@@ -41,30 +41,74 @@ SwapChainVK::~SwapChainVK()
         vkDestroySurfaceKHR(m_Device, m_Surface, m_Device.GetAllocationCallbacks());
 }
 
+Result SwapChainVK::CreateSurface(const SwapChainDesc& swapChainDesc)
+{
+    VkResult result;
+
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+    if (swapChainDesc.windowSystemType == WindowSystemType::WINDOWS)
+    {
+        VkWin32SurfaceCreateInfoKHR win32SurfaceInfo = {};
+        win32SurfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+        win32SurfaceInfo.hwnd = (HWND)swapChainDesc.windowHandle;
+
+        result = vkCreateWin32SurfaceKHR(m_Device, &win32SurfaceInfo, m_Device.GetAllocationCallbacks(), &m_Surface);
+
+        RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
+            "Can't create a surface: vkCreateWin32SurfaceKHR returned %d.", (int32_t)result);
+
+        return Result::SUCCESS;
+    }
+#endif
+#ifdef VK_USE_PLATFORM_XLIB_KHR
+    if (swapChainDesc.windowSystemType == WindowSystemType::X11)
+    {
+        const X11Window* x11Window = (const X11Window*)swapChainDesc.window;
+
+        VkXlibSurfaceCreateInfoKHR xlibSurfaceInfo = {};
+        xlibSurfaceInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
+        xlibSurfaceInfo.dpy = (Display*)x11Window->dpy;
+        xlibSurfaceInfo.window = (Window)x11Window->window;
+
+        result = vkCreateXlibSurfaceKHR(m_Device, &xlibSurfaceInfo, m_Device.GetAllocationCallbacks(), &m_Surface);
+
+        RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
+            "Can't create a surface: vkCreateXlibSurfaceKHR returned %d.", (int32_t)result);
+
+        return Result::SUCCESS;
+    }
+#endif
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
+    if (swapChainDesc.windowSystemType == WindowSystemType::WAYLAND)
+    {
+        const WaylandWindow* waylandWindow = (const WaylandWindow*)swapChainDesc.window;
+
+        VkWaylandSurfaceCreateInfoKHR waylandSurfaceInfo = {};
+        waylandSurfaceInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
+        waylandSurfaceInfo.display = (wl_display*)waylandWindow->display;
+        waylandSurfaceInfo.surface = (wl_surface*)waylandWindow->surface;
+
+        result = vkCreateWaylandSurfaceKHR(m_Device, &waylandSurfaceInfo, m_Device.GetAllocationCallbacks(), &m_Surface);
+
+        RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
+            "Can't create a surface: vkCreateWaylandSurfaceKHR returned %d.", (int32_t)result);
+
+        return Result::SUCCESS;
+    }
+#endif
+
+    return Result::UNSUPPORTED;
+}
+
 Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc)
 {
     m_CommandQueue = (CommandQueueVK*)swapChainDesc.commandQueue;
 
-#ifdef VK_USE_PLATFORM_WIN32_KHR
-    const VkWin32SurfaceCreateInfoKHR surfaceInfo = {
-        VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
-        nullptr,
-        (VkWin32SurfaceCreateFlagsKHR)0,
-        (HINSTANCE)nullptr,
-        (HWND)swapChainDesc.windowHandle
-    };
-
     {
-        const VkResult result = vkCreateWin32SurfaceKHR(m_Device, &surfaceInfo, m_Device.GetAllocationCallbacks(), &m_Surface);
-
-        RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
-            "Can't create a surface: vkCreateWin32SurfaceKHR returned %d.", (int32_t)result);
+        const Result result = CreateSurface(swapChainDesc);
+        if (result != Result::SUCCESS)
+            return result;
     }
-#elif defined(VK_USE_PLATFORM_XLIB_KHR)
-    // TODO: Implement
-#else
-#error "Unsupported platform!"
-#endif
 
     VkBool32 supported = VK_FALSE;
     vkGetPhysicalDeviceSurfaceSupportKHR(m_Device, m_CommandQueue->GetFamilyIndex(), m_Surface, &supported);

@@ -31,6 +31,8 @@ namespace nri
         Result SetHdrMetadata(const HdrMetadata& hdrMetadata);
 
     private:
+        Result CreateSurface(const SwapChainDesc& swapChainDesc);
+
         VkSwapchainKHR m_Handle = VK_NULL_HANDLE;
         const CommandQueueVK* m_CommandQueue = nullptr;
         uint32_t m_TextureIndex = std::numeric_limits<uint32_t>::max();

@@ -87,8 +87,11 @@ Result DeviceVal::CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*
     RETURN_ON_FAILURE(GetLog(), swapChainDesc.commandQueue != nullptr, Result::INVALID_ARGUMENT,
         "Can't create SwapChain: 'swapChainDesc.commandQueue' is invalid.");
 
-    RETURN_ON_FAILURE(GetLog(), swapChainDesc.windowHandle != nullptr, Result::INVALID_ARGUMENT,
-        "Can't create SwapChain: 'swapChainDesc.windowHandle' is invalid.");
+    RETURN_ON_FAILURE(GetLog(), swapChainDesc.windowSystemType < WindowSystemType::MAX_NUM, Result::INVALID_ARGUMENT,
+        "Can't create SwapChain: 'swapChainDesc.windowSystemType' is invalid.");
+
+    RETURN_ON_FAILURE(GetLog(), swapChainDesc.window != nullptr, Result::INVALID_ARGUMENT,
+        "Can't create SwapChain: 'swapChainDesc.window' is invalid.");
 
     RETURN_ON_FAILURE(GetLog(), swapChainDesc.width != 0, Result::INVALID_ARGUMENT,
         "Can't create SwapChain: 'swapChainDesc.width' is 0.");

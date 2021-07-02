@@ -30,10 +30,31 @@ namespace nri
         MAX_NUM
     };
 
+    enum class WindowSystemType : uint8_t
+    {
+        WINDOWS,
+        X11,
+        WAYLAND,
+        MAX_NUM
+    };
+
+    struct X11Window
+    {
+        const void* dpy; // Display*
+        uint64_t window; // Window
+    };
+
+    struct WaylandWindow
+    {
+        const void* display; // wl_display*
+        const void* surface; // wl_surface*
+    };
+
     // SwapChain buffers will be created as "color attachment" resources
     struct SwapChainDesc
     {
-        const void* windowHandle;
+        WindowSystemType windowSystemType;
+        const void* window;
         const CommandQueue* commandQueue;
         uint16_t width;
         uint16_t height;

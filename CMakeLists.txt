@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 
+option(NRI_DISABLE_INTERPROCEDURAL_OPTIMIZATION "disable interprocedural optimization" OFF)
+option(NRI_DISABLE_XLIB_SUPPORT "disable xlib support" OFF)
+option(NRI_DISABLE_WAYLAND_SUPPORT "disable wayland support" OFF)
+option(NRI_STATIC_LIBRARY "build static lib" OFF)
+
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/Include/NRI.h" ver_h)
 string(REGEX MATCH "NRI_VERSION_MAJOR ([0-9]*)" _ ${ver_h})
 set(ver_major ${CMAKE_MATCH_1})
@@ -32,7 +37,7 @@ set(CMAKE_POSITION_INDEPENDENT_BINARIES ON)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
-if (NOT NRI_STATIC_LIBRARY)
+if (NOT NRI_DISABLE_INTERPROCEDURAL_OPTIMIZATION)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 endif()
 
@@ -52,12 +57,14 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-Wno-switch -Wno-missing-braces)
 endif()
 
+# defines and VulkanSDK path for Windows
 if (WIN32)
     set(NRI_VULKAN_SDK_INCLUDE_PATH "$ENV{VULKAN_SDK}/Include/")
     set(NRI_VULKAN_SDK_LIB_PATH "$ENV{VULKAN_SDK}/Lib")
     add_compile_definitions(WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS _UNICODE UNICODE _ENFORCE_MATCHING_ALLOCATORS=0)
 endif()
 
+# Dependencies
 find_library(NRI_INPUT_LIB_VULKAN vulkan-1 vulkan PATHS "${NRI_VULKAN_SDK_LIB_PATH}" REQUIRED)
 if (WIN32)
     find_library(NRI_INPUT_LIB_D3D11 d3d11 REQUIRED)
@@ -68,24 +75,53 @@ if (WIN32)
     find_library(NRI_INPUT_LIB_AGS amd_ags_x64 PATHS "External/AGS/lib" REQUIRED)
 endif()
 
+# Shared
 add_library(NRI_Shared STATIC ${NRI_SHARED_SOURCE})
 target_include_directories(NRI_Shared PRIVATE "Include" "Source/Shared")
 
 if (WIN32)
+    #D3D11
     add_library(NRI_D3D11 STATIC ${NRI_D3D11_SOURCE})
     target_include_directories(NRI_D3D11 PRIVATE "Include" "Source/Shared" "External")
     target_link_libraries(NRI_D3D11 PRIVATE NRI_Shared ${NRI_INPUT_LIB_D3D11} ${NRI_INPUT_LIB_DXGI} ${NRI_INPUT_LIB_DXGUID} ${NRI_INPUT_LIB_NVAPI} ${NRI_INPUT_LIB_AGS})
+    
+    # D3D12
     add_library(NRI_D3D12 STATIC ${NRI_D3D12_SOURCE})
     target_include_directories(NRI_D3D12 PRIVATE "Include" "Source/Shared")
     target_link_libraries(NRI_D3D12 PRIVATE NRI_Shared ${NRI_INPUT_LIB_D3D12} ${NRI_INPUT_LIB_DXGI})
 endif()
+
+# Vulkan
 add_library(NRI_VK STATIC ${NRI_VK_SOURCE})
 target_include_directories(NRI_VK PRIVATE "Include" "Source/Shared" "${NRI_VULKAN_SDK_INCLUDE_PATH}")
 target_link_libraries(NRI_VK PRIVATE NRI_Shared ${NRI_INPUT_LIB_VULKAN})
+
+# Window system defines
+if (WIN32)
+    target_compile_definitions(NRI_VK PRIVATE VK_USE_PLATFORM_WIN32_KHR)
+else()
+    if (NOT NRI_DISABLE_XLIB_SUPPORT)
+        find_path(NRI_XLIB_HEADERS NAMES "X11/Xlib.h" REQUIRED)
+        if (NOT NRI_XLIB_HEADERS)
+            message(FATAL_ERROR "Can't find 'X11/xlib.h'. (libx11-dev is not installed?)")
+        endif()
+        target_compile_definitions(NRI_VK PRIVATE VK_USE_PLATFORM_XLIB_KHR)
+    endif()
+    if (NOT NRI_DISABLE_WAYLAND_SUPPORT)
+        find_path(NRI_WAYLAND_HEADERS NAMES "wayland-client.h" REQUIRED)
+        if (NOT NRI_XLIB_HEADERS)
+            message(FATAL_ERROR "Can't find 'wayland-client.h'. (libwayland-dev is not installed?)")
+        endif()
+        target_compile_definitions(NRI_VK PRIVATE VK_USE_PLATFORM_WAYLAND_KHR)
+    endif()
+endif()
+
+# Validation
 add_library(NRI_Validation STATIC ${NRI_VALIDATION_SOURCE})
 target_include_directories(NRI_Validation PRIVATE "Include" "Source/Shared")
 target_link_libraries(NRI_Validation PRIVATE NRI_Shared)
 
+# NRI
 if (NRI_STATIC_LIBRARY)
     add_library(${PROJECT_NAME} STATIC ${NRI_SOURCE})
 else()
