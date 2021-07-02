@@ -11,7 +11,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "SharedExternal.h"
 
 #include <cstdarg>
-#include <windows.h>
 
 constexpr std::array<const char*, uint32_t(nri::Message::TYPE_ERROR) + 1> MESSAGE_TYPE_NAME =
 {
@@ -79,6 +78,9 @@ void ConvertWcharToChar(const wchar_t* in, char* out, size_t outLength)
     *out = 0;
 }
 
+#if defined(_WIN32)
+#include <winerror.h>
+
 nri::Result GetResultFromHRESULT(long result)
 {
     if (SUCCEEDED(result))
@@ -98,6 +100,7 @@ nri::Result GetResultFromHRESULT(long result)
 
     return nri::Result::FAILURE;
 }
+#endif
 
 static constexpr std::array<uint32_t, (size_t)nri::Format::MAX_NUM> TEXEL_BLOCK_WIDTH = {
     0, // UNKNOWN
@@ -415,7 +418,7 @@ nri::Format GetFormatDXGI(uint32_t dxgiFormat)
 
 static void MessageCallback(void* userArg, const char* message, nri::Message messageType)
 {
-    OutputDebugStringA(message);
+    fprintf_s(stderr, message);
 }
 
 static void AbortExecution(void* userArg)
