@@ -40,3 +40,7 @@ Makefile
 build.ninja
 compile_commands.json
 *.log
+
+# external packages
+External/NVAPI
+External/AGS
