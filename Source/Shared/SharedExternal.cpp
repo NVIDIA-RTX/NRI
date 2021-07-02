@@ -12,6 +12,12 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include <cstdarg>
 
+#if _WIN32
+    #include <windows.h>
+#else
+    #include <csignal>
+#endif
+
 constexpr std::array<const char*, uint32_t(nri::Message::TYPE_ERROR) + 1> MESSAGE_TYPE_NAME =
 {
     "INFO",
@@ -418,13 +424,18 @@ nri::Format GetFormatDXGI(uint32_t dxgiFormat)
 
 static void MessageCallback(void* userArg, const char* message, nri::Message messageType)
 {
-    fprintf_s(stderr, message);
+    fprintf_s(stderr, "%s", message);
+#if _WIN32
+    OutputDebugStringA(message);
+#endif
 }
 
 static void AbortExecution(void* userArg)
 {
-#if _DEBUG
-    __debugbreak();
+#if _WIN32
+    DebugBreak();
+#else
+    raise(SIGTRAP);
 #endif
 }
 

@@ -16,7 +16,14 @@ namespace nri
     {
         TYPE_INFO,
         TYPE_WARNING,
-        TYPE_ERROR,
+        TYPE_ERROR
+    };
+
+    enum class PhysicalDeviceType
+    {
+        UNKNOWN,
+        INTEGRATED,
+        DISCRETE
     };
 
     struct MemoryAllocatorInterface
@@ -47,6 +54,7 @@ namespace nri
         char description[128];
         uint64_t luid;
         uint64_t dedicatedVideoMemoryMB;
+        PhysicalDeviceType type;
         Vendor vendor;
         uint32_t deviceID;
         uint32_t physicalDeviceGroupSize;

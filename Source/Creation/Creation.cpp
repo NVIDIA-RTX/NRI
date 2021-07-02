@@ -94,7 +94,7 @@ Result NRI_CALL nri::GetInterface(const Device& device, const char* interfaceNam
     return result;
 }
 
-bool IsValidDeviceGroup(const VkPhysicalDeviceGroupProperties& group)
+static bool IsValidDeviceGroup(const VkPhysicalDeviceGroupProperties& group)
 {
     VkPhysicalDeviceProperties baseProperties = {};
     vkGetPhysicalDeviceProperties(group.physicalDevices[0], &baseProperties);
@@ -109,6 +109,20 @@ bool IsValidDeviceGroup(const VkPhysicalDeviceGroupProperties& group)
     }
 
     return true;
+}
+
+constexpr std::array<nri::PhysicalDeviceType, 5> PHYSICAL_DEVICE_TYPE = {
+    nri::PhysicalDeviceType::UNKNOWN,
+    nri::PhysicalDeviceType::INTEGRATED,
+    nri::PhysicalDeviceType::DISCRETE,
+    nri::PhysicalDeviceType::UNKNOWN,
+    nri::PhysicalDeviceType::UNKNOWN
+};
+
+constexpr PhysicalDeviceType GetPhysicalDeviceType(VkPhysicalDeviceType physicalDeviceType)
+{
+    const size_t index = std::min(PHYSICAL_DEVICE_TYPE.size() - 1, (size_t)physicalDeviceType);
+    return PHYSICAL_DEVICE_TYPE[index];
 }
 
 Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroups, uint32_t& physicalDeviceGroupNum)
@@ -179,6 +193,7 @@ Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroup
 
         PhysicalDeviceGroup& group = physicalDeviceGroups[j++];
 
+        group.type = GetPhysicalDeviceType(properties.deviceType);
         group.vendor = GetVendorFromID(properties.vendorID);
         group.deviceID = properties.deviceID;
         group.luid = *(uint64_t*)&deviceIDProperties.deviceLUID[0];
