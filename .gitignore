@@ -33,6 +33,7 @@ Makefile
 *.pdb
 *.so
 *.so.*
+*.a
 
 # ninja
 .ninja_deps

@@ -424,7 +424,7 @@ nri::Format GetFormatDXGI(uint32_t dxgiFormat)
 
 static void MessageCallback(void* userArg, const char* message, nri::Message messageType)
 {
-    fprintf_s(stderr, "%s", message);
+    fprintf(stderr, "%s", message);
 #if _WIN32
     OutputDebugStringA(message);
 #endif
