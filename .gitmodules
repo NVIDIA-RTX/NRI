@@ -1,3 +1,3 @@
 [submodule "External/Packman"]
 	path = External/Packman
-	url = ssh://git@gitlab-master.nvidia.com:12051/nri/packman.git
+	url = https://gitlab-master.nvidia.com/nri/packman.git
