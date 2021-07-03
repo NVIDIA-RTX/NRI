@@ -84,7 +84,7 @@ if (WIN32)
     add_library(NRI_D3D11 STATIC ${NRI_D3D11_SOURCE})
     target_include_directories(NRI_D3D11 PRIVATE "Include" "Source/Shared" "External")
     target_link_libraries(NRI_D3D11 PRIVATE NRI_Shared ${NRI_INPUT_LIB_D3D11} ${NRI_INPUT_LIB_DXGI} ${NRI_INPUT_LIB_DXGUID} ${NRI_INPUT_LIB_NVAPI} ${NRI_INPUT_LIB_AGS})
-    
+
     # D3D12
     add_library(NRI_D3D12 STATIC ${NRI_D3D12_SOURCE})
     target_include_directories(NRI_D3D12 PRIVATE "Include" "Source/Shared")
@@ -130,9 +130,11 @@ endif()
 
 if (WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE NRI_D3D11 NRI_D3D12)
+    target_link_options(${PROJECT_NAME} PRIVATE "/DELAYLOAD:amd_ags_x64.dll")
 endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE NRI_Shared NRI_VK NRI_Validation ${NRI_INPUT_LIB_VULKAN})
 target_include_directories(${PROJECT_NAME} PRIVATE "Include" "Source/Shared" "${NRI_VULKAN_SDK_INCLUDE_PATH}")
+target_compile_definitions(${PROJECT_NAME} PRIVATE "NRI_API=extern \"C\" __declspec(dllexport)")
 
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE "${OUTPUT_BIN_PATH}/Release")
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "${OUTPUT_BIN_PATH}/Debug")
