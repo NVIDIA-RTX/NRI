@@ -50,7 +50,7 @@ Result SwapChainVK::CreateSurface(const SwapChainDesc& swapChainDesc)
     {
         VkWin32SurfaceCreateInfoKHR win32SurfaceInfo = {};
         win32SurfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-        win32SurfaceInfo.hwnd = (HWND)swapChainDesc.windowHandle;
+        win32SurfaceInfo.hwnd = (HWND)swapChainDesc.window;
 
         result = vkCreateWin32SurfaceKHR(m_Device, &win32SurfaceInfo, m_Device.GetAllocationCallbacks(), &m_Surface);
 
