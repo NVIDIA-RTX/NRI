@@ -41,8 +41,6 @@ if (NOT NRI_DISABLE_INTERPROCEDURAL_OPTIMIZATION)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 endif()
 
-set(OUTPUT_BIN_PATH "${PROJECT_BINARY_DIR}/Output/${CMAKE_CXX_COMPILER_ID}_${CMAKE_SYSTEM_NAME}_${CMAKE_SYSTEM_PROCESSOR}")
-
 file(GLOB_RECURSE NRI_SHARED_SOURCE "Source/Shared/*.cpp" "Source/Shared/*.h" "Source/Shared/*.hpp")
 file(GLOB_RECURSE NRI_D3D11_SOURCE "Source/D3D11/*.cpp" "Source/D3D11/*.h" "Source/D3D11/*.hpp")
 file(GLOB_RECURSE NRI_D3D12_SOURCE "Source/D3D12/*.cpp" "Source/D3D12/*.h" "Source/D3D12/*.hpp")
@@ -78,23 +76,27 @@ endif()
 # Shared
 add_library(NRI_Shared STATIC ${NRI_SHARED_SOURCE})
 target_include_directories(NRI_Shared PRIVATE "Include" "Source/Shared")
+set_property(TARGET NRI_Shared PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
 
 if (WIN32)
     #D3D11
     add_library(NRI_D3D11 STATIC ${NRI_D3D11_SOURCE})
     target_include_directories(NRI_D3D11 PRIVATE "Include" "Source/Shared" "External")
     target_link_libraries(NRI_D3D11 PRIVATE NRI_Shared ${NRI_INPUT_LIB_D3D11} ${NRI_INPUT_LIB_DXGI} ${NRI_INPUT_LIB_DXGUID} ${NRI_INPUT_LIB_NVAPI} ${NRI_INPUT_LIB_AGS})
+    set_property(TARGET NRI_D3D11 PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
 
     # D3D12
     add_library(NRI_D3D12 STATIC ${NRI_D3D12_SOURCE})
     target_include_directories(NRI_D3D12 PRIVATE "Include" "Source/Shared")
     target_link_libraries(NRI_D3D12 PRIVATE NRI_Shared ${NRI_INPUT_LIB_D3D12} ${NRI_INPUT_LIB_DXGI})
+    set_property(TARGET NRI_D3D12 PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
 endif()
 
 # Vulkan
 add_library(NRI_VK STATIC ${NRI_VK_SOURCE})
 target_include_directories(NRI_VK PRIVATE "Include" "Source/Shared" "${NRI_VULKAN_SDK_INCLUDE_PATH}")
 target_link_libraries(NRI_VK PRIVATE NRI_Shared ${NRI_INPUT_LIB_VULKAN})
+set_property(TARGET NRI_VK PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
 
 # Window system defines
 if (WIN32)
@@ -120,6 +122,7 @@ endif()
 add_library(NRI_Validation STATIC ${NRI_VALIDATION_SOURCE})
 target_include_directories(NRI_Validation PRIVATE "Include" "Source/Shared")
 target_link_libraries(NRI_Validation PRIVATE NRI_Shared)
+set_property(TARGET NRI_Validation PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
 
 # NRI
 if (NRI_STATIC_LIBRARY)
@@ -135,7 +138,9 @@ endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE NRI_Shared NRI_VK NRI_Validation ${NRI_INPUT_LIB_VULKAN})
 target_include_directories(${PROJECT_NAME} PRIVATE "Include" "Source/Shared" "${NRI_VULKAN_SDK_INCLUDE_PATH}")
 target_compile_definitions(${PROJECT_NAME} PRIVATE "NRI_API=extern \"C\" __declspec(dllexport)")
+set_property(TARGET ${PROJECT_NAME} PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
 
+set(OUTPUT_BIN_PATH "${PROJECT_BINARY_DIR}/Output/${CMAKE_CXX_COMPILER_ID}_${CMAKE_SYSTEM_NAME}_${CMAKE_SYSTEM_PROCESSOR}")
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE "${OUTPUT_BIN_PATH}/Release")
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "${OUTPUT_BIN_PATH}/Debug")
 set_target_properties(${PROJECT_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY_RELEASE "${OUTPUT_BIN_PATH}/Release")
