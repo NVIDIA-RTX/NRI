@@ -1,0 +1,3 @@
+[submodule "packman"]
+	path = packman
+	url = https://gitlab-master.nvidia.com/nri/packman.git
