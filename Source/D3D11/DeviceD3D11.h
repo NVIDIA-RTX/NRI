@@ -87,8 +87,8 @@ namespace nri
         nri::Result CreateImplementationWithNonEmptyConstructor(Interface*& entity, ConstructorArg&& constructorArg, const Args&... args);
 
     private:
-        // don't sort - ~DX11Extensions must be called last!
-        DX11Extensions m_Ext = {};
+        // don't sort - ~D3D11Extensions must be called last!
+        D3D11Extensions m_Ext = {};
         VersionedDevice m_Device = {};
         VersionedContext m_ImmediateContext = {};
         Vector<CommandQueueD3D11> m_CommandQueues;

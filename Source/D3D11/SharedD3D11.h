@@ -66,7 +66,7 @@ D3D11_BLEND GetD3D11BlendFromBlendFactor(nri::BlendFactor blendFactor);
 D3D11_LOGIC_OP GetD3D11LogicOpFromLogicFunc(nri::LogicFunc logicalFunc);
 
 struct AGSContext;
-struct DX11Extensions;
+struct D3D11Extensions;
 struct IDXGISwapChain4;
 
 struct VersionedDevice
@@ -80,7 +80,7 @@ struct VersionedDevice
     }
 
     ComPtr<ID3D11Device5> ptr;
-    const DX11Extensions* ext = nullptr;
+    const D3D11Extensions* ext = nullptr;
     bool isDeferredContextsEmulated = false;
     uint8_t version = 0;
 };
@@ -113,7 +113,7 @@ struct VersionedContext
 
     ComPtr<ID3D11DeviceContext4> ptr;
     ComPtr<ID3D11Multithread> multiThread;
-    const DX11Extensions* ext = nullptr;
+    const D3D11Extensions* ext = nullptr;
     CRITICAL_SECTION* criticalSection;
     uint8_t version = 0;
 };
@@ -146,29 +146,6 @@ struct CriticalSection
     }
 
     const VersionedContext& m_Context;
-};
-
-struct DX11Extensions
-{
-    ~DX11Extensions();
-
-    inline bool IsAvailable() const
-    {
-        return isAvailableNVAPI || isAvailableAGS;
-    }
-
-    void Create(const Log& log, nri::Vendor vendor, AGSContext* context);
-    void BeginUAVOverlap(const VersionedContext& context) const;
-    void EndUAVOverlap(const VersionedContext& context) const;
-    void WaitForDrain(const VersionedContext& context, nri::BarrierDependency dependency) const;
-    void SetDepthBounds(const VersionedContext& context, float minBound, float maxBound) const;
-    void MultiDrawIndirect(const VersionedContext& context, ID3D11Buffer* buffer, uint64_t offset, uint32_t drawNum, uint32_t stride) const;
-    void MultiDrawIndexedIndirect(const VersionedContext& context, ID3D11Buffer* buffer, uint64_t offset, uint32_t drawNum, uint32_t stride) const;
-
-    AGSContext* agsContext = nullptr;
-    bool isAvailableNVAPI = false;
-    bool isAvailableAGS = false;
-    const Log* log = nullptr;
 };
 
 struct SubresourceInfo
@@ -300,4 +277,6 @@ struct SamplePositionsState
     }
 };
 
+#include "AGS/inc/amd_ags.h"
+#include "D3D11Extensions.h"
 #include "DeviceD3D11.h"

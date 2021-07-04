@@ -32,7 +32,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include <d3d12.h>
 
 #include "NVAPI/nvapi.h"
-#include "AGS/inc/amd_ags.h"
 
 using namespace nri;
 
@@ -60,7 +59,8 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAd
 
     const Vendor vendor = GetVendorFromID(desc.VendorId);
 
-    m_Ext.Create(GetLog(), vendor, agsContext);
+    m_Ext.Create(GetLog(), vendor, agsContext, precreatedDevice != nullptr);
+
     ComPtr<ID3D11Device> device = precreatedDevice;
 
     if (!precreatedDevice)
@@ -72,32 +72,11 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAd
             D3D_FEATURE_LEVEL_11_0
         };
 
-        if (m_Ext.isAvailableAGS)
+        if (m_Ext.IsAGSAvailable())
         {
-            AGSDX11DeviceCreationParams deviceCreationParams = {};
-            deviceCreationParams.pAdapter = adapter;
-            deviceCreationParams.DriverType = D3D_DRIVER_TYPE_UNKNOWN;
-            deviceCreationParams.Software = nullptr;
-            deviceCreationParams.Flags = flags;
-            deviceCreationParams.pFeatureLevels = levels.data();
-            deviceCreationParams.FeatureLevels = (uint32_t)levels.size();
-            deviceCreationParams.SDKVersion = D3D11_SDK_VERSION;
-
-            AGSDX11ExtensionParams extensionsParams = {};
-            extensionsParams.uavSlot = 63;
-
-            AGSDX11ReturnedParams returnedParams = {};
-            AGSReturnCode res = agsDriverExtensionsDX11_CreateDevice(m_Ext.agsContext, &deviceCreationParams, &extensionsParams, &returnedParams);
-
-            if (flags && res != AGS_SUCCESS)
-            {
-                deviceCreationParams.Flags = 0;
-                res = agsDriverExtensionsDX11_CreateDevice(m_Ext.agsContext, &deviceCreationParams, &extensionsParams, &returnedParams);
-            }
-
-            RETURN_ON_FAILURE(GetLog(), res == AGS_SUCCESS, Result::FAILURE, "agsDriverExtensionsDX11_CreateDevice() - FAILED!");
-
-            device = returnedParams.pDevice;
+            device = m_Ext.CreateDeviceUsingAGS(adapter, levels.data(), levels.size(), flags);
+            if (device == nullptr)
+                return Result::FAILURE;
         }
         else
         {
@@ -162,7 +141,7 @@ void DeviceD3D11::InitVersionedDevice(ID3D11Device* device, bool isDeferredConte
     if (FAILED(hr) || !threadingCaps.DriverConcurrentCreates)
         REPORT_WARNING(GetLog(), "Concurrent resource creation is not supported by the driver!");
 
-    m_Device.isDeferredContextsEmulated = !m_Ext.isAvailableNVAPI || isDeferredContextsEmulationRequested;
+    m_Device.isDeferredContextsEmulated = !m_Ext.IsNvAPIAvailable() || isDeferredContextsEmulationRequested;
 
     if (!threadingCaps.DriverCommandLists)
     {

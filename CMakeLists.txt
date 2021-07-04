@@ -48,6 +48,13 @@ file(GLOB_RECURSE NRI_VK_SOURCE "Source/VK/*.cpp" "Source/VK/*.h" "Source/VK/*.h
 file(GLOB_RECURSE NRI_VALIDATION_SOURCE "Source/Validation/*.cpp" "Source/Validation/*.h" "Source/Validation/*.hpp")
 file(GLOB_RECURSE NRI_SOURCE "Source/Creation/*.cpp" "Source/Creation/*.h")
 
+source_group("" FILES ${NRI_SHARED_SOURCE})
+source_group("" FILES ${NRI_D3D11_SOURCE})
+source_group("" FILES ${NRI_D3D12_SOURCE})
+source_group("" FILES ${NRI_VK_SOURCE})
+source_group("" FILES ${NRI_VALIDATION_SOURCE})
+source_group("" FILES ${NRI_SOURCE})
+
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     # -Wmissing-braces
     # warning: suggest braces around initialization of subobject [-Wmissing-braces]
@@ -65,12 +72,24 @@ endif()
 # Dependencies
 find_library(NRI_INPUT_LIB_VULKAN vulkan-1 vulkan PATHS "${NRI_VULKAN_SDK_LIB_PATH}" REQUIRED)
 if (WIN32)
-    find_library(NRI_INPUT_LIB_D3D11 d3d11 REQUIRED)
-    find_library(NRI_INPUT_LIB_D3D12 d3d12 REQUIRED)
-    find_library(NRI_INPUT_LIB_DXGI dxgi REQUIRED)
-    find_library(NRI_INPUT_LIB_DXGUID dxguid REQUIRED)
-    find_library(NRI_INPUT_LIB_NVAPI nvapi64 PATHS "External/NVAPI/amd64" REQUIRED)
-    find_library(NRI_INPUT_LIB_AGS amd_ags_x64 PATHS "External/AGS/lib" REQUIRED)
+    if ("$ENV{WIN10_SDK_PATH}$ENV{WIN10_SDK_VERSION}" STREQUAL "" )
+        get_filename_component(NRI_WINDOWS_SDK_PATH "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots;KitsRoot10]" ABSOLUTE CACHE)
+        set(NRI_WINDOWS_SDK_VERSION ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION})
+    elseif()
+        set(NRI_WINDOWS_SDK_PATH $ENV{WIN10_SDK_PATH})
+        set(NRI_WINDOWS_SDK_VERSION $ENV{WIN10_SDK_VERSION})
+    endif()
+    if (IS_DIRECTORY "${NRI_WINDOWS_SDK_PATH}/Include/${NRI_WINDOWS_SDK_VERSION}.0")
+        set(NRI_WINDOWS_SDK_VERSION "${NRI_WINDOWS_SDK_VERSION}.0")
+    endif()
+    set(NRI_WINDOWS_SDK_LIB_PATH "${NRI_WINDOWS_SDK_PATH}/Lib/${NRI_WINDOWS_SDK_VERSION}/um/x64")
+
+    find_library(NRI_INPUT_LIB_D3D11 NAMES d3d11 HINTS ${NRI_WINDOWS_SDK_LIB_PATH} REQUIRED)
+    find_library(NRI_INPUT_LIB_D3D12 NAMES d3d12 HINTS ${NRI_WINDOWS_SDK_LIB_PATH} REQUIRED)
+    find_library(NRI_INPUT_LIB_DXGI NAMES dxgi HINTS ${NRI_WINDOWS_SDK_LIB_PATH} REQUIRED)
+    find_library(NRI_INPUT_LIB_DXGUID NAMES dxguid HINTS ${NRI_WINDOWS_SDK_LIB_PATH} REQUIRED)
+    find_library(NRI_INPUT_LIB_NVAPI NAMES nvapi64 PATHS "External/NVAPI/amd64" REQUIRED)
+    find_library(NRI_INPUT_LIB_AGS NAMES amd_ags_x64 PATHS "External/AGS/lib" REQUIRED)
 endif()
 
 # Shared
@@ -82,7 +101,7 @@ if (WIN32)
     #D3D11
     add_library(NRI_D3D11 STATIC ${NRI_D3D11_SOURCE})
     target_include_directories(NRI_D3D11 PRIVATE "Include" "Source/Shared" "External")
-    target_link_libraries(NRI_D3D11 PRIVATE NRI_Shared ${NRI_INPUT_LIB_D3D11} ${NRI_INPUT_LIB_DXGI} ${NRI_INPUT_LIB_DXGUID} ${NRI_INPUT_LIB_NVAPI} ${NRI_INPUT_LIB_AGS})
+    target_link_libraries(NRI_D3D11 PRIVATE NRI_Shared ${NRI_INPUT_LIB_D3D11} ${NRI_INPUT_LIB_DXGI} ${NRI_INPUT_LIB_DXGUID} ${NRI_INPUT_LIB_NVAPI})
     set_property(TARGET NRI_D3D11 PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
 
     # D3D12
@@ -133,7 +152,6 @@ endif()
 
 if (WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE NRI_D3D11 NRI_D3D12)
-    target_link_options(${PROJECT_NAME} PRIVATE "/DELAYLOAD:amd_ags_x64.dll")
 endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE NRI_Shared NRI_VK NRI_Validation ${NRI_INPUT_LIB_VULKAN})
 target_include_directories(${PROJECT_NAME} PRIVATE "Include" "Source/Shared" "${NRI_VULKAN_SDK_INCLUDE_PATH}")

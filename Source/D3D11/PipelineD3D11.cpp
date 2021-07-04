@@ -289,7 +289,7 @@ void PipelineD3D11::ChangeSamplePositions(const VersionedContext& context, const
             m_RasterizerStateExDesc->SamplePositionsY[j] = samplePositionState.positions[j].y + 8;
         }
 
-        if (context.ext->isAvailableNVAPI)
+        if (context.ext->IsNvAPIAvailable())
         {
             NvAPI_Status result = NvAPI_D3D11_CreateRasterizerState(m_VersionedDevice->ptr, m_RasterizerStateExDesc, (ID3D11RasterizerState**)&newState.ptr);
             if (result != NVAPI_OK)
