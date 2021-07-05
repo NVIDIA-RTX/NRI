@@ -13,6 +13,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #pragma once
 
 #include <cstdint>
+#include <cstddef>
 
 #define NRI_VERSION_MAJOR 1
 #define NRI_VERSION_MINOR 68

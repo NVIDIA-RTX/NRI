@@ -26,17 +26,21 @@ TextureVal::TextureVal(DeviceVal& device, Texture& texture, const TextureDesc& t
 {
 }
 
+#if NRI_USE_D3D11
 TextureVal::TextureVal(DeviceVal& device, Texture& texture, const TextureD3D11Desc& textureD3D11Desc) :
     DeviceObjectVal(device, texture)
 {
     GetTextureDescD3D11(textureD3D11Desc, m_TextureDesc);
 }
+#endif
 
+#if NRI_USE_D3D12
 TextureVal::TextureVal(DeviceVal& device, Texture& texture, const TextureD3D12Desc& textureD3D12Desc) :
     DeviceObjectVal(device, texture)
 {
     GetTextureDescD3D12(textureD3D12Desc, m_TextureDesc);
 }
+#endif
 
 TextureVal::TextureVal(DeviceVal& device, Texture& texture, const TextureVulkanDesc& textureVulkanDesc) :
     DeviceObjectVal(device, texture)

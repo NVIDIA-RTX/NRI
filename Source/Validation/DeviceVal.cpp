@@ -973,6 +973,7 @@ FormatSupportBits DeviceVal::GetFormatSupport(Format format) const
     return m_CoreAPI.GetFormatSupport(m_Device, format);
 }
 
+#if NRI_USE_VULKAN
 VkDevice DeviceVal::GetDeviceVK() const
 {
     return m_WrapperVKAPI.GetDeviceVK(m_Device);
@@ -1259,7 +1260,9 @@ Result DeviceVal::CreateDeviceSemaphoreVK(VkFence vkFence, DeviceSemaphore*& dev
 
     return result;
 }
+#endif
 
+#if NRI_USE_D3D11
 Result DeviceVal::CreateCommandBufferD3D11(const CommandBufferD3D11Desc& commandBufferDesc, CommandBuffer*& commandBuffer)
 {
     RETURN_ON_FAILURE(GetLog(), commandBufferDesc.d3d11DeviceContext != nullptr, Result::INVALID_ARGUMENT,
@@ -1321,7 +1324,9 @@ ID3D11Device* DeviceVal::GetDeviceD3D11()
 {
     return m_WrapperD3D11API.GetDeviceD3D11(m_Device);
 }
+#endif
 
+#if NRI_USE_D3D12
 Result DeviceVal::CreateCommandBufferD3D12(const CommandBufferD3D12Desc& commandBufferDesc, CommandBuffer*& commandBuffer)
 {
     RETURN_ON_FAILURE(GetLog(), commandBufferDesc.d3d12CommandAllocator != nullptr, Result::INVALID_ARGUMENT,
@@ -1407,6 +1412,7 @@ ID3D12Device* DeviceVal::GetDeviceD3D12()
 {
     return m_WrapperD3D12API.GetDeviceD3D12(m_Device);
 }
+#endif
 
 uint32_t DeviceVal::CalculateAllocationNumber(const ResourceGroupDesc& resourceGroupDesc) const
 {

@@ -24,11 +24,13 @@ MemoryVal::MemoryVal(DeviceVal& device, Memory& memory, uint64_t size, MemoryLoc
 {
 }
 
+#if NRI_USE_D3D12
 MemoryVal::MemoryVal(DeviceVal& device, Memory& memory, const MemoryD3D12Desc& memoryD3D12Desc) :
     DeviceObjectVal(device, memory)
 {
     m_Size = GetMemorySizeD3D12(memoryD3D12Desc);
 }
+#endif
 
 bool MemoryVal::HasBoundResources()
 {

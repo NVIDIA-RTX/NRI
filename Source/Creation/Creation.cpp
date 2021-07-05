@@ -15,18 +15,20 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #define NRI_STRINGIFY(name) #name
 
-#define USE_D3D11 1
-#define USE_D3D12 1
-#define USE_VULKAN 1
-
 using namespace nri;
 
+#if NRI_USE_D3D11
 Result CreateDeviceD3D11(const DeviceCreationDesc& deviceCreationDesc, DeviceBase*& device);
 Result CreateDeviceD3D11(const DeviceCreationD3D11Desc& deviceDesc, DeviceBase*& device);
+#endif
+#if NRI_USE_D3D12
 Result CreateDeviceD3D12(const DeviceCreationDesc& deviceCreationDesc, DeviceBase*& device);
 Result CreateDeviceD3D12(const DeviceCreationD3D12Desc& deviceCreationDesc, DeviceBase*& device);
+#endif
+#if NRI_USE_VULKAN
 Result CreateDeviceVK(const DeviceCreationDesc& deviceCreationDesc, DeviceBase*& device);
 Result CreateDeviceVK(const DeviceCreationVulkanDesc& deviceDesc, DeviceBase*& device);
+#endif
 DeviceBase* CreateDeviceValidation(const DeviceCreationDesc& deviceCreationDesc, DeviceBase& device);
 Format GetFormatDXGI(uint32_t dxgiFormat);
 Format GetFormatVK(uint32_t vkFormat);
@@ -245,17 +247,17 @@ NRI_API Result NRI_CALL nri::CreateDevice(const DeviceCreationDesc& deviceCreati
     CheckAndSetDefaultCallbacks(modifiedDeviceCreationDesc.callbackInterface);
     CheckAndSetDefaultAllocator(modifiedDeviceCreationDesc.memoryAllocatorInterface);
 
-    #if (USE_D3D11 == 1)
+    #if (NRI_USE_D3D11 == 1)
         if (modifiedDeviceCreationDesc.graphicsAPI == GraphicsAPI::D3D11)
             result = CreateDeviceD3D11(modifiedDeviceCreationDesc, deviceImpl);
     #endif
 
-    #if (USE_D3D12 == 1)
+    #if (NRI_USE_D3D12 == 1)
         if (modifiedDeviceCreationDesc.graphicsAPI == GraphicsAPI::D3D12)
             result = CreateDeviceD3D12(modifiedDeviceCreationDesc, deviceImpl);
     #endif
 
-    #if (USE_VULKAN == 1)
+    #if (NRI_USE_VULKAN == 1)
         if (modifiedDeviceCreationDesc.graphicsAPI == GraphicsAPI::VULKAN)
             result = CreateDeviceVK(modifiedDeviceCreationDesc, deviceImpl);
     #endif
@@ -281,7 +283,7 @@ NRI_API Result NRI_CALL nri::CreateDeviceFromD3D11Device(const DeviceCreationD3D
     Result result = Result::UNSUPPORTED;
     DeviceBase* deviceImpl = nullptr;
 
-    #if (USE_D3D11 == 1)
+    #if (NRI_USE_D3D11 == 1)
         result = CreateDeviceD3D11(deviceCreationD3D11Desc, deviceImpl);
     #endif
 
@@ -311,7 +313,7 @@ NRI_API Result NRI_CALL nri::CreateDeviceFromD3D12Device(const DeviceCreationD3D
     CheckAndSetDefaultCallbacks(tempDeviceCreationD3D12Desc.callbackInterface);
     CheckAndSetDefaultAllocator(tempDeviceCreationD3D12Desc.memoryAllocatorInterface);
 
-#if (USE_D3D12 == 1)
+#if (NRI_USE_D3D12 == 1)
     result = CreateDeviceD3D12(tempDeviceCreationD3D12Desc, deviceImpl);
 #endif
 
@@ -341,7 +343,7 @@ NRI_API Result NRI_CALL nri::CreateDeviceFromVkDevice(const DeviceCreationVulkan
     Result result = Result::UNSUPPORTED;
     DeviceBase* deviceImpl = nullptr;
 
-    #if (USE_VULKAN == 1)
+    #if (NRI_USE_VULKAN == 1)
         result = CreateDeviceVK(tempDeviceCreationVulkanDesc, deviceImpl);
     #endif
 
@@ -353,7 +355,7 @@ NRI_API Result NRI_CALL nri::CreateDeviceFromVkDevice(const DeviceCreationVulkan
 
 NRI_API Format NRI_CALL nri::GetFormatVK(uint32_t vkFormat)
 {
-    #if (USE_VULKAN == 1)
+    #if (NRI_USE_VULKAN == 1)
         return ::GetFormatVK(vkFormat);
     #else
         return nri::Format::UNKNOWN;
@@ -362,7 +364,7 @@ NRI_API Format NRI_CALL nri::GetFormatVK(uint32_t vkFormat)
 
 NRI_API Format NRI_CALL nri::GetFormatDXGI(uint32_t dxgiFormat)
 {
-    #if (USE_D3D11 == 1 || USE_D3D12 == 1)
+    #if (NRI_USE_D3D11 == 1 || NRI_USE_D3D12 == 1)
         return ::GetFormatDXGI(dxgiFormat);
     #else
         return nri::Format::UNKNOWN;

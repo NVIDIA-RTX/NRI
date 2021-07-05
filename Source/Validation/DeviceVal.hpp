@@ -320,6 +320,7 @@ Result DeviceVal::FillFunctionTable(SwapChainInterface& swapChainInterface) cons
 
 #pragma region [  WrapperD3D11Interface  ]
 
+#if NRI_USE_D3D11
 static Result NRI_CALL CreateCommandBufferD3D11(Device& device, const CommandBufferD3D11Desc& commandBufferDesc, CommandBuffer*& commandBuffer)
 {
     return ((DeviceVal&)device).CreateCommandBufferD3D11(commandBufferDesc, commandBuffer);
@@ -343,9 +344,11 @@ static ID3D11Device* NRI_CALL GetDeviceD3D11(const Device& device)
 void FillFunctionTableBufferVal(WrapperD3D11Interface& wrapperD3D11Interface);
 void FillFunctionTableTextureVal(WrapperD3D11Interface& wrapperD3D11Interface);
 void FillFunctionTableCommandBufferVal(WrapperD3D11Interface& wrapperD3D11Interface);
+#endif
 
 Result DeviceVal::FillFunctionTable(WrapperD3D11Interface& wrapperD3D11Interface) const
 {
+#if NRI_USE_D3D12
     wrapperD3D11Interface = {};
 
     FillFunctionTableBufferVal(wrapperD3D11Interface);
@@ -358,12 +361,16 @@ Result DeviceVal::FillFunctionTable(WrapperD3D11Interface& wrapperD3D11Interface
     wrapperD3D11Interface.GetDeviceD3D11 = ::GetDeviceD3D11;
 
     return ValidateFunctionTable(GetLog(), wrapperD3D11Interface);
+#else
+    return Result::UNSUPPORTED;
+#endif
 }
 
 #pragma endregion
 
 #pragma region [  WrapperD3D12Interface  ]
 
+#if NRI_USE_D3D12
 static Result NRI_CALL CreateCommandBufferD3D12(Device& device, const CommandBufferD3D12Desc& commandBufferDesc, CommandBuffer*& commandBuffer)
 {
     return ((DeviceVal&)device).CreateCommandBufferD3D12(commandBufferDesc, commandBuffer);
@@ -392,9 +399,11 @@ static ID3D12Device* NRI_CALL GetDeviceD3D12(const Device& device)
 void FillFunctionTableBufferVal(WrapperD3D12Interface& wrapperD3D12Interface);
 void FillFunctionTableTextureVal(WrapperD3D12Interface& wrapperD3D12Interface);
 void FillFunctionTableCommandBufferVal(WrapperD3D12Interface& wrapperD3D12Interface);
+#endif
 
 Result DeviceVal::FillFunctionTable(WrapperD3D12Interface& wrapperD3D12Interface) const
 {
+#if NRI_USE_D3D12
     wrapperD3D12Interface = {};
 
     FillFunctionTableBufferVal(wrapperD3D12Interface);
@@ -408,12 +417,16 @@ Result DeviceVal::FillFunctionTable(WrapperD3D12Interface& wrapperD3D12Interface
     wrapperD3D12Interface.GetDeviceD3D12 = ::GetDeviceD3D12;
 
     return ValidateFunctionTable(GetLog(), wrapperD3D12Interface);
+#else
+    return Result::UNSUPPORTED;
+#endif
 }
 
 #pragma endregion
 
 #pragma region [  WrapperVKInterface  ]
 
+#if NRI_USE_VULKAN
 static VkDevice NRI_CALL GetDeviceVK(const Device& device)
 {
     return ((DeviceVal&)device).GetDeviceVK();
@@ -492,9 +505,11 @@ static Result NRI_CALL CreateDeviceSemaphoreVK(Device& device, VkFence vkFence, 
 void FillFunctionTableCommandBufferVal(WrapperVKInterface& wrapperVKInterface);
 void FillFunctionTableDescriptorVal(WrapperVKInterface& wrapperVKInterface);
 void FillFunctionTableTextureVal(WrapperVKInterface& wrapperVKInterface);
+#endif
 
 Result DeviceVal::FillFunctionTable(WrapperVKInterface& wrapperVKInterface) const
 {
+#if NRI_USE_VULKAN
     wrapperVKInterface = {};
 
     FillFunctionTableCommandBufferVal(wrapperVKInterface);
@@ -519,6 +534,9 @@ Result DeviceVal::FillFunctionTable(WrapperVKInterface& wrapperVKInterface) cons
     wrapperVKInterface.GetInstanceVK = ::GetInstanceVK;
 
     return ValidateFunctionTable(GetLog(), wrapperVKInterface);
+#else
+    return Result::UNSUPPORTED;
+#endif
 }
 
 #pragma endregion
