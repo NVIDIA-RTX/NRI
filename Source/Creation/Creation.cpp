@@ -187,11 +187,13 @@ Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroup
         vkGetPhysicalDeviceProperties2(physicalDevice, &properties2);
         vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
 
+#if _WIN32
         if (deviceIDProperties.deviceLUIDValid == VK_FALSE)
         {
             vkDestroyInstance(instance, nullptr);
             return Result::UNSUPPORTED;
         }
+#endif
 
         PhysicalDeviceGroup& group = physicalDeviceGroups[j++];
 
