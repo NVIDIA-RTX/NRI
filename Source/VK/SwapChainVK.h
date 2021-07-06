@@ -39,7 +39,6 @@ namespace nri
         VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
         Vector<TextureVK*> m_Textures;
         Format m_Format = Format::UNKNOWN;
-        uint32_t m_SwapInterval = 0;
         DeviceVK& m_Device;
     };
 

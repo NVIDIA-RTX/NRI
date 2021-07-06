@@ -163,7 +163,6 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc)
 
     // Both of these modes use v-sync for preseting, but FIFO blocks execution
     VkPresentModeKHR desiredPresentMode = swapChainDesc.verticalSyncInterval ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_MAILBOX_KHR;
-    m_SwapInterval = swapChainDesc.verticalSyncInterval;
 
     supported = false;
     for (uint32_t i = 0; i < presentModeNum && !supported; i++)
@@ -272,11 +271,6 @@ inline Result SwapChainVK::Present(QueueSemaphore& textureReadyForPresent)
 
     const auto& vk = m_Device.GetDispatchTable();
     const VkResult result = vk.QueuePresentKHR(*m_CommandQueue, &info);
-
-    for (uint32_t i = 1; i < m_SwapInterval; i++)
-    {
-        // TODO: emulate swap interval here
-    }
 
     RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
         "Can't present the swapchain: vkQueuePresentKHR returned %d.", (int32_t)result);
