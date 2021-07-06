@@ -83,7 +83,9 @@ Result SwapChainD3D12::Create(const SwapChainDesc& swapChainDesc)
     DXGI_FORMAT format = g_SwapChainFormat[(uint32_t)swapChainDesc.format];
     DXGI_COLOR_SPACE_TYPE colorSpace = g_ColorSpace[(uint32_t)swapChainDesc.format];
 
-    if (!swapChainDesc.window)
+    const HWND window = (HWND)swapChainDesc.window.windows.hwnd;
+
+    if (!window)
         return Result::INVALID_ARGUMENT;
 
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc1 = {};
@@ -98,10 +100,10 @@ Result SwapChainD3D12::Create(const SwapChainDesc& swapChainDesc)
     swapChainDesc1.Scaling = DXGI_SCALING_NONE;
 
     ComPtr<IDXGISwapChain1> swapChain;
-    hr = factory->CreateSwapChainForHwnd((ID3D12CommandQueue*)commandQueueD3D12, (HWND)swapChainDesc.window, &swapChainDesc1, nullptr, nullptr, &swapChain);
+    hr = factory->CreateSwapChainForHwnd((ID3D12CommandQueue*)commandQueueD3D12, window, &swapChainDesc1, nullptr, nullptr, &swapChain);
     RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGIFactory2::CreateSwapChainForHwnd() failed, error code: 0x%X.", hr);
 
-    hr = factory->MakeWindowAssociation((HWND)swapChainDesc.window, DXGI_MWA_NO_ALT_ENTER);
+    hr = factory->MakeWindowAssociation(window, DXGI_MWA_NO_ALT_ENTER);
     RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "CreateSwapChainForHwnd::MakeWindowAssociation() failed, error code: 0x%X.", hr);
 
     hr = swapChain->QueryInterface(IID_PPV_ARGS(&m_SwapChain));

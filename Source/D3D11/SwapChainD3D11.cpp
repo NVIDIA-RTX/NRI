@@ -84,7 +84,7 @@ Result SwapChainD3D11::Create(const VersionedDevice& device, const SwapChainDesc
     DXGI_FORMAT format = g_swapChainFormat[(uint32_t)swapChainDesc.format];
     DXGI_COLOR_SPACE_TYPE colorSpace = g_colorSpace[(uint32_t)swapChainDesc.format];
 
-    const HWND hwnd = (HWND)swapChainDesc.window;
+    const HWND hwnd = (HWND)swapChainDesc.window.windows.hwnd;
 
     DXGI_SWAP_CHAIN_DESC1 desc = {};
     desc.BufferCount = swapChainDesc.textureNum;
