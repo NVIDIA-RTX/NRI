@@ -90,8 +90,25 @@ Result DeviceVal::CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*
     RETURN_ON_FAILURE(GetLog(), swapChainDesc.windowSystemType < WindowSystemType::MAX_NUM, Result::INVALID_ARGUMENT,
         "Can't create SwapChain: 'swapChainDesc.windowSystemType' is invalid.");
 
-    RETURN_ON_FAILURE(GetLog(), swapChainDesc.window != nullptr, Result::INVALID_ARGUMENT,
-        "Can't create SwapChain: 'swapChainDesc.window' is invalid.");
+    if (swapChainDesc.windowSystemType == WindowSystemType::WINDOWS)
+    {
+        RETURN_ON_FAILURE(GetLog(), swapChainDesc.window.windows.hwnd != nullptr, Result::INVALID_ARGUMENT,
+            "Can't create SwapChain: 'swapChainDesc.window.windows.hwnd' is invalid.");
+    }
+    else if (swapChainDesc.windowSystemType == WindowSystemType::X11)
+    {
+        RETURN_ON_FAILURE(GetLog(), swapChainDesc.window.x11.dpy != nullptr, Result::INVALID_ARGUMENT,
+            "Can't create SwapChain: 'swapChainDesc.window.x11.dpy' is invalid.");
+        RETURN_ON_FAILURE(GetLog(), swapChainDesc.window.x11.window != 0, Result::INVALID_ARGUMENT,
+            "Can't create SwapChain: 'swapChainDesc.window.x11.window' is invalid.");
+    }
+    else if (swapChainDesc.windowSystemType == WindowSystemType::WAYLAND)
+    {
+        RETURN_ON_FAILURE(GetLog(), swapChainDesc.window.wayland.display != nullptr, Result::INVALID_ARGUMENT,
+            "Can't create SwapChain: 'swapChainDesc.window.wayland.display' is invalid.");
+        RETURN_ON_FAILURE(GetLog(), swapChainDesc.window.wayland.surface != 0, Result::INVALID_ARGUMENT,
+            "Can't create SwapChain: 'swapChainDesc.window.wayland.surface' is invalid.");
+    }
 
     RETURN_ON_FAILURE(GetLog(), swapChainDesc.width != 0, Result::INVALID_ARGUMENT,
         "Can't create SwapChain: 'swapChainDesc.width' is 0.");

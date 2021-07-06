@@ -50,7 +50,7 @@ Result SwapChainVK::CreateSurface(const SwapChainDesc& swapChainDesc)
     {
         VkWin32SurfaceCreateInfoKHR win32SurfaceInfo = {};
         win32SurfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-        win32SurfaceInfo.hwnd = (HWND)swapChainDesc.window;
+        win32SurfaceInfo.hwnd = (HWND)swapChainDesc.window.windows.hwnd;
 
         result = vkCreateWin32SurfaceKHR(m_Device, &win32SurfaceInfo, m_Device.GetAllocationCallbacks(), &m_Surface);
 
@@ -63,12 +63,10 @@ Result SwapChainVK::CreateSurface(const SwapChainDesc& swapChainDesc)
 #ifdef VK_USE_PLATFORM_XLIB_KHR
     if (swapChainDesc.windowSystemType == WindowSystemType::X11)
     {
-        const X11Window* x11Window = (const X11Window*)swapChainDesc.window;
-
         VkXlibSurfaceCreateInfoKHR xlibSurfaceInfo = {};
         xlibSurfaceInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
-        xlibSurfaceInfo.dpy = (Display*)x11Window->dpy;
-        xlibSurfaceInfo.window = (Window)x11Window->window;
+        xlibSurfaceInfo.dpy = (::Display*)swapChainDesc.window.x11.dpy;
+        xlibSurfaceInfo.window = (::Window)swapChainDesc.window.x11.window;
 
         result = vkCreateXlibSurfaceKHR(m_Device, &xlibSurfaceInfo, m_Device.GetAllocationCallbacks(), &m_Surface);
 
@@ -81,12 +79,10 @@ Result SwapChainVK::CreateSurface(const SwapChainDesc& swapChainDesc)
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
     if (swapChainDesc.windowSystemType == WindowSystemType::WAYLAND)
     {
-        const WaylandWindow* waylandWindow = (const WaylandWindow*)swapChainDesc.window;
-
         VkWaylandSurfaceCreateInfoKHR waylandSurfaceInfo = {};
         waylandSurfaceInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
-        waylandSurfaceInfo.display = (wl_display*)waylandWindow->display;
-        waylandSurfaceInfo.surface = (wl_surface*)waylandWindow->surface;
+        waylandSurfaceInfo.display = (wl_display*)swapChainDesc.window.wayland.display;
+        waylandSurfaceInfo.surface = (wl_surface*)swapChainDesc.window.wayland.surface;
 
         result = vkCreateWaylandSurfaceKHR(m_Device, &waylandSurfaceInfo, m_Device.GetAllocationCallbacks(), &m_Surface);
 

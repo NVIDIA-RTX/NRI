@@ -38,23 +38,35 @@ namespace nri
         MAX_NUM
     };
 
+    struct WindowsWindow
+    {
+        void* hwnd; // HWND
+    };
+
     struct X11Window
     {
-        const void* dpy; // Display*
+        void* dpy; // Display*
         uint64_t window; // Window
     };
 
     struct WaylandWindow
     {
-        const void* display; // wl_display*
-        const void* surface; // wl_surface*
+        void* display; // wl_display*
+        void* surface; // wl_surface*
+    };
+
+    union Window
+    {
+        WindowsWindow windows;
+        X11Window x11;
+        WaylandWindow wayland;
     };
 
     // SwapChain buffers will be created as "color attachment" resources
     struct SwapChainDesc
     {
         WindowSystemType windowSystemType;
-        const void* window;
+        Window window;
         const CommandQueue* commandQueue;
         uint16_t width;
         uint16_t height;
