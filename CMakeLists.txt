@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
+# NRI_CUSTOM_VULKAN_SDK_PATH
 option(NRI_DISABLE_INTERPROCEDURAL_OPTIMIZATION "disable interprocedural optimization" OFF)
 option(NRI_DISABLE_XLIB_SUPPORT "disable xlib support" OFF)
 option(NRI_DISABLE_WAYLAND_SUPPORT "disable wayland support" OFF)
@@ -64,11 +65,18 @@ endif()
 
 # defines and VulkanSDK path for Windows
 if (WIN32)
-    set(NRI_VULKAN_SDK_INCLUDE_PATH "$ENV{VULKAN_SDK}/Include/")
+    set(NRI_VULKAN_SDK_INCLUDE_PATH "$ENV{VULKAN_SDK}/Include")
     set(NRI_VULKAN_SDK_LIB_PATH "$ENV{VULKAN_SDK}/Lib")
     add_compile_definitions(WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS _UNICODE UNICODE _ENFORCE_MATCHING_ALLOCATORS=0)
     add_compile_definitions(NRI_USE_D3D11=1 NRI_USE_D3D12=1)
 endif()
+
+if (NRI_CUSTOM_VULKAN_SDK_PATH)
+    set(NRI_VULKAN_SDK_INCLUDE_PATH "${NRI_CUSTOM_VULKAN_SDK_PATH}/include")
+    set(NRI_VULKAN_SDK_LIB_PATH "${NRI_CUSTOM_VULKAN_SDK_PATH}/lib")
+    message("NRI: using custom VulkanSDK path: '${NRI_CUSTOM_VULKAN_SDK_PATH}'")
+endif()
+
 add_compile_definitions(NRI_USE_VULKAN=1)
 
 # Dependencies
@@ -123,6 +131,12 @@ set_property(TARGET NRI_VK PROPERTY FOLDER "${NRI_PROJECT_FOLDER}")
 if (WIN32)
     target_compile_definitions(NRI_VK PRIVATE VK_USE_PLATFORM_WIN32_KHR)
 else()
+    if (NOT NRI_CUSTOM_VULKAN_SDK_PATH)
+        find_path(NRI_VULKANSDK_HEADERS NAMES "vulkan/vulkan.h" REQUIRED)
+        if (NOT NRI_VULKANSDK_HEADERS)
+            message(FATAL_ERROR "Can't find 'vulkan/vulkan.h'. (vulkansdk is not installed?)")
+        endif()
+    endif()
     if (NOT NRI_DISABLE_XLIB_SUPPORT)
         find_path(NRI_XLIB_HEADERS NAMES "X11/Xlib.h" REQUIRED)
         if (NOT NRI_XLIB_HEADERS)
