@@ -45,3 +45,6 @@ compile_commands.json
 # external packages
 External/NVAPI
 External/AGS
+
+# packaged SDK
+_NRI_SDK/
