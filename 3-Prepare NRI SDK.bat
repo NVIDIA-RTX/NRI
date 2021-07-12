@@ -21,3 +21,5 @@ copy "..\_Build\Release\NRI.pdb" "Lib\Release"
 
 mkdir "Include"
 copy "..\Include\*" "Include"
+mkdir "Include\Extensions"
+copy "..\Include\Extensions\*" "Include\Extensions"
