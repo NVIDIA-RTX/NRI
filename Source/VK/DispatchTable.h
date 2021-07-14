@@ -14,6 +14,32 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 struct DispatchTable
 {
+    VULKAN_FUNCTION(CreateInstance);
+    VULKAN_FUNCTION(EnumerateInstanceExtensionProperties);
+    VULKAN_FUNCTION(EnumerateInstanceLayerProperties);
+    VULKAN_FUNCTION(GetInstanceProcAddr);
+
+    VULKAN_FUNCTION(GetPhysicalDeviceSurfaceFormatsKHR);
+    VULKAN_FUNCTION(GetPhysicalDeviceSurfaceSupportKHR);
+    VULKAN_FUNCTION(GetPhysicalDeviceSurfaceCapabilitiesKHR);
+    VULKAN_FUNCTION(GetPhysicalDeviceSurfacePresentModesKHR);
+    VULKAN_FUNCTION(CreateWin32SurfaceKHR);
+    VULKAN_FUNCTION(DestroySurfaceKHR);
+    VULKAN_FUNCTION(GetDeviceProcAddr);
+    VULKAN_FUNCTION(DestroyInstance);
+    VULKAN_FUNCTION(DestroyDevice);
+    VULKAN_FUNCTION(GetPhysicalDeviceMemoryProperties);
+    VULKAN_FUNCTION(GetDeviceGroupPeerMemoryFeatures);
+    VULKAN_FUNCTION(CreateDevice);
+    VULKAN_FUNCTION(GetDeviceQueue);
+    VULKAN_FUNCTION(EnumeratePhysicalDeviceGroups);
+    VULKAN_FUNCTION(GetPhysicalDeviceProperties);
+    VULKAN_FUNCTION(GetPhysicalDeviceProperties2);
+    VULKAN_FUNCTION(GetPhysicalDeviceFeatures);
+    VULKAN_FUNCTION(GetPhysicalDeviceFeatures2);
+    VULKAN_FUNCTION(GetPhysicalDeviceQueueFamilyProperties);
+    VULKAN_FUNCTION(EnumerateDeviceExtensionProperties);
+
     VULKAN_FUNCTION(CreateBuffer);
     VULKAN_FUNCTION(CreateImage);
     VULKAN_FUNCTION(CreateBufferView);

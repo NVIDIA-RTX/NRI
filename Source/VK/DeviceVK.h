@@ -122,6 +122,8 @@ namespace nri
         void FillFamilyIndices(bool useEnabledFamilyIndices, const uint32_t* enabledFamilyIndices, uint32_t familyIndexNum);
         void SetDeviceLimits(bool enableValidation);
         void CreateCommandQueues();
+        Result ResolvePreInstanceDispatchTable();
+        Result ResolveInstanceDispatchTable();
         Result ResolveDispatchTable();
         void FilterInstanceLayers(Vector<const char*>& layers);
         bool FilterInstanceExtensions(Vector<const char*>& extensions);
@@ -160,6 +162,7 @@ namespace nri
         bool m_IsSubsetAllocationSupported = false;
         bool m_IsConcurrentSharingModeEnabledForBuffers = true;
         bool m_IsConcurrentSharingModeEnabledForImages = true;
+        Library* m_Loader = nullptr;
     };
 
     inline DeviceVK::operator VkDevice() const

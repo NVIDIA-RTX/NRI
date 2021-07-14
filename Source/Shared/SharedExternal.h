@@ -365,3 +365,9 @@ constexpr uint32_t GetPhysicalDeviceGroupMask(uint32_t mask)
 {
     return mask == nri::WHOLE_DEVICE_GROUP ? 0xff : mask;
 }
+
+struct Library;
+Library* LoadSharedLibrary(const char* path);
+void* GetSharedLibraryFunction(Library& library, const char* name);
+void UnloadSharedLibrary(Library& library);
+extern const char* VULKAN_LOADER_NAME;

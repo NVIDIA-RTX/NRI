@@ -99,7 +99,7 @@ Result NRI_CALL nri::GetInterface(const Device& device, const char* interfaceNam
     return result;
 }
 
-static bool IsValidDeviceGroup(const VkPhysicalDeviceGroupProperties& group)
+static bool IsValidDeviceGroup(const VkPhysicalDeviceGroupProperties& group, PFN_vkGetPhysicalDeviceProperties vkGetPhysicalDeviceProperties)
 {
     VkPhysicalDeviceProperties baseProperties = {};
     vkGetPhysicalDeviceProperties(group.physicalDevices[0], &baseProperties);
@@ -130,8 +130,20 @@ constexpr PhysicalDeviceType GetPhysicalDeviceType(VkPhysicalDeviceType physical
     return PHYSICAL_DEVICE_TYPE[index];
 }
 
+#define GET_VK_FUNCTION(instance, name) \
+    const auto name = (PFN_##name)vkGetInstanceProcAddr(instance, #name); \
+    if (name == nullptr) \
+        return Result::UNSUPPORTED;
+
 Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroups, uint32_t& physicalDeviceGroupNum)
 {
+    Library* loader = LoadSharedLibrary(VULKAN_LOADER_NAME);
+    if (loader == nullptr)
+        return Result::UNSUPPORTED;
+
+    const auto vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)GetSharedLibraryFunction(*loader, "vkGetInstanceProcAddr");
+    const auto vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
+
     VkApplicationInfo applicationInfo = {};
     applicationInfo.apiVersion = VK_API_VERSION_1_1;
 
@@ -144,9 +156,15 @@ Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroup
 
     if (result != VK_SUCCESS)
     {
-        vkDestroyInstance(instance, nullptr);
+        UnloadSharedLibrary(*loader);
         return Result::UNSUPPORTED;
     }
+
+    GET_VK_FUNCTION(instance, vkDestroyInstance);
+    GET_VK_FUNCTION(instance, vkEnumeratePhysicalDeviceGroups);
+    GET_VK_FUNCTION(instance, vkGetPhysicalDeviceProperties);
+    GET_VK_FUNCTION(instance, vkGetPhysicalDeviceProperties2);
+    GET_VK_FUNCTION(instance, vkGetPhysicalDeviceMemoryProperties);
 
     uint32_t deviceGroupNum = 0;
     vkEnumeratePhysicalDeviceGroups(instance, &deviceGroupNum, nullptr);
@@ -157,6 +175,7 @@ Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroup
     if (result != VK_SUCCESS)
     {
         vkDestroyInstance(instance, nullptr);
+        UnloadSharedLibrary(*loader);
         return Result::UNSUPPORTED;
     }
 
@@ -164,11 +183,12 @@ Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroup
     {
         for (uint32_t i = 0; i < deviceGroupNum; i++)
         {
-            if (!IsValidDeviceGroup(deviceGroupProperties[i]))
+            if (!IsValidDeviceGroup(deviceGroupProperties[i], vkGetPhysicalDeviceProperties))
                 deviceGroupNum--;
         }
         physicalDeviceGroupNum = deviceGroupNum;
         vkDestroyInstance(instance, nullptr);
+        UnloadSharedLibrary(*loader);
         return Result::SUCCESS;
     }
 
@@ -183,7 +203,7 @@ Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroup
 
     for (uint32_t i = 0, j = 0; i < deviceGroupNum && j < physicalDeviceGroupNum; i++)
     {
-        if (!IsValidDeviceGroup(deviceGroupProperties[i]))
+        if (!IsValidDeviceGroup(deviceGroupProperties[i], vkGetPhysicalDeviceProperties))
             continue;
 
         const VkPhysicalDevice physicalDevice = deviceGroupProperties[i].physicalDevices[0];
@@ -194,6 +214,7 @@ Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroup
         if (deviceIDProperties.deviceLUIDValid == VK_FALSE)
         {
             vkDestroyInstance(instance, nullptr);
+            UnloadSharedLibrary(*loader);
             return Result::UNSUPPORTED;
         }
 #endif
@@ -218,6 +239,7 @@ Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroup
     }
 
     vkDestroyInstance(instance, nullptr);
+    UnloadSharedLibrary(*loader);
     return Result::SUCCESS;
 }
 

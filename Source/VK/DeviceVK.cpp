@@ -101,15 +101,19 @@ DeviceVK::~DeviceVK()
     if (m_Messenger != VK_NULL_HANDLE)
     {
         typedef PFN_vkDestroyDebugUtilsMessengerEXT Func;
-        Func destroyCallback = (Func)vkGetInstanceProcAddr(m_Instance, "vkDestroyDebugUtilsMessengerEXT");
+        Func destroyCallback = (Func)m_VK.GetInstanceProcAddr(m_Instance, "vkDestroyDebugUtilsMessengerEXT");
         destroyCallback(m_Instance, m_Messenger, m_AllocationCallbackPtr);
     }
 
     if (m_OwnsNativeObjects)
     {
-        vkDestroyDevice(m_Device, m_AllocationCallbackPtr);
-        vkDestroyInstance(m_Instance, m_AllocationCallbackPtr);
+        m_VK.DestroyDevice(m_Device, m_AllocationCallbackPtr);
+        m_VK.DestroyInstance(m_Instance, m_AllocationCallbackPtr);
     }
+
+    if (m_Loader != nullptr)
+        UnloadSharedLibrary(*m_Loader);
+    m_Loader = nullptr;
 }
 
 Result DeviceVK::Create(const DeviceCreationDesc& deviceCreationDesc)
@@ -126,7 +130,22 @@ Result DeviceVK::Create(const DeviceCreationDesc& deviceCreationDesc)
     if (deviceCreationDesc.enableAPIValidation)
         m_AllocationCallbackPtr = &m_AllocationCallbacks;
 
-    Result res = CreateInstance(deviceCreationDesc);
+    m_Loader = LoadSharedLibrary(VULKAN_LOADER_NAME);
+    if (m_Loader == nullptr)
+    {
+        REPORT_ERROR(GetLog(), "Failed to load Vulkan loader: '%s'.", VULKAN_LOADER_NAME);
+        return Result::UNSUPPORTED;
+    }
+
+    Result res = ResolvePreInstanceDispatchTable();
+    if (res != Result::SUCCESS)
+        return res;
+
+    res = CreateInstance(deviceCreationDesc);
+    if (res != Result::SUCCESS)
+        return res;
+
+    res = ResolveInstanceDispatchTable();
     if (res != Result::SUCCESS)
         return res;
 
@@ -134,7 +153,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& deviceCreationDesc)
     if (res != Result::SUCCESS)
         return res;
 
-    vkGetPhysicalDeviceMemoryProperties(m_PhysicalDevices.front(), &m_MemoryProps);
+    m_VK.GetPhysicalDeviceMemoryProperties(m_PhysicalDevices.front(), &m_MemoryProps);
     FillFamilyIndices(false, nullptr, 0);
 
     res = CreateLogicalDevice(deviceCreationDesc);
@@ -185,12 +204,27 @@ Result DeviceVK::Create(const DeviceCreationVulkanDesc& deviceCreationVulkanDesc
     if (deviceCreationVulkanDesc.enableAPIValidation)
         m_AllocationCallbackPtr = &m_AllocationCallbacks;
 
-    vkGetPhysicalDeviceMemoryProperties(m_PhysicalDevices.front(), &m_MemoryProps);
+    m_Loader = LoadSharedLibrary(VULKAN_LOADER_NAME);
+    if (m_Loader == nullptr)
+    {
+        REPORT_ERROR(GetLog(), "Failed to load Vulkan loader: '%s'.", VULKAN_LOADER_NAME);
+        return Result::UNSUPPORTED;
+    }
+
+    Result res = ResolvePreInstanceDispatchTable();
+    if (res != Result::SUCCESS)
+        return res;
+
+    res = ResolveInstanceDispatchTable();
+    if (res != Result::SUCCESS)
+        return res;
+
+    m_VK.GetPhysicalDeviceMemoryProperties(m_PhysicalDevices.front(), &m_MemoryProps);
 
     FillFamilyIndices(true, deviceCreationVulkanDesc.queueFamilyIndices, deviceCreationVulkanDesc.queueFamilyIndexNum);
     CreateCommandQueues();
 
-    Result res = ResolveDispatchTable();
+    res = ResolveDispatchTable();
     if (res != Result::SUCCESS)
         return res;
 
@@ -941,10 +975,10 @@ VkBool32 VKAPI_PTR DebugUtilsMessenger(
 void DeviceVK::FilterInstanceLayers(Vector<const char*>& layers)
 {
     uint32_t layerNum = 0;
-    vkEnumerateInstanceLayerProperties(&layerNum, nullptr);
+    m_VK.EnumerateInstanceLayerProperties(&layerNum, nullptr);
 
     Vector<VkLayerProperties> supportedLayers(layerNum, GetStdAllocator());
-    vkEnumerateInstanceLayerProperties(&layerNum, supportedLayers.data());
+    m_VK.EnumerateInstanceLayerProperties(&layerNum, supportedLayers.data());
 
     for (size_t i = 0; i < layers.size(); i++)
     {
@@ -963,10 +997,10 @@ void DeviceVK::FilterInstanceLayers(Vector<const char*>& layers)
 bool DeviceVK::FilterInstanceExtensions(Vector<const char*>& extensions)
 {
     uint32_t extensionNum = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionNum, nullptr);
+    m_VK.EnumerateInstanceExtensionProperties(nullptr, &extensionNum, nullptr);
 
     Vector<VkExtensionProperties> supportedExtensions(extensionNum, GetStdAllocator());
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionNum, supportedExtensions.data());
+    m_VK.EnumerateInstanceExtensionProperties(nullptr, &extensionNum, supportedExtensions.data());
 
     bool allFound = true;
     for (size_t i = 0; i < extensions.size(); i++)
@@ -1040,7 +1074,7 @@ Result DeviceVK::CreateInstance(const DeviceCreationDesc& deviceCreationDesc)
         extensions.data(),
     };
 
-    VkResult result = vkCreateInstance(&info, m_AllocationCallbackPtr, &m_Instance);
+    VkResult result = m_VK.CreateInstance(&info, m_AllocationCallbackPtr, &m_Instance);
 
     RETURN_ON_FAILURE(GetLog(), result == VK_SUCCESS, GetReturnCode(result),
         "Can't create a VkInstance: vkCreateInstance returned %d.", (int32_t)result);
@@ -1049,7 +1083,7 @@ Result DeviceVK::CreateInstance(const DeviceCreationDesc& deviceCreationDesc)
     {
         typedef PFN_vkCreateDebugUtilsMessengerEXT Func;
         Func vkCreateDebugUtilsMessengerEXT = nullptr;
-        vkCreateDebugUtilsMessengerEXT = (Func)vkGetInstanceProcAddr(m_Instance, "vkCreateDebugUtilsMessengerEXT");
+        vkCreateDebugUtilsMessengerEXT = (Func)m_VK.GetInstanceProcAddr(m_Instance, "vkCreateDebugUtilsMessengerEXT");
 
         VkDebugUtilsMessengerCreateInfoEXT createInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT };
 
@@ -1074,10 +1108,10 @@ Result DeviceVK::CreateInstance(const DeviceCreationDesc& deviceCreationDesc)
 Result DeviceVK::FindPhysicalDeviceGroup(const PhysicalDeviceGroup* physicalDeviceGroup, bool enableMGPU)
 {
     uint32_t deviceGroupNum = 0;
-    vkEnumeratePhysicalDeviceGroups(m_Instance, &deviceGroupNum, nullptr);
+    m_VK.EnumeratePhysicalDeviceGroups(m_Instance, &deviceGroupNum, nullptr);
 
     VkPhysicalDeviceGroupProperties* deviceGroups = STACK_ALLOC(VkPhysicalDeviceGroupProperties, deviceGroupNum);
-    VkResult result = vkEnumeratePhysicalDeviceGroups(m_Instance, &deviceGroupNum, deviceGroups);
+    VkResult result = m_VK.EnumeratePhysicalDeviceGroups(m_Instance, &deviceGroupNum, deviceGroups);
 
     RETURN_ON_FAILURE(GetLog(), result == VK_SUCCESS, GetReturnCode(result),
         "Can't enumerate physical devices: vkEnumeratePhysicalDevices returned %d.", (int32_t)result);
@@ -1092,7 +1126,7 @@ Result DeviceVK::FindPhysicalDeviceGroup(const PhysicalDeviceGroup* physicalDevi
     for (; i < deviceGroupNum && m_PhysicalDevices.empty(); i++)
     {
         const VkPhysicalDeviceGroupProperties& group = deviceGroups[i];
-        vkGetPhysicalDeviceProperties2(group.physicalDevices[0], &props);
+        m_VK.GetPhysicalDeviceProperties2(group.physicalDevices[0], &props);
 
         const uint32_t majorVersion = VK_VERSION_MAJOR(props.properties.apiVersion);
         const uint32_t minorVersion = VK_VERSION_MINOR(props.properties.apiVersion);
@@ -1154,7 +1188,7 @@ void DeviceVK::SetDeviceLimits(bool enableValidation)
             VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
             &cr
         };
-        vkGetPhysicalDeviceProperties2(m_PhysicalDevices.front(), &props);
+        m_VK.GetPhysicalDeviceProperties2(m_PhysicalDevices.front(), &props);
 
         if ( cr.fullyCoveredFragmentShaderInputVariable && cr.primitiveOverestimationSize <= (1.0 / 256.0f) )
             conservativeRasterTier = 3;
@@ -1165,13 +1199,13 @@ void DeviceVK::SetDeviceLimits(bool enableValidation)
     }
 
     VkPhysicalDeviceFeatures features = {};
-    vkGetPhysicalDeviceFeatures(m_PhysicalDevices.front(), &features);
+    m_VK.GetPhysicalDeviceFeatures(m_PhysicalDevices.front(), &features);
 
     uint32_t familyNum = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevices.front(), &familyNum, nullptr);
+    m_VK.GetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevices.front(), &familyNum, nullptr);
 
     Vector<VkQueueFamilyProperties> familyProperties(familyNum, m_StdAllocator);
-    vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevices.front(), &familyNum, familyProperties.data());
+    m_VK.GetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevices.front(), &familyNum, familyProperties.data());
 
     uint32_t copyQueueTimestampValidBits = 0;
     const uint32_t copyQueueFamilyIndex = m_FamilyIndices[(uint32_t)CommandQueueType::COPY];
@@ -1179,7 +1213,7 @@ void DeviceVK::SetDeviceLimits(bool enableValidation)
         copyQueueTimestampValidBits = familyProperties[copyQueueFamilyIndex].timestampValidBits;
 
     VkPhysicalDeviceProperties props = {};
-    vkGetPhysicalDeviceProperties(m_PhysicalDevices.front(), &props);
+    m_VK.GetPhysicalDeviceProperties(m_PhysicalDevices.front(), &props);
     const VkPhysicalDeviceLimits& limits = props.limits;
 
     m_DeviceDesc.graphicsAPI = GraphicsAPI::VULKAN;
@@ -1294,10 +1328,10 @@ void DeviceVK::SetDeviceLimits(bool enableValidation)
 bool DeviceVK::FilterDeviceExtensions(Vector<const char*>& extensions)
 {
     uint32_t extensionNum = 0;
-    vkEnumerateDeviceExtensionProperties(m_PhysicalDevices.front(), nullptr, &extensionNum, nullptr);
+    m_VK.EnumerateDeviceExtensionProperties(m_PhysicalDevices.front(), nullptr, &extensionNum, nullptr);
 
     Vector<VkExtensionProperties> supportedExtensions(extensionNum, GetStdAllocator());
-    vkEnumerateDeviceExtensionProperties(m_PhysicalDevices.front(), nullptr, &extensionNum, supportedExtensions.data());
+    m_VK.EnumerateDeviceExtensionProperties(m_PhysicalDevices.front(), nullptr, &extensionNum, supportedExtensions.data());
 
     bool allFound = true;
     for (size_t i = 0; i < extensions.size(); i++)
@@ -1322,10 +1356,10 @@ bool DeviceVK::FilterDeviceExtensions(Vector<const char*>& extensions)
 void DeviceVK::FillFamilyIndices(bool useEnabledFamilyIndices, const uint32_t* enabledFamilyIndices, uint32_t familyIndexNum)
 {
     uint32_t familyNum = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevices.front(), &familyNum, nullptr);
+    m_VK.GetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevices.front(), &familyNum, nullptr);
 
     Vector<VkQueueFamilyProperties> familyProps(familyNum, GetStdAllocator());
-    vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevices.front(), &familyNum, familyProps.data());
+    m_VK.GetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevices.front(), &familyNum, familyProps.data());
 
     memset(m_FamilyIndices.data(), 0xff, m_FamilyIndices.size() * sizeof(uint32_t));
 
@@ -1468,7 +1502,7 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
         deviceFeatures2.pNext = &accelerationStructureFeatures;
     }
 
-    vkGetPhysicalDeviceFeatures2(m_PhysicalDevices.front(), &deviceFeatures2);
+    m_VK.GetPhysicalDeviceFeatures2(m_PhysicalDevices.front(), &deviceFeatures2);
 
     if (!deviceCreationDesc.enableAPIValidation)
         deviceFeatures2.features.robustBufferAccess = false;
@@ -1506,7 +1540,7 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
         deviceCreateInfo.pNext = &deviceGroupInfo;
     }
 
-    const VkResult result = vkCreateDevice(m_PhysicalDevices.front(), &deviceCreateInfo, m_AllocationCallbackPtr, &m_Device);
+    const VkResult result = m_VK.CreateDevice(m_PhysicalDevices.front(), &deviceCreateInfo, m_AllocationCallbackPtr, &m_Device);
 
     RETURN_ON_FAILURE(GetLog(), result == VK_SUCCESS, GetReturnCode(result), "Can't create a device: "
         "vkCreateDevice returned %d.", (int32_t)result);
@@ -1522,7 +1556,7 @@ void DeviceVK::CreateCommandQueues()
             continue;
 
         VkQueue handle = VK_NULL_HANDLE;
-        vkGetDeviceQueue(m_Device, m_FamilyIndices[i], 0, &handle);
+        m_VK.GetDeviceQueue(m_Device, m_FamilyIndices[i], 0, &handle);
 
         m_Queues[i] = Allocate<CommandQueueVK>(GetStdAllocator(), *this, handle, m_FamilyIndices[i], (CommandQueueType)i);
 
@@ -1547,7 +1581,7 @@ void DeviceVK::RetrieveRayTracingInfo()
 
     m_RayTracingDeviceProperties.pNext = &accelerationStructureProperties;
 
-    vkGetPhysicalDeviceProperties2(m_PhysicalDevices.front(), &props);
+    m_VK.GetPhysicalDeviceProperties2(m_PhysicalDevices.front(), &props);
 
     m_DeviceDesc.rayTracingShaderGroupIdentifierSize = m_RayTracingDeviceProperties.shaderGroupHandleSize;
     m_DeviceDesc.rayTracingMaxRecursionDepth = m_RayTracingDeviceProperties.maxRayRecursionDepth;
@@ -1569,7 +1603,7 @@ void DeviceVK::RetrieveMeshShaderInfo()
         &meshShaderProperties
     };
 
-    vkGetPhysicalDeviceProperties2(m_PhysicalDevices.front(), &props);
+    m_VK.GetPhysicalDeviceProperties2(m_PhysicalDevices.front(), &props);
 
     m_DeviceDesc.maxMeshTasksCount = meshShaderProperties.maxDrawMeshTasksCount;
     m_DeviceDesc.maxTaskWorkGroupInvocations = meshShaderProperties.maxTaskWorkGroupInvocations;
@@ -1671,7 +1705,7 @@ void DeviceVK::ReportDeviceGroupInfo()
                     continue;
 
                 VkPeerMemoryFeatureFlags flags = 0;
-                vkGetDeviceGroupPeerMemoryFeatures(m_Device, i, j, k, &flags);
+                m_VK.GetDeviceGroupPeerMemoryFeatures(m_Device, i, j, k, &flags);
 
                 text.clear();
                 if (flags & VK_PEER_MEMORY_FEATURE_COPY_SRC_BIT)
@@ -1690,14 +1724,66 @@ void DeviceVK::ReportDeviceGroupInfo()
 }
 
 #define RESOLVE_DEVICE_FUNCTION( name ) \
-    m_VK.name = (PFN_vk ## name)vkGetDeviceProcAddr(m_Device, "vk" #name)
+    m_VK.name = (PFN_vk ## name)m_VK.GetDeviceProcAddr(m_Device, "vk" #name); \
+    if (m_VK.name == nullptr) \
+    { \
+        REPORT_ERROR(GetLog(), "Failed to get device function: '%s'.", #name); \
+        return Result::UNSUPPORTED; \
+    }
 #define RESOLVE_INSTANCE_FUNCTION( name ) \
-    m_VK.name = (PFN_vk ## name)vkGetInstanceProcAddr(m_Instance, "vk" #name)
+    m_VK.name = (PFN_vk ## name)m_VK.GetInstanceProcAddr(m_Instance, "vk" #name); \
+    if (m_VK.name == nullptr) \
+    { \
+        REPORT_ERROR(GetLog(), "Failed to get instance function: '%s'.", #name); \
+        return Result::UNSUPPORTED; \
+    }
 
-Result DeviceVK::ResolveDispatchTable()
+Result DeviceVK::ResolvePreInstanceDispatchTable()
 {
     m_VK = {};
 
+    m_VK.GetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)GetSharedLibraryFunction(*m_Loader, "vkGetInstanceProcAddr");
+    if (m_VK.GetInstanceProcAddr == nullptr)
+    {
+        REPORT_ERROR(GetLog(), "Failed to get vkGetInstanceProcAddr.");
+        return Result::UNSUPPORTED;
+    }
+
+    RESOLVE_INSTANCE_FUNCTION(CreateInstance);
+    RESOLVE_INSTANCE_FUNCTION(EnumerateInstanceExtensionProperties);
+    RESOLVE_INSTANCE_FUNCTION(EnumerateInstanceLayerProperties);
+
+    return Result::SUCCESS;
+}
+
+Result DeviceVK::ResolveInstanceDispatchTable()
+{
+    RESOLVE_INSTANCE_FUNCTION(GetPhysicalDeviceSurfaceFormatsKHR);
+    RESOLVE_INSTANCE_FUNCTION(GetPhysicalDeviceSurfaceSupportKHR);
+    RESOLVE_INSTANCE_FUNCTION(GetPhysicalDeviceSurfaceCapabilitiesKHR);
+    RESOLVE_INSTANCE_FUNCTION(GetPhysicalDeviceSurfacePresentModesKHR);
+    RESOLVE_INSTANCE_FUNCTION(CreateWin32SurfaceKHR);
+    RESOLVE_INSTANCE_FUNCTION(DestroySurfaceKHR);
+    RESOLVE_INSTANCE_FUNCTION(GetDeviceProcAddr);
+    RESOLVE_INSTANCE_FUNCTION(DestroyInstance);
+    RESOLVE_INSTANCE_FUNCTION(DestroyDevice);
+    RESOLVE_INSTANCE_FUNCTION(GetPhysicalDeviceMemoryProperties);
+    RESOLVE_INSTANCE_FUNCTION(GetDeviceGroupPeerMemoryFeatures);
+    RESOLVE_INSTANCE_FUNCTION(CreateDevice);
+    RESOLVE_INSTANCE_FUNCTION(GetDeviceQueue);
+    RESOLVE_INSTANCE_FUNCTION(EnumeratePhysicalDeviceGroups);
+    RESOLVE_INSTANCE_FUNCTION(GetPhysicalDeviceProperties);
+    RESOLVE_INSTANCE_FUNCTION(GetPhysicalDeviceProperties2);
+    RESOLVE_INSTANCE_FUNCTION(GetPhysicalDeviceFeatures);
+    RESOLVE_INSTANCE_FUNCTION(GetPhysicalDeviceFeatures2);
+    RESOLVE_INSTANCE_FUNCTION(GetPhysicalDeviceQueueFamilyProperties);
+    RESOLVE_INSTANCE_FUNCTION(EnumerateDeviceExtensionProperties);
+
+    return Result::SUCCESS;
+}
+
+Result DeviceVK::ResolveDispatchTable()
+{
     RESOLVE_DEVICE_FUNCTION(CreateBuffer);
     RESOLVE_DEVICE_FUNCTION(CreateImage);
     RESOLVE_DEVICE_FUNCTION(CreateBufferView);

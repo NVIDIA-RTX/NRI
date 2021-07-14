@@ -38,11 +38,13 @@ SwapChainVK::~SwapChainVK()
         vk.DestroySwapchainKHR(m_Device, m_Handle, m_Device.GetAllocationCallbacks());
 
     if (m_Surface != VK_NULL_HANDLE)
-        vkDestroySurfaceKHR(m_Device, m_Surface, m_Device.GetAllocationCallbacks());
+        vk.DestroySurfaceKHR(m_Device, m_Surface, m_Device.GetAllocationCallbacks());
 }
 
 Result SwapChainVK::CreateSurface(const SwapChainDesc& swapChainDesc)
 {
+    const auto& vk = m_Device.GetDispatchTable();
+
     VkResult result;
 
 #ifdef VK_USE_PLATFORM_WIN32_KHR
@@ -52,7 +54,7 @@ Result SwapChainVK::CreateSurface(const SwapChainDesc& swapChainDesc)
         win32SurfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
         win32SurfaceInfo.hwnd = (HWND)swapChainDesc.window.windows.hwnd;
 
-        result = vkCreateWin32SurfaceKHR(m_Device, &win32SurfaceInfo, m_Device.GetAllocationCallbacks(), &m_Surface);
+        result = vk.CreateWin32SurfaceKHR(m_Device, &win32SurfaceInfo, m_Device.GetAllocationCallbacks(), &m_Surface);
 
         RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
             "Can't create a surface: vkCreateWin32SurfaceKHR returned %d.", (int32_t)result);
@@ -68,7 +70,7 @@ Result SwapChainVK::CreateSurface(const SwapChainDesc& swapChainDesc)
         xlibSurfaceInfo.dpy = (::Display*)swapChainDesc.window.x11.dpy;
         xlibSurfaceInfo.window = (::Window)swapChainDesc.window.x11.window;
 
-        result = vkCreateXlibSurfaceKHR(m_Device, &xlibSurfaceInfo, m_Device.GetAllocationCallbacks(), &m_Surface);
+        result = vk.CreateXlibSurfaceKHR(m_Device, &xlibSurfaceInfo, m_Device.GetAllocationCallbacks(), &m_Surface);
 
         RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
             "Can't create a surface: vkCreateXlibSurfaceKHR returned %d.", (int32_t)result);
@@ -84,7 +86,7 @@ Result SwapChainVK::CreateSurface(const SwapChainDesc& swapChainDesc)
         waylandSurfaceInfo.display = (wl_display*)swapChainDesc.window.wayland.display;
         waylandSurfaceInfo.surface = (wl_surface*)swapChainDesc.window.wayland.surface;
 
-        result = vkCreateWaylandSurfaceKHR(m_Device, &waylandSurfaceInfo, m_Device.GetAllocationCallbacks(), &m_Surface);
+        result = vk.CreateWaylandSurfaceKHR(m_Device, &waylandSurfaceInfo, m_Device.GetAllocationCallbacks(), &m_Surface);
 
         RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
             "Can't create a surface: vkCreateWaylandSurfaceKHR returned %d.", (int32_t)result);
@@ -106,8 +108,10 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc)
             return result;
     }
 
+    const auto& vk = m_Device.GetDispatchTable();
+
     VkBool32 supported = VK_FALSE;
-    vkGetPhysicalDeviceSurfaceSupportKHR(m_Device, m_CommandQueue->GetFamilyIndex(), m_Surface, &supported);
+    vk.GetPhysicalDeviceSurfaceSupportKHR(m_Device, m_CommandQueue->GetFamilyIndex(), m_Surface, &supported);
 
     if (supported == VK_FALSE)
     {
@@ -116,7 +120,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc)
     }
 
     VkSurfaceCapabilitiesKHR capabilites = {};
-    VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_Device, m_Surface, &capabilites);
+    VkResult result = vk.GetPhysicalDeviceSurfaceCapabilitiesKHR(m_Device, m_Surface, &capabilites);
 
     RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
         "Can't get physical device surface capabilities: vkGetPhysicalDeviceSurfaceCapabilitiesKHR returned %d.", (int32_t)result);
@@ -133,13 +137,13 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc)
     }
 
     uint32_t formatNum = 0;
-    result = vkGetPhysicalDeviceSurfaceFormatsKHR(m_Device, m_Surface, &formatNum, nullptr);
+    result = vk.GetPhysicalDeviceSurfaceFormatsKHR(m_Device, m_Surface, &formatNum, nullptr);
 
     RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
         "Can't get physical device surface formats: vkGetPhysicalDeviceSurfaceFormatsKHR returned %d.", (int32_t)result);
 
     VkSurfaceFormatKHR* surfaceFormats = STACK_ALLOC(VkSurfaceFormatKHR, formatNum);
-    result = vkGetPhysicalDeviceSurfaceFormatsKHR(m_Device, m_Surface, &formatNum, surfaceFormats);
+    result = vk.GetPhysicalDeviceSurfaceFormatsKHR(m_Device, m_Surface, &formatNum, surfaceFormats);
 
     RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
         "Can't get physical device surface formats: vkGetPhysicalDeviceSurfaceFormatsKHR returned %d.", (int32_t)result);
@@ -150,13 +154,13 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc)
     m_Format = GetNRIFormat(surfaceFormat.format);
 
     uint32_t presentModeNum = 0;
-    result = vkGetPhysicalDeviceSurfacePresentModesKHR(m_Device, m_Surface, &presentModeNum, nullptr);
+    result = vk.GetPhysicalDeviceSurfacePresentModesKHR(m_Device, m_Surface, &presentModeNum, nullptr);
 
     RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
         "Can't get supported present modes for the surface: vkGetPhysicalDeviceSurfacePresentModesKHR returned %d.", (int32_t)result);
 
     VkPresentModeKHR* presentModes = STACK_ALLOC(VkPresentModeKHR, presentModeNum);
-    result = vkGetPhysicalDeviceSurfacePresentModesKHR(m_Device, m_Surface, &presentModeNum, presentModes);
+    result = vk.GetPhysicalDeviceSurfacePresentModesKHR(m_Device, m_Surface, &presentModeNum, presentModes);
 
     RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
         "Can't get supported present modes for the surface: vkGetPhysicalDeviceSurfacePresentModesKHR returned %d.", (int32_t)result);
@@ -200,7 +204,6 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc)
         VK_NULL_HANDLE
     };
 
-    const auto& vk = m_Device.GetDispatchTable();
     result = vk.CreateSwapchainKHR(m_Device, &swapchainInfo, m_Device.GetAllocationCallbacks(), &m_Handle);
 
     RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
