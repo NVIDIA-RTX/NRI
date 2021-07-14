@@ -23,7 +23,15 @@ struct DispatchTable
     VULKAN_FUNCTION(GetPhysicalDeviceSurfaceSupportKHR);
     VULKAN_FUNCTION(GetPhysicalDeviceSurfaceCapabilitiesKHR);
     VULKAN_FUNCTION(GetPhysicalDeviceSurfacePresentModesKHR);
+#if VK_USE_PLATFORM_WIN32_KHR
     VULKAN_FUNCTION(CreateWin32SurfaceKHR);
+#endif
+#if VK_USE_PLATFORM_XLIB_KHR
+    VULKAN_FUNCTION(CreateXlibSurfaceKHR);
+#endif
+#if VK_USE_PLATFORM_WAYLAND_KHR
+    VULKAN_FUNCTION(CreateWaylandSurfaceKHR);
+#endif
     VULKAN_FUNCTION(DestroySurfaceKHR);
     VULKAN_FUNCTION(GetDeviceProcAddr);
     VULKAN_FUNCTION(DestroyInstance);

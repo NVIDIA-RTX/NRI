@@ -1764,7 +1764,15 @@ Result DeviceVK::ResolveInstanceDispatchTable()
     RESOLVE_INSTANCE_FUNCTION(GetPhysicalDeviceSurfaceSupportKHR);
     RESOLVE_INSTANCE_FUNCTION(GetPhysicalDeviceSurfaceCapabilitiesKHR);
     RESOLVE_INSTANCE_FUNCTION(GetPhysicalDeviceSurfacePresentModesKHR);
+#if VK_USE_PLATFORM_WIN32_KHR
     RESOLVE_INSTANCE_FUNCTION(CreateWin32SurfaceKHR);
+#endif
+#if VK_USE_PLATFORM_XLIB_KHR
+    RESOLVE_INSTANCE_FUNCTION(CreateXlibSurfaceKHR);
+#endif
+#if VK_USE_PLATFORM_WAYLAND_KHR
+    RESOLVE_INSTANCE_FUNCTION(CreateWaylandSurfaceKHR);
+#endif
     RESOLVE_INSTANCE_FUNCTION(DestroySurfaceKHR);
     RESOLVE_INSTANCE_FUNCTION(GetDeviceProcAddr);
     RESOLVE_INSTANCE_FUNCTION(DestroyInstance);
