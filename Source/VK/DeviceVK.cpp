@@ -1435,6 +1435,7 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
     extensions.push_back(VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME);
     extensions.push_back(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
     extensions.push_back(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME);
+    extensions.push_back(VK_EXT_HDR_METADATA_EXTENSION_NAME);
 
     FilterDeviceExtensions(extensions);
 
@@ -1445,6 +1446,7 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
     m_IsMinMaxFilterExtSupported = IsExtensionInList(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME, extensions);
     m_IsConservativeRasterExtSupported = IsExtensionInList(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME, extensions);
     m_IsMeshShaderExtSupported = IsExtensionInList(VK_NV_MESH_SHADER_EXTENSION_NAME, extensions);
+    m_IsHDRExtSupported = IsExtensionInList(VK_EXT_HDR_METADATA_EXTENSION_NAME, extensions);
 
     m_IsRayTracingExtSupported = m_IsDescriptorIndexingExtSupported;
     m_IsRayTracingExtSupported = m_IsRayTracingExtSupported && IsExtensionInList(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, extensions);
@@ -1883,7 +1885,9 @@ Result DeviceVK::ResolveDispatchTable()
     RESOLVE_DEVICE_FUNCTION(GetImageMemoryRequirements2);
 
     RESOLVE_DEVICE_FUNCTION(GetSwapchainImagesKHR);
-    RESOLVE_DEVICE_FUNCTION(SetHdrMetadataEXT);
+
+    if (m_IsHDRExtSupported)
+        RESOLVE_DEVICE_FUNCTION(SetHdrMetadataEXT);
 
     RESOLVE_DEVICE_FUNCTION(SetDebugUtilsObjectNameEXT);
 

@@ -159,6 +159,7 @@ namespace nri
         bool m_IsMinMaxFilterExtSupported = false;
         bool m_IsConservativeRasterExtSupported = false;
         bool m_IsMeshShaderExtSupported = false;
+        bool m_IsHDRExtSupported = false;
         bool m_IsSubsetAllocationSupported = false;
         bool m_IsConcurrentSharingModeEnabledForBuffers = true;
         bool m_IsConcurrentSharingModeEnabledForImages = true;
