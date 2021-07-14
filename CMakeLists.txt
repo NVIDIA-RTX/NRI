@@ -77,17 +77,17 @@ endif()
 if (WIN32)
     set(NRI_VULKAN_SDK_INCLUDE_PATH "$ENV{VULKAN_SDK}/Include")
     set(NRI_VULKAN_SDK_LIB_PATH "$ENV{VULKAN_SDK}/Lib")
-    add_compile_definitions(WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS _UNICODE UNICODE _ENFORCE_MATCHING_ALLOCATORS=0)
-    add_compile_definitions(NRI_USE_D3D11=1 NRI_USE_D3D12=1)
+    set(NRI_COMPILE_DEFINITIONS WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS _UNICODE UNICODE _ENFORCE_MATCHING_ALLOCATORS=0)
+    set(NRI_COMPILE_DEFINITIONS ${NRI_COMPILE_DEFINITIONS} NRI_USE_D3D11=1 NRI_USE_D3D12=1)
 endif()
+
+set(NRI_COMPILE_DEFINITIONS ${NRI_COMPILE_DEFINITIONS} NRI_USE_VULKAN=1)
 
 if (NRI_CUSTOM_VULKAN_SDK_PATH)
     set(NRI_VULKAN_SDK_INCLUDE_PATH "${NRI_CUSTOM_VULKAN_SDK_PATH}/include")
     set(NRI_VULKAN_SDK_LIB_PATH "${NRI_CUSTOM_VULKAN_SDK_PATH}/lib")
     message("NRI: using custom VulkanSDK path: '${NRI_CUSTOM_VULKAN_SDK_PATH}'")
 endif()
-
-add_compile_definitions(NRI_USE_VULKAN=1)
 
 # Dependencies
 find_library(NRI_INPUT_LIB_VULKAN vulkan-1 vulkan PATHS "${NRI_VULKAN_SDK_LIB_PATH}" REQUIRED)
@@ -115,18 +115,21 @@ endif()
 # Shared
 add_library(NRI_Shared STATIC ${NRI_SHARED_SOURCE})
 target_include_directories(NRI_Shared PRIVATE "Include" "Source/Shared")
+target_compile_definitions(NRI_Shared PRIVATE ${NRI_COMPILE_DEFINITIONS})
 set_property(TARGET NRI_Shared PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
 
 if (WIN32)
     #D3D11
     add_library(NRI_D3D11 STATIC ${NRI_D3D11_SOURCE})
     target_include_directories(NRI_D3D11 PRIVATE "Include" "Source/Shared" "External")
+    target_compile_definitions(NRI_D3D11 PRIVATE ${NRI_COMPILE_DEFINITIONS})
     target_link_libraries(NRI_D3D11 PRIVATE NRI_Shared ${NRI_INPUT_LIB_D3D11} ${NRI_INPUT_LIB_DXGI} ${NRI_INPUT_LIB_DXGUID} ${NRI_INPUT_LIB_NVAPI})
     set_property(TARGET NRI_D3D11 PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
 
     # D3D12
     add_library(NRI_D3D12 STATIC ${NRI_D3D12_SOURCE})
     target_include_directories(NRI_D3D12 PRIVATE "Include" "Source/Shared")
+    target_compile_definitions(NRI_D3D12 PRIVATE ${NRI_COMPILE_DEFINITIONS})
     target_link_libraries(NRI_D3D12 PRIVATE NRI_Shared ${NRI_INPUT_LIB_D3D12} ${NRI_INPUT_LIB_DXGI})
     set_property(TARGET NRI_D3D12 PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
 endif()
@@ -134,6 +137,7 @@ endif()
 # Vulkan
 add_library(NRI_VK STATIC ${NRI_VK_SOURCE})
 target_include_directories(NRI_VK PRIVATE "Include" "Source/Shared" "${NRI_VULKAN_SDK_INCLUDE_PATH}")
+target_compile_definitions(NRI_VK PRIVATE ${NRI_COMPILE_DEFINITIONS})
 target_link_libraries(NRI_VK PRIVATE NRI_Shared ${NRI_INPUT_LIB_VULKAN})
 set_property(TARGET NRI_VK PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
 
@@ -166,6 +170,7 @@ endif()
 # Validation
 add_library(NRI_Validation STATIC ${NRI_VALIDATION_SOURCE})
 target_include_directories(NRI_Validation PRIVATE "Include" "Source/Shared")
+target_compile_definitions(NRI_Validation PRIVATE ${NRI_COMPILE_DEFINITIONS})
 target_link_libraries(NRI_Validation PRIVATE NRI_Shared)
 set_property(TARGET NRI_Validation PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
 
@@ -181,6 +186,7 @@ if (WIN32)
 endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE NRI_Shared NRI_VK NRI_Validation ${NRI_INPUT_LIB_VULKAN})
 target_include_directories(${PROJECT_NAME} PRIVATE "Include" "Source/Shared" "${NRI_VULKAN_SDK_INCLUDE_PATH}")
+target_compile_definitions(${PROJECT_NAME} PRIVATE ${NRI_COMPILE_DEFINITIONS})
 set_property(TARGET ${PROJECT_NAME} PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
 set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION})
 
