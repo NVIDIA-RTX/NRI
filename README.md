@@ -6,12 +6,12 @@ NRI is a low-level abstract render interface which supports three backends: D3D1
 
 ## Build instructions
 ### Windows
-1. Install **WindowsSDK** and **VulkanSDK**
+1. Install **WindowsSDK**
 2. Clone project and init submodules
 3. Generate and build project using **cmake**
 
 ### Linux (x86-64/aarch64)
-1. Install **VulkanSDK**, and optionally **libwayland-dev**, **libx11-dev**, **libxrandr-dev**
+1. Install **libwayland-dev** or **libx11-dev** with **libxrandr-dev**
 2. Clone project and init submodules
 3. if **libwayland-dev** is not installed, add `-DNRI_DISABLE_WAYLAND_SUPPORT=ON` on step5
 4. if **libx11-dev** is not installed, add `-DNRI_DISABLE_XLIB_SUPPORT=ON` on step5
