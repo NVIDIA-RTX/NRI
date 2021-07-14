@@ -13,7 +13,7 @@ Library* LoadSharedLibrary(const char* path)
 
 void* GetSharedLibraryFunction(Library& library, const char* name)
 {
-    return GetProcAddress((HMODULE)&library, name);
+    return (void*)GetProcAddress((HMODULE)&library, name);
 }
 
 void UnloadSharedLibrary(Library& library)
