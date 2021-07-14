@@ -1,3 +1,7 @@
 [submodule "External/Packman"]
 	path = External/Packman
 	url = https://gitlab-master.nvidia.com/nri/packman.git
+[submodule "External/vulkan"]
+	path = External/vulkan
+	url = https://github.com/KhronosGroup/Vulkan-Headers.git
+	branch = sdk-1.2.176

@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
 
-# NRI_CUSTOM_VULKAN_SDK_PATH
 option(NRI_DISABLE_INTERPROCEDURAL_OPTIMIZATION "disable interprocedural optimization" OFF)
 option(NRI_DISABLE_XLIB_SUPPORT "disable xlib support" OFF)
 option(NRI_DISABLE_WAYLAND_SUPPORT "disable wayland support" OFF)
@@ -73,19 +72,13 @@ else()
     set(NRI_IS_SUBMODULE ON)
 endif()
 
-# defines and VulkanSDK path for Windows
+# defines
 if (WIN32)
-    set(NRI_VULKAN_SDK_INCLUDE_PATH "$ENV{VULKAN_SDK}/Include")
     set(NRI_COMPILE_DEFINITIONS WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS _UNICODE UNICODE _ENFORCE_MATCHING_ALLOCATORS=0)
     set(NRI_COMPILE_DEFINITIONS ${NRI_COMPILE_DEFINITIONS} NRI_USE_D3D11=1 NRI_USE_D3D12=1)
 endif()
 
 set(NRI_COMPILE_DEFINITIONS ${NRI_COMPILE_DEFINITIONS} NRI_USE_VULKAN=1)
-
-if (NRI_CUSTOM_VULKAN_SDK_PATH)
-    set(NRI_VULKAN_SDK_INCLUDE_PATH "${NRI_CUSTOM_VULKAN_SDK_PATH}/include")
-    message("NRI: using custom VulkanSDK path: '${NRI_CUSTOM_VULKAN_SDK_PATH}'")
-endif()
 
 # Dependencies
 if (WIN32)
@@ -133,7 +126,7 @@ endif()
 
 # Vulkan
 add_library(NRI_VK STATIC ${NRI_VK_SOURCE})
-target_include_directories(NRI_VK PRIVATE "Include" "Source/Shared" "${NRI_VULKAN_SDK_INCLUDE_PATH}")
+target_include_directories(NRI_VK PRIVATE "Include" "Source/Shared" "External/vulkan/include")
 target_compile_definitions(NRI_VK PRIVATE ${NRI_COMPILE_DEFINITIONS})
 target_link_libraries(NRI_VK PRIVATE NRI_Shared)
 set_property(TARGET NRI_VK PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
@@ -142,12 +135,6 @@ set_property(TARGET NRI_VK PROPERTY FOLDER "${NRI_PROJECT_FOLDER}")
 if (WIN32)
     target_compile_definitions(NRI_VK PRIVATE VK_USE_PLATFORM_WIN32_KHR)
 else()
-    if (NOT NRI_CUSTOM_VULKAN_SDK_PATH)
-        find_path(NRI_VULKANSDK_HEADERS NAMES "vulkan/vulkan.h")
-        if (NOT NRI_VULKANSDK_HEADERS)
-            message(FATAL_ERROR "Can't find 'vulkan/vulkan.h'. (vulkansdk is not installed?)")
-        endif()
-    endif()
     if (NOT NRI_DISABLE_XLIB_SUPPORT)
         find_path(NRI_XLIB_HEADERS NAMES "X11/Xlib.h")
         if (NOT NRI_XLIB_HEADERS)
@@ -178,11 +165,15 @@ else()
     add_library(${PROJECT_NAME} SHARED ${NRI_SOURCE} ${NRI_HEADERS} ${NRI_HEADERS_EXTENSIONS})
 endif()
 
+if (UNIX)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_DL_LIBS})
+endif()
 if (WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE NRI_D3D11 NRI_D3D12)
 endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE NRI_Shared NRI_VK NRI_Validation)
-target_include_directories(${PROJECT_NAME} PRIVATE "Include" "Source/Shared" "${NRI_VULKAN_SDK_INCLUDE_PATH}")
+
+target_include_directories(${PROJECT_NAME} PRIVATE "Include" "Source/Shared" "External/vulkan/include")
 target_compile_definitions(${PROJECT_NAME} PRIVATE ${NRI_COMPILE_DEFINITIONS})
 set_property(TARGET ${PROJECT_NAME} PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
 set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION})
