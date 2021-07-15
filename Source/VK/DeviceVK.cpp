@@ -1894,9 +1894,6 @@ Result DeviceVK::ResolveDispatchTable()
 
     RESOLVE_DEVICE_FUNCTION(GetSwapchainImagesKHR);
 
-    if (m_IsHDRExtSupported)
-        RESOLVE_DEVICE_FUNCTION(SetHdrMetadataEXT);
-
     RESOLVE_DEVICE_FUNCTION(SetDebugUtilsObjectNameEXT);
 
     if (m_IsRayTracingExtSupported)
@@ -1920,6 +1917,12 @@ Result DeviceVK::ResolveDispatchTable()
     }
 
     RESOLVE_INSTANCE_FUNCTION(GetPhysicalDeviceFormatProperties);
+
+    if (m_IsHDRExtSupported)
+    {
+        m_VK.SetHdrMetadataEXT = (PFN_vkSetHdrMetadataEXT)m_VK.GetDeviceProcAddr(m_Device, "vkSetHdrMetadataEXT");
+        m_IsHDRExtSupported = m_VK.SetHdrMetadataEXT != nullptr;
+    }
 
     return Result::SUCCESS;
 }
