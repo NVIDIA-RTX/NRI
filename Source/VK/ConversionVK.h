@@ -1183,7 +1183,7 @@ namespace nri
 
     constexpr TextureType GetTextureType(VkImageType type)
     {
-        if (type < TEXTURE_TYPE_TABLE.size())
+        if ((size_t)type < TEXTURE_TYPE_TABLE.size())
             return TEXTURE_TYPE_TABLE[(uint32_t)type];
 
         return TextureType::MAX_NUM;

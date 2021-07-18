@@ -106,7 +106,7 @@ Result DescriptorPoolVK::Create(void* vkDescriptorPool)
 
 inline void DescriptorPoolVK::SetDebugName(const char* name)
 {
-    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_DESCRIPTOR_POOL, m_Handle, name);
+    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_DESCRIPTOR_POOL, (uint64_t)m_Handle, name);
 }
 
 inline Result DescriptorPoolVK::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** const descriptorSets,

@@ -157,7 +157,11 @@ Result AccelerationStructureVK::FinishCreation()
 
 inline void AccelerationStructureVK::SetDebugName(const char* name)
 {
-    m_Device.SetDebugNameToDeviceGroupObject(VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR, (void**)m_Handles.data(), name);
+    std::array<uint64_t, PHYSICAL_DEVICE_GROUP_MAX_SIZE> handles;
+    for (size_t i = 0; i < handles.size(); i++)
+        handles[i] = (uint64_t)m_Handles[i];
+
+    m_Device.SetDebugNameToDeviceGroupObject(VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR, handles.data(), name);
     m_Buffer->SetDebugName(name);
 }
 

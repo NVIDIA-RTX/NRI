@@ -377,7 +377,7 @@ static bool ValidateBufferUploadDesc(DeviceVal& device, uint32_t i, const Buffer
 
     const BufferVal& bufferVal = *(BufferVal*)bufferUploadDesc.buffer;
 
-    const size_t rangeEnd = bufferUploadDesc.bufferOffset + bufferUploadDesc.dataSize;
+    const uint64_t rangeEnd = bufferUploadDesc.bufferOffset + bufferUploadDesc.dataSize;
 
     RETURN_ON_FAILURE(device.GetLog(), rangeEnd <= bufferVal.GetDesc().size, false,
         "Can't upload data: 'bufferUploadDescs[%u].bufferOffset + bufferUploadDescs[%u].dataSize' is out of bounds.", i, i);

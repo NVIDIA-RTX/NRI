@@ -279,7 +279,7 @@ void FillFunctionTableCommandBufferVal(WrapperD3D12Interface& wrapperD3D12Interf
 
 #pragma region [  WrapperVKInterface  ]
 
-static VkCommandBuffer NRI_CALL GetCommandBufferVK(const CommandBuffer& commandBuffer)
+static NRIVkCommandBuffer NRI_CALL GetCommandBufferVK(const CommandBuffer& commandBuffer)
 {
     return ((CommandBufferVal&)commandBuffer).GetCommandBufferVK();
 }

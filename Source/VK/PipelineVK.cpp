@@ -133,7 +133,7 @@ Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc)
         VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         nullptr,
         (VkShaderModuleCreateFlags)0,
-        computePipelineDesc.computeShader.size,
+        (size_t)computePipelineDesc.computeShader.size,
         (const uint32_t*)computePipelineDesc.computeShader.bytecode
     };
 
@@ -290,12 +290,12 @@ Result PipelineVK::CreateCompute(void* vkPipeline)
 
 inline void PipelineVK::SetDebugName(const char* name)
 {
-    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_PIPELINE, m_Handle, name);
+    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_PIPELINE, (uint64_t)m_Handle, name);
 }
 
 inline Result PipelineVK::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* buffer) const
 {
-    const uint64_t dataSize = shaderGroupNum * m_Device.GetDesc().rayTracingShaderGroupIdentifierSize;
+    const size_t dataSize = (size_t)(shaderGroupNum * m_Device.GetDesc().rayTracingShaderGroupIdentifierSize);
 
     const auto& vk = m_Device.GetDispatchTable();
     const VkResult result = vk.GetRayTracingShaderGroupHandlesKHR(m_Device, m_Handle, baseShaderGroupIndex, shaderGroupNum, dataSize, buffer);
@@ -312,7 +312,7 @@ Result PipelineVK::SetupShaderStage(VkPipelineShaderStageCreateInfo& stage, cons
         VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         nullptr,
         (VkShaderModuleCreateFlags)0,
-        shaderDesc.size,
+        (size_t)shaderDesc.size,
         (const uint32_t*)shaderDesc.bytecode
     };
 

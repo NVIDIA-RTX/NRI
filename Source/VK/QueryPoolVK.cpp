@@ -83,7 +83,11 @@ Result QueryPoolVK::Create(const QueryPoolVulkanDesc& queryPoolDesc)
 
 inline void QueryPoolVK::SetDebugName(const char* name)
 {
-    m_Device.SetDebugNameToDeviceGroupObject(VK_OBJECT_TYPE_QUERY_POOL, (void**)m_Handles.data(), name);
+    std::array<uint64_t, PHYSICAL_DEVICE_GROUP_MAX_SIZE> handles;
+    for (size_t i = 0; i < handles.size(); i++)
+        handles[i] = (uint64_t)m_Handles[i];
+
+    m_Device.SetDebugNameToDeviceGroupObject(VK_OBJECT_TYPE_QUERY_POOL, handles.data(), name);
 }
 
 uint32_t QueryPoolVK::GetQuerySize() const

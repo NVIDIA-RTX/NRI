@@ -40,8 +40,8 @@ namespace nri
         bool IsConcurrentSharingModeEnabledForImages() const;
         const Vector<uint32_t>& GetConcurrentSharingModeQueueIndices() const;
 
-        void SetDebugNameToTrivialObject(VkObjectType objectType, const void* handle, const char* name);
-        void SetDebugNameToDeviceGroupObject(VkObjectType objectType, const void* const* handles, const char* name);
+        void SetDebugNameToTrivialObject(VkObjectType objectType, uint64_t handle, const char* name);
+        void SetDebugNameToDeviceGroupObject(VkObjectType objectType, const uint64_t* handles, const char* name);
         void SetDebugName(const char* name);
         const DeviceDesc& GetDesc() const;
         Result GetCommandQueue(CommandQueueType commandQueueType, CommandQueue*& commandQueue);
@@ -69,15 +69,15 @@ namespace nri
         Result CreateCommandQueue(const CommandQueueVulkanDesc& commandQueueDesc, CommandQueue*& commandQueue);
         Result CreateCommandAllocator(const CommandAllocatorVulkanDesc& commandAllocatorDesc, CommandAllocator*& commandAllocator);
         Result CreateCommandBuffer(const CommandBufferVulkanDesc& commandBufferDesc, CommandBuffer*& commandBuffer);
-        Result CreateDescriptorPool(VkDescriptorPool vkDescriptorPool, DescriptorPool*& descriptorPool);
+        Result CreateDescriptorPool(NRIVkDescriptorPool vkDescriptorPool, DescriptorPool*& descriptorPool);
         Result CreateBuffer(const BufferVulkanDesc& bufferDesc, Buffer*& buffer);
         Result CreateTexture(const TextureVulkanDesc& textureVulkanDesc, Texture*& texture);
         Result CreateMemory(const MemoryVulkanDesc& memoryVulkanDesc, Memory*& memory);
-        Result CreateGraphicsPipeline(VkPipeline vkPipeline, Pipeline*& pipeline);
-        Result CreateComputePipeline(VkPipeline vkPipeline, Pipeline*& pipeline);
+        Result CreateGraphicsPipeline(NRIVkPipeline vkPipeline, Pipeline*& pipeline);
+        Result CreateComputePipeline(NRIVkPipeline vkPipeline, Pipeline*& pipeline);
         Result CreateQueryPool(const QueryPoolVulkanDesc& queryPoolVulkanDesc, QueryPool*& queryPool);
-        Result CreateQueueSemaphore(VkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore);
-        Result CreateDeviceSemaphore(VkFence vkFence, DeviceSemaphore*& deviceSemaphore);
+        Result CreateQueueSemaphore(NRIVkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore);
+        Result CreateDeviceSemaphore(NRIVkFence vkFence, DeviceSemaphore*& deviceSemaphore);
 
         void DestroyCommandAllocator(CommandAllocator& commandAllocator);
         void DestroyDescriptorPool(DescriptorPool& descriptorPool);

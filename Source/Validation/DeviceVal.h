@@ -72,21 +72,21 @@ namespace nri
         void DestroyAccelerationStructure(AccelerationStructure& accelerationStructure);
         FormatSupportBits GetFormatSupport(Format format) const;
 
-        VkDevice GetDeviceVK() const;
-        VkPhysicalDevice GetPhysicalDeviceVK() const;
-        VkInstance GetInstanceVK() const;
+        NRIVkDevice GetDeviceVK() const;
+        NRIVkPhysicalDevice GetPhysicalDeviceVK() const;
+        NRIVkInstance GetInstanceVK() const;
         Result CreateCommandQueueVK(const CommandQueueVulkanDesc& commandQueueDesc, CommandQueue*& commandQueue);
         Result CreateCommandAllocatorVK(const CommandAllocatorVulkanDesc& commandAllocatorDesc, CommandAllocator*& commandAllocator);
         Result CreateCommandBufferVK(const CommandBufferVulkanDesc& commandBufferDesc, CommandBuffer*& commandBuffer);
-        Result CreateDescriptorPoolVK(VkDescriptorPool vkDescriptorPool, DescriptorPool*& descriptorPool);
+        Result CreateDescriptorPoolVK(NRIVkDescriptorPool vkDescriptorPool, DescriptorPool*& descriptorPool);
         Result CreateBufferVK(const BufferVulkanDesc& bufferDesc, Buffer*& buffer);
         Result CreateTextureVK(const TextureVulkanDesc& textureVulkanDesc, Texture*& texture);
         Result CreateMemoryVK(const MemoryVulkanDesc& memoryVulkanDesc, Memory*& memory);
-        Result CreateGraphicsPipelineVK(VkPipeline vkPipeline, Pipeline*& pipeline);
-        Result CreateComputePipelineVK(VkPipeline vkPipeline, Pipeline*& pipeline);
+        Result CreateGraphicsPipelineVK(NRIVkPipeline vkPipeline, Pipeline*& pipeline);
+        Result CreateComputePipelineVK(NRIVkPipeline vkPipeline, Pipeline*& pipeline);
         Result CreateQueryPoolVK(const QueryPoolVulkanDesc& queryPoolVulkanDesc, QueryPool*& queryPool);
-        Result CreateQueueSemaphoreVK(VkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore);
-        Result CreateDeviceSemaphoreVK(VkFence vkFence, DeviceSemaphore*& deviceSemaphore);
+        Result CreateQueueSemaphoreVK(NRIVkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore);
+        Result CreateDeviceSemaphoreVK(NRIVkFence vkFence, DeviceSemaphore*& deviceSemaphore);
 
         Result CreateCommandBufferD3D11(const CommandBufferD3D11Desc& commandBufferDesc, CommandBuffer*& commandBuffer);
         Result CreateBufferD3D11(const BufferD3D11Desc& bufferDesc, Buffer*& buffer);

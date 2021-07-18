@@ -10,32 +10,33 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #pragma once
 
-typedef struct VkInstance_T* VkInstance;
-typedef struct VkPhysicalDevice_T* VkPhysicalDevice;
-typedef struct VkDevice_T* VkDevice;
-typedef struct VkQueue_T* VkQueue;
-typedef struct VkCommandPool_T* VkCommandPool;
-typedef struct VkCommandBuffer_T* VkCommandBuffer;
-typedef struct VkImage_T* VkImage;
-typedef struct VkBuffer_T* VkBuffer;
-typedef struct VkDeviceMemory_T* VkDeviceMemory;
-typedef struct VkQueryPool_T* VkQueryPool;
-typedef struct VkPipeline_T* VkPipeline;
-typedef struct VkDescriptorPool_T* VkDescriptorPool;
-typedef struct VkSemaphore_T* VkSemaphore;
-typedef struct VkFence_T* VkFence;
-
-typedef struct VkImageView_T* VkImageView;
-typedef struct VkBufferView_T* VkBufferView;
 struct VkImageSubresourceRange;
 
 namespace nri
 {
+    typedef uint64_t NRIVkInstance;
+    typedef uint64_t NRIVkPhysicalDevice;
+    typedef uint64_t NRIVkDevice;
+    typedef uint64_t NRIVkQueue;
+    typedef void* NRIVkCommandPool;
+    typedef uint64_t NRIVkCommandBuffer;
+    typedef void* NRIVkImage;
+    typedef void* NRIVkBuffer;
+    typedef void* NRIVkDeviceMemory;
+    typedef void* NRIVkQueryPool;
+    typedef void* NRIVkPipeline;
+    typedef void* NRIVkDescriptorPool;
+    typedef void* NRIVkSemaphore;
+    typedef void* NRIVkFence;
+
+    typedef void* NRIVkImageView;
+    typedef void* NRIVkBufferView;
+
     struct DeviceCreationVulkanDesc
     {
-        VkInstance vkInstance;
-        VkDevice vkDevice;
-        const VkPhysicalDevice* vkPhysicalDevices;
+        NRIVkInstance vkInstance;
+        NRIVkDevice vkDevice;
+        const NRIVkPhysicalDevice* vkPhysicalDevices;
         uint32_t deviceGroupSize;
         const uint32_t* queueFamilyIndices;
         uint32_t queueFamilyIndexNum;
@@ -47,26 +48,26 @@ namespace nri
 
     struct CommandQueueVulkanDesc
     {
-        VkQueue vkQueue;
+        NRIVkQueue vkQueue;
         uint32_t familyIndex;
         CommandQueueType commandQueueType;
     };
 
     struct CommandAllocatorVulkanDesc
     {
-        VkCommandPool vkCommandPool;
+        NRIVkCommandPool vkCommandPool;
         CommandQueueType commandQueueType;
     };
 
     struct CommandBufferVulkanDesc
     {
-        VkCommandBuffer vkCommandBuffer;
+        NRIVkCommandBuffer vkCommandBuffer;
         CommandQueueType commandQueueType;
     };
 
     struct BufferVulkanDesc
     {
-        VkBuffer vkBuffer;
+        NRIVkBuffer vkBuffer;
         uint64_t bufferSize;
         Memory* memory;
         uint64_t memoryOffset;
@@ -76,7 +77,7 @@ namespace nri
 
     struct TextureVulkanDesc
     {
-        VkImage vkImage;
+        NRIVkImage vkImage;
         uint32_t vkFormat;
         uint32_t vkImageAspectFlags;
         uint32_t vkImageType;
@@ -89,7 +90,7 @@ namespace nri
 
     struct MemoryVulkanDesc
     {
-        VkDeviceMemory vkDeviceMemory;
+        NRIVkDeviceMemory vkDeviceMemory;
         uint64_t size;
         uint32_t memoryTypeIndex;
         uint32_t physicalDeviceMask;
@@ -97,7 +98,7 @@ namespace nri
 
     struct QueryPoolVulkanDesc
     {
-        VkQueryPool vkQueryPool;
+        NRIVkQueryPool vkQueryPool;
         uint32_t vkQueryType;
         uint32_t physicalDeviceMask;
     };
@@ -110,23 +111,23 @@ namespace nri
         Result (NRI_CALL *CreateCommandQueueVK)(Device& device, const CommandQueueVulkanDesc& commandQueueVulkanDesc, CommandQueue*& commandQueue);
         Result (NRI_CALL *CreateCommandAllocatorVK)(Device& device, const CommandAllocatorVulkanDesc& commandAllocatorVulkanDesc, CommandAllocator*& commandAllocator);
         Result (NRI_CALL *CreateCommandBufferVK)(Device& device, const CommandBufferVulkanDesc& commandBufferVulkanDesc, CommandBuffer*& commandBuffer);
-        Result (NRI_CALL *CreateDescriptorPoolVK)(Device& device, VkDescriptorPool vkDescriptorPool, DescriptorPool*& descriptorPool);
+        Result (NRI_CALL *CreateDescriptorPoolVK)(Device& device, NRIVkDescriptorPool vkDescriptorPool, DescriptorPool*& descriptorPool);
         Result (NRI_CALL *CreateBufferVK)(Device& device, const BufferVulkanDesc& bufferVulkanDesc, Buffer*& buffer);
         Result (NRI_CALL *CreateTextureVK)(Device& device, const TextureVulkanDesc& textureVulkanDesc, Texture*& texture);
         Result (NRI_CALL *CreateMemoryVK)(Device& device, const MemoryVulkanDesc& memoryVulkanDesc, Memory*& memory);
-        Result (NRI_CALL *CreateGraphicsPipelineVK)(Device& device, VkPipeline vkPipeline, Pipeline*& pipeline);
-        Result (NRI_CALL *CreateComputePipelineVK)(Device& device, VkPipeline vkPipeline, Pipeline*& pipeline);
+        Result (NRI_CALL *CreateGraphicsPipelineVK)(Device& device, NRIVkPipeline vkPipeline, Pipeline*& pipeline);
+        Result (NRI_CALL *CreateComputePipelineVK)(Device& device, NRIVkPipeline vkPipeline, Pipeline*& pipeline);
         Result (NRI_CALL *CreateQueryPoolVK)(Device& device, const QueryPoolVulkanDesc& queryPoolVulkanDesc, QueryPool*& queryPool);
-        Result (NRI_CALL *CreateQueueSemaphoreVK)(Device& device, VkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore);
-        Result (NRI_CALL *CreateDeviceSemaphoreVK)(Device& device, VkFence vkFence, DeviceSemaphore*& deviceSemaphore);
+        Result (NRI_CALL *CreateQueueSemaphoreVK)(Device& device, NRIVkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore);
+        Result (NRI_CALL *CreateDeviceSemaphoreVK)(Device& device, NRIVkFence vkFence, DeviceSemaphore*& deviceSemaphore);
 
-        VkDevice (NRI_CALL *GetDeviceVK)(const Device& device);
-        VkPhysicalDevice (NRI_CALL *GetPhysicalDeviceVK)(const Device& device);
-        VkInstance (NRI_CALL *GetInstanceVK)(const Device& device);
-        VkCommandBuffer (NRI_CALL *GetCommandBufferVK)(const CommandBuffer& commandBuffer);
+        NRIVkDevice (NRI_CALL *GetDeviceVK)(const Device& device);
+        NRIVkPhysicalDevice (NRI_CALL *GetPhysicalDeviceVK)(const Device& device);
+        NRIVkInstance (NRI_CALL *GetInstanceVK)(const Device& device);
+        NRIVkCommandBuffer (NRI_CALL *GetCommandBufferVK)(const CommandBuffer& commandBuffer);
 
         void (NRI_CALL *GetTextureVK)(const Texture& texture, uint32_t physicalDeviceIndex, TextureVulkanDesc& textureVulkanDesc);
-        VkImageView (NRI_CALL *GetTextureDescriptorVK)(const Descriptor& descriptor, uint32_t physicalDeviceIndex, VkImageSubresourceRange& subresource);
-        VkBufferView (NRI_CALL *GetBufferDescriptorVK)(const Descriptor& descriptor, uint32_t physicalDeviceIndex);
+        NRIVkImageView (NRI_CALL *GetTextureDescriptorVK)(const Descriptor& descriptor, uint32_t physicalDeviceIndex, VkImageSubresourceRange& subresource);
+        NRIVkBufferView (NRI_CALL *GetBufferDescriptorVK)(const Descriptor& descriptor, uint32_t physicalDeviceIndex);
     };
 }

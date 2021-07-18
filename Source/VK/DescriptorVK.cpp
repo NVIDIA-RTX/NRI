@@ -261,18 +261,24 @@ Result DescriptorVK::Create(const VkAccelerationStructureKHR* accelerationStruct
 
 inline void DescriptorVK::SetDebugName(const char* name)
 {
+    std::array<uint64_t, PHYSICAL_DEVICE_GROUP_MAX_SIZE> handles;
+
     switch (m_Type)
     {
     case DescriptorTypeVK::BUFFER_VIEW:
-        m_Device.SetDebugNameToDeviceGroupObject(VK_OBJECT_TYPE_BUFFER_VIEW, (void**)m_BufferViews.data(), name);
+        for (size_t i = 0; i < handles.size(); i++)
+            handles[i] = (uint64_t)m_BufferViews[i];
+        m_Device.SetDebugNameToDeviceGroupObject(VK_OBJECT_TYPE_BUFFER_VIEW, handles.data(), name);
         break;
 
     case DescriptorTypeVK::IMAGE_VIEW:
-        m_Device.SetDebugNameToDeviceGroupObject(VK_OBJECT_TYPE_IMAGE_VIEW, (void**)m_ImageViews.data(), name);
+        for (size_t i = 0; i < handles.size(); i++)
+            handles[i] = (uint64_t)m_ImageViews[i];
+        m_Device.SetDebugNameToDeviceGroupObject(VK_OBJECT_TYPE_IMAGE_VIEW, handles.data(), name);
         break;
 
     case DescriptorTypeVK::SAMPLER:
-        m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_SAMPLER, m_Sampler, name);
+        m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_SAMPLER, (uint64_t)m_Sampler, name);
         break;
     }
 }

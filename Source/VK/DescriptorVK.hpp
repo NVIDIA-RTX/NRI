@@ -26,14 +26,16 @@ void FillFunctionTableDescriptorVK(CoreInterface& coreInterface)
 
 #pragma region [  WrapperVKInterface  ]
 
-static VkImageView NRI_CALL GetTextureDescriptorVK(const Descriptor& descriptor, uint32_t physicalDeviceIndex, VkImageSubresourceRange& subresource)
+static NRIVkImageView NRI_CALL GetTextureDescriptorVK(const Descriptor& descriptor, uint32_t physicalDeviceIndex, VkImageSubresourceRange& subresource)
 {
-    return ((DescriptorVK&)descriptor).GetTextureDescriptorVK(physicalDeviceIndex, subresource);
+    const VkImageView handle = ((DescriptorVK&)descriptor).GetTextureDescriptorVK(physicalDeviceIndex, subresource);
+    return (NRIVkImageView)handle;
 }
 
-static VkBufferView NRI_CALL GetBufferDescriptorVK(const Descriptor& descriptor, uint32_t physicalDeviceIndex)
+static NRIVkBufferView NRI_CALL GetBufferDescriptorVK(const Descriptor& descriptor, uint32_t physicalDeviceIndex)
 {
-    return ((DescriptorVK&)descriptor).GetBufferDescriptorVK(physicalDeviceIndex);
+    const VkBufferView handle = ((DescriptorVK&)descriptor).GetBufferDescriptorVK(physicalDeviceIndex);
+    return (NRIVkBufferView)handle;
 }
 
 void FillFunctionTableDescriptorVK(WrapperVKInterface& wrapperVKInterface)

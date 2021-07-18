@@ -65,7 +65,7 @@ Result CommandBufferVK::Create(const CommandBufferVulkanDesc& commandBufferDesc)
 
 inline void CommandBufferVK::SetDebugName(const char* name)
 {
-    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_COMMAND_BUFFER, m_Handle, name);
+    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)m_Handle, name);
 }
 
 inline Result CommandBufferVK::Begin(const DescriptorPool* descriptorPool, uint32_t physicalDeviceIndex)

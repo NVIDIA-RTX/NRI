@@ -229,8 +229,8 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc)
 
 inline void SwapChainVK::SetDebugName(const char* name)
 {
-    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_SURFACE_KHR, m_Surface, name);
-    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_SWAPCHAIN_KHR, m_Handle, name);
+    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_SURFACE_KHR, (uint64_t)m_Surface, name);
+    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_SWAPCHAIN_KHR, (uint64_t)m_Handle, name);
 }
 
 inline Texture* const* SwapChainVK::GetTextures(uint32_t& textureNum, Format& format) const

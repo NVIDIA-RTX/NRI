@@ -41,8 +41,8 @@ namespace nri
         DescriptorVal(DeviceVal& device, Descriptor& descriptor, const SamplerDesc& samplerDesc);
 
         void SetDebugName(const char* name);
-        VkBufferView GetBufferDescriptorVK(uint32_t physicalDeviceIndex) const;
-        VkImageView GetTextureDescriptorVK(uint32_t physicalDeviceIndex, VkImageSubresourceRange& subresourceRange) const;
+        NRIVkBufferView GetBufferDescriptorVK(uint32_t physicalDeviceIndex) const;
+        NRIVkImageView GetTextureDescriptorVK(uint32_t physicalDeviceIndex, VkImageSubresourceRange& subresourceRange) const;
 
         bool IsBufferView() const;
         bool IsTextureView() const;

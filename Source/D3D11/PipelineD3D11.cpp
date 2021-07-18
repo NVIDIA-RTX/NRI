@@ -55,27 +55,27 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc)
         if (shaderDesc->stage == ShaderStage::VERTEX)
         {
             vertexShader = shaderDesc;
-            hr = versionedDevice->CreateVertexShader(shaderDesc->bytecode, shaderDesc->size, nullptr, &m_VertexShader);
+            hr = versionedDevice->CreateVertexShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_VertexShader);
             RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateVertexShader() - FAILED!");
         }
         else if (shaderDesc->stage == ShaderStage::TESS_CONTROL)
         {
-            hr = versionedDevice->CreateHullShader(shaderDesc->bytecode, shaderDesc->size, nullptr, &m_TessControlShader);
+            hr = versionedDevice->CreateHullShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_TessControlShader);
             RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateHullShader() - FAILED!");
         }
         else if (shaderDesc->stage == ShaderStage::TESS_EVALUATION)
         {
-            hr = versionedDevice->CreateDomainShader(shaderDesc->bytecode, shaderDesc->size, nullptr, &m_TessEvaluationShader);
+            hr = versionedDevice->CreateDomainShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_TessEvaluationShader);
             RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateDomainShader() - FAILED!");
         }
         else if (shaderDesc->stage == ShaderStage::GEOMETRY)
         {
-            hr = versionedDevice->CreateGeometryShader(shaderDesc->bytecode, shaderDesc->size, nullptr, &m_GeometryShader);
+            hr = versionedDevice->CreateGeometryShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_GeometryShader);
             RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateGeometryShader() - FAILED!");
         }
         else if (shaderDesc->stage == ShaderStage::FRAGMENT)
         {
-            hr = versionedDevice->CreatePixelShader(shaderDesc->bytecode, shaderDesc->size, nullptr, &m_FragmentShader);
+            hr = versionedDevice->CreatePixelShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_FragmentShader);
             RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreatePixelShader() - FAILED!");
         }
         else
@@ -123,7 +123,7 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc)
         };
 
         assert(vertexShader != nullptr);
-        hr = versionedDevice->CreateInputLayout(&inputElements[0], ia.attributeNum, vertexShader->bytecode, vertexShader->size, &m_InputLayout);
+        hr = versionedDevice->CreateInputLayout(&inputElements[0], ia.attributeNum, vertexShader->bytecode, (size_t)vertexShader->size, &m_InputLayout);
         RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateInputLayout() - FAILED!");
     }
 
@@ -253,7 +253,7 @@ Result PipelineD3D11::Create(const ComputePipelineDesc& pipelineDesc)
 
     if (pipelineDesc.computeShader.bytecode)
     {
-        hr = versionedDevice->CreateComputeShader(pipelineDesc.computeShader.bytecode, pipelineDesc.computeShader.size, nullptr, &m_ComputeShader);
+        hr = versionedDevice->CreateComputeShader(pipelineDesc.computeShader.bytecode, (size_t)pipelineDesc.computeShader.size, nullptr, &m_ComputeShader);
 
         RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateComputeShader() - FAILED!");
     }

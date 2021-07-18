@@ -56,7 +56,7 @@ Result CommandAllocatorVK::Create(const CommandAllocatorVulkanDesc& commandAlloc
 
 inline void CommandAllocatorVK::SetDebugName(const char* name)
 {
-    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_COMMAND_POOL, m_Handle, name);
+    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_COMMAND_POOL, (uint64_t)m_Handle, name);
 }
 
 inline Result CommandAllocatorVK::CreateCommandBuffer(CommandBuffer*& commandBuffer)

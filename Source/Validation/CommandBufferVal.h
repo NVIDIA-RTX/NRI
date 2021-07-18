@@ -72,7 +72,7 @@ namespace nri
 
         ID3D11DeviceContext* GetCommandBufferD3D11() const;
         ID3D12GraphicsCommandList* GetCommandBufferD3D12() const;
-        VkCommandBuffer GetCommandBufferVK() const;
+        NRIVkCommandBuffer GetCommandBufferVK() const;
         const Vector<uint8_t>& GetValidationCommands() const;
 
     private:

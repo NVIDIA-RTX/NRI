@@ -132,7 +132,11 @@ void BufferVK::ReadDeviceAddress()
 
 void BufferVK::SetDebugName(const char* name)
 {
-    m_Device.SetDebugNameToDeviceGroupObject(VK_OBJECT_TYPE_BUFFER, (void**)m_Handles.data(), name);
+    std::array<uint64_t, PHYSICAL_DEVICE_GROUP_MAX_SIZE> handles;
+    for (size_t i = 0; i < handles.size(); i++)
+        handles[i] = (uint64_t)m_Handles[i];
+
+    m_Device.SetDebugNameToDeviceGroupObject(VK_OBJECT_TYPE_BUFFER, handles.data(), name);
 }
 
 void BufferVK::GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const

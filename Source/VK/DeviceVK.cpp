@@ -30,7 +30,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 using namespace nri;
 
-void* vkAllocateHostMemory(void* pUserData, size_t size, size_t alignment, VkSystemAllocationScope allocationScope)
+void* VKAPI_PTR vkAllocateHostMemory(void* pUserData, size_t size, size_t alignment, VkSystemAllocationScope allocationScope)
 {
     StdAllocator<uint8_t>& stdAllocator = *(StdAllocator<uint8_t>*)pUserData;
     const auto& lowLevelAllocator = stdAllocator.GetInterface();
@@ -38,7 +38,7 @@ void* vkAllocateHostMemory(void* pUserData, size_t size, size_t alignment, VkSys
     return lowLevelAllocator.Allocate(lowLevelAllocator.userArg, size, alignment);
 }
 
-void* vkReallocateHostMemory(void* pUserData, void* pOriginal, size_t size, size_t alignment, VkSystemAllocationScope allocationScope)
+void* VKAPI_PTR vkReallocateHostMemory(void* pUserData, void* pOriginal, size_t size, size_t alignment, VkSystemAllocationScope allocationScope)
 {
     StdAllocator<uint8_t>& stdAllocator = *(StdAllocator<uint8_t>*)pUserData;
     const auto& lowLevelAllocator = stdAllocator.GetInterface();
@@ -46,7 +46,7 @@ void* vkReallocateHostMemory(void* pUserData, void* pOriginal, size_t size, size
     return lowLevelAllocator.Reallocate(lowLevelAllocator.userArg, pOriginal, size, alignment);
 }
 
-void vkFreeHostMemory(void* pUserData, void* pMemory)
+void VKAPI_PTR vkFreeHostMemory(void* pUserData, void* pMemory)
 {
     StdAllocator<uint8_t>& stdAllocator = *(StdAllocator<uint8_t>*)pUserData;
     const auto& lowLevelAllocator = stdAllocator.GetInterface();
@@ -54,12 +54,12 @@ void vkFreeHostMemory(void* pUserData, void* pMemory)
     return lowLevelAllocator.Free(lowLevelAllocator.userArg, pMemory);
 }
 
-void vkHostMemoryInternalAllocationNotification(void* pUserData, size_t size, VkInternalAllocationType allocationType,
+void VKAPI_PTR vkHostMemoryInternalAllocationNotification(void* pUserData, size_t size, VkInternalAllocationType allocationType,
     VkSystemAllocationScope allocationScope)
 {
 }
 
-void vkHostMemoryInternalFreeNotification(void* pUserData, size_t size, VkInternalAllocationType allocationType,
+void VKAPI_PTR vkHostMemoryInternalFreeNotification(void* pUserData, size_t size, VkInternalAllocationType allocationType,
     VkSystemAllocationScope allocationScope)
 {
 }
@@ -282,7 +282,7 @@ bool DeviceVK::GetMemoryType(uint32_t index, MemoryTypeInfo& memoryTypeInfo) con
 
 void DeviceVK::SetDebugName(const char* name)
 {
-    SetDebugNameToTrivialObject(VK_OBJECT_TYPE_DEVICE, m_Device, name);
+    SetDebugNameToTrivialObject(VK_OBJECT_TYPE_DEVICE, (uint64_t)m_Device, name);
 }
 
 const DeviceDesc& DeviceVK::GetDesc() const
@@ -431,7 +431,7 @@ Result DeviceVK::CreateCommandBuffer(const CommandBufferVulkanDesc& commandBuffe
     return CreateImplementation<CommandBufferVK>(commandBuffer, commandBufferVulkanDesc);
 }
 
-Result DeviceVK::CreateDescriptorPool(VkDescriptorPool vkDescriptorPool, DescriptorPool*& descriptorPool)
+Result DeviceVK::CreateDescriptorPool(NRIVkDescriptorPool vkDescriptorPool, DescriptorPool*& descriptorPool)
 {
     return CreateImplementation<DescriptorPoolVK>(descriptorPool, vkDescriptorPool);
 }
@@ -451,7 +451,7 @@ Result DeviceVK::CreateMemory(const MemoryVulkanDesc& memoryVulkanDesc, Memory*&
     return CreateImplementation<MemoryVK>(memory, memoryVulkanDesc);
 }
 
-Result DeviceVK::CreateGraphicsPipeline(VkPipeline vkPipeline, Pipeline*& pipeline)
+Result DeviceVK::CreateGraphicsPipeline(NRIVkPipeline vkPipeline, Pipeline*& pipeline)
 {
     PipelineVK* implementation = Allocate<PipelineVK>(GetStdAllocator(), *this);
     const Result result = implementation->CreateGraphics(vkPipeline);
@@ -467,7 +467,7 @@ Result DeviceVK::CreateGraphicsPipeline(VkPipeline vkPipeline, Pipeline*& pipeli
     return result;
 }
 
-Result DeviceVK::CreateComputePipeline(VkPipeline vkPipeline, Pipeline*& pipeline)
+Result DeviceVK::CreateComputePipeline(NRIVkPipeline vkPipeline, Pipeline*& pipeline)
 {
     PipelineVK* implementation = Allocate<PipelineVK>(GetStdAllocator(), *this);
     const Result result = implementation->CreateCompute(vkPipeline);
@@ -488,12 +488,12 @@ Result DeviceVK::CreateQueryPool(const QueryPoolVulkanDesc& queryPoolVulkanDesc,
     return CreateImplementation<QueryPoolVK>(queryPool, queryPoolVulkanDesc);
 }
 
-Result DeviceVK::CreateQueueSemaphore(VkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore)
+Result DeviceVK::CreateQueueSemaphore(NRIVkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore)
 {
     return CreateImplementation<QueueSemaphoreVK>(queueSemaphore, vkSemaphore);
 }
 
-Result DeviceVK::CreateDeviceSemaphore(VkFence vkFence, DeviceSemaphore*& deviceSemaphore)
+Result DeviceVK::CreateDeviceSemaphore(NRIVkFence vkFence, DeviceSemaphore*& deviceSemaphore)
 {
     return CreateImplementation<DeviceSemaphoreVK>(deviceSemaphore, vkFence);
 }
@@ -1626,7 +1626,7 @@ void DeviceVK::RetrieveMeshShaderInfo()
     m_DeviceDesc.meshOutputPerPrimitiveGranularity = meshShaderProperties.meshOutputPerPrimitiveGranularity;
 }
 
-void DeviceVK::SetDebugNameToTrivialObject(VkObjectType objectType, const void* handle, const char* name)
+void DeviceVK::SetDebugNameToTrivialObject(VkObjectType objectType, uint64_t handle, const char* name)
 {
     if (m_VK.SetDebugUtilsObjectNameEXT == nullptr)
         return;
@@ -1645,7 +1645,7 @@ void DeviceVK::SetDebugNameToTrivialObject(VkObjectType objectType, const void* 
         "Can't set a debug name to an object: vkSetDebugUtilsObjectNameEXT returned %d.", (int32_t)result);
 }
 
-void DeviceVK::SetDebugNameToDeviceGroupObject(VkObjectType objectType, const void* const* handles, const char* name)
+void DeviceVK::SetDebugNameToDeviceGroupObject(VkObjectType objectType, const uint64_t* handles, const char* name)
 {
     if (m_VK.SetDebugUtilsObjectNameEXT == nullptr)
         return;

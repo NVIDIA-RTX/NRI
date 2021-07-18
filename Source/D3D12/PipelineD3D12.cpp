@@ -316,7 +316,7 @@ Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDes
     for (uint32_t i = 0; i < rayTracingPipelineDesc.shaderLibrary->shaderNum; i++)
     {
         libraryDescs[i].DXILLibrary.pShaderBytecode = rayTracingPipelineDesc.shaderLibrary->shaderDescs[i].bytecode;
-        libraryDescs[i].DXILLibrary.BytecodeLength = rayTracingPipelineDesc.shaderLibrary->shaderDescs[i].size;
+        libraryDescs[i].DXILLibrary.BytecodeLength = (size_t)rayTracingPipelineDesc.shaderLibrary->shaderDescs[i].size;
         libraryDescs[i].NumExports = 0;
         libraryDescs[i].pExports = nullptr;
 
@@ -415,7 +415,7 @@ Result PipelineD3D12::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex,
     for (uint32_t i = 0; i < shaderGroupNum; i++)
     {
         memcpy(byteBuffer + i * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT, m_StateObjectProperties->GetShaderIdentifier(m_ShaderGroupNames[baseShaderGroupIndex + i].c_str()),
-            m_Device.GetDesc().rayTracingShaderGroupIdentifierSize);
+            (size_t)m_Device.GetDesc().rayTracingShaderGroupIdentifierSize);
     }
 
     return Result::SUCCESS;
@@ -487,7 +487,7 @@ void PipelineD3D12::FillInputLayout(D3D12_INPUT_LAYOUT_DESC& inputLayoutDesc, co
 void PipelineD3D12::FillShaderBytecode(D3D12_SHADER_BYTECODE& shaderBytecode, const ShaderDesc& shaderDesc) const
 {
     shaderBytecode.pShaderBytecode = shaderDesc.bytecode;
-    shaderBytecode.BytecodeLength = shaderDesc.size;
+    shaderBytecode.BytecodeLength = (size_t)shaderDesc.size;
 }
 
 void PipelineD3D12::FillRasterizerState(D3D12_RASTERIZER_DESC& rasterizerDesc, const GraphicsPipelineDesc& graphicsPipelineDesc)

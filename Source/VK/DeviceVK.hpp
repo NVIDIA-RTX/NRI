@@ -304,19 +304,22 @@ Result DeviceVK::FillFunctionTable(SwapChainInterface& swapChainInterface) const
 
 #pragma region [  WrapperVKInterface  ]
 
-static VkDevice NRI_CALL GetDeviceVK(const Device& device)
+static NRIVkDevice NRI_CALL GetDeviceVK(const Device& device)
 {
-    return (DeviceVK&)device;
+    const VkDevice handle = (const DeviceVK&)device;
+    return (NRIVkDevice)handle;
 }
 
-static VkPhysicalDevice NRI_CALL GetPhysicalDeviceVK(const Device& device)
+static NRIVkPhysicalDevice NRI_CALL GetPhysicalDeviceVK(const Device& device)
 {
-    return (DeviceVK&)device;
+    const VkPhysicalDevice handle = (const DeviceVK&)device;
+    return (NRIVkPhysicalDevice)handle;
 }
 
-static VkInstance NRI_CALL GetInstanceVK(const Device& device)
+static NRIVkInstance NRI_CALL GetInstanceVK(const Device& device)
 {
-    return (DeviceVK&)device;
+    const VkInstance handle = (const DeviceVK&)device;
+    return (NRIVkInstance)handle;
 }
 
 static Result NRI_CALL CreateCommandQueueVK(Device& device, const CommandQueueVulkanDesc& commandQueueVulkanDesc, CommandQueue*& commandQueue)
@@ -334,7 +337,7 @@ static Result NRI_CALL CreateCommandBufferVK(Device& device, const CommandBuffer
     return ((DeviceVK&)device).CreateCommandBuffer(commandBufferVulkanDesc, commandBuffer);
 }
 
-static Result NRI_CALL CreateDescriptorPoolVK(Device& device, VkDescriptorPool vkDescriptorPool, DescriptorPool*& descriptorPool)
+static Result NRI_CALL CreateDescriptorPoolVK(Device& device, NRIVkDescriptorPool vkDescriptorPool, DescriptorPool*& descriptorPool)
 {
     return ((DeviceVK&)device).CreateDescriptorPool(vkDescriptorPool, descriptorPool);
 }
@@ -354,12 +357,12 @@ static Result NRI_CALL CreateMemoryVK(Device& device, const MemoryVulkanDesc& me
     return ((DeviceVK&)device).CreateMemory(memoryVulkanDesc, memory);
 }
 
-static Result NRI_CALL CreateGraphicsPipelineVK(Device& device, VkPipeline vkPipeline, Pipeline*& pipeline)
+static Result NRI_CALL CreateGraphicsPipelineVK(Device& device, NRIVkPipeline vkPipeline, Pipeline*& pipeline)
 {
     return ((DeviceVK&)device).CreateGraphicsPipeline(vkPipeline, pipeline);
 }
 
-static Result NRI_CALL CreateComputePipelineVK(Device& device, VkPipeline vkPipeline, Pipeline*& pipeline)
+static Result NRI_CALL CreateComputePipelineVK(Device& device, NRIVkPipeline vkPipeline, Pipeline*& pipeline)
 {
     return ((DeviceVK&)device).CreateComputePipeline(vkPipeline, pipeline);
 }
@@ -369,12 +372,12 @@ static Result NRI_CALL CreateQueryPoolVK(Device& device, const QueryPoolVulkanDe
     return ((DeviceVK&)device).CreateQueryPool(queryPoolVulkanDesc, queryPool);
 }
 
-static Result NRI_CALL CreateQueueSemaphoreVK(Device& device, VkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore)
+static Result NRI_CALL CreateQueueSemaphoreVK(Device& device, NRIVkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore)
 {
     return ((DeviceVK&)device).CreateQueueSemaphore(vkSemaphore, queueSemaphore);
 }
 
-static Result NRI_CALL CreateDeviceSemaphoreVK(Device& device, VkFence vkFence, DeviceSemaphore*& deviceSemaphore)
+static Result NRI_CALL CreateDeviceSemaphoreVK(Device& device, NRIVkFence vkFence, DeviceSemaphore*& deviceSemaphore)
 {
     return ((DeviceVK&)device).CreateDeviceSemaphore(vkFence, deviceSemaphore);
 }

@@ -28,7 +28,7 @@ Result CommandQueueVK::Create(const CommandQueueVulkanDesc& commandQueueDesc)
 
 inline void CommandQueueVK::SetDebugName(const char* name)
 {
-    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_QUEUE, m_Handle, name);
+    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_QUEUE, (uint64_t)m_Handle, name);
 }
 
 inline void CommandQueueVK::Submit(const WorkSubmissionDesc& workSubmissionDesc, DeviceSemaphore* deviceSemaphore)

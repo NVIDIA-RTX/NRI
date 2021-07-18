@@ -117,7 +117,7 @@ inline void* BufferD3D12::Map(uint64_t offset, uint64_t size)
     if (size == WHOLE_SIZE)
         size =  m_BufferDesc.Width;
 
-    D3D12_RANGE range = {offset, offset + size};
+    D3D12_RANGE range = {(SIZE_T)offset, (SIZE_T)(offset + size)};
     HRESULT hr = m_Buffer->Map(0, &range, (void**)&data);
     if (FAILED(hr))
         REPORT_ERROR(m_Device.GetLog(), "ID3D12Resource::Map() failed, error code: 0x%X.", hr);

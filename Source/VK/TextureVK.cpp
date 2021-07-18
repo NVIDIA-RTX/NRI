@@ -121,7 +121,11 @@ Result TextureVK::Create(const TextureVulkanDesc& textureDesc)
 
 inline void TextureVK::SetDebugName(const char* name)
 {
-    m_Device.SetDebugNameToDeviceGroupObject(VK_OBJECT_TYPE_IMAGE, (void**)m_Handles.data(), name);
+    std::array<uint64_t, PHYSICAL_DEVICE_GROUP_MAX_SIZE> handles;
+    for (size_t i = 0; i < handles.size(); i++)
+        handles[i] = (uint64_t)m_Handles[i];
+
+    m_Device.SetDebugNameToDeviceGroupObject(VK_OBJECT_TYPE_IMAGE, handles.data(), name);
 }
 
 void TextureVK::GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const
@@ -168,7 +172,7 @@ void TextureVK::GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memoryD
 inline void TextureVK::GetTextureVK(uint32_t physicalDeviceIndex, TextureVulkanDesc& textureVulkanDesc) const
 {
     textureVulkanDesc = {};
-    textureVulkanDesc.vkImage = GetHandle(physicalDeviceIndex);
+    textureVulkanDesc.vkImage = (NRIVkImage)GetHandle(physicalDeviceIndex);
     textureVulkanDesc.vkFormat = GetVkFormat(GetFormat());
     textureVulkanDesc.vkImageAspectFlags = GetImageAspectFlags();
     textureVulkanDesc.vkImageType = GetImageType(GetType());

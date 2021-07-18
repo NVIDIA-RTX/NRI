@@ -50,7 +50,7 @@ Result DeviceSemaphoreVK::Create(void* vkFence)
 
 inline void DeviceSemaphoreVK::SetDebugName(const char* name)
 {
-    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_FENCE, m_Handle, name);
+    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_FENCE, (uint64_t)m_Handle, name);
 }
 
 #include "DeviceSemaphoreVK.hpp"

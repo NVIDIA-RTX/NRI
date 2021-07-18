@@ -785,7 +785,7 @@ void CommandBufferVal::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc)
     RETURN_ON_FAILURE(m_Device.GetLog(), dispatchRaysDesc.raygenShader.size != 0, ReturnVoid(),
         "Can't record ray tracing dispatch: 'dispatchRaysDesc.raygenShader.size' is 0.");
 
-    const size_t SBTAlignment = m_Device.GetDesc().rayTracingShaderTableAligment;
+    const uint64_t SBTAlignment = m_Device.GetDesc().rayTracingShaderTableAligment;
 
     RETURN_ON_FAILURE(m_Device.GetLog(), dispatchRaysDesc.raygenShader.offset % SBTAlignment == 0, ReturnVoid(),
         "Can't record ray tracing dispatch: 'dispatchRaysDesc.raygenShader.offset' is misaligned.");
@@ -831,7 +831,7 @@ ID3D12GraphicsCommandList* CommandBufferVal::GetCommandBufferD3D12() const
     return m_Device.GetWrapperD3D12Interface().GetCommandBufferD3D12(m_ImplObject);
 }
 
-VkCommandBuffer CommandBufferVal::GetCommandBufferVK() const
+NRIVkCommandBuffer CommandBufferVal::GetCommandBufferVK() const
 {
     return m_Device.GetWrapperVKInterface().GetCommandBufferVK(m_ImplObject);
 }

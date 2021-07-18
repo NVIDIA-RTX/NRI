@@ -991,24 +991,24 @@ FormatSupportBits DeviceVal::GetFormatSupport(Format format) const
 }
 
 #if NRI_USE_VULKAN
-VkDevice DeviceVal::GetDeviceVK() const
+NRIVkDevice DeviceVal::GetDeviceVK() const
 {
     return m_WrapperVKAPI.GetDeviceVK(m_Device);
 }
 
-VkPhysicalDevice DeviceVal::GetPhysicalDeviceVK() const
+NRIVkPhysicalDevice DeviceVal::GetPhysicalDeviceVK() const
 {
     return m_WrapperVKAPI.GetPhysicalDeviceVK(m_Device);
 }
 
-VkInstance DeviceVal::GetInstanceVK() const
+NRIVkInstance DeviceVal::GetInstanceVK() const
 {
     return m_WrapperVKAPI.GetInstanceVK(m_Device);
 }
 
 Result DeviceVal::CreateCommandQueueVK(const CommandQueueVulkanDesc& commandQueueVulkanDesc, CommandQueue*& commandQueue)
 {
-    RETURN_ON_FAILURE(GetLog(), commandQueueVulkanDesc.vkQueue != nullptr, Result::INVALID_ARGUMENT,
+    RETURN_ON_FAILURE(GetLog(), commandQueueVulkanDesc.vkQueue != 0, Result::INVALID_ARGUMENT,
         "Can't create CommandQueue: 'commandQueueVulkanDesc.vkQueue' is invalid.");
 
     RETURN_ON_FAILURE(GetLog(), commandQueueVulkanDesc.commandQueueType < CommandQueueType::MAX_NUM, Result::INVALID_ARGUMENT,
@@ -1052,7 +1052,7 @@ Result DeviceVal::CreateCommandAllocatorVK(const CommandAllocatorVulkanDesc& com
 
 Result DeviceVal::CreateCommandBufferVK(const CommandBufferVulkanDesc& commandBufferVulkanDesc, CommandBuffer*& commandBuffer)
 {
-    RETURN_ON_FAILURE(GetLog(), commandBufferVulkanDesc.vkCommandBuffer != nullptr, Result::INVALID_ARGUMENT,
+    RETURN_ON_FAILURE(GetLog(), commandBufferVulkanDesc.vkCommandBuffer != 0, Result::INVALID_ARGUMENT,
         "Can't create CommandBuffer: 'commandBufferVulkanDesc.vkCommandBuffer' is invalid.");
 
     RETURN_ON_FAILURE(GetLog(), commandBufferVulkanDesc.commandQueueType < CommandQueueType::MAX_NUM, Result::INVALID_ARGUMENT,
@@ -1072,7 +1072,7 @@ Result DeviceVal::CreateCommandBufferVK(const CommandBufferVulkanDesc& commandBu
     return result;
 }
 
-Result DeviceVal::CreateDescriptorPoolVK(VkDescriptorPool vkDescriptorPool, DescriptorPool*& descriptorPool)
+Result DeviceVal::CreateDescriptorPoolVK(NRIVkDescriptorPool vkDescriptorPool, DescriptorPool*& descriptorPool)
 {
     RETURN_ON_FAILURE(GetLog(), vkDescriptorPool != nullptr, Result::INVALID_ARGUMENT,
         "Can't create DescriptorPool: 'vkDescriptorPool' is invalid.");
@@ -1178,7 +1178,7 @@ Result DeviceVal::CreateMemoryVK(const MemoryVulkanDesc& memoryVulkanDesc, Memor
     return result;
 }
 
-Result DeviceVal::CreateGraphicsPipelineVK(VkPipeline vkPipeline, Pipeline*& pipeline)
+Result DeviceVal::CreateGraphicsPipelineVK(NRIVkPipeline vkPipeline, Pipeline*& pipeline)
 {
     RETURN_ON_FAILURE(GetLog(), vkPipeline != 0, Result::INVALID_ARGUMENT,
         "Can't create graphics Pipeline: 'vkPipeline' is invalid.");
@@ -1197,7 +1197,7 @@ Result DeviceVal::CreateGraphicsPipelineVK(VkPipeline vkPipeline, Pipeline*& pip
     return result;
 }
 
-Result DeviceVal::CreateComputePipelineVK(VkPipeline vkPipeline, Pipeline*& pipeline)
+Result DeviceVal::CreateComputePipelineVK(NRIVkPipeline vkPipeline, Pipeline*& pipeline)
 {
     RETURN_ON_FAILURE(GetLog(), vkPipeline != 0, Result::INVALID_ARGUMENT,
         "Can't create compute Pipeline: 'vkPipeline' is invalid.");
@@ -1240,7 +1240,7 @@ Result DeviceVal::CreateQueryPoolVK(const QueryPoolVulkanDesc& queryPoolVulkanDe
     return result;
 }
 
-Result DeviceVal::CreateQueueSemaphoreVK(VkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore)
+Result DeviceVal::CreateQueueSemaphoreVK(NRIVkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore)
 {
     RETURN_ON_FAILURE(GetLog(), vkSemaphore != nullptr, Result::INVALID_ARGUMENT,
         "Can't create QueueSemaphore: 'vkSemaphore' is invalid.");
@@ -1259,7 +1259,7 @@ Result DeviceVal::CreateQueueSemaphoreVK(VkSemaphore vkSemaphore, QueueSemaphore
     return result;
 }
 
-Result DeviceVal::CreateDeviceSemaphoreVK(VkFence vkFence, DeviceSemaphore*& deviceSemaphore)
+Result DeviceVal::CreateDeviceSemaphoreVK(NRIVkFence vkFence, DeviceSemaphore*& deviceSemaphore)
 {
     RETURN_ON_FAILURE(GetLog(), vkFence != nullptr, Result::INVALID_ARGUMENT,
         "Can't create DeviceSemaphore: 'vkFence' is invalid.");
