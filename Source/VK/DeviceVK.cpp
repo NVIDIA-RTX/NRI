@@ -1666,7 +1666,7 @@ void DeviceVK::SetDebugNameToDeviceGroupObject(VkObjectType objectType, const ui
 
     for (uint32_t i = 0; i < m_DeviceDesc.phyiscalDeviceGroupSize; i++)
     {
-        if (handles[i] != VK_NULL_HANDLE)
+        if (handles[i] != 0)
         {
             info.objectHandle = (uint64_t)handles[i];
             snprintf(nameWithDeviceIndex + nameLength, deviceIndexSuffixLength, " (PD%u)", i);
