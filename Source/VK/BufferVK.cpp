@@ -120,6 +120,9 @@ void BufferVK::ReadDeviceAddress()
 
     const auto& vk = m_Device.GetDispatchTable();
 
+    if (vk.GetBufferDeviceAddress == nullptr)
+        return;
+
     for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
     {
         if (m_Handles[i] != VK_NULL_HANDLE)
