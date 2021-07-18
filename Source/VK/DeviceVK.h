@@ -131,6 +131,7 @@ namespace nri
         void RetrieveRayTracingInfo();
         void RetrieveMeshShaderInfo();
         void ReportDeviceGroupInfo();
+        void CheckSupportedDeviceExtensions(const Vector<const char*>& extensions);
 
         template< typename Implementation, typename Interface, typename ... Args >
         Result CreateImplementation(Interface*& entity, const Args&... args);
@@ -160,6 +161,7 @@ namespace nri
         bool m_IsConservativeRasterExtSupported = false;
         bool m_IsMeshShaderExtSupported = false;
         bool m_IsHDRExtSupported = false;
+        bool m_IsDemoteToHelperInvocationSupported = false;
         bool m_IsSubsetAllocationSupported = false;
         bool m_IsConcurrentSharingModeEnabledForBuffers = true;
         bool m_IsConcurrentSharingModeEnabledForImages = true;

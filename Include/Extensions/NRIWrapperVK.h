@@ -44,6 +44,11 @@ namespace nri
         MemoryAllocatorInterface memoryAllocatorInterface;
         bool enableNRIValidation;
         bool enableAPIValidation;
+        const char* const* instanceExtensions;
+        uint32_t instanceExtensionNum;
+        const char* const* deviceExtensions;
+        uint32_t deviceExtensionNum;
+        const char* vulkanLoaderPath;
     };
 
     struct CommandQueueVulkanDesc

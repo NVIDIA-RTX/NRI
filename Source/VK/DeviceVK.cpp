@@ -204,12 +204,22 @@ Result DeviceVK::Create(const DeviceCreationVulkanDesc& deviceCreationVulkanDesc
     if (deviceCreationVulkanDesc.enableAPIValidation)
         m_AllocationCallbackPtr = &m_AllocationCallbacks;
 
-    m_Loader = LoadSharedLibrary(VULKAN_LOADER_NAME);
+    const char* loaderPath = deviceCreationVulkanDesc.vulkanLoaderPath;
+    if (loaderPath == nullptr)
+        loaderPath = VULKAN_LOADER_NAME;
+
+    m_Loader = LoadSharedLibrary(loaderPath);
     if (m_Loader == nullptr)
     {
-        REPORT_ERROR(GetLog(), "Failed to load Vulkan loader: '%s'.", VULKAN_LOADER_NAME);
+        REPORT_ERROR(GetLog(), "Failed to load Vulkan loader: '%s'.", loaderPath);
         return Result::UNSUPPORTED;
     }
+
+    Vector<const char*> extensions(GetStdAllocator());
+    extensions.insert(extensions.end(), deviceCreationVulkanDesc.deviceExtensions,
+        deviceCreationVulkanDesc.deviceExtensions + deviceCreationVulkanDesc.deviceExtensionNum);
+
+    CheckSupportedDeviceExtensions(extensions);
 
     Result res = ResolvePreInstanceDispatchTable();
     if (res != Result::SUCCESS)
@@ -1410,6 +1420,24 @@ void EraseIncompatibleExtension(Vector<const char*>& extensions, const char* ext
         extensions.erase(extensions.begin() + i);
 }
 
+void DeviceVK::CheckSupportedDeviceExtensions(const Vector<const char*>& extensions)
+{
+    m_IsDescriptorIndexingExtSupported = IsExtensionInList(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME, extensions);
+    m_IsSampleLocationExtSupported = IsExtensionInList(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME, extensions);
+    m_IsMinMaxFilterExtSupported = IsExtensionInList(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME, extensions);
+    m_IsConservativeRasterExtSupported = IsExtensionInList(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME, extensions);
+    m_IsMeshShaderExtSupported = IsExtensionInList(VK_NV_MESH_SHADER_EXTENSION_NAME, extensions);
+    m_IsHDRExtSupported = IsExtensionInList(VK_EXT_HDR_METADATA_EXTENSION_NAME, extensions);
+
+    m_IsRayTracingExtSupported = m_IsDescriptorIndexingExtSupported;
+    m_IsRayTracingExtSupported = m_IsRayTracingExtSupported && IsExtensionInList(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, extensions);
+    m_IsRayTracingExtSupported = m_IsRayTracingExtSupported && IsExtensionInList(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, extensions);
+    m_IsRayTracingExtSupported = m_IsRayTracingExtSupported && IsExtensionInList(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME, extensions);
+    m_IsRayTracingExtSupported = m_IsRayTracingExtSupported && IsExtensionInList(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, extensions);
+
+    m_IsDemoteToHelperInvocationSupported = IsExtensionInList(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME, extensions);
+}
+
 Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDesc)
 {
     Vector<const char*> extensions(GetStdAllocator());
@@ -1441,20 +1469,7 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
 
     EraseIncompatibleExtension(extensions, VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
 
-    m_IsDescriptorIndexingExtSupported = IsExtensionInList(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME, extensions);
-    m_IsSampleLocationExtSupported = IsExtensionInList(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME, extensions);
-    m_IsMinMaxFilterExtSupported = IsExtensionInList(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME, extensions);
-    m_IsConservativeRasterExtSupported = IsExtensionInList(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME, extensions);
-    m_IsMeshShaderExtSupported = IsExtensionInList(VK_NV_MESH_SHADER_EXTENSION_NAME, extensions);
-    m_IsHDRExtSupported = IsExtensionInList(VK_EXT_HDR_METADATA_EXTENSION_NAME, extensions);
-
-    m_IsRayTracingExtSupported = m_IsDescriptorIndexingExtSupported;
-    m_IsRayTracingExtSupported = m_IsRayTracingExtSupported && IsExtensionInList(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, extensions);
-    m_IsRayTracingExtSupported = m_IsRayTracingExtSupported && IsExtensionInList(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, extensions);
-    m_IsRayTracingExtSupported = m_IsRayTracingExtSupported && IsExtensionInList(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME, extensions);
-    m_IsRayTracingExtSupported = m_IsRayTracingExtSupported && IsExtensionInList(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, extensions);
-
-    const bool isDemoteToHelperInvocationSupported = IsExtensionInList(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME, extensions);
+    CheckSupportedDeviceExtensions(extensions);
 
     VkPhysicalDeviceFeatures2 deviceFeatures2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
 
@@ -1484,7 +1499,7 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
         deviceFeatures2.pNext = &descriptorIndexingFeatures;
     }
 
-    if (isDemoteToHelperInvocationSupported)
+    if (m_IsDemoteToHelperInvocationSupported)
     {
         demoteToHelperInvocationFeatures.pNext = deviceFeatures2.pNext;
         deviceFeatures2.pNext = &demoteToHelperInvocationFeatures;
