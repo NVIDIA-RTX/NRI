@@ -63,6 +63,7 @@ DeviceD3D12::~DeviceD3D12()
 Result DeviceD3D12::Create(const DeviceCreationD3D12Desc& deviceCreationDesc)
 {
     m_Device = (ID3D12Device*)deviceCreationDesc.d3d12Device;
+    m_SkipLiveObjectsReporting = true;
 
     if (deviceCreationDesc.d3d12GraphicsQueue)
         CreateCommandQueue((ID3D12CommandQueue*)deviceCreationDesc.d3d12GraphicsQueue, m_CommandQueues[(uint32_t)CommandQueueType::GRAPHICS]);
@@ -760,10 +761,13 @@ void DeviceD3D12::Destroy()
 {
     Deallocate(GetStdAllocator(), this);
 
-    ComPtr<IDXGIDebug1> pDebug;
-    HRESULT hr = DXGIGetDebugInterface1(0, IID_PPV_ARGS(&pDebug));
-    if (SUCCEEDED(hr))
-        pDebug->ReportLiveObjects(DXGI_DEBUG_ALL, (DXGI_DEBUG_RLO_FLAGS)((uint32_t)DXGI_DEBUG_RLO_DETAIL | (uint32_t)DXGI_DEBUG_RLO_IGNORE_INTERNAL));
+    if (!m_SkipLiveObjectsReporting)
+    {
+        ComPtr<IDXGIDebug1> pDebug;
+        HRESULT hr = DXGIGetDebugInterface1(0, IID_PPV_ARGS(&pDebug));
+        if (SUCCEEDED(hr))
+            pDebug->ReportLiveObjects(DXGI_DEBUG_ALL, (DXGI_DEBUG_RLO_FLAGS)((uint32_t)DXGI_DEBUG_RLO_DETAIL | (uint32_t)DXGI_DEBUG_RLO_IGNORE_INTERNAL));
+    }
 }
 
 Result CreateDeviceD3D12(const DeviceCreationD3D12Desc& deviceCreationDesc, DeviceBase*& device)

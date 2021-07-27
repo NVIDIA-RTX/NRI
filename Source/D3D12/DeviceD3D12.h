@@ -161,8 +161,6 @@ namespace nri
 #ifdef __ID3D12Device5_INTERFACE_DEFINED__
         ComPtr<ID3D12Device5> m_Device5;
 #endif
-        bool m_IsRaytracingSupported = false;
-        bool m_IsMeshShaderSupported = false;
         std::array<CommandQueueD3D12*, COMMAND_QUEUE_TYPE_NUM> m_CommandQueues = {};
         Vector<DescriptorHeapDesc> m_DescriptorHeaps;
         static const uint32_t m_DescriptorHeapTypeNum = D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES;
@@ -172,6 +170,9 @@ namespace nri
         UnorderedMap<uint32_t, ComPtr<ID3D12CommandSignature>> m_DrawIndexedCommandSignatures;
         ComPtr<ID3D12CommandSignature> m_DispatchCommandSignature;
         CoreInterface m_CoreInterface = {};
+        bool m_IsRaytracingSupported = false;
+        bool m_IsMeshShaderSupported = false;
+        bool m_SkipLiveObjectsReporting = false;
     };
 
     inline DeviceD3D12::operator ID3D12Device*() const
