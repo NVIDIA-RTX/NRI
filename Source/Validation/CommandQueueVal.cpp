@@ -314,14 +314,17 @@ static bool ValidateTextureUploadDesc(DeviceVal& device, uint32_t i, const Textu
     RETURN_ON_FAILURE(device.GetLog(), textureUploadDesc.texture != nullptr, false,
         "Can't upload data: 'textureUploadDescs[%u].texture' is invalid.", i);
 
-    if (subresourceNum == 0)
+    if (subresourceNum == 0 && textureUploadDesc.subresources != nullptr)
     {
         REPORT_WARNING(device.GetLog(), "No data to upload: the number of subresources in 'textureUploadDescs[%u]' is 0.", i);
         return true;
     }
 
-    RETURN_ON_FAILURE(device.GetLog(), textureUploadDesc.subresources != nullptr, false,
-        "Can't upload data: 'textureUploadDescs[%u].subresources' is invalid.", i);
+    if (subresourceNum != 0 && !textureUploadDesc.subresources)
+    {
+        RETURN_ON_FAILURE(device.GetLog(), textureUploadDesc.subresources != nullptr, false,
+            "Can't upload data: 'textureUploadDescs[%u].subresources' is invalid.", i);
+    }
 
     const TextureVal& textureVal = *(TextureVal*)textureUploadDesc.texture;
 
