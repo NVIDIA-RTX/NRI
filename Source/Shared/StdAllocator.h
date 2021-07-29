@@ -14,25 +14,36 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include <unordered_map>
 #include <string>
 
+template<typename T> void StdAllocator_MaybeUnused([[maybe_unused]] const T& arg)
+{}
+
 #if _WIN32
+
 #include <malloc.h>
 
 inline void* AlignedMalloc(void* userArg, size_t size, size_t alignment)
 {
+    StdAllocator_MaybeUnused(userArg);
+
     return _aligned_malloc(size, alignment);
 }
 
 inline void* AlignedRealloc(void* userArg, void* memory, size_t size, size_t alignment)
 {
+    StdAllocator_MaybeUnused(userArg);
+
     return _aligned_realloc(memory, size, alignment);
 }
 
 inline void AlignedFree(void* userArg, void* memory)
 {
+    StdAllocator_MaybeUnused(userArg);
+
     _aligned_free(memory);
 }
 
 #elif __linux__
+
 #include <cstdlib>
 #include <alloca.h>
 #define _alloca alloca
@@ -44,6 +55,8 @@ inline uint8_t* AlignMemory(uint8_t* memory, size_t alignment)
 
 inline void* AlignedMalloc(void* userArg, size_t size, size_t alignment)
 {
+    StdAllocator_MaybeUnused(userArg);
+
     uint8_t* memory = (uint8_t*)malloc(size + sizeof(uint8_t*) + alignment - 1);
 
     if (memory == nullptr)
@@ -80,6 +93,8 @@ inline void* AlignedRealloc(void* userArg, void* memory, size_t size, size_t ali
 
 inline void AlignedFree(void* userArg, void* memory)
 {
+    StdAllocator_MaybeUnused(userArg);
+
     if (memory == nullptr)
         return;
 

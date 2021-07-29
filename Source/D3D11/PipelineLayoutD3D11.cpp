@@ -69,7 +69,7 @@ constexpr bool IsShaderVisible(uint32_t shaderVisibility, ShaderStage stage)
     return shaderVisibility & (1 << (uint32_t)stage);
 }
 
-constexpr uint32_t GetShaderVisibility(ShaderStage visibility, PipelineLayoutShaderStageBits stageMask, DescriptorTypeDX11 descriptorTypeIndex)
+constexpr uint32_t GetShaderVisibility(ShaderStage visibility, PipelineLayoutShaderStageBits stageMask)
 {
     // UAVs are visible from any stage on DX11.1, but can be bound to OM or compute
     //if (descriptorTypeIndex == DescriptorTypeDX11::STORAGE && !m_ComputeShader)
@@ -110,7 +110,7 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
             bindingRange.descriptorOffset = bindingSet.descriptorNum;
             bindingRange.descriptorNum = range.descriptorNum;
             bindingRange.descriptorType = GetDescriptorTypeIndex(range.descriptorType);
-            bindingRange.shaderVisibility = GetShaderVisibility(range.visibility, pipelineLayoutDesc.stageMask, bindingRange.descriptorType);
+            bindingRange.shaderVisibility = GetShaderVisibility(range.visibility, pipelineLayoutDesc.stageMask);
             m_BindingRanges.push_back(bindingRange);
 
             bindingSet.descriptorNum += bindingRange.descriptorNum;
@@ -129,7 +129,7 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
             bindingRange.descriptorOffset = bindingSet.descriptorNum;
             bindingRange.descriptorNum = 1;
             bindingRange.descriptorType = DescriptorTypeDX11::DYNAMIC_CONSTANT;
-            bindingRange.shaderVisibility = GetShaderVisibility(cb.visibility, pipelineLayoutDesc.stageMask, bindingRange.descriptorType);
+            bindingRange.shaderVisibility = GetShaderVisibility(cb.visibility, pipelineLayoutDesc.stageMask);
             m_BindingRanges.push_back(bindingRange);
 
             bindingSet.descriptorNum += bindingRange.descriptorNum;
@@ -142,7 +142,7 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
 
             StaticSampler staticSampler = {};
             staticSampler.slot = ss.registerIndex;
-            staticSampler.shaderVisibility = GetShaderVisibility(ss.visibility, pipelineLayoutDesc.stageMask, DescriptorTypeDX11::SAMPLER);
+            staticSampler.shaderVisibility = GetShaderVisibility(ss.visibility, pipelineLayoutDesc.stageMask);
             DescriptorD3D11::CreateSamplerState(m_Device.GetLog(), m_VersionedDevice, ss.samplerDesc, &staticSampler.sampler);
             m_StaticSamplers.push_back(staticSampler);
         }
@@ -167,7 +167,7 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         const PushConstantDesc& pushConstant = pipelineLayoutDesc.pushConstants[i];
 
         ConstantBuffer cb = {};
-        cb.shaderVisibility = GetShaderVisibility(pushConstant.visibility, pipelineLayoutDesc.stageMask, DescriptorTypeDX11::CONSTANT);
+        cb.shaderVisibility = GetShaderVisibility(pushConstant.visibility, pipelineLayoutDesc.stageMask);
         cb.slot = pushConstant.registerIndex;
 
         desc.ByteWidth = GetAlignedSize(pushConstant.size, 16);
@@ -210,6 +210,8 @@ void PipelineLayoutD3D11::Bind(const VersionedContext& context)
 
 void PipelineLayoutD3D11::SetConstants(const VersionedContext& context, uint32_t pushConstantIndex, const Vec4* data, uint32_t size) const
 {
+    MaybeUnused(size);
+
     const ConstantBuffer& cb = m_ConstantBuffers[pushConstantIndex];
     context->UpdateSubresource(cb.buffer, 0, nullptr, data, 0, 0);
 }

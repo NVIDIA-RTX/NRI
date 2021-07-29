@@ -12,7 +12,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 static Result NRI_CALL CreateAccelerationStructureDescriptor(const AccelerationStructure& accelerationStructure, uint32_t physicalDeviceIndex, Descriptor*& descriptor)
 {
-    // TODO: use physicalDeviceIndex
+    MaybeUnused(physicalDeviceIndex); // TODO: use it
 
     return ((AccelerationStructureD3D12&)accelerationStructure).CreateDescriptor(descriptor);
 }
@@ -34,7 +34,7 @@ static uint64_t NRI_CALL GetAccelerationStructureBuildScratchBufferSize(const Ac
 
 static uint64_t NRI_CALL GetAccelerationStructureHandle(const AccelerationStructure& accelerationStructure, uint32_t physicalDeviceIndex)
 {
-    // TODO: use physicalDeviceIndex
+    MaybeUnused(physicalDeviceIndex); // TODO: use it
 
     return ((AccelerationStructureD3D12&)accelerationStructure).GetHandle();
 }

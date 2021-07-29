@@ -97,7 +97,9 @@ uint64_t AccelerationStructureD3D12::GetHandle() const
 }
 
 inline void AccelerationStructureD3D12::SetDebugName(const char* name)
-{}
+{
+    m_Buffer->SetDebugName(name);
+}
 
 #include "AccelerationStructureD3D12.hpp"
 

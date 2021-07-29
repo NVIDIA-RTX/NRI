@@ -72,8 +72,7 @@ Result DeviceD3D12::Create(const DeviceCreationD3D12Desc& deviceCreationDesc)
     if (deviceCreationDesc.d3d12CopyQueue)
         CreateCommandQueue((ID3D12CommandQueue*)deviceCreationDesc.d3d12CopyQueue, m_CommandQueues[(uint32_t)CommandQueueType::COPY]);
 
-    ComPtr<IDXGIAdapter> adapter = (IDXGIAdapter*)deviceCreationDesc.d3d12PhysicalAdapter;
-    UpdateDeviceDesc(adapter.GetInterface(), deviceCreationDesc.enableAPIValidation);
+    UpdateDeviceDesc(deviceCreationDesc.enableAPIValidation);
 
     return Result::SUCCESS;
 }
@@ -133,7 +132,7 @@ Result DeviceD3D12::Create(IDXGIAdapter* dxgiAdapter, bool enableValidation)
         return Result::FAILURE;
     }
 
-    UpdateDeviceDesc(dxgiAdapter, enableValidation);
+    UpdateDeviceDesc(enableValidation);
 
     return Result::SUCCESS;
 }
@@ -601,7 +600,7 @@ inline Vendor GetVendor(ID3D12Device* device)
     return GetVendorFromID(desc.VendorId);
 }
 
-void DeviceD3D12::UpdateDeviceDesc(IDXGIAdapter* adapter, bool enableValidation)
+void DeviceD3D12::UpdateDeviceDesc(bool enableValidation)
 {
     D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
     HRESULT hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));

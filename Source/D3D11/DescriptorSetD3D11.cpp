@@ -47,6 +47,7 @@ uint32_t DescriptorSetD3D11::Initialize(const PipelineLayoutD3D11& pipelineLayou
 
 inline void DescriptorSetD3D11::SetDebugName(const char* name)
 {
+    MaybeUnused(name);
 }
 
 inline void DescriptorSetD3D11::UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs)

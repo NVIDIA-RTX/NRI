@@ -18,7 +18,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 using namespace nri;
 
-CommandQueueD3D11::CommandQueueD3D11(DeviceD3D11& device, const VersionedContext& immediateContext, CommandQueueType type) :
+CommandQueueD3D11::CommandQueueD3D11(DeviceD3D11& device, const VersionedContext& immediateContext) :
     m_ImmediateContext(immediateContext),
     m_Device(device)
 {

@@ -70,6 +70,8 @@ inline void CommandBufferVK::SetDebugName(const char* name)
 
 inline Result CommandBufferVK::Begin(const DescriptorPool* descriptorPool, uint32_t physicalDeviceIndex)
 {
+    MaybeUnused(descriptorPool);
+
     m_PhysicalDeviceIndex = physicalDeviceIndex;
 
     VkCommandBufferBeginInfo info = {
@@ -151,10 +153,12 @@ inline void CommandBufferVK::SetStencilReference(uint8_t reference)
 
 inline void CommandBufferVK::SetSamplePositions(const SamplePosition* positions, uint32_t positionNum)
 {
+    // TODO: not implemented
+    MaybeUnused(positions);
+    MaybeUnused(positionNum);
+
     RETURN_ON_FAILURE(m_Device.GetLog(), false, ReturnVoid(),
         "CommandBufferVK::SetSamplePositions() is not implemented.");
-
-    // TODO: not implemented
 }
 
 inline void CommandBufferVK::ClearAttachments(const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum)
@@ -302,6 +306,7 @@ inline void CommandBufferVK::SetPipeline(const Pipeline& pipeline)
 
 inline void CommandBufferVK::SetDescriptorPool(const DescriptorPool& descriptorPool)
 {
+    MaybeUnused(descriptorPool);
 }
 
 inline void CommandBufferVK::SetDescriptorSets(uint32_t baseIndex, uint32_t setNum, const DescriptorSet* const* descriptorSets, const uint32_t* offsets)
@@ -537,6 +542,8 @@ inline void CommandBufferVK::DispatchIndirect(const Buffer& buffer, uint64_t off
 
 inline void CommandBufferVK::PipelineBarrier(const TransitionBarrierDesc* transitionBarriers, const AliasingBarrierDesc* aliasingBarriers, BarrierDependency dependency)
 {
+    MaybeUnused(dependency); // TODO: use it or remove, because it's needed only for VK
+
     Barriers barriers = {};
 
     barriers.bufferNum = transitionBarriers ? transitionBarriers->bufferNum : 0;

@@ -482,7 +482,7 @@ Result DeviceVal::CreateDescriptor(const SamplerDesc& samplerDesc, Descriptor*& 
     if (result == Result::SUCCESS)
     {
         RETURN_ON_FAILURE(GetLog(), samplerImpl != nullptr, Result::FAILURE, "Unexpected error: 'samplerImpl' is NULL.");
-        sampler = (Descriptor*)Allocate<DescriptorVal>(GetStdAllocator(), *this, *samplerImpl, samplerDesc);
+        sampler = (Descriptor*)Allocate<DescriptorVal>(GetStdAllocator(), *this, *samplerImpl);
     }
 
     return result;

@@ -105,4 +105,6 @@ void FrameBufferD3D12::Clear(ID3D12GraphicsCommandList* graphicsCommandList, con
 }
 
 void FrameBufferD3D12::SetDebugName(const char* name)
-{}
+{
+    MaybeUnused(name);
+}

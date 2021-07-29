@@ -25,6 +25,7 @@ QueueSemaphoreD3D11::~QueueSemaphoreD3D11()
 
 void QueueSemaphoreD3D11::SetDebugName(const char* name)
 {
+    MaybeUnused(name);
 }
 
 #include "QueueSemaphoreD3D11.hpp"

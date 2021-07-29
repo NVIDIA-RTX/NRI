@@ -18,7 +18,7 @@ static void NRI_CALL SetDescriptorPoolDebugName(DescriptorPool& descriptorPool, 
 static Result NRI_CALL AllocateDescriptorSets(DescriptorPool& descriptorPool, const PipelineLayout& pipelineLayout, uint32_t setIndex,
     DescriptorSet** const descriptorSets, uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum)
 {
-    // TODO: use physicalDeviceMask
+    MaybeUnused(physicalDeviceMask); // TODO: use it
 
     return ((DescriptorPoolD3D12&)descriptorPool).AllocateDescriptorSets(pipelineLayout, setIndex, descriptorSets, instanceNum, variableDescriptorNum);
 }

@@ -22,7 +22,8 @@ static Result NRI_CALL GetCommandQueue(Device& device, CommandQueueType commandQ
 
 static Result NRI_CALL CreateCommandAllocator(const CommandQueue& commandQueue, uint32_t physicalDeviceMask, CommandAllocator*& commandAllocator)
 {
-    // TODO: use physicalDeviceMask
+    MaybeUnused(physicalDeviceMask); // TODO: use it
+
     DeviceD3D12& device = ((CommandQueueD3D12&)commandQueue).GetDevice();
     return device.CreateCommandAllocator(commandQueue, commandAllocator);
 }
@@ -174,7 +175,8 @@ static void NRI_CALL DestroyDeviceSemaphore(DeviceSemaphore& deviceSemaphore)
 
 static Result NRI_CALL AllocateMemory(Device& device, uint32_t physicalDeviceMask, MemoryType memoryType, uint64_t size, Memory*& memory)
 {
-    // TODO: unused physicalDeviceMask
+    MaybeUnused(physicalDeviceMask); // TODO: use it
+
     return ((DeviceD3D12&)device).AllocateMemory(memoryType, size, memory);
 }
 

@@ -16,14 +16,18 @@ namespace nri
     {
         TYPE_INFO,
         TYPE_WARNING,
-        TYPE_ERROR
+        TYPE_ERROR,
+
+        MAX_NUM,
     };
 
     enum class PhysicalDeviceType
     {
         UNKNOWN,
         INTEGRATED,
-        DISCRETE
+        DISCRETE,
+
+        MAX_NUM
     };
 
     struct MemoryAllocatorInterface

@@ -85,6 +85,7 @@ void ConvertWcharToChar(const wchar_t* in, char* out, size_t outLength)
 }
 
 #if defined(_WIN32)
+
 #include <winerror.h>
 
 nri::Result GetResultFromHRESULT(long result)
@@ -424,6 +425,9 @@ nri::Format GetFormatDXGI(uint32_t dxgiFormat)
 
 static void MessageCallback(void* userArg, const char* message, nri::Message messageType)
 {
+    MaybeUnused(userArg);
+    MaybeUnused(messageType);
+
     fprintf(stderr, "%s", message);
 #if _WIN32
     OutputDebugStringA(message);
@@ -432,6 +436,8 @@ static void MessageCallback(void* userArg, const char* message, nri::Message mes
 
 static void AbortExecution(void* userArg)
 {
+    MaybeUnused(userArg);
+
 #if _WIN32
     DebugBreak();
 #else

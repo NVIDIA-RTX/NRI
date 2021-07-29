@@ -44,6 +44,7 @@ Result CreateCommandBuffer(DeviceD3D11& deviceImpl, ID3D11DeviceContext* precrea
 CommandAllocatorD3D11::CommandAllocatorD3D11(DeviceD3D11& device, const VersionedDevice& versionedDevice) :
     m_Device(device)
 {
+    MaybeUnused(versionedDevice);
 }
 
 CommandAllocatorD3D11::~CommandAllocatorD3D11()
@@ -52,6 +53,7 @@ CommandAllocatorD3D11::~CommandAllocatorD3D11()
 
 inline void CommandAllocatorD3D11::SetDebugName(const char* name)
 {
+    MaybeUnused(name);
 }
 
 inline Result CommandAllocatorD3D11::CreateCommandBuffer(CommandBuffer*& commandBuffer)

@@ -153,7 +153,7 @@ namespace nri
         Result FillFunctionTable(HelperInterface& helperInterface) const;
 
     private:
-        void UpdateDeviceDesc(IDXGIAdapter* adapter, bool enableValidation);
+        void UpdateDeviceDesc(bool enableValidation);
         MemoryType GetMemoryType(MemoryLocation memoryLocation, const D3D12_RESOURCE_DESC& resourceDesc) const;
 
     private:

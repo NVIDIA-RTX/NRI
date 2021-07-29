@@ -104,7 +104,7 @@ DescriptorVal::DescriptorVal(DeviceVal& device, Descriptor& descriptor, const Te
    }
 }
 
-DescriptorVal::DescriptorVal(DeviceVal& device, Descriptor& descriptor, const SamplerDesc& samplerDesc) :
+DescriptorVal::DescriptorVal(DeviceVal& device, Descriptor& descriptor) :
     DeviceObjectVal(device, descriptor),
     m_ResourceType(ResourceType::SAMPLER)
 {

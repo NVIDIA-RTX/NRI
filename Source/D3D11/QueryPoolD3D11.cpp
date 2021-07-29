@@ -81,6 +81,7 @@ void QueryPoolD3D11::GetData(uint8_t* dstMemory, const VersionedContext& immedia
 
 inline void QueryPoolD3D11::SetDebugName(const char* name)
 {
+    MaybeUnused(name);
 }
 
 inline uint32_t QueryPoolD3D11::GetQuerySize() const

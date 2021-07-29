@@ -94,7 +94,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAd
     FillLimits(deviceCreationDesc.enableAPIValidation, vendor);
 
     for (uint32_t i = 0; i < COMMAND_QUEUE_TYPE_NUM; i++)
-        m_CommandQueues.emplace_back(*this, m_ImmediateContext, (CommandQueueType)i);
+        m_CommandQueues.emplace_back(*this, m_ImmediateContext);
 
     return Result::SUCCESS;
 }
@@ -375,6 +375,8 @@ inline Result DeviceD3D11::GetCommandQueue(CommandQueueType commandQueueType, Co
 
 inline Result DeviceD3D11::CreateCommandAllocator(const CommandQueue& commandQueue, CommandAllocator*& commandAllocator)
 {
+    MaybeUnused(commandQueue);
+
     commandAllocator = (CommandAllocator*)Allocate<CommandAllocatorD3D11>(GetStdAllocator(), *this, m_Device);
 
     return Result::SUCCESS;
@@ -560,6 +562,8 @@ inline void DeviceD3D11::DestroyDeviceSemaphore(DeviceSemaphore& deviceSemaphore
 
 inline Result DeviceD3D11::AllocateMemory(MemoryType memoryType, uint64_t size, Memory*& memory)
 {
+    MaybeUnused(size);
+
     memory = (Memory*)Allocate<MemoryD3D11>(GetStdAllocator(), *this, memoryType);
 
     return Result::SUCCESS;

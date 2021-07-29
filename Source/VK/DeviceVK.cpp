@@ -32,6 +32,8 @@ using namespace nri;
 
 void* VKAPI_PTR vkAllocateHostMemory(void* pUserData, size_t size, size_t alignment, VkSystemAllocationScope allocationScope)
 {
+    MaybeUnused(allocationScope);
+
     StdAllocator<uint8_t>& stdAllocator = *(StdAllocator<uint8_t>*)pUserData;
     const auto& lowLevelAllocator = stdAllocator.GetInterface();
 
@@ -40,6 +42,8 @@ void* VKAPI_PTR vkAllocateHostMemory(void* pUserData, size_t size, size_t alignm
 
 void* VKAPI_PTR vkReallocateHostMemory(void* pUserData, void* pOriginal, size_t size, size_t alignment, VkSystemAllocationScope allocationScope)
 {
+    MaybeUnused(allocationScope);
+
     StdAllocator<uint8_t>& stdAllocator = *(StdAllocator<uint8_t>*)pUserData;
     const auto& lowLevelAllocator = stdAllocator.GetInterface();
 
@@ -57,11 +61,19 @@ void VKAPI_PTR vkFreeHostMemory(void* pUserData, void* pMemory)
 void VKAPI_PTR vkHostMemoryInternalAllocationNotification(void* pUserData, size_t size, VkInternalAllocationType allocationType,
     VkSystemAllocationScope allocationScope)
 {
+    MaybeUnused(pUserData);
+    MaybeUnused(size);
+    MaybeUnused(allocationType);
+    MaybeUnused(allocationScope);
 }
 
 void VKAPI_PTR vkHostMemoryInternalFreeNotification(void* pUserData, size_t size, VkInternalAllocationType allocationType,
     VkSystemAllocationScope allocationScope)
 {
+    MaybeUnused(pUserData);
+    MaybeUnused(size);
+    MaybeUnused(allocationType);
+    MaybeUnused(allocationScope);
 }
 
 template< typename Implementation, typename Interface, typename ... Args >
@@ -901,6 +913,8 @@ VkBool32 VKAPI_PTR DebugUtilsMessenger(
     const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
     void* userData)
 {
+    MaybeUnused(messageType);
+
     bool isError = false;
     bool isWarning = false;
 

@@ -313,6 +313,8 @@ inline void BufferD3D11::GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc
 
 void* BufferD3D11::Map(uint64_t offset, uint64_t size)
 {
+    MaybeUnused(size);
+
     return Map(MapType::DEFAULT, offset);
 }
 

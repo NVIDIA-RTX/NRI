@@ -42,9 +42,9 @@ namespace nri
         void FillMultisampleState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineMultisampleStateCreateInfo& state) const;
         void FillDepthStencilState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineDepthStencilStateCreateInfo& state) const;
         void FillColorBlendState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineColorBlendStateCreateInfo& state) const;
-        void FillDynamicState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineDynamicStateCreateInfo& state) const;
+        void FillDynamicState(VkPipelineDynamicStateCreateInfo& state) const;
         Result SetupShaderStage(VkPipelineShaderStageCreateInfo& stage, const ShaderDesc& shaderDesc, VkShaderModule*& modules);
-        void FillGroupIndices(const RayTracingPipelineDesc& rayTracingPipelineDesc, uint32_t* groupIndices, uint32_t groupIndexNum);
+        void FillGroupIndices(const RayTracingPipelineDesc& rayTracingPipelineDesc, uint32_t* groupIndices);
 
         VkPipeline m_Handle = VK_NULL_HANDLE;
         VkPipelineBindPoint m_BindPoint = (VkPipelineBindPoint)0;

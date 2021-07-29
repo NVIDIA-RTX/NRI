@@ -25,6 +25,8 @@ CommandAllocatorVK::~CommandAllocatorVK()
 
 Result CommandAllocatorVK::Create(const CommandQueue& commandQueue, uint32_t physicalDeviceMask)
 {
+    MaybeUnused(physicalDeviceMask); // TODO: use it
+
     m_OwnsNativeObjects = true;
     const CommandQueueVK& commandQueueImpl = (CommandQueueVK&)commandQueue;
 

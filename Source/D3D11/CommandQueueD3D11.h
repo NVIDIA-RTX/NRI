@@ -16,7 +16,7 @@ namespace nri
 
     struct CommandQueueD3D11
     {
-        CommandQueueD3D11(DeviceD3D11& device, const VersionedContext& immediateContext, CommandQueueType type);
+        CommandQueueD3D11(DeviceD3D11& device, const VersionedContext& immediateContext);
         ~CommandQueueD3D11();
 
         inline DeviceD3D11& GetDevice() const

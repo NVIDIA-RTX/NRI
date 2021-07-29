@@ -86,7 +86,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc)
     FillMultisampleState(graphicsPipelineDesc, multisampleState);
     FillDepthStencilState(graphicsPipelineDesc, depthStencilState);
     FillColorBlendState(graphicsPipelineDesc, colorBlendState);
-    FillDynamicState(graphicsPipelineDesc, dynamicState);
+    FillDynamicState(dynamicState);
 
     const VkGraphicsPipelineCreateInfo info = {
         VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -510,7 +510,7 @@ static constexpr std::array<VkDynamicState, 4> DYNAMIC_STATE = {
     VK_DYNAMIC_STATE_STENCIL_REFERENCE,
 };
 
-void PipelineVK::FillDynamicState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineDynamicStateCreateInfo& state) const
+void PipelineVK::FillDynamicState(VkPipelineDynamicStateCreateInfo& state) const
 {
     state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 
@@ -615,7 +615,7 @@ Result PipelineVK::CreateRenderPass(const OutputMergerDesc* outputMerger, const 
     return Result::SUCCESS;
 }
 
-void PipelineVK::FillGroupIndices(const RayTracingPipelineDesc& rayTracingPipelineDesc, uint32_t* groupIndices, uint32_t groupIndexNum)
+void PipelineVK::FillGroupIndices(const RayTracingPipelineDesc& rayTracingPipelineDesc, uint32_t* groupIndices)
 {
     for (uint32_t i = 0; i < rayTracingPipelineDesc.shaderGroupDescNum; i++)
     {

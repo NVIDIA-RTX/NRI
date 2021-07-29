@@ -18,7 +18,7 @@ static void NRI_CALL SetDescriptorSetDebugName(DescriptorSet& descriptorSet, con
 static void NRI_CALL UpdateDescriptorRanges(DescriptorSet& descriptorSet, uint32_t physicalDeviceMask, uint32_t baseRange,
     uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs)
 {
-    // TODO: use physicalDeviceMask
+    MaybeUnused(physicalDeviceMask); // TODO: use it
 
     ((DescriptorSetD3D12&)descriptorSet).UpdateDescriptorRanges(baseRange, rangeNum, rangeUpdateDescs);
 }
@@ -26,7 +26,7 @@ static void NRI_CALL UpdateDescriptorRanges(DescriptorSet& descriptorSet, uint32
 static void NRI_CALL UpdateDynamicConstantBuffers(DescriptorSet& descriptorSet, uint32_t physicalDeviceMask, uint32_t baseBuffer,
     uint32_t bufferNum, const Descriptor* const* descriptors)
 {
-    // TODO: use physicalDeviceMask
+    MaybeUnused(physicalDeviceMask); // TODO: use it
 
     ((DescriptorSetD3D12&)descriptorSet).UpdateDynamicConstantBuffers(baseBuffer, bufferNum, descriptors);
 }

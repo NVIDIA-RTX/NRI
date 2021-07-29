@@ -46,6 +46,7 @@ uint32_t MemoryD3D11::GetResidencyPriority(uint64_t size) const
 
 void MemoryD3D11::SetDebugName(const char* name)
 {
+    MaybeUnused(name);
 }
 
 #include "MemoryD3D11.hpp"

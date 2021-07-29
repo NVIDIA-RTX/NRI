@@ -123,6 +123,9 @@ inline bool WriteBuffers(uint32_t physicalDeviceIndex, const DescriptorRangeDesc
 inline bool WriteSamplers(uint32_t physicalDeviceIndex, const DescriptorRangeDesc& rangeDesc, const DescriptorRangeUpdateDesc& update,
     uint32_t& descriptorOffset, VkWriteDescriptorSet& write, SlabAllocator& slab)
 {
+    MaybeUnused(rangeDesc);
+    MaybeUnused(physicalDeviceIndex);
+
     const uint32_t totalItemNum = update.descriptorNum - descriptorOffset;
     uint32_t itemNumForWriting = totalItemNum;
     VkDescriptorImageInfo* infoArray = slab.Allocate<VkDescriptorImageInfo>(itemNumForWriting);
@@ -146,6 +149,8 @@ inline bool WriteSamplers(uint32_t physicalDeviceIndex, const DescriptorRangeDes
 inline bool WriteAccelerationStructures(uint32_t physicalDeviceIndex, const DescriptorRangeDesc& rangeDesc, const DescriptorRangeUpdateDesc& update,
     uint32_t& descriptorOffset, VkWriteDescriptorSet& write, SlabAllocator& slab)
 {
+    MaybeUnused(rangeDesc);
+
     const uint32_t totalItemNum = update.descriptorNum - descriptorOffset;
     uint32_t itemNumForWriting = totalItemNum;
 

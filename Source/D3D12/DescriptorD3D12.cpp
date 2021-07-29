@@ -478,4 +478,6 @@ Result DescriptorD3D12::CreateDepthStencilView(ID3D12Resource* resource, const D
 }
 
 void DescriptorD3D12::SetDebugName(const char* name)
-{}
+{
+    MaybeUnused(name);
+}

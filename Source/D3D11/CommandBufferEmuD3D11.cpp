@@ -116,6 +116,8 @@ CommandBufferEmuD3D11::~CommandBufferEmuD3D11()
 
 Result CommandBufferEmuD3D11::Create(ID3D11DeviceContext* precreatedContext)
 {
+    MaybeUnused(precreatedContext);
+
     m_PushBuffer.reserve(256 * 1024);
 
     return Result::SUCCESS;
@@ -551,6 +553,7 @@ void CommandBufferEmuD3D11::Submit(const VersionedContext& immediateContext)
 
 inline void CommandBufferEmuD3D11::SetDebugName(const char* name)
 {
+    MaybeUnused(name);
 }
 
 inline Result CommandBufferEmuD3D11::Begin(const DescriptorPool* descriptorPool)
@@ -663,6 +666,7 @@ inline void CommandBufferEmuD3D11::SetPipeline(const Pipeline& pipeline)
 
 inline void CommandBufferEmuD3D11::SetDescriptorPool(const DescriptorPool& descriptorPool)
 {
+    MaybeUnused(descriptorPool);
 }
 
 inline void CommandBufferEmuD3D11::SetDescriptorSets(uint32_t baseIndex, uint32_t descriptorSetNum, const DescriptorSet* const* descriptorSets, const uint32_t* dynamicConstantBufferOffsets)
@@ -779,6 +783,8 @@ inline void CommandBufferEmuD3D11::DispatchIndirect(const Buffer& buffer, uint64
 
 inline void CommandBufferEmuD3D11::PipelineBarrier(const TransitionBarrierDesc* transitionBarriers, const AliasingBarrierDesc* aliasingBarriers, BarrierDependency dependency)
 {
+    MaybeUnused(aliasingBarriers);
+
     Push(m_PushBuffer, PIPELINE_BARRIER);
     Push(m_PushBuffer, dependency);
 

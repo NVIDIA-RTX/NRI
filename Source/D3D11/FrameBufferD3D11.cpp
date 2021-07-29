@@ -128,6 +128,7 @@ void FrameBufferD3D11::ClearAttachments(VersionedContext& context, const ClearDe
 
 void FrameBufferD3D11::SetDebugName(const char* name)
 {
+    MaybeUnused(name);
 }
 
 #include "FrameBufferD3D11.hpp"

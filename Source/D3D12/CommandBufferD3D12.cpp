@@ -430,6 +430,8 @@ inline void CommandBufferD3D12::DispatchIndirect(const Buffer& buffer, uint64_t 
 
 inline void CommandBufferD3D12::PipelineBarrier(const TransitionBarrierDesc* transitionBarriers, const AliasingBarrierDesc* aliasingBarriers, BarrierDependency dependency)
 {
+    MaybeUnused(dependency);
+
     uint32_t barrierNum = 0;
     if (transitionBarriers)
     {
@@ -647,6 +649,9 @@ void CommandBufferD3D12::CopyAccelerationStructure(AccelerationStructure& dst, A
 
 void CommandBufferD3D12::WriteAccelerationStructureSize(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset)
 {
+    MaybeUnused(accelerationStructures);
+    MaybeUnused(queryOffset);
+
 #ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
     D3D12_GPU_VIRTUAL_ADDRESS* virtualAddresses = ALLOCATE_SCRATCH(m_Device, D3D12_GPU_VIRTUAL_ADDRESS, accelerationStructureNum);
 

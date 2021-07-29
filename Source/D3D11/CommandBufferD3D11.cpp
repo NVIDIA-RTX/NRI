@@ -284,6 +284,7 @@ void CommandBufferD3D11::SetPipeline(const Pipeline& pipeline)
 
 void CommandBufferD3D11::SetDescriptorPool(const DescriptorPool& descriptorPool)
 {
+    MaybeUnused(descriptorPool);
 }
 
 void CommandBufferD3D11::SetDescriptorSets(uint32_t baseIndex, uint32_t descriptorSetNum, const DescriptorSet* const* descriptorSets, const uint32_t* dynamicConstantBufferOffsets)
@@ -431,6 +432,8 @@ void CommandBufferD3D11::DispatchIndirect(const Buffer& buffer, uint64_t offset)
 
 void CommandBufferD3D11::PipelineBarrier(const TransitionBarrierDesc* transitionBarriers, const AliasingBarrierDesc* aliasingBarriers, BarrierDependency dependency)
 {
+    MaybeUnused(aliasingBarriers);
+
     const AccessBits ANY_WRITE_MASK = AccessBits::COLOR_ATTACHMENT | AccessBits::DEPTH_STENCIL_WRITE | AccessBits::SHADER_RESOURCE_STORAGE;
     constexpr AccessBits STORAGE_MASK = AccessBits::SHADER_RESOURCE_STORAGE;
     constexpr AccessBits RESOURCE_MASK = AccessBits::SHADER_RESOURCE;

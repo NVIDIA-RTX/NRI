@@ -17,6 +17,8 @@ static void NRI_CALL SetCommandBufferDebugName(CommandBuffer& commandBuffer, con
 
 static Result NRI_CALL BeginCommandBuffer(CommandBuffer& commandBuffer, const DescriptorPool* descriptorPool, uint32_t physicalDeviceIndex)
 {
+    MaybeUnused(physicalDeviceIndex);
+
     return ((CommandBufferEmuD3D11&)commandBuffer).Begin(descriptorPool);
 }
 
@@ -168,12 +170,18 @@ static void NRI_CALL CmdClearStorageTexture(CommandBuffer& commandBuffer, const 
 static void NRI_CALL CmdCopyBuffer(CommandBuffer& commandBuffer, Buffer& dstBuffer, uint32_t dstPhysicalDeviceIndex, uint64_t dstOffset,
     const Buffer& srcBuffer, uint32_t srcPhysicalDeviceIndex, uint64_t srcOffset, uint64_t size)
 {
+    MaybeUnused(dstPhysicalDeviceIndex);
+    MaybeUnused(srcPhysicalDeviceIndex);
+
     ((CommandBufferEmuD3D11&)commandBuffer).CopyBuffer(dstBuffer, dstOffset, srcBuffer, srcOffset, size);
 }
 
 static void NRI_CALL CmdCopyTexture(CommandBuffer& commandBuffer, Texture& dstTexture, uint32_t dstPhysicalDeviceIndex,
     const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, uint32_t srcPhysicalDeviceIndex, const TextureRegionDesc* srcRegionDesc)
 {
+    MaybeUnused(dstPhysicalDeviceIndex);
+    MaybeUnused(srcPhysicalDeviceIndex);
+
     ((CommandBufferEmuD3D11&)commandBuffer).CopyTexture(dstTexture, dstRegionDesc, srcTexture, srcRegionDesc);
 }
 

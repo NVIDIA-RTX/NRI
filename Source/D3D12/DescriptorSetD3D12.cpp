@@ -79,7 +79,9 @@ DescriptorPointerGPU DescriptorSetD3D12::GetDynamicPointerGPU(uint32_t dynamicCo
 }
 
 inline void DescriptorSetD3D12::SetDebugName(const char* name)
-{}
+{
+    MaybeUnused(name);
+}
 
 inline void DescriptorSetD3D12::UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs)
 {
