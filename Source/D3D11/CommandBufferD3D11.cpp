@@ -23,7 +23,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 using namespace nri;
 
-static const uint64_t s_nullOffsets[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT] = {0};
+static constexpr uint64_t s_nullOffsets[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT] = {0};
 
 CommandBufferD3D11::CommandBufferD3D11(DeviceD3D11& deviceImpl) :
     m_Device(deviceImpl.GetDevice()),

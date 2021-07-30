@@ -46,7 +46,7 @@ using namespace nri;
 constexpr uint32_t ALL_GRAPHICS_STAGES = ~(1u << (uint32_t)ShaderStage::COMPUTE);
 
 // see StageSlots
-constexpr std::array<DescriptorTypeDX11, (uint32_t)DescriptorType::MAX_NUM> g_RemapDescriptorTypeToIndex =
+static constexpr std::array<DescriptorTypeDX11, (uint32_t)DescriptorType::MAX_NUM> g_RemapDescriptorTypeToIndex =
 {
     DescriptorTypeDX11::SAMPLER,  // SAMPLER
     DescriptorTypeDX11::CONSTANT, // CONSTANT_BUFFER

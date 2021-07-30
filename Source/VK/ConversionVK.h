@@ -12,12 +12,12 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    constexpr std::array<VkIndexType, (uint32_t)IndexType::MAX_NUM> INDEX_TYPE_TABLE = {
+    static constexpr std::array<VkIndexType, (uint32_t)IndexType::MAX_NUM> INDEX_TYPE_TABLE = {
         VK_INDEX_TYPE_UINT16,
         VK_INDEX_TYPE_UINT32
     };
 
-    constexpr std::array<VkImageLayout, (uint32_t)nri::TextureLayout::MAX_NUM> LAYOUT_TABLE = {
+    static constexpr std::array<VkImageLayout, (uint32_t)nri::TextureLayout::MAX_NUM> LAYOUT_TABLE = {
         VK_IMAGE_LAYOUT_GENERAL,                                        // GENERAL,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,                       // COLOR_ATTACHMENT,
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,               // DEPTH_STENCIL,
@@ -128,7 +128,7 @@ namespace nri
         return flags;
     }
 
-    constexpr std::array<VkDescriptorType, (uint32_t)DescriptorType::MAX_NUM> DESCRIPTOR_TYPES =
+    static constexpr std::array<VkDescriptorType, (uint32_t)DescriptorType::MAX_NUM> DESCRIPTOR_TYPES =
     {
         VK_DESCRIPTOR_TYPE_SAMPLER,                     // SAMPLER
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,              // CONSTANT_BUFFER
@@ -146,7 +146,7 @@ namespace nri
         return DESCRIPTOR_TYPES[(uint32_t)type];
     }
 
-    constexpr std::array<VkShaderStageFlags, (uint32_t)ShaderStage::MAX_NUM> SHADER_STAGE_TABLE = {
+    static constexpr std::array<VkShaderStageFlags, (uint32_t)ShaderStage::MAX_NUM> SHADER_STAGE_TABLE = {
         VK_SHADER_STAGE_ALL,                            // ALL,
         VK_SHADER_STAGE_VERTEX_BIT,                     // VERTEX,
         VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,       // TESS_CONTROL,
@@ -169,7 +169,7 @@ namespace nri
         return SHADER_STAGE_TABLE[(uint32_t)stage];
     }
 
-    constexpr std::array<VkFormat, (uint32_t)Format::MAX_NUM> VK_FORMAT = {
+    static constexpr std::array<VkFormat, (uint32_t)Format::MAX_NUM> VK_FORMAT = {
         VK_FORMAT_UNDEFINED,        // UNKNOWN
 
         VK_FORMAT_R8_UNORM,         // R8_UNORM
@@ -258,7 +258,7 @@ namespace nri
         VK_FORMAT_D32_SFLOAT_S8_UINT    // D32_SFLOAT_X8_TYPLESS_X24_TYPELESS
     };
 
-    constexpr std::array<VkFormat, (uint32_t)Format::MAX_NUM> VK_IMAGE_VIEW_FORMAT = {
+    static constexpr std::array<VkFormat, (uint32_t)Format::MAX_NUM> VK_IMAGE_VIEW_FORMAT = {
         VK_FORMAT_UNDEFINED,        // UNKNOWN
 
         VK_FORMAT_R8_UNORM,         // R8_UNORM
@@ -347,7 +347,7 @@ namespace nri
         VK_FORMAT_D32_SFLOAT_S8_UINT    // D32_SFLOAT_X8_TYPLESS_X24_TYPELESS
     };
 
-    constexpr std::array<VkImageCreateFlags, (size_t)Format::MAX_NUM> IMAGE_CREATE_FLAGS = {
+    static constexpr std::array<VkImageCreateFlags, (size_t)Format::MAX_NUM> IMAGE_CREATE_FLAGS = {
         0, // UNKNOWN,
 
         0, // R8_UNORM,
@@ -450,7 +450,7 @@ namespace nri
     }
 
     // TODO: add packed formats and depth-specific
-    constexpr std::array<Format, 261> FORMAT = {
+    static constexpr std::array<Format, 261> FORMAT = {
         Format::UNKNOWN, // VK_FORMAT_UNDEFINED = 0,
         Format::UNKNOWN, // VK_FORMAT_R4G4_UNORM_PACK8 = 1,
         Format::UNKNOWN, // VK_FORMAT_R4G4B4A4_UNORM_PACK16 = 2,
@@ -722,7 +722,7 @@ namespace nri
         return Format::UNKNOWN;
     }
 
-    constexpr std::array<VkPrimitiveTopology, (uint32_t)Topology::MAX_NUM> TOPOLOGIES = {
+    static constexpr std::array<VkPrimitiveTopology, (uint32_t)Topology::MAX_NUM> TOPOLOGIES = {
         VK_PRIMITIVE_TOPOLOGY_POINT_LIST,                       // POINT_LIST
         VK_PRIMITIVE_TOPOLOGY_LINE_LIST,                        // LINE_LIST
         VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,                       // LINE_STRIP
@@ -740,7 +740,7 @@ namespace nri
         return TOPOLOGIES[(uint32_t)topology];
     }
 
-    constexpr std::array<VkCullModeFlags, (uint32_t)CullMode::MAX_NUM> CULL_MODES = {
+    static constexpr std::array<VkCullModeFlags, (uint32_t)CullMode::MAX_NUM> CULL_MODES = {
         VK_CULL_MODE_NONE,      // NONE
         VK_CULL_MODE_FRONT_BIT, // FRONT
         VK_CULL_MODE_BACK_BIT   // BACK
@@ -751,7 +751,7 @@ namespace nri
         return CULL_MODES[(uint32_t)cullMode];
     }
 
-    constexpr std::array<VkPolygonMode, (uint32_t)FillMode::MAX_NUM> POLYGON_MODES = {
+    static constexpr std::array<VkPolygonMode, (uint32_t)FillMode::MAX_NUM> POLYGON_MODES = {
         VK_POLYGON_MODE_FILL,   // SOLID
         VK_POLYGON_MODE_LINE,   // WIREFRAME
     };
@@ -788,7 +788,7 @@ namespace nri
         return COMPARE_OP[(uint32_t)compareFunc];
     }
 
-    constexpr std::array<VkStencilOp, (uint32_t)StencilFunc::MAX_NUM> STENCIL_OP = {
+    static constexpr std::array<VkStencilOp, (uint32_t)StencilFunc::MAX_NUM> STENCIL_OP = {
         VK_STENCIL_OP_KEEP,                     // KEEP,
         VK_STENCIL_OP_ZERO,                     // ZERO,
         VK_STENCIL_OP_REPLACE,                  // REPLACE,
@@ -804,7 +804,7 @@ namespace nri
         return STENCIL_OP[(uint32_t)stencilFunc];
     }
 
-    constexpr std::array<VkLogicOp, (uint32_t)LogicFunc::MAX_NUM> LOGIC_OP = {
+    static constexpr std::array<VkLogicOp, (uint32_t)LogicFunc::MAX_NUM> LOGIC_OP = {
         VK_LOGIC_OP_MAX_ENUM,       // NONE
         VK_LOGIC_OP_CLEAR,          // CLEAR
         VK_LOGIC_OP_AND,            // AND
@@ -828,7 +828,7 @@ namespace nri
         return LOGIC_OP[(uint32_t)logicFunc];
     }
 
-    constexpr std::array<VkBlendFactor, (uint32_t)BlendFactor::MAX_NUM> BLEND_FACTOR = {
+    static constexpr std::array<VkBlendFactor, (uint32_t)BlendFactor::MAX_NUM> BLEND_FACTOR = {
         VK_BLEND_FACTOR_ZERO,                       // ZERO
         VK_BLEND_FACTOR_ONE,                        // ONE
         VK_BLEND_FACTOR_SRC_COLOR,                  // SRC_COLOR
@@ -855,7 +855,7 @@ namespace nri
         return BLEND_FACTOR[(uint32_t)blendFactor];
     }
 
-    constexpr std::array<VkBlendOp, (uint32_t)BlendFunc::MAX_NUM> BLEND_OP = {
+    static constexpr std::array<VkBlendOp, (uint32_t)BlendFunc::MAX_NUM> BLEND_OP = {
         VK_BLEND_OP_ADD,                // ADD
         VK_BLEND_OP_SUBTRACT,           // SUBTRACT
         VK_BLEND_OP_REVERSE_SUBTRACT,   // REVERSE_SUBTRACT
@@ -873,7 +873,7 @@ namespace nri
         return VkColorComponentFlags(colorWriteMask & ColorWriteBits::RGBA);
     }
 
-    constexpr std::array<VkImageType, (uint32_t)TextureType::MAX_NUM> IMAGE_TYPES = {
+    static constexpr std::array<VkImageType, (uint32_t)TextureType::MAX_NUM> IMAGE_TYPES = {
         VK_IMAGE_TYPE_1D,
         VK_IMAGE_TYPE_2D,
         VK_IMAGE_TYPE_3D
@@ -930,7 +930,7 @@ namespace nri
         return flags;
     }
 
-    constexpr std::array<VkFilter, (uint32_t)Filter::MAX_NUM> FILTER = {
+    static constexpr std::array<VkFilter, (uint32_t)Filter::MAX_NUM> FILTER = {
         VK_FILTER_NEAREST,  // NEAREST
         VK_FILTER_LINEAR,   // LINEAR
     };
@@ -940,7 +940,7 @@ namespace nri
         return FILTER[(uint32_t)filter];
     }
 
-    constexpr std::array<VkSamplerMipmapMode, (uint32_t)Filter::MAX_NUM> SAMPLER_MIPMAP_MODE = {
+    static constexpr std::array<VkSamplerMipmapMode, (uint32_t)Filter::MAX_NUM> SAMPLER_MIPMAP_MODE = {
         VK_SAMPLER_MIPMAP_MODE_NEAREST,  // NEAREST
         VK_SAMPLER_MIPMAP_MODE_LINEAR,   // LINEAR
     };
@@ -950,7 +950,7 @@ namespace nri
         return SAMPLER_MIPMAP_MODE[(uint32_t)filter];
     }
 
-    constexpr std::array<VkSamplerAddressMode, (uint32_t)AddressMode::MAX_NUM> SAMPLER_ADDRESS_MODE = {
+    static constexpr std::array<VkSamplerAddressMode, (uint32_t)AddressMode::MAX_NUM> SAMPLER_ADDRESS_MODE = {
         VK_SAMPLER_ADDRESS_MODE_REPEAT,                 // REPEAT
         VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,        // MIRRORED_REPEAT
         VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,          // CLAMP_TO_EDGE
@@ -962,7 +962,7 @@ namespace nri
         return SAMPLER_ADDRESS_MODE[(uint32_t)addressMode];
     }
 
-    constexpr std::array<VkQueryType, (uint32_t)QueryType::MAX_NUM> QUERY_TYPE = {
+    static constexpr std::array<VkQueryType, (uint32_t)QueryType::MAX_NUM> QUERY_TYPE = {
         VK_QUERY_TYPE_TIMESTAMP,                                // TIMESTAMP
         VK_QUERY_TYPE_OCCLUSION,                                // OCCLUSION
         VK_QUERY_TYPE_PIPELINE_STATISTICS,                      // PIPELINE_STATISTICS
@@ -1011,7 +1011,7 @@ namespace nri
         return flags;
     }
 
-    constexpr std::array<VkImageViewType, (uint32_t)Texture1DViewType::MAX_NUM> IMAGE_VIEW_TYPE_1D = {
+    static constexpr std::array<VkImageViewType, (uint32_t)Texture1DViewType::MAX_NUM> IMAGE_VIEW_TYPE_1D = {
         VK_IMAGE_VIEW_TYPE_1D,          // SHADER_RESOURCE_1D,
         VK_IMAGE_VIEW_TYPE_1D_ARRAY,    // SHADER_RESOURCE_1D_ARRAY,
         VK_IMAGE_VIEW_TYPE_1D,          // SHADER_RESOURCE_STORAGE_1D,
@@ -1020,7 +1020,7 @@ namespace nri
         VK_IMAGE_VIEW_TYPE_1D,          // DEPTH_STENCIL_ATTACHMENT
     };
 
-    constexpr std::array<VkImageViewType, (uint32_t)Texture2DViewType::MAX_NUM> IMAGE_VIEW_TYPE_2D = {
+    static constexpr std::array<VkImageViewType, (uint32_t)Texture2DViewType::MAX_NUM> IMAGE_VIEW_TYPE_2D = {
         VK_IMAGE_VIEW_TYPE_2D,          // SHADER_RESOURCE_2D,
         VK_IMAGE_VIEW_TYPE_2D_ARRAY,    // SHADER_RESOURCE_2D_ARRAY,
         VK_IMAGE_VIEW_TYPE_CUBE,        // SHADER_RESOURCE_CUBE,
@@ -1031,7 +1031,7 @@ namespace nri
         VK_IMAGE_VIEW_TYPE_2D,          // DEPTH_STENCIL_ATTACHMENT
     };
 
-    constexpr std::array<VkImageViewType, (uint32_t)Texture3DViewType::MAX_NUM> IMAGE_VIEW_TYPE_3D = {
+    static constexpr std::array<VkImageViewType, (uint32_t)Texture3DViewType::MAX_NUM> IMAGE_VIEW_TYPE_3D = {
         VK_IMAGE_VIEW_TYPE_3D, // SHADER_RESOURCE_3D,
         VK_IMAGE_VIEW_TYPE_3D, // SHADER_RESOURCE_STORAGE_3D,
         VK_IMAGE_VIEW_TYPE_3D, // COLOR_ATTACHMENT
@@ -1052,7 +1052,7 @@ namespace nri
         return IMAGE_VIEW_TYPE_3D[(uint32_t)type];
     }
 
-    constexpr std::array<VkImageUsageFlags, (uint32_t)Texture1DViewType::MAX_NUM> IMAGE_VIEW_USAGE_1D = {
+    static constexpr std::array<VkImageUsageFlags, (uint32_t)Texture1DViewType::MAX_NUM> IMAGE_VIEW_USAGE_1D = {
         VK_IMAGE_USAGE_SAMPLED_BIT,                   // SHADER_RESOURCE_1D,
         VK_IMAGE_USAGE_SAMPLED_BIT,                   // SHADER_RESOURCE_1D_ARRAY,
         VK_IMAGE_USAGE_STORAGE_BIT,                   // SHADER_RESOURCE_STORAGE_1D,
@@ -1061,7 +1061,7 @@ namespace nri
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,  // DEPTH_STENCIL_ATTACHMENT
     };
 
-    constexpr std::array<VkImageUsageFlags, (uint32_t)Texture2DViewType::MAX_NUM> IMAGE_VIEW_USAGE_2D = {
+    static constexpr std::array<VkImageUsageFlags, (uint32_t)Texture2DViewType::MAX_NUM> IMAGE_VIEW_USAGE_2D = {
         VK_IMAGE_USAGE_SAMPLED_BIT,                   // SHADER_RESOURCE_2D,
         VK_IMAGE_USAGE_SAMPLED_BIT,                   // SHADER_RESOURCE_2D_ARRAY,
         VK_IMAGE_USAGE_SAMPLED_BIT,                   // SHADER_RESOURCE_CUBE,
@@ -1072,7 +1072,7 @@ namespace nri
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,  // DEPTH_STENCIL_ATTACHMENT
     };
 
-    constexpr std::array<VkImageUsageFlags, (uint32_t)Texture3DViewType::MAX_NUM> IMAGE_VIEW_USAGE_3D = {
+    static constexpr std::array<VkImageUsageFlags, (uint32_t)Texture3DViewType::MAX_NUM> IMAGE_VIEW_USAGE_3D = {
         VK_IMAGE_USAGE_SAMPLED_BIT,          // SHADER_RESOURCE_3D,
         VK_IMAGE_USAGE_STORAGE_BIT,          // SHADER_RESOURCE_STORAGE_3D,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, // COLOR_ATTACHMENT
@@ -1093,7 +1093,7 @@ namespace nri
         return IMAGE_VIEW_USAGE_3D[(uint32_t)type];
     }
 
-    constexpr std::array<VkImageLayout, (uint32_t)Texture1DViewType::MAX_NUM> IMAGE_LAYOUT_1D = {
+    static constexpr std::array<VkImageLayout, (uint32_t)Texture1DViewType::MAX_NUM> IMAGE_LAYOUT_1D = {
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,           // SHADER_RESOURCE_1D,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,           // SHADER_RESOURCE_1D_ARRAY,
         VK_IMAGE_LAYOUT_GENERAL,                            // SHADER_RESOURCE_STORAGE_1D,
@@ -1102,7 +1102,7 @@ namespace nri
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,   // DEPTH_STENCIL_ATTACHMENT
     };
 
-    constexpr std::array<VkImageLayout, (uint32_t)Texture2DViewType::MAX_NUM> IMAGE_LAYOUT_2D = {
+    static constexpr std::array<VkImageLayout, (uint32_t)Texture2DViewType::MAX_NUM> IMAGE_LAYOUT_2D = {
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,           // SHADER_RESOURCE_2D,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,           // SHADER_RESOURCE_2D_ARRAY,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,           // SHADER_RESOURCE_CUBE,
@@ -1113,7 +1113,7 @@ namespace nri
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,   // DEPTH_STENCIL_ATTACHMENT
     };
 
-    constexpr std::array<VkImageLayout, (uint32_t)Texture3DViewType::MAX_NUM> IMAGE_LAYOUT_3D = {
+    static constexpr std::array<VkImageLayout, (uint32_t)Texture3DViewType::MAX_NUM> IMAGE_LAYOUT_3D = {
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,           // SHADER_RESOURCE_3D,
         VK_IMAGE_LAYOUT_GENERAL,                            // SHADER_RESOURCE_STORAGE_3D,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,           // COLOR_ATTACHMENT
@@ -1175,7 +1175,7 @@ namespace nri
     void ConvertGeometryObjectSizesVK(uint32_t physicalDeviceIndex, VkAccelerationStructureGeometryKHR* destObjects, uint32_t* primitiveNums, const GeometryObject* sourceObjects, uint32_t objectNum);
     void ConvertGeometryObjectsVK(uint32_t physicalDeviceIndex, VkAccelerationStructureGeometryKHR* destObjects, VkAccelerationStructureBuildRangeInfoKHR* ranges, const GeometryObject* sourceObjects, uint32_t objectNum);
 
-    constexpr std::array<TextureType, (uint32_t)TextureType::MAX_NUM> TEXTURE_TYPE_TABLE = {
+    static constexpr std::array<TextureType, (uint32_t)TextureType::MAX_NUM> TEXTURE_TYPE_TABLE = {
         TextureType::TEXTURE_1D, // VK_IMAGE_TYPE_1D
         TextureType::TEXTURE_2D, // VK_IMAGE_TYPE_2D
         TextureType::TEXTURE_3D, // VK_IMAGE_TYPE_3D
