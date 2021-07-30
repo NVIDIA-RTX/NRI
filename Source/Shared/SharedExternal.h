@@ -90,7 +90,7 @@ private:
 #endif
 
 constexpr void ReturnVoid() {}
-template<typename T> void MaybeUnused([[maybe_unused]] const T& arg) {}
+template<typename T> constexpr void MaybeUnused([[maybe_unused]] const T& arg) {}
 
 //==============================================================================================================================
 
