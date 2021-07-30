@@ -116,7 +116,7 @@ static bool IsValidDeviceGroup(const VkPhysicalDeviceGroupProperties& group, PFN
     return true;
 }
 
-static constexpr std::array<nri::PhysicalDeviceType, 5> PHYSICAL_DEVICE_TYPE = {
+constexpr std::array<nri::PhysicalDeviceType, 5> PHYSICAL_DEVICE_TYPE = {
     nri::PhysicalDeviceType::UNKNOWN,
     nri::PhysicalDeviceType::INTEGRATED,
     nri::PhysicalDeviceType::DISCRETE,

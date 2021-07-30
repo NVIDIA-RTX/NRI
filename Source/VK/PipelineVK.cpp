@@ -503,7 +503,7 @@ void PipelineVK::FillColorBlendState(const GraphicsPipelineDesc& graphicsPipelin
     }
 }
 
-static constexpr std::array<VkDynamicState, 4> DYNAMIC_STATE = {
+constexpr std::array<VkDynamicState, 4> DYNAMIC_STATE = {
     VK_DYNAMIC_STATE_VIEWPORT,
     VK_DYNAMIC_STATE_SCISSOR,
     VK_DYNAMIC_STATE_DEPTH_BOUNDS,

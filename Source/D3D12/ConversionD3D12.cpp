@@ -13,7 +13,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 using namespace nri;
 
-static constexpr std::array<D3D12_COMMAND_LIST_TYPE, (uint32_t)CommandQueueType::MAX_NUM> COMMAND_LIST_TYPES = {
+constexpr std::array<D3D12_COMMAND_LIST_TYPE, (uint32_t)CommandQueueType::MAX_NUM> COMMAND_LIST_TYPES = {
     D3D12_COMMAND_LIST_TYPE_DIRECT,             // GRAPHICS
     D3D12_COMMAND_LIST_TYPE_COMPUTE,            // COMPUTE
     D3D12_COMMAND_LIST_TYPE_COPY                // COPY
@@ -24,7 +24,7 @@ D3D12_COMMAND_LIST_TYPE GetCommandListType(CommandQueueType commandQueueType)
     return COMMAND_LIST_TYPES[(uint32_t)commandQueueType];
 }
 
-static constexpr std::array<D3D12_HEAP_TYPE, (uint32_t)MemoryLocation::MAX_NUM> HEAP_TYPES =
+constexpr std::array<D3D12_HEAP_TYPE, (uint32_t)MemoryLocation::MAX_NUM> HEAP_TYPES =
 {
     D3D12_HEAP_TYPE_DEFAULT,                    // DEVICE
     D3D12_HEAP_TYPE_UPLOAD,                     // HOST_UPLOAD
@@ -147,7 +147,7 @@ D3D12_RESOURCE_DIMENSION GetResourceDimension(TextureType textureType)
     return D3D12_RESOURCE_DIMENSION_UNKNOWN;
 }
 
-static constexpr std::array<D3D12_DESCRIPTOR_RANGE_TYPE, (uint32_t)DescriptorType::MAX_NUM> DESCRIPTOR_RANGE_TYPES = {
+constexpr std::array<D3D12_DESCRIPTOR_RANGE_TYPE, (uint32_t)DescriptorType::MAX_NUM> DESCRIPTOR_RANGE_TYPES = {
     D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,        // SAMPLER
     D3D12_DESCRIPTOR_RANGE_TYPE_CBV,            // CONSTANT_BUFFER
     D3D12_DESCRIPTOR_RANGE_TYPE_SRV,            // TEXTURE
@@ -169,7 +169,7 @@ D3D12_DESCRIPTOR_HEAP_TYPE GetDescriptorHeapType(DescriptorType descriptorType)
     return descriptorType == DescriptorType::SAMPLER ? D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER : D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 }
 
-static constexpr std::array<D3D12_SHADER_VISIBILITY, (uint32_t)ShaderStage::MAX_NUM> SHADER_STAGES = {
+constexpr std::array<D3D12_SHADER_VISIBILITY, (uint32_t)ShaderStage::MAX_NUM> SHADER_STAGES = {
     D3D12_SHADER_VISIBILITY_ALL,                // ALL
     D3D12_SHADER_VISIBILITY_VERTEX,             // VERTEX
     D3D12_SHADER_VISIBILITY_HULL,               // TESS_CONTROL
@@ -192,7 +192,7 @@ D3D12_SHADER_VISIBILITY GetShaderVisibility(ShaderStage shaderStage)
     return SHADER_STAGES[(uint32_t)shaderStage];
 }
 
-static constexpr std::array<D3D12_PRIMITIVE_TOPOLOGY_TYPE, (uint32_t)Topology::MAX_NUM> PRIMITIVE_TOPOLOGY_TYPES = {
+constexpr std::array<D3D12_PRIMITIVE_TOPOLOGY_TYPE, (uint32_t)Topology::MAX_NUM> PRIMITIVE_TOPOLOGY_TYPES = {
     D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT,        // POINT_LIST
     D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE,         // LINE_LIST
     D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE,         // LINE_STRIP
@@ -210,7 +210,7 @@ D3D12_PRIMITIVE_TOPOLOGY_TYPE GetPrimitiveTopologyType(Topology topology)
     return PRIMITIVE_TOPOLOGY_TYPES[(uint32_t)topology];
 }
 
-static constexpr std::array<D3D_PRIMITIVE_TOPOLOGY, 9> PRIMITIVE_TOPOLOGIES = {
+constexpr std::array<D3D_PRIMITIVE_TOPOLOGY, 9> PRIMITIVE_TOPOLOGIES = {
     D3D_PRIMITIVE_TOPOLOGY_POINTLIST,           // POINT_LIST
     D3D_PRIMITIVE_TOPOLOGY_LINELIST,            // LINE_LIST
     D3D_PRIMITIVE_TOPOLOGY_LINESTRIP,           // LINE_STRIP
@@ -230,7 +230,7 @@ D3D_PRIMITIVE_TOPOLOGY GetPrimitiveTopology(Topology topology, uint8_t tessContr
         return PRIMITIVE_TOPOLOGIES[(uint32_t)topology];
 }
 
-static constexpr std::array<D3D12_FILL_MODE, (uint32_t)FillMode::MAX_NUM> FILL_MODES = {
+constexpr std::array<D3D12_FILL_MODE, (uint32_t)FillMode::MAX_NUM> FILL_MODES = {
     D3D12_FILL_MODE_SOLID,                      // SOLID
     D3D12_FILL_MODE_WIREFRAME                   // WIREFRAME
 };
@@ -240,7 +240,7 @@ D3D12_FILL_MODE GetFillMode(FillMode fillMode)
     return FILL_MODES[(uint32_t)fillMode];
 }
 
-static constexpr std::array<D3D12_CULL_MODE, (uint32_t)CullMode::MAX_NUM> CULL_MODES = {
+constexpr std::array<D3D12_CULL_MODE, (uint32_t)CullMode::MAX_NUM> CULL_MODES = {
     D3D12_CULL_MODE_NONE,                       // NONE
     D3D12_CULL_MODE_FRONT,                      // FRONT
     D3D12_CULL_MODE_BACK                        // BACK
@@ -256,7 +256,7 @@ UINT8 GetRenderTargetWriteMask(ColorWriteBits colorWriteMask)
     return colorWriteMask & ColorWriteBits::RGBA;
 }
 
-static constexpr std::array<D3D12_COMPARISON_FUNC, (uint32_t)CompareFunc::MAX_NUM> COMPARISON_FUNCS = {
+constexpr std::array<D3D12_COMPARISON_FUNC, (uint32_t)CompareFunc::MAX_NUM> COMPARISON_FUNCS = {
     D3D12_COMPARISON_FUNC_ALWAYS,               // NONE
     D3D12_COMPARISON_FUNC_ALWAYS,               // ALWAYS
     D3D12_COMPARISON_FUNC_NEVER,                // NEVER
@@ -273,7 +273,7 @@ D3D12_COMPARISON_FUNC GetComparisonFunc(CompareFunc compareFunc)
     return COMPARISON_FUNCS[(uint32_t)compareFunc];
 }
 
-static constexpr std::array<D3D12_STENCIL_OP, (uint32_t)StencilFunc::MAX_NUM> STENCIL_OPS = {
+constexpr std::array<D3D12_STENCIL_OP, (uint32_t)StencilFunc::MAX_NUM> STENCIL_OPS = {
     D3D12_STENCIL_OP_KEEP,                      // KEEP
     D3D12_STENCIL_OP_ZERO,                      // ZERO
     D3D12_STENCIL_OP_REPLACE,                   // REPLACE
@@ -289,7 +289,7 @@ D3D12_STENCIL_OP GetStencilOp(StencilFunc stencilFunc)
     return STENCIL_OPS[(uint32_t)stencilFunc];
 }
 
-static constexpr std::array<D3D12_LOGIC_OP, (uint32_t)LogicFunc::MAX_NUM> LOGIC_OPS = {
+constexpr std::array<D3D12_LOGIC_OP, (uint32_t)LogicFunc::MAX_NUM> LOGIC_OPS = {
     D3D12_LOGIC_OP_NOOP,                        // NONE
     D3D12_LOGIC_OP_CLEAR,                       // CLEAR
     D3D12_LOGIC_OP_AND,                         // AND
@@ -313,7 +313,7 @@ D3D12_LOGIC_OP GetLogicOp(LogicFunc logicFunc)
     return LOGIC_OPS[(uint32_t)logicFunc];
 }
 
-static constexpr std::array<D3D12_BLEND, (uint32_t)BlendFactor::MAX_NUM> BLENDS =
+constexpr std::array<D3D12_BLEND, (uint32_t)BlendFactor::MAX_NUM> BLENDS =
 {
     D3D12_BLEND_ZERO,                           // ZERO
     D3D12_BLEND_ONE,                            // ONE
@@ -341,7 +341,7 @@ D3D12_BLEND GetBlend(BlendFactor blendFactor)
     return BLENDS[(uint32_t)blendFactor];
 }
 
-static constexpr std::array<D3D12_BLEND_OP, (uint32_t)BlendFunc::MAX_NUM> BLEND_OPS =
+constexpr std::array<D3D12_BLEND_OP, (uint32_t)BlendFunc::MAX_NUM> BLEND_OPS =
 {
     D3D12_BLEND_OP_ADD,                         // ADD
     D3D12_BLEND_OP_SUBTRACT,                    // SUBTRACT
@@ -355,7 +355,7 @@ D3D12_BLEND_OP GetBlendOp(BlendFunc blendFunc)
     return BLEND_OPS[(uint32_t)blendFunc];
 }
 
-static constexpr std::array<D3D12_TEXTURE_ADDRESS_MODE, (uint32_t)AddressMode::MAX_NUM> TEXTURE_ADDRESS_MODES = {
+constexpr std::array<D3D12_TEXTURE_ADDRESS_MODE, (uint32_t)AddressMode::MAX_NUM> TEXTURE_ADDRESS_MODES = {
     D3D12_TEXTURE_ADDRESS_MODE_WRAP,            // REPEAT
     D3D12_TEXTURE_ADDRESS_MODE_MIRROR,          // MIRRORED_REPEAT
     D3D12_TEXTURE_ADDRESS_MODE_CLAMP,           // CLAMP_TO_EDGE
@@ -395,7 +395,7 @@ D3D12_FILTER GetFilterAnisotropic(FilterExt filterExt, bool useComparison)
 }
 
 // WAR: QueryPoolD3D12 uses a readback buffer for ACCELERATION_STRUCTURE_COMPACTED_SIZE
-static constexpr std::array<D3D12_QUERY_TYPE, (uint32_t)QueryType::MAX_NUM> QUERY_TYPES =
+constexpr std::array<D3D12_QUERY_TYPE, (uint32_t)QueryType::MAX_NUM> QUERY_TYPES =
 {
     D3D12_QUERY_TYPE_TIMESTAMP,                         // TIMESTAMP
     D3D12_QUERY_TYPE_OCCLUSION,                         // OCCLUSION
@@ -409,7 +409,7 @@ D3D12_QUERY_TYPE GetQueryType(QueryType queryType)
 }
 
 // WAR: QueryPoolD3D12 uses a readback buffer for ACCELERATION_STRUCTURE_COMPACTED_SIZE
-static constexpr std::array<D3D12_QUERY_HEAP_TYPE, (uint32_t)QueryType::MAX_NUM> QUERY_HEAP_TYPES =
+constexpr std::array<D3D12_QUERY_HEAP_TYPE, (uint32_t)QueryType::MAX_NUM> QUERY_HEAP_TYPES =
 {
     D3D12_QUERY_HEAP_TYPE_TIMESTAMP,                    // TIMESTAMP
     D3D12_QUERY_HEAP_TYPE_OCCLUSION,                    // OCCLUSION
@@ -445,7 +445,7 @@ void ConvertRects(D3D12_RECT* rectsD3D12, const Rect* rects, uint32_t rectNum)
     }
 }
 
-static constexpr std::array<DXGI_FORMAT, (uint32_t)Format::MAX_NUM> DXGI_FORMATS = {
+constexpr std::array<DXGI_FORMAT, (uint32_t)Format::MAX_NUM> DXGI_FORMATS = {
     DXGI_FORMAT_UNKNOWN,                                // UNKNOWN
     DXGI_FORMAT_R8_UNORM,                               // R8_UNORM,
     DXGI_FORMAT_R8_SNORM,                               // R8_SNORM,
@@ -522,7 +522,7 @@ DXGI_FORMAT GetFormat(Format format)
     return DXGI_FORMATS[(uint32_t)format];
 }
 
-static constexpr std::array<DXGI_FORMAT, (uint32_t)Format::MAX_NUM> DXGI_TYPELESS_FORMATS = {
+constexpr std::array<DXGI_FORMAT, (uint32_t)Format::MAX_NUM> DXGI_TYPELESS_FORMATS = {
     DXGI_FORMAT_UNKNOWN,                                    // UNKNOWN
     DXGI_FORMAT_R8_TYPELESS,                                // R8_UNORM,
     DXGI_FORMAT_R8_TYPELESS,                                // R8_SNORM,
@@ -599,7 +599,7 @@ DXGI_FORMAT GetTypelessFormat(Format format)
     return DXGI_TYPELESS_FORMATS[(uint32_t)format];
 }
 
-static constexpr std::array<bool, (uint32_t)Format::MAX_NUM> FP_FORMATS = {
+constexpr std::array<bool, (uint32_t)Format::MAX_NUM> FP_FORMATS = {
     false,  // UNKNOWN
     true,   // R8_UNORM,
     true,   // R8_SNORM,

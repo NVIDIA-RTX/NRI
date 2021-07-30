@@ -181,7 +181,8 @@ inline bool WriteAccelerationStructures(uint32_t physicalDeviceIndex, const Desc
     return itemNumForWriting == totalItemNum;
 }
 
-static const std::array<WriteDescriptorsFunc, (uint32_t)DescriptorType::MAX_NUM> WRITE_FUNCS = {
+constexpr std::array<WriteDescriptorsFunc, (uint32_t)DescriptorType::MAX_NUM> WRITE_FUNCS =
+{
     (WriteDescriptorsFunc)&WriteSamplers,                   // SAMPLER
     (WriteDescriptorsFunc)&WriteBuffers,                    // CONSTANT_BUFFER
     (WriteDescriptorsFunc)&WriteTextures,                   // TEXTURE

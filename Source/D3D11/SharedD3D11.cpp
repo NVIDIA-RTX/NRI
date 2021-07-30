@@ -14,7 +14,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "NVAPI/nvapi.h"
 #include "AGS/inc/amd_ags.h"
 
-static constexpr std::array<FormatInfo, (size_t)nri::Format::MAX_NUM> FORMAT_INFO_TABLE =
+constexpr std::array<FormatInfo, (size_t)nri::Format::MAX_NUM> FORMAT_INFO_TABLE =
 {{
     {DXGI_FORMAT_UNKNOWN,                       DXGI_FORMAT_UNKNOWN,                         0,                     false}, // UNKNOWN,
 
@@ -107,7 +107,7 @@ const FormatInfo& GetFormatInfo(nri::Format format)
     return FORMAT_INFO_TABLE[(size_t)format];
 }
 
-static constexpr std::array<D3D11_LOGIC_OP, (size_t)nri::LogicFunc::MAX_NUM> LOGIC_FUNC_TABLE =
+constexpr std::array<D3D11_LOGIC_OP, (size_t)nri::LogicFunc::MAX_NUM> LOGIC_FUNC_TABLE =
 {
     D3D11_LOGIC_OP_CLEAR,                               // NONE,
     D3D11_LOGIC_OP_CLEAR,                               // CLEAR,
@@ -132,7 +132,7 @@ D3D11_LOGIC_OP GetD3D11LogicOpFromLogicFunc(nri::LogicFunc logicalFunc)
     return LOGIC_FUNC_TABLE[(size_t)logicalFunc];
 }
 
-static constexpr std::array<D3D11_BLEND_OP, (size_t)nri::BlendFunc::MAX_NUM> BLEND_FUNC_TABLE =
+constexpr std::array<D3D11_BLEND_OP, (size_t)nri::BlendFunc::MAX_NUM> BLEND_FUNC_TABLE =
 {
     D3D11_BLEND_OP_ADD,                                 // ADD,
     D3D11_BLEND_OP_SUBTRACT,                            // SUBTRACT,
@@ -146,7 +146,7 @@ D3D11_BLEND_OP GetD3D11BlendOpFromBlendFunc(nri::BlendFunc blendFunc)
     return BLEND_FUNC_TABLE[(size_t)blendFunc];
 }
 
-static constexpr std::array<D3D11_BLEND, (size_t)nri::BlendFactor::MAX_NUM> BLEND_FACTOR_TABLE =
+constexpr std::array<D3D11_BLEND, (size_t)nri::BlendFactor::MAX_NUM> BLEND_FACTOR_TABLE =
 {
     D3D11_BLEND_ZERO,                                   // ZERO,
     D3D11_BLEND_ONE,                                    // ONE,
@@ -174,7 +174,7 @@ D3D11_BLEND GetD3D11BlendFromBlendFactor(nri::BlendFactor blendFactor)
     return BLEND_FACTOR_TABLE[(size_t)blendFactor];
 }
 
-static constexpr std::array<D3D11_STENCIL_OP, (size_t)nri::StencilFunc::MAX_NUM> STENCIL_FUNC_TABLE =
+constexpr std::array<D3D11_STENCIL_OP, (size_t)nri::StencilFunc::MAX_NUM> STENCIL_FUNC_TABLE =
 {
     D3D11_STENCIL_OP_KEEP,                              // KEEP,
     D3D11_STENCIL_OP_ZERO,                              // ZERO,
@@ -191,7 +191,7 @@ D3D11_STENCIL_OP GetD3D11StencilOpFromStencilFunc(nri::StencilFunc stencilFunc)
     return STENCIL_FUNC_TABLE[(size_t)stencilFunc];
 }
 
-static constexpr std::array<D3D11_COMPARISON_FUNC, (size_t)nri::CompareFunc::MAX_NUM> COMPARE_FUNC_TABLE =
+constexpr std::array<D3D11_COMPARISON_FUNC, (size_t)nri::CompareFunc::MAX_NUM> COMPARE_FUNC_TABLE =
 {
     D3D11_COMPARISON_ALWAYS,                            // NONE,
     D3D11_COMPARISON_ALWAYS,                            // ALWAYS,
@@ -208,7 +208,7 @@ D3D11_COMPARISON_FUNC GetD3D11ComparisonFuncFromCompareFunc(nri::CompareFunc com
     return COMPARE_FUNC_TABLE[(size_t)compareFunc];
 }
 
-static constexpr std::array<D3D11_CULL_MODE, (size_t)nri::CullMode::MAX_NUM> CULL_MODE_TABLE =
+constexpr std::array<D3D11_CULL_MODE, (size_t)nri::CullMode::MAX_NUM> CULL_MODE_TABLE =
 {
     D3D11_CULL_NONE,                                    // NONE,
     D3D11_CULL_FRONT,                                   // FRONT,
@@ -220,7 +220,7 @@ D3D11_CULL_MODE GetD3D11CullModeFromCullMode(nri::CullMode cullMode)
     return CULL_MODE_TABLE[(size_t)cullMode];
 }
 
-static constexpr std::array<uint32_t, (size_t)nri::Topology::MAX_NUM> TOPOLOGY_TABLE =
+constexpr std::array<uint32_t, (size_t)nri::Topology::MAX_NUM> TOPOLOGY_TABLE =
 {
     D3D11_PRIMITIVE_TOPOLOGY_POINTLIST,                  // POINT_LIST,
     D3D11_PRIMITIVE_TOPOLOGY_LINELIST,                   // LINE_LIST,

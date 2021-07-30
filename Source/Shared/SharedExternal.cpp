@@ -18,14 +18,14 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
     #include <csignal>
 #endif
 
-static constexpr std::array<const char*, uint32_t(nri::Message::TYPE_ERROR) + 1> MESSAGE_TYPE_NAME =
+constexpr std::array<const char*, uint32_t(nri::Message::TYPE_ERROR) + 1> MESSAGE_TYPE_NAME =
 {
     "INFO",
     "WARNING",
     "ERROR"
 };
 
-static constexpr std::array<const char*, uint32_t(nri::GraphicsAPI::VULKAN) + 1> GRAPHICS_API_NAME =
+constexpr std::array<const char*, uint32_t(nri::GraphicsAPI::VULKAN) + 1> GRAPHICS_API_NAME =
 {
     "D3D11",
     "D3D12",
@@ -109,7 +109,7 @@ nri::Result GetResultFromHRESULT(long result)
 }
 #endif
 
-static constexpr std::array<uint32_t, (size_t)nri::Format::MAX_NUM> TEXEL_BLOCK_WIDTH = {
+constexpr std::array<uint32_t, (size_t)nri::Format::MAX_NUM> TEXEL_BLOCK_WIDTH = {
     0, // UNKNOWN
 
     1, // R8_UNORM
@@ -203,7 +203,7 @@ uint32_t GetTexelBlockWidth(nri::Format format)
     return TEXEL_BLOCK_WIDTH[(size_t)format];
 }
 
-static constexpr std::array<uint32_t, (size_t)nri::Format::MAX_NUM> TEXEL_BLOCK_SIZE = {
+constexpr std::array<uint32_t, (size_t)nri::Format::MAX_NUM> TEXEL_BLOCK_SIZE = {
     1, // UNKNOWN
 
     1, // R8_UNORM
@@ -297,7 +297,7 @@ uint32_t GetTexelBlockSize(nri::Format format)
     return TEXEL_BLOCK_SIZE[(size_t)format];
 }
 
-static constexpr std::array<nri::Format, 100> DXGI_FORMAT_TABLE =
+constexpr std::array<nri::Format, 100> DXGI_FORMAT_TABLE =
 {
     nri::Format::UNKNOWN,                              // DXGI_FORMAT_UNKNOWN = 0,
 
