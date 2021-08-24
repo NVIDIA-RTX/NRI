@@ -21,7 +21,7 @@ extern D3D12_FILTER GetFilterIsotropic(Filter mip, Filter magnification, Filter 
 extern D3D12_FILTER GetFilterAnisotropic(FilterExt filterExt, bool useComparison);
 extern D3D12_TEXTURE_ADDRESS_MODE GetAddressMode(AddressMode addressMode);
 
-constexpr D3D12_ROOT_SIGNATURE_FLAGS GetRootSignatureStageFlags(const PipelineLayoutDesc& pipelineLayoutDesc)
+D3D12_ROOT_SIGNATURE_FLAGS GetRootSignatureStageFlags(const PipelineLayoutDesc& pipelineLayoutDesc, const DeviceD3D12& device)
 {
     D3D12_ROOT_SIGNATURE_FLAGS flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
 
@@ -38,10 +38,18 @@ constexpr D3D12_ROOT_SIGNATURE_FLAGS GetRootSignatureStageFlags(const PipelineLa
         flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
     if (!(pipelineLayoutDesc.stageMask & PipelineLayoutShaderStageBits::FRAGMENT))
         flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
-    if (!(pipelineLayoutDesc.stageMask & PipelineLayoutShaderStageBits::MESH_CONTROL))
-        flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS;
-    if (!(pipelineLayoutDesc.stageMask & PipelineLayoutShaderStageBits::MESH_EVALUATION))
-        flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
+
+    // Windows versions prior to 20H1 (which introduced DirectX Ultimate) can
+    // produce errors when the following flags are added. To avoid this, we
+    // only add these mesh shading pipeline flags when the device
+    // (and thus Windows) supports mesh shading.
+    if(device.IsMeshShaderSupported())
+    {
+        if (!(pipelineLayoutDesc.stageMask & PipelineLayoutShaderStageBits::MESH_CONTROL))
+            flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS;
+        if (!(pipelineLayoutDesc.stageMask & PipelineLayoutShaderStageBits::MESH_EVALUATION))
+            flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
+    }
 
     return flags;
 }
@@ -209,7 +217,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     rootSignatureDesc.Desc_1_1.pParameters = rootParameters.empty() ? nullptr : &rootParameters[0];
     rootSignatureDesc.Desc_1_1.NumStaticSamplers = (UINT)staticSamplerDescs.size();
     rootSignatureDesc.Desc_1_1.pStaticSamplers = staticSamplerDescs.empty() ? nullptr : &staticSamplerDescs[0];
-    rootSignatureDesc.Desc_1_1.Flags = GetRootSignatureStageFlags(pipelineLayoutDesc);
+    rootSignatureDesc.Desc_1_1.Flags = GetRootSignatureStageFlags(pipelineLayoutDesc, m_Device);
 
     ComPtr<ID3DBlob> rootSignatureBlob;
     ComPtr<ID3DBlob> errorBlob;
