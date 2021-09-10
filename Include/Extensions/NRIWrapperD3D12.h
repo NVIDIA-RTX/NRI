@@ -10,6 +10,8 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #pragma once
 
+#include "NRIDeviceCreation.h"
+
 struct ID3D12Device;
 struct ID3D12CommandQueue;
 struct ID3D12Resource;
