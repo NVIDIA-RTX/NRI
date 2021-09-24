@@ -59,7 +59,7 @@ Result QueryPoolD3D12::CreateReadbackBuffer(const QueryPoolDesc& queryPoolDesc)
     D3D12_HEAP_PROPERTIES heapProperties = {};
     heapProperties.Type = D3D12_HEAP_TYPE_READBACK;
 
-    HRESULT hr = ((ID3D12Device*)m_Device)->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &resourceDesc,
+    HRESULT hr = ((ID3D12Device*)m_Device)->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_CREATE_NOT_ZEROED, &resourceDesc,
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&m_ReadbackBuffer));
 
     if (FAILED(hr))

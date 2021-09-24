@@ -28,7 +28,7 @@ Result MemoryD3D12::Create(const MemoryType memoryType, uint64_t size)
     heapDesc.Properties.CreationNodeMask = NRI_TEMP_NODE_MASK;
     heapDesc.Properties.VisibleNodeMask = NRI_TEMP_NODE_MASK;
     heapDesc.Alignment = 0;
-    heapDesc.Flags = size ? GetHeapFlags(memoryType) : D3D12_HEAP_FLAG_NONE;
+    heapDesc.Flags = (size ? GetHeapFlags(memoryType) : D3D12_HEAP_FLAG_NONE) | D3D12_HEAP_FLAG_CREATE_NOT_ZEROED;
 
     if (!::RequiresDedicatedAllocation(memoryType))
     {

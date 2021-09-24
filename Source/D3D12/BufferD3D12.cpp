@@ -66,7 +66,7 @@ Result BufferD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset, bool 
     {
         HRESULT hr = ((ID3D12Device*)m_Device)->CreateCommittedResource(
             &heapDesc.Properties,
-            D3D12_HEAP_FLAG_NONE,
+            D3D12_HEAP_FLAG_CREATE_NOT_ZEROED,
             &m_BufferDesc,
             initialState,
             nullptr,
