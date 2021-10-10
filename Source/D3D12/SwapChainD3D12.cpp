@@ -52,6 +52,17 @@ SwapChainD3D12::SwapChainD3D12(DeviceD3D12& device)
     , m_TexturePointer(device.GetStdAllocator())
 {}
 
+SwapChainD3D12::~SwapChainD3D12()
+{
+    if (m_IsFullscreenEnabled)
+    {
+        BOOL fullscreen = FALSE;
+        m_SwapChain->GetFullscreenState(&fullscreen, nullptr);
+        if (fullscreen)
+            m_SwapChain->SetFullscreenState(FALSE, nullptr);
+    }
+}
+
 Result SwapChainD3D12::Create(const SwapChainDesc& swapChainDesc)
 {
     ID3D12Device* device = m_Device;
@@ -123,8 +134,6 @@ Result SwapChainD3D12::Create(const SwapChainDesc& swapChainDesc)
 
     if (swapChainDesc.display != nullptr)
     {
-        m_IsTearingAllowed = false;
-
         ComPtr<IDXGIOutput> output;
         if (!m_Device.GetOutput(swapChainDesc.display, output))
         {
@@ -137,6 +146,9 @@ Result SwapChainD3D12::Create(const SwapChainDesc& swapChainDesc)
 
         hr = m_SwapChain->ResizeBuffers(swapChainDesc1.BufferCount, swapChainDesc1.Width, swapChainDesc1.Height, swapChainDesc1.Format, swapChainDesc1.Flags);
         RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain1::ResizeBuffers() failed, error code: 0x%X.", hr);
+
+        m_IsTearingAllowed = false;
+        m_IsFullscreenEnabled = true;
     }
 
     m_SwapChainDesc = swapChainDesc;
@@ -188,6 +200,11 @@ inline uint32_t SwapChainD3D12::AcquireNextTexture(QueueSemaphore& textureReadyF
 inline Result SwapChainD3D12::Present(QueueSemaphore& textureReadyForPresent)
 {
     ((QueueSemaphoreD3D12&)textureReadyForPresent).Wait(m_CommandQueue);
+
+    BOOL fullscreen = FALSE;
+    m_SwapChain->GetFullscreenState(&fullscreen, nullptr);
+    if (fullscreen != BOOL(m_IsFullscreenEnabled))
+        return Result::SWAPCHAIN_RESIZE;
 
     UINT flags = (!m_SwapChainDesc.verticalSyncInterval && m_IsTearingAllowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 

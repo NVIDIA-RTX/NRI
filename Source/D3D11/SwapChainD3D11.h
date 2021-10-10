@@ -41,6 +41,7 @@ namespace nri
         SwapChainDesc m_SwapChainDesc = {};
         Format m_Format = Format::UNKNOWN;
         bool m_IsTearingAllowed = false;
+        bool m_IsFullscreenEnabled = false;
         DeviceD3D11& m_Device;
     };
 }

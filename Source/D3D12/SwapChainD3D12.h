@@ -46,12 +46,10 @@ namespace nri
         Vector<Texture*> m_TexturePointer;
         Format m_Format = Format::UNKNOWN;
         bool m_IsTearingAllowed = false;
+        bool m_IsFullscreenEnabled = false;
 
         SwapChainDesc m_SwapChainDesc = {};
     };
-
-    inline SwapChainD3D12::~SwapChainD3D12()
-    {}
 
     inline DeviceD3D12& SwapChainD3D12::GetDevice() const
     {

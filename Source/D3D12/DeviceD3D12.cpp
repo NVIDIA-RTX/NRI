@@ -191,10 +191,11 @@ inline Result DeviceD3D12::GetDisplays(Display** displays, uint32_t& displayNum)
 inline Result DeviceD3D12::GetDisplaySize(Display& display, uint16_t& width, uint16_t& height)
 {
     Display* address = &display;
-    const uint32_t index = (*(uint32_t*)&address) - 1;
 
-    if (index == 0)
+    if (address == nullptr)
         return Result::UNSUPPORTED;
+
+    const uint32_t index = (*(uint32_t*)&address) - 1;
 
     ComPtr<IDXGIOutput> output;
     HRESULT result = m_Adapter->EnumOutputs(index, &output);

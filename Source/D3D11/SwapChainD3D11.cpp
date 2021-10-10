@@ -55,6 +55,13 @@ SwapChainD3D11::SwapChainD3D11(DeviceD3D11& device) :
 
 SwapChainD3D11::~SwapChainD3D11()
 {
+    if (m_IsFullscreenEnabled)
+    {
+        BOOL fullscreen = FALSE;
+        m_SwapChain->GetFullscreenState(&fullscreen, nullptr);
+        if (fullscreen)
+            m_SwapChain->SetFullscreenState(FALSE, nullptr);
+    }
 }
 
 Result SwapChainD3D11::Create(const VersionedDevice& device, const SwapChainDesc& swapChainDesc)
@@ -165,8 +172,6 @@ Result SwapChainD3D11::Create(const VersionedDevice& device, const SwapChainDesc
 
     if (swapChainDesc.display != nullptr)
     {
-        m_IsTearingAllowed = false;
-
         ComPtr<IDXGIOutput> output;
         if (!m_Device.GetOutput(swapChainDesc.display, output))
         {
@@ -179,6 +184,9 @@ Result SwapChainD3D11::Create(const VersionedDevice& device, const SwapChainDesc
 
         hr = m_SwapChain->ResizeBuffers(desc.BufferCount, desc.Width, desc.Height, desc.Format, desc.Flags);
         RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain1::ResizeBuffers() failed, error code: 0x%X.", hr);
+
+        m_IsTearingAllowed = false;
+        m_IsFullscreenEnabled = true;
     }
 
     // in DX11 only 'bufferIndex = 0' can be used to create render targets, so set BufferCount to '1' and ignore 'desc.BufferCount'
@@ -235,6 +243,11 @@ inline uint32_t SwapChainD3D11::AcquireNextTexture(QueueSemaphore& textureReadyF
 inline Result SwapChainD3D11::Present(QueueSemaphore& textureReadyForPresent)
 {
     ((QueueSemaphoreD3D11&)textureReadyForPresent).Wait();
+
+    BOOL fullscreen = FALSE;
+    m_SwapChain->GetFullscreenState(&fullscreen, nullptr);
+    if (fullscreen != BOOL(m_IsFullscreenEnabled))
+        return Result::SWAPCHAIN_RESIZE;
 
     UINT flags = (!m_SwapChainDesc.verticalSyncInterval && m_IsTearingAllowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
