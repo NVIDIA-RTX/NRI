@@ -163,6 +163,24 @@ Result SwapChainD3D11::Create(const VersionedDevice& device, const SwapChainDesc
             REPORT_WARNING(m_Device.GetLog(), "IDXGISwapChain1::SetBackgroundColor() - FAILED!");
     }
 
+    if (swapChainDesc.display != nullptr)
+    {
+        m_IsTearingAllowed = false;
+
+        ComPtr<IDXGIOutput> output;
+        if (!m_Device.GetOutput(swapChainDesc.display, output))
+        {
+            REPORT_ERROR(m_Device.GetLog(), "Failed to get IDXGIOutput for the specified display.");
+            return Result::UNSUPPORTED;
+        }
+
+        hr = m_SwapChain->SetFullscreenState(TRUE, output);
+        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain1::SetFullscreenState() failed, error code: 0x%X.", hr);
+
+        hr = m_SwapChain->ResizeBuffers(desc.BufferCount, desc.Width, desc.Height, desc.Format, desc.Flags);
+        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain1::ResizeBuffers() failed, error code: 0x%X.", hr);
+    }
+
     // in DX11 only 'bufferIndex = 0' can be used to create render targets, so set BufferCount to '1' and ignore 'desc.BufferCount'
     const uint32_t bufferCount = 1;
 

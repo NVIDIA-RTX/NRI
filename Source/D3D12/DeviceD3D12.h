@@ -16,6 +16,7 @@ struct ID3D12Device;
 struct ID3D12Device5;
 struct ID3D12DescriptorHeap;
 struct ID3D12CommandSignature;
+struct IDXGIOutput;
 struct D3D12_CPU_DESCRIPTOR_HANDLE;
 
 #define DESCRIPTORS_BATCH_SIZE          1024
@@ -70,6 +71,8 @@ namespace nri
 
         bool IsMeshShaderSupported() const;
         const CoreInterface& GetCoreInterface() const;
+
+        bool GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const;
 
         //================================================================================================================
         // NRI
@@ -136,6 +139,8 @@ namespace nri
         Result AllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDesc, Memory** allocations);
 
         Result CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*& swapChain);
+        Result GetDisplays(Display** displays, uint32_t& displayNum);
+        Result GetDisplaySize(Display& display, uint16_t& width, uint16_t& height);
 
         //================================================================================================================
         // DeviceBase
@@ -170,6 +175,7 @@ namespace nri
         UnorderedMap<uint32_t, ComPtr<ID3D12CommandSignature>> m_DrawIndexedCommandSignatures;
         ComPtr<ID3D12CommandSignature> m_DispatchCommandSignature;
         CoreInterface m_CoreInterface = {};
+        ComPtr<IDXGIAdapter> m_Adapter;
         bool m_IsRaytracingSupported = false;
         bool m_IsMeshShaderSupported = false;
         bool m_SkipLiveObjectsReporting = false;

@@ -121,6 +121,24 @@ Result SwapChainD3D12::Create(const SwapChainDesc& swapChainDesc)
     if (FAILED(hr))
         REPORT_ERROR(m_Device.GetLog(), "IDXGISwapChain3::SetColorSpace1() failed, error code: 0x%X.", hr);
 
+    if (swapChainDesc.display != nullptr)
+    {
+        m_IsTearingAllowed = false;
+
+        ComPtr<IDXGIOutput> output;
+        if (!m_Device.GetOutput(swapChainDesc.display, output))
+        {
+            REPORT_ERROR(m_Device.GetLog(), "Failed to get IDXGIOutput for the specified display.");
+            return Result::UNSUPPORTED;
+        }
+
+        hr = m_SwapChain->SetFullscreenState(TRUE, nullptr);
+        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain1::SetFullscreenState() failed, error code: 0x%X.", hr);
+
+        hr = m_SwapChain->ResizeBuffers(swapChainDesc1.BufferCount, swapChainDesc1.Width, swapChainDesc1.Height, swapChainDesc1.Format, swapChainDesc1.Flags);
+        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain1::ResizeBuffers() failed, error code: 0x%X.", hr);
+    }
+
     m_SwapChainDesc = swapChainDesc;
 
     m_Format = g_SwapChainTextureFormat[(uint32_t)swapChainDesc.format];

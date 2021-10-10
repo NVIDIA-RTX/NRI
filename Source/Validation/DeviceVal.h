@@ -32,6 +32,8 @@ namespace nri
         void RegisterMemoryType(MemoryType memoryType, MemoryLocation memoryLocation);
         Result CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*& swapChain);
         void DestroySwapChain(SwapChain& swapChain);
+        Result GetDisplays(Display** displays, uint32_t& displayNum);
+        Result GetDisplaySize(Display& display, uint16_t& width, uint16_t& height);
         void SetDebugName(const char* name);
         const DeviceDesc& GetDesc() const;
         Result GetCommandQueue(CommandQueueType commandQueueType, CommandQueue*& commandQueue);

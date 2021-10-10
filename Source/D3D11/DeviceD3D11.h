@@ -22,6 +22,7 @@ namespace nri
         const VersionedContext& GetImmediateContext() const;
         const VersionedDevice& GetDevice() const;
         const CoreInterface& GetCoreInterface() const;
+        bool GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const;
 
         Result Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAdapter* adapter, ID3D11Device* precreatedDevice, AGSContext* agsContext);
 
@@ -30,6 +31,8 @@ namespace nri
         //======================================================================================================================
         Result CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*& swapChain);
         void DestroySwapChain(SwapChain& swapChain);
+        Result GetDisplays(Display** displays, uint32_t& displayNum);
+        Result GetDisplaySize(Display& display, uint16_t& width, uint16_t& height);
         void SetDebugName(const char* name);
         const DeviceDesc& GetDesc() const;
         Result GetCommandQueue(CommandQueueType commandQueueType, CommandQueue*& commandQueue);
@@ -95,6 +98,7 @@ namespace nri
         DeviceDesc m_Desc = {};
         CRITICAL_SECTION m_CriticalSection = {};
         CoreInterface m_CoreInterface = {};
+        ComPtr<IDXGIAdapter> m_Adapter;
 
     private:
         void FillLimits(bool isValidationEnabled, Vendor vendor);

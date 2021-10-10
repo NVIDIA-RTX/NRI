@@ -28,6 +28,10 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "AccelerationStructureVK.h"
 #include "MemoryVK.h"
 
+#if _WIN32
+    #include <dxgi1_4.h>
+#endif
+
 using namespace nri;
 
 void* VKAPI_PTR vkAllocateHostMemory(void* pUserData, size_t size, size_t alignment, VkSystemAllocationScope allocationScope)
@@ -193,6 +197,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& deviceCreationDesc)
 
     m_SPIRVBindingOffsets = deviceCreationDesc.spirvBindingOffsets;
 
+    FindDXGIAdapter();
+
     return res;
 }
 
@@ -255,7 +261,34 @@ Result DeviceVK::Create(const DeviceCreationVulkanDesc& deviceCreationVulkanDesc
     if (deviceCreationVulkanDesc.enableAPIValidation)
         ReportDeviceGroupInfo();
 
+    FindDXGIAdapter();
+
     return res;
+}
+
+void DeviceVK::FindDXGIAdapter()
+{
+#if _WIN32
+    if (m_LUID == 0)
+        return;
+
+    ComPtr<IDXGIFactory4> factory;
+    HRESULT result = CreateDXGIFactory2(0, IID_PPV_ARGS(&factory));
+
+    if (FAILED(result))
+    {
+        REPORT_ERROR(GetLog(), "CreateDXGIFactory2() failed. (result: %d)", (int32_t)result);
+        return;
+    }
+
+    static_assert(sizeof(LUID) <= sizeof(uint64_t), "invalid sizeof");
+    const LUID luid = *(LUID*)&m_LUID;
+
+    result = factory->EnumAdapterByLuid(luid, IID_PPV_ARGS(&m_Adapter));
+
+    if (FAILED(result))
+        REPORT_ERROR(GetLog(), "EnumAdapterByLuid() failed. (result: %d)", (int32_t)result);
+#endif
 }
 
 bool DeviceVK::GetMemoryType(MemoryLocation memoryLocation, uint32_t memoryTypeMask, MemoryTypeInfo& memoryTypeInfo) const
@@ -583,6 +616,86 @@ void DeviceVK::DestroySwapChain(SwapChain& swapChain)
 void DeviceVK::DestroyAccelerationStructure(AccelerationStructure& accelerationStructure)
 {
     Deallocate(GetStdAllocator(), (AccelerationStructureVK*)&accelerationStructure);
+}
+
+Result DeviceVK::GetDisplays(Display** displays, uint32_t& displayNum)
+{
+#if _WIN32
+    if (m_Adapter == nullptr)
+        return Result::UNSUPPORTED;
+
+    HRESULT result = S_OK;
+
+    if (displays == nullptr || displayNum == 0)
+    {
+        UINT i = 0;
+        for(; result != DXGI_ERROR_NOT_FOUND; i++)
+        {
+            ComPtr<IDXGIOutput> output;
+            result = m_Adapter->EnumOutputs(i, &output);
+        }
+
+        displayNum = i;
+        return Result::SUCCESS;
+    }
+
+    UINT i = 0;
+    for(; result != DXGI_ERROR_NOT_FOUND && i < displayNum; i++)
+    {
+        ComPtr<IDXGIOutput> output;
+        result = m_Adapter->EnumOutputs(i, &output);
+        if (result != DXGI_ERROR_NOT_FOUND)
+            displays[i] = (Display*)(size_t)(i + 1);
+    }
+
+    for(; i < displayNum; i++)
+        displays[i] = nullptr;
+
+    return Result::SUCCESS;
+#else
+    return Result::UNSUPPORTED;
+#endif
+}
+
+Result DeviceVK::GetDisplaySize(Display& display, uint16_t& width, uint16_t& height)
+{
+#if _WIN32
+    if (m_Adapter == nullptr)
+        return Result::UNSUPPORTED;
+
+    Display* address = &display;
+    const uint32_t index = (*(uint32_t*)&address) - 1;
+
+    if (index == 0)
+        return Result::UNSUPPORTED;
+
+    ComPtr<IDXGIOutput> output;
+    HRESULT result = m_Adapter->EnumOutputs(index, &output);
+
+    if (FAILED(result))
+        return Result::UNSUPPORTED;
+
+    DXGI_OUTPUT_DESC outputDesc = {};
+    result = output->GetDesc(&outputDesc);
+
+    if (FAILED(result))
+        return Result::UNSUPPORTED;
+
+    MONITORINFO monitorInfo = {};
+    monitorInfo.cbSize = sizeof(monitorInfo);
+
+    if (!GetMonitorInfoA(outputDesc.Monitor, &monitorInfo))
+        return Result::UNSUPPORTED;
+
+    const RECT rect = monitorInfo.rcMonitor;
+
+    width = uint16_t(rect.right - rect.left);
+    height = uint16_t(rect.bottom - rect.top);
+
+    return Result::SUCCESS;
+#else
+    return Result::UNSUPPORTED;
+#endif
 }
 
 Result DeviceVK::AllocateMemory(uint32_t physicalDeviceMask, MemoryType memoryType, uint64_t size, Memory*& memory)
@@ -1236,12 +1349,21 @@ void DeviceVK::SetDeviceLimits(bool enableValidation)
     if (copyQueueFamilyIndex != std::numeric_limits<uint32_t>::max())
         copyQueueTimestampValidBits = familyProperties[copyQueueFamilyIndex].timestampValidBits;
 
-    VkPhysicalDeviceProperties props = {};
-    m_VK.GetPhysicalDeviceProperties(m_PhysicalDevices.front(), &props);
-    const VkPhysicalDeviceLimits& limits = props.limits;
+    VkPhysicalDeviceIDProperties IDProperties = {};
+    IDProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
+
+    VkPhysicalDeviceProperties2 props = {};
+    props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    props.pNext = &IDProperties;
+
+    m_VK.GetPhysicalDeviceProperties2(m_PhysicalDevices.front(), &props);
+    const VkPhysicalDeviceLimits& limits = props.properties.limits;
+
+    static_assert(VK_LUID_SIZE == sizeof(uint64_t), "invalid sizeof");
+    m_LUID = *(uint64_t*)IDProperties.deviceLUID;
 
     m_DeviceDesc.graphicsAPI = GraphicsAPI::VULKAN;
-    m_DeviceDesc.vendor = GetVendorFromID(props.vendorID);
+    m_DeviceDesc.vendor = GetVendorFromID(props.properties.vendorID);
     m_DeviceDesc.nriVersionMajor = NRI_VERSION_MAJOR;
     m_DeviceDesc.nriVersionMinor = NRI_VERSION_MINOR;
 

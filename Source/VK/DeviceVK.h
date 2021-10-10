@@ -93,6 +93,9 @@ namespace nri
         void DestroySwapChain(SwapChain& swapChain);
         void DestroyAccelerationStructure(AccelerationStructure& accelerationStructure);
 
+        Result GetDisplays(Display** displays, uint32_t& displayNum);
+        Result GetDisplaySize(Display& display, uint16_t& width, uint16_t& height);
+
         Result AllocateMemory(uint32_t physicalDeviceMask, MemoryType memoryType, uint64_t size, Memory*& memory);
         Result BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
         Result BindTextureMemory(const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
@@ -132,6 +135,7 @@ namespace nri
         void RetrieveMeshShaderInfo();
         void ReportDeviceGroupInfo();
         void CheckSupportedDeviceExtensions(const Vector<const char*>& extensions);
+        void FindDXGIAdapter();
 
         template< typename Implementation, typename Interface, typename ... Args >
         Result CreateImplementation(Interface*& entity, const Args&... args);
@@ -153,6 +157,7 @@ namespace nri
         SPIRVBindingOffsets m_SPIRVBindingOffsets = {};
         CoreInterface m_CoreInterface = {};
         Lock m_Lock;
+        uint64_t m_LUID = 0;
         bool m_OwnsNativeObjects = false;
         bool m_IsRayTracingExtSupported = false;
         bool m_IsDescriptorIndexingExtSupported = false;
@@ -166,6 +171,9 @@ namespace nri
         bool m_IsConcurrentSharingModeEnabledForBuffers = true;
         bool m_IsConcurrentSharingModeEnabledForImages = true;
         Library* m_Loader = nullptr;
+#if _WIN32
+        ComPtr<IDXGIAdapter> m_Adapter;
+#endif
     };
 
     inline DeviceVK::operator VkDevice() const

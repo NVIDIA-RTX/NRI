@@ -13,6 +13,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 namespace nri
 {
     struct SwapChain;
+    struct Display;
 
     enum class SwapChainFormat : uint16_t
     {
@@ -74,6 +75,7 @@ namespace nri
         SwapChainFormat format;
         uint32_t verticalSyncInterval;
         uint32_t physicalDeviceIndex;
+        Display* display;
     };
 
     struct HdrMetadata
@@ -97,5 +99,7 @@ namespace nri
         uint32_t (NRI_CALL *AcquireNextSwapChainTexture)(SwapChain& swapChain, QueueSemaphore& textureReadyForRender);
         Result (NRI_CALL *SwapChainPresent)(SwapChain& swapChain, QueueSemaphore& textureReadyForPresent);
         Result (NRI_CALL *SetSwapChainHdrMetadata)(SwapChain& swapChain, const HdrMetadata& hdrMetadata);
+        Result (NRI_CALL *GetDisplays)(Device& device, Display** displays, uint32_t& displayNum);
+        Result (NRI_CALL *GetDisplaySize)(Device& device, Display& display, uint16_t& width, uint16_t& height);
     };
 }

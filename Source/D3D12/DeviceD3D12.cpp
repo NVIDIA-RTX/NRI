@@ -65,6 +65,18 @@ Result DeviceD3D12::Create(const DeviceCreationD3D12Desc& deviceCreationDesc)
     m_Device = (ID3D12Device*)deviceCreationDesc.d3d12Device;
     m_SkipLiveObjectsReporting = true;
 
+    m_Adapter = deviceCreationDesc.d3d12PhysicalAdapter;
+
+    if (m_Adapter == nullptr)
+    {
+        ComPtr<IDXGIDevice> dxgiDevice;
+        HRESULT result = m_Device->QueryInterface(IID_PPV_ARGS(&dxgiDevice));
+        RETURN_ON_BAD_HRESULT(GetLog(), result, "Failed to get IDXGIDevice");
+
+        result = dxgiDevice->GetAdapter(&m_Adapter);
+        RETURN_ON_BAD_HRESULT(GetLog(), result, "Failed to get IDXGIAdapter");
+    }
+
     if (deviceCreationDesc.d3d12GraphicsQueue)
         CreateCommandQueue((ID3D12CommandQueue*)deviceCreationDesc.d3d12GraphicsQueue, m_CommandQueues[(uint32_t)CommandQueueType::GRAPHICS]);
     if (deviceCreationDesc.d3d12ComputeQueue)
@@ -79,6 +91,8 @@ Result DeviceD3D12::Create(const DeviceCreationD3D12Desc& deviceCreationDesc)
 
 Result DeviceD3D12::Create(IDXGIAdapter* dxgiAdapter, bool enableValidation)
 {
+    m_Adapter = dxgiAdapter;
+
     // Enable the debug layer (requires the Graphics Tools "optional feature").
     // NOTE: Enabling the debug layer after device creation will invalidate the active device.
     if (enableValidation)
@@ -140,6 +154,83 @@ Result DeviceD3D12::Create(IDXGIAdapter* dxgiAdapter, bool enableValidation)
 Result DeviceD3D12::CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*& swapChain)
 {
     return CreateImplementation<SwapChainD3D12>(swapChain, swapChainDesc);
+}
+
+inline Result DeviceD3D12::GetDisplays(Display** displays, uint32_t& displayNum)
+{
+    HRESULT result = S_OK;
+
+    if (displays == nullptr || displayNum == 0)
+    {
+        UINT i = 0;
+        for(; result != DXGI_ERROR_NOT_FOUND; i++)
+        {
+            ComPtr<IDXGIOutput> output;
+            result = m_Adapter->EnumOutputs(i, &output);
+        }
+
+        displayNum = i;
+        return Result::SUCCESS;
+    }
+
+    UINT i = 0;
+    for(; result != DXGI_ERROR_NOT_FOUND && i < displayNum; i++)
+    {
+        ComPtr<IDXGIOutput> output;
+        result = m_Adapter->EnumOutputs(i, &output);
+        if (result != DXGI_ERROR_NOT_FOUND)
+            displays[i] = (Display*)(size_t)(i + 1);
+    }
+
+    for(; i < displayNum; i++)
+        displays[i] = nullptr;
+
+    return Result::SUCCESS;
+}
+
+inline Result DeviceD3D12::GetDisplaySize(Display& display, uint16_t& width, uint16_t& height)
+{
+    Display* address = &display;
+    const uint32_t index = (*(uint32_t*)&address) - 1;
+
+    if (index == 0)
+        return Result::UNSUPPORTED;
+
+    ComPtr<IDXGIOutput> output;
+    HRESULT result = m_Adapter->EnumOutputs(index, &output);
+
+    if (FAILED(result))
+        return Result::UNSUPPORTED;
+
+    DXGI_OUTPUT_DESC outputDesc = {};
+    result = output->GetDesc(&outputDesc);
+
+    if (FAILED(result))
+        return Result::UNSUPPORTED;
+
+    MONITORINFO monitorInfo = {};
+    monitorInfo.cbSize = sizeof(monitorInfo);
+
+    if (!GetMonitorInfoA(outputDesc.Monitor, &monitorInfo))
+        return Result::UNSUPPORTED;
+
+    const RECT rect = monitorInfo.rcMonitor;
+
+    width = uint16_t(rect.right - rect.left);
+    height = uint16_t(rect.bottom - rect.top);
+
+    return Result::SUCCESS;
+}
+
+bool DeviceD3D12::GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const
+{
+    if (display == nullptr)
+        return false;
+
+    const uint32_t index = (*(uint32_t*)&display) - 1;
+    const HRESULT result = m_Adapter->EnumOutputs(index, &output);
+
+    return SUCCEEDED(result);
 }
 
 void DeviceD3D12::DestroySwapChain(SwapChain& swapChain)
