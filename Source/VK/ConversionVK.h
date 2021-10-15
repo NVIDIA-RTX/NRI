@@ -63,7 +63,7 @@ namespace nri
 
         if (usageMask & BufferUsageBits::SHADER_RESOURCE_STORAGE)
         {
-            if (structureStride == 0)
+            if (structureStride == 0 && (usageMask & BufferUsageBits::RAY_TRACING_BUFFER) == 0)
                 flags |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
             else
                 flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
