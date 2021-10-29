@@ -122,10 +122,9 @@ Result DeviceD3D12::Create(IDXGIAdapter* dxgiAdapter, bool enableValidation)
     if (result != Result::SUCCESS)
         return result;
 
-    // Create CPU-visible descriptor heaps for resource views
     for (uint32_t descriptorType = 0; descriptorType < m_DescriptorHeapTypeNum; descriptorType++)
     {
-        result = CreateDescriptorHeap((D3D12_DESCRIPTOR_HEAP_TYPE)descriptorType, DESCRIPTORS_BATCH_SIZE);
+        result = CreateCpuOnlyVisibleDescriptorHeap((D3D12_DESCRIPTOR_HEAP_TYPE)descriptorType, DESCRIPTORS_BATCH_SIZE);
         if (result != Result::SUCCESS)
             return result;
     }
@@ -251,7 +250,7 @@ inline void DeviceD3D12::DestroyAccelerationStructure(AccelerationStructure& acc
 }
 #endif
 
-Result DeviceD3D12::CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t descriptorNum)
+Result DeviceD3D12::CreateCpuOnlyVisibleDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t descriptorNum)
 {
     size_t heapIndex = m_DescriptorHeaps.size();
     if (heapIndex >= DESCRIPTOR_HEAP_NUM_MAX)
@@ -266,10 +265,9 @@ Result DeviceD3D12::CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32
         return Result::FAILURE;
     }
 
-    DescriptorHeapDesc descriptorHeapDesc;
+    DescriptorHeapDesc descriptorHeapDesc = {};
     descriptorHeapDesc.descriptorHeap = descriptorHeap;
     descriptorHeapDesc.descriptorPointerCPU = descriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr;
-    descriptorHeapDesc.descriptorPointerGPU = descriptorHeap->GetGPUDescriptorHandleForHeapStart().ptr;
     descriptorHeapDesc.descriptorSize = m_Device->GetDescriptorHandleIncrementSize(type);
     m_DescriptorHeaps.push_back(descriptorHeapDesc);
 
@@ -284,7 +282,7 @@ Result DeviceD3D12::GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, Descrip
     auto& descriptorPool = m_DescriptorPool[type];
     if (descriptorPool.empty())
     {
-        Result result = CreateDescriptorHeap(type, DESCRIPTORS_BATCH_SIZE);
+        Result result = CreateCpuOnlyVisibleDescriptorHeap(type, DESCRIPTORS_BATCH_SIZE);
         if (result != Result::SUCCESS)
             return result;
     }

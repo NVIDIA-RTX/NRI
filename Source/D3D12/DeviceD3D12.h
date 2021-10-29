@@ -58,7 +58,7 @@ namespace nri
         Result Create(IDXGIAdapter* dxgiAdapter, bool enableValidation);
         Result Create(const DeviceCreationD3D12Desc& deviceCreationDesc);
 
-        Result CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t descriptorNum);
+        Result CreateCpuOnlyVisibleDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t descriptorNum);
         Result GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, DescriptorHandle& descriptorHandle);
         DescriptorPointerCPU GetDescriptorPointerCPU(const DescriptorHandle& descriptorHandle) const;
         DescriptorPointerGPU GetDescriptorPointerGPU(const DescriptorHandle& descriptorHandle) const;
