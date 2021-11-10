@@ -848,15 +848,16 @@ void DeviceD3D12::UpdateDeviceDesc(bool enableValidation)
 
 void DeviceD3D12::Destroy()
 {
-    if (!m_SkipLiveObjectsReporting)
+    bool skipLiveObjectsReporting = m_SkipLiveObjectsReporting;
+    Deallocate(GetStdAllocator(), this);
+
+    if (!skipLiveObjectsReporting)
     {
         ComPtr<IDXGIDebug1> pDebug;
         HRESULT hr = DXGIGetDebugInterface1(0, IID_PPV_ARGS(&pDebug));
         if (SUCCEEDED(hr))
             pDebug->ReportLiveObjects(DXGI_DEBUG_ALL, (DXGI_DEBUG_RLO_FLAGS)((uint32_t)DXGI_DEBUG_RLO_DETAIL | (uint32_t)DXGI_DEBUG_RLO_IGNORE_INTERNAL));
     }
-
-    Deallocate(GetStdAllocator(), this);
 }
 
 Result CreateDeviceD3D12(const DeviceCreationD3D12Desc& deviceCreationDesc, DeviceBase*& device)
