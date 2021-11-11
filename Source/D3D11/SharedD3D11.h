@@ -225,6 +225,15 @@ struct BindingState
             }
         }
     }
+
+    inline void UnbindUAVs(const VersionedContext& context)
+    {
+        constexpr ID3D11UnorderedAccessView* nullDescriptor = nullptr;
+
+        for (uint32_t i = storageStartSlot; i < storageEndSlot; i++)
+            context->CSSetUnorderedAccessViews(i, 1, &nullDescriptor, nullptr);
+        ResetStorages();
+    }
 };
 
 namespace nri

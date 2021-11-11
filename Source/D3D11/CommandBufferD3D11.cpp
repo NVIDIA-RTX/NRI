@@ -439,7 +439,7 @@ void CommandBufferD3D11::PipelineBarrier(const TransitionBarrierDesc* transition
     constexpr AccessBits RESOURCE_MASK = AccessBits::SHADER_RESOURCE;
     constexpr BarrierDependency NO_WFI = (BarrierDependency)999;
 
-    if (!transitionBarriers || transitionBarriers->textureNum == 0 || transitionBarriers->bufferNum == 0)
+    if (!transitionBarriers || (transitionBarriers->textureNum == 0 && transitionBarriers->bufferNum == 0))
         return;
 
     BarrierDependency result = NO_WFI;
@@ -450,6 +450,9 @@ void CommandBufferD3D11::PipelineBarrier(const TransitionBarrierDesc* transition
 
         if ((textureDesc.prevAccess & STORAGE_MASK) && (textureDesc.nextAccess & STORAGE_MASK))
             result = dependency;
+
+        if ((textureDesc.prevAccess & STORAGE_MASK) && (textureDesc.nextAccess & RESOURCE_MASK))
+            m_BindingState.UnbindUAVs(m_Context);
 
         if ((textureDesc.prevAccess & RESOURCE_MASK) && (textureDesc.nextAccess & ANY_WRITE_MASK))
         {
@@ -464,6 +467,9 @@ void CommandBufferD3D11::PipelineBarrier(const TransitionBarrierDesc* transition
 
         if ((bufferDesc.prevAccess & STORAGE_MASK) && (bufferDesc.nextAccess & STORAGE_MASK))
             result = dependency;
+
+        if ((bufferDesc.prevAccess & STORAGE_MASK) && (bufferDesc.nextAccess & RESOURCE_MASK))
+            m_BindingState.UnbindUAVs(m_Context);
 
         if ((bufferDesc.prevAccess & RESOURCE_MASK) && (bufferDesc.nextAccess & ANY_WRITE_MASK))
         {

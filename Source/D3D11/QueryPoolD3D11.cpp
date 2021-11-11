@@ -30,8 +30,10 @@ Result QueryPoolD3D11::Create(const VersionedDevice& device, const QueryPoolDesc
     m_Type = queryPoolDesc.queryType;
 
     D3D11_QUERY_DESC queryDesc = {};
-    queryDesc.Query = D3D11_QUERY_TIMESTAMP;
-    if (m_Type == QueryType::OCCLUSION)
+
+    if (m_Type == QueryType::TIMESTAMP)
+        queryDesc.Query = D3D11_QUERY_TIMESTAMP;
+    else if (m_Type == QueryType::OCCLUSION)
         queryDesc.Query = D3D11_QUERY_OCCLUSION;
     else if (m_Type == QueryType::PIPELINE_STATISTICS)
         queryDesc.Query = D3D11_QUERY_PIPELINE_STATISTICS;
