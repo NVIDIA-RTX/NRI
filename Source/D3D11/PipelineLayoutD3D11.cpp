@@ -234,6 +234,7 @@ void PipelineLayoutD3D11::BindDescriptorSetImpl(BindingState& currentBindingStat
     const DescriptorSetD3D11& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const
 {
     const BindingSet& bindingSet = m_BindingSets[setIndex];
+    bool isStorageRebindNeededInGraphics = false;
 
     uint8_t* memory = STACK_ALLOC(uint8_t, bindingSet.descriptorNum * (sizeof(void*) + sizeof(uint32_t) * 2));
 
@@ -271,9 +272,9 @@ void PipelineLayoutD3D11::BindDescriptorSetImpl(BindingState& currentBindingStat
                     constantNum[i] = descriptor->GetElementNum();
                 }
                 else if (bindingRange.descriptorType == DescriptorTypeDX11::STORAGE)
-                    currentBindingState.storages[bindingRange.baseSlot + i] = *descriptor;
+                    currentBindingState.TrackSubresource_UnbindIfNeeded_PostponeGraphicsStorageBinding(context, descriptor->GetSubresourceInfo(), *descriptor, bindingRange.baseSlot + i, isGraphics, true);
                 else if (bindingRange.descriptorType == DescriptorTypeDX11::RESOURCE)
-                    currentBindingState.resources[bindingRange.baseSlot + i] = descriptor->GetSubresourceInfo();
+                    currentBindingState.TrackSubresource_UnbindIfNeeded_PostponeGraphicsStorageBinding(context, descriptor->GetSubresourceInfo(), *descriptor, bindingRange.baseSlot + i, isGraphics, false);
             }
             else
             {
@@ -348,20 +349,22 @@ void PipelineLayoutD3D11::BindDescriptorSetImpl(BindingState& currentBindingStat
         }
         else if (bindingRange.descriptorType == DescriptorTypeDX11::STORAGE)
         {
-            const uint32_t num = currentBindingState.UpdateStartEndStorageSlots(bindingRange.baseSlot, bindingRange.descriptorNum);
-            ID3D11UnorderedAccessView** storages = &currentBindingState.storages[currentBindingState.storageStartSlot];
-
             if (isGraphics)
-            {
-                if (bindingRange.shaderVisibility & ALL_GRAPHICS_STAGES)
-                    context->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, currentBindingState.storageStartSlot, num, storages, nullptr);
-            }
+                isStorageRebindNeededInGraphics = true;
             else
             {
                 if (IsShaderVisible(bindingRange.shaderVisibility, ShaderStage::COMPUTE))
-                    context->CSSetUnorderedAccessViews(currentBindingState.storageStartSlot, num, storages, nullptr);
+                    context->CSSetUnorderedAccessViews(bindingRange.baseSlot, bindingRange.descriptorNum, (ID3D11UnorderedAccessView**)descriptors, nullptr);
             }
         }
+    }
+
+    if (isStorageRebindNeededInGraphics)
+    {
+        uint32_t num = (uint32_t)currentBindingState.graphicsStorageDescriptors.size();
+        ID3D11UnorderedAccessView** storages = currentBindingState.graphicsStorageDescriptors.data();
+
+        context->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, 0, num, storages, nullptr);
     }
 }
 
