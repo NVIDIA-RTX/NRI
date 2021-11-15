@@ -40,9 +40,6 @@ DeviceD3D11::DeviceD3D11(const Log& log, StdAllocator<uint8_t>& stdAllocator) :
     m_CommandQueues(GetStdAllocator())
 {
     PipelineD3D11::CreateNullPipeline(*this);
-
-    if (FillFunctionTable(m_CoreInterface) != Result::SUCCESS)
-        REPORT_ERROR(GetLog(), "Failed to get 'CoreInterface' interface in DeviceD3D11().");
 }
 
 DeviceD3D11::~DeviceD3D11()
@@ -97,6 +94,9 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAd
 
     for (uint32_t i = 0; i < COMMAND_QUEUE_TYPE_NUM; i++)
         m_CommandQueues.emplace_back(*this, m_ImmediateContext);
+
+    if (FillFunctionTable(m_CoreInterface) != Result::SUCCESS)
+        REPORT_ERROR(GetLog(), "Failed to get 'CoreInterface' interface in DeviceD3D11().");
 
     return Result::SUCCESS;
 }

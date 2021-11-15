@@ -150,8 +150,8 @@ struct CriticalSection
 
 struct SubresourceInfo
 {
-    const void* resource;
-    uint64_t data;
+    const void* resource = nullptr;
+    uint64_t data = 0;
 
     inline void Initialize(const void* tex, uint16_t mipOffset, uint16_t mipNum, uint16_t arrayOffset, uint16_t arraySize)
     {
@@ -171,68 +171,92 @@ struct SubresourceInfo
     }
 };
 
+struct SubresourceAndSlot
+{
+    SubresourceInfo subresource;
+    uint32_t slot;
+};
+
 struct BindingState
 {
-    std::array<SubresourceInfo, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> resources;
+    std::vector<SubresourceAndSlot> resources; // max expected size - D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT
+    std::vector<SubresourceAndSlot> storages; // max expected size - D3D11_1_UAV_SLOT_COUNT
+    std::array<ID3D11UnorderedAccessView*, D3D11_PS_CS_UAV_REGISTER_COUNT> graphicsStorageDescriptors = {};
 
-    std::array<ID3D11UnorderedAccessView*, D3D11_1_UAV_SLOT_COUNT> storages;
-    uint32_t storageStartSlot;
-    uint32_t storageEndSlot;
-
-    inline void ResetStorages()
+    inline void TrackSubresource_UnbindIfNeeded_PostponeGraphicsStorageBinding(const VersionedContext& context, const SubresourceInfo& subresource, void* descriptor, uint32_t slot, bool isGraphics, bool isStorage)
     {
-        memset(&storages, 0, sizeof(storages));
-        storageStartSlot = uint32_t(-1);
-        storageEndSlot = 0;
-    }
+        constexpr void* null = nullptr;
 
-    inline uint32_t UpdateStartEndStorageSlots(uint32_t baseSlot, uint32_t descriptorNum)
-    {
-        storageStartSlot = std::min(storageStartSlot, baseSlot);
-        storageEndSlot = std::max(storageEndSlot, baseSlot + descriptorNum);
-
-        return storageEndSlot - storageStartSlot;
-    }
-
-    inline void ResetResources()
-    {
-        memset(&resources, 0, sizeof(resources));
-    }
-
-    inline void UnbindSubresource(const VersionedContext& context, const SubresourceInfo& subresourceInfo) const
-    {
-        constexpr ID3D11ShaderResourceView* nullDescriptor = nullptr;
-
-        // TODO: suboptimal implementation:
-        // - if a resource not present 128 iterations will be taken
-        // - store max register to reduce interations number required
-        // - store visibility to unbind only necessary state
-        // - std::map can be used for fast searches, but... it will slow down BindDescriptorSets what is undesirable
-        // - can be skipped if debug layer is not used
-
-        for (uint32_t slot = 0; slot < (uint32_t)resources.size(); slot++)
+        if (isStorage)
         {
-            if (resources[slot] == subresourceInfo)
+            for (uint32_t i = 0; i < (uint32_t)resources.size(); i++)
             {
-                context->VSSetShaderResources(slot, 1, &nullDescriptor);
-                context->HSSetShaderResources(slot, 1, &nullDescriptor);
-                context->DSSetShaderResources(slot, 1, &nullDescriptor);
-                context->GSSetShaderResources(slot, 1, &nullDescriptor);
-                context->PSSetShaderResources(slot, 1, &nullDescriptor);
-                context->CSSetShaderResources(slot, 1, &nullDescriptor);
+                const SubresourceAndSlot& subresourceAndSlot = resources[i];
+                if (subresourceAndSlot.subresource == subresource)
+                {
+                    // TODO: store visibility to unbind only in a necessary stage
+                    context->VSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+                    context->HSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+                    context->DSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+                    context->GSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+                    context->PSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+                    context->CSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
 
-                return;
+                    resources[i] = resources.back();
+                    resources.pop_back();
+                    i--;
+                }
             }
+
+            storages.push_back({subresource, slot});
+
+            if (isGraphics)
+                graphicsStorageDescriptors[slot] = (ID3D11UnorderedAccessView*)descriptor;
+        }
+        else
+        {
+            for (uint32_t i = 0; i < (uint32_t)storages.size(); i++)
+            {
+                const SubresourceAndSlot& subresourceAndSlot = storages[i];
+                if (subresourceAndSlot.subresource == subresource)
+                {
+                    context->CSSetUnorderedAccessViews(subresourceAndSlot.slot, 1, (ID3D11UnorderedAccessView**)&null, nullptr);
+
+                    graphicsStorageDescriptors[subresourceAndSlot.slot] = nullptr;
+
+                    storages[i] = storages.back();
+                    storages.pop_back();
+                    i--;
+                }
+            }
+
+            resources.push_back({subresource, slot});
         }
     }
 
-    inline void UnbindUAVs(const VersionedContext& context)
+    inline void UnbindAndReset(const VersionedContext& context)
     {
-        constexpr ID3D11UnorderedAccessView* nullDescriptor = nullptr;
+        constexpr void* null = nullptr;
 
-        for (uint32_t i = storageStartSlot; i < storageEndSlot; i++)
-            context->CSSetUnorderedAccessViews(i, 1, &nullDescriptor, nullptr);
-        ResetStorages();
+        for (const SubresourceAndSlot& subresourceAndSlot : resources)
+        {
+            // TODO: store visibility to unbind only in a necessary stage
+            context->VSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+            context->HSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+            context->DSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+            context->GSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+            context->PSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+            context->CSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+        }
+        resources.clear();
+
+        if (!storages.empty())
+            context->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, 0, 0, nullptr, nullptr);
+        for (const SubresourceAndSlot& subresourceAndSlot : storages)
+            context->CSSetUnorderedAccessViews(subresourceAndSlot.slot, 1, (ID3D11UnorderedAccessView**)&null, nullptr);
+        storages.clear();
+
+        memset(&graphicsStorageDescriptors, 0, sizeof(graphicsStorageDescriptors));
     }
 };
 

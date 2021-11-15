@@ -69,12 +69,14 @@ Result DeviceD3D12::Create(const DeviceCreationD3D12Desc& deviceCreationDesc)
 
     if (m_Adapter == nullptr)
     {
-        ComPtr<IDXGIDevice> dxgiDevice;
-        HRESULT result = m_Device->QueryInterface(IID_PPV_ARGS(&dxgiDevice));
-        RETURN_ON_BAD_HRESULT(GetLog(), result, "Failed to get IDXGIDevice");
+        const LUID luid = m_Device->GetAdapterLuid();
 
-        result = dxgiDevice->GetAdapter(&m_Adapter);
-        RETURN_ON_BAD_HRESULT(GetLog(), result, "Failed to get IDXGIAdapter");
+        ComPtr<IDXGIFactory4> DXGIFactory;
+        HRESULT result = CreateDXGIFactory(IID_PPV_ARGS(&DXGIFactory));
+        RETURN_ON_BAD_HRESULT(GetLog(), result, "Failed to create IDXGIFactory4");
+
+        result = DXGIFactory->EnumAdapterByLuid(luid, IID_PPV_ARGS(&m_Adapter));
+        RETURN_ON_BAD_HRESULT(GetLog(), result, "Failed to find IDXGIAdapter by LUID");
     }
 
     if (deviceCreationDesc.d3d12GraphicsQueue)
