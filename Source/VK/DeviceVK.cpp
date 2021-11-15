@@ -293,16 +293,36 @@ void DeviceVK::FindDXGIAdapter()
 
 bool DeviceVK::GetMemoryType(MemoryLocation memoryLocation, uint32_t memoryTypeMask, MemoryTypeInfo& memoryTypeInfo) const
 {
-    const auto host = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-    const auto device = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    const VkMemoryPropertyFlags host = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
-    const VkMemoryPropertyFlags flags = IsHostVisibleMemory(memoryLocation) ? host : device;
+    VkMemoryPropertyFlags hostUnwantedFlags =
+        (memoryLocation == nri::MemoryLocation::HOST_READBACK) ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0;
+
+    const VkMemoryPropertyFlags device = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    const VkMemoryPropertyFlags deviceUnwantedFlags = 0;
+
+    VkMemoryPropertyFlags flags = IsHostVisibleMemory(memoryLocation) ? host : device;
+    VkMemoryPropertyFlags unwantedFlags = IsHostVisibleMemory(memoryLocation) ? hostUnwantedFlags : deviceUnwantedFlags;
 
     memoryTypeInfo.isHostCoherent = IsHostVisibleMemory(memoryLocation);
 
     memoryTypeInfo.location = (uint8_t)memoryLocation;
     static_assert((uint32_t)MemoryLocation::MAX_NUM <= std::numeric_limits<uint8_t>::max(), "Unexpected number of memory locations");
 
+    for (uint_fast16_t i = 0; i < m_MemoryProps.memoryTypeCount; i++)
+    {
+        const bool isMemoryTypeSupported = memoryTypeMask & (1 << i);
+        const bool isPropSupported = (m_MemoryProps.memoryTypes[i].propertyFlags & flags) == flags;
+        const bool hasUnwantedProperties = (m_MemoryProps.memoryTypes[i].propertyFlags & unwantedFlags) == 0;
+
+        if (isMemoryTypeSupported && isPropSupported && !hasUnwantedProperties)
+        {
+            memoryTypeInfo.memoryTypeIndex = (uint16_t)i;
+            return true;
+        }
+    }
+
+    // ignore unwanted properties
     for (uint_fast16_t i = 0; i < m_MemoryProps.memoryTypeCount; i++)
     {
         const bool isMemoryTypeSupported = memoryTypeMask & (1 << i);
