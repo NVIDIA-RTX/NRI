@@ -1262,5 +1262,6 @@ namespace nri
         bool isCopyQueueTimestampSupported : 1;
         bool isRegisterAliasingSupported : 1;
         bool isSubsetAllocationSupported : 1;
+        bool isFloat16Supported : 1;
     };
 }

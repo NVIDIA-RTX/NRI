@@ -846,6 +846,7 @@ void DeviceD3D12::UpdateDeviceDesc(bool enableValidation)
     m_DeviceDesc.isCopyQueueTimestampSupported             = options3.CopyQueueTimestampQueriesSupported != 0;
     m_DeviceDesc.isRegisterAliasingSupported               = true;
     m_DeviceDesc.isSubsetAllocationSupported               = true;
+    m_DeviceDesc.isFloat16Supported                        = options.MinPrecisionSupport & D3D12_SHADER_MIN_PRECISION_SUPPORT_16_BIT;
 }
 
 void DeviceD3D12::Destroy()

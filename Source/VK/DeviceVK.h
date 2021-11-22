@@ -170,6 +170,7 @@ namespace nri
         bool m_IsSubsetAllocationSupported = false;
         bool m_IsConcurrentSharingModeEnabledForBuffers = true;
         bool m_IsConcurrentSharingModeEnabledForImages = true;
+        bool m_IsFP16Supported = false;
         Library* m_Loader = nullptr;
 #if _WIN32
         ComPtr<IDXGIAdapter> m_Adapter;

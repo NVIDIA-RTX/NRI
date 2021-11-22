@@ -1489,6 +1489,7 @@ void DeviceVK::SetDeviceLimits(bool enableValidation)
     m_DeviceDesc.isCopyQueueTimestampSupported = copyQueueTimestampValidBits == 64;
     m_DeviceDesc.isRegisterAliasingSupported = true;
     m_DeviceDesc.isSubsetAllocationSupported = m_IsSubsetAllocationSupported;
+    m_DeviceDesc.isFloat16Supported = m_IsFP16Supported;
     m_DeviceDesc.phyiscalDeviceGroupSize = (uint32_t)m_PhysicalDevices.size();
 }
 
@@ -1585,6 +1586,7 @@ void DeviceVK::CheckSupportedDeviceExtensions(const Vector<const char*>& extensi
     m_IsConservativeRasterExtSupported = IsExtensionInList(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME, extensions);
     m_IsMeshShaderExtSupported = IsExtensionInList(VK_NV_MESH_SHADER_EXTENSION_NAME, extensions);
     m_IsHDRExtSupported = IsExtensionInList(VK_EXT_HDR_METADATA_EXTENSION_NAME, extensions);
+    m_IsFP16Supported = IsExtensionInList(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME, extensions);
 
     m_IsRayTracingExtSupported = m_IsDescriptorIndexingExtSupported;
     m_IsRayTracingExtSupported = m_IsRayTracingExtSupported && IsExtensionInList(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, extensions);
@@ -1621,6 +1623,7 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
     extensions.push_back(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
     extensions.push_back(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME);
     extensions.push_back(VK_EXT_HDR_METADATA_EXTENSION_NAME);
+    extensions.push_back(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME);
 
     FilterDeviceExtensions(extensions);
 
@@ -1648,6 +1651,9 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
     VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures =
         { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };
 
+    VkPhysicalDeviceFloat16Int8FeaturesKHR float16Int8Features =
+        { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES_KHR };
+
     deviceFeatures2.pNext = &bufferDeviceAddressFeatures;
 
     if (m_IsDescriptorIndexingExtSupported)
@@ -1674,6 +1680,12 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
         deviceFeatures2.pNext = &rayTracingFeatures;
         accelerationStructureFeatures.pNext = deviceFeatures2.pNext;
         deviceFeatures2.pNext = &accelerationStructureFeatures;
+    }
+
+    if (m_IsFP16Supported)
+    {
+        float16Int8Features.pNext = deviceFeatures2.pNext;
+        deviceFeatures2.pNext = &float16Int8Features;
     }
 
     m_VK.GetPhysicalDeviceFeatures2(m_PhysicalDevices.front(), &deviceFeatures2);
@@ -1718,6 +1730,8 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
 
     RETURN_ON_FAILURE(GetLog(), result == VK_SUCCESS, GetReturnCode(result), "Can't create a device: "
         "vkCreateDevice returned %d.", (int32_t)result);
+
+    m_IsFP16Supported = float16Int8Features.shaderFloat16 != VK_FALSE;
 
     return Result::SUCCESS;
 }
