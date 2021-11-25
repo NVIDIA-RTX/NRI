@@ -695,16 +695,19 @@ inline Vendor GetVendor(ID3D12Device* device)
 void DeviceD3D12::UpdateDeviceDesc(bool enableValidation)
 {
     D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
-    HRESULT hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
+    m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1 = {};
-    hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1));
+    m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1));
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS2 options2 = {};
-    hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS2, &options2, sizeof(options2));
+    m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS2, &options2, sizeof(options2));
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS3 options3 = {};
-    hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, &options3, sizeof(options3));
+    m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, &options3, sizeof(options3));
+
+    D3D12_FEATURE_DATA_D3D12_OPTIONS4 options4 = {};
+    m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS4, &options4, sizeof(options4));
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
     m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
@@ -724,7 +727,7 @@ void DeviceD3D12::UpdateDeviceDesc(bool enableValidation)
     };
     levels.NumFeatureLevels = (uint32_t)levelsList.size();
     levels.pFeatureLevelsRequested = levelsList.data();
-    hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS, &levels, sizeof(levels));
+    m_Device->CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS, &levels, sizeof(levels));
 
     uint64_t timestampFrequency = 0;
     ID3D12CommandQueue* commandQueueD3D12 = *m_CommandQueues[0];
@@ -846,7 +849,7 @@ void DeviceD3D12::UpdateDeviceDesc(bool enableValidation)
     m_DeviceDesc.isCopyQueueTimestampSupported             = options3.CopyQueueTimestampQueriesSupported != 0;
     m_DeviceDesc.isRegisterAliasingSupported               = true;
     m_DeviceDesc.isSubsetAllocationSupported               = true;
-    m_DeviceDesc.isFloat16Supported                        = options.MinPrecisionSupport & D3D12_SHADER_MIN_PRECISION_SUPPORT_16_BIT;
+    m_DeviceDesc.isFloat16Supported                        = options4.Native16BitShaderOpsSupported;
 }
 
 void DeviceD3D12::Destroy()
