@@ -1143,115 +1143,150 @@ namespace nri
 
     struct DeviceDesc
     {
+        // Common
         GraphicsAPI graphicsAPI;
         Vendor vendor;
         uint16_t nriVersionMajor;
         uint16_t nriVersionMinor;
-        uint32_t maxViewports;
-        int32_t viewportBoundsRange[2];
+
+        // Viewports
+        uint32_t viewportMaxNum;
         uint32_t viewportSubPixelBits;
-        uint32_t maxFrameBufferSize;
-        uint32_t maxFrameBufferLayers;
-        uint32_t maxColorAttachments;
-        uint8_t maxFrameBufferColorSampleCount;
-        uint8_t maxFrameBufferDepthSampleCount;
-        uint8_t maxFrameBufferStencilSampleCount;
-        uint8_t maxFrameBufferNoAttachmentsSampleCount;
-        uint8_t maxTextureColorSampleCount;
-        uint8_t maxTextureIntegerSampleCount;
-        uint8_t maxTextureDepthSampleCount;
-        uint8_t maxTextureStencilSampleCount;
-        uint8_t maxStorageTextureSampleCount;
-        uint32_t maxTexture1DSize;
-        uint32_t maxTexture2DSize;
-        uint32_t maxTexture3DSize;
-        uint32_t maxTextureArraySize;
-        uint32_t maxTexelBufferElements;
-        uint32_t maxConstantBufferRange;
-        uint32_t maxStorageBufferRange;
-        uint32_t maxPushConstantsSize;
-        uint32_t maxMemoryAllocationCount;
-        uint32_t maxSamplerAllocationCount;
+        int32_t viewportBoundsRange[2];
+
+        // Framebuffer
+        uint32_t frameBufferMaxDim;
+        uint32_t frameBufferLayerMaxNum;
+        uint32_t framebufferColorAttachmentMaxNum;
+
+        // Multi-sampling
+        uint8_t frameBufferColorSampleMaxNum;
+        uint8_t frameBufferDepthSampleMaxNum;
+        uint8_t frameBufferStencilSampleMaxNum;
+        uint8_t frameBufferNoAttachmentsSampleMaxNum;
+        uint8_t textureColorSampleMaxNum;
+        uint8_t textureIntegerSampleMaxNum;
+        uint8_t textureDepthSampleMaxNum;
+        uint8_t textureStencilSampleMaxNum;
+        uint8_t storageTextureSampleMaxNum;
+
+        // Resource dimensions
+        uint32_t texture1DMaxDim;
+        uint32_t texture2DMaxDim;
+        uint32_t texture3DMaxDim;
+        uint32_t textureArrayMaxDim;
+        uint32_t texelBufferMaxDim;
+
+        // Memory
+        uint32_t memoryAllocationMaxNum;
+        uint32_t samplerAllocationMaxNum;
+        uint32_t uploadBufferTextureRowAlignment;
+        uint32_t uploadBufferTextureSliceAlignment;
+        uint32_t typedBufferOffsetAlignment;
+        uint32_t constantBufferOffsetAlignment;
+        uint32_t constantBufferMaxRange;
+        uint32_t storageBufferOffsetAlignment;
+        uint32_t storageBufferMaxRange;
         uint32_t bufferTextureGranularity;
-        uint32_t maxBoundDescriptorSets;
-        uint32_t maxPerStageDescriptorSamplers;
-        uint32_t maxPerStageDescriptorConstantBuffers;
-        uint32_t maxPerStageDescriptorStorageBuffers;
-        uint32_t maxPerStageDescriptorTextures;
-        uint32_t maxPerStageDescriptorStorageTextures;
-        uint32_t maxPerStageResources;
-        uint32_t maxDescriptorSetSamplers;
-        uint32_t maxDescriptorSetConstantBuffers;
-        uint32_t maxDescriptorSetStorageBuffers;
-        uint32_t maxDescriptorSetTextures;
-        uint32_t maxDescriptorSetStorageTextures;
-        uint32_t maxVertexAttributes;
-        uint32_t maxVertexStreams;
-        uint32_t maxVertexOutputComponents;
-        float maxTessGenerationLevel;
-        uint32_t maxTessPatchSize;
-        uint32_t maxTessControlPerVertexInputComponents;
-        uint32_t maxTessControlPerVertexOutputComponents;
-        uint32_t maxTessControlPerPatchOutputComponents;
-        uint32_t maxTessControlTotalOutputComponents;
-        uint32_t maxTessEvaluationInputComponents;
-        uint32_t maxTessEvaluationOutputComponents;
-        uint32_t maxGeometryShaderInvocations;
-        uint32_t maxGeometryInputComponents;
-        uint32_t maxGeometryOutputComponents;
-        uint32_t maxGeometryOutputVertices;
-        uint32_t maxGeometryTotalOutputComponents;
-        uint32_t maxFragmentInputComponents;
-        uint32_t maxFragmentOutputAttachments;
-        uint32_t maxFragmentDualSrcAttachments;
-        uint32_t maxFragmentCombinedOutputResources;
-        uint32_t maxComputeSharedMemorySize;
-        uint32_t maxComputeWorkGroupCount[3];
-        uint32_t maxComputeWorkGroupInvocations;
-        uint32_t maxComputeWorkGroupSize[3];
+        uint64_t bufferMaxSize;
+        uint32_t pushConstantsMaxSize;
+
+        // Shader resources
+        uint32_t boundDescriptorSetMaxNum;
+        uint32_t perStageDescriptorSamplerMaxNum;
+        uint32_t perStageDescriptorConstantBufferMaxNum;
+        uint32_t perStageDescriptorStorageBufferMaxNum;
+        uint32_t perStageDescriptorTextureMaxNum;
+        uint32_t perStageDescriptorStorageTextureMaxNum;
+        uint32_t perStageResourceMaxNum;
+
+        // Descriptor set
+        uint32_t descriptorSetSamplerMaxNum;
+        uint32_t descriptorSetConstantBufferMaxNum;
+        uint32_t descriptorSetStorageBufferMaxNum;
+        uint32_t descriptorSetTextureMaxNum;
+        uint32_t descriptorSetStorageTextureMaxNum;
+
+        // Vertex shader
+        uint32_t vertexShaderAttributeMaxNum;
+        uint32_t vertexShaderStreamMaxNum;
+        uint32_t vertexShaderOutputComponentMaxNum;
+
+        // Tessellation control shader
+        float tessControlShaderGenerationMaxLevel;
+        uint32_t tessControlShaderPatchPointMaxNum;
+        uint32_t tessControlShaderPerVertexInputComponentMaxNum;
+        uint32_t tessControlShaderPerVertexOutputComponentMaxNum;
+        uint32_t tessControlShaderPerPatchOutputComponentMaxNum;
+        uint32_t tessControlShaderTotalOutputComponentMaxNum;
+
+        // Tesselation evaluation shader
+        uint32_t tessEvaluationShaderInputComponentMaxNum;
+        uint32_t tessEvaluationShaderOutputComponentMaxNum;
+
+        // Geometry shader
+        uint32_t geometryShaderInvocationMaxNum;
+        uint32_t geometryShaderInputComponentMaxNum;
+        uint32_t geometryShaderOutputComponentMaxNum;
+        uint32_t geometryShaderOutputVertexMaxNum;
+        uint32_t geometryShaderTotalOutputComponentMaxNum;
+
+        // Fragment shader
+        uint32_t fragmentShaderInputComponentMaxNum;
+        uint32_t fragmentShaderOutputAttachmentMaxNum;
+        uint32_t fragmentShaderDualSourceAttachmentMaxNum;
+        uint32_t fragmentShaderCombinedOutputResourceMaxNum;
+
+        // Compute shader
+        uint32_t computeShaderSharedMemoryMaxSize;
+        uint32_t computeShaderWorkGroupMaxNum[3];
+        uint32_t computeShaderWorkGroupInvocationMaxNum;
+        uint32_t computeShaderWorkGroupMaxDim[3];
+
+        // Ray tracing
+        uint64_t rayTracingShaderGroupIdentifierSize;
+        uint64_t rayTracingShaderTableAligment;
+        uint64_t rayTracingShaderTableMaxStride;
+        uint32_t rayTracingShaderRecursionMaxDepth;
+        uint32_t rayTracingGeometryObjectMaxNum;
+
+        // Mesh shader
+        uint32_t meshTaskMaxNum;
+        uint32_t meshTaskWorkGroupInvocationMaxNum;
+        uint32_t meshTaskWorkGroupMaxDim[3];
+        uint32_t meshTaskTotalMemoryMaxSize;
+        uint32_t meshTaskOutputMaxNum;
+        uint32_t meshWorkGroupInvocationMaxNum;
+        uint32_t meshWorkGroupMaxDim[3];
+        uint32_t meshTotalMemoryMaxSize;
+        uint32_t meshOutputVertexMaxNum;
+        uint32_t meshOutputPrimitiveMaxNum;
+        uint32_t meshMultiviewViewMaxNum;
+        uint32_t meshOutputPerVertexGranularity;
+        uint32_t meshOutputPerPrimitiveGranularity;
+
+        // Other
         uint32_t subPixelPrecisionBits;
         uint32_t subTexelPrecisionBits;
         uint32_t mipmapPrecisionBits;
         uint32_t drawIndexedIndex16ValueMax;
         uint32_t drawIndexedIndex32ValueMax;
-        uint32_t maxDrawIndirectCount;
+        uint32_t drawIndirectMaxNum;
         float samplerLodBiasMin;
         float samplerLodBiasMax;
         float samplerAnisotropyMax;
-        uint32_t uploadBufferTextureRowAlignment;
-        uint32_t uploadBufferTextureSliceAlignment;
-        uint32_t typedBufferOffsetAlignment;
-        uint32_t constantBufferOffsetAlignment;
-        uint32_t storageBufferOffsetAlignment;
-        int32_t minTexelOffset;
-        uint32_t maxTexelOffset;
-        int32_t minTexelGatherOffset;
-        uint32_t maxTexelGatherOffset;
-        uint64_t timestampFrequencyHz;
-        uint32_t maxClipDistances;
-        uint32_t maxCullDistances;
-        uint32_t maxCombinedClipAndCullDistances;
-        uint64_t maxBufferSize;
-        uint64_t rayTracingShaderGroupIdentifierSize;
-        uint64_t rayTracingShaderTableAligment;
-        uint64_t rayTracingShaderTableMaxStride;
-        uint32_t rayTracingMaxRecursionDepth;
-        uint32_t rayTracingGeometryObjectMaxNum;
-        uint32_t maxMeshTasksCount;
-        uint32_t maxTaskWorkGroupInvocations;
-        uint32_t maxTaskWorkGroupSize[3];
-        uint32_t maxTaskTotalMemorySize;
-        uint32_t maxTaskOutputCount;
-        uint32_t maxMeshWorkGroupInvocations;
-        uint32_t maxMeshWorkGroupSize[3];
-        uint32_t maxMeshTotalMemorySize;
-        uint32_t maxMeshOutputVertices;
-        uint32_t maxMeshOutputPrimitives;
-        uint32_t maxMeshMultiviewViewCount;
-        uint32_t meshOutputPerVertexGranularity;
-        uint32_t meshOutputPerPrimitiveGranularity;
-        uint32_t phyiscalDeviceGroupSize;
+        int32_t texelOffsetMin;
+        uint32_t texelOffsetMax;
+        int32_t texelGatherOffsetMin;
+        uint32_t texelGatherOffsetMax;
+        uint32_t clipDistanceMaxNum;
+        uint32_t cullDistanceMaxNum;
+        uint32_t combinedClipAndCullDistanceMaxNum;
         uint8_t conservativeRasterTier;
+        uint32_t phyiscalDeviceGroupSize;
+        uint64_t timestampFrequencyHz;
+
+        // Features support
         bool isAPIValidationEnabled : 1;
         bool isTextureFilterMinMaxSupported : 1;
         bool isLogicOpSupported : 1;

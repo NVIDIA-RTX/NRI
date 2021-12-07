@@ -810,7 +810,7 @@ void CommandBufferVal::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc)
 
 void CommandBufferVal::DispatchMeshTasks(uint32_t taskNum)
 {
-    const uint32_t meshTaskMaxNum = m_Device.GetDesc().maxMeshTasksCount;
+    const uint32_t meshTaskMaxNum = m_Device.GetDesc().meshTaskMaxNum;
 
     if (taskNum > meshTaskMaxNum)
     {

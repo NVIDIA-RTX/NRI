@@ -272,10 +272,10 @@ inline Result SwapChainD3D11::SetHdrMetadata(const HdrMetadata& hdrMetadata)
     data.BluePrimary[1] = uint16_t(hdrMetadata.displayPrimaryBlue[1] * 50000.0f);
     data.WhitePoint[0] = uint16_t(hdrMetadata.whitePoint[0] * 50000.0f);
     data.WhitePoint[1] = uint16_t(hdrMetadata.whitePoint[1] * 50000.0f);
-    data.MaxMasteringLuminance = uint32_t(hdrMetadata.maxLuminance);
-    data.MinMasteringLuminance = uint32_t(hdrMetadata.minLuminance);
-    data.MaxContentLightLevel = uint16_t(hdrMetadata.maxContentLightLevel);
-    data.MaxFrameAverageLightLevel = uint16_t(hdrMetadata.maxFrameAverageLightLevel);
+    data.MaxMasteringLuminance = uint32_t(hdrMetadata.luminanceMax);
+    data.MinMasteringLuminance = uint32_t(hdrMetadata.luminanceMin);
+    data.MaxContentLightLevel = uint16_t(hdrMetadata.contentLightLevelMax);
+    data.MaxFrameAverageLightLevel = uint16_t(hdrMetadata.frameAverageLightLevelMax);
 
     HRESULT hr = m_SwapChain->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(DXGI_HDR_METADATA_HDR10), &data);
     RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain4::SetHDRMetaData() - FAILED");

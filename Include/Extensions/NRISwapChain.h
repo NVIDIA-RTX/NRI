@@ -84,10 +84,10 @@ namespace nri
         float displayPrimaryGreen[2];
         float displayPrimaryBlue[2];
         float whitePoint[2];
-        float maxLuminance;
-        float minLuminance;
-        float maxContentLightLevel;
-        float maxFrameAverageLightLevel;
+        float luminanceMax;
+        float luminanceMin;
+        float contentLightLevelMax;
+        float frameAverageLightLevelMax;
     };
 
     struct SwapChainInterface
