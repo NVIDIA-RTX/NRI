@@ -49,15 +49,17 @@ file(GLOB_RECURSE NRI_D3D12_SOURCE "Source/D3D12/*.cpp" "Source/D3D12/*.h" "Sour
 file(GLOB_RECURSE NRI_VK_SOURCE "Source/VK/*.cpp" "Source/VK/*.h" "Source/VK/*.hpp")
 file(GLOB_RECURSE NRI_VALIDATION_SOURCE "Source/Validation/*.cpp" "Source/Validation/*.h" "Source/Validation/*.hpp")
 file(GLOB_RECURSE NRI_SOURCE "Source/Creation/*.cpp" "Source/Creation/*.h")
+file(GLOB NRI_RESOURCE "Resources/*")
 
 source_group("Include" FILES ${NRI_HEADERS})
 source_group("Include/Extensions" FILES ${NRI_HEADERS_EXTENSIONS})
+source_group("Sources" FILES ${NRI_SOURCE})
+source_group("Resources" FILES ${NRI_RESOURCE})
 source_group("" FILES ${NRI_SHARED_SOURCE})
 source_group("" FILES ${NRI_D3D11_SOURCE})
 source_group("" FILES ${NRI_D3D12_SOURCE})
 source_group("" FILES ${NRI_VK_SOURCE})
 source_group("" FILES ${NRI_VALIDATION_SOURCE})
-source_group("" FILES ${NRI_SOURCE})
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     # -Wmissing-braces
@@ -127,7 +129,7 @@ endif()
 add_library(NRI_Shared STATIC ${NRI_SHARED_SOURCE})
 target_include_directories(NRI_Shared PRIVATE "Include" "Source/Shared")
 target_compile_definitions(NRI_Shared PRIVATE ${NRI_COMPILE_DEFINITIONS})
-set_property(TARGET NRI_Shared PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
+set_property(TARGET NRI_Shared PROPERTY FOLDER "${NRI_PROJECT_FOLDER}")
 
 if (WIN32)
     #D3D11
@@ -135,14 +137,14 @@ if (WIN32)
     target_include_directories(NRI_D3D11 PRIVATE "Include" "Source/Shared" "External")
     target_compile_definitions(NRI_D3D11 PRIVATE ${NRI_COMPILE_DEFINITIONS})
     target_link_libraries(NRI_D3D11 PRIVATE NRI_Shared ${NRI_INPUT_LIB_D3D11} ${NRI_INPUT_LIB_DXGI} ${NRI_INPUT_LIB_DXGUID} ${NRI_INPUT_LIB_NVAPI})
-    set_property(TARGET NRI_D3D11 PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
+    set_property(TARGET NRI_D3D11 PROPERTY FOLDER "${NRI_PROJECT_FOLDER}")
 
     # D3D12
     add_library(NRI_D3D12 STATIC ${NRI_D3D12_SOURCE})
     target_include_directories(NRI_D3D12 PRIVATE "Include" "Source/Shared")
     target_compile_definitions(NRI_D3D12 PRIVATE ${NRI_COMPILE_DEFINITIONS})
     target_link_libraries(NRI_D3D12 PRIVATE NRI_Shared ${NRI_INPUT_LIB_D3D12} ${NRI_INPUT_LIB_DXGI})
-    set_property(TARGET NRI_D3D12 PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
+    set_property(TARGET NRI_D3D12 PROPERTY FOLDER "${NRI_PROJECT_FOLDER}")
 endif()
 
 # Vulkan
@@ -150,7 +152,7 @@ add_library(NRI_VK STATIC ${NRI_VK_SOURCE})
 target_include_directories(NRI_VK PRIVATE "Include" "Source/Shared" "External/vulkan/include")
 target_compile_definitions(NRI_VK PRIVATE ${NRI_COMPILE_DEFINITIONS})
 target_link_libraries(NRI_VK PRIVATE NRI_Shared)
-set_property(TARGET NRI_VK PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
+set_property(TARGET NRI_VK PROPERTY FOLDER "${NRI_PROJECT_FOLDER}")
 
 # Window system defines
 if (WIN32)
@@ -177,13 +179,13 @@ add_library(NRI_Validation STATIC ${NRI_VALIDATION_SOURCE})
 target_include_directories(NRI_Validation PRIVATE "Include" "Source/Shared")
 target_compile_definitions(NRI_Validation PRIVATE ${NRI_COMPILE_DEFINITIONS})
 target_link_libraries(NRI_Validation PRIVATE NRI_Shared)
-set_property(TARGET NRI_Validation PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
+set_property(TARGET NRI_Validation PROPERTY FOLDER "${NRI_PROJECT_FOLDER}")
 
 # NRI
 if (NRI_STATIC_LIBRARY)
-    add_library(${PROJECT_NAME} STATIC ${NRI_SOURCE} ${NRI_HEADERS} ${NRI_HEADERS_EXTENSIONS})
+    add_library(${PROJECT_NAME} STATIC ${NRI_SOURCE} ${NRI_HEADERS} ${NRI_RESOURCE} ${NRI_HEADERS_EXTENSIONS})
 else()
-    add_library(${PROJECT_NAME} SHARED ${NRI_SOURCE} ${NRI_HEADERS} ${NRI_HEADERS_EXTENSIONS})
+    add_library(${PROJECT_NAME} SHARED ${NRI_SOURCE} ${NRI_HEADERS} ${NRI_RESOURCE} ${NRI_HEADERS_EXTENSIONS})
 endif()
 
 if (UNIX)
@@ -196,13 +198,17 @@ target_link_libraries(${PROJECT_NAME} PRIVATE NRI_Shared NRI_VK NRI_Validation)
 
 target_include_directories(${PROJECT_NAME} PRIVATE "Include" "Source/Shared" "External/vulkan/include")
 target_compile_definitions(${PROJECT_NAME} PRIVATE ${NRI_COMPILE_DEFINITIONS})
-set_property(TARGET ${PROJECT_NAME} PROPERTY FOLDER "${NRI_PROJECT_FOLDER}") 
+set_property(TARGET ${PROJECT_NAME} PROPERTY FOLDER "${NRI_PROJECT_FOLDER}")
 set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION})
 
-if(WIN32)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE "NRI_API=extern \"C\" __declspec(dllexport)")
+if (NRI_STATIC_LIBRARY)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC "NRI_API=")
 else()
-    target_compile_definitions(${PROJECT_NAME} PRIVATE "NRI_API=extern \"C\" __attribute__((visibility(\"default\")))")
+    if(WIN32)
+        target_compile_definitions(${PROJECT_NAME} PRIVATE "NRI_API=extern \"C\" __declspec(dllexport)")
+    else()
+        target_compile_definitions(${PROJECT_NAME} PRIVATE "NRI_API=extern \"C\" __attribute__((visibility(\"default\")))")
+    endif()
 endif()
 
 if (NOT NRI_IS_SUBMODULE)
