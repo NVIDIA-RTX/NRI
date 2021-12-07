@@ -1,4 +1,4 @@
-/*
+﻿/*
 Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
 
 NVIDIA CORPORATION and its licensors retain all intellectual property
@@ -1220,7 +1220,7 @@ namespace nri
         uint32_t tessControlShaderPerPatchOutputComponentMaxNum;
         uint32_t tessControlShaderTotalOutputComponentMaxNum;
 
-        // Tesselation evaluation shader
+        // Tessellation evaluation shader
         uint32_t tessEvaluationShaderInputComponentMaxNum;
         uint32_t tessEvaluationShaderOutputComponentMaxNum;
 
