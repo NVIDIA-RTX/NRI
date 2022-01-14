@@ -103,6 +103,7 @@ Result DeviceD3D12::Create(IDXGIAdapter* dxgiAdapter, bool enableValidation)
         if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
             debugController->EnableDebugLayer();
 
+        // GPU-based validation
         //ComPtr<ID3D12Debug1> debugController1;
         //if (SUCCEEDED(debugController->QueryInterface(IID_PPV_ARGS(&debugController1))))
         //    debugController1->SetEnableGPUBasedValidation(true);
@@ -113,6 +114,30 @@ Result DeviceD3D12::Create(IDXGIAdapter* dxgiAdapter, bool enableValidation)
     {
         REPORT_ERROR(GetLog(), "D3D12CreateDevice() failed, error code: 0x%X.", hr);
         return Result::FAILURE;
+    }
+
+    // TODO: this code is currently needed to disable known false-positive errors reported by the debug layer
+    if (enableValidation)
+    {
+        ComPtr<ID3D12InfoQueue> pInfoQueue;
+        m_Device->QueryInterface(&pInfoQueue);
+
+        if (pInfoQueue)
+        {
+            #ifdef _DEBUG
+                pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
+                pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
+            #endif
+
+            D3D12_MESSAGE_ID disableMessageIDs[] = {
+                D3D12_MESSAGE_ID_COMMAND_LIST_STATIC_DESCRIPTOR_RESOURCE_DIMENSION_MISMATCH, // TODO: descriptor validation doesn't understand acceleration structures used outside of RAYGEN shaders
+            };
+
+            D3D12_INFO_QUEUE_FILTER filter = {};
+            filter.DenyList.pIDList = disableMessageIDs;
+            filter.DenyList.NumIDs = GetCountOf(disableMessageIDs);
+            pInfoQueue->AddStorageFilterEntries(&filter);
+        }
     }
 
 #ifdef __ID3D12Device5_INTERFACE_DEFINED__
