@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
+Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
 
 NVIDIA CORPORATION and its licensors retain all intellectual property
 and proprietary rights in and to this software, related documentation
@@ -124,7 +124,7 @@ Result AccelerationStructureVK::FinishCreation()
 {
     if (m_Buffer == nullptr)
         return Result::FAILURE;
-    
+
     VkAccelerationStructureCreateInfoKHR accelerationStructureCreateInfo = {};
     accelerationStructureCreateInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
     accelerationStructureCreateInfo.type = m_Type;

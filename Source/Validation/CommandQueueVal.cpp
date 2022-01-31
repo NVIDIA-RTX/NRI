@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
+Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
 
 NVIDIA CORPORATION and its licensors retain all intellectual property
 and proprietary rights in and to this software, related documentation
@@ -117,7 +117,7 @@ Result CommandQueueVal::ChangeResourceStates(const TransitionBarrierDesc& transi
     return m_HelperAPI.ChangeResourceStates(m_ImplObject, transitionBarriersImpl);
 }
 
-Result CommandQueueVal::UploadData(const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum, 
+Result CommandQueueVal::UploadData(const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum,
     const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum)
 {
     RETURN_ON_FAILURE(m_Device.GetLog(), textureUploadDescNum == 0 || textureUploadDescs != nullptr, Result::INVALID_ARGUMENT,
@@ -220,7 +220,7 @@ void CommandQueueVal::ProcessValidationCommandResetQuery(const uint8_t*& begin, 
     const ValidationCommandResetQuery* command = ReadCommand<ValidationCommandResetQuery>(begin, end);
     CHECK(m_Device.GetLog(), command != nullptr, "ProcessValidationCommandResetQuery() failed: can't parse command.");
     CHECK(m_Device.GetLog(), command->queryPool != nullptr, "ProcessValidationCommandResetQuery() failed: query pool is invalid.");
- 
+
     QueryPoolVal& queryPool = *(QueryPoolVal*)command->queryPool;
     queryPool.ResetQueries(command->queryPoolOffset, command->queryNum);
 }
@@ -252,7 +252,7 @@ void CommandQueueVal::ProcessValidationCommands(const CommandBufferVal* const* c
                 REPORT_ERROR(m_Device.GetLog(), "Invalid validation command: %u", (uint32_t)type);
                 break;
             }
- 
+
             const ProcessValidationCommandMethod method = table[(size_t)type - 1];
             (this->*method)(begin, end);
         }

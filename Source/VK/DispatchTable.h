@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
+Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
 
 NVIDIA CORPORATION and its licensors retain all intellectual property
 and proprietary rights in and to this software, related documentation
@@ -98,7 +98,7 @@ struct DispatchTable
     VULKAN_FUNCTION(AcquireNextImageKHR);
     VULKAN_FUNCTION(QueueSubmit);
     VULKAN_FUNCTION(QueuePresentKHR);
-    
+
     VULKAN_FUNCTION(ResetCommandPool);
     VULKAN_FUNCTION(ResetDescriptorPool);
     VULKAN_FUNCTION(AllocateCommandBuffers);
@@ -146,7 +146,7 @@ struct DispatchTable
     VULKAN_FUNCTION(GetBufferMemoryRequirements2);
     VULKAN_FUNCTION(GetImageMemoryRequirements2);
     VULKAN_FUNCTION(GetPhysicalDeviceFormatProperties);
-    
+
     VULKAN_FUNCTION(GetSwapchainImagesKHR);
     VULKAN_FUNCTION(SetHdrMetadataEXT);
     VULKAN_FUNCTION(CreateAccelerationStructureKHR);

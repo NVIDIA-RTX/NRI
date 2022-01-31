@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
+Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
 
 NVIDIA CORPORATION and its licensors retain all intellectual property
 and proprietary rights in and to this software, related documentation
@@ -23,7 +23,7 @@ namespace nri
         void Wait(DeviceSemaphore& deviceSemaphore);
 
         Result ChangeResourceStates(const TransitionBarrierDesc& transitionBarriers);
-        Result UploadData(const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum, 
+        Result UploadData(const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum,
             const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum);
         Result WaitForIdle();
 

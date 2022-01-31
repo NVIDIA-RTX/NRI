@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
+Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
 
 NVIDIA CORPORATION and its licensors retain all intellectual property
 and proprietary rights in and to this software, related documentation
@@ -408,7 +408,7 @@ inline Result DeviceD3D11::GetDisplays(Display** displays, uint32_t& displayNum)
 inline Result DeviceD3D11::GetDisplaySize(Display& display, uint16_t& width, uint16_t& height)
 {
     Display* address = &display;
-    
+
     if (address == nullptr)
         return Result::UNSUPPORTED;
 

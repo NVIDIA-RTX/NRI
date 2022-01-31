@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
+Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
 
 NVIDIA CORPORATION and its licensors retain all intellectual property
 and proprietary rights in and to this software, related documentation
@@ -108,12 +108,12 @@ namespace nri
     {
         return m_ImmediateContext;
     }
-    
+
     inline const VersionedDevice& DeviceD3D11::GetDevice() const
     {
         return m_Device;
     }
-    
+
     inline const CoreInterface& DeviceD3D11::GetCoreInterface() const
     {
         return m_CoreInterface;
