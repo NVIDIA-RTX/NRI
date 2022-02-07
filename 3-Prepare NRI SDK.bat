@@ -3,7 +3,7 @@
 set NRI_DIR=.
 
 mkdir "_NRI_SDK"
-cd "_NRI_SDK"
+pushd "_NRI_SDK"
 
 copy "..\%NRI_DIR%\LICENSE.txt" "."
 
@@ -21,3 +21,5 @@ copy "..\_Build\Debug\NRI.pdb" "Lib\Debug"
 mkdir "Lib\Release"
 copy "..\_Build\Release\NRI.dll" "Lib\Release"
 copy "..\_Build\Release\NRI.lib" "Lib\Release"
+
+popd
