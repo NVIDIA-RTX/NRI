@@ -202,7 +202,7 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY FOLDER "${NRI_PROJECT_FOLDER}")
 set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION})
 
 if (NRI_STATIC_LIBRARY)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC "NRI_API=")
+    target_compile_definitions(${PROJECT_NAME} PUBLIC "NRI_API=extern \"C\"")
 else()
     if(WIN32)
         target_compile_definitions(${PROJECT_NAME} PRIVATE "NRI_API=extern \"C\" __declspec(dllexport)")
