@@ -10,3 +10,5 @@ rd /q /s "%PM_PACKAGES_ROOT%"
 rd /q /s "_Build"
 rd /q /s "_Compiler"
 rd /q /s "_NRI_SDK"
+
+rd /q /s "build"
