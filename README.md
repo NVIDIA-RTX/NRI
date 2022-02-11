@@ -1,4 +1,4 @@
-# NVIDIA Rendering Interface v1.76 (NRI)
+# NVIDIA Rendering Interface v1.77 (NRI)
 
 NRI is a low-level abstract render interface which supports three backends: D3D11, D3D12, Vulkan.
 
