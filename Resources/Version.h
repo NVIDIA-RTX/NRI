@@ -17,10 +17,11 @@ Versioning rules:
 - BUILD - preserves binary compatibility
 - MINOR - settings & descs change
 - MAJOR - major feature update, API change
+- don't forget to update README
 */
 
 #define VERSION_MAJOR                   1
-#define VERSION_MINOR                   75
+#define VERSION_MINOR                   77
 #define VERSION_BUILD                   0
 #define VERSION_REVISION                0
 

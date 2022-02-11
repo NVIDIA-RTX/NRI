@@ -16,8 +16,8 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include <cstddef>
 
 #define NRI_VERSION_MAJOR 1
-#define NRI_VERSION_MINOR 76
-#define NRI_VERSION_DATE "7 December 2021"
+#define NRI_VERSION_MINOR 77
+#define NRI_VERSION_DATE "11 February 2022"
 #define NRI_INTERFACE( name ) #name, sizeof(name)
 
 #if _WIN32
