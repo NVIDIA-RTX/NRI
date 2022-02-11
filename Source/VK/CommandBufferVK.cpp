@@ -187,7 +187,7 @@ inline void CommandBufferVK::ClearAttachments(const ClearDesc* clearDescs, uint3
         }
 
         attachment.colorAttachment = desc.colorAttachmentIndex;
-        memcpy(&attachment.clearValue, &clearDescs->value, sizeof(VkClearValue));
+        memcpy(&attachment.clearValue, &desc.value, sizeof(VkClearValue));
     }
 
     VkClearRect* clearRects;

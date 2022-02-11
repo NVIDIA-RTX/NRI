@@ -23,10 +23,8 @@ BufferVK::~BufferVK()
     if (!m_OwnsNativeObjects)
         return;
 
-    if (m_Memory != VK_NULL_HANDLE)
-    {
+    if (m_Memory != nullptr)
         vk.DestroyBuffer(m_Device, m_Handles[0], m_Device.GetAllocationCallbacks());
-    }
     else
     {
         for (uint32_t i = 0; i < GetCountOf(m_Handles); i++)
