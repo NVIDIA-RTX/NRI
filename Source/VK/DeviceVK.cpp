@@ -1037,8 +1037,9 @@ const char* GetObjectTypeName(VkObjectType objectType)
         return "VkDeferredOperationKHR";
     case VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NV:
         return "VkIndirectCommandsLayoutNV";
+    default:
+        return "unknown";
     }
-    return "unknown";
 }
 
 VkBool32 VKAPI_PTR DebugUtilsMessenger(
@@ -1060,7 +1061,7 @@ VkBool32 VKAPI_PTR DebugUtilsMessenger(
     if (callbackData->messageIdNumber == 738239446)
         messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
 
-    const char* type = "unknown";
+    const char* type;
     switch( messageSeverity )
     {
     case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
@@ -1076,6 +1077,9 @@ VkBool32 VKAPI_PTR DebugUtilsMessenger(
     case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
         type = "error";
         isError = true;
+        break;
+    default:
+        type = "unknown";
         break;
     }
 

@@ -35,6 +35,9 @@ DescriptorVal::DescriptorVal(DeviceVal& device, Descriptor& descriptor, const Bu
     case BufferViewType::SHADER_RESOURCE_STORAGE:
         m_ResourceViewType = ResourceViewType::SHADER_RESOURCE_STORAGE;
         break;
+    default:
+        CHECK(m_Device.GetLog(), false, "unexpected BufferView type in DescriptorVal: %u", (uint32_t)bufferViewDesc.viewType);
+        break;
    }
 }
 
@@ -54,10 +57,13 @@ DescriptorVal::DescriptorVal(DeviceVal& device, Descriptor& descriptor, const Te
         break;
     case Texture1DViewType::COLOR_ATTACHMENT:
         m_ResourceViewType = ResourceViewType::COLOR_ATTACHMENT;
-         break;
+        break;
     case Texture1DViewType::DEPTH_STENCIL_ATTACHMENT:
         m_ResourceViewType = ResourceViewType::DEPTH_STENCIL_ATTACHMENT;
-         break;
+        break;
+    default:
+        CHECK(m_Device.GetLog(), false, "unexpected TextureView type in DescriptorVal: %u", (uint32_t)textureViewDesc.viewType);
+        break;
    }
 }
 
@@ -79,10 +85,13 @@ DescriptorVal::DescriptorVal(DeviceVal& device, Descriptor& descriptor, const Te
         break;
     case Texture2DViewType::COLOR_ATTACHMENT:
         m_ResourceViewType = ResourceViewType::COLOR_ATTACHMENT;
-         break;
+        break;
     case Texture2DViewType::DEPTH_STENCIL_ATTACHMENT:
         m_ResourceViewType = ResourceViewType::DEPTH_STENCIL_ATTACHMENT;
-         break;
+        break;
+    default:
+        CHECK(m_Device.GetLog(), false, "unexpected TextureView type in DescriptorVal: %u", (uint32_t)textureViewDesc.viewType);
+        break;
    }
 }
 
@@ -100,7 +109,10 @@ DescriptorVal::DescriptorVal(DeviceVal& device, Descriptor& descriptor, const Te
         break;
     case Texture3DViewType::COLOR_ATTACHMENT:
         m_ResourceViewType = ResourceViewType::COLOR_ATTACHMENT;
-         break;
+        break;
+    default:
+        CHECK(m_Device.GetLog(), false, "unexpected TextureView type in DescriptorVal: %u", (uint32_t)textureViewDesc.viewType);
+        break;
    }
 }
 

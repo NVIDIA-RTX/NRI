@@ -905,29 +905,25 @@ namespace nri
 
     constexpr VkImageAspectFlags GetImageAspectFlags(Format format)
     {
-        VkImageAspectFlags flags = VK_IMAGE_ASPECT_COLOR_BIT;
-
         switch (format)
         {
         case Format::D16_UNORM:
         case Format::D32_SFLOAT:
         case Format::R24_UNORM_X8:
         case Format::R32_SFLOAT_X8_X24:
-            flags = VK_IMAGE_ASPECT_DEPTH_BIT;
-            break;
+            return VK_IMAGE_ASPECT_DEPTH_BIT;
 
         case Format::D24_UNORM_S8_UINT:
         case Format::D32_SFLOAT_S8_UINT_X24:
-            flags = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-            break;
+            return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
 
         case Format::X32_R8_UINT_X24:
         case Format::X24_R8_UINT:
-            flags = VK_IMAGE_ASPECT_STENCIL_BIT;
-            break;
-        }
+            return VK_IMAGE_ASPECT_STENCIL_BIT;
 
-        return flags;
+        default:
+            return VK_IMAGE_ASPECT_COLOR_BIT;
+        }
     }
 
     constexpr std::array<VkFilter, (uint32_t)Filter::MAX_NUM> FILTER = {
@@ -1233,7 +1229,9 @@ namespace nri
         case VK_ERROR_FRAGMENTATION_EXT:
         case VK_ERROR_FRAGMENTED_POOL:
             return Result::OUT_OF_MEMORY;
+
+        default:
+            return Result::FAILURE;
         }
-        return Result::FAILURE;
     }
 }

@@ -75,10 +75,10 @@ bool DescriptorPoolVal::CheckDescriptorRange(const DescriptorRangeDesc& rangeDes
         return m_StorageStructuredBufferNum + descriptorNum <= m_Desc.storageStructuredBufferMaxNum;
     case DescriptorType::ACCELERATION_STRUCTURE:
         return m_AccelerationStructureNum + descriptorNum <= m_Desc.accelerationStructureMaxNum;
+    default:
+        REPORT_ERROR(m_Device.GetLog(), "Unknown descriptor range type: %u", (uint32_t)rangeDesc.descriptorType);
+        return false;
     }
-
-    REPORT_ERROR(m_Device.GetLog(), "Unknown descriptor range type: %u", (uint32_t)rangeDesc.descriptorType);
-    return false;
 }
 
 void DescriptorPoolVal::IncrementDescriptorNum(const DescriptorRangeDesc& rangeDesc, uint32_t variableDescriptorNum)
@@ -114,9 +114,10 @@ void DescriptorPoolVal::IncrementDescriptorNum(const DescriptorRangeDesc& rangeD
     case DescriptorType::ACCELERATION_STRUCTURE:
         m_AccelerationStructureNum += descriptorNum;
         return;
+    default:
+        REPORT_ERROR(m_Device.GetLog(), "Unknown descriptor range type: %u", (uint32_t)rangeDesc.descriptorType);
+        return;
     }
-
-    REPORT_ERROR(m_Device.GetLog(), "Unknown descriptor range type: %u", (uint32_t)rangeDesc.descriptorType);
 }
 
 Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** const descriptorSets,
@@ -161,7 +162,7 @@ Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout& pipelineL
             "Can't allocate DescriptorSet: the maximum number of descriptors exceeded ('STATIC_SAMPLER').");
     }
 
-    PipelineLayout* pipelineLayoutImpl = NRI_GET_IMPL(PipelineLayout, &pipelineLayout);
+    PipelineLayout* pipelineLayoutImpl = NRI_GET_IMPL_REF(PipelineLayout, &pipelineLayout);
 
     Result result = m_CoreAPI.AllocateDescriptorSets(m_ImplObject, *pipelineLayoutImpl, setIndex, descriptorSets, instanceNum,
         physicalDeviceMask, variableDescriptorNum);

@@ -280,6 +280,16 @@ inline void DescriptorVK::SetDebugName(const char* name)
     case DescriptorTypeVK::SAMPLER:
         m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_SAMPLER, (uint64_t)m_Sampler, name);
         break;
+
+    case DescriptorTypeVK::ACCELERATION_STRUCTURE:
+        for (size_t i = 0; i < handles.size(); i++)
+            handles[i] = (uint64_t)m_AccelerationStructures[i];
+        m_Device.SetDebugNameToDeviceGroupObject(VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR, handles.data(), name);
+        break;
+
+    default:
+        CHECK(m_Device.GetLog(), false, "unexpected descriptor type in SetDebugName: %u", (uint32_t)m_Type);
+        break;
     }
 }
 
