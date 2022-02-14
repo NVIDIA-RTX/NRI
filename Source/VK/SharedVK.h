@@ -13,7 +13,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "SharedExternal.h"
 #include "DeviceBase.h"
 
-#define VK_ENABLE_BETA_EXTENSIONS
 #include <vulkan/vulkan.h>
 #undef CreateSemaphore
 
