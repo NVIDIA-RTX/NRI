@@ -63,11 +63,11 @@ source_group("" FILES ${NRI_D3D12_SOURCE})
 source_group("" FILES ${NRI_VK_SOURCE})
 source_group("" FILES ${NRI_VALIDATION_SOURCE})
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    # -Wmissing-braces
-    # warning: suggest braces around initialization of subobject [-Wmissing-braces]
-    # D:\git\nri\Source\D3D12\CommandBufferD3D12.cpp(344,75) initialization of anonymous union
-    add_compile_options(-Wno-switch -Wno-missing-braces)
+# warning level 4 and all warnings as errors (with some exceptions)
+if (MSVC)
+    add_compile_options(/W4 /WX /wd4324)
+else()
+    add_compile_options(-Wall -Werror -Wno-missing-braces -Wno-unknown-pragmas)
 endif()
 
 if (${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
