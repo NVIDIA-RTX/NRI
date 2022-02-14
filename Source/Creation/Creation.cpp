@@ -227,8 +227,9 @@ Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroup
         group.luid = *(uint64_t*)&deviceIDProperties.deviceLUID[0];
         group.physicalDeviceGroupSize = deviceGroupProperties[i].physicalDeviceCount;
 
-        const size_t descriptionLength = std::min(strlen(properties.deviceName), (size_t)GetCountOf(group.description));
+        const size_t descriptionLength = (size_t)GetCountOf(group.description) - 1;
         strncpy(group.description, properties.deviceName, descriptionLength);
+        group.description[descriptionLength] = '\0';
 
         group.dedicatedVideoMemoryMB = 0;
         for (uint32_t k = 0; k < memoryProperties.memoryHeapCount; k++)
