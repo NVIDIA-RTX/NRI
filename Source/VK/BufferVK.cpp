@@ -171,7 +171,7 @@ void BufferVK::GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memoryDe
     memoryDesc.size = requirements.memoryRequirements.size;
 
     MemoryTypeUnpack unpack = {};
-    const bool found = m_Device.GetMemoryType(memoryLocation, requirements.memoryRequirements.memoryTypeBits, unpack.info);
+    [[maybe_unused]] const bool found = m_Device.GetMemoryType(memoryLocation, requirements.memoryRequirements.memoryTypeBits, unpack.info);
     CHECK(m_Device.GetLog(), found, "Can't find suitable memory type: %d", requirements.memoryRequirements.memoryTypeBits);
 
     unpack.info.isDedicated = dedicatedRequirements.requiresDedicatedAllocation;
