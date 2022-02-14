@@ -79,7 +79,7 @@ void DescriptorSetVal::UpdateDescriptorRanges(uint32_t physicalDeviceMask, uint3
             RETURN_ON_FAILURE(m_Device.GetLog(), updateDesc.descriptors[j] != nullptr, ReturnVoid(),
                 "Can't update descriptor ranges: 'rangeUpdateDescs[%u].descriptors[%u]' is invalid.", i, j);
 
-            descriptors[j] = NRI_GET_IMPL(Descriptor, updateDesc.descriptors[j]);
+            descriptors[j] = NRI_GET_IMPL_PTR(Descriptor, updateDesc.descriptors[j]);
         }
     }
 
@@ -112,7 +112,7 @@ void DescriptorSetVal::UpdateDynamicConstantBuffers(uint32_t physicalDeviceMask,
         RETURN_ON_FAILURE(m_Device.GetLog(), descriptors[i] != nullptr, ReturnVoid(),
             "Can't update dynamic constant buffers: 'descriptors[%u]' is invalid.", i);
 
-        descriptorsImpl[i] = NRI_GET_IMPL(Descriptor, descriptors[i]);
+        descriptorsImpl[i] = NRI_GET_IMPL_PTR(Descriptor, descriptors[i]);
     }
 
     m_CoreAPI.UpdateDynamicConstantBuffers(m_ImplObject, physicalDeviceMask, baseBuffer, bufferNum, descriptorsImpl);
@@ -168,7 +168,7 @@ void DescriptorSetVal::Copy(const DescriptorSetCopyDesc& descriptorSetCopyDesc)
         "Can't copy descriptor set: destination range of dynamic constant buffers is invalid.");
 
     auto descriptorSetCopyDescImpl = descriptorSetCopyDesc;
-    descriptorSetCopyDescImpl.srcDescriptorSet = NRI_GET_IMPL(DescriptorSet, descriptorSetCopyDesc.srcDescriptorSet);
+    descriptorSetCopyDescImpl.srcDescriptorSet = NRI_GET_IMPL_PTR(DescriptorSet, descriptorSetCopyDesc.srcDescriptorSet);
 
     m_CoreAPI.CopyDescriptorSet(m_ImplObject, descriptorSetCopyDescImpl);
 }

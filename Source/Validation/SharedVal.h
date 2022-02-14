@@ -196,5 +196,8 @@ namespace nri
     }
 }
 
-#define NRI_GET_IMPL(className, object) \
+#define NRI_GET_IMPL_PTR(className, object) \
     ((object != nullptr) ? &((className##Val*)object)->GetImpl() : nullptr)
+
+#define NRI_GET_IMPL_REF(className, object) \
+    (&((className##Val*)object)->GetImpl())

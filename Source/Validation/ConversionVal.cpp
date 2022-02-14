@@ -25,13 +25,13 @@ void ConvertGeometryObjectsVal(GeometryObject* destObjects, const GeometryObject
 
         if (geometrySrc.type == GeometryType::TRIANGLES)
         {
-            geometryDst.triangles.vertexBuffer = NRI_GET_IMPL(Buffer, geometrySrc.triangles.vertexBuffer);
-            geometryDst.triangles.indexBuffer = NRI_GET_IMPL(Buffer, geometrySrc.triangles.indexBuffer);
-            geometryDst.triangles.transformBuffer = NRI_GET_IMPL(Buffer, geometrySrc.triangles.transformBuffer);
+            geometryDst.triangles.vertexBuffer = NRI_GET_IMPL_PTR(Buffer, geometrySrc.triangles.vertexBuffer);
+            geometryDst.triangles.indexBuffer = NRI_GET_IMPL_PTR(Buffer, geometrySrc.triangles.indexBuffer);
+            geometryDst.triangles.transformBuffer = NRI_GET_IMPL_PTR(Buffer, geometrySrc.triangles.transformBuffer);
         }
         else
         {
-            geometryDst.boxes.buffer = NRI_GET_IMPL(Buffer, geometrySrc.boxes.buffer);
+            geometryDst.boxes.buffer = NRI_GET_IMPL_PTR(Buffer, geometrySrc.boxes.buffer);
         }
     }
 }
