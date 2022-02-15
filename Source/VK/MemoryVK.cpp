@@ -92,7 +92,7 @@ Result MemoryVK::Create(const MemoryVulkanDesc& memoryDesc)
     m_OwnsNativeObjects = false;
 
     MemoryTypeUnpack unpack = {};
-    [[maybe_unused]] const bool found = m_Device.GetMemoryType(memoryDesc.memoryTypeIndex, unpack.info);
+    const bool found = m_Device.GetMemoryType(memoryDesc.memoryTypeIndex, unpack.info);
     CHECK(m_Device.GetLog(), found, "Can't find memory type: %u", memoryDesc.memoryTypeIndex);
 
     const VkDeviceMemory handle = (VkDeviceMemory)memoryDesc.vkDeviceMemory;
