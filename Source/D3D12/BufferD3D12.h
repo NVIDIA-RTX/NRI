@@ -81,4 +81,9 @@ namespace nri
     {
         return m_Device;
     }
+
+    inline void BufferD3D12::SetDebugName(const char* name)
+    {
+        SET_D3D_DEBUG_OBJECT_NAME(m_Buffer, name);
+    }
 }

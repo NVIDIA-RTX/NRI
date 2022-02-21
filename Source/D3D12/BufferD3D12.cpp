@@ -100,11 +100,6 @@ Result BufferD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset, bool 
     return Result::SUCCESS;
 }
 
-inline void BufferD3D12::SetDebugName(const char* name)
-{
-    SET_D3D_DEBUG_OBJECT_NAME(m_Buffer, name);
-}
-
 inline void BufferD3D12::GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const
 {
     m_Device.GetMemoryInfo(memoryLocation, m_BufferDesc, memoryDesc);
