@@ -184,10 +184,13 @@ inline void CommandBufferVK::ClearAttachments(const ClearDesc* clearDescs, uint3
         case AttachmentContentType::DEPTH_STENCIL:
             attachment.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
             break;
+        default:
+            attachment.aspectMask = 0;
+            break;
         }
 
         attachment.colorAttachment = desc.colorAttachmentIndex;
-        memcpy(&attachment.clearValue, &clearDescs->value, sizeof(VkClearValue));
+        memcpy(&attachment.clearValue, &desc.value, sizeof(VkClearValue));
     }
 
     VkClearRect* clearRects;

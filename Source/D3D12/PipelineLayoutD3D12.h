@@ -16,7 +16,7 @@ namespace nri
 {
     struct DeviceD3D12;
 
-    constexpr uint16_t ROOT_PARAMETER_UNUSED = uint16_t(-1);;
+    constexpr uint16_t ROOT_PARAMETER_UNUSED = uint16_t(-1);
 
     struct DescriptorSetRootMapping
     {

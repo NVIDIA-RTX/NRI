@@ -18,7 +18,7 @@ Makefile
 # VS Code
 .vscode/
 
-# Shaders
+# shaders
 *.dxbc
 *.dxil
 *.spirv
@@ -26,7 +26,7 @@ Makefile
 *.dxil.h
 *.spirv.h
 
-# Library
+# library
 *.lib
 *.exp
 *.dll
@@ -46,5 +46,5 @@ compile_commands.json
 External/NVAPI
 External/AGS
 
-# packaged SDK
+# generated folder
 _NRI_SDK/

@@ -45,17 +45,17 @@ void CommandQueueVal::Submit(const WorkSubmissionDesc& workSubmissionDesc, Devic
     auto workSubmissionDescImpl = workSubmissionDesc;
     workSubmissionDescImpl.commandBuffers = STACK_ALLOC(CommandBuffer*, workSubmissionDesc.commandBufferNum);
     for (uint32_t i = 0; i < workSubmissionDesc.commandBufferNum; i++)
-        ((CommandBuffer**)workSubmissionDescImpl.commandBuffers)[i] = NRI_GET_IMPL(CommandBuffer, workSubmissionDesc.commandBuffers[i]);
+        ((CommandBuffer**)workSubmissionDescImpl.commandBuffers)[i] = NRI_GET_IMPL_PTR(CommandBuffer, workSubmissionDesc.commandBuffers[i]);
     workSubmissionDescImpl.wait = STACK_ALLOC(QueueSemaphore*, workSubmissionDesc.waitNum);
     for (uint32_t i = 0; i < workSubmissionDesc.waitNum; i++)
-        ((QueueSemaphore**)workSubmissionDescImpl.wait)[i] = NRI_GET_IMPL(QueueSemaphore, workSubmissionDesc.wait[i]);
+        ((QueueSemaphore**)workSubmissionDescImpl.wait)[i] = NRI_GET_IMPL_PTR(QueueSemaphore, workSubmissionDesc.wait[i]);
     workSubmissionDescImpl.signal = STACK_ALLOC(QueueSemaphore*, workSubmissionDesc.signalNum);
     for (uint32_t i = 0; i < workSubmissionDesc.signalNum; i++)
-        ((QueueSemaphore**)workSubmissionDescImpl.signal)[i] = NRI_GET_IMPL(QueueSemaphore, workSubmissionDesc.signal[i]);
+        ((QueueSemaphore**)workSubmissionDescImpl.signal)[i] = NRI_GET_IMPL_PTR(QueueSemaphore, workSubmissionDesc.signal[i]);
 
     DeviceSemaphore* deviceSemaphoreImpl = nullptr;
     if (deviceSemaphore)
-        deviceSemaphoreImpl = NRI_GET_IMPL(DeviceSemaphore, deviceSemaphore);
+        deviceSemaphoreImpl = NRI_GET_IMPL_PTR(DeviceSemaphore, deviceSemaphore);
 
     for (uint32_t i = 0; i < workSubmissionDesc.waitNum; i++)
     {
@@ -78,7 +78,7 @@ void CommandQueueVal::Submit(const WorkSubmissionDesc& workSubmissionDesc, Devic
 void CommandQueueVal::Wait(DeviceSemaphore& deviceSemaphore)
 {
     ((DeviceSemaphoreVal&)deviceSemaphore).Wait();
-    DeviceSemaphore* deviceSemaphoreImpl = NRI_GET_IMPL(DeviceSemaphore, &deviceSemaphore);
+    DeviceSemaphore* deviceSemaphoreImpl = NRI_GET_IMPL_REF(DeviceSemaphore, &deviceSemaphore);
 
     m_CoreAPI.WaitForSemaphore(m_ImplObject, *deviceSemaphoreImpl);
 }

@@ -56,7 +56,7 @@ Result CommandBufferVal::Begin(const DescriptorPool* descriptorPool, uint32_t ph
 
     DescriptorPool* descriptorPoolImpl = nullptr;
     if (descriptorPool)
-        descriptorPoolImpl = NRI_GET_IMPL(DescriptorPool, descriptorPool);
+        descriptorPoolImpl = NRI_GET_IMPL_PTR(DescriptorPool, descriptorPool);
 
     Result result = m_CoreAPI.BeginCommandBuffer(m_ImplObject, descriptorPoolImpl, physicalDeviceIndex);
     if (result == Result::SUCCESS)
@@ -163,7 +163,7 @@ void CommandBufferVal::ClearStorageBuffer(const ClearStorageBufferDesc& clearDes
         "Can't clear storage buffer: 'clearDesc.storageBuffer' is invalid.");
 
     auto clearDescImpl = clearDesc;
-    clearDescImpl.storageBuffer = NRI_GET_IMPL(Descriptor, clearDesc.storageBuffer);
+    clearDescImpl.storageBuffer = NRI_GET_IMPL_PTR(Descriptor, clearDesc.storageBuffer);
 
     m_CoreAPI.CmdClearStorageBuffer(m_ImplObject, clearDescImpl);
 }
@@ -180,7 +180,7 @@ void CommandBufferVal::ClearStorageTexture(const ClearStorageTextureDesc& clearD
         "Can't clear storage texture: 'clearDesc.storageTexture' is invalid.");
 
     auto clearDescImpl = clearDesc;
-    clearDescImpl.storageTexture = NRI_GET_IMPL(Descriptor, clearDesc.storageTexture);
+    clearDescImpl.storageTexture = NRI_GET_IMPL_PTR(Descriptor, clearDesc.storageTexture);
 
     m_CoreAPI.CmdClearStorageTexture(m_ImplObject, clearDescImpl);
 }
@@ -198,7 +198,7 @@ void CommandBufferVal::BeginRenderPass(const FrameBuffer& frameBuffer, RenderPas
 
     m_FrameBuffer = &frameBuffer;
 
-    FrameBuffer* frameBufferImpl = NRI_GET_IMPL(FrameBuffer, &frameBuffer);
+    FrameBuffer* frameBufferImpl = NRI_GET_IMPL_REF(FrameBuffer, &frameBuffer);
 
     m_CoreAPI.CmdBeginRenderPass(m_ImplObject, *frameBufferImpl, renderPassBeginFlag);
 }
@@ -223,7 +223,7 @@ void CommandBufferVal::SetVertexBuffers(uint32_t baseSlot, uint32_t bufferNum, c
 
     Buffer** buffersImpl = STACK_ALLOC(Buffer*, bufferNum);
     for (uint32_t i = 0; i < bufferNum; i++)
-        buffersImpl[i] = NRI_GET_IMPL(Buffer, buffers[i]);
+        buffersImpl[i] = NRI_GET_IMPL_PTR(Buffer, buffers[i]);
 
     m_CoreAPI.CmdSetVertexBuffers(m_ImplObject, baseSlot, bufferNum, buffersImpl, offsets);
 }
@@ -233,7 +233,7 @@ void CommandBufferVal::SetIndexBuffer(const Buffer& buffer, uint64_t offset, Ind
     RETURN_ON_FAILURE(m_Device.GetLog(), m_IsRecordingStarted, ReturnVoid(),
         "Can't set index buffers: the command buffer must be in the recording state.");
 
-    Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);
+    Buffer* bufferImpl = NRI_GET_IMPL_REF(Buffer, &buffer);
 
     m_CoreAPI.CmdSetIndexBuffer(m_ImplObject, *bufferImpl, offset, indexType);
 }
@@ -243,7 +243,7 @@ void CommandBufferVal::SetPipelineLayout(const PipelineLayout& pipelineLayout)
     RETURN_ON_FAILURE(m_Device.GetLog(), m_IsRecordingStarted, ReturnVoid(),
         "Can't set pipeline layout: the command buffer must be in the recording state.");
 
-    PipelineLayout* pipelineLayoutImpl = NRI_GET_IMPL(PipelineLayout, &pipelineLayout);
+    PipelineLayout* pipelineLayoutImpl = NRI_GET_IMPL_REF(PipelineLayout, &pipelineLayout);
 
     m_CoreAPI.CmdSetPipelineLayout(m_ImplObject, *pipelineLayoutImpl);
 }
@@ -253,7 +253,7 @@ void CommandBufferVal::SetPipeline(const Pipeline& pipeline)
     RETURN_ON_FAILURE(m_Device.GetLog(), m_IsRecordingStarted, ReturnVoid(),
         "Can't set pipeline: the command buffer must be in the recording state.");
 
-    Pipeline* pipelineImpl = NRI_GET_IMPL(Pipeline, &pipeline);
+    Pipeline* pipelineImpl = NRI_GET_IMPL_REF(Pipeline, &pipeline);
 
     m_CoreAPI.CmdSetPipeline(m_ImplObject, *pipelineImpl);
 }
@@ -263,7 +263,7 @@ void CommandBufferVal::SetDescriptorPool(const DescriptorPool& descriptorPool)
     RETURN_ON_FAILURE(m_Device.GetLog(), m_IsRecordingStarted, ReturnVoid(),
         "Can't set descriptor pool: the command buffer must be in the recording state.");
 
-    DescriptorPool* descriptorPoolImpl = NRI_GET_IMPL(DescriptorPool, &descriptorPool);
+    DescriptorPool* descriptorPoolImpl = NRI_GET_IMPL_REF(DescriptorPool, &descriptorPool);
 
     m_CoreAPI.CmdSetDescriptorPool(m_ImplObject, *descriptorPoolImpl);
 }
@@ -275,7 +275,7 @@ void CommandBufferVal::SetDescriptorSets(uint32_t baseIndex, uint32_t descriptor
 
     DescriptorSet** descriptorSetsImpl = STACK_ALLOC(DescriptorSet*, descriptorSetNum);
     for (uint32_t i = 0; i < descriptorSetNum; i++)
-        descriptorSetsImpl[i] = NRI_GET_IMPL(DescriptorSet, descriptorSets[i]);
+        descriptorSetsImpl[i] = NRI_GET_IMPL_PTR(DescriptorSet, descriptorSets[i]);
 
     m_CoreAPI.CmdSetDescriptorSets(m_ImplObject, baseIndex, descriptorSetNum, descriptorSetsImpl, dynamicConstantBufferOffsets);
 }
@@ -318,7 +318,7 @@ void CommandBufferVal::DrawIndirect(const Buffer& buffer, uint64_t offset, uint3
     RETURN_ON_FAILURE(m_Device.GetLog(), m_FrameBuffer != nullptr, ReturnVoid(),
         "Can't record draw call: this operation is allowed only inside render pass.");
 
-    Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);
+    Buffer* bufferImpl = NRI_GET_IMPL_REF(Buffer, &buffer);
 
     m_CoreAPI.CmdDrawIndirect(m_ImplObject, *bufferImpl, offset, drawNum, stride);
 }
@@ -331,7 +331,7 @@ void CommandBufferVal::DrawIndexedIndirect(const Buffer& buffer, uint64_t offset
     RETURN_ON_FAILURE(m_Device.GetLog(), m_FrameBuffer != nullptr, ReturnVoid(),
         "Can't record draw call: this operation is allowed only inside render pass.");
 
-    Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);
+    Buffer* bufferImpl = NRI_GET_IMPL_REF(Buffer, &buffer);
 
     m_CoreAPI.CmdDrawIndexedIndirect(m_ImplObject, *bufferImpl, offset, drawNum, stride);
 }
@@ -358,8 +358,8 @@ void CommandBufferVal::CopyBuffer(Buffer& dstBuffer, uint32_t dstPhysicalDeviceI
         }
     }
 
-    Buffer* dstBufferImpl = NRI_GET_IMPL(Buffer, &dstBuffer);
-    Buffer* srcBufferImpl = NRI_GET_IMPL(Buffer, &srcBuffer);
+    Buffer* dstBufferImpl = NRI_GET_IMPL_REF(Buffer, &dstBuffer);
+    Buffer* srcBufferImpl = NRI_GET_IMPL_REF(Buffer, &srcBuffer);
 
     m_CoreAPI.CmdCopyBuffer(m_ImplObject, *dstBufferImpl, dstPhysicalDeviceIndex, dstOffset, *srcBufferImpl, srcPhysicalDeviceIndex,
         srcOffset, size);
@@ -377,8 +377,8 @@ void CommandBufferVal::CopyTexture(Texture& dstTexture, uint32_t dstPhysicalDevi
     RETURN_ON_FAILURE(m_Device.GetLog(), (dstRegionDesc == nullptr && srcRegionDesc == nullptr) || (dstRegionDesc != nullptr && srcRegionDesc != nullptr), ReturnVoid(),
         "Can't copy texture: 'dstRegionDesc' and 'srcRegionDesc' must be valid pointers or be both NULL.");
 
-    Texture* dstTextureImpl = NRI_GET_IMPL(Texture, &dstTexture);
-    Texture* srcTextureImpl = NRI_GET_IMPL(Texture, &srcTexture);
+    Texture* dstTextureImpl = NRI_GET_IMPL_REF(Texture, &dstTexture);
+    Texture* srcTextureImpl = NRI_GET_IMPL_REF(Texture, &srcTexture);
 
     m_CoreAPI.CmdCopyTexture(m_ImplObject, *dstTextureImpl, dstPhysicalDeviceIndex, dstRegionDesc, *srcTextureImpl, srcPhysicalDeviceIndex,
         srcRegionDesc);
@@ -393,8 +393,8 @@ void CommandBufferVal::UploadBufferToTexture(Texture& dstTexture, const TextureR
     RETURN_ON_FAILURE(m_Device.GetLog(), m_FrameBuffer == nullptr, ReturnVoid(),
         "Can't upload buffer to texture: this operation is allowed only outside render pass.");
 
-    Texture* dstTextureImpl = NRI_GET_IMPL(Texture, &dstTexture);
-    Buffer* srcBufferImpl = NRI_GET_IMPL(Buffer, &srcBuffer);
+    Texture* dstTextureImpl = NRI_GET_IMPL_REF(Texture, &dstTexture);
+    Buffer* srcBufferImpl = NRI_GET_IMPL_REF(Buffer, &srcBuffer);
 
     m_CoreAPI.CmdUploadBufferToTexture(m_ImplObject, *dstTextureImpl, dstRegionDesc, *srcBufferImpl, srcDataLayoutDesc);
 }
@@ -408,8 +408,8 @@ void CommandBufferVal::ReadbackTextureToBuffer(Buffer& dstBuffer, TextureDataLay
     RETURN_ON_FAILURE(m_Device.GetLog(), m_FrameBuffer == nullptr, ReturnVoid(),
         "Can't readback texture to buffer: this operation is allowed only outside render pass.");
 
-    Buffer* dstBufferImpl = NRI_GET_IMPL(Buffer, &dstBuffer);
-    Texture* srcTextureImpl = NRI_GET_IMPL(Texture, &srcTexture);
+    Buffer* dstBufferImpl = NRI_GET_IMPL_REF(Buffer, &dstBuffer);
+    Texture* srcTextureImpl = NRI_GET_IMPL_REF(Texture, &srcTexture);
 
     m_CoreAPI.CmdReadbackTextureToBuffer(m_ImplObject, *dstBufferImpl, dstDataLayoutDesc, *srcTextureImpl, srcRegionDesc);
 }
@@ -433,7 +433,7 @@ void CommandBufferVal::DispatchIndirect(const Buffer& buffer, uint64_t offset)
     RETURN_ON_FAILURE(m_Device.GetLog(), m_FrameBuffer == nullptr, ReturnVoid(),
         "Can't record dispatch call: this operation is allowed only outside render pass.");
 
-    Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);
+    Buffer* bufferImpl = NRI_GET_IMPL_REF(Buffer, &buffer);
 
     m_CoreAPI.CmdDispatchIndirect(m_ImplObject, *bufferImpl, offset);
 }
@@ -466,12 +466,12 @@ void CommandBufferVal::PipelineBarrier(const TransitionBarrierDesc* transitionBa
         transitionBarrierImpl.buffers = STACK_ALLOC(BufferTransitionBarrierDesc, transitionBarriers->bufferNum);
         memcpy((void*)transitionBarrierImpl.buffers, transitionBarriers->buffers, sizeof(BufferTransitionBarrierDesc) * transitionBarriers->bufferNum);
         for (uint32_t i = 0; i < transitionBarrierImpl.bufferNum; i++)
-            ((BufferTransitionBarrierDesc*)transitionBarrierImpl.buffers)[i].buffer = NRI_GET_IMPL(Buffer, transitionBarriers->buffers[i].buffer);
+            ((BufferTransitionBarrierDesc*)transitionBarrierImpl.buffers)[i].buffer = NRI_GET_IMPL_PTR(Buffer, transitionBarriers->buffers[i].buffer);
 
         transitionBarrierImpl.textures = STACK_ALLOC(TextureTransitionBarrierDesc, transitionBarriers->textureNum);
         memcpy((void*)transitionBarrierImpl.textures, transitionBarriers->textures, sizeof(TextureTransitionBarrierDesc) * transitionBarriers->textureNum);
         for (uint32_t i = 0; i < transitionBarrierImpl.textureNum; i++)
-            ((TextureTransitionBarrierDesc*)transitionBarrierImpl.textures)[i].texture = NRI_GET_IMPL(Texture, transitionBarriers->textures[i].texture);
+            ((TextureTransitionBarrierDesc*)transitionBarrierImpl.textures)[i].texture = NRI_GET_IMPL_PTR(Texture, transitionBarriers->textures[i].texture);
 
         transitionBarriers = &transitionBarrierImpl;
     }
@@ -485,16 +485,16 @@ void CommandBufferVal::PipelineBarrier(const TransitionBarrierDesc* transitionBa
         memcpy((void*)aliasingBarriersImpl.buffers, aliasingBarriers->buffers, sizeof(BufferAliasingBarrierDesc) * aliasingBarriers->bufferNum);
         for (uint32_t i = 0; i < aliasingBarriersImpl.bufferNum; i++)
         {
-            ((BufferAliasingBarrierDesc*)aliasingBarriersImpl.buffers)[i].before = NRI_GET_IMPL(Buffer, aliasingBarriers->buffers[i].before);
-            ((BufferAliasingBarrierDesc*)aliasingBarriersImpl.buffers)[i].after = NRI_GET_IMPL(Buffer, aliasingBarriers->buffers[i].after);
+            ((BufferAliasingBarrierDesc*)aliasingBarriersImpl.buffers)[i].before = NRI_GET_IMPL_PTR(Buffer, aliasingBarriers->buffers[i].before);
+            ((BufferAliasingBarrierDesc*)aliasingBarriersImpl.buffers)[i].after = NRI_GET_IMPL_PTR(Buffer, aliasingBarriers->buffers[i].after);
         }
 
         aliasingBarriersImpl.textures = STACK_ALLOC(TextureAliasingBarrierDesc, aliasingBarriers->textureNum);
         memcpy((void*)aliasingBarriersImpl.textures, aliasingBarriers->textures, sizeof(TextureAliasingBarrierDesc) * aliasingBarriers->textureNum);
         for (uint32_t i = 0; i < aliasingBarriersImpl.textureNum; i++)
         {
-            ((TextureAliasingBarrierDesc*)aliasingBarriersImpl.textures)[i].before = NRI_GET_IMPL(Texture, aliasingBarriers->textures[i].before);
-            ((TextureAliasingBarrierDesc*)aliasingBarriersImpl.textures)[i].after = NRI_GET_IMPL(Texture, aliasingBarriers->textures[i].after);
+            ((TextureAliasingBarrierDesc*)aliasingBarriersImpl.textures)[i].before = NRI_GET_IMPL_PTR(Texture, aliasingBarriers->textures[i].before);
+            ((TextureAliasingBarrierDesc*)aliasingBarriersImpl.textures)[i].after = NRI_GET_IMPL_PTR(Texture, aliasingBarriers->textures[i].after);
         }
 
         aliasingBarriers = &aliasingBarriersImpl;
@@ -524,7 +524,7 @@ void CommandBufferVal::BeginQuery(const QueryPool& queryPool, uint32_t offset)
         validationCommand.queryPoolOffset = offset;
     }
 
-    QueryPool* queryPoolImpl = NRI_GET_IMPL(QueryPool, &queryPool);
+    QueryPool* queryPoolImpl = NRI_GET_IMPL_REF(QueryPool, &queryPool);
 
     m_CoreAPI.CmdBeginQuery(m_ImplObject, *queryPoolImpl, offset);
 }
@@ -547,7 +547,7 @@ void CommandBufferVal::EndQuery(const QueryPool& queryPool, uint32_t offset)
         validationCommand.queryPoolOffset = offset;
     }
 
-    QueryPool* queryPoolImpl = NRI_GET_IMPL(QueryPool, &queryPool);
+    QueryPool* queryPoolImpl = NRI_GET_IMPL_REF(QueryPool, &queryPool);
 
     m_CoreAPI.CmdEndQuery(m_ImplObject, *queryPoolImpl, offset);
 }
@@ -568,8 +568,8 @@ void CommandBufferVal::CopyQueries(const QueryPool& queryPool, uint32_t offset, 
             "Can't copy queries: offset + num ('%u') is out of range.", offset + num);
     }
 
-    QueryPool* queryPoolImpl = NRI_GET_IMPL(QueryPool, &queryPool);
-    Buffer* dstBufferImpl = NRI_GET_IMPL(Buffer, &dstBuffer);
+    QueryPool* queryPoolImpl = NRI_GET_IMPL_REF(QueryPool, &queryPool);
+    Buffer* dstBufferImpl = NRI_GET_IMPL_REF(Buffer, &dstBuffer);
 
     m_CoreAPI.CmdCopyQueries(m_ImplObject, *queryPoolImpl, offset, num, *dstBufferImpl, dstOffset);
 }
@@ -596,7 +596,7 @@ void CommandBufferVal::ResetQueries(const QueryPool& queryPool, uint32_t offset,
         validationCommand.queryNum = num;
     }
 
-    QueryPool* queryPoolImpl = NRI_GET_IMPL(QueryPool, &queryPool);
+    QueryPool* queryPoolImpl = NRI_GET_IMPL_REF(QueryPool, &queryPool);
 
     m_CoreAPI.CmdResetQueries(m_ImplObject, *queryPoolImpl, offset, num);
 }
@@ -643,9 +643,9 @@ void CommandBufferVal::BuildTopLevelAccelerationStructure(uint32_t instanceNum, 
     RETURN_ON_FAILURE(m_Device.GetLog(), scratchOffset < scratchVal.GetDesc().size, ReturnVoid(),
         "Can't update TLAS: 'scratchOffset' is out of bounds.");
 
-    AccelerationStructure& dstImpl = *NRI_GET_IMPL(AccelerationStructure, &dst);
-    Buffer& scratchImpl = *NRI_GET_IMPL(Buffer, &scratch);
-    Buffer& bufferImpl = *NRI_GET_IMPL(Buffer, &buffer);
+    AccelerationStructure& dstImpl = *NRI_GET_IMPL_REF(AccelerationStructure, &dst);
+    Buffer& scratchImpl = *NRI_GET_IMPL_REF(Buffer, &scratch);
+    Buffer& bufferImpl = *NRI_GET_IMPL_REF(Buffer, &buffer);
 
     m_RayTracingAPI.CmdBuildTopLevelAccelerationStructure(m_ImplObject, instanceNum, bufferImpl, bufferOffset, flags, dstImpl, scratchImpl, scratchOffset);
 }
@@ -667,8 +667,8 @@ void CommandBufferVal::BuildBottomLevelAccelerationStructure(uint32_t geometryOb
     RETURN_ON_FAILURE(m_Device.GetLog(), scratchOffset < scratchVal.GetDesc().size, ReturnVoid(),
         "Can't build BLAS: 'scratchOffset' is out of bounds.");
 
-    AccelerationStructure& dstImpl = *NRI_GET_IMPL(AccelerationStructure, &dst);
-    Buffer& scratchImpl = *NRI_GET_IMPL(Buffer, &scratch);
+    AccelerationStructure& dstImpl = *NRI_GET_IMPL_REF(AccelerationStructure, &dst);
+    Buffer& scratchImpl = *NRI_GET_IMPL_REF(Buffer, &scratch);
 
     Vector<GeometryObject> objectImplArray(geometryObjectNum, m_Device.GetStdAllocator());
     ConvertGeometryObjectsVal(objectImplArray.data(), geometryObjects, geometryObjectNum);
@@ -694,10 +694,10 @@ void CommandBufferVal::UpdateTopLevelAccelerationStructure(uint32_t instanceNum,
     RETURN_ON_FAILURE(m_Device.GetLog(), scratchOffset < scratchVal.GetDesc().size, ReturnVoid(),
         "Can't update TLAS: 'scratchOffset' is out of bounds.");
 
-    AccelerationStructure& dstImpl = *NRI_GET_IMPL(AccelerationStructure, &dst);
-    AccelerationStructure& srcImpl = *NRI_GET_IMPL(AccelerationStructure, &src);
-    Buffer& scratchImpl = *NRI_GET_IMPL(Buffer, &scratch);
-    Buffer& bufferImpl = *NRI_GET_IMPL(Buffer, &buffer);
+    AccelerationStructure& dstImpl = *NRI_GET_IMPL_REF(AccelerationStructure, &dst);
+    AccelerationStructure& srcImpl = *NRI_GET_IMPL_REF(AccelerationStructure, &src);
+    Buffer& scratchImpl = *NRI_GET_IMPL_REF(Buffer, &scratch);
+    Buffer& bufferImpl = *NRI_GET_IMPL_REF(Buffer, &buffer);
 
     m_RayTracingAPI.CmdUpdateTopLevelAccelerationStructure(m_ImplObject, instanceNum, bufferImpl, bufferOffset, flags, dstImpl, srcImpl, scratchImpl, scratchOffset);
 }
@@ -719,9 +719,9 @@ void CommandBufferVal::UpdateBottomLevelAccelerationStructure(uint32_t geometryO
     RETURN_ON_FAILURE(m_Device.GetLog(), scratchOffset < scratchVal.GetDesc().size, ReturnVoid(),
         "Can't update BLAS: 'scratchOffset' is out of bounds.");
 
-    AccelerationStructure& dstImpl = *NRI_GET_IMPL(AccelerationStructure, &dst);
-    AccelerationStructure& srcImpl = *NRI_GET_IMPL(AccelerationStructure, &src);
-    Buffer& scratchImpl = *NRI_GET_IMPL(Buffer, &scratch);
+    AccelerationStructure& dstImpl = *NRI_GET_IMPL_REF(AccelerationStructure, &dst);
+    AccelerationStructure& srcImpl = *NRI_GET_IMPL_REF(AccelerationStructure, &src);
+    Buffer& scratchImpl = *NRI_GET_IMPL_REF(Buffer, &scratch);
 
     Vector<GeometryObject> objectImplArray(geometryObjectNum, m_Device.GetStdAllocator());
     ConvertGeometryObjectsVal(objectImplArray.data(), geometryObjects, geometryObjectNum);
@@ -740,8 +740,8 @@ void CommandBufferVal::CopyAccelerationStructure(AccelerationStructure& dst, Acc
     RETURN_ON_FAILURE(m_Device.GetLog(), copyMode < CopyMode::MAX_NUM, ReturnVoid(),
         "Can't copy AS: 'copyMode' is invalid.");
 
-    AccelerationStructure& dstImpl = *NRI_GET_IMPL(AccelerationStructure, &dst);
-    AccelerationStructure& srcImpl = *NRI_GET_IMPL(AccelerationStructure, &src);
+    AccelerationStructure& dstImpl = *NRI_GET_IMPL_REF(AccelerationStructure, &dst);
+    AccelerationStructure& srcImpl = *NRI_GET_IMPL_REF(AccelerationStructure, &src);
 
     m_RayTracingAPI.CmdCopyAccelerationStructure(m_ImplObject, dstImpl, srcImpl, copyMode);
 }
@@ -763,10 +763,10 @@ void CommandBufferVal::WriteAccelerationStructureSize(const AccelerationStructur
         RETURN_ON_FAILURE(m_Device.GetLog(), accelerationStructures[i] != nullptr, ReturnVoid(),
             "Can't write AS size: 'accelerationStructures[%u]' is invalid.", i);
 
-        accelerationStructureArray[i] = NRI_GET_IMPL(AccelerationStructure, accelerationStructures[i]);
+        accelerationStructureArray[i] = NRI_GET_IMPL_PTR(AccelerationStructure, accelerationStructures[i]);
     }
 
-    QueryPool& queryPoolImpl = *NRI_GET_IMPL(QueryPool, &queryPool);
+    QueryPool& queryPoolImpl = *NRI_GET_IMPL_REF(QueryPool, &queryPool);
 
     m_RayTracingAPI.CmdWriteAccelerationStructureSize(m_ImplObject, accelerationStructures, accelerationStructureNum, queryPoolImpl, queryOffset);
 }
@@ -800,10 +800,10 @@ void CommandBufferVal::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc)
         "Can't record ray tracing dispatch: 'dispatchRaysDesc.callableShaders.offset' is misaligned.");
 
     auto dispatchRaysDescImpl = dispatchRaysDesc;
-    dispatchRaysDescImpl.raygenShader.buffer = NRI_GET_IMPL(Buffer, dispatchRaysDesc.raygenShader.buffer);
-    dispatchRaysDescImpl.missShaders.buffer = NRI_GET_IMPL(Buffer, dispatchRaysDesc.missShaders.buffer);
-    dispatchRaysDescImpl.hitShaderGroups.buffer = NRI_GET_IMPL(Buffer, dispatchRaysDesc.hitShaderGroups.buffer);
-    dispatchRaysDescImpl.callableShaders.buffer = NRI_GET_IMPL(Buffer, dispatchRaysDesc.callableShaders.buffer);
+    dispatchRaysDescImpl.raygenShader.buffer = NRI_GET_IMPL_PTR(Buffer, dispatchRaysDesc.raygenShader.buffer);
+    dispatchRaysDescImpl.missShaders.buffer = NRI_GET_IMPL_PTR(Buffer, dispatchRaysDesc.missShaders.buffer);
+    dispatchRaysDescImpl.hitShaderGroups.buffer = NRI_GET_IMPL_PTR(Buffer, dispatchRaysDesc.hitShaderGroups.buffer);
+    dispatchRaysDescImpl.callableShaders.buffer = NRI_GET_IMPL_PTR(Buffer, dispatchRaysDesc.callableShaders.buffer);
 
     m_RayTracingAPI.CmdDispatchRays(m_ImplObject, dispatchRaysDescImpl);
 }

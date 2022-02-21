@@ -65,7 +65,7 @@ inline Texture* const* SwapChainVal::GetTextures(uint32_t& textureNum, Format& f
 inline uint32_t SwapChainVal::AcquireNextTexture(QueueSemaphore& textureReadyForRender)
 {
     ((QueueSemaphoreVal*)&textureReadyForRender)->Signal();
-    QueueSemaphore* queueSemaphoreImpl = NRI_GET_IMPL(QueueSemaphore, &textureReadyForRender);
+    QueueSemaphore* queueSemaphoreImpl = NRI_GET_IMPL_REF(QueueSemaphore, &textureReadyForRender);
 
     return m_SwapChainAPI.AcquireNextSwapChainTexture(m_ImplObject, *queueSemaphoreImpl);
 }
@@ -73,7 +73,7 @@ inline uint32_t SwapChainVal::AcquireNextTexture(QueueSemaphore& textureReadyFor
 inline Result SwapChainVal::Present(QueueSemaphore& textureReadyForPresent)
 {
     ((QueueSemaphoreVal*)&textureReadyForPresent)->Wait();
-    QueueSemaphore* queueSemaphoreImpl = NRI_GET_IMPL(QueueSemaphore, &textureReadyForPresent);
+    QueueSemaphore* queueSemaphoreImpl = NRI_GET_IMPL_REF(QueueSemaphore, &textureReadyForPresent);
 
     return m_SwapChainAPI.SwapChainPresent(m_ImplObject, *queueSemaphoreImpl);
 }

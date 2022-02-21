@@ -126,7 +126,7 @@ Result DeviceVal::CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*
         "Can't create SwapChain: 'swapChainDesc.physicalDeviceIndex' is invalid.");
 
     auto swapChainDescImpl = swapChainDesc;
-    swapChainDescImpl.commandQueue = NRI_GET_IMPL(CommandQueue, swapChainDesc.commandQueue);
+    swapChainDescImpl.commandQueue = NRI_GET_IMPL_PTR(CommandQueue, swapChainDesc.commandQueue);
 
     SwapChain* swapChainImpl;
     const Result result = m_SwapChainAPI.CreateSwapChain(m_Device, swapChainDescImpl, swapChainImpl);
@@ -142,7 +142,7 @@ Result DeviceVal::CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*
 
 void DeviceVal::DestroySwapChain(SwapChain& swapChain)
 {
-    m_SwapChainAPI.DestroySwapChain(*NRI_GET_IMPL(SwapChain, &swapChain));
+    m_SwapChainAPI.DestroySwapChain(*NRI_GET_IMPL_REF(SwapChain, &swapChain));
     Deallocate(GetStdAllocator(), (SwapChainVal*)&swapChain);
 }
 
@@ -195,7 +195,7 @@ Result DeviceVal::CreateCommandAllocator(const CommandQueue& commandQueue, uint3
     RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(physicalDeviceMask), Result::INVALID_ARGUMENT,
         "Can't create CommandAllocator: 'physicalDeviceMask' is invalid.");
 
-    auto commandQueueImpl = NRI_GET_IMPL(CommandQueue, &commandQueue);
+    auto commandQueueImpl = NRI_GET_IMPL_REF(CommandQueue, &commandQueue);
 
     CommandAllocator* commandAllocatorImpl = nullptr;
     const Result result = m_CoreAPI.CreateCommandAllocator(*commandQueueImpl, physicalDeviceMask, commandAllocatorImpl);
@@ -294,7 +294,7 @@ Result DeviceVal::CreateDescriptor(const BufferViewDesc& bufferViewDesc, Descrip
         bufferViewDesc.offset, bufferViewDesc.size, bufferDesc.size);
 
     auto bufferViewDescImpl = bufferViewDesc;
-    bufferViewDescImpl.buffer = NRI_GET_IMPL(Buffer, bufferViewDesc.buffer);
+    bufferViewDescImpl.buffer = NRI_GET_IMPL_PTR(Buffer, bufferViewDesc.buffer);
 
     Descriptor* descriptorImpl = nullptr;
     const Result result = m_CoreAPI.CreateBufferView(bufferViewDescImpl, descriptorImpl);
@@ -344,7 +344,7 @@ Result DeviceVal::CreateDescriptor(const Texture1DViewDesc& textureViewDesc, Des
         textureViewDesc.arrayOffset, textureViewDesc.arraySize, textureDesc.arraySize);
 
     auto textureViewDescImpl = textureViewDesc;
-    textureViewDescImpl.texture = NRI_GET_IMPL(Texture, textureViewDesc.texture);
+    textureViewDescImpl.texture = NRI_GET_IMPL_PTR(Texture, textureViewDesc.texture);
 
     Descriptor* descriptorImpl = nullptr;
     const Result result = m_CoreAPI.CreateTexture1DView(textureViewDescImpl, descriptorImpl);
@@ -395,7 +395,7 @@ Result DeviceVal::CreateDescriptor(const Texture2DViewDesc& textureViewDesc, Des
         textureViewDesc.arrayOffset, textureViewDesc.arraySize, textureDesc.arraySize);
 
     auto textureViewDescImpl = textureViewDesc;
-    textureViewDescImpl.texture = NRI_GET_IMPL(Texture, textureViewDesc.texture);
+    textureViewDescImpl.texture = NRI_GET_IMPL_PTR(Texture, textureViewDesc.texture);
 
     Descriptor* descriptorImpl = nullptr;
     const Result result = m_CoreAPI.CreateTexture2DView(textureViewDescImpl, descriptorImpl);
@@ -446,7 +446,7 @@ Result DeviceVal::CreateDescriptor(const Texture3DViewDesc& textureViewDesc, Des
         textureViewDesc.sliceOffset, textureViewDesc.sliceNum, textureDesc.size[2]);
 
     auto textureViewDescImpl = textureViewDesc;
-    textureViewDescImpl.texture = NRI_GET_IMPL(Texture, textureViewDesc.texture);
+    textureViewDescImpl.texture = NRI_GET_IMPL_PTR(Texture, textureViewDesc.texture);
 
     Descriptor* descriptorImpl = nullptr;
     const Result result = m_CoreAPI.CreateTexture3DView(textureViewDescImpl, descriptorImpl);
@@ -610,7 +610,7 @@ Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphicsPipelineDes
     }
 
     auto graphicsPipelineDescImpl = graphicsPipelineDesc;
-    graphicsPipelineDescImpl.pipelineLayout = NRI_GET_IMPL(PipelineLayout, graphicsPipelineDesc.pipelineLayout);
+    graphicsPipelineDescImpl.pipelineLayout = NRI_GET_IMPL_PTR(PipelineLayout, graphicsPipelineDesc.pipelineLayout);
 
     Pipeline* pipelineImpl = nullptr;
     const Result result = m_CoreAPI.CreateGraphicsPipeline(m_Device, graphicsPipelineDescImpl, pipelineImpl);
@@ -639,7 +639,7 @@ Result DeviceVal::CreatePipeline(const ComputePipelineDesc& computePipelineDesc,
         "Can't create Pipeline: 'computePipelineDesc.computeShader.stage' must be ShaderStage::COMPUTE.");
 
     auto computePipelineDescImpl = computePipelineDesc;
-    computePipelineDescImpl.pipelineLayout = NRI_GET_IMPL(PipelineLayout, computePipelineDesc.pipelineLayout);
+    computePipelineDescImpl.pipelineLayout = NRI_GET_IMPL_PTR(PipelineLayout, computePipelineDesc.pipelineLayout);
 
     Pipeline* pipelineImpl = nullptr;
     const Result result = m_CoreAPI.CreateComputePipeline(m_Device, computePipelineDescImpl, pipelineImpl);
@@ -681,12 +681,12 @@ Result DeviceVal::CreateFrameBuffer(const FrameBufferDesc& frameBufferDesc, Fram
 
     auto frameBufferDescImpl = frameBufferDesc;
     if (frameBufferDesc.depthStencilAttachment)
-        frameBufferDescImpl.depthStencilAttachment = NRI_GET_IMPL(Descriptor, frameBufferDesc.depthStencilAttachment);
+        frameBufferDescImpl.depthStencilAttachment = NRI_GET_IMPL_PTR(Descriptor, frameBufferDesc.depthStencilAttachment);
     if (frameBufferDesc.colorAttachmentNum)
     {
         frameBufferDescImpl.colorAttachments = STACK_ALLOC(Descriptor*, frameBufferDesc.colorAttachmentNum);
         for (uint32_t i = 0; i < frameBufferDesc.colorAttachmentNum; i++)
-            ((Descriptor**)frameBufferDescImpl.colorAttachments)[i] = NRI_GET_IMPL(Descriptor, frameBufferDesc.colorAttachments[i]);
+            ((Descriptor**)frameBufferDescImpl.colorAttachments)[i] = NRI_GET_IMPL_PTR(Descriptor, frameBufferDesc.colorAttachments[i]);
     }
 
     FrameBuffer* frameBufferImpl = nullptr;
@@ -757,67 +757,67 @@ Result DeviceVal::CreateDeviceSemaphore(bool signaled, DeviceSemaphore*& deviceS
 
 void DeviceVal::DestroyCommandAllocator(CommandAllocator& commandAllocator)
 {
-    m_CoreAPI.DestroyCommandAllocator(*NRI_GET_IMPL(CommandAllocator, &commandAllocator));
+    m_CoreAPI.DestroyCommandAllocator(*NRI_GET_IMPL_REF(CommandAllocator, &commandAllocator));
     Deallocate(GetStdAllocator(), (CommandAllocatorVal*)&commandAllocator);
 }
 
 void DeviceVal::DestroyDescriptorPool(DescriptorPool& descriptorPool)
 {
-    m_CoreAPI.DestroyDescriptorPool(*NRI_GET_IMPL(DescriptorPool, &descriptorPool));
+    m_CoreAPI.DestroyDescriptorPool(*NRI_GET_IMPL_REF(DescriptorPool, &descriptorPool));
     Deallocate(GetStdAllocator(), (DescriptorPoolVal*)&descriptorPool);
 }
 
 void DeviceVal::DestroyBuffer(Buffer& buffer)
 {
-    m_CoreAPI.DestroyBuffer(*NRI_GET_IMPL(Buffer, &buffer));
+    m_CoreAPI.DestroyBuffer(*NRI_GET_IMPL_REF(Buffer, &buffer));
     Deallocate(GetStdAllocator(), (BufferVal*)&buffer);
 }
 
 void DeviceVal::DestroyTexture(Texture& texture)
 {
-    m_CoreAPI.DestroyTexture(*NRI_GET_IMPL(Texture, &texture));
+    m_CoreAPI.DestroyTexture(*NRI_GET_IMPL_REF(Texture, &texture));
     Deallocate(GetStdAllocator(), (TextureVal*)&texture);
 }
 
 void DeviceVal::DestroyDescriptor(Descriptor& descriptor)
 {
-    m_CoreAPI.DestroyDescriptor(*NRI_GET_IMPL(Descriptor, &descriptor));
+    m_CoreAPI.DestroyDescriptor(*NRI_GET_IMPL_REF(Descriptor, &descriptor));
     Deallocate(GetStdAllocator(), (DescriptorVal*)&descriptor);
 }
 
 void DeviceVal::DestroyPipelineLayout(PipelineLayout& pipelineLayout)
 {
-    m_CoreAPI.DestroyPipelineLayout(*NRI_GET_IMPL(PipelineLayout, &pipelineLayout));
+    m_CoreAPI.DestroyPipelineLayout(*NRI_GET_IMPL_REF(PipelineLayout, &pipelineLayout));
     Deallocate(GetStdAllocator(), (PipelineLayoutVal*)&pipelineLayout);
 }
 
 void DeviceVal::DestroyPipeline(Pipeline& pipeline)
 {
-    m_CoreAPI.DestroyPipeline(*NRI_GET_IMPL(Pipeline, &pipeline));
+    m_CoreAPI.DestroyPipeline(*NRI_GET_IMPL_REF(Pipeline, &pipeline));
     Deallocate(GetStdAllocator(), (PipelineVal*)&pipeline);
 }
 
 void DeviceVal::DestroyFrameBuffer(FrameBuffer& frameBuffer)
 {
-    m_CoreAPI.DestroyFrameBuffer(*NRI_GET_IMPL(FrameBuffer, &frameBuffer));
+    m_CoreAPI.DestroyFrameBuffer(*NRI_GET_IMPL_REF(FrameBuffer, &frameBuffer));
     Deallocate(GetStdAllocator(), (FrameBufferVal*)&frameBuffer);
 }
 
 void DeviceVal::DestroyQueryPool(QueryPool& queryPool)
 {
-    m_CoreAPI.DestroyQueryPool(*NRI_GET_IMPL(QueryPool, &queryPool));
+    m_CoreAPI.DestroyQueryPool(*NRI_GET_IMPL_REF(QueryPool, &queryPool));
     Deallocate(GetStdAllocator(), (QueryPoolVal*)&queryPool);
 }
 
 void DeviceVal::DestroyQueueSemaphore(QueueSemaphore& queueSemaphore)
 {
-    m_CoreAPI.DestroyQueueSemaphore(*NRI_GET_IMPL(QueueSemaphore, &queueSemaphore));
+    m_CoreAPI.DestroyQueueSemaphore(*NRI_GET_IMPL_REF(QueueSemaphore, &queueSemaphore));
     Deallocate(GetStdAllocator(), (QueueSemaphoreVal*)&queueSemaphore);
 }
 
 void DeviceVal::DestroyDeviceSemaphore(DeviceSemaphore& deviceSemaphore)
 {
-    m_CoreAPI.DestroyDeviceSemaphore(*NRI_GET_IMPL(DeviceSemaphore, &deviceSemaphore));
+    m_CoreAPI.DestroyDeviceSemaphore(*NRI_GET_IMPL_REF(DeviceSemaphore, &deviceSemaphore));
     Deallocate(GetStdAllocator(), (DeviceSemaphoreVal*)&deviceSemaphore);
 }
 
@@ -994,7 +994,7 @@ void DeviceVal::FreeMemory(Memory& memory)
         return;
     }
 
-    m_CoreAPI.FreeMemory(*NRI_GET_IMPL(Memory, &memory));
+    m_CoreAPI.FreeMemory(*NRI_GET_IMPL_REF(Memory, &memory));
     Deallocate(GetStdAllocator(), (MemoryVal*)&memory);
 }
 
@@ -1584,7 +1584,7 @@ Result DeviceVal::CreateRayTracingPipeline(const RayTracingPipelineDesc& pipelin
     }
 
     auto pipelineDescImpl = pipelineDesc;
-    pipelineDescImpl.pipelineLayout = NRI_GET_IMPL(PipelineLayout, pipelineDesc.pipelineLayout);
+    pipelineDescImpl.pipelineLayout = NRI_GET_IMPL_PTR(PipelineLayout, pipelineDesc.pipelineLayout);
 
     Pipeline* pipelineImpl = nullptr;
     const Result result = m_RayTracingAPI.CreateRayTracingPipeline(m_Device, pipelineDescImpl, pipelineImpl);

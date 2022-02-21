@@ -102,9 +102,10 @@ uint32_t QueryPoolVK::GetQuerySize() const
         return sizeof(uint64_t);
     case VK_QUERY_TYPE_PIPELINE_STATISTICS:
         return highestBitInPipelineStatsBits * sizeof(uint64_t);
+    default:
+        CHECK(m_Device.GetLog(), false, "unexpected query type in GetQuerySize: %u", (uint32_t)m_Type);
+        return 0;
     }
-
-    return 0;
 }
 
 #include "QueryPoolVK.hpp"

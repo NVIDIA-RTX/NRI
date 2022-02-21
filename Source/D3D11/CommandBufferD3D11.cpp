@@ -433,9 +433,7 @@ void CommandBufferD3D11::PipelineBarrier(const TransitionBarrierDesc* transition
 {
     MaybeUnused(aliasingBarriers);
 
-    const AccessBits ANY_WRITE_MASK = AccessBits::COLOR_ATTACHMENT | AccessBits::DEPTH_STENCIL_WRITE | AccessBits::SHADER_RESOURCE_STORAGE;
     constexpr AccessBits STORAGE_MASK = AccessBits::SHADER_RESOURCE_STORAGE;
-    constexpr AccessBits RESOURCE_MASK = AccessBits::SHADER_RESOURCE;
     constexpr BarrierDependency NO_WFI = (BarrierDependency)999;
 
     if (!transitionBarriers || (transitionBarriers->textureNum == 0 && transitionBarriers->bufferNum == 0))
