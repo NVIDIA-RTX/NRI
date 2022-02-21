@@ -41,7 +41,7 @@ constexpr uint64_t Hash( const char* name )
     return *name != 0 ? *name ^ ( 33 * Hash(name + 1) ) : 5381;
 }
 
-Result NRI_CALL nri::GetInterface(const Device& device, const char* interfaceName, size_t interfaceSize, void* interfacePtr)
+NRI_API Result NRI_CALL nri::GetInterface(const Device& device, const char* interfaceName, size_t interfaceSize, void* interfacePtr)
 {
     const uint64_t hash = Hash(interfaceName);
     size_t realInterfaceSize = size_t(-1);
@@ -135,7 +135,7 @@ constexpr PhysicalDeviceType GetPhysicalDeviceType(VkPhysicalDeviceType physical
     if (name == nullptr) \
         return Result::UNSUPPORTED;
 
-Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroups, uint32_t& physicalDeviceGroupNum)
+NRI_API Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroups, uint32_t& physicalDeviceGroupNum)
 {
     Library* loader = LoadSharedLibrary(VULKAN_LOADER_NAME);
     if (loader == nullptr)

@@ -27,7 +27,11 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #endif
 
 #ifndef NRI_API
-    #define NRI_API extern "C"
+    #if NRI_STATIC_LIBRARY
+        #define NRI_API
+    #else
+        #define NRI_API extern "C"
+    #endif
 #endif
 
 #include "NRIDescs.h"
