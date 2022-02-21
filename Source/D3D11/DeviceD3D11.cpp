@@ -81,7 +81,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAd
         {
             HRESULT hr = D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags, levels.data(), (uint32_t)levels.size(), D3D11_SDK_VERSION, &device, nullptr, nullptr);
 
-            if (flags && hr == 0x887a002d)
+            if (flags && (uint32_t)hr == 0x887a002d)
                 hr = D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, &levels[0], (uint32_t)levels.size(), D3D11_SDK_VERSION, &device, nullptr, nullptr);
 
             RETURN_ON_BAD_HRESULT(GetLog(), hr, "D3D11CreateDevice() - FAILED!");
