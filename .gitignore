@@ -26,15 +26,6 @@ Makefile
 *.dxil.h
 *.spirv.h
 
-# library
-*.lib
-*.exp
-*.dll
-*.pdb
-*.so
-*.so.*
-*.a
-
 # ninja
 .ninja_deps
 .ninja_log
@@ -46,5 +37,8 @@ compile_commands.json
 External/NVAPI
 External/AGS
 
-# generated folder
+# generated folders
+_Data/
+_Build/
+_Compiler/
 _NRI_SDK/
