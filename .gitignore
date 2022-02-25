@@ -33,9 +33,19 @@ build.ninja
 compile_commands.json
 *.log
 
+# library
+*.lib
+*.exp
+*.dll
+*.ilk
+*.pdb
+*.so
+*.so.*
+*.manifest
+
 # external packages
-External/NVAPI
-External/AGS
+External/NVAPI/
+External/AGS/
 
 # generated folders
 _Data/
