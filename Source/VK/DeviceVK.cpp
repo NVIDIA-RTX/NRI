@@ -1634,6 +1634,7 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
     extensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
     extensions.push_back(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
     extensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+    extensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
     extensions.push_back(VK_NV_MESH_SHADER_EXTENSION_NAME);
     extensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
     extensions.push_back(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME);
@@ -1642,7 +1643,7 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
     extensions.push_back(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME);
     extensions.push_back(VK_EXT_HDR_METADATA_EXTENSION_NAME);
     extensions.push_back(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME);
-
+    
     FilterDeviceExtensions(extensions);
 
     EraseIncompatibleExtension(extensions, VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
@@ -1669,10 +1670,19 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
     VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures =
         { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };
 
+    VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures = 
+        { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR };
+
+    VkPhysicalDevice16BitStorageFeatures storageFeatures = 
+        { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES };
+
     VkPhysicalDeviceFloat16Int8FeaturesKHR float16Int8Features =
         { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES_KHR };
 
     deviceFeatures2.pNext = &bufferDeviceAddressFeatures;
+
+    storageFeatures.pNext = deviceFeatures2.pNext;
+    deviceFeatures2.pNext = &storageFeatures;
 
     if (m_IsDescriptorIndexingExtSupported)
     {
@@ -1698,6 +1708,8 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
         deviceFeatures2.pNext = &rayTracingFeatures;
         accelerationStructureFeatures.pNext = deviceFeatures2.pNext;
         deviceFeatures2.pNext = &accelerationStructureFeatures;
+        rayQueryFeatures.pNext = deviceFeatures2.pNext;
+        deviceFeatures2.pNext = &rayQueryFeatures;
     }
 
     if (m_IsFP16Supported)
