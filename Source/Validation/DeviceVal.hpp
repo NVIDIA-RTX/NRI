@@ -360,6 +360,8 @@ void FillFunctionTableCommandBufferVal(WrapperD3D11Interface& wrapperD3D11Interf
 
 Result DeviceVal::FillFunctionTable(WrapperD3D11Interface& wrapperD3D11Interface) const
 {
+    MaybeUnused(wrapperD3D11Interface);
+
 #if NRI_USE_D3D12
     wrapperD3D11Interface = {};
 
@@ -415,6 +417,8 @@ void FillFunctionTableCommandBufferVal(WrapperD3D12Interface& wrapperD3D12Interf
 
 Result DeviceVal::FillFunctionTable(WrapperD3D12Interface& wrapperD3D12Interface) const
 {
+    MaybeUnused(wrapperD3D12Interface);
+
 #if NRI_USE_D3D12
     wrapperD3D12Interface = {};
 

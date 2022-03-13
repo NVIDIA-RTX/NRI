@@ -392,6 +392,8 @@ NRI_API Format NRI_CALL nri::GetFormatVK(uint32_t vkFormat)
 
 NRI_API Format NRI_CALL nri::GetFormatDXGI(uint32_t dxgiFormat)
 {
+    MaybeUnused(dxgiFormat);
+
     #if (NRI_USE_D3D11 == 1 || NRI_USE_D3D12 == 1)
         return ::GetFormatDXGI(dxgiFormat);
     #else

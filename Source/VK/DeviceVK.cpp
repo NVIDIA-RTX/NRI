@@ -640,6 +640,8 @@ void DeviceVK::DestroyAccelerationStructure(AccelerationStructure& accelerationS
 
 Result DeviceVK::GetDisplays(Display** displays, uint32_t& displayNum)
 {
+    MaybeUnused(displays, displayNum);
+
 #if _WIN32
     if (m_Adapter == nullptr)
         return Result::UNSUPPORTED;
@@ -679,6 +681,8 @@ Result DeviceVK::GetDisplays(Display** displays, uint32_t& displayNum)
 
 Result DeviceVK::GetDisplaySize(Display& display, uint16_t& width, uint16_t& height)
 {
+    MaybeUnused(display, width, height);
+
 #if _WIN32
     if (m_Adapter == nullptr)
         return Result::UNSUPPORTED;
