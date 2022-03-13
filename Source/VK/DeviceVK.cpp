@@ -1095,9 +1095,8 @@ VkBool32 VKAPI_PTR DebugUtilsMessenger(
     message += " ";
     message += callbackData->pMessage;
 
-    if (strstr(callbackData->pMessage, "vkCmdCopyBufferToImage(): For optimal performance VkImage") != nullptr)
-        return VK_FALSE;
-    if (strstr(callbackData->pMessage, "vkCmdCopyImage(): For optimal performance VkImage") != nullptr)
+    // vkCmdCopyBufferToImage: For optimal performance VkImage 0x984b920000000104 layout should be VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL instead of GENERAL.
+    if (callbackData->messageIdNumber == 1303270965)
         return VK_FALSE;
 
     if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
