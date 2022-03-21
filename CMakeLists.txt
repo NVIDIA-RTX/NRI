@@ -216,8 +216,11 @@ if (NOT ${NRI_OUTPUT_BIN_PATH} STREQUAL "")
 endif()
 
 # warning level 4 and all warnings as errors (with some exceptions)
-if (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang" OR ${CMAKE_CXX_COMPILER_ID} MATCHES "GNU")
-    set(NRI_COMPILE_OPTIONS -Wextra -Werror -Wno-missing-braces -Wno-unknown-pragmas -Wno-switch -Wno-missing-field-initializers -Wno-deprecated-copy-with-user-provided-copy -Wno-deprecated-copy)
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
+    set(NRI_COMPILE_OPTIONS -Werror -Wextra -Wno-missing-braces -Wno-unknown-pragmas -Wno-switch -Wno-missing-field-initializers -Wno-deprecated-copy -Wno-deprecated-copy-with-user-provided-copy)
+elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    #TODO: give up due to "error: enumeral and non-enumeral type in conditional expression [-Werror=extra]" in absolutely valid code!
+    set(NRI_COMPILE_OPTIONS -Wextra -Wno-missing-braces -Wno-unknown-pragmas -Wno-switch -Wno-missing-field-initializers -Wno-deprecated-copy)
 elseif (MSVC)
     set(NRI_COMPILE_OPTIONS /W4 /WX /wd4324)
 endif()
