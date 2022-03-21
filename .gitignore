@@ -14,6 +14,8 @@ Makefile
 *.vcxproj*
 *.sln
 .vs/
+*.args.json
+*.manifest
 
 # VS Code
 .vscode/
@@ -32,6 +34,7 @@ Makefile
 build.ninja
 compile_commands.json
 *.log
+*.ninja
 
 # library
 *.lib
@@ -48,7 +51,6 @@ External/NVAPI/
 External/AGS/
 
 # generated folders
-_Data/
 _Build/
 _Compiler/
 _NRI_SDK/
