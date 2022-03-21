@@ -1,6 +1,16 @@
 # NVIDIA Rendering Interface v1.78 (NRI)
 
-NRI is a low-level abstract render interface which supports three backends: D3D11, D3D12, Vulkan.
+*NRI* is a low-level abstract render interface which currently supports three backends: D3D11, D3D12 and Vulkan. *NRI* has been designed to preserve low level features of D3D12 and Vulkan APIs, but at the same time to simpify usage and reduce amount of code needed (especially comparing with Vulkan).
+
+ Key features:
+ - common denominator for D3D11, D3D12 and Vulkan APIs
+ - low overhead
+ - ray tracing support
+ - API-provided and/or own validation layer
+- D3D11 behavior has been changed to match D3D12/VK where applicable using *NVAPI* or *AMD AGS* libraries (for example, force-removed artificial *wait for idle* inserted after each *Dispatch* call)
+
+ *NRI* is used in:
+ - [*NRD Sample*](https://github.com/NVIDIAGameWorks/NRDSample)
 
 ## Build instructions
 
