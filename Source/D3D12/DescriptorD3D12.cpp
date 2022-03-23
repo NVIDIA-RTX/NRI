@@ -404,77 +404,84 @@ Result DescriptorD3D12::Create(const SamplerDesc& samplerDesc)
         desc.BorderColor[3] = 1.0f;
     }
 
-    DescriptorHandle descriptorHandle;
-    Result result = m_Device.GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, descriptorHandle);
-    if (result != Result::SUCCESS)
-        return result;
+    m_HeapType = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
 
-    m_DescriptorHandle = descriptorHandle;
-
-    ((ID3D12Device*)m_Device)->CreateSampler(&desc, { m_Device.GetDescriptorPointerCPU(descriptorHandle) });
-
-    return Result::SUCCESS;
+    Result result = m_Device.GetDescriptorHandle(m_HeapType, m_Handle);
+    if (result == Result::SUCCESS)
+        ((ID3D12Device*)m_Device)->CreateSampler(&desc, { m_Device.GetDescriptorPointerCPU(m_Handle) });
+    
+    return result;
 }
 
 Result DescriptorD3D12::CreateConstantBufferView(const D3D12_CONSTANT_BUFFER_VIEW_DESC& desc)
 {
-    Result result = m_Device.GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, m_DescriptorHandle);
-    if (result != Result::SUCCESS)
-        return result;
+    m_HeapType = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 
-    ((ID3D12Device*)m_Device)->CreateConstantBufferView(&desc, { m_Device.GetDescriptorPointerCPU(m_DescriptorHandle) });
-    m_BufferLocation = desc.BufferLocation;
+    Result result = m_Device.GetDescriptorHandle(m_HeapType, m_Handle);
+    if (result == Result::SUCCESS)
+    {
+        ((ID3D12Device*)m_Device)->CreateConstantBufferView(&desc, { m_Device.GetDescriptorPointerCPU(m_Handle) });
+        m_BufferLocation = desc.BufferLocation;
+    }
 
-    return Result::SUCCESS;
+    return result;
 }
 
 Result DescriptorD3D12::CreateShaderResourceView(ID3D12Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& desc)
 {
-    Result result = m_Device.GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, m_DescriptorHandle);
-    if (result != Result::SUCCESS)
-        return result;
+    m_HeapType = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 
-    ((ID3D12Device*)m_Device)->CreateShaderResourceView(resource, &desc, { m_Device.GetDescriptorPointerCPU(m_DescriptorHandle) });
-    m_Resource = resource;
+    Result result = m_Device.GetDescriptorHandle(m_HeapType, m_Handle);
+    if (result == Result::SUCCESS)
+    {
+        ((ID3D12Device*)m_Device)->CreateShaderResourceView(resource, &desc, { m_Device.GetDescriptorPointerCPU(m_Handle) });
+        m_Resource = resource;
+    }
 
-    return Result::SUCCESS;
+    return result;
 }
 
 Result DescriptorD3D12::CreateUnorderedAccessView(ID3D12Resource* resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC& desc, Format format)
 {
-    Result result = m_Device.GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, m_DescriptorHandle);
-    if (result != Result::SUCCESS)
-        return result;
+    m_HeapType = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 
-    ((ID3D12Device*)m_Device)->CreateUnorderedAccessView(resource, nullptr, &desc, { m_Device.GetDescriptorPointerCPU(m_DescriptorHandle) });
-    m_Resource = resource;
-    m_IsFloatingPointFormatUAV = IsFloatingPointFormat(format);
+    Result result = m_Device.GetDescriptorHandle(m_HeapType, m_Handle);
+    if (result == Result::SUCCESS)
+    {
+        ((ID3D12Device*)m_Device)->CreateUnorderedAccessView(resource, nullptr, &desc, { m_Device.GetDescriptorPointerCPU(m_Handle) });
+        m_Resource = resource;
+        m_IsFloatingPointFormatUAV = IsFloatingPointFormat(format);
+    }
 
-    return Result::SUCCESS;
+    return result;
 }
 
 Result DescriptorD3D12::CreateRenderTargetView(ID3D12Resource* resource, const D3D12_RENDER_TARGET_VIEW_DESC& desc)
 {
-    Result result = m_Device.GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, m_DescriptorHandle);
-    if (result != Result::SUCCESS)
-        return result;
+    m_HeapType = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 
-    ((ID3D12Device*)m_Device)->CreateRenderTargetView(resource, &desc, { m_Device.GetDescriptorPointerCPU(m_DescriptorHandle) });
-    m_Resource = resource;
+    Result result = m_Device.GetDescriptorHandle(m_HeapType, m_Handle);
+    if (result == Result::SUCCESS)
+    {
+        ((ID3D12Device*)m_Device)->CreateRenderTargetView(resource, &desc, { m_Device.GetDescriptorPointerCPU(m_Handle) });
+        m_Resource = resource;
+    }
 
-    return Result::SUCCESS;
+    return result;
 }
 
 Result DescriptorD3D12::CreateDepthStencilView(ID3D12Resource* resource, const D3D12_DEPTH_STENCIL_VIEW_DESC& desc)
 {
-    Result result = m_Device.GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, m_DescriptorHandle);
-    if (result != Result::SUCCESS)
-        return result;
+    m_HeapType = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 
-    ((ID3D12Device*)m_Device)->CreateDepthStencilView(resource, &desc, { m_Device.GetDescriptorPointerCPU(m_DescriptorHandle) });
-    m_Resource = resource;
+    Result result = m_Device.GetDescriptorHandle(m_HeapType, m_Handle);
+    if (result == Result::SUCCESS)
+    {
+        ((ID3D12Device*)m_Device)->CreateDepthStencilView(resource, &desc, { m_Device.GetDescriptorPointerCPU(m_Handle) });
+        m_Resource = resource;
+    }
 
-    return Result::SUCCESS;
+    return result;
 }
 
 void DescriptorD3D12::SetDebugName(const char* name)

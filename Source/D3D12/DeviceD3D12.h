@@ -19,8 +19,6 @@ struct ID3D12CommandSignature;
 struct IDXGIOutput;
 struct D3D12_CPU_DESCRIPTOR_HANDLE;
 
-#define DESCRIPTORS_BATCH_SIZE          1024
-
 typedef size_t DescriptorPointerCPU;
 typedef uint64_t DescriptorPointerGPU;
 typedef uint16_t HeapIndexType;
@@ -44,6 +42,9 @@ namespace nri
         uint32_t descriptorSize;
     };
 
+    constexpr size_t DESCRIPTOR_HEAP_TYPE_NUM = D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES;
+    constexpr uint32_t DESCRIPTORS_BATCH_SIZE = 1024;
+
     struct DeviceD3D12 final : public DeviceBase
     {
         DeviceD3D12(const Log& log, StdAllocator<uint8_t>& stdAllocator);
@@ -58,8 +59,9 @@ namespace nri
         Result Create(IDXGIAdapter* dxgiAdapter, bool enableValidation);
         Result Create(const DeviceCreationD3D12Desc& deviceCreationDesc);
 
-        Result CreateCpuOnlyVisibleDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t descriptorNum);
+        Result CreateCpuOnlyVisibleDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type);
         Result GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, DescriptorHandle& descriptorHandle);
+        void ReturnDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, const DescriptorHandle& descriptorHandle);
         DescriptorPointerCPU GetDescriptorPointerCPU(const DescriptorHandle& descriptorHandle) const;
         DescriptorPointerGPU GetDescriptorPointerGPU(const DescriptorHandle& descriptorHandle) const;
         void GetMemoryInfo(MemoryLocation memoryLocation, const D3D12_RESOURCE_DESC& resourceDesc, MemoryDesc& memoryDesc) const;
@@ -168,8 +170,7 @@ namespace nri
 #endif
         std::array<CommandQueueD3D12*, COMMAND_QUEUE_TYPE_NUM> m_CommandQueues = {};
         Vector<DescriptorHeapDesc> m_DescriptorHeaps;
-        static const uint32_t m_DescriptorHeapTypeNum = D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES;
-        Vector<Vector<DescriptorHandle>> m_DescriptorPool;
+        Vector<Vector<DescriptorHandle>> m_FreeDescriptors;
         DeviceDesc m_DeviceDesc = {};
         UnorderedMap<uint32_t, ComPtr<ID3D12CommandSignature>> m_DrawCommandSignatures;
         UnorderedMap<uint32_t, ComPtr<ID3D12CommandSignature>> m_DrawIndexedCommandSignatures;
@@ -201,5 +202,11 @@ namespace nri
     inline const CoreInterface& DeviceD3D12::GetCoreInterface() const
     {
         return m_CoreInterface;
+    }
+
+    inline void DeviceD3D12::ReturnDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, const DescriptorHandle& descriptorHandle)
+    {
+        auto& freeDescriptors = m_FreeDescriptors[type];
+        freeDescriptors.push_back(descriptorHandle);
     }
 }

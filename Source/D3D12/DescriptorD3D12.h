@@ -54,9 +54,10 @@ namespace nri
     private:
         DeviceD3D12& m_Device;
         ID3D12Resource* m_Resource = nullptr;
-        bool m_IsFloatingPointFormatUAV = false;
         D3D12_GPU_VIRTUAL_ADDRESS m_BufferLocation = 0;
-        DescriptorHandle m_DescriptorHandle = {};
+        DescriptorHandle m_Handle = {};
+        D3D12_DESCRIPTOR_HEAP_TYPE m_HeapType = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        bool m_IsFloatingPointFormatUAV = false;
     };
 
     inline DescriptorD3D12::DescriptorD3D12(DeviceD3D12& device)
@@ -64,7 +65,7 @@ namespace nri
     {}
 
     inline DescriptorD3D12::~DescriptorD3D12()
-    {}
+    { m_Device.ReturnDescriptorHandle(m_HeapType, m_Handle); }
 
     inline DescriptorD3D12::operator ID3D12Resource*() const
     {
@@ -73,7 +74,7 @@ namespace nri
 
     inline DescriptorPointerCPU DescriptorD3D12::GetPointerCPU() const
     {
-        return m_Device.GetDescriptorPointerCPU(m_DescriptorHandle);
+        return m_Device.GetDescriptorPointerCPU(m_Handle);
     }
 
     inline D3D12_GPU_VIRTUAL_ADDRESS DescriptorD3D12::GetBufferLocation() const

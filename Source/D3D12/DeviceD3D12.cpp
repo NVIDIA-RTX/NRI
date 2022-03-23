@@ -30,8 +30,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include <dxgi1_5.h>
 #include <dxgidebug.h>
 
-#define DESCRIPTOR_HEAP_NUM_MAX 65536
-
 using namespace nri;
 
 extern MemoryType GetMemoryType(MemoryLocation memoryLocation, const D3D12_RESOURCE_DESC& resourceDesc);
@@ -40,11 +38,11 @@ extern bool RequiresDedicatedAllocation(MemoryType memoryType);
 DeviceD3D12::DeviceD3D12(const Log& log, StdAllocator<uint8_t>& stdAllocator)
     : DeviceBase(log, stdAllocator)
     , m_DescriptorHeaps(GetStdAllocator())
-    , m_DescriptorPool(GetStdAllocator())
+    , m_FreeDescriptors(GetStdAllocator())
     , m_DrawCommandSignatures(GetStdAllocator())
     , m_DrawIndexedCommandSignatures(GetStdAllocator())
 {
-    m_DescriptorPool.resize(m_DescriptorHeapTypeNum, Vector<DescriptorHandle>(GetStdAllocator()));
+    m_FreeDescriptors.resize(DESCRIPTOR_HEAP_TYPE_NUM, Vector<DescriptorHandle>(GetStdAllocator()));
 
     if (FillFunctionTable(m_CoreInterface) != Result::SUCCESS)
         REPORT_ERROR(GetLog(), "Failed to get 'CoreInterface' interface in DeviceD3D12().");
@@ -52,9 +50,8 @@ DeviceD3D12::DeviceD3D12(const Log& log, StdAllocator<uint8_t>& stdAllocator)
 
 DeviceD3D12::~DeviceD3D12()
 {
-    for (auto it = m_CommandQueues.begin(); it != m_CommandQueues.end(); it++)
+    for (auto& commandQueueD3D12 : m_CommandQueues)
     {
-        CommandQueueD3D12* commandQueueD3D12 = *it;
         if (commandQueueD3D12)
             Deallocate(GetStdAllocator(), commandQueueD3D12);
     }
@@ -148,13 +145,6 @@ Result DeviceD3D12::Create(IDXGIAdapter* dxgiAdapter, bool enableValidation)
     Result result = GetCommandQueue(CommandQueueType::GRAPHICS, commandQueue);
     if (result != Result::SUCCESS)
         return result;
-
-    for (uint32_t descriptorType = 0; descriptorType < m_DescriptorHeapTypeNum; descriptorType++)
-    {
-        result = CreateCpuOnlyVisibleDescriptorHeap((D3D12_DESCRIPTOR_HEAP_TYPE)descriptorType, DESCRIPTORS_BATCH_SIZE);
-        if (result != Result::SUCCESS)
-            return result;
-    }
 
     D3D12_INDIRECT_ARGUMENT_DESC indirectArgumentDesc = {};
     indirectArgumentDesc.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
@@ -277,14 +267,14 @@ inline void DeviceD3D12::DestroyAccelerationStructure(AccelerationStructure& acc
 }
 #endif
 
-Result DeviceD3D12::CreateCpuOnlyVisibleDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t descriptorNum)
+Result DeviceD3D12::CreateCpuOnlyVisibleDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
     size_t heapIndex = m_DescriptorHeaps.size();
-    if (heapIndex >= DESCRIPTOR_HEAP_NUM_MAX)
+    if (heapIndex >= HeapIndexType(-1))
         return Result::OUT_OF_MEMORY;
 
     ComPtr<ID3D12DescriptorHeap> descriptorHeap;
-    D3D12_DESCRIPTOR_HEAP_DESC desc = { type, descriptorNum, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, NRI_TEMP_NODE_MASK };
+    D3D12_DESCRIPTOR_HEAP_DESC desc = {type, DESCRIPTORS_BATCH_SIZE, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, NRI_TEMP_NODE_MASK};
     HRESULT hr = ((ID3D12Device*)m_Device)->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&descriptorHeap));
     if (FAILED(hr))
     {
@@ -298,24 +288,25 @@ Result DeviceD3D12::CreateCpuOnlyVisibleDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYP
     descriptorHeapDesc.descriptorSize = m_Device->GetDescriptorHandleIncrementSize(type);
     m_DescriptorHeaps.push_back(descriptorHeapDesc);
 
-    for (HeapOffsetType i = 0; i < DESCRIPTORS_BATCH_SIZE; i++)
-        m_DescriptorPool[type].push_back( {(HeapIndexType)heapIndex, i} );
+    auto& freeDescriptors = m_FreeDescriptors[type];
+    for (uint32_t i = 0; i < desc.NumDescriptors; i++)
+        freeDescriptors.push_back( {(HeapIndexType)heapIndex, (HeapOffsetType)i} );
 
     return Result::SUCCESS;
 }
 
 Result DeviceD3D12::GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, DescriptorHandle& descriptorHandle)
 {
-    auto& descriptorPool = m_DescriptorPool[type];
-    if (descriptorPool.empty())
+    auto& freeDescriptors = m_FreeDescriptors[type];
+    if (freeDescriptors.empty())
     {
-        Result result = CreateCpuOnlyVisibleDescriptorHeap(type, DESCRIPTORS_BATCH_SIZE);
+        Result result = CreateCpuOnlyVisibleDescriptorHeap(type);
         if (result != Result::SUCCESS)
             return result;
     }
 
-    descriptorHandle = *descriptorPool.rbegin();
-    descriptorPool.pop_back();
+    descriptorHandle = freeDescriptors.back();
+    freeDescriptors.pop_back();
 
     return Result::SUCCESS;
 }
