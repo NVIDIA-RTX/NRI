@@ -2,10 +2,10 @@ cmake_minimum_required(VERSION 3.15)
 
 message("Processing 'NRI'...")
 
-option(NRI_DISABLE_INTERPROCEDURAL_OPTIMIZATION "disable interprocedural optimization" OFF)
-option(NRI_DISABLE_XLIB_SUPPORT "disable xlib support" OFF)
-option(NRI_DISABLE_WAYLAND_SUPPORT "disable wayland support" OFF)
-option(NRI_STATIC_LIBRARY "build static lib" OFF)
+option(NRI_DISABLE_INTERPROCEDURAL_OPTIMIZATION "Disable interprocedural optimization" OFF)
+option(NRI_DISABLE_XLIB_SUPPORT "Disable xlib support" OFF)
+option(NRI_DISABLE_WAYLAND_SUPPORT "Disable wayland support" OFF)
+option(NRI_STATIC_LIBRARY "Build static lib" OFF)
 
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/Include/NRI.h" ver_h)
 string(REGEX MATCH "NRI_VERSION_MAJOR ([0-9]*)" _ ${ver_h})
