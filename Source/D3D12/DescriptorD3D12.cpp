@@ -408,8 +408,11 @@ Result DescriptorD3D12::Create(const SamplerDesc& samplerDesc)
 
     Result result = m_Device.GetDescriptorHandle(m_HeapType, m_Handle);
     if (result == Result::SUCCESS)
-        ((ID3D12Device*)m_Device)->CreateSampler(&desc, { m_Device.GetDescriptorPointerCPU(m_Handle) });
-    
+    {
+        m_DescriptorPointerCPU = m_Device.GetDescriptorPointerCPU(m_Handle);
+        ((ID3D12Device*)m_Device)->CreateSampler(&desc, { m_DescriptorPointerCPU });
+    }
+
     return result;
 }
 
@@ -420,7 +423,8 @@ Result DescriptorD3D12::CreateConstantBufferView(const D3D12_CONSTANT_BUFFER_VIE
     Result result = m_Device.GetDescriptorHandle(m_HeapType, m_Handle);
     if (result == Result::SUCCESS)
     {
-        ((ID3D12Device*)m_Device)->CreateConstantBufferView(&desc, { m_Device.GetDescriptorPointerCPU(m_Handle) });
+        m_DescriptorPointerCPU = m_Device.GetDescriptorPointerCPU(m_Handle);
+        ((ID3D12Device*)m_Device)->CreateConstantBufferView(&desc, { m_DescriptorPointerCPU });
         m_BufferLocation = desc.BufferLocation;
     }
 
@@ -434,7 +438,8 @@ Result DescriptorD3D12::CreateShaderResourceView(ID3D12Resource* resource, const
     Result result = m_Device.GetDescriptorHandle(m_HeapType, m_Handle);
     if (result == Result::SUCCESS)
     {
-        ((ID3D12Device*)m_Device)->CreateShaderResourceView(resource, &desc, { m_Device.GetDescriptorPointerCPU(m_Handle) });
+        m_DescriptorPointerCPU = m_Device.GetDescriptorPointerCPU(m_Handle);
+        ((ID3D12Device*)m_Device)->CreateShaderResourceView(resource, &desc, { m_DescriptorPointerCPU });
         m_Resource = resource;
     }
 
@@ -448,7 +453,8 @@ Result DescriptorD3D12::CreateUnorderedAccessView(ID3D12Resource* resource, cons
     Result result = m_Device.GetDescriptorHandle(m_HeapType, m_Handle);
     if (result == Result::SUCCESS)
     {
-        ((ID3D12Device*)m_Device)->CreateUnorderedAccessView(resource, nullptr, &desc, { m_Device.GetDescriptorPointerCPU(m_Handle) });
+        m_DescriptorPointerCPU = m_Device.GetDescriptorPointerCPU(m_Handle);
+        ((ID3D12Device*)m_Device)->CreateUnorderedAccessView(resource, nullptr, &desc, { m_DescriptorPointerCPU });
         m_Resource = resource;
         m_IsFloatingPointFormatUAV = IsFloatingPointFormat(format);
     }
@@ -463,7 +469,8 @@ Result DescriptorD3D12::CreateRenderTargetView(ID3D12Resource* resource, const D
     Result result = m_Device.GetDescriptorHandle(m_HeapType, m_Handle);
     if (result == Result::SUCCESS)
     {
-        ((ID3D12Device*)m_Device)->CreateRenderTargetView(resource, &desc, { m_Device.GetDescriptorPointerCPU(m_Handle) });
+        m_DescriptorPointerCPU = m_Device.GetDescriptorPointerCPU(m_Handle);
+        ((ID3D12Device*)m_Device)->CreateRenderTargetView(resource, &desc, { m_DescriptorPointerCPU });
         m_Resource = resource;
     }
 
@@ -477,7 +484,8 @@ Result DescriptorD3D12::CreateDepthStencilView(ID3D12Resource* resource, const D
     Result result = m_Device.GetDescriptorHandle(m_HeapType, m_Handle);
     if (result == Result::SUCCESS)
     {
-        ((ID3D12Device*)m_Device)->CreateDepthStencilView(resource, &desc, { m_Device.GetDescriptorPointerCPU(m_Handle) });
+        m_DescriptorPointerCPU = m_Device.GetDescriptorPointerCPU(m_Handle);
+        ((ID3D12Device*)m_Device)->CreateDepthStencilView(resource, &desc, { m_DescriptorPointerCPU });
         m_Resource = resource;
     }
 

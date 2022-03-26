@@ -267,8 +267,11 @@ inline void DeviceD3D12::DestroyAccelerationStructure(AccelerationStructure& acc
 }
 #endif
 
+// m_FreeDescriptorLocks[type] must be acquired before calling this function
 Result DeviceD3D12::CreateCpuOnlyVisibleDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
+    ExclusiveScope lock(m_DescriptorHeapLock);
+
     size_t heapIndex = m_DescriptorHeaps.size();
     if (heapIndex >= HeapIndexType(-1))
         return Result::OUT_OF_MEMORY;
@@ -297,6 +300,8 @@ Result DeviceD3D12::CreateCpuOnlyVisibleDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYP
 
 Result DeviceD3D12::GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, DescriptorHandle& descriptorHandle)
 {
+    ExclusiveScope lock(m_FreeDescriptorLocks[type]);
+
     auto& freeDescriptors = m_FreeDescriptors[type];
     if (freeDescriptors.empty())
     {
@@ -311,18 +316,12 @@ Result DeviceD3D12::GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, Descrip
     return Result::SUCCESS;
 }
 
-DescriptorPointerCPU DeviceD3D12::GetDescriptorPointerCPU(const DescriptorHandle& descriptorHandle) const
+DescriptorPointerCPU DeviceD3D12::GetDescriptorPointerCPU(const DescriptorHandle& descriptorHandle)
 {
+    ExclusiveScope lock(m_DescriptorHeapLock);
+
     const DescriptorHeapDesc& descriptorHeapDesc = m_DescriptorHeaps[descriptorHandle.heapIndex];
     DescriptorPointerCPU descriptorPointer = descriptorHeapDesc.descriptorPointerCPU + descriptorHandle.heapOffset * descriptorHeapDesc.descriptorSize;
-
-    return descriptorPointer;
-}
-
-DescriptorPointerGPU DeviceD3D12::GetDescriptorPointerGPU(const DescriptorHandle& descriptorHandle) const
-{
-    const DescriptorHeapDesc& descriptorHeapDesc = m_DescriptorHeaps[descriptorHandle.heapIndex];
-    DescriptorPointerGPU descriptorPointer = descriptorHeapDesc.descriptorPointerGPU + descriptorHandle.heapOffset * descriptorHeapDesc.descriptorSize;
 
     return descriptorPointer;
 }
@@ -406,6 +405,8 @@ const DeviceDesc& DeviceD3D12::GetDesc() const
 
 Result DeviceD3D12::GetCommandQueue(CommandQueueType commandQueueType, CommandQueue*& commandQueue)
 {
+    ExclusiveScope lock(m_QueueLock);
+
     uint32_t queueIndex = (uint32_t)commandQueueType;
 
     if (m_CommandQueues[queueIndex])

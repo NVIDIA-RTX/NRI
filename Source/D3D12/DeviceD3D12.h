@@ -62,8 +62,7 @@ namespace nri
         Result CreateCpuOnlyVisibleDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type);
         Result GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, DescriptorHandle& descriptorHandle);
         void ReturnDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, const DescriptorHandle& descriptorHandle);
-        DescriptorPointerCPU GetDescriptorPointerCPU(const DescriptorHandle& descriptorHandle) const;
-        DescriptorPointerGPU GetDescriptorPointerGPU(const DescriptorHandle& descriptorHandle) const;
+        DescriptorPointerCPU GetDescriptorPointerCPU(const DescriptorHandle& descriptorHandle);
         void GetMemoryInfo(MemoryLocation memoryLocation, const D3D12_RESOURCE_DESC& resourceDesc, MemoryDesc& memoryDesc) const;
 
         ID3D12CommandSignature* CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE indirectArgumentType, uint32_t stride);
@@ -180,6 +179,10 @@ namespace nri
         bool m_IsRaytracingSupported = false;
         bool m_IsMeshShaderSupported = false;
         bool m_SkipLiveObjectsReporting = false;
+
+        std::array<Lock, DESCRIPTOR_HEAP_TYPE_NUM> m_FreeDescriptorLocks;
+        Lock m_DescriptorHeapLock;
+        Lock m_QueueLock;
     };
 
     inline DeviceD3D12::operator ID3D12Device*() const
@@ -206,6 +209,7 @@ namespace nri
 
     inline void DeviceD3D12::ReturnDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, const DescriptorHandle& descriptorHandle)
     {
+        ExclusiveScope lock(m_FreeDescriptorLocks[type]);
         auto& freeDescriptors = m_FreeDescriptors[type];
         freeDescriptors.push_back(descriptorHandle);
     }
