@@ -3,7 +3,9 @@
 NRI is an abstract render interface which provides a single interface to a set of implementations which translate NRI calls into graphics API calls.
 
 **Supported APIs:** D3D11, D3D12, Vulkan
+
 **Supported platforms:** Windows, Linux
+
 **Supported CPU architectures:** x86, ARM
 
 NRI can be used as a shared library or a static library.
