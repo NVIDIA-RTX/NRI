@@ -140,7 +140,7 @@ Result CreateDevice(const DeviceCreationDesc& deviceCreationDesc, Device*& devic
 
 **`Valid usage:`**
 
-* The application can create any number of NRI devices using different implementations, there is no limitation on this.
+* The application can create any number of NRI devices using different implementations, there is no limitation on this
 
 **`Multithreading:`**
 
@@ -177,7 +177,7 @@ Result GetInterface(const Device& device, const char* interfaceName, size_t inte
 ```
 
 * `interfaceName`
-  * The name of the interface C++ struct with "nri::" prefix.
+  * The name of the interface C++ struct with "nri::" prefix
 
 NRI.h defines a macro which can be used to get an interface name and interface size from a structure name:
 
@@ -211,7 +211,7 @@ Result GetCommandQueue(Device& device, CommandQueueType commandQueueType, Comman
 
 **`Valid usage:`**
 
-* The application can call this function to check which command queue types are supported.
+* The application can call this function to check which command queue types are supported
 
 **`Multithreading:`**
 
@@ -243,7 +243,7 @@ If descriptorPoolDesc.physicalDeviceMask is set to 0 or has more than one bit se
 
 **`Valid usage:`**
 
-* The function may fail if the maximum number of descriptors exceeds the maximum size of D3D12 descriptor heap.
+* The function may fail if the maximum number of descriptors exceeds the maximum size of D3D12 descriptor heap
 
 **`Multithreading:`**
 
@@ -281,7 +281,7 @@ Result CreateBufferView(const BufferViewDesc& bufferViewDesc, Descriptor*& buffe
 
 **`Valid usage:`**
 
-* The buffer must be bound to memory.
+* The buffer must be bound to memory
 
 **`Multithreading:`**
 
@@ -295,7 +295,7 @@ Result CreateTexture1DView(const Texture1DViewDesc& textureViewDesc, Descriptor*
 
 **`Valid usage:`**
 
-* The texture must be bound to memory.
+* The texture must be bound to memory
 
 **`Multithreading:`**
 
@@ -323,7 +323,7 @@ Result CreateTexture3DView(const Texture3DViewDesc& textureViewDesc, Descriptor*
 
 **`Valid usage:`**
 
-* The texture must be bound to memory.
+* The texture must be bound to memory
 
 **`Multithreading:`**
 
@@ -349,9 +349,9 @@ Creates a pipeline layout which describes resource binding for descriptors sets 
 
 **`Valid usage:`**
 
-* pipelineLayoutDesc.stageMask can be a combination of bits which correspond to only one type of pipeline (graphics, compute, or ray tracing). For example, a pipeline layout can not be created for graphics and compute stages together, the application must create separate pipeline layouts.
+* pipelineLayoutDesc.stageMask can be a combination of bits which correspond to only one type of pipeline (graphics, compute, or ray tracing). For example, a pipeline layout can not be created for graphics and compute stages together, the application must create separate pipeline layouts
 pipelineLayoutDesc.stageMask must be a minimal set of pipeline stages which need access to shader resources.
-* If the pipeline layout is used with a pipeline which has a vertex stage that needs access to vertex attributes, pipelineLayoutDesc.stageMask must include the vertex pipeline stage.
+* If the pipeline layout is used with a pipeline which has a vertex stage that needs access to vertex attributes, pipelineLayoutDesc.stageMask must include the vertex pipeline stage
 
 **`Multithreading:`**
 
@@ -365,11 +365,11 @@ Result CreateGraphicsPipeline(Device& device, const GraphicsPipelineDesc& graphi
 
 **`Valid usage:`**
 
-* graphicsPipelineDesc.pipelineLayout must be a valid pipeline layout.
-* graphicsPipelineDesc.inputAssembly must be a valid pointer to InputAssemblyDesc.
-* graphicsPipelineDesc.rasterization can be nullptr.
-* graphicsPipelineDesc.outputMerger can be nullptr.
-* graphicsPipelineDesc.shaderStageNum must be greater than 0.
+* graphicsPipelineDesc.pipelineLayout must be a valid pipeline layout
+* graphicsPipelineDesc.inputAssembly must be a valid pointer to InputAssemblyDesc
+* graphicsPipelineDesc.rasterization can be nullptr
+* graphicsPipelineDesc.outputMerger can be nullptr
+* graphicsPipelineDesc.shaderStageNum must be greater than 0
 
 **`Multithreading:`**
 
@@ -383,8 +383,8 @@ Result CreateComputePipeline(Device& device, const ComputePipelineDesc& computeP
 
 **`Valid usage:`**
 
-* computePipelineDesc.pipelineLayout must be a valid pipeline layout.
-* computePipelineDesc.computeShader must be a valid shader description.
+* computePipelineDesc.pipelineLayout must be a valid pipeline layout
+* computePipelineDesc.computeShader must be a valid shader description
 
 **`Multithreading:`**
 
@@ -450,8 +450,8 @@ void DestroyCommandAllocator(CommandAllocator& commandAllocator)
 
 **`Valid usage:`**
 
-* All command buffers that were allocated using the command allocator must be destroyed.
-* The application must ensure that all command buffers which were allocated using the command allocator have completed execution.
+* All command buffers that were allocated using the command allocator must be destroyed
+* The application must ensure that all command buffers which were allocated using the command allocator have completed execution
 
 **`Multithreading:`**
 
@@ -467,7 +467,7 @@ Destroys the descriptor pool and its descriptor sets.
 
 **`Valid usage:`**
 
-* The application must ensure that all command buffers which use the descriptor pool and the descriptor sets have completed execution.
+* The application must ensure that all command buffers which use the descriptor pool and the descriptor sets have completed execution
 
 **`Multithreading:`**
 
@@ -481,8 +481,8 @@ void DestroyBuffer(Buffer& buffer)
 
 **`Valid usage:`**
 
-* The application must ensure that GPU finished execution of command buffers which use the buffer.
-* All descriptors (buffer views) which reference the buffer must be destroyed.
+* The application must ensure that GPU finished execution of command buffers which use the buffer
+* All descriptors (buffer views) which reference the buffer must be destroyed
 
 **`Multithreading:`**
 
@@ -496,8 +496,8 @@ void DestroyTexture(Texture& texture)
 
 **`Valid usage:`**
 
-* The application must ensure that all command buffers which use the texture have completed execution.
-* All descriptors (texture views) which reference the texture must be destroyed.
+* The application must ensure that all command buffers which use the texture have completed execution
+* All descriptors (texture views) which reference the texture must be destroyed
 
 **`Multithreading:`**
 
@@ -511,8 +511,8 @@ void DestroyDescriptor(Descriptor& descriptor)
 
 **`Valid usage:`**
 
-* The application must ensure that all command buffers which use descriptor sets which contain the descriptor have completed execution.
-* Descriptor sets must not reference the descriptor.
+* The application must ensure that all command buffers which use descriptor sets which contain the descriptor have completed execution
+* Descriptor sets must not reference the descriptor
 
 **`Multithreading:`**
 
@@ -526,8 +526,8 @@ void DestroyPipelineLayout(PipelineLayout& pipelineLayout)
 
 **`Valid usage:`**
 
-* Pipelines which were created using the pipeline layout must be destroyed.
-* Descriptor sets which were allocated using the pipeline layout must be destroyed.
+* Pipelines which were created using the pipeline layout must be destroyed
+* Descriptor sets which were allocated using the pipeline layout must be destroyed
 
 **`Multithreading:`**
 
@@ -541,7 +541,7 @@ void DestroyPipeline(Pipeline& pipeline)
 
 **`Valid usage:`**
 
-* The application must ensure that all command buffers which use the pipeline have completed execution.
+* The application must ensure that all command buffers which use the pipeline have completed execution
 
 **`Multithreading:`**
 
@@ -555,7 +555,7 @@ void DestroyFrameBuffer(FrameBuffer& frameBuffer)
 
 **`Valid usage:`**
 
-* The application must ensure that all command buffers which use the framebuffer have completed execution.
+* The application must ensure that all command buffers which use the framebuffer have completed execution
 
 **`Multithreading:`**
 
@@ -569,7 +569,7 @@ void DestroyQueryPool(QueryPool& queryPool)
 
 **`Valid usage:`**
 
-* The application must ensure that all command buffers which use the query pool have completed execution.
+* The application must ensure that all command buffers which use the query pool have completed execution
 
 **`Multithreading:`**
 
@@ -583,7 +583,7 @@ void DestroyQueueSemaphore(QueueSemaphore& queueSemaphore)
 
 **`Valid usage:`**
 
-* The application must ensure that all GPU operations related to the semaphore have finished.
+* The application must ensure that all GPU operations related to the semaphore have finished
 
 **`Multithreading:`**
 
@@ -597,7 +597,7 @@ void DestroyDeviceSemaphore(DeviceSemaphore& deviceSemaphore)
 
 **`Valid usage:`**
 
-* The application must ensure that all GPU operations related to the semaphore have finished.
+* The application must ensure that all GPU operations related to the semaphore have finished
 
 **`Multithreading:`**
 
@@ -611,7 +611,7 @@ void DestroyCommandBuffer(CommandBuffer& commandBuffer)
 
 **`Valid usage:`**
 
-* The application must ensure that the command buffer has completed execution.
+* The application must ensure that the command buffer has completed execution
 
 **`Multithreading:`**
 
@@ -625,7 +625,7 @@ Result AllocateMemory(Device& device, uint32_t physicalDeviceMask, MemoryType me
 
 **`Valid usage:`**
 
-* memoryType must be a valid memory type received using GetBufferMemoryInfo or GetTextureMemoryInfo.
+* memoryType must be a valid memory type received using GetBufferMemoryInfo or GetTextureMemoryInfo
 
 **`Multithreading:`**
 
@@ -639,8 +639,8 @@ Result BindBufferMemory(Device& device, const BufferMemoryBindingDesc* memoryBin
 
 **`Multithreading:`**
 
-* Access to the buffer instances must be externally synchronized
-* Access to the memory instances must be externally synchronized
+* Access to buffers must be externally synchronized
+* Access to memory instances must be externally synchronized
 
 ------
 
@@ -650,8 +650,8 @@ Result BindTextureMemory(Device& device, const TextureMemoryBindingDesc* memoryB
 
 **`Multithreading:`**
 
-* Access to the texture instances must be externally synchronized
-* Access to the memory instances must be externally synchronized
+* Access to textures must be externally synchronized
+* Access to memory instances must be externally synchronized
 
 ------
 
@@ -693,10 +693,6 @@ Result EndCommandBuffer(CommandBuffer& commandBuffer)
 void CmdSetPipeline(CommandBuffer& commandBuffer, const Pipeline& pipeline)
 ```
 
-**`Valid usage:`**
-
-* A compatible pipeline layout must be set.
-
 **`Multithreading:`**
 
 * Access to commandBuffer must be externally synchronized
@@ -719,7 +715,8 @@ void CmdSetDescriptorSets(CommandBuffer& commandBuffer, uint32_t baseSlot, uint3
 
 **`Valid usage:`**
 
-* A compatible pipeline layout must be set.
+* A compatible pipeline layout must be set
+* The number of offsets in dynamicConstantBufferOffsets must be equal to the total number of dynamic constant buffers in descriptorSets
 
 **`Multithreading:`**
 
@@ -733,7 +730,7 @@ void CmdSetConstants(CommandBuffer& commandBuffer, uint32_t pushConstantIndex, c
 
 **`Valid usage:`**
 
-* A compatible pipeline layout must be set.
+* A compatible pipeline layout must be set
 
 **`Multithreading:`**
 
@@ -747,7 +744,7 @@ void CmdSetDescriptorPool(CommandBuffer& commandBuffer, const DescriptorPool& de
 
 **`Performance notes:`**
 
-* Sets descriptor heap in D3D12
+* Sets descriptor heap in D3D12, which in some cases might cause pipeline flush
 
 **`Multithreading:`**
 
@@ -766,7 +763,7 @@ void CmdPipelineBarrier(CommandBuffer& commandBuffer, const TransitionBarrierDes
 ------
 
 ```cpp
-void CmdBeginRenderPass(CommandBuffer& commandBuffer, const FrameBuffer& frameBuffer, FramebufferBindFlag bindFlag)
+void CmdBeginRenderPass(CommandBuffer& commandBuffer, const FrameBuffer& frameBuffer, FramebufferBindFlag renderPassBeginFlag)
 ```
 
 **`Multithreading:`**
@@ -841,7 +838,7 @@ void CmdClearAttachments(CommandBuffer& commandBuffer, const ClearDesc* clearDes
 
 **`Valid usage:`**
 
-* Can be called only inside a render pass
+* Can be called only inside render pass
 
 **`Multithreading:`**
 
@@ -865,7 +862,7 @@ void CmdSetVertexBuffers(CommandBuffer& commandBuffer, uint32_t baseSlot, uint32
 
 **`Valid usage:`**
 
-* CmdSetVertexBuffers uses vertex stream strides from the pipeline, therefore the function can be called only after CmdSetPipeline.
+* CmdSetVertexBuffers uses vertex stream strides from the current pipeline
 
 **`Multithreading:`**
 
@@ -879,7 +876,7 @@ void CmdDraw(CommandBuffer& commandBuffer, uint32_t vertexNum, uint32_t instance
 
 **`Valid usage:`**
 
-* Can be called only inside a render pass
+* Can be called only inside render pass
 
 **`Multithreading:`**
 
@@ -893,7 +890,7 @@ void CmdDrawIndexed(CommandBuffer& commandBuffer, uint32_t indexNum, uint32_t in
 
 **`Valid usage:`**
 
-* Can be called only inside a render pass
+* Can be called only inside render pass
 
 **`Multithreading:`**
 
@@ -907,7 +904,7 @@ void CmdDrawIndirect(CommandBuffer& commandBuffer, const Buffer& buffer, uint64_
 
 **`Valid usage:`**
 
-* Can be called only inside a render pass
+* Can be called only inside render pass
 
 **`Multithreading:`**
 
@@ -921,7 +918,7 @@ void CmdDrawIndexedIndirect(CommandBuffer& commandBuffer, const Buffer& buffer, 
 
 **`Valid usage:`**
 
-* Can be called only inside a render pass
+* Can be called only inside render pass
 
 **`Multithreading:`**
 
@@ -1101,6 +1098,7 @@ void SubmitQueueWork(CommandQueue& commandQueue, const WorkSubmissionDesc& workS
 
 **`Valid usage:`**
 
+* If deviceSemaphore is not nullptr, it must be in unsignaled state
 * If queue submission waits a queue semaphore, there must be queue submission which signals the queue semaphore and it must be submitted for execution before the one which waits
 
 **Correct:**
@@ -1123,6 +1121,11 @@ void SubmitQueueWork(CommandQueue& commandQueue, const WorkSubmissionDesc& workS
 ```cpp
 void WaitForSemaphore(CommandQueue& commandQueue, DeviceSemaphore& deviceSemaphore)
 ```
+
+The function blocks execution until the device semaphore is signaled by the command queue.
+The function resets deviceSemaphore after waiting.
+
+A device semaphore can be signaled using SubmitQueueWork().
 
 **`Multithreading:`**
 
@@ -1189,7 +1192,7 @@ Destroys descriptor sets allocated from the descriptor pool
 
 **`Valid usage:`**
 
-* The application must ensure that all command buffers which use the descriptor pool and the descriptor sets have completed execution
+* The application must ensure that all command buffers which use the descriptor pool and the descriptor sets completed execution
 
 **`Multithreading:`**
 
@@ -1205,7 +1208,7 @@ Deallocates memory which was allocated for command recording, but does not destr
 
 **`Valid usage:`**
 
-* The application must ensure that all command buffers which were allocated using the command allocator have completed execution
+* The application must ensure that all command buffers which were allocated using the command allocator completed execution
 
 **`Multithreading:`**
 
@@ -1272,10 +1275,6 @@ void UnmapBuffer(Buffer& buffer)
 ```cpp
 void GetTextureMemoryInfo(const Texture& texture, MemoryLocation memoryLocation, MemoryDesc& memoryDesc)
 ```
-
-**`Performance notes:`**
-
-* NRI does not expose interface to map textures, therefore it makes little sense to use any memoryLocation other than DEVICE.
 
 **`Multithreading:`**
 
@@ -1498,8 +1497,8 @@ Texture* const* GetSwapChainTextures(const SwapChain& swapChain, uint32_t& textu
 
 **`Valid usage:`**
 
-* To use the textures, the application must acquire access using AcquireNextSwapChainTexture
-textureNum may not match swapChainDesc.textureNum
+* To use the textures, the application must acquire access using AcquireNextSwapChainTexture()
+* textureNum may not match swapChainDesc.textureNum
 
 **`Multithreading:`**
 
@@ -1510,6 +1509,8 @@ textureNum may not match swapChainDesc.textureNum
 ```cpp
 uint32_t AcquireNextSwapChainTexture(SwapChain& swapChain, QueueSemaphore& textureReadyForRender)
 ```
+
+Returns index of the acquired swapchain texture.
 
 **`Valid usage:`**
 
@@ -1621,7 +1622,7 @@ void GetAccelerationStructureMemoryInfo(const AccelerationStructure& acceleratio
 ------
 
 ```cpp
-void GetAccelerationStructureUpdateScratchMemoryInfo(const AccelerationStructure& accelerationStructure, MemoryDesc& memoryDesc)
+uint64_t GetAccelerationStructureUpdateScratchBufferSize(const AccelerationStructure& accelerationStructure)
 ```
 
 **`Multithreading:`**
@@ -1631,7 +1632,7 @@ void GetAccelerationStructureUpdateScratchMemoryInfo(const AccelerationStructure
 ------
 
 ```cpp
-void GetAccelerationStructureBuildScratchMemoryInfo(const AccelerationStructure& accelerationStructure, MemoryDesc& memoryDesc)
+uint64_t GetAccelerationStructureBuildScratchBufferSize(const AccelerationStructure& accelerationStructure)
 ```
 
 **`Multithreading:`**
@@ -1721,7 +1722,7 @@ void CmdWriteAccelerationStructureSize(CommandBuffer& commandBuffer, const Accel
 ------
 
 ```cpp
-void CmdTraceRays(CommandBuffer& commandBuffer, const Buffer& raygenShader, uint64_t raygenShaderOffset, const Buffer* missShaders, uint64_t missShaderOffset, uint64_t missShaderStride, const Buffer* hitShaders, uint64_t hitShaderOffset, uint64_t hitShaderStride, const Buffer* callableShaders, uint64_t callableShaderOffset, uint64_t callableShaderStride, uint32_t width, uint32_t height, uint32_t depth)
+void CmdDispatchRays(CommandBuffer& commandBuffer, const DispatchRaysDesc& dispatchRaysDesc)
 ```
 
 **`Multithreading:`**
