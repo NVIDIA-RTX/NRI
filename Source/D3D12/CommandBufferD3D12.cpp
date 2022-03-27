@@ -257,6 +257,9 @@ inline void CommandBufferD3D12::SetPipelineLayout(const PipelineLayout& pipeline
 {
     const PipelineLayoutD3D12& pipelineLayoutD3D12 = (const PipelineLayoutD3D12&)pipelineLayout;
 
+    if (m_PipelineLayout == &pipelineLayoutD3D12)
+        return;
+
     m_PipelineLayout = &pipelineLayoutD3D12;
     m_IsGraphicsPipelineLayout = pipelineLayoutD3D12.IsGraphicsPipelineLayout();
 
@@ -269,8 +272,9 @@ inline void CommandBufferD3D12::SetPipelineLayout(const PipelineLayout& pipeline
 inline void CommandBufferD3D12::SetPipeline(const Pipeline& pipeline)
 {
     PipelineD3D12* pipelineD3D12 = (PipelineD3D12*)&pipeline;
-    //if (m_Pipeline == pipelineD3D12)
-        //return;
+
+    if (m_Pipeline == pipelineD3D12)
+        return;
 
     pipelineD3D12->Bind(m_GraphicsCommandList, m_PrimitiveTopology);
 
