@@ -1,18 +1,18 @@
 # **NRI Programming Guide**
 
-`NRI` is an abstract render interface which provides a single interface to a set of implementations which translate `NRI` calls into graphics API calls.
+NRI is an abstract render interface which provides a single interface to a set of implementations which translate NRI calls into graphics API calls.
 
 **Supported APIs:** D3D11, D3D12, Vulkan
-
 **Supported platforms:** Windows, Linux
+**Supported CPU architectures:** x86, ARM
 
-`NRI` can be used as a shared library or a static library.
+NRI can be used as a shared library or a static library.
 
 &nbsp;
 
 ## **Objects**
 
-Analogs from the graphics API:
+Analogues from the graphics APIs:
 
 | NRI               | D3D12             | Vulkan                     |
 |-------------------|-------------------|----------------------------|
@@ -744,7 +744,8 @@ void CmdSetDescriptorPool(CommandBuffer& commandBuffer, const DescriptorPool& de
 ```
 
 **`Performance notes:`**
-Sets descriptor heap in D3D12
+
+* Sets descriptor heap in D3D12
 
 **`Multithreading:`**
 
@@ -1232,7 +1233,8 @@ Returns memory requirements such as size, alignment and memory type.
   * Memory location for the buffer, it can be DEVICE, HOST_UPLOAD, or HOST_READBACK.
 
 **`Performance notes:`**
-HOST_UPLOAD and HOST_READBACK both correspond to coherent and cached memory in Vulkan
+
+* HOST_UPLOAD and HOST_READBACK both correspond to coherent and cached memory in Vulkan
 
 **`Multithreading:`**
 
@@ -1270,7 +1272,8 @@ void GetTextureMemoryInfo(const Texture& texture, MemoryLocation memoryLocation,
 ```
 
 **`Performance notes:`**
-NRI does not expose interface to map textures, therefore it makes little sense to use any memoryLocation other than DEVICE.
+
+* NRI does not expose interface to map textures, therefore it makes little sense to use any memoryLocation other than DEVICE.
 
 **`Multithreading:`**
 
