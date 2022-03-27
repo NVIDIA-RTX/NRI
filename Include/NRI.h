@@ -8,7 +8,7 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-// Documentation: https://docs.google.com/document/d/1OidQtZnm-3grhua7Oy1WKDUzh8ExTdbO83VTAWS_nNM/
+// Documentation: ProgrammingGuide.md
 
 #pragma once
 
