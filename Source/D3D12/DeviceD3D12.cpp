@@ -747,8 +747,19 @@ void DeviceD3D12::UpdateDeviceDesc(bool enableValidation)
     m_Device->CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS, &levels, sizeof(levels));
 
     uint64_t timestampFrequency = 0;
-    ID3D12CommandQueue* commandQueueD3D12 = *m_CommandQueues[0];
-    commandQueueD3D12->GetTimestampFrequency(&timestampFrequency);
+
+    CommandQueue* commandQueue = nullptr;
+    const Result result = GetCommandQueue(CommandQueueType::GRAPHICS, commandQueue);
+
+    if (result == Result::SUCCESS)
+    {
+        ID3D12CommandQueue* commandQueueD3D12 = *(CommandQueueD3D12*)commandQueue;
+        commandQueueD3D12->GetTimestampFrequency(&timestampFrequency);
+    }
+    else
+    {
+        REPORT_ERROR(GetLog(), "Failed to get command queue to update device desc, result: %d.", (int32_t)result);
+    }
 
     m_DeviceDesc.graphicsAPI = GraphicsAPI::D3D12;
     m_DeviceDesc.vendor = GetVendor(m_Device);

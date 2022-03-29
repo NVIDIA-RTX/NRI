@@ -61,7 +61,7 @@ namespace nri
 
         Result CreateCpuOnlyVisibleDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type);
         Result GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, DescriptorHandle& descriptorHandle);
-        void ReturnDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, const DescriptorHandle& descriptorHandle);
+        void FreeDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, const DescriptorHandle& descriptorHandle);
         DescriptorPointerCPU GetDescriptorPointerCPU(const DescriptorHandle& descriptorHandle);
         void GetMemoryInfo(MemoryLocation memoryLocation, const D3D12_RESOURCE_DESC& resourceDesc, MemoryDesc& memoryDesc) const;
 
@@ -207,7 +207,7 @@ namespace nri
         return m_CoreInterface;
     }
 
-    inline void DeviceD3D12::ReturnDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, const DescriptorHandle& descriptorHandle)
+    inline void DeviceD3D12::FreeDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, const DescriptorHandle& descriptorHandle)
     {
         ExclusiveScope lock(m_FreeDescriptorLocks[type]);
         auto& freeDescriptors = m_FreeDescriptors[type];

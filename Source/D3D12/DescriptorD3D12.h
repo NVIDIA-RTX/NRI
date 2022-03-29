@@ -67,7 +67,7 @@ namespace nri
 
     inline DescriptorD3D12::~DescriptorD3D12()
     {
-        m_Device.ReturnDescriptorHandle(m_HeapType, m_Handle);
+        m_Device.FreeDescriptorHandle(m_HeapType, m_Handle);
     }
 
     inline DescriptorD3D12::operator ID3D12Resource*() const
