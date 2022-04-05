@@ -1959,6 +1959,14 @@ void DeviceVK::ReportDeviceGroupInfo()
         return Result::UNSUPPORTED; \
     }
 
+#define RESOLVE_PRE_INSTANCE_FUNCTION( name ) \
+    m_VK.name = (PFN_vk ## name)m_VK.GetInstanceProcAddr(VK_NULL_HANDLE, "vk" #name); \
+    if (m_VK.name == nullptr) \
+    { \
+        REPORT_ERROR(GetLog(), "Failed to get instance function: '%s'.", #name); \
+        return Result::UNSUPPORTED; \
+    }
+
 Result DeviceVK::ResolvePreInstanceDispatchTable()
 {
     m_VK = {};
@@ -1970,9 +1978,9 @@ Result DeviceVK::ResolvePreInstanceDispatchTable()
         return Result::UNSUPPORTED;
     }
 
-    RESOLVE_INSTANCE_FUNCTION(CreateInstance);
-    RESOLVE_INSTANCE_FUNCTION(EnumerateInstanceExtensionProperties);
-    RESOLVE_INSTANCE_FUNCTION(EnumerateInstanceLayerProperties);
+    RESOLVE_PRE_INSTANCE_FUNCTION(CreateInstance);
+    RESOLVE_PRE_INSTANCE_FUNCTION(EnumerateInstanceExtensionProperties);
+    RESOLVE_PRE_INSTANCE_FUNCTION(EnumerateInstanceLayerProperties);
 
     return Result::SUCCESS;
 }
