@@ -77,7 +77,7 @@ namespace nri
         if (dimension == 2)
             size = (uint16_t)m_TextureDesc.DepthOrArraySize;
 
-        size = (uint16_t)GetAlignedSize( std::max(size >> mipOffset, 1), GetTexelBlockWidth(m_Format) );
+        size = (uint16_t)Align( std::max(size >> mipOffset, 1), GetTexelBlockWidth(m_Format) );
 
         const uint32_t resourceDimension = m_TextureDesc.Dimension - D3D12_RESOURCE_DIMENSION_TEXTURE1D;
         return (dimension <= resourceDimension) ? size : 1;

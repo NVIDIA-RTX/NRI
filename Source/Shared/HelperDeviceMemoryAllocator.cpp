@@ -155,7 +155,7 @@ void HelperDeviceMemoryAllocator::GroupByMemoryType(MemoryLocation memoryLocatio
         {
             MemoryTypeGroup& group = m_Map.try_emplace(memoryDesc.type, m_StdAllocator).first->second;
 
-            const uint64_t offset = GetAlignedSize(group.memoryOffset, memoryDesc.alignment);
+            const uint64_t offset = Align(group.memoryOffset, memoryDesc.alignment);
 
             group.buffers.push_back(buffer);
             group.bufferOffsets.push_back(offset);
@@ -182,9 +182,9 @@ void HelperDeviceMemoryAllocator::GroupByMemoryType(MemoryLocation memoryLocatio
             MemoryTypeGroup& group = m_Map.try_emplace(memoryDesc.type, m_StdAllocator).first->second;
 
             if (group.textures.empty() && group.memoryOffset > 0)
-                group.memoryOffset = GetAlignedSize(group.memoryOffset, deviceDesc.bufferTextureGranularity);
+                group.memoryOffset = Align(group.memoryOffset, deviceDesc.bufferTextureGranularity);
 
-            const uint64_t offset = GetAlignedSize(group.memoryOffset, memoryDesc.alignment);
+            const uint64_t offset = Align(group.memoryOffset, memoryDesc.alignment);
 
             group.textures.push_back(texture);
             group.textureOffsets.push_back(offset);

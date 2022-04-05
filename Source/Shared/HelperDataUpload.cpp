@@ -28,13 +28,13 @@ Result HelperDataUpload::UploadData(const TextureUploadDesc* textureUploadDescs,
         const TextureSubresourceUploadDesc& subresource = textureUploadDescs[i].subresources[0];
 
         const uint32_t sliceRowNum = std::max(subresource.slicePitch / subresource.rowPitch, 1u);
-        const uint64_t alignedRowPitch = GetAlignedSize(subresource.rowPitch, deviceDesc.uploadBufferTextureRowAlignment);
-        const uint64_t alignedSlicePitch = GetAlignedSize(sliceRowNum * alignedRowPitch, deviceDesc.uploadBufferTextureSliceAlignment);
+        const uint64_t alignedRowPitch = Align(subresource.rowPitch, deviceDesc.uploadBufferTextureRowAlignment);
+        const uint64_t alignedSlicePitch = Align(sliceRowNum * alignedRowPitch, deviceDesc.uploadBufferTextureSliceAlignment);
         const uint64_t mipLevelContentSize = alignedSlicePitch * std::max(subresource.sliceNum, 1u);
         m_UploadBufferSize = std::max(m_UploadBufferSize, mipLevelContentSize);
     }
 
-    m_UploadBufferSize = GetAlignedSize(m_UploadBufferSize, COPY_ALIGMENT);
+    m_UploadBufferSize = Align(m_UploadBufferSize, COPY_ALIGMENT);
 
     Result result = Create();
 
@@ -217,8 +217,8 @@ bool HelperDataUpload::CopyTextureContent(const TextureUploadDesc& textureUpload
             const auto& subresource = textureUploadDesc.subresources[arrayOffset * textureUploadDesc.mipNum + mipOffset];
 
             const uint32_t sliceRowNum = subresource.slicePitch / subresource.rowPitch;
-            const uint32_t alignedRowPitch = GetAlignedSize(subresource.rowPitch, m_DeviceDesc.uploadBufferTextureRowAlignment);
-            const uint32_t alignedSlicePitch = GetAlignedSize(sliceRowNum * alignedRowPitch, m_DeviceDesc.uploadBufferTextureSliceAlignment);
+            const uint32_t alignedRowPitch = Align(subresource.rowPitch, m_DeviceDesc.uploadBufferTextureRowAlignment);
+            const uint32_t alignedSlicePitch = Align(sliceRowNum * alignedRowPitch, m_DeviceDesc.uploadBufferTextureSliceAlignment);
             const uint64_t mipLevelContentSize = uint64_t(alignedSlicePitch) * subresource.sliceNum;
             const uint64_t freeSpace = m_UploadBufferSize - m_UploadBufferOffset;
 
@@ -242,13 +242,13 @@ bool HelperDataUpload::CopyTextureContent(const TextureUploadDesc& textureUpload
             for (uint32_t k = 0; k < m_CommandBuffers.size(); k++)
                 NRI.CmdUploadBufferToTexture(*m_CommandBuffers[k], *textureUploadDesc.texture, dstRegion, *m_UploadBuffer, srcDataLayout);
 
-            m_UploadBufferOffset = GetAlignedSize(m_UploadBufferOffset + mipLevelContentSize, COPY_ALIGMENT);
+            m_UploadBufferOffset = Align(m_UploadBufferOffset + mipLevelContentSize, COPY_ALIGMENT);
         }
         mipOffset = 0;
     }
     arrayOffset = 0;
 
-    m_UploadBufferOffset = GetAlignedSize(m_UploadBufferOffset, COPY_ALIGMENT);
+    m_UploadBufferOffset = Align(m_UploadBufferOffset, COPY_ALIGMENT);
 
     return true;
 }
@@ -300,7 +300,7 @@ bool HelperDataUpload::CopyBufferContent(const BufferUploadDesc& bufferUploadDes
         return false;
 
     bufferContentOffset = 0;
-    m_UploadBufferOffset = GetAlignedSize(m_UploadBufferOffset, COPY_ALIGMENT);
+    m_UploadBufferOffset = Align(m_UploadBufferOffset, COPY_ALIGMENT);
     return true;
 }
 

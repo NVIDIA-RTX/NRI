@@ -303,7 +303,7 @@ inline void BufferD3D11::GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc
     else if (m_Desc.size <= 4096)
         alignment = 4096;
 
-    uint64_t size = GetAlignedSize(m_Desc.size, alignment);
+    uint64_t size = Align(m_Desc.size, alignment);
 
     memoryDesc.type = (MemoryType)memoryLocation;
     memoryDesc.size = size;

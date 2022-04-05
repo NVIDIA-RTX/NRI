@@ -168,7 +168,7 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         cb.shaderVisibility = GetShaderVisibility(pushConstant.visibility, pipelineLayoutDesc.stageMask);
         cb.slot = pushConstant.registerIndex;
 
-        desc.ByteWidth = GetAlignedSize(pushConstant.size, 16);
+        desc.ByteWidth = Align(pushConstant.size, 16);
         HRESULT hr = m_VersionedDevice->CreateBuffer(&desc, nullptr, &cb.buffer);
         if (FAILED(hr))
             REPORT_ERROR(m_Device.GetLog(), "Can't create a constant buffer for push constants! ID3D11Device::CreateBuffer() - FAILED!");

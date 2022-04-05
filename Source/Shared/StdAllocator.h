@@ -48,10 +48,8 @@ inline void AlignedFree(void* userArg, void* memory)
 #include <alloca.h>
 #define _alloca alloca
 
-inline uint8_t* AlignMemory(uint8_t* memory, size_t alignment)
-{
-    return (uint8_t*)((size_t(memory) + alignment - 1) & ~(alignment - 1));
-}
+template<typename T>
+inline T Align(T x, size_t alignment);
 
 inline void* AlignedMalloc(void* userArg, size_t size, size_t alignment)
 {
@@ -62,7 +60,7 @@ inline void* AlignedMalloc(void* userArg, size_t size, size_t alignment)
     if (memory == nullptr)
         return nullptr;
 
-    uint8_t* alignedMemory = AlignMemory(memory + sizeof(uint8_t*), alignment);
+    uint8_t* alignedMemory = Align(memory + sizeof(uint8_t*), alignment);
     uint8_t** memoryHeader = (uint8_t**)alignedMemory - 1;
     *memoryHeader = memory;
 
@@ -84,7 +82,7 @@ inline void* AlignedRealloc(void* userArg, void* memory, size_t size, size_t ali
     if (newMemory == oldMemory)
         return memory;
 
-    uint8_t* alignedMemory = AlignMemory(newMemory + sizeof(uint8_t*), alignment);
+    uint8_t* alignedMemory = Align(newMemory + sizeof(uint8_t*), alignment);
     memoryHeader = (uint8_t**)alignedMemory - 1;
     *memoryHeader = newMemory;
 
@@ -125,7 +123,7 @@ struct StdAllocator
     typedef std::false_type is_always_equal;
 
     StdAllocator(const MemoryAllocatorInterface& memoryAllocatorInterface) : m_Interface(memoryAllocatorInterface)
-    { CheckAndSetDefaultAllocator(m_Interface); }
+    {}
 
     template<class U>
     StdAllocator(const StdAllocator<U>& allocator) : m_Interface(allocator.GetInterface())
@@ -166,15 +164,9 @@ bool operator!= (const StdAllocator<T>& left, const StdAllocator<T>& right)
 }
 
 template<typename T>
-inline T GetAlignedSize(const T& x, uint32_t alignment)
+inline T Align(T x, size_t alignment)
 {
-    return ((x + alignment - 1) / alignment) * alignment;
-}
-
-template<typename T>
-inline T* Align(T* x, size_t alignment)
-{
-    return (T*)(((size_t)x + alignment - 1) / alignment * alignment);
+    return (T)((size_t(x) + alignment - 1) & ~(alignment - 1));
 }
 
 template <typename T, uint32_t N>
@@ -271,7 +263,7 @@ constexpr size_t CountStackAllocationSize(size_t arraySize)
 
 #define ALLOCATE_SCRATCH(device, T, arraySize) \
     (CountStackAllocationSize<T>(arraySize) <= STACK_ALLOC_MAX_SIZE) ? \
-    Align<T>(((arraySize) ? (T*)_alloca(CountStackAllocationSize<T>(arraySize)) : nullptr), alignof(T)) : \
+    Align(((arraySize) ? (T*)_alloca(CountStackAllocationSize<T>(arraySize)) : nullptr), alignof(T)) : \
     AllocateArray<T>((device).GetStdAllocator(), arraySize);
 
 #define FREE_SCRATCH(device, array, arraySize) \
@@ -279,4 +271,4 @@ constexpr size_t CountStackAllocationSize(size_t arraySize)
         DeallocateArray((device).GetStdAllocator(), array, arraySize);
 
 #define STACK_ALLOC(T, arraySize) \
-    Align<T>(((arraySize) ? (T*)_alloca(CountStackAllocationSize<T>(arraySize)) : nullptr), alignof(T))
+    Align(((arraySize) ? (T*)_alloca(CountStackAllocationSize<T>(arraySize)) : nullptr), alignof(T))

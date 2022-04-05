@@ -290,7 +290,7 @@ inline void TextureD3D11::GetMemoryInfo(MemoryLocation memoryLocation, MemoryDes
     else if (size <= 65536)
         alignment = 65536;
 
-    size = GetAlignedSize(size, alignment);
+    size = Align(size, alignment);
 
     memoryDesc.type = (MemoryType)memoryLocation;
     memoryDesc.size = size;
