@@ -17,11 +17,12 @@ namespace nri
 
     struct DescriptorSetVK
     {
-        DescriptorSetVK(DeviceVK& device, const VkDescriptorSet* handles, uint32_t physicalDeviceMask, const DescriptorSetDesc& setDesc);
+        DescriptorSetVK(DeviceVK& device);
 
         VkDescriptorSet GetHandle(uint32_t physicalDeviceIndex) const;
         DeviceVK& GetDevice() const;
         uint32_t GetDynamicConstantBufferNum() const;
+        void Create(const VkDescriptorSet* handles, uint32_t physicalDeviceMask, const DescriptorSetDesc& setDesc);
 
         void SetDebugName(const char* name);
         void UpdateDescriptorRanges(uint32_t physicalDeviceMask, uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs);
@@ -31,7 +32,7 @@ namespace nri
     private:
         std::array<VkDescriptorSet, PHYSICAL_DEVICE_GROUP_MAX_SIZE> m_Handles = {};
         uint32_t m_DynamicConstantBufferNum = 0;
-        const DescriptorSetDesc& m_SetDesc;
+        const DescriptorSetDesc* m_SetDesc = nullptr;
         DeviceVK& m_Device;
     };
 

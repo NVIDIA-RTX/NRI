@@ -29,11 +29,15 @@ private:
     uint8_t* m_Memory;
 };
 
-DescriptorSetVK::DescriptorSetVK(DeviceVK& device, const VkDescriptorSet* handles, uint32_t physicalDeviceMask, const DescriptorSetDesc& setDesc) :
-    m_DynamicConstantBufferNum(setDesc.dynamicConstantBufferNum),
-    m_SetDesc(setDesc),
-    m_Device(device)
+DescriptorSetVK::DescriptorSetVK(DeviceVK& device) : m_Device(device)
 {
+}
+
+void DescriptorSetVK::Create(const VkDescriptorSet* handles, uint32_t physicalDeviceMask, const DescriptorSetDesc& setDesc)
+{
+    m_SetDesc = &setDesc;
+    m_DynamicConstantBufferNum = setDesc.dynamicConstantBufferNum;
+
     uint32_t handleIndex = 0;
     for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
     {
@@ -225,7 +229,7 @@ inline void DescriptorSetVK::UpdateDescriptorRanges(uint32_t physicalDeviceMask,
             while (slabHasFreeSpace && j < rangeNum && writeNum < writeMaxNum)
             {
                 const DescriptorRangeUpdateDesc& update = rangeUpdateDescs[j];
-                const DescriptorRangeDesc& rangeDesc = m_SetDesc.ranges[rangeOffset + j];
+                const DescriptorRangeDesc& rangeDesc = m_SetDesc->ranges[rangeOffset + j];
 
                 const uint32_t bindingOffset = rangeDesc.isArray ? 0 : update.offsetInRange + descriptorOffset;
                 const uint32_t arrayOffset = rangeDesc.isArray ? update.offsetInRange + descriptorOffset : 0;
@@ -267,7 +271,7 @@ inline void DescriptorSetVK::UpdateDynamicConstantBuffers(uint32_t physicalDevic
 
         for (uint32_t j = 0; j < descriptorNum; j++)
         {
-            const DynamicConstantBufferDesc& bufferDesc = m_SetDesc.dynamicConstantBuffers[bufferOffset + j];
+            const DynamicConstantBufferDesc& bufferDesc = m_SetDesc->dynamicConstantBuffers[bufferOffset + j];
 
             VkDescriptorBufferInfo& bufferInfo = infos[writeNum];
             const DescriptorVK& descriptorImpl = *(const DescriptorVK*)descriptors[j];
@@ -310,8 +314,8 @@ inline void DescriptorSetVK::Copy(const DescriptorSetCopyDesc& descriptorSetCopy
 
         for (uint32_t j = 0; j < descriptorSetCopyDesc.rangeNum; j++)
         {
-            const DescriptorRangeDesc& srcRangeDesc = srcSetImpl.m_SetDesc.ranges[descriptorSetCopyDesc.baseSrcRange + j];
-            const DescriptorRangeDesc& dstRangeDesc = m_SetDesc.ranges[descriptorSetCopyDesc.baseDstRange + j];
+            const DescriptorRangeDesc& srcRangeDesc = srcSetImpl.m_SetDesc->ranges[descriptorSetCopyDesc.baseSrcRange + j];
+            const DescriptorRangeDesc& dstRangeDesc = m_SetDesc->ranges[descriptorSetCopyDesc.baseDstRange + j];
 
             copies[copyNum++] = {
                 VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET,
@@ -329,8 +333,8 @@ inline void DescriptorSetVK::Copy(const DescriptorSetCopyDesc& descriptorSetCopy
         for (uint32_t j = 0; j < descriptorSetCopyDesc.dynamicConstantBufferNum; j++)
         {
             const uint32_t srcBufferIndex = descriptorSetCopyDesc.baseSrcDynamicConstantBuffer + j;
-            const DynamicConstantBufferDesc& srcBuffer = srcSetImpl.m_SetDesc.dynamicConstantBuffers[srcBufferIndex];
-            const DynamicConstantBufferDesc& dstBuffer = m_SetDesc.dynamicConstantBuffers[srcBufferIndex];
+            const DynamicConstantBufferDesc& srcBuffer = srcSetImpl.m_SetDesc->dynamicConstantBuffers[srcBufferIndex];
+            const DynamicConstantBufferDesc& dstBuffer = m_SetDesc->dynamicConstantBuffers[srcBufferIndex];
 
             copies[copyNum++] = {
                 VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET,

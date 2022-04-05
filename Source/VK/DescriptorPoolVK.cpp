@@ -28,9 +28,12 @@ DescriptorPoolVK::~DescriptorPoolVK()
 {
     const auto& lowLevelAllocator = m_Device.GetStdAllocator().GetInterface();
 
-    for (size_t i = m_UsedSets; i < m_AllocatedSets.size(); i++)
+    for (size_t i = 0; i < m_AllocatedSets.size(); i++)
+    {
+        m_AllocatedSets[i]->~DescriptorSetVK();
         lowLevelAllocator.Free(lowLevelAllocator.userArg, m_AllocatedSets[i]);
-
+    }
+    
     const auto& vk = m_Device.GetDispatchTable();
     if (m_Handle != VK_NULL_HANDLE && m_OwnsNativeObjects)
         vk.DestroyDescriptorPool(m_Device, m_Handle, m_Device.GetAllocationCallbacks());
@@ -128,6 +131,8 @@ inline Result DescriptorPoolVK::AllocateDescriptorSets(const PipelineLayout& pip
         {
             m_AllocatedSets[prevSetNum + i] = (DescriptorSetVK*)lowLevelAllocator.Allocate(lowLevelAllocator.userArg,
                 sizeof(DescriptorSetVK), alignof(DescriptorSetVK));
+
+            Construct(m_AllocatedSets[prevSetNum + i], 1, m_Device);
         }
     }
 
@@ -171,7 +176,7 @@ inline Result DescriptorPoolVK::AllocateDescriptorSets(const PipelineLayout& pip
     for (uint32_t i = 0; i < numberOfCopies && result == VK_SUCCESS; i++)
     {
         result = vk.AllocateDescriptorSets(m_Device, &info, handles.data());
-        Construct(*((DescriptorSetVK**)descriptorSets + i), 1, m_Device, handles.data(), physicalDeviceMask, setDesc);
+        ((DescriptorSetVK*)descriptorSets[i])->Create(handles.data(), physicalDeviceMask, setDesc);
     }
 
     RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
