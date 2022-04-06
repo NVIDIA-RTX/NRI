@@ -38,6 +38,7 @@ namespace nri
         bool IsDescriptorIndexingExtSupported() const;
         bool IsConcurrentSharingModeEnabledForBuffers() const;
         bool IsConcurrentSharingModeEnabledForImages() const;
+        bool IsBufferDeviceAddressSupported() const;
         const Vector<uint32_t>& GetConcurrentSharingModeQueueIndices() const;
 
         void SetDebugNameToTrivialObject(VkObjectType objectType, uint64_t handle, const char* name);
@@ -107,6 +108,8 @@ namespace nri
         uint32_t CalculateAllocationNumber(const ResourceGroupDesc& resourceGroupDesc) const;
         Result AllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDesc, Memory** allocations);
 
+        void SetSPIRVBindingOffsets(const SPIRVBindingOffsets& spirvBindingOffsets);
+
         //================================================================================================================
         // DeviceBase
         //================================================================================================================
@@ -117,6 +120,7 @@ namespace nri
         Result FillFunctionTable(RayTracingInterface& rayTracingInterface) const;
         Result FillFunctionTable(MeshShaderInterface& meshShaderInterface) const;
         Result FillFunctionTable(HelperInterface& helperInterface) const;
+        Result FillFunctionTable(WrapperSPIRVOffsetsInterface& wrapperSPIRVOffsetsInterface) const;
 
     private:
         Result CreateInstance(const DeviceCreationDesc& deviceCreationDesc);
@@ -135,6 +139,7 @@ namespace nri
         void RetrieveMeshShaderInfo();
         void ReportDeviceGroupInfo();
         void CheckSupportedDeviceExtensions(const Vector<const char*>& extensions);
+        void CheckSupportedInstanceExtensions(const Vector<const char*>& extensions);
         void FindDXGIAdapter();
 
         template< typename Implementation, typename Interface, typename ... Args >
@@ -170,7 +175,9 @@ namespace nri
         bool m_IsSubsetAllocationSupported = false;
         bool m_IsConcurrentSharingModeEnabledForBuffers = true;
         bool m_IsConcurrentSharingModeEnabledForImages = true;
+        bool m_IsDebugUtilsSupported = false;
         bool m_IsFP16Supported = false;
+        bool m_IsBufferDeviceAddressSupported = false;
         Library* m_Loader = nullptr;
 #if _WIN32
         ComPtr<IDXGIAdapter> m_Adapter;
@@ -235,6 +242,11 @@ namespace nri
     inline bool DeviceVK::IsConcurrentSharingModeEnabledForImages() const
     {
         return m_IsConcurrentSharingModeEnabledForImages;
+    }
+
+    inline bool DeviceVK::IsBufferDeviceAddressSupported() const
+    {
+        return m_IsBufferDeviceAddressSupported;
     }
 
     inline const Vector<uint32_t>& DeviceVK::GetConcurrentSharingModeQueueIndices() const

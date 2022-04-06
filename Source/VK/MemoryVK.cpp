@@ -45,7 +45,10 @@ Result MemoryVK::Create(uint32_t physicalDeviceMask, const MemoryType memoryType
         return Result::SUCCESS;
 
     VkMemoryAllocateFlagsInfo flagsInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO };
-    flagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_MASK_BIT | VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
+    flagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_MASK_BIT;
+
+    if (m_Device.IsBufferDeviceAddressSupported())
+        flagsInfo.flags |= VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
 
     VkMemoryAllocateInfo memoryInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
     memoryInfo.pNext = &flagsInfo;

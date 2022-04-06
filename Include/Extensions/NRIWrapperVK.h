@@ -137,4 +137,9 @@ namespace nri
         NRIVkImageView (NRI_CALL *GetTextureDescriptorVK)(const Descriptor& descriptor, uint32_t physicalDeviceIndex, VkImageSubresourceRange& subresource);
         NRIVkBufferView (NRI_CALL *GetBufferDescriptorVK)(const Descriptor& descriptor, uint32_t physicalDeviceIndex);
     };
+
+    struct WrapperSPIRVOffsetsInterface
+    {
+        void (NRI_CALL *SetSPIRVBindingOffsets)(Device& device, const SPIRVBindingOffsets& spirvBindingOffsets);
+    };
 }

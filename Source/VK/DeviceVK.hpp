@@ -519,3 +519,21 @@ Result DeviceVK::FillFunctionTable(HelperInterface& helperInterface) const
 }
 
 #pragma endregion
+
+#pragma region [  WrapperSPIRVOffsetsInterface  ]
+
+static void NRI_CALL SetSPIRVBindingOffsets(Device& device, const SPIRVBindingOffsets& spirvBindingOffsets)
+{
+    return ((DeviceVK&)device).SetSPIRVBindingOffsets(spirvBindingOffsets);
+}
+
+Result DeviceVK::FillFunctionTable(WrapperSPIRVOffsetsInterface& wrapperSPIRVOffsetsInterface) const
+{
+    wrapperSPIRVOffsetsInterface = {};
+
+    wrapperSPIRVOffsetsInterface.SetSPIRVBindingOffsets = ::SetSPIRVBindingOffsets;
+
+    return ValidateFunctionTable(GetLog(), wrapperSPIRVOffsetsInterface);
+}
+
+#pragma endregion

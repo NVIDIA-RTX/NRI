@@ -104,6 +104,8 @@ namespace nri
         uint32_t CalculateAllocationNumber(const ResourceGroupDesc& resourceGroupDesc) const;
         Result AllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDesc, Memory** allocations);
 
+        void SetSPIRVBindingOffsets(const SPIRVBindingOffsets& spirvBindingOffsets);
+
         uint32_t GetPhysicalDeviceNum() const;
         bool IsPhysicalDeviceMaskValid(uint32_t physicalDeviceMask) const;
 
@@ -121,6 +123,7 @@ namespace nri
         Result FillFunctionTable(RayTracingInterface& table) const;
         Result FillFunctionTable(MeshShaderInterface& table) const;
         Result FillFunctionTable(HelperInterface& table) const;
+        Result FillFunctionTable(WrapperSPIRVOffsetsInterface& wrapperSPIRVOffsetsInterface) const;
 
     private:
         Device& m_Device;
@@ -133,12 +136,14 @@ namespace nri
         RayTracingInterface m_RayTracingAPI = {};
         MeshShaderInterface m_MeshShaderAPI = {};
         HelperInterface m_HelperAPI = {};
+        WrapperSPIRVOffsetsInterface m_WrapperSPIRVOffsetsAPI = {};
         bool m_IsSwapChainSupported = false;
         bool m_IsWrapperD3D11Supported = false;
         bool m_IsWrapperD3D12Supported = false;
         bool m_IsWrapperVKSupported = false;
         bool m_IsRayTracingSupported = false;
         bool m_IsMeshShaderExtSupported = false;
+        bool m_IsWrapperSPIRVOffsetsSupported = false;
         uint32_t m_PhysicalDeviceNum = 0;
         uint32_t m_PhysicalDeviceMask = 0;
         std::array<CommandQueueVal*, COMMAND_QUEUE_TYPE_NUM> m_CommandQueues = {};

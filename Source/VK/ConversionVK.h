@@ -50,8 +50,11 @@ namespace nri
         if (usageMask & BufferUsageBits::RAY_TRACING_BUFFER)
         {
             flags |= VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR |
-                VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
         }
+
+        if (usageMask & BufferUsageBits::ACCELERATION_STRUCTURE_BUILD_READ)
+            flags |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
 
         if (usageMask & BufferUsageBits::SHADER_RESOURCE)
         {

@@ -76,12 +76,21 @@ Result DeviceD3D12::Create(const DeviceCreationD3D12Desc& deviceCreationDesc)
         RETURN_ON_BAD_HRESULT(GetLog(), result, "Failed to find IDXGIAdapter by LUID");
     }
 
+#ifdef __ID3D12Device5_INTERFACE_DEFINED__
+    m_Device->QueryInterface(IID_PPV_ARGS(&m_Device5));
+#endif
+
     if (deviceCreationDesc.d3d12GraphicsQueue)
         CreateCommandQueue((ID3D12CommandQueue*)deviceCreationDesc.d3d12GraphicsQueue, m_CommandQueues[(uint32_t)CommandQueueType::GRAPHICS]);
     if (deviceCreationDesc.d3d12ComputeQueue)
         CreateCommandQueue((ID3D12CommandQueue*)deviceCreationDesc.d3d12ComputeQueue, m_CommandQueues[(uint32_t)CommandQueueType::COMPUTE]);
     if (deviceCreationDesc.d3d12CopyQueue)
         CreateCommandQueue((ID3D12CommandQueue*)deviceCreationDesc.d3d12CopyQueue, m_CommandQueues[(uint32_t)CommandQueueType::COPY]);
+
+    CommandQueue* commandQueue;
+    Result result = GetCommandQueue(CommandQueueType::GRAPHICS, commandQueue);
+    if (result != Result::SUCCESS)
+        return result;
 
     UpdateDeviceDesc(deviceCreationDesc.enableAPIValidation);
 

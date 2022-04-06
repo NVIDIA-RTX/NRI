@@ -88,6 +88,11 @@ NRI_API Result NRI_CALL nri::GetInterface(const Device& device, const char* inte
         realInterfaceSize = sizeof(HelperInterface);
         result = deviceBase.FillFunctionTable(*(HelperInterface*)interfacePtr);
     }
+    else if (hash == Hash( NRI_STRINGIFY(nri::WrapperSPIRVOffsetsInterface) ))
+    {
+        realInterfaceSize = sizeof(WrapperSPIRVOffsetsInterface);
+        result = deviceBase.FillFunctionTable(*(WrapperSPIRVOffsetsInterface*)interfacePtr);
+    }
 
     if (result == Result::INVALID_ARGUMENT)
         REPORT_ERROR(deviceBase.GetLog(), "Unknown interface '%s'!", interfaceName);

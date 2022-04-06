@@ -71,6 +71,7 @@ bool DeviceVal::Create()
     m_IsWrapperVKSupported = deviceBase.FillFunctionTable(m_WrapperVKAPI) == Result::SUCCESS;
     m_IsRayTracingSupported = deviceBase.FillFunctionTable(m_RayTracingAPI) == Result::SUCCESS;
     m_IsMeshShaderExtSupported = deviceBase.FillFunctionTable(m_MeshShaderAPI) == Result::SUCCESS;
+    m_IsWrapperSPIRVOffsetsSupported = deviceBase.FillFunctionTable(m_WrapperSPIRVOffsetsAPI) == Result::SUCCESS;
     deviceBase.FillFunctionTable(m_HelperAPI);
 
     return true;
@@ -1550,6 +1551,11 @@ Result DeviceVal::AllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDe
     }
 
     return result;
+}
+
+void DeviceVal::SetSPIRVBindingOffsets(const SPIRVBindingOffsets& spirvBindingOffsets)
+{
+    m_WrapperSPIRVOffsetsAPI.SetSPIRVBindingOffsets(m_Device, spirvBindingOffsets);
 }
 
 Result DeviceVal::CreateRayTracingPipeline(const RayTracingPipelineDesc& pipelineDesc, Pipeline*& pipeline)

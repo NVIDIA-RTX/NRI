@@ -197,6 +197,9 @@ Result DeviceVK::Create(const DeviceCreationDesc& deviceCreationDesc)
 
     m_SPIRVBindingOffsets = deviceCreationDesc.spirvBindingOffsets;
 
+    m_IsConcurrentSharingModeEnabledForBuffers = m_IsConcurrentSharingModeEnabledForBuffers && m_ConcurrentSharingModeQueueIndices.size() > 1;
+    m_IsConcurrentSharingModeEnabledForImages = m_IsConcurrentSharingModeEnabledForImages && m_ConcurrentSharingModeQueueIndices.size() > 1;
+
     FindDXGIAdapter();
 
     return res;
@@ -213,6 +216,7 @@ Result DeviceVK::Create(const DeviceCreationVulkanDesc& deviceCreationVulkanDesc
 
     m_Device = (VkDevice)deviceCreationVulkanDesc.vkDevice;
 
+    m_AllocationCallbacks.pUserData = &GetStdAllocator();
     m_AllocationCallbacks.pfnAllocation = vkAllocateHostMemory;
     m_AllocationCallbacks.pfnReallocation = vkReallocateHostMemory;
     m_AllocationCallbacks.pfnFree = vkFreeHostMemory;
@@ -234,6 +238,12 @@ Result DeviceVK::Create(const DeviceCreationVulkanDesc& deviceCreationVulkanDesc
     }
 
     Vector<const char*> extensions(GetStdAllocator());
+    extensions.insert(extensions.end(), deviceCreationVulkanDesc.instanceExtensions,
+        deviceCreationVulkanDesc.instanceExtensions + deviceCreationVulkanDesc.instanceExtensionNum);
+
+    CheckSupportedInstanceExtensions(extensions);
+
+    extensions.clear();
     extensions.insert(extensions.end(), deviceCreationVulkanDesc.deviceExtensions,
         deviceCreationVulkanDesc.deviceExtensions + deviceCreationVulkanDesc.deviceExtensionNum);
 
@@ -260,6 +270,9 @@ Result DeviceVK::Create(const DeviceCreationVulkanDesc& deviceCreationVulkanDesc
 
     if (deviceCreationVulkanDesc.enableAPIValidation)
         ReportDeviceGroupInfo();
+
+    m_IsConcurrentSharingModeEnabledForBuffers = m_IsConcurrentSharingModeEnabledForBuffers && m_ConcurrentSharingModeQueueIndices.size() > 1;
+    m_IsConcurrentSharingModeEnabledForImages = m_IsConcurrentSharingModeEnabledForImages && m_ConcurrentSharingModeQueueIndices.size() > 1;
 
     FindDXGIAdapter();
 
@@ -961,6 +974,11 @@ Result DeviceVK::AllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDes
     return allocator.AllocateAndBindMemory(resourceGroupDesc, allocations);
 }
 
+void DeviceVK::SetSPIRVBindingOffsets(const SPIRVBindingOffsets& spirvBindingOffsets)
+{
+    m_SPIRVBindingOffsets = spirvBindingOffsets;
+}
+
 const char* GetObjectTypeName(VkObjectType objectType)
 {
     switch(objectType)
@@ -1217,6 +1235,8 @@ Result DeviceVK::CreateInstance(const DeviceCreationDesc& deviceCreationDesc)
 
     FilterInstanceLayers(layers);
     FilterInstanceExtensions(extensions);
+
+    CheckSupportedInstanceExtensions(extensions);
 
     const VkApplicationInfo appInfo = {
         VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -1599,6 +1619,11 @@ void EraseIncompatibleExtension(Vector<const char*>& extensions, const char* ext
         extensions.erase(extensions.begin() + i);
 }
 
+void DeviceVK::CheckSupportedInstanceExtensions(const Vector<const char*>& extensions)
+{
+    m_IsDebugUtilsSupported = IsExtensionInList(VK_EXT_DEBUG_UTILS_EXTENSION_NAME, extensions);
+}
+
 void DeviceVK::CheckSupportedDeviceExtensions(const Vector<const char*>& extensions)
 {
     m_IsDescriptorIndexingExtSupported = IsExtensionInList(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME, extensions);
@@ -1608,6 +1633,7 @@ void DeviceVK::CheckSupportedDeviceExtensions(const Vector<const char*>& extensi
     m_IsMeshShaderExtSupported = IsExtensionInList(VK_NV_MESH_SHADER_EXTENSION_NAME, extensions);
     m_IsHDRExtSupported = IsExtensionInList(VK_EXT_HDR_METADATA_EXTENSION_NAME, extensions);
     m_IsFP16Supported = IsExtensionInList(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME, extensions);
+    m_IsBufferDeviceAddressSupported = IsExtensionInList(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME, extensions);
 
     m_IsRayTracingExtSupported = m_IsDescriptorIndexingExtSupported;
     m_IsRayTracingExtSupported = m_IsRayTracingExtSupported && IsExtensionInList(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, extensions);
@@ -1646,7 +1672,7 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
     extensions.push_back(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME);
     extensions.push_back(VK_EXT_HDR_METADATA_EXTENSION_NAME);
     extensions.push_back(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME);
-    
+
     FilterDeviceExtensions(extensions);
 
     EraseIncompatibleExtension(extensions, VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
@@ -1722,6 +1748,8 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
     }
 
     m_VK.GetPhysicalDeviceFeatures2(m_PhysicalDevices.front(), &deviceFeatures2);
+
+    m_IsBufferDeviceAddressSupported = bufferDeviceAddressFeatures.bufferDeviceAddress;
 
     if (!deviceCreationDesc.enableAPIValidation)
         deviceFeatures2.features.robustBufferAccess = false;
@@ -2110,8 +2138,6 @@ Result DeviceVK::ResolveDispatchTable()
     RESOLVE_DEVICE_FUNCTION(CmdWriteTimestamp);
     RESOLVE_DEVICE_FUNCTION(CmdCopyQueryPoolResults);
     RESOLVE_DEVICE_FUNCTION(CmdResetQueryPool);
-    RESOLVE_DEVICE_FUNCTION(CmdBeginDebugUtilsLabelEXT);
-    RESOLVE_DEVICE_FUNCTION(CmdEndDebugUtilsLabelEXT);
     RESOLVE_DEVICE_FUNCTION(CmdEndRenderPass);
     RESOLVE_DEVICE_FUNCTION(CmdFillBuffer);
     RESOLVE_DEVICE_FUNCTION(EndCommandBuffer);
@@ -2121,7 +2147,12 @@ Result DeviceVK::ResolveDispatchTable()
 
     RESOLVE_DEVICE_FUNCTION(GetSwapchainImagesKHR);
 
-    RESOLVE_DEVICE_FUNCTION(SetDebugUtilsObjectNameEXT);
+    if (m_IsDebugUtilsSupported)
+    {
+        RESOLVE_DEVICE_FUNCTION(SetDebugUtilsObjectNameEXT);
+        RESOLVE_DEVICE_FUNCTION(CmdBeginDebugUtilsLabelEXT);
+        RESOLVE_DEVICE_FUNCTION(CmdEndDebugUtilsLabelEXT);
+    }
 
     if (m_IsRayTracingExtSupported)
     {

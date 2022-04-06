@@ -186,14 +186,15 @@ namespace nri
 
     NRI_DECLARE_ENUM_CLASS_WITH_OPS(BufferUsageBits, uint16_t)
     {
-        NONE                         = 0,
-        SHADER_RESOURCE              = SetBit(0),
-        SHADER_RESOURCE_STORAGE      = SetBit(1),
-        VERTEX_BUFFER                = SetBit(2),
-        INDEX_BUFFER                 = SetBit(3),
-        CONSTANT_BUFFER              = SetBit(4),
-        ARGUMENT_BUFFER              = SetBit(5),
-        RAY_TRACING_BUFFER           = SetBit(6)
+        NONE                                = 0,
+        SHADER_RESOURCE                     = SetBit(0),
+        SHADER_RESOURCE_STORAGE             = SetBit(1),
+        VERTEX_BUFFER                       = SetBit(2),
+        INDEX_BUFFER                        = SetBit(3),
+        CONSTANT_BUFFER                     = SetBit(4),
+        ARGUMENT_BUFFER                     = SetBit(5),
+        RAY_TRACING_BUFFER                  = SetBit(6),
+        ACCELERATION_STRUCTURE_BUILD_READ   = SetBit(7)
     };
 
     NRI_DECLARE_ENUM_CLASS_WITH_OPS(AccessBits, uint16_t)
