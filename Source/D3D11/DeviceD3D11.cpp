@@ -49,7 +49,7 @@ DeviceD3D11::~DeviceD3D11()
     DeleteCriticalSection(&m_CriticalSection);
 }
 
-Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAdapter* adapter, ID3D11Device* precreatedDevice, AGSContext* agsContext)
+Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAdapter* adapter, ID3D11Device* device, AGSContext* agsContext)
 {
     m_Adapter = adapter;
 
@@ -58,11 +58,9 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAd
 
     const Vendor vendor = GetVendorFromID(desc.VendorId);
 
-    m_Ext.Create(GetLog(), vendor, agsContext, precreatedDevice != nullptr);
+    m_Ext.Create(GetLog(), vendor, agsContext, device != nullptr);
 
-    ComPtr<ID3D11Device> device = precreatedDevice;
-
-    if (!precreatedDevice)
+    if (!device)
     {
         const UINT flags = deviceCreationDesc.enableAPIValidation ? D3D11_CREATE_DEVICE_DEBUG : 0;
         const std::array<D3D_FEATURE_LEVEL, 2> levels =
@@ -87,6 +85,8 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAd
             RETURN_ON_BAD_HRESULT(GetLog(), hr, "D3D11CreateDevice() - FAILED!");
         }
     }
+    else
+        device->AddRef();
 
     InitVersionedDevice(device, deviceCreationDesc.D3D11CommandBufferEmulation);
     InitVersionedContext();
