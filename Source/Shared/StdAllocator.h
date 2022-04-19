@@ -125,6 +125,9 @@ struct StdAllocator
     StdAllocator(const MemoryAllocatorInterface& memoryAllocatorInterface) : m_Interface(memoryAllocatorInterface)
     {}
 
+    StdAllocator(const StdAllocator<T>& allocator) : m_Interface(allocator.GetInterface())
+    {}
+
     template<class U>
     StdAllocator(const StdAllocator<U>& allocator) : m_Interface(allocator.GetInterface())
     {}
