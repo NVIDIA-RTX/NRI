@@ -22,12 +22,12 @@ extern D3D12_RESOURCE_FLAGS GetTextureFlags(TextureUsageBits textureUsageMask);
 
 Result TextureD3D12::Create(const TextureDesc& textureDesc)
 {
-    uint16_t blockSize = GetTexelBlockWidth(textureDesc.format) ? 4 : 1;
+    uint16_t blockWidth = (uint16_t)GetTexelBlockWidth(textureDesc.format);
 
     m_TextureDesc.Dimension = GetResourceDimension(textureDesc.type);
     m_TextureDesc.Alignment = textureDesc.sampleNum > 1 ? 0 : D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-    m_TextureDesc.Width = Align(textureDesc.size[0], blockSize);
-    m_TextureDesc.Height = Align(textureDesc.size[1], blockSize);
+    m_TextureDesc.Width = Align(textureDesc.size[0], blockWidth);
+    m_TextureDesc.Height = Align(textureDesc.size[1], blockWidth);
     m_TextureDesc.DepthOrArraySize = textureDesc.type == TextureType::TEXTURE_3D ? textureDesc.size[2] : textureDesc.arraySize;
     m_TextureDesc.MipLevels = textureDesc.mipNum;
     m_TextureDesc.Format = GetTypelessFormat(textureDesc.format);

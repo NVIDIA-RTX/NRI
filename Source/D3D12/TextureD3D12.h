@@ -73,13 +73,19 @@ namespace nri
 
     inline uint16_t TextureD3D12::GetSize(uint32_t dimension, uint32_t mipOffset) const
     {
-        uint16_t size = dimension == 1 ? (uint16_t)m_TextureDesc.Height : (uint16_t)m_TextureDesc.Width;
-        if (dimension == 2)
+        assert(dimension < 3);
+
+        uint16_t size;
+        if (dimension == 0)
+            size = (uint16_t)m_TextureDesc.Width;
+        else if (dimension == 1)
+            size = (uint16_t)m_TextureDesc.Height;
+        else
             size = (uint16_t)m_TextureDesc.DepthOrArraySize;
 
-        size = (uint16_t)Align( std::max(size >> mipOffset, 1), GetTexelBlockWidth(m_Format) );
+        size = (uint16_t)std::max(size >> mipOffset, 1);
+        size = Align(size, dimension < 2 ? (uint16_t)GetTexelBlockWidth(m_Format) : 1);
 
-        const uint32_t resourceDimension = m_TextureDesc.Dimension - D3D12_RESOURCE_DIMENSION_TEXTURE1D;
-        return (dimension <= resourceDimension) ? size : 1;
+        return size;
     }
 }

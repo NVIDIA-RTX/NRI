@@ -73,9 +73,15 @@ namespace nri
 
     inline uint16_t TextureVK::GetSize(uint32_t dimension, uint32_t mipOffset) const
     {
-        uint32_t size = (&m_Extent.width)[dimension];
-        size = std::max(size >> mipOffset, 1u);
-        return (dimension <= (uint32_t)m_TextureType) ? (uint16_t)size : 1u;
+        assert(dimension < 3);
+
+        uint16_t size = (uint16_t)((&m_Extent.width)[dimension]);
+        size = (uint16_t)std::max(size >> mipOffset, 1);
+
+        // TODO: VK doesn't require manual alignment, but probably we should use it here and during texture creation
+        //size = Align( size, dimension < 2 ? (uint16_t)GetTexelBlockWidth(m_Format) : 1 );
+
+        return size;
     }
 
     inline const VkExtent3D& TextureVK::GetExtent() const

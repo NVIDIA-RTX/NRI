@@ -44,8 +44,13 @@ namespace nri
 
         inline uint16_t GetSize(uint32_t dimension, uint32_t mipOffset = 0) const
         {
-            const uint16_t size = (uint16_t)Align( std::max(m_Desc.size[dimension] >> mipOffset, 1), GetTexelBlockWidth(m_Desc.format) );
-            return (dimension <= (uint32_t)m_Desc.type) ? size : 1;
+            assert(dimension < 3);
+
+            uint16_t size = m_Desc.size[dimension];
+            size = (uint16_t)std::max(size >> mipOffset, 1);
+            size = Align(size, dimension < 2 ? (uint16_t)GetTexelBlockWidth(m_Desc.format) : 1);
+
+            return size;
         }
 
         Result Create(const VersionedDevice& device, const MemoryD3D11* memory);
