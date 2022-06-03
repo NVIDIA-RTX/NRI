@@ -36,6 +36,7 @@ namespace nri
         WINDOWS,
         X11,
         WAYLAND,
+        METAL,
         MAX_NUM
     };
 
@@ -56,11 +57,17 @@ namespace nri
         void* surface; // wl_surface*
     };
 
+    struct MetalWindow
+    {
+        void* caMetalLayer;
+    };
+
     union Window
     {
         WindowsWindow windows;
         X11Window x11;
         WaylandWindow wayland;
+        MetalWindow metal;
     };
 
     // SwapChain buffers will be created as "color attachment" resources

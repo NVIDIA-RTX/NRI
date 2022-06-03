@@ -152,6 +152,8 @@ set_property(TARGET NRI_VK PROPERTY FOLDER "${NRI_PROJECT_FOLDER}")
 # Window system defines
 if (WIN32)
     target_compile_definitions(NRI_VK PRIVATE VK_USE_PLATFORM_WIN32_KHR)
+elseif(APPLE)
+    target_compile_definitions(NRI_VK PRIVATE VK_USE_PLATFORM_METAL_EXT)
 else()
     if (NOT NRI_DISABLE_XLIB_SUPPORT)
         find_path(NRI_XLIB_HEADERS NAMES "X11/Xlib.h")
@@ -217,7 +219,7 @@ endif()
 
 # warning level 4 and all warnings as errors (with some exceptions)
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
-    set(NRI_COMPILE_OPTIONS -Werror -Wextra -Wno-missing-braces -Wno-unknown-pragmas -Wno-switch -Wno-missing-field-initializers -Wno-deprecated-copy -Wno-deprecated-copy-with-user-provided-copy)
+    set(NRI_COMPILE_OPTIONS -Werror -Wextra -Wno-missing-braces -Wno-unknown-pragmas -Wno-switch -Wno-missing-field-initializers -Wno-deprecated-copy)
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     #TODO: give up due to "error: enumeral and non-enumeral type in conditional expression [-Werror=extra]" in absolutely valid code!
     set(NRI_COMPILE_OPTIONS -Wextra -Wno-missing-braces -Wno-unknown-pragmas -Wno-switch -Wno-missing-field-initializers -Wno-deprecated-copy)

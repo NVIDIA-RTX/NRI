@@ -62,6 +62,21 @@ Result SwapChainVK::CreateSurface(const SwapChainDesc& swapChainDesc)
         return Result::SUCCESS;
     }
 #endif
+#ifdef VK_USE_PLATFORM_METAL_EXT
+    if (swapChainDesc.windowSystemType == WindowSystemType::METAL)
+    {
+        VkMetalSurfaceCreateInfoEXT metalSurfaceCreateInfo = {};
+        metalSurfaceCreateInfo.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
+        metalSurfaceCreateInfo.pLayer = (CAMetalLayer*)swapChainDesc.window.metal.caMetalLayer;
+
+        result = vk.CreateMetalSurfaceEXT(m_Device, &metalSurfaceCreateInfo, m_Device.GetAllocationCallbacks(), &m_Surface);
+
+        RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
+            "Can't create a surface: vkCreateMetalSurfaceEXT returned %d.", (int32_t)result);
+
+        return Result::SUCCESS;
+    }
+#endif
 #ifdef VK_USE_PLATFORM_XLIB_KHR
     if (swapChainDesc.windowSystemType == WindowSystemType::X11)
     {

@@ -1213,10 +1213,15 @@ Result DeviceVK::CreateInstance(const DeviceCreationDesc& deviceCreationDesc)
     #ifdef VK_USE_PLATFORM_WIN32_KHR
         extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
     #endif
+    #if VK_USE_PLATFORM_METAL_EXT
+        extensions.push_back(VK_EXT_METAL_SURFACE_EXTENSION_NAME);
+    #endif
     #ifdef VK_USE_PLATFORM_XLIB_KHR
         extensions.push_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
     #endif
-
+    #if VK_USE_PLATFORM_WAYLAND_KHR
+        extensions.push_back(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
+    #endif
     extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
 
     for (uint32_t i = 0; i < deviceCreationDesc.vulkanExtensions.instanceExtensionNum; i++)
@@ -1972,13 +1977,25 @@ void DeviceVK::ReportDeviceGroupInfo()
     }
 }
 
+#define RESOLVE_OPTIONAL_DEVICE_FUNCTION( name ) \
+    m_VK.name = (PFN_vk ## name)m_VK.GetDeviceProcAddr(m_Device, "vk" #name)
+
 #define RESOLVE_DEVICE_FUNCTION( name ) \
-    m_VK.name = (PFN_vk ## name)m_VK.GetDeviceProcAddr(m_Device, "vk" #name); \
+    RESOLVE_OPTIONAL_DEVICE_FUNCTION(name); \
     if (m_VK.name == nullptr) \
     { \
         REPORT_ERROR(GetLog(), "Failed to get device function: '%s'.", #name); \
         return Result::UNSUPPORTED; \
     }
+
+#define RESOLVE_DEVICE_FUNCTION_WITH_OTHER_NAME( functionName, otherName ) \
+    m_VK.functionName = (PFN_vk ## functionName)m_VK.GetDeviceProcAddr(m_Device, otherName); \
+    if (m_VK.functionName == nullptr) \
+    { \
+        REPORT_ERROR(GetLog(), "Failed to get device function: '" otherName "'."); \
+        return Result::UNSUPPORTED; \
+    }
+
 #define RESOLVE_INSTANCE_FUNCTION( name ) \
     m_VK.name = (PFN_vk ## name)m_VK.GetInstanceProcAddr(m_Instance, "vk" #name); \
     if (m_VK.name == nullptr) \
@@ -2021,6 +2038,9 @@ Result DeviceVK::ResolveInstanceDispatchTable()
     RESOLVE_INSTANCE_FUNCTION(GetPhysicalDeviceSurfacePresentModesKHR);
 #if VK_USE_PLATFORM_WIN32_KHR
     RESOLVE_INSTANCE_FUNCTION(CreateWin32SurfaceKHR);
+#endif
+#if VK_USE_PLATFORM_METAL_EXT
+    RESOLVE_INSTANCE_FUNCTION(CreateMetalSurfaceEXT);
 #endif
 #if VK_USE_PLATFORM_XLIB_KHR
     RESOLVE_INSTANCE_FUNCTION(CreateXlibSurfaceKHR);
@@ -2090,8 +2110,22 @@ Result DeviceVK::ResolveDispatchTable()
     RESOLVE_DEVICE_FUNCTION(MapMemory);
     RESOLVE_DEVICE_FUNCTION(UnmapMemory);
     RESOLVE_DEVICE_FUNCTION(FreeMemory);
-    RESOLVE_DEVICE_FUNCTION(BindBufferMemory2);
-    RESOLVE_DEVICE_FUNCTION(BindImageMemory2);
+
+    RESOLVE_OPTIONAL_DEVICE_FUNCTION(BindBufferMemory2);
+    if (m_VK.BindBufferMemory2 == nullptr)
+        RESOLVE_DEVICE_FUNCTION_WITH_OTHER_NAME(BindBufferMemory2, "vkBindBufferMemory2KHR");
+
+    RESOLVE_OPTIONAL_DEVICE_FUNCTION(BindImageMemory2);
+    if (m_VK.BindImageMemory2 == nullptr)
+        RESOLVE_DEVICE_FUNCTION_WITH_OTHER_NAME(BindImageMemory2, "vkBindImageMemory2KHR");
+
+    RESOLVE_OPTIONAL_DEVICE_FUNCTION(GetBufferMemoryRequirements2);
+    if (m_VK.GetBufferMemoryRequirements2 == nullptr)
+        RESOLVE_DEVICE_FUNCTION_WITH_OTHER_NAME(GetBufferMemoryRequirements2, "vkGetBufferMemoryRequirements2KHR");
+
+    RESOLVE_OPTIONAL_DEVICE_FUNCTION(GetImageMemoryRequirements2);
+    if (m_VK.GetImageMemoryRequirements2 == nullptr)
+        RESOLVE_DEVICE_FUNCTION_WITH_OTHER_NAME(GetImageMemoryRequirements2, "vkGetImageMemoryRequirements2KHR");
 
     RESOLVE_DEVICE_FUNCTION(QueueWaitIdle);
     RESOLVE_DEVICE_FUNCTION(WaitForFences);
@@ -2142,9 +2176,6 @@ Result DeviceVK::ResolveDispatchTable()
     RESOLVE_DEVICE_FUNCTION(CmdFillBuffer);
     RESOLVE_DEVICE_FUNCTION(EndCommandBuffer);
 
-    RESOLVE_DEVICE_FUNCTION(GetBufferMemoryRequirements2);
-    RESOLVE_DEVICE_FUNCTION(GetImageMemoryRequirements2);
-
     RESOLVE_DEVICE_FUNCTION(GetSwapchainImagesKHR);
 
     if (m_IsDebugUtilsSupported)
@@ -2178,7 +2209,7 @@ Result DeviceVK::ResolveDispatchTable()
 
     if (m_IsHDRExtSupported)
     {
-        m_VK.SetHdrMetadataEXT = (PFN_vkSetHdrMetadataEXT)m_VK.GetDeviceProcAddr(m_Device, "vkSetHdrMetadataEXT");
+        RESOLVE_OPTIONAL_DEVICE_FUNCTION(SetHdrMetadataEXT);
         m_IsHDRExtSupported = m_VK.SetHdrMetadataEXT != nullptr;
     }
 
