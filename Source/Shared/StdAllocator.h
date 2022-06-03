@@ -17,7 +17,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 template<typename T> void StdAllocator_MaybeUnused([[maybe_unused]] const T& arg)
 {}
 
-#if _WIN32
+#if defined(_WIN32)
 
 #include <malloc.h>
 
@@ -42,7 +42,7 @@ inline void AlignedFree(void* userArg, void* memory)
     _aligned_free(memory);
 }
 
-#elif __linux__
+#elif defined(__linux__) || defined(__APPLE__)
 
 #include <cstdlib>
 #include <alloca.h>
@@ -250,7 +250,7 @@ template<typename T>
 using Vector = std::vector<T, StdAllocator<T>>;
 
 template<typename U, typename T>
-using UnorderedMap = std::unordered_map<U, T, std::hash<U>, std::equal_to<U>, StdAllocator<std::pair<U, T>>>;
+using UnorderedMap = std::unordered_map<U, T, std::hash<U>, std::equal_to<U>, StdAllocator<std::pair<const U, T>>>;
 
 using String = std::basic_string<char, std::char_traits<char>, StdAllocator<char>>;
 

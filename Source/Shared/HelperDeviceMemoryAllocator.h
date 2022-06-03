@@ -1,7 +1,7 @@
 #pragma once
 
 template<typename U, typename T>
-using Map = std::map<U, T, std::less<U>, StdAllocator<std::pair<U, T>>>;
+using Map = std::map<U, T, std::less<U>, StdAllocator<std::pair<const U, T>>>;
 
 struct HelperDeviceMemoryAllocator
 {
