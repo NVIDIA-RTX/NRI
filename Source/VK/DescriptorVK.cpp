@@ -51,12 +51,15 @@ void FillTextureDesc(const T& textureViewDesc, DescriptorTextureDesc& descriptor
 {
     const TextureVK& texture = *(const TextureVK*)textureViewDesc.texture;
 
+    const uint32_t mipLevelsLeft = texture.GetMipNum() - textureViewDesc.mipOffset;
+    const uint32_t arrayLayersLeft = texture.GetArraySize() - descriptorTextureDesc.imageArrayOffset;
+
     descriptorTextureDesc.texture = &texture;
     descriptorTextureDesc.imageAspectFlags = texture.GetImageAspectFlags();
     descriptorTextureDesc.imageMipOffset = textureViewDesc.mipOffset;
-    descriptorTextureDesc.imageMipNum = textureViewDesc.mipNum;
+    descriptorTextureDesc.imageMipNum = (textureViewDesc.mipNum == REMAINING_MIP_LEVELS) ? mipLevelsLeft : textureViewDesc.mipNum;
     descriptorTextureDesc.imageArrayOffset = textureViewDesc.arrayOffset;
-    descriptorTextureDesc.imageArraySize = textureViewDesc.arraySize;
+    descriptorTextureDesc.imageArraySize = (textureViewDesc.arraySize == REMAINING_ARRAY_LAYERS) ? arrayLayersLeft : textureViewDesc.arraySize;
     descriptorTextureDesc.imageLayout = GetImageLayoutForView(textureViewDesc.viewType);
 }
 
@@ -65,10 +68,12 @@ void FillTextureDesc(const Texture3DViewDesc& textureViewDesc, DescriptorTexture
 {
     const TextureVK& texture = *(const TextureVK*)textureViewDesc.texture;
 
+    const uint32_t mipLevelsLeft = texture.GetMipNum() - textureViewDesc.mipOffset;
+
     descriptorTextureDesc.texture = &texture;
     descriptorTextureDesc.imageAspectFlags = texture.GetImageAspectFlags();
     descriptorTextureDesc.imageMipOffset = textureViewDesc.mipOffset;
-    descriptorTextureDesc.imageMipNum = textureViewDesc.mipNum;
+    descriptorTextureDesc.imageMipNum = (textureViewDesc.mipNum == REMAINING_MIP_LEVELS) ? mipLevelsLeft : textureViewDesc.mipNum;
     descriptorTextureDesc.imageArrayOffset = 0;
     descriptorTextureDesc.imageArraySize = 1;
     descriptorTextureDesc.imageLayout = GetImageLayoutForView(textureViewDesc.viewType);
