@@ -21,7 +21,7 @@ Versioning rules:
 */
 
 #define VERSION_MAJOR                   1
-#define VERSION_MINOR                   83
+#define VERSION_MINOR                   84
 #define VERSION_BUILD                   0
 #define VERSION_REVISION                0
 
