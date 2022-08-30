@@ -35,7 +35,7 @@ Result CommandAllocatorVal::CreateCommandBuffer(CommandBuffer*& commandBuffer)
     if (result == Result::SUCCESS)
     {
         RETURN_ON_FAILURE(m_Device.GetLog(), commandBufferImpl != nullptr, Result::FAILURE, "Implementation failure: 'commandBufferImpl' is NULL!");
-        commandBuffer = (CommandBuffer*)Allocate<CommandBufferVal>(m_Device.GetStdAllocator(), m_Device, *commandBufferImpl);
+        commandBuffer = (CommandBuffer*)Allocate<CommandBufferVal>(m_Device.GetStdAllocator(), m_Device, *commandBufferImpl, false);
     }
 
     return result;

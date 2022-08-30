@@ -32,11 +32,13 @@ void ConvertGeometryObjectsVal(GeometryObject* destObjects, const GeometryObject
 static bool ValidateBufferTransitionBarrierDesc(const DeviceVal& device, uint32_t i, const BufferTransitionBarrierDesc& bufferTransitionBarrierDesc);
 static bool ValidateTextureTransitionBarrierDesc(const DeviceVal& device, uint32_t i, const TextureTransitionBarrierDesc& textureTransitionBarrierDesc);
 
-CommandBufferVal::CommandBufferVal(DeviceVal& device, CommandBuffer& commandBuffer) :
+CommandBufferVal::CommandBufferVal(DeviceVal& device, CommandBuffer& commandBuffer, bool isWrapped) :
     DeviceObjectVal(device, commandBuffer),
     m_ValidationCommands(device.GetStdAllocator()),
     m_RayTracingAPI(device.GetRayTracingInterface()),
-    m_MeshShaderAPI(device.GetMeshShaderInterface())
+    m_MeshShaderAPI(device.GetMeshShaderInterface()),
+    m_IsWrapped(isWrapped),
+    m_IsRecordingStarted(isWrapped)
 {
 }
 
@@ -81,7 +83,7 @@ Result CommandBufferVal::End()
 
     if (result == Result::SUCCESS)
     {
-        m_IsRecordingStarted = false;
+        m_IsRecordingStarted = m_IsWrapped;
         m_FrameBuffer = nullptr;
     }
 

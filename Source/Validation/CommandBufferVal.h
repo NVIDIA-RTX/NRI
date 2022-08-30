@@ -14,7 +14,7 @@ namespace nri
 {
     struct CommandBufferVal : public DeviceObjectVal<CommandBuffer>
     {
-        CommandBufferVal(DeviceVal& device, CommandBuffer& commandBuffer);
+        CommandBufferVal(DeviceVal& device, CommandBuffer& commandBuffer, bool isWrapped);
 
         void SetDebugName(const char* name);
         Result Begin(const DescriptorPool* descriptorPool, uint32_t physicalDeviceIndex);
@@ -81,6 +81,7 @@ namespace nri
 
         Vector<uint8_t> m_ValidationCommands;
         bool m_IsRecordingStarted = false;
+        bool m_IsWrapped = false;
         const FrameBuffer* m_FrameBuffer = nullptr;
         int32_t m_AnnotationStack = 0;
         const RayTracingInterface& m_RayTracingAPI;

@@ -1080,7 +1080,7 @@ Result DeviceVal::CreateCommandBufferVK(const CommandBufferVulkanDesc& commandBu
         RETURN_ON_FAILURE(GetLog(), commandBufferImpl != nullptr, Result::FAILURE,
             "Can't create CommandBuffer: unexpected error.");
 
-        commandBuffer = (CommandBuffer*)Allocate<CommandBufferVal>(GetStdAllocator(), *this, *commandBufferImpl);
+        commandBuffer = (CommandBuffer*)Allocate<CommandBufferVal>(GetStdAllocator(), *this, *commandBufferImpl, true);
     }
 
     return result;
@@ -1307,7 +1307,7 @@ Result DeviceVal::CreateCommandBufferD3D11(const CommandBufferD3D11Desc& command
         RETURN_ON_FAILURE(GetLog(), commandBufferImpl != nullptr, Result::FAILURE,
             "Can't create CommandBuffer: unexpected error.");
 
-        commandBuffer = (CommandBuffer*)Allocate<CommandBufferVal>(GetStdAllocator(), *this, *commandBufferImpl);
+        commandBuffer = (CommandBuffer*)Allocate<CommandBufferVal>(GetStdAllocator(), *this, *commandBufferImpl, true);
     }
 
     return result;
@@ -1374,7 +1374,7 @@ Result DeviceVal::CreateCommandBufferD3D12(const CommandBufferD3D12Desc& command
         RETURN_ON_FAILURE(GetLog(), commandBufferImpl != nullptr, Result::FAILURE,
             "Can't create CommandBuffer: unexpected error.");
 
-        commandBuffer = (CommandBuffer*)Allocate<CommandBufferVal>(GetStdAllocator(), *this, *commandBufferImpl);
+        commandBuffer = (CommandBuffer*)Allocate<CommandBufferVal>(GetStdAllocator(), *this, *commandBufferImpl, true);
     }
 
     return result;
