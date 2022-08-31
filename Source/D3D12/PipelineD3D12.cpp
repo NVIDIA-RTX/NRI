@@ -119,7 +119,7 @@ Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipel
         else if (shader.stage == ShaderStage::TESS_EVALUATION)
             FillShaderBytecode(stream.domainShader, shader);
         else if (shader.stage == ShaderStage::GEOMETRY)
-            FillShaderBytecode(stream.amplificationShader, shader);
+            FillShaderBytecode(stream.geometryShader, shader);
         else if (shader.stage == ShaderStage::MESH_CONTROL)
             FillShaderBytecode(stream.amplificationShader, shader);
         else if (shader.stage == ShaderStage::MESH_EVALUATION)
