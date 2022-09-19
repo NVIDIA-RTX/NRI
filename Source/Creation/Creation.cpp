@@ -51,53 +51,62 @@ NRI_API Result NRI_CALL nri::GetInterface(const Device& device, const char* inte
     if (hash == Hash( NRI_STRINGIFY(nri::CoreInterface) ))
     {
         realInterfaceSize = sizeof(CoreInterface);
-        result = deviceBase.FillFunctionTable(*(CoreInterface*)interfacePtr);
+        if (realInterfaceSize == interfaceSize)
+            result = deviceBase.FillFunctionTable(*(CoreInterface*)interfacePtr);
     }
     else if (hash == Hash( NRI_STRINGIFY(nri::SwapChainInterface) ))
     {
         realInterfaceSize = sizeof(SwapChainInterface);
-        result = deviceBase.FillFunctionTable(*(SwapChainInterface*)interfacePtr);
+        if (realInterfaceSize == interfaceSize)
+            result = deviceBase.FillFunctionTable(*(SwapChainInterface*)interfacePtr);
     }
     else if (hash == Hash( NRI_STRINGIFY(nri::WrapperD3D11Interface) ))
     {
         realInterfaceSize = sizeof(WrapperD3D11Interface);
-        result = deviceBase.FillFunctionTable(*(WrapperD3D11Interface*)interfacePtr);
+        if (realInterfaceSize == interfaceSize)
+            result = deviceBase.FillFunctionTable(*(WrapperD3D11Interface*)interfacePtr);
     }
     else if (hash == Hash(NRI_STRINGIFY(nri::WrapperD3D12Interface)))
     {
         realInterfaceSize = sizeof(WrapperD3D12Interface);
-        result = deviceBase.FillFunctionTable(*(WrapperD3D12Interface*)interfacePtr);
+        if (realInterfaceSize == interfaceSize)
+            result = deviceBase.FillFunctionTable(*(WrapperD3D12Interface*)interfacePtr);
     }
     else if (hash == Hash( NRI_STRINGIFY(nri::WrapperVKInterface) ))
     {
         realInterfaceSize = sizeof(WrapperVKInterface);
-        result = deviceBase.FillFunctionTable(*(WrapperVKInterface*)interfacePtr);
+        if (realInterfaceSize == interfaceSize)
+            result = deviceBase.FillFunctionTable(*(WrapperVKInterface*)interfacePtr);
     }
     else if (hash == Hash( NRI_STRINGIFY(nri::RayTracingInterface) ))
     {
         realInterfaceSize = sizeof(RayTracingInterface);
-        result = deviceBase.FillFunctionTable(*(RayTracingInterface*)interfacePtr);
+        if (realInterfaceSize == interfaceSize)
+            result = deviceBase.FillFunctionTable(*(RayTracingInterface*)interfacePtr);
     }
     else if (hash == Hash( NRI_STRINGIFY(nri::MeshShaderInterface) ))
     {
         realInterfaceSize = sizeof(MeshShaderInterface);
-        result = deviceBase.FillFunctionTable(*(MeshShaderInterface*)interfacePtr);
+        if (realInterfaceSize == interfaceSize)
+            result = deviceBase.FillFunctionTable(*(MeshShaderInterface*)interfacePtr);
     }
     else if (hash == Hash( NRI_STRINGIFY(nri::HelperInterface) ))
     {
         realInterfaceSize = sizeof(HelperInterface);
-        result = deviceBase.FillFunctionTable(*(HelperInterface*)interfacePtr);
+        if (realInterfaceSize == interfaceSize)
+            result = deviceBase.FillFunctionTable(*(HelperInterface*)interfacePtr);
     }
     else if (hash == Hash( NRI_STRINGIFY(nri::WrapperSPIRVOffsetsInterface) ))
     {
         realInterfaceSize = sizeof(WrapperSPIRVOffsetsInterface);
-        result = deviceBase.FillFunctionTable(*(WrapperSPIRVOffsetsInterface*)interfacePtr);
+        if (realInterfaceSize == interfaceSize)
+            result = deviceBase.FillFunctionTable(*(WrapperSPIRVOffsetsInterface*)interfacePtr);
     }
 
     if (result == Result::INVALID_ARGUMENT)
         REPORT_ERROR(deviceBase.GetLog(), "Unknown interface '%s'!", interfaceName);
-    else if (interfaceSize > realInterfaceSize)
-        REPORT_ERROR(deviceBase.GetLog(), "Interface '%s' has invalid size (%u bytes, at least %u bytes expected by the implementation)", interfaceName, interfaceSize, realInterfaceSize);
+    else if (interfaceSize != realInterfaceSize)
+        REPORT_ERROR(deviceBase.GetLog(), "Interface '%s' has invalid size = %u bytes, while %u bytes expected by the implementation", interfaceName, interfaceSize, realInterfaceSize);
     else if (result == Result::UNSUPPORTED)
         REPORT_WARNING(deviceBase.GetLog(), "Interface '%s' is not supported by the device!", interfaceName);
 
