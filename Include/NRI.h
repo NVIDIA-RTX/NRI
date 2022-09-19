@@ -16,8 +16,8 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include <cstddef>
 
 #define NRI_VERSION_MAJOR 1
-#define NRI_VERSION_MINOR 85
-#define NRI_VERSION_DATE "1 September 2022"
+#define NRI_VERSION_MINOR 86
+#define NRI_VERSION_DATE "19 September 2022"
 #define NRI_INTERFACE( name ) #name, sizeof(name)
 
 #if _WIN32
@@ -43,6 +43,10 @@ namespace nri
     struct CoreInterface
     {
         const DeviceDesc& (NRI_CALL *GetDeviceDesc)(const Device& device);
+        FormatSupportBits (NRI_CALL *GetFormatSupport)(const Device& device, Format format);
+        uint32_t (NRI_CALL *GetQuerySize)(const QueryPool& queryPool);
+        void (NRI_CALL *GetBufferMemoryInfo)(const Buffer& buffer, MemoryLocation memoryLocation, MemoryDesc& memoryDesc);
+        void (NRI_CALL *GetTextureMemoryInfo)(const Texture& texture, MemoryLocation memoryLocation, MemoryDesc& memoryDesc);
         Result (NRI_CALL *GetCommandQueue)(Device& device, CommandQueueType commandQueueType, CommandQueue*& commandQueue);
 
         Result (NRI_CALL *CreateCommandAllocator)(const CommandQueue& commandQueue, uint32_t physicalDeviceMask, CommandAllocator*& commandAllocator);
@@ -134,15 +138,8 @@ namespace nri
 
         void (NRI_CALL *ResetCommandAllocator)(CommandAllocator& commandAllocator);
 
-        uint32_t (NRI_CALL *GetQuerySize)(const QueryPool& queryPool);
-
-        void (NRI_CALL *GetBufferMemoryInfo)(const Buffer& buffer, MemoryLocation memoryLocation, MemoryDesc& memoryDesc);
         void* (NRI_CALL *MapBuffer)(Buffer& buffer, uint64_t offset, uint64_t size);
         void (NRI_CALL *UnmapBuffer)(Buffer& buffer);
-
-        void (NRI_CALL *GetTextureMemoryInfo)(const Texture& texture, MemoryLocation memoryLocation, MemoryDesc& memoryDesc);
-
-        FormatSupportBits (NRI_CALL *GetFormatSupport)(const Device& device, Format format);
 
         void (NRI_CALL *SetDeviceDebugName)(Device& device, const char* name);
         void (NRI_CALL *SetCommandQueueDebugName)(CommandQueue& commandQueue, const char* name);
