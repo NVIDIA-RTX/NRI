@@ -314,11 +314,16 @@ NRI_API Result NRI_CALL nri::CreateDeviceFromD3D11Device(const DeviceCreationD3D
     CheckAndSetDefaultCallbacks(deviceCreationDesc.callbackInterface);
     CheckAndSetDefaultAllocator(deviceCreationDesc.memoryAllocatorInterface);
 
+    DeviceCreationD3D11Desc tempDeviceCreationD3D11Desc = deviceCreationD3D11Desc;
+
+    CheckAndSetDefaultCallbacks(tempDeviceCreationD3D11Desc.callbackInterface);
+    CheckAndSetDefaultAllocator(tempDeviceCreationD3D11Desc.memoryAllocatorInterface);
+
     Result result = Result::UNSUPPORTED;
     DeviceBase* deviceImpl = nullptr;
 
     #if (NRI_USE_D3D11 == 1)
-        result = CreateDeviceD3D11(deviceCreationD3D11Desc, deviceImpl);
+        result = CreateDeviceD3D11(tempDeviceCreationD3D11Desc, deviceImpl);
     #endif
 
     if (result != Result::SUCCESS)
@@ -341,11 +346,11 @@ NRI_API Result NRI_CALL nri::CreateDeviceFromD3D12Device(const DeviceCreationD3D
 
     DeviceCreationD3D12Desc tempDeviceCreationD3D12Desc = deviceCreationD3D12Desc;
 
-    Result result = Result::UNSUPPORTED;
-    DeviceBase* deviceImpl = nullptr;
-
     CheckAndSetDefaultCallbacks(tempDeviceCreationD3D12Desc.callbackInterface);
     CheckAndSetDefaultAllocator(tempDeviceCreationD3D12Desc.memoryAllocatorInterface);
+
+    Result result = Result::UNSUPPORTED;
+    DeviceBase* deviceImpl = nullptr;
 
     #if (NRI_USE_D3D12 == 1)
         result = CreateDeviceD3D12(tempDeviceCreationD3D12Desc, deviceImpl);
