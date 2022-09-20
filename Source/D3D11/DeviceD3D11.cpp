@@ -36,16 +36,13 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 using namespace nri;
 
 DeviceD3D11::DeviceD3D11(const Log& log, StdAllocator<uint8_t>& stdAllocator) :
-    DeviceBase(log, stdAllocator),
-    m_CommandQueues(GetStdAllocator())
+    DeviceBase(log, stdAllocator)
+    , m_CommandQueues(GetStdAllocator())
 {
-    PipelineD3D11::CreateNullPipeline(*this);
 }
 
 DeviceD3D11::~DeviceD3D11()
 {
-    PipelineD3D11::DestroyNullPipeline(GetStdAllocator());
-
     DeleteCriticalSection(&m_CriticalSection);
 }
 

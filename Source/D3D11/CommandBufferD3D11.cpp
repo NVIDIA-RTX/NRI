@@ -27,7 +27,6 @@ static constexpr uint64_t s_nullOffsets[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUN
 
 CommandBufferD3D11::CommandBufferD3D11(DeviceD3D11& deviceImpl) :
     m_Device(deviceImpl.GetDevice()),
-    m_CurrentPipeline(PipelineD3D11::GetNullPipeline()),
     m_DeviceImpl(deviceImpl)
 {
 }
@@ -35,7 +34,6 @@ CommandBufferD3D11::CommandBufferD3D11(DeviceD3D11& deviceImpl) :
 CommandBufferD3D11::CommandBufferD3D11(DeviceD3D11& deviceImpl, const VersionedContext& immediateContext) :
     m_Device(deviceImpl.GetDevice()),
     m_Context(immediateContext),
-    m_CurrentPipeline(PipelineD3D11::GetNullPipeline()),
     m_DeviceImpl(deviceImpl)
 {
     m_Context->QueryInterface(IID_PPV_ARGS(&m_Annotation));
@@ -109,7 +107,7 @@ Result CommandBufferD3D11::Begin(const DescriptorPool* descriptorPool)
     m_SamplePositionsState.Reset();
     m_CommandList = nullptr;
     m_CurrentFrameBuffer = nullptr;
-    m_CurrentPipeline = PipelineD3D11::GetNullPipeline();
+    m_CurrentPipeline = nullptr;
     m_CurrentIndexBuffer = nullptr;
     m_CurrentVertexBuffer = nullptr;
     m_StencilRef = 0;
@@ -147,7 +145,7 @@ void CommandBufferD3D11::SetScissors(const Rect* rects, uint32_t rectNum)
         winRect[i] = { rect.left, rect.top, (LONG)(rect.left + rect.width), (LONG)(rect.top + rect.height) };
     }
 
-    if (!m_CurrentPipeline->IsRasterizerDiscarded())
+    if (!m_CurrentPipeline || !m_CurrentPipeline->IsRasterizerDiscarded())
         m_Context->RSSetScissorRects(rectNum, &winRect[0]);
 }
 
@@ -166,7 +164,7 @@ void CommandBufferD3D11::SetStencilReference(uint8_t reference)
 {
     m_StencilRef = reference;
 
-    if (m_CurrentPipeline->IsValid())
+    if (m_CurrentPipeline && m_CurrentPipeline->IsValid())
         m_CurrentPipeline->ChangeStencilReference(m_Context, m_StencilRef, DynamicState::BIND_AND_SET);
 }
 
@@ -174,7 +172,7 @@ void CommandBufferD3D11::SetSamplePositions(const SamplePosition* positions, uin
 {
     m_SamplePositionsState.Set(positions, positionNum);
 
-    if (m_CurrentPipeline->IsValid())
+    if (m_CurrentPipeline && m_CurrentPipeline->IsValid())
         m_CurrentPipeline->ChangeSamplePositions(m_Context, m_SamplePositionsState, DynamicState::BIND_AND_SET);
 }
 

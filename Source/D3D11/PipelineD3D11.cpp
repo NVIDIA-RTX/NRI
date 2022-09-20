@@ -19,8 +19,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 using namespace nri;
 
-PipelineD3D11* PipelineD3D11::s_NullGraphicsPipeline = nullptr;
-
 PipelineD3D11::PipelineD3D11(DeviceD3D11& device, const VersionedDevice* versionedDevice) :
     m_VersionedDevice(versionedDevice),
     m_InputAssemplyStrides(device.GetStdAllocator()),
@@ -326,39 +324,39 @@ void PipelineD3D11::Bind(const VersionedContext& context, const PipelineD3D11* c
 
     if (IsCompute())
     {
-        if (m_ComputeShader != currentPipeline->m_ComputeShader)
+        if (!currentPipeline || m_ComputeShader != currentPipeline->m_ComputeShader)
             context->CSSetShader(m_ComputeShader, nullptr, 0);
     }
     else
     {
-        if (m_Topology != currentPipeline->m_Topology)
+        if (!currentPipeline || m_Topology != currentPipeline->m_Topology)
             context->IASetPrimitiveTopology(m_Topology);
 
-        if (m_InputLayout != currentPipeline->m_InputLayout)
+        if (!currentPipeline || m_InputLayout != currentPipeline->m_InputLayout)
             context->IASetInputLayout(m_InputLayout);
 
-        if (m_RasterizerState != currentPipeline->m_RasterizerState)
+        if (!currentPipeline || m_RasterizerState != currentPipeline->m_RasterizerState)
             context->RSSetState(m_RasterizerState);
 
-        if (m_DepthStencilState != currentPipeline->m_DepthStencilState || m_StencilRef != currentPipeline->m_StencilRef)
+        if (!currentPipeline || m_DepthStencilState != currentPipeline->m_DepthStencilState || m_StencilRef != currentPipeline->m_StencilRef)
             context->OMSetDepthStencilState(m_DepthStencilState, m_StencilRef);
 
-        if (m_BlendState != currentPipeline->m_BlendState || m_SampleMask != currentPipeline->m_SampleMask || memcmp(&m_BlendFactor.r, &currentPipeline->m_BlendFactor.r, sizeof(m_BlendFactor)))
+        if (!currentPipeline || m_BlendState != currentPipeline->m_BlendState || m_SampleMask != currentPipeline->m_SampleMask || memcmp(&m_BlendFactor.r, &currentPipeline->m_BlendFactor.r, sizeof(m_BlendFactor)))
             context->OMSetBlendState(m_BlendState, &m_BlendFactor.r, m_SampleMask);
 
-        if (m_VertexShader != currentPipeline->m_VertexShader)
+        if (!currentPipeline || m_VertexShader != currentPipeline->m_VertexShader)
             context->VSSetShader(m_VertexShader, nullptr, 0);
 
-        if (m_TessControlShader != currentPipeline->m_TessControlShader)
+        if (!currentPipeline || m_TessControlShader != currentPipeline->m_TessControlShader)
             context->HSSetShader(m_TessControlShader, nullptr, 0);
 
-        if (m_TessEvaluationShader != currentPipeline->m_TessEvaluationShader)
+        if (!currentPipeline || m_TessEvaluationShader != currentPipeline->m_TessEvaluationShader)
             context->DSSetShader(m_TessEvaluationShader, nullptr, 0);
 
-        if (m_GeometryShader != currentPipeline->m_GeometryShader)
+        if (!currentPipeline || m_GeometryShader != currentPipeline->m_GeometryShader)
             context->GSSetShader(m_GeometryShader, nullptr, 0);
 
-        if (m_FragmentShader != currentPipeline->m_FragmentShader)
+        if (!currentPipeline || m_FragmentShader != currentPipeline->m_FragmentShader)
             context->PSSetShader(m_FragmentShader, nullptr, 0);
 
         if (m_IsRasterizerDiscarded)

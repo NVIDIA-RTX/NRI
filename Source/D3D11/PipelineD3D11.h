@@ -83,18 +83,5 @@ namespace nri
         bool m_IsRasterizerDiscarded = false;
         const PipelineLayoutD3D11* m_PipelineLayout = nullptr;
         DeviceD3D11& m_Device;
-
-        static PipelineD3D11* s_NullGraphicsPipeline;
-
-    public:
-
-        static PipelineD3D11* GetNullPipeline()
-        { return s_NullGraphicsPipeline; }
-
-        static void CreateNullPipeline(DeviceD3D11& device)
-        { s_NullGraphicsPipeline = Allocate<PipelineD3D11>(device.GetStdAllocator(), device, nullptr); }
-
-        static void DestroyNullPipeline(StdAllocator<uint8_t>& allocator)
-        { Deallocate(allocator, s_NullGraphicsPipeline); }
     };
 }
