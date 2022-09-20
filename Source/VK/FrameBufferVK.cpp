@@ -150,11 +150,22 @@ Result FrameBufferVK::CreateRenderPass(const FrameBufferDesc& frameBufferDesc)
 
 Result FrameBufferVK::Create(const FrameBufferDesc& frameBufferDesc)
 {
-    VkExtent3D extent = {};
+    const DescriptorVK* descriptor = nullptr;
     if (frameBufferDesc.colorAttachmentNum > 0)
-        extent = ((DescriptorVK*)frameBufferDesc.colorAttachments[0])->GetExtent();
+        descriptor = (DescriptorVK*)frameBufferDesc.colorAttachments[0];
     else if (frameBufferDesc.depthStencilAttachment != nullptr)
-        extent = ((DescriptorVK*)frameBufferDesc.depthStencilAttachment)->GetExtent();
+        descriptor = (DescriptorVK*)frameBufferDesc.depthStencilAttachment;
+
+    VkExtent3D extent = {};
+    if (descriptor)
+    {
+        const TextureVK& texture = descriptor->GetTexture();
+        const DescriptorTextureDesc& descriptorDesc = descriptor->GetTextureDesc();
+
+        extent.width = texture.GetSize(0, descriptorDesc.imageMipOffset);
+        extent.height = texture.GetSize(1, descriptorDesc.imageMipOffset);
+        extent.depth = descriptorDesc.imageArraySize;
+    }
 
     m_RenderArea = { {}, { extent.width, extent.height } };
     m_AttachmentNum = frameBufferDesc.colorAttachmentNum + (frameBufferDesc.depthStencilAttachment ? 1 : 0);
