@@ -17,7 +17,7 @@ static void NRI_CALL SetPipelineDebugName(Pipeline& pipeline, const char* name)
 
 void FillFunctionTablePipelineVal(CoreInterface& coreInterface)
 {
-    coreInterface.SetPipelineDebugName = SetPipelineDebugName;
+    coreInterface.SetPipelineDebugName = ::SetPipelineDebugName;
 }
 
 static Result NRI_CALL WriteShaderGroupIdentifiers(const Pipeline& pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* buffer)
@@ -27,7 +27,7 @@ static Result NRI_CALL WriteShaderGroupIdentifiers(const Pipeline& pipeline, uin
 
 void FillFunctionTablePipelineVal(RayTracingInterface& rayTracingInterface)
 {
-    rayTracingInterface.WriteShaderGroupIdentifiers = WriteShaderGroupIdentifiers;
+    rayTracingInterface.WriteShaderGroupIdentifiers = ::WriteShaderGroupIdentifiers;
 }
 
 #pragma endregion

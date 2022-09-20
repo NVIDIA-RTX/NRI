@@ -19,7 +19,7 @@ static void NRI_CALL SetDeviceSemaphoreDebugName(DeviceSemaphore& deviceSemaphor
 
 void FillFunctionTableDeviceSemaphoreVK(CoreInterface& coreInterface)
 {
-    coreInterface.SetDeviceSemaphoreDebugName = SetDeviceSemaphoreDebugName;
+    coreInterface.SetDeviceSemaphoreDebugName = ::SetDeviceSemaphoreDebugName;
 }
 
 #pragma endregion

@@ -15,9 +15,18 @@ static void NRI_CALL SetDescriptorDebugName(Descriptor& descriptor, const char* 
     ((DescriptorD3D11&)descriptor).SetDebugName(name);
 }
 
+static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor& descriptor, uint32_t physicalDeviceIndex)
+{
+    MaybeUnused(physicalDeviceIndex);
+
+    return uint64_t( (ID3D11View*)((DescriptorD3D11&)descriptor) );
+}
+
 void FillFunctionTableDescriptorD3D11(CoreInterface& coreInterface)
 {
-    coreInterface.SetDescriptorDebugName = SetDescriptorDebugName;
+    coreInterface.SetDescriptorDebugName = ::SetDescriptorDebugName;
+
+    coreInterface.GetDescriptorNativeObject = ::GetDescriptorNativeObject;
 }
 
 #pragma endregion

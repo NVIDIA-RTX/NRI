@@ -19,8 +19,12 @@ namespace nri
         PipelineVal(DeviceVal& device, Pipeline& pipeline, const ComputePipelineDesc& computePipelineDesc);
         PipelineVal(DeviceVal& device, Pipeline& pipeline, const RayTracingPipelineDesc& rayTracingPipelineDesc);
 
-        const PipelineLayout* GetPipelineLayout() const;
+        inline const PipelineLayout* GetPipelineLayout() const
+        { return m_PipelineLayout; }
 
+        //======================================================================================================================
+        // NRI
+        //======================================================================================================================
         void SetDebugName(const char* name);
         Result WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* buffer);
 
@@ -28,9 +32,4 @@ namespace nri
         const RayTracingInterface& m_RayTracingAPI;
         const PipelineLayout* m_PipelineLayout = nullptr;
     };
-
-    inline const PipelineLayout* PipelineVal::GetPipelineLayout() const
-    {
-        return m_PipelineLayout;
-    }
 }

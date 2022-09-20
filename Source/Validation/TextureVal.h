@@ -22,42 +22,33 @@ namespace nri
         TextureVal(DeviceVal& device, Texture& texture, const TextureVulkanDesc& textureVulkanDesc);
         ~TextureVal();
 
-        void SetBoundToMemory();
-        void SetBoundToMemory(MemoryVal& memory);
-        bool IsBoundToMemory() const;
+        inline const TextureDesc& GetDesc() const
+        { return m_TextureDesc; }
 
-        const TextureDesc& GetDesc() const;
+        inline uint64_t GetNativeObject(uint32_t physicalDeviceIndex) const
+        { return m_CoreAPI.GetTextureNativeObject(m_ImplObject, physicalDeviceIndex); }
 
+        inline bool IsBoundToMemory() const
+        { return m_IsBoundToMemory; }
+
+        inline void SetBoundToMemory()
+        { m_IsBoundToMemory = true; }
+        
+        inline void SetBoundToMemory(MemoryVal& memory)
+        {
+            m_Memory = &memory;
+            m_IsBoundToMemory = true;
+        }
+        
+        //======================================================================================================================
+        // NRI
+        //======================================================================================================================
         void SetDebugName(const char* name);
         void GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
-        ID3D11Resource* GetTextureD3D11() const;
-        ID3D12Resource* GetTextureD3D12() const;
-        void GetTextureVK(uint32_t physicalDeviceIndex, TextureVulkanDesc& textureVulkanDesc) const;
 
     private:
         MemoryVal* m_Memory = nullptr;
         bool m_IsBoundToMemory = false;
         TextureDesc m_TextureDesc = {};
     };
-
-    inline void TextureVal::SetBoundToMemory()
-    {
-        m_IsBoundToMemory = true;
-    }
-
-    inline void TextureVal::SetBoundToMemory(MemoryVal& memory)
-    {
-        m_Memory = &memory;
-        m_IsBoundToMemory = true;
-    }
-
-    inline bool TextureVal::IsBoundToMemory() const
-    {
-        return m_IsBoundToMemory;
-    }
-
-    inline const TextureDesc& TextureVal::GetDesc() const
-    {
-        return m_TextureDesc;
-    }
 }

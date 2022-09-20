@@ -19,11 +19,16 @@ namespace nri
         DeviceD3D11(const Log& log, StdAllocator<uint8_t>& stdAllocator);
         ~DeviceD3D11();
 
-        const VersionedContext& GetImmediateContext() const;
-        const VersionedDevice& GetDevice() const;
-        const CoreInterface& GetCoreInterface() const;
-        bool GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const;
+        inline const VersionedContext& GetImmediateContext() const
+        { return m_ImmediateContext; }
 
+        inline const VersionedDevice& GetDevice() const
+        { return m_Device; }
+
+        inline const CoreInterface& GetCoreInterface() const
+        { return m_CoreInterface; }
+
+        bool GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const;
         Result Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAdapter* adapter, ID3D11Device* precreatedDevice, AGSContext* agsContext);
 
         //======================================================================================================================
@@ -67,9 +72,7 @@ namespace nri
         Result BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
         Result BindTextureMemory(const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
         void FreeMemory(Memory& memory);
-
         FormatSupportBits GetFormatSupport(Format format) const;
-
         uint32_t CalculateAllocationNumber(const ResourceGroupDesc& resourceGroupDesc) const;
         Result AllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDesc, Memory** allocations);
 
@@ -103,19 +106,4 @@ namespace nri
     private:
         void FillLimits(bool isValidationEnabled, Vendor vendor);
     };
-
-    inline const VersionedContext& DeviceD3D11::GetImmediateContext() const
-    {
-        return m_ImmediateContext;
-    }
-
-    inline const VersionedDevice& DeviceD3D11::GetDevice() const
-    {
-        return m_Device;
-    }
-
-    inline const CoreInterface& DeviceD3D11::GetCoreInterface() const
-    {
-        return m_CoreInterface;
-    }
 }

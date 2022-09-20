@@ -27,9 +27,9 @@ static void NRI_CALL WaitForSemaphore(CommandQueue& commandQueue, DeviceSemaphor
 
 void FillFunctionTableCommandQueueD3D12(CoreInterface& coreInterface)
 {
-    coreInterface.SetCommandQueueDebugName = SetCommandQueueDebugName;
-    coreInterface.SubmitQueueWork = SubmitQueueWork;
-    coreInterface.WaitForSemaphore = WaitForSemaphore;
+    coreInterface.SetCommandQueueDebugName = ::SetCommandQueueDebugName;
+    coreInterface.SubmitQueueWork = ::SubmitQueueWork;
+    coreInterface.WaitForSemaphore = ::WaitForSemaphore;
 }
 
 #pragma endregion
@@ -54,9 +54,9 @@ static nri::Result NRI_CALL WaitForIdleD3D12(CommandQueue& commandQueue)
 
 void FillFunctionTableCommandQueueD3D12(HelperInterface& helperInterface)
 {
-    helperInterface.ChangeResourceStates = ChangeResourceStatesD3D12;
-    helperInterface.UploadData = UploadDataD3D12;
-    helperInterface.WaitForIdle = WaitForIdleD3D12;
+    helperInterface.ChangeResourceStates = ::ChangeResourceStatesD3D12;
+    helperInterface.UploadData = ::UploadDataD3D12;
+    helperInterface.WaitForIdle = ::WaitForIdleD3D12;
 }
 
 #pragma endregion

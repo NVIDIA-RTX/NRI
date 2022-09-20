@@ -33,8 +33,6 @@ Result CreateDeviceVK(const DeviceCreationVulkanDesc& deviceDesc, DeviceBase*& d
 #endif
 
 DeviceBase* CreateDeviceValidation(const DeviceCreationDesc& deviceCreationDesc, DeviceBase& device);
-Format GetFormatDXGI(uint32_t dxgiFormat);
-Format GetFormatVK(uint32_t vkFormat);
 
 constexpr uint64_t Hash( const char* name )
 {
@@ -95,12 +93,6 @@ NRI_API Result NRI_CALL nri::GetInterface(const Device& device, const char* inte
         realInterfaceSize = sizeof(HelperInterface);
         if (realInterfaceSize == interfaceSize)
             result = deviceBase.FillFunctionTable(*(HelperInterface*)interfacePtr);
-    }
-    else if (hash == Hash( NRI_STRINGIFY(nri::WrapperSPIRVOffsetsInterface) ))
-    {
-        realInterfaceSize = sizeof(WrapperSPIRVOffsetsInterface);
-        if (realInterfaceSize == interfaceSize)
-            result = deviceBase.FillFunctionTable(*(WrapperSPIRVOffsetsInterface*)interfacePtr);
     }
 
     if (result == Result::INVALID_ARGUMENT)
@@ -355,9 +347,9 @@ NRI_API Result NRI_CALL nri::CreateDeviceFromD3D12Device(const DeviceCreationD3D
     CheckAndSetDefaultCallbacks(tempDeviceCreationD3D12Desc.callbackInterface);
     CheckAndSetDefaultAllocator(tempDeviceCreationD3D12Desc.memoryAllocatorInterface);
 
-#if (NRI_USE_D3D12 == 1)
-    result = CreateDeviceD3D12(tempDeviceCreationD3D12Desc, deviceImpl);
-#endif
+    #if (NRI_USE_D3D12 == 1)
+        result = CreateDeviceD3D12(tempDeviceCreationD3D12Desc, deviceImpl);
+    #endif
 
     if (result != Result::SUCCESS)
         return result;
@@ -370,6 +362,7 @@ NRI_API Result NRI_CALL nri::CreateDeviceFromVkDevice(const DeviceCreationVulkan
     DeviceCreationDesc deviceCreationDesc = {};
     deviceCreationDesc.callbackInterface = deviceCreationVulkanDesc.callbackInterface;
     deviceCreationDesc.memoryAllocatorInterface = deviceCreationVulkanDesc.memoryAllocatorInterface;
+    deviceCreationDesc.spirvBindingOffsets = deviceCreationVulkanDesc.spirvBindingOffsets;
     deviceCreationDesc.graphicsAPI = GraphicsAPI::VULKAN;
     deviceCreationDesc.enableNRIValidation = deviceCreationVulkanDesc.enableNRIValidation;
     deviceCreationDesc.enableAPIValidation = deviceCreationVulkanDesc.enableAPIValidation;
@@ -395,27 +388,41 @@ NRI_API Result NRI_CALL nri::CreateDeviceFromVkDevice(const DeviceCreationVulkan
     return FinalizeDeviceCreation(deviceCreationDesc, *deviceImpl, device);
 }
 
-NRI_API Format NRI_CALL nri::GetFormatVK(uint32_t vkFormat)
-{
-    #if (NRI_USE_VULKAN == 1)
-        return ::GetFormatVK(vkFormat);
-    #else
-        return nri::Format::UNKNOWN;
-    #endif
-}
-
-NRI_API Format NRI_CALL nri::GetFormatDXGI(uint32_t dxgiFormat)
-{
-    MaybeUnused(dxgiFormat);
-
-    #if (NRI_USE_D3D11 == 1 || NRI_USE_D3D12 == 1)
-        return ::GetFormatDXGI(dxgiFormat);
-    #else
-        return nri::Format::UNKNOWN;
-    #endif
-}
-
 NRI_API void NRI_CALL nri::DestroyDevice(Device& device)
 {
     ((DeviceBase&)device).Destroy();
+}
+
+NRI_API Format NRI_CALL nri::ConvertVKFormatToNRI(uint32_t vkFormat)
+{
+    return VKFormatToNRIFormat((VkFormat)vkFormat);
+}
+
+NRI_API Format NRI_CALL nri::ConvertDXGIFormatToNRI(uint32_t dxgiFormat)
+{
+    return DXGIFormatToNRIFormat(dxgiFormat);
+}
+
+NRI_API uint32_t NRI_CALL nri::ConvertNRIFormatToVK(Format format)
+{
+    MaybeUnused(format);
+
+    #if (NRI_USE_VULKAN == 1)
+        return NRIFormatToVKFormat(format);
+    #else
+        return 0;
+    #endif
+}
+
+NRI_API uint32_t NRI_CALL nri::ConvertNRIFormatToDXGI(Format format)
+{
+    MaybeUnused(format);
+
+    #if (NRI_USE_D3D11 == 1)
+        return NRIFormatToDXGIFormatD3D11(format);
+    #elif(NRI_USE_D3D12 == 1)
+        return NRIFormatToDXGIFormatD3D12(format);
+    #else
+        return 0;
+    #endif
 }

@@ -47,7 +47,7 @@ TextureVal::TextureVal(DeviceVal& device, Texture& texture, const TextureVulkanD
 {
     m_TextureDesc = {};
     m_TextureDesc.type = GetTextureTypeVK(textureVulkanDesc.vkImageType);
-    m_TextureDesc.format = GetFormatVK(textureVulkanDesc.vkFormat);
+    m_TextureDesc.format = ConvertVKFormatToNRI(textureVulkanDesc.vkFormat);
 
     static_assert(sizeof(TextureUsageBits) == sizeof(uint16_t), "Unexpected TextureUsageBits sizeof");
     m_TextureDesc.usageMask = (TextureUsageBits)0xffff;
@@ -78,23 +78,6 @@ void TextureVal::GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memory
 {
     m_CoreAPI.GetTextureMemoryInfo(m_ImplObject, memoryLocation, memoryDesc);
     m_Device.RegisterMemoryType(memoryDesc.type, memoryLocation);
-}
-
-ID3D11Resource* TextureVal::GetTextureD3D11() const
-{
-    return m_Device.GetWrapperD3D11Interface().GetTextureD3D11(m_ImplObject);
-}
-
-ID3D12Resource* TextureVal::GetTextureD3D12() const
-{
-    return m_Device.GetWrapperD3D12Interface().GetTextureD3D12(m_ImplObject);
-}
-
-void TextureVal::GetTextureVK(uint32_t physicalDeviceIndex, TextureVulkanDesc& textureVulkanDesc) const
-{
-    const WrapperVKInterface& interface = m_Device.GetWrapperVKInterface();
-
-    interface.GetTextureVK(m_ImplObject, physicalDeviceIndex, textureVulkanDesc);
 }
 
 #include "TextureVal.hpp"

@@ -16,8 +16,12 @@ namespace nri
     {
         PipelineLayoutVal(DeviceVal& device, PipelineLayout& pipelineLayout, const PipelineLayoutDesc& pipelineLayoutDesc);
 
-        const PipelineLayoutDesc& GetPipelineLayoutDesc() const;
+        inline const PipelineLayoutDesc& GetPipelineLayoutDesc() const
+        { return m_PipelineLayoutDesc; }
 
+        //======================================================================================================================
+        // NRI
+        //======================================================================================================================
         void SetDebugName(const char* name);
 
     private:
@@ -28,9 +32,4 @@ namespace nri
         Vector<StaticSamplerDesc> m_StaticSamplerDescs;
         Vector<DynamicConstantBufferDesc> m_DynamicConstantBufferDescs;
     };
-
-    inline const PipelineLayoutDesc& PipelineLayoutVal::GetPipelineLayoutDesc() const
-    {
-        return m_PipelineLayoutDesc;
-    }
 }

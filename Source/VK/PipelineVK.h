@@ -26,8 +26,8 @@ namespace nri
         Result Create(const GraphicsPipelineDesc& graphicsPipelineDesc);
         Result Create(const ComputePipelineDesc& computePipelineDesc);
         Result Create(const RayTracingPipelineDesc& rayTracingPipelineDesc);
-        Result CreateGraphics(void* vkPipeline);
-        Result CreateCompute(void* vkPipeline);
+        Result CreateGraphics(NRIVkPipeline vkPipeline);
+        Result CreateCompute(NRIVkPipeline vkPipeline);
 
         void SetDebugName(const char* name);
         Result WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* buffer) const;

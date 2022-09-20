@@ -39,11 +39,11 @@ static Result NRI_CALL SetSwapChainHdrMetadata(SwapChain& swapChain, const HdrMe
 
 void FillFunctionTableSwapChainVK(SwapChainInterface& swapChainInterface)
 {
-    swapChainInterface.SetSwapChainDebugName = SetSwapChainDebugName;
-    swapChainInterface.GetSwapChainTextures = GetSwapChainTextures;
-    swapChainInterface.AcquireNextSwapChainTexture = AcquireNextSwapChainTexture;
-    swapChainInterface.SwapChainPresent = SwapChainPresent;
-    swapChainInterface.SetSwapChainHdrMetadata = SetSwapChainHdrMetadata;
+    swapChainInterface.SetSwapChainDebugName = ::SetSwapChainDebugName;
+    swapChainInterface.GetSwapChainTextures = ::GetSwapChainTextures;
+    swapChainInterface.AcquireNextSwapChainTexture = ::AcquireNextSwapChainTexture;
+    swapChainInterface.SwapChainPresent = ::SwapChainPresent;
+    swapChainInterface.SetSwapChainHdrMetadata = ::SetSwapChainHdrMetadata;
 }
 
 #pragma endregion

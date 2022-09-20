@@ -99,7 +99,7 @@ Result DescriptorPoolVK::Create(const DescriptorPoolDesc& descriptorPoolDesc)
     return Result::SUCCESS;
 }
 
-Result DescriptorPoolVK::Create(void* vkDescriptorPool)
+Result DescriptorPoolVK::Create(NRIVkDescriptorPool vkDescriptorPool)
 {
     m_OwnsNativeObjects = false;
     m_Handle = (VkDescriptorPool)vkDescriptorPool;

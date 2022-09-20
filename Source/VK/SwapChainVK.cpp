@@ -166,7 +166,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc)
     VkSurfaceFormatKHR surfaceFormat = {};
 
     surfaceFormat = surfaceFormats[0];
-    m_Format = GetNRIFormat(surfaceFormat.format);
+    m_Format = VKFormatToNRIFormat(surfaceFormat.format);
 
     uint32_t presentModeNum = 0;
     result = vk.GetPhysicalDeviceSurfacePresentModesKHR(m_Device, m_Surface, &presentModeNum, nullptr);

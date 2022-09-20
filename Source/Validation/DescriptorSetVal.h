@@ -16,8 +16,12 @@ namespace nri
     {
         DescriptorSetVal(DeviceVal& device, DescriptorSet& descriptorSet, const DescriptorSetDesc& descriptorSetDesc);
 
-        const DescriptorSetDesc& GetDesc() const;
+        inline const DescriptorSetDesc& GetDesc() const
+        { return m_Desc; }
 
+        //======================================================================================================================
+        // NRI
+        //======================================================================================================================
         void SetDebugName(const char* name);
         void UpdateDescriptorRanges(uint32_t physicalDeviceMask, uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs);
         void UpdateDynamicConstantBuffers(uint32_t physicalDeviceMask, uint32_t baseBuffer, uint32_t bufferNum, const Descriptor* const* descriptors);
@@ -26,9 +30,4 @@ namespace nri
     private:
         const DescriptorSetDesc& m_Desc;
     };
-
-    inline const DescriptorSetDesc& DescriptorSetVal::GetDesc() const
-    {
-        return m_Desc;
-    }
 }

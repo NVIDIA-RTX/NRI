@@ -107,6 +107,11 @@ const FormatInfo& GetFormatInfo(nri::Format format)
     return FORMAT_INFO_TABLE[(size_t)format];
 }
 
+uint32_t NRIFormatToDXGIFormatD3D11(nri::Format format)
+{
+    return (uint32_t)FORMAT_INFO_TABLE[(size_t)format].typed;
+}
+
 constexpr std::array<D3D11_LOGIC_OP, (size_t)nri::LogicFunc::MAX_NUM> LOGIC_FUNC_TABLE =
 {
     D3D11_LOGIC_OP_CLEAR,                               // NONE,
@@ -279,7 +284,7 @@ namespace nri
                 textureDesc.usageMask = (TextureUsageBits)0xffff;
                 static_assert(sizeof(TextureUsageBits) == sizeof(uint16_t), "invalid sizeof");
 
-                textureDesc.format = GetFormatDXGI(desc.Format);
+                textureDesc.format = DXGIFormatToNRIFormat(desc.Format);
                 textureDesc.size[0] = (uint16_t)desc.Width;
                 textureDesc.size[1] = 1;
                 textureDesc.size[2] = 1;
@@ -300,7 +305,7 @@ namespace nri
                 textureDesc.usageMask = (TextureUsageBits)0xffff;
                 static_assert(sizeof(TextureUsageBits) == sizeof(uint16_t), "invalid sizeof");
 
-                textureDesc.format = GetFormatDXGI(desc.Format);
+                textureDesc.format = DXGIFormatToNRIFormat(desc.Format);
                 textureDesc.size[0] = (uint16_t)desc.Width;
                 textureDesc.size[1] = (uint16_t)desc.Height;
                 textureDesc.size[2] = 1;
@@ -321,7 +326,7 @@ namespace nri
                 textureDesc.usageMask = (TextureUsageBits)0xffff;
                 static_assert(sizeof(TextureUsageBits) == sizeof(uint16_t), "invalid sizeof");
 
-                textureDesc.format = GetFormatDXGI(desc.Format);
+                textureDesc.format = DXGIFormatToNRIFormat(desc.Format);
                 textureDesc.size[0] = (uint16_t)desc.Width;
                 textureDesc.size[1] = (uint16_t)desc.Height;
                 textureDesc.size[2] = (uint16_t)desc.Depth;

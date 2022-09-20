@@ -12,32 +12,19 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 static void NRI_CALL SetDescriptorDebugName(Descriptor& descriptor, const char* name)
 {
-    ((DescriptorVal*)&descriptor)->SetDebugName(name);
+    ((DescriptorVal&)descriptor).SetDebugName(name);
+}
+
+static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor& descriptor, uint32_t physicalDeviceIndex)
+{
+    return ((DescriptorVal&)descriptor).GetNativeObject(physicalDeviceIndex);
 }
 
 void FillFunctionTableDescriptorVal(CoreInterface& coreInterface)
 {
-    coreInterface.SetDescriptorDebugName = SetDescriptorDebugName;
-}
+    coreInterface.SetDescriptorDebugName = ::SetDescriptorDebugName;
 
-#pragma endregion
-
-#pragma region [  WrapperVKInterface  ]
-
-static NRIVkImageView NRI_CALL GetTextureDescriptorVK(const Descriptor& descriptor, uint32_t physicalDeviceIndex, VkImageSubresourceRange& subresource)
-{
-    return ((DescriptorVal&)descriptor).GetTextureDescriptorVK(physicalDeviceIndex, subresource);
-}
-
-static NRIVkBufferView NRI_CALL GetBufferDescriptorVK(const Descriptor& descriptor, uint32_t physicalDeviceIndex)
-{
-    return ((DescriptorVal&)descriptor).GetBufferDescriptorVK(physicalDeviceIndex);
-}
-
-void FillFunctionTableDescriptorVal(WrapperVKInterface& wrapperVKInterface)
-{
-    wrapperVKInterface.GetTextureDescriptorVK = GetTextureDescriptorVK;
-    wrapperVKInterface.GetBufferDescriptorVK = GetBufferDescriptorVK;
+    coreInterface.GetDescriptorNativeObject = ::GetDescriptorNativeObject;
 }
 
 #pragma endregion

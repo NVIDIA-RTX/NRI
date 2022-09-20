@@ -28,7 +28,6 @@ extern UINT8 GetRenderTargetWriteMask(ColorWriteBits colorWriteMask);
 extern D3D12_LOGIC_OP GetLogicOp(LogicFunc logicFunc);
 extern D3D12_BLEND GetBlend(BlendFactor blendFactor);
 extern D3D12_BLEND_OP GetBlendOp(BlendFunc blendFunc);
-extern DXGI_FORMAT GetFormat(Format format);
 
 template<typename DescComponent, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE subobjectType>
 struct alignas(void*) PipelineDescComponent
@@ -147,11 +146,11 @@ Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipel
     if (graphicsPipelineDesc.outputMerger != nullptr)
     {
         FillDepthStencilState(stream.depthStencil, *graphicsPipelineDesc.outputMerger);
-        stream.depthStencilFormat = GetFormat(graphicsPipelineDesc.outputMerger->depthStencilFormat);
+        stream.depthStencilFormat = GetDXGIFormat(graphicsPipelineDesc.outputMerger->depthStencilFormat);
 
         stream.renderTargetFormats.desc.NumRenderTargets = graphicsPipelineDesc.outputMerger->colorNum;
         for (uint32_t i = 0; i < graphicsPipelineDesc.outputMerger->colorNum; i++)
-            stream.renderTargetFormats.desc.RTFormats[i] = GetFormat(graphicsPipelineDesc.outputMerger->color[i].format);
+            stream.renderTargetFormats.desc.RTFormats[i] = GetDXGIFormat(graphicsPipelineDesc.outputMerger->color[i].format);
     }
 
     D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc = {};
@@ -217,11 +216,11 @@ Result PipelineD3D12::Create(const GraphicsPipelineDesc& graphicsPipelineDesc)
     if (graphicsPipelineDesc.outputMerger)
     {
         FillDepthStencilState(graphicsPipleineStateDesc.DepthStencilState, *graphicsPipelineDesc.outputMerger);
-        graphicsPipleineStateDesc.DSVFormat = GetFormat(graphicsPipelineDesc.outputMerger->depthStencilFormat);
+        graphicsPipleineStateDesc.DSVFormat = GetDXGIFormat(graphicsPipelineDesc.outputMerger->depthStencilFormat);
 
         graphicsPipleineStateDesc.NumRenderTargets = graphicsPipelineDesc.outputMerger->colorNum;
         for (uint32_t i = 0; i < graphicsPipelineDesc.outputMerger->colorNum; i++)
-            graphicsPipleineStateDesc.RTVFormats[i] = GetFormat(graphicsPipelineDesc.outputMerger->color[i].format);
+            graphicsPipleineStateDesc.RTVFormats[i] = GetDXGIFormat(graphicsPipelineDesc.outputMerger->color[i].format);
     }
 
     HRESULT hr = ((ID3D12Device*)m_Device)->CreateGraphicsPipelineState(&graphicsPipleineStateDesc, IID_PPV_ARGS(&m_PipelineState));
@@ -476,7 +475,7 @@ void PipelineD3D12::FillInputLayout(D3D12_INPUT_LAYOUT_DESC& inputLayoutDesc, co
 
         inputElementsDescs[i].SemanticName = vertexAttributeDesc.d3d.semanticName;
         inputElementsDescs[i].SemanticIndex = vertexAttributeDesc.d3d.semanticIndex;
-        inputElementsDescs[i].Format = GetFormat(vertexAttributeDesc.format);
+        inputElementsDescs[i].Format = GetDXGIFormat(vertexAttributeDesc.format);
         inputElementsDescs[i].InputSlot = vertexStreamDesc.bindingSlot;
         inputElementsDescs[i].AlignedByteOffset = vertexAttributeDesc.offset;
         inputElementsDescs[i].InputSlotClass = isPerVertexData ? D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA : D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;

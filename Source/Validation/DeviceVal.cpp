@@ -71,7 +71,6 @@ bool DeviceVal::Create()
     m_IsWrapperVKSupported = deviceBase.FillFunctionTable(m_WrapperVKAPI) == Result::SUCCESS;
     m_IsRayTracingSupported = deviceBase.FillFunctionTable(m_RayTracingAPI) == Result::SUCCESS;
     m_IsMeshShaderExtSupported = deviceBase.FillFunctionTable(m_MeshShaderAPI) == Result::SUCCESS;
-    m_IsWrapperSPIRVOffsetsSupported = deviceBase.FillFunctionTable(m_WrapperSPIRVOffsetsAPI) == Result::SUCCESS;
     deviceBase.FillFunctionTable(m_HelperAPI);
 
     return true;
@@ -1005,20 +1004,6 @@ FormatSupportBits DeviceVal::GetFormatSupport(Format format) const
 }
 
 #if NRI_USE_VULKAN
-NRIVkDevice DeviceVal::GetDeviceVK() const
-{
-    return m_WrapperVKAPI.GetDeviceVK(m_Device);
-}
-
-NRIVkPhysicalDevice DeviceVal::GetPhysicalDeviceVK() const
-{
-    return m_WrapperVKAPI.GetPhysicalDeviceVK(m_Device);
-}
-
-NRIVkInstance DeviceVal::GetInstanceVK() const
-{
-    return m_WrapperVKAPI.GetInstanceVK(m_Device);
-}
 
 Result DeviceVal::CreateCommandQueueVK(const CommandQueueVulkanDesc& commandQueueVulkanDesc, CommandQueue*& commandQueue)
 {
@@ -1044,7 +1029,7 @@ Result DeviceVal::CreateCommandQueueVK(const CommandQueueVulkanDesc& commandQueu
 
 Result DeviceVal::CreateCommandAllocatorVK(const CommandAllocatorVulkanDesc& commandAllocatorVulkanDesc, CommandAllocator*& commandAllocator)
 {
-    RETURN_ON_FAILURE(GetLog(), commandAllocatorVulkanDesc.vkCommandPool != nullptr, Result::INVALID_ARGUMENT,
+    RETURN_ON_FAILURE(GetLog(), commandAllocatorVulkanDesc.vkCommandPool != 0, Result::INVALID_ARGUMENT,
         "Can't create CommandAllocator: 'commandAllocatorVulkanDesc.vkCommandPool' is invalid.");
 
     RETURN_ON_FAILURE(GetLog(), commandAllocatorVulkanDesc.commandQueueType < CommandQueueType::MAX_NUM, Result::INVALID_ARGUMENT,
@@ -1088,7 +1073,7 @@ Result DeviceVal::CreateCommandBufferVK(const CommandBufferVulkanDesc& commandBu
 
 Result DeviceVal::CreateDescriptorPoolVK(NRIVkDescriptorPool vkDescriptorPool, DescriptorPool*& descriptorPool)
 {
-    RETURN_ON_FAILURE(GetLog(), vkDescriptorPool != nullptr, Result::INVALID_ARGUMENT,
+    RETURN_ON_FAILURE(GetLog(), vkDescriptorPool != 0, Result::INVALID_ARGUMENT,
         "Can't create DescriptorPool: 'vkDescriptorPool' is invalid.");
 
     DescriptorPool* descriptorPoolImpl = nullptr;
@@ -1110,7 +1095,7 @@ Result DeviceVal::CreateBufferVK(const BufferVulkanDesc& bufferDesc, Buffer*& bu
     RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(bufferDesc.physicalDeviceMask), Result::INVALID_ARGUMENT,
         "Can't create Buffer: 'bufferDesc.physicalDeviceMask' is invalid.");
 
-    RETURN_ON_FAILURE(GetLog(), bufferDesc.vkBuffer != nullptr, Result::INVALID_ARGUMENT,
+    RETURN_ON_FAILURE(GetLog(), bufferDesc.vkBuffer != 0, Result::INVALID_ARGUMENT,
         "Can't create Buffer: 'bufferDesc.vkBuffer' is invalid.");
 
     RETURN_ON_FAILURE(GetLog(), bufferDesc.memory != nullptr, Result::INVALID_ARGUMENT,
@@ -1138,10 +1123,10 @@ Result DeviceVal::CreateTextureVK(const TextureVulkanDesc& textureVulkanDesc, Te
     RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(textureVulkanDesc.physicalDeviceMask), Result::INVALID_ARGUMENT,
         "Can't create Texture: 'textureVulkanDesc.physicalDeviceMask' is invalid.");
 
-    RETURN_ON_FAILURE(GetLog(), textureVulkanDesc.vkImage != nullptr, Result::INVALID_ARGUMENT,
+    RETURN_ON_FAILURE(GetLog(), textureVulkanDesc.vkImage != 0, Result::INVALID_ARGUMENT,
         "Can't create Texture: 'textureVulkanDesc.vkImage' is invalid.");
 
-    RETURN_ON_FAILURE(GetLog(), GetFormatVK(textureVulkanDesc.vkFormat) != Format::UNKNOWN, Result::INVALID_ARGUMENT,
+    RETURN_ON_FAILURE(GetLog(), ConvertVKFormatToNRI(textureVulkanDesc.vkFormat) != Format::UNKNOWN, Result::INVALID_ARGUMENT,
         "Can't create Texture: 'textureVulkanDesc.sampleNum' is 0.");
 
     RETURN_ON_FAILURE(GetLog(), textureVulkanDesc.sampleNum > 0, Result::INVALID_ARGUMENT,
@@ -1172,7 +1157,7 @@ Result DeviceVal::CreateMemoryVK(const MemoryVulkanDesc& memoryVulkanDesc, Memor
     RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(memoryVulkanDesc.physicalDeviceMask), Result::INVALID_ARGUMENT,
         "Can't create Memory: 'memoryVulkanDesc.physicalDeviceMask' is invalid.");
 
-    RETURN_ON_FAILURE(GetLog(), memoryVulkanDesc.vkDeviceMemory != nullptr, Result::INVALID_ARGUMENT,
+    RETURN_ON_FAILURE(GetLog(), memoryVulkanDesc.vkDeviceMemory != 0, Result::INVALID_ARGUMENT,
         "Can't create Memory: 'memoryVulkanDesc.vkDeviceMemory' is invalid.");
 
     RETURN_ON_FAILURE(GetLog(), memoryVulkanDesc.size > 0, Result::INVALID_ARGUMENT,
@@ -1235,7 +1220,7 @@ Result DeviceVal::CreateQueryPoolVK(const QueryPoolVulkanDesc& queryPoolVulkanDe
     RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(queryPoolVulkanDesc.physicalDeviceMask), Result::INVALID_ARGUMENT,
         "Can't create QueryPool: 'queryPoolVulkanDesc.physicalDeviceMask' is invalid.");
 
-    RETURN_ON_FAILURE(GetLog(), queryPoolVulkanDesc.vkQueryPool != nullptr, Result::INVALID_ARGUMENT,
+    RETURN_ON_FAILURE(GetLog(), queryPoolVulkanDesc.vkQueryPool != 0, Result::INVALID_ARGUMENT,
         "Can't create QueryPool: 'queryPoolVulkanDesc.vkQueryPool' is invalid.");
 
     QueryPool* queryPoolImpl = nullptr;
@@ -1256,7 +1241,7 @@ Result DeviceVal::CreateQueryPoolVK(const QueryPoolVulkanDesc& queryPoolVulkanDe
 
 Result DeviceVal::CreateQueueSemaphoreVK(NRIVkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore)
 {
-    RETURN_ON_FAILURE(GetLog(), vkSemaphore != nullptr, Result::INVALID_ARGUMENT,
+    RETURN_ON_FAILURE(GetLog(), vkSemaphore != 0, Result::INVALID_ARGUMENT,
         "Can't create QueueSemaphore: 'vkSemaphore' is invalid.");
 
     QueueSemaphore* queueSemaphoreImpl = nullptr;
@@ -1275,7 +1260,7 @@ Result DeviceVal::CreateQueueSemaphoreVK(NRIVkSemaphore vkSemaphore, QueueSemaph
 
 Result DeviceVal::CreateDeviceSemaphoreVK(NRIVkFence vkFence, DeviceSemaphore*& deviceSemaphore)
 {
-    RETURN_ON_FAILURE(GetLog(), vkFence != nullptr, Result::INVALID_ARGUMENT,
+    RETURN_ON_FAILURE(GetLog(), vkFence != 0, Result::INVALID_ARGUMENT,
         "Can't create DeviceSemaphore: 'vkFence' is invalid.");
 
     DeviceSemaphore* deviceSemaphoreImpl = nullptr;
@@ -1291,9 +1276,11 @@ Result DeviceVal::CreateDeviceSemaphoreVK(NRIVkFence vkFence, DeviceSemaphore*& 
 
     return result;
 }
+
 #endif
 
 #if NRI_USE_D3D11
+
 Result DeviceVal::CreateCommandBufferD3D11(const CommandBufferD3D11Desc& commandBufferDesc, CommandBuffer*& commandBuffer)
 {
     RETURN_ON_FAILURE(GetLog(), commandBufferDesc.d3d11DeviceContext != nullptr, Result::INVALID_ARGUMENT,
@@ -1351,13 +1338,10 @@ Result DeviceVal::CreateTextureD3D11(const TextureD3D11Desc& textureDesc, Textur
     return result;
 }
 
-ID3D11Device* DeviceVal::GetDeviceD3D11()
-{
-    return m_WrapperD3D11API.GetDeviceD3D11(m_Device);
-}
 #endif
 
 #if NRI_USE_D3D12
+
 Result DeviceVal::CreateCommandBufferD3D12(const CommandBufferD3D12Desc& commandBufferDesc, CommandBuffer*& commandBuffer)
 {
     RETURN_ON_FAILURE(GetLog(), commandBufferDesc.d3d12CommandAllocator != nullptr, Result::INVALID_ARGUMENT,
@@ -1439,10 +1423,6 @@ Result DeviceVal::CreateMemoryD3D12(const MemoryD3D12Desc& memoryDesc, Memory*& 
     return result;
 }
 
-ID3D12Device* DeviceVal::GetDeviceD3D12()
-{
-    return m_WrapperD3D12API.GetDeviceD3D12(m_Device);
-}
 #endif
 
 uint32_t DeviceVal::CalculateAllocationNumber(const ResourceGroupDesc& resourceGroupDesc) const
@@ -1551,11 +1531,6 @@ Result DeviceVal::AllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDe
     }
 
     return result;
-}
-
-void DeviceVal::SetSPIRVBindingOffsets(const SPIRVBindingOffsets& spirvBindingOffsets)
-{
-    m_WrapperSPIRVOffsetsAPI.SetSPIRVBindingOffsets(m_Device, spirvBindingOffsets);
 }
 
 Result DeviceVal::CreateRayTracingPipeline(const RayTracingPipelineDesc& pipelineDesc, Pipeline*& pipeline)

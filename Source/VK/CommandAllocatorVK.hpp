@@ -29,9 +29,9 @@ static void NRI_CALL ResetCommandAllocator(CommandAllocator& commandAllocator)
 
 void FillFunctionTableCommandAllocatorVK(CoreInterface& coreInterface)
 {
-    coreInterface.SetCommandAllocatorDebugName = SetCommandAllocatorDebugName;
-    coreInterface.CreateCommandBuffer = CreateCommandBuffer;
-    coreInterface.ResetCommandAllocator = ResetCommandAllocator;
+    coreInterface.SetCommandAllocatorDebugName = ::SetCommandAllocatorDebugName;
+    coreInterface.CreateCommandBuffer = ::CreateCommandBuffer;
+    coreInterface.ResetCommandAllocator = ::ResetCommandAllocator;
 }
 
 #pragma endregion

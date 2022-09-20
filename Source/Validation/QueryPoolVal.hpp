@@ -22,8 +22,8 @@ static uint32_t NRI_CALL GetQuerySize(const QueryPool& queryPool)
 
 void FillFunctionTableQueryPoolVal(CoreInterface& coreInterface)
 {
-    coreInterface.SetQueryPoolDebugName = SetQueryPoolDebugName;
-    coreInterface.GetQuerySize = GetQuerySize;
+    coreInterface.SetQueryPoolDebugName = ::SetQueryPoolDebugName;
+    coreInterface.GetQuerySize = ::GetQuerySize;
 }
 
 #pragma endregion

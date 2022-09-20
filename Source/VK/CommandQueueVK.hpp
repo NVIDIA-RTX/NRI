@@ -29,9 +29,9 @@ static void NRI_CALL WaitForSemaphore(CommandQueue& commandQueue, DeviceSemaphor
 
 void FillFunctionTableCommandQueueVK(CoreInterface& coreInterface)
 {
-    coreInterface.SetCommandQueueDebugName = SetCommandQueueDebugName;
-    coreInterface.SubmitQueueWork = SubmitQueueWork;
-    coreInterface.WaitForSemaphore = WaitForSemaphore;
+    coreInterface.SetCommandQueueDebugName = ::SetCommandQueueDebugName;
+    coreInterface.SubmitQueueWork = ::SubmitQueueWork;
+    coreInterface.WaitForSemaphore = ::WaitForSemaphore;
 }
 
 #pragma endregion
@@ -56,9 +56,9 @@ static nri::Result NRI_CALL WaitForIdleVK(CommandQueue& commandQueue)
 
 void FillFunctionTableCommandQueueVK(HelperInterface& helperInterface)
 {
-    helperInterface.ChangeResourceStates = ChangeResourceStatesVK;
-    helperInterface.UploadData = UploadDataVK;
-    helperInterface.WaitForIdle = WaitForIdleVK;
+    helperInterface.ChangeResourceStates = ::ChangeResourceStatesVK;
+    helperInterface.UploadData = ::UploadDataVK;
+    helperInterface.WaitForIdle = ::WaitForIdleVK;
 }
 
 #pragma endregion

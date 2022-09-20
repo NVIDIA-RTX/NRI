@@ -128,18 +128,4 @@ void DescriptorVal::SetDebugName(const char* name)
     m_CoreAPI.SetDescriptorDebugName(m_ImplObject, name);
 }
 
-NRIVkBufferView DescriptorVal::GetBufferDescriptorVK(uint32_t physicalDeviceIndex) const
-{
-    const WrapperVKInterface& interface = m_Device.GetWrapperVKInterface();
-
-    return interface.GetBufferDescriptorVK(m_ImplObject, physicalDeviceIndex);
-}
-
-NRIVkImageView DescriptorVal::GetTextureDescriptorVK(uint32_t physicalDeviceIndex, VkImageSubresourceRange& subresourceRange) const
-{
-    const WrapperVKInterface& interface = m_Device.GetWrapperVKInterface();
-
-    return interface.GetTextureDescriptorVK(m_ImplObject, physicalDeviceIndex, subresourceRange);
-}
-
 #include "DescriptorVal.hpp"

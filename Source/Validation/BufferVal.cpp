@@ -91,14 +91,4 @@ void BufferVal::Unmap()
     m_CoreAPI.UnmapBuffer(m_ImplObject);
 }
 
-ID3D11Resource* BufferVal::GetBufferD3D11() const
-{
-    return m_Device.GetWrapperD3D11Interface().GetBufferD3D11(m_ImplObject);
-}
-
-ID3D12Resource* BufferVal::GetBufferD3D12() const
-{
-    return m_Device.GetWrapperD3D12Interface().GetBufferD3D12(m_ImplObject);
-}
-
 #include "BufferVal.hpp"

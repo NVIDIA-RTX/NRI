@@ -823,21 +823,6 @@ void CommandBufferVal::DispatchMeshTasks(uint32_t taskNum)
     m_MeshShaderAPI.CmdDispatchMeshTasks(m_ImplObject, std::min(taskNum, meshTaskMaxNum));
 }
 
-ID3D11DeviceContext* CommandBufferVal::GetCommandBufferD3D11() const
-{
-    return m_Device.GetWrapperD3D11Interface().GetCommandBufferD3D11(m_ImplObject);
-}
-
-ID3D12GraphicsCommandList* CommandBufferVal::GetCommandBufferD3D12() const
-{
-    return m_Device.GetWrapperD3D12Interface().GetCommandBufferD3D12(m_ImplObject);
-}
-
-NRIVkCommandBuffer CommandBufferVal::GetCommandBufferVK() const
-{
-    return m_Device.GetWrapperVKInterface().GetCommandBufferVK(m_ImplObject);
-}
-
 template<typename Command>
 Command& CommandBufferVal::AllocateValidationCommand()
 {
@@ -861,11 +846,11 @@ static bool ValidateBufferTransitionBarrierDesc(const DeviceVal& device, uint32_
 
     const BufferVal& bufferVal = *(const BufferVal*)bufferTransitionBarrierDesc.buffer;
 
-    RETURN_ON_FAILURE(device.GetLog(), IsAccessMaskSupported(bufferVal.GetUsageMask(), bufferTransitionBarrierDesc.prevAccess), false,
+    RETURN_ON_FAILURE(device.GetLog(), IsAccessMaskSupported(bufferVal.GetDesc().usageMask, bufferTransitionBarrierDesc.prevAccess), false,
         "Can't record pipeline barrier: 'transitionBarriers->buffers[%u].prevAccess' is not supported by the usage mask of the buffer ('%s').",
         i, bufferVal.GetDebugName().c_str());
 
-    RETURN_ON_FAILURE(device.GetLog(), IsAccessMaskSupported(bufferVal.GetUsageMask(), bufferTransitionBarrierDesc.nextAccess), false,
+    RETURN_ON_FAILURE(device.GetLog(), IsAccessMaskSupported(bufferVal.GetDesc().usageMask, bufferTransitionBarrierDesc.nextAccess), false,
         "Can't record pipeline barrier: 'transitionBarriers->buffers[%u].nextAccess' is not supported by the usage mask of the buffer ('%s').",
         i, bufferVal.GetDebugName().c_str());
 

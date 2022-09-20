@@ -19,7 +19,7 @@ static void NRI_CALL SetMemoryDebugName(Memory& memory, const char* name)
 
 void FillFunctionTableMemoryVK(CoreInterface& coreInterface)
 {
-    coreInterface.SetMemoryDebugName = SetMemoryDebugName;
+    coreInterface.SetMemoryDebugName = ::SetMemoryDebugName;
 }
 
 #pragma endregion

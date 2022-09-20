@@ -19,7 +19,7 @@ static void NRI_CALL SetQueueSemaphoreDebugName(QueueSemaphore& queueSemaphore, 
 
 void FillFunctionTableQueueSemaphoreVK(CoreInterface& coreInterface)
 {
-    coreInterface.SetQueueSemaphoreDebugName = SetQueueSemaphoreDebugName;
+    coreInterface.SetQueueSemaphoreDebugName = ::SetQueueSemaphoreDebugName;
 }
 
 #pragma endregion

@@ -517,9 +517,14 @@ constexpr std::array<DXGI_FORMAT, (uint32_t)Format::MAX_NUM> DXGI_FORMATS = {
     DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS                // D32_SFLOAT_X8_TYPLESS_X24_TYPELESS,
 };
 
-DXGI_FORMAT GetFormat(Format format)
+DXGI_FORMAT GetDXGIFormat(Format format)
 {
     return DXGI_FORMATS[(uint32_t)format];
+}
+
+uint32_t NRIFormatToDXGIFormatD3D12(Format format)
+{
+    return (uint32_t)GetDXGIFormat(format);
 }
 
 constexpr std::array<DXGI_FORMAT, (uint32_t)Format::MAX_NUM> DXGI_TYPELESS_FORMATS = {
@@ -721,7 +726,7 @@ namespace nri
         textureDesc.usageMask = (TextureUsageBits)0xffff;
         static_assert(sizeof(TextureUsageBits) == sizeof(uint16_t), "invalid sizeof");
 
-        textureDesc.format = GetFormatDXGI(desc.Format);
+        textureDesc.format = DXGIFormatToNRIFormat(desc.Format);
         textureDesc.size[0] = (uint16_t)desc.Width;
         textureDesc.size[1] = (uint16_t)desc.Height;
         textureDesc.size[2] = textureDesc.type == TextureType::TEXTURE_3D ? desc.DepthOrArraySize : 1;
@@ -795,7 +800,7 @@ void ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs, const G
             const Triangles& triangles = geometryObjects[i].triangles;
             geometryDescs[i].Triangles.Transform3x4 = triangles.transformBuffer ? ((BufferD3D12*)triangles.transformBuffer)->GetPointerGPU() + triangles.transformOffset : 0;
             geometryDescs[i].Triangles.IndexFormat = triangles.indexType == IndexType::UINT16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
-            geometryDescs[i].Triangles.VertexFormat = GetFormat(triangles.vertexFormat);
+            geometryDescs[i].Triangles.VertexFormat = GetDXGIFormat(triangles.vertexFormat);
             geometryDescs[i].Triangles.IndexCount = triangles.indexNum;
             geometryDescs[i].Triangles.VertexCount = triangles.vertexNum;
             geometryDescs[i].Triangles.IndexBuffer = triangles.indexBuffer ? ((BufferD3D12*)triangles.indexBuffer)->GetPointerGPU() + triangles.indexOffset : 0;

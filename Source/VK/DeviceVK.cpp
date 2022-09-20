@@ -271,6 +271,8 @@ Result DeviceVK::Create(const DeviceCreationVulkanDesc& deviceCreationVulkanDesc
     if (deviceCreationVulkanDesc.enableAPIValidation)
         ReportDeviceGroupInfo();
 
+    m_SPIRVBindingOffsets = deviceCreationVulkanDesc.spirvBindingOffsets;
+
     m_IsConcurrentSharingModeEnabledForBuffers = m_IsConcurrentSharingModeEnabledForBuffers && m_ConcurrentSharingModeQueueIndices.size() > 1;
     m_IsConcurrentSharingModeEnabledForImages = m_IsConcurrentSharingModeEnabledForImages && m_ConcurrentSharingModeQueueIndices.size() > 1;
 
@@ -2256,11 +2258,6 @@ Result CreateDeviceVK(const DeviceCreationVulkanDesc& deviceCreationDesc, Device
 
     Deallocate(allocator, implementation);
     return res;
-}
-
-Format GetFormatVK(uint32_t vkFormat)
-{
-    return ::GetNRIFormat((VkFormat)vkFormat);
 }
 
 #include "DeviceVK.hpp"

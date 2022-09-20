@@ -19,9 +19,15 @@ namespace nri
         AccelerationStructureVal(DeviceVal& device, AccelerationStructure& accelerationStructure);
         ~AccelerationStructureVal();
 
-        void SetBoundToMemory(MemoryVal& memory);
-        bool IsBoundToMemory() const;
+        inline bool IsBoundToMemory() const
+        { return m_Memory != nullptr; }
 
+        inline void SetBoundToMemory(MemoryVal& memory)
+        { m_Memory = &memory; }
+
+        //======================================================================================================================
+        // NRI
+        //======================================================================================================================
         void GetMemoryInfo(MemoryDesc& memoryDesc) const;
         uint64_t GetUpdateScratchBufferSize() const;
         uint64_t GetBuildScratchBufferSize() const;
@@ -33,14 +39,4 @@ namespace nri
         const RayTracingInterface& m_RayTracingAPI;
         MemoryVal* m_Memory = nullptr;
     };
-
-    inline void AccelerationStructureVal::SetBoundToMemory(MemoryVal& memory)
-    {
-        m_Memory = &memory;
-    }
-
-    inline bool AccelerationStructureVal::IsBoundToMemory() const
-    {
-        return m_Memory != nullptr;
-    }
 }

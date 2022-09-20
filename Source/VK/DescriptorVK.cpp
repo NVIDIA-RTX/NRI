@@ -118,7 +118,6 @@ Result DescriptorVK::CreateTextureView(const T& textureViewDesc)
 
     m_Type = DescriptorTypeVK::IMAGE_VIEW;
     m_Format = ::GetVkImageViewFormat(textureViewDesc.format);
-    m_Extent = texture.GetExtent();
     FillTextureDesc(textureViewDesc, m_TextureDesc);
 
     VkImageSubresourceRange subresource;
@@ -157,7 +156,7 @@ Result DescriptorVK::Create(const BufferViewDesc& bufferViewDesc)
     const BufferVK& buffer = *(const BufferVK*)bufferViewDesc.buffer;
 
     m_Type = DescriptorTypeVK::BUFFER_VIEW;
-    m_Format = ::GetVkFormat((nri::Format)bufferViewDesc.format);
+    m_Format = GetVkFormat((nri::Format)bufferViewDesc.format);
     m_BufferDesc.offset = bufferViewDesc.offset;
     m_BufferDesc.size = (bufferViewDesc.size == WHOLE_SIZE) ? VK_WHOLE_SIZE : bufferViewDesc.size;
 

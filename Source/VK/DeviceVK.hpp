@@ -192,6 +192,11 @@ static void NRI_CALL SetDeviceDebugName(Device& device, const char* name)
     ((DeviceVK&)device).SetDebugName(name);
 }
 
+static void* NRI_CALL GetDeviceNativeObject(const Device& device)
+{
+    return (VkDevice)((DeviceVK&)device);
+}
+
 void FillFunctionTableBufferVK(CoreInterface& coreInterface);
 void FillFunctionTableCommandAllocatorVK(CoreInterface& coreInterface);
 void FillFunctionTableCommandBufferVK(CoreInterface& coreInterface);
@@ -229,6 +234,7 @@ Result DeviceVK::FillFunctionTable(CoreInterface& coreInterface) const
     FillFunctionTableQueueSemaphoreVK(coreInterface);
 
     coreInterface.GetDeviceDesc = ::GetDeviceDesc;
+    coreInterface.GetFormatSupport = ::GetFormatSupport;
     coreInterface.GetCommandQueue = ::GetCommandQueue;
 
     coreInterface.CreateCommandAllocator = ::CreateCommandAllocator;
@@ -265,9 +271,9 @@ Result DeviceVK::FillFunctionTable(CoreInterface& coreInterface) const
     coreInterface.BindTextureMemory = ::BindTextureMemory;
     coreInterface.FreeMemory = ::FreeMemory;
 
-    coreInterface.GetFormatSupport = ::GetFormatSupport;
-
     coreInterface.SetDeviceDebugName = ::SetDeviceDebugName;
+
+    coreInterface.GetDeviceNativeObject = ::GetDeviceNativeObject;
 
     return ValidateFunctionTable(GetLog(), coreInterface);
 }
@@ -315,24 +321,6 @@ Result DeviceVK::FillFunctionTable(SwapChainInterface& swapChainInterface) const
 #pragma endregion
 
 #pragma region [  WrapperVKInterface  ]
-
-static NRIVkDevice NRI_CALL GetDeviceVK(const Device& device)
-{
-    const VkDevice handle = (const DeviceVK&)device;
-    return (NRIVkDevice)handle;
-}
-
-static NRIVkPhysicalDevice NRI_CALL GetPhysicalDeviceVK(const Device& device)
-{
-    const VkPhysicalDevice handle = (const DeviceVK&)device;
-    return (NRIVkPhysicalDevice)handle;
-}
-
-static NRIVkInstance NRI_CALL GetInstanceVK(const Device& device)
-{
-    const VkInstance handle = (const DeviceVK&)device;
-    return (NRIVkInstance)handle;
-}
 
 static Result NRI_CALL CreateCommandQueueVK(Device& device, const CommandQueueVulkanDesc& commandQueueVulkanDesc, CommandQueue*& commandQueue)
 {
@@ -394,18 +382,19 @@ static Result NRI_CALL CreateDeviceSemaphoreVK(Device& device, NRIVkFence vkFenc
     return ((DeviceVK&)device).CreateDeviceSemaphore(vkFence, deviceSemaphore);
 }
 
-void FillFunctionTableCommandBufferVK(WrapperVKInterface& wrapperVKInterface);
-void FillFunctionTableDescriptorVK(WrapperVKInterface& wrapperVKInterface);
-void FillFunctionTableTextureVK(WrapperVKInterface& wrapperVKInterface);
+static NRIVkPhysicalDevice NRI_CALL GetVkPhysicalDevice(const Device& device)
+{
+    return (VkPhysicalDevice)((DeviceVK&)device);
+}
+
+static NRIVkInstance NRI_CALL GetVkInstance(const Device& device)
+{
+    return (VkInstance)((DeviceVK&)device);
+}
 
 Result DeviceVK::FillFunctionTable(WrapperVKInterface& wrapperVKInterface) const
 {
     wrapperVKInterface = {};
-
-    FillFunctionTableCommandBufferVK(wrapperVKInterface);
-    FillFunctionTableDescriptorVK(wrapperVKInterface);
-    FillFunctionTableTextureVK(wrapperVKInterface);
-
     wrapperVKInterface.CreateCommandQueueVK = ::CreateCommandQueueVK;
     wrapperVKInterface.CreateCommandAllocatorVK = ::CreateCommandAllocatorVK;
     wrapperVKInterface.CreateCommandBufferVK = ::CreateCommandBufferVK;
@@ -419,9 +408,8 @@ Result DeviceVK::FillFunctionTable(WrapperVKInterface& wrapperVKInterface) const
     wrapperVKInterface.CreateQueueSemaphoreVK = ::CreateQueueSemaphoreVK;
     wrapperVKInterface.CreateDeviceSemaphoreVK = ::CreateDeviceSemaphoreVK;
 
-    wrapperVKInterface.GetDeviceVK = ::GetDeviceVK;
-    wrapperVKInterface.GetPhysicalDeviceVK = ::GetPhysicalDeviceVK;
-    wrapperVKInterface.GetInstanceVK = ::GetInstanceVK;
+    wrapperVKInterface.GetVkPhysicalDevice = ::GetVkPhysicalDevice;
+    wrapperVKInterface.GetVkInstance = ::GetVkInstance;
 
     return ValidateFunctionTable(GetLog(), wrapperVKInterface);
 }
@@ -516,24 +504,6 @@ Result DeviceVK::FillFunctionTable(HelperInterface& helperInterface) const
     FillFunctionTableCommandQueueVK(helperInterface);
 
     return ValidateFunctionTable(GetLog(), helperInterface);
-}
-
-#pragma endregion
-
-#pragma region [  WrapperSPIRVOffsetsInterface  ]
-
-static void NRI_CALL SetSPIRVBindingOffsets(Device& device, const SPIRVBindingOffsets& spirvBindingOffsets)
-{
-    return ((DeviceVK&)device).SetSPIRVBindingOffsets(spirvBindingOffsets);
-}
-
-Result DeviceVK::FillFunctionTable(WrapperSPIRVOffsetsInterface& wrapperSPIRVOffsetsInterface) const
-{
-    wrapperSPIRVOffsetsInterface = {};
-
-    wrapperSPIRVOffsetsInterface.SetSPIRVBindingOffsets = ::SetSPIRVBindingOffsets;
-
-    return ValidateFunctionTable(GetLog(), wrapperSPIRVOffsetsInterface);
 }
 
 #pragma endregion

@@ -16,7 +16,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 using namespace nri;
 
 extern D3D12_RESOURCE_DIMENSION GetResourceDimension(TextureType textureType);
-extern DXGI_FORMAT GetFormat(Format format);
 extern DXGI_FORMAT GetTypelessFormat(Format format);
 extern D3D12_RESOURCE_FLAGS GetTextureFlags(TextureUsageBits textureUsageMask);
 
@@ -51,13 +50,13 @@ void TextureD3D12::Initialize(ID3D12Resource* resource)
 {
     m_Texture = resource;
     m_TextureDesc = resource->GetDesc();
-    m_Format = GetFormat((uint32_t)m_TextureDesc.Format);
+    m_Format = DXGIFormatToNRIFormat((uint32_t)m_TextureDesc.Format);
 }
 
 Result TextureD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset)
 {
     const D3D12_HEAP_DESC& heapDesc = memory->GetHeapDesc();
-    D3D12_CLEAR_VALUE clearValue = { GetFormat(m_Format) };
+    D3D12_CLEAR_VALUE clearValue = { GetDXGIFormat(m_Format) };
     bool isRenderableSurface = m_TextureDesc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
     if (memory->RequiresDedicatedAllocation())

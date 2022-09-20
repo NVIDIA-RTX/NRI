@@ -19,17 +19,54 @@ namespace nri
         DeviceVal(const Log& log, const StdAllocator<uint8_t>& stdAllocator, DeviceBase& device, uint32_t physicalDeviceNum);
         ~DeviceVal();
 
-        const CoreInterface& GetCoreInterface() const;
-        const SwapChainInterface& GetSwapChainInterface() const;
-        const WrapperD3D11Interface& GetWrapperD3D11Interface() const;
-        const WrapperD3D12Interface& GetWrapperD3D12Interface() const;
-        const WrapperVKInterface& GetWrapperVKInterface() const;
-        const RayTracingInterface& GetRayTracingInterface() const;
-        const MeshShaderInterface& GetMeshShaderInterface() const;
-        const HelperInterface& GetHelperInterface() const;
-
         bool Create();
         void RegisterMemoryType(MemoryType memoryType, MemoryLocation memoryLocation);
+
+        inline const CoreInterface& GetCoreInterface() const
+        { return m_CoreAPI; }
+
+        inline const SwapChainInterface& GetSwapChainInterface() const
+        { return m_SwapChainAPI; }
+
+        inline const WrapperD3D11Interface& GetWrapperD3D11Interface() const
+        { return m_WrapperD3D11API; }
+
+        inline const WrapperD3D12Interface& GetWrapperD3D12Interface() const
+        { return m_WrapperD3D12API; }
+
+        inline const WrapperVKInterface& GetWrapperVKInterface() const
+        { return m_WrapperVKAPI; }
+
+        inline const RayTracingInterface& GetRayTracingInterface() const
+        { return m_RayTracingAPI; }
+
+        inline const MeshShaderInterface& GetMeshShaderInterface() const
+        { return m_MeshShaderAPI; }
+
+        inline const HelperInterface& GetHelperInterface() const
+        { return m_HelperAPI; }
+
+        inline void* GetNativeObject() const
+        { return m_CoreAPI.GetDeviceNativeObject(m_Device); }
+
+        NRIVkPhysicalDevice GetVkPhysicalDevice() const
+        { return m_WrapperVKAPI.GetVkPhysicalDevice(m_Device); }
+
+        NRIVkInstance GetVkInstance() const
+        { return m_WrapperVKAPI.GetVkInstance(m_Device); }
+
+        inline uint32_t GetPhysicalDeviceNum() const
+        { return m_PhysicalDeviceNum; }
+
+        inline bool IsPhysicalDeviceMaskValid(uint32_t physicalDeviceMask) const
+        { return (physicalDeviceMask & m_PhysicalDeviceMask) == physicalDeviceMask; }
+
+        inline Lock& GetLock()
+        { return m_Lock; }
+
+        //======================================================================================================================
+        // NRI
+        //======================================================================================================================
         Result CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*& swapChain);
         void DestroySwapChain(SwapChain& swapChain);
         Result GetDisplays(Display** displays, uint32_t& displayNum);
@@ -68,15 +105,13 @@ namespace nri
         Result BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
         Result BindTextureMemory(const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
         void FreeMemory(Memory& memory);
+
         Result CreateRayTracingPipeline(const RayTracingPipelineDesc& pipelineDesc, Pipeline*& pipeline);
         Result CreateAccelerationStructure(const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
         Result BindAccelerationStructureMemory(const AccelerationStructureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
         void DestroyAccelerationStructure(AccelerationStructure& accelerationStructure);
         FormatSupportBits GetFormatSupport(Format format) const;
 
-        NRIVkDevice GetDeviceVK() const;
-        NRIVkPhysicalDevice GetPhysicalDeviceVK() const;
-        NRIVkInstance GetInstanceVK() const;
         Result CreateCommandQueueVK(const CommandQueueVulkanDesc& commandQueueDesc, CommandQueue*& commandQueue);
         Result CreateCommandAllocatorVK(const CommandAllocatorVulkanDesc& commandAllocatorDesc, CommandAllocator*& commandAllocator);
         Result CreateCommandBufferVK(const CommandBufferVulkanDesc& commandBufferDesc, CommandBuffer*& commandBuffer);
@@ -93,23 +128,14 @@ namespace nri
         Result CreateCommandBufferD3D11(const CommandBufferD3D11Desc& commandBufferDesc, CommandBuffer*& commandBuffer);
         Result CreateBufferD3D11(const BufferD3D11Desc& bufferDesc, Buffer*& buffer);
         Result CreateTextureD3D11(const TextureD3D11Desc& textureDesc, Texture*& texture);
-        ID3D11Device* GetDeviceD3D11();
 
         Result CreateCommandBufferD3D12(const CommandBufferD3D12Desc& commandBufferDesc, CommandBuffer*& commandBuffer);
         Result CreateBufferD3D12(const BufferD3D12Desc& bufferDesc, Buffer*& buffer);
         Result CreateTextureD3D12(const TextureD3D12Desc& textureDesc, Texture*& texture);
         Result CreateMemoryD3D12(const MemoryD3D12Desc& memoryDesc, Memory*& memory);
-        ID3D12Device* GetDeviceD3D12();
 
         uint32_t CalculateAllocationNumber(const ResourceGroupDesc& resourceGroupDesc) const;
         Result AllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDesc, Memory** allocations);
-
-        void SetSPIRVBindingOffsets(const SPIRVBindingOffsets& spirvBindingOffsets);
-
-        uint32_t GetPhysicalDeviceNum() const;
-        bool IsPhysicalDeviceMaskValid(uint32_t physicalDeviceMask) const;
-
-        Lock& GetLock();
 
         //================================================================================================================
         // DeviceBase
@@ -123,7 +149,6 @@ namespace nri
         Result FillFunctionTable(RayTracingInterface& table) const;
         Result FillFunctionTable(MeshShaderInterface& table) const;
         Result FillFunctionTable(HelperInterface& table) const;
-        Result FillFunctionTable(WrapperSPIRVOffsetsInterface& wrapperSPIRVOffsetsInterface) const;
 
     private:
         Device& m_Device;
@@ -136,73 +161,16 @@ namespace nri
         RayTracingInterface m_RayTracingAPI = {};
         MeshShaderInterface m_MeshShaderAPI = {};
         HelperInterface m_HelperAPI = {};
-        WrapperSPIRVOffsetsInterface m_WrapperSPIRVOffsetsAPI = {};
+        std::array<CommandQueueVal*, COMMAND_QUEUE_TYPE_NUM> m_CommandQueues = {};
+        UnorderedMap<MemoryType, MemoryLocation> m_MemoryTypeMap;
+        Lock m_Lock;
+        uint32_t m_PhysicalDeviceNum = 0;
+        uint32_t m_PhysicalDeviceMask = 0;
         bool m_IsSwapChainSupported = false;
         bool m_IsWrapperD3D11Supported = false;
         bool m_IsWrapperD3D12Supported = false;
         bool m_IsWrapperVKSupported = false;
         bool m_IsRayTracingSupported = false;
         bool m_IsMeshShaderExtSupported = false;
-        bool m_IsWrapperSPIRVOffsetsSupported = false;
-        uint32_t m_PhysicalDeviceNum = 0;
-        uint32_t m_PhysicalDeviceMask = 0;
-        std::array<CommandQueueVal*, COMMAND_QUEUE_TYPE_NUM> m_CommandQueues = {};
-        UnorderedMap<MemoryType, MemoryLocation> m_MemoryTypeMap;
-        Lock m_Lock;
     };
-
-    inline uint32_t DeviceVal::GetPhysicalDeviceNum() const
-    {
-        return m_PhysicalDeviceNum;
-    }
-
-    inline bool DeviceVal::IsPhysicalDeviceMaskValid(uint32_t physicalDeviceMask) const
-    {
-        return (physicalDeviceMask & m_PhysicalDeviceMask) == physicalDeviceMask;
-    }
-
-    inline const CoreInterface& DeviceVal::GetCoreInterface() const
-    {
-        return m_CoreAPI;
-    }
-
-    inline const SwapChainInterface& DeviceVal::GetSwapChainInterface() const
-    {
-        return m_SwapChainAPI;
-    }
-
-    inline const WrapperD3D11Interface& DeviceVal::GetWrapperD3D11Interface() const
-    {
-        return m_WrapperD3D11API;
-    }
-
-    inline const WrapperD3D12Interface& DeviceVal::GetWrapperD3D12Interface() const
-    {
-        return m_WrapperD3D12API;
-    }
-
-    inline const WrapperVKInterface& DeviceVal::GetWrapperVKInterface() const
-    {
-        return m_WrapperVKAPI;
-    }
-
-    inline const RayTracingInterface& DeviceVal::GetRayTracingInterface() const
-    {
-        return m_RayTracingAPI;
-    }
-
-    inline const MeshShaderInterface& DeviceVal::GetMeshShaderInterface() const
-    {
-        return m_MeshShaderAPI;
-    }
-
-    inline const HelperInterface& DeviceVal::GetHelperInterface() const
-    {
-        return m_HelperAPI;
-    }
-
-    inline Lock& DeviceVal::GetLock()
-    {
-        return m_Lock;
-    }
 }

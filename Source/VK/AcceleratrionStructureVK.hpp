@@ -45,12 +45,12 @@ static Result NRI_CALL CreateAccelerationStructureDescriptor(const AccelerationS
 
 void FillFunctionTableAccelerationStructureVK(RayTracingInterface& rayTracingInterface)
 {
-    rayTracingInterface.GetAccelerationStructureMemoryInfo = GetAccelerationStructureMemoryInfo;
-    rayTracingInterface.GetAccelerationStructureUpdateScratchBufferSize = GetAccelerationStructureUpdateScratchBufferSize;
-    rayTracingInterface.GetAccelerationStructureBuildScratchBufferSize = GetAccelerationStructureBuildScratchBufferSize;
-    rayTracingInterface.GetAccelerationStructureHandle = GetAccelerationStructureHandle;
-    rayTracingInterface.SetAccelerationStructureDebugName = SetAccelerationStructureDebugName;
-    rayTracingInterface.CreateAccelerationStructureDescriptor = CreateAccelerationStructureDescriptor;
+    rayTracingInterface.GetAccelerationStructureMemoryInfo = ::GetAccelerationStructureMemoryInfo;
+    rayTracingInterface.GetAccelerationStructureUpdateScratchBufferSize = ::GetAccelerationStructureUpdateScratchBufferSize;
+    rayTracingInterface.GetAccelerationStructureBuildScratchBufferSize = ::GetAccelerationStructureBuildScratchBufferSize;
+    rayTracingInterface.GetAccelerationStructureHandle = ::GetAccelerationStructureHandle;
+    rayTracingInterface.SetAccelerationStructureDebugName = ::SetAccelerationStructureDebugName;
+    rayTracingInterface.CreateAccelerationStructureDescriptor = ::CreateAccelerationStructureDescriptor;
 }
 
 #pragma endregion

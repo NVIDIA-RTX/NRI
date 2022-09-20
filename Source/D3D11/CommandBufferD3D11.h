@@ -24,12 +24,13 @@ namespace nri
         ~CommandBufferD3D11();
 
         inline const VersionedContext& GetContext() const
-        {
-            return m_Context;
-        }
+        { return m_Context; }
+
+        inline operator ID3D11CommandList*() const
+        { return m_CommandList.GetInterface(); }
 
         //======================================================================================================================
-        // nri::CommandBufferHelper
+        // CommandBufferHelper
         //======================================================================================================================
         Result Create(ID3D11DeviceContext* precreatedContext);
         void Submit(const VersionedContext& context);

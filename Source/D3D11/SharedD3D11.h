@@ -75,9 +75,10 @@ struct VersionedDevice
     {}
 
     inline ID3D11Device5* operator->() const
-    {
-        return ptr;
-    }
+    { return ptr; }
+
+    inline operator ID3D11Device5*() const
+    { return ptr.GetInterface(); }
 
     ComPtr<ID3D11Device5> ptr;
     const D3D11Extensions* ext = nullptr;
@@ -91,9 +92,10 @@ struct VersionedContext
     {}
 
     inline ID3D11DeviceContext4* operator->() const
-    {
-        return ptr;
-    }
+    { return ptr; }
+
+    inline operator ID3D11DeviceContext4*() const
+    { return ptr.GetInterface(); }
 
     inline void EnterCriticalSection() const
     {
@@ -124,9 +126,7 @@ struct VersionedSwapchain
     {}
 
     inline IDXGISwapChain4* operator->() const
-    {
-        return ptr;
-    }
+    { return ptr; }
 
     ComPtr<IDXGISwapChain4> ptr;
     uint8_t version = 0;
@@ -136,14 +136,10 @@ struct CriticalSection
 {
     CriticalSection(const VersionedContext& context) :
         m_Context(context)
-    {
-        m_Context.EnterCriticalSection();
-    }
+    { m_Context.EnterCriticalSection(); }
 
     ~CriticalSection()
-    {
-        m_Context.LeaveCriticalSection();
-    }
+    { m_Context.LeaveCriticalSection(); }
 
     const VersionedContext& m_Context;
 };
@@ -166,9 +162,7 @@ struct SubresourceInfo
     }
 
     friend bool operator==(const SubresourceInfo& a, const SubresourceInfo& b)
-    {
-        return a.resource == b.resource && a.data == b.data;
-    }
+    { return a.resource == b.resource && a.data == b.data; }
 };
 
 struct SubresourceAndSlot

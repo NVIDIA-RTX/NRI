@@ -19,7 +19,7 @@ static void NRI_CALL SetFrameBufferDebugName(FrameBuffer& frameBuffer, const cha
 
 void FillFunctionTableFrameBufferVK(CoreInterface& coreInterface)
 {
-    coreInterface.SetFrameBufferDebugName = SetFrameBufferDebugName;
+    coreInterface.SetFrameBufferDebugName = ::SetFrameBufferDebugName;
 }
 
 #pragma endregion

@@ -17,31 +17,28 @@ static void NRI_CALL SetDescriptorDebugName(Descriptor& descriptor, const char* 
     ((DescriptorVK&)descriptor).SetDebugName(name);
 }
 
+static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor& descriptor, uint32_t physicalDeviceIndex)
+{
+    const DescriptorVK& d = ((DescriptorVK&)descriptor);
+
+    uint64_t handle = 0;
+    if (d.GetType() == DescriptorTypeVK::BUFFER_VIEW)
+        handle = (uint64_t)d.GetBufferView(physicalDeviceIndex);
+    else if (d.GetType() == DescriptorTypeVK::IMAGE_VIEW)
+        handle = (uint64_t)d.GetImageView(physicalDeviceIndex);
+    else if (d.GetType() == DescriptorTypeVK::SAMPLER)
+        handle = (uint64_t)d.GetSampler();
+    else if (d.GetType() == DescriptorTypeVK::ACCELERATION_STRUCTURE)
+        handle = (uint64_t)d.GetAccelerationStructure(physicalDeviceIndex);
+
+    return handle;
+}
+
 void FillFunctionTableDescriptorVK(CoreInterface& coreInterface)
 {
-    coreInterface.SetDescriptorDebugName = SetDescriptorDebugName;
-}
+    coreInterface.SetDescriptorDebugName = ::SetDescriptorDebugName;
 
-#pragma endregion
-
-#pragma region [  WrapperVKInterface  ]
-
-static NRIVkImageView NRI_CALL GetTextureDescriptorVK(const Descriptor& descriptor, uint32_t physicalDeviceIndex, VkImageSubresourceRange& subresource)
-{
-    const VkImageView handle = ((DescriptorVK&)descriptor).GetTextureDescriptorVK(physicalDeviceIndex, subresource);
-    return (NRIVkImageView)handle;
-}
-
-static NRIVkBufferView NRI_CALL GetBufferDescriptorVK(const Descriptor& descriptor, uint32_t physicalDeviceIndex)
-{
-    const VkBufferView handle = ((DescriptorVK&)descriptor).GetBufferDescriptorVK(physicalDeviceIndex);
-    return (NRIVkBufferView)handle;
-}
-
-void FillFunctionTableDescriptorVK(WrapperVKInterface& wrapperVKInterface)
-{
-    wrapperVKInterface.GetTextureDescriptorVK = GetTextureDescriptorVK;
-    wrapperVKInterface.GetBufferDescriptorVK = GetBufferDescriptorVK;
+    coreInterface.GetDescriptorNativeObject = ::GetDescriptorNativeObject;
 }
 
 #pragma endregion

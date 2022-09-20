@@ -39,6 +39,17 @@ uint32_t QueryPoolVal::GetQuerySize() const
     return m_CoreAPI.GetQuerySize(m_ImplObject);
 }
 
+inline bool QueryPoolVal::SetQueryState(uint32_t offset, bool state)
+{
+    const size_t batchIndex = offset >> 6;
+    const uint64_t batchValue = m_DeviceState[batchIndex];
+    const size_t bitIndex = 1ull << (offset & 63);
+    const uint64_t maskBitValue = ~bitIndex;
+    const uint64_t bitValue = state ? bitIndex : 0;
+    m_DeviceState[batchIndex] = (batchValue & maskBitValue) | bitValue;
+    return batchValue & bitIndex;
+}
+
 void QueryPoolVal::ResetQueries(uint32_t offset, uint32_t number)
 {
     for (uint32_t i = 0; i < number; i++)

@@ -17,7 +17,7 @@ static void NRI_CALL SetPipelineLayoutDebugName(PipelineLayout& pipelineLayout, 
 
 void FillFunctionTablePipelineLayoutD3D12(CoreInterface& coreInterface)
 {
-    coreInterface.SetPipelineLayoutDebugName = SetPipelineLayoutDebugName;
+    coreInterface.SetPipelineLayoutDebugName = ::SetPipelineLayoutDebugName;
 }
 
 #pragma endregion

@@ -15,5 +15,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "SharedExternal.h"
 #include "DeviceBase.h"
 
+DXGI_FORMAT GetDXGIFormat(nri::Format format);
+
 #define NRI_TEMP_NODE_MASK 0x1
 #define SET_D3D_DEBUG_OBJECT_NAME(obj, name) if (obj) obj->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)std::strlen(name), name)

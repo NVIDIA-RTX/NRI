@@ -274,7 +274,7 @@ Result PipelineVK::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc)
     return Result::SUCCESS;
 }
 
-Result PipelineVK::CreateGraphics(void* vkPipeline)
+Result PipelineVK::CreateGraphics(NRIVkPipeline vkPipeline)
 {
     m_OwnsNativeObjects = false;
     m_Handle = (VkPipeline)vkPipeline;
@@ -283,7 +283,7 @@ Result PipelineVK::CreateGraphics(void* vkPipeline)
     return Result::SUCCESS;
 }
 
-Result PipelineVK::CreateCompute(void* vkPipeline)
+Result PipelineVK::CreateCompute(NRIVkPipeline vkPipeline)
 {
     m_OwnsNativeObjects = false;
     m_Handle = (VkPipeline)vkPipeline;

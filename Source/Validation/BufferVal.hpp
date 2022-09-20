@@ -15,6 +15,11 @@ static void NRI_CALL SetBufferDebugName(Buffer& buffer, const char* name)
     ((BufferVal*)&buffer)->SetDebugName(name);
 }
 
+static uint64_t NRI_CALL GetBufferNativeObject(const Buffer& buffer, uint32_t physicalDeviceIndex)
+{
+    return ((BufferVal*)&buffer)->GetNativeObject(physicalDeviceIndex);
+}
+
 static void NRI_CALL GetBufferMemoryInfo(const Buffer& buffer, MemoryLocation memoryLocation, MemoryDesc& memoryDesc)
 {
     ((BufferVal*)&buffer)->GetMemoryInfo(memoryLocation, memoryDesc);
@@ -32,38 +37,11 @@ static void NRI_CALL UnmapBuffer(Buffer& buffer)
 
 void FillFunctionTableBufferVal(CoreInterface& coreInterface)
 {
-    coreInterface.SetBufferDebugName = SetBufferDebugName;
-    coreInterface.GetBufferMemoryInfo = GetBufferMemoryInfo;
-    coreInterface.MapBuffer = MapBuffer;
-    coreInterface.UnmapBuffer = UnmapBuffer;
-}
-
-#pragma endregion
-
-#pragma region [  WrapperD3D11Interface  ]
-
-static ID3D11Resource* NRI_CALL GetBufferD3D11(const Buffer& buffer)
-{
-    return ((BufferVal*)&buffer)->GetBufferD3D11();
-}
-
-void FillFunctionTableBufferVal(WrapperD3D11Interface& wrapperD3D11Interface)
-{
-    wrapperD3D11Interface.GetBufferD3D11 = GetBufferD3D11;
-}
-
-#pragma endregion
-
-#pragma region [  WrapperD3D12Interface  ]
-
-static ID3D12Resource* NRI_CALL GetBufferD3D12(const Buffer& buffer)
-{
-    return ((BufferVal*)&buffer)->GetBufferD3D12();
-}
-
-void FillFunctionTableBufferVal(WrapperD3D12Interface& wrapperD3D12Interface)
-{
-    wrapperD3D12Interface.GetBufferD3D12 = GetBufferD3D12;
+    coreInterface.SetBufferDebugName = ::SetBufferDebugName;
+    coreInterface.GetBufferNativeObject = ::GetBufferNativeObject;
+    coreInterface.GetBufferMemoryInfo = ::GetBufferMemoryInfo;
+    coreInterface.MapBuffer = ::MapBuffer;
+    coreInterface.UnmapBuffer = ::UnmapBuffer;
 }
 
 #pragma endregion

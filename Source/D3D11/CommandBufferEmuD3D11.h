@@ -20,8 +20,11 @@ namespace nri
         CommandBufferEmuD3D11(DeviceD3D11& deviceImpl);
         ~CommandBufferEmuD3D11();
 
+        inline const VersionedContext& GetImmediateContext() const
+        { return m_DeviceImpl.GetImmediateContext(); }
+
         //======================================================================================================================
-        // nri::CommandBufferHelper
+        // CommandBufferHelper
         //======================================================================================================================
         Result Create(ID3D11DeviceContext* precreatedContext);
         void Submit(const VersionedContext& context);

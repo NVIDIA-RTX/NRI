@@ -17,7 +17,7 @@ static void NRI_CALL SetMemoryDebugName(Memory& memory, const char* name)
 
 void FillFunctionTableMemoryD3D11(CoreInterface& coreInterface)
 {
-    coreInterface.SetMemoryDebugName = SetMemoryDebugName;
+    coreInterface.SetMemoryDebugName = ::SetMemoryDebugName;
 }
 
 #pragma endregion

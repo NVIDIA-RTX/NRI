@@ -30,9 +30,9 @@ static void NRI_CALL ResetDescriptorPool(DescriptorPool& descriptorPool)
 
 void FillFunctionTableDescriptorPoolVK(CoreInterface& coreInterface)
 {
-    coreInterface.SetDescriptorPoolDebugName = SetDescriptorPoolDebugName;
-    coreInterface.AllocateDescriptorSets = AllocateDescriptorSets;
-    coreInterface.ResetDescriptorPool = ResetDescriptorPool;
+    coreInterface.SetDescriptorPoolDebugName = ::SetDescriptorPoolDebugName;
+    coreInterface.AllocateDescriptorSets = ::AllocateDescriptorSets;
+    coreInterface.ResetDescriptorPool = ::ResetDescriptorPool;
 }
 
 #pragma endregion

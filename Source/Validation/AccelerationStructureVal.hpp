@@ -8,6 +8,8 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
+#pragma region [  RayTracingInterface  ]
+
 static void NRI_CALL GetAccelerationStructureMemoryInfo(const AccelerationStructure& accelerationStructure, MemoryDesc& memoryDesc)
 {
     ((const AccelerationStructureVal&)accelerationStructure).GetMemoryInfo(memoryDesc);
@@ -40,10 +42,12 @@ static void NRI_CALL SetAccelerationStructureDebugName(AccelerationStructure& ac
 
 void FillFunctionTableAccelarationStructureVal(RayTracingInterface& rayTracingInterface)
 {
-    rayTracingInterface.GetAccelerationStructureMemoryInfo = GetAccelerationStructureMemoryInfo;
-    rayTracingInterface.GetAccelerationStructureUpdateScratchBufferSize = GetAccelerationStructureUpdateScratchBufferSize;
-    rayTracingInterface.GetAccelerationStructureBuildScratchBufferSize = GetAccelerationStructureBuildScratchBufferSize;
-    rayTracingInterface.GetAccelerationStructureHandle = GetAccelerationStructureHandle;
-    rayTracingInterface.CreateAccelerationStructureDescriptor = CreateAccelerationStructureDescriptor;
-    rayTracingInterface.SetAccelerationStructureDebugName = SetAccelerationStructureDebugName;
+    rayTracingInterface.GetAccelerationStructureMemoryInfo = ::GetAccelerationStructureMemoryInfo;
+    rayTracingInterface.GetAccelerationStructureUpdateScratchBufferSize = ::GetAccelerationStructureUpdateScratchBufferSize;
+    rayTracingInterface.GetAccelerationStructureBuildScratchBufferSize = ::GetAccelerationStructureBuildScratchBufferSize;
+    rayTracingInterface.GetAccelerationStructureHandle = ::GetAccelerationStructureHandle;
+    rayTracingInterface.CreateAccelerationStructureDescriptor = ::CreateAccelerationStructureDescriptor;
+    rayTracingInterface.SetAccelerationStructureDebugName = ::SetAccelerationStructureDebugName;
 }
+
+#pragma endregion

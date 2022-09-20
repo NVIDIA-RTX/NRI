@@ -361,12 +361,16 @@ nri::Result ValidateFunctionTable(const Log& log, const T& table)
 
 uint32_t GetTexelBlockWidth(nri::Format format);
 uint32_t GetTexelBlockSize(nri::Format format);
-nri::Format GetFormat(uint32_t dxgiFormat);
+
+nri::Format DXGIFormatToNRIFormat(uint32_t dxgiFormat);
+nri::Format VKFormatToNRIFormat(uint32_t vkFormat);
+
+uint32_t NRIFormatToDXGIFormatD3D11(nri::Format format);
+uint32_t NRIFormatToDXGIFormatD3D12(nri::Format format);
+uint32_t NRIFormatToVKFormat(nri::Format format);
 
 constexpr uint32_t GetPhysicalDeviceGroupMask(uint32_t mask)
-{
-    return mask == nri::WHOLE_DEVICE_GROUP ? 0xff : mask;
-}
+{ return mask == nri::WHOLE_DEVICE_GROUP ? 0xff : mask; }
 
 struct Library;
 Library* LoadSharedLibrary(const char* path);

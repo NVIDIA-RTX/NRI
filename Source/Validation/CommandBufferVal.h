@@ -16,6 +16,15 @@ namespace nri
     {
         CommandBufferVal(DeviceVal& device, CommandBuffer& commandBuffer, bool isWrapped);
 
+        inline const Vector<uint8_t>& GetValidationCommands() const
+        { return m_ValidationCommands; }
+
+        inline void* GetNativeObject() const
+        { return m_CoreAPI.GetCommandBufferNativeObject(m_ImplObject); }
+
+        //================================================================================================================
+        // NRI
+        //================================================================================================================
         void SetDebugName(const char* name);
         Result Begin(const DescriptorPool* descriptorPool, uint32_t physicalDeviceIndex);
         Result End();
@@ -70,11 +79,6 @@ namespace nri
         void DispatchRays(const DispatchRaysDesc& dispatchRaysDesc);
         void DispatchMeshTasks(uint32_t taskNum);
 
-        ID3D11DeviceContext* GetCommandBufferD3D11() const;
-        ID3D12GraphicsCommandList* GetCommandBufferD3D12() const;
-        NRIVkCommandBuffer GetCommandBufferVK() const;
-        const Vector<uint8_t>& GetValidationCommands() const;
-
     private:
         template<typename Command>
         Command& AllocateValidationCommand();
@@ -87,11 +91,6 @@ namespace nri
         const RayTracingInterface& m_RayTracingAPI;
         const MeshShaderInterface& m_MeshShaderAPI;
     };
-
-    inline const Vector<uint8_t>& CommandBufferVal::GetValidationCommands() const
-    {
-        return m_ValidationCommands;
-    }
 
     enum class ValidationCommandType : uint32_t
     {

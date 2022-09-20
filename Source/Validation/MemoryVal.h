@@ -21,11 +21,18 @@ namespace nri
         MemoryVal(DeviceVal& device, Memory& memory, uint64_t size, MemoryLocation memoryLocation);
         MemoryVal(DeviceVal& device, Memory& memory, const MemoryD3D12Desc& memoryD3D12Desc);
 
-        uint64_t GetSize() const;
-        MemoryLocation GetMemoryLocation() const;
         bool HasBoundResources();
         void ReportBoundResources();
 
+        inline uint64_t GetSize() const
+        { return m_Size; }
+
+        inline MemoryLocation GetMemoryLocation() const
+        { return m_MemoryLocation; }
+
+        //======================================================================================================================
+        // NRI
+        //======================================================================================================================
         void BindBuffer(BufferVal& buffer);
         void BindTexture(TextureVal& texture);
         void BindAccelerationStructure(AccelerationStructureVal& accelerationStructure);
@@ -44,14 +51,4 @@ namespace nri
         uint64_t m_Size = 0;
         MemoryLocation m_MemoryLocation = MemoryLocation::MAX_NUM;
     };
-
-    inline uint64_t MemoryVal::GetSize() const
-    {
-        return m_Size;
-    }
-
-    inline MemoryLocation MemoryVal::GetMemoryLocation() const
-    {
-        return m_MemoryLocation;
-    }
 }

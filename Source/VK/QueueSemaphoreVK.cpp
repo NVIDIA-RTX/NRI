@@ -40,7 +40,7 @@ Result QueueSemaphoreVK::Create()
     return Result::SUCCESS;
 }
 
-Result QueueSemaphoreVK::Create(void* vkSemaphore)
+Result QueueSemaphoreVK::Create(NRIVkSemaphore vkSemaphore)
 {
     m_OwnsNativeObjects = false;
     m_Handle = (VkSemaphore)vkSemaphore;

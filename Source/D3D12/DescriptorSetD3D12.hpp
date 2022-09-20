@@ -38,10 +38,10 @@ static void NRI_CALL CopyDescriptorSet(DescriptorSet& descriptorSet, const Descr
 
 void FillFunctionTableDescriptorSetD3D12(CoreInterface& coreInterface)
 {
-    coreInterface.SetDescriptorSetDebugName = SetDescriptorSetDebugName;
-    coreInterface.UpdateDescriptorRanges = UpdateDescriptorRanges;
-    coreInterface.UpdateDynamicConstantBuffers = UpdateDynamicConstantBuffers;
-    coreInterface.CopyDescriptorSet = CopyDescriptorSet;
+    coreInterface.SetDescriptorSetDebugName = ::SetDescriptorSetDebugName;
+    coreInterface.UpdateDescriptorRanges = ::UpdateDescriptorRanges;
+    coreInterface.UpdateDynamicConstantBuffers = ::UpdateDynamicConstantBuffers;
+    coreInterface.CopyDescriptorSet = ::CopyDescriptorSet;
 }
 
 #pragma endregion

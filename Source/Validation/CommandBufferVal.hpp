@@ -200,93 +200,59 @@ static void NRI_CALL DestroyCommandBuffer(CommandBuffer& commandBuffer)
     ((CommandBufferVal*)&commandBuffer)->Destroy();
 }
 
+static void* NRI_CALL GetCommandBufferNativeObject(const CommandBuffer& commandBuffer)
+{
+    return ((CommandBufferVal*)&commandBuffer)->GetNativeObject();
+}
+
 void FillFunctionTableCommandBufferVal(CoreInterface& coreInterface)
 {
-    coreInterface.SetCommandBufferDebugName = SetCommandBufferDebugName;
-    coreInterface.DestroyCommandBuffer = DestroyCommandBuffer;
+    coreInterface.DestroyCommandBuffer = ::DestroyCommandBuffer;
 
-    coreInterface.BeginCommandBuffer = BeginCommandBuffer;
-    coreInterface.EndCommandBuffer = EndCommandBuffer;
+    coreInterface.BeginCommandBuffer = ::BeginCommandBuffer;
+    coreInterface.EndCommandBuffer = ::EndCommandBuffer;
 
-    coreInterface.CmdSetPipelineLayout = CmdSetPipelineLayout;
-    coreInterface.CmdSetPipeline = CmdSetPipeline;
-    coreInterface.CmdPipelineBarrier = CmdPipelineBarrier;
-    coreInterface.CmdSetDescriptorPool = CmdSetDescriptorPool;
-    coreInterface.CmdSetDescriptorSets = CmdSetDescriptorSets;
-    coreInterface.CmdSetConstants = CmdSetConstants;
+    coreInterface.CmdSetPipelineLayout = ::CmdSetPipelineLayout;
+    coreInterface.CmdSetPipeline = ::CmdSetPipeline;
+    coreInterface.CmdPipelineBarrier = ::CmdPipelineBarrier;
+    coreInterface.CmdSetDescriptorPool = ::CmdSetDescriptorPool;
+    coreInterface.CmdSetDescriptorSets = ::CmdSetDescriptorSets;
+    coreInterface.CmdSetConstants = ::CmdSetConstants;
 
-    coreInterface.CmdBeginRenderPass = CmdBeginRenderPass;
-    coreInterface.CmdEndRenderPass = CmdEndRenderPass;
-    coreInterface.CmdSetViewports = CmdSetViewports;
-    coreInterface.CmdSetScissors = CmdSetScissors;
-    coreInterface.CmdSetDepthBounds = CmdSetDepthBounds;
-    coreInterface.CmdSetStencilReference = CmdSetStencilReference;
-    coreInterface.CmdSetSamplePositions = CmdSetSamplePositions;
-    coreInterface.CmdClearAttachments = CmdClearAttachments;
-    coreInterface.CmdSetIndexBuffer = CmdSetIndexBuffer;
-    coreInterface.CmdSetVertexBuffers = CmdSetVertexBuffers;
+    coreInterface.CmdBeginRenderPass = ::CmdBeginRenderPass;
+    coreInterface.CmdEndRenderPass = ::CmdEndRenderPass;
+    coreInterface.CmdSetViewports = ::CmdSetViewports;
+    coreInterface.CmdSetScissors = ::CmdSetScissors;
+    coreInterface.CmdSetDepthBounds = ::CmdSetDepthBounds;
+    coreInterface.CmdSetStencilReference = ::CmdSetStencilReference;
+    coreInterface.CmdSetSamplePositions = ::CmdSetSamplePositions;
+    coreInterface.CmdClearAttachments = ::CmdClearAttachments;
+    coreInterface.CmdSetIndexBuffer = ::CmdSetIndexBuffer;
+    coreInterface.CmdSetVertexBuffers = ::CmdSetVertexBuffers;
 
-    coreInterface.CmdDraw = CmdDraw;
-    coreInterface.CmdDrawIndexed = CmdDrawIndexed;
-    coreInterface.CmdDrawIndirect = CmdDrawIndirect;
-    coreInterface.CmdDrawIndexedIndirect = CmdDrawIndexedIndirect;
-    coreInterface.CmdDispatch = CmdDispatch;
-    coreInterface.CmdDispatchIndirect = CmdDispatchIndirect;
-    coreInterface.CmdBeginQuery = CmdBeginQuery;
-    coreInterface.CmdEndQuery = CmdEndQuery;
-    coreInterface.CmdBeginAnnotation = CmdBeginAnnotation;
-    coreInterface.CmdEndAnnotation = CmdEndAnnotation;
+    coreInterface.CmdDraw = ::CmdDraw;
+    coreInterface.CmdDrawIndexed = ::CmdDrawIndexed;
+    coreInterface.CmdDrawIndirect = ::CmdDrawIndirect;
+    coreInterface.CmdDrawIndexedIndirect = ::CmdDrawIndexedIndirect;
+    coreInterface.CmdDispatch = ::CmdDispatch;
+    coreInterface.CmdDispatchIndirect = ::CmdDispatchIndirect;
+    coreInterface.CmdBeginQuery = ::CmdBeginQuery;
+    coreInterface.CmdEndQuery = ::CmdEndQuery;
+    coreInterface.CmdBeginAnnotation = ::CmdBeginAnnotation;
+    coreInterface.CmdEndAnnotation = ::CmdEndAnnotation;
 
-    coreInterface.CmdClearStorageBuffer = CmdClearStorageBuffer;
-    coreInterface.CmdClearStorageTexture = CmdClearStorageTexture;
-    coreInterface.CmdCopyBuffer = CmdCopyBuffer;
-    coreInterface.CmdCopyTexture = CmdCopyTexture;
-    coreInterface.CmdUploadBufferToTexture = CmdUploadBufferToTexture;
-    coreInterface.CmdReadbackTextureToBuffer = CmdReadbackTextureToBuffer;
-    coreInterface.CmdCopyQueries = CmdCopyQueries;
-    coreInterface.CmdResetQueries = CmdResetQueries;
-}
+    coreInterface.CmdClearStorageBuffer = ::CmdClearStorageBuffer;
+    coreInterface.CmdClearStorageTexture = ::CmdClearStorageTexture;
+    coreInterface.CmdCopyBuffer = ::CmdCopyBuffer;
+    coreInterface.CmdCopyTexture = ::CmdCopyTexture;
+    coreInterface.CmdUploadBufferToTexture = ::CmdUploadBufferToTexture;
+    coreInterface.CmdReadbackTextureToBuffer = ::CmdReadbackTextureToBuffer;
+    coreInterface.CmdCopyQueries = ::CmdCopyQueries;
+    coreInterface.CmdResetQueries = ::CmdResetQueries;
 
-#pragma endregion
+    coreInterface.SetCommandBufferDebugName = ::SetCommandBufferDebugName;
 
-#pragma region [  WrapperD3D11Interface  ]
-
-static ID3D11DeviceContext* NRI_CALL GetCommandBufferD3D11(const CommandBuffer& commandBuffer)
-{
-    return ((CommandBufferVal*)&commandBuffer)->GetCommandBufferD3D11();
-}
-
-void FillFunctionTableCommandBufferVal(WrapperD3D11Interface& wrapperD3D11Interface)
-{
-    wrapperD3D11Interface.GetCommandBufferD3D11 = GetCommandBufferD3D11;
-}
-
-#pragma endregion
-
-#pragma region [  WrapperD3D12Interface  ]
-
-static ID3D12GraphicsCommandList* NRI_CALL GetCommandBufferD3D12(const CommandBuffer& commandBuffer)
-{
-    return ((CommandBufferVal*)&commandBuffer)->GetCommandBufferD3D12();
-}
-
-void FillFunctionTableCommandBufferVal(WrapperD3D12Interface& wrapperD3D12Interface)
-{
-    wrapperD3D12Interface.GetCommandBufferD3D12 = GetCommandBufferD3D12;
-}
-
-#pragma endregion
-
-#pragma region [  WrapperVKInterface  ]
-
-static NRIVkCommandBuffer NRI_CALL GetCommandBufferVK(const CommandBuffer& commandBuffer)
-{
-    return ((CommandBufferVal&)commandBuffer).GetCommandBufferVK();
-}
-
-void FillFunctionTableCommandBufferVal(WrapperVKInterface& wrapperVKInterface)
-{
-    wrapperVKInterface.GetCommandBufferVK = ::GetCommandBufferVK;
+    coreInterface.GetCommandBufferNativeObject = ::GetCommandBufferNativeObject;
 }
 
 #pragma endregion
@@ -335,13 +301,13 @@ static void NRI_CALL CmdDispatchRays(CommandBuffer& commandBuffer, const Dispatc
 
 void FillFunctionTableCommandBufferVal(RayTracingInterface& rayTracingInterface)
 {
-    rayTracingInterface.CmdBuildTopLevelAccelerationStructure = CmdBuildTopLevelAccelerationStructure;
-    rayTracingInterface.CmdBuildBottomLevelAccelerationStructure = CmdBuildBottomLevelAccelerationStructure;
-    rayTracingInterface.CmdUpdateTopLevelAccelerationStructure = CmdUpdateTopLevelAccelerationStructure;
-    rayTracingInterface.CmdUpdateBottomLevelAccelerationStructure = CmdUpdateBottomLevelAccelerationStructure;
-    rayTracingInterface.CmdCopyAccelerationStructure = CmdCopyAccelerationStructure;
-    rayTracingInterface.CmdWriteAccelerationStructureSize = CmdWriteAccelerationStructureSize;
-    rayTracingInterface.CmdDispatchRays = CmdDispatchRays;
+    rayTracingInterface.CmdBuildTopLevelAccelerationStructure = ::CmdBuildTopLevelAccelerationStructure;
+    rayTracingInterface.CmdBuildBottomLevelAccelerationStructure = ::CmdBuildBottomLevelAccelerationStructure;
+    rayTracingInterface.CmdUpdateTopLevelAccelerationStructure = ::CmdUpdateTopLevelAccelerationStructure;
+    rayTracingInterface.CmdUpdateBottomLevelAccelerationStructure = ::CmdUpdateBottomLevelAccelerationStructure;
+    rayTracingInterface.CmdCopyAccelerationStructure = ::CmdCopyAccelerationStructure;
+    rayTracingInterface.CmdWriteAccelerationStructureSize = ::CmdWriteAccelerationStructureSize;
+    rayTracingInterface.CmdDispatchRays = ::CmdDispatchRays;
 
 }
 

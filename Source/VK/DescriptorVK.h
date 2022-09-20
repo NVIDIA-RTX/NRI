@@ -64,10 +64,11 @@ namespace nri
         void GetBufferInfo(uint32_t physicalDeviceIndex, VkDescriptorBufferInfo& info) const;
         const TextureVK& GetTexture() const;
         DescriptorTypeVK GetType() const;
-        VkExtent3D GetExtent() const;
         VkFormat GetFormat() const;
         void GetImageSubresourceRange(VkImageSubresourceRange& range) const;
         VkImageLayout GetImageLayout() const;
+        const DescriptorTextureDesc& GetTextureDesc() const;
+        const DescriptorBufferDesc& GetBufferDesc() const;
 
         template<typename T>
         Result CreateTextureView(const T& textureViewDesc);
@@ -91,7 +92,6 @@ namespace nri
         };
         DescriptorTypeVK m_Type = DescriptorTypeVK::NONE;
         VkFormat m_Format = VK_FORMAT_UNDEFINED;
-        VkExtent3D m_Extent = {};
         DeviceVK& m_Device;
     };
 
@@ -154,11 +154,6 @@ namespace nri
         return m_Type;
     }
 
-    inline VkExtent3D DescriptorVK::GetExtent() const
-    {
-        return m_Extent;
-    }
-
     inline VkFormat DescriptorVK::GetFormat() const
     {
         return m_Format;
@@ -176,5 +171,15 @@ namespace nri
     inline VkImageLayout DescriptorVK::GetImageLayout() const
     {
         return m_TextureDesc.imageLayout;
+    }
+
+    inline const DescriptorTextureDesc& DescriptorVK::GetTextureDesc() const
+    {
+        return m_TextureDesc;
+    }
+
+    inline const DescriptorBufferDesc& DescriptorVK::GetBufferDesc() const
+    {
+        return m_BufferDesc;
     }
 }

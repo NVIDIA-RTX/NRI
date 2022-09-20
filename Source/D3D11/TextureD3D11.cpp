@@ -167,7 +167,7 @@ Result TextureD3D11::Create(DeviceD3D11& device, const TextureD3D11Desc& texture
         m_Desc.arraySize = (uint16_t)desc.ArraySize;
         m_Desc.sampleNum = 1;
         m_Desc.type = TextureType::TEXTURE_1D;
-        m_Desc.format = GetFormat(desc.Format);
+        m_Desc.format = DXGIFormatToNRIFormat(desc.Format);
 
         bindFlags = desc.BindFlags;
     }
@@ -184,7 +184,7 @@ Result TextureD3D11::Create(DeviceD3D11& device, const TextureD3D11Desc& texture
         m_Desc.arraySize = (uint16_t)desc.ArraySize;
         m_Desc.sampleNum = (uint8_t)desc.SampleDesc.Count;
         m_Desc.type = TextureType::TEXTURE_2D;
-        m_Desc.format = GetFormat(desc.Format);
+        m_Desc.format = DXGIFormatToNRIFormat(desc.Format);
 
         bindFlags = desc.BindFlags;
     }
@@ -201,7 +201,7 @@ Result TextureD3D11::Create(DeviceD3D11& device, const TextureD3D11Desc& texture
         m_Desc.arraySize = 1;
         m_Desc.sampleNum = 1;
         m_Desc.type = TextureType::TEXTURE_3D;
-        m_Desc.format = GetFormat(desc.Format);
+        m_Desc.format = DXGIFormatToNRIFormat(desc.Format);
 
         bindFlags = desc.BindFlags;
     }

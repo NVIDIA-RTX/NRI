@@ -102,7 +102,7 @@ Result TextureVK::Create(const TextureVulkanDesc& textureDesc)
     m_Extent = { textureDesc.size[0], textureDesc.size[1], textureDesc.size[2] };
     m_MipNum = textureDesc.mipNum;
     m_ArraySize = textureDesc.arraySize;
-    m_Format = ::GetNRIFormat((VkFormat)textureDesc.vkFormat);
+    m_Format = VKFormatToNRIFormat((VkFormat)textureDesc.vkFormat);
     m_ImageAspectFlags = (VkImageAspectFlags)textureDesc.vkImageAspectFlags;
     m_TextureType = GetTextureType((VkImageType)textureDesc.vkImageType);
     m_SampleCount = (VkSampleCountFlagBits)textureDesc.sampleNum;

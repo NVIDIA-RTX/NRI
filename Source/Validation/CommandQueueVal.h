@@ -18,14 +18,17 @@ namespace nri
     {
         CommandQueueVal(DeviceVal& device, CommandQueue& commandQueue);
 
+        //======================================================================================================================
+        // NRI
+        //======================================================================================================================
         void SetDebugName(const char* name);
         void Submit(const WorkSubmissionDesc& workSubmissions, DeviceSemaphore* deviceSemaphore);
         void Wait(DeviceSemaphore& deviceSemaphore);
 
+        Result WaitForIdle();
         Result ChangeResourceStates(const TransitionBarrierDesc& transitionBarriers);
         Result UploadData(const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum,
             const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum);
-        Result WaitForIdle();
 
     private:
         void ProcessValidationCommands(const CommandBufferVal* const* commandBuffers, uint32_t commandBufferNum);

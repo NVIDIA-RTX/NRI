@@ -28,7 +28,7 @@ using namespace nri;
 
 extern D3D12_RESOURCE_STATES GetResourceStates(nri::AccessBits accessMask);
 extern void ConvertRects(D3D12_RECT* rectsD3D12, const Rect* rects, uint32_t rectNum);
-extern DXGI_FORMAT GetFormat(Format format);
+
 #ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
 extern D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS GetAccelerationStructureBuildFlags(AccelerationStructureBuildBits accelerationStructureBuildFlags);
 extern void ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs, const GeometryObject* geometryObjects, uint32_t geometryObjectNum);

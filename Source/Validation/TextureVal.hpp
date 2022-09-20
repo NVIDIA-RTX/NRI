@@ -12,60 +12,24 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 static void NRI_CALL SetTextureDebugName(Texture& texture, const char* name)
 {
-    ((TextureVal*)&texture)->SetDebugName(name);
+    ((TextureVal&)texture).SetDebugName(name);
+}
+
+static uint64_t NRI_CALL GetTextureNativeObject(const Texture& texture, uint32_t physicalDeviceIndex)
+{
+    return ((TextureVal&)texture).GetNativeObject(physicalDeviceIndex);
 }
 
 static void NRI_CALL GetTextureMemoryInfo(const Texture& texture, MemoryLocation memoryLocation, MemoryDesc& memoryDesc)
 {
-    ((TextureVal*)&texture)->GetMemoryInfo(memoryLocation, memoryDesc);
+    ((TextureVal&)texture).GetMemoryInfo(memoryLocation, memoryDesc);
 }
 
 void FillFunctionTableTextureVal(CoreInterface& coreInterface)
 {
-    coreInterface.SetTextureDebugName = SetTextureDebugName;
-    coreInterface.GetTextureMemoryInfo = GetTextureMemoryInfo;
-}
-
-#pragma endregion
-
-#pragma region [  WrapperD3D11Interface  ]
-
-static ID3D11Resource* NRI_CALL GetTextureD3D11(const Texture& texture)
-{
-    return ((TextureVal*)&texture)->GetTextureD3D11();
-}
-
-void FillFunctionTableTextureVal(WrapperD3D11Interface& wrapperD3D11Interface)
-{
-    wrapperD3D11Interface.GetTextureD3D11 = GetTextureD3D11;
-}
-
-#pragma endregion
-
-#pragma region [  WrapperD3D12Interface  ]
-
-static ID3D12Resource* NRI_CALL GetTextureD3D12(const Texture& texture)
-{
-    return ((TextureVal*)&texture)->GetTextureD3D12();
-}
-
-void FillFunctionTableTextureVal(WrapperD3D12Interface& wrapperD3D12Interface)
-{
-    wrapperD3D12Interface.GetTextureD3D12 = GetTextureD3D12;
-}
-
-#pragma endregion
-
-#pragma region [  WrapperVKInterface  ]
-
-static void NRI_CALL GetTextureVK(const Texture& texture, uint32_t physicalDeviceIndex, TextureVulkanDesc& textureVulkanDesc)
-{
-    return ((TextureVal&)texture).GetTextureVK(physicalDeviceIndex, textureVulkanDesc);
-}
-
-void FillFunctionTableTextureVal(WrapperVKInterface& wrapperVKInterface)
-{
-    wrapperVKInterface.GetTextureVK = GetTextureVK;
+    coreInterface.SetTextureDebugName = ::SetTextureDebugName;
+    coreInterface.GetTextureNativeObject = ::GetTextureNativeObject;
+    coreInterface.GetTextureMemoryInfo = ::GetTextureMemoryInfo;
 }
 
 #pragma endregion

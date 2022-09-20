@@ -44,17 +44,13 @@ namespace nri
     };
 
     NRI_API Result NRI_CALL CreateDeviceFromD3D11Device(const DeviceCreationD3D11Desc& deviceDesc, Device*& device);
-    NRI_API Format NRI_CALL GetFormatDXGI(uint32_t dxgiFormat);
+    NRI_API Format NRI_CALL ConvertDXGIFormatToNRI(uint32_t dxgiFormat);
+    NRI_API uint32_t NRI_CALL ConvertNRIFormatToDXGI(Format format);
 
     struct WrapperD3D11Interface
     {
         Result (NRI_CALL *CreateCommandBufferD3D11)(Device& device, const CommandBufferD3D11Desc& commandBufferDesc, CommandBuffer*& commandBuffer);
         Result (NRI_CALL *CreateBufferD3D11)(Device& device, const BufferD3D11Desc& bufferDesc, Buffer*& buffer);
         Result (NRI_CALL *CreateTextureD3D11)(Device& device, const TextureD3D11Desc& textureDesc, Texture*& texture);
-
-        ID3D11Device* (NRI_CALL *GetDeviceD3D11)(const Device& device);
-        ID3D11Resource* (NRI_CALL *GetBufferD3D11)(const Buffer& buffer);
-        ID3D11Resource* (NRI_CALL *GetTextureD3D11)(const Texture& texture);
-        ID3D11DeviceContext* (NRI_CALL *GetCommandBufferD3D11)(const CommandBuffer& commandBuffer);
     };
 }

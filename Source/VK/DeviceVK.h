@@ -120,7 +120,6 @@ namespace nri
         Result FillFunctionTable(RayTracingInterface& rayTracingInterface) const;
         Result FillFunctionTable(MeshShaderInterface& meshShaderInterface) const;
         Result FillFunctionTable(HelperInterface& helperInterface) const;
-        Result FillFunctionTable(WrapperSPIRVOffsetsInterface& wrapperSPIRVOffsetsInterface) const;
 
     private:
         Result CreateInstance(const DeviceCreationDesc& deviceCreationDesc);

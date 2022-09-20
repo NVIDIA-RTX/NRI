@@ -16,7 +16,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 using namespace nri;
 
-extern DXGI_FORMAT GetFormat(Format format);
 extern bool IsFloatingPointFormat(Format format);
 extern D3D12_FILTER GetFilterIsotropic(Filter mip, Filter magnification, Filter minification, FilterExt filterExt, bool useComparison);
 extern D3D12_FILTER GetFilterAnisotropic(FilterExt filterExt, bool useComparison);
@@ -27,7 +26,7 @@ extern DXGI_FORMAT GetShaderFormatForDepth(DXGI_FORMAT format);
 Result DescriptorD3D12::Create(const BufferViewDesc& bufferViewDesc)
 {
     const BufferD3D12& buffer = *((BufferD3D12*)bufferViewDesc.buffer);
-    DXGI_FORMAT format = GetFormat(bufferViewDesc.format);
+    DXGI_FORMAT format = GetDXGIFormat(bufferViewDesc.format);
     uint64_t size = bufferViewDesc.size == WHOLE_SIZE ? buffer.GetByteSize() : bufferViewDesc.size;
     uint32_t elementSize = GetTexelBlockSize(bufferViewDesc.format);
     uint64_t elementOffset;
@@ -90,7 +89,7 @@ Result DescriptorD3D12::Create(const BufferViewDesc& bufferViewDesc)
 Result DescriptorD3D12::Create(const Texture1DViewDesc& textureViewDesc)
 {
     const TextureD3D12& texture = (TextureD3D12&)*textureViewDesc.texture;
-    DXGI_FORMAT format = GetFormat(textureViewDesc.format);
+    DXGI_FORMAT format = GetDXGIFormat(textureViewDesc.format);
 
     const D3D12_RESOURCE_DESC& textureDesc = texture.GetTextureDesc();
     uint32_t remainingMipLevels = textureViewDesc.mipNum == REMAINING_MIP_LEVELS ? (textureDesc.MipLevels - textureViewDesc.mipOffset) : textureViewDesc.mipNum;
@@ -180,7 +179,7 @@ Result DescriptorD3D12::Create(const Texture1DViewDesc& textureViewDesc)
 Result DescriptorD3D12::Create(const Texture2DViewDesc& textureViewDesc)
 {
     const TextureD3D12& texture = (TextureD3D12&)*textureViewDesc.texture;
-    DXGI_FORMAT format = GetFormat(textureViewDesc.format);
+    DXGI_FORMAT format = GetDXGIFormat(textureViewDesc.format);
     bool isMultisampled = texture.GetTextureDesc().SampleDesc.Count > 1 ? true : false;
 
     const D3D12_RESOURCE_DESC& textureDesc = texture.GetTextureDesc();
@@ -316,7 +315,7 @@ Result DescriptorD3D12::Create(const Texture2DViewDesc& textureViewDesc)
 Result DescriptorD3D12::Create(const Texture3DViewDesc& textureViewDesc)
 {
     const TextureD3D12& texture = (TextureD3D12&)*textureViewDesc.texture;
-    DXGI_FORMAT format = GetFormat(textureViewDesc.format);
+    DXGI_FORMAT format = GetDXGIFormat(textureViewDesc.format);
 
     const D3D12_RESOURCE_DESC& textureDesc = texture.GetTextureDesc();
     uint32_t remainingMipLevels = textureViewDesc.mipNum == REMAINING_MIP_LEVELS ? (textureDesc.MipLevels - textureViewDesc.mipOffset) : textureViewDesc.mipNum;

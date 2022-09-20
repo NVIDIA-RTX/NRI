@@ -15,6 +15,13 @@ static void NRI_CALL SetTextureDebugName(Texture& texture, const char* name)
     ((TextureD3D12&)texture).SetDebugName(name);
 }
 
+static uint64_t NRI_CALL GetTextureNativeObject(const Texture& texture, uint32_t physicalDeviceIndex)
+{
+    MaybeUnused(physicalDeviceIndex);
+
+    return uint64_t((ID3D12Resource*)((TextureD3D12&)texture));
+}
+
 static void NRI_CALL GetTextureMemoryInfo(const Texture& texture, MemoryLocation memoryLocation, MemoryDesc& memoryDesc)
 {
     ((TextureD3D12&)texture).GetMemoryInfo(memoryLocation, memoryDesc);
@@ -22,8 +29,9 @@ static void NRI_CALL GetTextureMemoryInfo(const Texture& texture, MemoryLocation
 
 void FillFunctionTableTextureD3D12(CoreInterface& coreInterface)
 {
-    coreInterface.SetTextureDebugName = SetTextureDebugName;
-    coreInterface.GetTextureMemoryInfo = GetTextureMemoryInfo;
+    coreInterface.SetTextureDebugName = ::SetTextureDebugName;
+    coreInterface.GetTextureNativeObject = ::GetTextureNativeObject;
+    coreInterface.GetTextureMemoryInfo = ::GetTextureMemoryInfo;
 }
 
 #pragma endregion

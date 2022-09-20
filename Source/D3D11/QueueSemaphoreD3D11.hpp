@@ -17,7 +17,7 @@ static void NRI_CALL SetQueueSemaphoreDebugName(QueueSemaphore& queueSemaphore, 
 
 void FillFunctionTableQueueSemaphoreD3D11(CoreInterface& coreInterface)
 {
-    coreInterface.SetQueueSemaphoreDebugName = SetQueueSemaphoreDebugName;
+    coreInterface.SetQueueSemaphoreDebugName = ::SetQueueSemaphoreDebugName;
 }
 
 #pragma endregion

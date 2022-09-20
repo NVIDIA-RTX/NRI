@@ -269,7 +269,7 @@ static bool ValidateTransitionBarrierDesc(DeviceVal& device, uint32_t i, const B
     RETURN_ON_FAILURE(device.GetLog(), bufferVal.IsBoundToMemory(), false,
         "Can't change resource state: 'transitionBarriers.buffers[%u].buffer' is not bound to memory.", i);
 
-    const BufferUsageBits usageMask = bufferVal.GetUsageMask();
+    const BufferUsageBits usageMask = bufferVal.GetDesc().usageMask;
 
     RETURN_ON_FAILURE(device.GetLog(), IsAccessMaskSupported(usageMask, bufferTransitionBarrierDesc.prevAccess), false,
         "Can't change resource state: 'transitionBarriers.buffers[%u].prevAccess' is not supported by usageMask of the buffer.", i);

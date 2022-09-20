@@ -20,12 +20,14 @@ namespace nri
         DescriptorPoolVal(DeviceVal& device, DescriptorPool& descriptorPool, const DescriptorPoolDesc& descriptorPoolDesc);
         ~DescriptorPoolVal();
 
+        //======================================================================================================================
+        // NRI
+        //======================================================================================================================
         void SetDebugName(const char* name);
+        void Reset();
 
         Result AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** const descriptorSets,
             uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum);
-
-        void Reset();
 
     private:
         bool CheckDescriptorRange(const DescriptorRangeDesc& rangeDesc, uint32_t variableDescriptorNum);

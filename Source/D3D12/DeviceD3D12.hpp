@@ -236,6 +236,18 @@ static void NRI_CALL SetMemoryDebugName(Memory& memory, const char* name)
     ((MemoryD3D12&)memory).SetDebugName(name);
 }
 
+static void* NRI_CALL GetDeviceNativeObject(const Device& device)
+{
+    return (DeviceD3D12&)device;
+}
+
+static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor& descriptor, uint32_t physicalDeviceIndex)
+{
+    MaybeUnused(physicalDeviceIndex);
+
+    return uint64_t( ((DescriptorD3D12&)descriptor).GetPointerCPU() );
+}
+
 void FillFunctionTableBufferD3D12(CoreInterface& coreInterface);
 void FillFunctionTableCommandAllocatorD3D12(CoreInterface& coreInterface);
 void FillFunctionTableCommandBufferD3D12(CoreInterface& coreInterface);
@@ -261,6 +273,7 @@ Result DeviceD3D12::FillFunctionTable(CoreInterface& coreInterface) const
     FillFunctionTablePipelineLayoutD3D12(coreInterface);
 
     coreInterface.GetDeviceDesc = ::GetDeviceDesc;
+    coreInterface.GetFormatSupport = ::GetFormatSupport;
     coreInterface.GetCommandQueue = ::GetCommandQueue;
 
     coreInterface.CreateCommandAllocator = ::CreateCommandAllocator;
@@ -297,8 +310,6 @@ Result DeviceD3D12::FillFunctionTable(CoreInterface& coreInterface) const
     coreInterface.BindTextureMemory = ::BindTextureMemory;
     coreInterface.FreeMemory = ::FreeMemory;
 
-    coreInterface.GetFormatSupport = ::GetFormatSupport;
-
     coreInterface.SetDeviceDebugName = ::SetDeviceDebugName;
     coreInterface.SetDeviceSemaphoreDebugName = ::SetDeviceSemaphoreDebugName;
     coreInterface.SetQueueSemaphoreDebugName = ::SetQueueSemaphoreDebugName;
@@ -306,6 +317,9 @@ Result DeviceD3D12::FillFunctionTable(CoreInterface& coreInterface) const
     coreInterface.SetPipelineDebugName = ::SetPipelineDebugName;
     coreInterface.SetFrameBufferDebugName = ::SetFrameBufferDebugName;
     coreInterface.SetMemoryDebugName = ::SetMemoryDebugName;
+
+    coreInterface.GetDeviceNativeObject = ::GetDeviceNativeObject;
+    coreInterface.GetDescriptorNativeObject = ::GetDescriptorNativeObject;
 
     return ValidateFunctionTable(GetLog(), coreInterface);
 }
@@ -355,21 +369,6 @@ Result DeviceD3D12::FillFunctionTable(SwapChainInterface& swapChainInterface) co
 
 #pragma region [  WrapperD3D12Interface  ]
 
-static ID3D12Device* NRI_CALL GetDeviceD3D12(const Device& device)
-{
-    return (DeviceD3D12&)device;
-}
-
-static ID3D12Resource* NRI_CALL GetBufferD3D12(const Buffer& buffer)
-{
-    return (BufferD3D12&)buffer;
-}
-
-static ID3D12Resource* NRI_CALL GetTextureD3D12(const Texture& texture)
-{
-    return (TextureD3D12&)texture;
-}
-
 static Result NRI_CALL CreateCommandBufferD3D12(Device& device, const CommandBufferD3D12Desc& commandBufferDesc, CommandBuffer*& commandBuffer)
 {
     return ((DeviceD3D12&)device).CreateCommandBuffer(commandBufferDesc, commandBuffer);
@@ -390,22 +389,13 @@ static Result NRI_CALL CreateMemoryD3D12(Device& device, const MemoryD3D12Desc& 
     return ((DeviceD3D12&)device).CreateMemory(memoryDesc, memory);
 }
 
-void FillFunctionTableCommandBufferD3D12(WrapperD3D12Interface& wrapperD3D11Interface);
-
 Result DeviceD3D12::FillFunctionTable(WrapperD3D12Interface& wrapperD3D12Interface) const
 {
     wrapperD3D12Interface = {};
-
-    FillFunctionTableCommandBufferD3D12(wrapperD3D12Interface);
-
     wrapperD3D12Interface.CreateCommandBufferD3D12 = ::CreateCommandBufferD3D12;
     wrapperD3D12Interface.CreateBufferD3D12 = ::CreateBufferD3D12;
     wrapperD3D12Interface.CreateTextureD3D12 = ::CreateTextureD3D12;
     wrapperD3D12Interface.CreateMemoryD3D12 = ::CreateMemoryD3D12;
-
-    wrapperD3D12Interface.GetDeviceD3D12 = ::GetDeviceD3D12;
-    wrapperD3D12Interface.GetBufferD3D12 = ::GetBufferD3D12;
-    wrapperD3D12Interface.GetTextureD3D12 = ::GetTextureD3D12;
 
     return ValidateFunctionTable(GetLog(), wrapperD3D12Interface);
 }
@@ -415,6 +405,7 @@ Result DeviceD3D12::FillFunctionTable(WrapperD3D12Interface& wrapperD3D12Interfa
 #pragma region [  RayTracingInterface  ]
 
 #ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
+
 static Result NRI_CALL CreateRayTracingPipeline(Device& device, const RayTracingPipelineDesc& rayTracingPipelineDesc, Pipeline*& pipeline)
 {
     return ((DeviceD3D12&)device).CreatePipeline(rayTracingPipelineDesc, pipeline);
@@ -458,6 +449,7 @@ Result DeviceD3D12::FillFunctionTable(RayTracingInterface& rayTracingInterface) 
 
     return ValidateFunctionTable(GetLog(), rayTracingInterface);
 }
+
 #endif
 
 #pragma endregion
@@ -465,6 +457,7 @@ Result DeviceD3D12::FillFunctionTable(RayTracingInterface& rayTracingInterface) 
 #pragma region [  MeshShaderInterface  ]
 
 #ifdef __ID3D12GraphicsCommandList6_INTERFACE_DEFINED__
+
 void FillFunctionTableCommandBufferD3D12(MeshShaderInterface& meshShaderInterface);
 
 Result DeviceD3D12::FillFunctionTable(MeshShaderInterface& meshShaderInterface) const
@@ -478,6 +471,7 @@ Result DeviceD3D12::FillFunctionTable(MeshShaderInterface& meshShaderInterface) 
 
     return ValidateFunctionTable(GetLog(), meshShaderInterface);
 }
+
 #endif
 
 #pragma endregion

@@ -17,7 +17,7 @@ static void NRI_CALL SetFrameBufferDebugName(FrameBuffer& frameBuffer, const cha
 
 void FillFunctionTableFrameBufferD3D11(CoreInterface& coreInterface)
 {
-    coreInterface.SetFrameBufferDebugName = SetFrameBufferDebugName;
+    coreInterface.SetFrameBufferDebugName = ::SetFrameBufferDebugName;
 }
 
 #pragma endregion

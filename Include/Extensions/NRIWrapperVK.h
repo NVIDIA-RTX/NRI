@@ -16,23 +16,23 @@ struct VkImageSubresourceRange;
 
 namespace nri
 {
-    typedef uint64_t NRIVkInstance;
-    typedef uint64_t NRIVkPhysicalDevice;
-    typedef uint64_t NRIVkDevice;
-    typedef uint64_t NRIVkQueue;
-    typedef void* NRIVkCommandPool;
-    typedef uint64_t NRIVkCommandBuffer;
-    typedef void* NRIVkImage;
-    typedef void* NRIVkBuffer;
-    typedef void* NRIVkDeviceMemory;
-    typedef void* NRIVkQueryPool;
-    typedef void* NRIVkPipeline;
-    typedef void* NRIVkDescriptorPool;
-    typedef void* NRIVkSemaphore;
-    typedef void* NRIVkFence;
+    typedef uint64_t NRIVkCommandPool;
+    typedef uint64_t NRIVkImage;
+    typedef uint64_t NRIVkBuffer;
+    typedef uint64_t NRIVkDeviceMemory;
+    typedef uint64_t NRIVkQueryPool;
+    typedef uint64_t NRIVkPipeline;
+    typedef uint64_t NRIVkDescriptorPool;
+    typedef uint64_t NRIVkSemaphore;
+    typedef uint64_t NRIVkFence;
+    typedef uint64_t NRIVkImageView;
+    typedef uint64_t NRIVkBufferView;
 
-    typedef void* NRIVkImageView;
-    typedef void* NRIVkBufferView;
+    typedef void* NRIVkInstance;
+    typedef void* NRIVkPhysicalDevice;
+    typedef void* NRIVkDevice;
+    typedef void* NRIVkQueue;
+    typedef void* NRIVkCommandBuffer;
 
     struct DeviceCreationVulkanDesc
     {
@@ -51,6 +51,7 @@ namespace nri
         const char* const* deviceExtensions;
         uint32_t deviceExtensionNum;
         const char* vulkanLoaderPath;
+        SPIRVBindingOffsets spirvBindingOffsets;
     };
 
     struct CommandQueueVulkanDesc
@@ -75,8 +76,8 @@ namespace nri
     struct BufferVulkanDesc
     {
         NRIVkBuffer vkBuffer;
-        uint64_t bufferSize;
         Memory* memory;
+        uint64_t bufferSize;
         uint64_t memoryOffset;
         uint64_t deviceAddress;
         uint32_t physicalDeviceMask;
@@ -111,7 +112,8 @@ namespace nri
     };
 
     NRI_API Result NRI_CALL CreateDeviceFromVkDevice(const DeviceCreationVulkanDesc& deviceDesc, Device*& device);
-    NRI_API Format NRI_CALL GetFormatVK(uint32_t vkFormat);
+    NRI_API Format NRI_CALL ConvertVKFormatToNRI(uint32_t vkFormat);
+    NRI_API uint32_t NRI_CALL ConvertNRIFormatToVK(Format format);
 
     struct WrapperVKInterface
     {
@@ -128,18 +130,7 @@ namespace nri
         Result (NRI_CALL *CreateQueueSemaphoreVK)(Device& device, NRIVkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore);
         Result (NRI_CALL *CreateDeviceSemaphoreVK)(Device& device, NRIVkFence vkFence, DeviceSemaphore*& deviceSemaphore);
 
-        NRIVkDevice (NRI_CALL *GetDeviceVK)(const Device& device);
-        NRIVkPhysicalDevice (NRI_CALL *GetPhysicalDeviceVK)(const Device& device);
-        NRIVkInstance (NRI_CALL *GetInstanceVK)(const Device& device);
-        NRIVkCommandBuffer (NRI_CALL *GetCommandBufferVK)(const CommandBuffer& commandBuffer);
-
-        void (NRI_CALL *GetTextureVK)(const Texture& texture, uint32_t physicalDeviceIndex, TextureVulkanDesc& textureVulkanDesc);
-        NRIVkImageView (NRI_CALL *GetTextureDescriptorVK)(const Descriptor& descriptor, uint32_t physicalDeviceIndex, VkImageSubresourceRange& subresource);
-        NRIVkBufferView (NRI_CALL *GetBufferDescriptorVK)(const Descriptor& descriptor, uint32_t physicalDeviceIndex);
-    };
-
-    struct WrapperSPIRVOffsetsInterface
-    {
-        void (NRI_CALL *SetSPIRVBindingOffsets)(Device& device, const SPIRVBindingOffsets& spirvBindingOffsets);
+        NRIVkPhysicalDevice (NRI_CALL *GetVkPhysicalDevice)(const Device& device);
+        NRIVkInstance (NRI_CALL *GetVkInstance)(const Device& device);
     };
 }

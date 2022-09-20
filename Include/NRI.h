@@ -42,6 +42,7 @@ namespace nri
 
     struct CoreInterface
     {
+        // Get
         const DeviceDesc& (NRI_CALL *GetDeviceDesc)(const Device& device);
         FormatSupportBits (NRI_CALL *GetFormatSupport)(const Device& device, Format format);
         uint32_t (NRI_CALL *GetQuerySize)(const QueryPool& queryPool);
@@ -49,6 +50,7 @@ namespace nri
         void (NRI_CALL *GetTextureMemoryInfo)(const Texture& texture, MemoryLocation memoryLocation, MemoryDesc& memoryDesc);
         Result (NRI_CALL *GetCommandQueue)(Device& device, CommandQueueType commandQueueType, CommandQueue*& commandQueue);
 
+        // Create
         Result (NRI_CALL *CreateCommandAllocator)(const CommandQueue& commandQueue, uint32_t physicalDeviceMask, CommandAllocator*& commandAllocator);
         Result (NRI_CALL *CreateDescriptorPool)(Device& device, const DescriptorPoolDesc& descriptorPoolDesc, DescriptorPool*& descriptorPool);
         Result (NRI_CALL *CreateBuffer)(Device& device, const BufferDesc& bufferDesc, Buffer*& buffer);
@@ -67,6 +69,7 @@ namespace nri
         Result (NRI_CALL *CreateDeviceSemaphore)(Device& device, bool signaled, DeviceSemaphore*& deviceSemaphore);
         Result (NRI_CALL *CreateCommandBuffer)(CommandAllocator& commandAllocator, CommandBuffer*& commandBuffer);
 
+        // Destroy
         void (NRI_CALL *DestroyCommandAllocator)(CommandAllocator& commandAllocator);
         void (NRI_CALL *DestroyDescriptorPool)(DescriptorPool& descriptorPool);
         void (NRI_CALL *DestroyBuffer)(Buffer& buffer);
@@ -80,11 +83,13 @@ namespace nri
         void (NRI_CALL *DestroyDeviceSemaphore)(DeviceSemaphore& deviceSemaphore);
         void (NRI_CALL *DestroyCommandBuffer)(CommandBuffer& commandBuffer);
 
+        // Memory
         Result (NRI_CALL *AllocateMemory)(Device& device, uint32_t physicalDeviceMask, MemoryType memoryType, uint64_t size, Memory*& memory);
         Result (NRI_CALL *BindBufferMemory)(Device& device, const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
         Result (NRI_CALL *BindTextureMemory)(Device& device, const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
         void (NRI_CALL *FreeMemory)(Memory& memory);
 
+        // Command buffer commands
         Result (NRI_CALL *BeginCommandBuffer)(CommandBuffer& commandBuffer, const DescriptorPool* descriptorPool, uint32_t physicalDeviceIndex);
         Result (NRI_CALL *EndCommandBuffer)(CommandBuffer& commandBuffer);
 
@@ -126,21 +131,27 @@ namespace nri
         void (NRI_CALL* CmdCopyQueries)(CommandBuffer& commandBuffer, const QueryPool& queryPool, uint32_t offset, uint32_t num, Buffer& dstBuffer, uint64_t dstOffset);
         void (NRI_CALL* CmdResetQueries)(CommandBuffer& commandBuffer, const QueryPool& queryPool, uint32_t offset, uint32_t num);
 
+        // Work submission & idle
         void (NRI_CALL *SubmitQueueWork)(CommandQueue& commandQueue, const WorkSubmissionDesc& workSubmissionDesc, DeviceSemaphore* deviceSemaphore);
         void (NRI_CALL *WaitForSemaphore)(CommandQueue& commandQueue, DeviceSemaphore& deviceSemaphore);
 
+        // Descriptor set
         void (NRI_CALL *UpdateDescriptorRanges)(DescriptorSet& descriptorSet, uint32_t physicalDeviceMask, uint32_t baseRange, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs);
         void (NRI_CALL *UpdateDynamicConstantBuffers)(DescriptorSet& descriptorSet, uint32_t physicalDeviceMask, uint32_t baseBuffer, uint32_t bufferNum, const Descriptor* const* descriptors);
         void (NRI_CALL *CopyDescriptorSet)(DescriptorSet& descriptorSet, const DescriptorSetCopyDesc& descriptorSetCopyDesc);
 
+        // Descriptor pool
         Result (NRI_CALL *AllocateDescriptorSets)(DescriptorPool& descriptorPool, const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** const descriptorSets, uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum);
         void (NRI_CALL *ResetDescriptorPool)(DescriptorPool& descriptorPool);
 
+        // Command allocator
         void (NRI_CALL *ResetCommandAllocator)(CommandAllocator& commandAllocator);
 
+        // Map / Unmap
         void* (NRI_CALL *MapBuffer)(Buffer& buffer, uint64_t offset, uint64_t size);
         void (NRI_CALL *UnmapBuffer)(Buffer& buffer);
 
+        // Debug name
         void (NRI_CALL *SetDeviceDebugName)(Device& device, const char* name);
         void (NRI_CALL *SetCommandQueueDebugName)(CommandQueue& commandQueue, const char* name);
         void (NRI_CALL *SetDeviceSemaphoreDebugName)(DeviceSemaphore& deviceSemaphore, const char* name);
@@ -157,5 +168,12 @@ namespace nri
         void (NRI_CALL *SetDescriptorSetDebugName)(DescriptorSet& descriptorSet, const char* name);
         void (NRI_CALL *SetCommandBufferDebugName)(CommandBuffer& commandBuffer, const char* name);
         void (NRI_CALL *SetMemoryDebugName)(Memory& memory, const char* name);
+
+        // Native objects
+        void* (NRI_CALL *GetDeviceNativeObject)(const Device& device); // ID3D11Device*, ID3D12Device* or VkDevice
+        void* (NRI_CALL *GetCommandBufferNativeObject)(const CommandBuffer& commandBuffer); // ID3D11DeviceContext*, ID3D12GraphicsCommandList* or VkCommandBuffer
+        uint64_t (NRI_CALL *GetBufferNativeObject)(const Buffer& buffer, uint32_t physicalDeviceIndex); // ID3D11Buffer*, ID3D12Resource* or VkBuffer
+        uint64_t (NRI_CALL *GetTextureNativeObject)(const Texture& texture, uint32_t physicalDeviceIndex); // ID3D11Resource*, ID3D12Resource* or VkImage
+        uint64_t (NRI_CALL *GetDescriptorNativeObject)(const Descriptor& descriptor, uint32_t physicalDeviceIndex); // ID3D11View*, D3D12_CPU_DESCRIPTOR_HANDLE or VkImageView/VkBufferView
     };
 }

@@ -27,9 +27,9 @@ static void NRI_CALL WaitForSemaphore(CommandQueue& commandQueue, DeviceSemaphor
 
 void FillFunctionTableCommandQueueVal(CoreInterface& coreInterface)
 {
-    coreInterface.SetCommandQueueDebugName = SetCommandQueueDebugName;
-    coreInterface.SubmitQueueWork = SubmitQueueWork;
-    coreInterface.WaitForSemaphore = WaitForSemaphore;
+    coreInterface.SetCommandQueueDebugName = ::SetCommandQueueDebugName;
+    coreInterface.SubmitQueueWork = ::SubmitQueueWork;
+    coreInterface.WaitForSemaphore = ::WaitForSemaphore;
 }
 
 #pragma endregion
@@ -54,9 +54,9 @@ static nri::Result NRI_CALL WaitForIdleVal(CommandQueue& commandQueue)
 
 void FillFunctionTableCommandQueueVal(HelperInterface& helperInterface)
 {
-    helperInterface.ChangeResourceStates = ChangeResourceStatesVal;
-    helperInterface.UploadData = UploadDataVal;
-    helperInterface.WaitForIdle = WaitForIdleVal;
+    helperInterface.ChangeResourceStates = ::ChangeResourceStatesVal;
+    helperInterface.UploadData = ::UploadDataVal;
+    helperInterface.WaitForIdle = ::WaitForIdleVal;
 }
 
 #pragma endregion

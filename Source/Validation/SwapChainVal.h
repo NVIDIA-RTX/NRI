@@ -19,6 +19,9 @@ namespace nri
         SwapChainVal(DeviceVal& device, SwapChain& swapChain, const SwapChainDesc& swapChainDesc);
         ~SwapChainVal();
 
+        //======================================================================================================================
+        // NRI
+        //======================================================================================================================
         void SetDebugName(const char* name);
         Texture* const* GetTextures(uint32_t& textureNum, Format& format) const;
         uint32_t AcquireNextTexture(QueueSemaphore& textureReadyForRender);

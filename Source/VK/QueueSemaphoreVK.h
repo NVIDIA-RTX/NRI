@@ -22,7 +22,7 @@ namespace nri
         operator VkSemaphore() const;
         DeviceVK& GetDevice() const;
         Result Create();
-        Result Create(void* vkSemaphore);
+        Result Create(NRIVkSemaphore vkSemaphore);
 
         void SetDebugName(const char* name);
 

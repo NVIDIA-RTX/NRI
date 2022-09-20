@@ -17,7 +17,7 @@ static void NRI_CALL SetPipelineDebugName(Pipeline& pipeline, const char* name)
 
 void FillFunctionTablePipelineD3D11(CoreInterface& coreInterface)
 {
-    coreInterface.SetPipelineDebugName = SetPipelineDebugName;
+    coreInterface.SetPipelineDebugName = ::SetPipelineDebugName;
 }
 
 #pragma endregion

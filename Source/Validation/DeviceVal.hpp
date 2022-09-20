@@ -205,6 +205,11 @@ static void NRI_CALL SetDeviceDebugName(Device& device, const char* name)
     ((DeviceVal&)device).SetDebugName(name);
 }
 
+static void* NRI_CALL GetDeviceNativeObject(const Device& device)
+{
+    return ((DeviceVal*)&device)->GetNativeObject();
+}
+
 void FillFunctionTableBufferVal(CoreInterface& coreInterface);
 void FillFunctionTableCommandAllocatorVal(CoreInterface& coreInterface);
 void FillFunctionTableCommandBufferVal(CoreInterface& coreInterface);
@@ -242,6 +247,7 @@ Result DeviceVal::FillFunctionTable(CoreInterface& coreInterface) const
     FillFunctionTableTextureVal(coreInterface);
 
     coreInterface.GetDeviceDesc = ::GetDeviceDesc;
+    coreInterface.GetFormatSupport = ::GetFormatSupport;
     coreInterface.GetCommandQueue = ::GetCommandQueue;
 
     coreInterface.CreateCommandAllocator = ::CreateCommandAllocator;
@@ -278,9 +284,9 @@ Result DeviceVal::FillFunctionTable(CoreInterface& coreInterface) const
     coreInterface.BindTextureMemory = ::BindTextureMemory;
     coreInterface.FreeMemory = ::FreeMemory;
 
-    coreInterface.GetFormatSupport = ::GetFormatSupport;
-
     coreInterface.SetDeviceDebugName = ::SetDeviceDebugName;
+
+    coreInterface.GetDeviceNativeObject = ::GetDeviceNativeObject;
 
     return ValidateFunctionTable(GetLog(), coreInterface);
 }
@@ -333,6 +339,7 @@ Result DeviceVal::FillFunctionTable(SwapChainInterface& swapChainInterface) cons
 #pragma region [  WrapperD3D11Interface  ]
 
 #if NRI_USE_D3D11
+
 static Result NRI_CALL CreateCommandBufferD3D11(Device& device, const CommandBufferD3D11Desc& commandBufferDesc, CommandBuffer*& commandBuffer)
 {
     return ((DeviceVal&)device).CreateCommandBufferD3D11(commandBufferDesc, commandBuffer);
@@ -348,33 +355,21 @@ static Result NRI_CALL CreateTextureD3D11(Device& device, const TextureD3D11Desc
     return ((DeviceVal&)device).CreateTextureD3D11(textureDesc, texture);
 }
 
-static ID3D11Device* NRI_CALL GetDeviceD3D11(const Device& device)
-{
-    return ((DeviceVal&)device).GetDeviceD3D11();
-}
-
-void FillFunctionTableBufferVal(WrapperD3D11Interface& wrapperD3D11Interface);
-void FillFunctionTableTextureVal(WrapperD3D11Interface& wrapperD3D11Interface);
-void FillFunctionTableCommandBufferVal(WrapperD3D11Interface& wrapperD3D11Interface);
 #endif
 
 Result DeviceVal::FillFunctionTable(WrapperD3D11Interface& wrapperD3D11Interface) const
 {
     MaybeUnused(wrapperD3D11Interface);
 
-#if NRI_USE_D3D12
+#if NRI_USE_D3D11
+
     wrapperD3D11Interface = {};
-
-    FillFunctionTableBufferVal(wrapperD3D11Interface);
-    FillFunctionTableTextureVal(wrapperD3D11Interface);
-    FillFunctionTableCommandBufferVal(wrapperD3D11Interface);
-
     wrapperD3D11Interface.CreateCommandBufferD3D11 = ::CreateCommandBufferD3D11;
     wrapperD3D11Interface.CreateBufferD3D11 = ::CreateBufferD3D11;
     wrapperD3D11Interface.CreateTextureD3D11 = ::CreateTextureD3D11;
-    wrapperD3D11Interface.GetDeviceD3D11 = ::GetDeviceD3D11;
 
     return ValidateFunctionTable(GetLog(), wrapperD3D11Interface);
+
 #else
     return Result::UNSUPPORTED;
 #endif
@@ -385,6 +380,7 @@ Result DeviceVal::FillFunctionTable(WrapperD3D11Interface& wrapperD3D11Interface
 #pragma region [  WrapperD3D12Interface  ]
 
 #if NRI_USE_D3D12
+
 static Result NRI_CALL CreateCommandBufferD3D12(Device& device, const CommandBufferD3D12Desc& commandBufferDesc, CommandBuffer*& commandBuffer)
 {
     return ((DeviceVal&)device).CreateCommandBufferD3D12(commandBufferDesc, commandBuffer);
@@ -405,14 +401,6 @@ static Result NRI_CALL CreateMemoryD3D12(Device& device, const MemoryD3D12Desc& 
     return ((DeviceVal&)device).CreateMemoryD3D12(memoryDesc, memory);
 }
 
-static ID3D12Device* NRI_CALL GetDeviceD3D12(const Device& device)
-{
-    return ((DeviceVal&)device).GetDeviceD3D12();
-}
-
-void FillFunctionTableBufferVal(WrapperD3D12Interface& wrapperD3D12Interface);
-void FillFunctionTableTextureVal(WrapperD3D12Interface& wrapperD3D12Interface);
-void FillFunctionTableCommandBufferVal(WrapperD3D12Interface& wrapperD3D12Interface);
 #endif
 
 Result DeviceVal::FillFunctionTable(WrapperD3D12Interface& wrapperD3D12Interface) const
@@ -420,19 +408,15 @@ Result DeviceVal::FillFunctionTable(WrapperD3D12Interface& wrapperD3D12Interface
     MaybeUnused(wrapperD3D12Interface);
 
 #if NRI_USE_D3D12
+
     wrapperD3D12Interface = {};
-
-    FillFunctionTableBufferVal(wrapperD3D12Interface);
-    FillFunctionTableTextureVal(wrapperD3D12Interface);
-    FillFunctionTableCommandBufferVal(wrapperD3D12Interface);
-
     wrapperD3D12Interface.CreateCommandBufferD3D12 = ::CreateCommandBufferD3D12;
     wrapperD3D12Interface.CreateBufferD3D12 = ::CreateBufferD3D12;
     wrapperD3D12Interface.CreateTextureD3D12 = ::CreateTextureD3D12;
     wrapperD3D12Interface.CreateMemoryD3D12 = ::CreateMemoryD3D12;
-    wrapperD3D12Interface.GetDeviceD3D12 = ::GetDeviceD3D12;
 
     return ValidateFunctionTable(GetLog(), wrapperD3D12Interface);
+
 #else
     return Result::UNSUPPORTED;
 #endif
@@ -443,20 +427,6 @@ Result DeviceVal::FillFunctionTable(WrapperD3D12Interface& wrapperD3D12Interface
 #pragma region [  WrapperVKInterface  ]
 
 #if NRI_USE_VULKAN
-static NRIVkDevice NRI_CALL GetDeviceVK(const Device& device)
-{
-    return ((DeviceVal&)device).GetDeviceVK();
-}
-
-static NRIVkPhysicalDevice NRI_CALL GetPhysicalDeviceVK(const Device& device)
-{
-    return ((DeviceVal&)device).GetPhysicalDeviceVK();
-}
-
-static NRIVkInstance NRI_CALL GetInstanceVK(const Device& device)
-{
-    return ((DeviceVal&)device).GetInstanceVK();
-}
 
 static Result NRI_CALL CreateCommandQueueVK(Device& device, const CommandQueueVulkanDesc& commandQueueVulkanDesc, CommandQueue*& commandQueue)
 {
@@ -518,20 +488,23 @@ static Result NRI_CALL CreateDeviceSemaphoreVK(Device& device, NRIVkFence vkFenc
     return ((DeviceVal&)device).CreateDeviceSemaphore(vkFence, deviceSemaphore);
 }
 
-void FillFunctionTableCommandBufferVal(WrapperVKInterface& wrapperVKInterface);
-void FillFunctionTableDescriptorVal(WrapperVKInterface& wrapperVKInterface);
-void FillFunctionTableTextureVal(WrapperVKInterface& wrapperVKInterface);
+static NRIVkPhysicalDevice NRI_CALL GetVkPhysicalDevice(const Device& device)
+{
+    return ((DeviceVal&)device).GetVkPhysicalDevice();
+}
+
+static NRIVkInstance NRI_CALL GetVkInstance(const Device& device)
+{
+    return ((DeviceVal&)device).GetVkInstance();
+}
+
 #endif
 
 Result DeviceVal::FillFunctionTable(WrapperVKInterface& wrapperVKInterface) const
 {
 #if NRI_USE_VULKAN
+
     wrapperVKInterface = {};
-
-    FillFunctionTableCommandBufferVal(wrapperVKInterface);
-    FillFunctionTableDescriptorVal(wrapperVKInterface);
-    FillFunctionTableTextureVal(wrapperVKInterface);
-
     wrapperVKInterface.CreateCommandQueueVK = ::CreateCommandQueueVK;
     wrapperVKInterface.CreateCommandAllocatorVK = ::CreateCommandAllocatorVK;
     wrapperVKInterface.CreateCommandBufferVK = ::CreateCommandBufferVK;
@@ -545,11 +518,11 @@ Result DeviceVal::FillFunctionTable(WrapperVKInterface& wrapperVKInterface) cons
     wrapperVKInterface.CreateQueueSemaphoreVK = ::CreateQueueSemaphoreVK;
     wrapperVKInterface.CreateDeviceSemaphoreVK = ::CreateDeviceSemaphoreVK;
 
-    wrapperVKInterface.GetDeviceVK = ::GetDeviceVK;
-    wrapperVKInterface.GetPhysicalDeviceVK = ::GetPhysicalDeviceVK;
-    wrapperVKInterface.GetInstanceVK = ::GetInstanceVK;
+    wrapperVKInterface.GetVkPhysicalDevice = ::GetVkPhysicalDevice;
+    wrapperVKInterface.GetVkInstance = ::GetVkInstance;
 
     return ValidateFunctionTable(GetLog(), wrapperVKInterface);
+
 #else
     return Result::UNSUPPORTED;
 #endif
@@ -644,27 +617,6 @@ Result DeviceVal::FillFunctionTable(HelperInterface& helperInterface) const
     FillFunctionTableCommandQueueVal(helperInterface);
 
     return ValidateFunctionTable(GetLog(), helperInterface);
-}
-
-#pragma endregion
-
-#pragma region [  WrapperSPIRVOffsetsInterface  ]
-
-static void NRI_CALL SetSPIRVBindingOffsets(Device& device, const SPIRVBindingOffsets& spirvBindingOffsets)
-{
-    return ((DeviceVal&)device).SetSPIRVBindingOffsets(spirvBindingOffsets);
-}
-
-Result DeviceVal::FillFunctionTable(WrapperSPIRVOffsetsInterface& wrapperSPIRVOffsetsInterface) const
-{
-    if (!m_IsWrapperSPIRVOffsetsSupported)
-        return Result::UNSUPPORTED;
-
-    wrapperSPIRVOffsetsInterface = {};
-
-    wrapperSPIRVOffsetsInterface.SetSPIRVBindingOffsets = ::SetSPIRVBindingOffsets;
-
-    return ValidateFunctionTable(GetLog(), wrapperSPIRVOffsetsInterface);
 }
 
 #pragma endregion

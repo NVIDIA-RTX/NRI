@@ -206,6 +206,11 @@ static void NRI_CALL SetDeviceDebugName(Device& device, const char* name)
     ((DeviceD3D11&)device).SetDebugName(name);
 }
 
+static void* NRI_CALL GetDeviceNativeObject(const Device& device)
+{
+    return ((DeviceD3D11&)device).GetDevice();
+}
+
 void FillFunctionTableBufferD3D11(CoreInterface& coreInterface);
 void FillFunctionTableCommandAllocatorD3D11(CoreInterface& coreInterface);
 void FillFunctionTableCommandBufferD3D11(CoreInterface& coreInterface);
@@ -248,6 +253,7 @@ Result DeviceD3D11::FillFunctionTable(CoreInterface& coreInterface) const
         FillFunctionTableCommandBufferD3D11(coreInterface);
 
     coreInterface.GetDeviceDesc = ::GetDeviceDesc;
+    coreInterface.GetFormatSupport = ::GetFormatSupport;
     coreInterface.GetCommandQueue = ::GetCommandQueue;
 
     coreInterface.CreateCommandAllocator = ::CreateCommandAllocator;
@@ -284,9 +290,9 @@ Result DeviceD3D11::FillFunctionTable(CoreInterface& coreInterface) const
     coreInterface.BindTextureMemory = ::BindTextureMemory;
     coreInterface.FreeMemory = ::FreeMemory;
 
-    coreInterface.GetFormatSupport = ::GetFormatSupport;
-
     coreInterface.SetDeviceDebugName = ::SetDeviceDebugName;
+
+    coreInterface.GetDeviceNativeObject = ::GetDeviceNativeObject;
 
     return ValidateFunctionTable(GetLog(), coreInterface);
 }
@@ -410,36 +416,12 @@ static Result NRI_CALL CreateTextureD3D11(Device& device, const TextureD3D11Desc
     return res;
 }
 
-static ID3D11Device* NRI_CALL GetDeviceD3D11(const Device& device)
-{
-    return ((DeviceD3D11&)device).GetDevice().ptr;
-}
-
-static ID3D11Resource* NRI_CALL GetBufferD3D11(const Buffer& buffer)
-{
-    return (BufferD3D11&)buffer;
-}
-
-static ID3D11Resource* NRI_CALL GetTextureD3D11(const Texture& texture)
-{
-    return (TextureD3D11&)texture;
-}
-
-void FillFunctionTableCommandBufferD3D11(WrapperD3D11Interface& wrapperD3D11Interface);
-
 Result DeviceD3D11::FillFunctionTable(WrapperD3D11Interface& wrapperD3D11Interface) const
 {
     wrapperD3D11Interface = {};
-
-    FillFunctionTableCommandBufferD3D11(wrapperD3D11Interface);
-
     wrapperD3D11Interface.CreateCommandBufferD3D11 = ::CreateCommandBufferD3D11;
     wrapperD3D11Interface.CreateTextureD3D11 = ::CreateTextureD3D11;
     wrapperD3D11Interface.CreateBufferD3D11 = ::CreateBufferD3D11;
-
-    wrapperD3D11Interface.GetDeviceD3D11 = ::GetDeviceD3D11;
-    wrapperD3D11Interface.GetBufferD3D11 = ::GetBufferD3D11;
-    wrapperD3D11Interface.GetTextureD3D11 = ::GetTextureD3D11;
 
     return ValidateFunctionTable(GetLog(), wrapperD3D11Interface);
 }

@@ -16,6 +16,9 @@ namespace nri
     {
         CommandAllocatorVal(DeviceVal& device, CommandAllocator& commandAllocator);
 
+        //======================================================================================================================
+        // NRI
+        //======================================================================================================================
         void SetDebugName(const char* name);
         Result CreateCommandBuffer(CommandBuffer*& commandBuffer);
         void Reset();
