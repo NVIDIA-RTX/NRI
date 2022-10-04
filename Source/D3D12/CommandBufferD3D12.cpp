@@ -517,8 +517,8 @@ inline void CommandBufferD3D12::PipelineBarrier(const TransitionBarrierDesc* tra
         {
             D3D12_RESOURCE_BARRIER& barrier = *ptr++;
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
-            barrier.Aliasing.pResourceBefore = *((BufferD3D12*)aliasingBarriers->textures[i].before);
-            barrier.Aliasing.pResourceAfter = *((BufferD3D12*)aliasingBarriers->textures[i].after);
+            barrier.Aliasing.pResourceBefore = *((TextureD3D12*)aliasingBarriers->textures[i].before);
+            barrier.Aliasing.pResourceAfter = *((TextureD3D12*)aliasingBarriers->textures[i].after);
         }
     }
 
