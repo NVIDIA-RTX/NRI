@@ -40,7 +40,7 @@ Result DeviceSemaphoreVK::Create(bool signaled)
     return Result::SUCCESS;
 }
 
-Result DeviceSemaphoreVK::Create(void* vkFence)
+Result DeviceSemaphoreVK::Create(NRIVkFence vkFence)
 {
     m_OwnsNativeObjects = false;
     m_Handle = (VkFence)vkFence;
