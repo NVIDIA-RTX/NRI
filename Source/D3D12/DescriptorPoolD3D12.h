@@ -51,8 +51,8 @@ namespace nri
         std::array<DescriptorHeapDesc, DescriptorHeapType::MAX_NUM> m_DescriptorHeapDescs;
         std::array<uint32_t, DescriptorHeapType::MAX_NUM> m_DescriptorNum = {};
         std::array<ID3D12DescriptorHeap*, DescriptorHeapType::MAX_NUM> m_DescriptorHeaps = {};
-        uint32_t m_DescriptorHeapNum = 0;
         Vector<DescriptorSetD3D12*> m_DescriptorSets;
+        uint32_t m_DescriptorHeapNum = 0;
         uint32_t m_DescriptorSetNum = 0;
     };
 

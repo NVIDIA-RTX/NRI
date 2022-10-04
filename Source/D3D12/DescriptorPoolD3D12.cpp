@@ -134,6 +134,7 @@ inline void DescriptorPoolD3D12::Reset()
     for (uint32_t i = 0; i < m_DescriptorSetNum; i++)
         Deallocate(m_Device.GetStdAllocator(), m_DescriptorSets[i]);
 
+    m_DescriptorSets.clear();
     m_DescriptorSetNum = 0;
 }
 
