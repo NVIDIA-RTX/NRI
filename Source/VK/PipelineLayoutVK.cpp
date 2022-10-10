@@ -231,9 +231,9 @@ void PipelineLayoutVK::CreateStaticSamplersAndFillSamplerBindings(const Descript
         const StaticSamplerDesc& sampler = descriptorSetDesc.staticSamplers[i];
 
         m_StaticSamplers.emplace_back(m_Device);
-        DescriptorVK& descirptor = m_StaticSamplers.back();
+        DescriptorVK& descriptor = m_StaticSamplers.back();
 
-        descirptor.Create(sampler.samplerDesc);
+        descriptor.Create(sampler.samplerDesc);
 
         *(bindingFlags++) = 0;
 
@@ -243,7 +243,7 @@ void PipelineLayoutVK::CreateStaticSamplersAndFillSamplerBindings(const Descript
         descriptorBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
         descriptorBinding.descriptorCount = 1;
         descriptorBinding.stageFlags = GetShaderStageFlags(sampler.visibility);
-        descriptorBinding.pImmutableSamplers = &descirptor.GetSampler();
+        descriptorBinding.pImmutableSamplers = &descriptor.GetSampler();
     }
 }
 
