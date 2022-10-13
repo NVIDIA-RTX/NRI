@@ -21,6 +21,7 @@ namespace nri
 
         DeviceVK& GetDevice() const;
         Result Create(const AccelerationStructureDesc& accelerationStructureDesc);
+        Result Create(const AccelerationStructureVulkanDesc& accelerationStructureDesc);
         Result FinishCreation();
         VkAccelerationStructureKHR GetHandle(uint32_t physicalDeviceIndex) const;
         BufferVK* GetBuffer() const;
@@ -46,6 +47,7 @@ namespace nri
         uint32_t m_PhysicalDeviceMask = 0;
         VkAccelerationStructureTypeKHR m_Type = (VkAccelerationStructureTypeKHR)0;
         VkBuildAccelerationStructureFlagsKHR m_BuildFlags = (VkBuildAccelerationStructureFlagsKHR)0;
+        bool m_OwnsNativeObjects = false;
     };
 
     inline AccelerationStructureVK::AccelerationStructureVK(DeviceVK& device) :

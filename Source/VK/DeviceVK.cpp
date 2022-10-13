@@ -588,6 +588,11 @@ Result DeviceVK::CreateDeviceSemaphore(NRIVkFence vkFence, DeviceSemaphore*& dev
     return CreateImplementation<DeviceSemaphoreVK>(deviceSemaphore, vkFence);
 }
 
+Result DeviceVK::CreateAccelerationStructure(const AccelerationStructureVulkanDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure)
+{
+    return CreateImplementation<AccelerationStructureVK>(accelerationStructure, accelerationStructureDesc);
+}
+
 void DeviceVK::DestroyCommandAllocator(CommandAllocator& commandAllocator)
 {
     Deallocate(GetStdAllocator(), (CommandAllocatorVK*)&commandAllocator);

@@ -192,5 +192,7 @@ namespace nri
         void (NRI_CALL *CmdWriteAccelerationStructureSize)(CommandBuffer& commandBuffer, const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryPoolOffset);
 
         void (NRI_CALL *CmdDispatchRays)(CommandBuffer& commandBuffer, const DispatchRaysDesc& dispatchRaysDesc);
+
+        uint64_t (NRI_CALL* GetAccelerationStructureNativeObject)(const AccelerationStructure& accelerationStructure, uint32_t physicalDeviceIndex); // ID3D12Resource* or VkAccelerationStructureKHR
     };
 }

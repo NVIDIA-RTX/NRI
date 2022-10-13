@@ -22,6 +22,9 @@ AccelerationStructureVK::~AccelerationStructureVK()
 {
     const auto& vk = m_Device.GetDispatchTable();
 
+    if (!m_OwnsNativeObjects)
+        return;
+
     for (uint32_t i = 0; i < GetCountOf(m_Handles); i++)
     {
         if (m_Handles[i] != VK_NULL_HANDLE)
@@ -34,6 +37,7 @@ AccelerationStructureVK::~AccelerationStructureVK()
 
 Result AccelerationStructureVK::Create(const AccelerationStructureDesc& accelerationStructureDesc)
 {
+    m_OwnsNativeObjects = true;
     m_Type = GetAccelerationStructureType(accelerationStructureDesc.type);
     m_BuildFlags = GetAccelerationStructureBuildFlags(accelerationStructureDesc.flags);
 
@@ -56,6 +60,40 @@ Result AccelerationStructureVK::Create(const AccelerationStructureDesc& accelera
     m_Buffer = (BufferVK*)buffer;
 
     return result;
+}
+
+Result AccelerationStructureVK::Create(const AccelerationStructureVulkanDesc& accelerationStructureDesc)
+{
+    m_OwnsNativeObjects = false;
+    m_Type = VK_ACCELERATION_STRUCTURE_TYPE_MAX_ENUM_KHR;
+    m_BuildFlags = 0;
+
+    uint32_t physicalDeviceMask = GetPhysicalDeviceGroupMask(accelerationStructureDesc.physicalDeviceMask);
+
+    VkAccelerationStructureDeviceAddressInfoKHR deviceAddressInfo = {};
+    deviceAddressInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
+    deviceAddressInfo.accelerationStructure = (VkAccelerationStructureKHR)accelerationStructureDesc.vkAccelerationStructure;
+
+    const auto& vk = m_Device.GetDispatchTable();
+
+    const uint64_t deviceAddress = vk.GetAccelerationStructureDeviceAddressKHR(m_Device, &deviceAddressInfo);
+
+    if (deviceAddress == 0)
+        return Result::FAILURE;
+
+    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    {
+        if ((1 << i) & physicalDeviceMask)
+        {
+            m_Handles[i] = (VkAccelerationStructureKHR)accelerationStructureDesc.vkAccelerationStructure;
+            m_DeviceAddresses[i] = deviceAddress;
+        }
+    }
+
+    m_BuildScratchSize = accelerationStructureDesc.buildScratchSize;
+    m_UpdateScratchSize = accelerationStructureDesc.updateScratchSize;
+
+    return Result::SUCCESS;
 }
 
 void AccelerationStructureVK::PrecreateBottomLevel(const AccelerationStructureDesc& accelerationStructureDesc)

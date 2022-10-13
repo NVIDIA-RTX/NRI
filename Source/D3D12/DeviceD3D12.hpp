@@ -389,6 +389,11 @@ static Result NRI_CALL CreateMemoryD3D12(Device& device, const MemoryD3D12Desc& 
     return ((DeviceD3D12&)device).CreateMemory(memoryDesc, memory);
 }
 
+static Result NRI_CALL CreateAccelerationStructureD3D12(Device& device, const AccelerationStructureD3D12Desc& accelerationStructureDesc, AccelerationStructure*& memory)
+{
+    return ((DeviceD3D12&)device).CreateAccelerationStructure(accelerationStructureDesc, memory);
+}
+
 Result DeviceD3D12::FillFunctionTable(WrapperD3D12Interface& wrapperD3D12Interface) const
 {
     wrapperD3D12Interface = {};
@@ -396,6 +401,7 @@ Result DeviceD3D12::FillFunctionTable(WrapperD3D12Interface& wrapperD3D12Interfa
     wrapperD3D12Interface.CreateBufferD3D12 = ::CreateBufferD3D12;
     wrapperD3D12Interface.CreateTextureD3D12 = ::CreateTextureD3D12;
     wrapperD3D12Interface.CreateMemoryD3D12 = ::CreateMemoryD3D12;
+    wrapperD3D12Interface.CreateAccelerationStructureD3D12 = ::CreateAccelerationStructureD3D12;
 
     return ValidateFunctionTable(GetLog(), wrapperD3D12Interface);
 }

@@ -22,6 +22,8 @@ struct IDXGIAdapter;
 
 namespace nri
 {
+    struct AccelerationStructure;
+
     struct DeviceCreationD3D12Desc
     {
         ID3D12Device* d3d12Device;
@@ -57,6 +59,13 @@ namespace nri
         ID3D12Heap* d3d12Heap;
     };
 
+    struct AccelerationStructureD3D12Desc
+    {
+        ID3D12Resource* d3d12Resource;
+        uint64_t scratchDataSizeInBytes;
+        uint64_t updateScratchDataSizeInBytes;
+    };
+
     NRI_API Result NRI_CALL CreateDeviceFromD3D12Device(const DeviceCreationD3D12Desc& deviceDesc, Device*& device);
     NRI_API Format NRI_CALL ConvertDXGIFormatToNRI(uint32_t dxgiFormat);
     NRI_API uint32_t NRI_CALL ConvertNRIFormatToDXGI(Format format);
@@ -67,6 +76,7 @@ namespace nri
         Result (NRI_CALL *CreateBufferD3D12)(Device& device, const BufferD3D12Desc& bufferDesc, Buffer*& buffer);
         Result (NRI_CALL *CreateTextureD3D12)(Device& device, const TextureD3D12Desc& textureDesc, Texture*& texture);
         Result (NRI_CALL *CreateMemoryD3D12)(Device& device, const MemoryD3D12Desc& memoryDesc, Memory*& memory);
+        Result (NRI_CALL *CreateAccelerationStructureD3D12)(Device& device, const AccelerationStructureD3D12Desc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
     };
 
 }

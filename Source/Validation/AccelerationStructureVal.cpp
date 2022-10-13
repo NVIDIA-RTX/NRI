@@ -18,9 +18,10 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 using namespace nri;
 
-AccelerationStructureVal::AccelerationStructureVal(DeviceVal& device, AccelerationStructure& accelerationStructure) :
+AccelerationStructureVal::AccelerationStructureVal(DeviceVal& device, AccelerationStructure& accelerationStructure, bool isBoundToMemory) :
     DeviceObjectVal(device, accelerationStructure),
-    m_RayTracingAPI(device.GetRayTracingInterface())
+    m_RayTracingAPI(device.GetRayTracingInterface()),
+    m_IsBoundToMemory(isBoundToMemory)
 {
 }
 
@@ -50,10 +51,18 @@ uint64_t AccelerationStructureVal::GetBuildScratchBufferSize() const
 
 uint64_t AccelerationStructureVal::GetHandle(uint32_t physicalDeviceIndex) const
 {
-    RETURN_ON_FAILURE(m_Device.GetLog(), m_Memory != nullptr, 0,
+    RETURN_ON_FAILURE(m_Device.GetLog(), IsBoundToMemory(), 0,
         "Can't get AccelerationStructure handle: AccelerationStructure is not bound to memory.");
 
     return m_RayTracingAPI.GetAccelerationStructureHandle(m_ImplObject, physicalDeviceIndex);
+}
+
+uint64_t AccelerationStructureVal::GetNativeObject(uint32_t physicalDeviceIndex) const
+{
+    RETURN_ON_FAILURE(m_Device.GetLog(), IsBoundToMemory(), 0,
+        "Can't get AccelerationStructure native object: AccelerationStructure is not bound to memory.");
+
+    return m_RayTracingAPI.GetAccelerationStructureNativeObject(m_ImplObject, physicalDeviceIndex);
 }
 
 Result AccelerationStructureVal::CreateDescriptor(uint32_t physicalDeviceIndex, Descriptor*& descriptor)

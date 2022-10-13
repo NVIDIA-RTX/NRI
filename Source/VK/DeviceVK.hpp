@@ -382,6 +382,11 @@ static Result NRI_CALL CreateDeviceSemaphoreVK(Device& device, NRIVkFence vkFenc
     return ((DeviceVK&)device).CreateDeviceSemaphore(vkFence, deviceSemaphore);
 }
 
+static Result NRI_CALL CreateAccelerationStructureVK(Device& device, const AccelerationStructureVulkanDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure)
+{
+    return ((DeviceVK&)device).CreateAccelerationStructure(accelerationStructureDesc, accelerationStructure);
+}
+
 static NRIVkPhysicalDevice NRI_CALL GetVkPhysicalDevice(const Device& device)
 {
     return (VkPhysicalDevice)((DeviceVK&)device);
@@ -407,6 +412,7 @@ Result DeviceVK::FillFunctionTable(WrapperVKInterface& wrapperVKInterface) const
     wrapperVKInterface.CreateQueryPoolVK = ::CreateQueryPoolVK;
     wrapperVKInterface.CreateQueueSemaphoreVK = ::CreateQueueSemaphoreVK;
     wrapperVKInterface.CreateDeviceSemaphoreVK = ::CreateDeviceSemaphoreVK;
+    wrapperVKInterface.CreateAccelerationStructureVK = ::CreateAccelerationStructureVK;
 
     wrapperVKInterface.GetVkPhysicalDevice = ::GetVkPhysicalDevice;
     wrapperVKInterface.GetVkInstance = ::GetVkInstance;
