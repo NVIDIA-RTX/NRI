@@ -1,4 +1,4 @@
-/*
+﻿/*
 Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
 
 NVIDIA CORPORATION and its licensors retain all intellectual property
@@ -107,9 +107,10 @@ namespace nri
         Result CreateDeviceSemaphore(bool signaled, DeviceSemaphore*& deviceSemaphore);
 
         Result CreateCommandBuffer(const CommandBufferD3D12Desc& commandBufferDesc, CommandBuffer*& commandBuffer);
-        Result CreateBuffer(const BufferD3D12Desc& commandBufferDesc, Buffer*& commandBuffer);
-        Result CreateTexture(const TextureD3D12Desc& commandBufferDesc, Texture*& commandBuffer);
+        Result CreateBuffer(const BufferD3D12Desc& bufferDesc, Buffer*& buffer);
+        Result CreateTexture(const TextureD3D12Desc& textureDesc, Texture*& texture);
         Result CreateMemory(const MemoryD3D12Desc& memoryDesc, Memory*& memory);
+        Result CreateAccelerationStructure(const AccelerationStructureD3D12Desc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
 
         void DestroyCommandAllocator(CommandAllocator& commandAllocator);
         void DestroyDescriptorPool(DescriptorPool& descriptorPool);

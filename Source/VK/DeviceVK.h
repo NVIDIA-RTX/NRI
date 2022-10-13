@@ -79,6 +79,7 @@ namespace nri
         Result CreateQueryPool(const QueryPoolVulkanDesc& queryPoolVulkanDesc, QueryPool*& queryPool);
         Result CreateQueueSemaphore(NRIVkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore);
         Result CreateDeviceSemaphore(NRIVkFence vkFence, DeviceSemaphore*& deviceSemaphore);
+        Result CreateAccelerationStructure(const AccelerationStructureVulkanDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
 
         void DestroyCommandAllocator(CommandAllocator& commandAllocator);
         void DestroyDescriptorPool(DescriptorPool& descriptorPool);

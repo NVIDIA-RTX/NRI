@@ -401,6 +401,11 @@ static Result NRI_CALL CreateMemoryD3D12(Device& device, const MemoryD3D12Desc& 
     return ((DeviceVal&)device).CreateMemoryD3D12(memoryDesc, memory);
 }
 
+static Result NRI_CALL CreateAccelerationStructureD3D12(Device& device, const AccelerationStructureD3D12Desc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure)
+{
+    return ((DeviceVal&)device).CreateAccelerationStructureD3D12(accelerationStructureDesc, accelerationStructure);
+}
+
 #endif
 
 Result DeviceVal::FillFunctionTable(WrapperD3D12Interface& wrapperD3D12Interface) const
@@ -414,6 +419,7 @@ Result DeviceVal::FillFunctionTable(WrapperD3D12Interface& wrapperD3D12Interface
     wrapperD3D12Interface.CreateBufferD3D12 = ::CreateBufferD3D12;
     wrapperD3D12Interface.CreateTextureD3D12 = ::CreateTextureD3D12;
     wrapperD3D12Interface.CreateMemoryD3D12 = ::CreateMemoryD3D12;
+    wrapperD3D12Interface.CreateAccelerationStructureD3D12 = ::CreateAccelerationStructureD3D12;
 
     return ValidateFunctionTable(GetLog(), wrapperD3D12Interface);
 
@@ -485,7 +491,12 @@ static Result NRI_CALL CreateQueueSemaphoreVK(Device& device, NRIVkSemaphore vkS
 
 static Result NRI_CALL CreateDeviceSemaphoreVK(Device& device, NRIVkFence vkFence, DeviceSemaphore*& deviceSemaphore)
 {
-    return ((DeviceVal&)device).CreateDeviceSemaphore(vkFence, deviceSemaphore);
+    return ((DeviceVal&)device).CreateDeviceSemaphoreVK(vkFence, deviceSemaphore);
+}
+
+static Result NRI_CALL CreateAccelerationStructureVK(Device& device, const AccelerationStructureVulkanDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure)
+{
+    return ((DeviceVal&)device).CreateAccelerationStructureVK(accelerationStructureDesc, accelerationStructure);
 }
 
 static NRIVkPhysicalDevice NRI_CALL GetVkPhysicalDevice(const Device& device)
@@ -517,6 +528,7 @@ Result DeviceVal::FillFunctionTable(WrapperVKInterface& wrapperVKInterface) cons
     wrapperVKInterface.CreateQueryPoolVK = ::CreateQueryPoolVK;
     wrapperVKInterface.CreateQueueSemaphoreVK = ::CreateQueueSemaphoreVK;
     wrapperVKInterface.CreateDeviceSemaphoreVK = ::CreateDeviceSemaphoreVK;
+    wrapperVKInterface.CreateAccelerationStructureVK = ::CreateAccelerationStructureVK;
 
     wrapperVKInterface.GetVkPhysicalDevice = ::GetVkPhysicalDevice;
     wrapperVKInterface.GetVkInstance = ::GetVkInstance;

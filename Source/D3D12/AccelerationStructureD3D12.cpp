@@ -30,6 +30,15 @@ AccelerationStructureD3D12::~AccelerationStructureD3D12()
         Deallocate(m_Device.GetStdAllocator(), m_Buffer);
 }
 
+Result AccelerationStructureD3D12::Create(const AccelerationStructureD3D12Desc& accelerationStructureDesc)
+{
+    m_PrebuildInfo.ScratchDataSizeInBytes = accelerationStructureDesc.scratchDataSizeInBytes;
+    m_PrebuildInfo.UpdateScratchDataSizeInBytes = accelerationStructureDesc.updateScratchDataSizeInBytes;
+    BufferD3D12Desc bufferDesc = {};
+    bufferDesc.d3d12Resource = (ID3D12Resource*)accelerationStructureDesc.d3d12Resource;
+    return m_Device.CreateBuffer(bufferDesc, (Buffer*&)m_Buffer);
+}
+
 Result AccelerationStructureD3D12::Create(const AccelerationStructureDesc& accelerationStructureDesc)
 {
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS accelerationStructureInputs = {};

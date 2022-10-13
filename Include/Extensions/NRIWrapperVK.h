@@ -16,6 +16,8 @@ struct VkImageSubresourceRange;
 
 namespace nri
 {
+    struct AccelerationStructure;
+
     typedef uint64_t NRIVkCommandPool;
     typedef uint64_t NRIVkImage;
     typedef uint64_t NRIVkBuffer;
@@ -27,6 +29,7 @@ namespace nri
     typedef uint64_t NRIVkFence;
     typedef uint64_t NRIVkImageView;
     typedef uint64_t NRIVkBufferView;
+    typedef uint64_t NRIVkAccelerationStructureKHR;
 
     typedef void* NRIVkInstance;
     typedef void* NRIVkPhysicalDevice;
@@ -111,6 +114,14 @@ namespace nri
         uint32_t physicalDeviceMask;
     };
 
+    struct AccelerationStructureVulkanDesc
+    {
+        NRIVkAccelerationStructureKHR vkAccelerationStructure;
+        uint64_t buildScratchSize;
+        uint64_t updateScratchSize;
+        uint32_t physicalDeviceMask;
+    };
+
     NRI_API Result NRI_CALL CreateDeviceFromVkDevice(const DeviceCreationVulkanDesc& deviceDesc, Device*& device);
     NRI_API Format NRI_CALL ConvertVKFormatToNRI(uint32_t vkFormat);
     NRI_API uint32_t NRI_CALL ConvertNRIFormatToVK(Format format);
@@ -129,6 +140,7 @@ namespace nri
         Result (NRI_CALL *CreateQueryPoolVK)(Device& device, const QueryPoolVulkanDesc& queryPoolVulkanDesc, QueryPool*& queryPool);
         Result (NRI_CALL *CreateQueueSemaphoreVK)(Device& device, NRIVkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore);
         Result (NRI_CALL *CreateDeviceSemaphoreVK)(Device& device, NRIVkFence vkFence, DeviceSemaphore*& deviceSemaphore);
+        Result (NRI_CALL *CreateAccelerationStructureVK)(Device& device, const AccelerationStructureVulkanDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
 
         NRIVkPhysicalDevice (NRI_CALL *GetVkPhysicalDevice)(const Device& device);
         NRIVkInstance (NRI_CALL *GetVkInstance)(const Device& device);

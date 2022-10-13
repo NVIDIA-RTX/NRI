@@ -1258,6 +1258,25 @@ Result DeviceVal::CreateQueueSemaphoreVK(NRIVkSemaphore vkSemaphore, QueueSemaph
     return result;
 }
 
+Result DeviceVal::CreateAccelerationStructureVK(const AccelerationStructureVulkanDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure)
+{
+    RETURN_ON_FAILURE(GetLog(), accelerationStructureDesc.vkAccelerationStructure != 0, Result::INVALID_ARGUMENT,
+        "Can't create AccelerationStructure: 'accelerationStructureDesc.vkAccelerationStructure' is invalid.");
+
+    AccelerationStructure* accelerationStructureImpl = nullptr;
+    const Result result = m_WrapperVKAPI.CreateAccelerationStructureVK(m_Device, accelerationStructureDesc, accelerationStructureImpl);
+
+    if (result == Result::SUCCESS)
+    {
+        RETURN_ON_FAILURE(GetLog(), accelerationStructureImpl != nullptr, Result::FAILURE,
+            "Can't create AccelerationStructure: unexpected error.");
+
+        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetStdAllocator(), *this, *accelerationStructureImpl, true);
+    }
+
+    return result;
+}
+
 Result DeviceVal::CreateDeviceSemaphoreVK(NRIVkFence vkFence, DeviceSemaphore*& deviceSemaphore)
 {
     RETURN_ON_FAILURE(GetLog(), vkFence != 0, Result::INVALID_ARGUMENT,
@@ -1418,6 +1437,25 @@ Result DeviceVal::CreateMemoryD3D12(const MemoryD3D12Desc& memoryDesc, Memory*& 
             "Can't create Memory: unexpected error.");
 
         memory = (Memory*)Allocate<MemoryVal>(GetStdAllocator(), *this, *memoryImpl, size, MemoryLocation::MAX_NUM);
+    }
+
+    return result;
+}
+
+Result DeviceVal::CreateAccelerationStructureD3D12(const AccelerationStructureD3D12Desc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure)
+{
+    RETURN_ON_FAILURE(GetLog(), accelerationStructureDesc.d3d12Resource != nullptr, Result::INVALID_ARGUMENT,
+        "Can't create AccelerationStructure: 'accelerationStructureDesc.d3d12Resource' is invalid.");
+
+    AccelerationStructure* accelerationStructureImpl = nullptr;
+    const Result result = m_WrapperD3D12API.CreateAccelerationStructureD3D12(m_Device, accelerationStructureDesc, accelerationStructureImpl);
+
+    if (result == Result::SUCCESS)
+    {
+        RETURN_ON_FAILURE(GetLog(), accelerationStructureImpl != nullptr, Result::FAILURE,
+            "Can't create AccelerationStructure: unexpected error.");
+
+        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetStdAllocator(), *this, *accelerationStructureImpl, true);
     }
 
     return result;
@@ -1604,7 +1642,7 @@ Result DeviceVal::CreateAccelerationStructure(const AccelerationStructureDesc& a
     if (result == Result::SUCCESS)
     {
         RETURN_ON_FAILURE(GetLog(), accelerationStructureImpl != nullptr, Result::FAILURE, "Unexpected error: 'accelerationStructureImpl' is NULL.");
-        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetStdAllocator(), *this, *accelerationStructureImpl);
+        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetStdAllocator(), *this, *accelerationStructureImpl, false);
     }
 
     return result;

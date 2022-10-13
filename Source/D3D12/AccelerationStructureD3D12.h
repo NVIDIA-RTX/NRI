@@ -22,8 +22,11 @@ namespace nri
         ~AccelerationStructureD3D12();
 
         DeviceD3D12& GetDevice() const;
+        operator ID3D12Resource*() const;
+        operator BufferD3D12* () const;
 
         Result Create(const AccelerationStructureDesc& accelerationStructureDesc);
+        Result Create(const AccelerationStructureD3D12Desc& accelerationStructureDesc);
         void GetMemoryInfo(MemoryDesc& memoryDesc) const;
         uint64_t GetUpdateScratchBufferSize() const;
         uint64_t GetBuildScratchBufferSize() const;
@@ -49,6 +52,16 @@ namespace nri
     inline DeviceD3D12& AccelerationStructureD3D12::GetDevice() const
     {
         return m_Device;
+    }
+
+    inline AccelerationStructureD3D12::operator ID3D12Resource*() const
+    {
+        return (ID3D12Resource*)m_Buffer;
+    }
+
+    inline AccelerationStructureD3D12::operator BufferD3D12* () const
+    {
+        return m_Buffer;
     }
 }
 #endif

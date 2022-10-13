@@ -270,6 +270,11 @@ Result DeviceD3D12::CreateAccelerationStructure(const AccelerationStructureDesc&
     return CreateImplementation<AccelerationStructureD3D12>(accelerationStructure, accelerationStructureDesc);
 }
 
+Result DeviceD3D12::CreateAccelerationStructure(const AccelerationStructureD3D12Desc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure)
+{
+    return CreateImplementation<AccelerationStructureD3D12>(accelerationStructure, accelerationStructureDesc);
+}
+
 inline void DeviceD3D12::DestroyAccelerationStructure(AccelerationStructure& accelerationStructure)
 {
     Deallocate(GetStdAllocator(), (AccelerationStructureD3D12*)&accelerationStructure);

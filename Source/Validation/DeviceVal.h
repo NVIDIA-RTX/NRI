@@ -124,6 +124,7 @@ namespace nri
         Result CreateQueryPoolVK(const QueryPoolVulkanDesc& queryPoolVulkanDesc, QueryPool*& queryPool);
         Result CreateQueueSemaphoreVK(NRIVkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore);
         Result CreateDeviceSemaphoreVK(NRIVkFence vkFence, DeviceSemaphore*& deviceSemaphore);
+        Result CreateAccelerationStructureVK(const AccelerationStructureVulkanDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
 
         Result CreateCommandBufferD3D11(const CommandBufferD3D11Desc& commandBufferDesc, CommandBuffer*& commandBuffer);
         Result CreateBufferD3D11(const BufferD3D11Desc& bufferDesc, Buffer*& buffer);
@@ -133,6 +134,7 @@ namespace nri
         Result CreateBufferD3D12(const BufferD3D12Desc& bufferDesc, Buffer*& buffer);
         Result CreateTextureD3D12(const TextureD3D12Desc& textureDesc, Texture*& texture);
         Result CreateMemoryD3D12(const MemoryD3D12Desc& memoryDesc, Memory*& memory);
+        Result CreateAccelerationStructureD3D12(const AccelerationStructureD3D12Desc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
 
         uint32_t CalculateAllocationNumber(const ResourceGroupDesc& resourceGroupDesc) const;
         Result AllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDesc, Memory** allocations);
