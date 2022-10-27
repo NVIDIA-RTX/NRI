@@ -43,6 +43,11 @@ static Result NRI_CALL CreateAccelerationStructureDescriptor(const AccelerationS
     return ((AccelerationStructureVK&)accelerationStructure).CreateDescriptor(physicalDeviceIndex, descriptor);
 }
 
+static uint64_t NRI_CALL GetAccelerationStructureNativeObject(const AccelerationStructure& accelerationStructure, uint32_t physicalDeviceIndex)
+{
+    return uint64_t(((AccelerationStructureVK&)accelerationStructure).GetHandle(physicalDeviceIndex));
+}
+
 void FillFunctionTableAccelerationStructureVK(RayTracingInterface& rayTracingInterface)
 {
     rayTracingInterface.GetAccelerationStructureMemoryInfo = ::GetAccelerationStructureMemoryInfo;
@@ -51,6 +56,7 @@ void FillFunctionTableAccelerationStructureVK(RayTracingInterface& rayTracingInt
     rayTracingInterface.GetAccelerationStructureHandle = ::GetAccelerationStructureHandle;
     rayTracingInterface.SetAccelerationStructureDebugName = ::SetAccelerationStructureDebugName;
     rayTracingInterface.CreateAccelerationStructureDescriptor = ::CreateAccelerationStructureDescriptor;
+    rayTracingInterface.GetAccelerationStructureNativeObject = ::GetAccelerationStructureNativeObject;
 }
 
 #pragma endregion
