@@ -1117,6 +1117,8 @@ namespace nri
         const ClearValueDesc* depthStencilClearValue;
         uint32_t colorAttachmentNum;
         uint32_t physicalDeviceMask;
+        uint16_t size[2];
+        uint16_t layerNum;
     };
 
     struct QueryPoolDesc

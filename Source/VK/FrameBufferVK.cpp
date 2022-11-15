@@ -156,19 +156,21 @@ Result FrameBufferVK::Create(const FrameBufferDesc& frameBufferDesc)
     else if (frameBufferDesc.depthStencilAttachment != nullptr)
         descriptor = (DescriptorVK*)frameBufferDesc.depthStencilAttachment;
 
-    VkExtent3D extent = {};
-    if (descriptor)
+    m_RenderArea = {};
+    m_RenderArea.extent.width = frameBufferDesc.size[0];
+    m_RenderArea.extent.height = frameBufferDesc.size[1];
+    m_LayerNum = frameBufferDesc.layerNum;
+    m_AttachmentNum = frameBufferDesc.colorAttachmentNum + (frameBufferDesc.depthStencilAttachment ? 1 : 0);
+
+    if (descriptor && m_RenderArea.extent.width == 0)
     {
         const TextureVK& texture = descriptor->GetTexture();
         const DescriptorTextureDesc& descriptorDesc = descriptor->GetTextureDesc();
 
-        extent.width = texture.GetSize(0, descriptorDesc.imageMipOffset);
-        extent.height = texture.GetSize(1, descriptorDesc.imageMipOffset);
-        extent.depth = descriptorDesc.imageArraySize;
+        m_RenderArea.extent.width = texture.GetSize(0, descriptorDesc.imageMipOffset);
+        m_RenderArea.extent.height = texture.GetSize(1, descriptorDesc.imageMipOffset);
+        m_LayerNum = descriptorDesc.imageArraySize;
     }
-
-    m_RenderArea = { {}, { extent.width, extent.height } };
-    m_AttachmentNum = frameBufferDesc.colorAttachmentNum + (frameBufferDesc.depthStencilAttachment ? 1 : 0);
 
     Result result = SaveClearColors(frameBufferDesc);
     if (result != Result::SUCCESS)
@@ -189,7 +191,7 @@ Result FrameBufferVK::Create(const FrameBufferDesc& frameBufferDesc)
         imageViews.data(),
         m_RenderArea.extent.width,
         m_RenderArea.extent.height,
-        1
+        m_LayerNum
     };
 
     const auto& vk = m_Device.GetDispatchTable();

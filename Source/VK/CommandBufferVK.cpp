@@ -201,12 +201,13 @@ inline void CommandBufferVK::ClearAttachments(const ClearDesc* clearDescs, uint3
         rectNum = clearDescNum;
 
         const VkRect2D& rect = m_CurrentFrameBuffer->GetRenderArea();
+        const uint32_t layerNum = m_CurrentFrameBuffer->GetLayerNum();
 
         for (uint32_t i = 0; i < clearDescNum; i++)
         {
             VkClearRect& clearRect = clearRects[i];
             clearRect.baseArrayLayer = 0;
-            clearRect.layerCount = 1;
+            clearRect.layerCount = layerNum;
             clearRect.rect = rect;
         }
     }

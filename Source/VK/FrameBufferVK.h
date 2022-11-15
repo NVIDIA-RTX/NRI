@@ -23,6 +23,7 @@ namespace nri
         Result Create(const FrameBufferDesc& frameBufferDesc);
         VkFramebuffer GetHandle(uint32_t physicalDeviceIndex) const;
         const VkRect2D& GetRenderArea() const;
+        uint32_t GetLayerNum() const;
         VkRenderPass GetRenderPass(RenderPassBeginFlag renderPassBeginFlag) const;
         uint32_t GetAttachmentNum() const;
         void GetClearValues(VkClearValue* values) const;
@@ -41,6 +42,7 @@ namespace nri
         VkRenderPass m_RenderPass = VK_NULL_HANDLE;
         std::array<ClearValueDesc, ATTACHMENT_MAX_NUM> m_ClearValues = {};
         VkRect2D m_RenderArea = {};
+        uint32_t m_LayerNum = 0;
         uint32_t m_AttachmentNum = 0;
         DeviceVK& m_Device;
     };
@@ -63,6 +65,11 @@ namespace nri
     inline VkRenderPass FrameBufferVK::GetRenderPass(RenderPassBeginFlag renderPassBeginFlag) const
     {
         return (renderPassBeginFlag == RenderPassBeginFlag::SKIP_FRAME_BUFFER_CLEAR) ? m_RenderPass : m_RenderPassWithClear;
+    }
+
+    inline uint32_t FrameBufferVK::GetLayerNum() const
+    {
+        return m_LayerNum;
     }
 
     inline const VkRect2D& FrameBufferVK::GetRenderArea() const
