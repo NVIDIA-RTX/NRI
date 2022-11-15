@@ -59,7 +59,7 @@ void FrameBufferD3D12::Bind(ID3D12GraphicsCommandList* graphicsCommandList, Rend
 {
     graphicsCommandList->OMSetRenderTargets(
         (UINT)m_RenderTargets.size(),
-        &m_RenderTargets[0],
+        m_RenderTargets.data(),
         FALSE,
         m_DepthStencilTarget.ptr != 0 ? &m_DepthStencilTarget : nullptr
     );
