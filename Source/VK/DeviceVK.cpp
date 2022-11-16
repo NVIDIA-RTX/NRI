@@ -326,7 +326,7 @@ bool DeviceVK::GetMemoryType(MemoryLocation memoryLocation, uint32_t memoryTypeM
     {
         const bool isMemoryTypeSupported = memoryTypeMask & (1 << i);
         const bool isPropSupported = (m_MemoryProps.memoryTypes[i].propertyFlags & flags) == flags;
-        const bool hasUnwantedProperties = (m_MemoryProps.memoryTypes[i].propertyFlags & unwantedFlags) == 0;
+        const bool hasUnwantedProperties = (m_MemoryProps.memoryTypes[i].propertyFlags & unwantedFlags) != 0;
 
         if (isMemoryTypeSupported && isPropSupported && !hasUnwantedProperties)
         {
