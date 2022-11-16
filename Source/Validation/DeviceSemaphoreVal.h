@@ -18,8 +18,7 @@ namespace nri
 
         void Create(bool signaled);
 
-        inline bool DeviceSemaphoreVal::IsUnsignaled() const
-        { return (m_Value & 0x1) == 0; }
+        inline bool IsUnsignaled() const;
 
         //======================================================================================================================
         // NRI
@@ -32,4 +31,9 @@ namespace nri
     private:
         uint64_t m_Value = 0;
     };
+
+    inline bool DeviceSemaphoreVal::IsUnsignaled() const
+    {
+        return (m_Value & 0x1) == 0;
+    }
 }
