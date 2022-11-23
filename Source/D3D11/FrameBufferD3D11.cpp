@@ -76,7 +76,7 @@ void FrameBufferD3D11::ClearAttachments(VersionedContext& context, const ClearDe
             {
             case AttachmentContentType::COLOR:
                 {
-                    context->ClearRenderTargetView(m_RenderTargets[clearDesc.colorAttachmentIndex], &clearDesc.value.rgba32f.r);
+                    context->ClearRenderTargetView(m_RenderTargets[clearDesc.colorAttachmentIndex], &clearDesc.value.color32f.x);
                 }
                 break;
             case AttachmentContentType::DEPTH:
@@ -116,7 +116,7 @@ void FrameBufferD3D11::ClearAttachments(VersionedContext& context, const ClearDe
             for (uint32_t i = 0; i < clearDescNum; i++)
             {
                 const ClearDesc& clearDesc = clearDescs[i];
-                context->ClearView(m_RenderTargets[clearDesc.colorAttachmentIndex], &clearDesc.value.rgba32f.r, &winRect[0], rectNum);
+                context->ClearView(m_RenderTargets[clearDesc.colorAttachmentIndex], &clearDesc.value.color32f.x, &winRect[0], rectNum);
             }
         }
         else

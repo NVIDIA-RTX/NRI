@@ -341,8 +341,8 @@ void PipelineD3D11::Bind(const VersionedContext& context, const PipelineD3D11* c
         if (!currentPipeline || m_DepthStencilState != currentPipeline->m_DepthStencilState || m_StencilRef != currentPipeline->m_StencilRef)
             context->OMSetDepthStencilState(m_DepthStencilState, m_StencilRef);
 
-        if (!currentPipeline || m_BlendState != currentPipeline->m_BlendState || m_SampleMask != currentPipeline->m_SampleMask || memcmp(&m_BlendFactor.r, &currentPipeline->m_BlendFactor.r, sizeof(m_BlendFactor)))
-            context->OMSetBlendState(m_BlendState, &m_BlendFactor.r, m_SampleMask);
+        if (!currentPipeline || m_BlendState != currentPipeline->m_BlendState || m_SampleMask != currentPipeline->m_SampleMask || memcmp(&m_BlendFactor.x, &currentPipeline->m_BlendFactor.x, sizeof(m_BlendFactor)))
+            context->OMSetBlendState(m_BlendState, &m_BlendFactor.x, m_SampleMask);
 
         if (!currentPipeline || m_VertexShader != currentPipeline->m_VertexShader)
             context->VSSetShader(m_VertexShader, nullptr, 0);

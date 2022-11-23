@@ -487,7 +487,7 @@ void PipelineVK::FillColorBlendState(const GraphicsPipelineDesc& graphicsPipelin
     state.attachmentCount = outputMerger.colorNum;
 
     for (uint32_t i = 0; i < 4; i++)
-        state.blendConstants[i] = *(&outputMerger.blendConsts.r + i);
+        state.blendConstants[i] = *(&outputMerger.blendConsts.x + i);
 
     VkPipelineColorBlendAttachmentState* attachments = const_cast<VkPipelineColorBlendAttachmentState*>(state.pAttachments);
     for (uint32_t i = 0; i < outputMerger.colorNum; i++)

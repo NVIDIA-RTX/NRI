@@ -62,7 +62,7 @@ namespace nri
 #endif
         const PipelineLayoutD3D12* m_PipelineLayout = nullptr;
         D3D_PRIMITIVE_TOPOLOGY m_PrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
-        Color<float> m_BlendFactor = {};
+        Color32f m_BlendFactor = {};
         uint8_t m_SampleNum = 1;
         bool m_BlendEnabled = false;
         bool m_IsGraphicsPipeline = false;

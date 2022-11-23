@@ -441,7 +441,7 @@ void PipelineD3D12::Bind(ID3D12GraphicsCommandList* graphicsCommandList, D3D12_P
         }
 
         if (m_BlendEnabled)
-            graphicsCommandList->OMSetBlendFactor(&m_BlendFactor.r);
+            graphicsCommandList->OMSetBlendFactor(&m_BlendFactor.x);
     }
 }
 

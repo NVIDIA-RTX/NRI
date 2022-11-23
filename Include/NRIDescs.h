@@ -639,10 +639,19 @@ namespace nri
         float depthRangeMax;
     };
 
-    template<typename T>
-    struct Color
+    struct Color32f
     {
-        T r, g, b, a;
+        float x, y, z, w;
+    };
+
+    struct Color32ui
+    {
+        uint32_t x, y, z, w;
+    };
+
+    struct Color32i
+    {
+        int32_t x, y, z, w;
     };
 
     struct DepthStencilClearValue
@@ -654,9 +663,9 @@ namespace nri
     union ClearValueDesc
     {
         DepthStencilClearValue depthStencil;
-        Color<float> rgba32f;
-        Color<uint32_t> rgba32ui;
-        Color<int32_t> rgba32i;
+        Color32f color32f;
+        Color32ui color32ui;
+        Color32i color32i;
     };
 
     struct ClearDesc
@@ -1056,7 +1065,6 @@ namespace nri
     };
 
     // CompareFunc::NONE = depth/stencil test disabled
-
     struct DepthAttachmentDesc
     {
         CompareFunc compareFunc;
@@ -1080,7 +1088,7 @@ namespace nri
         Format depthStencilFormat;
         LogicFunc colorLogicFunc;
         uint32_t colorNum;
-        Color<float> blendConsts;
+        Color32f blendConsts;
     };
 
     struct PipelineLayoutDesc

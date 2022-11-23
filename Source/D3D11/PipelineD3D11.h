@@ -77,7 +77,7 @@ namespace nri
         NvAPI_D3D11_RASTERIZER_DESC_EX* m_RasterizerStateExDesc = nullptr;
 
         D3D11_PRIMITIVE_TOPOLOGY m_Topology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
-        Color<float> m_BlendFactor = {};
+        Color32f m_BlendFactor = {};
         uint16_t m_SampleMask = 0;
         uint16_t m_StencilRef = uint16_t(-1);
         bool m_IsRasterizerDiscarded = false;

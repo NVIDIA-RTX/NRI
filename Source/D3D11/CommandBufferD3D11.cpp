@@ -185,8 +185,8 @@ void CommandBufferD3D11::ClearStorageBuffer(const ClearStorageBufferDesc& clearD
 {
     const DescriptorD3D11& descriptor = *(const DescriptorD3D11*)clearDesc.storageBuffer;
 
-    Color<uint32_t> clearValue = {clearDesc.value, clearDesc.value, clearDesc.value, clearDesc.value};
-    m_Context->ClearUnorderedAccessViewUint(descriptor, &clearValue.r);
+    Color32ui clearValue = {clearDesc.value, clearDesc.value, clearDesc.value, clearDesc.value};
+    m_Context->ClearUnorderedAccessViewUint(descriptor, &clearValue.x);
 }
 
 void CommandBufferD3D11::ClearStorageTexture(const ClearStorageTextureDesc& clearDesc)
@@ -194,9 +194,9 @@ void CommandBufferD3D11::ClearStorageTexture(const ClearStorageTextureDesc& clea
     const DescriptorD3D11& descriptor = *(const DescriptorD3D11*)clearDesc.storageTexture;
 
     if (descriptor.IsIntegerFormat())
-        m_Context->ClearUnorderedAccessViewUint(descriptor, &clearDesc.value.rgba32ui.r);
+        m_Context->ClearUnorderedAccessViewUint(descriptor, &clearDesc.value.color32ui.x);
     else
-        m_Context->ClearUnorderedAccessViewFloat(descriptor, &clearDesc.value.rgba32f.r);
+        m_Context->ClearUnorderedAccessViewFloat(descriptor, &clearDesc.value.color32f.x);
 }
 
 void CommandBufferD3D11::BeginRenderPass(const FrameBuffer& frameBuffer, RenderPassBeginFlag renderPassBeginFlag)

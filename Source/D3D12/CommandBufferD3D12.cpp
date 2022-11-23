@@ -189,7 +189,7 @@ inline void CommandBufferD3D12::ClearStorageTexture(const ClearStorageTextureDes
         { descriptorSet->GetPointerGPU(clearDesc.rangeIndex, clearDesc.offsetInRange) },
         { resourceView->GetPointerCPU() },
             *resourceView,
-            &clearDesc.value.rgba32f.r,
+            &clearDesc.value.color32f.x,
             0,
             nullptr);
     }
@@ -199,7 +199,7 @@ inline void CommandBufferD3D12::ClearStorageTexture(const ClearStorageTextureDes
         { descriptorSet->GetPointerGPU(clearDesc.rangeIndex, clearDesc.offsetInRange) },
         { resourceView->GetPointerCPU() },
             *resourceView,
-            &clearDesc.value.rgba32ui.r,
+            &clearDesc.value.color32ui.x,
             0,
             nullptr);
     }

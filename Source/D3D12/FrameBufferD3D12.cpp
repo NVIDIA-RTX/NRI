@@ -80,7 +80,7 @@ void FrameBufferD3D12::Clear(ID3D12GraphicsCommandList* graphicsCommandList, con
         if (AttachmentContentType::COLOR == clearDescs[i].attachmentContentType)
         {
             if (clearDescs[i].colorAttachmentIndex < m_RenderTargets.size())
-                graphicsCommandList->ClearRenderTargetView(m_RenderTargets[clearDescs[i].colorAttachmentIndex], &clearDescs[i].value.rgba32f.r, rectNum, rectsD3D12);
+                graphicsCommandList->ClearRenderTargetView(m_RenderTargets[clearDescs[i].colorAttachmentIndex], &clearDescs[i].value.color32f.x, rectNum, rectsD3D12);
         }
         else if (m_DepthStencilTarget.ptr)
         {
