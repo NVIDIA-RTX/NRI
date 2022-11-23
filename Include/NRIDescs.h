@@ -49,7 +49,7 @@ namespace nri
     constexpr bool VARIABLE_DESCRIPTOR_NUM = true;
     constexpr bool DESCRIPTOR_ARRAY = true;
 
-    enum class Result
+    enum class Result : uint8_t
     {
         SUCCESS,
         FAILURE,
@@ -72,7 +72,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class GraphicsAPI
+    enum class GraphicsAPI : uint8_t
     {
         D3D11,
         D3D12,
@@ -81,7 +81,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class CommandQueueType
+    enum class CommandQueueType : uint8_t
     {
         GRAPHICS,
         COMPUTE,
@@ -99,7 +99,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class TextureType : uint16_t
+    enum class TextureType : uint8_t
     {
         TEXTURE_1D,
         TEXTURE_2D,
@@ -108,7 +108,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class Texture1DViewType : uint16_t
+    enum class Texture1DViewType : uint8_t
     {
         SHADER_RESOURCE_1D,
         SHADER_RESOURCE_1D_ARRAY,
@@ -120,7 +120,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class Texture2DViewType : uint16_t
+    enum class Texture2DViewType : uint8_t
     {
         SHADER_RESOURCE_2D,
         SHADER_RESOURCE_2D_ARRAY,
@@ -134,7 +134,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class Texture3DViewType : uint16_t
+    enum class Texture3DViewType : uint8_t
     {
         SHADER_RESOURCE_3D,
         SHADER_RESOURCE_STORAGE_3D,
@@ -143,7 +143,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class BufferViewType : uint16_t
+    enum class BufferViewType : uint8_t
     {
         SHADER_RESOURCE,
         SHADER_RESOURCE_STORAGE,
@@ -152,7 +152,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class DescriptorType : uint16_t
+    enum class DescriptorType : uint8_t
     {
         SAMPLER,
         CONSTANT_BUFFER,
@@ -167,7 +167,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class VertexStreamStepRate : uint16_t
+    enum class VertexStreamStepRate : uint8_t
     {
         PER_VERTEX,
         PER_INSTANCE,
@@ -175,47 +175,7 @@ namespace nri
         MAX_NUM
     };
 
-    NRI_DECLARE_ENUM_CLASS_WITH_OPS(TextureUsageBits, uint16_t)
-    {
-        NONE                         = 0,
-        SHADER_RESOURCE              = SetBit(0),
-        SHADER_RESOURCE_STORAGE      = SetBit(1),
-        COLOR_ATTACHMENT             = SetBit(2),
-        DEPTH_STENCIL_ATTACHMENT     = SetBit(3)
-    };
-
-    NRI_DECLARE_ENUM_CLASS_WITH_OPS(BufferUsageBits, uint16_t)
-    {
-        NONE                                = 0,
-        SHADER_RESOURCE                     = SetBit(0),
-        SHADER_RESOURCE_STORAGE             = SetBit(1),
-        VERTEX_BUFFER                       = SetBit(2),
-        INDEX_BUFFER                        = SetBit(3),
-        CONSTANT_BUFFER                     = SetBit(4),
-        ARGUMENT_BUFFER                     = SetBit(5),
-        RAY_TRACING_BUFFER                  = SetBit(6),
-        ACCELERATION_STRUCTURE_BUILD_READ   = SetBit(7)
-    };
-
-    NRI_DECLARE_ENUM_CLASS_WITH_OPS(AccessBits, uint16_t)
-    {
-        UNKNOWN                      = 0,
-        VERTEX_BUFFER                = SetBit(0),
-        INDEX_BUFFER                 = SetBit(1),
-        CONSTANT_BUFFER              = SetBit(2),
-        ARGUMENT_BUFFER              = SetBit(3),
-        SHADER_RESOURCE              = SetBit(4),
-        SHADER_RESOURCE_STORAGE      = SetBit(5),
-        COLOR_ATTACHMENT             = SetBit(6),
-        DEPTH_STENCIL_WRITE          = SetBit(7),
-        DEPTH_STENCIL_READ           = SetBit(8),
-        COPY_SOURCE                  = SetBit(9),
-        COPY_DESTINATION             = SetBit(10),
-        ACCELERATION_STRUCTURE_READ  = SetBit(11),
-        ACCELERATION_STRUCTURE_WRITE = SetBit(12)
-    };
-
-    enum class TextureLayout : uint16_t
+    enum class TextureLayout : uint8_t
     {
         GENERAL,
         COLOR_ATTACHMENT,
@@ -230,7 +190,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class ShaderStage : uint16_t
+    enum class ShaderStage : uint8_t
     {
         ALL,
         VERTEX,
@@ -251,28 +211,7 @@ namespace nri
         MAX_NUM
     };
 
-    NRI_DECLARE_ENUM_CLASS_WITH_OPS(PipelineLayoutShaderStageBits, uint16_t)
-    {
-        NONE                  = 0,
-        VERTEX                = SetBit(1),
-        TESS_CONTROL          = SetBit(2),
-        TESS_EVALUATION       = SetBit(3),
-        GEOMETRY              = SetBit(4),
-        FRAGMENT              = SetBit(5),
-        COMPUTE               = SetBit(6),
-        RAYGEN                = SetBit(7),
-        MISS                  = SetBit(8),
-        INTERSECTION          = SetBit(9),
-        CLOSEST_HIT           = SetBit(10),
-        ANY_HIT               = SetBit(11),
-        CALLABLE              = SetBit(12),
-        MESH_CONTROL          = SetBit(13),
-        MESH_EVALUATION       = SetBit(14),
-        ALL_GRAPHICS          = VERTEX | TESS_CONTROL | TESS_EVALUATION | GEOMETRY | FRAGMENT | MESH_CONTROL | MESH_EVALUATION,
-        ALL_RAY_TRACING       = RAYGEN | MISS | INTERSECTION | CLOSEST_HIT | ANY_HIT | CALLABLE
-    };
-
-    enum class BarrierDependency
+    enum class BarrierDependency : uint8_t
     {
         ALL_STAGES,
         GRAPHICS_STAGE,
@@ -281,15 +220,6 @@ namespace nri
         RAYTRACING_STAGE,
 
         MAX_NUM
-    };
-
-    NRI_DECLARE_ENUM_CLASS_WITH_OPS(ColorWriteBits, uint8_t)
-    {
-        R    = SetBit(0),
-        G    = SetBit(1),
-        B    = SetBit(2),
-        A    = SetBit(3),
-        RGBA = R | G | B | A
     };
 
     enum class Topology : uint8_t
@@ -308,7 +238,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class FillMode
+    enum class FillMode : uint8_t
     {
         SOLID,
         WIREFRAME,
@@ -316,7 +246,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class CullMode
+    enum class CullMode : uint8_t
     {
         NONE,
         FRONT,
@@ -325,7 +255,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class LogicFunc
+    enum class LogicFunc : uint8_t
     {
         NONE,
         CLEAR,
@@ -347,7 +277,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class CompareFunc : uint16_t
+    enum class CompareFunc : uint8_t
     {
         NONE,
         ALWAYS,
@@ -362,7 +292,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class StencilFunc : uint16_t
+    enum class StencilFunc : uint8_t
     {
         KEEP,
         ZERO,
@@ -376,7 +306,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class BlendFactor
+    enum class BlendFactor : uint8_t
     {
         ZERO,
         ONE,
@@ -401,7 +331,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class BlendFunc
+    enum class BlendFunc : uint8_t
     {
         ADD,
         SUBTRACT,
@@ -412,7 +342,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class IndexType
+    enum class IndexType : uint8_t
     {
         UINT16,
         UINT32,
@@ -420,7 +350,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class QueryType
+    enum class QueryType : uint8_t
     {
         TIMESTAMP,
         OCCLUSION,
@@ -428,27 +358,6 @@ namespace nri
         ACCELERATION_STRUCTURE_COMPACTED_SIZE,
 
         MAX_NUM
-    };
-
-    NRI_DECLARE_ENUM_CLASS_WITH_OPS(PipelineStatsBits, uint32_t)
-    {
-        INPUT_ASSEMBLY_VERTICES                = SetBit(0),
-        INPUT_ASSEMBLY_PRIMITIVES              = SetBit(1),
-        VERTEX_SHADER_INVOCATIONS              = SetBit(2),
-        GEOMETRY_SHADER_INVOCATIONS            = SetBit(3),
-        GEOMETRY_SHADER_PRIMITIVES             = SetBit(4),
-        CLIPPING_INVOCATIONS                   = SetBit(5),
-        CLIPPING_PRIMITIVES                    = SetBit(6),
-        FRAGMENT_SHADER_INVOCATIONS            = SetBit(7),
-        TESS_CONTROL_SHADER_PATCHES            = SetBit(8),
-        TESS_EVALUATION_SHADER_INVOCATIONS     = SetBit(9),
-        COMPUTE_SHADER_INVOCATIONS             = SetBit(10)
-    };
-
-    NRI_DECLARE_ENUM_CLASS_WITH_OPS(ResourceViewBits, uint32_t)
-    {
-        READONLY_DEPTH                          = SetBit(0),
-        READONLY_STENCIL                        = SetBit(1)
     };
 
     enum class Filter : uint8_t
@@ -468,7 +377,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class AddressMode : uint16_t
+    enum class AddressMode : uint8_t
     {
         REPEAT,
         MIRRORED_REPEAT,
@@ -478,7 +387,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class BorderColor : uint16_t
+    enum class BorderColor : uint8_t
     {
         FLOAT_TRANSPARENT_BLACK,
         FLOAT_OPAQUE_BLACK,
@@ -490,7 +399,7 @@ namespace nri
         MAX_NUM
     };
 
-    enum class Format : uint16_t
+    enum class Format : uint8_t
     {
         UNKNOWN,
 
@@ -584,7 +493,7 @@ namespace nri
 
     typedef uint32_t MemoryType;
 
-    enum class AttachmentContentType
+    enum class AttachmentContentType : uint8_t
     {
         COLOR,
         DEPTH,
@@ -611,16 +520,107 @@ namespace nri
         MAX_NUM
     };
 
-    NRI_DECLARE_ENUM_CLASS_WITH_OPS(FormatSupportBits, uint16_t)
+    NRI_DECLARE_ENUM_CLASS_WITH_OPS(TextureUsageBits, uint16_t)
     {
-        UNSUPPORTED                  = 0,
-        TEXTURE                      = SetBit(0),
-        STORAGE_TEXTURE              = SetBit(1),
-        BUFFER                       = SetBit(2),
-        STORAGE_BUFFER               = SetBit(3),
-        COLOR_ATTACHMENT             = SetBit(4),
-        DEPTH_STENCIL_ATTACHMENT     = SetBit(5),
-        VERTEX_BUFFER                = SetBit(6)
+        NONE                                = 0,
+        SHADER_RESOURCE                     = SetBit(0),
+        SHADER_RESOURCE_STORAGE             = SetBit(1),
+        COLOR_ATTACHMENT                    = SetBit(2),
+        DEPTH_STENCIL_ATTACHMENT            = SetBit(3)
+    };
+
+    NRI_DECLARE_ENUM_CLASS_WITH_OPS(BufferUsageBits, uint16_t)
+    {
+        NONE                                = 0,
+        SHADER_RESOURCE                     = SetBit(0),
+        SHADER_RESOURCE_STORAGE             = SetBit(1),
+        VERTEX_BUFFER                       = SetBit(2),
+        INDEX_BUFFER                        = SetBit(3),
+        CONSTANT_BUFFER                     = SetBit(4),
+        ARGUMENT_BUFFER                     = SetBit(5),
+        RAY_TRACING_BUFFER                  = SetBit(6),
+        ACCELERATION_STRUCTURE_BUILD_READ   = SetBit(7)
+    };
+
+    NRI_DECLARE_ENUM_CLASS_WITH_OPS(AccessBits, uint16_t)
+    {
+        UNKNOWN                             = 0,
+        VERTEX_BUFFER                       = SetBit(0),
+        INDEX_BUFFER                        = SetBit(1),
+        CONSTANT_BUFFER                     = SetBit(2),
+        ARGUMENT_BUFFER                     = SetBit(3),
+        SHADER_RESOURCE                     = SetBit(4),
+        SHADER_RESOURCE_STORAGE             = SetBit(5),
+        COLOR_ATTACHMENT                    = SetBit(6),
+        DEPTH_STENCIL_WRITE                 = SetBit(7),
+        DEPTH_STENCIL_READ                  = SetBit(8),
+        COPY_SOURCE                         = SetBit(9),
+        COPY_DESTINATION                    = SetBit(10),
+        ACCELERATION_STRUCTURE_READ         = SetBit(11),
+        ACCELERATION_STRUCTURE_WRITE        = SetBit(12)
+    };
+
+    NRI_DECLARE_ENUM_CLASS_WITH_OPS(PipelineLayoutShaderStageBits, uint16_t)
+    {
+        NONE                                = 0,
+        VERTEX                              = SetBit(1),
+        TESS_CONTROL                        = SetBit(2),
+        TESS_EVALUATION                     = SetBit(3),
+        GEOMETRY                            = SetBit(4),
+        FRAGMENT                            = SetBit(5),
+        COMPUTE                             = SetBit(6),
+        RAYGEN                              = SetBit(7),
+        MISS                                = SetBit(8),
+        INTERSECTION                        = SetBit(9),
+        CLOSEST_HIT                         = SetBit(10),
+        ANY_HIT                             = SetBit(11),
+        CALLABLE                            = SetBit(12),
+        MESH_CONTROL                        = SetBit(13),
+        MESH_EVALUATION                     = SetBit(14),
+        ALL_GRAPHICS                        = VERTEX | TESS_CONTROL | TESS_EVALUATION | GEOMETRY | FRAGMENT | MESH_CONTROL | MESH_EVALUATION,
+        ALL_RAY_TRACING                     = RAYGEN | MISS | INTERSECTION | CLOSEST_HIT | ANY_HIT | CALLABLE
+    };
+
+    NRI_DECLARE_ENUM_CLASS_WITH_OPS(PipelineStatsBits, uint16_t)
+    {
+        INPUT_ASSEMBLY_VERTICES             = SetBit(0),
+        INPUT_ASSEMBLY_PRIMITIVES           = SetBit(1),
+        VERTEX_SHADER_INVOCATIONS           = SetBit(2),
+        GEOMETRY_SHADER_INVOCATIONS         = SetBit(3),
+        GEOMETRY_SHADER_PRIMITIVES          = SetBit(4),
+        CLIPPING_INVOCATIONS                = SetBit(5),
+        CLIPPING_PRIMITIVES                 = SetBit(6),
+        FRAGMENT_SHADER_INVOCATIONS         = SetBit(7),
+        TESS_CONTROL_SHADER_PATCHES         = SetBit(8),
+        TESS_EVALUATION_SHADER_INVOCATIONS  = SetBit(9),
+        COMPUTE_SHADER_INVOCATIONS          = SetBit(10)
+    };
+
+    NRI_DECLARE_ENUM_CLASS_WITH_OPS(ColorWriteBits, uint8_t)
+    {
+        R                                   = SetBit(0),
+        G                                   = SetBit(1),
+        B                                   = SetBit(2),
+        A                                   = SetBit(3),
+        RGBA                                = R | G | B | A
+    };
+
+    NRI_DECLARE_ENUM_CLASS_WITH_OPS(ResourceViewBits, uint8_t)
+    {
+        READONLY_DEPTH                      = SetBit(0),
+        READONLY_STENCIL                    = SetBit(1)
+    };
+
+    NRI_DECLARE_ENUM_CLASS_WITH_OPS(FormatSupportBits, uint8_t)
+    {
+        UNSUPPORTED                         = 0,
+        TEXTURE                             = SetBit(0),
+        STORAGE_TEXTURE                     = SetBit(1),
+        BUFFER                              = SetBit(2),
+        STORAGE_BUFFER                      = SetBit(3),
+        COLOR_ATTACHMENT                    = SetBit(4),
+        DEPTH_STENCIL_ATTACHMENT            = SetBit(5),
+        VERTEX_BUFFER                       = SetBit(6)
     };
 
     struct Rect

@@ -723,7 +723,7 @@ namespace nri
         textureDesc = {};
         textureDesc.type = TEXTURE_TYPE_TABLE[desc.Dimension];
 
-        textureDesc.usageMask = (TextureUsageBits)0xffff;
+        textureDesc.usageMask = TextureUsageBits(-1);
         static_assert(sizeof(TextureUsageBits) == sizeof(uint16_t), "invalid sizeof");
 
         textureDesc.format = DXGIFormatToNRIFormat(desc.Format);
@@ -742,7 +742,7 @@ namespace nri
 
         bufferDesc = {};
 
-        bufferDesc.usageMask = (BufferUsageBits)0xffff;
+        bufferDesc.usageMask = BufferUsageBits(-1);
         static_assert(sizeof(BufferUsageBits) == sizeof(uint16_t), "invalid sizeof");
 
         bufferDesc.size = desc.Width;
