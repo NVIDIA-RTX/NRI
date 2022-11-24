@@ -15,7 +15,7 @@ namespace nri
     struct SwapChain;
     struct Display;
 
-    enum class SwapChainFormat : uint16_t
+    enum class SwapChainFormat : uint8_t
     {
         // BT.709 - LDR, https://en.wikipedia.org/wiki/Rec._709
         // BT.2020 - HDR, https://en.wikipedia.org/wiki/Rec._2020
@@ -28,6 +28,7 @@ namespace nri
         BT709_G22_8BIT,
         BT709_G22_10BIT,
         BT2020_G2084_10BIT,
+
         MAX_NUM
     };
 
@@ -37,6 +38,7 @@ namespace nri
         X11,
         WAYLAND,
         METAL,
+
         MAX_NUM
     };
 

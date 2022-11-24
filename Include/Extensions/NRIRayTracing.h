@@ -14,24 +14,27 @@ namespace nri
 {
     struct AccelerationStructure;
 
-    enum class GeometryType
+    enum class GeometryType : uint8_t
     {
         TRIANGLES,
         AABBS,
+
         MAX_NUM
     };
 
-    enum class AccelerationStructureType
+    enum class AccelerationStructureType : uint8_t
     {
         TOP_LEVEL,
         BOTTOM_LEVEL,
+
         MAX_NUM
     };
 
-    enum class CopyMode
+    enum class CopyMode : uint8_t
     {
-        CLONE = 0,
-        COMPACT = 1,
+        CLONE,
+        COMPACT,
+
         MAX_NUM
     };
 

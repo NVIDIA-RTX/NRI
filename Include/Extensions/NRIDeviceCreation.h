@@ -12,7 +12,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    enum class Message
+    enum class Message : uint8_t
     {
         TYPE_INFO,
         TYPE_WARNING,
@@ -21,7 +21,7 @@ namespace nri
         MAX_NUM,
     };
 
-    enum class PhysicalDeviceType
+    enum class PhysicalDeviceType : uint8_t
     {
         UNKNOWN,
         INTEGRATED,
