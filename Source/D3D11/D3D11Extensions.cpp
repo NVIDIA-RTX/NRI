@@ -2,8 +2,6 @@
 #include "SharedD3D11.h"
 #include "D3D11Extensions.h"
 
-#include "NVAPI/nvapi.h"
-
 D3D11Extensions::~D3D11Extensions()
 {
     if (m_IsNvAPIAvailable)
@@ -80,7 +78,7 @@ bool D3D11Extensions::LoadAGS()
     m_AGS.MultiDrawIndexedInstancedIndirect = (PFN_agsDriverExtensionsDX11_MultiDrawIndexedInstancedIndirect)GetProcAddress(m_AGSLibrary, "agsDriverExtensionsDX11_MultiDrawIndexedInstancedIndirect");
     m_AGS.SetDepthBounds = (PFN_agsDriverExtensionsDX11_SetDepthBounds)GetProcAddress(m_AGSLibrary, "agsDriverExtensionsDX11_SetDepthBounds");
     m_AGS.MultiDrawInstancedIndirect = (PFN_agsDriverExtensionsDX11_MultiDrawInstancedIndirect)GetProcAddress(m_AGSLibrary, "agsDriverExtensionsDX11_MultiDrawInstancedIndirect");
-    
+
     const void** functionArray = (const void**)&m_AGS;
     const size_t functionArraySize = sizeof(AGSFunctionTable) / sizeof(void*);
     size_t i = 0;

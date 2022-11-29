@@ -10,10 +10,11 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #pragma once
 
-namespace nri
+NRI_NAMESPACE_BEGIN
+
+NRI_STRUCT(MeshShaderInterface)
 {
-    struct MeshShaderInterface
-    {
-        void (NRI_CALL *CmdDispatchMeshTasks)(CommandBuffer& commandBuffer, uint32_t taskNum);
-    };
-}
+    void (NRI_CALL *CmdDispatchMeshTasks)(NRI_REF_NAME(CommandBuffer) commandBuffer, uint32_t taskNum);
+};
+
+NRI_NAMESPACE_END

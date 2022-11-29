@@ -11,9 +11,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "SharedExternal.h"
 #include "SharedD3D11.h"
 
-#include "NVAPI/nvapi.h"
-#include "AGS/inc/amd_ags.h"
-
 constexpr std::array<FormatInfo, (size_t)nri::Format::MAX_NUM> FORMAT_INFO_TABLE =
 {{
     {DXGI_FORMAT_UNKNOWN,                       DXGI_FORMAT_UNKNOWN,                         0,                     false}, // UNKNOWN,

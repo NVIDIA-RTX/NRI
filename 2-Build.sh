@@ -4,7 +4,7 @@ mkdir -p "_Compiler"
 
 cd "_Compiler"
 rm CMakeCache.txt
-cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake .. -A x64
 cmake --build . --config Release
 cd ..
 
@@ -14,7 +14,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]
 then
     cd "_Compiler"
     rm CMakeCache.txt
-    cmake -DCMAKE_BUILD_TYPE=Debug ..
+    cmake .. -A x64
     cmake --build . --config Debug
     cd ..
 fi

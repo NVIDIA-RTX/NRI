@@ -10,85 +10,94 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #pragma once
 
-namespace nri
+NRI_NAMESPACE_BEGIN
+
+NRI_ENUM
+(
+    Message, MESSAGE, uint8_t,
+
+    TYPE_INFO,
+    TYPE_WARNING,
+    TYPE_ERROR,
+
+    MAX_NUM,
+);
+
+NRI_ENUM
+(
+    PhysicalDeviceType, PHYSICAL_DEVICE_TYPE, uint8_t,
+
+    UNKNOWN,
+    INTEGRATED,
+    DISCRETE,
+
+    MAX_NUM
+);
+
+NRI_STRUCT(MemoryAllocatorInterface)
 {
-    enum class Message : uint8_t
-    {
-        TYPE_INFO,
-        TYPE_WARNING,
-        TYPE_ERROR,
+    void* (*Allocate)(void* userArg, size_t size, size_t alignment);
+    void* (*Reallocate)(void* userArg, void* memory, size_t size, size_t alignment);
+    void (*Free)(void* userArg, void* memory);
+    void* userArg;
+};
 
-        MAX_NUM,
-    };
+NRI_STRUCT(CallbackInterface)
+{
+    void (*MessageCallback)(void* userArg, const char* message, NRI_NAME(Message) messageType);
+    void (*AbortExecution)(void* userArg);
+    void* userArg;
+};
 
-    enum class PhysicalDeviceType : uint8_t
-    {
-        UNKNOWN,
-        INTEGRATED,
-        DISCRETE,
+NRI_STRUCT(DisplayDesc)
+{
+    int32_t originLeft;
+    int32_t originTop;
+    uint32_t width;
+    uint32_t height;
+};
 
-        MAX_NUM
-    };
+NRI_STRUCT(PhysicalDeviceGroup)
+{
+    char description[128];
+    uint64_t luid;
+    uint64_t dedicatedVideoMemoryMB;
+    NRI_NAME(PhysicalDeviceType) type;
+    NRI_NAME(Vendor) vendor;
+    uint32_t deviceID;
+    uint32_t physicalDeviceGroupSize;
+};
 
-    struct MemoryAllocatorInterface
-    {
-        void* (*Allocate)(void* userArg, size_t size, size_t alignment);
-        void* (*Reallocate)(void* userArg, void* memory, size_t size, size_t alignment);
-        void (*Free)(void* userArg, void* memory);
-        void* userArg;
-    };
+NRI_STRUCT(VulkanExtensions)
+{
+    const char* const* instanceExtensions;
+    uint32_t instanceExtensionNum;
+    const char* const* deviceExtensions;
+    uint32_t deviceExtensionNum;
+};
 
-    struct CallbackInterface
-    {
-        void (*MessageCallback)(void* userArg, const char* message, Message messageType);
-        void (*AbortExecution)(void* userArg);
-        void* userArg;
-    };
+NRI_STRUCT(DeviceCreationDesc)
+{
+    const NRI_NAME(PhysicalDeviceGroup)* physicalDeviceGroup;
+    NRI_NAME(CallbackInterface) callbackInterface;
+    NRI_NAME(MemoryAllocatorInterface) memoryAllocatorInterface;
+    NRI_NAME(GraphicsAPI) graphicsAPI;
+    NRI_NAME(SPIRVBindingOffsets) spirvBindingOffsets;
+    NRI_NAME(VulkanExtensions) vulkanExtensions;
+    bool enableNRIValidation : 1;
+    bool enableAPIValidation : 1;
+    bool enableMGPU : 1;
+    bool D3D11CommandBufferEmulation : 1;
+};
 
-    struct DisplayDesc
-    {
-        int32_t originLeft;
-        int32_t originTop;
-        uint32_t width;
-        uint32_t height;
-    };
-
-    struct PhysicalDeviceGroup
-    {
-        char description[128];
-        uint64_t luid;
-        uint64_t dedicatedVideoMemoryMB;
-        PhysicalDeviceType type;
-        Vendor vendor;
-        uint32_t deviceID;
-        uint32_t physicalDeviceGroupSize;
-        const DisplayDesc* displays;
-        uint32_t displayNum;
-    };
-
-    struct VulkanExtensions
-    {
-        const char* const* instanceExtensions;
-        uint32_t instanceExtensionNum;
-        const char* const* deviceExtensions;
-        uint32_t deviceExtensionNum;
-    };
-
-    struct DeviceCreationDesc
-    {
-        const PhysicalDeviceGroup* physicalDeviceGroup;
-        CallbackInterface callbackInterface;
-        MemoryAllocatorInterface memoryAllocatorInterface;
-        GraphicsAPI graphicsAPI;
-        SPIRVBindingOffsets spirvBindingOffsets;
-        VulkanExtensions vulkanExtensions;
-        bool enableNRIValidation : 1;
-        bool enableAPIValidation : 1;
-        bool enableMGPU : 1;
-        bool D3D11CommandBufferEmulation : 1;
-    };
-
+#if defined(NRI_CPP)
     NRI_API Result NRI_CALL GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroups, uint32_t& physicalDeviceGroupNum);
     NRI_API Result NRI_CALL CreateDevice(const DeviceCreationDesc& deviceCreationDesc, Device*& device);
     NRI_API void NRI_CALL DestroyDevice(Device& device);
-}
+#endif
+
+NRI_NAMESPACE_END
+
+NRIC_API uint8_t NRI_CALL nri_GetPhysicalDevices(void* physicalDeviceGroups, uint32_t* physicalDeviceGroupNum);
+NRIC_API uint8_t NRI_CALL nri_CreateDevice(const void* deviceCreationDesc, void** device);
+NRIC_API void NRI_CALL nri_DestroyDevice(void* device);

@@ -15,8 +15,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "DescriptorD3D11.h"
 #include "DescriptorSetD3D11.h"
 
-#include "NVAPI/nvapi.h"
-
 using namespace nri;
 
 #define SET_CONSTANT_BUFFERS1(xy, stage) \

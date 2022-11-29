@@ -182,6 +182,7 @@ NRI_API Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDev
     {
         vkDestroyInstance(instance, nullptr);
         UnloadSharedLibrary(*loader);
+
         return Result::UNSUPPORTED;
     }
 
@@ -192,19 +193,19 @@ NRI_API Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDev
             if (!IsValidDeviceGroup(deviceGroupProperties[i], vkGetPhysicalDeviceProperties))
                 deviceGroupNum--;
         }
+        
         physicalDeviceGroupNum = deviceGroupNum;
         vkDestroyInstance(instance, nullptr);
         UnloadSharedLibrary(*loader);
+
         return Result::SUCCESS;
     }
 
     VkPhysicalDeviceIDProperties deviceIDProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES };
-
     VkPhysicalDeviceProperties2 properties2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
     properties2.pNext = &deviceIDProperties;
 
     VkPhysicalDeviceMemoryProperties memoryProperties = {};
-
     VkPhysicalDeviceProperties& properties = properties2.properties;
 
     for (uint32_t i = 0, j = 0; i < deviceGroupNum && j < physicalDeviceGroupNum; i++)
@@ -221,21 +222,24 @@ NRI_API Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDev
         {
             vkDestroyInstance(instance, nullptr);
             UnloadSharedLibrary(*loader);
+
             return Result::UNSUPPORTED;
         }
 #endif
 
         PhysicalDeviceGroup& group = physicalDeviceGroups[j++];
 
+        group = {};
+
+        const size_t descriptionLength = (size_t)GetCountOf(group.description) - 1;
+        strncpy(group.description, properties.deviceName, descriptionLength);
+        group.description[descriptionLength] = '\0';
+
         group.type = GetPhysicalDeviceType(properties.deviceType);
         group.vendor = GetVendorFromID(properties.vendorID);
         group.deviceID = properties.deviceID;
         group.luid = *(uint64_t*)&deviceIDProperties.deviceLUID[0];
         group.physicalDeviceGroupSize = deviceGroupProperties[i].physicalDeviceCount;
-
-        const size_t descriptionLength = (size_t)GetCountOf(group.description) - 1;
-        strncpy(group.description, properties.deviceName, descriptionLength);
-        group.description[descriptionLength] = '\0';
 
         group.dedicatedVideoMemoryMB = 0;
         for (uint32_t k = 0; k < memoryProperties.memoryHeapCount; k++)
@@ -247,6 +251,7 @@ NRI_API Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDev
 
     vkDestroyInstance(instance, nullptr);
     UnloadSharedLibrary(*loader);
+
     return Result::SUCCESS;
 }
 
@@ -265,9 +270,7 @@ Result FinalizeDeviceCreation(const T& deviceCreationDesc, DeviceBase& deviceImp
         device = deviceVal;
     }
     else
-    {
         device = (Device*)&deviceImpl;
-    }
 
     return Result::SUCCESS;
 }
@@ -430,4 +433,82 @@ NRI_API uint32_t NRI_CALL nri::ConvertNRIFormatToDXGI(Format format)
     #else
         return 0;
     #endif
+}
+
+// C compatible exported functions
+
+static_assert(sizeof(uint8_t) == sizeof(nri::Result));
+static_assert(sizeof(uint8_t) == sizeof(nri::Format));
+
+NRIC_API uint8_t NRI_CALL nri_GetInterface(const void* device, const char* interfaceName, size_t interfaceSize, void* interfacePtr)
+{
+    const uint64_t hash = Hash(interfaceName);
+    if (hash == Hash(NRI_STRINGIFY(nri_CoreInterface)))
+        return (uint8_t)nri::GetInterface(*(const nri::Device*)device, NRI_STRINGIFY(nri::CoreInterface), interfaceSize, interfacePtr);
+    else if (hash == Hash(NRI_STRINGIFY(nri_SwapChainInterface)))
+        return (uint8_t)nri::GetInterface(*(const nri::Device*)device, NRI_STRINGIFY(nri::SwapChainInterface), interfaceSize, interfacePtr);
+    else if (hash == Hash(NRI_STRINGIFY(nri_WrapperD3D11Interface)))
+        return (uint8_t)nri::GetInterface(*(const nri::Device*)device, NRI_STRINGIFY(nri::WrapperD3D11Interface), interfaceSize, interfacePtr);
+    else if (hash == Hash(NRI_STRINGIFY(nri_WrapperD3D12Interface)))
+        return (uint8_t)nri::GetInterface(*(const nri::Device*)device, NRI_STRINGIFY(nri::WrapperD3D12Interface), interfaceSize, interfacePtr);
+    else if (hash == Hash(NRI_STRINGIFY(nri_WrapperVKInterface)))
+        return (uint8_t)nri::GetInterface(*(const nri::Device*)device, NRI_STRINGIFY(nri::WrapperVKInterface), interfaceSize, interfacePtr);
+    else if (hash == Hash(NRI_STRINGIFY(nri_RayTracingInterface)))
+        return (uint8_t)nri::GetInterface(*(const nri::Device*)device, NRI_STRINGIFY(nri::RayTracingInterface), interfaceSize, interfacePtr);
+    else if (hash == Hash(NRI_STRINGIFY(nri_MeshShaderInterface)))
+        return (uint8_t)nri::GetInterface(*(const nri::Device*)device, NRI_STRINGIFY(nri::MeshShaderInterface), interfaceSize, interfacePtr);
+    else if (hash == Hash(NRI_STRINGIFY(nri_HelperInterface)))
+        return (uint8_t)nri::GetInterface(*(const nri::Device*)device, NRI_STRINGIFY(nri::HelperInterface), interfaceSize, interfacePtr);
+
+    return (uint8_t)nri::GetInterface(*(const nri::Device*)device, interfaceName, interfaceSize, interfacePtr);
+}
+
+NRIC_API uint8_t NRI_CALL nri_GetPhysicalDevices(void* physicalDeviceGroups, uint32_t* physicalDeviceGroupNum)
+{
+    return (uint8_t)nri::GetPhysicalDevices((nri::PhysicalDeviceGroup*)physicalDeviceGroups, *physicalDeviceGroupNum);
+}
+
+NRIC_API uint8_t NRI_CALL nri_CreateDevice(const void* deviceCreationDesc, void** device)
+{
+    return (uint8_t)nri::CreateDevice(*(const nri::DeviceCreationDesc*)deviceCreationDesc, *(nri::Device**)device);
+}
+
+NRIC_API void NRI_CALL nri_DestroyDevice(void* device)
+{
+    return nri::DestroyDevice(*(nri::Device*)device);
+}
+
+NRIC_API uint8_t NRI_CALL nri_CreateDeviceFromD3D11Device(const void* deviceDesc, void** device)
+{
+    return (uint8_t)nri::CreateDeviceFromD3D11Device(*(const nri::DeviceCreationD3D11Desc*)deviceDesc, *(nri::Device**)device);
+}
+
+NRIC_API uint8_t NRI_CALL nri_ConvertDXGIFormatToNRI(uint32_t dxgiFormat)
+{
+    return (uint8_t)nri::ConvertDXGIFormatToNRI(dxgiFormat);
+}
+
+NRIC_API uint32_t NRI_CALL nri_ConvertNRIFormatToDXGI(uint8_t format)
+{
+    return nri::ConvertNRIFormatToDXGI((Format)format);
+}
+
+NRIC_API uint8_t NRI_CALL nri_CreateDeviceFromD3D12Device(const void* deviceDesc, void** device)
+{
+    return (uint8_t)nri::CreateDeviceFromD3D12Device(*(const nri::DeviceCreationD3D12Desc*)deviceDesc, *(nri::Device**)device);
+}
+
+NRIC_API uint8_t NRI_CALL nri_CreateDeviceFromVkDevice(const void* deviceDesc, void** device)
+{
+    return (uint8_t)nri::CreateDeviceFromVkDevice(*(const nri::DeviceCreationVulkanDesc*)deviceDesc, *(nri::Device**)device);
+}
+
+NRIC_API uint8_t NRI_CALL nri_ConvertVKFormatToNRI(uint32_t vkFormat)
+{
+    return (uint8_t)nri::ConvertVKFormatToNRI(vkFormat);
+}
+
+NRIC_API uint32_t NRI_CALL nri_ConvertNRIFormatToVK(uint8_t format)
+{
+    return nri::ConvertNRIFormatToVK((Format)format);
 }

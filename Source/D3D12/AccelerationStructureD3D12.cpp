@@ -34,8 +34,10 @@ Result AccelerationStructureD3D12::Create(const AccelerationStructureD3D12Desc& 
 {
     m_PrebuildInfo.ScratchDataSizeInBytes = accelerationStructureDesc.scratchDataSizeInBytes;
     m_PrebuildInfo.UpdateScratchDataSizeInBytes = accelerationStructureDesc.updateScratchDataSizeInBytes;
+
     BufferD3D12Desc bufferDesc = {};
     bufferDesc.d3d12Resource = (ID3D12Resource*)accelerationStructureDesc.d3d12Resource;
+
     return m_Device.CreateBuffer(bufferDesc, (Buffer*&)m_Buffer);
 }
 

@@ -548,7 +548,7 @@ inline Result DeviceD3D12::CreateCommandBuffer(const CommandBufferD3D12Desc& com
     return CreateImplementation<CommandBufferD3D12>(commandBuffer, commandBufferDesc);
 }
 
-inline Result DeviceD3D12::CreateBuffer(const BufferD3D12Desc& bufferDesc, Buffer*& buffer)
+Result DeviceD3D12::CreateBuffer(const BufferD3D12Desc& bufferDesc, Buffer*& buffer) // TODO: not inline because used in AccelerationStructure
 {
     return CreateImplementation<BufferD3D12>(buffer, bufferDesc);
 }

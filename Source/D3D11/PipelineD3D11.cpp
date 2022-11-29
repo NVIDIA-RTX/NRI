@@ -15,8 +15,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "DescriptorD3D11.h"
 #include "DescriptorSetD3D11.h"
 
-#include "NVAPI/nvapi.h"
-
 using namespace nri;
 
 PipelineD3D11::PipelineD3D11(DeviceD3D11& device, const VersionedDevice* versionedDevice) :

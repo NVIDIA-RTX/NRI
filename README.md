@@ -1,12 +1,13 @@
-# NVIDIA Render Interface v1.89 (NRI)
+# NVIDIA Render Interface v1.90 (NRI)
 
-*NRI* is a low-level abstract render interface which currently supports three backends: D3D11, D3D12 and Vulkan. *NRI* has been designed to support all (at least major) low level features of D3D12 and Vulkan APIs, but at the same time to simplify usage and reduce the amount of code needed (especially compared with Vulkan).
+*NRI* is a low-level abstract render interface which currently supports three backends: D3D11, D3D12 and Vulkan. *NRI* has been designed to support all (at least major) low level features of D3D12 and Vulkan APIs, but at the same time to simplify usage and reduce the amount of code needed (especially compared with Vulkan). *NRI* is written in *C++*, but supports both *C++* and *C* interfaces.
 
  Key features:
+ - *C++* and *C* compatible interfaces
  - common denominator for D3D11, D3D12 and Vulkan APIs
  - low overhead
  - ray tracing support
- - API-provided and/or own validation layer
+ - API-provided and/or integrated validation layer
  - default D3D11 behavior is changed to match D3D12/VK where applicable using *NVAPI* or *AMD AGS* libraries
 
  *NRI* is used in:
@@ -29,9 +30,23 @@
 
 Note: *Xlib* and *Wayland* can be both enabled.
 
-### CMake options
+## CMake options
 
-- `NRI_DISABLE_INTERPROCEDURAL_OPTIMIZATION=ON` - disable interprocedural optimization
 - `NRI_DISABLE_XLIB_SUPPORT=ON` - disable *Xlib* support
 - `NRI_DISABLE_WAYLAND_SUPPORT=ON` - disable *Wayland* support
 - `NRI_STATIC_LIBRARY=ON` - build NRI as a static library
+
+## Samples overview
+
+In order of complexity:
+- DeviceInfo - queries and prints out information about device groups in the system
+- Clear - minimal example of rendering using framebuffer clears only
+- Triangle - simple textured triangle rendering
+- SceneViewer - loading & rendering of meshes with materials
+- Readback - getting data from the GPU back to the CPU
+- AsyncCompute - demonstrates parallel execution of graphic and compute workloads
+- MultiThreading - shows advantages of multi-threaded command buffer recording
+- MultiGPU - multi GPU example
+- RayTracingTriangle - simple triangle rendeing through ray tracing
+- RayTracingBoxes - a more advanced ray tracing example with many BLASes in TLAS
+- Wrapper - shows how to wrap native D3D11/D3D12/VK objects into NRI entities

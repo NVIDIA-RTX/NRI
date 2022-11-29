@@ -31,8 +31,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include <dxgidebug.h>
 #include <d3d12.h>
 
-#include "NVAPI/nvapi.h"
-
 using namespace nri;
 
 DeviceD3D11::DeviceD3D11(const Log& log, StdAllocator<uint8_t>& stdAllocator) :

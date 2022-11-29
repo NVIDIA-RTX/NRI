@@ -1,5 +1,8 @@
 #pragma once
 
+#include "AGS/inc/amd_ags.h"
+#include "NVAPI/nvapi.h"
+
 typedef AGSReturnCode (*PFN_agsInit)(AGSContext** context, const AGSConfiguration* config, AGSGPUInfo* gpuInfo);
 typedef AGSReturnCode (*PFN_agsDeInit)(AGSContext* context);
 typedef AGSReturnCode (*PFN_agsDriverExtensionsDX11_CreateDevice)(AGSContext* context, const AGSDX11DeviceCreationParams* creationParams, const AGSDX11ExtensionParams* extensionParams, AGSDX11ReturnedParams* returnedParams);

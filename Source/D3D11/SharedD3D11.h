@@ -304,6 +304,5 @@ struct SamplePositionsState
     }
 };
 
-#include "AGS/inc/amd_ags.h"
 #include "D3D11Extensions.h"
 #include "DeviceD3D11.h"

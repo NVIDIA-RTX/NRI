@@ -10,105 +10,110 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #pragma once
 
-namespace nri
+NRI_NAMESPACE_BEGIN
+
+NRI_FORWARD_STRUCT(SwapChain);
+NRI_FORWARD_STRUCT(Display);
+
+NRI_ENUM
+(
+    SwapChainFormat, SWAP_CHAIN_FORMAT, uint8_t,
+
+    /* BT.709 - LDR https://en.wikipedia.org/wiki/Rec._709
+       BT.2020 - HDR https://en.wikipedia.org/wiki/Rec._2020
+       G10 - linear (gamma 1.0)
+       G22 - sRGB (gamma ~2.2)
+       G2084 - SMPTE ST.2084 (Perceptual Quantization) */
+
+    BT709_G10_8BIT,
+    BT709_G10_16BIT,
+    BT709_G22_8BIT,
+    BT709_G22_10BIT,
+    BT2020_G2084_10BIT,
+
+    MAX_NUM
+);
+
+NRI_ENUM
+(
+    WindowSystemType, WINDOW_SYSTEM_TYPE, uint8_t,
+
+    WINDOWS,
+    X11,
+    WAYLAND,
+    METAL,
+
+    MAX_NUM
+);
+
+NRI_STRUCT(WindowsWindow)
 {
-    struct SwapChain;
-    struct Display;
+    void* hwnd; // HWND
+};
 
-    enum class SwapChainFormat : uint8_t
-    {
-        // BT.709 - LDR, https://en.wikipedia.org/wiki/Rec._709
-        // BT.2020 - HDR, https://en.wikipedia.org/wiki/Rec._2020
-        // G10 - linear (gamma 1.0)
-        // G22 - sRGB (gamma ~2.2)
-        // G2084 - SMPTE ST.2084 (Perceptual Quantization)
+NRI_STRUCT(X11Window)
+{
+    void* dpy; // Display*
+    uint64_t window; // Window
+};
 
-        BT709_G10_8BIT,
-        BT709_G10_16BIT,
-        BT709_G22_8BIT,
-        BT709_G22_10BIT,
-        BT2020_G2084_10BIT,
+NRI_STRUCT(WaylandWindow)
+{
+    void* display; // wl_display*
+    void* surface; // wl_surface*
+};
 
-        MAX_NUM
-    };
+NRI_STRUCT(MetalWindow)
+{
+    void* caMetalLayer;
+};
 
-    enum class WindowSystemType : uint8_t
-    {
-        WINDOWS,
-        X11,
-        WAYLAND,
-        METAL,
+NRI_UNION(Window)
+{
+    NRI_NAME(WindowsWindow) windows;
+    NRI_NAME(X11Window) x11;
+    NRI_NAME(WaylandWindow) wayland;
+    NRI_NAME(MetalWindow) metal;
+};
 
-        MAX_NUM
-    };
+// SwapChain buffers will be created as "color attachment" resources
+NRI_STRUCT(SwapChainDesc)
+{
+    NRI_NAME(WindowSystemType) windowSystemType;
+    NRI_NAME(Window) window;
+    const NRI_NAME(CommandQueue) * commandQueue;
+    uint16_t width;
+    uint16_t height;
+    uint16_t textureNum;
+    NRI_NAME(SwapChainFormat) format;
+    uint32_t verticalSyncInterval;
+    uint32_t physicalDeviceIndex;
+    NRI_NAME(Display)* display;
+};
 
-    struct WindowsWindow
-    {
-        void* hwnd; // HWND
-    };
+NRI_STRUCT(HdrMetadata)
+{
+    float displayPrimaryRed[2];
+    float displayPrimaryGreen[2];
+    float displayPrimaryBlue[2];
+    float whitePoint[2];
+    float luminanceMax;
+    float luminanceMin;
+    float contentLightLevelMax;
+    float frameAverageLightLevelMax;
+};
 
-    struct X11Window
-    {
-        void* dpy; // Display*
-        uint64_t window; // Window
-    };
+NRI_STRUCT(SwapChainInterface)
+{
+    NRI_NAME(Result) (NRI_CALL *CreateSwapChain)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(SwapChainDesc) swapChainDesc, NRI_REF_NAME(SwapChain*) swapChain);
+    void (NRI_CALL *DestroySwapChain)(NRI_REF_NAME(SwapChain) swapChain);
+    void (NRI_CALL *SetSwapChainDebugName)(NRI_REF_NAME(SwapChain) swapChain, const char* name);
+    NRI_NAME(Texture)* const* (NRI_CALL *GetSwapChainTextures)(const NRI_REF_NAME(SwapChain) swapChain, NRI_REF(uint32_t) textureNum, NRI_REF_NAME(Format) format);
+    uint32_t (NRI_CALL *AcquireNextSwapChainTexture)(NRI_REF_NAME(SwapChain) swapChain, NRI_REF_NAME(QueueSemaphore) textureReadyForRender);
+    NRI_NAME(Result) (NRI_CALL *SwapChainPresent)(NRI_REF_NAME(SwapChain) swapChain, NRI_REF_NAME(QueueSemaphore) textureReadyForPresent);
+    NRI_NAME(Result) (NRI_CALL *SetSwapChainHdrMetadata)(NRI_REF_NAME(SwapChain) swapChain, const NRI_REF_NAME(HdrMetadata) hdrMetadata);
+    NRI_NAME(Result) (NRI_CALL *GetDisplays)(NRI_REF_NAME(Device) device, NRI_NAME(Display)** displays, NRI_REF(uint32_t) displayNum);
+    NRI_NAME(Result) (NRI_CALL *GetDisplaySize)(NRI_REF_NAME(Device) device, NRI_REF_NAME(Display) display, NRI_REF(uint16_t) width, NRI_REF(uint16_t) height);
+};
 
-    struct WaylandWindow
-    {
-        void* display; // wl_display*
-        void* surface; // wl_surface*
-    };
-
-    struct MetalWindow
-    {
-        void* caMetalLayer;
-    };
-
-    union Window
-    {
-        WindowsWindow windows;
-        X11Window x11;
-        WaylandWindow wayland;
-        MetalWindow metal;
-    };
-
-    // SwapChain buffers will be created as "color attachment" resources
-    struct SwapChainDesc
-    {
-        WindowSystemType windowSystemType;
-        Window window;
-        const CommandQueue* commandQueue;
-        uint16_t width;
-        uint16_t height;
-        uint16_t textureNum;
-        SwapChainFormat format;
-        uint32_t verticalSyncInterval;
-        uint32_t physicalDeviceIndex;
-        Display* display;
-    };
-
-    struct HdrMetadata
-    {
-        float displayPrimaryRed[2];
-        float displayPrimaryGreen[2];
-        float displayPrimaryBlue[2];
-        float whitePoint[2];
-        float luminanceMax;
-        float luminanceMin;
-        float contentLightLevelMax;
-        float frameAverageLightLevelMax;
-    };
-
-    struct SwapChainInterface
-    {
-        Result (NRI_CALL *CreateSwapChain)(Device& device, const SwapChainDesc& swapChainDesc, SwapChain*& swapChain);
-        void (NRI_CALL *DestroySwapChain)(SwapChain& swapChain);
-        void (NRI_CALL *SetSwapChainDebugName)(SwapChain& swapChain, const char* name);
-        Texture* const* (NRI_CALL *GetSwapChainTextures)(const SwapChain& swapChain, uint32_t& textureNum, Format& format);
-        uint32_t (NRI_CALL *AcquireNextSwapChainTexture)(SwapChain& swapChain, QueueSemaphore& textureReadyForRender);
-        Result (NRI_CALL *SwapChainPresent)(SwapChain& swapChain, QueueSemaphore& textureReadyForPresent);
-        Result (NRI_CALL *SetSwapChainHdrMetadata)(SwapChain& swapChain, const HdrMetadata& hdrMetadata);
-        Result (NRI_CALL *GetDisplays)(Device& device, Display** displays, uint32_t& displayNum);
-        Result (NRI_CALL *GetDisplaySize)(Device& device, Display& display, uint16_t& width, uint16_t& height);
-    };
-}
+NRI_NAMESPACE_END
