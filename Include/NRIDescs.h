@@ -621,25 +621,26 @@ NRI_ENUM_BITS
     ACCELERATION_STRUCTURE_WRITE        = NRI_SET_BIT(12)
 );
 
+// Starts with 1 to unblock "1 << ShaderStage"
 NRI_ENUM_BITS
 (
     PipelineLayoutShaderStageBits, PIPELINE_LAYOUT_SHADER_STAGE_BITS, uint16_t,
 
     NONE                                = 0,
-    VERTEX                              = NRI_SET_BIT(0),
-    TESS_CONTROL                        = NRI_SET_BIT(1),
-    TESS_EVALUATION                     = NRI_SET_BIT(2),
-    GEOMETRY                            = NRI_SET_BIT(3),
-    FRAGMENT                            = NRI_SET_BIT(4),
-    COMPUTE                             = NRI_SET_BIT(5),
-    RAYGEN                              = NRI_SET_BIT(6),
-    MISS                                = NRI_SET_BIT(7),
-    INTERSECTION                        = NRI_SET_BIT(8),
-    CLOSEST_HIT                         = NRI_SET_BIT(9),
-    ANY_HIT                             = NRI_SET_BIT(10),
-    CALLABLE                            = NRI_SET_BIT(11),
-    MESH_CONTROL                        = NRI_SET_BIT(12),
-    MESH_EVALUATION                     = NRI_SET_BIT(13),
+    VERTEX                              = NRI_SET_BIT(1),
+    TESS_CONTROL                        = NRI_SET_BIT(2),
+    TESS_EVALUATION                     = NRI_SET_BIT(3),
+    GEOMETRY                            = NRI_SET_BIT(4),
+    FRAGMENT                            = NRI_SET_BIT(5),
+    COMPUTE                             = NRI_SET_BIT(6),
+    RAYGEN                              = NRI_SET_BIT(7),
+    MISS                                = NRI_SET_BIT(8),
+    INTERSECTION                        = NRI_SET_BIT(9),
+    CLOSEST_HIT                         = NRI_SET_BIT(10),
+    ANY_HIT                             = NRI_SET_BIT(11),
+    CALLABLE                            = NRI_SET_BIT(12),
+    MESH_CONTROL                        = NRI_SET_BIT(13),
+    MESH_EVALUATION                     = NRI_SET_BIT(14),
 
     ALL_GRAPHICS                        = NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, PIPELINE_LAYOUT_SHADER_STAGE_BITS, VERTEX) |
                                           NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, PIPELINE_LAYOUT_SHADER_STAGE_BITS, TESS_CONTROL) |
