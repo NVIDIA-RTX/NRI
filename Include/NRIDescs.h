@@ -929,7 +929,6 @@ NRI_STRUCT(DescriptorPoolDesc)
     uint32_t physicalDeviceMask;
     uint32_t descriptorSetMaxNum;
     uint32_t samplerMaxNum;
-    uint32_t staticSamplerMaxNum;
     uint32_t constantBufferMaxNum;
     uint32_t dynamicConstantBufferMaxNum;
     uint32_t textureMaxNum;
@@ -1008,19 +1007,10 @@ NRI_STRUCT(DynamicConstantBufferDesc)
     NRI_NAME(ShaderStage) visibility;
 };
 
-NRI_STRUCT(StaticSamplerDesc)
-{
-    NRI_NAME(SamplerDesc) samplerDesc;
-    uint32_t registerIndex;
-    NRI_NAME(ShaderStage) visibility;
-};
-
 NRI_STRUCT(DescriptorSetDesc)
 {
     const NRI_NAME(DescriptorRangeDesc)* ranges;
     uint32_t rangeNum;
-    const NRI_NAME(StaticSamplerDesc)* staticSamplers;
-    uint32_t staticSamplerNum;
     const NRI_NAME(DynamicConstantBufferDesc)* dynamicConstantBuffers;
     uint32_t dynamicConstantBufferNum;
 };

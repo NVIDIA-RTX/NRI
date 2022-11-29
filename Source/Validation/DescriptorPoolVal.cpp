@@ -155,11 +155,6 @@ Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout& pipelineL
 
         RETURN_ON_FAILURE(m_Device.GetLog(), enoughDescriptors, Result::INVALID_ARGUMENT,
             "Can't allocate DescriptorSet: the maximum number of descriptors exceeded ('DYNAMIC_CONSTANT_BUFFER').");
-
-        enoughDescriptors = m_StaticSamplerNum + descriptorSetDesc.staticSamplerNum <= m_Desc.staticSamplerMaxNum;
-
-        RETURN_ON_FAILURE(m_Device.GetLog(), enoughDescriptors, Result::INVALID_ARGUMENT,
-            "Can't allocate DescriptorSet: the maximum number of descriptors exceeded ('STATIC_SAMPLER').");
     }
 
     PipelineLayout* pipelineLayoutImpl = NRI_GET_IMPL_REF(PipelineLayout, &pipelineLayout);
@@ -176,7 +171,6 @@ Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout& pipelineL
     {
         m_DescriptorSetNum += instanceNum;
         m_DynamicConstantBufferNum += descriptorSetDesc.dynamicConstantBufferNum;
-        m_StaticSamplerNum += descriptorSetDesc.staticSamplerNum;
         for (uint32_t i = 0; i < descriptorSetDesc.rangeNum; i++)
             IncrementDescriptorNum(descriptorSetDesc.ranges[i], variableDescriptorNum);
     }
@@ -199,7 +193,6 @@ void DescriptorPoolVal::Reset()
 
     m_DescriptorSetNum = 0;
     m_SamplerNum = 0;
-    m_StaticSamplerNum = 0;
     m_ConstantBufferNum = 0;
     m_DynamicConstantBufferNum = 0;
     m_TextureNum = 0;

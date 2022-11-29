@@ -29,7 +29,6 @@ namespace nri
         Vector<DescriptorSetDesc> m_DescriptorSets;
         Vector<PushConstantDesc> m_PushConstants;
         Vector<DescriptorRangeDesc> m_DescriptorRangeDescs;
-        Vector<StaticSamplerDesc> m_StaticSamplerDescs;
         Vector<DynamicConstantBufferDesc> m_DynamicConstantBufferDescs;
     };
 }

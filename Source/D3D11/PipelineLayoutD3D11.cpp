@@ -78,7 +78,6 @@ PipelineLayoutD3D11::PipelineLayoutD3D11(DeviceD3D11& device, const VersionedDev
     m_BindingSets(device.GetStdAllocator()),
     m_BindingRanges(device.GetStdAllocator()),
     m_ConstantBuffers(device.GetStdAllocator()),
-    m_StaticSamplers(device.GetStdAllocator()),
     m_VersionedDevice(versionedDevice),
     m_Device(device)
 {
@@ -131,18 +130,6 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
             bindingSet.descriptorNum += bindingRange.descriptorNum;
         }
 
-        // Static samplers
-        for (uint32_t j = 0; j < set.staticSamplerNum; j++)
-        {
-            const StaticSamplerDesc& ss = set.staticSamplers[j];
-
-            StaticSampler staticSampler = {};
-            staticSampler.slot = ss.registerIndex;
-            staticSampler.shaderVisibility = GetShaderVisibility(ss.visibility, pipelineLayoutDesc.stageMask);
-            DescriptorD3D11::CreateSamplerState(m_Device.GetLog(), m_VersionedDevice, ss.samplerDesc, &staticSampler.sampler);
-            m_StaticSamplers.push_back(staticSampler);
-        }
-
         bindingSet.rangeEnd = bindingSet.rangeStart + set.rangeNum;
         bindingSet.rangeEnd += set.dynamicConstantBufferNum;
 
@@ -189,18 +176,6 @@ void PipelineLayoutD3D11::Bind(const VersionedContext& context)
         SET_CONSTANT_BUFFER(GS, ShaderStage::GEOMETRY);
         SET_CONSTANT_BUFFER(PS, ShaderStage::FRAGMENT);
         SET_CONSTANT_BUFFER(CS, ShaderStage::COMPUTE);
-    }
-
-    for (size_t i = 0; i < m_StaticSamplers.size(); i++)
-    {
-        const StaticSampler& ss = m_StaticSamplers[i];
-
-        SET_SAMPLER(VS, ShaderStage::VERTEX);
-        SET_SAMPLER(HS, ShaderStage::TESS_CONTROL);
-        SET_SAMPLER(DS, ShaderStage::TESS_EVALUATION);
-        SET_SAMPLER(GS, ShaderStage::GEOMETRY);
-        SET_SAMPLER(PS, ShaderStage::FRAGMENT);
-        SET_SAMPLER(CS, ShaderStage::COMPUTE);
     }
 }
 

@@ -40,13 +40,6 @@ namespace nri
         uint32_t shaderVisibility;
     };
 
-    struct StaticSampler
-    {
-        ComPtr<ID3D11SamplerState> sampler;
-        uint32_t slot;
-        uint32_t shaderVisibility;
-    };
-
     union Vec4
     {
         uint32_t ui[4];
@@ -91,7 +84,6 @@ namespace nri
         Vector<BindingSet> m_BindingSets;
         Vector<BindingRange> m_BindingRanges;
         Vector<ConstantBuffer> m_ConstantBuffers;
-        Vector<StaticSampler> m_StaticSamplers;
         bool m_IsGraphicsPipelineLayout = false;
         uint32_t m_DynamicConstantBufferNum = 0;
         const VersionedDevice& m_VersionedDevice;

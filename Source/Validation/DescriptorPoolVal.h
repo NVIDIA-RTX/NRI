@@ -37,7 +37,6 @@ namespace nri
         DescriptorPoolDesc m_Desc = {};
         uint32_t m_DescriptorSetNum = 0;
         uint32_t m_SamplerNum = 0;
-        uint32_t m_StaticSamplerNum = 0;
         uint32_t m_ConstantBufferNum = 0;
         uint32_t m_DynamicConstantBufferNum = 0;
         uint32_t m_TextureNum = 0;

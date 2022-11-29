@@ -21,17 +21,14 @@ PipelineLayoutVal::PipelineLayoutVal(DeviceVal& device, PipelineLayout& pipeline
     m_DescriptorSets(device.GetStdAllocator()),
     m_PushConstants(device.GetStdAllocator()),
     m_DescriptorRangeDescs(device.GetStdAllocator()),
-    m_StaticSamplerDescs(device.GetStdAllocator()),
     m_DynamicConstantBufferDescs(device.GetStdAllocator())
 {
     uint32_t descriptorRangeDescNum = 0;
-    uint32_t staticSamplerDescNum = 0;
     uint32_t dynamicConstantBufferDescNum = 0;
 
     for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++)
     {
         descriptorRangeDescNum += pipelineLayoutDesc.descriptorSets[i].rangeNum;
-        staticSamplerDescNum += pipelineLayoutDesc.descriptorSets[i].staticSamplerNum;
         dynamicConstantBufferDescNum += pipelineLayoutDesc.descriptorSets[i].dynamicConstantBufferNum;
     }
 
@@ -42,7 +39,6 @@ PipelineLayoutVal::PipelineLayoutVal(DeviceVal& device, PipelineLayout& pipeline
         pipelineLayoutDesc.pushConstants + pipelineLayoutDesc.pushConstantNum);
 
     m_DescriptorRangeDescs.reserve(descriptorRangeDescNum);
-    m_StaticSamplerDescs.reserve(staticSamplerDescNum);
     m_DynamicConstantBufferDescs.reserve(dynamicConstantBufferDescNum);
 
     for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++)
@@ -50,14 +46,10 @@ PipelineLayoutVal::PipelineLayoutVal(DeviceVal& device, PipelineLayout& pipeline
         const DescriptorSetDesc& descriptorSetDesc = pipelineLayoutDesc.descriptorSets[i];
 
         m_DescriptorSets[i].ranges = m_DescriptorRangeDescs.data() + m_DescriptorRangeDescs.size();
-        m_DescriptorSets[i].staticSamplers = m_StaticSamplerDescs.data() + m_StaticSamplerDescs.size();
         m_DescriptorSets[i].dynamicConstantBuffers = m_DynamicConstantBufferDescs.data() + m_DynamicConstantBufferDescs.size();
 
         m_DescriptorRangeDescs.insert(m_DescriptorRangeDescs.end(), descriptorSetDesc.ranges,
             descriptorSetDesc.ranges + descriptorSetDesc.rangeNum);
-
-        m_StaticSamplerDescs.insert(m_StaticSamplerDescs.end(), descriptorSetDesc.staticSamplers,
-            descriptorSetDesc.staticSamplers + descriptorSetDesc.staticSamplerNum);
 
         m_DynamicConstantBufferDescs.insert(m_DynamicConstantBufferDescs.end(), descriptorSetDesc.dynamicConstantBuffers,
             descriptorSetDesc.dynamicConstantBuffers + descriptorSetDesc.dynamicConstantBufferNum);

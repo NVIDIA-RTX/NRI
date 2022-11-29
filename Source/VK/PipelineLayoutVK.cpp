@@ -18,7 +18,6 @@ using namespace nri;
 PipelineLayoutVK::PipelineLayoutVK(DeviceVK& device) :
     m_RuntimeBindingInfo(device.GetStdAllocator()),
     m_DescriptorSetLayouts(device.GetStdAllocator()),
-    m_StaticSamplers(device.GetStdAllocator()),
     m_Device(device)
 {
 }
@@ -34,8 +33,6 @@ PipelineLayoutVK::~PipelineLayoutVK()
 
     for (auto& handle : m_DescriptorSetLayouts)
         vk.DestroyDescriptorSetLayout(m_Device, handle, allocationCallbacks);
-
-    m_StaticSamplers.clear();
 }
 
 Result PipelineLayoutVK::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
@@ -51,8 +48,6 @@ Result PipelineLayoutVK::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
 
     uint32_t bindingOffsets[(uint32_t)DescriptorType::MAX_NUM] = {};
     FillBindingOffsets(pipelineLayoutDesc.ignoreGlobalSPIRVOffsets, bindingOffsets);
-
-    ReserveStaticSamplers(pipelineLayoutDesc);
 
     m_DescriptorSetLayouts.reserve(pipelineLayoutDesc.descriptorSetNum);
     for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++)
@@ -106,18 +101,9 @@ void PipelineLayoutVK::FillBindingOffsets(bool ignoreGlobalSPIRVOffsets, uint32_
     bindingOffsets[(uint32_t)DescriptorType::ACCELERATION_STRUCTURE] = spirvBindingOffsets.textureOffset;
 }
 
-void PipelineLayoutVK::ReserveStaticSamplers(const PipelineLayoutDesc& pipelineLayoutDesc)
-{
-    uint32_t staticSamplerNum = 0;
-    for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++)
-        staticSamplerNum += pipelineLayoutDesc.descriptorSets[i].staticSamplerNum;
-
-    m_StaticSamplers.reserve(staticSamplerNum);
-}
-
 void PipelineLayoutVK::CreateSetLayout(const DescriptorSetDesc& descriptorSetDesc, const uint32_t* bindingOffsets)
 {
-    uint32_t bindingMaxNum = descriptorSetDesc.dynamicConstantBufferNum + descriptorSetDesc.staticSamplerNum;
+    uint32_t bindingMaxNum = descriptorSetDesc.dynamicConstantBufferNum;
 
     for (uint32_t i = 0; i < descriptorSetDesc.rangeNum; i++)
     {
@@ -132,7 +118,6 @@ void PipelineLayoutVK::CreateSetLayout(const DescriptorSetDesc& descriptorSetDes
 
     FillDescriptorBindings(descriptorSetDesc, bindingOffsets, bindings, bindingFlags);
     FillDynamicConstantBufferBindings(descriptorSetDesc, bindingOffsets, bindings, bindingFlags);
-    CreateStaticSamplersAndFillSamplerBindings(descriptorSetDesc, bindingOffsets, bindings, bindingFlags);
 
     const uint32_t bindingNum = uint32_t(bindings - bindingsBegin);
 
@@ -220,30 +205,6 @@ void PipelineLayoutVK::FillDynamicConstantBufferBindings(const DescriptorSetDesc
         descriptorBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         descriptorBinding.descriptorCount = 1;
         descriptorBinding.stageFlags = GetShaderStageFlags(buffer.visibility);
-    }
-}
-
-void PipelineLayoutVK::CreateStaticSamplersAndFillSamplerBindings(const DescriptorSetDesc& descriptorSetDesc, const uint32_t* bindingOffsets,
-    VkDescriptorSetLayoutBinding*& bindings, VkDescriptorBindingFlagsEXT*& bindingFlags)
-{
-    for (uint32_t i = 0; i < descriptorSetDesc.staticSamplerNum; i++)
-    {
-        const StaticSamplerDesc& sampler = descriptorSetDesc.staticSamplers[i];
-
-        m_StaticSamplers.emplace_back(m_Device);
-        DescriptorVK& descriptor = m_StaticSamplers.back();
-
-        descriptor.Create(sampler.samplerDesc);
-
-        *(bindingFlags++) = 0;
-
-        VkDescriptorSetLayoutBinding& descriptorBinding = *(bindings++);
-        descriptorBinding = {};
-        descriptorBinding.binding = sampler.registerIndex + bindingOffsets[(uint32_t)DescriptorType::SAMPLER];
-        descriptorBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-        descriptorBinding.descriptorCount = 1;
-        descriptorBinding.stageFlags = GetShaderStageFlags(sampler.visibility);
-        descriptorBinding.pImmutableSamplers = &descriptor.GetSampler();
     }
 }
 

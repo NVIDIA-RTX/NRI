@@ -49,15 +49,12 @@ namespace nri
 
     private:
         void FillBindingOffsets(bool ignoreGlobalSPIRVOffsets, uint32_t* bindingOffsets);
-        void ReserveStaticSamplers(const PipelineLayoutDesc& pipelineLayoutDesc);
         void CreateSetLayout(const DescriptorSetDesc& descriptorSetDesc, const uint32_t* bindingOffsets);
 
         void FillDescriptorBindings(const DescriptorSetDesc& descriptorSetDesc, const uint32_t* bindingOffsets,
             VkDescriptorSetLayoutBinding*& bindings, VkDescriptorBindingFlagsEXT*& bindingFlags) const;
         void FillDynamicConstantBufferBindings(const DescriptorSetDesc& descriptorSetDesc, const uint32_t* bindingOffsets,
             VkDescriptorSetLayoutBinding*& bindings, VkDescriptorBindingFlagsEXT*& bindingFlags) const;
-        void CreateStaticSamplersAndFillSamplerBindings(const DescriptorSetDesc& descriptorSetDesc, const uint32_t* bindingOffsets,
-            VkDescriptorSetLayoutBinding*& bindings, VkDescriptorBindingFlagsEXT*& bindingFlags);
 
         void FillPushConstantRanges(const PipelineLayoutDesc& pipelineLayoutDesc, VkPushConstantRange* pushConstantRanges) const;
         void FillRuntimeBindingInfo(const PipelineLayoutDesc& pipelineLayoutDesc, const uint32_t* bindingOffsets);
@@ -66,7 +63,6 @@ namespace nri
         VkPipelineBindPoint m_PipelineBindPoint = VK_PIPELINE_BIND_POINT_MAX_ENUM;
         RuntimeBindingInfo m_RuntimeBindingInfo;
         Vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
-        Vector<DescriptorVK> m_StaticSamplers;
         DeviceVK& m_Device;
     };
 

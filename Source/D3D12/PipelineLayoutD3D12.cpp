@@ -75,7 +75,6 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     uint32_t totalRangeNum = 0;
     Vector<D3D12_ROOT_PARAMETER1> rootParameters(allocator);
     Vector<D3D12_DESCRIPTOR_RANGE1> descriptorRanges(rangeMax, allocator);
-    Vector<D3D12_STATIC_SAMPLER_DESC> staticSamplerDescs(allocator);
 
     m_DescriptorSetMappings.resize(pipelineLayoutDesc.descriptorSetNum, DescriptorSetMapping(allocator));
     m_DescriptorSetRootMappings.resize(pipelineLayoutDesc.descriptorSetNum, DescriptorSetRootMapping(allocator));
@@ -158,41 +157,6 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
             m_DynamicConstantBufferMappings[i].constantNum = 0;
             m_DynamicConstantBufferMappings[i].rootOffset = 0;
         }
-
-        if (descriptorSetDesc.staticSamplerNum)
-        {
-            for (uint32_t j = 0; j < descriptorSetDesc.staticSamplerNum; j++)
-            {
-                const SamplerDesc& samplerDesc = descriptorSetDesc.staticSamplers[j].samplerDesc;
-                bool useAnisotropy = samplerDesc.anisotropy > 1 ? true : false;
-                bool useComparison = samplerDesc.compareFunc != CompareFunc::NONE;
-
-                D3D12_STATIC_SAMPLER_DESC desc = {};
-                desc.Filter = useAnisotropy ?
-                    GetFilterAnisotropic(samplerDesc.filterExt, useComparison) :
-                    GetFilterIsotropic(samplerDesc.mip, samplerDesc.magnification, samplerDesc.minification, samplerDesc.filterExt, useComparison);
-                desc.AddressU = GetAddressMode(samplerDesc.addressModes.u);
-                desc.AddressV = GetAddressMode(samplerDesc.addressModes.v);
-                desc.AddressW = GetAddressMode(samplerDesc.addressModes.w);
-                desc.MipLODBias = samplerDesc.mipBias;
-                desc.MaxAnisotropy = samplerDesc.anisotropy;
-                desc.ComparisonFunc = GetComparisonFunc(samplerDesc.compareFunc);
-                desc.MinLOD = samplerDesc.mipMin;
-                desc.MaxLOD = samplerDesc.mipMax;
-                desc.ShaderRegister = descriptorSetDesc.staticSamplers[j].registerIndex;
-                desc.RegisterSpace = i;
-                desc.ShaderVisibility = GetShaderVisibility(descriptorSetDesc.staticSamplers[j].visibility);
-
-                if (samplerDesc.borderColor == BorderColor::FLOAT_TRANSPARENT_BLACK || samplerDesc.borderColor == BorderColor::INT_TRANSPARENT_BLACK)
-                    desc.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-                else if (samplerDesc.borderColor == BorderColor::FLOAT_OPAQUE_BLACK || samplerDesc.borderColor == BorderColor::INT_OPAQUE_BLACK)
-                    desc.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
-                else if (samplerDesc.borderColor == BorderColor::FLOAT_OPAQUE_WHITE || samplerDesc.borderColor == BorderColor::INT_OPAQUE_WHITE)
-                    desc.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
-
-                staticSamplerDescs.push_back(desc);
-            }
-        }
     }
 
     if (pipelineLayoutDesc.pushConstantNum)
@@ -215,8 +179,6 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     rootSignatureDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
     rootSignatureDesc.Desc_1_1.NumParameters = (UINT)rootParameters.size();
     rootSignatureDesc.Desc_1_1.pParameters = rootParameters.empty() ? nullptr : &rootParameters[0];
-    rootSignatureDesc.Desc_1_1.NumStaticSamplers = (UINT)staticSamplerDescs.size();
-    rootSignatureDesc.Desc_1_1.pStaticSamplers = staticSamplerDescs.empty() ? nullptr : &staticSamplerDescs[0];
     rootSignatureDesc.Desc_1_1.Flags = GetRootSignatureStageFlags(pipelineLayoutDesc, m_Device);
 
     ComPtr<ID3DBlob> rootSignatureBlob;
