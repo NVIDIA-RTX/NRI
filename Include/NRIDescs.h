@@ -851,7 +851,7 @@ NRI_STRUCT(SamplerDesc)
     NRI_NAME(AddressModes) addressModes;
     NRI_NAME(CompareFunc) compareFunc;
     NRI_NAME(BorderColor) borderColor;
-    bool unnormalizedCoordinates : 1;
+    bool unnormalizedCoordinates;
 };
 
 NRI_STRUCT(TextureDesc)
@@ -1120,12 +1120,12 @@ NRI_STRUCT(RasterizationDesc)
     NRI_NAME(CullMode) cullMode;
     uint16_t sampleMask;
     uint8_t sampleNum;
-    bool alphaToCoverage : 1;
-    bool frontCounterClockwise : 1;
-    bool depthClamp : 1;
-    bool antialiasedLines : 1;
-    bool rasterizerDiscard : 1;
-    bool conservativeRasterization : 1;
+    bool alphaToCoverage;
+    bool frontCounterClockwise;
+    bool depthClamp;
+    bool antialiasedLines;
+    bool rasterizerDiscard;
+    bool conservativeRasterization;
 };
 
 NRI_STRUCT(StencilDesc)
@@ -1149,7 +1149,7 @@ NRI_STRUCT(ColorAttachmentDesc)
     NRI_NAME(BlendingDesc) colorBlend;
     NRI_NAME(BlendingDesc) alphaBlend;
     NRI_NAME(ColorWriteBits) colorWriteMask;
-    bool blendEnabled : 1;
+    bool blendEnabled;
 };
 
 // CompareFunc::NONE = depth/stencil test disabled
@@ -1386,17 +1386,17 @@ NRI_STRUCT(DeviceDesc)
     uint64_t timestampFrequencyHz;
 
     // Features support
-    bool isAPIValidationEnabled : 1;
-    bool isTextureFilterMinMaxSupported : 1;
-    bool isLogicOpSupported : 1;
-    bool isDepthBoundsTestSupported : 1;
-    bool isProgrammableSampleLocationsSupported : 1;
-    bool isComputeQueueSupported : 1;
-    bool isCopyQueueSupported : 1;
-    bool isCopyQueueTimestampSupported : 1;
-    bool isRegisterAliasingSupported : 1;
-    bool isSubsetAllocationSupported : 1;
-    bool isFloat16Supported : 1;
+    bool isAPIValidationEnabled;
+    bool isTextureFilterMinMaxSupported;
+    bool isLogicOpSupported;
+    bool isDepthBoundsTestSupported;
+    bool isProgrammableSampleLocationsSupported;
+    bool isComputeQueueSupported;
+    bool isCopyQueueSupported;
+    bool isCopyQueueTimestampSupported;
+    bool isRegisterAliasingSupported;
+    bool isSubsetAllocationSupported;
+    bool isFloat16Supported;
 };
 
 NRI_NAMESPACE_END
