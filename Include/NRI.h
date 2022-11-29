@@ -18,12 +18,13 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #define NRI_VERSION_DATE "28 November 2022"
 #define NRI_INTERFACE( name ) #name, sizeof(name)
 
-#if _WIN32
+#ifdef _WIN32
     #define NRI_CALL __fastcall
 #else
     #define NRI_CALL
 #endif
 
+// C++ API
 #ifndef NRI_API
     #if NRI_STATIC_LIBRARY
         #define NRI_API
@@ -32,9 +33,12 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
     #endif
 #endif
 
+// C API
 #ifndef NRIC_API
     #if NRI_STATIC_LIBRARY
         #define NRIC_API
+    #elif( defined(__cplusplus) )
+        #define NRIC_API extern "C"
     #else
         #define NRIC_API extern
     #endif
