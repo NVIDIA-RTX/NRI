@@ -84,10 +84,10 @@ NRI_STRUCT(DeviceCreationDesc)
     NRI_NAME(GraphicsAPI) graphicsAPI;
     NRI_NAME(SPIRVBindingOffsets) spirvBindingOffsets;
     NRI_NAME(VulkanExtensions) vulkanExtensions;
-    bool enableNRIValidation : 1;
-    bool enableAPIValidation : 1;
-    bool enableMGPU : 1;
-    bool D3D11CommandBufferEmulation : 1;
+    bool enableNRIValidation;
+    bool enableAPIValidation;
+    bool enableMGPU;
+    bool D3D11CommandBufferEmulation;
 };
 
 #if defined(NRI_CPP)
