@@ -1,7 +1,11 @@
 #pragma once
 
-#if( defined(__cplusplus) && !defined(NRI_FORCE_C) )
-    #define NRI_CPP
+#if defined(__cplusplus)
+    #if !defined(NRI_FORCE_C)
+        #define NRI_CPP
+    #endif
+#else
+    #include <stdbool.h>
 #endif
 
 #define NRI_EXPAND(args) args
@@ -184,7 +188,10 @@
     #define NRI_UNION(name) union name
     #define NRI_FORWARD_STRUCT(name) struct name
     #define NRI_REF(arg) arg&
+    #define NRI_REF_ACCESS(arg) (&arg)
     #define NRI_ENUM_MEMBER(name, nameCaps, member) name::##member
+    #define NRI_DEFAULT_VALUE(arg) = arg
+    #define NRI_ZERO_INIT {}
 
     #define NRI_ENUM_BITS(name, nameCaps, type, ...) \
         enum class name : type; \
@@ -200,8 +207,6 @@
             _NRI_EXPAND_ENUM(__VA_ARGS__) \
         }
 #else
-    #include <stdbool.h>
-
     #define _NRI_ENUM_PREFIX(name) NRI_MERGE_TOKEN3(NRI_, name, _)
     #define _NRI_ENUM_NAME(name) nri_##name##_
     #define _NRI_ENUM_ENTRY(index, prefix, ...) NRI_MERGE_TOKEN2(prefix, NRI_VA_ARGS_AT(index, __VA_ARGS__))
@@ -214,7 +219,10 @@
     #define NRI_UNION(name) typedef union NRI_NAME(name) NRI_NAME(name); union NRI_NAME(name)
     #define NRI_FORWARD_STRUCT(name) typedef struct NRI_NAME(name) NRI_NAME(name)
     #define NRI_REF(arg) arg*
+    #define NRI_REF_ACCESS(arg) (arg)
     #define NRI_ENUM_MEMBER(name, nameCaps, member) _NRI_ENUM_PREFIX(nameCaps)##member
+    #define NRI_DEFAULT_VALUE(arg)
+    #define NRI_ZERO_INIT {0}
 
     #define NRI_ENUM_BITS(name, nameCaps, type, ...) \
         NRI_ENUM(name, nameCaps, type, __VA_ARGS__)

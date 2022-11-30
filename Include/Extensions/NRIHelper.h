@@ -59,4 +59,130 @@ NRI_STRUCT(HelperInterface)
     NRI_NAME(Result) (NRI_CALL *WaitForIdle)(NRI_REF_NAME(CommandQueue) commandQueue);
 };
 
+static inline NRI_NAME(Format) NRI_NAME(GetSupportedDepthFormat)(const NRI_REF_NAME(CoreInterface) coreInterface, const NRI_REF_NAME(Device) device, uint32_t minBits, bool stencil)
+{
+    if (stencil)
+    {
+        if (minBits <= 24)
+        {
+            if (NRI_REF_ACCESS(coreInterface)->GetFormatSupport(device, NRI_ENUM_MEMBER(Format, FORMAT, D24_UNORM_S8_UINT)) & NRI_ENUM_MEMBER(FormatSupportBits, FORMAT_SUPPORT_BITS, DEPTH_STENCIL_ATTACHMENT))
+                return NRI_ENUM_MEMBER(Format, FORMAT, D24_UNORM_S8_UINT);
+        }
+    }
+    else
+    {
+        if (minBits <= 16)
+        {
+            if (NRI_REF_ACCESS(coreInterface)->GetFormatSupport(device, NRI_ENUM_MEMBER(Format, FORMAT, D16_UNORM)) & NRI_ENUM_MEMBER(FormatSupportBits, FORMAT_SUPPORT_BITS, DEPTH_STENCIL_ATTACHMENT))
+                return NRI_ENUM_MEMBER(Format, FORMAT, D16_UNORM);
+        }
+        else if (minBits <= 24)
+        {
+            if (NRI_REF_ACCESS(coreInterface)->GetFormatSupport(device, NRI_ENUM_MEMBER(Format, FORMAT, D24_UNORM_S8_UINT)) & NRI_ENUM_MEMBER(FormatSupportBits, FORMAT_SUPPORT_BITS, DEPTH_STENCIL_ATTACHMENT))
+                return NRI_ENUM_MEMBER(Format, FORMAT, D24_UNORM_S8_UINT);
+        }
+
+        if (NRI_REF_ACCESS(coreInterface)->GetFormatSupport(device, NRI_ENUM_MEMBER(Format, FORMAT, D32_SFLOAT)) & NRI_ENUM_MEMBER(FormatSupportBits, FORMAT_SUPPORT_BITS, DEPTH_STENCIL_ATTACHMENT))
+            return NRI_ENUM_MEMBER(Format, FORMAT, D32_SFLOAT);
+    }
+
+    if (NRI_REF_ACCESS(coreInterface)->GetFormatSupport(device, NRI_ENUM_MEMBER(Format, FORMAT, D32_SFLOAT_S8_UINT_X24)) & NRI_ENUM_MEMBER(FormatSupportBits, FORMAT_SUPPORT_BITS, DEPTH_STENCIL_ATTACHMENT))
+        return NRI_ENUM_MEMBER(Format, FORMAT, D32_SFLOAT_S8_UINT_X24);
+
+    return NRI_ENUM_MEMBER(Format, FORMAT, UNKNOWN);
+}
+
+static inline NRI_NAME(TextureDesc) NRI_NAME(Texture1D)(NRI_NAME(Format) format, uint16_t width, uint16_t mipNum NRI_DEFAULT_VALUE(1), uint16_t arraySize NRI_DEFAULT_VALUE(1), NRI_NAME(TextureUsageBits) usageMask NRI_DEFAULT_VALUE(NRI_ENUM_MEMBER(TextureUsageBits, TEXTURE_USAGE_BITS, SHADER_RESOURCE)))
+{
+    NRI_NAME(TextureDesc) textureDesc = NRI_ZERO_INIT;
+    textureDesc.type = NRI_ENUM_MEMBER(TextureType, TEXTURE_TYPE, TEXTURE_1D);
+    textureDesc.format = format;
+    textureDesc.usageMask = usageMask;
+    textureDesc.size[0] = width;
+    textureDesc.size[1] = 1;
+    textureDesc.size[2] = 1;
+    textureDesc.mipNum = mipNum;
+    textureDesc.arraySize = arraySize;
+    textureDesc.sampleNum = 1;
+
+    return textureDesc;
+}
+
+static inline NRI_NAME(TextureDesc) NRI_NAME(Texture2D)(NRI_NAME(Format) format, uint16_t width, uint16_t height, uint16_t mipNum NRI_DEFAULT_VALUE(1), uint16_t arraySize NRI_DEFAULT_VALUE(1), NRI_NAME(TextureUsageBits) usageMask NRI_DEFAULT_VALUE(NRI_ENUM_MEMBER(TextureUsageBits, TEXTURE_USAGE_BITS, SHADER_RESOURCE)), uint8_t sampleNum NRI_DEFAULT_VALUE(1))
+{
+    NRI_NAME(TextureDesc) textureDesc = NRI_ZERO_INIT;
+    textureDesc.type = NRI_ENUM_MEMBER(TextureType, TEXTURE_TYPE, TEXTURE_2D);
+    textureDesc.format = format;
+    textureDesc.usageMask = usageMask;
+    textureDesc.size[0] = width;
+    textureDesc.size[1] = height;
+    textureDesc.size[2] = 1;
+    textureDesc.mipNum = mipNum;
+    textureDesc.arraySize = arraySize;
+    textureDesc.sampleNum = sampleNum;
+
+    return textureDesc;
+}
+
+static inline NRI_NAME(TextureDesc) NRI_NAME(Texture3D)(NRI_NAME(Format) format, uint16_t width, uint16_t height, uint16_t depth, uint16_t mipNum NRI_DEFAULT_VALUE(1), NRI_NAME(TextureUsageBits) usageMask NRI_DEFAULT_VALUE(NRI_ENUM_MEMBER(TextureUsageBits, TEXTURE_USAGE_BITS, SHADER_RESOURCE)))
+{
+    NRI_NAME(TextureDesc) textureDesc = NRI_ZERO_INIT;
+    textureDesc.type = NRI_ENUM_MEMBER(TextureType, TEXTURE_TYPE, TEXTURE_3D);
+    textureDesc.format = format;
+    textureDesc.usageMask = usageMask;
+    textureDesc.size[0] = width;
+    textureDesc.size[1] = height;
+    textureDesc.size[2] = depth;
+    textureDesc.mipNum = mipNum;
+    textureDesc.arraySize = 1;
+    textureDesc.sampleNum = 1;
+
+    return textureDesc;
+}
+
+static inline NRI_NAME(TextureTransitionBarrierDesc) NRI_NAME(TextureTransition)(NRI_NAME(Texture)* texture, NRI_NAME(AccessBits) prevAccess, NRI_NAME(AccessBits) nextAccess, NRI_NAME(TextureLayout) prevLayout, NRI_NAME(TextureLayout) nextLayout,
+    uint16_t mipOffset NRI_DEFAULT_VALUE(0), uint16_t mipNum NRI_DEFAULT_VALUE(NRI_NAME(REMAINING_MIP_LEVELS)), uint16_t arrayOffset NRI_DEFAULT_VALUE(0), uint16_t arraySize NRI_DEFAULT_VALUE(NRI_NAME(REMAINING_ARRAY_LAYERS)))
+{
+    NRI_NAME(TextureTransitionBarrierDesc) textureTransitionBarrierDesc = NRI_ZERO_INIT;
+    textureTransitionBarrierDesc.texture = texture;
+    textureTransitionBarrierDesc.prevAccess = prevAccess;
+    textureTransitionBarrierDesc.nextAccess = nextAccess;
+    textureTransitionBarrierDesc.prevLayout = prevLayout;
+    textureTransitionBarrierDesc.nextLayout = nextLayout;
+    textureTransitionBarrierDesc.mipOffset = mipOffset;
+    textureTransitionBarrierDesc.mipNum = mipNum;
+    textureTransitionBarrierDesc.arrayOffset = arrayOffset;
+    textureTransitionBarrierDesc.arraySize = arraySize;
+
+    return textureTransitionBarrierDesc;
+}
+
+static inline NRI_NAME(TextureTransitionBarrierDesc) NRI_NAME(TextureTransition1)(NRI_NAME(Texture)* texture, NRI_NAME(AccessBits) nextAccess, NRI_NAME(TextureLayout) nextLayout,
+    uint16_t mipOffset NRI_DEFAULT_VALUE(0), uint16_t mipNum NRI_DEFAULT_VALUE(NRI_NAME(REMAINING_MIP_LEVELS)), uint16_t arrayOffset NRI_DEFAULT_VALUE(0), uint16_t arraySize NRI_DEFAULT_VALUE(NRI_NAME(REMAINING_ARRAY_LAYERS)))
+{
+    NRI_NAME(TextureTransitionBarrierDesc) textureTransitionBarrierDesc = NRI_ZERO_INIT;
+    textureTransitionBarrierDesc.texture = texture;
+    textureTransitionBarrierDesc.prevAccess = NRI_ENUM_MEMBER(AccessBits, ACCESS_BITS, UNKNOWN);
+    textureTransitionBarrierDesc.nextAccess = nextAccess;
+    textureTransitionBarrierDesc.prevLayout = NRI_ENUM_MEMBER(TextureLayout, TEXTURE_LAYOUT, UNKNOWN);
+    textureTransitionBarrierDesc.nextLayout = nextLayout;
+    textureTransitionBarrierDesc.mipOffset = mipOffset;
+    textureTransitionBarrierDesc.mipNum = mipNum;
+    textureTransitionBarrierDesc.arrayOffset = arrayOffset;
+    textureTransitionBarrierDesc.arraySize = arraySize;
+
+    return textureTransitionBarrierDesc;
+}
+
+static inline void TextureTransition(NRI_REF_NAME(TextureTransitionBarrierDesc) prevState, NRI_NAME(AccessBits) nextAccess, NRI_NAME(TextureLayout) nextLayout,
+    uint16_t mipOffset NRI_DEFAULT_VALUE(0), uint16_t mipNum NRI_DEFAULT_VALUE(NRI_NAME(REMAINING_MIP_LEVELS)))
+{
+    NRI_REF_ACCESS(prevState)->mipOffset = mipOffset;
+    NRI_REF_ACCESS(prevState)->mipNum = mipNum;
+    NRI_REF_ACCESS(prevState)->prevAccess = NRI_REF_ACCESS(prevState)->nextAccess;
+    NRI_REF_ACCESS(prevState)->nextAccess = nextAccess;
+    NRI_REF_ACCESS(prevState)->prevLayout = NRI_REF_ACCESS(prevState)->nextLayout;
+    NRI_REF_ACCESS(prevState)->nextLayout = nextLayout;
+}
+
 NRI_NAMESPACE_END
