@@ -43,8 +43,15 @@ namespace nri
 
         void SetDebugNameToTrivialObject(VkObjectType objectType, uint64_t handle, const char* name);
         void SetDebugNameToDeviceGroupObject(VkObjectType objectType, const uint64_t* handles, const char* name);
+
+        //================================================================================================================
+        // NRI
+        //================================================================================================================
         void SetDebugName(const char* name);
-        const DeviceDesc& GetDesc() const;
+        
+        inline const DeviceDesc& GetDesc() const
+        { return m_DeviceDesc; }
+
         Result GetCommandQueue(CommandQueueType commandQueueType, CommandQueue*& commandQueue);
 
         Result CreateCommandAllocator(const CommandQueue& commandQueue, uint32_t physicalDeviceMask, CommandAllocator*& commandAllocator);
@@ -108,8 +115,6 @@ namespace nri
 
         uint32_t CalculateAllocationNumber(const ResourceGroupDesc& resourceGroupDesc) const;
         Result AllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDesc, Memory** allocations);
-
-        void SetSPIRVBindingOffsets(const SPIRVBindingOffsets& spirvBindingOffsets);
 
         //================================================================================================================
         // DeviceBase

@@ -44,6 +44,17 @@ DeviceD3D11::~DeviceD3D11()
     DeleteCriticalSection(&m_CriticalSection);
 }
 
+bool DeviceD3D11::GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const
+{
+    if (display == nullptr)
+        return false;
+
+    const uint32_t index = (*(uint32_t*)&display) - 1;
+    const HRESULT result = m_Adapter->EnumOutputs(index, &output);
+
+    return SUCCEEDED(result);
+}
+
 Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAdapter* adapter, ID3D11Device* device, AGSContext* agsContext)
 {
     m_Adapter = adapter;
@@ -435,25 +446,9 @@ inline Result DeviceD3D11::GetDisplaySize(Display& display, uint16_t& width, uin
     return Result::SUCCESS;
 }
 
-bool DeviceD3D11::GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const
-{
-    if (display == nullptr)
-        return false;
-
-    const uint32_t index = (*(uint32_t*)&display) - 1;
-    const HRESULT result = m_Adapter->EnumOutputs(index, &output);
-
-    return SUCCEEDED(result);
-}
-
 inline void DeviceD3D11::SetDebugName(const char* name)
 {
     SetName(m_Device.ptr, name);
-}
-
-inline const DeviceDesc& DeviceD3D11::GetDesc() const
-{
-    return m_Desc;
 }
 
 inline Result DeviceD3D11::GetCommandQueue(CommandQueueType commandQueueType, CommandQueue*& commandQueue)

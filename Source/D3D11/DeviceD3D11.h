@@ -39,7 +39,10 @@ namespace nri
         Result GetDisplays(Display** displays, uint32_t& displayNum);
         Result GetDisplaySize(Display& display, uint16_t& width, uint16_t& height);
         void SetDebugName(const char* name);
-        const DeviceDesc& GetDesc() const;
+
+        inline const DeviceDesc& GetDesc() const
+        { return m_Desc; }
+
         Result GetCommandQueue(CommandQueueType commandQueueType, CommandQueue*& commandQueue);
         Result CreateCommandAllocator(const CommandQueue& commandQueue, CommandAllocator*& commandAllocator);
         Result CreateDescriptorPool(const DescriptorPoolDesc& descriptorPoolDesc, DescriptorPool*& descriptorPool);

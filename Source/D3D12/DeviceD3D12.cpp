@@ -57,6 +57,17 @@ DeviceD3D12::~DeviceD3D12()
     }
 }
 
+bool DeviceD3D12::GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const
+{
+    if (display == nullptr)
+        return false;
+
+    const uint32_t index = (*(uint32_t*)&display) - 1;
+    const HRESULT result = m_Adapter->EnumOutputs(index, &output);
+
+    return SUCCEEDED(result);
+}
+
 Result DeviceD3D12::Create(const DeviceCreationD3D12Desc& deviceCreationDesc)
 {
     m_Device = (ID3D12Device*)deviceCreationDesc.d3d12Device;
@@ -248,17 +259,6 @@ inline Result DeviceD3D12::GetDisplaySize(Display& display, uint16_t& width, uin
     return Result::SUCCESS;
 }
 
-bool DeviceD3D12::GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const
-{
-    if (display == nullptr)
-        return false;
-
-    const uint32_t index = (*(uint32_t*)&display) - 1;
-    const HRESULT result = m_Adapter->EnumOutputs(index, &output);
-
-    return SUCCEEDED(result);
-}
-
 void DeviceD3D12::DestroySwapChain(SwapChain& swapChain)
 {
     Deallocate(GetStdAllocator(), (SwapChainD3D12*)&swapChain);
@@ -412,12 +412,7 @@ inline void DeviceD3D12::SetDebugName(const char* name)
     SET_D3D_DEBUG_OBJECT_NAME(m_Device, name);
 }
 
-const DeviceDesc& DeviceD3D12::GetDesc() const
-{
-    return m_DeviceDesc;
-}
-
-Result DeviceD3D12::GetCommandQueue(CommandQueueType commandQueueType, CommandQueue*& commandQueue)
+inline Result DeviceD3D12::GetCommandQueue(CommandQueueType commandQueueType, CommandQueue*& commandQueue)
 {
     ExclusiveScope lock(m_QueueLock);
 
@@ -492,7 +487,7 @@ inline Result DeviceD3D12::CreateDescriptor(const Texture3DViewDesc& textureView
 }
 
 #ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
-Result DeviceD3D12::CreateDescriptor(const AccelerationStructure& accelerationStructure, Descriptor*& accelerationStructureView)
+Result DeviceD3D12::CreateDescriptor(const AccelerationStructure& accelerationStructure, Descriptor*& accelerationStructureView) // TODO: not inline
 {
     return CreateImplementation<DescriptorD3D12>(accelerationStructureView, accelerationStructure);
 }
@@ -548,7 +543,7 @@ inline Result DeviceD3D12::CreateCommandBuffer(const CommandBufferD3D12Desc& com
     return CreateImplementation<CommandBufferD3D12>(commandBuffer, commandBufferDesc);
 }
 
-Result DeviceD3D12::CreateBuffer(const BufferD3D12Desc& bufferDesc, Buffer*& buffer) // TODO: not inline because used in AccelerationStructure
+Result DeviceD3D12::CreateBuffer(const BufferD3D12Desc& bufferDesc, Buffer*& buffer) // TODO: not inline
 {
     return CreateImplementation<BufferD3D12>(buffer, bufferDesc);
 }

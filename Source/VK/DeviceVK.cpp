@@ -368,17 +368,12 @@ bool DeviceVK::GetMemoryType(uint32_t index, MemoryTypeInfo& memoryTypeInfo) con
     return true;
 }
 
-void DeviceVK::SetDebugName(const char* name)
+inline void DeviceVK::SetDebugName(const char* name)
 {
     SetDebugNameToTrivialObject(VK_OBJECT_TYPE_DEVICE, (uint64_t)m_Device, name);
 }
 
-const DeviceDesc& DeviceVK::GetDesc() const
-{
-    return m_DeviceDesc;
-}
-
-Result DeviceVK::GetCommandQueue(CommandQueueType commandQueueType, CommandQueue*& commandQueue)
+inline Result DeviceVK::GetCommandQueue(CommandQueueType commandQueueType, CommandQueue*& commandQueue)
 {
     SharedScope sharedScope(m_Lock);
 
@@ -389,102 +384,102 @@ Result DeviceVK::GetCommandQueue(CommandQueueType commandQueueType, CommandQueue
     return Result::SUCCESS;
 }
 
-Result DeviceVK::CreateCommandAllocator(const CommandQueue& commandQueue, uint32_t physicalDeviceMask, CommandAllocator*& commandAllocator)
+inline Result DeviceVK::CreateCommandAllocator(const CommandQueue& commandQueue, uint32_t physicalDeviceMask, CommandAllocator*& commandAllocator)
 {
     return CreateImplementation<CommandAllocatorVK>(commandAllocator, commandQueue, physicalDeviceMask);
 }
 
-Result DeviceVK::CreateDescriptorPool(const DescriptorPoolDesc& descriptorPoolDesc, DescriptorPool*& descriptorPool)
+inline Result DeviceVK::CreateDescriptorPool(const DescriptorPoolDesc& descriptorPoolDesc, DescriptorPool*& descriptorPool)
 {
     return CreateImplementation<DescriptorPoolVK>(descriptorPool, descriptorPoolDesc);
 }
 
-Result DeviceVK::CreateBuffer(const BufferDesc& bufferDesc, Buffer*& buffer)
+Result DeviceVK::CreateBuffer(const BufferDesc& bufferDesc, Buffer*& buffer) // TODO: not inline
 {
     return CreateImplementation<BufferVK>(buffer, bufferDesc);
 }
 
-Result DeviceVK::CreateTexture(const TextureDesc& textureDesc, Texture*& texture)
+inline Result DeviceVK::CreateTexture(const TextureDesc& textureDesc, Texture*& texture)
 {
     return CreateImplementation<TextureVK>(texture, textureDesc);
 }
 
-Result DeviceVK::CreateBufferView(const BufferViewDesc& bufferViewDesc, Descriptor*& bufferView)
+inline Result DeviceVK::CreateBufferView(const BufferViewDesc& bufferViewDesc, Descriptor*& bufferView)
 {
     return CreateImplementation<DescriptorVK>(bufferView, bufferViewDesc);
 }
 
-Result DeviceVK::CreateTexture1DView(const Texture1DViewDesc& textureViewDesc, Descriptor*& textureView)
+inline Result DeviceVK::CreateTexture1DView(const Texture1DViewDesc& textureViewDesc, Descriptor*& textureView)
 {
     return CreateImplementation<DescriptorVK>(textureView, textureViewDesc);
 }
 
-Result DeviceVK::CreateTexture2DView(const Texture2DViewDesc& textureViewDesc, Descriptor*& textureView)
+inline Result DeviceVK::CreateTexture2DView(const Texture2DViewDesc& textureViewDesc, Descriptor*& textureView)
 {
     return CreateImplementation<DescriptorVK>(textureView, textureViewDesc);
 }
 
-Result DeviceVK::CreateTexture3DView(const Texture3DViewDesc& textureViewDesc, Descriptor*& textureView)
+inline Result DeviceVK::CreateTexture3DView(const Texture3DViewDesc& textureViewDesc, Descriptor*& textureView)
 {
     return CreateImplementation<DescriptorVK>(textureView, textureViewDesc);
 }
 
-Result DeviceVK::CreateSampler(const SamplerDesc& samplerDesc, Descriptor*& sampler)
+inline Result DeviceVK::CreateSampler(const SamplerDesc& samplerDesc, Descriptor*& sampler)
 {
     return CreateImplementation<DescriptorVK>(sampler, samplerDesc);
 }
 
-Result DeviceVK::CreatePipelineLayout(const PipelineLayoutDesc& pipelineLayoutDesc, PipelineLayout*& pipelineLayout)
+inline Result DeviceVK::CreatePipelineLayout(const PipelineLayoutDesc& pipelineLayoutDesc, PipelineLayout*& pipelineLayout)
 {
     return CreateImplementation<PipelineLayoutVK>(pipelineLayout, pipelineLayoutDesc);
 }
 
-Result DeviceVK::CreatePipeline(const GraphicsPipelineDesc& graphicsPipelineDesc, Pipeline*& pipeline)
+inline Result DeviceVK::CreatePipeline(const GraphicsPipelineDesc& graphicsPipelineDesc, Pipeline*& pipeline)
 {
     return CreateImplementation<PipelineVK>(pipeline, graphicsPipelineDesc);
 }
 
-Result DeviceVK::CreatePipeline(const ComputePipelineDesc& computePipelineDesc, Pipeline*& pipeline)
+inline Result DeviceVK::CreatePipeline(const ComputePipelineDesc& computePipelineDesc, Pipeline*& pipeline)
 {
     return CreateImplementation<PipelineVK>(pipeline, computePipelineDesc);
 }
 
-Result DeviceVK::CreateFrameBuffer(const FrameBufferDesc& frameBufferDesc, FrameBuffer*& frameBuffer)
+inline Result DeviceVK::CreateFrameBuffer(const FrameBufferDesc& frameBufferDesc, FrameBuffer*& frameBuffer)
 {
     return CreateImplementation<FrameBufferVK>(frameBuffer, frameBufferDesc);
 }
 
-Result DeviceVK::CreateQueryPool(const QueryPoolDesc& queryPoolDesc, QueryPool*& queryPool)
+inline Result DeviceVK::CreateQueryPool(const QueryPoolDesc& queryPoolDesc, QueryPool*& queryPool)
 {
     return CreateImplementation<QueryPoolVK>(queryPool, queryPoolDesc);
 }
 
-Result DeviceVK::CreateQueueSemaphore(QueueSemaphore*& queueSemaphore)
+inline Result DeviceVK::CreateQueueSemaphore(QueueSemaphore*& queueSemaphore)
 {
     return CreateImplementation<QueueSemaphoreVK>(queueSemaphore);
 }
 
-Result DeviceVK::CreateDeviceSemaphore(bool signaled, DeviceSemaphore*& deviceSemaphore)
+inline Result DeviceVK::CreateDeviceSemaphore(bool signaled, DeviceSemaphore*& deviceSemaphore)
 {
     return CreateImplementation<DeviceSemaphoreVK>(deviceSemaphore, signaled);
 }
 
-Result DeviceVK::CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*& swapChain)
+inline Result DeviceVK::CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*& swapChain)
 {
     return CreateImplementation<SwapChainVK>(swapChain, swapChainDesc);
 }
 
-Result DeviceVK::CreatePipeline(const RayTracingPipelineDesc& rayTracingPipelineDesc, Pipeline*& pipeline)
+inline Result DeviceVK::CreatePipeline(const RayTracingPipelineDesc& rayTracingPipelineDesc, Pipeline*& pipeline)
 {
     return CreateImplementation<PipelineVK>(pipeline, rayTracingPipelineDesc);
 }
 
-Result DeviceVK::CreateAccelerationStructure(const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure)
+inline Result DeviceVK::CreateAccelerationStructure(const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure)
 {
     return CreateImplementation<AccelerationStructureVK>(accelerationStructure, accelerationStructureDesc);
 }
 
-Result DeviceVK::CreateCommandQueue(const CommandQueueVulkanDesc& commandQueueVulkanDesc, CommandQueue*& commandQueue)
+inline Result DeviceVK::CreateCommandQueue(const CommandQueueVulkanDesc& commandQueueVulkanDesc, CommandQueue*& commandQueue)
 {
     const uint32_t commandQueueTypeIndex = (uint32_t)commandQueueVulkanDesc.commandQueueType;
 
@@ -509,37 +504,37 @@ Result DeviceVK::CreateCommandQueue(const CommandQueueVulkanDesc& commandQueueVu
     return Result::SUCCESS;
 }
 
-Result DeviceVK::CreateCommandAllocator(const CommandAllocatorVulkanDesc& commandAllocatorVulkanDesc, CommandAllocator*& commandAllocator)
+inline Result DeviceVK::CreateCommandAllocator(const CommandAllocatorVulkanDesc& commandAllocatorVulkanDesc, CommandAllocator*& commandAllocator)
 {
     return CreateImplementation<CommandAllocatorVK>(commandAllocator, commandAllocatorVulkanDesc);
 }
 
-Result DeviceVK::CreateCommandBuffer(const CommandBufferVulkanDesc& commandBufferVulkanDesc, CommandBuffer*& commandBuffer)
+inline Result DeviceVK::CreateCommandBuffer(const CommandBufferVulkanDesc& commandBufferVulkanDesc, CommandBuffer*& commandBuffer)
 {
     return CreateImplementation<CommandBufferVK>(commandBuffer, commandBufferVulkanDesc);
 }
 
-Result DeviceVK::CreateDescriptorPool(NRIVkDescriptorPool vkDescriptorPool, DescriptorPool*& descriptorPool)
+inline Result DeviceVK::CreateDescriptorPool(NRIVkDescriptorPool vkDescriptorPool, DescriptorPool*& descriptorPool)
 {
     return CreateImplementation<DescriptorPoolVK>(descriptorPool, vkDescriptorPool);
 }
 
-Result DeviceVK::CreateBuffer(const BufferVulkanDesc& bufferDesc, Buffer*& buffer)
+inline Result DeviceVK::CreateBuffer(const BufferVulkanDesc& bufferDesc, Buffer*& buffer)
 {
     return CreateImplementation<BufferVK>(buffer, bufferDesc);
 }
 
-Result DeviceVK::CreateTexture(const TextureVulkanDesc& textureVulkanDesc, Texture*& texture)
+inline Result DeviceVK::CreateTexture(const TextureVulkanDesc& textureVulkanDesc, Texture*& texture)
 {
     return CreateImplementation<TextureVK>(texture, textureVulkanDesc);
 }
 
-Result DeviceVK::CreateMemory(const MemoryVulkanDesc& memoryVulkanDesc, Memory*& memory)
+inline Result DeviceVK::CreateMemory(const MemoryVulkanDesc& memoryVulkanDesc, Memory*& memory)
 {
     return CreateImplementation<MemoryVK>(memory, memoryVulkanDesc);
 }
 
-Result DeviceVK::CreateGraphicsPipeline(NRIVkPipeline vkPipeline, Pipeline*& pipeline)
+inline Result DeviceVK::CreateGraphicsPipeline(NRIVkPipeline vkPipeline, Pipeline*& pipeline)
 {
     PipelineVK* implementation = Allocate<PipelineVK>(GetStdAllocator(), *this);
     const Result result = implementation->CreateGraphics(vkPipeline);
@@ -555,7 +550,7 @@ Result DeviceVK::CreateGraphicsPipeline(NRIVkPipeline vkPipeline, Pipeline*& pip
     return result;
 }
 
-Result DeviceVK::CreateComputePipeline(NRIVkPipeline vkPipeline, Pipeline*& pipeline)
+inline Result DeviceVK::CreateComputePipeline(NRIVkPipeline vkPipeline, Pipeline*& pipeline)
 {
     PipelineVK* implementation = Allocate<PipelineVK>(GetStdAllocator(), *this);
     const Result result = implementation->CreateCompute(vkPipeline);
@@ -571,92 +566,92 @@ Result DeviceVK::CreateComputePipeline(NRIVkPipeline vkPipeline, Pipeline*& pipe
     return result;
 }
 
-Result DeviceVK::CreateQueryPool(const QueryPoolVulkanDesc& queryPoolVulkanDesc, QueryPool*& queryPool)
+inline Result DeviceVK::CreateQueryPool(const QueryPoolVulkanDesc& queryPoolVulkanDesc, QueryPool*& queryPool)
 {
     return CreateImplementation<QueryPoolVK>(queryPool, queryPoolVulkanDesc);
 }
 
-Result DeviceVK::CreateQueueSemaphore(NRIVkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore)
+inline Result DeviceVK::CreateQueueSemaphore(NRIVkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore)
 {
     return CreateImplementation<QueueSemaphoreVK>(queueSemaphore, vkSemaphore);
 }
 
-Result DeviceVK::CreateDeviceSemaphore(NRIVkFence vkFence, DeviceSemaphore*& deviceSemaphore)
+inline Result DeviceVK::CreateDeviceSemaphore(NRIVkFence vkFence, DeviceSemaphore*& deviceSemaphore)
 {
     return CreateImplementation<DeviceSemaphoreVK>(deviceSemaphore, vkFence);
 }
 
-Result DeviceVK::CreateAccelerationStructure(const AccelerationStructureVulkanDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure)
+inline Result DeviceVK::CreateAccelerationStructure(const AccelerationStructureVulkanDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure)
 {
     return CreateImplementation<AccelerationStructureVK>(accelerationStructure, accelerationStructureDesc);
 }
 
-void DeviceVK::DestroyCommandAllocator(CommandAllocator& commandAllocator)
+inline void DeviceVK::DestroyCommandAllocator(CommandAllocator& commandAllocator)
 {
     Deallocate(GetStdAllocator(), (CommandAllocatorVK*)&commandAllocator);
 }
 
-void DeviceVK::DestroyDescriptorPool(DescriptorPool& descriptorPool)
+inline void DeviceVK::DestroyDescriptorPool(DescriptorPool& descriptorPool)
 {
     Deallocate(GetStdAllocator(), (DescriptorPoolVK*)&descriptorPool);
 }
 
-void DeviceVK::DestroyBuffer(Buffer& buffer)
+void DeviceVK::DestroyBuffer(Buffer& buffer) // TODO: not inline
 {
     Deallocate(GetStdAllocator(), (BufferVK*)&buffer);
 }
 
-void DeviceVK::DestroyTexture(Texture& texture)
+inline void DeviceVK::DestroyTexture(Texture& texture)
 {
     Deallocate(GetStdAllocator(), (TextureVK*)&texture);
 }
 
-void DeviceVK::DestroyDescriptor(Descriptor& descriptor)
+inline void DeviceVK::DestroyDescriptor(Descriptor& descriptor)
 {
     Deallocate(GetStdAllocator(), (DescriptorVK*)&descriptor);
 }
 
-void DeviceVK::DestroyPipelineLayout(PipelineLayout& pipelineLayout)
+inline void DeviceVK::DestroyPipelineLayout(PipelineLayout& pipelineLayout)
 {
     Deallocate(GetStdAllocator(), (PipelineLayoutVK*)&pipelineLayout);
 }
 
-void DeviceVK::DestroyPipeline(Pipeline& pipeline)
+inline void DeviceVK::DestroyPipeline(Pipeline& pipeline)
 {
     Deallocate(GetStdAllocator(), (PipelineVK*)&pipeline);
 }
 
-void DeviceVK::DestroyFrameBuffer(FrameBuffer& frameBuffer)
+inline void DeviceVK::DestroyFrameBuffer(FrameBuffer& frameBuffer)
 {
     Deallocate(GetStdAllocator(), (FrameBufferVK*)&frameBuffer);
 }
 
-void DeviceVK::DestroyQueryPool(QueryPool& queryPool)
+inline void DeviceVK::DestroyQueryPool(QueryPool& queryPool)
 {
     Deallocate(GetStdAllocator(), (QueryPoolVK*)&queryPool);
 }
 
-void DeviceVK::DestroyQueueSemaphore(QueueSemaphore& queueSemaphore)
+inline void DeviceVK::DestroyQueueSemaphore(QueueSemaphore& queueSemaphore)
 {
     Deallocate(GetStdAllocator(), (QueueSemaphoreVK*)&queueSemaphore);
 }
 
-void DeviceVK::DestroyDeviceSemaphore(DeviceSemaphore& deviceSemaphore)
+inline void DeviceVK::DestroyDeviceSemaphore(DeviceSemaphore& deviceSemaphore)
 {
     Deallocate(GetStdAllocator(), (DeviceSemaphoreVK*)&deviceSemaphore);
 }
 
-void DeviceVK::DestroySwapChain(SwapChain& swapChain)
+inline void DeviceVK::DestroySwapChain(SwapChain& swapChain)
 {
     Deallocate(GetStdAllocator(), (SwapChainVK*)&swapChain);
 }
 
-void DeviceVK::DestroyAccelerationStructure(AccelerationStructure& accelerationStructure)
+inline void DeviceVK::DestroyAccelerationStructure(AccelerationStructure& accelerationStructure)
 {
     Deallocate(GetStdAllocator(), (AccelerationStructureVK*)&accelerationStructure);
 }
 
-Result DeviceVK::GetDisplays(Display** displays, uint32_t& displayNum)
+inline Result DeviceVK::GetDisplays(Display** displays, uint32_t& displayNum)
 {
     MaybeUnused(displays, displayNum);
 
@@ -697,7 +692,7 @@ Result DeviceVK::GetDisplays(Display** displays, uint32_t& displayNum)
 #endif
 }
 
-Result DeviceVK::GetDisplaySize(Display& display, uint16_t& width, uint16_t& height)
+inline Result DeviceVK::GetDisplaySize(Display& display, uint16_t& width, uint16_t& height)
 {
     MaybeUnused(display, width, height);
 
@@ -741,12 +736,12 @@ Result DeviceVK::GetDisplaySize(Display& display, uint16_t& width, uint16_t& hei
 #endif
 }
 
-Result DeviceVK::AllocateMemory(uint32_t physicalDeviceMask, MemoryType memoryType, uint64_t size, Memory*& memory)
+inline Result DeviceVK::AllocateMemory(uint32_t physicalDeviceMask, MemoryType memoryType, uint64_t size, Memory*& memory)
 {
     return CreateImplementation<MemoryVK>(memory, physicalDeviceMask, memoryType, size);
 }
 
-Result DeviceVK::BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum)
+inline Result DeviceVK::BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum)
 {
     if (memoryBindingDescNum == 0)
         return Result::SUCCESS;
@@ -823,7 +818,7 @@ Result DeviceVK::BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDe
     return Result::SUCCESS;
 }
 
-Result DeviceVK::BindTextureMemory(const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum)
+inline Result DeviceVK::BindTextureMemory(const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum)
 {
     const uint32_t infoMaxNum = memoryBindingDescNum * m_DeviceDesc.phyiscalDeviceGroupSize;
 
@@ -883,7 +878,7 @@ Result DeviceVK::BindTextureMemory(const TextureMemoryBindingDesc* memoryBinding
     return Result::SUCCESS;
 }
 
-Result DeviceVK::BindAccelerationStructureMemory(const AccelerationStructureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum)
+inline Result DeviceVK::BindAccelerationStructureMemory(const AccelerationStructureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum)
 {
     if (memoryBindingDescNum == 0)
         return Result::SUCCESS;
@@ -916,12 +911,12 @@ Result DeviceVK::BindAccelerationStructureMemory(const AccelerationStructureMemo
     return result;
 }
 
-void DeviceVK::FreeMemory(Memory& memory)
+inline void DeviceVK::FreeMemory(Memory& memory)
 {
     Deallocate(GetStdAllocator(), (MemoryVK*)&memory);
 }
 
-FormatSupportBits DeviceVK::GetFormatSupport(Format format) const
+inline FormatSupportBits DeviceVK::GetFormatSupport(Format format) const
 {
     const VkFormat vulkanFormat = GetVkFormat(format);
     const VkPhysicalDevice physicalDevice = m_PhysicalDevices.front();
@@ -965,23 +960,18 @@ FormatSupportBits DeviceVK::GetFormatSupport(Format format) const
     return mask;
 }
 
-uint32_t DeviceVK::CalculateAllocationNumber(const ResourceGroupDesc& resourceGroupDesc) const
+inline uint32_t DeviceVK::CalculateAllocationNumber(const ResourceGroupDesc& resourceGroupDesc) const
 {
     HelperDeviceMemoryAllocator allocator(m_CoreInterface, (Device&)*this, m_StdAllocator);
 
     return allocator.CalculateAllocationNumber(resourceGroupDesc);
 }
 
-Result DeviceVK::AllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDesc, nri::Memory** allocations)
+inline Result DeviceVK::AllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDesc, nri::Memory** allocations)
 {
     HelperDeviceMemoryAllocator allocator(m_CoreInterface, (Device&)*this, m_StdAllocator);
 
     return allocator.AllocateAndBindMemory(resourceGroupDesc, allocations);
-}
-
-void DeviceVK::SetSPIRVBindingOffsets(const SPIRVBindingOffsets& spirvBindingOffsets)
-{
-    m_SPIRVBindingOffsets = spirvBindingOffsets;
 }
 
 const char* GetObjectTypeName(VkObjectType objectType)

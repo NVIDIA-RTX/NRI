@@ -56,6 +56,8 @@ namespace nri
         template<typename Implementation, typename Interface, typename ... Args>
         Result CreateImplementation(Interface*& entity, const Args&... args);
 
+        bool GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const;
+
         Result Create(IDXGIAdapter* dxgiAdapter, bool enableValidation);
         Result Create(const DeviceCreationD3D12Desc& deviceCreationDesc);
 
@@ -73,14 +75,14 @@ namespace nri
         bool IsMeshShaderSupported() const;
         const CoreInterface& GetCoreInterface() const;
 
-        bool GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const;
-
         //================================================================================================================
         // NRI
         //================================================================================================================
         void SetDebugName(const char* name);
 
-        const DeviceDesc& GetDesc() const;
+        inline const DeviceDesc& GetDesc() const
+        { return m_DeviceDesc; }
+
         Result GetCommandQueue(CommandQueueType commandQueueType, CommandQueue*& commandQueue);
 
         Result CreateCommandQueue(CommandQueueType commandQueueType, CommandQueue*& commandQueue);
