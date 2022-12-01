@@ -10,5 +10,5 @@ chmod +x "4-Clean.sh"
 mkdir -p "_Compiler"
 
 cd "_Compiler"
-cmake ..
+cmake .. -A x64
 cd ..
