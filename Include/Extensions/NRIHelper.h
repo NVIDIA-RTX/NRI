@@ -157,7 +157,7 @@ static inline NRI_NAME(TextureTransitionBarrierDesc) NRI_NAME(TextureTransition)
     return textureTransitionBarrierDesc;
 }
 
-static inline NRI_NAME(TextureTransitionBarrierDesc) NRI_NAME(TextureTransition1)(NRI_NAME(Texture)* texture, NRI_NAME(AccessBits) nextAccess, NRI_NAME(TextureLayout) nextLayout,
+static inline NRI_NAME(TextureTransitionBarrierDesc) NRI_NAME(TextureTransitionFromUnknown)(NRI_NAME(Texture)* texture, NRI_NAME(AccessBits) nextAccess, NRI_NAME(TextureLayout) nextLayout,
     uint16_t mipOffset NRI_DEFAULT_VALUE(0), uint16_t mipNum NRI_DEFAULT_VALUE(NRI_NAME(REMAINING_MIP_LEVELS)), uint16_t arrayOffset NRI_DEFAULT_VALUE(0), uint16_t arraySize NRI_DEFAULT_VALUE(NRI_NAME(REMAINING_ARRAY_LAYERS)))
 {
     NRI_NAME(TextureTransitionBarrierDesc) textureTransitionBarrierDesc = NRI_ZERO_INIT;
@@ -174,7 +174,7 @@ static inline NRI_NAME(TextureTransitionBarrierDesc) NRI_NAME(TextureTransition1
     return textureTransitionBarrierDesc;
 }
 
-static inline void TextureTransition(NRI_REF_NAME(TextureTransitionBarrierDesc) prevState, NRI_NAME(AccessBits) nextAccess, NRI_NAME(TextureLayout) nextLayout,
+static inline NRI_NAME(TextureTransitionBarrierDesc) NRI_NAME(TextureTransitionFromState)(NRI_REF_NAME(TextureTransitionBarrierDesc) prevState, NRI_NAME(AccessBits) nextAccess, NRI_NAME(TextureLayout) nextLayout,
     uint16_t mipOffset NRI_DEFAULT_VALUE(0), uint16_t mipNum NRI_DEFAULT_VALUE(NRI_NAME(REMAINING_MIP_LEVELS)))
 {
     NRI_REF_ACCESS(prevState)->mipOffset = mipOffset;
@@ -183,6 +183,8 @@ static inline void TextureTransition(NRI_REF_NAME(TextureTransitionBarrierDesc) 
     NRI_REF_ACCESS(prevState)->nextAccess = nextAccess;
     NRI_REF_ACCESS(prevState)->prevLayout = NRI_REF_ACCESS(prevState)->nextLayout;
     NRI_REF_ACCESS(prevState)->nextLayout = nextLayout;
+
+    return *NRI_REF_ACCESS(prevState);
 }
 
 NRI_NAMESPACE_END
