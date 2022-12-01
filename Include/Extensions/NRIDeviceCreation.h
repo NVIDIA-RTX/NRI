@@ -49,14 +49,6 @@ NRI_STRUCT(CallbackInterface)
     void* userArg;
 };
 
-NRI_STRUCT(DisplayDesc)
-{
-    int32_t originLeft;
-    int32_t originTop;
-    uint32_t width;
-    uint32_t height;
-};
-
 NRI_STRUCT(PhysicalDeviceGroup)
 {
     char description[128];
