@@ -313,28 +313,20 @@ inline void CommandBufferVK::SetDescriptorPool(const DescriptorPool& descriptorP
     MaybeUnused(descriptorPool);
 }
 
-inline void CommandBufferVK::SetDescriptorSets(uint32_t baseIndex, uint32_t setNum, const DescriptorSet* const* descriptorSets, const uint32_t* offsets)
+inline void CommandBufferVK::SetDescriptorSet(uint32_t setIndexInPipelineLayout, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets)
 {
-    VkDescriptorSet* sets = STACK_ALLOC(VkDescriptorSet, setNum);
-    uint32_t dynamicOffsetNum = 0;
+    const DescriptorSetVK& descriptorSetImpl = (DescriptorSetVK&)descriptorSet;
+    VkDescriptorSet vkDescriptorSet = descriptorSetImpl.GetHandle(m_PhysicalDeviceIndex);
 
-    for (uint32_t i = 0; i < setNum; i++)
-    {
-        const DescriptorSetVK& descriptorSetImpl = *(const DescriptorSetVK*)descriptorSets[i];
-
-        sets[i] = descriptorSetImpl.GetHandle(m_PhysicalDeviceIndex);
-        dynamicOffsetNum += descriptorSetImpl.GetDynamicConstantBufferNum();
-    }
+    uint32_t space = m_CurrentPipelineLayout->GetDescriptorSetSpace(setIndexInPipelineLayout);
+    uint32_t dynamicOffsetNum = descriptorSetImpl.GetDynamicConstantBufferNum();
 
     m_VK.CmdBindDescriptorSets(
         m_Handle,
         m_CurrentPipelineBindPoint,
         m_CurrentPipelineLayoutHandle,
-        baseIndex,
-        setNum,
-        sets,
-        dynamicOffsetNum,
-        offsets);
+        space, 1, &vkDescriptorSet,
+        dynamicOffsetNum, dynamicConstantBufferOffsets);
 }
 
 inline void CommandBufferVK::SetConstants(uint32_t pushConstantIndex, const void* data, uint32_t size)

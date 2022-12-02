@@ -270,16 +270,14 @@ void CommandBufferVal::SetDescriptorPool(const DescriptorPool& descriptorPool)
     m_CoreAPI.CmdSetDescriptorPool(m_ImplObject, *descriptorPoolImpl);
 }
 
-void CommandBufferVal::SetDescriptorSets(uint32_t baseIndex, uint32_t descriptorSetNum, const DescriptorSet* const* descriptorSets, const uint32_t* dynamicConstantBufferOffsets)
+void CommandBufferVal::SetDescriptorSet(uint32_t setIndexInPipelineLayout, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets)
 {
     RETURN_ON_FAILURE(m_Device.GetLog(), m_IsRecordingStarted, ReturnVoid(),
         "Can't set descriptor sets: the command buffer must be in the recording state.");
 
-    DescriptorSet** descriptorSetsImpl = STACK_ALLOC(DescriptorSet*, descriptorSetNum);
-    for (uint32_t i = 0; i < descriptorSetNum; i++)
-        descriptorSetsImpl[i] = NRI_GET_IMPL_PTR(DescriptorSet, descriptorSets[i]);
+    DescriptorSet* descriptorSetImpl = NRI_GET_IMPL_REF(DescriptorSet, &descriptorSet);
 
-    m_CoreAPI.CmdSetDescriptorSets(m_ImplObject, baseIndex, descriptorSetNum, descriptorSetsImpl, dynamicConstantBufferOffsets);
+    m_CoreAPI.CmdSetDescriptorSet(m_ImplObject, setIndexInPipelineLayout, *descriptorSetImpl, dynamicConstantBufferOffsets);
 }
 
 void CommandBufferVal::SetConstants(uint32_t pushConstantIndex, const void* data, uint32_t size)

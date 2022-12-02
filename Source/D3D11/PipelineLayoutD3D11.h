@@ -57,19 +57,16 @@ namespace nri
     {
         PipelineLayoutD3D11(DeviceD3D11& device, const VersionedDevice& versionedDevice);
 
+        Result Create(const PipelineLayoutDesc& pipelineDesc);
+
         DeviceD3D11& GetDevice() const;
         const BindingSet& GetBindingSet(uint32_t set) const;
         const BindingRange& GetBindingRange(uint32_t range) const;
-        uint32_t GetDynamicConstantBufferNum() const;
-
-        Result Create(const PipelineLayoutDesc& pipelineDesc);
-
         void SetConstants(const VersionedContext& context, uint32_t pushConstantIndex, const Vec4* data, uint32_t size) const;
 
-        void BindDescriptorSet(BindingState& currentBindingState, const VersionedContext& context,
-            uint32_t setIndex, const DescriptorSetD3D11& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const;
-
         void Bind(const VersionedContext& context);
+        void BindDescriptorSet(BindingState& currentBindingState, const VersionedContext& context,
+            uint32_t setIndexInPipelineLayout, const DescriptorSetD3D11& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const;
 
         //======================================================================================================================
         // NRI
@@ -78,14 +75,13 @@ namespace nri
 
     private:
         template<bool isGraphics>
-        void BindDescriptorSetImpl(BindingState& currentBindingState, const VersionedContext& context, uint32_t setIndex,
+        void BindDescriptorSetImpl(BindingState& currentBindingState, const VersionedContext& context, uint32_t setIndexInPipelineLayout,
             const DescriptorSetD3D11& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const;
 
         Vector<BindingSet> m_BindingSets;
         Vector<BindingRange> m_BindingRanges;
         Vector<ConstantBuffer> m_ConstantBuffers;
         bool m_IsGraphicsPipelineLayout = false;
-        uint32_t m_DynamicConstantBufferNum = 0;
         const VersionedDevice& m_VersionedDevice;
         DeviceD3D11& m_Device;
     };
@@ -104,10 +100,4 @@ namespace nri
     {
         return m_BindingRanges[range];
     }
-
-    inline uint32_t PipelineLayoutD3D11::GetDynamicConstantBufferNum() const
-    {
-        return m_DynamicConstantBufferNum;
-    }
-
 }

@@ -123,7 +123,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
             descriptorRange.RangeType = rangeType;
             descriptorRange.NumDescriptors = descriptorSetDesc.ranges[j].descriptorNum;
             descriptorRange.BaseShaderRegister = descriptorSetDesc.ranges[j].baseRegisterIndex;
-            descriptorRange.RegisterSpace = i;
+            descriptorRange.RegisterSpace = descriptorSetDesc.registerSpace;
             descriptorRange.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE; // TODO:
             descriptorRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
             groupedRangeNum++;
@@ -147,7 +147,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
             for (uint32_t j = 0; j < descriptorSetDesc.dynamicConstantBufferNum; j++)
             {
                 rootParameterLocal.Descriptor.ShaderRegister = descriptorSetDesc.dynamicConstantBuffers[j].registerIndex;
-                rootParameterLocal.Descriptor.RegisterSpace = i;
+                rootParameterLocal.Descriptor.RegisterSpace = descriptorSetDesc.registerSpace;
                 rootParameterLocal.ShaderVisibility = GetShaderVisibility(descriptorSetDesc.dynamicConstantBuffers[j].visibility);
                 rootParameters.push_back(rootParameterLocal);
             }

@@ -17,10 +17,10 @@ static void NRI_CALL SetDescriptorPoolDebugName(DescriptorPool& descriptorPool, 
     ((DescriptorPoolVK&)descriptorPool).SetDebugName(name);
 }
 
-static Result NRI_CALL AllocateDescriptorSets(DescriptorPool& descriptorPool, const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** const descriptorSets,
+static Result NRI_CALL AllocateDescriptorSets(DescriptorPool& descriptorPool, const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** const descriptorSets,
     uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum)
 {
-    return ((DescriptorPoolVK&)descriptorPool).AllocateDescriptorSets(pipelineLayout, setIndex, descriptorSets, instanceNum, physicalDeviceMask, variableDescriptorNum);
+    return ((DescriptorPoolVK&)descriptorPool).AllocateDescriptorSets(pipelineLayout, setIndexInPipelineLayout, descriptorSets, instanceNum, physicalDeviceMask, variableDescriptorNum);
 }
 
 static void NRI_CALL ResetDescriptorPool(DescriptorPool& descriptorPool)

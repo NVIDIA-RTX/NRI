@@ -104,7 +104,7 @@ inline void DescriptorPoolD3D12::SetDebugName(const char* name)
     MaybeUnused(name);
 }
 
-inline Result DescriptorPoolD3D12::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** const descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum)
+inline Result DescriptorPoolD3D12::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** const descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum)
 {
     MaybeUnused(variableDescriptorNum);
 
@@ -112,8 +112,8 @@ inline Result DescriptorPoolD3D12::AllocateDescriptorSets(const PipelineLayout& 
         return Result::FAILURE;
 
     const PipelineLayoutD3D12& pipelineLayoutD3D12 = (PipelineLayoutD3D12&)pipelineLayout;
-    const DescriptorSetMapping& descriptorSetMapping = pipelineLayoutD3D12.GetDescriptorSetMapping(setIndex);
-    const DynamicConstantBufferMapping& dynamicConstantBufferMapping = pipelineLayoutD3D12.GetDynamicConstantBufferMapping(setIndex);
+    const DescriptorSetMapping& descriptorSetMapping = pipelineLayoutD3D12.GetDescriptorSetMapping(setIndexInPipelineLayout);
+    const DynamicConstantBufferMapping& dynamicConstantBufferMapping = pipelineLayoutD3D12.GetDynamicConstantBufferMapping(setIndexInPipelineLayout);
 
     for (uint32_t i = 0; i < instanceNum; i++)
     {

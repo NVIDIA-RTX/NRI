@@ -136,8 +136,6 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         m_BindingSets.push_back(bindingSet);
 
         bindingSet.rangeStart = bindingSet.rangeEnd;
-
-        m_DynamicConstantBufferNum += set.dynamicConstantBufferNum;
     }
 
     // Push constants
@@ -188,12 +186,12 @@ void PipelineLayoutD3D11::SetConstants(const VersionedContext& context, uint32_t
 }
 
 void PipelineLayoutD3D11::BindDescriptorSet(BindingState& currentBindingState, const VersionedContext& context,
-    uint32_t setIndex, const DescriptorSetD3D11& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const
+    uint32_t setIndexInPipelineLayout, const DescriptorSetD3D11& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const
 {
     if (m_IsGraphicsPipelineLayout)
-        BindDescriptorSetImpl<true>(currentBindingState, context, setIndex, descriptorSet, dynamicConstantBufferOffsets);
+        BindDescriptorSetImpl<true>(currentBindingState, context, setIndexInPipelineLayout, descriptorSet, dynamicConstantBufferOffsets);
     else
-        BindDescriptorSetImpl<false>(currentBindingState, context, setIndex, descriptorSet, dynamicConstantBufferOffsets);
+        BindDescriptorSetImpl<false>(currentBindingState, context, setIndexInPipelineLayout, descriptorSet, dynamicConstantBufferOffsets);
 }
 
 void PipelineLayoutD3D11::SetDebugName(const char*)
@@ -201,10 +199,10 @@ void PipelineLayoutD3D11::SetDebugName(const char*)
 }
 
 template<bool isGraphics>
-void PipelineLayoutD3D11::BindDescriptorSetImpl(BindingState& currentBindingState, const VersionedContext& context, uint32_t setIndex,
+void PipelineLayoutD3D11::BindDescriptorSetImpl(BindingState& currentBindingState, const VersionedContext& context, uint32_t setIndexInPipelineLayout,
     const DescriptorSetD3D11& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const
 {
-    const BindingSet& bindingSet = m_BindingSets[setIndex];
+    const BindingSet& bindingSet = m_BindingSets[setIndexInPipelineLayout];
     bool isStorageRebindNeededInGraphics = false;
 
     uint8_t* memory = STACK_ALLOC(uint8_t, bindingSet.descriptorNum * (sizeof(void*) + sizeof(uint32_t) * 2));

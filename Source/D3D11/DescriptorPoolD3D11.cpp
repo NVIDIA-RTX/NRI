@@ -48,7 +48,7 @@ inline void DescriptorPoolD3D11::SetDebugName(const char* name)
     MaybeUnused(name);
 }
 
-inline Result DescriptorPoolD3D11::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** const descriptorSets,
+inline Result DescriptorPoolD3D11::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** const descriptorSets,
     uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum)
 {
     MaybeUnused(physicalDeviceMask); // TODO: use it
@@ -60,7 +60,7 @@ inline Result DescriptorPoolD3D11::AllocateDescriptorSets(const PipelineLayout& 
     {
         const DescriptorD3D11** descriptors = m_Pool.data() + m_DescriptorPoolOffset;
         DescriptorSetD3D11* descriptorSet = &m_Sets[m_DescriptorSetIndex];
-        uint32_t descriptorNum = descriptorSet->Initialize(pipelineLayoutD3D11, setIndex, descriptors);
+        uint32_t descriptorNum = descriptorSet->Initialize(pipelineLayoutD3D11, setIndexInPipelineLayout, descriptors);
         descriptorSets[i] = (DescriptorSet*)descriptorSet;
 
         m_DescriptorPoolOffset += descriptorNum;

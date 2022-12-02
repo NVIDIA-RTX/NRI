@@ -27,7 +27,7 @@ namespace nri
 
         void SetDebugName(const char* name);
 
-        Result AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** const descriptorSets,
+        Result AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** const descriptorSets,
             uint32_t numberOfCopies, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum);
 
         void Reset();

@@ -13,6 +13,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "CommandBufferEmuD3D11.h"
 
 #include "CommandBufferD3D11.h"
+#include "DescriptorSetD3D11.h"
 #include "PipelineD3D11.h"
 #include "PipelineLayoutD3D11.h"
 
@@ -36,7 +37,7 @@ enum OpCode : uint32_t
     BIND_INDEX_BUFFER,
     BIND_PIPELINE_LAYOUT,
     BIND_PIPELINE,
-    BIND_DESCRIPTOR_SETS,
+    BIND_DESCRIPTOR_SET,
     SET_CONSTANTS,
     DRAW,
     DRAW_INDEXED,
@@ -284,20 +285,19 @@ void CommandBufferEmuD3D11::Submit(const VersionedContext& immediateContext)
                 commandBuffer.SetPipeline(*pipeline);
             }
             break;
-        case BIND_DESCRIPTOR_SETS:
+        case BIND_DESCRIPTOR_SET:
             {
-                uint32_t baseIndex;
-                Read(m_PushBuffer, i, baseIndex);
+                uint32_t setIndexInPipelineLayout;
+                Read(m_PushBuffer, i, setIndexInPipelineLayout);
 
-                DescriptorSet** descriptorSets;
-                uint32_t descriptorSetNum;
-                Read(m_PushBuffer, i, descriptorSets, descriptorSetNum);
+                DescriptorSet* descriptorSet;
+                Read(m_PushBuffer, i, descriptorSet);
 
                 uint32_t* dynamicConstantBufferOffsets;
                 uint32_t dynamicConstantBufferNum;
                 Read(m_PushBuffer, i, dynamicConstantBufferOffsets, dynamicConstantBufferNum);
 
-                commandBuffer.SetDescriptorSets(baseIndex, descriptorSetNum, descriptorSets, dynamicConstantBufferOffsets);
+                commandBuffer.SetDescriptorSet(setIndexInPipelineLayout, *descriptorSet, dynamicConstantBufferOffsets);
             }
             break;
         case SET_CONSTANTS:
@@ -654,8 +654,6 @@ inline void CommandBufferEmuD3D11::SetPipelineLayout(const PipelineLayout& pipel
 {
     Push(m_PushBuffer, BIND_PIPELINE_LAYOUT);
     Push(m_PushBuffer, &pipelineLayout);
-
-    m_DynamicConstantBufferNum = ((const PipelineLayoutD3D11&)pipelineLayout).GetDynamicConstantBufferNum();
 }
 
 inline void CommandBufferEmuD3D11::SetPipeline(const Pipeline& pipeline)
@@ -669,12 +667,14 @@ inline void CommandBufferEmuD3D11::SetDescriptorPool(const DescriptorPool& descr
     MaybeUnused(descriptorPool);
 }
 
-inline void CommandBufferEmuD3D11::SetDescriptorSets(uint32_t baseIndex, uint32_t descriptorSetNum, const DescriptorSet* const* descriptorSets, const uint32_t* dynamicConstantBufferOffsets)
+inline void CommandBufferEmuD3D11::SetDescriptorSet(uint32_t setIndexInPipelineLayout, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets)
 {
-    Push(m_PushBuffer, BIND_DESCRIPTOR_SETS);
-    Push(m_PushBuffer, baseIndex);
-    Push(m_PushBuffer, descriptorSets, descriptorSetNum);
-    Push(m_PushBuffer, dynamicConstantBufferOffsets, m_DynamicConstantBufferNum);
+    uint32_t dynamicConstantBufferNum = ((DescriptorSetD3D11&)descriptorSet).GetDynamicConstantBufferNum();
+
+    Push(m_PushBuffer, BIND_DESCRIPTOR_SET);
+    Push(m_PushBuffer, setIndexInPipelineLayout);
+    Push(m_PushBuffer, &descriptorSet);
+    Push(m_PushBuffer, dynamicConstantBufferOffsets, dynamicConstantBufferNum);
 }
 
 inline void CommandBufferEmuD3D11::SetConstants(uint32_t pushConstantIndex, const void* data, uint32_t size)

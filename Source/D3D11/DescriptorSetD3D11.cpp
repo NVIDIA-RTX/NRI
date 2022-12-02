@@ -22,9 +22,9 @@ DescriptorSetD3D11::DescriptorSetD3D11(DeviceD3D11& device) :
 {
 }
 
-uint32_t DescriptorSetD3D11::Initialize(const PipelineLayoutD3D11& pipelineLayout, uint32_t setIndex, const DescriptorD3D11** descriptors)
+uint32_t DescriptorSetD3D11::Initialize(const PipelineLayoutD3D11& pipelineLayout, uint32_t setIndexInPipelineLayout, const DescriptorD3D11** descriptors)
 {
-    const BindingSet& bindingSet = pipelineLayout.GetBindingSet(setIndex);
+    const BindingSet& bindingSet = pipelineLayout.GetBindingSet(setIndexInPipelineLayout);
 
     for (uint32_t i = bindingSet.rangeStart; i < bindingSet.rangeEnd; i++)
     {

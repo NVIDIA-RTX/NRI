@@ -165,7 +165,7 @@ inline void CommandBufferD3D12::ClearAttachments(const ClearDesc* clearDescs, ui
 
 inline void CommandBufferD3D12::ClearStorageBuffer(const ClearStorageBufferDesc& clearDesc)
 {
-    DescriptorSetD3D12* descriptorSet = m_DescriptorSets[clearDesc.setIndex];
+    DescriptorSetD3D12* descriptorSet = m_DescriptorSets[clearDesc.setIndexInPipelineLayout];
     DescriptorD3D12* resourceView = (DescriptorD3D12*)clearDesc.storageBuffer;
     const UINT clearValues[4] = { clearDesc.value, clearDesc.value , clearDesc.value, clearDesc.value };
 
@@ -180,7 +180,7 @@ inline void CommandBufferD3D12::ClearStorageBuffer(const ClearStorageBufferDesc&
 
 inline void CommandBufferD3D12::ClearStorageTexture(const ClearStorageTextureDesc& clearDesc)
 {
-    DescriptorSetD3D12* descriptorSet = m_DescriptorSets[clearDesc.setIndex];
+    DescriptorSetD3D12* descriptorSet = m_DescriptorSets[clearDesc.setIndexInPipelineLayout];
     DescriptorD3D12* resourceView = (DescriptorD3D12*)clearDesc.storageTexture;
 
     if (resourceView->IsFloatingPointUAV())
@@ -286,12 +286,10 @@ inline void CommandBufferD3D12::SetDescriptorPool(const DescriptorPool& descript
     ((DescriptorPoolD3D12&)descriptorPool).Bind(m_GraphicsCommandList);
 }
 
-inline void CommandBufferD3D12::SetDescriptorSets(uint32_t baseIndex, uint32_t setNum, const DescriptorSet* const* descriptorSets, const uint32_t* offsets)
+inline void CommandBufferD3D12::SetDescriptorSet(uint32_t setIndexInPipelineLayout, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets)
 {
-    m_PipelineLayout->SetDescriptorSets(*m_GraphicsCommandList, m_IsGraphicsPipelineLayout, baseIndex, setNum, descriptorSets, offsets);
-
-    for (uint32_t i = 0; i < setNum; i++)
-        m_DescriptorSets[baseIndex + i] = (DescriptorSetD3D12*)descriptorSets[i];
+    m_PipelineLayout->SetDescriptorSet(*m_GraphicsCommandList, m_IsGraphicsPipelineLayout, setIndexInPipelineLayout, descriptorSet, dynamicConstantBufferOffsets);
+    m_DescriptorSets[setIndexInPipelineLayout] = (DescriptorSetD3D12*)&descriptorSet;
 }
 
 inline void CommandBufferD3D12::SetConstants(uint32_t pushConstantRangeIndex, const void* data, uint32_t size)

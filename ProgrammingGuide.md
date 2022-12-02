@@ -624,13 +624,13 @@ void CmdSetPipelineLayout(CommandBuffer& commandBuffer, const PipelineLayout& pi
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
-void CmdSetDescriptorSets(CommandBuffer& commandBuffer, uint32_t baseSlot, uint32_t descriptorSetNum, const DescriptorSet* const* descriptorSets, const uint32_t* dynamicConstantBufferOffsets)
+void CmdSetDescriptorSet(CommandBuffer& commandBuffer, uint32_t setIndexInPipelineLayout, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets)
 ```
 
 *Valid usage:*
 
 * A compatible pipeline layout must be set
-* The number of offsets in dynamicConstantBufferOffsets must be equal to the total number of dynamic constant buffers in descriptorSets
+* The number of offsets in dynamicConstantBufferOffsets must be equal to the total number of dynamic constant buffers in descriptorSet
 
 *Multithreading:*
 
@@ -1008,12 +1008,12 @@ void CopyDescriptorSet(DescriptorSet& descriptorSet, const DescriptorSetCopyDesc
 * Access to descriptorSetCopyDesc.srcDescriptorSet must be externally synchronized
 
 ```cpp
-Result AllocateDescriptorSets(DescriptorPool& descriptorPool, const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** const descriptorSets, uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum)
+Result AllocateDescriptorSets(DescriptorPool& descriptorPool, const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** const descriptorSets, uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum)
 ```
 
 * `pipelineLayout`
   * The pipeline layout which describes shader resource binding
-* `setIndex`
+* `setIndexInPipelineLayout`
   * The index of the descriptor set in the pipeline layout
 * `instanceNum`
   * The number of descriptor sets to allocate

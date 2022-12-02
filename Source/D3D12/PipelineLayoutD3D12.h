@@ -40,13 +40,13 @@ namespace nri
         DeviceD3D12& GetDevice() const;
         bool IsGraphicsPipelineLayout() const;
 
-        const DescriptorSetMapping& GetDescriptorSetMapping(uint32_t setIndex) const;
-        const DescriptorSetRootMapping& GetDescriptorSetRootMapping(uint32_t setIndex) const;
-        const DynamicConstantBufferMapping& GetDynamicConstantBufferMapping(uint32_t setIndex) const;
+        const DescriptorSetMapping& GetDescriptorSetMapping(uint32_t setIndexInPipelineLayout) const;
+        const DescriptorSetRootMapping& GetDescriptorSetRootMapping(uint32_t setIndexInPipelineLayout) const;
+        const DynamicConstantBufferMapping& GetDynamicConstantBufferMapping(uint32_t setIndexInPipelineLayout) const;
         uint32_t GetPushConstantsRootOffset(uint32_t rangeIndex) const;
 
-        void SetDescriptorSets(ID3D12GraphicsCommandList& graphicsCommandList, bool isGraphics, uint32_t baseIndex,
-            uint32_t setNum, const DescriptorSet* const* descriptorSets, const uint32_t* offsets) const;
+        void SetDescriptorSet(ID3D12GraphicsCommandList& graphicsCommandList, bool isGraphics,
+            uint32_t setIndexInPipelineLayout, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const;
 
         Result Create(const PipelineLayoutDesc& pipelineLayoutDesc);
 
@@ -54,8 +54,8 @@ namespace nri
 
     private:
         template<bool isGraphics>
-        void SetDescriptorSetsImpl(ID3D12GraphicsCommandList& graphicsCommandList, uint32_t baseIndex,
-            uint32_t setNum, const DescriptorSet* const* descriptorSets, const uint32_t* offsets) const;
+        void SetDescriptorSetImpl(ID3D12GraphicsCommandList& graphicsCommandList, uint32_t setIndexInPipelineLayout,
+            const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const;
 
         ComPtr<ID3D12RootSignature> m_RootSignature;
         bool m_IsGraphicsPipelineLayout = false;
@@ -81,19 +81,19 @@ namespace nri
         return m_IsGraphicsPipelineLayout;
     }
 
-    inline const DescriptorSetMapping& PipelineLayoutD3D12::GetDescriptorSetMapping(uint32_t setIndex) const
+    inline const DescriptorSetMapping& PipelineLayoutD3D12::GetDescriptorSetMapping(uint32_t setIndexInPipelineLayout) const
     {
-        return m_DescriptorSetMappings[setIndex];
+        return m_DescriptorSetMappings[setIndexInPipelineLayout];
     }
 
-    inline const DescriptorSetRootMapping& PipelineLayoutD3D12::GetDescriptorSetRootMapping(uint32_t setIndex) const
+    inline const DescriptorSetRootMapping& PipelineLayoutD3D12::GetDescriptorSetRootMapping(uint32_t setIndexInPipelineLayout) const
     {
-        return m_DescriptorSetRootMappings[setIndex];
+        return m_DescriptorSetRootMappings[setIndexInPipelineLayout];
     }
 
-    inline const DynamicConstantBufferMapping& PipelineLayoutD3D12::GetDynamicConstantBufferMapping(uint32_t setIndex) const
+    inline const DynamicConstantBufferMapping& PipelineLayoutD3D12::GetDynamicConstantBufferMapping(uint32_t setIndexInPipelineLayout) const
     {
-        return m_DynamicConstantBufferMappings[setIndex];
+        return m_DynamicConstantBufferMappings[setIndexInPipelineLayout];
     }
 
     inline uint32_t PipelineLayoutD3D12::GetPushConstantsRootOffset(uint32_t rangeIndex) const
@@ -102,57 +102,47 @@ namespace nri
     }
 
     template<bool isGraphics>
-    inline void PipelineLayoutD3D12::SetDescriptorSetsImpl(ID3D12GraphicsCommandList& graphicsCommandList, uint32_t baseIndex,
-        uint32_t setNum, const DescriptorSet* const* descriptorSets, const uint32_t* offsets) const
+    inline void PipelineLayoutD3D12::SetDescriptorSetImpl(ID3D12GraphicsCommandList& graphicsCommandList, uint32_t setIndexInPipelineLayout,
+        const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const
     {
-        uint32_t dynamicConstantBufferNum = 0;
+        const DescriptorSetD3D12& descriptorSetImpl = (const DescriptorSetD3D12&)descriptorSet;
 
-        for (uint32_t i = 0; i < setNum; i++)
+        const auto& rootOffsets = m_DescriptorSetRootMappings[setIndexInPipelineLayout].rootOffsets;
+        uint32_t descriptorRangeNum = (uint32_t)rootOffsets.size();
+        for (uint32_t j = 0; j < descriptorRangeNum; j++)
         {
-            const DescriptorSetD3D12* descriptorSet = (const DescriptorSetD3D12*)descriptorSets[i];
+            uint16_t rootParameterIndex = rootOffsets[j];
+            if (rootParameterIndex == ROOT_PARAMETER_UNUSED)
+                continue;
 
-            uint32_t setIndex = baseIndex + i;
-            const auto& rootOffsets = m_DescriptorSetRootMappings[setIndex].rootOffsets;
+            DescriptorPointerGPU descriptorPointerGPU = descriptorSetImpl.GetPointerGPU(j, 0);
 
-            uint32_t descriptorRangeNum = (uint32_t)rootOffsets.size();
-            for (uint32_t j = 0; j < descriptorRangeNum; j++)
-            {
-                uint16_t rootParameterIndex = rootOffsets[j];
-                if (rootParameterIndex == ROOT_PARAMETER_UNUSED)
-                    continue;
+            if (isGraphics)
+                graphicsCommandList.SetGraphicsRootDescriptorTable(rootParameterIndex, { descriptorPointerGPU });
+            else
+                graphicsCommandList.SetComputeRootDescriptorTable(rootParameterIndex, { descriptorPointerGPU });
+        }
 
-                DescriptorPointerGPU descriptorPointerGPU = descriptorSet->GetPointerGPU(j, 0);
+        const auto& dynamicConstantBufferMapping = m_DynamicConstantBufferMappings[setIndexInPipelineLayout];
+        for (uint16_t j = 0; j < dynamicConstantBufferMapping.constantNum; j++)
+        {
+            uint16_t rootParameterIndex = dynamicConstantBufferMapping.rootOffset + j;
+            DescriptorPointerGPU descriptorPointerGPU = descriptorSetImpl.GetDynamicPointerGPU(j) + dynamicConstantBufferOffsets[j];
 
-                if (isGraphics)
-                    graphicsCommandList.SetGraphicsRootDescriptorTable(rootParameterIndex, { descriptorPointerGPU });
-                else
-                    graphicsCommandList.SetComputeRootDescriptorTable(rootParameterIndex, { descriptorPointerGPU });
-            }
-
-            const auto& dynamicConstantBufferMapping = m_DynamicConstantBufferMappings[setIndex];
-
-            for (uint16_t j = 0; j < dynamicConstantBufferMapping.constantNum; j++)
-            {
-                uint16_t rootParameterIndex = dynamicConstantBufferMapping.rootOffset + j;
-                DescriptorPointerGPU descriptorPointerGPU = descriptorSet->GetDynamicPointerGPU(j) + offsets[dynamicConstantBufferNum];
-
-                if (isGraphics)
-                    graphicsCommandList.SetGraphicsRootConstantBufferView(rootParameterIndex, descriptorPointerGPU);
-                else
-                    graphicsCommandList.SetComputeRootConstantBufferView(rootParameterIndex, descriptorPointerGPU);
-
-                dynamicConstantBufferNum++;
-            }
+            if (isGraphics)
+                graphicsCommandList.SetGraphicsRootConstantBufferView(rootParameterIndex, descriptorPointerGPU);
+            else
+                graphicsCommandList.SetComputeRootConstantBufferView(rootParameterIndex, descriptorPointerGPU);
         }
     }
 
-    inline void PipelineLayoutD3D12::SetDescriptorSets(ID3D12GraphicsCommandList& graphicsCommandList, bool isGraphics,
-        uint32_t baseIndex, uint32_t setNum, const DescriptorSet* const* descriptorSets, const uint32_t* offsets) const
+    inline void PipelineLayoutD3D12::SetDescriptorSet(ID3D12GraphicsCommandList& graphicsCommandList, bool isGraphics,
+        uint32_t setIndexInPipelineLayout, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const
     {
         if (isGraphics)
-            SetDescriptorSetsImpl<true>(graphicsCommandList, baseIndex, setNum, descriptorSets, offsets);
+            SetDescriptorSetImpl<true>(graphicsCommandList, setIndexInPipelineLayout, descriptorSet, dynamicConstantBufferOffsets);
         else
-            SetDescriptorSetsImpl<false>(graphicsCommandList, baseIndex, setNum, descriptorSets, offsets);
+            SetDescriptorSetImpl<false>(graphicsCommandList, setIndexInPipelineLayout, descriptorSet, dynamicConstantBufferOffsets);
     }
 
     inline DescriptorSetRootMapping::DescriptorSetRootMapping(StdAllocator<uint8_t>& allocator)

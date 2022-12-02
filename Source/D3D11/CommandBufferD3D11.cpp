@@ -284,13 +284,10 @@ void CommandBufferD3D11::SetDescriptorPool(const DescriptorPool& descriptorPool)
     MaybeUnused(descriptorPool);
 }
 
-void CommandBufferD3D11::SetDescriptorSets(uint32_t baseIndex, uint32_t descriptorSetNum, const DescriptorSet* const* descriptorSets, const uint32_t* dynamicConstantBufferOffsets)
+void CommandBufferD3D11::SetDescriptorSet(uint32_t setIndexInPipelineLayout, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets)
 {
-    for (uint32_t i = 0; i < descriptorSetNum; i++)
-    {
-        const DescriptorSetD3D11& descriptorSet = *(DescriptorSetD3D11*)descriptorSets[i];
-        m_CurrentPipelineLayout->BindDescriptorSet(m_BindingState, m_Context, baseIndex++, descriptorSet, dynamicConstantBufferOffsets);
-    }
+    const DescriptorSetD3D11& descriptorSetImpl = (DescriptorSetD3D11&)descriptorSet;
+    m_CurrentPipelineLayout->BindDescriptorSet(m_BindingState, m_Context, setIndexInPipelineLayout, descriptorSetImpl, dynamicConstantBufferOffsets);
 }
 
 void CommandBufferD3D11::SetConstants(uint32_t pushConstantIndex, const void* data, uint32_t size)

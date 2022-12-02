@@ -51,7 +51,7 @@ namespace nri
         void SetPipelineLayout(const PipelineLayout& pipelineLayout);
         void SetPipeline(const Pipeline& pipeline);
         void SetDescriptorPool(const DescriptorPool& descriptorPool);
-        void SetDescriptorSets(uint32_t baseIndex, uint32_t descriptorSetNum, const DescriptorSet* const* descriptorSets, const uint32_t* constantBufferOffsets);
+        void SetDescriptorSet(uint32_t setIndexInPipelineLayout, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets);
         void SetConstants(uint32_t pushConstantIndex, const void* data, uint32_t size);
         void Draw(uint32_t vertexNum, uint32_t instanceNum, uint32_t baseVertex, uint32_t baseInstance);
         void DrawIndexed(uint32_t indexNum, uint32_t instanceNum, uint32_t baseIndex, uint32_t baseVertex, uint32_t baseInstance);
@@ -73,7 +73,6 @@ namespace nri
     private:
         const VersionedDevice& m_Device;
         PushBuffer m_PushBuffer;
-        uint32_t m_DynamicConstantBufferNum = 0;
         DeviceD3D11& m_DeviceImpl;
     };
 }

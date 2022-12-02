@@ -120,7 +120,7 @@ void DescriptorPoolVal::IncrementDescriptorNum(const DescriptorRangeDesc& rangeD
     }
 }
 
-Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** const descriptorSets,
+Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** const descriptorSets,
     uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum)
 {
     const PipelineLayoutVal& pipelineLayoutVal = (const PipelineLayoutVal&)pipelineLayout;
@@ -137,10 +137,10 @@ Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout& pipelineL
         RETURN_ON_FAILURE(m_Device.GetLog(), m_DescriptorSetNum + instanceNum <= m_Desc.descriptorSetMaxNum, Result::INVALID_ARGUMENT,
             "Can't allocate DescriptorSet: the maximum number of descriptor sets exceeded.");
 
-        RETURN_ON_FAILURE(m_Device.GetLog(), setIndex < pipelineLayoutDesc.descriptorSetNum, Result::INVALID_ARGUMENT,
-            "Can't allocate DescriptorSet: 'setIndex' is invalid.");
+        RETURN_ON_FAILURE(m_Device.GetLog(), setIndexInPipelineLayout < pipelineLayoutDesc.descriptorSetNum, Result::INVALID_ARGUMENT,
+            "Can't allocate DescriptorSet: 'setIndexInPipelineLayout' is invalid.");
 
-        const DescriptorSetDesc& descriptorSetDesc = pipelineLayoutDesc.descriptorSets[setIndex];
+        const DescriptorSetDesc& descriptorSetDesc = pipelineLayoutDesc.descriptorSets[setIndexInPipelineLayout];
 
         for (uint32_t i = 0; i < descriptorSetDesc.rangeNum; i++)
         {
@@ -159,13 +159,13 @@ Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout& pipelineL
 
     PipelineLayout* pipelineLayoutImpl = NRI_GET_IMPL_REF(PipelineLayout, &pipelineLayout);
 
-    Result result = m_CoreAPI.AllocateDescriptorSets(m_ImplObject, *pipelineLayoutImpl, setIndex, descriptorSets, instanceNum,
+    Result result = m_CoreAPI.AllocateDescriptorSets(m_ImplObject, *pipelineLayoutImpl, setIndexInPipelineLayout, descriptorSets, instanceNum,
         physicalDeviceMask, variableDescriptorNum);
 
     if (result != Result::SUCCESS)
         return result;
 
-    const DescriptorSetDesc& descriptorSetDesc = pipelineLayoutDesc.descriptorSets[setIndex];
+    const DescriptorSetDesc& descriptorSetDesc = pipelineLayoutDesc.descriptorSets[setIndexInPipelineLayout];
 
     if (!m_SkipValidation)
     {

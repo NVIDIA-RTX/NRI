@@ -768,7 +768,7 @@ NRI_STRUCT(ClearStorageBufferDesc)
 {
     const NRI_NAME(Descriptor)* storageBuffer;
     uint32_t value;
-    uint32_t setIndex;
+    uint32_t setIndexInPipelineLayout;
     uint32_t rangeIndex;
     uint32_t offsetInRange;
 };
@@ -777,7 +777,7 @@ NRI_STRUCT(ClearStorageTextureDesc)
 {
     const NRI_NAME(Descriptor)* storageTexture;
     NRI_NAME(ClearValueDesc) value;
-    uint32_t setIndex;
+    uint32_t setIndexInPipelineLayout;
     uint32_t rangeIndex;
     uint32_t offsetInRange;
 };
@@ -1009,6 +1009,7 @@ NRI_STRUCT(DynamicConstantBufferDesc)
 
 NRI_STRUCT(DescriptorSetDesc)
 {
+    uint32_t registerSpace;
     const NRI_NAME(DescriptorRangeDesc)* ranges;
     uint32_t rangeNum;
     const NRI_NAME(DynamicConstantBufferDesc)* dynamicConstantBuffers;

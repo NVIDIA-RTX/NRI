@@ -47,9 +47,9 @@ static void NRI_CALL CmdSetDescriptorPool(CommandBuffer& commandBuffer, const De
     ((CommandBufferD3D11&)commandBuffer).SetDescriptorPool(descriptorPool);
 }
 
-static void NRI_CALL CmdSetDescriptorSets(CommandBuffer& commandBuffer, uint32_t baseSlot, uint32_t descriptorSetNum, const DescriptorSet* const* descriptorSets, const uint32_t* dynamicConstantBufferOffsets)
+static void NRI_CALL CmdSetDescriptorSet(CommandBuffer& commandBuffer, uint32_t setIndexInPipelineLayout, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets)
 {
-    ((CommandBufferD3D11&)commandBuffer).SetDescriptorSets(baseSlot, descriptorSetNum, descriptorSets, dynamicConstantBufferOffsets);
+    ((CommandBufferD3D11&)commandBuffer).SetDescriptorSet(setIndexInPipelineLayout, descriptorSet, dynamicConstantBufferOffsets);
 }
 
 static void NRI_CALL CmdSetConstants(CommandBuffer& commandBuffer, uint32_t pushConstantIndex, const void* data, uint32_t size)
@@ -224,7 +224,7 @@ void FillFunctionTableCommandBufferD3D11(CoreInterface& coreInterface)
     coreInterface.CmdSetPipeline = ::CmdSetPipeline;
     coreInterface.CmdPipelineBarrier = ::CmdPipelineBarrier;
     coreInterface.CmdSetDescriptorPool = ::CmdSetDescriptorPool;
-    coreInterface.CmdSetDescriptorSets = ::CmdSetDescriptorSets;
+    coreInterface.CmdSetDescriptorSet = ::CmdSetDescriptorSet;
     coreInterface.CmdSetConstants = ::CmdSetConstants;
 
     coreInterface.CmdBeginRenderPass = ::CmdBeginRenderPass;

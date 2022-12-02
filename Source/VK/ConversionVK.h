@@ -141,7 +141,7 @@ namespace nri
         VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,              // STORAGE_BUFFER
         VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,              // STRUCTURED_BUFFER
         VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,              // STORAGE_STRUCTURED_BUFFER
-        VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,   // ACCELERATION_STRUCTURE
+        VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,  // ACCELERATION_STRUCTURE
     };
 
     constexpr VkDescriptorType GetDescriptorType(DescriptorType type)
@@ -157,12 +157,12 @@ namespace nri
         VK_SHADER_STAGE_GEOMETRY_BIT,                   // GEOMETRY,
         VK_SHADER_STAGE_FRAGMENT_BIT,                   // FRAGMENT,
         VK_SHADER_STAGE_COMPUTE_BIT,                    // COMPUTE,
-        VK_SHADER_STAGE_RAYGEN_BIT_KHR,                  // RAYGEN,
-        VK_SHADER_STAGE_MISS_BIT_KHR,                    // MISS,
-        VK_SHADER_STAGE_INTERSECTION_BIT_KHR,            // INTERSECTION,
-        VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR,             // CLOSEST_HIT,
-        VK_SHADER_STAGE_ANY_HIT_BIT_KHR,                 // ANY_HIT
-        VK_SHADER_STAGE_CALLABLE_BIT_KHR,                // CALLABLE
+        VK_SHADER_STAGE_RAYGEN_BIT_KHR,                 // RAYGEN,
+        VK_SHADER_STAGE_MISS_BIT_KHR,                   // MISS,
+        VK_SHADER_STAGE_INTERSECTION_BIT_KHR,           // INTERSECTION,
+        VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR,            // CLOSEST_HIT,
+        VK_SHADER_STAGE_ANY_HIT_BIT_KHR,                // ANY_HIT
+        VK_SHADER_STAGE_CALLABLE_BIT_KHR,               // CALLABLE
         VK_SHADER_STAGE_TASK_BIT_NV,                    // MESH_CONTROL
         VK_SHADER_STAGE_MESH_BIT_NV                     // MESH_EVALUATION
     };

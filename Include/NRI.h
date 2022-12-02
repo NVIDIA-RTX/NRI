@@ -109,7 +109,7 @@ NRI_STRUCT(CoreInterface)
 
     void (NRI_CALL *CmdSetPipeline)(NRI_REF_NAME(CommandBuffer) commandBuffer, const NRI_REF_NAME(Pipeline) pipeline);
     void (NRI_CALL *CmdSetPipelineLayout)(NRI_REF_NAME(CommandBuffer) commandBuffer, const NRI_REF_NAME(PipelineLayout) pipelineLayout);
-    void (NRI_CALL *CmdSetDescriptorSets)(NRI_REF_NAME(CommandBuffer) commandBuffer, uint32_t baseSlot, uint32_t descriptorSetNum, const NRI_NAME(DescriptorSet)* const* descriptorSets, const uint32_t* dynamicConstantBufferOffsets);
+    void (NRI_CALL *CmdSetDescriptorSet)(NRI_REF_NAME(CommandBuffer) commandBuffer, uint32_t setIndexInPipelineLayout, const NRI_REF_NAME(DescriptorSet) descriptorSet, const uint32_t* dynamicConstantBufferOffsets);
     void (NRI_CALL *CmdSetConstants)(NRI_REF_NAME(CommandBuffer) commandBuffer, uint32_t pushConstantIndex, const void* data, uint32_t size);
     void (NRI_CALL *CmdSetDescriptorPool)(NRI_REF_NAME(CommandBuffer) commandBuffer, const NRI_REF_NAME(DescriptorPool) descriptorPool);
     void (NRI_CALL *CmdPipelineBarrier)(NRI_REF_NAME(CommandBuffer) commandBuffer, const NRI_NAME(TransitionBarrierDesc)* transitionBarriers, const NRI_NAME(AliasingBarrierDesc)* aliasingBarriers, NRI_NAME(BarrierDependency) dependency);
@@ -155,7 +155,7 @@ NRI_STRUCT(CoreInterface)
     void (NRI_CALL *CopyDescriptorSet)(NRI_REF_NAME(DescriptorSet) descriptorSet, const NRI_REF_NAME(DescriptorSetCopyDesc) descriptorSetCopyDesc);
 
     // Descriptor pool
-    NRI_NAME(Result) (NRI_CALL *AllocateDescriptorSets)(NRI_REF_NAME(DescriptorPool) descriptorPool, const NRI_REF_NAME(PipelineLayout) pipelineLayout, uint32_t setIndex, NRI_NAME(DescriptorSet)** const descriptorSets, uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum);
+    NRI_NAME(Result) (NRI_CALL *AllocateDescriptorSets)(NRI_REF_NAME(DescriptorPool) descriptorPool, const NRI_REF_NAME(PipelineLayout) pipelineLayout, uint32_t setIndexInPipelineLayout, NRI_NAME(DescriptorSet)** const descriptorSets, uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum);
     void (NRI_CALL *ResetDescriptorPool)(NRI_REF_NAME(DescriptorPool) descriptorPool);
 
     // Command allocator

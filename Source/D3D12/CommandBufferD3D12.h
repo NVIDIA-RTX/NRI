@@ -58,7 +58,7 @@ namespace nri
         void SetPipelineLayout(const PipelineLayout& pipelineLayout);
         void SetPipeline(const Pipeline& pipeline);
         void SetDescriptorPool(const DescriptorPool& descriptorPool);
-        void SetDescriptorSets(uint32_t baseIndex, uint32_t setNum, const DescriptorSet* const* descriptorSets, const uint32_t* offsets);
+        void SetDescriptorSet(uint32_t setIndexInPipelineLayout, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets);
         void SetConstants(uint32_t pushConstantRangeIndex, const void* data, uint32_t size);
         void Draw(uint32_t vertexNum, uint32_t instanceNum, uint32_t baseVertex, uint32_t baseInstance);
         void DrawIndexed(uint32_t indexNum, uint32_t instanceNum, uint32_t baseIndex, uint32_t baseVertex, uint32_t baseInstance);

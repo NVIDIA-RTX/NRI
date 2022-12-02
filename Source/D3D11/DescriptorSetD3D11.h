@@ -28,7 +28,10 @@ namespace nri
         inline const DescriptorD3D11* GetDescriptor(uint32_t i) const
         { return m_Descriptors[i]; }
 
-        uint32_t Initialize(const PipelineLayoutD3D11& pipelineLayout, uint32_t setIndex, const DescriptorD3D11** descriptors);
+        inline uint32_t GetDynamicConstantBufferNum() const
+        { return (uint32_t)m_DynamicConstantBuffers.size(); }
+
+        uint32_t Initialize(const PipelineLayoutD3D11& pipelineLayout, uint32_t setIndexInPipelineLayout, const DescriptorD3D11** descriptors);
 
         //======================================================================================================================
         // NRI

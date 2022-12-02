@@ -36,7 +36,7 @@ namespace nri
 
         void SetPipeline(const Pipeline& pipeline);
         void SetPipelineLayout(const PipelineLayout& pipelineLayout);
-        void SetDescriptorSets(uint32_t baseSlot, uint32_t descriptorSetNum, const DescriptorSet* const* descriptorSets, const uint32_t* dynamicConstantBufferOffsets);
+        void SetDescriptorSet(uint32_t setIndexInPipelineLayout, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets);
         void SetConstants(uint32_t pushConstantIndex, const void* data, uint32_t size);
         void SetDescriptorPool(const DescriptorPool& descriptorPool);
         void PipelineBarrier(const TransitionBarrierDesc* transitionBarriers, const AliasingBarrierDesc* aliasingBarriers, BarrierDependency dependency);
