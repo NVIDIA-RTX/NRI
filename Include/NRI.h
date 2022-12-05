@@ -155,7 +155,7 @@ NRI_STRUCT(CoreInterface)
     void (NRI_CALL *CopyDescriptorSet)(NRI_REF_NAME(DescriptorSet) descriptorSet, const NRI_REF_NAME(DescriptorSetCopyDesc) descriptorSetCopyDesc);
 
     // Descriptor pool
-    NRI_NAME(Result) (NRI_CALL *AllocateDescriptorSets)(NRI_REF_NAME(DescriptorPool) descriptorPool, const NRI_REF_NAME(PipelineLayout) pipelineLayout, uint32_t setIndexInPipelineLayout, NRI_NAME(DescriptorSet)** const descriptorSets, uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum);
+    NRI_NAME(Result) (NRI_CALL *AllocateDescriptorSets)(NRI_REF_NAME(DescriptorPool) descriptorPool, const NRI_REF_NAME(PipelineLayout) pipelineLayout, uint32_t setIndexInPipelineLayout, NRI_NAME(DescriptorSet)** descriptorSets, uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum);
     void (NRI_CALL *ResetDescriptorPool)(NRI_REF_NAME(DescriptorPool) descriptorPool);
 
     // Command allocator

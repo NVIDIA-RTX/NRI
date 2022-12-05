@@ -110,7 +110,7 @@ inline void DescriptorPoolVK::SetDebugName(const char* name)
     m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_DESCRIPTOR_POOL, (uint64_t)m_Handle, name);
 }
 
-inline Result DescriptorPoolVK::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** const descriptorSets,
+inline Result DescriptorPoolVK::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** descriptorSets,
     uint32_t numberOfCopies, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum)
 {
     const PipelineLayoutVK& pipelineLayoutVK = (const PipelineLayoutVK&)pipelineLayout;

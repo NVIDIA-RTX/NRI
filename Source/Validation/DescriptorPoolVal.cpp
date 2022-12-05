@@ -120,7 +120,7 @@ void DescriptorPoolVal::IncrementDescriptorNum(const DescriptorRangeDesc& rangeD
     }
 }
 
-Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** const descriptorSets,
+Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** descriptorSets,
     uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum)
 {
     const PipelineLayoutVal& pipelineLayoutVal = (const PipelineLayoutVal&)pipelineLayout;

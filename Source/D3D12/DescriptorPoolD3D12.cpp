@@ -104,7 +104,7 @@ inline void DescriptorPoolD3D12::SetDebugName(const char* name)
     MaybeUnused(name);
 }
 
-inline Result DescriptorPoolD3D12::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** const descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum)
+inline Result DescriptorPoolD3D12::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum)
 {
     MaybeUnused(variableDescriptorNum);
 

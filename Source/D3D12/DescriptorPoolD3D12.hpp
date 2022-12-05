@@ -16,7 +16,7 @@ static void NRI_CALL SetDescriptorPoolDebugName(DescriptorPool& descriptorPool, 
 }
 
 static Result NRI_CALL AllocateDescriptorSets(DescriptorPool& descriptorPool, const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout,
-    DescriptorSet** const descriptorSets, uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum)
+    DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum)
 {
     MaybeUnused(physicalDeviceMask); // TODO: use it
 
