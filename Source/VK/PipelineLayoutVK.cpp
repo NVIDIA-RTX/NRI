@@ -189,8 +189,8 @@ void PipelineLayoutVK::FillDescriptorBindings(const DescriptorSetDesc& descripto
     const VkDescriptorBindingFlagsEXT commonBindingFlags = descriptorSetDesc.bindingMask & DescriptorSetBindingBits::PARTIALLY_BOUND ?
         VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT : 0;
 
-    constexpr VkDescriptorBindingFlagsEXT variableSizedArrayFlags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT |
-                VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT;
+    constexpr VkDescriptorBindingFlagsEXT variableSizedArrayFlags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
+        VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
 
     for (uint32_t i = 0; i < descriptorSetDesc.rangeNum; i++)
     {
