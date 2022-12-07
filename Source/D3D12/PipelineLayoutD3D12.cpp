@@ -90,6 +90,9 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         D3D12_ROOT_PARAMETER1 rootParameter = {};
         rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 
+        D3D12_DESCRIPTOR_RANGE_FLAGS descriptorRangeFlags = descriptorSetDesc.bindingMask & DescriptorSetBindingBits::PARTIALLY_BOUND ?
+            D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE : D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
+
         uint32_t groupedRangeNum = 0;
         D3D12_DESCRIPTOR_RANGE_TYPE groupedRangeType = {};
         for (uint32_t j = 0; j < descriptorSetDesc.rangeNum; j++)
@@ -124,7 +127,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
             descriptorRange.NumDescriptors = descriptorSetDesc.ranges[j].descriptorNum;
             descriptorRange.BaseShaderRegister = descriptorSetDesc.ranges[j].baseRegisterIndex;
             descriptorRange.RegisterSpace = descriptorSetDesc.registerSpace;
-            descriptorRange.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE; // TODO:
+            descriptorRange.Flags = descriptorRangeFlags;
             descriptorRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
             groupedRangeNum++;
         }

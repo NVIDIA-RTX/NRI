@@ -712,6 +712,14 @@ NRI_ENUM_BITS
     VERTEX_BUFFER                       = NRI_SET_BIT(6)
 );
 
+NRI_ENUM_BITS
+(
+    DescriptorSetBindingBits, DESCRIPTOR_SET_BINDING_BITS, uint8_t,
+
+    DEFAULT                             = 0,
+    PARTIALLY_BOUND                     = NRI_SET_BIT(1)
+);
+
 NRI_STRUCT(Rect)
 {
     int32_t left;
@@ -1014,6 +1022,7 @@ NRI_STRUCT(DescriptorSetDesc)
     uint32_t rangeNum;
     const NRI_NAME(DynamicConstantBufferDesc)* dynamicConstantBuffers;
     uint32_t dynamicConstantBufferNum;
+    NRI_NAME(DescriptorSetBindingBits) bindingMask;
 };
 
 NRI_STRUCT(DescriptorRangeUpdateDesc)

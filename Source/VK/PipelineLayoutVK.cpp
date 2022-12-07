@@ -186,6 +186,9 @@ VkDescriptorSetLayout PipelineLayoutVK::CreateSetLayout(const DescriptorSetDesc&
 void PipelineLayoutVK::FillDescriptorBindings(const DescriptorSetDesc& descriptorSetDesc, const uint32_t* bindingOffsets,
     VkDescriptorSetLayoutBinding*& bindings, VkDescriptorBindingFlagsEXT*& bindingFlags) const
 {
+    const VkDescriptorBindingFlagsEXT commonBindingFlags = descriptorSetDesc.bindingMask & DescriptorSetBindingBits::PARTIALLY_BOUND ?
+        VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT : 0;
+
     constexpr VkDescriptorBindingFlagsEXT variableSizedArrayFlags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT |
                 VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT;
 
@@ -197,7 +200,7 @@ void PipelineLayoutVK::FillDescriptorBindings(const DescriptorSetDesc& descripto
 
         if (range.isArray)
         {
-            *(bindingFlags++) = range.isDescriptorNumVariable ? variableSizedArrayFlags : 0;
+            *(bindingFlags++) = commonBindingFlags | (range.isDescriptorNumVariable ? variableSizedArrayFlags : 0);
 
             VkDescriptorSetLayoutBinding& descriptorBinding = *(bindings++);
             descriptorBinding = {};
@@ -210,7 +213,7 @@ void PipelineLayoutVK::FillDescriptorBindings(const DescriptorSetDesc& descripto
         {
             for (uint32_t j = 0; j < range.descriptorNum; j++)
             {
-                *(bindingFlags++) = 0;
+                *(bindingFlags++) = commonBindingFlags;
 
                 VkDescriptorSetLayoutBinding& descriptorBinding = *(bindings++);
                 descriptorBinding = {};
