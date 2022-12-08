@@ -717,7 +717,7 @@ NRI_ENUM_BITS
     DescriptorSetBindingBits, DESCRIPTOR_SET_BINDING_BITS, uint8_t,
 
     DEFAULT                             = 0,
-    PARTIALLY_BOUND                     = NRI_SET_BIT(1)
+    PARTIALLY_BOUND                     = NRI_SET_BIT(0)
 );
 
 NRI_STRUCT(Rect)
