@@ -1631,6 +1631,7 @@ void DeviceVK::CheckSupportedDeviceExtensions(const Vector<const char*>& extensi
     m_IsHDRExtSupported = IsExtensionInList(VK_EXT_HDR_METADATA_EXTENSION_NAME, extensions);
     m_IsFP16Supported = IsExtensionInList(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME, extensions);
     m_IsBufferDeviceAddressSupported = IsExtensionInList(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME, extensions);
+    m_IsMicroMapSupported = IsExtensionInList(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME, extensions);
 
     m_IsRayTracingExtSupported = m_IsDescriptorIndexingExtSupported;
     m_IsRayTracingExtSupported = m_IsRayTracingExtSupported && IsExtensionInList(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, extensions);
@@ -1669,6 +1670,8 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
     extensions.push_back(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME);
     extensions.push_back(VK_EXT_HDR_METADATA_EXTENSION_NAME);
     extensions.push_back(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME);
+    extensions.push_back(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME);
+    extensions.push_back(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
 
     FilterDeviceExtensions(extensions);
 
@@ -1704,6 +1707,12 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
 
     VkPhysicalDeviceFloat16Int8FeaturesKHR float16Int8Features =
         { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES_KHR };
+
+    VkPhysicalDeviceOpacityMicromapFeaturesEXT  micromapFeatures =
+    { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_FEATURES_EXT };
+
+    VkPhysicalDeviceSynchronization2Features syncronization2Fetures =
+    { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES };
 
     deviceFeatures2.pNext = &bufferDeviceAddressFeatures;
 
@@ -1742,6 +1751,14 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
     {
         float16Int8Features.pNext = deviceFeatures2.pNext;
         deviceFeatures2.pNext = &float16Int8Features;
+    }
+
+    if (m_IsMicroMapSupported)
+    {
+        micromapFeatures.pNext = deviceFeatures2.pNext;
+        deviceFeatures2.pNext = &micromapFeatures;
+        syncronization2Fetures.pNext = deviceFeatures2.pNext;
+        deviceFeatures2.pNext = &syncronization2Fetures;
     }
 
     m_VK.GetPhysicalDeviceFeatures2(m_PhysicalDevices.front(), &deviceFeatures2);

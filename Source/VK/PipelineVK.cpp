@@ -48,6 +48,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc)
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = {};
     VkPipelineTessellationStateCreateInfo tessellationState = {};
     VkPipelineViewportStateCreateInfo viewportState = {};
+    VkPipelineRasterizationConservativeStateCreateInfoEXT consetvativeRasterizationState = {};
     VkPipelineRasterizationStateCreateInfo rasterizationState = {};
     VkPipelineMultisampleStateCreateInfo multisampleState = {};
     VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
@@ -82,7 +83,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc)
     FillInputAssemblyState(graphicsPipelineDesc, inputAssemblyState);
     FillTessellationState(graphicsPipelineDesc, tessellationState);
     FillViewportState(graphicsPipelineDesc, viewportState);
-    FillRasterizationState(graphicsPipelineDesc, rasterizationState);
+    FillRasterizationState(graphicsPipelineDesc, rasterizationState, consetvativeRasterizationState);
     FillMultisampleState(graphicsPipelineDesc, multisampleState);
     FillDepthStencilState(graphicsPipelineDesc, depthStencilState);
     FillColorBlendState(graphicsPipelineDesc, colorBlendState);
@@ -403,7 +404,7 @@ void PipelineVK::FillViewportState(const GraphicsPipelineDesc& graphicsPipelineD
     state.scissorCount = graphicsPipelineDesc.rasterization->viewportNum;
 }
 
-void PipelineVK::FillRasterizationState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineRasterizationStateCreateInfo& state) const
+void PipelineVK::FillRasterizationState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineRasterizationStateCreateInfo& state, VkPipelineRasterizationConservativeStateCreateInfoEXT& conservativeRasterState) const
 {
     state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 
@@ -421,6 +422,14 @@ void PipelineVK::FillRasterizationState(const GraphicsPipelineDesc& graphicsPipe
     state.depthBiasClamp = rasterization.depthBiasClamp;
     state.depthBiasSlopeFactor = rasterization.depthBiasSlopeFactor;
     state.lineWidth = 1.0f;
+
+    if (graphicsPipelineDesc.rasterization->conservativeRasterization == false)
+        return;
+
+    conservativeRasterState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT;
+    conservativeRasterState.conservativeRasterizationMode = VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
+    conservativeRasterState.extraPrimitiveOverestimationSize = 0.0f;
+    state.pNext = &conservativeRasterState;
 }
 
 void PipelineVK::FillMultisampleState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineMultisampleStateCreateInfo& state) const

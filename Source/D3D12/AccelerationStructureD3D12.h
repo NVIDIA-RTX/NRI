@@ -54,11 +54,6 @@ namespace nri
         return m_Device;
     }
 
-    inline AccelerationStructureD3D12::operator ID3D12Resource*() const
-    {
-        return (ID3D12Resource*)m_Buffer;
-    }
-
     inline AccelerationStructureD3D12::operator BufferD3D12* () const
     {
         return m_Buffer;

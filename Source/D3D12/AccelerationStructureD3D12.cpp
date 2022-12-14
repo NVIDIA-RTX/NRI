@@ -111,6 +111,11 @@ inline void AccelerationStructureD3D12::SetDebugName(const char* name)
     m_Buffer->SetDebugName(name);
 }
 
+inline AccelerationStructureD3D12::operator ID3D12Resource* () const
+{
+    return (ID3D12Resource*)*m_Buffer;
+}
+
 #include "AccelerationStructureD3D12.hpp"
 
 #endif

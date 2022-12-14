@@ -183,6 +183,7 @@ namespace nri
         bool m_IsDebugUtilsSupported = false;
         bool m_IsFP16Supported = false;
         bool m_IsBufferDeviceAddressSupported = false;
+        bool m_IsMicroMapSupported = false;
         Library* m_Loader = nullptr;
 #if _WIN32
         ComPtr<IDXGIAdapter> m_Adapter;
