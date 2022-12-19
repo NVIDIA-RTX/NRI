@@ -55,6 +55,12 @@ namespace nri
         NRIVkInstance GetVkInstance() const
         { return m_WrapperVKAPI.GetVkInstance(m_Device); }
 
+        NRIVkProcAddress GetVkGetInstanceProcAddr() const
+        { return m_WrapperVKAPI.GetVkGetInstanceProcAddr(m_Device); }
+
+        NRIVkProcAddress GetVkGetDeviceProcAddr() const
+        { return m_WrapperVKAPI.GetVkGetDeviceProcAddr(m_Device); }
+
         inline uint32_t GetPhysicalDeviceNum() const
         { return m_PhysicalDeviceNum; }
 
