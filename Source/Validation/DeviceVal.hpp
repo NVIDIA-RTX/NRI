@@ -509,6 +509,16 @@ static NRIVkInstance NRI_CALL GetVkInstance(const Device& device)
     return ((DeviceVal&)device).GetVkInstance();
 }
 
+static NRIVkInstance NRI_CALL GetVkGetInstanceProcAddr(const Device& device)
+{
+    return ((DeviceVal&)device).GetVkGetInstanceProcAddr();
+}
+
+static NRIVkInstance NRI_CALL GetVkGetDeviceProcAddr(const Device& device)
+{
+    return ((DeviceVal&)device).GetVkGetDeviceProcAddr();
+}
+
 #endif
 
 Result DeviceVal::FillFunctionTable(WrapperVKInterface& wrapperVKInterface) const
@@ -532,6 +542,8 @@ Result DeviceVal::FillFunctionTable(WrapperVKInterface& wrapperVKInterface) cons
 
     wrapperVKInterface.GetVkPhysicalDevice = ::GetVkPhysicalDevice;
     wrapperVKInterface.GetVkInstance = ::GetVkInstance;
+    wrapperVKInterface.GetVkGetDeviceProcAddr = ::GetVkGetDeviceProcAddr;
+    wrapperVKInterface.GetVkGetInstanceProcAddr = ::GetVkGetInstanceProcAddr;
 
     return ValidateFunctionTable(GetLog(), wrapperVKInterface);
 

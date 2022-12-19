@@ -40,6 +40,7 @@ typedef void* NRIVkPhysicalDevice;
 typedef void* NRIVkDevice;
 typedef void* NRIVkQueue;
 typedef void* NRIVkCommandBuffer;
+typedef void* NRIVkProcAddress;
 
 NRI_STRUCT(DeviceCreationVulkanDesc)
 {
@@ -144,6 +145,8 @@ NRI_STRUCT(WrapperVKInterface)
 
     NRIVkPhysicalDevice (NRI_CALL *GetVkPhysicalDevice)(const NRI_REF_NAME(Device) device);
     NRIVkInstance (NRI_CALL *GetVkInstance)(const NRI_REF_NAME(Device) device);
+    NRIVkProcAddress(NRI_CALL *GetVkGetInstanceProcAddr)(const NRI_REF_NAME(Device) device);
+    NRIVkProcAddress(NRI_CALL *GetVkGetDeviceProcAddr)(const NRI_REF_NAME(Device) device);
 };
 
 #if defined(NRI_CPP)
