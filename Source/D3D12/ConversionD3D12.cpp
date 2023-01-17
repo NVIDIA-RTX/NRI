@@ -257,7 +257,7 @@ UINT8 GetRenderTargetWriteMask(ColorWriteBits colorWriteMask)
 }
 
 constexpr std::array<D3D12_COMPARISON_FUNC, (uint32_t)CompareFunc::MAX_NUM> COMPARISON_FUNCS = {
-    D3D12_COMPARISON_FUNC_ALWAYS,               // NONE
+    D3D12_COMPARISON_FUNC_NEVER,                // NONE
     D3D12_COMPARISON_FUNC_ALWAYS,               // ALWAYS
     D3D12_COMPARISON_FUNC_NEVER,                // NEVER
     D3D12_COMPARISON_FUNC_LESS,                 // LESS
