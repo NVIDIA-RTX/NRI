@@ -1366,6 +1366,7 @@ NRI_STRUCT(DeviceDesc)
     uint32_t meshOutputPerPrimitiveGranularity;
 
     // Other
+    uint64_t timestampFrequencyHz;
     uint32_t subPixelPrecisionBits;
     uint32_t subTexelPrecisionBits;
     uint32_t mipmapPrecisionBits;
@@ -1383,8 +1384,7 @@ NRI_STRUCT(DeviceDesc)
     uint32_t cullDistanceMaxNum;
     uint32_t combinedClipAndCullDistanceMaxNum;
     uint8_t conservativeRasterTier;
-    uint32_t phyiscalDeviceGroupSize;
-    uint64_t timestampFrequencyHz;
+    uint8_t physicalDeviceNum;
 
     // Features support
     bool isAPIValidationEnabled;

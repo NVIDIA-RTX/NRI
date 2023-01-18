@@ -105,6 +105,7 @@ namespace nri
         CRITICAL_SECTION m_CriticalSection = {};
         CoreInterface m_CoreInterface = {};
         ComPtr<IDXGIAdapter> m_Adapter;
+        bool m_SkipLiveObjectsReporting = false;
 
     private:
         void FillLimits(bool isValidationEnabled, Vendor vendor);

@@ -58,7 +58,7 @@ namespace nri
 
         bool GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const;
 
-        Result Create(IDXGIAdapter* dxgiAdapter, bool enableValidation);
+        Result Create(IDXGIAdapter* dxgiAdapter, const DeviceCreationDesc& deviceCreationDesc);
         Result Create(const DeviceCreationD3D12Desc& deviceCreationDesc);
 
         Result CreateCpuOnlyVisibleDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type);

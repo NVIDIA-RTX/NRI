@@ -35,12 +35,10 @@ using namespace nri;
 void ConvertGeometryObjectsVal(GeometryObject* destObjects, const GeometryObject* sourceObjects, uint32_t objectNum);
 QueryType GetQueryTypeVK(uint32_t queryTypeVK);
 
-DeviceVal::DeviceVal(const Log& log, const StdAllocator<uint8_t>& stdAllocator, DeviceBase& device, uint32_t physicalDeviceNum) :
+DeviceVal::DeviceVal(const Log& log, const StdAllocator<uint8_t>& stdAllocator, DeviceBase& device) :
     DeviceBase(log, stdAllocator),
     m_Device(*(Device*)&device),
     m_Name(GetStdAllocator()),
-    m_PhysicalDeviceNum(physicalDeviceNum),
-    m_PhysicalDeviceMask((1 << (physicalDeviceNum + 1)) - 1),
     m_MemoryTypeMap(GetStdAllocator())
 {
 }
@@ -122,9 +120,6 @@ Result DeviceVal::CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*
     RETURN_ON_FAILURE(GetLog(), swapChainDesc.format < SwapChainFormat::MAX_NUM, Result::INVALID_ARGUMENT,
         "Can't create SwapChain: 'swapChainDesc.format' is invalid.");
 
-    RETURN_ON_FAILURE(GetLog(), swapChainDesc.physicalDeviceIndex < m_PhysicalDeviceNum, Result::INVALID_ARGUMENT,
-        "Can't create SwapChain: 'swapChainDesc.physicalDeviceIndex' is invalid.");
-
     auto swapChainDescImpl = swapChainDesc;
     swapChainDescImpl.commandQueue = NRI_GET_IMPL_PTR(CommandQueue, swapChainDesc.commandQueue);
 
@@ -192,9 +187,6 @@ Result DeviceVal::GetCommandQueue(CommandQueueType commandQueueType, CommandQueu
 
 Result DeviceVal::CreateCommandAllocator(const CommandQueue& commandQueue, uint32_t physicalDeviceMask, CommandAllocator*& commandAllocator)
 {
-    RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(physicalDeviceMask), Result::INVALID_ARGUMENT,
-        "Can't create CommandAllocator: 'physicalDeviceMask' is invalid.");
-
     auto commandQueueImpl = NRI_GET_IMPL_REF(CommandQueue, &commandQueue);
 
     CommandAllocator* commandAllocatorImpl = nullptr;
@@ -211,9 +203,6 @@ Result DeviceVal::CreateCommandAllocator(const CommandQueue& commandQueue, uint3
 
 Result DeviceVal::CreateDescriptorPool(const DescriptorPoolDesc& descriptorPoolDesc, DescriptorPool*& descriptorPool)
 {
-    RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(descriptorPoolDesc.physicalDeviceMask), Result::INVALID_ARGUMENT,
-        "Can't create DescriptorPool: 'descriptorPoolDesc.physicalDeviceMask' is invalid.");
-
     DescriptorPool* descriptorPoolImpl = nullptr;
     const Result result = m_CoreAPI.CreateDescriptorPool(m_Device, descriptorPoolDesc, descriptorPoolImpl);
 
@@ -228,9 +217,6 @@ Result DeviceVal::CreateDescriptorPool(const DescriptorPoolDesc& descriptorPoolD
 
 Result DeviceVal::CreateBuffer(const BufferDesc& bufferDesc, Buffer*& buffer)
 {
-    RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(bufferDesc.physicalDeviceMask), Result::INVALID_ARGUMENT,
-        "Can't create Buffer: 'bufferDesc.physicalDeviceMask' is invalid.");
-
     RETURN_ON_FAILURE(GetLog(), bufferDesc.size > 0, Result::INVALID_ARGUMENT,
         "Can't create Buffer: 'bufferDesc.size' is 0.");
 
@@ -248,9 +234,6 @@ Result DeviceVal::CreateBuffer(const BufferDesc& bufferDesc, Buffer*& buffer)
 
 Result DeviceVal::CreateTexture(const TextureDesc& textureDesc, Texture*& texture)
 {
-    RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(textureDesc.physicalDeviceMask), Result::INVALID_ARGUMENT,
-        "Can't create Texture: 'textureDesc.physicalDeviceMask' is invalid.");
-
     RETURN_ON_FAILURE(GetLog(), textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT,
         "Can't create Texture: 'textureDesc.format' is invalid.");
 
@@ -271,9 +254,6 @@ Result DeviceVal::CreateTexture(const TextureDesc& textureDesc, Texture*& textur
 
 Result DeviceVal::CreateDescriptor(const BufferViewDesc& bufferViewDesc, Descriptor*& bufferView)
 {
-    RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(bufferViewDesc.physicalDeviceMask), Result::INVALID_ARGUMENT,
-        "Can't create Descriptor: 'bufferViewDesc.physicalDeviceMask' is invalid.");
-
     RETURN_ON_FAILURE(GetLog(), bufferViewDesc.buffer != nullptr, Result::INVALID_ARGUMENT,
         "Can't create Descriptor: 'bufferViewDesc.buffer' is invalid.");
 
@@ -310,9 +290,6 @@ Result DeviceVal::CreateDescriptor(const BufferViewDesc& bufferViewDesc, Descrip
 
 Result DeviceVal::CreateDescriptor(const Texture1DViewDesc& textureViewDesc, Descriptor*& textureView)
 {
-    RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(textureViewDesc.physicalDeviceMask), Result::INVALID_ARGUMENT,
-        "Can't create Descriptor: 'textureViewDesc.physicalDeviceMask' is invalid.");
-
     RETURN_ON_FAILURE(GetLog(), textureViewDesc.texture != nullptr, Result::INVALID_ARGUMENT,
         "Can't create Descriptor: 'textureViewDesc.texture' is invalid.");
 
@@ -360,9 +337,6 @@ Result DeviceVal::CreateDescriptor(const Texture1DViewDesc& textureViewDesc, Des
 
 Result DeviceVal::CreateDescriptor(const Texture2DViewDesc& textureViewDesc, Descriptor*& textureView)
 {
-    RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(textureViewDesc.physicalDeviceMask), Result::INVALID_ARGUMENT,
-        "Can't create Descriptor: 'textureViewDesc.physicalDeviceMask' is invalid.");
-
     RETURN_ON_FAILURE(GetLog(), textureViewDesc.texture != nullptr, Result::INVALID_ARGUMENT,
         "Can't create Descriptor: 'textureViewDesc.texture' is invalid.");
 
@@ -411,9 +385,6 @@ Result DeviceVal::CreateDescriptor(const Texture2DViewDesc& textureViewDesc, Des
 
 Result DeviceVal::CreateDescriptor(const Texture3DViewDesc& textureViewDesc, Descriptor*& textureView)
 {
-    RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(textureViewDesc.physicalDeviceMask), Result::INVALID_ARGUMENT,
-        "Can't create Descriptor: 'textureViewDesc.physicalDeviceMask' is invalid.");
-
     RETURN_ON_FAILURE(GetLog(), textureViewDesc.texture != nullptr, Result::INVALID_ARGUMENT,
         "Can't create Descriptor: 'textureViewDesc.texture' is invalid.");
 
@@ -655,9 +626,6 @@ Result DeviceVal::CreatePipeline(const ComputePipelineDesc& computePipelineDesc,
 
 Result DeviceVal::CreateFrameBuffer(const FrameBufferDesc& frameBufferDesc, FrameBuffer*& frameBuffer)
 {
-    RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(frameBufferDesc.physicalDeviceMask), Result::INVALID_ARGUMENT,
-        "Can't create FrameBuffer: 'frameBufferDesc.physicalDeviceMask' is invalid.");
-
     if (frameBufferDesc.colorAttachmentNum > 0)
     {
         RETURN_ON_FAILURE(GetLog(), frameBufferDesc.colorAttachments != nullptr, Result::INVALID_ARGUMENT,
@@ -703,9 +671,6 @@ Result DeviceVal::CreateFrameBuffer(const FrameBufferDesc& frameBufferDesc, Fram
 
 Result DeviceVal::CreateQueryPool(const QueryPoolDesc& queryPoolDesc, QueryPool*& queryPool)
 {
-    RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(queryPoolDesc.physicalDeviceMask), Result::INVALID_ARGUMENT,
-        "Can't create QueryPool: 'queryPoolDesc.physicalDeviceMask' is invalid.");
-
     RETURN_ON_FAILURE(GetLog(), queryPoolDesc.queryType < QueryType::MAX_NUM, Result::INVALID_ARGUMENT,
         "Can't create QueryPool: 'queryPoolDesc.queryType' is invalid.");
 
@@ -823,9 +788,6 @@ void DeviceVal::DestroyDeviceSemaphore(DeviceSemaphore& deviceSemaphore)
 
 Result DeviceVal::AllocateMemory(uint32_t physicalDeviceMask, MemoryType memoryType, uint64_t size, Memory*& memory)
 {
-    RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(physicalDeviceMask), Result::INVALID_ARGUMENT,
-        "Can't allocate Memory: 'physicalDeviceMask' is invalid.");
-
     RETURN_ON_FAILURE(GetLog(), size > 0, Result::INVALID_ARGUMENT,
         "Can't allocate Memory: 'size' is 0.");
 
@@ -1092,9 +1054,6 @@ Result DeviceVal::CreateDescriptorPoolVK(NRIVkDescriptorPool vkDescriptorPool, D
 
 Result DeviceVal::CreateBufferVK(const BufferVulkanDesc& bufferDesc, Buffer*& buffer)
 {
-    RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(bufferDesc.physicalDeviceMask), Result::INVALID_ARGUMENT,
-        "Can't create Buffer: 'bufferDesc.physicalDeviceMask' is invalid.");
-
     RETURN_ON_FAILURE(GetLog(), bufferDesc.vkBuffer != 0, Result::INVALID_ARGUMENT,
         "Can't create Buffer: 'bufferDesc.vkBuffer' is invalid.");
 
@@ -1120,9 +1079,6 @@ Result DeviceVal::CreateBufferVK(const BufferVulkanDesc& bufferDesc, Buffer*& bu
 
 Result DeviceVal::CreateTextureVK(const TextureVulkanDesc& textureVulkanDesc, Texture*& texture)
 {
-    RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(textureVulkanDesc.physicalDeviceMask), Result::INVALID_ARGUMENT,
-        "Can't create Texture: 'textureVulkanDesc.physicalDeviceMask' is invalid.");
-
     RETURN_ON_FAILURE(GetLog(), textureVulkanDesc.vkImage != 0, Result::INVALID_ARGUMENT,
         "Can't create Texture: 'textureVulkanDesc.vkImage' is invalid.");
 
@@ -1154,9 +1110,6 @@ Result DeviceVal::CreateTextureVK(const TextureVulkanDesc& textureVulkanDesc, Te
 
 Result DeviceVal::CreateMemoryVK(const MemoryVulkanDesc& memoryVulkanDesc, Memory*& memory)
 {
-    RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(memoryVulkanDesc.physicalDeviceMask), Result::INVALID_ARGUMENT,
-        "Can't create Memory: 'memoryVulkanDesc.physicalDeviceMask' is invalid.");
-
     RETURN_ON_FAILURE(GetLog(), memoryVulkanDesc.vkDeviceMemory != 0, Result::INVALID_ARGUMENT,
         "Can't create Memory: 'memoryVulkanDesc.vkDeviceMemory' is invalid.");
 
@@ -1217,9 +1170,6 @@ Result DeviceVal::CreateComputePipelineVK(NRIVkPipeline vkPipeline, Pipeline*& p
 
 Result DeviceVal::CreateQueryPoolVK(const QueryPoolVulkanDesc& queryPoolVulkanDesc, QueryPool*& queryPool)
 {
-    RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(queryPoolVulkanDesc.physicalDeviceMask), Result::INVALID_ARGUMENT,
-        "Can't create QueryPool: 'queryPoolVulkanDesc.physicalDeviceMask' is invalid.");
-
     RETURN_ON_FAILURE(GetLog(), queryPoolVulkanDesc.vkQueryPool != 0, Result::INVALID_ARGUMENT,
         "Can't create QueryPool: 'queryPoolVulkanDesc.vkQueryPool' is invalid.");
 
@@ -1619,9 +1569,6 @@ Result DeviceVal::CreateRayTracingPipeline(const RayTracingPipelineDesc& pipelin
 
 Result DeviceVal::CreateAccelerationStructure(const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure)
 {
-    RETURN_ON_FAILURE(GetLog(), IsPhysicalDeviceMaskValid(accelerationStructureDesc.physicalDeviceMask), Result::INVALID_ARGUMENT,
-        "Can't create AccelerationStructure: 'accelerationStructureDesc.physicalDeviceMask' is invalid.");
-
     RETURN_ON_FAILURE(GetLog(), accelerationStructureDesc.instanceOrGeometryObjectNum != 0, Result::INVALID_ARGUMENT,
         "Can't create AccelerationStructure: 'accelerationStructureDesc.instanceOrGeometryObjectNum' is 0.");
 
@@ -1720,11 +1667,7 @@ DeviceBase* CreateDeviceValidation(const DeviceCreationDesc& deviceCreationDesc,
     Log log(deviceCreationDesc.graphicsAPI, deviceCreationDesc.callbackInterface);
     StdAllocator<uint8_t> allocator(deviceCreationDesc.memoryAllocatorInterface);
 
-    uint32_t physicalDeviceNum = 1;
-    if (deviceCreationDesc.physicalDeviceGroup != nullptr)
-        physicalDeviceNum = deviceCreationDesc.physicalDeviceGroup->physicalDeviceGroupSize;
-
-    DeviceVal* deviceVal = Allocate<DeviceVal>(allocator, log, allocator, device, physicalDeviceNum);
+    DeviceVal* deviceVal = Allocate<DeviceVal>(allocator, log, allocator, device);
 
     if (!deviceVal->Create())
     {

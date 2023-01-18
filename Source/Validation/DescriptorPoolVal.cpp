@@ -131,9 +131,6 @@ Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout& pipelineL
         RETURN_ON_FAILURE(m_Device.GetLog(), instanceNum != 0, Result::INVALID_ARGUMENT,
             "Can't allocate DescriptorSet: 'instanceNum' is 0.");
 
-        RETURN_ON_FAILURE(m_Device.GetLog(), m_Device.IsPhysicalDeviceMaskValid(physicalDeviceMask), Result::INVALID_ARGUMENT,
-            "Can't create DescriptorSet: 'physicalDeviceMask' is invalid.");
-
         RETURN_ON_FAILURE(m_Device.GetLog(), m_DescriptorSetNum + instanceNum <= m_Desc.descriptorSetMaxNum, Result::INVALID_ARGUMENT,
             "Can't allocate DescriptorSet: the maximum number of descriptor sets exceeded.");
 

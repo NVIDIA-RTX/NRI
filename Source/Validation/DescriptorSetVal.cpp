@@ -33,9 +33,6 @@ void DescriptorSetVal::UpdateDescriptorRanges(uint32_t physicalDeviceMask, uint3
     if (rangeNum == 0)
         return;
 
-    RETURN_ON_FAILURE(m_Device.GetLog(), m_Device.IsPhysicalDeviceMaskValid(physicalDeviceMask), ReturnVoid(),
-        "Can't update descriptor ranges: 'physicalDeviceMask' is invalid.");
-
     RETURN_ON_FAILURE(m_Device.GetLog(), rangeUpdateDescs != nullptr, ReturnVoid(),
         "Can't update descriptor ranges: 'rangeUpdateDescs' is invalid.");
 
@@ -91,9 +88,6 @@ void DescriptorSetVal::UpdateDynamicConstantBuffers(uint32_t physicalDeviceMask,
     if (bufferNum == 0)
         return;
 
-    RETURN_ON_FAILURE(m_Device.GetLog(), m_Device.IsPhysicalDeviceMaskValid(physicalDeviceMask), ReturnVoid(),
-        "Can't update dynamic constant buffers: 'physicalDeviceMask' is invalid.");
-
     RETURN_ON_FAILURE(m_Device.GetLog(), baseBuffer < m_Desc.dynamicConstantBufferNum, ReturnVoid(),
         "Can't update dynamic constant buffers: 'baseBuffer' is invalid. (baseBuffer=%u, dynamicConstantBufferNum=%u)",
         baseBuffer, m_Desc.dynamicConstantBufferNum);
@@ -120,9 +114,6 @@ void DescriptorSetVal::UpdateDynamicConstantBuffers(uint32_t physicalDeviceMask,
 
 void DescriptorSetVal::Copy(const DescriptorSetCopyDesc& descriptorSetCopyDesc)
 {
-    RETURN_ON_FAILURE(m_Device.GetLog(), m_Device.IsPhysicalDeviceMaskValid(descriptorSetCopyDesc.physicalDeviceMask), ReturnVoid(),
-        "Can't copy descriptor set: 'physicalDeviceMask' is invalid.");
-
     RETURN_ON_FAILURE(m_Device.GetLog(), descriptorSetCopyDesc.srcDescriptorSet != nullptr, ReturnVoid(),
         "Can't copy descriptor set: 'descriptorSetCopyDesc.srcDescriptorSet' is invalid.");
 

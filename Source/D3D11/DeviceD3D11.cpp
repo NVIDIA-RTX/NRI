@@ -57,6 +57,7 @@ bool DeviceD3D11::GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const
 
 Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAdapter* adapter, ID3D11Device* device, AGSContext* agsContext)
 {
+    m_SkipLiveObjectsReporting = deviceCreationDesc.skipLiveObjectsReporting;
     m_Adapter = adapter;
 
     DXGI_ADAPTER_DESC desc = {};
@@ -332,6 +333,7 @@ void DeviceD3D11::FillLimits(bool isValidationEnabled, Vendor vendor)
     m_Desc.computeShaderWorkGroupMaxDim[1] = D3D11_CS_THREAD_GROUP_MAX_Y;
     m_Desc.computeShaderWorkGroupMaxDim[2] = D3D11_CS_THREAD_GROUP_MAX_Z;
 
+    m_Desc.timestampFrequencyHz = timestampFrequency;
     m_Desc.subPixelPrecisionBits = D3D11_SUBPIXEL_FRACTIONAL_BIT_COUNT;
     m_Desc.subTexelPrecisionBits = D3D11_SUBTEXEL_FRACTIONAL_BIT_COUNT;
     m_Desc.mipmapPrecisionBits = D3D11_MIP_LOD_FRACTIONAL_BIT_COUNT;
@@ -354,8 +356,7 @@ void DeviceD3D11::FillLimits(bool isValidationEnabled, Vendor vendor)
     m_Desc.rayTracingShaderRecursionMaxDepth = 0;
     m_Desc.rayTracingGeometryObjectMaxNum = 0;
     m_Desc.conservativeRasterTier = (uint8_t)options2.ConservativeRasterizationTier;
-    m_Desc.timestampFrequencyHz = timestampFrequency;
-    m_Desc.phyiscalDeviceGroupSize = 1; // TODO: fill me
+    m_Desc.physicalDeviceNum = 1; // TODO: is there a way to query it in D3D11?
 
     m_Desc.isAPIValidationEnabled = isValidationEnabled;
     m_Desc.isTextureFilterMinMaxSupported = options1.MinMaxFiltering != 0;
@@ -708,12 +709,16 @@ inline Result DeviceD3D11::AllocateAndBindMemory(const ResourceGroupDesc& resour
 
 void DeviceD3D11::Destroy()
 {
+    bool skipLiveObjectsReporting = m_SkipLiveObjectsReporting;
     Deallocate(GetStdAllocator(), this);
 
-    ComPtr<IDXGIDebug1> pDebug;
-    HRESULT hr = DXGIGetDebugInterface1(0, IID_PPV_ARGS(&pDebug));
-    if (SUCCEEDED(hr))
-        pDebug->ReportLiveObjects(DXGI_DEBUG_ALL, (DXGI_DEBUG_RLO_FLAGS)((uint32_t)DXGI_DEBUG_RLO_DETAIL | (uint32_t)DXGI_DEBUG_RLO_IGNORE_INTERNAL));
+    if (!skipLiveObjectsReporting)
+    {
+        ComPtr<IDXGIDebug1> pDebug;
+        HRESULT hr = DXGIGetDebugInterface1(0, IID_PPV_ARGS(&pDebug));
+        if (SUCCEEDED(hr))
+            pDebug->ReportLiveObjects(DXGI_DEBUG_ALL, (DXGI_DEBUG_RLO_FLAGS)((uint32_t)DXGI_DEBUG_RLO_DETAIL | (uint32_t)DXGI_DEBUG_RLO_IGNORE_INTERNAL));
+    }
 }
 
 template<typename Implementation, typename Interface, typename ConstructorArg, typename ... Args>

@@ -70,10 +70,9 @@ bool DeviceD3D12::GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const
 
 Result DeviceD3D12::Create(const DeviceCreationD3D12Desc& deviceCreationDesc)
 {
-    m_Device = (ID3D12Device*)deviceCreationDesc.d3d12Device;
     m_SkipLiveObjectsReporting = true;
-
     m_Adapter = deviceCreationDesc.d3d12PhysicalAdapter;
+    m_Device = (ID3D12Device*)deviceCreationDesc.d3d12Device;
 
     if (m_Adapter == nullptr)
     {
@@ -108,13 +107,14 @@ Result DeviceD3D12::Create(const DeviceCreationD3D12Desc& deviceCreationDesc)
     return Result::SUCCESS;
 }
 
-Result DeviceD3D12::Create(IDXGIAdapter* dxgiAdapter, bool enableValidation)
+Result DeviceD3D12::Create(IDXGIAdapter* dxgiAdapter, const DeviceCreationDesc& deviceCreationDesc)
 {
+    m_SkipLiveObjectsReporting = deviceCreationDesc.skipLiveObjectsReporting;
     m_Adapter = dxgiAdapter;
 
     // Enable the debug layer (requires the Graphics Tools "optional feature").
     // NOTE: Enabling the debug layer after device creation will invalidate the active device.
-    if (enableValidation)
+    if (deviceCreationDesc.enableAPIValidation)
     {
         ComPtr<ID3D12Debug> debugController;
         if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
@@ -134,7 +134,7 @@ Result DeviceD3D12::Create(IDXGIAdapter* dxgiAdapter, bool enableValidation)
     }
 
     // TODO: this code is currently needed to disable known false-positive errors reported by the debug layer
-    if (enableValidation)
+    if (deviceCreationDesc.enableAPIValidation)
     {
         ComPtr<ID3D12InfoQueue> pInfoQueue;
         m_Device->QueryInterface(&pInfoQueue);
@@ -182,7 +182,7 @@ Result DeviceD3D12::Create(IDXGIAdapter* dxgiAdapter, bool enableValidation)
         return Result::FAILURE;
     }
 
-    UpdateDeviceDesc(enableValidation);
+    UpdateDeviceDesc(deviceCreationDesc.enableAPIValidation);
 
     return Result::SUCCESS;
 }
@@ -872,6 +872,7 @@ void DeviceD3D12::UpdateDeviceDesc(bool enableValidation)
     }
 #endif
 
+    m_DeviceDesc.timestampFrequencyHz = timestampFrequency;
     m_DeviceDesc.subPixelPrecisionBits = D3D12_SUBPIXEL_FRACTIONAL_BIT_COUNT;
     m_DeviceDesc.subTexelPrecisionBits = D3D12_SUBTEXEL_FRACTIONAL_BIT_COUNT;
     m_DeviceDesc.mipmapPrecisionBits = D3D12_MIP_LOD_FRACTIONAL_BIT_COUNT;
@@ -889,8 +890,7 @@ void DeviceD3D12::UpdateDeviceDesc(bool enableValidation)
     m_DeviceDesc.cullDistanceMaxNum = D3D12_CLIP_OR_CULL_DISTANCE_COUNT;
     m_DeviceDesc.combinedClipAndCullDistanceMaxNum = D3D12_CLIP_OR_CULL_DISTANCE_COUNT;
     m_DeviceDesc.conservativeRasterTier = (uint8_t)options.ConservativeRasterizationTier;
-    m_DeviceDesc.timestampFrequencyHz = timestampFrequency;
-    m_DeviceDesc.phyiscalDeviceGroupSize = m_Device->GetNodeCount();
+    m_DeviceDesc.physicalDeviceNum = (uint8_t)m_Device->GetNodeCount();
 
     m_DeviceDesc.isAPIValidationEnabled = enableValidation;
     m_DeviceDesc.isTextureFilterMinMaxSupported = levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_11_1 ? true : false;
@@ -960,7 +960,7 @@ Result CreateDeviceD3D12(const DeviceCreationDesc& deviceCreationDesc, DeviceBas
     }
 
     DeviceD3D12* implementation = Allocate<DeviceD3D12>(allocator, log, allocator);
-    const nri::Result result = implementation->Create(adapter, deviceCreationDesc.enableAPIValidation);
+    const nri::Result result = implementation->Create(adapter, deviceCreationDesc);
     if (result != nri::Result::SUCCESS)
     {
         Deallocate(allocator, implementation);

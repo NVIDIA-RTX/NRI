@@ -81,7 +81,7 @@ Result AccelerationStructureVK::Create(const AccelerationStructureVulkanDesc& ac
     if (deviceAddress == 0)
         return Result::FAILURE;
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if ((1 << i) & physicalDeviceMask)
         {
@@ -170,7 +170,7 @@ Result AccelerationStructureVK::FinishCreation()
 
     const auto& vk = m_Device.GetDispatchTable();
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if ((1 << i) & m_PhysicalDeviceMask)
         {

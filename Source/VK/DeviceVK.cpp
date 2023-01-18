@@ -186,7 +186,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& deviceCreationDesc)
 
     SetDeviceLimits(deviceCreationDesc.enableAPIValidation);
 
-    const uint32_t groupSize = m_DeviceDesc.phyiscalDeviceGroupSize;
+    const uint32_t groupSize = m_DeviceDesc.physicalDeviceNum;
     m_PhysicalDeviceIndices.resize(groupSize * groupSize);
     const auto begin = m_PhysicalDeviceIndices.begin();
     for (uint32_t i = 0; i < groupSize; i++)
@@ -746,13 +746,13 @@ inline Result DeviceVK::BindBufferMemory(const BufferMemoryBindingDesc* memoryBi
     if (memoryBindingDescNum == 0)
         return Result::SUCCESS;
 
-    const uint32_t infoMaxNum = memoryBindingDescNum * m_DeviceDesc.phyiscalDeviceGroupSize;
+    const uint32_t infoMaxNum = memoryBindingDescNum * m_DeviceDesc.physicalDeviceNum;
 
     VkBindBufferMemoryInfo* infos = STACK_ALLOC(VkBindBufferMemoryInfo, infoMaxNum);
     uint32_t infoNum = 0;
 
     VkBindBufferMemoryDeviceGroupInfo* deviceGroupInfos = nullptr;
-    if (m_DeviceDesc.phyiscalDeviceGroupSize > 1)
+    if (m_DeviceDesc.physicalDeviceNum > 1)
         deviceGroupInfos = STACK_ALLOC(VkBindBufferMemoryDeviceGroupInfo, infoMaxNum);
 
     for (uint32_t i = 0; i < memoryBindingDescNum; i++)
@@ -774,7 +774,7 @@ inline Result DeviceVK::BindBufferMemory(const BufferMemoryBindingDesc* memoryBi
         if (memoryTypeInfo.isDedicated == 1)
             memoryImpl.CreateDedicated(bufferImpl, physicalDeviceMask);
 
-        for (uint32_t j = 0; j < m_DeviceDesc.phyiscalDeviceGroupSize; j++)
+        for (uint32_t j = 0; j < m_DeviceDesc.physicalDeviceNum; j++)
         {
             if ((1u << j) & physicalDeviceMask)
             {
@@ -794,8 +794,8 @@ inline Result DeviceVK::BindBufferMemory(const BufferMemoryBindingDesc* memoryBi
                     VkBindBufferMemoryDeviceGroupInfo& deviceGroupInfo = deviceGroupInfos[infoNum - 1];
                     deviceGroupInfo = {};
                     deviceGroupInfo.sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO;
-                    deviceGroupInfo.deviceIndexCount = m_DeviceDesc.phyiscalDeviceGroupSize;
-                    deviceGroupInfo.pDeviceIndices = &m_PhysicalDeviceIndices[j * m_DeviceDesc.phyiscalDeviceGroupSize];
+                    deviceGroupInfo.deviceIndexCount = m_DeviceDesc.physicalDeviceNum;
+                    deviceGroupInfo.pDeviceIndices = &m_PhysicalDeviceIndices[j * m_DeviceDesc.physicalDeviceNum];
                     info.pNext = &deviceGroupInfo;
                 }
             }
@@ -820,13 +820,13 @@ inline Result DeviceVK::BindBufferMemory(const BufferMemoryBindingDesc* memoryBi
 
 inline Result DeviceVK::BindTextureMemory(const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum)
 {
-    const uint32_t infoMaxNum = memoryBindingDescNum * m_DeviceDesc.phyiscalDeviceGroupSize;
+    const uint32_t infoMaxNum = memoryBindingDescNum * m_DeviceDesc.physicalDeviceNum;
 
     VkBindImageMemoryInfo* infos = STACK_ALLOC(VkBindImageMemoryInfo, infoMaxNum);
     uint32_t infoNum = 0;
 
     VkBindImageMemoryDeviceGroupInfo* deviceGroupInfos = nullptr;
-    if (m_DeviceDesc.phyiscalDeviceGroupSize > 1)
+    if (m_DeviceDesc.physicalDeviceNum > 1)
         deviceGroupInfos = STACK_ALLOC(VkBindImageMemoryDeviceGroupInfo, infoMaxNum);
 
     for (uint32_t i = 0; i < memoryBindingDescNum; i++)
@@ -844,7 +844,7 @@ inline Result DeviceVK::BindTextureMemory(const TextureMemoryBindingDesc* memory
         if (memoryTypeInfo.isDedicated == 1)
             memoryImpl.CreateDedicated(textureImpl, physicalDeviceMask);
 
-        for (uint32_t j = 0; j < m_DeviceDesc.phyiscalDeviceGroupSize; j++)
+        for (uint32_t j = 0; j < m_DeviceDesc.physicalDeviceNum; j++)
         {
             if ((1u << j) & physicalDeviceMask)
             {
@@ -860,8 +860,8 @@ inline Result DeviceVK::BindTextureMemory(const TextureMemoryBindingDesc* memory
                     VkBindImageMemoryDeviceGroupInfo& deviceGroupInfo = deviceGroupInfos[infoNum - 1];
                     deviceGroupInfo = {};
                     deviceGroupInfo.sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO;
-                    deviceGroupInfo.deviceIndexCount = m_DeviceDesc.phyiscalDeviceGroupSize;
-                    deviceGroupInfo.pDeviceIndices = &m_PhysicalDeviceIndices[j * m_DeviceDesc.phyiscalDeviceGroupSize];
+                    deviceGroupInfo.deviceIndexCount = m_DeviceDesc.physicalDeviceNum;
+                    deviceGroupInfo.pDeviceIndices = &m_PhysicalDeviceIndices[j * m_DeviceDesc.physicalDeviceNum];
                     info.pNext = &deviceGroupInfo;
                 }
             }
@@ -1079,7 +1079,7 @@ VkBool32 VKAPI_PTR DebugUtilsMessenger(
         messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
 
     // VUID-RuntimeSpirv-OpImageWrite-07112
-    if (callbackData->messageIdNumber == 1842853234)
+    if (callbackData->messageIdNumber == 1842853234 || callbackData->messageIdNumber == 2144011273)
         messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
 
     const char* type = "unknown";
@@ -1314,12 +1314,10 @@ Result DeviceVK::FindPhysicalDeviceGroup(const PhysicalDeviceGroup* physicalDevi
         const uint32_t minorVersion = VK_VERSION_MINOR(props.properties.apiVersion);
         isVulkan11Supported = majorVersion > 1 || (majorVersion == 1 && minorVersion >= 1);
 
-        const bool isPhysicalDeviceSpecified = physicalDeviceGroup != nullptr;
-
-        if (isPhysicalDeviceSpecified)
+        if (physicalDeviceGroup)
         {
             const uint64_t luid = *(uint64_t*)idProps.deviceLUID;
-            if (luid == physicalDeviceGroup->luid && group.physicalDeviceCount == physicalDeviceGroup->physicalDeviceGroupSize)
+            if (luid == physicalDeviceGroup->luid)
             {
                 RETURN_ON_FAILURE(GetLog(), isVulkan11Supported, Result::UNSUPPORTED,
                     "Can't create a device: the specified physical device does not support Vulkan 1.1.");
@@ -1498,6 +1496,7 @@ void DeviceVK::SetDeviceLimits(bool enableValidation)
     m_DeviceDesc.computeShaderWorkGroupMaxDim[1] = limits.maxComputeWorkGroupSize[1];
     m_DeviceDesc.computeShaderWorkGroupMaxDim[2] = limits.maxComputeWorkGroupSize[2];
 
+    m_DeviceDesc.timestampFrequencyHz = uint64_t( 1e9 / double(limits.timestampPeriod) + 0.5 );
     m_DeviceDesc.subPixelPrecisionBits = limits.subPixelPrecisionBits;
     m_DeviceDesc.subTexelPrecisionBits = limits.subTexelPrecisionBits;
     m_DeviceDesc.mipmapPrecisionBits = limits.mipmapPrecisionBits;
@@ -1515,8 +1514,7 @@ void DeviceVK::SetDeviceLimits(bool enableValidation)
     m_DeviceDesc.cullDistanceMaxNum = limits.maxCullDistances;
     m_DeviceDesc.combinedClipAndCullDistanceMaxNum = limits.maxCombinedClipAndCullDistances;
     m_DeviceDesc.conservativeRasterTier = conservativeRasterTier;
-    m_DeviceDesc.timestampFrequencyHz = uint64_t( 1e9 / double(limits.timestampPeriod) + 0.5 );
-    m_DeviceDesc.phyiscalDeviceGroupSize = (uint32_t)m_PhysicalDevices.size();
+    m_DeviceDesc.physicalDeviceNum = (uint8_t)m_PhysicalDevices.size();
 
     m_DeviceDesc.isAPIValidationEnabled = enableValidation;
     m_DeviceDesc.isTextureFilterMinMaxSupported = m_IsMinMaxFilterExtSupported;
@@ -1925,7 +1923,7 @@ void DeviceVK::SetDebugNameToDeviceGroupObject(VkObjectType objectType, const ui
         nameWithDeviceIndex
     };
 
-    for (uint32_t i = 0; i < m_DeviceDesc.phyiscalDeviceGroupSize; i++)
+    for (uint32_t i = 0; i < m_DeviceDesc.physicalDeviceNum; i++)
     {
         if (handles[i] != 0)
         {
@@ -1955,14 +1953,14 @@ void DeviceVK::ReportDeviceGroupInfo()
 
         REPORT_INFO(GetLog(), "\tHeap%u %.1lfMiB - %s", i, size, text.c_str());
 
-        if (m_DeviceDesc.phyiscalDeviceGroupSize == 1)
+        if (m_DeviceDesc.physicalDeviceNum == 1)
             continue;
 
-        for (uint32_t j = 0; j < m_DeviceDesc.phyiscalDeviceGroupSize; j++)
+        for (uint32_t j = 0; j < m_DeviceDesc.physicalDeviceNum; j++)
         {
             REPORT_INFO(GetLog(), "\t\tPhysicalDevice%u", j);
 
-            for (uint32_t k = 0; k < m_DeviceDesc.phyiscalDeviceGroupSize; k++)
+            for (uint32_t k = 0; k < m_DeviceDesc.physicalDeviceNum; k++)
             {
                 if (j == k)
                     continue;

@@ -75,8 +75,8 @@ Result HelperDataUpload::Create()
     if (result != Result::SUCCESS)
         return result;
 
-    m_CommandAllocators.resize(m_DeviceDesc.phyiscalDeviceGroupSize);
-    m_CommandBuffers.resize(m_DeviceDesc.phyiscalDeviceGroupSize);
+    m_CommandAllocators.resize(m_DeviceDesc.physicalDeviceNum);
+    m_CommandBuffers.resize(m_DeviceDesc.physicalDeviceNum);
 
     for (uint32_t i = 0; i < m_CommandBuffers.size(); i++)
     {

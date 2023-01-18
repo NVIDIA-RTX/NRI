@@ -11,8 +11,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "SharedExternal.h"
 #include "DeviceBase.h"
 
-#include <vulkan/vulkan.h>
-
 #define NRI_STRINGIFY(name) #name
 
 using namespace nri;
@@ -105,156 +103,6 @@ NRI_API Result NRI_CALL nri::GetInterface(const Device& device, const char* inte
     return result;
 }
 
-static bool IsValidDeviceGroup(const VkPhysicalDeviceGroupProperties& group, PFN_vkGetPhysicalDeviceProperties vkGetPhysicalDeviceProperties)
-{
-    VkPhysicalDeviceProperties baseProperties = {};
-    vkGetPhysicalDeviceProperties(group.physicalDevices[0], &baseProperties);
-
-    for (uint32_t j = 1; j < group.physicalDeviceCount; j++)
-    {
-        VkPhysicalDeviceProperties properties = {};
-        vkGetPhysicalDeviceProperties(group.physicalDevices[j], &properties);
-
-        if (properties.deviceID != baseProperties.deviceID)
-            return false;
-    }
-
-    return true;
-}
-
-constexpr std::array<nri::PhysicalDeviceType, 5> PHYSICAL_DEVICE_TYPE = {
-    nri::PhysicalDeviceType::UNKNOWN,
-    nri::PhysicalDeviceType::INTEGRATED,
-    nri::PhysicalDeviceType::DISCRETE,
-    nri::PhysicalDeviceType::UNKNOWN,
-    nri::PhysicalDeviceType::UNKNOWN
-};
-
-constexpr PhysicalDeviceType GetPhysicalDeviceType(VkPhysicalDeviceType physicalDeviceType)
-{
-    const size_t index = std::min(PHYSICAL_DEVICE_TYPE.size() - 1, (size_t)physicalDeviceType);
-    return PHYSICAL_DEVICE_TYPE[index];
-}
-
-#define GET_VK_FUNCTION(instance, name) \
-    const auto name = (PFN_##name)vkGetInstanceProcAddr(instance, #name); \
-    if (name == nullptr) \
-        return Result::UNSUPPORTED;
-
-NRI_API Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroups, uint32_t& physicalDeviceGroupNum)
-{
-    Library* loader = LoadSharedLibrary(VULKAN_LOADER_NAME);
-    if (loader == nullptr)
-        return Result::UNSUPPORTED;
-
-    const auto vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)GetSharedLibraryFunction(*loader, "vkGetInstanceProcAddr");
-    const auto vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
-
-    VkApplicationInfo applicationInfo = {};
-    applicationInfo.apiVersion = VK_API_VERSION_1_1;
-
-    VkInstanceCreateInfo instanceCreateInfo = {};
-    instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    instanceCreateInfo.pApplicationInfo = &applicationInfo;
-
-    VkInstance instance = VK_NULL_HANDLE;
-    VkResult result = vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
-
-    if (result != VK_SUCCESS)
-    {
-        UnloadSharedLibrary(*loader);
-        return Result::UNSUPPORTED;
-    }
-
-    GET_VK_FUNCTION(instance, vkDestroyInstance);
-    GET_VK_FUNCTION(instance, vkEnumeratePhysicalDeviceGroups);
-    GET_VK_FUNCTION(instance, vkGetPhysicalDeviceProperties);
-    GET_VK_FUNCTION(instance, vkGetPhysicalDeviceProperties2);
-    GET_VK_FUNCTION(instance, vkGetPhysicalDeviceMemoryProperties);
-
-    uint32_t deviceGroupNum = 0;
-    vkEnumeratePhysicalDeviceGroups(instance, &deviceGroupNum, nullptr);
-
-    VkPhysicalDeviceGroupProperties* deviceGroupProperties = STACK_ALLOC(VkPhysicalDeviceGroupProperties, deviceGroupNum);
-    result = vkEnumeratePhysicalDeviceGroups(instance, &deviceGroupNum, deviceGroupProperties);
-
-    if (result != VK_SUCCESS)
-    {
-        vkDestroyInstance(instance, nullptr);
-        UnloadSharedLibrary(*loader);
-
-        return Result::UNSUPPORTED;
-    }
-
-    if (physicalDeviceGroupNum == 0)
-    {
-        for (uint32_t i = 0; i < deviceGroupNum; i++)
-        {
-            if (!IsValidDeviceGroup(deviceGroupProperties[i], vkGetPhysicalDeviceProperties))
-                deviceGroupNum--;
-        }
-        
-        physicalDeviceGroupNum = deviceGroupNum;
-        vkDestroyInstance(instance, nullptr);
-        UnloadSharedLibrary(*loader);
-
-        return Result::SUCCESS;
-    }
-
-    VkPhysicalDeviceIDProperties deviceIDProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES };
-    VkPhysicalDeviceProperties2 properties2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
-    properties2.pNext = &deviceIDProperties;
-
-    VkPhysicalDeviceMemoryProperties memoryProperties = {};
-    VkPhysicalDeviceProperties& properties = properties2.properties;
-
-    for (uint32_t i = 0, j = 0; i < deviceGroupNum && j < physicalDeviceGroupNum; i++)
-    {
-        if (!IsValidDeviceGroup(deviceGroupProperties[i], vkGetPhysicalDeviceProperties))
-            continue;
-
-        const VkPhysicalDevice physicalDevice = deviceGroupProperties[i].physicalDevices[0];
-        vkGetPhysicalDeviceProperties2(physicalDevice, &properties2);
-        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
-
-#if _WIN32
-        if (deviceIDProperties.deviceLUIDValid == VK_FALSE)
-        {
-            vkDestroyInstance(instance, nullptr);
-            UnloadSharedLibrary(*loader);
-
-            return Result::UNSUPPORTED;
-        }
-#endif
-
-        PhysicalDeviceGroup& group = physicalDeviceGroups[j++];
-
-        group = {};
-
-        const size_t descriptionLength = (size_t)GetCountOf(group.description) - 1;
-        strncpy(group.description, properties.deviceName, descriptionLength);
-        group.description[descriptionLength] = '\0';
-
-        group.type = GetPhysicalDeviceType(properties.deviceType);
-        group.vendor = GetVendorFromID(properties.vendorID);
-        group.deviceID = properties.deviceID;
-        group.luid = *(uint64_t*)&deviceIDProperties.deviceLUID[0];
-        group.physicalDeviceGroupSize = deviceGroupProperties[i].physicalDeviceCount;
-
-        group.dedicatedVideoMemoryMB = 0;
-        for (uint32_t k = 0; k < memoryProperties.memoryHeapCount; k++)
-        {
-            if (memoryProperties.memoryHeaps[k].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
-                group.dedicatedVideoMemoryMB += memoryProperties.memoryHeaps[k].size / (1024 * 1024);
-        }
-    }
-
-    vkDestroyInstance(instance, nullptr);
-    UnloadSharedLibrary(*loader);
-
-    return Result::SUCCESS;
-}
-
 template< typename T >
 Result FinalizeDeviceCreation(const T& deviceCreationDesc, DeviceBase& deviceImpl, Device*& device)
 {
@@ -313,6 +161,7 @@ NRI_API Result NRI_CALL nri::CreateDeviceFromD3D11Device(const DeviceCreationD3D
     deviceCreationDesc.graphicsAPI = GraphicsAPI::D3D11;
     deviceCreationDesc.enableNRIValidation = deviceCreationD3D11Desc.enableNRIValidation;
     deviceCreationDesc.enableAPIValidation = deviceCreationD3D11Desc.enableAPIValidation;
+    deviceCreationDesc.skipLiveObjectsReporting = true;
 
     CheckAndSetDefaultCallbacks(deviceCreationDesc.callbackInterface);
     CheckAndSetDefaultAllocator(deviceCreationDesc.memoryAllocatorInterface);
@@ -403,7 +252,7 @@ NRI_API void NRI_CALL nri::DestroyDevice(Device& device)
 
 NRI_API Format NRI_CALL nri::ConvertVKFormatToNRI(uint32_t vkFormat)
 {
-    return VKFormatToNRIFormat((VkFormat)vkFormat);
+    return VKFormatToNRIFormat(vkFormat);
 }
 
 NRI_API Format NRI_CALL nri::ConvertDXGIFormatToNRI(uint32_t dxgiFormat)
@@ -512,3 +361,218 @@ NRIC_API uint32_t NRI_CALL nri_ConvertNRIFormatToVK(uint8_t format)
 {
     return nri::ConvertNRIFormatToVK((Format)format);
 }
+
+#ifdef _WIN32
+
+#include <dxgi.h>
+
+int SortAdaptersByDedicatedVideoMemorySize(const void* a, const void* b)
+{
+    DXGI_ADAPTER_DESC1 ad, bd;
+    (*(IDXGIAdapter1**)a)->GetDesc1(&ad);
+    (*(IDXGIAdapter1**)b)->GetDesc1(&bd);
+
+    if (ad.DedicatedVideoMemory > bd.DedicatedVideoMemory)
+        return -1;
+
+    if (ad.DedicatedVideoMemory < bd.DedicatedVideoMemory)
+        return 1;
+
+    return 0;
+}
+
+NRI_API Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroups, uint32_t& physicalDeviceGroupNum)
+{
+    IDXGIFactory1* factory = NULL;
+    if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory)))
+        return Result::UNSUPPORTED;
+
+    uint32_t adaptersNum = 0;
+    IDXGIAdapter1* adapters[32];
+
+    for (uint32_t i = 0; ; i++)
+    {
+        IDXGIAdapter1* adapter;
+        HRESULT hr = factory->EnumAdapters1(i, &adapter);
+        if (hr == DXGI_ERROR_NOT_FOUND)
+            break;
+
+        DXGI_ADAPTER_DESC1 desc;
+        if (adapter->GetDesc1(&desc) == S_OK)
+        {
+            if (desc.Flags == DXGI_ADAPTER_FLAG_NONE)
+                adapters[adaptersNum++] = adapter;
+        }
+    }
+    
+    factory->Release();
+
+    if (!adaptersNum)
+        return Result::FAILURE;
+
+    if (!physicalDeviceGroupNum)
+    {
+        physicalDeviceGroupNum = adaptersNum;
+
+        return Result::SUCCESS;
+    }
+
+    qsort(adapters, adaptersNum, sizeof(adapters[0]), SortAdaptersByDedicatedVideoMemorySize);
+
+    for (uint32_t i = 0; i < physicalDeviceGroupNum; i++)
+    {
+        DXGI_ADAPTER_DESC1 desc;
+        adapters[i]->GetDesc1(&desc);
+
+        PhysicalDeviceGroup& group = physicalDeviceGroups[i];
+        memset(&group, 0 ,sizeof(group));
+        wcscpy(group.description, desc.Description);
+        group.luid = *(uint64_t*)&desc.AdapterLuid;
+        group.dedicatedVideoMemory = desc.DedicatedVideoMemory;
+        group.deviceID = desc.DeviceId;
+        group.vendor = GetVendorFromID(desc.VendorId);
+    }
+
+    return Result::SUCCESS;
+}
+
+#else
+
+#include <vulkan/vulkan.h>
+
+#define GET_VK_FUNCTION(instance, name) \
+    const auto name = (PFN_##name)vkGetInstanceProcAddr(instance, #name); \
+    if (name == nullptr) \
+        return Result::UNSUPPORTED;
+
+int SortAdaptersByDedicatedVideoMemorySize(const void* pa, const void* pb)
+{
+    PhysicalDeviceGroup* a = (PhysicalDeviceGroup*)pa;
+    PhysicalDeviceGroup* b = (PhysicalDeviceGroup*)pb;
+
+    if (a->dedicatedVideoMemory > b->dedicatedVideoMemory)
+        return -1;
+
+    if (a->dedicatedVideoMemory < b->dedicatedVideoMemory)
+        return 1;
+
+    return 0;
+}
+
+NRI_API Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroups, uint32_t& physicalDeviceGroupNum)
+{
+    Library* loader = LoadSharedLibrary(VULKAN_LOADER_NAME);
+    if (!loader)
+        return Result::UNSUPPORTED;
+
+    const auto vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)GetSharedLibraryFunction(*loader, "vkGetInstanceProcAddr");
+    if (!vkGetInstanceProcAddr)
+        return Result::UNSUPPORTED;
+
+    const auto vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
+    if (!vkCreateInstance)
+        return Result::UNSUPPORTED;
+
+    // Create instance
+    VkApplicationInfo applicationInfo = {};
+    applicationInfo.apiVersion = VK_API_VERSION_1_1;
+
+    VkInstanceCreateInfo instanceCreateInfo = {};
+    instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    instanceCreateInfo.pApplicationInfo = &applicationInfo;
+
+    VkInstance instance = VK_NULL_HANDLE;
+    VkResult result = vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
+
+    nri::Result nriResult = nri::Result::UNSUPPORTED;
+    if (result == VK_SUCCESS)
+    {
+        // Get needed functions
+        GET_VK_FUNCTION(instance, vkDestroyInstance);
+        GET_VK_FUNCTION(instance, vkEnumeratePhysicalDeviceGroups);
+        GET_VK_FUNCTION(instance, vkGetPhysicalDeviceProperties2);
+        GET_VK_FUNCTION(instance, vkGetPhysicalDeviceMemoryProperties);
+
+        uint32_t deviceGroupNum = 0;
+        result = vkEnumeratePhysicalDeviceGroups(instance, &deviceGroupNum, nullptr);
+
+        if (result == VK_SUCCESS && deviceGroupNum)
+        {
+            if (physicalDeviceGroupNum)
+            {
+                // Query device groups
+                VkPhysicalDeviceGroupProperties* deviceGroupProperties = STACK_ALLOC(VkPhysicalDeviceGroupProperties, deviceGroupNum);
+                vkEnumeratePhysicalDeviceGroups(instance, &deviceGroupNum, deviceGroupProperties);
+
+                // Query device groups properties
+                PhysicalDeviceGroup* physicalDeviceGroupsSorted = STACK_ALLOC(PhysicalDeviceGroup, deviceGroupNum);
+                for (uint32_t i = 0; i < deviceGroupNum; i++)
+                {
+                    VkPhysicalDeviceIDProperties deviceIDProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES };
+                    VkPhysicalDeviceProperties2 properties2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+                    properties2.pNext = &deviceIDProperties;
+
+                    VkPhysicalDevice physicalDevice = deviceGroupProperties[i].physicalDevices[0];
+                    vkGetPhysicalDeviceProperties2(physicalDevice, &properties2);
+
+                    VkPhysicalDeviceMemoryProperties memoryProperties = {};
+                    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
+
+                    PhysicalDeviceGroup& group = physicalDeviceGroupsSorted[i];
+                    memset(&group, 0, sizeof(group));
+
+                    char* src = properties2.properties.deviceName;
+                    wchar_t* dst = group.description;
+                    uint32_t n = 0;
+                    while (*src && ++n < GetCountOf(group.description))
+                        *dst++ = *src++;
+                    *dst = 0;
+
+                    group.luid = *(uint64_t*)&deviceIDProperties.deviceLUID[0];
+                    group.deviceID = properties2.properties.deviceID;
+                    group.vendor = GetVendorFromID(properties2.properties.vendorID);
+
+                    if (memoryProperties.memoryHeapCount == 1)
+                    {
+                        /*
+                        https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceMemoryProperties.html
+                        In a unified memory architecture (UMA) system there is often only a single memory heap which is considered to
+                        be equally “local” to the host and to the device, and such an implementation must advertise the heap as device-local.
+                        */
+
+                        // Awful spec leads to awful solutions :)
+                        group.dedicatedVideoMemory = 0;
+                    }
+                    else
+                    {
+                        for (uint32_t k = 0; k < memoryProperties.memoryHeapCount; k++)
+                        {
+                            if (memoryProperties.memoryHeaps[k].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+                                group.dedicatedVideoMemory += memoryProperties.memoryHeaps[k].size;
+                        }
+                    }
+                }
+
+                // Sort by dedicated video memory
+                qsort(physicalDeviceGroupsSorted, deviceGroupNum, sizeof(physicalDeviceGroupsSorted[0]), SortAdaptersByDedicatedVideoMemorySize);
+
+                // Copy to output
+                for (uint32_t i = 0; i < physicalDeviceGroupNum; i++)
+                    *physicalDeviceGroups++ = *physicalDeviceGroupsSorted++;
+            }
+            else
+                physicalDeviceGroupNum = deviceGroupNum;
+
+            nriResult = nri::Result::SUCCESS;
+        }
+
+        if (instance)
+            vkDestroyInstance(instance, nullptr);
+    }
+
+    UnloadSharedLibrary(*loader);
+
+    return nriResult;
+}
+
+#endif

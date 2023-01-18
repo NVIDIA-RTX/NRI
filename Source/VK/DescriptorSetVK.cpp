@@ -39,7 +39,7 @@ void DescriptorSetVK::Create(const VkDescriptorSet* handles, uint32_t physicalDe
     m_DynamicConstantBufferNum = setDesc.dynamicConstantBufferNum;
 
     uint32_t handleIndex = 0;
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if ((1 << i) & physicalDeviceMask)
             m_Handles[i] = handles[handleIndex++];
@@ -212,7 +212,7 @@ inline void DescriptorSetVK::UpdateDescriptorRanges(uint32_t physicalDeviceMask,
 
     physicalDeviceMask = GetPhysicalDeviceGroupMask(physicalDeviceMask);
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if (!((1 << i) & physicalDeviceMask))
             continue;
@@ -256,7 +256,7 @@ inline void DescriptorSetVK::UpdateDescriptorRanges(uint32_t physicalDeviceMask,
 
 inline void DescriptorSetVK::UpdateDynamicConstantBuffers(uint32_t physicalDeviceMask, uint32_t bufferOffset, uint32_t descriptorNum, const Descriptor* const* descriptors)
 {
-    const uint32_t descriptorMaxNum = descriptorNum * m_Device.GetPhyiscalDeviceGroupSize();
+    const uint32_t descriptorMaxNum = descriptorNum * m_Device.GetPhysicalDeviceGroupSize();
 
     VkWriteDescriptorSet* writes = STACK_ALLOC(VkWriteDescriptorSet, descriptorMaxNum);
     VkDescriptorBufferInfo* infos = STACK_ALLOC(VkDescriptorBufferInfo, descriptorMaxNum);
@@ -264,7 +264,7 @@ inline void DescriptorSetVK::UpdateDynamicConstantBuffers(uint32_t physicalDevic
 
     physicalDeviceMask = GetPhysicalDeviceGroupMask(physicalDeviceMask);
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if (!((1 << i) & physicalDeviceMask))
             continue;
@@ -298,7 +298,7 @@ inline void DescriptorSetVK::UpdateDynamicConstantBuffers(uint32_t physicalDevic
 inline void DescriptorSetVK::Copy(const DescriptorSetCopyDesc& descriptorSetCopyDesc)
 {
     const uint32_t descriptorRangeNum = descriptorSetCopyDesc.rangeNum + descriptorSetCopyDesc.dynamicConstantBufferNum;
-    const uint32_t copyMaxNum = descriptorRangeNum * m_Device.GetPhyiscalDeviceGroupSize();
+    const uint32_t copyMaxNum = descriptorRangeNum * m_Device.GetPhysicalDeviceGroupSize();
 
     VkCopyDescriptorSet* copies = STACK_ALLOC(VkCopyDescriptorSet, copyMaxNum);
     uint32_t copyNum = 0;
@@ -307,7 +307,7 @@ inline void DescriptorSetVK::Copy(const DescriptorSetCopyDesc& descriptorSetCopy
 
     const uint32_t physicalDeviceMask = GetPhysicalDeviceGroupMask(descriptorSetCopyDesc.physicalDeviceMask);
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if (!((1 << i) & physicalDeviceMask))
             continue;

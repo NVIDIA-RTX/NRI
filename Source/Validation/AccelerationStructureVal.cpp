@@ -67,9 +67,6 @@ uint64_t AccelerationStructureVal::GetNativeObject(uint32_t physicalDeviceIndex)
 
 Result AccelerationStructureVal::CreateDescriptor(uint32_t physicalDeviceIndex, Descriptor*& descriptor)
 {
-    RETURN_ON_FAILURE(m_Device.GetLog(), physicalDeviceIndex < m_Device.GetPhysicalDeviceNum(), Result::INVALID_ARGUMENT,
-        "Can't create Descriptor: 'physicalDeviceIndex' is invalid.");
-
     Descriptor* descriptorImpl = nullptr;
     const Result result = m_RayTracingAPI.CreateAccelerationStructureDescriptor(m_ImplObject, physicalDeviceIndex, descriptorImpl);
 

@@ -53,9 +53,6 @@ Result CommandBufferVal::Begin(const DescriptorPool* descriptorPool, uint32_t ph
     RETURN_ON_FAILURE(m_Device.GetLog(), !m_IsRecordingStarted, Result::FAILURE,
         "Can't begin recording of CommandBuffer: the command buffer is already in the recording state.");
 
-    RETURN_ON_FAILURE(m_Device.GetLog(), physicalDeviceIndex < m_Device.GetPhysicalDeviceNum(), Result::FAILURE,
-        "Can't begin recording of CommandBuffer: 'physicalDeviceIndex' is invalid.");
-
     DescriptorPool* descriptorPoolImpl = nullptr;
     if (descriptorPool)
         descriptorPoolImpl = NRI_GET_IMPL_PTR(DescriptorPool, descriptorPool);

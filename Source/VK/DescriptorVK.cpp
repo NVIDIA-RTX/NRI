@@ -26,14 +26,14 @@ DescriptorVK::~DescriptorVK()
     case DescriptorTypeVK::ACCELERATION_STRUCTURE:
         break;
     case DescriptorTypeVK::BUFFER_VIEW:
-        for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+        for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
         {
             if (m_BufferViews[i] != VK_NULL_HANDLE)
                 vk.DestroyBufferView(m_Device, m_BufferViews[i], m_Device.GetAllocationCallbacks());
         }
         break;
     case DescriptorTypeVK::IMAGE_VIEW:
-        for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+        for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
         {
             if (m_ImageViews[i] != VK_NULL_HANDLE)
                 vk.DestroyImageView(m_Device, m_ImageViews[i], m_Device.GetAllocationCallbacks());
@@ -134,7 +134,7 @@ Result DescriptorVK::CreateTextureView(const T& textureViewDesc)
 
     const uint32_t physicalDeviceMask = GetPhysicalDeviceGroupMask(textureViewDesc.physicalDeviceMask);
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if ((1 << i) & physicalDeviceMask)
         {
@@ -162,7 +162,7 @@ Result DescriptorVK::Create(const BufferViewDesc& bufferViewDesc)
 
     const uint32_t physicalDeviceMask = GetPhysicalDeviceGroupMask(bufferViewDesc.physicalDeviceMask);
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if ((1 << i) & physicalDeviceMask)
             m_BufferDesc.handles[i] = buffer.GetHandle(i);
@@ -183,7 +183,7 @@ Result DescriptorVK::Create(const BufferViewDesc& bufferViewDesc)
 
     const auto& vk = m_Device.GetDispatchTable();
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if ((1 << i) & physicalDeviceMask)
         {
@@ -254,7 +254,7 @@ Result DescriptorVK::Create(const VkAccelerationStructureKHR* accelerationStruct
 
     physicalDeviceMask = GetPhysicalDeviceGroupMask(physicalDeviceMask);
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if ((1 << i) & physicalDeviceMask)
             m_AccelerationStructures[i] = accelerationStructures[i];

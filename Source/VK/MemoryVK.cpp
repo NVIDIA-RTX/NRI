@@ -66,7 +66,7 @@ Result MemoryVK::Create(uint32_t physicalDeviceMask, const MemoryType memoryType
 
     const auto& vk = m_Device.GetDispatchTable();
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if ((1 << i) & physicalDeviceMask)
         {
@@ -105,7 +105,7 @@ Result MemoryVK::Create(const MemoryVulkanDesc& memoryDesc)
 
     const auto& vk = m_Device.GetDispatchTable();
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if ((1 << i) & physicalDeviceMask)
         {
@@ -162,7 +162,7 @@ Result MemoryVK::CreateDedicated(BufferVK& buffer, uint32_t physicalDeviceMask)
 
     const auto& vk = m_Device.GetDispatchTable();
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if ((1 << i) & physicalDeviceMask)
         {
@@ -225,7 +225,7 @@ Result MemoryVK::CreateDedicated(TextureVK& texture, uint32_t physicalDeviceMask
 
     const auto& vk = m_Device.GetDispatchTable();
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if ((1 << i) & physicalDeviceMask)
         {

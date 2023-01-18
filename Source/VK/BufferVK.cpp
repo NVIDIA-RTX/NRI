@@ -57,7 +57,7 @@ Result BufferVK::Create(const BufferDesc& bufferDesc)
 
     const uint32_t physicalDeviceMask = GetPhysicalDeviceGroupMask(bufferDesc.physicalDeviceMask);
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if ((1 << i) & physicalDeviceMask)
         {
@@ -83,7 +83,7 @@ Result BufferVK::Create(const BufferVulkanDesc& bufferDesc)
     if (m_Memory != nullptr)
         physicalDeviceMask = 0x1;
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if ((1 << i) & physicalDeviceMask)
         {
@@ -103,7 +103,7 @@ void BufferVK::SetHostMemory(MemoryVK& memory, uint64_t memoryOffset)
     const auto& vk = m_Device.GetDispatchTable();
 
     // No need to keep more than one instance of host buffer
-    for (uint32_t i = 1; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 1; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if (m_Handles[i] != VK_NULL_HANDLE)
             vk.DestroyBuffer(m_Device, m_Handles[i], m_Device.GetAllocationCallbacks());
@@ -121,7 +121,7 @@ void BufferVK::ReadDeviceAddress()
     if (vk.GetBufferDeviceAddress == nullptr)
         return;
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if (m_Handles[i] != VK_NULL_HANDLE)
         {
@@ -143,7 +143,7 @@ void BufferVK::SetDebugName(const char* name)
 void BufferVK::GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const
 {
     VkBuffer handle = VK_NULL_HANDLE;
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize() && handle == VK_NULL_HANDLE; i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize() && handle == VK_NULL_HANDLE; i++)
         handle = m_Handles[i];
 
     const auto& vk = m_Device.GetDispatchTable();

@@ -67,7 +67,7 @@ inline void CommandQueueVK::Submit(const WorkSubmissionDesc& workSubmissionDesc,
         fence = *(DeviceSemaphoreVK*)deviceSemaphore;
 
     VkDeviceGroupSubmitInfo deviceGroupInfo;
-    if (m_Device.GetPhyiscalDeviceGroupSize() > 1)
+    if (m_Device.GetPhysicalDeviceGroupSize() > 1)
     {
         uint32_t* waitSemaphoreDeviceIndices = STACK_ALLOC(uint32_t, workSubmissionDesc.waitNum);
         uint32_t* commandBufferDeviceMasks = STACK_ALLOC(uint32_t, workSubmissionDesc.commandBufferNum);

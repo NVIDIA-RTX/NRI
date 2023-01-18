@@ -82,7 +82,7 @@ inline Result CommandBufferVK::Begin(const DescriptorPool* descriptorPool, uint3
     };
 
     VkDeviceGroupCommandBufferBeginInfo deviceGroupInfo;
-    if (m_Device.GetPhyiscalDeviceGroupSize() > 1)
+    if (m_Device.GetPhysicalDeviceGroupSize() > 1)
     {
         deviceGroupInfo = {
             VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO,

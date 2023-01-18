@@ -61,9 +61,9 @@ Result DescriptorPoolVK::Create(const DescriptorPoolDesc& descriptorPoolDesc)
 
     const uint32_t physicalDeviceMask = GetPhysicalDeviceGroupMask(descriptorPoolDesc.physicalDeviceMask);
 
-    uint32_t phyiscalDeviceNum = 0;
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
-        phyiscalDeviceNum += ((1 << i) & physicalDeviceMask) != 0 ? 1 : 0;
+    uint32_t physicalDeviceNum = 0;
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
+        physicalDeviceNum += ((1 << i) & physicalDeviceMask) != 0 ? 1 : 0;
 
     uint32_t poolSizeCount = 0;
 
@@ -78,13 +78,13 @@ Result DescriptorPoolVK::Create(const DescriptorPoolDesc& descriptorPoolDesc)
     AddDescriptorPoolSize(descriptorPoolSizeArray, poolSizeCount, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV, descriptorPoolDesc.accelerationStructureMaxNum);
 
     for (uint32_t i = 0; i < poolSizeCount; i++)
-        descriptorPoolSizeArray[i].descriptorCount *= phyiscalDeviceNum;
+        descriptorPoolSizeArray[i].descriptorCount *= physicalDeviceNum;
 
     const VkDescriptorPoolCreateInfo info = {
         VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         nullptr,
         VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-        descriptorPoolDesc.descriptorSetMaxNum * phyiscalDeviceNum,
+        descriptorPoolDesc.descriptorSetMaxNum * physicalDeviceNum,
         poolSizeCount,
         descriptorPoolSizeArray
     };
@@ -152,7 +152,7 @@ inline Result DescriptorPoolVK::AllocateDescriptorSets(const PipelineLayout& pip
 
     std::array<VkDescriptorSetLayout, PHYSICAL_DEVICE_GROUP_MAX_SIZE> setLayoutArray = {};
     uint32_t phyicalDeviceNum = 0;
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if ((1 << i) & physicalDeviceMask)
             setLayoutArray[phyicalDeviceNum++] = setLayout;

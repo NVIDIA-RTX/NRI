@@ -16,7 +16,7 @@ namespace nri
 
     struct DeviceVal final : public DeviceBase
     {
-        DeviceVal(const Log& log, const StdAllocator<uint8_t>& stdAllocator, DeviceBase& device, uint32_t physicalDeviceNum);
+        DeviceVal(const Log& log, const StdAllocator<uint8_t>& stdAllocator, DeviceBase& device);
         ~DeviceVal();
 
         bool Create();
@@ -60,12 +60,6 @@ namespace nri
 
         NRIVkProcAddress GetVkGetDeviceProcAddr() const
         { return m_WrapperVKAPI.GetVkGetDeviceProcAddr(m_Device); }
-
-        inline uint32_t GetPhysicalDeviceNum() const
-        { return m_PhysicalDeviceNum; }
-
-        inline bool IsPhysicalDeviceMaskValid(uint32_t physicalDeviceMask) const
-        { return (physicalDeviceMask & m_PhysicalDeviceMask) == physicalDeviceMask; }
 
         inline Lock& GetLock()
         { return m_Lock; }
@@ -172,8 +166,6 @@ namespace nri
         std::array<CommandQueueVal*, COMMAND_QUEUE_TYPE_NUM> m_CommandQueues = {};
         UnorderedMap<MemoryType, MemoryLocation> m_MemoryTypeMap;
         Lock m_Lock;
-        uint32_t m_PhysicalDeviceNum = 0;
-        uint32_t m_PhysicalDeviceMask = 0;
         bool m_IsSwapChainSupported = false;
         bool m_IsWrapperD3D11Supported = false;
         bool m_IsWrapperD3D12Supported = false;

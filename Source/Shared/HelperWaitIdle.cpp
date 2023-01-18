@@ -22,7 +22,7 @@ Result HelperWaitIdle::WaitIdle()
     if (m_DeviceSemaphore == nullptr)
         return Result::FAILURE;
 
-    const uint32_t physicalDeviceNum = NRI.GetDeviceDesc(m_Device).phyiscalDeviceGroupSize;
+    const uint32_t physicalDeviceNum = NRI.GetDeviceDesc(m_Device).physicalDeviceNum;
 
     for (uint32_t i = 0; i < physicalDeviceNum; i++)
     {

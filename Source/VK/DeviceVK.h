@@ -34,7 +34,7 @@ namespace nri
         bool GetMemoryType(MemoryLocation memoryLocation, uint32_t memoryTypeMask, MemoryTypeInfo& memoryTypeInfo) const;
         bool GetMemoryType(uint32_t index, MemoryTypeInfo& memoryTypeInfo) const;
 
-        uint32_t GetPhyiscalDeviceGroupSize() const;
+        uint32_t GetPhysicalDeviceGroupSize() const;
         bool IsDescriptorIndexingExtSupported() const;
         bool IsConcurrentSharingModeEnabledForBuffers() const;
         bool IsConcurrentSharingModeEnabledForImages() const;
@@ -230,9 +230,9 @@ namespace nri
         return m_CoreInterface;
     }
 
-    inline uint32_t DeviceVK::GetPhyiscalDeviceGroupSize() const
+    inline uint32_t DeviceVK::GetPhysicalDeviceGroupSize() const
     {
-        return m_DeviceDesc.phyiscalDeviceGroupSize;
+        return m_DeviceDesc.physicalDeviceNum;
     }
 
     inline bool DeviceVK::IsDescriptorIndexingExtSupported() const

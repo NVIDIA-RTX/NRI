@@ -22,7 +22,7 @@ TextureVK::~TextureVK()
     if (!m_OwnsNativeObjects)
         return;
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if (m_Handles[i] != VK_NULL_HANDLE)
             vk.DestroyImage(m_Device, m_Handles[i], m_Device.GetAllocationCallbacks());
@@ -82,7 +82,7 @@ Result TextureVK::Create(const TextureDesc& textureDesc)
 
     uint32_t physicalDeviceMask = (textureDesc.physicalDeviceMask == WHOLE_DEVICE_GROUP) ? 0xff : textureDesc.physicalDeviceMask;
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if ((1 << i) & physicalDeviceMask)
         {
@@ -110,7 +110,7 @@ Result TextureVK::Create(const TextureVulkanDesc& textureDesc)
     const VkImage handle = (VkImage)textureDesc.vkImage;
     const uint32_t physicalDeviceMask = GetPhysicalDeviceGroupMask(textureDesc.physicalDeviceMask);
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if ((1 << i) & physicalDeviceMask)
             m_Handles[i] = handle;
@@ -131,7 +131,7 @@ inline void TextureVK::SetDebugName(const char* name)
 void TextureVK::GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const
 {
     VkImage handle = VK_NULL_HANDLE;
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize() && handle == VK_NULL_HANDLE; i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize() && handle == VK_NULL_HANDLE; i++)
         handle = m_Handles[i];
 
     const auto& vk = m_Device.GetDispatchTable();

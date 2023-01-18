@@ -46,7 +46,7 @@ Result QueryPoolVK::Create(const QueryPoolDesc& queryPoolDesc)
 
     const uint32_t physicalDeviceMask = (queryPoolDesc.physicalDeviceMask == WHOLE_DEVICE_GROUP) ? 0xff : queryPoolDesc.physicalDeviceMask;
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if ((1 << i) & physicalDeviceMask)
         {
@@ -70,7 +70,7 @@ Result QueryPoolVK::Create(const QueryPoolVulkanDesc& queryPoolDesc)
     const VkQueryPool handle = (VkQueryPool)queryPoolDesc.vkQueryPool;
     const uint32_t physicalDeviceMask = GetPhysicalDeviceGroupMask(queryPoolDesc.physicalDeviceMask);
 
-    for (uint32_t i = 0; i < m_Device.GetPhyiscalDeviceGroupSize(); i++)
+    for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
     {
         if ((1 << i) & physicalDeviceMask)
             m_Handles[i] = handle;

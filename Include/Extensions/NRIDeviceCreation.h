@@ -23,17 +23,6 @@ NRI_ENUM
     MAX_NUM,
 );
 
-NRI_ENUM
-(
-    PhysicalDeviceType, PHYSICAL_DEVICE_TYPE, uint8_t,
-
-    UNKNOWN,
-    INTEGRATED,
-    DISCRETE,
-
-    MAX_NUM
-);
-
 NRI_STRUCT(MemoryAllocatorInterface)
 {
     void* (*Allocate)(void* userArg, size_t size, size_t alignment);
@@ -51,13 +40,11 @@ NRI_STRUCT(CallbackInterface)
 
 NRI_STRUCT(PhysicalDeviceGroup)
 {
-    char description[128];
+    wchar_t description[128];
     uint64_t luid;
-    uint64_t dedicatedVideoMemoryMB;
-    NRI_NAME(PhysicalDeviceType) type;
-    NRI_NAME(Vendor) vendor;
+    uint64_t dedicatedVideoMemory;
     uint32_t deviceID;
-    uint32_t physicalDeviceGroupSize;
+    NRI_NAME(Vendor) vendor;
 };
 
 NRI_STRUCT(VulkanExtensions)
@@ -80,6 +67,7 @@ NRI_STRUCT(DeviceCreationDesc)
     bool enableAPIValidation;
     bool enableMGPU;
     bool D3D11CommandBufferEmulation;
+    bool skipLiveObjectsReporting;
 };
 
 #if defined(NRI_CPP)
