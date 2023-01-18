@@ -404,34 +404,32 @@ NRI_API Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDev
                 adapters[adaptersNum++] = adapter;
         }
     }
-    
+
     factory->Release();
 
     if (!adaptersNum)
         return Result::FAILURE;
 
-    if (!physicalDeviceGroupNum)
+    if (physicalDeviceGroups)
     {
+        qsort(adapters, adaptersNum, sizeof(adapters[0]), SortAdaptersByDedicatedVideoMemorySize);
+
+        for (uint32_t i = 0; i < physicalDeviceGroupNum; i++)
+        {
+            DXGI_ADAPTER_DESC1 desc;
+            adapters[i]->GetDesc1(&desc);
+
+            PhysicalDeviceGroup& group = physicalDeviceGroups[i];
+            memset(&group, 0 ,sizeof(group));
+            wcscpy(group.description, desc.Description);
+            group.luid = *(uint64_t*)&desc.AdapterLuid;
+            group.dedicatedVideoMemory = desc.DedicatedVideoMemory;
+            group.deviceID = desc.DeviceId;
+            group.vendor = GetVendorFromID(desc.VendorId);
+        }
+    }
+    else
         physicalDeviceGroupNum = adaptersNum;
-
-        return Result::SUCCESS;
-    }
-
-    qsort(adapters, adaptersNum, sizeof(adapters[0]), SortAdaptersByDedicatedVideoMemorySize);
-
-    for (uint32_t i = 0; i < physicalDeviceGroupNum; i++)
-    {
-        DXGI_ADAPTER_DESC1 desc;
-        adapters[i]->GetDesc1(&desc);
-
-        PhysicalDeviceGroup& group = physicalDeviceGroups[i];
-        memset(&group, 0 ,sizeof(group));
-        wcscpy(group.description, desc.Description);
-        group.luid = *(uint64_t*)&desc.AdapterLuid;
-        group.dedicatedVideoMemory = desc.DedicatedVideoMemory;
-        group.deviceID = desc.DeviceId;
-        group.vendor = GetVendorFromID(desc.VendorId);
-    }
 
     return Result::SUCCESS;
 }
@@ -484,7 +482,7 @@ NRI_API Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDev
     VkInstance instance = VK_NULL_HANDLE;
     VkResult result = vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
 
-    nri::Result nriResult = nri::Result::UNSUPPORTED;
+    nri::Result nriResult = nri::Result::FAILURE;
     if (result == VK_SUCCESS)
     {
         // Get needed functions
@@ -498,7 +496,7 @@ NRI_API Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDev
 
         if (result == VK_SUCCESS && deviceGroupNum)
         {
-            if (physicalDeviceGroupNum)
+            if (physicalDeviceGroups)
             {
                 // Query device groups
                 VkPhysicalDeviceGroupProperties* deviceGroupProperties = STACK_ALLOC(VkPhysicalDeviceGroupProperties, deviceGroupNum);
@@ -537,7 +535,7 @@ NRI_API Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDev
                         /*
                         https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceMemoryProperties.html
                         In a unified memory architecture (UMA) system there is often only a single memory heap which is considered to
-                        be equally “local” to the host and to the device, and such an implementation must advertise the heap as device-local.
+                        be equally "local" to the host and to the device, and such an implementation must advertise the heap as device-local.
                         */
 
                         // Awful spec leads to awful solutions :)
