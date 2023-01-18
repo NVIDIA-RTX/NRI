@@ -532,7 +532,7 @@ NRI_API Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDev
                     group.deviceID = properties2.properties.deviceID;
                     group.vendor = GetVendorFromID(properties2.properties.vendorID);
 
-                    if (memoryProperties.memoryHeapCount == 1)
+                    if (properties2.properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
                     {
                         /*
                         https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceMemoryProperties.html
