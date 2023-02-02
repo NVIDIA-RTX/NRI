@@ -66,11 +66,11 @@ inline void CommandQueueD3D12::Submit(const WorkSubmissionDesc& workSubmissionDe
 
     if (workSubmissionDesc.commandBufferNum)
     {
-        Vector<ID3D12GraphicsCommandList*> commandLists(m_Device.GetStdAllocator());
+        ID3D12CommandList** commandLists = STACK_ALLOC(ID3D12CommandList*, workSubmissionDesc.commandBufferNum);
         for (uint32_t j = 0; j < workSubmissionDesc.commandBufferNum; j++)
-            commandLists.push_back(*((CommandBufferD3D12*)workSubmissionDesc.commandBuffers[j]));
+            commandLists[j] = *(CommandBufferD3D12*)workSubmissionDesc.commandBuffers[j];
 
-        m_CommandQueue->ExecuteCommandLists((UINT)commandLists.size(), (ID3D12CommandList**)&commandLists[0]);
+        m_CommandQueue->ExecuteCommandLists(workSubmissionDesc.commandBufferNum, commandLists);
     }
 
     for (uint32_t i = 0; i < workSubmissionDesc.signalNum; i++)

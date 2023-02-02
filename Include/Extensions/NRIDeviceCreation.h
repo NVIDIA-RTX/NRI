@@ -40,7 +40,7 @@ NRI_STRUCT(CallbackInterface)
 
 NRI_STRUCT(PhysicalDeviceGroup)
 {
-    wchar_t description[128];
+    char description[128];
     uint64_t luid;
     uint64_t dedicatedVideoMemory;
     uint32_t deviceID;

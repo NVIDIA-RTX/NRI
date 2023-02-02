@@ -89,7 +89,7 @@ namespace nri
         Result FillFunctionTable(HelperInterface& helperInterface) const;
 
     private:
-        void InitVersionedDevice(ID3D11Device* device, bool isDeferredContextsEmulationRequested);
+        void InitVersionedDevice(bool isDeferredContextsEmulationRequested);
         void InitVersionedContext();
 
         template<typename Implementation, typename Interface, typename ConstructorArg, typename ... Args>

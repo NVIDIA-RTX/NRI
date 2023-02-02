@@ -67,6 +67,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAd
 
     m_Ext.Create(GetLog(), vendor, agsContext, device != nullptr);
 
+    m_Device.ptr = (ID3D11Device5*)device;
     if (!device)
     {
         const UINT flags = deviceCreationDesc.enableAPIValidation ? D3D11_CREATE_DEVICE_DEBUG : 0;
@@ -84,10 +85,10 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAd
         }
         else
         {
-            HRESULT hr = D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags, levels.data(), (uint32_t)levels.size(), D3D11_SDK_VERSION, &device, nullptr, nullptr);
+            HRESULT hr = D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags, levels.data(), (uint32_t)levels.size(), D3D11_SDK_VERSION, (ID3D11Device**)&m_Device.ptr, nullptr, nullptr);
 
             if (flags && (uint32_t)hr == 0x887a002d)
-                hr = D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, &levels[0], (uint32_t)levels.size(), D3D11_SDK_VERSION, &device, nullptr, nullptr);
+                hr = D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, &levels[0], (uint32_t)levels.size(), D3D11_SDK_VERSION, (ID3D11Device**)&m_Device.ptr, nullptr, nullptr);
 
             RETURN_ON_BAD_HRESULT(GetLog(), hr, "D3D11CreateDevice() - FAILED!");
         }
@@ -95,7 +96,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAd
     else
         device->AddRef();
 
-    InitVersionedDevice(device, deviceCreationDesc.D3D11CommandBufferEmulation);
+    InitVersionedDevice(deviceCreationDesc.D3D11CommandBufferEmulation);
     InitVersionedContext();
     FillLimits(deviceCreationDesc.enableAPIValidation, vendor);
 
@@ -108,44 +109,48 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAd
     return Result::SUCCESS;
 }
 
-void DeviceD3D11::InitVersionedDevice(ID3D11Device* device, bool isDeferredContextsEmulationRequested)
+void DeviceD3D11::InitVersionedDevice(bool isDeferredContextsEmulationRequested)
 {
-    HRESULT hr = device->QueryInterface(__uuidof(ID3D11Device5), (void**)&m_Device.ptr);
-    m_Device.version = 5;
     m_Device.ext = &m_Ext;
+
+    ComPtr<ID3D11Device5> versionedDevice;
+    HRESULT hr = m_Device->QueryInterface(__uuidof(ID3D11Device5), (void**)&versionedDevice);
+    m_Device.version = 5;
     if (FAILED(hr))
     {
         REPORT_WARNING(GetLog(), "QueryInterface(ID3D11Device5) - FAILED!");
-        hr = device->QueryInterface(__uuidof(ID3D11Device4), (void**)&m_Device.ptr);
+        hr = m_Device->QueryInterface(__uuidof(ID3D11Device4), (void**)&versionedDevice);
         m_Device.version = 4;
         if (FAILED(hr))
         {
             REPORT_WARNING(GetLog(), "QueryInterface(ID3D11Device4) - FAILED!");
-            hr = device->QueryInterface(__uuidof(ID3D11Device3), (void**)&m_Device.ptr);
+            hr = m_Device->QueryInterface(__uuidof(ID3D11Device3), (void**)&versionedDevice);
             m_Device.version = 3;
             if (FAILED(hr))
             {
                 REPORT_WARNING(GetLog(), "QueryInterface(ID3D11Device3) - FAILED!");
-                hr = device->QueryInterface(__uuidof(ID3D11Device2), (void**)&m_Device.ptr);
+                hr = m_Device->QueryInterface(__uuidof(ID3D11Device2), (void**)&versionedDevice);
                 m_Device.version = 2;
                 if (FAILED(hr))
                 {
                     REPORT_WARNING(GetLog(), "QueryInterface(ID3D11Device2) - FAILED!");
-                    hr = device->QueryInterface(__uuidof(ID3D11Device1), (void**)&m_Device.ptr);
+                    hr = m_Device->QueryInterface(__uuidof(ID3D11Device1), (void**)&versionedDevice);
                     m_Device.version = 1;
                     if (FAILED(hr))
                     {
                         REPORT_WARNING(GetLog(), "QueryInterface(ID3D11Device1) - FAILED!");
-                        m_Device.ptr = (ID3D11Device5*)device;
                         m_Device.version = 0;
+                        versionedDevice = m_Device.ptr;
                     }
                 }
             }
         }
     }
 
+    m_Device.ptr = versionedDevice;
+
     D3D11_FEATURE_DATA_THREADING threadingCaps = {};
-    hr = device->CheckFeatureSupport(D3D11_FEATURE_THREADING, &threadingCaps, sizeof(threadingCaps));
+    hr = m_Device->CheckFeatureSupport(D3D11_FEATURE_THREADING, &threadingCaps, sizeof(threadingCaps));
 
     if (FAILED(hr) || !threadingCaps.DriverConcurrentCreates)
         REPORT_WARNING(GetLog(), "Concurrent resource creation is not supported by the driver!");
@@ -161,41 +166,43 @@ void DeviceD3D11::InitVersionedDevice(ID3D11Device* device, bool isDeferredConte
 
 void DeviceD3D11::InitVersionedContext()
 {
-    ID3D11DeviceContext* immediateContext = nullptr;
-    m_Device.ptr->GetImmediateContext(&immediateContext);
-    immediateContext->Release();
-
-    HRESULT hr = immediateContext->QueryInterface(__uuidof(ID3D11DeviceContext4), (void**)&m_ImmediateContext.ptr);
-    m_ImmediateContext.version = 4;
     m_ImmediateContext.ext = &m_Ext;
+
+    m_Device.ptr->GetImmediateContext((ID3D11DeviceContext**)&m_ImmediateContext.ptr);
+
+    ComPtr<ID3D11DeviceContext4> versionedImmediateContext;
+    HRESULT hr = m_ImmediateContext->QueryInterface(__uuidof(ID3D11DeviceContext4), (void**)&versionedImmediateContext);
+    m_ImmediateContext.version = 4;
     if (FAILED(hr))
     {
         REPORT_WARNING(GetLog(), "QueryInterface(ID3D11DeviceContext4) - FAILED!");
-        hr = immediateContext->QueryInterface(__uuidof(ID3D11DeviceContext3), (void**)&m_ImmediateContext.ptr);
+        hr = m_ImmediateContext->QueryInterface(__uuidof(ID3D11DeviceContext3), (void**)&versionedImmediateContext);
         m_ImmediateContext.version = 3;
         if (FAILED(hr))
         {
             REPORT_WARNING(GetLog(), "QueryInterface(ID3D11DeviceContext3) - FAILED!");
-            hr = immediateContext->QueryInterface(__uuidof(ID3D11DeviceContext2), (void**)&m_ImmediateContext.ptr);
+            hr = m_ImmediateContext->QueryInterface(__uuidof(ID3D11DeviceContext2), (void**)&versionedImmediateContext);
             m_ImmediateContext.version = 2;
             if (FAILED(hr))
             {
                 REPORT_WARNING(GetLog(), "QueryInterface(ID3D11DeviceContext2) - FAILED!");
-                hr = immediateContext->QueryInterface(__uuidof(ID3D11DeviceContext1), (void**)&m_ImmediateContext.ptr);
+                hr = m_ImmediateContext->QueryInterface(__uuidof(ID3D11DeviceContext1), (void**)&versionedImmediateContext);
                 m_ImmediateContext.version = 1;
                 if (FAILED(hr))
                 {
                     REPORT_WARNING(GetLog(), "QueryInterface(ID3D11DeviceContext1) - FAILED!");
-                    m_ImmediateContext.ptr = (ID3D11DeviceContext4*)immediateContext;
                     m_ImmediateContext.version = 0;
+                    versionedImmediateContext = m_ImmediateContext.ptr;
                 }
             }
         }
     }
 
+    m_ImmediateContext.ptr = versionedImmediateContext;
+
     InitializeCriticalSection(&m_CriticalSection);
 
-    hr = immediateContext->QueryInterface(IID_PPV_ARGS(&m_ImmediateContext.multiThread));
+    hr = m_ImmediateContext->QueryInterface(IID_PPV_ARGS(&m_ImmediateContext.multiThread));
     if (FAILED(hr))
     {
         REPORT_WARNING(GetLog(), "QueryInterface(ID3D11Multithread) - FAILED! Critical section will be used instead!");
@@ -747,7 +754,6 @@ Result CreateDeviceD3D11(const DeviceCreationDesc& deviceCreationDesc, DeviceBas
     RETURN_ON_BAD_HRESULT(log, hr, "Can't create D3D11 device. CreateDXGIFactory2() failed. (result: %d)", (int32_t)hr);
 
     ComPtr<IDXGIAdapter> adapter;
-
     if (deviceCreationDesc.physicalDeviceGroup != nullptr)
     {
         LUID luid = *(LUID*)&deviceCreationDesc.physicalDeviceGroup->luid;

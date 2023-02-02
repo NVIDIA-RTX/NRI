@@ -414,14 +414,17 @@ NRI_API Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDev
     {
         qsort(adapters, adaptersNum, sizeof(adapters[0]), SortAdaptersByDedicatedVideoMemorySize);
 
+        if (adaptersNum < physicalDeviceGroupNum)
+            physicalDeviceGroupNum = adaptersNum;
+
         for (uint32_t i = 0; i < physicalDeviceGroupNum; i++)
         {
             DXGI_ADAPTER_DESC1 desc;
             adapters[i]->GetDesc1(&desc);
 
             PhysicalDeviceGroup& group = physicalDeviceGroups[i];
-            memset(&group, 0 ,sizeof(group));
-            wcscpy(group.description, desc.Description);
+            memset(&group, 0, sizeof(group));
+            wcstombs(group.description, desc.Description, GetCountOf(group.description) - 1);
             group.luid = *(uint64_t*)&desc.AdapterLuid;
             group.dedicatedVideoMemory = desc.DedicatedVideoMemory;
             group.deviceID = desc.DeviceId;
@@ -518,14 +521,7 @@ NRI_API Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDev
 
                     PhysicalDeviceGroup& group = physicalDeviceGroupsSorted[i];
                     memset(&group, 0, sizeof(group));
-
-                    char* src = properties2.properties.deviceName;
-                    wchar_t* dst = group.description;
-                    uint32_t n = 0;
-                    while (*src && ++n < GetCountOf(group.description))
-                        *dst++ = *src++;
-                    *dst = 0;
-
+                    strcpy_s(group.description, properties2.properties.deviceName);
                     group.luid = *(uint64_t*)&deviceIDProperties.deviceLUID[0];
                     group.deviceID = properties2.properties.deviceID;
                     group.vendor = GetVendorFromID(properties2.properties.vendorID);
@@ -555,6 +551,9 @@ NRI_API Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDev
                 qsort(physicalDeviceGroupsSorted, deviceGroupNum, sizeof(physicalDeviceGroupsSorted[0]), SortAdaptersByDedicatedVideoMemorySize);
 
                 // Copy to output
+                if (deviceGroupNum < physicalDeviceGroupNum)
+                    physicalDeviceGroupNum = deviceGroupNum;
+
                 for (uint32_t i = 0; i < physicalDeviceGroupNum; i++)
                     *physicalDeviceGroups++ = *physicalDeviceGroupsSorted++;
             }

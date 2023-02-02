@@ -189,8 +189,14 @@ Result SwapChainD3D11::Create(const VersionedDevice& device, const SwapChainDesc
         m_IsFullscreenEnabled = true;
     }
 
-    // in DX11 only 'bufferIndex = 0' can be used to create render targets, so set BufferCount to '1' and ignore 'desc.BufferCount'
+    // In DX11 only 'bufferIndex = 0' can be used to create render targets, so set BufferCount to '1' and ignore 'desc.BufferCount'
     const uint32_t bufferCount = 1;
+
+    // Use "swapChainDesc.textureNum" to explicitly limit maximum frames in flight
+    ComPtr<IDXGIDevice1> dxgiDevice1;
+    hr = dxgiDevice->QueryInterface(IID_PPV_ARGS(&dxgiDevice1));
+    if (SUCCEEDED(hr))
+        dxgiDevice1->SetMaximumFrameLatency(swapChainDesc.textureNum);
 
     m_RenderTargets.resize(bufferCount);
     m_RenderTargetPointers.clear();

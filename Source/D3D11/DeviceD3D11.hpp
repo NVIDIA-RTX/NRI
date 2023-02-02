@@ -352,13 +352,13 @@ Result CreateDeviceD3D11(const DeviceCreationD3D11Desc& deviceCreationD3D11Desc,
     Log log(GraphicsAPI::D3D11, deviceCreationDesc.callbackInterface);
     StdAllocator<uint8_t> allocator(deviceCreationDesc.memoryAllocatorInterface);
 
-    ID3D11Device* d3d11Device = (ID3D11Device*)deviceCreationD3D11Desc.d3d11Device;
+    ComPtr<ID3D11Device> d3d11Device = (ID3D11Device*)deviceCreationD3D11Desc.d3d11Device;
 
-    ComPtr<IDXGIAdapter> adapter;
     ComPtr<IDXGIDevice> dxgiDevice;
     HRESULT hr = d3d11Device->QueryInterface(IID_PPV_ARGS(&dxgiDevice));
     RETURN_ON_BAD_HRESULT(log, hr, "Can't create device. Failed to query IDXGIDevice from ID3D11Device. (result: %d)", (int32_t)hr);
 
+    ComPtr<IDXGIAdapter> adapter;
     hr = dxgiDevice->GetAdapter(&adapter);
     RETURN_ON_BAD_HRESULT(log, hr, "Can't create device. IDXGIDevice::GetAdapter() failed. (result: %d)", (int32_t)hr);
 
