@@ -115,9 +115,9 @@ endif ()
 
 # Compile options
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set (COMPILE_OPTIONS -Wextra)
+    set (COMPILE_OPTIONS -msse4.1 -Wextra)
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    set (COMPILE_OPTIONS -Wextra)
+    set (COMPILE_OPTIONS -msse4.1 -Wextra)
 elseif (MSVC)
     set (COMPILE_OPTIONS /W4 /WX /wd4324)
 else ()
