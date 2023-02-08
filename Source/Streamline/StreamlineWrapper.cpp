@@ -10,25 +10,30 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include <Extensions/Optional/NRIStreamlineWrapper.h>
 
-#define SUPERSTRINGIFY(str) STRINGIFY(str)
-#define STRINGIFY(str) L#str
+#define _STRINGIFY(str) L#str
+#define STRINGIFY(str) _STRINGIFY(str)
 
-const wchar_t* pluginPath = SUPERSTRINGIFY(SL_PLUGINS_DIRECTORY);
+const wchar_t* pluginPath = STRINGIFY(SL_PLUGINS_DIRECTORY);
 
 bool slwrap::setConstants(const ::sl::Constants& values, uint32_t frameIndex, uint32_t id)
 {
     return slSetConstants(values, frameIndex, id);
 }
 
-bool slwrap::shutdown() { return slShutdown(); }
-bool slwrap::init(const sl::Preferences& pref, int applicationId) 
-{ 
+bool slwrap::shutdown()
+{
+    return slShutdown();
+}
+
+bool slwrap::init(const sl::Preferences& pref, int applicationId)
+{
     sl::Preferences preferences = pref;
     if (preferences.numPathsToPlugins == 0)
     {
         preferences.pathsToPlugins = &pluginPath;
         preferences.numPathsToPlugins = 1;
     }
+
     return slInit(preferences, applicationId);
 }
 
