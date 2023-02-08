@@ -5,6 +5,11 @@ option (NRI_DISABLE_XLIB_SUPPORT "Disable 'xlib' support" OFF)
 option (NRI_DISABLE_WAYLAND_SUPPORT "Disable 'wayland' support" OFF)
 option (NRI_STATIC_LIBRARY "Build static library" OFF)
 
+if (WIN32)
+    option (NRI_ENABLE_STREAMLINE_SUPPORT "Enables streamline wrapper for streamline integration. Requires NRI_STREAMLINE_SDK_PATH to point to a valid streamline package" OFF)
+    set (NRI_STREAMLINE_SDK_PATH "" CACHE STRING "Path to a directory containing streamline sdk package. Must not include the name of the library 'sl.interposer.lib'. Must not be empty when NRI_ENABLE_STREAMLINE_SUPPORT is on.")
+endif ()
+
 # Cached
 set (GLOBAL_BIN_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/_Build" CACHE STRING "")
 set (CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "")
@@ -141,6 +146,11 @@ target_compile_definitions (NRI_Shared PRIVATE ${COMPILE_DEFINITIONS})
 target_compile_options (NRI_Shared PRIVATE ${COMPILE_OPTIONS})
 set_property (TARGET NRI_Shared PROPERTY FOLDER ${PROJECT_NAME})
 
+if (NOT NRI_ENABLE_STREAMLINE_SUPPORT)
+    set (INPUT_LIBS_D3D11 ${INPUT_LIB_D3D11} ${INPUT_LIB_DXGI})
+    set (INPUT_LIBS_D3D12 ${INPUT_LIB_D3D12} ${INPUT_LIB_DXGI})
+endif ()
+
 # D3D11
 if (WIN32)
     file (GLOB D3D11_SOURCE "Source/D3D11/*.cpp" "Source/D3D11/*.h" "Source/D3D11/*.hpp")
@@ -153,7 +163,7 @@ if (WIN32)
     target_include_directories (NRI_D3D11 PRIVATE "Include" "Source/Shared" "External")
     target_compile_definitions (NRI_D3D11 PRIVATE ${COMPILE_DEFINITIONS})
     target_compile_options (NRI_D3D11 PRIVATE ${COMPILE_OPTIONS})
-    target_link_libraries (NRI_D3D11 PRIVATE NRI_Shared ${INPUT_LIB_D3D11} ${INPUT_LIB_DXGI} ${INPUT_LIB_DXGUID} ${INPUT_LIB_NVAPI})
+    target_link_libraries (NRI_D3D11 PRIVATE NRI_Shared ${INPUT_LIBS_D3D11} ${INPUT_LIB_DXGUID} ${INPUT_LIB_NVAPI})
     set_property (TARGET NRI_D3D11 PROPERTY FOLDER ${PROJECT_NAME})
 endif ()
 
@@ -165,7 +175,7 @@ if (WIN32)
     target_include_directories (NRI_D3D12 PRIVATE "Include" "Source/Shared")
     target_compile_definitions (NRI_D3D12 PRIVATE ${COMPILE_DEFINITIONS})
     target_compile_options (NRI_D3D12 PRIVATE ${COMPILE_OPTIONS})
-    target_link_libraries (NRI_D3D12 PRIVATE NRI_Shared ${INPUT_LIB_D3D12} ${INPUT_LIB_DXGI})
+    target_link_libraries (NRI_D3D12 PRIVATE NRI_Shared ${INPUT_LIBS_D3D12})
     set_property (TARGET NRI_D3D12 PROPERTY FOLDER ${PROJECT_NAME})
 endif ()
 
@@ -221,6 +231,12 @@ source_group ("Include" FILES ${NRI_HEADERS})
 file (GLOB NRI_EXTENSIONS "Include/Extensions/*.h" "Include/Extensions/*.hpp")
 source_group ("Include/Extensions" FILES ${NRI_EXTENSIONS})
 file (GLOB NRI_SOURCE "Source/Creation/*.cpp" "Source/Creation/*.h")
+
+if (NRI_ENABLE_STREAMLINE_SUPPORT)
+    file (GLOB NRI_SOURCE ${NRI_SOURCE} "Source/Streamline/*.cpp")
+    file (GLOB NRI_EXTENSIONS ${NRI_EXTENSIONS} "Include/Extensions/Optional/NRIStreamlineWrapper.h")
+endif ()
+
 source_group ("Sources" FILES ${NRI_SOURCE})
 file (GLOB NRI_RESOURCES "Resources/*")
 source_group ("Resources" FILES ${NRI_RESOURCES})
@@ -237,6 +253,25 @@ else ()
         target_compile_definitions (${PROJECT_NAME} PRIVATE "NRI_API=extern \"C\" __attribute__((visibility(\"default\")))")
         target_compile_definitions (${PROJECT_NAME} PRIVATE "NRIC_API=extern \"C\" __attribute__((visibility(\"default\")))")
     endif ()
+endif ()
+
+if (NRI_ENABLE_STREAMLINE_SUPPORT)
+    set (SL_INTERPOSER_LINK_PATH "${NRI_STREAMLINE_SDK_PATH}/lib/x64/sl.interposer.lib")
+    set (SL_INCLUDE_DIRECTORY "${NRI_STREAMLINE_SDK_PATH}/include/")
+    set (SL_PLUGINS_DIRECTORY ${NRI_STREAMLINE_SDK_PATH}/bin/x64)
+
+    target_include_directories (${PROJECT_NAME} PRIVATE ${SL_INCLUDE_DIRECTORY})
+    target_link_libraries (${PROJECT_NAME} PRIVATE ${SL_INTERPOSER_LINK_PATH})
+    target_compile_definitions (${PROJECT_NAME} PRIVATE SL_PLUGINS_DIRECTORY=${SL_PLUGINS_DIRECTORY})
+
+    file (TO_NATIVE_PATH ${GLOBAL_BIN_OUTPUT_PATH}/$<CONFIG> BIN_OUTPUT_PATH_NATIVE)
+    file (TO_NATIVE_PATH ${SL_PLUGINS_DIRECTORY} SL_PLUGINS_PATH_NATIVE)
+
+    add_custom_command (TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${BIN_OUTPUT_PATH_NATIVE} ${SL_PLUGINS_PATH_NATIVE}
+        COMMENT "Copying '${BIN_OUTPUT_PATH_NATIVE}' to '${SL_PLUGINS_PATH_NATIVE}'"
+        VERBATIM
+    )
 endif ()
 
 target_include_directories (${PROJECT_NAME} PRIVATE "Include" "Source/Shared" "External/vulkan/include")
