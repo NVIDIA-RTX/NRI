@@ -25,11 +25,6 @@ static void NRI_CALL GetTextureMemoryInfo(const Texture& texture, MemoryLocation
     ((TextureVal&)texture).GetMemoryInfo(memoryLocation, memoryDesc);
 }
 
-void FillFunctionTableTextureVal(CoreInterface& coreInterface)
-{
-    coreInterface.SetTextureDebugName = ::SetTextureDebugName;
-    coreInterface.GetTextureNativeObject = ::GetTextureNativeObject;
-    coreInterface.GetTextureMemoryInfo = ::GetTextureMemoryInfo;
-}
-
 #pragma endregion
+
+Define_Core_Texture_PartiallyFillFunctionTable(Val)

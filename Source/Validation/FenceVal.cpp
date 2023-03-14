@@ -11,12 +11,33 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "SharedExternal.h"
 #include "SharedVal.h"
 #include "FenceVal.h"
+#include "CommandQueueVal.h"
 
 using namespace nri;
 
 //================================================================================================================
 // NRI
 //================================================================================================================
+
+inline uint64_t FenceVal::GetFenceValue() const
+{
+    return m_CoreAPI.GetFenceValue(m_ImplObject);
+}
+
+inline void FenceVal::QueueSignal(CommandQueueVal& commandQueue, uint64_t value)
+{
+    m_CoreAPI.QueueSignal(commandQueue.GetImpl(), m_ImplObject, value);
+}
+
+inline void FenceVal::QueueWait(CommandQueueVal& commandQueue, uint64_t value)
+{
+    m_CoreAPI.QueueWait(commandQueue.GetImpl(), m_ImplObject, value);
+}
+
+inline void FenceVal::Wait(uint64_t value)
+{
+    m_CoreAPI.Wait(m_ImplObject, value);
+}
 
 inline void FenceVal::SetDebugName(const char* name)
 {

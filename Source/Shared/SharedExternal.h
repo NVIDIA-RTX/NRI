@@ -356,7 +356,7 @@ nri::Result ValidateFunctionTable(const Log& log, const T& table)
     {
         if (*current == nullptr)
         {
-            REPORT_ERROR(log, "Invalid function table: function#%u is NULL!", uint32_t(current - begin));
+            REPORT_ERROR(log, "Invalid function table: function #%u is NULL!", uint32_t(current - begin));
             return nri::Result::FAILURE;
         }
     }

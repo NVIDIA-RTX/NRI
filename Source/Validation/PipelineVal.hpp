@@ -12,7 +12,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 static void NRI_CALL SetPipelineDebugName(Pipeline& pipeline, const char* name)
 {
-    ((PipelineVal*)&pipeline)->SetDebugName(name);
+    ((PipelineVal&)pipeline).SetDebugName(name);
 }
 
 void FillFunctionTablePipelineVal(CoreInterface& coreInterface)

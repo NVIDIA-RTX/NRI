@@ -10,15 +10,32 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #pragma region [  Core  ]
 
-static void NRI_CALL SetFenceDebugName(Fence& fence, const char* name)
+static uint64_t NRI_CALL GetFenceValue(Fence& fence)
 {
-    ((FenceVal*)&fence)->SetDebugName(name);
+    return ((FenceVal&)fence).GetFenceValue();
 }
 
-void FillFunctionTableFenceVal(CoreInterface& coreInterface)
+static void NRI_CALL QueueSignal(CommandQueue& commandQueue, Fence& fence, uint64_t value)
 {
-    coreInterface.SetFenceDebugName = ::SetFenceDebugName;
+    return ((FenceVal&)fence).QueueSignal((CommandQueueVal&)commandQueue, value);
+}
+
+static void NRI_CALL QueueWait(CommandQueue& commandQueue, Fence& fence, uint64_t value)
+{
+    return ((FenceVal&)fence).QueueWait((CommandQueueVal&)commandQueue, value);
+}
+
+static void NRI_CALL Wait(Fence& fence, uint64_t value)
+{
+    ((FenceVal&)fence).Wait(value);
+}
+
+static void NRI_CALL SetFenceDebugName(Fence& fence, const char* name)
+{
+    ((FenceVal&)fence).SetDebugName(name);
 }
 
 #pragma endregion
+
+Define_Core_Fence_PartiallyFillFunctionTable(Val)
 

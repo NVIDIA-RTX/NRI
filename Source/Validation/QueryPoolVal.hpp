@@ -12,18 +12,14 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 static void NRI_CALL SetQueryPoolDebugName(QueryPool& queryPool, const char* name)
 {
-    ((QueryPoolVal*)&queryPool)->SetDebugName(name);
+    ((QueryPoolVal&)queryPool).SetDebugName(name);
 }
 
 static uint32_t NRI_CALL GetQuerySize(const QueryPool& queryPool)
 {
-    return ((QueryPoolVal*)&queryPool)->GetQuerySize();
-}
-
-void FillFunctionTableQueryPoolVal(CoreInterface& coreInterface)
-{
-    coreInterface.SetQueryPoolDebugName = ::SetQueryPoolDebugName;
-    coreInterface.GetQuerySize = ::GetQuerySize;
+    return ((QueryPoolVal&)queryPool).GetQuerySize();
 }
 
 #pragma endregion
+
+Define_Core_QueryPool_PartiallyFillFunctionTable(Val)

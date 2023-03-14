@@ -35,6 +35,6 @@ static Result NRI_CALL SetSwapChainHdrMetadata(SwapChain& swapChain, const HdrMe
     return ((SwapChainD3D12&)swapChain).SetHdrMetadata(hdrMetadata);
 }
 
-Define_SwapChain_PartiallyFillFunctionTable(D3D12)
-
 #pragma endregion
+
+Define_SwapChain_PartiallyFillFunctionTable(D3D12)

@@ -12,7 +12,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 static void NRI_CALL SetFrameBufferDebugName(FrameBuffer& frameBuffer, const char* name)
 {
-    ((FrameBufferVal*)&frameBuffer)->SetDebugName(name);
+    ((FrameBufferVal&)frameBuffer).SetDebugName(name);
 }
 
 void FillFunctionTableFrameBufferVal(CoreInterface& coreInterface)

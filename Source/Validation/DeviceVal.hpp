@@ -8,11 +8,13 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
+Declare_PartiallyFillFunctionTable_Functions(Val)
+
 #pragma region [  Core  ]
 
 static const DeviceDesc& NRI_CALL GetDeviceDesc(const Device& device)
 {
-    return ((const DeviceVal*)&device)->GetDesc();
+    return ((const DeviceVal&)device).GetDesc();
 }
 
 static Result NRI_CALL GetCommandQueue(Device& device, CommandQueueType commandQueueType, CommandQueue*& commandQueue)
@@ -197,23 +199,12 @@ static void NRI_CALL SetDeviceDebugName(Device& device, const char* name)
 
 static void* NRI_CALL GetDeviceNativeObject(const Device& device)
 {
-    return ((DeviceVal*)&device)->GetNativeObject();
+    return ((DeviceVal&)device).GetNativeObject();
 }
 
-void FillFunctionTableBufferVal(CoreInterface& coreInterface);
-void FillFunctionTableCommandAllocatorVal(CoreInterface& coreInterface);
-void FillFunctionTableCommandBufferVal(CoreInterface& coreInterface);
-void FillFunctionTableCommandQueueVal(CoreInterface& coreInterface);
-void FillFunctionTableDescriptorVal(CoreInterface& coreInterface);
-void FillFunctionTableDescriptorPoolVal(CoreInterface& coreInterface);
-void FillFunctionTableDescriptorSetVal(CoreInterface& coreInterface);
-void FillFunctionTableFenceVal(CoreInterface& coreInterface);
 void FillFunctionTableFrameBufferVal(CoreInterface& coreInterface);
 void FillFunctionTableMemoryVal(CoreInterface& coreInterface);
-void FillFunctionTablePipelineLayoutVal(CoreInterface& coreInterface);
 void FillFunctionTablePipelineVal(CoreInterface& coreInterface);
-void FillFunctionTableQueryPoolVal(CoreInterface& coreInterface);
-void FillFunctionTableTextureVal(CoreInterface& coreInterface);
 
 Result DeviceVal::FillFunctionTable(CoreInterface& coreInterface) const
 {
@@ -253,20 +244,20 @@ Result DeviceVal::FillFunctionTable(CoreInterface& coreInterface) const
     coreInterface.SetDeviceDebugName = ::SetDeviceDebugName;
     coreInterface.GetDeviceNativeObject = ::GetDeviceNativeObject;
 
-    FillFunctionTableBufferVal(coreInterface);
-    FillFunctionTableCommandAllocatorVal(coreInterface);
-    FillFunctionTableCommandBufferVal(coreInterface);
-    FillFunctionTableCommandQueueVal(coreInterface);
-    FillFunctionTableDescriptorVal(coreInterface);
-    FillFunctionTableDescriptorPoolVal(coreInterface);
-    FillFunctionTableDescriptorSetVal(coreInterface);
-    FillFunctionTableFenceVal(coreInterface);
+    Core_Buffer_PartiallyFillFunctionTableVal(coreInterface);
+    Core_CommandAllocator_PartiallyFillFunctionTableVal(coreInterface);
+    Core_CommandBuffer_PartiallyFillFunctionTableVal(coreInterface);
+    Core_CommandQueue_PartiallyFillFunctionTableVal(coreInterface);
+    Core_Descriptor_PartiallyFillFunctionTableVal(coreInterface);
+    Core_DescriptorPool_PartiallyFillFunctionTableVal(coreInterface);
+    Core_DescriptorSet_PartiallyFillFunctionTableVal(coreInterface);
+    Core_Fence_PartiallyFillFunctionTableVal(coreInterface);
+    Core_PipelineLayout_PartiallyFillFunctionTableVal(coreInterface);
+    Core_QueryPool_PartiallyFillFunctionTableVal(coreInterface);
+    Core_Texture_PartiallyFillFunctionTableVal(coreInterface);
     FillFunctionTableFrameBufferVal(coreInterface);
     FillFunctionTableMemoryVal(coreInterface);
-    FillFunctionTablePipelineLayoutVal(coreInterface);
     FillFunctionTablePipelineVal(coreInterface);
-    FillFunctionTableQueryPoolVal(coreInterface);
-    FillFunctionTableTextureVal(coreInterface);
 
     return ValidateFunctionTable(GetLog(), coreInterface);
 }
@@ -295,21 +286,18 @@ static Result NRI_CALL GetDisplaySize(Device& device, Display& display, uint16_t
     return ((DeviceVal&)device).GetDisplaySize(display, width, height);
 }
 
-void FillFunctionTableSwapChainVal(SwapChainInterface& swapChainInterface);
-
 Result DeviceVal::FillFunctionTable(SwapChainInterface& swapChainInterface) const
 {
     if (!m_IsSwapChainSupported)
         return Result::UNSUPPORTED;
 
     swapChainInterface = {};
-
-    FillFunctionTableSwapChainVal(swapChainInterface);
-
     swapChainInterface.CreateSwapChain = ::CreateSwapChain;
     swapChainInterface.DestroySwapChain = ::DestroySwapChain;
     swapChainInterface.GetDisplays = ::GetDisplays;
     swapChainInterface.GetDisplaySize = ::GetDisplaySize;
+
+    SwapChain_PartiallyFillFunctionTableVal(swapChainInterface);
 
     return ValidateFunctionTable(GetLog(), swapChainInterface);
 }
@@ -339,18 +327,16 @@ static Result NRI_CALL CreateTextureD3D11(Device& device, const TextureD3D11Desc
 
 Result DeviceVal::FillFunctionTable(WrapperD3D11Interface& wrapperD3D11Interface) const
 {
-    MaybeUnused(wrapperD3D11Interface);
-
 #if NRI_USE_D3D11
-
     wrapperD3D11Interface = {};
     wrapperD3D11Interface.CreateCommandBufferD3D11 = ::CreateCommandBufferD3D11;
     wrapperD3D11Interface.CreateBufferD3D11 = ::CreateBufferD3D11;
     wrapperD3D11Interface.CreateTextureD3D11 = ::CreateTextureD3D11;
 
     return ValidateFunctionTable(GetLog(), wrapperD3D11Interface);
-
 #else
+    MaybeUnused(wrapperD3D11Interface);
+
     return Result::UNSUPPORTED;
 #endif
 }
@@ -390,10 +376,7 @@ static Result NRI_CALL CreateAccelerationStructureD3D12(Device& device, const Ac
 
 Result DeviceVal::FillFunctionTable(WrapperD3D12Interface& wrapperD3D12Interface) const
 {
-    MaybeUnused(wrapperD3D12Interface);
-
 #if NRI_USE_D3D12
-
     wrapperD3D12Interface = {};
     wrapperD3D12Interface.CreateCommandBufferD3D12 = ::CreateCommandBufferD3D12;
     wrapperD3D12Interface.CreateBufferD3D12 = ::CreateBufferD3D12;
@@ -404,6 +387,8 @@ Result DeviceVal::FillFunctionTable(WrapperD3D12Interface& wrapperD3D12Interface
     return ValidateFunctionTable(GetLog(), wrapperD3D12Interface);
 
 #else
+    MaybeUnused(wrapperD3D12Interface);
+
     return Result::UNSUPPORTED;
 #endif
 }
@@ -514,6 +499,8 @@ Result DeviceVal::FillFunctionTable(WrapperVKInterface& wrapperVKInterface) cons
 
     return ValidateFunctionTable(GetLog(), wrapperVKInterface);
 #else
+    MaybeUnused(wrapperVKInterface);
+
     return Result::UNSUPPORTED;
 #endif
 }
@@ -543,8 +530,6 @@ static void NRI_CALL DestroyAccelerationStructure(AccelerationStructure& acceler
 }
 
 void FillFunctionTablePipelineVal(RayTracingInterface& rayTracingInterface);
-void FillFunctionTableCommandBufferVal(RayTracingInterface& rayTracingInterface);
-void FillFunctionTableAccelarationStructureVal(RayTracingInterface& rayTracingInterface);
 
 Result DeviceVal::FillFunctionTable(RayTracingInterface& rayTracingInterface) const
 {
@@ -557,9 +542,9 @@ Result DeviceVal::FillFunctionTable(RayTracingInterface& rayTracingInterface) co
     rayTracingInterface.BindAccelerationStructureMemory = ::BindAccelerationStructureMemory;
     rayTracingInterface.DestroyAccelerationStructure = ::DestroyAccelerationStructure;
 
+    RayTracing_CommandBuffer_PartiallyFillFunctionTableVal(rayTracingInterface);
+    RayTracing_AccelerationStructure_PartiallyFillFunctionTableVal(rayTracingInterface);
     FillFunctionTablePipelineVal(rayTracingInterface);
-    FillFunctionTableCommandBufferVal(rayTracingInterface);
-    FillFunctionTableAccelarationStructureVal(rayTracingInterface);
 
     return ValidateFunctionTable(GetLog(), rayTracingInterface);
 }
@@ -568,8 +553,6 @@ Result DeviceVal::FillFunctionTable(RayTracingInterface& rayTracingInterface) co
 
 #pragma region [  MeshShader  ]
 
-void FillFunctionTableCommandBufferVal(MeshShaderInterface& meshShaderInterface);
-
 Result DeviceVal::FillFunctionTable(MeshShaderInterface& meshShaderInterface) const
 {
     if (!m_IsMeshShaderExtSupported)
@@ -577,7 +560,7 @@ Result DeviceVal::FillFunctionTable(MeshShaderInterface& meshShaderInterface) co
 
     meshShaderInterface = {};
 
-    FillFunctionTableCommandBufferVal(meshShaderInterface);
+    MeshShader_CommandBuffer_PartiallyFillFunctionTableVal(meshShaderInterface);
 
     return ValidateFunctionTable(GetLog(), meshShaderInterface);
 }
@@ -586,25 +569,23 @@ Result DeviceVal::FillFunctionTable(MeshShaderInterface& meshShaderInterface) co
 
 #pragma region [  Helper  ]
 
-static uint32_t NRI_CALL CountAllocationNumVal(Device& device, const ResourceGroupDesc& resourceGroupDesc)
+static uint32_t NRI_CALL CountAllocationNum(Device& device, const ResourceGroupDesc& resourceGroupDesc)
 {
     return ((DeviceVal&)device).CalculateAllocationNumber(resourceGroupDesc);
 }
 
-static Result NRI_CALL AllocateAndBindMemoryVal(Device& device, const ResourceGroupDesc& resourceGroupDesc, Memory** allocations)
+static Result NRI_CALL AllocateAndBindMemory(Device& device, const ResourceGroupDesc& resourceGroupDesc, Memory** allocations)
 {
     return ((DeviceVal&)device).AllocateAndBindMemory(resourceGroupDesc, allocations);
 }
 
-void FillFunctionTableCommandQueueVal(HelperInterface& helperInterface);
-
 Result DeviceVal::FillFunctionTable(HelperInterface& helperInterface) const
 {
     helperInterface = {};
+    helperInterface.CalculateAllocationNumber = ::CountAllocationNum;
+    helperInterface.AllocateAndBindMemory = ::AllocateAndBindMemory;
 
-    helperInterface.CalculateAllocationNumber = ::CountAllocationNumVal;
-    helperInterface.AllocateAndBindMemory = ::AllocateAndBindMemoryVal;
-    FillFunctionTableCommandQueueVal(helperInterface);
+    Helper_CommandQueue_PartiallyFillFunctionTableVal(helperInterface);
 
     return ValidateFunctionTable(GetLog(), helperInterface);
 }

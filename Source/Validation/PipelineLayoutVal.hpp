@@ -12,12 +12,9 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 static void NRI_CALL SetPipelineLayoutDebugName(PipelineLayout& pipelineLayout, const char* name)
 {
-    ((PipelineLayoutVal*)&pipelineLayout)->SetDebugName(name);
-}
-
-void FillFunctionTablePipelineLayoutVal(CoreInterface& coreInterface)
-{
-    coreInterface.SetPipelineLayoutDebugName = ::SetPipelineLayoutDebugName;
+    ((PipelineLayoutVal&)pipelineLayout).SetDebugName(name);
 }
 
 #pragma endregion
+
+Define_Core_PipelineLayout_PartiallyFillFunctionTable(Val)

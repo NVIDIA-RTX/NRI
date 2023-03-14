@@ -12,45 +12,35 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 static void NRI_CALL SetCommandQueueDebugName(CommandQueue& commandQueue, const char* name)
 {
-    ((CommandQueueVal*)&commandQueue)->SetDebugName(name);
+    ((CommandQueueVal&)commandQueue).SetDebugName(name);
 }
 
 static void NRI_CALL QueueSubmit(CommandQueue& commandQueue, const QueueSubmitDesc& queueSubmitDesc)
 {
-    ((CommandQueueVal*)&commandQueue)->Submit(queueSubmitDesc);
-}
-
-void FillFunctionTableCommandQueueVal(CoreInterface& coreInterface)
-{
-    coreInterface.SetCommandQueueDebugName = ::SetCommandQueueDebugName;
-    coreInterface.QueueSubmit = ::QueueSubmit;
+    ((CommandQueueVal&)commandQueue).Submit(queueSubmitDesc);
 }
 
 #pragma endregion
 
 #pragma region [  Helper  ]
 
-static Result NRI_CALL ChangeResourceStatesVal(CommandQueue& commandQueue, const TransitionBarrierDesc& transitionBarriers)
+static Result NRI_CALL ChangeResourceStates(CommandQueue& commandQueue, const TransitionBarrierDesc& transitionBarriers)
 {
     return ((CommandQueueVal&)commandQueue).ChangeResourceStates(transitionBarriers);
 }
 
-static nri::Result NRI_CALL UploadDataVal(CommandQueue& commandQueue, const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum,
+static nri::Result NRI_CALL UploadData(CommandQueue& commandQueue, const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum,
     const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum)
 {
     return ((CommandQueueVal&)commandQueue).UploadData(textureUploadDescs, textureUploadDescNum, bufferUploadDescs, bufferUploadDescNum);
 }
 
-static nri::Result NRI_CALL WaitForIdleVal(CommandQueue& commandQueue)
+static nri::Result NRI_CALL WaitForIdle(CommandQueue& commandQueue)
 {
     return ((CommandQueueVal&)commandQueue).WaitForIdle();
 }
 
-void FillFunctionTableCommandQueueVal(HelperInterface& helperInterface)
-{
-    helperInterface.ChangeResourceStates = ::ChangeResourceStatesVal;
-    helperInterface.UploadData = ::UploadDataVal;
-    helperInterface.WaitForIdle = ::WaitForIdleVal;
-}
-
 #pragma endregion
+
+Define_Core_CommandQueue_PartiallyFillFunctionTable(Val)
+Define_Helper_CommandQueue_PartiallyFillFunctionTable(Val)

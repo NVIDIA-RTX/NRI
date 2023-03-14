@@ -12,24 +12,19 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 static void NRI_CALL SetCommandAllocatorDebugName(CommandAllocator& commandAllocator, const char* name)
 {
-    ((CommandAllocatorVal*)&commandAllocator)->SetDebugName(name);
+    ((CommandAllocatorVal&)commandAllocator).SetDebugName(name);
 }
 
 static Result NRI_CALL CreateCommandBuffer(CommandAllocator& commandAllocator, CommandBuffer*& commandBuffer)
 {
-    return ((CommandAllocatorVal*)&commandAllocator)->CreateCommandBuffer(commandBuffer);
+    return ((CommandAllocatorVal&)commandAllocator).CreateCommandBuffer(commandBuffer);
 }
 
 static void NRI_CALL ResetCommandAllocator(CommandAllocator& commandAllocator)
 {
-    ((CommandAllocatorVal*)&commandAllocator)->Reset();
-}
-
-void FillFunctionTableCommandAllocatorVal(CoreInterface& coreInterface)
-{
-    coreInterface.SetCommandAllocatorDebugName = ::SetCommandAllocatorDebugName;
-    coreInterface.CreateCommandBuffer = ::CreateCommandBuffer;
-    coreInterface.ResetCommandAllocator = ::ResetCommandAllocator;
+    ((CommandAllocatorVal&)commandAllocator).Reset();
 }
 
 #pragma endregion
+
+Define_Core_CommandAllocator_PartiallyFillFunctionTable(Val)

@@ -417,7 +417,6 @@ Result DeviceVK::FillFunctionTable(RayTracingInterface& rayTracingInterface) con
         return Result::UNSUPPORTED;
 
     rayTracingInterface = {};
-
     rayTracingInterface.CreateRayTracingPipeline = ::CreateRayTracingPipeline;
     rayTracingInterface.CreateAccelerationStructure = ::CreateAccelerationStructure;
     rayTracingInterface.BindAccelerationStructureMemory = ::BindAccelerationStructureMemory;

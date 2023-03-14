@@ -20,11 +20,6 @@ static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor& descriptor,
     return ((DescriptorVal&)descriptor).GetNativeObject(physicalDeviceIndex);
 }
 
-void FillFunctionTableDescriptorVal(CoreInterface& coreInterface)
-{
-    coreInterface.SetDescriptorDebugName = ::SetDescriptorDebugName;
-
-    coreInterface.GetDescriptorNativeObject = ::GetDescriptorNativeObject;
-}
-
 #pragma endregion
+
+Define_Core_Descriptor_PartiallyFillFunctionTable(Val)

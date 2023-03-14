@@ -12,36 +12,29 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 static void NRI_CALL SetSwapChainDebugName(SwapChain& swapChain, const char* name)
 {
-    ((SwapChainVal*)&swapChain)->SetDebugName(name);
+    ((SwapChainVal&)swapChain).SetDebugName(name);
 }
 
 static Texture* const* NRI_CALL GetSwapChainTextures(const SwapChain& swapChain, uint32_t& textureNum, Format& format)
 {
-    return ((SwapChainVal*)&swapChain)->GetTextures(textureNum, format);
+    return ((SwapChainVal&)swapChain).GetTextures(textureNum, format);
 }
 
 static uint32_t NRI_CALL AcquireNextSwapChainTexture(SwapChain& swapChain)
 {
-    return ((SwapChainVal*)&swapChain)->AcquireNextTexture();
+    return ((SwapChainVal&)swapChain).AcquireNextTexture();
 }
 
 static Result NRI_CALL SwapChainPresent(SwapChain& swapChain)
 {
-    return ((SwapChainVal*)&swapChain)->Present();
+    return ((SwapChainVal&)swapChain).Present();
 }
 
 static Result NRI_CALL SetSwapChainHdrMetadata(SwapChain& swapChain, const HdrMetadata& hdrMetadata)
 {
-    return ((SwapChainVal*)&swapChain)->SetHdrMetadata(hdrMetadata);
-}
-
-void FillFunctionTableSwapChainVal(SwapChainInterface& swapChainInterface)
-{
-    swapChainInterface.SetSwapChainDebugName = ::SetSwapChainDebugName;
-    swapChainInterface.GetSwapChainTextures = ::GetSwapChainTextures;
-    swapChainInterface.AcquireNextSwapChainTexture = ::AcquireNextSwapChainTexture;
-    swapChainInterface.SwapChainPresent = ::SwapChainPresent;
-    swapChainInterface.SetSwapChainHdrMetadata = ::SetSwapChainHdrMetadata;
+    return ((SwapChainVal&)swapChain).SetHdrMetadata(hdrMetadata);
 }
 
 #pragma endregion
+
+Define_SwapChain_PartiallyFillFunctionTable(Val)

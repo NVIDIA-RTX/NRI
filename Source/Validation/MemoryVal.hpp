@@ -12,7 +12,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 static void NRI_CALL SetMemoryDebugName(Memory& memory, const char* name)
 {
-    ((MemoryVal*)&memory)->SetDebugName(name);
+    ((MemoryVal&)memory).SetDebugName(name);
 }
 
 void FillFunctionTableMemoryVal(CoreInterface& coreInterface)
