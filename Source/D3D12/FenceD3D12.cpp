@@ -35,9 +35,6 @@ inline void FenceD3D12::QueueSignal(CommandQueueD3D12& commandQueue, uint64_t va
 {
     HRESULT hr = ((ID3D12CommandQueue*)commandQueue)->Signal(m_Fence, value);
     CHECK(m_Device.GetLog(), hr == S_OK, "ID3D12CommandQueue::Signal() - FAILED!");
-
-    //while (m_Fence->GetCompletedValue() < value)
-    //    printf("waiting\n");
 }
 
 inline void FenceD3D12::QueueWait(CommandQueueD3D12& commandQueue, uint64_t value)
