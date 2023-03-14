@@ -14,90 +14,87 @@ struct NvAPI_D3D11_RASTERIZER_DESC_EX;
 
 namespace nri
 {
-    struct DeviceD3D11;
-    struct DescriptorSetD3D11;
 
-    struct BindingSet
-    {
-        uint32_t descriptorNum;
-        uint32_t rangeStart;
-        uint32_t rangeEnd;
-    };
+struct DeviceD3D11;
+struct DescriptorSetD3D11;
 
-    struct BindingRange
-    {
-        uint32_t baseSlot;
-        uint32_t descriptorNum;
-        uint32_t descriptorOffset;
-        uint32_t shaderVisibility;
-        DescriptorTypeDX11 descriptorType;
-    };
+struct BindingSet
+{
+    uint32_t descriptorNum;
+    uint32_t rangeStart;
+    uint32_t rangeEnd;
+};
 
-    struct ConstantBuffer
-    {
-        ComPtr<ID3D11Buffer> buffer;
-        uint32_t slot;
-        uint32_t shaderVisibility;
-    };
+struct BindingRange
+{
+    uint32_t baseSlot;
+    uint32_t descriptorNum;
+    uint32_t descriptorOffset;
+    uint32_t shaderVisibility;
+    DescriptorTypeDX11 descriptorType;
+};
 
-    union Vec4
-    {
-        uint32_t ui[4];
-        float f[4];
-    };
+struct ConstantBuffer
+{
+    ComPtr<ID3D11Buffer> buffer;
+    uint32_t slot;
+    uint32_t shaderVisibility;
+};
 
-    struct BindingData
-    {
-        void** descriptors;
-        uint32_t* constantFirst;
-        uint32_t* constantNum;
-    };
+union Vec4
+{
+    uint32_t ui[4];
+    float f[4];
+};
 
-    struct PipelineLayoutD3D11
-    {
-        PipelineLayoutD3D11(DeviceD3D11& device, const VersionedDevice& versionedDevice);
+struct BindingData
+{
+    void** descriptors;
+    uint32_t* constantFirst;
+    uint32_t* constantNum;
+};
 
-        Result Create(const PipelineLayoutDesc& pipelineDesc);
+struct PipelineLayoutD3D11
+{
+    inline PipelineLayoutD3D11(DeviceD3D11& device) :
+        m_Device(device)
+        , m_BindingSets(device.GetStdAllocator())
+        , m_BindingRanges(device.GetStdAllocator())
+        , m_ConstantBuffers(device.GetStdAllocator())
+    {}
 
-        DeviceD3D11& GetDevice() const;
-        const BindingSet& GetBindingSet(uint32_t set) const;
-        const BindingRange& GetBindingRange(uint32_t range) const;
-        void SetConstants(const VersionedContext& context, uint32_t pushConstantIndex, const Vec4* data, uint32_t size) const;
+    inline DeviceD3D11& GetDevice() const
+    { return m_Device; }
 
-        void Bind(const VersionedContext& context);
-        void BindDescriptorSet(BindingState& currentBindingState, const VersionedContext& context,
-            uint32_t setIndexInPipelineLayout, const DescriptorSetD3D11& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const;
+    inline const BindingSet& GetBindingSet(uint32_t set) const
+    { return m_BindingSets[set]; }
 
-        //======================================================================================================================
-        // NRI
-        //======================================================================================================================
-        void SetDebugName(const char* name);
+    inline const BindingRange& GetBindingRange(uint32_t range) const
+    { return m_BindingRanges[range]; }
 
-    private:
-        template<bool isGraphics>
-        void BindDescriptorSetImpl(BindingState& currentBindingState, const VersionedContext& context, uint32_t setIndexInPipelineLayout,
-            const DescriptorSetD3D11& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const;
+    Result Create(const PipelineLayoutDesc& pipelineDesc);
+    void SetConstants(const VersionedContext& deferredContext, uint32_t pushConstantIndex, const Vec4* data, uint32_t size) const;
+    void Bind(const VersionedContext& deferredContext);
+    void BindDescriptorSet(BindingState& currentBindingState, const VersionedContext& deferredContext,
+        uint32_t setIndexInPipelineLayout, const DescriptorSetD3D11& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const;
 
-        Vector<BindingSet> m_BindingSets;
-        Vector<BindingRange> m_BindingRanges;
-        Vector<ConstantBuffer> m_ConstantBuffers;
-        bool m_IsGraphicsPipelineLayout = false;
-        const VersionedDevice& m_VersionedDevice;
-        DeviceD3D11& m_Device;
-    };
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
 
-    inline DeviceD3D11& PipelineLayoutD3D11::GetDevice() const
-    {
-        return m_Device;
-    }
+    inline void SetDebugName(const char* name)
+    { MaybeUnused(name); }
 
-    inline const BindingSet& PipelineLayoutD3D11::GetBindingSet(uint32_t set) const
-    {
-        return m_BindingSets[set];
-    }
+private:
+    template<bool isGraphics>
+    void BindDescriptorSetImpl(BindingState& currentBindingState, const VersionedContext& deferredContext, uint32_t setIndexInPipelineLayout,
+        const DescriptorSetD3D11& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const;
 
-    inline const BindingRange& PipelineLayoutD3D11::GetBindingRange(uint32_t range) const
-    {
-        return m_BindingRanges[range];
-    }
+    DeviceD3D11& m_Device;
+    Vector<BindingSet> m_BindingSets;
+    Vector<BindingRange> m_BindingRanges;
+    Vector<ConstantBuffer> m_ConstantBuffers;
+    bool m_IsGraphicsPipelineLayout = false;
+};
+
 }

@@ -10,8 +10,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #pragma once
 
-#pragma region [  SwapChainInterface  ]
-
 static void NRI_CALL SetSwapChainDebugName(SwapChain& swapChain, const char* name)
 {
     ((SwapChainVK&)swapChain).SetDebugName(name);
@@ -22,14 +20,14 @@ static Texture* const* NRI_CALL GetSwapChainTextures(const SwapChain& swapChain,
     return ((SwapChainVK&)swapChain).GetTextures(textureNum, format);
 }
 
-static uint32_t NRI_CALL AcquireNextSwapChainTexture(SwapChain& swapChain, QueueSemaphore& textureReadyForRender)
+static uint32_t NRI_CALL AcquireNextSwapChainTexture(SwapChain& swapChain)
 {
-    return ((SwapChainVK&)swapChain).AcquireNextTexture(textureReadyForRender);
+    return ((SwapChainVK&)swapChain).AcquireNextTexture();
 }
 
-static Result NRI_CALL SwapChainPresent(SwapChain& swapChain, QueueSemaphore& textureReadyForPresent)
+static Result NRI_CALL SwapChainPresent(SwapChain& swapChain)
 {
-    return ((SwapChainVK&)swapChain).Present(textureReadyForPresent);
+    return ((SwapChainVK&)swapChain).Present();
 }
 
 static Result NRI_CALL SetSwapChainHdrMetadata(SwapChain& swapChain, const HdrMetadata& hdrMetadata)
@@ -37,13 +35,4 @@ static Result NRI_CALL SetSwapChainHdrMetadata(SwapChain& swapChain, const HdrMe
     return ((SwapChainVK&)swapChain).SetHdrMetadata(hdrMetadata);
 }
 
-void FillFunctionTableSwapChainVK(SwapChainInterface& swapChainInterface)
-{
-    swapChainInterface.SetSwapChainDebugName = ::SetSwapChainDebugName;
-    swapChainInterface.GetSwapChainTextures = ::GetSwapChainTextures;
-    swapChainInterface.AcquireNextSwapChainTexture = ::AcquireNextSwapChainTexture;
-    swapChainInterface.SwapChainPresent = ::SwapChainPresent;
-    swapChainInterface.SetSwapChainHdrMetadata = ::SetSwapChainHdrMetadata;
-}
-
-#pragma endregion
+Define_SwapChain_PartiallyFillFunctionTable(VK)

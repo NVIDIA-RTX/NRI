@@ -8,7 +8,7 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma region [  CoreInterface  ]
+#pragma region [  Core  ]
 
 static void NRI_CALL SetDescriptorPoolDebugName(DescriptorPool& descriptorPool, const char* name)
 {
@@ -28,11 +28,6 @@ static void NRI_CALL ResetDescriptorPool(DescriptorPool& descriptorPool)
     ((DescriptorPoolD3D12&)descriptorPool).Reset();
 }
 
-void FillFunctionTableDescriptorPoolD3D12(CoreInterface& coreInterface)
-{
-    coreInterface.SetDescriptorPoolDebugName = ::SetDescriptorPoolDebugName;
-    coreInterface.AllocateDescriptorSets = ::AllocateDescriptorSets;
-    coreInterface.ResetDescriptorPool = ::ResetDescriptorPool;
-}
-
 #pragma endregion
+
+Define_Core_DescriptorPool_PartiallyFillFunctionTable(D3D12)

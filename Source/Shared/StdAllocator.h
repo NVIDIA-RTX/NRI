@@ -203,7 +203,9 @@ inline T* Allocate(StdAllocator<uint8_t>& allocator, Args&&... args)
     const auto& lowLevelAllocator = allocator.GetInterface();
     T* object = (T*)lowLevelAllocator.Allocate(lowLevelAllocator.userArg, sizeof(T), alignof(T));
 
-    new (object) T(std::forward<Args>(args)...);
+    if (object)
+        new (object) T(std::forward<Args>(args)...);
+
     return object;
 }
 
@@ -213,8 +215,11 @@ inline T* AllocateArray(StdAllocator<uint8_t>& allocator, size_t arraySize, Args
     const auto& lowLevelAllocator = allocator.GetInterface();
     T* array = (T*)lowLevelAllocator.Allocate(lowLevelAllocator.userArg, arraySize * sizeof(T), alignof(T));
 
-    for (size_t i = 0; i < arraySize; i++)
-        new (array + i) T(std::forward<Args>(args)...);
+    if (array)
+    {
+        for (size_t i = 0; i < arraySize; i++)
+            new (array + i) T(std::forward<Args>(args)...);
+    }
 
     return array;
 }
@@ -222,7 +227,7 @@ inline T* AllocateArray(StdAllocator<uint8_t>& allocator, size_t arraySize, Args
 template<typename T>
 inline void Deallocate(StdAllocator<uint8_t>& allocator, T* object)
 {
-    if (object == nullptr)
+    if (!object)
         return;
 
     object->~T();
@@ -234,7 +239,7 @@ inline void Deallocate(StdAllocator<uint8_t>& allocator, T* object)
 template<typename T>
 inline void DeallocateArray(StdAllocator<uint8_t>& allocator, T* array, size_t arraySize)
 {
-    if (array == nullptr)
+    if (!array)
         return;
 
     for (size_t i = 0; i < arraySize; i++)
@@ -244,7 +249,7 @@ inline void DeallocateArray(StdAllocator<uint8_t>& allocator, T* array, size_t a
     lowLevelAllocator.Free(lowLevelAllocator.userArg, array);
 }
 
-//==============================================================================================================================
+//================================================================================================================
 
 template<typename T>
 using Vector = std::vector<T, StdAllocator<T>>;
@@ -254,7 +259,7 @@ using UnorderedMap = std::unordered_map<U, T, std::hash<U>, std::equal_to<U>, St
 
 using String = std::basic_string<char, std::char_traits<char>, StdAllocator<char>>;
 
-//==============================================================================================================================
+//================================================================================================================
 
 constexpr size_t STACK_ALLOC_MAX_SIZE = 65536;
 

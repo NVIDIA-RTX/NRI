@@ -12,7 +12,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "MemoryVK.h"
 #include "BufferVK.h"
 #include "TextureVK.h"
-#include "DeviceVK.h"
 
 using namespace nri;
 
@@ -249,6 +248,10 @@ Result MemoryVK::CreateDedicated(TextureVK& texture, uint32_t physicalDeviceMask
 
     return Result::SUCCESS;
 }
+
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 inline void MemoryVK::SetDebugName(const char* name)
 {

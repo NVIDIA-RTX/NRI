@@ -12,6 +12,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include <d3d11_4.h>
 
+#include "SharedExternal.h"
 #include "DeviceBase.h"
 
 #define NULL_TEXTURE_REGION_DESC 0xFFFF
@@ -67,7 +68,6 @@ D3D11_LOGIC_OP GetD3D11LogicOpFromLogicFunc(nri::LogicFunc logicalFunc);
 
 struct AGSContext;
 struct D3D11Extensions;
-struct IDXGISwapChain4;
 
 struct VersionedDevice
 {
@@ -82,7 +82,7 @@ struct VersionedDevice
 
     ComPtr<ID3D11Device5> ptr;
     const D3D11Extensions* ext = nullptr;
-    bool isDeferredContextsEmulated = false;
+    bool isDeferredContextEmulated = false;
     uint8_t version = 0;
 };
 
@@ -120,25 +120,13 @@ struct VersionedContext
     uint8_t version = 0;
 };
 
-struct VersionedSwapchain
-{
-    ~VersionedSwapchain()
-    {}
-
-    inline IDXGISwapChain4* operator->() const
-    { return ptr; }
-
-    ComPtr<IDXGISwapChain4> ptr;
-    uint8_t version = 0;
-};
-
 struct CriticalSection
 {
-    CriticalSection(const VersionedContext& context) :
-        m_Context(context)
+    inline CriticalSection(const VersionedContext& deferredContext) :
+        m_Context(deferredContext)
     { m_Context.EnterCriticalSection(); }
 
-    ~CriticalSection()
+    inline ~CriticalSection()
     { m_Context.LeaveCriticalSection(); }
 
     const VersionedContext& m_Context;
@@ -177,7 +165,7 @@ struct BindingState
     std::vector<SubresourceAndSlot> storages; // max expected size - D3D11_1_UAV_SLOT_COUNT
     std::array<ID3D11UnorderedAccessView*, D3D11_PS_CS_UAV_REGISTER_COUNT> graphicsStorageDescriptors = {};
 
-    inline void TrackSubresource_UnbindIfNeeded_PostponeGraphicsStorageBinding(const VersionedContext& context, const SubresourceInfo& subresource, void* descriptor, uint32_t slot, bool isGraphics, bool isStorage)
+    inline void TrackSubresource_UnbindIfNeeded_PostponeGraphicsStorageBinding(const VersionedContext& deferredContext, const SubresourceInfo& subresource, void* descriptor, uint32_t slot, bool isGraphics, bool isStorage)
     {
         constexpr void* null = nullptr;
 
@@ -189,12 +177,12 @@ struct BindingState
                 if (subresourceAndSlot.subresource == subresource)
                 {
                     // TODO: store visibility to unbind only in a necessary stage
-                    context->VSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
-                    context->HSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
-                    context->DSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
-                    context->GSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
-                    context->PSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
-                    context->CSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+                    deferredContext->VSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+                    deferredContext->HSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+                    deferredContext->DSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+                    deferredContext->GSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+                    deferredContext->PSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+                    deferredContext->CSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
 
                     resources[i] = resources.back();
                     resources.pop_back();
@@ -214,7 +202,7 @@ struct BindingState
                 const SubresourceAndSlot& subresourceAndSlot = storages[i];
                 if (subresourceAndSlot.subresource == subresource)
                 {
-                    context->CSSetUnorderedAccessViews(subresourceAndSlot.slot, 1, (ID3D11UnorderedAccessView**)&null, nullptr);
+                    deferredContext->CSSetUnorderedAccessViews(subresourceAndSlot.slot, 1, (ID3D11UnorderedAccessView**)&null, nullptr);
 
                     graphicsStorageDescriptors[subresourceAndSlot.slot] = nullptr;
 
@@ -228,26 +216,26 @@ struct BindingState
         }
     }
 
-    inline void UnbindAndReset(const VersionedContext& context)
+    inline void UnbindAndReset(const VersionedContext& deferredContext)
     {
         constexpr void* null = nullptr;
 
         for (const SubresourceAndSlot& subresourceAndSlot : resources)
         {
             // TODO: store visibility to unbind only in a necessary stage
-            context->VSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
-            context->HSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
-            context->DSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
-            context->GSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
-            context->PSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
-            context->CSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+            deferredContext->VSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+            deferredContext->HSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+            deferredContext->DSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+            deferredContext->GSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+            deferredContext->PSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
+            deferredContext->CSSetShaderResources(subresourceAndSlot.slot, 1, (ID3D11ShaderResourceView**)&null);
         }
         resources.clear();
 
         if (!storages.empty())
-            context->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, 0, 0, nullptr, nullptr);
+            deferredContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, 0, 0, nullptr, nullptr);
         for (const SubresourceAndSlot& subresourceAndSlot : storages)
-            context->CSSetUnorderedAccessViews(subresourceAndSlot.slot, 1, (ID3D11UnorderedAccessView**)&null, nullptr);
+            deferredContext->CSSetUnorderedAccessViews(subresourceAndSlot.slot, 1, (ID3D11UnorderedAccessView**)&null, nullptr);
         storages.clear();
 
         memset(&graphicsStorageDescriptors, 0, sizeof(graphicsStorageDescriptors));
@@ -260,15 +248,10 @@ namespace nri
     {
         virtual ~CommandBufferHelper() {}
         virtual Result Create(ID3D11DeviceContext* precreatedContext) = 0;
-        virtual void Submit(const VersionedContext& context) = 0;
+        virtual void Submit() = 0;
+        virtual ID3D11DeviceContext* GetNativeObject() const = 0;
         virtual StdAllocator<uint8_t>& GetStdAllocator() const = 0;
     };
-}
-
-template<typename T> void SetName(const ComPtr<T>& obj, const char* name)
-{
-    if (obj)
-        obj->SetPrivateData(WKPDID_D3DDebugObjectName, (uint32_t)std::strlen(name), name);
 }
 
 static inline uint64_t ComputeHash(const void* key, uint32_t len)

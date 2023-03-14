@@ -8,22 +8,10 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#include "SharedExternal.h"
 #include "SharedD3D11.h"
 #include "PipelineD3D11.h"
 
-#include "DescriptorD3D11.h"
-#include "DescriptorSetD3D11.h"
-
 using namespace nri;
-
-PipelineD3D11::PipelineD3D11(DeviceD3D11& device, const VersionedDevice* versionedDevice) :
-    m_VersionedDevice(versionedDevice),
-    m_InputAssemplyStrides(device.GetStdAllocator()),
-    m_RasterizerStates(device.GetStdAllocator()),
-    m_Device(device)
-{
-}
 
 PipelineD3D11::~PipelineD3D11()
 {
@@ -32,8 +20,6 @@ PipelineD3D11::~PipelineD3D11()
 
 Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc)
 {
-    const VersionedDevice& versionedDevice = *m_VersionedDevice;
-
     const InputAssemblyDesc& ia = *pipelineDesc.inputAssembly;
     const RasterizationDesc& rs = *pipelineDesc.rasterization;
     const OutputMergerDesc& om = *pipelineDesc.outputMerger;
@@ -51,27 +37,27 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc)
         if (shaderDesc->stage == ShaderStage::VERTEX)
         {
             vertexShader = shaderDesc;
-            hr = versionedDevice->CreateVertexShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_VertexShader);
+            hr = m_Device.GetDevice()->CreateVertexShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_VertexShader);
             RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateVertexShader() - FAILED!");
         }
         else if (shaderDesc->stage == ShaderStage::TESS_CONTROL)
         {
-            hr = versionedDevice->CreateHullShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_TessControlShader);
+            hr = m_Device.GetDevice()->CreateHullShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_TessControlShader);
             RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateHullShader() - FAILED!");
         }
         else if (shaderDesc->stage == ShaderStage::TESS_EVALUATION)
         {
-            hr = versionedDevice->CreateDomainShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_TessEvaluationShader);
+            hr = m_Device.GetDevice()->CreateDomainShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_TessEvaluationShader);
             RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateDomainShader() - FAILED!");
         }
         else if (shaderDesc->stage == ShaderStage::GEOMETRY)
         {
-            hr = versionedDevice->CreateGeometryShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_GeometryShader);
+            hr = m_Device.GetDevice()->CreateGeometryShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_GeometryShader);
             RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateGeometryShader() - FAILED!");
         }
         else if (shaderDesc->stage == ShaderStage::FRAGMENT)
         {
-            hr = versionedDevice->CreatePixelShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_FragmentShader);
+            hr = m_Device.GetDevice()->CreatePixelShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_FragmentShader);
             RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreatePixelShader() - FAILED!");
         }
         else
@@ -119,7 +105,7 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc)
         };
 
         assert(vertexShader != nullptr);
-        hr = versionedDevice->CreateInputLayout(&inputElements[0], ia.attributeNum, vertexShader->bytecode, (size_t)vertexShader->size, &m_InputLayout);
+        hr = m_Device.GetDevice()->CreateInputLayout(&inputElements[0], ia.attributeNum, vertexShader->bytecode, (size_t)vertexShader->size, &m_InputLayout);
         RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateInputLayout() - FAILED!");
     }
 
@@ -140,14 +126,14 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc)
         D3D11_CONSERVATIVE_RASTERIZATION_MODE_ON : D3D11_CONSERVATIVE_RASTERIZATION_MODE_OFF;
 
     RasterizerState rasterizerState;
-    if (versionedDevice.version >= 3)
+    if (m_Device.GetDevice().version >= 3)
     {
-        hr = versionedDevice->CreateRasterizerState2(&rasterizerDesc, &rasterizerState.ptr);
+        hr = m_Device.GetDevice()->CreateRasterizerState2(&rasterizerDesc, &rasterizerState.ptr);
         RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device3::CreateRasterizerState2() - FAILED!");
     }
     else
     {
-        hr = versionedDevice->CreateRasterizerState((D3D11_RASTERIZER_DESC*)&rasterizerDesc, (ID3D11RasterizerState**)&rasterizerState.ptr);
+        hr = m_Device.GetDevice()->CreateRasterizerState((D3D11_RASTERIZER_DESC*)&rasterizerDesc, (ID3D11RasterizerState**)&rasterizerState.ptr);
         RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateRasterizerState() - FAILED!");
     }
 
@@ -183,7 +169,7 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc)
     depthStencilState.BackFace.StencilPassOp = GetD3D11StencilOpFromStencilFunc(ss.front.pass);
     depthStencilState.BackFace.StencilFunc = GetD3D11ComparisonFuncFromCompareFunc(ss.back.compareFunc);
 
-    hr = versionedDevice->CreateDepthStencilState(&depthStencilState, &m_DepthStencilState);
+    hr = m_Device.GetDevice()->CreateDepthStencilState(&depthStencilState, &m_DepthStencilState);
     RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateDepthStencilState() - FAILED!");
 
     // output merger
@@ -208,8 +194,8 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc)
         blendState1.RenderTarget[i].LogicOp = GetD3D11LogicOpFromLogicFunc(om.colorLogicFunc);
     }
 
-    if (versionedDevice.version >= 1)
-        hr = versionedDevice->CreateBlendState1(&blendState1, &m_BlendState);
+    if (m_Device.GetDevice().version >= 1)
+        hr = m_Device.GetDevice()->CreateBlendState1(&blendState1, &m_BlendState);
     else
     {
         D3D11_BLEND_DESC blendState = {};
@@ -227,7 +213,7 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc)
             blendState.RenderTarget[i].RenderTargetWriteMask = blendState1.RenderTarget[i].RenderTargetWriteMask;
         }
 
-        hr = versionedDevice->CreateBlendState(&blendState, (ID3D11BlendState**)&m_BlendState);
+        hr = m_Device.GetDevice()->CreateBlendState(&blendState, (ID3D11BlendState**)&m_BlendState);
     }
 
     RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device1::CreateBlendState1() - FAILED!");
@@ -241,27 +227,19 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc)
 
 Result PipelineD3D11::Create(const ComputePipelineDesc& pipelineDesc)
 {
-    const VersionedDevice& versionedDevice = *m_VersionedDevice;
-
-    HRESULT hr;
-
-    // shaders
-
     if (pipelineDesc.computeShader.bytecode)
     {
-        hr = versionedDevice->CreateComputeShader(pipelineDesc.computeShader.bytecode, (size_t)pipelineDesc.computeShader.size, nullptr, &m_ComputeShader);
+        HRESULT hr = m_Device.GetDevice()->CreateComputeShader(pipelineDesc.computeShader.bytecode, (size_t)pipelineDesc.computeShader.size, nullptr, &m_ComputeShader);
 
         RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateComputeShader() - FAILED!");
     }
-
-    // resources
 
     m_PipelineLayout = (const PipelineLayoutD3D11*)pipelineDesc.pipelineLayout;
 
     return Result::SUCCESS;
 }
 
-void PipelineD3D11::ChangeSamplePositions(const VersionedContext& context, const SamplePositionsState& samplePositionState, DynamicState mode)
+void PipelineD3D11::ChangeSamplePositions(const VersionedContext& deferredContext, const SamplePositionsState& samplePositionState, DynamicState mode)
 {
     if (IsCompute())
         return;
@@ -285,9 +263,9 @@ void PipelineD3D11::ChangeSamplePositions(const VersionedContext& context, const
             m_RasterizerStateExDesc->SamplePositionsY[j] = samplePositionState.positions[j].y + 8;
         }
 
-        if (context.ext->IsNvAPIAvailable())
+        if (deferredContext.ext->IsNvAPIAvailable())
         {
-            NvAPI_Status result = NvAPI_D3D11_CreateRasterizerState(m_VersionedDevice->ptr, m_RasterizerStateExDesc, (ID3D11RasterizerState**)&newState.ptr);
+            NvAPI_Status result = NvAPI_D3D11_CreateRasterizerState(m_Device.GetDevice().ptr, m_RasterizerStateExDesc, (ID3D11RasterizerState**)&newState.ptr);
             if (result != NVAPI_OK)
                 REPORT_ERROR(m_Device.GetLog(), "NvAPI_D3D11_CreateRasterizerState() - FAILED!");
         }
@@ -302,20 +280,20 @@ void PipelineD3D11::ChangeSamplePositions(const VersionedContext& context, const
 
     ID3D11RasterizerState2* newState = m_RasterizerStates[i].ptr;
     if (mode == DynamicState::BIND_AND_SET && m_RasterizerState != newState)
-        context->RSSetState(newState);
+        deferredContext->RSSetState(newState);
 
     m_RasterizerState = newState;
 }
 
-void PipelineD3D11::ChangeStencilReference(const VersionedContext& context, uint8_t stencilRef, DynamicState mode)
+void PipelineD3D11::ChangeStencilReference(const VersionedContext& deferredContext, uint8_t stencilRef, DynamicState mode)
 {
     if (mode == DynamicState::BIND_AND_SET && m_StencilRef != stencilRef)
-        context->OMSetDepthStencilState(m_DepthStencilState, stencilRef);
+        deferredContext->OMSetDepthStencilState(m_DepthStencilState, stencilRef);
 
     m_StencilRef = stencilRef;
 }
 
-void PipelineD3D11::Bind(const VersionedContext& context, const PipelineD3D11* currentPipeline) const
+void PipelineD3D11::Bind(const VersionedContext& deferredContext, const PipelineD3D11* currentPipeline) const
 {
     if (this == currentPipeline)
         return;
@@ -323,63 +301,67 @@ void PipelineD3D11::Bind(const VersionedContext& context, const PipelineD3D11* c
     if (IsCompute())
     {
         if (!currentPipeline || m_ComputeShader != currentPipeline->m_ComputeShader)
-            context->CSSetShader(m_ComputeShader, nullptr, 0);
+            deferredContext->CSSetShader(m_ComputeShader, nullptr, 0);
     }
     else
     {
         if (!currentPipeline || m_Topology != currentPipeline->m_Topology)
-            context->IASetPrimitiveTopology(m_Topology);
+            deferredContext->IASetPrimitiveTopology(m_Topology);
 
         if (!currentPipeline || m_InputLayout != currentPipeline->m_InputLayout)
-            context->IASetInputLayout(m_InputLayout);
+            deferredContext->IASetInputLayout(m_InputLayout);
 
         if (!currentPipeline || m_RasterizerState != currentPipeline->m_RasterizerState)
-            context->RSSetState(m_RasterizerState);
+            deferredContext->RSSetState(m_RasterizerState);
 
         if (!currentPipeline || m_DepthStencilState != currentPipeline->m_DepthStencilState || m_StencilRef != currentPipeline->m_StencilRef)
-            context->OMSetDepthStencilState(m_DepthStencilState, m_StencilRef);
+            deferredContext->OMSetDepthStencilState(m_DepthStencilState, m_StencilRef);
 
         if (!currentPipeline || m_BlendState != currentPipeline->m_BlendState || m_SampleMask != currentPipeline->m_SampleMask || memcmp(&m_BlendFactor.x, &currentPipeline->m_BlendFactor.x, sizeof(m_BlendFactor)))
-            context->OMSetBlendState(m_BlendState, &m_BlendFactor.x, m_SampleMask);
+            deferredContext->OMSetBlendState(m_BlendState, &m_BlendFactor.x, m_SampleMask);
 
         if (!currentPipeline || m_VertexShader != currentPipeline->m_VertexShader)
-            context->VSSetShader(m_VertexShader, nullptr, 0);
+            deferredContext->VSSetShader(m_VertexShader, nullptr, 0);
 
         if (!currentPipeline || m_TessControlShader != currentPipeline->m_TessControlShader)
-            context->HSSetShader(m_TessControlShader, nullptr, 0);
+            deferredContext->HSSetShader(m_TessControlShader, nullptr, 0);
 
         if (!currentPipeline || m_TessEvaluationShader != currentPipeline->m_TessEvaluationShader)
-            context->DSSetShader(m_TessEvaluationShader, nullptr, 0);
+            deferredContext->DSSetShader(m_TessEvaluationShader, nullptr, 0);
 
         if (!currentPipeline || m_GeometryShader != currentPipeline->m_GeometryShader)
-            context->GSSetShader(m_GeometryShader, nullptr, 0);
+            deferredContext->GSSetShader(m_GeometryShader, nullptr, 0);
 
         if (!currentPipeline || m_FragmentShader != currentPipeline->m_FragmentShader)
-            context->PSSetShader(m_FragmentShader, nullptr, 0);
+            deferredContext->PSSetShader(m_FragmentShader, nullptr, 0);
 
         if (m_IsRasterizerDiscarded)
         {
             // no RASTERIZER_DISCARD support in DX11, below is the simplest emulation
             D3D11_RECT rect = { -1, -1, -1, -1 };
-            context->RSSetScissorRects(1, &rect);
+            deferredContext->RSSetScissorRects(1, &rect);
         }
     }
 }
 
-void PipelineD3D11::SetDebugName(const char* name)
+//================================================================================================================
+// NRI
+//================================================================================================================
+
+inline void PipelineD3D11::SetDebugName(const char* name)
 {
-    SetName(m_VertexShader, name);
-    SetName(m_TessControlShader, name);
-    SetName(m_TessEvaluationShader, name);
-    SetName(m_GeometryShader, name);
-    SetName(m_FragmentShader, name);
-    SetName(m_ComputeShader, name);
-    SetName(m_InputLayout, name);
-    SetName(m_DepthStencilState, name);
-    SetName(m_BlendState, name);
+    SET_D3D_DEBUG_OBJECT_NAME(m_VertexShader, name);
+    SET_D3D_DEBUG_OBJECT_NAME(m_TessControlShader, name);
+    SET_D3D_DEBUG_OBJECT_NAME(m_TessEvaluationShader, name);
+    SET_D3D_DEBUG_OBJECT_NAME(m_GeometryShader, name);
+    SET_D3D_DEBUG_OBJECT_NAME(m_FragmentShader, name);
+    SET_D3D_DEBUG_OBJECT_NAME(m_ComputeShader, name);
+    SET_D3D_DEBUG_OBJECT_NAME(m_InputLayout, name);
+    SET_D3D_DEBUG_OBJECT_NAME(m_DepthStencilState, name);
+    SET_D3D_DEBUG_OBJECT_NAME(m_BlendState, name);
 
     for (size_t i = 0; i < m_RasterizerStates.size(); i++)
-        SetName(m_RasterizerStates[i].ptr, name);
+        SET_D3D_DEBUG_OBJECT_NAME(m_RasterizerStates[i].ptr, name);
 }
 
 #include "PipelineD3D11.hpp"

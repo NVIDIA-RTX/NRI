@@ -12,41 +12,44 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct DeviceVK;
-    struct DescriptorSetVK;
 
-    struct DescriptorPoolVK
-    {
-        DescriptorPoolVK(DeviceVK& device);
-        ~DescriptorPoolVK();
+struct DeviceVK;
+struct DescriptorSetVK;
 
-        operator VkDescriptorPool() const;
-        DeviceVK& GetDevice() const;
-        Result Create(const DescriptorPoolDesc& descriptorPoolDesc);
-        Result Create(NRIVkDescriptorPool vkDescriptorPool);
+struct DescriptorPoolVK
+{
+    inline DescriptorPoolVK(DeviceVK& device) :
+        m_Device(device)
+        , m_AllocatedSets(device.GetStdAllocator())
+    { m_AllocatedSets.reserve(64); }
 
-        void SetDebugName(const char* name);
+    inline operator VkDescriptorPool() const
+    { return m_Handle; }
 
-        Result AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** descriptorSets,
-            uint32_t numberOfCopies, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum);
+    inline DeviceVK& GetDevice() const
+    { return m_Device; }
 
-        void Reset();
+    ~DescriptorPoolVK();
 
-    private:
-        VkDescriptorPool m_Handle = VK_NULL_HANDLE;
-        Vector<DescriptorSetVK*> m_AllocatedSets;
-        uint32_t m_UsedSets = 0;
-        DeviceVK& m_Device;
-        bool m_OwnsNativeObjects = false;
-    };
+    Result Create(const DescriptorPoolDesc& descriptorPoolDesc);
+    Result Create(NRIVkDescriptorPool vkDescriptorPool);
 
-    inline DescriptorPoolVK::operator VkDescriptorPool() const
-    {
-        return m_Handle;
-    }
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
 
-    inline DeviceVK& DescriptorPoolVK::GetDevice() const
-    {
-        return m_Device;
-    }
+    void SetDebugName(const char* name);
+    void Reset();
+
+    Result AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** descriptorSets,
+        uint32_t numberOfCopies, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum);
+
+private:
+    DeviceVK& m_Device;
+    Vector<DescriptorSetVK*> m_AllocatedSets;
+    VkDescriptorPool m_Handle = VK_NULL_HANDLE;
+    uint32_t m_UsedSets = 0;
+    bool m_OwnsNativeObjects = false;
+};
+
 }

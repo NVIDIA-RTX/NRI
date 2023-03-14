@@ -29,8 +29,6 @@ typedef uint64_t NRIVkDeviceMemory;
 typedef uint64_t NRIVkQueryPool;
 typedef uint64_t NRIVkPipeline;
 typedef uint64_t NRIVkDescriptorPool;
-typedef uint64_t NRIVkSemaphore;
-typedef uint64_t NRIVkFence;
 typedef uint64_t NRIVkImageView;
 typedef uint64_t NRIVkBufferView;
 typedef uint64_t NRIVkAccelerationStructureKHR;
@@ -52,14 +50,10 @@ NRI_STRUCT(DeviceCreationVulkanDesc)
     uint32_t queueFamilyIndexNum;
     NRI_NAME(CallbackInterface) callbackInterface;
     NRI_NAME(MemoryAllocatorInterface) memoryAllocatorInterface;
+    NRI_NAME(SPIRVBindingOffsets) spirvBindingOffsets;
+    const char* vulkanLoaderPath;
     bool enableNRIValidation;
     bool enableAPIValidation;
-    const char* const* instanceExtensions;
-    uint32_t instanceExtensionNum;
-    const char* const* deviceExtensions;
-    uint32_t deviceExtensionNum;
-    const char* vulkanLoaderPath;
-    NRI_NAME(SPIRVBindingOffsets) spirvBindingOffsets;
 };
 
 NRI_STRUCT(CommandQueueVulkanDesc)
@@ -139,8 +133,6 @@ NRI_STRUCT(WrapperVKInterface)
     NRI_NAME(Result) (NRI_CALL *CreateGraphicsPipelineVK)(NRI_REF_NAME(Device) device, NRIVkPipeline vkPipeline, NRI_REF_NAME(Pipeline*) pipeline);
     NRI_NAME(Result) (NRI_CALL *CreateComputePipelineVK)(NRI_REF_NAME(Device) device, NRIVkPipeline vkPipeline, NRI_REF_NAME(Pipeline*) pipeline);
     NRI_NAME(Result) (NRI_CALL *CreateQueryPoolVK)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(QueryPoolVulkanDesc) queryPoolVulkanDesc, NRI_REF_NAME(QueryPool*) queryPool);
-    NRI_NAME(Result) (NRI_CALL *CreateQueueSemaphoreVK)(NRI_REF_NAME(Device) device, NRIVkSemaphore vkSemaphore, NRI_REF_NAME(QueueSemaphore*) queueSemaphore);
-    NRI_NAME(Result) (NRI_CALL *CreateDeviceSemaphoreVK)(NRI_REF_NAME(Device) device, NRIVkFence vkFence, NRI_REF_NAME(DeviceSemaphore*) deviceSemaphore);
     NRI_NAME(Result) (NRI_CALL *CreateAccelerationStructureVK)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(AccelerationStructureVulkanDesc) accelerationStructureDesc, NRI_REF_NAME(AccelerationStructure*) accelerationStructure);
 
     NRIVkPhysicalDevice (NRI_CALL *GetVkPhysicalDevice)(const NRI_REF_NAME(Device) device);

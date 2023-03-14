@@ -10,7 +10,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "SharedD3D12.h"
 #include "TextureD3D12.h"
-#include "DeviceD3D12.h"
 #include "MemoryD3D12.h"
 
 using namespace nri;
@@ -97,15 +96,27 @@ Result TextureD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset)
     return Result::SUCCESS;
 }
 
-uint32_t TextureD3D12::GetSubresourceIndex(uint32_t arrayOffset, uint32_t mipOffset) const
+uint16_t TextureD3D12::GetSize(uint32_t dimension, uint32_t mipOffset) const
 {
-    return arrayOffset * m_TextureDesc.MipLevels + mipOffset;
+    assert(dimension < 3);
+
+    uint16_t size;
+    if (dimension == 0)
+        size = (uint16_t)m_TextureDesc.Width;
+    else if (dimension == 1)
+        size = (uint16_t)m_TextureDesc.Height;
+    else
+        size = (uint16_t)m_TextureDesc.DepthOrArraySize;
+
+    size = (uint16_t)std::max(size >> mipOffset, 1);
+    size = Align(size, dimension < 2 ? (uint16_t)GetTexelBlockWidth(m_Format) : 1);
+
+    return size;
 }
 
-inline void TextureD3D12::SetDebugName(const char* name)
-{
-    SET_D3D_DEBUG_OBJECT_NAME(m_Texture, name);
-}
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 inline void TextureD3D12::GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const
 {

@@ -81,7 +81,7 @@ NRI_STRUCT(SwapChainDesc)
 {
     NRI_NAME(WindowSystemType) windowSystemType;
     NRI_NAME(Window) window;
-    const NRI_NAME(CommandQueue) * commandQueue;
+    const NRI_NAME(CommandQueue)* commandQueue;
     uint16_t width;
     uint16_t height;
     uint16_t textureNum;
@@ -109,8 +109,8 @@ NRI_STRUCT(SwapChainInterface)
     void (NRI_CALL *DestroySwapChain)(NRI_REF_NAME(SwapChain) swapChain);
     void (NRI_CALL *SetSwapChainDebugName)(NRI_REF_NAME(SwapChain) swapChain, const char* name);
     NRI_NAME(Texture)* const* (NRI_CALL *GetSwapChainTextures)(const NRI_REF_NAME(SwapChain) swapChain, NRI_REF(uint32_t) textureNum, NRI_REF_NAME(Format) format);
-    uint32_t (NRI_CALL *AcquireNextSwapChainTexture)(NRI_REF_NAME(SwapChain) swapChain, NRI_REF_NAME(QueueSemaphore) textureReadyForRender);
-    NRI_NAME(Result) (NRI_CALL *SwapChainPresent)(NRI_REF_NAME(SwapChain) swapChain, NRI_REF_NAME(QueueSemaphore) textureReadyForPresent);
+    uint32_t (NRI_CALL *AcquireNextSwapChainTexture)(NRI_REF_NAME(SwapChain) swapChain);
+    NRI_NAME(Result) (NRI_CALL *SwapChainPresent)(NRI_REF_NAME(SwapChain) swapChain);
     NRI_NAME(Result) (NRI_CALL *SetSwapChainHdrMetadata)(NRI_REF_NAME(SwapChain) swapChain, const NRI_REF_NAME(HdrMetadata) hdrMetadata);
     NRI_NAME(Result) (NRI_CALL *GetDisplays)(NRI_REF_NAME(Device) device, NRI_NAME(Display)** displays, NRI_REF(uint32_t) displayNum);
     NRI_NAME(Result) (NRI_CALL *GetDisplaySize)(NRI_REF_NAME(Device) device, NRI_REF_NAME(Display) display, NRI_REF(uint16_t) width, NRI_REF(uint16_t) height);

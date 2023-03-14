@@ -10,7 +10,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "SharedD3D12.h"
 #include "QueryPoolD3D12.h"
-#include "DeviceD3D12.h"
 
 using namespace nri;
 
@@ -71,9 +70,8 @@ Result QueryPoolD3D12::CreateReadbackBuffer(const QueryPoolDesc& queryPoolDesc)
     return Result::SUCCESS;
 }
 
-inline void QueryPoolD3D12::SetDebugName(const char* name)
-{
-    SET_D3D_DEBUG_OBJECT_NAME(m_QueryHeap, name);
-}
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 #include "QueryPoolD3D12.hpp"

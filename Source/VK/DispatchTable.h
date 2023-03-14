@@ -14,33 +14,17 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 struct DispatchTable
 {
+    VULKAN_FUNCTION(GetInstanceProcAddr);
     VULKAN_FUNCTION(CreateInstance);
     VULKAN_FUNCTION(EnumerateInstanceExtensionProperties);
     VULKAN_FUNCTION(EnumerateInstanceLayerProperties);
-    VULKAN_FUNCTION(GetInstanceProcAddr);
 
-    VULKAN_FUNCTION(GetPhysicalDeviceSurfaceFormatsKHR);
-    VULKAN_FUNCTION(GetPhysicalDeviceSurfaceSupportKHR);
-    VULKAN_FUNCTION(GetPhysicalDeviceSurfaceCapabilitiesKHR);
-    VULKAN_FUNCTION(GetPhysicalDeviceSurfacePresentModesKHR);
-#if VK_USE_PLATFORM_WIN32_KHR
-    VULKAN_FUNCTION(CreateWin32SurfaceKHR);
-#endif
-#if VK_USE_PLATFORM_METAL_EXT
-    VULKAN_FUNCTION(CreateMetalSurfaceEXT);
-#endif
-#if VK_USE_PLATFORM_XLIB_KHR
-    VULKAN_FUNCTION(CreateXlibSurfaceKHR);
-#endif
-#if VK_USE_PLATFORM_WAYLAND_KHR
-    VULKAN_FUNCTION(CreateWaylandSurfaceKHR);
-#endif
-    VULKAN_FUNCTION(DestroySurfaceKHR);
     VULKAN_FUNCTION(GetDeviceProcAddr);
     VULKAN_FUNCTION(DestroyInstance);
     VULKAN_FUNCTION(DestroyDevice);
     VULKAN_FUNCTION(GetPhysicalDeviceMemoryProperties);
     VULKAN_FUNCTION(GetDeviceGroupPeerMemoryFeatures);
+    VULKAN_FUNCTION(GetPhysicalDeviceFormatProperties);
     VULKAN_FUNCTION(CreateDevice);
     VULKAN_FUNCTION(GetDeviceQueue);
     VULKAN_FUNCTION(EnumeratePhysicalDeviceGroups);
@@ -50,6 +34,21 @@ struct DispatchTable
     VULKAN_FUNCTION(GetPhysicalDeviceFeatures2);
     VULKAN_FUNCTION(GetPhysicalDeviceQueueFamilyProperties);
     VULKAN_FUNCTION(EnumerateDeviceExtensionProperties);
+    VULKAN_FUNCTION(GetPhysicalDeviceSurfaceFormatsKHR);
+    VULKAN_FUNCTION(GetPhysicalDeviceSurfaceSupportKHR);
+    VULKAN_FUNCTION(GetPhysicalDeviceSurfaceCapabilitiesKHR);
+    VULKAN_FUNCTION(GetPhysicalDeviceSurfacePresentModesKHR);
+    VULKAN_FUNCTION(DestroySurfaceKHR);
+
+#if VK_USE_PLATFORM_WIN32_KHR
+    VULKAN_FUNCTION(CreateWin32SurfaceKHR);
+#elif VK_USE_PLATFORM_METAL_EXT
+    VULKAN_FUNCTION(CreateMetalSurfaceEXT);
+#elif VK_USE_PLATFORM_XLIB_KHR
+    VULKAN_FUNCTION(CreateXlibSurfaceKHR);
+#elif VK_USE_PLATFORM_WAYLAND_KHR
+    VULKAN_FUNCTION(CreateWaylandSurfaceKHR);
+#endif
 
     VULKAN_FUNCTION(CreateBuffer);
     VULKAN_FUNCTION(CreateImage);
@@ -60,7 +59,6 @@ struct DispatchTable
     VULKAN_FUNCTION(CreateFramebuffer);
     VULKAN_FUNCTION(CreateQueryPool);
     VULKAN_FUNCTION(CreateCommandPool);
-    VULKAN_FUNCTION(CreateFence);
     VULKAN_FUNCTION(CreateSemaphore);
     VULKAN_FUNCTION(CreateDescriptorPool);
     VULKAN_FUNCTION(CreatePipelineLayout);
@@ -79,7 +77,6 @@ struct DispatchTable
     VULKAN_FUNCTION(DestroyFramebuffer);
     VULKAN_FUNCTION(DestroyQueryPool);
     VULKAN_FUNCTION(DestroyCommandPool);
-    VULKAN_FUNCTION(DestroyFence);
     VULKAN_FUNCTION(DestroySemaphore);
     VULKAN_FUNCTION(DestroyDescriptorPool);
     VULKAN_FUNCTION(DestroyPipelineLayout);
@@ -95,12 +92,16 @@ struct DispatchTable
     VULKAN_FUNCTION(BindBufferMemory2);
     VULKAN_FUNCTION(BindImageMemory2);
 
+    VULKAN_FUNCTION(GetBufferMemoryRequirements2);
+    VULKAN_FUNCTION(GetImageMemoryRequirements2);
+
     VULKAN_FUNCTION(QueueWaitIdle);
-    VULKAN_FUNCTION(WaitForFences);
-    VULKAN_FUNCTION(ResetFences);
     VULKAN_FUNCTION(AcquireNextImageKHR);
     VULKAN_FUNCTION(QueueSubmit);
     VULKAN_FUNCTION(QueuePresentKHR);
+
+    VULKAN_FUNCTION(GetSemaphoreCounterValue);
+    VULKAN_FUNCTION(WaitSemaphores);
 
     VULKAN_FUNCTION(ResetCommandPool);
     VULKAN_FUNCTION(ResetDescriptorPool);
@@ -108,7 +109,6 @@ struct DispatchTable
     VULKAN_FUNCTION(AllocateDescriptorSets);
     VULKAN_FUNCTION(FreeCommandBuffers);
     VULKAN_FUNCTION(FreeDescriptorSets);
-
     VULKAN_FUNCTION(UpdateDescriptorSets);
 
     VULKAN_FUNCTION(BeginCommandBuffer);
@@ -140,18 +140,18 @@ struct DispatchTable
     VULKAN_FUNCTION(CmdWriteTimestamp);
     VULKAN_FUNCTION(CmdCopyQueryPoolResults);
     VULKAN_FUNCTION(CmdResetQueryPool);
-    VULKAN_FUNCTION(CmdBeginDebugUtilsLabelEXT);
-    VULKAN_FUNCTION(CmdEndDebugUtilsLabelEXT);
     VULKAN_FUNCTION(CmdEndRenderPass);
     VULKAN_FUNCTION(CmdFillBuffer);
     VULKAN_FUNCTION(EndCommandBuffer);
 
-    VULKAN_FUNCTION(GetBufferMemoryRequirements2);
-    VULKAN_FUNCTION(GetImageMemoryRequirements2);
-    VULKAN_FUNCTION(GetPhysicalDeviceFormatProperties);
-
     VULKAN_FUNCTION(GetSwapchainImagesKHR);
+
+    VULKAN_FUNCTION(SetDebugUtilsObjectNameEXT);
+    VULKAN_FUNCTION(CmdBeginDebugUtilsLabelEXT);
+    VULKAN_FUNCTION(CmdEndDebugUtilsLabelEXT);
+
     VULKAN_FUNCTION(SetHdrMetadataEXT);
+
     VULKAN_FUNCTION(CreateAccelerationStructureKHR);
     VULKAN_FUNCTION(CreateRayTracingPipelinesKHR);
     VULKAN_FUNCTION(DestroyAccelerationStructureKHR);
@@ -164,9 +164,7 @@ struct DispatchTable
     VULKAN_FUNCTION(CmdTraceRaysKHR);
     VULKAN_FUNCTION(GetBufferDeviceAddress);
 
-    VULKAN_FUNCTION(CmdDrawMeshTasksNV);
-
-    VULKAN_FUNCTION(SetDebugUtilsObjectNameEXT);
+    VULKAN_FUNCTION(CmdDrawMeshTasksEXT);
 };
 
 #undef VULKAN_FUNCTION

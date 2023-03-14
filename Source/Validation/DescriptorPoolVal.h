@@ -12,40 +12,42 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct DescriptorSetVal;
 
-    struct DescriptorPoolVal : public DeviceObjectVal<DescriptorPool>
-    {
-        DescriptorPoolVal(DeviceVal& device, DescriptorPool& descriptorPool);
-        DescriptorPoolVal(DeviceVal& device, DescriptorPool& descriptorPool, const DescriptorPoolDesc& descriptorPoolDesc);
-        ~DescriptorPoolVal();
+struct DescriptorSetVal;
 
-        //======================================================================================================================
-        // NRI
-        //======================================================================================================================
-        void SetDebugName(const char* name);
-        void Reset();
+struct DescriptorPoolVal : public DeviceObjectVal<DescriptorPool>
+{
+    DescriptorPoolVal(DeviceVal& device, DescriptorPool& descriptorPool);
+    DescriptorPoolVal(DeviceVal& device, DescriptorPool& descriptorPool, const DescriptorPoolDesc& descriptorPoolDesc);
+    ~DescriptorPoolVal();
 
-        Result AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout,
-            DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum);
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+    void SetDebugName(const char* name);
+    void Reset();
 
-    private:
-        bool CheckDescriptorRange(const DescriptorRangeDesc& rangeDesc, uint32_t variableDescriptorNum);
-        void IncrementDescriptorNum(const DescriptorRangeDesc& rangeDesc, uint32_t variableDescriptorNum);
+    Result AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout,
+        DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum);
 
-        Vector<DescriptorSetVal*> m_DescriptorSets;
-        DescriptorPoolDesc m_Desc = {};
-        uint32_t m_DescriptorSetNum = 0;
-        uint32_t m_SamplerNum = 0;
-        uint32_t m_ConstantBufferNum = 0;
-        uint32_t m_DynamicConstantBufferNum = 0;
-        uint32_t m_TextureNum = 0;
-        uint32_t m_StorageTextureNum = 0;
-        uint32_t m_BufferNum = 0;
-        uint32_t m_StorageBufferNum = 0;
-        uint32_t m_StructuredBufferNum = 0;
-        uint32_t m_StorageStructuredBufferNum = 0;
-        uint32_t m_AccelerationStructureNum = 0;
-        bool m_SkipValidation = false;
-    };
+private:
+    bool CheckDescriptorRange(const DescriptorRangeDesc& rangeDesc, uint32_t variableDescriptorNum);
+    void IncrementDescriptorNum(const DescriptorRangeDesc& rangeDesc, uint32_t variableDescriptorNum);
+
+    Vector<DescriptorSetVal*> m_DescriptorSets;
+    DescriptorPoolDesc m_Desc = {};
+    uint32_t m_DescriptorSetNum = 0;
+    uint32_t m_SamplerNum = 0;
+    uint32_t m_ConstantBufferNum = 0;
+    uint32_t m_DynamicConstantBufferNum = 0;
+    uint32_t m_TextureNum = 0;
+    uint32_t m_StorageTextureNum = 0;
+    uint32_t m_BufferNum = 0;
+    uint32_t m_StorageBufferNum = 0;
+    uint32_t m_StructuredBufferNum = 0;
+    uint32_t m_StorageStructuredBufferNum = 0;
+    uint32_t m_AccelerationStructureNum = 0;
+    bool m_SkipValidation = false;
+};
+
 }

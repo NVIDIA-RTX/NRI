@@ -19,11 +19,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "DispatchTable.h"
 #include "ConversionVK.h"
 
-template< typename HandleType, typename ImplType, typename NRIType >
-constexpr HandleType GetVulkanHandle(NRIType* object, uint32_t physicalDeviceIndex)
-{
-    return (object != nullptr) ? (*(ImplType*)object).GetHandle(physicalDeviceIndex) : HandleType(VK_NULL_HANDLE);
-}
+constexpr uint64_t DEFAULT_TIMEOUT = uint64_t(-1);
 
 struct MemoryTypeInfo
 {
@@ -40,7 +36,11 @@ union MemoryTypeUnpack
     MemoryTypeInfo info;
 };
 
+template< typename HandleType, typename ImplType, typename NRIType >
+constexpr HandleType GetVulkanHandle(NRIType* object, uint32_t physicalDeviceIndex)
+{ return (object != nullptr) ? (*(ImplType*)object).GetHandle(physicalDeviceIndex) : HandleType(VK_NULL_HANDLE); }
+
 constexpr bool IsHostVisibleMemory(nri::MemoryLocation location)
-{
-    return location > nri::MemoryLocation::DEVICE;
-}
+{ return location > nri::MemoryLocation::DEVICE; }
+
+#include "DeviceVK.h"

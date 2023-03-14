@@ -10,7 +10,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "SharedD3D12.h"
 #include "PipelineLayoutD3D12.h"
-#include "DeviceD3D12.h"
 
 using namespace nri;
 
@@ -203,9 +202,52 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     return Result::SUCCESS;
 }
 
-void PipelineLayoutD3D12::SetDebugName(const char* name)
+template<bool isGraphics>
+void PipelineLayoutD3D12::SetDescriptorSetImpl(ID3D12GraphicsCommandList& graphicsCommandList, uint32_t setIndexInPipelineLayout,
+    const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const
 {
-    SET_D3D_DEBUG_OBJECT_NAME(m_RootSignature, name);
+    const DescriptorSetD3D12& descriptorSetImpl = (const DescriptorSetD3D12&)descriptorSet;
+
+    const auto& rootOffsets = m_DescriptorSetRootMappings[setIndexInPipelineLayout].rootOffsets;
+    uint32_t descriptorRangeNum = (uint32_t)rootOffsets.size();
+    for (uint32_t j = 0; j < descriptorRangeNum; j++)
+    {
+        uint16_t rootParameterIndex = rootOffsets[j];
+        if (rootParameterIndex == ROOT_PARAMETER_UNUSED)
+            continue;
+
+        DescriptorPointerGPU descriptorPointerGPU = descriptorSetImpl.GetPointerGPU(j, 0);
+
+        if (isGraphics)
+            graphicsCommandList.SetGraphicsRootDescriptorTable(rootParameterIndex, { descriptorPointerGPU });
+        else
+            graphicsCommandList.SetComputeRootDescriptorTable(rootParameterIndex, { descriptorPointerGPU });
+    }
+
+    const auto& dynamicConstantBufferMapping = m_DynamicConstantBufferMappings[setIndexInPipelineLayout];
+    for (uint16_t j = 0; j < dynamicConstantBufferMapping.constantNum; j++)
+    {
+        uint16_t rootParameterIndex = dynamicConstantBufferMapping.rootOffset + j;
+        DescriptorPointerGPU descriptorPointerGPU = descriptorSetImpl.GetDynamicPointerGPU(j) + dynamicConstantBufferOffsets[j];
+
+        if (isGraphics)
+            graphicsCommandList.SetGraphicsRootConstantBufferView(rootParameterIndex, descriptorPointerGPU);
+        else
+            graphicsCommandList.SetComputeRootConstantBufferView(rootParameterIndex, descriptorPointerGPU);
+    }
 }
+
+void PipelineLayoutD3D12::SetDescriptorSet(ID3D12GraphicsCommandList& graphicsCommandList, bool isGraphics,
+    uint32_t setIndexInPipelineLayout, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const
+{
+    if (isGraphics)
+        SetDescriptorSetImpl<true>(graphicsCommandList, setIndexInPipelineLayout, descriptorSet, dynamicConstantBufferOffsets);
+    else
+        SetDescriptorSetImpl<false>(graphicsCommandList, setIndexInPipelineLayout, descriptorSet, dynamicConstantBufferOffsets);
+}
+
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 #include "PipelineLayoutD3D12.hpp"

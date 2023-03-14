@@ -8,9 +8,7 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma once
-
-#pragma region [  CoreInterface  ]
+#pragma region [  Core  ]
 
 static void NRI_CALL SetCommandBufferDebugName(CommandBuffer& commandBuffer, const char* name)
 {
@@ -228,61 +226,11 @@ static void* NRI_CALL GetCommandBufferNativeObject(const CommandBuffer& commandB
     return (VkCommandBuffer)((CommandBufferVK&)commandBuffer);
 }
 
-void FillFunctionTableCommandBufferVK(CoreInterface& coreInterface)
-{
-    coreInterface.DestroyCommandBuffer = ::DestroyCommandBuffer;
-
-    coreInterface.BeginCommandBuffer = ::BeginCommandBuffer;
-    coreInterface.EndCommandBuffer = ::EndCommandBuffer;
-
-    coreInterface.CmdSetPipelineLayout = ::CmdSetPipelineLayout;
-    coreInterface.CmdSetPipeline = ::CmdSetPipeline;
-    coreInterface.CmdPipelineBarrier = ::CmdPipelineBarrier;
-    coreInterface.CmdSetDescriptorPool = ::CmdSetDescriptorPool;
-    coreInterface.CmdSetDescriptorSet = ::CmdSetDescriptorSet;
-    coreInterface.CmdSetConstants = ::CmdSetConstants;
-
-    coreInterface.CmdBeginRenderPass = ::CmdBeginRenderPass;
-    coreInterface.CmdEndRenderPass = ::CmdEndRenderPass;
-    coreInterface.CmdSetViewports = ::CmdSetViewports;
-    coreInterface.CmdSetScissors = ::CmdSetScissors;
-    coreInterface.CmdSetDepthBounds = ::CmdSetDepthBounds;
-    coreInterface.CmdSetStencilReference = ::CmdSetStencilReference;
-    coreInterface.CmdSetSamplePositions = ::CmdSetSamplePositions;
-    coreInterface.CmdClearAttachments = ::CmdClearAttachments;
-    coreInterface.CmdSetIndexBuffer = ::CmdSetIndexBuffer;
-    coreInterface.CmdSetVertexBuffers = ::CmdSetVertexBuffers;
-
-    coreInterface.CmdDraw = ::CmdDraw;
-    coreInterface.CmdDrawIndexed = ::CmdDrawIndexed;
-    coreInterface.CmdDrawIndirect = ::CmdDrawIndirect;
-    coreInterface.CmdDrawIndexedIndirect = ::CmdDrawIndexedIndirect;
-    coreInterface.CmdDispatch = ::CmdDispatch;
-    coreInterface.CmdDispatchIndirect = ::CmdDispatchIndirect;
-    coreInterface.CmdBeginQuery = ::CmdBeginQuery;
-    coreInterface.CmdEndQuery = ::CmdEndQuery;
-    coreInterface.CmdBeginAnnotation = ::CmdBeginAnnotation;
-    coreInterface.CmdEndAnnotation = ::CmdEndAnnotation;
-
-    coreInterface.CmdClearStorageBuffer = ::CmdClearStorageBuffer;
-    coreInterface.CmdClearStorageTexture = ::CmdClearStorageTexture;
-    coreInterface.CmdCopyBuffer = ::CmdCopyBuffer;
-    coreInterface.CmdCopyTexture = ::CmdCopyTexture;
-    coreInterface.CmdUploadBufferToTexture = ::CmdUploadBufferToTexture;
-    coreInterface.CmdReadbackTextureToBuffer = ::CmdReadbackTextureToBuffer;
-    coreInterface.CmdCopyQueries = ::CmdCopyQueries;
-    coreInterface.CmdResetQueries = ::CmdResetQueries;
-
-    coreInterface.SetCommandBufferDebugName = ::SetCommandBufferDebugName;
-
-    coreInterface.GetCommandBufferNativeObject = ::GetCommandBufferNativeObject;
-}
-
 #pragma endregion
 
-#pragma region [  RayTracingInterface  ]
+#pragma region [  RayTracing  ]
 
-void NRI_CALL CmdBuildTopLevelAccelerationStructure(CommandBuffer& commandBuffer, uint32_t instanceNum, const Buffer& buffer,
+static void NRI_CALL CmdBuildTopLevelAccelerationStructure(CommandBuffer& commandBuffer, uint32_t instanceNum, const Buffer& buffer,
     uint64_t bufferOffset, AccelerationStructureBuildBits flags, AccelerationStructure& dst, Buffer& scratch,
     uint64_t scratchOffset)
 {
@@ -290,7 +238,7 @@ void NRI_CALL CmdBuildTopLevelAccelerationStructure(CommandBuffer& commandBuffer
         scratch, scratchOffset);
 }
 
-void NRI_CALL CmdBuildBottomLevelAccelerationStructure(CommandBuffer& commandBuffer, uint32_t geometryObjectNum,
+static void NRI_CALL CmdBuildBottomLevelAccelerationStructure(CommandBuffer& commandBuffer, uint32_t geometryObjectNum,
     const GeometryObject* geometryObjects, AccelerationStructureBuildBits flags, AccelerationStructure& dst,
     Buffer& scratch, uint64_t scratchOffset)
 {
@@ -298,7 +246,7 @@ void NRI_CALL CmdBuildBottomLevelAccelerationStructure(CommandBuffer& commandBuf
         scratch, scratchOffset);
 }
 
-void NRI_CALL CmdUpdateTopLevelAccelerationStructure(CommandBuffer& commandBuffer, uint32_t instanceNum, const Buffer& buffer,
+static void NRI_CALL CmdUpdateTopLevelAccelerationStructure(CommandBuffer& commandBuffer, uint32_t instanceNum, const Buffer& buffer,
     uint64_t bufferOffset, AccelerationStructureBuildBits flags, AccelerationStructure& dst, AccelerationStructure& src,
     Buffer& scratch, uint64_t scratchOffset)
 {
@@ -306,7 +254,7 @@ void NRI_CALL CmdUpdateTopLevelAccelerationStructure(CommandBuffer& commandBuffe
         scratch, scratchOffset);
 }
 
-void NRI_CALL CmdUpdateBottomLevelAccelerationStructure(CommandBuffer& commandBuffer, uint32_t geometryObjectNum,
+static void NRI_CALL CmdUpdateBottomLevelAccelerationStructure(CommandBuffer& commandBuffer, uint32_t geometryObjectNum,
     const GeometryObject* geometryObjects, AccelerationStructureBuildBits flags, AccelerationStructure& dst,
     AccelerationStructure& src, Buffer& scratch, uint64_t scratchOffset)
 {
@@ -314,46 +262,34 @@ void NRI_CALL CmdUpdateBottomLevelAccelerationStructure(CommandBuffer& commandBu
         src, scratch, scratchOffset);
 }
 
-void NRI_CALL CmdCopyAccelerationStructure(CommandBuffer& commandBuffer, AccelerationStructure& dst,
+static void NRI_CALL CmdCopyAccelerationStructure(CommandBuffer& commandBuffer, AccelerationStructure& dst,
     AccelerationStructure& src, CopyMode mode)
 {
     ((CommandBufferVK&)commandBuffer).CopyAccelerationStructure(dst, src, mode);
 }
 
-void NRI_CALL CmdWriteAccelerationStructureSize(CommandBuffer& commandBuffer,
+static void NRI_CALL CmdWriteAccelerationStructureSize(CommandBuffer& commandBuffer,
     const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset)
 {
     ((CommandBufferVK&)commandBuffer).WriteAccelerationStructureSize(accelerationStructures, accelerationStructureNum, queryPool, queryOffset);
 }
 
-void NRI_CALL CmdDispatchRays(CommandBuffer& commandBuffer, const DispatchRaysDesc& dispatchRaysDesc)
+static void NRI_CALL CmdDispatchRays(CommandBuffer& commandBuffer, const DispatchRaysDesc& dispatchRaysDesc)
 {
     ((CommandBufferVK&)commandBuffer).DispatchRays(dispatchRaysDesc);
 }
 
-void FillFunctionTableCommandBufferVK(RayTracingInterface& rayTracingInterface)
+#pragma endregion
+
+#pragma region [  MeshShader  ]
+
+static void NRI_CALL CmdDispatchMeshTasks(CommandBuffer& commandBuffer, uint32_t x, uint32_t y, uint32_t z)
 {
-    rayTracingInterface.CmdBuildTopLevelAccelerationStructure = ::CmdBuildTopLevelAccelerationStructure;
-    rayTracingInterface.CmdBuildBottomLevelAccelerationStructure = ::CmdBuildBottomLevelAccelerationStructure;
-    rayTracingInterface.CmdUpdateTopLevelAccelerationStructure = ::CmdUpdateTopLevelAccelerationStructure;
-    rayTracingInterface.CmdUpdateBottomLevelAccelerationStructure = ::CmdUpdateBottomLevelAccelerationStructure;
-    rayTracingInterface.CmdCopyAccelerationStructure = ::CmdCopyAccelerationStructure;
-    rayTracingInterface.CmdWriteAccelerationStructureSize = ::CmdWriteAccelerationStructureSize;
-    rayTracingInterface.CmdDispatchRays = ::CmdDispatchRays;
+    ((CommandBufferVK&)commandBuffer).DispatchMeshTasks(x, y, z);
 }
 
 #pragma endregion
 
-#pragma region [  MeshShaderInterface  ]
-
-static void NRI_CALL CmdDispatchMeshTasks(CommandBuffer& commandBuffer, uint32_t taskNum)
-{
-    ((CommandBufferVK&)commandBuffer).DispatchMeshTasks(taskNum);
-}
-
-void FillFunctionTableCommandBufferVK(MeshShaderInterface& meshShaderInterface)
-{
-    meshShaderInterface.CmdDispatchMeshTasks = ::CmdDispatchMeshTasks;
-}
-
-#pragma endregion
+Define_Core_CommandBuffer_PartiallyFillFunctionTable(VK)
+Define_RayTracing_CommandBuffer_PartiallyFillFunctionTable(VK)
+Define_MeshShader_CommandBuffer_PartiallyFillFunctionTable(VK)

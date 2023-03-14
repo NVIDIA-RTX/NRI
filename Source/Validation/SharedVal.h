@@ -16,184 +16,186 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct DeviceObjectBaseVal
-    {
-        DeviceObjectBaseVal(DeviceVal& device);
 
-        DeviceVal& GetDevice() const;
+struct DeviceObjectBaseVal
+{
+    DeviceObjectBaseVal(DeviceVal& device);
 
-    protected:
-        DeviceVal& m_Device;
-        const CoreInterface& m_CoreAPI;
-    };
+    DeviceVal& GetDevice() const;
 
-    inline DeviceVal& DeviceObjectBaseVal::GetDevice() const
-    {
-        return m_Device;
-    }
+protected:
+    DeviceVal& m_Device;
+    const CoreInterface& m_CoreAPI;
+};
 
-    template< typename T >
-    struct DeviceObjectVal : public DeviceObjectBaseVal
-    {
-        DeviceObjectVal(DeviceVal& device, T& object);
+inline DeviceVal& DeviceObjectBaseVal::GetDevice() const
+{
+    return m_Device;
+}
 
-        T& GetImpl() const;
-        const String& GetDebugName() const;
+template< typename T >
+struct DeviceObjectVal : public DeviceObjectBaseVal
+{
+    DeviceObjectVal(DeviceVal& device, T& object);
 
-    protected:
-        T& m_ImplObject;
-        String m_Name;
-    };
+    T& GetImpl() const;
+    const String& GetDebugName() const;
 
-    template< typename T >
-    inline DeviceObjectVal<T>::DeviceObjectVal(DeviceVal& device, T& object) :
-        DeviceObjectBaseVal(device),
-        m_ImplObject(object),
-        m_Name(device.GetStdAllocator())
-    {
-    }
+protected:
+    T& m_ImplObject;
+    String m_Name;
+};
 
-    template< typename T >
-    inline T& DeviceObjectVal<T>::GetImpl() const
-    {
-        return m_ImplObject;
-    }
+template< typename T >
+inline DeviceObjectVal<T>::DeviceObjectVal(DeviceVal& device, T& object) :
+    DeviceObjectBaseVal(device),
+    m_ImplObject(object),
+    m_Name(device.GetStdAllocator())
+{
+}
 
-    template< typename T >
-    const String& DeviceObjectVal<T>::GetDebugName() const
-    {
-        return m_Name;
-    }
+template< typename T >
+inline T& DeviceObjectVal<T>::GetImpl() const
+{
+    return m_ImplObject;
+}
 
-    template< typename T >
-    inline DeviceVal& GetDeviceVal(T& object)
-    {
-        return ((DeviceObjectBaseVal&)object).GetDevice();
-    }
+template< typename T >
+const String& DeviceObjectVal<T>::GetDebugName() const
+{
+    return m_Name;
+}
 
-    uint64_t GetMemorySizeD3D12(const MemoryD3D12Desc& memoryD3D12Desc);
-    void GetTextureDescD3D12(const TextureD3D12Desc& textureD3D12Desc, TextureDesc& textureDesc);
-    void GetBufferDescD3D12(const BufferD3D12Desc& bufferD3D12Desc, BufferDesc& bufferDesc);
+template< typename T >
+inline DeviceVal& GetDeviceVal(T& object)
+{
+    return ((DeviceObjectBaseVal&)object).GetDevice();
+}
 
-    void GetTextureDescD3D11(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& textureDesc);
-    void GetBufferDescD3D11(const BufferD3D11Desc& bufferD3D11Desc, BufferDesc& bufferDesc);
+uint64_t GetMemorySizeD3D12(const MemoryD3D12Desc& memoryD3D12Desc);
+void GetTextureDescD3D12(const TextureD3D12Desc& textureD3D12Desc, TextureDesc& textureDesc);
+void GetBufferDescD3D12(const BufferD3D12Desc& bufferD3D12Desc, BufferDesc& bufferDesc);
 
-    constexpr const char* DESCRIPTOR_TYPE_NAME[] = {
-        "SAMPLER",
-        "CONSTANT_BUFFER",
-        "TEXTURE",
-        "STORAGE_TEXTURE",
-        "BUFFER",
-        "STORAGE_BUFFER",
-        "STRUCTURED_BUFFER",
-        "STORAGE_STRUCTURED_BUFFER",
-        "ACCELERATION_STRUCTURE"
-    };
-    static_assert(GetCountOf(DESCRIPTOR_TYPE_NAME) == (uint32_t)nri::DescriptorType::MAX_NUM, "descriptor type name array is out of date");
+void GetTextureDescD3D11(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& textureDesc);
+void GetBufferDescD3D11(const BufferD3D11Desc& bufferD3D11Desc, BufferDesc& bufferDesc);
 
-    constexpr const char* GetDescriptorTypeName(nri::DescriptorType descriptorType)
-    {
-        return DESCRIPTOR_TYPE_NAME[(uint32_t)descriptorType];
-    }
+constexpr const char* DESCRIPTOR_TYPE_NAME[] = {
+    "SAMPLER",
+    "CONSTANT_BUFFER",
+    "TEXTURE",
+    "STORAGE_TEXTURE",
+    "BUFFER",
+    "STORAGE_BUFFER",
+    "STRUCTURED_BUFFER",
+    "STORAGE_STRUCTURED_BUFFER",
+    "ACCELERATION_STRUCTURE"
+};
+static_assert(GetCountOf(DESCRIPTOR_TYPE_NAME) == (uint32_t)nri::DescriptorType::MAX_NUM, "descriptor type name array is out of date");
 
-    constexpr bool IsAccessMaskSupported(BufferUsageBits usageMask, AccessBits accessMask)
-    {
-        BufferUsageBits requiredUsageMask = BufferUsageBits::NONE;
+constexpr const char* GetDescriptorTypeName(nri::DescriptorType descriptorType)
+{
+    return DESCRIPTOR_TYPE_NAME[(uint32_t)descriptorType];
+}
 
-        if (accessMask & AccessBits::VERTEX_BUFFER)
-            requiredUsageMask |= BufferUsageBits::VERTEX_BUFFER;
+constexpr bool IsAccessMaskSupported(BufferUsageBits usageMask, AccessBits accessMask)
+{
+    BufferUsageBits requiredUsageMask = BufferUsageBits::NONE;
 
-        if (accessMask & AccessBits::INDEX_BUFFER)
-            requiredUsageMask |= BufferUsageBits::INDEX_BUFFER;
+    if (accessMask & AccessBits::VERTEX_BUFFER)
+        requiredUsageMask |= BufferUsageBits::VERTEX_BUFFER;
 
-        if (accessMask & AccessBits::CONSTANT_BUFFER)
-            requiredUsageMask |= BufferUsageBits::CONSTANT_BUFFER;
+    if (accessMask & AccessBits::INDEX_BUFFER)
+        requiredUsageMask |= BufferUsageBits::INDEX_BUFFER;
 
-        if (accessMask & AccessBits::ARGUMENT_BUFFER)
-            requiredUsageMask |= BufferUsageBits::ARGUMENT_BUFFER;
+    if (accessMask & AccessBits::CONSTANT_BUFFER)
+        requiredUsageMask |= BufferUsageBits::CONSTANT_BUFFER;
 
-        if (accessMask & AccessBits::SHADER_RESOURCE)
-            requiredUsageMask |= BufferUsageBits::SHADER_RESOURCE;
+    if (accessMask & AccessBits::ARGUMENT_BUFFER)
+        requiredUsageMask |= BufferUsageBits::ARGUMENT_BUFFER;
 
-        if (accessMask & AccessBits::SHADER_RESOURCE_STORAGE)
-            requiredUsageMask |= BufferUsageBits::SHADER_RESOURCE_STORAGE;
+    if (accessMask & AccessBits::SHADER_RESOURCE)
+        requiredUsageMask |= BufferUsageBits::SHADER_RESOURCE;
 
-        if (accessMask & AccessBits::COLOR_ATTACHMENT)
-            return false;
+    if (accessMask & AccessBits::SHADER_RESOURCE_STORAGE)
+        requiredUsageMask |= BufferUsageBits::SHADER_RESOURCE_STORAGE;
 
-        if (accessMask & AccessBits::DEPTH_STENCIL_WRITE)
-            return false;
+    if (accessMask & AccessBits::COLOR_ATTACHMENT)
+        return false;
 
-        if (accessMask & AccessBits::DEPTH_STENCIL_READ)
-            return false;
+    if (accessMask & AccessBits::DEPTH_STENCIL_WRITE)
+        return false;
 
-        if (accessMask & AccessBits::ACCELERATION_STRUCTURE_READ)
-            return false;
+    if (accessMask & AccessBits::DEPTH_STENCIL_READ)
+        return false;
 
-        if (accessMask & AccessBits::ACCELERATION_STRUCTURE_WRITE)
-            return false;
+    if (accessMask & AccessBits::ACCELERATION_STRUCTURE_READ)
+        return false;
 
-        return (uint32_t)(requiredUsageMask & usageMask) == (uint32_t)requiredUsageMask;
-    }
+    if (accessMask & AccessBits::ACCELERATION_STRUCTURE_WRITE)
+        return false;
 
-    constexpr bool IsAccessMaskSupported(TextureUsageBits usageMask, AccessBits accessMask)
-    {
-        TextureUsageBits requiredUsageMask = TextureUsageBits::NONE;
+    return (uint32_t)(requiredUsageMask & usageMask) == (uint32_t)requiredUsageMask;
+}
 
-        if (accessMask & AccessBits::VERTEX_BUFFER)
-            return false;
+constexpr bool IsAccessMaskSupported(TextureUsageBits usageMask, AccessBits accessMask)
+{
+    TextureUsageBits requiredUsageMask = TextureUsageBits::NONE;
 
-        if (accessMask & AccessBits::INDEX_BUFFER)
-            return false;
+    if (accessMask & AccessBits::VERTEX_BUFFER)
+        return false;
 
-        if (accessMask & AccessBits::CONSTANT_BUFFER)
-            return false;
+    if (accessMask & AccessBits::INDEX_BUFFER)
+        return false;
 
-        if (accessMask & AccessBits::ARGUMENT_BUFFER)
-            return false;
+    if (accessMask & AccessBits::CONSTANT_BUFFER)
+        return false;
 
-        if (accessMask & AccessBits::SHADER_RESOURCE)
-            requiredUsageMask |= TextureUsageBits::SHADER_RESOURCE;
+    if (accessMask & AccessBits::ARGUMENT_BUFFER)
+        return false;
 
-        if (accessMask & AccessBits::SHADER_RESOURCE_STORAGE)
-            requiredUsageMask |= TextureUsageBits::SHADER_RESOURCE_STORAGE;
+    if (accessMask & AccessBits::SHADER_RESOURCE)
+        requiredUsageMask |= TextureUsageBits::SHADER_RESOURCE;
 
-        if (accessMask & AccessBits::COLOR_ATTACHMENT)
-            requiredUsageMask |= TextureUsageBits::COLOR_ATTACHMENT;
+    if (accessMask & AccessBits::SHADER_RESOURCE_STORAGE)
+        requiredUsageMask |= TextureUsageBits::SHADER_RESOURCE_STORAGE;
 
-        if (accessMask & AccessBits::DEPTH_STENCIL_WRITE)
-            requiredUsageMask |= TextureUsageBits::DEPTH_STENCIL_ATTACHMENT;
+    if (accessMask & AccessBits::COLOR_ATTACHMENT)
+        requiredUsageMask |= TextureUsageBits::COLOR_ATTACHMENT;
 
-        if (accessMask & AccessBits::DEPTH_STENCIL_READ)
-            requiredUsageMask |= TextureUsageBits::DEPTH_STENCIL_ATTACHMENT;
+    if (accessMask & AccessBits::DEPTH_STENCIL_WRITE)
+        requiredUsageMask |= TextureUsageBits::DEPTH_STENCIL_ATTACHMENT;
 
-        if (accessMask & AccessBits::ACCELERATION_STRUCTURE_READ)
-            return false;
+    if (accessMask & AccessBits::DEPTH_STENCIL_READ)
+        requiredUsageMask |= TextureUsageBits::DEPTH_STENCIL_ATTACHMENT;
 
-        if (accessMask & AccessBits::ACCELERATION_STRUCTURE_WRITE)
-            return false;
+    if (accessMask & AccessBits::ACCELERATION_STRUCTURE_READ)
+        return false;
 
-        return (uint32_t)(requiredUsageMask & usageMask) == (uint32_t)requiredUsageMask;
-    }
+    if (accessMask & AccessBits::ACCELERATION_STRUCTURE_WRITE)
+        return false;
 
-    constexpr std::array<TextureUsageBits, (size_t)TextureLayout::MAX_NUM> TEXTURE_USAGE_FOR_TEXTURE_LAYOUT_TABLE = {
-        TextureUsageBits::NONE, // GENERAL
-        TextureUsageBits::COLOR_ATTACHMENT, // COLOR_ATTACHMENT
-        TextureUsageBits::DEPTH_STENCIL_ATTACHMENT, // DEPTH_STENCIL
-        TextureUsageBits::DEPTH_STENCIL_ATTACHMENT, // DEPTH_STENCIL_READONLY
-        TextureUsageBits::DEPTH_STENCIL_ATTACHMENT, // DEPTH_READONLY
-        TextureUsageBits::DEPTH_STENCIL_ATTACHMENT, // STENCIL_READONLY
-        TextureUsageBits::SHADER_RESOURCE, // SHADER_RESOURCE
-        TextureUsageBits::NONE, // PRESENT
-        TextureUsageBits::NONE // UNKNOWN
-    };
+    return (uint32_t)(requiredUsageMask & usageMask) == (uint32_t)requiredUsageMask;
+}
 
-    constexpr bool IsTextureLayoutSupported(TextureUsageBits usageMask, TextureLayout textureLayout)
-    {
-        const TextureUsageBits requiredMask = TEXTURE_USAGE_FOR_TEXTURE_LAYOUT_TABLE[(size_t)textureLayout];
+constexpr std::array<TextureUsageBits, (size_t)TextureLayout::MAX_NUM> TEXTURE_USAGE_FOR_TEXTURE_LAYOUT_TABLE = {
+    TextureUsageBits::NONE, // GENERAL
+    TextureUsageBits::COLOR_ATTACHMENT, // COLOR_ATTACHMENT
+    TextureUsageBits::DEPTH_STENCIL_ATTACHMENT, // DEPTH_STENCIL
+    TextureUsageBits::DEPTH_STENCIL_ATTACHMENT, // DEPTH_STENCIL_READONLY
+    TextureUsageBits::DEPTH_STENCIL_ATTACHMENT, // DEPTH_READONLY
+    TextureUsageBits::DEPTH_STENCIL_ATTACHMENT, // STENCIL_READONLY
+    TextureUsageBits::SHADER_RESOURCE, // SHADER_RESOURCE
+    TextureUsageBits::NONE, // PRESENT
+    TextureUsageBits::NONE // UNKNOWN
+};
 
-        return (uint32_t)(requiredMask & usageMask) == (uint32_t)requiredMask;
-    }
+constexpr bool IsTextureLayoutSupported(TextureUsageBits usageMask, TextureLayout textureLayout)
+{
+    const TextureUsageBits requiredMask = TEXTURE_USAGE_FOR_TEXTURE_LAYOUT_TABLE[(size_t)textureLayout];
+
+    return (uint32_t)(requiredMask & usageMask) == (uint32_t)requiredMask;
+}
+
 }
 
 #define NRI_GET_IMPL_PTR(className, object) \

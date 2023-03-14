@@ -12,154 +12,91 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct DeviceVK;
-    struct TextureVK;
 
-    enum class DescriptorTypeVK
-    {
-        NONE = 0,
-        BUFFER_VIEW,
-        IMAGE_VIEW,
-        SAMPLER,
-        ACCELERATION_STRUCTURE
-    };
+struct DeviceVK;
+struct TextureVK;
 
-    struct DescriptorBufferDesc
-    {
-        std::array<VkBuffer, PHYSICAL_DEVICE_GROUP_MAX_SIZE> handles;
-        uint64_t offset;
-        uint64_t size;
-    };
+enum class DescriptorTypeVK
+{
+    NONE = 0,
+    BUFFER_VIEW,
+    IMAGE_VIEW,
+    SAMPLER,
+    ACCELERATION_STRUCTURE
+};
 
-    struct DescriptorTextureDesc
-    {
-        std::array<VkImage, PHYSICAL_DEVICE_GROUP_MAX_SIZE> handles;
-        const TextureVK* texture;
-        VkImageLayout imageLayout;
-        uint32_t imageMipOffset;
-        uint32_t imageMipNum;
-        uint32_t imageArrayOffset;
-        uint32_t imageArraySize;
-        VkImageAspectFlags imageAspectFlags;
-    };
+struct DescriptorBufferDesc
+{
+    std::array<VkBuffer, PHYSICAL_DEVICE_GROUP_MAX_SIZE> handles;
+    uint64_t offset;
+    uint64_t size;
+};
 
-    struct DescriptorVK
-    {
-        DescriptorVK(DeviceVK& device);
-        ~DescriptorVK();
+struct DescriptorTextureDesc
+{
+    std::array<VkImage, PHYSICAL_DEVICE_GROUP_MAX_SIZE> handles;
+    const TextureVK* texture;
+    VkImageLayout imageLayout;
+    uint32_t imageMipOffset;
+    uint32_t imageMipNum;
+    uint32_t imageArrayOffset;
+    uint32_t imageArraySize;
+    VkImageAspectFlags imageAspectFlags;
+};
 
-        DeviceVK& GetDevice() const;
-        Result Create(const BufferViewDesc& bufferViewDesc);
-        Result Create(const Texture1DViewDesc& textureViewDesc);
-        Result Create(const Texture2DViewDesc& textureViewDesc);
-        Result Create(const Texture3DViewDesc& textureViewDesc);
-        Result Create(const SamplerDesc& samplerDesc);
-        Result Create(const VkAccelerationStructureKHR* accelerationStructures, uint32_t physicalDeviceMask);
-        VkBufferView GetBufferView(uint32_t physicalDeviceIndex) const;
-        VkImageView GetImageView(uint32_t physicalDeviceIndex) const;
-        const VkSampler& GetSampler() const;
-        VkAccelerationStructureKHR GetAccelerationStructure(uint32_t physicalDeviceIndex) const;
-        VkBuffer GetBuffer(uint32_t physicalDeviceIndex) const;
-        VkImage GetImage(uint32_t physicalDeviceIndex) const;
-        void GetBufferInfo(uint32_t physicalDeviceIndex, VkDescriptorBufferInfo& info) const;
-        const TextureVK& GetTexture() const;
-        DescriptorTypeVK GetType() const;
-        VkFormat GetFormat() const;
-        void GetImageSubresourceRange(VkImageSubresourceRange& range) const;
-        VkImageLayout GetImageLayout() const;
-        const DescriptorTextureDesc& GetTextureDesc() const;
-        const DescriptorBufferDesc& GetBufferDesc() const;
-
-        template<typename T>
-        Result CreateTextureView(const T& textureViewDesc);
-
-        void SetDebugName(const char* name);
-        VkBufferView GetBufferDescriptorVK(uint32_t physicalDeviceIndex) const;
-        VkImageView GetTextureDescriptorVK(uint32_t physicalDeviceIndex, VkImageSubresourceRange& subresourceRange) const;
-
-    private:
-        union
-        {
-            std::array<VkBufferView, PHYSICAL_DEVICE_GROUP_MAX_SIZE> m_BufferViews;
-            std::array<VkImageView, PHYSICAL_DEVICE_GROUP_MAX_SIZE> m_ImageViews;
-            std::array<VkAccelerationStructureKHR, PHYSICAL_DEVICE_GROUP_MAX_SIZE> m_AccelerationStructures;
-            VkSampler m_Sampler;
-        };
-        union
-        {
-            DescriptorBufferDesc m_BufferDesc;
-            DescriptorTextureDesc m_TextureDesc;
-        };
-        DescriptorTypeVK m_Type = DescriptorTypeVK::NONE;
-        VkFormat m_Format = VK_FORMAT_UNDEFINED;
-        DeviceVK& m_Device;
-    };
-
-    inline DescriptorVK::DescriptorVK(DeviceVK& device) :
+struct DescriptorVK
+{
+    inline DescriptorVK(DeviceVK& device) :
         m_Device(device)
-    {
-        m_BufferViews.fill(VK_NULL_HANDLE);
-        m_TextureDesc = {};
-    }
+    { m_BufferViews.fill(VK_NULL_HANDLE); }
 
-    inline VkBufferView DescriptorVK::GetBufferView(uint32_t physicalDeviceIndex) const
-    {
-        return m_BufferViews[physicalDeviceIndex];
-    }
+    inline DeviceVK& GetDevice() const
+    { return m_Device; }
 
-    inline VkImageView DescriptorVK::GetImageView(uint32_t physicalDeviceIndex) const
-    {
-        return m_ImageViews[physicalDeviceIndex];
-    }
+    inline VkBufferView GetBufferView(uint32_t physicalDeviceIndex) const
+    { return m_BufferViews[physicalDeviceIndex]; }
 
-    inline const VkSampler& DescriptorVK::GetSampler() const
-    {
-        return m_Sampler;
-    }
+    inline VkImageView GetImageView(uint32_t physicalDeviceIndex) const
+    { return m_ImageViews[physicalDeviceIndex]; }
 
-    inline VkAccelerationStructureKHR DescriptorVK::GetAccelerationStructure(uint32_t physicalDeviceIndex) const
-    {
-        return m_AccelerationStructures[physicalDeviceIndex];
-    }
+    inline const VkSampler& GetSampler() const
+    { return m_Sampler; }
 
-    inline VkBuffer DescriptorVK::GetBuffer(uint32_t physicalDeviceIndex) const
-    {
-        return m_BufferDesc.handles[physicalDeviceIndex];
-    }
+    inline VkAccelerationStructureKHR GetAccelerationStructure(uint32_t physicalDeviceIndex) const
+    { return m_AccelerationStructures[physicalDeviceIndex]; }
 
-    inline VkImage DescriptorVK::GetImage(uint32_t physicalDeviceIndex) const
-    {
-        return m_TextureDesc.handles[physicalDeviceIndex];
-    }
+    inline VkBuffer GetBuffer(uint32_t physicalDeviceIndex) const
+    { return m_BufferDesc.handles[physicalDeviceIndex]; }
 
-    inline void DescriptorVK::GetBufferInfo(uint32_t physicalDeviceIndex, VkDescriptorBufferInfo& info) const
+    inline VkImage GetImage(uint32_t physicalDeviceIndex) const
+    { return m_TextureDesc.handles[physicalDeviceIndex]; }
+
+    inline const TextureVK& GetTexture() const
+    { return *m_TextureDesc.texture; }
+
+    inline DescriptorTypeVK GetType() const
+    { return m_Type; }
+
+    inline VkFormat GetFormat() const
+    { return m_Format; }
+
+    inline VkImageLayout GetImageLayout() const
+    { return m_TextureDesc.imageLayout; }
+
+    inline const DescriptorTextureDesc& GetTextureDesc() const
+    { return m_TextureDesc; }
+
+    inline const DescriptorBufferDesc& GetBufferDesc() const
+    { return m_BufferDesc; }
+
+    inline void GetBufferInfo(uint32_t physicalDeviceIndex, VkDescriptorBufferInfo& info) const
     {
         info.buffer = m_BufferDesc.handles[physicalDeviceIndex];
         info.offset = m_BufferDesc.offset;
         info.range = m_BufferDesc.size;
     }
 
-    inline const TextureVK& DescriptorVK::GetTexture() const
-    {
-        return *m_TextureDesc.texture;
-    }
-
-    inline DeviceVK& DescriptorVK::GetDevice() const
-    {
-        return m_Device;
-    }
-
-    inline DescriptorTypeVK DescriptorVK::GetType() const
-    {
-        return m_Type;
-    }
-
-    inline VkFormat DescriptorVK::GetFormat() const
-    {
-        return m_Format;
-    }
-
-    inline void DescriptorVK::GetImageSubresourceRange(VkImageSubresourceRange& range) const
+    inline void GetImageSubresourceRange(VkImageSubresourceRange& range) const
     {
         range.aspectMask = m_TextureDesc.imageAspectFlags;
         range.baseMipLevel = m_TextureDesc.imageMipOffset;
@@ -168,18 +105,41 @@ namespace nri
         range.layerCount = m_TextureDesc.imageArraySize;
     }
 
-    inline VkImageLayout DescriptorVK::GetImageLayout() const
-    {
-        return m_TextureDesc.imageLayout;
-    }
+    ~DescriptorVK();
 
-    inline const DescriptorTextureDesc& DescriptorVK::GetTextureDesc() const
-    {
-        return m_TextureDesc;
-    }
+    Result Create(const BufferViewDesc& bufferViewDesc);
+    Result Create(const Texture1DViewDesc& textureViewDesc);
+    Result Create(const Texture2DViewDesc& textureViewDesc);
+    Result Create(const Texture3DViewDesc& textureViewDesc);
+    Result Create(const SamplerDesc& samplerDesc);
+    Result Create(const VkAccelerationStructureKHR* accelerationStructures, uint32_t physicalDeviceMask);
 
-    inline const DescriptorBufferDesc& DescriptorVK::GetBufferDesc() const
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+
+    void SetDebugName(const char* name);
+
+private:
+    template<typename T>
+    Result CreateTextureView(const T& textureViewDesc);
+
+private:
+    DeviceVK& m_Device;
+    union
     {
-        return m_BufferDesc;
-    }
+        std::array<VkBufferView, PHYSICAL_DEVICE_GROUP_MAX_SIZE> m_BufferViews;
+        std::array<VkImageView, PHYSICAL_DEVICE_GROUP_MAX_SIZE> m_ImageViews;
+        std::array<VkAccelerationStructureKHR, PHYSICAL_DEVICE_GROUP_MAX_SIZE> m_AccelerationStructures;
+        VkSampler m_Sampler;
+    };
+    union
+    {
+        DescriptorBufferDesc m_BufferDesc;
+        DescriptorTextureDesc m_TextureDesc = {};
+    };
+    DescriptorTypeVK m_Type = DescriptorTypeVK::NONE;
+    VkFormat m_Format = VK_FORMAT_UNDEFINED;
+};
+
 }

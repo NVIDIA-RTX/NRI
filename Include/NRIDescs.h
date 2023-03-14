@@ -24,12 +24,11 @@ NRI_FORWARD_STRUCT(Device);
 NRI_FORWARD_STRUCT(Descriptor);
 NRI_FORWARD_STRUCT(DescriptorPool);
 NRI_FORWARD_STRUCT(DescriptorSet);
-NRI_FORWARD_STRUCT(DeviceSemaphore);
+NRI_FORWARD_STRUCT(Fence);
 NRI_FORWARD_STRUCT(FrameBuffer);
 NRI_FORWARD_STRUCT(Memory);
 NRI_FORWARD_STRUCT(PipelineLayout);
 NRI_FORWARD_STRUCT(Pipeline);
-NRI_FORWARD_STRUCT(QueueSemaphore);
 NRI_FORWARD_STRUCT(QueryPool);
 NRI_FORWARD_STRUCT(Texture);
 
@@ -805,14 +804,10 @@ NRI_STRUCT(TextureDataLayoutDesc)
     uint32_t slicePitch;
 };
 
-NRI_STRUCT(WorkSubmissionDesc)
+NRI_STRUCT(QueueSubmitDesc)
 {
     const NRI_NAME(CommandBuffer)* const* commandBuffers;
-    const NRI_NAME(QueueSemaphore)* const* wait;
-    const NRI_NAME(QueueSemaphore)* const* signal;
     uint32_t commandBufferNum;
-    uint32_t waitNum;
-    uint32_t signalNum;
     uint32_t physicalDeviceIndex;
 };
 
@@ -1351,14 +1346,12 @@ NRI_STRUCT(DeviceDesc)
     uint32_t rayTracingGeometryObjectMaxNum;
 
     // Mesh shader
-    uint32_t meshTaskMaxNum;
     uint32_t meshTaskWorkGroupInvocationMaxNum;
     uint32_t meshTaskWorkGroupMaxDim[3];
     uint32_t meshTaskTotalMemoryMaxSize;
     uint32_t meshTaskOutputMaxNum;
     uint32_t meshWorkGroupInvocationMaxNum;
     uint32_t meshWorkGroupMaxDim[3];
-    uint32_t meshTotalMemoryMaxSize;
     uint32_t meshOutputVertexMaxNum;
     uint32_t meshOutputPrimitiveMaxNum;
     uint32_t meshMultiviewViewMaxNum;

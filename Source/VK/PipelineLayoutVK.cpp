@@ -11,22 +11,12 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "SharedVK.h"
 #include "PipelineLayoutVK.h"
 #include "DescriptorVK.h"
-#include "DeviceVK.h"
 
 using namespace nri;
-
-PipelineLayoutVK::PipelineLayoutVK(DeviceVK& device) :
-    m_RuntimeBindingInfo(device.GetStdAllocator()),
-    m_DescriptorSetLayouts(device.GetStdAllocator()),
-    m_DescriptorSetSpaces(device.GetStdAllocator()),
-    m_Device(device)
-{
-}
 
 PipelineLayoutVK::~PipelineLayoutVK()
 {
     const auto& vk = m_Device.GetDispatchTable();
-
     const auto allocationCallbacks = m_Device.GetAllocationCallbacks();
 
     if (m_Handle)
@@ -108,11 +98,6 @@ Result PipelineLayoutVK::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     FillRuntimeBindingInfo(pipelineLayoutDesc, bindingOffsets);
 
     return Result::SUCCESS;
-}
-
-inline void PipelineLayoutVK::SetDebugName(const char* name)
-{
-    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_PIPELINE_LAYOUT, (uint64_t)m_Handle, name);
 }
 
 void PipelineLayoutVK::FillBindingOffsets(bool ignoreGlobalSPIRVOffsets, uint32_t* bindingOffsets)
@@ -337,6 +322,15 @@ RuntimeBindingInfo::RuntimeBindingInfo(StdAllocator<uint8_t>& allocator) :
     pushConstantDescs(allocator),
     pushConstantBindings(allocator)
 {
+}
+
+//================================================================================================================
+// NRI
+//================================================================================================================
+
+inline void PipelineLayoutVK::SetDebugName(const char* name)
+{
+    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_PIPELINE_LAYOUT, (uint64_t)m_Handle, name);
 }
 
 #include "PipelineLayoutVK.hpp"

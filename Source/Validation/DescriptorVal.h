@@ -12,71 +12,73 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    enum class ResourceType
-    {
-        NONE,
-        BUFFER,
-        TEXTURE,
-        SAMPLER,
-        ACCELERATION_STRUCTURE
-    };
 
-    enum class ResourceViewType
-    {
-        NONE,
-        COLOR_ATTACHMENT,
-        DEPTH_STENCIL_ATTACHMENT,
-        SHADER_RESOURCE,
-        SHADER_RESOURCE_STORAGE,
-        CONSTANT_BUFFER_VIEW
-    };
+enum class ResourceType
+{
+    NONE,
+    BUFFER,
+    TEXTURE,
+    SAMPLER,
+    ACCELERATION_STRUCTURE
+};
 
-    struct DescriptorVal : public DeviceObjectVal<Descriptor>
-    {
-        DescriptorVal(DeviceVal& device, Descriptor& descriptor, ResourceType resourceType);
-        DescriptorVal(DeviceVal& device, Descriptor& descriptor, const BufferViewDesc& bufferViewDesc);
-        DescriptorVal(DeviceVal& device, Descriptor& descriptor, const Texture1DViewDesc& textureViewDesc);
-        DescriptorVal(DeviceVal& device, Descriptor& descriptor, const Texture2DViewDesc& textureViewDesc);
-        DescriptorVal(DeviceVal& device, Descriptor& descriptor, const Texture3DViewDesc& textureViewDesc);
-        DescriptorVal(DeviceVal& device, Descriptor& descriptor);
+enum class ResourceViewType
+{
+    NONE,
+    COLOR_ATTACHMENT,
+    DEPTH_STENCIL_ATTACHMENT,
+    SHADER_RESOURCE,
+    SHADER_RESOURCE_STORAGE,
+    CONSTANT_BUFFER_VIEW
+};
 
-        inline uint64_t GetNativeObject(uint32_t physicalDeviceIndex) const
-        { return m_CoreAPI.GetDescriptorNativeObject(m_ImplObject, physicalDeviceIndex); }
+struct DescriptorVal : public DeviceObjectVal<Descriptor>
+{
+    DescriptorVal(DeviceVal& device, Descriptor& descriptor, ResourceType resourceType);
+    DescriptorVal(DeviceVal& device, Descriptor& descriptor, const BufferViewDesc& bufferViewDesc);
+    DescriptorVal(DeviceVal& device, Descriptor& descriptor, const Texture1DViewDesc& textureViewDesc);
+    DescriptorVal(DeviceVal& device, Descriptor& descriptor, const Texture2DViewDesc& textureViewDesc);
+    DescriptorVal(DeviceVal& device, Descriptor& descriptor, const Texture3DViewDesc& textureViewDesc);
+    DescriptorVal(DeviceVal& device, Descriptor& descriptor);
 
-        inline bool IsBufferView() const
-        { return m_ResourceType == ResourceType::BUFFER; }
+    inline uint64_t GetNativeObject(uint32_t physicalDeviceIndex) const
+    { return m_CoreAPI.GetDescriptorNativeObject(m_ImplObject, physicalDeviceIndex); }
 
-        inline bool IsTextureView() const
-        { return m_ResourceType == ResourceType::TEXTURE; }
+    inline bool IsBufferView() const
+    { return m_ResourceType == ResourceType::BUFFER; }
 
-        inline bool IsSampler() const
-        { return m_ResourceType == ResourceType::SAMPLER; }
+    inline bool IsTextureView() const
+    { return m_ResourceType == ResourceType::TEXTURE; }
 
-        inline bool IsAccelerationStructure() const
-        { return m_ResourceType == ResourceType::ACCELERATION_STRUCTURE; }
+    inline bool IsSampler() const
+    { return m_ResourceType == ResourceType::SAMPLER; }
 
-        inline bool IsConstantBufferView() const
-        { return m_ResourceType == ResourceType::BUFFER && m_ResourceViewType == ResourceViewType::CONSTANT_BUFFER_VIEW; }
+    inline bool IsAccelerationStructure() const
+    { return m_ResourceType == ResourceType::ACCELERATION_STRUCTURE; }
 
-        inline bool IsColorAttachment() const
-        { return IsTextureView() && m_ResourceViewType == ResourceViewType::COLOR_ATTACHMENT; }
+    inline bool IsConstantBufferView() const
+    { return m_ResourceType == ResourceType::BUFFER && m_ResourceViewType == ResourceViewType::CONSTANT_BUFFER_VIEW; }
 
-        inline bool IsDepthStencilAttachment() const
-        { return IsTextureView() && m_ResourceViewType == ResourceViewType::DEPTH_STENCIL_ATTACHMENT; }
+    inline bool IsColorAttachment() const
+    { return IsTextureView() && m_ResourceViewType == ResourceViewType::COLOR_ATTACHMENT; }
 
-        inline bool IsShaderResource() const
-        { return m_ResourceType != ResourceType::NONE && !IsSampler() && m_ResourceViewType == ResourceViewType::SHADER_RESOURCE; }
+    inline bool IsDepthStencilAttachment() const
+    { return IsTextureView() && m_ResourceViewType == ResourceViewType::DEPTH_STENCIL_ATTACHMENT; }
 
-        inline bool IsShaderResourceStorage() const
-        { return m_ResourceType != ResourceType::NONE && !IsSampler() && m_ResourceViewType == ResourceViewType::SHADER_RESOURCE_STORAGE; }
+    inline bool IsShaderResource() const
+    { return m_ResourceType != ResourceType::NONE && !IsSampler() && m_ResourceViewType == ResourceViewType::SHADER_RESOURCE; }
 
-        //======================================================================================================================
-        // NRI
-        //======================================================================================================================
-        void SetDebugName(const char* name);
+    inline bool IsShaderResourceStorage() const
+    { return m_ResourceType != ResourceType::NONE && !IsSampler() && m_ResourceViewType == ResourceViewType::SHADER_RESOURCE_STORAGE; }
 
-    private:
-        ResourceType m_ResourceType = ResourceType::NONE;
-        ResourceViewType m_ResourceViewType = ResourceViewType::NONE;
-    };
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+    void SetDebugName(const char* name);
+
+private:
+    ResourceType m_ResourceType = ResourceType::NONE;
+    ResourceViewType m_ResourceViewType = ResourceViewType::NONE;
+};
+
 }

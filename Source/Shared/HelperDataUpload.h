@@ -25,7 +25,7 @@ private:
     const nri::DeviceDesc& m_DeviceDesc;
     nri::Device& m_Device;
     nri::CommandQueue& m_CommandQueue;
-    nri::DeviceSemaphore* m_DeviceSemaphore = nullptr;
+    nri::Fence* m_Fence = nullptr;
     Vector<nri::CommandAllocator*> m_CommandAllocators;
     Vector<nri::CommandBuffer*> m_CommandBuffers;
     nri::Buffer* m_UploadBuffer = nullptr;
@@ -33,6 +33,7 @@ private:
     uint8_t* m_MappedMemory = nullptr;
     uint64_t m_UploadBufferSize = 0;
     uint64_t m_UploadBufferOffset = 0;
+    uint64_t m_FenceValue = 1;
 
     static constexpr uint64_t COPY_ALIGMENT = 16;
 };

@@ -12,28 +12,34 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct DeviceD3D11;
 
-    struct FrameBufferD3D11
-    {
-        FrameBufferD3D11(DeviceD3D11& device, const FrameBufferDesc& desc);
-        ~FrameBufferD3D11();
+struct DeviceD3D11;
 
-        inline DeviceD3D11& GetDevice() const
-        { return m_Device; }
+struct FrameBufferD3D11
+{
+    inline ~FrameBufferD3D11()
+    {}
 
-        void Bind(VersionedContext& context, RenderPassBeginFlag renderPassBeginFlag) const;
-        void ClearAttachments(VersionedContext& context, const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum) const;
+    inline DeviceD3D11& GetDevice() const
+    { return m_Device; }
 
-        //======================================================================================================================
-        // NRI
-        //======================================================================================================================
-        void SetDebugName(const char* name);
+    FrameBufferD3D11(DeviceD3D11& device, const FrameBufferDesc& desc);
 
-    private:
-        Vector<ClearDesc> m_ClearDescs;
-        Vector<ID3D11RenderTargetView*> m_RenderTargets;
-        ID3D11DepthStencilView* m_DepthStencil = nullptr;
-        DeviceD3D11& m_Device;
-    };
+    void Bind(VersionedContext& context, RenderPassBeginFlag renderPassBeginFlag) const;
+    void ClearAttachments(VersionedContext& context, const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum) const;
+
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+
+    inline void SetDebugName(const char* name)
+    { MaybeUnused(name); }
+
+private:
+    DeviceD3D11& m_Device;
+    Vector<ClearDesc> m_ClearDescs;
+    Vector<ID3D11RenderTargetView*> m_RenderTargets;
+    ID3D11DepthStencilView* m_DepthStencil = nullptr;
+};
+
 }

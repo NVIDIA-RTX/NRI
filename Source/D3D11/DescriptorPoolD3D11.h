@@ -12,31 +12,48 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct DeviceD3D11;
-    struct DescriptorD3D11;
 
-    struct DescriptorPoolD3D11
+struct DeviceD3D11;
+struct DescriptorD3D11;
+
+struct DescriptorPoolD3D11
+{
+    inline DescriptorPoolD3D11(DeviceD3D11& device) :
+        m_Sets(device.GetStdAllocator()),
+        m_Pool(device.GetStdAllocator()),
+        m_Device(device)
+    {}
+
+    inline ~DescriptorPoolD3D11()
+    {}
+
+    inline DeviceD3D11& GetDevice() const
+    { return m_Device; }
+
+    Result Create(const DescriptorPoolDesc& descriptorPoolDesc);
+
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+
+    inline void SetDebugName(const char* name)
+    { MaybeUnused(name); }
+
+    inline void Reset()
     {
-        DescriptorPoolD3D11(DeviceD3D11& device);
+        m_DescriptorPoolOffset = 0;
+        m_DescriptorSetIndex = 0;
+    }
 
-        inline DeviceD3D11& GetDevice() const
-        { return m_Device; }
+    Result AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** descriptorSets,
+        uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum);
 
-        Result Create(const DescriptorPoolDesc& descriptorPoolDesc);
+private:
+    DeviceD3D11& m_Device;
+    Vector<DescriptorSetD3D11> m_Sets;
+    Vector<const DescriptorD3D11*> m_Pool;
+    uint32_t m_DescriptorPoolOffset = 0;
+    uint32_t m_DescriptorSetIndex = 0;
+};
 
-        //======================================================================================================================
-        // NRI
-        //======================================================================================================================
-        void SetDebugName(const char* name);
-        Result AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** descriptorSets,
-            uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum);
-        void Reset();
-
-    private:
-        Vector<DescriptorSetD3D11> m_Sets;
-        Vector<const DescriptorD3D11*> m_Pool;
-        uint32_t m_DescriptorPoolOffset = 0;
-        uint32_t m_DescriptorSetIndex = 0;
-        DeviceD3D11& m_Device;
-    };
 }

@@ -12,13 +12,15 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct FrameBufferVal : public DeviceObjectVal<FrameBuffer>
-    {
-        FrameBufferVal(DeviceVal& device, FrameBuffer& frameBuffer);
 
-        //======================================================================================================================
-        // NRI
-        //======================================================================================================================
-        void SetDebugName(const char* name);
-    };
+struct FrameBufferVal : public DeviceObjectVal<FrameBuffer>
+{
+    FrameBufferVal(DeviceVal& device, FrameBuffer& frameBuffer);
+
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+    void SetDebugName(const char* name);
+};
+
 }

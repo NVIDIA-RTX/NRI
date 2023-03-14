@@ -12,38 +12,43 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct DeviceVK;
-    struct CommandQueueVK;
-    struct TextureVK;
 
-    struct SwapChainVK
-    {
-        SwapChainVK(DeviceVK& device);
-        ~SwapChainVK();
+struct DeviceVK;
+struct CommandQueueVK;
+struct TextureVK;
 
-        DeviceVK& GetDevice() const;
-        Result Create(const SwapChainDesc& swapChainDesc);
+struct SwapChainVK
+{
+    inline DeviceVK& GetDevice() const
+    { return m_Device; }
 
-        void SetDebugName(const char* name);
-        Texture* const* GetTextures(uint32_t& textureNum, Format& format) const;
-        uint32_t AcquireNextTexture(QueueSemaphore& textureReadyForRender);
-        Result Present(QueueSemaphore& textureReadyForPresent);
-        Result SetHdrMetadata(const HdrMetadata& hdrMetadata);
+    SwapChainVK(DeviceVK& device);
+    ~SwapChainVK();
 
-    private:
-        Result CreateSurface(const SwapChainDesc& swapChainDesc);
+    Result Create(const SwapChainDesc& swapChainDesc);
 
-        VkSwapchainKHR m_Handle = VK_NULL_HANDLE;
-        const CommandQueueVK* m_CommandQueue = nullptr;
-        uint32_t m_TextureIndex = std::numeric_limits<uint32_t>::max();
-        VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
-        Vector<TextureVK*> m_Textures;
-        Format m_Format = Format::UNKNOWN;
-        DeviceVK& m_Device;
-    };
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
 
-    inline DeviceVK& SwapChainVK::GetDevice() const
-    {
-        return m_Device;
-    }
+    void SetDebugName(const char* name);
+    Texture* const* GetTextures(uint32_t& textureNum, Format& format) const;
+    uint32_t AcquireNextTexture();
+    Result Present();
+    Result SetHdrMetadata(const HdrMetadata& hdrMetadata);
+
+private:
+    Result CreateSurface(const SwapChainDesc& swapChainDesc);
+
+private:
+    VkSwapchainKHR m_Handle = VK_NULL_HANDLE;
+    const CommandQueueVK* m_CommandQueue = nullptr;
+    uint32_t m_TextureIndex = 0;
+    VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
+    Vector<TextureVK*> m_Textures;
+    Format m_Format = Format::UNKNOWN;
+    DeviceVK& m_Device;
+    VkSemaphore m_Fence = VK_NULL_HANDLE;
+};
+
 }

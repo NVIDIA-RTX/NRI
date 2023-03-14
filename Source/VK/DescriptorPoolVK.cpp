@@ -12,17 +12,8 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "DescriptorPoolVK.h"
 #include "DescriptorSetVK.h"
 #include "PipelineLayoutVK.h"
-#include "DeviceVK.h"
 
 using namespace nri;
-
-DescriptorPoolVK::DescriptorPoolVK(DeviceVK& device) :
-    m_AllocatedSets(device.GetStdAllocator()),
-    m_Device(device)
-{
-    const size_t initialCapacity = 64;
-    m_AllocatedSets.reserve(initialCapacity);
-}
 
 DescriptorPoolVK::~DescriptorPoolVK()
 {
@@ -75,7 +66,7 @@ Result DescriptorPoolVK::Create(const DescriptorPoolDesc& descriptorPoolDesc)
     AddDescriptorPoolSize(descriptorPoolSizeArray, poolSizeCount, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, descriptorPoolDesc.bufferMaxNum);
     AddDescriptorPoolSize(descriptorPoolSizeArray, poolSizeCount, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, descriptorPoolDesc.storageBufferMaxNum);
     AddDescriptorPoolSize(descriptorPoolSizeArray, poolSizeCount, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, descriptorPoolDesc.structuredBufferMaxNum + descriptorPoolDesc.storageStructuredBufferMaxNum);
-    AddDescriptorPoolSize(descriptorPoolSizeArray, poolSizeCount, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV, descriptorPoolDesc.accelerationStructureMaxNum);
+    AddDescriptorPoolSize(descriptorPoolSizeArray, poolSizeCount, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, descriptorPoolDesc.accelerationStructureMaxNum);
 
     for (uint32_t i = 0; i < poolSizeCount; i++)
         descriptorPoolSizeArray[i].descriptorCount *= physicalDeviceNum;
@@ -104,6 +95,10 @@ Result DescriptorPoolVK::Create(NRIVkDescriptorPool vkDescriptorPool)
 
     return Result::SUCCESS;
 }
+
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 inline void DescriptorPoolVK::SetDebugName(const char* name)
 {

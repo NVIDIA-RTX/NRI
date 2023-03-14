@@ -10,7 +10,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #pragma once
 
-#pragma region [  CoreInterface  ]
+#pragma region [  Core  ]
 
 static void NRI_CALL SetMemoryDebugName(Memory& memory, const char* name)
 {

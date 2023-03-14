@@ -9,13 +9,8 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
 #include "SharedD3D12.h"
-
 #include "AccelerationStructureD3D12.h"
-#include "DeviceD3D12.h"
 #include "BufferD3D12.h"
-#include "MemoryD3D12.h"
-
-#ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
 
 using namespace nri;
 
@@ -106,16 +101,18 @@ uint64_t AccelerationStructureD3D12::GetHandle() const
     return m_Buffer->GetPointerGPU();
 }
 
+AccelerationStructureD3D12::operator ID3D12Resource* () const
+{
+    return (ID3D12Resource*)*m_Buffer;
+}
+
+//================================================================================================================
+// NRI
+//================================================================================================================
+
 inline void AccelerationStructureD3D12::SetDebugName(const char* name)
 {
     m_Buffer->SetDebugName(name);
 }
 
-inline AccelerationStructureD3D12::operator ID3D12Resource* () const
-{
-    return (ID3D12Resource*)*m_Buffer;
-}
-
 #include "AccelerationStructureD3D12.hpp"
-
-#endif

@@ -8,18 +8,13 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma once
-
-#pragma region [  CoreInterface  ]
+#pragma region [  Core  ]
 
 static void NRI_CALL SetPipelineLayoutDebugName(PipelineLayout& pipelineLayout, const char* name)
 {
     ((PipelineLayoutVK&)pipelineLayout).SetDebugName(name);
 }
 
-void FillFunctionTablePipelineLayoutVK(CoreInterface& coreInterface)
-{
-    coreInterface.SetPipelineLayoutDebugName = ::SetPipelineLayoutDebugName;
-}
-
 #pragma endregion
+
+Define_Core_PipelineLayout_PartiallyFillFunctionTable(VK)

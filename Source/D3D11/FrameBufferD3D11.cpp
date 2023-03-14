@@ -8,18 +8,16 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#include "SharedExternal.h"
 #include "SharedD3D11.h"
 #include "FrameBufferD3D11.h"
-
 #include "DescriptorD3D11.h"
 
 using namespace nri;
 
 FrameBufferD3D11::FrameBufferD3D11(DeviceD3D11& device, const FrameBufferDesc& desc) :
-    m_ClearDescs(device.GetStdAllocator()),
-    m_RenderTargets(device.GetStdAllocator()),
     m_Device(device)
+    , m_ClearDescs(device.GetStdAllocator())
+    , m_RenderTargets(device.GetStdAllocator())
 {
     uint32_t clearDescNum = 0;
     if (desc.colorAttachments && desc.colorClearValues)
@@ -50,10 +48,6 @@ FrameBufferD3D11::FrameBufferD3D11(DeviceD3D11& device, const FrameBufferDesc& d
         if (desc.depthStencilClearValue)
             m_ClearDescs[desc.colorAttachmentNum] = {*desc.depthStencilClearValue, AttachmentContentType::DEPTH_STENCIL, 0};
     }
-}
-
-FrameBufferD3D11::~FrameBufferD3D11()
-{
 }
 
 void FrameBufferD3D11::Bind(VersionedContext& context, RenderPassBeginFlag renderPassBeginFlag) const
@@ -124,9 +118,8 @@ void FrameBufferD3D11::ClearAttachments(VersionedContext& context, const ClearDe
     }
 }
 
-void FrameBufferD3D11::SetDebugName(const char* name)
-{
-    MaybeUnused(name);
-}
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 #include "FrameBufferD3D11.hpp"

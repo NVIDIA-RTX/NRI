@@ -10,7 +10,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "SharedD3D12.h"
 #include "BufferD3D12.h"
-#include "DeviceD3D12.h"
 #include "MemoryD3D12.h"
 
 using namespace nri;
@@ -57,10 +56,8 @@ Result BufferD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset, bool 
     else if (heapDesc.Properties.Type == D3D12_HEAP_TYPE_READBACK)
         initialState |= D3D12_RESOURCE_STATE_COPY_DEST;
 
-#ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
     if (isAccelerationStructureBuffer)
         initialState |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
-#endif
 
     if (memory->RequiresDedicatedAllocation())
     {
@@ -99,6 +96,10 @@ Result BufferD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset, bool 
 
     return Result::SUCCESS;
 }
+
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 inline void BufferD3D12::GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const
 {

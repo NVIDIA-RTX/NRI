@@ -12,36 +12,39 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct DeviceD3D12;
 
-    struct FrameBufferD3D12
-    {
-        FrameBufferD3D12(DeviceD3D12& device);
-        ~FrameBufferD3D12();
+struct DeviceD3D12;
 
-        DeviceD3D12& GetDevice() const;
-
-        Result Create(const FrameBufferDesc& frameBufferDesc);
-        void Bind(ID3D12GraphicsCommandList* graphicsCommandList, RenderPassBeginFlag renderPassBeginFlag);
-        void Clear(ID3D12GraphicsCommandList* graphicsCommandList, const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum);
-
-        //================================================================================================================
-        // NRI
-        //================================================================================================================
-        void SetDebugName(const char* name);
-
-    private:
-        DeviceD3D12& m_Device;
-        Vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_RenderTargets;
-        D3D12_CPU_DESCRIPTOR_HANDLE m_DepthStencilTarget = {};
-        Vector<ClearDesc> m_ClearDescs;
-    };
-
-    inline FrameBufferD3D12::~FrameBufferD3D12()
+struct FrameBufferD3D12
+{
+    inline FrameBufferD3D12(DeviceD3D12& device)
+        : m_Device(device)
+        , m_RenderTargets(device.GetStdAllocator())
+        , m_ClearDescs(device.GetStdAllocator())
     {}
 
-    inline DeviceD3D12& FrameBufferD3D12::GetDevice() const
-    {
-        return m_Device;
-    }
+    inline ~FrameBufferD3D12()
+    {}
+
+    inline DeviceD3D12& GetDevice() const
+    { return m_Device; }
+
+    Result Create(const FrameBufferDesc& frameBufferDesc);
+    void Bind(ID3D12GraphicsCommandList* graphicsCommandList, RenderPassBeginFlag renderPassBeginFlag);
+    void Clear(ID3D12GraphicsCommandList* graphicsCommandList, const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum);
+
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+
+    inline void SetDebugName(const char* name)
+    { MaybeUnused(name); }
+
+private:
+    DeviceD3D12& m_Device;
+    Vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_RenderTargets;
+    D3D12_CPU_DESCRIPTOR_HANDLE m_DepthStencilTarget = {};
+    Vector<ClearDesc> m_ClearDescs;
+};
+
 }

@@ -8,33 +8,27 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma region [  CoreInterface  ]
+#pragma region [  Core  ]
 
 static void NRI_CALL SetCommandQueueDebugName(CommandQueue& commandQueue, const char* name)
 {
     ((CommandQueueVal*)&commandQueue)->SetDebugName(name);
 }
 
-static void NRI_CALL SubmitQueueWork(CommandQueue& commandQueue, const WorkSubmissionDesc& workSubmissionDesc, DeviceSemaphore* deviceSemaphore)
+static void NRI_CALL QueueSubmit(CommandQueue& commandQueue, const QueueSubmitDesc& queueSubmitDesc)
 {
-    ((CommandQueueVal*)&commandQueue)->Submit(workSubmissionDesc, deviceSemaphore);
-}
-
-static void NRI_CALL WaitForSemaphore(CommandQueue& commandQueue, DeviceSemaphore& deviceSemaphore)
-{
-    ((CommandQueueVal*)&commandQueue)->Wait(deviceSemaphore);
+    ((CommandQueueVal*)&commandQueue)->Submit(queueSubmitDesc);
 }
 
 void FillFunctionTableCommandQueueVal(CoreInterface& coreInterface)
 {
     coreInterface.SetCommandQueueDebugName = ::SetCommandQueueDebugName;
-    coreInterface.SubmitQueueWork = ::SubmitQueueWork;
-    coreInterface.WaitForSemaphore = ::WaitForSemaphore;
+    coreInterface.QueueSubmit = ::QueueSubmit;
 }
 
 #pragma endregion
 
-#pragma region [  HelperInterface  ]
+#pragma region [  Helper  ]
 
 static Result NRI_CALL ChangeResourceStatesVal(CommandQueue& commandQueue, const TransitionBarrierDesc& transitionBarriers)
 {

@@ -12,30 +12,31 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct CommandBufferVal;
 
-    struct CommandQueueVal : public DeviceObjectVal<CommandQueue>
-    {
-        CommandQueueVal(DeviceVal& device, CommandQueue& commandQueue);
+struct CommandBufferVal;
 
-        //======================================================================================================================
-        // NRI
-        //======================================================================================================================
-        void SetDebugName(const char* name);
-        void Submit(const WorkSubmissionDesc& workSubmissions, DeviceSemaphore* deviceSemaphore);
-        void Wait(DeviceSemaphore& deviceSemaphore);
+struct CommandQueueVal : public DeviceObjectVal<CommandQueue>
+{
+    CommandQueueVal(DeviceVal& device, CommandQueue& commandQueue);
 
-        Result WaitForIdle();
-        Result ChangeResourceStates(const TransitionBarrierDesc& transitionBarriers);
-        Result UploadData(const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum,
-            const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum);
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+    void SetDebugName(const char* name);
+    void Submit(const QueueSubmitDesc& queueSubmitDesc);
 
-    private:
-        void ProcessValidationCommands(const CommandBufferVal* const* commandBuffers, uint32_t commandBufferNum);
-        void ProcessValidationCommandBeginQuery(const uint8_t*& begin, const uint8_t* end);
-        void ProcessValidationCommandEndQuery(const uint8_t*& begin, const uint8_t* end);
-        void ProcessValidationCommandResetQuery(const uint8_t*& begin, const uint8_t* end);
+    Result WaitForIdle();
+    Result ChangeResourceStates(const TransitionBarrierDesc& transitionBarriers);
+    Result UploadData(const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum,
+        const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum);
 
-        const HelperInterface& m_HelperAPI;
-    };
+private:
+    void ProcessValidationCommands(const CommandBufferVal* const* commandBuffers, uint32_t commandBufferNum);
+    void ProcessValidationCommandBeginQuery(const uint8_t*& begin, const uint8_t* end);
+    void ProcessValidationCommandEndQuery(const uint8_t*& begin, const uint8_t* end);
+    void ProcessValidationCommandResetQuery(const uint8_t*& begin, const uint8_t* end);
+
+    const HelperInterface& m_HelperAPI;
+};
+
 }

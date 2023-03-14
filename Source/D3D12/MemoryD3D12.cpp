@@ -10,7 +10,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "SharedD3D12.h"
 #include "MemoryD3D12.h"
-#include "DeviceD3D12.h"
 
 using namespace nri;
 
@@ -51,9 +50,4 @@ Result MemoryD3D12::Create(const MemoryD3D12Desc& memoryDesc)
     m_HeapDesc = m_Heap->GetDesc();
 
     return Result::SUCCESS;
-}
-
-void MemoryD3D12::SetDebugName(const char* name)
-{
-    SET_D3D_DEBUG_OBJECT_NAME(m_Heap, name);
 }

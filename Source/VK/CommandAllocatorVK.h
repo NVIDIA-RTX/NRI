@@ -12,41 +12,39 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct DeviceVK;
 
-    struct CommandAllocatorVK
-    {
-        CommandAllocatorVK(DeviceVK& device);
-        ~CommandAllocatorVK();
+struct DeviceVK;
 
-        operator VkCommandPool() const;
-        DeviceVK& GetDevice() const;
-        Result Create(const CommandQueue& commandQueue, uint32_t physicalDeviceMask);
-        Result Create(const CommandAllocatorVulkanDesc& commandAllocatorDesc);
-
-        void SetDebugName(const char* name);
-        Result CreateCommandBuffer(CommandBuffer*& commandBuffer);
-        void Reset();
-
-    private:
-        VkCommandPool m_Handle = VK_NULL_HANDLE;
-        CommandQueueType m_Type = (CommandQueueType)0;
-        DeviceVK& m_Device;
-        bool m_OwnsNativeObjects = false;
-    };
-
-    inline CommandAllocatorVK::CommandAllocatorVK(DeviceVK& device) :
+struct CommandAllocatorVK
+{
+    inline CommandAllocatorVK(DeviceVK& device) :
         m_Device(device)
-    {
-    }
+    {}
 
-    inline CommandAllocatorVK::operator VkCommandPool() const
-    {
-        return m_Handle;
-    }
+    inline operator VkCommandPool() const
+    { return m_Handle; }
 
-    inline DeviceVK& CommandAllocatorVK::GetDevice() const
-    {
-        return m_Device;
-    }
+    inline DeviceVK& GetDevice() const
+    { return m_Device; }
+
+    ~CommandAllocatorVK();
+
+    Result Create(const CommandQueue& commandQueue, uint32_t physicalDeviceMask);
+    Result Create(const CommandAllocatorVulkanDesc& commandAllocatorDesc);
+
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+
+    void SetDebugName(const char* name);
+    Result CreateCommandBuffer(CommandBuffer*& commandBuffer);
+    void Reset();
+
+private:
+    DeviceVK& m_Device;
+    VkCommandPool m_Handle = VK_NULL_HANDLE;
+    CommandQueueType m_Type = (CommandQueueType)0;
+    bool m_OwnsNativeObjects = false;
+};
+
 }

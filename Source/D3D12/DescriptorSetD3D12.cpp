@@ -10,8 +10,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "SharedD3D12.h"
 #include "DescriptorSetD3D12.h"
-#include "DeviceD3D12.h"
-#include "DescriptorPoolD3D12.h"
 #include "DescriptorD3D12.h"
 
 using namespace nri;
@@ -78,10 +76,9 @@ DescriptorPointerGPU DescriptorSetD3D12::GetDynamicPointerGPU(uint32_t dynamicCo
     return m_DynamicConstantBuffers[dynamicConstantBufferIndex];
 }
 
-inline void DescriptorSetD3D12::SetDebugName(const char* name)
-{
-    MaybeUnused(name);
-}
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 inline void DescriptorSetD3D12::UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs)
 {

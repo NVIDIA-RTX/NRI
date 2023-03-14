@@ -11,7 +11,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "SharedVK.h"
 #include "TextureVK.h"
 #include "CommandQueueVK.h"
-#include "DeviceVK.h"
 
 using namespace nri;
 
@@ -119,6 +118,10 @@ Result TextureVK::Create(const TextureVulkanDesc& textureDesc)
     return Result::SUCCESS;
 }
 
+//================================================================================================================
+// NRI
+//================================================================================================================
+
 inline void TextureVK::SetDebugName(const char* name)
 {
     std::array<uint64_t, PHYSICAL_DEVICE_GROUP_MAX_SIZE> handles;
@@ -169,24 +172,4 @@ void TextureVK::GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memoryD
     memoryDesc.type = unpack.type;
 }
 
-inline void TextureVK::GetTextureVK(uint32_t physicalDeviceIndex, TextureVulkanDesc& textureVulkanDesc) const
-{
-    textureVulkanDesc = {};
-    textureVulkanDesc.vkImage = (NRIVkImage)GetHandle(physicalDeviceIndex);
-    textureVulkanDesc.vkFormat = GetVkFormat(GetFormat());
-    textureVulkanDesc.vkImageAspectFlags = GetImageAspectFlags();
-    textureVulkanDesc.vkImageType = GetImageType(GetType());
-    textureVulkanDesc.size[0] = GetSize(0);
-    textureVulkanDesc.size[1] = GetSize(1);
-    textureVulkanDesc.size[2] = GetSize(2);
-    textureVulkanDesc.mipNum = GetMipNum();
-    textureVulkanDesc.arraySize = GetArraySize();
-    textureVulkanDesc.sampleNum = (uint8_t)GetSampleCount();
-    textureVulkanDesc.physicalDeviceMask = 1 << physicalDeviceIndex;
-}
-
 #include "TextureVK.hpp"
-
-static_assert((uint32_t)nri::TextureType::TEXTURE_1D == 0u, "TextureVK::GetSize() depends on nri::TextureType");
-static_assert((uint32_t)nri::TextureType::TEXTURE_2D == 1u, "TextureVK::GetSize() depends on nri::TextureType");
-static_assert((uint32_t)nri::TextureType::TEXTURE_3D == 2u, "TextureVK::GetSize() depends on nri::TextureType");

@@ -8,14 +8,11 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#include "SharedExternal.h"
+#include <dxgi1_5.h>
+
 #include "SharedD3D11.h"
 #include "SwapChainD3D11.h"
-
 #include "TextureD3D11.h"
-#include "QueueSemaphoreD3D11.h"
-
-#include <dxgi1_5.h>
 
 using namespace nri;
 
@@ -46,13 +43,6 @@ static std::array<Format, 5> g_swapChainTextureFormat =
     Format::R10_G10_B10_A2_UNORM,                   // BT2020_G2084_10BIT
 };
 
-SwapChainD3D11::SwapChainD3D11(DeviceD3D11& device) :
-    m_RenderTargets(device.GetStdAllocator()),
-    m_RenderTargetPointers(device.GetStdAllocator()),
-    m_Device(device)
-{
-}
-
 SwapChainD3D11::~SwapChainD3D11()
 {
     if (m_IsFullscreenEnabled)
@@ -62,12 +52,19 @@ SwapChainD3D11::~SwapChainD3D11()
         if (fullscreen)
             m_SwapChain->SetFullscreenState(FALSE, nullptr);
     }
+
+    for (TextureD3D11* texture : m_Textures)
+        Deallocate<TextureD3D11>(m_Device.GetStdAllocator(), texture);
 }
 
-Result SwapChainD3D11::Create(const VersionedDevice& device, const SwapChainDesc& swapChainDesc)
+Result SwapChainD3D11::Create(const SwapChainDesc& swapChainDesc)
 {
+    HWND hwnd = (HWND)swapChainDesc.window.windows.hwnd;
+    if (!hwnd)
+        return Result::INVALID_ARGUMENT;
+
     ComPtr<IDXGIDevice> dxgiDevice;
-    HRESULT hr = device->QueryInterface(IID_PPV_ARGS(&dxgiDevice));
+    HRESULT hr = m_Device.GetDevice()->QueryInterface(IID_PPV_ARGS(&dxgiDevice));
     RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IUnknown::QueryInterface() - FAILED!");
 
     ComPtr<IDXGIAdapter> dxgiAdapter;
@@ -91,8 +88,6 @@ Result SwapChainD3D11::Create(const VersionedDevice& device, const SwapChainDesc
     DXGI_FORMAT format = g_swapChainFormat[(uint32_t)swapChainDesc.format];
     DXGI_COLOR_SPACE_TYPE colorSpace = g_colorSpace[(uint32_t)swapChainDesc.format];
 
-    const HWND hwnd = (HWND)swapChainDesc.window.windows.hwnd;
-
     DXGI_SWAP_CHAIN_DESC1 desc = {};
     desc.BufferCount = swapChainDesc.textureNum;
     desc.Width = swapChainDesc.width;
@@ -106,12 +101,12 @@ Result SwapChainD3D11::Create(const VersionedDevice& device, const SwapChainDesc
     desc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
 
     ComPtr<IDXGISwapChain1> swapChain;
-    hr = dxgiFactory2->CreateSwapChainForHwnd(device.ptr, hwnd, &desc, nullptr, nullptr, &swapChain);
+    hr = dxgiFactory2->CreateSwapChainForHwnd(m_Device.GetDevice().ptr, hwnd, &desc, nullptr, nullptr, &swapChain);
     if (FAILED(hr))
     {
         // are we on Win7?
         desc.Scaling = DXGI_SCALING_STRETCH;
-        hr = dxgiFactory2->CreateSwapChainForHwnd(device.ptr, hwnd, &desc, nullptr, nullptr, &swapChain);
+        hr = dxgiFactory2->CreateSwapChainForHwnd(m_Device.GetDevice().ptr, hwnd, &desc, nullptr, nullptr, &swapChain);
     }
     RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGIFactory2::CreateSwapChainForHwnd() - FAILED!");
 
@@ -123,17 +118,17 @@ Result SwapChainD3D11::Create(const VersionedDevice& device, const SwapChainDesc
     if (FAILED(hr))
     {
         REPORT_WARNING(m_Device.GetLog(), "QueryInterface(IDXGISwapChain4) - FAILED!");
-        hr = device->QueryInterface(__uuidof(IDXGISwapChain3), (void**)&m_SwapChain.ptr);
+        hr = m_Device.GetDevice()->QueryInterface(__uuidof(IDXGISwapChain3), (void**)&m_SwapChain.ptr);
         m_SwapChain.version = 3;
         if (FAILED(hr))
         {
             REPORT_WARNING(m_Device.GetLog(), "QueryInterface(IDXGISwapChain3) - FAILED!");
-            hr = device->QueryInterface(__uuidof(IDXGISwapChain2), (void**)&m_SwapChain.ptr);
+            hr = m_Device.GetDevice()->QueryInterface(__uuidof(IDXGISwapChain2), (void**)&m_SwapChain.ptr);
             m_SwapChain.version = 2;
             if (FAILED(hr))
             {
                 REPORT_WARNING(m_Device.GetLog(), "QueryInterface(IDXGISwapChain2) - FAILED!");
-                hr = device->QueryInterface(__uuidof(IDXGISwapChain1), (void**)&m_SwapChain.ptr);
+                hr = m_Device.GetDevice()->QueryInterface(__uuidof(IDXGISwapChain1), (void**)&m_SwapChain.ptr);
                 m_SwapChain.version = 1;
                 if (FAILED(hr))
                 {
@@ -180,17 +175,14 @@ Result SwapChainD3D11::Create(const VersionedDevice& device, const SwapChainDesc
         }
 
         hr = m_SwapChain->SetFullscreenState(TRUE, output);
-        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain1::SetFullscreenState() failed, error code: 0x%X.", hr);
+        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain::SetFullscreenState() failed, error code: 0x%X.", hr);
 
         hr = m_SwapChain->ResizeBuffers(desc.BufferCount, desc.Width, desc.Height, desc.Format, desc.Flags);
-        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain1::ResizeBuffers() failed, error code: 0x%X.", hr);
+        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain::ResizeBuffers() failed, error code: 0x%X.", hr);
 
         m_IsTearingAllowed = false;
         m_IsFullscreenEnabled = true;
     }
-
-    // In DX11 only 'bufferIndex = 0' can be used to create render targets, so set BufferCount to '1' and ignore 'desc.BufferCount'
-    const uint32_t bufferCount = 1;
 
     // Use "swapChainDesc.textureNum" to explicitly limit maximum frames in flight
     ComPtr<IDXGIDevice1> dxgiDevice1;
@@ -198,47 +190,47 @@ Result SwapChainD3D11::Create(const VersionedDevice& device, const SwapChainDesc
     if (SUCCEEDED(hr))
         dxgiDevice1->SetMaximumFrameLatency(swapChainDesc.textureNum);
 
-    m_RenderTargets.resize(bufferCount);
-    m_RenderTargetPointers.clear();
+    m_Format = g_swapChainTextureFormat[(uint32_t)swapChainDesc.format];
+    m_SwapChainDesc = swapChainDesc;
 
-    for (uint32_t i = 0; i < bufferCount; i++)
+    // In DX11 only 'bufferIndex = 0' can be used to create render targets, so set BufferCount to '1' and ignore 'desc.BufferCount'
+    m_SwapChainDesc.textureNum = 1;
+
+    m_Textures.reserve(m_SwapChainDesc.textureNum);
+    for (uint32_t i = 0; i < m_SwapChainDesc.textureNum; i++)
     {
-        ComPtr<ID3D11Texture2D> backBuffer;
-        hr = m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffer));
+        ComPtr<ID3D11Texture2D> textureNative;
+        hr = m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&textureNative));
         RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain::GetBuffer() - FAILED!");
 
         TextureD3D11Desc textureDesc = {};
-        textureDesc.d3d11Resource = backBuffer;
-        m_RenderTargets[i].Create(m_Device, textureDesc);
+        textureDesc.d3d11Resource = textureNative;
 
-        m_RenderTargetPointers.push_back((Texture*)&m_RenderTargets[i]);
+        TextureD3D11* texture = Allocate<TextureD3D11>(m_Device.GetStdAllocator(), m_Device);
+        const nri::Result res = texture->Create(textureDesc);
+        if (res != nri::Result::SUCCESS)
+            return res;
+
+        m_Textures.push_back(texture);
     }
-
-    m_Format = g_swapChainTextureFormat[(uint32_t)swapChainDesc.format];
-
-    m_SwapChainDesc = swapChainDesc;
-    m_SwapChainDesc.textureNum = bufferCount;
 
     return Result::SUCCESS;
 }
 
-inline void SwapChainD3D11::SetDebugName(const char* name)
-{
-    SetName(m_SwapChain.ptr, name);
-}
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 inline Texture* const* SwapChainD3D11::GetTextures(uint32_t& textureNum, Format& format) const
 {
     textureNum = m_SwapChainDesc.textureNum;
     format = m_Format;
 
-    return &m_RenderTargetPointers[0];
+    return (Texture**)m_Textures.data();
 }
 
-inline uint32_t SwapChainD3D11::AcquireNextTexture(QueueSemaphore& textureReadyForRender)
+inline uint32_t SwapChainD3D11::AcquireNextTexture()
 {
-    ((QueueSemaphoreD3D11&)textureReadyForRender).Signal();
-
     uint32_t nextTextureIndex = 0;
     if (m_SwapChain.version >= 3)
         nextTextureIndex = m_SwapChain->GetCurrentBackBufferIndex();
@@ -246,10 +238,8 @@ inline uint32_t SwapChainD3D11::AcquireNextTexture(QueueSemaphore& textureReadyF
     return nextTextureIndex;
 }
 
-inline Result SwapChainD3D11::Present(QueueSemaphore& textureReadyForPresent)
+inline Result SwapChainD3D11::Present()
 {
-    ((QueueSemaphoreD3D11&)textureReadyForPresent).Wait();
-
     BOOL fullscreen = FALSE;
     m_SwapChain->GetFullscreenState(&fullscreen, nullptr);
     if (fullscreen != BOOL(m_IsFullscreenEnabled))

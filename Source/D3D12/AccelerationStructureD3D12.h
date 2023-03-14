@@ -10,53 +10,47 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #pragma once
 
-#ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
 namespace nri
 {
-    struct DeviceD3D12;
-    struct BufferD3D12;
 
-    struct AccelerationStructureD3D12
-    {
-        AccelerationStructureD3D12(DeviceD3D12& device);
-        ~AccelerationStructureD3D12();
+struct DeviceD3D12;
+struct BufferD3D12;
 
-        DeviceD3D12& GetDevice() const;
-        operator ID3D12Resource*() const;
-        operator BufferD3D12* () const;
-
-        Result Create(const AccelerationStructureDesc& accelerationStructureDesc);
-        Result Create(const AccelerationStructureD3D12Desc& accelerationStructureDesc);
-        void GetMemoryInfo(MemoryDesc& memoryDesc) const;
-        uint64_t GetUpdateScratchBufferSize() const;
-        uint64_t GetBuildScratchBufferSize() const;
-        Result BindMemory(Memory* memory, uint64_t offset);
-        Result CreateDescriptor(Descriptor*& descriptor) const;
-        uint64_t GetHandle() const;
-
-        //================================================================================================================
-        // NRI
-        //================================================================================================================
-        void SetDebugName(const char* name);
-
-    private:
-        DeviceD3D12& m_Device;
-        D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO m_PrebuildInfo = {};
-        BufferD3D12* m_Buffer = nullptr;
-    };
-
-    inline AccelerationStructureD3D12::AccelerationStructureD3D12(DeviceD3D12& device)
+struct AccelerationStructureD3D12
+{
+    inline AccelerationStructureD3D12(DeviceD3D12& device)
         : m_Device(device)
     {}
 
-    inline DeviceD3D12& AccelerationStructureD3D12::GetDevice() const
-    {
-        return m_Device;
-    }
+    inline DeviceD3D12& GetDevice() const
+    { return m_Device; }
 
-    inline AccelerationStructureD3D12::operator BufferD3D12* () const
-    {
-        return m_Buffer;
-    }
+    inline operator BufferD3D12* () const
+    { return m_Buffer; }
+
+    ~AccelerationStructureD3D12();
+
+    Result Create(const AccelerationStructureDesc& accelerationStructureDesc);
+    Result Create(const AccelerationStructureD3D12Desc& accelerationStructureDesc);
+    void GetMemoryInfo(MemoryDesc& memoryDesc) const;
+    uint64_t GetUpdateScratchBufferSize() const;
+    uint64_t GetBuildScratchBufferSize() const;
+    Result BindMemory(Memory* memory, uint64_t offset);
+    Result CreateDescriptor(Descriptor*& descriptor) const;
+
+    uint64_t GetHandle() const;
+    operator ID3D12Resource* () const;
+
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+
+    void SetDebugName(const char* name);
+
+private:
+    DeviceD3D12& m_Device;
+    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO m_PrebuildInfo = {};
+    BufferD3D12* m_Buffer = nullptr;
+};
+
 }
-#endif

@@ -8,7 +8,9 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma region [  CoreInterface  ]
+Declare_PartiallyFillFunctionTable_Functions(D3D12)
+
+#pragma region [  Core  ]
 
 static const DeviceDesc& NRI_CALL GetDeviceDesc(const Device& device)
 {
@@ -87,6 +89,11 @@ static Result NRI_CALL CreateComputePipeline(Device& device, const ComputePipeli
     return ((DeviceD3D12&)device).CreatePipeline(computePipelineDesc, pipeline);
 }
 
+static Result NRI_CALL CreateFence(Device& device, uint64_t initialValue, Fence*& fence)
+{
+    return ((DeviceD3D12&)device).CreateFence(initialValue, fence);
+}
+
 static Result NRI_CALL CreateFrameBuffer(Device& device, const FrameBufferDesc& frameBufferDesc, FrameBuffer*& frameBuffer)
 {
     return ((DeviceD3D12&)device).CreateFrameBuffer(frameBufferDesc, frameBuffer);
@@ -95,16 +102,6 @@ static Result NRI_CALL CreateFrameBuffer(Device& device, const FrameBufferDesc& 
 static Result NRI_CALL CreateQueryPool(Device& device, const QueryPoolDesc& queryPoolDesc, QueryPool*& queryPool)
 {
     return ((DeviceD3D12&)device).CreateQueryPool(queryPoolDesc, queryPool);
-}
-
-static Result NRI_CALL CreateQueueSemaphore(Device& device, QueueSemaphore*& queueSemaphore)
-{
-    return ((DeviceD3D12&)device).CreateQueueSemaphore(queueSemaphore);
-}
-
-static Result NRI_CALL CreateDeviceSemaphore(Device& device, bool signaled, DeviceSemaphore*& deviceSemaphore)
-{
-    return ((DeviceD3D12&)device).CreateDeviceSemaphore(signaled, deviceSemaphore);
 }
 
 static void NRI_CALL DestroyCommandAllocator(CommandAllocator& commandAllocator)
@@ -149,6 +146,12 @@ static void NRI_CALL DestroyPipeline(Pipeline& pipeline)
     device.DestroyPipeline(pipeline);
 }
 
+static void NRI_CALL DestroyFence(Fence& fence)
+{
+    DeviceD3D12& device = ((FenceD3D12&)fence).GetDevice();
+    device.DestroyFence(fence);
+}
+
 static void NRI_CALL DestroyFrameBuffer(FrameBuffer& frameBuffer)
 {
     DeviceD3D12& device = ((FrameBufferD3D12&)frameBuffer).GetDevice();
@@ -159,18 +162,6 @@ static void NRI_CALL DestroyQueryPool(QueryPool& queryPool)
 {
     DeviceD3D12& device = ((QueryPoolD3D12&)queryPool).GetDevice();
     device.DestroyQueryPool(queryPool);
-}
-
-static void NRI_CALL DestroyQueueSemaphore(QueueSemaphore& queueSemaphore)
-{
-    DeviceD3D12& device = ((QueueSemaphoreD3D12&)queueSemaphore).GetDevice();
-    device.DestroyQueueSemaphore(queueSemaphore);
-}
-
-static void NRI_CALL DestroyDeviceSemaphore(DeviceSemaphore& deviceSemaphore)
-{
-    DeviceD3D12& device = ((DeviceSemaphoreD3D12&)deviceSemaphore).GetDevice();
-    device.DestroyDeviceSemaphore(deviceSemaphore);
 }
 
 static Result NRI_CALL AllocateMemory(Device& device, uint32_t physicalDeviceMask, MemoryType memoryType, uint64_t size, Memory*& memory)
@@ -206,19 +197,9 @@ static void NRI_CALL SetDeviceDebugName(Device& device, const char* name)
     ((DeviceD3D12&)device).SetDebugName(name);
 }
 
-static void NRI_CALL SetDeviceSemaphoreDebugName(DeviceSemaphore& deviceSemaphore, const char* name)
+static void NRI_CALL SetFenceDebugName(Fence& fence, const char* name)
 {
-    ((DeviceSemaphoreD3D12&)deviceSemaphore).SetDebugName(name);
-}
-
-static void NRI_CALL SetQueueSemaphoreDebugName(QueueSemaphore& queueSemaphore, const char* name)
-{
-    ((QueueSemaphoreD3D12&)queueSemaphore).SetDebugName(name);
-}
-
-static void NRI_CALL SetDescriptorDebugName(Descriptor& descriptor, const char* name)
-{
-    ((DescriptorD3D12&)descriptor).SetDebugName(name);
+    ((FenceD3D12&)fence).SetDebugName(name);
 }
 
 static void NRI_CALL SetPipelineDebugName(Pipeline& pipeline, const char* name)
@@ -241,41 +222,12 @@ static void* NRI_CALL GetDeviceNativeObject(const Device& device)
     return (DeviceD3D12&)device;
 }
 
-static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor& descriptor, uint32_t physicalDeviceIndex)
-{
-    MaybeUnused(physicalDeviceIndex);
-
-    return uint64_t( ((DescriptorD3D12&)descriptor).GetPointerCPU() );
-}
-
-void FillFunctionTableBufferD3D12(CoreInterface& coreInterface);
-void FillFunctionTableCommandAllocatorD3D12(CoreInterface& coreInterface);
-void FillFunctionTableCommandBufferD3D12(CoreInterface& coreInterface);
-void FillFunctionTableCommandQueueD3D12(CoreInterface& coreInterface);
-void FillFunctionTableDescriptorPoolD3D12(CoreInterface& coreInterface);
-void FillFunctionTableDescriptorSetD3D12(CoreInterface& coreInterface);
-void FillFunctionTableQueryPoolD3D12(CoreInterface& coreInterface);
-void FillFunctionTableTextureD3D12(CoreInterface& coreInterface);
-void FillFunctionTablePipelineLayoutD3D12(CoreInterface& coreInterface);
-
 Result DeviceD3D12::FillFunctionTable(CoreInterface& coreInterface) const
 {
     coreInterface = {};
-
-    FillFunctionTableBufferD3D12(coreInterface);
-    FillFunctionTableCommandAllocatorD3D12(coreInterface);
-    FillFunctionTableCommandBufferD3D12(coreInterface);
-    FillFunctionTableCommandQueueD3D12(coreInterface);
-    FillFunctionTableDescriptorPoolD3D12(coreInterface);
-    FillFunctionTableDescriptorSetD3D12(coreInterface);
-    FillFunctionTableQueryPoolD3D12(coreInterface);
-    FillFunctionTableTextureD3D12(coreInterface);
-    FillFunctionTablePipelineLayoutD3D12(coreInterface);
-
     coreInterface.GetDeviceDesc = ::GetDeviceDesc;
     coreInterface.GetFormatSupport = ::GetFormatSupport;
     coreInterface.GetCommandQueue = ::GetCommandQueue;
-
     coreInterface.CreateCommandAllocator = ::CreateCommandAllocator;
     coreInterface.CreateDescriptorPool = ::CreateDescriptorPool;
     coreInterface.CreateBuffer = ::CreateBuffer;
@@ -290,9 +242,7 @@ Result DeviceD3D12::FillFunctionTable(CoreInterface& coreInterface) const
     coreInterface.CreateComputePipeline = ::CreateComputePipeline;
     coreInterface.CreateFrameBuffer = ::CreateFrameBuffer;
     coreInterface.CreateQueryPool = ::CreateQueryPool;
-    coreInterface.CreateQueueSemaphore = ::CreateQueueSemaphore;
-    coreInterface.CreateDeviceSemaphore = ::CreateDeviceSemaphore;
-
+    coreInterface.CreateFence = ::CreateFence;
     coreInterface.DestroyCommandAllocator = ::DestroyCommandAllocator;
     coreInterface.DestroyDescriptorPool = ::DestroyDescriptorPool;
     coreInterface.DestroyBuffer = ::DestroyBuffer;
@@ -300,33 +250,38 @@ Result DeviceD3D12::FillFunctionTable(CoreInterface& coreInterface) const
     coreInterface.DestroyDescriptor = ::DestroyDescriptor;
     coreInterface.DestroyPipelineLayout = ::DestroyPipelineLayout;
     coreInterface.DestroyPipeline = ::DestroyPipeline;
+    coreInterface.DestroyFence = ::DestroyFence;
     coreInterface.DestroyFrameBuffer = ::DestroyFrameBuffer;
     coreInterface.DestroyQueryPool = ::DestroyQueryPool;
-    coreInterface.DestroyQueueSemaphore = ::DestroyQueueSemaphore;
-    coreInterface.DestroyDeviceSemaphore = ::DestroyDeviceSemaphore;
-
     coreInterface.AllocateMemory = ::AllocateMemory;
     coreInterface.BindBufferMemory = ::BindBufferMemory;
     coreInterface.BindTextureMemory = ::BindTextureMemory;
     coreInterface.FreeMemory = ::FreeMemory;
-
     coreInterface.SetDeviceDebugName = ::SetDeviceDebugName;
-    coreInterface.SetDeviceSemaphoreDebugName = ::SetDeviceSemaphoreDebugName;
-    coreInterface.SetQueueSemaphoreDebugName = ::SetQueueSemaphoreDebugName;
-    coreInterface.SetDescriptorDebugName = ::SetDescriptorDebugName;
+    coreInterface.SetFenceDebugName = ::SetFenceDebugName;
     coreInterface.SetPipelineDebugName = ::SetPipelineDebugName;
     coreInterface.SetFrameBufferDebugName = ::SetFrameBufferDebugName;
     coreInterface.SetMemoryDebugName = ::SetMemoryDebugName;
-
     coreInterface.GetDeviceNativeObject = ::GetDeviceNativeObject;
-    coreInterface.GetDescriptorNativeObject = ::GetDescriptorNativeObject;
+
+    Core_Buffer_PartiallyFillFunctionTableD3D12(coreInterface);
+    Core_CommandAllocator_PartiallyFillFunctionTableD3D12(coreInterface);
+    Core_CommandBuffer_PartiallyFillFunctionTableD3D12(coreInterface);
+    Core_CommandQueue_PartiallyFillFunctionTableD3D12(coreInterface);
+    Core_Descriptor_PartiallyFillFunctionTableD3D12(coreInterface);
+    Core_DescriptorPool_PartiallyFillFunctionTableD3D12(coreInterface);
+    Core_DescriptorSet_PartiallyFillFunctionTableD3D12(coreInterface);
+    Core_Fence_PartiallyFillFunctionTableD3D12(coreInterface);
+    Core_PipelineLayout_PartiallyFillFunctionTableD3D12(coreInterface);
+    Core_QueryPool_PartiallyFillFunctionTableD3D12(coreInterface);
+    Core_Texture_PartiallyFillFunctionTableD3D12(coreInterface);
 
     return ValidateFunctionTable(GetLog(), coreInterface);
 }
 
 #pragma endregion
 
-#pragma region [  SwapChainInterface  ]
+#pragma region [  SwapChain  ]
 
 static Result NRI_CALL CreateSwapChain(Device& device, const SwapChainDesc& swapChainDesc, SwapChain*& swapChain)
 {
@@ -349,47 +304,44 @@ static Result NRI_CALL GetDisplaySize(Device& device, Display& display, uint16_t
     return ((DeviceD3D12&)device).GetDisplaySize(display, width, height);
 }
 
-void FillFunctionTableSwapChainD3D12(SwapChainInterface& swapChainInterface);
-
 Result DeviceD3D12::FillFunctionTable(SwapChainInterface& swapChainInterface) const
 {
     swapChainInterface = {};
-
-    FillFunctionTableSwapChainD3D12(swapChainInterface);
-
     swapChainInterface.CreateSwapChain = ::CreateSwapChain;
     swapChainInterface.DestroySwapChain = ::DestroySwapChain;
     swapChainInterface.GetDisplays = ::GetDisplays;
     swapChainInterface.GetDisplaySize = ::GetDisplaySize;
+
+    SwapChain_PartiallyFillFunctionTableD3D12(swapChainInterface);
 
     return ValidateFunctionTable(GetLog(), swapChainInterface);
 }
 
 #pragma endregion
 
-#pragma region [  WrapperD3D12Interface  ]
+#pragma region [  WrapperD3D12  ]
 
-static Result NRI_CALL CreateCommandBufferD3D12(Device& device, const CommandBufferD3D12Desc& commandBufferDesc, CommandBuffer*& commandBuffer)
+static Result NRI_CALL CreateCommandBuffer(Device& device, const CommandBufferD3D12Desc& commandBufferDesc, CommandBuffer*& commandBuffer)
 {
     return ((DeviceD3D12&)device).CreateCommandBuffer(commandBufferDesc, commandBuffer);
 }
 
-static Result NRI_CALL CreateBufferD3D12(Device& device, const BufferD3D12Desc& bufferDesc, Buffer*& buffer)
+static Result NRI_CALL CreateBuffer(Device& device, const BufferD3D12Desc& bufferDesc, Buffer*& buffer)
 {
     return ((DeviceD3D12&)device).CreateBuffer(bufferDesc, buffer);
 }
 
-static Result NRI_CALL CreateTextureD3D12(Device& device, const TextureD3D12Desc& textureDesc, Texture*& texture)
+static Result NRI_CALL CreateTexture(Device& device, const TextureD3D12Desc& textureDesc, Texture*& texture)
 {
     return ((DeviceD3D12&)device).CreateTexture(textureDesc, texture);
 }
 
-static Result NRI_CALL CreateMemoryD3D12(Device& device, const MemoryD3D12Desc& memoryDesc, Memory*& memory)
+static Result NRI_CALL CreateMemory(Device& device, const MemoryD3D12Desc& memoryDesc, Memory*& memory)
 {
     return ((DeviceD3D12&)device).CreateMemory(memoryDesc, memory);
 }
 
-static Result NRI_CALL CreateAccelerationStructureD3D12(Device& device, const AccelerationStructureD3D12Desc& accelerationStructureDesc, AccelerationStructure*& memory)
+static Result NRI_CALL CreateAccelerationStructure(Device& device, const AccelerationStructureD3D12Desc& accelerationStructureDesc, AccelerationStructure*& memory)
 {
     return ((DeviceD3D12&)device).CreateAccelerationStructure(accelerationStructureDesc, memory);
 }
@@ -397,20 +349,18 @@ static Result NRI_CALL CreateAccelerationStructureD3D12(Device& device, const Ac
 Result DeviceD3D12::FillFunctionTable(WrapperD3D12Interface& wrapperD3D12Interface) const
 {
     wrapperD3D12Interface = {};
-    wrapperD3D12Interface.CreateCommandBufferD3D12 = ::CreateCommandBufferD3D12;
-    wrapperD3D12Interface.CreateBufferD3D12 = ::CreateBufferD3D12;
-    wrapperD3D12Interface.CreateTextureD3D12 = ::CreateTextureD3D12;
-    wrapperD3D12Interface.CreateMemoryD3D12 = ::CreateMemoryD3D12;
-    wrapperD3D12Interface.CreateAccelerationStructureD3D12 = ::CreateAccelerationStructureD3D12;
+    wrapperD3D12Interface.CreateCommandBufferD3D12 = ::CreateCommandBuffer;
+    wrapperD3D12Interface.CreateBufferD3D12 = ::CreateBuffer;
+    wrapperD3D12Interface.CreateTextureD3D12 = ::CreateTexture;
+    wrapperD3D12Interface.CreateMemoryD3D12 = ::CreateMemory;
+    wrapperD3D12Interface.CreateAccelerationStructureD3D12 = ::CreateAccelerationStructure;
 
     return ValidateFunctionTable(GetLog(), wrapperD3D12Interface);
 }
 
 #pragma endregion
 
-#pragma region [  RayTracingInterface  ]
-
-#ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
+#pragma region [  RayTracing  ]
 
 static Result NRI_CALL CreateRayTracingPipeline(Device& device, const RayTracingPipelineDesc& rayTracingPipelineDesc, Pipeline*& pipeline)
 {
@@ -434,8 +384,6 @@ static Result NRI_CALL BindAccelerationStructureMemory(Device& device, const Acc
 }
 
 void FillFunctionTablePipelineD3D12(RayTracingInterface& rayTracingInterface);
-void FillFunctionTableCommandBufferD3D12(RayTracingInterface& rayTracingInterface);
-void FillFunctionTableAccelerationStructureD3D12(RayTracingInterface& rayTracingInterface);
 
 Result DeviceD3D12::FillFunctionTable(RayTracingInterface& rayTracingInterface) const
 {
@@ -445,8 +393,8 @@ Result DeviceD3D12::FillFunctionTable(RayTracingInterface& rayTracingInterface) 
         return Result::UNSUPPORTED;
 
     FillFunctionTablePipelineD3D12(rayTracingInterface);
-    FillFunctionTableAccelerationStructureD3D12(rayTracingInterface);
-    FillFunctionTableCommandBufferD3D12(rayTracingInterface);
+    RayTracing_AccelerationStructure_PartiallyFillFunctionTableD3D12(rayTracingInterface);
+    RayTracing_CommandBuffer_PartiallyFillFunctionTableD3D12(rayTracingInterface);
 
     rayTracingInterface.CreateRayTracingPipeline = ::CreateRayTracingPipeline;
     rayTracingInterface.CreateAccelerationStructure = ::CreateAccelerationStructure;
@@ -456,15 +404,9 @@ Result DeviceD3D12::FillFunctionTable(RayTracingInterface& rayTracingInterface) 
     return ValidateFunctionTable(GetLog(), rayTracingInterface);
 }
 
-#endif
-
 #pragma endregion
 
-#pragma region [  MeshShaderInterface  ]
-
-#ifdef __ID3D12GraphicsCommandList6_INTERFACE_DEFINED__
-
-void FillFunctionTableCommandBufferD3D12(MeshShaderInterface& meshShaderInterface);
+#pragma region [  MeshShader  ]
 
 Result DeviceD3D12::FillFunctionTable(MeshShaderInterface& meshShaderInterface) const
 {
@@ -473,36 +415,32 @@ Result DeviceD3D12::FillFunctionTable(MeshShaderInterface& meshShaderInterface) 
 
     meshShaderInterface = {};
 
-    FillFunctionTableCommandBufferD3D12(meshShaderInterface);
+    MeshShader_CommandBuffer_PartiallyFillFunctionTableD3D12(meshShaderInterface);
 
     return ValidateFunctionTable(GetLog(), meshShaderInterface);
 }
 
-#endif
-
 #pragma endregion
 
-#pragma region [  HelperInterface  ]
+#pragma region [  Helper  ]
 
-static uint32_t NRI_CALL CountAllocationNumD3D12(Device& device, const ResourceGroupDesc& resourceGroupDesc)
+static uint32_t NRI_CALL CountAllocationNum(Device& device, const ResourceGroupDesc& resourceGroupDesc)
 {
     return ((DeviceD3D12&)device).CalculateAllocationNumber(resourceGroupDesc);
 }
 
-static Result NRI_CALL AllocateAndBindMemoryD3D12(Device& device, const ResourceGroupDesc& resourceGroupDesc, Memory** allocations)
+static Result NRI_CALL AllocateAndBindMemory(Device& device, const ResourceGroupDesc& resourceGroupDesc, Memory** allocations)
 {
     return ((DeviceD3D12&)device).AllocateAndBindMemory(resourceGroupDesc, allocations);
 }
 
-void FillFunctionTableCommandQueueD3D12(HelperInterface& helperInterface);
-
 Result DeviceD3D12::FillFunctionTable(HelperInterface& helperInterface) const
 {
     helperInterface = {};
+    helperInterface.CalculateAllocationNumber = ::CountAllocationNum;
+    helperInterface.AllocateAndBindMemory = ::AllocateAndBindMemory;
 
-    helperInterface.CalculateAllocationNumber = ::CountAllocationNumD3D12;
-    helperInterface.AllocateAndBindMemory = ::AllocateAndBindMemoryD3D12;
-    FillFunctionTableCommandQueueD3D12(helperInterface);
+    Helper_CommandQueue_PartiallyFillFunctionTableD3D12(helperInterface);
 
     return ValidateFunctionTable(GetLog(), helperInterface);
 }

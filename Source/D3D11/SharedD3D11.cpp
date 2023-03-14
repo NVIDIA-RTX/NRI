@@ -8,7 +8,6 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#include "SharedExternal.h"
 #include "SharedD3D11.h"
 
 constexpr std::array<FormatInfo, (size_t)nri::Format::MAX_NUM> FORMAT_INFO_TABLE =
@@ -246,7 +245,7 @@ D3D11_PRIMITIVE_TOPOLOGY GetD3D11TopologyFromTopology(nri::Topology topology, ui
     return (D3D11_PRIMITIVE_TOPOLOGY)res;
 }
 
-//==============================================================================================================================
+//================================================================================================================
 
 inline bool DoesLibraryExist(const Log& log, const char* moduleName)
 {

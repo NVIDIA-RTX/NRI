@@ -8,7 +8,7 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma region [  CoreInterface  ]
+#pragma region [  Core  ]
 
 static void NRI_CALL SetCommandBufferDebugName(CommandBuffer& commandBuffer, const char* name)
 {
@@ -212,23 +212,23 @@ static void NRI_CALL DestroyCommandBuffer(CommandBuffer& commandBuffer)
 
 static void* NRI_CALL GetCommandBufferNativeObject(const CommandBuffer& commandBuffer)
 {
-    return ((CommandBufferEmuD3D11&)commandBuffer).GetImmediateContext();
+    CommandBufferHelper& commandBufferHelper = (CommandBufferHelper&)commandBuffer;
+    return commandBufferHelper.GetNativeObject();
 }
 
-void FillFunctionTableCommandBufferEmuD3D11(CoreInterface& coreInterface)
+#pragma endregion
+
+void Core_CommandBufferEmu_PartiallyFillFunctionTable(CoreInterface& coreInterface)
 {
     coreInterface.DestroyCommandBuffer = ::DestroyCommandBuffer;
-
     coreInterface.BeginCommandBuffer = ::BeginCommandBuffer;
     coreInterface.EndCommandBuffer = ::EndCommandBuffer;
-
     coreInterface.CmdSetPipelineLayout = ::CmdSetPipelineLayout;
     coreInterface.CmdSetPipeline = ::CmdSetPipeline;
     coreInterface.CmdPipelineBarrier = ::CmdPipelineBarrier;
     coreInterface.CmdSetDescriptorPool = ::CmdSetDescriptorPool;
     coreInterface.CmdSetDescriptorSet = ::CmdSetDescriptorSet;
     coreInterface.CmdSetConstants = ::CmdSetConstants;
-
     coreInterface.CmdBeginRenderPass = ::CmdBeginRenderPass;
     coreInterface.CmdEndRenderPass = ::CmdEndRenderPass;
     coreInterface.CmdSetViewports = ::CmdSetViewports;
@@ -239,7 +239,6 @@ void FillFunctionTableCommandBufferEmuD3D11(CoreInterface& coreInterface)
     coreInterface.CmdClearAttachments = ::CmdClearAttachments;
     coreInterface.CmdSetIndexBuffer = ::CmdSetIndexBuffer;
     coreInterface.CmdSetVertexBuffers = ::CmdSetVertexBuffers;
-
     coreInterface.CmdDraw = ::CmdDraw;
     coreInterface.CmdDrawIndexed = ::CmdDrawIndexed;
     coreInterface.CmdDrawIndirect = ::CmdDrawIndirect;
@@ -250,7 +249,6 @@ void FillFunctionTableCommandBufferEmuD3D11(CoreInterface& coreInterface)
     coreInterface.CmdEndQuery = ::CmdEndQuery;
     coreInterface.CmdBeginAnnotation = ::CmdBeginAnnotation;
     coreInterface.CmdEndAnnotation = ::CmdEndAnnotation;
-
     coreInterface.CmdClearStorageBuffer = ::CmdClearStorageBuffer;
     coreInterface.CmdClearStorageTexture = ::CmdClearStorageTexture;
     coreInterface.CmdCopyBuffer = ::CmdCopyBuffer;
@@ -259,10 +257,6 @@ void FillFunctionTableCommandBufferEmuD3D11(CoreInterface& coreInterface)
     coreInterface.CmdReadbackTextureToBuffer = ::CmdReadbackTextureToBuffer;
     coreInterface.CmdCopyQueries = ::CmdCopyQueries;
     coreInterface.CmdResetQueries = ::CmdResetQueries;
-
     coreInterface.SetCommandBufferDebugName = ::SetCommandBufferDebugName;
-
     coreInterface.GetCommandBufferNativeObject = ::GetCommandBufferNativeObject;
 }
-
-#pragma endregion

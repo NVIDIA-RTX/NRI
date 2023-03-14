@@ -10,7 +10,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "SharedVK.h"
 #include "QueryPoolVK.h"
-#include "DeviceVK.h"
 
 using namespace nri;
 
@@ -81,6 +80,10 @@ Result QueryPoolVK::Create(const QueryPoolVulkanDesc& queryPoolDesc)
     return Result::SUCCESS;
 }
 
+//================================================================================================================
+// NRI
+//================================================================================================================
+
 inline void QueryPoolVK::SetDebugName(const char* name)
 {
     std::array<uint64_t, PHYSICAL_DEVICE_GROUP_MAX_SIZE> handles;
@@ -90,7 +93,7 @@ inline void QueryPoolVK::SetDebugName(const char* name)
     m_Device.SetDebugNameToDeviceGroupObject(VK_OBJECT_TYPE_QUERY_POOL, handles.data(), name);
 }
 
-uint32_t QueryPoolVK::GetQuerySize() const
+inline uint32_t QueryPoolVK::GetQuerySize() const
 {
     const uint32_t highestBitInPipelineStatsBits = 11;
 

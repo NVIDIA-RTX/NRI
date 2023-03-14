@@ -12,7 +12,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "CommandAllocatorVK.h"
 #include "CommandBufferVK.h"
 #include "CommandQueueVK.h"
-#include "DeviceVK.h"
 
 using namespace nri;
 
@@ -53,8 +52,13 @@ Result CommandAllocatorVK::Create(const CommandAllocatorVulkanDesc& commandAlloc
     m_OwnsNativeObjects = false;
     m_Handle = (VkCommandPool)commandAllocatorDesc.vkCommandPool;
     m_Type = commandAllocatorDesc.commandQueueType;
+
     return Result::SUCCESS;
 }
+
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 inline void CommandAllocatorVK::SetDebugName(const char* name)
 {
@@ -63,8 +67,6 @@ inline void CommandAllocatorVK::SetDebugName(const char* name)
 
 inline Result CommandAllocatorVK::CreateCommandBuffer(CommandBuffer*& commandBuffer)
 {
-    const auto& vk = m_Device.GetDispatchTable();
-
     const VkCommandBufferAllocateInfo info = {
         VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         nullptr,
@@ -74,6 +76,8 @@ inline Result CommandAllocatorVK::CreateCommandBuffer(CommandBuffer*& commandBuf
     };
 
     VkCommandBuffer commandBufferHandle = VK_NULL_HANDLE;
+
+    const auto& vk = m_Device.GetDispatchTable();
     const VkResult result = vk.AllocateCommandBuffers(m_Device, &info, &commandBufferHandle);
 
     RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),

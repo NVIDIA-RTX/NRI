@@ -43,7 +43,7 @@ endif ()
 
 message ("Packman platform: ${PACKMAN_PLATFORM}")
 
-execute_process (COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/External/Packman/Packman${PACKMAN_EXT}" pull "${CMAKE_CURRENT_SOURCE_DIR}/Dependencies.xml" -p ${PACKMAN_PLATFORM}
+execute_process (COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/External/Packman/packman${PACKMAN_EXT}" pull "${CMAKE_CURRENT_SOURCE_DIR}/Dependencies.xml" -p ${PACKMAN_PLATFORM}
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     RESULT_VARIABLE PACKMAN_RESULT)
 

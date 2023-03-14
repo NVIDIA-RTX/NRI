@@ -8,7 +8,7 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma region [  CoreInterface  ]
+#pragma region [  Core  ]
 
 static void NRI_CALL SetBufferDebugName(Buffer& buffer, const char* name)
 {
@@ -37,13 +37,6 @@ static void NRI_CALL UnmapBuffer(Buffer& buffer)
     ((BufferD3D11&)buffer).Unmap();
 }
 
-void FillFunctionTableBufferD3D11(CoreInterface& coreInterface)
-{
-    coreInterface.SetBufferDebugName = ::SetBufferDebugName;
-    coreInterface.GetBufferNativeObject = ::GetBufferNativeObject;
-    coreInterface.GetBufferMemoryInfo = ::GetBufferMemoryInfo;
-    coreInterface.MapBuffer = ::MapBuffer;
-    coreInterface.UnmapBuffer = ::UnmapBuffer;
-}
-
 #pragma endregion
+
+Define_Core_Buffer_PartiallyFillFunctionTable(D3D11)

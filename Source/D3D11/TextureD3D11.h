@@ -12,61 +12,71 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct DeviceD3D11;
-    struct MemoryD3D11;
 
-    struct TextureD3D11
+struct DeviceD3D11;
+struct MemoryD3D11;
+
+struct TextureD3D11
+{
+    inline TextureD3D11(DeviceD3D11& device) :
+        m_Device(device)
+    {}
+
+    inline ~TextureD3D11()
+    {}
+
+    inline DeviceD3D11& GetDevice() const
+    { return m_Device; }
+
+    inline operator ID3D11Resource*() const
+    { return m_Texture; }
+
+    inline operator ID3D11Texture1D*() const
+    { return (ID3D11Texture1D*)m_Texture.GetInterface(); }
+
+    inline operator ID3D11Texture2D*() const
+    { return (ID3D11Texture2D*)m_Texture.GetInterface(); }
+
+    inline operator ID3D11Texture3D*() const
+    { return (ID3D11Texture3D*)m_Texture.GetInterface(); }
+
+    inline const TextureDesc& GetDesc() const
+    { return m_Desc; }
+
+    inline uint32_t GetSubresourceIndex(const TextureRegionDesc& regionDesc) const
+    { return regionDesc.mipOffset + regionDesc.arrayOffset * m_Desc.mipNum; }
+
+    inline uint16_t GetSize(uint32_t dimension, uint32_t mipOffset = 0) const
     {
-        TextureD3D11();
-        TextureD3D11(DeviceD3D11& device, const TextureDesc& textureDesc);
-        ~TextureD3D11();
+        assert(dimension < 3);
 
-        inline DeviceD3D11& GetDevice() const
-        { return *m_Device; }
+        uint16_t size = m_Desc.size[dimension];
+        size = (uint16_t)std::max(size >> mipOffset, 1);
+        size = Align(size, dimension < 2 ? (uint16_t)GetTexelBlockWidth(m_Desc.format) : 1);
 
-        inline operator ID3D11Resource*() const
-        { return m_Texture; }
+        return size;
+    }
 
-        inline operator ID3D11Texture1D*() const
-        { return (ID3D11Texture1D*)m_Texture.GetInterface(); }
+    TextureD3D11(DeviceD3D11& device, const TextureDesc& textureDesc);
 
-        inline operator ID3D11Texture2D*() const
-        { return (ID3D11Texture2D*)m_Texture.GetInterface(); }
+    Result Create(const MemoryD3D11* memory);
+    Result Create(const TextureD3D11Desc& textureDesc);
 
-        inline operator ID3D11Texture3D*() const
-        { return (ID3D11Texture3D*)m_Texture.GetInterface(); }
+    uint32_t GetMipmappedSize(uint32_t w = 0, uint32_t h = 0, uint32_t d = 0, uint32_t mipOffset = 0, uint32_t mipNum = 0) const;
 
-        inline const TextureDesc& GetDesc() const
-        { return m_Desc; }
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
 
-        inline uint32_t GetSubresourceIndex(const TextureRegionDesc& regionDesc) const
-        { return regionDesc.mipOffset + regionDesc.arrayOffset * m_Desc.mipNum; }
+    inline void SetDebugName(const char* name)
+    { SET_D3D_DEBUG_OBJECT_NAME(m_Texture, name); }
 
-        inline uint16_t GetSize(uint32_t dimension, uint32_t mipOffset = 0) const
-        {
-            assert(dimension < 3);
+    void GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
 
-            uint16_t size = m_Desc.size[dimension];
-            size = (uint16_t)std::max(size >> mipOffset, 1);
-            size = Align(size, dimension < 2 ? (uint16_t)GetTexelBlockWidth(m_Desc.format) : 1);
+private:
+    DeviceD3D11& m_Device;
+    ComPtr<ID3D11Resource> m_Texture;
+    TextureDesc m_Desc = {};
+};
 
-            return size;
-        }
-
-        Result Create(const VersionedDevice& device, const MemoryD3D11* memory);
-        Result Create(DeviceD3D11& device, const TextureD3D11Desc& textureDesc);
-
-        uint32_t GetMipmappedSize(uint32_t w = 0, uint32_t h = 0, uint32_t d = 0, uint32_t mipOffset = 0, uint32_t mipNum = 0) const;
-
-        //======================================================================================================================
-        // NRI
-        //======================================================================================================================
-        void SetDebugName(const char* name);
-        void GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
-
-    private:
-        ComPtr<ID3D11Resource> m_Texture;
-        TextureDesc m_Desc = {};
-        DeviceD3D11* m_Device = nullptr;
-    };
 }

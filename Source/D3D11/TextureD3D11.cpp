@@ -8,15 +8,13 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#include "SharedExternal.h"
 #include "SharedD3D11.h"
 #include "TextureD3D11.h"
-
 #include "MemoryD3D11.h"
 
 using namespace nri;
 
-static uint16_t GetMaxMipNum(uint16_t w, uint16_t h, uint16_t d)
+static inline uint16_t GetMaxMipNum(uint16_t w, uint16_t h, uint16_t d)
 {
     uint16_t mipNum = 1;
 
@@ -37,24 +35,15 @@ static uint16_t GetMaxMipNum(uint16_t w, uint16_t h, uint16_t d)
     return mipNum;
 }
 
-TextureD3D11::TextureD3D11() :
-    m_Device(nullptr)
-{
-}
-
 TextureD3D11::TextureD3D11(DeviceD3D11& device, const TextureDesc& textureDesc) :
-    m_Desc(textureDesc),
-    m_Device(&device)
+    m_Device(device)
+    , m_Desc(textureDesc)
 {
     uint16_t mipNum = GetMaxMipNum(m_Desc.size[0], m_Desc.size[1], m_Desc.size[2]);
     m_Desc.mipNum = std::min(m_Desc.mipNum, mipNum);
 }
 
-TextureD3D11::~TextureD3D11()
-{
-}
-
-Result TextureD3D11::Create(const VersionedDevice& device, const MemoryD3D11* memory)
+Result TextureD3D11::Create(const MemoryD3D11* memory)
 {
     HRESULT hr = E_INVALIDARG;
     const FormatInfo& formatInfo = GetFormatInfo(m_Desc.format);
@@ -92,7 +81,7 @@ Result TextureD3D11::Create(const VersionedDevice& device, const MemoryD3D11* me
         desc.BindFlags = bindFlags;
         desc.CPUAccessFlags = cpuAccessFlags;
 
-        hr = device->CreateTexture1D(&desc, nullptr, (ID3D11Texture1D**)&m_Texture);
+        hr = m_Device.GetDevice()->CreateTexture1D(&desc, nullptr, (ID3D11Texture1D**)&m_Texture);
     }
     else if (m_Desc.type == TextureType::TEXTURE_3D)
     {
@@ -107,7 +96,7 @@ Result TextureD3D11::Create(const VersionedDevice& device, const MemoryD3D11* me
         desc.BindFlags = bindFlags;
         desc.CPUAccessFlags = cpuAccessFlags;
 
-        hr = device->CreateTexture3D(&desc, nullptr, (ID3D11Texture3D**)&m_Texture);
+        hr = m_Device.GetDevice()->CreateTexture3D(&desc, nullptr, (ID3D11Texture3D**)&m_Texture);
     }
     else
     {
@@ -126,10 +115,10 @@ Result TextureD3D11::Create(const VersionedDevice& device, const MemoryD3D11* me
         if (m_Desc.sampleNum == 1 && desc.Width == desc.Height && (m_Desc.arraySize % 6 == 0))
             desc.MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE;
 
-        hr = device->CreateTexture2D(&desc, nullptr, (ID3D11Texture2D**)&m_Texture);
+        hr = m_Device.GetDevice()->CreateTexture2D(&desc, nullptr, (ID3D11Texture2D**)&m_Texture);
     }
 
-    RETURN_ON_BAD_HRESULT(m_Device->GetLog(), hr, "Can't create texture!");
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "Can't create texture!");
 
     uint64_t size = GetMipmappedSize();
     uint32_t priority = memory ? memory->GetResidencyPriority(size) : 0;
@@ -139,10 +128,8 @@ Result TextureD3D11::Create(const VersionedDevice& device, const MemoryD3D11* me
     return Result::SUCCESS;
 }
 
-Result TextureD3D11::Create(DeviceD3D11& device, const TextureD3D11Desc& textureDesc)
+Result TextureD3D11::Create(const TextureD3D11Desc& textureDesc)
 {
-    m_Device = &device;
-
     ID3D11Resource* resource = (ID3D11Resource*)textureDesc.d3d11Resource;
     if (!resource)
         return Result::INVALID_ARGUMENT;
@@ -274,10 +261,9 @@ uint32_t TextureD3D11::GetMipmappedSize(uint32_t w, uint32_t h, uint32_t d, uint
     return size;
 }
 
-inline void TextureD3D11::SetDebugName(const char* name)
-{
-    SetName(m_Texture, name);
-}
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 inline void TextureD3D11::GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const
 {
@@ -299,7 +285,3 @@ inline void TextureD3D11::GetMemoryInfo(MemoryLocation memoryLocation, MemoryDes
 }
 
 #include "TextureD3D11.hpp"
-
-static_assert((uint32_t)nri::TextureType::TEXTURE_1D == 0u, "TextureD3D11::GetSize() depends on nri::TextureType");
-static_assert((uint32_t)nri::TextureType::TEXTURE_2D == 1u, "TextureD3D11::GetSize() depends on nri::TextureType");
-static_assert((uint32_t)nri::TextureType::TEXTURE_3D == 2u, "TextureD3D11::GetSize() depends on nri::TextureType");

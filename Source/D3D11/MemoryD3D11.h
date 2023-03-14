@@ -12,38 +12,48 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct DeviceD3D11;
 
-    enum class MemoryResidencyPriority
-    {
-        DEFAULT,
-        MINIMUM,
-        LOW,
-        NORMAL,
-        HIGH,
-        MAXIMUM
-    };
+struct DeviceD3D11;
 
-    struct MemoryD3D11
-    {
-        MemoryD3D11(DeviceD3D11& device, MemoryType memoryType);
+enum class MemoryResidencyPriority
+{
+    DEFAULT,
+    MINIMUM,
+    LOW,
+    NORMAL,
+    HIGH,
+    MAXIMUM
+};
 
-        inline DeviceD3D11& GetDevice() const
-        { return m_Device; }
+struct MemoryD3D11
+{
+    inline MemoryD3D11(DeviceD3D11& device, MemoryType memoryType) :
+        m_Device(device)
+        , m_Location((MemoryLocation)memoryType)
+    {}
 
-        inline MemoryLocation GetType() const
-        { return m_Location; }
+    inline ~MemoryD3D11()
+    {}
 
-        uint32_t GetResidencyPriority(uint64_t size) const;
+    inline DeviceD3D11& GetDevice() const
+    { return m_Device; }
 
-        //======================================================================================================================
-        // NRI
-        //======================================================================================================================
-        void SetDebugName(const char* name);
+    inline MemoryLocation GetType() const
+    { return m_Location; }
 
-    private:
-        MemoryLocation m_Location;
-        MemoryResidencyPriority m_ResidencyPriority = MemoryResidencyPriority::DEFAULT;
-        DeviceD3D11& m_Device;
-    };
+    uint32_t GetResidencyPriority(uint64_t size) const;
+
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+
+    inline void SetDebugName(const char* name)
+    { MaybeUnused(name); }
+
+private:
+    DeviceD3D11& m_Device;
+    MemoryLocation m_Location;
+    MemoryResidencyPriority m_ResidencyPriority = MemoryResidencyPriority::DEFAULT;
+};
+
 }

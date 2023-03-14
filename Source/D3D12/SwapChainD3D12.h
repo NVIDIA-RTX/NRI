@@ -10,49 +10,60 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #pragma once
 
-struct IDXGIFactory2;
-struct ID3D12CommandQueue;
 struct IDXGISwapChain4;
 
 namespace nri
 {
-    struct DeviceD3D12;
-    struct TextureD3D12;
 
-    struct SwapChainD3D12
-    {
-        SwapChainD3D12(DeviceD3D12& device);
-        ~SwapChainD3D12();
+struct DeviceD3D12;
+struct TextureD3D12;
 
-        DeviceD3D12& GetDevice() const;
+struct VersionedSwapChain
+{
+    inline ~VersionedSwapChain()
+    {}
 
-        Result Create(const SwapChainDesc& swapChainDesc);
+    inline IDXGISwapChain4* operator->() const
+    { return ptr; }
 
-        //================================================================================================================
-        // NRI
-        //================================================================================================================
-        void SetDebugName(const char* name);
+    ComPtr<IDXGISwapChain4> ptr;
+    uint8_t version = 0;
+};
 
-        Texture* const* GetTextures(uint32_t& textureNum, Format& format) const;
-        uint32_t AcquireNextTexture(QueueSemaphore& textureReadyForRender);
-        Result Present(QueueSemaphore& textureReadyForPresent);
-        Result SetHdrMetadata(const HdrMetadata& hdrMetadata);
+struct SwapChainD3D12
+{
+    inline SwapChainD3D12(DeviceD3D12& device) :
+        m_Device(device)
+        , m_Textures(device.GetStdAllocator())
+    {}
 
-    private:
-        DeviceD3D12& m_Device;
-        ComPtr<IDXGISwapChain4> m_SwapChain;
-        ComPtr<ID3D12CommandQueue> m_CommandQueue;
-        Vector<TextureD3D12> m_Textures;
-        Vector<Texture*> m_TexturePointer;
-        Format m_Format = Format::UNKNOWN;
-        bool m_IsTearingAllowed = false;
-        bool m_IsFullscreenEnabled = false;
+    inline DeviceD3D12& GetDevice() const
+    { return m_Device; }
 
-        SwapChainDesc m_SwapChainDesc = {};
-    };
+    ~SwapChainD3D12();
 
-    inline DeviceD3D12& SwapChainD3D12::GetDevice() const
-    {
-        return m_Device;
-    }
+    Result Create(const SwapChainDesc& swapChainDesc);
+
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+
+    inline void SetDebugName(const char* name)
+    { SET_D3D_DEBUG_OBJECT_NAME(m_SwapChain.ptr, name); }
+
+    Texture* const* GetTextures(uint32_t& textureNum, Format& format) const;
+    uint32_t AcquireNextTexture();
+    Result Present();
+    Result SetHdrMetadata(const HdrMetadata& hdrMetadata);
+
+private:
+    DeviceD3D12& m_Device;
+    VersionedSwapChain m_SwapChain;
+    Vector<TextureD3D12*> m_Textures;
+    SwapChainDesc m_SwapChainDesc = {};
+    Format m_Format = Format::UNKNOWN;
+    bool m_IsTearingAllowed = false;
+    bool m_IsFullscreenEnabled = false;
+};
+
 }

@@ -7,29 +7,27 @@ HelperWaitIdle::HelperWaitIdle(const CoreInterface& NRI, Device& device, Command
     m_Device(device),
     m_CommandQueue(commandQueue)
 {
-    NRI.CreateDeviceSemaphore(device, false, m_DeviceSemaphore);
+    NRI.CreateFence(device, 0, m_Fence);
 }
 
 HelperWaitIdle::~HelperWaitIdle()
 {
-    if (m_DeviceSemaphore != nullptr)
-        NRI.DestroyDeviceSemaphore(*m_DeviceSemaphore);
-    m_DeviceSemaphore = nullptr;
+    if (m_Fence)
+        NRI.DestroyFence(*m_Fence);
+    m_Fence = nullptr;
 }
 
 Result HelperWaitIdle::WaitIdle()
 {
-    if (m_DeviceSemaphore == nullptr)
+    if (!m_Fence)
         return Result::FAILURE;
 
     const uint32_t physicalDeviceNum = NRI.GetDeviceDesc(m_Device).physicalDeviceNum;
 
     for (uint32_t i = 0; i < physicalDeviceNum; i++)
     {
-        WorkSubmissionDesc workSubmissionDesc = {};
-        workSubmissionDesc.physicalDeviceIndex = i;
-        NRI.SubmitQueueWork(m_CommandQueue, workSubmissionDesc, m_DeviceSemaphore);
-        NRI.WaitForSemaphore(m_CommandQueue, *m_DeviceSemaphore);
+        NRI.QueueSignal(m_CommandQueue, *m_Fence, 1);
+        NRI.Wait(*m_Fence, 1);
     }
 
     return Result::SUCCESS;

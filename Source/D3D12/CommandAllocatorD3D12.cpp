@@ -10,7 +10,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "SharedD3D12.h"
 #include "CommandAllocatorD3D12.h"
-#include "DeviceD3D12.h"
 #include "CommandQueueD3D12.h"
 #include "CommandBufferD3D12.h"
 
@@ -30,10 +29,9 @@ Result CommandAllocatorD3D12::Create(const CommandQueue& commandQueue)
     return Result::SUCCESS;
 }
 
-inline void CommandAllocatorD3D12::SetDebugName(const char* name)
-{
-    SET_D3D_DEBUG_OBJECT_NAME(m_CommandAllocator, name);
-}
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 inline Result CommandAllocatorD3D12::CreateCommandBuffer(CommandBuffer*& commandBuffer)
 {

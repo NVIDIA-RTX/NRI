@@ -10,18 +10,11 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "SharedD3D12.h"
 #include "FrameBufferD3D12.h"
-#include "DeviceD3D12.h"
 #include "DescriptorD3D12.h"
 
 using namespace nri;
 
 extern void ConvertRects(D3D12_RECT* rectsD3D12, const Rect* rects, uint32_t rectNum);
-
-FrameBufferD3D12::FrameBufferD3D12(DeviceD3D12& device)
-    : m_Device(device)
-    , m_RenderTargets(device.GetStdAllocator())
-    , m_ClearDescs(device.GetStdAllocator())
-{}
 
 Result FrameBufferD3D12::Create(const FrameBufferDesc& frameBufferDesc)
 {
@@ -102,9 +95,4 @@ void FrameBufferD3D12::Clear(ID3D12GraphicsCommandList* graphicsCommandList, con
                 graphicsCommandList->ClearDepthStencilView(m_DepthStencilTarget, clearFlags, clearDescs[i].value.depthStencil.depth, clearDescs[i].value.depthStencil.stencil, rectNum, rectsD3D12);
         }
     }
-}
-
-void FrameBufferD3D12::SetDebugName(const char* name)
-{
-    MaybeUnused(name);
 }

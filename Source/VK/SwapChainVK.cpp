@@ -11,9 +11,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "SharedVK.h"
 #include "SwapChainVK.h"
 #include "CommandQueueVK.h"
-#include "QueueSemaphoreVK.h"
 #include "TextureVK.h"
-#include "DeviceVK.h"
 
 using namespace nri;
 
@@ -39,6 +37,9 @@ SwapChainVK::~SwapChainVK()
 
     if (m_Surface != VK_NULL_HANDLE)
         vk.DestroySurfaceKHR(m_Device, m_Surface, m_Device.GetAllocationCallbacks());
+
+    if (m_Fence != VK_NULL_HANDLE)
+        vk.DestroySemaphore(m_Device, m_Fence, m_Device.GetAllocationCallbacks());
 }
 
 Result SwapChainVK::CreateSurface(const SwapChainDesc& swapChainDesc)
@@ -115,15 +116,20 @@ Result SwapChainVK::CreateSurface(const SwapChainDesc& swapChainDesc)
 
 Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc)
 {
+    const auto& vk = m_Device.GetDispatchTable();
+
+    VkSemaphoreTypeCreateInfo timelineCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO, nullptr, VK_SEMAPHORE_TYPE_BINARY, 0 };
+    VkSemaphoreCreateInfo createInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, &timelineCreateInfo, 0 };
+    VkResult result = vk.CreateSemaphore((VkDevice)m_Device, &createInfo, m_Device.GetAllocationCallbacks(), &m_Fence);
+
+    RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
+        "Can't create a semaphore: vk.CreateSemaphore returned %d.", (int32_t)result);
+
     m_CommandQueue = (CommandQueueVK*)swapChainDesc.commandQueue;
 
-    {
-        const Result result = CreateSurface(swapChainDesc);
-        if (result != Result::SUCCESS)
-            return result;
-    }
-
-    const auto& vk = m_Device.GetDispatchTable();
+    const Result nriResult = CreateSurface(swapChainDesc);
+    if (nriResult != Result::SUCCESS)
+        return nriResult;
 
     VkBool32 supported = VK_FALSE;
     vk.GetPhysicalDeviceSurfaceSupportKHR(m_Device, m_CommandQueue->GetFamilyIndex(), m_Surface, &supported);
@@ -135,7 +141,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc)
     }
 
     VkSurfaceCapabilitiesKHR capabilites = {};
-    VkResult result = vk.GetPhysicalDeviceSurfaceCapabilitiesKHR(m_Device, m_Surface, &capabilites);
+    result = vk.GetPhysicalDeviceSurfaceCapabilitiesKHR(m_Device, m_Surface, &capabilites);
 
     RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
         "Can't get physical device surface capabilities: vkGetPhysicalDeviceSurfaceCapabilitiesKHR returned %d.", (int32_t)result);
@@ -242,6 +248,10 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc)
     return Result::SUCCESS;
 }
 
+//================================================================================================================
+// NRI
+//================================================================================================================
+
 inline void SwapChainVK::SetDebugName(const char* name)
 {
     m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_SURFACE_KHR, (uint64_t)m_Surface, name);
@@ -255,36 +265,31 @@ inline Texture* const* SwapChainVK::GetTextures(uint32_t& textureNum, Format& fo
     return (Texture* const*)m_Textures.data();
 }
 
-inline uint32_t SwapChainVK::AcquireNextTexture(QueueSemaphore& textureReadyForRender)
+inline uint32_t SwapChainVK::AcquireNextTexture()
 {
-    const uint64_t timeout = 5000000000; // 5 seconds
-    m_TextureIndex = std::numeric_limits<uint32_t>::max();
-
     const auto& vk = m_Device.GetDispatchTable();
-    const VkResult result = vk.AcquireNextImageKHR(m_Device, m_Handle, timeout, *(QueueSemaphoreVK*)&textureReadyForRender,
-        VK_NULL_HANDLE, &m_TextureIndex);
+    const VkResult result = vk.AcquireNextImageKHR(m_Device, m_Handle, DEFAULT_TIMEOUT, m_Fence, VK_NULL_HANDLE, &m_TextureIndex);
 
     RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, m_TextureIndex,
         "Can't acquire the next texture of the swapchain: vkAcquireNextImageKHR returned %d.", (int32_t)result);
 
+    VkSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO, nullptr, 1, &m_Fence, nullptr, 0, nullptr, 0, nullptr };
+    vk.QueueSubmit(*m_CommandQueue, 1, &submitInfo, VK_NULL_HANDLE);
+
     return m_TextureIndex;
 }
 
-inline Result SwapChainVK::Present(QueueSemaphore& textureReadyForPresent)
+inline Result SwapChainVK::Present()
 {
-    const VkSemaphore semaphore = (QueueSemaphoreVK&)textureReadyForPresent;
-
-    VkResult presentRes = VK_SUCCESS;
-
     const VkPresentInfoKHR info = {
         VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         nullptr,
-        1,
-        &semaphore,
+        0,
+        nullptr,
         1,
         &m_Handle,
         &m_TextureIndex,
-        &presentRes
+        nullptr
     };
 
     const auto& vk = m_Device.GetDispatchTable();
@@ -316,6 +321,7 @@ inline Result SwapChainVK::SetHdrMetadata(const HdrMetadata& hdrMetadata)
     };
 
     vk.SetHdrMetadataEXT(m_Device, 1, &m_Handle, &data);
+
     return Result::SUCCESS;
 }
 

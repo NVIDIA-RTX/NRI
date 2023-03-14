@@ -8,10 +8,8 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#include "SharedExternal.h"
 #include "SharedD3D11.h"
 #include "CommandBufferEmuD3D11.h"
-
 #include "CommandBufferD3D11.h"
 #include "DescriptorSetD3D11.h"
 #include "PipelineD3D11.h"
@@ -102,18 +100,9 @@ template<typename T> inline void Read(PushBuffer& pushBuffer, size_t& i, T*& dat
     i += GetElementNum(sizeof(T) * num);
 }
 
-//==============================================================================================================================
-
-CommandBufferEmuD3D11::CommandBufferEmuD3D11(DeviceD3D11& deviceImpl) :
-    m_Device(deviceImpl.GetDevice()),
-    m_PushBuffer(deviceImpl.GetStdAllocator()),
-    m_DeviceImpl(deviceImpl)
-{
-}
-
-CommandBufferEmuD3D11::~CommandBufferEmuD3D11()
-{
-}
+//================================================================================================================
+// CommandBufferHelper
+//================================================================================================================
 
 Result CommandBufferEmuD3D11::Create(ID3D11DeviceContext* precreatedContext)
 {
@@ -124,9 +113,10 @@ Result CommandBufferEmuD3D11::Create(ID3D11DeviceContext* precreatedContext)
     return Result::SUCCESS;
 }
 
-void CommandBufferEmuD3D11::Submit(const VersionedContext& immediateContext)
+void CommandBufferEmuD3D11::Submit()
 {
-    CommandBufferD3D11 commandBuffer(m_DeviceImpl, immediateContext);
+    CommandBufferD3D11 commandBuffer(m_Device);
+
     OpCode opCode = UNKNOWN;
     size_t i = 0;
 
@@ -551,10 +541,19 @@ void CommandBufferEmuD3D11::Submit(const VersionedContext& immediateContext)
     }
 }
 
-inline void CommandBufferEmuD3D11::SetDebugName(const char* name)
+ID3D11DeviceContext* CommandBufferEmuD3D11::GetNativeObject() const
 {
-    MaybeUnused(name);
+    return m_Device.GetImmediateContext();
 }
+
+StdAllocator<uint8_t>& CommandBufferEmuD3D11::GetStdAllocator() const
+{
+    return m_Device.GetStdAllocator();
+}
+
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 inline Result CommandBufferEmuD3D11::Begin(const DescriptorPool* descriptorPool)
 {
@@ -835,11 +834,6 @@ inline void CommandBufferEmuD3D11::BeginAnnotation(const char* name)
 inline void CommandBufferEmuD3D11::EndAnnotation()
 {
     Push(m_PushBuffer, END_ANNOTATION);
-}
-
-StdAllocator<uint8_t>& CommandBufferEmuD3D11::GetStdAllocator() const
-{
-    return m_DeviceImpl.GetStdAllocator();
 }
 
 #include "CommandBufferEmuD3D11.hpp"

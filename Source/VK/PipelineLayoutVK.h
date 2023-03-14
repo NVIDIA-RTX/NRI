@@ -12,89 +12,84 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct DeviceVK;
-    struct DescriptorVK;
 
-    struct PushConstantRangeBindingDesc
-    {
-        VkShaderStageFlags flags;
-        uint32_t offset;
-    };
+struct DeviceVK;
+struct DescriptorVK;
 
-    struct RuntimeBindingInfo
-    {
-        RuntimeBindingInfo(StdAllocator<uint8_t>& allocator);
+struct PushConstantRangeBindingDesc
+{
+    VkShaderStageFlags flags;
+    uint32_t offset;
+};
 
-        Vector<bool> hasVariableDescriptorNum;
-        Vector<DescriptorRangeDesc> descriptorSetRangeDescs;
-        Vector<DynamicConstantBufferDesc> dynamicConstantBufferDescs;
-        Vector<DescriptorSetDesc> descriptorSetDescs;
-        Vector<PushConstantDesc> pushConstantDescs;
-        Vector<PushConstantRangeBindingDesc> pushConstantBindings;
-    };
+struct RuntimeBindingInfo
+{
+    RuntimeBindingInfo(StdAllocator<uint8_t>& allocator);
 
-    struct PipelineLayoutVK
-    {
-        PipelineLayoutVK(DeviceVK& device);
-        ~PipelineLayoutVK();
+    Vector<bool> hasVariableDescriptorNum;
+    Vector<DescriptorRangeDesc> descriptorSetRangeDescs;
+    Vector<DynamicConstantBufferDesc> dynamicConstantBufferDescs;
+    Vector<DescriptorSetDesc> descriptorSetDescs;
+    Vector<PushConstantDesc> pushConstantDescs;
+    Vector<PushConstantRangeBindingDesc> pushConstantBindings;
+};
 
-        operator VkPipelineLayout() const;
-        DeviceVK& GetDevice() const;
-        Result Create(const PipelineLayoutDesc& pipelineLayoutDesc);
-        const RuntimeBindingInfo& GetRuntimeBindingInfo() const;
-        VkDescriptorSetLayout GetDescriptorSetLayout(uint32_t index) const;
-        VkPipelineBindPoint GetPipelineBindPoint() const;
-        uint32_t GetDescriptorSetSpace(uint32_t setIndexInPipelineLayout) const;
+struct PipelineLayoutVK
+{
+    inline PipelineLayoutVK(DeviceVK& device) :
+        m_Device(device)
+        , m_RuntimeBindingInfo(device.GetStdAllocator())
+        , m_DescriptorSetLayouts(device.GetStdAllocator())
+        , m_DescriptorSetSpaces(device.GetStdAllocator())
+    {}
 
-        void SetDebugName(const char* name);
+    inline operator VkPipelineLayout() const
+    { return m_Handle; }
 
-    private:
-        void FillBindingOffsets(bool ignoreGlobalSPIRVOffsets, uint32_t* bindingOffsets);
-        VkDescriptorSetLayout CreateSetLayout(const DescriptorSetDesc& descriptorSetDesc, const uint32_t* bindingOffsets);
+    inline DeviceVK& GetDevice() const
+    { return m_Device; }
 
-        void FillDescriptorBindings(const DescriptorSetDesc& descriptorSetDesc, const uint32_t* bindingOffsets,
-            VkDescriptorSetLayoutBinding*& bindings, VkDescriptorBindingFlagsEXT*& bindingFlags) const;
-        void FillDynamicConstantBufferBindings(const DescriptorSetDesc& descriptorSetDesc, const uint32_t* bindingOffsets,
-            VkDescriptorSetLayoutBinding*& bindings, VkDescriptorBindingFlagsEXT*& bindingFlags) const;
+    inline const RuntimeBindingInfo& GetRuntimeBindingInfo() const
+    { return m_RuntimeBindingInfo; }
 
-        void FillPushConstantRanges(const PipelineLayoutDesc& pipelineLayoutDesc, VkPushConstantRange* pushConstantRanges) const;
-        void FillRuntimeBindingInfo(const PipelineLayoutDesc& pipelineLayoutDesc, const uint32_t* bindingOffsets);
+    inline VkDescriptorSetLayout GetDescriptorSetLayout(uint32_t index) const
+    { return m_DescriptorSetLayouts[index]; }
 
-        VkPipelineLayout m_Handle = VK_NULL_HANDLE;
-        VkPipelineBindPoint m_PipelineBindPoint = VK_PIPELINE_BIND_POINT_MAX_ENUM;
-        RuntimeBindingInfo m_RuntimeBindingInfo;
-        Vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
-        Vector<uint32_t> m_DescriptorSetSpaces;
-        DeviceVK& m_Device;
-    };
+    inline VkPipelineBindPoint GetPipelineBindPoint() const
+    { return m_PipelineBindPoint; }
 
-    inline PipelineLayoutVK::operator VkPipelineLayout() const
-    {
-        return m_Handle;
-    }
+    inline uint32_t GetDescriptorSetSpace(uint32_t setIndexInPipelineLayout) const
+    { return m_DescriptorSetSpaces[setIndexInPipelineLayout]; }
 
-    inline DeviceVK& PipelineLayoutVK::GetDevice() const
-    {
-        return m_Device;
-    }
+    ~PipelineLayoutVK();
 
-    inline const RuntimeBindingInfo& PipelineLayoutVK::GetRuntimeBindingInfo() const
-    {
-        return m_RuntimeBindingInfo;
-    }
+    Result Create(const PipelineLayoutDesc& pipelineLayoutDesc);
 
-    inline VkDescriptorSetLayout PipelineLayoutVK::GetDescriptorSetLayout(uint32_t index) const
-    {
-        return m_DescriptorSetLayouts[index];
-    }
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
 
-    inline VkPipelineBindPoint PipelineLayoutVK::GetPipelineBindPoint() const
-    {
-        return m_PipelineBindPoint;
-    }
+    void SetDebugName(const char* name);
 
-    inline uint32_t PipelineLayoutVK::GetDescriptorSetSpace(uint32_t setIndexInPipelineLayout) const
-    {
-        return m_DescriptorSetSpaces[setIndexInPipelineLayout];
-    }
+private:
+    void FillBindingOffsets(bool ignoreGlobalSPIRVOffsets, uint32_t* bindingOffsets);
+    VkDescriptorSetLayout CreateSetLayout(const DescriptorSetDesc& descriptorSetDesc, const uint32_t* bindingOffsets);
+
+    void FillDescriptorBindings(const DescriptorSetDesc& descriptorSetDesc, const uint32_t* bindingOffsets,
+        VkDescriptorSetLayoutBinding*& bindings, VkDescriptorBindingFlagsEXT*& bindingFlags) const;
+    void FillDynamicConstantBufferBindings(const DescriptorSetDesc& descriptorSetDesc, const uint32_t* bindingOffsets,
+        VkDescriptorSetLayoutBinding*& bindings, VkDescriptorBindingFlagsEXT*& bindingFlags) const;
+
+    void FillPushConstantRanges(const PipelineLayoutDesc& pipelineLayoutDesc, VkPushConstantRange* pushConstantRanges) const;
+    void FillRuntimeBindingInfo(const PipelineLayoutDesc& pipelineLayoutDesc, const uint32_t* bindingOffsets);
+
+private:
+    DeviceVK& m_Device;
+    VkPipelineLayout m_Handle = VK_NULL_HANDLE;
+    VkPipelineBindPoint m_PipelineBindPoint = VK_PIPELINE_BIND_POINT_MAX_ENUM;
+    RuntimeBindingInfo m_RuntimeBindingInfo;
+    Vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
+    Vector<uint32_t> m_DescriptorSetSpaces;
+};
+
 }

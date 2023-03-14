@@ -11,14 +11,8 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "SharedVK.h"
 #include "PipelineVK.h"
 #include "PipelineLayoutVK.h"
-#include "DeviceVK.h"
 
 using namespace nri;
-
-PipelineVK::PipelineVK(DeviceVK& device) :
-    m_Device(device)
-{
-}
 
 PipelineVK::~PipelineVK()
 {
@@ -289,24 +283,6 @@ Result PipelineVK::CreateCompute(NRIVkPipeline vkPipeline)
     m_OwnsNativeObjects = false;
     m_Handle = (VkPipeline)vkPipeline;
     m_BindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
-
-    return Result::SUCCESS;
-}
-
-inline void PipelineVK::SetDebugName(const char* name)
-{
-    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_PIPELINE, (uint64_t)m_Handle, name);
-}
-
-inline Result PipelineVK::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* buffer) const
-{
-    const size_t dataSize = (size_t)(shaderGroupNum * m_Device.GetDesc().rayTracingShaderGroupIdentifierSize);
-
-    const auto& vk = m_Device.GetDispatchTable();
-    const VkResult result = vk.GetRayTracingShaderGroupHandlesKHR(m_Device, m_Handle, baseShaderGroupIndex, shaderGroupNum, dataSize, buffer);
-
-    RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
-        "Can't get shader group identifiers: vkGetRayTracingShaderGroupHandlesKHR returned %d.", (int32_t)result);
 
     return Result::SUCCESS;
 }
@@ -639,6 +615,28 @@ void PipelineVK::FillGroupIndices(const RayTracingPipelineDesc& rayTracingPipeli
                 groupIndices[shaderGroupDesc.shaderIndices[j] - 1] = j;
         }
     }
+}
+
+//================================================================================================================
+// NRI
+//================================================================================================================
+
+inline void PipelineVK::SetDebugName(const char* name)
+{
+    m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_PIPELINE, (uint64_t)m_Handle, name);
+}
+
+inline Result PipelineVK::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* buffer) const
+{
+    const size_t dataSize = (size_t)(shaderGroupNum * m_Device.GetDesc().rayTracingShaderGroupIdentifierSize);
+
+    const auto& vk = m_Device.GetDispatchTable();
+    const VkResult result = vk.GetRayTracingShaderGroupHandlesKHR(m_Device, m_Handle, baseShaderGroupIndex, shaderGroupNum, dataSize, buffer);
+
+    RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
+        "Can't get shader group identifiers: vkGetRayTracingShaderGroupHandlesKHR returned %d.", (int32_t)result);
+
+    return Result::SUCCESS;
 }
 
 #include "PipelineVK.hpp"

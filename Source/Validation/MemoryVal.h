@@ -12,43 +12,45 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct BufferVal;
-    struct TextureVal;
-    struct AccelerationStructureVal;
 
-    struct MemoryVal : public DeviceObjectVal<Memory>
-    {
-        MemoryVal(DeviceVal& device, Memory& memory, uint64_t size, MemoryLocation memoryLocation);
-        MemoryVal(DeviceVal& device, Memory& memory, const MemoryD3D12Desc& memoryD3D12Desc);
+struct BufferVal;
+struct TextureVal;
+struct AccelerationStructureVal;
 
-        bool HasBoundResources();
-        void ReportBoundResources();
+struct MemoryVal : public DeviceObjectVal<Memory>
+{
+    MemoryVal(DeviceVal& device, Memory& memory, uint64_t size, MemoryLocation memoryLocation);
+    MemoryVal(DeviceVal& device, Memory& memory, const MemoryD3D12Desc& memoryD3D12Desc);
 
-        inline uint64_t GetSize() const
-        { return m_Size; }
+    bool HasBoundResources();
+    void ReportBoundResources();
 
-        inline MemoryLocation GetMemoryLocation() const
-        { return m_MemoryLocation; }
+    inline uint64_t GetSize() const
+    { return m_Size; }
 
-        //======================================================================================================================
-        // NRI
-        //======================================================================================================================
-        void BindBuffer(BufferVal& buffer);
-        void BindTexture(TextureVal& texture);
-        void BindAccelerationStructure(AccelerationStructureVal& accelerationStructure);
-        void UnbindBuffer(BufferVal& buffer);
-        void UnbindTexture(TextureVal& texture);
-        void UnbindAccelerationStructure(AccelerationStructureVal& accelerationStructure);
+    inline MemoryLocation GetMemoryLocation() const
+    { return m_MemoryLocation; }
 
-        void SetDebugName(const char* name);
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+    void BindBuffer(BufferVal& buffer);
+    void BindTexture(TextureVal& texture);
+    void BindAccelerationStructure(AccelerationStructureVal& accelerationStructure);
+    void UnbindBuffer(BufferVal& buffer);
+    void UnbindTexture(TextureVal& texture);
+    void UnbindAccelerationStructure(AccelerationStructureVal& accelerationStructure);
 
-    private:
-        std::vector<BufferVal*> m_Buffers;
-        std::vector<TextureVal*> m_Textures;
-        std::vector<AccelerationStructureVal*> m_AccelerationStructures;
-        Lock m_Lock;
+    void SetDebugName(const char* name);
 
-        uint64_t m_Size = 0;
-        MemoryLocation m_MemoryLocation = MemoryLocation::MAX_NUM;
-    };
+private:
+    std::vector<BufferVal*> m_Buffers;
+    std::vector<TextureVal*> m_Textures;
+    std::vector<AccelerationStructureVal*> m_AccelerationStructures;
+    Lock m_Lock;
+
+    uint64_t m_Size = 0;
+    MemoryLocation m_MemoryLocation = MemoryLocation::MAX_NUM;
+};
+
 }

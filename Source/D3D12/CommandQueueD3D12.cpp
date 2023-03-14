@@ -10,9 +10,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "SharedD3D12.h"
 #include "CommandQueueD3D12.h"
-#include "DeviceD3D12.h"
-#include "QueueSemaphoreD3D12.h"
-#include "DeviceSemaphoreD3D12.h"
 #include "CommandBufferD3D12.h"
 
 using namespace nri;
@@ -49,40 +46,20 @@ Result CommandQueueD3D12::Create(ID3D12CommandQueue* commandQueue)
     return Result::SUCCESS;
 }
 
-D3D12_COMMAND_LIST_TYPE CommandQueueD3D12::GetType() const
-{
-    return m_CommandListType;
-}
+//================================================================================================================
+// NRI
+//================================================================================================================
 
-inline void CommandQueueD3D12::SetDebugName(const char* name)
+inline void CommandQueueD3D12::Submit(const QueueSubmitDesc& queueSubmitDesc)
 {
-    SET_D3D_DEBUG_OBJECT_NAME(m_CommandQueue, name);
-}
-
-inline void CommandQueueD3D12::Submit(const WorkSubmissionDesc& workSubmissionDesc, DeviceSemaphore* deviceSemaphore)
-{
-    for (uint32_t i = 0; i < workSubmissionDesc.waitNum; i++)
-        ((QueueSemaphoreD3D12*)workSubmissionDesc.wait[i])->Wait(m_CommandQueue);
-
-    if (workSubmissionDesc.commandBufferNum)
+    if (queueSubmitDesc.commandBufferNum)
     {
-        ID3D12CommandList** commandLists = STACK_ALLOC(ID3D12CommandList*, workSubmissionDesc.commandBufferNum);
-        for (uint32_t j = 0; j < workSubmissionDesc.commandBufferNum; j++)
-            commandLists[j] = *(CommandBufferD3D12*)workSubmissionDesc.commandBuffers[j];
+        ID3D12CommandList** commandLists = STACK_ALLOC(ID3D12CommandList*, queueSubmitDesc.commandBufferNum);
+        for (uint32_t j = 0; j < queueSubmitDesc.commandBufferNum; j++)
+            commandLists[j] = *(CommandBufferD3D12*)queueSubmitDesc.commandBuffers[j];
 
-        m_CommandQueue->ExecuteCommandLists(workSubmissionDesc.commandBufferNum, commandLists);
+        m_CommandQueue->ExecuteCommandLists(queueSubmitDesc.commandBufferNum, commandLists);
     }
-
-    for (uint32_t i = 0; i < workSubmissionDesc.signalNum; i++)
-        ((QueueSemaphoreD3D12*)workSubmissionDesc.signal[i])->Signal(m_CommandQueue);
-
-    if (deviceSemaphore)
-        ((DeviceSemaphoreD3D12*)deviceSemaphore)->Signal(m_CommandQueue);
-}
-
-inline void CommandQueueD3D12::Wait(DeviceSemaphore& deviceSemaphore)
-{
-    ((DeviceSemaphoreD3D12&)deviceSemaphore).Wait();
 }
 
 inline Result CommandQueueD3D12::ChangeResourceStates(const TransitionBarrierDesc& transitionBarriers)

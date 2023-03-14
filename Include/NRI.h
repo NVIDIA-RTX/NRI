@@ -14,8 +14,8 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include <stddef.h>
 
 #define NRI_VERSION_MAJOR 1
-#define NRI_VERSION_MINOR 92
-#define NRI_VERSION_DATE "2 February 2023"
+#define NRI_VERSION_MINOR 93
+#define NRI_VERSION_DATE "14 March 2023"
 #define NRI_INTERFACE( name ) #name, sizeof(name)
 
 #ifdef _WIN32
@@ -66,6 +66,7 @@ NRI_STRUCT(CoreInterface)
 
     // Create
     NRI_NAME(Result) (NRI_CALL *CreateCommandAllocator)(const NRI_REF_NAME(CommandQueue) commandQueue, uint32_t physicalDeviceMask, NRI_REF_NAME(CommandAllocator*) commandAllocator);
+    NRI_NAME(Result) (NRI_CALL *CreateCommandBuffer)(NRI_REF_NAME(CommandAllocator) commandAllocator, NRI_REF_NAME(CommandBuffer*) commandBuffer);
     NRI_NAME(Result) (NRI_CALL *CreateDescriptorPool)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(DescriptorPoolDesc) descriptorPoolDesc, NRI_REF_NAME(DescriptorPool*) descriptorPool);
     NRI_NAME(Result) (NRI_CALL *CreateBuffer)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(BufferDesc) bufferDesc, NRI_REF_NAME(Buffer*) buffer);
     NRI_NAME(Result) (NRI_CALL *CreateTexture)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(TextureDesc) textureDesc, NRI_REF_NAME(Texture*) texture);
@@ -79,12 +80,11 @@ NRI_STRUCT(CoreInterface)
     NRI_NAME(Result) (NRI_CALL *CreateComputePipeline)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(ComputePipelineDesc) computePipelineDesc, NRI_REF_NAME(Pipeline*) pipeline);
     NRI_NAME(Result) (NRI_CALL *CreateFrameBuffer)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(FrameBufferDesc) frameBufferDesc, NRI_REF_NAME(FrameBuffer*) frameBuffer);
     NRI_NAME(Result) (NRI_CALL *CreateQueryPool)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(QueryPoolDesc) queryPoolDesc, NRI_REF_NAME(QueryPool*) queryPool);
-    NRI_NAME(Result) (NRI_CALL *CreateQueueSemaphore)(NRI_REF_NAME(Device) device, NRI_REF_NAME(QueueSemaphore*) queueSemaphore);
-    NRI_NAME(Result) (NRI_CALL *CreateDeviceSemaphore)(NRI_REF_NAME(Device) device, bool signaled, NRI_REF_NAME(DeviceSemaphore*) deviceSemaphore);
-    NRI_NAME(Result) (NRI_CALL *CreateCommandBuffer)(NRI_REF_NAME(CommandAllocator) commandAllocator, NRI_REF_NAME(CommandBuffer*) commandBuffer);
+    NRI_NAME(Result) (NRI_CALL *CreateFence)(NRI_REF_NAME(Device) device, uint64_t initialValue, NRI_REF_NAME(Fence*) fence);
 
     // Destroy
     void (NRI_CALL *DestroyCommandAllocator)(NRI_REF_NAME(CommandAllocator) commandAllocator);
+    void (NRI_CALL *DestroyCommandBuffer)(NRI_REF_NAME(CommandBuffer) commandBuffer);
     void (NRI_CALL *DestroyDescriptorPool)(NRI_REF_NAME(DescriptorPool) descriptorPool);
     void (NRI_CALL *DestroyBuffer)(NRI_REF_NAME(Buffer) buffer);
     void (NRI_CALL *DestroyTexture)(NRI_REF_NAME(Texture) texture);
@@ -93,9 +93,7 @@ NRI_STRUCT(CoreInterface)
     void (NRI_CALL *DestroyPipeline)(NRI_REF_NAME(Pipeline) pipeline);
     void (NRI_CALL *DestroyFrameBuffer)(NRI_REF_NAME(FrameBuffer) frameBuffer);
     void (NRI_CALL *DestroyQueryPool)(NRI_REF_NAME(QueryPool) queryPool);
-    void (NRI_CALL *DestroyQueueSemaphore)(NRI_REF_NAME(QueueSemaphore) queueSemaphore);
-    void (NRI_CALL *DestroyDeviceSemaphore)(NRI_REF_NAME(DeviceSemaphore) deviceSemaphore);
-    void (NRI_CALL *DestroyCommandBuffer)(NRI_REF_NAME(CommandBuffer) commandBuffer);
+    void (NRI_CALL *DestroyFence)(NRI_REF_NAME(Fence) fence);
 
     // Memory
     NRI_NAME(Result) (NRI_CALL *AllocateMemory)(NRI_REF_NAME(Device) device, uint32_t physicalDeviceMask, NRI_NAME(MemoryType) memoryType, uint64_t size, NRI_REF_NAME(Memory*) memory);
@@ -142,12 +140,17 @@ NRI_STRUCT(CoreInterface)
     void (NRI_CALL *CmdCopyTexture)(NRI_REF_NAME(CommandBuffer) commandBuffer, NRI_REF_NAME(Texture) dstTexture, uint32_t dstPhysicalDeviceIndex, const NRI_NAME(TextureRegionDesc)* dstRegionDesc, const NRI_REF_NAME(Texture) srcTexture, uint32_t srcPhysicalDeviceIndex, const NRI_NAME(TextureRegionDesc)* srcRegionDesc);
     void (NRI_CALL *CmdUploadBufferToTexture)(NRI_REF_NAME(CommandBuffer) commandBuffer, NRI_REF_NAME(Texture) dstTexture, const NRI_REF_NAME(TextureRegionDesc) dstRegionDesc, const NRI_REF_NAME(Buffer) srcBuffer, const NRI_REF_NAME(TextureDataLayoutDesc) srcDataLayoutDesc);
     void (NRI_CALL *CmdReadbackTextureToBuffer)(NRI_REF_NAME(CommandBuffer) commandBuffer, NRI_REF_NAME(Buffer) dstBuffer, NRI_REF_NAME(TextureDataLayoutDesc) dstDataLayoutDesc, const NRI_REF_NAME(Texture) srcTexture, const NRI_REF_NAME(TextureRegionDesc) srcRegionDesc);
-    void (NRI_CALL* CmdCopyQueries)(NRI_REF_NAME(CommandBuffer) commandBuffer, const NRI_REF_NAME(QueryPool) queryPool, uint32_t offset, uint32_t num, NRI_REF_NAME(Buffer) dstBuffer, uint64_t dstOffset);
-    void (NRI_CALL* CmdResetQueries)(NRI_REF_NAME(CommandBuffer) commandBuffer, const NRI_REF_NAME(QueryPool) queryPool, uint32_t offset, uint32_t num);
+    void (NRI_CALL *CmdCopyQueries)(NRI_REF_NAME(CommandBuffer) commandBuffer, const NRI_REF_NAME(QueryPool) queryPool, uint32_t offset, uint32_t num, NRI_REF_NAME(Buffer) dstBuffer, uint64_t dstOffset);
+    void (NRI_CALL *CmdResetQueries)(NRI_REF_NAME(CommandBuffer) commandBuffer, const NRI_REF_NAME(QueryPool) queryPool, uint32_t offset, uint32_t num);
 
-    // Work submission & idle
-    void (NRI_CALL *SubmitQueueWork)(NRI_REF_NAME(CommandQueue) commandQueue, const NRI_REF_NAME(WorkSubmissionDesc) workSubmissionDesc, NRI_NAME(DeviceSemaphore)* deviceSemaphore);
-    void (NRI_CALL *WaitForSemaphore)(NRI_REF_NAME(CommandQueue) commandQueue, NRI_REF_NAME(DeviceSemaphore) deviceSemaphore);
+    // Synchronization
+    uint64_t (NRI_CALL *GetFenceValue)(NRI_REF_NAME(Fence) fence);
+    void (NRI_CALL *QueueSignal)(NRI_REF_NAME(CommandQueue) commandQueue, NRI_REF_NAME(Fence) fence, uint64_t value);
+    void (NRI_CALL *QueueWait)(NRI_REF_NAME(CommandQueue) commandQueue, NRI_REF_NAME(Fence) fence, uint64_t value);
+    void (NRI_CALL *Wait)(NRI_REF_NAME(Fence) fence, uint64_t value);
+
+    // Work submission
+    void (NRI_CALL *QueueSubmit)(NRI_REF_NAME(CommandQueue) commandQueue, const NRI_REF_NAME(QueueSubmitDesc) queueSubmitDesc);
 
     // Descriptor set
     void (NRI_CALL *UpdateDescriptorRanges)(NRI_REF_NAME(DescriptorSet) descriptorSet, uint32_t physicalDeviceMask, uint32_t baseRange, uint32_t rangeNum, const NRI_NAME(DescriptorRangeUpdateDesc)* rangeUpdateDescs);
@@ -168,8 +171,7 @@ NRI_STRUCT(CoreInterface)
     // Debug name
     void (NRI_CALL *SetDeviceDebugName)(NRI_REF_NAME(Device) device, const char* name);
     void (NRI_CALL *SetCommandQueueDebugName)(NRI_REF_NAME(CommandQueue) commandQueue, const char* name);
-    void (NRI_CALL *SetDeviceSemaphoreDebugName)(NRI_REF_NAME(DeviceSemaphore) deviceSemaphore, const char* name);
-    void (NRI_CALL *SetQueueSemaphoreDebugName)(NRI_REF_NAME(QueueSemaphore) queueSemaphore, const char* name);
+    void (NRI_CALL *SetFenceDebugName)(NRI_REF_NAME(Fence) fence, const char* name);
     void (NRI_CALL *SetCommandAllocatorDebugName)(NRI_REF_NAME(CommandAllocator) commandAllocator, const char* name);
     void (NRI_CALL *SetDescriptorPoolDebugName)(NRI_REF_NAME(DescriptorPool) descriptorPool, const char* name);
     void (NRI_CALL *SetBufferDebugName)(NRI_REF_NAME(Buffer) buffer, const char* name);

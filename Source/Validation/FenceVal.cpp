@@ -9,23 +9,19 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
 #include "SharedExternal.h"
-#include "SharedD3D11.h"
-#include "QueueSemaphoreD3D11.h"
+#include "SharedVal.h"
+#include "FenceVal.h"
 
 using namespace nri;
 
-QueueSemaphoreD3D11::QueueSemaphoreD3D11(DeviceD3D11& device) :
-    m_Device(device)
+//================================================================================================================
+// NRI
+//================================================================================================================
+
+inline void FenceVal::SetDebugName(const char* name)
 {
+    m_Name = name;
+    m_CoreAPI.SetFenceDebugName(m_ImplObject, name);
 }
 
-QueueSemaphoreD3D11::~QueueSemaphoreD3D11()
-{
-}
-
-void QueueSemaphoreD3D11::SetDebugName(const char* name)
-{
-    MaybeUnused(name);
-}
-
-#include "QueueSemaphoreD3D11.hpp"
+#include "FenceVal.hpp"

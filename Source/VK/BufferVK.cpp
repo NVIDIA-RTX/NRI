@@ -12,7 +12,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "BufferVK.h"
 #include "MemoryVK.h"
 #include "CommandQueueVK.h"
-#include "DeviceVK.h"
 
 using namespace nri;
 
@@ -118,7 +117,7 @@ void BufferVK::ReadDeviceAddress()
 
     const auto& vk = m_Device.GetDispatchTable();
 
-    if (vk.GetBufferDeviceAddress == nullptr)
+    if (!vk.GetBufferDeviceAddress)
         return;
 
     for (uint32_t i = 0; i < m_Device.GetPhysicalDeviceGroupSize(); i++)
@@ -130,6 +129,10 @@ void BufferVK::ReadDeviceAddress()
         }
     }
 }
+
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 void BufferVK::SetDebugName(const char* name)
 {

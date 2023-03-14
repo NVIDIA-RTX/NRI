@@ -8,16 +8,20 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma region [  CoreInterface  ]
+#pragma region [  Core  ]
 
-static void NRI_CALL SetDeviceSemaphoreDebugName(DeviceSemaphore& deviceSemaphore, const char* name)
+static void NRI_CALL SetDescriptorDebugName(Descriptor& descriptor, const char* name)
 {
-    ((DeviceSemaphoreVal*)&deviceSemaphore)->SetDebugName(name);
+    ((DescriptorD3D12&)descriptor).SetDebugName(name);
 }
 
-void FillFunctionTableDeviceSemaphoreVal(CoreInterface& coreInterface)
+static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor& descriptor, uint32_t physicalDeviceIndex)
 {
-    coreInterface.SetDeviceSemaphoreDebugName = ::SetDeviceSemaphoreDebugName;
+    MaybeUnused(physicalDeviceIndex);
+
+    return uint64_t( ((DescriptorD3D12&)descriptor).GetPointerCPU() );
 }
 
 #pragma endregion
+
+Define_Core_Descriptor_PartiallyFillFunctionTable(D3D12)

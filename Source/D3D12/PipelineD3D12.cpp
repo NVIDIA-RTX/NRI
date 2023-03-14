@@ -10,8 +10,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "SharedD3D12.h"
 #include "PipelineD3D12.h"
-#include "DeviceD3D12.h"
-#include "DescriptorSetD3D12.h"
 #include "PipelineLayoutD3D12.h"
 
 using namespace nri;
@@ -74,7 +72,6 @@ typedef PipelineDescComponent<D3D12_RT_FORMAT_ARRAY, D3D12_PIPELINE_STATE_SUBOBJ
 
 Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipelineDesc)
 {
-#ifdef __ID3D12GraphicsCommandList6_INTERFACE_DEFINED__
     m_PipelineLayout = (const PipelineLayoutD3D12*)graphicsPipelineDesc.pipelineLayout;
 
     if (graphicsPipelineDesc.inputAssembly != nullptr)
@@ -165,16 +162,14 @@ Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipel
     }
 
     m_IsGraphicsPipeline = true;
-#endif
+
     return Result::SUCCESS;
 }
 
 Result PipelineD3D12::Create(const GraphicsPipelineDesc& graphicsPipelineDesc)
 {
-#ifdef __ID3D12GraphicsCommandList6_INTERFACE_DEFINED__
     if (m_Device.IsMeshShaderSupported())
         return CreateFromStream(graphicsPipelineDesc);
-#endif
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPipleineStateDesc = {};
     graphicsPipleineStateDesc.NodeMask = NRI_TEMP_NODE_MASK;
@@ -258,7 +253,6 @@ Result PipelineD3D12::Create(const ComputePipelineDesc& computePipelineDesc)
 
 Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc)
 {
-#ifdef __ID3D12Device5_INTERFACE_DEFINED__
     ID3D12Device5* device5 = m_Device;
     if (!device5)
         return Result::FAILURE;
@@ -402,35 +396,14 @@ Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDes
     m_StateObject->QueryInterface(&m_StateObjectProperties);
 
     return Result::SUCCESS;
-#else
-    return Result::FAILURE;
-#endif
-}
-
-Result PipelineD3D12::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* buffer) const
-{
-#ifdef __ID3D12Device5_INTERFACE_DEFINED__
-    uint8_t* byteBuffer = (uint8_t*)buffer;
-    for (uint32_t i = 0; i < shaderGroupNum; i++)
-    {
-        memcpy(byteBuffer + i * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT, m_StateObjectProperties->GetShaderIdentifier(m_ShaderGroupNames[baseShaderGroupIndex + i].c_str()),
-            (size_t)m_Device.GetDesc().rayTracingShaderGroupIdentifierSize);
-    }
-
-    return Result::SUCCESS;
-#else
-    return Result::FAILURE;
-#endif
 }
 
 void PipelineD3D12::Bind(ID3D12GraphicsCommandList* graphicsCommandList, D3D12_PRIMITIVE_TOPOLOGY& primitiveTopology) const
 {
-#ifdef __ID3D12Device5_INTERFACE_DEFINED__
     if (m_StateObject)
         ((ID3D12GraphicsCommandList4*)graphicsCommandList)->SetPipelineState1(m_StateObject);
     else
-#endif
-    graphicsCommandList->SetPipelineState(m_PipelineState);
+        graphicsCommandList->SetPipelineState(m_PipelineState);
 
     if (m_IsGraphicsPipeline)
     {
@@ -573,9 +546,20 @@ void PipelineD3D12::FillSampleDesc(DXGI_SAMPLE_DESC& sampleDesc, UINT& sampleMas
     m_SampleNum = rasterizationDesc.sampleNum;
 }
 
-void PipelineD3D12::SetDebugName(const char* name)
+//================================================================================================================
+// NRI
+//================================================================================================================
+
+inline Result PipelineD3D12::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* buffer) const
 {
-    SET_D3D_DEBUG_OBJECT_NAME(m_PipelineState, name);
+    uint8_t* byteBuffer = (uint8_t*)buffer;
+    for (uint32_t i = 0; i < shaderGroupNum; i++)
+    {
+        memcpy(byteBuffer + i * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT, m_StateObjectProperties->GetShaderIdentifier(m_ShaderGroupNames[baseShaderGroupIndex + i].c_str()),
+            (size_t)m_Device.GetDesc().rayTracingShaderGroupIdentifierSize);
+    }
+
+    return Result::SUCCESS;
 }
 
 #include "PipelineD3D12.hpp"

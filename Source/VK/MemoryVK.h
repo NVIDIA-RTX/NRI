@@ -12,56 +12,48 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct DeviceVK;
-    struct BufferVK;
-    struct TextureVK;
 
-    struct MemoryVK
-    {
-        MemoryVK(DeviceVK& device);
-        ~MemoryVK();
+struct DeviceVK;
+struct BufferVK;
+struct TextureVK;
 
-        DeviceVK& GetDevice() const;
-        Result Create(uint32_t physicalDeviceMask, const MemoryType memoryType, uint64_t size);
-        Result Create(const MemoryVulkanDesc& memoryDesc);
-        Result CreateDedicated(BufferVK& buffer, uint32_t physicalDeviceMask);
-        Result CreateDedicated(TextureVK& texture, uint32_t physicalDeviceMask);
-        VkDeviceMemory GetHandle(uint32_t physicalDeviceIndex) const;
-        MemoryType GetType() const;
-        uint8_t* GetMappedMemory(uint32_t physicalDeviceIndex) const;
-
-        void SetDebugName(const char* name);
-
-    private:
-        std::array<VkDeviceMemory, PHYSICAL_DEVICE_GROUP_MAX_SIZE> m_Handles = {};
-        std::array<uint8_t*, PHYSICAL_DEVICE_GROUP_MAX_SIZE> m_MappedMemory = {};
-        MemoryType m_Type = std::numeric_limits<MemoryType>::max();
-        DeviceVK& m_Device;
-        bool m_OwnsNativeObjects = false;
-    };
-
-    inline MemoryVK::MemoryVK(DeviceVK& device) :
+struct MemoryVK
+{
+    inline MemoryVK(DeviceVK& device) :
         m_Device(device)
-    {
-    }
+    {}
 
-    inline VkDeviceMemory MemoryVK::GetHandle(uint32_t physicalDeviceIndex) const
-    {
-        return m_Handles[physicalDeviceIndex];
-    }
+    inline VkDeviceMemory GetHandle(uint32_t physicalDeviceIndex) const
+    { return m_Handles[physicalDeviceIndex]; }
 
-    inline DeviceVK& MemoryVK::GetDevice() const
-    {
-        return m_Device;
-    }
+    inline DeviceVK& GetDevice() const
+    { return m_Device; }
 
-    inline MemoryType MemoryVK::GetType() const
-    {
-        return m_Type;
-    }
+    inline MemoryType GetType() const
+    { return m_Type; }
 
-    inline uint8_t* MemoryVK::GetMappedMemory(uint32_t physicalDeviceIndex) const
-    {
-        return m_MappedMemory[physicalDeviceIndex];
-    }
+    inline uint8_t* GetMappedMemory(uint32_t physicalDeviceIndex) const
+    { return m_MappedMemory[physicalDeviceIndex]; }
+
+    ~MemoryVK();
+
+    Result Create(uint32_t physicalDeviceMask, const MemoryType memoryType, uint64_t size);
+    Result Create(const MemoryVulkanDesc& memoryDesc);
+    Result CreateDedicated(BufferVK& buffer, uint32_t physicalDeviceMask);
+    Result CreateDedicated(TextureVK& texture, uint32_t physicalDeviceMask);
+
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+
+    void SetDebugName(const char* name);
+
+private:
+    DeviceVK& m_Device;
+    std::array<VkDeviceMemory, PHYSICAL_DEVICE_GROUP_MAX_SIZE> m_Handles = {};
+    std::array<uint8_t*, PHYSICAL_DEVICE_GROUP_MAX_SIZE> m_MappedMemory = {};
+    MemoryType m_Type = std::numeric_limits<MemoryType>::max();
+    bool m_OwnsNativeObjects = false;
+};
+
 }

@@ -8,7 +8,7 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma region [  RayTracingInterface  ]
+#pragma region [  RayTracing  ]
 
 static Result NRI_CALL CreateAccelerationStructureDescriptor(const AccelerationStructure& accelerationStructure, uint32_t physicalDeviceIndex, Descriptor*& descriptor)
 {
@@ -51,15 +51,6 @@ static uint64_t NRI_CALL GetAccelerationStructureNativeObject(const Acceleration
     return uint64_t((ID3D12Resource*)((AccelerationStructureD3D12&)accelerationStructure));
 }
 
-void FillFunctionTableAccelerationStructureD3D12(RayTracingInterface& rayTracingInterface)
-{
-    rayTracingInterface.CreateAccelerationStructureDescriptor = ::CreateAccelerationStructureDescriptor;
-    rayTracingInterface.GetAccelerationStructureMemoryInfo = ::GetAccelerationStructureMemoryInfo;
-    rayTracingInterface.GetAccelerationStructureUpdateScratchBufferSize = ::GetAccelerationStructureUpdateScratchBufferSize;
-    rayTracingInterface.GetAccelerationStructureBuildScratchBufferSize = ::GetAccelerationStructureBuildScratchBufferSize;
-    rayTracingInterface.GetAccelerationStructureHandle = ::GetAccelerationStructureHandle;
-    rayTracingInterface.SetAccelerationStructureDebugName = ::SetAccelerationStructureDebugName;
-    rayTracingInterface.GetAccelerationStructureNativeObject = ::GetAccelerationStructureNativeObject;
-}
-
 #pragma endregion
+
+Define_RayTracing_AccelerationStructure_PartiallyFillFunctionTable(D3D12)

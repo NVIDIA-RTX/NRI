@@ -8,8 +8,6 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma region [  SwapChainInterface  ]
-
 static void NRI_CALL SetSwapChainDebugName(SwapChain& swapChain, const char* name)
 {
     ((SwapChainD3D11&)swapChain).SetDebugName(name);
@@ -20,14 +18,14 @@ static Texture* const* NRI_CALL GetSwapChainTextures(const SwapChain& swapChain,
     return ((SwapChainD3D11&)swapChain).GetTextures(textureNum, format);
 }
 
-static uint32_t NRI_CALL AcquireNextSwapChainTexture(SwapChain& swapChain, QueueSemaphore& textureReadyForRender)
+static uint32_t NRI_CALL AcquireNextSwapChainTexture(SwapChain& swapChain)
 {
-    return ((SwapChainD3D11&)swapChain).AcquireNextTexture(textureReadyForRender);
+    return ((SwapChainD3D11&)swapChain).AcquireNextTexture();
 }
 
-static Result NRI_CALL SwapChainPresent(SwapChain& swapChain, QueueSemaphore& textureReadyForPresent)
+static Result NRI_CALL SwapChainPresent(SwapChain& swapChain)
 {
-    return ((SwapChainD3D11&)swapChain).Present(textureReadyForPresent);
+    return ((SwapChainD3D11&)swapChain).Present();
 }
 
 static Result NRI_CALL SetSwapChainHdrMetadata(SwapChain& swapChain, const HdrMetadata& hdrMetadata)
@@ -35,13 +33,4 @@ static Result NRI_CALL SetSwapChainHdrMetadata(SwapChain& swapChain, const HdrMe
     return ((SwapChainD3D11&)swapChain).SetHdrMetadata(hdrMetadata);
 }
 
-void FillFunctionTableSwapChainD3D11(SwapChainInterface& table)
-{
-    table.SetSwapChainDebugName = ::SetSwapChainDebugName;
-    table.GetSwapChainTextures = ::GetSwapChainTextures;
-    table.AcquireNextSwapChainTexture = ::AcquireNextSwapChainTexture;
-    table.SwapChainPresent = ::SwapChainPresent;
-    table.SetSwapChainHdrMetadata = ::SetSwapChainHdrMetadata;
-}
-
-#pragma endregion
+Define_SwapChain_PartiallyFillFunctionTable(D3D11)

@@ -476,7 +476,7 @@ NRI_API Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDev
 
     // Create instance
     VkApplicationInfo applicationInfo = {};
-    applicationInfo.apiVersion = VK_API_VERSION_1_1;
+    applicationInfo.apiVersion = VK_API_VERSION_1_3;
 
     VkInstanceCreateInfo instanceCreateInfo = {};
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;

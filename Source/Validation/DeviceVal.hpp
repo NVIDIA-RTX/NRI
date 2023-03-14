@@ -8,7 +8,7 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma region [  CoreInterface  ]
+#pragma region [  Core  ]
 
 static const DeviceDesc& NRI_CALL GetDeviceDesc(const Device& device)
 {
@@ -110,14 +110,9 @@ static Result NRI_CALL CreateQueryPool(Device& device, const QueryPoolDesc& quer
     return ((DeviceVal&)device).CreateQueryPool(queryPoolDesc, queryPool);
 }
 
-static Result NRI_CALL CreateQueueSemaphore(Device& device, QueueSemaphore*& queueSemaphore)
+static Result NRI_CALL CreateFence(Device& device, uint64_t initialValue, Fence*& fence)
 {
-    return ((DeviceVal&)device).CreateQueueSemaphore(queueSemaphore);
-}
-
-static Result NRI_CALL CreateDeviceSemaphore(Device& device, bool signaled, DeviceSemaphore*& deviceSemaphore)
-{
-    return ((DeviceVal&)device).CreateDeviceSemaphore(signaled, deviceSemaphore);
+    return ((DeviceVal&)device).CreateFence(initialValue, fence);
 }
 
 static void NRI_CALL DestroyCommandAllocator(CommandAllocator& commandAllocator)
@@ -165,14 +160,9 @@ static void NRI_CALL DestroyQueryPool(QueryPool& queryPool)
     GetDeviceVal(queryPool).DestroyQueryPool(queryPool);
 }
 
-static void NRI_CALL DestroyQueueSemaphore(QueueSemaphore& queueSemaphore)
+static void NRI_CALL DestroyFence(Fence& fence)
 {
-    GetDeviceVal(queueSemaphore).DestroyQueueSemaphore(queueSemaphore);
-}
-
-static void NRI_CALL DestroyDeviceSemaphore(DeviceSemaphore& deviceSemaphore)
-{
-    GetDeviceVal(deviceSemaphore).DestroyDeviceSemaphore(deviceSemaphore);
+    GetDeviceVal(fence).DestroyFence(fence);
 }
 
 static Result NRI_CALL AllocateMemory(Device& device, uint32_t physicalDeviceMask, MemoryType memoryType, uint64_t size, Memory*& memory)
@@ -217,39 +207,20 @@ void FillFunctionTableCommandQueueVal(CoreInterface& coreInterface);
 void FillFunctionTableDescriptorVal(CoreInterface& coreInterface);
 void FillFunctionTableDescriptorPoolVal(CoreInterface& coreInterface);
 void FillFunctionTableDescriptorSetVal(CoreInterface& coreInterface);
-void FillFunctionTableDeviceSemaphoreVal(CoreInterface& coreInterface);
+void FillFunctionTableFenceVal(CoreInterface& coreInterface);
 void FillFunctionTableFrameBufferVal(CoreInterface& coreInterface);
 void FillFunctionTableMemoryVal(CoreInterface& coreInterface);
 void FillFunctionTablePipelineLayoutVal(CoreInterface& coreInterface);
 void FillFunctionTablePipelineVal(CoreInterface& coreInterface);
 void FillFunctionTableQueryPoolVal(CoreInterface& coreInterface);
-void FillFunctionTableQueueSemaphoreVal(CoreInterface& coreInterface);
 void FillFunctionTableTextureVal(CoreInterface& coreInterface);
 
 Result DeviceVal::FillFunctionTable(CoreInterface& coreInterface) const
 {
     coreInterface = {};
-
-    FillFunctionTableBufferVal(coreInterface);
-    FillFunctionTableCommandAllocatorVal(coreInterface);
-    FillFunctionTableCommandBufferVal(coreInterface);
-    FillFunctionTableCommandQueueVal(coreInterface);
-    FillFunctionTableDescriptorVal(coreInterface);
-    FillFunctionTableDescriptorPoolVal(coreInterface);
-    FillFunctionTableDescriptorSetVal(coreInterface);
-    FillFunctionTableDeviceSemaphoreVal(coreInterface);
-    FillFunctionTableFrameBufferVal(coreInterface);
-    FillFunctionTableMemoryVal(coreInterface);
-    FillFunctionTablePipelineLayoutVal(coreInterface);
-    FillFunctionTablePipelineVal(coreInterface);
-    FillFunctionTableQueryPoolVal(coreInterface);
-    FillFunctionTableQueueSemaphoreVal(coreInterface);
-    FillFunctionTableTextureVal(coreInterface);
-
     coreInterface.GetDeviceDesc = ::GetDeviceDesc;
     coreInterface.GetFormatSupport = ::GetFormatSupport;
     coreInterface.GetCommandQueue = ::GetCommandQueue;
-
     coreInterface.CreateCommandAllocator = ::CreateCommandAllocator;
     coreInterface.CreateDescriptorPool = ::CreateDescriptorPool;
     coreInterface.CreateBuffer = ::CreateBuffer;
@@ -264,9 +235,7 @@ Result DeviceVal::FillFunctionTable(CoreInterface& coreInterface) const
     coreInterface.CreateComputePipeline = ::CreateComputePipeline;
     coreInterface.CreateFrameBuffer = ::CreateFrameBuffer;
     coreInterface.CreateQueryPool = ::CreateQueryPool;
-    coreInterface.CreateQueueSemaphore = ::CreateQueueSemaphore;
-    coreInterface.CreateDeviceSemaphore = ::CreateDeviceSemaphore;
-
+    coreInterface.CreateFence = ::CreateFence;
     coreInterface.DestroyCommandAllocator = ::DestroyCommandAllocator;
     coreInterface.DestroyDescriptorPool = ::DestroyDescriptorPool;
     coreInterface.DestroyBuffer = ::DestroyBuffer;
@@ -276,24 +245,35 @@ Result DeviceVal::FillFunctionTable(CoreInterface& coreInterface) const
     coreInterface.DestroyPipeline = ::DestroyPipeline;
     coreInterface.DestroyFrameBuffer = ::DestroyFrameBuffer;
     coreInterface.DestroyQueryPool = ::DestroyQueryPool;
-    coreInterface.DestroyQueueSemaphore = ::DestroyQueueSemaphore;
-    coreInterface.DestroyDeviceSemaphore = ::DestroyDeviceSemaphore;
-
+    coreInterface.DestroyFence = ::DestroyFence;
     coreInterface.AllocateMemory = ::AllocateMemory;
     coreInterface.BindBufferMemory = ::BindBufferMemory;
     coreInterface.BindTextureMemory = ::BindTextureMemory;
     coreInterface.FreeMemory = ::FreeMemory;
-
     coreInterface.SetDeviceDebugName = ::SetDeviceDebugName;
-
     coreInterface.GetDeviceNativeObject = ::GetDeviceNativeObject;
+
+    FillFunctionTableBufferVal(coreInterface);
+    FillFunctionTableCommandAllocatorVal(coreInterface);
+    FillFunctionTableCommandBufferVal(coreInterface);
+    FillFunctionTableCommandQueueVal(coreInterface);
+    FillFunctionTableDescriptorVal(coreInterface);
+    FillFunctionTableDescriptorPoolVal(coreInterface);
+    FillFunctionTableDescriptorSetVal(coreInterface);
+    FillFunctionTableFenceVal(coreInterface);
+    FillFunctionTableFrameBufferVal(coreInterface);
+    FillFunctionTableMemoryVal(coreInterface);
+    FillFunctionTablePipelineLayoutVal(coreInterface);
+    FillFunctionTablePipelineVal(coreInterface);
+    FillFunctionTableQueryPoolVal(coreInterface);
+    FillFunctionTableTextureVal(coreInterface);
 
     return ValidateFunctionTable(GetLog(), coreInterface);
 }
 
 #pragma endregion
 
-#pragma region [  SwapChainInterface  ]
+#pragma region [  SwapChain  ]
 
 static Result NRI_CALL CreateSwapChain(Device& device, const SwapChainDesc& swapChainDesc, SwapChain*& swapChain)
 {
@@ -336,7 +316,7 @@ Result DeviceVal::FillFunctionTable(SwapChainInterface& swapChainInterface) cons
 
 #pragma endregion
 
-#pragma region [  WrapperD3D11Interface  ]
+#pragma region [  WrapperD3D11  ]
 
 #if NRI_USE_D3D11
 
@@ -377,7 +357,7 @@ Result DeviceVal::FillFunctionTable(WrapperD3D11Interface& wrapperD3D11Interface
 
 #pragma endregion
 
-#pragma region [  WrapperD3D12Interface  ]
+#pragma region [  WrapperD3D12  ]
 
 #if NRI_USE_D3D12
 
@@ -430,7 +410,7 @@ Result DeviceVal::FillFunctionTable(WrapperD3D12Interface& wrapperD3D12Interface
 
 #pragma endregion
 
-#pragma region [  WrapperVKInterface  ]
+#pragma region [  WrapperVK  ]
 
 #if NRI_USE_VULKAN
 
@@ -484,16 +464,6 @@ static Result NRI_CALL CreateQueryPoolVK(Device& device, const QueryPoolVulkanDe
     return ((DeviceVal&)device).CreateQueryPoolVK(queryPoolVulkanDesc, queryPool);
 }
 
-static Result NRI_CALL CreateQueueSemaphoreVK(Device& device, NRIVkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore)
-{
-    return ((DeviceVal&)device).CreateQueueSemaphoreVK(vkSemaphore, queueSemaphore);
-}
-
-static Result NRI_CALL CreateDeviceSemaphoreVK(Device& device, NRIVkFence vkFence, DeviceSemaphore*& deviceSemaphore)
-{
-    return ((DeviceVal&)device).CreateDeviceSemaphoreVK(vkFence, deviceSemaphore);
-}
-
 static Result NRI_CALL CreateAccelerationStructureVK(Device& device, const AccelerationStructureVulkanDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure)
 {
     return ((DeviceVal&)device).CreateAccelerationStructureVK(accelerationStructureDesc, accelerationStructure);
@@ -524,7 +494,6 @@ static NRIVkInstance NRI_CALL GetVkGetDeviceProcAddr(const Device& device)
 Result DeviceVal::FillFunctionTable(WrapperVKInterface& wrapperVKInterface) const
 {
 #if NRI_USE_VULKAN
-
     wrapperVKInterface = {};
     wrapperVKInterface.CreateCommandQueueVK = ::CreateCommandQueueVK;
     wrapperVKInterface.CreateCommandAllocatorVK = ::CreateCommandAllocatorVK;
@@ -536,8 +505,6 @@ Result DeviceVal::FillFunctionTable(WrapperVKInterface& wrapperVKInterface) cons
     wrapperVKInterface.CreateGraphicsPipelineVK = ::CreateGraphicsPipelineVK;
     wrapperVKInterface.CreateComputePipelineVK = ::CreateComputePipelineVK;
     wrapperVKInterface.CreateQueryPoolVK = ::CreateQueryPoolVK;
-    wrapperVKInterface.CreateQueueSemaphoreVK = ::CreateQueueSemaphoreVK;
-    wrapperVKInterface.CreateDeviceSemaphoreVK = ::CreateDeviceSemaphoreVK;
     wrapperVKInterface.CreateAccelerationStructureVK = ::CreateAccelerationStructureVK;
 
     wrapperVKInterface.GetVkPhysicalDevice = ::GetVkPhysicalDevice;
@@ -546,7 +513,6 @@ Result DeviceVal::FillFunctionTable(WrapperVKInterface& wrapperVKInterface) cons
     wrapperVKInterface.GetVkGetInstanceProcAddr = ::GetVkGetInstanceProcAddr;
 
     return ValidateFunctionTable(GetLog(), wrapperVKInterface);
-
 #else
     return Result::UNSUPPORTED;
 #endif
@@ -554,7 +520,7 @@ Result DeviceVal::FillFunctionTable(WrapperVKInterface& wrapperVKInterface) cons
 
 #pragma endregion
 
-#pragma region [  RayTracingInterface  ]
+#pragma region [  RayTracing  ]
 
 static Result NRI_CALL CreateRayTracingPipeline(Device& device, const RayTracingPipelineDesc& pipelineDesc, Pipeline*& pipeline)
 {
@@ -600,7 +566,7 @@ Result DeviceVal::FillFunctionTable(RayTracingInterface& rayTracingInterface) co
 
 #pragma endregion
 
-#pragma region [  MeshShaderInterface  ]
+#pragma region [  MeshShader  ]
 
 void FillFunctionTableCommandBufferVal(MeshShaderInterface& meshShaderInterface);
 
@@ -618,7 +584,7 @@ Result DeviceVal::FillFunctionTable(MeshShaderInterface& meshShaderInterface) co
 
 #pragma endregion
 
-#pragma region [  HelperInterface  ]
+#pragma region [  Helper  ]
 
 static uint32_t NRI_CALL CountAllocationNumVal(Device& device, const ResourceGroupDesc& resourceGroupDesc)
 {

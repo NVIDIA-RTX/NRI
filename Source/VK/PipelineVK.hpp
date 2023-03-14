@@ -10,7 +10,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #pragma once
 
-#pragma region [  CoreInterface  ]
+#pragma region [  Core  ]
 
 static void NRI_CALL SetPipelineDebugName(Pipeline& pipeline, const char* name)
 {
@@ -24,7 +24,7 @@ void FillFunctionTablePipelineVK(CoreInterface& coreInterface)
 
 #pragma endregion
 
-#pragma region [  RayTracingInterface  ]
+#pragma region [  RayTracing  ]
 
 static Result NRI_CALL WriteShaderGroupIdentifiers(const Pipeline& pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* buffer)
 {

@@ -8,19 +8,11 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#include "SharedExternal.h"
 #include "SharedD3D11.h"
 #include "DescriptorSetD3D11.h"
-
 #include "PipelineLayoutD3D11.h"
 
 using namespace nri;
-
-DescriptorSetD3D11::DescriptorSetD3D11(DeviceD3D11& device) :
-    m_Ranges(device.GetStdAllocator()),
-    m_DynamicConstantBuffers(device.GetStdAllocator())
-{
-}
 
 uint32_t DescriptorSetD3D11::Initialize(const PipelineLayoutD3D11& pipelineLayout, uint32_t setIndexInPipelineLayout, const DescriptorD3D11** descriptors)
 {
@@ -45,10 +37,9 @@ uint32_t DescriptorSetD3D11::Initialize(const PipelineLayoutD3D11& pipelineLayou
     return bindingSet.descriptorNum;
 }
 
-inline void DescriptorSetD3D11::SetDebugName(const char* name)
-{
-    MaybeUnused(name);
-}
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 inline void DescriptorSetD3D11::UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs)
 {

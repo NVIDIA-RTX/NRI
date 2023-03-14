@@ -12,26 +12,37 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct DeviceD3D11;
 
-    struct CommandAllocatorD3D11
-    {
-        CommandAllocatorD3D11(DeviceD3D11& device, const VersionedDevice& versionedDevice);
-        ~CommandAllocatorD3D11();
+struct DeviceD3D11;
 
-        inline DeviceD3D11& GetDevice() const
-        { return m_Device; }
+struct CommandAllocatorD3D11
+{
+    inline CommandAllocatorD3D11(DeviceD3D11& device) :
+        m_Device(device)
+    {}
 
-        //======================================================================================================================
-        // NRI
-        //======================================================================================================================
-        void SetDebugName(const char* name);
-        Result CreateCommandBuffer(CommandBuffer*& commandBuffer);
-        void Reset();
+    inline ~CommandAllocatorD3D11()
+    {}
 
-    private:
-        DeviceD3D11& m_Device;
-    };
+    inline DeviceD3D11& GetDevice() const
+    { return m_Device; }
+
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+
+    inline void SetDebugName(const char* name)
+    { MaybeUnused(name); }
+
+    inline void Reset()
+    {}
+
+    Result CreateCommandBuffer(CommandBuffer*& commandBuffer);
+
+private:
+    DeviceD3D11& m_Device;
+};
+
 }
 
 nri::Result CreateCommandBuffer(nri::DeviceD3D11& deviceImpl, ID3D11DeviceContext* precreatedContext, nri::CommandBuffer*& commandBuffer);

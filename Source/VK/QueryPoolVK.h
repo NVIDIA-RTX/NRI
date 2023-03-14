@@ -12,53 +12,45 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct DeviceVK;
 
-    struct QueryPoolVK
-    {
-        QueryPoolVK(DeviceVK& device);
-        ~QueryPoolVK();
+struct DeviceVK;
 
-        VkQueryPool GetHandle(uint32_t physicalDeviceIndex) const;
-        DeviceVK& GetDevice() const;
-        uint32_t GetStride() const;
-        VkQueryType GetType() const;
-        Result Create(const QueryPoolDesc& queryPoolDesc);
-        Result Create(const QueryPoolVulkanDesc& queryPoolDesc);
-
-        void SetDebugName(const char* name);
-        uint32_t GetQuerySize() const;
-
-    private:
-        std::array<VkQueryPool, PHYSICAL_DEVICE_GROUP_MAX_SIZE> m_Handles = {};
-        uint32_t m_Stride = 0;
-        VkQueryType m_Type = (VkQueryType)0;
-        DeviceVK& m_Device;
-        bool m_OwnsNativeObjects = false;
-    };
-
-    inline QueryPoolVK::QueryPoolVK(DeviceVK& device) :
+struct QueryPoolVK
+{
+    inline QueryPoolVK(DeviceVK& device) :
         m_Device(device)
-    {
-    }
+    {}
 
-    inline VkQueryPool QueryPoolVK::GetHandle(uint32_t physicalDeviceIndex) const
-    {
-        return m_Handles[physicalDeviceIndex];
-    }
+    inline VkQueryPool GetHandle(uint32_t physicalDeviceIndex) const
+    { return m_Handles[physicalDeviceIndex]; }
 
-    inline DeviceVK& QueryPoolVK::GetDevice() const
-    {
-        return m_Device;
-    }
+    inline DeviceVK& GetDevice() const
+    { return m_Device; }
 
-    inline uint32_t QueryPoolVK::GetStride() const
-    {
-        return m_Stride;
-    }
+    inline uint32_t GetStride() const
+    { return m_Stride; }
 
-    inline VkQueryType QueryPoolVK::GetType() const
-    {
-        return m_Type;
-    }
+    inline VkQueryType GetType() const
+    { return m_Type; }
+
+    ~QueryPoolVK();
+
+    Result Create(const QueryPoolDesc& queryPoolDesc);
+    Result Create(const QueryPoolVulkanDesc& queryPoolDesc);
+
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+
+    void SetDebugName(const char* name);
+    uint32_t GetQuerySize() const;
+
+private:
+    DeviceVK& m_Device;
+    std::array<VkQueryPool, PHYSICAL_DEVICE_GROUP_MAX_SIZE> m_Handles = {};
+    uint32_t m_Stride = 0;
+    VkQueryType m_Type = (VkQueryType)0;
+    bool m_OwnsNativeObjects = false;
+};
+
 }

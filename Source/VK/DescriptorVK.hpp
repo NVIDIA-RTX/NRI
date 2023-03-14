@@ -10,7 +10,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #pragma once
 
-#pragma region [  CoreInterface  ]
+#pragma region [  Core  ]
 
 static void NRI_CALL SetDescriptorDebugName(Descriptor& descriptor, const char* name)
 {
@@ -34,11 +34,6 @@ static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor& descriptor,
     return handle;
 }
 
-void FillFunctionTableDescriptorVK(CoreInterface& coreInterface)
-{
-    coreInterface.SetDescriptorDebugName = ::SetDescriptorDebugName;
-
-    coreInterface.GetDescriptorNativeObject = ::GetDescriptorNativeObject;
-}
-
 #pragma endregion
+
+Define_Core_Descriptor_PartiallyFillFunctionTable(VK)

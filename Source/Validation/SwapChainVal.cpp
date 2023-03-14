@@ -13,8 +13,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "DeviceVal.h"
 #include "SharedVal.h"
 #include "SwapChainVal.h"
-
-#include "QueueSemaphoreVal.h"
 #include "TextureVal.h"
 
 using namespace nri;
@@ -62,20 +60,14 @@ inline Texture* const* SwapChainVal::GetTextures(uint32_t& textureNum, Format& f
     return (Texture* const*)m_Textures.data();
 }
 
-inline uint32_t SwapChainVal::AcquireNextTexture(QueueSemaphore& textureReadyForRender)
+inline uint32_t SwapChainVal::AcquireNextTexture()
 {
-    ((QueueSemaphoreVal*)&textureReadyForRender)->Signal();
-    QueueSemaphore* queueSemaphoreImpl = NRI_GET_IMPL_REF(QueueSemaphore, &textureReadyForRender);
-
-    return m_SwapChainAPI.AcquireNextSwapChainTexture(m_ImplObject, *queueSemaphoreImpl);
+    return m_SwapChainAPI.AcquireNextSwapChainTexture(m_ImplObject);
 }
 
-inline Result SwapChainVal::Present(QueueSemaphore& textureReadyForPresent)
+inline Result SwapChainVal::Present()
 {
-    ((QueueSemaphoreVal*)&textureReadyForPresent)->Wait();
-    QueueSemaphore* queueSemaphoreImpl = NRI_GET_IMPL_REF(QueueSemaphore, &textureReadyForPresent);
-
-    return m_SwapChainAPI.SwapChainPresent(m_ImplObject, *queueSemaphoreImpl);
+    return m_SwapChainAPI.SwapChainPresent(m_ImplObject);
 }
 
 inline Result SwapChainVal::SetHdrMetadata(const HdrMetadata& hdrMetadata)

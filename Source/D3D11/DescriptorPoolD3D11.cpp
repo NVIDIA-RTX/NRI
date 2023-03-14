@@ -8,21 +8,11 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#include "SharedExternal.h"
 #include "SharedD3D11.h"
 #include "DescriptorSetD3D11.h"
 #include "DescriptorPoolD3D11.h"
 
-#include "PipelineLayoutD3D11.h"
-
 using namespace nri;
-
-DescriptorPoolD3D11::DescriptorPoolD3D11(DeviceD3D11& device) :
-    m_Sets(device.GetStdAllocator()),
-    m_Pool(device.GetStdAllocator()),
-    m_Device(device)
-{
-}
 
 Result DescriptorPoolD3D11::Create(const DescriptorPoolDesc& descriptorPoolDesc)
 {
@@ -43,10 +33,9 @@ Result DescriptorPoolD3D11::Create(const DescriptorPoolDesc& descriptorPoolDesc)
     return Result::SUCCESS;
 }
 
-inline void DescriptorPoolD3D11::SetDebugName(const char* name)
-{
-    MaybeUnused(name);
-}
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 inline Result DescriptorPoolD3D11::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** descriptorSets,
     uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum)
@@ -68,12 +57,6 @@ inline Result DescriptorPoolD3D11::AllocateDescriptorSets(const PipelineLayout& 
     }
 
     return Result::SUCCESS;
-}
-
-inline void DescriptorPoolD3D11::Reset()
-{
-    m_DescriptorPoolOffset = 0;
-    m_DescriptorSetIndex = 0;
 }
 
 #include "DescriptorPoolD3D11.hpp"

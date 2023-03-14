@@ -8,7 +8,7 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma region [  CoreInterface  ]
+#pragma region [  Core  ]
 
 static void NRI_CALL SetCommandBufferDebugName(CommandBuffer& commandBuffer, const char* name)
 {
@@ -257,7 +257,7 @@ void FillFunctionTableCommandBufferVal(CoreInterface& coreInterface)
 
 #pragma endregion
 
-#pragma region [  RayTracingInterface  ]
+#pragma region [  RayTracing  ]
 
 static void NRI_CALL CmdBuildTopLevelAccelerationStructure(CommandBuffer& commandBuffer, uint32_t instanceNum, const Buffer& buffer, uint64_t bufferOffset,
     AccelerationStructureBuildBits flags, AccelerationStructure& dst, Buffer& scratch, uint64_t scratchOffset)
@@ -313,11 +313,11 @@ void FillFunctionTableCommandBufferVal(RayTracingInterface& rayTracingInterface)
 
 #pragma endregion
 
-#pragma region [  MeshShaderInterface  ]
+#pragma region [  MeshShader  ]
 
-static void NRI_CALL CmdDispatchMeshTasks(CommandBuffer& commandBuffer, uint32_t taskNum)
+static void NRI_CALL CmdDispatchMeshTasks(CommandBuffer& commandBuffer, uint32_t x, uint32_t y, uint32_t z)
 {
-    ((CommandBufferVal&)commandBuffer).DispatchMeshTasks(taskNum);
+    ((CommandBufferVal&)commandBuffer).DispatchMeshTasks(x, y, z);
 }
 
 void FillFunctionTableCommandBufferVal(MeshShaderInterface& meshShaderInterface)

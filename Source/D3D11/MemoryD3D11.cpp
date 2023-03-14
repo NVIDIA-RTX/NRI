@@ -8,17 +8,10 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#include "SharedExternal.h"
 #include "SharedD3D11.h"
 #include "MemoryD3D11.h"
 
 using namespace nri;
-
-MemoryD3D11::MemoryD3D11(DeviceD3D11& device, MemoryType memoryType) :
-    m_Location((MemoryLocation)memoryType),
-    m_Device(device)
-{
-}
 
 uint32_t MemoryD3D11::GetResidencyPriority(uint64_t size) const
 {
@@ -44,9 +37,8 @@ uint32_t MemoryD3D11::GetResidencyPriority(uint64_t size) const
     return high;
 }
 
-void MemoryD3D11::SetDebugName(const char* name)
-{
-    MaybeUnused(name);
-}
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 #include "MemoryD3D11.hpp"

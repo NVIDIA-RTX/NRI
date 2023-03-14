@@ -10,55 +10,39 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #pragma once
 
-#pragma region [  CoreInterface  ]
+#pragma region [  Core  ]
 
 static void NRI_CALL SetCommandQueueDebugName(CommandQueue& commandQueue, const char* name)
 {
     ((CommandQueueVK&)commandQueue).SetDebugName(name);
 }
 
-static void NRI_CALL SubmitQueueWork(CommandQueue& commandQueue, const WorkSubmissionDesc& workSubmissionDesc, DeviceSemaphore* deviceSemaphore)
+static void NRI_CALL QueueSubmit(CommandQueue& commandQueue, const QueueSubmitDesc& workSubmissionDesc)
 {
-    ((CommandQueueVK&)commandQueue).Submit(workSubmissionDesc, deviceSemaphore);
-}
-
-static void NRI_CALL WaitForSemaphore(CommandQueue& commandQueue, DeviceSemaphore& deviceSemaphore)
-{
-    ((CommandQueueVK&)commandQueue).Wait(deviceSemaphore);
-}
-
-void FillFunctionTableCommandQueueVK(CoreInterface& coreInterface)
-{
-    coreInterface.SetCommandQueueDebugName = ::SetCommandQueueDebugName;
-    coreInterface.SubmitQueueWork = ::SubmitQueueWork;
-    coreInterface.WaitForSemaphore = ::WaitForSemaphore;
+    ((CommandQueueVK&)commandQueue).Submit(workSubmissionDesc);
 }
 
 #pragma endregion
 
-#pragma region [  HelperInterface  ]
+#pragma region [  Helper  ]
 
-static Result NRI_CALL ChangeResourceStatesVK(CommandQueue& commandQueue, const TransitionBarrierDesc& transitionBarriers)
+static Result NRI_CALL ChangeResourceStates(CommandQueue& commandQueue, const TransitionBarrierDesc& transitionBarriers)
 {
     return ((CommandQueueVK&)commandQueue).ChangeResourceStates(transitionBarriers);
 }
 
-static nri::Result NRI_CALL UploadDataVK(CommandQueue& commandQueue, const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum,
+static nri::Result NRI_CALL UploadData(CommandQueue& commandQueue, const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum,
     const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum)
 {
     return ((CommandQueueVK&)commandQueue).UploadData(textureUploadDescs, textureUploadDescNum, bufferUploadDescs, bufferUploadDescNum);
 }
 
-static nri::Result NRI_CALL WaitForIdleVK(CommandQueue& commandQueue)
+static nri::Result NRI_CALL WaitForIdle(CommandQueue& commandQueue)
 {
     return ((CommandQueueVK&)commandQueue).WaitForIdle();
 }
 
-void FillFunctionTableCommandQueueVK(HelperInterface& helperInterface)
-{
-    helperInterface.ChangeResourceStates = ::ChangeResourceStatesVK;
-    helperInterface.UploadData = ::UploadDataVK;
-    helperInterface.WaitForIdle = ::WaitForIdleVK;
-}
-
 #pragma endregion
+
+Define_Core_CommandQueue_PartiallyFillFunctionTable(VK)
+Define_Helper_CommandQueue_PartiallyFillFunctionTable(VK)

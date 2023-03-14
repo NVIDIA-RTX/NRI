@@ -12,23 +12,25 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct PipelineLayoutVal : public DeviceObjectVal<PipelineLayout>
-    {
-        PipelineLayoutVal(DeviceVal& device, PipelineLayout& pipelineLayout, const PipelineLayoutDesc& pipelineLayoutDesc);
 
-        inline const PipelineLayoutDesc& GetPipelineLayoutDesc() const
-        { return m_PipelineLayoutDesc; }
+struct PipelineLayoutVal : public DeviceObjectVal<PipelineLayout>
+{
+    PipelineLayoutVal(DeviceVal& device, PipelineLayout& pipelineLayout, const PipelineLayoutDesc& pipelineLayoutDesc);
 
-        //======================================================================================================================
-        // NRI
-        //======================================================================================================================
-        void SetDebugName(const char* name);
+    inline const PipelineLayoutDesc& GetPipelineLayoutDesc() const
+    { return m_PipelineLayoutDesc; }
 
-    private:
-        PipelineLayoutDesc m_PipelineLayoutDesc;
-        Vector<DescriptorSetDesc> m_DescriptorSets;
-        Vector<PushConstantDesc> m_PushConstants;
-        Vector<DescriptorRangeDesc> m_DescriptorRangeDescs;
-        Vector<DynamicConstantBufferDesc> m_DynamicConstantBufferDescs;
-    };
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+    void SetDebugName(const char* name);
+
+private:
+    PipelineLayoutDesc m_PipelineLayoutDesc;
+    Vector<DescriptorSetDesc> m_DescriptorSets;
+    Vector<PushConstantDesc> m_PushConstants;
+    Vector<DescriptorRangeDesc> m_DescriptorRangeDescs;
+    Vector<DynamicConstantBufferDesc> m_DynamicConstantBufferDescs;
+};
+
 }

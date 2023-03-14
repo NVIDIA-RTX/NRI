@@ -72,7 +72,7 @@ bool RequiresDedicatedAllocation(MemoryType memoryType)
     return false;
 }
 
-D3D12_RESOURCE_STATES GetResourceStates(AccessBits accessMask)
+D3D12_RESOURCE_STATES GetResourceStates(AccessBits accessMask, D3D12_COMMAND_LIST_TYPE commandListType)
 {
     D3D12_RESOURCE_STATES resourceStates = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON; // TODO: PS resource and/or non-PS resource?
 
@@ -95,7 +95,11 @@ D3D12_RESOURCE_STATES GetResourceStates(AccessBits accessMask)
     if (accessMask & AccessBits::COPY_DESTINATION)
         resourceStates |= D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST;
     if (accessMask & AccessBits::SHADER_RESOURCE)
-        resourceStates |= D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    {
+        resourceStates |= D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+        if (commandListType == D3D12_COMMAND_LIST_TYPE_DIRECT)
+            resourceStates |= D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    }
     if (accessMask & AccessBits::ACCELERATION_STRUCTURE_READ)
         resourceStates |= D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
     if (accessMask & AccessBits::ACCELERATION_STRUCTURE_WRITE)
@@ -751,8 +755,6 @@ namespace nri
     }
 }
 
-#ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
-
 D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE GetAccelerationStructureType(AccelerationStructureType accelerationStructureType)
 {
     static_assert(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL == (uint32_t)AccelerationStructureType::TOP_LEVEL, "Unsupported AccelerationStructureType.");
@@ -824,5 +826,3 @@ D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE GetCopyMode(CopyMode copyMode)
 
     return (D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE)copyMode;
 }
-
-#endif

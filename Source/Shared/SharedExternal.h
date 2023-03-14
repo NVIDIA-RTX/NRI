@@ -56,7 +56,11 @@ private:
     nri::CallbackInterface m_CallbackInterface;
 };
 
-//==============================================================================================================================
+//================================================================================================================
+
+#define SET_D3D_DEBUG_OBJECT_NAME(obj, name) \
+    if (obj) \
+        obj->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)std::strlen(name), name)
 
 #define RETURN_ON_BAD_HRESULT(log, hresult, format, ...) \
     if ( FAILED(hresult) ) \
@@ -93,7 +97,7 @@ private:
 constexpr void ReturnVoid() {}
 template<typename... Args> constexpr void MaybeUnused([[maybe_unused]] const Args&... args) {}
 
-//==============================================================================================================================
+//================================================================================================================
 
 void ConvertCharToWchar(const char* in, wchar_t* out, size_t outLen);
 void ConvertWcharToChar(const wchar_t* in, char* out, size_t outLen);
@@ -111,7 +115,7 @@ inline nri::Vendor GetVendorFromID(uint32_t vendorID)
     return nri::Vendor::UNKNOWN;
 }
 
-//==============================================================================================================================
+//================================================================================================================
 
 // TODO: This code is Windows/D3D specific, so it's probably better to move it into a separate header
 #if _WIN32

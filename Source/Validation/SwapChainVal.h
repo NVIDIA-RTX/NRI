@@ -12,25 +12,27 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct TextureVal;
 
-    struct SwapChainVal : public DeviceObjectVal<SwapChain>
-    {
-        SwapChainVal(DeviceVal& device, SwapChain& swapChain, const SwapChainDesc& swapChainDesc);
-        ~SwapChainVal();
+struct TextureVal;
 
-        //======================================================================================================================
-        // NRI
-        //======================================================================================================================
-        void SetDebugName(const char* name);
-        Texture* const* GetTextures(uint32_t& textureNum, Format& format) const;
-        uint32_t AcquireNextTexture(QueueSemaphore& textureReadyForRender);
-        Result Present(QueueSemaphore& textureReadyForPresent);
-        Result SetHdrMetadata(const HdrMetadata& hdrMetadata);
+struct SwapChainVal : public DeviceObjectVal<SwapChain>
+{
+    SwapChainVal(DeviceVal& device, SwapChain& swapChain, const SwapChainDesc& swapChainDesc);
+    ~SwapChainVal();
 
-    private:
-        const SwapChainInterface& m_SwapChainAPI;
-        mutable Vector<TextureVal*> m_Textures;
-        SwapChainDesc m_SwapChainDesc = {};
-    };
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+    void SetDebugName(const char* name);
+    Texture* const* GetTextures(uint32_t& textureNum, Format& format) const;
+    uint32_t AcquireNextTexture();
+    Result Present();
+    Result SetHdrMetadata(const HdrMetadata& hdrMetadata);
+
+private:
+    const SwapChainInterface& m_SwapChainAPI;
+    mutable Vector<TextureVal*> m_Textures;
+    SwapChainDesc m_SwapChainDesc = {};
+};
+
 }

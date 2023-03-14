@@ -12,15 +12,17 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct CommandAllocatorVal final : public DeviceObjectVal<CommandAllocator>
-    {
-        CommandAllocatorVal(DeviceVal& device, CommandAllocator& commandAllocator);
 
-        //======================================================================================================================
-        // NRI
-        //======================================================================================================================
-        void SetDebugName(const char* name);
-        Result CreateCommandBuffer(CommandBuffer*& commandBuffer);
-        void Reset();
-    };
+struct CommandAllocatorVal final : public DeviceObjectVal<CommandAllocator>
+{
+    CommandAllocatorVal(DeviceVal& device, CommandAllocator& commandAllocator);
+
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+    void SetDebugName(const char* name);
+    Result CreateCommandBuffer(CommandBuffer*& commandBuffer);
+    void Reset();
+};
+
 }

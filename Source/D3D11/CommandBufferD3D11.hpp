@@ -8,7 +8,7 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma region [  CoreInterface  ]
+#pragma region [  Core  ]
 
 static void NRI_CALL SetCommandBufferDebugName(CommandBuffer& commandBuffer, const char* name)
 {
@@ -213,54 +213,6 @@ static void* NRI_CALL GetCommandBufferNativeObject(const CommandBuffer& commandB
     return (CommandBufferD3D11&)commandBuffer;
 }
 
-void FillFunctionTableCommandBufferD3D11(CoreInterface& coreInterface)
-{
-    coreInterface.DestroyCommandBuffer = ::DestroyCommandBuffer;
-
-    coreInterface.BeginCommandBuffer = ::BeginCommandBuffer;
-    coreInterface.EndCommandBuffer = ::EndCommandBuffer;
-
-    coreInterface.CmdSetPipelineLayout = ::CmdSetPipelineLayout;
-    coreInterface.CmdSetPipeline = ::CmdSetPipeline;
-    coreInterface.CmdPipelineBarrier = ::CmdPipelineBarrier;
-    coreInterface.CmdSetDescriptorPool = ::CmdSetDescriptorPool;
-    coreInterface.CmdSetDescriptorSet = ::CmdSetDescriptorSet;
-    coreInterface.CmdSetConstants = ::CmdSetConstants;
-
-    coreInterface.CmdBeginRenderPass = ::CmdBeginRenderPass;
-    coreInterface.CmdEndRenderPass = ::CmdEndRenderPass;
-    coreInterface.CmdSetViewports = ::CmdSetViewports;
-    coreInterface.CmdSetScissors = ::CmdSetScissors;
-    coreInterface.CmdSetDepthBounds = ::CmdSetDepthBounds;
-    coreInterface.CmdSetStencilReference = ::CmdSetStencilReference;
-    coreInterface.CmdSetSamplePositions = ::CmdSetSamplePositions;
-    coreInterface.CmdClearAttachments = ::CmdClearAttachments;
-    coreInterface.CmdSetIndexBuffer = ::CmdSetIndexBuffer;
-    coreInterface.CmdSetVertexBuffers = ::CmdSetVertexBuffers;
-
-    coreInterface.CmdDraw = ::CmdDraw;
-    coreInterface.CmdDrawIndexed = ::CmdDrawIndexed;
-    coreInterface.CmdDrawIndirect = ::CmdDrawIndirect;
-    coreInterface.CmdDrawIndexedIndirect = ::CmdDrawIndexedIndirect;
-    coreInterface.CmdDispatch = ::CmdDispatch;
-    coreInterface.CmdDispatchIndirect = ::CmdDispatchIndirect;
-    coreInterface.CmdBeginQuery = ::CmdBeginQuery;
-    coreInterface.CmdEndQuery = ::CmdEndQuery;
-    coreInterface.CmdBeginAnnotation = ::CmdBeginAnnotation;
-    coreInterface.CmdEndAnnotation = ::CmdEndAnnotation;
-
-    coreInterface.CmdClearStorageBuffer = ::CmdClearStorageBuffer;
-    coreInterface.CmdClearStorageTexture = ::CmdClearStorageTexture;
-    coreInterface.CmdCopyBuffer = ::CmdCopyBuffer;
-    coreInterface.CmdCopyTexture = ::CmdCopyTexture;
-    coreInterface.CmdUploadBufferToTexture = ::CmdUploadBufferToTexture;
-    coreInterface.CmdReadbackTextureToBuffer = ::CmdReadbackTextureToBuffer;
-    coreInterface.CmdCopyQueries = ::CmdCopyQueries;
-    coreInterface.CmdResetQueries = ::CmdResetQueries;
-
-    coreInterface.SetCommandBufferDebugName = ::SetCommandBufferDebugName;
-
-    coreInterface.GetCommandBufferNativeObject = ::GetCommandBufferNativeObject;
-}
-
 #pragma endregion
+
+Define_Core_CommandBuffer_PartiallyFillFunctionTable(D3D11)

@@ -8,9 +8,7 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma once
-
-#pragma region [  CoreInterface  ]
+#pragma region [  Core  ]
 
 static void NRI_CALL SetCommandAllocatorDebugName(CommandAllocator& commandAllocator, const char* name)
 {
@@ -27,11 +25,6 @@ static void NRI_CALL ResetCommandAllocator(CommandAllocator& commandAllocator)
     ((CommandAllocatorVK&)commandAllocator).Reset();
 }
 
-void FillFunctionTableCommandAllocatorVK(CoreInterface& coreInterface)
-{
-    coreInterface.SetCommandAllocatorDebugName = ::SetCommandAllocatorDebugName;
-    coreInterface.CreateCommandBuffer = ::CreateCommandBuffer;
-    coreInterface.ResetCommandAllocator = ::ResetCommandAllocator;
-}
-
 #pragma endregion
+
+Define_Core_CommandAllocator_PartiallyFillFunctionTable(VK)

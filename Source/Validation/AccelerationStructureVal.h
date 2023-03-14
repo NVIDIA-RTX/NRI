@@ -12,41 +12,43 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct MemoryVal;
 
-    struct AccelerationStructureVal final : public DeviceObjectVal<AccelerationStructure>
-    {
-        AccelerationStructureVal(DeviceVal& device, AccelerationStructure& accelerationStructure, bool isBoundToMemory);
-        ~AccelerationStructureVal();
+struct MemoryVal;
 
-        inline bool IsBoundToMemory() const;
-        inline void SetBoundToMemory(MemoryVal& memory);
+struct AccelerationStructureVal final : public DeviceObjectVal<AccelerationStructure>
+{
+    AccelerationStructureVal(DeviceVal& device, AccelerationStructure& accelerationStructure, bool isBoundToMemory);
+    ~AccelerationStructureVal();
 
-        //======================================================================================================================
-        // NRI
-        //======================================================================================================================
-        void GetMemoryInfo(MemoryDesc& memoryDesc) const;
-        uint64_t GetUpdateScratchBufferSize() const;
-        uint64_t GetBuildScratchBufferSize() const;
-        uint64_t GetHandle(uint32_t physicalDeviceIndex) const;
-        uint64_t GetNativeObject(uint32_t physicalDeviceIndex) const;
-        Result CreateDescriptor(uint32_t physicalDeviceIndex, Descriptor*& descriptor);
-        void SetDebugName(const char* name);
+    inline bool IsBoundToMemory() const;
+    inline void SetBoundToMemory(MemoryVal& memory);
 
-    private:
-        const RayTracingInterface& m_RayTracingAPI;
-        MemoryVal* m_Memory = nullptr;
-        bool m_IsBoundToMemory = false;
-    };
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+    void GetMemoryInfo(MemoryDesc& memoryDesc) const;
+    uint64_t GetUpdateScratchBufferSize() const;
+    uint64_t GetBuildScratchBufferSize() const;
+    uint64_t GetHandle(uint32_t physicalDeviceIndex) const;
+    uint64_t GetNativeObject(uint32_t physicalDeviceIndex) const;
+    Result CreateDescriptor(uint32_t physicalDeviceIndex, Descriptor*& descriptor);
+    void SetDebugName(const char* name);
 
-    inline bool AccelerationStructureVal::IsBoundToMemory() const
-    {
-        return m_IsBoundToMemory;
-    }
+private:
+    const RayTracingInterface& m_RayTracingAPI;
+    MemoryVal* m_Memory = nullptr;
+    bool m_IsBoundToMemory = false;
+};
 
-    inline void AccelerationStructureVal::SetBoundToMemory(MemoryVal& memory)
-    {
-        m_Memory = &memory;
-        m_IsBoundToMemory = true;
-    }
+inline bool AccelerationStructureVal::IsBoundToMemory() const
+{
+    return m_IsBoundToMemory;
+}
+
+inline void AccelerationStructureVal::SetBoundToMemory(MemoryVal& memory)
+{
+    m_Memory = &memory;
+    m_IsBoundToMemory = true;
+}
+
 }

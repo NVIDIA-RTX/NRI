@@ -12,7 +12,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "DescriptorVK.h"
 #include "TextureVK.h"
 #include "BufferVK.h"
-#include "DeviceVK.h"
 
 using namespace nri;
 
@@ -263,6 +262,10 @@ Result DescriptorVK::Create(const VkAccelerationStructureKHR* accelerationStruct
     return Result::SUCCESS;
 }
 
+//================================================================================================================
+// NRI
+//================================================================================================================
+
 inline void DescriptorVK::SetDebugName(const char* name)
 {
     std::array<uint64_t, PHYSICAL_DEVICE_GROUP_MAX_SIZE> handles;
@@ -295,17 +298,6 @@ inline void DescriptorVK::SetDebugName(const char* name)
         CHECK(m_Device.GetLog(), false, "unexpected descriptor type in SetDebugName: %u", (uint32_t)m_Type);
         break;
     }
-}
-
-inline VkBufferView DescriptorVK::GetBufferDescriptorVK(uint32_t physicalDeviceIndex) const
-{
-    return m_BufferViews[physicalDeviceIndex];
-}
-
-inline VkImageView DescriptorVK::GetTextureDescriptorVK(uint32_t physicalDeviceIndex, VkImageSubresourceRange& subresourceRange) const
-{
-    GetImageSubresourceRange(subresourceRange);
-    return m_ImageViews[physicalDeviceIndex];
 }
 
 #include "DescriptorVK.hpp"

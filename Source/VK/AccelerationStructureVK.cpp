@@ -13,7 +13,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "AccelerationStructureVK.h"
 #include "DescriptorVK.h"
 #include "CommandQueueVK.h"
-#include "DeviceVK.h"
 #include "ConversionVK.h"
 
 using namespace nri;
@@ -75,7 +74,6 @@ Result AccelerationStructureVK::Create(const AccelerationStructureVulkanDesc& ac
     deviceAddressInfo.accelerationStructure = (VkAccelerationStructureKHR)accelerationStructureDesc.vkAccelerationStructure;
 
     const auto& vk = m_Device.GetDispatchTable();
-
     const uint64_t deviceAddress = vk.GetAccelerationStructureDeviceAddressKHR(m_Device, &deviceAddressInfo);
 
     if (deviceAddress == 0)
@@ -112,12 +110,11 @@ void AccelerationStructureVK::PrecreateBottomLevel(const AccelerationStructureDe
     Vector<VkAccelerationStructureGeometryKHR> geometries(m_Device.GetStdAllocator());
     uint32_t* primitiveMaxNums = ALLOCATE_SCRATCH(m_Device, uint32_t, accelerationStructureDesc.instanceOrGeometryObjectNum);
 
-    const auto& vk = m_Device.GetDispatchTable();
-
     geometries.resize(accelerationStructureDesc.instanceOrGeometryObjectNum);
     ConvertGeometryObjectSizesVK(0, geometries.data(), primitiveMaxNums, accelerationStructureDesc.geometryObjects, (uint32_t)geometries.size());
     buildInfo.pGeometries = geometries.data();
 
+    const auto& vk = m_Device.GetDispatchTable();
     vk.GetAccelerationStructureBuildSizesKHR(m_Device, buildType, &buildInfo, primitiveMaxNums, &sizeInfo);
 
     m_BuildScratchSize = sizeInfo.buildScratchSize;
@@ -193,6 +190,10 @@ Result AccelerationStructureVK::FinishCreation()
     return Result::SUCCESS;
 }
 
+//================================================================================================================
+// NRI
+//================================================================================================================
+
 inline void AccelerationStructureVK::SetDebugName(const char* name)
 {
     std::array<uint64_t, PHYSICAL_DEVICE_GROUP_MAX_SIZE> handles;
@@ -206,16 +207,6 @@ inline void AccelerationStructureVK::SetDebugName(const char* name)
 inline void AccelerationStructureVK::GetMemoryInfo(MemoryDesc& memoryDesc) const
 {
     m_Buffer->GetMemoryInfo(MemoryLocation::DEVICE, memoryDesc);
-}
-
-inline uint64_t AccelerationStructureVK::GetUpdateScratchBufferSize() const
-{
-    return m_UpdateScratchSize;
-}
-
-inline uint64_t AccelerationStructureVK::GetBuildScratchBufferSize() const
-{
-    return m_BuildScratchSize;
 }
 
 inline Result AccelerationStructureVK::CreateDescriptor(uint32_t physicalDeviceMask, Descriptor*& descriptor) const

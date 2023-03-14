@@ -361,7 +361,6 @@ Result DescriptorD3D12::Create(const Texture3DViewDesc& textureViewDesc)
     return Result::FAILURE;
 }
 
-#ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
 Result DescriptorD3D12::Create(const AccelerationStructure& accelerationStructure)
 {
     D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
@@ -371,7 +370,6 @@ Result DescriptorD3D12::Create(const AccelerationStructure& accelerationStructur
 
     return CreateShaderResourceView(nullptr, desc);
 }
-#endif
 
 Result DescriptorD3D12::Create(const SamplerDesc& samplerDesc)
 {
@@ -491,7 +489,4 @@ Result DescriptorD3D12::CreateDepthStencilView(ID3D12Resource* resource, const D
     return result;
 }
 
-void DescriptorD3D12::SetDebugName(const char* name)
-{
-    MaybeUnused(name);
-}
+#include "DescriptorD3D12.hpp"

@@ -805,17 +805,9 @@ void CommandBufferVal::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc)
     m_RayTracingAPI.CmdDispatchRays(m_ImplObject, dispatchRaysDescImpl);
 }
 
-void CommandBufferVal::DispatchMeshTasks(uint32_t taskNum)
+void CommandBufferVal::DispatchMeshTasks(uint32_t x, uint32_t y, uint32_t z)
 {
-    const uint32_t meshTaskMaxNum = m_Device.GetDesc().meshTaskMaxNum;
-
-    if (taskNum > meshTaskMaxNum)
-    {
-        REPORT_ERROR(m_Device.GetLog(),
-            "Can't dispatch the specified number of mesh tasks: the number exceeds the maximum number of mesh tasks.");
-    }
-
-    m_MeshShaderAPI.CmdDispatchMeshTasks(m_ImplObject, std::min(taskNum, meshTaskMaxNum));
+    m_MeshShaderAPI.CmdDispatchMeshTasks(m_ImplObject, x, y, z);
 }
 
 template<typename Command>

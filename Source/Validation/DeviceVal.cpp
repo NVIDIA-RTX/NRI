@@ -19,13 +19,12 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "CommandBufferVal.h"
 #include "DescriptorVal.h"
 #include "DescriptorPoolVal.h"
-#include "DeviceSemaphoreVal.h"
+#include "FenceVal.h"
 #include "FrameBufferVal.h"
 #include "MemoryVal.h"
 #include "PipelineLayoutVal.h"
 #include "PipelineVal.h"
 #include "QueryPoolVal.h"
-#include "QueueSemaphoreVal.h"
 #include "SwapChainVal.h"
 #include "TextureVal.h"
 #include "AccelerationStructureVal.h"
@@ -690,31 +689,15 @@ Result DeviceVal::CreateQueryPool(const QueryPoolDesc& queryPoolDesc, QueryPool*
     return result;
 }
 
-Result DeviceVal::CreateQueueSemaphore(QueueSemaphore*& queueSemaphore)
+Result DeviceVal::CreateFence(uint64_t initialValue, Fence*& fence)
 {
-    QueueSemaphore* queueSemaphoreImpl;
-    const Result result = m_CoreAPI.CreateQueueSemaphore(m_Device, queueSemaphoreImpl);
+    Fence* fenceImpl;
+    const Result result = m_CoreAPI.CreateFence(m_Device, initialValue, fenceImpl);
 
     if (result == Result::SUCCESS)
     {
-        RETURN_ON_FAILURE(GetLog(), queueSemaphoreImpl != nullptr, Result::FAILURE, "Unexpected error: 'queueSemaphoreImpl' is NULL!");
-        queueSemaphore = (QueueSemaphore*)Allocate<QueueSemaphoreVal>(GetStdAllocator(), *this, *queueSemaphoreImpl);
-    }
-
-    return result;
-}
-
-Result DeviceVal::CreateDeviceSemaphore(bool signaled, DeviceSemaphore*& deviceSemaphore)
-{
-    DeviceSemaphore* deviceSemaphoreImpl;
-    const Result result = m_CoreAPI.CreateDeviceSemaphore(m_Device, signaled, deviceSemaphoreImpl);
-
-    if (result == Result::SUCCESS)
-    {
-        RETURN_ON_FAILURE(GetLog(), deviceSemaphoreImpl != nullptr, Result::FAILURE, "Unexpected error: 'queueSemaphoreImpl' is NULL!");
-        DeviceSemaphoreVal* deviceSemaphoreVal = Allocate<DeviceSemaphoreVal>(GetStdAllocator(), *this, *deviceSemaphoreImpl);
-        deviceSemaphoreVal->Create(signaled);
-        deviceSemaphore = (DeviceSemaphore*)deviceSemaphoreVal;
+        RETURN_ON_FAILURE(GetLog(), fenceImpl != nullptr, Result::FAILURE, "Unexpected error: 'fenceImpl' is NULL!");
+        fence = (Fence*)Allocate<FenceVal>(GetStdAllocator(), *this, *fenceImpl);
     }
 
     return result;
@@ -774,16 +757,10 @@ void DeviceVal::DestroyQueryPool(QueryPool& queryPool)
     Deallocate(GetStdAllocator(), (QueryPoolVal*)&queryPool);
 }
 
-void DeviceVal::DestroyQueueSemaphore(QueueSemaphore& queueSemaphore)
+void DeviceVal::DestroyFence(Fence& fence)
 {
-    m_CoreAPI.DestroyQueueSemaphore(*NRI_GET_IMPL_REF(QueueSemaphore, &queueSemaphore));
-    Deallocate(GetStdAllocator(), (QueueSemaphoreVal*)&queueSemaphore);
-}
-
-void DeviceVal::DestroyDeviceSemaphore(DeviceSemaphore& deviceSemaphore)
-{
-    m_CoreAPI.DestroyDeviceSemaphore(*NRI_GET_IMPL_REF(DeviceSemaphore, &deviceSemaphore));
-    Deallocate(GetStdAllocator(), (DeviceSemaphoreVal*)&deviceSemaphore);
+    m_CoreAPI.DestroyFence(*NRI_GET_IMPL_REF(Fence, &fence));
+    Deallocate(GetStdAllocator(), (FenceVal*)&fence);
 }
 
 Result DeviceVal::AllocateMemory(uint32_t physicalDeviceMask, MemoryType memoryType, uint64_t size, Memory*& memory)
@@ -1189,25 +1166,6 @@ Result DeviceVal::CreateQueryPoolVK(const QueryPoolVulkanDesc& queryPoolVulkanDe
     return result;
 }
 
-Result DeviceVal::CreateQueueSemaphoreVK(NRIVkSemaphore vkSemaphore, QueueSemaphore*& queueSemaphore)
-{
-    RETURN_ON_FAILURE(GetLog(), vkSemaphore != 0, Result::INVALID_ARGUMENT,
-        "Can't create QueueSemaphore: 'vkSemaphore' is invalid.");
-
-    QueueSemaphore* queueSemaphoreImpl = nullptr;
-    const Result result = m_WrapperVKAPI.CreateQueueSemaphoreVK(m_Device, vkSemaphore, queueSemaphoreImpl);
-
-    if (result == Result::SUCCESS)
-    {
-        RETURN_ON_FAILURE(GetLog(), queueSemaphoreImpl != nullptr, Result::FAILURE,
-            "Can't create QueueSemaphore: unexpected error.");
-
-        queueSemaphore = (QueueSemaphore*)Allocate<QueueSemaphoreVal>(GetStdAllocator(), *this, *queueSemaphoreImpl);
-    }
-
-    return result;
-}
-
 Result DeviceVal::CreateAccelerationStructureVK(const AccelerationStructureVulkanDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure)
 {
     RETURN_ON_FAILURE(GetLog(), accelerationStructureDesc.vkAccelerationStructure != 0, Result::INVALID_ARGUMENT,
@@ -1222,25 +1180,6 @@ Result DeviceVal::CreateAccelerationStructureVK(const AccelerationStructureVulka
             "Can't create AccelerationStructure: unexpected error.");
 
         accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetStdAllocator(), *this, *accelerationStructureImpl, true);
-    }
-
-    return result;
-}
-
-Result DeviceVal::CreateDeviceSemaphoreVK(NRIVkFence vkFence, DeviceSemaphore*& deviceSemaphore)
-{
-    RETURN_ON_FAILURE(GetLog(), vkFence != 0, Result::INVALID_ARGUMENT,
-        "Can't create DeviceSemaphore: 'vkFence' is invalid.");
-
-    DeviceSemaphore* deviceSemaphoreImpl = nullptr;
-    const Result result = m_WrapperVKAPI.CreateDeviceSemaphoreVK(m_Device, vkFence, deviceSemaphoreImpl);
-
-    if (result == Result::SUCCESS)
-    {
-        RETURN_ON_FAILURE(GetLog(), deviceSemaphoreImpl != nullptr, Result::FAILURE,
-            "Can't create DeviceSemaphore: unexpected error.");
-
-        deviceSemaphore = (DeviceSemaphore*)Allocate<DeviceSemaphoreVal>(GetStdAllocator(), *this, *deviceSemaphoreImpl);
     }
 
     return result;

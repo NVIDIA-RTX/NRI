@@ -10,24 +10,11 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "SharedD3D12.h"
 #include "DescriptorPoolD3D12.h"
-#include "DeviceD3D12.h"
 #include "PipelineLayoutD3D12.h"
 
 using namespace nri;
 
 extern D3D12_DESCRIPTOR_HEAP_TYPE GetDescriptorHeapType(DescriptorType descriptorType);
-
-DescriptorPoolD3D12::DescriptorPoolD3D12(DeviceD3D12& device)
-    : m_Device(device)
-    , m_DescriptorSets(device.GetStdAllocator())
-{}
-
-DescriptorPoolD3D12::~DescriptorPoolD3D12()
-{
-    Reset();
-
-    m_DescriptorSets.clear();
-}
 
 Result DescriptorPoolD3D12::Create(const DescriptorPoolDesc& descriptorPoolDesc)
 {
@@ -99,9 +86,14 @@ DescriptorPointerGPU DescriptorPoolD3D12::GetDescriptorPointerGPU(DescriptorHeap
     return descriptorPointer;
 }
 
+//================================================================================================================
+// NRI
+//================================================================================================================
+
 inline void DescriptorPoolD3D12::SetDebugName(const char* name)
 {
-    MaybeUnused(name);
+    for (ID3D12DescriptorHeap* descriptorHeap : m_DescriptorHeaps)
+        SET_D3D_DEBUG_OBJECT_NAME(descriptorHeap, name);
 }
 
 inline Result DescriptorPoolD3D12::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum)
@@ -127,7 +119,7 @@ inline Result DescriptorPoolD3D12::AllocateDescriptorSets(const PipelineLayout& 
     return Result::SUCCESS;
 }
 
-inline void DescriptorPoolD3D12::Reset()
+void DescriptorPoolD3D12::Reset()
 {
     for (uint32_t i = 0; i < DescriptorHeapType::MAX_NUM; i++)
         m_DescriptorNum[i] = 0;

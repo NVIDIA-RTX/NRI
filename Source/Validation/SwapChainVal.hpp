@@ -8,7 +8,7 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma region [  SwapChainInterface  ]
+#pragma region [  SwapChain  ]
 
 static void NRI_CALL SetSwapChainDebugName(SwapChain& swapChain, const char* name)
 {
@@ -20,14 +20,14 @@ static Texture* const* NRI_CALL GetSwapChainTextures(const SwapChain& swapChain,
     return ((SwapChainVal*)&swapChain)->GetTextures(textureNum, format);
 }
 
-static uint32_t NRI_CALL AcquireNextSwapChainTexture(SwapChain& swapChain, QueueSemaphore& textureReadyForRender)
+static uint32_t NRI_CALL AcquireNextSwapChainTexture(SwapChain& swapChain)
 {
-    return ((SwapChainVal*)&swapChain)->AcquireNextTexture(textureReadyForRender);
+    return ((SwapChainVal*)&swapChain)->AcquireNextTexture();
 }
 
-static Result NRI_CALL SwapChainPresent(SwapChain& swapChain, QueueSemaphore& textureReadyForPresent)
+static Result NRI_CALL SwapChainPresent(SwapChain& swapChain)
 {
-    return ((SwapChainVal*)&swapChain)->Present(textureReadyForPresent);
+    return ((SwapChainVal*)&swapChain)->Present();
 }
 
 static Result NRI_CALL SetSwapChainHdrMetadata(SwapChain& swapChain, const HdrMetadata& hdrMetadata)

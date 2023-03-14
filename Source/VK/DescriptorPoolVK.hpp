@@ -10,7 +10,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #pragma once
 
-#pragma region [  CoreInterface  ]
+#pragma region [  Core  ]
 
 static void NRI_CALL SetDescriptorPoolDebugName(DescriptorPool& descriptorPool, const char* name)
 {
@@ -28,11 +28,6 @@ static void NRI_CALL ResetDescriptorPool(DescriptorPool& descriptorPool)
     ((DescriptorPoolVK&)descriptorPool).Reset();
 }
 
-void FillFunctionTableDescriptorPoolVK(CoreInterface& coreInterface)
-{
-    coreInterface.SetDescriptorPoolDebugName = ::SetDescriptorPoolDebugName;
-    coreInterface.AllocateDescriptorSets = ::AllocateDescriptorSets;
-    coreInterface.ResetDescriptorPool = ::ResetDescriptorPool;
-}
-
 #pragma endregion
+
+Define_Core_DescriptorPool_PartiallyFillFunctionTable(VK)

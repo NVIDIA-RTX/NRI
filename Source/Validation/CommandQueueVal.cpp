@@ -13,8 +13,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "CommandQueueVal.h"
 
 #include "CommandBufferVal.h"
-#include "DeviceSemaphoreVal.h"
-#include "QueueSemaphoreVal.h"
 #include "TextureVal.h"
 #include "BufferVal.h"
 #include "QueryPoolVal.h"
@@ -38,49 +36,16 @@ void CommandQueueVal::SetDebugName(const char* name)
     m_CoreAPI.SetCommandQueueDebugName(m_ImplObject, name);
 }
 
-void CommandQueueVal::Submit(const WorkSubmissionDesc& workSubmissionDesc, DeviceSemaphore* deviceSemaphore)
+void CommandQueueVal::Submit(const QueueSubmitDesc& queueSubmitDesc)
 {
-    ProcessValidationCommands((const CommandBufferVal* const*)workSubmissionDesc.commandBuffers, workSubmissionDesc.commandBufferNum);
+    ProcessValidationCommands((const CommandBufferVal* const*)queueSubmitDesc.commandBuffers, queueSubmitDesc.commandBufferNum);
 
-    auto workSubmissionDescImpl = workSubmissionDesc;
-    workSubmissionDescImpl.commandBuffers = STACK_ALLOC(CommandBuffer*, workSubmissionDesc.commandBufferNum);
-    for (uint32_t i = 0; i < workSubmissionDesc.commandBufferNum; i++)
-        ((CommandBuffer**)workSubmissionDescImpl.commandBuffers)[i] = NRI_GET_IMPL_PTR(CommandBuffer, workSubmissionDesc.commandBuffers[i]);
-    workSubmissionDescImpl.wait = STACK_ALLOC(QueueSemaphore*, workSubmissionDesc.waitNum);
-    for (uint32_t i = 0; i < workSubmissionDesc.waitNum; i++)
-        ((QueueSemaphore**)workSubmissionDescImpl.wait)[i] = NRI_GET_IMPL_PTR(QueueSemaphore, workSubmissionDesc.wait[i]);
-    workSubmissionDescImpl.signal = STACK_ALLOC(QueueSemaphore*, workSubmissionDesc.signalNum);
-    for (uint32_t i = 0; i < workSubmissionDesc.signalNum; i++)
-        ((QueueSemaphore**)workSubmissionDescImpl.signal)[i] = NRI_GET_IMPL_PTR(QueueSemaphore, workSubmissionDesc.signal[i]);
+    auto queueSubmitDescImpl = queueSubmitDesc;
+    queueSubmitDescImpl.commandBuffers = STACK_ALLOC(CommandBuffer*, queueSubmitDesc.commandBufferNum);
+    for (uint32_t i = 0; i < queueSubmitDesc.commandBufferNum; i++)
+        ((CommandBuffer**)queueSubmitDescImpl.commandBuffers)[i] = NRI_GET_IMPL_PTR(CommandBuffer, queueSubmitDesc.commandBuffers[i]);
 
-    DeviceSemaphore* deviceSemaphoreImpl = nullptr;
-    if (deviceSemaphore)
-        deviceSemaphoreImpl = NRI_GET_IMPL_PTR(DeviceSemaphore, deviceSemaphore);
-
-    for (uint32_t i = 0; i < workSubmissionDesc.waitNum; i++)
-    {
-        QueueSemaphoreVal* semaphore = (QueueSemaphoreVal*)workSubmissionDesc.wait[i];
-        semaphore->Wait();
-    }
-
-    m_CoreAPI.SubmitQueueWork(m_ImplObject, workSubmissionDescImpl, deviceSemaphoreImpl);
-
-    for (uint32_t i = 0; i < workSubmissionDesc.signalNum; i++)
-    {
-        QueueSemaphoreVal* semaphore = (QueueSemaphoreVal*)workSubmissionDesc.signal[i];
-        semaphore->Signal();
-    }
-
-    if (deviceSemaphore)
-        ((DeviceSemaphoreVal*)deviceSemaphore)->Signal();
-}
-
-void CommandQueueVal::Wait(DeviceSemaphore& deviceSemaphore)
-{
-    ((DeviceSemaphoreVal&)deviceSemaphore).Wait();
-    DeviceSemaphore* deviceSemaphoreImpl = NRI_GET_IMPL_REF(DeviceSemaphore, &deviceSemaphore);
-
-    m_CoreAPI.WaitForSemaphore(m_ImplObject, *deviceSemaphoreImpl);
+    m_CoreAPI.QueueSubmit(m_ImplObject, queueSubmitDescImpl);
 }
 
 Result CommandQueueVal::ChangeResourceStates(const TransitionBarrierDesc& transitionBarriers)

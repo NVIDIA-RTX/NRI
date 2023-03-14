@@ -8,55 +8,39 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma region [  CoreInterface  ]
+#pragma region [  Core  ]
 
 static void NRI_CALL SetCommandQueueDebugName(CommandQueue& commandQueue, const char* name)
 {
     ((CommandQueueD3D11&)commandQueue).SetDebugName(name);
 }
 
-static void NRI_CALL SubmitQueueWork(CommandQueue& commandQueue, const WorkSubmissionDesc& workSubmissionDesc, DeviceSemaphore* deviceSemaphore)
+static void NRI_CALL QueueSubmit(CommandQueue& commandQueue, const QueueSubmitDesc& queueSubmitDesc)
 {
-    ((CommandQueueD3D11&)commandQueue).Submit(workSubmissionDesc, deviceSemaphore);
-}
-
-static void NRI_CALL WaitForSemaphore(CommandQueue& commandQueue, DeviceSemaphore& deviceSemaphore)
-{
-    ((CommandQueueD3D11&)commandQueue).Wait(deviceSemaphore);
-}
-
-void FillFunctionTableCommandQueueD3D11(CoreInterface& coreInterface)
-{
-    coreInterface.SetCommandQueueDebugName = ::SetCommandQueueDebugName;
-    coreInterface.SubmitQueueWork = ::SubmitQueueWork;
-    coreInterface.WaitForSemaphore = ::WaitForSemaphore;
+    ((CommandQueueD3D11&)commandQueue).Submit(queueSubmitDesc);
 }
 
 #pragma endregion
 
-#pragma region [  HelperInterface  ]
+#pragma region [  Helper  ]
 
-static Result NRI_CALL ChangeResourceStatesD3D11(CommandQueue& commandQueue, const TransitionBarrierDesc& transitionBarriers)
+static Result NRI_CALL ChangeResourceStates(CommandQueue& commandQueue, const TransitionBarrierDesc& transitionBarriers)
 {
     return ((CommandQueueD3D11&)commandQueue).ChangeResourceStates(transitionBarriers);
 }
 
-static nri::Result NRI_CALL UploadDataD3D11(CommandQueue& commandQueue, const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum,
+static nri::Result NRI_CALL UploadData(CommandQueue& commandQueue, const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum,
     const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum)
 {
     return ((CommandQueueD3D11&)commandQueue).UploadData(textureUploadDescs, textureUploadDescNum, bufferUploadDescs, bufferUploadDescNum);
 }
 
-static nri::Result NRI_CALL WaitForIdleD3D11(CommandQueue& commandQueue)
+static nri::Result NRI_CALL WaitForIdle(CommandQueue& commandQueue)
 {
     return ((CommandQueueD3D11&)commandQueue).WaitForIdle();
 }
 
-void FillFunctionTableCommandQueueD3D11(HelperInterface& helperInterface)
-{
-    helperInterface.ChangeResourceStates = ::ChangeResourceStatesD3D11;
-    helperInterface.UploadData = ::UploadDataD3D11;
-    helperInterface.WaitForIdle = ::WaitForIdleD3D11;
-}
-
 #pragma endregion
+
+Define_Core_CommandQueue_PartiallyFillFunctionTable(D3D11)
+Define_Helper_CommandQueue_PartiallyFillFunctionTable(D3D11)

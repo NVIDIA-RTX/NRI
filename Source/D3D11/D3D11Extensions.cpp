@@ -1,4 +1,13 @@
-#include "SharedExternal.h"
+/*
+Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+
+NVIDIA CORPORATION and its licensors retain all intellectual property
+and proprietary rights in and to this software, related documentation
+and any modifications thereto. Any use, reproduction, disclosure or
+distribution of this software and related documentation without an express
+license agreement from NVIDIA CORPORATION is strictly prohibited.
+*/
+
 #include "SharedD3D11.h"
 #include "D3D11Extensions.h"
 
@@ -18,7 +27,7 @@ D3D11Extensions::~D3D11Extensions()
     }
 }
 
-void D3D11Extensions::Create(const Log& log, nri::Vendor vendor, AGSContext* context, bool isImported)
+void D3D11Extensions::Create(const Log& log, nri::Vendor vendor, AGSContext* agsContext, bool isImported)
 {
     m_Log = &log;
 
@@ -34,12 +43,12 @@ void D3D11Extensions::Create(const Log& log, nri::Vendor vendor, AGSContext* con
         break;
     case nri::Vendor::AMD:
         {
-            if (isImported && context == nullptr)
+            if (isImported && !agsContext)
                 break;
 
             if (LoadAGS())
             {
-                m_AGSContext = context;
+                m_AGSContext = agsContext;
                 m_IsImported = isImported;
 
                 if (m_AGSContext == nullptr)
@@ -95,35 +104,35 @@ bool D3D11Extensions::LoadAGS()
     return true;
 }
 
-void D3D11Extensions::BeginUAVOverlap(const VersionedContext& context) const
+void D3D11Extensions::BeginUAVOverlap(const VersionedContext& deferredContext) const
 {
     if (m_IsNvAPIAvailable)
     {
-        const NvAPI_Status res = NvAPI_D3D11_BeginUAVOverlap(context.ptr);
+        const NvAPI_Status res = NvAPI_D3D11_BeginUAVOverlap(deferredContext.ptr);
         CHECK(*m_Log, res == NVAPI_OK, "NvAPI_D3D11_BeginUAVOverlap() - FAILED!");
     }
     else if (m_IsAGSAvailable)
     {
-        const AGSReturnCode res = m_AGS.BeginUAVOverlap(m_AGSContext, context.ptr);
+        const AGSReturnCode res = m_AGS.BeginUAVOverlap(m_AGSContext, deferredContext.ptr);
         CHECK(*m_Log, res == AGS_SUCCESS, "agsDriverExtensionsDX11_BeginUAVOverlap() - FAILED!");
     }
 }
 
-void D3D11Extensions::EndUAVOverlap(const VersionedContext& context) const
+void D3D11Extensions::EndUAVOverlap(const VersionedContext& deferredContext) const
 {
     if (m_IsNvAPIAvailable)
     {
-        const NvAPI_Status status = NvAPI_D3D11_EndUAVOverlap(context.ptr);
+        const NvAPI_Status status = NvAPI_D3D11_EndUAVOverlap(deferredContext.ptr);
         CHECK(*m_Log, status == NVAPI_OK, "NvAPI_D3D11_EndUAVOverlap() - FAILED!");
     }
     else if (m_IsAGSAvailable)
     {
-        const AGSReturnCode res = m_AGS.EndUAVOverlap(m_AGSContext, context.ptr);
+        const AGSReturnCode res = m_AGS.EndUAVOverlap(m_AGSContext, deferredContext.ptr);
         CHECK(*m_Log, res == AGS_SUCCESS, "agsDriverExtensionsDX11_EndUAVOverlap() - FAILED!");
     }
 }
 
-void D3D11Extensions::WaitForDrain(const VersionedContext& context, nri::BarrierDependency dependency) const
+void D3D11Extensions::WaitForDrain(const VersionedContext& deferredContext, nri::BarrierDependency dependency) const
 {
     if (m_IsNvAPIAvailable)
     {
@@ -136,75 +145,75 @@ void D3D11Extensions::WaitForDrain(const VersionedContext& context, nri::Barrier
         else
             flags = NVAPI_D3D_BEGIN_UAV_OVERLAP_GFX_WFI | NVAPI_D3D_BEGIN_UAV_OVERLAP_COMP_WFI;
 
-        const NvAPI_Status res = NvAPI_D3D11_BeginUAVOverlapEx(context.ptr, flags);
+        const NvAPI_Status res = NvAPI_D3D11_BeginUAVOverlapEx(deferredContext.ptr, flags);
         CHECK(*m_Log, res == NVAPI_OK, "NvAPI_D3D11_BeginUAVOverlap() - FAILED!");
     }
     else if (m_IsAGSAvailable)
     {
         REPORT_WARNING(*m_Log, "Verify that this code actually works on AMD!");
 
-        const AGSReturnCode res1 = m_AGS.EndUAVOverlap(m_AGSContext, context.ptr);
+        const AGSReturnCode res1 = m_AGS.EndUAVOverlap(m_AGSContext, deferredContext.ptr);
         CHECK(*m_Log, res1 == AGS_SUCCESS, "agsDriverExtensionsDX11_EndUAVOverlap() - FAILED!");
-        const AGSReturnCode res2 = m_AGS.BeginUAVOverlap(m_AGSContext, context.ptr);
+        const AGSReturnCode res2 = m_AGS.BeginUAVOverlap(m_AGSContext, deferredContext.ptr);
         CHECK(*m_Log, res2 == AGS_SUCCESS, "agsDriverExtensionsDX11_BeginUAVOverlap() - FAILED!");
     }
 }
 
-void D3D11Extensions::SetDepthBounds(const VersionedContext& context, float minBound, float maxBound) const
+void D3D11Extensions::SetDepthBounds(const VersionedContext& deferredContext, float minBound, float maxBound) const
 {
     bool isEnabled = minBound != 0.0f || maxBound != 1.0f;
 
     if (m_IsNvAPIAvailable)
     {
-        const NvAPI_Status status = NvAPI_D3D11_SetDepthBoundsTest(context.ptr, isEnabled, minBound, maxBound);
+        const NvAPI_Status status = NvAPI_D3D11_SetDepthBoundsTest(deferredContext.ptr, isEnabled, minBound, maxBound);
         CHECK(*m_Log, status == NVAPI_OK, "NvAPI_D3D11_SetDepthBoundsTest() - FAILED!");
     }
     else if (m_IsAGSAvailable)
     {
-        const AGSReturnCode res = m_AGS.SetDepthBounds(m_AGSContext, context.ptr, isEnabled, minBound, maxBound);
+        const AGSReturnCode res = m_AGS.SetDepthBounds(m_AGSContext, deferredContext.ptr, isEnabled, minBound, maxBound);
         CHECK(*m_Log, res == AGS_SUCCESS, "agsDriverExtensionsDX11_SetDepthBounds() - FAILED!");
     }
 }
 
-void D3D11Extensions::MultiDrawIndirect(const VersionedContext& context, ID3D11Buffer* buffer, uint64_t offset, uint32_t drawNum, uint32_t stride) const
+void D3D11Extensions::MultiDrawIndirect(const VersionedContext& deferredContext, ID3D11Buffer* buffer, uint64_t offset, uint32_t drawNum, uint32_t stride) const
 {
     if (m_IsNvAPIAvailable)
     {
-        const NvAPI_Status status = NvAPI_D3D11_MultiDrawInstancedIndirect(context.ptr, drawNum, buffer, (uint32_t)offset, stride);
+        const NvAPI_Status status = NvAPI_D3D11_MultiDrawInstancedIndirect(deferredContext.ptr, drawNum, buffer, (uint32_t)offset, stride);
         CHECK(*m_Log, status == NVAPI_OK, "NvAPI_D3D11_MultiDrawInstancedIndirect() - FAILED!");
     }
     else if (m_IsAGSAvailable)
     {
-        const AGSReturnCode res = m_AGS.MultiDrawInstancedIndirect(m_AGSContext, context.ptr, drawNum, buffer, (uint32_t)offset, stride);
+        const AGSReturnCode res = m_AGS.MultiDrawInstancedIndirect(m_AGSContext, deferredContext.ptr, drawNum, buffer, (uint32_t)offset, stride);
         CHECK(*m_Log, res == AGS_SUCCESS, "agsDriverExtensionsDX11_MultiDrawIndexedInstancedIndirect() - FAILED!");
     }
     else
     {
         for (uint32_t i = 0; i < drawNum; i++)
         {
-            context->DrawInstancedIndirect(buffer, (uint32_t)offset);
+            deferredContext->DrawInstancedIndirect(buffer, (uint32_t)offset);
             offset += stride;
         }
     }
 }
 
-void D3D11Extensions::MultiDrawIndexedIndirect(const VersionedContext& context, ID3D11Buffer* buffer, uint64_t offset, uint32_t drawNum, uint32_t stride) const
+void D3D11Extensions::MultiDrawIndexedIndirect(const VersionedContext& deferredContext, ID3D11Buffer* buffer, uint64_t offset, uint32_t drawNum, uint32_t stride) const
 {
     if (m_IsNvAPIAvailable)
     {
-        const NvAPI_Status status = NvAPI_D3D11_MultiDrawIndexedInstancedIndirect(context.ptr, drawNum, buffer, (uint32_t)offset, stride);
+        const NvAPI_Status status = NvAPI_D3D11_MultiDrawIndexedInstancedIndirect(deferredContext.ptr, drawNum, buffer, (uint32_t)offset, stride);
         CHECK(*m_Log, status == NVAPI_OK, "NvAPI_D3D11_MultiDrawInstancedIndirect() - FAILED!");
     }
     else if (m_IsAGSAvailable)
     {
-        const AGSReturnCode res = m_AGS.MultiDrawIndexedInstancedIndirect(m_AGSContext, context.ptr, drawNum, buffer, (uint32_t)offset, stride);
+        const AGSReturnCode res = m_AGS.MultiDrawIndexedInstancedIndirect(m_AGSContext, deferredContext.ptr, drawNum, buffer, (uint32_t)offset, stride);
         CHECK(*m_Log, res == AGS_SUCCESS, "agsDriverExtensionsDX11_MultiDrawIndexedInstancedIndirect() - FAILED!");
     }
     else
     {
         for (uint32_t i = 0; i < drawNum; i++)
         {
-            context->DrawIndexedInstancedIndirect(buffer, (uint32_t)offset);
+            deferredContext->DrawIndexedInstancedIndirect(buffer, (uint32_t)offset);
             offset += stride;
         }
     }

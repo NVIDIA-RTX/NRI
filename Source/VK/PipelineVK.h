@@ -12,59 +12,60 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct DeviceVK;
-    struct PipelineLayoutVK;
 
-    struct PipelineVK
-    {
-        PipelineVK(DeviceVK& device);
-        ~PipelineVK();
+struct DeviceVK;
+struct PipelineLayoutVK;
 
-        operator VkPipeline() const;
-        DeviceVK& GetDevice() const;
-        VkPipelineBindPoint GetBindPoint() const;
-        Result Create(const GraphicsPipelineDesc& graphicsPipelineDesc);
-        Result Create(const ComputePipelineDesc& computePipelineDesc);
-        Result Create(const RayTracingPipelineDesc& rayTracingPipelineDesc);
-        Result CreateGraphics(NRIVkPipeline vkPipeline);
-        Result CreateCompute(NRIVkPipeline vkPipeline);
+struct PipelineVK
+{
+    inline PipelineVK(DeviceVK& device) :
+        m_Device(device)
+    {}
 
-        void SetDebugName(const char* name);
-        Result WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* buffer) const;
+    inline operator VkPipeline() const
+    { return m_Handle; }
 
-    private:
-        Result CreateRenderPass(const OutputMergerDesc* outputMerger, const RasterizationDesc* rasterizationDesc);
-        void FillVertexInputState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineVertexInputStateCreateInfo& state) const;
-        void FillInputAssemblyState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineInputAssemblyStateCreateInfo& state) const;
-        void FillTessellationState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineTessellationStateCreateInfo& state) const;
-        void FillViewportState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineViewportStateCreateInfo& state);
-        void FillRasterizationState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineRasterizationStateCreateInfo& state, VkPipelineRasterizationConservativeStateCreateInfoEXT& conservativeRasterState) const;
-        void FillMultisampleState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineMultisampleStateCreateInfo& state) const;
-        void FillDepthStencilState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineDepthStencilStateCreateInfo& state) const;
-        void FillColorBlendState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineColorBlendStateCreateInfo& state) const;
-        void FillDynamicState(VkPipelineDynamicStateCreateInfo& state) const;
-        Result SetupShaderStage(VkPipelineShaderStageCreateInfo& stage, const ShaderDesc& shaderDesc, VkShaderModule*& modules);
-        void FillGroupIndices(const RayTracingPipelineDesc& rayTracingPipelineDesc, uint32_t* groupIndices);
+    inline DeviceVK& GetDevice() const
+    { return m_Device; }
 
-        VkPipeline m_Handle = VK_NULL_HANDLE;
-        VkPipelineBindPoint m_BindPoint = (VkPipelineBindPoint)0;
-        VkRenderPass m_RenderPass = VK_NULL_HANDLE;
-        DeviceVK& m_Device;
-        bool m_OwnsNativeObjects = false;
-    };
+    inline VkPipelineBindPoint GetBindPoint() const
+    { return m_BindPoint; }
 
-    inline PipelineVK::operator VkPipeline() const
-    {
-        return m_Handle;
-    }
+    ~PipelineVK();
 
-    inline DeviceVK& PipelineVK::GetDevice() const
-    {
-        return m_Device;
-    }
+    Result Create(const GraphicsPipelineDesc& graphicsPipelineDesc);
+    Result Create(const ComputePipelineDesc& computePipelineDesc);
+    Result Create(const RayTracingPipelineDesc& rayTracingPipelineDesc);
+    Result CreateGraphics(NRIVkPipeline vkPipeline);
+    Result CreateCompute(NRIVkPipeline vkPipeline);
 
-    inline VkPipelineBindPoint PipelineVK::GetBindPoint() const
-    {
-        return m_BindPoint;
-    }
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+
+    void SetDebugName(const char* name);
+    Result WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* buffer) const;
+
+private:
+    Result SetupShaderStage(VkPipelineShaderStageCreateInfo& stage, const ShaderDesc& shaderDesc, VkShaderModule*& modules);
+    Result CreateRenderPass(const OutputMergerDesc* outputMerger, const RasterizationDesc* rasterizationDesc);
+    void FillVertexInputState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineVertexInputStateCreateInfo& state) const;
+    void FillInputAssemblyState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineInputAssemblyStateCreateInfo& state) const;
+    void FillTessellationState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineTessellationStateCreateInfo& state) const;
+    void FillViewportState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineViewportStateCreateInfo& state);
+    void FillRasterizationState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineRasterizationStateCreateInfo& state, VkPipelineRasterizationConservativeStateCreateInfoEXT& conservativeRasterState) const;
+    void FillMultisampleState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineMultisampleStateCreateInfo& state) const;
+    void FillDepthStencilState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineDepthStencilStateCreateInfo& state) const;
+    void FillColorBlendState(const GraphicsPipelineDesc& graphicsPipelineDesc, VkPipelineColorBlendStateCreateInfo& state) const;
+    void FillDynamicState(VkPipelineDynamicStateCreateInfo& state) const;
+    void FillGroupIndices(const RayTracingPipelineDesc& rayTracingPipelineDesc, uint32_t* groupIndices);
+
+private:
+    DeviceVK& m_Device;
+    VkPipeline m_Handle = VK_NULL_HANDLE;
+    VkPipelineBindPoint m_BindPoint = (VkPipelineBindPoint)0;
+    VkRenderPass m_RenderPass = VK_NULL_HANDLE;
+    bool m_OwnsNativeObjects = false;
+};
+
 }

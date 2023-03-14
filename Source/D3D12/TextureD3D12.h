@@ -16,76 +16,51 @@ struct ID3D12Resource;
 
 namespace nri
 {
-    struct DeviceD3D12;
-    struct MemoryD3D12;
 
-    struct TextureD3D12
-    {
-        TextureD3D12(DeviceD3D12& device);
-        ~TextureD3D12();
+struct DeviceD3D12;
+struct MemoryD3D12;
 
-        operator ID3D12Resource*() const;
-
-        DeviceD3D12& GetDevice() const;
-
-        Result Create(const TextureDesc& textureDesc);
-        Result Create(const TextureD3D12Desc& textureDesc);
-        void Initialize(ID3D12Resource* resource);
-        Result BindMemory(const MemoryD3D12* memory, uint64_t offset);
-        const D3D12_RESOURCE_DESC& GetTextureDesc() const;
-        uint32_t GetSubresourceIndex(uint32_t arrayOffset, uint32_t mipOffset) const;
-        uint16_t GetSize(uint32_t dim, uint32_t mipOffset = 0) const;
-
-        //================================================================================================================
-        // NRI
-        //================================================================================================================
-        void SetDebugName(const char* name);
-        void GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
-
-    private:
-        DeviceD3D12& m_Device;
-        D3D12_RESOURCE_DESC m_TextureDesc = {};
-        ComPtr<ID3D12Resource> m_Texture;
-        Format m_Format = Format::UNKNOWN;
-    };
-
-    inline TextureD3D12::TextureD3D12(DeviceD3D12& device)
+struct TextureD3D12
+{
+    inline TextureD3D12(DeviceD3D12& device)
         : m_Device(device)
     {}
 
-    inline TextureD3D12::~TextureD3D12()
+    inline ~TextureD3D12()
     {}
 
-    inline TextureD3D12::operator ID3D12Resource*() const
-    {
-        return m_Texture.GetInterface();
-    }
+    inline operator ID3D12Resource*() const
+    { return m_Texture.GetInterface(); }
 
-    inline const D3D12_RESOURCE_DESC& TextureD3D12::GetTextureDesc() const
-    {
-        return m_TextureDesc;
-    }
+    inline const D3D12_RESOURCE_DESC& GetTextureDesc() const
+    { return m_TextureDesc; }
 
-    inline DeviceD3D12& TextureD3D12::GetDevice() const
-    {
-        return m_Device;
-    }
+    inline DeviceD3D12& GetDevice() const
+    { return m_Device; }
 
-    inline uint16_t TextureD3D12::GetSize(uint32_t dimension, uint32_t mipOffset) const
-    {
-        assert(dimension < 3);
+    inline uint32_t GetSubresourceIndex(uint32_t arrayOffset, uint32_t mipOffset) const
+    { return arrayOffset * m_TextureDesc.MipLevels + mipOffset; }
 
-        uint16_t size;
-        if (dimension == 0)
-            size = (uint16_t)m_TextureDesc.Width;
-        else if (dimension == 1)
-            size = (uint16_t)m_TextureDesc.Height;
-        else
-            size = (uint16_t)m_TextureDesc.DepthOrArraySize;
+    Result Create(const TextureDesc& textureDesc);
+    Result Create(const TextureD3D12Desc& textureDesc);
+    void Initialize(ID3D12Resource* resource);
+    Result BindMemory(const MemoryD3D12* memory, uint64_t offset);
+    uint16_t GetSize(uint32_t dim, uint32_t mipOffset = 0) const;
 
-        size = (uint16_t)std::max(size >> mipOffset, 1);
-        size = Align(size, dimension < 2 ? (uint16_t)GetTexelBlockWidth(m_Format) : 1);
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
 
-        return size;
-    }
+    inline void SetDebugName(const char* name)
+    { SET_D3D_DEBUG_OBJECT_NAME(m_Texture, name); }
+
+    void GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
+
+private:
+    DeviceD3D12& m_Device;
+    D3D12_RESOURCE_DESC m_TextureDesc = {};
+    ComPtr<ID3D12Resource> m_Texture;
+    Format m_Format = Format::UNKNOWN;
+};
+
 }

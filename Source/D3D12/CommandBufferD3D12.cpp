@@ -10,9 +10,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "SharedD3D12.h"
 #include "CommandBufferD3D12.h"
-#include "DeviceD3D12.h"
-#include "CommandQueueD3D12.h"
-#include "CommandAllocatorD3D12.h"
 #include "BufferD3D12.h"
 #include "TextureD3D12.h"
 #include "DescriptorD3D12.h"
@@ -22,18 +19,16 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "PipelineLayoutD3D12.h"
 #include "QueryPoolD3D12.h"
 #include "AccelerationStructureD3D12.h"
+
 #include <pix.h>
 
 using namespace nri;
 
-extern D3D12_RESOURCE_STATES GetResourceStates(nri::AccessBits accessMask);
+extern D3D12_RESOURCE_STATES GetResourceStates(AccessBits accessMask, D3D12_COMMAND_LIST_TYPE commandListType);
 extern void ConvertRects(D3D12_RECT* rectsD3D12, const Rect* rects, uint32_t rectNum);
-
-#ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
 extern D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS GetAccelerationStructureBuildFlags(AccelerationStructureBuildBits accelerationStructureBuildFlags);
 extern void ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs, const GeometryObject* geometryObjects, uint32_t geometryObjectNum);
 extern D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE GetCopyMode(CopyMode copyMode);
-#endif
 
 Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D12CommandAllocator* commandAllocator)
 {
@@ -48,14 +43,8 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
     m_CommandAllocator = commandAllocator;
     m_GraphicsCommandList = graphicsCommandList;
     m_GraphicsCommandList->QueryInterface(IID_PPV_ARGS(&m_GraphicsCommandList1));
-
-#ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
     m_GraphicsCommandList->QueryInterface(IID_PPV_ARGS(&m_GraphicsCommandList4));
-#endif
-
-#ifdef __ID3D12GraphicsCommandList6_INTERFACE_DEFINED__
     m_GraphicsCommandList->QueryInterface(IID_PPV_ARGS(&m_GraphicsCommandList6));
-#endif
 
     hr = m_GraphicsCommandList->Close();
     if (FAILED(hr))
@@ -72,22 +61,36 @@ Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferDes
     m_CommandAllocator = (ID3D12CommandAllocator*)commandBufferDesc.d3d12CommandAllocator;
     m_GraphicsCommandList = (ID3D12GraphicsCommandList*)commandBufferDesc.d3d12CommandList;
     m_GraphicsCommandList->QueryInterface(IID_PPV_ARGS(&m_GraphicsCommandList1));
-
-#ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
     m_GraphicsCommandList->QueryInterface(IID_PPV_ARGS(&m_GraphicsCommandList4));
-#endif
-
-#ifdef __ID3D12GraphicsCommandList6_INTERFACE_DEFINED__
     m_GraphicsCommandList->QueryInterface(IID_PPV_ARGS(&m_GraphicsCommandList6));
-#endif
 
     return Result::SUCCESS;
 }
 
-inline void CommandBufferD3D12::SetDebugName(const char* name)
+inline void CommandBufferD3D12::AddResourceBarrier(ID3D12Resource* resource, AccessBits before, AccessBits after, D3D12_RESOURCE_BARRIER& resourceBarrier, uint32_t subresource)
 {
-    SET_D3D_DEBUG_OBJECT_NAME(m_GraphicsCommandList, name);
+    D3D12_COMMAND_LIST_TYPE commandListType = m_GraphicsCommandList->GetType();
+    D3D12_RESOURCE_STATES resourceStateBefore = GetResourceStates(before, commandListType);
+    D3D12_RESOURCE_STATES resourceStateAfter = GetResourceStates(after, commandListType);
+
+    if (resourceStateBefore == resourceStateAfter && resourceStateBefore == D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
+    {
+        resourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        resourceBarrier.UAV.pResource = resource;
+    }
+    else
+    {
+        resourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        resourceBarrier.Transition.pResource = resource;
+        resourceBarrier.Transition.StateBefore = resourceStateBefore;
+        resourceBarrier.Transition.StateAfter = resourceStateAfter;
+        resourceBarrier.Transition.Subresource = subresource;
+    }
 }
+
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 inline Result CommandBufferD3D12::Begin(const DescriptorPool* descriptorPool)
 {
@@ -566,10 +569,9 @@ inline void CommandBufferD3D12::EndAnnotation()
     PIXEndEvent(m_GraphicsCommandList);
 }
 
-void CommandBufferD3D12::BuildTopLevelAccelerationStructure(uint32_t instanceNum, const Buffer& buffer, uint64_t bufferOffset,
+inline void CommandBufferD3D12::BuildTopLevelAccelerationStructure(uint32_t instanceNum, const Buffer& buffer, uint64_t bufferOffset,
     AccelerationStructureBuildBits flags, AccelerationStructure& dst, Buffer& scratch, uint64_t scratchOffset)
 {
-#ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC desc = {};
     desc.DestAccelerationStructureData = ((AccelerationStructureD3D12&)dst).GetHandle();
     desc.ScratchAccelerationStructureData = ((BufferD3D12&)scratch).GetPointerGPU() + scratchOffset;
@@ -581,13 +583,11 @@ void CommandBufferD3D12::BuildTopLevelAccelerationStructure(uint32_t instanceNum
     desc.Inputs.InstanceDescs = ((BufferD3D12&)buffer).GetPointerGPU() + bufferOffset;
 
     m_GraphicsCommandList4->BuildRaytracingAccelerationStructure(&desc, 0, nullptr);
-#endif
 }
 
-void CommandBufferD3D12::BuildBottomLevelAccelerationStructure(uint32_t geometryObjectNum, const GeometryObject* geometryObjects,
+inline void CommandBufferD3D12::BuildBottomLevelAccelerationStructure(uint32_t geometryObjectNum, const GeometryObject* geometryObjects,
     AccelerationStructureBuildBits flags, AccelerationStructure& dst, Buffer& scratch, uint64_t scratchOffset)
 {
-#ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC desc = {};
     desc.DestAccelerationStructureData = ((AccelerationStructureD3D12&)dst).GetHandle();
     desc.ScratchAccelerationStructureData = ((BufferD3D12&)scratch).GetPointerGPU() + scratchOffset;
@@ -601,13 +601,11 @@ void CommandBufferD3D12::BuildBottomLevelAccelerationStructure(uint32_t geometry
     desc.Inputs.pGeometryDescs = &geometryDescs[0];
 
     m_GraphicsCommandList4->BuildRaytracingAccelerationStructure(&desc, 0, nullptr);
-#endif
 }
 
-void CommandBufferD3D12::UpdateTopLevelAccelerationStructure(uint32_t instanceNum, const Buffer& buffer, uint64_t bufferOffset,
+inline void CommandBufferD3D12::UpdateTopLevelAccelerationStructure(uint32_t instanceNum, const Buffer& buffer, uint64_t bufferOffset,
     AccelerationStructureBuildBits flags, AccelerationStructure& dst, AccelerationStructure& src, Buffer& scratch, uint64_t scratchOffset)
 {
-#ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC desc = {};
     desc.DestAccelerationStructureData = ((AccelerationStructureD3D12&)dst).GetHandle();
     desc.SourceAccelerationStructureData = ((AccelerationStructureD3D12&)src).GetHandle();
@@ -618,13 +616,11 @@ void CommandBufferD3D12::UpdateTopLevelAccelerationStructure(uint32_t instanceNu
     desc.Inputs.InstanceDescs = ((BufferD3D12&)buffer).GetPointerGPU() + bufferOffset;
 
     m_GraphicsCommandList4->BuildRaytracingAccelerationStructure(&desc, 0, nullptr);
-#endif
 }
 
-void CommandBufferD3D12::UpdateBottomLevelAccelerationStructure(uint32_t geometryObjectNum, const GeometryObject* geometryObjects,
+inline void CommandBufferD3D12::UpdateBottomLevelAccelerationStructure(uint32_t geometryObjectNum, const GeometryObject* geometryObjects,
     AccelerationStructureBuildBits flags, AccelerationStructure& dst, AccelerationStructure& src, Buffer& scratch, uint64_t scratchOffset)
 {
-#ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC desc = {};
     desc.DestAccelerationStructureData = ((AccelerationStructureD3D12&)dst).GetHandle();
     desc.SourceAccelerationStructureData = ((AccelerationStructureD3D12&)src).GetHandle();
@@ -639,22 +635,18 @@ void CommandBufferD3D12::UpdateBottomLevelAccelerationStructure(uint32_t geometr
     desc.Inputs.pGeometryDescs = &geometryDescs[0];
 
     m_GraphicsCommandList4->BuildRaytracingAccelerationStructure(&desc, 0, nullptr);
-#endif
 }
 
-void CommandBufferD3D12::CopyAccelerationStructure(AccelerationStructure& dst, AccelerationStructure& src, CopyMode copyMode)
+inline void CommandBufferD3D12::CopyAccelerationStructure(AccelerationStructure& dst, AccelerationStructure& src, CopyMode copyMode)
 {
-#ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
     m_GraphicsCommandList4->CopyRaytracingAccelerationStructure(((AccelerationStructureD3D12&)dst).GetHandle(), ((AccelerationStructureD3D12&)src).GetHandle(), GetCopyMode(copyMode));
-#endif
 }
 
-void CommandBufferD3D12::WriteAccelerationStructureSize(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset)
+inline void CommandBufferD3D12::WriteAccelerationStructureSize(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset)
 {
     MaybeUnused(accelerationStructures);
     MaybeUnused(queryOffset);
 
-#ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
     D3D12_GPU_VIRTUAL_ADDRESS* virtualAddresses = ALLOCATE_SCRATCH(m_Device, D3D12_GPU_VIRTUAL_ADDRESS, accelerationStructureNum);
 
     QueryPoolD3D12& queryPoolD3D12 = (QueryPoolD3D12&)queryPool;
@@ -666,12 +658,10 @@ void CommandBufferD3D12::WriteAccelerationStructureSize(const AccelerationStruct
     m_GraphicsCommandList4->EmitRaytracingAccelerationStructurePostbuildInfo(&postbuildInfo, accelerationStructureNum, virtualAddresses);
 
     FREE_SCRATCH(m_Device, virtualAddresses, accelerationStructureNum);
-#endif
 }
 
-void CommandBufferD3D12::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc)
+inline void CommandBufferD3D12::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc)
 {
-#ifdef __ID3D12GraphicsCommandList4_INTERFACE_DEFINED__
     D3D12_DISPATCH_RAYS_DESC desc = {};
 
     desc.RayGenerationShaderRecord.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.raygenShader.buffer).GetPointerGPU() + dispatchRaysDesc.raygenShader.offset;
@@ -703,34 +693,11 @@ void CommandBufferD3D12::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc)
     desc.Depth = dispatchRaysDesc.depth;
 
     m_GraphicsCommandList4->DispatchRays(&desc);
-#endif
 }
 
-inline void CommandBufferD3D12::DispatchMeshTasks(uint32_t taskNum)
+inline void CommandBufferD3D12::DispatchMeshTasks(uint32_t x, uint32_t y, uint32_t z)
 {
-#ifdef __ID3D12GraphicsCommandList6_INTERFACE_DEFINED__
-    m_GraphicsCommandList6->DispatchMesh(taskNum, 1, 1);
-#endif
-}
-
-inline void CommandBufferD3D12::AddResourceBarrier(ID3D12Resource* resource, AccessBits before, AccessBits after, D3D12_RESOURCE_BARRIER& resourceBarrier, uint32_t subresource)
-{
-    D3D12_RESOURCE_STATES resourceStateBefore = GetResourceStates(before);
-    D3D12_RESOURCE_STATES resourceStateAfter = GetResourceStates(after);
-
-    if (resourceStateBefore == resourceStateAfter && resourceStateBefore == D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
-    {
-        resourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-        resourceBarrier.UAV.pResource = resource;
-    }
-    else
-    {
-        resourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        resourceBarrier.Transition.pResource = resource;
-        resourceBarrier.Transition.StateBefore = resourceStateBefore;
-        resourceBarrier.Transition.StateAfter = resourceStateAfter;
-        resourceBarrier.Transition.Subresource = subresource;
-    }
+    m_GraphicsCommandList6->DispatchMesh(x, y, z);
 }
 
 #include "CommandBufferD3D12.hpp"

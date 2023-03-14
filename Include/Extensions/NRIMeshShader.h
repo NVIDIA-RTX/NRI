@@ -14,7 +14,7 @@ NRI_NAMESPACE_BEGIN
 
 NRI_STRUCT(MeshShaderInterface)
 {
-    void (NRI_CALL *CmdDispatchMeshTasks)(NRI_REF_NAME(CommandBuffer) commandBuffer, uint32_t taskNum);
+    void (NRI_CALL *CmdDispatchMeshTasks)(NRI_REF_NAME(CommandBuffer) commandBuffer, uint32_t x, uint32_t y, uint32_t z);
 };
 
 NRI_NAMESPACE_END

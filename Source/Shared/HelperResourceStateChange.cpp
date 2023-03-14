@@ -14,11 +14,11 @@ HelperResourceStateChange::HelperResourceStateChange(const CoreInterface& NRI, D
 
 HelperResourceStateChange::~HelperResourceStateChange()
 {
-    if (m_CommandBuffer != nullptr)
+    if (m_CommandBuffer)
         NRI.DestroyCommandBuffer(*m_CommandBuffer);
     m_CommandBuffer = nullptr;
 
-    if (m_CommandAllocator != nullptr)
+    if (m_CommandAllocator)
         NRI.DestroyCommandAllocator(*m_CommandAllocator);
     m_CommandAllocator = nullptr;
 }
@@ -33,15 +33,17 @@ Result HelperResourceStateChange::ChangeStates(const TransitionBarrierDesc& tran
     for (uint32_t i = 0; i < physicalDeviceNum; i++)
     {
         NRI.BeginCommandBuffer(*m_CommandBuffer, nullptr, i);
-        NRI.CmdPipelineBarrier(*m_CommandBuffer, &transitionBarriers, nullptr, BarrierDependency::ALL_STAGES);
+        {
+            NRI.CmdPipelineBarrier(*m_CommandBuffer, &transitionBarriers, nullptr, BarrierDependency::ALL_STAGES);
+        }
         NRI.EndCommandBuffer(*m_CommandBuffer);
 
-        WorkSubmissionDesc workSubmissionDesc = {};
-        workSubmissionDesc.physicalDeviceIndex = i;
-        workSubmissionDesc.commandBufferNum = 1;
-        workSubmissionDesc.commandBuffers = &m_CommandBuffer;
+        QueueSubmitDesc queueSubmitDesc = {};
+        queueSubmitDesc.physicalDeviceIndex = i;
+        queueSubmitDesc.commandBufferNum = 1;
+        queueSubmitDesc.commandBuffers = &m_CommandBuffer;
 
-        NRI.SubmitQueueWork(m_CommandQueue, workSubmissionDesc, nullptr);
+        NRI.QueueSubmit(m_CommandQueue, queueSubmitDesc);
     }
 
     return m_HelperWaitIdle.WaitIdle();

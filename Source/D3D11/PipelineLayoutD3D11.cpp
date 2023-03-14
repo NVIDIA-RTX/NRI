@@ -8,10 +8,8 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#include "SharedExternal.h"
 #include "SharedD3D11.h"
 #include "PipelineLayoutD3D11.h"
-
 #include "DescriptorD3D11.h"
 #include "DescriptorSetD3D11.h"
 
@@ -19,27 +17,27 @@ using namespace nri;
 
 #define SET_CONSTANT_BUFFERS1(xy, stage) \
     if ( IsShaderVisible(bindingRange.shaderVisibility, stage) ) \
-        context->xy##SetConstantBuffers1(bindingRange.baseSlot, bindingRange.descriptorNum, (ID3D11Buffer**)descriptors, constantFirst, constantNum)
+        deferredContext->xy##SetConstantBuffers1(bindingRange.baseSlot, bindingRange.descriptorNum, (ID3D11Buffer**)descriptors, constantFirst, constantNum)
 
 #define SET_CONSTANT_BUFFERS(xy, stage) \
     if ( IsShaderVisible(bindingRange.shaderVisibility, stage) ) \
-        context->xy##SetConstantBuffers(bindingRange.baseSlot, bindingRange.descriptorNum, (ID3D11Buffer**)descriptors)
+        deferredContext->xy##SetConstantBuffers(bindingRange.baseSlot, bindingRange.descriptorNum, (ID3D11Buffer**)descriptors)
 
 #define SET_SHADER_RESOURCES(xy, stage) \
     if ( IsShaderVisible(bindingRange.shaderVisibility, stage) ) \
-        context->xy##SetShaderResources(bindingRange.baseSlot, bindingRange.descriptorNum, (ID3D11ShaderResourceView**)descriptors)
+        deferredContext->xy##SetShaderResources(bindingRange.baseSlot, bindingRange.descriptorNum, (ID3D11ShaderResourceView**)descriptors)
 
 #define SET_SAMPLERS(xy, stage) \
     if ( IsShaderVisible(bindingRange.shaderVisibility, stage) ) \
-        context->xy##SetSamplers(bindingRange.baseSlot, bindingRange.descriptorNum, (ID3D11SamplerState**)descriptors)
+        deferredContext->xy##SetSamplers(bindingRange.baseSlot, bindingRange.descriptorNum, (ID3D11SamplerState**)descriptors)
 
 #define SET_CONSTANT_BUFFER(xy, stage) \
     if ( IsShaderVisible(cb.shaderVisibility, stage) ) \
-        context->xy##SetConstantBuffers(cb.slot, 1, (ID3D11Buffer**)&cb.buffer)
+        deferredContext->xy##SetConstantBuffers(cb.slot, 1, (ID3D11Buffer**)&cb.buffer)
 
 #define SET_SAMPLER(xy, stage) \
     if ( IsShaderVisible(ss.shaderVisibility, stage) ) \
-        context->xy##SetSamplers(ss.slot, 1, (ID3D11SamplerState**)&ss.sampler)
+        deferredContext->xy##SetSamplers(ss.slot, 1, (ID3D11SamplerState**)&ss.sampler)
 
 // see StageSlots
 constexpr std::array<DescriptorTypeDX11, (uint32_t)DescriptorType::MAX_NUM> g_RemapDescriptorTypeToIndex =
@@ -74,15 +72,6 @@ constexpr uint32_t GetShaderVisibility(ShaderStage visibility, PipelineLayoutSha
     return (visibility == ShaderStage::ALL) ? (uint32_t)stageMask : (1 << (uint32_t)visibility) & (uint32_t)stageMask;
 }
 
-PipelineLayoutD3D11::PipelineLayoutD3D11(DeviceD3D11& device, const VersionedDevice& versionedDevice) :
-    m_BindingSets(device.GetStdAllocator()),
-    m_BindingRanges(device.GetStdAllocator()),
-    m_ConstantBuffers(device.GetStdAllocator()),
-    m_VersionedDevice(versionedDevice),
-    m_Device(device)
-{
-}
-
 Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
 {
     m_IsGraphicsPipelineLayout = pipelineLayoutDesc.stageMask & PipelineLayoutShaderStageBits::ALL_GRAPHICS;
@@ -112,7 +101,7 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         }
 
         // Dynamic constant buffers
-        if (set.dynamicConstantBufferNum && m_VersionedDevice.version == 0)
+        if (set.dynamicConstantBufferNum && m_Device.GetDevice().version == 0)
             REPORT_ERROR(m_Device.GetLog(), "Dynamic constant buffers with non-zero offsets require DX11.1+");
 
         for (uint32_t j = 0; j < set.dynamicConstantBufferNum; j++)
@@ -152,7 +141,7 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         cb.slot = pushConstant.registerIndex;
 
         desc.ByteWidth = Align(pushConstant.size, 16);
-        HRESULT hr = m_VersionedDevice->CreateBuffer(&desc, nullptr, &cb.buffer);
+        HRESULT hr = m_Device.GetDevice()->CreateBuffer(&desc, nullptr, &cb.buffer);
         if (FAILED(hr))
             REPORT_ERROR(m_Device.GetLog(), "Can't create a constant buffer for push constants! ID3D11Device::CreateBuffer() - FAILED!");
 
@@ -162,7 +151,7 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     return Result::SUCCESS;
 }
 
-void PipelineLayoutD3D11::Bind(const VersionedContext& context)
+void PipelineLayoutD3D11::Bind(const VersionedContext& deferredContext)
 {
     for (size_t i = 0; i < m_ConstantBuffers.size(); i++)
     {
@@ -177,29 +166,25 @@ void PipelineLayoutD3D11::Bind(const VersionedContext& context)
     }
 }
 
-void PipelineLayoutD3D11::SetConstants(const VersionedContext& context, uint32_t pushConstantIndex, const Vec4* data, uint32_t size) const
+void PipelineLayoutD3D11::SetConstants(const VersionedContext& deferredContext, uint32_t pushConstantIndex, const Vec4* data, uint32_t size) const
 {
     MaybeUnused(size);
 
     const ConstantBuffer& cb = m_ConstantBuffers[pushConstantIndex];
-    context->UpdateSubresource(cb.buffer, 0, nullptr, data, 0, 0);
+    deferredContext->UpdateSubresource(cb.buffer, 0, nullptr, data, 0, 0);
 }
 
-void PipelineLayoutD3D11::BindDescriptorSet(BindingState& currentBindingState, const VersionedContext& context,
+void PipelineLayoutD3D11::BindDescriptorSet(BindingState& currentBindingState, const VersionedContext& deferredContext,
     uint32_t setIndexInPipelineLayout, const DescriptorSetD3D11& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const
 {
     if (m_IsGraphicsPipelineLayout)
-        BindDescriptorSetImpl<true>(currentBindingState, context, setIndexInPipelineLayout, descriptorSet, dynamicConstantBufferOffsets);
+        BindDescriptorSetImpl<true>(currentBindingState, deferredContext, setIndexInPipelineLayout, descriptorSet, dynamicConstantBufferOffsets);
     else
-        BindDescriptorSetImpl<false>(currentBindingState, context, setIndexInPipelineLayout, descriptorSet, dynamicConstantBufferOffsets);
-}
-
-void PipelineLayoutD3D11::SetDebugName(const char*)
-{
+        BindDescriptorSetImpl<false>(currentBindingState, deferredContext, setIndexInPipelineLayout, descriptorSet, dynamicConstantBufferOffsets);
 }
 
 template<bool isGraphics>
-void PipelineLayoutD3D11::BindDescriptorSetImpl(BindingState& currentBindingState, const VersionedContext& context, uint32_t setIndexInPipelineLayout,
+void PipelineLayoutD3D11::BindDescriptorSetImpl(BindingState& currentBindingState, const VersionedContext& deferredContext, uint32_t setIndexInPipelineLayout,
     const DescriptorSetD3D11& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const
 {
     const BindingSet& bindingSet = m_BindingSets[setIndexInPipelineLayout];
@@ -241,9 +226,9 @@ void PipelineLayoutD3D11::BindDescriptorSetImpl(BindingState& currentBindingStat
                     constantNum[i] = descriptor->GetElementNum();
                 }
                 else if (bindingRange.descriptorType == DescriptorTypeDX11::STORAGE)
-                    currentBindingState.TrackSubresource_UnbindIfNeeded_PostponeGraphicsStorageBinding(context, descriptor->GetSubresourceInfo(), *descriptor, bindingRange.baseSlot + i, isGraphics, true);
+                    currentBindingState.TrackSubresource_UnbindIfNeeded_PostponeGraphicsStorageBinding(deferredContext, descriptor->GetSubresourceInfo(), *descriptor, bindingRange.baseSlot + i, isGraphics, true);
                 else if (bindingRange.descriptorType == DescriptorTypeDX11::RESOURCE)
-                    currentBindingState.TrackSubresource_UnbindIfNeeded_PostponeGraphicsStorageBinding(context, descriptor->GetSubresourceInfo(), *descriptor, bindingRange.baseSlot + i, isGraphics, false);
+                    currentBindingState.TrackSubresource_UnbindIfNeeded_PostponeGraphicsStorageBinding(deferredContext, descriptor->GetSubresourceInfo(), *descriptor, bindingRange.baseSlot + i, isGraphics, false);
             }
             else
             {
@@ -323,7 +308,7 @@ void PipelineLayoutD3D11::BindDescriptorSetImpl(BindingState& currentBindingStat
             else
             {
                 if (IsShaderVisible(bindingRange.shaderVisibility, ShaderStage::COMPUTE))
-                    context->CSSetUnorderedAccessViews(bindingRange.baseSlot, bindingRange.descriptorNum, (ID3D11UnorderedAccessView**)descriptors, nullptr);
+                    deferredContext->CSSetUnorderedAccessViews(bindingRange.baseSlot, bindingRange.descriptorNum, (ID3D11UnorderedAccessView**)descriptors, nullptr);
             }
         }
     }
@@ -333,8 +318,12 @@ void PipelineLayoutD3D11::BindDescriptorSetImpl(BindingState& currentBindingStat
         uint32_t num = (uint32_t)currentBindingState.graphicsStorageDescriptors.size();
         ID3D11UnorderedAccessView** storages = currentBindingState.graphicsStorageDescriptors.data();
 
-        context->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, 0, num, storages, nullptr);
+        deferredContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, 0, num, storages, nullptr);
     }
 }
+
+//================================================================================================================
+// NRI
+//================================================================================================================
 
 #include "PipelineLayoutD3D11.hpp"

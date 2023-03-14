@@ -71,7 +71,7 @@ Result HelperDataUpload::Create()
     if (result != Result::SUCCESS)
         return result;
 
-    result = NRI.CreateDeviceSemaphore(m_Device, false, m_DeviceSemaphore);
+    result = NRI.CreateFence(m_Device, 0, m_Fence);
     if (result != Result::SUCCESS)
         return result;
 
@@ -99,8 +99,8 @@ void HelperDataUpload::Destroy()
         NRI.DestroyCommandBuffer(*m_CommandBuffers[i]);
         NRI.DestroyCommandAllocator(*m_CommandAllocators[i]);
     }
-    NRI.DestroyDeviceSemaphore(*m_DeviceSemaphore);
 
+    NRI.DestroyFence(*m_Fence);
     NRI.DestroyBuffer(*m_UploadBuffer);
     NRI.FreeMemory(*m_UploadBufferMemory);
 }
@@ -188,15 +188,20 @@ Result HelperDataUpload::EndCommandBuffersAndSubmit()
             return result;
     }
 
-    WorkSubmissionDesc workSubmissionDesc = {};
-    workSubmissionDesc.commandBufferNum = 1;
+    QueueSubmitDesc queueSubmitDesc = {};
+    queueSubmitDesc.commandBufferNum = 1;
 
     for (uint32_t i = 0; i < m_CommandBuffers.size(); i++)
     {
-        workSubmissionDesc.commandBuffers = &m_CommandBuffers[i];
-        workSubmissionDesc.physicalDeviceIndex = i;
-        NRI.SubmitQueueWork(m_CommandQueue, workSubmissionDesc, m_DeviceSemaphore);
-        NRI.WaitForSemaphore(m_CommandQueue, *m_DeviceSemaphore);
+        queueSubmitDesc.commandBuffers = &m_CommandBuffers[i];
+        queueSubmitDesc.physicalDeviceIndex = i;
+
+        NRI.QueueSubmit(m_CommandQueue, queueSubmitDesc);
+
+        NRI.QueueSignal(m_CommandQueue, *m_Fence, m_FenceValue);
+        NRI.Wait(*m_Fence, m_FenceValue);
+
+        m_FenceValue++;
     }
 
     for (uint32_t i = 0; i < m_CommandAllocators.size(); i++)

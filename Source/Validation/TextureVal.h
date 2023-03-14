@@ -12,43 +12,45 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 namespace nri
 {
-    struct MemoryVal;
 
-    struct TextureVal : public DeviceObjectVal<Texture>
+struct MemoryVal;
+
+struct TextureVal : public DeviceObjectVal<Texture>
+{
+    TextureVal(DeviceVal& device, Texture& texture, const TextureDesc& textureDesc);
+    TextureVal(DeviceVal& device, Texture& texture, const TextureD3D11Desc& textureD3D11Desc);
+    TextureVal(DeviceVal& device, Texture& texture, const TextureD3D12Desc& textureD3D12Desc);
+    TextureVal(DeviceVal& device, Texture& texture, const TextureVulkanDesc& textureVulkanDesc);
+    ~TextureVal();
+
+    inline const TextureDesc& GetDesc() const
+    { return m_TextureDesc; }
+
+    inline uint64_t GetNativeObject(uint32_t physicalDeviceIndex) const
+    { return m_CoreAPI.GetTextureNativeObject(m_ImplObject, physicalDeviceIndex); }
+
+    inline bool IsBoundToMemory() const
+    { return m_IsBoundToMemory; }
+
+    inline void SetBoundToMemory()
+    { m_IsBoundToMemory = true; }
+
+    inline void SetBoundToMemory(MemoryVal& memory)
     {
-        TextureVal(DeviceVal& device, Texture& texture, const TextureDesc& textureDesc);
-        TextureVal(DeviceVal& device, Texture& texture, const TextureD3D11Desc& textureD3D11Desc);
-        TextureVal(DeviceVal& device, Texture& texture, const TextureD3D12Desc& textureD3D12Desc);
-        TextureVal(DeviceVal& device, Texture& texture, const TextureVulkanDesc& textureVulkanDesc);
-        ~TextureVal();
+        m_Memory = &memory;
+        m_IsBoundToMemory = true;
+    }
 
-        inline const TextureDesc& GetDesc() const
-        { return m_TextureDesc; }
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+    void SetDebugName(const char* name);
+    void GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
 
-        inline uint64_t GetNativeObject(uint32_t physicalDeviceIndex) const
-        { return m_CoreAPI.GetTextureNativeObject(m_ImplObject, physicalDeviceIndex); }
+private:
+    MemoryVal* m_Memory = nullptr;
+    bool m_IsBoundToMemory = false;
+    TextureDesc m_TextureDesc = {};
+};
 
-        inline bool IsBoundToMemory() const
-        { return m_IsBoundToMemory; }
-
-        inline void SetBoundToMemory()
-        { m_IsBoundToMemory = true; }
-        
-        inline void SetBoundToMemory(MemoryVal& memory)
-        {
-            m_Memory = &memory;
-            m_IsBoundToMemory = true;
-        }
-        
-        //======================================================================================================================
-        // NRI
-        //======================================================================================================================
-        void SetDebugName(const char* name);
-        void GetMemoryInfo(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
-
-    private:
-        MemoryVal* m_Memory = nullptr;
-        bool m_IsBoundToMemory = false;
-        TextureDesc m_TextureDesc = {};
-    };
 }

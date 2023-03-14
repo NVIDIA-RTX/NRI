@@ -8,9 +8,7 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma once
-
-#pragma region [  CoreInterface  ]
+#pragma region [  Core  ]
 
 static void NRI_CALL SetDescriptorSetDebugName(DescriptorSet& descriptorSet, const char* name)
 {
@@ -32,12 +30,6 @@ static void NRI_CALL CopyDescriptorSet(DescriptorSet& descriptorSet, const Descr
     ((DescriptorSetVK&)descriptorSet).Copy(descriptorSetCopyDesc);
 }
 
-void FillFunctionTableDescriptorSetVK(CoreInterface& coreInterface)
-{
-    coreInterface.SetDescriptorSetDebugName = ::SetDescriptorSetDebugName;
-    coreInterface.UpdateDescriptorRanges = ::UpdateDescriptorRanges;
-    coreInterface.UpdateDynamicConstantBuffers = ::UpdateDynamicConstantBuffers;
-    coreInterface.CopyDescriptorSet = ::CopyDescriptorSet;
-}
-
 #pragma endregion
+
+Define_Core_DescriptorSet_PartiallyFillFunctionTable(VK)

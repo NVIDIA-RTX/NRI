@@ -8,18 +8,17 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma once
+#pragma region [  Core  ]
 
-#pragma region [  CoreInterface  ]
-
-static void NRI_CALL SetDeviceSemaphoreDebugName(DeviceSemaphore& deviceSemaphore, const char* name)
+static void NRI_CALL SetFenceDebugName(Fence& fence, const char* name)
 {
-    ((DeviceSemaphoreVK&)deviceSemaphore).SetDebugName(name);
+    ((FenceVal*)&fence)->SetDebugName(name);
 }
 
-void FillFunctionTableDeviceSemaphoreVK(CoreInterface& coreInterface)
+void FillFunctionTableFenceVal(CoreInterface& coreInterface)
 {
-    coreInterface.SetDeviceSemaphoreDebugName = ::SetDeviceSemaphoreDebugName;
+    coreInterface.SetFenceDebugName = ::SetFenceDebugName;
 }
 
 #pragma endregion
+
