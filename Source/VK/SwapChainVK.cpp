@@ -38,8 +38,8 @@ SwapChainVK::~SwapChainVK()
     if (m_Surface != VK_NULL_HANDLE)
         vk.DestroySurfaceKHR(m_Device, m_Surface, m_Device.GetAllocationCallbacks());
 
-    if (m_Fence != VK_NULL_HANDLE)
-        vk.DestroySemaphore(m_Device, m_Fence, m_Device.GetAllocationCallbacks());
+    if (m_Semaphore != VK_NULL_HANDLE)
+        vk.DestroySemaphore(m_Device, m_Semaphore, m_Device.GetAllocationCallbacks());
 }
 
 Result SwapChainVK::CreateSurface(const SwapChainDesc& swapChainDesc)
@@ -120,7 +120,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc)
 
     VkSemaphoreTypeCreateInfo timelineCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO, nullptr, VK_SEMAPHORE_TYPE_BINARY, 0 };
     VkSemaphoreCreateInfo createInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, &timelineCreateInfo, 0 };
-    VkResult result = vk.CreateSemaphore((VkDevice)m_Device, &createInfo, m_Device.GetAllocationCallbacks(), &m_Fence);
+    VkResult result = vk.CreateSemaphore((VkDevice)m_Device, &createInfo, m_Device.GetAllocationCallbacks(), &m_Semaphore);
 
     RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),
         "Can't create a semaphore: vk.CreateSemaphore returned %d.", (int32_t)result);
@@ -268,12 +268,12 @@ inline Texture* const* SwapChainVK::GetTextures(uint32_t& textureNum, Format& fo
 inline uint32_t SwapChainVK::AcquireNextTexture()
 {
     const auto& vk = m_Device.GetDispatchTable();
-    const VkResult result = vk.AcquireNextImageKHR(m_Device, m_Handle, DEFAULT_TIMEOUT, m_Fence, VK_NULL_HANDLE, &m_TextureIndex);
+    const VkResult result = vk.AcquireNextImageKHR(m_Device, m_Handle, DEFAULT_TIMEOUT, m_Semaphore, VK_NULL_HANDLE, &m_TextureIndex);
 
     RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, m_TextureIndex,
         "Can't acquire the next texture of the swapchain: vkAcquireNextImageKHR returned %d.", (int32_t)result);
 
-    VkSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO, nullptr, 1, &m_Fence, nullptr, 0, nullptr, 0, nullptr };
+    VkSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO, nullptr, 1, &m_Semaphore, nullptr, 0, nullptr, 0, nullptr };
     vk.QueueSubmit(*m_CommandQueue, 1, &submitInfo, VK_NULL_HANDLE);
 
     return m_TextureIndex;
@@ -281,18 +281,20 @@ inline uint32_t SwapChainVK::AcquireNextTexture()
 
 inline Result SwapChainVK::Present()
 {
+    const auto& vk = m_Device.GetDispatchTable();
+
+    VkSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO, nullptr, 0, nullptr, nullptr, 0, nullptr, 1, &m_Semaphore };
+    vk.QueueSubmit(*m_CommandQueue, 1, &submitInfo, VK_NULL_HANDLE);
+
     const VkPresentInfoKHR info = {
         VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         nullptr,
-        0,
-        nullptr,
-        1,
-        &m_Handle,
+        1, &m_Semaphore,
+        1, &m_Handle,
         &m_TextureIndex,
         nullptr
     };
 
-    const auto& vk = m_Device.GetDispatchTable();
     const VkResult result = vk.QueuePresentKHR(*m_CommandQueue, &info);
 
     RETURN_ON_FAILURE(m_Device.GetLog(), result == VK_SUCCESS, GetReturnCode(result),

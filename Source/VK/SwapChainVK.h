@@ -48,7 +48,7 @@ private:
     Vector<TextureVK*> m_Textures;
     Format m_Format = Format::UNKNOWN;
     DeviceVK& m_Device;
-    VkSemaphore m_Fence = VK_NULL_HANDLE;
+    VkSemaphore m_Semaphore = VK_NULL_HANDLE;
 };
 
 }
