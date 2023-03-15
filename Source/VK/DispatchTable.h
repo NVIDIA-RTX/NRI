@@ -42,11 +42,14 @@ struct DispatchTable
 
 #if VK_USE_PLATFORM_WIN32_KHR
     VULKAN_FUNCTION(CreateWin32SurfaceKHR);
-#elif VK_USE_PLATFORM_METAL_EXT
+#endif
+#if VK_USE_PLATFORM_METAL_EXT
     VULKAN_FUNCTION(CreateMetalSurfaceEXT);
-#elif VK_USE_PLATFORM_XLIB_KHR
+#endif
+#if VK_USE_PLATFORM_XLIB_KHR
     VULKAN_FUNCTION(CreateXlibSurfaceKHR);
-#elif VK_USE_PLATFORM_WAYLAND_KHR
+#endif
+#if VK_USE_PLATFORM_WAYLAND_KHR
     VULKAN_FUNCTION(CreateWaylandSurfaceKHR);
 #endif
 

@@ -607,7 +607,7 @@ Result DeviceVK::CreateInstance(const DeviceCreationDesc& deviceCreationDesc)
     #elif defined VK_USE_PLATFORM_WAYLAND_KHR
         extensions.push_back(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
     #endif
-    
+
     if (IsExtensionSupported(VK_EXT_DEBUG_UTILS_EXTENSION_NAME, supportedExts))
     {
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -889,7 +889,7 @@ void DeviceVK::SetDeviceLimits(bool enableValidation)
     if (m_IsConservativeRasterExtSupported)
     {
         VkPhysicalDeviceConservativeRasterizationPropertiesEXT conservativeRasterProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT };
-        
+
         props.pNext = &conservativeRasterProps;
 
         m_VK.GetPhysicalDeviceProperties2(m_PhysicalDevices.front(), &props);
@@ -907,7 +907,7 @@ void DeviceVK::SetDeviceLimits(bool enableValidation)
     {
         VkPhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR };
         VkPhysicalDeviceAccelerationStructurePropertiesKHR accelerationStructureProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR };
-        
+
         props.pNext = &rayTracingProps;
         rayTracingProps.pNext = &accelerationStructureProperties;
 
@@ -924,7 +924,7 @@ void DeviceVK::SetDeviceLimits(bool enableValidation)
     if (!m_IsMeshShaderExtSupported)
     {
         VkPhysicalDeviceMeshShaderPropertiesEXT meshShaderProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT };
-        
+
         props.pNext = &meshShaderProps;
 
         m_VK.GetPhysicalDeviceProperties2(m_PhysicalDevices.front(), &props);
@@ -1050,7 +1050,7 @@ Result DeviceVK::CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDes
     }
 
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR };
-    VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };    
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };
     VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR };
     VkPhysicalDeviceOpacityMicromapFeaturesEXT micromapFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_FEATURES_EXT };
     VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT };
@@ -1317,11 +1317,14 @@ Result DeviceVK::ResolveInstanceDispatchTable()
 
 #if VK_USE_PLATFORM_WIN32_KHR
     RESOLVE_INSTANCE_FUNCTION(CreateWin32SurfaceKHR);
-#elif VK_USE_PLATFORM_METAL_EXT
+#endif
+#if VK_USE_PLATFORM_METAL_EXT
     RESOLVE_INSTANCE_FUNCTION(CreateMetalSurfaceEXT);
-#elif VK_USE_PLATFORM_XLIB_KHR
+#endif
+#if VK_USE_PLATFORM_XLIB_KHR
     RESOLVE_INSTANCE_FUNCTION(CreateXlibSurfaceKHR);
-#elif VK_USE_PLATFORM_WAYLAND_KHR
+#endif
+#if VK_USE_PLATFORM_WAYLAND_KHR
     RESOLVE_INSTANCE_FUNCTION(CreateWaylandSurfaceKHR);
 #endif
 
