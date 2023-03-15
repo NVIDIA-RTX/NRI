@@ -51,7 +51,6 @@ namespace nri
     void Core_DescriptorPool_PartiallyFillFunctionTable##API(CoreInterface& table); \
     void Core_DescriptorSet_PartiallyFillFunctionTable##API(CoreInterface& table); \
     void Core_Fence_PartiallyFillFunctionTable##API(CoreInterface& table); \
-    void Core_PipelineLayout_PartiallyFillFunctionTable##API(CoreInterface& table); \
     void Core_QueryPool_PartiallyFillFunctionTable##API(CoreInterface& table); \
     void Core_Texture_PartiallyFillFunctionTable##API(CoreInterface& table); \
     void SwapChain_PartiallyFillFunctionTable##API(SwapChainInterface& table); \
@@ -161,12 +160,6 @@ void Core_Fence_PartiallyFillFunctionTable##API(CoreInterface& table) \
     table.QueueWait = ::QueueWait; \
     table.Wait = ::Wait; \
     table.SetFenceDebugName = ::SetFenceDebugName; \
-}
-
-#define Define_Core_PipelineLayout_PartiallyFillFunctionTable(API) \
-void Core_PipelineLayout_PartiallyFillFunctionTable##API(CoreInterface& table) \
-{ \
-    table.SetPipelineLayoutDebugName = ::SetPipelineLayoutDebugName; \
 }
 
 #define Define_Core_QueryPool_PartiallyFillFunctionTable(API) \

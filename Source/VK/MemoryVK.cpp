@@ -253,7 +253,7 @@ Result MemoryVK::CreateDedicated(TextureVK& texture, uint32_t physicalDeviceMask
 // NRI
 //================================================================================================================
 
-inline void MemoryVK::SetDebugName(const char* name)
+void MemoryVK::SetDebugName(const char* name)
 {
     std::array<uint64_t, PHYSICAL_DEVICE_GROUP_MAX_SIZE> handles;
     for (size_t i = 0; i < handles.size(); i++)
@@ -261,5 +261,3 @@ inline void MemoryVK::SetDebugName(const char* name)
 
     m_Device.SetDebugNameToDeviceGroupObject(VK_OBJECT_TYPE_DEVICE_MEMORY, handles.data(), name);
 }
-
-#include "MemoryVK.hpp"

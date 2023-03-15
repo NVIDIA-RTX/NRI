@@ -197,16 +197,32 @@ static void NRI_CALL SetDeviceDebugName(Device& device, const char* name)
     ((DeviceD3D11&)device).SetDebugName(name);
 }
 
+static void NRI_CALL SetPipelineDebugName(Pipeline& pipeline, const char* name)
+{
+    ((PipelineD3D11&)pipeline).SetDebugName(name);
+}
+
+static void NRI_CALL SetPipelineLayoutDebugName(PipelineLayout& pipelineLayout, const char* name)
+{
+    ((PipelineLayoutD3D11&)pipelineLayout).SetDebugName(name);
+}
+
+static void NRI_CALL SetFrameBufferDebugName(FrameBuffer& frameBuffer, const char* name)
+{
+    ((FrameBufferD3D11&)frameBuffer).SetDebugName(name);
+}
+
+static void NRI_CALL SetMemoryDebugName(Memory& memory, const char* name)
+{
+    ((MemoryD3D11&)memory).SetDebugName(name);
+}
+
 static void* NRI_CALL GetDeviceNativeObject(const Device& device)
 {
     return ((DeviceD3D11&)device).GetDevice();
 }
 
 void Core_CommandBufferEmu_PartiallyFillFunctionTable(CoreInterface& coreInterface);
-
-void FillFunctionTableFrameBufferD3D11(CoreInterface& coreInterface);
-void FillFunctionTableMemoryD3D11(CoreInterface& coreInterface);
-void FillFunctionTablePipelineD3D11(CoreInterface& coreInterface);
 
 Result DeviceD3D11::FillFunctionTable(CoreInterface& coreInterface) const
 {
@@ -244,6 +260,10 @@ Result DeviceD3D11::FillFunctionTable(CoreInterface& coreInterface) const
     coreInterface.BindTextureMemory = ::BindTextureMemory;
     coreInterface.FreeMemory = ::FreeMemory;
     coreInterface.SetDeviceDebugName = ::SetDeviceDebugName;
+    coreInterface.SetPipelineDebugName = ::SetPipelineDebugName;
+    coreInterface.SetPipelineLayoutDebugName = ::SetPipelineLayoutDebugName;
+    coreInterface.SetFrameBufferDebugName = ::SetFrameBufferDebugName;
+    coreInterface.SetMemoryDebugName = ::SetMemoryDebugName;
     coreInterface.GetDeviceNativeObject = ::GetDeviceNativeObject;
 
     Core_Buffer_PartiallyFillFunctionTableD3D11(coreInterface);
@@ -253,12 +273,8 @@ Result DeviceD3D11::FillFunctionTable(CoreInterface& coreInterface) const
     Core_DescriptorPool_PartiallyFillFunctionTableD3D11(coreInterface);
     Core_DescriptorSet_PartiallyFillFunctionTableD3D11(coreInterface);
     Core_Fence_PartiallyFillFunctionTableD3D11(coreInterface);
-    Core_PipelineLayout_PartiallyFillFunctionTableD3D11(coreInterface);
     Core_QueryPool_PartiallyFillFunctionTableD3D11(coreInterface);
     Core_Texture_PartiallyFillFunctionTableD3D11(coreInterface);
-    FillFunctionTableFrameBufferD3D11(coreInterface);
-    FillFunctionTableMemoryD3D11(coreInterface);
-    FillFunctionTablePipelineD3D11(coreInterface);
 
     if (m_Device.isDeferredContextEmulated)
         Core_CommandBufferEmu_PartiallyFillFunctionTable(coreInterface);

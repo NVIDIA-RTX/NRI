@@ -8,22 +8,6 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma once
-
-#pragma region [  Core  ]
-
-static void NRI_CALL SetPipelineDebugName(Pipeline& pipeline, const char* name)
-{
-    ((PipelineVK&)pipeline).SetDebugName(name);
-}
-
-void FillFunctionTablePipelineVK(CoreInterface& coreInterface)
-{
-    coreInterface.SetPipelineDebugName = ::SetPipelineDebugName;
-}
-
-#pragma endregion
-
 #pragma region [  RayTracing  ]
 
 static Result NRI_CALL WriteShaderGroupIdentifiers(const Pipeline& pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* buffer)

@@ -197,14 +197,14 @@ static void NRI_CALL SetDeviceDebugName(Device& device, const char* name)
     ((DeviceD3D12&)device).SetDebugName(name);
 }
 
-static void NRI_CALL SetFenceDebugName(Fence& fence, const char* name)
-{
-    ((FenceD3D12&)fence).SetDebugName(name);
-}
-
 static void NRI_CALL SetPipelineDebugName(Pipeline& pipeline, const char* name)
 {
     ((PipelineD3D12&)pipeline).SetDebugName(name);
+}
+
+static void NRI_CALL SetPipelineLayoutDebugName(PipelineLayout& pipelineLayout, const char* name)
+{
+    ((PipelineLayoutD3D12&)pipelineLayout).SetDebugName(name);
 }
 
 static void NRI_CALL SetFrameBufferDebugName(FrameBuffer& frameBuffer, const char* name)
@@ -258,8 +258,8 @@ Result DeviceD3D12::FillFunctionTable(CoreInterface& coreInterface) const
     coreInterface.BindTextureMemory = ::BindTextureMemory;
     coreInterface.FreeMemory = ::FreeMemory;
     coreInterface.SetDeviceDebugName = ::SetDeviceDebugName;
-    coreInterface.SetFenceDebugName = ::SetFenceDebugName;
     coreInterface.SetPipelineDebugName = ::SetPipelineDebugName;
+    coreInterface.SetPipelineLayoutDebugName = ::SetPipelineLayoutDebugName;
     coreInterface.SetFrameBufferDebugName = ::SetFrameBufferDebugName;
     coreInterface.SetMemoryDebugName = ::SetMemoryDebugName;
     coreInterface.GetDeviceNativeObject = ::GetDeviceNativeObject;
@@ -272,7 +272,6 @@ Result DeviceD3D12::FillFunctionTable(CoreInterface& coreInterface) const
     Core_DescriptorPool_PartiallyFillFunctionTableD3D12(coreInterface);
     Core_DescriptorSet_PartiallyFillFunctionTableD3D12(coreInterface);
     Core_Fence_PartiallyFillFunctionTableD3D12(coreInterface);
-    Core_PipelineLayout_PartiallyFillFunctionTableD3D12(coreInterface);
     Core_QueryPool_PartiallyFillFunctionTableD3D12(coreInterface);
     Core_Texture_PartiallyFillFunctionTableD3D12(coreInterface);
 

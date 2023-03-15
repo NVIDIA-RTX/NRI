@@ -226,7 +226,7 @@ Result FrameBufferVK::Create(const FrameBufferDesc& frameBufferDesc)
 // NRI
 //================================================================================================================
 
-inline void FrameBufferVK::SetDebugName(const char* name)
+void FrameBufferVK::SetDebugName(const char* name)
 {
     std::array<uint64_t, PHYSICAL_DEVICE_GROUP_MAX_SIZE> handles;
     for (size_t i = 0; i < handles.size(); i++)
@@ -236,5 +236,3 @@ inline void FrameBufferVK::SetDebugName(const char* name)
     m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_RENDER_PASS, (uint64_t)m_RenderPass, name);
     m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_RENDER_PASS, (uint64_t)m_RenderPassWithClear, name);
 }
-
-#include "FrameBufferVK.hpp"

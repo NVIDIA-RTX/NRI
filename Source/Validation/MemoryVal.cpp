@@ -132,5 +132,3 @@ void MemoryVal::SetDebugName(const char* name)
     m_Name = name;
     m_CoreAPI.SetMemoryDebugName(m_ImplObject, name);
 }
-
-#include "MemoryVal.hpp"

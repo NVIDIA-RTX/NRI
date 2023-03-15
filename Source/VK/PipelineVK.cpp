@@ -621,7 +621,7 @@ void PipelineVK::FillGroupIndices(const RayTracingPipelineDesc& rayTracingPipeli
 // NRI
 //================================================================================================================
 
-inline void PipelineVK::SetDebugName(const char* name)
+void PipelineVK::SetDebugName(const char* name)
 {
     m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_PIPELINE, (uint64_t)m_Handle, name);
 }

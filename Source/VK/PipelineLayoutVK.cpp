@@ -328,9 +328,7 @@ RuntimeBindingInfo::RuntimeBindingInfo(StdAllocator<uint8_t>& allocator) :
 // NRI
 //================================================================================================================
 
-inline void PipelineLayoutVK::SetDebugName(const char* name)
+void PipelineLayoutVK::SetDebugName(const char* name)
 {
     m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_PIPELINE_LAYOUT, (uint64_t)m_Handle, name);
 }
-
-#include "PipelineLayoutVK.hpp"

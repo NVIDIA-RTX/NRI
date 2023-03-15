@@ -117,9 +117,3 @@ void FrameBufferD3D11::ClearAttachments(VersionedContext& context, const ClearDe
             CHECK(m_Device.GetLog(), false, "add 'ClearView' emulation!");
     }
 }
-
-//================================================================================================================
-// NRI
-//================================================================================================================
-
-#include "FrameBufferD3D11.hpp"

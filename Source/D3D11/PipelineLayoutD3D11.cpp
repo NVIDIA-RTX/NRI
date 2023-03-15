@@ -321,9 +321,3 @@ void PipelineLayoutD3D11::BindDescriptorSetImpl(BindingState& currentBindingStat
         deferredContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, 0, num, storages, nullptr);
     }
 }
-
-//================================================================================================================
-// NRI
-//================================================================================================================
-
-#include "PipelineLayoutD3D11.hpp"

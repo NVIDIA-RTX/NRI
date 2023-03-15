@@ -24,5 +24,3 @@ void FrameBufferVal::SetDebugName(const char* name)
     m_Name = name;
     m_CoreAPI.SetFrameBufferDebugName(m_ImplObject, name);
 }
-
-#include "FrameBufferVal.hpp"

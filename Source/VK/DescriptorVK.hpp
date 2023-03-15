@@ -8,8 +8,6 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
-#pragma once
-
 #pragma region [  Core  ]
 
 static void NRI_CALL SetDescriptorDebugName(Descriptor& descriptor, const char* name)

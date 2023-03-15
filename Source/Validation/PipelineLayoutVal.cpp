@@ -66,5 +66,3 @@ void PipelineLayoutVal::SetDebugName(const char* name)
     m_Name = name;
     m_CoreAPI.SetPipelineLayoutDebugName(m_ImplObject, name);
 }
-
-#include "PipelineLayoutVal.hpp"

@@ -348,7 +348,7 @@ void PipelineD3D11::Bind(const VersionedContext& deferredContext, const Pipeline
 // NRI
 //================================================================================================================
 
-inline void PipelineD3D11::SetDebugName(const char* name)
+void PipelineD3D11::SetDebugName(const char* name)
 {
     SET_D3D_DEBUG_OBJECT_NAME(m_VertexShader, name);
     SET_D3D_DEBUG_OBJECT_NAME(m_TessControlShader, name);
@@ -363,5 +363,3 @@ inline void PipelineD3D11::SetDebugName(const char* name)
     for (size_t i = 0; i < m_RasterizerStates.size(); i++)
         SET_D3D_DEBUG_OBJECT_NAME(m_RasterizerStates[i].ptr, name);
 }
-
-#include "PipelineD3D11.hpp"

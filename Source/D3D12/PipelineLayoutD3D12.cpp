@@ -245,9 +245,3 @@ void PipelineLayoutD3D12::SetDescriptorSet(ID3D12GraphicsCommandList& graphicsCo
     else
         SetDescriptorSetImpl<false>(graphicsCommandList, setIndexInPipelineLayout, descriptorSet, dynamicConstantBufferOffsets);
 }
-
-//================================================================================================================
-// NRI
-//================================================================================================================
-
-#include "PipelineLayoutD3D12.hpp"

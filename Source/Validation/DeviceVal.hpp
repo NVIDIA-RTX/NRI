@@ -197,14 +197,30 @@ static void NRI_CALL SetDeviceDebugName(Device& device, const char* name)
     ((DeviceVal&)device).SetDebugName(name);
 }
 
+static void NRI_CALL SetPipelineDebugName(Pipeline& pipeline, const char* name)
+{
+    ((PipelineVal&)pipeline).SetDebugName(name);
+}
+
+static void NRI_CALL SetPipelineLayoutDebugName(PipelineLayout& pipelineLayout, const char* name)
+{
+    ((PipelineLayoutVal&)pipelineLayout).SetDebugName(name);
+}
+
+static void NRI_CALL SetFrameBufferDebugName(FrameBuffer& frameBuffer, const char* name)
+{
+    ((FrameBufferVal&)frameBuffer).SetDebugName(name);
+}
+
+static void NRI_CALL SetMemoryDebugName(Memory& memory, const char* name)
+{
+    ((MemoryVal&)memory).SetDebugName(name);
+}
+
 static void* NRI_CALL GetDeviceNativeObject(const Device& device)
 {
     return ((DeviceVal&)device).GetNativeObject();
 }
-
-void FillFunctionTableFrameBufferVal(CoreInterface& coreInterface);
-void FillFunctionTableMemoryVal(CoreInterface& coreInterface);
-void FillFunctionTablePipelineVal(CoreInterface& coreInterface);
 
 Result DeviceVal::FillFunctionTable(CoreInterface& coreInterface) const
 {
@@ -242,6 +258,10 @@ Result DeviceVal::FillFunctionTable(CoreInterface& coreInterface) const
     coreInterface.BindTextureMemory = ::BindTextureMemory;
     coreInterface.FreeMemory = ::FreeMemory;
     coreInterface.SetDeviceDebugName = ::SetDeviceDebugName;
+    coreInterface.SetPipelineDebugName = ::SetPipelineDebugName;
+    coreInterface.SetPipelineLayoutDebugName = ::SetPipelineLayoutDebugName;
+    coreInterface.SetFrameBufferDebugName = ::SetFrameBufferDebugName;
+    coreInterface.SetMemoryDebugName = ::SetMemoryDebugName;
     coreInterface.GetDeviceNativeObject = ::GetDeviceNativeObject;
 
     Core_Buffer_PartiallyFillFunctionTableVal(coreInterface);
@@ -252,12 +272,8 @@ Result DeviceVal::FillFunctionTable(CoreInterface& coreInterface) const
     Core_DescriptorPool_PartiallyFillFunctionTableVal(coreInterface);
     Core_DescriptorSet_PartiallyFillFunctionTableVal(coreInterface);
     Core_Fence_PartiallyFillFunctionTableVal(coreInterface);
-    Core_PipelineLayout_PartiallyFillFunctionTableVal(coreInterface);
     Core_QueryPool_PartiallyFillFunctionTableVal(coreInterface);
     Core_Texture_PartiallyFillFunctionTableVal(coreInterface);
-    FillFunctionTableFrameBufferVal(coreInterface);
-    FillFunctionTableMemoryVal(coreInterface);
-    FillFunctionTablePipelineVal(coreInterface);
 
     return ValidateFunctionTable(GetLog(), coreInterface);
 }
