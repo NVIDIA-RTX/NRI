@@ -485,17 +485,11 @@ VkBool32 VKAPI_PTR DebugUtilsMessenger(
     bool isError = false;
     bool isWarning = false;
 
-    // UNASSIGNED-CoreValidation-Shader-InconsistentSpirv
-    if (callbackData->messageIdNumber == 7060244)
+    /*
+    // TODO: convert an error to a warning as
+    if (callbackData->messageIdNumber == <message ID>)
         messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
-
-    // VUID-VkShaderModuleCreateInfo-pCode-01090
-    if (callbackData->messageIdNumber == 738239446)
-        messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
-
-    // VUID-RuntimeSpirv-OpImageWrite-07112
-    if (callbackData->messageIdNumber == 1842853234 || callbackData->messageIdNumber == 2144011273)
-        messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
+    */
 
     const char* type = "unknown";
     switch( messageSeverity )
