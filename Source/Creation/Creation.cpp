@@ -521,7 +521,7 @@ NRI_API Result NRI_CALL nri::GetPhysicalDevices(PhysicalDeviceGroup* physicalDev
 
                     PhysicalDeviceGroup& group = physicalDeviceGroupsSorted[i];
                     memset(&group, 0, sizeof(group));
-                    strcpy_s(group.description, properties2.properties.deviceName);
+                    strncpy(group.description, properties2.properties.deviceName, sizeof(group.description));
                     group.luid = *(uint64_t*)&deviceIDProperties.deviceLUID[0];
                     group.deviceID = properties2.properties.deviceID;
                     group.vendor = GetVendorFromID(properties2.properties.vendorID);
