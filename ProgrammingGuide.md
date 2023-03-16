@@ -19,7 +19,7 @@ NRI can be used as a *shared* or *static* library.
 
 ## C/C++ interface differences
 
-| C                     | C++                   |
+| C++                   | C                     |
 |-----------------------|-----------------------|
 | `nri::`               | `nri_`                |
 | Reference `&`         | Pointer `*`           |
