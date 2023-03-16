@@ -34,8 +34,7 @@ Analogues from the graphics APIs:
 | Device            | Device            | Device                     |
 | Command Buffer    | Command List      | Command Buffer             |
 | Command Queue     | Command Queue     | Queue                      |
-| Device Semaphore  | Fence             | Fence                      |
-| Queue Semaphore   | Fence             | Semaphore                  |
+| Fence             | Fence             | Timeline semaphore         |
 | Command Allocator | Command Allocator | Command Pool               |
 | Buffer            | Resource          | Buffer                     |
 | Texture           | Resource          | Image                      |
@@ -53,9 +52,9 @@ Analogues from the graphics APIs:
 
 `Command Queue` is a queue of `Command Buffers` which are ready for execution on a physical device. A physical device may support multiple queue types, queues of different types are processed in parallel by the physical device.
 
-`Device Semaphore` is a synchronization primitive which allows the application to wait for a physical device to complete execution of command buffers.
-
-`Queue Semaphore` is a synchronization primitive which allows the application to synchronize execution of `Command Buffers` between `Command Queues`.
+`Fence` is a synchronization primitive which allows the application:
+- to synchronize execution of `Command Buffers` between `Command Queues`
+- to wait for a physical device to complete execution of command buffers
 
 `Command Allocator` is a memory allocator for command recording. When the application records commands into `Command Buffer`, memory for the commands is allocated from `Command Allocator` associated with the `Command Buffer`.
 
@@ -95,7 +94,6 @@ Result CreateDevice(const DeviceCreationVulkanDesc& deviceDesc, Device*& device)
 ```
 
 The application must specify the following members of `DeviceCreationVulkanDesc`:
-
 * `deviceDesc.vkInstance`
   * VkInstance handle
 * `deviceDesc.vkDevice`
@@ -123,30 +121,24 @@ Result GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroups, uint32_t& p
 
 The function allows the application to enumerate available physical devices.
 
-*Valid usage:*
-
+Valid usage:
 * To get the number of physical devices, the application can call the function with physicalDeviceGroupNum set to 0
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 Result CreateDevice(const DeviceCreationDesc& deviceCreationDesc, Device*& device)
 ```
-
 * `deviceCreationDesc.physicalDeviceGroup`
   * implementation will choose the first physical device if the value is nullptr
-
 * `deviceCreationDesc.graphicsAPI`
   * controls which implementation will be used (D3D11, D3D12, VK)
 
-*Valid usage:*
-
+Valid usage:
 * The application can create any number of NRI devices using different implementations, there is no limitation on this
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ## Destroying device
@@ -157,12 +149,10 @@ An NRI device must be explicitly destroyed to free memory and graphics API objec
 void DestroyDevice(Device& device)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * All NRI objects which were created using the device must be already destroyed
 
-*Multithreading:*
-
+Multithreading:
 * Access to device must be externally synchronized
 
 # Querying interfaces
@@ -172,7 +162,6 @@ To get NRI interface, the application can use the following function:
 ```cpp
 Result GetInterface(const Device& device, const char* interfaceName, size_t interfaceSize, void* interfacePtr)
 ```
-
 * `interfaceName`
   * The name of the interface C++ struct with "nri::" prefix
 
@@ -190,32 +179,27 @@ const DeviceDesc& GetDeviceDesc(const Device& device)
 
 Returns the device description which contains capabilities of the device and some info on the NRI implementation.
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 Result GetCommandQueue(Device& device, CommandQueueType commandQueueType, CommandQueue*& commandQueue)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * The application can call this function to check which command queue types are supported
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 Result CreateCommandAllocator(const CommandQueue& commandQueue, uint32_t physicalDeviceMask, CommandAllocator*& commandAllocator)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * physicalDeviceMask can be set to 0 (WHOLE_DEVICE_GROUP) to create a command allocator which can be used with all physical devices in the device group
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
@@ -226,12 +210,10 @@ Creates a descriptor pool which can be used to allocate descriptor sets.
 
 If descriptorPoolDesc.physicalDeviceMask is set to 0 or has more than one bit set and the device group consists of more than one physical device, the maximum number of descriptors in the descriptor pool is multiplied by the number of physical devices.
 
-*Valid usage:*
-
+Valid usage:
 * The function may fail if the maximum number of descriptors exceeds the maximum size of D3D12 descriptor heap
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
@@ -240,8 +222,7 @@ Result CreateBuffer(Device& device, const BufferDesc& bufferDesc, Buffer*& buffe
 
 Creates a buffer which must be bound to memory before it can be used on GPU.
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
@@ -250,64 +231,54 @@ Result CreateTexture(Device& device, const TextureDesc& textureDesc, Texture*& t
 
 Creates a texture which must be bound to memory before it can be used on GPU.
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 Result CreateBufferView(const BufferViewDesc& bufferViewDesc, Descriptor*& bufferView)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * The buffer must be bound to memory
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 Result CreateTexture1DView(const Texture1DViewDesc& textureViewDesc, Descriptor*& textureView)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * The texture must be bound to memory
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 Result CreateTexture2DView(const Texture2DViewDesc& textureViewDesc, Descriptor*& textureView)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * The texture must be bound to memory.
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 Result CreateTexture3DView(const Texture3DViewDesc& textureViewDesc, Descriptor*& textureView)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * The texture must be bound to memory
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 Result CreateSampler(Device& device, const SamplerDesc& samplerDesc, Descriptor*& sampler)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
@@ -316,99 +287,75 @@ Result CreatePipelineLayout(Device& device, const PipelineLayoutDesc& pipelineLa
 
 Creates a pipeline layout which describes resource binding for descriptors sets and pipelines.
 
-*Valid usage:*
-
-* pipelineLayoutDesc.stageMask can be a combination of bits which correspond to only one type of pipeline (graphics, compute, or ray tracing). For example, a pipeline layout can not be created for graphics and compute stages together, the application must create separate pipeline layouts
-pipelineLayoutDesc.stageMask must be a minimal set of pipeline stages which need access to shader resources.
+Valid usage:
+* pipelineLayoutDesc.stageMask can be a combination of bits which correspond to only one type of pipeline (graphics, compute, or ray tracing). For example, a pipeline layout can not be created for graphics and compute stages together, the application must create separate pipeline layouts pipelineLayoutDesc.stageMask must be a minimal set of pipeline stages which need access to shader resources.
 * If the pipeline layout is used with a pipeline which has a vertex stage that needs access to vertex attributes, pipelineLayoutDesc.stageMask must include the vertex pipeline stage
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 Result CreateGraphicsPipeline(Device& device, const GraphicsPipelineDesc& graphicsPipelineDesc, Pipeline*& pipeline)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * graphicsPipelineDesc.pipelineLayout must be a valid pipeline layout
 * graphicsPipelineDesc.inputAssembly must be a valid pointer to InputAssemblyDesc
 * graphicsPipelineDesc.rasterization can be nullptr
 * graphicsPipelineDesc.outputMerger can be nullptr
 * graphicsPipelineDesc.shaderStageNum must be greater than 0
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 Result CreateComputePipeline(Device& device, const ComputePipelineDesc& computePipelineDesc, Pipeline*& pipeline)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * computePipelineDesc.pipelineLayout must be a valid pipeline layout
 * computePipelineDesc.computeShader must be a valid shader description
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 Result CreateFrameBuffer(Device& device, const FrameBufferDesc& frameBufferDesc, FrameBuffer*& frameBuffer)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 Result CreateQueryPool(Device& device, const QueryPoolDesc& queryPoolDesc, QueryPool*& queryPool)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 
 ```cpp
-Result CreateQueueSemaphore(Device& device, QueueSemaphore*& queueSemaphore)
+Result CreateQueueFence(Device& device, uint64_t initialValue, Fence*& fence)
 ```
 
-Creates a queue semaphore. The initial state of the semaphore is unsignaled, therefore it must be signaled by a command queue before it can be used to wait on a command queue.
-
-*Multithreading:*
-
-* No synchronization required
-
-```cpp
-Result CreateDeviceSemaphore(Device& device, bool signaled, DeviceSemaphore*& deviceSemaphore)
-```
-
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 Result CreateCommandBuffer(CommandAllocator& commandAllocator, CommandBuffer*& commandBuffer)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 void DestroyCommandAllocator(CommandAllocator& commandAllocator)
 ```
 
-*Valid usage:*
+Valid usage:
+* All command buffers that were allocated using the command allocator must be destroyed* The application must ensure that all command buffers which were allocated using the command allocator have completed execution
 
-* All command buffers that were allocated using the command allocator must be destroyed
-* The application must ensure that all command buffers which were allocated using the command allocator have completed execution
-
-*Multithreading:*
-
+Multithreading:
 * Access to commandAllocator must be externally synchronized
 
 ```cpp
@@ -417,156 +364,121 @@ void DestroyDescriptorPool(DescriptorPool& descriptorPool)
 
 Destroys the descriptor pool and its descriptor sets.
 
-*Valid usage:*
-
+Valid usage:
 * The application must ensure that all command buffers which use the descriptor pool and the descriptor sets have completed execution
 
-*Multithreading:*
-
+Multithreading:
 * Access to descriptorPool must be externally synchronized
 
 ```cpp
 void DestroyBuffer(Buffer& buffer)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * The application must ensure that GPU finished execution of command buffers which use the buffer
 * All descriptors (buffer views) which reference the buffer must be destroyed
 
-*Multithreading:*
-
+Multithreading:
 * Access to buffer must be externally synchronized
 
 ```cpp
 void DestroyTexture(Texture& texture)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * The application must ensure that all command buffers which use the texture have completed execution
 * All descriptors (texture views) which reference the texture must be destroyed
 
-*Multithreading:*
-
+Multithreading:
 * Access to texture must be externally synchronized
 
 ```cpp
 void DestroyDescriptor(Descriptor& descriptor)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * The application must ensure that all command buffers which use descriptor sets which contain the descriptor have completed execution
 * Descriptor sets must not reference the descriptor
 
-*Multithreading:*
-
+Multithreading:
 * Access to descriptor must be externally synchronized
 
 ```cpp
 void DestroyPipelineLayout(PipelineLayout& pipelineLayout)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * Pipelines which were created using the pipeline layout must be destroyed
 * Descriptor sets which were allocated using the pipeline layout must be destroyed
 
-*Multithreading:*
-
+Multithreading:
 * Access to pipelineLayout must be externally synchronized
 
 ```cpp
 void DestroyPipeline(Pipeline& pipeline)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * The application must ensure that all command buffers which use the pipeline have completed execution
 
-*Multithreading:*
-
+Multithreading:
 * Access to pipeline must be externally synchronized
 
 ```cpp
 void DestroyFrameBuffer(FrameBuffer& frameBuffer)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * The application must ensure that all command buffers which use the framebuffer have completed execution
 
-*Multithreading:*
-
+Multithreading:
 * Access to frameBuffer must be externally synchronized
 
 ```cpp
 void DestroyQueryPool(QueryPool& queryPool)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * The application must ensure that all command buffers which use the query pool have completed execution
 
-*Multithreading:*
-
+Multithreading:
 * Access to queryPool must be externally synchronized
 
 ```cpp
-void DestroyQueueSemaphore(QueueSemaphore& queueSemaphore)
+void DestroyFence(Fence& fence)
 ```
 
-*Valid usage:*
+Valid usage:
+* The application must ensure that all GPU operations related to the fence have finished
 
-* The application must ensure that all GPU operations related to the semaphore have finished
-
-*Multithreading:*
-
-* Access to queueSemaphore must be externally synchronized
-
-```cpp
-void DestroyDeviceSemaphore(DeviceSemaphore& deviceSemaphore)
-```
-
-*Valid usage:*
-
-* The application must ensure that all GPU operations related to the semaphore have finished
-
-*Multithreading:*
-
-* Access to deviceSemaphore must be externally synchronized
+Multithreading:
+* Access to fence must be externally synchronized
 
 ```cpp
 void DestroyCommandBuffer(CommandBuffer& commandBuffer)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * The application must ensure that the command buffer has completed execution
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 Result AllocateMemory(Device& device, uint32_t physicalDeviceMask, MemoryType memoryType, uint64_t size, Memory*& memory)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * memoryType must be a valid memory type received using GetBufferMemoryInfo or GetTextureMemoryInfo
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 Result BindBufferMemory(Device& device, const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to buffers must be externally synchronized
 * Access to memory instances must be externally synchronized
 
@@ -574,8 +486,7 @@ Result BindBufferMemory(Device& device, const BufferMemoryBindingDesc* memoryBin
 Result BindTextureMemory(Device& device, const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to textures must be externally synchronized
 * Access to memory instances must be externally synchronized
 
@@ -583,69 +494,59 @@ Result BindTextureMemory(Device& device, const TextureMemoryBindingDesc* memoryB
 void FreeMemory(Memory& memory)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * All buffers or textures which are bound to the memory must be destroyed.
 
-*Multithreading:*
-
+Multithreading:
 * Access to memory must be externally synchronized
 
 ```cpp
 Result BeginCommandBuffer(CommandBuffer& commandBuffer, const DescriptorPool* descriptorPool, uint32_t physicalDeviceIndex)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 Result EndCommandBuffer(CommandBuffer& commandBuffer)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdSetPipeline(CommandBuffer& commandBuffer, const Pipeline& pipeline)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdSetPipelineLayout(CommandBuffer& commandBuffer, const PipelineLayout& pipelineLayout)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdSetDescriptorSet(CommandBuffer& commandBuffer, uint32_t setIndexInPipelineLayout, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * A compatible pipeline layout must be set
 * The number of offsets in dynamicConstantBufferOffsets must be equal to the total number of dynamic constant buffers in descriptorSet
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdSetConstants(CommandBuffer& commandBuffer, uint32_t pushConstantIndex, const void* data, uint32_t size)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * A compatible pipeline layout must be set
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
@@ -653,364 +554,311 @@ void CmdSetDescriptorPool(CommandBuffer& commandBuffer, const DescriptorPool& de
 ```
 
 **`Performance notes:`**
-
 * Sets descriptor heap in D3D12, which in some cases might cause pipeline flush
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdPipelineBarrier(CommandBuffer& commandBuffer, const TransitionBarrierDesc* transitionBarriers, const AliasingBarrierDesc* aliasingBarriers, BarrierDependency dependency)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdBeginRenderPass(CommandBuffer& commandBuffer, const FrameBuffer& frameBuffer, FramebufferBindFlag renderPassBeginFlag)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdEndRenderPass(CommandBuffer& commandBuffer)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdSetViewports(CommandBuffer& commandBuffer, const Viewport* viewports, uint32_t viewportNum)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdSetScissors(CommandBuffer& commandBuffer, const Rect* rects, uint32_t rectNum)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdSetDepthBounds(CommandBuffer& commandBuffer, float boundsMin, float boundsMax)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdSetStencilReference(CommandBuffer& commandBuffer, uint8_t reference)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdSetSamplePositions(CommandBuffer& commandBuffer, const SamplePosition* positions, uint32_t positionNum)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdClearAttachments(CommandBuffer& commandBuffer, const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * Can be called only inside render pass
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdSetIndexBuffer(CommandBuffer& commandBuffer, const Buffer& buffer, uint64_t offset, IndexType indexType)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdSetVertexBuffers(CommandBuffer& commandBuffer, uint32_t baseSlot, uint32_t bufferNum, const Buffer* const* buffers, const uint64_t* offsets)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * CmdSetVertexBuffers uses vertex stream strides from the current pipeline
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdDraw(CommandBuffer& commandBuffer, uint32_t vertexNum, uint32_t instanceNum, uint32_t baseVertex, uint32_t baseInstance)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * Can be called only inside render pass
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdDrawIndexed(CommandBuffer& commandBuffer, uint32_t indexNum, uint32_t instanceNum, uint32_t baseIndex, uint32_t baseVertex, uint32_t baseInstance)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * Can be called only inside render pass
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdDrawIndirect(CommandBuffer& commandBuffer, const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * Can be called only inside render pass
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdDrawIndexedIndirect(CommandBuffer& commandBuffer, const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * Can be called only inside render pass
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdDispatch(CommandBuffer& commandBuffer, uint32_t x, uint32_t y, uint32_t z)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * Can be called only outside of a render pass
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdDispatchIndirect(CommandBuffer& commandBuffer, const Buffer& buffer, uint64_t offset)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * Can be called only outside of a render pass
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdBeginQuery(CommandBuffer& commandBuffer, const QueryPool& queryPool, uint32_t offset)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdEndQuery(CommandBuffer& commandBuffer, const QueryPool& queryPool, uint32_t offset)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdBeginAnnotation(CommandBuffer& commandBuffer, const char* name)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdEndAnnotation(CommandBuffer& commandBuffer)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdClearStorageBuffer(CommandBuffer& commandBuffer, const ClearStorageBufferDesc& clearDesc)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * Can be called only outside of a render pass
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdClearStorageTexture(CommandBuffer& commandBuffer, const ClearStorageTextureDesc& clearDesc)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * Can be called only outside of a render pass
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdCopyBuffer(CommandBuffer& commandBuffer, Buffer& dstBuffer, uint32_t dstPhysicalDeviceIndex, uint64_t dstOffset, const Buffer& srcBuffer, uint32_t srcPhysicalDeviceIndex, uint64_t srcOffset, uint64_t size)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * Can be called only outside of a render pass
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdCopyTexture(CommandBuffer& commandBuffer, Texture& dstTexture, uint32_t dstPhysicalDeviceIndex, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, uint32_t srcPhysicalDeviceIndex, const TextureRegionDesc* srcRegionDesc)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * Can be called only outside of a render pass
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdUploadBufferToTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc& dstRegionDesc, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayoutDesc)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * Can be called only outside of a render pass
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdReadbackTextureToBuffer(CommandBuffer& commandBuffer, Buffer& dstBuffer, TextureDataLayoutDesc& dstDataLayoutDesc, const Texture& srcTexture, const TextureRegionDesc& srcRegionDesc)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * Can be called only outside of a render pass
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdCopyQueries(CommandBuffer& commandBuffer, const QueryPool& queryPool, uint32_t offset, uint32_t num, Buffer& dstBuffer, uint64_t dstOffset)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * Can be called only outside of a render pass
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
-void SubmitQueueWork(CommandQueue& commandQueue, const WorkSubmissionDesc& workSubmissionDesc, DeviceSemaphore* deviceSemaphore)
+void QueueSubmit(CommandQueue& commandQueue, const QueueSubmitDesc& queueSubmitDesc)
 ```
 
-*Valid usage:*
-
-* If deviceSemaphore is not nullptr, it must be in unsignaled state
-* If queue submission waits a queue semaphore, there must be queue submission which signals the queue semaphore and it must be submitted for execution before the one which waits
-
-**Correct:**
-
-1. SubmitQueueWork(...) // signals semaphore A
-2. SubmitQueueWork(...) // waits semaphore A
-
-**Incorrect:**
-
-1. SubmitQueueWork(...) // waits semaphore A
-2. SubmitQueueWork(...) // signals semaphore A
-
-*Multithreading:*
-
+Multithreading:
 * Access to commandQueue must be externally synchronized
-* Access to deviceSemaphore must be externally synchronized
 
 ```cpp
-void WaitForSemaphore(CommandQueue& commandQueue, DeviceSemaphore& deviceSemaphore)
+void QueueWait(CommandQueue& commandQueue, Fence& fence, uint64_t value)
 ```
 
-The function blocks execution until the device semaphore is signaled by the command queue.
-The function resets deviceSemaphore after waiting.
-
-A device semaphore can be signaled using SubmitQueueWork().
-
-*Multithreading:*
-
+Multithreading:
 * Access to commandQueue must be externally synchronized
-* Access to deviceSemaphore must be externally synchronized
+
+```cpp
+void QueueSignal(CommandQueue& commandQueue, Fence& fence, uint64_t value)
+```
+
+Multithreading:
+* Access to commandQueue must be externally synchronized
+
+```cpp
+uint64_t GetFenceValue(Fence& fence)
+```
+
+Multithreading:
+* No synchronization required
+
+```cpp
+void Wait(Fence& fence, uint64_t value)
+```
+
+Multithreading:
+* No synchronization required
 
 ```cpp
 void UpdateDescriptorRanges(DescriptorSet& descriptorSet, uint32_t physicalDeviceMask, uint32_t baseRange, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to descriptorSet must be externally synchronized
 
 ```cpp
 void UpdateDynamicConstantBuffers(DescriptorSet& descriptorSet, uint32_t physicalDeviceMask, uint32_t baseBuffer, uint32_t bufferNum, const Descriptor* const* descriptors)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to descriptorSet must be externally synchronized
 
 ```cpp
 void CopyDescriptorSet(DescriptorSet& descriptorSet, const DescriptorSetCopyDesc& descriptorSetCopyDesc)
 ```
 
-*Multithreading:*
-
-* Access to descriptorSet must be externally synchronized
-* Access to descriptorSetCopyDesc.srcDescriptorSet must be externally synchronized
+Multithreading:
+* Access to descriptorSet must be externally synchronized* Access to descriptorSetCopyDesc.srcDescriptorSet must be externally synchronized
 
 ```cpp
 Result AllocateDescriptorSets(DescriptorPool& descriptorPool, const PipelineLayout& pipelineLayout, uint32_t setIndexInPipelineLayout, DescriptorSet** const descriptorSets, uint32_t instanceNum, uint32_t physicalDeviceMask, uint32_t variableDescriptorNum)
 ```
-
 * `pipelineLayout`
   * The pipeline layout which describes shader resource binding
 * `setIndexInPipelineLayout`
@@ -1020,8 +868,7 @@ Result AllocateDescriptorSets(DescriptorPool& descriptorPool, const PipelineLayo
 * `variableDescriptorNum`
   * If the descriptor set in the pipeline layout uses variable descriptor number, the argument specifies the actual size of the descriptor range
 
-*Multithreading:*
-
+Multithreading:
 * Access to descriptorPool must be externally synchronized
 
 ```cpp
@@ -1030,12 +877,10 @@ void ResetDescriptorPool(DescriptorPool& descriptorPool)
 
 Destroys descriptor sets allocated from the descriptor pool
 
-*Valid usage:*
-
+Valid usage:
 * The application must ensure that all command buffers which use the descriptor pool and the descriptor sets completed execution
 
-*Multithreading:*
-
+Multithreading:
 * Access to descriptorPool must be externally synchronized
 
 ```cpp
@@ -1044,12 +889,10 @@ void ResetCommandAllocator(CommandAllocator& commandAllocator)
 
 Deallocates memory which was allocated for command recording, but does not destroy command buffers.
 
-*Valid usage:*
-
+Valid usage:
 * The application must ensure that all command buffers which were allocated using the command allocator completed execution
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandAllocator must be externally synchronized
 
 ```cpp
@@ -1058,8 +901,7 @@ uint32_t GetQuerySize(const QueryPool& queryPool)
 
 Returns the size of the query in bytes
 
-*Multithreading:*
-
+Multithreading:
 * No synchronized required
 
 ```cpp
@@ -1067,45 +909,38 @@ void GetBufferMemoryInfo(const Buffer& buffer, MemoryLocation memoryLocation, Me
 ```
 
 Returns memory requirements such as size, alignment and memory type.
-
 * `memoryLocation`
   * Memory location for the buffer, it can be DEVICE, HOST_UPLOAD, or HOST_READBACK.
 
 **`Performance notes:`**
-
 * HOST_UPLOAD and HOST_READBACK both correspond to coherent and cached memory in Vulkan
 
-*Multithreading:*
-
+Multithreading:
 * No synchronized required
 
 ```cpp
 void* MapBuffer(Buffer& buffer, uint64_t offset, uint64_t size)
 ```
 
-*Valid usage:*
-
+Valid usage:
 * The buffer must be bound to HOST_UPLOAD or HOST_READBACK memory
 * The buffer must not already be mapped
 
-*Multithreading:*
-
+Multithreading:
 * Access to buffer must be externally synchronized
 
 ```cpp
 void UnmapBuffer(Buffer& buffer)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to buffer must be externally synchronized
 
 ```cpp
 void GetTextureMemoryInfo(const Texture& texture, MemoryLocation memoryLocation, MemoryDesc& memoryDesc)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to texture must be externally synchronized
 
 ```cpp
@@ -1114,136 +949,112 @@ FormatSupportBits GetFormatSupport(const Device& device, Format format)
 
 The function allows the application to check format support for different use cases.
 
-*Multithreading:*
-
+Multithreading:
 * No synchronized required
 
 ```cpp
 void SetDeviceDebugName(Device& device, const char* name)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to device must be externally synchronized
 
 ```cpp
 void SetCommandQueueDebugName(CommandQueue& commandQueue, const char* name)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandQueue must be externally synchronized
 
 ```cpp
-void SetDeviceSemaphoreDebugName(DeviceSemaphore& deviceSemaphore, const char* name)
+void SetFenceDebugName(Fence& fence, const char* name)
 ```
 
-*Multithreading:*
-
-* Access to deviceSemaphore must be externally synchronized
-
-```cpp
-void SetQueueSemaphoreDebugName(QueueSemaphore& queueSemaphore, const char* name)
-```
-
-*Multithreading:*
-
-* Access to queueSemaphore must be externally synchronized
+Multithreading:
+* Access to fence must be externally synchronized
 
 ```cpp
 void SetCommandAllocatorDebugName(CommandAllocator& commandAllocator, const char* name)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandAllocator must be externally synchronized
 
 ```cpp
 void SetDescriptorPoolDebugName(DescriptorPool& descriptorPool, const char* name)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to descriptorPool must be externally synchronized
 
 ```cpp
 void SetBufferDebugName(Buffer& buffer, const char* name)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to buffer must be externally synchronized
 
 ```cpp
 void SetTextureDebugName(Texture& texture, const char* name)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to texture must be externally synchronized
 
 ```cpp
 void SetDescriptorDebugName(Descriptor& descriptor, const char* name)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to descriptor must be externally synchronized
 
 ```cpp
 void SetPipelineLayoutDebugName(PipelineLayout& pipelineLayout, const char* name)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to pipelineLayout must be externally synchronized
 
 ```cpp
 void SetPipelineDebugName(Pipeline& pipeline, const char* name)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to pipeline must be externally synchronized
 
 ```cpp
 void SetFrameBufferDebugName(FrameBuffer& frameBuffer, const char* name)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to frameBuffer must be externally synchronized
 
 ```cpp
 void SetQueryPoolDebugName(QueryPool& queryPool, const char* name)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to queryPool must be externally synchronized
 
 ```cpp
 void SetDescriptorSetDebugName(DescriptorSet& descriptorSet, const char* name)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to descriptorSet must be externally synchronized
 
 ```cpp
 void SetCommandBufferDebugName(CommandBuffer& commandBuffer, const char* name)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void SetMemoryDebugName(Memory& memory, const char* name)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to memory must be externally synchronized
 
 # Swapchain Interface
@@ -1251,75 +1062,56 @@ void SetMemoryDebugName(Memory& memory, const char* name)
 ```cpp
 Result CreateSwapChain(Device& device, const SwapChainDesc& swapChainDesc, SwapChain*& swapChain)
 ```
-
 * `swapChainDesc.commandQueue`
   * The command queue which will be presenting
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 void DestroySwapChain(SwapChain& swapChain)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to swapChain must be externally synchronized
 
 ```cpp
 void SetSwapChainDebugName(SwapChain& swapChain, const char* name)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to swapChain must be externally synchronized
 
 ```cpp
 Texture* const* GetSwapChainTextures(const SwapChain& swapChain, uint32_t& textureNum, Format& format)
 ```
 
-*Valid usage:*
+Valid usage:
+* To use the textures, the application must acquire access using AcquireNextSwapChainTexture()* textureNum may not match swapChainDesc.textureNum
 
-* To use the textures, the application must acquire access using AcquireNextSwapChainTexture()
-* textureNum may not match swapChainDesc.textureNum
-
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
-uint32_t AcquireNextSwapChainTexture(SwapChain& swapChain, QueueSemaphore& textureReadyForRender)
+uint32_t AcquireNextSwapChainTexture(SwapChain& swapChain)
 ```
-
 Returns index of the acquired swapchain texture.
 
-*Valid usage:*
-
-* The application must add textureReadyForRender to WorkSubmissionDesc::wait to synchronize access to the texture
-
-*Multithreading:*
-
+Multithreading:
 * Access to swapChain must be externally synchronized
 
 ```cpp
-Result SwapChainPresent(SwapChain& swapChain, QueueSemaphore& textureReadyForPresent)
+Result SwapChainPresent(SwapChain& swapChain)
 ```
 
-*Valid usage:*
-
-* textureReadyForPresent must be signaled by the application
-
-*Multithreading:*
-
+Multithreading:
 * Access to swapChain must be externally synchronized
 
 ```cpp
 Result SetSwapChainHdrMetadata(SwapChain& swapChain, const HdrMetadata& hdrMetadata)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to swapChain must be externally synchronized
 
 # Ray Tracing Interface
@@ -1328,143 +1120,124 @@ Result SetSwapChainHdrMetadata(SwapChain& swapChain, const HdrMetadata& hdrMetad
 Result CreateRayTracingPipeline(Device& device, const RayTracingPipelineDesc& rayTracingPipelineDesc, Pipeline*& pipeline)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 Result CreateAccelerationStructure(Device& device, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 Result BindAccelerationStructureMemory(Device& device, const AccelerationStructureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum)
 ```
 
-*Multithreading:*
-
-* Access to the acceleration structure instances must be externally synchronized
-* Access to the memory instances must be externally synchronized
+Multithreading:
+* Access to the acceleration structure instances must be externally synchronized* Access to the memory instances must be externally synchronized
 
 ```cpp
 Result CreateAccelerationStructureDescriptor(const AccelerationStructure& accelerationStructure, uint32_t physicalDeviceMask, Descriptor*& descriptor)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to accelerationStructure must be externally synchronized
 
 ```cpp
 void SetAccelerationStructureDebugName(AccelerationStructure& accelerationStructure, const char* name)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to accelerationStructure must be externally synchronized
 
 ```cpp
 void DestroyAccelerationStructure(AccelerationStructure& accelerationStructure)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to accelerationStructure must be externally synchronized
 
 ```cpp
 void GetAccelerationStructureMemoryInfo(const AccelerationStructure& accelerationStructure, MemoryDesc& memoryDesc)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 uint64_t GetAccelerationStructureUpdateScratchBufferSize(const AccelerationStructure& accelerationStructure)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 uint64_t GetAccelerationStructureBuildScratchBufferSize(const AccelerationStructure& accelerationStructure)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 uint64_t GetAccelerationStructureHandle(const AccelerationStructure& accelerationStructure, uint32_t physicalDeviceIndex)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 Result WriteShaderGroupIdentifiers(const Pipeline& pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* buffer)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * No synchronization required
 
 ```cpp
 void CmdBuildTopLevelAccelerationStructure(CommandBuffer& commandBuffer, uint32_t instanceNum, const Buffer& buffer, uint64_t bufferOffset, AccelerationStructureBuildBits flags, AccelerationStructure& dst, Buffer& scratch, uint64_t scratchOffset)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdBuildBottomLevelAccelerationStructure(CommandBuffer& commandBuffer, uint32_t geometryObjectNum, const GeometryObject* geometryObjects, AccelerationStructureBuildBits flags, AccelerationStructure& dst, Buffer& scratch, uint64_t scratchOffset)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdUpdateTopLevelAccelerationStructure(CommandBuffer& commandBuffer, uint32_t instanceNum, const Buffer& buffer, uint64_t bufferOffset, AccelerationStructureBuildBits flags, AccelerationStructure& dst, AccelerationStructure& src, Buffer& scratch, uint64_t scratchOffset)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdUpdateBottomLevelAccelerationStructure(CommandBuffer& commandBuffer, uint32_t geometryObjectNum, const GeometryObject* geometryObjects, AccelerationStructureBuildBits flags, AccelerationStructure& dst, AccelerationStructure& src, Buffer& scratch, uint64_t scratchOffset)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdCopyAccelerationStructure(CommandBuffer& commandBuffer, AccelerationStructure& dst, AccelerationStructure& src, CopyMode copyMode)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdWriteAccelerationStructureSize(CommandBuffer& commandBuffer, const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryPoolOffset)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
 
 ```cpp
 void CmdDispatchRays(CommandBuffer& commandBuffer, const DispatchRaysDesc& dispatchRaysDesc)
 ```
 
-*Multithreading:*
-
+Multithreading:
 * Access to commandBuffer must be externally synchronized
