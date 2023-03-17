@@ -10,9 +10,19 @@ if (WIN32)
     set (NRI_STREAMLINE_SDK_PATH "" CACHE STRING "Path to a directory containing streamline sdk package. Must not include the name of the library 'sl.interposer.lib'. Must not be empty when NRI_ENABLE_STREAMLINE_SUPPORT is on.")
 endif ()
 
+# Is submodule?
+if (${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
+    set (IS_SUBMODULE OFF)
+else()
+    set (IS_SUBMODULE ON)
+endif()
+
 # Cached
+if (NOT IS_SUBMODULE)
+    set (CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "")
+endif()
+
 set (GLOBAL_BIN_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/_Build" CACHE STRING "")
-set (CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "")
 
 # Create project
 file (READ "${CMAKE_CURRENT_SOURCE_DIR}/Include/NRI.h" ver_h)
