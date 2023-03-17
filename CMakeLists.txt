@@ -37,6 +37,8 @@ project (NRI LANGUAGES C CXX)
 # Download dependencies using Packman
 if (WIN32)
     set (PACKMAN_EXT ".cmd")
+else ()
+    set (PACKMAN_EXT ".sh")
 endif ()
 
 if ((CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64") OR(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64"))
