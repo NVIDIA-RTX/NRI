@@ -597,14 +597,16 @@ Result DeviceVK::CreateInstance(const DeviceCreationDesc& deviceCreationDesc)
         extensions.push_back(deviceCreationDesc.vulkanExtensions.instanceExtensions[i]);
 
     extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-
     #ifdef VK_USE_PLATFORM_WIN32_KHR
         extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-    #elif defined VK_USE_PLATFORM_METAL_EXT
+    #endif
+    #ifdef VK_USE_PLATFORM_METAL_EXT
         extensions.push_back(VK_EXT_METAL_SURFACE_EXTENSION_NAME);
-    #elif defined VK_USE_PLATFORM_XLIB_KHR
+    #endif
+    #ifdef VK_USE_PLATFORM_XLIB_KHR
         extensions.push_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
-    #elif defined VK_USE_PLATFORM_WAYLAND_KHR
+    #endif
+    #ifdef VK_USE_PLATFORM_WAYLAND_KHR
         extensions.push_back(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
     #endif
 
