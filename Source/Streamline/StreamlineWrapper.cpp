@@ -15,17 +15,14 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 const wchar_t* pluginPath = STRINGIFY(SL_PLUGINS_DIRECTORY);
 
-bool slwrap::setConstants(const ::sl::Constants& values, uint32_t frameIndex, uint32_t id)
+sl::Result slwrap::setConstants(const sl::Constants& values, const sl::FrameToken& frame, const sl::ViewportHandle& viewport)
 {
-    return slSetConstants(values, frameIndex, id);
+    return slSetConstants(values, frame, viewport);
 }
 
-bool slwrap::shutdown()
-{
-    return slShutdown();
-}
+sl::Result slwrap::shutdown() { return slShutdown(); }
 
-bool slwrap::init(const sl::Preferences& pref, int applicationId)
+sl::Result slwrap::init(const sl::Preferences& pref, uint64_t sdkVersion)
 {
     sl::Preferences preferences = pref;
     if (preferences.numPathsToPlugins == 0)
@@ -33,31 +30,75 @@ bool slwrap::init(const sl::Preferences& pref, int applicationId)
         preferences.pathsToPlugins = &pluginPath;
         preferences.numPathsToPlugins = 1;
     }
-
-    return slInit(preferences, applicationId);
+    return slInit(preferences, sdkVersion);
 }
 
-bool slwrap::setTag(const sl::Resource* resource, sl::BufferType tag, uint32_t id, const sl::Extent* extent)
+sl::Result slwrap::setTag(const sl::ViewportHandle& viewport, const sl::ResourceTag* tags, uint32_t numTags, sl::CommandBuffer* cmdBuffer)
 {
-    return slSetTag(resource, tag, id, extent);
+    return slSetTag(viewport, tags, numTags, cmdBuffer);
 }
 
-bool slwrap::isFeatureSupported(sl::Feature feature, uint32_t* adapterBitMask)
+sl::Result slwrap::isFeatureSupported(sl::Feature feature, const sl::AdapterInfo& adapterInfo)
 {
-    return slIsFeatureSupported(feature, adapterBitMask);
+    return slIsFeatureSupported(feature, adapterInfo);
 }
 
-bool slwrap::setFeatureConstants(sl::Feature feature, const void* consts, uint32_t frameIndex, uint32_t id)
+sl::Result slwrap::isFeatureLoaded(sl::Feature feature, bool& loaded)
 {
-    return slSetFeatureConstants(feature, consts, frameIndex, id);
+    return slIsFeatureLoaded(feature, loaded);
 }
 
-bool slwrap::evaluateFeature(sl::CommandBuffer* cmdBuffer, sl::Feature feature, uint32_t frameIndex, uint32_t id)
+sl::Result slwrap::setFeatureLoaded(sl::Feature feature, bool loaded)
 {
-    return slEvaluateFeature(cmdBuffer, feature, frameIndex, id);
+    return slSetFeatureLoaded(feature, loaded);
 }
 
-bool slwrap::getFeatureSettings(sl::Feature feature, const void* consts, void* settings)
+sl::Result slwrap::getFeatureRequirements(sl::Feature feature, sl::FeatureRequirements& requirements)
 {
-    return slGetFeatureSettings(feature, consts, settings);
+    return slGetFeatureRequirements(feature, requirements);
+}
+
+sl::Result slwrap::getFeatureVersion(sl::Feature feature, sl::FeatureVersion& version)
+{
+    return slGetFeatureVersion(feature, version);
+}
+
+sl::Result slwrap::allocateResources(sl::CommandBuffer* cmdBuffer, sl::Feature feature, const sl::ViewportHandle& viewport)
+{
+    return slAllocateResources(cmdBuffer, feature, viewport);
+}
+
+sl::Result slwrap::freeResources(sl::Feature feature, const sl::ViewportHandle& viewport)
+{
+    return slFreeResources(feature, viewport);
+}
+
+sl::Result slwrap::evaluateFeature(sl::Feature feature, const sl::FrameToken& frame, const sl::BaseStructure** inputs, uint32_t numInputs, sl::CommandBuffer* cmdBuffer)
+{
+    return slEvaluateFeature(feature, frame, inputs, numInputs, cmdBuffer);
+}
+
+sl::Result slwrap::upgradeInterface(void** baseInterface)
+{
+    return slUpgradeInterface(baseInterface);
+}
+
+sl::Result slwrap::getNativeInterface(void* proxyInterface, void** baseInterface)
+{
+    return slGetNativeInterface(proxyInterface, baseInterface);
+}
+
+sl::Result slwrap::getFeatureFunction(sl::Feature feature, const char* functionName, void*& function)
+{
+    return slGetFeatureFunction(feature, functionName, function);
+}
+
+sl::Result slwrap::getNewFrameToken(sl::FrameToken*& token, const uint32_t* frameIndex)
+{
+    return slGetNewFrameToken(token, frameIndex);
+}
+
+sl::Result slwrap::setD3DDevice(void* d3dDevice)
+{
+    return slSetD3DDevice(d3dDevice);
 }

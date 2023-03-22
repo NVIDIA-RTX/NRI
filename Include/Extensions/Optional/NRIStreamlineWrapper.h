@@ -11,27 +11,27 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #pragma once
 
 #include <climits>
+
 #include <NRI.h>
-
-#ifndef UINT_MAX
-#define UNDEF_UINT_MAX
-#define UINT_MAX 0xFFFFFFFF
-#endif
-
 #include <sl.h>
-
-#ifdef UNDEF_UINT_MAX
-#undef UINT_MAX
-#endif
 
 namespace slwrap
 {
-    NRI_API bool NRI_CALL setConstants(const ::sl::Constants& values, uint32_t frameIndex, uint32_t id);
-    NRI_API bool NRI_CALL shutdown();
-    NRI_API bool NRI_CALL init(const sl::Preferences& pref, int applicationId = 0);
-    NRI_API bool NRI_CALL setTag(const sl::Resource* resource, sl::BufferType tag, uint32_t id, const sl::Extent* extent);
-    NRI_API bool NRI_CALL isFeatureSupported(sl::Feature feature, uint32_t* adapterBitMask = nullptr);
-    NRI_API bool NRI_CALL setFeatureConstants(sl::Feature feature, const void* consts, uint32_t frameIndex, uint32_t id);
-    NRI_API bool NRI_CALL evaluateFeature(sl::CommandBuffer* cmdBuffer, sl::Feature feature, uint32_t frameIndex, uint32_t id);
-    NRI_API bool NRI_CALL getFeatureSettings(sl::Feature feature, const void* consts, void* settings);
+    NRI_API sl::Result NRI_CALL init(const sl::Preferences& pref, uint64_t sdkVersion = sl::kSDKVersion);
+    NRI_API sl::Result NRI_CALL shutdown();
+    NRI_API sl::Result NRI_CALL isFeatureSupported(sl::Feature feature, const sl::AdapterInfo& adapterInfo);
+    NRI_API sl::Result NRI_CALL isFeatureLoaded(sl::Feature feature, bool& loaded);
+    NRI_API sl::Result NRI_CALL setFeatureLoaded(sl::Feature feature, bool loaded);
+    NRI_API sl::Result NRI_CALL setTag(const sl::ViewportHandle& viewport, const sl::ResourceTag* tags, uint32_t numTags, sl::CommandBuffer* cmdBuffer);
+    NRI_API sl::Result NRI_CALL setConstants(const sl::Constants& values, const sl::FrameToken& frame, const sl::ViewportHandle& viewport);
+    NRI_API sl::Result NRI_CALL getFeatureRequirements(sl::Feature feature, sl::FeatureRequirements& requirements);
+    NRI_API sl::Result NRI_CALL getFeatureVersion(sl::Feature feature, sl::FeatureVersion& version);
+    NRI_API sl::Result NRI_CALL allocateResources(sl::CommandBuffer* cmdBuffer, sl::Feature feature, const sl::ViewportHandle& viewport);
+    NRI_API sl::Result NRI_CALL freeResources(sl::Feature feature, const sl::ViewportHandle& viewport);
+    NRI_API sl::Result NRI_CALL evaluateFeature(sl::Feature feature, const sl::FrameToken& frame, const sl::BaseStructure** inputs, uint32_t numInputs, sl::CommandBuffer* cmdBuffer);
+    NRI_API sl::Result NRI_CALL upgradeInterface(void** baseInterface);
+    NRI_API sl::Result NRI_CALL getNativeInterface(void* proxyInterface, void** baseInterface);
+    NRI_API sl::Result NRI_CALL getFeatureFunction(sl::Feature feature, const char* functionName, void*& function);
+    NRI_API sl::Result NRI_CALL getNewFrameToken(sl::FrameToken*& token, const uint32_t* frameIndex = nullptr);
+    NRI_API sl::Result NRI_CALL setD3DDevice(void* d3dDevice);
 }

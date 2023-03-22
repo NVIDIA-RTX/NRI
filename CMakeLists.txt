@@ -7,6 +7,7 @@ option (NRI_STATIC_LIBRARY "Build static library" OFF)
 
 if (WIN32)
     option (NRI_ENABLE_STREAMLINE_SUPPORT "Enables streamline wrapper for streamline integration. Requires NRI_STREAMLINE_SDK_PATH to point to a valid streamline package" OFF)
+    option(NRI_USE_DEVELOPMENT_STREAMLINE_LIBRARY "Makes the project use development streamline libraries instead of regular ones." OFF)
     set (NRI_STREAMLINE_SDK_PATH "" CACHE STRING "Path to a directory containing streamline sdk package. Must not include the name of the library 'sl.interposer.lib'. Must not be empty when NRI_ENABLE_STREAMLINE_SUPPORT is on.")
 endif ()
 
@@ -237,12 +238,14 @@ set_property (TARGET NRI_Validation PROPERTY FOLDER ${PROJECT_NAME})
 file (GLOB NRI_HEADERS "Include/*.h" "Include/*.hpp")
 source_group ("Include" FILES ${NRI_HEADERS})
 file (GLOB NRI_EXTENSIONS "Include/Extensions/*.h" "Include/Extensions/*.hpp")
+if (NRI_ENABLE_STREAMLINE_SUPPORT)
+    file(GLOB NRI_EXTENSIONS ${NRI_EXTENSIONS} "Include/Extensions/Optional/NRIStreamlineWrapper.h")
+endif()
+
 source_group ("Include/Extensions" FILES ${NRI_EXTENSIONS})
 file (GLOB NRI_SOURCE "Source/Creation/*.cpp" "Source/Creation/*.h")
-
 if (NRI_ENABLE_STREAMLINE_SUPPORT)
     file (GLOB NRI_SOURCE ${NRI_SOURCE} "Source/Streamline/*.cpp")
-    file (GLOB NRI_EXTENSIONS ${NRI_EXTENSIONS} "Include/Extensions/Optional/NRIStreamlineWrapper.h")
 endif ()
 
 source_group ("Sources" FILES ${NRI_SOURCE})
@@ -264,11 +267,15 @@ else ()
 endif ()
 
 if (NRI_ENABLE_STREAMLINE_SUPPORT)
-    set (SL_INTERPOSER_LINK_PATH "${NRI_STREAMLINE_SDK_PATH}/lib/x64/sl.interposer.lib")
     set (SL_INCLUDE_DIRECTORY "${NRI_STREAMLINE_SDK_PATH}/include/")
-    set (SL_PLUGINS_DIRECTORY ${NRI_STREAMLINE_SDK_PATH}/bin/x64)
+    set(SL_INTERPOSER_LINK_PATH "${NRI_STREAMLINE_SDK_PATH}/lib/x64/sl.interposer.lib")
+    if (NRI_USE_DEVELOPMENT_STREAMLINE_LIBRARY)
+        set(SL_PLUGINS_DIRECTORY "${NRI_STREAMLINE_SDK_PATH}/bin/x64/development")
+    else()
+        set(SL_PLUGINS_DIRECTORY "${NRI_STREAMLINE_SDK_PATH}/bin/x64")
+    endif()
 
-    target_include_directories (${PROJECT_NAME} PRIVATE ${SL_INCLUDE_DIRECTORY})
+    target_include_directories(${PROJECT_NAME} PUBLIC ${SL_INCLUDE_DIRECTORY})
     target_link_libraries (${PROJECT_NAME} PRIVATE ${SL_INTERPOSER_LINK_PATH})
     target_compile_definitions (${PROJECT_NAME} PRIVATE SL_PLUGINS_DIRECTORY=${SL_PLUGINS_DIRECTORY})
 
