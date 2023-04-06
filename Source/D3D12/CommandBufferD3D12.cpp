@@ -611,8 +611,10 @@ inline void CommandBufferD3D12::UpdateTopLevelAccelerationStructure(uint32_t ins
     desc.SourceAccelerationStructureData = ((AccelerationStructureD3D12&)src).GetHandle();
     desc.ScratchAccelerationStructureData = ((BufferD3D12&)scratch).GetPointerGPU() + scratchOffset;
     desc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-    desc.Inputs.Flags = GetAccelerationStructureBuildFlags(flags) & D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
+    desc.Inputs.Flags = GetAccelerationStructureBuildFlags(flags) | D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
     desc.Inputs.NumDescs = instanceNum;
+    desc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+
     desc.Inputs.InstanceDescs = ((BufferD3D12&)buffer).GetPointerGPU() + bufferOffset;
 
     m_GraphicsCommandList4->BuildRaytracingAccelerationStructure(&desc, 0, nullptr);
@@ -626,7 +628,7 @@ inline void CommandBufferD3D12::UpdateBottomLevelAccelerationStructure(uint32_t 
     desc.SourceAccelerationStructureData = ((AccelerationStructureD3D12&)src).GetHandle();
     desc.ScratchAccelerationStructureData = ((BufferD3D12&)scratch).GetPointerGPU() + scratchOffset;
     desc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
-    desc.Inputs.Flags = GetAccelerationStructureBuildFlags(flags) & D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
+    desc.Inputs.Flags = GetAccelerationStructureBuildFlags(flags) | D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
     desc.Inputs.NumDescs = geometryObjectNum;
     desc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
 
