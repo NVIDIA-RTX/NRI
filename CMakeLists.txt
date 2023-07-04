@@ -239,7 +239,7 @@ file (GLOB NRI_HEADERS "Include/*.h" "Include/*.hpp")
 source_group ("Include" FILES ${NRI_HEADERS})
 file (GLOB NRI_EXTENSIONS "Include/Extensions/*.h" "Include/Extensions/*.hpp")
 if (NRI_ENABLE_STREAMLINE_SUPPORT)
-    file(GLOB NRI_EXTENSIONS ${NRI_EXTENSIONS} "Include/Extensions/Optional/NRIStreamlineWrapper.h")
+    file(GLOB NRI_EXTENSIONS ${NRI_EXTENSIONS} "Include/Extensions/Optional/NRIStreamlineWrapper.h" "Include/Extensions/Optional/NRIGfxApiWrapper.h")
 endif()
 
 source_group ("Include/Extensions" FILES ${NRI_EXTENSIONS})
@@ -269,22 +269,23 @@ endif ()
 if (NRI_ENABLE_STREAMLINE_SUPPORT)
     set (SL_INCLUDE_DIRECTORY "${NRI_STREAMLINE_SDK_PATH}/include/")
     set(SL_INTERPOSER_LINK_PATH "${NRI_STREAMLINE_SDK_PATH}/lib/x64/sl.interposer.lib")
+    file (TO_CMAKE_PATH "${NRI_STREAMLINE_SDK_PATH}" NRI_STREAMLINE_SDK_CMAKE_PATH)
     if (NRI_USE_DEVELOPMENT_STREAMLINE_LIBRARY)
-        set(SL_PLUGINS_DIRECTORY "${NRI_STREAMLINE_SDK_PATH}/bin/x64/development")
+        set(SL_PLUGINS_DIRECTORY "${NRI_STREAMLINE_SDK_CMAKE_PATH}/bin/x64/development")
     else()
-        set(SL_PLUGINS_DIRECTORY "${NRI_STREAMLINE_SDK_PATH}/bin/x64")
+        set(SL_PLUGINS_DIRECTORY "${NRI_STREAMLINE_SDK_CMAKE_PATH}/bin/x64")
     endif()
 
     target_include_directories(${PROJECT_NAME} PUBLIC ${SL_INCLUDE_DIRECTORY})
     target_link_libraries (${PROJECT_NAME} PRIVATE ${SL_INTERPOSER_LINK_PATH})
-    target_compile_definitions (${PROJECT_NAME} PRIVATE SL_PLUGINS_DIRECTORY=${SL_PLUGINS_DIRECTORY})
+    target_compile_definitions (${PROJECT_NAME} PRIVATE SL_PLUGINS_DIRECTORY=${SL_PLUGINS_DIRECTORY} NRI_GFX_API_WRAPPER_LIBRARY)
 
     file (TO_NATIVE_PATH ${GLOBAL_BIN_OUTPUT_PATH}/$<CONFIG> BIN_OUTPUT_PATH_NATIVE)
-    file (TO_NATIVE_PATH ${SL_PLUGINS_DIRECTORY} SL_PLUGINS_PATH_NATIVE)
+    file (TO_NATIVE_PATH "${SL_PLUGINS_DIRECTORY}/sl.interposer.dll" SL_INTERPOSER_CMAKE_PATH)
 
     add_custom_command (TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${BIN_OUTPUT_PATH_NATIVE} ${SL_PLUGINS_PATH_NATIVE}
-        COMMENT "Copying '${BIN_OUTPUT_PATH_NATIVE}' to '${SL_PLUGINS_PATH_NATIVE}'"
+        COMMAND ${CMAKE_COMMAND} -E copy ${SL_INTERPOSER_CMAKE_PATH} ${BIN_OUTPUT_PATH_NATIVE} 
+        COMMENT "Copying '${SL_INTERPOSER_CMAKE_PATH}' to '${BIN_OUTPUT_PATH_NATIVE}'"
         VERBATIM
     )
 endif ()
