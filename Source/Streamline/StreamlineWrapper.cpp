@@ -103,8 +103,9 @@ sl::Result slwrap::setD3DDevice(void* d3dDevice)
     return slSetD3DDevice(d3dDevice);
 }
 
-sl::Result slwrap::NRDSetConstants(const sl::ViewportHandle& viewport, const sl::NRDConstants& constants)
+sl::Result slwrap::setFeatureSpecificInputs(sl::Feature feature, const sl::FrameToken& frame, const sl::BaseStructure** inputs, uint32_t numInputs)
 {
-    SL_FEATURE_FUN_IMPORT_STATIC(sl::kFeatureNRD, slNRDSetConstants);
-    return s_slNRDSetConstants(viewport, constants);
+    using PFun_slSetFeatureSpecificInputs = sl::Result(const sl::FrameToken& frame, const sl::BaseStructure** inputs, uint32_t numInputs);
+    SL_FEATURE_FUN_IMPORT_STATIC(feature, slSetFeatureSpecificInputs);
+    return s_slSetFeatureSpecificInputs(frame, inputs, numInputs);
 }

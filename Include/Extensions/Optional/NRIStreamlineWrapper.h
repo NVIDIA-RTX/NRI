@@ -35,6 +35,5 @@ namespace slwrap
     NRI_API sl::Result NRI_CALL getFeatureFunction(sl::Feature feature, const char* functionName, void*& function);
     NRI_API sl::Result NRI_CALL getNewFrameToken(sl::FrameToken*& token, const uint32_t* frameIndex = nullptr);
     NRI_API sl::Result NRI_CALL setD3DDevice(void* d3dDevice);
-
-    NRI_API sl::Result NRI_CALL NRDSetConstants(const sl::ViewportHandle& viewport, const sl::NRDConstants& constants);
+    NRI_API sl::Result NRI_CALL setFeatureSpecificInputs(sl::Feature feature, const sl::FrameToken& frame, const sl::BaseStructure** inputs, uint32_t numInputs);
 }
