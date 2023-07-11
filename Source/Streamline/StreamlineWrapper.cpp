@@ -102,3 +102,10 @@ sl::Result slwrap::setD3DDevice(void* d3dDevice)
 {
     return slSetD3DDevice(d3dDevice);
 }
+
+sl::Result slwrap::setFeatureSpecificInputs(sl::Feature feature, const sl::FrameToken& frame, const sl::BaseStructure** inputs, uint32_t numInputs)
+{
+    using PFun_slSetFeatureSpecificInputs = sl::Result(const sl::FrameToken& frame, const sl::BaseStructure** inputs, uint32_t numInputs);
+    SL_FEATURE_FUN_IMPORT_STATIC(feature, slSetFeatureSpecificInputs);
+    return s_slSetFeatureSpecificInputs(frame, inputs, numInputs);
+}

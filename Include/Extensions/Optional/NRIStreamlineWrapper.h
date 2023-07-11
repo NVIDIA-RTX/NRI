@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
 NVIDIA CORPORATION and its licensors retain all intellectual property
 and proprietary rights in and to this software, related documentation
@@ -14,6 +14,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include <NRI.h>
 #include <sl.h>
+#include <sl_nrd.h>
 
 namespace slwrap
 {
@@ -34,4 +35,5 @@ namespace slwrap
     NRI_API sl::Result NRI_CALL getFeatureFunction(sl::Feature feature, const char* functionName, void*& function);
     NRI_API sl::Result NRI_CALL getNewFrameToken(sl::FrameToken*& token, const uint32_t* frameIndex = nullptr);
     NRI_API sl::Result NRI_CALL setD3DDevice(void* d3dDevice);
+    NRI_API sl::Result NRI_CALL setFeatureSpecificInputs(sl::Feature feature, const sl::FrameToken& frame, const sl::BaseStructure** inputs, uint32_t numInputs);
 }
