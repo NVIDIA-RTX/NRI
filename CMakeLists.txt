@@ -35,35 +35,6 @@ set (VERSION_MINOR ${CMAKE_MATCH_1})
 message ("NRI v${VERSION_MAJOR}.${VERSION_MINOR}")
 project (NRI LANGUAGES C CXX)
 
-# Download dependencies using Packman
-if (WIN32)
-    set (PACKMAN_EXT ".cmd")
-else ()
-    set (PACKMAN_EXT ".sh")
-endif ()
-
-if ((CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64") OR(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64"))
-    if (WIN32)
-        set (PACKMAN_PLATFORM "windows-x86_64")
-    else ()
-        set (PACKMAN_PLATFORM "linux-x86_64")
-    endif ()
-elseif ((CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64") OR(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64"))
-    set (PACKMAN_PLATFORM "linux-aarch64")
-else ()
-    message (FATAL_ERROR "Unsupported architecture: '${CMAKE_SYSTEM_PROCESSOR}'")
-endif ()
-
-message ("Packman platform: ${PACKMAN_PLATFORM}")
-
-execute_process (COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/External/Packman/packman${PACKMAN_EXT}" pull "${CMAKE_CURRENT_SOURCE_DIR}/Dependencies.xml" -p ${PACKMAN_PLATFORM}
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    RESULT_VARIABLE PACKMAN_RESULT)
-
-if (NOT "${PACKMAN_RESULT}" STREQUAL "0")
-    message (FATAL_ERROR "Packman failed(code = ${PACKMAN_RESULT})")
-endif ()
-
 # Setup dependencies
 if (WIN32)
     if (CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -75,8 +46,8 @@ if (WIN32)
     endif ()
 
     # External
-    find_library (INPUT_LIB_NVAPI NAMES nvapi64 nvapi PATHS "External/NVAPI/${NVAPI_BIN_ARCHITECTURE}" REQUIRED)
-    find_library (INPUT_LIB_AGS NAMES amd_ags_${BIN_ARCHITECTURE} PATHS "External/AGS/lib" REQUIRED)
+    find_library (INPUT_LIB_NVAPI NAMES nvapi64 nvapi PATHS "External/nvapi/${NVAPI_BIN_ARCHITECTURE}" REQUIRED)
+    find_library (INPUT_LIB_AGS NAMES amd_ags_${BIN_ARCHITECTURE} PATHS "External/amdags/ags_lib/lib" REQUIRED)
 
     # System
     if ("$ENV{WIN10_SDK_PATH}$ENV{WIN10_SDK_VERSION}" STREQUAL "")
@@ -164,10 +135,10 @@ endif ()
 if (WIN32)
     file (GLOB D3D11_SOURCE "Source/D3D11/*.cpp" "Source/D3D11/*.h" "Source/D3D11/*.hpp")
     source_group ("" FILES ${D3D11_SOURCE})
-    file (GLOB D3D11_NVAPI "External/NVAPI/*.h")
-    source_group ("External/NVAPI" FILES ${D3D11_NVAPI})
-    file (GLOB D3D11_AMDAGS "External/AGS/inc/*.h")
-    source_group ("External/AMDAGS" FILES ${D3D11_AMDAGS})
+    file (GLOB D3D11_NVAPI "External/nvapi/*.h")
+    source_group ("External/nvapi" FILES ${D3D11_NVAPI})
+    file (GLOB D3D11_AMDAGS "External/amdags/ags_lib/inc/*.h")
+    source_group ("External/amdags" FILES ${D3D11_AMDAGS})
     add_library (NRI_D3D11 STATIC ${D3D11_SOURCE} ${D3D11_NVAPI} ${D3D11_AMDAGS})
     target_include_directories (NRI_D3D11 PRIVATE "Include" "Source/Shared" "External")
     target_compile_definitions (NRI_D3D11 PRIVATE ${COMPILE_DEFINITIONS})
@@ -284,7 +255,7 @@ if (NRI_ENABLE_STREAMLINE_SUPPORT)
     file (TO_NATIVE_PATH "${SL_PLUGINS_DIRECTORY}/sl.interposer.dll" SL_INTERPOSER_CMAKE_PATH)
 
     add_custom_command (TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${SL_INTERPOSER_CMAKE_PATH} ${BIN_OUTPUT_PATH_NATIVE} 
+        COMMAND ${CMAKE_COMMAND} -E copy ${SL_INTERPOSER_CMAKE_PATH} ${BIN_OUTPUT_PATH_NATIVE}
         COMMENT "Copying '${SL_INTERPOSER_CMAKE_PATH}' to '${BIN_OUTPUT_PATH_NATIVE}'"
         VERBATIM
     )

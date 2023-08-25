@@ -46,10 +46,6 @@ compile_commands.json
 *.so.*
 *.manifest
 
-# external packages
-External/NVAPI/
-External/AGS/
-
 # generated folders
 _Build/
 _Compiler/

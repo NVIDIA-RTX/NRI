@@ -1,7 +1,7 @@
 #pragma once
 
-#include "AGS/inc/amd_ags.h"
-#include "NVAPI/nvapi.h"
+#include "amdags/ags_lib/inc/amd_ags.h"
+#include "nvapi/nvapi.h"
 
 typedef AGSReturnCode (*PFN_agsInit)(AGSContext** agsContext, const AGSConfiguration* config, AGSGPUInfo* gpuInfo);
 typedef AGSReturnCode (*PFN_agsDeInit)(AGSContext* agsContext);
