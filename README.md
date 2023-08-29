@@ -1,4 +1,4 @@
-# NVIDIA Render Interface v1.95 (NRI)
+# NVIDIA Render Interface v1.97 (NRI)
 
 *NRI* is a low-level abstract render interface which currently supports three backends: D3D11, D3D12 and Vulkan. *NRI* has been designed to support all (at least major) low level features of D3D12 and Vulkan APIs, but at the same time to simplify usage and reduce the amount of code needed (especially compared with Vulkan). *NRI* is written in *C++*, but supports both *C++* and *C* interfaces.
 
@@ -50,3 +50,7 @@ In order of complexity:
 - RayTracingTriangle - simple triangle rendeing through ray tracing
 - RayTracingBoxes - a more advanced ray tracing example with many BLASes in TLAS
 - Wrapper - shows how to wrap native D3D11/D3D12/VK objects into NRI entities
+
+## Licence
+
+This project includes NVAPI software. All uses of NVAPI software are governed by the license terms specified here: https://github.com/NVIDIA/nvapi/blob/main/License.txt.”
