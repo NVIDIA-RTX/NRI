@@ -8,6 +8,7 @@
     #include <stdbool.h>
 #endif
 
+#define NRI_SET_BIT(bit) (1 << (bit))
 #define NRI_EXPAND(args) args
 
 #if defined(_MSC_VER)
@@ -192,6 +193,12 @@
     #define NRI_DEFAULT_VALUE(arg) = arg
     #define NRI_ZERO_INIT {}
 
+    #define NRI_ENUM(name, nameCaps, type, ...) \
+        enum class name : type \
+        { \
+            _NRI_EXPAND_ENUM(__VA_ARGS__) \
+        }
+
     #define NRI_ENUM_BITS(name, nameCaps, type, ...) \
         enum class name : type; \
         constexpr type  operator &  (name val0, name val1)  { return (type)val0 & (type)val1; } \
@@ -199,12 +206,6 @@
         constexpr name& operator &= (name& val0, name val1) { val0 = (name)(val0 & val1); return val0; } \
         constexpr name& operator |= (name& val0, name val1) { val0 = (name)(val0 | val1); return val0; } \
         NRI_ENUM(name, nameCaps, type, __VA_ARGS__)
-
-    #define NRI_ENUM(name, nameCaps, type, ...) \
-        enum class name : type \
-        { \
-            _NRI_EXPAND_ENUM(__VA_ARGS__) \
-        }
 #else
     #define _NRI_ENUM_PREFIX(name) NRI_MERGE_TOKEN3(NRI_, name, _)
     #define _NRI_ENUM_NAME(name) nri_##name##_
@@ -219,12 +220,9 @@
     #define NRI_FORWARD_STRUCT(name) typedef struct NRI_NAME(name) NRI_NAME(name)
     #define NRI_REF(arg) arg*
     #define NRI_REF_ACCESS(arg) (arg)
-    #define NRI_ENUM_MEMBER(name, nameCaps, member) _NRI_ENUM_PREFIX(nameCaps)##member
+    #define NRI_ENUM_MEMBER(name, nameCaps, member) NRI_MERGE_TOKEN2(_NRI_ENUM_PREFIX(nameCaps), member)
     #define NRI_DEFAULT_VALUE(arg)
     #define NRI_ZERO_INIT {0}
-
-    #define NRI_ENUM_BITS(name, nameCaps, type, ...) \
-        NRI_ENUM(name, nameCaps, type, __VA_ARGS__)
 
     #define NRI_ENUM(name, nameCaps, type, ...) \
         typedef type NRI_NAME(name); \
@@ -232,6 +230,9 @@
         { \
             _NRI_EXPAND_ENUM(_NRI_ENUM_PREFIX(nameCaps), __VA_ARGS__) \
         } _NRI_ENUM_NAME(name)
+
+    #define NRI_ENUM_BITS(name, nameCaps, type, ...) \
+        NRI_ENUM(name, nameCaps, type, __VA_ARGS__)
 #endif
 
 #define NRI_REF_NAME(arg) NRI_REF(NRI_NAME(arg))

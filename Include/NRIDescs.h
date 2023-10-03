@@ -12,8 +12,6 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "NRIMacro.h"
 
-#define NRI_SET_BIT(index) (1 << (index))
-
 NRI_NAMESPACE_BEGIN
 
 NRI_FORWARD_STRUCT(Buffer);
