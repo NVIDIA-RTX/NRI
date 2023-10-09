@@ -16,7 +16,7 @@ NRI_FORWARD_STRUCT(AccelerationStructure);
 
 NRI_ENUM
 (
-    GeometryType, GEOMETRY_TYPE, uint8_t,
+    GeometryType, uint8_t,
 
     TRIANGLES,
     AABBS,
@@ -26,7 +26,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    AccelerationStructureType, ACCELERATION_STRUCTURE_TYPE, uint8_t,
+    AccelerationStructureType, uint8_t,
 
     TOP_LEVEL,
     BOTTOM_LEVEL,
@@ -36,7 +36,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    CopyMode, COPYMODE, uint8_t,
+    CopyMode, uint8_t,
 
     CLONE,
     COMPACT,
@@ -46,7 +46,7 @@ NRI_ENUM
 
 NRI_ENUM_BITS
 (
-    BottomLevelGeometryBits, BOTTOM_LEVEL_GEOMETRY_BITS, uint32_t,
+    BottomLevelGeometryBits, uint32_t,
 
     NONE                                = 0,
     OPAQUE_GEOMETRY                     = NRI_SET_BIT(0),
@@ -55,7 +55,7 @@ NRI_ENUM_BITS
 
 NRI_ENUM_BITS
 (
-    TopLevelInstanceBits, TOP_LEVEL_INSTANCE_BITS, uint32_t,
+    TopLevelInstanceBits, uint32_t,
 
     NONE                                = 0,
     TRIANGLE_CULL_DISABLE               = NRI_SET_BIT(0),
@@ -66,7 +66,7 @@ NRI_ENUM_BITS
 
 NRI_ENUM_BITS
 (
-    AccelerationStructureBuildBits, ACCELERATION_STRUCTURE_BUILD_BITS, uint32_t,
+    AccelerationStructureBuildBits, uint32_t,
 
     NONE                                = 0,
     ALLOW_UPDATE                        = NRI_SET_BIT(0),

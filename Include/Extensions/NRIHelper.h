@@ -65,37 +65,37 @@ static inline NRI_NAME(Format) NRI_NAME(GetSupportedDepthFormat)(const NRI_REF_N
     {
         if (minBits <= 24)
         {
-            if (NRI_REF_ACCESS(coreInterface)->GetFormatSupport(device, NRI_ENUM_MEMBER(Format, FORMAT, D24_UNORM_S8_UINT)) & NRI_ENUM_MEMBER(FormatSupportBits, FORMAT_SUPPORT_BITS, DEPTH_STENCIL_ATTACHMENT))
-                return NRI_ENUM_MEMBER(Format, FORMAT, D24_UNORM_S8_UINT);
+            if (NRI_REF_ACCESS(coreInterface)->GetFormatSupport(device, NRI_ENUM_MEMBER(Format, D24_UNORM_S8_UINT)) & NRI_ENUM_MEMBER(FormatSupportBits, DEPTH_STENCIL_ATTACHMENT))
+                return NRI_ENUM_MEMBER(Format, D24_UNORM_S8_UINT);
         }
     }
     else
     {
         if (minBits <= 16)
         {
-            if (NRI_REF_ACCESS(coreInterface)->GetFormatSupport(device, NRI_ENUM_MEMBER(Format, FORMAT, D16_UNORM)) & NRI_ENUM_MEMBER(FormatSupportBits, FORMAT_SUPPORT_BITS, DEPTH_STENCIL_ATTACHMENT))
-                return NRI_ENUM_MEMBER(Format, FORMAT, D16_UNORM);
+            if (NRI_REF_ACCESS(coreInterface)->GetFormatSupport(device, NRI_ENUM_MEMBER(Format, D16_UNORM)) & NRI_ENUM_MEMBER(FormatSupportBits, DEPTH_STENCIL_ATTACHMENT))
+                return NRI_ENUM_MEMBER(Format, D16_UNORM);
         }
         else if (minBits <= 24)
         {
-            if (NRI_REF_ACCESS(coreInterface)->GetFormatSupport(device, NRI_ENUM_MEMBER(Format, FORMAT, D24_UNORM_S8_UINT)) & NRI_ENUM_MEMBER(FormatSupportBits, FORMAT_SUPPORT_BITS, DEPTH_STENCIL_ATTACHMENT))
-                return NRI_ENUM_MEMBER(Format, FORMAT, D24_UNORM_S8_UINT);
+            if (NRI_REF_ACCESS(coreInterface)->GetFormatSupport(device, NRI_ENUM_MEMBER(Format, D24_UNORM_S8_UINT)) & NRI_ENUM_MEMBER(FormatSupportBits, DEPTH_STENCIL_ATTACHMENT))
+                return NRI_ENUM_MEMBER(Format, D24_UNORM_S8_UINT);
         }
 
-        if (NRI_REF_ACCESS(coreInterface)->GetFormatSupport(device, NRI_ENUM_MEMBER(Format, FORMAT, D32_SFLOAT)) & NRI_ENUM_MEMBER(FormatSupportBits, FORMAT_SUPPORT_BITS, DEPTH_STENCIL_ATTACHMENT))
-            return NRI_ENUM_MEMBER(Format, FORMAT, D32_SFLOAT);
+        if (NRI_REF_ACCESS(coreInterface)->GetFormatSupport(device, NRI_ENUM_MEMBER(Format, D32_SFLOAT)) & NRI_ENUM_MEMBER(FormatSupportBits, DEPTH_STENCIL_ATTACHMENT))
+            return NRI_ENUM_MEMBER(Format, D32_SFLOAT);
     }
 
-    if (NRI_REF_ACCESS(coreInterface)->GetFormatSupport(device, NRI_ENUM_MEMBER(Format, FORMAT, D32_SFLOAT_S8_UINT_X24)) & NRI_ENUM_MEMBER(FormatSupportBits, FORMAT_SUPPORT_BITS, DEPTH_STENCIL_ATTACHMENT))
-        return NRI_ENUM_MEMBER(Format, FORMAT, D32_SFLOAT_S8_UINT_X24);
+    if (NRI_REF_ACCESS(coreInterface)->GetFormatSupport(device, NRI_ENUM_MEMBER(Format, D32_SFLOAT_S8_UINT_X24)) & NRI_ENUM_MEMBER(FormatSupportBits, DEPTH_STENCIL_ATTACHMENT))
+        return NRI_ENUM_MEMBER(Format, D32_SFLOAT_S8_UINT_X24);
 
-    return NRI_ENUM_MEMBER(Format, FORMAT, UNKNOWN);
+    return NRI_ENUM_MEMBER(Format, UNKNOWN);
 }
 
-static inline NRI_NAME(TextureDesc) NRI_NAME(Texture1D)(NRI_NAME(Format) format, uint16_t width, uint16_t mipNum NRI_DEFAULT_VALUE(1), uint16_t arraySize NRI_DEFAULT_VALUE(1), NRI_NAME(TextureUsageBits) usageMask NRI_DEFAULT_VALUE(NRI_ENUM_MEMBER(TextureUsageBits, TEXTURE_USAGE_BITS, SHADER_RESOURCE)))
+static inline NRI_NAME(TextureDesc) NRI_NAME(Texture1D)(NRI_NAME(Format) format, uint16_t width, uint16_t mipNum NRI_DEFAULT_VALUE(1), uint16_t arraySize NRI_DEFAULT_VALUE(1), NRI_NAME(TextureUsageBits) usageMask NRI_DEFAULT_VALUE(NRI_ENUM_MEMBER(TextureUsageBits, SHADER_RESOURCE)))
 {
     NRI_NAME(TextureDesc) textureDesc = NRI_ZERO_INIT;
-    textureDesc.type = NRI_ENUM_MEMBER(TextureType, TEXTURE_TYPE, TEXTURE_1D);
+    textureDesc.type = NRI_ENUM_MEMBER(TextureType, TEXTURE_1D);
     textureDesc.format = format;
     textureDesc.usageMask = usageMask;
     textureDesc.size[0] = width;
@@ -108,10 +108,10 @@ static inline NRI_NAME(TextureDesc) NRI_NAME(Texture1D)(NRI_NAME(Format) format,
     return textureDesc;
 }
 
-static inline NRI_NAME(TextureDesc) NRI_NAME(Texture2D)(NRI_NAME(Format) format, uint16_t width, uint16_t height, uint16_t mipNum NRI_DEFAULT_VALUE(1), uint16_t arraySize NRI_DEFAULT_VALUE(1), NRI_NAME(TextureUsageBits) usageMask NRI_DEFAULT_VALUE(NRI_ENUM_MEMBER(TextureUsageBits, TEXTURE_USAGE_BITS, SHADER_RESOURCE)), uint8_t sampleNum NRI_DEFAULT_VALUE(1))
+static inline NRI_NAME(TextureDesc) NRI_NAME(Texture2D)(NRI_NAME(Format) format, uint16_t width, uint16_t height, uint16_t mipNum NRI_DEFAULT_VALUE(1), uint16_t arraySize NRI_DEFAULT_VALUE(1), NRI_NAME(TextureUsageBits) usageMask NRI_DEFAULT_VALUE(NRI_ENUM_MEMBER(TextureUsageBits, SHADER_RESOURCE)), uint8_t sampleNum NRI_DEFAULT_VALUE(1))
 {
     NRI_NAME(TextureDesc) textureDesc = NRI_ZERO_INIT;
-    textureDesc.type = NRI_ENUM_MEMBER(TextureType, TEXTURE_TYPE, TEXTURE_2D);
+    textureDesc.type = NRI_ENUM_MEMBER(TextureType, TEXTURE_2D);
     textureDesc.format = format;
     textureDesc.usageMask = usageMask;
     textureDesc.size[0] = width;
@@ -124,10 +124,10 @@ static inline NRI_NAME(TextureDesc) NRI_NAME(Texture2D)(NRI_NAME(Format) format,
     return textureDesc;
 }
 
-static inline NRI_NAME(TextureDesc) NRI_NAME(Texture3D)(NRI_NAME(Format) format, uint16_t width, uint16_t height, uint16_t depth, uint16_t mipNum NRI_DEFAULT_VALUE(1), NRI_NAME(TextureUsageBits) usageMask NRI_DEFAULT_VALUE(NRI_ENUM_MEMBER(TextureUsageBits, TEXTURE_USAGE_BITS, SHADER_RESOURCE)))
+static inline NRI_NAME(TextureDesc) NRI_NAME(Texture3D)(NRI_NAME(Format) format, uint16_t width, uint16_t height, uint16_t depth, uint16_t mipNum NRI_DEFAULT_VALUE(1), NRI_NAME(TextureUsageBits) usageMask NRI_DEFAULT_VALUE(NRI_ENUM_MEMBER(TextureUsageBits, SHADER_RESOURCE)))
 {
     NRI_NAME(TextureDesc) textureDesc = NRI_ZERO_INIT;
-    textureDesc.type = NRI_ENUM_MEMBER(TextureType, TEXTURE_TYPE, TEXTURE_3D);
+    textureDesc.type = NRI_ENUM_MEMBER(TextureType, TEXTURE_3D);
     textureDesc.format = format;
     textureDesc.usageMask = usageMask;
     textureDesc.size[0] = width;
@@ -162,9 +162,9 @@ static inline NRI_NAME(TextureTransitionBarrierDesc) NRI_NAME(TextureTransitionF
 {
     NRI_NAME(TextureTransitionBarrierDesc) textureTransitionBarrierDesc = NRI_ZERO_INIT;
     textureTransitionBarrierDesc.texture = texture;
-    textureTransitionBarrierDesc.prevAccess = NRI_ENUM_MEMBER(AccessBits, ACCESS_BITS, UNKNOWN);
+    textureTransitionBarrierDesc.prevAccess = NRI_ENUM_MEMBER(AccessBits,UNKNOWN);
     textureTransitionBarrierDesc.nextAccess = nextAccess;
-    textureTransitionBarrierDesc.prevLayout = NRI_ENUM_MEMBER(TextureLayout, TEXTURE_LAYOUT, UNKNOWN);
+    textureTransitionBarrierDesc.prevLayout = NRI_ENUM_MEMBER(TextureLayout, UNKNOWN);
     textureTransitionBarrierDesc.nextLayout = nextLayout;
     textureTransitionBarrierDesc.mipOffset = mipOffset;
     textureTransitionBarrierDesc.mipNum = mipNum;

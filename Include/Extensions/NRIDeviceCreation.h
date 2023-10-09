@@ -14,13 +14,13 @@ NRI_NAMESPACE_BEGIN
 
 NRI_ENUM
 (
-    Message, MESSAGE, uint8_t,
+    Message, uint8_t,
 
     TYPE_INFO,
     TYPE_WARNING,
     TYPE_ERROR,
 
-    MAX_NUM,
+    MAX_NUM
 );
 
 NRI_STRUCT(MemoryAllocatorInterface)

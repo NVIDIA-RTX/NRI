@@ -17,7 +17,7 @@ NRI_FORWARD_STRUCT(Display);
 
 NRI_ENUM
 (
-    SwapChainFormat, SWAP_CHAIN_FORMAT, uint8_t,
+    SwapChainFormat, uint8_t,
 
     /* BT.709 - LDR https://en.wikipedia.org/wiki/Rec._709
        BT.2020 - HDR https://en.wikipedia.org/wiki/Rec._2020
@@ -36,7 +36,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    WindowSystemType, WINDOW_SYSTEM_TYPE, uint8_t,
+    WindowSystemType, uint8_t,
 
     WINDOWS,
     X11,

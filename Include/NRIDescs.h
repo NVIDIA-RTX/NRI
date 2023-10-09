@@ -41,7 +41,7 @@ typedef uint32_t NRI_NAME(MemoryType);
 
 NRI_ENUM
 (
-    Result, RESULT, uint8_t,
+    Result, uint8_t,
 
     SUCCESS,
     FAILURE,
@@ -56,7 +56,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    Vendor, VENDOR, uint8_t,
+    Vendor, uint8_t,
 
     UNKNOWN,
     NVIDIA,
@@ -68,7 +68,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    GraphicsAPI, GRAPHICS_API, uint8_t,
+    GraphicsAPI, uint8_t,
 
     D3D11,
     D3D12,
@@ -79,7 +79,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    CommandQueueType, COMMAND_QUEUE_TYPE, uint8_t,
+    CommandQueueType, uint8_t,
 
     GRAPHICS,
     COMPUTE,
@@ -90,7 +90,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    MemoryLocation, MEMORY_LOCATION, uint8_t,
+    MemoryLocation, uint8_t,
 
     DEVICE,
     HOST_UPLOAD,
@@ -101,7 +101,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    TextureType, TEXTURE_TYPE, uint8_t,
+    TextureType, uint8_t,
 
     TEXTURE_1D,
     TEXTURE_2D,
@@ -112,7 +112,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    Texture1DViewType, TEXTURE_1D_VIEW_TYPE, uint8_t,
+    Texture1DViewType, uint8_t,
 
     SHADER_RESOURCE_1D,
     SHADER_RESOURCE_1D_ARRAY,
@@ -126,7 +126,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    Texture2DViewType, TEXTURE_2D_VIEW_TYPE, uint8_t,
+    Texture2DViewType, uint8_t,
 
     SHADER_RESOURCE_2D,
     SHADER_RESOURCE_2D_ARRAY,
@@ -142,7 +142,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    Texture3DViewType, TEXTURE_3D_VIEW_TYPE, uint8_t,
+    Texture3DViewType, uint8_t,
 
     SHADER_RESOURCE_3D,
     SHADER_RESOURCE_STORAGE_3D,
@@ -153,7 +153,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    BufferViewType, BUFFER_VIEW_TYPE, uint8_t,
+    BufferViewType, uint8_t,
 
     SHADER_RESOURCE,
     SHADER_RESOURCE_STORAGE,
@@ -164,7 +164,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    DescriptorType, DESCRIPTOR_TYPE, uint8_t,
+    DescriptorType, uint8_t,
 
     SAMPLER,
     CONSTANT_BUFFER,
@@ -181,7 +181,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    VertexStreamStepRate, VERTEX_STREAM_STEP_RATE, uint8_t,
+    VertexStreamStepRate, uint8_t,
 
     PER_VERTEX,
     PER_INSTANCE,
@@ -191,7 +191,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    TextureLayout, TEXTURE_LAYOUT, uint8_t,
+    TextureLayout, uint8_t,
 
     GENERAL,
     COLOR_ATTACHMENT,
@@ -208,7 +208,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    ShaderStage, SHADER_STAGE, uint8_t,
+    ShaderStage, uint8_t,
 
     ALL,
     VERTEX,
@@ -231,7 +231,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    BarrierDependency, BARRIER_DEPENDENCY, uint8_t,
+    BarrierDependency, uint8_t,
 
     ALL_STAGES,
     GRAPHICS_STAGE,
@@ -244,7 +244,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    Topology, TOPOLOGY, uint8_t,
+    Topology, uint8_t,
 
     POINT_LIST,
     LINE_LIST,
@@ -262,7 +262,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    FillMode, FILL_MODE, uint8_t,
+    FillMode, uint8_t,
 
     SOLID,
     WIREFRAME,
@@ -272,7 +272,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    CullMode, CULL_MODE, uint8_t,
+    CullMode, uint8_t,
 
     NONE,
     FRONT,
@@ -283,7 +283,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    LogicFunc, LOGIC_FUNC, uint8_t,
+    LogicFunc, uint8_t,
 
     NONE,
     CLEAR,
@@ -307,7 +307,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    CompareFunc, COMPARE_FUNC, uint8_t,
+    CompareFunc, uint8_t,
 
     NONE,
     ALWAYS,
@@ -324,7 +324,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    StencilFunc, STENCIL_FUNC, uint8_t,
+    StencilFunc, uint8_t,
 
     KEEP,
     ZERO,
@@ -340,7 +340,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    BlendFactor, BLEND_FACTOR, uint8_t,
+    BlendFactor, uint8_t,
 
     ZERO,
     ONE,
@@ -367,7 +367,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    BlendFunc, BLEND_FUNC, uint8_t,
+    BlendFunc, uint8_t,
 
     ADD,
     SUBTRACT,
@@ -380,7 +380,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    IndexType, INDEX_TYPE, uint8_t,
+    IndexType, uint8_t,
 
     UINT16,
     UINT32,
@@ -390,7 +390,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    QueryType, QUERY_TYPE, uint8_t,
+    QueryType, uint8_t,
 
     TIMESTAMP,
     OCCLUSION,
@@ -402,7 +402,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    Filter, FILTER, uint8_t,
+    Filter, uint8_t,
 
     NEAREST,
     LINEAR,
@@ -412,7 +412,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    FilterExt, FILTER_EXT, uint8_t,
+    FilterExt, uint8_t,
 
     NONE,
     MIN,
@@ -423,7 +423,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    AddressMode, ADDRESS_MODE, uint8_t,
+    AddressMode, uint8_t,
 
     REPEAT,
     MIRRORED_REPEAT,
@@ -435,7 +435,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    BorderColor, BORDER_COLOR, uint8_t,
+    BorderColor, uint8_t,
 
     FLOAT_TRANSPARENT_BLACK,
     FLOAT_OPAQUE_BLACK,
@@ -449,7 +449,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    Format, FORMAT, uint8_t,
+    Format, uint8_t,
 
     UNKNOWN,
 
@@ -541,7 +541,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    AttachmentContentType, ATTACHMENT_CONTENT_TYPE, uint8_t,
+    AttachmentContentType, uint8_t,
 
     COLOR,
     DEPTH,
@@ -553,7 +553,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    RenderPassBeginFlag, RENDER_PASS_BEGIN_FLAG, uint8_t,
+    RenderPassBeginFlag, uint8_t,
 
     NONE,
     SKIP_FRAME_BUFFER_CLEAR,
@@ -563,7 +563,7 @@ NRI_ENUM
 
 NRI_ENUM
 (
-    PrimitiveRestart, PRIMITIVE_RESTART, uint8_t,
+    PrimitiveRestart, uint8_t,
 
     DISABLED,
     INDICES_UINT16,
@@ -574,7 +574,7 @@ NRI_ENUM
 
 NRI_ENUM_BITS
 (
-    TextureUsageBits, TEXTURE_USAGE_BITS, uint16_t,
+    TextureUsageBits, uint16_t,
 
     NONE                                = 0,
     SHADER_RESOURCE                     = NRI_SET_BIT(0),
@@ -585,7 +585,7 @@ NRI_ENUM_BITS
 
 NRI_ENUM_BITS
 (
-    BufferUsageBits, BUFFER_USAGE_BITS, uint16_t,
+    BufferUsageBits, uint16_t,
 
     NONE                                = 0,
     SHADER_RESOURCE                     = NRI_SET_BIT(0),
@@ -600,7 +600,7 @@ NRI_ENUM_BITS
 
 NRI_ENUM_BITS
 (
-    AccessBits, ACCESS_BITS, uint16_t,
+    AccessBits, uint16_t,
 
     UNKNOWN                             = 0,
     VERTEX_BUFFER                       = NRI_SET_BIT(0),
@@ -621,7 +621,7 @@ NRI_ENUM_BITS
 // Starts with 1 to unblock "1 << ShaderStage"
 NRI_ENUM_BITS
 (
-    PipelineLayoutShaderStageBits, PIPELINE_LAYOUT_SHADER_STAGE_BITS, uint16_t,
+    PipelineLayoutShaderStageBits, uint16_t,
 
     NONE                                = 0,
     VERTEX                              = NRI_SET_BIT(1),
@@ -639,25 +639,25 @@ NRI_ENUM_BITS
     MESH_CONTROL                        = NRI_SET_BIT(13),
     MESH_EVALUATION                     = NRI_SET_BIT(14),
 
-    ALL_GRAPHICS                        = NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, PIPELINE_LAYOUT_SHADER_STAGE_BITS, VERTEX) |
-                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, PIPELINE_LAYOUT_SHADER_STAGE_BITS, TESS_CONTROL) |
-                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, PIPELINE_LAYOUT_SHADER_STAGE_BITS, TESS_EVALUATION) |
-                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, PIPELINE_LAYOUT_SHADER_STAGE_BITS, GEOMETRY) |
-                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, PIPELINE_LAYOUT_SHADER_STAGE_BITS, FRAGMENT) |
-                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, PIPELINE_LAYOUT_SHADER_STAGE_BITS, MESH_CONTROL) |
-                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, PIPELINE_LAYOUT_SHADER_STAGE_BITS, MESH_EVALUATION),
+    ALL_GRAPHICS                        = NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, VERTEX) |
+                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, TESS_CONTROL) |
+                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, TESS_EVALUATION) |
+                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, GEOMETRY) |
+                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, FRAGMENT) |
+                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, MESH_CONTROL) |
+                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, MESH_EVALUATION),
 
-    ALL_RAY_TRACING                     = NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, PIPELINE_LAYOUT_SHADER_STAGE_BITS, RAYGEN) |
-                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, PIPELINE_LAYOUT_SHADER_STAGE_BITS, MISS) |
-                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, PIPELINE_LAYOUT_SHADER_STAGE_BITS, INTERSECTION) |
-                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, PIPELINE_LAYOUT_SHADER_STAGE_BITS, CLOSEST_HIT) |
-                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, PIPELINE_LAYOUT_SHADER_STAGE_BITS, ANY_HIT) |
-                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, PIPELINE_LAYOUT_SHADER_STAGE_BITS, CALLABLE)
+    ALL_RAY_TRACING                     = NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, RAYGEN) |
+                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, MISS) |
+                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, INTERSECTION) |
+                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, CLOSEST_HIT) |
+                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, ANY_HIT) |
+                                          NRI_ENUM_MEMBER(PipelineLayoutShaderStageBits, CALLABLE)
 );
 
 NRI_ENUM_BITS
 (
-    PipelineStatsBits, PIPELINE_STATS_BITS, uint16_t,
+    PipelineStatsBits, uint16_t,
 
     INPUT_ASSEMBLY_VERTICES             = NRI_SET_BIT(0),
     INPUT_ASSEMBLY_PRIMITIVES           = NRI_SET_BIT(1),
@@ -674,22 +674,22 @@ NRI_ENUM_BITS
 
 NRI_ENUM_BITS
 (
-    ColorWriteBits, COLOR_WRITE_BITS, uint8_t,
+    ColorWriteBits, uint8_t,
 
     R                                   = NRI_SET_BIT(0),
     G                                   = NRI_SET_BIT(1),
     B                                   = NRI_SET_BIT(2),
     A                                   = NRI_SET_BIT(3),
 
-    RGBA                                = NRI_ENUM_MEMBER(ColorWriteBits, COLOR_WRITE_BITS, R) |
-                                          NRI_ENUM_MEMBER(ColorWriteBits, COLOR_WRITE_BITS, G) |
-                                          NRI_ENUM_MEMBER(ColorWriteBits, COLOR_WRITE_BITS, B) |
-                                          NRI_ENUM_MEMBER(ColorWriteBits, COLOR_WRITE_BITS, A)
+    RGBA                                = NRI_ENUM_MEMBER(ColorWriteBits, R) |
+                                          NRI_ENUM_MEMBER(ColorWriteBits, G) |
+                                          NRI_ENUM_MEMBER(ColorWriteBits, B) |
+                                          NRI_ENUM_MEMBER(ColorWriteBits, A)
 );
 
 NRI_ENUM_BITS
 (
-    ResourceViewBits, RESOURCE_VIEW_BITS, uint8_t,
+    ResourceViewBits, uint8_t,
 
     READONLY_DEPTH                      = NRI_SET_BIT(0),
     READONLY_STENCIL                    = NRI_SET_BIT(1)
@@ -697,7 +697,7 @@ NRI_ENUM_BITS
 
 NRI_ENUM_BITS
 (
-    FormatSupportBits, FORMAT_SUPPORT_BITS, uint8_t,
+    FormatSupportBits, uint8_t,
 
     UNSUPPORTED                         = 0,
     TEXTURE                             = NRI_SET_BIT(0),
@@ -711,7 +711,7 @@ NRI_ENUM_BITS
 
 NRI_ENUM_BITS
 (
-    DescriptorSetBindingBits, DESCRIPTOR_SET_BINDING_BITS, uint8_t,
+    DescriptorSetBindingBits, uint8_t,
 
     DEFAULT                             = 0,
     PARTIALLY_BOUND                     = NRI_SET_BIT(0)

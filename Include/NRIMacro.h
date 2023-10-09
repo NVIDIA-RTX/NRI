@@ -12,13 +12,13 @@
 #define NRI_EXPAND(args) args
 
 #if defined(_MSC_VER)
-    #define _NRI_NARGS(_1, _2, _3, _4, _5, _6_, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55, _56, _57, _58, _59, _60, _61, _62, _63, _64, _65, _66, _67, _68, _69, _70, _71, _72, _73, VAL, ...) VAL
-    #define _NRI_NARGS1(...) NRI_EXPAND(_NRI_NARGS(__VA_ARGS__, 72, 71, 70, 69, 68, 67, 66, 65, 64, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0))
+    #define _NRI_NARGS(_1, _2, _3, _4, _5, _6_, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55, _56, _57, _58, _59, _60, _61, _62, _63, _64, _65, _66, _67, _68, _69, _70, _71, VAL, ...) VAL
+    #define _NRI_NARGS1(...) NRI_EXPAND(_NRI_NARGS(__VA_ARGS__, 70, 69, 68, 67, 66, 65, 64, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0))
     #define _NRI_AUGMENTER(...) unused, __VA_ARGS__
     #define NRI_NARGS(...) _NRI_NARGS1(_NRI_AUGMENTER(__VA_ARGS__))
 #else
-    #define _NRI_NARGS(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55, _56, _57, _58, _59, _60, _61, _62, _63, _64, _65, _66, _67, _68, _69, _70, _71, _72, _73, VAL,...) VAL
-    #define NRI_NARGS(...) _NRI_NARGS(0, ## __VA_ARGS__, 73, 72, 71, 70, 69, 68, 67, 66, 65, 64, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+    #define _NRI_NARGS(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55, _56, _57, _58, _59, _60, _61, _62, _63, _64, _65, _66, _67, _68, _69, _70, _71, VAL,...) VAL
+    #define NRI_NARGS(...) _NRI_NARGS(0, ## __VA_ARGS__, 71, 70, 69, 68, 67, 66, 65, 64, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 #endif
 
 #define _NRI_MERGE_TOKEN2(_0, _1) _0##_1
@@ -98,8 +98,6 @@
 #define _NRI_SEQ68(code, ...) _NRI_SEQ67(code, __VA_ARGS__), NRI_EXPAND(code(67, __VA_ARGS__))
 #define _NRI_SEQ69(code, ...) _NRI_SEQ68(code, __VA_ARGS__), NRI_EXPAND(code(68, __VA_ARGS__))
 #define _NRI_SEQ70(code, ...) _NRI_SEQ69(code, __VA_ARGS__), NRI_EXPAND(code(69, __VA_ARGS__))
-#define _NRI_SEQ71(code, ...) _NRI_SEQ70(code, __VA_ARGS__), NRI_EXPAND(code(70, __VA_ARGS__))
-#define _NRI_SEQ72(code, ...) _NRI_SEQ71(code, __VA_ARGS__), NRI_EXPAND(code(71, __VA_ARGS__))
 #define NRI_SEQN(code, count, ...) NRI_MERGE_TOKEN2(_NRI_SEQ, count)(code, __VA_ARGS__)
 
 #define _NRI_VA_ARGS_AT0(_0, ...) _0
@@ -172,67 +170,64 @@
 #define _NRI_VA_ARGS_AT67(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55, _56, _57, _58, _59, _60, _61, _62, _63, _64, _65, _66, _67, ...) _67
 #define _NRI_VA_ARGS_AT68(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55, _56, _57, _58, _59, _60, _61, _62, _63, _64, _65, _66, _67, _68, ...) _68
 #define _NRI_VA_ARGS_AT69(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55, _56, _57, _58, _59, _60, _61, _62, _63, _64, _65, _66, _67, _68, _69, ...) _69
-#define _NRI_VA_ARGS_AT70(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55, _56, _57, _58, _59, _60, _61, _62, _63, _64, _65, _66, _67, _68, _69, _70, ...) _70
-#define _NRI_VA_ARGS_AT71(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55, _56, _57, _58, _59, _60, _61, _62, _63, _64, _65, _66, _67, _68, _69, _70, _71, ...) _71
-#define _NRI_VA_ARGS_AT72(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55, _56, _57, _58, _59, _60, _61, _62, _63, _64, _65, _66, _67, _68, _69, _70, _71, _72, ...) _72
 #define NRI_VA_ARGS_AT(index, ...) NRI_EXPAND(NRI_MERGE_TOKEN2(_NRI_VA_ARGS_AT, index)(__VA_ARGS__))
 
 #if defined(NRI_CPP)
-    #define _NRI_ENUM_ENTRY(index, ...) NRI_VA_ARGS_AT(index, __VA_ARGS__)
-    #define _NRI_EXPAND_ENUM(...) NRI_SEQN(_NRI_ENUM_ENTRY, NRI_NARGS(__VA_ARGS__), __VA_ARGS__)
+    #define NRI_ENUM_ENTRY(index, ...) NRI_VA_ARGS_AT(index, __VA_ARGS__)
+    #define NRI_EXPAND_ENUM(...) NRI_SEQN(NRI_ENUM_ENTRY, NRI_NARGS(__VA_ARGS__), __VA_ARGS__)
+    #define NRI_NAME(name) name
 
     #define NRI_NAMESPACE_BEGIN namespace nri {
     #define NRI_NAMESPACE_END }
-    #define NRI_NAME(name) name
     #define NRI_STRUCT(name) struct name
     #define NRI_UNION(name) union name
     #define NRI_FORWARD_STRUCT(name) struct name
     #define NRI_REF(arg) arg&
     #define NRI_REF_ACCESS(arg) (&arg)
-    #define NRI_ENUM_MEMBER(name, nameCaps, member) name::member
+    #define NRI_ENUM_MEMBER(name, member) name::member
     #define NRI_DEFAULT_VALUE(arg) = arg
     #define NRI_ZERO_INIT {}
 
-    #define NRI_ENUM(name, nameCaps, type, ...) \
+    #define NRI_ENUM(name, type, ...) \
         enum class name : type \
         { \
-            _NRI_EXPAND_ENUM(__VA_ARGS__) \
+            NRI_EXPAND_ENUM(__VA_ARGS__) \
         }
 
-    #define NRI_ENUM_BITS(name, nameCaps, type, ...) \
+    #define NRI_ENUM_BITS(name, type, ...) \
         enum class name : type; \
         constexpr type  operator &  (name val0, name val1)  { return (type)val0 & (type)val1; } \
         constexpr name  operator |  (name val0, name val1)  { return (name)((type)val0 | (type)val1); } \
         constexpr name& operator &= (name& val0, name val1) { val0 = (name)(val0 & val1); return val0; } \
         constexpr name& operator |= (name& val0, name val1) { val0 = (name)(val0 | val1); return val0; } \
-        NRI_ENUM(name, nameCaps, type, __VA_ARGS__)
+        NRI_ENUM(name, type, __VA_ARGS__)
 #else
-    #define _NRI_ENUM_PREFIX(name) NRI_MERGE_TOKEN3(NRI_, name, _)
-    #define _NRI_ENUM_NAME(name) nri_##name##_
-    #define _NRI_ENUM_ENTRY(index, prefix, ...) NRI_MERGE_TOKEN2(prefix, NRI_VA_ARGS_AT(index, __VA_ARGS__))
-    #define _NRI_EXPAND_ENUM(prefix, ...) NRI_SEQN(_NRI_ENUM_ENTRY, NRI_NARGS(__VA_ARGS__), prefix, __VA_ARGS__)
+    #define NRI_ENUM_PREFIX(name) NRI_MERGE_TOKEN3(nri_, name, _)
+    #define NRI_ENUM_ENTRY(index, prefix, ...) NRI_MERGE_TOKEN2(prefix, NRI_VA_ARGS_AT(index, __VA_ARGS__))
+    #define NRI_EXPAND_ENUM(prefix, ...) NRI_SEQN(NRI_ENUM_ENTRY, NRI_NARGS(__VA_ARGS__), prefix, __VA_ARGS__)
+    #define NRI_NAME(name) nri_##name
+    #define NRI_NAME_(name) nri_##name##_
 
     #define NRI_NAMESPACE_BEGIN
     #define NRI_NAMESPACE_END
-    #define NRI_NAME(name) nri_##name
     #define NRI_STRUCT(name) typedef struct NRI_NAME(name) NRI_NAME(name); struct NRI_NAME(name)
     #define NRI_UNION(name) typedef union NRI_NAME(name) NRI_NAME(name); union NRI_NAME(name)
     #define NRI_FORWARD_STRUCT(name) typedef struct NRI_NAME(name) NRI_NAME(name)
     #define NRI_REF(arg) arg*
     #define NRI_REF_ACCESS(arg) (arg)
-    #define NRI_ENUM_MEMBER(name, nameCaps, member) NRI_MERGE_TOKEN2(_NRI_ENUM_PREFIX(nameCaps), member)
+    #define NRI_ENUM_MEMBER(name, member) NRI_MERGE_TOKEN2(NRI_ENUM_PREFIX(name), member)
     #define NRI_DEFAULT_VALUE(arg)
     #define NRI_ZERO_INIT {0}
 
-    #define NRI_ENUM(name, nameCaps, type, ...) \
+    #define NRI_ENUM(name, type, ...) \
         typedef type NRI_NAME(name); \
-        typedef enum \
+        typedef enum NRI_NAME_(name) \
         { \
-            _NRI_EXPAND_ENUM(_NRI_ENUM_PREFIX(nameCaps), __VA_ARGS__) \
-        } _NRI_ENUM_NAME(name)
+            NRI_EXPAND_ENUM(NRI_ENUM_PREFIX(name), __VA_ARGS__) \
+        } NRI_NAME_(name)
 
-    #define NRI_ENUM_BITS(name, nameCaps, type, ...) \
-        NRI_ENUM(name, nameCaps, type, __VA_ARGS__)
+    #define NRI_ENUM_BITS(name, type, ...) \
+        NRI_ENUM(name, type, __VA_ARGS__)
 #endif
 
 #define NRI_REF_NAME(arg) NRI_REF(NRI_NAME(arg))
