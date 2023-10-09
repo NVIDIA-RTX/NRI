@@ -41,6 +41,7 @@ Note: *Xlib* and *Wayland* can be both enabled.
 In order of complexity:
 - DeviceInfo - queries and prints out information about device groups in the system
 - Clear - minimal example of rendering using framebuffer clears only
+- CTest - very simple example of C interface usage
 - Triangle - simple textured triangle rendering
 - SceneViewer - loading & rendering of meshes with materials
 - Readback - getting data from the GPU back to the CPU
