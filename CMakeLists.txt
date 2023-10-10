@@ -208,18 +208,19 @@ set_property (TARGET NRI_Validation PROPERTY FOLDER ${PROJECT_NAME})
 # NRI
 file (GLOB NRI_HEADERS "Include/*.h" "Include/*.hpp")
 source_group ("Include" FILES ${NRI_HEADERS})
+
 file (GLOB NRI_EXTENSIONS "Include/Extensions/*.h" "Include/Extensions/*.hpp")
 if (NRI_ENABLE_STREAMLINE_SUPPORT)
     file(GLOB NRI_EXTENSIONS ${NRI_EXTENSIONS} "Include/Extensions/Optional/NRIStreamlineWrapper.h" "Include/Extensions/Optional/NRIGfxApiWrapper.h")
 endif()
-
 source_group ("Include/Extensions" FILES ${NRI_EXTENSIONS})
+
 file (GLOB NRI_SOURCE "Source/Creation/*.cpp" "Source/Creation/*.h")
 if (NRI_ENABLE_STREAMLINE_SUPPORT)
     file (GLOB NRI_SOURCE ${NRI_SOURCE} "Source/Streamline/*.cpp")
 endif ()
-
 source_group ("Sources" FILES ${NRI_SOURCE})
+
 file (GLOB NRI_RESOURCES "Resources/*")
 source_group ("Resources" FILES ${NRI_RESOURCES})
 
@@ -276,6 +277,4 @@ endif ()
 set_property (TARGET ${PROJECT_NAME} PROPERTY FOLDER ${PROJECT_NAME})
 
 set_target_properties (${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${GLOBAL_BIN_OUTPUT_PATH}/$<CONFIG>")
-set_target_properties (${PROJECT_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${GLOBAL_BIN_OUTPUT_PATH}/$<CONFIG>")
-set_target_properties (${PROJECT_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${GLOBAL_BIN_OUTPUT_PATH}/$<CONFIG>")
 message ("NRI output path: '${GLOBAL_BIN_OUTPUT_PATH}'")
