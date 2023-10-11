@@ -1059,7 +1059,7 @@ Result DeviceVal::CreateTextureVK(const TextureVulkanDesc& textureVulkanDesc, Te
     RETURN_ON_FAILURE(GetLog(), textureVulkanDesc.vkImage != 0, Result::INVALID_ARGUMENT,
         "Can't create Texture: 'textureVulkanDesc.vkImage' is invalid.");
 
-    RETURN_ON_FAILURE(GetLog(), ConvertVKFormatToNRI(textureVulkanDesc.vkFormat) != Format::UNKNOWN, Result::INVALID_ARGUMENT,
+    RETURN_ON_FAILURE(GetLog(), nriConvertVKFormatToNRI(textureVulkanDesc.vkFormat) != Format::UNKNOWN, Result::INVALID_ARGUMENT,
         "Can't create Texture: 'textureVulkanDesc.sampleNum' is 0.");
 
     RETURN_ON_FAILURE(GetLog(), textureVulkanDesc.sampleNum > 0, Result::INVALID_ARGUMENT,

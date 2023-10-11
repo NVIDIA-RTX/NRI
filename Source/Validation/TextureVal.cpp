@@ -47,7 +47,7 @@ TextureVal::TextureVal(DeviceVal& device, Texture& texture, const TextureVulkanD
 {
     m_TextureDesc = {};
     m_TextureDesc.type = GetTextureTypeVK(textureVulkanDesc.vkImageType);
-    m_TextureDesc.format = ConvertVKFormatToNRI(textureVulkanDesc.vkFormat);
+    m_TextureDesc.format = nriConvertVKFormatToNRI(textureVulkanDesc.vkFormat);
 
     static_assert(sizeof(TextureUsageBits) == sizeof(uint16_t), "Unexpected TextureUsageBits sizeof");
     m_TextureDesc.usageMask = (TextureUsageBits)0xffff;

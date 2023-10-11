@@ -8,8 +8,10 @@
     #include <stdbool.h>
 #endif
 
+#define NRI_INTERFACE(name) #name, sizeof(name)
 #define NRI_SET_BIT(bit) (1 << (bit))
 #define NRI_EXPAND(args) args
+#define NRI_NAME_C(name) Nri##name
 
 #ifdef _MSC_VER
     #define _NRI_NARGS(_1, _2, _3, _4, _5, _6_, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55, _56, _57, _58, _59, _60, _61, _62, _63, _64, _65, _66, _67, _68, _69, _70, _71, VAL, ...) VAL
@@ -170,26 +172,23 @@
 #define NRI_VA_ARGS_AT(index, ...) NRI_EXPAND(NRI_MERGE_TOKENS(_NRI_VA_ARGS_AT, index)(__VA_ARGS__))
 
 #ifdef NRI_CPP
-    #ifndef NRI_NAME
-        #define NRI_NAME(name) name
-    #endif
-
-    #define NRI_ENUM_ENTRY(index, ...) NRI_VA_ARGS_AT(index, __VA_ARGS__)
-    #define NRI_EXPAND_ENUM(...) NRI_SEQN(NRI_ENUM_ENTRY, NRI_NARGS(__VA_ARGS__), __VA_ARGS__)
+    #define NRI_NAME(name) name
     #define NRI_NAMESPACE_BEGIN namespace nri {
     #define NRI_NAMESPACE_END }
     #define NRI_FORWARD_STRUCT(name) struct name
     #define NRI_STRUCT(name) NRI_FORWARD_STRUCT(name)
     #define NRI_UNION(name) union name
-    #define NRI_REF(arg) arg&
+    #define NRI_REF &
     #define NRI_REF_ACCESS(arg) (&arg)
-    #define NRI_ENUM_MEMBER(name, member) name::member
     #define NRI_DEFAULT_VALUE(arg) = arg
     #define NRI_ZERO_INIT {}
 
+    #define NRI_ENUM_MEMBER(name, member) name::member
+    #define NRI_ENUM_ENTRY(index, ...) NRI_VA_ARGS_AT(index, __VA_ARGS__)
+    #define NRI_ENUM_EXPAND(...) NRI_SEQN(NRI_ENUM_ENTRY, NRI_NARGS(__VA_ARGS__), __VA_ARGS__)
     #define NRI_ENUM(name, type, ...) \
         enum class name : type { \
-            NRI_EXPAND_ENUM(__VA_ARGS__) \
+            NRI_ENUM_EXPAND(__VA_ARGS__) \
         }
 
     #define NRI_ENUM_BITS(name, type, ...) \
@@ -200,32 +199,29 @@
         constexpr name& operator |= (name& val0, name val1) { val0 = (name)(val0 | val1); return val0; } \
         NRI_ENUM(name, type, __VA_ARGS__)
 #else
-    #ifndef NRI_NAME
-        #define NRI_NAME(name) nri_##name
-    #endif
-
-    #define NRI_ENUM_ENTRY(index, prefix, ...) NRI_MERGE_TOKENS(prefix, NRI_VA_ARGS_AT(index, __VA_ARGS__))
-    #define NRI_EXPAND_ENUM(prefix, ...) NRI_SEQN(NRI_ENUM_ENTRY, NRI_NARGS(__VA_ARGS__), prefix, __VA_ARGS__)
+    #define NRI_NAME(name) NRI_NAME_C(name)
     #define NRI_NAME_(name) NRI_MERGE_TOKENS(NRI_NAME(name), _)
     #define NRI_NAMESPACE_BEGIN
     #define NRI_NAMESPACE_END
     #define NRI_FORWARD_STRUCT(name) typedef struct NRI_NAME(name) NRI_NAME(name)
     #define NRI_STRUCT(name) NRI_FORWARD_STRUCT(name); struct NRI_NAME(name)
     #define NRI_UNION(name) typedef union NRI_NAME(name) NRI_NAME(name); union NRI_NAME(name)
-    #define NRI_REF(arg) arg*
+    #define NRI_REF *
     #define NRI_REF_ACCESS(arg) (arg)
-    #define NRI_ENUM_MEMBER(name, member) NRI_MERGE_TOKENS(NRI_NAME_(name), member)
     #define NRI_DEFAULT_VALUE(arg)
     #define NRI_ZERO_INIT {0}
 
+    #define NRI_ENUM_MEMBER(name, member) NRI_MERGE_TOKENS(NRI_NAME_(name), member)
+    #define NRI_ENUM_ENTRY(index, prefix, ...) NRI_MERGE_TOKENS(prefix, NRI_VA_ARGS_AT(index, __VA_ARGS__))
+    #define NRI_ENUM_EXPAND(prefix, ...) NRI_SEQN(NRI_ENUM_ENTRY, NRI_NARGS(__VA_ARGS__), prefix, __VA_ARGS__)
     #define NRI_ENUM(name, type, ...) \
         typedef type NRI_NAME(name); \
         typedef enum NRI_NAME_(name) { \
-            NRI_EXPAND_ENUM(NRI_NAME_(name), __VA_ARGS__) \
+            NRI_ENUM_EXPAND(NRI_NAME_(name), __VA_ARGS__) \
         } NRI_NAME_(name)
 
     #define NRI_ENUM_BITS(name, type, ...) \
         NRI_ENUM(name, type, __VA_ARGS__)
 #endif
 
-#define NRI_REF_NAME(arg) NRI_REF(NRI_NAME(arg))
+#define NRI_NAME_REF(arg) NRI_NAME(arg) NRI_REF

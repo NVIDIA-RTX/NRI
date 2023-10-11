@@ -12,23 +12,13 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "NRIDeviceCreation.h"
 
-#ifdef NRI_CPP
-    struct ID3D12Device;
-    struct ID3D12CommandQueue;
-    struct ID3D12Resource;
-    struct ID3D12Heap;
-    struct ID3D12GraphicsCommandList;
-    struct ID3D12CommandAllocator;
-    struct IDXGIAdapter;
-#else
-    typedef struct ID3D12Device ID3D12Device;
-    typedef struct ID3D12CommandQueue ID3D12CommandQueue;
-    typedef struct ID3D12Resource ID3D12Resource;
-    typedef struct ID3D12Heap ID3D12Heap;
-    typedef struct ID3D12GraphicsCommandList ID3D12GraphicsCommandList;
-    typedef struct ID3D12CommandAllocator ID3D12CommandAllocator;
-    typedef struct IDXGIAdapter IDXGIAdapter;
-#endif
+NRI_FORWARD_STRUCT(ID3D12Device);
+NRI_FORWARD_STRUCT(ID3D12CommandQueue);
+NRI_FORWARD_STRUCT(ID3D12Resource);
+NRI_FORWARD_STRUCT(ID3D12Heap);
+NRI_FORWARD_STRUCT(ID3D12GraphicsCommandList);
+NRI_FORWARD_STRUCT(ID3D12CommandAllocator);
+NRI_FORWARD_STRUCT(IDXGIAdapter);
 
 NRI_NAMESPACE_BEGIN
 
@@ -78,21 +68,15 @@ NRI_STRUCT(AccelerationStructureD3D12Desc)
 
 NRI_STRUCT(WrapperD3D12Interface)
 {
-    NRI_NAME(Result) (NRI_CALL *CreateCommandBufferD3D12)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(CommandBufferD3D12Desc) commandBufferDesc, NRI_REF_NAME(CommandBuffer*) commandBuffer);
-    NRI_NAME(Result) (NRI_CALL *CreateBufferD3D12)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(BufferD3D12Desc) bufferDesc, NRI_REF_NAME(Buffer*) buffer);
-    NRI_NAME(Result) (NRI_CALL *CreateTextureD3D12)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(TextureD3D12Desc) textureDesc, NRI_REF_NAME(Texture*) texture);
-    NRI_NAME(Result) (NRI_CALL *CreateMemoryD3D12)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(MemoryD3D12Desc) memoryDesc, NRI_REF_NAME(Memory*) memory);
-    NRI_NAME(Result) (NRI_CALL *CreateAccelerationStructureD3D12)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(AccelerationStructureD3D12Desc) accelerationStructureDesc, NRI_REF_NAME(AccelerationStructure*) accelerationStructure);
+    NRI_NAME(Result) (NRI_CALL *CreateCommandBufferD3D12)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(CommandBufferD3D12Desc) commandBufferDesc, NRI_NAME_REF(CommandBuffer*) commandBuffer);
+    NRI_NAME(Result) (NRI_CALL *CreateBufferD3D12)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(BufferD3D12Desc) bufferDesc, NRI_NAME_REF(Buffer*) buffer);
+    NRI_NAME(Result) (NRI_CALL *CreateTextureD3D12)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(TextureD3D12Desc) textureDesc, NRI_NAME_REF(Texture*) texture);
+    NRI_NAME(Result) (NRI_CALL *CreateMemoryD3D12)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(MemoryD3D12Desc) memoryDesc, NRI_NAME_REF(Memory*) memory);
+    NRI_NAME(Result) (NRI_CALL *CreateAccelerationStructureD3D12)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(AccelerationStructureD3D12Desc) accelerationStructureDesc, NRI_NAME_REF(AccelerationStructure*) accelerationStructure);
 };
 
-#ifdef NRI_CPP
-    NRI_API Result NRI_CALL CreateDeviceFromD3D12Device(const DeviceCreationD3D12Desc& deviceDesc, Device*& device);
-    NRI_API Format NRI_CALL ConvertDXGIFormatToNRI(uint32_t dxgiFormat);
-    NRI_API uint32_t NRI_CALL ConvertNRIFormatToDXGI(Format format);
-#endif
+NRI_API NRI_NAME(Result) NRI_CALL nriCreateDeviceFromD3D12Device(const NRI_NAME_REF(DeviceCreationD3D12Desc) deviceDesc, NRI_NAME_REF(Device*) device);
+NRI_API NRI_NAME(Format) NRI_CALL nriConvertDXGIFormatToNRI(uint32_t dxgiFormat);
+NRI_API uint32_t NRI_CALL nriConvertNRIFormatToDXGI(Format format);
 
 NRI_NAMESPACE_END
-
-NRIC_API uint8_t NRI_CALL nri_CreateDeviceFromD3D12Device(const void* deviceDesc, void** device);
-NRIC_API uint8_t NRI_CALL nri_ConvertDXGIFormatToNRI(uint32_t dxgiFormat);
-NRIC_API uint32_t NRI_CALL nri_ConvertNRIFormatToDXGI(uint8_t format);

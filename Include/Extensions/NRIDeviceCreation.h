@@ -70,14 +70,8 @@ NRI_STRUCT(DeviceCreationDesc)
     bool skipLiveObjectsReporting;
 };
 
-#ifdef NRI_CPP
-    NRI_API Result NRI_CALL GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroups, uint32_t& physicalDeviceGroupNum);
-    NRI_API Result NRI_CALL CreateDevice(const DeviceCreationDesc& deviceCreationDesc, Device*& device);
-    NRI_API void NRI_CALL DestroyDevice(Device& device);
-#endif
+NRI_API NRI_NAME(Result) NRI_CALL nriGetPhysicalDevices(NRI_NAME(PhysicalDeviceGroup)* physicalDeviceGroups, uint32_t NRI_REF physicalDeviceGroupNum);
+NRI_API NRI_NAME(Result) NRI_CALL nriCreateDevice(const NRI_NAME_REF(DeviceCreationDesc) deviceCreationDesc, NRI_NAME_REF(Device*) device);
+NRI_API void NRI_CALL nriDestroyDevice(NRI_NAME_REF(Device) device);
 
 NRI_NAMESPACE_END
-
-NRIC_API uint8_t NRI_CALL nri_GetPhysicalDevices(void* physicalDeviceGroups, uint32_t* physicalDeviceGroupNum);
-NRIC_API uint8_t NRI_CALL nri_CreateDevice(const void* deviceCreationDesc, void** device);
-NRIC_API void NRI_CALL nri_DestroyDevice(void* device);

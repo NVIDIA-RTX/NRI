@@ -51,15 +51,15 @@ NRI_STRUCT(ResourceGroupDesc)
 
 NRI_STRUCT(HelperInterface)
 {
-    uint32_t (NRI_CALL *CalculateAllocationNumber)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(ResourceGroupDesc) resourceGroupDesc);
-    NRI_NAME(Result) (NRI_CALL *AllocateAndBindMemory)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(ResourceGroupDesc) resourceGroupDesc, NRI_NAME(Memory)** allocations);
-    NRI_NAME(Result) (NRI_CALL *ChangeResourceStates)(NRI_REF_NAME(CommandQueue) commandQueue, const NRI_REF_NAME(TransitionBarrierDesc) transitionBarriers);
-    NRI_NAME(Result) (NRI_CALL *UploadData)(NRI_REF_NAME(CommandQueue) commandQueue, const NRI_NAME(TextureUploadDesc)* textureUploadDescs, uint32_t textureUploadDescNum,
+    uint32_t (NRI_CALL *CalculateAllocationNumber)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(ResourceGroupDesc) resourceGroupDesc);
+    NRI_NAME(Result) (NRI_CALL *AllocateAndBindMemory)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(ResourceGroupDesc) resourceGroupDesc, NRI_NAME(Memory)** allocations);
+    NRI_NAME(Result) (NRI_CALL *ChangeResourceStates)(NRI_NAME_REF(CommandQueue) commandQueue, const NRI_NAME_REF(TransitionBarrierDesc) transitionBarriers);
+    NRI_NAME(Result) (NRI_CALL *UploadData)(NRI_NAME_REF(CommandQueue) commandQueue, const NRI_NAME(TextureUploadDesc)* textureUploadDescs, uint32_t textureUploadDescNum,
         const NRI_NAME(BufferUploadDesc)* bufferUploadDescs, uint32_t bufferUploadDescNum);
-    NRI_NAME(Result) (NRI_CALL *WaitForIdle)(NRI_REF_NAME(CommandQueue) commandQueue);
+    NRI_NAME(Result) (NRI_CALL *WaitForIdle)(NRI_NAME_REF(CommandQueue) commandQueue);
 };
 
-static inline NRI_NAME(Format) NRI_NAME(GetSupportedDepthFormat)(const NRI_REF_NAME(CoreInterface) coreInterface, const NRI_REF_NAME(Device) device, uint32_t minBits, bool stencil)
+static inline NRI_NAME(Format) NRI_NAME(GetSupportedDepthFormat)(const NRI_NAME_REF(CoreInterface) coreInterface, const NRI_NAME_REF(Device) device, uint32_t minBits, bool stencil)
 {
     if (stencil)
     {
@@ -174,7 +174,7 @@ static inline NRI_NAME(TextureTransitionBarrierDesc) NRI_NAME(TextureTransitionF
     return textureTransitionBarrierDesc;
 }
 
-static inline NRI_NAME(TextureTransitionBarrierDesc) NRI_NAME(TextureTransitionFromState)(NRI_REF_NAME(TextureTransitionBarrierDesc) prevState, NRI_NAME(AccessBits) nextAccess, NRI_NAME(TextureLayout) nextLayout,
+static inline NRI_NAME(TextureTransitionBarrierDesc) NRI_NAME(TextureTransitionFromState)(NRI_NAME_REF(TextureTransitionBarrierDesc) prevState, NRI_NAME(AccessBits) nextAccess, NRI_NAME(TextureLayout) nextLayout,
     uint16_t mipOffset NRI_DEFAULT_VALUE(0), uint16_t mipNum NRI_DEFAULT_VALUE(NRI_NAME(REMAINING_MIP_LEVELS)))
 {
     NRI_REF_ACCESS(prevState)->mipOffset = mipOffset;

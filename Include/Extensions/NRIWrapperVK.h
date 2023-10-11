@@ -12,11 +12,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "NRIDeviceCreation.h"
 
-#ifdef NRI_CPP
-    struct VkImageSubresourceRange;
-#else
-    typedef struct VkImageSubresourceRange VkImageSubresourceRange;
-#endif
+NRI_FORWARD_STRUCT(VkImageSubresourceRange);
 
 NRI_NAMESPACE_BEGIN
 
@@ -123,32 +119,26 @@ NRI_STRUCT(AccelerationStructureVulkanDesc)
 
 NRI_STRUCT(WrapperVKInterface)
 {
-    NRI_NAME(Result) (NRI_CALL *CreateCommandQueueVK)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(CommandQueueVulkanDesc) commandQueueVulkanDesc, NRI_REF_NAME(CommandQueue*) commandQueue);
-    NRI_NAME(Result) (NRI_CALL *CreateCommandAllocatorVK)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(CommandAllocatorVulkanDesc) commandAllocatorVulkanDesc, NRI_REF_NAME(CommandAllocator*) commandAllocator);
-    NRI_NAME(Result) (NRI_CALL *CreateCommandBufferVK)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(CommandBufferVulkanDesc) commandBufferVulkanDesc, NRI_REF_NAME(CommandBuffer*) commandBuffer);
-    NRI_NAME(Result) (NRI_CALL *CreateDescriptorPoolVK)(NRI_REF_NAME(Device) device, NRIVkDescriptorPool vkDescriptorPool, NRI_REF_NAME(DescriptorPool*) descriptorPool);
-    NRI_NAME(Result) (NRI_CALL *CreateBufferVK)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(BufferVulkanDesc) bufferVulkanDesc, NRI_REF_NAME(Buffer*) buffer);
-    NRI_NAME(Result) (NRI_CALL *CreateTextureVK)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(TextureVulkanDesc) textureVulkanDesc, NRI_REF_NAME(Texture*) texture);
-    NRI_NAME(Result) (NRI_CALL *CreateMemoryVK)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(MemoryVulkanDesc) memoryVulkanDesc, NRI_REF_NAME(Memory*) memory);
-    NRI_NAME(Result) (NRI_CALL *CreateGraphicsPipelineVK)(NRI_REF_NAME(Device) device, NRIVkPipeline vkPipeline, NRI_REF_NAME(Pipeline*) pipeline);
-    NRI_NAME(Result) (NRI_CALL *CreateComputePipelineVK)(NRI_REF_NAME(Device) device, NRIVkPipeline vkPipeline, NRI_REF_NAME(Pipeline*) pipeline);
-    NRI_NAME(Result) (NRI_CALL *CreateQueryPoolVK)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(QueryPoolVulkanDesc) queryPoolVulkanDesc, NRI_REF_NAME(QueryPool*) queryPool);
-    NRI_NAME(Result) (NRI_CALL *CreateAccelerationStructureVK)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(AccelerationStructureVulkanDesc) accelerationStructureDesc, NRI_REF_NAME(AccelerationStructure*) accelerationStructure);
+    NRI_NAME(Result) (NRI_CALL *CreateCommandQueueVK)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(CommandQueueVulkanDesc) commandQueueVulkanDesc, NRI_NAME_REF(CommandQueue*) commandQueue);
+    NRI_NAME(Result) (NRI_CALL *CreateCommandAllocatorVK)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(CommandAllocatorVulkanDesc) commandAllocatorVulkanDesc, NRI_NAME_REF(CommandAllocator*) commandAllocator);
+    NRI_NAME(Result) (NRI_CALL *CreateCommandBufferVK)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(CommandBufferVulkanDesc) commandBufferVulkanDesc, NRI_NAME_REF(CommandBuffer*) commandBuffer);
+    NRI_NAME(Result) (NRI_CALL *CreateDescriptorPoolVK)(NRI_NAME_REF(Device) device, NRIVkDescriptorPool vkDescriptorPool, NRI_NAME_REF(DescriptorPool*) descriptorPool);
+    NRI_NAME(Result) (NRI_CALL *CreateBufferVK)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(BufferVulkanDesc) bufferVulkanDesc, NRI_NAME_REF(Buffer*) buffer);
+    NRI_NAME(Result) (NRI_CALL *CreateTextureVK)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(TextureVulkanDesc) textureVulkanDesc, NRI_NAME_REF(Texture*) texture);
+    NRI_NAME(Result) (NRI_CALL *CreateMemoryVK)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(MemoryVulkanDesc) memoryVulkanDesc, NRI_NAME_REF(Memory*) memory);
+    NRI_NAME(Result) (NRI_CALL *CreateGraphicsPipelineVK)(NRI_NAME_REF(Device) device, NRIVkPipeline vkPipeline, NRI_NAME_REF(Pipeline*) pipeline);
+    NRI_NAME(Result) (NRI_CALL *CreateComputePipelineVK)(NRI_NAME_REF(Device) device, NRIVkPipeline vkPipeline, NRI_NAME_REF(Pipeline*) pipeline);
+    NRI_NAME(Result) (NRI_CALL *CreateQueryPoolVK)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(QueryPoolVulkanDesc) queryPoolVulkanDesc, NRI_NAME_REF(QueryPool*) queryPool);
+    NRI_NAME(Result) (NRI_CALL *CreateAccelerationStructureVK)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(AccelerationStructureVulkanDesc) accelerationStructureDesc, NRI_NAME_REF(AccelerationStructure*) accelerationStructure);
 
-    NRIVkPhysicalDevice (NRI_CALL *GetVkPhysicalDevice)(const NRI_REF_NAME(Device) device);
-    NRIVkInstance (NRI_CALL *GetVkInstance)(const NRI_REF_NAME(Device) device);
-    NRIVkProcAddress(NRI_CALL *GetVkGetInstanceProcAddr)(const NRI_REF_NAME(Device) device);
-    NRIVkProcAddress(NRI_CALL *GetVkGetDeviceProcAddr)(const NRI_REF_NAME(Device) device);
+    NRIVkPhysicalDevice (NRI_CALL *GetVkPhysicalDevice)(const NRI_NAME_REF(Device) device);
+    NRIVkInstance (NRI_CALL *GetVkInstance)(const NRI_NAME_REF(Device) device);
+    NRIVkProcAddress(NRI_CALL *GetVkGetInstanceProcAddr)(const NRI_NAME_REF(Device) device);
+    NRIVkProcAddress(NRI_CALL *GetVkGetDeviceProcAddr)(const NRI_NAME_REF(Device) device);
 };
 
-#ifdef NRI_CPP
-    NRI_API Result NRI_CALL CreateDeviceFromVkDevice(const DeviceCreationVulkanDesc& deviceDesc, Device*& device);
-    NRI_API Format NRI_CALL ConvertVKFormatToNRI(uint32_t vkFormat);
-    NRI_API uint32_t NRI_CALL ConvertNRIFormatToVK(Format format);
-#endif
+NRI_API NRI_NAME(Result) NRI_CALL nriCreateDeviceFromVkDevice(const NRI_NAME_REF(DeviceCreationVulkanDesc) deviceDesc, NRI_NAME_REF(Device*) device);
+NRI_API NRI_NAME(Format) NRI_CALL nriConvertVKFormatToNRI(uint32_t vkFormat);
+NRI_API uint32_t NRI_CALL nriConvertNRIFormatToVK(Format format);
 
 NRI_NAMESPACE_END
-
-NRIC_API uint8_t NRI_CALL nri_CreateDeviceFromVkDevice(const void* deviceDesc, void** device);
-NRIC_API uint8_t NRI_CALL nri_ConvertVKFormatToNRI(uint32_t vkFormat);
-NRIC_API uint32_t NRI_CALL nri_ConvertNRIFormatToVK(uint8_t format);

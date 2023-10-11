@@ -105,15 +105,15 @@ NRI_STRUCT(HdrMetadata)
 
 NRI_STRUCT(SwapChainInterface)
 {
-    NRI_NAME(Result) (NRI_CALL *CreateSwapChain)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(SwapChainDesc) swapChainDesc, NRI_REF_NAME(SwapChain*) swapChain);
-    void (NRI_CALL *DestroySwapChain)(NRI_REF_NAME(SwapChain) swapChain);
-    void (NRI_CALL *SetSwapChainDebugName)(NRI_REF_NAME(SwapChain) swapChain, const char* name);
-    NRI_NAME(Texture)* const* (NRI_CALL *GetSwapChainTextures)(const NRI_REF_NAME(SwapChain) swapChain, NRI_REF(uint32_t) textureNum, NRI_REF_NAME(Format) format);
-    uint32_t (NRI_CALL *AcquireNextSwapChainTexture)(NRI_REF_NAME(SwapChain) swapChain);
-    NRI_NAME(Result) (NRI_CALL *SwapChainPresent)(NRI_REF_NAME(SwapChain) swapChain);
-    NRI_NAME(Result) (NRI_CALL *SetSwapChainHdrMetadata)(NRI_REF_NAME(SwapChain) swapChain, const NRI_REF_NAME(HdrMetadata) hdrMetadata);
-    NRI_NAME(Result) (NRI_CALL *GetDisplays)(NRI_REF_NAME(Device) device, NRI_NAME(Display)** displays, NRI_REF(uint32_t) displayNum);
-    NRI_NAME(Result) (NRI_CALL *GetDisplaySize)(NRI_REF_NAME(Device) device, NRI_REF_NAME(Display) display, NRI_REF(uint16_t) width, NRI_REF(uint16_t) height);
+    NRI_NAME(Result) (NRI_CALL *CreateSwapChain)(NRI_NAME_REF(Device) device, const NRI_NAME_REF(SwapChainDesc) swapChainDesc, NRI_NAME_REF(SwapChain*) swapChain);
+    void (NRI_CALL *DestroySwapChain)(NRI_NAME_REF(SwapChain) swapChain);
+    void (NRI_CALL *SetSwapChainDebugName)(NRI_NAME_REF(SwapChain) swapChain, const char* name);
+    NRI_NAME(Texture)* const* (NRI_CALL *GetSwapChainTextures)(const NRI_NAME_REF(SwapChain) swapChain, uint32_t NRI_REF textureNum, NRI_NAME_REF(Format) format);
+    uint32_t (NRI_CALL *AcquireNextSwapChainTexture)(NRI_NAME_REF(SwapChain) swapChain);
+    NRI_NAME(Result) (NRI_CALL *SwapChainPresent)(NRI_NAME_REF(SwapChain) swapChain);
+    NRI_NAME(Result) (NRI_CALL *SetSwapChainHdrMetadata)(NRI_NAME_REF(SwapChain) swapChain, const NRI_NAME_REF(HdrMetadata) hdrMetadata);
+    NRI_NAME(Result) (NRI_CALL *GetDisplays)(NRI_NAME_REF(Device) device, NRI_NAME(Display)** displays, uint32_t NRI_REF displayNum);
+    NRI_NAME(Result) (NRI_CALL *GetDisplaySize)(NRI_NAME_REF(Device) device, NRI_NAME_REF(Display) display, uint16_t NRI_REF width, uint16_t NRI_REF height);
 };
 
 NRI_NAMESPACE_END

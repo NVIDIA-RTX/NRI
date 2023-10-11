@@ -231,10 +231,8 @@ else ()
 
     if (WIN32)
         target_compile_definitions (${PROJECT_NAME} PRIVATE "NRI_API=extern \"C\" __declspec(dllexport)")
-        target_compile_definitions (${PROJECT_NAME} PRIVATE "NRIC_API=extern \"C\" __declspec(dllexport)")
     else ()
         target_compile_definitions (${PROJECT_NAME} PRIVATE "NRI_API=extern \"C\" __attribute__((visibility(\"default\")))")
-        target_compile_definitions (${PROJECT_NAME} PRIVATE "NRIC_API=extern \"C\" __attribute__((visibility(\"default\")))")
     endif ()
 endif ()
 
