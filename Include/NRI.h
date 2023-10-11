@@ -50,7 +50,7 @@ NRIC_API uint8_t NRI_CALL nri_GetInterface(const void* device, const char* inter
 
 NRI_NAMESPACE_BEGIN
 
-#if defined(NRI_CPP)
+#ifdef NRI_CPP
     NRI_API Result NRI_CALL GetInterface(const Device& device, const char* interfaceName, size_t interfaceSize, void* interfacePtr);
 #endif
 

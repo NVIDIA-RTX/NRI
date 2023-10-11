@@ -70,7 +70,7 @@ NRI_STRUCT(DeviceCreationDesc)
     bool skipLiveObjectsReporting;
 };
 
-#if defined(NRI_CPP)
+#ifdef NRI_CPP
     NRI_API Result NRI_CALL GetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroups, uint32_t& physicalDeviceGroupNum);
     NRI_API Result NRI_CALL CreateDevice(const DeviceCreationDesc& deviceCreationDesc, Device*& device);
     NRI_API void NRI_CALL DestroyDevice(Device& device);

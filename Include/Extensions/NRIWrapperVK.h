@@ -12,7 +12,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "NRIDeviceCreation.h"
 
-#if defined(NRI_CPP)
+#ifdef NRI_CPP
     struct VkImageSubresourceRange;
 #else
     typedef struct VkImageSubresourceRange VkImageSubresourceRange;
@@ -141,7 +141,7 @@ NRI_STRUCT(WrapperVKInterface)
     NRIVkProcAddress(NRI_CALL *GetVkGetDeviceProcAddr)(const NRI_REF_NAME(Device) device);
 };
 
-#if defined(NRI_CPP)
+#ifdef NRI_CPP
     NRI_API Result NRI_CALL CreateDeviceFromVkDevice(const DeviceCreationVulkanDesc& deviceDesc, Device*& device);
     NRI_API Format NRI_CALL ConvertVKFormatToNRI(uint32_t vkFormat);
     NRI_API uint32_t NRI_CALL ConvertNRIFormatToVK(Format format);

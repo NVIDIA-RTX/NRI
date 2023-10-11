@@ -12,7 +12,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "NRIDeviceCreation.h"
 
-#if defined(NRI_CPP)
+#ifdef NRI_CPP
     struct ID3D12Device;
     struct ID3D12CommandQueue;
     struct ID3D12Resource;
@@ -85,7 +85,7 @@ NRI_STRUCT(WrapperD3D12Interface)
     NRI_NAME(Result) (NRI_CALL *CreateAccelerationStructureD3D12)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(AccelerationStructureD3D12Desc) accelerationStructureDesc, NRI_REF_NAME(AccelerationStructure*) accelerationStructure);
 };
 
-#if defined(NRI_CPP)
+#ifdef NRI_CPP
     NRI_API Result NRI_CALL CreateDeviceFromD3D12Device(const DeviceCreationD3D12Desc& deviceDesc, Device*& device);
     NRI_API Format NRI_CALL ConvertDXGIFormatToNRI(uint32_t dxgiFormat);
     NRI_API uint32_t NRI_CALL ConvertNRIFormatToDXGI(Format format);

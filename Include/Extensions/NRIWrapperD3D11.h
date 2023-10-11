@@ -12,7 +12,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include "NRIDeviceCreation.h"
 
-#if defined(NRI_CPP)
+#ifdef NRI_CPP
     struct ID3D11Device;
     struct ID3D11Resource;
     struct ID3D11DeviceContext;
@@ -56,7 +56,7 @@ NRI_STRUCT(WrapperD3D11Interface)
     NRI_NAME(Result) (NRI_CALL *CreateTextureD3D11)(NRI_REF_NAME(Device) device, const NRI_REF_NAME(TextureD3D11Desc) textureDesc, NRI_REF_NAME(Texture*) texture);
 };
 
-#if defined(NRI_CPP)
+#ifdef NRI_CPP
     NRI_API Result NRI_CALL CreateDeviceFromD3D11Device(const DeviceCreationD3D11Desc& deviceDesc, Device*& device);
     NRI_API Format NRI_CALL ConvertDXGIFormatToNRI(uint32_t dxgiFormat);
     NRI_API uint32_t NRI_CALL ConvertNRIFormatToDXGI(Format format);
