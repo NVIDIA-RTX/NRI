@@ -14,6 +14,7 @@
 
 #define NRI_NAME_C(name) Nri##name
 #define NRI_FUNC_NAME_C(name) nri##name
+#define NRI_CONST_NAME_C(name) NRI_##name
 
 #ifdef _MSC_VER
     #define _NRI_NARGS(_1, _2, _3, _4, _5, _6_, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48, _49, _50, _51, _52, _53, _54, _55, _56, _57, _58, _59, _60, _61, _62, _63, _64, _65, _66, _67, _68, _69, _70, _71, VAL, ...) VAL
@@ -176,6 +177,7 @@
 #ifdef NRI_CPP
     #define NRI_NAME(name) name
     #define NRI_FUNC_NAME(name) name
+    #define NRI_CONST_NAME(name) name
     #define NRI_NAMESPACE_BEGIN namespace nri {
     #define NRI_NAMESPACE_END }
     #define NRI_FORWARD_STRUCT(name) struct name
@@ -204,6 +206,7 @@
 #else
     #define NRI_NAME(name) NRI_NAME_C(name)
     #define NRI_FUNC_NAME(name) NRI_FUNC_NAME_C(name)
+    #define NRI_CONST_NAME(name) NRI_CONST_NAME_C(name)
     #define NRI_NAME_(name) NRI_MERGE_TOKENS(NRI_NAME(name), _)
     #define NRI_NAMESPACE_BEGIN
     #define NRI_NAMESPACE_END

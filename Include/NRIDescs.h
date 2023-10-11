@@ -30,12 +30,12 @@ NRI_FORWARD_STRUCT(Pipeline);
 NRI_FORWARD_STRUCT(QueryPool);
 NRI_FORWARD_STRUCT(Texture);
 
-static const uint16_t NRI_NAME(REMAINING_ARRAY_LAYERS) = 0;
-static const uint16_t NRI_NAME(REMAINING_MIP_LEVELS) = 0;
-static const uint16_t NRI_NAME(WHOLE_SIZE) = 0;
-static const uint32_t NRI_NAME(WHOLE_DEVICE_GROUP) = 0;
-static const bool NRI_NAME(VARIABLE_DESCRIPTOR_NUM) = true;
-static const bool NRI_NAME(DESCRIPTOR_ARRAY) = true;
+static const uint16_t NRI_CONST_NAME(REMAINING_ARRAY_LAYERS) = 0;
+static const uint16_t NRI_CONST_NAME(REMAINING_MIP_LEVELS) = 0;
+static const uint16_t NRI_CONST_NAME(WHOLE_SIZE) = 0;
+static const uint32_t NRI_CONST_NAME(WHOLE_DEVICE_GROUP) = 0;
+static const bool NRI_CONST_NAME(VARIABLE_DESCRIPTOR_NUM) = true;
+static const bool NRI_CONST_NAME(DESCRIPTOR_ARRAY) = true;
 
 typedef uint32_t NRI_NAME(MemoryType);
 
