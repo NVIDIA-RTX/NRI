@@ -51,7 +51,5 @@ NRI_STRUCT(WrapperD3D11Interface)
 };
 
 NRI_API NRI_NAME(Result) NRI_CALL nriCreateDeviceFromD3D11Device(const NRI_NAME_REF(DeviceCreationD3D11Desc) deviceDesc, NRI_NAME_REF(Device*) device);
-NRI_API NRI_NAME(Format) NRI_CALL nriConvertDXGIFormatToNRI(uint32_t dxgiFormat);
-NRI_API uint32_t NRI_CALL nriConvertNRIFormatToDXGI(NRI_NAME(Format) format);
 
 NRI_NAMESPACE_END

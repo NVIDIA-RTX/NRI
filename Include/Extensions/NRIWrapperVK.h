@@ -138,7 +138,5 @@ NRI_STRUCT(WrapperVKInterface)
 };
 
 NRI_API NRI_NAME(Result) NRI_CALL nriCreateDeviceFromVkDevice(const NRI_NAME_REF(DeviceCreationVulkanDesc) deviceDesc, NRI_NAME_REF(Device*) device);
-NRI_API NRI_NAME(Format) NRI_CALL nriConvertVKFormatToNRI(uint32_t vkFormat);
-NRI_API uint32_t NRI_CALL nriConvertNRIFormatToVK(Format format);
 
 NRI_NAMESPACE_END

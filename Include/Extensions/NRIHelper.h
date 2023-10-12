@@ -12,6 +12,11 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 NRI_NAMESPACE_BEGIN
 
+NRI_API NRI_NAME(Format) NRI_CALL nriConvertDXGIFormatToNRI(uint32_t dxgiFormat);
+NRI_API uint32_t NRI_CALL nriConvertNRIFormatToDXGI(NRI_NAME(Format) format);
+NRI_API NRI_NAME(Format) NRI_CALL nriConvertVKFormatToNRI(uint32_t vkFormat);
+NRI_API uint32_t NRI_CALL nriConvertNRIFormatToVK(NRI_NAME(Format) format);
+
 NRI_STRUCT(TextureSubresourceUploadDesc)
 {
     const void* slices;
