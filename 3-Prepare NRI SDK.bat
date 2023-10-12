@@ -17,6 +17,7 @@ copy "..\_Build\Debug\NRI.lib" "Lib\Debug"
 copy "..\_Build\Debug\NRI.pdb" "Lib\Debug"
 copy "..\_Build\Release\NRI.dll" "Lib\Release"
 copy "..\_Build\Release\NRI.lib" "Lib\Release"
+copy "..\_Build\Release\NRI.pdb" "Lib\Release"
 copy "..\%NRI_DIR%\LICENSE.txt" "."
 
 cd ..
