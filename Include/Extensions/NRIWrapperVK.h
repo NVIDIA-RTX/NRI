@@ -49,7 +49,6 @@ NRI_STRUCT(DeviceCreationVulkanDesc)
     NRI_NAME(SPIRVBindingOffsets) spirvBindingOffsets;
     const char* vulkanLoaderPath;
     bool enableNRIValidation;
-    bool enableAPIValidation;
 };
 
 NRI_STRUCT(CommandQueueVulkanDesc)

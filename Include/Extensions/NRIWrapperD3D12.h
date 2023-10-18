@@ -32,7 +32,6 @@ NRI_STRUCT(DeviceCreationD3D12Desc)
     NRI_NAME(CallbackInterface) callbackInterface;
     NRI_NAME(MemoryAllocatorInterface) memoryAllocatorInterface;
     bool enableNRIValidation;
-    bool enableAPIValidation;
 };
 
 NRI_STRUCT(CommandBufferD3D12Desc)

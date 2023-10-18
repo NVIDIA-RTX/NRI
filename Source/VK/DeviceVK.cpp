@@ -272,16 +272,6 @@ Result DeviceVK::Create(const DeviceCreationVulkanDesc& deviceCreationVulkanDesc
     const VkPhysicalDevice* physicalDevices = (VkPhysicalDevice*)deviceCreationVulkanDesc.vkPhysicalDevices;
     m_PhysicalDevices.insert(m_PhysicalDevices.begin(), physicalDevices, physicalDevices + deviceCreationVulkanDesc.deviceGroupSize);
 
-    m_AllocationCallbacks.pUserData = &GetStdAllocator();
-    m_AllocationCallbacks.pfnAllocation = vkAllocateHostMemory;
-    m_AllocationCallbacks.pfnReallocation = vkReallocateHostMemory;
-    m_AllocationCallbacks.pfnFree = vkFreeHostMemory;
-    m_AllocationCallbacks.pfnInternalAllocation = vkHostMemoryInternalAllocationNotification;
-    m_AllocationCallbacks.pfnInternalFree = vkHostMemoryInternalFreeNotification;
-
-    if (deviceCreationVulkanDesc.enableAPIValidation)
-        m_AllocationCallbackPtr = &m_AllocationCallbacks;
-
     const char* loaderPath = deviceCreationVulkanDesc.vulkanLoaderPath ? deviceCreationVulkanDesc.vulkanLoaderPath : VULKAN_LOADER_NAME;
     m_Loader = LoadSharedLibrary(loaderPath);
     if (!m_Loader)
@@ -370,10 +360,7 @@ Result DeviceVK::Create(const DeviceCreationVulkanDesc& deviceCreationVulkanDesc
 
     // Finalize
     CreateCommandQueues();
-    FillDesc(deviceCreationVulkanDesc.enableAPIValidation);
-
-    if (deviceCreationVulkanDesc.enableAPIValidation)
-        ReportDeviceGroupInfo();
+    FillDesc(false);
 
     return res;
 }

@@ -161,7 +161,6 @@ NRI_API Result NRI_CALL nriCreateDeviceFromD3D11Device(const DeviceCreationD3D11
     deviceCreationDesc.memoryAllocatorInterface = deviceCreationD3D11Desc.memoryAllocatorInterface;
     deviceCreationDesc.graphicsAPI = GraphicsAPI::D3D11;
     deviceCreationDesc.enableNRIValidation = deviceCreationD3D11Desc.enableNRIValidation;
-    deviceCreationDesc.enableAPIValidation = deviceCreationD3D11Desc.enableAPIValidation;
     deviceCreationDesc.skipLiveObjectsReporting = true;
 
     CheckAndSetDefaultCallbacks(deviceCreationDesc.callbackInterface);
@@ -192,7 +191,6 @@ NRI_API Result NRI_CALL nriCreateDeviceFromD3D12Device(const DeviceCreationD3D12
     deviceCreationDesc.memoryAllocatorInterface = deviceCreationD3D12Desc.memoryAllocatorInterface;
     deviceCreationDesc.graphicsAPI = GraphicsAPI::D3D12;
     deviceCreationDesc.enableNRIValidation = deviceCreationD3D12Desc.enableNRIValidation;
-    deviceCreationDesc.enableAPIValidation = deviceCreationD3D12Desc.enableAPIValidation;
 
     CheckAndSetDefaultCallbacks(deviceCreationDesc.callbackInterface);
     CheckAndSetDefaultAllocator(deviceCreationDesc.memoryAllocatorInterface);
@@ -223,7 +221,6 @@ NRI_API Result NRI_CALL nriCreateDeviceFromVkDevice(const DeviceCreationVulkanDe
     deviceCreationDesc.spirvBindingOffsets = deviceCreationVulkanDesc.spirvBindingOffsets;
     deviceCreationDesc.graphicsAPI = GraphicsAPI::VULKAN;
     deviceCreationDesc.enableNRIValidation = deviceCreationVulkanDesc.enableNRIValidation;
-    deviceCreationDesc.enableAPIValidation = deviceCreationVulkanDesc.enableAPIValidation;
 
     CheckAndSetDefaultCallbacks(deviceCreationDesc.callbackInterface);
     CheckAndSetDefaultAllocator(deviceCreationDesc.memoryAllocatorInterface);

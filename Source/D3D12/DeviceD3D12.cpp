@@ -123,14 +123,21 @@ bool DeviceD3D12::GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const
 Result DeviceD3D12::Create(const DeviceCreationD3D12Desc& deviceCreationDesc)
 {
     m_SkipLiveObjectsReporting = true;
-    m_Device = (ID3D12Device*)deviceCreationDesc.d3d12Device;
+    m_Device = deviceCreationDesc.d3d12Device;
+
+    ComPtr<IDXGIFactory4> dxgiFactory;
+    HRESULT hr = CreateDXGIFactory2(0, IID_PPV_ARGS(&dxgiFactory));
+    RETURN_ON_BAD_HRESULT(GetLog(), hr, "CreateDXGIFactory2()");
+
+    hr = dxgiFactory->EnumAdapterByLuid(m_Device->GetAdapterLuid(), IID_PPV_ARGS(&m_Adapter));
+    RETURN_ON_BAD_HRESULT(GetLog(), hr, "IDXGIFactory4::EnumAdapterByLuid()");
 
     if (deviceCreationDesc.d3d12GraphicsQueue)
-        CreateCommandQueue((ID3D12CommandQueue*)deviceCreationDesc.d3d12GraphicsQueue, m_CommandQueues[(uint32_t)CommandQueueType::GRAPHICS]);
+        CreateCommandQueue(deviceCreationDesc.d3d12GraphicsQueue, m_CommandQueues[(uint32_t)CommandQueueType::GRAPHICS]);
     if (deviceCreationDesc.d3d12ComputeQueue)
-        CreateCommandQueue((ID3D12CommandQueue*)deviceCreationDesc.d3d12ComputeQueue, m_CommandQueues[(uint32_t)CommandQueueType::COMPUTE]);
+        CreateCommandQueue(deviceCreationDesc.d3d12ComputeQueue, m_CommandQueues[(uint32_t)CommandQueueType::COMPUTE]);
     if (deviceCreationDesc.d3d12CopyQueue)
-        CreateCommandQueue((ID3D12CommandQueue*)deviceCreationDesc.d3d12CopyQueue, m_CommandQueues[(uint32_t)CommandQueueType::COPY]);
+        CreateCommandQueue(deviceCreationDesc.d3d12CopyQueue, m_CommandQueues[(uint32_t)CommandQueueType::COPY]);
 
     m_Device->QueryInterface(IID_PPV_ARGS(&m_Device5));
 
@@ -148,7 +155,7 @@ Result DeviceD3D12::Create(const DeviceCreationD3D12Desc& deviceCreationDesc)
     commandSignatureDesc.NodeMask = NRI_TEMP_NODE_MASK;
     commandSignatureDesc.ByteStride = 12;
 
-    HRESULT hr = m_Device->CreateCommandSignature(&commandSignatureDesc, nullptr, IID_PPV_ARGS(&m_DispatchCommandSignature));
+    hr = m_Device->CreateCommandSignature(&commandSignatureDesc, nullptr, IID_PPV_ARGS(&m_DispatchCommandSignature));
     RETURN_ON_BAD_HRESULT(GetLog(), hr, "ID3D12Device::CreateCommandSignature()");
 
     FillDesc(false);
