@@ -38,15 +38,6 @@ NRI_STRUCT(CallbackInterface)
     void* userArg;
 };
 
-NRI_STRUCT(PhysicalDeviceGroup)
-{
-    char description[128];
-    uint64_t luid;
-    uint64_t dedicatedVideoMemory;
-    uint32_t deviceID;
-    NRI_NAME(Vendor) vendor;
-};
-
 NRI_STRUCT(VulkanExtensions)
 {
     const char* const* instanceExtensions;
@@ -57,7 +48,7 @@ NRI_STRUCT(VulkanExtensions)
 
 NRI_STRUCT(DeviceCreationDesc)
 {
-    const NRI_NAME(PhysicalDeviceGroup)* physicalDeviceGroup;
+    const NRI_NAME(AdapterDesc)* adapterDesc;
     NRI_NAME(CallbackInterface) callbackInterface;
     NRI_NAME(MemoryAllocatorInterface) memoryAllocatorInterface;
     NRI_NAME(GraphicsAPI) graphicsAPI;
@@ -70,7 +61,7 @@ NRI_STRUCT(DeviceCreationDesc)
     bool skipLiveObjectsReporting;
 };
 
-NRI_API NRI_NAME(Result) NRI_CALL nriGetPhysicalDevices(NRI_NAME(PhysicalDeviceGroup)* physicalDeviceGroups, uint32_t NRI_REF physicalDeviceGroupNum);
+NRI_API NRI_NAME(Result) NRI_CALL nriEnumerateAdapters(NRI_NAME(AdapterDesc)* adapterDescs, uint32_t NRI_REF adapterDescNum);
 NRI_API NRI_NAME(Result) NRI_CALL nriCreateDevice(const NRI_NAME_REF(DeviceCreationDesc) deviceCreationDesc, NRI_NAME_REF(Device*) device);
 NRI_API void NRI_CALL nriDestroyDevice(NRI_NAME_REF(Device) device);
 

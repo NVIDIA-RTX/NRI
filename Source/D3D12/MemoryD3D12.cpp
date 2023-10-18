@@ -32,11 +32,7 @@ Result MemoryD3D12::Create(const MemoryType memoryType, uint64_t size)
     if (!::RequiresDedicatedAllocation(memoryType))
     {
         HRESULT hr = ((ID3D12Device*)m_Device)->CreateHeap(&heapDesc, IID_PPV_ARGS(&m_Heap));
-        if (FAILED(hr))
-        {
-            REPORT_ERROR(m_Device.GetLog(), "ID3D12Device::CreateHeap() failed, error code: 0x%X.", hr);
-            return Result::FAILURE;
-        }
+        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D12Device::CreateHeap()");
     }
 
     m_HeapDesc = heapDesc;

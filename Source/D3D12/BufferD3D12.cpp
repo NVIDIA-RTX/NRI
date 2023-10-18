@@ -69,12 +69,7 @@ Result BufferD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset, bool 
             nullptr,
             IID_PPV_ARGS(&m_Buffer)
         );
-
-        if (FAILED(hr))
-        {
-            REPORT_ERROR(m_Device.GetLog(), "ID3D12Device::CreateCommittedResource() failed, error code: 0x%X.", hr);
-            return Result::FAILURE;
-        }
+        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D12Device::CreateCommittedResource()");
     }
     else
     {
@@ -86,12 +81,7 @@ Result BufferD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset, bool 
             nullptr,
             IID_PPV_ARGS(&m_Buffer)
         );
-
-        if (FAILED(hr))
-        {
-            REPORT_ERROR(m_Device.GetLog(), "ID3D12Device::CreatePlacedResource() failed, error code: 0x%X.", hr);
-            return Result::FAILURE;
-        }
+        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D12Device::CreatePlacedResource()");
     }
 
     return Result::SUCCESS;
@@ -116,7 +106,7 @@ inline void* BufferD3D12::Map(uint64_t offset, uint64_t size)
     D3D12_RANGE range = {(SIZE_T)offset, (SIZE_T)(offset + size)};
     HRESULT hr = m_Buffer->Map(0, &range, (void**)&data);
     if (FAILED(hr))
-        REPORT_ERROR(m_Device.GetLog(), "ID3D12Resource::Map() failed, error code: 0x%X.", hr);
+        REPORT_ERROR(m_Device.GetLog(), "ID3D12Resource::Map() failed, result = 0x%08X!", hr);
 
     return data + offset;
 }

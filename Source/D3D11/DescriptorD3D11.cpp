@@ -171,7 +171,7 @@ Result DescriptorD3D11::Create(const Texture1DViewDesc& textureViewDesc)
         break;
     };
 
-    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "Can't create view!");
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateXxxView()");
 
     m_IsIntegerFormat = formatInfo.isInteger;
     m_SubresourceInfo.Initialize(textureViewDesc.texture, textureViewDesc.mipOffset, textureViewDesc.mipNum, textureViewDesc.arrayOffset, textureViewDesc.arraySize);
@@ -350,7 +350,7 @@ Result DescriptorD3D11::Create(const Texture2DViewDesc& textureViewDesc)
         break;
     };
 
-    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "Can't create view!");
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateXxxView()");
 
     m_IsIntegerFormat = formatInfo.isInteger;
     m_SubresourceInfo.Initialize(textureViewDesc.texture, textureViewDesc.mipOffset, textureViewDesc.mipNum, textureViewDesc.arrayOffset, textureViewDesc.arraySize);
@@ -415,7 +415,7 @@ Result DescriptorD3D11::Create(const Texture3DViewDesc& textureViewDesc)
         break;
     };
 
-    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "Can't create view!");
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateXxxView()");
 
     m_IsIntegerFormat = formatInfo.isInteger;
     m_SubresourceInfo.Initialize(textureViewDesc.texture, textureViewDesc.mipOffset, textureViewDesc.mipNum, textureViewDesc.sliceOffset, textureViewDesc.sliceNum);
@@ -488,7 +488,7 @@ Result DescriptorD3D11::Create(const BufferViewDesc& bufferViewDesc)
         break;
     };
 
-    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "Can't create view!");
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateXxxView()");
 
     m_IsIntegerFormat = formatInfo.isInteger;
     m_SubresourceInfo.Initialize(bufferViewDesc.buffer);

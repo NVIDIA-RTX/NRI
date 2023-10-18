@@ -34,23 +34,22 @@ using namespace nri;
 extern MemoryType GetMemoryType(MemoryLocation memoryLocation, const D3D12_RESOURCE_DESC& resourceDesc);
 extern bool RequiresDedicatedAllocation(MemoryType memoryType);
 
-inline Vendor GetVendor(ID3D12Device* device)
+Result CreateDeviceD3D12(const DeviceCreationDesc& deviceCreationDesc, DeviceBase*& device)
 {
-    ComPtr<IDXGIFactory4> DXGIFactory;
-    CreateDXGIFactory(IID_PPV_ARGS(&DXGIFactory));
+    Log log(GraphicsAPI::D3D12, deviceCreationDesc.callbackInterface);
+    StdAllocator<uint8_t> allocator(deviceCreationDesc.memoryAllocatorInterface);
 
-    DXGI_ADAPTER_DESC desc = {};
-    if (DXGIFactory)
+    DeviceD3D12* implementation = Allocate<DeviceD3D12>(allocator, log, allocator);
+    const nri::Result result = implementation->Create(deviceCreationDesc);
+    if (result != nri::Result::SUCCESS)
     {
-        LUID luid = device->GetAdapterLuid();
-
-        ComPtr<IDXGIAdapter> adapter;
-        DXGIFactory->EnumAdapterByLuid(luid, IID_PPV_ARGS(&adapter));
-        if (adapter)
-            adapter->GetDesc(&desc);
+        Deallocate(allocator, implementation);
+        return result;
     }
 
-    return GetVendorFromID(desc.VendorId);
+    device = (DeviceBase*)implementation;
+
+    return nri::Result::SUCCESS;
 }
 
 Result CreateDeviceD3D12(const DeviceCreationD3D12Desc& deviceCreationDesc, DeviceBase*& device)
@@ -69,41 +68,6 @@ Result CreateDeviceD3D12(const DeviceCreationD3D12Desc& deviceCreationDesc, Devi
 
     Deallocate(allocator, implementation);
     return res;
-}
-
-Result CreateDeviceD3D12(const DeviceCreationDesc& deviceCreationDesc, DeviceBase*& device)
-{
-    Log log(GraphicsAPI::D3D12, deviceCreationDesc.callbackInterface);
-    StdAllocator<uint8_t> allocator(deviceCreationDesc.memoryAllocatorInterface);
-
-    ComPtr<IDXGIFactory4> factory;
-    HRESULT hr = CreateDXGIFactory2(0, IID_PPV_ARGS(&factory));
-    RETURN_ON_BAD_HRESULT(log, hr, "CreateDXGIFactory2() failed, error code: 0x%X.", hr);
-
-    ComPtr<IDXGIAdapter> adapter;
-    if (deviceCreationDesc.physicalDeviceGroup != nullptr)
-    {
-        LUID luid = *(LUID*)&deviceCreationDesc.physicalDeviceGroup->luid;
-        hr = factory->EnumAdapterByLuid(luid, IID_PPV_ARGS(&adapter));
-        RETURN_ON_BAD_HRESULT(log, hr, "IDXGIFactory4::EnumAdapterByLuid() failed, error code: 0x%X.", hr);
-    }
-    else
-    {
-        hr = factory->EnumAdapters(0, &adapter);
-        RETURN_ON_BAD_HRESULT(log, hr, "IDXGIFactory4::EnumAdapters() failed, error code: 0x%X.", hr);
-    }
-
-    DeviceD3D12* implementation = Allocate<DeviceD3D12>(allocator, log, allocator);
-    const nri::Result result = implementation->Create(adapter, deviceCreationDesc);
-    if (result != nri::Result::SUCCESS)
-    {
-        Deallocate(allocator, implementation);
-        return result;
-    }
-
-    device = (DeviceBase*)implementation;
-
-    return nri::Result::SUCCESS;
 }
 
 DeviceD3D12::DeviceD3D12(const Log& log, StdAllocator<uint8_t>& stdAllocator)
@@ -147,11 +111,11 @@ Result DeviceD3D12::CreateImplementation(Interface*& entity, const Args&... args
 
 bool DeviceD3D12::GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const
 {
-    if (display == nullptr)
+    if (!display)
         return false;
 
     const uint32_t index = (*(uint32_t*)&display) - 1;
-    const HRESULT result = m_Adapter->EnumOutputs(index, &output);
+    HRESULT result = m_Adapter->EnumOutputs(index, &output);
 
     return SUCCEEDED(result);
 }
@@ -159,22 +123,7 @@ bool DeviceD3D12::GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const
 Result DeviceD3D12::Create(const DeviceCreationD3D12Desc& deviceCreationDesc)
 {
     m_SkipLiveObjectsReporting = true;
-    m_Adapter = deviceCreationDesc.d3d12PhysicalAdapter;
     m_Device = (ID3D12Device*)deviceCreationDesc.d3d12Device;
-
-    if (m_Adapter == nullptr)
-    {
-        const LUID luid = m_Device->GetAdapterLuid();
-
-        ComPtr<IDXGIFactory4> DXGIFactory;
-        HRESULT result = CreateDXGIFactory(IID_PPV_ARGS(&DXGIFactory));
-        RETURN_ON_BAD_HRESULT(GetLog(), result, "Failed to create IDXGIFactory4");
-
-        result = DXGIFactory->EnumAdapterByLuid(luid, IID_PPV_ARGS(&m_Adapter));
-        RETURN_ON_BAD_HRESULT(GetLog(), result, "Failed to find IDXGIAdapter by LUID");
-    }
-
-    m_Device->QueryInterface(IID_PPV_ARGS(&m_Device5));
 
     if (deviceCreationDesc.d3d12GraphicsQueue)
         CreateCommandQueue((ID3D12CommandQueue*)deviceCreationDesc.d3d12GraphicsQueue, m_CommandQueues[(uint32_t)CommandQueueType::GRAPHICS]);
@@ -183,41 +132,60 @@ Result DeviceD3D12::Create(const DeviceCreationD3D12Desc& deviceCreationDesc)
     if (deviceCreationDesc.d3d12CopyQueue)
         CreateCommandQueue((ID3D12CommandQueue*)deviceCreationDesc.d3d12CopyQueue, m_CommandQueues[(uint32_t)CommandQueueType::COPY]);
 
+    m_Device->QueryInterface(IID_PPV_ARGS(&m_Device5));
+
     CommandQueue* commandQueue;
     Result result = GetCommandQueue(CommandQueueType::GRAPHICS, commandQueue);
     if (result != Result::SUCCESS)
         return result;
 
-    UpdateDeviceDesc(deviceCreationDesc.enableAPIValidation);
+    D3D12_INDIRECT_ARGUMENT_DESC indirectArgumentDesc = {};
+    indirectArgumentDesc.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
+
+    D3D12_COMMAND_SIGNATURE_DESC commandSignatureDesc = {};
+    commandSignatureDesc.NumArgumentDescs = 1;
+    commandSignatureDesc.pArgumentDescs = &indirectArgumentDesc;
+    commandSignatureDesc.NodeMask = NRI_TEMP_NODE_MASK;
+    commandSignatureDesc.ByteStride = 12;
+
+    HRESULT hr = m_Device->CreateCommandSignature(&commandSignatureDesc, nullptr, IID_PPV_ARGS(&m_DispatchCommandSignature));
+    RETURN_ON_BAD_HRESULT(GetLog(), hr, "ID3D12Device::CreateCommandSignature()");
+
+    FillDesc(false);
 
     return Result::SUCCESS;
 }
 
-Result DeviceD3D12::Create(IDXGIAdapter* dxgiAdapter, const DeviceCreationDesc& deviceCreationDesc)
+Result DeviceD3D12::Create(const DeviceCreationDesc& deviceCreationDesc)
 {
     m_SkipLiveObjectsReporting = deviceCreationDesc.skipLiveObjectsReporting;
-    m_Adapter = dxgiAdapter;
 
-    // Enable the debug layer (requires the Graphics Tools "optional feature").
-    // NOTE: Enabling the debug layer after device creation will invalidate the active device.
+    // IMPORTANT: Must be called before the D3D12 device is created, or the D3D12 runtime removes the device.
     if (deviceCreationDesc.enableAPIValidation)
     {
         ComPtr<ID3D12Debug> debugController;
         if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
             debugController->EnableDebugLayer();
-
-        // GPU-based validation
-        //ComPtr<ID3D12Debug1> debugController1;
-        //if (SUCCEEDED(debugController->QueryInterface(IID_PPV_ARGS(&debugController1))))
-        //    debugController1->SetEnableGPUBasedValidation(true);
     }
 
-    HRESULT hr = D3D12CreateDevice(dxgiAdapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&m_Device));
-    if (FAILED(hr))
+    ComPtr<IDXGIFactory4> dxgiFactory;
+    HRESULT hr = CreateDXGIFactory2(0, IID_PPV_ARGS(&dxgiFactory));
+    RETURN_ON_BAD_HRESULT(GetLog(), hr, "CreateDXGIFactory2()");
+
+    if (deviceCreationDesc.adapterDesc)
     {
-        REPORT_ERROR(GetLog(), "D3D12CreateDevice() failed, error code: 0x%X.", hr);
-        return Result::FAILURE;
+        LUID luid = *(LUID*)&deviceCreationDesc.adapterDesc->luid;
+        hr = dxgiFactory->EnumAdapterByLuid(luid, IID_PPV_ARGS(&m_Adapter));
+        RETURN_ON_BAD_HRESULT(GetLog(), hr, "IDXGIFactory4::EnumAdapterByLuid()");
     }
+    else
+    {
+        hr = dxgiFactory->EnumAdapters(0, &m_Adapter);
+        RETURN_ON_BAD_HRESULT(GetLog(), hr, "IDXGIFactory4::EnumAdapters()");
+    }
+
+    hr = D3D12CreateDevice(m_Adapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&m_Device));
+    RETURN_ON_BAD_HRESULT(GetLog(), hr, "D3D12CreateDevice()");
 
     // TODO: this code is currently needed to disable known false-positive errors reported by the debug layer
     if (deviceCreationDesc.enableAPIValidation)
@@ -260,13 +228,9 @@ Result DeviceD3D12::Create(IDXGIAdapter* dxgiAdapter, const DeviceCreationDesc& 
     commandSignatureDesc.ByteStride = 12;
 
     hr = m_Device->CreateCommandSignature(&commandSignatureDesc, nullptr, IID_PPV_ARGS(&m_DispatchCommandSignature));
-    if (FAILED(hr))
-    {
-        REPORT_ERROR(GetLog(), "ID3D12Device::CreateCommandSignature() failed, error code: 0x%X.", hr);
-        return Result::FAILURE;
-    }
+    RETURN_ON_BAD_HRESULT(GetLog(), hr, "ID3D12Device::CreateCommandSignature()");
 
-    UpdateDeviceDesc(deviceCreationDesc.enableAPIValidation);
+    FillDesc(deviceCreationDesc.enableAPIValidation);
 
     return Result::SUCCESS;
 }
@@ -283,11 +247,7 @@ Result DeviceD3D12::CreateCpuOnlyVisibleDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYP
     ComPtr<ID3D12DescriptorHeap> descriptorHeap;
     D3D12_DESCRIPTOR_HEAP_DESC desc = {type, DESCRIPTORS_BATCH_SIZE, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, NRI_TEMP_NODE_MASK};
     HRESULT hr = ((ID3D12Device*)m_Device)->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&descriptorHeap));
-    if (FAILED(hr))
-    {
-        REPORT_ERROR(GetLog(), "ID3D12Device::CreateDescriptorHeap() failed, return code %d.", hr);
-        return Result::FAILURE;
-    }
+    RETURN_ON_BAD_HRESULT(GetLog(), hr, "ID3D12Device::CreateDescriptorHeap()");
 
     DescriptorHeapDesc descriptorHeapDesc = {};
     descriptorHeapDesc.descriptorHeap = descriptorHeap;
@@ -355,7 +315,7 @@ ID3D12CommandSignature* DeviceD3D12::CreateCommandSignature(D3D12_INDIRECT_ARGUM
     ID3D12CommandSignature* commandSignature = nullptr;
     HRESULT hr = m_Device->CreateCommandSignature(&commandSignatureDesc, nullptr, IID_PPV_ARGS(&commandSignature));
     if (FAILED(hr))
-        REPORT_ERROR(GetLog(), "ID3D12Device::CreateCommandSignature() failed, error code: 0x%X.", hr);
+        REPORT_ERROR(GetLog(), "ID3D12Device::CreateCommandSignature() failed, result = 0x%08X!", hr);
 
     return commandSignature;
 }
@@ -394,7 +354,7 @@ MemoryType DeviceD3D12::GetMemoryType(MemoryLocation memoryLocation, const D3D12
     return ::GetMemoryType(memoryLocation, resourceDesc);
 }
 
-void DeviceD3D12::UpdateDeviceDesc(bool enableValidation)
+void DeviceD3D12::FillDesc(bool enableValidation)
 {
     D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
     m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
@@ -442,141 +402,150 @@ void DeviceD3D12::UpdateDeviceDesc(bool enableValidation)
         commandQueueD3D12->GetTimestampFrequency(&timestampFrequency);
     }
     else
-    {
         REPORT_ERROR(GetLog(), "Failed to get command queue to update device desc, result: %d.", (int32_t)result);
+
+    DXGI_ADAPTER_DESC desc = {};
+    HRESULT hr = m_Adapter->GetDesc(&desc);
+    if (SUCCEEDED(hr))
+    {
+        wcstombs(m_Desc.adapterDesc.description, desc.Description, GetCountOf(m_Desc.adapterDesc.description) - 1);
+        m_Desc.adapterDesc.luid = *(uint64_t*)&desc.AdapterLuid;
+        m_Desc.adapterDesc.videoMemorySize = desc.DedicatedVideoMemory;
+        m_Desc.adapterDesc.systemMemorySize = desc.DedicatedSystemMemory + desc.SharedSystemMemory;
+        m_Desc.adapterDesc.deviceId = desc.DeviceId;
+        m_Desc.adapterDesc.vendor = GetVendorFromID(desc.VendorId);
     }
 
-    m_DeviceDesc.graphicsAPI = GraphicsAPI::D3D12;
-    m_DeviceDesc.vendor = GetVendor(m_Device);
-    m_DeviceDesc.nriVersionMajor = NRI_VERSION_MAJOR;
-    m_DeviceDesc.nriVersionMinor = NRI_VERSION_MINOR;
+    m_Desc.graphicsAPI = GraphicsAPI::D3D12;
+    m_Desc.nriVersionMajor = NRI_VERSION_MAJOR;
+    m_Desc.nriVersionMinor = NRI_VERSION_MINOR;
 
-    m_DeviceDesc.viewportMaxNum = D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
-    m_DeviceDesc.viewportSubPixelBits = D3D12_SUBPIXEL_FRACTIONAL_BIT_COUNT;
-    m_DeviceDesc.viewportBoundsRange[0] = D3D12_VIEWPORT_BOUNDS_MIN;
-    m_DeviceDesc.viewportBoundsRange[1] = D3D12_VIEWPORT_BOUNDS_MAX;
+    m_Desc.viewportMaxNum = D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
+    m_Desc.viewportSubPixelBits = D3D12_SUBPIXEL_FRACTIONAL_BIT_COUNT;
+    m_Desc.viewportBoundsRange[0] = D3D12_VIEWPORT_BOUNDS_MIN;
+    m_Desc.viewportBoundsRange[1] = D3D12_VIEWPORT_BOUNDS_MAX;
 
-    m_DeviceDesc.frameBufferMaxDim = D3D12_REQ_RENDER_TO_BUFFER_WINDOW_WIDTH;
-    m_DeviceDesc.frameBufferLayerMaxNum = D3D12_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
-    m_DeviceDesc.framebufferColorAttachmentMaxNum = D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT;
+    m_Desc.frameBufferMaxDim = D3D12_REQ_RENDER_TO_BUFFER_WINDOW_WIDTH;
+    m_Desc.frameBufferLayerMaxNum = D3D12_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
+    m_Desc.framebufferColorAttachmentMaxNum = D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT;
 
-    m_DeviceDesc.frameBufferColorSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
-    m_DeviceDesc.frameBufferDepthSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
-    m_DeviceDesc.frameBufferStencilSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
-    m_DeviceDesc.frameBufferNoAttachmentsSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
-    m_DeviceDesc.textureColorSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
-    m_DeviceDesc.textureIntegerSampleMaxNum = 1;
-    m_DeviceDesc.textureDepthSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
-    m_DeviceDesc.textureStencilSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
-    m_DeviceDesc.storageTextureSampleMaxNum = 1;
+    m_Desc.frameBufferColorSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
+    m_Desc.frameBufferDepthSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
+    m_Desc.frameBufferStencilSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
+    m_Desc.frameBufferNoAttachmentsSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
+    m_Desc.textureColorSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
+    m_Desc.textureIntegerSampleMaxNum = 1;
+    m_Desc.textureDepthSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
+    m_Desc.textureStencilSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
+    m_Desc.storageTextureSampleMaxNum = 1;
 
-    m_DeviceDesc.texture1DMaxDim = D3D12_REQ_TEXTURE1D_U_DIMENSION;
-    m_DeviceDesc.texture2DMaxDim = D3D12_REQ_TEXTURE2D_U_OR_V_DIMENSION;
-    m_DeviceDesc.texture3DMaxDim = D3D12_REQ_TEXTURE3D_U_V_OR_W_DIMENSION;
-    m_DeviceDesc.textureArrayMaxDim = D3D12_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
-    m_DeviceDesc.texelBufferMaxDim = (1 << D3D12_REQ_BUFFER_RESOURCE_TEXEL_COUNT_2_TO_EXP) - 1;
+    m_Desc.texture1DMaxDim = D3D12_REQ_TEXTURE1D_U_DIMENSION;
+    m_Desc.texture2DMaxDim = D3D12_REQ_TEXTURE2D_U_OR_V_DIMENSION;
+    m_Desc.texture3DMaxDim = D3D12_REQ_TEXTURE3D_U_V_OR_W_DIMENSION;
+    m_Desc.textureArrayMaxDim = D3D12_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
+    m_Desc.texelBufferMaxDim = (1 << D3D12_REQ_BUFFER_RESOURCE_TEXEL_COUNT_2_TO_EXP) - 1;
 
-    m_DeviceDesc.memoryAllocationMaxNum = 0xFFFFFFFF;
-    m_DeviceDesc.samplerAllocationMaxNum = D3D12_REQ_SAMPLER_OBJECT_COUNT_PER_DEVICE;
-    m_DeviceDesc.uploadBufferTextureRowAlignment = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
-    m_DeviceDesc.uploadBufferTextureSliceAlignment = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
-    m_DeviceDesc.typedBufferOffsetAlignment = D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT;
-    m_DeviceDesc.constantBufferOffsetAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
-    m_DeviceDesc.constantBufferMaxRange = D3D12_REQ_IMMEDIATE_CONSTANT_BUFFER_ELEMENT_COUNT * 16;
-    m_DeviceDesc.storageBufferOffsetAlignment = D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT;
-    m_DeviceDesc.storageBufferMaxRange = (1 << D3D12_REQ_BUFFER_RESOURCE_TEXEL_COUNT_2_TO_EXP) - 1;
-    m_DeviceDesc.bufferTextureGranularity = 1; // TODO: 64KB?
-    m_DeviceDesc.bufferMaxSize = D3D12_REQ_RESOURCE_SIZE_IN_MEGABYTES_EXPRESSION_C_TERM * 1024ull * 1024ull;
-    m_DeviceDesc.pushConstantsMaxSize = D3D12_REQ_IMMEDIATE_CONSTANT_BUFFER_ELEMENT_COUNT * 16;
+    m_Desc.memoryAllocationMaxNum = 0xFFFFFFFF;
+    m_Desc.samplerAllocationMaxNum = D3D12_REQ_SAMPLER_OBJECT_COUNT_PER_DEVICE;
+    m_Desc.uploadBufferTextureRowAlignment = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
+    m_Desc.uploadBufferTextureSliceAlignment = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
+    m_Desc.typedBufferOffsetAlignment = D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT;
+    m_Desc.constantBufferOffsetAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+    m_Desc.constantBufferMaxRange = D3D12_REQ_IMMEDIATE_CONSTANT_BUFFER_ELEMENT_COUNT * 16;
+    m_Desc.storageBufferOffsetAlignment = D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT;
+    m_Desc.storageBufferMaxRange = (1 << D3D12_REQ_BUFFER_RESOURCE_TEXEL_COUNT_2_TO_EXP) - 1;
+    m_Desc.bufferTextureGranularity = 1; // TODO: 64KB?
+    m_Desc.bufferMaxSize = D3D12_REQ_RESOURCE_SIZE_IN_MEGABYTES_EXPRESSION_C_TERM * 1024ull * 1024ull;
+    m_Desc.pushConstantsMaxSize = D3D12_REQ_IMMEDIATE_CONSTANT_BUFFER_ELEMENT_COUNT * 16;
 
-    m_DeviceDesc.boundDescriptorSetMaxNum = D3D12_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT;
-    m_DeviceDesc.perStageDescriptorSamplerMaxNum = D3D12_COMMONSHADER_SAMPLER_SLOT_COUNT;
-    m_DeviceDesc.perStageDescriptorConstantBufferMaxNum = D3D12_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT;
-    m_DeviceDesc.perStageDescriptorStorageBufferMaxNum = levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_11_1 ? D3D12_UAV_SLOT_COUNT : D3D12_PS_CS_UAV_REGISTER_COUNT;
-    m_DeviceDesc.perStageDescriptorTextureMaxNum = D3D12_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT;
-    m_DeviceDesc.perStageDescriptorStorageTextureMaxNum = levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_11_1 ? D3D12_UAV_SLOT_COUNT : D3D12_PS_CS_UAV_REGISTER_COUNT;
-    m_DeviceDesc.perStageResourceMaxNum = D3D12_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT;
+    m_Desc.boundDescriptorSetMaxNum = D3D12_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT;
+    m_Desc.perStageDescriptorSamplerMaxNum = D3D12_COMMONSHADER_SAMPLER_SLOT_COUNT;
+    m_Desc.perStageDescriptorConstantBufferMaxNum = D3D12_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT;
+    m_Desc.perStageDescriptorStorageBufferMaxNum = levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_11_1 ? D3D12_UAV_SLOT_COUNT : D3D12_PS_CS_UAV_REGISTER_COUNT;
+    m_Desc.perStageDescriptorTextureMaxNum = D3D12_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT;
+    m_Desc.perStageDescriptorStorageTextureMaxNum = levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_11_1 ? D3D12_UAV_SLOT_COUNT : D3D12_PS_CS_UAV_REGISTER_COUNT;
+    m_Desc.perStageResourceMaxNum = D3D12_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT;
 
-    m_DeviceDesc.descriptorSetSamplerMaxNum = m_DeviceDesc.perStageDescriptorSamplerMaxNum;
-    m_DeviceDesc.descriptorSetConstantBufferMaxNum = m_DeviceDesc.perStageDescriptorConstantBufferMaxNum;
-    m_DeviceDesc.descriptorSetStorageBufferMaxNum = m_DeviceDesc.perStageDescriptorStorageBufferMaxNum;
-    m_DeviceDesc.descriptorSetTextureMaxNum = m_DeviceDesc.perStageDescriptorTextureMaxNum;
-    m_DeviceDesc.descriptorSetStorageTextureMaxNum = m_DeviceDesc.perStageDescriptorStorageTextureMaxNum;
+    m_Desc.descriptorSetSamplerMaxNum = m_Desc.perStageDescriptorSamplerMaxNum;
+    m_Desc.descriptorSetConstantBufferMaxNum = m_Desc.perStageDescriptorConstantBufferMaxNum;
+    m_Desc.descriptorSetStorageBufferMaxNum = m_Desc.perStageDescriptorStorageBufferMaxNum;
+    m_Desc.descriptorSetTextureMaxNum = m_Desc.perStageDescriptorTextureMaxNum;
+    m_Desc.descriptorSetStorageTextureMaxNum = m_Desc.perStageDescriptorStorageTextureMaxNum;
 
-    m_DeviceDesc.vertexShaderAttributeMaxNum = D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
-    m_DeviceDesc.vertexShaderStreamMaxNum = D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
-    m_DeviceDesc.vertexShaderOutputComponentMaxNum = D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT * 4;
+    m_Desc.vertexShaderAttributeMaxNum = D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
+    m_Desc.vertexShaderStreamMaxNum = D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
+    m_Desc.vertexShaderOutputComponentMaxNum = D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT * 4;
 
-    m_DeviceDesc.tessControlShaderGenerationMaxLevel = D3D12_HS_MAXTESSFACTOR_UPPER_BOUND;
-    m_DeviceDesc.tessControlShaderPatchPointMaxNum = D3D12_IA_PATCH_MAX_CONTROL_POINT_COUNT;
-    m_DeviceDesc.tessControlShaderPerVertexInputComponentMaxNum = D3D12_HS_CONTROL_POINT_PHASE_INPUT_REGISTER_COUNT * D3D12_HS_CONTROL_POINT_REGISTER_COMPONENTS;
-    m_DeviceDesc.tessControlShaderPerVertexOutputComponentMaxNum = D3D12_HS_CONTROL_POINT_PHASE_OUTPUT_REGISTER_COUNT * D3D12_HS_CONTROL_POINT_REGISTER_COMPONENTS;
-    m_DeviceDesc.tessControlShaderPerPatchOutputComponentMaxNum = D3D12_HS_OUTPUT_PATCH_CONSTANT_REGISTER_SCALAR_COMPONENTS;
-    m_DeviceDesc.tessControlShaderTotalOutputComponentMaxNum = m_DeviceDesc.tessControlShaderPatchPointMaxNum * m_DeviceDesc.tessControlShaderPerVertexOutputComponentMaxNum + m_DeviceDesc.tessControlShaderPerPatchOutputComponentMaxNum;
+    m_Desc.tessControlShaderGenerationMaxLevel = D3D12_HS_MAXTESSFACTOR_UPPER_BOUND;
+    m_Desc.tessControlShaderPatchPointMaxNum = D3D12_IA_PATCH_MAX_CONTROL_POINT_COUNT;
+    m_Desc.tessControlShaderPerVertexInputComponentMaxNum = D3D12_HS_CONTROL_POINT_PHASE_INPUT_REGISTER_COUNT * D3D12_HS_CONTROL_POINT_REGISTER_COMPONENTS;
+    m_Desc.tessControlShaderPerVertexOutputComponentMaxNum = D3D12_HS_CONTROL_POINT_PHASE_OUTPUT_REGISTER_COUNT * D3D12_HS_CONTROL_POINT_REGISTER_COMPONENTS;
+    m_Desc.tessControlShaderPerPatchOutputComponentMaxNum = D3D12_HS_OUTPUT_PATCH_CONSTANT_REGISTER_SCALAR_COMPONENTS;
+    m_Desc.tessControlShaderTotalOutputComponentMaxNum = m_Desc.tessControlShaderPatchPointMaxNum * m_Desc.tessControlShaderPerVertexOutputComponentMaxNum + m_Desc.tessControlShaderPerPatchOutputComponentMaxNum;
 
-    m_DeviceDesc.tessEvaluationShaderInputComponentMaxNum = D3D12_DS_INPUT_CONTROL_POINT_REGISTER_COUNT * D3D12_DS_INPUT_CONTROL_POINT_REGISTER_COMPONENTS;
-    m_DeviceDesc.tessEvaluationShaderOutputComponentMaxNum = D3D12_DS_INPUT_CONTROL_POINT_REGISTER_COUNT * D3D12_DS_INPUT_CONTROL_POINT_REGISTER_COMPONENTS;
+    m_Desc.tessEvaluationShaderInputComponentMaxNum = D3D12_DS_INPUT_CONTROL_POINT_REGISTER_COUNT * D3D12_DS_INPUT_CONTROL_POINT_REGISTER_COMPONENTS;
+    m_Desc.tessEvaluationShaderOutputComponentMaxNum = D3D12_DS_INPUT_CONTROL_POINT_REGISTER_COUNT * D3D12_DS_INPUT_CONTROL_POINT_REGISTER_COMPONENTS;
 
-    m_DeviceDesc.geometryShaderInvocationMaxNum = D3D12_GS_MAX_INSTANCE_COUNT;
-    m_DeviceDesc.geometryShaderInputComponentMaxNum = D3D12_GS_INPUT_REGISTER_COUNT * D3D12_GS_INPUT_REGISTER_COMPONENTS;
-    m_DeviceDesc.geometryShaderOutputComponentMaxNum = D3D12_GS_OUTPUT_REGISTER_COUNT * D3D12_GS_INPUT_REGISTER_COMPONENTS;
-    m_DeviceDesc.geometryShaderOutputVertexMaxNum = D3D12_GS_MAX_OUTPUT_VERTEX_COUNT_ACROSS_INSTANCES;
-    m_DeviceDesc.geometryShaderTotalOutputComponentMaxNum = D3D12_REQ_GS_INVOCATION_32BIT_OUTPUT_COMPONENT_LIMIT;
+    m_Desc.geometryShaderInvocationMaxNum = D3D12_GS_MAX_INSTANCE_COUNT;
+    m_Desc.geometryShaderInputComponentMaxNum = D3D12_GS_INPUT_REGISTER_COUNT * D3D12_GS_INPUT_REGISTER_COMPONENTS;
+    m_Desc.geometryShaderOutputComponentMaxNum = D3D12_GS_OUTPUT_REGISTER_COUNT * D3D12_GS_INPUT_REGISTER_COMPONENTS;
+    m_Desc.geometryShaderOutputVertexMaxNum = D3D12_GS_MAX_OUTPUT_VERTEX_COUNT_ACROSS_INSTANCES;
+    m_Desc.geometryShaderTotalOutputComponentMaxNum = D3D12_REQ_GS_INVOCATION_32BIT_OUTPUT_COMPONENT_LIMIT;
 
-    m_DeviceDesc.fragmentShaderInputComponentMaxNum = D3D12_PS_INPUT_REGISTER_COUNT * D3D12_PS_INPUT_REGISTER_COMPONENTS;
-    m_DeviceDesc.fragmentShaderOutputAttachmentMaxNum = D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT;
-    m_DeviceDesc.fragmentShaderDualSourceAttachmentMaxNum = 1;
-    m_DeviceDesc.fragmentShaderCombinedOutputResourceMaxNum = D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT + D3D12_PS_CS_UAV_REGISTER_COUNT;
+    m_Desc.fragmentShaderInputComponentMaxNum = D3D12_PS_INPUT_REGISTER_COUNT * D3D12_PS_INPUT_REGISTER_COMPONENTS;
+    m_Desc.fragmentShaderOutputAttachmentMaxNum = D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT;
+    m_Desc.fragmentShaderDualSourceAttachmentMaxNum = 1;
+    m_Desc.fragmentShaderCombinedOutputResourceMaxNum = D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT + D3D12_PS_CS_UAV_REGISTER_COUNT;
 
-    m_DeviceDesc.computeShaderSharedMemoryMaxSize = D3D12_CS_THREAD_LOCAL_TEMP_REGISTER_POOL;
-    m_DeviceDesc.computeShaderWorkGroupMaxNum[0] = D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION;
-    m_DeviceDesc.computeShaderWorkGroupMaxNum[1] = D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION;
-    m_DeviceDesc.computeShaderWorkGroupMaxNum[2] = D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION;
-    m_DeviceDesc.computeShaderWorkGroupInvocationMaxNum = D3D12_CS_THREAD_GROUP_MAX_THREADS_PER_GROUP;
-    m_DeviceDesc.computeShaderWorkGroupMaxDim[0] = D3D12_CS_THREAD_GROUP_MAX_X;
-    m_DeviceDesc.computeShaderWorkGroupMaxDim[1] = D3D12_CS_THREAD_GROUP_MAX_Y;
-    m_DeviceDesc.computeShaderWorkGroupMaxDim[2] = D3D12_CS_THREAD_GROUP_MAX_Z;
+    m_Desc.computeShaderSharedMemoryMaxSize = D3D12_CS_THREAD_LOCAL_TEMP_REGISTER_POOL;
+    m_Desc.computeShaderWorkGroupMaxNum[0] = D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION;
+    m_Desc.computeShaderWorkGroupMaxNum[1] = D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION;
+    m_Desc.computeShaderWorkGroupMaxNum[2] = D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION;
+    m_Desc.computeShaderWorkGroupInvocationMaxNum = D3D12_CS_THREAD_GROUP_MAX_THREADS_PER_GROUP;
+    m_Desc.computeShaderWorkGroupMaxDim[0] = D3D12_CS_THREAD_GROUP_MAX_X;
+    m_Desc.computeShaderWorkGroupMaxDim[1] = D3D12_CS_THREAD_GROUP_MAX_Y;
+    m_Desc.computeShaderWorkGroupMaxDim[2] = D3D12_CS_THREAD_GROUP_MAX_Z;
 
     if (m_IsRaytracingSupported)
     {
-        m_DeviceDesc.rayTracingShaderGroupIdentifierSize = D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;
-        m_DeviceDesc.rayTracingShaderTableAligment = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
-        m_DeviceDesc.rayTracingShaderTableMaxStride = std::numeric_limits<uint64_t>::max();
-        m_DeviceDesc.rayTracingShaderRecursionMaxDepth = D3D12_RAYTRACING_MAX_DECLARABLE_TRACE_RECURSION_DEPTH;
-        m_DeviceDesc.rayTracingGeometryObjectMaxNum = (1 << 24) - 1;
+        m_Desc.rayTracingShaderGroupIdentifierSize = D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;
+        m_Desc.rayTracingShaderTableAligment = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+        m_Desc.rayTracingShaderTableMaxStride = std::numeric_limits<uint64_t>::max();
+        m_Desc.rayTracingShaderRecursionMaxDepth = D3D12_RAYTRACING_MAX_DECLARABLE_TRACE_RECURSION_DEPTH;
+        m_Desc.rayTracingGeometryObjectMaxNum = (1 << 24) - 1;
     }
 
-    m_DeviceDesc.timestampFrequencyHz = timestampFrequency;
-    m_DeviceDesc.subPixelPrecisionBits = D3D12_SUBPIXEL_FRACTIONAL_BIT_COUNT;
-    m_DeviceDesc.subTexelPrecisionBits = D3D12_SUBTEXEL_FRACTIONAL_BIT_COUNT;
-    m_DeviceDesc.mipmapPrecisionBits = D3D12_MIP_LOD_FRACTIONAL_BIT_COUNT;
-    m_DeviceDesc.drawIndexedIndex16ValueMax = D3D12_16BIT_INDEX_STRIP_CUT_VALUE;
-    m_DeviceDesc.drawIndexedIndex32ValueMax = D3D12_32BIT_INDEX_STRIP_CUT_VALUE;
-    m_DeviceDesc.drawIndirectMaxNum = (1ull << D3D12_REQ_DRAWINDEXED_INDEX_COUNT_2_TO_EXP) - 1;
-    m_DeviceDesc.samplerLodBiasMin = D3D12_MIP_LOD_BIAS_MIN;
-    m_DeviceDesc.samplerLodBiasMax = D3D12_MIP_LOD_BIAS_MAX;
-    m_DeviceDesc.samplerAnisotropyMax = D3D12_DEFAULT_MAX_ANISOTROPY;
-    m_DeviceDesc.texelOffsetMin = D3D12_COMMONSHADER_TEXEL_OFFSET_MAX_NEGATIVE;
-    m_DeviceDesc.texelOffsetMax = D3D12_COMMONSHADER_TEXEL_OFFSET_MAX_POSITIVE;
-    m_DeviceDesc.texelGatherOffsetMin = D3D12_COMMONSHADER_TEXEL_OFFSET_MAX_NEGATIVE;
-    m_DeviceDesc.texelGatherOffsetMax = D3D12_COMMONSHADER_TEXEL_OFFSET_MAX_POSITIVE;
-    m_DeviceDesc.clipDistanceMaxNum = D3D12_CLIP_OR_CULL_DISTANCE_COUNT;
-    m_DeviceDesc.cullDistanceMaxNum = D3D12_CLIP_OR_CULL_DISTANCE_COUNT;
-    m_DeviceDesc.combinedClipAndCullDistanceMaxNum = D3D12_CLIP_OR_CULL_DISTANCE_COUNT;
-    m_DeviceDesc.conservativeRasterTier = (uint8_t)options.ConservativeRasterizationTier;
-    m_DeviceDesc.physicalDeviceNum = (uint8_t)m_Device->GetNodeCount();
+    m_Desc.timestampFrequencyHz = timestampFrequency;
+    m_Desc.subPixelPrecisionBits = D3D12_SUBPIXEL_FRACTIONAL_BIT_COUNT;
+    m_Desc.subTexelPrecisionBits = D3D12_SUBTEXEL_FRACTIONAL_BIT_COUNT;
+    m_Desc.mipmapPrecisionBits = D3D12_MIP_LOD_FRACTIONAL_BIT_COUNT;
+    m_Desc.drawIndexedIndex16ValueMax = D3D12_16BIT_INDEX_STRIP_CUT_VALUE;
+    m_Desc.drawIndexedIndex32ValueMax = D3D12_32BIT_INDEX_STRIP_CUT_VALUE;
+    m_Desc.drawIndirectMaxNum = (1ull << D3D12_REQ_DRAWINDEXED_INDEX_COUNT_2_TO_EXP) - 1;
+    m_Desc.samplerLodBiasMin = D3D12_MIP_LOD_BIAS_MIN;
+    m_Desc.samplerLodBiasMax = D3D12_MIP_LOD_BIAS_MAX;
+    m_Desc.samplerAnisotropyMax = D3D12_DEFAULT_MAX_ANISOTROPY;
+    m_Desc.texelOffsetMin = D3D12_COMMONSHADER_TEXEL_OFFSET_MAX_NEGATIVE;
+    m_Desc.texelOffsetMax = D3D12_COMMONSHADER_TEXEL_OFFSET_MAX_POSITIVE;
+    m_Desc.texelGatherOffsetMin = D3D12_COMMONSHADER_TEXEL_OFFSET_MAX_NEGATIVE;
+    m_Desc.texelGatherOffsetMax = D3D12_COMMONSHADER_TEXEL_OFFSET_MAX_POSITIVE;
+    m_Desc.clipDistanceMaxNum = D3D12_CLIP_OR_CULL_DISTANCE_COUNT;
+    m_Desc.cullDistanceMaxNum = D3D12_CLIP_OR_CULL_DISTANCE_COUNT;
+    m_Desc.combinedClipAndCullDistanceMaxNum = D3D12_CLIP_OR_CULL_DISTANCE_COUNT;
+    m_Desc.conservativeRasterTier = (uint8_t)options.ConservativeRasterizationTier;
+    m_Desc.physicalDeviceNum = (uint8_t)m_Device->GetNodeCount();
 
-    m_DeviceDesc.isAPIValidationEnabled = enableValidation;
-    m_DeviceDesc.isTextureFilterMinMaxSupported = levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_11_1 ? true : false;
-    m_DeviceDesc.isLogicOpSupported = options.OutputMergerLogicOp != 0;
-    m_DeviceDesc.isDepthBoundsTestSupported = options2.DepthBoundsTestSupported != 0;
-    m_DeviceDesc.isProgrammableSampleLocationsSupported = options2.ProgrammableSamplePositionsTier != D3D12_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_NOT_SUPPORTED;
-    m_DeviceDesc.isComputeQueueSupported = true;
-    m_DeviceDesc.isCopyQueueSupported = true;
-    m_DeviceDesc.isCopyQueueTimestampSupported = options3.CopyQueueTimestampQueriesSupported != 0;
-    m_DeviceDesc.isRegisterAliasingSupported = true;
-    m_DeviceDesc.isSubsetAllocationSupported = true;
-    m_DeviceDesc.isFloat16Supported = options4.Native16BitShaderOpsSupported;
+    m_Desc.isAPIValidationEnabled = enableValidation;
+    m_Desc.isTextureFilterMinMaxSupported = levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_11_1 ? true : false;
+    m_Desc.isLogicOpSupported = options.OutputMergerLogicOp != 0;
+    m_Desc.isDepthBoundsTestSupported = options2.DepthBoundsTestSupported != 0;
+    m_Desc.isProgrammableSampleLocationsSupported = options2.ProgrammableSamplePositionsTier != D3D12_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_NOT_SUPPORTED;
+    m_Desc.isComputeQueueSupported = true;
+    m_Desc.isCopyQueueSupported = true;
+    m_Desc.isCopyQueueTimestampSupported = options3.CopyQueueTimestampQueriesSupported != 0;
+    m_Desc.isRegisterAliasingSupported = true;
+    m_Desc.isSubsetAllocationSupported = true;
+    m_Desc.isFloat16Supported = options4.Native16BitShaderOpsSupported;
 }
 
 //================================================================================================================
@@ -614,7 +583,6 @@ inline void DeviceD3D12::DestroySwapChain(SwapChain& swapChain)
 inline Result DeviceD3D12::GetDisplays(Display** displays, uint32_t& displayNum)
 {
     HRESULT result = S_OK;
-
     if (displays == nullptr || displayNum == 0)
     {
         UINT i = 0;
@@ -646,23 +614,18 @@ inline Result DeviceD3D12::GetDisplays(Display** displays, uint32_t& displayNum)
 inline Result DeviceD3D12::GetDisplaySize(Display& display, uint16_t& width, uint16_t& height)
 {
     Display* address = &display;
-
-    if (address == nullptr)
+    if (!address)
         return Result::UNSUPPORTED;
 
     const uint32_t index = (*(uint32_t*)&address) - 1;
 
     ComPtr<IDXGIOutput> output;
     HRESULT result = m_Adapter->EnumOutputs(index, &output);
-
-    if (FAILED(result))
-        return Result::UNSUPPORTED;
+    RETURN_ON_BAD_HRESULT(GetLog(), result, "IDXGIAdapter::EnumOutputs()");
 
     DXGI_OUTPUT_DESC outputDesc = {};
     result = output->GetDesc(&outputDesc);
-
-    if (FAILED(result))
-        return Result::UNSUPPORTED;
+    RETURN_ON_BAD_HRESULT(GetLog(), result, "IDXGIOutput::GetDesc()");
 
     MONITORINFO monitorInfo = {};
     monitorInfo.cbSize = sizeof(monitorInfo);
@@ -670,8 +633,7 @@ inline Result DeviceD3D12::GetDisplaySize(Display& display, uint16_t& width, uin
     if (!GetMonitorInfoA(outputDesc.Monitor, &monitorInfo))
         return Result::UNSUPPORTED;
 
-    const RECT rect = monitorInfo.rcMonitor;
-
+    const RECT& rect = monitorInfo.rcMonitor;
     width = uint16_t(rect.right - rect.left);
     height = uint16_t(rect.bottom - rect.top);
 

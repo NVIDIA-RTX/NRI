@@ -12,7 +12,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #include <cstdarg>
 
-#if _WIN32
+#ifdef _WIN32
     #include <windows.h>
 #else
     #include <csignal>
@@ -700,7 +700,7 @@ static void MessageCallback(void* userArg, const char* message, nri::Message mes
     MaybeUnused(messageType);
 
     fprintf(stderr, "%s", message);
-#if _WIN32
+#ifdef _WIN32
     OutputDebugStringA(message);
 #endif
 }
@@ -709,7 +709,7 @@ static void AbortExecution(void* userArg)
 {
     MaybeUnused(userArg);
 
-#if _WIN32
+#ifdef _WIN32
     DebugBreak();
 #else
     raise(SIGTRAP);

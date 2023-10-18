@@ -18,7 +18,6 @@ NRI_FORWARD_STRUCT(ID3D12Resource);
 NRI_FORWARD_STRUCT(ID3D12Heap);
 NRI_FORWARD_STRUCT(ID3D12GraphicsCommandList);
 NRI_FORWARD_STRUCT(ID3D12CommandAllocator);
-NRI_FORWARD_STRUCT(IDXGIAdapter);
 
 NRI_NAMESPACE_BEGIN
 
@@ -30,7 +29,6 @@ NRI_STRUCT(DeviceCreationD3D12Desc)
     ID3D12CommandQueue* d3d12GraphicsQueue;
     ID3D12CommandQueue* d3d12ComputeQueue;
     ID3D12CommandQueue* d3d12CopyQueue;
-    IDXGIAdapter* d3d12PhysicalAdapter;
     NRI_NAME(CallbackInterface) callbackInterface;
     NRI_NAME(MemoryAllocatorInterface) memoryAllocatorInterface;
     bool enableNRIValidation;

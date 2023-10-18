@@ -10,6 +10,8 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 #pragma once
 
+struct IDXGIAdapter;
+
 namespace nri
 {
 
@@ -42,7 +44,7 @@ struct DeviceVK final : public DeviceBase
     { return m_CoreInterface; }
 
     inline uint32_t GetPhysicalDeviceGroupSize() const
-    { return m_DeviceDesc.physicalDeviceNum; }
+    { return m_Desc.physicalDeviceNum; }
 
     inline bool IsDescriptorIndexingExtSupported() const
     { return m_IsDescriptorIndexingSupported; }
@@ -72,9 +74,6 @@ struct DeviceVK final : public DeviceBase
     //================================================================================================================
     // NRI
     //================================================================================================================
-
-    inline const DeviceDesc& GetDesc() const
-    { return m_DeviceDesc; }
 
     void SetDebugName(const char* name);        
     Result GetCommandQueue(CommandQueueType commandQueueType, CommandQueue*& commandQueue);
@@ -134,6 +133,9 @@ struct DeviceVK final : public DeviceBase
     // DeviceBase
     //================================================================================================================
 
+    const DeviceDesc& GetDesc() const
+    { return m_Desc; }
+
     void Destroy();
     Result FillFunctionTable(CoreInterface& table) const;
     Result FillFunctionTable(SwapChainInterface& table) const;
@@ -144,17 +146,16 @@ struct DeviceVK final : public DeviceBase
 
 private:
     Result CreateInstance(const DeviceCreationDesc& deviceCreationDesc);
-    Result FindPhysicalDeviceGroup(const PhysicalDeviceGroup* physicalDeviceGroup, bool enableMGPU);
+    Result FindPhysicalDeviceGroup(const AdapterDesc* physicalDeviceGroup, bool enableMGPU);
     Result CreateLogicalDevice(const DeviceCreationDesc& deviceCreationDesc);
     void FillFamilyIndices(bool useEnabledFamilyIndices, const uint32_t* enabledFamilyIndices, uint32_t familyIndexNum);
-    void SetDeviceLimits(bool enableValidation);
+    void FillDesc(bool enableValidation);
     void CreateCommandQueues();
     Result ResolvePreInstanceDispatchTable();
     Result ResolveInstanceDispatchTable();
     Result ResolveDispatchTable();
     void FilterInstanceLayers(Vector<const char*>& layers);
     void ReportDeviceGroupInfo();
-    void FindDXGIAdapter();
 
     template< typename Implementation, typename Interface, typename ... Args >
     Result CreateImplementation(Interface*& entity, const Args&... args);
@@ -167,7 +168,7 @@ private:
     std::array<uint32_t, COMMAND_QUEUE_TYPE_NUM> m_FamilyIndices = {};
     std::array<CommandQueueVK*, COMMAND_QUEUE_TYPE_NUM> m_Queues = {};
     DispatchTable m_VK = {};
-    DeviceDesc m_DeviceDesc = {};
+    DeviceDesc m_Desc = {};
     VkPhysicalDeviceMemoryProperties m_MemoryProps = {};
     VkAllocationCallbacks m_AllocationCallbacks = {};
     SPIRVBindingOffsets m_SPIRVBindingOffsets = {};
@@ -177,8 +178,7 @@ private:
     VkInstance m_Instance = VK_NULL_HANDLE;
     VkAllocationCallbacks* m_AllocationCallbackPtr = nullptr;
     VkDebugUtilsMessengerEXT m_Messenger = VK_NULL_HANDLE;
-    uint64_t m_LUID = 0;
-#if _WIN32
+#ifdef _WIN32
     ComPtr<IDXGIAdapter> m_Adapter;
 #endif
     bool m_OwnsNativeObjects = false;

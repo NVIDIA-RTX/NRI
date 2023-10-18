@@ -33,7 +33,7 @@ Result QueryPoolD3D11::Create(const QueryPoolDesc& queryPoolDesc)
     {
         ID3D11Query* query = nullptr;
         HRESULT hr = m_Device.GetDevice()->CreateQuery(&queryDesc, &query);
-        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateQuery() - FAILED!");
+        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateQuery()");
 
         m_Pool.push_back(query);
     }

@@ -35,25 +35,34 @@ Result CreateDeviceD3D11(const DeviceCreationDesc& deviceCreationDesc, DeviceBas
     Log log(GraphicsAPI::D3D11, deviceCreationDesc.callbackInterface);
     StdAllocator<uint8_t> allocator(deviceCreationDesc.memoryAllocatorInterface);
 
-    ComPtr<IDXGIFactory4> factory;
-    HRESULT hr = CreateDXGIFactory2(0, IID_PPV_ARGS(&factory));
-    RETURN_ON_BAD_HRESULT(log, hr, "Can't create D3D11 device. CreateDXGIFactory2() failed. (result: %d)", (int32_t)hr);
+    DeviceD3D11* implementation = Allocate<DeviceD3D11>(allocator, log, allocator);
+    const nri::Result result = implementation->Create(deviceCreationDesc, nullptr, nullptr);
 
-    ComPtr<IDXGIAdapter> adapter;
-    if (deviceCreationDesc.physicalDeviceGroup != nullptr)
+    if (result == nri::Result::SUCCESS)
     {
-        LUID luid = *(LUID*)&deviceCreationDesc.physicalDeviceGroup->luid;
-        hr = factory->EnumAdapterByLuid(luid, IID_PPV_ARGS(&adapter));
-        RETURN_ON_BAD_HRESULT(log, hr, "Can't create D3D11 device. IDXGIFactory4::EnumAdapterByLuid() failed. (result: %d)", (int32_t)hr);
+        device = (DeviceBase*)implementation;
+        return nri::Result::SUCCESS;
     }
-    else
-    {
-        hr = factory->EnumAdapters(0, &adapter);
-        RETURN_ON_BAD_HRESULT(log, hr, "Can't create D3D11 device. IDXGIFactory4::EnumAdapters() failed. (result: %d)", (int32_t)hr);
-    }
+
+    Deallocate(allocator, implementation);
+
+    return result;
+}
+
+Result CreateDeviceD3D11(const DeviceCreationD3D11Desc& deviceCreationD3D11Desc, DeviceBase*& device)
+{
+    DeviceCreationDesc deviceCreationDesc = {};
+    deviceCreationDesc.callbackInterface = deviceCreationD3D11Desc.callbackInterface;
+    deviceCreationDesc.memoryAllocatorInterface = deviceCreationD3D11Desc.memoryAllocatorInterface;
+    deviceCreationDesc.graphicsAPI = GraphicsAPI::D3D11;
+
+    Log log(GraphicsAPI::D3D11, deviceCreationDesc.callbackInterface);
+    StdAllocator<uint8_t> allocator(deviceCreationDesc.memoryAllocatorInterface);
+
+    ComPtr<ID3D11Device> d3d11Device = (ID3D11Device*)deviceCreationD3D11Desc.d3d11Device;
 
     DeviceD3D11* implementation = Allocate<DeviceD3D11>(allocator, log, allocator);
-    const nri::Result result = implementation->Create(deviceCreationDesc, adapter, nullptr, nullptr);
+    const nri::Result result = implementation->Create(deviceCreationDesc, d3d11Device, (AGSContext*)deviceCreationD3D11Desc.agsContextAssociatedWithDevice);
 
     if (result == nri::Result::SUCCESS)
     {
@@ -78,7 +87,7 @@ DeviceD3D11::~DeviceD3D11()
 
 bool DeviceD3D11::GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const
 {
-    if (display == nullptr)
+    if (!display)
         return false;
 
     const uint32_t index = (*(uint32_t*)&display) - 1;
@@ -87,16 +96,41 @@ bool DeviceD3D11::GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const
     return SUCCEEDED(result);
 }
 
-Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAdapter* adapter, ID3D11Device* device, AGSContext* agsContext)
+Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, ID3D11Device* device, AGSContext* agsContext)
 {
     m_SkipLiveObjectsReporting = deviceCreationDesc.skipLiveObjectsReporting;
-    m_Adapter = adapter;
+
+    if (!device)
+    {
+        ComPtr<IDXGIFactory4> dxgiFactory;
+        HRESULT hr = CreateDXGIFactory2(0, IID_PPV_ARGS(&dxgiFactory));
+        RETURN_ON_BAD_HRESULT(GetLog(), hr, "CreateDXGIFactory2()");
+
+        if (deviceCreationDesc.adapterDesc)
+        {
+            LUID luid = *(LUID*)&deviceCreationDesc.adapterDesc->luid;
+            hr = dxgiFactory->EnumAdapterByLuid(luid, IID_PPV_ARGS(&m_Adapter));
+            RETURN_ON_BAD_HRESULT(GetLog(), hr, "IDXGIFactory4::EnumAdapterByLuid()");
+        }
+        else
+        {
+            hr = dxgiFactory->EnumAdapters(0, &m_Adapter);
+            RETURN_ON_BAD_HRESULT(GetLog(), hr, "IDXGIFactory4::EnumAdapters()");
+        }
+    }
+    else
+    {
+        ComPtr<IDXGIDevice> dxgiDevice;
+        HRESULT hr = device->QueryInterface(IID_PPV_ARGS(&dxgiDevice));
+        RETURN_ON_BAD_HRESULT(GetLog(), hr, "QueryInterface(IDXGIDevice)");
+
+        hr = dxgiDevice->GetAdapter(&m_Adapter);
+        RETURN_ON_BAD_HRESULT(GetLog(), hr, "IDXGIDevice::GetAdapter()");
+    }
 
     DXGI_ADAPTER_DESC desc = {};
-    adapter->GetDesc(&desc);
-
+    m_Adapter->GetDesc(&desc);
     const Vendor vendor = GetVendorFromID(desc.VendorId);
-
     m_Ext.Create(GetLog(), vendor, agsContext, device != nullptr);
 
     m_Device.ptr = (ID3D11Device5*)device;
@@ -111,18 +145,18 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAd
 
         if (m_Ext.IsAGSAvailable())
         {
-            device = m_Ext.CreateDeviceUsingAGS(adapter, levels.data(), levels.size(), flags);
+            device = m_Ext.CreateDeviceUsingAGS(m_Adapter, levels.data(), levels.size(), flags);
             if (device == nullptr)
                 return Result::FAILURE;
         }
         else
         {
-            HRESULT hr = D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags, levels.data(), (uint32_t)levels.size(), D3D11_SDK_VERSION, (ID3D11Device**)&m_Device.ptr, nullptr, nullptr);
+            HRESULT hr = D3D11CreateDevice(m_Adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags, levels.data(), (uint32_t)levels.size(), D3D11_SDK_VERSION, (ID3D11Device**)&m_Device.ptr, nullptr, nullptr);
 
             if (flags && (uint32_t)hr == 0x887a002d)
-                hr = D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, &levels[0], (uint32_t)levels.size(), D3D11_SDK_VERSION, (ID3D11Device**)&m_Device.ptr, nullptr, nullptr);
+                hr = D3D11CreateDevice(m_Adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, &levels[0], (uint32_t)levels.size(), D3D11_SDK_VERSION, (ID3D11Device**)&m_Device.ptr, nullptr, nullptr);
 
-            RETURN_ON_BAD_HRESULT(GetLog(), hr, "D3D11CreateDevice() - FAILED!");
+            RETURN_ON_BAD_HRESULT(GetLog(), hr, "D3D11CreateDevice()");
         }
     }
     else
@@ -130,7 +164,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAd
 
     InitVersionedDevice(deviceCreationDesc.D3D11CommandBufferEmulation);
     InitVersionedContext();
-    FillLimits(deviceCreationDesc.enableAPIValidation, vendor);
+    FillDesc(deviceCreationDesc.enableAPIValidation);
 
     for (uint32_t i = 0; i < COMMAND_QUEUE_TYPE_NUM; i++)
         m_CommandQueues.emplace_back(*this);
@@ -244,7 +278,7 @@ void DeviceD3D11::InitVersionedContext()
         m_ImmediateContext.multiThread->SetMultithreadProtected(true);
 }
 
-void DeviceD3D11::FillLimits(bool isValidationEnabled, Vendor vendor)
+void DeviceD3D11::FillDesc(bool isValidationEnabled)
 {
     D3D11_FEATURE_DATA_D3D11_OPTIONS options = {};
     HRESULT hr = m_Device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS, &options, sizeof(options));
@@ -281,8 +315,19 @@ void DeviceD3D11::FillLimits(bool isValidationEnabled, Vendor vendor)
         }
     }
 
+    DXGI_ADAPTER_DESC desc = {};
+    hr = m_Adapter->GetDesc(&desc);
+    if (SUCCEEDED(hr))
+    {
+        wcstombs(m_Desc.adapterDesc.description, desc.Description, GetCountOf(m_Desc.adapterDesc.description) - 1);
+        m_Desc.adapterDesc.luid = *(uint64_t*)&desc.AdapterLuid;
+        m_Desc.adapterDesc.videoMemorySize = desc.DedicatedVideoMemory;
+        m_Desc.adapterDesc.systemMemorySize = desc.DedicatedSystemMemory + desc.SharedSystemMemory;
+        m_Desc.adapterDesc.deviceId = desc.DeviceId;
+        m_Desc.adapterDesc.vendor = GetVendorFromID(desc.VendorId);
+    }
+
     m_Desc.graphicsAPI = GraphicsAPI::D3D11;
-    m_Desc.vendor = vendor;
     m_Desc.nriVersionMajor = NRI_VERSION_MAJOR;
     m_Desc.nriVersionMinor = NRI_VERSION_MINOR;
 
@@ -400,8 +445,8 @@ void DeviceD3D11::FillLimits(bool isValidationEnabled, Vendor vendor)
     m_Desc.isAPIValidationEnabled = isValidationEnabled;
     m_Desc.isTextureFilterMinMaxSupported = options1.MinMaxFiltering != 0;
     m_Desc.isLogicOpSupported = options.OutputMergerLogicOp != 0;
-    m_Desc.isDepthBoundsTestSupported = vendor == Vendor::NVIDIA || vendor == Vendor::AMD;
-    m_Desc.isProgrammableSampleLocationsSupported = vendor == Vendor::NVIDIA;
+    m_Desc.isDepthBoundsTestSupported = m_Desc.adapterDesc.vendor == Vendor::NVIDIA || m_Desc.adapterDesc.vendor == Vendor::AMD;
+    m_Desc.isProgrammableSampleLocationsSupported = m_Desc.adapterDesc.vendor == Vendor::NVIDIA;
     m_Desc.isComputeQueueSupported = false;
     m_Desc.isCopyQueueSupported = false;
     m_Desc.isCopyQueueTimestampSupported = false;
@@ -461,7 +506,6 @@ inline void DeviceD3D11::DestroySwapChain(SwapChain& swapChain)
 inline Result DeviceD3D11::GetDisplays(Display** displays, uint32_t& displayNum)
 {
     HRESULT result = S_OK;
-
     if (displays == nullptr || displayNum == 0)
     {
         UINT i = 0;
@@ -493,23 +537,18 @@ inline Result DeviceD3D11::GetDisplays(Display** displays, uint32_t& displayNum)
 inline Result DeviceD3D11::GetDisplaySize(Display& display, uint16_t& width, uint16_t& height)
 {
     Display* address = &display;
-
-    if (address == nullptr)
+    if (!address)
         return Result::UNSUPPORTED;
 
     const uint32_t index = (*(uint32_t*)&address) - 1;
 
     ComPtr<IDXGIOutput> output;
     HRESULT result = m_Adapter->EnumOutputs(index, &output);
-
-    if (FAILED(result))
-        return Result::UNSUPPORTED;
+    RETURN_ON_BAD_HRESULT(GetLog(), result, "IDXGIAdapter::EnumOutputs()");
 
     DXGI_OUTPUT_DESC outputDesc = {};
     result = output->GetDesc(&outputDesc);
-
-    if (FAILED(result))
-        return Result::UNSUPPORTED;
+    RETURN_ON_BAD_HRESULT(GetLog(), result, "IDXGIOutput::GetDesc()");
 
     MONITORINFO monitorInfo = {};
     monitorInfo.cbSize = sizeof(monitorInfo);
@@ -517,8 +556,7 @@ inline Result DeviceD3D11::GetDisplaySize(Display& display, uint16_t& width, uin
     if (!GetMonitorInfoA(outputDesc.Monitor, &monitorInfo))
         return Result::UNSUPPORTED;
 
-    const RECT rect = monitorInfo.rcMonitor;
-
+    const RECT& rect = monitorInfo.rcMonitor;
     width = uint16_t(rect.right - rect.left);
     height = uint16_t(rect.bottom - rect.top);
 

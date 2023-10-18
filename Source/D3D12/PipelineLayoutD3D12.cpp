@@ -186,18 +186,10 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     ComPtr<ID3DBlob> rootSignatureBlob;
     ComPtr<ID3DBlob> errorBlob;
     HRESULT hr = D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &rootSignatureBlob, &errorBlob);
-    if (FAILED(hr))
-    {
-        REPORT_ERROR(m_Device.GetLog(), "D3D12SerializeVersionedRootSignature() failed, error code: 0x%X.", hr);
-        return Result::FAILURE;
-    }
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "D3D12SerializeVersionedRootSignature()");
 
     hr = ((ID3D12Device*)m_Device)->CreateRootSignature(NRI_TEMP_NODE_MASK, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&m_RootSignature));
-    if (FAILED(hr))
-    {
-        REPORT_ERROR(m_Device.GetLog(), "ID3D12Device::CreateRootSignature() failed, error code: 0x%X.", hr);
-        return Result::FAILURE;
-    }
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D12Device::CreateRootSignature()");
 
     return Result::SUCCESS;
 }

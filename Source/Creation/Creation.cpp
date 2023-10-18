@@ -287,13 +287,15 @@ NRI_API uint32_t NRI_CALL nriConvertNRIFormatToDXGI(Format format)
 
 #ifdef _WIN32
 
-#include <dxgi.h>
+#include <dxgi1_4.h>
 
-int SortAdaptersByDedicatedVideoMemorySize(const void* a, const void* b)
+static int SortAdaptersByDedicatedVideoMemorySize(const void* a, const void* b)
 {
-    DXGI_ADAPTER_DESC1 ad, bd;
-    (*(IDXGIAdapter1**)a)->GetDesc1(&ad);
-    (*(IDXGIAdapter1**)b)->GetDesc1(&bd);
+    DXGI_ADAPTER_DESC ad = {};
+    (*(IDXGIAdapter1**)a)->GetDesc(&ad);
+
+    DXGI_ADAPTER_DESC bd = {};
+    (*(IDXGIAdapter1**)b)->GetDesc(&bd);
 
     if (ad.DedicatedVideoMemory > bd.DedicatedVideoMemory)
         return -1;
@@ -304,23 +306,23 @@ int SortAdaptersByDedicatedVideoMemorySize(const void* a, const void* b)
     return 0;
 }
 
-NRI_API Result NRI_CALL nriGetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroups, uint32_t& physicalDeviceGroupNum)
+NRI_API Result NRI_CALL nriEnumerateAdapters(AdapterDesc* adapterDescs, uint32_t& adapterDescNum)
 {
-    IDXGIFactory1* factory = NULL;
-    if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory)))
+    ComPtr<IDXGIFactory4> dxgifactory;
+    if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&dxgifactory))))
         return Result::UNSUPPORTED;
 
     uint32_t adaptersNum = 0;
     IDXGIAdapter1* adapters[32];
 
-    for (uint32_t i = 0; ; i++)
+    for (uint32_t i = 0; i < GetCountOf(adapters); i++)
     {
         IDXGIAdapter1* adapter;
-        HRESULT hr = factory->EnumAdapters1(i, &adapter);
+        HRESULT hr = dxgifactory->EnumAdapters1(i, &adapter);
         if (hr == DXGI_ERROR_NOT_FOUND)
             break;
 
-        DXGI_ADAPTER_DESC1 desc;
+        DXGI_ADAPTER_DESC1 desc = {};
         if (adapter->GetDesc1(&desc) == S_OK)
         {
             if (desc.Flags == DXGI_ADAPTER_FLAG_NONE)
@@ -328,36 +330,60 @@ NRI_API Result NRI_CALL nriGetPhysicalDevices(PhysicalDeviceGroup* physicalDevic
         }
     }
 
-    factory->Release();
-
     if (!adaptersNum)
         return Result::FAILURE;
 
-    if (physicalDeviceGroups)
+    if (adapterDescs)
     {
         qsort(adapters, adaptersNum, sizeof(adapters[0]), SortAdaptersByDedicatedVideoMemorySize);
 
-        if (adaptersNum < physicalDeviceGroupNum)
-            physicalDeviceGroupNum = adaptersNum;
+        if (adaptersNum < adapterDescNum)
+            adapterDescNum = adaptersNum;
 
-        for (uint32_t i = 0; i < physicalDeviceGroupNum; i++)
+        for (uint32_t i = 0; i < adapterDescNum; i++)
         {
-            DXGI_ADAPTER_DESC1 desc;
-            adapters[i]->GetDesc1(&desc);
+            DXGI_ADAPTER_DESC desc = {};
+            adapters[i]->GetDesc(&desc);
 
-            PhysicalDeviceGroup& group = physicalDeviceGroups[i];
-            memset(&group, 0, sizeof(group));
-            wcstombs(group.description, desc.Description, GetCountOf(group.description) - 1);
-            group.luid = *(uint64_t*)&desc.AdapterLuid;
-            group.dedicatedVideoMemory = desc.DedicatedVideoMemory;
-            group.deviceID = desc.DeviceId;
-            group.vendor = GetVendorFromID(desc.VendorId);
+            AdapterDesc& adapterDesc = adapterDescs[i];
+            memset(&adapterDesc, 0, sizeof(adapterDesc));
+            wcstombs(adapterDesc.description, desc.Description, GetCountOf(adapterDesc.description) - 1);
+            adapterDesc.luid = *(uint64_t*)&desc.AdapterLuid;
+            adapterDesc.videoMemorySize = desc.DedicatedVideoMemory;
+            adapterDesc.systemMemorySize = desc.DedicatedSystemMemory + desc.SharedSystemMemory;
+            adapterDesc.deviceId = desc.DeviceId;
+            adapterDesc.vendor = GetVendorFromID(desc.VendorId);
         }
     }
     else
-        physicalDeviceGroupNum = adaptersNum;
+        adapterDescNum = adaptersNum;
+
+    for (uint32_t i = 0; i < adaptersNum; i++)
+        adapters[i]->Release();
 
     return Result::SUCCESS;
+}
+
+NRI_API bool NRI_CALL nriQueryVideoMemoryInfo(const Device& device, MemoryLocation memoryLocation, VideoMemoryInfo& videoMemoryInfo)
+{
+    uint64_t luid = ((DeviceBase&)device).GetDesc().adapterDesc.luid;
+
+    ComPtr<IDXGIFactory4> dxgifactory;
+    if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&dxgifactory))))
+        return false;
+
+    ComPtr<IDXGIAdapter3> adapter;
+    if (FAILED(dxgifactory->EnumAdapterByLuid(*(LUID*)&luid, IID_PPV_ARGS(&adapter))))
+        return false;
+
+    DXGI_QUERY_VIDEO_MEMORY_INFO info = {};
+    if (FAILED(adapter->QueryVideoMemoryInfo(0, memoryLocation == MemoryLocation::DEVICE ? DXGI_MEMORY_SEGMENT_GROUP_LOCAL : DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &info)))
+        return false;
+
+    static_assert(sizeof(VideoMemoryInfo) == sizeof(DXGI_QUERY_VIDEO_MEMORY_INFO));
+    memcpy(&videoMemoryInfo, &info, sizeof(info));
+
+    return true;
 }
 
 #else
@@ -369,21 +395,21 @@ NRI_API Result NRI_CALL nriGetPhysicalDevices(PhysicalDeviceGroup* physicalDevic
     if (name == nullptr) \
         return Result::UNSUPPORTED;
 
-int SortAdaptersByDedicatedVideoMemorySize(const void* pa, const void* pb)
+static int SortAdaptersByDedicatedVideoMemorySize(const void* pa, const void* pb)
 {
-    PhysicalDeviceGroup* a = (PhysicalDeviceGroup*)pa;
-    PhysicalDeviceGroup* b = (PhysicalDeviceGroup*)pb;
+    AdapterDesc* a = (AdapterDesc*)pa;
+    AdapterDesc* b = (AdapterDesc*)pb;
 
-    if (a->dedicatedVideoMemory > b->dedicatedVideoMemory)
+    if (a->videoMemorySize > b->videoMemorySize)
         return -1;
 
-    if (a->dedicatedVideoMemory < b->dedicatedVideoMemory)
+    if (a->videoMemorySize < b->videoMemorySize)
         return 1;
 
     return 0;
 }
 
-NRI_API Result NRI_CALL nriGetPhysicalDevices(PhysicalDeviceGroup* physicalDeviceGroups, uint32_t& physicalDeviceGroupNum)
+NRI_API Result NRI_CALL nriEnumerateAdapters(AdapterDesc* adapterDescs, uint32_t& adapterDescNum)
 {
     Library* loader = LoadSharedLibrary(VULKAN_LOADER_NAME);
     if (!loader)
@@ -422,14 +448,14 @@ NRI_API Result NRI_CALL nriGetPhysicalDevices(PhysicalDeviceGroup* physicalDevic
 
         if (result == VK_SUCCESS && deviceGroupNum)
         {
-            if (physicalDeviceGroups)
+            if (adapterDescs)
             {
                 // Query device groups
                 VkPhysicalDeviceGroupProperties* deviceGroupProperties = STACK_ALLOC(VkPhysicalDeviceGroupProperties, deviceGroupNum);
                 vkEnumeratePhysicalDeviceGroups(instance, &deviceGroupNum, deviceGroupProperties);
 
                 // Query device groups properties
-                PhysicalDeviceGroup* physicalDeviceGroupsSorted = STACK_ALLOC(PhysicalDeviceGroup, deviceGroupNum);
+                AdapterDesc* adapterDescsSorted = STACK_ALLOC(AdapterDesc, deviceGroupNum);
                 for (uint32_t i = 0; i < deviceGroupNum; i++)
                 {
                     VkPhysicalDeviceIDProperties deviceIDProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES };
@@ -442,46 +468,38 @@ NRI_API Result NRI_CALL nriGetPhysicalDevices(PhysicalDeviceGroup* physicalDevic
                     VkPhysicalDeviceMemoryProperties memoryProperties = {};
                     vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
 
-                    PhysicalDeviceGroup& group = physicalDeviceGroupsSorted[i];
-                    memset(&group, 0, sizeof(group));
-                    strncpy(group.description, properties2.properties.deviceName, sizeof(group.description));
-                    group.luid = *(uint64_t*)&deviceIDProperties.deviceLUID[0];
-                    group.deviceID = properties2.properties.deviceID;
-                    group.vendor = GetVendorFromID(properties2.properties.vendorID);
+                    AdapterDesc& adapterDesc = adapterDescsSorted[i];
+                    memset(&adapterDesc, 0, sizeof(adapterDesc));
+                    strncpy(adapterDesc.description, properties2.properties.deviceName, sizeof(adapterDesc.description));
+                    adapterDesc.luid = *(uint64_t*)&deviceIDProperties.deviceLUID[0];
+                    adapterDesc.deviceId = properties2.properties.deviceID;
+                    adapterDesc.vendor = GetVendorFromID(properties2.properties.vendorID);
 
-                    if (properties2.properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+                    /* THIS IS AWFUL!
+                    https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceMemoryProperties.html
+                    In a unified memory architecture (UMA) system there is often only a single memory heap which is considered to
+                    be equally "local" to the host and to the device, and such an implementation must advertise the heap as device-local. */
+                    for (uint32_t k = 0; k < memoryProperties.memoryHeapCount; k++)
                     {
-                        /*
-                        https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceMemoryProperties.html
-                        In a unified memory architecture (UMA) system there is often only a single memory heap which is considered to
-                        be equally "local" to the host and to the device, and such an implementation must advertise the heap as device-local.
-                        */
-
-                        // Awful spec leads to awful solutions :)
-                        group.dedicatedVideoMemory = 0;
-                    }
-                    else
-                    {
-                        for (uint32_t k = 0; k < memoryProperties.memoryHeapCount; k++)
-                        {
-                            if (memoryProperties.memoryHeaps[k].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
-                                group.dedicatedVideoMemory += memoryProperties.memoryHeaps[k].size;
-                        }
+                        if (memoryProperties.memoryHeaps[k].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+                            adapterDesc.videoMemorySize += memoryProperties.memoryHeaps[k].size;
+                        else
+                            adapterDesc.systemMemorySize += memoryProperties.memoryHeaps[k].size;
                     }
                 }
 
-                // Sort by dedicated video memory
-                qsort(physicalDeviceGroupsSorted, deviceGroupNum, sizeof(physicalDeviceGroupsSorted[0]), SortAdaptersByDedicatedVideoMemorySize);
+                // Sort by video memory size
+                qsort(adapterDescsSorted, deviceGroupNum, sizeof(adapterDescsSorted[0]), SortAdaptersByDedicatedVideoMemorySize);
 
                 // Copy to output
-                if (deviceGroupNum < physicalDeviceGroupNum)
-                    physicalDeviceGroupNum = deviceGroupNum;
+                if (deviceGroupNum < adapterDescNum)
+                    adapterDescNum = deviceGroupNum;
 
-                for (uint32_t i = 0; i < physicalDeviceGroupNum; i++)
-                    *physicalDeviceGroups++ = *physicalDeviceGroupsSorted++;
+                for (uint32_t i = 0; i < adapterDescNum; i++)
+                    *adapterDescs++ = *adapterDescsSorted++;
             }
             else
-                physicalDeviceGroupNum = deviceGroupNum;
+                adapterDescNum = deviceGroupNum;
 
             nriResult = Result::SUCCESS;
         }
@@ -493,6 +511,16 @@ NRI_API Result NRI_CALL nriGetPhysicalDevices(PhysicalDeviceGroup* physicalDevic
     UnloadSharedLibrary(*loader);
 
     return nriResult;
+}
+
+NRI_API bool NRI_CALL nriQueryVideoMemoryInfo(const Device& device, MemoryLocation memoryLocation, VideoMemoryInfo& videoMemoryInfo)
+{
+    MaybeUnused(device);
+    MaybeUnused(memoryLocation);
+    MaybeUnused(videoMemoryInfo);
+
+    // TODO: is there a QueryVideoMemoryInfo analog on Linux?
+    return false;
 }
 
 #endif

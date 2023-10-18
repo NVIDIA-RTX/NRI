@@ -15,24 +15,19 @@ using namespace nri;
 
 Result FenceD3D11::Create(uint64_t initialValue)
 {
-    HRESULT hr = E_INVALIDARG;
-    const char* message = "";
-
     if (m_Device.GetDevice().version >= 5)
     {
-        hr = m_Device.GetDevice()->CreateFence(initialValue, D3D11_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_Fence));
-        message = "ID3D11Device5::CreateFence() - FAILED!";
+        HRESULT hr = m_Device.GetDevice()->CreateFence(initialValue, D3D11_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_Fence));
+        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device5::CreateFence()");
     }
     else
     {
         D3D11_QUERY_DESC queryDesc = {};
         queryDesc.Query = D3D11_QUERY_EVENT;
 
-        hr = m_Device.GetDevice()->CreateQuery(&queryDesc, &m_Query);
-        message = "ID3D11Device::CreateQuery() - FAILED!";
+        HRESULT hr = m_Device.GetDevice()->CreateQuery(&queryDesc, &m_Query);
+        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateQuery()");
     }
-
-    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, message);
 
     m_Value = initialValue;
 

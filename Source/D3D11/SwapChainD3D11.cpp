@@ -63,17 +63,9 @@ Result SwapChainD3D11::Create(const SwapChainDesc& swapChainDesc)
     if (!hwnd)
         return Result::INVALID_ARGUMENT;
 
-    ComPtr<IDXGIDevice> dxgiDevice;
-    HRESULT hr = m_Device.GetDevice()->QueryInterface(IID_PPV_ARGS(&dxgiDevice));
-    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IUnknown::QueryInterface() - FAILED!");
-
-    ComPtr<IDXGIAdapter> dxgiAdapter;
-    hr = dxgiDevice->GetAdapter(&dxgiAdapter);
-    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGIDevice::GetAdapter() - FAILED!");
-
     ComPtr<IDXGIFactory2> dxgiFactory2;
-    hr = dxgiAdapter->GetParent(IID_PPV_ARGS(&dxgiFactory2));
-    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGIObject::GetParent() - FAILED!");
+    HRESULT hr = m_Device.GetAdapter()->GetParent(IID_PPV_ARGS(&dxgiFactory2));
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGIObject::GetParent()");
 
     m_IsTearingAllowed = false;
     ComPtr<IDXGIFactory5> dxgiFactory5;
@@ -108,10 +100,10 @@ Result SwapChainD3D11::Create(const SwapChainDesc& swapChainDesc)
         desc.Scaling = DXGI_SCALING_STRETCH;
         hr = dxgiFactory2->CreateSwapChainForHwnd(m_Device.GetDevice().ptr, hwnd, &desc, nullptr, nullptr, &swapChain);
     }
-    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGIFactory2::CreateSwapChainForHwnd() - FAILED!");
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGIFactory2::CreateSwapChainForHwnd()");
 
     hr = dxgiFactory2->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);
-    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGIFactory::MakeWindowAssociation() - FAILED!");
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGIFactory::MakeWindowAssociation()");
 
     hr = swapChain->QueryInterface(__uuidof(IDXGISwapChain4), (void**)&m_SwapChain.ptr);
     m_SwapChain.version = 4;
@@ -175,20 +167,25 @@ Result SwapChainD3D11::Create(const SwapChainDesc& swapChainDesc)
         }
 
         hr = m_SwapChain->SetFullscreenState(TRUE, output);
-        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain::SetFullscreenState() failed, error code: 0x%X.", hr);
+        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain::SetFullscreenState()");
 
         hr = m_SwapChain->ResizeBuffers(desc.BufferCount, desc.Width, desc.Height, desc.Format, desc.Flags);
-        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain::ResizeBuffers() failed, error code: 0x%X.", hr);
+        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain::ResizeBuffers()");
 
         m_IsTearingAllowed = false;
         m_IsFullscreenEnabled = true;
     }
 
     // Use "swapChainDesc.textureNum" to explicitly limit maximum frames in flight
-    ComPtr<IDXGIDevice1> dxgiDevice1;
-    hr = dxgiDevice->QueryInterface(IID_PPV_ARGS(&dxgiDevice1));
+    ComPtr<IDXGIDevice> dxgiDevice;
+    hr = m_Device.GetDevice()->QueryInterface(IID_PPV_ARGS(&dxgiDevice));
     if (SUCCEEDED(hr))
-        dxgiDevice1->SetMaximumFrameLatency(swapChainDesc.textureNum);
+    {
+        ComPtr<IDXGIDevice1> dxgiDevice1;
+        hr = dxgiDevice->QueryInterface(IID_PPV_ARGS(&dxgiDevice1));
+        if (SUCCEEDED(hr))
+            dxgiDevice1->SetMaximumFrameLatency(swapChainDesc.textureNum);
+    }
 
     m_Format = g_swapChainTextureFormat[(uint32_t)swapChainDesc.format];
     m_SwapChainDesc = swapChainDesc;
@@ -201,7 +198,7 @@ Result SwapChainD3D11::Create(const SwapChainDesc& swapChainDesc)
     {
         ComPtr<ID3D11Texture2D> textureNative;
         hr = m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&textureNative));
-        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain::GetBuffer() - FAILED!");
+        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain::GetBuffer()");
 
         TextureD3D11Desc textureDesc = {};
         textureDesc.d3d11Resource = textureNative;
@@ -247,9 +244,8 @@ inline Result SwapChainD3D11::Present()
 
     UINT flags = (!m_SwapChainDesc.verticalSyncInterval && m_IsTearingAllowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
-    const HRESULT result = m_SwapChain->Present(m_SwapChainDesc.verticalSyncInterval, flags);
-
-    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), result, "Can't present the swapchain: IDXGISwapChain::Present() returned %d.", (int32_t)result);
+    HRESULT result = m_SwapChain->Present(m_SwapChainDesc.verticalSyncInterval, flags);
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), result, "IDXGISwapChain::Present()");
 
     return Result::SUCCESS;
 }
@@ -274,7 +270,7 @@ inline Result SwapChainD3D11::SetHdrMetadata(const HdrMetadata& hdrMetadata)
     data.MaxFrameAverageLightLevel = uint16_t(hdrMetadata.frameAverageLightLevelMax);
 
     HRESULT hr = m_SwapChain->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(DXGI_HDR_METADATA_HDR10), &data);
-    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain4::SetHDRMetaData() - FAILED");
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "IDXGISwapChain4::SetHDRMetaData()");
 
     return Result::SUCCESS;
 }

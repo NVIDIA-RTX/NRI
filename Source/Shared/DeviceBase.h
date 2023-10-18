@@ -26,6 +26,7 @@ namespace nri
         { return m_StdAllocator; }
 
         virtual ~DeviceBase() {}
+        virtual const DeviceDesc& GetDesc() const = 0;
         virtual void Destroy() = 0;
         virtual Result FillFunctionTable(CoreInterface& table) const { table = {}; return Result::UNSUPPORTED; }
         virtual Result FillFunctionTable(SwapChainInterface& table) const { table = {}; return Result::UNSUPPORTED; }

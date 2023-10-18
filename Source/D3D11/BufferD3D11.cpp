@@ -80,7 +80,7 @@ Result BufferD3D11::Create(const MemoryD3D11& memory)
         desc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
 
     HRESULT hr = m_Device.GetDevice()->CreateBuffer(&desc, nullptr, &m_Buffer);
-    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateBuffer() - FAILED!");
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateBuffer()");
 
     uint32_t priority = memory.GetResidencyPriority(m_Desc.size);
     if (priority != 0)

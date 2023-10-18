@@ -247,17 +247,6 @@ D3D11_PRIMITIVE_TOPOLOGY GetD3D11TopologyFromTopology(nri::Topology topology, ui
 
 //================================================================================================================
 
-inline bool DoesLibraryExist(const Log& log, const char* moduleName)
-{
-    HMODULE handle = LoadLibraryA(moduleName);
-    if (handle)
-        FreeLibrary(handle);
-    else
-        REPORT_INFO(log, "'%s' is not found. It's not required, but to enable AMD extensions put it in the working/system directory.", moduleName);
-
-    return handle != nullptr;
-}
-
 namespace nri
 {
     void GetTextureDescD3D11(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& textureDesc)

@@ -326,40 +326,6 @@ Result DeviceD3D11::FillFunctionTable(SwapChainInterface& swapChainInterface) co
 
 #pragma region [  WrapperD3D11  ]
 
-Result CreateDeviceD3D11(const DeviceCreationD3D11Desc& deviceCreationD3D11Desc, DeviceBase*& device)
-{
-    DeviceCreationDesc deviceCreationDesc = {};
-    deviceCreationDesc.callbackInterface = deviceCreationD3D11Desc.callbackInterface;
-    deviceCreationDesc.memoryAllocatorInterface = deviceCreationD3D11Desc.memoryAllocatorInterface;
-    deviceCreationDesc.graphicsAPI = GraphicsAPI::D3D11;
-
-    Log log(GraphicsAPI::D3D11, deviceCreationDesc.callbackInterface);
-    StdAllocator<uint8_t> allocator(deviceCreationDesc.memoryAllocatorInterface);
-
-    ComPtr<ID3D11Device> d3d11Device = (ID3D11Device*)deviceCreationD3D11Desc.d3d11Device;
-
-    ComPtr<IDXGIDevice> dxgiDevice;
-    HRESULT hr = d3d11Device->QueryInterface(IID_PPV_ARGS(&dxgiDevice));
-    RETURN_ON_BAD_HRESULT(log, hr, "Can't create device. Failed to query IDXGIDevice from ID3D11Device. (result: %d)", (int32_t)hr);
-
-    ComPtr<IDXGIAdapter> adapter;
-    hr = dxgiDevice->GetAdapter(&adapter);
-    RETURN_ON_BAD_HRESULT(log, hr, "Can't create device. IDXGIDevice::GetAdapter() failed. (result: %d)", (int32_t)hr);
-
-    DeviceD3D11* implementation = Allocate<DeviceD3D11>(allocator, log, allocator);
-    const nri::Result result = implementation->Create(deviceCreationDesc, adapter, d3d11Device, (AGSContext*)deviceCreationD3D11Desc.agsContextAssociatedWithDevice);
-
-    if (result == nri::Result::SUCCESS)
-    {
-        device = (DeviceBase*)implementation;
-        return nri::Result::SUCCESS;
-    }
-
-    Deallocate(allocator, implementation);
-
-    return result;
-}
-
 static Result NRI_CALL CreateCommandBuffer(Device& device, const CommandBufferD3D11Desc& commandBufferDesc, CommandBuffer*& commandBuffer)
 {
     DeviceD3D11& deviceD3D11 = (DeviceD3D11&)device;

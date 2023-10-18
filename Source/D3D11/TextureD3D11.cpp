@@ -118,7 +118,7 @@ Result TextureD3D11::Create(const MemoryD3D11* memory)
         hr = m_Device.GetDevice()->CreateTexture2D(&desc, nullptr, (ID3D11Texture2D**)&m_Texture);
     }
 
-    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "Can't create texture!");
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateTextureXx()");
 
     uint64_t size = GetMipmappedSize();
     uint32_t priority = memory ? memory->GetResidencyPriority(size) : 0;

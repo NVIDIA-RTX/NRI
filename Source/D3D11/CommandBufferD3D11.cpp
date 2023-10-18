@@ -48,7 +48,7 @@ Result CommandBufferD3D11::Create(ID3D11DeviceContext* precreatedContext)
     if (!precreatedContext)
     {
         hr = m_Device.GetDevice()->CreateDeferredContext(0, &context);
-        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateDeferredContext() - FAILED!");
+        RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11Device::CreateDeferredContext()");
     }
 
     // Release inherited interfaces from the immediate context
@@ -84,7 +84,7 @@ Result CommandBufferD3D11::Create(ID3D11DeviceContext* precreatedContext)
     }
 
     hr = m_DeferredContext->QueryInterface(IID_PPV_ARGS(&m_Annotation));
-    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "QueryInterface(ID3DUserDefinedAnnotation) - FAILED!");
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "QueryInterface(ID3DUserDefinedAnnotation)");
 
     m_DeferredContext.ext->BeginUAVOverlap(m_DeferredContext);
 
@@ -131,7 +131,7 @@ Result CommandBufferD3D11::Begin(const DescriptorPool* descriptorPool)
 Result CommandBufferD3D11::End()
 {
     HRESULT hr = m_DeferredContext->FinishCommandList(FALSE, &m_CommandList);
-    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11DeviceContext::FinishCommandList() - FAILED!");
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D11DeviceContext::FinishCommandList()");
 
     m_BindingState.UnbindAndReset(m_DeferredContext);
 

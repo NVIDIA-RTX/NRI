@@ -62,11 +62,11 @@ private:
     if (obj) \
         obj->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)std::strlen(name), name)
 
-#define RETURN_ON_BAD_HRESULT(log, hresult, format, ...) \
-    if ( FAILED(hresult) ) \
+#define RETURN_ON_BAD_HRESULT(log, hr, msg) \
+    if ( FAILED(hr) ) \
     { \
-        (log).ReportMessage(nri::Message::TYPE_ERROR, format, ##__VA_ARGS__); \
-        return GetResultFromHRESULT(hresult); \
+        (log).ReportMessage(nri::Message::TYPE_ERROR, msg##" failed, result = 0x%08X!", hr); \
+        return GetResultFromHRESULT(hr); \
     }
 
 #define RETURN_ON_FAILURE(log, condition, returnCode, format, ...) \
@@ -118,7 +118,7 @@ inline nri::Vendor GetVendorFromID(uint32_t vendorID)
 //================================================================================================================
 
 // TODO: This code is Windows/D3D specific, so it's probably better to move it into a separate header
-#if _WIN32
+#ifdef _WIN32
 
 struct IUnknown;
 

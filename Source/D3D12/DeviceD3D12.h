@@ -57,6 +57,9 @@ struct DeviceD3D12 final : public DeviceBase
     inline operator ID3D12Device5*() const
     { return m_Device5.GetInterface(); }
 
+    inline IDXGIAdapter* GetAdapter() const
+    { return m_Adapter.GetInterface(); }
+
     inline bool IsMeshShaderSupported() const
     { return m_IsMeshShaderSupported; }
 
@@ -75,7 +78,7 @@ struct DeviceD3D12 final : public DeviceBase
 
     bool GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const;
 
-    Result Create(IDXGIAdapter* dxgiAdapter, const DeviceCreationDesc& deviceCreationDesc);
+    Result Create(const DeviceCreationDesc& deviceCreationDesc);
     Result Create(const DeviceCreationD3D12Desc& deviceCreationDesc);
 
     Result CreateCpuOnlyVisibleDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type);
@@ -94,9 +97,6 @@ struct DeviceD3D12 final : public DeviceBase
 
     inline void SetDebugName(const char* name)
     { SET_D3D_DEBUG_OBJECT_NAME(m_Device, name); }
-
-    inline const DeviceDesc& GetDesc() const
-    { return m_DeviceDesc; }
 
     Result CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*& swapChain);
     void DestroySwapChain(SwapChain& swapChain);
@@ -154,6 +154,9 @@ struct DeviceD3D12 final : public DeviceBase
     // DeviceBase
     //================================================================================================================
 
+    inline const DeviceDesc& GetDesc() const
+    { return m_Desc; }
+
     void Destroy();
     Result FillFunctionTable(CoreInterface& table) const;
     Result FillFunctionTable(SwapChainInterface& table) const;
@@ -163,21 +166,21 @@ struct DeviceD3D12 final : public DeviceBase
     Result FillFunctionTable(HelperInterface& helperInterface) const;
 
 private:
-    void UpdateDeviceDesc(bool enableValidation);
+    void FillDesc(bool enableValidation);
     MemoryType GetMemoryType(MemoryLocation memoryLocation, const D3D12_RESOURCE_DESC& resourceDesc) const;
 
 private:
     ComPtr<ID3D12Device> m_Device;
     ComPtr<ID3D12Device5> m_Device5;
+    ComPtr<IDXGIAdapter> m_Adapter;
     std::array<CommandQueueD3D12*, COMMAND_QUEUE_TYPE_NUM> m_CommandQueues = {};
     Vector<DescriptorHeapDesc> m_DescriptorHeaps;
     Vector<Vector<DescriptorHandle>> m_FreeDescriptors;
-    DeviceDesc m_DeviceDesc = {};
+    DeviceDesc m_Desc = {};
     UnorderedMap<uint32_t, ComPtr<ID3D12CommandSignature>> m_DrawCommandSignatures;
     UnorderedMap<uint32_t, ComPtr<ID3D12CommandSignature>> m_DrawIndexedCommandSignatures;
     ComPtr<ID3D12CommandSignature> m_DispatchCommandSignature;
     CoreInterface m_CoreInterface = {};
-    ComPtr<IDXGIAdapter> m_Adapter;
     std::array<Lock, DESCRIPTOR_HEAP_TYPE_NUM> m_FreeDescriptorLocks;
     Lock m_DescriptorHeapLock;
     Lock m_QueueLock;

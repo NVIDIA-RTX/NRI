@@ -17,7 +17,7 @@ using namespace nri;
 Result FenceD3D12::Create(uint64_t initialValue)
 {
     HRESULT hr = ((ID3D12Device*)m_Device)->CreateFence(initialValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_Fence));
-    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D12Device::CreateFence() - FAILED!");
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D12Device::CreateFence()");
 
     return Result::SUCCESS;
 }

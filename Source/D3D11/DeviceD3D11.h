@@ -23,6 +23,9 @@ struct DeviceD3D11 final : public DeviceBase
     inline const VersionedDevice& GetDevice() const
     { return m_Device; }
 
+    inline IDXGIAdapter* GetAdapter() const
+    { return m_Adapter.GetInterface(); }
+
     inline const VersionedContext& GetImmediateContext() const
     { return m_ImmediateContext; }
 
@@ -30,24 +33,11 @@ struct DeviceD3D11 final : public DeviceBase
     { return m_CoreInterface; }
 
     bool GetOutput(Display* display, ComPtr<IDXGIOutput>& output) const;
-    Result Create(const DeviceCreationDesc& deviceCreationDesc, IDXGIAdapter* adapter, ID3D11Device* precreatedDevice, AGSContext* agsContext);
-
-    //================================================================================================================
-    // DeviceBase
-    //================================================================================================================
-
-    void Destroy();
-    Result FillFunctionTable(CoreInterface& table) const;
-    Result FillFunctionTable(SwapChainInterface& table) const;
-    Result FillFunctionTable(WrapperD3D11Interface& table) const;
-    Result FillFunctionTable(HelperInterface& helperInterface) const;
+    Result Create(const DeviceCreationDesc& deviceCreationDesc, ID3D11Device* precreatedDevice, AGSContext* agsContext);
 
     //================================================================================================================
     // NRI
     //================================================================================================================
-
-    inline const DeviceDesc& GetDesc() const
-    { return m_Desc; }
 
     inline void SetDebugName(const char* name)
     {
@@ -94,6 +84,19 @@ struct DeviceD3D11 final : public DeviceBase
     uint32_t CalculateAllocationNumber(const ResourceGroupDesc& resourceGroupDesc) const;
     Result AllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDesc, Memory** allocations);
 
+    //================================================================================================================
+    // DeviceBase
+    //================================================================================================================
+
+    const DeviceDesc& GetDesc() const
+    { return m_Desc; }
+
+    void Destroy();
+    Result FillFunctionTable(CoreInterface& table) const;
+    Result FillFunctionTable(SwapChainInterface& table) const;
+    Result FillFunctionTable(WrapperD3D11Interface& table) const;
+    Result FillFunctionTable(HelperInterface& helperInterface) const;
+
 private:
     void InitVersionedDevice(bool isDeferredContextsEmulationRequested);
     void InitVersionedContext();
@@ -114,7 +117,7 @@ private:
     bool m_SkipLiveObjectsReporting = false;
 
 private:
-    void FillLimits(bool isValidationEnabled, Vendor vendor);
+    void FillDesc(bool isValidationEnabled);
 };
 
 }

@@ -34,11 +34,7 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
 {
     ComPtr<ID3D12GraphicsCommandList> graphicsCommandList;
     HRESULT hr = ((ID3D12Device*)m_Device)->CreateCommandList(NRI_TEMP_NODE_MASK, commandListType, commandAllocator, nullptr, IID_PPV_ARGS(&graphicsCommandList));
-    if (FAILED(hr))
-    {
-        REPORT_ERROR(m_Device.GetLog(), "ID3D12Device::CreateCommandList() failed, error code: 0x%X.", hr);
-        return Result::FAILURE;
-    }
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D12Device::CreateCommandList()");
 
     m_CommandAllocator = commandAllocator;
     m_GraphicsCommandList = graphicsCommandList;
@@ -47,11 +43,7 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
     m_GraphicsCommandList->QueryInterface(IID_PPV_ARGS(&m_GraphicsCommandList6));
 
     hr = m_GraphicsCommandList->Close();
-    if (FAILED(hr))
-    {
-        REPORT_ERROR(m_Device.GetLog(), "ID3D12GraphicsCommandList::Close() failed, error code: 0x%X.", hr);
-        return Result::FAILURE;
-    }
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D12GraphicsCommandList::Close()");
 
     return Result::SUCCESS;
 }
@@ -95,11 +87,7 @@ inline void CommandBufferD3D12::AddResourceBarrier(ID3D12Resource* resource, Acc
 inline Result CommandBufferD3D12::Begin(const DescriptorPool* descriptorPool)
 {
     HRESULT hr = m_GraphicsCommandList->Reset(m_CommandAllocator, nullptr);
-    if (FAILED(hr))
-    {
-        REPORT_ERROR(m_Device.GetLog(), "ID3D12GraphicsCommandList::Reset() failed, return code %d.", hr);
-        return Result::FAILURE;
-    }
+    RETURN_ON_BAD_HRESULT(m_Device.GetLog(), hr, "ID3D12GraphicsCommandList::Reset()");
 
     if (descriptorPool)
         SetDescriptorPool(*descriptorPool);

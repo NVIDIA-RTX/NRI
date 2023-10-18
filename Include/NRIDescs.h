@@ -1234,11 +1234,21 @@ NRI_STRUCT(PipelineStatisticsDesc)
     uint64_t computeShaderInvocations;
 };
 
+NRI_STRUCT(AdapterDesc)
+{
+    char description[128];
+    uint64_t luid;
+    uint64_t videoMemorySize;
+    uint64_t systemMemorySize;
+    uint32_t deviceId;
+    NRI_NAME(Vendor) vendor;
+};
+
 NRI_STRUCT(DeviceDesc)
 {
     // Common
+    NRI_NAME(AdapterDesc) adapterDesc;
     NRI_NAME(GraphicsAPI) graphicsAPI;
-    NRI_NAME(Vendor) vendor;
     uint16_t nriVersionMajor;
     uint16_t nriVersionMinor;
 
