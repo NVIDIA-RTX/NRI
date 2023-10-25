@@ -12,12 +12,12 @@ cd "_NRI_SDK"
 
 copy "..\%NRI_DIR%\Include\*" "Include"
 copy "..\%NRI_DIR%\Include\Extensions\*" "Include\Extensions"
-copy "..\_Build\Debug\NRI.dll" "Lib\Debug"
-copy "..\_Build\Debug\NRI.lib" "Lib\Debug"
-copy "..\_Build\Debug\NRI.pdb" "Lib\Debug"
-copy "..\_Build\Release\NRI.dll" "Lib\Release"
-copy "..\_Build\Release\NRI.lib" "Lib\Release"
-copy "..\_Build\Release\NRI.pdb" "Lib\Release"
+copy "..\_Bin\Debug\NRI.dll" "Lib\Debug"
+copy "..\_Bin\Debug\NRI.lib" "Lib\Debug"
+copy "..\_Bin\Debug\NRI.pdb" "Lib\Debug"
+copy "..\_Bin\Release\NRI.dll" "Lib\Release"
+copy "..\_Bin\Release\NRI.lib" "Lib\Release"
+copy "..\_Bin\Release\NRI.pdb" "Lib\Release"
 copy "..\%NRI_DIR%\LICENSE.txt" "."
 
 cd ..

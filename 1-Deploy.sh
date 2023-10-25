@@ -7,8 +7,8 @@ chmod +x "2-Build.sh"
 chmod +x "3-Prepare NRI SDK.sh"
 chmod +x "4-Clean.sh"
 
-mkdir -p "_Compiler"
+mkdir -p "_Build"
 
-cd "_Compiler"
+cd "_Build"
 cmake ..
 cd ..

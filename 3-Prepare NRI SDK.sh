@@ -11,8 +11,8 @@ mkdir -p "_NRI_SDK/Lib/Release"
 cd "_NRI_SDK"
 
 cp -r ../$NRI_DIR/Include/ "Include"
-cp -H ../_Build/Debug/libNRI.so "Lib/Debug"
-cp -H ../_Build/Release/libNRI.so "Lib/Release"
+cp -H ../_Bin/Debug/libNRI.so "Lib/Debug"
+cp -H ../_Bin/Release/libNRI.so "Lib/Release"
 cp ../$NRI_DIR/LICENSE.txt "."
 
 cd ..
