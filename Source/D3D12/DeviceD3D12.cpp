@@ -254,7 +254,7 @@ Result DeviceD3D12::CreateCpuOnlyVisibleDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYP
     ComPtr<ID3D12DescriptorHeap> descriptorHeap;
     D3D12_DESCRIPTOR_HEAP_DESC desc = {type, DESCRIPTORS_BATCH_SIZE, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, NRI_TEMP_NODE_MASK};
     HRESULT hr = ((ID3D12Device*)m_Device)->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&descriptorHeap));
-    RETURN_ON_BAD_HRESULT(GetLog(), hr, "ID3D12Device::CreateDescriptorHeap()");
+    RETURN_ON_BAD_HRESULT(GetLog(), hr, "ID3D12Device::CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_FLAG_NONE)");
 
     DescriptorHeapDesc descriptorHeapDesc = {};
     descriptorHeapDesc.descriptorHeap = descriptorHeap;
