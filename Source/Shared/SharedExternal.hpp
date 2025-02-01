@@ -1,6 +1,6 @@
 // © 2021 NVIDIA Corporation
 
-#ifdef _WIN32
+#if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
 
 constexpr std::array<DxgiFormat, (size_t)nri::Format::MAX_NUM> DXGI_FORMAT_TABLE = {{
     {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN},                            // UNKNOWN
@@ -394,7 +394,7 @@ nri::Result QueryVideoMemoryInfoDXGI(uint64_t luid, nri::MemoryLocation memoryLo
 
 #else
 
-uint32_t NRIFormatToDXGIFormat(nri::Format format) {
+uint32_t NRIFormatToDXGIFormat(nri::Format) {
     return 0;
 }
 

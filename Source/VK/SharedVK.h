@@ -2,13 +2,11 @@
 
 #pragma once
 
-#include "SharedExternal.h"
-
 #include <vulkan/vulkan.h>
-
 #undef CreateSemaphore
 
 #include "DispatchTable.h"
+#include "SharedExternal.h"
 
 typedef uint16_t MemoryTypeIndex;
 

@@ -37,6 +37,166 @@ option(NRI_ENABLE_AGILITY_SDK_SUPPORT "Enable Agility SDK support to unlock acce
 set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK binaries will be copied to relative to 'CMAKE_RUNTIME_OUTPUT_DIRECTORY'")
 set(NRI_AGILITY_SDK_VERSION 614)
 
+# Is submodule?
+if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
+    set(IS_SUBMODULE OFF)
+else()
+    set(IS_SUBMODULE ON)
+endif()
+
+# Create project
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/Include/NRI.h" ver_h)
+string(REGEX MATCH "NRI_VERSION_MAJOR ([0-9]*)" _ ${ver_h})
+set(VERSION_MAJOR ${CMAKE_MATCH_1})
+string(REGEX MATCH "NRI_VERSION_MINOR ([0-9]*)" _ ${ver_h})
+set(VERSION_MINOR ${CMAKE_MATCH_1})
+
+message("NRI: v${VERSION_MAJOR}.${VERSION_MINOR}")
+project(NRI LANGUAGES C CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_POSITION_INDEPENDENT_BINARIES ON)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
+
+if(IS_SUBMODULE)
+    file(RELATIVE_PATH PROJECT_FOLDER ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+else()
+    set(PROJECT_FOLDER ${PROJECT_NAME})
+    set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "")
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/_Bin" CACHE STRING "")
+endif()
+
+if(MSVC)
+    # Generate PDB for Release builds
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi")
+    set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /DEBUG /OPT:REF /OPT:ICF")
+
+    # Static runtime linking
+    if(NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    endif()
+
+    # Debugger markup
+    set(NRI_NATVIS "nri.natvis")
+else()
+    set(NRI_NATVIS "")
+endif()
+
+# Enable grouping of source files into folders in IDEs
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+# Compile options
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set(COMPILE_OPTIONS -msse4.1 -Wextra -Wno-missing-field-initializers)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    set(COMPILE_OPTIONS -msse4.1 -Wextra -Wno-missing-field-initializers)
+elseif(MSVC)
+    set(COMPILE_OPTIONS
+        /W4 /WX
+        /wd4324 # padding was added at the end of a structure because you specified an alignment specifier
+    )
+else()
+    message(WARNING "Unknown compiler!")
+endif()
+
+# Compile definitions
+message("NRI: enabled options:")
+
+set(COMPILE_DEFINITIONS WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS)
+
+if(NRI_STATIC_LIBRARY)
+    message(STATUS "NRI_STATIC_LIBRARY")
+    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_STATIC_LIBRARY)
+endif()
+
+if(NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS)
+    message(STATUS "NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS")
+    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS=1)
+endif()
+
+if(NRI_ENABLE_D3D_EXTENSIONS)
+    message(STATUS "NRI_ENABLE_D3D_EXTENSIONS")
+    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_D3D_EXTENSIONS=1)
+endif()
+
+if(NRI_ENABLE_NVTX_SUPPORT)
+    message(STATUS "NRI_ENABLE_NVTX_SUPPORT")
+    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_NVTX_SUPPORT=1)
+endif()
+
+if(NRI_ENABLE_NONE_SUPPORT)
+    message(STATUS "NRI_ENABLE_NONE_SUPPORT")
+    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_NONE_SUPPORT=1)
+endif()
+
+if(NRI_ENABLE_D3D11_SUPPORT)
+    message(STATUS "NRI_ENABLE_D3D11_SUPPORT")
+    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_D3D11_SUPPORT=1)
+endif()
+
+if(NRI_ENABLE_D3D12_SUPPORT)
+    message(STATUS "NRI_ENABLE_D3D12_SUPPORT")
+    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_D3D12_SUPPORT=1)
+endif()
+
+if(NRI_ENABLE_VK_SUPPORT)
+    message(STATUS "NRI_ENABLE_VK_SUPPORT")
+    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_VK_SUPPORT=1)
+endif()
+
+if(NRI_ENABLE_VALIDATION_SUPPORT)
+    message(STATUS "NRI_ENABLE_VALIDATION_SUPPORT")
+    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_VALIDATION_SUPPORT=1)
+endif()
+
+# Find Windows SDK
+if(HAS_D3D)
+    message("NRI: looking for Windows SDK:")
+
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(BIN_ARCHITECTURE "x64")
+        set(NVAPI_BIN_ARCHITECTURE "amd64")
+    else()
+        set(BIN_ARCHITECTURE "x86")
+        set(NVAPI_BIN_ARCHITECTURE "x86")
+    endif()
+
+    if("$ENV{WIN10_SDK_PATH}$ENV{WIN10_SDK_VERSION}" STREQUAL "")
+        get_filename_component(WINDOWS_SDK_PATH "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots;KitsRoot10]" ABSOLUTE CACHE)
+        set(WINDOWS_SDK_VERSION ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION})
+
+        if("${WINDOWS_SDK_VERSION}" STREQUAL "")
+            set(WINDOWS_SDK_VERSION ${CMAKE_SYSTEM_VERSION})
+            message(STATUS "Using CMAKE_SYSTEM_VERSION as WindowsSDK version.(${CMAKE_SYSTEM_VERSION})")
+        endif()
+    else()
+        set(WINDOWS_SDK_PATH $ENV{WIN10_SDK_PATH})
+        set(WINDOWS_SDK_VERSION $ENV{WIN10_SDK_VERSION})
+    endif()
+
+    if("${WINDOWS_SDK_PATH}" STREQUAL "")
+        message(FATAL_ERROR "Failed to detect WindowsSDK path. Please add enviroment variables WIN10_SDK_PATH and WIN10_SDK_VERSION or use MSVC")
+    endif()
+
+    if("${WINDOWS_SDK_VERSION}" STREQUAL "")
+        message(FATAL_ERROR "Failed to detect WindowsSDK version. Please add enviroment variables WIN10_SDK_PATH and WIN10_SDK_VERSION or use MSVC")
+    endif()
+
+    if(IS_DIRECTORY "${WINDOWS_SDK_PATH}/Include/${WINDOWS_SDK_VERSION}.0")
+        set(WINDOWS_SDK_VERSION "${WINDOWS_SDK_VERSION}.0")
+    endif()
+
+    set(WINDOWS_SDK_LIB_PATH "${WINDOWS_SDK_PATH}/Lib/${WINDOWS_SDK_VERSION}/um/${BIN_ARCHITECTURE}")
+    message(STATUS "${WINDOWS_SDK_LIB_PATH}")
+
+    find_library(INPUT_LIB_DXGI NAMES dxgi HINTS ${WINDOWS_SDK_LIB_PATH} REQUIRED)
+    find_library(INPUT_LIB_DXGUID NAMES dxguid HINTS ${WINDOWS_SDK_LIB_PATH} REQUIRED)
+endif()
+
 # Fetch dependencies
 include(FetchContent)
 
@@ -120,165 +280,6 @@ if(DEPS)
     FetchContent_MakeAvailable(${DEPS})
 endif()
 
-# Is submodule?
-if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
-    set(IS_SUBMODULE OFF)
-else()
-    set(IS_SUBMODULE ON)
-endif()
-
-# Cached
-if(NOT IS_SUBMODULE)
-    set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "")
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/_Bin" CACHE STRING "")
-endif()
-
-# Generate PDB for Release builds
-if(MSVC)
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi")
-    set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /DEBUG /OPT:REF /OPT:ICF")
-    set(NRI_NATVIS "nri.natvis")
-else()
-    set(NRI_NATVIS "")
-endif()
-
-# Create project
-file(READ "${CMAKE_CURRENT_SOURCE_DIR}/Include/NRI.h" ver_h)
-string(REGEX MATCH "NRI_VERSION_MAJOR ([0-9]*)" _ ${ver_h})
-set(VERSION_MAJOR ${CMAKE_MATCH_1})
-string(REGEX MATCH "NRI_VERSION_MINOR ([0-9]*)" _ ${ver_h})
-set(VERSION_MINOR ${CMAKE_MATCH_1})
-
-message("NRI: v${VERSION_MAJOR}.${VERSION_MINOR}")
-project(NRI LANGUAGES C CXX)
-
-if(IS_SUBMODULE)
-    file(RELATIVE_PATH PROJECT_FOLDER ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
-else()
-    set(PROJECT_FOLDER ${PROJECT_NAME})
-endif()
-
-# Find Windows SDK
-if(WIN32)
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-        set(BIN_ARCHITECTURE "x64")
-        set(NVAPI_BIN_ARCHITECTURE "amd64")
-    else()
-        set(BIN_ARCHITECTURE "x86")
-        set(NVAPI_BIN_ARCHITECTURE "x86")
-    endif()
-
-    if("$ENV{WIN10_SDK_PATH}$ENV{WIN10_SDK_VERSION}" STREQUAL "")
-        get_filename_component(WINDOWS_SDK_PATH "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots;KitsRoot10]" ABSOLUTE CACHE)
-        set(WINDOWS_SDK_VERSION ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION})
-
-        if("${WINDOWS_SDK_VERSION}" STREQUAL "")
-            set(WINDOWS_SDK_VERSION ${CMAKE_SYSTEM_VERSION})
-            message(STATUS "Using CMAKE_SYSTEM_VERSION as WindowsSDK version.(${CMAKE_SYSTEM_VERSION})")
-        endif()
-    else()
-        set(WINDOWS_SDK_PATH $ENV{WIN10_SDK_PATH})
-        set(WINDOWS_SDK_VERSION $ENV{WIN10_SDK_VERSION})
-    endif()
-
-    if("${WINDOWS_SDK_PATH}" STREQUAL "")
-        message(FATAL_ERROR "Failed to detect WindowsSDK path. Please add enviroment variables WIN10_SDK_PATH and WIN10_SDK_VERSION or use MSVC")
-    endif()
-
-    if("${WINDOWS_SDK_VERSION}" STREQUAL "")
-        message(FATAL_ERROR "Failed to detect WindowsSDK version. Please add enviroment variables WIN10_SDK_PATH and WIN10_SDK_VERSION or use MSVC")
-    endif()
-
-    if(IS_DIRECTORY "${WINDOWS_SDK_PATH}/Include/${WINDOWS_SDK_VERSION}.0")
-        set(WINDOWS_SDK_VERSION "${WINDOWS_SDK_VERSION}.0")
-    endif()
-
-    set(WINDOWS_SDK_LIB_PATH "${WINDOWS_SDK_PATH}/Lib/${WINDOWS_SDK_VERSION}/um/${BIN_ARCHITECTURE}")
-
-    find_library(INPUT_LIB_D3D11 NAMES d3d11 HINTS ${WINDOWS_SDK_LIB_PATH} REQUIRED)
-    find_library(INPUT_LIB_D3D12 NAMES d3d12 HINTS ${WINDOWS_SDK_LIB_PATH} REQUIRED)
-    find_library(INPUT_LIB_DXGI NAMES dxgi HINTS ${WINDOWS_SDK_LIB_PATH} REQUIRED)
-    find_library(INPUT_LIB_DXGUID NAMES dxguid HINTS ${WINDOWS_SDK_LIB_PATH} REQUIRED) # for nriReportLiveObjects
-endif()
-
-# Globals?
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_POSITION_INDEPENDENT_BINARIES ON)
-set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
-
-if(MSVC AND NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
-
-# Compile options
-message("NRI: enabled options:")
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(COMPILE_OPTIONS -msse4.1 -Wextra -Wno-missing-field-initializers)
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    set(COMPILE_OPTIONS -msse4.1 -Wextra -Wno-missing-field-initializers)
-elseif(MSVC)
-    set(COMPILE_OPTIONS
-        /W4 /WX
-        /wd4324 # padding was added at the end of a structure because you specified an alignment specifier
-    )
-else()
-    message(WARNING "Unknown compiler!")
-endif()
-
-set(COMPILE_DEFINITIONS WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS)
-
-if(NRI_STATIC_LIBRARY)
-    message(STATUS "NRI_STATIC_LIBRARY")
-    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_STATIC_LIBRARY)
-endif()
-
-if(NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS)
-    message(STATUS "NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS")
-    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS=1)
-endif()
-
-if(NRI_ENABLE_D3D_EXTENSIONS)
-    message(STATUS "NRI_ENABLE_D3D_EXTENSIONS")
-    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_D3D_EXTENSIONS=1)
-endif()
-
-if(NRI_ENABLE_NVTX_SUPPORT)
-    message(STATUS "NRI_ENABLE_NVTX_SUPPORT")
-    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_NVTX_SUPPORT=1)
-endif()
-
-if(NRI_ENABLE_NONE_SUPPORT)
-    message(STATUS "NRI_ENABLE_NONE_SUPPORT")
-    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_NONE_SUPPORT=1)
-endif()
-
-if(NRI_ENABLE_D3D11_SUPPORT)
-    message(STATUS "NRI_ENABLE_D3D11_SUPPORT")
-    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_D3D11_SUPPORT=1)
-endif()
-
-if(NRI_ENABLE_D3D12_SUPPORT)
-    message(STATUS "NRI_ENABLE_D3D12_SUPPORT")
-    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_D3D12_SUPPORT=1)
-endif()
-
-if(NRI_ENABLE_VK_SUPPORT)
-    message(STATUS "NRI_ENABLE_VK_SUPPORT")
-    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_VK_SUPPORT=1)
-endif()
-
-if(NRI_ENABLE_VALIDATION_SUPPORT)
-    message(STATUS "NRI_ENABLE_VALIDATION_SUPPORT")
-    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_VALIDATION_SUPPORT=1)
-endif()
-
 # D3D extensions
 if(NRI_ENABLE_D3D_EXTENSIONS)
     find_library(NVAPI_LIB NAMES nvapi64 nvapi PATHS "${nvapi_SOURCE_DIR}/${NVAPI_BIN_ARCHITECTURE}" REQUIRED) # statically linked
@@ -319,6 +320,8 @@ if(NRI_ENABLE_D3D11_SUPPORT)
         add_library(NRI_D3D11 STATIC ${D3D11_SOURCE})
     endif()
 
+    find_library(INPUT_LIB_D3D11 NAMES d3d11 HINTS ${WINDOWS_SDK_LIB_PATH} REQUIRED)
+
     target_include_directories(NRI_D3D11 PRIVATE "Include" "Source/Shared" "${nvapi_SOURCE_DIR}" "${amdags_SOURCE_DIR}/ags_lib/inc")
     target_compile_definitions(NRI_D3D11 PRIVATE ${COMPILE_DEFINITIONS})
     target_compile_options(NRI_D3D11 PRIVATE ${COMPILE_OPTIONS})
@@ -343,10 +346,12 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         add_library(NRI_D3D12 STATIC ${D3D12_SOURCE})
     endif()
 
+    find_library(INPUT_LIB_D3D12 NAMES d3d12 HINTS ${WINDOWS_SDK_LIB_PATH} REQUIRED)
+
     target_include_directories(NRI_D3D12 PRIVATE "Include" "Source/Shared" "${d3d12ma_SOURCE_DIR}/include" "${d3d12ma_SOURCE_DIR}/src" "${nvapi_SOURCE_DIR}" "${amdags_SOURCE_DIR}/ags_lib/inc")
     target_compile_definitions(NRI_D3D12 PRIVATE ${COMPILE_DEFINITIONS})
     target_compile_options(NRI_D3D12 PRIVATE ${COMPILE_OPTIONS})
-    target_link_libraries(NRI_D3D12 PRIVATE NRI_Shared ${INPUT_LIB_D3D12} ${INPUT_LIB_DXGI})
+    target_link_libraries(NRI_D3D12 PRIVATE NRI_Shared ${INPUT_LIB_D3D12} ${INPUT_LIB_DXGI} ${INPUT_LIB_DXGUID})
     set_property(TARGET NRI_D3D12 PROPERTY FOLDER ${PROJECT_FOLDER})
 
     if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
@@ -471,9 +476,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE ${COMPILE_OPTIONS})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE NRI_Shared)
 
-if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${INPUT_LIB_DXGI} ${INPUT_LIB_DXGUID})
-else()
+if(NOT WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_DL_LIBS})
 endif()
 

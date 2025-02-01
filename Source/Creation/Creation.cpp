@@ -1,9 +1,5 @@
 // © 2021 NVIDIA Corporation
 
-#include "SharedExternal.h"
-
-#define ADAPTER_MAX_NUM 32
-
 #if NRI_ENABLE_NVTX_SUPPORT
 #    include "nvtx3/nvToolsExt.h"
 #endif
@@ -22,27 +18,17 @@
 #    include <vulkan/vulkan.h>
 #endif
 
+#include "SharedExternal.h"
+
+#define ADAPTER_MAX_NUM 32
+
 using namespace nri;
 
-#if NRI_ENABLE_NONE_SUPPORT
 Result CreateDeviceNONE(const DeviceCreationDesc& deviceCreationDesc, DeviceBase*& device);
-#endif
-
-#if NRI_ENABLE_D3D11_SUPPORT
 Result CreateDeviceD3D11(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationD3D11Desc& deviceCreationDescD3D11, DeviceBase*& device);
-#endif
-
-#if NRI_ENABLE_D3D12_SUPPORT
 Result CreateDeviceD3D12(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationD3D12Desc& deviceCreationDescD3D12, DeviceBase*& device);
-#endif
-
-#if NRI_ENABLE_VK_SUPPORT
 Result CreateDeviceVK(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationVKDesc& deviceCreationDescVK, DeviceBase*& device);
-#endif
-
-#if NRI_ENABLE_VALIDATION_SUPPORT
 DeviceBase* CreateDeviceValidation(const DeviceCreationDesc& deviceCreationDesc, DeviceBase& device);
-#endif
 
 constexpr uint64_t Hash(const char* name) {
     return *name != 0 ? *name ^ (33 * Hash(name + 1)) : 5381;
@@ -151,18 +137,9 @@ static Result EnumerateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterD
     return Result::SUCCESS;
 }
 
-#else
-
-static Result EnumerateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t&, uint64_t, DeviceCreationDesc*) {
-    if (adapterDescs)
-        *adapterDescs = {};
-
-    return Result::UNSUPPORTED;
-}
-
 #endif
 
-#if NRI_ENABLE_VK_SUPPORT // prefer VK since it shows real support for queues
+#if NRI_ENABLE_VK_SUPPORT
 
 static int SortAdaptersByDedicatedVideoMemorySizeVK(const void* pa, const void* pb) {
     const AdapterDesc* a = (AdapterDesc*)pa;
@@ -376,17 +353,6 @@ static Result EnumerateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDe
     UnloadSharedLibrary(*loader);
 
     return nriResult;
-}
-
-#else
-
-typedef void* VkPhysicalDevice;
-
-static Result EnumerateAdaptersVK(AdapterDesc* adapterDescs, uint32_t&, VkPhysicalDevice, DeviceCreationDesc*) {
-    if (adapterDescs)
-        *adapterDescs = {};
-
-    return Result::UNSUPPORTED;
 }
 
 #endif
@@ -847,17 +813,30 @@ NRI_API const char* NRI_CALL nriGetGraphicsAPIString(GraphicsAPI graphicsAPI) {
 }
 
 NRI_API Result NRI_CALL nriEnumerateAdapters(AdapterDesc* adapterDescs, uint32_t& adapterDescNum) {
-    // Try VK first as capable to return real queue support
-    Result result = EnumerateAdaptersVK(adapterDescs, adapterDescNum, 0, nullptr);
+    Result result = Result::UNSUPPORTED;
 
+    if (adapterDescs && adapterDescNum)
+        memset(adapterDescs, 0, sizeof(AdapterDesc) * adapterDescNum);
+
+#if NRI_ENABLE_VK_SUPPORT
+    // Try VK first as capable to return real support for queues
+    result = EnumerateAdaptersVK(adapterDescs, adapterDescNum, 0, nullptr);
+#endif
+
+#if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
     // If VK is not available, use D3D
     if (result != Result::SUCCESS)
         result = EnumerateAdaptersD3D(adapterDescs, adapterDescNum, 0, nullptr);
+#endif
 
-#if !(NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT || NRI_ENABLE_VK_SUPPORT) && NRI_ENABLE_NONE_SUPPORT
+#if NRI_ENABLE_NONE_SUPPORT && !(NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT || NRI_ENABLE_VK_SUPPORT)
     // Patch the results, if NONE is the only avaiable implementation
-    adapterDescNum = 1;
-    result = Result::SUCCESS;
+    if (result != Result::SUCCESS) {
+        if (adapterDescNum > 1)
+            adapterDescNum = 1;
+
+        result = Result::SUCCESS;
+    }
 #endif
 
     return result;

@@ -9,13 +9,18 @@
 #include <map>
 
 #ifdef _WIN32
-#    include <dxgi1_6.h>
 #    define FILE_SEPARATOR '\\'
 #else
 #    define FILE_SEPARATOR '/'
+#endif
+
+#if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
+#    include <dxgi1_6.h>
+#else
 typedef uint32_t DXGI_FORMAT;
 #endif
 
+// IMPORTANT: "SharedExternal.h" must be included after inclusion of "windows.h" (can be implicit) because ERROR gets undef-ed below
 #include "NRI.h"
 
 #include "Extensions/NRIDeviceCreation.h"
@@ -235,7 +240,7 @@ void UnloadSharedLibrary(Library& library);
 extern const char* VULKAN_LOADER_NAME;
 
 // Windows/D3D specific
-#ifdef _WIN32
+#if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
 
 struct IUnknown;
 
@@ -352,7 +357,7 @@ struct DisplayDescHelper {
 #else
 
 struct DisplayDescHelper {
-    inline nri::Result GetDisplayDesc(void*, nri::DisplayDesc& displayDesc) {
+    inline nri::Result GetDisplayDesc(void*, nri::DisplayDesc& displayDesc) { // TODO: non-Windows - query somehow? Windows - allow DXGI usage even if D3D is disabled?
         displayDesc = {};
         displayDesc.sdrLuminance = 80.0f;
         displayDesc.maxLuminance = 80.0f;
