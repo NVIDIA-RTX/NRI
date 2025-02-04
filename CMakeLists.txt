@@ -218,6 +218,7 @@ if(NRI_ENABLE_NVTX_SUPPORT)
         nvtx
         GIT_REPOSITORY https://github.com/NVIDIA/NVTX.git
         GIT_TAG dev
+        GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
     )
     list(APPEND DEPS nvtx)
@@ -229,6 +230,7 @@ if(NRI_ENABLE_D3D_EXTENSIONS)
         nvapi
         GIT_REPOSITORY https://github.com/NVIDIA/nvapi.git
         GIT_TAG main
+        GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
     )
     list(APPEND DEPS nvapi)
@@ -238,6 +240,7 @@ if(NRI_ENABLE_D3D_EXTENSIONS)
         amdags
         GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/AGS_SDK.git
         GIT_TAG master
+        GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
     )
     list(APPEND DEPS amdags)
@@ -249,6 +252,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         d3d12ma
         GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
         GIT_TAG master
+        GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
     )
     list(APPEND DEPS d3d12ma)
@@ -260,6 +264,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         vulkan_headers
         GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers.git
         GIT_TAG origin/vulkan-sdk-1.4.304
+        GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
     )
     list(APPEND DEPS vulkan_headers)
@@ -269,6 +274,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         vma
         GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
         GIT_TAG master
+        GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
     )
     list(APPEND DEPS vma)
