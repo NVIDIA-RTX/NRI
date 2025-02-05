@@ -38,6 +38,7 @@ Key features:
  - user provided memory allocator support
  - default D3D11 behavior is changed to match D3D12/VK using *NVAPI* or *AMD AGS* libraries, where applicable
  - supporting as much as possible VK-enabled platforms: Windows, Linux, MacOS, Android
+ - debug names and annotations for CPU and GPU timelines (GAPI, [NVTX](https://github.com/NVIDIA/NVTX) and [PIX](https://devblogs.microsoft.com/pix/winpixeventruntime/), if "WinPixEventRuntime.dll" is nearby)
  - can be used as a *shared* or *static* library
 
 Available interfaces:
