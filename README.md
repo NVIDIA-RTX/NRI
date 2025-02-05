@@ -112,7 +112,7 @@ Repository organization:
 
 *NRI* sample code:
  - [*NRI samples*](https://github.com/NVIDIA-RTX/NRISamples)
- - [*NRD sample*](https://github.com/NVIDIA-RTX/NRDSample)
+ - [*NRD sample*](https://github.com/NVIDIA-RTX/NRD-Sample)
 
 ## C/C++ INTERFACE DIFFERENCES
 
