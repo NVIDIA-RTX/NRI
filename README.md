@@ -1,6 +1,6 @@
 # NVIDIA RENDER INTERFACE (NRI)
 
-[![Status](https://github.com/NVIDIAGameWorks/NRI/actions/workflows/build.yml/badge.svg)](https://github.com/NVIDIAGameWorks/NRI/actions/workflows/build.yml)
+[![Status](https://github.com/NVIDIA-RTX/NRI/actions/workflows/build.yml/badge.svg)](https://github.com/NVIDIA-RTX/NRI/actions/workflows/build.yml)
 
 *NRI* is a low-level abstract render interface, which has been designed to support all low level features of D3D12 and Vulkan GAPIs, but at the same time to simplify usage and reduce the amount of code needed (especially compared with VK).
 
@@ -111,8 +111,8 @@ Repository organization:
 - it's recommended to use the latest release
 
 *NRI* sample code:
- - [*NRI samples*](https://github.com/NVIDIAGameWorks/NRISamples)
- - [*NRD sample*](https://github.com/NVIDIAGameWorks/NRDSample)
+ - [*NRI samples*](https://github.com/NVIDIA-RTX/NRISamples)
+ - [*NRD sample*](https://github.com/NVIDIA-RTX/NRDSample)
 
 ## C/C++ INTERFACE DIFFERENCES
 
@@ -199,7 +199,7 @@ Installation steps:
 
 ## SAMPLES OVERVIEW
 
-NRI samples can be found [*here*](https://github.com/NVIDIAGameWorks/NRISamples).
+NRI samples can be found [*here*](https://github.com/NVIDIA-RTX/NRISamples).
 
 Samples:
 - DeviceInfo - queries and prints out information about device groups in the system
