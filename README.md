@@ -52,7 +52,18 @@ Available interfaces:
  - `NRIStreamer.h` - a convenient way to stream data into resources
  - `NRISwapChain.h` - swap chain and related functionality
 
-Required Vulkan extensions:
+Repository organization:
+- there is only `main` branch used for development
+- stable versions are in `Releases` section
+- it's recommended to use the latest release
+
+*NRI* sample code:
+ - [*NRI samples*](https://github.com/NVIDIA-RTX/NRISamples)
+ - [*NRD sample*](https://github.com/NVIDIA-RTX/NRD-Sample)
+
+<details>
+<summary>Required Vulkan extensions:</summary>
+
 - for Vulkan 1.2:
     - _VK_KHR_synchronization2_
     - _VK_KHR_dynamic_rendering_
@@ -63,7 +74,11 @@ Required Vulkan extensions:
     - _VK_KHR_get_physical_device_properties2_ (instance extension)
     - _VK_KHR_portability_subset_
 
-Supported Vulkan extensions:
+</details>
+
+<details>
+<summary>Supported Vulkan extensions:</summary>
+
 - Instance:
     - _VK_KHR_get_surface_capabilities2_
     - _VK_KHR_surface_
@@ -104,15 +119,10 @@ Supported Vulkan extensions:
     - _VK_EXT_pipeline_robustness_
     - _VK_EXT_fragment_shader_interlock_
     - _VK_NV_low_latency2_
+    - _VK_NVX_binary_import_
+    - _VK_NVX_image_view_handle_
 
-Repository organization:
-- there is only one branch `main` used for development
-- stable versions are in `Releases` section
-- it's recommended to use the latest release
-
-*NRI* sample code:
- - [*NRI samples*](https://github.com/NVIDIA-RTX/NRISamples)
- - [*NRD sample*](https://github.com/NVIDIA-RTX/NRD-Sample)
+</details>
 
 ## C/C++ INTERFACE DIFFERENCES
 
