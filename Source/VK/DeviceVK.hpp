@@ -289,6 +289,12 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     if (IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, supportedExts))
         desiredDeviceExts.push_back(VK_NV_LOW_LATENCY_2_EXTENSION_NAME);
 
+    if (IsExtensionSupported(VK_NVX_BINARY_IMPORT_EXTENSION_NAME, supportedExts))
+        desiredDeviceExts.push_back(VK_NVX_BINARY_IMPORT_EXTENSION_NAME);
+
+    if (IsExtensionSupported(VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME, supportedExts))
+        desiredDeviceExts.push_back(VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME);
+
     // Dependencies
     if (IsExtensionSupported(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, supportedExts))
         desiredDeviceExts.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
