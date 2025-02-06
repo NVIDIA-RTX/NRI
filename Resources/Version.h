@@ -4,7 +4,7 @@
 #define STR(x) STR_HELPER(x)
 
 #define VERSION_MAJOR                   1
-#define VERSION_MINOR                   162
+#define VERSION_MINOR                   163
 #define VERSION_BUILD                   0
 #define VERSION_REVISION                0
 
