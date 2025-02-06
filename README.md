@@ -1,4 +1,4 @@
-# NVIDIA RENDER INTERFACE (NRI)
+# NVIDIA RENDER INTERFACE (NRI) 
 
 [![Status](https://github.com/NVIDIA-RTX/NRI/actions/workflows/build.yml/badge.svg)](https://github.com/NVIDIA-RTX/NRI/actions/workflows/build.yml)
 
