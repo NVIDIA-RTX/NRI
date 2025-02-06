@@ -190,7 +190,7 @@ if(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT)
     find_library(INPUT_LIB_DXGUID NAMES dxguid HINTS ${WINDOWS_SDK_LIB_PATH} REQUIRED)
 endif()
 
-# Fetch dependencies
+# Download dependencies
 set(DEPS)
 
 if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
