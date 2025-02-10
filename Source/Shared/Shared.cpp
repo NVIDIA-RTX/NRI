@@ -1,10 +1,3 @@
-#ifdef _WIN32
-#    include <windows.h>
-#else
-#    include <csignal>
-#    include <cstdarg>
-#endif
-
 #include "SharedExternal.h"
 
 #include "HelperDataUpload.h"
