@@ -1,3 +1,8 @@
+#ifndef _WIN32
+#    include <signal.h> // raise
+#    include <stdarg.h> // va_start, va_end
+#endif
+
 #include "SharedExternal.h"
 
 #include "HelperDataUpload.h"
