@@ -76,6 +76,9 @@ Result BufferVK::Create(const AllocateBufferDesc& bufferDesc) {
     allocationCreateInfo.priority = bufferDesc.memoryPriority * 0.5f + 0.5f;
     allocationCreateInfo.usage = IsHostMemory(bufferDesc.memoryLocation) ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 
+    if (bufferDesc.dedicated)
+        allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+
     if (IsHostVisibleMemory(bufferDesc.memoryLocation)) {
         allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
@@ -141,6 +144,9 @@ Result TextureVK::Create(const AllocateTextureDesc& textureDesc) {
     allocationCreateInfo.flags = VMA_ALLOCATION_CREATE_CAN_ALIAS_BIT | VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
     allocationCreateInfo.priority = textureDesc.memoryPriority * 0.5f + 0.5f;
     allocationCreateInfo.usage = IsHostMemory(textureDesc.memoryLocation) ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+
+    if (textureDesc.dedicated)
+        allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 
     VkResult result = vmaCreateImage(m_Device.GetVma(), &imageCreateInfo, &allocationCreateInfo, &m_Handle, &m_VmaAllocation, nullptr);
     RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vmaCreateImage returned %d", (int32_t)result);

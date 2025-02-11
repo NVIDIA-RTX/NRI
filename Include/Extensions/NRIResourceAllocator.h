@@ -15,18 +15,21 @@ NriStruct(AllocateBufferDesc) {
     Nri(BufferDesc) desc;
     Nri(MemoryLocation) memoryLocation;
     float memoryPriority; // [-1; 1]: low < 0, normal = 0, high > 0
+    bool dedicated;
 };
 
 NriStruct(AllocateTextureDesc) {
     Nri(TextureDesc) desc;
     Nri(MemoryLocation) memoryLocation;
     float memoryPriority;
+    bool dedicated;
 };
 
 NriStruct(AllocateAccelerationStructureDesc) {
     Nri(AccelerationStructureDesc) desc;
     Nri(MemoryLocation) memoryLocation;
     float memoryPriority;
+    bool dedicated;
 };
 
 NriStruct(ResourceAllocatorInterface) {

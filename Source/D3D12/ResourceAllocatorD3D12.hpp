@@ -68,9 +68,13 @@ Result BufferD3D12::Create(const AllocateBufferDesc& bufferDesc) {
     if (nriResult != Result::SUCCESS)
         return nriResult;
 
+    uint32_t flags = D3D12MA::ALLOCATION_FLAG_CAN_ALIAS | D3D12MA::ALLOCATION_FLAG_STRATEGY_MIN_MEMORY;
+    if (bufferDesc.dedicated)
+        flags |= D3D12MA::ALLOCATION_FLAG_COMMITTED;
+
     D3D12MA::ALLOCATION_DESC allocationDesc = {};
     allocationDesc.HeapType = GetHeapType(bufferDesc.memoryLocation);
-    allocationDesc.Flags = (D3D12MA::ALLOCATION_FLAGS)(D3D12MA::ALLOCATION_FLAG_CAN_ALIAS | D3D12MA::ALLOCATION_FLAG_STRATEGY_MIN_MEMORY);
+    allocationDesc.Flags = (D3D12MA::ALLOCATION_FLAGS)flags;
 
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
     if (m_Device.GetVersion() >= 10) {
@@ -123,9 +127,13 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
 
     D3D12_CLEAR_VALUE clearValue = {GetDxgiFormat(textureDesc.desc.format).typed};
 
+    uint32_t flags = D3D12MA::ALLOCATION_FLAG_CAN_ALIAS | D3D12MA::ALLOCATION_FLAG_STRATEGY_MIN_MEMORY;
+    if (textureDesc.dedicated)
+        flags |= D3D12MA::ALLOCATION_FLAG_COMMITTED;
+
     D3D12MA::ALLOCATION_DESC allocationDesc = {};
     allocationDesc.HeapType = GetHeapType(textureDesc.memoryLocation);
-    allocationDesc.Flags = (D3D12MA::ALLOCATION_FLAGS)(D3D12MA::ALLOCATION_FLAG_CAN_ALIAS | D3D12MA::ALLOCATION_FLAG_STRATEGY_MIN_MEMORY);
+    allocationDesc.Flags = (D3D12MA::ALLOCATION_FLAGS)flags;
 
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
     if (m_Device.GetVersion() >= 10) {
