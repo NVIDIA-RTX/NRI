@@ -1,4 +1,6 @@
-Result WaitIdle(const CoreInterface& NRI, Device& device, Queue& queue) {
+// © 2021 NVIDIA Corporation
+
+Result nri::WaitIdle(const CoreInterface& NRI, Device& device, Queue& queue) {
     Fence* fence = nullptr;
     Result result = NRI.CreateFence(device, 0, fence);
     if (result != Result::SUCCESS)

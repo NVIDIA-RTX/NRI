@@ -1,39 +1,45 @@
+// © 2021 NVIDIA Corporation
+
 #pragma once
 
 template <typename U, typename T>
 using Map = std::map<U, T, std::less<U>, StdAllocator<std::pair<const U, T>>>;
 
-struct HelperDeviceMemoryAllocator {
-    HelperDeviceMemoryAllocator(const nri::CoreInterface& NRI, nri::Device& device);
+namespace nri {
 
-    uint32_t CalculateAllocationNumber(const nri::ResourceGroupDesc& resourceGroupDesc);
-    nri::Result AllocateAndBindMemory(const nri::ResourceGroupDesc& resourceGroupDesc, nri::Memory** allocations);
+struct HelperDeviceMemoryAllocator {
+    HelperDeviceMemoryAllocator(const CoreInterface& NRI, Device& device);
+
+    uint32_t CalculateAllocationNumber(const ResourceGroupDesc& resourceGroupDesc);
+    Result AllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDesc, Memory** allocations);
 
 private:
     struct MemoryHeap {
-        MemoryHeap(nri::MemoryType memoryType, const StdAllocator<uint8_t>& stdAllocator);
+        MemoryHeap(MemoryType memoryType, const StdAllocator<uint8_t>& stdAllocator);
 
-        Vector<nri::Buffer*> buffers;
+        Vector<Buffer*> buffers;
         Vector<uint64_t> bufferOffsets;
-        Vector<nri::Texture*> textures;
+        Vector<Texture*> textures;
         Vector<uint64_t> textureOffsets;
         uint64_t size;
-        nri::MemoryType type;
+        MemoryType type;
     };
 
-    nri::Result TryToAllocateAndBindMemory(const nri::ResourceGroupDesc& resourceGroupDesc, nri::Memory** allocations, size_t& allocationNum);
-    nri::Result ProcessDedicatedResources(nri::MemoryLocation memoryLocation, nri::Memory** allocations, size_t& allocationNum);
-    MemoryHeap& FindOrCreateHeap(nri::MemoryDesc& memoryDesc, uint64_t preferredMemorySize);
-    void GroupByMemoryType(nri::MemoryLocation memoryLocation, const nri::ResourceGroupDesc& resourceGroupDesc);
-    void FillMemoryBindingDescs(nri::Buffer* const* buffers, const uint64_t* bufferOffsets, uint32_t bufferNum, nri::Memory& memory);
-    void FillMemoryBindingDescs(nri::Texture* const* texture, const uint64_t* textureOffsets, uint32_t textureNum, nri::Memory& memory);
+    Result TryToAllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDesc, Memory** allocations, size_t& allocationNum);
+    Result ProcessDedicatedResources(MemoryLocation memoryLocation, Memory** allocations, size_t& allocationNum);
+    MemoryHeap& FindOrCreateHeap(MemoryDesc& memoryDesc, uint64_t preferredMemorySize);
+    void GroupByMemoryType(MemoryLocation memoryLocation, const ResourceGroupDesc& resourceGroupDesc);
+    void FillMemoryBindingDescs(Buffer* const* buffers, const uint64_t* bufferOffsets, uint32_t bufferNum, Memory& memory);
+    void FillMemoryBindingDescs(Texture* const* texture, const uint64_t* textureOffsets, uint32_t textureNum, Memory& memory);
 
-    const nri::CoreInterface& m_NRI;
-    nri::Device& m_Device;
+    const CoreInterface& m_NRI;
+    Device& m_Device;
 
     Vector<MemoryHeap> m_Heaps;
-    Vector<nri::Buffer*> m_DedicatedBuffers;
-    Vector<nri::Texture*> m_DedicatedTextures;
-    Vector<nri::BufferMemoryBindingDesc> m_BufferBindingDescs;
-    Vector<nri::TextureMemoryBindingDesc> m_TextureBindingDescs;
+    Vector<Buffer*> m_DedicatedBuffers;
+    Vector<Texture*> m_DedicatedTextures;
+    Vector<BufferMemoryBindingDesc> m_BufferBindingDescs;
+    Vector<TextureMemoryBindingDesc> m_TextureBindingDescs;
 };
+
+}

@@ -1,3 +1,5 @@
+// © 2021 NVIDIA Corporation
+
 constexpr uint32_t BARRIERS_PER_PASS = 256;
 constexpr uint64_t COPY_ALIGNMENT = 16;
 

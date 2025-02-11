@@ -1,4 +1,8 @@
+// © 2021 NVIDIA Corporation
+
 #pragma once
+
+#include <atomic>
 
 constexpr size_t LOCK_CACHELINE_SIZE = 64;
 

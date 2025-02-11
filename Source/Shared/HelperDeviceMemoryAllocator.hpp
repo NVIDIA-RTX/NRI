@@ -1,3 +1,5 @@
+// © 2021 NVIDIA Corporation
+
 HelperDeviceMemoryAllocator::MemoryHeap::MemoryHeap(MemoryType memoryType, const StdAllocator<uint8_t>& stdAllocator)
     : buffers(stdAllocator)
     , bufferOffsets(stdAllocator)
@@ -115,7 +117,7 @@ Result HelperDeviceMemoryAllocator::ProcessDedicatedResources(MemoryLocation mem
     return Result::SUCCESS;
 }
 
-HelperDeviceMemoryAllocator::MemoryHeap& HelperDeviceMemoryAllocator::FindOrCreateHeap(nri::MemoryDesc& memoryDesc, uint64_t preferredMemorySize) {
+HelperDeviceMemoryAllocator::MemoryHeap& HelperDeviceMemoryAllocator::FindOrCreateHeap(MemoryDesc& memoryDesc, uint64_t preferredMemorySize) {
     if (preferredMemorySize == 0)
         preferredMemorySize = 256 * 1024 * 1024;
 
@@ -136,7 +138,7 @@ HelperDeviceMemoryAllocator::MemoryHeap& HelperDeviceMemoryAllocator::FindOrCrea
     return m_Heaps[j];
 }
 
-void HelperDeviceMemoryAllocator::GroupByMemoryType(MemoryLocation memoryLocation, const nri::ResourceGroupDesc& resourceGroupDesc) {
+void HelperDeviceMemoryAllocator::GroupByMemoryType(MemoryLocation memoryLocation, const ResourceGroupDesc& resourceGroupDesc) {
     for (uint32_t i = 0; i < resourceGroupDesc.bufferNum; i++) {
         Buffer* buffer = resourceGroupDesc.buffers[i];
 

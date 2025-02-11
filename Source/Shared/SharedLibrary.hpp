@@ -1,3 +1,5 @@
+// © 2021 NVIDIA Corporation
+
 #if defined(_WIN32)
 #    undef LoadLibrary
 
