@@ -910,14 +910,16 @@ Result DeviceVal::FillFunctionTable(ResourceAllocatorInterface& table) const {
 #pragma region[  Streamer  ]
 
 struct StreamerVal : public ObjectVal {
-    inline StreamerVal(DeviceVal& device, Streamer* impl)
-        : ObjectVal(device, impl) {
+    inline StreamerVal(DeviceVal& device, Streamer* impl, const StreamerDesc& streamerDesc)
+        : ObjectVal(device, impl)
+        , m_Desc(streamerDesc) {
     }
 
     inline Streamer* GetImpl() const {
         return (Streamer*)m_Impl;
     }
 
+    StreamerDesc m_Desc = {}; // only for .natvis
     BufferVal* constantBuffer = nullptr;
     BufferVal* dynamicBuffer = nullptr;
     bool isDynamicBufferValid = false;
@@ -933,7 +935,7 @@ static Result CreateStreamer(Device& device, const StreamerDesc& streamerDesc, S
     Result result = deviceVal.GetStreamerInterface().CreateStreamer(deviceVal.GetImpl(), streamerDesc, impl);
 
     if (result == Result::SUCCESS)
-        streamer = (Streamer*)Allocate<StreamerVal>(deviceVal.GetAllocationCallbacks(), deviceVal, impl);
+        streamer = (Streamer*)Allocate<StreamerVal>(deviceVal.GetAllocationCallbacks(), deviceVal, impl, streamerDesc);
 
     return result;
 }
