@@ -25,10 +25,13 @@ Non-goals (exceptions apply to helper interfaces, where high-level abstraction a
 #pragma once
 
 #define NRI_VERSION_MAJOR 1
-#define NRI_VERSION_MINOR 163
-#define NRI_VERSION_DATE "6 February 2025"
+#define NRI_VERSION_MINOR 164
+#define NRI_VERSION_DATE "18 February 2025"
 
 #include "NRIDescs.h"
+
+// Can be used with "name", "nri::name" and "NriName"
+#define NRI_INTERFACE(name) #name, sizeof(name)
 
 NriNamespaceBegin
 

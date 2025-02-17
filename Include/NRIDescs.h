@@ -28,8 +28,6 @@
 
 #include "NRIMacro.h"
 
-#define NRI_INTERFACE(name) #name, sizeof(name)
-
 // TIP: designated initializers are highly recommended
 
 NriNamespaceBegin
@@ -342,6 +340,14 @@ NriUnion(ClearValue) {
 
 NriStruct(SampleLocation) {
     int8_t x, y; // [-8; 7]
+};
+
+NriStruct(Dim2) {
+    Nri(Dim_t) w, h;
+};
+
+NriStruct(Float2) {
+    float x, y;
 };
 
 #pragma endregion
