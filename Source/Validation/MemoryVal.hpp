@@ -11,16 +11,6 @@ MemoryVal::MemoryVal(DeviceVal& device, Memory* memory, uint64_t size, MemoryLoc
     , m_MemoryLocation(memoryLocation) {
 }
 
-#if NRI_ENABLE_D3D12_SUPPORT
-MemoryVal::MemoryVal(DeviceVal& device, Memory* memory, const MemoryD3D12Desc& memoryD3D12Desc)
-    : ObjectVal(device, memory)
-    , m_Buffers(device.GetStdAllocator())
-    , m_Textures(device.GetStdAllocator())
-    , m_AccelerationStructures(device.GetStdAllocator()) {
-    m_Size = GetMemorySizeD3D12(memoryD3D12Desc);
-}
-#endif
-
 bool MemoryVal::HasBoundResources() {
     ExclusiveScope lockScope(m_Lock);
     return !m_Buffers.empty() || !m_Textures.empty() || !m_AccelerationStructures.empty();

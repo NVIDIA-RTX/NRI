@@ -219,7 +219,7 @@ constexpr std::array<TextureUsageBits, (size_t)Layout::MAX_NUM> TEXTURE_USAGE_FO
 };
 
 constexpr bool IsTextureLayoutSupported(TextureUsageBits usage, Layout textureLayout) {
-    const TextureUsageBits requiredMask = TEXTURE_USAGE_FOR_TEXTURE_LAYOUT_TABLE[(size_t)textureLayout];
+    TextureUsageBits requiredMask = TEXTURE_USAGE_FOR_TEXTURE_LAYOUT_TABLE[(size_t)textureLayout];
 
     return (uint32_t)(requiredMask & usage) == (uint32_t)requiredMask;
 }
