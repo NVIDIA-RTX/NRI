@@ -133,9 +133,9 @@ struct DeviceD3D12 final : public DeviceBase {
     Result FillFunctionTable(LowLatencyInterface& table) const override;
     Result FillFunctionTable(MeshShaderInterface& table) const override;
     Result FillFunctionTable(RayTracingInterface& table) const override;
+    Result FillFunctionTable(ResourceAllocatorInterface& table) const override;
     Result FillFunctionTable(StreamerInterface& table) const override;
     Result FillFunctionTable(SwapChainInterface& table) const override;
-    Result FillFunctionTable(ResourceAllocatorInterface& table) const override;
     Result FillFunctionTable(WrapperD3D12Interface& table) const override;
 
     //================================================================================================================
@@ -177,7 +177,6 @@ private:
     DeviceDesc m_Desc = {};
     uint8_t m_Version = 0;
     bool m_IsWrapped = false;
-    bool m_Disable3rdPartyAllocationCallbacks = false;
 
     std::array<Lock, D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES> m_FreeDescriptorLocks;
     Lock m_DescriptorHeapLock;
