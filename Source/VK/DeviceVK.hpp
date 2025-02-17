@@ -343,7 +343,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_OwnsNativeObjects = !isWrapper;
     m_BindingOffsets = desc.vkBindingOffsets;
 
-    if (!isWrapper && !desc.disable3rdPartyAllocationCallbacks)
+    if (!isWrapper && !GetAllocationCallbacks().disable3rdPartyAllocationCallbacks)
         m_AllocationCallbackPtr = &m_AllocationCallbacks;
 
     // Get adapter description as early as possible for meaningful error reporting

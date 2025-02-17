@@ -65,7 +65,6 @@ DeviceD3D12::~DeviceD3D12() {
 
 Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD3D12Desc& descD3D12) {
     m_IsWrapped = descD3D12.d3d12Device != nullptr;
-    m_Disable3rdPartyAllocationCallbacks = desc.disable3rdPartyAllocationCallbacks;
 
     // Get adapter description as early as possible for meaningful error reporting
     m_Desc.adapterDesc = *desc.adapterDesc;

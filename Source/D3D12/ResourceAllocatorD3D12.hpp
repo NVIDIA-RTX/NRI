@@ -54,7 +54,7 @@ Result DeviceD3D12::CreateVma() {
     allocatorDesc.Flags = (D3D12MA::ALLOCATOR_FLAGS)(D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED | D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED | D3D12MA::ALLOCATOR_FLAG_DONT_PREFER_SMALL_BUFFERS_COMMITTED);
     allocatorDesc.PreferredBlockSize = VMA_PREFERRED_BLOCK_SIZE;
 
-    if (!m_Disable3rdPartyAllocationCallbacks)
+    if (!GetAllocationCallbacks().disable3rdPartyAllocationCallbacks)
         allocatorDesc.pAllocationCallbacks = &allocationCallbacks;
 
     HRESULT hr = D3D12MA::CreateAllocator(&allocatorDesc, &m_Vma);

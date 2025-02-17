@@ -15,6 +15,7 @@ NriStruct(AllocationCallbacks) {
     void* (*Reallocate)(void* userArg, void* memory, size_t size, size_t alignment);
     void (*Free)(void* userArg, void* memory);
     void* userArg;
+    bool disable3rdPartyAllocationCallbacks;    // to use "AllocationCallbacks" only for NRI needs
 };
 
 NriStruct(CallbackInterface) {
@@ -71,7 +72,6 @@ NriStruct(DeviceCreationDesc) {
 
     // Switches (enabled by default)
     bool disableVKRayTracing;                   // to save CPU memory in some implementations
-    bool disable3rdPartyAllocationCallbacks;    // to use "allocationCallbacks" only for NRI needs
 };
 
 // if "adapterDescs == NULL", then "adapterDescNum" is set to the number of adapters
