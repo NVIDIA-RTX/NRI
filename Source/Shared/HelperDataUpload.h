@@ -8,7 +8,7 @@ constexpr size_t BASE_UPLOAD_BUFFER_SIZE = 1 * 1024 * 1024;
 
 struct HelperDataUpload {
     inline HelperDataUpload(const CoreInterface& NRI, Device& device, Queue& queue)
-        : NRI(NRI)
+        : m_NRI(NRI)
         , m_Device(device)
         , m_Queue(queue)
         , m_UploadBufferSize(BASE_UPLOAD_BUFFER_SIZE) {
@@ -25,7 +25,7 @@ private:
     void CopyTextureSubresourceContent(const TextureSubresourceUploadDesc& subresource, uint64_t alignedRowPitch, uint64_t alignedSlicePitch);
     bool CopyBufferContent(const BufferUploadDesc& bufferDataDesc, uint64_t& bufferContentOffset);
 
-    const CoreInterface& NRI;
+    const CoreInterface& m_NRI;
     Device& m_Device;
     Queue& m_Queue;
     CommandBuffer* m_CommandBuffer = nullptr;
