@@ -7,15 +7,10 @@
 #include <cstring>
 #include <map>
 
-#ifdef _WIN32
-#    define FILE_SEPARATOR '\\'
-#else
-#    define FILE_SEPARATOR '/'
-#endif
-
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
 #    include <dxgi1_6.h>
 #else
+#    include <cstdint>
 typedef uint32_t DXGI_FORMAT;
 #endif
 
@@ -118,6 +113,12 @@ constexpr void ReturnVoid() {
 }
 
 // Macro stuff
+#ifdef _WIN32
+#    define FILE_SEPARATOR '\\'
+#else
+#    define FILE_SEPARATOR '/'
+#endif
+
 #define NRI_INLINE inline // we want to inline all functions, which are actually wrappers for the interface functions
 
 #define NRI_STRINGIFY_(token) #token
