@@ -211,7 +211,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     if (m_Desc.rayTracingTier >= 2)
         m_DispatchRaysCommandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_RAYS, sizeof(DispatchRaysIndirectDesc), nullptr);
 
-    return FillFunctionTable(m_CoreInterface);
+    return FillFunctionTable(m_iCore);
 }
 
 void DeviceD3D12::FillDesc(const DeviceCreationDesc& desc) {

@@ -91,8 +91,8 @@ struct CommandBufferVK final : public DebugNameBase {
 
 private:
     DeviceVK& m_Device;
-    const PipelineVK* m_CurrentPipeline = nullptr;
-    const PipelineLayoutVK* m_CurrentPipelineLayout = nullptr;
+    const PipelineVK* m_Pipeline = nullptr;
+    const PipelineLayoutVK* m_PipelineLayout = nullptr;
     const DescriptorVK* m_DepthStencil = nullptr;
     VkCommandBuffer m_Handle = VK_NULL_HANDLE;
     VkCommandPool m_CommandPool = VK_NULL_HANDLE;

@@ -77,6 +77,12 @@
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(NriTextureDesc*)((uint8_t*)this + 40)</Item>
         </Expand>
     </Type>
+    <Type Name="NriUpscaler">
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <Expand>
+            <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(NriUpscalerDesc*)((uint8_t*)this + 40)</Item>
+        </Expand>
+    </Type>
 <!-- C++ -->
     <Type Name="nri::AccelerationStructure">
         <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
@@ -151,6 +157,12 @@
         <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(nri::TextureDesc*)((uint8_t*)this + 40)</Item>
+        </Expand>
+    </Type>
+    <Type Name="nri::Upscaler">
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <Expand>
+            <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(nri::UpscalerDesc*)((uint8_t*)this + 40)</Item>
         </Expand>
     </Type>
 </AutoVisualizer>

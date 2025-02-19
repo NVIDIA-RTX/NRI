@@ -215,7 +215,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     // Fill desc
     FillDesc();
 
-    return FillFunctionTable(m_CoreInterface);
+    return FillFunctionTable(m_iCore);
 }
 
 void DeviceD3D11::FillDesc() {

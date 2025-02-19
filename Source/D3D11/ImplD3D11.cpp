@@ -22,6 +22,7 @@
 #include "HelperDeviceMemoryAllocator.h"
 #include "HelperWaitIdle.h"
 #include "Streamer.h"
+#include "Upscaler.h"
 
 using namespace nri;
 
@@ -846,14 +847,21 @@ Result DeviceD3D11::FillFunctionTable(CoreInterface& table) const {
 #pragma region[  Helper  ]
 
 static Result NRI_CALL UploadData(Queue& queue, const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum, const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum) {
-    return ((QueueD3D11&)queue).UploadData(textureUploadDescs, textureUploadDescNum, bufferUploadDescs, bufferUploadDescNum);
+    QueueD3D11& queueD3D11 = (QueueD3D11&)queue;
+    DeviceD3D11& deviceD3D11 = queueD3D11.GetDevice();
+    HelperDataUpload helperDataUpload(deviceD3D11.GetCoreInterface(), (Device&)deviceD3D11, queue);
+
+    return helperDataUpload.UploadData(textureUploadDescs, textureUploadDescNum, bufferUploadDescs, bufferUploadDescNum);
 }
 
 static Result NRI_CALL WaitForIdle(Queue& queue) {
     if (!(&queue))
         return Result::SUCCESS;
 
-    return ((QueueD3D11&)queue).WaitForIdle();
+    QueueD3D11& queueD3D11 = (QueueD3D11&)queue;
+    DeviceD3D11& deviceD3D11 = queueD3D11.GetDevice();
+
+    return WaitIdle(deviceD3D11.GetCoreInterface(), (Device&)deviceD3D11, queue);
 }
 
 static uint32_t NRI_CALL CalculateAllocationNumber(const Device& device, const ResourceGroupDesc& resourceGroupDesc) {
@@ -997,19 +1005,19 @@ static Buffer* GetStreamerConstantBuffer(Streamer& streamer) {
 }
 
 static uint32_t UpdateStreamerConstantBuffer(Streamer& streamer, const void* data, uint32_t dataSize) {
-    return ((StreamerImpl&)streamer).UpdateStreamerConstantBuffer(data, dataSize);
+    return ((StreamerImpl&)streamer).UpdateConstantBuffer(data, dataSize);
 }
 
 static uint64_t AddStreamerBufferUpdateRequest(Streamer& streamer, const BufferUpdateRequestDesc& bufferUpdateRequestDesc) {
-    return ((StreamerImpl&)streamer).AddStreamerBufferUpdateRequest(bufferUpdateRequestDesc);
+    return ((StreamerImpl&)streamer).AddBufferUpdateRequest(bufferUpdateRequestDesc);
 }
 
 static uint64_t AddStreamerTextureUpdateRequest(Streamer& streamer, const TextureUpdateRequestDesc& textureUpdateRequestDesc) {
-    return ((StreamerImpl&)streamer).AddStreamerTextureUpdateRequest(textureUpdateRequestDesc);
+    return ((StreamerImpl&)streamer).AddTextureUpdateRequest(textureUpdateRequestDesc);
 }
 
 static Result CopyStreamerUpdateRequests(Streamer& streamer) {
-    return ((StreamerImpl&)streamer).CopyStreamerUpdateRequests();
+    return ((StreamerImpl&)streamer).CopyUpdateRequests();
 }
 
 static Buffer* GetStreamerDynamicBuffer(Streamer& streamer) {
@@ -1017,7 +1025,7 @@ static Buffer* GetStreamerDynamicBuffer(Streamer& streamer) {
 }
 
 static void CmdUploadStreamerUpdateRequests(CommandBuffer& commandBuffer, Streamer& streamer) {
-    ((StreamerImpl&)streamer).CmdUploadStreamerUpdateRequests(commandBuffer);
+    ((StreamerImpl&)streamer).CmdUploadUpdateRequests(commandBuffer);
 }
 
 Result DeviceD3D11::FillFunctionTable(StreamerInterface& table) const {
@@ -1078,6 +1086,57 @@ Result DeviceD3D11::FillFunctionTable(SwapChainInterface& table) const {
     table.WaitForPresent = ::WaitForPresent;
     table.QueuePresent = ::QueuePresent;
     table.GetDisplayDesc = ::GetDisplayDesc;
+
+    return Result::SUCCESS;
+}
+
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region[  Upscaler  ]
+
+static Result CreateUpscaler(Device& device, const UpscalerDesc& upscalerDesc, Upscaler*& upscaler) {
+    DeviceD3D11& deviceD3D11 = (DeviceD3D11&)device;
+    UpscalerImpl* impl = Allocate<UpscalerImpl>(deviceD3D11.GetAllocationCallbacks(), device, deviceD3D11.GetCoreInterface());
+    Result result = impl->Create(upscalerDesc);
+
+    if (result != Result::SUCCESS) {
+        Destroy(deviceD3D11.GetAllocationCallbacks(), impl);
+        upscaler = nullptr;
+    } else
+        upscaler = (Upscaler*)impl;
+
+    return result;
+}
+
+static void DestroyUpscaler(Upscaler& upscaler) {
+    Destroy((UpscalerImpl*)&upscaler);
+}
+
+static bool IsUpscalerSupported(const Device& device, UpscalerType upscalerType) {
+    DeviceD3D11& deviceD3D11 = (DeviceD3D11&)device;
+
+    return IsUpscalerSupported(deviceD3D11.GetDesc(), upscalerType);
+}
+
+static void GetUpscalerProps(const Upscaler& upscaler, UpscalerProps& upscalerProps) {
+    UpscalerImpl& upscalerImpl = (UpscalerImpl&)upscaler;
+    
+    return upscalerImpl.GetUpscalerProps(upscalerProps);
+}
+
+static void CmdDispatchUpscale(CommandBuffer& commandBuffer, Upscaler& upscaler, const DispatchUpscaleDesc& dispatchUpscalerDesc) {
+    UpscalerImpl& upscalerImpl = (UpscalerImpl&)upscaler;
+
+    upscalerImpl.CmdDispatchUpscale(commandBuffer, dispatchUpscalerDesc);
+}
+
+Result DeviceD3D11::FillFunctionTable(UpscalerInterface& table) const {
+    table.CreateUpscaler = ::CreateUpscaler;
+    table.DestroyUpscaler = ::DestroyUpscaler;
+    table.IsUpscalerSupported = ::IsUpscalerSupported;
+    table.GetUpscalerProps = ::GetUpscalerProps;
+    table.CmdDispatchUpscale = ::CmdDispatchUpscale;
 
     return Result::SUCCESS;
 }

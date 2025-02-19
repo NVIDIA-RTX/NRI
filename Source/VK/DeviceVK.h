@@ -52,7 +52,7 @@ struct DeviceVK final : public DeviceBase {
     }
 
     inline const CoreInterface& GetCoreInterface() const {
-        return m_CoreInterface;
+        return m_iCore;
     }
 
     inline bool IsHostCoherentMemory(MemoryTypeIndex memoryTypeIndex) const {
@@ -116,6 +116,7 @@ struct DeviceVK final : public DeviceBase {
     Result FillFunctionTable(ResourceAllocatorInterface& table) const override;
     Result FillFunctionTable(StreamerInterface& table) const override;
     Result FillFunctionTable(SwapChainInterface& table) const override;
+    Result FillFunctionTable(UpscalerInterface& table) const override;
     Result FillFunctionTable(WrapperVKInterface& table) const override;
 
     //================================================================================================================
@@ -153,7 +154,7 @@ private:
     VkPhysicalDeviceMemoryProperties m_MemoryProps = {};
     VkAllocationCallbacks m_AllocationCallbacks = {};
     VKBindingOffsets m_BindingOffsets = {};
-    CoreInterface m_CoreInterface = {};
+    CoreInterface m_iCore = {};
     DeviceDesc m_Desc = {};
     Library* m_Loader = nullptr;
     VkDevice m_Device = VK_NULL_HANDLE;

@@ -24,48 +24,48 @@ struct DeviceVal final : public DeviceBase {
         return m_Impl;
     }
 
+    inline const CoreInterface& GetCoreInterfaceVal() const {
+        return m_iCoreVal;
+    }
+
     inline const CoreInterface& GetCoreInterface() const {
-        return m_CoreAPI;
+        return m_iCore;
     }
 
     inline const HelperInterface& GetHelperInterface() const {
-        return m_HelperAPI;
-    }
-
-    inline const StreamerInterface& GetStreamerInterface() const {
-        return m_StreamerAPI;
-    }
-
-    inline const WrapperD3D11Interface& GetWrapperD3D11Interface() const {
-        return m_WrapperD3D11API;
-    }
-
-    inline const WrapperD3D12Interface& GetWrapperD3D12Interface() const {
-        return m_WrapperD3D12API;
-    }
-
-    inline const WrapperVKInterface& GetWrapperVKInterface() const {
-        return m_WrapperVKAPI;
-    }
-
-    inline const SwapChainInterface& GetSwapChainInterface() const {
-        return m_SwapChainAPI;
-    }
-
-    inline const RayTracingInterface& GetRayTracingInterface() const {
-        return m_RayTracingAPI;
-    }
-
-    inline const MeshShaderInterface& GetMeshShaderInterface() const {
-        return m_MeshShaderAPI;
+        return m_iHelper;
     }
 
     inline const LowLatencyInterface& GetLowLatencyInterface() const {
-        return m_LowLatencyAPI;
+        return m_iLowLatency;
+    }
+
+    inline const MeshShaderInterface& GetMeshShaderInterface() const {
+        return m_iMeshShader;
+    }
+
+    inline const RayTracingInterface& GetRayTracingInterface() const {
+        return m_iRayTracing;
+    }
+
+    inline const SwapChainInterface& GetSwapChainInterface() const {
+        return m_iSwapChain;
+    }
+
+    inline const WrapperD3D11Interface& GetWrapperD3D11Interface() const {
+        return m_iWrapperD3D11;
+    }
+
+    inline const WrapperD3D12Interface& GetWrapperD3D12Interface() const {
+        return m_iWrapperD3D12;
+    }
+
+    inline const WrapperVKInterface& GetWrapperVKInterface() const {
+        return m_iWrapperVK;
     }
 
     inline void* GetNativeObject() const {
-        return m_CoreAPI.GetDeviceNativeObject(m_Impl);
+        return m_iCore.GetDeviceNativeObject(m_Impl);
     }
 
     inline Lock& GetLock() {
@@ -108,6 +108,7 @@ struct DeviceVal final : public DeviceBase {
     Result FillFunctionTable(ResourceAllocatorInterface& table) const override;
     Result FillFunctionTable(StreamerInterface& table) const override;
     Result FillFunctionTable(SwapChainInterface& table) const override;
+    Result FillFunctionTable(UpscalerInterface& table) const override;
     Result FillFunctionTable(WrapperD3D11Interface& table) const override;
     Result FillFunctionTable(WrapperD3D12Interface& table) const override;
     Result FillFunctionTable(WrapperVKInterface& table) const override;
@@ -174,29 +175,30 @@ struct DeviceVal final : public DeviceBase {
     Result AllocateMemory(const AllocateMemoryDesc& allocateMemoryDesc, Memory*& memory);
     Result BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
     Result BindTextureMemory(const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
-    Result QueryVideoMemoryInfo(MemoryLocation memoryLocation, VideoMemoryInfo& videoMemoryInfo) const;
-    Result AllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDesc, Memory** allocations);
     Result BindAccelerationStructureMemory(const AccelerationStructureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
-    uint32_t CalculateAllocationNumber(const ResourceGroupDesc& resourceGroupDesc);
     FormatSupportBits GetFormatSupport(Format format) const;
 
 private:
     char* m_Name = nullptr; // .natvis
     DeviceDesc m_Desc = {}; // .natvis
     Device& m_Impl;
-    CoreInterface m_CoreAPI = {};
-    HelperInterface m_HelperAPI = {};
-    StreamerInterface m_StreamerAPI = {};
-    LowLatencyInterface m_LowLatencyAPI = {};
-    MeshShaderInterface m_MeshShaderAPI = {};
-    RayTracingInterface m_RayTracingAPI = {};
-    ResourceAllocatorInterface m_ResourceAllocatorAPI = {};
-    SwapChainInterface m_SwapChainAPI = {};
-    WrapperD3D11Interface m_WrapperD3D11API = {};
-    WrapperD3D12Interface m_WrapperD3D12API = {};
-    WrapperVKInterface m_WrapperVKAPI = {};
     std::array<QueueVal*, (size_t)QueueType::MAX_NUM> m_Queues = {};
     UnorderedMap<MemoryType, MemoryLocation> m_MemoryTypeMap;
+
+    // Validation interfaces
+    CoreInterface m_iCoreVal = {};
+
+    // Original interfaces
+    CoreInterface m_iCore = {};
+    HelperInterface m_iHelper = {};
+    LowLatencyInterface m_iLowLatency = {};
+    MeshShaderInterface m_iMeshShader = {};
+    RayTracingInterface m_iRayTracing = {};
+    ResourceAllocatorInterface m_iResourceAllocator = {};
+    SwapChainInterface m_iSwapChain = {};
+    WrapperD3D11Interface m_iWrapperD3D11 = {};
+    WrapperD3D12Interface m_iWrapperD3D12 = {};
+    WrapperVKInterface m_iWrapperVK = {};
 
     union {
         uint32_t m_IsExtSupportedStorage = 0;

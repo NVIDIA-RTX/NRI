@@ -69,13 +69,3 @@ NRI_INLINE void QueueD3D12::Submit(const QueueSubmitDesc& queueSubmitDesc) {
         fence->QueueSignal(*this, fenceSubmitDesc.value);
     }
 }
-
-NRI_INLINE Result QueueD3D12::UploadData(const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum, const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum) {
-    HelperDataUpload helperDataUpload(m_Device.GetCoreInterface(), (Device&)m_Device, (Queue&)*this);
-
-    return helperDataUpload.UploadData(textureUploadDescs, textureUploadDescNum, bufferUploadDescs, bufferUploadDescNum);
-}
-
-NRI_INLINE Result QueueD3D12::WaitForIdle() {
-    return WaitIdle(m_Device.GetCoreInterface(), (Device&)m_Device, (Queue&)*this);
-}

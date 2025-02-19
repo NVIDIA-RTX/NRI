@@ -46,11 +46,11 @@ struct StreamerImpl : public DebugNameBase {
     ~StreamerImpl();
 
     Result Create(const StreamerDesc& desc);
-    uint32_t UpdateStreamerConstantBuffer(const void* data, uint32_t dataSize);
-    uint64_t AddStreamerBufferUpdateRequest(const BufferUpdateRequestDesc& bufferUpdateRequestDesc);
-    uint64_t AddStreamerTextureUpdateRequest(const TextureUpdateRequestDesc& textureUpdateRequestDesc);
-    Result CopyStreamerUpdateRequests();
-    void CmdUploadStreamerUpdateRequests(CommandBuffer& commandBuffer);
+    uint32_t UpdateConstantBuffer(const void* data, uint32_t dataSize);
+    uint64_t AddBufferUpdateRequest(const BufferUpdateRequestDesc& bufferUpdateRequestDesc);
+    uint64_t AddTextureUpdateRequest(const TextureUpdateRequestDesc& textureUpdateRequestDesc);
+    Result CopyUpdateRequests();
+    void CmdUploadUpdateRequests(CommandBuffer& commandBuffer);
 
     //================================================================================================================
     // DebugNameBase

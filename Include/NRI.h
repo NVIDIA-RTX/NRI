@@ -26,7 +26,7 @@ Non-goals (exceptions apply to helper interfaces, where high-level abstraction a
 
 #define NRI_VERSION_MAJOR 1
 #define NRI_VERSION_MINOR 164
-#define NRI_VERSION_DATE "18 February 2025"
+#define NRI_VERSION_DATE "19 February 2025"
 
 #include "NRIDescs.h"
 
@@ -60,8 +60,8 @@ NriStruct(CoreInterface) {
     void                        (NRI_CALL *GetTextureMemoryDesc2)   (const NriRef(Device) device, const NriRef(TextureDesc) textureDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "isGetMemoryDesc2Supported"
 
     // Returns one of the pre-created queues (see "DeviceCreationDesc" or wrapper extensions). Return codes: UNSUPPORTED (no queues of "queueType") or INVALID_ARGUMENT (if "queueIndex" is out of bounds).
-    // Getting COMPUTE and/or COPY queues switches VK "sharing mode" to "VK_SHARING_MODE_CONCURRENT", which can be slower on some HW. This approach is used to avoid
-    // dealing with "queue ownership transitions", but also adds a requirement to "get" all async queues before resources creation participating into multi-queue activity
+    // Getting COMPUTE and/or COPY queues switches VK "sharing mode" to "VK_SHARING_MODE_CONCURRENT", which can be slower on non-NVIDIA HW. This approach is used to avoid
+    // dealing with "queue ownership transitions", but also adds a requirement to "get" all async queues *before* creation of resources participating into multi-queue activities
     Nri(Result)         (NRI_CALL *GetQueue)                        (NriRef(Device) device, Nri(QueueType) queueType, uint32_t queueIndex, NriOut NriRef(Queue*) queue);
 
     // Create
@@ -128,7 +128,7 @@ NriStruct(CoreInterface) {
         void                (NRI_CALL *CmdSetPipelineLayout)        (NriRef(CommandBuffer) commandBuffer, const NriRef(PipelineLayout) pipelineLayout);
         void                (NRI_CALL *CmdSetPipeline)              (NriRef(CommandBuffer) commandBuffer, const NriRef(Pipeline) pipeline);
 
-        // Setup (expects "CmdSetPipelineLayout" to be called first)
+        // Setup (expects "CmdSetPipelineLayout" to be called first, descriptor sets updates must be completed before this point)
         void                (NRI_CALL *CmdSetDescriptorSet)         (NriRef(CommandBuffer) commandBuffer, uint32_t setIndex, const NriRef(DescriptorSet) descriptorSet, const uint32_t* dynamicConstantBufferOffsets); // expects dynamic constant buffer offsets as in the currently bound pipeline
         void                (NRI_CALL *CmdSetRootConstants)         (NriRef(CommandBuffer) commandBuffer, uint32_t rootConstantIndex, const void* data, uint32_t size); // requires "pipelineLayoutRootConstantMaxSize > 0"
         void                (NRI_CALL *CmdSetRootDescriptor)        (NriRef(CommandBuffer) commandBuffer, uint32_t rootDescriptorIndex, NriRef(Descriptor) descriptor); // requires "pipelineLayoutRootDescriptorMaxNum > 0"
@@ -144,7 +144,7 @@ NriStruct(CoreInterface) {
         void                (NRI_CALL *CmdSetViewports)             (NriRef(CommandBuffer) commandBuffer, const NriPtr(Viewport) viewports, uint32_t viewportNum);
         void                (NRI_CALL *CmdSetScissors)              (NriRef(CommandBuffer) commandBuffer, const NriPtr(Rect) rects, uint32_t rectNum);
 
-        // Initial state, if enabled in the pipeline (since this state is global in D3D11/D3D12 inside a command buffer, better treat it as global even in VK to avoid discrepancies)
+        // Initial state, if enabled in the pipeline
         void                (NRI_CALL *CmdSetStencilReference)      (NriRef(CommandBuffer) commandBuffer, uint8_t frontRef, uint8_t backRef); // "backRef" requires "isIndependentFrontAndBackStencilReferenceAndMasksSupported"
         void                (NRI_CALL *CmdSetDepthBounds)           (NriRef(CommandBuffer) commandBuffer, float boundsMin, float boundsMax); // requires "isDepthBoundsTestSupported"
         void                (NRI_CALL *CmdSetBlendConstants)        (NriRef(CommandBuffer) commandBuffer, const NriRef(Color32f) color);
@@ -196,7 +196,7 @@ NriStruct(CoreInterface) {
         void                (NRI_CALL *CmdEndAnnotation)            (NriRef(CommandBuffer) commandBuffer);
         void                (NRI_CALL *CmdAnnotation)               (NriRef(CommandBuffer) commandBuffer, const char* name, uint32_t bgra);
     // }                }
-    Nri(Result)         (NRI_CALL *EndCommandBuffer)                (NriRef(CommandBuffer) commandBuffer);
+    Nri(Result)         (NRI_CALL *EndCommandBuffer)                (NriRef(CommandBuffer) commandBuffer); // D3D11 performs state tracking and resets it there
 
     // Annotations for profiling tools: command queue - D3D11: NOP
     void                (NRI_CALL *QueueBeginAnnotation)            (NriRef(Queue) queue, const char* name, uint32_t bgra);

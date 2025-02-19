@@ -53,7 +53,7 @@ Result StreamerImpl::Create(const StreamerDesc& desc) {
     return Result::SUCCESS;
 }
 
-uint32_t StreamerImpl::UpdateStreamerConstantBuffer(const void* data, uint32_t dataSize) {
+uint32_t StreamerImpl::UpdateConstantBuffer(const void* data, uint32_t dataSize) {
     const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
     uint32_t alignedSize = Align(dataSize, deviceDesc.constantBufferOffsetAlignment);
 
@@ -74,7 +74,7 @@ uint32_t StreamerImpl::UpdateStreamerConstantBuffer(const void* data, uint32_t d
     return offset;
 }
 
-uint64_t StreamerImpl::AddStreamerBufferUpdateRequest(const BufferUpdateRequestDesc& bufferUpdateRequestDesc) {
+uint64_t StreamerImpl::AddBufferUpdateRequest(const BufferUpdateRequestDesc& bufferUpdateRequestDesc) {
     uint64_t alignedSize = Align(bufferUpdateRequestDesc.dataSize, 16);
 
     uint64_t offset = m_DynamicDataOffsetBase + m_DynamicDataOffset;
@@ -84,7 +84,7 @@ uint64_t StreamerImpl::AddStreamerBufferUpdateRequest(const BufferUpdateRequestD
     return offset;
 }
 
-uint64_t StreamerImpl::AddStreamerTextureUpdateRequest(const TextureUpdateRequestDesc& textureUpdateRequestDesc) {
+uint64_t StreamerImpl::AddTextureUpdateRequest(const TextureUpdateRequestDesc& textureUpdateRequestDesc) {
     const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
     const TextureDesc& textureDesc = m_NRI.GetTextureDesc(*textureUpdateRequestDesc.dstTexture);
 
@@ -105,7 +105,7 @@ uint64_t StreamerImpl::AddStreamerTextureUpdateRequest(const TextureUpdateReques
     return offset;
 }
 
-Result StreamerImpl::CopyStreamerUpdateRequests() {
+Result StreamerImpl::CopyUpdateRequests() {
     if (!m_DynamicDataOffset)
         return Result::SUCCESS;
 
@@ -227,7 +227,7 @@ Result StreamerImpl::CopyStreamerUpdateRequests() {
     return Result::SUCCESS;
 }
 
-void StreamerImpl::CmdUploadStreamerUpdateRequests(CommandBuffer& commandBuffer) {
+void StreamerImpl::CmdUploadUpdateRequests(CommandBuffer& commandBuffer) {
     // Buffers
     for (const BufferUpdateRequest& request : m_BufferRequestsWithDst)
         m_NRI.CmdCopyBuffer(commandBuffer, *request.desc.dstBuffer, request.desc.dstBufferOffset, *m_DynamicBuffer, request.offset, request.desc.dataSize);

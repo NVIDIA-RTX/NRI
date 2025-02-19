@@ -210,9 +210,10 @@ struct DeviceNONE final : public DeviceBase {
     Result FillFunctionTable(LowLatencyInterface& table) const override;
     Result FillFunctionTable(MeshShaderInterface& table) const override;
     Result FillFunctionTable(RayTracingInterface& table) const override;
+    Result FillFunctionTable(ResourceAllocatorInterface& table) const override;
     Result FillFunctionTable(StreamerInterface& table) const override;
     Result FillFunctionTable(SwapChainInterface& table) const override;
-    Result FillFunctionTable(ResourceAllocatorInterface& table) const override;
+    Result FillFunctionTable(UpscalerInterface& table) const override;
 
 private:
     DeviceDesc m_Desc = {};
@@ -241,13 +242,13 @@ static const DeviceDesc& NRI_CALL GetDeviceDesc(const Device& device) {
 }
 
 static const BufferDesc& NRI_CALL GetBufferDesc(const Buffer&) {
-    static const BufferDesc bufferDesc = {};
+    static const BufferDesc bufferDesc = {1};
 
     return bufferDesc;
 }
 
 static const TextureDesc& NRI_CALL GetTextureDesc(const Texture&) {
-    static const TextureDesc textureDesc = {};
+    static const TextureDesc textureDesc = {TextureType::TEXTURE_1D, TextureUsageBits::NONE, Format::R8_UNORM, 1, 1, 1, 1, 1, 1};
 
     return textureDesc;
 }
@@ -261,19 +262,19 @@ static uint32_t NRI_CALL GetQuerySize(const QueryPool&) {
 }
 
 static void NRI_CALL GetBufferMemoryDesc(const Buffer&, MemoryLocation, MemoryDesc& memoryDesc) {
-    memoryDesc = {};
+    memoryDesc = {1};
 }
 
 static void NRI_CALL GetTextureMemoryDesc(const Texture&, MemoryLocation, MemoryDesc& memoryDesc) {
-    memoryDesc = {};
+    memoryDesc = {1};
 }
 
 static void NRI_CALL GetBufferMemoryDesc2(const Device&, const BufferDesc&, MemoryLocation, MemoryDesc& memoryDesc) {
-    memoryDesc = {};
+    memoryDesc = {1};
 }
 
 static void NRI_CALL GetTextureMemoryDesc2(const Device&, const TextureDesc&, MemoryLocation, MemoryDesc& memoryDesc) {
-    memoryDesc = {};
+    memoryDesc = {1};
 }
 
 static Result NRI_CALL GetQueue(Device&, QueueType, uint32_t, Queue*& queue) {
@@ -1025,7 +1026,7 @@ static void NRI_CALL DestroySwapChain(SwapChain&) {
 }
 
 static Texture* const* NRI_CALL GetSwapChainTextures(const SwapChain&, uint32_t& textureNum) {
-    static void* textures[1] = {};
+    static const void* textures[1] = {};
     textureNum = 1;
 
     return (Texture**)textures;
@@ -1057,6 +1058,41 @@ Result DeviceNONE::FillFunctionTable(SwapChainInterface& table) const {
     table.WaitForPresent = ::WaitForPresent;
     table.QueuePresent = ::QueuePresent;
     table.GetDisplayDesc = ::GetDisplayDesc;
+
+    return Result::SUCCESS;
+}
+
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region[  Upscaler  ]
+
+static Result CreateUpscaler(Device&, const UpscalerDesc&, Upscaler*& upscaler) {
+    upscaler = DummyObject<Upscaler>();
+
+    return Result::SUCCESS;
+}
+
+static void DestroyUpscaler(Upscaler&) {
+}
+
+static bool IsUpscalerSupported(const Device&, UpscalerType) {
+    return true;
+}
+
+static void GetUpscalerProps(const Upscaler&, UpscalerProps& upscalerProps) {
+    upscalerProps = {1.0f, 0.0f, {1, 1}, {1, 1}, {1, 1}, 1};
+}
+
+static void CmdDispatchUpscale(CommandBuffer&, Upscaler&, const DispatchUpscaleDesc&) {
+}
+
+Result DeviceNONE::FillFunctionTable(UpscalerInterface& table) const {
+    table.CreateUpscaler = ::CreateUpscaler;
+    table.DestroyUpscaler = ::DestroyUpscaler;
+    table.IsUpscalerSupported = ::IsUpscalerSupported;
+    table.GetUpscalerProps = ::GetUpscalerProps;
+    table.CmdDispatchUpscale = ::CmdDispatchUpscale;
 
     return Result::SUCCESS;
 }

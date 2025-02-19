@@ -81,11 +81,11 @@ Result BufferD3D12::Create(const AllocateBufferDesc& bufferDesc) {
         D3D12_RESOURCE_DESC1 desc1 = {};
         GetResourceDesc((D3D12_RESOURCE_DESC*)&desc1, bufferDesc.desc);
 
+        const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_UNDEFINED;
         uint32_t castableFormatNum = 0;
         DXGI_FORMAT* castableFormats = nullptr; // TODO: add castable formats, see options12.RelaxedFormatCastingSupported
 
-        HRESULT hr = m_Device.GetVma()->CreateResource3(&allocationDesc, &desc1, D3D12_BARRIER_LAYOUT_UNDEFINED, nullptr, castableFormatNum, castableFormats, &m_VmaAllocation, IID_PPV_ARGS(&m_Buffer));
-
+        HRESULT hr = m_Device.GetVma()->CreateResource3(&allocationDesc, &desc1, initialLayout, nullptr, castableFormatNum, castableFormats, &m_VmaAllocation, IID_PPV_ARGS(&m_Buffer));
         RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3()");
     } else
 #endif
@@ -103,7 +103,6 @@ Result BufferD3D12::Create(const AllocateBufferDesc& bufferDesc) {
             initialState |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
 
         HRESULT hr = m_Device.GetVma()->CreateResource(&allocationDesc, &desc, initialState, nullptr, &m_VmaAllocation, IID_PPV_ARGS(&m_Buffer));
-
         RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3()");
     }
 
@@ -144,9 +143,7 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
         uint32_t castableFormatNum = 0;
         DXGI_FORMAT* castableFormats = nullptr; // TODO: add castable formats, see options12.RelaxedFormatCastingSupported
 
-        HRESULT hr = m_Device.GetVma()->CreateResource3(&allocationDesc, &desc1, D3D12_BARRIER_LAYOUT_COMMON, isRenderableSurface ? &clearValue : nullptr, castableFormatNum,
-            castableFormats, &m_VmaAllocation, IID_PPV_ARGS(&m_Texture));
-
+        HRESULT hr = m_Device.GetVma()->CreateResource3(&allocationDesc, &desc1, D3D12_BARRIER_LAYOUT_COMMON, isRenderableSurface ? &clearValue : nullptr, castableFormatNum, castableFormats, &m_VmaAllocation, IID_PPV_ARGS(&m_Texture));
         RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3()");
     } else
 #endif
@@ -157,7 +154,6 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
         bool isRenderableSurface = desc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
         HRESULT hr = m_Device.GetVma()->CreateResource(&allocationDesc, &desc, D3D12_RESOURCE_STATE_COMMON, isRenderableSurface ? &clearValue : nullptr, &m_VmaAllocation, IID_PPV_ARGS(&m_Texture));
-
         RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3()");
     }
 

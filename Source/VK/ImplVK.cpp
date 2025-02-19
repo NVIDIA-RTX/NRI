@@ -22,6 +22,7 @@
 #include "HelperDataUpload.h"
 #include "HelperDeviceMemoryAllocator.h"
 #include "Streamer.h"
+#include "Upscaler.h"
 
 using namespace nri;
 
@@ -643,7 +644,11 @@ Result DeviceVK::FillFunctionTable(CoreInterface& table) const {
 #pragma region[  Helper  ]
 
 static Result NRI_CALL UploadData(Queue& queue, const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum, const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum) {
-    return ((QueueVK&)queue).UploadData(textureUploadDescs, textureUploadDescNum, bufferUploadDescs, bufferUploadDescNum);
+    QueueVK& queueVK = (QueueVK&)queue;
+    DeviceVK& deviceVK = queueVK.GetDevice();
+    HelperDataUpload helperDataUpload(deviceVK.GetCoreInterface(), (Device&)deviceVK, queue);
+
+    return helperDataUpload.UploadData(textureUploadDescs, textureUploadDescNum, bufferUploadDescs, bufferUploadDescNum);
 }
 
 static Result NRI_CALL WaitForIdle(Queue& queue) {
@@ -760,6 +765,10 @@ static uint64_t NRI_CALL GetAccelerationStructureHandle(const AccelerationStruct
     return (uint64_t)((AccelerationStructureVK&)accelerationStructure).GetDeviceAddress();
 }
 
+static Buffer* NRI_CALL GetAccelerationStructureBuffer(const AccelerationStructure& accelerationStructure) {
+    return (Buffer*)((AccelerationStructureVK&)accelerationStructure).GetBuffer();
+}
+
 static Result NRI_CALL CreateAccelerationStructureDescriptor(const AccelerationStructure& accelerationStructure, Descriptor*& descriptor) {
     return ((AccelerationStructureVK&)accelerationStructure).CreateDescriptor(descriptor);
 }
@@ -832,11 +841,12 @@ Result DeviceVK::FillFunctionTable(RayTracingInterface& table) const {
     if (!m_Desc.isRayTracingSupported)
         return Result::UNSUPPORTED;
 
-    table.GetAccelerationStructureMemoryDesc = ::GetAccelerationStructureMemoryDesc;
-    table.GetAccelerationStructureMemoryDesc2 = ::GetAccelerationStructureMemoryDesc2;
     table.GetAccelerationStructureUpdateScratchBufferSize = ::GetAccelerationStructureUpdateScratchBufferSize;
     table.GetAccelerationStructureBuildScratchBufferSize = ::GetAccelerationStructureBuildScratchBufferSize;
     table.GetAccelerationStructureHandle = ::GetAccelerationStructureHandle;
+    table.GetAccelerationStructureBuffer = ::GetAccelerationStructureBuffer;
+    table.GetAccelerationStructureMemoryDesc = ::GetAccelerationStructureMemoryDesc;
+    table.GetAccelerationStructureMemoryDesc2 = ::GetAccelerationStructureMemoryDesc2;
     table.CreateRayTracingPipeline = ::CreateRayTracingPipeline;
     table.CreateAccelerationStructure = ::CreateAccelerationStructure;
     table.CreateAccelerationStructureDescriptor = ::CreateAccelerationStructureDescriptor;
@@ -909,19 +919,19 @@ static Buffer* GetStreamerConstantBuffer(Streamer& streamer) {
 }
 
 static uint32_t UpdateStreamerConstantBuffer(Streamer& streamer, const void* data, uint32_t dataSize) {
-    return ((StreamerImpl&)streamer).UpdateStreamerConstantBuffer(data, dataSize);
+    return ((StreamerImpl&)streamer).UpdateConstantBuffer(data, dataSize);
 }
 
 static uint64_t AddStreamerBufferUpdateRequest(Streamer& streamer, const BufferUpdateRequestDesc& bufferUpdateRequestDesc) {
-    return ((StreamerImpl&)streamer).AddStreamerBufferUpdateRequest(bufferUpdateRequestDesc);
+    return ((StreamerImpl&)streamer).AddBufferUpdateRequest(bufferUpdateRequestDesc);
 }
 
 static uint64_t AddStreamerTextureUpdateRequest(Streamer& streamer, const TextureUpdateRequestDesc& textureUpdateRequestDesc) {
-    return ((StreamerImpl&)streamer).AddStreamerTextureUpdateRequest(textureUpdateRequestDesc);
+    return ((StreamerImpl&)streamer).AddTextureUpdateRequest(textureUpdateRequestDesc);
 }
 
 static Result CopyStreamerUpdateRequests(Streamer& streamer) {
-    return ((StreamerImpl&)streamer).CopyStreamerUpdateRequests();
+    return ((StreamerImpl&)streamer).CopyUpdateRequests();
 }
 
 static Buffer* GetStreamerDynamicBuffer(Streamer& streamer) {
@@ -929,7 +939,7 @@ static Buffer* GetStreamerDynamicBuffer(Streamer& streamer) {
 }
 
 static void CmdUploadStreamerUpdateRequests(CommandBuffer& commandBuffer, Streamer& streamer) {
-    ((StreamerImpl&)streamer).CmdUploadStreamerUpdateRequests(commandBuffer);
+    ((StreamerImpl&)streamer).CmdUploadUpdateRequests(commandBuffer);
 }
 
 Result DeviceVK::FillFunctionTable(StreamerInterface& table) const {
@@ -990,6 +1000,57 @@ Result DeviceVK::FillFunctionTable(SwapChainInterface& table) const {
     table.WaitForPresent = ::WaitForPresent;
     table.QueuePresent = ::QueuePresent;
     table.GetDisplayDesc = ::GetDisplayDesc;
+
+    return Result::SUCCESS;
+}
+
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region[  Upscaler  ]
+
+static Result CreateUpscaler(Device& device, const UpscalerDesc& upscalerDesc, Upscaler*& upscaler) {
+    DeviceVK& deviceVK = (DeviceVK&)device;
+    UpscalerImpl* impl = Allocate<UpscalerImpl>(deviceVK.GetAllocationCallbacks(), device, deviceVK.GetCoreInterface());
+    Result result = impl->Create(upscalerDesc);
+
+    if (result != Result::SUCCESS) {
+        Destroy(deviceVK.GetAllocationCallbacks(), impl);
+        upscaler = nullptr;
+    } else
+        upscaler = (Upscaler*)impl;
+
+    return result;
+}
+
+static void DestroyUpscaler(Upscaler& upscaler) {
+    Destroy((UpscalerImpl*)&upscaler);
+}
+
+static bool IsUpscalerSupported(const Device& device, UpscalerType upscalerType) {
+    DeviceVK& deviceVK = (DeviceVK&)device;
+
+    return IsUpscalerSupported(deviceVK.GetDesc(), upscalerType);
+}
+
+static void GetUpscalerProps(const Upscaler& upscaler, UpscalerProps& upscalerProps) {
+    UpscalerImpl& upscalerImpl = (UpscalerImpl&)upscaler;
+    
+    return upscalerImpl.GetUpscalerProps(upscalerProps);
+}
+
+static void CmdDispatchUpscale(CommandBuffer& commandBuffer, Upscaler& upscaler, const DispatchUpscaleDesc& dispatchUpscalerDesc) {
+    UpscalerImpl& upscalerImpl = (UpscalerImpl&)upscaler;
+
+    upscalerImpl.CmdDispatchUpscale(commandBuffer, dispatchUpscalerDesc);
+}
+
+Result DeviceVK::FillFunctionTable(UpscalerInterface& table) const {
+    table.CreateUpscaler = ::CreateUpscaler;
+    table.DestroyUpscaler = ::DestroyUpscaler;
+    table.IsUpscalerSupported = ::IsUpscalerSupported;
+    table.GetUpscalerProps = ::GetUpscalerProps;
+    table.CmdDispatchUpscale = ::CmdDispatchUpscale;
 
     return Result::SUCCESS;
 }

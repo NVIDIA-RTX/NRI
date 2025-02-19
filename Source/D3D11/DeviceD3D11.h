@@ -38,7 +38,7 @@ struct DeviceD3D11 final : public DeviceBase {
     }
 
     inline const CoreInterface& GetCoreInterface() const {
-        return m_CoreInterface;
+        return m_iCore;
     }
 
     inline bool IsDeferredContextEmulated() const {
@@ -123,6 +123,7 @@ struct DeviceD3D11 final : public DeviceBase {
     Result FillFunctionTable(ResourceAllocatorInterface& table) const override;
     Result FillFunctionTable(StreamerInterface& table) const override;
     Result FillFunctionTable(SwapChainInterface& table) const override;
+    Result FillFunctionTable(UpscalerInterface& table) const override;
     Result FillFunctionTable(WrapperD3D11Interface& table) const override;
 
     //================================================================================================================
@@ -152,7 +153,7 @@ private:
     ComPtr<ID3D11Multithread> m_Multithread;
     std::array<std::vector<QueueD3D11*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies = {}; // TODO: use Vector!
     CRITICAL_SECTION m_CriticalSection = {};                                               // TODO: Lock?
-    CoreInterface m_CoreInterface = {};
+    CoreInterface m_iCore = {};
     DeviceDesc m_Desc = {};
     uint8_t m_Version = 0;
     uint8_t m_ImmediateContextVersion = 0;

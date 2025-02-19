@@ -36,8 +36,8 @@ NRI_INLINE Result CommandBufferVK::Begin(const DescriptorPool*) {
     VkResult result = vk.BeginCommandBuffer(m_Handle, &info);
     RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkBeginCommandBuffer returned %d", (int32_t)result);
 
-    m_CurrentPipelineLayout = nullptr;
-    m_CurrentPipeline = nullptr;
+    m_PipelineLayout = nullptr;
+    m_Pipeline = nullptr;
 
     return Result::SUCCESS;
 }
@@ -138,7 +138,7 @@ NRI_INLINE void CommandBufferVK::SetShadingRate(const ShadingRateDesc& shadingRa
 }
 
 NRI_INLINE void CommandBufferVK::SetDepthBias(const DepthBiasDesc& depthBiasDesc) {
-    if (!m_CurrentPipeline || IsDepthBiasEnabled(m_CurrentPipeline->GetDepthBias())) {
+    if (!m_Pipeline || IsDepthBiasEnabled(m_Pipeline->GetDepthBias())) {
         const auto& vk = m_Device.GetDispatchTable();
         vk.CmdSetDepthBias(m_Handle, depthBiasDesc.constant, depthBiasDesc.clamp, depthBiasDesc.slope);
     }
@@ -335,7 +335,7 @@ NRI_INLINE void CommandBufferVK::SetVertexBuffers(uint32_t baseSlot, uint32_t bu
             handles[i] = buffer.GetHandle();
             fixedOffsets[i] = offset;
             sizes[i] = buffer.GetDesc().size - offset;
-            strides[i] = m_CurrentPipeline->GetVertexStreamStride(baseSlot + i);
+            strides[i] = m_Pipeline->GetVertexStreamStride(baseSlot + i);
         } else {
             handles[i] = VK_NULL_HANDLE;
             fixedOffsets[i] = 0;
@@ -361,15 +361,12 @@ NRI_INLINE void CommandBufferVK::SetIndexBuffer(const Buffer& buffer, uint64_t o
 
 NRI_INLINE void CommandBufferVK::SetPipelineLayout(const PipelineLayout& pipelineLayout) {
     const PipelineLayoutVK& pipelineLayoutVK = (const PipelineLayoutVK&)pipelineLayout;
-    m_CurrentPipelineLayout = &pipelineLayoutVK;
+    m_PipelineLayout = &pipelineLayoutVK;
 }
 
 NRI_INLINE void CommandBufferVK::SetPipeline(const Pipeline& pipeline) {
-    if (m_CurrentPipeline == (PipelineVK*)&pipeline)
-        return;
-
     const PipelineVK& pipelineImpl = (const PipelineVK&)pipeline;
-    m_CurrentPipeline = &pipelineImpl;
+    m_Pipeline = &pipelineImpl;
 
     const auto& vk = m_Device.GetDispatchTable();
     vk.CmdBindPipeline(m_Handle, pipelineImpl.GetBindPoint(), pipelineImpl);
@@ -389,21 +386,21 @@ NRI_INLINE void CommandBufferVK::SetDescriptorSet(uint32_t setIndex, const Descr
     VkDescriptorSet vkDescriptorSet = descriptorSetImpl.GetHandle();
     uint32_t dynamicConstantBufferNum = descriptorSetImpl.GetDynamicConstantBufferNum();
 
-    const auto& bindingInfo = m_CurrentPipelineLayout->GetBindingInfo();
+    const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
     uint32_t space = bindingInfo.descriptorSetDescs[setIndex].registerSpace;
 
-    VkPipelineLayout pipelineLayout = *m_CurrentPipelineLayout;
-    VkPipelineBindPoint pipelineBindPoint = m_CurrentPipelineLayout->GetPipelineBindPoint();
+    VkPipelineLayout pipelineLayout = *m_PipelineLayout;
+    VkPipelineBindPoint pipelineBindPoint = m_PipelineLayout->GetPipelineBindPoint();
 
     const auto& vk = m_Device.GetDispatchTable();
     vk.CmdBindDescriptorSets(m_Handle, pipelineBindPoint, pipelineLayout, space, 1, &vkDescriptorSet, dynamicConstantBufferNum, dynamicConstantBufferOffsets);
 }
 
 NRI_INLINE void CommandBufferVK::SetRootConstants(uint32_t rootConstantIndex, const void* data, uint32_t size) {
-    const auto& bindingInfo = m_CurrentPipelineLayout->GetBindingInfo();
+    const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
     const PushConstantBindingDesc& pushConstantBindingDesc = bindingInfo.pushConstantBindings[rootConstantIndex];
 
-    VkPipelineLayout pipelineLayout = *m_CurrentPipelineLayout;
+    VkPipelineLayout pipelineLayout = *m_PipelineLayout;
 
     const auto& vk = m_Device.GetDispatchTable();
     vk.CmdPushConstants(m_Handle, pipelineLayout, pushConstantBindingDesc.stages, pushConstantBindingDesc.offset, size, data);
@@ -413,7 +410,7 @@ NRI_INLINE void CommandBufferVK::SetRootDescriptor(uint32_t rootDescriptorIndex,
     const DescriptorVK& descriptorVK = (DescriptorVK&)descriptor;
     DescriptorTypeVK descriptorType = descriptorVK.GetType();
 
-    const auto& bindingInfo = m_CurrentPipelineLayout->GetBindingInfo();
+    const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
     const PushDescriptorBindingDesc& pushDescriptorBindingDesc = bindingInfo.pushDescriptorBindings[rootDescriptorIndex];
 
     VkWriteDescriptorSet descriptorWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
@@ -431,8 +428,8 @@ NRI_INLINE void CommandBufferVK::SetRootDescriptor(uint32_t rootDescriptorIndex,
         descriptorWrite.pBufferInfo = &bufferInfo;
     }
 
-    VkPipelineLayout pipelineLayout = *m_CurrentPipelineLayout;
-    VkPipelineBindPoint pipelineBindPoint = m_CurrentPipelineLayout->GetPipelineBindPoint();
+    VkPipelineLayout pipelineLayout = *m_PipelineLayout;
+    VkPipelineBindPoint pipelineBindPoint = m_PipelineLayout->GetPipelineBindPoint();
 
     const auto& vk = m_Device.GetDispatchTable();
     vk.CmdPushDescriptorSetKHR(m_Handle, pipelineBindPoint, pipelineLayout, pushDescriptorBindingDesc.registerSpace, 1, &descriptorWrite);

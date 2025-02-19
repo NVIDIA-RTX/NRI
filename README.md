@@ -1,8 +1,8 @@
-# NVIDIA RENDER INTERFACE (NRI) 
+# NVIDIA RENDER INTERFACE (NRI)
 
 [![Status](https://github.com/NVIDIA-RTX/NRI/actions/workflows/build.yml/badge.svg)](https://github.com/NVIDIA-RTX/NRI/actions/workflows/build.yml)
 
-*NRI* is a low-level abstract render interface, which has been designed to support all low level features of D3D12 and Vulkan GAPIs, but at the same time to simplify usage and reduce the amount of code needed (especially compared with VK).
+*NRI* is a modular extensible low-level abstract render interface, which has been designed to support all low level features of D3D12 and Vulkan GAPIs, but at the same time to simplify usage and reduce the amount of code needed (especially compared with VK).
 
 Goals:
 - generalization of D3D12 ([spec](https://microsoft.github.io/DirectX-Specs/)) and VK ([spec](https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html)) GAPIs
@@ -12,7 +12,7 @@ Goals:
 - cross platform and platform independence (AMD/INTEL friendly)
 - D3D11 ([spec](https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm)) support (as much as possible)
 
-Non-goals (exceptions apply to helper interfaces, where high-level abstraction and hidden management are desired):
+Non-goals (exceptions apply to some extensions, where high-level abstraction and hidden management are desired):
 - high level (D3D11-like) abstraction
 - exposing entities not existing in GAPIs
 - hidden management of any kind
@@ -51,6 +51,7 @@ Available interfaces:
  - `NRIResourceAllocator.h` - convenient creation of resources using *AMD Virtual Memory Allocator*, which get returned already bound to memory
  - `NRIStreamer.h` - a convenient way to stream data into resources
  - `NRISwapChain.h` - swap chain and related functionality
+ - `NRIUpscaler.h` - a configurable collection of common upscalers (NIS, FSR, DLSS-SR, DLSS-RR)
 
 Repository organization:
 - there is only `main` branch used for development
@@ -178,22 +179,19 @@ Notes:
 - `NRI_ENABLE_NVTX_SUPPORT` - annotations for NVIDIA Nsight Systems (`on` by default)
 - `NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS` - enable debug names, host and device annotations (`on` by default)
 - `NRI_ENABLE_NONE_SUPPORT` - enable NONE backend (`on` by default)
-- `NRI_ENABLE_D3D11_SUPPORT` - enable D3D11 backend (`on` by default on Windows)
-- `NRI_ENABLE_D3D12_SUPPORT` - enable D3D12 backend (`on` by default on Windows)
 - `NRI_ENABLE_VK_SUPPORT` - enable VULKAN backend (`on` by default)
 - `NRI_ENABLE_VALIDATION_SUPPORT` - enable Validation backend (otherwise `enableNRIValidation` is ignored, `on` by default)
-
-D3D11/D3D12:
-- `NRI_ENABLE_D3D_EXTENSIONS` - enable vendor specific extension libraries for D3D (NVAPI and AMD AGS) (`on` by default if there is a D3D backend)
-
-D3D12 only:
-- `NRI_ENABLE_AGILITY_SDK_SUPPORT` - enable Agility SDK (`on` by default)
-- `NRI_AGILITY_SDK_DIR` - directory where Agility SDK binaries will be copied to relative to `CMAKE_RUNTIME_OUTPUT_DIRECTORY` (`AgilitySDK` by default)
-- `NRI_AGILITY_SDK_VERSION` - Agility SDK version
-
-VK only:
+- `NRI_ENABLE_D3D11_SUPPORT` - enable D3D11 backend (`on` by default on Windows)
+- `NRI_ENABLE_D3D12_SUPPORT` - enable D3D12 backend (`on` by default on Windows)
+- `NRI_ENABLE_AGILITY_SDK_SUPPORT` - enable D3D12 Agility SDK (`on` by default)
 - `NRI_ENABLE_XLIB_SUPPORT` - enable *Xlib* support (`on` by default)
 - `NRI_ENABLE_WAYLAND_SUPPORT` - enable *Wayland* support (`on` by default)
+- `NRI_ENABLE_D3D_EXTENSIONS` - enable vendor specific extension libraries for D3D (NVAPI and AMD AGS) (`on` by default if there is a D3D backend)
+- `NRI_ENABLE_NIS_SDK` - enable NVIDIA Image Sharpening SDK (`off` by default)
+- `NRI_ENABLE_NGX_SDK` - enable NVIDIA NGX (DLSS) SDK (`off` by default)
+- `NRI_ENABLE_FFX_SDK` - enable AMD FidelityFX SDK (`off` by default)
+- `NRI_AGILITY_SDK_DIR` - directory where Agility SDK binaries will be copied to relative to `CMAKE_RUNTIME_OUTPUT_DIRECTORY` (`AgilitySDK` by default)
+- `NRI_AGILITY_SDK_VERSION` - Agility SDK version
 
 ## AGILITY SDK
 
@@ -202,10 +200,10 @@ VK only:
 D3D12 backend uses Agility SDK to get access to most recent D3D12 features.
 
 Installation steps:
-- set `NRI_AGILITY_SDK_VERSION` to the version of the package
+- set `NRI_AGILITY_SDK_VERSION_MAJOR` and `NRI_AGILITY_SDK_VERSION_MINOR` to the desired value
 - enable `NRI_ENABLE_AGILITY_SDK_SUPPORT`
 - re-deploy project
-- include auto-generated `NRIAgilitySDK.h` header in the code of your executable, using NRI
+- include auto-generated `NRIAgilitySDK.h` header in the code of your executable using NRI
 
 ## SAMPLES OVERVIEW
 

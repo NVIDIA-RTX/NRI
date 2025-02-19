@@ -424,6 +424,10 @@ NRI_API Result NRI_CALL nriGetInterface(const Device& device, const char* interf
         realInterfaceSize = sizeof(SwapChainInterface);
         if (realInterfaceSize == interfaceSize)
             result = deviceBase.FillFunctionTable(*(SwapChainInterface*)interfacePtr);
+    } else if (hash == Hash(NRI_STRINGIFY(UpscalerInterface))) {
+        realInterfaceSize = sizeof(UpscalerInterface);
+        if (realInterfaceSize == interfaceSize)
+            result = deviceBase.FillFunctionTable(*(UpscalerInterface*)interfacePtr);
     } else if (hash == Hash(NRI_STRINGIFY(WrapperD3D11Interface))) {
         realInterfaceSize = sizeof(WrapperD3D11Interface);
         if (realInterfaceSize == interfaceSize)

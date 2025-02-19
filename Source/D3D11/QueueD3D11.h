@@ -21,8 +21,6 @@ struct QueueD3D11 final : public DebugNameBase {
     //================================================================================================================
 
     void Submit(const QueueSubmitDesc& queueSubmitDesc);
-    Result UploadData(const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum, const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum);
-    Result WaitForIdle();
 
 private:
     DeviceD3D11& m_Device;

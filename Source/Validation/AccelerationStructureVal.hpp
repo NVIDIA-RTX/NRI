@@ -27,6 +27,12 @@ NRI_INLINE uint64_t AccelerationStructureVal::GetNativeObject() const {
     return GetRayTracingInterface().GetAccelerationStructureNativeObject(*GetImpl());
 }
 
+NRI_INLINE Buffer* AccelerationStructureVal::GetBuffer() const {
+    RETURN_ON_FAILURE(&m_Device, IsBoundToMemory(), 0, "AccelerationStructure is not bound to memory");
+
+    return GetRayTracingInterface().GetAccelerationStructureBuffer(*GetImpl());
+}
+
 NRI_INLINE Result AccelerationStructureVal::CreateDescriptor(Descriptor*& descriptor) {
     Descriptor* descriptorImpl = nullptr;
     const Result result = GetRayTracingInterface().CreateAccelerationStructureDescriptor(*GetImpl(), descriptorImpl);

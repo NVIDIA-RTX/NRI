@@ -3,7 +3,6 @@
 #pragma once
 
 #include <array>
-#include <atomic>
 #include <cassert>
 #include <cstring>
 #include <map>
@@ -31,6 +30,7 @@ typedef uint32_t DXGI_FORMAT;
 #include "Extensions/NRIResourceAllocator.h"
 #include "Extensions/NRIStreamer.h"
 #include "Extensions/NRISwapChain.h"
+#include "Extensions/NRIUpscaler.h"
 #include "Extensions/NRIWrapperD3D11.h"
 #include "Extensions/NRIWrapperD3D12.h"
 #include "Extensions/NRIWrapperVK.h"
@@ -105,7 +105,7 @@ inline void Destroy(T* object) {
     if (object) {
         object->~T();
 
-        const auto& allocationCallbacks = ((nri::DeviceBase&)object->GetDevice()).GetAllocationCallbacks();
+        const auto& allocationCallbacks = ((nri::DeviceBase&)(object->GetDevice())).GetAllocationCallbacks();
         allocationCallbacks.Free(allocationCallbacks.userArg, object);
     }
 }
@@ -139,7 +139,11 @@ constexpr void ReturnVoid() {
     if ((expression) != 0) \
     (deviceBase)->ReportMessage(nri::Message::ERROR, __FILE__, __LINE__, "%s: " NRI_STRINGIFY(expression) " failed!", __FUNCTION__)
 
-#define CHECK(condition, message) assert((condition) && message)
+#ifdef NDEBUG
+#    define CHECK(condition, message) MaybeUnused(condition)
+#else
+#    define CHECK(condition, message) assert((condition) && message)
+#endif
 
 #define SET_D3D_DEBUG_OBJECT_NAME(obj, name) \
     if (obj) \

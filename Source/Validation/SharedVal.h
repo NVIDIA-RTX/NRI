@@ -39,8 +39,20 @@ struct ObjectVal : public DebugNameBaseVal {
         return m_Device.GetHelperInterface();
     }
 
-    inline const StreamerInterface& GetStreamerInterface() const {
-        return m_Device.GetStreamerInterface();
+    inline const LowLatencyInterface& GetLowLatencyInterface() const {
+        return m_Device.GetLowLatencyInterface();
+    }
+
+    inline const MeshShaderInterface& GetMeshShaderInterface() const {
+        return m_Device.GetMeshShaderInterface();
+    }
+
+    inline const RayTracingInterface& GetRayTracingInterface() const {
+        return m_Device.GetRayTracingInterface();
+    }
+
+    inline const SwapChainInterface& GetSwapChainInterface() const {
+        return m_Device.GetSwapChainInterface();
     }
 
     inline const WrapperD3D11Interface& GetWrapperD3D11Interface() const {
@@ -53,22 +65,6 @@ struct ObjectVal : public DebugNameBaseVal {
 
     inline const WrapperVKInterface& GetWrapperVKInterface() const {
         return m_Device.GetWrapperVKInterface();
-    }
-
-    inline const SwapChainInterface& GetSwapChainInterface() const {
-        return m_Device.GetSwapChainInterface();
-    }
-
-    inline const RayTracingInterface& GetRayTracingInterface() const {
-        return m_Device.GetRayTracingInterface();
-    }
-
-    inline const MeshShaderInterface& GetMeshShaderInterface() const {
-        return m_Device.GetMeshShaderInterface();
-    }
-
-    inline const LowLatencyInterface& GetLowLatencyInterface() const {
-        return m_Device.GetLowLatencyInterface();
     }
 
     //================================================================================================================

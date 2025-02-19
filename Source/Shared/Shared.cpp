@@ -1,3 +1,5 @@
+// © 2021 NVIDIA Corporation
+
 #ifndef _WIN32
 #    include <csignal> // raise
 #    include <cstdarg> // va_start, va_end
@@ -9,6 +11,7 @@
 #include "HelperDeviceMemoryAllocator.h"
 #include "HelperWaitIdle.h"
 #include "Streamer.h"
+#include "Upscaler.h"
 
 using namespace nri;
 
@@ -16,6 +19,7 @@ using namespace nri;
 #include "HelperDeviceMemoryAllocator.hpp"
 #include "HelperWaitIdle.hpp"
 #include "Streamer.hpp"
+#include "Upscaler.hpp"
 
 #include "SharedExternal.hpp"
 #include "SharedLibrary.hpp"

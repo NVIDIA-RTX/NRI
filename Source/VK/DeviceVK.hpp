@@ -1098,7 +1098,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
     ReportDeviceGroupInfo();
 
-    return FillFunctionTable(m_CoreInterface);
+    return FillFunctionTable(m_iCore);
 }
 
 void DeviceVK::FillCreateInfo(const BufferDesc& bufferDesc, VkBufferCreateInfo& info) const {

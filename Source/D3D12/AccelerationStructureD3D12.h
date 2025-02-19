@@ -15,7 +15,7 @@ struct AccelerationStructureD3D12 final : public DebugNameBase {
         return m_Device;
     }
 
-    inline operator BufferD3D12*() const {
+    inline BufferD3D12* GetBuffer() const {
         return m_Buffer;
     }
 

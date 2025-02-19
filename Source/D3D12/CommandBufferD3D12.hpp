@@ -73,7 +73,9 @@ static inline D3D12_BARRIER_SYNC GetBarrierSyncFlags(StageBits stageBits) {
         flags |= D3D12_BARRIER_SYNC_CLEAR_UNORDERED_ACCESS_VIEW;
 
     if (stageBits & StageBits::ACCELERATION_STRUCTURE)
-        flags |= D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE | D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE | D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO;
+        flags |= D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE | D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE;
+
+    // TODO: D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO?
 
     return flags;
 }
@@ -463,8 +465,6 @@ NRI_INLINE void CommandBufferD3D12::SetIndexBuffer(const Buffer& buffer, uint64_
 
 NRI_INLINE void CommandBufferD3D12::SetPipelineLayout(const PipelineLayout& pipelineLayout) {
     const PipelineLayoutD3D12& pipelineLayoutD3D12 = (const PipelineLayoutD3D12&)pipelineLayout;
-    if (m_PipelineLayout == &pipelineLayoutD3D12)
-        return;
 
     m_PipelineLayout = &pipelineLayoutD3D12;
     m_IsGraphicsPipelineLayout = pipelineLayoutD3D12.IsGraphicsPipelineLayout();
@@ -477,9 +477,6 @@ NRI_INLINE void CommandBufferD3D12::SetPipelineLayout(const PipelineLayout& pipe
 
 NRI_INLINE void CommandBufferD3D12::SetPipeline(const Pipeline& pipeline) {
     PipelineD3D12* pipelineD3D12 = (PipelineD3D12*)&pipeline;
-    if (m_Pipeline == pipelineD3D12)
-        return;
-
     pipelineD3D12->Bind(m_GraphicsCommandList, m_PrimitiveTopology);
 
     m_Pipeline = pipelineD3D12;

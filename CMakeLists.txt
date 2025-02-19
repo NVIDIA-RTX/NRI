@@ -7,31 +7,24 @@ include(FetchContent)
 option(NRI_STATIC_LIBRARY "Build static library" OFF)
 option(NRI_ENABLE_NVTX_SUPPORT "Annotations for NVIDIA Nsight Systems" ON)
 option(NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS "Enable debug names, host and device annotations" ON)
-
-# Options: backends
 option(NRI_ENABLE_NONE_SUPPORT "Enable NONE backend" ON)
-cmake_dependent_option(NRI_ENABLE_D3D11_SUPPORT "Enable D3D11 backend" ON "WIN32" OFF)
-cmake_dependent_option(NRI_ENABLE_D3D12_SUPPORT "Enable D3D12 backend" ON "WIN32" OFF)
 option(NRI_ENABLE_VK_SUPPORT "Enable Vulkan backend" ON)
 option(NRI_ENABLE_VALIDATION_SUPPORT "Enable Validation backend (otherwise 'enableNRIValidation' is ignored)" ON)
+option(NRI_ENABLE_NIS_SDK "Enable NVIDIA Image Sharpening SDK" OFF)
 
-# Options: VK specific
-cmake_dependent_option(NRI_ENABLE_XLIB_SUPPORT "Enable 'xlib' support" ON "NRI_ENABLE_VK_SUPPORT" OFF)
-cmake_dependent_option(NRI_ENABLE_WAYLAND_SUPPORT "Enable 'wayland' support" ON "NRI_ENABLE_VK_SUPPORT" OFF)
-
-# Options: D3D11/D3D12 specific
-if(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT) # TODO: CMake 3.22 required for conditionals in "cmake_dependent_option"
-    set(HAS_D3D ON)
-else()
-    set(HAS_D3D OFF)
-endif()
-
-option(NRI_ENABLE_D3D_EXTENSIONS "Enable vendor specific extension libraries for D3D (NVAPI and AMD AGS)" ${HAS_D3D})
-
-# Options: D3D12 specific
+cmake_dependent_option(NRI_ENABLE_D3D11_SUPPORT "Enable D3D11 backend" ON "WIN32" OFF)
+cmake_dependent_option(NRI_ENABLE_D3D12_SUPPORT "Enable D3D12 backend" ON "WIN32" OFF)
+cmake_dependent_option(NRI_ENABLE_D3D_EXTENSIONS "Enable vendor specific extension libraries for D3D (NVAPI and AMD AGS)" ON "NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT" OFF)
 cmake_dependent_option(NRI_ENABLE_AGILITY_SDK_SUPPORT "Enable Agility SDK support to unlock access to latest D3D12 features" ON "NRI_ENABLE_D3D12_SUPPORT" OFF)
+cmake_dependent_option(NRI_ENABLE_XLIB_SUPPORT "Enable 'xlib' support" ON "NRI_ENABLE_VK_SUPPORT AND NOT WIN32" OFF)
+cmake_dependent_option(NRI_ENABLE_WAYLAND_SUPPORT "Enable 'wayland' support" ON "NRI_ENABLE_VK_SUPPORT AND NOT WIN32" OFF)
+cmake_dependent_option(NRI_ENABLE_NGX_SDK "Enable NVIDIA NGX (DLSS) SDK" OFF "NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT OR NRI_ENABLE_VK_SUPPORT" OFF)
+cmake_dependent_option(NRI_ENABLE_FFX_SDK "Enable AMD FidelityFX SDK" OFF "(NRI_ENABLE_VK_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT) AND WIN32" OFF)
+
 set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK binaries will be copied to relative to 'CMAKE_RUNTIME_OUTPUT_DIRECTORY'")
-set(NRI_AGILITY_SDK_VERSION 614)
+set(NRI_AGILITY_SDK_VERSION_MAJOR 615)
+set(NRI_AGILITY_SDK_VERSION_MINOR 0)
+set(NRI_SHADERS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_Shaders" CACHE STRING "Shader output path override")
 
 # Is submodule?
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
@@ -101,50 +94,28 @@ message("NRI: enabled options:")
 
 set(COMPILE_DEFINITIONS WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS)
 
-if(NRI_STATIC_LIBRARY)
-    message(STATUS "NRI_STATIC_LIBRARY")
-    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_STATIC_LIBRARY)
-endif()
+function(add_compile_definition DEFINITION)
+    if(${DEFINITION})
+        message(STATUS "${DEFINITION}")
+        set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} ${DEFINITION}=1 PARENT_SCOPE)
+    endif()
+endfunction()
 
-if(NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS)
-    message(STATUS "NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS")
-    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS=1)
-endif()
-
-if(NRI_ENABLE_D3D_EXTENSIONS)
-    message(STATUS "NRI_ENABLE_D3D_EXTENSIONS")
-    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_D3D_EXTENSIONS=1)
-endif()
-
-if(NRI_ENABLE_NVTX_SUPPORT)
-    message(STATUS "NRI_ENABLE_NVTX_SUPPORT")
-    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_NVTX_SUPPORT=1)
-endif()
-
-if(NRI_ENABLE_NONE_SUPPORT)
-    message(STATUS "NRI_ENABLE_NONE_SUPPORT")
-    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_NONE_SUPPORT=1)
-endif()
-
-if(NRI_ENABLE_D3D11_SUPPORT)
-    message(STATUS "NRI_ENABLE_D3D11_SUPPORT")
-    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_D3D11_SUPPORT=1)
-endif()
-
-if(NRI_ENABLE_D3D12_SUPPORT)
-    message(STATUS "NRI_ENABLE_D3D12_SUPPORT")
-    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_D3D12_SUPPORT=1)
-endif()
-
-if(NRI_ENABLE_VK_SUPPORT)
-    message(STATUS "NRI_ENABLE_VK_SUPPORT")
-    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_VK_SUPPORT=1)
-endif()
-
-if(NRI_ENABLE_VALIDATION_SUPPORT)
-    message(STATUS "NRI_ENABLE_VALIDATION_SUPPORT")
-    set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} NRI_ENABLE_VALIDATION_SUPPORT=1)
-endif()
+add_compile_definition(NRI_STATIC_LIBRARY)
+add_compile_definition(NRI_ENABLE_NVTX_SUPPORT)
+add_compile_definition(NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS)
+add_compile_definition(NRI_ENABLE_NONE_SUPPORT)
+add_compile_definition(NRI_ENABLE_VK_SUPPORT)
+add_compile_definition(NRI_ENABLE_VALIDATION_SUPPORT)
+add_compile_definition(NRI_ENABLE_NIS_SDK)
+add_compile_definition(NRI_ENABLE_D3D11_SUPPORT)
+add_compile_definition(NRI_ENABLE_D3D12_SUPPORT)
+add_compile_definition(NRI_ENABLE_D3D_EXTENSIONS)
+add_compile_definition(NRI_ENABLE_AGILITY_SDK_SUPPORT)
+add_compile_definition(NRI_ENABLE_XLIB_SUPPORT)
+add_compile_definition(NRI_ENABLE_WAYLAND_SUPPORT)
+add_compile_definition(NRI_ENABLE_NGX_SDK)
+add_compile_definition(NRI_ENABLE_FFX_SDK)
 
 # Find Windows SDK
 if(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT)
@@ -190,7 +161,7 @@ if(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT)
     find_library(INPUT_LIB_DXGUID NAMES dxguid HINTS ${WINDOWS_SDK_LIB_PATH} REQUIRED)
 endif()
 
-# Download dependencies
+# Construct list of dependencies
 set(DEPS)
 
 if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
@@ -198,7 +169,7 @@ if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
     FetchContent_Declare(
         agilitysdk
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.${NRI_AGILITY_SDK_VERSION}.1 # keep an eye on minor version
+        URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.${NRI_AGILITY_SDK_VERSION_MAJOR}.${NRI_AGILITY_SDK_VERSION_MINOR}
     )
     list(APPEND DEPS agilitysdk)
 endif()
@@ -210,7 +181,6 @@ if(NRI_ENABLE_NVTX_SUPPORT)
         GIT_REPOSITORY https://github.com/NVIDIA/NVTX.git
         GIT_TAG dev
         GIT_SHALLOW 1
-        SOURCE_SUBDIR "ignore CMakeLists.txt"
     )
     list(APPEND DEPS nvtx)
 endif()
@@ -222,7 +192,6 @@ if(NRI_ENABLE_D3D_EXTENSIONS)
         GIT_REPOSITORY https://github.com/NVIDIA/nvapi.git
         GIT_TAG main
         GIT_SHALLOW 1
-        SOURCE_SUBDIR "ignore CMakeLists.txt"
     )
     list(APPEND DEPS nvapi)
 
@@ -232,7 +201,6 @@ if(NRI_ENABLE_D3D_EXTENSIONS)
         GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/AGS_SDK.git
         GIT_TAG master
         GIT_SHALLOW 1
-        SOURCE_SUBDIR "ignore CMakeLists.txt"
     )
     list(APPEND DEPS amdags)
 endif()
@@ -271,6 +239,44 @@ if(NRI_ENABLE_VK_SUPPORT)
     list(APPEND DEPS vma)
 endif()
 
+if(NRI_ENABLE_NGX_SDK)
+    # NVIDIA NGX SDK
+    FetchContent_Declare(
+        ngx
+        GIT_REPOSITORY https://github.com/NVIDIA/DLSS.git
+        GIT_TAG v310.1.0
+        GIT_SHALLOW 1
+    )
+    list(APPEND DEPS ngx)
+endif()
+
+if(NRI_ENABLE_FFX_SDK)
+    # AMD FidelityFX SDK
+    FetchContent_Declare(
+        ffx
+        GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK.git
+        GIT_TAG v1.1.3
+        GIT_SHALLOW 1
+        SOURCE_SUBDIR "ignore CMakeLists.txt"
+    )
+    list(APPEND DEPS ffx)
+endif()
+
+# Add dependencies for dependencies
+if(NRI_ENABLE_NIS_SDK AND NOT TARGET ShaderMake)
+    # ShaderMake
+    set(SHADERMAKE_BIN_OUTPUT_PATH ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} CACHE STRING "")
+
+    FetchContent_Declare(
+        shadermake
+        GIT_REPOSITORY https://github.com/NVIDIA-RTX/ShaderMake.git
+        GIT_TAG main
+        GIT_SHALLOW 1
+    )
+    list(APPEND DEPS shadermake)
+endif()
+
+# Download dependencies
 if(DEPS)
     message("NRI: downloading dependencies:")
     message(STATUS "${DEPS} ...")
@@ -369,7 +375,6 @@ if(NRI_ENABLE_D3D12_SUPPORT)
 
     if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
         target_include_directories(NRI_D3D12 PRIVATE "${agilitysdk_SOURCE_DIR}/build/native/include")
-        target_compile_definitions(NRI_D3D12 PRIVATE NRI_ENABLE_AGILITY_SDK_SUPPORT)
 
         # Copy Agility SDK binaries
         message("NRI: copying Agility SDK binaries to '${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${NRI_AGILITY_SDK_DIR}'")
@@ -381,7 +386,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
             "#ifdef __cplusplus\n"
             "extern \"C\" {\n"
             "#endif\n\n"
-            "__declspec(dllexport) extern const uint32_t D3D12SDKVersion = ${NRI_AGILITY_SDK_VERSION};\n"
+            "__declspec(dllexport) extern const uint32_t D3D12SDKVersion = ${NRI_AGILITY_SDK_VERSION_MAJOR};\n"
             "__declspec(dllexport) extern const char* D3D12SDKPath = \"../${NRI_AGILITY_SDK_DIR}/x64/\";\n\n"
             "#ifdef __cplusplus\n"
             "}\n"
@@ -465,10 +470,39 @@ file(GLOB SHARED_SOURCE
 )
 source_group("" FILES ${SHARED_SOURCE})
 add_library(NRI_Shared STATIC ${SHARED_SOURCE})
+
 target_include_directories(NRI_Shared PRIVATE
     "Include"
     "Source/Shared"
 )
+
+if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
+    target_include_directories(NRI_Shared PRIVATE "${agilitysdk_SOURCE_DIR}/build/native/include")
+endif()
+
+if(NRI_ENABLE_VK_SUPPORT)
+    target_include_directories(NRI_Shared PRIVATE "${vulkan_headers_SOURCE_DIR}/include")
+endif()
+
+if(NRI_ENABLE_NGX_SDK)
+    target_include_directories(NRI_Shared PRIVATE "${ngx_SOURCE_DIR}/include")
+
+    if(WIN32)
+        find_library(NGX_D_LIB NAMES nvsdk_ngx_s_dbg.lib PATHS "${ngx_SOURCE_DIR}/lib/Windows_x86_64/x64")
+        find_library(NGX_LIB NAMES nvsdk_ngx_s.lib PATHS "${ngx_SOURCE_DIR}/lib/Windows_x86_64/x64")
+    else()
+        find_library(NGX_D_LIB NAMES libnvsdk_ngx.a PATHS "${ngx_SOURCE_DIR}/lib/Linux_x86_64")
+        find_library(NGX_LIB NAMES libnvsdk_ngx.a PATHS "${ngx_SOURCE_DIR}/lib/Linux_x86_64")
+    endif()
+
+    target_link_libraries(NRI_Shared PRIVATE debug ${NGX_D_LIB})
+    target_link_libraries(NRI_Shared PRIVATE optimized ${NGX_LIB})
+endif()
+
+if(NRI_ENABLE_FFX_SDK)
+    target_include_directories(NRI_Shared PRIVATE "${ffx_SOURCE_DIR}/ffx-api/include/ffx_api")
+endif()
+
 target_compile_definitions(NRI_Shared PRIVATE ${COMPILE_DEFINITIONS})
 target_compile_options(NRI_Shared PRIVATE ${COMPILE_OPTIONS})
 set_property(TARGET NRI_Shared PROPERTY FOLDER ${PROJECT_NAME})
@@ -547,15 +581,88 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY FOLDER ${PROJECT_NAME})
 message("NRI: setting output path to '${CMAKE_RUNTIME_OUTPUT_DIRECTORY}'")
 set_target_properties(${PROJECT_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
-if(NRI_ENABLE_D3D_EXTENSIONS)
-    # Function - copy a library to the output folder of a project
-    function(copy_library PROJECT LIBRARY_NAME)
-        add_custom_command(TARGET ${PROJECT} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${LIBRARY_NAME} $<TARGET_FILE_DIR:${PROJECT}>
-            COMMAND_EXPAND_LISTS)
-    endfunction()
+# Function - copy a library to the project output folder
+function(copy_library PROJECT LIBRARY_NAME)
+    add_custom_command(TARGET ${PROJECT} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${LIBRARY_NAME} $<TARGET_FILE_DIR:${PROJECT}>
+        COMMAND_EXPAND_LISTS)
+endfunction()
 
-    # Copy AMD AGS into the output folder
+# Copy shared libs to the output folder
+if(NRI_ENABLE_D3D_EXTENSIONS)
     find_file(AMD_AGS_DLL NAMES amd_ags_x64.dll PATHS "${amdags_SOURCE_DIR}/ags_lib/lib")
     copy_library(${PROJECT_NAME} ${AMD_AGS_DLL})
+endif()
+
+if(NRI_ENABLE_NGX_SDK)
+    if(WIN32)
+        find_file(DLSS_SR_DLL NAMES nvngx_dlss.dll PATHS "${ngx_SOURCE_DIR}/lib/Windows_x86_64/rel")
+        find_file(DLSS_RR_DLL NAMES nvngx_dlssd.dll PATHS "${ngx_SOURCE_DIR}/lib/Windows_x86_64/rel")
+    else()
+        find_file(DLSS_SR_DLL NAMES libnvidia-ngx-dlss.so.310.1.0 PATHS "${ngx_SOURCE_DIR}/lib/Linux_x86_64/rel")
+        find_file(DLSS_RR_DLL NAMES libnvidia-ngx-dlssd.so.310.1.0 PATHS "${ngx_SOURCE_DIR}/lib/Linux_x86_64/rel")
+    endif()
+
+    copy_library(${PROJECT_NAME} ${DLSS_SR_DLL})
+    copy_library(${PROJECT_NAME} ${DLSS_RR_DLL})
+endif()
+
+if(NRI_ENABLE_FFX_SDK)
+    if(NRI_ENABLE_D3D12_SUPPORT)
+        find_file(FFX_DX12_DLL NAMES amd_fidelityfx_dx12.dll PATHS "${ffx_SOURCE_DIR}/PrebuiltSignedDLL")
+        copy_library(${PROJECT_NAME} ${FFX_DX12_DLL})
+    endif()
+
+    if(NRI_ENABLE_VK_SUPPORT AND WIN32)
+        find_file(FFX_VK_DLL NAMES amd_fidelityfx_vk.dll PATHS "${ffx_SOURCE_DIR}/PrebuiltSignedDLL")
+        copy_library(${PROJECT_NAME} ${FFX_VK_DLL})
+    endif()
+endif()
+
+# Shaders
+if(NRI_ENABLE_NIS_SDK)
+    file(GLOB_RECURSE SHADERS
+        "Shaders/*.hlsl"
+        "Shaders/*.hlsli"
+    )
+    set_source_files_properties(${SHADERS} PROPERTIES VS_TOOL_OVERRIDE "None")
+
+    set(SHADERMAKE_GENERAL_ARGS
+        --useAPI --flatten --stripReflection --WX
+        --sRegShift 0 --tRegShift 0 --bRegShift 0 --uRegShift 0
+        --headerBlob
+        --sourceDir "Shaders"
+        --ignoreConfigDir
+        -c "Shaders/Shaders.cfg"
+        -o "${NRI_SHADERS_PATH}"
+        -I "Shaders"
+    )
+
+    if(WIN32)
+        add_custom_target(NRI_Shaders ALL
+            COMMAND ShaderMake ${SHADERMAKE_GENERAL_ARGS} -p DXBC --compiler "${FXC_PATH}"
+            COMMAND ShaderMake ${SHADERMAKE_GENERAL_ARGS} -p DXIL --compiler "${DXC_PATH}"
+            COMMAND ShaderMake ${SHADERMAKE_GENERAL_ARGS} -p SPIRV --compiler "${DXC_SPIRV_PATH}"
+            DEPENDS ShaderMake
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            VERBATIM
+            SOURCES ${SHADERS}
+        )
+    else()
+        add_custom_target(NRI_Shaders ALL
+            COMMAND ShaderMake ${SHADERMAKE_GENERAL_ARGS} -p SPIRV --compiler "${DXC_SPIRV_PATH}"
+            DEPENDS ShaderMake
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            VERBATIM
+            SOURCES ${SHADERS}
+        )
+    endif()
+
+    set_property(TARGET NRI_Shaders PROPERTY FOLDER ${PROJECT_NAME})
+
+    add_dependencies(NRI_Shared NRI_Shaders)
+    target_include_directories(NRI_Shared PRIVATE "${NRI_SHADERS_PATH}")
+    target_link_libraries(NRI_Shared PRIVATE ShaderMakeBlob)
+
+    message("NRI: setting shaders path to '${NRI_SHADERS_PATH}'")
 endif()

@@ -88,12 +88,6 @@ NRI_INLINE void QueueVK::Submit(const QueueSubmitDesc& queueSubmitDesc, const Sw
     RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, ReturnVoid(), "vkQueueSubmit returned %d", (int32_t)result);
 }
 
-NRI_INLINE Result QueueVK::UploadData(const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum, const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum) {
-    HelperDataUpload helperDataUpload(m_Device.GetCoreInterface(), (Device&)m_Device, (Queue&)*this);
-
-    return helperDataUpload.UploadData(textureUploadDescs, textureUploadDescNum, bufferUploadDescs, bufferUploadDescNum);
-}
-
 NRI_INLINE Result QueueVK::WaitForIdle() {
     ExclusiveScope lock(m_Lock);
 

@@ -253,8 +253,11 @@ D3D12_HEAP_FLAGS nri::GetHeapFlags(MemoryType memoryType) {
 D3D12_RESOURCE_FLAGS nri::GetBufferFlags(BufferUsageBits bufferUsage) {
     D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
 
-    if (bufferUsage & (BufferUsageBits::SHADER_RESOURCE_STORAGE | BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE | BufferUsageBits::SCRATCH_BUFFER))
+    if (bufferUsage & (BufferUsageBits::SHADER_RESOURCE_STORAGE | BufferUsageBits::SCRATCH_BUFFER))
         flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+    if (bufferUsage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE)
+        flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE;
 
     return flags;
 }

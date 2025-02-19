@@ -43,8 +43,8 @@ NriStruct(StreamerInterface) {
     void            (NRI_CALL *DestroyStreamer)                 (NriRef(Streamer) streamer);
 
     // Get internal buffers
-    Nri(Buffer*)    (NRI_CALL *GetStreamerConstantBuffer)       (NriRef(Streamer) streamer); // Never changes
-    Nri(Buffer*)    (NRI_CALL *GetStreamerDynamicBuffer)        (NriRef(Streamer) streamer); // Valid only after "CopyStreamerUpdateRequests"
+    NriPtr(Buffer)  (NRI_CALL *GetStreamerConstantBuffer)       (NriRef(Streamer) streamer); // Never changes (if requested)
+    NriPtr(Buffer)  (NRI_CALL *GetStreamerDynamicBuffer)        (NriRef(Streamer) streamer); // Valid only after "CopyStreamerUpdateRequests"
 
     // Add an update request. Return the offset in the ring buffer and don't invoke any work
     uint64_t        (NRI_CALL *AddStreamerBufferUpdateRequest)  (NriRef(Streamer) streamer, const NriRef(BufferUpdateRequestDesc) bufferUpdateRequestDesc);

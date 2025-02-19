@@ -42,7 +42,7 @@ struct DeviceD3D12 final : public DeviceBase {
     }
 
     inline const CoreInterface& GetCoreInterface() const {
-        return m_CoreInterface;
+        return m_iCore;
     }
 
     inline D3D12MA::Allocator* GetVma() const {
@@ -136,6 +136,7 @@ struct DeviceD3D12 final : public DeviceBase {
     Result FillFunctionTable(ResourceAllocatorInterface& table) const override;
     Result FillFunctionTable(StreamerInterface& table) const override;
     Result FillFunctionTable(SwapChainInterface& table) const override;
+    Result FillFunctionTable(UpscalerInterface& table) const override;
     Result FillFunctionTable(WrapperD3D12Interface& table) const override;
 
     //================================================================================================================
@@ -173,7 +174,7 @@ private:
     UnorderedMap<uint64_t, ComPtr<ID3D12CommandSignature>> m_DrawIndexedCommandSignatures;
     UnorderedMap<uint32_t, ComPtr<ID3D12CommandSignature>> m_DrawMeshCommandSignatures;
     std::array<std::vector<QueueD3D12*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies = {}; // TODO: use Vector!
-    CoreInterface m_CoreInterface = {};
+    CoreInterface m_iCore = {};
     DeviceDesc m_Desc = {};
     uint8_t m_Version = 0;
     bool m_IsWrapped = false;

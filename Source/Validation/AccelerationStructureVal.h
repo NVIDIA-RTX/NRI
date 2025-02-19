@@ -40,6 +40,7 @@ struct AccelerationStructureVal final : public ObjectVal {
     uint64_t GetBuildScratchBufferSize() const;
     uint64_t GetHandle() const;
     uint64_t GetNativeObject() const;
+    Buffer* GetBuffer() const;
     Result CreateDescriptor(Descriptor*& descriptor);
 
 private:

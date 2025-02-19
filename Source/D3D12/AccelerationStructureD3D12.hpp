@@ -58,7 +58,7 @@ uint64_t AccelerationStructureD3D12::GetHandle() const {
 }
 
 AccelerationStructureD3D12::operator ID3D12Resource*() const {
-    return (ID3D12Resource*)*m_Buffer;
+    return (ID3D12Resource*)(*m_Buffer);
 }
 
 NRI_INLINE void AccelerationStructureD3D12::SetDebugName(const char* name) {
