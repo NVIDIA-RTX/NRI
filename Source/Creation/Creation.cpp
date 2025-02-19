@@ -683,7 +683,6 @@ NRI_API Result NRI_CALL nriCreateDeviceFromD3D12Device(const DeviceCreationD3D12
     deviceCreationDesc.callbackInterface = deviceCreationD3D12Desc.callbackInterface;
     deviceCreationDesc.allocationCallbacks = deviceCreationD3D12Desc.allocationCallbacks;
     deviceCreationDesc.enableNRIValidation = deviceCreationD3D12Desc.enableNRIValidation;
-    deviceCreationDesc.enableD3D12DrawParametersEmulation = deviceCreationD3D12Desc.enableD3D12DrawParametersEmulation;
 
     CheckAndSetDefaultCallbacks(deviceCreationDesc.callbackInterface);
     CheckAndSetDefaultAllocator(deviceCreationDesc.allocationCallbacks);

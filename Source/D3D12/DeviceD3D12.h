@@ -150,7 +150,7 @@ struct DeviceD3D12 final : public DeviceBase {
     FormatSupportBits GetFormatSupport(Format format) const;
 
 private:
-    void FillDesc(const DeviceCreationDesc& deviceCreationDesc);
+    void FillDesc();
     void InitializeNvExt(bool isNVAPILoadedInApp, bool isImported);
     void InitializeAmdExt(AGSContext* agsContext, bool isImported);
     void InitializePixExt();

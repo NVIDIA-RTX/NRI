@@ -67,7 +67,6 @@ NriStruct(DeviceCreationDesc) {
     // Switches (disabled by default)
     bool enableNRIValidation;
     bool enableGraphicsAPIValidation;
-    bool enableD3D12DrawParametersEmulation;    // not needed for VK, unsupported by D3D11
     bool enableD3D11CommandBufferEmulation;     // enable? but why? (auto-enabled if deferred contexts are not supported)
 
     // Switches (enabled by default)

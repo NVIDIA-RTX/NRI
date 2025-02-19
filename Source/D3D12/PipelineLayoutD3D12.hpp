@@ -28,8 +28,35 @@ D3D12_ROOT_SIGNATURE_FLAGS GetRootSignatureStageFlags(const PipelineLayoutDesc& 
             flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
     }
 
-    if (device.GetDesc().shaderModel >= 66)
-        flags |= D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED | D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED;
+    if (device.GetDesc().shaderModel >= 66) { // TODO: an extension is needed because of VK, or add "samplersDirectlyIndexed" and "resourcesDirectlyIndexed" into "PipelineLayoutDesc"
+        bool hasSamplers = false;
+        bool hasResources = false;
+
+        for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++) {
+            const DescriptorSetDesc& descriptorSetDesc = pipelineLayoutDesc.descriptorSets[i];
+
+            for (uint32_t j = 0; j < descriptorSetDesc.rangeNum; j++) {
+                const DescriptorRangeDesc& descriptorRangeDesc = descriptorSetDesc.ranges[j];
+
+                if (descriptorRangeDesc.descriptorType == DescriptorType::SAMPLER)
+                    hasSamplers = true;
+                else if (descriptorRangeDesc.descriptorType == DescriptorType::CONSTANT_BUFFER
+                    || descriptorRangeDesc.descriptorType == DescriptorType::TEXTURE
+                    || descriptorRangeDesc.descriptorType == DescriptorType::STORAGE_TEXTURE
+                    || descriptorRangeDesc.descriptorType == DescriptorType::BUFFER
+                    || descriptorRangeDesc.descriptorType == DescriptorType::STORAGE_BUFFER
+                    || descriptorRangeDesc.descriptorType == DescriptorType::STRUCTURED_BUFFER
+                    || descriptorRangeDesc.descriptorType == DescriptorType::STORAGE_STRUCTURED_BUFFER)
+                    hasResources = true;
+            }
+        }
+
+        if (hasSamplers)
+            flags |= D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED;
+
+        if (hasResources)
+            flags |= D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED;
+    }
 
     return flags;
 }
@@ -57,7 +84,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     Scratch<D3D12_DESCRIPTOR_RANGE1> ranges = AllocateScratch(m_Device, D3D12_DESCRIPTOR_RANGE1, rangeMaxNum);
     Vector<D3D12_ROOT_PARAMETER1> rootParameters(allocator);
 
-    bool enableDrawParametersEmulation = m_Device.GetDesc().isDrawParametersEmulationEnabled && pipelineLayoutDesc.enableD3D12DrawParametersEmulation && (pipelineLayoutDesc.shaderStages & nri::StageBits::VERTEX_SHADER);
+    bool enableDrawParametersEmulation = pipelineLayoutDesc.enableD3D12DrawParametersEmulation && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
 
     D3D12_ROOT_PARAMETER1 rootParameterLocal = {};
     if (enableDrawParametersEmulation) {

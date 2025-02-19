@@ -621,7 +621,7 @@ NriStruct(PipelineLayoutDesc) {
     uint32_t descriptorSetNum;
     Nri(StageBits) shaderStages;
     bool ignoreGlobalSPIRVOffsets;
-    bool enableD3D12DrawParametersEmulation; // implicitly expects "enableD3D12DrawParametersEmulation" passed during device creation
+    bool enableD3D12DrawParametersEmulation; // enable draw parameters emulation, not needed if all vertex shaders for this layout compiled with SM 6.8 (native support)
 };
 
 // Updating descriptors
@@ -1538,9 +1538,6 @@ NriStruct(DeviceDesc) {
     uint32_t isRasterizedOrderedViewSupported : 1;      // ROV, aka fragment shader interlock
     uint32_t isBarycentricSupported : 1;
     uint32_t isRayTracingPositionFetchSupported : 1;    // currently VK only
-
-    // Emulated features
-    uint32_t isDrawParametersEmulationEnabled : 1;
 
     // Extensions (unexposed are always supported)
     uint32_t isSwapChainSupported : 1;                  // NRISwapChain

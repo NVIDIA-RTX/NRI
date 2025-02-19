@@ -35,7 +35,6 @@ NriStruct(DeviceCreationD3D12Desc) {
 
     // Switches (disabled by default)
     bool enableNRIValidation;
-    bool enableD3D12DrawParametersEmulation;
 };
 
 NriStruct(CommandBufferD3D12Desc) {
