@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include <cmath>
-
 namespace NIS {
 
 struct Constants {

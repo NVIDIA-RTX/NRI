@@ -1,5 +1,7 @@
 // © 2025 NVIDIA Corporation
 
+#include <cmath>
+
 #if NRI_ENABLE_D3D11_SUPPORT
 #    include <d3d11.h>
 #endif
