@@ -272,7 +272,7 @@ struct RefCounter {
 std::array<RefCounter, 32> g_refCounters; // awful API borns awful solutions...
 uint32_t g_refCounterNum = 0;
 
-static int32_t IncrRef(void* deviceNative) {
+static inline int32_t NgxIncrRef(void* deviceNative) {
     uint32_t i = 0;
     for (; i < g_refCounterNum && g_refCounters[i].deviceNative != deviceNative; i++)
         ;
@@ -288,7 +288,7 @@ static int32_t IncrRef(void* deviceNative) {
     return g_refCounters[i].refCounter;
 }
 
-static int32_t DecrRef(void* deviceNative) {
+static inline int32_t NgxDecrRef(void* deviceNative) {
     uint32_t i = 0;
     for (; i < g_refCounterNum && g_refCounters[i].deviceNative != deviceNative; i++)
         ;
@@ -387,7 +387,7 @@ UpscalerImpl::~UpscalerImpl() {
 
         const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
         void* deviceNative = m_NRI.GetDeviceNativeObject(m_Device);
-        int32_t refCount = DecrRef(deviceNative);
+        int32_t refCount = NgxDecrRef(deviceNative);
 
 #    if NRI_ENABLE_D3D11_SUPPORT
         if (deviceDesc.graphicsAPI == GraphicsAPI::D3D11) {
@@ -757,7 +757,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             if (deviceDesc.graphicsAPI == GraphicsAPI::D3D11) {
                 ngxResult = NVSDK_NGX_D3D11_Init(APPLICATION_ID, path, (ID3D11Device*)deviceNative, &featureCommonInfo);
                 if (ngxResult == NVSDK_NGX_Result_Success) {
-                    IncrRef(deviceNative);
+                    NgxIncrRef(deviceNative);
                     ngxResult = NVSDK_NGX_D3D11_GetCapabilityParameters(&m.ngx->params);
                 }
             }
@@ -767,7 +767,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
                 ngxResult = NVSDK_NGX_D3D12_Init(APPLICATION_ID, path, (ID3D12Device*)deviceNative, &featureCommonInfo);
                 if (ngxResult == NVSDK_NGX_Result_Success) {
-                    IncrRef(deviceNative);
+                    NgxIncrRef(deviceNative);
                     ngxResult = NVSDK_NGX_D3D12_GetCapabilityParameters(&m.ngx->params);
                 }
             }
@@ -786,7 +786,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
                 ngxResult = NVSDK_NGX_VULKAN_Init(APPLICATION_ID, path, vkInstance, vkPhysicalDevice, (VkDevice)deviceNative, vkGipa, vkGdpa, &featureCommonInfo);
                 if (ngxResult == NVSDK_NGX_Result_Success) {
-                    IncrRef(deviceNative);
+                    NgxIncrRef(deviceNative);
                     ngxResult = NVSDK_NGX_VULKAN_GetCapabilityParameters(&m.ngx->params);
                 }
             }
