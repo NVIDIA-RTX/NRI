@@ -230,15 +230,16 @@ static inline FfxApiResource FfxGetResource(const CoreInterface& NRI, const Upsc
     return res;
 }
 
-static inline void FfxDebugMessage(uint32_t, const wchar_t* message) {
-    MaybeUnused(message);
-#    if 0
+#    ifndef NDEBUG
+
+static void FfxDebugMessage(uint32_t, const wchar_t* message) {
     char s[1024];
     ConvertWcharToChar(message, s, sizeof(s));
 
-    printf("%s\n", s);
-#    endif
+    printf("FFX: %s\n", s);
 }
+
+#endif
 
 #endif
 
@@ -299,6 +300,9 @@ static int32_t DecrRef(void* deviceNative) {
     g_refCounters[i].refCounter--;
 
     return g_refCounters[i].refCounter;
+}
+
+static void NVSDK_CONV NgxLogCallback(const char*, NVSDK_NGX_Logging_Level, NVSDK_NGX_Feature) {
 }
 
 #    if NRI_ENABLE_VK_SUPPORT
@@ -744,9 +748,14 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         { // Create instance
             ExclusiveScope lock(m.ngx->lock);
 
+            NVSDK_NGX_FeatureCommonInfo featureCommonInfo = {};
+            featureCommonInfo.LoggingInfo.LoggingCallback = NgxLogCallback;
+            featureCommonInfo.LoggingInfo.MinimumLoggingLevel = NVSDK_NGX_LOGGING_LEVEL_OFF;
+            featureCommonInfo.LoggingInfo.DisableOtherLoggingSinks = true;
+
 #    if NRI_ENABLE_D3D11_SUPPORT
             if (deviceDesc.graphicsAPI == GraphicsAPI::D3D11) {
-                ngxResult = NVSDK_NGX_D3D11_Init(APPLICATION_ID, path, (ID3D11Device*)deviceNative);
+                ngxResult = NVSDK_NGX_D3D11_Init(APPLICATION_ID, path, (ID3D11Device*)deviceNative, &featureCommonInfo);
                 if (ngxResult == NVSDK_NGX_Result_Success) {
                     IncrRef(deviceNative);
                     ngxResult = NVSDK_NGX_D3D11_GetCapabilityParameters(&m.ngx->params);
@@ -756,7 +765,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
 #    if NRI_ENABLE_D3D12_SUPPORT
             if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
-                ngxResult = NVSDK_NGX_D3D12_Init(APPLICATION_ID, path, (ID3D12Device*)deviceNative);
+                ngxResult = NVSDK_NGX_D3D12_Init(APPLICATION_ID, path, (ID3D12Device*)deviceNative, &featureCommonInfo);
                 if (ngxResult == NVSDK_NGX_Result_Success) {
                     IncrRef(deviceNative);
                     ngxResult = NVSDK_NGX_D3D12_GetCapabilityParameters(&m.ngx->params);
@@ -772,8 +781,10 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
                 VkPhysicalDevice vkPhysicalDevice = (VkPhysicalDevice)iWrapperVK.GetPhysicalDeviceVK(m_Device);
                 VkInstance vkInstance = (VkInstance)iWrapperVK.GetInstanceVK(m_Device);
+                PFN_vkGetInstanceProcAddr vkGipa = (PFN_vkGetInstanceProcAddr)iWrapperVK.GetInstanceProcAddrVK(m_Device);
+                PFN_vkGetDeviceProcAddr vkGdpa = (PFN_vkGetDeviceProcAddr)iWrapperVK.GetDeviceProcAddrVK(m_Device);
 
-                ngxResult = NVSDK_NGX_VULKAN_Init(APPLICATION_ID, path, vkInstance, vkPhysicalDevice, (VkDevice)deviceNative);
+                ngxResult = NVSDK_NGX_VULKAN_Init(APPLICATION_ID, path, vkInstance, vkPhysicalDevice, (VkDevice)deviceNative, vkGipa, vkGdpa, &featureCommonInfo);
                 if (ngxResult == NVSDK_NGX_Result_Success) {
                     IncrRef(deviceNative);
                     ngxResult = NVSDK_NGX_VULKAN_GetCapabilityParameters(&m.ngx->params);
