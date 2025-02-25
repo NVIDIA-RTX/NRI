@@ -587,7 +587,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMA
 # Function - copy a library to the project output folder
 function(copy_library PROJECT LIBRARY_NAME)
     add_custom_command(TARGET ${PROJECT} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${LIBRARY_NAME} $<TARGET_FILE_DIR:${PROJECT}>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${LIBRARY_NAME}" "$<TARGET_FILE_DIR:${PROJECT}>"
         COMMAND_EXPAND_LISTS)
 endfunction()
 
@@ -598,12 +598,14 @@ if(NRI_ENABLE_D3D_EXTENSIONS)
 endif()
 
 if(NRI_ENABLE_NGX_SDK)
+    set(NGX_LIB_DIR $<IF:$<CONFIG:Debug>,dev,rel>)
+
     if(WIN32)
-        find_file(DLSS_SR_DLL NAMES nvngx_dlss.dll PATHS "${ngx_SOURCE_DIR}/lib/Windows_x86_64/rel")
-        find_file(DLSS_RR_DLL NAMES nvngx_dlssd.dll PATHS "${ngx_SOURCE_DIR}/lib/Windows_x86_64/rel")
+        set(DLSS_SR_DLL "${ngx_SOURCE_DIR}/lib/Windows_x86_64/${NGX_LIB_DIR}/nvngx_dlss.dll")
+        set(DLSS_RR_DLL "${ngx_SOURCE_DIR}/lib/Windows_x86_64/${NGX_LIB_DIR}/nvngx_dlssd.dll")
     else()
-        find_file(DLSS_SR_DLL NAMES libnvidia-ngx-dlss.so.310.1.0 PATHS "${ngx_SOURCE_DIR}/lib/Linux_x86_64/rel")
-        find_file(DLSS_RR_DLL NAMES libnvidia-ngx-dlssd.so.310.1.0 PATHS "${ngx_SOURCE_DIR}/lib/Linux_x86_64/rel")
+        set(DLSS_SR_DLL "${ngx_SOURCE_DIR}/lib/Linux_x86_64/${NGX_LIB_DIR}/libnvidia-ngx-dlss.so.310.1.0")
+        set(DLSS_RR_DLL "${ngx_SOURCE_DIR}/lib/Linux_x86_64/${NGX_LIB_DIR}/libnvidia-ngx-dlssd.so.310.1.0")
     endif()
 
     copy_library(${PROJECT_NAME} ${DLSS_SR_DLL})
