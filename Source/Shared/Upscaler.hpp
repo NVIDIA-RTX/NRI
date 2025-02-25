@@ -85,6 +85,58 @@ struct ffxCreateBackendVKDesc { // TODO: copied from "vk" header (can't be used 
     PFN_vkGetDeviceProcAddr vkDeviceProcAddr;
 };
 
+// Unfortunately, FFX devs don't understand how VK works. Some functions are retrieved with non-CORE names,
+// despite being in CORE for years. Manual patching needed, which is not as easy in case of multiple devices.
+struct FfxPair {
+    VkDevice device;
+    PFN_vkGetDeviceProcAddr getDeviceProcAddress;
+};
+
+std::array<FfxPair, 32> g_ffxPair = {};
+Lock g_ffxLock = {};
+
+static inline void FfxRegisterDevice(VkDevice device, PFN_vkGetDeviceProcAddr getDeviceProcAddress) {
+    ExclusiveScope lock(g_ffxLock);
+
+    size_t i = 0;
+    for (; i < g_ffxPair.size(); i++) {
+        if (g_ffxPair[i].device == device) {
+            // Already registered
+            CHECK(g_ffxPair[i].getDeviceProcAddress == getDeviceProcAddress, "Unexpected");
+            return;
+        }
+
+        // Empty slot is found
+        if (!g_ffxPair[i].device)
+            break;
+    }
+
+    CHECK(i < g_ffxPair.size(), "Too many devices?");
+
+    // Add new entry
+    g_ffxPair[i] = {device, getDeviceProcAddress};
+}
+
+static PFN_vkVoidFunction VKAPI_PTR FfxVkGetDeviceProcAddr(VkDevice device, const char* pName) {
+    ExclusiveScope lock(g_ffxLock);
+
+    // TODO: patch FFX requests here
+    if (!strcmp(pName, "vkGetBufferMemoryRequirements2KHR"))
+        pName = "vkGetBufferMemoryRequirements2";
+
+    // Find entry
+    size_t i = 0;
+    for (; i < g_ffxPair.size(); i++) {
+        if (g_ffxPair[i].device == device)
+            break;
+    }
+
+    CHECK(i < g_ffxPair.size(), "Unexpected");
+
+    // Return corresponding "vkGetDeviceProcAddr"
+    return g_ffxPair[i].getDeviceProcAddress(device, pName);
+}
+
 #    endif
 
 struct Ffx {
@@ -239,7 +291,7 @@ static void FfxDebugMessage(uint32_t, const wchar_t* message) {
     printf("FFX: %s\n", s);
 }
 
-#endif
+#    endif
 
 #endif
 
@@ -259,16 +311,16 @@ static void FfxDebugMessage(uint32_t, const wchar_t* message) {
 struct Ngx {
     NVSDK_NGX_Handle* handle = nullptr;
     NVSDK_NGX_Parameter* params = nullptr;
-    Lock lock; // methods in NGX library are NOT thread safe, yay! (see the first comment in "nvsdk_ngx.h")
 };
-
-const uint32_t APPLICATION_ID = 0x3143DEC; // don't care, but can't be 0
 
 struct RefCounter {
     void* deviceNative;
     int32_t refCounter;
 };
 
+const uint32_t APPLICATION_ID = 0x3143DEC; // don't care, but can't be 0
+
+Lock g_ngxLock = {}; // methods in NGX library are NOT thread safe, yay! (see the first comment in "nvsdk_ngx.h")
 std::array<RefCounter, 32> g_refCounters; // awful API borns awful solutions...
 uint32_t g_refCounterNum = 0;
 
@@ -383,7 +435,7 @@ UpscalerImpl::~UpscalerImpl() {
 
 #if NRI_ENABLE_NGX_SDK
     if ((m_Desc.type == UpscalerType::DLSR || m_Desc.type == UpscalerType::DLRR) && m.ngx) {
-        ExclusiveScope lock(m.ngx->lock);
+        ExclusiveScope lock(g_ngxLock);
 
         const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
         void* deviceNative = m_NRI.GetDeviceNativeObject(m_Device);
@@ -718,10 +770,15 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             if (nriGetInterface(m_Device, NRI_INTERFACE(WrapperVKInterface), &iWrapperVK) != Result::SUCCESS)
                 return Result::UNSUPPORTED;
 
+            VkDevice vkDevice = (VkDevice)m_NRI.GetDeviceNativeObject(m_Device);
+            VkPhysicalDevice vkPhysicalDevice = (VkPhysicalDevice)iWrapperVK.GetPhysicalDeviceVK(m_Device);
+            PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr = (PFN_vkGetDeviceProcAddr)iWrapperVK.GetDeviceProcAddrVK(m_Device);
+            FfxRegisterDevice(vkDevice, vkGetDeviceProcAddr);
+
             backendVKDesc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_VK;
-            backendVKDesc.vkDevice = (VkDevice)m_NRI.GetDeviceNativeObject(m_Device);
-            backendVKDesc.vkPhysicalDevice = (VkPhysicalDevice)iWrapperVK.GetPhysicalDeviceVK(m_Device);
-            backendVKDesc.vkDeviceProcAddr = (PFN_vkGetDeviceProcAddr)iWrapperVK.GetDeviceProcAddrVK(m_Device);
+            backendVKDesc.vkDevice = vkDevice;
+            backendVKDesc.vkPhysicalDevice = vkPhysicalDevice;
+            backendVKDesc.vkDeviceProcAddr = FfxVkGetDeviceProcAddr;
 
             contextDesc.header.pNext = &backendVKDesc.header;
         }
@@ -746,7 +803,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         m.ngx = Allocate<Ngx>(allocationCallbacks);
 
         { // Create instance
-            ExclusiveScope lock(m.ngx->lock);
+            ExclusiveScope lock(g_ngxLock);
 
             NVSDK_NGX_FeatureCommonInfo featureCommonInfo = {};
             featureCommonInfo.LoggingInfo.LoggingCallback = NgxLogCallback;
@@ -823,7 +880,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         }
 
         { // Record creation commands
-            ExclusiveScope lock(m.ngx->lock);
+            ExclusiveScope lock(g_ngxLock);
 
             void* commandBufferNative = m_NRI.GetCommandBufferNativeObject(*commandBuffer);
 
@@ -1051,7 +1108,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
 
 #if NRI_ENABLE_NGX_SDK
     if (m_Desc.type == UpscalerType::DLSR) {
-        ExclusiveScope lock(m.ngx->lock);
+        ExclusiveScope lock(g_ngxLock);
 
         const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
         const DLSRGuides& guides = dispatchUpscaleDesc.guides.dlsr;
@@ -1138,7 +1195,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
     }
 
     if (m_Desc.type == UpscalerType::DLRR) {
-        ExclusiveScope lock(m.ngx->lock);
+        ExclusiveScope lock(g_ngxLock);
 
         const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
         const DLRRGuides& guides = dispatchUpscaleDesc.guides.dlrr;
