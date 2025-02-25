@@ -61,11 +61,6 @@ if(MSVC)
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi")
     set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /DEBUG /OPT:REF /OPT:ICF")
 
-    # Static runtime linking
-    if(NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
-        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-    endif()
-
     # Debugger markup
     set(NRI_NATVIS "nri.natvis")
 else()
@@ -488,8 +483,16 @@ if(NRI_ENABLE_NGX_SDK)
     target_include_directories(NRI_Shared PRIVATE "${ngx_SOURCE_DIR}/include")
 
     if(WIN32)
-        find_library(NGX_D_LIB NAMES nvsdk_ngx_s_dbg.lib PATHS "${ngx_SOURCE_DIR}/lib/Windows_x86_64/x64")
-        find_library(NGX_LIB NAMES nvsdk_ngx_s.lib PATHS "${ngx_SOURCE_DIR}/lib/Windows_x86_64/x64")
+        if((NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY) OR(${CMAKE_MSVC_RUNTIME_LIBRARY} MATCHES "DLL"))
+            set(NGX_SUFFIX "d")
+            message("NRI: using NGX LIB with dynamic runtime")
+        else()
+            set(NGX_SUFFIX "s") # static runtime
+            message("NRI: using NGX LIB with static runtime")
+        endif()
+
+        find_library(NGX_D_LIB NAMES nvsdk_ngx_${NGX_SUFFIX}_dbg.lib PATHS "${ngx_SOURCE_DIR}/lib/Windows_x86_64/x64")
+        find_library(NGX_LIB NAMES nvsdk_ngx_${NGX_SUFFIX}.lib PATHS "${ngx_SOURCE_DIR}/lib/Windows_x86_64/x64")
     else()
         find_library(NGX_D_LIB NAMES libnvsdk_ngx.a PATHS "${ngx_SOURCE_DIR}/lib/Linux_x86_64")
         find_library(NGX_LIB NAMES libnvsdk_ngx.a PATHS "${ngx_SOURCE_DIR}/lib/Linux_x86_64")
