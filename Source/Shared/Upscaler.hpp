@@ -85,56 +85,60 @@ struct ffxCreateBackendVKDesc { // TODO: copied from "vk" header (can't be used 
     PFN_vkGetDeviceProcAddr vkDeviceProcAddr;
 };
 
-// Unfortunately, FFX devs don't understand how VK works. Some functions are retrieved with non-CORE names,
+// Unfortunately, FFX devs don't understand how VK works. Some VK functions are retrieved with non-CORE names,
 // despite being in CORE for years. Manual patching needed, which is not as easy in case of multiple devices.
-struct FfxPair {
+struct FfxVkPair {
     VkDevice device;
     PFN_vkGetDeviceProcAddr getDeviceProcAddress;
 };
 
-std::array<FfxPair, 32> g_ffxPair = {};
-Lock g_ffxLock = {};
+struct FfxGlobals {
+    ;
+    std::array<FfxVkPair, 32> vkPairs = {};
+    Lock lock = {};
+} g_ffx;
 
 static inline void FfxRegisterDevice(VkDevice device, PFN_vkGetDeviceProcAddr getDeviceProcAddress) {
-    ExclusiveScope lock(g_ffxLock);
+    ExclusiveScope lock(g_ffx.lock);
 
     size_t i = 0;
-    for (; i < g_ffxPair.size(); i++) {
-        if (g_ffxPair[i].device == device) {
+    for (; i < g_ffx.vkPairs.size(); i++) {
+        if (g_ffx.vkPairs[i].device == device) {
             // Already registered
-            CHECK(g_ffxPair[i].getDeviceProcAddress == getDeviceProcAddress, "Unexpected");
+            CHECK(g_ffx.vkPairs[i].getDeviceProcAddress == getDeviceProcAddress, "Unexpected");
             return;
         }
 
         // Empty slot is found
-        if (!g_ffxPair[i].device)
+        if (!g_ffx.vkPairs[i].device)
             break;
     }
 
-    CHECK(i < g_ffxPair.size(), "Too many devices?");
+    CHECK(i < g_ffx.vkPairs.size(), "Too many devices?");
 
     // Add new entry
-    g_ffxPair[i] = {device, getDeviceProcAddress};
+    g_ffx.vkPairs[i] = {device, getDeviceProcAddress};
 }
 
 static PFN_vkVoidFunction VKAPI_PTR FfxVkGetDeviceProcAddr(VkDevice device, const char* pName) {
-    ExclusiveScope lock(g_ffxLock);
-
     // TODO: patch FFX requests here
     if (!strcmp(pName, "vkGetBufferMemoryRequirements2KHR"))
         pName = "vkGetBufferMemoryRequirements2";
 
     // Find entry
     size_t i = 0;
-    for (; i < g_ffxPair.size(); i++) {
-        if (g_ffxPair[i].device == device)
+    for (; i < g_ffx.vkPairs.size(); i++) {
+        if (g_ffx.vkPairs[i].device == device)
             break;
     }
 
-    CHECK(i < g_ffxPair.size(), "Unexpected");
+    CHECK(i < g_ffx.vkPairs.size(), "Unexpected");
 
-    // Return corresponding "vkGetDeviceProcAddr"
-    return g_ffxPair[i].getDeviceProcAddress(device, pName);
+    // Use corresponding "vkGetDeviceProcAddr"
+    PFN_vkVoidFunction func = g_ffx.vkPairs[i].getDeviceProcAddress(device, pName);
+    CHECK(func || strstr(pName, "AMD"), "Another non-CORE function name?");
+
+    return func;
 }
 
 #    endif
@@ -320,38 +324,40 @@ struct RefCounter {
 
 const uint32_t APPLICATION_ID = 0x3143DEC; // don't care, but can't be 0
 
-Lock g_ngxLock = {}; // methods in NGX library are NOT thread safe, yay! (see the first comment in "nvsdk_ngx.h")
-std::array<RefCounter, 32> g_refCounters; // awful API borns awful solutions...
-uint32_t g_refCounterNum = 0;
+struct NgxGlobals {
+    std::array<RefCounter, 32> refCounters; // awful API borns awful solutions...
+    uint32_t refCounterNum = 0;
+    Lock lock = {}; // methods in NGX library are NOT thread safe, yay! (see the first comment in "nvsdk_ngx.h")
+} g_ngx;
 
 static inline int32_t NgxIncrRef(void* deviceNative) {
     uint32_t i = 0;
-    for (; i < g_refCounterNum && g_refCounters[i].deviceNative != deviceNative; i++)
+    for (; i < g_ngx.refCounterNum && g_ngx.refCounters[i].deviceNative != deviceNative; i++)
         ;
 
-    if (i == g_refCounterNum) {
-        g_refCounterNum++;
-        CHECK(g_refCounterNum < g_refCounters.size(), "Too many devices?");
+    if (i == g_ngx.refCounterNum) {
+        g_ngx.refCounterNum++;
+        CHECK(g_ngx.refCounterNum < g_ngx.refCounters.size(), "Too many devices?");
     }
 
-    g_refCounters[i].deviceNative = deviceNative;
-    g_refCounters[i].refCounter++;
+    g_ngx.refCounters[i].deviceNative = deviceNative;
+    g_ngx.refCounters[i].refCounter++;
 
-    return g_refCounters[i].refCounter;
+    return g_ngx.refCounters[i].refCounter;
 }
 
 static inline int32_t NgxDecrRef(void* deviceNative) {
     uint32_t i = 0;
-    for (; i < g_refCounterNum && g_refCounters[i].deviceNative != deviceNative; i++)
+    for (; i < g_ngx.refCounterNum && g_ngx.refCounters[i].deviceNative != deviceNative; i++)
         ;
 
-    CHECK(i < g_refCounterNum, "Destroy before create?");
-    CHECK(g_refCounters[i].refCounter > 0, "Unexpected");
+    CHECK(i < g_ngx.refCounterNum, "Destroy before create?");
+    CHECK(g_ngx.refCounters[i].refCounter > 0, "Unexpected");
 
-    g_refCounters[i].deviceNative = deviceNative;
-    g_refCounters[i].refCounter--;
+    g_ngx.refCounters[i].deviceNative = deviceNative;
+    g_ngx.refCounters[i].refCounter--;
 
-    return g_refCounters[i].refCounter;
+    return g_ngx.refCounters[i].refCounter;
 }
 
 static void NVSDK_CONV NgxLogCallback(const char*, NVSDK_NGX_Logging_Level, NVSDK_NGX_Feature) {
@@ -435,7 +441,7 @@ UpscalerImpl::~UpscalerImpl() {
 
 #if NRI_ENABLE_NGX_SDK
     if ((m_Desc.type == UpscalerType::DLSR || m_Desc.type == UpscalerType::DLRR) && m.ngx) {
-        ExclusiveScope lock(g_ngxLock);
+        ExclusiveScope lock(g_ngx.lock);
 
         const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
         void* deviceNative = m_NRI.GetDeviceNativeObject(m_Device);
@@ -803,7 +809,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         m.ngx = Allocate<Ngx>(allocationCallbacks);
 
         { // Create instance
-            ExclusiveScope lock(g_ngxLock);
+            ExclusiveScope lock(g_ngx.lock);
 
             NVSDK_NGX_FeatureCommonInfo featureCommonInfo = {};
             featureCommonInfo.LoggingInfo.LoggingCallback = NgxLogCallback;
@@ -880,7 +886,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         }
 
         { // Record creation commands
-            ExclusiveScope lock(g_ngxLock);
+            ExclusiveScope lock(g_ngx.lock);
 
             void* commandBufferNative = m_NRI.GetCommandBufferNativeObject(*commandBuffer);
 
@@ -1108,7 +1114,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
 
 #if NRI_ENABLE_NGX_SDK
     if (m_Desc.type == UpscalerType::DLSR) {
-        ExclusiveScope lock(g_ngxLock);
+        ExclusiveScope lock(g_ngx.lock);
 
         const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
         const DLSRGuides& guides = dispatchUpscaleDesc.guides.dlsr;
@@ -1195,7 +1201,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
     }
 
     if (m_Desc.type == UpscalerType::DLRR) {
-        ExclusiveScope lock(g_ngxLock);
+        ExclusiveScope lock(g_ngx.lock);
 
         const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
         const DLRRGuides& guides = dispatchUpscaleDesc.guides.dlrr;
