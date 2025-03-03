@@ -191,6 +191,7 @@ Notes:
 - `NRI_ENABLE_NIS_SDK` - enable NVIDIA Image Sharpening SDK (`off` by default)
 - `NRI_ENABLE_NGX_SDK` - enable NVIDIA NGX (DLSS) SDK (`off` by default)
 - `NRI_ENABLE_FFX_SDK` - enable AMD FidelityFX SDK (`off` by default)
+- `NRI_ENABLE_XESS_SDK` - enable INTEL XeSS SDK (`off` by default)
 - `NRI_AGILITY_SDK_DIR` - directory where Agility SDK binaries will be copied to relative to `CMAKE_RUNTIME_OUTPUT_DIRECTORY` (`AgilitySDK` by default)
 - `NRI_AGILITY_SDK_VERSION` - Agility SDK version
 
