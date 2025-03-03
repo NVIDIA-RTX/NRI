@@ -27,10 +27,15 @@ NRI_INLINE uint64_t AccelerationStructureVal::GetNativeObject() const {
     return GetRayTracingInterface().GetAccelerationStructureNativeObject(*GetImpl());
 }
 
-NRI_INLINE Buffer* AccelerationStructureVal::GetBuffer() const {
+NRI_INLINE Buffer* AccelerationStructureVal::GetBuffer() {
     RETURN_ON_FAILURE(&m_Device, IsBoundToMemory(), 0, "AccelerationStructure is not bound to memory");
 
-    return GetRayTracingInterface().GetAccelerationStructureBuffer(*GetImpl());
+    if (!m_Buffer) {
+        Buffer* buffer = GetRayTracingInterface().GetAccelerationStructureBuffer(*GetImpl());
+        m_Buffer = Allocate<BufferVal>(m_Device.GetAllocationCallbacks(), m_Device, buffer, false);
+    }
+
+    return (Buffer*)m_Buffer;
 }
 
 NRI_INLINE Result AccelerationStructureVal::CreateDescriptor(Descriptor*& descriptor) {

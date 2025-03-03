@@ -4,6 +4,7 @@
 
 namespace nri {
 
+struct BufferVal;
 struct MemoryVal;
 
 struct AccelerationStructureVal final : public ObjectVal {
@@ -40,11 +41,12 @@ struct AccelerationStructureVal final : public ObjectVal {
     uint64_t GetBuildScratchBufferSize() const;
     uint64_t GetHandle() const;
     uint64_t GetNativeObject() const;
-    Buffer* GetBuffer() const;
+    Buffer* GetBuffer();
     Result CreateDescriptor(Descriptor*& descriptor);
 
 private:
     MemoryVal* m_Memory = nullptr;
+    BufferVal* m_Buffer = nullptr;
     MemoryDesc m_MemoryDesc = {};
     bool m_IsBoundToMemory = false;
 };
