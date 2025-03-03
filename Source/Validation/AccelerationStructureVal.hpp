@@ -4,6 +4,9 @@ AccelerationStructureVal::~AccelerationStructureVal() {
     if (m_Memory)
         m_Memory->UnbindAccelerationStructure(*this);
 
+    if (m_Buffer)
+        Destroy(m_Device.GetAllocationCallbacks(), m_Buffer);
+
     GetRayTracingInterface().DestroyAccelerationStructure(*GetImpl());
 }
 
