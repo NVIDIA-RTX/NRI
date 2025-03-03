@@ -153,35 +153,18 @@ struct Ffx {
     ffxAllocationCallbacks* allocationCallbacksPtr = nullptr;
 };
 
-static Result FfxConvertError(ffxReturnCode_t code) {
+static inline Result FfxConvertError(ffxReturnCode_t code) {
     switch (code) {
         case FFX_API_RETURN_OK:
             return Result::SUCCESS;
-        case FFX_API_RETURN_ERROR:
-            return Result::FAILURE;
         case FFX_API_RETURN_ERROR_UNKNOWN_DESCTYPE:
-            return Result::INVALID_ARGUMENT;
-        case FFX_API_RETURN_ERROR_RUNTIME_ERROR:
-            return Result::FAILURE;
-        case FFX_API_RETURN_NO_PROVIDER:
-            return Result::FAILURE;
-        case FFX_API_RETURN_ERROR_MEMORY:
-            return Result::OUT_OF_MEMORY;
         case FFX_API_RETURN_ERROR_PARAMETER:
             return Result::INVALID_ARGUMENT;
+        case FFX_API_RETURN_ERROR_MEMORY:
+            return Result::OUT_OF_MEMORY;
     }
 
     return Result::FAILURE;
-}
-
-static void* FfxAlloc(void* pUserData, uint64_t size) {
-    const auto& allocationCallbacks = *(AllocationCallbacks*)pUserData;
-    return allocationCallbacks.Allocate(allocationCallbacks.userArg, size, sizeof(size_t));
-}
-
-static void FfxDealloc(void* pUserData, void* pMem) {
-    const auto& allocationCallbacks = *(AllocationCallbacks*)pUserData;
-    allocationCallbacks.Free(allocationCallbacks.userArg, pMem);
 }
 
 static inline FfxApiSurfaceFormat FfxConvertFormat(Format format) {
@@ -286,6 +269,16 @@ static inline FfxApiResource FfxGetResource(const CoreInterface& NRI, const Upsc
     return res;
 }
 
+static void* FfxAlloc(void* pUserData, uint64_t size) {
+    const auto& allocationCallbacks = *(AllocationCallbacks*)pUserData;
+    return allocationCallbacks.Allocate(allocationCallbacks.userArg, size, sizeof(size_t));
+}
+
+static void FfxDealloc(void* pUserData, void* pMem) {
+    const auto& allocationCallbacks = *(AllocationCallbacks*)pUserData;
+    allocationCallbacks.Free(allocationCallbacks.userArg, pMem);
+}
+
 #    ifndef NDEBUG
 
 static void FfxDebugMessage(uint32_t, const wchar_t* message) {
@@ -296,6 +289,42 @@ static void FfxDebugMessage(uint32_t, const wchar_t* message) {
 }
 
 #    endif
+
+#endif
+
+//=====================================================================================================================================
+// XESS
+//=====================================================================================================================================
+#if NRI_ENABLE_XESS_SDK
+#    include "xess.h"
+#    include "xess_debug.h"
+
+#    if NRI_ENABLE_D3D12_SUPPORT
+#        include "xess_d3d12.h"
+#    endif
+
+struct Xess {
+    xess_context_handle_t context = nullptr;
+};
+
+static inline Result XessConvertError(xess_result_t code) {
+    switch (code) {
+        case XESS_RESULT_WARNING_NONEXISTING_FOLDER:
+        case XESS_RESULT_WARNING_OLD_DRIVER:
+        case XESS_RESULT_ERROR_INVALID_ARGUMENT:
+            return Result::INVALID_ARGUMENT;
+
+        case XESS_RESULT_SUCCESS:
+            return Result::SUCCESS;
+
+        case XESS_RESULT_ERROR_UNSUPPORTED:
+        case XESS_RESULT_ERROR_UNSUPPORTED_DEVICE:
+        case XESS_RESULT_ERROR_UNSUPPORTED_DRIVER:
+            return Result::UNSUPPORTED;
+    }
+
+    return Result::FAILURE;
+}
 
 #endif
 
@@ -388,21 +417,28 @@ bool nri::IsUpscalerSupported(const DeviceDesc& deviceDesc, UpscalerType type) {
 
 #if NRI_ENABLE_NIS_SDK
     if (type == UpscalerType::NIS) {
-        if (deviceDesc.graphicsAPI == GraphicsAPI::D3D11 || deviceDesc.graphicsAPI == GraphicsAPI::D3D12 || deviceDesc.graphicsAPI != GraphicsAPI::VK)
+        if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12 || deviceDesc.graphicsAPI == GraphicsAPI::VK || deviceDesc.graphicsAPI == GraphicsAPI::D3D11)
             return true;
     }
 #endif
 
 #if NRI_ENABLE_FFX_SDK
     if (type == UpscalerType::FSR) {
-        if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12 || deviceDesc.graphicsAPI != GraphicsAPI::VK)
+        if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12 || deviceDesc.graphicsAPI == GraphicsAPI::VK)
+            return true;
+    }
+#endif
+
+#if NRI_ENABLE_XESS_SDK
+    if (type == UpscalerType::XESS) {
+        if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12)
             return true;
     }
 #endif
 
 #if NRI_ENABLE_NGX_SDK
     if (type == UpscalerType::DLSR || type == UpscalerType::DLRR) {
-        if (deviceDesc.adapterDesc.vendor == Vendor::NVIDIA && strstr(deviceDesc.adapterDesc.name, " RTX ")) // TODO: true?
+        if (deviceDesc.adapterDesc.vendor == Vendor::NVIDIA && deviceDesc.isRayTracingSupported) // an elegant way to detect an RTX GPU?
             return true;
     }
 #endif
@@ -424,6 +460,16 @@ UpscalerImpl::~UpscalerImpl() {
 
         const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
         Destroy<Nis>(allocationCallbacks, m.nis);
+    }
+#endif
+
+#if NRI_ENABLE_XESS_SDK
+    if (m_Desc.type == UpscalerType::XESS && m.xess) {
+        xess_result_t result = xessDestroyContext(m.xess->context);
+        CHECK(result == XESS_RESULT_SUCCESS, "xessDestroyContext() failed!");
+
+        const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
+        Destroy<Xess>(allocationCallbacks, m.xess);
     }
 #endif
 
@@ -501,15 +547,15 @@ UpscalerImpl::~UpscalerImpl() {
 Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
     m_Desc = upscalerDesc;
 
+    const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
+    if (!IsUpscalerSupported(deviceDesc, upscalerDesc.type))
+        return Result::UNSUPPORTED;
+
     UpscalerProps upscalerProps = {};
     GetUpscalerProps(upscalerProps);
 
 #if NRI_ENABLE_NIS_SDK
     if (upscalerDesc.type == UpscalerType::NIS) {
-        const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
-        if (!(deviceDesc.graphicsAPI == GraphicsAPI::D3D11 || deviceDesc.graphicsAPI == GraphicsAPI::D3D12 || deviceDesc.graphicsAPI == GraphicsAPI::VK))
-            return Result::UNSUPPORTED;
-
         const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
         m.nis = Allocate<Nis>(allocationCallbacks);
 
@@ -695,10 +741,6 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
 #if NRI_ENABLE_FFX_SDK
     if (upscalerDesc.type == UpscalerType::FSR) {
-        const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
-        if (!(deviceDesc.graphicsAPI == GraphicsAPI::D3D12 || deviceDesc.graphicsAPI == GraphicsAPI::VK))
-            return Result::UNSUPPORTED;
-
         const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
         m.ffx = Allocate<Ffx>(allocationCallbacks);
 
@@ -733,24 +775,27 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             m.ffx->allocationCallbacksPtr = &m.ffx->allocationCallbacks;
 
         // Create context
+        uint32_t flags = FFX_UPSCALE_ENABLE_DYNAMIC_RESOLUTION; // TODO: move to "UpscalerBits"?
+        if (upscalerDesc.flags & UpscalerBits::HDR)
+            flags |= FFX_UPSCALE_ENABLE_HIGH_DYNAMIC_RANGE;
+        if (upscalerDesc.flags & UpscalerBits::SRGB)
+            flags |= FFX_UPSCALE_ENABLE_NON_LINEAR_COLORSPACE;
+        if (!(upscalerDesc.flags & UpscalerBits::USE_EXPOSURE))
+            flags |= FFX_UPSCALE_ENABLE_AUTO_EXPOSURE;
+        if (upscalerDesc.flags & UpscalerBits::DEPTH_INVERTED)
+            flags |= FFX_UPSCALE_ENABLE_DEPTH_INVERTED;
+        if (upscalerDesc.flags & UpscalerBits::DEPTH_INFINITE)
+            flags |= FFX_UPSCALE_ENABLE_DEPTH_INFINITE;
+        if (upscalerDesc.flags & UpscalerBits::MV_UPSCALED)
+            flags |= FFX_UPSCALE_ENABLE_DISPLAY_RESOLUTION_MOTION_VECTORS;
+        if (upscalerDesc.flags & UpscalerBits::MV_JITTERED)
+            flags |= FFX_UPSCALE_ENABLE_MOTION_VECTORS_JITTER_CANCELLATION;
+
         ffxCreateContextDescUpscale contextDesc = {};
         contextDesc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE;
         contextDesc.maxRenderSize = {upscalerProps.renderResolution.w, upscalerProps.renderResolution.h};
         contextDesc.maxUpscaleSize = {upscalerProps.upscaleResolution.w, upscalerProps.upscaleResolution.h};
-        contextDesc.flags = FFX_UPSCALE_ENABLE_DYNAMIC_RESOLUTION; // TODO: move to "UpscalerBits"?
-
-        if (upscalerDesc.flags & UpscalerBits::HDR)
-            contextDesc.flags |= FFX_UPSCALE_ENABLE_HIGH_DYNAMIC_RANGE;
-        if (upscalerDesc.flags & UpscalerBits::NON_LINEAR)
-            contextDesc.flags |= FFX_UPSCALE_ENABLE_NON_LINEAR_COLORSPACE;
-        if (upscalerDesc.flags & UpscalerBits::AUTO_EXPOSURE)
-            contextDesc.flags |= FFX_UPSCALE_ENABLE_AUTO_EXPOSURE;
-        if (upscalerDesc.flags & UpscalerBits::DEPTH_INVERTED)
-            contextDesc.flags |= FFX_UPSCALE_ENABLE_DEPTH_INVERTED;
-        if (upscalerDesc.flags & UpscalerBits::DEPTH_INFINITE)
-            contextDesc.flags |= FFX_UPSCALE_ENABLE_DEPTH_INFINITE;
-        if (upscalerDesc.flags & UpscalerBits::UPSCALE_RES_MV)
-            contextDesc.flags |= FFX_UPSCALE_ENABLE_DISPLAY_RESOLUTION_MOTION_VECTORS;
+        contextDesc.flags = flags;
 
 #    ifndef NDEBUG
         contextDesc.flags |= FFX_UPSCALE_ENABLE_DEBUG_CHECKING;
@@ -793,14 +838,85 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         ffxReturnCode_t result = m.ffx->CreateContext(&m.ffx->context, &contextDesc.header, m.ffx->allocationCallbacksPtr);
         if (result != FFX_API_RETURN_OK)
             return FfxConvertError(result);
+    }
+#endif
 
-        return Result::SUCCESS;
+#if NRI_ENABLE_XESS_SDK
+    if (upscalerDesc.type == UpscalerType::XESS) {
+        const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
+        m.xess = Allocate<Xess>(allocationCallbacks);
+
+#    if NRI_ENABLE_D3D12_SUPPORT
+        if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
+            ID3D12Device* deviceNative = (ID3D12Device*)m_NRI.GetDeviceNativeObject(m_Device);
+
+            xess_result_t result = xessD3D12CreateContext(deviceNative, &m.xess->context);
+            if (result != XESS_RESULT_SUCCESS)
+                return XessConvertError(result);
+
+            result = xessForceLegacyScaleFactors(m.xess->context, true);
+            if (result != XESS_RESULT_SUCCESS)
+                return XessConvertError(result);
+
+            xess_quality_settings_t qualitySetting = XESS_QUALITY_SETTING_ULTRA_PERFORMANCE;
+            if (upscalerDesc.mode == UpscalerMode::NATIVE)
+                qualitySetting = XESS_QUALITY_SETTING_AA;
+            else if (upscalerDesc.mode == UpscalerMode::ULTRA_QUALITY)
+                qualitySetting = XESS_QUALITY_SETTING_ULTRA_QUALITY;
+            else if (upscalerDesc.mode == UpscalerMode::QUALITY)
+                qualitySetting = XESS_QUALITY_SETTING_QUALITY;
+            else if (upscalerDesc.mode == UpscalerMode::BALANCED)
+                qualitySetting = XESS_QUALITY_SETTING_BALANCED;
+            else if (upscalerDesc.mode == UpscalerMode::PERFORMANCE)
+                qualitySetting = XESS_QUALITY_SETTING_PERFORMANCE;
+            else if (upscalerDesc.mode == UpscalerMode::ULTRA_PERFORMANCE)
+                qualitySetting = XESS_QUALITY_SETTING_ULTRA_PERFORMANCE;
+
+            uint32_t initFlags = 0;
+            if (!(upscalerDesc.flags & UpscalerBits::HDR))
+                initFlags |= XESS_INIT_FLAG_LDR_INPUT_COLOR;
+            if (upscalerDesc.flags & UpscalerBits::USE_REACTIVE)
+                initFlags |= XESS_INIT_FLAG_RESPONSIVE_PIXEL_MASK;
+            if (upscalerDesc.flags & UpscalerBits::DEPTH_INVERTED)
+                initFlags |= XESS_INIT_FLAG_INVERTED_DEPTH;
+            if (upscalerDesc.flags & UpscalerBits::MV_UPSCALED)
+                initFlags |= XESS_INIT_FLAG_HIGH_RES_MV;
+            if (upscalerDesc.flags & UpscalerBits::MV_JITTERED)
+                initFlags |= XESS_INIT_FLAG_JITTERED_MV;
+
+            if (upscalerDesc.flags & UpscalerBits::USE_EXPOSURE)
+                initFlags |= XESS_INIT_FLAG_EXPOSURE_SCALE_TEXTURE;
+            else
+                initFlags |= XESS_INIT_FLAG_ENABLE_AUTOEXPOSURE;
+
+            xess_d3d12_init_params_t initParams = {};
+            initParams.outputResolution = {upscalerProps.upscaleResolution.w, upscalerProps.upscaleResolution.h};
+            initParams.qualitySetting = qualitySetting;
+            initParams.initFlags = initFlags;
+            initParams.creationNodeMask = NRI_NODE_MASK;
+            initParams.visibleNodeMask = NRI_NODE_MASK;
+
+            result = xessD3D12BuildPipelines(m.xess->context, NULL, true, initParams.initFlags);
+            if (result != XESS_RESULT_SUCCESS)
+                return XessConvertError(result);
+
+            result = xessD3D12Init(m.xess->context, &initParams);
+            if (result != XESS_RESULT_SUCCESS)
+                return XessConvertError(result);
+
+            if (upscalerDesc.preset != 0) {
+                xess_network_model_t preset = (xess_network_model_t)(upscalerDesc.preset - 1);
+                result = xessSelectNetworkModel(m.xess->context, preset);
+                if (result != XESS_RESULT_SUCCESS)
+                    return XessConvertError(result);
+            }
+        }
+#    endif
     }
 #endif
 
 #if NRI_ENABLE_NGX_SDK
     if (upscalerDesc.type == UpscalerType::DLSR || upscalerDesc.type == UpscalerType::DLRR) {
-        const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
         void* deviceNative = m_NRI.GetDeviceNativeObject(m_Device);
         const wchar_t* path = L""; // don't care
         NVSDK_NGX_Result ngxResult = NVSDK_NGX_Result_Fail;
@@ -894,7 +1010,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             if (upscalerDesc.mode == UpscalerMode::NATIVE) {
                 qualityValue = NVSDK_NGX_PerfQuality_Value_DLAA;
                 NVSDK_NGX_Parameter_SetUI(m.ngx->params, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA, upscalerDesc.preset);
-            } else if (upscalerDesc.mode == UpscalerMode::QUALITY) {
+            } else if (upscalerDesc.mode == UpscalerMode::QUALITY || upscalerDesc.mode == UpscalerMode::ULTRA_QUALITY) {
                 qualityValue = NVSDK_NGX_PerfQuality_Value_MaxQuality;
                 NVSDK_NGX_Parameter_SetUI(m.ngx->params, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality, upscalerDesc.preset);
             } else if (upscalerDesc.mode == UpscalerMode::BALANCED) {
@@ -911,12 +1027,14 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             int32_t featureCreateFlags = 0;
             if (upscalerDesc.flags & UpscalerBits::HDR)
                 featureCreateFlags |= NVSDK_NGX_DLSS_Feature_Flags_IsHDR;
-            if (upscalerDesc.flags & UpscalerBits::AUTO_EXPOSURE)
+            if (!(upscalerDesc.flags & UpscalerBits::USE_EXPOSURE))
                 featureCreateFlags |= NVSDK_NGX_DLSS_Feature_Flags_AutoExposure;
             if (upscalerDesc.flags & UpscalerBits::DEPTH_INVERTED)
                 featureCreateFlags |= NVSDK_NGX_DLSS_Feature_Flags_DepthInverted;
-            if (!(upscalerDesc.flags & UpscalerBits::UPSCALE_RES_MV))
+            if (!(upscalerDesc.flags & UpscalerBits::MV_UPSCALED))
                 featureCreateFlags |= NVSDK_NGX_DLSS_Feature_Flags_MVLowRes;
+            if (upscalerDesc.flags & UpscalerBits::MV_JITTERED)
+                featureCreateFlags |= NVSDK_NGX_DLSS_Feature_Flags_MVJittered;
 
             if (upscalerDesc.type == UpscalerType::DLSR) {
                 NVSDK_NGX_DLSS_Create_Params srCreateParams = {};
@@ -1005,7 +1123,9 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
 void UpscalerImpl::GetUpscalerProps(UpscalerProps& upscalerProps) const {
     float scalingFactor = 1.0f;
-    if (m_Desc.mode == UpscalerMode::QUALITY)
+    if (m_Desc.mode == UpscalerMode::ULTRA_QUALITY)
+        scalingFactor = 1.3f;
+    else if (m_Desc.mode == UpscalerMode::QUALITY)
         scalingFactor = 1.5f;
     else if (m_Desc.mode == UpscalerMode::BALANCED)
         scalingFactor = 1.7f;
@@ -1018,10 +1138,10 @@ void UpscalerImpl::GetUpscalerProps(UpscalerProps& upscalerProps) const {
     upscalerProps.scalingFactor = scalingFactor;
     upscalerProps.mipBias = -std::log2(scalingFactor) - 1;
     upscalerProps.upscaleResolution = m_Desc.upscaleResolution;
-    upscalerProps.renderResolutionMin.w = m_Desc.upscaleResolution.w / (m_Desc.mode == UpscalerMode::ULTRA_PERFORMANCE ? 3 : 2);
-    upscalerProps.renderResolutionMin.h = m_Desc.upscaleResolution.h / (m_Desc.mode == UpscalerMode::ULTRA_PERFORMANCE ? 3 : 2);
     upscalerProps.renderResolution.w = (Dim_t)(m_Desc.upscaleResolution.w / scalingFactor + 0.5f);
     upscalerProps.renderResolution.h = (Dim_t)(m_Desc.upscaleResolution.h / scalingFactor + 0.5f);
+    upscalerProps.renderResolutionMin.w = (uint32_t)m_Desc.mode >= (uint32_t)UpscalerMode::PERFORMANCE ? upscalerProps.renderResolution.w : m_Desc.upscaleResolution.w / 2;
+    upscalerProps.renderResolutionMin.h = (uint32_t)m_Desc.mode >= (uint32_t)UpscalerMode::PERFORMANCE ? upscalerProps.renderResolution.h : m_Desc.upscaleResolution.h / 2;
     upscalerProps.jitterPhaseNum = (uint8_t)std::ceil(8.0f * scalingFactor * scalingFactor);
 }
 
@@ -1082,7 +1202,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
 
 #if NRI_ENABLE_FFX_SDK
     if (m_Desc.type == UpscalerType::FSR) {
-        const FSRGuides& guides = dispatchUpscaleDesc.guides.fsr;
+        const UpscalerGuides& guides = dispatchUpscaleDesc.guides.upscaler;
 
         ffxDispatchDescUpscale dispatchDesc = {};
         dispatchDesc.header.type = FFX_API_DISPATCH_DESC_TYPE_UPSCALE;
@@ -1105,10 +1225,35 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         dispatchDesc.cameraFar = (m_Desc.flags & UpscalerBits::DEPTH_INFINITE) ? FLT_MAX : dispatchUpscaleDesc.settings.fsr.zFar;
         dispatchDesc.cameraFovAngleVertical = dispatchUpscaleDesc.settings.fsr.verticalFov;
         dispatchDesc.viewSpaceToMetersFactor = dispatchUpscaleDesc.settings.fsr.viewSpaceToMetersFactor;
-        dispatchDesc.flags = (m_Desc.flags & UpscalerBits::NON_LINEAR) ? FFX_UPSCALE_FLAG_NON_LINEAR_COLOR_SRGB : 0;
+        dispatchDesc.flags = (m_Desc.flags & UpscalerBits::SRGB) ? FFX_UPSCALE_FLAG_NON_LINEAR_COLOR_SRGB : 0;
 
         ffxReturnCode_t result = m.ffx->Dispatch(&m.ffx->context, &dispatchDesc.header);
         CHECK(result == FFX_API_RETURN_OK, "ffxDispatch() failed!");
+    }
+#endif
+
+#if NRI_ENABLE_XESS_SDK
+    if (m_Desc.type == UpscalerType::XESS) {
+        const UpscalerGuides& guides = dispatchUpscaleDesc.guides.upscaler;
+
+        xess_d3d12_execute_params_t executeParams = {};
+        executeParams.pColorTexture = (ID3D12Resource*)m_NRI.GetTextureNativeObject(*input.texture);
+        executeParams.pVelocityTexture = (ID3D12Resource*)m_NRI.GetTextureNativeObject(*guides.mv.texture);
+        executeParams.pDepthTexture = (ID3D12Resource*)m_NRI.GetTextureNativeObject(*guides.depth.texture);
+        executeParams.pExposureScaleTexture = (ID3D12Resource*)m_NRI.GetTextureNativeObject(*guides.exposure.texture);
+        executeParams.pResponsivePixelMaskTexture = (ID3D12Resource*)m_NRI.GetTextureNativeObject(*guides.reactive.texture);
+        executeParams.pOutputTexture = (ID3D12Resource*)m_NRI.GetTextureNativeObject(*output.texture);
+        executeParams.jitterOffsetX = dispatchUpscaleDesc.cameraJitter.x;
+        executeParams.jitterOffsetY = dispatchUpscaleDesc.cameraJitter.y;
+        executeParams.exposureScale = 1.0f;
+        executeParams.resetHistory = (dispatchUpscaleDesc.flags & DispatchUpscaleBits::RESET_HISTORY) != 0;
+        executeParams.inputWidth = dispatchUpscaleDesc.currentResolution.w;
+        executeParams.inputHeight = dispatchUpscaleDesc.currentResolution.h;
+
+        ID3D12GraphicsCommandList* commandList = (ID3D12GraphicsCommandList*)m_NRI.GetCommandBufferNativeObject(commandBuffer);
+
+        xess_result_t result = xessD3D12Execute(m.xess->context, commandList, &executeParams);
+        CHECK(result == XESS_RESULT_SUCCESS, "xessD3D12Execute() failed!");
     }
 #endif
 
@@ -1117,7 +1262,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         ExclusiveScope lock(g_ngx.lock);
 
         const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
-        const DLSRGuides& guides = dispatchUpscaleDesc.guides.dlsr;
+        const UpscalerGuides& guides = dispatchUpscaleDesc.guides.upscaler;
 
         uint64_t outputNative = m_NRI.GetTextureNativeObject(*output.texture);
         uint64_t inputNative = m_NRI.GetTextureNativeObject(*input.texture);
@@ -1204,7 +1349,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         ExclusiveScope lock(g_ngx.lock);
 
         const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
-        const DLRRGuides& guides = dispatchUpscaleDesc.guides.dlrr;
+        const DenoiserGuides& guides = dispatchUpscaleDesc.guides.denoiser;
 
         uint64_t outputNative = m_NRI.GetTextureNativeObject(*output.texture);
         uint64_t inputNative = m_NRI.GetTextureNativeObject(*input.texture);

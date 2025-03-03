@@ -20,10 +20,11 @@ cmake_dependent_option(NRI_ENABLE_XLIB_SUPPORT "Enable 'xlib' support" ON "NRI_E
 cmake_dependent_option(NRI_ENABLE_WAYLAND_SUPPORT "Enable 'wayland' support" ON "NRI_ENABLE_VK_SUPPORT AND NOT WIN32" OFF)
 cmake_dependent_option(NRI_ENABLE_NGX_SDK "Enable NVIDIA NGX (DLSS) SDK" OFF "NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT OR NRI_ENABLE_VK_SUPPORT" OFF)
 cmake_dependent_option(NRI_ENABLE_FFX_SDK "Enable AMD FidelityFX SDK" OFF "(NRI_ENABLE_VK_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT) AND WIN32" OFF)
+cmake_dependent_option(NRI_ENABLE_XESS_SDK "Enable INTEL XeSS SDK" OFF "NRI_ENABLE_D3D12_SUPPORT AND WIN32" OFF)
 
 set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK binaries will be copied to relative to 'CMAKE_RUNTIME_OUTPUT_DIRECTORY'")
 set(NRI_AGILITY_SDK_VERSION_MAJOR 615)
-set(NRI_AGILITY_SDK_VERSION_MINOR 0)
+set(NRI_AGILITY_SDK_VERSION_MINOR 1)
 set(NRI_SHADERS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_Shaders" CACHE STRING "Shader output path override")
 
 # Is submodule?
@@ -111,6 +112,7 @@ add_compile_definition(NRI_ENABLE_XLIB_SUPPORT)
 add_compile_definition(NRI_ENABLE_WAYLAND_SUPPORT)
 add_compile_definition(NRI_ENABLE_NGX_SDK)
 add_compile_definition(NRI_ENABLE_FFX_SDK)
+add_compile_definition(NRI_ENABLE_XESS_SDK)
 
 # Find Windows SDK
 if(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT)
@@ -159,12 +161,14 @@ endif()
 # Construct list of dependencies
 set(DEPS)
 
+# set(FETCHCONTENT_QUIET FALSE)
 if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
     # Agility SDK
     FetchContent_Declare(
         agilitysdk
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.${NRI_AGILITY_SDK_VERSION_MAJOR}.${NRI_AGILITY_SDK_VERSION_MINOR}
+        GIT_PROGRESS TRUE
     )
     list(APPEND DEPS agilitysdk)
 endif()
@@ -176,6 +180,7 @@ if(NRI_ENABLE_NVTX_SUPPORT)
         GIT_REPOSITORY https://github.com/NVIDIA/NVTX.git
         GIT_TAG dev
         GIT_SHALLOW 1
+        GIT_PROGRESS TRUE
     )
     list(APPEND DEPS nvtx)
 endif()
@@ -187,6 +192,7 @@ if(NRI_ENABLE_D3D_EXTENSIONS)
         GIT_REPOSITORY https://github.com/NVIDIA/nvapi.git
         GIT_TAG main
         GIT_SHALLOW 1
+        GIT_PROGRESS TRUE
     )
     list(APPEND DEPS nvapi)
 
@@ -196,6 +202,7 @@ if(NRI_ENABLE_D3D_EXTENSIONS)
         GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/AGS_SDK.git
         GIT_TAG master
         GIT_SHALLOW 1
+        GIT_PROGRESS TRUE
     )
     list(APPEND DEPS amdags)
 endif()
@@ -208,6 +215,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         GIT_TAG master
         GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
+        GIT_PROGRESS TRUE
     )
     list(APPEND DEPS d3d12ma)
 endif()
@@ -220,6 +228,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         GIT_TAG origin/vulkan-sdk-1.4.304
         GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
+        GIT_PROGRESS TRUE
     )
     list(APPEND DEPS vulkan_headers)
 
@@ -230,6 +239,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         GIT_TAG master
         GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
+        GIT_PROGRESS TRUE
     )
     list(APPEND DEPS vma)
 endif()
@@ -241,6 +251,7 @@ if(NRI_ENABLE_NGX_SDK)
         GIT_REPOSITORY https://github.com/NVIDIA/DLSS.git
         GIT_TAG v310.1.0
         GIT_SHALLOW 1
+        GIT_PROGRESS TRUE
     )
     list(APPEND DEPS ngx)
 endif()
@@ -253,8 +264,22 @@ if(NRI_ENABLE_FFX_SDK)
         GIT_TAG v1.1.3
         GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
+        GIT_PROGRESS TRUE
     )
     list(APPEND DEPS ffx)
+endif()
+
+if(NRI_ENABLE_XESS_SDK)
+    # INTEL XeSS SDK
+    FetchContent_Declare(
+        xess
+        GIT_REPOSITORY https://github.com/intel/xess.git
+        GIT_TAG v1.3.1
+        GIT_SHALLOW 1
+        SOURCE_SUBDIR "ignore CMakeLists.txt"
+        GIT_PROGRESS TRUE
+    )
+    list(APPEND DEPS xess)
 endif()
 
 # Add dependencies for dependencies
@@ -267,6 +292,7 @@ if(NRI_ENABLE_NIS_SDK AND NOT TARGET ShaderMake)
         GIT_REPOSITORY https://github.com/NVIDIA-RTX/ShaderMake.git
         GIT_TAG main
         GIT_SHALLOW 1
+        GIT_PROGRESS TRUE
     )
     list(APPEND DEPS shadermake)
 endif()
@@ -487,23 +513,26 @@ if(NRI_ENABLE_NGX_SDK)
             set(NGX_SUFFIX "d")
             message("NRI: using NGX LIB with dynamic runtime")
         else()
-            set(NGX_SUFFIX "s") # static runtime
+            set(NGX_SUFFIX "s")
             message("NRI: using NGX LIB with static runtime")
         endif()
 
-        find_library(NGX_D_LIB NAMES nvsdk_ngx_${NGX_SUFFIX}_dbg.lib PATHS "${ngx_SOURCE_DIR}/lib/Windows_x86_64/x64")
-        find_library(NGX_LIB NAMES nvsdk_ngx_${NGX_SUFFIX}.lib PATHS "${ngx_SOURCE_DIR}/lib/Windows_x86_64/x64")
-    else()
-        find_library(NGX_D_LIB NAMES libnvsdk_ngx.a PATHS "${ngx_SOURCE_DIR}/lib/Linux_x86_64")
-        find_library(NGX_LIB NAMES libnvsdk_ngx.a PATHS "${ngx_SOURCE_DIR}/lib/Linux_x86_64")
-    endif()
+        set(NGX_LIB "${ngx_SOURCE_DIR}/lib/Windows_x86_64/x64/nvsdk_ngx_${NGX_SUFFIX}")
 
-    target_link_libraries(NRI_Shared PRIVATE debug ${NGX_D_LIB})
-    target_link_libraries(NRI_Shared PRIVATE optimized ${NGX_LIB})
+        target_link_libraries(NRI_Shared PRIVATE debug ${NGX_LIB}_dbg.lib)
+        target_link_libraries(NRI_Shared PRIVATE optimized ${NGX_LIB}.lib)
+    else()
+        target_link_libraries(NRI_Shared PRIVATE "${ngx_SOURCE_DIR}/lib/Linux_x86_64/libnvsdk_ngx.a")
+    endif()
 endif()
 
 if(NRI_ENABLE_FFX_SDK)
     target_include_directories(NRI_Shared PRIVATE "${ffx_SOURCE_DIR}/ffx-api/include/ffx_api")
+endif()
+
+if(NRI_ENABLE_XESS_SDK)
+    target_include_directories(NRI_Shared PRIVATE "${xess_SOURCE_DIR}/inc/xess")
+    target_link_libraries(NRI_Shared PRIVATE "${xess_SOURCE_DIR}/lib/libxess.lib")
 endif()
 
 target_compile_definitions(NRI_Shared PRIVATE ${COMPILE_DEFINITIONS})
@@ -621,6 +650,13 @@ if(NRI_ENABLE_FFX_SDK)
     if(NRI_ENABLE_VK_SUPPORT AND WIN32)
         find_file(FFX_VK_DLL NAMES amd_fidelityfx_vk.dll PATHS "${ffx_SOURCE_DIR}/PrebuiltSignedDLL")
         copy_library(${PROJECT_NAME} ${FFX_VK_DLL})
+    endif()
+endif()
+
+if(NRI_ENABLE_XESS_SDK)
+    if(NRI_ENABLE_D3D12_SUPPORT)
+        find_file(XESS_DX12_DLL NAMES libxess.dll PATHS "${xess_SOURCE_DIR}/bin")
+        copy_library(${PROJECT_NAME} ${XESS_DX12_DLL})
     endif()
 endif()
 

@@ -3,8 +3,9 @@
 #pragma once
 
 struct Nis;
-struct Ngx;
 struct Ffx;
+struct Xess;
+struct Ngx;
 
 namespace nri {
 
@@ -33,8 +34,9 @@ private:
 
     union {
         Nis* nis;
-        Ngx* ngx;
         Ffx* ffx;
+        Xess* xess;
+        Ngx* ngx;
     } m = {};
 };
 

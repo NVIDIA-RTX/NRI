@@ -9,41 +9,45 @@ NriForwardStruct(Upscaler);
 NriEnum(UpscalerType, uint8_t,  // Name                                     // Notes
     NIS,                        // NVIDIA Image Scaling                     sharpener-upscaler, cross vendor
     FSR,                        // AMD FidelityFX Super Resolution          upscaler, cross vendor
+    XESS,                       // INTEL XeSS Super Resolution              upscaler, cross vendor
     DLSR,                       // NVIDIA Deep Learning Super Resolution    upscaler, NVIDIA only
     DLRR                        // NVIDIA Deep Learning Ray Reconstruction  upscaler-denoiser, NVIDIA only
 );
 
-NriEnum(UpscalerMode, uint8_t,  // Scaling factor       // Min jitter phases
+NriEnum(UpscalerMode, uint8_t,  // Scaling factor       // Min jitter phases (or just use unclamped Halton2D)
     NATIVE,                     // 1.0x                 8
+    ULTRA_QUALITY,              // 1.3x                 14
     QUALITY,                    // 1.5x                 18
     BALANCED,                   // 1.7x                 23
     PERFORMANCE,                // 2.0x                 32
     ULTRA_PERFORMANCE           // 3.0x                 72
 );
 
-NriBits(UpscalerBits, uint8_t,
+NriBits(UpscalerBits, uint16_t,
     NONE                        = 0,
-    HDR                         = NriBit(0),            // "input" uses colors in High-Dynamic Range
-    NON_LINEAR                  = NriBit(1),            // "input" uses perceptual (gamma corrected) colors
-    AUTO_EXPOSURE               = NriBit(2),            // automatic exposure ("exposure" texture is ignored)
-    DEPTH_INVERTED              = NriBit(3),            // "depth" is inverted, i.e. the near plane is mapped to 1
-    DEPTH_INFINITE              = NriBit(4),            // "depth" uses INF far plane
-    DEPTH_LINEAR                = NriBit(5),            // "depth" is linear viewZ (HW otherwise)
-    UPSCALE_RES_MV              = NriBit(6)             // motion vectors ("mv") are rendered at upscale resolution (not render)
+    HDR                         = NriBit(0),            // "input" uses colors in High-Dynamic Range (HDR)
+    SRGB                        = NriBit(1),            // "input" uses Low-Dynamic Range (LDR) colors in sRGB space
+    USE_EXPOSURE                = NriBit(2),            // "exposure" texture is provided (automatic exposure otherwise)
+    USE_REACTIVE                = NriBit(3),            // "reactive" texture is provided
+    DEPTH_INVERTED              = NriBit(4),            // "depth" is inverted, i.e. the near plane is mapped to 1
+    DEPTH_INFINITE              = NriBit(5),            // "depth" uses INF far plane
+    DEPTH_LINEAR                = NriBit(6),            // "depth" is linear viewZ (HW otherwise)
+    MV_UPSCALED                 = NriBit(7),            // "mv" are rendered at upscale resolution
+    MV_JITTERED                 = NriBit(8)             // "mv" include jitter
 );
 
 NriBits(DispatchUpscaleBits, uint8_t,
     NONE                        = 0,
     RESET_HISTORY               = NriBit(0),            // restart accumulation
-    USE_SPECULAR_MOTION         = NriBit(1)             // if set, "specularMvOrHitT" represents "specular motion" not "hit distance"
+    USE_SPECULAR_MOTION         = NriBit(1)             // ("DLRR" only) if set, "specularMvOrHitT" represents "specular motion" not "hit distance"
 );
 
 NriStruct(UpscalerDesc) {
     Nri(Dim2) upscaleResolution;                        // output resolution
     Nri(UpscalerType) type;
-    Nri(UpscalerMode) mode;                             // not needed for "NIS"
+    Nri(UpscalerMode) mode;                             // not needed for NIS
     Nri(UpscalerBits) flags;
-    NriOptional uint8_t preset;                         // "DLSR" and "DLRR" only (0 default, >1 presets A, B, C...)
+    NriOptional uint8_t preset;                         // preset for DLSR or XESS (0 default, >1 presets A, B, C...)
     NriOptional NriPtr(CommandBuffer) commandBuffer;    // a non-copy-only command buffer in opened state, submission must be done manually ("wait for idle" executed, if not provided)
 };
 
@@ -62,21 +66,14 @@ NriStruct(UpscalerResource) {
 };
 
 // Guide buffers
-NriStruct(FSRGuides) {
+NriStruct(UpscalerGuides) {                             // For FSR, XESS, DLSR
     Nri(UpscalerResource) mv;                           // .xy - surface motion
     Nri(UpscalerResource) depth;                        // .x - HW depth
     NriOptional Nri(UpscalerResource) exposure;         // .x - 1x1 exposure
     NriOptional Nri(UpscalerResource) reactive;         // .x - bias towards "input"
 };
 
-NriStruct(DLSRGuides) {
-    Nri(UpscalerResource) mv;                           // .xy - surface motion
-    Nri(UpscalerResource) depth;                        // .x - HW or linear depth
-    NriOptional Nri(UpscalerResource) exposure;         // .x - 1x1 exposure
-    NriOptional Nri(UpscalerResource) reactive;         // .x - bias towards "input"
-};
-
-NriStruct(DLRRGuides) {
+NriStruct(DenoiserGuides) {                             // For DLRR
     Nri(UpscalerResource) mv;                           // .xy - surface motion
     Nri(UpscalerResource) depth;                        // .x - HW or linear depth
     Nri(UpscalerResource) normalRoughness;              // .xyz - world-space normal (not encoded), .w - linear roughness
@@ -116,16 +113,15 @@ NriStruct(DispatchUpscaleDesc) {
 
     // Guides (required "SHADER_RESOURCE" for resource states & descriptors)
     union {                                             // Choosen based on "UpscalerType" passed during creation
-        Nri(FSRGuides) fsr;                             //      "FSR" guides
-        Nri(DLSRGuides) dlsr;                           //      "DLSR" guides
-        Nri(DLRRGuides) dlrr;                           //      "DLRR" guides (sRGB not supported)
+        Nri(UpscalerGuides) upscaler;                   //      FSR, XESS, DLSR
+        Nri(DenoiserGuides) denoiser;                   //      DLRR (sRGB not supported)
     } guides;
 
     // Settings
     union {                                             // Choosen based on "UpscalerType" passed during creation
-        Nri(NISSettings) nis;                           //      "NIS" settings
-        Nri(FSRSettings) fsr;                           //      "FSR" settings
-        Nri(DLRRSettings) dlrr;                         //      "DLRR" settings
+        Nri(NISSettings) nis;                           //      NIS settings
+        Nri(FSRSettings) fsr;                           //      FSR settings
+        Nri(DLRRSettings) dlrr;                         //      DLRR settings
     } settings;
 
     Nri(Dim2) currentResolution;                        // current render resolution for inputs and guides, renderResolutionMin <= currentResolution <= renderResolution

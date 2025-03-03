@@ -26,7 +26,7 @@ Non-goals (exceptions apply to helper interfaces, where high-level abstraction a
 
 #define NRI_VERSION_MAJOR 1
 #define NRI_VERSION_MINOR 164
-#define NRI_VERSION_DATE "19 February 2025"
+#define NRI_VERSION_DATE "3 March 2025"
 
 #include "NRIDescs.h"
 
@@ -218,7 +218,7 @@ NriStruct(CoreInterface) {
     void*               (NRI_CALL *MapBuffer)                       (NriRef(Buffer) buffer, uint64_t offset, uint64_t size);
     void                (NRI_CALL *UnmapBuffer)                     (NriRef(Buffer) buffer);
 
-    // Debug name (skipped for buffers/textures in D3D if they are not bound to memory)
+    // Debug name for any object declared as "NriForwardStruct" (skipped for buffers/textures in D3D if they are not bound to memory)
     void                (NRI_CALL *SetDebugName)                    (NriPtr(Object) object, const char* name);
 
     // Native objects                                                                                            ___D3D11___________________________|_D3D12_______________________|_VK_________________________________
