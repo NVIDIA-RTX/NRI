@@ -6,6 +6,7 @@ constexpr std::array<DXGI_FORMAT, (size_t)SwapChainFormat::MAX_NUM> g_swapChainF
     DXGI_FORMAT_R10G10B10A2_UNORM,  // BT709_G22_10BIT
     DXGI_FORMAT_R10G10B10A2_UNORM,  // BT2020_G2084_10BIT
 };
+VALIDATE_ARRAY(g_swapChainFormat);
 
 constexpr std::array<DXGI_COLOR_SPACE_TYPE, (size_t)SwapChainFormat::MAX_NUM> g_colorSpace = {
     DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709,    // BT709_G10_16BIT
@@ -13,6 +14,7 @@ constexpr std::array<DXGI_COLOR_SPACE_TYPE, (size_t)SwapChainFormat::MAX_NUM> g_
     DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709,    // BT709_G22_10BIT
     DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020, // BT2020_G2084_10BIT
 };
+VALIDATE_ARRAY(g_colorSpace);
 
 static uint8_t QueryLatestSwapChain(ComPtr<IDXGISwapChainBest>& in, ComPtr<IDXGISwapChainBest>& out) {
     static const IID versions[] = {

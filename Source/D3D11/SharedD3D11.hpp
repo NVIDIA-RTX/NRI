@@ -1,6 +1,6 @@
 // © 2021 NVIDIA Corporation
 
-constexpr std::array<D3D11_LOGIC_OP, (size_t)LogicFunc::MAX_NUM> LOGIC_OP_TABLE = {
+constexpr std::array<D3D11_LOGIC_OP, (size_t)LogicFunc::MAX_NUM> g_LogicOps = {
     D3D11_LOGIC_OP_CLEAR,         // NONE,
     D3D11_LOGIC_OP_CLEAR,         // CLEAR,
     D3D11_LOGIC_OP_AND,           // AND,
@@ -18,24 +18,26 @@ constexpr std::array<D3D11_LOGIC_OP, (size_t)LogicFunc::MAX_NUM> LOGIC_OP_TABLE 
     D3D11_LOGIC_OP_NAND,          // NAND,
     D3D11_LOGIC_OP_SET            // SET
 };
+VALIDATE_ARRAY(g_LogicOps);
 
 D3D11_LOGIC_OP nri::GetyD3D11LogicOp(LogicFunc logicFunc) {
-    return LOGIC_OP_TABLE[(size_t)logicFunc];
+    return g_LogicOps[(size_t)logicFunc];
 }
 
-constexpr std::array<D3D11_BLEND_OP, (size_t)BlendFunc::MAX_NUM> BLEND_FUNC_TABLE = {
+constexpr std::array<D3D11_BLEND_OP, (size_t)BlendFunc::MAX_NUM> g_BlendOps = {
     D3D11_BLEND_OP_ADD,          // ADD,
     D3D11_BLEND_OP_SUBTRACT,     // SUBTRACT,
     D3D11_BLEND_OP_REV_SUBTRACT, // REVERSE_SUBTRACT,
     D3D11_BLEND_OP_MIN,          // MIN,
     D3D11_BLEND_OP_MAX           // MAX
 };
+VALIDATE_ARRAY(g_BlendOps);
 
 D3D11_BLEND_OP nri::GetyD3D11BlendOp(BlendFunc blendFunc) {
-    return BLEND_FUNC_TABLE[(size_t)blendFunc];
+    return g_BlendOps[(size_t)blendFunc];
 }
 
-constexpr std::array<D3D11_BLEND, (size_t)BlendFactor::MAX_NUM> BLEND_FACTOR_TABLE = {
+constexpr std::array<D3D11_BLEND, (size_t)BlendFactor::MAX_NUM> g_BlendFactors = {
     D3D11_BLEND_ZERO,             // ZERO,
     D3D11_BLEND_ONE,              // ONE,
     D3D11_BLEND_SRC_COLOR,        // SRC_COLOR,
@@ -56,12 +58,13 @@ constexpr std::array<D3D11_BLEND, (size_t)BlendFactor::MAX_NUM> BLEND_FACTOR_TAB
     D3D11_BLEND_SRC1_ALPHA,       // SRC1_ALPHA,
     D3D11_BLEND_INV_SRC1_ALPHA    // ONE_MINUS_SRC1_ALPHA,
 };
+VALIDATE_ARRAY(g_BlendFactors);
 
 D3D11_BLEND nri::GetD3D11BlendFromBlendFactor(BlendFactor blendFactor) {
-    return BLEND_FACTOR_TABLE[(size_t)blendFactor];
+    return g_BlendFactors[(size_t)blendFactor];
 }
 
-constexpr std::array<D3D11_STENCIL_OP, (size_t)StencilFunc::MAX_NUM> STENCIL_FUNC_TABLE = {
+constexpr std::array<D3D11_STENCIL_OP, (size_t)StencilFunc::MAX_NUM> g_StencilOps = {
     D3D11_STENCIL_OP_KEEP,     // KEEP,
     D3D11_STENCIL_OP_ZERO,     // ZERO,
     D3D11_STENCIL_OP_REPLACE,  // REPLACE,
@@ -71,12 +74,13 @@ constexpr std::array<D3D11_STENCIL_OP, (size_t)StencilFunc::MAX_NUM> STENCIL_FUN
     D3D11_STENCIL_OP_INCR,     // INCREMENT_AND_WRAP,
     D3D11_STENCIL_OP_DECR      // DECREMENT_AND_WRAP
 };
+VALIDATE_ARRAY(g_StencilOps);
 
 D3D11_STENCIL_OP nri::GetD3D11StencilOpFromStencilFunc(StencilFunc stencilFunc) {
-    return STENCIL_FUNC_TABLE[(size_t)stencilFunc];
+    return g_StencilOps[(size_t)stencilFunc];
 }
 
-constexpr std::array<D3D11_COMPARISON_FUNC, (size_t)CompareFunc::MAX_NUM> COMPARE_FUNC_TABLE = {
+constexpr std::array<D3D11_COMPARISON_FUNC, (size_t)CompareFunc::MAX_NUM> g_ComparisonFuncs = {
     D3D11_COMPARISON_FUNC(0),       // NONE,
     D3D11_COMPARISON_ALWAYS,        // ALWAYS,
     D3D11_COMPARISON_NEVER,         // NEVER,
@@ -87,22 +91,24 @@ constexpr std::array<D3D11_COMPARISON_FUNC, (size_t)CompareFunc::MAX_NUM> COMPAR
     D3D11_COMPARISON_GREATER,       // GREATER,
     D3D11_COMPARISON_GREATER_EQUAL, // GREATER_EQUAL,
 };
+VALIDATE_ARRAY(g_ComparisonFuncs);
 
 D3D11_COMPARISON_FUNC nri::GetD3D11ComparisonFuncFromCompareFunc(CompareFunc compareFunc) {
-    return COMPARE_FUNC_TABLE[(size_t)compareFunc];
+    return g_ComparisonFuncs[(size_t)compareFunc];
 }
 
-constexpr std::array<D3D11_CULL_MODE, (size_t)CullMode::MAX_NUM> CULL_MODE_TABLE = {
+constexpr std::array<D3D11_CULL_MODE, (size_t)CullMode::MAX_NUM> g_CullModes = {
     D3D11_CULL_NONE,  // NONE,
     D3D11_CULL_FRONT, // FRONT,
     D3D11_CULL_BACK   // BACK
 };
+VALIDATE_ARRAY(g_CullModes);
 
 D3D11_CULL_MODE nri::GetD3D11CullModeFromCullMode(CullMode cullMode) {
-    return CULL_MODE_TABLE[(size_t)cullMode];
+    return g_CullModes[(size_t)cullMode];
 }
 
-constexpr std::array<uint32_t, (size_t)Topology::MAX_NUM> TOPOLOGY_TABLE = {
+constexpr std::array<D3D_PRIMITIVE_TOPOLOGY, (size_t)Topology::MAX_NUM> g_Topologies = {
     D3D11_PRIMITIVE_TOPOLOGY_POINTLIST,                // POINT_LIST,
     D3D11_PRIMITIVE_TOPOLOGY_LINELIST,                 // LINE_LIST,
     D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP,                // LINE_STRIP,
@@ -114,9 +120,10 @@ constexpr std::array<uint32_t, (size_t)Topology::MAX_NUM> TOPOLOGY_TABLE = {
     D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ,        // TRIANGLE_STRIP_WITH_ADJACENCY,
     D3D11_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST // PATCH_LIST
 };
+VALIDATE_ARRAY(g_Topologies);
 
 D3D11_PRIMITIVE_TOPOLOGY nri::GetD3D11TopologyFromTopology(Topology topology, uint32_t patchPoints) {
-    uint32_t res = TOPOLOGY_TABLE[(size_t)topology];
+    uint32_t res = g_Topologies[(size_t)topology];
 
     if (res == D3D11_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST)
         res += patchPoints - 1;

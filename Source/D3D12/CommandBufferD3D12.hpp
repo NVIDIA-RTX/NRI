@@ -137,7 +137,7 @@ static inline D3D12_BARRIER_ACCESS GetBarrierAccessFlags(AccessBits accessBits) 
     return flags;
 }
 
-constexpr std::array<D3D12_BARRIER_LAYOUT, (size_t)Layout::MAX_NUM> LAYOUTS = {
+constexpr std::array<D3D12_BARRIER_LAYOUT, (size_t)Layout::MAX_NUM> g_BarrierLayouts = {
     D3D12_BARRIER_LAYOUT_UNDEFINED,           // UNKNOWN
     D3D12_BARRIER_LAYOUT_RENDER_TARGET,       // COLOR_ATTACHMENT
     D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE, // DEPTH_STENCIL_ATTACHMENT
@@ -151,9 +151,10 @@ constexpr std::array<D3D12_BARRIER_LAYOUT, (size_t)Layout::MAX_NUM> LAYOUTS = {
     D3D12_BARRIER_LAYOUT_PRESENT,             // PRESENT
     D3D12_BARRIER_LAYOUT_SHADING_RATE_SOURCE, // SHADING_RATE_ATTACHMENT
 };
+VALIDATE_ARRAY(g_BarrierLayouts);
 
 static inline D3D12_BARRIER_LAYOUT GetBarrierLayout(Layout layout) {
-    return LAYOUTS[(uint32_t)layout];
+    return g_BarrierLayouts[(uint32_t)layout];
 }
 #endif
 

@@ -1,26 +1,28 @@
 // © 2021 NVIDIA Corporation
 
-constexpr std::array<D3D12_COMMAND_LIST_TYPE, (size_t)QueueType::MAX_NUM> COMMAND_LIST_TYPES = {
+constexpr std::array<D3D12_COMMAND_LIST_TYPE, (size_t)QueueType::MAX_NUM> g_CommandListTypes = {
     D3D12_COMMAND_LIST_TYPE_DIRECT,  // GRAPHICS,
     D3D12_COMMAND_LIST_TYPE_COMPUTE, // COMPUTE,
     D3D12_COMMAND_LIST_TYPE_COPY,    // COPY,
 };
+VALIDATE_ARRAY(g_CommandListTypes);
 
 D3D12_COMMAND_LIST_TYPE nri::GetCommandListType(QueueType queueType) {
-    return COMMAND_LIST_TYPES[(size_t)queueType];
+    return g_CommandListTypes[(size_t)queueType];
 }
 
-constexpr std::array<D3D12_RESOURCE_DIMENSION, (size_t)TextureType::MAX_NUM> RESOURCE_DIMENSIONS = {
+constexpr std::array<D3D12_RESOURCE_DIMENSION, (size_t)TextureType::MAX_NUM> g_ResourceDimensions = {
     D3D12_RESOURCE_DIMENSION_TEXTURE1D, // TEXTURE_1D,
     D3D12_RESOURCE_DIMENSION_TEXTURE2D, // TEXTURE_2D,
     D3D12_RESOURCE_DIMENSION_TEXTURE3D, // TEXTURE_3D,
 };
+VALIDATE_ARRAY(g_ResourceDimensions);
 
 D3D12_RESOURCE_DIMENSION nri::GetResourceDimension(TextureType textureType) {
-    return RESOURCE_DIMENSIONS[(size_t)textureType];
+    return g_ResourceDimensions[(size_t)textureType];
 }
 
-constexpr std::array<D3D12_DESCRIPTOR_RANGE_TYPE, (size_t)DescriptorType::MAX_NUM> DESCRIPTOR_RANGE_TYPES = {
+constexpr std::array<D3D12_DESCRIPTOR_RANGE_TYPE, (size_t)DescriptorType::MAX_NUM> g_DescriptorRangeTypes = {
     D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, // SAMPLER
     D3D12_DESCRIPTOR_RANGE_TYPE_CBV,     // CONSTANT_BUFFER
     D3D12_DESCRIPTOR_RANGE_TYPE_SRV,     // TEXTURE
@@ -31,12 +33,13 @@ constexpr std::array<D3D12_DESCRIPTOR_RANGE_TYPE, (size_t)DescriptorType::MAX_NU
     D3D12_DESCRIPTOR_RANGE_TYPE_UAV,     // STORAGE_STRUCTURED_BUFFER
     D3D12_DESCRIPTOR_RANGE_TYPE_SRV      // ACCELERATION_STRUCTURE
 };
+//VALIDATE_ARRAY(g_DescriptorRangeTypes); // TODO: 0 is expected for ACCELERATION_STRUCTURE
 
 D3D12_DESCRIPTOR_RANGE_TYPE nri::GetDescriptorRangesType(DescriptorType descriptorType) {
-    return DESCRIPTOR_RANGE_TYPES[(size_t)descriptorType];
+    return g_DescriptorRangeTypes[(size_t)descriptorType];
 }
 
-constexpr std::array<D3D12_PRIMITIVE_TOPOLOGY_TYPE, (size_t)Topology::MAX_NUM> PRIMITIVE_TOPOLOGY_TYPES = {
+constexpr std::array<D3D12_PRIMITIVE_TOPOLOGY_TYPE, (size_t)Topology::MAX_NUM> g_PrimitiveTopologyTypes = {
     D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT,    // POINT_LIST
     D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE,     // LINE_LIST
     D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE,     // LINE_STRIP
@@ -48,12 +51,13 @@ constexpr std::array<D3D12_PRIMITIVE_TOPOLOGY_TYPE, (size_t)Topology::MAX_NUM> P
     D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, // TRIANGLE_STRIP_WITH_ADJACENCY
     D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH     // PATCH_LIST
 };
+VALIDATE_ARRAY(g_PrimitiveTopologyTypes);
 
 D3D12_PRIMITIVE_TOPOLOGY_TYPE nri::GetPrimitiveTopologyType(Topology topology) {
-    return PRIMITIVE_TOPOLOGY_TYPES[(size_t)topology];
+    return g_PrimitiveTopologyTypes[(size_t)topology];
 }
 
-constexpr std::array<D3D_PRIMITIVE_TOPOLOGY, 9> PRIMITIVE_TOPOLOGIES = {
+constexpr std::array<D3D_PRIMITIVE_TOPOLOGY, (size_t)Topology::MAX_NUM - 1> g_PrimitiveTopologies = {
     D3D_PRIMITIVE_TOPOLOGY_POINTLIST,        // POINT_LIST
     D3D_PRIMITIVE_TOPOLOGY_LINELIST,         // LINE_LIST
     D3D_PRIMITIVE_TOPOLOGY_LINESTRIP,        // LINE_STRIP
@@ -64,34 +68,37 @@ constexpr std::array<D3D_PRIMITIVE_TOPOLOGY, 9> PRIMITIVE_TOPOLOGIES = {
     D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ, // TRIANGLE_LIST_WITH_ADJACENCY
     D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ // TRIANGLE_STRIP_WITH_ADJACENCY
 };
+VALIDATE_ARRAY(g_PrimitiveTopologyTypes);
 
 D3D_PRIMITIVE_TOPOLOGY nri::GetPrimitiveTopology(Topology topology, uint8_t tessControlPointNum) {
     if (topology == Topology::PATCH_LIST)
         return (D3D_PRIMITIVE_TOPOLOGY)((uint8_t)D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ + tessControlPointNum);
     else
-        return PRIMITIVE_TOPOLOGIES[(size_t)topology];
+        return g_PrimitiveTopologies[(size_t)topology];
 }
 
-constexpr std::array<D3D12_FILL_MODE, (size_t)FillMode::MAX_NUM> FILL_MODES = {
+constexpr std::array<D3D12_FILL_MODE, (size_t)FillMode::MAX_NUM> g_FillModes = {
     D3D12_FILL_MODE_SOLID,    // SOLID
     D3D12_FILL_MODE_WIREFRAME // WIREFRAME
 };
+VALIDATE_ARRAY(g_FillModes);
 
 D3D12_FILL_MODE nri::GetFillMode(FillMode fillMode) {
-    return FILL_MODES[(size_t)fillMode];
+    return g_FillModes[(size_t)fillMode];
 }
 
-constexpr std::array<D3D12_CULL_MODE, (size_t)CullMode::MAX_NUM> CULL_MODES = {
+constexpr std::array<D3D12_CULL_MODE, (size_t)CullMode::MAX_NUM> g_CullModes = {
     D3D12_CULL_MODE_NONE,  // NONE
     D3D12_CULL_MODE_FRONT, // FRONT
     D3D12_CULL_MODE_BACK   // BACK
 };
+VALIDATE_ARRAY(g_CullModes);
 
 D3D12_CULL_MODE nri::GetCullMode(CullMode cullMode) {
-    return CULL_MODES[(size_t)cullMode];
+    return g_CullModes[(size_t)cullMode];
 }
 
-constexpr std::array<D3D12_COMPARISON_FUNC, (size_t)CompareFunc::MAX_NUM> COMPARISON_FUNCS = {
+constexpr std::array<D3D12_COMPARISON_FUNC, (size_t)CompareFunc::MAX_NUM> g_ComparisonFuncs = {
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_COMPARISON_FUNC_NONE, // NONE
 #else
@@ -106,12 +113,13 @@ constexpr std::array<D3D12_COMPARISON_FUNC, (size_t)CompareFunc::MAX_NUM> COMPAR
     D3D12_COMPARISON_FUNC_GREATER,       // GREATER
     D3D12_COMPARISON_FUNC_GREATER_EQUAL, // GREATER_EQUAL
 };
+VALIDATE_ARRAY(g_ComparisonFuncs);
 
 D3D12_COMPARISON_FUNC nri::GetComparisonFunc(CompareFunc compareFunc) {
-    return COMPARISON_FUNCS[(size_t)compareFunc];
+    return g_ComparisonFuncs[(size_t)compareFunc];
 }
 
-constexpr std::array<D3D12_STENCIL_OP, (size_t)StencilFunc::MAX_NUM> STENCIL_OPS = {
+constexpr std::array<D3D12_STENCIL_OP, (size_t)StencilFunc::MAX_NUM> g_StencilOps = {
     D3D12_STENCIL_OP_KEEP,     // KEEP
     D3D12_STENCIL_OP_ZERO,     // ZERO
     D3D12_STENCIL_OP_REPLACE,  // REPLACE
@@ -121,12 +129,13 @@ constexpr std::array<D3D12_STENCIL_OP, (size_t)StencilFunc::MAX_NUM> STENCIL_OPS
     D3D12_STENCIL_OP_INCR,     // INCREMENT_AND_WRAP
     D3D12_STENCIL_OP_DECR      // DECREMENT_AND_WRAP
 };
+VALIDATE_ARRAY(g_StencilOps);
 
 D3D12_STENCIL_OP nri::GetStencilOp(StencilFunc stencilFunc) {
-    return STENCIL_OPS[(size_t)stencilFunc];
+    return g_StencilOps[(size_t)stencilFunc];
 }
 
-constexpr std::array<D3D12_LOGIC_OP, (size_t)LogicFunc::MAX_NUM> LOGIC_OPS = {
+constexpr std::array<D3D12_LOGIC_OP, (size_t)LogicFunc::MAX_NUM> g_LogicOps = {
     D3D12_LOGIC_OP_NOOP,          // NONE
     D3D12_LOGIC_OP_CLEAR,         // CLEAR
     D3D12_LOGIC_OP_AND,           // AND
@@ -144,12 +153,13 @@ constexpr std::array<D3D12_LOGIC_OP, (size_t)LogicFunc::MAX_NUM> LOGIC_OPS = {
     D3D12_LOGIC_OP_NAND,          // NAND
     D3D12_LOGIC_OP_SET            // SET
 };
+VALIDATE_ARRAY(g_LogicOps);
 
 D3D12_LOGIC_OP nri::GetLogicOp(LogicFunc logicFunc) {
-    return LOGIC_OPS[(size_t)logicFunc];
+    return g_LogicOps[(size_t)logicFunc];
 }
 
-constexpr std::array<D3D12_BLEND, (size_t)BlendFactor::MAX_NUM> BLENDS = {
+constexpr std::array<D3D12_BLEND, (size_t)BlendFactor::MAX_NUM> g_BlendFactors = {
     D3D12_BLEND_ZERO,             // ZERO
     D3D12_BLEND_ONE,              // ONE
     D3D12_BLEND_SRC_COLOR,        // SRC_COLOR
@@ -176,28 +186,30 @@ constexpr std::array<D3D12_BLEND, (size_t)BlendFactor::MAX_NUM> BLENDS = {
     D3D12_BLEND_SRC1_ALPHA,     // SRC1_ALPHA
     D3D12_BLEND_INV_SRC1_ALPHA  // ONE_MINUS_SRC1_ALPHA
 };
+VALIDATE_ARRAY(g_BlendFactors);
 
 D3D12_BLEND nri::GetBlend(BlendFactor blendFactor) {
-    return BLENDS[(size_t)blendFactor];
+    return g_BlendFactors[(size_t)blendFactor];
 }
 
-constexpr std::array<D3D12_BLEND_OP, (size_t)BlendFunc::MAX_NUM> BLEND_OPS = {
+constexpr std::array<D3D12_BLEND_OP, (size_t)BlendFunc::MAX_NUM> g_BlendOps = {
     D3D12_BLEND_OP_ADD,          // ADD
     D3D12_BLEND_OP_SUBTRACT,     // SUBTRACT
     D3D12_BLEND_OP_REV_SUBTRACT, // REVERSE_SUBTRACT
     D3D12_BLEND_OP_MIN,          // MIN
     D3D12_BLEND_OP_MAX           // MAX
 };
+VALIDATE_ARRAY(g_BlendOps);
 
 D3D12_BLEND_OP nri::GetBlendOp(BlendFunc blendFunc) {
-    return BLEND_OPS[(size_t)blendFunc];
+    return g_BlendOps[(size_t)blendFunc];
 }
 
 D3D12_TEXTURE_ADDRESS_MODE nri::GetAddressMode(AddressMode addressMode) {
     return (D3D12_TEXTURE_ADDRESS_MODE)(D3D12_TEXTURE_ADDRESS_MODE_WRAP + (uint32_t)addressMode);
 }
 
-constexpr std::array<D3D12_HEAP_TYPE, (size_t)MemoryLocation::MAX_NUM> HEAP_TYPES = {
+constexpr std::array<D3D12_HEAP_TYPE, (size_t)MemoryLocation::MAX_NUM> g_HeapTypes = {
     D3D12_HEAP_TYPE_DEFAULT, // DEVICE
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_HEAP_TYPE_GPU_UPLOAD, // DEVICE_UPLOAD (Prerequisite: D3D12_FEATURE_D3D12_OPTIONS16)
@@ -207,12 +219,13 @@ constexpr std::array<D3D12_HEAP_TYPE, (size_t)MemoryLocation::MAX_NUM> HEAP_TYPE
     D3D12_HEAP_TYPE_UPLOAD,   // HOST_UPLOAD
     D3D12_HEAP_TYPE_READBACK, // HOST_READBACK
 };
+VALIDATE_ARRAY(g_HeapTypes);
 
 D3D12_HEAP_TYPE nri::GetHeapType(MemoryLocation memoryLocation) {
-    return HEAP_TYPES[(size_t)memoryLocation];
+    return g_HeapTypes[(size_t)memoryLocation];
 }
 
-constexpr std::array<D3D12_SHADING_RATE, (size_t)ShadingRate::MAX_NUM> SHADING_RATES = {
+constexpr std::array<D3D12_SHADING_RATE, (size_t)ShadingRate::MAX_NUM> g_ShadingRates = {
     D3D12_SHADING_RATE_1X1, // FRAGMENT_SIZE_1X1,
     D3D12_SHADING_RATE_1X2, // FRAGMENT_SIZE_1X2,
     D3D12_SHADING_RATE_2X1, // FRAGMENT_SIZE_2X1,
@@ -221,21 +234,23 @@ constexpr std::array<D3D12_SHADING_RATE, (size_t)ShadingRate::MAX_NUM> SHADING_R
     D3D12_SHADING_RATE_4X2, // FRAGMENT_SIZE_4X2,
     D3D12_SHADING_RATE_4X4, // FRAGMENT_SIZE_4X4
 };
+VALIDATE_ARRAY(g_ShadingRates);
 
 D3D12_SHADING_RATE nri::GetShadingRate(ShadingRate shadingRate) {
-    return SHADING_RATES[(size_t)shadingRate];
+    return g_ShadingRates[(size_t)shadingRate];
 }
 
-constexpr std::array<D3D12_SHADING_RATE_COMBINER, (size_t)ShadingRate::MAX_NUM> SHADING_RATE_COMBINERS = {
+constexpr std::array<D3D12_SHADING_RATE_COMBINER, (size_t)ShadingRateCombiner::MAX_NUM> g_ShadingRateCombiners = {
     D3D12_SHADING_RATE_COMBINER_OVERRIDE,    // REPLACE,
     D3D12_SHADING_RATE_COMBINER_PASSTHROUGH, // KEEP,
     D3D12_SHADING_RATE_COMBINER_MIN,         // MIN,
     D3D12_SHADING_RATE_COMBINER_MAX,         // MAX,
     D3D12_SHADING_RATE_COMBINER_SUM,         // SUM,
 };
+VALIDATE_ARRAY(g_ShadingRateCombiners);
 
 D3D12_SHADING_RATE_COMBINER nri::GetShadingRateCombiner(ShadingRateCombiner shadingRateCombiner) {
-    return SHADING_RATE_COMBINERS[(size_t)shadingRateCombiner];
+    return g_ShadingRateCombiners[(size_t)shadingRateCombiner];
 }
 
 UINT8 nri::GetRenderTargetWriteMask(ColorWriteBits colorWriteMask) {

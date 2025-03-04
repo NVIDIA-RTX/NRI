@@ -101,7 +101,7 @@ inline DeviceVal& GetDeviceVal(T& object) {
 
 uint64_t GetMemorySizeD3D12(const MemoryD3D12Desc& memoryD3D12Desc);
 
-constexpr std::array<const char*, (size_t)nri::DescriptorType::MAX_NUM> DESCRIPTOR_TYPE_NAME = {
+constexpr std::array<const char*, (size_t)nri::DescriptorType::MAX_NUM> g_descriptorTypeNames = {
     "SAMPLER",                   // SAMPLER,
     "CONSTANT_BUFFER",           // CONSTANT_BUFFER,
     "TEXTURE",                   // TEXTURE,
@@ -112,9 +112,10 @@ constexpr std::array<const char*, (size_t)nri::DescriptorType::MAX_NUM> DESCRIPT
     "STORAGE_STRUCTURED_BUFFER", // STORAGE_STRUCTURED_BUFFER,
     "ACCELERATION_STRUCTURE",    // ACCELERATION_STRUCTURE
 };
+VALIDATE_ARRAY_BY_PTR(g_descriptorTypeNames);
 
 constexpr const char* GetDescriptorTypeName(nri::DescriptorType descriptorType) {
-    return DESCRIPTOR_TYPE_NAME[(uint32_t)descriptorType];
+    return g_descriptorTypeNames[(uint32_t)descriptorType];
 }
 
 constexpr bool IsAccessMaskSupported(BufferUsageBits usage, AccessBits accessMask) {

@@ -2,7 +2,7 @@
 
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
 
-constexpr std::array<DxgiFormat, (size_t)nri::Format::MAX_NUM> DXGI_FORMAT_TABLE = {{
+constexpr std::array<DxgiFormat, (size_t)nri::Format::MAX_NUM> g_dxgiFormats = {{
     {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN},                            // UNKNOWN
     {DXGI_FORMAT_R8_TYPELESS, DXGI_FORMAT_R8_UNORM},                       // R8_UNORM
     {DXGI_FORMAT_R8_TYPELESS, DXGI_FORMAT_R8_SNORM},                       // R8_SNORM
@@ -76,9 +76,10 @@ constexpr std::array<DxgiFormat, (size_t)nri::Format::MAX_NUM> DXGI_FORMAT_TABLE
     {DXGI_FORMAT_R32G8X24_TYPELESS, DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS}, // R32_SFLOAT_X8_X24
     {DXGI_FORMAT_R32G8X24_TYPELESS, DXGI_FORMAT_X32_TYPELESS_G8X24_UINT},  // X32_G8_UINT_X24
 }};
+VALIDATE_ARRAY_BY_FILED(g_dxgiFormats, typeless);
 
 const DxgiFormat& GetDxgiFormat(nri::Format format) {
-    return DXGI_FORMAT_TABLE[(size_t)format];
+    return g_dxgiFormats[(size_t)format];
 }
 
 nri::Result GetResultFromHRESULT(long result) {
@@ -101,7 +102,7 @@ nri::Result GetResultFromHRESULT(long result) {
 }
 
 uint32_t NRIFormatToDXGIFormat(nri::Format format) {
-    return DXGI_FORMAT_TABLE[(size_t)format].typed;
+    return g_dxgiFormats[(size_t)format].typed;
 }
 
 // Returns true if this is an integrated display panel e.g. the screen attached to tablets or laptops
@@ -405,7 +406,7 @@ uint32_t NRIFormatToDXGIFormat(nri::Format) {
 #define _ 0
 #define X 1
 
-constexpr std::array<nri::FormatProps, (size_t)nri::Format::MAX_NUM> FORMAT_PROPS = {{
+constexpr std::array<nri::FormatProps, (size_t)nri::Format::MAX_NUM> g_formatProps = {{
     //                                                                                                                  isStencil
     //                                                                                                                  isSrgb  |
     //                                                                                                             isSigned  |  |
@@ -513,6 +514,7 @@ constexpr std::array<nri::FormatProps, (size_t)nri::Format::MAX_NUM> FORMAT_PROP
     {"R32_SFLOAT_X8_X24",       nri::Format::R32_SFLOAT_X8_X24,         32, 8,  0,  0,  8,  1, 1, _, _, X, _, X, _, _, _, X, _, _}, // R32_SFLOAT_X8_X24
     {"X32_G8_UINT_X24",         nri::Format::X32_G8_UINT_X24,           32, 8,  0,  0,  8,  1, 1, _, _, _, _, _, _, X, _, _, _, X}, // X32_G8_UINT_X24
 }};
+VALIDATE_ARRAY_BY_FILED(g_formatProps, name);
 
 #undef _
 #undef X
@@ -520,7 +522,7 @@ constexpr std::array<nri::FormatProps, (size_t)nri::Format::MAX_NUM> FORMAT_PROP
 // clang-format on
 
 const nri::FormatProps& GetFormatProps(nri::Format format) {
-    return FORMAT_PROPS[(size_t)format];
+    return g_formatProps[(size_t)format];
 }
 
 constexpr std::array<nri::Format, 116> NRI_FORMAT_TABLE = {
@@ -792,16 +794,17 @@ nri::Format VKFormatToNRIFormat(uint32_t format) {
     return nri::Format::UNKNOWN;
 }
 
-constexpr std::array<const char*, (size_t)nri::Message::MAX_NUM> MESSAGE_TYPE_NAME = {
+constexpr std::array<const char*, (size_t)nri::Message::MAX_NUM> g_messageTypes = {
     "INFO",    // INFO,
     "WARNING", // WARNING,
     "ERROR",   // ERROR
 };
+VALIDATE_ARRAY_BY_PTR(g_messageTypes);
 
 static void MessageCallback(nri::Message messageType, const char* file, uint32_t line, const char* message, void* userArg) {
     MaybeUnused(userArg);
 
-    const char* messageTypeName = MESSAGE_TYPE_NAME[(size_t)messageType];
+    const char* messageTypeName = g_messageTypes[(size_t)messageType];
 
     char buf[MAX_MESSAGE_LENGTH];
     snprintf(buf, sizeof(buf), "nri::%s (%s:%u) - %s\n", messageTypeName, file, line, message);

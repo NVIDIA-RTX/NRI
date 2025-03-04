@@ -36,6 +36,7 @@ constexpr std::array<DescriptorTypeDX11, (size_t)DescriptorType::MAX_NUM> g_Rema
     DescriptorTypeDX11::STORAGE,  // STORAGE_STRUCTURED_BUFFER
     DescriptorTypeDX11::RESOURCE, // ACCELERATION_STRUCTURE
 };
+VALIDATE_ARRAY(g_RemapDescriptorTypeToIndex);
 
 constexpr DescriptorTypeDX11 GetDescriptorTypeIndex(DescriptorType type) {
     return g_RemapDescriptorTypeToIndex[(uint32_t)type];

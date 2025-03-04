@@ -144,7 +144,7 @@ static bool WriteAccelerationStructures(const DescriptorRangeDesc& rangeDesc, co
 
 typedef bool (*WriteDescriptorsFunc)(const DescriptorRangeDesc& rangeDesc, const DescriptorRangeUpdateDesc& update, uint32_t& descriptorOffset, VkWriteDescriptorSet& write, SlabAllocator& slab);
 
-constexpr std::array<WriteDescriptorsFunc, (size_t)DescriptorType::MAX_NUM> WRITE_FUNCS = {
+constexpr std::array<WriteDescriptorsFunc, (size_t)DescriptorType::MAX_NUM> g_WriteFuncs = {
     (WriteDescriptorsFunc)&WriteSamplers,               // SAMPLER
     (WriteDescriptorsFunc)&WriteBuffers,                // CONSTANT_BUFFER
     (WriteDescriptorsFunc)&WriteTextures,               // TEXTURE
@@ -155,6 +155,7 @@ constexpr std::array<WriteDescriptorsFunc, (size_t)DescriptorType::MAX_NUM> WRIT
     (WriteDescriptorsFunc)&WriteBuffers,                // STORAGE_STRUCTURED_BUFFER
     (WriteDescriptorsFunc)&WriteAccelerationStructures, // ACCELERATION_STRUCTURE
 };
+VALIDATE_ARRAY_BY_PTR(g_WriteFuncs);
 
 void DescriptorSetVK::Create(VkDescriptorSet handle, const DescriptorSetDesc& setDesc) {
     m_Desc = &setDesc;
@@ -204,7 +205,7 @@ NRI_INLINE void DescriptorSetVK::UpdateDescriptorRanges(uint32_t rangeOffset, ui
             }
 
             const uint32_t index = (uint32_t)rangeDesc.descriptorType;
-            slabHasFreeSpace = WRITE_FUNCS[index](rangeDesc, update, descriptorOffset, write, slab);
+            slabHasFreeSpace = g_WriteFuncs[index](rangeDesc, update, descriptorOffset, write, slab);
 
             j += (descriptorOffset == update.descriptorNum) ? 1 : 0;
             descriptorOffset = (descriptorOffset == update.descriptorNum) ? 0 : descriptorOffset;
