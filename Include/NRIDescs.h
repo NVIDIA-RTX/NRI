@@ -111,17 +111,17 @@ NriEnum(Format, uint8_t,
     R8_UINT,                             // +  +  +  -  -  -  +  +  +  - // SHADING_RATE compatible, see NRI_SHADING_RATE macro
     R8_SINT,                             // +  +  +  -  -  -  +  +  +  -
 
-    RG8_UNORM,                           // +  +  +  -  +  -  +  +  +  -
-    RG8_SNORM,                           // +  +  +  -  +  -  +  +  +  -
+    RG8_UNORM,                           // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "rayTracingTier >= 2")
+    RG8_SNORM,                           // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "rayTracingTier >= 2")
     RG8_UINT,                            // +  +  +  -  -  -  +  +  +  -
     RG8_SINT,                            // +  +  +  -  -  -  +  +  +  -
 
     BGRA8_UNORM,                         // +  +  +  -  +  -  +  +  +  -
     BGRA8_SRGB,                          // +  -  +  -  +  -  -  -  -  -
 
-    RGBA8_UNORM,                         // +  +  +  -  +  -  +  +  +  -
+    RGBA8_UNORM,                         // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "rayTracingTier >= 2")
     RGBA8_SRGB,                          // +  -  +  -  +  -  -  -  -  -
-    RGBA8_SNORM,                         // +  +  +  -  +  -  +  +  +  -
+    RGBA8_SNORM,                         // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "rayTracingTier >= 2")
     RGBA8_UINT,                          // +  +  +  -  -  -  +  +  +  -
     RGBA8_SINT,                          // +  +  +  -  -  -  +  +  +  -
 
@@ -132,17 +132,17 @@ NriEnum(Format, uint8_t,
     R16_SINT,                            // +  +  +  -  -  -  +  +  +  -
     R16_SFLOAT,                          // +  +  +  -  +  -  +  +  +  -
 
-    RG16_UNORM,                          // +  +  +  -  +  -  +  +  +  -
-    RG16_SNORM,                          // +  +  +  -  +  -  +  +  +  -
+    RG16_UNORM,                          // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "rayTracingTier >= 2")
+    RG16_SNORM,                          // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible
     RG16_UINT,                           // +  +  +  -  -  -  +  +  +  -
     RG16_SINT,                           // +  +  +  -  -  -  +  +  +  -
-    RG16_SFLOAT,                         // +  +  +  -  +  -  +  +  +  -
+    RG16_SFLOAT,                         // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible
 
-    RGBA16_UNORM,                        // +  +  +  -  +  -  +  +  +  -
-    RGBA16_SNORM,                        // +  +  +  -  +  -  +  +  +  -
+    RGBA16_UNORM,                        // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "rayTracingTier >= 2")
+    RGBA16_SNORM,                        // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible
     RGBA16_UINT,                         // +  +  +  -  -  -  +  +  +  -
     RGBA16_SINT,                         // +  +  +  -  -  -  +  +  +  -
-    RGBA16_SFLOAT,                       // +  +  +  -  +  -  +  +  +  -
+    RGBA16_SFLOAT,                       // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible
 
     // Plain: 32 bits per channel
     R32_UINT,                            // +  +  +  -  -  +  +  +  +  +
@@ -151,11 +151,11 @@ NriEnum(Format, uint8_t,
 
     RG32_UINT,                           // +  +  +  -  -  -  +  +  +  -
     RG32_SINT,                           // +  +  +  -  -  -  +  +  +  -
-    RG32_SFLOAT,                         // +  +  +  -  +  -  +  +  +  -
+    RG32_SFLOAT,                         // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible
 
     RGB32_UINT,                          // +  -  -  -  -  -  +  -  +  -
     RGB32_SINT,                          // +  -  -  -  -  -  +  -  +  -
-    RGB32_SFLOAT,                        // +  -  -  -  -  -  +  -  +  -
+    RGB32_SFLOAT,                        // +  -  -  -  -  -  +  -  +  - // ACCELERATION_STRUCTURE compatible
 
     RGBA32_UINT,                         // +  +  +  -  -  -  +  +  +  -
     RGBA32_SINT,                         // +  +  +  -  -  -  +  +  +  -
@@ -167,7 +167,7 @@ NriEnum(Format, uint8_t,
     B4_G4_R4_A4_UNORM,                   // +  -  +  -  +  -  -  -  -  -
 
     // Packed: 32 bits per pixel
-    R10_G10_B10_A2_UNORM,                // +  +  +  -  +  -  +  +  +  -
+    R10_G10_B10_A2_UNORM,                // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "rayTracingTier >= 2")
     R10_G10_B10_A2_UINT,                 // +  +  +  -  -  -  +  +  +  -
     R11_G11_B10_UFLOAT,                  // +  +  +  -  +  -  +  +  +  -
     R9_G9_B9_E5_UFLOAT,                  // +  -  -  -  -  -  -  -  -  -
@@ -262,7 +262,7 @@ NriBits(StageBits, uint32_t,
     RESOLVE                         = NriBit(20), // Invoked by "CmdResolveTexture"
 
     // Modifiers
-    INDIRECT                        = NriBit(21), // Invoked by "Indirect" command (used in addition to other bits)
+    INDIRECT                        = NriBit(21), // Invoked by "Indirect" commands (used in addition to other bits)
 
     // Umbrella stages
     TESSELLATION_SHADERS            = NriMember(StageBits, TESS_CONTROL_SHADER) |
@@ -427,29 +427,27 @@ NriEnum(DescriptorType, uint8_t,
     ACCELERATION_STRUCTURE
 );
 
-NriBits(TextureUsageBits, uint8_t,
+NriBits(TextureUsageBits, uint8_t,               // Min compatible access:                  Usage:
     NONE                                = 0,
-    SHADER_RESOURCE                     = NriBit(0),
-    SHADER_RESOURCE_STORAGE             = NriBit(1),
-    COLOR_ATTACHMENT                    = NriBit(2),
-    DEPTH_STENCIL_ATTACHMENT            = NriBit(3),
-    SHADING_RATE_ATTACHMENT             = NriBit(4)
+    SHADER_RESOURCE                     = NriBit(0), // SHADER_RESOURCE                         Read-only shader resource (SRV)
+    SHADER_RESOURCE_STORAGE             = NriBit(1), // SHADER_RESOURCE_STORAGE                 Read/write shader resource (UAV)
+    COLOR_ATTACHMENT                    = NriBit(2), // COLOR_ATTACHMENT                        Color attachment (render target)
+    DEPTH_STENCIL_ATTACHMENT            = NriBit(3), // DEPTH_STENCIL_ATTACHMENT_READ/WRITE     Depth-stencil attachment (depth-stencil target)
+    SHADING_RATE_ATTACHMENT             = NriBit(4)  // SHADING_RATE_ATTACHMENT                 Shading rate attachment (source)
 );
 
-NriBits(BufferUsageBits, uint16_t,
+NriBits(BufferUsageBits, uint16_t,               // Min compatible access:                  Usage:
     NONE                                = 0,
-    SHADER_RESOURCE                     = NriBit(0),
-    SHADER_RESOURCE_STORAGE             = NriBit(1),
-    VERTEX_BUFFER                       = NriBit(2),
-    INDEX_BUFFER                        = NriBit(3),
-    CONSTANT_BUFFER                     = NriBit(4),
-    ARGUMENT_BUFFER                     = NriBit(5),
-
-    // Ray tracing
-    SCRATCH_BUFFER                      = NriBit(6),
-    SHADER_BINDING_TABLE                = NriBit(7),
-    ACCELERATION_STRUCTURE_BUILD_INPUT  = NriBit(8), // read-only input for an acceleration structure build or update
-    ACCELERATION_STRUCTURE_STORAGE      = NriBit(9)  // (INTERNAL) acceleration structure storage
+    SHADER_RESOURCE                     = NriBit(0), // SHADER_RESOURCE                         Read-only shader resource (SRV)
+    SHADER_RESOURCE_STORAGE             = NriBit(1), // SHADER_RESOURCE_STORAGE                 Read/write shader resource (UAV)
+    VERTEX_BUFFER                       = NriBit(2), // VERTEX_BUFFER                           Vertex buffer
+    INDEX_BUFFER                        = NriBit(3), // INDEX_BUFFER                            Index buffer
+    CONSTANT_BUFFER                     = NriBit(4), // CONSTANT_BUFFER                         Constant buffer
+    ARGUMENT_BUFFER                     = NriBit(5), // ARGUMENT_BUFFER                         Argument buffer in "Indirect" commands
+    SCRATCH_BUFFER                      = NriBit(6), // SCRATCH_BUFFER                          Scratch buffer in "Cmd[Build/Update]*AccelerationStructure" commands
+    SHADER_BINDING_TABLE                = NriBit(7), // SHADER_RESOURCE                         Shader binding table (SBT) in "CmdDispatchRays*" commands
+    ACCELERATION_STRUCTURE_BUILD_INPUT  = NriBit(8), // SHADER_RESOURCE                         Read-only input in "Cmd[Build/Update]*AccelerationStructure" commands
+    ACCELERATION_STRUCTURE_STORAGE      = NriBit(9)  // ACCELERATION_STRUCTURE_READ/WRITE       (INTERNAL) acceleration structure storage
 );
 
 // Resources
@@ -1048,30 +1046,45 @@ NriStruct(ComputePipelineDesc) {
 //============================================================================================================================================================================================
 
 // If AgilitySDK is not available, "UNKNOWN" will be silently mapped to "COMMON", leading to discrepancies with VK
-NriBits(AccessBits, uint16_t,                       // Compatible "StageBits" (including ALL):
+NriBits(AccessBits, uint32_t,                 // Compatible "StageBits" (including ALL):
     UNKNOWN                         = 0,
-    INDEX_BUFFER                    = NriBit(0),    // INDEX_INPUT
-    VERTEX_BUFFER                   = NriBit(1),    // VERTEX_SHADER
-    CONSTANT_BUFFER                 = NriBit(2),    // GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
-    SHADER_RESOURCE                 = NriBit(3),    // GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
-    SHADER_RESOURCE_STORAGE         = NriBit(4),    // GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS, CLEAR_STORAGE
-    ARGUMENT_BUFFER                 = NriBit(5),    // INDIRECT
-    COLOR_ATTACHMENT                = NriBit(6),    // COLOR_ATTACHMENT
-    DEPTH_STENCIL_ATTACHMENT_WRITE  = NriBit(7),    // DEPTH_STENCIL_ATTACHMENT
-    DEPTH_STENCIL_ATTACHMENT_READ   = NriBit(8),    // DEPTH_STENCIL_ATTACHMENT
-    COPY_SOURCE                     = NriBit(9),    // COPY
-    COPY_DESTINATION                = NriBit(10),   // COPY
-    RESOLVE_SOURCE                  = NriBit(11),   // RESOLVE
-    RESOLVE_DESTINATION             = NriBit(12),   // RESOLVE
-    ACCELERATION_STRUCTURE_READ     = NriBit(13),   // COMPUTE_SHADER, RAY_TRACING_SHADERS, ACCELERATION_STRUCTURE
-    ACCELERATION_STRUCTURE_WRITE    = NriBit(14),   // COMPUTE_SHADER, RAY_TRACING_SHADERS, ACCELERATION_STRUCTURE
-    SHADING_RATE_ATTACHMENT         = NriBit(15)    // FRAGMENT_SHADER
+    
+    // Buffer
+    INDEX_BUFFER                    = NriBit(0),  // INDEX_INPUT
+    VERTEX_BUFFER                   = NriBit(1),  // VERTEX_SHADER
+    CONSTANT_BUFFER                 = NriBit(2),  // GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
+    ARGUMENT_BUFFER                 = NriBit(3),  // INDIRECT
+    SCRATCH_BUFFER                  = NriBit(4),  // ACCELERATION_STRUCTURE
+
+    // Attachment
+    COLOR_ATTACHMENT                = NriBit(5),  // COLOR_ATTACHMENT
+    SHADING_RATE_ATTACHMENT         = NriBit(6),  // FRAGMENT_SHADER
+    DEPTH_STENCIL_ATTACHMENT_READ   = NriBit(7),  // DEPTH_STENCIL_ATTACHMENT
+    DEPTH_STENCIL_ATTACHMENT_WRITE  = NriBit(8),  // DEPTH_STENCIL_ATTACHMENT
+
+    // Acceleration structure
+    ACCELERATION_STRUCTURE_READ     = NriBit(9),  // COMPUTE_SHADER, RAY_TRACING_SHADERS, ACCELERATION_STRUCTURE
+    ACCELERATION_STRUCTURE_WRITE    = NriBit(10), // COMPUTE_SHADER, RAY_TRACING_SHADERS, ACCELERATION_STRUCTURE
+
+    // Shader resource
+    SHADER_RESOURCE                 = NriBit(11), // GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
+    SHADER_RESOURCE_STORAGE         = NriBit(12), // GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS, CLEAR_STORAGE
+
+    // Copy
+    COPY_SOURCE                     = NriBit(13), // COPY
+    COPY_DESTINATION                = NriBit(14), // COPY
+
+    // Resolve
+    RESOLVE_SOURCE                  = NriBit(15), // RESOLVE
+    RESOLVE_DESTINATION             = NriBit(16)  // RESOLVE
 );
 
 // Not used if "isEnchancedBarrierSupported" is "false", i.e. no AgilitySDK
-NriEnum(Layout, uint8_t,        // Compatible "AccessBits":
+NriEnum(Layout, uint8_t,    // Compatible "AccessBits":
     UNKNOWN,
+    PRESENT,                    // UNKNOWN
     COLOR_ATTACHMENT,           // COLOR_ATTACHMENT
+    SHADING_RATE_ATTACHMENT,    // SHADING_RATE_ATTACHMENT
     DEPTH_STENCIL_ATTACHMENT,   // DEPTH_STENCIL_ATTACHMENT_WRITE
     DEPTH_STENCIL_READONLY,     // DEPTH_STENCIL_ATTACHMENT_READ, SHADER_RESOURCE
     SHADER_RESOURCE,            // SHADER_RESOURCE
@@ -1079,9 +1092,7 @@ NriEnum(Layout, uint8_t,        // Compatible "AccessBits":
     COPY_SOURCE,                // COPY_SOURCE
     COPY_DESTINATION,           // COPY_DESTINATION
     RESOLVE_SOURCE,             // RESOLVE_SOURCE
-    RESOLVE_DESTINATION,        // RESOLVE_DESTINATION
-    PRESENT,                    // UNKNOWN
-    SHADING_RATE_ATTACHMENT     // SHADING_RATE_ATTACHMENT
+    RESOLVE_DESTINATION         // RESOLVE_DESTINATION
 );
 
 NriStruct(AccessStage) {

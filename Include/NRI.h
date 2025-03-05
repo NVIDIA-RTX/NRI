@@ -25,8 +25,8 @@ Non-goals (exceptions apply to helper interfaces, where high-level abstraction a
 #pragma once
 
 #define NRI_VERSION_MAJOR 1
-#define NRI_VERSION_MINOR 164
-#define NRI_VERSION_DATE "3 March 2025"
+#define NRI_VERSION_MINOR 165
+#define NRI_VERSION_DATE "4 March 2025"
 
 #include "NRIDescs.h"
 

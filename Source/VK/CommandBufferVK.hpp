@@ -724,11 +724,11 @@ NRI_INLINE void CommandBufferVK::DispatchIndirect(const Buffer& buffer, uint64_t
 static inline VkAccessFlags2 GetAccessFlags(AccessBits accessBits) {
     VkAccessFlags2 flags = 0;
 
-    if (accessBits & AccessBits::VERTEX_BUFFER)
-        flags |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
-
     if (accessBits & AccessBits::INDEX_BUFFER)
         flags |= VK_ACCESS_2_INDEX_READ_BIT;
+
+    if (accessBits & AccessBits::VERTEX_BUFFER)
+        flags |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
 
     if (accessBits & AccessBits::CONSTANT_BUFFER)
         flags |= VK_ACCESS_2_UNIFORM_READ_BIT;
@@ -736,26 +736,20 @@ static inline VkAccessFlags2 GetAccessFlags(AccessBits accessBits) {
     if (accessBits & AccessBits::ARGUMENT_BUFFER)
         flags |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
 
-    if (accessBits & AccessBits::SHADER_RESOURCE)
-        flags |= VK_ACCESS_2_SHADER_READ_BIT;
-
-    if (accessBits & AccessBits::SHADER_RESOURCE_STORAGE)
-        flags |= VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+    if (accessBits & AccessBits::SCRATCH_BUFFER)
+        flags |= VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
 
     if (accessBits & AccessBits::COLOR_ATTACHMENT)
         flags |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
 
-    if (accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE)
-        flags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    if (accessBits & AccessBits::SHADING_RATE_ATTACHMENT)
+        flags |= VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
 
     if (accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_READ)
         flags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 
-    if (accessBits & (AccessBits::COPY_SOURCE | AccessBits::RESOLVE_SOURCE))
-        flags |= VK_ACCESS_2_TRANSFER_READ_BIT;
-
-    if (accessBits & (AccessBits::COPY_DESTINATION | AccessBits::RESOLVE_DESTINATION))
-        flags |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
+    if (accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE)
+        flags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
     if (accessBits & AccessBits::ACCELERATION_STRUCTURE_READ)
         flags |= VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
@@ -763,8 +757,17 @@ static inline VkAccessFlags2 GetAccessFlags(AccessBits accessBits) {
     if (accessBits & AccessBits::ACCELERATION_STRUCTURE_WRITE)
         flags |= VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
 
-    if (accessBits & AccessBits::SHADING_RATE_ATTACHMENT)
-        flags |= VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
+    if (accessBits & AccessBits::SHADER_RESOURCE)
+        flags |= VK_ACCESS_2_SHADER_READ_BIT;
+
+    if (accessBits & AccessBits::SHADER_RESOURCE_STORAGE)
+        flags |= VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+
+    if (accessBits & (AccessBits::COPY_SOURCE | AccessBits::RESOLVE_SOURCE))
+        flags |= VK_ACCESS_2_TRANSFER_READ_BIT;
+
+    if (accessBits & (AccessBits::COPY_DESTINATION | AccessBits::RESOLVE_DESTINATION))
+        flags |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
 
     return flags;
 }

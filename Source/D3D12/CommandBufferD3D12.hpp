@@ -86,11 +86,11 @@ static inline D3D12_BARRIER_ACCESS GetBarrierAccessFlags(AccessBits accessBits) 
 
     D3D12_BARRIER_ACCESS flags = D3D12_BARRIER_ACCESS_COMMON; // = 0
 
-    if (accessBits & AccessBits::VERTEX_BUFFER)
-        flags |= D3D12_BARRIER_ACCESS_VERTEX_BUFFER;
-
     if (accessBits & AccessBits::INDEX_BUFFER)
         flags |= D3D12_BARRIER_ACCESS_INDEX_BUFFER;
+
+    if (accessBits & AccessBits::VERTEX_BUFFER)
+        flags |= D3D12_BARRIER_ACCESS_VERTEX_BUFFER;
 
     if (accessBits & AccessBits::CONSTANT_BUFFER)
         flags |= D3D12_BARRIER_ACCESS_CONSTANT_BUFFER;
@@ -98,20 +98,29 @@ static inline D3D12_BARRIER_ACCESS GetBarrierAccessFlags(AccessBits accessBits) 
     if (accessBits & AccessBits::ARGUMENT_BUFFER)
         flags |= D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT;
 
-    if (accessBits & AccessBits::SHADER_RESOURCE)
-        flags |= D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
-
-    if (accessBits & AccessBits::SHADER_RESOURCE_STORAGE)
-        flags |= D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
-
     if (accessBits & AccessBits::COLOR_ATTACHMENT)
         flags |= D3D12_BARRIER_ACCESS_RENDER_TARGET;
+
+    if (accessBits & AccessBits::SHADING_RATE_ATTACHMENT)
+        flags |= D3D12_BARRIER_ACCESS_SHADING_RATE_SOURCE;
 
     if (accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE)
         flags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
 
     if (accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_READ)
         flags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
+
+    if (accessBits & AccessBits::ACCELERATION_STRUCTURE_READ)
+        flags |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
+
+    if (accessBits & AccessBits::ACCELERATION_STRUCTURE_WRITE)
+        flags |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
+
+    if (accessBits & AccessBits::SHADER_RESOURCE)
+        flags |= D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
+
+    if (accessBits & (AccessBits::SHADER_RESOURCE_STORAGE | AccessBits::SCRATCH_BUFFER))
+        flags |= D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
 
     if (accessBits & AccessBits::COPY_SOURCE)
         flags |= D3D12_BARRIER_ACCESS_COPY_SOURCE;
@@ -125,21 +134,14 @@ static inline D3D12_BARRIER_ACCESS GetBarrierAccessFlags(AccessBits accessBits) 
     if (accessBits & AccessBits::RESOLVE_DESTINATION)
         flags |= D3D12_BARRIER_ACCESS_RESOLVE_DEST;
 
-    if (accessBits & AccessBits::ACCELERATION_STRUCTURE_READ)
-        flags |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
-
-    if (accessBits & AccessBits::ACCELERATION_STRUCTURE_WRITE)
-        flags |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
-
-    if (accessBits & AccessBits::SHADING_RATE_ATTACHMENT)
-        flags |= D3D12_BARRIER_ACCESS_SHADING_RATE_SOURCE;
-
     return flags;
 }
 
 constexpr std::array<D3D12_BARRIER_LAYOUT, (size_t)Layout::MAX_NUM> g_BarrierLayouts = {
     D3D12_BARRIER_LAYOUT_UNDEFINED,           // UNKNOWN
+    D3D12_BARRIER_LAYOUT_PRESENT,             // PRESENT
     D3D12_BARRIER_LAYOUT_RENDER_TARGET,       // COLOR_ATTACHMENT
+    D3D12_BARRIER_LAYOUT_SHADING_RATE_SOURCE, // SHADING_RATE_ATTACHMENT
     D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE, // DEPTH_STENCIL_ATTACHMENT
     D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ,  // DEPTH_STENCIL_READONLY
     D3D12_BARRIER_LAYOUT_SHADER_RESOURCE,     // SHADER_RESOURCE
@@ -148,8 +150,6 @@ constexpr std::array<D3D12_BARRIER_LAYOUT, (size_t)Layout::MAX_NUM> g_BarrierLay
     D3D12_BARRIER_LAYOUT_COPY_DEST,           // COPY_DESTINATION
     D3D12_BARRIER_LAYOUT_RESOLVE_SOURCE,      // RESOLVE_SOURCE
     D3D12_BARRIER_LAYOUT_RESOLVE_DEST,        // RESOLVE_DESTINATION
-    D3D12_BARRIER_LAYOUT_PRESENT,             // PRESENT
-    D3D12_BARRIER_LAYOUT_SHADING_RATE_SOURCE, // SHADING_RATE_ATTACHMENT
 };
 VALIDATE_ARRAY(g_BarrierLayouts);
 
@@ -158,56 +158,57 @@ static inline D3D12_BARRIER_LAYOUT GetBarrierLayout(Layout layout) {
 }
 #endif
 
-static inline D3D12_RESOURCE_STATES GetResourceStates(AccessBits accessMask, D3D12_COMMAND_LIST_TYPE commandListType) {
+static inline D3D12_RESOURCE_STATES GetResourceStates(AccessBits accessBits, D3D12_COMMAND_LIST_TYPE commandListType) {
     D3D12_RESOURCE_STATES resourceStates = D3D12_RESOURCE_STATE_COMMON;
 
-    if (accessMask & (AccessBits::CONSTANT_BUFFER | AccessBits::VERTEX_BUFFER))
-        resourceStates |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-
-    if (accessMask & AccessBits::INDEX_BUFFER)
+    if (accessBits & AccessBits::INDEX_BUFFER)
         resourceStates |= D3D12_RESOURCE_STATE_INDEX_BUFFER;
 
-    if (accessMask & AccessBits::ARGUMENT_BUFFER)
+    if (accessBits & (AccessBits::CONSTANT_BUFFER | AccessBits::VERTEX_BUFFER))
+        resourceStates |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+
+    if (accessBits & AccessBits::ARGUMENT_BUFFER)
         resourceStates |= D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
 
-    if (accessMask & AccessBits::SHADER_RESOURCE_STORAGE)
-        resourceStates |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-
-    if (accessMask & AccessBits::COLOR_ATTACHMENT)
+    if (accessBits & AccessBits::COLOR_ATTACHMENT)
         resourceStates |= D3D12_RESOURCE_STATE_RENDER_TARGET;
 
-    if (accessMask & AccessBits::DEPTH_STENCIL_ATTACHMENT_READ)
+    if (accessBits & AccessBits::SHADING_RATE_ATTACHMENT)
+        resourceStates |= D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE;
+
+    if (accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_READ)
         resourceStates |= D3D12_RESOURCE_STATE_DEPTH_READ;
 
-    if (accessMask & AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE)
+    if (accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE)
         resourceStates |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
-    if (accessMask & AccessBits::COPY_SOURCE)
-        resourceStates |= D3D12_RESOURCE_STATE_COPY_SOURCE;
+    if (accessBits & AccessBits::ACCELERATION_STRUCTURE_READ)
+        resourceStates |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
 
-    if (accessMask & AccessBits::COPY_DESTINATION)
-        resourceStates |= D3D12_RESOURCE_STATE_COPY_DEST;
+    if (accessBits & AccessBits::ACCELERATION_STRUCTURE_WRITE)
+        resourceStates |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
-    if (accessMask & AccessBits::RESOLVE_SOURCE)
-        resourceStates |= D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
-
-    if (accessMask & AccessBits::RESOLVE_DESTINATION)
-        resourceStates |= D3D12_RESOURCE_STATE_RESOLVE_DEST;
-
-    if (accessMask & AccessBits::SHADER_RESOURCE) {
+    if (accessBits & AccessBits::SHADER_RESOURCE) {
         resourceStates |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
         if (commandListType == D3D12_COMMAND_LIST_TYPE_DIRECT)
             resourceStates |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
     }
 
-    if (accessMask & AccessBits::ACCELERATION_STRUCTURE_READ)
-        resourceStates |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
-
-    if (accessMask & AccessBits::ACCELERATION_STRUCTURE_WRITE)
+    if (accessBits & (AccessBits::SHADER_RESOURCE_STORAGE | AccessBits::SCRATCH_BUFFER))
         resourceStates |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
-    if (accessMask & AccessBits::SHADING_RATE_ATTACHMENT)
-        resourceStates |= D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE;
+    if (accessBits & AccessBits::COPY_SOURCE)
+        resourceStates |= D3D12_RESOURCE_STATE_COPY_SOURCE;
+
+    if (accessBits & AccessBits::COPY_DESTINATION)
+        resourceStates |= D3D12_RESOURCE_STATE_COPY_DEST;
+
+    if (accessBits & AccessBits::RESOLVE_SOURCE)
+        resourceStates |= D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+
+    if (accessBits & AccessBits::RESOLVE_DESTINATION)
+        resourceStates |= D3D12_RESOURCE_STATE_RESOLVE_DEST;
 
     return resourceStates;
 }

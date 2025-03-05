@@ -14,9 +14,11 @@ constexpr VkIndexType GetIndexType(IndexType indexType) {
     return g_IndexTypes[(size_t)indexType];
 }
 
-constexpr std::array<VkImageLayout, (size_t)Layout::MAX_NUM> g_Layouts = {
+constexpr std::array<VkImageLayout, (size_t)Layout::MAX_NUM> g_ImageLayouts = {
     VK_IMAGE_LAYOUT_UNDEFINED,                                    // UNKNOWN
+    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,                              // PRESENT
     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,                     // COLOR_ATTACHMENT
+    VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR, // SHADING_RATE_ATTACHMENT
     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,             // DEPTH_STENCIL_ATTACHMENT
     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,              // DEPTH_STENCIL_READONLY
     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                     // SHADER_RESOURCE
@@ -25,13 +27,11 @@ constexpr std::array<VkImageLayout, (size_t)Layout::MAX_NUM> g_Layouts = {
     IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,                            // COPY_DESTINATION
     IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,                            // RESOLVE_SOURCE
     IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,                            // RESOLVE_DESTINATION
-    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,                              // PRESENT
-    VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR, // SHADING_RATE_ATTACHMENT
 };
-VALIDATE_ARRAY(g_Layouts);
+VALIDATE_ARRAY(g_ImageLayouts);
 
 constexpr VkImageLayout GetImageLayout(Layout layout) {
-    return g_Layouts[(size_t)layout];
+    return g_ImageLayouts[(size_t)layout];
 }
 
 constexpr std::array<VkDescriptorType, (size_t)DescriptorType::MAX_NUM> g_DescriptorTypes = {
