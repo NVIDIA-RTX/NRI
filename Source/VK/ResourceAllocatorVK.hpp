@@ -39,7 +39,7 @@ Result DeviceVK::CreateVma() {
     vulkanFunctions.vkGetDeviceProcAddr = m_VK.GetDeviceProcAddr;
 
     VmaAllocatorCreateInfo allocatorCreateInfo = {};
-    allocatorCreateInfo.vulkanApiVersion = m_MinorVersion >= 3 ? VK_API_VERSION_1_3 : VK_API_VERSION_1_2;
+    allocatorCreateInfo.vulkanApiVersion = VK_MAKE_API_VERSION(0, 1, m_MinorVersion, 0);
     allocatorCreateInfo.physicalDevice = m_PhysicalDevice;
     allocatorCreateInfo.device = m_Device;
     allocatorCreateInfo.instance = m_Instance;

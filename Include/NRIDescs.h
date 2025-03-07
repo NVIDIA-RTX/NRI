@@ -1079,7 +1079,7 @@ NriBits(AccessBits, uint32_t,                 // Compatible "StageBits" (includi
     RESOLVE_DESTINATION             = NriBit(16)  // RESOLVE
 );
 
-// Not used if "isEnchancedBarrierSupported" is "false", i.e. no AgilitySDK
+// Not used if "isEnchancedBarrierSupported = false"
 NriEnum(Layout, uint8_t,    // Compatible "AccessBits":
     UNKNOWN,
     PRESENT,                    // UNKNOWN
@@ -1511,8 +1511,8 @@ NriStruct(DeviceDesc) {
     uint8_t bindlessTier;
 
     // Features
-    uint32_t isGetMemoryDesc2Supported : 1;             // D3D: always supported, VK: requires "maintenance4" support
-    uint32_t isEnchancedBarrierSupported : 1;           // aka can "Layout" be ignored?
+    uint32_t isGetMemoryDesc2Supported : 1;             // VK: requires "maintenance4", D3D: supported
+    uint32_t isEnchancedBarrierSupported : 1;           // VK: supported, D3D12: requires "AgilitySDK", D3D11: unsupported
     uint32_t isMemoryTier2Supported : 1;                // a memory object can support resources from all 3 categories (buffers, attachments, all other textures)
 
     uint32_t isIndependentFrontAndBackStencilReferenceAndMasksSupported : 1; // see "StencilAttachmentDesc::back"
