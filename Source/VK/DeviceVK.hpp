@@ -1,6 +1,6 @@
 // © 2021 NVIDIA Corporation
 
-constexpr VkBufferUsageFlags GetBufferUsageFlags(BufferUsageBits bufferUsageBits, uint32_t structureStride, bool isDeviceAddressSupported) {
+static constexpr VkBufferUsageFlags GetBufferUsageFlags(BufferUsageBits bufferUsageBits, uint32_t structureStride, bool isDeviceAddressSupported) {
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
     if (isDeviceAddressSupported)
@@ -39,7 +39,7 @@ constexpr VkBufferUsageFlags GetBufferUsageFlags(BufferUsageBits bufferUsageBits
     return flags;
 }
 
-constexpr VkImageUsageFlags GetImageUsageFlags(TextureUsageBits textureUsageBits) {
+static constexpr VkImageUsageFlags GetImageUsageFlags(TextureUsageBits textureUsageBits) {
     VkImageUsageFlags flags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
     if (textureUsageBits & TextureUsageBits::SHADER_RESOURCE)
@@ -60,7 +60,7 @@ constexpr VkImageUsageFlags GetImageUsageFlags(TextureUsageBits textureUsageBits
     return flags;
 }
 
-inline bool IsExtensionSupported(const char* ext, const Vector<VkExtensionProperties>& list) {
+static inline bool IsExtensionSupported(const char* ext, const Vector<VkExtensionProperties>& list) {
     for (auto& e : list) {
         if (!strcmp(ext, e.extensionName))
             return true;
@@ -69,7 +69,7 @@ inline bool IsExtensionSupported(const char* ext, const Vector<VkExtensionProper
     return false;
 }
 
-inline bool IsExtensionSupported(const char* ext, const Vector<const char*>& list) {
+static inline bool IsExtensionSupported(const char* ext, const Vector<const char*>& list) {
     for (auto& e : list) {
         if (!strcmp(ext, e))
             return true;
@@ -94,6 +94,25 @@ static void VKAPI_PTR vkFreeHostMemory(void* pUserData, void* pMemory) {
     const auto& allocationCallbacks = *(AllocationCallbacks*)pUserData;
 
     return allocationCallbacks.Free(allocationCallbacks.userArg, pMemory);
+}
+
+static VkBool32 VKAPI_PTR MessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT, const VkDebugUtilsMessengerCallbackDataEXT* callbackData, void* userData) {
+    // TODO: some messages can be muted here
+    if (callbackData->messageIdNumber == 0) // loader info message
+        return VK_FALSE;
+    if (callbackData->messageIdNumber == 0x76589099) // Validation Warning: [ WARNING-DEBUG-PRINTF ] Internal Warning: Setting VkPhysicalDeviceVulkan12Properties::maxUpdateAfterBindDescriptorsInAllPools to 32
+        return VK_FALSE;
+
+    Message severity = Message::INFO;
+    if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+        severity = Message::ERROR;
+    else if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+        severity = Message::WARNING;
+
+    DeviceVK& device = *(DeviceVK*)userData;
+    device.ReportMessage(severity, __FILE__, __LINE__, "%s", callbackData->pMessage);
+
+    return VK_FALSE;
 }
 
 void DeviceVK::FilterInstanceLayers(Vector<const char*>& layers) {
@@ -1328,104 +1347,6 @@ void DeviceVK::GetAccelerationStructureBuildSizesInfo(const AccelerationStructur
     vk.GetAccelerationStructureBuildSizesKHR(m_Device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, primitiveMaxNums, &sizesInfo);
 }
 
-const char* GetObjectTypeName(VkObjectType objectType) {
-    switch (objectType) {
-        case VK_OBJECT_TYPE_INSTANCE:
-            return "VkInstance";
-        case VK_OBJECT_TYPE_PHYSICAL_DEVICE:
-            return "VkPhysicalDevice";
-        case VK_OBJECT_TYPE_DEVICE:
-            return "VkDevice";
-        case VK_OBJECT_TYPE_QUEUE:
-            return "VkQueue";
-        case VK_OBJECT_TYPE_SEMAPHORE:
-            return "VkSemaphore";
-        case VK_OBJECT_TYPE_COMMAND_BUFFER:
-            return "VkCommandBuffer";
-        case VK_OBJECT_TYPE_FENCE:
-            return "VkFence";
-        case VK_OBJECT_TYPE_DEVICE_MEMORY:
-            return "VkDeviceMemory";
-        case VK_OBJECT_TYPE_BUFFER:
-            return "VkBuffer";
-        case VK_OBJECT_TYPE_IMAGE:
-            return "VkImage";
-        case VK_OBJECT_TYPE_EVENT:
-            return "VkEvent";
-        case VK_OBJECT_TYPE_QUERY_POOL:
-            return "VkQueryPool";
-        case VK_OBJECT_TYPE_BUFFER_VIEW:
-            return "VkBufferView";
-        case VK_OBJECT_TYPE_IMAGE_VIEW:
-            return "VkImageView";
-        case VK_OBJECT_TYPE_SHADER_MODULE:
-            return "VkShaderModule";
-        case VK_OBJECT_TYPE_PIPELINE_CACHE:
-            return "VkPipelineCache";
-        case VK_OBJECT_TYPE_PIPELINE_LAYOUT:
-            return "VkPipelineLayout";
-        case VK_OBJECT_TYPE_RENDER_PASS:
-            return "VkRenderPass";
-        case VK_OBJECT_TYPE_PIPELINE:
-            return "VkPipeline";
-        case VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT:
-            return "VkDescriptorSetLayout";
-        case VK_OBJECT_TYPE_SAMPLER:
-            return "VkSampler";
-        case VK_OBJECT_TYPE_DESCRIPTOR_POOL:
-            return "VkDescriptorPool";
-        case VK_OBJECT_TYPE_DESCRIPTOR_SET:
-            return "VkDescriptorSet";
-        case VK_OBJECT_TYPE_FRAMEBUFFER:
-            return "VkFramebuffer";
-        case VK_OBJECT_TYPE_COMMAND_POOL:
-            return "VkCommandPool";
-        case VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION:
-            return "VkSamplerYcbcrConversion";
-        case VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE:
-            return "VkDescriptorUpdateTemplate";
-        case VK_OBJECT_TYPE_SURFACE_KHR:
-            return "VkSurfaceKHR";
-        case VK_OBJECT_TYPE_SWAPCHAIN_KHR:
-            return "VkSwapchainKHR";
-        case VK_OBJECT_TYPE_DISPLAY_KHR:
-            return "VkDisplayKHR";
-        case VK_OBJECT_TYPE_DISPLAY_MODE_KHR:
-            return "VkDisplayModeKHR";
-        case VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT:
-            return "VkDebugReportCallbackEXT";
-        case VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT:
-            return "VkDebugUtilsMessengerEXT";
-        case VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR:
-            return "VkAccelerationStructureKHR";
-        case VK_OBJECT_TYPE_VALIDATION_CACHE_EXT:
-            return "VkValidationCacheEXT";
-        case VK_OBJECT_TYPE_DEFERRED_OPERATION_KHR:
-            return "VkDeferredOperationKHR";
-        default:
-            return "unknown";
-    }
-}
-
-VkBool32 VKAPI_PTR DebugUtilsMessenger(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT, const VkDebugUtilsMessengerCallbackDataEXT* callbackData, void* userData) {
-    // TODO: some messages can be muted here
-    if (callbackData->messageIdNumber == 0) // loader info message
-        return VK_FALSE;
-    if (callbackData->messageIdNumber == 0x76589099) // Validation Warning: [ WARNING-DEBUG-PRINTF ] Internal Warning: Setting VkPhysicalDeviceVulkan12Properties::maxUpdateAfterBindDescriptorsInAllPools to 32
-        return VK_FALSE;
-
-    Message severity = Message::INFO;
-    if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-        severity = Message::ERROR;
-    else if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-        severity = Message::WARNING;
-
-    DeviceVK& device = *(DeviceVK*)userData;
-    device.ReportMessage(severity, __FILE__, __LINE__, "%s", callbackData->pMessage);
-
-    return VK_FALSE;
-}
-
 Result DeviceVK::CreateInstance(bool enableGraphicsAPIValidation, const Vector<const char*>& desiredInstanceExts) {
     Vector<const char*> layers(GetStdAllocator());
     if (enableGraphicsAPIValidation)
@@ -1461,7 +1382,7 @@ Result DeviceVK::CreateInstance(bool enableGraphicsAPIValidation, const Vector<c
     if (enableGraphicsAPIValidation) {
         VkDebugUtilsMessengerCreateInfoEXT createInfo = {VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
         createInfo.pUserData = this;
-        createInfo.pfnUserCallback = DebugUtilsMessenger;
+        createInfo.pfnUserCallback = MessageCallback;
 
         createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
         createInfo.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
