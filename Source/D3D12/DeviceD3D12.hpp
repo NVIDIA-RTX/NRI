@@ -1,5 +1,11 @@
 ﻿// © 2021 NVIDIA Corporation
 
+#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+typedef ID3D12InfoQueue1 ID3D12InfoQueueBest;
+#else
+typedef ID3D12InfoQueue ID3D12InfoQueueBest;
+#endif
+
 static uint8_t QueryLatestDevice(ComPtr<ID3D12DeviceBest>& in, ComPtr<ID3D12DeviceBest>& out) {
     static const IID versions[] = {
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
@@ -35,6 +41,24 @@ static uint8_t QueryLatestDevice(ComPtr<ID3D12DeviceBest>& in, ComPtr<ID3D12Devi
 static inline uint64_t HashRootSignatureAndStride(ID3D12RootSignature* rootSignature, uint32_t stride) {
     CHECK(stride < 4096, "Only stride < 4096 supported by encoding");
     return ((uint64_t)stride << 52ull) | ((uint64_t)rootSignature & ((1ull << 52) - 1));
+}
+
+static void __stdcall MessageCallback(
+    D3D12_MESSAGE_CATEGORY category,
+    D3D12_MESSAGE_SEVERITY severity,
+    D3D12_MESSAGE_ID id,
+    LPCSTR message,
+    void* context) {
+    MaybeUnused(id, category);
+
+    Message messageType = Message::INFO;
+    if (severity < D3D12_MESSAGE_SEVERITY_WARNING)
+        messageType = Message::ERROR;
+    else if (severity == D3D12_MESSAGE_SEVERITY_WARNING)
+        messageType = Message::WARNING;
+
+    DeviceD3D12& device = *(DeviceD3D12*)context;
+    device.ReportMessage(messageType, __FILE__, __LINE__, "%s", message);
 }
 
 DeviceD3D12::DeviceD3D12(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks)
@@ -138,14 +162,15 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     REPORT_INFO(this, "Using ID3D12Device%u", m_Version);
 
     if (desc.enableGraphicsAPIValidation) {
-        ComPtr<ID3D12InfoQueue> pInfoQueue;
-        m_Device->QueryInterface(&pInfoQueue);
+        ComPtr<ID3D12InfoQueueBest> pInfoQueue;
+        HRESULT hr = m_Device->QueryInterface(&pInfoQueue);
 
-        if (pInfoQueue) {
-#ifndef NDEBUG
-            pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
-            pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
-#endif
+        if (SUCCEEDED(hr)) {
+            hr = pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
+            RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue::SetBreakOnSeverity()");
+
+            hr = pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
+            RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue::SetBreakOnSeverity()");
 
             // TODO: this code is currently needed to disable known false-positive errors reported by the debug layer
             D3D12_MESSAGE_ID disableMessageIDs[] = {
@@ -159,7 +184,14 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
             D3D12_INFO_QUEUE_FILTER filter = {};
             filter.DenyList.pIDList = disableMessageIDs;
             filter.DenyList.NumIDs = GetCountOf(disableMessageIDs);
-            pInfoQueue->AddStorageFilterEntries(&filter);
+            hr = pInfoQueue->AddStorageFilterEntries(&filter);
+            RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue::AddStorageFilterEntries()");
+
+#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+            DWORD cookie = 0;
+            hr = pInfoQueue->RegisterMessageCallback(MessageCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, this, &cookie);
+            RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue1::RegisterMessageCallback()");
+#endif
         }
     }
 
