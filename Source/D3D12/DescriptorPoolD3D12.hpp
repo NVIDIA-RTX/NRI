@@ -99,8 +99,8 @@ NRI_INLINE void DescriptorPoolD3D12::SetDebugName(const char* name) {
         SET_D3D_DEBUG_OBJECT_NAME(descriptorHeap, name);
 }
 
-NRI_INLINE Result DescriptorPoolD3D12::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum) {
-    MaybeUnused(variableDescriptorNum);
+NRI_INLINE Result DescriptorPoolD3D12::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t) {
+    ExclusiveScope lock(m_Lock);
 
     if (m_DescriptorSetNum + instanceNum > m_DescriptorSets.size())
         return Result::FAILURE;
@@ -119,6 +119,8 @@ NRI_INLINE Result DescriptorPoolD3D12::AllocateDescriptorSets(const PipelineLayo
 }
 
 NRI_INLINE void DescriptorPoolD3D12::Reset() {
+    ExclusiveScope lock(m_Lock);
+
     for (DescriptorHeapDesc& descriptorHeapDesc : m_DescriptorHeapDescs)
         descriptorHeapDesc.num = 0;
 

@@ -64,10 +64,12 @@ NriStruct(FormatProps) {
     uint32_t unused         : 7;
 };
 
+// Threadsafe: yes
 NriStruct(HelperInterface) {
     // Optimized memory allocation for a group of resources
+    // "allocations" must have entries >= returned by "CalculateAllocationNumber"
     uint32_t    (NRI_CALL *CalculateAllocationNumber)   (const NriRef(Device) device, const NriRef(ResourceGroupDesc) resourceGroupDesc);
-    Nri(Result) (NRI_CALL *AllocateAndBindMemory)       (NriRef(Device) device, const NriRef(ResourceGroupDesc) resourceGroupDesc, NriPtr(Memory)* allocations);
+    Nri(Result) (NRI_CALL *AllocateAndBindMemory)       (NriRef(Device) device, const NriRef(ResourceGroupDesc) resourceGroupDesc, NriOut NriPtr(Memory)* allocations);
 
     // Populate resources with data (not for streaming!)
     Nri(Result) (NRI_CALL *UploadData)                  (NriRef(Queue) queue, const NriPtr(TextureUploadDesc) textureUploadDescs, uint32_t textureUploadDescNum,

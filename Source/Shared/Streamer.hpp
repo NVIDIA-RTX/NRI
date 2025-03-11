@@ -54,6 +54,8 @@ Result StreamerImpl::Create(const StreamerDesc& desc) {
 }
 
 uint32_t StreamerImpl::UpdateConstantBuffer(const void* data, uint32_t dataSize) {
+    ExclusiveScope lock(m_Lock);
+
     const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
     uint32_t alignedSize = Align(dataSize, deviceDesc.constantBufferOffsetAlignment);
 
@@ -75,6 +77,8 @@ uint32_t StreamerImpl::UpdateConstantBuffer(const void* data, uint32_t dataSize)
 }
 
 uint64_t StreamerImpl::AddBufferUpdateRequest(const BufferUpdateRequestDesc& bufferUpdateRequestDesc) {
+    ExclusiveScope lock(m_Lock);
+
     uint64_t alignedSize = Align(bufferUpdateRequestDesc.dataSize, 16);
 
     uint64_t offset = m_DynamicDataOffsetBase + m_DynamicDataOffset;
@@ -85,6 +89,8 @@ uint64_t StreamerImpl::AddBufferUpdateRequest(const BufferUpdateRequestDesc& buf
 }
 
 uint64_t StreamerImpl::AddTextureUpdateRequest(const TextureUpdateRequestDesc& textureUpdateRequestDesc) {
+    ExclusiveScope lock(m_Lock);
+
     const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
     const TextureDesc& textureDesc = m_NRI.GetTextureDesc(*textureUpdateRequestDesc.dstTexture);
 
@@ -106,6 +112,8 @@ uint64_t StreamerImpl::AddTextureUpdateRequest(const TextureUpdateRequestDesc& t
 }
 
 Result StreamerImpl::CopyUpdateRequests() {
+    ExclusiveScope lock(m_Lock);
+
     if (!m_DynamicDataOffset)
         return Result::SUCCESS;
 
@@ -228,6 +236,8 @@ Result StreamerImpl::CopyUpdateRequests() {
 }
 
 void StreamerImpl::CmdUploadUpdateRequests(CommandBuffer& commandBuffer) {
+    ExclusiveScope lock(m_Lock);
+
     // Buffers
     for (const BufferUpdateRequest& request : m_BufferRequestsWithDst)
         m_NRI.CmdCopyBuffer(commandBuffer, *request.desc.dstBuffer, request.desc.dstBufferOffset, *m_DynamicBuffer, request.offset, request.desc.dataSize);

@@ -45,6 +45,7 @@ private:
     VkDescriptorPool m_Handle = VK_NULL_HANDLE;
     uint32_t m_UsedSets = 0;
     bool m_OwnsNativeObjects = true;
+    Lock m_Lock;
 };
 
 } // namespace nri

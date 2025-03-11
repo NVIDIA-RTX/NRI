@@ -90,6 +90,7 @@ NriStruct(DisplayDesc) {
     bool isHDR;
 };
 
+// Threadsafe: no
 NriStruct(SwapChainInterface) {
     Nri(Result)             (NRI_CALL *CreateSwapChain)             (NriRef(Device) device, const NriRef(SwapChainDesc) swapChainDesc, NriOut NriRef(SwapChain*) swapChain);
     void                    (NRI_CALL *DestroySwapChain)            (NriRef(SwapChain) swapChain);

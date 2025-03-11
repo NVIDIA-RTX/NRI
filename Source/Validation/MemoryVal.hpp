@@ -12,12 +12,12 @@ MemoryVal::MemoryVal(DeviceVal& device, Memory* memory, uint64_t size, MemoryLoc
 }
 
 bool MemoryVal::HasBoundResources() {
-    ExclusiveScope lockScope(m_Lock);
+    ExclusiveScope lock(m_Lock);
     return !m_Buffers.empty() || !m_Textures.empty() || !m_AccelerationStructures.empty();
 }
 
 void MemoryVal::ReportBoundResources() {
-    ExclusiveScope lockScope(m_Lock);
+    ExclusiveScope lock(m_Lock);
 
     for (size_t i = 0; i < m_Buffers.size(); i++) {
         BufferVal& buffer = *m_Buffers[i];
@@ -36,7 +36,7 @@ void MemoryVal::ReportBoundResources() {
 }
 
 void MemoryVal::UnbindBuffer(BufferVal& buffer) {
-    ExclusiveScope lockScope(m_Lock);
+    ExclusiveScope lock(m_Lock);
 
     const auto it = std::find(m_Buffers.begin(), m_Buffers.end(), &buffer);
     if (it == m_Buffers.end()) {
@@ -48,7 +48,7 @@ void MemoryVal::UnbindBuffer(BufferVal& buffer) {
 }
 
 void MemoryVal::UnbindTexture(TextureVal& texture) {
-    ExclusiveScope lockScope(m_Lock);
+    ExclusiveScope lock(m_Lock);
 
     const auto it = std::find(m_Textures.begin(), m_Textures.end(), &texture);
     if (it == m_Textures.end()) {
@@ -60,7 +60,7 @@ void MemoryVal::UnbindTexture(TextureVal& texture) {
 }
 
 void MemoryVal::UnbindAccelerationStructure(AccelerationStructureVal& accelerationStructure) {
-    ExclusiveScope lockScope(m_Lock);
+    ExclusiveScope lock(m_Lock);
 
     const auto it = std::find(m_AccelerationStructures.begin(), m_AccelerationStructures.end(), &accelerationStructure);
     if (it == m_AccelerationStructures.end()) {
@@ -72,19 +72,19 @@ void MemoryVal::UnbindAccelerationStructure(AccelerationStructureVal& accelerati
 }
 
 void MemoryVal::BindBuffer(BufferVal& buffer) {
-    ExclusiveScope lockScope(m_Lock);
+    ExclusiveScope lock(m_Lock);
     m_Buffers.push_back(&buffer);
     buffer.SetBoundToMemory(this);
 }
 
 void MemoryVal::BindTexture(TextureVal& texture) {
-    ExclusiveScope lockScope(m_Lock);
+    ExclusiveScope lock(m_Lock);
     m_Textures.push_back(&texture);
     texture.SetBoundToMemory(this);
 }
 
 void MemoryVal::BindAccelerationStructure(AccelerationStructureVal& accelerationStructure) {
-    ExclusiveScope lockScope(m_Lock);
+    ExclusiveScope lock(m_Lock);
     m_AccelerationStructures.push_back(&accelerationStructure);
     accelerationStructure.SetBoundToMemory(*this);
 }

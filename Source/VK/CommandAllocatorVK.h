@@ -40,6 +40,7 @@ private:
     VkCommandPool m_Handle = VK_NULL_HANDLE;
     QueueType m_Type = (QueueType)0;
     bool m_OwnsNativeObjects = true;
+    Lock m_Lock;
 };
 
 } // namespace nri

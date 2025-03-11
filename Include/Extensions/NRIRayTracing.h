@@ -156,8 +156,9 @@ NriStruct(DispatchRaysIndirectDesc) {
     uint32_t x, y, z;
 };
 
+// Threadsafe: yes
 NriStruct(RayTracingInterface) {
-    // Get                    
+    // Get
     uint64_t        (NRI_CALL *GetAccelerationStructureUpdateScratchBufferSize)     (const NriRef(AccelerationStructure) accelerationStructure);
     uint64_t        (NRI_CALL *GetAccelerationStructureBuildScratchBufferSize)      (const NriRef(AccelerationStructure) accelerationStructure);
     uint64_t        (NRI_CALL *GetAccelerationStructureHandle)                      (const NriRef(AccelerationStructure) accelerationStructure);
@@ -180,7 +181,7 @@ NriStruct(RayTracingInterface) {
     // Shader table
     Nri(Result)     (NRI_CALL *WriteShaderGroupIdentifiers)                         (const NriRef(Pipeline) pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* buffer); // TODO: add stride
 
-    // Compute
+    // Acceleration structure
     void            (NRI_CALL *CmdBuildTopLevelAccelerationStructure)               (NriRef(CommandBuffer) commandBuffer, uint32_t instanceNum, const NriRef(Buffer) buffer, uint64_t bufferOffset, Nri(AccelerationStructureBuildBits) flags,
                                                                                         NriRef(AccelerationStructure) dst, NriRef(Buffer) scratch, uint64_t scratchOffset);
 
@@ -193,6 +194,7 @@ NriStruct(RayTracingInterface) {
     void            (NRI_CALL *CmdUpdateBottomLevelAccelerationStructure)           (NriRef(CommandBuffer) commandBuffer, uint32_t geometryObjectNum, const NriPtr(GeometryObject) geometryObjects, Nri(AccelerationStructureBuildBits) flags,
                                                                                         NriRef(AccelerationStructure) dst, const NriRef(AccelerationStructure) src, NriRef(Buffer) scratch, uint64_t scratchOffset);
 
+    // Ray tracing
     void            (NRI_CALL *CmdDispatchRays)                                     (NriRef(CommandBuffer) commandBuffer, const NriRef(DispatchRaysDesc) dispatchRaysDesc);
     void            (NRI_CALL *CmdDispatchRaysIndirect)                             (NriRef(CommandBuffer) commandBuffer, const NriRef(Buffer) buffer, uint64_t offset); // buffer contains "DispatchRaysIndirectDesc" commands
 

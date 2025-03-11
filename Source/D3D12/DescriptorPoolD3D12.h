@@ -49,6 +49,7 @@ private:
     Vector<DescriptorSetD3D12> m_DescriptorSets;
     uint32_t m_DescriptorHeapNum = 0;
     uint32_t m_DescriptorSetNum = 0;
+    Lock m_Lock;
 };
 
 } // namespace nri

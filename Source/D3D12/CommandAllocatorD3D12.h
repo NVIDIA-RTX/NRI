@@ -44,6 +44,7 @@ private:
     DeviceD3D12& m_Device;
     ComPtr<ID3D12CommandAllocator> m_CommandAllocator;
     D3D12_COMMAND_LIST_TYPE m_CommandListType = D3D12_COMMAND_LIST_TYPE(-1);
+    Lock m_Lock;
 };
 
 } // namespace nri

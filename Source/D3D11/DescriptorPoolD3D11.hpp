@@ -19,6 +19,8 @@ Result DescriptorPoolD3D11::Create(const DescriptorPoolDesc& descriptorPoolDesc)
 }
 
 NRI_INLINE Result DescriptorPoolD3D11::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum) {
+    ExclusiveScope lock(m_Lock);
+
     if (variableDescriptorNum)
         return Result::UNSUPPORTED;
 
@@ -34,4 +36,11 @@ NRI_INLINE Result DescriptorPoolD3D11::AllocateDescriptorSets(const PipelineLayo
     }
 
     return Result::SUCCESS;
+}
+
+NRI_INLINE void DescriptorPoolD3D11::Reset() {
+    ExclusiveScope lock(m_Lock);
+
+    m_DescriptorPoolOffset = 0;
+    m_DescriptorSetIndex = 0;
 }

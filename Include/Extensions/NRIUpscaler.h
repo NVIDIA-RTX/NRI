@@ -130,6 +130,7 @@ NriStruct(DispatchUpscaleDesc) {
     Nri(DispatchUpscaleBits) flags;
 };
 
+// Threadsafe: yes
 NriStruct(UpscalerInterface) {
     Nri(Result)     (NRI_CALL *CreateUpscaler)          (NriRef(Device) device, const NriRef(UpscalerDesc) upscalerDesc, NriOut NriRef(Upscaler*) upscaler);
     void            (NRI_CALL *DestroyUpscaler)         (NriRef(Upscaler) upscaler);

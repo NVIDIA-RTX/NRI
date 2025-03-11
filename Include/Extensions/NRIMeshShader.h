@@ -8,6 +8,7 @@ NriStruct(DrawMeshTasksDesc) {
     uint32_t x, y, z;
 };
 
+// Threadsafe: no
 NriStruct(MeshShaderInterface) {
     // Draw
     void    (NRI_CALL *CmdDrawMeshTasks)            (NriRef(CommandBuffer) commandBuffer, const NriRef(DrawMeshTasksDesc) drawMeshTasksDesc);

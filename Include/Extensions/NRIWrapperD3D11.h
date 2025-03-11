@@ -37,6 +37,7 @@ NriStruct(TextureD3D11Desc) {
     NriOptional const NriPtr(TextureDesc) desc; // not all information can be retrieved from the resource if not provided
 };
 
+// Threadsafe: yes
 NriStruct(WrapperD3D11Interface) {
     Nri(Result) (NRI_CALL *CreateCommandBufferD3D11)    (NriRef(Device) device, const NriRef(CommandBufferD3D11Desc) commandBufferD3D11Desc, NriOut NriRef(CommandBuffer*) commandBuffer);
     Nri(Result) (NRI_CALL *CreateBufferD3D11)           (NriRef(Device) device, const NriRef(BufferD3D11Desc) bufferD3D11Desc, NriOut NriRef(Buffer*) buffer);

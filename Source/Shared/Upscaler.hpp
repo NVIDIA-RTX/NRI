@@ -307,6 +307,10 @@ struct Xess {
     xess_context_handle_t context = nullptr;
 };
 
+struct XessGlobals {
+    Lock lock = {}; // methods in XESS library are NOT thread safe (see "Thread safety")
+} g_xess;
+
 static inline Result XessConvertError(xess_result_t code) {
     switch (code) {
         case XESS_RESULT_WARNING_NONEXISTING_FOLDER:
@@ -356,7 +360,7 @@ const uint32_t APPLICATION_ID = 0x3143DEC; // don't care, but can't be 0
 struct NgxGlobals {
     std::array<RefCounter, 32> refCounters; // awful API borns awful solutions...
     uint32_t refCounterNum = 0;
-    Lock lock = {}; // methods in NGX library are NOT thread safe, yay! (see the first comment in "nvsdk_ngx.h")
+    Lock lock = {}; // methods in NGX library are NOT thread safe (see the comment in "nvsdk_ngx.h")
 } g_ngx;
 
 static inline int32_t NgxIncrRef(void* deviceNative) {
@@ -465,6 +469,8 @@ UpscalerImpl::~UpscalerImpl() {
 
 #if NRI_ENABLE_XESS_SDK
     if (m_Desc.type == UpscalerType::XESS && m.xess) {
+        ExclusiveScope lock(g_xess.lock);
+
         xess_result_t result = xessDestroyContext(m.xess->context);
         CHECK(result == XESS_RESULT_SUCCESS, "xessDestroyContext() failed!");
 
@@ -848,6 +854,8 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
 #    if NRI_ENABLE_D3D12_SUPPORT
         if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
+            ExclusiveScope lock(g_xess.lock);
+
             ID3D12Device* deviceNative = (ID3D12Device*)m_NRI.GetDeviceNativeObject(m_Device);
 
             xess_result_t result = xessD3D12CreateContext(deviceNative, &m.xess->context);

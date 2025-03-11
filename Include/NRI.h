@@ -4,6 +4,7 @@
 Overview:
 - Generalized common denominator for VK, D3D12 and D3D11
     - VK spec: https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html
+       - Best practices: https://developer.nvidia.com/blog/vulkan-dos-donts/
     - D3D12 spec: https://microsoft.github.io/DirectX-Specs/
     - D3D11 spec: https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm
 - C/C++ compatible interface (auto-selection or via "NRI_FORCE_C" macro)
@@ -20,13 +21,23 @@ Non-goals (exceptions apply to helper interfaces, where high-level abstraction a
 - high level (D3D11-like) abstraction
 - exposing entities not existing in gAPIs
 - hidden management of any kind
+
+Thread safety (a comment applies to a whole block unless stated otherwise, sub-blocks can be different):
+- Threadsafe: yes - free-threaded access
+- Threadsafe: no  - external synchronization required, i.e. one thread at a time (additional restrictions can apply)
+- Threadsafe: ?   - unclear status
+
+Implicit:
+- Create*         - thread safe
+- Destroy*        - not thread safe (because of VK)
+- Cmd*            - not thread safe
 */
 
 #pragma once
 
 #define NRI_VERSION_MAJOR 1
 #define NRI_VERSION_MINOR 165
-#define NRI_VERSION_DATE "4 March 2025"
+#define NRI_VERSION_DATE "11 March 2025"
 
 #include "NRIDescs.h"
 
@@ -47,6 +58,7 @@ NRI_API void NRI_CALL nriEndAnnotation();                                   // e
 NRI_API void NRI_CALL nriAnnotation(const char* name, uint32_t bgra);       // emit a named simultaneous event
 NRI_API void NRI_CALL nriSetThreadName(const char* name);                   // assign a name to the current thread
 
+// Threadsafe: yes
 NriStruct(CoreInterface) {
     // Get
     const NriRef(DeviceDesc)    (NRI_CALL *GetDeviceDesc)           (const NriRef(Device) device);
@@ -218,7 +230,7 @@ NriStruct(CoreInterface) {
     void*               (NRI_CALL *MapBuffer)                       (NriRef(Buffer) buffer, uint64_t offset, uint64_t size);
     void                (NRI_CALL *UnmapBuffer)                     (NriRef(Buffer) buffer);
 
-    // Debug name for any object declared as "NriForwardStruct" (skipped for buffers/textures in D3D if they are not bound to memory)
+    // Debug name for any object declared as "NriForwardStruct" (skipped for buffers & textures in D3D if they are not bound to a memory)
     void                (NRI_CALL *SetDebugName)                    (NriPtr(Object) object, const char* name);
 
     // Native objects                                                                                            ___D3D11___________________________|_D3D12_______________________|_VK_________________________________

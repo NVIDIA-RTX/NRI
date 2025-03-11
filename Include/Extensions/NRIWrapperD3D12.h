@@ -69,6 +69,7 @@ NriStruct(AccelerationStructureD3D12Desc) {
     uint64_t updateScratchDataSize;
 };
 
+// Threadsafe: yes
 NriStruct(WrapperD3D12Interface) {
     Nri(Result) (NRI_CALL *CreateCommandBufferD3D12)            (NriRef(Device) device, const NriRef(CommandBufferD3D12Desc) commandBufferD3D12Desc, NriOut NriRef(CommandBuffer*) commandBuffer);
     Nri(Result) (NRI_CALL *CreateDescriptorPoolD3D12)           (NriRef(Device) device, const NriRef(DescriptorPoolD3D12Desc) descriptorPoolD3D12Desc, NriOut NriRef(DescriptorPool*) descriptorPool);

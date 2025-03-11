@@ -80,14 +80,15 @@ bool DeviceVal::Create() {
     m_IsExtSupported.wrapperD3D11 = deviceBaseImpl.FillFunctionTable(m_iWrapperD3D11) == Result::SUCCESS;
     m_IsExtSupported.wrapperD3D12 = deviceBaseImpl.FillFunctionTable(m_iWrapperD3D12) == Result::SUCCESS;
     m_IsExtSupported.wrapperVK = deviceBaseImpl.FillFunctionTable(m_iWrapperVK) == Result::SUCCESS;
-    
+
     m_Desc = GetDesc();
 
     return FillFunctionTable(m_iCoreVal) == Result::SUCCESS;
 }
 
 void DeviceVal::RegisterMemoryType(MemoryType memoryType, MemoryLocation memoryLocation) {
-    ExclusiveScope lockScope(m_Lock);
+    ExclusiveScope lock(m_Lock);
+
     m_MemoryTypeMap[memoryType] = memoryLocation;
 }
 
@@ -583,7 +584,7 @@ NRI_INLINE Result DeviceVal::AllocateMemory(const AllocateMemoryDesc& allocateMe
     std::unordered_map<MemoryType, MemoryLocation>::iterator it;
     std::unordered_map<MemoryType, MemoryLocation>::iterator end;
     {
-        ExclusiveScope lockScope(m_Lock);
+        ExclusiveScope lock(m_Lock);
         it = m_MemoryTypeMap.find(allocateMemoryDesc.type);
         end = m_MemoryTypeMap.end();
     }

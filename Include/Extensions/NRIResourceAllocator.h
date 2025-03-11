@@ -32,6 +32,7 @@ NriStruct(AllocateAccelerationStructureDesc) {
     bool dedicated;
 };
 
+// Threadsafe: yes
 NriStruct(ResourceAllocatorInterface) {
     Nri(Result) (NRI_CALL *AllocateBuffer)                  (NriRef(Device) device, const NriRef(AllocateBufferDesc) bufferDesc, NriOut NriRef(Buffer*) buffer);
     Nri(Result) (NRI_CALL *AllocateTexture)                 (NriRef(Device) device, const NriRef(AllocateTextureDesc) textureDesc, NriOut NriRef(Texture*) texture);

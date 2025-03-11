@@ -81,6 +81,7 @@ private:
     uint64_t m_DynamicDataOffsetBase = 0;
     uint64_t m_DynamicBufferSize = 0;
     uint32_t m_FrameIndex = 0;
+    Lock m_Lock;
 };
 
 }

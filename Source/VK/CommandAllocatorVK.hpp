@@ -37,6 +37,8 @@ NRI_INLINE void CommandAllocatorVK::SetDebugName(const char* name) {
 }
 
 NRI_INLINE Result CommandAllocatorVK::CreateCommandBuffer(CommandBuffer*& commandBuffer) {
+    ExclusiveScope lock(m_Lock);
+
     const VkCommandBufferAllocateInfo info = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, nullptr, m_Handle, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1};
 
     VkCommandBuffer commandBufferHandle = VK_NULL_HANDLE;
@@ -54,6 +56,8 @@ NRI_INLINE Result CommandAllocatorVK::CreateCommandBuffer(CommandBuffer*& comman
 }
 
 NRI_INLINE void CommandAllocatorVK::Reset() {
+    ExclusiveScope lock(m_Lock);
+
     const auto& vk = m_Device.GetDispatchTable();
     VkResult result = vk.ResetCommandPool(m_Device, m_Handle, (VkCommandPoolResetFlags)0);
     RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, ReturnVoid(), "vkResetCommandPool returned %d", (int32_t)result);

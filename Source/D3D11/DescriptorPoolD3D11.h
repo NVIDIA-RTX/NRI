@@ -26,12 +26,8 @@ struct DescriptorPoolD3D11 final : public DebugNameBase {
     // NRI
     //================================================================================================================
 
-    inline void Reset() {
-        m_DescriptorPoolOffset = 0;
-        m_DescriptorSetIndex = 0;
-    }
-
     Result AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum);
+    void Reset();
 
 private:
     DeviceD3D11& m_Device;
@@ -39,6 +35,7 @@ private:
     Vector<const DescriptorD3D11*> m_DescriptorPool;
     uint32_t m_DescriptorPoolOffset = 0;
     uint32_t m_DescriptorSetIndex = 0;
+    Lock m_Lock;
 };
 
 } // namespace nri
