@@ -199,11 +199,11 @@ Notes:
 
 *Overview* and *Download* sections can be found [*here*](https://devblogs.microsoft.com/directx/directx12agility/).
 
-D3D12 backend uses Agility SDK to get access to most recent D3D12 features.
+D3D12 backend uses Agility SDK to get access to most recent D3D12 features. It's highly recommended to use it.
 
-Installation steps:
-- set `NRI_AGILITY_SDK_VERSION_MAJOR` and `NRI_AGILITY_SDK_VERSION_MINOR` to the desired value
-- enable `NRI_ENABLE_AGILITY_SDK_SUPPORT`
+Steps (already enabled by default):
+- modify `NRI_AGILITY_SDK_VERSION_MAJOR` and `NRI_AGILITY_SDK_VERSION_MINOR` to the desired value
+- enable or disable `NRI_ENABLE_AGILITY_SDK_SUPPORT`
 - re-deploy project
 - include auto-generated `NRIAgilitySDK.h` header in the code of your executable using NRI
 
