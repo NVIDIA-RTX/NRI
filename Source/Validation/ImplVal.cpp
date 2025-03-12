@@ -1133,7 +1133,7 @@ static Buffer* GetStreamerDynamicBuffer(Streamer& streamer) {
     StreamerVal& streamerVal = (StreamerVal&)streamer;
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
 
-    if (!streamerVal.isDynamicBufferValid)
+    if (!streamerVal.isDynamicBufferValid && streamerVal.m_Desc.dynamicBufferSize == 0)
         REPORT_ERROR(&deviceVal, "'GetStreamerDynamicBuffer' must be called after 'CopyStreamerUpdateRequests'");
 
     return streamerImpl->GetDynamicBuffer();

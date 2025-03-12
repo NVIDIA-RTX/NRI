@@ -16,7 +16,6 @@ struct TextureUpdateRequest {
 
 struct GarbageInFlight {
     Buffer* buffer;
-    Memory* memory;
     uint32_t frameNum;
 };
 
@@ -58,9 +57,7 @@ struct StreamerImpl : public DebugNameBase {
 
     void SetDebugName(const char* name) DEBUG_NAME_OVERRIDE {
         m_NRI.SetDebugName(m_ConstantBuffer, name);
-        m_NRI.SetDebugName(m_ConstantBufferMemory, name);
         m_NRI.SetDebugName(m_DynamicBuffer, name);
-        m_NRI.SetDebugName(m_DynamicBufferMemory, name);
     }
 
 private:
@@ -73,9 +70,7 @@ private:
     Vector<TextureUpdateRequest> m_TextureRequestsWithDst;
     Vector<GarbageInFlight> m_GarbageInFlight;
     Buffer* m_ConstantBuffer = nullptr;
-    Memory* m_ConstantBufferMemory = nullptr;
     Buffer* m_DynamicBuffer = nullptr;
-    Memory* m_DynamicBufferMemory = nullptr;
     uint32_t m_ConstantDataOffset = 0;
     uint64_t m_DynamicDataOffset = 0;
     uint64_t m_DynamicDataOffsetBase = 0;

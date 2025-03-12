@@ -1,51 +1,48 @@
 // © 2024 NVIDIA Corporation
 
 constexpr uint64_t CHUNK_SIZE = 65536;
+constexpr bool USE_DEDICATED = true;
 
 StreamerImpl::~StreamerImpl() {
-    for (GarbageInFlight& garbageInFlight : m_GarbageInFlight) {
+    for (GarbageInFlight& garbageInFlight : m_GarbageInFlight)
         m_NRI.DestroyBuffer(*garbageInFlight.buffer);
-        m_NRI.FreeMemory(*garbageInFlight.memory);
-    }
 
     m_NRI.DestroyBuffer(*m_ConstantBuffer);
     m_NRI.DestroyBuffer(*m_DynamicBuffer);
-
-    m_NRI.FreeMemory(*m_ConstantBufferMemory);
-    m_NRI.FreeMemory(*m_DynamicBufferMemory);
 }
 
 Result StreamerImpl::Create(const StreamerDesc& desc) {
+    ResourceAllocatorInterface iResourceAllocator = {};
+    Result result = nriGetInterface(m_Device, NRI_INTERFACE(ResourceAllocatorInterface), &iResourceAllocator);
+    if (result != Result::SUCCESS)
+        return result;
+
     if (desc.constantBufferSize) {
-        // Create constant buffer
-        BufferDesc bufferDesc = {};
-        bufferDesc.size = desc.constantBufferSize;
-        bufferDesc.usage = BufferUsageBits::CONSTANT_BUFFER;
+        // Create the constant buffer
+        AllocateBufferDesc allocateBufferDesc = {};
+        allocateBufferDesc.desc.size = desc.constantBufferSize;
+        allocateBufferDesc.desc.usage = BufferUsageBits::CONSTANT_BUFFER;
+        allocateBufferDesc.memoryLocation = desc.constantBufferMemoryLocation;
+        allocateBufferDesc.dedicated = USE_DEDICATED;
 
-        Result result = m_NRI.CreateBuffer(m_Device, bufferDesc, m_ConstantBuffer);
+        result = iResourceAllocator.AllocateBuffer(m_Device, allocateBufferDesc, m_ConstantBuffer);
+        if (result != Result::SUCCESS)
+            return result;
+    }
+
+    if (desc.dynamicBufferSize) {
+        // Create the dynamic buffer
+        AllocateBufferDesc allocateBufferDesc = {};
+        allocateBufferDesc.desc.size = desc.dynamicBufferSize;
+        allocateBufferDesc.desc.usage = desc.dynamicBufferUsageBits;
+        allocateBufferDesc.memoryLocation = desc.dynamicBufferMemoryLocation;
+        allocateBufferDesc.dedicated = USE_DEDICATED;
+
+        result = iResourceAllocator.AllocateBuffer(m_Device, allocateBufferDesc, m_DynamicBuffer);
         if (result != Result::SUCCESS)
             return result;
 
-        // Allocate memory
-        MemoryDesc memoryDesc = {};
-        m_NRI.GetBufferMemoryDesc(*m_ConstantBuffer, desc.constantBufferMemoryLocation, memoryDesc);
-
-        AllocateMemoryDesc allocateMemoryDesc = {};
-        allocateMemoryDesc.type = memoryDesc.type;
-        allocateMemoryDesc.size = memoryDesc.size;
-
-        result = m_NRI.AllocateMemory(m_Device, allocateMemoryDesc, m_ConstantBufferMemory);
-        if (result != Result::SUCCESS)
-            return result;
-
-        // Bind to memory
-        BufferMemoryBindingDesc memoryBindingDesc = {};
-        memoryBindingDesc.buffer = m_ConstantBuffer;
-        memoryBindingDesc.memory = m_ConstantBufferMemory;
-
-        result = m_NRI.BindBufferMemory(m_Device, &memoryBindingDesc, 1);
-        if (result != Result::SUCCESS)
-            return result;
+        m_DynamicBufferSize = desc.dynamicBufferSize;
     }
 
     m_Desc = desc;
@@ -124,7 +121,6 @@ Result StreamerImpl::CopyUpdateRequests() {
             garbageInFlight.frameNum++;
         else {
             m_NRI.DestroyBuffer(*garbageInFlight.buffer);
-            m_NRI.FreeMemory(*garbageInFlight.memory);
 
             m_GarbageInFlight[i--] = m_GarbageInFlight.back();
             m_GarbageInFlight.pop_back();
@@ -133,39 +129,28 @@ Result StreamerImpl::CopyUpdateRequests() {
 
     // Grow
     if (m_DynamicDataOffsetBase + m_DynamicDataOffset > m_DynamicBufferSize) {
+        if (m_Desc.dynamicBufferSize)
+            return Result::OUT_OF_MEMORY; // TODO: add "AddMessage" to Core or Helper interface
+
         m_DynamicBufferSize = Align(m_DynamicDataOffset, CHUNK_SIZE) * (m_Desc.frameInFlightNum + 1);
 
         // Add the current buffer to the garbage collector immediately, but keep it alive for some frames
         if (m_DynamicBuffer)
-            m_GarbageInFlight.push_back({m_DynamicBuffer, m_DynamicBufferMemory, 0});
+            m_GarbageInFlight.push_back({m_DynamicBuffer, 0});
 
-        { // Create new dynamic buffer & allocate memory
-            BufferDesc bufferDesc = {};
-            bufferDesc.size = m_DynamicBufferSize;
-            bufferDesc.usage = m_Desc.dynamicBufferUsageBits;
-
-            Result result = m_NRI.CreateBuffer(m_Device, bufferDesc, m_DynamicBuffer);
+        { // Create new dynamic buffer
+            ResourceAllocatorInterface iResourceAllocator = {};
+            Result result = nriGetInterface(m_Device, NRI_INTERFACE(ResourceAllocatorInterface), &iResourceAllocator);
             if (result != Result::SUCCESS)
                 return result;
 
-            MemoryDesc memoryDesc = {};
-            m_NRI.GetBufferMemoryDesc(*m_DynamicBuffer, m_Desc.dynamicBufferMemoryLocation, memoryDesc);
+            AllocateBufferDesc allocateBufferDesc = {};
+            allocateBufferDesc.desc.size = m_DynamicBufferSize;
+            allocateBufferDesc.desc.usage = m_Desc.dynamicBufferUsageBits;
+            allocateBufferDesc.memoryLocation = m_Desc.dynamicBufferMemoryLocation;
+            allocateBufferDesc.dedicated = USE_DEDICATED;
 
-            AllocateMemoryDesc allocateMemoryDesc = {};
-            allocateMemoryDesc.type = memoryDesc.type;
-            allocateMemoryDesc.size = memoryDesc.size;
-
-            result = m_NRI.AllocateMemory(m_Device, allocateMemoryDesc, m_DynamicBufferMemory);
-            if (result != Result::SUCCESS)
-                return result;
-        }
-
-        { // Bind to memory
-            BufferMemoryBindingDesc memoryBindingDesc = {};
-            memoryBindingDesc.buffer = m_DynamicBuffer;
-            memoryBindingDesc.memory = m_DynamicBufferMemory;
-
-            Result result = m_NRI.BindBufferMemory(m_Device, &memoryBindingDesc, 1);
+            result = iResourceAllocator.AllocateBuffer(m_Device, allocateBufferDesc, m_DynamicBuffer);
             if (result != Result::SUCCESS)
                 return result;
         }

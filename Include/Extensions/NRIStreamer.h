@@ -11,10 +11,11 @@ NriStruct(StreamerDesc) {
     NriOptional Nri(MemoryLocation) constantBufferMemoryLocation; // UPLOAD or DEVICE_UPLOAD
     NriOptional uint64_t constantBufferSize;
 
-    // Dynamically (re)allocated ring-buffer for copying and rendering
+    // Statically or dynamically (re)allocated ring-buffer for copying and rendering
     Nri(MemoryLocation) dynamicBufferMemoryLocation; // UPLOAD or DEVICE_UPLOAD
     Nri(BufferUsageBits) dynamicBufferUsageBits;
     uint32_t frameInFlightNum;
+    uint64_t dynamicBufferSize; // makes "dynamic buffer" statically allocated if set (i.e. non-0)
 };
 
 NriStruct(BufferUpdateRequestDesc) {
@@ -43,9 +44,11 @@ NriStruct(StreamerInterface) {
     Nri(Result)     (NRI_CALL *CreateStreamer)                  (NriRef(Device) device, const NriRef(StreamerDesc) streamerDesc, NriOut NriRef(Streamer*) streamer);
     void            (NRI_CALL *DestroyStreamer)                 (NriRef(Streamer) streamer);
 
-    // Get internal buffers
-    NriPtr(Buffer)  (NRI_CALL *GetStreamerConstantBuffer)       (NriRef(Streamer) streamer); // Never changes (if requested)
-    NriPtr(Buffer)  (NRI_CALL *GetStreamerDynamicBuffer)        (NriRef(Streamer) streamer); // Valid only after "CopyStreamerUpdateRequests"
+    // Statically allocated (never changes)
+    NriPtr(Buffer)  (NRI_CALL *GetStreamerConstantBuffer)       (NriRef(Streamer) streamer);
+
+    // Valid only after "CopyStreamerUpdateRequests" if "dynamicBufferSize = 0"
+    NriPtr(Buffer)  (NRI_CALL *GetStreamerDynamicBuffer)        (NriRef(Streamer) streamer);
 
     // Add an update request. Return the offset in the ring buffer and don't invoke any work
     uint64_t        (NRI_CALL *AddStreamerBufferUpdateRequest)  (NriRef(Streamer) streamer, const NriRef(BufferUpdateRequestDesc) bufferUpdateRequestDesc);
