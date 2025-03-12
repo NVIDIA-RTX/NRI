@@ -404,6 +404,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         # Generate "NRIAgilitySDK.h"
         file(WRITE Include/NRIAgilitySDK.h
             "// This file is auto-generated during project deployment. Do not modify!\n"
+            "#if NRI_ENABLE_AGILITY_SDK_SUPPORT\n\n"
             "#ifdef __cplusplus\n"
             "extern \"C\" {\n"
             "#endif\n\n"
@@ -411,6 +412,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
             "__declspec(dllexport) extern const char* D3D12SDKPath = \"../${NRI_AGILITY_SDK_DIR}/x64/\";\n\n"
             "#ifdef __cplusplus\n"
             "}\n"
+            "#endif\n\n"
             "#endif\n"
         )
     endif()
@@ -580,6 +582,11 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     "${vulkan_headers_SOURCE_DIR}/include"
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE ${COMPILE_DEFINITIONS})
+
+if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC NRI_ENABLE_AGILITY_SDK_SUPPORT=1)
+endif()
+
 target_compile_options(${PROJECT_NAME} PRIVATE ${COMPILE_OPTIONS})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE NRI_Shared)
