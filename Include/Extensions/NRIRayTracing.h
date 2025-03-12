@@ -179,7 +179,9 @@ NriStruct(RayTracingInterface) {
     Nri(Result)     (NRI_CALL *BindAccelerationStructureMemory)                     (NriRef(Device) device, const NriPtr(AccelerationStructureMemoryBindingDesc) memoryBindingDescs, uint32_t memoryBindingDescNum);
 
     // Shader table
-    Nri(Result)     (NRI_CALL *WriteShaderGroupIdentifiers)                         (const NriRef(Pipeline) pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* buffer); // TODO: add stride
+    // "dst" size must be >= "shaderGroupNum * rayTracingShaderGroupIdentifierSize" bytes
+    // VK doesn't have a "local root signature" analog, thus stride = "rayTracingShaderGroupIdentifierSize", i.e. tight packing
+    Nri(Result)     (NRI_CALL *WriteShaderGroupIdentifiers)                         (const NriRef(Pipeline) pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, NriOut void* dst);
 
     // Acceleration structure
     void            (NRI_CALL *CmdBuildTopLevelAccelerationStructure)               (NriRef(CommandBuffer) commandBuffer, uint32_t instanceNum, const NriRef(Buffer) buffer, uint64_t bufferOffset, Nri(AccelerationStructureBuildBits) flags,

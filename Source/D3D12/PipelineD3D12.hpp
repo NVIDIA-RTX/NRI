@@ -574,11 +574,17 @@ void PipelineD3D12::Bind(ID3D12GraphicsCommandList* graphicsCommandList, D3D12_P
     }
 }
 
-NRI_INLINE Result PipelineD3D12::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* buffer) const {
-    uint8_t* byteBuffer = (uint8_t*)buffer;
+NRI_INLINE Result PipelineD3D12::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* dst) const {
+    uint8_t* ptr = (uint8_t*)dst;
+    size_t identifierSize = (size_t)m_Device.GetDesc().rayTracingShaderGroupIdentifierSize;
+    uint32_t shaderGroupIndex = baseShaderGroupIndex;
+
     for (uint32_t i = 0; i < shaderGroupNum; i++) {
-        memcpy(byteBuffer + i * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT, m_StateObjectProperties->GetShaderIdentifier(m_ShaderGroupNames[baseShaderGroupIndex + i].c_str()),
-            (size_t)m_Device.GetDesc().rayTracingShaderGroupIdentifierSize);
+        const void* identifier = m_StateObjectProperties->GetShaderIdentifier(m_ShaderGroupNames[shaderGroupIndex].c_str());
+        memcpy(ptr, identifier, identifierSize);
+
+        ptr += identifierSize;
+        shaderGroupIndex++;
     }
 
     return Result::SUCCESS;

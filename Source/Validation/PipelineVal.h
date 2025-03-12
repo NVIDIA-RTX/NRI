@@ -30,7 +30,7 @@ struct PipelineVal final : public ObjectVal {
     // NRI
     //================================================================================================================
 
-    Result WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* buffer);
+    Result WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* dst);
 
 private:
     const PipelineLayout* m_PipelineLayout = nullptr;

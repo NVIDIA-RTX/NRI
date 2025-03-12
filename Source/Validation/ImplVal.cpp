@@ -961,8 +961,8 @@ static void NRI_CALL DestroyAccelerationStructure(AccelerationStructure& acceler
     GetDeviceVal(accelerationStructure).DestroyAccelerationStructure(accelerationStructure);
 }
 
-static Result NRI_CALL WriteShaderGroupIdentifiers(const Pipeline& pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* buffer) {
-    return ((PipelineVal&)pipeline).WriteShaderGroupIdentifiers(baseShaderGroupIndex, shaderGroupNum, buffer);
+static Result NRI_CALL WriteShaderGroupIdentifiers(const Pipeline& pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* dst) {
+    return ((PipelineVal&)pipeline).WriteShaderGroupIdentifiers(baseShaderGroupIndex, shaderGroupNum, dst);
 }
 
 Result DeviceVal::FillFunctionTable(RayTracingInterface& table) const {

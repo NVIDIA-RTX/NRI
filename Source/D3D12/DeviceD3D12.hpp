@@ -1,11 +1,5 @@
 ﻿// © 2021 NVIDIA Corporation
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
-typedef ID3D12InfoQueue1 ID3D12InfoQueueBest;
-#else
-typedef ID3D12InfoQueue ID3D12InfoQueueBest;
-#endif
-
 static uint8_t QueryLatestDevice(ComPtr<ID3D12DeviceBest>& in, ComPtr<ID3D12DeviceBest>& out) {
     static const IID versions[] = {
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
@@ -43,6 +37,9 @@ static inline uint64_t HashRootSignatureAndStride(ID3D12RootSignature* rootSigna
     return ((uint64_t)stride << 52ull) | ((uint64_t)rootSignature & ((1ull << 52) - 1));
 }
 
+#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+typedef ID3D12InfoQueue1 ID3D12InfoQueueBest;
+
 static void __stdcall MessageCallback(
     D3D12_MESSAGE_CATEGORY category,
     D3D12_MESSAGE_SEVERITY severity,
@@ -60,6 +57,9 @@ static void __stdcall MessageCallback(
     DeviceD3D12& device = *(DeviceD3D12*)context;
     device.ReportMessage(messageType, __FILE__, __LINE__, "%s", message);
 }
+#else
+typedef ID3D12InfoQueue ID3D12InfoQueueBest;
+#endif
 
 DeviceD3D12::DeviceD3D12(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks)
     : DeviceBase(callbacks, allocationCallbacks)
@@ -508,8 +508,8 @@ void DeviceD3D12::FillDesc() {
     m_Desc.computeShaderWorkGroupMaxDim[2] = D3D12_CS_THREAD_GROUP_MAX_Z;
 
     if (m_Desc.isRayTracingSupported) {
-        m_Desc.rayTracingShaderGroupIdentifierSize = D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;
-        m_Desc.rayTracingShaderTableMaxStride = std::numeric_limits<uint32_t>::max();
+        m_Desc.rayTracingShaderGroupIdentifierSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+        m_Desc.rayTracingShaderTableMaxStride = D3D12_RAYTRACING_MAX_SHADER_RECORD_STRIDE;
         m_Desc.rayTracingShaderRecursionMaxDepth = D3D12_RAYTRACING_MAX_DECLARABLE_TRACE_RECURSION_DEPTH;
         m_Desc.rayTracingGeometryObjectMaxNum = (1 << 24) - 1;
     }
