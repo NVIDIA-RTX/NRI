@@ -59,9 +59,13 @@ struct BufferD3D12 final : public DebugNameBase {
     void Unmap();
 
 private:
+    Result SetPriorityAndPersistentlyMap(float priority, const D3D12_HEAP_PROPERTIES& heapProps);
+
+private:
     DeviceD3D12& m_Device;
     ComPtr<ID3D12ResourceBest> m_Buffer;
     ComPtr<D3D12MA::Allocation> m_VmaAllocation = nullptr;
+    uint8_t* m_MappedMemory = nullptr;
     BufferDesc m_Desc = {};
 };
 

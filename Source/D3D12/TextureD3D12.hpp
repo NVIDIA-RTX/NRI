@@ -64,7 +64,7 @@ Result TextureD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset) {
         }
     } else
 #endif
-    {
+    { // TODO: by design textures should not be created in UPLOAD/READBACK heaps, since they can't be mapped. But what about a wrapped texture?
         D3D12_RESOURCE_DESC desc = {};
         GetResourceDesc(&desc, m_Desc);
 

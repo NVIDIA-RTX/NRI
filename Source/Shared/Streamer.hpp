@@ -130,7 +130,7 @@ Result StreamerImpl::CopyUpdateRequests() {
     // Grow
     if (m_DynamicDataOffsetBase + m_DynamicDataOffset > m_DynamicBufferSize) {
         if (m_Desc.dynamicBufferSize)
-            return Result::OUT_OF_MEMORY; // TODO: add "AddMessage" to Core or Helper interface
+            return Result::OUT_OF_MEMORY;
 
         m_DynamicBufferSize = Align(m_DynamicDataOffset, CHUNK_SIZE) * (m_Desc.frameInFlightNum + 1);
 

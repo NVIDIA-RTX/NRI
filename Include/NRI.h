@@ -37,7 +37,7 @@ Implicit:
 
 #define NRI_VERSION_MAJOR 1
 #define NRI_VERSION_MINOR 165
-#define NRI_VERSION_DATE "11 March 2025"
+#define NRI_VERSION_DATE "13 March 2025"
 
 #include "NRIDescs.h"
 
@@ -227,6 +227,9 @@ NriStruct(CoreInterface) {
     void                (NRI_CALL *ResetCommandAllocator)           (NriRef(CommandAllocator) commandAllocator);
 
     // Map / Unmap
+    // D3D11: persistent mapping unsupported
+    // D3D12: persistent mapping supported, "Map/Unmap" do nothing
+    // VK: persistent mapping supported, but "Unmap" can do a flush if underlying memory is not HOST_COHERENT (unlikely)
     void*               (NRI_CALL *MapBuffer)                       (NriRef(Buffer) buffer, uint64_t offset, uint64_t size);
     void                (NRI_CALL *UnmapBuffer)                     (NriRef(Buffer) buffer);
 

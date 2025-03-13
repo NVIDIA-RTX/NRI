@@ -110,17 +110,12 @@ Result BufferD3D12::Create(const AllocateBufferDesc& bufferDesc) {
         RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3()");
     }
 
-    // Priority
-    D3D12_RESIDENCY_PRIORITY residencyPriority = (D3D12_RESIDENCY_PRIORITY)ConvertPriority(bufferDesc.memoryPriority);
-    if (m_Device.GetVersion() >= 1 && residencyPriority != 0) {
-        ID3D12Pageable* obj = m_Buffer.GetInterface();
-        HRESULT hr = m_Device->SetResidencyPriority(1, &obj, &residencyPriority);
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority()");
-    }
-
     m_Desc = bufferDesc.desc;
 
-    return Result::SUCCESS;
+    D3D12_HEAP_PROPERTIES heapProps = {};
+    heapProps.Type = allocationDesc.HeapType;
+
+    return SetPriorityAndPersistentlyMap(bufferDesc.memoryPriority, heapProps);
 }
 
 Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {

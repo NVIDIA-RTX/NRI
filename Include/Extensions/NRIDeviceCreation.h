@@ -10,12 +10,13 @@ NriEnum(Message, uint8_t,
     ERROR // "wingdi.h" must not be included after
 );
 
+// Callbacks must be thread safe
 NriStruct(AllocationCallbacks) {
     void* (*Allocate)(void* userArg, size_t size, size_t alignment);
     void* (*Reallocate)(void* userArg, void* memory, size_t size, size_t alignment);
     void (*Free)(void* userArg, void* memory);
     void* userArg;
-    bool disable3rdPartyAllocationCallbacks;    // to use "AllocationCallbacks" only for NRI needs
+    bool disable3rdPartyAllocationCallbacks; // to use "AllocationCallbacks" only for NRI needs
 };
 
 NriStruct(CallbackInterface) {

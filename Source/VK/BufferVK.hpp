@@ -92,7 +92,7 @@ NRI_INLINE void BufferVK::SetDebugName(const char* name) {
 }
 
 NRI_INLINE void* BufferVK::Map(uint64_t offset, uint64_t size) {
-    CHECK(m_MappedMemory, "The buffer does not support memory mapping");
+    CHECK(m_MappedMemory, "No CPU access");
 
     if (size == WHOLE_SIZE)
         size = m_Desc.size;
