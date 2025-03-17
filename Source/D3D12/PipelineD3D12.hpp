@@ -59,7 +59,7 @@ static void FillRasterizerState(D3D12_RASTERIZER_DESC& rasterizerDesc, const Gra
 
     if (graphicsPipelineDesc.multisample) {
         rasterizerDesc.MultisampleEnable = graphicsPipelineDesc.multisample->sampleNum > 1 ? TRUE : FALSE;
-        rasterizerDesc.ForcedSampleCount = graphicsPipelineDesc.multisample->sampleNum > 1 ? graphicsPipelineDesc.multisample->sampleNum : 0;
+        // TODO: rasterizerDesc.ForcedSampleCount?
     }
 }
 
@@ -96,7 +96,7 @@ static void FillRasterizerState(D3D12_RASTERIZER_DESC1& rasterizerDesc, const Gr
 
     if (graphicsPipelineDesc.multisample) {
         rasterizerDesc.MultisampleEnable = graphicsPipelineDesc.multisample->sampleNum > 1 ? TRUE : FALSE;
-        rasterizerDesc.ForcedSampleCount = graphicsPipelineDesc.multisample->sampleNum > 1 ? graphicsPipelineDesc.multisample->sampleNum : 0;
+        // TODO: rasterizerDesc.ForcedSampleCount?
     }
 }
 

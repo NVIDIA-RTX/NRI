@@ -101,7 +101,7 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc) {
         rasterizerDesc.AntialiasedLineEnable = r.lineSmoothing;
         rasterizerDesc.MultisampleEnable = sampleNum > 1 ? TRUE : FALSE;
         // D3D11_RASTERIZER_DESC1
-        rasterizerDesc.ForcedSampleCount = sampleNum > 1 ? sampleNum : 0;
+        // TODO: rasterizerDesc.ForcedSampleCount?
         // D3D11_RASTERIZER_DESC2
         rasterizerDesc.ConservativeRaster = r.conservativeRaster ? D3D11_CONSERVATIVE_RASTERIZATION_MODE_ON : D3D11_CONSERVATIVE_RASTERIZATION_MODE_OFF;
 
@@ -121,7 +121,7 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc) {
         // Ex
         memcpy(&m_RasterizerDesc, &rasterizerDesc, sizeof(D3D11_RASTERIZER_DESC));
 #if NRI_ENABLE_D3D_EXTENSIONS
-        m_RasterizerDesc.ForcedSampleCount = sampleNum > 1 ? sampleNum : 0;
+        // TODO: m_RasterizerDesc.ForcedSampleCount?
         m_RasterizerDesc.ProgrammableSamplePositionsEnable = true;
         m_RasterizerDesc.SampleCount = sampleNum;
         m_RasterizerDesc.ConservativeRasterEnable = r.conservativeRaster;
