@@ -454,7 +454,9 @@ if(NRI_ENABLE_VK_SUPPORT)
         endif()
 
         if(NRI_ENABLE_WAYLAND_SUPPORT)
-            find_path(WAYLAND_HEADERS NAMES "wayland-client.h")
+            set(WAYLAND_INCLUDE_DIR "/usr/include/wayland")
+            MESSAGE(STATUS "  Wayland include path ${WAYLAND_INCLUDE_DIR}")
+            find_path(WAYLAND_HEADERS NAMES "wayland-client.h" HINTS ${WAYLAND_INCLUDE_DIR})
 
             if(NOT WAYLAND_HEADERS)
                 message(FATAL_ERROR "Can't find 'wayland-client.h'. 'libwayland-dev' is not installed?")
