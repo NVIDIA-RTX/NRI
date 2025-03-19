@@ -270,6 +270,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         if (clusterBlasSupport)
             psoOptionsParams.flags |= NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_ENABLE_CLUSTER_SUPPORT;
 
+        /*
         NVAPI_D3D12_RAYTRACING_SPHERES_CAPS spheresSupport = {};
         REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_SPHERES, &spheresSupport, sizeof(spheresSupport)));
         if (clusterBlasSupport)
@@ -279,6 +280,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_LINEAR_SWEPT_SPHERES, &linearSweptSpheresSupport, sizeof(linearSweptSpheresSupport)));
         if (clusterBlasSupport)
             psoOptionsParams.flags |= NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_ENABLE_LSS_SUPPORT;
+        */
 
         NVAPI_D3D12_RAYTRACING_THREAD_REORDERING_CAPS threadReorderingSupport = {};
         REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_THREAD_REORDERING, &threadReorderingSupport, sizeof(threadReorderingSupport))); // TODO: use
@@ -867,14 +869,14 @@ void DeviceD3D12::GetAccelerationStructurePrebuildInfo(const AccelerationStructu
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS accelerationStructureInputs = {};
     accelerationStructureInputs.Type = GetAccelerationStructureType(accelerationStructureDesc.type);
     accelerationStructureInputs.Flags = GetAccelerationStructureBuildFlags(accelerationStructureDesc.flags);
-    accelerationStructureInputs.NumDescs = accelerationStructureDesc.instanceOrGeometryNum;
+    accelerationStructureInputs.NumDescs = accelerationStructureDesc.geometryOrInstanceNum;
     accelerationStructureInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY; // TODO: D3D12_ELEMENTS_LAYOUT_ARRAY_OF_POINTERS support?
 
-    uint32_t geometryCount = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.instanceOrGeometryNum : 0;
+    uint32_t geometryCount = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.geometryOrInstanceNum : 0;
     Scratch<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescs = AllocateScratch(*this, D3D12_RAYTRACING_GEOMETRY_DESC, geometryCount);
 
-    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL && accelerationStructureDesc.instanceOrGeometryNum) {
-        ConvertGeometryDescs(geometryDescs, accelerationStructureDesc.geometries, accelerationStructureDesc.instanceOrGeometryNum);
+    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL && accelerationStructureDesc.geometryOrInstanceNum) {
+        ConvertGeometryDescs(geometryDescs, accelerationStructureDesc.geometries, accelerationStructureDesc.geometryOrInstanceNum);
         accelerationStructureInputs.pGeometryDescs = geometryDescs;
     }
 
