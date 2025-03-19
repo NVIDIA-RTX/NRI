@@ -416,8 +416,8 @@ D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE nri::GetCopyMode(CopyMode copy
     return (D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE)copyMode;
 }
 
-void nri::ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs, const BottomLevelGeometry* geometries, uint32_t geometryObjectNum) {
-    for (uint32_t i = 0; i < geometryObjectNum; i++) {
+void nri::ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs, const BottomLevelGeometry* geometries, uint32_t geometryNum) {
+    for (uint32_t i = 0; i < geometryNum; i++) {
         geometryDescs[i].Type = GetGeometryType(geometries[i].type);
         geometryDescs[i].Flags = GetGeometryFlags(geometries[i].flags);
 

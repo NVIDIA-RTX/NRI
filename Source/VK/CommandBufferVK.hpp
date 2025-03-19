@@ -985,7 +985,7 @@ NRI_INLINE void CommandBufferVK::BuildTopLevelAccelerationStructure(const BuildT
 NRI_INLINE void CommandBufferVK::BuildBottomLevelAccelerationStructure(const BuildBottomLevelAccelerationStructureDesc* buildBottomLevelAccelerationStructureDescs, uint32_t buildBottomLevelAccelerationStructureDescNum) {
     uint32_t totalGeometryObjectNum = 0;
     for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++)
-        totalGeometryObjectNum += buildBottomLevelAccelerationStructureDescs[i].geometryObjectNum;
+        totalGeometryObjectNum += buildBottomLevelAccelerationStructureDescs[i].geometryNum;
 
     Scratch<VkAccelerationStructureBuildGeometryInfoKHR> infos = AllocateScratch(m_Device, VkAccelerationStructureBuildGeometryInfoKHR, buildBottomLevelAccelerationStructureDescNum);
     Scratch<const VkAccelerationStructureBuildRangeInfoKHR*> pRanges = AllocateScratch(m_Device, const VkAccelerationStructureBuildRangeInfoKHR*, buildBottomLevelAccelerationStructureDescNum);
@@ -1003,7 +1003,7 @@ NRI_INLINE void CommandBufferVK::BuildBottomLevelAccelerationStructure(const Bui
         BufferVK* scratchBuffer = (BufferVK*)in.scratchBuffer;
 
         // Ranges and geometries
-        ConvertGeometryObjectsVK(geometries, ranges, in.geometries, in.geometryObjectNum);
+        ConvertGeometryObjectsVK(geometries, ranges, in.geometries, in.geometryNum);
 
         pRanges[i] = ranges;
 
@@ -1013,7 +1013,7 @@ NRI_INLINE void CommandBufferVK::BuildBottomLevelAccelerationStructure(const Bui
         info.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
         info.flags = GetAccelerationStructureBuildFlags(dst->GetFlags());
         info.dstAccelerationStructure = dst->GetHandle();
-        info.geometryCount = in.geometryObjectNum;
+        info.geometryCount = in.geometryNum;
         info.pGeometries = geometries;
         info.scratchData.deviceAddress = scratchBuffer->GetDeviceAddress() + in.scratchOffset;
 
@@ -1024,8 +1024,8 @@ NRI_INLINE void CommandBufferVK::BuildBottomLevelAccelerationStructure(const Bui
         else
             info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
 
-        geometries += in.geometryObjectNum;
-        ranges += in.geometryObjectNum;
+        geometries += in.geometryNum;
+        ranges += in.geometryNum;
     }
 
     const auto& vk = m_Device.GetDispatchTable();

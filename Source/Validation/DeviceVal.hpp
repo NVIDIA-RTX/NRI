@@ -999,15 +999,15 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const RayTracingPipelineDesc& pipeli
 }
 
 NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    RETURN_ON_FAILURE(this, accelerationStructureDesc.instanceOrGeometryNum != 0, Result::INVALID_ARGUMENT, "'instanceOrGeometryNum' is 0");
+    RETURN_ON_FAILURE(this, accelerationStructureDesc.geometryOrInstanceNum != 0, Result::INVALID_ARGUMENT, "'geometryOrInstanceNum' is 0");
 
     auto accelerationStructureDescImpl = accelerationStructureDesc;
 
-    uint32_t geometryObjectNum = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.instanceOrGeometryNum : 0;
-    Scratch<BottomLevelGeometry> objectImplArray = AllocateScratch(*this, BottomLevelGeometry, geometryObjectNum);
+    uint32_t geometryNum = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.geometryOrInstanceNum : 0;
+    Scratch<BottomLevelGeometry> objectImplArray = AllocateScratch(*this, BottomLevelGeometry, geometryNum);
 
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
-        ConvertGeometryObjectsVal(objectImplArray, accelerationStructureDesc.geometries, geometryObjectNum);
+        ConvertGeometryObjectsVal(objectImplArray, accelerationStructureDesc.geometries, geometryNum);
         accelerationStructureDescImpl.geometries = objectImplArray;
     }
 
@@ -1025,15 +1025,15 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
 }
 
 NRI_INLINE Result DeviceVal::AllocateAccelerationStructure(const AllocateAccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    RETURN_ON_FAILURE(this, accelerationStructureDesc.desc.instanceOrGeometryNum != 0, Result::INVALID_ARGUMENT, "'instanceOrGeometryNum' is 0");
+    RETURN_ON_FAILURE(this, accelerationStructureDesc.desc.geometryOrInstanceNum != 0, Result::INVALID_ARGUMENT, "'geometryOrInstanceNum' is 0");
 
     auto accelerationStructureDescImpl = accelerationStructureDesc;
 
-    uint32_t geometryObjectNum = accelerationStructureDesc.desc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.desc.instanceOrGeometryNum : 0;
-    Scratch<BottomLevelGeometry> objectImplArray = AllocateScratch(*this, BottomLevelGeometry, geometryObjectNum);
+    uint32_t geometryNum = accelerationStructureDesc.desc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.desc.geometryOrInstanceNum : 0;
+    Scratch<BottomLevelGeometry> objectImplArray = AllocateScratch(*this, BottomLevelGeometry, geometryNum);
 
     if (accelerationStructureDesc.desc.type == AccelerationStructureType::BOTTOM_LEVEL) {
-        ConvertGeometryObjectsVal(objectImplArray, accelerationStructureDesc.desc.geometries, geometryObjectNum);
+        ConvertGeometryObjectsVal(objectImplArray, accelerationStructureDesc.desc.geometries, geometryNum);
         accelerationStructureDescImpl.desc.geometries = objectImplArray;
     }
 

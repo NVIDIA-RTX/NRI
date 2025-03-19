@@ -555,7 +555,7 @@ NRI_INLINE void CommandBufferVal::BuildBottomLevelAccelerationStructure(const Bu
 
     uint32_t totalGeometryObjectNum = 0;
     for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++)
-        totalGeometryObjectNum += buildBottomLevelAccelerationStructureDescs[i].geometryObjectNum;
+        totalGeometryObjectNum += buildBottomLevelAccelerationStructureDescs[i].geometryNum;
 
     Scratch<BottomLevelGeometry> geometryObjectsImplScratch = AllocateScratch(m_Device, BottomLevelGeometry, totalGeometryObjectNum);
     BottomLevelGeometry* geometryObjectsImpl = geometryObjectsImplScratch;
@@ -579,9 +579,9 @@ NRI_INLINE void CommandBufferVal::BuildBottomLevelAccelerationStructure(const Bu
         out.geometries = geometryObjectsImpl;
         out.scratchBuffer = NRI_GET_IMPL(Buffer, in.scratchBuffer);
 
-        ConvertGeometryObjectsVal(geometryObjectsImpl, in.geometries, in.geometryObjectNum);
+        ConvertGeometryObjectsVal(geometryObjectsImpl, in.geometries, in.geometryNum);
 
-        geometryObjectsImpl += in.geometryObjectNum;
+        geometryObjectsImpl += in.geometryNum;
     }
 
     GetRayTracingInterface().CmdBuildBottomLevelAccelerationStructures(*GetImpl(), buildBottomLevelAccelerationStructureDescsImpl, buildBottomLevelAccelerationStructureDescNum);

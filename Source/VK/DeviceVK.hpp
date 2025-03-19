@@ -1336,7 +1336,7 @@ bool DeviceVK::GetMemoryTypeByIndex(uint32_t index, MemoryTypeInfo& memoryTypeIn
 }
 
 void DeviceVK::GetAccelerationStructureBuildSizesInfo(const AccelerationStructureDesc& accelerationStructureDesc, VkAccelerationStructureBuildSizesInfoKHR& sizesInfo) {
-    uint32_t geometryCount = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.instanceOrGeometryNum : 1;
+    uint32_t geometryCount = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.geometryOrInstanceNum : 1;
     Scratch<uint32_t> primitiveMaxNums = AllocateScratch(*this, uint32_t, geometryCount);
     Scratch<VkAccelerationStructureGeometryKHR> geometries = AllocateScratch(*this, VkAccelerationStructureGeometryKHR, geometryCount);
 
@@ -1349,7 +1349,7 @@ void DeviceVK::GetAccelerationStructureBuildSizesInfo(const AccelerationStructur
         geometries[0].geometry.aabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
         geometries[0].geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
 
-        primitiveMaxNums[0] = accelerationStructureDesc.instanceOrGeometryNum;
+        primitiveMaxNums[0] = accelerationStructureDesc.geometryOrInstanceNum;
     }
 
     VkAccelerationStructureBuildGeometryInfoKHR buildInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};

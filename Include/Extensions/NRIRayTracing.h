@@ -178,7 +178,7 @@ NriStruct(BottomLevelGeometry) {
 
 NriStruct(AccelerationStructureDesc) {
     const NriPtr(BottomLevelGeometry) geometries; // needed only for BOTTOM_LEVEL
-    uint32_t instanceOrGeometryNum;
+    uint32_t geometryOrInstanceNum;
     Nri(AccelerationStructureBits) flags;
     Nri(AccelerationStructureType) type;
 };
@@ -203,7 +203,7 @@ NriStruct(BuildBottomLevelAccelerationStructureDesc) {
     NriPtr(AccelerationStructure) dst;
     NriOptional const NriPtr(AccelerationStructure) src; // implies "update" instead of "build" if provided (requires "ALLOW_UPDATE")
     const NriPtr(BottomLevelGeometry) geometries;
-    uint32_t geometryObjectNum;
+    uint32_t geometryNum;
     NriPtr(Buffer) scratchBuffer;
     uint64_t scratchOffset;
 };

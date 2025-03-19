@@ -1,7 +1,7 @@
 // © 2021 NVIDIA Corporation
 
-void nri::ConvertGeometryObjectSizesVK(VkAccelerationStructureGeometryKHR* vkGeometries, uint32_t* primitiveNums, const BottomLevelGeometry* geometries, uint32_t geometryObjectNum) {
-    for (uint32_t i = 0; i < geometryObjectNum; i++) {
+void nri::ConvertGeometryObjectSizesVK(VkAccelerationStructureGeometryKHR* vkGeometries, uint32_t* primitiveNums, const BottomLevelGeometry* geometries, uint32_t geometryNum) {
+    for (uint32_t i = 0; i < geometryNum; i++) {
         const BottomLevelGeometry& in = geometries[i];
         const BottomLevelTriangles& triangles = in.geometry.triangles;
         const BottomLevelAabbs& aabbs = in.geometry.aabbs;
@@ -25,8 +25,8 @@ void nri::ConvertGeometryObjectSizesVK(VkAccelerationStructureGeometryKHR* vkGeo
     }
 }
 
-void nri::ConvertGeometryObjectsVK(VkAccelerationStructureGeometryKHR* vkGeometries, VkAccelerationStructureBuildRangeInfoKHR* ranges, const BottomLevelGeometry* geometries, uint32_t geometryObjectNum) {
-    for (uint32_t i = 0; i < geometryObjectNum; i++) {
+void nri::ConvertGeometryObjectsVK(VkAccelerationStructureGeometryKHR* vkGeometries, VkAccelerationStructureBuildRangeInfoKHR* ranges, const BottomLevelGeometry* geometries, uint32_t geometryNum) {
+    for (uint32_t i = 0; i < geometryNum; i++) {
         const BottomLevelGeometry& in = geometries[i];
         const BottomLevelTriangles& triangles = in.geometry.triangles;
         const BottomLevelAabbs& aabbs = in.geometry.aabbs;

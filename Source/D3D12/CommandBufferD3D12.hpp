@@ -992,7 +992,7 @@ NRI_INLINE void CommandBufferD3D12::BuildBottomLevelAccelerationStructure(const 
 
     uint32_t totalGeometryObjectNum = 0;
     for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++)
-        totalGeometryObjectNum += buildBottomLevelAccelerationStructureDescs[i].geometryObjectNum;
+        totalGeometryObjectNum += buildBottomLevelAccelerationStructureDescs[i].geometryNum;
 
     Scratch<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescsScratch = AllocateScratch(m_Device, D3D12_RAYTRACING_GEOMETRY_DESC, totalGeometryObjectNum);
     D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs = geometryDescsScratch;
@@ -1009,7 +1009,7 @@ NRI_INLINE void CommandBufferD3D12::BuildBottomLevelAccelerationStructure(const 
         out.ScratchAccelerationStructureData = scratchBuffer->GetPointerGPU() + in.scratchOffset;
         out.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
         out.Inputs.Flags = GetAccelerationStructureBuildFlags(dst->GetFlags());
-        out.Inputs.NumDescs = in.geometryObjectNum;
+        out.Inputs.NumDescs = in.geometryNum;
         out.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
         out.Inputs.pGeometryDescs = geometryDescs;
 
@@ -1018,11 +1018,11 @@ NRI_INLINE void CommandBufferD3D12::BuildBottomLevelAccelerationStructure(const 
             out.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
         }
 
-        ConvertGeometryDescs(geometryDescs, in.geometries, in.geometryObjectNum);
+        ConvertGeometryDescs(geometryDescs, in.geometries, in.geometryNum);
 
         m_GraphicsCommandList->BuildRaytracingAccelerationStructure(&out, 0, nullptr);
 
-        geometryDescs += in.geometryObjectNum;
+        geometryDescs += in.geometryNum;
     }
 }
 

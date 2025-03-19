@@ -928,11 +928,11 @@ static void NRI_CALL GetAccelerationStructureMemoryDesc2(const Device& device, c
 
     auto accelerationStructureDescImpl = accelerationStructureDesc;
 
-    uint32_t geometryObjectNum = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.instanceOrGeometryNum : 0;
-    Scratch<BottomLevelGeometry> objectImplArray = AllocateScratch(deviceVal, BottomLevelGeometry, geometryObjectNum);
+    uint32_t geometryNum = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.geometryOrInstanceNum : 0;
+    Scratch<BottomLevelGeometry> objectImplArray = AllocateScratch(deviceVal, BottomLevelGeometry, geometryNum);
 
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
-        ConvertGeometryObjectsVal(objectImplArray, accelerationStructureDesc.geometries, geometryObjectNum);
+        ConvertGeometryObjectsVal(objectImplArray, accelerationStructureDesc.geometries, geometryNum);
         accelerationStructureDescImpl.geometries = objectImplArray;
     }
 
