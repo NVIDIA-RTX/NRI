@@ -124,9 +124,11 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         RETURN_ON_FAILURE(&m_Device, isHeightValid, Result::INVALID_ARGUMENT, "swapChainDesc.height is out of [%u, %u] range", sc.surfaceCapabilities.minImageExtent.height,
             sc.surfaceCapabilities.maxImageExtent.height);
 
-        bool isTextureNumValid = textureNum >= sc.surfaceCapabilities.minImageCount && (textureNum <= sc.surfaceCapabilities.maxImageCount || sc.surfaceCapabilities.maxImageCount == 0);
-        RETURN_ON_FAILURE(&m_Device, isTextureNumValid, Result::INVALID_ARGUMENT, "swapChainDesc.textureNum is out of [%u, %u] range", sc.surfaceCapabilities.minImageCount,
-            sc.surfaceCapabilities.maxImageCount);
+        // Silently clamp "textureNum" to supported range
+        if (textureNum < sc.surfaceCapabilities.minImageCount)
+            textureNum = sc.surfaceCapabilities.minImageCount;
+        else if (textureNum > sc.surfaceCapabilities.maxImageCount)
+            textureNum = sc.surfaceCapabilities.maxImageCount;
     }
 
     // Surface format
