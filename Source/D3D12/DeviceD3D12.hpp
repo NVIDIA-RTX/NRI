@@ -255,46 +255,58 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         NVAPI_D3D12_SET_CREATE_PIPELINE_STATE_OPTIONS_PARAMS psoOptionsParams = {};
         psoOptionsParams.version = NVAPI_D3D12_SET_CREATE_PIPELINE_STATE_OPTIONS_PARAMS_VER;
 
-        NVAPI_D3D12_RAYTRACING_OPACITY_MICROMAP_CAPS micromapSupport = {};
-        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_OPACITY_MICROMAP, &micromapSupport, sizeof(micromapSupport)));
-        if (micromapSupport) {
-            psoOptionsParams.flags |= NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_ENABLE_OMM_SUPPORT;
+        { // Check ray tracing opacity micromap support
+            NVAPI_D3D12_RAYTRACING_OPACITY_MICROMAP_CAPS micromapSupport = {};
+            REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_OPACITY_MICROMAP, &micromapSupport, sizeof(micromapSupport)));
+            if (micromapSupport) {
+                psoOptionsParams.flags |= NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_ENABLE_OMM_SUPPORT;
 
-            m_Desc.isMicromapSupported = true;
-            m_Desc.opacity2StateSubdivisionMaxLevel = NVAPI_D3D12_RAYTRACING_OPACITY_MICROMAP_OC1_MAX_SUBDIVISION_LEVEL;
-            m_Desc.opacity4StateSubdivisionMaxLevel = NVAPI_D3D12_RAYTRACING_OPACITY_MICROMAP_OC1_MAX_SUBDIVISION_LEVEL;
+                m_Desc.isMicromapSupported = true;
+                m_Desc.opacity2StateSubdivisionMaxLevel = NVAPI_D3D12_RAYTRACING_OPACITY_MICROMAP_OC1_MAX_SUBDIVISION_LEVEL;
+                m_Desc.opacity4StateSubdivisionMaxLevel = NVAPI_D3D12_RAYTRACING_OPACITY_MICROMAP_OC1_MAX_SUBDIVISION_LEVEL;
+            }
         }
 
-        NVAPI_D3D12_RAYTRACING_CLUSTER_OPERATIONS_CAPS clusterBlasSupport = {};
-        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_CLUSTER_OPERATIONS, &clusterBlasSupport, sizeof(clusterBlasSupport)));
-        if (clusterBlasSupport)
-            psoOptionsParams.flags |= NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_ENABLE_CLUSTER_SUPPORT;
+        { // Check ray tracing cluster ops support
+            NVAPI_D3D12_RAYTRACING_CLUSTER_OPERATIONS_CAPS clusterBlasSupport = {};
+            REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_CLUSTER_OPERATIONS, &clusterBlasSupport, sizeof(clusterBlasSupport)));
+            if (clusterBlasSupport)
+                psoOptionsParams.flags |= NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_ENABLE_CLUSTER_SUPPORT;
+        }
 
-        /*
-        NVAPI_D3D12_RAYTRACING_SPHERES_CAPS spheresSupport = {};
-        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_SPHERES, &spheresSupport, sizeof(spheresSupport)));
-        if (clusterBlasSupport)
-            psoOptionsParams.flags |= NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_ENABLE_SPHERE_SUPPORT;
+        { // Check ray tracing spheres support
+            NVAPI_D3D12_RAYTRACING_SPHERES_CAPS spheresSupport = {};
+            REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_SPHERES, &spheresSupport, sizeof(spheresSupport)));
+            if (spheresSupport)
+                psoOptionsParams.flags |= NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_ENABLE_SPHERE_SUPPORT;
+        }
 
-        NVAPI_D3D12_RAYTRACING_LINEAR_SWEPT_SPHERES_CAPS linearSweptSpheresSupport = {};
-        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_LINEAR_SWEPT_SPHERES, &linearSweptSpheresSupport, sizeof(linearSweptSpheresSupport)));
-        if (clusterBlasSupport)
-            psoOptionsParams.flags |= NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_ENABLE_LSS_SUPPORT;
-        */
+        { // Check ray tracing LSS support
+            NVAPI_D3D12_RAYTRACING_LINEAR_SWEPT_SPHERES_CAPS linearSweptSpheresSupport = {};
+            REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_LINEAR_SWEPT_SPHERES, &linearSweptSpheresSupport, sizeof(linearSweptSpheresSupport)));
+            if (linearSweptSpheresSupport)
+                psoOptionsParams.flags |= NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_ENABLE_LSS_SUPPORT;
+        }
 
-        NVAPI_D3D12_RAYTRACING_THREAD_REORDERING_CAPS threadReorderingSupport = {};
-        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_THREAD_REORDERING, &threadReorderingSupport, sizeof(threadReorderingSupport))); // TODO: use
+        { // Check ray tracing SER support
+            NVAPI_D3D12_RAYTRACING_THREAD_REORDERING_CAPS threadReorderingSupport = {};
+            REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_THREAD_REORDERING, &threadReorderingSupport, sizeof(threadReorderingSupport))); // TODO: use
+        }
 
-        NVAPI_D3D12_RAYTRACING_PARTITIONED_TLAS_CAPS partitionedTlasSupport = {};
-        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_PARTITIONED_TLAS, &partitionedTlasSupport, sizeof(partitionedTlasSupport))); // TODO: use
+        { // Check ray tracing partitioned TLAS support
+            NVAPI_D3D12_RAYTRACING_PARTITIONED_TLAS_CAPS partitionedTlasSupport = {};
+            REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_PARTITIONED_TLAS, &partitionedTlasSupport, sizeof(partitionedTlasSupport))); // TODO: use
+        }
 
+        // Enable supported features
         REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_SetCreatePipelineStateOptions(m_Device, &psoOptionsParams));
 
+        // Check ray tracing position fetch support
         bool isSupported = false;
         REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_RT_TRIANGLE_OBJECT_POSITIONS, &isSupported));
         m_Desc.isRayTracingPositionFetchSupported = isSupported;
 
-        // Ray tracing validation
+        // Enable ray tracing validation
         if (desc.enableD3D12RayTracingValidation) {
             NvAPI_Status status = NvAPI_D3D12_EnableRaytracingValidation(m_Device, NVAPI_D3D12_RAYTRACING_VALIDATION_FLAG_NONE);
             if (status == NVAPI_OK) {
