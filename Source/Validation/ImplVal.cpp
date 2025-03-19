@@ -804,19 +804,19 @@ static void NRI_CALL QueueSubmitTrackable(Queue& queue, const QueueSubmitDesc& w
     ((QueueVal&)queue).Submit(workSubmissionDesc, &swapChain);
 }
 
-static Result SetLatencySleepMode(SwapChain& swapChain, const LatencySleepMode& latencySleepMode) {
+static Result NRI_CALL SetLatencySleepMode(SwapChain& swapChain, const LatencySleepMode& latencySleepMode) {
     return ((SwapChainVal&)swapChain).SetLatencySleepMode(latencySleepMode);
 }
 
-static Result SetLatencyMarker(SwapChain& swapChain, LatencyMarker latencyMarker) {
+static Result NRI_CALL SetLatencyMarker(SwapChain& swapChain, LatencyMarker latencyMarker) {
     return ((SwapChainVal&)swapChain).SetLatencyMarker(latencyMarker);
 }
 
-static Result LatencySleep(SwapChain& swapChain) {
+static Result NRI_CALL LatencySleep(SwapChain& swapChain) {
     return ((SwapChainVal&)swapChain).LatencySleep();
 }
 
-static Result GetLatencyReport(const SwapChain& swapChain, LatencyReport& latencyReport) {
+static Result NRI_CALL GetLatencyReport(const SwapChain& swapChain, LatencyReport& latencyReport) {
     return ((SwapChainVal&)swapChain).GetLatencyReport(latencyReport);
 }
 
@@ -861,6 +861,23 @@ Result DeviceVal::FillFunctionTable(MeshShaderInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  RayTracing  ]
 
+static Result NRI_CALL CreateRayTracingPipeline(Device& device, const RayTracingPipelineDesc& pipelineDesc, Pipeline*& pipeline) {
+    return ((DeviceVal&)device).CreatePipeline(pipelineDesc, pipeline);
+}
+
+static Result NRI_CALL CreateAccelerationStructure(Device& device, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
+    return ((DeviceVal&)device).CreateAccelerationStructure(accelerationStructureDesc, accelerationStructure);
+}
+
+static Result NRI_CALL CreateAccelerationStructureDescriptor(const AccelerationStructure& accelerationStructure, Descriptor*& descriptor) {
+    return ((AccelerationStructureVal&)accelerationStructure).CreateDescriptor(descriptor);
+}
+
+static Result NRI_CALL CreateMicromap(Device&, const MicromapDesc&, Micromap*&) {
+    // TODO
+    return Result::SUCCESS;
+}
+
 static uint64_t NRI_CALL GetAccelerationStructureUpdateScratchBufferSize(const AccelerationStructure& accelerationStructure) {
     return ((const AccelerationStructureVal&)accelerationStructure).GetUpdateScratchBufferSize();
 }
@@ -877,44 +894,25 @@ static Buffer* NRI_CALL GetAccelerationStructureBuffer(const AccelerationStructu
     return ((AccelerationStructureVal&)accelerationStructure).GetBuffer();
 }
 
-static Result NRI_CALL CreateAccelerationStructureDescriptor(const AccelerationStructure& accelerationStructure, Descriptor*& descriptor) {
-    return ((AccelerationStructureVal&)accelerationStructure).CreateDescriptor(descriptor);
+static uint64_t NRI_CALL GetMicromapBuildScratchBufferSize(const Micromap&) {
+    // TODO
+    return 0;
 }
 
-static uint64_t NRI_CALL GetAccelerationStructureNativeObject(const AccelerationStructure& accelerationStructure) {
-    return ((AccelerationStructureVal&)accelerationStructure).GetNativeObject();
+static Buffer* NRI_CALL GetMicromapBuffer(const Micromap&) {
+    // TODO
+    return nullptr;
 }
 
-static void NRI_CALL CmdBuildTopLevelAccelerationStructure(CommandBuffer& commandBuffer, uint32_t instanceNum, const Buffer& buffer, uint64_t bufferOffset, AccelerationStructureBuildBits flags, AccelerationStructure& dst, Buffer& scratch, uint64_t scratchOffset) {
-    ((CommandBufferVal&)commandBuffer).BuildTopLevelAccelerationStructure(instanceNum, buffer, bufferOffset, flags, dst, scratch, scratchOffset);
+static void NRI_CALL DestroyAccelerationStructure(AccelerationStructure& accelerationStructure) {
+    if (!(&accelerationStructure))
+        return;
+
+    GetDeviceVal(accelerationStructure).DestroyAccelerationStructure(accelerationStructure);
 }
 
-static void NRI_CALL CmdBuildBottomLevelAccelerationStructure(CommandBuffer& commandBuffer, uint32_t geometryObjectNum, const GeometryObject* geometryObjects, AccelerationStructureBuildBits flags, AccelerationStructure& dst, Buffer& scratch, uint64_t scratchOffset) {
-    ((CommandBufferVal&)commandBuffer).BuildBottomLevelAccelerationStructure(geometryObjectNum, geometryObjects, flags, dst, scratch, scratchOffset);
-}
-
-static void NRI_CALL CmdUpdateTopLevelAccelerationStructure(CommandBuffer& commandBuffer, uint32_t instanceNum, const Buffer& buffer, uint64_t bufferOffset, AccelerationStructureBuildBits flags, AccelerationStructure& dst, const AccelerationStructure& src, Buffer& scratch, uint64_t scratchOffset) {
-    ((CommandBufferVal&)commandBuffer).UpdateTopLevelAccelerationStructure(instanceNum, buffer, bufferOffset, flags, dst, src, scratch, scratchOffset);
-}
-
-static void NRI_CALL CmdUpdateBottomLevelAccelerationStructure(CommandBuffer& commandBuffer, uint32_t geometryObjectNum, const GeometryObject* geometryObjects, AccelerationStructureBuildBits flags, AccelerationStructure& dst, const AccelerationStructure& src, Buffer& scratch, uint64_t scratchOffset) {
-    ((CommandBufferVal&)commandBuffer).UpdateBottomLevelAccelerationStructure(geometryObjectNum, geometryObjects, flags, dst, src, scratch, scratchOffset);
-}
-
-static void NRI_CALL CmdCopyAccelerationStructure(CommandBuffer& commandBuffer, AccelerationStructure& dst, const AccelerationStructure& src, CopyMode mode) {
-    ((CommandBufferVal&)commandBuffer).CopyAccelerationStructure(dst, src, mode);
-}
-
-static void NRI_CALL CmdWriteAccelerationStructureSize(CommandBuffer& commandBuffer, const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset) {
-    ((CommandBufferVal&)commandBuffer).WriteAccelerationStructureSize(accelerationStructures, accelerationStructureNum, queryPool, queryOffset);
-}
-
-static void NRI_CALL CmdDispatchRays(CommandBuffer& commandBuffer, const DispatchRaysDesc& dispatchRaysDesc) {
-    ((CommandBufferVal&)commandBuffer).DispatchRays(dispatchRaysDesc);
-}
-
-static void NRI_CALL CmdDispatchRaysIndirect(CommandBuffer& commandBuffer, const Buffer& buffer, uint64_t offset) {
-    ((CommandBufferVal&)commandBuffer).DispatchRaysIndirect(buffer, offset);
+static void NRI_CALL DestroyMicromap(Micromap&) {
+    // TODO
 }
 
 static void NRI_CALL GetAccelerationStructureMemoryDesc(const AccelerationStructure& accelerationStructure, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
@@ -930,66 +928,118 @@ static void NRI_CALL GetAccelerationStructureMemoryDesc2(const Device& device, c
 
     auto accelerationStructureDescImpl = accelerationStructureDesc;
 
-    uint32_t geometryObjectNum = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.instanceOrGeometryObjectNum : 0;
-    Scratch<GeometryObject> objectImplArray = AllocateScratch(deviceVal, GeometryObject, geometryObjectNum);
+    uint32_t geometryObjectNum = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.instanceOrGeometryNum : 0;
+    Scratch<BottomLevelGeometry> objectImplArray = AllocateScratch(deviceVal, BottomLevelGeometry, geometryObjectNum);
 
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
-        ConvertGeometryObjectsVal(objectImplArray, accelerationStructureDesc.geometryObjects, geometryObjectNum);
-        accelerationStructureDescImpl.geometryObjects = objectImplArray;
+        ConvertGeometryObjectsVal(objectImplArray, accelerationStructureDesc.geometries, geometryObjectNum);
+        accelerationStructureDescImpl.geometries = objectImplArray;
     }
 
     deviceVal.GetRayTracingInterface().GetAccelerationStructureMemoryDesc2(deviceVal.GetImpl(), accelerationStructureDescImpl, memoryLocation, memoryDesc);
     deviceVal.RegisterMemoryType(memoryDesc.type, memoryLocation);
 }
 
-static Result NRI_CALL CreateRayTracingPipeline(Device& device, const RayTracingPipelineDesc& pipelineDesc, Pipeline*& pipeline) {
-    return ((DeviceVal&)device).CreatePipeline(pipelineDesc, pipeline);
-}
-
-static Result NRI_CALL CreateAccelerationStructure(Device& device, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    return ((DeviceVal&)device).CreateAccelerationStructure(accelerationStructureDesc, accelerationStructure);
-}
-
 static Result NRI_CALL BindAccelerationStructureMemory(Device& device, const AccelerationStructureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
     return ((DeviceVal&)device).BindAccelerationStructureMemory(memoryBindingDescs, memoryBindingDescNum);
 }
 
-static void NRI_CALL DestroyAccelerationStructure(AccelerationStructure& accelerationStructure) {
-    if (!(&accelerationStructure))
-        return;
+static void NRI_CALL GetMicromapMemoryDesc(const Micromap&, MemoryLocation, MemoryDesc&) {
+    // TODO
+}
 
-    GetDeviceVal(accelerationStructure).DestroyAccelerationStructure(accelerationStructure);
+static void NRI_CALL GetMicromapMemoryDesc2(const Device&, const MicromapDesc&, MemoryLocation, MemoryDesc&) {
+    // TODO
+}
+
+static Result NRI_CALL BindMicromapMemory(Device&, const MicromapMemoryBindingDesc*, uint32_t) {
+    // TODO
+    return Result::SUCCESS;
 }
 
 static Result NRI_CALL WriteShaderGroupIdentifiers(const Pipeline& pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* dst) {
     return ((PipelineVal&)pipeline).WriteShaderGroupIdentifiers(baseShaderGroupIndex, shaderGroupNum, dst);
 }
 
+static void NRI_CALL CmdBuildTopLevelAccelerationStructures(CommandBuffer& commandBuffer, const BuildTopLevelAccelerationStructureDesc* buildTopLevelAccelerationStructureDescs, uint32_t buildTopLevelAccelerationStructureDescNum) {
+    ((CommandBufferVal&)commandBuffer).BuildTopLevelAccelerationStructure(buildTopLevelAccelerationStructureDescs, buildTopLevelAccelerationStructureDescNum);
+}
+
+static void NRI_CALL CmdBuildBottomLevelAccelerationStructures(CommandBuffer& commandBuffer, const BuildBottomLevelAccelerationStructureDesc* buildBottomLevelAccelerationStructureDescs, uint32_t buildBottomLevelAccelerationStructureDescNum) {
+    ((CommandBufferVal&)commandBuffer).BuildBottomLevelAccelerationStructure(buildBottomLevelAccelerationStructureDescs, buildBottomLevelAccelerationStructureDescNum);
+}
+
+static void NRI_CALL CmdBuildMicromaps(CommandBuffer&, const BuildMicromapDesc*, uint32_t) {
+    // TODO
+}
+
+static void NRI_CALL CmdDispatchRays(CommandBuffer& commandBuffer, const DispatchRaysDesc& dispatchRaysDesc) {
+    ((CommandBufferVal&)commandBuffer).DispatchRays(dispatchRaysDesc);
+}
+
+static void NRI_CALL CmdDispatchRaysIndirect(CommandBuffer& commandBuffer, const Buffer& buffer, uint64_t offset) {
+    ((CommandBufferVal&)commandBuffer).DispatchRaysIndirect(buffer, offset);
+}
+
+static void NRI_CALL CmdCopyAccelerationStructure(CommandBuffer& commandBuffer, AccelerationStructure& dst, const AccelerationStructure& src, CopyMode mode) {
+    ((CommandBufferVal&)commandBuffer).CopyAccelerationStructure(dst, src, mode);
+}
+
+static void NRI_CALL CmdWriteAccelerationStructureSize(CommandBuffer& commandBuffer, const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset) {
+    ((CommandBufferVal&)commandBuffer).WriteAccelerationStructureSize(accelerationStructures, accelerationStructureNum, queryPool, queryOffset);
+}
+
+static void NRI_CALL CmdCopyMicromap(CommandBuffer&, Micromap&, const Micromap&, CopyMode) {
+    // TODO
+}
+
+static void NRI_CALL CmdWriteMicromapSize(CommandBuffer&, const Micromap* const*, uint32_t, QueryPool&, uint32_t) {
+    // TODO
+}
+
+static uint64_t NRI_CALL GetAccelerationStructureNativeObject(const AccelerationStructure& accelerationStructure) {
+    return ((AccelerationStructureVal&)accelerationStructure).GetNativeObject();
+}
+
+static uint64_t NRI_CALL GetMicromapNativeObject(const Micromap&) {
+    // TODO
+    return 0;
+}
+
 Result DeviceVal::FillFunctionTable(RayTracingInterface& table) const {
     if (!m_IsExtSupported.rayTracing)
         return Result::UNSUPPORTED;
 
+    table.CreateRayTracingPipeline = ::CreateRayTracingPipeline;
+    table.CreateAccelerationStructure = ::CreateAccelerationStructure;
+    table.CreateAccelerationStructureDescriptor = ::CreateAccelerationStructureDescriptor;
+    table.CreateMicromap = ::CreateMicromap;
     table.GetAccelerationStructureUpdateScratchBufferSize = ::GetAccelerationStructureUpdateScratchBufferSize;
     table.GetAccelerationStructureBuildScratchBufferSize = ::GetAccelerationStructureBuildScratchBufferSize;
     table.GetAccelerationStructureHandle = ::GetAccelerationStructureHandle;
     table.GetAccelerationStructureBuffer = ::GetAccelerationStructureBuffer;
+    table.GetMicromapBuildScratchBufferSize = ::GetMicromapBuildScratchBufferSize;
+    table.GetMicromapBuffer = ::GetMicromapBuffer;
+    table.DestroyAccelerationStructure = ::DestroyAccelerationStructure;
+    table.DestroyMicromap = ::DestroyMicromap;
     table.GetAccelerationStructureMemoryDesc = ::GetAccelerationStructureMemoryDesc;
     table.GetAccelerationStructureMemoryDesc2 = ::GetAccelerationStructureMemoryDesc2;
-    table.CreateRayTracingPipeline = ::CreateRayTracingPipeline;
-    table.CreateAccelerationStructure = ::CreateAccelerationStructure;
-    table.CreateAccelerationStructureDescriptor = ::CreateAccelerationStructureDescriptor;
-    table.DestroyAccelerationStructure = ::DestroyAccelerationStructure;
     table.BindAccelerationStructureMemory = ::BindAccelerationStructureMemory;
+    table.GetMicromapMemoryDesc = ::GetMicromapMemoryDesc;
+    table.GetMicromapMemoryDesc2 = ::GetMicromapMemoryDesc2;
+    table.BindMicromapMemory = ::BindMicromapMemory;
     table.WriteShaderGroupIdentifiers = ::WriteShaderGroupIdentifiers;
-    table.CmdBuildTopLevelAccelerationStructure = ::CmdBuildTopLevelAccelerationStructure;
-    table.CmdBuildBottomLevelAccelerationStructure = ::CmdBuildBottomLevelAccelerationStructure;
-    table.CmdUpdateTopLevelAccelerationStructure = ::CmdUpdateTopLevelAccelerationStructure;
-    table.CmdUpdateBottomLevelAccelerationStructure = ::CmdUpdateBottomLevelAccelerationStructure;
+    table.CmdBuildTopLevelAccelerationStructures = ::CmdBuildTopLevelAccelerationStructures;
+    table.CmdBuildBottomLevelAccelerationStructures = ::CmdBuildBottomLevelAccelerationStructures;
+    table.CmdBuildMicromaps = ::CmdBuildMicromaps;
     table.CmdDispatchRays = ::CmdDispatchRays;
     table.CmdDispatchRaysIndirect = ::CmdDispatchRaysIndirect;
     table.CmdCopyAccelerationStructure = ::CmdCopyAccelerationStructure;
     table.CmdWriteAccelerationStructureSize = ::CmdWriteAccelerationStructureSize;
+    table.CmdCopyMicromap = ::CmdCopyMicromap;
+    table.CmdWriteMicromapSize = ::CmdWriteMicromapSize;
     table.GetAccelerationStructureNativeObject = ::GetAccelerationStructureNativeObject;
+    table.GetMicromapNativeObject = ::GetMicromapNativeObject;
 
     return Result::SUCCESS;
 }
@@ -999,22 +1049,30 @@ Result DeviceVal::FillFunctionTable(RayTracingInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  ResourceAllocator  ]
 
-static Result AllocateBuffer(Device& device, const AllocateBufferDesc& bufferDesc, Buffer*& buffer) {
+static Result NRI_CALL AllocateBuffer(Device& device, const AllocateBufferDesc& bufferDesc, Buffer*& buffer) {
     return ((DeviceVal&)device).AllocateBuffer(bufferDesc, buffer);
 }
 
-static Result AllocateTexture(Device& device, const AllocateTextureDesc& textureDesc, Texture*& texture) {
+static Result NRI_CALL AllocateTexture(Device& device, const AllocateTextureDesc& textureDesc, Texture*& texture) {
     return ((DeviceVal&)device).AllocateTexture(textureDesc, texture);
 }
 
-static Result AllocateAccelerationStructure(Device& device, const AllocateAccelerationStructureDesc& acelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
+static Result NRI_CALL AllocateAccelerationStructure(Device& device, const AllocateAccelerationStructureDesc& acelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
     return ((DeviceVal&)device).AllocateAccelerationStructure(acelerationStructureDesc, accelerationStructure);
+}
+
+static Result NRI_CALL AllocateMicromap(Device&, const AllocateMicromapDesc&, Micromap*& micromap) {
+    // TODO
+    micromap = nullptr;
+
+    return Result::FAILURE;
 }
 
 Result DeviceVal::FillFunctionTable(ResourceAllocatorInterface& table) const {
     table.AllocateBuffer = ::AllocateBuffer;
     table.AllocateTexture = ::AllocateTexture;
     table.AllocateAccelerationStructure = ::AllocateAccelerationStructure;
+    table.AllocateMicromap = ::AllocateMicromap;
 
     return Result::SUCCESS;
 }
@@ -1038,7 +1096,7 @@ struct StreamerVal : public ObjectVal {
     bool isDynamicBufferValid = false;
 };
 
-static Result CreateStreamer(Device& device, const StreamerDesc& streamerDesc, Streamer*& streamer) {
+static Result NRI_CALL CreateStreamer(Device& device, const StreamerDesc& streamerDesc, Streamer*& streamer) {
     DeviceVal& deviceVal = (DeviceVal&)device;
 
     bool isUpload = streamerDesc.constantBufferMemoryLocation == MemoryLocation::HOST_UPLOAD || streamerDesc.constantBufferMemoryLocation == MemoryLocation::DEVICE_UPLOAD;
@@ -1059,7 +1117,7 @@ static Result CreateStreamer(Device& device, const StreamerDesc& streamerDesc, S
     return result;
 }
 
-static void DestroyStreamer(Streamer& streamer) {
+static void NRI_CALL DestroyStreamer(Streamer& streamer) {
     if (!(&streamer))
         return;
 
@@ -1071,14 +1129,14 @@ static void DestroyStreamer(Streamer& streamer) {
     Destroy(deviceVal.GetAllocationCallbacks(), &streamerVal);
 }
 
-static Buffer* GetStreamerConstantBuffer(Streamer& streamer) {
+static Buffer* NRI_CALL GetStreamerConstantBuffer(Streamer& streamer) {
     StreamerVal& streamerVal = (StreamerVal&)streamer;
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
 
     return streamerImpl->GetConstantBuffer();
 }
 
-static uint32_t UpdateStreamerConstantBuffer(Streamer& streamer, const void* data, uint32_t dataSize) {
+static uint32_t NRI_CALL UpdateStreamerConstantBuffer(Streamer& streamer, const void* data, uint32_t dataSize) {
     DeviceVal& deviceVal = GetDeviceVal(streamer);
     StreamerVal& streamerVal = (StreamerVal&)streamer;
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
@@ -1089,7 +1147,7 @@ static uint32_t UpdateStreamerConstantBuffer(Streamer& streamer, const void* dat
     return streamerImpl->UpdateConstantBuffer(data, dataSize);
 }
 
-static uint64_t AddStreamerBufferUpdateRequest(Streamer& streamer, const BufferUpdateRequestDesc& bufferUpdateRequestDesc) {
+static uint64_t NRI_CALL AddStreamerBufferUpdateRequest(Streamer& streamer, const BufferUpdateRequestDesc& bufferUpdateRequestDesc) {
     DeviceVal& deviceVal = GetDeviceVal(streamer);
     StreamerVal& streamerVal = (StreamerVal&)streamer;
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
@@ -1102,7 +1160,7 @@ static uint64_t AddStreamerBufferUpdateRequest(Streamer& streamer, const BufferU
     return streamerImpl->AddBufferUpdateRequest(bufferUpdateRequestDesc);
 }
 
-static uint64_t AddStreamerTextureUpdateRequest(Streamer& streamer, const TextureUpdateRequestDesc& textureUpdateRequestDesc) {
+static uint64_t NRI_CALL AddStreamerTextureUpdateRequest(Streamer& streamer, const TextureUpdateRequestDesc& textureUpdateRequestDesc) {
     DeviceVal& deviceVal = GetDeviceVal(streamer);
     StreamerVal& streamerVal = (StreamerVal&)streamer;
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
@@ -1119,7 +1177,7 @@ static uint64_t AddStreamerTextureUpdateRequest(Streamer& streamer, const Textur
     return streamerImpl->AddTextureUpdateRequest(textureUpdateRequestDesc);
 }
 
-static Result CopyStreamerUpdateRequests(Streamer& streamer) {
+static Result NRI_CALL CopyStreamerUpdateRequests(Streamer& streamer) {
     StreamerVal& streamerVal = (StreamerVal&)streamer;
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
 
@@ -1128,7 +1186,7 @@ static Result CopyStreamerUpdateRequests(Streamer& streamer) {
     return streamerImpl->CopyUpdateRequests();
 }
 
-static Buffer* GetStreamerDynamicBuffer(Streamer& streamer) {
+static Buffer* NRI_CALL GetStreamerDynamicBuffer(Streamer& streamer) {
     DeviceVal& deviceVal = GetDeviceVal(streamer);
     StreamerVal& streamerVal = (StreamerVal&)streamer;
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
@@ -1139,7 +1197,7 @@ static Buffer* GetStreamerDynamicBuffer(Streamer& streamer) {
     return streamerImpl->GetDynamicBuffer();
 }
 
-static void CmdUploadStreamerUpdateRequests(CommandBuffer& commandBuffer, Streamer& streamer) {
+static void NRI_CALL CmdUploadStreamerUpdateRequests(CommandBuffer& commandBuffer, Streamer& streamer) {
     StreamerVal& streamerVal = (StreamerVal&)streamer;
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
 
@@ -1229,7 +1287,7 @@ struct UpscalerVal : public ObjectVal {
     UpscalerDesc m_Desc = {}; // only for .natvis
 };
 
-static Result CreateUpscaler(Device& device, const UpscalerDesc& upscalerDesc, Upscaler*& upscaler) {
+static Result NRI_CALL CreateUpscaler(Device& device, const UpscalerDesc& upscalerDesc, Upscaler*& upscaler) {
     DeviceVal& deviceVal = (DeviceVal&)device;
 
     UpscalerImpl* impl = Allocate<UpscalerImpl>(deviceVal.GetAllocationCallbacks(), device, deviceVal.GetCoreInterfaceVal());
@@ -1244,7 +1302,7 @@ static Result CreateUpscaler(Device& device, const UpscalerDesc& upscalerDesc, U
     return result;
 }
 
-static void DestroyUpscaler(Upscaler& upscaler) {
+static void NRI_CALL DestroyUpscaler(Upscaler& upscaler) {
     if (!(&upscaler))
         return;
 
@@ -1256,20 +1314,20 @@ static void DestroyUpscaler(Upscaler& upscaler) {
     Destroy(deviceVal.GetAllocationCallbacks(), &upscalerVal);
 }
 
-static bool IsUpscalerSupported(const Device& device, UpscalerType upscalerType) {
+static bool NRI_CALL IsUpscalerSupported(const Device& device, UpscalerType upscalerType) {
     DeviceVal& deviceVal = (DeviceVal&)device;
 
     return IsUpscalerSupported(deviceVal.GetDesc(), upscalerType);
 }
 
-static void GetUpscalerProps(const Upscaler& upscaler, UpscalerProps& upscalerProps) {
+static void NRI_CALL GetUpscalerProps(const Upscaler& upscaler, UpscalerProps& upscalerProps) {
     UpscalerVal& upscalerVal = (UpscalerVal&)upscaler;
     UpscalerImpl* upscalerImpl = upscalerVal.GetImpl();
     
     return upscalerImpl->GetUpscalerProps(upscalerProps);
 }
 
-static void CmdDispatchUpscale(CommandBuffer& commandBuffer, Upscaler& upscaler, const DispatchUpscaleDesc& dispatchUpscaleDesc) {
+static void NRI_CALL CmdDispatchUpscale(CommandBuffer& commandBuffer, Upscaler& upscaler, const DispatchUpscaleDesc& dispatchUpscaleDesc) {
     UpscalerVal& upscalerVal = (UpscalerVal&)upscaler;
     UpscalerImpl* upscalerImpl = upscalerVal.GetImpl();
     

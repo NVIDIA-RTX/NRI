@@ -97,6 +97,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         bool isDepthBoundsTestSupported = false;
         bool isDrawIndirectCountSupported = false;
         bool isShaderAtomicsI64Supported = false;
+        bool isShaderClockSupported = false;
 
 #if NRI_ENABLE_D3D_EXTENSIONS
         uint32_t shaderExtRegister = desc.shaderExtRegister ? desc.shaderExtRegister : NRI_SHADER_EXT_REGISTER;
@@ -145,6 +146,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
                 REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D_RegisterDevice(deviceTemp));
                 REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D11_SetNvShaderExtnSlot(deviceTemp, shaderExtRegister));
                 REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_UINT64_ATOMIC, &isShaderAtomicsI64Supported));
+                REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_GET_SPECIAL, &isShaderClockSupported));
                 isDepthBoundsTestSupported = true;
             }
         }
@@ -154,6 +156,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         m_Desc.isDepthBoundsTestSupported = isDepthBoundsTestSupported;
         m_Desc.isDrawIndirectCountSupported = isDrawIndirectCountSupported;
         m_Desc.isShaderAtomicsI64Supported = isShaderAtomicsI64Supported;
+        m_Desc.isShaderClockSupported = isShaderClockSupported;
     }
 
     m_Version = QueryLatestDevice(deviceTemp, m_Device);
@@ -429,7 +432,7 @@ void DeviceD3D11::InitializeNvExt(bool isNVAPILoadedInApp, bool isImported) {
     else {
         NvAPI_Status status = NvAPI_Initialize();
         if (status != NVAPI_OK)
-            REPORT_ERROR(this, "Failed to initialize NVAPI: %d", (int32_t)status);
+            REPORT_ERROR(this, "NvAPI_Initialize(): failed, result = %d!", (int32_t)status);
         m_NvExt.available = (status == NVAPI_OK);
     }
 #endif

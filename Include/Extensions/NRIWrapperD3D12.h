@@ -3,6 +3,7 @@
 #pragma once
 
 #include "NRIDeviceCreation.h"
+#include "NRIRayTracing.h"
 
 NonNriForwardStruct(AGSContext);
 NonNriForwardStruct(ID3D12Heap);
@@ -14,8 +15,6 @@ NonNriForwardStruct(ID3D12CommandAllocator);
 NonNriForwardStruct(ID3D12GraphicsCommandList);
 
 NriNamespaceBegin
-
-NriForwardStruct(AccelerationStructure);
 
 // A collection of queues of the same type
 NriStruct(QueueFamilyD3D12Desc) {
@@ -65,8 +64,12 @@ NriStruct(MemoryD3D12Desc) {
 
 NriStruct(AccelerationStructureD3D12Desc) {
     ID3D12Resource* d3d12Resource;
-    uint64_t scratchDataSize;
-    uint64_t updateScratchDataSize;
+    Nri(AccelerationStructureBits) flags;
+
+    // D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO
+    uint64_t size;
+    uint64_t buildScratchSize;
+    uint64_t updateScratchSize;
 };
 
 // Threadsafe: yes

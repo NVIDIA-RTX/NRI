@@ -424,6 +424,9 @@ constexpr VkPipelineStageFlags2 GetPipelineStageFlags(StageBits stageBits) {
     if (stageBits & StageBits::ACCELERATION_STRUCTURE)
         flags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
 
+    if (stageBits & StageBits::MICROMAP)
+        flags |= VK_PIPELINE_STAGE_2_MICROMAP_BUILD_BIT_EXT;
+
     return flags;
 }
 
@@ -574,26 +577,35 @@ constexpr VkAccelerationStructureTypeKHR GetAccelerationStructureType(Accelerati
     return (VkAccelerationStructureTypeKHR)type;
 }
 
-constexpr VkBuildAccelerationStructureFlagsKHR GetAccelerationStructureBuildFlags(AccelerationStructureBuildBits accelerationStructureBuildFlags) {
+constexpr VkBuildAccelerationStructureFlagsKHR GetAccelerationStructureBuildFlags(AccelerationStructureBits accelerationStructureBits) {
     VkBuildAccelerationStructureFlagsKHR flags = 0;
 
-    if (accelerationStructureBuildFlags & AccelerationStructureBuildBits::ALLOW_UPDATE)
+    if (accelerationStructureBits & AccelerationStructureBits::ALLOW_UPDATE)
         flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
 
-    if (accelerationStructureBuildFlags & AccelerationStructureBuildBits::ALLOW_COMPACTION)
+    if (accelerationStructureBits & AccelerationStructureBits::ALLOW_COMPACTION)
         flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
 
-    if (accelerationStructureBuildFlags & AccelerationStructureBuildBits::PREFER_FAST_TRACE)
+    if (accelerationStructureBits & AccelerationStructureBits::ALLOW_DATA_ACCESS)
+        flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_DATA_ACCESS_KHR;
+
+    if (accelerationStructureBits & AccelerationStructureBits::ALLOW_MICROMAP_UPDATE)
+        flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_OPACITY_MICROMAP_UPDATE_EXT;
+
+    if (accelerationStructureBits & AccelerationStructureBits::ALLOW_MICROMAP_DATA_UPDATE)
+        flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_OPACITY_MICROMAP_DATA_UPDATE_EXT;
+
+    if (accelerationStructureBits & AccelerationStructureBits::ALLOW_DISABLE_MICROMAPS)
+        flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_DISABLE_OPACITY_MICROMAPS_EXT;
+
+    if (accelerationStructureBits & AccelerationStructureBits::PREFER_FAST_TRACE)
         flags |= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
 
-    if (accelerationStructureBuildFlags & AccelerationStructureBuildBits::PREFER_FAST_BUILD)
+    if (accelerationStructureBits & AccelerationStructureBits::PREFER_FAST_BUILD)
         flags |= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR;
 
-    if (accelerationStructureBuildFlags & AccelerationStructureBuildBits::MINIMIZE_MEMORY)
+    if (accelerationStructureBits & AccelerationStructureBits::MINIMIZE_MEMORY)
         flags |= VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_KHR;
-
-    if (accelerationStructureBuildFlags & AccelerationStructureBuildBits::ALLOW_DATA_ACCESS)
-        flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_DATA_ACCESS_KHR;
 
     return flags;
 }
@@ -605,9 +617,9 @@ constexpr VkGeometryFlagsKHR GetGeometryFlags(BottomLevelGeometryBits geometryFl
     return (VkGeometryFlagsKHR)geometryFlags;
 }
 
-constexpr VkGeometryTypeKHR GetGeometryType(GeometryType geometryType) {
-    static_assert(VK_GEOMETRY_TYPE_TRIANGLES_KHR == (uint32_t)GeometryType::TRIANGLES, "Enum mismatch");
-    static_assert(VK_GEOMETRY_TYPE_AABBS_KHR == (uint32_t)GeometryType::AABBS, "Enum mismatch");
+constexpr VkGeometryTypeKHR GetGeometryType(BottomLevelGeometryType geometryType) {
+    static_assert(VK_GEOMETRY_TYPE_TRIANGLES_KHR == (uint32_t)BottomLevelGeometryType::TRIANGLES, "Enum mismatch");
+    static_assert(VK_GEOMETRY_TYPE_AABBS_KHR == (uint32_t)BottomLevelGeometryType::AABBS, "Enum mismatch");
 
     return (VkGeometryTypeKHR)geometryType;
 }
@@ -650,7 +662,7 @@ inline VkExtent2D GetShadingRate(ShadingRate shadingRate) {
     return {};
 }
 
-void ConvertGeometryObjectSizesVK(VkAccelerationStructureGeometryKHR* destObjects, uint32_t* primitiveNums, const GeometryObject* sourceObjects, uint32_t objectNum);
-void ConvertGeometryObjectsVK(VkAccelerationStructureGeometryKHR* destObjects, VkAccelerationStructureBuildRangeInfoKHR* ranges, const GeometryObject* sourceObjects, uint32_t objectNum);
+void ConvertGeometryObjectSizesVK(VkAccelerationStructureGeometryKHR* destObjects, uint32_t* primitiveNums, const BottomLevelGeometry* sourceObjects, uint32_t objectNum);
+void ConvertGeometryObjectsVK(VkAccelerationStructureGeometryKHR* destObjects, VkAccelerationStructureBuildRangeInfoKHR* ranges, const BottomLevelGeometry* sourceObjects, uint32_t objectNum);
 
 } // namespace nri

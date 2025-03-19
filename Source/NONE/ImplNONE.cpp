@@ -773,19 +773,19 @@ Result DeviceNONE::FillFunctionTable(HelperInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  LowLatency  ]
 
-static Result SetLatencySleepMode(SwapChain&, const LatencySleepMode&) {
+static Result NRI_CALL SetLatencySleepMode(SwapChain&, const LatencySleepMode&) {
     return Result::SUCCESS;
 }
 
-static Result SetLatencyMarker(SwapChain&, LatencyMarker) {
+static Result NRI_CALL SetLatencyMarker(SwapChain&, LatencyMarker) {
     return Result::SUCCESS;
 }
 
-static Result LatencySleep(SwapChain&) {
+static Result NRI_CALL LatencySleep(SwapChain&) {
     return Result::SUCCESS;
 }
 
-static Result GetLatencyReport(const SwapChain&, LatencyReport&) {
+static Result NRI_CALL GetLatencyReport(const SwapChain&, LatencyReport&) {
     return Result::SUCCESS;
 }
 
@@ -825,24 +825,6 @@ Result DeviceNONE::FillFunctionTable(MeshShaderInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  RayTracing  ]
 
-static void NRI_CALL GetAccelerationStructureMemoryDesc(const AccelerationStructure&, MemoryLocation, MemoryDesc&) {
-}
-
-static void NRI_CALL GetAccelerationStructureMemoryDesc2(const Device&, const AccelerationStructureDesc&, MemoryLocation, MemoryDesc&) {
-}
-
-static uint64_t NRI_CALL GetAccelerationStructureUpdateScratchBufferSize(const AccelerationStructure&) {
-    return 0;
-}
-
-static uint64_t NRI_CALL GetAccelerationStructureBuildScratchBufferSize(const AccelerationStructure&) {
-    return 0;
-}
-
-static uint64_t NRI_CALL GetAccelerationStructureHandle(const AccelerationStructure&) {
-    return 0;
-}
-
 static Result NRI_CALL CreateRayTracingPipeline(Device&, const RayTracingPipelineDesc&, Pipeline*& pipeline) {
     pipeline = DummyObject<Pipeline>();
 
@@ -861,10 +843,59 @@ static Result NRI_CALL CreateAccelerationStructureDescriptor(const AccelerationS
     return Result::SUCCESS;
 }
 
+static Result NRI_CALL CreateMicromap(Device&, const MicromapDesc&, Micromap*& micromap) {
+    micromap = DummyObject<Micromap>();
+
+    return Result::SUCCESS;
+}
+
+static uint64_t NRI_CALL GetAccelerationStructureUpdateScratchBufferSize(const AccelerationStructure&) {
+    return 0;
+}
+
+static uint64_t NRI_CALL GetAccelerationStructureBuildScratchBufferSize(const AccelerationStructure&) {
+    return 0;
+}
+
+static uint64_t NRI_CALL GetAccelerationStructureHandle(const AccelerationStructure&) {
+    return 0;
+}
+
+static Buffer* NRI_CALL GetAccelerationStructureBuffer(const AccelerationStructure&) {
+    return DummyObject<Buffer>();
+}
+
+static uint64_t NRI_CALL GetMicromapBuildScratchBufferSize(const Micromap&) {
+    return 0;
+}
+
+static Buffer* NRI_CALL GetMicromapBuffer(const Micromap&) {
+    return DummyObject<Buffer>();
+}
+
 static void NRI_CALL DestroyAccelerationStructure(AccelerationStructure&) {
 }
 
+static void NRI_CALL DestroyMicromap(Micromap&) {
+}
+
+static void NRI_CALL GetAccelerationStructureMemoryDesc(const AccelerationStructure&, MemoryLocation, MemoryDesc&) {
+}
+
+static void NRI_CALL GetAccelerationStructureMemoryDesc2(const Device&, const AccelerationStructureDesc&, MemoryLocation, MemoryDesc&) {
+}
+
 static Result NRI_CALL BindAccelerationStructureMemory(Device&, const AccelerationStructureMemoryBindingDesc*, uint32_t) {
+    return Result::SUCCESS;
+}
+
+static void NRI_CALL GetMicromapMemoryDesc(const Micromap&, MemoryLocation, MemoryDesc&) {
+}
+
+static void NRI_CALL GetMicromapMemoryDesc2(const Device&, const MicromapDesc&, MemoryLocation, MemoryDesc&) {
+}
+
+static Result NRI_CALL BindMicromapMemory(Device&, const MicromapMemoryBindingDesc*, uint32_t) {
     return Result::SUCCESS;
 }
 
@@ -872,16 +903,13 @@ static Result NRI_CALL WriteShaderGroupIdentifiers(const Pipeline&, uint32_t, ui
     return Result::SUCCESS;
 }
 
-static void NRI_CALL CmdBuildTopLevelAccelerationStructure(CommandBuffer&, uint32_t, const Buffer&, uint64_t, AccelerationStructureBuildBits, AccelerationStructure&, Buffer&, uint64_t) {
+static void NRI_CALL CmdBuildTopLevelAccelerationStructures(CommandBuffer&, const BuildTopLevelAccelerationStructureDesc*, uint32_t) {
 }
 
-static void NRI_CALL CmdBuildBottomLevelAccelerationStructure(CommandBuffer&, uint32_t, const GeometryObject*, AccelerationStructureBuildBits, AccelerationStructure&, Buffer&, uint64_t) {
+static void NRI_CALL CmdBuildBottomLevelAccelerationStructures(CommandBuffer&, const BuildBottomLevelAccelerationStructureDesc*, uint32_t) {
 }
 
-static void NRI_CALL CmdUpdateTopLevelAccelerationStructure(CommandBuffer&, uint32_t, const Buffer&, uint64_t, AccelerationStructureBuildBits, AccelerationStructure&, const AccelerationStructure&, Buffer&, uint64_t) {
-}
-
-static void NRI_CALL CmdUpdateBottomLevelAccelerationStructure(CommandBuffer&, uint32_t, const GeometryObject*, AccelerationStructureBuildBits, AccelerationStructure&, const AccelerationStructure&, Buffer&, uint64_t) {
+static void NRI_CALL CmdBuildMicromaps(CommandBuffer&, const BuildMicromapDesc*, uint32_t) {
 }
 
 static void NRI_CALL CmdDispatchRays(CommandBuffer&, const DispatchRaysDesc&) {
@@ -896,31 +924,51 @@ static void NRI_CALL CmdCopyAccelerationStructure(CommandBuffer&, AccelerationSt
 static void NRI_CALL CmdWriteAccelerationStructureSize(CommandBuffer&, const AccelerationStructure* const*, uint32_t, QueryPool&, uint32_t) {
 }
 
+static void NRI_CALL CmdCopyMicromap(CommandBuffer&, Micromap&, const Micromap&, CopyMode) {
+}
+
+static void NRI_CALL CmdWriteMicromapSize(CommandBuffer&, const Micromap* const*, uint32_t, QueryPool&, uint32_t) {
+}
+
 static uint64_t NRI_CALL GetAccelerationStructureNativeObject(const AccelerationStructure&) {
     return 0;
 }
 
+static uint64_t NRI_CALL GetMicromapNativeObject(const Micromap&) {
+    return 0;
+}
+
 Result DeviceNONE::FillFunctionTable(RayTracingInterface& table) const {
-    table.GetAccelerationStructureMemoryDesc = ::GetAccelerationStructureMemoryDesc;
-    table.GetAccelerationStructureMemoryDesc2 = ::GetAccelerationStructureMemoryDesc2;
-    table.GetAccelerationStructureUpdateScratchBufferSize = ::GetAccelerationStructureUpdateScratchBufferSize;
-    table.GetAccelerationStructureBuildScratchBufferSize = ::GetAccelerationStructureBuildScratchBufferSize;
-    table.GetAccelerationStructureHandle = ::GetAccelerationStructureHandle;
     table.CreateRayTracingPipeline = ::CreateRayTracingPipeline;
     table.CreateAccelerationStructure = ::CreateAccelerationStructure;
     table.CreateAccelerationStructureDescriptor = ::CreateAccelerationStructureDescriptor;
+    table.CreateMicromap = ::CreateMicromap;
+    table.GetAccelerationStructureUpdateScratchBufferSize = ::GetAccelerationStructureUpdateScratchBufferSize;
+    table.GetAccelerationStructureBuildScratchBufferSize = ::GetAccelerationStructureBuildScratchBufferSize;
+    table.GetAccelerationStructureHandle = ::GetAccelerationStructureHandle;
+    table.GetAccelerationStructureBuffer = ::GetAccelerationStructureBuffer;
+    table.GetMicromapBuildScratchBufferSize = ::GetMicromapBuildScratchBufferSize;
+    table.GetMicromapBuffer = ::GetMicromapBuffer;
     table.DestroyAccelerationStructure = ::DestroyAccelerationStructure;
+    table.DestroyMicromap = ::DestroyMicromap;
+    table.GetAccelerationStructureMemoryDesc = ::GetAccelerationStructureMemoryDesc;
+    table.GetAccelerationStructureMemoryDesc2 = ::GetAccelerationStructureMemoryDesc2;
     table.BindAccelerationStructureMemory = ::BindAccelerationStructureMemory;
+    table.GetMicromapMemoryDesc = ::GetMicromapMemoryDesc;
+    table.GetMicromapMemoryDesc2 = ::GetMicromapMemoryDesc2;
+    table.BindMicromapMemory = ::BindMicromapMemory;
     table.WriteShaderGroupIdentifiers = ::WriteShaderGroupIdentifiers;
-    table.CmdBuildTopLevelAccelerationStructure = ::CmdBuildTopLevelAccelerationStructure;
-    table.CmdBuildBottomLevelAccelerationStructure = ::CmdBuildBottomLevelAccelerationStructure;
-    table.CmdUpdateTopLevelAccelerationStructure = ::CmdUpdateTopLevelAccelerationStructure;
-    table.CmdUpdateBottomLevelAccelerationStructure = ::CmdUpdateBottomLevelAccelerationStructure;
+    table.CmdBuildTopLevelAccelerationStructures = ::CmdBuildTopLevelAccelerationStructures;
+    table.CmdBuildBottomLevelAccelerationStructures = ::CmdBuildBottomLevelAccelerationStructures;
+    table.CmdBuildMicromaps = ::CmdBuildMicromaps;
     table.CmdDispatchRays = ::CmdDispatchRays;
     table.CmdDispatchRaysIndirect = ::CmdDispatchRaysIndirect;
     table.CmdCopyAccelerationStructure = ::CmdCopyAccelerationStructure;
     table.CmdWriteAccelerationStructureSize = ::CmdWriteAccelerationStructureSize;
+    table.CmdCopyMicromap = ::CmdCopyMicromap;
+    table.CmdWriteMicromapSize = ::CmdWriteMicromapSize;
     table.GetAccelerationStructureNativeObject = ::GetAccelerationStructureNativeObject;
+    table.GetMicromapNativeObject = ::GetMicromapNativeObject;
 
     return Result::SUCCESS;
 }
@@ -930,28 +978,35 @@ Result DeviceNONE::FillFunctionTable(RayTracingInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  ResourceAllocator  ]
 
-static Result AllocateBuffer(Device&, const AllocateBufferDesc&, Buffer*& buffer) {
+static Result NRI_CALL AllocateBuffer(Device&, const AllocateBufferDesc&, Buffer*& buffer) {
     buffer = DummyObject<Buffer>();
 
     return Result::SUCCESS;
 }
 
-static Result AllocateTexture(Device&, const AllocateTextureDesc&, Texture*& texture) {
+static Result NRI_CALL AllocateTexture(Device&, const AllocateTextureDesc&, Texture*& texture) {
     texture = DummyObject<Texture>();
 
     return Result::SUCCESS;
 }
 
-static Result AllocateAccelerationStructure(Device&, const AllocateAccelerationStructureDesc&, AccelerationStructure*& accelerationStructure) {
+static Result NRI_CALL AllocateAccelerationStructure(Device&, const AllocateAccelerationStructureDesc&, AccelerationStructure*& accelerationStructure) {
     accelerationStructure = DummyObject<AccelerationStructure>();
 
     return Result::SUCCESS;
+}
+
+static Result NRI_CALL AllocateMicromap(Device&, const AllocateMicromapDesc&, Micromap*& micromap) {
+    micromap = DummyObject<Micromap>();
+
+    return Result::FAILURE;
 }
 
 Result DeviceNONE::FillFunctionTable(ResourceAllocatorInterface& table) const {
     table.AllocateBuffer = ::AllocateBuffer;
     table.AllocateTexture = ::AllocateTexture;
     table.AllocateAccelerationStructure = ::AllocateAccelerationStructure;
+    table.AllocateMicromap = ::AllocateMicromap;
 
     return Result::SUCCESS;
 }
@@ -961,32 +1016,32 @@ Result DeviceNONE::FillFunctionTable(ResourceAllocatorInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  Streamer  ]
 
-static Result CreateStreamer(Device&, const StreamerDesc&, Streamer*& streamer) {
+static Result NRI_CALL CreateStreamer(Device&, const StreamerDesc&, Streamer*& streamer) {
     streamer = DummyObject<Streamer>();
 
     return Result::SUCCESS;
 }
 
-static void DestroyStreamer(Streamer&) {
+static void NRI_CALL DestroyStreamer(Streamer&) {
 }
 
-static Buffer* GetStreamerConstantBuffer(Streamer&) {
+static Buffer* NRI_CALL GetStreamerConstantBuffer(Streamer&) {
     return nullptr;
 }
 
-static uint32_t UpdateStreamerConstantBuffer(Streamer&, const void*, uint32_t) {
+static uint32_t NRI_CALL UpdateStreamerConstantBuffer(Streamer&, const void*, uint32_t) {
     return 0;
 }
 
-static uint64_t AddStreamerBufferUpdateRequest(Streamer&, const BufferUpdateRequestDesc&) {
+static uint64_t NRI_CALL AddStreamerBufferUpdateRequest(Streamer&, const BufferUpdateRequestDesc&) {
     return 0;
 }
 
-static uint64_t AddStreamerTextureUpdateRequest(Streamer&, const TextureUpdateRequestDesc&) {
+static uint64_t NRI_CALL AddStreamerTextureUpdateRequest(Streamer&, const TextureUpdateRequestDesc&) {
     return 0;
 }
 
-static Result CopyStreamerUpdateRequests(Streamer&) {
+static Result NRI_CALL CopyStreamerUpdateRequests(Streamer&) {
     return Result::SUCCESS;
 }
 
@@ -994,7 +1049,7 @@ static Buffer* GetStreamerDynamicBuffer(Streamer&) {
     return nullptr;
 }
 
-static void CmdUploadStreamerUpdateRequests(CommandBuffer&, Streamer&) {
+static void NRI_CALL CmdUploadStreamerUpdateRequests(CommandBuffer&, Streamer&) {
 }
 
 Result DeviceNONE::FillFunctionTable(StreamerInterface& table) const {
@@ -1067,24 +1122,24 @@ Result DeviceNONE::FillFunctionTable(SwapChainInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  Upscaler  ]
 
-static Result CreateUpscaler(Device&, const UpscalerDesc&, Upscaler*& upscaler) {
+static Result NRI_CALL CreateUpscaler(Device&, const UpscalerDesc&, Upscaler*& upscaler) {
     upscaler = DummyObject<Upscaler>();
 
     return Result::SUCCESS;
 }
 
-static void DestroyUpscaler(Upscaler&) {
+static void NRI_CALL DestroyUpscaler(Upscaler&) {
 }
 
-static bool IsUpscalerSupported(const Device&, UpscalerType) {
+static bool NRI_CALL IsUpscalerSupported(const Device&, UpscalerType) {
     return true;
 }
 
-static void GetUpscalerProps(const Upscaler&, UpscalerProps& upscalerProps) {
+static void NRI_CALL GetUpscalerProps(const Upscaler&, UpscalerProps& upscalerProps) {
     upscalerProps = {1.0f, 0.0f, {1, 1}, {1, 1}, {1, 1}, 1};
 }
 
-static void CmdDispatchUpscale(CommandBuffer&, Upscaler&, const DispatchUpscaleDesc&) {
+static void NRI_CALL CmdDispatchUpscale(CommandBuffer&, Upscaler&, const DispatchUpscaleDesc&) {
 }
 
 Result DeviceNONE::FillFunctionTable(UpscalerInterface& table) const {

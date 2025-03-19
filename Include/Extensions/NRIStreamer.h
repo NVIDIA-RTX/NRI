@@ -60,9 +60,12 @@ NriStruct(StreamerInterface) {
     // (HOST) Copy gathered requests to the internal buffer, potentially a new one if the capacity exceeded. Must be called once per frame
     Nri(Result)     (NRI_CALL *CopyStreamerUpdateRequests)      (NriRef(Streamer) streamer);
 
-    // (DEVICE) Copy data to destinations (if any), barriers are externally controlled. Must be called after "CopyStreamerUpdateRequests"
-    // WARNING: D3D12 can silently promote a resource state to COPY_DESTINATION!
-    void            (NRI_CALL *CmdUploadStreamerUpdateRequests) (NriRef(CommandBuffer) commandBuffer, NriRef(Streamer) streamer);
+    // Command buffer
+    // {
+            // (DEVICE) Copy data to destinations (if any), barriers are externally controlled. Must be called after "CopyStreamerUpdateRequests"
+            // WARNING: D3D12 can silently promote a resource state to COPY_DESTINATION!
+            void    (NRI_CALL *CmdUploadStreamerUpdateRequests) (NriRef(CommandBuffer) commandBuffer, NriRef(Streamer) streamer);
+    // }
 };
 
 NriNamespaceEnd

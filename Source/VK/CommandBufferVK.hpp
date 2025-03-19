@@ -757,6 +757,12 @@ static inline VkAccessFlags2 GetAccessFlags(AccessBits accessBits) {
     if (accessBits & AccessBits::ACCELERATION_STRUCTURE_WRITE)
         flags |= VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
 
+    if (accessBits & AccessBits::MICROMAP_READ)
+        flags |= VK_ACCESS_2_MICROMAP_READ_BIT_EXT;
+
+    if (accessBits & AccessBits::MICROMAP_WRITE)
+        flags |= VK_ACCESS_2_MICROMAP_WRITE_BIT_EXT;
+
     if (accessBits & AccessBits::SHADER_RESOURCE)
         flags |= VK_ACCESS_2_SHADER_READ_BIT;
 
@@ -922,129 +928,117 @@ NRI_INLINE void CommandBufferVK::Annotation(const char* name, uint32_t bgra) {
         vk.CmdInsertDebugUtilsLabelEXT(m_Handle, &info);
 }
 
-NRI_INLINE void CommandBufferVK::BuildTopLevelAccelerationStructure(uint32_t instanceNum, const Buffer& buffer, uint64_t bufferOffset, AccelerationStructureBuildBits flags, AccelerationStructure& dst, Buffer& scratch, uint64_t scratchOffset) {
-    static_assert(sizeof(VkAccelerationStructureInstanceKHR) == sizeof(GeometryObjectInstance), "Mismatched sizeof");
+NRI_INLINE void CommandBufferVK::BuildTopLevelAccelerationStructure(const BuildTopLevelAccelerationStructureDesc* buildTopLevelAccelerationStructureDescs, uint32_t buildTopLevelAccelerationStructureDescNum) {
+    static_assert(sizeof(VkAccelerationStructureInstanceKHR) == sizeof(TopLevelInstance), "Mismatched sizeof");
 
-    const VkAccelerationStructureKHR dstASHandle = ((const AccelerationStructureVK&)dst).GetHandle();
-    const VkDeviceAddress scratchAddress = ((BufferVK&)scratch).GetDeviceAddress() + scratchOffset;
-    const VkDeviceAddress bufferAddress = ((BufferVK&)buffer).GetDeviceAddress() + bufferOffset;
+    Scratch<VkAccelerationStructureBuildGeometryInfoKHR> infos = AllocateScratch(m_Device, VkAccelerationStructureBuildGeometryInfoKHR, buildTopLevelAccelerationStructureDescNum);
+    Scratch<const VkAccelerationStructureBuildRangeInfoKHR*> pRanges = AllocateScratch(m_Device, const VkAccelerationStructureBuildRangeInfoKHR*, buildTopLevelAccelerationStructureDescNum);
+    Scratch<VkAccelerationStructureGeometryKHR> geometries = AllocateScratch(m_Device, VkAccelerationStructureGeometryKHR, buildTopLevelAccelerationStructureDescNum);
+    Scratch<VkAccelerationStructureBuildRangeInfoKHR> ranges = AllocateScratch(m_Device, VkAccelerationStructureBuildRangeInfoKHR, buildTopLevelAccelerationStructureDescNum);
 
-    VkAccelerationStructureGeometryKHR geometry = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
-    geometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
-    geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
-    geometry.geometry.aabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
-    geometry.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
-    geometry.geometry.instances.data.deviceAddress = bufferAddress;
+    for (uint32_t i = 0; i < buildTopLevelAccelerationStructureDescNum; i++) {
+        const BuildTopLevelAccelerationStructureDesc& in = buildTopLevelAccelerationStructureDescs[i];
 
-    VkAccelerationStructureBuildGeometryInfoKHR buildGeometryInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
-    buildGeometryInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-    buildGeometryInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-    buildGeometryInfo.flags = GetAccelerationStructureBuildFlags(flags);
-    buildGeometryInfo.dstAccelerationStructure = dstASHandle;
-    buildGeometryInfo.geometryCount = 1;
-    buildGeometryInfo.pGeometries = &geometry;
-    buildGeometryInfo.scratchData.deviceAddress = scratchAddress;
+        AccelerationStructureVK* dst = (AccelerationStructureVK*)in.dst;
+        AccelerationStructureVK* src = (AccelerationStructureVK*)in.src;
+        BufferVK* scratchBuffer = (BufferVK*)in.scratchBuffer;
+        BufferVK* instanceBuffer = (BufferVK*)in.instanceBuffer;
 
-    VkAccelerationStructureBuildRangeInfoKHR range = {};
-    range.primitiveCount = instanceNum;
+        // Range
+        VkAccelerationStructureBuildRangeInfoKHR& range = ranges[i];
+        range = {};
+        range.primitiveCount = in.instanceNum;
 
-    const VkAccelerationStructureBuildRangeInfoKHR* rangeArrays[1] = {&range};
+        pRanges[i] = &ranges[i];
+
+        // Geometry
+        VkAccelerationStructureGeometryKHR& geometry = geometries[i];
+        geometry = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
+        geometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+        geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+        geometry.geometry.aabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
+        geometry.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
+        geometry.geometry.instances.data.deviceAddress = instanceBuffer->GetDeviceAddress() + in.instanceOffset;
+
+        // Info
+        VkAccelerationStructureBuildGeometryInfoKHR& info = infos[i];
+        info = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
+        info.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+        info.flags = GetAccelerationStructureBuildFlags(dst->GetFlags());
+        info.dstAccelerationStructure = dst->GetHandle();
+        info.geometryCount = 1;
+        info.pGeometries = &geometry;
+        info.scratchData.deviceAddress = scratchBuffer->GetDeviceAddress() + in.scratchOffset;
+
+        if (in.src) {
+            info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
+            info.srcAccelerationStructure = src->GetHandle();
+        }
+        else
+            info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+    }
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdBuildAccelerationStructuresKHR(m_Handle, 1, &buildGeometryInfo, rangeArrays);
+    vk.CmdBuildAccelerationStructuresKHR(m_Handle, buildTopLevelAccelerationStructureDescNum, infos, pRanges);
 }
 
-NRI_INLINE void CommandBufferVK::BuildBottomLevelAccelerationStructure(uint32_t geometryObjectNum, const GeometryObject* geometryObjects, AccelerationStructureBuildBits flags, AccelerationStructure& dst, Buffer& scratch, uint64_t scratchOffset) {
-    const VkAccelerationStructureKHR dstASHandle = ((const AccelerationStructureVK&)dst).GetHandle();
-    const VkDeviceAddress scratchAddress = ((BufferVK&)scratch).GetDeviceAddress() + scratchOffset;
+NRI_INLINE void CommandBufferVK::BuildBottomLevelAccelerationStructure(const BuildBottomLevelAccelerationStructureDesc* buildBottomLevelAccelerationStructureDescs, uint32_t buildBottomLevelAccelerationStructureDescNum) {
+    uint32_t totalGeometryObjectNum = 0;
+    for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++)
+        totalGeometryObjectNum += buildBottomLevelAccelerationStructureDescs[i].geometryObjectNum;
 
-    Scratch<VkAccelerationStructureGeometryKHR> geometries = AllocateScratch(m_Device, VkAccelerationStructureGeometryKHR, geometryObjectNum);
-    Scratch<VkAccelerationStructureBuildRangeInfoKHR> ranges = AllocateScratch(m_Device, VkAccelerationStructureBuildRangeInfoKHR, geometryObjectNum);
+    Scratch<VkAccelerationStructureBuildGeometryInfoKHR> infos = AllocateScratch(m_Device, VkAccelerationStructureBuildGeometryInfoKHR, buildBottomLevelAccelerationStructureDescNum);
+    Scratch<const VkAccelerationStructureBuildRangeInfoKHR*> pRanges = AllocateScratch(m_Device, const VkAccelerationStructureBuildRangeInfoKHR*, buildBottomLevelAccelerationStructureDescNum);
+    Scratch<VkAccelerationStructureGeometryKHR> geometriesScratch = AllocateScratch(m_Device, VkAccelerationStructureGeometryKHR, totalGeometryObjectNum);
+    Scratch<VkAccelerationStructureBuildRangeInfoKHR> rangesScratch = AllocateScratch(m_Device, VkAccelerationStructureBuildRangeInfoKHR, totalGeometryObjectNum);
 
-    ConvertGeometryObjectsVK(geometries, ranges, geometryObjects, geometryObjectNum);
+    VkAccelerationStructureGeometryKHR* geometries = geometriesScratch;
+    VkAccelerationStructureBuildRangeInfoKHR* ranges = rangesScratch;
 
-    VkAccelerationStructureBuildGeometryInfoKHR buildGeometryInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
-    buildGeometryInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-    buildGeometryInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-    buildGeometryInfo.flags = GetAccelerationStructureBuildFlags(flags);
-    buildGeometryInfo.dstAccelerationStructure = dstASHandle;
-    buildGeometryInfo.geometryCount = geometryObjectNum;
-    buildGeometryInfo.pGeometries = geometries;
-    buildGeometryInfo.scratchData.deviceAddress = scratchAddress;
+    for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++) {
+        const BuildBottomLevelAccelerationStructureDesc& in = buildBottomLevelAccelerationStructureDescs[i];
 
-    const VkAccelerationStructureBuildRangeInfoKHR* rangeArrays[1] = {ranges};
+        AccelerationStructureVK* dst = (AccelerationStructureVK*)in.dst;
+        AccelerationStructureVK* src = (AccelerationStructureVK*)in.src;
+        BufferVK* scratchBuffer = (BufferVK*)in.scratchBuffer;
 
-    const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdBuildAccelerationStructuresKHR(m_Handle, 1, &buildGeometryInfo, rangeArrays);
-}
+        // Ranges and geometries
+        ConvertGeometryObjectsVK(geometries, ranges, in.geometries, in.geometryObjectNum);
 
-NRI_INLINE void CommandBufferVK::UpdateTopLevelAccelerationStructure(uint32_t instanceNum, const Buffer& buffer, uint64_t bufferOffset, AccelerationStructureBuildBits flags,
-    AccelerationStructure& dst, const AccelerationStructure& src, Buffer& scratch, uint64_t scratchOffset) {
-    const VkAccelerationStructureKHR srcASHandle = ((const AccelerationStructureVK&)src).GetHandle();
-    const VkAccelerationStructureKHR dstASHandle = ((const AccelerationStructureVK&)dst).GetHandle();
-    const VkDeviceAddress scratchAddress = ((BufferVK&)scratch).GetDeviceAddress() + scratchOffset;
-    const VkDeviceAddress bufferAddress = ((BufferVK&)buffer).GetDeviceAddress() + bufferOffset;
+        pRanges[i] = ranges;
 
-    VkAccelerationStructureGeometryKHR geometry = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
-    geometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
-    geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
-    geometry.geometry.aabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
-    geometry.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
-    geometry.geometry.instances.data.deviceAddress = bufferAddress;
+        // Info
+        VkAccelerationStructureBuildGeometryInfoKHR& info = infos[i];
+        info = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
+        info.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+        info.flags = GetAccelerationStructureBuildFlags(dst->GetFlags());
+        info.dstAccelerationStructure = dst->GetHandle();
+        info.geometryCount = in.geometryObjectNum;
+        info.pGeometries = geometries;
+        info.scratchData.deviceAddress = scratchBuffer->GetDeviceAddress() + in.scratchOffset;
 
-    VkAccelerationStructureBuildGeometryInfoKHR buildGeometryInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
-    buildGeometryInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
-    buildGeometryInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-    buildGeometryInfo.flags = GetAccelerationStructureBuildFlags(flags);
-    buildGeometryInfo.srcAccelerationStructure = srcASHandle;
-    buildGeometryInfo.dstAccelerationStructure = dstASHandle;
-    buildGeometryInfo.geometryCount = 1;
-    buildGeometryInfo.pGeometries = &geometry;
-    buildGeometryInfo.scratchData.deviceAddress = scratchAddress;
+        if (in.src) {
+            info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
+            info.srcAccelerationStructure = src->GetHandle();
+        }
+        else
+            info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
 
-    VkAccelerationStructureBuildRangeInfoKHR range = {};
-    range.primitiveCount = instanceNum;
-
-    const VkAccelerationStructureBuildRangeInfoKHR* rangeArrays[1] = {&range};
+        geometries += in.geometryObjectNum;
+        ranges += in.geometryObjectNum;
+    }
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdBuildAccelerationStructuresKHR(m_Handle, 1, &buildGeometryInfo, rangeArrays);
-}
-
-NRI_INLINE void CommandBufferVK::UpdateBottomLevelAccelerationStructure(uint32_t geometryObjectNum, const GeometryObject* geometryObjects, AccelerationStructureBuildBits flags,
-    AccelerationStructure& dst, const AccelerationStructure& src, Buffer& scratch, uint64_t scratchOffset) {
-    const VkAccelerationStructureKHR srcASHandle = ((const AccelerationStructureVK&)src).GetHandle();
-    const VkAccelerationStructureKHR dstASHandle = ((const AccelerationStructureVK&)dst).GetHandle();
-    const VkDeviceAddress scratchAddress = ((BufferVK&)scratch).GetDeviceAddress() + scratchOffset;
-
-    Scratch<VkAccelerationStructureGeometryKHR> geometries = AllocateScratch(m_Device, VkAccelerationStructureGeometryKHR, geometryObjectNum);
-    Scratch<VkAccelerationStructureBuildRangeInfoKHR> ranges = AllocateScratch(m_Device, VkAccelerationStructureBuildRangeInfoKHR, geometryObjectNum);
-
-    ConvertGeometryObjectsVK(geometries, ranges, geometryObjects, geometryObjectNum);
-
-    VkAccelerationStructureBuildGeometryInfoKHR buildGeometryInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
-    buildGeometryInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
-    buildGeometryInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-    buildGeometryInfo.flags = GetAccelerationStructureBuildFlags(flags);
-    buildGeometryInfo.srcAccelerationStructure = srcASHandle;
-    buildGeometryInfo.dstAccelerationStructure = dstASHandle;
-    buildGeometryInfo.geometryCount = geometryObjectNum;
-    buildGeometryInfo.pGeometries = geometries;
-    buildGeometryInfo.scratchData.deviceAddress = scratchAddress;
-
-    const VkAccelerationStructureBuildRangeInfoKHR* rangeArrays[1] = {ranges};
-
-    const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdBuildAccelerationStructuresKHR(m_Handle, 1, &buildGeometryInfo, rangeArrays);
+    vk.CmdBuildAccelerationStructuresKHR(m_Handle, buildBottomLevelAccelerationStructureDescNum, infos, pRanges);
 }
 
 NRI_INLINE void CommandBufferVK::CopyAccelerationStructure(AccelerationStructure& dst, const AccelerationStructure& src, CopyMode copyMode) {
-    const VkAccelerationStructureKHR dstASHandle = ((const AccelerationStructureVK&)dst).GetHandle();
-    const VkAccelerationStructureKHR srcASHandle = ((const AccelerationStructureVK&)src).GetHandle();
+    const VkAccelerationStructureKHR dstHandle = ((const AccelerationStructureVK&)dst).GetHandle();
+    const VkAccelerationStructureKHR srcHandle = ((const AccelerationStructureVK&)src).GetHandle();
 
     VkCopyAccelerationStructureInfoKHR info = {VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR};
-    info.src = srcASHandle;
-    info.dst = dstASHandle;
+    info.src = srcHandle;
+    info.dst = dstHandle;
     info.mode = GetCopyMode(copyMode);
 
     const auto& vk = m_Device.GetDispatchTable();
@@ -1052,15 +1046,14 @@ NRI_INLINE void CommandBufferVK::CopyAccelerationStructure(AccelerationStructure
 }
 
 NRI_INLINE void CommandBufferVK::WriteAccelerationStructureSize(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
-    Scratch<VkAccelerationStructureKHR> ASes = AllocateScratch(m_Device, VkAccelerationStructureKHR, accelerationStructureNum);
-
+    Scratch<VkAccelerationStructureKHR> handles = AllocateScratch(m_Device, VkAccelerationStructureKHR, accelerationStructureNum);
     for (uint32_t i = 0; i < accelerationStructureNum; i++)
-        ASes[i] = ((const AccelerationStructureVK*)accelerationStructures[i])->GetHandle();
+        handles[i] = ((const AccelerationStructureVK*)accelerationStructures[i])->GetHandle();
 
-    const VkQueryPool queryPoolHandle = ((const QueryPoolVK&)queryPool).GetHandle();
+    const QueryPoolVK& queryPoolVK = (QueryPoolVK&)queryPool;
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdWriteAccelerationStructuresPropertiesKHR(m_Handle, accelerationStructureNum, ASes, VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR, queryPoolHandle, queryPoolOffset);
+    vk.CmdWriteAccelerationStructuresPropertiesKHR(m_Handle, accelerationStructureNum, handles, queryPoolVK.GetType(), queryPoolVK.GetHandle(), queryPoolOffset);
 }
 
 NRI_INLINE void CommandBufferVK::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc) {

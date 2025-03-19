@@ -274,6 +274,9 @@ D3D12_RESOURCE_FLAGS nri::GetBufferFlags(BufferUsageBits bufferUsage) {
     if (bufferUsage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE)
         flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE;
 
+    if (bufferUsage & BufferUsageBits::MICROMAP_STORAGE) // TODO: no official flags for micromap
+        flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
     return flags;
 }
 
@@ -357,39 +360,53 @@ D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE nri::GetAccelerationStructureType(A
     return (D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE)accelerationStructureType;
 }
 
-D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS nri::GetAccelerationStructureBuildFlags(AccelerationStructureBuildBits accelerationStructureBuildFlags) {
-    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS nri::GetAccelerationStructureBuildFlags(AccelerationStructureBits accelerationStructureBits) {
+    uint32_t flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
 
-    if (accelerationStructureBuildFlags & AccelerationStructureBuildBits::ALLOW_UPDATE)
+    if (accelerationStructureBits & AccelerationStructureBits::ALLOW_UPDATE)
         flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
 
-    if (accelerationStructureBuildFlags & AccelerationStructureBuildBits::ALLOW_COMPACTION)
+    if (accelerationStructureBits & AccelerationStructureBits::ALLOW_COMPACTION)
         flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_COMPACTION;
 
-    if (accelerationStructureBuildFlags & AccelerationStructureBuildBits::PREFER_FAST_TRACE)
+#if NRI_ENABLE_D3D_EXTENSIONS
+    if (accelerationStructureBits & AccelerationStructureBits::ALLOW_DATA_ACCESS)
+        flags |= NVAPI_D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_DATA_ACCESS_EX;
+
+    if (accelerationStructureBits & AccelerationStructureBits::ALLOW_MICROMAP_UPDATE)
+        flags |= NVAPI_D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_OMM_UPDATE_EX;
+
+    if (accelerationStructureBits & AccelerationStructureBits::ALLOW_MICROMAP_DATA_UPDATE)
+        flags |= NVAPI_D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_OMM_OPACITY_STATES_UPDATE_EX;
+
+    if (accelerationStructureBits & AccelerationStructureBits::ALLOW_DISABLE_MICROMAPS)
+        flags |= NVAPI_D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_DISABLE_OMMS_EX;
+#endif
+
+    if (accelerationStructureBits & AccelerationStructureBits::PREFER_FAST_TRACE)
         flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
 
-    if (accelerationStructureBuildFlags & AccelerationStructureBuildBits::PREFER_FAST_BUILD)
+    if (accelerationStructureBits & AccelerationStructureBits::PREFER_FAST_BUILD)
         flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD;
 
-    if (accelerationStructureBuildFlags & AccelerationStructureBuildBits::MINIMIZE_MEMORY)
+    if (accelerationStructureBits & AccelerationStructureBits::MINIMIZE_MEMORY)
         flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_MINIMIZE_MEMORY;
 
-    return flags;
+    return (D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS)flags;
 }
 
-D3D12_RAYTRACING_GEOMETRY_TYPE GetGeometryType(GeometryType geometryType) {
-    static_assert(D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES == (uint32_t)GeometryType::TRIANGLES, "Enum mismatch");
-    static_assert(D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS == (uint32_t)GeometryType::AABBS, "Enum mismatch");
+D3D12_RAYTRACING_GEOMETRY_TYPE GetGeometryType(BottomLevelGeometryType geometryType) {
+    static_assert(D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES == (uint32_t)BottomLevelGeometryType::TRIANGLES, "Enum mismatch");
+    static_assert(D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS == (uint32_t)BottomLevelGeometryType::AABBS, "Enum mismatch");
 
     return (D3D12_RAYTRACING_GEOMETRY_TYPE)geometryType;
 }
 
-D3D12_RAYTRACING_GEOMETRY_FLAGS GetGeometryFlags(BottomLevelGeometryBits geometryFlagMask) {
+D3D12_RAYTRACING_GEOMETRY_FLAGS GetGeometryFlags(BottomLevelGeometryBits bottomLevelGeometryBits) {
     static_assert(D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE == (uint32_t)BottomLevelGeometryBits::OPAQUE_GEOMETRY, "Enum mismatch");
     static_assert(D3D12_RAYTRACING_GEOMETRY_FLAG_NO_DUPLICATE_ANYHIT_INVOCATION == (uint32_t)BottomLevelGeometryBits::NO_DUPLICATE_ANY_HIT_INVOCATION, "Enum mismatch");
 
-    return (D3D12_RAYTRACING_GEOMETRY_FLAGS)geometryFlagMask;
+    return (D3D12_RAYTRACING_GEOMETRY_FLAGS)bottomLevelGeometryBits;
 }
 
 D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE nri::GetCopyMode(CopyMode copyMode) {
@@ -399,13 +416,13 @@ D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE nri::GetCopyMode(CopyMode copy
     return (D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE)copyMode;
 }
 
-void nri::ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs, const GeometryObject* geometryObjects, uint32_t geometryObjectNum) {
+void nri::ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs, const BottomLevelGeometry* geometries, uint32_t geometryObjectNum) {
     for (uint32_t i = 0; i < geometryObjectNum; i++) {
-        geometryDescs[i].Type = GetGeometryType(geometryObjects[i].type);
-        geometryDescs[i].Flags = GetGeometryFlags(geometryObjects[i].flags);
+        geometryDescs[i].Type = GetGeometryType(geometries[i].type);
+        geometryDescs[i].Flags = GetGeometryFlags(geometries[i].flags);
 
         if (geometryDescs[i].Type == D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES) {
-            const Triangles& triangles = geometryObjects[i].geometry.triangles;
+            const BottomLevelTriangles& triangles = geometries[i].geometry.triangles;
             geometryDescs[i].Triangles.Transform3x4 = triangles.transformBuffer ? ((BufferD3D12*)triangles.transformBuffer)->GetPointerGPU() + triangles.transformOffset : 0;
             geometryDescs[i].Triangles.IndexFormat = triangles.indexType == IndexType::UINT16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
             geometryDescs[i].Triangles.VertexFormat = GetDxgiFormat(triangles.vertexFormat).typed;
@@ -415,8 +432,8 @@ void nri::ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs, co
             geometryDescs[i].Triangles.VertexBuffer.StartAddress = ((BufferD3D12*)triangles.vertexBuffer)->GetPointerGPU() + triangles.vertexOffset;
             geometryDescs[i].Triangles.VertexBuffer.StrideInBytes = triangles.vertexStride;
         } else if (geometryDescs[i].Type == D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS) {
-            const AABBs& aabbs = geometryObjects[i].geometry.aabbs;
-            geometryDescs[i].AABBs.AABBCount = aabbs.boxNum;
+            const BottomLevelAabbs& aabbs = geometries[i].geometry.aabbs;
+            geometryDescs[i].AABBs.AABBCount = aabbs.num;
             geometryDescs[i].AABBs.AABBs.StartAddress = ((BufferD3D12*)aabbs.buffer)->GetPointerGPU() + aabbs.offset;
             geometryDescs[i].AABBs.AABBs.StrideInBytes = aabbs.stride;
         }

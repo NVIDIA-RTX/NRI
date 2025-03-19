@@ -11,16 +11,12 @@ struct AccelerationStructureVK final : public DebugNameBase {
         : m_Device(device) {
     }
 
-    inline VkAccelerationStructureKHR GetHandle() const {
-        return m_Handle;
-    }
-
     inline DeviceVK& GetDevice() const {
         return m_Device;
     }
 
-    inline BufferVK* GetBuffer() const {
-        return m_Buffer;
+    inline AccelerationStructureBits GetFlags() const {
+        return m_Flags;
     }
 
     ~AccelerationStructureVK();
@@ -52,6 +48,14 @@ struct AccelerationStructureVK final : public DebugNameBase {
         return m_DeviceAddress;
     }
 
+    inline BufferVK* GetBuffer() const {
+        return m_Buffer;
+    }
+
+    inline VkAccelerationStructureKHR GetHandle() const {
+        return m_Handle;
+    }
+
     Result CreateDescriptor(Descriptor*& descriptor) const;
 
 private:
@@ -63,6 +67,7 @@ private:
     uint64_t m_UpdateScratchSize = 0;
     uint64_t m_AccelerationStructureSize = 0;                                  // needed only for FinishCreation
     VkAccelerationStructureTypeKHR m_Type = (VkAccelerationStructureTypeKHR)0; // needed only for FinishCreation
+    AccelerationStructureBits m_Flags = AccelerationStructureBits::NONE;
     bool m_OwnsNativeObjects = true;
 };
 

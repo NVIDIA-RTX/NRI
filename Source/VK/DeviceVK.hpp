@@ -30,6 +30,12 @@ static constexpr VkBufferUsageFlags GetBufferUsageFlags(BufferUsageBits bufferUs
     if (bufferUsageBits & BufferUsageBits::ACCELERATION_STRUCTURE_BUILD_INPUT)
         flags |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
 
+    if (bufferUsageBits & BufferUsageBits::MICROMAP_STORAGE)
+        flags |= VK_BUFFER_USAGE_MICROMAP_STORAGE_BIT_EXT;
+
+    if (bufferUsageBits & BufferUsageBits::MICROMAP_BUILD_INPUT)
+        flags |= VK_BUFFER_USAGE_MICROMAP_BUILD_INPUT_READ_ONLY_BIT_EXT;
+
     if (bufferUsageBits & BufferUsageBits::SHADER_RESOURCE)
         flags |= structureStride ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
@@ -894,6 +900,11 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
             APPEND_EXT(meshShaderProps);
         }
 
+        VkPhysicalDeviceOpacityMicromapPropertiesEXT micromapProps = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_PROPERTIES_EXT};
+        if (IsExtensionSupported(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME, desiredDeviceExts)) {
+            APPEND_EXT(micromapProps);
+        }
+
         m_VK.GetPhysicalDeviceProperties2(m_PhysicalDevice, &props);
 
         // Fill desc
@@ -998,6 +1009,9 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.rayTracingShaderRecursionMaxDepth = rayTracingProps.maxRayRecursionDepth;
         m_Desc.rayTracingGeometryObjectMaxNum = (uint32_t)accelerationStructureProps.maxGeometryCount;
 
+        m_Desc.opacity2StateSubdivisionMaxLevel = micromapProps.maxOpacity2StateSubdivisionLevel;
+        m_Desc.opacity4StateSubdivisionMaxLevel = micromapProps.maxOpacity4StateSubdivisionLevel;
+
         m_Desc.meshControlSharedMemoryMaxSize = meshShaderProps.maxTaskSharedMemorySize;
         m_Desc.meshControlWorkGroupInvocationMaxNum = meshShaderProps.maxTaskWorkGroupInvocations;
         m_Desc.meshControlPayloadMaxSize = meshShaderProps.maxTaskPayloadSize;
@@ -1072,7 +1086,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.isRegionResolveSupported = true;
         m_Desc.isLayerBasedMultiviewSupported = features11.multiview;
         m_Desc.isPresentFromComputeSupported = true;
-        m_Desc.isWaitableSwapChainSupported = presentIdFeatures.presentId != 0 && presentWaitFeatures.presentWait != 0;;
+        m_Desc.isWaitableSwapChainSupported = presentIdFeatures.presentId != 0 && presentWaitFeatures.presentWait != 0;
+        m_Desc.isMicromapSupported = micromapFeatures.micromap != 0;
 
         m_Desc.isShaderNativeI16Supported = features.features.shaderInt16;
         m_Desc.isShaderNativeF16Supported = features12.shaderFloat16;
@@ -1321,12 +1336,12 @@ bool DeviceVK::GetMemoryTypeByIndex(uint32_t index, MemoryTypeInfo& memoryTypeIn
 }
 
 void DeviceVK::GetAccelerationStructureBuildSizesInfo(const AccelerationStructureDesc& accelerationStructureDesc, VkAccelerationStructureBuildSizesInfoKHR& sizesInfo) {
-    uint32_t geometryCount = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.instanceOrGeometryObjectNum : 1;
+    uint32_t geometryCount = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.instanceOrGeometryNum : 1;
     Scratch<uint32_t> primitiveMaxNums = AllocateScratch(*this, uint32_t, geometryCount);
     Scratch<VkAccelerationStructureGeometryKHR> geometries = AllocateScratch(*this, VkAccelerationStructureGeometryKHR, geometryCount);
 
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL)
-        ConvertGeometryObjectSizesVK(geometries, primitiveMaxNums, accelerationStructureDesc.geometryObjects, geometryCount);
+        ConvertGeometryObjectSizesVK(geometries, primitiveMaxNums, accelerationStructureDesc.geometries, geometryCount);
     else {
         geometries[0] = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
         geometries[0].geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
@@ -1334,7 +1349,7 @@ void DeviceVK::GetAccelerationStructureBuildSizesInfo(const AccelerationStructur
         geometries[0].geometry.aabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
         geometries[0].geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
 
-        primitiveMaxNums[0] = accelerationStructureDesc.instanceOrGeometryObjectNum;
+        primitiveMaxNums[0] = accelerationStructureDesc.instanceOrGeometryNum;
     }
 
     VkAccelerationStructureBuildGeometryInfoKHR buildInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
@@ -1577,6 +1592,8 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_PROC(CreateShaderModule);
     GET_DEVICE_CORE_PROC(CreateGraphicsPipelines);
     GET_DEVICE_CORE_PROC(CreateComputePipelines);
+    GET_DEVICE_CORE_PROC(AllocateMemory);
+
     GET_DEVICE_CORE_PROC(DestroyBuffer);
     GET_DEVICE_CORE_PROC(DestroyImage);
     GET_DEVICE_CORE_PROC(DestroyBufferView);
@@ -1591,10 +1608,11 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_PROC(DestroyDescriptorSetLayout);
     GET_DEVICE_CORE_PROC(DestroyShaderModule);
     GET_DEVICE_CORE_PROC(DestroyPipeline);
-    GET_DEVICE_CORE_PROC(AllocateMemory);
-    GET_DEVICE_CORE_PROC(MapMemory);
-    GET_DEVICE_CORE_PROC(UnmapMemory);
     GET_DEVICE_CORE_PROC(FreeMemory);
+    GET_DEVICE_CORE_PROC(FreeCommandBuffers);
+    GET_DEVICE_CORE_PROC(FreeDescriptorSets);
+
+    GET_DEVICE_CORE_PROC(MapMemory);
     GET_DEVICE_CORE_PROC(FlushMappedMemoryRanges);
     GET_DEVICE_CORE_PROC(QueueWaitIdle);
     GET_DEVICE_CORE_PROC(QueueSubmit2);
@@ -1604,8 +1622,6 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_PROC(ResetDescriptorPool);
     GET_DEVICE_CORE_PROC(AllocateCommandBuffers);
     GET_DEVICE_CORE_PROC(AllocateDescriptorSets);
-    GET_DEVICE_CORE_PROC(FreeCommandBuffers);
-    GET_DEVICE_CORE_PROC(FreeDescriptorSets);
     GET_DEVICE_CORE_PROC(UpdateDescriptorSets);
     GET_DEVICE_CORE_PROC(BindBufferMemory2);
     GET_DEVICE_CORE_PROC(BindImageMemory2);
@@ -1613,6 +1629,7 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_PROC(GetImageMemoryRequirements2);
     GET_DEVICE_CORE_PROC(ResetQueryPool);
     GET_DEVICE_CORE_PROC(GetBufferDeviceAddress);
+
     GET_DEVICE_CORE_PROC(BeginCommandBuffer);
     GET_DEVICE_CORE_PROC(CmdSetViewportWithCount);
     GET_DEVICE_CORE_PROC(CmdSetScissorWithCount);

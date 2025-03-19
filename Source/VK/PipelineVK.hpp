@@ -378,9 +378,9 @@ Result PipelineVK::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc) 
         stages[i].pName = shaderDesc.entryPointName ? shaderDesc.entryPointName : "main";
     }
 
-    Scratch<VkRayTracingShaderGroupCreateInfoKHR> groupArray = AllocateScratch(m_Device, VkRayTracingShaderGroupCreateInfoKHR, rayTracingPipelineDesc.shaderGroupDescNum);
-    for (uint32_t i = 0; i < rayTracingPipelineDesc.shaderGroupDescNum; i++) {
-        const ShaderGroupDesc& srcGroup = rayTracingPipelineDesc.shaderGroupDescs[i];
+    Scratch<VkRayTracingShaderGroupCreateInfoKHR> groupArray = AllocateScratch(m_Device, VkRayTracingShaderGroupCreateInfoKHR, rayTracingPipelineDesc.shaderGroupNum);
+    for (uint32_t i = 0; i < rayTracingPipelineDesc.shaderGroupNum; i++) {
+        const ShaderGroupDesc& srcGroup = rayTracingPipelineDesc.shaderGroups[i];
 
         VkRayTracingShaderGroupCreateInfoKHR& dstGroup = groupArray[i];
         dstGroup = {VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR};
@@ -428,12 +428,17 @@ Result PipelineVK::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc) 
             dstGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
     }
 
+    VkRayTracingPipelineInterfaceCreateInfoKHR interfaceCreateInfo = {VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_INTERFACE_CREATE_INFO_KHR};
+    interfaceCreateInfo.maxPipelineRayPayloadSize = rayTracingPipelineDesc.rayPayloadMaxSize;
+    interfaceCreateInfo.maxPipelineRayHitAttributeSize = rayTracingPipelineDesc.rayHitAttributeMaxSize;
+
     VkRayTracingPipelineCreateInfoKHR createInfo = {VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR};
     createInfo.stageCount = stageNum;
     createInfo.pStages = stages;
-    createInfo.groupCount = rayTracingPipelineDesc.shaderGroupDescNum;
+    createInfo.groupCount = rayTracingPipelineDesc.shaderGroupNum;
     createInfo.pGroups = groupArray;
-    createInfo.maxPipelineRayRecursionDepth = rayTracingPipelineDesc.recursionDepthMax;
+    createInfo.maxPipelineRayRecursionDepth = rayTracingPipelineDesc.recursionMaxDepth;
+    createInfo.pLibraryInterface = &interfaceCreateInfo;
     createInfo.layout = pipelineLayoutVK;
     createInfo.basePipelineIndex = -1;
 

@@ -14,8 +14,12 @@ Result QueryPoolVK::Create(const QueryPoolDesc& queryPoolDesc) {
         m_Type = VK_QUERY_TYPE_OCCLUSION;
     else if (queryPoolDesc.queryType == QueryType::PIPELINE_STATISTICS)
         m_Type = VK_QUERY_TYPE_PIPELINE_STATISTICS;
+    else if (queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_SIZE)
+        m_Type = VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE_KHR;
     else if (queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_COMPACTED_SIZE)
         m_Type = VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR;
+    else if (queryPoolDesc.queryType == QueryType::MICROMAP_COMPACTED_SIZE)
+        m_Type = VK_QUERY_TYPE_MICROMAP_COMPACTED_SIZE_EXT;
     else
         return Result::INVALID_ARGUMENT;
 
@@ -24,7 +28,7 @@ Result QueryPoolVK::Create(const QueryPoolDesc& queryPoolDesc) {
     if (m_Device.GetDesc().isMeshShaderSupported)
         pipelineStatistics |= VK_QUERY_PIPELINE_STATISTIC_TASK_SHADER_INVOCATIONS_BIT_EXT | VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT;
 
-    const VkQueryPoolCreateInfo poolInfo = {VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO, nullptr, (VkQueryPoolCreateFlags)0, m_Type, queryPoolDesc.capacity, pipelineStatistics};
+    VkQueryPoolCreateInfo poolInfo = {VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO, nullptr, (VkQueryPoolCreateFlags)0, m_Type, queryPoolDesc.capacity, pipelineStatistics};
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult result = vk.CreateQueryPool(m_Device, &poolInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);

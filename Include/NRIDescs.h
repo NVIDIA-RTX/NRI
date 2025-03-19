@@ -254,15 +254,16 @@ NriBits(StageBits, uint32_t,
     ANY_HIT_SHADER                  = NriBit(15), //    Any hit shader
     CALLABLE_SHADER                 = NriBit(16), //    Callable shader
 
-    ACCELERATION_STRUCTURE          = NriBit(17), // Invoked by "Cmd*AccelerationStructure*"
+    ACCELERATION_STRUCTURE          = NriBit(17), // Invoked by "CmdBuild*AccelerationStructures"
+    MICROMAP                        = NriBit(18), // Invoked by "CmdBuild*Micromaps"
 
     // Copy
-    COPY                            = NriBit(18), // Invoked by "CmdCopy*", "CmdUpload*" and "CmdReadback*"
-    CLEAR_STORAGE                   = NriBit(19), // Invoked by "CmdClearStorage*"
-    RESOLVE                         = NriBit(20), // Invoked by "CmdResolveTexture"
+    COPY                            = NriBit(19), // Invoked by "CmdCopy*", "CmdUpload*" and "CmdReadback*"
+    CLEAR_STORAGE                   = NriBit(20), // Invoked by "CmdClearStorage*"
+    RESOLVE                         = NriBit(21), // Invoked by "CmdResolveTexture"
 
     // Modifiers
-    INDIRECT                        = NriBit(21), // Invoked by "Indirect" commands (used in addition to other bits)
+    INDIRECT                        = NriBit(22), // Invoked by "Indirect" commands (used in addition to other bits)
 
     // Umbrella stages
     TESSELLATION_SHADERS            = NriMember(StageBits, TESS_CONTROL_SHADER) |
@@ -429,25 +430,27 @@ NriEnum(DescriptorType, uint8_t,
 
 NriBits(TextureUsageBits, uint8_t,               // Min compatible access:                  Usage:
     NONE                                = 0,
-    SHADER_RESOURCE                     = NriBit(0), // SHADER_RESOURCE                         Read-only shader resource (SRV)
-    SHADER_RESOURCE_STORAGE             = NriBit(1), // SHADER_RESOURCE_STORAGE                 Read/write shader resource (UAV)
-    COLOR_ATTACHMENT                    = NriBit(2), // COLOR_ATTACHMENT                        Color attachment (render target)
-    DEPTH_STENCIL_ATTACHMENT            = NriBit(3), // DEPTH_STENCIL_ATTACHMENT_READ/WRITE     Depth-stencil attachment (depth-stencil target)
-    SHADING_RATE_ATTACHMENT             = NriBit(4)  // SHADING_RATE_ATTACHMENT                 Shading rate attachment (source)
+    SHADER_RESOURCE                     = NriBit(0),  // SHADER_RESOURCE                         Read-only shader resource (SRV)
+    SHADER_RESOURCE_STORAGE             = NriBit(1),  // SHADER_RESOURCE_STORAGE                 Read/write shader resource (UAV)
+    COLOR_ATTACHMENT                    = NriBit(2),  // COLOR_ATTACHMENT                        Color attachment (render target)
+    DEPTH_STENCIL_ATTACHMENT            = NriBit(3),  // DEPTH_STENCIL_ATTACHMENT_READ/WRITE     Depth-stencil attachment (depth-stencil target)
+    SHADING_RATE_ATTACHMENT             = NriBit(4)   // SHADING_RATE_ATTACHMENT                 Shading rate attachment (source)
 );
 
 NriBits(BufferUsageBits, uint16_t,               // Min compatible access:                  Usage:
     NONE                                = 0,
-    SHADER_RESOURCE                     = NriBit(0), // SHADER_RESOURCE                         Read-only shader resource (SRV)
-    SHADER_RESOURCE_STORAGE             = NriBit(1), // SHADER_RESOURCE_STORAGE                 Read/write shader resource (UAV)
-    VERTEX_BUFFER                       = NriBit(2), // VERTEX_BUFFER                           Vertex buffer
-    INDEX_BUFFER                        = NriBit(3), // INDEX_BUFFER                            Index buffer
-    CONSTANT_BUFFER                     = NriBit(4), // CONSTANT_BUFFER                         Constant buffer
-    ARGUMENT_BUFFER                     = NriBit(5), // ARGUMENT_BUFFER                         Argument buffer in "Indirect" commands
-    SCRATCH_BUFFER                      = NriBit(6), // SCRATCH_BUFFER                          Scratch buffer in "Cmd[Build/Update]*AccelerationStructure" commands
-    SHADER_BINDING_TABLE                = NriBit(7), // SHADER_RESOURCE                         Shader binding table (SBT) in "CmdDispatchRays*" commands
-    ACCELERATION_STRUCTURE_BUILD_INPUT  = NriBit(8), // SHADER_RESOURCE                         Read-only input in "Cmd[Build/Update]*AccelerationStructure" commands
-    ACCELERATION_STRUCTURE_STORAGE      = NriBit(9)  // ACCELERATION_STRUCTURE_READ/WRITE       (INTERNAL) acceleration structure storage
+    SHADER_RESOURCE                     = NriBit(0),  // SHADER_RESOURCE                         Read-only shader resource (SRV)
+    SHADER_RESOURCE_STORAGE             = NriBit(1),  // SHADER_RESOURCE_STORAGE                 Read/write shader resource (UAV)
+    VERTEX_BUFFER                       = NriBit(2),  // VERTEX_BUFFER                           Vertex buffer
+    INDEX_BUFFER                        = NriBit(3),  // INDEX_BUFFER                            Index buffer
+    CONSTANT_BUFFER                     = NriBit(4),  // CONSTANT_BUFFER                         Constant buffer
+    ARGUMENT_BUFFER                     = NriBit(5),  // ARGUMENT_BUFFER                         Argument buffer in "Indirect" commands
+    SCRATCH_BUFFER                      = NriBit(6),  // SCRATCH_BUFFER                          Scratch buffer in "Cmd[Build/Update]*AccelerationStructure" commands
+    SHADER_BINDING_TABLE                = NriBit(7),  // SHADER_RESOURCE                         Shader binding table (SBT) in "CmdDispatchRays*" commands
+    ACCELERATION_STRUCTURE_BUILD_INPUT  = NriBit(8),  // SHADER_RESOURCE                         Read-only input in "Cmd[Build/Update]*AccelerationStructure" commands
+    ACCELERATION_STRUCTURE_STORAGE      = NriBit(9),  // ACCELERATION_STRUCTURE_READ/WRITE       (INTERNAL) acceleration structure storage
+    MICROMAP_BUILD_INPUT                = NriBit(10), // SHADER_RESOURCE                         Read-only input in "Cmd[Build/Update]*AccelerationStructure" commands
+    MICROMAP_STORAGE                    = NriBit(11)  // MICROMAP_READ/WRITE                     (INTERNAL) micromap storage
 );
 
 // Resources
@@ -1064,19 +1067,23 @@ NriBits(AccessBits, uint32_t,                 // Compatible "StageBits" (includi
 
     // Acceleration structure
     ACCELERATION_STRUCTURE_READ     = NriBit(9),  // COMPUTE_SHADER, RAY_TRACING_SHADERS, ACCELERATION_STRUCTURE
-    ACCELERATION_STRUCTURE_WRITE    = NriBit(10), // COMPUTE_SHADER, RAY_TRACING_SHADERS, ACCELERATION_STRUCTURE
+    ACCELERATION_STRUCTURE_WRITE    = NriBit(10), // ACCELERATION_STRUCTURE
+
+    // Micromap
+    MICROMAP_READ                   = NriBit(11), // MICROMAP, ACCELERATION_STRUCTURE
+    MICROMAP_WRITE                  = NriBit(12), // MICROMAP
 
     // Shader resource
-    SHADER_RESOURCE                 = NriBit(11), // GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
-    SHADER_RESOURCE_STORAGE         = NriBit(12), // GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS, CLEAR_STORAGE
+    SHADER_RESOURCE                 = NriBit(13), // GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
+    SHADER_RESOURCE_STORAGE         = NriBit(14), // GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS, CLEAR_STORAGE
 
     // Copy
-    COPY_SOURCE                     = NriBit(13), // COPY
-    COPY_DESTINATION                = NriBit(14), // COPY
+    COPY_SOURCE                     = NriBit(15), // COPY
+    COPY_DESTINATION                = NriBit(16), // COPY
 
     // Resolve
-    RESOLVE_SOURCE                  = NriBit(15), // RESOLVE
-    RESOLVE_DESTINATION             = NriBit(16)  // RESOLVE
+    RESOLVE_SOURCE                  = NriBit(17), // RESOLVE
+    RESOLVE_DESTINATION             = NriBit(18)  // RESOLVE
 );
 
 // Not used if "isEnchancedBarrierSupported = false"
@@ -1275,7 +1282,9 @@ NriEnum(QueryType, uint8_t,
     TIMESTAMP_COPY_QUEUE, // requires "isCopyQueueTimestampSupported"
     OCCLUSION,
     PIPELINE_STATISTICS,
-    ACCELERATION_STRUCTURE_COMPACTED_SIZE
+    ACCELERATION_STRUCTURE_SIZE,
+    ACCELERATION_STRUCTURE_COMPACTED_SIZE,
+    MICROMAP_COMPACTED_SIZE
 );
 
 NriStruct(QueryPoolDesc) {
@@ -1454,6 +1463,10 @@ NriStruct(DeviceDesc) {
     uint32_t rayTracingShaderRecursionMaxDepth;
     uint32_t rayTracingGeometryObjectMaxNum;
 
+    // Micromap
+    uint32_t opacity2StateSubdivisionMaxLevel;
+    uint32_t opacity4StateSubdivisionMaxLevel;
+
     // Mesh shaders
     uint32_t meshControlSharedMemoryMaxSize;
     uint32_t meshControlWorkGroupInvocationMaxNum;
@@ -1511,50 +1524,51 @@ NriStruct(DeviceDesc) {
     uint8_t bindlessTier;
 
     // Features
-    uint32_t isGetMemoryDesc2Supported : 1;             // VK: requires "maintenance4", D3D: supported
-    uint32_t isEnchancedBarrierSupported : 1;           // VK: supported, D3D12: requires "AgilitySDK", D3D11: unsupported
-    uint32_t isMemoryTier2Supported : 1;                // a memory object can support resources from all 3 categories (buffers, attachments, all other textures)
+    uint32_t isGetMemoryDesc2Supported                                  : 1; // VK: requires "maintenance4", D3D: supported
+    uint32_t isEnchancedBarrierSupported                                : 1; // VK: supported, D3D12: requires "AgilitySDK", D3D11: unsupported
+    uint32_t isMemoryTier2Supported                                     : 1; // a memory object can support resources from all 3 categories (buffers, attachments, all other textures)
 
     uint32_t isIndependentFrontAndBackStencilReferenceAndMasksSupported : 1; // see "StencilAttachmentDesc::back"
-    uint32_t isTextureFilterMinMaxSupported : 1;        // see "FilterExt"
-    uint32_t isLogicFuncSupported : 1;                  // see "LogicFunc"
-    uint32_t isDepthBoundsTestSupported : 1;            // see "DepthAttachmentDesc::boundsTest"
-    uint32_t isDrawIndirectCountSupported : 1;          // see "countBuffer" and "countBufferOffset"
-    uint32_t isLineSmoothingSupported : 1;              // see "RasterizationDesc::lineSmoothing"
-    uint32_t isCopyQueueTimestampSupported : 1;         // see "QueryType::TIMESTAMP_COPY_QUEUE"
-    uint32_t isMeshShaderPipelineStatsSupported : 1;    // see "PipelineStatisticsDesc"
-    uint32_t isDynamicDepthBiasSupported : 1;           // see "CmdSetDepthBias"
-    uint32_t isAdditionalShadingRatesSupported : 1;     // see "ShadingRate"
-    uint32_t isViewportOriginBottomLeftSupported : 1;   // see "Viewport"
-    uint32_t isRegionResolveSupported : 1;              // see "CmdResolveTexture"
-    uint32_t isFlexibleMultiviewSupported : 1;          // see "Multiview::FLEXIBLE"
-    uint32_t isLayerBasedMultiviewSupported : 1;        // see "Multiview::LAYRED_BASED"
-    uint32_t isViewportBasedMultiviewSupported : 1;     // see "Multiview::VIEWPORT_BASED"
-    uint32_t isPresentFromComputeSupported : 1;         // see "SwapChainDesc::queue"
-    uint32_t isWaitableSwapChainSupported : 1;          // see "SwapChainDesc::waitable"
+    uint32_t isTextureFilterMinMaxSupported                             : 1; // see "FilterExt"
+    uint32_t isLogicFuncSupported                                       : 1; // see "LogicFunc"
+    uint32_t isDepthBoundsTestSupported                                 : 1; // see "DepthAttachmentDesc::boundsTest"
+    uint32_t isDrawIndirectCountSupported                               : 1; // see "countBuffer" and "countBufferOffset"
+    uint32_t isLineSmoothingSupported                                   : 1; // see "RasterizationDesc::lineSmoothing"
+    uint32_t isCopyQueueTimestampSupported                              : 1; // see "QueryType::TIMESTAMP_COPY_QUEUE"
+    uint32_t isMeshShaderPipelineStatsSupported                         : 1; // see "PipelineStatisticsDesc"
+    uint32_t isDynamicDepthBiasSupported                                : 1; // see "CmdSetDepthBias"
+    uint32_t isAdditionalShadingRatesSupported                          : 1; // see "ShadingRate"
+    uint32_t isViewportOriginBottomLeftSupported                        : 1; // see "Viewport"
+    uint32_t isRegionResolveSupported                                   : 1; // see "CmdResolveTexture"
+    uint32_t isFlexibleMultiviewSupported                               : 1; // see "Multiview::FLEXIBLE"
+    uint32_t isLayerBasedMultiviewSupported                             : 1; // see "Multiview::LAYRED_BASED"
+    uint32_t isViewportBasedMultiviewSupported                          : 1; // see "Multiview::VIEWPORT_BASED"
+    uint32_t isPresentFromComputeSupported                              : 1; // see "SwapChainDesc::queue"
+    uint32_t isWaitableSwapChainSupported                               : 1; // see "SwapChainDesc::waitable"
+    uint32_t isMicromapSupported                                        : 1; // see "Micromap"
 
     // Shader features (I32 + atomics and F32 are always supported)
-    uint32_t isShaderNativeI16Supported : 1;
-    uint32_t isShaderNativeF16Supported : 1;
-    uint32_t isShaderNativeI64Supported : 1;
-    uint32_t isShaderNativeF64Supported : 1;
-    uint32_t isShaderAtomicsI16Supported : 1;
-    uint32_t isShaderAtomicsF16Supported : 1;
-    uint32_t isShaderAtomicsF32Supported : 1;
-    uint32_t isShaderAtomicsI64Supported : 1;
-    uint32_t isShaderAtomicsF64Supported : 1;
-    uint32_t isShaderViewportIndexSupported : 1;        // always can be used from geometry shaders
-    uint32_t isShaderLayerSupported : 1;                // always can be used from geometry shaders
-    uint32_t isShaderClockSupported : 1;
-    uint32_t isRasterizedOrderedViewSupported : 1;      // ROV, aka fragment shader interlock
-    uint32_t isBarycentricSupported : 1;
-    uint32_t isRayTracingPositionFetchSupported : 1;    // currently VK only
+    uint32_t isShaderNativeI16Supported                                 : 1;
+    uint32_t isShaderNativeF16Supported                                 : 1;
+    uint32_t isShaderNativeI64Supported                                 : 1;
+    uint32_t isShaderNativeF64Supported                                 : 1;
+    uint32_t isShaderAtomicsI16Supported                                : 1;
+    uint32_t isShaderAtomicsF16Supported                                : 1;
+    uint32_t isShaderAtomicsF32Supported                                : 1;
+    uint32_t isShaderAtomicsI64Supported                                : 1;
+    uint32_t isShaderAtomicsF64Supported                                : 1;
+    uint32_t isShaderViewportIndexSupported                             : 1; // always can be used from geometry shaders
+    uint32_t isShaderLayerSupported                                     : 1; // always can be used from geometry shaders
+    uint32_t isShaderClockSupported                                     : 1;
+    uint32_t isRasterizedOrderedViewSupported                           : 1; // ROV, aka fragment shader interlock
+    uint32_t isBarycentricSupported                                     : 1;
+    uint32_t isRayTracingPositionFetchSupported                         : 1;
 
     // Extensions (unexposed are always supported)
-    uint32_t isSwapChainSupported : 1;                  // NRISwapChain
-    uint32_t isRayTracingSupported : 1;                 // NRIRayTracing
-    uint32_t isMeshShaderSupported : 1;                 // NRIMeshShader
-    uint32_t isLowLatencySupported : 1;                 // NRILowLatency
+    uint32_t isSwapChainSupported                                       : 1; // NRISwapChain
+    uint32_t isRayTracingSupported                                      : 1; // NRIRayTracing
+    uint32_t isMeshShaderSupported                                      : 1; // NRIMeshShader
+    uint32_t isLowLatencySupported                                      : 1; // NRILowLatency
 };
 
 #pragma endregion

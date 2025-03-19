@@ -32,11 +32,19 @@ NriStruct(AllocateAccelerationStructureDesc) {
     bool dedicated;
 };
 
+NriStruct(AllocateMicromapDesc) {
+    Nri(MicromapDesc) desc;
+    Nri(MemoryLocation) memoryLocation;
+    float memoryPriority;
+    bool dedicated;
+};
+
 // Threadsafe: yes
 NriStruct(ResourceAllocatorInterface) {
     Nri(Result) (NRI_CALL *AllocateBuffer)                  (NriRef(Device) device, const NriRef(AllocateBufferDesc) bufferDesc, NriOut NriRef(Buffer*) buffer);
     Nri(Result) (NRI_CALL *AllocateTexture)                 (NriRef(Device) device, const NriRef(AllocateTextureDesc) textureDesc, NriOut NriRef(Texture*) texture);
     Nri(Result) (NRI_CALL *AllocateAccelerationStructure)   (NriRef(Device) device, const NriRef(AllocateAccelerationStructureDesc) accelerationStructureDesc, NriOut NriRef(AccelerationStructure*) accelerationStructure);
+    Nri(Result) (NRI_CALL *AllocateMicromap)                (NriRef(Device) device, const NriRef(AllocateMicromapDesc) micromapDesc, NriOut NriRef(Micromap*) micromap);
 };
 
 NriNamespaceEnd

@@ -439,13 +439,13 @@ Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDes
         + 1                     // shader config
         + 1                     // node mask
         + shaderNum             // DXIL libraries
-        + rayTracingPipelineDesc.shaderGroupDescNum
+        + rayTracingPipelineDesc.shaderGroupNum
         + (rootSignature ? 1 : 0);
     Scratch<D3D12_STATE_SUBOBJECT> stateSubobjects = AllocateScratch(m_Device, D3D12_STATE_SUBOBJECT, stateObjectNum);
 
     D3D12_RAYTRACING_PIPELINE_CONFIG rayTracingPipelineConfig = {};
     {
-        rayTracingPipelineConfig.MaxTraceRecursionDepth = rayTracingPipelineDesc.recursionDepthMax;
+        rayTracingPipelineConfig.MaxTraceRecursionDepth = rayTracingPipelineDesc.recursionMaxDepth;
 
         stateSubobjects[stateSubobjectNum].Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG;
         stateSubobjects[stateSubobjectNum].pDesc = &rayTracingPipelineConfig;
@@ -454,8 +454,8 @@ Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDes
 
     D3D12_RAYTRACING_SHADER_CONFIG rayTracingShaderConfig = {};
     {
-        rayTracingShaderConfig.MaxPayloadSizeInBytes = rayTracingPipelineDesc.payloadAttributeSizeMax;
-        rayTracingShaderConfig.MaxAttributeSizeInBytes = rayTracingPipelineDesc.intersectionAttributeSizeMax;
+        rayTracingShaderConfig.MaxPayloadSizeInBytes = rayTracingPipelineDesc.rayPayloadMaxSize;
+        rayTracingShaderConfig.MaxAttributeSizeInBytes = rayTracingPipelineDesc.rayHitAttributeMaxSize;
 
         stateSubobjects[stateSubobjectNum].Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG;
         stateSubobjects[stateSubobjectNum].pDesc = &rayTracingShaderConfig;
@@ -501,15 +501,15 @@ Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDes
     }
 
     uint32_t hitGroupNum = 0;
-    Scratch<D3D12_HIT_GROUP_DESC> hitGroups = AllocateScratch(m_Device, D3D12_HIT_GROUP_DESC, rayTracingPipelineDesc.shaderGroupDescNum);
-    memset(&hitGroups[0], 0, rayTracingPipelineDesc.shaderGroupDescNum * sizeof(D3D12_HIT_GROUP_DESC)); // some fields can stay untouched
-    m_ShaderGroupNames.reserve(rayTracingPipelineDesc.shaderGroupDescNum);
-    for (uint32_t i = 0; i < rayTracingPipelineDesc.shaderGroupDescNum; i++) {
+    Scratch<D3D12_HIT_GROUP_DESC> hitGroups = AllocateScratch(m_Device, D3D12_HIT_GROUP_DESC, rayTracingPipelineDesc.shaderGroupNum);
+    memset(&hitGroups[0], 0, rayTracingPipelineDesc.shaderGroupNum * sizeof(D3D12_HIT_GROUP_DESC)); // some fields can stay untouched
+    m_ShaderGroupNames.reserve(rayTracingPipelineDesc.shaderGroupNum);
+    for (uint32_t i = 0; i < rayTracingPipelineDesc.shaderGroupNum; i++) {
         bool isHitGroup = true;
         bool hasIntersectionShader = false;
         std::wstring shaderIndentifierName;
-        for (uint32_t j = 0; j < GetCountOf(rayTracingPipelineDesc.shaderGroupDescs[i].shaderIndices); j++) {
-            const uint32_t& shaderIndex = rayTracingPipelineDesc.shaderGroupDescs[i].shaderIndices[j];
+        for (uint32_t j = 0; j < GetCountOf(rayTracingPipelineDesc.shaderGroups[i].shaderIndices); j++) {
+            const uint32_t& shaderIndex = rayTracingPipelineDesc.shaderGroups[i].shaderIndices[j];
             if (shaderIndex) {
                 uint32_t lookupIndex = shaderIndex - 1;
                 const ShaderDesc& shader = rayTracingPipelineDesc.shaderLibrary->shaders[lookupIndex];

@@ -26,12 +26,20 @@ Result QueryPoolD3D12::Create(const QueryPoolDesc& queryPoolDesc) {
         m_QueryType = D3D12_QUERY_TYPE_PIPELINE_STATISTICS;
         desc.Type = D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS;
 #endif
+    } else if (queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_SIZE) {
+        m_QuerySize = sizeof(uint64_t);
+        m_QueryType = QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE;
     } else if (queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_COMPACTED_SIZE) {
         m_QuerySize = sizeof(uint64_t);
         m_QueryType = QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE;
-        return CreateReadbackBuffer(queryPoolDesc);
+    } else if (queryPoolDesc.queryType == QueryType::MICROMAP_COMPACTED_SIZE) {
+        m_QuerySize = sizeof(uint64_t);
+        m_QueryType = QUERY_TYPE_MICROMAP_COMPACTED_SIZE;
     } else
         return Result::INVALID_ARGUMENT;
+
+    if (m_QueryType >= QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE)
+        return CreateReadbackBuffer(queryPoolDesc);
 
     desc.Count = queryPoolDesc.capacity;
     desc.NodeMask = NRI_NODE_MASK;

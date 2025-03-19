@@ -1,6 +1,6 @@
 // © 2021 NVIDIA Corporation
 
-void ConvertGeometryObjectsVal(GeometryObject* destObjects, const GeometryObject* sourceObjects, uint32_t objectNum);
+void ConvertGeometryObjectsVal(BottomLevelGeometry* destObjects, const BottomLevelGeometry* sourceObjects, uint32_t objectNum);
 
 static bool ValidateBufferBarrierDesc(const DeviceVal& device, uint32_t i, const BufferBarrierDesc& bufferBarrierDesc) {
     const BufferVal& bufferVal = *(const BufferVal*)bufferBarrierDesc.buffer;
@@ -520,77 +520,71 @@ NRI_INLINE void CommandBufferVal::Annotation(const char* name, uint32_t bgra) {
     GetCoreInterface().CmdAnnotation(*GetImpl(), name, bgra);
 }
 
-NRI_INLINE void CommandBufferVal::BuildTopLevelAccelerationStructure(uint32_t instanceNum, const Buffer& buffer, uint64_t bufferOffset, AccelerationStructureBuildBits flags, AccelerationStructure& dst, Buffer& scratch, uint64_t scratchOffset) {
+NRI_INLINE void CommandBufferVal::BuildTopLevelAccelerationStructure(const BuildTopLevelAccelerationStructureDesc* buildTopLevelAccelerationStructureDescs, uint32_t buildTopLevelAccelerationStructureDescNum) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
 
-    BufferVal& bufferVal = (BufferVal&)buffer;
-    BufferVal& scratchVal = (BufferVal&)scratch;
+    Scratch<BuildTopLevelAccelerationStructureDesc> buildTopLevelAccelerationStructureDescsImpl = AllocateScratch(m_Device, BuildTopLevelAccelerationStructureDesc, buildTopLevelAccelerationStructureDescNum);
 
-    RETURN_ON_FAILURE(&m_Device, bufferOffset < bufferVal.GetDesc().size, ReturnVoid(), "'bufferOffset = %llu' is out of bounds", bufferOffset);
-    RETURN_ON_FAILURE(&m_Device, scratchOffset < scratchVal.GetDesc().size, ReturnVoid(), "'scratchOffset = %llu' is out of bounds", scratchOffset);
+    for (uint32_t i = 0; i < buildTopLevelAccelerationStructureDescNum; i++) {
+        const BuildTopLevelAccelerationStructureDesc& in = buildTopLevelAccelerationStructureDescs[i];
 
-    AccelerationStructure& dstImpl = *NRI_GET_IMPL(AccelerationStructure, &dst);
-    Buffer& scratchImpl = *NRI_GET_IMPL(Buffer, &scratch);
-    Buffer& bufferImpl = *NRI_GET_IMPL(Buffer, &buffer);
+        RETURN_ON_FAILURE(&m_Device, in.instanceBuffer, ReturnVoid(), "'instanceBuffer' is NULL");
+        RETURN_ON_FAILURE(&m_Device, in.scratchBuffer, ReturnVoid(), "'scratchBuffer' is NULL");
 
-    GetRayTracingInterface().CmdBuildTopLevelAccelerationStructure(*GetImpl(), instanceNum, bufferImpl, bufferOffset, flags, dstImpl, scratchImpl, scratchOffset);
+        const BufferVal* instanceBufferVal = (BufferVal*)in.instanceBuffer;
+        const BufferVal* scratchBufferVal = (BufferVal*)in.scratchBuffer;
+
+        RETURN_ON_FAILURE(&m_Device, in.instanceOffset < instanceBufferVal->GetDesc().size, ReturnVoid(), "'instanceOffset = %llu' is out of bounds", in.instanceOffset);
+        RETURN_ON_FAILURE(&m_Device, in.scratchOffset < scratchBufferVal->GetDesc().size, ReturnVoid(), "'scratchOffset = %llu' is out of bounds", in.scratchOffset);
+
+        BuildTopLevelAccelerationStructureDesc& out = buildTopLevelAccelerationStructureDescsImpl[i];
+        out = in;
+        out.dst = NRI_GET_IMPL(AccelerationStructure, in.dst);
+        out.src = NRI_GET_IMPL(AccelerationStructure, in.src);
+        out.instanceBuffer = NRI_GET_IMPL(Buffer, in.instanceBuffer);
+        out.scratchBuffer = NRI_GET_IMPL(Buffer, in.scratchBuffer);
+    }
+
+    GetRayTracingInterface().CmdBuildTopLevelAccelerationStructures(*GetImpl(), buildTopLevelAccelerationStructureDescsImpl, buildTopLevelAccelerationStructureDescNum);
 }
 
-NRI_INLINE void CommandBufferVal::BuildBottomLevelAccelerationStructure(uint32_t geometryObjectNum, const GeometryObject* geometryObjects, AccelerationStructureBuildBits flags, AccelerationStructure& dst, Buffer& scratch, uint64_t scratchOffset) {
-    BufferVal& scratchVal = (BufferVal&)scratch;
-
-    RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
-    RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
-    RETURN_ON_FAILURE(&m_Device, geometryObjects, ReturnVoid(), "'geometryObjects' is NULL");
-    RETURN_ON_FAILURE(&m_Device, scratchOffset < scratchVal.GetDesc().size, ReturnVoid(), "'scratchOffset = %llu' is out of bounds", scratchOffset);
-
-    AccelerationStructure& dstImpl = *NRI_GET_IMPL(AccelerationStructure, &dst);
-    Buffer& scratchImpl = *NRI_GET_IMPL(Buffer, &scratch);
-
-    Scratch<GeometryObject> objectImplArray = AllocateScratch(m_Device, GeometryObject, geometryObjectNum);
-    ConvertGeometryObjectsVal(objectImplArray, geometryObjects, geometryObjectNum);
-
-    GetRayTracingInterface().CmdBuildBottomLevelAccelerationStructure(*GetImpl(), geometryObjectNum, objectImplArray, flags, dstImpl, scratchImpl, scratchOffset);
-}
-
-NRI_INLINE void CommandBufferVal::UpdateTopLevelAccelerationStructure(uint32_t instanceNum, const Buffer& buffer, uint64_t bufferOffset, AccelerationStructureBuildBits flags,
-    AccelerationStructure& dst, const AccelerationStructure& src, Buffer& scratch, uint64_t scratchOffset) {
+NRI_INLINE void CommandBufferVal::BuildBottomLevelAccelerationStructure(const BuildBottomLevelAccelerationStructureDesc* buildBottomLevelAccelerationStructureDescs, uint32_t buildBottomLevelAccelerationStructureDescNum) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
 
-    BufferVal& bufferVal = (BufferVal&)buffer;
-    BufferVal& scratchVal = (BufferVal&)scratch;
+    uint32_t totalGeometryObjectNum = 0;
+    for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++)
+        totalGeometryObjectNum += buildBottomLevelAccelerationStructureDescs[i].geometryObjectNum;
 
-    RETURN_ON_FAILURE(&m_Device, bufferOffset < bufferVal.GetDesc().size, ReturnVoid(), "'bufferOffset = %llu' is out of bounds", bufferOffset);
-    RETURN_ON_FAILURE(&m_Device, scratchOffset < scratchVal.GetDesc().size, ReturnVoid(), "'scratchOffset = %llu' is out of bounds", scratchOffset);
+    Scratch<BottomLevelGeometry> geometryObjectsImplScratch = AllocateScratch(m_Device, BottomLevelGeometry, totalGeometryObjectNum);
+    BottomLevelGeometry* geometryObjectsImpl = geometryObjectsImplScratch;
 
-    AccelerationStructure& dstImpl = *NRI_GET_IMPL(AccelerationStructure, &dst);
-    AccelerationStructure& srcImpl = *NRI_GET_IMPL(AccelerationStructure, &src);
-    Buffer& scratchImpl = *NRI_GET_IMPL(Buffer, &scratch);
-    Buffer& bufferImpl = *NRI_GET_IMPL(Buffer, &buffer);
+    Scratch<BuildBottomLevelAccelerationStructureDesc> buildBottomLevelAccelerationStructureDescsImpl = AllocateScratch(m_Device, BuildBottomLevelAccelerationStructureDesc, buildBottomLevelAccelerationStructureDescNum);
 
-    GetRayTracingInterface().CmdUpdateTopLevelAccelerationStructure(*GetImpl(), instanceNum, bufferImpl, bufferOffset, flags, dstImpl, srcImpl, scratchImpl, scratchOffset);
-}
+    for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++) {
+        const BuildBottomLevelAccelerationStructureDesc& in = buildBottomLevelAccelerationStructureDescs[i];
 
-NRI_INLINE void CommandBufferVal::UpdateBottomLevelAccelerationStructure(uint32_t geometryObjectNum, const GeometryObject* geometryObjects, AccelerationStructureBuildBits flags,
-    AccelerationStructure& dst, const AccelerationStructure& src, Buffer& scratch, uint64_t scratchOffset) {
-    RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
-    RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
-    RETURN_ON_FAILURE(&m_Device, geometryObjects, ReturnVoid(), "'geometryObjects' is NULL");
+        RETURN_ON_FAILURE(&m_Device, in.scratchBuffer, ReturnVoid(), "'scratchBuffer' is NULL");
 
-    BufferVal& scratchVal = (BufferVal&)scratch;
+        const BufferVal* scratchBufferVal = (BufferVal*)in.scratchBuffer;
 
-    RETURN_ON_FAILURE(&m_Device, scratchOffset < scratchVal.GetDesc().size, ReturnVoid(), "'scratchOffset = %llu' is out of bounds", scratchOffset);
+        RETURN_ON_FAILURE(&m_Device, in.geometries, ReturnVoid(), "'geometries' is NULL");
+        RETURN_ON_FAILURE(&m_Device, in.scratchOffset < scratchBufferVal->GetDesc().size, ReturnVoid(), "'scratchOffset = %llu' is out of bounds", in.scratchOffset);
 
-    AccelerationStructure& dstImpl = *NRI_GET_IMPL(AccelerationStructure, &dst);
-    AccelerationStructure& srcImpl = *NRI_GET_IMPL(AccelerationStructure, &src);
-    Buffer& scratchImpl = *NRI_GET_IMPL(Buffer, &scratch);
+        BuildBottomLevelAccelerationStructureDesc& out = buildBottomLevelAccelerationStructureDescsImpl[i];
+        out = in;
+        out.dst = NRI_GET_IMPL(AccelerationStructure, in.dst);
+        out.src = NRI_GET_IMPL(AccelerationStructure, in.src);
+        out.geometries = geometryObjectsImpl;
+        out.scratchBuffer = NRI_GET_IMPL(Buffer, in.scratchBuffer);
 
-    Scratch<GeometryObject> objectImplArray = AllocateScratch(m_Device, GeometryObject, geometryObjectNum);
-    ConvertGeometryObjectsVal(objectImplArray, geometryObjects, geometryObjectNum);
+        ConvertGeometryObjectsVal(geometryObjectsImpl, in.geometries, in.geometryObjectNum);
 
-    GetRayTracingInterface().CmdUpdateBottomLevelAccelerationStructure(*GetImpl(), geometryObjectNum, objectImplArray, flags, dstImpl, srcImpl, scratchImpl, scratchOffset);
+        geometryObjectsImpl += in.geometryObjectNum;
+    }
+
+    GetRayTracingInterface().CmdBuildBottomLevelAccelerationStructures(*GetImpl(), buildBottomLevelAccelerationStructureDescsImpl, buildBottomLevelAccelerationStructureDescNum);
 }
 
 NRI_INLINE void CommandBufferVal::CopyAccelerationStructure(AccelerationStructure& dst, const AccelerationStructure& src, CopyMode copyMode) {
@@ -609,16 +603,20 @@ NRI_INLINE void CommandBufferVal::WriteAccelerationStructureSize(const Accelerat
     RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
     RETURN_ON_FAILURE(&m_Device, accelerationStructures, ReturnVoid(), "'accelerationStructures' is NULL");
 
-    Scratch<AccelerationStructure*> accelerationStructureArray = AllocateScratch(m_Device, AccelerationStructure*, accelerationStructureNum);
+    const QueryPoolVal& queryPoolVal = (QueryPoolVal&)queryPool;
+    bool isTypeValid = queryPoolVal.GetQueryType() == QueryType::ACCELERATION_STRUCTURE_SIZE || queryPoolVal.GetQueryType() == QueryType::ACCELERATION_STRUCTURE_COMPACTED_SIZE;
+    RETURN_ON_FAILURE(&m_Device, isTypeValid, ReturnVoid(), "'queryPool' query type must be 'ACCELERATION_STRUCTURE_SIZE' or 'ACCELERATION_STRUCTURE_COMPACTED_SIZE'");
+
+    Scratch<AccelerationStructure*> accelerationStructuresImpl = AllocateScratch(m_Device, AccelerationStructure*, accelerationStructureNum);
     for (uint32_t i = 0; i < accelerationStructureNum; i++) {
         RETURN_ON_FAILURE(&m_Device, accelerationStructures[i], ReturnVoid(), "'accelerationStructures[%u]' is NULL", i);
 
-        accelerationStructureArray[i] = NRI_GET_IMPL(AccelerationStructure, accelerationStructures[i]);
+        accelerationStructuresImpl[i] = NRI_GET_IMPL(AccelerationStructure, accelerationStructures[i]);
     }
 
     QueryPool& queryPoolImpl = *NRI_GET_IMPL(QueryPool, &queryPool);
 
-    GetRayTracingInterface().CmdWriteAccelerationStructureSize(*GetImpl(), accelerationStructures, accelerationStructureNum, queryPoolImpl, queryOffset);
+    GetRayTracingInterface().CmdWriteAccelerationStructureSize(*GetImpl(), accelerationStructuresImpl, accelerationStructureNum, queryPoolImpl, queryOffset);
 }
 
 NRI_INLINE void CommandBufferVal::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc) {

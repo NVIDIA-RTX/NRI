@@ -72,7 +72,7 @@ static inline D3D12_BARRIER_SYNC GetBarrierSyncFlags(StageBits stageBits) {
     if (stageBits & StageBits::CLEAR_STORAGE)
         flags |= D3D12_BARRIER_SYNC_CLEAR_UNORDERED_ACCESS_VIEW;
 
-    if (stageBits & StageBits::ACCELERATION_STRUCTURE)
+    if (stageBits & (StageBits::ACCELERATION_STRUCTURE | StageBits::MICROMAP)) // TODO: no official flags for micromap
         flags |= D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE | D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE;
 
     // TODO: D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO?
@@ -110,10 +110,10 @@ static inline D3D12_BARRIER_ACCESS GetBarrierAccessFlags(AccessBits accessBits) 
     if (accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_READ)
         flags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
 
-    if (accessBits & AccessBits::ACCELERATION_STRUCTURE_READ)
+    if (accessBits & (AccessBits::ACCELERATION_STRUCTURE_READ | AccessBits::MICROMAP_READ)) // TODO: no official flags for micromap
         flags |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
 
-    if (accessBits & AccessBits::ACCELERATION_STRUCTURE_WRITE)
+    if (accessBits & (AccessBits::ACCELERATION_STRUCTURE_WRITE | AccessBits::MICROMAP_WRITE)) // TODO: no official flags for micromap
         flags |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
 
     if (accessBits & AccessBits::SHADER_RESOURCE)
@@ -923,7 +923,7 @@ NRI_INLINE void CommandBufferD3D12::CopyQueries(const QueryPool& queryPool, uint
     const QueryPoolD3D12& queryPoolD3D12 = (QueryPoolD3D12&)queryPool;
     const BufferD3D12& bufferD3D12 = (BufferD3D12&)buffer;
 
-    if (queryPoolD3D12.GetType() == QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE) {
+    if (queryPoolD3D12.GetType() >= QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE) {
         const uint64_t srcOffset = offset * queryPoolD3D12.GetQuerySize();
         const uint64_t size = num * queryPoolD3D12.GetQuerySize();
         m_GraphicsCommandList->CopyBufferRegion(bufferD3D12, alignedBufferOffset, queryPoolD3D12.GetReadbackBuffer(), srcOffset, size);
@@ -954,74 +954,76 @@ NRI_INLINE void CommandBufferD3D12::Annotation(const char* name, uint32_t bgra) 
         PIXSetMarker(m_GraphicsCommandList, bgra, name);
 }
 
-NRI_INLINE void CommandBufferD3D12::BuildTopLevelAccelerationStructure(uint32_t instanceNum, const Buffer& buffer, uint64_t bufferOffset, AccelerationStructureBuildBits flags, AccelerationStructure& dst, Buffer& scratch, uint64_t scratchOffset) {
-    static_assert(sizeof(D3D12_RAYTRACING_INSTANCE_DESC) == sizeof(GeometryObjectInstance), "Mismatched sizeof");
+NRI_INLINE void CommandBufferD3D12::BuildTopLevelAccelerationStructure(const BuildTopLevelAccelerationStructureDesc* buildTopLevelAccelerationStructureDescs, uint32_t buildTopLevelAccelerationStructureDescNum) {
+    static_assert(sizeof(D3D12_RAYTRACING_INSTANCE_DESC) == sizeof(TopLevelInstance), "Mismatched sizeof");
 
-    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC desc = {};
-    desc.DestAccelerationStructureData = ((AccelerationStructureD3D12&)dst).GetHandle();
-    desc.ScratchAccelerationStructureData = ((BufferD3D12&)scratch).GetPointerGPU() + scratchOffset;
-    desc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-    desc.Inputs.Flags = GetAccelerationStructureBuildFlags(flags);
-    desc.Inputs.NumDescs = instanceNum;
-    desc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+    if (m_Version < 4)
+        return;
 
-    desc.Inputs.InstanceDescs = ((BufferD3D12&)buffer).GetPointerGPU() + bufferOffset;
+    for (uint32_t i = 0; i < buildTopLevelAccelerationStructureDescNum; i++) {
+        const BuildTopLevelAccelerationStructureDesc& in = buildTopLevelAccelerationStructureDescs[i];
 
-    if (m_Version >= 4)
-        m_GraphicsCommandList->BuildRaytracingAccelerationStructure(&desc, 0, nullptr);
+        AccelerationStructureD3D12* dst = (AccelerationStructureD3D12*)in.dst;
+        AccelerationStructureD3D12* src = (AccelerationStructureD3D12*)in.src;
+        BufferD3D12* scratchBuffer = (BufferD3D12*)in.scratchBuffer;
+        BufferD3D12* instanceBuffer = (BufferD3D12*)in.instanceBuffer;
+
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC out = {};
+        out.DestAccelerationStructureData = dst->GetHandle();
+        out.ScratchAccelerationStructureData = scratchBuffer->GetPointerGPU() + in.scratchOffset;
+        out.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
+        out.Inputs.Flags = GetAccelerationStructureBuildFlags(dst->GetFlags());
+        out.Inputs.NumDescs = in.instanceNum;
+        out.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+        out.Inputs.InstanceDescs = instanceBuffer->GetPointerGPU() + in.instanceOffset;
+
+        if (in.src) {
+            out.SourceAccelerationStructureData = src->GetHandle();
+            out.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
+        }
+
+        m_GraphicsCommandList->BuildRaytracingAccelerationStructure(&out, 0, nullptr);
+    }
 }
 
-NRI_INLINE void CommandBufferD3D12::BuildBottomLevelAccelerationStructure(uint32_t geometryObjectNum, const GeometryObject* geometryObjects, AccelerationStructureBuildBits flags, AccelerationStructure& dst, Buffer& scratch, uint64_t scratchOffset) {
-    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC desc = {};
-    desc.DestAccelerationStructureData = ((AccelerationStructureD3D12&)dst).GetHandle();
-    desc.ScratchAccelerationStructureData = ((BufferD3D12&)scratch).GetPointerGPU() + scratchOffset;
-    desc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
-    desc.Inputs.Flags = GetAccelerationStructureBuildFlags(flags);
-    desc.Inputs.NumDescs = geometryObjectNum;
-    desc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+NRI_INLINE void CommandBufferD3D12::BuildBottomLevelAccelerationStructure(const BuildBottomLevelAccelerationStructureDesc* buildBottomLevelAccelerationStructureDescs, uint32_t buildBottomLevelAccelerationStructureDescNum) {
+    if (m_Version < 4)
+        return;
 
-    Scratch<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescs = AllocateScratch(m_Device, D3D12_RAYTRACING_GEOMETRY_DESC, geometryObjectNum);
-    ConvertGeometryDescs(geometryDescs, geometryObjects, geometryObjectNum);
-    desc.Inputs.pGeometryDescs = geometryDescs;
+    uint32_t totalGeometryObjectNum = 0;
+    for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++)
+        totalGeometryObjectNum += buildBottomLevelAccelerationStructureDescs[i].geometryObjectNum;
 
-    if (m_Version >= 4)
-        m_GraphicsCommandList->BuildRaytracingAccelerationStructure(&desc, 0, nullptr);
-}
+    Scratch<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescsScratch = AllocateScratch(m_Device, D3D12_RAYTRACING_GEOMETRY_DESC, totalGeometryObjectNum);
+    D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs = geometryDescsScratch;
 
-NRI_INLINE void CommandBufferD3D12::UpdateTopLevelAccelerationStructure(uint32_t instanceNum, const Buffer& buffer, uint64_t bufferOffset, AccelerationStructureBuildBits flags,
-    AccelerationStructure& dst, const AccelerationStructure& src, Buffer& scratch, uint64_t scratchOffset) {
-    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC desc = {};
-    desc.DestAccelerationStructureData = ((AccelerationStructureD3D12&)dst).GetHandle();
-    desc.SourceAccelerationStructureData = ((AccelerationStructureD3D12&)src).GetHandle();
-    desc.ScratchAccelerationStructureData = ((BufferD3D12&)scratch).GetPointerGPU() + scratchOffset;
-    desc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-    desc.Inputs.Flags = GetAccelerationStructureBuildFlags(flags) | D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
-    desc.Inputs.NumDescs = instanceNum;
-    desc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+    for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++) {
+        const BuildBottomLevelAccelerationStructureDesc& in = buildBottomLevelAccelerationStructureDescs[i];
 
-    desc.Inputs.InstanceDescs = ((BufferD3D12&)buffer).GetPointerGPU() + bufferOffset;
+        AccelerationStructureD3D12* dst = (AccelerationStructureD3D12*)in.dst;
+        AccelerationStructureD3D12* src = (AccelerationStructureD3D12*)in.src;
+        BufferD3D12* scratchBuffer = (BufferD3D12*)in.scratchBuffer;
 
-    if (m_Version >= 4)
-        m_GraphicsCommandList->BuildRaytracingAccelerationStructure(&desc, 0, nullptr);
-}
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC out = {};
+        out.DestAccelerationStructureData = dst->GetHandle();
+        out.ScratchAccelerationStructureData = scratchBuffer->GetPointerGPU() + in.scratchOffset;
+        out.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+        out.Inputs.Flags = GetAccelerationStructureBuildFlags(dst->GetFlags());
+        out.Inputs.NumDescs = in.geometryObjectNum;
+        out.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+        out.Inputs.pGeometryDescs = geometryDescs;
 
-NRI_INLINE void CommandBufferD3D12::UpdateBottomLevelAccelerationStructure(uint32_t geometryObjectNum, const GeometryObject* geometryObjects, AccelerationStructureBuildBits flags,
-    AccelerationStructure& dst, const AccelerationStructure& src, Buffer& scratch, uint64_t scratchOffset) {
-    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC desc = {};
-    desc.DestAccelerationStructureData = ((AccelerationStructureD3D12&)dst).GetHandle();
-    desc.SourceAccelerationStructureData = ((AccelerationStructureD3D12&)src).GetHandle();
-    desc.ScratchAccelerationStructureData = ((BufferD3D12&)scratch).GetPointerGPU() + scratchOffset;
-    desc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
-    desc.Inputs.Flags = GetAccelerationStructureBuildFlags(flags) | D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
-    desc.Inputs.NumDescs = geometryObjectNum;
-    desc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+        if (in.src) {
+            out.SourceAccelerationStructureData = src->GetHandle();
+            out.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
+        }
 
-    Scratch<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescs = AllocateScratch(m_Device, D3D12_RAYTRACING_GEOMETRY_DESC, geometryObjectNum);
-    ConvertGeometryDescs(geometryDescs, geometryObjects, geometryObjectNum);
-    desc.Inputs.pGeometryDescs = geometryDescs;
+        ConvertGeometryDescs(geometryDescs, in.geometries, in.geometryObjectNum);
 
-    if (m_Version >= 4)
-        m_GraphicsCommandList->BuildRaytracingAccelerationStructure(&desc, 0, nullptr);
+        m_GraphicsCommandList->BuildRaytracingAccelerationStructure(&out, 0, nullptr);
+
+        geometryDescs += in.geometryObjectNum;
+    }
 }
 
 NRI_INLINE void CommandBufferD3D12::CopyAccelerationStructure(AccelerationStructure& dst, const AccelerationStructure& src, CopyMode copyMode) {
@@ -1033,9 +1035,15 @@ NRI_INLINE void CommandBufferD3D12::WriteAccelerationStructureSize(const Acceler
     for (uint32_t i = 0; i < accelerationStructureNum; i++)
         virtualAddresses[i] = ((AccelerationStructureD3D12&)accelerationStructures[i]).GetHandle();
 
+    const QueryPoolD3D12& queryPoolD3D12 = (QueryPoolD3D12&)queryPool;
+
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC postbuildInfo = {};
-    postbuildInfo.InfoType = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_COMPACTED_SIZE;
-    postbuildInfo.DestBuffer = ((QueryPoolD3D12&)queryPool).GetReadbackBuffer()->GetGPUVirtualAddress() + queryOffset;
+    postbuildInfo.DestBuffer = queryPoolD3D12.GetReadbackBuffer()->GetGPUVirtualAddress() + queryOffset;
+
+    if (queryPoolD3D12.GetType() == QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE)
+        postbuildInfo.InfoType = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_CURRENT_SIZE;
+    else if (queryPoolD3D12.GetType() == QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE)
+        postbuildInfo.InfoType = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_COMPACTED_SIZE;
 
     if (m_Version >= 4)
         m_GraphicsCommandList->EmitRaytracingAccelerationStructurePostbuildInfo(&postbuildInfo, accelerationStructureNum, virtualAddresses);

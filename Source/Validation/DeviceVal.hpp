@@ -34,7 +34,7 @@ static inline Mip_t GetMaxMipNum(uint16_t w, uint16_t h, uint16_t d) {
     return mipNum;
 }
 
-void ConvertGeometryObjectsVal(GeometryObject* destObjects, const GeometryObject* sourceObjects, uint32_t objectNum);
+void ConvertGeometryObjectsVal(BottomLevelGeometry* destObjects, const BottomLevelGeometry* sourceObjects, uint32_t objectNum);
 QueryType GetQueryTypeVK(uint32_t queryTypeVK);
 
 DeviceVal::DeviceVal(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks, DeviceBase& device)
@@ -972,9 +972,9 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
 NRI_INLINE Result DeviceVal::CreatePipeline(const RayTracingPipelineDesc& pipelineDesc, Pipeline*& pipeline) {
     RETURN_ON_FAILURE(this, pipelineDesc.pipelineLayout != nullptr, Result::INVALID_ARGUMENT, "'pipelineLayout' is NULL");
     RETURN_ON_FAILURE(this, pipelineDesc.shaderLibrary != nullptr, Result::INVALID_ARGUMENT, "'shaderLibrary' is NULL");
-    RETURN_ON_FAILURE(this, pipelineDesc.shaderGroupDescs != nullptr, Result::INVALID_ARGUMENT, "'shaderGroupDescs' is NULL");
-    RETURN_ON_FAILURE(this, pipelineDesc.shaderGroupDescNum != 0, Result::INVALID_ARGUMENT, "'shaderGroupDescNum' is 0");
-    RETURN_ON_FAILURE(this, pipelineDesc.recursionDepthMax != 0, Result::INVALID_ARGUMENT, "'recursionDepthMax' is 0");
+    RETURN_ON_FAILURE(this, pipelineDesc.shaderGroups != nullptr, Result::INVALID_ARGUMENT, "'shaderGroups' is NULL");
+    RETURN_ON_FAILURE(this, pipelineDesc.shaderGroupNum != 0, Result::INVALID_ARGUMENT, "'shaderGroupNum' is 0");
+    RETURN_ON_FAILURE(this, pipelineDesc.recursionMaxDepth != 0, Result::INVALID_ARGUMENT, "'recursionDepthMax' is 0");
 
     uint32_t uniqueShaderStages = 0;
     for (uint32_t i = 0; i < pipelineDesc.shaderLibrary->shaderNum; i++) {
@@ -999,16 +999,16 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const RayTracingPipelineDesc& pipeli
 }
 
 NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    RETURN_ON_FAILURE(this, accelerationStructureDesc.instanceOrGeometryObjectNum != 0, Result::INVALID_ARGUMENT, "'instanceOrGeometryObjectNum' is 0");
+    RETURN_ON_FAILURE(this, accelerationStructureDesc.instanceOrGeometryNum != 0, Result::INVALID_ARGUMENT, "'instanceOrGeometryNum' is 0");
 
     auto accelerationStructureDescImpl = accelerationStructureDesc;
 
-    uint32_t geometryObjectNum = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.instanceOrGeometryObjectNum : 0;
-    Scratch<GeometryObject> objectImplArray = AllocateScratch(*this, GeometryObject, geometryObjectNum);
+    uint32_t geometryObjectNum = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.instanceOrGeometryNum : 0;
+    Scratch<BottomLevelGeometry> objectImplArray = AllocateScratch(*this, BottomLevelGeometry, geometryObjectNum);
 
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
-        ConvertGeometryObjectsVal(objectImplArray, accelerationStructureDesc.geometryObjects, geometryObjectNum);
-        accelerationStructureDescImpl.geometryObjects = objectImplArray;
+        ConvertGeometryObjectsVal(objectImplArray, accelerationStructureDesc.geometries, geometryObjectNum);
+        accelerationStructureDescImpl.geometries = objectImplArray;
     }
 
     AccelerationStructure* accelerationStructureImpl = nullptr;
@@ -1025,16 +1025,16 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
 }
 
 NRI_INLINE Result DeviceVal::AllocateAccelerationStructure(const AllocateAccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    RETURN_ON_FAILURE(this, accelerationStructureDesc.desc.instanceOrGeometryObjectNum != 0, Result::INVALID_ARGUMENT, "'instanceOrGeometryObjectNum' is 0");
+    RETURN_ON_FAILURE(this, accelerationStructureDesc.desc.instanceOrGeometryNum != 0, Result::INVALID_ARGUMENT, "'instanceOrGeometryNum' is 0");
 
     auto accelerationStructureDescImpl = accelerationStructureDesc;
 
-    uint32_t geometryObjectNum = accelerationStructureDesc.desc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.desc.instanceOrGeometryObjectNum : 0;
-    Scratch<GeometryObject> objectImplArray = AllocateScratch(*this, GeometryObject, geometryObjectNum);
+    uint32_t geometryObjectNum = accelerationStructureDesc.desc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.desc.instanceOrGeometryNum : 0;
+    Scratch<BottomLevelGeometry> objectImplArray = AllocateScratch(*this, BottomLevelGeometry, geometryObjectNum);
 
     if (accelerationStructureDesc.desc.type == AccelerationStructureType::BOTTOM_LEVEL) {
-        ConvertGeometryObjectsVal(objectImplArray, accelerationStructureDesc.desc.geometryObjects, geometryObjectNum);
-        accelerationStructureDescImpl.desc.geometryObjects = objectImplArray;
+        ConvertGeometryObjectsVal(objectImplArray, accelerationStructureDesc.desc.geometries, geometryObjectNum);
+        accelerationStructureDescImpl.desc.geometries = objectImplArray;
     }
 
     AccelerationStructure* accelerationStructureImpl = nullptr;

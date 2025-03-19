@@ -1,58 +1,61 @@
 // © 2021 NVIDIA Corporation
 
-void nri::ConvertGeometryObjectSizesVK(VkAccelerationStructureGeometryKHR* destObjects, uint32_t* primitiveNums, const GeometryObject* sourceObjects, uint32_t objectNum) {
-    for (uint32_t i = 0; i < objectNum; i++) {
-        const GeometryObject& src = sourceObjects[i];
+void nri::ConvertGeometryObjectSizesVK(VkAccelerationStructureGeometryKHR* vkGeometries, uint32_t* primitiveNums, const BottomLevelGeometry* geometries, uint32_t geometryObjectNum) {
+    for (uint32_t i = 0; i < geometryObjectNum; i++) {
+        const BottomLevelGeometry& in = geometries[i];
+        const BottomLevelTriangles& triangles = in.geometry.triangles;
+        const BottomLevelAabbs& aabbs = in.geometry.aabbs;
 
-        uint32_t triangleNum = (src.geometry.triangles.indexNum ? src.geometry.triangles.indexNum : src.geometry.triangles.vertexNum) / 3;
-        VkDeviceAddress transform = GetBufferDeviceAddress(src.geometry.triangles.transformBuffer) + src.geometry.triangles.transformOffset;
+        uint32_t triangleNum = (triangles.indexNum ? triangles.indexNum : triangles.vertexNum) / 3;
+        VkDeviceAddress transformAddr = GetBufferDeviceAddress(triangles.transformBuffer) + triangles.transformOffset;
 
-        primitiveNums[i] = src.type == GeometryType::TRIANGLES ? triangleNum : src.geometry.aabbs.boxNum;
+        primitiveNums[i] = in.type == BottomLevelGeometryType::TRIANGLES ? triangleNum : aabbs.num;
 
-        VkAccelerationStructureGeometryKHR& geometryDst = destObjects[i];
-        geometryDst = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
-        geometryDst.flags = GetGeometryFlags(src.flags);
-        geometryDst.geometryType = GetGeometryType(src.type);
-        geometryDst.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
-        geometryDst.geometry.aabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
-        geometryDst.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
-        geometryDst.geometry.triangles.maxVertex = src.geometry.triangles.vertexNum;
-        geometryDst.geometry.triangles.indexType = GetIndexType(src.geometry.triangles.indexType);
-        geometryDst.geometry.triangles.vertexFormat = GetVkFormat(src.geometry.triangles.vertexFormat);
-        geometryDst.geometry.triangles.transformData.deviceAddress = transform;
+        VkAccelerationStructureGeometryKHR& out = vkGeometries[i];
+        out = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
+        out.flags = GetGeometryFlags(in.flags);
+        out.geometryType = GetGeometryType(in.type);
+        out.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
+        out.geometry.aabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
+        out.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+        out.geometry.triangles.maxVertex = triangles.vertexNum;
+        out.geometry.triangles.indexType = GetIndexType(triangles.indexType);
+        out.geometry.triangles.vertexFormat = GetVkFormat(triangles.vertexFormat);
+        out.geometry.triangles.transformData.deviceAddress = transformAddr;
     }
 }
 
-void nri::ConvertGeometryObjectsVK(VkAccelerationStructureGeometryKHR* destObjects, VkAccelerationStructureBuildRangeInfoKHR* ranges, const GeometryObject* sourceObjects, uint32_t objectNum) {
-    for (uint32_t i = 0; i < objectNum; i++) {
-        const GeometryObject& src = sourceObjects[i];
+void nri::ConvertGeometryObjectsVK(VkAccelerationStructureGeometryKHR* vkGeometries, VkAccelerationStructureBuildRangeInfoKHR* ranges, const BottomLevelGeometry* geometries, uint32_t geometryObjectNum) {
+    for (uint32_t i = 0; i < geometryObjectNum; i++) {
+        const BottomLevelGeometry& in = geometries[i];
+        const BottomLevelTriangles& triangles = in.geometry.triangles;
+        const BottomLevelAabbs& aabbs = in.geometry.aabbs;
 
-        uint32_t triangleNum = (src.geometry.triangles.indexNum ? src.geometry.triangles.indexNum : src.geometry.triangles.vertexNum) / 3;
-
-        VkDeviceAddress aabbs = GetBufferDeviceAddress(src.geometry.aabbs.buffer) + src.geometry.aabbs.offset;
-        VkDeviceAddress vertices = GetBufferDeviceAddress(src.geometry.triangles.vertexBuffer) + src.geometry.triangles.vertexOffset;
-        VkDeviceAddress indices = GetBufferDeviceAddress(src.geometry.triangles.indexBuffer) + src.geometry.triangles.indexOffset;
-        VkDeviceAddress transform = GetBufferDeviceAddress(src.geometry.triangles.transformBuffer) + src.geometry.triangles.transformOffset;
+        uint32_t triangleNum = (triangles.indexNum ? triangles.indexNum : triangles.vertexNum) / 3;
+        VkDeviceAddress aabbAddr = GetBufferDeviceAddress(aabbs.buffer) + aabbs.offset;
+        VkDeviceAddress vertexAddr = GetBufferDeviceAddress(triangles.vertexBuffer) + triangles.vertexOffset;
+        VkDeviceAddress indexAddr = GetBufferDeviceAddress(triangles.indexBuffer) + triangles.indexOffset;
+        VkDeviceAddress transformAddr = GetBufferDeviceAddress(triangles.transformBuffer) + triangles.transformOffset;
 
         ranges[i] = {};
-        ranges[i].primitiveCount = src.type == GeometryType::TRIANGLES ? triangleNum : src.geometry.aabbs.boxNum;
+        ranges[i].primitiveCount = in.type == BottomLevelGeometryType::TRIANGLES ? triangleNum : aabbs.num;
 
-        VkAccelerationStructureGeometryKHR& geometryDst = destObjects[i];
-        geometryDst = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
-        geometryDst.flags = GetGeometryFlags(src.flags);
-        geometryDst.geometryType = GetGeometryType(src.type);
-        geometryDst.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
-        geometryDst.geometry.aabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
-        geometryDst.geometry.aabbs.data.deviceAddress = aabbs;
-        geometryDst.geometry.aabbs.stride = src.geometry.aabbs.stride;
-        geometryDst.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
-        geometryDst.geometry.triangles.maxVertex = src.geometry.triangles.vertexNum;
-        geometryDst.geometry.triangles.vertexData.deviceAddress = vertices;
-        geometryDst.geometry.triangles.vertexStride = src.geometry.triangles.vertexStride;
-        geometryDst.geometry.triangles.vertexFormat = GetVkFormat(src.geometry.triangles.vertexFormat);
-        geometryDst.geometry.triangles.indexData.deviceAddress = indices;
-        geometryDst.geometry.triangles.indexType = GetIndexType(src.geometry.triangles.indexType);
-        geometryDst.geometry.triangles.transformData.deviceAddress = transform;
+        VkAccelerationStructureGeometryKHR& out = vkGeometries[i];
+        out = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
+        out.flags = GetGeometryFlags(in.flags);
+        out.geometryType = GetGeometryType(in.type);
+        out.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
+        out.geometry.aabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
+        out.geometry.aabbs.data.deviceAddress = aabbAddr;
+        out.geometry.aabbs.stride = aabbs.stride;
+        out.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+        out.geometry.triangles.maxVertex = triangles.vertexNum;
+        out.geometry.triangles.vertexData.deviceAddress = vertexAddr;
+        out.geometry.triangles.vertexStride = triangles.vertexStride;
+        out.geometry.triangles.vertexFormat = GetVkFormat(triangles.vertexFormat);
+        out.geometry.triangles.indexData.deviceAddress = indexAddr;
+        out.geometry.triangles.indexType = GetIndexType(triangles.indexType);
+        out.geometry.triangles.transformData.deviceAddress = transformAddr;
     }
 }
 

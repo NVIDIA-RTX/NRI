@@ -50,7 +50,7 @@ struct DescriptorHeapDesc {
 
 void GetResourceDesc(D3D12_RESOURCE_DESC* desc, const BufferDesc& bufferDesc);
 void GetResourceDesc(D3D12_RESOURCE_DESC* desc, const TextureDesc& textureDesc);
-void ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs, const GeometryObject* geometryObjects, uint32_t geometryObjectNum);
+void ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs, const BottomLevelGeometry* geometries, uint32_t geometryObjectNum);
 bool GetTextureDesc(const TextureD3D12Desc& textureD3D12Desc, TextureDesc& textureDesc);
 bool GetBufferDesc(const BufferD3D12Desc& bufferD3D12Desc, BufferDesc& bufferDesc);
 uint64_t GetMemorySizeD3D12(const MemoryD3D12Desc& memoryD3D12Desc);
@@ -58,7 +58,7 @@ D3D12_RESIDENCY_PRIORITY ConvertPriority(float priority);
 
 D3D12_HEAP_TYPE GetHeapType(MemoryLocation memoryLocation);
 D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE GetAccelerationStructureType(AccelerationStructureType accelerationStructureType);
-D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS GetAccelerationStructureBuildFlags(AccelerationStructureBuildBits accelerationStructureBuildFlags);
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS GetAccelerationStructureBuildFlags(AccelerationStructureBits accelerationStructureBuildFlags);
 D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE GetCopyMode(CopyMode copyMode);
 D3D12_RESOURCE_FLAGS GetBufferFlags(BufferUsageBits bufferUsage);
 D3D12_RESOURCE_FLAGS GetTextureFlags(TextureUsageBits textureUsage);

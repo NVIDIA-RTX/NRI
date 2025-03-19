@@ -15,9 +15,27 @@ struct AccelerationStructureD3D12 final : public DebugNameBase {
         return m_Device;
     }
 
-    inline BufferD3D12* GetBuffer() const {
-        return m_Buffer;
+    inline AccelerationStructureBits GetFlags() const {
+        return m_Flags;
     }
+
+    ~AccelerationStructureD3D12();
+
+    Result Create(const AccelerationStructureDesc& accelerationStructureDesc);
+    Result Create(const AccelerationStructureD3D12Desc& accelerationStructureDesc);
+    Result Create(const AllocateAccelerationStructureDesc& accelerationStructureDesc);
+    Result BindMemory(Memory* memory, uint64_t offset);
+    void GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
+
+    //================================================================================================================
+    // DebugNameBase
+    //================================================================================================================
+
+    void SetDebugName(const char* name) DEBUG_NAME_OVERRIDE;
+
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
 
     inline uint64_t GetUpdateScratchBufferSize() const {
         return m_PrebuildInfo.UpdateScratchDataSizeInBytes;
@@ -27,28 +45,19 @@ struct AccelerationStructureD3D12 final : public DebugNameBase {
         return m_PrebuildInfo.ScratchDataSizeInBytes;
     }
 
-    ~AccelerationStructureD3D12();
+    inline BufferD3D12* GetBuffer() const {
+        return m_Buffer;
+    }
 
-    Result Create(const AccelerationStructureDesc& accelerationStructureDesc);
-    Result Create(const AccelerationStructureD3D12Desc& accelerationStructureDesc);
-    Result Create(const AllocateAccelerationStructureDesc& accelerationStructureDesc);
-    Result BindMemory(Memory* memory, uint64_t offset);
     Result CreateDescriptor(Descriptor*& descriptor) const;
-    void GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
-
     uint64_t GetHandle() const;
     operator ID3D12Resource*() const;
 
-    //================================================================================================================
-    // DebugNameBase
-    //================================================================================================================
-
-    void SetDebugName(const char* name) DEBUG_NAME_OVERRIDE;
-
 private:
     DeviceD3D12& m_Device;
-    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO m_PrebuildInfo = {};
     BufferD3D12* m_Buffer = nullptr;
+    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO m_PrebuildInfo = {};
+    AccelerationStructureBits m_Flags = AccelerationStructureBits::NONE;
 };
 
 } // namespace nri

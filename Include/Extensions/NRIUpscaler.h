@@ -138,8 +138,11 @@ NriStruct(UpscalerInterface) {
     bool            (NRI_CALL *IsUpscalerSupported)     (const NriRef(Device) device, Nri(UpscalerType) type);
     void            (NRI_CALL *GetUpscalerProps)        (const NriRef(Upscaler) upscaler, NriOut NriRef(UpscalerProps) upscalerProps);
 
-    // Changes descriptor pool, pipeline layout and pipeline. Barriers are externally controlled
-    void            (NRI_CALL *CmdDispatchUpscale)      (NriRef(CommandBuffer) commandBuffer, NriRef(Upscaler) upscaler, const NriRef(DispatchUpscaleDesc) dispatchUpscaleDesc);
+    // Command buffer
+    // {
+            // Changes descriptor pool, pipeline layout and pipeline. Barriers are externally controlled
+            void    (NRI_CALL *CmdDispatchUpscale)      (NriRef(CommandBuffer) commandBuffer, NriRef(Upscaler) upscaler, const NriRef(DispatchUpscaleDesc) dispatchUpscaleDesc);
+    // }
 };
 
 NriNamespaceEnd

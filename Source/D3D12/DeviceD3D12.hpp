@@ -40,12 +40,7 @@ static inline uint64_t HashRootSignatureAndStride(ID3D12RootSignature* rootSigna
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
 typedef ID3D12InfoQueue1 ID3D12InfoQueueBest;
 
-static void __stdcall MessageCallback(
-    D3D12_MESSAGE_CATEGORY category,
-    D3D12_MESSAGE_SEVERITY severity,
-    D3D12_MESSAGE_ID id,
-    LPCSTR message,
-    void* context) {
+static void __stdcall MessageCallback(D3D12_MESSAGE_CATEGORY category, D3D12_MESSAGE_SEVERITY severity, D3D12_MESSAGE_ID id, LPCSTR message, void* context) {
     MaybeUnused(id, category);
 
     Message messageType = Message::INFO;
@@ -57,8 +52,25 @@ static void __stdcall MessageCallback(
     DeviceD3D12& device = *(DeviceD3D12*)context;
     device.ReportMessage(messageType, __FILE__, __LINE__, "%s", message);
 }
+
 #else
 typedef ID3D12InfoQueue ID3D12InfoQueueBest;
+#endif
+
+#if NRI_ENABLE_D3D_EXTENSIONS
+
+static void __stdcall NvapiMessageCallback(void* context, NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY severity, const char* messageCode, const char* message, const char* messageDetails) {
+    Message messageType = Message::INFO;
+    if (severity == NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY_ERROR)
+        messageType = Message::ERROR;
+    else if (severity == NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY_WARNING)
+        messageType = Message::WARNING;
+
+    DeviceD3D12& device = *(DeviceD3D12*)context;
+    device.ReportMessage(messageType, __FILE__, __LINE__, "%s: %s", messageCode, message);
+    device.ReportMessage(messageType, __FILE__, __LINE__, "Details: %s", messageDetails);
+}
+
 #endif
 
 DeviceD3D12::DeviceD3D12(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks)
@@ -124,6 +136,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         bool isShaderAtomicsI64Supported = false;
         bool isShaderClockSupported = false;
         uint32_t shaderExtRegister = desc.shaderExtRegister ? desc.shaderExtRegister : NRI_SHADER_EXT_REGISTER;
+
         if (HasAmdExt()) {
             AGSDX12DeviceCreationParams deviceCreationParams = {};
             deviceCreationParams.pAdapter = m_Adapter;
@@ -149,6 +162,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
             if (HasNvExt()) {
                 REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_SetNvShaderExtnSlotSpace(deviceTemp, shaderExtRegister, 0));
                 REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_UINT64_ATOMIC, &isShaderAtomicsI64Supported));
+                REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_GET_SPECIAL, &isShaderClockSupported));
             }
         }
 
@@ -234,6 +248,61 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
             m_Desc.adapterDesc.queueNum[(size_t)queueFamilyDesc.queueType] = queueFamilyDesc.queueNum;
         }
     }
+
+    // NV-specific features
+#if NRI_ENABLE_D3D_EXTENSIONS
+    if (HasNvExt()) {
+        NVAPI_D3D12_SET_CREATE_PIPELINE_STATE_OPTIONS_PARAMS psoOptionsParams = {};
+        psoOptionsParams.version = NVAPI_D3D12_SET_CREATE_PIPELINE_STATE_OPTIONS_PARAMS_VER;
+
+        NVAPI_D3D12_RAYTRACING_OPACITY_MICROMAP_CAPS micromapSupport = {};
+        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_OPACITY_MICROMAP, &micromapSupport, sizeof(micromapSupport)));
+        if (micromapSupport) {
+            psoOptionsParams.flags |= NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_ENABLE_OMM_SUPPORT;
+
+            m_Desc.isMicromapSupported = true;
+            m_Desc.opacity2StateSubdivisionMaxLevel = NVAPI_D3D12_RAYTRACING_OPACITY_MICROMAP_OC1_MAX_SUBDIVISION_LEVEL;
+            m_Desc.opacity4StateSubdivisionMaxLevel = NVAPI_D3D12_RAYTRACING_OPACITY_MICROMAP_OC1_MAX_SUBDIVISION_LEVEL;
+        }
+
+        NVAPI_D3D12_RAYTRACING_CLUSTER_OPERATIONS_CAPS clusterBlasSupport = {};
+        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_CLUSTER_OPERATIONS, &clusterBlasSupport, sizeof(clusterBlasSupport)));
+        if (clusterBlasSupport)
+            psoOptionsParams.flags |= NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_ENABLE_CLUSTER_SUPPORT;
+
+        NVAPI_D3D12_RAYTRACING_SPHERES_CAPS spheresSupport = {};
+        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_SPHERES, &spheresSupport, sizeof(spheresSupport)));
+        if (clusterBlasSupport)
+            psoOptionsParams.flags |= NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_ENABLE_SPHERE_SUPPORT;
+
+        NVAPI_D3D12_RAYTRACING_LINEAR_SWEPT_SPHERES_CAPS linearSweptSpheresSupport = {};
+        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_LINEAR_SWEPT_SPHERES, &linearSweptSpheresSupport, sizeof(linearSweptSpheresSupport)));
+        if (clusterBlasSupport)
+            psoOptionsParams.flags |= NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_ENABLE_LSS_SUPPORT;
+
+        NVAPI_D3D12_RAYTRACING_THREAD_REORDERING_CAPS threadReorderingSupport = {};
+        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_THREAD_REORDERING, &threadReorderingSupport, sizeof(threadReorderingSupport))); // TODO: use
+
+        NVAPI_D3D12_RAYTRACING_PARTITIONED_TLAS_CAPS partitionedTlasSupport = {};
+        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_PARTITIONED_TLAS, &partitionedTlasSupport, sizeof(partitionedTlasSupport))); // TODO: use
+
+        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_SetCreatePipelineStateOptions(m_Device, &psoOptionsParams));
+
+        bool isSupported = false;
+        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_RT_TRIANGLE_OBJECT_POSITIONS, &isSupported));
+        m_Desc.isRayTracingPositionFetchSupported = isSupported;
+
+        // Ray tracing validation
+        if (desc.enableD3D12RayTracingValidation) {
+            NvAPI_Status status = NvAPI_D3D12_EnableRaytracingValidation(m_Device, NVAPI_D3D12_RAYTRACING_VALIDATION_FLAG_NONE);
+            if (status == NVAPI_OK) {
+                void* unused = nullptr;
+                REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_RegisterRaytracingValidationMessageCallback(m_Device, NvapiMessageCallback, this, &unused));
+                // TODO: add "NvAPI_D3D12_FlushRaytracingValidationMessages" somewhere?
+            }
+        }
+    }
+#endif
 
     // Fill desc
     FillDesc();
@@ -582,10 +651,10 @@ void DeviceD3D12::FillDesc() {
     m_Desc.isShaderAtomicsI64Supported = m_Desc.isShaderAtomicsI64Supported || options9.AtomicInt64OnTypedResourceSupported || options9.AtomicInt64OnGroupSharedSupported || options11.AtomicInt64OnDescriptorHeapResourceSupported;
 #endif
 
-    m_Desc.isRasterizedOrderedViewSupported = options.ROVsSupported;
-    m_Desc.isBarycentricSupported = options3.BarycentricsSupported;
     m_Desc.isShaderViewportIndexSupported = options.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation;
     m_Desc.isShaderLayerSupported = options.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation;
+    m_Desc.isRasterizedOrderedViewSupported = options.ROVsSupported;
+    m_Desc.isBarycentricSupported = options3.BarycentricsSupported;
 
     m_Desc.isSwapChainSupported = HasOutput();
     m_Desc.isLowLatencySupported = HasNvExt();
@@ -602,9 +671,9 @@ void DeviceD3D12::InitializeNvExt(bool isNVAPILoadedInApp, bool isImported) {
     if (isImported && !isNVAPILoadedInApp)
         REPORT_WARNING(this, "NVAPI is disabled, because it's not loaded on the application side");
     else {
-        const NvAPI_Status status = NvAPI_Initialize();
+        NvAPI_Status status = NvAPI_Initialize();
         if (status != NVAPI_OK)
-            REPORT_ERROR(this, "Failed to initialize NVAPI: %d", (int32_t)status);
+            REPORT_ERROR(this, "NvAPI_Initialize(): failed, result = %d!", (int32_t)status);
         m_NvExt.available = (status == NVAPI_OK);
     }
 #endif
@@ -798,14 +867,14 @@ void DeviceD3D12::GetAccelerationStructurePrebuildInfo(const AccelerationStructu
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS accelerationStructureInputs = {};
     accelerationStructureInputs.Type = GetAccelerationStructureType(accelerationStructureDesc.type);
     accelerationStructureInputs.Flags = GetAccelerationStructureBuildFlags(accelerationStructureDesc.flags);
-    accelerationStructureInputs.NumDescs = accelerationStructureDesc.instanceOrGeometryObjectNum;
+    accelerationStructureInputs.NumDescs = accelerationStructureDesc.instanceOrGeometryNum;
     accelerationStructureInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY; // TODO: D3D12_ELEMENTS_LAYOUT_ARRAY_OF_POINTERS support?
 
-    uint32_t geometryCount = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.instanceOrGeometryObjectNum : 0;
+    uint32_t geometryCount = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.instanceOrGeometryNum : 0;
     Scratch<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescs = AllocateScratch(*this, D3D12_RAYTRACING_GEOMETRY_DESC, geometryCount);
 
-    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL && accelerationStructureDesc.instanceOrGeometryObjectNum) {
-        ConvertGeometryDescs(geometryDescs, accelerationStructureDesc.geometryObjects, accelerationStructureDesc.instanceOrGeometryObjectNum);
+    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL && accelerationStructureDesc.instanceOrGeometryNum) {
+        ConvertGeometryDescs(geometryDescs, accelerationStructureDesc.geometries, accelerationStructureDesc.instanceOrGeometryNum);
         accelerationStructureInputs.pGeometryDescs = geometryDescs;
     }
 
