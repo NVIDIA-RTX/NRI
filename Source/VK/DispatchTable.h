@@ -36,17 +36,17 @@ struct DispatchTable {
     VULKAN_FUNCTION(GetPhysicalDeviceSurfacePresentModesKHR);
     VULKAN_FUNCTION(DestroySurfaceKHR);
 
-#if VK_USE_PLATFORM_WIN32_KHR
+#ifdef VK_USE_PLATFORM_WIN32_KHR
     VULKAN_FUNCTION(CreateWin32SurfaceKHR);
     VULKAN_FUNCTION(GetMemoryWin32HandlePropertiesKHR);
 #endif
-#if VK_USE_PLATFORM_METAL_EXT
+#ifdef VK_USE_PLATFORM_METAL_EXT
     VULKAN_FUNCTION(CreateMetalSurfaceEXT);
 #endif
-#if VK_USE_PLATFORM_XLIB_KHR
+#ifdef VK_USE_PLATFORM_XLIB_KHR
     VULKAN_FUNCTION(CreateXlibSurfaceKHR);
 #endif
-#if VK_USE_PLATFORM_WAYLAND_KHR
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
     VULKAN_FUNCTION(CreateWaylandSurfaceKHR);
 #endif
 

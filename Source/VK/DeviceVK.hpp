@@ -1559,17 +1559,17 @@ Result DeviceVK::ResolveInstanceDispatchTable(const Vector<const char*>& desired
         GET_INSTANCE_PROC(GetPhysicalDeviceSurfacePresentModesKHR);
         GET_INSTANCE_PROC(DestroySurfaceKHR);
 
-#if VK_USE_PLATFORM_WIN32_KHR
+#ifdef VK_USE_PLATFORM_WIN32_KHR
         GET_INSTANCE_PROC(CreateWin32SurfaceKHR);
         GET_INSTANCE_PROC(GetMemoryWin32HandlePropertiesKHR);
 #endif
-#if VK_USE_PLATFORM_METAL_EXT
+#ifdef VK_USE_PLATFORM_METAL_EXT
         GET_INSTANCE_PROC(CreateMetalSurfaceEXT);
 #endif
-#if VK_USE_PLATFORM_XLIB_KHR
+#ifdef VK_USE_PLATFORM_XLIB_KHR
         GET_INSTANCE_PROC(CreateXlibSurfaceKHR);
 #endif
-#if VK_USE_PLATFORM_WAYLAND_KHR
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
         GET_INSTANCE_PROC(CreateWaylandSurfaceKHR);
 #endif
     }
