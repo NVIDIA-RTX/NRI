@@ -145,6 +145,7 @@ static int SortAdaptersByDedicatedVideoMemorySizeVK(const void* pa, const void* 
     const AdapterDesc* a = (AdapterDesc*)pa;
     const AdapterDesc* b = (AdapterDesc*)pb;
 
+    // TODO: also sort by "Architecture"?
     if (a->videoMemorySize > b->videoMemorySize)
         return -1;
 
@@ -257,7 +258,7 @@ static Result EnumerateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDe
                             // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceMemoryProperties.html
                             for (uint32_t j = 0; j < memoryProperties.memoryHeapCount; j++) {
                                 // From spec: In UMA systems ... implementation must advertise the heap as device-local
-                                if ((memoryProperties.memoryHeaps[j].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) != 0 && deviceProps.deviceType != VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) // TODO: or just put INTEGRATED into the end of the list after sorting?
+                                if ((memoryProperties.memoryHeaps[j].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) != 0 && adapterDesc.architecture == Architecture::DESCRETE)
                                     adapterDesc.videoMemorySize += memoryProperties.memoryHeaps[j].size;
                                 else
                                     adapterDesc.sharedSystemMemorySize += memoryProperties.memoryHeaps[j].size;

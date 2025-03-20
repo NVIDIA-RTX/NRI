@@ -1051,7 +1051,7 @@ NriStruct(ComputePipelineDesc) {
 // If AgilitySDK is not available, "UNKNOWN" will be silently mapped to "COMMON", leading to discrepancies with VK
 NriBits(AccessBits, uint32_t,                 // Compatible "StageBits" (including ALL):
     UNKNOWN                         = 0,
-    
+
     // Buffer
     INDEX_BUFFER                    = NriBit(0),  // INDEX_INPUT
     VERTEX_BUFFER                   = NriBit(1),  // VERTEX_SHADER
@@ -1330,8 +1330,8 @@ NriEnum(Vendor, uint8_t,
 );
 
 NriEnum(Architecture, uint8_t,
-    UNKNOWN,
-    DESCRETE,
+    UNKNOWN,   // CPU device, virtual GPU or other
+    DESCRETE,  // yes, please!
     INTEGRATED // UMA
 );
 
