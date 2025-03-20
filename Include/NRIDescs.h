@@ -1330,9 +1330,9 @@ NriEnum(Vendor, uint8_t,
 );
 
 NriEnum(Architecture, uint8_t,
-    UNKNOWN,   // CPU device, virtual GPU or other
-    DESCRETE,  // yes, please!
-    INTEGRATED // UMA
+    UNKNOWN,    // CPU device, virtual GPU or other
+    INTEGRATED, // UMA
+    DESCRETE    // yes, please!
 );
 
 NriEnum(QueueType, uint8_t,

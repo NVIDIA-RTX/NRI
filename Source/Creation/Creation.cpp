@@ -142,14 +142,21 @@ static Result EnumerateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterD
 #if NRI_ENABLE_VK_SUPPORT
 
 static int SortAdaptersByDedicatedVideoMemorySizeVK(const void* pa, const void* pb) {
-    const AdapterDesc* a = (AdapterDesc*)pa;
-    const AdapterDesc* b = (AdapterDesc*)pb;
+    constexpr uint64_t SHIFT = 60ull;
+    static_assert((uint64_t)Architecture::MAX_NUM <= 1ull << (64ull - SHIFT), "Adjust SHIFT");
 
-    // TODO: also sort by "Architecture"?
-    if (a->videoMemorySize > b->videoMemorySize)
+    const AdapterDesc* a = (AdapterDesc*)pa;
+    uint64_t sa = a->videoMemorySize + a->sharedSystemMemorySize;
+    sa |= (uint64_t)(a->architecture) << SHIFT;
+
+    const AdapterDesc* b = (AdapterDesc*)pb;
+    uint64_t sb = b->videoMemorySize + b->sharedSystemMemorySize;
+    sb |= (uint64_t)(b->architecture) << SHIFT;
+
+    if (sa > sb)
         return -1;
 
-    if (a->videoMemorySize < b->videoMemorySize)
+    if (sa < sb)
         return 1;
 
     return 0;
@@ -258,7 +265,7 @@ static Result EnumerateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDe
                             // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceMemoryProperties.html
                             for (uint32_t j = 0; j < memoryProperties.memoryHeapCount; j++) {
                                 // From spec: In UMA systems ... implementation must advertise the heap as device-local
-                                if ((memoryProperties.memoryHeaps[j].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) != 0 && adapterDesc.architecture == Architecture::DESCRETE)
+                                if ((memoryProperties.memoryHeaps[j].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) != 0 && deviceProps.deviceType != VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
                                     adapterDesc.videoMemorySize += memoryProperties.memoryHeaps[j].size;
                                 else
                                     adapterDesc.sharedSystemMemorySize += memoryProperties.memoryHeaps[j].size;
