@@ -60,8 +60,7 @@ struct CommandBufferD3D11 final : public CommandBufferBase {
     void SetSampleLocations(const SampleLocation* locations, Sample_t locationNum, Sample_t sampleNum);
     void SetBlendConstants(const Color32f& color);
     void ClearAttachments(const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum);
-    void ClearStorageBuffer(const ClearStorageBufferDesc& clearDesc);
-    void ClearStorageTexture(const ClearStorageTextureDesc& clearDesc);
+    void ClearStorage(const ClearStorageDesc& clearDesc);
     void BeginRendering(const AttachmentsDesc& attachmentsDesc);
     void SetVertexBuffers(uint32_t baseSlot, uint32_t bufferNum, const Buffer* const* buffers, const uint64_t* offsets);
     void SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType);
@@ -77,9 +76,10 @@ struct CommandBufferD3D11 final : public CommandBufferBase {
     void DrawIndexedIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset);
     void CopyBuffer(Buffer& dstBuffer, uint64_t dstOffset, const Buffer& srcBuffer, uint64_t srcOffset, uint64_t size);
     void CopyTexture(Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc);
-    void ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc);
     void UploadBufferToTexture(Texture& dstTexture, const TextureRegionDesc& dstRegionDesc, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayoutDesc);
     void ReadbackTextureToBuffer(Buffer& dstBuffer, const TextureDataLayoutDesc& dstDataLayoutDesc, const Texture& srcTexture, const TextureRegionDesc& srcRegionDesc);
+    void ZeroBuffer(Buffer& buffer, uint64_t offset, uint64_t size);
+    void ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc);
     void Dispatch(const DispatchDesc& dispatchDesc);
     void DispatchIndirect(const Buffer& buffer, uint64_t offset);
     void Barrier(const BarrierGroupDesc& barrierGroupDesc);

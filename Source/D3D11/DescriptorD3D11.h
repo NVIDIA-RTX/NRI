@@ -54,6 +54,10 @@ struct DescriptorD3D11 final : public DebugNameBase {
         return m_SubresourceInfo;
     }
 
+    inline bool IsBuffer() const {
+        return m_ElementNum != 0;
+    }
+
     Result Create(const Texture1DViewDesc& textureViewDesc);
     Result Create(const Texture2DViewDesc& textureViewDesc);
     Result Create(const Texture3DViewDesc& textureViewDesc);

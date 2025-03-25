@@ -29,7 +29,7 @@ NRI_INLINE Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout
         for (uint32_t i = 0; i < instanceNum; i++) {
             for (uint32_t j = 0; j < descriptorSetDesc.rangeNum; j++) {
                 const DescriptorRangeDesc& rangeDesc = descriptorSetDesc.ranges[j];
-                RETURN_ON_FAILURE(&m_Device, (uint32_t)rangeDesc.descriptorType < (uint32_t)nri::DescriptorType::MAX_NUM, Result::INVALID_ARGUMENT, "Invalid DescriptorType=%u", (uint32_t)rangeDesc.descriptorType);
+                RETURN_ON_FAILURE(&m_Device, (uint32_t)rangeDesc.descriptorType < (uint32_t)DescriptorType::MAX_NUM, Result::INVALID_ARGUMENT, "Invalid DescriptorType=%u", (uint32_t)rangeDesc.descriptorType);
 
                 uint32_t descriptorNum = (rangeDesc.flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY) ? variableDescriptorNum : rangeDesc.descriptorNum;
                 RETURN_ON_FAILURE(&m_Device, descriptorNum <= rangeDesc.descriptorNum, Result::INVALID_ARGUMENT, "'variableDescriptorNum=%u' is greater than 'descriptorNum=%u'", variableDescriptorNum, rangeDesc.descriptorNum);

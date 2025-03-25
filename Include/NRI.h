@@ -37,7 +37,7 @@ Implicit:
 
 #define NRI_VERSION_MAJOR 1
 #define NRI_VERSION_MINOR 165
-#define NRI_VERSION_DATE "18 March 2025"
+#define NRI_VERSION_DATE "25 March 2025"
 
 #include "NRIDescs.h"
 
@@ -191,11 +191,15 @@ NriStruct(CoreInterface) {
         // Copy
         void                (NRI_CALL *CmdCopyBuffer)               (NriRef(CommandBuffer) commandBuffer, NriRef(Buffer) dstBuffer, uint64_t dstOffset, const NriRef(Buffer) srcBuffer, uint64_t srcOffset, uint64_t size);
         void                (NRI_CALL *CmdCopyTexture)              (NriRef(CommandBuffer) commandBuffer, NriRef(Texture) dstTexture, NriOptional const NriPtr(TextureRegionDesc) dstRegionDesc, const NriRef(Texture) srcTexture, NriOptional const NriPtr(TextureRegionDesc) srcRegionDesc);
-        void                (NRI_CALL *CmdResolveTexture)           (NriRef(CommandBuffer) commandBuffer, NriRef(Texture) dstTexture, NriOptional const NriPtr(TextureRegionDesc) dstRegionDesc, const NriRef(Texture) srcTexture, NriOptional const NriPtr(TextureRegionDesc) srcRegionDesc); // "isRegionResolveSupported" is needed for region specification
         void                (NRI_CALL *CmdUploadBufferToTexture)    (NriRef(CommandBuffer) commandBuffer, NriRef(Texture) dstTexture, const NriRef(TextureRegionDesc) dstRegionDesc, const NriRef(Buffer) srcBuffer, const NriRef(TextureDataLayoutDesc) srcDataLayoutDesc);
         void                (NRI_CALL *CmdReadbackTextureToBuffer)  (NriRef(CommandBuffer) commandBuffer, NriRef(Buffer) dstBuffer, const NriRef(TextureDataLayoutDesc) dstDataLayoutDesc, const NriRef(Texture) srcTexture, const NriRef(TextureRegionDesc) srcRegionDesc);
-        void                (NRI_CALL *CmdClearStorageBuffer)       (NriRef(CommandBuffer) commandBuffer, const NriRef(ClearStorageBufferDesc) clearDesc); // potentially slow clear
-        void                (NRI_CALL *CmdClearStorageTexture)      (NriRef(CommandBuffer) commandBuffer, const NriRef(ClearStorageTextureDesc) clearDesc); // potentially slow clear
+        void                (NRI_CALL *CmdZeroBuffer)               (NriRef(CommandBuffer) commandBuffer, NriRef(Buffer) buffer, uint64_t offset, uint64_t size);
+
+        // Resolve
+        void                (NRI_CALL *CmdResolveTexture)           (NriRef(CommandBuffer) commandBuffer, NriRef(Texture) dstTexture, NriOptional const NriPtr(TextureRegionDesc) dstRegionDesc, const NriRef(Texture) srcTexture, NriOptional const NriPtr(TextureRegionDesc) srcRegionDesc); // "isRegionResolveSupported" is needed for region specification
+
+        // Clear (potentially slow)
+        void                (NRI_CALL *CmdClearStorage)             (NriRef(CommandBuffer) commandBuffer, const NriRef(ClearStorageDesc) clearDesc);
 
         // Query
         void                (NRI_CALL *CmdResetQueries)             (NriRef(CommandBuffer) commandBuffer, NriRef(QueryPool) queryPool, uint32_t offset, uint32_t num);

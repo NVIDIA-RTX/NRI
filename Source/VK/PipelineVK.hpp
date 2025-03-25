@@ -249,7 +249,8 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     std::array<VkDynamicState, 16> dynamicStates;
     dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT;
     dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT;
-    dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE;
+    if (vi)
+        dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE;
     if (rasterizationState.depthBiasEnable)
         dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_DEPTH_BIAS;
     if (depthStencilState.depthBoundsTestEnable)

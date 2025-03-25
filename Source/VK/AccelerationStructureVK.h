@@ -65,7 +65,6 @@ private:
     BufferVK* m_Buffer = nullptr;
     uint64_t m_BuildScratchSize = 0;
     uint64_t m_UpdateScratchSize = 0;
-    uint64_t m_AccelerationStructureSize = 0;                                  // needed only for FinishCreation
     VkAccelerationStructureTypeKHR m_Type = (VkAccelerationStructureTypeKHR)0; // needed only for FinishCreation
     AccelerationStructureBits m_Flags = AccelerationStructureBits::NONE;
     bool m_OwnsNativeObjects = true;

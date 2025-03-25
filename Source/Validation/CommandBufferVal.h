@@ -46,8 +46,7 @@ struct CommandBufferVal final : public ObjectVal {
     void SetShadingRate(const ShadingRateDesc& shadingRateDesc);
     void SetDepthBias(const DepthBiasDesc& depthBiasDesc);
     void ClearAttachments(const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum);
-    void ClearStorageBuffer(const ClearStorageBufferDesc& clearDesc);
-    void ClearStorageTexture(const ClearStorageTextureDesc& clearDesc);
+    void ClearStorage(const ClearStorageDesc& clearDesc);
     void BeginRendering(const AttachmentsDesc& attachmentsDesc);
     void EndRendering();
     void SetVertexBuffers(uint32_t baseSlot, uint32_t bufferNum, const Buffer* const* buffers, const uint64_t* offsets);
@@ -64,9 +63,10 @@ struct CommandBufferVal final : public ObjectVal {
     void DrawIndexedIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset);
     void CopyBuffer(Buffer& dstBuffer, uint64_t dstOffset, const Buffer& srcBuffer, uint64_t srcOffset, uint64_t size);
     void CopyTexture(Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc);
-    void ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc);
     void UploadBufferToTexture(Texture& dstTexture, const TextureRegionDesc& dstRegionDesc, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayoutDesc);
     void ReadbackTextureToBuffer(Buffer& dstBuffer, const TextureDataLayoutDesc& dstDataLayoutDesc, const Texture& srcTexture, const TextureRegionDesc& srcRegionDesc);
+    void ZeroBuffer(Buffer& buffer, uint64_t offset, uint64_t size);
+    void ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc);
     void Dispatch(const DispatchDesc& dispatchDesc);
     void DispatchIndirect(const Buffer& buffer, uint64_t offset);
     void Barrier(const BarrierGroupDesc& barrierGroupDesc);
@@ -80,7 +80,7 @@ struct CommandBufferVal final : public ObjectVal {
     void BuildTopLevelAccelerationStructure(const BuildTopLevelAccelerationStructureDesc* buildTopLevelAccelerationStructureDescs, uint32_t buildTopLevelAccelerationStructureDescNum);
     void BuildBottomLevelAccelerationStructure(const BuildBottomLevelAccelerationStructureDesc* buildBottomLevelAccelerationStructureDescs, uint32_t buildBottomLevelAccelerationStructureDescNum);
     void CopyAccelerationStructure(AccelerationStructure& dst, const AccelerationStructure& src, CopyMode copyMode);
-    void WriteAccelerationStructureSize(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset);
+    void WriteAccelerationStructuresSizes(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset);
     void DispatchRays(const DispatchRaysDesc& dispatchRaysDesc);
     void DispatchRaysIndirect(const Buffer& buffer, uint64_t offset);
     void DrawMeshTasks(const DrawMeshTasksDesc& drawMeshTasksDesc);

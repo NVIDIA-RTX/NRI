@@ -384,10 +384,6 @@ static void NRI_CALL CmdCopyTexture(CommandBuffer& commandBuffer, Texture& dstTe
     ((CommandBufferVal&)commandBuffer).CopyTexture(dstTexture, dstRegionDesc, srcTexture, srcRegionDesc);
 }
 
-static void NRI_CALL CmdResolveTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
-    ((CommandBufferVal&)commandBuffer).ResolveTexture(dstTexture, dstRegionDesc, srcTexture, srcRegionDesc);
-}
-
 static void NRI_CALL CmdUploadBufferToTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc& dstRegionDesc, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayoutDesc) {
     ((CommandBufferVal&)commandBuffer).UploadBufferToTexture(dstTexture, dstRegionDesc, srcBuffer, srcDataLayoutDesc);
 }
@@ -396,12 +392,16 @@ static void NRI_CALL CmdReadbackTextureToBuffer(CommandBuffer& commandBuffer, Bu
     ((CommandBufferVal&)commandBuffer).ReadbackTextureToBuffer(dstBuffer, dstDataLayoutDesc, srcTexture, srcRegionDesc);
 }
 
-static void NRI_CALL CmdClearStorageBuffer(CommandBuffer& commandBuffer, const ClearStorageBufferDesc& clearDesc) {
-    ((CommandBufferVal&)commandBuffer).ClearStorageBuffer(clearDesc);
+static void NRI_CALL CmdZeroBuffer(CommandBuffer& commandBuffer, Buffer& buffer, uint64_t offset, uint64_t size) {
+    ((CommandBufferVal&)commandBuffer).ZeroBuffer(buffer, offset, size);
 }
 
-static void NRI_CALL CmdClearStorageTexture(CommandBuffer& commandBuffer, const ClearStorageTextureDesc& clearDesc) {
-    ((CommandBufferVal&)commandBuffer).ClearStorageTexture(clearDesc);
+static void NRI_CALL CmdResolveTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
+    ((CommandBufferVal&)commandBuffer).ResolveTexture(dstTexture, dstRegionDesc, srcTexture, srcRegionDesc);
+}
+
+static void NRI_CALL CmdClearStorage(CommandBuffer& commandBuffer, const ClearStorageDesc& clearDesc) {
+    ((CommandBufferVal&)commandBuffer).ClearStorage(clearDesc);
 }
 
 static void NRI_CALL CmdResetQueries(CommandBuffer& commandBuffer, QueryPool& queryPool, uint32_t offset, uint32_t num) {
@@ -616,9 +616,9 @@ Result DeviceVal::FillFunctionTable(CoreInterface& table) const {
     table.CmdCopyTexture = ::CmdCopyTexture;
     table.CmdUploadBufferToTexture = ::CmdUploadBufferToTexture;
     table.CmdReadbackTextureToBuffer = ::CmdReadbackTextureToBuffer;
-    table.CmdClearStorageBuffer = ::CmdClearStorageBuffer;
-    table.CmdClearStorageTexture = ::CmdClearStorageTexture;
+    table.CmdZeroBuffer = ::CmdZeroBuffer;
     table.CmdResolveTexture = ::CmdResolveTexture;
+    table.CmdClearStorage = ::CmdClearStorage;
     table.CmdResetQueries = ::CmdResetQueries;
     table.CmdBeginQuery = ::CmdBeginQuery;
     table.CmdEndQuery = ::CmdEndQuery;
@@ -929,7 +929,7 @@ static void NRI_CALL GetAccelerationStructureMemoryDesc2(const Device& device, c
     auto accelerationStructureDescImpl = accelerationStructureDesc;
 
     uint32_t geometryNum = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.geometryOrInstanceNum : 0;
-    Scratch<BottomLevelGeometry> objectImplArray = AllocateScratch(deviceVal, BottomLevelGeometry, geometryNum);
+    Scratch<BottomLevelGeometryDesc> objectImplArray = AllocateScratch(deviceVal, BottomLevelGeometryDesc, geometryNum);
 
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
         ConvertGeometryObjectsVal(objectImplArray, accelerationStructureDesc.geometries, geometryNum);
@@ -985,15 +985,15 @@ static void NRI_CALL CmdCopyAccelerationStructure(CommandBuffer& commandBuffer, 
     ((CommandBufferVal&)commandBuffer).CopyAccelerationStructure(dst, src, mode);
 }
 
-static void NRI_CALL CmdWriteAccelerationStructureSize(CommandBuffer& commandBuffer, const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset) {
-    ((CommandBufferVal&)commandBuffer).WriteAccelerationStructureSize(accelerationStructures, accelerationStructureNum, queryPool, queryOffset);
+static void NRI_CALL CmdWriteAccelerationStructuresSizes(CommandBuffer& commandBuffer, const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset) {
+    ((CommandBufferVal&)commandBuffer).WriteAccelerationStructuresSizes(accelerationStructures, accelerationStructureNum, queryPool, queryOffset);
 }
 
 static void NRI_CALL CmdCopyMicromap(CommandBuffer&, Micromap&, const Micromap&, CopyMode) {
     // TODO
 }
 
-static void NRI_CALL CmdWriteMicromapSize(CommandBuffer&, const Micromap* const*, uint32_t, QueryPool&, uint32_t) {
+static void NRI_CALL CmdWriteMicromapsSizes(CommandBuffer&, const Micromap* const*, uint32_t, QueryPool&, uint32_t) {
     // TODO
 }
 
@@ -1035,9 +1035,9 @@ Result DeviceVal::FillFunctionTable(RayTracingInterface& table) const {
     table.CmdDispatchRays = ::CmdDispatchRays;
     table.CmdDispatchRaysIndirect = ::CmdDispatchRaysIndirect;
     table.CmdCopyAccelerationStructure = ::CmdCopyAccelerationStructure;
-    table.CmdWriteAccelerationStructureSize = ::CmdWriteAccelerationStructureSize;
+    table.CmdWriteAccelerationStructuresSizes = ::CmdWriteAccelerationStructuresSizes;
     table.CmdCopyMicromap = ::CmdCopyMicromap;
-    table.CmdWriteMicromapSize = ::CmdWriteMicromapSize;
+    table.CmdWriteMicromapsSizes = ::CmdWriteMicromapsSizes;
     table.GetAccelerationStructureNativeObject = ::GetAccelerationStructureNativeObject;
     table.GetMicromapNativeObject = ::GetMicromapNativeObject;
 

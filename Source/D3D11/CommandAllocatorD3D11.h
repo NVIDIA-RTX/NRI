@@ -29,6 +29,6 @@ private:
     DeviceD3D11& m_Device;
 };
 
-} // namespace nri
+Result CreateCommandBuffer(DeviceD3D11& deviceImpl, ID3D11DeviceContext* precreatedContext, CommandBuffer*& commandBuffer);
 
-nri::Result CreateCommandBuffer(nri::DeviceD3D11& deviceImpl, ID3D11DeviceContext* precreatedContext, nri::CommandBuffer*& commandBuffer);
+} // namespace nri

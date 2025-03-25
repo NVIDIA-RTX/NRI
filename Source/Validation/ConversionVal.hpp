@@ -1,9 +1,9 @@
 // © 2021 NVIDIA Corporation
 
-void ConvertGeometryObjectsVal(BottomLevelGeometry* destObjects, const BottomLevelGeometry* sourceObjects, uint32_t objectNum) {
+void nri::ConvertGeometryObjectsVal(BottomLevelGeometryDesc* destObjects, const BottomLevelGeometryDesc* sourceObjects, uint32_t objectNum) {
     for (uint32_t i = 0; i < objectNum; i++) {
-        const BottomLevelGeometry& src = sourceObjects[i];
-        BottomLevelGeometry& dst = destObjects[i];
+        const BottomLevelGeometryDesc& src = sourceObjects[i];
+        BottomLevelGeometryDesc& dst = destObjects[i];
 
         dst = src;
         if (src.type == BottomLevelGeometryType::TRIANGLES) {

@@ -2,205 +2,202 @@
 
 #pragma once
 
-#define VULKAN_FUNCTION(name) PFN_vk##name name
+#define VK_FUNC(name) PFN_vk##name name
 
 struct DispatchTable {
     //==========================================================================
     // Instance
     //==========================================================================
-    VULKAN_FUNCTION(GetInstanceProcAddr);
-    VULKAN_FUNCTION(CreateInstance);
-    VULKAN_FUNCTION(EnumerateInstanceExtensionProperties);
-    VULKAN_FUNCTION(EnumerateInstanceLayerProperties);
+    VK_FUNC(GetInstanceProcAddr);
+    VK_FUNC(CreateInstance);
+    VK_FUNC(EnumerateInstanceExtensionProperties);
+    VK_FUNC(EnumerateInstanceLayerProperties);
 
-    VULKAN_FUNCTION(GetDeviceProcAddr);
-    VULKAN_FUNCTION(DestroyInstance);
-    VULKAN_FUNCTION(DestroyDevice);
-    VULKAN_FUNCTION(GetPhysicalDeviceMemoryProperties2);
-    VULKAN_FUNCTION(GetDeviceGroupPeerMemoryFeatures);
-    VULKAN_FUNCTION(GetPhysicalDeviceFormatProperties2);
-    VULKAN_FUNCTION(CreateDevice);
-    VULKAN_FUNCTION(GetDeviceQueue2);
-    VULKAN_FUNCTION(EnumeratePhysicalDeviceGroups);
-    VULKAN_FUNCTION(GetPhysicalDeviceProperties2);
-    VULKAN_FUNCTION(GetPhysicalDeviceFeatures2);
-    VULKAN_FUNCTION(GetPhysicalDeviceQueueFamilyProperties2);
-    VULKAN_FUNCTION(EnumerateDeviceExtensionProperties);
+    VK_FUNC(GetDeviceProcAddr);
+    VK_FUNC(DestroyInstance);
+    VK_FUNC(DestroyDevice);
+    VK_FUNC(GetPhysicalDeviceMemoryProperties2);
+    VK_FUNC(GetDeviceGroupPeerMemoryFeatures);
+    VK_FUNC(GetPhysicalDeviceFormatProperties2);
+    VK_FUNC(CreateDevice);
+    VK_FUNC(GetDeviceQueue2);
+    VK_FUNC(EnumeratePhysicalDeviceGroups);
+    VK_FUNC(GetPhysicalDeviceProperties2);
+    VK_FUNC(GetPhysicalDeviceFeatures2);
+    VK_FUNC(GetPhysicalDeviceQueueFamilyProperties2);
+    VK_FUNC(EnumerateDeviceExtensionProperties);
 
     // VK_KHR_get_surface_capabilities2
-    VULKAN_FUNCTION(GetPhysicalDeviceSurfaceFormats2KHR);
-    VULKAN_FUNCTION(GetPhysicalDeviceSurfaceCapabilities2KHR);
+    VK_FUNC(GetPhysicalDeviceSurfaceFormats2KHR);
+    VK_FUNC(GetPhysicalDeviceSurfaceCapabilities2KHR);
 
     // VK_KHR_surface
-    VULKAN_FUNCTION(GetPhysicalDeviceSurfaceSupportKHR);
-    VULKAN_FUNCTION(GetPhysicalDeviceSurfacePresentModesKHR);
-    VULKAN_FUNCTION(DestroySurfaceKHR);
+    VK_FUNC(GetPhysicalDeviceSurfaceSupportKHR);
+    VK_FUNC(GetPhysicalDeviceSurfacePresentModesKHR);
+    VK_FUNC(DestroySurfaceKHR);
 
 #ifdef VK_USE_PLATFORM_WIN32_KHR
-    VULKAN_FUNCTION(CreateWin32SurfaceKHR);
-    VULKAN_FUNCTION(GetMemoryWin32HandlePropertiesKHR);
+    VK_FUNC(CreateWin32SurfaceKHR);
+    VK_FUNC(GetMemoryWin32HandlePropertiesKHR);
 #endif
 #ifdef VK_USE_PLATFORM_METAL_EXT
-    VULKAN_FUNCTION(CreateMetalSurfaceEXT);
+    VK_FUNC(CreateMetalSurfaceEXT);
 #endif
 #ifdef VK_USE_PLATFORM_XLIB_KHR
-    VULKAN_FUNCTION(CreateXlibSurfaceKHR);
+    VK_FUNC(CreateXlibSurfaceKHR);
 #endif
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
-    VULKAN_FUNCTION(CreateWaylandSurfaceKHR);
+    VK_FUNC(CreateWaylandSurfaceKHR);
 #endif
 
     // VK_EXT_debug_utils
-    VULKAN_FUNCTION(SetDebugUtilsObjectNameEXT);
-    VULKAN_FUNCTION(CmdBeginDebugUtilsLabelEXT);
-    VULKAN_FUNCTION(CmdEndDebugUtilsLabelEXT);
-    VULKAN_FUNCTION(CmdInsertDebugUtilsLabelEXT);
-    VULKAN_FUNCTION(QueueBeginDebugUtilsLabelEXT);
-    VULKAN_FUNCTION(QueueEndDebugUtilsLabelEXT);
-    VULKAN_FUNCTION(QueueInsertDebugUtilsLabelEXT);
+    VK_FUNC(SetDebugUtilsObjectNameEXT);
+    VK_FUNC(CmdBeginDebugUtilsLabelEXT);
+    VK_FUNC(CmdEndDebugUtilsLabelEXT);
+    VK_FUNC(CmdInsertDebugUtilsLabelEXT);
+    VK_FUNC(QueueBeginDebugUtilsLabelEXT);
+    VK_FUNC(QueueEndDebugUtilsLabelEXT);
+    VK_FUNC(QueueInsertDebugUtilsLabelEXT);
 
     //==========================================================================
-    // Device                                  Thread safety | Accounted
+    // Device                                    Thread safety | Accounted
     //==========================================================================
-    VULKAN_FUNCTION(CreateBuffer);                      // + | +
-    VULKAN_FUNCTION(CreateImage);                       // + | +
-    VULKAN_FUNCTION(CreateBufferView);                  // + | +
-    VULKAN_FUNCTION(CreateImageView);                   // + | +
-    VULKAN_FUNCTION(CreateSampler);                     // + | +
-    VULKAN_FUNCTION(CreateQueryPool);                   // + | +
-    VULKAN_FUNCTION(CreateCommandPool);                 // + | +
-    VULKAN_FUNCTION(CreateSemaphore);                   // + | +
-    VULKAN_FUNCTION(CreateDescriptorPool);              // + | +
-    VULKAN_FUNCTION(CreatePipelineLayout);              // + | +
-    VULKAN_FUNCTION(CreateDescriptorSetLayout);         // + | +
-    VULKAN_FUNCTION(CreateShaderModule);                // + | +
-    VULKAN_FUNCTION(CreateGraphicsPipelines);           // + | +
-    VULKAN_FUNCTION(CreateComputePipelines);            // + | +
-    VULKAN_FUNCTION(AllocateMemory);                    // + | +
-
-    VULKAN_FUNCTION(DestroyBuffer);                     // - | +
-    VULKAN_FUNCTION(DestroyImage);                      // - | +
-    VULKAN_FUNCTION(DestroyBufferView);                 // - | +
-    VULKAN_FUNCTION(DestroyImageView);                  // - | +
-    VULKAN_FUNCTION(DestroySampler);                    // - | +
-    VULKAN_FUNCTION(DestroyFramebuffer);                // - | +
-    VULKAN_FUNCTION(DestroyQueryPool);                  // - | +
-    VULKAN_FUNCTION(DestroyCommandPool);                // - | +
-    VULKAN_FUNCTION(DestroySemaphore);                  // - | +
-    VULKAN_FUNCTION(DestroyDescriptorPool);             // - | +
-    VULKAN_FUNCTION(DestroyPipelineLayout);             // - | +
-    VULKAN_FUNCTION(DestroyDescriptorSetLayout);        // - | +
-    VULKAN_FUNCTION(DestroyShaderModule);               // - | +
-    VULKAN_FUNCTION(DestroyPipeline);                   // - | +
-    VULKAN_FUNCTION(FreeMemory);                        // - | +
-    VULKAN_FUNCTION(FreeCommandBuffers);                // - | +
-    VULKAN_FUNCTION(FreeDescriptorSets);                // - | - TODO: unused, add "FreeDescriptorSet"?
-
-    VULKAN_FUNCTION(MapMemory);                         // - | + TODO: replace with 2 (VK_KHR_map_memory2 or VK 1.4)
-    VULKAN_FUNCTION(FlushMappedMemoryRanges);           // + | +
-    VULKAN_FUNCTION(QueueWaitIdle);                     // - | +
-    VULKAN_FUNCTION(QueueSubmit2);                      // - | +
-    VULKAN_FUNCTION(GetSemaphoreCounterValue);          // + | +
-    VULKAN_FUNCTION(WaitSemaphores);                    // + | +
-    VULKAN_FUNCTION(ResetCommandPool);                  // - | +
-    VULKAN_FUNCTION(ResetDescriptorPool);               // - | +
-    VULKAN_FUNCTION(AllocateCommandBuffers);            // - | +
-    VULKAN_FUNCTION(AllocateDescriptorSets);            // - | +
-    VULKAN_FUNCTION(UpdateDescriptorSets);              // + | +
-    VULKAN_FUNCTION(BindBufferMemory2);                 // + | +
-    VULKAN_FUNCTION(BindImageMemory2);                  // + | +
-    VULKAN_FUNCTION(GetBufferMemoryRequirements2);      // + | +
-    VULKAN_FUNCTION(GetImageMemoryRequirements2);       // + | +
-    VULKAN_FUNCTION(GetDeviceBufferMemoryRequirements); // + | +
-    VULKAN_FUNCTION(GetDeviceImageMemoryRequirements);  // + | +
-    VULKAN_FUNCTION(ResetQueryPool);                    // + | +
-    VULKAN_FUNCTION(GetBufferDeviceAddress);            // + | +
-
-    VULKAN_FUNCTION(BeginCommandBuffer);                // - | +
-    VULKAN_FUNCTION(CmdSetViewportWithCount);           // - | +
-    VULKAN_FUNCTION(CmdSetScissorWithCount);            // - | +
-    VULKAN_FUNCTION(CmdSetDepthBounds);                 // - | +
-    VULKAN_FUNCTION(CmdSetStencilReference);            // - | +
-    VULKAN_FUNCTION(CmdSetBlendConstants);              // - | +
-    VULKAN_FUNCTION(CmdSetDepthBias);                   // - | + TODO: replace with 2 (VK_EXT_depth_bias_control)
-    VULKAN_FUNCTION(CmdClearAttachments);               // - | +
-    VULKAN_FUNCTION(CmdClearColorImage);                // - | +
-    VULKAN_FUNCTION(CmdBindVertexBuffers2);             // - | +
-    VULKAN_FUNCTION(CmdBindIndexBuffer);                // - | + TODO: remove after migration to v1.4
-    VULKAN_FUNCTION(CmdBindPipeline);                   // - | +
-    VULKAN_FUNCTION(CmdBindDescriptorSets);             // - | + TODO: replace with 2 (VK_KHR_maintenance6 or VK 1.4)
-    VULKAN_FUNCTION(CmdPushConstants);                  // - | + TODO: replace with 2 (VK_KHR_maintenance6 or VK 1.4)
-    VULKAN_FUNCTION(CmdDispatch);                       // - | +
-    VULKAN_FUNCTION(CmdDispatchIndirect);               // - | +
-    VULKAN_FUNCTION(CmdDraw);                           // - | +
-    VULKAN_FUNCTION(CmdDrawIndexed);                    // - | +
-    VULKAN_FUNCTION(CmdDrawIndirect);                   // - | +
-    VULKAN_FUNCTION(CmdDrawIndexedIndirect);            // - | +
-    VULKAN_FUNCTION(CmdDrawIndirectCount);              // - | +
-    VULKAN_FUNCTION(CmdDrawIndexedIndirectCount);       // - | +
-    VULKAN_FUNCTION(CmdCopyBuffer2);                    // - | +
-    VULKAN_FUNCTION(CmdCopyImage2);                     // - | +
-    VULKAN_FUNCTION(CmdResolveImage2);                  // - | +
-    VULKAN_FUNCTION(CmdCopyBufferToImage2);             // - | +
-    VULKAN_FUNCTION(CmdCopyImageToBuffer2);             // - | +
-    VULKAN_FUNCTION(CmdPipelineBarrier2);               // - | +
-    VULKAN_FUNCTION(CmdBeginQuery);                     // - | +
-    VULKAN_FUNCTION(CmdEndQuery);                       // - | +
-    VULKAN_FUNCTION(CmdWriteTimestamp2);                // - | +
-    VULKAN_FUNCTION(CmdCopyQueryPoolResults);           // - | +
-    VULKAN_FUNCTION(CmdResetQueryPool);                 // - | +
-    VULKAN_FUNCTION(CmdFillBuffer);                     // - | +
-    VULKAN_FUNCTION(CmdBeginRendering);                 // - | +
-    VULKAN_FUNCTION(CmdEndRendering);                   // - | +
-    VULKAN_FUNCTION(EndCommandBuffer);                  // - | +
-
-    // VK_KHR_maintenance5
-    VULKAN_FUNCTION(CmdBindIndexBuffer2KHR);
-
-    // VK_KHR_push_descriptor
-    VULKAN_FUNCTION(CmdPushDescriptorSetKHR);
-
-    // VK_KHR_fragment_shading_rate
-    VULKAN_FUNCTION(CmdSetFragmentShadingRateKHR);
-
-    // VK_KHR_swapchain
-    VULKAN_FUNCTION(AcquireNextImageKHR);
-    VULKAN_FUNCTION(QueuePresentKHR);
-    VULKAN_FUNCTION(CreateSwapchainKHR);
-    VULKAN_FUNCTION(DestroySwapchainKHR);
-    VULKAN_FUNCTION(GetSwapchainImagesKHR);
-
-    // VK_KHR_present_wait
-    VULKAN_FUNCTION(WaitForPresentKHR);
-
-    // VK_KHR_acceleration_structure
-    VULKAN_FUNCTION(CreateAccelerationStructureKHR);
-    VULKAN_FUNCTION(DestroyAccelerationStructureKHR);
-    VULKAN_FUNCTION(GetAccelerationStructureDeviceAddressKHR);
-    VULKAN_FUNCTION(GetAccelerationStructureBuildSizesKHR);
-    VULKAN_FUNCTION(CmdBuildAccelerationStructuresKHR);
-    VULKAN_FUNCTION(CmdCopyAccelerationStructureKHR);
-    VULKAN_FUNCTION(CmdWriteAccelerationStructuresPropertiesKHR);
-
-    // VK_KHR_ray_tracing_pipeline
-    VULKAN_FUNCTION(CreateRayTracingPipelinesKHR);
-    VULKAN_FUNCTION(GetRayTracingShaderGroupHandlesKHR);
-    VULKAN_FUNCTION(CmdTraceRaysKHR);
-    VULKAN_FUNCTION(CmdTraceRaysIndirect2KHR);
-
-    // VK_EXT_sample_locations
-    VULKAN_FUNCTION(CmdSetSampleLocationsEXT);
-
-    // VK_EXT_mesh_shader
-    VULKAN_FUNCTION(CmdDrawMeshTasksEXT);
-    VULKAN_FUNCTION(CmdDrawMeshTasksIndirectEXT);
-    VULKAN_FUNCTION(CmdDrawMeshTasksIndirectCountEXT);
-
-    // VK_NV_low_latency2
-    VULKAN_FUNCTION(GetLatencyTimingsNV);
-    VULKAN_FUNCTION(LatencySleepNV);
-    VULKAN_FUNCTION(SetLatencyMarkerNV);
-    VULKAN_FUNCTION(SetLatencySleepModeNV);
+    VK_FUNC(CreateBuffer);                                // + | +
+    VK_FUNC(CreateImage);                                 // + | +
+    VK_FUNC(CreateBufferView);                            // + | +
+    VK_FUNC(CreateImageView);                             // + | +
+    VK_FUNC(CreateSampler);                               // + | +
+    VK_FUNC(CreateQueryPool);                             // + | +
+    VK_FUNC(CreateCommandPool);                           // + | +
+    VK_FUNC(CreateSemaphore);                             // + | +
+    VK_FUNC(CreateDescriptorPool);                        // + | +
+    VK_FUNC(CreatePipelineLayout);                        // + | +
+    VK_FUNC(CreateDescriptorSetLayout);                   // + | +
+    VK_FUNC(CreateShaderModule);                          // + | +
+    VK_FUNC(CreateGraphicsPipelines);                     // + | +
+    VK_FUNC(CreateComputePipelines);                      // + | +
+    VK_FUNC(AllocateMemory);                              // + | +
+                                                          // -----
+    VK_FUNC(DestroyBuffer);                               // - | +
+    VK_FUNC(DestroyImage);                                // - | +
+    VK_FUNC(DestroyBufferView);                           // - | +
+    VK_FUNC(DestroyImageView);                            // - | +
+    VK_FUNC(DestroySampler);                              // - | +
+    VK_FUNC(DestroyFramebuffer);                          // - | +
+    VK_FUNC(DestroyQueryPool);                            // - | +
+    VK_FUNC(DestroyCommandPool);                          // - | +
+    VK_FUNC(DestroySemaphore);                            // - | +
+    VK_FUNC(DestroyDescriptorPool);                       // - | +
+    VK_FUNC(DestroyPipelineLayout);                       // - | +
+    VK_FUNC(DestroyDescriptorSetLayout);                  // - | +
+    VK_FUNC(DestroyShaderModule);                         // - | +
+    VK_FUNC(DestroyPipeline);                             // - | +
+    VK_FUNC(FreeMemory);                                  // - | +
+    VK_FUNC(FreeCommandBuffers);                          // - | +
+    VK_FUNC(FreeDescriptorSets);                          // - | ? TODO: unused, add "FreeDescriptorSet"?
+                                                          // -----
+    VK_FUNC(MapMemory);                                   // - | + TODO: replace with 2 (VK_KHR_map_memory2 or VK 1.4)
+    VK_FUNC(FlushMappedMemoryRanges);                     // + | +
+    VK_FUNC(QueueWaitIdle);                               // - | +
+    VK_FUNC(QueueSubmit2);                                // - | +
+    VK_FUNC(GetSemaphoreCounterValue);                    // + | +
+    VK_FUNC(WaitSemaphores);                              // + | +
+    VK_FUNC(ResetCommandPool);                            // - | +
+    VK_FUNC(ResetDescriptorPool);                         // - | +
+    VK_FUNC(AllocateCommandBuffers);                      // - | +
+    VK_FUNC(AllocateDescriptorSets);                      // - | +
+    VK_FUNC(UpdateDescriptorSets);                        // + | +
+    VK_FUNC(BindBufferMemory2);                           // + | +
+    VK_FUNC(BindImageMemory2);                            // + | +
+    VK_FUNC(GetBufferMemoryRequirements2);                // + | +
+    VK_FUNC(GetImageMemoryRequirements2);                 // + | +
+    VK_FUNC(GetDeviceBufferMemoryRequirements);           // + | +
+    VK_FUNC(GetDeviceImageMemoryRequirements);            // + | +
+    VK_FUNC(ResetQueryPool);                              // + | +
+    VK_FUNC(GetBufferDeviceAddress);                      // + | +
+                                                          // -----
+    VK_FUNC(BeginCommandBuffer);                          // - | +
+    VK_FUNC(CmdSetViewportWithCount);                     // - | +
+    VK_FUNC(CmdSetScissorWithCount);                      // - | +
+    VK_FUNC(CmdSetDepthBounds);                           // - | +
+    VK_FUNC(CmdSetStencilReference);                      // - | +
+    VK_FUNC(CmdSetBlendConstants);                        // - | +
+    VK_FUNC(CmdSetDepthBias);                             // - | + TODO: replace with 2 (VK_EXT_depth_bias_control)
+    VK_FUNC(CmdClearAttachments);                         // - | +
+    VK_FUNC(CmdClearColorImage);                          // - | +
+    VK_FUNC(CmdBindVertexBuffers2);                       // - | +
+    VK_FUNC(CmdBindIndexBuffer);                          // - | + TODO: remove after migration to v1.4
+    VK_FUNC(CmdBindPipeline);                             // - | +
+    VK_FUNC(CmdBindDescriptorSets);                       // - | + TODO: replace with 2 (VK_KHR_maintenance6 or VK 1.4)
+    VK_FUNC(CmdPushConstants);                            // - | + TODO: replace with 2 (VK_KHR_maintenance6 or VK 1.4)
+    VK_FUNC(CmdDispatch);                                 // - | +
+    VK_FUNC(CmdDispatchIndirect);                         // - | +
+    VK_FUNC(CmdDraw);                                     // - | +
+    VK_FUNC(CmdDrawIndexed);                              // - | +
+    VK_FUNC(CmdDrawIndirect);                             // - | +
+    VK_FUNC(CmdDrawIndexedIndirect);                      // - | +
+    VK_FUNC(CmdDrawIndirectCount);                        // - | +
+    VK_FUNC(CmdDrawIndexedIndirectCount);                 // - | +
+    VK_FUNC(CmdCopyBuffer2);                              // - | +
+    VK_FUNC(CmdCopyImage2);                               // - | +
+    VK_FUNC(CmdResolveImage2);                            // - | +
+    VK_FUNC(CmdCopyBufferToImage2);                       // - | +
+    VK_FUNC(CmdCopyImageToBuffer2);                       // - | +
+    VK_FUNC(CmdPipelineBarrier2);                         // - | +
+    VK_FUNC(CmdBeginQuery);                               // - | +
+    VK_FUNC(CmdEndQuery);                                 // - | +
+    VK_FUNC(CmdWriteTimestamp2);                          // - | +
+    VK_FUNC(CmdCopyQueryPoolResults);                     // - | +
+    VK_FUNC(CmdResetQueryPool);                           // - | +
+    VK_FUNC(CmdFillBuffer);                               // - | +
+    VK_FUNC(CmdBeginRendering);                           // - | +
+    VK_FUNC(CmdEndRendering);                             // - | +
+    VK_FUNC(EndCommandBuffer);                            // - | +
+                                                          // VK_KHR_maintenance5
+    VK_FUNC(CmdBindIndexBuffer2KHR);                      // - | +
+                                                          // VK_KHR_push_descriptor
+    VK_FUNC(CmdPushDescriptorSetKHR);                     // - | +
+                                                          // VK_KHR_fragment_shading_rate
+    VK_FUNC(CmdSetFragmentShadingRateKHR);                // - | +
+                                                          // VK_KHR_swapchain
+    VK_FUNC(AcquireNextImageKHR);                         // - | ?
+    VK_FUNC(QueuePresentKHR);                             // - | ?
+    VK_FUNC(CreateSwapchainKHR);                          // + | ?
+    VK_FUNC(DestroySwapchainKHR);                         // - | +
+    VK_FUNC(GetSwapchainImagesKHR);                       // + | +
+                                                          // VK_KHR_present_wait
+    VK_FUNC(WaitForPresentKHR);                           // - | ?
+                                                          // VK_KHR_acceleration_structure
+    VK_FUNC(CreateAccelerationStructureKHR);              // + | +
+    VK_FUNC(DestroyAccelerationStructureKHR);             // - | +
+    VK_FUNC(GetAccelerationStructureDeviceAddressKHR);    // + | + 
+    VK_FUNC(GetAccelerationStructureBuildSizesKHR);       // + | +
+    VK_FUNC(CmdBuildAccelerationStructuresKHR);           // - | +
+    VK_FUNC(CmdCopyAccelerationStructureKHR);             // - | +
+    VK_FUNC(CmdWriteAccelerationStructuresPropertiesKHR); // - | +
+                                                          // VK_KHR_ray_tracing_pipeline
+    VK_FUNC(CreateRayTracingPipelinesKHR);                // + | +
+    VK_FUNC(GetRayTracingShaderGroupHandlesKHR);          // + | +
+    VK_FUNC(CmdTraceRaysKHR);                             // - | +
+    VK_FUNC(CmdTraceRaysIndirect2KHR);                    // - | +
+                                                          // VK_EXT_opacity_micromap
+    VK_FUNC(CreateMicromapEXT);                           // + | +
+    VK_FUNC(DestroyMicromapEXT);                          // - | +
+    VK_FUNC(GetMicromapBuildSizesEXT);                    // + | +
+    VK_FUNC(CmdBuildMicromapsEXT);                        // - | +
+    VK_FUNC(CmdCopyMicromapEXT);                          // - | +
+    VK_FUNC(CmdWriteMicromapsPropertiesEXT);              // - | +
+                                                          // VK_EXT_sample_locations
+    VK_FUNC(CmdSetSampleLocationsEXT);                    // - | +
+                                                          // VK_EXT_mesh_shader
+    VK_FUNC(CmdDrawMeshTasksEXT);                         // - | +
+    VK_FUNC(CmdDrawMeshTasksIndirectEXT);                 // - | +
+    VK_FUNC(CmdDrawMeshTasksIndirectCountEXT);            // - | +
+                                                          // VK_NV_low_latency2
+    VK_FUNC(GetLatencyTimingsNV);                         // + | +
+    VK_FUNC(LatencySleepNV);                              // + | +
+    VK_FUNC(SetLatencyMarkerNV);                          // + | +
+    VK_FUNC(SetLatencySleepModeNV);                       // + | +
 };
 
-#undef VULKAN_FUNCTION
+#undef VK_FUNC

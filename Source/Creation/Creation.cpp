@@ -34,6 +34,8 @@ constexpr uint64_t Hash(const char* name) {
     return *name != 0 ? *name ^ (33 * Hash(name + 1)) : 5381;
 }
 
+#if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT || NRI_ENABLE_VK_SUPPORT)
+
 static int SortAdapters(const void* pa, const void* pb) {
     constexpr uint64_t SHIFT = 60ull;
     static_assert((uint64_t)Architecture::MAX_NUM <= 1ull << (64ull - SHIFT), "Adjust SHIFT");
@@ -54,6 +56,8 @@ static int SortAdapters(const void* pa, const void* pb) {
 
     return 0;
 }
+
+#endif
 
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
 
@@ -624,6 +628,8 @@ NRI_API Result NRI_CALL nriCreateDeviceFromD3D11Device(const DeviceCreationD3D11
     // Copy what is possible to the main "desc"
     deviceCreationDesc.callbackInterface = deviceCreationD3D11Desc.callbackInterface;
     deviceCreationDesc.allocationCallbacks = deviceCreationD3D11Desc.allocationCallbacks;
+    deviceCreationDesc.d3dShaderExtRegister = deviceCreationD3D11Desc.d3dShaderExtRegister;
+    deviceCreationDesc.d3dZeroBufferSize = deviceCreationD3D11Desc.d3dZeroBufferSize;
     deviceCreationDesc.enableNRIValidation = deviceCreationD3D11Desc.enableNRIValidation;
     deviceCreationDesc.enableD3D11CommandBufferEmulation = deviceCreationD3D11Desc.enableD3D11CommandBufferEmulation;
 
@@ -681,6 +687,8 @@ NRI_API Result NRI_CALL nriCreateDeviceFromD3D12Device(const DeviceCreationD3D12
     // Copy what is possible to the main "desc"
     deviceCreationDesc.callbackInterface = deviceCreationD3D12Desc.callbackInterface;
     deviceCreationDesc.allocationCallbacks = deviceCreationD3D12Desc.allocationCallbacks;
+    deviceCreationDesc.d3dShaderExtRegister = deviceCreationD3D12Desc.d3dShaderExtRegister;
+    deviceCreationDesc.d3dZeroBufferSize = deviceCreationD3D12Desc.d3dZeroBufferSize;
     deviceCreationDesc.enableNRIValidation = deviceCreationD3D12Desc.enableNRIValidation;
 
     CheckAndSetDefaultCallbacks(deviceCreationDesc.callbackInterface);

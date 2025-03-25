@@ -49,6 +49,10 @@ struct DeviceD3D12 final : public DeviceBase {
         return m_Vma;
     }
 
+    inline ID3D12Resource* GetZeroBuffer() const {
+        return m_ZeroBuffer;
+    }
+
     inline void FreeDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, const DescriptorHandle& descriptorHandle) {
         ExclusiveScope lock(m_FreeDescriptorLocks[type]);
         auto& freeDescriptors = m_FreeDescriptors[type];
@@ -161,18 +165,24 @@ private:
     PixExt m_Pix = {};
 #if NRI_ENABLE_D3D_EXTENSIONS
     NvExt m_NvExt = {};
-    AmdExt m_AmdExt = {};
+    AmdExtD3D12 m_AmdExt = {};
 #endif
     ComPtr<ID3D12DeviceBest> m_Device;
     ComPtr<IDXGIAdapter> m_Adapter;
     ComPtr<ID3D12CommandSignature> m_DispatchCommandSignature;
     ComPtr<ID3D12CommandSignature> m_DispatchRaysCommandSignature;
     ComPtr<D3D12MA::Allocator> m_Vma;
+    ComPtr<ID3D12Resource> m_ZeroBuffer;
+
+    // Used with "m_DescriptorHeapLock"
     Vector<DescriptorHeapDesc> m_DescriptorHeaps;
     Vector<Vector<DescriptorHandle>> m_FreeDescriptors;
+
+    // TODO: add locks
     UnorderedMap<uint64_t, ComPtr<ID3D12CommandSignature>> m_DrawCommandSignatures;
     UnorderedMap<uint64_t, ComPtr<ID3D12CommandSignature>> m_DrawIndexedCommandSignatures;
     UnorderedMap<uint32_t, ComPtr<ID3D12CommandSignature>> m_DrawMeshCommandSignatures;
+
     std::array<std::vector<QueueD3D12*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies = {}; // TODO: use Vector!
     CoreInterface m_iCore = {};
     DeviceDesc m_Desc = {};

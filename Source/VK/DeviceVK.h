@@ -86,9 +86,11 @@ struct DeviceVK final : public DeviceBase {
     void GetMemoryDesc2(const BufferDesc& bufferDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
     void GetMemoryDesc2(const TextureDesc& textureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
     void GetMemoryDesc2(const AccelerationStructureDesc& accelerationStructureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc);
+    void GetMemoryDesc2(const MicromapDesc& micromapDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc);
     bool GetMemoryTypeInfo(MemoryLocation memoryLocation, uint32_t memoryTypeMask, MemoryTypeInfo& memoryTypeInfo) const;
     bool GetMemoryTypeByIndex(uint32_t index, MemoryTypeInfo& memoryTypeInfo) const;
     void GetAccelerationStructureBuildSizesInfo(const AccelerationStructureDesc& accelerationStructureDesc, VkAccelerationStructureBuildSizesInfoKHR& sizesInfo);
+    void GetMicromapBuildSizesInfo(const MicromapDesc& micromapDesc, VkMicromapBuildSizesInfoEXT& sizesInfo);
     void SetDebugNameToTrivialObject(VkObjectType objectType, uint64_t handle, const char* name);
     Result CreateVma();
     void DestroyVma();
@@ -128,6 +130,7 @@ struct DeviceVK final : public DeviceBase {
     Result BindTextureMemory(const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
     Result QueryVideoMemoryInfo(MemoryLocation memoryLocation, VideoMemoryInfo& videoMemoryInfo) const;
     Result BindAccelerationStructureMemory(const AccelerationStructureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
+    Result BindMicromapMemory(const MicromapMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
     FormatSupportBits GetFormatSupport(Format format) const;
 
 private:

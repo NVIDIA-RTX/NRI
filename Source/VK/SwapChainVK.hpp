@@ -167,22 +167,22 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         };
 
         switch (swapChainDesc.format) {
-            case nri::SwapChainFormat::BT709_G10_16BIT:
+            case SwapChainFormat::BT709_G10_16BIT:
                 std::sort(surfaceFormats + 0, surfaceFormats + formatNum, [&](VkSurfaceFormat2KHR& a1, VkSurfaceFormat2KHR& b1) {
                     return priority_BT709_G22_16BIT(a1) > priority_BT709_G22_16BIT(b1);
                 });
                 break;
-            case nri::SwapChainFormat::BT709_G22_8BIT:
+            case SwapChainFormat::BT709_G22_8BIT:
                 std::sort(surfaceFormats + 0, surfaceFormats + formatNum, [&](VkSurfaceFormat2KHR& a1, VkSurfaceFormat2KHR& b1) {
                     return priority_BT709_G22_8BIT(a1) > priority_BT709_G22_8BIT(b1);
                 });
                 break;
-            case nri::SwapChainFormat::BT709_G22_10BIT:
+            case SwapChainFormat::BT709_G22_10BIT:
                 std::sort(surfaceFormats + 0, surfaceFormats + formatNum, [&](VkSurfaceFormat2KHR& a1, VkSurfaceFormat2KHR& b1) {
                     return priority_BT709_G22_10BIT(a1) > priority_BT709_G22_10BIT(b1);
                 });
                 break;
-            case nri::SwapChainFormat::BT2020_G2084_10BIT:
+            case SwapChainFormat::BT2020_G2084_10BIT:
                 std::sort(surfaceFormats + 0, surfaceFormats + formatNum, [&](VkSurfaceFormat2KHR& a1, VkSurfaceFormat2KHR& b1) {
                     return priority_BT2020_G2084_10BIT(a1) > priority_BT2020_G2084_10BIT(b1);
                 });

@@ -10,8 +10,7 @@ enum OpCode : uint32_t {
     SET_SAMPLE_LOCATIONS,
     SET_BLEND_CONSTANTS,
     CLEAR_ATTACHMENTS,
-    CLEAR_STORAGE_BUFFER,
-    CLEAR_STORAGE_TEXTURE,
+    CLEAR_STORAGE,
     BEGIN_RENDERING,
     END_RENDERING,
     BIND_VERTEX_BUFFERS,
@@ -27,9 +26,10 @@ enum OpCode : uint32_t {
     DRAW_INDEXED_INDIRECT,
     COPY_BUFFER,
     COPY_TEXTURE,
-    RESOLVE_TEXTURE,
     UPLOAD_BUFFER_TO_TEXTURE,
     READBACK_TEXTURE_TO_BUFFER,
+    ZERO_BUFFER,
+    RESOLVE_TEXTURE,
     DISPATCH,
     DISPATCH_INDIRECT,
     BARRIER,
@@ -172,17 +172,11 @@ void CommandBufferEmuD3D11::Submit() {
 
                 commandBuffer.ClearAttachments(clearDescs, clearDescNum, rects, rectNum);
             } break;
-            case CLEAR_STORAGE_BUFFER: {
-                ClearStorageBufferDesc clearDesc = {};
+            case CLEAR_STORAGE: {
+                ClearStorageDesc clearDesc = {};
                 Read(m_PushBuffer, i, clearDesc);
 
-                commandBuffer.ClearStorageBuffer(clearDesc);
-            } break;
-            case CLEAR_STORAGE_TEXTURE: {
-                ClearStorageTextureDesc clearDesc = {};
-                Read(m_PushBuffer, i, clearDesc);
-
-                commandBuffer.ClearStorageTexture(clearDesc);
+                commandBuffer.ClearStorage(clearDesc);
             } break;
             case BEGIN_RENDERING: {
                 AttachmentsDesc attachmentsDesc = {};
@@ -351,21 +345,6 @@ void CommandBufferEmuD3D11::Submit() {
 
                 commandBuffer.CopyTexture(*dstTexture, &dstRegion, *srcTexture, &srcRegion);
             } break;
-            case RESOLVE_TEXTURE: {
-                Texture* dstTexture;
-                Read(m_PushBuffer, i, dstTexture);
-
-                TextureRegionDesc dstRegion = {};
-                Read(m_PushBuffer, i, dstRegion);
-
-                Texture* srcTexture;
-                Read(m_PushBuffer, i, srcTexture);
-
-                TextureRegionDesc srcRegion = {};
-                Read(m_PushBuffer, i, srcRegion);
-
-                commandBuffer.ResolveTexture(*dstTexture, &dstRegion, *srcTexture, &srcRegion);
-            } break;
             case UPLOAD_BUFFER_TO_TEXTURE: {
                 Texture* dstTexture;
                 Read(m_PushBuffer, i, dstTexture);
@@ -395,6 +374,33 @@ void CommandBufferEmuD3D11::Submit() {
                 Read(m_PushBuffer, i, srcRegion);
 
                 commandBuffer.ReadbackTextureToBuffer(*dstBuffer, dstDataLayout, *srcTexture, srcRegion);
+            } break;
+            case ZERO_BUFFER: {
+                Buffer* buffer;
+                Read(m_PushBuffer, i, buffer);
+
+                uint64_t offset;
+                Read(m_PushBuffer, i, offset);
+
+                uint64_t size;
+                Read(m_PushBuffer, i, size);
+
+                commandBuffer.ZeroBuffer(*buffer, offset, size);
+            } break;
+            case RESOLVE_TEXTURE: {
+                Texture* dstTexture;
+                Read(m_PushBuffer, i, dstTexture);
+
+                TextureRegionDesc dstRegion = {};
+                Read(m_PushBuffer, i, dstRegion);
+
+                Texture* srcTexture;
+                Read(m_PushBuffer, i, srcTexture);
+
+                TextureRegionDesc srcRegion = {};
+                Read(m_PushBuffer, i, srcRegion);
+
+                commandBuffer.ResolveTexture(*dstTexture, &dstRegion, *srcTexture, &srcRegion);
             } break;
             case DISPATCH: {
                 DispatchDesc dispatchDesc;
@@ -535,13 +541,8 @@ NRI_INLINE void CommandBufferEmuD3D11::ClearAttachments(const ClearDesc* clearDe
     Push(m_PushBuffer, rects, rectNum);
 }
 
-NRI_INLINE void CommandBufferEmuD3D11::ClearStorageBuffer(const ClearStorageBufferDesc& clearDesc) {
-    Push(m_PushBuffer, CLEAR_STORAGE_BUFFER);
-    Push(m_PushBuffer, clearDesc);
-}
-
-NRI_INLINE void CommandBufferEmuD3D11::ClearStorageTexture(const ClearStorageTextureDesc& clearDesc) {
-    Push(m_PushBuffer, CLEAR_STORAGE_TEXTURE);
+NRI_INLINE void CommandBufferEmuD3D11::ClearStorage(const ClearStorageDesc& clearDesc) {
+    Push(m_PushBuffer, CLEAR_STORAGE);
     Push(m_PushBuffer, clearDesc);
 }
 
@@ -655,22 +656,6 @@ NRI_INLINE void CommandBufferEmuD3D11::CopyTexture(Texture& dstTexture, const Te
     Push(m_PushBuffer, *srcRegionDesc);
 }
 
-NRI_INLINE void CommandBufferEmuD3D11::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
-    TextureRegionDesc wholeResource = {};
-    wholeResource.mipOffset = NULL_TEXTURE_REGION_DESC;
-
-    if (!dstRegionDesc)
-        dstRegionDesc = &wholeResource;
-    if (!srcRegionDesc)
-        srcRegionDesc = &wholeResource;
-
-    Push(m_PushBuffer, RESOLVE_TEXTURE);
-    Push(m_PushBuffer, &dstTexture);
-    Push(m_PushBuffer, *dstRegionDesc);
-    Push(m_PushBuffer, &srcTexture);
-    Push(m_PushBuffer, *srcRegionDesc);
-}
-
 NRI_INLINE void CommandBufferEmuD3D11::UploadBufferToTexture(Texture& dstTexture, const TextureRegionDesc& dstRegionDesc, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayoutDesc) {
     Push(m_PushBuffer, UPLOAD_BUFFER_TO_TEXTURE);
     Push(m_PushBuffer, &dstTexture);
@@ -685,6 +670,29 @@ NRI_INLINE void CommandBufferEmuD3D11::ReadbackTextureToBuffer(Buffer& dstBuffer
     Push(m_PushBuffer, dstDataLayoutDesc);
     Push(m_PushBuffer, &srcTexture);
     Push(m_PushBuffer, srcRegionDesc);
+}
+
+NRI_INLINE void CommandBufferEmuD3D11::ZeroBuffer(Buffer& buffer, uint64_t offset, uint64_t size) {
+    Push(m_PushBuffer, ZERO_BUFFER);
+    Push(m_PushBuffer, &buffer);
+    Push(m_PushBuffer, offset);
+    Push(m_PushBuffer, size);
+}
+
+NRI_INLINE void CommandBufferEmuD3D11::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
+    TextureRegionDesc wholeResource = {};
+    wholeResource.mipOffset = NULL_TEXTURE_REGION_DESC;
+
+    if (!dstRegionDesc)
+        dstRegionDesc = &wholeResource;
+    if (!srcRegionDesc)
+        srcRegionDesc = &wholeResource;
+
+    Push(m_PushBuffer, RESOLVE_TEXTURE);
+    Push(m_PushBuffer, &dstTexture);
+    Push(m_PushBuffer, *dstRegionDesc);
+    Push(m_PushBuffer, &srcTexture);
+    Push(m_PushBuffer, *srcRegionDesc);
 }
 
 NRI_INLINE void CommandBufferEmuD3D11::Dispatch(const DispatchDesc& dispatchDesc) {

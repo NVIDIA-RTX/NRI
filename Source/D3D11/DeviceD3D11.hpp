@@ -100,7 +100,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         bool isShaderClockSupported = false;
 
 #if NRI_ENABLE_D3D_EXTENSIONS
-        uint32_t shaderExtRegister = desc.shaderExtRegister ? desc.shaderExtRegister : NRI_SHADER_EXT_REGISTER;
+        uint32_t d3dShaderExtRegister = desc.d3dShaderExtRegister ? desc.d3dShaderExtRegister : NRI_SHADER_EXT_REGISTER;
         if (HasAmdExt()) {
             AGSDX11DeviceCreationParams deviceCreationParams = {};
             deviceCreationParams.pAdapter = m_Adapter;
@@ -111,7 +111,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
             deviceCreationParams.SDKVersion = D3D11_SDK_VERSION;
 
             AGSDX11ExtensionParams extensionsParams = {};
-            extensionsParams.uavSlot = shaderExtRegister;
+            extensionsParams.uavSlot = d3dShaderExtRegister;
 
             AGSDX11ReturnedParams agsParams = {};
             AGSReturnCode result = m_AmdExt.CreateDeviceD3D11(m_AmdExt.context, &deviceCreationParams, &extensionsParams, &agsParams);
@@ -144,7 +144,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 #if NRI_ENABLE_D3D_EXTENSIONS
             if (HasNvExt()) {
                 REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D_RegisterDevice(deviceTemp));
-                REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D11_SetNvShaderExtnSlot(deviceTemp, shaderExtRegister));
+                REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D11_SetNvShaderExtnSlot(deviceTemp, d3dShaderExtRegister));
                 REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_UINT64_ATOMIC, &isShaderAtomicsI64Supported));
                 REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_GET_SPECIAL, &isShaderClockSupported));
                 isDepthBoundsTestSupported = true;
@@ -213,6 +213,24 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         }
 
         m_Desc.adapterDesc.queueNum[(size_t)queueFamilyDesc.queueType] = queueFamilyDesc.queueNum;
+    }
+
+    { // Create zero buffer
+        D3D11_BUFFER_DESC zeroBufferDesc = {};
+        zeroBufferDesc.ByteWidth = desc.d3dZeroBufferSize ? desc.d3dZeroBufferSize : ZERO_BUFFER_DEFAULT_SIZE;
+        zeroBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+
+        auto& allocator = GetAllocationCallbacks();
+        uint8_t* zeros = (uint8_t*)allocator.Allocate(allocator.userArg, zeroBufferDesc.ByteWidth, 16);
+        memset(zeros, 0, zeroBufferDesc.ByteWidth);
+
+        D3D11_SUBRESOURCE_DATA data = {};
+        data.pSysMem = zeros;
+
+        hr = m_Device->CreateBuffer(&zeroBufferDesc, nullptr, &m_ZeroBuffer);
+        RETURN_ON_BAD_HRESULT(this, hr, "ID3D11Device::CreateBuffer()");
+
+        allocator.Free(allocator.userArg, zeros);
     }
 
     // Fill desc
@@ -404,7 +422,7 @@ void DeviceD3D11::FillDesc() {
     m_Desc.isTextureFilterMinMaxSupported = options1.MinMaxFiltering != 0;
     m_Desc.isLogicFuncSupported = options.OutputMergerLogicOp != 0;
     m_Desc.isLineSmoothingSupported = true;
-    m_Desc.isEnchancedBarrierSupported = true; // don't care, but advertise support
+    m_Desc.isEnchancedBarrierSupported = true;  // don't care, but advertise support
     m_Desc.isWaitableSwapChainSupported = true; // TODO: swap chain version >= 2?
 
     m_Desc.isShaderNativeF64Supported = options.ExtendedDoublesShaderInstructions;

@@ -11,6 +11,7 @@
 #include "DescriptorSetD3D12.h"
 #include "FenceD3D12.h"
 #include "MemoryD3D12.h"
+#include "MicromapD3D12.h"
 #include "PipelineD3D12.h"
 #include "PipelineLayoutD3D12.h"
 #include "QueryPoolD3D12.h"
@@ -36,6 +37,7 @@ using namespace nri;
 #include "DeviceD3D12.hpp"
 #include "FenceD3D12.hpp"
 #include "MemoryD3D12.hpp"
+#include "MicromapD3D12.hpp"
 #include "PipelineD3D12.hpp"
 #include "PipelineLayoutD3D12.hpp"
 #include "QueryPoolD3D12.hpp"
@@ -354,10 +356,6 @@ static void NRI_CALL CmdCopyTexture(CommandBuffer& commandBuffer, Texture& dstTe
     ((CommandBufferD3D12&)commandBuffer).CopyTexture(dstTexture, dstRegionDesc, srcTexture, srcRegionDesc);
 }
 
-static void NRI_CALL CmdResolveTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
-    ((CommandBufferD3D12&)commandBuffer).ResolveTexture(dstTexture, dstRegionDesc, srcTexture, srcRegionDesc);
-}
-
 static void NRI_CALL CmdUploadBufferToTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc& dstRegionDesc, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayoutDesc) {
     ((CommandBufferD3D12&)commandBuffer).UploadBufferToTexture(dstTexture, dstRegionDesc, srcBuffer, srcDataLayoutDesc);
 }
@@ -366,12 +364,16 @@ static void NRI_CALL CmdReadbackTextureToBuffer(CommandBuffer& commandBuffer, Bu
     ((CommandBufferD3D12&)commandBuffer).ReadbackTextureToBuffer(dstBuffer, dstDataLayoutDesc, srcTexture, srcRegionDesc);
 }
 
-static void NRI_CALL CmdClearStorageBuffer(CommandBuffer& commandBuffer, const ClearStorageBufferDesc& clearDesc) {
-    ((CommandBufferD3D12&)commandBuffer).ClearStorageBuffer(clearDesc);
+static void NRI_CALL CmdZeroBuffer(CommandBuffer& commandBuffer, Buffer& buffer, uint64_t offset, uint64_t size) {
+    ((CommandBufferD3D12&)commandBuffer).ZeroBuffer(buffer, offset, size);
 }
 
-static void NRI_CALL CmdClearStorageTexture(CommandBuffer& commandBuffer, const ClearStorageTextureDesc& clearDesc) {
-    ((CommandBufferD3D12&)commandBuffer).ClearStorageTexture(clearDesc);
+static void NRI_CALL CmdResolveTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
+    ((CommandBufferD3D12&)commandBuffer).ResolveTexture(dstTexture, dstRegionDesc, srcTexture, srcRegionDesc);
+}
+
+static void NRI_CALL CmdClearStorage(CommandBuffer& commandBuffer, const ClearStorageDesc& clearDesc) {
+    ((CommandBufferD3D12&)commandBuffer).ClearStorage(clearDesc);
 }
 
 static void NRI_CALL CmdResetQueries(CommandBuffer&, QueryPool&, uint32_t, uint32_t) {
@@ -603,9 +605,9 @@ Result DeviceD3D12::FillFunctionTable(CoreInterface& table) const {
     table.CmdCopyTexture = ::CmdCopyTexture;
     table.CmdUploadBufferToTexture = ::CmdUploadBufferToTexture;
     table.CmdReadbackTextureToBuffer = ::CmdReadbackTextureToBuffer;
-    table.CmdClearStorageBuffer = ::CmdClearStorageBuffer;
-    table.CmdClearStorageTexture = ::CmdClearStorageTexture;
+    table.CmdZeroBuffer = ::CmdZeroBuffer;
     table.CmdResolveTexture = ::CmdResolveTexture;
+    table.CmdClearStorage = ::CmdClearStorage;
     table.CmdResetQueries = ::CmdResetQueries;
     table.CmdBeginQuery = ::CmdBeginQuery;
     table.CmdEndQuery = ::CmdEndQuery;
@@ -840,7 +842,6 @@ static Result NRI_CALL WriteShaderGroupIdentifiers(const Pipeline& pipeline, uin
     return ((const PipelineD3D12&)pipeline).WriteShaderGroupIdentifiers(baseShaderGroupIndex, shaderGroupNum, dst);
 }
 
-
 static void NRI_CALL CmdBuildTopLevelAccelerationStructures(CommandBuffer& commandBuffer, const BuildTopLevelAccelerationStructureDesc* buildTopLevelAccelerationStructureDescs, uint32_t buildTopLevelAccelerationStructureDescNum) {
     ((CommandBufferD3D12&)commandBuffer).BuildTopLevelAccelerationStructure(buildTopLevelAccelerationStructureDescs, buildTopLevelAccelerationStructureDescNum);
 }
@@ -865,15 +866,15 @@ static void NRI_CALL CmdCopyAccelerationStructure(CommandBuffer& commandBuffer, 
     ((CommandBufferD3D12&)commandBuffer).CopyAccelerationStructure(dst, src, copyMode);
 }
 
-static void NRI_CALL CmdWriteAccelerationStructureSize(CommandBuffer& commandBuffer, const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset) {
-    ((CommandBufferD3D12&)commandBuffer).WriteAccelerationStructureSize(accelerationStructures, accelerationStructureNum, queryPool, queryOffset);
+static void NRI_CALL CmdWriteAccelerationStructuresSizes(CommandBuffer& commandBuffer, const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset) {
+    ((CommandBufferD3D12&)commandBuffer).WriteAccelerationStructuresSizes(accelerationStructures, accelerationStructureNum, queryPool, queryOffset);
 }
 
 static void NRI_CALL CmdCopyMicromap(CommandBuffer&, Micromap&, const Micromap&, CopyMode) {
     // TODO
 }
 
-static void NRI_CALL CmdWriteMicromapSize(CommandBuffer&, const Micromap* const*, uint32_t, QueryPool&, uint32_t) {
+static void NRI_CALL CmdWriteMicromapsSizes(CommandBuffer&, const Micromap* const*, uint32_t, QueryPool&, uint32_t) {
     // TODO
 }
 
@@ -915,9 +916,9 @@ Result DeviceD3D12::FillFunctionTable(RayTracingInterface& table) const {
     table.CmdDispatchRays = ::CmdDispatchRays;
     table.CmdDispatchRaysIndirect = ::CmdDispatchRaysIndirect;
     table.CmdCopyAccelerationStructure = ::CmdCopyAccelerationStructure;
-    table.CmdWriteAccelerationStructureSize = ::CmdWriteAccelerationStructureSize;
+    table.CmdWriteAccelerationStructuresSizes = ::CmdWriteAccelerationStructuresSizes;
     table.CmdCopyMicromap = ::CmdCopyMicromap;
-    table.CmdWriteMicromapSize = ::CmdWriteMicromapSize;
+    table.CmdWriteMicromapsSizes = ::CmdWriteMicromapsSizes;
     table.GetAccelerationStructureNativeObject = ::GetAccelerationStructureNativeObject;
     table.GetMicromapNativeObject = ::GetMicromapNativeObject;
 
@@ -1101,7 +1102,7 @@ static bool NRI_CALL IsUpscalerSupported(const Device& device, UpscalerType upsc
 
 static void NRI_CALL GetUpscalerProps(const Upscaler& upscaler, UpscalerProps& upscalerProps) {
     UpscalerImpl& upscalerImpl = (UpscalerImpl&)upscaler;
-    
+
     return upscalerImpl.GetUpscalerProps(upscalerProps);
 }
 

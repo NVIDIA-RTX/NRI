@@ -360,7 +360,7 @@ D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE nri::GetAccelerationStructureType(A
     return (D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE)accelerationStructureType;
 }
 
-D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS nri::GetAccelerationStructureBuildFlags(AccelerationStructureBits accelerationStructureBits) {
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS nri::GetBuildAccelerationStructureFlags(AccelerationStructureBits accelerationStructureBits) {
     uint32_t flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
 
     if (accelerationStructureBits & AccelerationStructureBits::ALLOW_UPDATE)
@@ -395,14 +395,14 @@ D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS nri::GetAccelerationStructur
     return (D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS)flags;
 }
 
-D3D12_RAYTRACING_GEOMETRY_TYPE GetGeometryType(BottomLevelGeometryType geometryType) {
+D3D12_RAYTRACING_GEOMETRY_TYPE nri::GetGeometryType(BottomLevelGeometryType geometryType) {
     static_assert(D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES == (uint32_t)BottomLevelGeometryType::TRIANGLES, "Enum mismatch");
     static_assert(D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS == (uint32_t)BottomLevelGeometryType::AABBS, "Enum mismatch");
 
     return (D3D12_RAYTRACING_GEOMETRY_TYPE)geometryType;
 }
 
-D3D12_RAYTRACING_GEOMETRY_FLAGS GetGeometryFlags(BottomLevelGeometryBits bottomLevelGeometryBits) {
+D3D12_RAYTRACING_GEOMETRY_FLAGS nri::GetGeometryFlags(BottomLevelGeometryBits bottomLevelGeometryBits) {
     static_assert(D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE == (uint32_t)BottomLevelGeometryBits::OPAQUE_GEOMETRY, "Enum mismatch");
     static_assert(D3D12_RAYTRACING_GEOMETRY_FLAG_NO_DUPLICATE_ANYHIT_INVOCATION == (uint32_t)BottomLevelGeometryBits::NO_DUPLICATE_ANY_HIT_INVOCATION, "Enum mismatch");
 
@@ -414,30 +414,6 @@ D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE nri::GetCopyMode(CopyMode copy
     static_assert(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE_COMPACT == (uint32_t)CopyMode::COMPACT, "Enum mismatch");
 
     return (D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE)copyMode;
-}
-
-void nri::ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs, const BottomLevelGeometry* geometries, uint32_t geometryNum) {
-    for (uint32_t i = 0; i < geometryNum; i++) {
-        geometryDescs[i].Type = GetGeometryType(geometries[i].type);
-        geometryDescs[i].Flags = GetGeometryFlags(geometries[i].flags);
-
-        if (geometryDescs[i].Type == D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES) {
-            const BottomLevelTriangles& triangles = geometries[i].geometry.triangles;
-            geometryDescs[i].Triangles.Transform3x4 = triangles.transformBuffer ? ((BufferD3D12*)triangles.transformBuffer)->GetPointerGPU() + triangles.transformOffset : 0;
-            geometryDescs[i].Triangles.IndexFormat = triangles.indexType == IndexType::UINT16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
-            geometryDescs[i].Triangles.VertexFormat = GetDxgiFormat(triangles.vertexFormat).typed;
-            geometryDescs[i].Triangles.IndexCount = triangles.indexNum;
-            geometryDescs[i].Triangles.VertexCount = triangles.vertexNum;
-            geometryDescs[i].Triangles.IndexBuffer = triangles.indexBuffer ? ((BufferD3D12*)triangles.indexBuffer)->GetPointerGPU() + triangles.indexOffset : 0;
-            geometryDescs[i].Triangles.VertexBuffer.StartAddress = ((BufferD3D12*)triangles.vertexBuffer)->GetPointerGPU() + triangles.vertexOffset;
-            geometryDescs[i].Triangles.VertexBuffer.StrideInBytes = triangles.vertexStride;
-        } else if (geometryDescs[i].Type == D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS) {
-            const BottomLevelAabbs& aabbs = geometries[i].geometry.aabbs;
-            geometryDescs[i].AABBs.AABBCount = aabbs.num;
-            geometryDescs[i].AABBs.AABBs.StartAddress = ((BufferD3D12*)aabbs.buffer)->GetPointerGPU() + aabbs.offset;
-            geometryDescs[i].AABBs.AABBs.StrideInBytes = aabbs.stride;
-        }
-    }
 }
 
 uint64_t nri::GetMemorySizeD3D12(const MemoryD3D12Desc& memoryD3D12Desc) {

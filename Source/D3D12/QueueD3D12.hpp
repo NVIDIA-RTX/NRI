@@ -4,7 +4,7 @@ Result QueueD3D12::Create(QueueType queueType, float priority) {
     D3D12_COMMAND_QUEUE_DESC queueDesc = {};
     queueDesc.Priority = priority > 0.5f ? D3D12_COMMAND_QUEUE_PRIORITY_HIGH : D3D12_COMMAND_QUEUE_PRIORITY_NORMAL; // TODO: values in between? check D3D12_FEATURE_COMMAND_QUEUE_PRIORITY support?
     queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-    queueDesc.NodeMask = NRI_NODE_MASK;
+    queueDesc.NodeMask = NODE_MASK;
     queueDesc.Type = GetCommandListType(queueType);
 
     HRESULT hr = m_Device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_Queue));

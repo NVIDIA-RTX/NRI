@@ -117,7 +117,7 @@ Result HelperDataUpload::Create() {
     if (result != Result::SUCCESS)
         return result;
 
-    const BufferMemoryBindingDesc bufferMemoryBindingDesc = {m_UploadBufferMemory, m_UploadBuffer, 0};
+    BufferMemoryBindingDesc bufferMemoryBindingDesc = {m_UploadBuffer, m_UploadBufferMemory, 0};
     result = m_NRI.BindBufferMemory(m_Device, &bufferMemoryBindingDesc, 1);
     if (result != Result::SUCCESS)
         return result;

@@ -30,7 +30,9 @@ NriStruct(DeviceCreationD3D12Desc) {
     NriOptional AGSContext* agsContext;
     NriOptional Nri(CallbackInterface) callbackInterface;
     NriOptional Nri(AllocationCallbacks) allocationCallbacks;
-    bool isNVAPILoaded; // at least NVAPI requires calling "NvAPI_Initialize" in DLL/EXE where the device is created in addition to NRI
+    NriOptional uint32_t d3dShaderExtRegister;  // vendor specific shader extensions (default is NRI_SHADER_EXT_REGISTER, space is always "0")
+    NriOptional uint32_t d3dZeroBufferSize;     // no "memset" functionality in D3D, "CmdZeroBuffer" implemented via a bunch of copies (4 Mb by default)
+    bool isNVAPILoaded;                         // at least NVAPI requires calling "NvAPI_Initialize" in DLL/EXE where the device is created in addition to NRI
 
     // Switches (disabled by default)
     bool enableNRIValidation;

@@ -166,13 +166,13 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc) {
             blendState1.RenderTarget[i].BlendEnable = bs.blendEnabled;
             blendState1.RenderTarget[i].SrcBlend = GetD3D11BlendFromBlendFactor(bs.colorBlend.srcFactor);
             blendState1.RenderTarget[i].DestBlend = GetD3D11BlendFromBlendFactor(bs.colorBlend.dstFactor);
-            blendState1.RenderTarget[i].BlendOp = GetyD3D11BlendOp(bs.colorBlend.func);
+            blendState1.RenderTarget[i].BlendOp = GetD3D11BlendOp(bs.colorBlend.func);
             blendState1.RenderTarget[i].SrcBlendAlpha = GetD3D11BlendFromBlendFactor(bs.alphaBlend.srcFactor);
             blendState1.RenderTarget[i].DestBlendAlpha = GetD3D11BlendFromBlendFactor(bs.alphaBlend.dstFactor);
-            blendState1.RenderTarget[i].BlendOpAlpha = GetyD3D11BlendOp(bs.alphaBlend.func);
+            blendState1.RenderTarget[i].BlendOpAlpha = GetD3D11BlendOp(bs.alphaBlend.func);
             blendState1.RenderTarget[i].RenderTargetWriteMask = uint8_t(bs.colorWriteMask);
             blendState1.RenderTarget[i].LogicOpEnable = om.logicFunc != LogicFunc::NONE ? TRUE : FALSE;
-            blendState1.RenderTarget[i].LogicOp = GetyD3D11LogicOp(om.logicFunc);
+            blendState1.RenderTarget[i].LogicOp = GetD3D11LogicOp(om.logicFunc);
         }
 
         if (m_Device.GetVersion() >= 1)

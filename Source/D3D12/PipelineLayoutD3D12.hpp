@@ -174,7 +174,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         m_BaseRootConstant = (uint32_t)rootParameters.size();
 
         for (uint32_t i = 0; i < pipelineLayoutDesc.rootConstantNum; i++) {
-            const nri::RootConstantDesc& rootConstantDesc = pipelineLayoutDesc.rootConstants[i];
+            const RootConstantDesc& rootConstantDesc = pipelineLayoutDesc.rootConstants[i];
 
             rootParameterLocal.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
             rootParameterLocal.ShaderVisibility = GetShaderVisibility(rootConstantDesc.shaderStages);
@@ -190,7 +190,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         m_BaseRootDescriptor = (uint32_t)rootParameters.size();
 
         for (uint32_t i = 0; i < pipelineLayoutDesc.rootDescriptorNum; i++) {
-            const nri::RootDescriptorDesc& rootDescriptorDesc = pipelineLayoutDesc.rootDescriptors[i];
+            const RootDescriptorDesc& rootDescriptorDesc = pipelineLayoutDesc.rootDescriptors[i];
 
             if (rootDescriptorDesc.descriptorType == DescriptorType::CONSTANT_BUFFER)
                 rootParameterLocal.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
@@ -221,14 +221,12 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         REPORT_ERROR(&m_Device, "D3D12SerializeVersionedRootSignature(): %s", (char*)errorBlob->GetBufferPointer());
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12SerializeVersionedRootSignature()");
 
-    hr = m_Device->CreateRootSignature(NRI_NODE_MASK, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&m_RootSignature));
+    hr = m_Device->CreateRootSignature(NODE_MASK, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&m_RootSignature));
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateRootSignature()");
 
     m_DrawParametersEmulation = enableDrawParametersEmulation;
-    if (pipelineLayoutDesc.shaderStages & nri::StageBits::VERTEX_SHADER) {
-        RETURN_ON_FAILURE(&m_Device, m_Device.CreateDefaultDrawSignatures(m_RootSignature.GetInterface(), enableDrawParametersEmulation) != nri::Result::FAILURE,
-            nri::Result::FAILURE, "Failed to create draw signature for pipeline layout");
-    }
+    if (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER)
+        RETURN_ON_FAILURE(&m_Device, m_Device.CreateDefaultDrawSignatures(m_RootSignature.GetInterface(), enableDrawParametersEmulation) != Result::FAILURE, Result::FAILURE, "Failed to create draw signature for pipeline layout");
 
     return Result::SUCCESS;
 }

@@ -59,11 +59,12 @@ NriStruct(DeviceCreationDesc) {
     NriOptional uint32_t queueFamilyNum;
 
     // D3D specific
-    NriOptional uint32_t shaderExtRegister;     // vendor specific shader extensions (default is NRI_SHADER_EXT_REGISTER, space is always "0")
+    NriOptional uint32_t d3dShaderExtRegister;  // vendor specific shader extensions (default is NRI_SHADER_EXT_REGISTER, space is always "0")
+    NriOptional uint32_t d3dZeroBufferSize;     // no "memset" functionality in D3D, "CmdZeroBuffer" implemented via a bunch of copies (4 Mb by default)
 
     // Vulkan specific
     Nri(VKBindingOffsets) vkBindingOffsets;
-    NriOptional Nri(VKExtensions) vkExtensions;
+    NriOptional Nri(VKExtensions) vkExtensions; // to enable
 
     // Switches (disabled by default)
     bool enableNRIValidation;                   // embedded validation layer, checks for NRI specifics

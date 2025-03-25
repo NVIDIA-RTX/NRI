@@ -1,6 +1,6 @@
 // © 2021 NVIDIA Corporation
 
-Result CreateCommandBuffer(DeviceD3D11& device, ID3D11DeviceContext* precreatedContext, CommandBuffer*& commandBuffer) {
+Result nri::CreateCommandBuffer(DeviceD3D11& device, ID3D11DeviceContext* precreatedContext, CommandBuffer*& commandBuffer) {
     bool isImmediate = false;
     if (precreatedContext)
         isImmediate = precreatedContext->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE;
@@ -29,5 +29,5 @@ Result CreateCommandBuffer(DeviceD3D11& device, ID3D11DeviceContext* precreatedC
 }
 
 NRI_INLINE Result CommandAllocatorD3D11::CreateCommandBuffer(CommandBuffer*& commandBuffer) {
-    return ::CreateCommandBuffer(m_Device, nullptr, commandBuffer);
+    return nri::CreateCommandBuffer(m_Device, nullptr, commandBuffer);
 }

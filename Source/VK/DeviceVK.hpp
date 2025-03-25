@@ -66,6 +66,38 @@ static constexpr VkImageUsageFlags GetImageUsageFlags(TextureUsageBits textureUs
     return flags;
 }
 
+static void ConvertBotomLevelGeometriesForSizes(VkAccelerationStructureGeometryKHR* vkGeometries, uint32_t* primitiveNums, const BottomLevelGeometryDesc* geometries, uint32_t geometryNum) {
+    for (uint32_t i = 0; i < geometryNum; i++) {
+        const BottomLevelGeometryDesc& in = geometries[i];
+        VkAccelerationStructureGeometryKHR& out = vkGeometries[i];
+
+        out = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
+        out.flags = GetGeometryFlags(in.flags);
+        out.geometryType = GetGeometryType(in.type);
+
+        if (in.type == BottomLevelGeometryType::TRIANGLES) {
+            const BottomLevelTrianglesDesc& tris = in.geometry.triangles;
+
+            uint32_t triangleNum = (tris.indexBuffer ? tris.indexNum : tris.vertexNum) / 3;
+            primitiveNums[i] = triangleNum;
+
+            VkAccelerationStructureGeometryTrianglesDataKHR& geometryTriangles = out.geometry.triangles;
+            geometryTriangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+            geometryTriangles.maxVertex = tris.vertexNum;
+            geometryTriangles.indexType = tris.indexBuffer ? GetIndexType(tris.indexType) : VK_INDEX_TYPE_NONE_KHR;
+            geometryTriangles.vertexFormat = GetVkFormat(tris.vertexFormat);
+            geometryTriangles.transformData.hostAddress = tris.transformBuffer ? (void*)1 : nullptr;
+        } else if (in.type == BottomLevelGeometryType::AABBS) {
+            const BottomLevelAabbsDesc& aabbs = in.geometry.aabbs;
+
+            primitiveNums[i] = aabbs.num;
+
+            VkAccelerationStructureGeometryAabbsDataKHR& geometryAabbs = out.geometry.aabbs;
+            geometryAabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
+        }
+    }
+}
+
 static inline bool IsExtensionSupported(const char* ext, const Vector<VkExtensionProperties>& list) {
     for (auto& e : list) {
         if (!strcmp(ext, e.extensionName))
@@ -730,7 +762,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         bool hasDynamicRendering = features13.dynamicRendering != 0 || (dynamicRenderingFeatures.dynamicRendering != 0 && extendedDynamicStateFeatures.extendedDynamicState != 0);
         bool hasSynchronization2 = features13.synchronization2 != 0 || synchronization2features.synchronization2 != 0;
 
-        RETURN_ON_FAILURE(this, hasDynamicRendering && hasSynchronization2, nri::Result::UNSUPPORTED, "'dynamicRendering' and 'synchronization2' are not supported by the device");
+        RETURN_ON_FAILURE(this, hasDynamicRendering && hasSynchronization2, Result::UNSUPPORTED, "'dynamicRendering' and 'synchronization2' are not supported by the device");
     }
 
     { // Create device
@@ -1151,7 +1183,7 @@ void DeviceVK::FillCreateInfo(const TextureDesc& textureDesc, VkImageCreateInfo&
         flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
     if (textureDesc.layerNum >= 6 && textureDesc.width == textureDesc.height)
         flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
-    if (textureDesc.type == nri::TextureType::TEXTURE_3D)
+    if (textureDesc.type == TextureType::TEXTURE_3D)
         flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT; // allow 3D demotion to a set of layers // TODO: hook up "VK_EXT_image_2d_view_of_3d"?
     if (m_Desc.sampleLocationsTier && formatProps.isDepth)
         flags |= VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT;
@@ -1234,6 +1266,17 @@ void DeviceVK::GetMemoryDesc2(const AccelerationStructureDesc& accelerationStruc
 
     BufferDesc bufferDesc = {};
     bufferDesc.size = sizesInfo.accelerationStructureSize;
+    bufferDesc.usage = BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE;
+
+    GetMemoryDesc2(bufferDesc, memoryLocation, memoryDesc);
+}
+
+void DeviceVK::GetMemoryDesc2(const MicromapDesc& micromapDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
+    VkMicromapBuildSizesInfoEXT sizesInfo = {VK_STRUCTURE_TYPE_MICROMAP_BUILD_SIZES_INFO_EXT};
+    GetMicromapBuildSizesInfo(micromapDesc, sizesInfo);
+
+    BufferDesc bufferDesc = {};
+    bufferDesc.size = sizesInfo.micromapSize;
     bufferDesc.usage = BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE;
 
     GetMemoryDesc2(bufferDesc, memoryLocation, memoryDesc);
@@ -1341,12 +1384,10 @@ void DeviceVK::GetAccelerationStructureBuildSizesInfo(const AccelerationStructur
     Scratch<VkAccelerationStructureGeometryKHR> geometries = AllocateScratch(*this, VkAccelerationStructureGeometryKHR, geometryCount);
 
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL)
-        ConvertGeometryObjectSizesVK(geometries, primitiveMaxNums, accelerationStructureDesc.geometries, geometryCount);
+        ConvertBotomLevelGeometriesForSizes(geometries, primitiveMaxNums, accelerationStructureDesc.geometries, geometryCount);
     else {
         geometries[0] = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
         geometries[0].geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
-        geometries[0].geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
-        geometries[0].geometry.aabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
         geometries[0].geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
 
         primitiveMaxNums[0] = accelerationStructureDesc.geometryOrInstanceNum;
@@ -1354,12 +1395,37 @@ void DeviceVK::GetAccelerationStructureBuildSizesInfo(const AccelerationStructur
 
     VkAccelerationStructureBuildGeometryInfoKHR buildInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
     buildInfo.type = GetAccelerationStructureType(accelerationStructureDesc.type);
-    buildInfo.flags = GetAccelerationStructureBuildFlags(accelerationStructureDesc.flags);
+    buildInfo.flags = GetBuildAccelerationStructureFlags(accelerationStructureDesc.flags);
     buildInfo.geometryCount = geometryCount;
     buildInfo.pGeometries = geometries;
 
     const auto& vk = GetDispatchTable();
     vk.GetAccelerationStructureBuildSizesKHR(m_Device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, primitiveMaxNums, &sizesInfo);
+}
+
+void DeviceVK::GetMicromapBuildSizesInfo(const MicromapDesc& micromapDesc, VkMicromapBuildSizesInfoEXT& sizesInfo) {
+    static_assert((uint32_t)MicromapFormat::OPACITY_2_STATE == VK_OPACITY_MICROMAP_FORMAT_2_STATE_EXT, "Format doesn't match");
+    static_assert((uint32_t)MicromapFormat::OPACITY_4_STATE == VK_OPACITY_MICROMAP_FORMAT_4_STATE_EXT, "Format doesn't match");
+
+    Scratch<VkMicromapUsageEXT> usages = AllocateScratch(*this, VkMicromapUsageEXT, micromapDesc.usageNum);
+    for (uint32_t i = 0; i < micromapDesc.usageNum; i++) {
+        const MicromapUsageDesc& in = micromapDesc.usages[i];
+
+        VkMicromapUsageEXT& out = usages[i];
+        out = {};
+        out.count = in.triangleNum;
+        out.subdivisionLevel = in.subdivisionLevel;
+        out.format = (VkOpacityMicromapFormatEXT)in.format;
+    }
+
+    VkMicromapBuildInfoEXT buildInfo = {VK_STRUCTURE_TYPE_MICROMAP_BUILD_INFO_EXT};
+    buildInfo.type = VK_MICROMAP_TYPE_OPACITY_MICROMAP_EXT;
+    buildInfo.flags = GetBuildMicromapFlags(micromapDesc.flags);
+    buildInfo.usageCountsCount = micromapDesc.usageNum;
+    buildInfo.pUsageCounts = usages;
+
+    const auto& vk = GetDispatchTable();
+    vk.GetMicromapBuildSizesEXT(m_Device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, &sizesInfo);
 }
 
 Result DeviceVK::CreateInstance(bool enableGraphicsAPIValidation, const Vector<const char*>& desiredInstanceExts) {
@@ -1477,7 +1543,7 @@ void DeviceVK::ReportDeviceGroupInfo() {
 #define MERGE_TOKENS2(a, b) a##b
 #define MERGE_TOKENS3(a, b, c) a##b##c
 
-#define GET_DEVICE_OPTIONAL_CORE_PROC(name) \
+#define GET_DEVICE_OPTIONAL_CORE_FUNC(name) \
     /* Core */ \
     m_VK.name = (PFN_vk##name)m_VK.GetDeviceProcAddr(m_Device, NRI_STRINGIFY(MERGE_TOKENS2(vk, name))); \
     /* KHR */ \
@@ -1487,21 +1553,21 @@ void DeviceVK::ReportDeviceGroupInfo() {
     if (!m_VK.name) \
     m_VK.name = (PFN_vk##name)m_VK.GetDeviceProcAddr(m_Device, NRI_STRINGIFY(MERGE_TOKENS3(vk, name, EXT)))
 
-#define GET_DEVICE_CORE_PROC(name) \
-    GET_DEVICE_OPTIONAL_CORE_PROC(name); \
+#define GET_DEVICE_CORE_FUNC(name) \
+    GET_DEVICE_OPTIONAL_CORE_FUNC(name); \
     if (!m_VK.name) { \
         REPORT_ERROR(this, "Failed to get device function: '%s'", NRI_STRINGIFY(MERGE_TOKENS2(vk, name))); \
         return Result::UNSUPPORTED; \
     }
 
-#define GET_DEVICE_PROC(name) \
+#define GET_DEVICE_FUNC(name) \
     m_VK.name = (PFN_vk##name)m_VK.GetDeviceProcAddr(m_Device, NRI_STRINGIFY(MERGE_TOKENS2(vk, name))); \
     if (!m_VK.name) { \
         REPORT_ERROR(this, "Failed to get device function: '%s'", NRI_STRINGIFY(MERGE_TOKENS2(vk, name))); \
         return Result::UNSUPPORTED; \
     }
 
-#define GET_INSTANCE_PROC(name) \
+#define GET_INSTANCE_FUNC(name) \
     m_VK.name = (PFN_vk##name)m_VK.GetInstanceProcAddr(m_Instance, NRI_STRINGIFY(MERGE_TOKENS2(vk, name))); \
     if (!m_VK.name) { \
         REPORT_ERROR(this, "Failed to get instance function: '%s'", NRI_STRINGIFY(MERGE_TOKENS2(vk, name))); \
@@ -1517,60 +1583,63 @@ Result DeviceVK::ResolvePreInstanceDispatchTable() {
         return Result::UNSUPPORTED;
     }
 
-    GET_INSTANCE_PROC(CreateInstance);
-    GET_INSTANCE_PROC(EnumerateInstanceExtensionProperties);
-    GET_INSTANCE_PROC(EnumerateInstanceLayerProperties);
+    GET_INSTANCE_FUNC(CreateInstance);
+    GET_INSTANCE_FUNC(EnumerateInstanceExtensionProperties);
+    GET_INSTANCE_FUNC(EnumerateInstanceLayerProperties);
 
     return Result::SUCCESS;
 }
 
 Result DeviceVK::ResolveInstanceDispatchTable(const Vector<const char*>& desiredInstanceExts) {
-    GET_INSTANCE_PROC(GetDeviceProcAddr);
-    GET_INSTANCE_PROC(DestroyInstance);
-    GET_INSTANCE_PROC(DestroyDevice);
-    GET_INSTANCE_PROC(GetPhysicalDeviceMemoryProperties2);
-    GET_INSTANCE_PROC(GetDeviceGroupPeerMemoryFeatures);
-    GET_INSTANCE_PROC(GetPhysicalDeviceFormatProperties2);
-    GET_INSTANCE_PROC(CreateDevice);
-    GET_INSTANCE_PROC(GetDeviceQueue2);
-    GET_INSTANCE_PROC(EnumeratePhysicalDeviceGroups);
-    GET_INSTANCE_PROC(GetPhysicalDeviceProperties2);
-    GET_INSTANCE_PROC(GetPhysicalDeviceFeatures2);
-    GET_INSTANCE_PROC(GetPhysicalDeviceQueueFamilyProperties2);
-    GET_INSTANCE_PROC(EnumerateDeviceExtensionProperties);
+    GET_INSTANCE_FUNC(GetDeviceProcAddr);
+    GET_INSTANCE_FUNC(DestroyInstance);
+    GET_INSTANCE_FUNC(DestroyDevice);
+    GET_INSTANCE_FUNC(GetPhysicalDeviceMemoryProperties2);
+    GET_INSTANCE_FUNC(GetDeviceGroupPeerMemoryFeatures);
+    GET_INSTANCE_FUNC(GetPhysicalDeviceFormatProperties2);
+    GET_INSTANCE_FUNC(CreateDevice);
+    GET_INSTANCE_FUNC(GetDeviceQueue2);
+    GET_INSTANCE_FUNC(EnumeratePhysicalDeviceGroups);
+    GET_INSTANCE_FUNC(GetPhysicalDeviceProperties2);
+    GET_INSTANCE_FUNC(GetPhysicalDeviceFeatures2);
+    GET_INSTANCE_FUNC(GetPhysicalDeviceQueueFamilyProperties2);
+    GET_INSTANCE_FUNC(EnumerateDeviceExtensionProperties);
 
     if (IsExtensionSupported(VK_EXT_DEBUG_UTILS_EXTENSION_NAME, desiredInstanceExts)) {
-        GET_INSTANCE_PROC(SetDebugUtilsObjectNameEXT);
-        GET_INSTANCE_PROC(CmdBeginDebugUtilsLabelEXT);
-        GET_INSTANCE_PROC(CmdEndDebugUtilsLabelEXT);
-        GET_INSTANCE_PROC(CmdInsertDebugUtilsLabelEXT);
-        GET_INSTANCE_PROC(QueueBeginDebugUtilsLabelEXT);
-        GET_INSTANCE_PROC(QueueEndDebugUtilsLabelEXT);
-        GET_INSTANCE_PROC(QueueInsertDebugUtilsLabelEXT);
+        GET_INSTANCE_FUNC(SetDebugUtilsObjectNameEXT);
+        GET_INSTANCE_FUNC(CmdBeginDebugUtilsLabelEXT);
+        GET_INSTANCE_FUNC(CmdEndDebugUtilsLabelEXT);
+        GET_INSTANCE_FUNC(CmdInsertDebugUtilsLabelEXT);
+        GET_INSTANCE_FUNC(QueueBeginDebugUtilsLabelEXT);
+        GET_INSTANCE_FUNC(QueueEndDebugUtilsLabelEXT);
+        GET_INSTANCE_FUNC(QueueInsertDebugUtilsLabelEXT);
     }
 
     if (IsExtensionSupported(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME, desiredInstanceExts)) {
-        GET_INSTANCE_PROC(GetPhysicalDeviceSurfaceFormats2KHR);
-        GET_INSTANCE_PROC(GetPhysicalDeviceSurfaceCapabilities2KHR);
+        GET_INSTANCE_FUNC(GetPhysicalDeviceSurfaceFormats2KHR);
+        GET_INSTANCE_FUNC(GetPhysicalDeviceSurfaceCapabilities2KHR);
     }
 
     if (IsExtensionSupported(VK_KHR_SURFACE_EXTENSION_NAME, desiredInstanceExts)) {
-        GET_INSTANCE_PROC(GetPhysicalDeviceSurfaceSupportKHR);
-        GET_INSTANCE_PROC(GetPhysicalDeviceSurfacePresentModesKHR);
-        GET_INSTANCE_PROC(DestroySurfaceKHR);
+        GET_INSTANCE_FUNC(GetPhysicalDeviceSurfaceSupportKHR);
+        GET_INSTANCE_FUNC(GetPhysicalDeviceSurfacePresentModesKHR);
+        GET_INSTANCE_FUNC(DestroySurfaceKHR);
 
 #ifdef VK_USE_PLATFORM_WIN32_KHR
-        GET_INSTANCE_PROC(CreateWin32SurfaceKHR);
-        GET_INSTANCE_PROC(GetMemoryWin32HandlePropertiesKHR);
+        GET_INSTANCE_FUNC(CreateWin32SurfaceKHR);
+        GET_INSTANCE_FUNC(GetMemoryWin32HandlePropertiesKHR);
 #endif
+
 #ifdef VK_USE_PLATFORM_METAL_EXT
-        GET_INSTANCE_PROC(CreateMetalSurfaceEXT);
+        GET_INSTANCE_FUNC(CreateMetalSurfaceEXT);
 #endif
+
 #ifdef VK_USE_PLATFORM_XLIB_KHR
-        GET_INSTANCE_PROC(CreateXlibSurfaceKHR);
+        GET_INSTANCE_FUNC(CreateXlibSurfaceKHR);
 #endif
+
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
-        GET_INSTANCE_PROC(CreateWaylandSurfaceKHR);
+        GET_INSTANCE_FUNC(CreateWaylandSurfaceKHR);
 #endif
     }
 
@@ -1578,163 +1647,179 @@ Result DeviceVK::ResolveInstanceDispatchTable(const Vector<const char*>& desired
 }
 
 Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceExts) {
-    GET_DEVICE_CORE_PROC(CreateBuffer);
-    GET_DEVICE_CORE_PROC(CreateImage);
-    GET_DEVICE_CORE_PROC(CreateBufferView);
-    GET_DEVICE_CORE_PROC(CreateImageView);
-    GET_DEVICE_CORE_PROC(CreateSampler);
-    GET_DEVICE_CORE_PROC(CreateQueryPool);
-    GET_DEVICE_CORE_PROC(CreateCommandPool);
-    GET_DEVICE_CORE_PROC(CreateSemaphore);
-    GET_DEVICE_CORE_PROC(CreateDescriptorPool);
-    GET_DEVICE_CORE_PROC(CreatePipelineLayout);
-    GET_DEVICE_CORE_PROC(CreateDescriptorSetLayout);
-    GET_DEVICE_CORE_PROC(CreateShaderModule);
-    GET_DEVICE_CORE_PROC(CreateGraphicsPipelines);
-    GET_DEVICE_CORE_PROC(CreateComputePipelines);
-    GET_DEVICE_CORE_PROC(AllocateMemory);
+    GET_DEVICE_CORE_FUNC(CreateBuffer);
+    GET_DEVICE_CORE_FUNC(CreateImage);
+    GET_DEVICE_CORE_FUNC(CreateBufferView);
+    GET_DEVICE_CORE_FUNC(CreateImageView);
+    GET_DEVICE_CORE_FUNC(CreateSampler);
+    GET_DEVICE_CORE_FUNC(CreateQueryPool);
+    GET_DEVICE_CORE_FUNC(CreateCommandPool);
+    GET_DEVICE_CORE_FUNC(CreateSemaphore);
+    GET_DEVICE_CORE_FUNC(CreateDescriptorPool);
+    GET_DEVICE_CORE_FUNC(CreatePipelineLayout);
+    GET_DEVICE_CORE_FUNC(CreateDescriptorSetLayout);
+    GET_DEVICE_CORE_FUNC(CreateShaderModule);
+    GET_DEVICE_CORE_FUNC(CreateGraphicsPipelines);
+    GET_DEVICE_CORE_FUNC(CreateComputePipelines);
+    GET_DEVICE_CORE_FUNC(AllocateMemory);
 
-    GET_DEVICE_CORE_PROC(DestroyBuffer);
-    GET_DEVICE_CORE_PROC(DestroyImage);
-    GET_DEVICE_CORE_PROC(DestroyBufferView);
-    GET_DEVICE_CORE_PROC(DestroyImageView);
-    GET_DEVICE_CORE_PROC(DestroySampler);
-    GET_DEVICE_CORE_PROC(DestroyFramebuffer);
-    GET_DEVICE_CORE_PROC(DestroyQueryPool);
-    GET_DEVICE_CORE_PROC(DestroyCommandPool);
-    GET_DEVICE_CORE_PROC(DestroySemaphore);
-    GET_DEVICE_CORE_PROC(DestroyDescriptorPool);
-    GET_DEVICE_CORE_PROC(DestroyPipelineLayout);
-    GET_DEVICE_CORE_PROC(DestroyDescriptorSetLayout);
-    GET_DEVICE_CORE_PROC(DestroyShaderModule);
-    GET_DEVICE_CORE_PROC(DestroyPipeline);
-    GET_DEVICE_CORE_PROC(FreeMemory);
-    GET_DEVICE_CORE_PROC(FreeCommandBuffers);
-    GET_DEVICE_CORE_PROC(FreeDescriptorSets);
+    GET_DEVICE_CORE_FUNC(DestroyBuffer);
+    GET_DEVICE_CORE_FUNC(DestroyImage);
+    GET_DEVICE_CORE_FUNC(DestroyBufferView);
+    GET_DEVICE_CORE_FUNC(DestroyImageView);
+    GET_DEVICE_CORE_FUNC(DestroySampler);
+    GET_DEVICE_CORE_FUNC(DestroyFramebuffer);
+    GET_DEVICE_CORE_FUNC(DestroyQueryPool);
+    GET_DEVICE_CORE_FUNC(DestroyCommandPool);
+    GET_DEVICE_CORE_FUNC(DestroySemaphore);
+    GET_DEVICE_CORE_FUNC(DestroyDescriptorPool);
+    GET_DEVICE_CORE_FUNC(DestroyPipelineLayout);
+    GET_DEVICE_CORE_FUNC(DestroyDescriptorSetLayout);
+    GET_DEVICE_CORE_FUNC(DestroyShaderModule);
+    GET_DEVICE_CORE_FUNC(DestroyPipeline);
+    GET_DEVICE_CORE_FUNC(FreeMemory);
+    GET_DEVICE_CORE_FUNC(FreeCommandBuffers);
+    GET_DEVICE_CORE_FUNC(FreeDescriptorSets);
 
-    GET_DEVICE_CORE_PROC(MapMemory);
-    GET_DEVICE_CORE_PROC(FlushMappedMemoryRanges);
-    GET_DEVICE_CORE_PROC(QueueWaitIdle);
-    GET_DEVICE_CORE_PROC(QueueSubmit2);
-    GET_DEVICE_CORE_PROC(GetSemaphoreCounterValue);
-    GET_DEVICE_CORE_PROC(WaitSemaphores);
-    GET_DEVICE_CORE_PROC(ResetCommandPool);
-    GET_DEVICE_CORE_PROC(ResetDescriptorPool);
-    GET_DEVICE_CORE_PROC(AllocateCommandBuffers);
-    GET_DEVICE_CORE_PROC(AllocateDescriptorSets);
-    GET_DEVICE_CORE_PROC(UpdateDescriptorSets);
-    GET_DEVICE_CORE_PROC(BindBufferMemory2);
-    GET_DEVICE_CORE_PROC(BindImageMemory2);
-    GET_DEVICE_CORE_PROC(GetBufferMemoryRequirements2);
-    GET_DEVICE_CORE_PROC(GetImageMemoryRequirements2);
-    GET_DEVICE_CORE_PROC(ResetQueryPool);
-    GET_DEVICE_CORE_PROC(GetBufferDeviceAddress);
+    GET_DEVICE_CORE_FUNC(MapMemory);
+    GET_DEVICE_CORE_FUNC(FlushMappedMemoryRanges);
+    GET_DEVICE_CORE_FUNC(QueueWaitIdle);
+    GET_DEVICE_CORE_FUNC(QueueSubmit2);
+    GET_DEVICE_CORE_FUNC(GetSemaphoreCounterValue);
+    GET_DEVICE_CORE_FUNC(WaitSemaphores);
+    GET_DEVICE_CORE_FUNC(ResetCommandPool);
+    GET_DEVICE_CORE_FUNC(ResetDescriptorPool);
+    GET_DEVICE_CORE_FUNC(AllocateCommandBuffers);
+    GET_DEVICE_CORE_FUNC(AllocateDescriptorSets);
+    GET_DEVICE_CORE_FUNC(UpdateDescriptorSets);
+    GET_DEVICE_CORE_FUNC(BindBufferMemory2);
+    GET_DEVICE_CORE_FUNC(BindImageMemory2);
+    GET_DEVICE_CORE_FUNC(GetBufferMemoryRequirements2);
+    GET_DEVICE_CORE_FUNC(GetImageMemoryRequirements2);
+    GET_DEVICE_CORE_FUNC(ResetQueryPool);
+    GET_DEVICE_CORE_FUNC(GetBufferDeviceAddress);
 
-    GET_DEVICE_CORE_PROC(BeginCommandBuffer);
-    GET_DEVICE_CORE_PROC(CmdSetViewportWithCount);
-    GET_DEVICE_CORE_PROC(CmdSetScissorWithCount);
-    GET_DEVICE_CORE_PROC(CmdSetDepthBounds);
-    GET_DEVICE_CORE_PROC(CmdSetStencilReference);
-    GET_DEVICE_CORE_PROC(CmdSetBlendConstants);
-    GET_DEVICE_CORE_PROC(CmdSetDepthBias);
-    GET_DEVICE_CORE_PROC(CmdClearAttachments);
-    GET_DEVICE_CORE_PROC(CmdClearColorImage);
-    GET_DEVICE_CORE_PROC(CmdBindVertexBuffers2);
-    GET_DEVICE_CORE_PROC(CmdBindIndexBuffer);
-    GET_DEVICE_CORE_PROC(CmdBindPipeline);
-    GET_DEVICE_CORE_PROC(CmdBindDescriptorSets);
-    GET_DEVICE_CORE_PROC(CmdPushConstants);
-    GET_DEVICE_CORE_PROC(CmdDispatch);
-    GET_DEVICE_CORE_PROC(CmdDispatchIndirect);
-    GET_DEVICE_CORE_PROC(CmdDraw);
-    GET_DEVICE_CORE_PROC(CmdDrawIndexed);
-    GET_DEVICE_CORE_PROC(CmdDrawIndirect);
-    GET_DEVICE_CORE_PROC(CmdDrawIndirectCount);
-    GET_DEVICE_CORE_PROC(CmdDrawIndexedIndirect);
-    GET_DEVICE_CORE_PROC(CmdDrawIndexedIndirectCount);
-    GET_DEVICE_CORE_PROC(CmdCopyBuffer2);
-    GET_DEVICE_CORE_PROC(CmdCopyImage2);
-    GET_DEVICE_CORE_PROC(CmdResolveImage2);
-    GET_DEVICE_CORE_PROC(CmdCopyBufferToImage2);
-    GET_DEVICE_CORE_PROC(CmdCopyImageToBuffer2);
-    GET_DEVICE_CORE_PROC(CmdPipelineBarrier2);
-    GET_DEVICE_CORE_PROC(CmdBeginQuery);
-    GET_DEVICE_CORE_PROC(CmdEndQuery);
-    GET_DEVICE_CORE_PROC(CmdWriteTimestamp2);
-    GET_DEVICE_CORE_PROC(CmdCopyQueryPoolResults);
-    GET_DEVICE_CORE_PROC(CmdResetQueryPool);
-    GET_DEVICE_CORE_PROC(CmdFillBuffer);
-    GET_DEVICE_CORE_PROC(CmdBeginRendering);
-    GET_DEVICE_CORE_PROC(CmdEndRendering);
-    GET_DEVICE_CORE_PROC(EndCommandBuffer);
+    GET_DEVICE_CORE_FUNC(BeginCommandBuffer);
+    GET_DEVICE_CORE_FUNC(CmdSetViewportWithCount);
+    GET_DEVICE_CORE_FUNC(CmdSetScissorWithCount);
+    GET_DEVICE_CORE_FUNC(CmdSetDepthBounds);
+    GET_DEVICE_CORE_FUNC(CmdSetStencilReference);
+    GET_DEVICE_CORE_FUNC(CmdSetBlendConstants);
+    GET_DEVICE_CORE_FUNC(CmdSetDepthBias);
+    GET_DEVICE_CORE_FUNC(CmdClearAttachments);
+    GET_DEVICE_CORE_FUNC(CmdClearColorImage);
+    GET_DEVICE_CORE_FUNC(CmdBindVertexBuffers2);
+    GET_DEVICE_CORE_FUNC(CmdBindIndexBuffer);
+    GET_DEVICE_CORE_FUNC(CmdBindPipeline);
+    GET_DEVICE_CORE_FUNC(CmdBindDescriptorSets);
+    GET_DEVICE_CORE_FUNC(CmdPushConstants);
+    GET_DEVICE_CORE_FUNC(CmdDispatch);
+    GET_DEVICE_CORE_FUNC(CmdDispatchIndirect);
+    GET_DEVICE_CORE_FUNC(CmdDraw);
+    GET_DEVICE_CORE_FUNC(CmdDrawIndexed);
+    GET_DEVICE_CORE_FUNC(CmdDrawIndirect);
+    GET_DEVICE_CORE_FUNC(CmdDrawIndirectCount);
+    GET_DEVICE_CORE_FUNC(CmdDrawIndexedIndirect);
+    GET_DEVICE_CORE_FUNC(CmdDrawIndexedIndirectCount);
+    GET_DEVICE_CORE_FUNC(CmdCopyBuffer2);
+    GET_DEVICE_CORE_FUNC(CmdCopyImage2);
+    GET_DEVICE_CORE_FUNC(CmdResolveImage2);
+    GET_DEVICE_CORE_FUNC(CmdCopyBufferToImage2);
+    GET_DEVICE_CORE_FUNC(CmdCopyImageToBuffer2);
+    GET_DEVICE_CORE_FUNC(CmdPipelineBarrier2);
+    GET_DEVICE_CORE_FUNC(CmdBeginQuery);
+    GET_DEVICE_CORE_FUNC(CmdEndQuery);
+    GET_DEVICE_CORE_FUNC(CmdWriteTimestamp2);
+    GET_DEVICE_CORE_FUNC(CmdCopyQueryPoolResults);
+    GET_DEVICE_CORE_FUNC(CmdResetQueryPool);
+    GET_DEVICE_CORE_FUNC(CmdFillBuffer);
+    GET_DEVICE_CORE_FUNC(CmdBeginRendering);
+    GET_DEVICE_CORE_FUNC(CmdEndRendering);
+    GET_DEVICE_CORE_FUNC(EndCommandBuffer);
 
     // IMPORTANT: { } are mandatory here!
 
     if (m_MinorVersion >= 3 || IsExtensionSupported(VK_KHR_MAINTENANCE_4_EXTENSION_NAME, desiredDeviceExts)) {
-        GET_DEVICE_CORE_PROC(GetDeviceBufferMemoryRequirements);
-        GET_DEVICE_CORE_PROC(GetDeviceImageMemoryRequirements);
+        GET_DEVICE_CORE_FUNC(GetDeviceBufferMemoryRequirements);
+        GET_DEVICE_CORE_FUNC(GetDeviceImageMemoryRequirements);
     }
 
     if (IsExtensionSupported(VK_KHR_MAINTENANCE_5_EXTENSION_NAME, desiredDeviceExts)) {
-        GET_DEVICE_PROC(CmdBindIndexBuffer2KHR);
-    }
-
-    if (IsExtensionSupported(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME, desiredDeviceExts)) {
-        GET_DEVICE_PROC(CmdSetFragmentShadingRateKHR);
+        GET_DEVICE_FUNC(CmdBindIndexBuffer2KHR);
     }
 
     if (IsExtensionSupported(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME, desiredDeviceExts)) {
-        GET_DEVICE_PROC(CmdPushDescriptorSetKHR);
+        GET_DEVICE_FUNC(CmdPushDescriptorSetKHR);
+    }
+
+    if (IsExtensionSupported(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME, desiredDeviceExts)) {
+        GET_DEVICE_FUNC(CmdSetFragmentShadingRateKHR);
     }
 
     if (IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME, desiredDeviceExts)) {
-        GET_DEVICE_PROC(AcquireNextImageKHR);
-        GET_DEVICE_PROC(QueuePresentKHR);
-        GET_DEVICE_PROC(CreateSwapchainKHR);
-        GET_DEVICE_PROC(DestroySwapchainKHR);
-        GET_DEVICE_PROC(GetSwapchainImagesKHR);
+        GET_DEVICE_FUNC(AcquireNextImageKHR);
+        GET_DEVICE_FUNC(QueuePresentKHR);
+        GET_DEVICE_FUNC(CreateSwapchainKHR);
+        GET_DEVICE_FUNC(DestroySwapchainKHR);
+        GET_DEVICE_FUNC(GetSwapchainImagesKHR);
     }
 
     if (IsExtensionSupported(VK_KHR_PRESENT_WAIT_EXTENSION_NAME, desiredDeviceExts)) {
-        GET_DEVICE_PROC(WaitForPresentKHR);
+        GET_DEVICE_FUNC(WaitForPresentKHR);
     }
 
     if (IsExtensionSupported(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, desiredDeviceExts)) {
-        GET_DEVICE_PROC(CreateAccelerationStructureKHR);
-        GET_DEVICE_PROC(DestroyAccelerationStructureKHR);
-        GET_DEVICE_PROC(GetAccelerationStructureDeviceAddressKHR);
-        GET_DEVICE_PROC(GetAccelerationStructureBuildSizesKHR);
-        GET_DEVICE_PROC(CmdBuildAccelerationStructuresKHR);
-        GET_DEVICE_PROC(CmdCopyAccelerationStructureKHR);
-        GET_DEVICE_PROC(CmdWriteAccelerationStructuresPropertiesKHR);
+        GET_DEVICE_FUNC(CreateAccelerationStructureKHR);
+        GET_DEVICE_FUNC(DestroyAccelerationStructureKHR);
+        GET_DEVICE_FUNC(GetAccelerationStructureDeviceAddressKHR);
+        GET_DEVICE_FUNC(GetAccelerationStructureBuildSizesKHR);
+        GET_DEVICE_FUNC(CmdBuildAccelerationStructuresKHR);
+        GET_DEVICE_FUNC(CmdCopyAccelerationStructureKHR);
+        GET_DEVICE_FUNC(CmdWriteAccelerationStructuresPropertiesKHR);
     }
 
     if (IsExtensionSupported(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, desiredDeviceExts)) {
-        GET_DEVICE_PROC(CreateRayTracingPipelinesKHR);
-        GET_DEVICE_PROC(GetRayTracingShaderGroupHandlesKHR);
-        GET_DEVICE_PROC(CmdTraceRaysKHR);
-        GET_DEVICE_PROC(CmdTraceRaysIndirect2KHR);
+        GET_DEVICE_FUNC(CreateRayTracingPipelinesKHR);
+        GET_DEVICE_FUNC(GetRayTracingShaderGroupHandlesKHR);
+        GET_DEVICE_FUNC(CmdTraceRaysKHR);
+        GET_DEVICE_FUNC(CmdTraceRaysIndirect2KHR);
+    }
+
+    if (IsExtensionSupported(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME, desiredDeviceExts)) {
+        GET_DEVICE_FUNC(CreateMicromapEXT);
+        GET_DEVICE_FUNC(DestroyMicromapEXT);
+        GET_DEVICE_FUNC(GetMicromapBuildSizesEXT);
+        GET_DEVICE_FUNC(CmdBuildMicromapsEXT);
+        GET_DEVICE_FUNC(CmdCopyMicromapEXT);
+        GET_DEVICE_FUNC(CmdWriteMicromapsPropertiesEXT);
     }
 
     if (IsExtensionSupported(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME, desiredDeviceExts)) {
-        GET_DEVICE_PROC(CmdSetSampleLocationsEXT);
+        GET_DEVICE_FUNC(CmdSetSampleLocationsEXT);
     }
 
     if (IsExtensionSupported(VK_EXT_MESH_SHADER_EXTENSION_NAME, desiredDeviceExts)) {
-        GET_DEVICE_PROC(CmdDrawMeshTasksEXT);
-        GET_DEVICE_PROC(CmdDrawMeshTasksIndirectEXT);
-        GET_DEVICE_PROC(CmdDrawMeshTasksIndirectCountEXT);
+        GET_DEVICE_FUNC(CmdDrawMeshTasksEXT);
+        GET_DEVICE_FUNC(CmdDrawMeshTasksIndirectEXT);
+        GET_DEVICE_FUNC(CmdDrawMeshTasksIndirectCountEXT);
     }
 
     if (IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, desiredDeviceExts)) {
-        GET_DEVICE_PROC(GetLatencyTimingsNV);
-        GET_DEVICE_PROC(LatencySleepNV);
-        GET_DEVICE_PROC(SetLatencyMarkerNV);
-        GET_DEVICE_PROC(SetLatencySleepModeNV);
+        GET_DEVICE_FUNC(GetLatencyTimingsNV);
+        GET_DEVICE_FUNC(LatencySleepNV);
+        GET_DEVICE_FUNC(SetLatencyMarkerNV);
+        GET_DEVICE_FUNC(SetLatencySleepModeNV);
     }
 
     return Result::SUCCESS;
 }
+
+#undef MERGE_TOKENS2
+#undef MERGE_TOKENS3
+#undef GET_DEVICE_OPTIONAL_CORE_FUNC
+#undef GET_DEVICE_CORE_FUNC
+#undef GET_DEVICE_FUNC
+#undef GET_INSTANCE_FUNC
 
 void DeviceVK::Destruct() {
     Destroy(GetAllocationCallbacks(), this);
@@ -1843,24 +1928,51 @@ NRI_INLINE Result DeviceVK::BindAccelerationStructureMemory(const AccelerationSt
     if (!memoryBindingDescNum)
         return Result::SUCCESS;
 
-    Scratch<BufferMemoryBindingDesc> infos = AllocateScratch(*this, BufferMemoryBindingDesc, memoryBindingDescNum);
+    Scratch<BufferMemoryBindingDesc> bufferMemoryBindingDescs = AllocateScratch(*this, BufferMemoryBindingDesc, memoryBindingDescNum);
 
     for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
         const AccelerationStructureMemoryBindingDesc& memoryBindingDesc = memoryBindingDescs[i];
         AccelerationStructureVK& accelerationStructure = *(AccelerationStructureVK*)memoryBindingDesc.accelerationStructure;
 
-        BufferMemoryBindingDesc& bufferMemoryBinding = infos[i];
+        BufferMemoryBindingDesc& bufferMemoryBinding = bufferMemoryBindingDescs[i];
         bufferMemoryBinding = {};
         bufferMemoryBinding.buffer = (Buffer*)accelerationStructure.GetBuffer();
         bufferMemoryBinding.memory = memoryBindingDesc.memory;
         bufferMemoryBinding.offset = memoryBindingDesc.offset;
     }
 
-    Result result = BindBufferMemory(infos, memoryBindingDescNum);
+    Result result = BindBufferMemory(bufferMemoryBindingDescs, memoryBindingDescNum);
 
     for (uint32_t i = 0; i < memoryBindingDescNum && result == Result::SUCCESS; i++) {
         AccelerationStructureVK& accelerationStructure = *(AccelerationStructureVK*)memoryBindingDescs[i].accelerationStructure;
         result = accelerationStructure.FinishCreation();
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVK::BindMicromapMemory(const MicromapMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
+    if (!memoryBindingDescNum)
+        return Result::SUCCESS;
+
+    Scratch<BufferMemoryBindingDesc> bufferMemoryBindingDescs = AllocateScratch(*this, BufferMemoryBindingDesc, memoryBindingDescNum);
+
+    for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
+        const MicromapMemoryBindingDesc& memoryBindingDesc = memoryBindingDescs[i];
+        MicromapVK& micromap = *(MicromapVK*)memoryBindingDesc.micromap;
+
+        BufferMemoryBindingDesc& bufferMemoryBinding = bufferMemoryBindingDescs[i];
+        bufferMemoryBinding = {};
+        bufferMemoryBinding.buffer = (Buffer*)micromap.GetBuffer();
+        bufferMemoryBinding.memory = memoryBindingDesc.memory;
+        bufferMemoryBinding.offset = memoryBindingDesc.offset;
+    }
+
+    Result result = BindBufferMemory(bufferMemoryBindingDescs, memoryBindingDescNum);
+
+    for (uint32_t i = 0; i < memoryBindingDescNum && result == Result::SUCCESS; i++) {
+        MicromapVK& micromap = *(MicromapVK*)memoryBindingDescs[i].micromap;
+        result = micromap.FinishCreation();
     }
 
     return result;
@@ -1915,7 +2027,7 @@ NRI_INLINE Result DeviceVK::QueryVideoMemoryInfo(MemoryLocation memoryLocation, 
     const auto& vk = GetDispatchTable();
     vk.GetPhysicalDeviceMemoryProperties2(m_PhysicalDevice, &memoryProps);
 
-    bool isLocal = memoryLocation == nri::MemoryLocation::DEVICE || memoryLocation == nri::MemoryLocation::DEVICE_UPLOAD;
+    bool isLocal = memoryLocation == MemoryLocation::DEVICE || memoryLocation == MemoryLocation::DEVICE_UPLOAD;
 
     for (uint32_t i = 0; i < GetCountOf(budgetProps.heapBudget); i++) {
         VkDeviceSize size = budgetProps.heapBudget[i];

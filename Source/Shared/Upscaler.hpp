@@ -901,8 +901,8 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             initParams.outputResolution = {upscalerProps.upscaleResolution.w, upscalerProps.upscaleResolution.h};
             initParams.qualitySetting = qualitySetting;
             initParams.initFlags = initFlags;
-            initParams.creationNodeMask = NRI_NODE_MASK;
-            initParams.visibleNodeMask = NRI_NODE_MASK;
+            initParams.creationNodeMask = NODE_MASK;
+            initParams.visibleNodeMask = NODE_MASK;
 
             result = xessD3D12BuildPipelines(m.xess->context, NULL, true, initParams.initFlags);
             if (result != XESS_RESULT_SUCCESS)
@@ -1060,12 +1060,12 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
 #    if NRI_ENABLE_D3D12_SUPPORT
                 if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12)
-                    ngxResult = NGX_D3D12_CREATE_DLSS_EXT((ID3D12GraphicsCommandList*)commandBufferNative, NRI_NODE_MASK, NRI_NODE_MASK, &m.ngx->handle, m.ngx->params, &srCreateParams);
+                    ngxResult = NGX_D3D12_CREATE_DLSS_EXT((ID3D12GraphicsCommandList*)commandBufferNative, NODE_MASK, NODE_MASK, &m.ngx->handle, m.ngx->params, &srCreateParams);
 #    endif
 
 #    if NRI_ENABLE_VK_SUPPORT
                 if (deviceDesc.graphicsAPI == GraphicsAPI::VK)
-                    ngxResult = NGX_VULKAN_CREATE_DLSS_EXT1((VkDevice)deviceNative, (VkCommandBuffer)commandBufferNative, NRI_NODE_MASK, NRI_NODE_MASK, &m.ngx->handle, m.ngx->params, &srCreateParams);
+                    ngxResult = NGX_VULKAN_CREATE_DLSS_EXT1((VkDevice)deviceNative, (VkCommandBuffer)commandBufferNative, NODE_MASK, NODE_MASK, &m.ngx->handle, m.ngx->params, &srCreateParams);
 #    endif
             }
 
@@ -1088,12 +1088,12 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
 #    if NRI_ENABLE_D3D12_SUPPORT
                 if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12)
-                    ngxResult = NGX_D3D12_CREATE_DLSSD_EXT((ID3D12GraphicsCommandList*)commandBufferNative, NRI_NODE_MASK, NRI_NODE_MASK, &m.ngx->handle, m.ngx->params, &rrCreateParams);
+                    ngxResult = NGX_D3D12_CREATE_DLSSD_EXT((ID3D12GraphicsCommandList*)commandBufferNative, NODE_MASK, NODE_MASK, &m.ngx->handle, m.ngx->params, &rrCreateParams);
 #    endif
 
 #    if NRI_ENABLE_VK_SUPPORT
                 if (deviceDesc.graphicsAPI == GraphicsAPI::VK)
-                    ngxResult = NGX_VULKAN_CREATE_DLSSD_EXT1((VkDevice)deviceNative, (VkCommandBuffer)commandBufferNative, NRI_NODE_MASK, NRI_NODE_MASK, &m.ngx->handle, m.ngx->params, &rrCreateParams);
+                    ngxResult = NGX_VULKAN_CREATE_DLSSD_EXT1((VkDevice)deviceNative, (VkCommandBuffer)commandBufferNative, NODE_MASK, NODE_MASK, &m.ngx->handle, m.ngx->params, &rrCreateParams);
 #    endif
             }
         }

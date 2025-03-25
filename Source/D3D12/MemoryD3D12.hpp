@@ -8,8 +8,8 @@ Result MemoryD3D12::Create(const AllocateMemoryDesc& allocateMemoryDesc) {
     heapDesc.Properties.Type = (D3D12_HEAP_TYPE)memoryTypeInfo.heapType;
     heapDesc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
     heapDesc.Properties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-    heapDesc.Properties.CreationNodeMask = NRI_NODE_MASK;
-    heapDesc.Properties.VisibleNodeMask = NRI_NODE_MASK;
+    heapDesc.Properties.CreationNodeMask = NODE_MASK;
+    heapDesc.Properties.VisibleNodeMask = NODE_MASK;
     heapDesc.Alignment = 0;
     heapDesc.Flags = (allocateMemoryDesc.size ? GetHeapFlags(allocateMemoryDesc.type) : D3D12_HEAP_FLAG_NONE) | D3D12_HEAP_FLAG_CREATE_NOT_ZEROED;
 

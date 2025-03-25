@@ -33,6 +33,10 @@ struct DeviceD3D11 final : public DeviceBase {
         return m_ImmediateContext;
     }
 
+    inline ID3D11Buffer* GetZeroBuffer() const {
+        return m_ZeroBuffer;
+    }
+
     inline uint8_t GetImmediateContextVersion() {
         return m_ImmediateContextVersion;
     }
@@ -68,7 +72,7 @@ struct DeviceD3D11 final : public DeviceBase {
         return m_AmdExt.context != nullptr;
     }
 
-    inline const AmdExt& GetAmdExt() const {
+    inline const AmdExtD3D11& GetAmdExt() const {
         return m_AmdExt;
     }
 #else
@@ -145,12 +149,13 @@ private:
     // Order of destructors is important
 #if NRI_ENABLE_D3D_EXTENSIONS
     NvExt m_NvExt = {};
-    AmdExt m_AmdExt = {};
+    AmdExtD3D11 m_AmdExt = {};
 #endif
     ComPtr<ID3D11DeviceBest> m_Device;
     ComPtr<IDXGIAdapter> m_Adapter;
     ComPtr<ID3D11DeviceContextBest> m_ImmediateContext;
     ComPtr<ID3D11Multithread> m_Multithread;
+    ComPtr<ID3D11Buffer> m_ZeroBuffer;
     std::array<std::vector<QueueD3D11*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies = {}; // TODO: use Vector!
     CRITICAL_SECTION m_CriticalSection = {};                                               // TODO: Lock?
     CoreInterface m_iCore = {};

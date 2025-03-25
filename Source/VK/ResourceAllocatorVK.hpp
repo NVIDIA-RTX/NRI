@@ -19,6 +19,14 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #define VMA_IMPLEMENTATION
 
+#ifndef NDEBUG
+#    define VMA_LEAK_LOG_FORMAT(format, ...) \
+        do { \
+            printf(format, __VA_ARGS__); \
+            printf("\n"); \
+        } while (false)
+#endif
+
 #include "vk_mem_alloc.h"
 
 #if defined(__GNUC__)
@@ -28,7 +36,6 @@
 #else
 #    pragma warning(pop)
 #endif
-
 
 Result DeviceVK::CreateVma() {
     if (m_Vma)
@@ -179,7 +186,32 @@ Result AccelerationStructureVK::Create(const AllocateAccelerationStructureDesc& 
         m_BuildScratchSize = sizesInfo.buildScratchSize;
         m_UpdateScratchSize = sizesInfo.updateScratchSize;
         m_Type = GetAccelerationStructureType(accelerationStructureDesc.desc.type);
-        m_AccelerationStructureSize = sizesInfo.accelerationStructureSize;
+
+        FinishCreation();
+    }
+
+    return result;
+}
+
+Result MicromapVK::Create(const AllocateMicromapDesc& micromapDesc) {
+    Result nriResult = m_Device.CreateVma();
+    if (nriResult != Result::SUCCESS)
+        return nriResult;
+
+    VkMicromapBuildSizesInfoEXT sizesInfo = {VK_STRUCTURE_TYPE_MICROMAP_BUILD_SIZES_INFO_EXT};
+    m_Device.GetMicromapBuildSizesInfo(micromapDesc.desc, sizesInfo);
+
+    AllocateBufferDesc bufferDesc = {};
+    bufferDesc.memoryLocation = micromapDesc.memoryLocation;
+    bufferDesc.memoryPriority = micromapDesc.memoryPriority;
+    bufferDesc.desc.size = sizesInfo.micromapSize;
+    bufferDesc.desc.usage = BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE;
+
+    Buffer* buffer = nullptr;
+    Result result = m_Device.CreateImplementation<BufferVK>(buffer, bufferDesc);
+    if (result == Result::SUCCESS) {
+        m_Buffer = (BufferVK*)buffer;
+        m_BuildScratchSize = sizesInfo.buildScratchSize;
 
         FinishCreation();
     }

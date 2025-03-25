@@ -238,9 +238,39 @@ static inline void ConvertRects(const Rect* in, uint32_t rectNum, D3D12_RECT* ou
     }
 }
 
+static void ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs, const BottomLevelGeometryDesc* geometries, uint32_t geometryNum) {
+    for (uint32_t i = 0; i < geometryNum; i++) {
+        const BottomLevelGeometryDesc& in = geometries[i];
+        D3D12_RAYTRACING_GEOMETRY_DESC& out = geometryDescs[i];
+
+        out = {};
+        out.Type = GetGeometryType(in.type);
+        out.Flags = GetGeometryFlags(in.flags);
+
+        if (out.Type == D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES) {
+            const BottomLevelTrianglesDesc& triangles = in.geometry.triangles;
+
+            out.Triangles.Transform3x4 = triangles.transformBuffer ? ((BufferD3D12*)triangles.transformBuffer)->GetPointerGPU() + triangles.transformOffset : 0;
+            out.Triangles.IndexFormat = triangles.indexType == IndexType::UINT16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+            out.Triangles.VertexFormat = GetDxgiFormat(triangles.vertexFormat).typed;
+            out.Triangles.IndexCount = triangles.indexNum;
+            out.Triangles.VertexCount = triangles.vertexNum;
+            out.Triangles.IndexBuffer = triangles.indexBuffer ? ((BufferD3D12*)triangles.indexBuffer)->GetPointerGPU() + triangles.indexOffset : 0;
+            out.Triangles.VertexBuffer.StartAddress = ((BufferD3D12*)triangles.vertexBuffer)->GetPointerGPU() + triangles.vertexOffset;
+            out.Triangles.VertexBuffer.StrideInBytes = triangles.vertexStride;
+        } else if (out.Type == D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS) {
+            const BottomLevelAabbsDesc& aabbs = in.geometry.aabbs;
+
+            out.AABBs.AABBCount = aabbs.num;
+            out.AABBs.AABBs.StartAddress = ((BufferD3D12*)aabbs.buffer)->GetPointerGPU() + aabbs.offset;
+            out.AABBs.AABBs.StrideInBytes = aabbs.stride;
+        }
+    }
+}
+
 Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D12CommandAllocator* commandAllocator) {
     ComPtr<ID3D12GraphicsCommandListBest> graphicsCommandList;
-    HRESULT hr = m_Device->CreateCommandList(NRI_NODE_MASK, commandListType, commandAllocator, nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&graphicsCommandList);
+    HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&graphicsCommandList);
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommandList()");
 
     m_Version = QueryLatestGraphicsCommandList(graphicsCommandList, m_GraphicsCommandList);
@@ -383,22 +413,14 @@ NRI_INLINE void CommandBufferD3D12::ClearAttachments(const ClearDesc* clearDescs
     }
 }
 
-NRI_INLINE void CommandBufferD3D12::ClearStorageBuffer(const ClearStorageBufferDesc& clearDesc) {
+NRI_INLINE void CommandBufferD3D12::ClearStorage(const ClearStorageDesc& clearDesc) {
     DescriptorSetD3D12* descriptorSet = m_DescriptorSets[clearDesc.setIndex];
-    DescriptorD3D12* resourceView = (DescriptorD3D12*)clearDesc.storageBuffer;
-    const UINT clearValues[4] = {clearDesc.value, clearDesc.value, clearDesc.value, clearDesc.value};
+    DescriptorD3D12* storage = (DescriptorD3D12*)clearDesc.storage;
 
-    m_GraphicsCommandList->ClearUnorderedAccessViewUint({descriptorSet->GetPointerGPU(clearDesc.rangeIndex, clearDesc.descriptorIndex)}, {resourceView->GetPointerCPU()}, *resourceView, clearValues, 0, nullptr);
-}
-
-NRI_INLINE void CommandBufferD3D12::ClearStorageTexture(const ClearStorageTextureDesc& clearDesc) {
-    DescriptorSetD3D12* descriptorSet = m_DescriptorSets[clearDesc.setIndex];
-    DescriptorD3D12* resourceView = (DescriptorD3D12*)clearDesc.storageTexture;
-
-    if (resourceView->IsIntegerFormat())
-        m_GraphicsCommandList->ClearUnorderedAccessViewUint({descriptorSet->GetPointerGPU(clearDesc.rangeIndex, clearDesc.descriptorIndex)}, {resourceView->GetPointerCPU()}, *resourceView, &clearDesc.value.color.ui.x, 0, nullptr);
+    if (storage->IsIntegerFormat() || storage->GetBufferViewType() != BufferViewType::MAX_NUM)
+        m_GraphicsCommandList->ClearUnorderedAccessViewUint({descriptorSet->GetPointerGPU(clearDesc.rangeIndex, clearDesc.descriptorIndex)}, {storage->GetPointerCPU()}, *storage, &clearDesc.value.ui.x, 0, nullptr);
     else
-        m_GraphicsCommandList->ClearUnorderedAccessViewFloat({descriptorSet->GetPointerGPU(clearDesc.rangeIndex, clearDesc.descriptorIndex)}, {resourceView->GetPointerCPU()}, *resourceView, &clearDesc.value.color.f.x, 0, nullptr);
+        m_GraphicsCommandList->ClearUnorderedAccessViewFloat({descriptorSet->GetPointerGPU(clearDesc.rangeIndex, clearDesc.descriptorIndex)}, {storage->GetPointerCPU()}, *storage, &clearDesc.value.f.x, 0, nullptr);
 }
 
 NRI_INLINE void CommandBufferD3D12::BeginRendering(const AttachmentsDesc& attachmentsDesc) {
@@ -621,6 +643,24 @@ NRI_INLINE void CommandBufferD3D12::CopyTexture(Texture& dstTexture, const Textu
         };
 
         m_GraphicsCommandList->CopyTextureRegion(&dstTextureCopyLocation, dstRegionDesc->x, dstRegionDesc->y, dstRegionDesc->z, &srcTextureCopyLocation, &box);
+    }
+}
+
+NRI_INLINE void CommandBufferD3D12::ZeroBuffer(Buffer& buffer, uint64_t offset, uint64_t size) {
+    const BufferD3D12& dst = (BufferD3D12&)buffer;
+    ID3D12Resource* zeroBuffer = m_Device.GetZeroBuffer();    
+    D3D12_RESOURCE_DESC zeroBufferDesc = zeroBuffer->GetDesc();
+
+    if (size == WHOLE_SIZE)
+        size = dst.GetDesc().size;
+
+    while(size) {
+        uint64_t blockSize = size < zeroBufferDesc.Width ? size : zeroBufferDesc.Width;
+
+        m_GraphicsCommandList->CopyBufferRegion(dst, offset, zeroBuffer, 0, blockSize);
+
+        offset += blockSize;
+        size -= blockSize;
     }
 }
 
@@ -972,7 +1012,7 @@ NRI_INLINE void CommandBufferD3D12::BuildTopLevelAccelerationStructure(const Bui
         out.DestAccelerationStructureData = dst->GetHandle();
         out.ScratchAccelerationStructureData = scratchBuffer->GetPointerGPU() + in.scratchOffset;
         out.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-        out.Inputs.Flags = GetAccelerationStructureBuildFlags(dst->GetFlags());
+        out.Inputs.Flags = GetBuildAccelerationStructureFlags(dst->GetFlags());
         out.Inputs.NumDescs = in.instanceNum;
         out.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
         out.Inputs.InstanceDescs = instanceBuffer->GetPointerGPU() + in.instanceOffset;
@@ -1008,7 +1048,7 @@ NRI_INLINE void CommandBufferD3D12::BuildBottomLevelAccelerationStructure(const 
         out.DestAccelerationStructureData = dst->GetHandle();
         out.ScratchAccelerationStructureData = scratchBuffer->GetPointerGPU() + in.scratchOffset;
         out.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
-        out.Inputs.Flags = GetAccelerationStructureBuildFlags(dst->GetFlags());
+        out.Inputs.Flags = GetBuildAccelerationStructureFlags(dst->GetFlags());
         out.Inputs.NumDescs = in.geometryNum;
         out.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
         out.Inputs.pGeometryDescs = geometryDescs;
@@ -1030,7 +1070,7 @@ NRI_INLINE void CommandBufferD3D12::CopyAccelerationStructure(AccelerationStruct
     m_GraphicsCommandList->CopyRaytracingAccelerationStructure(((AccelerationStructureD3D12&)dst).GetHandle(), ((AccelerationStructureD3D12&)src).GetHandle(), GetCopyMode(copyMode));
 }
 
-NRI_INLINE void CommandBufferD3D12::WriteAccelerationStructureSize(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset) {
+NRI_INLINE void CommandBufferD3D12::WriteAccelerationStructuresSizes(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset) {
     Scratch<D3D12_GPU_VIRTUAL_ADDRESS> virtualAddresses = AllocateScratch(m_Device, D3D12_GPU_VIRTUAL_ADDRESS, accelerationStructureNum);
     for (uint32_t i = 0; i < accelerationStructureNum; i++)
         virtualAddresses[i] = ((AccelerationStructureD3D12&)accelerationStructures[i]).GetHandle();

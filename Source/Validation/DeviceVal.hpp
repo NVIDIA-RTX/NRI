@@ -34,9 +34,6 @@ static inline Mip_t GetMaxMipNum(uint16_t w, uint16_t h, uint16_t d) {
     return mipNum;
 }
 
-void ConvertGeometryObjectsVal(BottomLevelGeometry* destObjects, const BottomLevelGeometry* sourceObjects, uint32_t objectNum);
-QueryType GetQueryTypeVK(uint32_t queryTypeVK);
-
 DeviceVal::DeviceVal(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks, DeviceBase& device)
     : DeviceBase(callbacks, allocationCallbacks, NRI_OBJECT_SIGNATURE)
     , m_Impl(*(Device*)&device)
@@ -1004,7 +1001,7 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
     auto accelerationStructureDescImpl = accelerationStructureDesc;
 
     uint32_t geometryNum = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.geometryOrInstanceNum : 0;
-    Scratch<BottomLevelGeometry> objectImplArray = AllocateScratch(*this, BottomLevelGeometry, geometryNum);
+    Scratch<BottomLevelGeometryDesc> objectImplArray = AllocateScratch(*this, BottomLevelGeometryDesc, geometryNum);
 
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
         ConvertGeometryObjectsVal(objectImplArray, accelerationStructureDesc.geometries, geometryNum);
@@ -1030,7 +1027,7 @@ NRI_INLINE Result DeviceVal::AllocateAccelerationStructure(const AllocateAcceler
     auto accelerationStructureDescImpl = accelerationStructureDesc;
 
     uint32_t geometryNum = accelerationStructureDesc.desc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.desc.geometryOrInstanceNum : 0;
-    Scratch<BottomLevelGeometry> objectImplArray = AllocateScratch(*this, BottomLevelGeometry, geometryNum);
+    Scratch<BottomLevelGeometryDesc> objectImplArray = AllocateScratch(*this, BottomLevelGeometryDesc, geometryNum);
 
     if (accelerationStructureDesc.desc.type == AccelerationStructureType::BOTTOM_LEVEL) {
         ConvertGeometryObjectsVal(objectImplArray, accelerationStructureDesc.desc.geometries, geometryNum);

@@ -4,6 +4,8 @@
 
 namespace nri {
 
+QueryType GetQueryTypeVK(uint32_t queryTypeVK);
+
 constexpr std::array<VkIndexType, (size_t)IndexType::MAX_NUM> g_IndexTypes = {
     VK_INDEX_TYPE_UINT16, // UINT16
     VK_INDEX_TYPE_UINT32, // UINT32
@@ -506,13 +508,13 @@ constexpr VkImageAspectFlags GetImageAspectFlags(Format format) {
 
 constexpr bool HasStencil(Format format) {
     switch (format) {
-        case nri::Format::D24_UNORM_S8_UINT:
+        case Format::D24_UNORM_S8_UINT:
             return true;
-        case nri::Format::D32_SFLOAT_S8_UINT_X24:
+        case Format::D32_SFLOAT_S8_UINT_X24:
             return true;
-        case nri::Format::X24_G8_UINT:
+        case Format::X24_G8_UINT:
             return true;
-        case nri::Format::X32_G8_UINT_X24:
+        case Format::X32_G8_UINT_X24:
             return true;
         default:
             return false;
@@ -570,6 +572,21 @@ constexpr VkColorComponentFlags GetColorComponent(ColorWriteBits colorWriteMask)
     return VkColorComponentFlags(colorWriteMask & ColorWriteBits::RGBA);
 }
 
+constexpr VkBuildMicromapFlagsEXT GetBuildMicromapFlags(MicromapBits micromapBits) {
+    VkBuildMicromapFlagsEXT flags = 0;
+
+    if (micromapBits & MicromapBits::ALLOW_COMPACTION)
+        flags |= VK_BUILD_MICROMAP_ALLOW_COMPACTION_BIT_EXT;
+
+    if (micromapBits & MicromapBits::PREFER_FAST_TRACE)
+        flags |= VK_BUILD_MICROMAP_PREFER_FAST_TRACE_BIT_EXT;
+
+    if (micromapBits & MicromapBits::PREFER_FAST_BUILD)
+        flags |= VK_BUILD_MICROMAP_PREFER_FAST_BUILD_BIT_EXT;
+
+    return flags;
+}
+
 constexpr VkAccelerationStructureTypeKHR GetAccelerationStructureType(AccelerationStructureType type) {
     static_assert(VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR == (uint32_t)AccelerationStructureType::TOP_LEVEL, "Enum mismatch");
     static_assert(VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR == (uint32_t)AccelerationStructureType::BOTTOM_LEVEL, "Enum mismatch");
@@ -577,7 +594,7 @@ constexpr VkAccelerationStructureTypeKHR GetAccelerationStructureType(Accelerati
     return (VkAccelerationStructureTypeKHR)type;
 }
 
-constexpr VkBuildAccelerationStructureFlagsKHR GetAccelerationStructureBuildFlags(AccelerationStructureBits accelerationStructureBits) {
+constexpr VkBuildAccelerationStructureFlagsKHR GetBuildAccelerationStructureFlags(AccelerationStructureBits accelerationStructureBits) {
     VkBuildAccelerationStructureFlagsKHR flags = 0;
 
     if (accelerationStructureBits & AccelerationStructureBits::ALLOW_UPDATE)
@@ -624,11 +641,24 @@ constexpr VkGeometryTypeKHR GetGeometryType(BottomLevelGeometryType geometryType
     return (VkGeometryTypeKHR)geometryType;
 }
 
-constexpr VkCopyAccelerationStructureModeKHR GetCopyMode(CopyMode copyMode) {
-    static_assert(VK_COPY_ACCELERATION_STRUCTURE_MODE_CLONE_KHR == (uint32_t)CopyMode::CLONE, "Enum mismatch");
-    static_assert(VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR == (uint32_t)CopyMode::COMPACT, "Enum mismatch");
+constexpr VkCopyAccelerationStructureModeKHR GetAccelerationStructureCopyMode(CopyMode copyMode) {
+    if (copyMode == CopyMode::CLONE)
+        return VK_COPY_ACCELERATION_STRUCTURE_MODE_CLONE_KHR;
 
-    return (VkCopyAccelerationStructureModeKHR)copyMode;
+    if (copyMode == CopyMode::COMPACT)
+        return VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR;
+
+    return VK_COPY_ACCELERATION_STRUCTURE_MODE_MAX_ENUM_KHR;
+}
+
+constexpr VkCopyMicromapModeEXT GetMicromapCopyMode(CopyMode copyMode) {
+    if (copyMode == CopyMode::CLONE)
+        return VK_COPY_MICROMAP_MODE_CLONE_EXT;
+
+    if (copyMode == CopyMode::COMPACT)
+        return VK_COPY_MICROMAP_MODE_COMPACT_EXT;
+
+    return VK_COPY_MICROMAP_MODE_MAX_ENUM_EXT;
 }
 
 inline VkFormat GetVkFormat(Format format, bool demoteSrgb = false) {
@@ -661,8 +691,5 @@ inline VkExtent2D GetShadingRate(ShadingRate shadingRate) {
 
     return {};
 }
-
-void ConvertGeometryObjectSizesVK(VkAccelerationStructureGeometryKHR* destObjects, uint32_t* primitiveNums, const BottomLevelGeometry* sourceObjects, uint32_t objectNum);
-void ConvertGeometryObjectsVK(VkAccelerationStructureGeometryKHR* destObjects, VkAccelerationStructureBuildRangeInfoKHR* ranges, const BottomLevelGeometry* sourceObjects, uint32_t objectNum);
 
 } // namespace nri

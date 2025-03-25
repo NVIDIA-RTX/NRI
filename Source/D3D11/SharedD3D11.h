@@ -33,9 +33,9 @@ D3D11_PRIMITIVE_TOPOLOGY GetD3D11TopologyFromTopology(Topology topology, uint32_
 D3D11_CULL_MODE GetD3D11CullModeFromCullMode(CullMode cullMode);
 D3D11_COMPARISON_FUNC GetD3D11ComparisonFuncFromCompareFunc(CompareFunc compareFunc);
 D3D11_STENCIL_OP GetD3D11StencilOpFromStencilFunc(StencilFunc stencilFunc);
-D3D11_BLEND_OP GetyD3D11BlendOp(BlendFunc blendFunc);
+D3D11_BLEND_OP GetD3D11BlendOp(BlendFunc blendFunc);
 D3D11_BLEND GetD3D11BlendFromBlendFactor(BlendFactor blendFactor);
-D3D11_LOGIC_OP GetyD3D11LogicOp(LogicFunc logicalFunc);
+D3D11_LOGIC_OP GetD3D11LogicOp(LogicFunc logicalFunc);
 bool GetTextureDesc(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& textureDesc);
 bool GetBufferDesc(const BufferD3D11Desc& bufferD3D11Desc, BufferDesc& bufferDesc);
 uint32_t ConvertPriority(float priority);
@@ -192,7 +192,7 @@ struct SamplePositionsState {
 #    include "nvShaderExtnEnums.h"
 #    include "nvapi.h"
 
-struct AmdExt {
+struct AmdExtD3D11 {
     // Funcs first
     AGS_INITIALIZE Initialize;
     AGS_DEINITIALIZE Deinitialize;
@@ -210,7 +210,7 @@ struct AmdExt {
     AGSContext* context;
     bool isWrapped;
 
-    ~AmdExt() {
+    ~AmdExtD3D11() {
         if (context && !isWrapped)
             Deinitialize(context);
 

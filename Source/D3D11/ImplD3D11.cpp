@@ -340,10 +340,6 @@ static void NRI_CALL CmdCopyTexture(CommandBuffer& commandBuffer, Texture& dstTe
     ((CommandBufferD3D11&)commandBuffer).CopyTexture(dstTexture, dstRegionDesc, srcTexture, srcRegionDesc);
 }
 
-static void NRI_CALL CmdResolveTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
-    ((CommandBufferD3D11&)commandBuffer).ResolveTexture(dstTexture, dstRegionDesc, srcTexture, srcRegionDesc);
-}
-
 static void NRI_CALL CmdUploadBufferToTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc& dstRegionDesc, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayoutDesc) {
     ((CommandBufferD3D11&)commandBuffer).UploadBufferToTexture(dstTexture, dstRegionDesc, srcBuffer, srcDataLayoutDesc);
 }
@@ -352,12 +348,16 @@ static void NRI_CALL CmdReadbackTextureToBuffer(CommandBuffer& commandBuffer, Bu
     ((CommandBufferD3D11&)commandBuffer).ReadbackTextureToBuffer(dstBuffer, dstDataLayoutDesc, srcTexture, srcRegionDesc);
 }
 
-static void NRI_CALL CmdClearStorageBuffer(CommandBuffer& commandBuffer, const ClearStorageBufferDesc& clearDesc) {
-    ((CommandBufferD3D11&)commandBuffer).ClearStorageBuffer(clearDesc);
+static void NRI_CALL CmdZeroBuffer(CommandBuffer& commandBuffer, Buffer& buffer, uint64_t offset, uint64_t size) {
+    ((CommandBufferD3D11&)commandBuffer).ZeroBuffer(buffer, offset, size);
 }
 
-static void NRI_CALL CmdClearStorageTexture(CommandBuffer& commandBuffer, const ClearStorageTextureDesc& clearDesc) {
-    ((CommandBufferD3D11&)commandBuffer).ClearStorageTexture(clearDesc);
+static void NRI_CALL CmdResolveTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
+    ((CommandBufferD3D11&)commandBuffer).ResolveTexture(dstTexture, dstRegionDesc, srcTexture, srcRegionDesc);
+}
+
+static void NRI_CALL CmdClearStorage(CommandBuffer& commandBuffer, const ClearStorageDesc& clearDesc) {
+    ((CommandBufferD3D11&)commandBuffer).ClearStorage(clearDesc);
 }
 
 static void NRI_CALL CmdResetQueries(CommandBuffer&, QueryPool&, uint32_t, uint32_t) {
@@ -618,10 +618,6 @@ static void NRI_CALL EmuCmdCopyTexture(CommandBuffer& commandBuffer, Texture& ds
     ((CommandBufferEmuD3D11&)commandBuffer).CopyTexture(dstTexture, dstRegionDesc, srcTexture, srcRegionDesc);
 }
 
-static void NRI_CALL EmuCmdResolveTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
-    ((CommandBufferEmuD3D11&)commandBuffer).ResolveTexture(dstTexture, dstRegionDesc, srcTexture, srcRegionDesc);
-}
-
 static void NRI_CALL EmuCmdUploadBufferToTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc& dstRegionDesc, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayoutDesc) {
     ((CommandBufferEmuD3D11&)commandBuffer).UploadBufferToTexture(dstTexture, dstRegionDesc, srcBuffer, srcDataLayoutDesc);
 }
@@ -630,12 +626,16 @@ static void NRI_CALL EmuCmdReadbackTextureToBuffer(CommandBuffer& commandBuffer,
     ((CommandBufferEmuD3D11&)commandBuffer).ReadbackTextureToBuffer(dstBuffer, dstDataLayoutDesc, srcTexture, srcRegionDesc);
 }
 
-static void NRI_CALL EmuCmdClearStorageBuffer(CommandBuffer& commandBuffer, const ClearStorageBufferDesc& clearDesc) {
-    ((CommandBufferEmuD3D11&)commandBuffer).ClearStorageBuffer(clearDesc);
+static void NRI_CALL EmuCmdFillBuffer(CommandBuffer& commandBuffer, Buffer& buffer, uint64_t offset, uint64_t size) {
+    ((CommandBufferEmuD3D11&)commandBuffer).ZeroBuffer(buffer, offset, size);
 }
 
-static void NRI_CALL EmuCmdClearStorageTexture(CommandBuffer& commandBuffer, const ClearStorageTextureDesc& clearDesc) {
-    ((CommandBufferEmuD3D11&)commandBuffer).ClearStorageTexture(clearDesc);
+static void NRI_CALL EmuCmdResolveTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
+    ((CommandBufferEmuD3D11&)commandBuffer).ResolveTexture(dstTexture, dstRegionDesc, srcTexture, srcRegionDesc);
+}
+
+static void NRI_CALL EmuCmdClearStorage(CommandBuffer& commandBuffer, const ClearStorageDesc& clearDesc) {
+    ((CommandBufferEmuD3D11&)commandBuffer).ClearStorage(clearDesc);
 }
 
 static void NRI_CALL EmuCmdResetQueries(CommandBuffer&, QueryPool&, uint32_t, uint32_t) {
@@ -780,9 +780,9 @@ Result DeviceD3D11::FillFunctionTable(CoreInterface& table) const {
         table.CmdCopyTexture = ::EmuCmdCopyTexture;
         table.CmdUploadBufferToTexture = ::EmuCmdUploadBufferToTexture;
         table.CmdReadbackTextureToBuffer = ::EmuCmdReadbackTextureToBuffer;
-        table.CmdClearStorageBuffer = ::EmuCmdClearStorageBuffer;
-        table.CmdClearStorageTexture = ::EmuCmdClearStorageTexture;
+        table.CmdZeroBuffer = ::EmuCmdFillBuffer;
         table.CmdResolveTexture = ::EmuCmdResolveTexture;
+        table.CmdClearStorage = ::EmuCmdClearStorage;
         table.CmdResetQueries = ::EmuCmdResetQueries;
         table.CmdBeginQuery = ::EmuCmdBeginQuery;
         table.CmdEndQuery = ::EmuCmdEndQuery;
@@ -824,9 +824,9 @@ Result DeviceD3D11::FillFunctionTable(CoreInterface& table) const {
         table.CmdCopyTexture = ::CmdCopyTexture;
         table.CmdUploadBufferToTexture = ::CmdUploadBufferToTexture;
         table.CmdReadbackTextureToBuffer = ::CmdReadbackTextureToBuffer;
-        table.CmdClearStorageBuffer = ::CmdClearStorageBuffer;
-        table.CmdClearStorageTexture = ::CmdClearStorageTexture;
+        table.CmdZeroBuffer = ::CmdZeroBuffer;
         table.CmdResolveTexture = ::CmdResolveTexture;
+        table.CmdClearStorage = ::CmdClearStorage;
         table.CmdResetQueries = ::CmdResetQueries;
         table.CmdBeginQuery = ::CmdBeginQuery;
         table.CmdEndQuery = ::CmdEndQuery;
@@ -1156,7 +1156,7 @@ Result DeviceD3D11::FillFunctionTable(UpscalerInterface& table) const {
 static Result NRI_CALL CreateCommandBufferD3D11(Device& device, const CommandBufferD3D11Desc& commandBufferDesc, CommandBuffer*& commandBuffer) {
     DeviceD3D11& deviceD3D11 = (DeviceD3D11&)device;
 
-    return ::CreateCommandBuffer(deviceD3D11, commandBufferDesc.d3d11DeviceContext, commandBuffer);
+    return CreateCommandBuffer(deviceD3D11, commandBufferDesc.d3d11DeviceContext, commandBuffer);
 }
 
 static Result NRI_CALL CreateBufferD3D11(Device& device, const BufferD3D11Desc& bufferDesc, Buffer*& buffer) {

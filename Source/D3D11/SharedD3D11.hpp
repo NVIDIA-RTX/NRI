@@ -20,7 +20,7 @@ constexpr std::array<D3D11_LOGIC_OP, (size_t)LogicFunc::MAX_NUM> g_LogicOps = {
 };
 VALIDATE_ARRAY(g_LogicOps);
 
-D3D11_LOGIC_OP nri::GetyD3D11LogicOp(LogicFunc logicFunc) {
+D3D11_LOGIC_OP nri::GetD3D11LogicOp(LogicFunc logicFunc) {
     return g_LogicOps[(size_t)logicFunc];
 }
 
@@ -33,7 +33,7 @@ constexpr std::array<D3D11_BLEND_OP, (size_t)BlendFunc::MAX_NUM> g_BlendOps = {
 };
 VALIDATE_ARRAY(g_BlendOps);
 
-D3D11_BLEND_OP nri::GetyD3D11BlendOp(BlendFunc blendFunc) {
+D3D11_BLEND_OP nri::GetD3D11BlendOp(BlendFunc blendFunc) {
     return g_BlendOps[(size_t)blendFunc];
 }
 

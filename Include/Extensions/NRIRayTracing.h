@@ -4,11 +4,13 @@
 
 NriNamespaceBegin
 
-NriForwardStruct(AccelerationStructure);    // bottom or top level acceleration structure (aka BLAS or TLAS respectively)
-NriForwardStruct(Micromap);                 // a micromap that encodes sub-triangle opacity (aka OMM)
+NriForwardStruct(AccelerationStructure); // bottom or top level acceleration structure (aka BLAS or TLAS respectively)
+NriForwardStruct(Micromap);              // a micromap that encodes sub-triangle opacity (aka OMM)
+
+static const NriPtr(Buffer) NriConstant(HAS_BUFFER) = (NriPtr(Buffer))1; // only to indicate buffer presence in "AccelerationStructureDesc"
 
 //============================================================================================================================================================================================
-#pragma region [ Shader library and pipeline ]
+#pragma region [ Pipeline ]
 //============================================================================================================================================================================================
 
 NriStruct(ShaderLibraryDesc) {
@@ -46,6 +48,13 @@ NriEnum(MicromapFormat, uint16_t,
     OPACITY_4_STATE                     = 2
 );
 
+NriEnum(MicromapSpecialIndex, int8_t,
+    FULLY_TRANSPARENT                   = -1,
+    FULLY_OPAQUE                        = -2,
+    FULLY_UNKNOWN_TRANSPARENT           = -3,
+    FULLY_UNKNOWN_OPAQUE                = -4
+);
+
 NriBits(MicromapBits, uint8_t,
     NONE                                = 0,
     ALLOW_COMPACTION                    = NriBit(1), // allows to compact the micromap by copying using "COMPACT" mode
@@ -66,8 +75,8 @@ NriStruct(MicromapDesc) {
 };
 
 NriStruct(MicromapMemoryBindingDesc) {
-    NriPtr(Memory) memory;
     NriPtr(Micromap) micromap;
+    NriPtr(Memory) memory;
     uint64_t offset;
 };
 
@@ -79,6 +88,18 @@ NriStruct(BuildMicromapDesc) {
     uint64_t triangleOffset;
     NriPtr(Buffer) scratchBuffer;
     uint64_t scratchOffset;
+};
+
+NriStruct(BottomLevelMicromapDesc) {
+    NriPtr(Micromap) micromap;
+
+    // An index buffer specifying which micromap triangle to use for each triangle in the geometry. If an index is the unsigned cast of one of the values from "MicromapSpecialIndex"
+    // then that triangle behaves as described for that special value. Otherwise that triangle uses the opacity micromap information from micromap at that index plus "baseTriangle".
+    // If not provided, "1:1" mapping between geometry triangles and micromap triangles
+    const NriPtr(Buffer) indexBuffer;
+    uint64_t indexOffset;
+    uint32_t baseTriangle;
+    Nri(IndexType) indexType;
 };
 
 // Data layout
@@ -133,7 +154,7 @@ NriBits(TopLevelInstanceBits, uint32_t,
     DISABLE_MICROMAPS                   = NriBit(5)  // disable micromap test for all triangles and revert to using geometry opaque/non-opaque state instead
 );
 
-NriStruct(BottomLevelTriangles) {
+NriStruct(BottomLevelTrianglesDesc) {
     // Vertices
     NriPtr(Buffer) vertexBuffer;
     uint64_t vertexOffset;
@@ -152,40 +173,35 @@ NriStruct(BottomLevelTriangles) {
     NriOptional uint64_t transformOffset;
 
     // Micromap
-    NriOptional NriPtr(Micromap) micromap;
-
-    // Remap buffer specifying which micromap triangle to use for each triangle in the geometry.
-    // If not provided, "1:1" mapping between geometry triangles and micromap triangles
-    NriOptional const NriPtr(Buffer) micromapRemapBuffer;
-    NriOptional uint64_t micromapRemapOffset;
+    NriOptional NriPtr(BottomLevelMicromapDesc) micromap;
 };
 
-NriStruct(BottomLevelAabbs) {
+NriStruct(BottomLevelAabbsDesc) {
     NriPtr(Buffer) buffer; // contains "BottomLevelAabb" entries
     uint64_t offset;
     uint32_t num;
     uint32_t stride;
 };
 
-NriStruct(BottomLevelGeometry) {
+NriStruct(BottomLevelGeometryDesc) {
     Nri(BottomLevelGeometryType) type;
     Nri(BottomLevelGeometryBits) flags;
     union {
-        Nri(BottomLevelTriangles) triangles;
-        Nri(BottomLevelAabbs) aabbs;
+        Nri(BottomLevelTrianglesDesc) triangles;
+        Nri(BottomLevelAabbsDesc) aabbs;
     } geometry;
 };
 
 NriStruct(AccelerationStructureDesc) {
-    const NriPtr(BottomLevelGeometry) geometries; // needed only for BOTTOM_LEVEL
+    const NriPtr(BottomLevelGeometryDesc) geometries; // needed only for "BOTTOM_LEVEL", "HAS_BUFFER" can be used to indicate a buffer presence (no real buffers needed at initialization time)
     uint32_t geometryOrInstanceNum;
     Nri(AccelerationStructureBits) flags;
     Nri(AccelerationStructureType) type;
 };
 
 NriStruct(AccelerationStructureMemoryBindingDesc) {
-    NriPtr(Memory) memory;
     NriPtr(AccelerationStructure) accelerationStructure;
+    NriPtr(Memory) memory;
     uint64_t offset;
 };
 
@@ -202,7 +218,7 @@ NriStruct(BuildTopLevelAccelerationStructureDesc) {
 NriStruct(BuildBottomLevelAccelerationStructureDesc) {
     NriPtr(AccelerationStructure) dst;
     NriOptional const NriPtr(AccelerationStructure) src; // implies "update" instead of "build" if provided (requires "ALLOW_UPDATE")
-    const NriPtr(BottomLevelGeometry) geometries;
+    const NriPtr(BottomLevelGeometryDesc) geometries;
     uint32_t geometryNum;
     NriPtr(Buffer) scratchBuffer;
     uint64_t scratchOffset;
@@ -322,9 +338,9 @@ NriStruct(RayTracingInterface) {
 
             // Copy
             void    (NRI_CALL *CmdCopyAccelerationStructure)                        (NriRef(CommandBuffer) commandBuffer, NriRef(AccelerationStructure) dst, const NriRef(AccelerationStructure) src, Nri(CopyMode) copyMode);
-            void    (NRI_CALL *CmdWriteAccelerationStructureSize)                   (NriRef(CommandBuffer) commandBuffer, const NriPtr(AccelerationStructure) const* accelerationStructures, uint32_t accelerationStructureNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
+            void    (NRI_CALL *CmdWriteAccelerationStructuresSizes)                  (NriRef(CommandBuffer) commandBuffer, const NriPtr(AccelerationStructure) const* accelerationStructures, uint32_t accelerationStructureNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
             void    (NRI_CALL *CmdCopyMicromap)                                     (NriRef(CommandBuffer) commandBuffer, NriRef(Micromap) dst, const NriRef(Micromap) src, Nri(CopyMode) copyMode);
-            void    (NRI_CALL *CmdWriteMicromapSize)                                (NriRef(CommandBuffer) commandBuffer, const NriPtr(Micromap) const* micromaps, uint32_t micromapNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
+            void    (NRI_CALL *CmdWriteMicromapsSizes)                               (NriRef(CommandBuffer) commandBuffer, const NriPtr(Micromap) const* micromaps, uint32_t micromapNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
     // }
 
     // Native object

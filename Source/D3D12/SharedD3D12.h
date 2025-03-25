@@ -7,6 +7,8 @@
 
 #include "SharedExternal.h"
 
+namespace nri {
+
 typedef size_t DescriptorPointerCPU;
 typedef uint64_t DescriptorPointerGPU;
 typedef uint16_t HeapIndexType;
@@ -18,17 +20,16 @@ struct MemoryTypeInfo {
     bool mustBeDedicated;
 };
 
-inline nri::MemoryType Pack(const MemoryTypeInfo& memoryTypeInfo) {
-    return *(nri::MemoryType*)&memoryTypeInfo;
+inline MemoryType Pack(const MemoryTypeInfo& memoryTypeInfo) {
+    return *(MemoryType*)&memoryTypeInfo;
 }
 
-inline MemoryTypeInfo Unpack(const nri::MemoryType& memoryType) {
+inline MemoryTypeInfo Unpack(const MemoryType& memoryType) {
     return *(MemoryTypeInfo*)&memoryType;
 }
 
-static_assert(sizeof(MemoryTypeInfo) == sizeof(nri::MemoryType), "Must be equal");
+static_assert(sizeof(MemoryTypeInfo) == sizeof(MemoryType), "Must be equal");
 
-namespace nri {
 enum DescriptorHeapType : uint32_t {
     RESOURCE = 0,
     SAMPLER,
@@ -50,7 +51,6 @@ struct DescriptorHeapDesc {
 
 void GetResourceDesc(D3D12_RESOURCE_DESC* desc, const BufferDesc& bufferDesc);
 void GetResourceDesc(D3D12_RESOURCE_DESC* desc, const TextureDesc& textureDesc);
-void ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs, const BottomLevelGeometry* geometries, uint32_t geometryNum);
 bool GetTextureDesc(const TextureD3D12Desc& textureD3D12Desc, TextureDesc& textureDesc);
 bool GetBufferDesc(const BufferD3D12Desc& bufferD3D12Desc, BufferDesc& bufferDesc);
 uint64_t GetMemorySizeD3D12(const MemoryD3D12Desc& memoryD3D12Desc);
@@ -58,7 +58,9 @@ D3D12_RESIDENCY_PRIORITY ConvertPriority(float priority);
 
 D3D12_HEAP_TYPE GetHeapType(MemoryLocation memoryLocation);
 D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE GetAccelerationStructureType(AccelerationStructureType accelerationStructureType);
-D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS GetAccelerationStructureBuildFlags(AccelerationStructureBits accelerationStructureBuildFlags);
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS GetBuildAccelerationStructureFlags(AccelerationStructureBits accelerationStructureBuildFlags);
+D3D12_RAYTRACING_GEOMETRY_TYPE GetGeometryType(BottomLevelGeometryType geometryType);
+D3D12_RAYTRACING_GEOMETRY_FLAGS GetGeometryFlags(BottomLevelGeometryBits bottomLevelGeometryBits);
 D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE GetCopyMode(CopyMode copyMode);
 D3D12_RESOURCE_FLAGS GetBufferFlags(BufferUsageBits bufferUsage);
 D3D12_RESOURCE_FLAGS GetTextureFlags(TextureUsageBits textureUsage);
@@ -90,7 +92,7 @@ D3D12_SHADING_RATE_COMBINER GetShadingRateCombiner(ShadingRateCombiner shadingRa
 #    include "nvShaderExtnEnums.h"
 #    include "nvapi.h"
 
-struct AmdExt {
+struct AmdExtD3D12 {
     // Funcs first
     AGS_INITIALIZE Initialize;
     AGS_DEINITIALIZE Deinitialize;
@@ -100,7 +102,7 @@ struct AmdExt {
     AGSContext* context;
     bool isWrapped;
 
-    ~AmdExt() {
+    ~AmdExtD3D12() {
         if (context && !isWrapped)
             Deinitialize(context);
 
@@ -143,8 +145,8 @@ struct PixExt {
 };
 
 namespace D3D12MA {
-    class Allocator;
-    class Allocation;
-}
+class Allocator;
+class Allocation;
+} // namespace D3D12MA
 
 #include "DeviceD3D12.h"

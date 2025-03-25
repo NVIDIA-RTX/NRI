@@ -1,7 +1,5 @@
 // © 2021 NVIDIA Corporation
 
-void ConvertGeometryObjectsVal(BottomLevelGeometry* destObjects, const BottomLevelGeometry* sourceObjects, uint32_t objectNum);
-
 static bool ValidateBufferBarrierDesc(const DeviceVal& device, uint32_t i, const BufferBarrierDesc& bufferBarrierDesc) {
     const BufferVal& bufferVal = *(const BufferVal*)bufferBarrierDesc.buffer;
 
@@ -158,26 +156,18 @@ NRI_INLINE void CommandBufferVal::ClearAttachments(const ClearDesc* clearDescs, 
     GetCoreInterface().CmdClearAttachments(*GetImpl(), clearDescs, clearDescNum, rects, rectNum);
 }
 
-NRI_INLINE void CommandBufferVal::ClearStorageBuffer(const ClearStorageBufferDesc& clearDesc) {
+NRI_INLINE void CommandBufferVal::ClearStorage(const ClearStorageDesc& clearDesc) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
-    RETURN_ON_FAILURE(&m_Device, clearDesc.storageBuffer, ReturnVoid(), "'.storageBuffer' is NULL");
+    RETURN_ON_FAILURE(&m_Device, clearDesc.storage, ReturnVoid(), "'.storage' is NULL");
+
+    const DescriptorVal& descriptorVal = *(DescriptorVal*)clearDesc.storage;
+    RETURN_ON_FAILURE(&m_Device, descriptorVal.IsShaderResourceStorage(), ReturnVoid(), "'.storage' is not a 'SHADER_RESOURCE_STORAGE' resource");
 
     auto clearDescImpl = clearDesc;
-    clearDescImpl.storageBuffer = NRI_GET_IMPL(Descriptor, clearDesc.storageBuffer);
+    clearDescImpl.storage = NRI_GET_IMPL(Descriptor, clearDesc.storage);
 
-    GetCoreInterface().CmdClearStorageBuffer(*GetImpl(), clearDescImpl);
-}
-
-NRI_INLINE void CommandBufferVal::ClearStorageTexture(const ClearStorageTextureDesc& clearDesc) {
-    RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
-    RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
-    RETURN_ON_FAILURE(&m_Device, clearDesc.storageTexture, ReturnVoid(), "'.storageTexture' is NULL");
-
-    auto clearDescImpl = clearDesc;
-    clearDescImpl.storageTexture = NRI_GET_IMPL(Descriptor, clearDesc.storageTexture);
-
-    GetCoreInterface().CmdClearStorageTexture(*GetImpl(), clearDescImpl);
+    GetCoreInterface().CmdClearStorage(*GetImpl(), clearDescImpl);
 }
 
 NRI_INLINE void CommandBufferVal::BeginRendering(const AttachmentsDesc& attachmentsDesc) {
@@ -344,14 +334,18 @@ NRI_INLINE void CommandBufferVal::DrawIndexedIndirect(const Buffer& buffer, uint
 }
 
 NRI_INLINE void CommandBufferVal::CopyBuffer(Buffer& dstBuffer, uint64_t dstOffset, const Buffer& srcBuffer, uint64_t srcOffset, uint64_t size) {
+    const BufferDesc& dstDesc = ((BufferVal&)dstBuffer).GetDesc();
+    const BufferDesc& srcDesc = ((BufferVal&)srcBuffer).GetDesc();
+
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
-
+    RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
     if (size == WHOLE_SIZE) {
-        const BufferDesc& dstDesc = ((BufferVal&)dstBuffer).GetDesc();
-        const BufferDesc& srcDesc = ((BufferVal&)srcBuffer).GetDesc();
-
-        if (dstDesc.size != srcDesc.size)
-            REPORT_WARNING(&m_Device, "WHOLE_SIZE is used but 'dstBuffer' and 'srcBuffer' have different sizes");
+        RETURN_ON_FAILURE(&m_Device, dstOffset != 0, ReturnVoid(), "WHOLE_SIZE is used but 'dstOffset' is not 0");
+        RETURN_ON_FAILURE(&m_Device, srcOffset != 0, ReturnVoid(), "WHOLE_SIZE is used but 'srcOffset' is not 0");
+        RETURN_ON_FAILURE(&m_Device, dstDesc.size != srcDesc.size, ReturnVoid(), "WHOLE_SIZE is used but 'dstBuffer' and 'srcBuffer' have different sizes");
+    } else {
+        RETURN_ON_FAILURE(&m_Device, srcOffset + size <= srcDesc.size, ReturnVoid(), "'srcOffset + size' > srcBuffer.size");
+        RETURN_ON_FAILURE(&m_Device, dstOffset + size <= dstDesc.size, ReturnVoid(), "'dstOffset + size' > dstBuffer.size");
     }
 
     Buffer* dstBufferImpl = NRI_GET_IMPL(Buffer, &dstBuffer);
@@ -400,6 +394,23 @@ NRI_INLINE void CommandBufferVal::ReadbackTextureToBuffer(Buffer& dstBuffer, con
     GetCoreInterface().CmdReadbackTextureToBuffer(*GetImpl(), *dstBufferImpl, dstDataLayoutDesc, *srcTextureImpl, srcRegionDesc);
 }
 
+NRI_INLINE void CommandBufferVal::ZeroBuffer(Buffer& buffer, uint64_t offset, uint64_t size) {
+    const BufferDesc& bufferDesc = ((BufferVal&)buffer).GetDesc();
+
+    RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
+    if (size == WHOLE_SIZE) {
+        RETURN_ON_FAILURE(&m_Device, offset != 0, ReturnVoid(), "WHOLE_SIZE is used but 'offset' is not 0");
+    } else {
+        RETURN_ON_FAILURE(&m_Device, offset + size <= bufferDesc.size, ReturnVoid(), "'offset + size' > buffer.size");
+    }
+    RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
+    RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
+
+    Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);
+
+    GetCoreInterface().CmdZeroBuffer(*GetImpl(), *bufferImpl, offset, size);
+}
+
 NRI_INLINE void CommandBufferVal::Dispatch(const DispatchDesc& dispatchDesc) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
@@ -420,7 +431,6 @@ NRI_INLINE void CommandBufferVal::DispatchIndirect(const Buffer& buffer, uint64_
 
 NRI_INLINE void CommandBufferVal::Barrier(const BarrierGroupDesc& barrierGroupDesc) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
-    RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
 
     for (uint32_t i = 0; i < barrierGroupDesc.bufferNum; i++) {
         if (!ValidateBufferBarrierDesc(m_Device, i, barrierGroupDesc.buffers[i]))
@@ -557,8 +567,8 @@ NRI_INLINE void CommandBufferVal::BuildBottomLevelAccelerationStructure(const Bu
     for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++)
         totalGeometryObjectNum += buildBottomLevelAccelerationStructureDescs[i].geometryNum;
 
-    Scratch<BottomLevelGeometry> geometryObjectsImplScratch = AllocateScratch(m_Device, BottomLevelGeometry, totalGeometryObjectNum);
-    BottomLevelGeometry* geometryObjectsImpl = geometryObjectsImplScratch;
+    Scratch<BottomLevelGeometryDesc> geometryObjectsImplScratch = AllocateScratch(m_Device, BottomLevelGeometryDesc, totalGeometryObjectNum);
+    BottomLevelGeometryDesc* geometryObjectsImpl = geometryObjectsImplScratch;
 
     Scratch<BuildBottomLevelAccelerationStructureDesc> buildBottomLevelAccelerationStructureDescsImpl = AllocateScratch(m_Device, BuildBottomLevelAccelerationStructureDesc, buildBottomLevelAccelerationStructureDescNum);
 
@@ -598,7 +608,7 @@ NRI_INLINE void CommandBufferVal::CopyAccelerationStructure(AccelerationStructur
     GetRayTracingInterface().CmdCopyAccelerationStructure(*GetImpl(), dstImpl, srcImpl, copyMode);
 }
 
-NRI_INLINE void CommandBufferVal::WriteAccelerationStructureSize(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset) {
+NRI_INLINE void CommandBufferVal::WriteAccelerationStructuresSizes(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
     RETURN_ON_FAILURE(&m_Device, accelerationStructures, ReturnVoid(), "'accelerationStructures' is NULL");
@@ -616,7 +626,7 @@ NRI_INLINE void CommandBufferVal::WriteAccelerationStructureSize(const Accelerat
 
     QueryPool& queryPoolImpl = *NRI_GET_IMPL(QueryPool, &queryPool);
 
-    GetRayTracingInterface().CmdWriteAccelerationStructureSize(*GetImpl(), accelerationStructuresImpl, accelerationStructureNum, queryPoolImpl, queryOffset);
+    GetRayTracingInterface().CmdWriteAccelerationStructuresSizes(*GetImpl(), accelerationStructuresImpl, accelerationStructureNum, queryPoolImpl, queryOffset);
 }
 
 NRI_INLINE void CommandBufferVal::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc) {
@@ -643,6 +653,8 @@ NRI_INLINE void CommandBufferVal::DispatchRays(const DispatchRaysDesc& dispatchR
 NRI_INLINE void CommandBufferVal::DispatchRaysIndirect(const Buffer& buffer, uint64_t offset) {
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
     const BufferDesc& bufferDesc = ((BufferVal&)buffer).GetDesc();
+    RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
+    RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
     RETURN_ON_FAILURE(&m_Device, offset < bufferDesc.size, ReturnVoid(), "offset is greater than the buffer size");
     RETURN_ON_FAILURE(&m_Device, deviceDesc.rayTracingTier >= 2, ReturnVoid(), "'rayTracingTier' must be >= 2");
 

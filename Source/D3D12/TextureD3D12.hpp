@@ -10,7 +10,7 @@ void nri::GetResourceDesc(D3D12_RESOURCE_DESC* desc, const TextureDesc& textureD
     desc->Height = Align(std::max(textureDesc.height, (Dim_t)1), blockWidth);
     desc->DepthOrArraySize = std::max(textureDesc.type == TextureType::TEXTURE_3D ? textureDesc.depth : textureDesc.layerNum, (Dim_t)1);
     desc->MipLevels = std::max(textureDesc.mipNum, (Mip_t)1);
-    desc->Format = (textureDesc.usage & nri::TextureUsageBits::SHADING_RATE_ATTACHMENT) ? dxgiFormat.typed : dxgiFormat.typeless;
+    desc->Format = (textureDesc.usage & TextureUsageBits::SHADING_RATE_ATTACHMENT) ? dxgiFormat.typed : dxgiFormat.typeless;
     desc->SampleDesc.Count = std::max(textureDesc.sampleNum, (Sample_t)1);
     desc->Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
     desc->Flags = GetTextureFlags(textureDesc.usage);

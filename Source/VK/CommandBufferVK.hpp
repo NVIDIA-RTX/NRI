@@ -2,6 +2,56 @@
 
 #include <math.h>
 
+static uint32_t ConvertBotomLevelGeometries(VkAccelerationStructureGeometryKHR* vkGeometries, VkAccelerationStructureBuildRangeInfoKHR* ranges, const BottomLevelGeometryDesc* geometries, uint32_t geometryNum) {
+    uint32_t micromapNum = 0;
+
+    for (uint32_t i = 0; i < geometryNum; i++) {
+        const BottomLevelGeometryDesc& in = geometries[i];
+        VkAccelerationStructureGeometryKHR& out = vkGeometries[i];
+
+        out = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
+        out.flags = GetGeometryFlags(in.flags);
+        out.geometryType = GetGeometryType(in.type);
+
+        ranges[i] = {}; // TODO: review struct fields...
+
+        if (in.type == BottomLevelGeometryType::TRIANGLES) {
+            const BottomLevelTrianglesDesc& tris = in.geometry.triangles;
+
+            uint32_t triangleNum = (tris.indexNum ? tris.indexNum : tris.vertexNum) / 3;
+            ranges[i].primitiveCount = triangleNum;
+
+            VkAccelerationStructureGeometryTrianglesDataKHR& geometryTriangles = out.geometry.triangles;
+            geometryTriangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+            geometryTriangles.maxVertex = tris.vertexNum;
+            geometryTriangles.vertexData.deviceAddress = GetBufferDeviceAddress(tris.vertexBuffer) + tris.vertexOffset;
+            geometryTriangles.vertexStride = tris.vertexStride;
+            geometryTriangles.vertexFormat = GetVkFormat(tris.vertexFormat);
+            geometryTriangles.transformData.deviceAddress = GetBufferDeviceAddress(tris.transformBuffer) + tris.transformOffset;
+
+            if (tris.indexBuffer) {
+                geometryTriangles.indexType = GetIndexType(tris.indexType);
+                geometryTriangles.indexData.deviceAddress = GetBufferDeviceAddress(tris.indexBuffer) + tris.indexOffset;
+            } else
+                geometryTriangles.indexType = VK_INDEX_TYPE_NONE_KHR;
+
+            if (tris.micromap)
+                micromapNum++;
+        } else if (in.type == BottomLevelGeometryType::AABBS) {
+            const BottomLevelAabbsDesc& aabbs = in.geometry.aabbs;
+
+            ranges[i].primitiveCount = aabbs.num;
+
+            VkAccelerationStructureGeometryAabbsDataKHR& geometryAabbs = out.geometry.aabbs;
+            geometryAabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
+            geometryAabbs.data.deviceAddress = GetBufferDeviceAddress(aabbs.buffer) + aabbs.offset;
+            geometryAabbs.stride = aabbs.stride;
+        }
+    }
+
+    return micromapNum;
+}
+
 CommandBufferVK::~CommandBufferVK() {
     if (m_CommandPool == VK_NULL_HANDLE)
         return;
@@ -203,20 +253,20 @@ NRI_INLINE void CommandBufferVK::ClearAttachments(const ClearDesc* clearDescs, u
     }
 }
 
-NRI_INLINE void CommandBufferVK::ClearStorageBuffer(const ClearStorageBufferDesc& clearDesc) {
-    const DescriptorVK& descriptor = *(const DescriptorVK*)clearDesc.storageBuffer;
-    const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdFillBuffer(m_Handle, descriptor.GetBuffer(), 0, VK_WHOLE_SIZE, clearDesc.value);
-}
-
-NRI_INLINE void CommandBufferVK::ClearStorageTexture(const ClearStorageTextureDesc& clearDesc) {
-    const DescriptorVK& descriptor = *(const DescriptorVK*)clearDesc.storageTexture;
-    const VkClearColorValue* value = (const VkClearColorValue*)&clearDesc.value;
-
-    VkImageSubresourceRange range = descriptor.GetImageSubresourceRange();
+NRI_INLINE void CommandBufferVK::ClearStorage(const ClearStorageDesc& clearDesc) {
+    const DescriptorVK& storage = *(DescriptorVK*)clearDesc.storage;
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdClearColorImage(m_Handle, descriptor.GetImage(), VK_IMAGE_LAYOUT_GENERAL, value, 1, &range);
+    if (storage.GetType() == DescriptorTypeVK::BUFFER_VIEW) {
+        const DescriptorBufDesc& bufDesc = storage.GetBufDesc();
+        vk.CmdFillBuffer(m_Handle, bufDesc.handle, bufDesc.offset, bufDesc.size, clearDesc.value.ui.x);
+    } else {
+        static_assert(sizeof(VkClearColorValue) == sizeof(clearDesc.value), "Unexpected sizeof");
+
+        const VkClearColorValue* value = (VkClearColorValue*)&clearDesc.value;
+        VkImageSubresourceRange range = storage.GetImageSubresourceRange();
+        vk.CmdClearColorImage(m_Handle, storage.GetImage(), IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, value, 1, &range);
+    }
 }
 
 NRI_INLINE void CommandBufferVK::BeginRendering(const AttachmentsDesc& attachmentsDesc) {
@@ -708,6 +758,16 @@ NRI_INLINE void CommandBufferVK::ReadbackTextureToBuffer(Buffer& dstBuffer, cons
     vk.CmdCopyImageToBuffer2(m_Handle, &info);
 }
 
+NRI_INLINE void CommandBufferVK::ZeroBuffer(Buffer& buffer, uint64_t offset, uint64_t size) {
+    BufferVK& dst = (BufferVK&)buffer;
+
+    if (size == WHOLE_SIZE)
+        size = dst.GetDesc().size;
+
+    const auto& vk = m_Device.GetDispatchTable();
+    vk.CmdFillBuffer(m_Handle, dst.GetHandle(), offset, size, 0);
+}
+
 NRI_INLINE void CommandBufferVK::Dispatch(const DispatchDesc& dispatchDesc) {
     const auto& vk = m_Device.GetDispatchTable();
     vk.CmdDispatch(m_Handle, dispatchDesc.x, dispatchDesc.y, dispatchDesc.z);
@@ -955,8 +1015,6 @@ NRI_INLINE void CommandBufferVK::BuildTopLevelAccelerationStructure(const BuildT
         VkAccelerationStructureGeometryKHR& geometry = geometries[i];
         geometry = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
         geometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
-        geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
-        geometry.geometry.aabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
         geometry.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
         geometry.geometry.instances.data.deviceAddress = instanceBuffer->GetDeviceAddress() + in.instanceOffset;
 
@@ -964,7 +1022,7 @@ NRI_INLINE void CommandBufferVK::BuildTopLevelAccelerationStructure(const BuildT
         VkAccelerationStructureBuildGeometryInfoKHR& info = infos[i];
         info = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
         info.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-        info.flags = GetAccelerationStructureBuildFlags(dst->GetFlags());
+        info.flags = GetBuildAccelerationStructureFlags(dst->GetFlags());
         info.dstAccelerationStructure = dst->GetHandle();
         info.geometryCount = 1;
         info.pGeometries = &geometry;
@@ -973,8 +1031,7 @@ NRI_INLINE void CommandBufferVK::BuildTopLevelAccelerationStructure(const BuildT
         if (in.src) {
             info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
             info.srcAccelerationStructure = src->GetHandle();
-        }
-        else
+        } else
             info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
     }
 
@@ -995,23 +1052,25 @@ NRI_INLINE void CommandBufferVK::BuildBottomLevelAccelerationStructure(const Bui
     VkAccelerationStructureGeometryKHR* geometries = geometriesScratch;
     VkAccelerationStructureBuildRangeInfoKHR* ranges = rangesScratch;
 
+    uint32_t micromapNum = 0;
     for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++) {
         const BuildBottomLevelAccelerationStructureDesc& in = buildBottomLevelAccelerationStructureDescs[i];
 
-        AccelerationStructureVK* dst = (AccelerationStructureVK*)in.dst;
-        AccelerationStructureVK* src = (AccelerationStructureVK*)in.src;
-        BufferVK* scratchBuffer = (BufferVK*)in.scratchBuffer;
-
         // Ranges and geometries
-        ConvertGeometryObjectsVK(geometries, ranges, in.geometries, in.geometryNum);
+        micromapNum += ConvertBotomLevelGeometries(geometries, ranges, in.geometries, in.geometryNum);
 
         pRanges[i] = ranges;
 
         // Info
+        AccelerationStructureVK* dst = (AccelerationStructureVK*)in.dst;
+        AccelerationStructureVK* src = (AccelerationStructureVK*)in.src;
+
+        BufferVK* scratchBuffer = (BufferVK*)in.scratchBuffer;
+
         VkAccelerationStructureBuildGeometryInfoKHR& info = infos[i];
         info = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
         info.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-        info.flags = GetAccelerationStructureBuildFlags(dst->GetFlags());
+        info.flags = GetBuildAccelerationStructureFlags(dst->GetFlags());
         info.dstAccelerationStructure = dst->GetHandle();
         info.geometryCount = in.geometryNum;
         info.pGeometries = geometries;
@@ -1020,40 +1079,133 @@ NRI_INLINE void CommandBufferVK::BuildBottomLevelAccelerationStructure(const Bui
         if (in.src) {
             info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
             info.srcAccelerationStructure = src->GetHandle();
-        }
-        else
+        } else
             info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
 
         geometries += in.geometryNum;
         ranges += in.geometryNum;
     }
 
+    // Add micromaps
+    Scratch<VkAccelerationStructureTrianglesOpacityMicromapEXT> trianglesMicromapsScratch = AllocateScratch(m_Device, VkAccelerationStructureTrianglesOpacityMicromapEXT, micromapNum);
+    VkAccelerationStructureTrianglesOpacityMicromapEXT* trianglesMicromaps = trianglesMicromapsScratch;
+
+    if (micromapNum) {
+        for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++) {
+            const BuildBottomLevelAccelerationStructureDesc& in = buildBottomLevelAccelerationStructureDescs[i];
+
+            VkAccelerationStructureGeometryKHR* pGeometry = (VkAccelerationStructureGeometryKHR*)infos[i].pGeometries;
+
+            for (uint32_t j = 0; j < in.geometryNum; j++) {
+                const BottomLevelGeometryDesc& geometry = in.geometries[j];
+
+                const BottomLevelMicromapDesc* botomLevelMicromap = geometry.geometry.triangles.micromap;
+                if (geometry.type == BottomLevelGeometryType::TRIANGLES && botomLevelMicromap) {
+                    pGeometry[j].geometry.triangles.pNext = trianglesMicromaps;
+
+                    BufferVK* indexBuffer = (BufferVK*)botomLevelMicromap->indexBuffer;
+                    MicromapVK* micromap = (MicromapVK*)botomLevelMicromap->micromap;
+
+                    VkAccelerationStructureTrianglesOpacityMicromapEXT& trianglesMicromap = *trianglesMicromaps;
+                    trianglesMicromap = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_TRIANGLES_OPACITY_MICROMAP_EXT};
+                    trianglesMicromap.usageCountsCount = micromap->GetUsageNum();
+                    trianglesMicromap.pUsageCounts = micromap->GetUsages();
+                    trianglesMicromap.micromap = micromap->GetHandle();
+
+                    if (indexBuffer) {
+                        trianglesMicromap.indexType = GetIndexType(botomLevelMicromap->indexType);
+                        trianglesMicromap.indexBuffer.deviceAddress = indexBuffer->GetDeviceAddress() + botomLevelMicromap->indexOffset;
+                        trianglesMicromap.indexStride = botomLevelMicromap->indexType == IndexType::UINT32 ? sizeof(uint32_t) : sizeof(uint16_t);
+                        trianglesMicromap.baseTriangle = botomLevelMicromap->baseTriangle;
+                    } else
+                        trianglesMicromap.indexType = VK_INDEX_TYPE_NONE_KHR;
+
+                    trianglesMicromaps++;
+                }
+            }
+        }
+    }
+
     const auto& vk = m_Device.GetDispatchTable();
     vk.CmdBuildAccelerationStructuresKHR(m_Handle, buildBottomLevelAccelerationStructureDescNum, infos, pRanges);
 }
 
+NRI_INLINE void CommandBufferVK::BuildMicromaps(const BuildMicromapDesc* buildMicromapDescs, uint32_t buildMicromapDescNum) {
+    static_assert(sizeof(MicromapTriangle) == sizeof(VkMicromapTriangleEXT), "Mismatched sizeof");
+
+    Scratch<VkMicromapBuildInfoEXT> infos = AllocateScratch(m_Device, VkMicromapBuildInfoEXT, buildMicromapDescNum);
+    for (uint32_t i = 0; i < buildMicromapDescNum; i++) {
+        const BuildMicromapDesc& in = buildMicromapDescs[i];
+
+        MicromapVK* dst = (MicromapVK*)in.dst;
+        BufferVK* scratchBuffer = (BufferVK*)in.scratchBuffer;
+        BufferVK* triangleBuffer = (BufferVK*)in.triangleBuffer;
+        BufferVK* dataBuffer = (BufferVK*)in.dataBuffer;
+
+        VkMicromapBuildInfoEXT& out = infos[i];
+        out = {VK_STRUCTURE_TYPE_MICROMAP_BUILD_INFO_EXT};
+        out.type = VK_MICROMAP_TYPE_OPACITY_MICROMAP_EXT;
+        out.flags = GetBuildMicromapFlags(dst->GetFlags());
+        out.mode = VK_BUILD_MICROMAP_MODE_BUILD_EXT;
+        out.dstMicromap = dst->GetHandle();
+        out.usageCountsCount = dst->GetUsageNum();
+        out.pUsageCounts = dst->GetUsages();
+        out.data.deviceAddress = dataBuffer->GetDeviceAddress() + in.dataOffset;
+        out.scratchData.deviceAddress = scratchBuffer->GetDeviceAddress() + in.scratchOffset;
+        out.triangleArray.deviceAddress = triangleBuffer->GetDeviceAddress() + in.triangleOffset;
+        out.triangleArrayStride = sizeof(MicromapTriangle);
+    }
+
+    const auto& vk = m_Device.GetDispatchTable();
+    vk.CmdBuildMicromapsEXT(m_Handle, buildMicromapDescNum, infos);
+}
+
 NRI_INLINE void CommandBufferVK::CopyAccelerationStructure(AccelerationStructure& dst, const AccelerationStructure& src, CopyMode copyMode) {
-    const VkAccelerationStructureKHR dstHandle = ((const AccelerationStructureVK&)dst).GetHandle();
-    const VkAccelerationStructureKHR srcHandle = ((const AccelerationStructureVK&)src).GetHandle();
+    VkAccelerationStructureKHR dstHandle = ((AccelerationStructureVK&)dst).GetHandle();
+    VkAccelerationStructureKHR srcHandle = ((AccelerationStructureVK&)src).GetHandle();
 
     VkCopyAccelerationStructureInfoKHR info = {VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR};
     info.src = srcHandle;
     info.dst = dstHandle;
-    info.mode = GetCopyMode(copyMode);
+    info.mode = GetAccelerationStructureCopyMode(copyMode);
 
     const auto& vk = m_Device.GetDispatchTable();
     vk.CmdCopyAccelerationStructureKHR(m_Handle, &info);
 }
 
-NRI_INLINE void CommandBufferVK::WriteAccelerationStructureSize(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
+NRI_INLINE void CommandBufferVK::CopyMicromap(Micromap& dst, const Micromap& src, CopyMode copyMode) {
+    VkMicromapEXT dstHandle = ((MicromapVK&)dst).GetHandle();
+    VkMicromapEXT srcHandle = ((MicromapVK&)src).GetHandle();
+
+    VkCopyMicromapInfoEXT info = {VK_STRUCTURE_TYPE_COPY_MICROMAP_INFO_EXT};
+    info.src = srcHandle;
+    info.dst = dstHandle;
+    info.mode = GetMicromapCopyMode(copyMode);
+
+    const auto& vk = m_Device.GetDispatchTable();
+    vk.CmdCopyMicromapEXT(m_Handle, &info);
+}
+
+NRI_INLINE void CommandBufferVK::WriteAccelerationStructuresSizes(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
     Scratch<VkAccelerationStructureKHR> handles = AllocateScratch(m_Device, VkAccelerationStructureKHR, accelerationStructureNum);
     for (uint32_t i = 0; i < accelerationStructureNum; i++)
-        handles[i] = ((const AccelerationStructureVK*)accelerationStructures[i])->GetHandle();
+        handles[i] = ((AccelerationStructureVK*)accelerationStructures[i])->GetHandle();
 
     const QueryPoolVK& queryPoolVK = (QueryPoolVK&)queryPool;
 
     const auto& vk = m_Device.GetDispatchTable();
     vk.CmdWriteAccelerationStructuresPropertiesKHR(m_Handle, accelerationStructureNum, handles, queryPoolVK.GetType(), queryPoolVK.GetHandle(), queryPoolOffset);
+}
+
+NRI_INLINE void CommandBufferVK::WriteMicromapsSizes(const Micromap* const* micromaps, uint32_t micromapNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
+    Scratch<VkMicromapEXT> handles = AllocateScratch(m_Device, VkMicromapEXT, micromapNum);
+    for (uint32_t i = 0; i < micromapNum; i++)
+        handles[i] = ((MicromapVK*)micromaps[i])->GetHandle();
+
+    const QueryPoolVK& queryPoolVK = (QueryPoolVK&)queryPool;
+
+    const auto& vk = m_Device.GetDispatchTable();
+    vk.CmdWriteMicromapsPropertiesEXT(m_Handle, micromapNum, handles, queryPoolVK.GetType(), queryPoolVK.GetHandle(), queryPoolOffset);
 }
 
 NRI_INLINE void CommandBufferVK::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc) {

@@ -257,10 +257,10 @@ NriBits(StageBits, uint32_t,
     ACCELERATION_STRUCTURE          = NriBit(17), // Invoked by "CmdBuild*AccelerationStructures"
     MICROMAP                        = NriBit(18), // Invoked by "CmdBuild*Micromaps"
 
-    // Copy
+    // Other
     COPY                            = NriBit(19), // Invoked by "CmdCopy*", "CmdUpload*" and "CmdReadback*"
-    CLEAR_STORAGE                   = NriBit(20), // Invoked by "CmdClearStorage*"
-    RESOLVE                         = NriBit(21), // Invoked by "CmdResolveTexture"
+    RESOLVE                         = NriBit(20), // Invoked by "CmdResolveTexture"
+    CLEAR_STORAGE                   = NriBit(21), // Invoked by "CmdClearStorage"
 
     // Modifiers
     INDIRECT                        = NriBit(22), // Invoked by "Indirect" commands (used in addition to other bits)
@@ -278,19 +278,17 @@ NriBits(StageBits, uint32_t,
                                       NriMember(StageBits, MESH_SHADERS) |
                                       NriMember(StageBits, FRAGMENT_SHADER),
 
-    // Invoked by "CmdDispatchRays"
+    DRAW                            = NriMember(StageBits, INDEX_INPUT) |
+                                      NriMember(StageBits, GRAPHICS_SHADERS) |
+                                      NriMember(StageBits, DEPTH_STENCIL_ATTACHMENT) |
+                                      NriMember(StageBits, COLOR_ATTACHMENT),
+
     RAY_TRACING_SHADERS             = NriMember(StageBits, RAYGEN_SHADER) |
                                       NriMember(StageBits, MISS_SHADER) |
                                       NriMember(StageBits, INTERSECTION_SHADER) |
                                       NriMember(StageBits, CLOSEST_HIT_SHADER) |
                                       NriMember(StageBits, ANY_HIT_SHADER) |
-                                      NriMember(StageBits, CALLABLE_SHADER),
-
-    // Invoked by "CmdDraw*"
-    DRAW                            = NriMember(StageBits, INDEX_INPUT) |
-                                      NriMember(StageBits, GRAPHICS_SHADERS) |
-                                      NriMember(StageBits, DEPTH_STENCIL_ATTACHMENT) |
-                                      NriMember(StageBits, COLOR_ATTACHMENT)
+                                      NriMember(StageBits, CALLABLE_SHADER)
 );
 
 // The viewport origin is top-left (D3D native) by default, but can be changed to bottom-left (VK native)
@@ -1199,29 +1197,29 @@ NriStruct(AllocateMemoryDesc) {
 };
 
 NriStruct(BufferMemoryBindingDesc) {
-    NriPtr(Memory) memory;
     NriPtr(Buffer) buffer;
+    NriPtr(Memory) memory;
     uint64_t offset;
 };
 
 NriStruct(TextureMemoryBindingDesc) {
-    NriPtr(Memory) memory;
     NriPtr(Texture) texture;
+    NriPtr(Memory) memory;
     uint64_t offset;
 };
 
 // Clear storage
-NriStruct(ClearStorageBufferDesc) {
-    const NriPtr(Descriptor) storageBuffer;
-    uint32_t value;
-    uint32_t setIndex;
-    uint32_t rangeIndex;
-    uint32_t descriptorIndex;
-};
-
-NriStruct(ClearStorageTextureDesc) {
-    const NriPtr(Descriptor) storageTexture;
-    Nri(ClearValue) value;
+NriStruct(ClearStorageDesc) {
+    // For any buffers and textures with integer formats:
+    //  - Clears a storage view with bit-precise values, copying the lower "N" bits from "value.[f/ui/i].channel"
+    //    to the corresponding channel, where "N" is the number of bits in the "channel" of the resource format
+    // For textures with non-integer formats:
+    //  - Clears a storage view with float values with format conversion from "FLOAT" to "UNORM/SNORM" where appropriate
+    // For buffers:
+    //  - To avoid discrepancies in behavior between GAPIs use "R32f/ui/i" formats for views
+    //  - D3D: structured buffers are unsupported!
+    const NriPtr(Descriptor) storage; // a "STORAGE" descriptor
+    Nri(Color) value; // avoid overflow
     uint32_t setIndex;
     uint32_t rangeIndex;
     uint32_t descriptorIndex;

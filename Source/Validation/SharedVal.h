@@ -101,7 +101,7 @@ inline DeviceVal& GetDeviceVal(T& object) {
 
 uint64_t GetMemorySizeD3D12(const MemoryD3D12Desc& memoryD3D12Desc);
 
-constexpr std::array<const char*, (size_t)nri::DescriptorType::MAX_NUM> g_descriptorTypeNames = {
+constexpr std::array<const char*, (size_t)DescriptorType::MAX_NUM> g_descriptorTypeNames = {
     "SAMPLER",                   // SAMPLER,
     "CONSTANT_BUFFER",           // CONSTANT_BUFFER,
     "TEXTURE",                   // TEXTURE,
@@ -114,7 +114,7 @@ constexpr std::array<const char*, (size_t)nri::DescriptorType::MAX_NUM> g_descri
 };
 VALIDATE_ARRAY_BY_PTR(g_descriptorTypeNames);
 
-constexpr const char* GetDescriptorTypeName(nri::DescriptorType descriptorType) {
+constexpr const char* GetDescriptorTypeName(DescriptorType descriptorType) {
     return g_descriptorTypeNames[(uint32_t)descriptorType];
 }
 
@@ -178,5 +178,8 @@ constexpr bool IsTextureLayoutSupported(TextureUsageBits usage, Layout layout) {
 
     return true;
 }
+
+void ConvertGeometryObjectsVal(BottomLevelGeometryDesc* destObjects, const BottomLevelGeometryDesc* sourceObjects, uint32_t objectNum);
+QueryType GetQueryTypeVK(uint32_t queryTypeVK);
 
 } // namespace nri

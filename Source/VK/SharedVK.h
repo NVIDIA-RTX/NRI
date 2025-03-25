@@ -10,31 +10,8 @@
 
 typedef uint16_t MemoryTypeIndex;
 
-struct MemoryTypeInfo {
-    MemoryTypeIndex index;
-    nri::MemoryLocation location;
-    bool mustBeDedicated;
-};
-
-inline nri::MemoryType Pack(const MemoryTypeInfo& memoryTypeInfo) {
-    return *(nri::MemoryType*)&memoryTypeInfo;
-}
-
-inline MemoryTypeInfo Unpack(const nri::MemoryType& memoryType) {
-    return *(MemoryTypeInfo*)&memoryType;
-}
-
-static_assert(sizeof(MemoryTypeInfo) == sizeof(nri::MemoryType), "Must be equal");
-
-inline bool IsHostVisibleMemory(nri::MemoryLocation location) {
-    return location > nri::MemoryLocation::DEVICE;
-}
-
-inline bool IsHostMemory(nri::MemoryLocation location) {
-    return location > nri::MemoryLocation::DEVICE_UPLOAD;
-}
-
-constexpr uint32_t INVALID_FAMILY_INDEX = uint32_t(-1);
+struct VmaAllocator_T;
+struct VmaAllocation_T;
 
 #if 1
 #    define IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
@@ -49,7 +26,34 @@ constexpr uint32_t INVALID_FAMILY_INDEX = uint32_t(-1);
     *tail = &desc; \
     tail = &desc.pNext
 
-struct VmaAllocator_T;
-struct VmaAllocation_T;
+namespace nri {
+
+constexpr uint32_t INVALID_FAMILY_INDEX = uint32_t(-1);
+
+struct MemoryTypeInfo {
+    MemoryTypeIndex index;
+    MemoryLocation location;
+    bool mustBeDedicated;
+};
+
+inline MemoryType Pack(const MemoryTypeInfo& memoryTypeInfo) {
+    return *(MemoryType*)&memoryTypeInfo;
+}
+
+inline MemoryTypeInfo Unpack(const MemoryType& memoryType) {
+    return *(MemoryTypeInfo*)&memoryType;
+}
+
+static_assert(sizeof(MemoryTypeInfo) == sizeof(MemoryType), "Must be equal");
+
+inline bool IsHostVisibleMemory(MemoryLocation location) {
+    return location > MemoryLocation::DEVICE;
+}
+
+inline bool IsHostMemory(MemoryLocation location) {
+    return location > MemoryLocation::DEVICE_UPLOAD;
+}
+
+}
 
 #include "DeviceVK.h"

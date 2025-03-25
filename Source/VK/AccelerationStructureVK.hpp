@@ -24,7 +24,6 @@ Result AccelerationStructureVK::Create(const AccelerationStructureDesc& accelera
         m_BuildScratchSize = sizesInfo.buildScratchSize;
         m_UpdateScratchSize = sizesInfo.updateScratchSize;
         m_Type = GetAccelerationStructureType(accelerationStructureDesc.type);
-        m_AccelerationStructureSize = sizesInfo.accelerationStructureSize;
     }
 
     return result;
@@ -55,13 +54,13 @@ Result AccelerationStructureVK::FinishCreation() {
     if (!m_Buffer)
         return Result::FAILURE;
 
-    VkAccelerationStructureCreateInfoKHR accelerationStructureCreateInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR};
-    accelerationStructureCreateInfo.type = m_Type;
-    accelerationStructureCreateInfo.size = m_AccelerationStructureSize;
-    accelerationStructureCreateInfo.buffer = m_Buffer->GetHandle();
+    VkAccelerationStructureCreateInfoKHR createInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR};
+    createInfo.type = m_Type;
+    createInfo.size = m_Buffer->GetDesc().size;
+    createInfo.buffer = m_Buffer->GetHandle();
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.CreateAccelerationStructureKHR(m_Device, &accelerationStructureCreateInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    VkResult result = vk.CreateAccelerationStructureKHR(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
     RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkCreateAccelerationStructureKHR returned %d", (int32_t)result);
 
     // Device address

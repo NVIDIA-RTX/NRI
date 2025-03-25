@@ -12,6 +12,7 @@
 #include "DescriptorVK.h"
 #include "FenceVK.h"
 #include "MemoryVK.h"
+#include "MicromapVK.h"
 #include "PipelineLayoutVK.h"
 #include "PipelineVK.h"
 #include "QueryPoolVK.h"
@@ -37,6 +38,7 @@ using namespace nri;
 #include "DeviceVK.hpp"
 #include "FenceVK.hpp"
 #include "MemoryVK.hpp"
+#include "MicromapVK.hpp"
 #include "PipelineLayoutVK.hpp"
 #include "PipelineVK.hpp"
 #include "QueryPoolVK.hpp"
@@ -338,10 +340,6 @@ static void NRI_CALL CmdCopyTexture(CommandBuffer& commandBuffer, Texture& dstTe
     ((CommandBufferVK&)commandBuffer).CopyTexture(dstTexture, dstRegionDesc, srcTexture, srcRegionDesc);
 }
 
-static void NRI_CALL CmdResolveTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
-    ((CommandBufferVK&)commandBuffer).ResolveTexture(dstTexture, dstRegionDesc, srcTexture, srcRegionDesc);
-}
-
 static void NRI_CALL CmdUploadBufferToTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc& dstRegionDesc, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayoutDesc) {
     ((CommandBufferVK&)commandBuffer).UploadBufferToTexture(dstTexture, dstRegionDesc, srcBuffer, srcDataLayoutDesc);
 }
@@ -350,12 +348,16 @@ static void NRI_CALL CmdReadbackTextureToBuffer(CommandBuffer& commandBuffer, Bu
     ((CommandBufferVK&)commandBuffer).ReadbackTextureToBuffer(dstBuffer, dstDataLayoutDesc, srcTexture, srcRegionDesc);
 }
 
-static void NRI_CALL CmdClearStorageBuffer(CommandBuffer& commandBuffer, const ClearStorageBufferDesc& clearDesc) {
-    ((CommandBufferVK&)commandBuffer).ClearStorageBuffer(clearDesc);
+static void NRI_CALL CmdZeroBuffer(CommandBuffer& commandBuffer, Buffer& buffer, uint64_t offset, uint64_t size) {
+    ((CommandBufferVK&)commandBuffer).ZeroBuffer(buffer, offset, size);
 }
 
-static void NRI_CALL CmdClearStorageTexture(CommandBuffer& commandBuffer, const ClearStorageTextureDesc& clearDesc) {
-    ((CommandBufferVK&)commandBuffer).ClearStorageTexture(clearDesc);
+static void NRI_CALL CmdResolveTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
+    ((CommandBufferVK&)commandBuffer).ResolveTexture(dstTexture, dstRegionDesc, srcTexture, srcRegionDesc);
+}
+
+static void NRI_CALL CmdClearStorage(CommandBuffer& commandBuffer, const ClearStorageDesc& clearDesc) {
+    ((CommandBufferVK&)commandBuffer).ClearStorage(clearDesc);
 }
 
 static void NRI_CALL CmdResetQueries(CommandBuffer& commandBuffer, QueryPool& queryPool, uint32_t offset, uint32_t num) {
@@ -601,9 +603,9 @@ Result DeviceVK::FillFunctionTable(CoreInterface& table) const {
     table.CmdCopyTexture = ::CmdCopyTexture;
     table.CmdUploadBufferToTexture = ::CmdUploadBufferToTexture;
     table.CmdReadbackTextureToBuffer = ::CmdReadbackTextureToBuffer;
-    table.CmdClearStorageBuffer = ::CmdClearStorageBuffer;
-    table.CmdClearStorageTexture = ::CmdClearStorageTexture;
+    table.CmdZeroBuffer = ::CmdZeroBuffer;
     table.CmdResolveTexture = ::CmdResolveTexture;
+    table.CmdClearStorage = ::CmdClearStorage;
     table.CmdResetQueries = ::CmdResetQueries;
     table.CmdBeginQuery = ::CmdBeginQuery;
     table.CmdEndQuery = ::CmdEndQuery;
@@ -764,9 +766,8 @@ static Result NRI_CALL CreateAccelerationStructureDescriptor(const AccelerationS
     return ((AccelerationStructureVK&)accelerationStructure).CreateDescriptor(descriptor);
 }
 
-static Result NRI_CALL CreateMicromap(Device&, const MicromapDesc&, Micromap*&) {
-    // TODO
-    return Result::SUCCESS;
+static Result NRI_CALL CreateMicromap(Device& device, const MicromapDesc& micromapDesc, Micromap*& micromap) {
+    return ((DeviceVK&)device).CreateImplementation<MicromapVK>(micromap, micromapDesc);
 }
 
 static uint64_t NRI_CALL GetAccelerationStructureUpdateScratchBufferSize(const AccelerationStructure& accelerationStructure) {
@@ -786,22 +787,20 @@ static Buffer* NRI_CALL GetAccelerationStructureBuffer(const AccelerationStructu
     return (Buffer*)((AccelerationStructureVK&)accelerationStructure).GetBuffer();
 }
 
-static uint64_t NRI_CALL GetMicromapBuildScratchBufferSize(const Micromap&) {
-    // TODO
-    return 0;
+static uint64_t NRI_CALL GetMicromapBuildScratchBufferSize(const Micromap& micromap) {
+    return ((MicromapVK&)micromap).GetBuildScratchBufferSize();
 }
 
-static Buffer* NRI_CALL GetMicromapBuffer(const Micromap&) {
-    // TODO
-    return nullptr;
+static Buffer* NRI_CALL GetMicromapBuffer(const Micromap& micromap) {
+    return (Buffer*)((MicromapVK&)micromap).GetBuffer();
 }
 
 static void NRI_CALL DestroyAccelerationStructure(AccelerationStructure& accelerationStructure) {
     Destroy((AccelerationStructureVK*)&accelerationStructure);
 }
 
-static void NRI_CALL DestroyMicromap(Micromap&) {
-    // TODO
+static void NRI_CALL DestroyMicromap(Micromap& micromap) {
+    Destroy((MicromapVK*)&micromap);
 }
 
 static void NRI_CALL GetAccelerationStructureMemoryDesc(const AccelerationStructure& accelerationStructure, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
@@ -816,17 +815,16 @@ static Result NRI_CALL BindAccelerationStructureMemory(Device& device, const Acc
     return ((DeviceVK&)device).BindAccelerationStructureMemory(memoryBindingDescs, memoryBindingDescNum);
 }
 
-static void NRI_CALL GetMicromapMemoryDesc(const Micromap&, MemoryLocation, MemoryDesc&) {
-    // TODO
+static void NRI_CALL GetMicromapMemoryDesc(const Micromap& micromap, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
+    ((MicromapVK&)micromap).GetBuffer()->GetMemoryDesc(memoryLocation, memoryDesc);
 }
 
-static void NRI_CALL GetMicromapMemoryDesc2(const Device&, const MicromapDesc&, MemoryLocation, MemoryDesc&) {
-    // TODO
+static void NRI_CALL GetMicromapMemoryDesc2(const Device& device, const MicromapDesc& micromapDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
+    ((DeviceVK&)device).GetMemoryDesc2(micromapDesc, memoryLocation, memoryDesc);
 }
 
-static Result NRI_CALL BindMicromapMemory(Device&, const MicromapMemoryBindingDesc*, uint32_t) {
-    // TODO
-    return Result::SUCCESS;
+static Result NRI_CALL BindMicromapMemory(Device& device, const MicromapMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
+    return ((DeviceVK&)device).BindMicromapMemory(memoryBindingDescs, memoryBindingDescNum);
 }
 
 static Result NRI_CALL WriteShaderGroupIdentifiers(const Pipeline& pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* dst) {
@@ -841,8 +839,8 @@ static void NRI_CALL CmdBuildBottomLevelAccelerationStructures(CommandBuffer& co
     ((CommandBufferVK&)commandBuffer).BuildBottomLevelAccelerationStructure(buildBottomLevelAccelerationStructureDescs, buildBottomLevelAccelerationStructureDescNum);
 }
 
-static void NRI_CALL CmdBuildMicromaps(CommandBuffer&, const BuildMicromapDesc*, uint32_t) {
-    // TODO
+static void NRI_CALL CmdBuildMicromaps(CommandBuffer& commandBuffer, const BuildMicromapDesc* buildMicromapDescs, uint32_t buildMicromapDescNum) {
+    ((CommandBufferVK&)commandBuffer).BuildMicromaps(buildMicromapDescs, buildMicromapDescNum);
 }
 
 static void NRI_CALL CmdDispatchRays(CommandBuffer& commandBuffer, const DispatchRaysDesc& dispatchRaysDesc) {
@@ -857,25 +855,24 @@ static void NRI_CALL CmdCopyAccelerationStructure(CommandBuffer& commandBuffer, 
     ((CommandBufferVK&)commandBuffer).CopyAccelerationStructure(dst, src, mode);
 }
 
-static void NRI_CALL CmdWriteAccelerationStructureSize(CommandBuffer& commandBuffer, const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset) {
-    ((CommandBufferVK&)commandBuffer).WriteAccelerationStructureSize(accelerationStructures, accelerationStructureNum, queryPool, queryOffset);
+static void NRI_CALL CmdWriteAccelerationStructuresSizes(CommandBuffer& commandBuffer, const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset) {
+    ((CommandBufferVK&)commandBuffer).WriteAccelerationStructuresSizes(accelerationStructures, accelerationStructureNum, queryPool, queryOffset);
 }
 
-static void NRI_CALL CmdCopyMicromap(CommandBuffer&, Micromap&, const Micromap&, CopyMode) {
-    // TODO
+static void NRI_CALL CmdCopyMicromap(CommandBuffer& commandBuffer, Micromap& dst, const Micromap& src, CopyMode copyMode) {
+    ((CommandBufferVK&)commandBuffer).CopyMicromap(dst, src, copyMode);
 }
 
-static void NRI_CALL CmdWriteMicromapSize(CommandBuffer&, const Micromap* const*, uint32_t, QueryPool&, uint32_t) {
-    // TODO
+static void NRI_CALL CmdWriteMicromapsSizes(CommandBuffer& commandBuffer, const Micromap* const* micromaps, uint32_t micromapNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
+    ((CommandBufferVK&)commandBuffer).WriteMicromapsSizes(micromaps, micromapNum, queryPool, queryPoolOffset);
 }
 
 static uint64_t NRI_CALL GetAccelerationStructureNativeObject(const AccelerationStructure& accelerationStructure) {
     return uint64_t(((AccelerationStructureVK&)accelerationStructure).GetHandle());
 }
 
-static uint64_t NRI_CALL GetMicromapNativeObject(const Micromap&) {
-    // TODO
-    return 0;
+static uint64_t NRI_CALL GetMicromapNativeObject(const Micromap& micromap) {
+    return uint64_t(((MicromapVK&)micromap).GetHandle());
 }
 
 Result DeviceVK::FillFunctionTable(RayTracingInterface& table) const {
@@ -907,9 +904,9 @@ Result DeviceVK::FillFunctionTable(RayTracingInterface& table) const {
     table.CmdDispatchRays = ::CmdDispatchRays;
     table.CmdDispatchRaysIndirect = ::CmdDispatchRaysIndirect;
     table.CmdCopyAccelerationStructure = ::CmdCopyAccelerationStructure;
-    table.CmdWriteAccelerationStructureSize = ::CmdWriteAccelerationStructureSize;
+    table.CmdWriteAccelerationStructuresSizes = ::CmdWriteAccelerationStructuresSizes;
     table.CmdCopyMicromap = ::CmdCopyMicromap;
-    table.CmdWriteMicromapSize = ::CmdWriteMicromapSize;
+    table.CmdWriteMicromapsSizes = ::CmdWriteMicromapsSizes;
     table.GetAccelerationStructureNativeObject = ::GetAccelerationStructureNativeObject;
     table.GetMicromapNativeObject = ::GetMicromapNativeObject;
 
@@ -933,11 +930,8 @@ static Result NRI_CALL AllocateAccelerationStructure(Device& device, const Alloc
     return ((DeviceVK&)device).CreateImplementation<AccelerationStructureVK>(accelerationStructure, accelerationStructureDesc);
 }
 
-static Result NRI_CALL AllocateMicromap(Device&, const AllocateMicromapDesc&, Micromap*& micromap) {
-    // TODO
-    micromap = nullptr;
-
-    return Result::FAILURE;
+static Result NRI_CALL AllocateMicromap(Device& device, const AllocateMicromapDesc& allocateMicromapDesc, Micromap*& micromap) {
+    return ((DeviceVK&)device).CreateImplementation<MicromapVK>(micromap, allocateMicromapDesc);
 }
 
 Result DeviceVK::FillFunctionTable(ResourceAllocatorInterface& table) const {
@@ -1093,7 +1087,7 @@ static bool NRI_CALL IsUpscalerSupported(const Device& device, UpscalerType upsc
 
 static void NRI_CALL GetUpscalerProps(const Upscaler& upscaler, UpscalerProps& upscalerProps) {
     UpscalerImpl& upscalerImpl = (UpscalerImpl&)upscaler;
-    
+
     return upscalerImpl.GetUpscalerProps(upscalerProps);
 }
 
