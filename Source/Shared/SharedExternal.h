@@ -140,15 +140,21 @@ protected:
 
 #endif
 
+// Prerequisites // TODO: improve
+template <typename T>
+inline T Align(T x, size_t alignment) {
+    return (T)((size_t(x) + alignment - 1) & ~(alignment - 1));
+}
+
+template <typename... Args>
+constexpr void MaybeUnused([[maybe_unused]] const Args&... args) {
+}
+
 // Allocator
 typedef nri::AllocationCallbacks AllocationCallbacks;
 #include "StdAllocator.h"
 
 // Base classes
-template <typename... Args>
-constexpr void MaybeUnused([[maybe_unused]] const Args&... args) {
-}
-
 #include "DeviceBase.h"
 
 // Macro stuff
@@ -222,11 +228,6 @@ constexpr uint32_t ROOT_SIGNATURE_DWORD_NUM = 64; // https://learn.microsoft.com
 constexpr uint32_t ZERO_BUFFER_DEFAULT_SIZE = 4 * 1024 * 1024;
 
 // Helpers
-template <typename T>
-inline T Align(T x, size_t alignment) {
-    return (T)((size_t(x) + alignment - 1) & ~(alignment - 1));
-}
-
 template <typename T, uint32_t N>
 constexpr uint32_t GetCountOf(T const (&)[N]) {
     return N;

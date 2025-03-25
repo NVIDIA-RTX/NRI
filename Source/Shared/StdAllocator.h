@@ -8,27 +8,23 @@
 #include <unordered_map>
 #include <vector>
 
-template <typename T>
-void StdAllocator_MaybeUnused([[maybe_unused]] const T& arg) {
-}
-
 #if defined(_WIN32)
 #    include <malloc.h>
 
 inline void* AlignedMalloc(void* userArg, size_t size, size_t alignment) {
-    StdAllocator_MaybeUnused(userArg);
+    MaybeUnused(userArg);
 
     return _aligned_malloc(size, alignment);
 }
 
 inline void* AlignedRealloc(void* userArg, void* memory, size_t size, size_t alignment) {
-    StdAllocator_MaybeUnused(userArg);
+    MaybeUnused(userArg);
 
     return _aligned_realloc(memory, size, alignment);
 }
 
 inline void AlignedFree(void* userArg, void* memory) {
-    StdAllocator_MaybeUnused(userArg);
+    MaybeUnused(userArg);
 
     _aligned_free(memory);
 }
@@ -38,11 +34,8 @@ inline void AlignedFree(void* userArg, void* memory) {
 #    include <cstddef>
 #    include <cstdlib>
 
-template <typename T>
-inline T Align(T x, size_t alignment);
-
 inline void* AlignedMalloc(void* userArg, size_t size, size_t alignment) {
-    StdAllocator_MaybeUnused(userArg);
+    MaybeUnused(userArg);
 
     uint8_t* memory = (uint8_t*)malloc(size + sizeof(uint8_t*) + alignment - 1);
     if (!memory)
@@ -77,7 +70,7 @@ inline void* AlignedRealloc(void* userArg, void* memory, size_t size, size_t ali
 }
 
 inline void AlignedFree(void* userArg, void* memory) {
-    StdAllocator_MaybeUnused(userArg);
+    MaybeUnused(userArg);
 
     if (!memory)
         return;
