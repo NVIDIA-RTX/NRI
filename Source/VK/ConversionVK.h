@@ -344,8 +344,8 @@ constexpr VkImageLayout GetImageLayoutForView(Texture3DViewType type) {
 }
 
 constexpr std::array<VkFragmentShadingRateCombinerOpKHR, (size_t)ShadingRateCombiner::MAX_NUM> g_ShadingRateCombiner = {
-    VK_FRAGMENT_SHADING_RATE_COMBINER_OP_REPLACE_KHR, // REPLACE,
     VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,    // KEEP,
+    VK_FRAGMENT_SHADING_RATE_COMBINER_OP_REPLACE_KHR, // REPLACE,
     VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MIN_KHR,     // MIN,
     VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MAX_KHR,     // MAX,
     VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MUL_KHR,     // SUM, // TODO: SUM vs MUL?

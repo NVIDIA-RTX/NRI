@@ -740,12 +740,15 @@ NriEnum(ShadingRate, uint8_t,
     FRAGMENT_SIZE_4X4
 );
 
+//     "primitiveCombiner"      "attachmentCombiner"
+// A   Pipeline shading rate    Result of Op1
+// B   Primitive shading rate   Attachment shading rate
 NriEnum(ShadingRateCombiner, uint8_t,
-    REPLACE,
-    KEEP,
-    MIN,
-    MAX,
-    SUM
+    KEEP,       // A
+    REPLACE,    // B
+    MIN,        // min(A, B)
+    MAX,        // max(A, B)
+    SUM         // (A + B) or (A * B)
 );
 
 /*
