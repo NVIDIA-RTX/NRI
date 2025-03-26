@@ -841,7 +841,7 @@ NRI_API Result NRI_CALL nriEnumerateAdapters(AdapterDesc* adapterDescs, uint32_t
 
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
     // If VK is not available, use D3D
-    //if (result != Result::SUCCESS)
+    if (result != Result::SUCCESS)
         result = EnumerateAdaptersD3D(adapterDescs, adapterDescNum, 0, nullptr);
 #endif
 
