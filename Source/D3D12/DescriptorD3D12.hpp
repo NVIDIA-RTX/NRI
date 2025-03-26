@@ -289,8 +289,9 @@ Result DescriptorD3D12::Create(const BufferViewDesc& bufferViewDesc) {
         structureStride = bufferViewDesc.structureStride ? bufferViewDesc.structureStride : bufferDesc.structureStride;
     bool isRaw = structureStride == 4;
 
-    const DxgiFormat& format = GetDxgiFormat(bufferViewDesc.format);
-    const FormatProps& formatProps = GetFormatProps(bufferViewDesc.format);
+    Format patchedFormat = isRaw ? Format::R32_UINT : bufferViewDesc.format;
+    const DxgiFormat& format = GetDxgiFormat(patchedFormat);
+    const FormatProps& formatProps = GetFormatProps(patchedFormat);
     uint32_t elementSize = structureStride ? structureStride : formatProps.stride;
     uint64_t elementOffset = (uint32_t)(bufferViewDesc.offset / elementSize);
     uint32_t elementNum = (uint32_t)(size / elementSize);
