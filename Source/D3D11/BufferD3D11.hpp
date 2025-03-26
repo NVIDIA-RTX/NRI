@@ -178,15 +178,18 @@ NRI_INLINE void* BufferD3D11::Map(uint64_t offset) {
             return nullptr;
         }
 
-        const uint32_t d = m_ReadbackTexture->GetDesc().depth;
-        const uint32_t h = m_ReadbackTexture->GetDesc().height;
+        const TextureDesc& readbackTextureDesc = m_ReadbackTexture->GetDesc();
+        uint32_t d = readbackTextureDesc.depth;
+        uint32_t h = readbackTextureDesc.height;
+        uint32_t rowSize = readbackTextureDesc.width * GetFormatProps(readbackTextureDesc.format).stride;
+
         const uint8_t* src = (uint8_t*)srcData.pData;
         uint8_t* dst = ptr;
         for (uint32_t i = 0; i < d; i++) {
             for (uint32_t j = 0; j < h; j++) {
-                const uint8_t* s = src + j * srcData.RowPitch;
+                const uint8_t* srcLocal = src + j * srcData.RowPitch;
                 uint8_t* dstLocal = dst + j * m_ReadbackDataLayoutDesc.rowPitch;
-                memcpy(dstLocal, s, srcData.RowPitch);
+                memcpy(dstLocal, srcLocal, rowSize);
             }
             src += srcData.DepthPitch;
             dst += m_ReadbackDataLayoutDesc.slicePitch;
