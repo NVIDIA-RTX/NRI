@@ -793,13 +793,14 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
             for (uint32_t i = 0; i < desc.queueFamilyNum; i++) {
                 const QueueFamilyDesc& queueFamily = desc.queueFamilies[i];
+                uint32_t queueFamilyIndex = queueFamilyIndices[(size_t)queueFamily.queueType];
 
-                if (queueFamily.queueNum) {
+                if (queueFamily.queueNum && queueFamilyIndex != INVALID_FAMILY_INDEX) {
                     VkDeviceQueueCreateInfo& queueCreateInfo = queueCreateInfos[deviceCreateInfo.queueCreateInfoCount++];
 
                     queueCreateInfo = {VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
                     queueCreateInfo.queueCount = queueFamily.queueNum;
-                    queueCreateInfo.queueFamilyIndex = queueFamilyIndices[(size_t)queueFamily.queueType];
+                    queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
                     queueCreateInfo.pQueuePriorities = queueFamily.queuePriorities ? queueFamily.queuePriorities : zeroPriorities.data();
                 }
             }
@@ -819,43 +820,53 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         for (uint32_t i = 0; i < descVK.queueFamilyNum; i++) {
             const QueueFamilyVKDesc& queueFamilyDesc = descVK.queueFamilies[i];
             auto& queueFamily = m_QueueFamilies[(size_t)queueFamilyDesc.queueType];
+            uint32_t queueFamilyIndex = queueFamilyIndices[(size_t)queueFamilyDesc.queueType];
 
-            for (uint32_t j = 0; j < queueFamilyDesc.queueNum; j++) {
-                VkDeviceQueueInfo2 queueInfo = {VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2};
-                queueInfo.queueFamilyIndex = queueFamilyIndices[(size_t)queueFamilyDesc.queueType];
-                queueInfo.queueIndex = j;
+            if (queueFamilyIndex != INVALID_FAMILY_INDEX) {
+                for (uint32_t j = 0; j < queueFamilyDesc.queueNum; j++) {
+                    VkDeviceQueueInfo2 queueInfo = {VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2};
+                    queueInfo.queueFamilyIndex = queueFamilyIndex;
+                    queueInfo.queueIndex = j;
 
-                VkQueue handle = VK_NULL_HANDLE;
-                m_VK.GetDeviceQueue2(m_Device, &queueInfo, &handle);
+                    VkQueue handle = VK_NULL_HANDLE;
+                    m_VK.GetDeviceQueue2(m_Device, &queueInfo, &handle);
 
-                QueueVK* queue;
-                Result result = CreateImplementation<QueueVK>(queue, queueFamilyDesc.queueType, queueFamilyDesc.familyIndex, handle);
-                if (result == Result::SUCCESS)
-                    queueFamily.push_back(queue);
+                    QueueVK* queue;
+                    Result result = CreateImplementation<QueueVK>(queue, queueFamilyDesc.queueType, queueFamilyDesc.familyIndex, handle);
+                    if (result == Result::SUCCESS)
+                        queueFamily.push_back(queue);
+                }
+
+                m_Desc.adapterDesc.queueNum[(size_t)queueFamilyDesc.queueType] = queueFamilyDesc.queueNum;
             }
-
-            m_Desc.adapterDesc.queueNum[(size_t)queueFamilyDesc.queueType] = queueFamilyDesc.queueNum;
+            else
+                m_Desc.adapterDesc.queueNum[(size_t)queueFamilyDesc.queueType] = 0;
         }
     } else {
         for (uint32_t i = 0; i < desc.queueFamilyNum; i++) {
             const QueueFamilyDesc& queueFamilyDesc = desc.queueFamilies[i];
             auto& queueFamily = m_QueueFamilies[(size_t)queueFamilyDesc.queueType];
+            uint32_t queueFamilyIndex = queueFamilyIndices[(size_t)queueFamilyDesc.queueType];
 
-            for (uint32_t j = 0; j < queueFamilyDesc.queueNum; j++) {
-                VkDeviceQueueInfo2 queueInfo = {VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2};
-                queueInfo.queueFamilyIndex = queueFamilyIndices[(size_t)queueFamilyDesc.queueType];
-                queueInfo.queueIndex = j;
+            if (queueFamilyIndex != INVALID_FAMILY_INDEX) {
+                for (uint32_t j = 0; j < queueFamilyDesc.queueNum; j++) {
+                    VkDeviceQueueInfo2 queueInfo = {VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2};
+                    queueInfo.queueFamilyIndex = queueFamilyIndices[(size_t)queueFamilyDesc.queueType];
+                    queueInfo.queueIndex = j;
 
-                VkQueue handle = VK_NULL_HANDLE;
-                m_VK.GetDeviceQueue2(m_Device, &queueInfo, &handle);
+                    VkQueue handle = VK_NULL_HANDLE;
+                    m_VK.GetDeviceQueue2(m_Device, &queueInfo, &handle);
 
-                QueueVK* queue;
-                Result result = CreateImplementation<QueueVK>(queue, queueFamilyDesc.queueType, queueInfo.queueFamilyIndex, handle);
-                if (result == Result::SUCCESS)
-                    queueFamily.push_back(queue);
+                    QueueVK* queue;
+                    Result result = CreateImplementation<QueueVK>(queue, queueFamilyDesc.queueType, queueInfo.queueFamilyIndex, handle);
+                    if (result == Result::SUCCESS)
+                        queueFamily.push_back(queue);
+                }
+
+                m_Desc.adapterDesc.queueNum[(size_t)queueFamilyDesc.queueType] = queueFamilyDesc.queueNum;
             }
-
-            m_Desc.adapterDesc.queueNum[(size_t)queueFamilyDesc.queueType] = queueFamilyDesc.queueNum;
+            else
+                m_Desc.adapterDesc.queueNum[(size_t)queueFamilyDesc.queueType] = 0;
         }
     }
 
