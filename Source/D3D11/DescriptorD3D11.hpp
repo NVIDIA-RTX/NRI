@@ -385,18 +385,24 @@ Result DescriptorD3D11::Create(const BufferViewDesc& bufferViewDesc) {
     const BufferDesc& bufferDesc = buffer.GetDesc();
     uint64_t size = bufferViewDesc.size == WHOLE_SIZE ? bufferDesc.size : bufferViewDesc.size;
 
+    // D3D11 requires "structureStride" passed during creation, but we violate the spec and treat "structured" buffers as "raw" to allow multiple views creation for a single buffer
+    uint32_t structureStride = 0;
+    if (bufferViewDesc.format == Format::UNKNOWN)
+        structureStride = bufferDesc.structureStride == 4 ? 4 : bufferViewDesc.structureStride;
+    bool isRaw = structureStride == 4;
+
     Format patchedFormat = bufferViewDesc.format;
     if (bufferViewDesc.viewType == BufferViewType::CONSTANT) {
         patchedFormat = Format::RGBA32_SFLOAT;
 
         if (bufferViewDesc.offset != 0 && m_Device.GetVersion() == 0)
             REPORT_ERROR(&m_Device, "Constant buffers with non-zero offsets require 11.1+ feature level!");
-    } else if (bufferDesc.structureStride)
-        patchedFormat = Format::UNKNOWN;
+    } else if (structureStride)
+        patchedFormat = isRaw ? Format::R32_UINT : Format::UNKNOWN;
 
-    DXGI_FORMAT format = GetDxgiFormat(patchedFormat).typed;
+    const DxgiFormat& format = GetDxgiFormat(patchedFormat);
     const FormatProps& formatProps = GetFormatProps(patchedFormat);
-    uint32_t elementSize = bufferDesc.structureStride ? bufferDesc.structureStride : formatProps.stride;
+    uint32_t elementSize = structureStride ? structureStride : formatProps.stride;
     m_ElementOffset = (uint32_t)(bufferViewDesc.offset / elementSize);
     m_ElementNum = (uint32_t)(size / elementSize);
 
@@ -409,11 +415,11 @@ Result DescriptorD3D11::Create(const BufferViewDesc& bufferViewDesc) {
         } break;
         case BufferViewType::SHADER_RESOURCE: {
             D3D11_SHADER_RESOURCE_VIEW_DESC desc = {};
-            desc.Format = format;
+            desc.Format = isRaw ? format.typeless : format.typed;
             desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
             desc.BufferEx.FirstElement = m_ElementOffset;
             desc.BufferEx.NumElements = m_ElementNum;
-            desc.BufferEx.Flags = 0; // TODO: D3D11_BUFFEREX_SRV_FLAG_RAW?
+            desc.BufferEx.Flags = isRaw ? D3D11_BUFFEREX_SRV_FLAG_RAW : 0;
 
             hr = m_Device->CreateShaderResourceView(buffer, &desc, (ID3D11ShaderResourceView**)&m_Descriptor);
 
@@ -421,11 +427,11 @@ Result DescriptorD3D11::Create(const BufferViewDesc& bufferViewDesc) {
         } break;
         case BufferViewType::SHADER_RESOURCE_STORAGE: {
             D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
-            desc.Format = format;
+            desc.Format = isRaw ? format.typeless : format.typed;
             desc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
             desc.Buffer.FirstElement = m_ElementOffset;
             desc.Buffer.NumElements = m_ElementNum;
-            desc.Buffer.Flags = 0; // TODO: D3D11_BUFFER_UAV_FLAG_RAW?
+            desc.Buffer.Flags = isRaw ? D3D11_BUFFER_UAV_FLAG_RAW : 0;
 
             hr = m_Device->CreateUnorderedAccessView(buffer, &desc, (ID3D11UnorderedAccessView**)&m_Descriptor);
 

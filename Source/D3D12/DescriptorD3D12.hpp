@@ -284,9 +284,14 @@ Result DescriptorD3D12::Create(const BufferViewDesc& bufferViewDesc) {
     const BufferDesc& bufferDesc = buffer.GetDesc();
     uint64_t size = bufferViewDesc.size == WHOLE_SIZE ? bufferDesc.size : bufferViewDesc.size;
 
-    DXGI_FORMAT format = GetDxgiFormat(bufferViewDesc.format).typed;
+    uint32_t structureStride = 0;
+    if (bufferViewDesc.format == Format::UNKNOWN)
+        structureStride = bufferViewDesc.structureStride ? bufferViewDesc.structureStride : bufferDesc.structureStride;
+    bool isRaw = structureStride == 4;
+
+    const DxgiFormat& format = GetDxgiFormat(bufferViewDesc.format);
     const FormatProps& formatProps = GetFormatProps(bufferViewDesc.format);
-    uint32_t elementSize = bufferDesc.structureStride ? bufferDesc.structureStride : formatProps.stride;
+    uint32_t elementSize = structureStride ? structureStride : formatProps.stride;
     uint64_t elementOffset = (uint32_t)(bufferViewDesc.offset / elementSize);
     uint32_t elementNum = (uint32_t)(size / elementSize);
 
@@ -303,25 +308,25 @@ Result DescriptorD3D12::Create(const BufferViewDesc& bufferViewDesc) {
         }
         case BufferViewType::SHADER_RESOURCE: {
             D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
-            desc.Format = format;
+            desc.Format = isRaw ? format.typeless : format.typed;
             desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
             desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             desc.Buffer.FirstElement = elementOffset;
             desc.Buffer.NumElements = elementNum;
-            desc.Buffer.StructureByteStride = bufferDesc.structureStride;
-            desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE; // TODO: D3D12_BUFFER_SRV_FLAG_RAW?
+            desc.Buffer.StructureByteStride = isRaw ? 0 : structureStride;
+            desc.Buffer.Flags = isRaw ? D3D12_BUFFER_SRV_FLAG_RAW : D3D12_BUFFER_SRV_FLAG_NONE;
 
             return CreateShaderResourceView(buffer, desc);
         }
         case BufferViewType::SHADER_RESOURCE_STORAGE: {
             D3D12_UNORDERED_ACCESS_VIEW_DESC desc = {};
-            desc.Format = format;
+            desc.Format = isRaw ? format.typeless : format.typed;
             desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
             desc.Buffer.FirstElement = elementOffset;
             desc.Buffer.NumElements = elementNum;
-            desc.Buffer.StructureByteStride = bufferDesc.structureStride;
-            desc.Buffer.CounterOffsetInBytes = 0;
-            desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE; // TODO: D3D12_BUFFER_UAV_FLAG_RAW?
+            desc.Buffer.StructureByteStride = isRaw ? 0 : structureStride;
+            desc.Buffer.CounterOffsetInBytes = 0; // TODO: needed?
+            desc.Buffer.Flags = isRaw ? D3D12_BUFFER_UAV_FLAG_RAW : D3D12_BUFFER_UAV_FLAG_NONE;
 
             return CreateUnorderedAccessView(buffer, desc, bufferViewDesc.format);
         }

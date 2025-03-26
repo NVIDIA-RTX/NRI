@@ -464,9 +464,13 @@ NriStruct(TextureDesc) {
     NriOptional Nri(Sample_t) sampleNum;
 };
 
+// "structureStride" values:
+// 0  = allows "typed" views
+// 4  = allows "typed", "byte address" (raw) and "structured" views (D3D11: allows to create multiple "structured" views for a single resource, disobeying the spec)
+// >4 = allows "structured" and potentially "typed" views (D3D11: locks this buffer to a single "structured" layout, no "typed" views)
 NriStruct(BufferDesc) {
     uint64_t size;
-    NriOptional uint32_t structureStride; // use 4 to allow "byte address" (raw) views
+    uint32_t structureStride;
     Nri(BufferUsageBits) usage;
 };
 
@@ -505,8 +509,9 @@ NriStruct(BufferViewDesc) {
     const NriPtr(Buffer) buffer;
     Nri(BufferViewType) viewType;
     Nri(Format) format;
-    uint64_t offset;
+    uint64_t offset; // expects "bufferShaderResourceOffsetAlignment" for shader resources
     uint64_t size;
+    NriOptional uint32_t structureStride; // = structure stride from "BufferDesc" if not provided
 };
 
 // Descriptor pool

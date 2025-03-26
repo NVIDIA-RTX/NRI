@@ -162,6 +162,31 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     m_Version = QueryLatestDevice(deviceTemp, m_Device);
     REPORT_INFO(this, "Using ID3D11Device%u", m_Version);
 
+    if (desc.enableGraphicsAPIValidation) {
+        ComPtr<ID3D11InfoQueue> pInfoQueue;
+        HRESULT hr = m_Device->QueryInterface(&pInfoQueue);
+
+        if (SUCCEEDED(hr)) {
+            hr = pInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
+            RETURN_ON_BAD_HRESULT(this, hr, "ID3D11InfoQueue::SetBreakOnSeverity()");
+
+            hr = pInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
+            RETURN_ON_BAD_HRESULT(this, hr, "ID3D11InfoQueue::SetBreakOnSeverity()");
+
+            // TODO: this code is currently needed to disable known false-positive errors reported by the debug layer
+            D3D11_MESSAGE_ID disableMessageIDs[] = {
+                // Disobey the spec, but allow multiple structured views for a single buffer
+                D3D11_MESSAGE_ID_DEVICE_SHADERRESOURCEVIEW_BUFFER_TYPE_MISMATCH,
+            };
+
+            D3D11_INFO_QUEUE_FILTER filter = {};
+            filter.DenyList.pIDList = disableMessageIDs;
+            filter.DenyList.NumIDs = GetCountOf(disableMessageIDs);
+            hr = pInfoQueue->AddStorageFilterEntries(&filter);
+            RETURN_ON_BAD_HRESULT(this, hr, "ID3D11InfoQueue::AddStorageFilterEntries()");
+        }
+    }
+
     // Immediate context
     ComPtr<ID3D11DeviceContextBest> immediateContext;
     m_Device->GetImmediateContext((ID3D11DeviceContext**)&immediateContext);
