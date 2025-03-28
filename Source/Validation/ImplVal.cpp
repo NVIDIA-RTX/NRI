@@ -1323,14 +1323,14 @@ static bool NRI_CALL IsUpscalerSupported(const Device& device, UpscalerType upsc
 static void NRI_CALL GetUpscalerProps(const Upscaler& upscaler, UpscalerProps& upscalerProps) {
     UpscalerVal& upscalerVal = (UpscalerVal&)upscaler;
     UpscalerImpl* upscalerImpl = upscalerVal.GetImpl();
-    
+
     return upscalerImpl->GetUpscalerProps(upscalerProps);
 }
 
 static void NRI_CALL CmdDispatchUpscale(CommandBuffer& commandBuffer, Upscaler& upscaler, const DispatchUpscaleDesc& dispatchUpscaleDesc) {
     UpscalerVal& upscalerVal = (UpscalerVal&)upscaler;
     UpscalerImpl* upscalerImpl = upscalerVal.GetImpl();
-    
+
     upscalerImpl->CmdDispatchUpscale(commandBuffer, dispatchUpscaleDesc);
 }
 

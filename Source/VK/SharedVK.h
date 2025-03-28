@@ -54,6 +54,6 @@ inline bool IsHostMemory(MemoryLocation location) {
     return location > MemoryLocation::DEVICE_UPLOAD;
 }
 
-}
+} // namespace nri
 
 #include "DeviceVK.h"

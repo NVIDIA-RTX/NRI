@@ -648,13 +648,13 @@ NRI_INLINE void CommandBufferD3D12::CopyTexture(Texture& dstTexture, const Textu
 
 NRI_INLINE void CommandBufferD3D12::ZeroBuffer(Buffer& buffer, uint64_t offset, uint64_t size) {
     const BufferD3D12& dst = (BufferD3D12&)buffer;
-    ID3D12Resource* zeroBuffer = m_Device.GetZeroBuffer();    
+    ID3D12Resource* zeroBuffer = m_Device.GetZeroBuffer();
     D3D12_RESOURCE_DESC zeroBufferDesc = zeroBuffer->GetDesc();
 
     if (size == WHOLE_SIZE)
         size = dst.GetDesc().size;
 
-    while(size) {
+    while (size) {
         uint64_t blockSize = size < zeroBufferDesc.Width ? size : zeroBufferDesc.Width;
 
         m_GraphicsCommandList->CopyBufferRegion(dst, offset, zeroBuffer, 0, blockSize);

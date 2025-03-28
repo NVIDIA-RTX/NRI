@@ -838,8 +838,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
                 }
 
                 m_Desc.adapterDesc.queueNum[(size_t)queueFamilyDesc.queueType] = queueFamilyDesc.queueNum;
-            }
-            else
+            } else
                 m_Desc.adapterDesc.queueNum[(size_t)queueFamilyDesc.queueType] = 0;
         }
     } else {
@@ -864,8 +863,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
                 }
 
                 m_Desc.adapterDesc.queueNum[(size_t)queueFamilyDesc.queueType] = queueFamilyDesc.queueNum;
-            }
-            else
+            } else
                 m_Desc.adapterDesc.queueNum[(size_t)queueFamilyDesc.queueType] = 0;
         }
     }

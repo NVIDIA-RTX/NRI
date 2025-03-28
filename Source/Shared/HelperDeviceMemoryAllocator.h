@@ -42,4 +42,4 @@ private:
     Vector<TextureMemoryBindingDesc> m_TextureBindingDescs;
 };
 
-}
+} // namespace nri

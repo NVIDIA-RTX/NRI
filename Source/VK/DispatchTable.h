@@ -170,7 +170,7 @@ struct DispatchTable {
                                                           // VK_KHR_acceleration_structure
     VK_FUNC(CreateAccelerationStructureKHR);              // + | +
     VK_FUNC(DestroyAccelerationStructureKHR);             // - | +
-    VK_FUNC(GetAccelerationStructureDeviceAddressKHR);    // + | + 
+    VK_FUNC(GetAccelerationStructureDeviceAddressKHR);    // + | +
     VK_FUNC(GetAccelerationStructureBuildSizesKHR);       // + | +
     VK_FUNC(CmdBuildAccelerationStructuresKHR);           // - | +
     VK_FUNC(CmdCopyAccelerationStructureKHR);             // - | +

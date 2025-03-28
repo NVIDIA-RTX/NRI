@@ -277,7 +277,7 @@ Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipel
         stateStream.flags = D3D12_PIPELINE_STATE_FLAG_DYNAMIC_DEPTH_BIAS;
 #endif
 
-        // Depth stencil
+    // Depth stencil
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
     FillDepthStencilState(stateStream.depthStencil.desc, graphicsPipelineDesc.outputMerger);
 #else

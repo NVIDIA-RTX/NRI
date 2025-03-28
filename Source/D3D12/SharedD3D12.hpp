@@ -33,7 +33,8 @@ constexpr std::array<D3D12_DESCRIPTOR_RANGE_TYPE, (size_t)DescriptorType::MAX_NU
     D3D12_DESCRIPTOR_RANGE_TYPE_UAV,     // STORAGE_STRUCTURED_BUFFER
     D3D12_DESCRIPTOR_RANGE_TYPE_SRV      // ACCELERATION_STRUCTURE
 };
-//VALIDATE_ARRAY(g_DescriptorRangeTypes); // TODO: 0 is expected for ACCELERATION_STRUCTURE
+
+// VALIDATE_ARRAY(g_DescriptorRangeTypes); // TODO: 0 is expected for ACCELERATION_STRUCTURE
 
 D3D12_DESCRIPTOR_RANGE_TYPE nri::GetDescriptorRangesType(DescriptorType descriptorType) {
     return g_DescriptorRangeTypes[(size_t)descriptorType];

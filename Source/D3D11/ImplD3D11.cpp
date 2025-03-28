@@ -1128,7 +1128,7 @@ static bool NRI_CALL IsUpscalerSupported(const Device& device, UpscalerType upsc
 
 static void NRI_CALL GetUpscalerProps(const Upscaler& upscaler, UpscalerProps& upscalerProps) {
     UpscalerImpl& upscalerImpl = (UpscalerImpl&)upscaler;
-    
+
     return upscalerImpl.GetUpscalerProps(upscalerProps);
 }
 
