@@ -43,7 +43,7 @@ Result AccelerationStructureD3D12::CreateDescriptor(Descriptor*& descriptor) con
 }
 
 void AccelerationStructureD3D12::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {
-    D3D12_HEAP_TYPE heapType = GetHeapType(memoryLocation);
+    D3D12_HEAP_TYPE heapType = m_Device.GetHeapType(memoryLocation);
     D3D12_HEAP_FLAGS heapFlags = m_Device.GetDesc().isMemoryTier2Supported ? D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES : D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
 
     MemoryTypeInfo memoryTypeInfo = {};

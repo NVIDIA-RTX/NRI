@@ -56,7 +56,6 @@ bool GetBufferDesc(const BufferD3D12Desc& bufferD3D12Desc, BufferDesc& bufferDes
 uint64_t GetMemorySizeD3D12(const MemoryD3D12Desc& memoryD3D12Desc);
 D3D12_RESIDENCY_PRIORITY ConvertPriority(float priority);
 
-D3D12_HEAP_TYPE GetHeapType(MemoryLocation memoryLocation);
 D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE GetAccelerationStructureType(AccelerationStructureType accelerationStructureType);
 D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS GetBuildAccelerationStructureFlags(AccelerationStructureBits accelerationStructureBuildFlags);
 D3D12_RAYTRACING_GEOMETRY_TYPE GetGeometryType(BottomLevelGeometryType geometryType);

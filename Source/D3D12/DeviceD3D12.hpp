@@ -887,10 +887,26 @@ DescriptorPointerCPU DeviceD3D12::GetDescriptorPointerCPU(const DescriptorHandle
     return descriptorPointerCPU;
 }
 
-void DeviceD3D12::GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOURCE_DESC& resourceDesc, MemoryDesc& memoryDesc) const {
+constexpr std::array<D3D12_HEAP_TYPE, (size_t)MemoryLocation::MAX_NUM> g_HeapTypes = {
+    D3D12_HEAP_TYPE_DEFAULT, // DEVICE
+#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+    D3D12_HEAP_TYPE_GPU_UPLOAD, // DEVICE_UPLOAD (Prerequisite: D3D12_FEATURE_D3D12_OPTIONS16)
+#else
+    D3D12_HEAP_TYPE_UPLOAD, // DEVICE_UPLOAD (silent fallback to HOST_UPLOAD)
+#endif
+    D3D12_HEAP_TYPE_UPLOAD,   // HOST_UPLOAD
+    D3D12_HEAP_TYPE_READBACK, // HOST_READBACK
+};
+VALIDATE_ARRAY(g_HeapTypes);
+
+D3D12_HEAP_TYPE DeviceD3D12::GetHeapType(MemoryLocation memoryLocation) const {
     if (memoryLocation == MemoryLocation::DEVICE_UPLOAD && m_Desc.deviceUploadHeapSize == 0)
         memoryLocation = MemoryLocation::HOST_UPLOAD;
 
+    return g_HeapTypes[(size_t)memoryLocation];
+}
+
+void DeviceD3D12::GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOURCE_DESC& resourceDesc, MemoryDesc& memoryDesc) const {
     D3D12_HEAP_TYPE heapType = GetHeapType(memoryLocation);
 
     D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;

@@ -84,7 +84,7 @@ Result BufferD3D12::Create(const AllocateBufferDesc& bufferDesc) {
         flags |= D3D12MA::ALLOCATION_FLAG_COMMITTED;
 
     D3D12MA::ALLOCATION_DESC allocationDesc = {};
-    allocationDesc.HeapType = GetHeapType(bufferDesc.memoryLocation);
+    allocationDesc.HeapType = m_Device.GetHeapType(bufferDesc.memoryLocation);
     allocationDesc.Flags = (D3D12MA::ALLOCATION_FLAGS)flags;
 
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
@@ -137,7 +137,7 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
         flags |= D3D12MA::ALLOCATION_FLAG_COMMITTED;
 
     D3D12MA::ALLOCATION_DESC allocationDesc = {};
-    allocationDesc.HeapType = GetHeapType(textureDesc.memoryLocation);
+    allocationDesc.HeapType = m_Device.GetHeapType(textureDesc.memoryLocation);
     allocationDesc.Flags = (D3D12MA::ALLOCATION_FLAGS)flags;
 
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
