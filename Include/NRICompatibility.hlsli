@@ -53,12 +53,7 @@ Draw parameters:
       for pipelines expecting emulation
 */
 
-#ifndef __cplusplus
-    #define _NRI_MERGE_TOKENS(a, b) a##b
-    #define NRI_MERGE_TOKENS(a, b) _NRI_MERGE_TOKENS(a, b)
-#endif
-
-// Container detection
+// Compiler detection
 #ifdef __hlsl_dx_compiler
     #ifdef __spirv__
         #define NRI_SPIRV
@@ -67,9 +62,17 @@ Draw parameters:
         #define NRI_DXIL
     #endif
 #else
-    #ifndef __cplusplus
+    #if (defined(__cplusplus) || defined(__STDC__) || defined(__STDC_VERSION__))
+        #define NRI_C
+    #else
         #define NRI_DXBC
     #endif
+#endif
+
+// Copied from "NRIMacro.h"
+#ifndef NRI_C
+    #define _NRI_MERGE_TOKENS(a, b) a##b
+    #define NRI_MERGE_TOKENS(a, b) _NRI_MERGE_TOKENS(a, b)
 #endif
 
 // Shader model
@@ -278,7 +281,7 @@ Draw parameters:
 #endif
 
 // C/C++
-#ifdef __cplusplus
+#ifdef NRI_C
     #define NRI_RESOURCE(resourceType, name, regName, bindingIndex, setIndex) \
         struct name
 #endif
