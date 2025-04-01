@@ -20,7 +20,7 @@ NRI_INLINE Result CommandAllocatorD3D12::CreateCommandBuffer(CommandBuffer*& com
         return Result::SUCCESS;
     }
 
-    Destroy(m_Device.GetAllocationCallbacks(), commandBufferD3D12);
+    Destroy(commandBufferD3D12);
 
     return result;
 }

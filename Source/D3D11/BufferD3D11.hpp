@@ -14,7 +14,7 @@ struct MultiThreadProtection {
 };
 
 BufferD3D11::~BufferD3D11() {
-    Destroy(m_Device.GetAllocationCallbacks(), m_ReadbackTexture);
+    Destroy(m_ReadbackTexture);
 }
 
 Result BufferD3D11::Create(MemoryLocation memoryLocation, float priority) {
@@ -120,13 +120,13 @@ TextureD3D11& BufferD3D11::RecreateReadbackTexture(const TextureD3D11& srcTextur
         else if (srcRegionDesc.height == 1)
             textureDesc.type = TextureType::TEXTURE_1D;
 
-        Destroy(m_Device.GetAllocationCallbacks(), m_ReadbackTexture);
+        Destroy(m_ReadbackTexture);
 
         Result result = m_Device.CreateImplementation<TextureD3D11>(m_ReadbackTexture, textureDesc);
         if (result == Result::SUCCESS) {
             result = m_ReadbackTexture->Create(MemoryLocation::HOST_READBACK, 0.0f);
             if (result != Result::SUCCESS)
-                Destroy(m_Device.GetAllocationCallbacks(), m_ReadbackTexture);
+                Destroy(m_ReadbackTexture);
         }
     }
 

@@ -1,7 +1,7 @@
 // © 2021 NVIDIA Corporation
 
 AccelerationStructureD3D12::~AccelerationStructureD3D12() {
-    Destroy(m_Device.GetAllocationCallbacks(), m_Buffer);
+    Destroy(m_Buffer);
 }
 
 Result AccelerationStructureD3D12::Create(const AccelerationStructureD3D12Desc& accelerationStructureDesc) {
@@ -13,11 +13,11 @@ Result AccelerationStructureD3D12::Create(const AccelerationStructureD3D12Desc& 
     BufferD3D12Desc bufferDesc = {};
     bufferDesc.d3d12Resource = accelerationStructureDesc.d3d12Resource;
 
-    return m_Device.CreateImplementation<BufferD3D12>((Buffer*&)m_Buffer, bufferDesc);
+    return m_Device.CreateImplementation<BufferD3D12>(m_Buffer, bufferDesc);
 }
 
 Result AccelerationStructureD3D12::Create(const AccelerationStructureDesc& accelerationStructureDesc) {
-    if (m_Device.GetVersion() < 5)
+    if (!m_Device.GetDesc().isRayTracingSupported)
         return Result::UNSUPPORTED;
 
     m_Device.GetAccelerationStructurePrebuildInfo(accelerationStructureDesc, m_PrebuildInfo);
@@ -27,7 +27,7 @@ Result AccelerationStructureD3D12::Create(const AccelerationStructureDesc& accel
     bufferDesc.size = m_PrebuildInfo.ResultDataMaxSizeInBytes;
     bufferDesc.usage = BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE;
 
-    return m_Device.CreateImplementation<BufferD3D12>((Buffer*&)m_Buffer, bufferDesc);
+    return m_Device.CreateImplementation<BufferD3D12>(m_Buffer, bufferDesc);
 }
 
 Result AccelerationStructureD3D12::BindMemory(Memory* memory, uint64_t offset) {

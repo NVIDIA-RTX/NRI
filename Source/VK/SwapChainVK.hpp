@@ -7,9 +7,9 @@ SwapChainVK::SwapChainVK(DeviceVK& device)
 
 SwapChainVK::~SwapChainVK() {
     for (size_t i = 0; i < m_Textures.size(); i++)
-        Destroy(m_Device.GetAllocationCallbacks(), m_Textures[i]);
+        Destroy(m_Textures[i]);
 
-    Destroy(m_Device.GetAllocationCallbacks(), m_LatencyFence);
+    Destroy(m_LatencyFence);
 
     const auto& vk = m_Device.GetDispatchTable();
     if (m_Handle)

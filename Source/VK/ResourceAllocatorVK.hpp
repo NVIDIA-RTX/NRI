@@ -166,6 +166,9 @@ Result TextureVK::Create(const AllocateTextureDesc& textureDesc) {
 }
 
 Result AccelerationStructureVK::Create(const AllocateAccelerationStructureDesc& accelerationStructureDesc) {
+    if (!m_Device.GetDesc().isRayTracingSupported)
+        return Result::UNSUPPORTED;
+
     Result nriResult = m_Device.CreateVma();
     if (nriResult != Result::SUCCESS)
         return nriResult;
@@ -179,10 +182,8 @@ Result AccelerationStructureVK::Create(const AllocateAccelerationStructureDesc& 
     bufferDesc.desc.size = sizesInfo.accelerationStructureSize;
     bufferDesc.desc.usage = BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE;
 
-    Buffer* buffer = nullptr;
-    Result result = m_Device.CreateImplementation<BufferVK>(buffer, bufferDesc);
+    Result result = m_Device.CreateImplementation<BufferVK>(m_Buffer, bufferDesc);
     if (result == Result::SUCCESS) {
-        m_Buffer = (BufferVK*)buffer;
         m_BuildScratchSize = sizesInfo.buildScratchSize;
         m_UpdateScratchSize = sizesInfo.updateScratchSize;
         m_Type = GetAccelerationStructureType(accelerationStructureDesc.desc.type);
@@ -194,6 +195,9 @@ Result AccelerationStructureVK::Create(const AllocateAccelerationStructureDesc& 
 }
 
 Result MicromapVK::Create(const AllocateMicromapDesc& micromapDesc) {
+    if (!m_Device.GetDesc().isMicromapSupported)
+        return Result::UNSUPPORTED;
+
     Result nriResult = m_Device.CreateVma();
     if (nriResult != Result::SUCCESS)
         return nriResult;
@@ -207,10 +211,8 @@ Result MicromapVK::Create(const AllocateMicromapDesc& micromapDesc) {
     bufferDesc.desc.size = sizesInfo.micromapSize;
     bufferDesc.desc.usage = BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE;
 
-    Buffer* buffer = nullptr;
-    Result result = m_Device.CreateImplementation<BufferVK>(buffer, bufferDesc);
+    Result result = m_Device.CreateImplementation<BufferVK>(m_Buffer, bufferDesc);
     if (result == Result::SUCCESS) {
-        m_Buffer = (BufferVK*)buffer;
         m_BuildScratchSize = sizesInfo.buildScratchSize;
 
         FinishCreation();

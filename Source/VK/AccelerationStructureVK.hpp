@@ -10,6 +10,9 @@ AccelerationStructureVK::~AccelerationStructureVK() {
 }
 
 Result AccelerationStructureVK::Create(const AccelerationStructureDesc& accelerationStructureDesc) {
+    if (!m_Device.GetDesc().isRayTracingSupported)
+        return Result::UNSUPPORTED;
+
     VkAccelerationStructureBuildSizesInfoKHR sizesInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
     m_Device.GetAccelerationStructureBuildSizesInfo(accelerationStructureDesc, sizesInfo);
 
@@ -17,10 +20,8 @@ Result AccelerationStructureVK::Create(const AccelerationStructureDesc& accelera
     bufferDesc.size = sizesInfo.accelerationStructureSize;
     bufferDesc.usage = BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE;
 
-    Buffer* buffer = nullptr;
-    Result result = m_Device.CreateImplementation<BufferVK>(buffer, bufferDesc);
+    Result result = m_Device.CreateImplementation<BufferVK>(m_Buffer, bufferDesc);
     if (result == Result::SUCCESS) {
-        m_Buffer = (BufferVK*)buffer;
         m_BuildScratchSize = sizesInfo.buildScratchSize;
         m_UpdateScratchSize = sizesInfo.updateScratchSize;
         m_Type = GetAccelerationStructureType(accelerationStructureDesc.type);
@@ -75,9 +76,7 @@ Result AccelerationStructureVK::FinishCreation() {
 
 NRI_INLINE void AccelerationStructureVK::SetDebugName(const char* name) {
     m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR, (uint64_t)m_Handle, name);
-
-    if (m_Buffer)
-        m_Buffer->SetDebugName(name);
+    m_Buffer->SetDebugName(name);
 }
 
 NRI_INLINE Result AccelerationStructureVK::CreateDescriptor(Descriptor*& descriptor) const {
@@ -90,7 +89,7 @@ NRI_INLINE Result AccelerationStructureVK::CreateDescriptor(Descriptor*& descrip
         return Result::SUCCESS;
     }
 
-    Destroy(m_Device.GetAllocationCallbacks(), descriptorImpl);
+    Destroy(descriptorImpl);
 
     return Result::SUCCESS;
 }

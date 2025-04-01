@@ -2,7 +2,7 @@
 
 SwapChainVal::~SwapChainVal() {
     for (size_t i = 0; i < m_Textures.size(); i++)
-        Destroy(m_Device.GetAllocationCallbacks(), m_Textures[i]);
+        Destroy(m_Textures[i]);
 }
 
 NRI_INLINE Texture* const* SwapChainVal::GetTextures(uint32_t& textureNum) {

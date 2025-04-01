@@ -177,7 +177,7 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
 }
 
 Result AccelerationStructureD3D12::Create(const AllocateAccelerationStructureDesc& accelerationStructureDesc) {
-    if (m_Device.GetVersion() < 5)
+    if (!m_Device.GetDesc().isRayTracingSupported)
         return Result::UNSUPPORTED;
 
     Result nriResult = m_Device.CreateVma();
@@ -192,5 +192,5 @@ Result AccelerationStructureD3D12::Create(const AllocateAccelerationStructureDes
     bufferDesc.desc.size = m_PrebuildInfo.ResultDataMaxSizeInBytes;
     bufferDesc.desc.usage = BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE;
 
-    return m_Device.CreateImplementation<BufferD3D12>((Buffer*&)m_Buffer, bufferDesc);
+    return m_Device.CreateImplementation<BufferD3D12>(m_Buffer, bufferDesc);
 }
