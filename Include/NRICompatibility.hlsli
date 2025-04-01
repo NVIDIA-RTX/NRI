@@ -76,10 +76,10 @@ Draw parameters:
 #endif
 
 // Shader model
-#ifdef NRI_DXBC
-    #define NRI_SHADER_MODEL 50
-#else
+#ifdef __hlsl_dx_compiler
     #define NRI_SHADER_MODEL (__SHADER_TARGET_MAJOR * 10 + __SHADER_TARGET_MINOR)
+#else
+    #define NRI_SHADER_MODEL 50
 #endif
 
 // Extensions
