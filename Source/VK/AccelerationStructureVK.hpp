@@ -10,9 +10,6 @@ AccelerationStructureVK::~AccelerationStructureVK() {
 }
 
 Result AccelerationStructureVK::Create(const AccelerationStructureDesc& accelerationStructureDesc) {
-    if (!m_Device.GetDesc().isRayTracingSupported)
-        return Result::UNSUPPORTED;
-
     VkAccelerationStructureBuildSizesInfoKHR sizesInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
     m_Device.GetAccelerationStructureBuildSizesInfo(accelerationStructureDesc, sizesInfo);
 

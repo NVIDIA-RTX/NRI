@@ -426,9 +426,6 @@ Result PipelineD3D12::Create(const ComputePipelineDesc& computePipelineDesc) {
 }
 
 Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc) {
-    if (m_Device.GetVersion() < 5)
-        return Result::UNSUPPORTED;
-
     m_PipelineLayout = (const PipelineLayoutD3D12*)rayTracingPipelineDesc.pipelineLayout;
 
     ID3D12RootSignature* rootSignature = *m_PipelineLayout;
@@ -443,11 +440,18 @@ Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDes
         + (rootSignature ? 1 : 0);
     Scratch<D3D12_STATE_SUBOBJECT> stateSubobjects = AllocateScratch(m_Device, D3D12_STATE_SUBOBJECT, stateObjectNum);
 
-    D3D12_RAYTRACING_PIPELINE_CONFIG rayTracingPipelineConfig = {};
+    D3D12_RAYTRACING_PIPELINE_CONFIG1 rayTracingPipelineConfig = {};
     {
         rayTracingPipelineConfig.MaxTraceRecursionDepth = rayTracingPipelineDesc.recursionMaxDepth;
+        rayTracingPipelineConfig.Flags = D3D12_RAYTRACING_PIPELINE_FLAG_NONE;
 
-        stateSubobjects[stateSubobjectNum].Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG;
+        if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::SKIP_TRIANGLES)
+            rayTracingPipelineConfig.Flags |= D3D12_RAYTRACING_PIPELINE_FLAG_SKIP_TRIANGLES;
+        if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::SKIP_AABBS)
+            rayTracingPipelineConfig.Flags |= D3D12_RAYTRACING_PIPELINE_FLAG_SKIP_PROCEDURAL_PRIMITIVES;
+        // TODO: if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::ALLOW_MICROMAPS)
+
+        stateSubobjects[stateSubobjectNum].Type = m_Device.GetDesc().rayTracingTier > 1 ? D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG1 : D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG;
         stateSubobjects[stateSubobjectNum].pDesc = &rayTracingPipelineConfig;
         stateSubobjectNum++;
     }

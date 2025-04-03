@@ -942,7 +942,7 @@ static Result NRI_CALL AllocateBuffer(Device& device, const AllocateBufferDesc& 
     if (result == Result::SUCCESS) {
         result = ((BufferD3D11*)buffer)->Create(bufferDesc.memoryLocation, bufferDesc.memoryPriority);
         if (result != Result::SUCCESS) {
-            Destroy(((DeviceD3D11&)device).GetAllocationCallbacks(), (BufferD3D11*)buffer);
+            Destroy((BufferD3D11*)buffer);
             buffer = nullptr;
         }
     }
@@ -955,7 +955,7 @@ static Result NRI_CALL AllocateTexture(Device& device, const AllocateTextureDesc
     if (result == Result::SUCCESS) {
         result = ((TextureD3D11*)texture)->Create(textureDesc.memoryLocation, textureDesc.memoryPriority);
         if (result != Result::SUCCESS) {
-            Destroy(((DeviceD3D11&)device).GetAllocationCallbacks(), (TextureD3D11*)texture);
+            Destroy((TextureD3D11*)texture);
             texture = nullptr;
         }
     }
@@ -995,7 +995,7 @@ static Result NRI_CALL CreateStreamer(Device& device, const StreamerDesc& stream
     Result result = impl->Create(streamerDesc);
 
     if (result != Result::SUCCESS) {
-        Destroy(deviceD3D11.GetAllocationCallbacks(), impl);
+        Destroy(impl);
         streamer = nullptr;
     } else
         streamer = (Streamer*)impl;
@@ -1108,7 +1108,7 @@ static Result NRI_CALL CreateUpscaler(Device& device, const UpscalerDesc& upscal
     Result result = impl->Create(upscalerDesc);
 
     if (result != Result::SUCCESS) {
-        Destroy(deviceD3D11.GetAllocationCallbacks(), impl);
+        Destroy(impl);
         upscaler = nullptr;
     } else
         upscaler = (Upscaler*)impl;

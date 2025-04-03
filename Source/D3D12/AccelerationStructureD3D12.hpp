@@ -17,9 +17,6 @@ Result AccelerationStructureD3D12::Create(const AccelerationStructureD3D12Desc& 
 }
 
 Result AccelerationStructureD3D12::Create(const AccelerationStructureDesc& accelerationStructureDesc) {
-    if (!m_Device.GetDesc().isRayTracingSupported)
-        return Result::UNSUPPORTED;
-
     m_Device.GetAccelerationStructurePrebuildInfo(accelerationStructureDesc, m_PrebuildInfo);
     m_Flags = accelerationStructureDesc.flags;
 

@@ -609,9 +609,6 @@ constexpr VkBuildAccelerationStructureFlagsKHR GetBuildAccelerationStructureFlag
     if (accelerationStructureBits & AccelerationStructureBits::ALLOW_MICROMAP_UPDATE)
         flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_OPACITY_MICROMAP_UPDATE_EXT;
 
-    if (accelerationStructureBits & AccelerationStructureBits::ALLOW_MICROMAP_DATA_UPDATE)
-        flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_OPACITY_MICROMAP_DATA_UPDATE_EXT;
-
     if (accelerationStructureBits & AccelerationStructureBits::ALLOW_DISABLE_MICROMAPS)
         flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_DISABLE_OPACITY_MICROMAPS_EXT;
 

@@ -7,9 +7,18 @@ namespace nri {
 struct BufferVal;
 struct TextureVal;
 struct AccelerationStructureVal;
+struct MicromapVal;
 
 struct MemoryVal final : public ObjectVal {
-    MemoryVal(DeviceVal& device, Memory* memory, uint64_t size, MemoryLocation memoryLocation);
+    inline MemoryVal(DeviceVal& device, Memory* memory, uint64_t size, MemoryLocation memoryLocation)
+        : ObjectVal(device, memory)
+        , m_Buffers(device.GetStdAllocator())
+        , m_Textures(device.GetStdAllocator())
+        , m_AccelerationStructures(device.GetStdAllocator())
+        , m_Micromaps(device.GetStdAllocator())
+        , m_Size(size)
+        , m_MemoryLocation(memoryLocation) {
+    }
 
     inline Memory* GetImpl() const {
         return (Memory*)m_Impl;
@@ -25,17 +34,20 @@ struct MemoryVal final : public ObjectVal {
 
     bool HasBoundResources();
     void ReportBoundResources();
-    void UnbindBuffer(BufferVal& buffer);
-    void UnbindTexture(TextureVal& texture);
-    void UnbindAccelerationStructure(AccelerationStructureVal& accelerationStructure);
-    void BindBuffer(BufferVal& buffer);
-    void BindTexture(TextureVal& texture);
-    void BindAccelerationStructure(AccelerationStructureVal& accelerationStructure);
+    void Bind(BufferVal& buffer);
+    void Bind(TextureVal& texture);
+    void Bind(AccelerationStructureVal& accelerationStructure);
+    void Bind(MicromapVal& micromap);
+    void Unbind(BufferVal& buffer);
+    void Unbind(TextureVal& texture);
+    void Unbind(AccelerationStructureVal& accelerationStructure);
+    void Unbind(MicromapVal& micromap);
 
 private:
     Vector<BufferVal*> m_Buffers;
     Vector<TextureVal*> m_Textures;
     Vector<AccelerationStructureVal*> m_AccelerationStructures;
+    Vector<MicromapVal*> m_Micromaps;
     uint64_t m_Size = 0;
     MemoryLocation m_MemoryLocation = MemoryLocation::MAX_NUM; // wrapped object
     Lock m_Lock;

@@ -443,6 +443,13 @@ Result PipelineVK::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc) 
     createInfo.layout = pipelineLayoutVK;
     createInfo.basePipelineIndex = -1;
 
+    if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::SKIP_TRIANGLES)
+        createInfo.flags |= VK_PIPELINE_CREATE_RAY_TRACING_SKIP_TRIANGLES_BIT_KHR;
+    if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::SKIP_AABBS)
+        createInfo.flags |= VK_PIPELINE_CREATE_RAY_TRACING_SKIP_AABBS_BIT_KHR;
+    if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::ALLOW_MICROMAPS)
+        createInfo.flags |= VK_PIPELINE_CREATE_RAY_TRACING_OPACITY_MICROMAP_BIT_EXT;
+
     VkPipelineRobustnessCreateInfoEXT robustnessInfo = {VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO_EXT};
     if (FillPipelineRobustness(m_Device, rayTracingPipelineDesc.robustness, robustnessInfo))
         createInfo.pNext = &robustnessInfo;

@@ -131,6 +131,7 @@ struct DeviceVal final : public DeviceBase {
     Result CreatePipeline(const GraphicsPipelineDesc& graphicsPipelineDesc, Pipeline*& pipeline);
     Result CreatePipeline(const ComputePipelineDesc& computePipelineDesc, Pipeline*& pipeline);
     Result CreatePipeline(const RayTracingPipelineDesc& pipelineDesc, Pipeline*& pipeline);
+    Result CreateMicromap(const MicromapDesc& micromapDesc, Micromap*& micromap);
     Result AllocateBuffer(const AllocateBufferDesc& bufferDesc, Buffer*& buffer);
     Result AllocateTexture(const AllocateTextureDesc& textureDesc, Texture*& texture);
     Result CreateQueryPool(const QueryPoolDesc& queryPoolDesc, QueryPool*& queryPool);
@@ -161,6 +162,7 @@ struct DeviceVal final : public DeviceBase {
     void DestroyBuffer(Buffer& buffer);
     void DestroyTexture(Texture& texture);
     void DestroyPipeline(Pipeline& pipeline);
+    void DestroyMicromap(Micromap& micromap);
     void DestroyQueryPool(QueryPool& queryPool);
     void DestroySwapChain(SwapChain& swapChain);
     void DestroyDescriptor(Descriptor& descriptor);
@@ -175,6 +177,7 @@ struct DeviceVal final : public DeviceBase {
     Result AllocateMemory(const AllocateMemoryDesc& allocateMemoryDesc, Memory*& memory);
     Result BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
     Result BindTextureMemory(const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
+    Result BindMicromapMemory(const MicromapMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
     Result BindAccelerationStructureMemory(const AccelerationStructureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
     FormatSupportBits GetFormatSupport(Format format) const;
 

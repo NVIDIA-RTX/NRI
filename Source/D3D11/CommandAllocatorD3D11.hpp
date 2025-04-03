@@ -21,9 +21,9 @@ Result nri::CreateCommandBuffer(DeviceD3D11& device, ID3D11DeviceContext* precre
     }
 
     if (isImmediate)
-        Destroy(device.GetAllocationCallbacks(), (CommandBufferEmuD3D11*)impl);
+        Destroy((CommandBufferEmuD3D11*)impl);
     else
-        Destroy(device.GetAllocationCallbacks(), (CommandBufferD3D11*)impl);
+        Destroy((CommandBufferD3D11*)impl);
 
     return result;
 }

@@ -7,10 +7,12 @@ void nri::ConvertGeometryObjectsVal(BottomLevelGeometryDesc* destObjects, const 
 
         dst = src;
         if (src.type == BottomLevelGeometryType::TRIANGLES) {
-            dst.geometry.triangles.vertexBuffer = NRI_GET_IMPL(Buffer, src.geometry.triangles.vertexBuffer);
-            dst.geometry.triangles.indexBuffer = NRI_GET_IMPL(Buffer, src.geometry.triangles.indexBuffer);
-            dst.geometry.triangles.transformBuffer = NRI_GET_IMPL(Buffer, src.geometry.triangles.transformBuffer);
+            dst.triangles.vertexBuffer = NRI_GET_IMPL(Buffer, src.triangles.vertexBuffer);
+            dst.triangles.indexBuffer = NRI_GET_IMPL(Buffer, src.triangles.indexBuffer);
+            dst.triangles.transformBuffer = NRI_GET_IMPL(Buffer, src.triangles.transformBuffer);
+            dst.triangles.micromap.micromap = NRI_GET_IMPL(Micromap, src.triangles.micromap.micromap);
+            dst.triangles.micromap.indexBuffer = NRI_GET_IMPL(Buffer, src.triangles.micromap.indexBuffer);
         } else
-            dst.geometry.aabbs.buffer = NRI_GET_IMPL(Buffer, src.geometry.aabbs.buffer);
+            dst.aabbs.buffer = NRI_GET_IMPL(Buffer, src.aabbs.buffer);
     }
 }

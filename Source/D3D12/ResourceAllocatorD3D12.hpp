@@ -177,9 +177,6 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
 }
 
 Result AccelerationStructureD3D12::Create(const AllocateAccelerationStructureDesc& accelerationStructureDesc) {
-    if (!m_Device.GetDesc().isRayTracingSupported)
-        return Result::UNSUPPORTED;
-
     Result nriResult = m_Device.CreateVma();
     if (nriResult != Result::SUCCESS)
         return nriResult;

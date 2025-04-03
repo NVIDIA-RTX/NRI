@@ -4,14 +4,21 @@
 
 NriNamespaceBegin
 
-NriForwardStruct(AccelerationStructure); // bottom or top level acceleration structure (aka BLAS or TLAS respectively)
-NriForwardStruct(Micromap);              // a micromap that encodes sub-triangle opacity (aka OMM)
+NriForwardStruct(AccelerationStructure); // bottom- or top- level acceleration structure (aka BLAS or TLAS respectively)
+NriForwardStruct(Micromap);              // a micromap that encodes sub-triangle opacity (aka OMM, can be attached to a triangle BLAS)
 
 static const NriPtr(Buffer) NriConstant(HAS_BUFFER) = (NriPtr(Buffer))1; // only to indicate buffer presence in "AccelerationStructureDesc"
 
 //============================================================================================================================================================================================
 #pragma region [ Pipeline ]
 //============================================================================================================================================================================================
+
+NriBits(RayTracingPipelineBits, uint8_t,
+    NONE                                = 0,
+    SKIP_TRIANGLES                      = NriBit(0), // provides knowledge that "triangles" doesn't need to be considered
+    SKIP_AABBS                          = NriBit(1), // provides knowledge that "aabbs" doesn't need to be considered
+    ALLOW_MICROMAPS                     = NriBit(2)  // specifies that the ray tracing pipeline can be used with acceleration structures which reference micromaps
+);
 
 NriStruct(ShaderLibraryDesc) {
     const NriPtr(ShaderDesc) shaders;
@@ -34,13 +41,14 @@ NriStruct(RayTracingPipelineDesc) {
     uint32_t recursionMaxDepth;
     uint32_t rayPayloadMaxSize;
     uint32_t rayHitAttributeMaxSize;
+    Nri(RayTracingPipelineBits) flags;
     NriOptional Nri(Robustness) robustness;
 };
 
 #pragma endregion
 
 //============================================================================================================================================================================================
-#pragma region [ Opacity micromap ]
+#pragma region [ Acceleration Structure: Opacity Micromap (OMM) ]
 //============================================================================================================================================================================================
 
 NriEnum(MicromapFormat, uint16_t,
@@ -69,9 +77,9 @@ NriStruct(MicromapUsageDesc) {
 };
 
 NriStruct(MicromapDesc) {
-    Nri(MicromapBits) flags;
     const NriPtr(MicromapUsageDesc) usages;
     uint32_t usageNum;
+    Nri(MicromapBits) flags;
 };
 
 NriStruct(MicromapMemoryBindingDesc) {
@@ -82,9 +90,9 @@ NriStruct(MicromapMemoryBindingDesc) {
 
 NriStruct(BuildMicromapDesc) {
     NriPtr(Micromap) dst;
-    NriPtr(Buffer) dataBuffer;
+    const NriPtr(Buffer) dataBuffer;
     uint64_t dataOffset;
-    NriPtr(Buffer) triangleBuffer; // contains "MicromapTriangle" entries
+    const NriPtr(Buffer) triangleBuffer; // contains "MicromapTriangle" entries
     uint64_t triangleOffset;
     NriPtr(Buffer) scratchBuffer;
     uint64_t scratchOffset;
@@ -94,7 +102,7 @@ NriStruct(BottomLevelMicromapDesc) {
     NriPtr(Micromap) micromap;
 
     // An index buffer specifying which micromap triangle to use for each triangle in the geometry. If an index is the unsigned cast of one of the values from "MicromapSpecialIndex"
-    // then that triangle behaves as described for that special value. Otherwise that triangle uses the opacity micromap information from micromap at that index plus "baseTriangle".
+    // then that triangle behaves as described for that special value. Otherwise that triangle uses the micromap information from micromap at that index plus "baseTriangle".
     // If not provided, "1:1" mapping between geometry triangles and micromap triangles
     const NriPtr(Buffer) indexBuffer;
     uint64_t indexOffset;
@@ -112,30 +120,12 @@ NriStruct(MicromapTriangle) {
 #pragma endregion
 
 //============================================================================================================================================================================================
-#pragma region [ Acceleration structure ]
+#pragma region [ Acceleration Structure: Bottom Level (BLAS) ]
 //============================================================================================================================================================================================
-
-NriEnum(AccelerationStructureType, uint8_t,
-    TOP_LEVEL,
-    BOTTOM_LEVEL
-);
 
 NriEnum(BottomLevelGeometryType, uint8_t,
     TRIANGLES,
     AABBS
-);
-
-NriBits(AccelerationStructureBits, uint16_t,
-    NONE                                = 0,
-    ALLOW_UPDATE                        = NriBit(0), // allows to do "updates", which are faster than "builds" (may increase memory usage, build time and decrease traversal performance)
-    ALLOW_COMPACTION                    = NriBit(1), // allows to compact the acceleration structure by copying using "COMPACT" mode
-    ALLOW_DATA_ACCESS                   = NriBit(2), // allows to access vertex data from shaders (requires "isRayTracingPositionFetchSupported")
-    ALLOW_MICROMAP_UPDATE               = NriBit(3), // allows to update micromaps via acceleration structure update (may increase size and decrease traversal performance)
-    ALLOW_MICROMAP_DATA_UPDATE          = NriBit(4), // allows to update micromap data via acceleration structure update (may decrease traversal performance)
-    ALLOW_DISABLE_MICROMAPS             = NriBit(5), // allows to have "DISABLE_MICROMAPS" flag for instances referencing this BLAS
-    PREFER_FAST_TRACE                   = NriBit(6), // prioritize traversal performance over build time
-    PREFER_FAST_BUILD                   = NriBit(7), // prioritize build time over traversal performance
-    MINIMIZE_MEMORY                     = NriBit(8)  // minimize the amount of memory used during the build (may increase build time and decrease traversal performance)
 );
 
 NriBits(BottomLevelGeometryBits, uint8_t,
@@ -143,6 +133,65 @@ NriBits(BottomLevelGeometryBits, uint8_t,
     OPAQUE_GEOMETRY                     = NriBit(0), // the geometry acts as if no any hit shader is present (can be overriden by "TopLevelInstanceBits" or ray flags)
     NO_DUPLICATE_ANY_HIT_INVOCATION     = NriBit(1)  // the any-hit shader must be called once for each primitive in this geometry
 );
+
+NriStruct(BottomLevelTrianglesDesc) {
+    // Vertices
+    const NriPtr(Buffer) vertexBuffer;
+    uint64_t vertexOffset;
+    uint32_t vertexNum;
+    uint16_t vertexStride;
+    Nri(Format) vertexFormat;
+
+    // Indices
+    NriOptional const NriPtr(Buffer) indexBuffer;
+    NriOptional uint64_t indexOffset;
+    NriOptional uint32_t indexNum;
+    NriOptional Nri(IndexType) indexType;
+
+    // Transform
+    NriOptional const NriPtr(Buffer) transformBuffer; // contains "TransformMatrix" entries
+    NriOptional uint64_t transformOffset;
+
+    // Micromap
+    NriOptional Nri(BottomLevelMicromapDesc) micromap;
+};
+
+NriStruct(BottomLevelAabbsDesc) {
+    const NriPtr(Buffer) buffer; // contains "BottomLevelAabb" entries
+    uint64_t offset;
+    uint32_t num;
+    uint32_t stride;
+};
+
+NriStruct(BottomLevelGeometryDesc) {
+    Nri(BottomLevelGeometryBits) flags;
+    Nri(BottomLevelGeometryType) type;
+    union {
+        Nri(BottomLevelTrianglesDesc) triangles;
+        Nri(BottomLevelAabbsDesc) aabbs;
+    };
+};
+
+// Data layout
+NriStruct(TransformMatrix) {
+    float transform[3][4]; // 3x4 row-major affine transformation matrix, the first three columns of matrix must define an invertible 3x3 matrix
+};
+
+NriStruct(BottomLevelAabb)
+{
+    float minX;
+    float minY;
+    float minZ;
+    float maxX;
+    float maxY;
+    float maxZ;
+};
+
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region [ Acceleration Structure: Top Level (TLAS) ]
+//============================================================================================================================================================================================
 
 NriBits(TopLevelInstanceBits, uint32_t,
     NONE                                = 0,
@@ -154,43 +203,37 @@ NriBits(TopLevelInstanceBits, uint32_t,
     DISABLE_MICROMAPS                   = NriBit(5)  // disable micromap test for all triangles and revert to using geometry opaque/non-opaque state instead
 );
 
-NriStruct(BottomLevelTrianglesDesc) {
-    // Vertices
-    NriPtr(Buffer) vertexBuffer;
-    uint64_t vertexOffset;
-    uint32_t vertexNum;
-    uint16_t vertexStride;
-    Nri(Format) vertexFormat;
-
-    // Indices
-    NriOptional NriPtr(Buffer) indexBuffer;
-    NriOptional uint64_t indexOffset;
-    NriOptional uint32_t indexNum;
-    NriOptional Nri(IndexType) indexType;
-
-    // Transform
-    NriOptional NriPtr(Buffer) transformBuffer; // contains "float transform[3][4]" affine matrices in row major layout
-    NriOptional uint64_t transformOffset;
-
-    // Micromap
-    NriOptional NriPtr(BottomLevelMicromapDesc) micromap;
+NriStruct(TopLevelInstance) {
+    float transform[3][4];
+    uint32_t instanceId                     : 24;
+    uint32_t mask                           : 8;
+    uint32_t shaderBindingTableLocalOffset  : 24;
+    Nri(TopLevelInstanceBits) flags         : 8;
+    uint64_t accelerationStructureHandle;
 };
 
-NriStruct(BottomLevelAabbsDesc) {
-    NriPtr(Buffer) buffer; // contains "BottomLevelAabb" entries
-    uint64_t offset;
-    uint32_t num;
-    uint32_t stride;
-};
+#pragma endregion
 
-NriStruct(BottomLevelGeometryDesc) {
-    Nri(BottomLevelGeometryType) type;
-    Nri(BottomLevelGeometryBits) flags;
-    union {
-        Nri(BottomLevelTrianglesDesc) triangles;
-        Nri(BottomLevelAabbsDesc) aabbs;
-    } geometry;
-};
+//============================================================================================================================================================================================
+#pragma region [ Acceleration structure (AS) ]
+//============================================================================================================================================================================================
+
+NriEnum(AccelerationStructureType, uint8_t,
+    TOP_LEVEL,
+    BOTTOM_LEVEL
+);
+
+NriBits(AccelerationStructureBits, uint8_t,
+    NONE                                = 0,
+    ALLOW_UPDATE                        = NriBit(0), // allows to do "updates", which are faster than "builds" (may increase memory usage, build time and decrease traversal performance)
+    ALLOW_COMPACTION                    = NriBit(1), // allows to compact the acceleration structure by copying using "COMPACT" mode
+    ALLOW_DATA_ACCESS                   = NriBit(2), // allows to access vertex data from shaders (requires "isRayTracingPositionFetchSupported")
+    ALLOW_MICROMAP_UPDATE               = NriBit(3), // allows to update micromaps via acceleration structure update (may increase size and decrease traversal performance)
+    ALLOW_DISABLE_MICROMAPS             = NriBit(4), // allows to have "DISABLE_MICROMAPS" flag for instances referencing this BLAS
+    PREFER_FAST_TRACE                   = NriBit(5), // prioritize traversal performance over build time
+    PREFER_FAST_BUILD                   = NriBit(6), // prioritize build time over traversal performance
+    MINIMIZE_MEMORY                     = NriBit(7)  // minimize the amount of memory used during the build (may increase build time and decrease traversal performance)
+);
 
 NriStruct(AccelerationStructureDesc) {
     const NriPtr(BottomLevelGeometryDesc) geometries; // needed only for "BOTTOM_LEVEL", "HAS_BUFFER" can be used to indicate a buffer presence (no real buffers needed at initialization time)
@@ -222,26 +265,6 @@ NriStruct(BuildBottomLevelAccelerationStructureDesc) {
     uint32_t geometryNum;
     NriPtr(Buffer) scratchBuffer;
     uint64_t scratchOffset;
-};
-
-// Data layouts
-NriStruct(BottomLevelAabb)
-{
-    float minX;
-    float minY;
-    float minZ;
-    float maxX;
-    float maxY;
-    float maxZ;
-};
-
-NriStruct(TopLevelInstance) {
-    float transform[3][4];
-    uint32_t instanceId                     : 24;
-    uint32_t mask                           : 8;
-    uint32_t shaderBindingTableLocalOffset  : 24;
-    Nri(TopLevelInstanceBits) flags         : 8;
-    uint64_t accelerationStructureHandle;
 };
 
 #pragma endregion
@@ -338,9 +361,9 @@ NriStruct(RayTracingInterface) {
 
             // Copy
             void    (NRI_CALL *CmdCopyAccelerationStructure)                        (NriRef(CommandBuffer) commandBuffer, NriRef(AccelerationStructure) dst, const NriRef(AccelerationStructure) src, Nri(CopyMode) copyMode);
-            void    (NRI_CALL *CmdWriteAccelerationStructuresSizes)                  (NriRef(CommandBuffer) commandBuffer, const NriPtr(AccelerationStructure) const* accelerationStructures, uint32_t accelerationStructureNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
+            void    (NRI_CALL *CmdWriteAccelerationStructuresSizes)                 (NriRef(CommandBuffer) commandBuffer, const NriPtr(AccelerationStructure) const* accelerationStructures, uint32_t accelerationStructureNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
             void    (NRI_CALL *CmdCopyMicromap)                                     (NriRef(CommandBuffer) commandBuffer, NriRef(Micromap) dst, const NriRef(Micromap) src, Nri(CopyMode) copyMode);
-            void    (NRI_CALL *CmdWriteMicromapsSizes)                               (NriRef(CommandBuffer) commandBuffer, const NriPtr(Micromap) const* micromaps, uint32_t micromapNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
+            void    (NRI_CALL *CmdWriteMicromapsSizes)                              (NriRef(CommandBuffer) commandBuffer, const NriPtr(Micromap) const* micromaps, uint32_t micromapNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
     // }
 
     // Native object

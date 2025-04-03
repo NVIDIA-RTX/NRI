@@ -166,9 +166,6 @@ Result TextureVK::Create(const AllocateTextureDesc& textureDesc) {
 }
 
 Result AccelerationStructureVK::Create(const AllocateAccelerationStructureDesc& accelerationStructureDesc) {
-    if (!m_Device.GetDesc().isRayTracingSupported)
-        return Result::UNSUPPORTED;
-
     Result nriResult = m_Device.CreateVma();
     if (nriResult != Result::SUCCESS)
         return nriResult;

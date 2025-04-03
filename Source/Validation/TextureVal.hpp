@@ -2,5 +2,5 @@
 
 TextureVal::~TextureVal() {
     if (m_Memory)
-        m_Memory->UnbindTexture(*this);
+        m_Memory->Unbind(*this);
 }

@@ -2,12 +2,9 @@
 
 AccelerationStructureVal::~AccelerationStructureVal() {
     if (m_Memory)
-        m_Memory->UnbindAccelerationStructure(*this);
+        m_Memory->Unbind(*this);
 
-    if (m_Buffer)
-        Destroy(m_Buffer);
-
-    GetRayTracingInterface().DestroyAccelerationStructure(*GetImpl());
+    Destroy(m_Buffer);
 }
 
 NRI_INLINE uint64_t AccelerationStructureVal::GetUpdateScratchBufferSize() const {

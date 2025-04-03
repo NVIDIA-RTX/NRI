@@ -16,36 +16,36 @@ static uint32_t ConvertBotomLevelGeometries(VkAccelerationStructureGeometryKHR* 
         ranges[i] = {}; // TODO: review struct fields...
 
         if (in.type == BottomLevelGeometryType::TRIANGLES) {
-            const BottomLevelTrianglesDesc& tris = in.geometry.triangles;
+            const BottomLevelTrianglesDesc& triangles = in.triangles;
 
-            uint32_t triangleNum = (tris.indexNum ? tris.indexNum : tris.vertexNum) / 3;
+            uint32_t triangleNum = (triangles.indexNum ?triangles.indexNum : triangles.vertexNum) / 3;
             ranges[i].primitiveCount = triangleNum;
 
-            VkAccelerationStructureGeometryTrianglesDataKHR& geometryTriangles = out.geometry.triangles;
-            geometryTriangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
-            geometryTriangles.maxVertex = tris.vertexNum;
-            geometryTriangles.vertexData.deviceAddress = GetBufferDeviceAddress(tris.vertexBuffer) + tris.vertexOffset;
-            geometryTriangles.vertexStride = tris.vertexStride;
-            geometryTriangles.vertexFormat = GetVkFormat(tris.vertexFormat);
-            geometryTriangles.transformData.deviceAddress = GetBufferDeviceAddress(tris.transformBuffer) + tris.transformOffset;
+            VkAccelerationStructureGeometryTrianglesDataKHR& outTriangles = out.geometry.triangles;
+            outTriangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+            outTriangles.maxVertex = triangles.vertexNum;
+            outTriangles.vertexData.deviceAddress = GetBufferDeviceAddress(triangles.vertexBuffer) + triangles.vertexOffset;
+            outTriangles.vertexStride = triangles.vertexStride;
+            outTriangles.vertexFormat = GetVkFormat(triangles.vertexFormat);
+            outTriangles.transformData.deviceAddress = GetBufferDeviceAddress(triangles.transformBuffer) + triangles.transformOffset;
 
-            if (tris.indexBuffer) {
-                geometryTriangles.indexType = GetIndexType(tris.indexType);
-                geometryTriangles.indexData.deviceAddress = GetBufferDeviceAddress(tris.indexBuffer) + tris.indexOffset;
+            if (triangles.indexBuffer) {
+                outTriangles.indexType = GetIndexType(triangles.indexType);
+                outTriangles.indexData.deviceAddress = GetBufferDeviceAddress(triangles.indexBuffer) + triangles.indexOffset;
             } else
-                geometryTriangles.indexType = VK_INDEX_TYPE_NONE_KHR;
+                outTriangles.indexType = VK_INDEX_TYPE_NONE_KHR;
 
-            if (tris.micromap)
+            if (triangles.micromap.micromap)
                 micromapNum++;
         } else if (in.type == BottomLevelGeometryType::AABBS) {
-            const BottomLevelAabbsDesc& aabbs = in.geometry.aabbs;
+            const BottomLevelAabbsDesc& aabbs = in.aabbs;
 
             ranges[i].primitiveCount = aabbs.num;
 
-            VkAccelerationStructureGeometryAabbsDataKHR& geometryAabbs = out.geometry.aabbs;
-            geometryAabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
-            geometryAabbs.data.deviceAddress = GetBufferDeviceAddress(aabbs.buffer) + aabbs.offset;
-            geometryAabbs.stride = aabbs.stride;
+            VkAccelerationStructureGeometryAabbsDataKHR& outAabbs = out.geometry.aabbs;
+            outAabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
+            outAabbs.data.deviceAddress = GetBufferDeviceAddress(aabbs.buffer) + aabbs.offset;
+            outAabbs.stride = aabbs.stride;
         }
     }
 
@@ -1040,10 +1040,12 @@ NRI_INLINE void CommandBufferVK::BuildTopLevelAccelerationStructure(const BuildT
 }
 
 NRI_INLINE void CommandBufferVK::BuildBottomLevelAccelerationStructure(const BuildBottomLevelAccelerationStructureDesc* buildBottomLevelAccelerationStructureDescs, uint32_t buildBottomLevelAccelerationStructureDescNum) {
+    // Count geometries
     uint32_t totalGeometryObjectNum = 0;
     for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++)
         totalGeometryObjectNum += buildBottomLevelAccelerationStructureDescs[i].geometryNum;
 
+    // Convert geometries
     Scratch<VkAccelerationStructureBuildGeometryInfoKHR> infos = AllocateScratch(m_Device, VkAccelerationStructureBuildGeometryInfoKHR, buildBottomLevelAccelerationStructureDescNum);
     Scratch<const VkAccelerationStructureBuildRangeInfoKHR*> pRanges = AllocateScratch(m_Device, const VkAccelerationStructureBuildRangeInfoKHR*, buildBottomLevelAccelerationStructureDescNum);
     Scratch<VkAccelerationStructureGeometryKHR> geometriesScratch = AllocateScratch(m_Device, VkAccelerationStructureGeometryKHR, totalGeometryObjectNum);
@@ -1093,32 +1095,31 @@ NRI_INLINE void CommandBufferVK::BuildBottomLevelAccelerationStructure(const Bui
     if (micromapNum) {
         for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++) {
             const BuildBottomLevelAccelerationStructureDesc& in = buildBottomLevelAccelerationStructureDescs[i];
-
-            VkAccelerationStructureGeometryKHR* pGeometry = (VkAccelerationStructureGeometryKHR*)infos[i].pGeometries;
+            VkAccelerationStructureGeometryKHR* pGeometries = (VkAccelerationStructureGeometryKHR*)infos[i].pGeometries;
 
             for (uint32_t j = 0; j < in.geometryNum; j++) {
                 const BottomLevelGeometryDesc& geometry = in.geometries[j];
+                const BottomLevelMicromapDesc& trianglesMicromap = geometry.triangles.micromap;
 
-                const BottomLevelMicromapDesc* botomLevelMicromap = geometry.geometry.triangles.micromap;
-                if (geometry.type == BottomLevelGeometryType::TRIANGLES && botomLevelMicromap) {
-                    pGeometry[j].geometry.triangles.pNext = trianglesMicromaps;
+                if (geometry.type == BottomLevelGeometryType::TRIANGLES && trianglesMicromap.micromap) {
+                    pGeometries[j].geometry.triangles.pNext = trianglesMicromaps;
 
-                    BufferVK* indexBuffer = (BufferVK*)botomLevelMicromap->indexBuffer;
-                    MicromapVK* micromap = (MicromapVK*)botomLevelMicromap->micromap;
+                    BufferVK* indexBuffer = (BufferVK*)trianglesMicromap.indexBuffer;
+                    MicromapVK* micromap = (MicromapVK*)trianglesMicromap.micromap;
 
-                    VkAccelerationStructureTrianglesOpacityMicromapEXT& trianglesMicromap = *trianglesMicromaps;
-                    trianglesMicromap = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_TRIANGLES_OPACITY_MICROMAP_EXT};
-                    trianglesMicromap.usageCountsCount = micromap->GetUsageNum();
-                    trianglesMicromap.pUsageCounts = micromap->GetUsages();
-                    trianglesMicromap.micromap = micromap->GetHandle();
+                    VkAccelerationStructureTrianglesOpacityMicromapEXT& outTrianglesMicromap = *trianglesMicromaps;
+                    outTrianglesMicromap = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_TRIANGLES_OPACITY_MICROMAP_EXT};
+                    outTrianglesMicromap.indexStride = trianglesMicromap.indexType == IndexType::UINT32 ? sizeof(uint32_t) : sizeof(uint16_t);
+                    outTrianglesMicromap.baseTriangle = trianglesMicromap.baseTriangle;
+                    outTrianglesMicromap.usageCountsCount = micromap->GetUsageNum();
+                    outTrianglesMicromap.pUsageCounts = micromap->GetUsages();
+                    outTrianglesMicromap.micromap = micromap->GetHandle();
 
                     if (indexBuffer) {
-                        trianglesMicromap.indexType = GetIndexType(botomLevelMicromap->indexType);
-                        trianglesMicromap.indexBuffer.deviceAddress = indexBuffer->GetDeviceAddress() + botomLevelMicromap->indexOffset;
-                        trianglesMicromap.indexStride = botomLevelMicromap->indexType == IndexType::UINT32 ? sizeof(uint32_t) : sizeof(uint16_t);
-                        trianglesMicromap.baseTriangle = botomLevelMicromap->baseTriangle;
+                        outTrianglesMicromap.indexType = GetIndexType(trianglesMicromap.indexType);
+                        outTrianglesMicromap.indexBuffer.deviceAddress = indexBuffer->GetDeviceAddress() + trianglesMicromap.indexOffset;
                     } else
-                        trianglesMicromap.indexType = VK_INDEX_TYPE_NONE_KHR;
+                        outTrianglesMicromap.indexType = VK_INDEX_TYPE_NONE_KHR;
 
                     trianglesMicromaps++;
                 }
@@ -1126,6 +1127,7 @@ NRI_INLINE void CommandBufferVK::BuildBottomLevelAccelerationStructure(const Bui
         }
     }
 
+    // Build
     const auto& vk = m_Device.GetDispatchTable();
     vk.CmdBuildAccelerationStructuresKHR(m_Handle, buildBottomLevelAccelerationStructureDescNum, infos, pRanges);
 }

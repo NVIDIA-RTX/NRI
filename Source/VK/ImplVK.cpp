@@ -954,7 +954,7 @@ static Result NRI_CALL CreateStreamer(Device& device, const StreamerDesc& stream
     Result result = impl->Create(streamerDesc);
 
     if (result != Result::SUCCESS) {
-        Destroy(deviceVK.GetAllocationCallbacks(), impl);
+        Destroy(impl);
         streamer = nullptr;
     } else
         streamer = (Streamer*)impl;
@@ -963,7 +963,7 @@ static Result NRI_CALL CreateStreamer(Device& device, const StreamerDesc& stream
 }
 
 static void NRI_CALL DestroyStreamer(Streamer& streamer) {
-    Destroy(((DeviceBase&)((StreamerImpl&)streamer).GetDevice()).GetAllocationCallbacks(), (StreamerImpl*)&streamer);
+    Destroy((StreamerImpl*)&streamer);
 }
 
 static Buffer* NRI_CALL GetStreamerConstantBuffer(Streamer& streamer) {
@@ -1067,7 +1067,7 @@ static Result NRI_CALL CreateUpscaler(Device& device, const UpscalerDesc& upscal
     Result result = impl->Create(upscalerDesc);
 
     if (result != Result::SUCCESS) {
-        Destroy(deviceVK.GetAllocationCallbacks(), impl);
+        Destroy(impl);
         upscaler = nullptr;
     } else
         upscaler = (Upscaler*)impl;

@@ -1,8 +1,8 @@
 // © 2021 NVIDIA Corporation
 
 BufferVal::~BufferVal() {
-    if (m_Memory != nullptr)
-        m_Memory->UnbindBuffer(*this);
+    if (m_Memory)
+        m_Memory->Unbind(*this);
 }
 
 NRI_INLINE void* BufferVal::Map(uint64_t offset, uint64_t size) {

@@ -248,7 +248,7 @@ static void ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs, 
         out.Flags = GetGeometryFlags(in.flags);
 
         if (out.Type == D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES) {
-            const BottomLevelTrianglesDesc& triangles = in.geometry.triangles;
+            const BottomLevelTrianglesDesc& triangles = in.triangles;
 
             out.Triangles.Transform3x4 = triangles.transformBuffer ? ((BufferD3D12*)triangles.transformBuffer)->GetPointerGPU() + triangles.transformOffset : 0;
             out.Triangles.IndexFormat = triangles.indexType == IndexType::UINT16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
@@ -259,7 +259,7 @@ static void ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs, 
             out.Triangles.VertexBuffer.StartAddress = ((BufferD3D12*)triangles.vertexBuffer)->GetPointerGPU() + triangles.vertexOffset;
             out.Triangles.VertexBuffer.StrideInBytes = triangles.vertexStride;
         } else if (out.Type == D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS) {
-            const BottomLevelAabbsDesc& aabbs = in.geometry.aabbs;
+            const BottomLevelAabbsDesc& aabbs = in.aabbs;
 
             out.AABBs.AABBCount = aabbs.num;
             out.AABBs.AABBs.StartAddress = ((BufferD3D12*)aabbs.buffer)->GetPointerGPU() + aabbs.offset;

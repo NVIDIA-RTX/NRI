@@ -66,7 +66,9 @@ static constexpr VkImageUsageFlags GetImageUsageFlags(TextureUsageBits textureUs
     return flags;
 }
 
-static void ConvertBotomLevelGeometriesForSizes(VkAccelerationStructureGeometryKHR* vkGeometries, uint32_t* primitiveNums, const BottomLevelGeometryDesc* geometries, uint32_t geometryNum) {
+static uint32_t ConvertBotomLevelGeometriesForSizes(VkAccelerationStructureGeometryKHR* vkGeometries, uint32_t* primitiveNums, const BottomLevelGeometryDesc* geometries, uint32_t geometryNum) {
+    uint32_t micromapNum = 0;
+
     for (uint32_t i = 0; i < geometryNum; i++) {
         const BottomLevelGeometryDesc& in = geometries[i];
         VkAccelerationStructureGeometryKHR& out = vkGeometries[i];
@@ -76,26 +78,31 @@ static void ConvertBotomLevelGeometriesForSizes(VkAccelerationStructureGeometryK
         out.geometryType = GetGeometryType(in.type);
 
         if (in.type == BottomLevelGeometryType::TRIANGLES) {
-            const BottomLevelTrianglesDesc& tris = in.geometry.triangles;
+            const BottomLevelTrianglesDesc& triangles = in.triangles;
 
-            uint32_t triangleNum = (tris.indexBuffer ? tris.indexNum : tris.vertexNum) / 3;
+            uint32_t triangleNum = (triangles.indexBuffer ? triangles.indexNum : triangles.vertexNum) / 3;
             primitiveNums[i] = triangleNum;
 
-            VkAccelerationStructureGeometryTrianglesDataKHR& geometryTriangles = out.geometry.triangles;
-            geometryTriangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
-            geometryTriangles.maxVertex = tris.vertexNum;
-            geometryTriangles.indexType = tris.indexBuffer ? GetIndexType(tris.indexType) : VK_INDEX_TYPE_NONE_KHR;
-            geometryTriangles.vertexFormat = GetVkFormat(tris.vertexFormat);
-            geometryTriangles.transformData.hostAddress = tris.transformBuffer ? (void*)1 : nullptr;
+            VkAccelerationStructureGeometryTrianglesDataKHR& outTriangles = out.geometry.triangles;
+            outTriangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+            outTriangles.maxVertex = triangles.vertexNum;
+            outTriangles.indexType = triangles.indexBuffer ? GetIndexType(triangles.indexType) : VK_INDEX_TYPE_NONE_KHR;
+            outTriangles.vertexFormat = GetVkFormat(triangles.vertexFormat);
+            outTriangles.transformData.hostAddress = triangles.transformBuffer ? (void*)1 : nullptr;
+
+            if (triangles.micromap.micromap)
+                micromapNum++;
         } else if (in.type == BottomLevelGeometryType::AABBS) {
-            const BottomLevelAabbsDesc& aabbs = in.geometry.aabbs;
+            const BottomLevelAabbsDesc& aabbs = in.aabbs;
 
             primitiveNums[i] = aabbs.num;
 
-            VkAccelerationStructureGeometryAabbsDataKHR& geometryAabbs = out.geometry.aabbs;
-            geometryAabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
+            VkAccelerationStructureGeometryAabbsDataKHR& outAabbs = out.geometry.aabbs;
+            outAabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
         }
     }
+
+    return micromapNum;
 }
 
 static inline bool IsExtensionSupported(const char* ext, const Vector<VkExtensionProperties>& list) {
@@ -1392,8 +1399,10 @@ void DeviceVK::GetAccelerationStructureBuildSizesInfo(const AccelerationStructur
     Scratch<uint32_t> primitiveMaxNums = AllocateScratch(*this, uint32_t, geometryCount);
     Scratch<VkAccelerationStructureGeometryKHR> geometries = AllocateScratch(*this, VkAccelerationStructureGeometryKHR, geometryCount);
 
+    // Convert geometries
+    uint32_t micromapNum = 0;
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL)
-        ConvertBotomLevelGeometriesForSizes(geometries, primitiveMaxNums, accelerationStructureDesc.geometries, geometryCount);
+        micromapNum = ConvertBotomLevelGeometriesForSizes(geometries, primitiveMaxNums, accelerationStructureDesc.geometries, geometryCount);
     else {
         geometries[0] = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
         geometries[0].geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
@@ -1402,6 +1411,35 @@ void DeviceVK::GetAccelerationStructureBuildSizesInfo(const AccelerationStructur
         primitiveMaxNums[0] = accelerationStructureDesc.geometryOrInstanceNum;
     }
 
+    // Add micromaps
+    Scratch<VkAccelerationStructureTrianglesOpacityMicromapEXT> trianglesMicromapsScratch = AllocateScratch(*this, VkAccelerationStructureTrianglesOpacityMicromapEXT, micromapNum);
+    VkAccelerationStructureTrianglesOpacityMicromapEXT* trianglesMicromaps = trianglesMicromapsScratch;
+
+    if (micromapNum) {
+        for (uint32_t i = 0; i < geometryCount; i++) {
+            const BottomLevelGeometryDesc& geometry = accelerationStructureDesc.geometries[i];
+            const BottomLevelMicromapDesc& trianglesMicromap = geometry.triangles.micromap;
+
+            if (geometry.type == BottomLevelGeometryType::TRIANGLES && trianglesMicromap.micromap) {
+                geometries[i].geometry.triangles.pNext = trianglesMicromaps;
+
+                MicromapVK* micromap = (MicromapVK*)trianglesMicromap.micromap;
+
+                VkAccelerationStructureTrianglesOpacityMicromapEXT& outTrianglesMicromap = *trianglesMicromaps;
+                outTrianglesMicromap = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_TRIANGLES_OPACITY_MICROMAP_EXT};
+                outTrianglesMicromap.indexType = trianglesMicromap.indexBuffer ? GetIndexType(trianglesMicromap.indexType) : VK_INDEX_TYPE_NONE_KHR;
+                outTrianglesMicromap.indexStride = trianglesMicromap.indexType == IndexType::UINT32 ? sizeof(uint32_t) : sizeof(uint16_t);
+                outTrianglesMicromap.baseTriangle = trianglesMicromap.baseTriangle;
+                outTrianglesMicromap.usageCountsCount = micromap->GetUsageNum();
+                outTrianglesMicromap.pUsageCounts = micromap->GetUsages();
+                outTrianglesMicromap.micromap = micromap->GetHandle();
+
+                trianglesMicromaps++;
+            }
+        }
+    }
+
+    // Get sizes
     VkAccelerationStructureBuildGeometryInfoKHR buildInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
     buildInfo.type = GetAccelerationStructureType(accelerationStructureDesc.type);
     buildInfo.flags = GetBuildAccelerationStructureFlags(accelerationStructureDesc.flags);

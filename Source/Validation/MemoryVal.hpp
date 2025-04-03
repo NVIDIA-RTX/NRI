@@ -2,18 +2,10 @@
 
 #include <algorithm>
 
-MemoryVal::MemoryVal(DeviceVal& device, Memory* memory, uint64_t size, MemoryLocation memoryLocation)
-    : ObjectVal(device, memory)
-    , m_Buffers(device.GetStdAllocator())
-    , m_Textures(device.GetStdAllocator())
-    , m_AccelerationStructures(device.GetStdAllocator())
-    , m_Size(size)
-    , m_MemoryLocation(memoryLocation) {
-}
-
 bool MemoryVal::HasBoundResources() {
     ExclusiveScope lock(m_Lock);
-    return !m_Buffers.empty() || !m_Textures.empty() || !m_AccelerationStructures.empty();
+
+    return !m_Buffers.empty() || !m_Textures.empty() || !m_AccelerationStructures.empty() || !m_Micromaps.empty();
 }
 
 void MemoryVal::ReportBoundResources() {
@@ -33,9 +25,42 @@ void MemoryVal::ReportBoundResources() {
         AccelerationStructureVal& accelerationStructure = *m_AccelerationStructures[i];
         REPORT_ERROR(&m_Device, "AccelerationStructure (%p '%s') is still bound to the memory", &accelerationStructure, accelerationStructure.GetDebugName());
     }
+
+    for (size_t i = 0; i < m_Micromaps.size(); i++) {
+        MicromapVal& micromap = *m_Micromaps[i];
+        REPORT_ERROR(&m_Device, "Micromap (%p '%s') is still bound to the memory", &micromap, micromap.GetDebugName());
+    }
 }
 
-void MemoryVal::UnbindBuffer(BufferVal& buffer) {
+void MemoryVal::Bind(BufferVal& buffer) {
+    ExclusiveScope lock(m_Lock);
+
+    m_Buffers.push_back(&buffer);
+    buffer.SetBoundToMemory(this);
+}
+
+void MemoryVal::Bind(TextureVal& texture) {
+    ExclusiveScope lock(m_Lock);
+
+    m_Textures.push_back(&texture);
+    texture.SetBoundToMemory(this);
+}
+
+void MemoryVal::Bind(AccelerationStructureVal& accelerationStructure) {
+    ExclusiveScope lock(m_Lock);
+
+    m_AccelerationStructures.push_back(&accelerationStructure);
+    accelerationStructure.SetBoundToMemory(*this);
+}
+
+void MemoryVal::Bind(MicromapVal& micromap) {
+    ExclusiveScope lock(m_Lock);
+
+    m_Micromaps.push_back(&micromap);
+    micromap.SetBoundToMemory(*this);
+}
+
+void MemoryVal::Unbind(BufferVal& buffer) {
     ExclusiveScope lock(m_Lock);
 
     const auto it = std::find(m_Buffers.begin(), m_Buffers.end(), &buffer);
@@ -47,7 +72,7 @@ void MemoryVal::UnbindBuffer(BufferVal& buffer) {
     m_Buffers.erase(it);
 }
 
-void MemoryVal::UnbindTexture(TextureVal& texture) {
+void MemoryVal::Unbind(TextureVal& texture) {
     ExclusiveScope lock(m_Lock);
 
     const auto it = std::find(m_Textures.begin(), m_Textures.end(), &texture);
@@ -59,7 +84,7 @@ void MemoryVal::UnbindTexture(TextureVal& texture) {
     m_Textures.erase(it);
 }
 
-void MemoryVal::UnbindAccelerationStructure(AccelerationStructureVal& accelerationStructure) {
+void MemoryVal::Unbind(AccelerationStructureVal& accelerationStructure) {
     ExclusiveScope lock(m_Lock);
 
     const auto it = std::find(m_AccelerationStructures.begin(), m_AccelerationStructures.end(), &accelerationStructure);
@@ -71,20 +96,14 @@ void MemoryVal::UnbindAccelerationStructure(AccelerationStructureVal& accelerati
     m_AccelerationStructures.erase(it);
 }
 
-void MemoryVal::BindBuffer(BufferVal& buffer) {
+void MemoryVal::Unbind(MicromapVal& micromap) {
     ExclusiveScope lock(m_Lock);
-    m_Buffers.push_back(&buffer);
-    buffer.SetBoundToMemory(this);
-}
 
-void MemoryVal::BindTexture(TextureVal& texture) {
-    ExclusiveScope lock(m_Lock);
-    m_Textures.push_back(&texture);
-    texture.SetBoundToMemory(this);
-}
+    const auto it = std::find(m_Micromaps.begin(), m_Micromaps.end(), &micromap);
+    if (it == m_Micromaps.end()) {
+        REPORT_ERROR(&m_Device, "Unexpected error: Can't find the micromap in the list of bound resources");
+        return;
+    }
 
-void MemoryVal::BindAccelerationStructure(AccelerationStructureVal& accelerationStructure) {
-    ExclusiveScope lock(m_Lock);
-    m_AccelerationStructures.push_back(&accelerationStructure);
-    accelerationStructure.SetBoundToMemory(*this);
+    m_Micromaps.erase(it);
 }

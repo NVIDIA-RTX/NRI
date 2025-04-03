@@ -83,7 +83,7 @@ static void ConvertGeometryDescsForSizes(D3D12_RAYTRACING_GEOMETRY_DESC* geometr
         out.Flags = GetGeometryFlags(in.flags);
 
         if (out.Type == D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES) {
-            const BottomLevelTrianglesDesc& triangles = in.geometry.triangles;
+            const BottomLevelTrianglesDesc& triangles = in.triangles;
 
             out.Triangles.Transform3x4 = triangles.transformBuffer ? (D3D12_GPU_VIRTUAL_ADDRESS)1 : 0;
             out.Triangles.IndexFormat = triangles.indexType == IndexType::UINT16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
@@ -94,7 +94,7 @@ static void ConvertGeometryDescsForSizes(D3D12_RAYTRACING_GEOMETRY_DESC* geometr
             out.Triangles.VertexBuffer.StartAddress = triangles.vertexBuffer ? (D3D12_GPU_VIRTUAL_ADDRESS)1 : 0;
             out.Triangles.VertexBuffer.StrideInBytes = triangles.vertexStride;
         } else if (out.Type == D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS) {
-            const BottomLevelAabbsDesc& aabbs = in.geometry.aabbs;
+            const BottomLevelAabbsDesc& aabbs = in.aabbs;
 
             out.AABBs.AABBCount = aabbs.num;
             out.AABBs.AABBs.StartAddress = aabbs.buffer ? (D3D12_GPU_VIRTUAL_ADDRESS)1 : 0;
@@ -282,65 +282,20 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     // NV-specific ray tracing features
 #if NRI_ENABLE_D3D_EXTENSIONS
     if (HasNvExt()) {
-        uint32_t pipelineCreationFlags = NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_NONE;
-
         { // Check opacity micromap support
             NVAPI_D3D12_RAYTRACING_OPACITY_MICROMAP_CAPS micromapSupport = {};
             REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_OPACITY_MICROMAP, &micromapSupport, sizeof(micromapSupport)));
             if (micromapSupport) {
-                pipelineCreationFlags |= NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_ENABLE_OMM_SUPPORT;
-
                 m_Desc.isMicromapSupported = true;
                 m_Desc.opacity2StateSubdivisionMaxLevel = NVAPI_D3D12_RAYTRACING_OPACITY_MICROMAP_OC1_MAX_SUBDIVISION_LEVEL;
                 m_Desc.opacity4StateSubdivisionMaxLevel = NVAPI_D3D12_RAYTRACING_OPACITY_MICROMAP_OC1_MAX_SUBDIVISION_LEVEL;
             }
         }
 
-        { // Check cluster ops support
-            NVAPI_D3D12_RAYTRACING_CLUSTER_OPERATIONS_CAPS clusterBlasSupport = {};
-            REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_CLUSTER_OPERATIONS, &clusterBlasSupport, sizeof(clusterBlasSupport)));
-            if (clusterBlasSupport)
-                pipelineCreationFlags |= NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_ENABLE_CLUSTER_SUPPORT;
-        }
-
-        { // Check sphere geometry support
-            NVAPI_D3D12_RAYTRACING_SPHERES_CAPS spheresSupport = {};
-            REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_SPHERES, &spheresSupport, sizeof(spheresSupport)));
-            if (spheresSupport)
-                pipelineCreationFlags |= NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_ENABLE_SPHERE_SUPPORT;
-        }
-
-        { // Check LSS geometry support
-            NVAPI_D3D12_RAYTRACING_LINEAR_SWEPT_SPHERES_CAPS linearSweptSpheresSupport = {};
-            REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_LINEAR_SWEPT_SPHERES, &linearSweptSpheresSupport, sizeof(linearSweptSpheresSupport)));
-            if (linearSweptSpheresSupport)
-                pipelineCreationFlags |= NVAPI_D3D12_PIPELINE_CREATION_STATE_FLAGS_ENABLE_LSS_SUPPORT;
-        }
-
-        { // Check SER support
-            NVAPI_D3D12_RAYTRACING_THREAD_REORDERING_CAPS threadReorderingSupport = {};
-            REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_THREAD_REORDERING, &threadReorderingSupport, sizeof(threadReorderingSupport))); // TODO: use
-        }
-
-        { // Check partitioned TLAS support
-            NVAPI_D3D12_RAYTRACING_PARTITIONED_TLAS_CAPS partitionedTlasSupport = {};
-            REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_GetRaytracingCaps(m_Device, NVAPI_D3D12_RAYTRACING_CAPS_TYPE_PARTITIONED_TLAS, &partitionedTlasSupport, sizeof(partitionedTlasSupport))); // TODO: use
-        }
-
         { // Check position fetch support
             bool isSupported = false;
             REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_RT_TRIANGLE_OBJECT_POSITIONS, &isSupported));
             m_Desc.isRayTracingPositionFetchSupported = isSupported;
-        }
-
-        { // Enable supported features
-            // TODO: setting NVAPI pipeline creation flags here is safe, but can imply a small performance overhead. The doc says:
-            //   Support should only be enabled for the specific features that are present, since they may incur a small penalty on traversal performance overall.
-            //   If the pipeline is not created with the correct primitive support, and that primitive type is encountered during traversal, behavior is undefined.
-            NVAPI_D3D12_SET_CREATE_PIPELINE_STATE_OPTIONS_PARAMS psoOptionsParams = {};
-            psoOptionsParams.version = NVAPI_D3D12_SET_CREATE_PIPELINE_STATE_OPTIONS_PARAMS_VER;
-            psoOptionsParams.flags = pipelineCreationFlags;
-            REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_SetCreatePipelineStateOptions(m_Device, &psoOptionsParams));
         }
 
         // Enable ray tracing validation
@@ -935,7 +890,7 @@ void DeviceD3D12::GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOU
     memoryDesc.mustBeDedicated = mustBeDedicated;
 }
 
-void DeviceD3D12::GetMemoryDesc(const AccelerationStructureDesc& accelerationStructureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
+void DeviceD3D12::GetMemoryDesc(const AccelerationStructureDesc& accelerationStructureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuildInfo = {};
     GetAccelerationStructurePrebuildInfo(accelerationStructureDesc, prebuildInfo);
 
@@ -952,7 +907,7 @@ void DeviceD3D12::GetMemoryDesc(const AccelerationStructureDesc& accelerationStr
     memoryDesc.type = Pack(memoryTypeInfo);
 }
 
-void DeviceD3D12::GetAccelerationStructurePrebuildInfo(const AccelerationStructureDesc& accelerationStructureDesc, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO& prebuildInfo) {
+void DeviceD3D12::GetAccelerationStructurePrebuildInfo(const AccelerationStructureDesc& accelerationStructureDesc, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO& prebuildInfo) const {
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS accelerationStructureInputs = {};
     accelerationStructureInputs.Type = GetAccelerationStructureType(accelerationStructureDesc.type);
     accelerationStructureInputs.Flags = GetBuildAccelerationStructureFlags(accelerationStructureDesc.flags);
