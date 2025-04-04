@@ -68,15 +68,15 @@ static const DeviceDesc& NRI_CALL GetDeviceDesc(const Device& device) {
 }
 
 static const BufferDesc& NRI_CALL GetBufferDesc(const Buffer& buffer) {
-    return ((const BufferVK&)buffer).GetDesc();
+    return ((BufferVK&)buffer).GetDesc();
 }
 
 static const TextureDesc& NRI_CALL GetTextureDesc(const Texture& texture) {
-    return ((const TextureVK&)texture).GetDesc();
+    return ((TextureVK&)texture).GetDesc();
 }
 
 static FormatSupportBits NRI_CALL GetFormatSupport(const Device& device, Format format) {
-    return ((const DeviceVK&)device).GetFormatSupport(format);
+    return ((DeviceVK&)device).GetFormatSupport(format);
 }
 
 static uint32_t NRI_CALL GetQuerySize(const QueryPool& queryPool) {
@@ -84,19 +84,19 @@ static uint32_t NRI_CALL GetQuerySize(const QueryPool& queryPool) {
 }
 
 static void NRI_CALL GetBufferMemoryDesc(const Buffer& buffer, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
-    ((const BufferVK&)buffer).GetMemoryDesc(memoryLocation, memoryDesc);
+    ((BufferVK&)buffer).GetMemoryDesc(memoryLocation, memoryDesc);
 }
 
 static void NRI_CALL GetTextureMemoryDesc(const Texture& texture, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
-    ((const TextureVK&)texture).GetMemoryDesc(memoryLocation, memoryDesc);
+    ((TextureVK&)texture).GetMemoryDesc(memoryLocation, memoryDesc);
 }
 
 static void NRI_CALL GetBufferMemoryDesc2(const Device& device, const BufferDesc& bufferDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
-    ((const DeviceVK&)device).GetMemoryDesc2(bufferDesc, memoryLocation, memoryDesc);
+    ((DeviceVK&)device).GetMemoryDesc2(bufferDesc, memoryLocation, memoryDesc);
 }
 
 static void NRI_CALL GetTextureMemoryDesc2(const Device& device, const TextureDesc& textureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
-    ((const DeviceVK&)device).GetMemoryDesc2(textureDesc, memoryLocation, memoryDesc);
+    ((DeviceVK&)device).GetMemoryDesc2(textureDesc, memoryLocation, memoryDesc);
 }
 
 static Result NRI_CALL GetQueue(Device& device, QueueType queueType, uint32_t queueIndex, Queue*& queue) {
@@ -149,22 +149,22 @@ static Result NRI_CALL CreateSampler(Device& device, const SamplerDesc& samplerD
 }
 
 static Result NRI_CALL CreateBufferView(const BufferViewDesc& bufferViewDesc, Descriptor*& bufferView) {
-    DeviceVK& device = ((const BufferVK*)bufferViewDesc.buffer)->GetDevice();
+    DeviceVK& device = ((BufferVK*)bufferViewDesc.buffer)->GetDevice();
     return device.CreateImplementation<DescriptorVK>(bufferView, bufferViewDesc);
 }
 
 static Result NRI_CALL CreateTexture1DView(const Texture1DViewDesc& textureViewDesc, Descriptor*& textureView) {
-    DeviceVK& device = ((const TextureVK*)textureViewDesc.texture)->GetDevice();
+    DeviceVK& device = ((TextureVK*)textureViewDesc.texture)->GetDevice();
     return device.CreateImplementation<DescriptorVK>(textureView, textureViewDesc);
 }
 
 static Result NRI_CALL CreateTexture2DView(const Texture2DViewDesc& textureViewDesc, Descriptor*& textureView) {
-    DeviceVK& device = ((const TextureVK*)textureViewDesc.texture)->GetDevice();
+    DeviceVK& device = ((TextureVK*)textureViewDesc.texture)->GetDevice();
     return device.CreateImplementation<DescriptorVK>(textureView, textureViewDesc);
 }
 
 static Result NRI_CALL CreateTexture3DView(const Texture3DViewDesc& textureViewDesc, Descriptor*& textureView) {
-    DeviceVK& device = ((const TextureVK*)textureViewDesc.texture)->GetDevice();
+    DeviceVK& device = ((TextureVK*)textureViewDesc.texture)->GetDevice();
     return device.CreateImplementation<DescriptorVK>(textureView, textureViewDesc);
 }
 
@@ -828,7 +828,7 @@ static Result NRI_CALL BindMicromapMemory(Device& device, const MicromapMemoryBi
 }
 
 static Result NRI_CALL WriteShaderGroupIdentifiers(const Pipeline& pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* dst) {
-    return ((const PipelineVK&)pipeline).WriteShaderGroupIdentifiers(baseShaderGroupIndex, shaderGroupNum, dst);
+    return ((PipelineVK&)pipeline).WriteShaderGroupIdentifiers(baseShaderGroupIndex, shaderGroupNum, dst);
 }
 
 static void NRI_CALL CmdBuildTopLevelAccelerationStructures(CommandBuffer& commandBuffer, const BuildTopLevelAccelerationStructureDesc* buildTopLevelAccelerationStructureDescs, uint32_t buildTopLevelAccelerationStructureDescNum) {
