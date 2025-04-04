@@ -643,7 +643,7 @@ NRI_INLINE void CommandBufferVal::CopyAccelerationStructure(AccelerationStructur
     GetRayTracingInterface().CmdCopyAccelerationStructure(*GetImpl(), dstImpl, srcImpl, copyMode);
 }
 
-NRI_INLINE void CommandBufferVal::WriteMicromapsSizes(const Micromap* const* micromaps, uint32_t micromapNum, QueryPool& queryPool, uint32_t queryOffset) {
+NRI_INLINE void CommandBufferVal::WriteMicromapsSizes(const Micromap* const* micromaps, uint32_t micromapNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
     const QueryPoolVal& queryPoolVal = (QueryPoolVal&)queryPool;
     bool isTypeValid = queryPoolVal.GetQueryType() == QueryType::MICROMAP_COMPACTED_SIZE;
 
@@ -660,10 +660,10 @@ NRI_INLINE void CommandBufferVal::WriteMicromapsSizes(const Micromap* const* mic
 
     QueryPool& queryPoolImpl = *NRI_GET_IMPL(QueryPool, &queryPool);
 
-    GetRayTracingInterface().CmdWriteMicromapsSizes(*GetImpl(), micromapsImpl, micromapNum, queryPoolImpl, queryOffset);
+    GetRayTracingInterface().CmdWriteMicromapsSizes(*GetImpl(), micromapsImpl, micromapNum, queryPoolImpl, queryPoolOffset);
 }
 
-NRI_INLINE void CommandBufferVal::WriteAccelerationStructuresSizes(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset) {
+NRI_INLINE void CommandBufferVal::WriteAccelerationStructuresSizes(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
     const QueryPoolVal& queryPoolVal = (QueryPoolVal&)queryPool;
     bool isTypeValid = queryPoolVal.GetQueryType() == QueryType::ACCELERATION_STRUCTURE_SIZE || queryPoolVal.GetQueryType() == QueryType::ACCELERATION_STRUCTURE_COMPACTED_SIZE;
 
@@ -680,7 +680,7 @@ NRI_INLINE void CommandBufferVal::WriteAccelerationStructuresSizes(const Acceler
 
     QueryPool& queryPoolImpl = *NRI_GET_IMPL(QueryPool, &queryPool);
 
-    GetRayTracingInterface().CmdWriteAccelerationStructuresSizes(*GetImpl(), accelerationStructuresImpl, accelerationStructureNum, queryPoolImpl, queryOffset);
+    GetRayTracingInterface().CmdWriteAccelerationStructuresSizes(*GetImpl(), accelerationStructuresImpl, accelerationStructureNum, queryPoolImpl, queryPoolOffset);
 }
 
 NRI_INLINE void CommandBufferVal::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc) {

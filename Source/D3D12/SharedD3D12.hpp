@@ -256,11 +256,8 @@ D3D12_RESOURCE_FLAGS nri::GetBufferFlags(BufferUsageBits bufferUsage) {
     if (bufferUsage & (BufferUsageBits::SHADER_RESOURCE_STORAGE | BufferUsageBits::SCRATCH_BUFFER))
         flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-    if (bufferUsage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE)
+    if (bufferUsage & (BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE | BufferUsageBits::MICROMAP_STORAGE))
         flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE;
-
-    if (bufferUsage & BufferUsageBits::MICROMAP_STORAGE) // TODO: no official flags for micromap
-        flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
     return flags;
 }
@@ -345,7 +342,7 @@ D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE nri::GetAccelerationStructureType(A
     return (D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE)accelerationStructureType;
 }
 
-D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS nri::GetBuildAccelerationStructureFlags(AccelerationStructureBits accelerationStructureBits) {
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS nri::GetAccelerationStructureFlags(AccelerationStructureBits accelerationStructureBits) {
     uint32_t flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
 
     if (accelerationStructureBits & AccelerationStructureBits::ALLOW_UPDATE)
@@ -373,6 +370,21 @@ D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS nri::GetBuildAccelerationStr
 
     if (accelerationStructureBits & AccelerationStructureBits::MINIMIZE_MEMORY)
         flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_MINIMIZE_MEMORY;
+
+    return (D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS)flags;
+}
+
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS nri::GetMicromapFlags(MicromapBits micromapBits) {
+    uint32_t flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
+
+    if (micromapBits & MicromapBits::ALLOW_COMPACTION)
+        flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_COMPACTION;
+
+    if (micromapBits & MicromapBits::PREFER_FAST_TRACE)
+        flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+
+    if (micromapBits & MicromapBits::PREFER_FAST_BUILD)
+        flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD;
 
     return (D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS)flags;
 }
@@ -491,4 +503,46 @@ bool nri::GetBufferDesc(const BufferD3D12Desc& bufferD3D12Desc, BufferDesc& buff
         bufferDesc.usage |= BufferUsageBits::SHADER_RESOURCE_STORAGE;
 
     return true;
+}
+
+void nri::ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs,
+    D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC* triangleDescs,
+    D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC* micromapDescs,
+    const BottomLevelGeometryDesc* geometries, uint32_t geometryNum) {
+    MaybeUnused(triangleDescs, micromapDescs);
+
+    for (uint32_t i = 0; i < geometryNum; i++) {
+        const BottomLevelGeometryDesc& in = geometries[i];
+        D3D12_RAYTRACING_GEOMETRY_DESC& out = geometryDescs[i];
+
+        out = {};
+        out.Type = GetGeometryType(in.type);
+        out.Flags = GetGeometryFlags(in.flags);
+
+        if (out.Type == D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES) {
+            const BottomLevelTrianglesDesc& triangles = in.triangles;
+            D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC* outTriangles = &out.Triangles;
+
+            *outTriangles = {};
+            outTriangles->VertexFormat = GetDxgiFormat(triangles.vertexFormat).typed;
+            outTriangles->VertexCount = triangles.vertexNum;
+            outTriangles->VertexBuffer.StrideInBytes = triangles.vertexStride;
+            outTriangles->VertexBuffer.StartAddress = GetBufferAddress(triangles.vertexBuffer, triangles.vertexOffset);
+            outTriangles->Transform3x4 = GetBufferAddress(triangles.transformBuffer, triangles.transformOffset);
+
+            if (triangles.indexBuffer) {
+                outTriangles->IndexFormat = triangles.indexType == IndexType::UINT16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+                outTriangles->IndexCount = triangles.indexNum;
+                outTriangles->IndexBuffer = GetBufferAddress(triangles.indexBuffer, triangles.indexOffset);
+            }
+        } else if (out.Type == D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS) {
+            const BottomLevelAabbsDesc& aabbs = in.aabbs;
+            D3D12_RAYTRACING_GEOMETRY_AABBS_DESC* outAABBs = &out.AABBs;
+
+            *outAABBs = {};
+            outAABBs->AABBCount = aabbs.num;
+            outAABBs->AABBs.StrideInBytes = aabbs.stride;
+            outAABBs->AABBs.StartAddress = GetBufferAddress(aabbs.buffer, aabbs.offset);
+        }
+    }
 }

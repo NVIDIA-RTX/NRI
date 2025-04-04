@@ -988,20 +988,20 @@ static void NRI_CALL CmdDispatchRaysIndirect(CommandBuffer& commandBuffer, const
     ((CommandBufferVal&)commandBuffer).DispatchRaysIndirect(buffer, offset);
 }
 
+static void NRI_CALL CmdWriteAccelerationStructuresSizes(CommandBuffer& commandBuffer, const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
+    ((CommandBufferVal&)commandBuffer).WriteAccelerationStructuresSizes(accelerationStructures, accelerationStructureNum, queryPool, queryPoolOffset);
+}
+
+static void NRI_CALL CmdWriteMicromapsSizes(CommandBuffer& commandBuffer, const Micromap* const* micromaps, uint32_t micromapNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
+    ((CommandBufferVal&)commandBuffer).WriteMicromapsSizes(micromaps, micromapNum, queryPool, queryPoolOffset);
+}
+
 static void NRI_CALL CmdCopyAccelerationStructure(CommandBuffer& commandBuffer, AccelerationStructure& dst, const AccelerationStructure& src, CopyMode copyMode) {
     ((CommandBufferVal&)commandBuffer).CopyAccelerationStructure(dst, src, copyMode);
 }
 
-static void NRI_CALL CmdWriteAccelerationStructuresSizes(CommandBuffer& commandBuffer, const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset) {
-    ((CommandBufferVal&)commandBuffer).WriteAccelerationStructuresSizes(accelerationStructures, accelerationStructureNum, queryPool, queryOffset);
-}
-
 static void NRI_CALL CmdCopyMicromap(CommandBuffer& commandBuffer, Micromap& dst, const Micromap& src, CopyMode copyMode) {
     ((CommandBufferVal&)commandBuffer).CopyMicromap(dst, src, copyMode);
-}
-
-static void NRI_CALL CmdWriteMicromapsSizes(CommandBuffer& commandBuffer, const Micromap* const* micromaps, uint32_t micromapNum, QueryPool& queryPool, uint32_t queryOffset) {
-    ((CommandBufferVal&)commandBuffer).WriteMicromapsSizes(micromaps, micromapNum, queryPool, queryOffset);
 }
 
 static uint64_t NRI_CALL GetAccelerationStructureNativeObject(const AccelerationStructure& accelerationStructure) {
@@ -1040,10 +1040,10 @@ Result DeviceVal::FillFunctionTable(RayTracingInterface& table) const {
     table.CmdBuildMicromaps = ::CmdBuildMicromaps;
     table.CmdDispatchRays = ::CmdDispatchRays;
     table.CmdDispatchRaysIndirect = ::CmdDispatchRaysIndirect;
-    table.CmdCopyAccelerationStructure = ::CmdCopyAccelerationStructure;
     table.CmdWriteAccelerationStructuresSizes = ::CmdWriteAccelerationStructuresSizes;
-    table.CmdCopyMicromap = ::CmdCopyMicromap;
     table.CmdWriteMicromapsSizes = ::CmdWriteMicromapsSizes;
+    table.CmdCopyAccelerationStructure = ::CmdCopyAccelerationStructure;
+    table.CmdCopyMicromap = ::CmdCopyMicromap;
     table.GetAccelerationStructureNativeObject = ::GetAccelerationStructureNativeObject;
     table.GetMicromapNativeObject = ::GetMicromapNativeObject;
 

@@ -5,22 +5,29 @@ MicromapD3D12::~MicromapD3D12() {
 }
 
 Result MicromapD3D12::Create(const MicromapDesc& micromapDesc) {
-    if (!m_Device.GetDesc().isMicromapSupported)
-        return Result::UNSUPPORTED;
+    MaybeUnused(micromapDesc);
 
-    for (uint32_t i = 0; i < micromapDesc.usageNum; i++) {
-        const MicromapUsageDesc& in = micromapDesc.usages[i];
-        // TODO: convert
-        m_Usages.push_back(in);
-    }
+    return Result::UNSUPPORTED;
+}
 
-    BufferDesc bufferDesc = {};
-    bufferDesc.size = 0; // TODO
-    bufferDesc.usage = BufferUsageBits::MICROMAP_STORAGE;
+Result MicromapD3D12::BindMemory(Memory* memory, uint64_t offset) {
+    Result result = m_Buffer->BindMemory((MemoryD3D12*)memory, offset);
 
-    return m_Device.CreateImplementation<BufferD3D12>(m_Buffer, bufferDesc);
+    return result;
+}
+
+void MicromapD3D12::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {
+    m_Device.GetMemoryDesc(m_PrebuildInfo, memoryLocation, memoryDesc, true);
 }
 
 NRI_INLINE void MicromapD3D12::SetDebugName(const char* name) {
     m_Buffer->SetDebugName(name);
+}
+
+NRI_INLINE uint64_t MicromapD3D12::GetHandle() const {
+    return m_Buffer->GetPointerGPU();
+}
+
+NRI_INLINE MicromapD3D12::operator ID3D12Resource*() const {
+    return (ID3D12Resource*)(*m_Buffer);
 }

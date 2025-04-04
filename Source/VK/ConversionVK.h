@@ -4,6 +4,12 @@
 
 namespace nri {
 
+uint32_t ConvertBotomLevelGeometries(
+    VkAccelerationStructureBuildRangeInfoKHR* vkRanges,
+    VkAccelerationStructureGeometryKHR* vkGeometries,
+    VkAccelerationStructureTrianglesOpacityMicromapEXT* vkTrianglesMicromaps,
+    const BottomLevelGeometryDesc* geometries, uint32_t geometryNum);
+
 QueryType GetQueryTypeVK(uint32_t queryTypeVK);
 
 constexpr std::array<VkIndexType, (size_t)IndexType::MAX_NUM> g_IndexTypes = {

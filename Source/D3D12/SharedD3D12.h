@@ -7,6 +7,14 @@
 
 #include "SharedExternal.h"
 
+struct D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC {
+    uint32_t unused;
+};
+
+struct D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY {
+    uint32_t unused;
+};
+
 namespace nri {
 
 typedef size_t DescriptorPointerCPU;
@@ -49,15 +57,20 @@ struct DescriptorHeapDesc {
     uint32_t num = 0;
 };
 
+void ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs,
+    D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC* triangleDescs,
+    D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC* micromapDescs,
+    const BottomLevelGeometryDesc* geometries, uint32_t geometryNum);
+
 void GetResourceDesc(D3D12_RESOURCE_DESC* desc, const BufferDesc& bufferDesc);
 void GetResourceDesc(D3D12_RESOURCE_DESC* desc, const TextureDesc& textureDesc);
 bool GetTextureDesc(const TextureD3D12Desc& textureD3D12Desc, TextureDesc& textureDesc);
 bool GetBufferDesc(const BufferD3D12Desc& bufferD3D12Desc, BufferDesc& bufferDesc);
 uint64_t GetMemorySizeD3D12(const MemoryD3D12Desc& memoryD3D12Desc);
 D3D12_RESIDENCY_PRIORITY ConvertPriority(float priority);
-
 D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE GetAccelerationStructureType(AccelerationStructureType accelerationStructureType);
-D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS GetBuildAccelerationStructureFlags(AccelerationStructureBits accelerationStructureBuildFlags);
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS GetAccelerationStructureFlags(AccelerationStructureBits accelerationStructureBits);
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS GetMicromapFlags(MicromapBits micromapBits);
 D3D12_RAYTRACING_GEOMETRY_TYPE GetGeometryType(BottomLevelGeometryType geometryType);
 D3D12_RAYTRACING_GEOMETRY_FLAGS GetGeometryFlags(BottomLevelGeometryBits bottomLevelGeometryBits);
 D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE GetCopyMode(CopyMode copyMode);
@@ -84,6 +97,7 @@ D3D12_DESCRIPTOR_RANGE_TYPE GetDescriptorRangesType(DescriptorType descriptorTyp
 D3D12_RESOURCE_DIMENSION GetResourceDimension(TextureType textureType);
 D3D12_SHADING_RATE GetShadingRate(ShadingRate shadingRate);
 D3D12_SHADING_RATE_COMBINER GetShadingRateCombiner(ShadingRateCombiner shadingRateCombiner);
+
 } // namespace nri
 
 #if NRI_ENABLE_D3D_EXTENSIONS

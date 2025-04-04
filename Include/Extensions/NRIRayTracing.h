@@ -14,10 +14,10 @@ static const NriPtr(Buffer) NriConstant(HAS_BUFFER) = (NriPtr(Buffer))1; // only
 //============================================================================================================================================================================================
 
 NriBits(RayTracingPipelineBits, uint8_t,
-    NONE                                = 0,
-    SKIP_TRIANGLES                      = NriBit(0), // provides knowledge that "triangles" doesn't need to be considered
-    SKIP_AABBS                          = NriBit(1), // provides knowledge that "aabbs" doesn't need to be considered
-    ALLOW_MICROMAPS                     = NriBit(2)  // specifies that the ray tracing pipeline can be used with acceleration structures which reference micromaps
+    NONE                        = 0,
+    SKIP_TRIANGLES              = NriBit(0), // provides knowledge that "triangles" doesn't need to be considered
+    SKIP_AABBS                  = NriBit(1), // provides knowledge that "aabbs" doesn't need to be considered
+    ALLOW_MICROMAPS             = NriBit(2)  // specifies that the ray tracing pipeline can be used with acceleration structures which reference micromaps
 );
 
 NriStruct(ShaderLibraryDesc) {
@@ -48,26 +48,26 @@ NriStruct(RayTracingPipelineDesc) {
 #pragma endregion
 
 //============================================================================================================================================================================================
-#pragma region [ Acceleration Structure: Opacity Micromap (OMM) ]
+#pragma region [ Opacity Micromap (OMM) ]
 //============================================================================================================================================================================================
 
 NriEnum(MicromapFormat, uint16_t,
-    OPACITY_2_STATE                     = 1,
-    OPACITY_4_STATE                     = 2
+    OPACITY_2_STATE             = 1,
+    OPACITY_4_STATE             = 2
 );
 
 NriEnum(MicromapSpecialIndex, int8_t,
-    FULLY_TRANSPARENT                   = -1,
-    FULLY_OPAQUE                        = -2,
-    FULLY_UNKNOWN_TRANSPARENT           = -3,
-    FULLY_UNKNOWN_OPAQUE                = -4
+    FULLY_TRANSPARENT           = -1,
+    FULLY_OPAQUE                = -2,
+    FULLY_UNKNOWN_TRANSPARENT   = -3,
+    FULLY_UNKNOWN_OPAQUE        = -4
 );
 
-NriBits(MicromapBits, uint8_t,
-    NONE                                = 0,
-    ALLOW_COMPACTION                    = NriBit(1), // allows to compact the micromap by copying using "COMPACT" mode
-    PREFER_FAST_TRACE                   = NriBit(2), // prioritize traversal performance over build time
-    PREFER_FAST_BUILD                   = NriBit(3)  // prioritize build time over traversal performance
+NriBits(MicromapBits, uint8_t,  
+    NONE                        = 0,
+    ALLOW_COMPACTION            = NriBit(1), // allows to compact the micromap by copying using "COMPACT" mode
+    PREFER_FAST_TRACE           = NriBit(2), // prioritize traversal performance over build time
+    PREFER_FAST_BUILD           = NriBit(3)  // prioritize build time over traversal performance
 );
 
 NriStruct(MicromapUsageDesc) {
@@ -77,6 +77,7 @@ NriStruct(MicromapUsageDesc) {
 };
 
 NriStruct(MicromapDesc) {
+    NriOptional uint64_t optimizedSize; // can be retrieved by "CmdWriteMicromapsSizes" and used for compaction via "CmdCopyMicromap"
     const NriPtr(MicromapUsageDesc) usages;
     uint32_t usageNum;
     Nri(MicromapBits) flags;
@@ -101,9 +102,10 @@ NriStruct(BuildMicromapDesc) {
 NriStruct(BottomLevelMicromapDesc) {
     NriPtr(Micromap) micromap;
 
-    // An index buffer specifying which micromap triangle to use for each triangle in the geometry. If an index is the unsigned cast of one of the values from "MicromapSpecialIndex"
-    // then that triangle behaves as described for that special value. Otherwise that triangle uses the micromap information from micromap at that index plus "baseTriangle".
-    // If not provided, "1:1" mapping between geometry triangles and micromap triangles
+    // An index buffer specifying which micromap triangle to use for each triangle in the geometry.
+    // If an index is the unsigned cast of one of the values from "MicromapSpecialIndex" then that triangle behaves as described for that special value.
+    // Otherwise that triangle uses the micromap information from "micromap" at that index plus "baseTriangle".
+    // If an index buffer is not provided, "1:1" mapping between geometry triangles and micromap triangles is assumed.
     const NriPtr(Buffer) indexBuffer;
     uint64_t indexOffset;
     uint32_t baseTriangle;
@@ -194,13 +196,13 @@ NriStruct(BottomLevelAabb)
 //============================================================================================================================================================================================
 
 NriBits(TopLevelInstanceBits, uint32_t,
-    NONE                                = 0,
-    TRIANGLE_CULL_DISABLE               = NriBit(0), // disables face culling for this instance
-    TRIANGLE_FLIP_FACING                = NriBit(1), // inverts the facing determination for geometry in this instance (since the facing is determined in object space, an instance transform does not change the winding, but a geometry transform does)
-    FORCE_OPAQUE                        = NriBit(2), // force enable "OPAQUE_GEOMETRY" bit on all geometries referenced by this instance
-    FORCE_NON_OPAQUE                    = NriBit(3), // force disable "OPAQUE_GEOMETRY" bit on all geometries referenced by this instance
-    FORCE_OPACITY_2_STATE               = NriBit(4), // ignore the "unknown" state and only consider the "transparent" or "opaque" bit for all 4-state micromaps encountered during traversal
-    DISABLE_MICROMAPS                   = NriBit(5)  // disable micromap test for all triangles and revert to using geometry opaque/non-opaque state instead
+    NONE                        = 0,
+    TRIANGLE_CULL_DISABLE       = NriBit(0), // disables face culling for this instance
+    TRIANGLE_FLIP_FACING        = NriBit(1), // inverts the facing determination for geometry in this instance (since the facing is determined in object space, an instance transform does not change the winding, but a geometry transform does)
+    FORCE_OPAQUE                = NriBit(2), // force enable "OPAQUE_GEOMETRY" bit on all geometries referenced by this instance
+    FORCE_NON_OPAQUE            = NriBit(3), // force disable "OPAQUE_GEOMETRY" bit on all geometries referenced by this instance
+    FORCE_OPACITY_2_STATE       = NriBit(4), // ignore the "unknown" state and only consider the "transparent" or "opaque" bit for all 4-state micromaps encountered during traversal
+    DISABLE_MICROMAPS           = NriBit(5)  // disable micromap test for all triangles and revert to using geometry opaque/non-opaque state instead
 );
 
 NriStruct(TopLevelInstance) {
@@ -224,19 +226,20 @@ NriEnum(AccelerationStructureType, uint8_t,
 );
 
 NriBits(AccelerationStructureBits, uint8_t,
-    NONE                                = 0,
-    ALLOW_UPDATE                        = NriBit(0), // allows to do "updates", which are faster than "builds" (may increase memory usage, build time and decrease traversal performance)
-    ALLOW_COMPACTION                    = NriBit(1), // allows to compact the acceleration structure by copying using "COMPACT" mode
-    ALLOW_DATA_ACCESS                   = NriBit(2), // allows to access vertex data from shaders (requires "isRayTracingPositionFetchSupported")
-    ALLOW_MICROMAP_UPDATE               = NriBit(3), // allows to update micromaps via acceleration structure update (may increase size and decrease traversal performance)
-    ALLOW_DISABLE_MICROMAPS             = NriBit(4), // allows to have "DISABLE_MICROMAPS" flag for instances referencing this BLAS
-    PREFER_FAST_TRACE                   = NriBit(5), // prioritize traversal performance over build time
-    PREFER_FAST_BUILD                   = NriBit(6), // prioritize build time over traversal performance
-    MINIMIZE_MEMORY                     = NriBit(7)  // minimize the amount of memory used during the build (may increase build time and decrease traversal performance)
+    NONE                        = 0,
+    ALLOW_UPDATE                = NriBit(0), // allows to do "updates", which are faster than "builds" (may increase memory usage, build time and decrease traversal performance)
+    ALLOW_COMPACTION            = NriBit(1), // allows to compact the acceleration structure by copying using "COMPACT" mode
+    ALLOW_DATA_ACCESS           = NriBit(2), // allows to access vertex data from shaders (requires "isRayTracingPositionFetchSupported")
+    ALLOW_MICROMAP_UPDATE       = NriBit(3), // allows to update micromaps via acceleration structure update (may increase size and decrease traversal performance)
+    ALLOW_DISABLE_MICROMAPS     = NriBit(4), // allows to have "DISABLE_MICROMAPS" flag for instances referencing this BLAS
+    PREFER_FAST_TRACE           = NriBit(5), // prioritize traversal performance over build time
+    PREFER_FAST_BUILD           = NriBit(6), // prioritize build time over traversal performance
+    MINIMIZE_MEMORY             = NriBit(7)  // minimize the amount of memory used during the build (may increase build time and decrease traversal performance)
 );
 
 NriStruct(AccelerationStructureDesc) {
-    const NriPtr(BottomLevelGeometryDesc) geometries; // needed only for "BOTTOM_LEVEL", "HAS_BUFFER" can be used to indicate a buffer presence (no real buffers needed at initialization time)
+    NriOptional uint64_t optimizedSize; // can be retrieved by "CmdWriteAccelerationStructuresSizes" and used for compaction via "CmdCopyAccelerationStructure"
+    const NriPtr(BottomLevelGeometryDesc) geometries; // needed only for "BOTTOM_LEVEL", "HAS_BUFFER" can be used to indicate a buffer presence (no real entities needed at initialization time)
     uint32_t geometryOrInstanceNum;
     Nri(AccelerationStructureBits) flags;
     Nri(AccelerationStructureType) type;
@@ -360,10 +363,10 @@ NriStruct(RayTracingInterface) {
             void    (NRI_CALL *CmdDispatchRaysIndirect)                             (NriRef(CommandBuffer) commandBuffer, const NriRef(Buffer) buffer, uint64_t offset); // buffer contains "DispatchRaysIndirectDesc" commands
 
             // Copy
-            void    (NRI_CALL *CmdCopyAccelerationStructure)                        (NriRef(CommandBuffer) commandBuffer, NriRef(AccelerationStructure) dst, const NriRef(AccelerationStructure) src, Nri(CopyMode) copyMode);
             void    (NRI_CALL *CmdWriteAccelerationStructuresSizes)                 (NriRef(CommandBuffer) commandBuffer, const NriPtr(AccelerationStructure) const* accelerationStructures, uint32_t accelerationStructureNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
-            void    (NRI_CALL *CmdCopyMicromap)                                     (NriRef(CommandBuffer) commandBuffer, NriRef(Micromap) dst, const NriRef(Micromap) src, Nri(CopyMode) copyMode);
             void    (NRI_CALL *CmdWriteMicromapsSizes)                              (NriRef(CommandBuffer) commandBuffer, const NriPtr(Micromap) const* micromaps, uint32_t micromapNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
+            void    (NRI_CALL *CmdCopyAccelerationStructure)                        (NriRef(CommandBuffer) commandBuffer, NriRef(AccelerationStructure) dst, const NriRef(AccelerationStructure) src, Nri(CopyMode) copyMode);
+            void    (NRI_CALL *CmdCopyMicromap)                                     (NriRef(CommandBuffer) commandBuffer, NriRef(Micromap) dst, const NriRef(Micromap) src, Nri(CopyMode) copyMode);
     // }
 
     // Native object

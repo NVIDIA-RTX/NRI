@@ -107,6 +107,10 @@ Result BufferVK::Create(const AllocateBufferDesc& bufferDesc) {
         alignment = std::max(alignment, deviceDesc.shaderBindingTableAlignment);
     if (bufferDesc.desc.usage & BufferUsageBits::SCRATCH_BUFFER)
         alignment = std::max(alignment, deviceDesc.scratchBufferOffsetAlignment);
+    if (bufferDesc.desc.usage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE)
+        alignment = std::max(alignment, deviceDesc.accelerationStructureOffsetAlignment);
+    if (bufferDesc.desc.usage & BufferUsageBits::MICROMAP_STORAGE)
+        alignment = std::max(alignment, deviceDesc.micromapOffsetAlignment);
 
     VmaAllocationInfo allocationInfo = {};
     VkResult result = vmaCreateBufferWithAlignment(m_Device.GetVma(), &bufferCreateInfo, &allocationCreateInfo, alignment, &m_Handle, &m_VmaAllocation, &allocationInfo);

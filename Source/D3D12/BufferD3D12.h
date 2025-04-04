@@ -69,4 +69,14 @@ private:
     BufferDesc m_Desc = {};
 };
 
+inline D3D12_GPU_VIRTUAL_ADDRESS GetBufferAddress(const Buffer* buffer, uint64_t offset) {
+    if (!buffer)
+        return 0;
+
+    if (buffer == HAS_BUFFER)
+        return 1;
+
+    return ((BufferD3D12*)buffer)->GetPointerGPU() + offset;
+}
+
 } // namespace nri

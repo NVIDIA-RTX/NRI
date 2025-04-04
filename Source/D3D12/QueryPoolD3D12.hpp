@@ -32,12 +32,9 @@ Result QueryPoolD3D12::Create(const QueryPoolDesc& queryPoolDesc) {
     } else if (queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_SIZE) {
         m_QuerySize = sizeof(uint64_t);
         m_QueryType = QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE;
-    } else if (queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_COMPACTED_SIZE) {
+    } else if (queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_COMPACTED_SIZE || queryPoolDesc.queryType == QueryType::MICROMAP_COMPACTED_SIZE) {
         m_QuerySize = sizeof(uint64_t);
         m_QueryType = QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE;
-    } else if (queryPoolDesc.queryType == QueryType::MICROMAP_COMPACTED_SIZE) {
-        m_QuerySize = sizeof(uint64_t);
-        m_QueryType = QUERY_TYPE_MICROMAP_COMPACTED_SIZE;
     } else
         return Result::INVALID_ARGUMENT;
 

@@ -13,18 +13,18 @@ Result AccelerationStructureVK::Create(const AccelerationStructureDesc& accelera
     VkAccelerationStructureBuildSizesInfoKHR sizesInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
     m_Device.GetAccelerationStructureBuildSizesInfo(accelerationStructureDesc, sizesInfo);
 
+    if (accelerationStructureDesc.optimizedSize)
+        sizesInfo.accelerationStructureSize = std::min(sizesInfo.accelerationStructureSize, accelerationStructureDesc.optimizedSize);
+
+    m_BuildScratchSize = sizesInfo.buildScratchSize;
+    m_UpdateScratchSize = sizesInfo.updateScratchSize;
+    m_Type = GetAccelerationStructureType(accelerationStructureDesc.type);
+
     BufferDesc bufferDesc = {};
     bufferDesc.size = sizesInfo.accelerationStructureSize;
     bufferDesc.usage = BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE;
 
-    Result result = m_Device.CreateImplementation<BufferVK>(m_Buffer, bufferDesc);
-    if (result == Result::SUCCESS) {
-        m_BuildScratchSize = sizesInfo.buildScratchSize;
-        m_UpdateScratchSize = sizesInfo.updateScratchSize;
-        m_Type = GetAccelerationStructureType(accelerationStructureDesc.type);
-    }
-
-    return result;
+    return m_Device.CreateImplementation<BufferVK>(m_Buffer, bufferDesc);
 }
 
 Result AccelerationStructureVK::Create(const AccelerationStructureVKDesc& accelerationStructureDesc) {

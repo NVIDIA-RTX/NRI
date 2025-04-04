@@ -3,6 +3,7 @@
 static uint8_t QueryLatestGraphicsCommandList(ComPtr<ID3D12GraphicsCommandListBest>& in, ComPtr<ID3D12GraphicsCommandListBest>& out) {
     static const IID versions[] = {
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+        __uuidof(ID3D12GraphicsCommandList10),
         __uuidof(ID3D12GraphicsCommandList9),
         __uuidof(ID3D12GraphicsCommandList8),
         __uuidof(ID3D12GraphicsCommandList7),
@@ -72,7 +73,7 @@ static inline D3D12_BARRIER_SYNC GetBarrierSyncFlags(StageBits stageBits) {
     if (stageBits & StageBits::CLEAR_STORAGE)
         flags |= D3D12_BARRIER_SYNC_CLEAR_UNORDERED_ACCESS_VIEW;
 
-    if (stageBits & (StageBits::ACCELERATION_STRUCTURE | StageBits::MICROMAP)) // TODO: no official flags for micromap
+    if (stageBits & (StageBits::ACCELERATION_STRUCTURE | StageBits::MICROMAP))
         flags |= D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE | D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE;
 
     // TODO: D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO?
@@ -110,10 +111,10 @@ static inline D3D12_BARRIER_ACCESS GetBarrierAccessFlags(AccessBits accessBits) 
     if (accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_READ)
         flags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
 
-    if (accessBits & (AccessBits::ACCELERATION_STRUCTURE_READ | AccessBits::MICROMAP_READ)) // TODO: no official flags for micromap
+    if (accessBits & (AccessBits::ACCELERATION_STRUCTURE_READ | AccessBits::MICROMAP_READ))
         flags |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
 
-    if (accessBits & (AccessBits::ACCELERATION_STRUCTURE_WRITE | AccessBits::MICROMAP_WRITE)) // TODO: no official flags for micromap
+    if (accessBits & (AccessBits::ACCELERATION_STRUCTURE_WRITE | AccessBits::MICROMAP_WRITE))
         flags |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
 
     if (accessBits & AccessBits::SHADER_RESOURCE)
@@ -235,36 +236,6 @@ static inline void ConvertRects(const Rect* in, uint32_t rectNum, D3D12_RECT* ou
         out[i].top = in[i].y;
         out[i].right = in[i].x + in[i].width;
         out[i].bottom = in[i].y + in[i].height;
-    }
-}
-
-static void ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs, const BottomLevelGeometryDesc* geometries, uint32_t geometryNum) {
-    for (uint32_t i = 0; i < geometryNum; i++) {
-        const BottomLevelGeometryDesc& in = geometries[i];
-        D3D12_RAYTRACING_GEOMETRY_DESC& out = geometryDescs[i];
-
-        out = {};
-        out.Type = GetGeometryType(in.type);
-        out.Flags = GetGeometryFlags(in.flags);
-
-        if (out.Type == D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES) {
-            const BottomLevelTrianglesDesc& triangles = in.triangles;
-
-            out.Triangles.Transform3x4 = triangles.transformBuffer ? ((BufferD3D12*)triangles.transformBuffer)->GetPointerGPU() + triangles.transformOffset : 0;
-            out.Triangles.IndexFormat = triangles.indexType == IndexType::UINT16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
-            out.Triangles.VertexFormat = GetDxgiFormat(triangles.vertexFormat).typed;
-            out.Triangles.IndexCount = triangles.indexNum;
-            out.Triangles.VertexCount = triangles.vertexNum;
-            out.Triangles.IndexBuffer = triangles.indexBuffer ? ((BufferD3D12*)triangles.indexBuffer)->GetPointerGPU() + triangles.indexOffset : 0;
-            out.Triangles.VertexBuffer.StartAddress = ((BufferD3D12*)triangles.vertexBuffer)->GetPointerGPU() + triangles.vertexOffset;
-            out.Triangles.VertexBuffer.StrideInBytes = triangles.vertexStride;
-        } else if (out.Type == D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS) {
-            const BottomLevelAabbsDesc& aabbs = in.aabbs;
-
-            out.AABBs.AABBCount = aabbs.num;
-            out.AABBs.AABBs.StartAddress = ((BufferD3D12*)aabbs.buffer)->GetPointerGPU() + aabbs.offset;
-            out.AABBs.AABBs.StrideInBytes = aabbs.stride;
-        }
     }
 }
 
@@ -994,7 +965,7 @@ NRI_INLINE void CommandBufferD3D12::Annotation(const char* name, uint32_t bgra) 
         PIXSetMarker(m_GraphicsCommandList, bgra, name);
 }
 
-NRI_INLINE void CommandBufferD3D12::BuildTopLevelAccelerationStructure(const BuildTopLevelAccelerationStructureDesc* buildTopLevelAccelerationStructureDescs, uint32_t buildTopLevelAccelerationStructureDescNum) {
+NRI_INLINE void CommandBufferD3D12::BuildTopLevelAccelerationStructures(const BuildTopLevelAccelerationStructureDesc* buildTopLevelAccelerationStructureDescs, uint32_t buildTopLevelAccelerationStructureDescNum) {
     static_assert(sizeof(D3D12_RAYTRACING_INSTANCE_DESC) == sizeof(TopLevelInstance), "Mismatched sizeof");
 
     if (m_Version < 4)
@@ -1005,17 +976,15 @@ NRI_INLINE void CommandBufferD3D12::BuildTopLevelAccelerationStructure(const Bui
 
         AccelerationStructureD3D12* dst = (AccelerationStructureD3D12*)in.dst;
         AccelerationStructureD3D12* src = (AccelerationStructureD3D12*)in.src;
-        BufferD3D12* scratchBuffer = (BufferD3D12*)in.scratchBuffer;
-        BufferD3D12* instanceBuffer = (BufferD3D12*)in.instanceBuffer;
 
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC out = {};
         out.DestAccelerationStructureData = dst->GetHandle();
-        out.ScratchAccelerationStructureData = scratchBuffer->GetPointerGPU() + in.scratchOffset;
+        out.ScratchAccelerationStructureData = GetBufferAddress(in.scratchBuffer, in.scratchOffset);
         out.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-        out.Inputs.Flags = GetBuildAccelerationStructureFlags(dst->GetFlags());
+        out.Inputs.Flags = GetAccelerationStructureFlags(dst->GetFlags());
         out.Inputs.NumDescs = in.instanceNum;
         out.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-        out.Inputs.InstanceDescs = instanceBuffer->GetPointerGPU() + in.instanceOffset;
+        out.Inputs.InstanceDescs = GetBufferAddress(in.instanceBuffer, in.instanceOffset);
 
         if (in.src) {
             out.SourceAccelerationStructureData = src->GetHandle();
@@ -1026,29 +995,44 @@ NRI_INLINE void CommandBufferD3D12::BuildTopLevelAccelerationStructure(const Bui
     }
 }
 
-NRI_INLINE void CommandBufferD3D12::BuildBottomLevelAccelerationStructure(const BuildBottomLevelAccelerationStructureDesc* buildBottomLevelAccelerationStructureDescs, uint32_t buildBottomLevelAccelerationStructureDescNum) {
+NRI_INLINE void CommandBufferD3D12::BuildBottomLevelAccelerationStructures(const BuildBottomLevelAccelerationStructureDesc* buildBottomLevelAccelerationStructureDescs, uint32_t buildBottomLevelAccelerationStructureDescNum) {
     if (m_Version < 4)
         return;
 
-    uint32_t totalGeometryObjectNum = 0;
-    for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++)
-        totalGeometryObjectNum += buildBottomLevelAccelerationStructureDescs[i].geometryNum;
+    // Scratch memory
+    uint32_t geometryMaxNum = 0;
+    uint32_t micromapMaxNum = 0;
 
-    Scratch<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescsScratch = AllocateScratch(m_Device, D3D12_RAYTRACING_GEOMETRY_DESC, totalGeometryObjectNum);
-    D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs = geometryDescsScratch;
+    for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++) {
+        const BuildBottomLevelAccelerationStructureDesc& desc = buildBottomLevelAccelerationStructureDescs[i];
 
+        uint32_t micromapNum = 0;
+        for (uint32_t j = 0; j < desc.geometryNum; j++) {
+            const BottomLevelGeometryDesc& geometryDesc = desc.geometries[i];
+            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap.micromap)
+                micromapNum++;
+        }
+
+        geometryMaxNum = std::max(geometryMaxNum, desc.geometryNum);
+        micromapMaxNum = std::max(micromapMaxNum, micromapNum);
+    }
+
+    Scratch<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescs = AllocateScratch(m_Device, D3D12_RAYTRACING_GEOMETRY_DESC, geometryMaxNum);
+    Scratch<D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC> trianglesDescs = AllocateScratch(m_Device, D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC, micromapMaxNum);
+    Scratch<D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC> ommDescs = AllocateScratch(m_Device, D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC, micromapMaxNum);
+
+    // 1 by 1
     for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++) {
         const BuildBottomLevelAccelerationStructureDesc& in = buildBottomLevelAccelerationStructureDescs[i];
 
         AccelerationStructureD3D12* dst = (AccelerationStructureD3D12*)in.dst;
         AccelerationStructureD3D12* src = (AccelerationStructureD3D12*)in.src;
-        BufferD3D12* scratchBuffer = (BufferD3D12*)in.scratchBuffer;
 
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC out = {};
         out.DestAccelerationStructureData = dst->GetHandle();
-        out.ScratchAccelerationStructureData = scratchBuffer->GetPointerGPU() + in.scratchOffset;
+        out.ScratchAccelerationStructureData = GetBufferAddress(in.scratchBuffer, in.scratchOffset);
         out.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
-        out.Inputs.Flags = GetBuildAccelerationStructureFlags(dst->GetFlags());
+        out.Inputs.Flags = GetAccelerationStructureFlags(dst->GetFlags());
         out.Inputs.NumDescs = in.geometryNum;
         out.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
         out.Inputs.pGeometryDescs = geometryDescs;
@@ -1058,19 +1042,25 @@ NRI_INLINE void CommandBufferD3D12::BuildBottomLevelAccelerationStructure(const 
             out.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
         }
 
-        ConvertGeometryDescs(geometryDescs, in.geometries, in.geometryNum);
+        ConvertGeometryDescs(geometryDescs, trianglesDescs, ommDescs, in.geometries, in.geometryNum);
 
         m_GraphicsCommandList->BuildRaytracingAccelerationStructure(&out, 0, nullptr);
-
-        geometryDescs += in.geometryNum;
     }
+}
+
+NRI_INLINE void CommandBufferD3D12::BuildMicromaps(const BuildMicromapDesc* buildMicromapDescs, uint32_t buildMicromapDescNum) {
+    MaybeUnused(buildMicromapDescs, buildMicromapDescNum);
 }
 
 NRI_INLINE void CommandBufferD3D12::CopyAccelerationStructure(AccelerationStructure& dst, const AccelerationStructure& src, CopyMode copyMode) {
     m_GraphicsCommandList->CopyRaytracingAccelerationStructure(((AccelerationStructureD3D12&)dst).GetHandle(), ((AccelerationStructureD3D12&)src).GetHandle(), GetCopyMode(copyMode));
 }
 
-NRI_INLINE void CommandBufferD3D12::WriteAccelerationStructuresSizes(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryOffset) {
+NRI_INLINE void CommandBufferD3D12::CopyMicromap(Micromap& dst, const Micromap& src, CopyMode copyMode) {
+    m_GraphicsCommandList->CopyRaytracingAccelerationStructure(((MicromapD3D12&)dst).GetHandle(), ((MicromapD3D12&)src).GetHandle(), GetCopyMode(copyMode));
+}
+
+NRI_INLINE void CommandBufferD3D12::WriteAccelerationStructuresSizes(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
     Scratch<D3D12_GPU_VIRTUAL_ADDRESS> virtualAddresses = AllocateScratch(m_Device, D3D12_GPU_VIRTUAL_ADDRESS, accelerationStructureNum);
     for (uint32_t i = 0; i < accelerationStructureNum; i++)
         virtualAddresses[i] = ((AccelerationStructureD3D12&)accelerationStructures[i]).GetHandle();
@@ -1078,15 +1068,34 @@ NRI_INLINE void CommandBufferD3D12::WriteAccelerationStructuresSizes(const Accel
     const QueryPoolD3D12& queryPoolD3D12 = (QueryPoolD3D12&)queryPool;
 
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC postbuildInfo = {};
-    postbuildInfo.DestBuffer = queryPoolD3D12.GetReadbackBuffer()->GetGPUVirtualAddress() + queryOffset;
+    postbuildInfo.DestBuffer = queryPoolD3D12.GetReadbackBuffer()->GetGPUVirtualAddress() + queryPoolOffset;
 
     if (queryPoolD3D12.GetType() == QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE)
         postbuildInfo.InfoType = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_CURRENT_SIZE;
-    else if (queryPoolD3D12.GetType() == QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE)
+    else
         postbuildInfo.InfoType = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_COMPACTED_SIZE;
 
     if (m_Version >= 4)
         m_GraphicsCommandList->EmitRaytracingAccelerationStructurePostbuildInfo(&postbuildInfo, accelerationStructureNum, virtualAddresses);
+}
+
+NRI_INLINE void CommandBufferD3D12::WriteMicromapsSizes(const Micromap* const* micromaps, uint32_t micromapNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
+    Scratch<D3D12_GPU_VIRTUAL_ADDRESS> virtualAddresses = AllocateScratch(m_Device, D3D12_GPU_VIRTUAL_ADDRESS, micromapNum);
+    for (uint32_t i = 0; i < micromapNum; i++)
+        virtualAddresses[i] = ((AccelerationStructureD3D12&)micromaps[i]).GetHandle();
+
+    const QueryPoolD3D12& queryPoolD3D12 = (QueryPoolD3D12&)queryPool;
+
+    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC postbuildInfo = {};
+    postbuildInfo.DestBuffer = queryPoolD3D12.GetReadbackBuffer()->GetGPUVirtualAddress() + queryPoolOffset;
+
+    if (queryPoolD3D12.GetType() == QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE)
+        postbuildInfo.InfoType = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_CURRENT_SIZE;
+    else
+        postbuildInfo.InfoType = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_COMPACTED_SIZE;
+
+    if (m_Version >= 4)
+        m_GraphicsCommandList->EmitRaytracingAccelerationStructurePostbuildInfo(&postbuildInfo, micromapNum, virtualAddresses);
 }
 
 NRI_INLINE void CommandBufferD3D12::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc) {

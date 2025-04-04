@@ -254,8 +254,8 @@ NriBits(StageBits, uint32_t,
     ANY_HIT_SHADER                  = NriBit(15), //    Any hit shader
     CALLABLE_SHADER                 = NriBit(16), //    Callable shader
 
-    ACCELERATION_STRUCTURE          = NriBit(17), // Invoked by "CmdBuild*AccelerationStructures"
-    MICROMAP                        = NriBit(18), // Invoked by "CmdBuild*Micromaps"
+    ACCELERATION_STRUCTURE          = NriBit(17), // Invoked by "CmdBuildAccelerationStructures"
+    MICROMAP                        = NriBit(18), // Invoked by "CmdBuildMicromaps"
 
     // Other
     COPY                            = NriBit(19), // Invoked by "CmdCopy*", "CmdUpload*" and "CmdReadback*"
@@ -443,11 +443,11 @@ NriBits(BufferUsageBits, uint16_t,               // Min compatible access:      
     INDEX_BUFFER                        = NriBit(3),  // INDEX_BUFFER                            Index buffer
     CONSTANT_BUFFER                     = NriBit(4),  // CONSTANT_BUFFER                         Constant buffer
     ARGUMENT_BUFFER                     = NriBit(5),  // ARGUMENT_BUFFER                         Argument buffer in "Indirect" commands
-    SCRATCH_BUFFER                      = NriBit(6),  // SCRATCH_BUFFER                          Scratch buffer in "Cmd[Build/Update]*AccelerationStructure" commands
+    SCRATCH_BUFFER                      = NriBit(6),  // SCRATCH_BUFFER                          Scratch buffer in "CmdBuild*" commands
     SHADER_BINDING_TABLE                = NriBit(7),  // SHADER_RESOURCE                         Shader binding table (SBT) in "CmdDispatchRays*" commands
-    ACCELERATION_STRUCTURE_BUILD_INPUT  = NriBit(8),  // SHADER_RESOURCE                         Read-only input in "Cmd[Build/Update]*AccelerationStructure" commands
+    ACCELERATION_STRUCTURE_BUILD_INPUT  = NriBit(8),  // SHADER_RESOURCE                         Read-only input in "CmdBuildAccelerationStructures" command
     ACCELERATION_STRUCTURE_STORAGE      = NriBit(9),  // ACCELERATION_STRUCTURE_READ/WRITE       (INTERNAL) acceleration structure storage
-    MICROMAP_BUILD_INPUT                = NriBit(10), // SHADER_RESOURCE                         Read-only input in "Cmd[Build/Update]*AccelerationStructure" commands
+    MICROMAP_BUILD_INPUT                = NriBit(10), // SHADER_RESOURCE                         Read-only input in "CmdBuildMicromaps" command
     MICROMAP_STORAGE                    = NriBit(11)  // MICROMAP_READ/WRITE                     (INTERNAL) micromap storage
 );
 
@@ -1404,10 +1404,12 @@ NriStruct(DeviceDesc) {
     // Memory alignment
     uint32_t uploadBufferTextureRowAlignment;
     uint32_t uploadBufferTextureSliceAlignment;
+    uint32_t shaderBindingTableAlignment;
     uint32_t bufferShaderResourceOffsetAlignment;
     uint32_t constantBufferOffsetAlignment;
     uint32_t scratchBufferOffsetAlignment;
-    uint32_t shaderBindingTableAlignment;
+    uint32_t accelerationStructureOffsetAlignment;
+    uint32_t micromapOffsetAlignment;
 
     // Pipeline layout
     // D3D12 only: rootConstantSize + descriptorSetNum * 4 + rootDescriptorNum * 8 <= 256 (see "FitPipelineLayoutSettingsIntoDeviceLimits")
@@ -1470,8 +1472,7 @@ NriStruct(DeviceDesc) {
     uint32_t rayTracingGeometryObjectMaxNum;
 
     // Micromap
-    uint32_t opacity2StateSubdivisionMaxLevel;
-    uint32_t opacity4StateSubdivisionMaxLevel;
+    uint32_t micromapSubdivisionMaxLevel;
 
     // Mesh shaders
     uint32_t meshControlSharedMemoryMaxSize;

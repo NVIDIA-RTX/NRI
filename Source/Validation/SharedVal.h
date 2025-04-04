@@ -134,6 +134,8 @@ constexpr bool IsAccessMaskSupported(BufferUsageBits usage, AccessBits accessMas
         isSupported = false;
     if (accessMask & (AccessBits::ACCELERATION_STRUCTURE_READ | AccessBits::ACCELERATION_STRUCTURE_WRITE))
         isSupported = isSupported && (usage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE) != 0;
+    if (accessMask & (AccessBits::MICROMAP_READ | AccessBits::MICROMAP_WRITE))
+        isSupported = isSupported && (usage & BufferUsageBits::MICROMAP_STORAGE) != 0;
     if (accessMask & AccessBits::SHADER_RESOURCE)
         isSupported = isSupported && (usage & (BufferUsageBits::SHADER_RESOURCE | BufferUsageBits::SHADER_BINDING_TABLE)) != 0;
     if (accessMask & AccessBits::SHADER_RESOURCE_STORAGE)
@@ -155,6 +157,8 @@ constexpr bool IsAccessMaskSupported(TextureUsageBits usage, AccessBits accessMa
     if (accessMask & (AccessBits::DEPTH_STENCIL_ATTACHMENT_READ | AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE))
         isSupported = isSupported && (usage & TextureUsageBits::DEPTH_STENCIL_ATTACHMENT) != 0;
     if (accessMask & (AccessBits::ACCELERATION_STRUCTURE_READ | AccessBits::ACCELERATION_STRUCTURE_WRITE))
+        isSupported = false;
+    if (accessMask & (AccessBits::MICROMAP_READ | AccessBits::MICROMAP_WRITE))
         isSupported = false;
     if (accessMask & AccessBits::SHADER_RESOURCE)
         isSupported = isSupported && (usage & TextureUsageBits::SHADER_RESOURCE) != 0;

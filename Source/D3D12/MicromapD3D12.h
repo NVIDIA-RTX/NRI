@@ -8,8 +8,8 @@ struct BufferD3D12;
 
 struct MicromapD3D12 final : public DebugNameBase {
     inline MicromapD3D12(DeviceD3D12& device)
-        : m_Usages(device.GetStdAllocator())
-        , m_Device(device) {
+        : m_Device(device)
+        , m_Usages(device.GetStdAllocator()) {
     }
 
     inline DeviceD3D12& GetDevice() const {
@@ -20,7 +20,7 @@ struct MicromapD3D12 final : public DebugNameBase {
         return m_Flags;
     }
 
-    inline const MicromapUsageDesc* GetUsages() const {
+    inline const D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY* GetUsages() const {
         return m_Usages.data();
     }
 
@@ -30,8 +30,8 @@ struct MicromapD3D12 final : public DebugNameBase {
 
     ~MicromapD3D12();
 
-    Result Create(const MicromapDesc& accelerationStructureDesc);
-    Result Create(const AllocateMicromapDesc& accelerationStructureDesc);
+    Result Create(const MicromapDesc& micromapDesc);
+    Result Create(const AllocateMicromapDesc& micromapDesc);
     Result BindMemory(Memory* memory, uint64_t offset);
     void GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
 
@@ -46,18 +46,21 @@ struct MicromapD3D12 final : public DebugNameBase {
     //================================================================================================================
 
     inline uint64_t GetBuildScratchBufferSize() const {
-        return m_BuildScratchSize;
+        return m_PrebuildInfo.ScratchDataSizeInBytes;
     }
 
     inline BufferD3D12* GetBuffer() const {
         return m_Buffer;
     }
 
+    uint64_t GetHandle() const;
+    operator ID3D12Resource*() const;
+
 private:
     DeviceD3D12& m_Device;
     BufferD3D12* m_Buffer = nullptr;
-    Vector<MicromapUsageDesc> m_Usages;
-    uint64_t m_BuildScratchSize = 0;
+    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO m_PrebuildInfo = {};
+    Vector<D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY> m_Usages;
     MicromapBits m_Flags = MicromapBits::NONE;
 };
 

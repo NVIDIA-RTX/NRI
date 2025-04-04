@@ -66,45 +66,6 @@ static constexpr VkImageUsageFlags GetImageUsageFlags(TextureUsageBits textureUs
     return flags;
 }
 
-static uint32_t ConvertBotomLevelGeometriesForSizes(VkAccelerationStructureGeometryKHR* vkGeometries, uint32_t* primitiveNums, const BottomLevelGeometryDesc* geometries, uint32_t geometryNum) {
-    uint32_t micromapNum = 0;
-
-    for (uint32_t i = 0; i < geometryNum; i++) {
-        const BottomLevelGeometryDesc& in = geometries[i];
-        VkAccelerationStructureGeometryKHR& out = vkGeometries[i];
-
-        out = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
-        out.flags = GetGeometryFlags(in.flags);
-        out.geometryType = GetGeometryType(in.type);
-
-        if (in.type == BottomLevelGeometryType::TRIANGLES) {
-            const BottomLevelTrianglesDesc& triangles = in.triangles;
-
-            uint32_t triangleNum = (triangles.indexBuffer ? triangles.indexNum : triangles.vertexNum) / 3;
-            primitiveNums[i] = triangleNum;
-
-            VkAccelerationStructureGeometryTrianglesDataKHR& outTriangles = out.geometry.triangles;
-            outTriangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
-            outTriangles.maxVertex = triangles.vertexNum;
-            outTriangles.indexType = triangles.indexBuffer ? GetIndexType(triangles.indexType) : VK_INDEX_TYPE_NONE_KHR;
-            outTriangles.vertexFormat = GetVkFormat(triangles.vertexFormat);
-            outTriangles.transformData.hostAddress = triangles.transformBuffer ? (void*)1 : nullptr;
-
-            if (triangles.micromap.micromap)
-                micromapNum++;
-        } else if (in.type == BottomLevelGeometryType::AABBS) {
-            const BottomLevelAabbsDesc& aabbs = in.aabbs;
-
-            primitiveNums[i] = aabbs.num;
-
-            VkAccelerationStructureGeometryAabbsDataKHR& outAabbs = out.geometry.aabbs;
-            outAabbs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
-        }
-    }
-
-    return micromapNum;
-}
-
 static inline bool IsExtensionSupported(const char* ext, const Vector<VkExtensionProperties>& list) {
     for (auto& e : list) {
         if (!strcmp(ext, e.extensionName))
@@ -998,10 +959,12 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
         m_Desc.uploadBufferTextureRowAlignment = (uint32_t)limits.optimalBufferCopyRowPitchAlignment;
         m_Desc.uploadBufferTextureSliceAlignment = (uint32_t)limits.optimalBufferCopyOffsetAlignment; // TODO: ?
+        m_Desc.shaderBindingTableAlignment = rayTracingProps.shaderGroupBaseAlignment;
         m_Desc.bufferShaderResourceOffsetAlignment = (uint32_t)std::max(limits.minTexelBufferOffsetAlignment, limits.minStorageBufferOffsetAlignment);
         m_Desc.constantBufferOffsetAlignment = (uint32_t)limits.minUniformBufferOffsetAlignment;
         m_Desc.scratchBufferOffsetAlignment = accelerationStructureProps.minAccelerationStructureScratchOffsetAlignment;
-        m_Desc.shaderBindingTableAlignment = rayTracingProps.shaderGroupBaseAlignment;
+        m_Desc.accelerationStructureOffsetAlignment = 256; // see the spec
+        m_Desc.micromapOffsetAlignment = 256;              // see the spec
 
         m_Desc.pipelineLayoutDescriptorSetMaxNum = limits.maxBoundDescriptorSets;
         m_Desc.pipelineLayoutRootConstantMaxSize = limits.maxPushConstantsSize;
@@ -1057,8 +1020,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.rayTracingShaderRecursionMaxDepth = rayTracingProps.maxRayRecursionDepth;
         m_Desc.rayTracingGeometryObjectMaxNum = (uint32_t)accelerationStructureProps.maxGeometryCount;
 
-        m_Desc.opacity2StateSubdivisionMaxLevel = micromapProps.maxOpacity2StateSubdivisionLevel;
-        m_Desc.opacity4StateSubdivisionMaxLevel = micromapProps.maxOpacity4StateSubdivisionLevel;
+        m_Desc.micromapSubdivisionMaxLevel = micromapProps.maxOpacity2StateSubdivisionLevel;
 
         m_Desc.meshControlSharedMemoryMaxSize = meshShaderProps.maxTaskSharedMemorySize;
         m_Desc.meshControlWorkGroupInvocationMaxNum = meshShaderProps.maxTaskWorkGroupInvocations;
@@ -1395,59 +1357,55 @@ bool DeviceVK::GetMemoryTypeByIndex(uint32_t index, MemoryTypeInfo& memoryTypeIn
 }
 
 void DeviceVK::GetAccelerationStructureBuildSizesInfo(const AccelerationStructureDesc& accelerationStructureDesc, VkAccelerationStructureBuildSizesInfoKHR& sizesInfo) {
-    uint32_t geometryCount = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.geometryOrInstanceNum : 1;
-    Scratch<uint32_t> primitiveMaxNums = AllocateScratch(*this, uint32_t, geometryCount);
-    Scratch<VkAccelerationStructureGeometryKHR> geometries = AllocateScratch(*this, VkAccelerationStructureGeometryKHR, geometryCount);
+    // Allocate scratch
+    uint32_t geometryNum = 0;
+    uint32_t micromapNum = 0;
+
+    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
+        geometryNum = accelerationStructureDesc.geometryOrInstanceNum;
+
+        for (uint32_t i = 0; i < geometryNum; i++) {
+            const BottomLevelGeometryDesc& geometryDesc = accelerationStructureDesc.geometries[i];
+            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap.micromap)
+                micromapNum++;
+        }
+    } else
+        geometryNum = 1;
+
+    Scratch<uint32_t> primitiveNums = AllocateScratch(*this, uint32_t, geometryNum);
+    Scratch<VkAccelerationStructureGeometryKHR> geometries = AllocateScratch(*this, VkAccelerationStructureGeometryKHR, geometryNum);
+    Scratch<VkAccelerationStructureTrianglesOpacityMicromapEXT> trianglesMicromaps = AllocateScratch(*this, VkAccelerationStructureTrianglesOpacityMicromapEXT, micromapNum);
 
     // Convert geometries
-    uint32_t micromapNum = 0;
-    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL)
-        micromapNum = ConvertBotomLevelGeometriesForSizes(geometries, primitiveMaxNums, accelerationStructureDesc.geometries, geometryCount);
-    else {
+    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
+        micromapNum = ConvertBotomLevelGeometries(nullptr, geometries, trianglesMicromaps, accelerationStructureDesc.geometries, geometryNum);
+
+        for (uint32_t i = 0; i < geometryNum; i++) {
+            const BottomLevelGeometryDesc& in = accelerationStructureDesc.geometries[i];
+
+            if (in.type == BottomLevelGeometryType::TRIANGLES) {
+                uint32_t triangleNum = (in.triangles.indexNum ? in.triangles.indexNum : in.triangles.vertexNum) / 3;
+                primitiveNums[i] = triangleNum;
+            } else if (in.type == BottomLevelGeometryType::AABBS)
+                primitiveNums[i] = in.aabbs.num;
+        }
+    } else {
         geometries[0] = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
         geometries[0].geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
         geometries[0].geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
 
-        primitiveMaxNums[0] = accelerationStructureDesc.geometryOrInstanceNum;
-    }
-
-    // Add micromaps
-    Scratch<VkAccelerationStructureTrianglesOpacityMicromapEXT> trianglesMicromapsScratch = AllocateScratch(*this, VkAccelerationStructureTrianglesOpacityMicromapEXT, micromapNum);
-    VkAccelerationStructureTrianglesOpacityMicromapEXT* trianglesMicromaps = trianglesMicromapsScratch;
-
-    if (micromapNum) {
-        for (uint32_t i = 0; i < geometryCount; i++) {
-            const BottomLevelGeometryDesc& geometry = accelerationStructureDesc.geometries[i];
-            const BottomLevelMicromapDesc& trianglesMicromap = geometry.triangles.micromap;
-
-            if (geometry.type == BottomLevelGeometryType::TRIANGLES && trianglesMicromap.micromap) {
-                geometries[i].geometry.triangles.pNext = trianglesMicromaps;
-
-                MicromapVK* micromap = (MicromapVK*)trianglesMicromap.micromap;
-
-                VkAccelerationStructureTrianglesOpacityMicromapEXT& outTrianglesMicromap = *trianglesMicromaps;
-                outTrianglesMicromap = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_TRIANGLES_OPACITY_MICROMAP_EXT};
-                outTrianglesMicromap.indexType = trianglesMicromap.indexBuffer ? GetIndexType(trianglesMicromap.indexType) : VK_INDEX_TYPE_NONE_KHR;
-                outTrianglesMicromap.indexStride = trianglesMicromap.indexType == IndexType::UINT32 ? sizeof(uint32_t) : sizeof(uint16_t);
-                outTrianglesMicromap.baseTriangle = trianglesMicromap.baseTriangle;
-                outTrianglesMicromap.usageCountsCount = micromap->GetUsageNum();
-                outTrianglesMicromap.pUsageCounts = micromap->GetUsages();
-                outTrianglesMicromap.micromap = micromap->GetHandle();
-
-                trianglesMicromaps++;
-            }
-        }
+        primitiveNums[0] = accelerationStructureDesc.geometryOrInstanceNum;
     }
 
     // Get sizes
     VkAccelerationStructureBuildGeometryInfoKHR buildInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
     buildInfo.type = GetAccelerationStructureType(accelerationStructureDesc.type);
     buildInfo.flags = GetBuildAccelerationStructureFlags(accelerationStructureDesc.flags);
-    buildInfo.geometryCount = geometryCount;
+    buildInfo.geometryCount = geometryNum;
     buildInfo.pGeometries = geometries;
 
     const auto& vk = GetDispatchTable();
-    vk.GetAccelerationStructureBuildSizesKHR(m_Device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, primitiveMaxNums, &sizesInfo);
+    vk.GetAccelerationStructureBuildSizesKHR(m_Device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, primitiveNums, &sizesInfo);
 }
 
 void DeviceVK::GetMicromapBuildSizesInfo(const MicromapDesc& micromapDesc, VkMicromapBuildSizesInfoEXT& sizesInfo) {

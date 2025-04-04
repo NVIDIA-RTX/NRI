@@ -191,3 +191,19 @@ Result AccelerationStructureD3D12::Create(const AllocateAccelerationStructureDes
 
     return m_Device.CreateImplementation<BufferD3D12>(m_Buffer, bufferDesc);
 }
+
+Result MicromapD3D12::Create(const AllocateMicromapDesc& micromapDesc) {
+    Result nriResult = m_Device.CreateVma();
+    if (nriResult != Result::SUCCESS)
+        return nriResult;
+
+    m_Device.GetMicromapPrebuildInfo(micromapDesc.desc, m_PrebuildInfo);
+
+    AllocateBufferDesc bufferDesc = {};
+    bufferDesc.memoryLocation = micromapDesc.memoryLocation;
+    bufferDesc.memoryPriority = micromapDesc.memoryPriority;
+    bufferDesc.desc.size = m_PrebuildInfo.ResultDataMaxSizeInBytes;
+    bufferDesc.desc.usage = BufferUsageBits::MICROMAP_STORAGE;
+
+    return m_Device.CreateImplementation<BufferD3D12>(m_Buffer, bufferDesc);
+}

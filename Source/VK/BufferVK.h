@@ -63,10 +63,14 @@ private:
     bool m_OwnsNativeObjects = true;
 };
 
-inline VkDeviceAddress GetBufferDeviceAddress(const Buffer* buffer) {
-    const BufferVK* bufferVK = (const BufferVK*)buffer;
+inline VkDeviceAddress GetBufferDeviceAddress(const Buffer* buffer, uint64_t offset) {
+    if (!buffer)
+        return 0;
 
-    return bufferVK != nullptr ? bufferVK->GetDeviceAddress() : 0;
+    if (buffer == HAS_BUFFER)
+        return 1;
+
+    return ((BufferVK*)buffer)->GetDeviceAddress() + offset;
 }
 
 } // namespace nri

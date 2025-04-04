@@ -20,6 +20,9 @@ Result AccelerationStructureD3D12::Create(const AccelerationStructureDesc& accel
     m_Device.GetAccelerationStructurePrebuildInfo(accelerationStructureDesc, m_PrebuildInfo);
     m_Flags = accelerationStructureDesc.flags;
 
+    if (accelerationStructureDesc.optimizedSize)
+        m_PrebuildInfo.ResultDataMaxSizeInBytes = std::min(m_PrebuildInfo.ResultDataMaxSizeInBytes, accelerationStructureDesc.optimizedSize);
+
     BufferDesc bufferDesc = {};
     bufferDesc.size = m_PrebuildInfo.ResultDataMaxSizeInBytes;
     bufferDesc.usage = BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE;
@@ -40,27 +43,17 @@ Result AccelerationStructureD3D12::CreateDescriptor(Descriptor*& descriptor) con
 }
 
 void AccelerationStructureD3D12::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {
-    D3D12_HEAP_TYPE heapType = m_Device.GetHeapType(memoryLocation);
-    D3D12_HEAP_FLAGS heapFlags = m_Device.GetDesc().isMemoryTier2Supported ? D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES : D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
-
-    MemoryTypeInfo memoryTypeInfo = {};
-    memoryTypeInfo.heapFlags = (uint16_t)heapFlags;
-    memoryTypeInfo.heapType = (uint8_t)heapType;
-
-    memoryDesc = {};
-    memoryDesc.size = m_PrebuildInfo.ResultDataMaxSizeInBytes;
-    memoryDesc.alignment = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
-    memoryDesc.type = Pack(memoryTypeInfo);
-}
-
-uint64_t AccelerationStructureD3D12::GetHandle() const {
-    return m_Buffer->GetPointerGPU();
-}
-
-AccelerationStructureD3D12::operator ID3D12Resource*() const {
-    return (ID3D12Resource*)(*m_Buffer);
+    m_Device.GetMemoryDesc(m_PrebuildInfo, memoryLocation, memoryDesc, false);
 }
 
 NRI_INLINE void AccelerationStructureD3D12::SetDebugName(const char* name) {
     m_Buffer->SetDebugName(name);
+}
+
+NRI_INLINE uint64_t AccelerationStructureD3D12::GetHandle() const {
+    return m_Buffer->GetPointerGPU();
+}
+
+NRI_INLINE AccelerationStructureD3D12::operator ID3D12Resource*() const {
+    return (ID3D12Resource*)(*m_Buffer);
 }
