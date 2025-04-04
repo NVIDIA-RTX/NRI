@@ -1009,7 +1009,7 @@ NRI_INLINE void CommandBufferD3D12::BuildBottomLevelAccelerationStructures(const
         uint32_t micromapNum = 0;
         for (uint32_t j = 0; j < desc.geometryNum; j++) {
             const BottomLevelGeometryDesc& geometryDesc = desc.geometries[i];
-            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap.micromap)
+            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
                 micromapNum++;
         }
 
@@ -1042,7 +1042,7 @@ NRI_INLINE void CommandBufferD3D12::BuildBottomLevelAccelerationStructures(const
             out.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
         }
 
-        ConvertGeometryDescs(in.geometries, in.geometryNum, geometryDescs, trianglesDescs, ommDescs);
+        ConvertBotomLevelGeometries(in.geometries, in.geometryNum, geometryDescs, trianglesDescs, ommDescs);
 
         m_GraphicsCommandList->BuildRaytracingAccelerationStructure(&out, 0, nullptr);
     }

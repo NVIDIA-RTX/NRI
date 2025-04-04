@@ -57,7 +57,7 @@ struct DescriptorHeapDesc {
     uint32_t num = 0;
 };
 
-void ConvertGeometryDescs(const BottomLevelGeometryDesc* geometries, uint32_t geometryNum,
+void ConvertBotomLevelGeometries(const BottomLevelGeometryDesc* geometries, uint32_t geometryNum,
     D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs,
     D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC* triangleDescs,
     D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC* micromapDescs);

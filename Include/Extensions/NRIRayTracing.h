@@ -57,10 +57,13 @@ NriEnum(MicromapFormat, uint16_t,
 );
 
 NriEnum(MicromapSpecialIndex, int8_t,
-    FULLY_TRANSPARENT           = -1,
-    FULLY_OPAQUE                = -2,
-    FULLY_UNKNOWN_TRANSPARENT   = -3,
-    FULLY_UNKNOWN_OPAQUE        = -4
+    // 2/4 state
+    FULLY_TRANSPARENT           = -1, // specifies that the entire triangle is fully transparent
+    FULLY_OPAQUE                = -2, // specifies that the entire triangle is fully opaque
+
+    // 4 state
+    FULLY_UNKNOWN_TRANSPARENT   = -3, // specifies that the entire triangle is unknown-transparent
+    FULLY_UNKNOWN_OPAQUE        = -4  // specifies that the entire triangle is unknown-opaque
 );
 
 NriBits(MicromapBits, uint8_t,  
@@ -100,13 +103,13 @@ NriStruct(BuildMicromapDesc) {
 };
 
 NriStruct(BottomLevelMicromapDesc) {
-    NriPtr(Micromap) micromap;
-
-    // An index buffer specifying which micromap triangle to use for each triangle in the geometry.
+    // For each triangle in the geometry, the acceleration structure build fetches an index from "indexBuffer".
     // If an index is the unsigned cast of one of the values from "MicromapSpecialIndex" then that triangle behaves as described for that special value.
     // Otherwise that triangle uses the micromap information from "micromap" at that index plus "baseTriangle".
     // If an index buffer is not provided, "1:1" mapping between geometry triangles and micromap triangles is assumed.
-    const NriPtr(Buffer) indexBuffer;
+
+    NriOptional NriPtr(Micromap) micromap;
+    NriOptional const NriPtr(Buffer) indexBuffer;
     uint64_t indexOffset;
     uint32_t baseTriangle;
     Nri(IndexType) indexType;
@@ -155,7 +158,7 @@ NriStruct(BottomLevelTrianglesDesc) {
     NriOptional uint64_t transformOffset;
 
     // Micromap
-    NriOptional Nri(BottomLevelMicromapDesc) micromap;
+    NriOptional NriPtr(BottomLevelMicromapDesc) micromap;
 };
 
 NriStruct(BottomLevelAabbsDesc) {

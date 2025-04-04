@@ -999,9 +999,8 @@ NRI_INLINE void CommandBufferVK::BuildBottomLevelAccelerationStructures(const Bu
 
         for (uint32_t j = 0; j < desc.geometryNum; j++) {
             const BottomLevelGeometryDesc& geometry = desc.geometries[j];
-            const BottomLevelMicromapDesc& trianglesMicromap = geometry.triangles.micromap;
 
-            if (geometry.type == BottomLevelGeometryType::TRIANGLES && trianglesMicromap.micromap)
+            if (geometry.type == BottomLevelGeometryType::TRIANGLES && geometry.triangles.micromap)
                 micromapTotalNum++;
         }
 

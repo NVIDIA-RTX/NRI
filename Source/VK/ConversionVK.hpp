@@ -45,19 +45,22 @@ uint32_t nri::ConvertBotomLevelGeometries(
                 outTriangles.indexType = VK_INDEX_TYPE_NONE_KHR;
 
             // Update micromap
-            const BottomLevelMicromapDesc& trianglesMicromap = triangles.micromap;
-            if (trianglesMicromap.micromap) {
-                outTriangles.pNext = vkTrianglesMicromaps;
+            if (triangles.micromap) {
+                const BottomLevelMicromapDesc& trianglesMicromap = *triangles.micromap;
 
-                MicromapVK* micromap = (MicromapVK*)trianglesMicromap.micromap;
+                outTriangles.pNext = vkTrianglesMicromaps;
 
                 VkAccelerationStructureTrianglesOpacityMicromapEXT& outTrianglesMicromap = *vkTrianglesMicromaps;
                 outTrianglesMicromap = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_TRIANGLES_OPACITY_MICROMAP_EXT};
                 outTrianglesMicromap.indexStride = trianglesMicromap.indexType == IndexType::UINT32 ? sizeof(uint32_t) : sizeof(uint16_t);
                 outTrianglesMicromap.baseTriangle = trianglesMicromap.baseTriangle;
-                outTrianglesMicromap.usageCountsCount = micromap->GetUsageNum();
-                outTrianglesMicromap.pUsageCounts = micromap->GetUsages();
-                outTrianglesMicromap.micromap = micromap->GetHandle();
+
+                MicromapVK* micromap = (MicromapVK*)trianglesMicromap.micromap;
+                if (micromap) {
+                    outTrianglesMicromap.usageCountsCount = micromap->GetUsageNum();
+                    outTrianglesMicromap.pUsageCounts = micromap->GetUsages();
+                    outTrianglesMicromap.micromap = micromap->GetHandle();
+                }
 
                 if (trianglesMicromap.indexBuffer) {
                     outTrianglesMicromap.indexType = GetIndexType(trianglesMicromap.indexType);

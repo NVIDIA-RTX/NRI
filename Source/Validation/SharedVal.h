@@ -183,7 +183,10 @@ constexpr bool IsTextureLayoutSupported(TextureUsageBits usage, Layout layout) {
     return true;
 }
 
-void ConvertGeometryObjectsVal(BottomLevelGeometryDesc* destObjects, const BottomLevelGeometryDesc* sourceObjects, uint32_t objectNum);
+void ConvertBotomLevelGeometries(const BottomLevelGeometryDesc* geometries, uint32_t geometryNum,
+    BottomLevelGeometryDesc*& outGeometries,
+    BottomLevelMicromapDesc*& outMicromaps);
+
 QueryType GetQueryTypeVK(uint32_t queryTypeVK);
 
 } // namespace nri

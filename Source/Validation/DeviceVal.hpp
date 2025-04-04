@@ -1008,16 +1008,36 @@ NRI_INLINE Result DeviceVal::CreateMicromap(const MicromapDesc& micromapDesc, Mi
 NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
     RETURN_ON_FAILURE(this, accelerationStructureDesc.geometryOrInstanceNum != 0, Result::INVALID_ARGUMENT, "'geometryOrInstanceNum' is 0");
 
-    auto accelerationStructureDescImpl = accelerationStructureDesc;
-
-    uint32_t geometryNum = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.geometryOrInstanceNum : 0;
-    Scratch<BottomLevelGeometryDesc> objectImplArray = AllocateScratch(*this, BottomLevelGeometryDesc, geometryNum);
+    // Allocate scratch
+    uint32_t geometryNum = 0;
+    uint32_t micromapNum = 0;
 
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
-        ConvertGeometryObjectsVal(objectImplArray, accelerationStructureDesc.geometries, geometryNum);
-        accelerationStructureDescImpl.geometries = objectImplArray;
+        geometryNum = accelerationStructureDesc.geometryOrInstanceNum;
+
+        for (uint32_t i = 0; i < geometryNum; i++) {
+            const BottomLevelGeometryDesc& geometryDesc = accelerationStructureDesc.geometries[i];
+
+            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
+                micromapNum++;
+        }
     }
 
+    Scratch<BottomLevelGeometryDesc> geometriesImplScratch = AllocateScratch(*this, BottomLevelGeometryDesc, geometryNum);
+    Scratch<BottomLevelMicromapDesc> micromapsImplScratch = AllocateScratch(*this, BottomLevelMicromapDesc, micromapNum);
+
+    BottomLevelGeometryDesc* geometriesImpl = geometriesImplScratch;
+    BottomLevelMicromapDesc* micromapsImpl = micromapsImplScratch;
+
+    // Convert
+    auto accelerationStructureDescImpl = accelerationStructureDesc;
+
+    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
+        accelerationStructureDescImpl.geometries = geometriesImplScratch;
+        ConvertBotomLevelGeometries(accelerationStructureDesc.geometries, geometryNum, geometriesImpl, micromapsImpl);
+    }
+
+    // Call
     AccelerationStructure* accelerationStructureImpl = nullptr;
     Result result = m_iRayTracing.CreateAccelerationStructure(m_Impl, accelerationStructureDescImpl, accelerationStructureImpl);
 
@@ -1034,16 +1054,36 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
 NRI_INLINE Result DeviceVal::AllocateAccelerationStructure(const AllocateAccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
     RETURN_ON_FAILURE(this, accelerationStructureDesc.desc.geometryOrInstanceNum != 0, Result::INVALID_ARGUMENT, "'geometryOrInstanceNum' is 0");
 
-    auto accelerationStructureDescImpl = accelerationStructureDesc;
-
-    uint32_t geometryNum = accelerationStructureDesc.desc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.desc.geometryOrInstanceNum : 0;
-    Scratch<BottomLevelGeometryDesc> objectImplArray = AllocateScratch(*this, BottomLevelGeometryDesc, geometryNum);
+    // Allocate scratch
+    uint32_t geometryNum = 0;
+    uint32_t micromapNum = 0;
 
     if (accelerationStructureDesc.desc.type == AccelerationStructureType::BOTTOM_LEVEL) {
-        ConvertGeometryObjectsVal(objectImplArray, accelerationStructureDesc.desc.geometries, geometryNum);
-        accelerationStructureDescImpl.desc.geometries = objectImplArray;
+        geometryNum = accelerationStructureDesc.desc.geometryOrInstanceNum;
+
+        for (uint32_t i = 0; i < geometryNum; i++) {
+            const BottomLevelGeometryDesc& geometryDesc = accelerationStructureDesc.desc.geometries[i];
+
+            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
+                micromapNum++;
+        }
     }
 
+    Scratch<BottomLevelGeometryDesc> geometriesImplScratch = AllocateScratch(*this, BottomLevelGeometryDesc, geometryNum);
+    Scratch<BottomLevelMicromapDesc> micromapsImplScratch = AllocateScratch(*this, BottomLevelMicromapDesc, micromapNum);
+
+    BottomLevelGeometryDesc* geometriesImpl = geometriesImplScratch;
+    BottomLevelMicromapDesc* micromapsImpl = micromapsImplScratch;
+
+    // Convert
+    auto accelerationStructureDescImpl = accelerationStructureDesc;
+
+    if (accelerationStructureDesc.desc.type == AccelerationStructureType::BOTTOM_LEVEL) {
+        accelerationStructureDescImpl.desc.geometries = geometriesImplScratch;
+        ConvertBotomLevelGeometries(accelerationStructureDesc.desc.geometries, geometryNum, geometriesImpl, micromapsImpl);
+    }
+
+    // Call
     AccelerationStructure* accelerationStructureImpl = nullptr;
     Result result = m_iResourceAllocator.AllocateAccelerationStructure(m_Impl, accelerationStructureDescImpl, accelerationStructureImpl);
 

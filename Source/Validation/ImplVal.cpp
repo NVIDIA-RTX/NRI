@@ -928,15 +928,36 @@ static void NRI_CALL GetAccelerationStructureMemoryDesc(const AccelerationStruct
 static void NRI_CALL GetAccelerationStructureMemoryDesc2(const Device& device, const AccelerationStructureDesc& accelerationStructureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
     DeviceVal& deviceVal = (DeviceVal&)device;
 
-    uint32_t geometryNum = accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL ? accelerationStructureDesc.geometryOrInstanceNum : 0;
-    Scratch<BottomLevelGeometryDesc> objectImplArray = AllocateScratch(deviceVal, BottomLevelGeometryDesc, geometryNum);
+    // Allocate scratch
+    uint32_t geometryNum = 0;
+    uint32_t micromapNum = 0;
 
-    auto accelerationStructureDescImpl = accelerationStructureDesc;
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
-        ConvertGeometryObjectsVal(objectImplArray, accelerationStructureDesc.geometries, geometryNum);
-        accelerationStructureDescImpl.geometries = objectImplArray;
+        geometryNum = accelerationStructureDesc.geometryOrInstanceNum;
+
+        for (uint32_t i = 0; i < geometryNum; i++) {
+            const BottomLevelGeometryDesc& geometryDesc = accelerationStructureDesc.geometries[i];
+
+            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
+                micromapNum++;
+        }
     }
 
+    Scratch<BottomLevelGeometryDesc> geometriesImplScratch = AllocateScratch(deviceVal, BottomLevelGeometryDesc, geometryNum);
+    Scratch<BottomLevelMicromapDesc> micromapsImplScratch = AllocateScratch(deviceVal, BottomLevelMicromapDesc, micromapNum);
+
+    BottomLevelGeometryDesc* geometriesImpl = geometriesImplScratch;
+    BottomLevelMicromapDesc* micromapsImpl = micromapsImplScratch;
+
+    // Convert
+    auto accelerationStructureDescImpl = accelerationStructureDesc;
+
+    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
+        accelerationStructureDescImpl.geometries = geometriesImplScratch;
+        ConvertBotomLevelGeometries(accelerationStructureDesc.geometries, geometryNum, geometriesImpl, micromapsImpl);
+    }
+
+    // Call
     deviceVal.GetRayTracingInterface().GetAccelerationStructureMemoryDesc2(deviceVal.GetImpl(), accelerationStructureDescImpl, memoryLocation, memoryDesc);
     deviceVal.RegisterMemoryType(memoryDesc.type, memoryLocation);
 }

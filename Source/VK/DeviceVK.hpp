@@ -1366,7 +1366,8 @@ void DeviceVK::GetAccelerationStructureBuildSizesInfo(const AccelerationStructur
 
         for (uint32_t i = 0; i < geometryNum; i++) {
             const BottomLevelGeometryDesc& geometryDesc = accelerationStructureDesc.geometries[i];
-            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap.micromap)
+
+            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
                 micromapNum++;
         }
     } else

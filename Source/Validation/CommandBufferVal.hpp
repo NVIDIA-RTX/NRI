@@ -557,14 +557,28 @@ NRI_INLINE void CommandBufferVal::BuildBottomLevelAccelerationStructure(const Bu
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
 
-    uint32_t totalGeometryObjectNum = 0;
-    for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++)
-        totalGeometryObjectNum += buildBottomLevelAccelerationStructureDescs[i].geometryNum;
+    uint32_t geometryTotalNum = 0;
+    uint32_t micromapTotalNum = 0;
 
-    Scratch<BottomLevelGeometryDesc> geometryObjectsImplScratch = AllocateScratch(m_Device, BottomLevelGeometryDesc, totalGeometryObjectNum);
-    BottomLevelGeometryDesc* geometryObjectsImpl = geometryObjectsImplScratch;
+    for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++) {
+        const BuildBottomLevelAccelerationStructureDesc& desc = buildBottomLevelAccelerationStructureDescs[i];
+
+        for (uint32_t j = 0; j < desc.geometryNum; j++) {
+            const BottomLevelGeometryDesc& geometry = desc.geometries[j];
+
+            if (geometry.type == BottomLevelGeometryType::TRIANGLES && geometry.triangles.micromap)
+                micromapTotalNum++;
+        }
+
+        geometryTotalNum += desc.geometryNum;
+    }
 
     Scratch<BuildBottomLevelAccelerationStructureDesc> buildBottomLevelAccelerationStructureDescsImpl = AllocateScratch(m_Device, BuildBottomLevelAccelerationStructureDesc, buildBottomLevelAccelerationStructureDescNum);
+    Scratch<BottomLevelGeometryDesc> geometriesImplScratch = AllocateScratch(m_Device, BottomLevelGeometryDesc, geometryTotalNum);
+    Scratch<BottomLevelMicromapDesc> micromapsImplScratch = AllocateScratch(m_Device, BottomLevelMicromapDesc, geometryTotalNum);
+
+    BottomLevelGeometryDesc* geometriesImpl = geometriesImplScratch;
+    BottomLevelMicromapDesc* micromapsImpl = micromapsImplScratch;
 
     for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++) {
         const BuildBottomLevelAccelerationStructureDesc& in = buildBottomLevelAccelerationStructureDescs[i];
@@ -579,12 +593,10 @@ NRI_INLINE void CommandBufferVal::BuildBottomLevelAccelerationStructure(const Bu
         out = in;
         out.dst = NRI_GET_IMPL(AccelerationStructure, in.dst);
         out.src = NRI_GET_IMPL(AccelerationStructure, in.src);
-        out.geometries = geometryObjectsImpl;
+        out.geometries = geometriesImpl;
         out.scratchBuffer = NRI_GET_IMPL(Buffer, in.scratchBuffer);
 
-        ConvertGeometryObjectsVal(geometryObjectsImpl, in.geometries, in.geometryNum);
-
-        geometryObjectsImpl += in.geometryNum;
+        ConvertBotomLevelGeometries(in.geometries, in.geometryNum, geometriesImpl, micromapsImpl);
     }
 
     GetRayTracingInterface().CmdBuildBottomLevelAccelerationStructures(*GetImpl(), buildBottomLevelAccelerationStructureDescsImpl, buildBottomLevelAccelerationStructureDescNum);

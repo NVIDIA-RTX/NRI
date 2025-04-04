@@ -945,7 +945,7 @@ void DeviceD3D12::GetAccelerationStructurePrebuildInfo(const AccelerationStructu
 
         for (uint32_t i = 0; i < geometryNum; i++) {
             const BottomLevelGeometryDesc& geometryDesc = accelerationStructureDesc.geometries[i];
-            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap.micromap)
+            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
                 micromapNum++;
         }
     }
@@ -962,8 +962,8 @@ void DeviceD3D12::GetAccelerationStructurePrebuildInfo(const AccelerationStructu
     accelerationStructureInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY; // TODO: D3D12_ELEMENTS_LAYOUT_ARRAY_OF_POINTERS support?
 
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
-        ConvertGeometryDescs(accelerationStructureDesc.geometries, geometryNum, geometryDescs, trianglesDescs, ommDescs);
         accelerationStructureInputs.pGeometryDescs = geometryDescs;
+        ConvertBotomLevelGeometries(accelerationStructureDesc.geometries, geometryNum, geometryDescs, trianglesDescs, ommDescs);
     }
 
     m_Device->GetRaytracingAccelerationStructurePrebuildInfo(&accelerationStructureInputs, &prebuildInfo);

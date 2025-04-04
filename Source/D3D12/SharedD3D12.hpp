@@ -474,7 +474,7 @@ bool nri::GetBufferDesc(const BufferD3D12Desc& bufferD3D12Desc, BufferDesc& buff
     return true;
 }
 
-void nri::ConvertGeometryDescs(const BottomLevelGeometryDesc* geometries, uint32_t geometryNum,
+void nri::ConvertBotomLevelGeometries(const BottomLevelGeometryDesc* geometries, uint32_t geometryNum,
     D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs,
     D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC* triangleDescs,
     D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC* micromapDescs) {
