@@ -137,6 +137,7 @@ struct DeviceVal final : public DeviceBase {
     Result CreateQueryPool(const QueryPoolDesc& queryPoolDesc, QueryPool*& queryPool);
     Result CreateQueryPool(const QueryPoolVKDesc& queryPoolVKDesc, QueryPool*& queryPool);
     Result CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*& swapChain);
+    Result AllocateMicromap(const AllocateMicromapDesc& micromapDesc, Micromap*& micromap);
     Result CreateDescriptor(const SamplerDesc& samplerDesc, Descriptor*& sampler);
     Result CreateDescriptor(const BufferViewDesc& bufferViewDesc, Descriptor*& bufferView);
     Result CreateDescriptor(const Texture1DViewDesc& textureViewDesc, Descriptor*& textureView);
@@ -154,9 +155,9 @@ struct DeviceVal final : public DeviceBase {
     Result CreateCommandAllocator(const Queue& queue, CommandAllocator*& commandAllocator);
     Result CreateCommandAllocator(const CommandAllocatorVKDesc& commandAllocatorDesc, CommandAllocator*& commandAllocator);
     Result CreateAccelerationStructure(const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
-    Result AllocateAccelerationStructure(const AllocateAccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
     Result CreateAccelerationStructure(const AccelerationStructureVKDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
     Result CreateAccelerationStructure(const AccelerationStructureD3D12Desc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
+    Result AllocateAccelerationStructure(const AllocateAccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
 
     void DestroyFence(Fence& fence);
     void DestroyBuffer(Buffer& buffer);

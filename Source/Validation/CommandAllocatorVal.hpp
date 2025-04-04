@@ -4,6 +4,7 @@ NRI_INLINE Result CommandAllocatorVal::CreateCommandBuffer(CommandBuffer*& comma
     CommandBuffer* commandBufferImpl;
     const Result result = GetCoreInterface().CreateCommandBuffer(*GetImpl(), commandBufferImpl);
 
+    commandBuffer = nullptr;
     if (result == Result::SUCCESS)
         commandBuffer = (CommandBuffer*)Allocate<CommandBufferVal>(m_Device.GetAllocationCallbacks(), m_Device, commandBufferImpl, false);
 

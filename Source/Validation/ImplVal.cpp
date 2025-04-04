@@ -1088,11 +1088,8 @@ static Result NRI_CALL AllocateAccelerationStructure(Device& device, const Alloc
     return ((DeviceVal&)device).AllocateAccelerationStructure(acelerationStructureDesc, accelerationStructure);
 }
 
-static Result NRI_CALL AllocateMicromap(Device&, const AllocateMicromapDesc&, Micromap*& micromap) {
-    // TODO
-    micromap = nullptr;
-
-    return Result::FAILURE;
+static Result NRI_CALL AllocateMicromap(Device& device, const AllocateMicromapDesc& allocateMicromapDesc, Micromap*& micromap) {
+    return ((DeviceVal&)device).AllocateMicromap(allocateMicromapDesc, micromap);
 }
 
 Result DeviceVal::FillFunctionTable(ResourceAllocatorInterface& table) const {
