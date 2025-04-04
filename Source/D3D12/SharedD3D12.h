@@ -57,13 +57,11 @@ struct DescriptorHeapDesc {
     uint32_t num = 0;
 };
 
-void ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs,
+void ConvertGeometryDescs(const BottomLevelGeometryDesc* geometries, uint32_t geometryNum,
+    D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs,
     D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC* triangleDescs,
-    D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC* micromapDescs,
-    const BottomLevelGeometryDesc* geometries, uint32_t geometryNum);
+    D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC* micromapDescs);
 
-void GetResourceDesc(D3D12_RESOURCE_DESC* desc, const BufferDesc& bufferDesc);
-void GetResourceDesc(D3D12_RESOURCE_DESC* desc, const TextureDesc& textureDesc);
 bool GetTextureDesc(const TextureD3D12Desc& textureD3D12Desc, TextureDesc& textureDesc);
 bool GetBufferDesc(const BufferD3D12Desc& bufferD3D12Desc, BufferDesc& bufferDesc);
 uint64_t GetMemorySizeD3D12(const MemoryD3D12Desc& memoryD3D12Desc);
@@ -74,8 +72,6 @@ D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS GetMicromapFlags(MicromapBit
 D3D12_RAYTRACING_GEOMETRY_TYPE GetGeometryType(BottomLevelGeometryType geometryType);
 D3D12_RAYTRACING_GEOMETRY_FLAGS GetGeometryFlags(BottomLevelGeometryBits bottomLevelGeometryBits);
 D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE GetCopyMode(CopyMode copyMode);
-D3D12_RESOURCE_FLAGS GetBufferFlags(BufferUsageBits bufferUsage);
-D3D12_RESOURCE_FLAGS GetTextureFlags(TextureUsageBits textureUsage);
 D3D12_FILTER GetFilterIsotropic(Filter mip, Filter magnification, Filter minification, FilterExt filterExt, bool useComparison);
 D3D12_FILTER GetFilterAnisotropic(FilterExt filterExt, bool useComparison);
 D3D12_TEXTURE_ADDRESS_MODE GetAddressMode(AddressMode addressMode);

@@ -250,18 +250,6 @@ D3D12_HEAP_FLAGS nri::GetHeapFlags(MemoryType memoryType) {
     return (D3D12_HEAP_FLAGS)(memoryType & 0xffff);
 }
 
-D3D12_RESOURCE_FLAGS nri::GetBufferFlags(BufferUsageBits bufferUsage) {
-    D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
-
-    if (bufferUsage & (BufferUsageBits::SHADER_RESOURCE_STORAGE | BufferUsageBits::SCRATCH_BUFFER))
-        flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-    if (bufferUsage & (BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE | BufferUsageBits::MICROMAP_STORAGE))
-        flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE;
-
-    return flags;
-}
-
 D3D12_FILTER nri::GetFilterIsotropic(Filter mip, Filter magnification, Filter minification, FilterExt filterExt, bool useComparison) {
     uint32_t combinedMask = 0;
     combinedMask |= mip == Filter::LINEAR ? 0x1 : 0;
@@ -314,25 +302,6 @@ D3D12_SHADER_VISIBILITY nri::GetShaderVisibility(StageBits shaderStages) {
 
     // Should be unreachable
     return D3D12_SHADER_VISIBILITY_ALL;
-}
-
-D3D12_RESOURCE_FLAGS nri::GetTextureFlags(TextureUsageBits textureUsage) {
-    D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
-
-    if (textureUsage & TextureUsageBits::SHADER_RESOURCE_STORAGE)
-        flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-    if (textureUsage & TextureUsageBits::COLOR_ATTACHMENT)
-        flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-
-    if (textureUsage & TextureUsageBits::DEPTH_STENCIL_ATTACHMENT) {
-        flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-
-        if (!(textureUsage & TextureUsageBits::SHADER_RESOURCE))
-            flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
-    }
-
-    return flags;
 }
 
 D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE nri::GetAccelerationStructureType(AccelerationStructureType accelerationStructureType) {
@@ -505,10 +474,10 @@ bool nri::GetBufferDesc(const BufferD3D12Desc& bufferD3D12Desc, BufferDesc& buff
     return true;
 }
 
-void nri::ConvertGeometryDescs(D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs,
+void nri::ConvertGeometryDescs(const BottomLevelGeometryDesc* geometries, uint32_t geometryNum,
+    D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs,
     D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC* triangleDescs,
-    D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC* micromapDescs,
-    const BottomLevelGeometryDesc* geometries, uint32_t geometryNum) {
+    D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC* micromapDescs) {
     MaybeUnused(triangleDescs, micromapDescs);
 
     for (uint32_t i = 0; i < geometryNum; i++) {

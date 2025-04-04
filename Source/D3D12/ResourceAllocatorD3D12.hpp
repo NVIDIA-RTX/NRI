@@ -90,7 +90,7 @@ Result BufferD3D12::Create(const AllocateBufferDesc& bufferDesc) {
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
     if (m_Device.GetVersion() >= 10) {
         D3D12_RESOURCE_DESC1 desc1 = {};
-        GetResourceDesc((D3D12_RESOURCE_DESC*)&desc1, bufferDesc.desc);
+        m_Device.GetResourceDesc(bufferDesc.desc, (D3D12_RESOURCE_DESC&)desc1);
 
         const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_UNDEFINED;
         uint32_t castableFormatNum = 0;
@@ -102,7 +102,7 @@ Result BufferD3D12::Create(const AllocateBufferDesc& bufferDesc) {
 #endif
     {
         D3D12_RESOURCE_DESC desc = {};
-        GetResourceDesc(&desc, bufferDesc.desc);
+        m_Device.GetResourceDesc(bufferDesc.desc, desc);
 
         D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
         if (bufferDesc.memoryLocation == MemoryLocation::HOST_UPLOAD || bufferDesc.memoryLocation == MemoryLocation::DEVICE_UPLOAD)
@@ -143,7 +143,7 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
     if (m_Device.GetVersion() >= 10) {
         D3D12_RESOURCE_DESC1 desc1 = {};
-        GetResourceDesc((D3D12_RESOURCE_DESC*)&desc1, textureDesc.desc);
+        m_Device.GetResourceDesc(textureDesc.desc, (D3D12_RESOURCE_DESC&)desc1);
 
         bool isRenderableSurface = desc1.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
         uint32_t castableFormatNum = 0;
@@ -155,7 +155,7 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
 #endif
     {
         D3D12_RESOURCE_DESC desc = {};
-        GetResourceDesc(&desc, textureDesc.desc);
+        m_Device.GetResourceDesc(textureDesc.desc, desc);
 
         bool isRenderableSurface = desc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 

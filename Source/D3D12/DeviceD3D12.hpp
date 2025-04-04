@@ -73,6 +73,37 @@ static void __stdcall NvapiMessageCallback(void* context, NVAPI_D3D12_RAYTRACING
 
 #endif
 
+static D3D12_RESOURCE_FLAGS GetBufferFlags(BufferUsageBits bufferUsage) {
+    D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
+
+    if (bufferUsage & (BufferUsageBits::SHADER_RESOURCE_STORAGE | BufferUsageBits::SCRATCH_BUFFER))
+        flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+    if (bufferUsage & (BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE | BufferUsageBits::MICROMAP_STORAGE))
+        flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE;
+
+    return flags;
+}
+
+static D3D12_RESOURCE_FLAGS GetTextureFlags(TextureUsageBits textureUsage) {
+    D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
+
+    if (textureUsage & TextureUsageBits::SHADER_RESOURCE_STORAGE)
+        flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+    if (textureUsage & TextureUsageBits::COLOR_ATTACHMENT)
+        flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+
+    if (textureUsage & TextureUsageBits::DEPTH_STENCIL_ATTACHMENT) {
+        flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+        if (!(textureUsage & TextureUsageBits::SHADER_RESOURCE))
+            flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+    }
+
+    return flags;
+}
+
 DeviceD3D12::DeviceD3D12(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks)
     : DeviceBase(callbacks, allocationCallbacks)
     , m_DescriptorHeaps(GetStdAllocator())
@@ -444,6 +475,12 @@ void DeviceD3D12::FillDesc() {
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS21, &options21, sizeof(options21));
     if (FAILED(hr))
         REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options21) failed, result = 0x%08X!", hr);
+
+    D3D12_FEATURE_DATA_TIGHT_ALIGNMENT tightAlignment = {};
+    hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_TIGHT_ALIGNMENT, &tightAlignment, sizeof(tightAlignment));
+    if (FAILED(hr))
+        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(tightAlignment) failed, result = 0x%08X!", hr);
+    m_TightAlignmentTier = (uint8_t)tightAlignment.SupportTier;
 #else
     m_Desc.uploadBufferTextureRowAlignment = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
     m_Desc.uploadBufferTextureSliceAlignment = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
@@ -831,6 +868,44 @@ D3D12_HEAP_TYPE DeviceD3D12::GetHeapType(MemoryLocation memoryLocation) const {
     return g_HeapTypes[(size_t)memoryLocation];
 }
 
+void DeviceD3D12::GetResourceDesc(const BufferDesc& bufferDesc, D3D12_RESOURCE_DESC& desc) const {
+    desc = {};
+    desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    desc.Width = bufferDesc.size;
+    desc.Height = 1;
+    desc.DepthOrArraySize = 1;
+    desc.MipLevels = 1;
+    desc.SampleDesc.Count = 1;
+    desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    desc.Flags = GetBufferFlags(bufferDesc.usage);
+
+#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+    if (m_TightAlignmentTier != 0)
+        desc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
+#endif
+}
+
+void DeviceD3D12::GetResourceDesc(const TextureDesc& textureDesc, D3D12_RESOURCE_DESC& desc) const {
+    uint16_t blockWidth = (uint16_t)GetFormatProps(textureDesc.format).blockWidth;
+    const DxgiFormat& dxgiFormat = GetDxgiFormat(textureDesc.format);
+
+    desc = {};
+    desc.Dimension = GetResourceDimension(textureDesc.type);
+    desc.Width = Align(textureDesc.width, blockWidth);
+    desc.Height = Align(std::max(textureDesc.height, (Dim_t)1), blockWidth);
+    desc.DepthOrArraySize = std::max(textureDesc.type == TextureType::TEXTURE_3D ? textureDesc.depth : textureDesc.layerNum, (Dim_t)1);
+    desc.MipLevels = std::max(textureDesc.mipNum, (Mip_t)1);
+    desc.Format = (textureDesc.usage & TextureUsageBits::SHADING_RATE_ATTACHMENT) ? dxgiFormat.typed : dxgiFormat.typeless;
+    desc.SampleDesc.Count = std::max(textureDesc.sampleNum, (Sample_t)1);
+    desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    desc.Flags = GetTextureFlags(textureDesc.usage);
+
+#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+    if (m_TightAlignmentTier > 1)
+        desc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
+#endif
+}
+
 void DeviceD3D12::GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOURCE_DESC& resourceDesc, MemoryDesc& memoryDesc) const {
     D3D12_HEAP_TYPE heapType = GetHeapType(memoryLocation);
     D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
@@ -860,20 +935,6 @@ void DeviceD3D12::GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOU
     memoryDesc.mustBeDedicated = mustBeDedicated;
 }
 
-void DeviceD3D12::GetMemoryDesc(const D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO& prebuildInfo, MemoryLocation memoryLocation, MemoryDesc& memoryDesc, bool isMicromap) const {
-    D3D12_HEAP_TYPE heapType = GetHeapType(memoryLocation);
-    D3D12_HEAP_FLAGS heapFlags = m_Desc.isMemoryTier2Supported ? D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES : D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
-
-    MemoryTypeInfo memoryTypeInfo = {};
-    memoryTypeInfo.heapFlags = (uint16_t)heapFlags;
-    memoryTypeInfo.heapType = (uint8_t)heapType;
-
-    memoryDesc = {};
-    memoryDesc.size = prebuildInfo.ResultDataMaxSizeInBytes;
-    memoryDesc.alignment = isMicromap ? m_Desc.micromapOffsetAlignment : m_Desc.accelerationStructureOffsetAlignment;
-    memoryDesc.type = Pack(memoryTypeInfo);
-}
-
 void DeviceD3D12::GetAccelerationStructurePrebuildInfo(const AccelerationStructureDesc& accelerationStructureDesc, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO& prebuildInfo) const {
     // Scratch memory
     uint32_t geometryNum = 0;
@@ -901,7 +962,7 @@ void DeviceD3D12::GetAccelerationStructurePrebuildInfo(const AccelerationStructu
     accelerationStructureInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY; // TODO: D3D12_ELEMENTS_LAYOUT_ARRAY_OF_POINTERS support?
 
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
-        ConvertGeometryDescs(geometryDescs, trianglesDescs, ommDescs, accelerationStructureDesc.geometries, accelerationStructureDesc.geometryOrInstanceNum);
+        ConvertGeometryDescs(accelerationStructureDesc.geometries, geometryNum, geometryDescs, trianglesDescs, ommDescs);
         accelerationStructureInputs.pGeometryDescs = geometryDescs;
     }
 

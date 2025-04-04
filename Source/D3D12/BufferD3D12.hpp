@@ -1,17 +1,5 @@
 // © 2021 NVIDIA Corporation
 
-void nri::GetResourceDesc(D3D12_RESOURCE_DESC* desc, const BufferDesc& bufferDesc) {
-    *desc = {};
-    desc->Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    desc->Width = bufferDesc.size;
-    desc->Height = 1;
-    desc->DepthOrArraySize = 1;
-    desc->MipLevels = 1;
-    desc->SampleDesc.Count = 1;
-    desc->Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-    desc->Flags = GetBufferFlags(bufferDesc.usage);
-}
-
 Result BufferD3D12::Create(const BufferDesc& bufferDesc) {
     m_Desc = bufferDesc;
 
@@ -42,7 +30,7 @@ Result BufferD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset) {
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
     if (m_Device.GetVersion() >= 10) {
         D3D12_RESOURCE_DESC1 desc1 = {};
-        GetResourceDesc((D3D12_RESOURCE_DESC*)&desc1, m_Desc);
+        m_Device.GetResourceDesc(m_Desc, (D3D12_RESOURCE_DESC&)desc1);
 
         const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_UNDEFINED;
         uint32_t castableFormatNum = 0;
@@ -68,7 +56,7 @@ Result BufferD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset) {
             || (heapDesc.Properties.Type == D3D12_HEAP_TYPE_CUSTOM && heapDesc.Properties.CPUPageProperty == D3D12_CPU_PAGE_PROPERTY_WRITE_BACK);
 
         D3D12_RESOURCE_DESC desc = {};
-        GetResourceDesc(&desc, m_Desc);
+        m_Device.GetResourceDesc(m_Desc, desc);
 
         D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
         if (isUpload)

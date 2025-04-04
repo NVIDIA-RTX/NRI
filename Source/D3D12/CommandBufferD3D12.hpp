@@ -1042,7 +1042,7 @@ NRI_INLINE void CommandBufferD3D12::BuildBottomLevelAccelerationStructures(const
             out.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
         }
 
-        ConvertGeometryDescs(geometryDescs, trianglesDescs, ommDescs, in.geometries, in.geometryNum);
+        ConvertGeometryDescs(in.geometries, in.geometryNum, geometryDescs, trianglesDescs, ommDescs);
 
         m_GraphicsCommandList->BuildRaytracingAccelerationStructure(&out, 0, nullptr);
     }

@@ -1,21 +1,5 @@
 // © 2021 NVIDIA Corporation
 
-void nri::GetResourceDesc(D3D12_RESOURCE_DESC* desc, const TextureDesc& textureDesc) {
-    uint16_t blockWidth = (uint16_t)GetFormatProps(textureDesc.format).blockWidth;
-    const DxgiFormat& dxgiFormat = GetDxgiFormat(textureDesc.format);
-
-    *desc = {};
-    desc->Dimension = GetResourceDimension(textureDesc.type);
-    desc->Width = Align(textureDesc.width, blockWidth);
-    desc->Height = Align(std::max(textureDesc.height, (Dim_t)1), blockWidth);
-    desc->DepthOrArraySize = std::max(textureDesc.type == TextureType::TEXTURE_3D ? textureDesc.depth : textureDesc.layerNum, (Dim_t)1);
-    desc->MipLevels = std::max(textureDesc.mipNum, (Mip_t)1);
-    desc->Format = (textureDesc.usage & TextureUsageBits::SHADING_RATE_ATTACHMENT) ? dxgiFormat.typed : dxgiFormat.typeless;
-    desc->SampleDesc.Count = std::max(textureDesc.sampleNum, (Sample_t)1);
-    desc->Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    desc->Flags = GetTextureFlags(textureDesc.usage);
-}
-
 Result TextureD3D12::Create(const TextureDesc& textureDesc) {
     m_Desc = FixTextureDesc(textureDesc);
 
@@ -47,7 +31,7 @@ Result TextureD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset) {
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
     if (m_Device.GetVersion() >= 10) {
         D3D12_RESOURCE_DESC1 desc1 = {};
-        GetResourceDesc((D3D12_RESOURCE_DESC*)&desc1, m_Desc);
+        m_Device.GetResourceDesc(m_Desc, (D3D12_RESOURCE_DESC&)desc1);
 
         const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_COMMON;
         bool isRenderableSurface = desc1.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
@@ -66,7 +50,7 @@ Result TextureD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset) {
 #endif
     { // TODO: by design textures should not be created in UPLOAD/READBACK heaps, since they can't be mapped. But what about a wrapped texture?
         D3D12_RESOURCE_DESC desc = {};
-        GetResourceDesc(&desc, m_Desc);
+        m_Device.GetResourceDesc(m_Desc, desc);
 
         const D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
         bool isRenderableSurface = desc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);

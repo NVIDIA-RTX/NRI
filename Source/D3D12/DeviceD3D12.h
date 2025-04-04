@@ -105,8 +105,9 @@ struct DeviceD3D12 final : public DeviceBase {
     Result CreateDefaultDrawSignatures(ID3D12RootSignature* rootSignature, bool enableDrawParametersEmulation);
     Result CreateCpuOnlyVisibleDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type);
     Result GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, DescriptorHandle& descriptorHandle);
+    void GetResourceDesc(const BufferDesc& bufferDesc, D3D12_RESOURCE_DESC& desc) const;
+    void GetResourceDesc(const TextureDesc& textureDesc, D3D12_RESOURCE_DESC& desc) const;
     void GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOURCE_DESC& resourceDesc, MemoryDesc& memoryDesc) const;
-    void GetMemoryDesc(const D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO& prebuildInfo, MemoryLocation memoryLocation, MemoryDesc& memoryDesc, bool isMicromap) const;
     void GetAccelerationStructurePrebuildInfo(const AccelerationStructureDesc& accelerationStructureDesc, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO& prebuildInfo) const;
     void GetMicromapPrebuildInfo(const MicromapDesc& micromapDesc, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO& prebuildInfo) const;
     D3D12_HEAP_TYPE GetHeapType(MemoryLocation memoryLocation) const;
@@ -190,6 +191,7 @@ private:
     CoreInterface m_iCore = {};
     DeviceDesc m_Desc = {};
     uint8_t m_Version = 0;
+    uint8_t m_TightAlignmentTier = 0;
     bool m_IsWrapped = false;
 
     std::array<Lock, D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES> m_FreeDescriptorLocks;

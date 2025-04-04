@@ -43,7 +43,13 @@ Result AccelerationStructureD3D12::CreateDescriptor(Descriptor*& descriptor) con
 }
 
 void AccelerationStructureD3D12::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {
-    m_Device.GetMemoryDesc(m_PrebuildInfo, memoryLocation, memoryDesc, false);
+    BufferDesc bufferDesc = {};
+    bufferDesc.size = m_PrebuildInfo.ResultDataMaxSizeInBytes;
+    bufferDesc.usage = BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE;
+
+    D3D12_RESOURCE_DESC resourceDesc = {};
+    m_Device.GetResourceDesc(bufferDesc, resourceDesc);
+    m_Device.GetMemoryDesc(memoryLocation, resourceDesc, memoryDesc);
 }
 
 NRI_INLINE void AccelerationStructureD3D12::SetDebugName(const char* name) {

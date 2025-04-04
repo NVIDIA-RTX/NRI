@@ -17,7 +17,13 @@ Result MicromapD3D12::BindMemory(Memory* memory, uint64_t offset) {
 }
 
 void MicromapD3D12::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {
-    m_Device.GetMemoryDesc(m_PrebuildInfo, memoryLocation, memoryDesc, true);
+    BufferDesc bufferDesc = {};
+    bufferDesc.size = m_PrebuildInfo.ResultDataMaxSizeInBytes;
+    bufferDesc.usage = BufferUsageBits::MICROMAP_STORAGE;
+
+    D3D12_RESOURCE_DESC resourceDesc = {};
+    m_Device.GetResourceDesc(bufferDesc, resourceDesc);
+    m_Device.GetMemoryDesc(memoryLocation, resourceDesc, memoryDesc);
 }
 
 NRI_INLINE void MicromapD3D12::SetDebugName(const char* name) {
