@@ -519,6 +519,7 @@ NRI_API void NRI_CALL nriAnnotation(const char* name, uint32_t bgra) {
     eventAttrib.message.ascii = name;
 
     nvtxMarkEx(&eventAttrib);
+
 #    else
 
     // TODO: add PIX

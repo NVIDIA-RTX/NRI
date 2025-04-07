@@ -19,8 +19,6 @@ namespace nri {
 
 typedef size_t DescriptorPointerCPU;
 typedef uint64_t DescriptorPointerGPU;
-typedef uint16_t HeapIndexType;
-typedef uint16_t HeapOffsetType;
 
 struct MemoryTypeInfo {
     uint16_t heapFlags;
@@ -44,10 +42,20 @@ enum DescriptorHeapType : uint32_t {
     MAX_NUM
 };
 
+#define DESCRIPTOR_HANDLE_HEAP_TYPE_BIT_NUM 2
+#define DESCRIPTOR_HANDLE_HEAP_INDEX_BIT_NUM 16
+#define DESCRIPTOR_HANDLE_HEAP_OFFSET_BIT_NUM 14
+
 struct DescriptorHandle {
-    HeapIndexType heapIndex;
-    HeapOffsetType heapOffset;
+    uint32_t heapType : DESCRIPTOR_HANDLE_HEAP_TYPE_BIT_NUM;
+    uint32_t heapIndex : DESCRIPTOR_HANDLE_HEAP_INDEX_BIT_NUM;
+    uint32_t heapOffset : DESCRIPTOR_HANDLE_HEAP_OFFSET_BIT_NUM;
 };
+
+constexpr uint32_t DESCRIPTORS_BATCH_SIZE = 1024;
+
+static_assert(D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES <= (1 << DESCRIPTOR_HANDLE_HEAP_TYPE_BIT_NUM), "Out of bounds");
+static_assert(DESCRIPTORS_BATCH_SIZE <= (1 << DESCRIPTOR_HANDLE_HEAP_OFFSET_BIT_NUM), "Out of bounds");
 
 struct DescriptorHeapDesc {
     ComPtr<ID3D12DescriptorHeap> heap;

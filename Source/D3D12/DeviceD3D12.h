@@ -19,8 +19,6 @@ namespace nri {
 
 struct QueueD3D12;
 
-constexpr uint32_t DESCRIPTORS_BATCH_SIZE = 1024;
-
 struct DeviceD3D12 final : public DeviceBase {
     DeviceD3D12(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks);
     ~DeviceD3D12();
@@ -51,12 +49,6 @@ struct DeviceD3D12 final : public DeviceBase {
 
     inline ID3D12Resource* GetZeroBuffer() const {
         return m_ZeroBuffer;
-    }
-
-    inline void FreeDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, const DescriptorHandle& descriptorHandle) {
-        ExclusiveScope lock(m_FreeDescriptorLocks[type]);
-        auto& freeDescriptors = m_FreeDescriptors[type];
-        freeDescriptors.push_back(descriptorHandle);
     }
 
     inline bool HasPix() const {
@@ -103,8 +95,8 @@ struct DeviceD3D12 final : public DeviceBase {
     Result CreateVma();
     Result Create(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationD3D12Desc& deviceCreationD3D12Desc);
     Result CreateDefaultDrawSignatures(ID3D12RootSignature* rootSignature, bool enableDrawParametersEmulation);
-    Result CreateCpuOnlyVisibleDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type);
     Result GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, DescriptorHandle& descriptorHandle);
+    void FreeDescriptorHandle(const DescriptorHandle& descriptorHandle);
     void GetResourceDesc(const BufferDesc& bufferDesc, D3D12_RESOURCE_DESC& desc) const;
     void GetResourceDesc(const TextureDesc& textureDesc, D3D12_RESOURCE_DESC& desc) const;
     void GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOURCE_DESC& resourceDesc, MemoryDesc& memoryDesc) const;
@@ -177,17 +169,12 @@ private:
     ComPtr<ID3D12CommandSignature> m_DispatchRaysCommandSignature;
     ComPtr<D3D12MA::Allocator> m_Vma;
     ComPtr<ID3D12Resource> m_ZeroBuffer;
-
-    // Used with "m_DescriptorHeapLock"
-    Vector<DescriptorHeapDesc> m_DescriptorHeaps;
-    Vector<Vector<DescriptorHandle>> m_FreeDescriptors;
-
-    // TODO: add locks
-    UnorderedMap<uint64_t, ComPtr<ID3D12CommandSignature>> m_DrawCommandSignatures;
-    UnorderedMap<uint64_t, ComPtr<ID3D12CommandSignature>> m_DrawIndexedCommandSignatures;
-    UnorderedMap<uint32_t, ComPtr<ID3D12CommandSignature>> m_DrawMeshCommandSignatures;
-
-    std::array<std::vector<QueueD3D12*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies = {}; // TODO: use Vector!
+    Vector<DescriptorHeapDesc> m_DescriptorHeaps;                                          // m_DescriptorHeapLock
+    Vector<Vector<DescriptorHandle>> m_FreeDescriptors;                                    // m_FreeDescriptorLocks
+    UnorderedMap<uint64_t, ComPtr<ID3D12CommandSignature>> m_DrawCommandSignatures;        // m_CommandSignatureLock
+    UnorderedMap<uint64_t, ComPtr<ID3D12CommandSignature>> m_DrawIndexedCommandSignatures; // m_CommandSignatureLock
+    UnorderedMap<uint32_t, ComPtr<ID3D12CommandSignature>> m_DrawMeshCommandSignatures;    // m_CommandSignatureLock
+    std::array<Vector<QueueD3D12*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies;
     CoreInterface m_iCore = {};
     DeviceDesc m_Desc = {};
     uint8_t m_Version = 0;
@@ -196,6 +183,7 @@ private:
 
     std::array<Lock, D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES> m_FreeDescriptorLocks;
     Lock m_DescriptorHeapLock;
+    Lock m_CommandSignatureLock;
 };
 
 } // namespace nri

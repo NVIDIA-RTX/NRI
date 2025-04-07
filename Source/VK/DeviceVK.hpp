@@ -326,7 +326,12 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
 }
 
 DeviceVK::DeviceVK(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks)
-    : DeviceBase(callbacks, allocationCallbacks) {
+    : DeviceBase(callbacks, allocationCallbacks)
+    , m_QueueFamilies{
+          Vector<QueueVK*>(GetStdAllocator()),
+          Vector<QueueVK*>(GetStdAllocator()),
+          Vector<QueueVK*>(GetStdAllocator()),
+      } {
     m_AllocationCallbacks.pUserData = (void*)&GetAllocationCallbacks();
     m_AllocationCallbacks.pfnAllocation = vkAllocateHostMemory;
     m_AllocationCallbacks.pfnReallocation = vkReallocateHostMemory;

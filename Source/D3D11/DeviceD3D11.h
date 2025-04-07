@@ -156,8 +156,8 @@ private:
     ComPtr<ID3D11DeviceContextBest> m_ImmediateContext;
     ComPtr<ID3D11Multithread> m_Multithread;
     ComPtr<ID3D11Buffer> m_ZeroBuffer;
-    std::array<std::vector<QueueD3D11*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies = {}; // TODO: use Vector!
-    CRITICAL_SECTION m_CriticalSection = {};                                               // TODO: Lock?
+    std::array<Vector<QueueD3D11*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies;
+    CRITICAL_SECTION m_CriticalSection = {}; // TODO: Lock?
     CoreInterface m_iCore = {};
     DeviceDesc m_Desc = {};
     uint8_t m_Version = 0;

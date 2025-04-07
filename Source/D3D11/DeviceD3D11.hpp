@@ -24,7 +24,12 @@ static uint8_t QueryLatestDevice(ComPtr<ID3D11DeviceBest>& in, ComPtr<ID3D11Devi
 }
 
 DeviceD3D11::DeviceD3D11(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks)
-    : DeviceBase(callbacks, allocationCallbacks) {
+    : DeviceBase(callbacks, allocationCallbacks)
+    , m_QueueFamilies{
+          Vector<QueueD3D11*>(GetStdAllocator()),
+          Vector<QueueD3D11*>(GetStdAllocator()),
+          Vector<QueueD3D11*>(GetStdAllocator()),
+      } {
     m_Desc.graphicsAPI = GraphicsAPI::D3D11;
     m_Desc.nriVersionMajor = NRI_VERSION_MAJOR;
     m_Desc.nriVersionMinor = NRI_VERSION_MINOR;

@@ -12,7 +12,7 @@ struct DescriptorD3D12 final : public DebugNameBase {
     }
 
     inline ~DescriptorD3D12() {
-        m_Device.FreeDescriptorHandle(m_HeapType, m_Handle);
+        m_Device.FreeDescriptorHandle(m_Handle);
     }
 
     inline operator ID3D12Resource*() const {
@@ -59,7 +59,6 @@ private:
     D3D12_GPU_VIRTUAL_ADDRESS m_BufferLocation = 0;
     DescriptorPointerCPU m_DescriptorPointerCPU = {};
     DescriptorHandle m_Handle = {};
-    D3D12_DESCRIPTOR_HEAP_TYPE m_HeapType = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV; // TODO: merge into m_Handle (2 bits needed)
     BufferViewType m_BufferViewType = BufferViewType::MAX_NUM;
     bool m_IsIntegerFormat = false;
 };

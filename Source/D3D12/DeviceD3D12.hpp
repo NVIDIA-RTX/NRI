@@ -110,7 +110,12 @@ DeviceD3D12::DeviceD3D12(const CallbackInterface& callbacks, const AllocationCal
     , m_FreeDescriptors(GetStdAllocator())
     , m_DrawCommandSignatures(GetStdAllocator())
     , m_DrawIndexedCommandSignatures(GetStdAllocator())
-    , m_DrawMeshCommandSignatures(GetStdAllocator()) {
+    , m_DrawMeshCommandSignatures(GetStdAllocator())
+    , m_QueueFamilies{
+          Vector<QueueD3D12*>(GetStdAllocator()),
+          Vector<QueueD3D12*>(GetStdAllocator()),
+          Vector<QueueD3D12*>(GetStdAllocator()),
+      } {
     m_FreeDescriptors.resize(D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES, Vector<DescriptorHandle>(GetStdAllocator()));
 
     m_Desc.graphicsAPI = GraphicsAPI::D3D12;
@@ -798,46 +803,63 @@ void DeviceD3D12::InitializePixExt() {
     m_Pix.library = pixLibrary;
 }
 
-Result DeviceD3D12::CreateCpuOnlyVisibleDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type) {
-    // IMPORTANT: m_FreeDescriptorLocks[type] must be acquired before calling this function
-    ExclusiveScope lock(m_DescriptorHeapLock);
-
-    size_t heapIndex = m_DescriptorHeaps.size();
-    if (heapIndex >= HeapIndexType(-1))
-        return Result::OUT_OF_MEMORY;
-
-    ComPtr<ID3D12DescriptorHeap> descriptorHeap;
-    D3D12_DESCRIPTOR_HEAP_DESC desc = {type, DESCRIPTORS_BATCH_SIZE, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, NODE_MASK};
-    HRESULT hr = m_Device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&descriptorHeap));
-    RETURN_ON_BAD_HRESULT(this, hr, "ID3D12Device::CreateDescriptorHeap()");
-
-    DescriptorHeapDesc descriptorHeapDesc = {};
-    descriptorHeapDesc.heap = descriptorHeap;
-    descriptorHeapDesc.basePointerCPU = descriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr;
-    descriptorHeapDesc.descriptorSize = m_Device->GetDescriptorHandleIncrementSize(type);
-    m_DescriptorHeaps.push_back(descriptorHeapDesc);
-
-    auto& freeDescriptors = m_FreeDescriptors[type];
-    for (uint32_t i = 0; i < desc.NumDescriptors; i++)
-        freeDescriptors.push_back({(HeapIndexType)heapIndex, (HeapOffsetType)i});
-
-    return Result::SUCCESS;
-}
-
 Result DeviceD3D12::GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, DescriptorHandle& descriptorHandle) {
-    ExclusiveScope lock(m_FreeDescriptorLocks[type]);
+    ExclusiveScope lock1(m_FreeDescriptorLocks[type]);
 
+    descriptorHandle = {};
+
+    // Create a new descriptor heap if there is no a free descriptor
     auto& freeDescriptors = m_FreeDescriptors[type];
     if (freeDescriptors.empty()) {
-        Result result = CreateCpuOnlyVisibleDescriptorHeap(type);
-        if (result != Result::SUCCESS)
-            return result;
+        ExclusiveScope lock2(m_DescriptorHeapLock);
+
+        // Can't create a new heap because the index doesn't fit into "DESCRIPTOR_HANDLE_HEAP_INDEX_BIT_NUM" bits
+        size_t heapIndex = m_DescriptorHeaps.size();
+        if (heapIndex >= (1 << DESCRIPTOR_HANDLE_HEAP_INDEX_BIT_NUM))
+            return Result::OUT_OF_MEMORY;
+
+        // Create a new batch of descriptors
+        D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+        desc.Type = type;
+        desc.NumDescriptors = DESCRIPTORS_BATCH_SIZE;
+        desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+        desc.NodeMask = NODE_MASK;
+
+        ComPtr<ID3D12DescriptorHeap> descriptorHeap;
+        HRESULT hr = m_Device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&descriptorHeap));
+        RETURN_ON_BAD_HRESULT(this, hr, "ID3D12Device::CreateDescriptorHeap()");
+
+        DescriptorHeapDesc descriptorHeapDesc = {};
+        descriptorHeapDesc.heap = descriptorHeap;
+        descriptorHeapDesc.basePointerCPU = descriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr;
+        descriptorHeapDesc.descriptorSize = m_Device->GetDescriptorHandleIncrementSize(type);
+        m_DescriptorHeaps.push_back(descriptorHeapDesc);
+
+        // Add the new batch of free descriptors
+        freeDescriptors.reserve(desc.NumDescriptors);
+
+        for (uint32_t i = 0; i < desc.NumDescriptors; i++) {
+            DescriptorHandle handle = {};
+            handle.heapType = type;
+            handle.heapIndex = heapIndex;
+            handle.heapOffset = i;
+
+            freeDescriptors.push_back(handle);
+        }
     }
 
+    // Reserve and return one descriptor
     descriptorHandle = freeDescriptors.back();
     freeDescriptors.pop_back();
 
     return Result::SUCCESS;
+}
+
+void DeviceD3D12::FreeDescriptorHandle(const DescriptorHandle& descriptorHandle) {
+    ExclusiveScope lock(m_FreeDescriptorLocks[descriptorHandle.heapType]);
+
+    auto& freeDescriptors = m_FreeDescriptors[descriptorHandle.heapType];
+    freeDescriptors.push_back(descriptorHandle);
 }
 
 DescriptorPointerCPU DeviceD3D12::GetDescriptorPointerCPU(const DescriptorHandle& descriptorHandle) {
@@ -1003,7 +1025,32 @@ ComPtr<ID3D12CommandSignature> DeviceD3D12::CreateCommandSignature(D3D12_INDIREC
     return commandSignature;
 }
 
+Result DeviceD3D12::CreateDefaultDrawSignatures(ID3D12RootSignature* rootSignature, bool enableDrawParametersEmulation) {
+    ExclusiveScope lock(m_CommandSignatureLock);
+
+    const uint32_t drawStride = enableDrawParametersEmulation ? sizeof(DrawBaseDesc) : sizeof(DrawDesc);
+    const uint32_t drawIndexedStride = enableDrawParametersEmulation ? sizeof(DrawIndexedBaseDesc) : sizeof(DrawIndexedDesc);
+
+    ComPtr<ID3D12CommandSignature> drawCommandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DRAW, drawStride, rootSignature, enableDrawParametersEmulation);
+    if (!drawCommandSignature)
+        return Result::FAILURE;
+
+    auto key = HashRootSignatureAndStride(rootSignature, drawStride);
+    m_DrawCommandSignatures.emplace(key, drawCommandSignature);
+
+    ComPtr<ID3D12CommandSignature> drawIndexedCommandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED, drawIndexedStride, rootSignature, enableDrawParametersEmulation);
+    if (!drawIndexedCommandSignature)
+        return Result::FAILURE;
+
+    key = HashRootSignatureAndStride(rootSignature, drawIndexedStride);
+    m_DrawIndexedCommandSignatures.emplace(key, drawIndexedCommandSignature);
+
+    return Result::SUCCESS;
+}
+
 ID3D12CommandSignature* DeviceD3D12::GetDrawCommandSignature(uint32_t stride, ID3D12RootSignature* rootSignature) {
+    ExclusiveScope lock(m_CommandSignatureLock);
+
     auto key = HashRootSignatureAndStride(rootSignature, stride);
     auto commandSignatureIt = m_DrawCommandSignatures.find(key);
     if (commandSignatureIt != m_DrawCommandSignatures.end())
@@ -1016,6 +1063,8 @@ ID3D12CommandSignature* DeviceD3D12::GetDrawCommandSignature(uint32_t stride, ID
 }
 
 ID3D12CommandSignature* DeviceD3D12::GetDrawIndexedCommandSignature(uint32_t stride, ID3D12RootSignature* rootSignature) {
+    ExclusiveScope lock(m_CommandSignatureLock);
+
     auto key = HashRootSignatureAndStride(rootSignature, stride);
     auto commandSignatureIt = m_DrawIndexedCommandSignatures.find(key);
     if (commandSignatureIt != m_DrawIndexedCommandSignatures.end())
@@ -1028,6 +1077,8 @@ ID3D12CommandSignature* DeviceD3D12::GetDrawIndexedCommandSignature(uint32_t str
 }
 
 ID3D12CommandSignature* DeviceD3D12::GetDrawMeshCommandSignature(uint32_t stride) {
+    ExclusiveScope lock(m_CommandSignatureLock);
+
     auto commandSignatureIt = m_DrawMeshCommandSignatures.find(stride);
     if (commandSignatureIt != m_DrawMeshCommandSignatures.end())
         return commandSignatureIt->second;
@@ -1142,25 +1193,4 @@ NRI_INLINE FormatSupportBits DeviceD3D12::GetFormatSupport(Format format) const 
     }
 
     return mask;
-}
-
-Result DeviceD3D12::CreateDefaultDrawSignatures(ID3D12RootSignature* rootSignature, bool enableDrawParametersEmulation) {
-    const uint32_t drawStride = enableDrawParametersEmulation ? sizeof(DrawBaseDesc) : sizeof(DrawDesc);
-    const uint32_t drawIndexedStride = enableDrawParametersEmulation ? sizeof(DrawIndexedBaseDesc) : sizeof(DrawIndexedDesc);
-
-    ComPtr<ID3D12CommandSignature> drawCommandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DRAW, drawStride, rootSignature, enableDrawParametersEmulation);
-    if (!drawCommandSignature)
-        return Result::FAILURE;
-
-    auto key = HashRootSignatureAndStride(rootSignature, drawStride);
-    m_DrawCommandSignatures.emplace(key, drawCommandSignature);
-
-    ComPtr<ID3D12CommandSignature> drawIndexedCommandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED, drawIndexedStride, rootSignature, enableDrawParametersEmulation);
-    if (!drawIndexedCommandSignature)
-        return Result::FAILURE;
-
-    key = HashRootSignatureAndStride(rootSignature, drawIndexedStride);
-    m_DrawIndexedCommandSignatures.emplace(key, drawIndexedCommandSignature);
-
-    return Result::SUCCESS;
 }

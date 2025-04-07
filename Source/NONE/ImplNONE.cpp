@@ -145,49 +145,10 @@ struct DeviceNONE final : public DeviceBase {
         m_Desc.shadingRateAttachmentTileSize = 16;
         m_Desc.shaderModel = 69;
 
-        m_Desc.conservativeRasterTier = 3;
-        m_Desc.sampleLocationsTier = 2;
-        m_Desc.shadingRateTier = 2;
-        m_Desc.bindlessTier = 2;
-        m_Desc.bindlessTier = 2;
-
-        m_Desc.isGetMemoryDesc2Supported = true;
-        m_Desc.isTextureFilterMinMaxSupported = true;
-        m_Desc.isLogicFuncSupported = true;
-        m_Desc.isDepthBoundsTestSupported = true;
-        m_Desc.isDrawIndirectCountSupported = true;
-        m_Desc.isIndependentFrontAndBackStencilReferenceAndMasksSupported = true;
-        m_Desc.isLineSmoothingSupported = true;
-        m_Desc.isCopyQueueTimestampSupported = true;
-        m_Desc.isMeshShaderPipelineStatsSupported = true;
-        m_Desc.isEnchancedBarrierSupported = true;
-        m_Desc.isMemoryTier2Supported = true;
-        m_Desc.isDynamicDepthBiasSupported = true;
-        m_Desc.isAdditionalShadingRatesSupported = true;
-        m_Desc.isViewportOriginBottomLeftSupported = true;
-        m_Desc.isRegionResolveSupported = true;
-        m_Desc.isFlexibleMultiviewSupported = true;
-        m_Desc.isLayerBasedMultiviewSupported = true;
-        m_Desc.isViewportBasedMultiviewSupported = true;
-
-        m_Desc.isShaderNativeI16Supported = true;
-        m_Desc.isShaderNativeF16Supported = true;
-        m_Desc.isShaderNativeI64Supported = true;
-        m_Desc.isShaderNativeF64Supported = true;
-        m_Desc.isShaderAtomicsI16Supported = true;
-        m_Desc.isShaderAtomicsF16Supported = true;
-        m_Desc.isShaderAtomicsF32Supported = true;
-        m_Desc.isShaderAtomicsI64Supported = true;
-        m_Desc.isShaderAtomicsF64Supported = true;
-        m_Desc.isRasterizedOrderedViewSupported = true;
-        m_Desc.isBarycentricSupported = true;
-        m_Desc.isShaderViewportIndexSupported = true;
-        m_Desc.isShaderLayerSupported = true;
-
-        m_Desc.isSwapChainSupported = true;
-        m_Desc.isRayTracingSupported = true;
-        m_Desc.isMeshShaderSupported = true;
-        m_Desc.isLowLatencySupported = true;
+        // Set all tiers to "255" and "isSupported" bits to "1"
+        static_assert(offsetof(DeviceDesc, conservativeRasterTier) == offsetof(DeviceDesc, shaderModel) + sizeof(uint8_t), "Conservative raster must be first");
+        constexpr size_t tiersAndBits = sizeof(DeviceDesc) - offsetof(DeviceDesc, conservativeRasterTier);
+        memset(&m_Desc.conservativeRasterTier, 0xFF, tiersAndBits);
     }
 
     inline ~DeviceNONE() {

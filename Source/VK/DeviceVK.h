@@ -152,7 +152,7 @@ public:
 private:
     VkPhysicalDevice m_PhysicalDevice = nullptr;
     std::array<uint32_t, (size_t)QueueType::MAX_NUM> m_ActiveQueueFamilyIndices = {};
-    std::array<std::vector<QueueVK*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies = {}; // TODO: use Vector!
+    std::array<Vector<QueueVK*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies;
     DispatchTable m_VK = {};
     VkPhysicalDeviceMemoryProperties m_MemoryProps = {};
     VkAllocationCallbacks m_AllocationCallbacks = {};
