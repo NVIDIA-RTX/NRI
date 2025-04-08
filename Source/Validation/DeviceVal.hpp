@@ -330,7 +330,7 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const SamplerDesc& samplerDesc, De
     RETURN_ON_FAILURE(this, samplerDesc.compareFunc < CompareFunc::MAX_NUM, Result::INVALID_ARGUMENT, "'compareFunc' is invalid");
 
     if (samplerDesc.filters.ext != FilterExt::NONE)
-        RETURN_ON_FAILURE(this, GetDesc().isTextureFilterMinMaxSupported, Result::UNSUPPORTED, "'isTextureFilterMinMaxSupported' is false");
+        RETURN_ON_FAILURE(this, GetDesc().features.textureFilterMinMax, Result::UNSUPPORTED, "'features.textureFilterMinMax' is false");
 
     if ((samplerDesc.addressModes.u != AddressMode::CLAMP_TO_BORDER && samplerDesc.addressModes.v != AddressMode::CLAMP_TO_BORDER && samplerDesc.addressModes.w != AddressMode::CLAMP_TO_BORDER) && (samplerDesc.borderColor.ui.x != 0 || samplerDesc.borderColor.ui.y != 0 || samplerDesc.borderColor.ui.z != 0 && samplerDesc.borderColor.ui.w != 0))
         REPORT_WARNING(this, "'borderColor' is provided, but 'CLAMP_TO_BORDER' is not requested");
@@ -465,22 +465,22 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
     }
 
     if (graphicsPipelineDesc.rasterization.conservativeRaster)
-        RETURN_ON_FAILURE(this, GetDesc().conservativeRasterTier, Result::UNSUPPORTED, "'conservativeRasterTier' must be > 0");
+        RETURN_ON_FAILURE(this, GetDesc().tiers.conservativeRaster, Result::UNSUPPORTED, "'tiers.conservativeRaster' must be > 0");
 
     if (graphicsPipelineDesc.rasterization.lineSmoothing)
-        RETURN_ON_FAILURE(this, GetDesc().isLineSmoothingSupported, Result::UNSUPPORTED, "'isLineSmoothingSupported' is false");
+        RETURN_ON_FAILURE(this, GetDesc().features.lineSmoothing, Result::UNSUPPORTED, "'features.lineSmoothing' is false");
 
     if (graphicsPipelineDesc.rasterization.shadingRate)
-        RETURN_ON_FAILURE(this, GetDesc().shadingRateTier, Result::UNSUPPORTED, "'shadingRateTier' must be > 0");
+        RETURN_ON_FAILURE(this, GetDesc().tiers.shadingRate, Result::UNSUPPORTED, "'tiers.shadingRate' must be > 0");
 
     if (graphicsPipelineDesc.multisample && graphicsPipelineDesc.multisample->sampleLocations)
-        RETURN_ON_FAILURE(this, GetDesc().sampleLocationsTier, Result::UNSUPPORTED, "'sampleLocationsTier' must be > 0");
+        RETURN_ON_FAILURE(this, GetDesc().tiers.sampleLocations, Result::UNSUPPORTED, "'tiers.sampleLocations' must be > 0");
 
     if (graphicsPipelineDesc.outputMerger.depth.boundsTest)
-        RETURN_ON_FAILURE(this, GetDesc().isDepthBoundsTestSupported, Result::UNSUPPORTED, "'isDepthBoundsTestSupported' is false");
+        RETURN_ON_FAILURE(this, GetDesc().features.depthBoundsTest, Result::UNSUPPORTED, "'features.depthBoundsTest' is false");
 
     if (graphicsPipelineDesc.outputMerger.logicFunc != LogicFunc::NONE)
-        RETURN_ON_FAILURE(this, GetDesc().isLogicFuncSupported, Result::UNSUPPORTED, "'isLogicFuncSupported' is false");
+        RETURN_ON_FAILURE(this, GetDesc().features.logicFunc, Result::UNSUPPORTED, "'features.logicFunc' is false");
 
     auto graphicsPipelineDescImpl = graphicsPipelineDesc;
     graphicsPipelineDescImpl.pipelineLayout = NRI_GET_IMPL(PipelineLayout, graphicsPipelineDesc.pipelineLayout);
@@ -519,7 +519,7 @@ NRI_INLINE Result DeviceVal::CreateQueryPool(const QueryPoolDesc& queryPoolDesc,
     RETURN_ON_FAILURE(this, queryPoolDesc.capacity > 0, Result::INVALID_ARGUMENT, "'capacity' is 0");
 
     if (queryPoolDesc.queryType == QueryType::TIMESTAMP_COPY_QUEUE)
-        RETURN_ON_FAILURE(this, GetDesc().isCopyQueueTimestampSupported, Result::UNSUPPORTED, "'isCopyQueueTimestampSupported' is false");
+        RETURN_ON_FAILURE(this, GetDesc().features.copyQueueTimestamp, Result::UNSUPPORTED, "'features.copyQueueTimestamp' is false");
 
     QueryPool* queryPoolImpl = nullptr;
     Result result = m_iCore.CreateQueryPool(m_Impl, queryPoolDesc, queryPoolImpl);

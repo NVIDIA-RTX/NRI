@@ -262,7 +262,7 @@ NRI_INLINE void CommandBufferD3D11::BeginRendering(const AttachmentsDesc& attach
 
 #if NRI_ENABLE_D3D_EXTENSIONS
     // Shading rate
-    if (m_Device.HasNvExt() && m_Device.GetDesc().shadingRateTier >= 2) {
+    if (m_Device.HasNvExt() && m_Device.GetDesc().tiers.shadingRate >= 2) {
         ID3D11NvShadingRateResourceView* shadingRateImage = nullptr;
         if (attachmentsDesc.shadingRate) {
             const DescriptorD3D11& descriptor = *(DescriptorD3D11*)attachmentsDesc.shadingRate;
@@ -300,7 +300,7 @@ NRI_INLINE void CommandBufferD3D11::BeginRendering(const AttachmentsDesc& attach
     }
 
     // Multiview
-    if (m_Device.HasAmdExt() && m_Device.GetDesc().viewMaxNum > 1) {
+    if (m_Device.HasAmdExt() && m_Device.GetDesc().other.viewMaxNum > 1) {
         const AmdExtD3D11& amdExt = m_Device.GetAmdExt();
         AGSReturnCode res = amdExt.SetViewBroadcastMasks(amdExt.context, attachmentsDesc.viewMask, attachmentsDesc.viewMask ? 0x1 : 0x0, 0);
         RETURN_ON_FAILURE(&m_Device, res == AGS_SUCCESS, ReturnVoid(), "agsDriverExtensionsDX11_SetViewBroadcastMasks()  failed!");

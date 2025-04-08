@@ -64,9 +64,9 @@ NRI_INLINE void CommandBufferVal::SetViewports(const Viewport* viewports, uint32
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
 
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
-    if (!deviceDesc.isViewportOriginBottomLeftSupported) {
+    if (!deviceDesc.features.viewportOriginBottomLeft) {
         for (uint32_t i = 0; i < viewportNum; i++) {
-            RETURN_ON_FAILURE(&m_Device, !viewports[i].originBottomLeft, ReturnVoid(), "'isViewportOriginBottomLeftSupported' is false");
+            RETURN_ON_FAILURE(&m_Device, !viewports[i].originBottomLeft, ReturnVoid(), "'features.viewportOriginBottomLeft' is false");
         }
     }
 
@@ -83,7 +83,7 @@ NRI_INLINE void CommandBufferVal::SetDepthBounds(float boundsMin, float boundsMa
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
 
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
-    RETURN_ON_FAILURE(&m_Device, deviceDesc.isDepthBoundsTestSupported, ReturnVoid(), "'isDepthBoundsTestSupported' is false");
+    RETURN_ON_FAILURE(&m_Device, deviceDesc.features.depthBoundsTest, ReturnVoid(), "'features.depthBoundsTest' is false");
 
     GetCoreInterface().CmdSetDepthBounds(*GetImpl(), boundsMin, boundsMax);
 }
@@ -98,7 +98,7 @@ NRI_INLINE void CommandBufferVal::SetSampleLocations(const SampleLocation* locat
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
 
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
-    RETURN_ON_FAILURE(&m_Device, deviceDesc.sampleLocationsTier != 0, ReturnVoid(), "'sampleLocationsTier > 0' required");
+    RETURN_ON_FAILURE(&m_Device, deviceDesc.tiers.sampleLocations != 0, ReturnVoid(), "'tiers.sampleLocations > 0' required");
 
     GetCoreInterface().CmdSetSampleLocations(*GetImpl(), locations, locationNum, sampleNum);
 }
@@ -113,7 +113,7 @@ NRI_INLINE void CommandBufferVal::SetShadingRate(const ShadingRateDesc& shadingR
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
 
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
-    RETURN_ON_FAILURE(&m_Device, deviceDesc.shadingRateTier, ReturnVoid(), "'shadingRateTier > 0' required");
+    RETURN_ON_FAILURE(&m_Device, deviceDesc.tiers.shadingRate, ReturnVoid(), "'tiers.shadingRate > 0' required");
 
     GetCoreInterface().CmdSetShadingRate(*GetImpl(), shadingRateDesc);
 }
@@ -122,7 +122,7 @@ NRI_INLINE void CommandBufferVal::SetDepthBias(const DepthBiasDesc& depthBiasDes
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
 
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
-    RETURN_ON_FAILURE(&m_Device, deviceDesc.isDynamicDepthBiasSupported, ReturnVoid(), "'isDynamicDepthBiasSupported' is false");
+    RETURN_ON_FAILURE(&m_Device, deviceDesc.features.dynamicDepthBias, ReturnVoid(), "'features.dynamicDepthBias' is false");
 
     GetCoreInterface().CmdSetDepthBias(*GetImpl(), depthBiasDesc);
 }
@@ -136,7 +136,7 @@ NRI_INLINE void CommandBufferVal::ClearAttachments(const ClearDesc* clearDescs, 
         RETURN_ON_FAILURE(&m_Device, (clearDescs[i].planes & (PlaneBits::COLOR | PlaneBits::DEPTH | PlaneBits::STENCIL)) != 0, ReturnVoid(), "'[%u].planes' is not COLOR, DEPTH or STENCIL", i);
 
         if (clearDescs[i].planes & PlaneBits::COLOR) {
-            RETURN_ON_FAILURE(&m_Device, clearDescs[i].colorAttachmentIndex < deviceDesc.colorAttachmentMaxNum, ReturnVoid(), "'[%u].colorAttachmentIndex = %u' is out of bounds", i, clearDescs[i].colorAttachmentIndex);
+            RETURN_ON_FAILURE(&m_Device, clearDescs[i].colorAttachmentIndex < deviceDesc.shaderStage.fragment.attachmentMaxNum, ReturnVoid(), "'[%u].colorAttachmentIndex = %u' is out of bounds", i, clearDescs[i].colorAttachmentIndex);
             RETURN_ON_FAILURE(&m_Device, m_RenderTargets[clearDescs[i].colorAttachmentIndex], ReturnVoid(), "'[%u].colorAttachmentIndex = %u' references a NULL COLOR attachment", i, clearDescs[i].colorAttachmentIndex);
         }
 
@@ -170,7 +170,7 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const AttachmentsDesc& attachme
 
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
     if (attachmentsDesc.shadingRate)
-        RETURN_ON_FAILURE(&m_Device, deviceDesc.shadingRateTier, ReturnVoid(), "'shadingRateTier >= 2' required");
+        RETURN_ON_FAILURE(&m_Device, deviceDesc.tiers.shadingRate, ReturnVoid(), "'tiers.shadingRate >= 2' required");
 
     Scratch<Descriptor*> colors = AllocateScratch(m_Device, Descriptor*, attachmentsDesc.colorNum);
     for (uint32_t i = 0; i < attachmentsDesc.colorNum; i++)
@@ -308,7 +308,7 @@ NRI_INLINE void CommandBufferVal::DrawIndirect(const Buffer& buffer, uint64_t of
 
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_IsRenderPass, ReturnVoid(), "must be called inside 'CmdBeginRendering/CmdEndRendering'");
-    RETURN_ON_FAILURE(&m_Device, !countBuffer || deviceDesc.isDrawIndirectCountSupported, ReturnVoid(), "'countBuffer' is not supported");
+    RETURN_ON_FAILURE(&m_Device, !countBuffer || deviceDesc.features.drawIndirectCount, ReturnVoid(), "'countBuffer' is not supported");
 
     Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);
     Buffer* countBufferImpl = NRI_GET_IMPL(Buffer, countBuffer);
@@ -321,7 +321,7 @@ NRI_INLINE void CommandBufferVal::DrawIndexedIndirect(const Buffer& buffer, uint
 
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_IsRenderPass, ReturnVoid(), "must be called inside 'CmdBeginRendering/CmdEndRendering'");
-    RETURN_ON_FAILURE(&m_Device, !countBuffer || deviceDesc.isDrawIndirectCountSupported, ReturnVoid(), "'countBuffer' is not supported");
+    RETURN_ON_FAILURE(&m_Device, !countBuffer || deviceDesc.features.drawIndirectCount, ReturnVoid(), "'countBuffer' is not supported");
 
     Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);
     Buffer* countBufferImpl = NRI_GET_IMPL(Buffer, countBuffer);
@@ -697,7 +697,7 @@ NRI_INLINE void CommandBufferVal::WriteAccelerationStructuresSizes(const Acceler
 
 NRI_INLINE void CommandBufferVal::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc) {
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
-    uint64_t align = deviceDesc.shaderBindingTableAlignment;
+    uint64_t align = deviceDesc.memoryAlignment.shaderBindingTable;
 
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
@@ -724,7 +724,7 @@ NRI_INLINE void CommandBufferVal::DispatchRaysIndirect(const Buffer& buffer, uin
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
     RETURN_ON_FAILURE(&m_Device, offset < bufferDesc.size, ReturnVoid(), "offset is greater than the buffer size");
-    RETURN_ON_FAILURE(&m_Device, deviceDesc.rayTracingTier >= 2, ReturnVoid(), "'rayTracingTier' must be >= 2");
+    RETURN_ON_FAILURE(&m_Device, deviceDesc.tiers.rayTracing >= 2, ReturnVoid(), "'tiers.rayTracing' must be >= 2");
 
     Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);
 
@@ -736,7 +736,7 @@ NRI_INLINE void CommandBufferVal::DrawMeshTasks(const DrawMeshTasksDesc& drawMes
 
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_IsRenderPass, ReturnVoid(), "must be called inside 'CmdBeginRendering/CmdEndRendering'");
-    RETURN_ON_FAILURE(&m_Device, deviceDesc.isMeshShaderSupported, ReturnVoid(), "'isMeshShaderSupported' is false");
+    RETURN_ON_FAILURE(&m_Device, deviceDesc.features.meshShader, ReturnVoid(), "'features.meshShader' is false");
 
     GetMeshShaderInterface().CmdDrawMeshTasks(*GetImpl(), drawMeshTasksDesc);
 }
@@ -747,8 +747,8 @@ NRI_INLINE void CommandBufferVal::DrawMeshTasksIndirect(const Buffer& buffer, ui
 
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_IsRenderPass, ReturnVoid(), "must be called inside 'CmdBeginRendering/CmdEndRendering'");
-    RETURN_ON_FAILURE(&m_Device, deviceDesc.isMeshShaderSupported, ReturnVoid(), "'isMeshShaderSupported' is false");
-    RETURN_ON_FAILURE(&m_Device, !countBuffer || deviceDesc.isDrawIndirectCountSupported, ReturnVoid(), "'countBuffer' is not supported");
+    RETURN_ON_FAILURE(&m_Device, deviceDesc.features.meshShader, ReturnVoid(), "'features.meshShader' is false");
+    RETURN_ON_FAILURE(&m_Device, !countBuffer || deviceDesc.features.drawIndirectCount, ReturnVoid(), "'countBuffer' is not supported");
     RETURN_ON_FAILURE(&m_Device, offset < bufferDesc.size, ReturnVoid(), "'offset' is greater than the buffer size");
 
     Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);

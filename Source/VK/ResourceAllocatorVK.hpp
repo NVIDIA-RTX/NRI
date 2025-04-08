@@ -100,17 +100,17 @@ Result BufferVK::Create(const AllocateBufferDesc& bufferDesc) {
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
     uint32_t alignment = 1;
     if (bufferDesc.desc.usage & (BufferUsageBits::SHADER_RESOURCE | BufferUsageBits::SHADER_RESOURCE_STORAGE))
-        alignment = std::max(alignment, deviceDesc.bufferShaderResourceOffsetAlignment);
+        alignment = std::max(alignment, deviceDesc.memoryAlignment.bufferShaderResourceOffset);
     if (bufferDesc.desc.usage & BufferUsageBits::CONSTANT_BUFFER)
-        alignment = std::max(alignment, deviceDesc.constantBufferOffsetAlignment);
+        alignment = std::max(alignment, deviceDesc.memoryAlignment.constantBufferOffset);
     if (bufferDesc.desc.usage & BufferUsageBits::SHADER_BINDING_TABLE)
-        alignment = std::max(alignment, deviceDesc.shaderBindingTableAlignment);
+        alignment = std::max(alignment, deviceDesc.memoryAlignment.shaderBindingTable);
     if (bufferDesc.desc.usage & BufferUsageBits::SCRATCH_BUFFER)
-        alignment = std::max(alignment, deviceDesc.scratchBufferOffsetAlignment);
+        alignment = std::max(alignment, deviceDesc.memoryAlignment.scratchBufferOffset);
     if (bufferDesc.desc.usage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE)
-        alignment = std::max(alignment, deviceDesc.accelerationStructureOffsetAlignment);
+        alignment = std::max(alignment, deviceDesc.memoryAlignment.accelerationStructureOffset);
     if (bufferDesc.desc.usage & BufferUsageBits::MICROMAP_STORAGE)
-        alignment = std::max(alignment, deviceDesc.micromapOffsetAlignment);
+        alignment = std::max(alignment, deviceDesc.memoryAlignment.micromapOffset);
 
     VmaAllocationInfo allocationInfo = {};
     VkResult result = vmaCreateBufferWithAlignment(m_Device.GetVma(), &bufferCreateInfo, &allocationCreateInfo, alignment, &m_Handle, &m_VmaAllocation, &allocationInfo);
@@ -196,7 +196,7 @@ Result AccelerationStructureVK::Create(const AllocateAccelerationStructureDesc& 
 }
 
 Result MicromapVK::Create(const AllocateMicromapDesc& micromapDesc) {
-    if (!m_Device.GetDesc().isMicromapSupported)
+    if (!m_Device.GetDesc().features.micromap)
         return Result::UNSUPPORTED;
 
     Result nriResult = m_Device.CreateVma();

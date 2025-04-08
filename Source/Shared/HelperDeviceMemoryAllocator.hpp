@@ -171,7 +171,7 @@ void HelperDeviceMemoryAllocator::GroupByMemoryType(MemoryLocation memoryLocatio
 
             if (heap.textures.empty()) {
                 const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
-                heap.size = Align(heap.size, deviceDesc.bufferTextureGranularity);
+                heap.size = Align(heap.size, deviceDesc.memory.bufferTextureGranularity);
             }
 
             uint64_t offset = Align(heap.size, memoryDesc.alignment);

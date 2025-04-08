@@ -451,7 +451,7 @@ Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDes
             rayTracingPipelineConfig.Flags |= D3D12_RAYTRACING_PIPELINE_FLAG_SKIP_PROCEDURAL_PRIMITIVES;
         // TODO: if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::ALLOW_MICROMAPS)
 
-        stateSubobjects[stateSubobjectNum].Type = m_Device.GetDesc().rayTracingTier > 1 ? D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG1 : D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG;
+        stateSubobjects[stateSubobjectNum].Type = m_Device.GetDesc().tiers.rayTracing > 1 ? D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG1 : D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG;
         stateSubobjects[stateSubobjectNum].pDesc = &rayTracingPipelineConfig;
         stateSubobjectNum++;
     }
@@ -580,7 +580,7 @@ void PipelineD3D12::Bind(ID3D12GraphicsCommandList* graphicsCommandList, D3D12_P
 
 NRI_INLINE Result PipelineD3D12::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* dst) const {
     uint8_t* ptr = (uint8_t*)dst;
-    size_t identifierSize = (size_t)m_Device.GetDesc().rayTracingShaderGroupIdentifierSize;
+    size_t identifierSize = (size_t)m_Device.GetDesc().shaderStage.rayTracing.shaderGroupIdentifierSize;
     uint32_t shaderGroupIndex = baseShaderGroupIndex;
 
     for (uint32_t i = 0; i < shaderGroupNum; i++) {

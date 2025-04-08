@@ -714,7 +714,7 @@ static Result NRI_CALL GetLatencyReport(const SwapChain& swapChain, LatencyRepor
 }
 
 Result DeviceVK::FillFunctionTable(LowLatencyInterface& table) const {
-    if (!m_Desc.isLowLatencySupported)
+    if (!m_Desc.features.lowLatency)
         return Result::UNSUPPORTED;
 
     table.SetLatencySleepMode = ::SetLatencySleepMode;
@@ -740,7 +740,7 @@ static void NRI_CALL CmdDrawMeshTasksIndirect(CommandBuffer& commandBuffer, cons
 }
 
 Result DeviceVK::FillFunctionTable(MeshShaderInterface& table) const {
-    if (!m_Desc.isMeshShaderSupported)
+    if (!m_Desc.features.meshShader)
         return Result::UNSUPPORTED;
 
     table.CmdDrawMeshTasks = ::CmdDrawMeshTasks;
@@ -876,7 +876,7 @@ static uint64_t NRI_CALL GetMicromapNativeObject(const Micromap& micromap) {
 }
 
 Result DeviceVK::FillFunctionTable(RayTracingInterface& table) const {
-    if (!m_Desc.isRayTracingSupported)
+    if (!m_Desc.features.rayTracing)
         return Result::UNSUPPORTED;
 
     table.CreateRayTracingPipeline = ::CreateRayTracingPipeline;
@@ -1042,7 +1042,7 @@ static Result NRI_CALL GetDisplayDesc(SwapChain& swapChain, DisplayDesc& display
 }
 
 Result DeviceVK::FillFunctionTable(SwapChainInterface& table) const {
-    if (!m_Desc.isSwapChainSupported)
+    if (!m_Desc.features.swapChain)
         return Result::UNSUPPORTED;
 
     table.CreateSwapChain = ::CreateSwapChain;

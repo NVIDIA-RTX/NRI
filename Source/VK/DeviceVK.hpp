@@ -900,13 +900,13 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         VkPhysicalDeviceConservativeRasterizationPropertiesEXT conservativeRasterProps = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT};
         if (IsExtensionSupported(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME, desiredDeviceExts)) {
             APPEND_EXT(conservativeRasterProps);
-            m_Desc.conservativeRasterTier = 1;
+            m_Desc.tiers.conservativeRaster = 1;
         }
 
         VkPhysicalDeviceSampleLocationsPropertiesEXT sampleLocationsProps = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT};
         if (IsExtensionSupported(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME, desiredDeviceExts)) {
             APPEND_EXT(sampleLocationsProps);
-            m_Desc.sampleLocationsTier = 1;
+            m_Desc.tiers.sampleLocations = 1;
         }
 
         VkPhysicalDeviceMeshShaderPropertiesEXT meshShaderProps = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT};
@@ -924,235 +924,233 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         // Fill desc
         const VkPhysicalDeviceLimits& limits = props.properties.limits;
 
-        m_Desc.viewportMaxNum = limits.maxViewports;
-        m_Desc.viewportBoundsRange[0] = int32_t(limits.viewportBoundsRange[0]);
-        m_Desc.viewportBoundsRange[1] = int32_t(limits.viewportBoundsRange[1]);
+        m_Desc.viewport.maxNum = limits.maxViewports;
+        m_Desc.viewport.boundsMin = (int16_t)limits.viewportBoundsRange[0];
+        m_Desc.viewport.boundsMax = (int16_t)limits.viewportBoundsRange[1];
 
-        m_Desc.attachmentMaxDim = (Dim_t)std::min(limits.maxFramebufferWidth, limits.maxFramebufferHeight);
-        m_Desc.attachmentLayerMaxNum = (Dim_t)limits.maxFramebufferLayers;
-        m_Desc.colorAttachmentMaxNum = (Dim_t)limits.maxColorAttachments;
+        m_Desc.multisampling.zeroAttachmentsSampleMaxNum = (Sample_t)limits.framebufferNoAttachmentsSampleCounts;
+        m_Desc.multisampling.attachmentColorSampleMaxNum = (Sample_t)limits.framebufferColorSampleCounts;
+        m_Desc.multisampling.attachmentDepthSampleMaxNum = (Sample_t)limits.framebufferDepthSampleCounts;
+        m_Desc.multisampling.attachmentStencilSampleMaxNum = (Sample_t)limits.framebufferStencilSampleCounts;
+        m_Desc.multisampling.textureColorSampleMaxNum = (Sample_t)limits.sampledImageColorSampleCounts;
+        m_Desc.multisampling.textureIntegerSampleMaxNum = (Sample_t)limits.sampledImageIntegerSampleCounts;
+        m_Desc.multisampling.textureDepthSampleMaxNum = (Sample_t)limits.sampledImageDepthSampleCounts;
+        m_Desc.multisampling.textureStencilSampleMaxNum = (Sample_t)limits.sampledImageStencilSampleCounts;
+        m_Desc.multisampling.storageTextureSampleMaxNum = (Sample_t)limits.storageImageSampleCounts;
 
-        m_Desc.colorSampleMaxNum = (Sample_t)limits.framebufferColorSampleCounts;
-        m_Desc.depthSampleMaxNum = (Sample_t)limits.framebufferDepthSampleCounts;
-        m_Desc.stencilSampleMaxNum = (Sample_t)limits.framebufferStencilSampleCounts;
-        m_Desc.zeroAttachmentsSampleMaxNum = (Sample_t)limits.framebufferNoAttachmentsSampleCounts;
-        m_Desc.textureColorSampleMaxNum = (Sample_t)limits.sampledImageColorSampleCounts;
-        m_Desc.textureIntegerSampleMaxNum = (Sample_t)limits.sampledImageIntegerSampleCounts;
-        m_Desc.textureDepthSampleMaxNum = (Sample_t)limits.sampledImageDepthSampleCounts;
-        m_Desc.textureStencilSampleMaxNum = (Sample_t)limits.sampledImageStencilSampleCounts;
-        m_Desc.storageTextureSampleMaxNum = (Sample_t)limits.storageImageSampleCounts;
+        m_Desc.dimensions.attachmentMaxDim = (Dim_t)std::min(limits.maxFramebufferWidth, limits.maxFramebufferHeight);
+        m_Desc.dimensions.attachmentLayerMaxNum = (Dim_t)limits.maxFramebufferLayers;
+        m_Desc.dimensions.texture1DMaxDim = (Dim_t)limits.maxImageDimension1D;
+        m_Desc.dimensions.texture2DMaxDim = (Dim_t)limits.maxImageDimension2D;
+        m_Desc.dimensions.texture3DMaxDim = (Dim_t)limits.maxImageDimension3D;
+        m_Desc.dimensions.textureLayerMaxNum = (Dim_t)limits.maxImageArrayLayers;
+        m_Desc.dimensions.typedBufferMaxDim = limits.maxTexelBufferElements;
 
-        m_Desc.texture1DMaxDim = (Dim_t)limits.maxImageDimension1D;
-        m_Desc.texture2DMaxDim = (Dim_t)limits.maxImageDimension2D;
-        m_Desc.texture3DMaxDim = (Dim_t)limits.maxImageDimension3D;
-        m_Desc.textureArrayLayerMaxNum = (Dim_t)limits.maxImageArrayLayers;
-        m_Desc.typedBufferMaxDim = limits.maxTexelBufferElements;
+        m_Desc.precision.viewportBits = limits.viewportSubPixelBits;
+        m_Desc.precision.subPixelBits = limits.subPixelPrecisionBits;
+        m_Desc.precision.subTexelBits = limits.subTexelPrecisionBits;
+        m_Desc.precision.mipmapBits = limits.mipmapPrecisionBits;
 
         const VkMemoryPropertyFlags neededFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
         for (uint32_t i = 0; i < m_MemoryProps.memoryTypeCount; i++) {
             const VkMemoryType& memoryType = m_MemoryProps.memoryTypes[i];
             if ((memoryType.propertyFlags & neededFlags) == neededFlags)
-                m_Desc.deviceUploadHeapSize += m_MemoryProps.memoryHeaps[memoryType.heapIndex].size;
+                m_Desc.memory.deviceUploadHeapSize += m_MemoryProps.memoryHeaps[memoryType.heapIndex].size;
         }
 
-        m_Desc.memoryAllocationMaxNum = limits.maxMemoryAllocationCount;
-        m_Desc.samplerAllocationMaxNum = limits.maxSamplerAllocationCount;
-        m_Desc.constantBufferMaxRange = limits.maxUniformBufferRange;
-        m_Desc.storageBufferMaxRange = limits.maxStorageBufferRange;
-        m_Desc.bufferTextureGranularity = (uint32_t)limits.bufferImageGranularity;
-        m_Desc.bufferMaxSize = m_MinorVersion >= 3 ? props13.maxBufferSize : maintenance4Props.maxBufferSize;
+        m_Desc.memory.allocationMaxNum = limits.maxMemoryAllocationCount;
+        m_Desc.memory.samplerAllocationMaxNum = limits.maxSamplerAllocationCount;
+        m_Desc.memory.constantBufferMaxRange = limits.maxUniformBufferRange;
+        m_Desc.memory.storageBufferMaxRange = limits.maxStorageBufferRange;
+        m_Desc.memory.bufferTextureGranularity = (uint32_t)limits.bufferImageGranularity;
+        m_Desc.memory.bufferMaxSize = m_MinorVersion >= 3 ? props13.maxBufferSize : maintenance4Props.maxBufferSize;
 
-        m_Desc.uploadBufferTextureRowAlignment = (uint32_t)limits.optimalBufferCopyRowPitchAlignment;
-        m_Desc.uploadBufferTextureSliceAlignment = (uint32_t)limits.optimalBufferCopyOffsetAlignment; // TODO: ?
-        m_Desc.shaderBindingTableAlignment = rayTracingProps.shaderGroupBaseAlignment;
-        m_Desc.bufferShaderResourceOffsetAlignment = (uint32_t)std::max(limits.minTexelBufferOffsetAlignment, limits.minStorageBufferOffsetAlignment);
-        m_Desc.constantBufferOffsetAlignment = (uint32_t)limits.minUniformBufferOffsetAlignment;
-        m_Desc.scratchBufferOffsetAlignment = accelerationStructureProps.minAccelerationStructureScratchOffsetAlignment;
-        m_Desc.accelerationStructureOffsetAlignment = 256; // see the spec
-        m_Desc.micromapOffsetAlignment = 256;              // see the spec
+        m_Desc.memoryAlignment.uploadBufferTextureRow = (uint32_t)limits.optimalBufferCopyRowPitchAlignment;
+        m_Desc.memoryAlignment.uploadBufferTextureSlice = (uint32_t)limits.optimalBufferCopyOffsetAlignment; // TODO: ?
+        m_Desc.memoryAlignment.shaderBindingTable = rayTracingProps.shaderGroupBaseAlignment;
+        m_Desc.memoryAlignment.bufferShaderResourceOffset = (uint32_t)std::max(limits.minTexelBufferOffsetAlignment, limits.minStorageBufferOffsetAlignment);
+        m_Desc.memoryAlignment.constantBufferOffset = (uint32_t)limits.minUniformBufferOffsetAlignment;
+        m_Desc.memoryAlignment.scratchBufferOffset = accelerationStructureProps.minAccelerationStructureScratchOffsetAlignment;
+        m_Desc.memoryAlignment.accelerationStructureOffset = 256; // see the spec
+        m_Desc.memoryAlignment.micromapOffset = 256;              // see the spec
 
-        m_Desc.pipelineLayoutDescriptorSetMaxNum = limits.maxBoundDescriptorSets;
-        m_Desc.pipelineLayoutRootConstantMaxSize = limits.maxPushConstantsSize;
-        m_Desc.pipelineLayoutRootDescriptorMaxNum = pushDescriptorProps.maxPushDescriptors;
+        m_Desc.pipelineLayout.descriptorSetMaxNum = limits.maxBoundDescriptorSets;
+        m_Desc.pipelineLayout.rootConstantMaxSize = limits.maxPushConstantsSize;
+        m_Desc.pipelineLayout.rootDescriptorMaxNum = pushDescriptorProps.maxPushDescriptors;
 
-        m_Desc.descriptorSetSamplerMaxNum = limits.maxDescriptorSetSamplers;
-        m_Desc.descriptorSetConstantBufferMaxNum = limits.maxDescriptorSetUniformBuffers;
-        m_Desc.descriptorSetStorageBufferMaxNum = limits.maxDescriptorSetStorageBuffers;
-        m_Desc.descriptorSetTextureMaxNum = limits.maxDescriptorSetSampledImages;
-        m_Desc.descriptorSetStorageTextureMaxNum = limits.maxDescriptorSetStorageImages;
+        m_Desc.descriptorSet.samplerMaxNum = limits.maxDescriptorSetSamplers;
+        m_Desc.descriptorSet.constantBufferMaxNum = limits.maxDescriptorSetUniformBuffers;
+        m_Desc.descriptorSet.storageBufferMaxNum = limits.maxDescriptorSetStorageBuffers;
+        m_Desc.descriptorSet.textureMaxNum = limits.maxDescriptorSetSampledImages;
+        m_Desc.descriptorSet.storageTextureMaxNum = limits.maxDescriptorSetStorageImages;
 
-        m_Desc.perStageDescriptorSamplerMaxNum = limits.maxPerStageDescriptorSamplers;
-        m_Desc.perStageDescriptorConstantBufferMaxNum = limits.maxPerStageDescriptorUniformBuffers;
-        m_Desc.perStageDescriptorStorageBufferMaxNum = limits.maxPerStageDescriptorStorageBuffers;
-        m_Desc.perStageDescriptorTextureMaxNum = limits.maxPerStageDescriptorSampledImages;
-        m_Desc.perStageDescriptorStorageTextureMaxNum = limits.maxPerStageDescriptorStorageImages;
-        m_Desc.perStageResourceMaxNum = limits.maxPerStageResources;
+        m_Desc.descriptorSet.updateAfterSet.samplerMaxNum = props12.maxDescriptorSetUpdateAfterBindSamplers;
+        m_Desc.descriptorSet.updateAfterSet.constantBufferMaxNum = props12.maxDescriptorSetUpdateAfterBindUniformBuffers;
+        m_Desc.descriptorSet.updateAfterSet.storageBufferMaxNum = props12.maxDescriptorSetUpdateAfterBindStorageBuffers;
+        m_Desc.descriptorSet.updateAfterSet.textureMaxNum = props12.maxDescriptorSetUpdateAfterBindSampledImages;
+        m_Desc.descriptorSet.updateAfterSet.storageTextureMaxNum = props12.maxDescriptorSetUpdateAfterBindStorageImages;
 
-        m_Desc.descriptorSetUpdateAfterSetSamplerMaxNum = props12.maxDescriptorSetUpdateAfterBindSamplers;
-        m_Desc.descriptorSetUpdateAfterSetConstantBufferMaxNum = props12.maxDescriptorSetUpdateAfterBindUniformBuffers;
-        m_Desc.descriptorSetUpdateAfterSetStorageBufferMaxNum = props12.maxDescriptorSetUpdateAfterBindStorageBuffers;
-        m_Desc.descriptorSetUpdateAfterSetTextureMaxNum = props12.maxDescriptorSetUpdateAfterBindSampledImages;
-        m_Desc.descriptorSetUpdateAfterSetStorageTextureMaxNum = props12.maxDescriptorSetUpdateAfterBindStorageImages;
+        m_Desc.shaderStage.descriptorSamplerMaxNum = limits.maxPerStageDescriptorSamplers;
+        m_Desc.shaderStage.descriptorConstantBufferMaxNum = limits.maxPerStageDescriptorUniformBuffers;
+        m_Desc.shaderStage.descriptorStorageBufferMaxNum = limits.maxPerStageDescriptorStorageBuffers;
+        m_Desc.shaderStage.descriptorTextureMaxNum = limits.maxPerStageDescriptorSampledImages;
+        m_Desc.shaderStage.descriptorStorageTextureMaxNum = limits.maxPerStageDescriptorStorageImages;
+        m_Desc.shaderStage.resourceMaxNum = limits.maxPerStageResources;
 
-        m_Desc.perStageDescriptorUpdateAfterSetSamplerMaxNum = props12.maxPerStageDescriptorUpdateAfterBindSamplers;
-        m_Desc.perStageDescriptorUpdateAfterSetConstantBufferMaxNum = props12.maxPerStageDescriptorUpdateAfterBindUniformBuffers;
-        m_Desc.perStageDescriptorUpdateAfterSetStorageBufferMaxNum = props12.maxPerStageDescriptorUpdateAfterBindStorageBuffers;
-        m_Desc.perStageDescriptorUpdateAfterSetTextureMaxNum = props12.maxPerStageDescriptorUpdateAfterBindSampledImages;
-        m_Desc.perStageDescriptorUpdateAfterSetStorageTextureMaxNum = props12.maxPerStageDescriptorUpdateAfterBindStorageImages;
-        m_Desc.perStageUpdateAfterSetResourceMaxNum = props12.maxPerStageUpdateAfterBindResources;
+        m_Desc.shaderStage.updateAfterSet.descriptorSamplerMaxNum = props12.maxPerStageDescriptorUpdateAfterBindSamplers;
+        m_Desc.shaderStage.updateAfterSet.descriptorConstantBufferMaxNum = props12.maxPerStageDescriptorUpdateAfterBindUniformBuffers;
+        m_Desc.shaderStage.updateAfterSet.descriptorStorageBufferMaxNum = props12.maxPerStageDescriptorUpdateAfterBindStorageBuffers;
+        m_Desc.shaderStage.updateAfterSet.descriptorTextureMaxNum = props12.maxPerStageDescriptorUpdateAfterBindSampledImages;
+        m_Desc.shaderStage.updateAfterSet.descriptorStorageTextureMaxNum = props12.maxPerStageDescriptorUpdateAfterBindStorageImages;
+        m_Desc.shaderStage.updateAfterSet.resourceMaxNum = props12.maxPerStageUpdateAfterBindResources;
 
-        m_Desc.vertexShaderAttributeMaxNum = limits.maxVertexInputAttributes;
-        m_Desc.vertexShaderStreamMaxNum = limits.maxVertexInputBindings;
-        m_Desc.vertexShaderOutputComponentMaxNum = limits.maxVertexOutputComponents;
+        m_Desc.shaderStage.vertex.attributeMaxNum = limits.maxVertexInputAttributes;
+        m_Desc.shaderStage.vertex.streamMaxNum = limits.maxVertexInputBindings;
+        m_Desc.shaderStage.vertex.outputComponentMaxNum = limits.maxVertexOutputComponents;
 
-        m_Desc.tessControlShaderGenerationMaxLevel = (float)limits.maxTessellationGenerationLevel;
-        m_Desc.tessControlShaderPatchPointMaxNum = limits.maxTessellationPatchSize;
-        m_Desc.tessControlShaderPerVertexInputComponentMaxNum = limits.maxTessellationControlPerVertexInputComponents;
-        m_Desc.tessControlShaderPerVertexOutputComponentMaxNum = limits.maxTessellationControlPerVertexOutputComponents;
-        m_Desc.tessControlShaderPerPatchOutputComponentMaxNum = limits.maxTessellationControlPerPatchOutputComponents;
-        m_Desc.tessControlShaderTotalOutputComponentMaxNum = limits.maxTessellationControlTotalOutputComponents;
-        m_Desc.tessEvaluationShaderInputComponentMaxNum = limits.maxTessellationEvaluationInputComponents;
-        m_Desc.tessEvaluationShaderOutputComponentMaxNum = limits.maxTessellationEvaluationOutputComponents;
+        m_Desc.shaderStage.tesselationControl.generationMaxLevel = (float)limits.maxTessellationGenerationLevel;
+        m_Desc.shaderStage.tesselationControl.patchPointMaxNum = limits.maxTessellationPatchSize;
+        m_Desc.shaderStage.tesselationControl.perVertexInputComponentMaxNum = limits.maxTessellationControlPerVertexInputComponents;
+        m_Desc.shaderStage.tesselationControl.perVertexOutputComponentMaxNum = limits.maxTessellationControlPerVertexOutputComponents;
+        m_Desc.shaderStage.tesselationControl.perPatchOutputComponentMaxNum = limits.maxTessellationControlPerPatchOutputComponents;
+        m_Desc.shaderStage.tesselationControl.totalOutputComponentMaxNum = limits.maxTessellationControlTotalOutputComponents;
 
-        m_Desc.geometryShaderInvocationMaxNum = limits.maxGeometryShaderInvocations;
-        m_Desc.geometryShaderInputComponentMaxNum = limits.maxGeometryInputComponents;
-        m_Desc.geometryShaderOutputComponentMaxNum = limits.maxGeometryOutputComponents;
-        m_Desc.geometryShaderOutputVertexMaxNum = limits.maxGeometryOutputVertices;
-        m_Desc.geometryShaderTotalOutputComponentMaxNum = limits.maxGeometryTotalOutputComponents;
+        m_Desc.shaderStage.tesselationEvaluation.inputComponentMaxNum = limits.maxTessellationEvaluationInputComponents;
+        m_Desc.shaderStage.tesselationEvaluation.outputComponentMaxNum = limits.maxTessellationEvaluationOutputComponents;
 
-        m_Desc.fragmentShaderInputComponentMaxNum = limits.maxFragmentInputComponents;
-        m_Desc.fragmentShaderOutputAttachmentMaxNum = limits.maxFragmentOutputAttachments;
-        m_Desc.fragmentShaderDualSourceAttachmentMaxNum = limits.maxFragmentDualSrcAttachments;
+        m_Desc.shaderStage.geometry.invocationMaxNum = limits.maxGeometryShaderInvocations;
+        m_Desc.shaderStage.geometry.inputComponentMaxNum = limits.maxGeometryInputComponents;
+        m_Desc.shaderStage.geometry.outputComponentMaxNum = limits.maxGeometryOutputComponents;
+        m_Desc.shaderStage.geometry.outputVertexMaxNum = limits.maxGeometryOutputVertices;
+        m_Desc.shaderStage.geometry.totalOutputComponentMaxNum = limits.maxGeometryTotalOutputComponents;
 
-        m_Desc.computeShaderSharedMemoryMaxSize = limits.maxComputeSharedMemorySize;
-        m_Desc.computeShaderWorkGroupMaxNum[0] = limits.maxComputeWorkGroupCount[0];
-        m_Desc.computeShaderWorkGroupMaxNum[1] = limits.maxComputeWorkGroupCount[1];
-        m_Desc.computeShaderWorkGroupMaxNum[2] = limits.maxComputeWorkGroupCount[2];
-        m_Desc.computeShaderWorkGroupInvocationMaxNum = limits.maxComputeWorkGroupInvocations;
-        m_Desc.computeShaderWorkGroupMaxDim[0] = limits.maxComputeWorkGroupSize[0];
-        m_Desc.computeShaderWorkGroupMaxDim[1] = limits.maxComputeWorkGroupSize[1];
-        m_Desc.computeShaderWorkGroupMaxDim[2] = limits.maxComputeWorkGroupSize[2];
+        m_Desc.shaderStage.fragment.inputComponentMaxNum = limits.maxFragmentInputComponents;
+        m_Desc.shaderStage.fragment.attachmentMaxNum = limits.maxFragmentOutputAttachments;
+        m_Desc.shaderStage.fragment.dualSourceAttachmentMaxNum = limits.maxFragmentDualSrcAttachments;
 
-        m_Desc.rayTracingShaderGroupIdentifierSize = rayTracingProps.shaderGroupHandleSize;
-        m_Desc.rayTracingShaderTableMaxStride = rayTracingProps.maxShaderGroupStride;
-        m_Desc.rayTracingShaderRecursionMaxDepth = rayTracingProps.maxRayRecursionDepth;
-        m_Desc.rayTracingGeometryObjectMaxNum = (uint32_t)accelerationStructureProps.maxGeometryCount;
+        m_Desc.shaderStage.compute.sharedMemoryMaxSize = limits.maxComputeSharedMemorySize;
+        m_Desc.shaderStage.compute.workGroupMaxNum[0] = limits.maxComputeWorkGroupCount[0];
+        m_Desc.shaderStage.compute.workGroupMaxNum[1] = limits.maxComputeWorkGroupCount[1];
+        m_Desc.shaderStage.compute.workGroupMaxNum[2] = limits.maxComputeWorkGroupCount[2];
+        m_Desc.shaderStage.compute.workGroupInvocationMaxNum = limits.maxComputeWorkGroupInvocations;
+        m_Desc.shaderStage.compute.workGroupMaxDim[0] = limits.maxComputeWorkGroupSize[0];
+        m_Desc.shaderStage.compute.workGroupMaxDim[1] = limits.maxComputeWorkGroupSize[1];
+        m_Desc.shaderStage.compute.workGroupMaxDim[2] = limits.maxComputeWorkGroupSize[2];
 
-        m_Desc.micromapSubdivisionMaxLevel = micromapProps.maxOpacity2StateSubdivisionLevel;
+        m_Desc.shaderStage.rayTracing.shaderGroupIdentifierSize = rayTracingProps.shaderGroupHandleSize;
+        m_Desc.shaderStage.rayTracing.tableMaxStride = rayTracingProps.maxShaderGroupStride;
+        m_Desc.shaderStage.rayTracing.recursionMaxDepth = rayTracingProps.maxRayRecursionDepth;
 
-        m_Desc.meshControlSharedMemoryMaxSize = meshShaderProps.maxTaskSharedMemorySize;
-        m_Desc.meshControlWorkGroupInvocationMaxNum = meshShaderProps.maxTaskWorkGroupInvocations;
-        m_Desc.meshControlPayloadMaxSize = meshShaderProps.maxTaskPayloadSize;
-        m_Desc.meshEvaluationOutputVerticesMaxNum = meshShaderProps.maxMeshOutputVertices;
-        m_Desc.meshEvaluationOutputPrimitiveMaxNum = meshShaderProps.maxMeshOutputPrimitives;
-        m_Desc.meshEvaluationOutputComponentMaxNum = meshShaderProps.maxMeshOutputComponents;
-        m_Desc.meshEvaluationSharedMemoryMaxSize = meshShaderProps.maxMeshSharedMemorySize;
-        m_Desc.meshEvaluationWorkGroupInvocationMaxNum = meshShaderProps.maxMeshWorkGroupInvocations;
+        m_Desc.shaderStage.meshControl.sharedMemoryMaxSize = meshShaderProps.maxTaskSharedMemorySize;
+        m_Desc.shaderStage.meshControl.workGroupInvocationMaxNum = meshShaderProps.maxTaskWorkGroupInvocations;
+        m_Desc.shaderStage.meshControl.payloadMaxSize = meshShaderProps.maxTaskPayloadSize;
 
-        m_Desc.viewportPrecisionBits = limits.viewportSubPixelBits;
-        m_Desc.subPixelPrecisionBits = limits.subPixelPrecisionBits;
-        m_Desc.subTexelPrecisionBits = limits.subTexelPrecisionBits;
-        m_Desc.mipmapPrecisionBits = limits.mipmapPrecisionBits;
+        m_Desc.shaderStage.meshEvaluation.outputVerticesMaxNum = meshShaderProps.maxMeshOutputVertices;
+        m_Desc.shaderStage.meshEvaluation.outputPrimitiveMaxNum = meshShaderProps.maxMeshOutputPrimitives;
+        m_Desc.shaderStage.meshEvaluation.outputComponentMaxNum = meshShaderProps.maxMeshOutputComponents;
+        m_Desc.shaderStage.meshEvaluation.sharedMemoryMaxSize = meshShaderProps.maxMeshSharedMemorySize;
+        m_Desc.shaderStage.meshEvaluation.workGroupInvocationMaxNum = meshShaderProps.maxMeshWorkGroupInvocations;
 
-        m_Desc.timestampFrequencyHz = uint64_t(1e9 / double(limits.timestampPeriod) + 0.5);
-        m_Desc.drawIndirectMaxNum = limits.maxDrawIndirectCount;
-        m_Desc.samplerLodBiasMin = -limits.maxSamplerLodBias;
-        m_Desc.samplerLodBiasMax = limits.maxSamplerLodBias;
-        m_Desc.samplerAnisotropyMax = limits.maxSamplerAnisotropy;
-        m_Desc.texelOffsetMin = limits.minTexelOffset;
-        m_Desc.texelOffsetMax = limits.maxTexelOffset;
-        m_Desc.texelGatherOffsetMin = limits.minTexelGatherOffset;
-        m_Desc.texelGatherOffsetMax = limits.maxTexelGatherOffset;
-        m_Desc.clipDistanceMaxNum = limits.maxClipDistances;
-        m_Desc.cullDistanceMaxNum = limits.maxCullDistances;
-        m_Desc.combinedClipAndCullDistanceMaxNum = limits.maxCombinedClipAndCullDistances;
-        m_Desc.viewMaxNum = features11.multiview ? props11.maxMultiviewViewCount : 1;
-        m_Desc.shadingRateAttachmentTileSize = (uint8_t)shadingRateProps.minFragmentShadingRateAttachmentTexelSize.width;
+        m_Desc.other.timestampFrequencyHz = uint64_t(1e9 / double(limits.timestampPeriod) + 0.5);
+        m_Desc.other.rayTracingGeometryObjectMaxNum = (uint32_t)accelerationStructureProps.maxGeometryCount;
+        m_Desc.other.micromapSubdivisionMaxLevel = micromapProps.maxOpacity2StateSubdivisionLevel;
+        m_Desc.other.drawIndirectMaxNum = limits.maxDrawIndirectCount;
+        m_Desc.other.samplerLodBiasMin = -limits.maxSamplerLodBias;
+        m_Desc.other.samplerLodBiasMax = limits.maxSamplerLodBias;
+        m_Desc.other.samplerAnisotropyMax = limits.maxSamplerAnisotropy;
+        m_Desc.other.texelOffsetMin = limits.minTexelOffset;
+        m_Desc.other.texelOffsetMax = limits.maxTexelOffset;
+        m_Desc.other.texelGatherOffsetMin = limits.minTexelGatherOffset;
+        m_Desc.other.texelGatherOffsetMax = limits.maxTexelGatherOffset;
+        m_Desc.other.clipDistanceMaxNum = limits.maxClipDistances;
+        m_Desc.other.cullDistanceMaxNum = limits.maxCullDistances;
+        m_Desc.other.combinedClipAndCullDistanceMaxNum = limits.maxCombinedClipAndCullDistances;
+        m_Desc.other.viewMaxNum = features11.multiview ? props11.maxMultiviewViewCount : 1;
+        m_Desc.other.shadingRateAttachmentTileSize = (uint8_t)shadingRateProps.minFragmentShadingRateAttachmentTexelSize.width;
 
-        if (m_Desc.conservativeRasterTier) {
+        if (m_Desc.tiers.conservativeRaster) {
             if (conservativeRasterProps.primitiveOverestimationSize < 1.0f / 2.0f && conservativeRasterProps.degenerateTrianglesRasterized)
-                m_Desc.conservativeRasterTier = 2;
+                m_Desc.tiers.conservativeRaster = 2;
             if (conservativeRasterProps.primitiveOverestimationSize <= 1.0 / 256.0f && conservativeRasterProps.degenerateTrianglesRasterized)
-                m_Desc.conservativeRasterTier = 3;
+                m_Desc.tiers.conservativeRaster = 3;
         }
 
-        if (m_Desc.sampleLocationsTier) {
+        if (m_Desc.tiers.sampleLocations) {
             if (sampleLocationsProps.variableSampleLocations) // TODO: it's weird...
-                m_Desc.sampleLocationsTier = 2;
+                m_Desc.tiers.sampleLocations = 2;
         }
 
-        m_Desc.rayTracingTier = accelerationStructureFeatures.accelerationStructure != 0;
-        if (m_Desc.rayTracingTier) {
+        m_Desc.tiers.rayTracing = accelerationStructureFeatures.accelerationStructure != 0;
+        if (m_Desc.tiers.rayTracing) {
             if (rayTracingPipelineFeatures.rayTracingPipelineTraceRaysIndirect && rayQueryFeatures.rayQuery)
-                m_Desc.rayTracingTier = 2;
+                m_Desc.tiers.rayTracing = 2;
         }
 
-        m_Desc.shadingRateTier = shadingRateFeatures.pipelineFragmentShadingRate != 0;
-        if (m_Desc.shadingRateTier) {
+        m_Desc.tiers.shadingRate = shadingRateFeatures.pipelineFragmentShadingRate != 0;
+        if (m_Desc.tiers.shadingRate) {
             if (shadingRateFeatures.primitiveFragmentShadingRate && shadingRateFeatures.attachmentFragmentShadingRate)
-                m_Desc.shadingRateTier = 2;
+                m_Desc.tiers.shadingRate = 2;
 
-            m_Desc.isAdditionalShadingRatesSupported = shadingRateProps.maxFragmentSize.height > 2 || shadingRateProps.maxFragmentSize.width > 2;
+            m_Desc.features.additionalShadingRates = shadingRateProps.maxFragmentSize.height > 2 || shadingRateProps.maxFragmentSize.width > 2;
         }
 
-        m_Desc.bindlessTier = m_IsSupported.descriptorIndexing ? 1 : 0;
+        m_Desc.tiers.bindless = m_IsSupported.descriptorIndexing ? 1 : 0;
+        m_Desc.tiers.memory = 1; // TODO: seems to be the best match
 
-        m_Desc.isGetMemoryDesc2Supported = m_IsSupported.maintenance4;
-        m_Desc.isEnchancedBarrierSupported = true;
-        m_Desc.isMemoryTier2Supported = true; // TODO: seems to be the best match
+        m_Desc.features.getMemoryDesc2 = m_IsSupported.maintenance4;
+        m_Desc.features.enchancedBarrier = true;
+        m_Desc.features.swapChain = IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME, desiredDeviceExts);
+        m_Desc.features.rayTracing = m_Desc.tiers.rayTracing != 0;
+        m_Desc.features.meshShader = meshShaderFeatures.meshShader != 0 && meshShaderFeatures.taskShader != 0;
+        m_Desc.features.lowLatency = IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, desiredDeviceExts);
+        m_Desc.features.micromap = micromapFeatures.micromap != 0;
 
-        m_Desc.isIndependentFrontAndBackStencilReferenceAndMasksSupported = true;
-        m_Desc.isTextureFilterMinMaxSupported = features12.samplerFilterMinmax;
-        m_Desc.isLogicFuncSupported = features.features.logicOp;
-        m_Desc.isDepthBoundsTestSupported = features.features.depthBounds;
-        m_Desc.isDrawIndirectCountSupported = features12.drawIndirectCount;
-        m_Desc.isLineSmoothingSupported = lineRasterizationFeatures.smoothLines;
-        m_Desc.isCopyQueueTimestampSupported = limits.timestampComputeAndGraphics;
-        m_Desc.isMeshShaderPipelineStatsSupported = meshShaderFeatures.meshShaderQueries == VK_TRUE;
-        m_Desc.isDynamicDepthBiasSupported = true;
-        m_Desc.isViewportOriginBottomLeftSupported = true;
-        m_Desc.isRegionResolveSupported = true;
-        m_Desc.isLayerBasedMultiviewSupported = features11.multiview;
-        m_Desc.isPresentFromComputeSupported = true;
-        m_Desc.isWaitableSwapChainSupported = presentIdFeatures.presentId != 0 && presentWaitFeatures.presentWait != 0;
-        m_Desc.isMicromapSupported = micromapFeatures.micromap != 0;
+        m_Desc.features.independentFrontAndBackStencilReferenceAndMasks = true;
+        m_Desc.features.textureFilterMinMax = features12.samplerFilterMinmax;
+        m_Desc.features.logicFunc = features.features.logicOp;
+        m_Desc.features.depthBoundsTest = features.features.depthBounds;
+        m_Desc.features.drawIndirectCount = features12.drawIndirectCount;
+        m_Desc.features.lineSmoothing = lineRasterizationFeatures.smoothLines;
+        m_Desc.features.copyQueueTimestamp = limits.timestampComputeAndGraphics;
+        m_Desc.features.meshShaderPipelineStats = meshShaderFeatures.meshShaderQueries == VK_TRUE;
+        m_Desc.features.dynamicDepthBias = true;
+        m_Desc.features.viewportOriginBottomLeft = true;
+        m_Desc.features.regionResolve = true;
+        m_Desc.features.layerBasedMultiview = features11.multiview;
+        m_Desc.features.presentFromCompute = true;
+        m_Desc.features.waitableSwapChain = presentIdFeatures.presentId != 0 && presentWaitFeatures.presentWait != 0;
 
-        m_Desc.isShaderNativeI16Supported = features.features.shaderInt16;
-        m_Desc.isShaderNativeF16Supported = features12.shaderFloat16;
-        m_Desc.isShaderNativeI64Supported = features.features.shaderInt64;
-        m_Desc.isShaderNativeF64Supported = features.features.shaderFloat64;
-        m_Desc.isShaderAtomicsF16Supported = (shaderAtomicFloat2Features.shaderBufferFloat16Atomics || shaderAtomicFloat2Features.shaderSharedFloat16Atomics) ? true : false;
-        m_Desc.isShaderAtomicsF32Supported = (shaderAtomicFloatFeatures.shaderBufferFloat32Atomics || shaderAtomicFloatFeatures.shaderSharedFloat32Atomics) ? true : false;
-        m_Desc.isShaderAtomicsI64Supported = (features12.shaderBufferInt64Atomics || features12.shaderSharedInt64Atomics) ? true : false;
-        m_Desc.isShaderAtomicsF64Supported = (shaderAtomicFloatFeatures.shaderBufferFloat64Atomics || shaderAtomicFloatFeatures.shaderSharedFloat64Atomics) ? true : false;
-        m_Desc.isShaderViewportIndexSupported = features12.shaderOutputViewportIndex;
-        m_Desc.isShaderLayerSupported = features12.shaderOutputLayer;
-        m_Desc.isShaderClockSupported = (shaderClockFeatures.shaderDeviceClock || shaderClockFeatures.shaderSubgroupClock) ? true : false;
-        m_Desc.isRasterizedOrderedViewSupported = fragmentShaderInterlockFeatures.fragmentShaderPixelInterlock != 0 && fragmentShaderInterlockFeatures.fragmentShaderSampleInterlock != 0;
-        m_Desc.isBarycentricSupported = fragmentShaderBarycentricFeatures.fragmentShaderBarycentric;
-        m_Desc.isRayTracingPositionFetchSupported = rayTracingPositionFetchFeatures.rayTracingPositionFetch;
-
-        m_Desc.isSwapChainSupported = IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME, desiredDeviceExts);
-        m_Desc.isRayTracingSupported = m_Desc.rayTracingTier != 0;
-        m_Desc.isMeshShaderSupported = meshShaderFeatures.meshShader != 0 && meshShaderFeatures.taskShader != 0;
-        m_Desc.isLowLatencySupported = IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, desiredDeviceExts);
+        m_Desc.shaderFeatures.nativeI16 = features.features.shaderInt16;
+        m_Desc.shaderFeatures.nativeF16 = features12.shaderFloat16;
+        m_Desc.shaderFeatures.nativeI64 = features.features.shaderInt64;
+        m_Desc.shaderFeatures.nativeF64 = features.features.shaderFloat64;
+        m_Desc.shaderFeatures.atomicsF16 = (shaderAtomicFloat2Features.shaderBufferFloat16Atomics || shaderAtomicFloat2Features.shaderSharedFloat16Atomics) ? true : false;
+        m_Desc.shaderFeatures.atomicsF32 = (shaderAtomicFloatFeatures.shaderBufferFloat32Atomics || shaderAtomicFloatFeatures.shaderSharedFloat32Atomics) ? true : false;
+        m_Desc.shaderFeatures.atomicsI64 = (features12.shaderBufferInt64Atomics || features12.shaderSharedInt64Atomics) ? true : false;
+        m_Desc.shaderFeatures.atomicsF64 = (shaderAtomicFloatFeatures.shaderBufferFloat64Atomics || shaderAtomicFloatFeatures.shaderSharedFloat64Atomics) ? true : false;
+        m_Desc.shaderFeatures.viewportIndex = features12.shaderOutputViewportIndex;
+        m_Desc.shaderFeatures.layerIndex = features12.shaderOutputLayer;
+        m_Desc.shaderFeatures.clock = (shaderClockFeatures.shaderDeviceClock || shaderClockFeatures.shaderSubgroupClock) ? true : false;
+        m_Desc.shaderFeatures.rasterizedOrderedView = fragmentShaderInterlockFeatures.fragmentShaderPixelInterlock != 0 && fragmentShaderInterlockFeatures.fragmentShaderSampleInterlock != 0;
+        m_Desc.shaderFeatures.barycentric = fragmentShaderBarycentricFeatures.fragmentShaderBarycentric;
+        m_Desc.shaderFeatures.rayTracingPositionFetch = rayTracingPositionFetchFeatures.rayTracingPositionFetch;
 
         // Estimate shader model last since it depends on many "m_Desc" fields
         // Based on https://docs.vulkan.org/guide/latest/hlsl.html#_shader_model_coverage // TODO: code below needs to be improved
         m_Desc.shaderModel = 51;
-        if (m_Desc.isShaderNativeI64Supported)
+        if (m_Desc.shaderFeatures.nativeI64)
             m_Desc.shaderModel = 60;
-        if (m_Desc.viewMaxNum > 1 || m_Desc.isBarycentricSupported)
+        if (m_Desc.other.viewMaxNum > 1 || m_Desc.shaderFeatures.barycentric)
             m_Desc.shaderModel = 61;
-        if (m_Desc.isShaderNativeF16Supported || m_Desc.isShaderNativeI16Supported)
+        if (m_Desc.shaderFeatures.nativeF16 || m_Desc.shaderFeatures.nativeI16)
             m_Desc.shaderModel = 62;
-        if (m_Desc.isRayTracingSupported)
+        if (m_Desc.features.rayTracing)
             m_Desc.shaderModel = 63;
-        if (m_Desc.shadingRateTier >= 2)
+        if (m_Desc.tiers.shadingRate >= 2)
             m_Desc.shaderModel = 64;
-        if (m_Desc.isMeshShaderSupported || m_Desc.rayTracingTier >= 2)
+        if (m_Desc.features.meshShader || m_Desc.tiers.rayTracing >= 2)
             m_Desc.shaderModel = 65;
-        if (m_Desc.isShaderAtomicsI64Supported)
+        if (m_Desc.shaderFeatures.atomicsI64)
             m_Desc.shaderModel = 66;
         if (features.features.shaderStorageImageMultisample)
             m_Desc.shaderModel = 67;
@@ -1181,7 +1179,7 @@ void DeviceVK::FillCreateInfo(const TextureDesc& textureDesc, VkImageCreateInfo&
         flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
     if (textureDesc.type == TextureType::TEXTURE_3D)
         flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT; // allow 3D demotion to a set of layers // TODO: hook up "VK_EXT_image_2d_view_of_3d"?
-    if (m_Desc.sampleLocationsTier && formatProps.isDepth)
+    if (m_Desc.tiers.sampleLocations && formatProps.isDepth)
         flags |= VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT;
 
     info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO; // should be already set

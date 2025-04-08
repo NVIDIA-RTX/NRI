@@ -13,7 +13,7 @@ Result MicromapVK::Create(const MicromapDesc& micromapDesc) {
     static_assert((uint32_t)MicromapFormat::OPACITY_2_STATE == VK_OPACITY_MICROMAP_FORMAT_2_STATE_EXT, "Type mismatch");
     static_assert((uint32_t)MicromapFormat::OPACITY_4_STATE == VK_OPACITY_MICROMAP_FORMAT_4_STATE_EXT, "Type mismatch");
 
-    if (!m_Device.GetDesc().isMicromapSupported)
+    if (!m_Device.GetDesc().features.micromap)
         return Result::UNSUPPORTED;
 
     VkMicromapBuildSizesInfoEXT sizesInfo = {VK_STRUCTURE_TYPE_MICROMAP_BUILD_SIZES_INFO_EXT};

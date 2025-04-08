@@ -54,7 +54,7 @@ uint32_t StreamerImpl::UpdateConstantBuffer(const void* data, uint32_t dataSize)
     ExclusiveScope lock(m_Lock);
 
     const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
-    uint32_t alignedSize = Align(dataSize, deviceDesc.constantBufferOffsetAlignment);
+    uint32_t alignedSize = Align(dataSize, deviceDesc.memoryAlignment.constantBufferOffset);
 
     // Update
     if (m_ConstantDataOffset + alignedSize > m_Desc.constantBufferSize)
@@ -97,8 +97,8 @@ uint64_t StreamerImpl::AddTextureUpdateRequest(const TextureUpdateRequestDesc& t
     Dim_t d = textureUpdateRequestDesc.dstRegionDesc.depth;
     d = d == WHOLE_SIZE ? GetDimension(deviceDesc.graphicsAPI, textureDesc, 2, textureUpdateRequestDesc.dstRegionDesc.mipOffset) : d;
 
-    uint32_t alignedRowPitch = Align(textureUpdateRequestDesc.dataRowPitch, deviceDesc.uploadBufferTextureRowAlignment);
-    uint32_t alignedSlicePitch = Align(alignedRowPitch * h, deviceDesc.uploadBufferTextureSliceAlignment);
+    uint32_t alignedRowPitch = Align(textureUpdateRequestDesc.dataRowPitch, deviceDesc.memoryAlignment.uploadBufferTextureRow);
+    uint32_t alignedSlicePitch = Align(alignedRowPitch * h, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
     uint64_t alignedSize = alignedSlicePitch * d;
 
     uint64_t offset = m_DynamicDataOffsetBase + m_DynamicDataOffset;
@@ -183,8 +183,8 @@ Result StreamerImpl::CopyUpdateRequests() {
             Dim_t d = request.desc.dstRegionDesc.depth;
             d = d == WHOLE_SIZE ? GetDimension(deviceDesc.graphicsAPI, textureDesc, 2, request.desc.dstRegionDesc.mipOffset) : d;
 
-            uint32_t alignedRowPitch = Align(request.desc.dataRowPitch, deviceDesc.uploadBufferTextureRowAlignment);
-            uint32_t alignedSlicePitch = Align(alignedRowPitch * h, deviceDesc.uploadBufferTextureSliceAlignment);
+            uint32_t alignedRowPitch = Align(request.desc.dataRowPitch, deviceDesc.memoryAlignment.uploadBufferTextureRow);
+            uint32_t alignedSlicePitch = Align(alignedRowPitch * h, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
 
             for (uint32_t z = 0; z < d; z++) {
                 for (uint32_t y = 0; y < h; y++) {

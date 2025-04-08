@@ -920,7 +920,7 @@ static void NRI_CALL QueueSubmitTrackable(Queue& queue, const QueueSubmitDesc& w
 }
 
 Result DeviceD3D11::FillFunctionTable(LowLatencyInterface& table) const {
-    if (!m_Desc.isLowLatencySupported)
+    if (!m_Desc.features.lowLatency)
         return Result::UNSUPPORTED;
 
     table.SetLatencySleepMode = ::SetLatencySleepMode;
@@ -1083,7 +1083,7 @@ static Result NRI_CALL GetDisplayDesc(SwapChain& swapChain, DisplayDesc& display
 }
 
 Result DeviceD3D11::FillFunctionTable(SwapChainInterface& table) const {
-    if (!m_Desc.isSwapChainSupported)
+    if (!m_Desc.features.swapChain)
         return Result::UNSUPPORTED;
 
     table.CreateSwapChain = ::CreateSwapChain;

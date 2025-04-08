@@ -109,13 +109,13 @@ static inline Nri(PipelineLayoutSettingsDesc) NriFunc(FitPipelineLayoutSettingsI
     uint32_t rootDescriptorNum = NriDeref(pipelineLayoutSettingsDesc)->rootDescriptorNum;
 
     // Apply global limits
-    if (rootConstantSize > NriDeref(deviceDesc)->pipelineLayoutRootConstantMaxSize)
-        rootConstantSize = NriDeref(deviceDesc)->pipelineLayoutRootConstantMaxSize;
+    if (rootConstantSize > NriDeref(deviceDesc)->pipelineLayout.rootConstantMaxSize)
+        rootConstantSize = NriDeref(deviceDesc)->pipelineLayout.rootConstantMaxSize;
 
-    if (rootDescriptorNum > NriDeref(deviceDesc)->pipelineLayoutRootDescriptorMaxNum)
-        rootDescriptorNum = NriDeref(deviceDesc)->pipelineLayoutRootDescriptorMaxNum;
+    if (rootDescriptorNum > NriDeref(deviceDesc)->pipelineLayout.rootDescriptorMaxNum)
+        rootDescriptorNum = NriDeref(deviceDesc)->pipelineLayout.rootDescriptorMaxNum;
 
-    uint32_t pipelineLayoutDescriptorSetMaxNum = NriDeref(deviceDesc)->pipelineLayoutDescriptorSetMaxNum;
+    uint32_t pipelineLayoutDescriptorSetMaxNum = NriDeref(deviceDesc)->pipelineLayout.descriptorSetMaxNum;
 
     // D3D12 has limited-size root signature
     if (NriDeref(deviceDesc)->graphicsAPI == NriScopedMember(GraphicsAPI, D3D12)) {

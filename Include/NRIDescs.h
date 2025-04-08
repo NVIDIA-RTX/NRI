@@ -111,17 +111,17 @@ NriEnum(Format, uint8_t,
     R8_UINT,                             // +  +  +  -  -  -  +  +  +  - // SHADING_RATE compatible, see NRI_SHADING_RATE macro
     R8_SINT,                             // +  +  +  -  -  -  +  +  +  -
 
-    RG8_UNORM,                           // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "rayTracingTier >= 2")
-    RG8_SNORM,                           // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "rayTracingTier >= 2")
+    RG8_UNORM,                           // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "tiers.rayTracing >= 2")
+    RG8_SNORM,                           // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "tiers.rayTracing >= 2")
     RG8_UINT,                            // +  +  +  -  -  -  +  +  +  -
     RG8_SINT,                            // +  +  +  -  -  -  +  +  +  -
 
     BGRA8_UNORM,                         // +  +  +  -  +  -  +  +  +  -
     BGRA8_SRGB,                          // +  -  +  -  +  -  -  -  -  -
 
-    RGBA8_UNORM,                         // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "rayTracingTier >= 2")
+    RGBA8_UNORM,                         // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "tiers.rayTracing >= 2")
     RGBA8_SRGB,                          // +  -  +  -  +  -  -  -  -  -
-    RGBA8_SNORM,                         // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "rayTracingTier >= 2")
+    RGBA8_SNORM,                         // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "tiers.rayTracing >= 2")
     RGBA8_UINT,                          // +  +  +  -  -  -  +  +  +  -
     RGBA8_SINT,                          // +  +  +  -  -  -  +  +  +  -
 
@@ -132,13 +132,13 @@ NriEnum(Format, uint8_t,
     R16_SINT,                            // +  +  +  -  -  -  +  +  +  -
     R16_SFLOAT,                          // +  +  +  -  +  -  +  +  +  -
 
-    RG16_UNORM,                          // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "rayTracingTier >= 2")
+    RG16_UNORM,                          // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "tiers.rayTracing >= 2")
     RG16_SNORM,                          // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible
     RG16_UINT,                           // +  +  +  -  -  -  +  +  +  -
     RG16_SINT,                           // +  +  +  -  -  -  +  +  +  -
     RG16_SFLOAT,                         // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible
 
-    RGBA16_UNORM,                        // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "rayTracingTier >= 2")
+    RGBA16_UNORM,                        // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "tiers.rayTracing >= 2")
     RGBA16_SNORM,                        // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible
     RGBA16_UINT,                         // +  +  +  -  -  -  +  +  +  -
     RGBA16_SINT,                         // +  +  +  -  -  -  +  +  +  -
@@ -167,7 +167,7 @@ NriEnum(Format, uint8_t,
     B4_G4_R4_A4_UNORM,                   // +  -  +  -  +  -  -  -  -  -
 
     // Packed: 32 bits per pixel
-    R10_G10_B10_A2_UNORM,                // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "rayTracingTier >= 2")
+    R10_G10_B10_A2_UNORM,                // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "tiers.rayTracing >= 2")
     R10_G10_B10_A2_UINT,                 // +  +  +  -  -  -  +  +  +  -
     R11_G11_B10_UFLOAT,                  // +  +  +  -  +  -  +  +  +  -
     R9_G9_B9_E5_UFLOAT,                  // +  -  -  -  -  -  -  -  -  -
@@ -299,7 +299,7 @@ NriStruct(Viewport) {
     float height;
     float depthMin;
     float depthMax;
-    bool originBottomLeft; // expects "isViewportOriginBottomLeftSupported"
+    bool originBottomLeft; // expects "features.viewportOriginBottomLeft"
 };
 
 NriStruct(Rect) {
@@ -514,7 +514,7 @@ NriStruct(BufferViewDesc) {
     const NriPtr(Buffer) buffer;
     Nri(BufferViewType) viewType;
     Nri(Format) format;
-    uint64_t offset; // expects "bufferShaderResourceOffsetAlignment" for shader resources
+    uint64_t offset; // expects "memoryAlignment.bufferShaderResourceOffset" for shader resources
     uint64_t size;
     NriOptional uint32_t structureStride; // = structure stride from "BufferDesc" if not provided
 };
@@ -757,7 +757,7 @@ NriEnum(ShadingRate, uint8_t,
     FRAGMENT_SIZE_2X1,
     FRAGMENT_SIZE_2X2,
 
-    // Require "isAdditionalShadingRatesSupported"
+    // Require "features.additionalShadingRates"
     FRAGMENT_SIZE_2X4,
     FRAGMENT_SIZE_4X2,
     FRAGMENT_SIZE_4X4
@@ -798,16 +798,16 @@ NriStruct(RasterizationDesc) {
     Nri(CullMode) cullMode;
     bool frontCounterClockwise;
     bool depthClamp;
-    bool lineSmoothing;         // requires "isLineSmoothingSupported"
-    bool conservativeRaster;    // requires "conservativeRasterTier != 0"
-    bool shadingRate;           // requires "shadingRateTier != 0", expects "CmdSetShadingRate" and optionally "AttachmentsDesc::shadingRate"
+    bool lineSmoothing;         // requires "features.lineSmoothing"
+    bool conservativeRaster;    // requires "tiers.conservativeRaster != 0"
+    bool shadingRate;           // requires "tiers.shadingRate != 0", expects "CmdSetShadingRate" and optionally "AttachmentsDesc::shadingRate"
 };
 
 NriStruct(MultisampleDesc) {
     uint32_t sampleMask;
     Nri(Sample_t) sampleNum;
     bool alphaToCoverage;
-    bool sampleLocations; // requires "sampleLocationsTier != 0", expects "CmdSetSampleLocations"
+    bool sampleLocations; // requires "tiers.sampleLocations != 0", expects "CmdSetSampleLocations"
 };
 
 NriStruct(ShadingRateDesc) {
@@ -961,12 +961,12 @@ NriStruct(ColorAttachmentDesc) {
 NriStruct(DepthAttachmentDesc) {
     Nri(CompareFunc) compareFunc;
     bool write;
-    bool boundsTest; // requires "isDepthBoundsTestSupported", expects "CmdSetDepthBounds"
+    bool boundsTest; // requires "features.depthBoundsTest", expects "CmdSetDepthBounds"
 };
 
 NriStruct(StencilAttachmentDesc) {
     Nri(StencilDesc) front;
-    Nri(StencilDesc) back; // requires "isIndependentFrontAndBackStencilReferenceAndMasksSupported" for "back.writeMask"
+    Nri(StencilDesc) back; // requires "features.independentFrontAndBackStencilReferenceAndMasks" for "back.writeMask"
 };
 
 NriStruct(OutputMergerDesc) {
@@ -975,14 +975,14 @@ NriStruct(OutputMergerDesc) {
     Nri(DepthAttachmentDesc) depth;
     Nri(StencilAttachmentDesc) stencil;
     Nri(Format) depthStencilFormat;
-    Nri(LogicFunc) logicFunc; // requires "isLogicFuncSupported"
+    Nri(LogicFunc) logicFunc; // requires "features.logicFunc"
     NriOptional uint32_t viewMask; // if non-0, requires "viewMaxNum > 1"
-    NriOptional Nri(Multiview) multiview; // if viewMask != 0, requires "is(multiview)MultiviewSupported"
+    NriOptional Nri(Multiview) multiview; // if viewMask != 0, requires "features.(xxx)Multiview"
 };
 
 NriStruct(AttachmentsDesc) {
     NriOptional const NriPtr(Descriptor) depthStencil;
-    NriOptional const NriPtr(Descriptor) shadingRate; // requires "shadingRateTier >= 2"
+    NriOptional const NriPtr(Descriptor) shadingRate; // requires "tiers.shadingRate >= 2"
     const NriPtr(Descriptor) const* colors;
     uint32_t colorNum;
     NriOptional uint32_t viewMask;
@@ -1019,7 +1019,7 @@ NriStruct(AddressModes) {
 
 NriStruct(Filters) {
     Nri(Filter) min, mag, mip;
-    Nri(FilterExt) ext; // requires "isTextureFilterMinMaxSupported"
+    Nri(FilterExt) ext; // requires "features.textureFilterMinMax"
 };
 
 NriStruct(SamplerDesc) {
@@ -1110,7 +1110,7 @@ NriBits(AccessBits, uint32_t,                 // Compatible "StageBits" (includi
     RESOLVE_DESTINATION             = NriBit(18)  // RESOLVE
 );
 
-// Not used if "isEnchancedBarrierSupported = false"
+// Not used if "features.enchancedBarrier" is "0"
 NriEnum(Layout, uint8_t,    // Compatible "AccessBits":
     UNKNOWN,
     PRESENT,                    // UNKNOWN
@@ -1303,7 +1303,7 @@ NriStruct(DrawIndexedBaseDesc) { // see NRI_FILL_DRAW_INDEXED_COMMAND
 
 NriEnum(QueryType, uint8_t,
     TIMESTAMP,
-    TIMESTAMP_COPY_QUEUE, // requires "isCopyQueueTimestampSupported"
+    TIMESTAMP_COPY_QUEUE, // requires "features.copyQueueTimestamp"
     OCCLUSION,
     PIPELINE_STATISTICS,
     ACCELERATION_STRUCTURE_SIZE,
@@ -1332,11 +1332,11 @@ NriStruct(PipelineStatisticsDesc) {
     uint64_t tessEvaluationShaderInvocationNum;
     uint64_t computeShaderInvocationNum;
 
-    // If "isMeshShaderPipelineStatsSupported"
+    // If "features.meshShaderPipelineStats"
     uint64_t meshControlShaderInvocationNum;
     uint64_t meshEvaluationShaderInvocationNum;
 
-    // If "isMeshShaderPipelineStatsSupported" and D3D12
+    // If "features.meshShaderPipelineStats" and D3D12
     uint64_t meshEvaluationShaderPrimitiveNum;
 };
 
@@ -1378,235 +1378,285 @@ NriStruct(AdapterDesc) {
 
 NriStruct(DeviceDesc) {
     // Common
-    Nri(AdapterDesc) adapterDesc; // "queueNum" reflects available number of queues
+    Nri(AdapterDesc) adapterDesc; // "queueNum" reflects available number of queues per "QueueType"
     Nri(GraphicsAPI) graphicsAPI;
     uint16_t nriVersionMajor;
     uint16_t nriVersionMinor;
+    uint8_t shaderModel; // major * 10 + minor
 
-    // Viewports
-    uint32_t viewportMaxNum;
-    int32_t viewportBoundsRange[2];
+    // Viewport
+    struct {
+        uint32_t maxNum;
+        int16_t boundsMin;
+        int16_t boundsMax;
+    } viewport;
 
-    // Attachments
-    Nri(Dim_t) attachmentMaxDim;
-    Nri(Dim_t) attachmentLayerMaxNum;
-    Nri(Dim_t) colorAttachmentMaxNum;
+    // Multisampling
+    struct {
+        Nri(Sample_t) zeroAttachmentsSampleMaxNum;
+        Nri(Sample_t) attachmentColorSampleMaxNum;
+        Nri(Sample_t) attachmentDepthSampleMaxNum;
+        Nri(Sample_t) attachmentStencilSampleMaxNum;
+        Nri(Sample_t) textureColorSampleMaxNum;
+        Nri(Sample_t) textureDepthSampleMaxNum;
+        Nri(Sample_t) textureStencilSampleMaxNum;
+        Nri(Sample_t) textureIntegerSampleMaxNum;
+        Nri(Sample_t) storageTextureSampleMaxNum;
+    } multisampling;
 
-    // Multi-sampling
-    Nri(Sample_t) colorSampleMaxNum;
-    Nri(Sample_t) depthSampleMaxNum;
-    Nri(Sample_t) stencilSampleMaxNum;
-    Nri(Sample_t) zeroAttachmentsSampleMaxNum;
-    Nri(Sample_t) textureColorSampleMaxNum;
-    Nri(Sample_t) textureIntegerSampleMaxNum;
-    Nri(Sample_t) textureDepthSampleMaxNum;
-    Nri(Sample_t) textureStencilSampleMaxNum;
-    Nri(Sample_t) storageTextureSampleMaxNum;
+    // Dimensions
+    struct {
+        uint32_t typedBufferMaxDim;
+        Nri(Dim_t) attachmentMaxDim;
+        Nri(Dim_t) attachmentLayerMaxNum;
+        Nri(Dim_t) texture1DMaxDim;
+        Nri(Dim_t) texture2DMaxDim;
+        Nri(Dim_t) texture3DMaxDim;
+        Nri(Dim_t) textureLayerMaxNum;
+    } dimensions;
 
-    // Resource dimensions
-    Nri(Dim_t) texture1DMaxDim;
-    Nri(Dim_t) texture2DMaxDim;
-    Nri(Dim_t) texture3DMaxDim;
-    Nri(Dim_t) textureArrayLayerMaxNum;
-    uint32_t typedBufferMaxDim;
+    // Precision bits
+    struct {
+        uint32_t viewportBits;
+        uint32_t subPixelBits;
+        uint32_t subTexelBits;
+        uint32_t mipmapBits;
+    } precision;
 
     // Memory
-    uint64_t deviceUploadHeapSize; // ReBAR
-    uint32_t memoryAllocationMaxNum;
-    uint32_t samplerAllocationMaxNum;
-    uint32_t constantBufferMaxRange;
-    uint32_t storageBufferMaxRange;
-    uint32_t bufferTextureGranularity;
-    uint64_t bufferMaxSize;
+    struct {
+        uint64_t deviceUploadHeapSize; // ReBAR
+        uint32_t allocationMaxNum;
+        uint32_t samplerAllocationMaxNum;
+        uint32_t constantBufferMaxRange;
+        uint32_t storageBufferMaxRange;
+        uint32_t bufferTextureGranularity;
+        uint64_t bufferMaxSize;
+    } memory;
 
     // Memory alignment
-    uint32_t uploadBufferTextureRowAlignment;
-    uint32_t uploadBufferTextureSliceAlignment;
-    uint32_t shaderBindingTableAlignment;
-    uint32_t bufferShaderResourceOffsetAlignment;
-    uint32_t constantBufferOffsetAlignment;
-    uint32_t scratchBufferOffsetAlignment;
-    uint32_t accelerationStructureOffsetAlignment;
-    uint32_t micromapOffsetAlignment;
+    struct {
+        uint32_t uploadBufferTextureRow;
+        uint32_t uploadBufferTextureSlice;
+        uint32_t shaderBindingTable;
+        uint32_t bufferShaderResourceOffset;
+        uint32_t constantBufferOffset;
+        uint32_t scratchBufferOffset;
+        uint32_t accelerationStructureOffset;
+        uint32_t micromapOffset;
+    } memoryAlignment;
 
     // Pipeline layout
     // D3D12 only: rootConstantSize + descriptorSetNum * 4 + rootDescriptorNum * 8 <= 256 (see "FitPipelineLayoutSettingsIntoDeviceLimits")
-    uint32_t pipelineLayoutDescriptorSetMaxNum;
-    uint32_t pipelineLayoutRootConstantMaxSize;
-    uint32_t pipelineLayoutRootDescriptorMaxNum;
+    struct {
+        uint32_t descriptorSetMaxNum;
+        uint32_t rootConstantMaxSize;
+        uint32_t rootDescriptorMaxNum;
+    } pipelineLayout;
 
     // Descriptor set
-    uint32_t descriptorSetSamplerMaxNum;
-    uint32_t descriptorSetConstantBufferMaxNum;
-    uint32_t descriptorSetStorageBufferMaxNum;
-    uint32_t descriptorSetTextureMaxNum;
-    uint32_t descriptorSetStorageTextureMaxNum;
+    struct {
+        uint32_t samplerMaxNum;
+        uint32_t constantBufferMaxNum;
+        uint32_t storageBufferMaxNum;
+        uint32_t textureMaxNum;
+        uint32_t storageTextureMaxNum;
 
-    uint32_t descriptorSetUpdateAfterSetSamplerMaxNum;
-    uint32_t descriptorSetUpdateAfterSetConstantBufferMaxNum;
-    uint32_t descriptorSetUpdateAfterSetStorageBufferMaxNum;
-    uint32_t descriptorSetUpdateAfterSetTextureMaxNum;
-    uint32_t descriptorSetUpdateAfterSetStorageTextureMaxNum;
+        struct {
+            uint32_t samplerMaxNum;
+            uint32_t constantBufferMaxNum;
+            uint32_t storageBufferMaxNum;
+            uint32_t textureMaxNum;
+            uint32_t storageTextureMaxNum;
+        } updateAfterSet;
+    } descriptorSet;
 
-    // Shader resources
-    uint32_t perStageDescriptorSamplerMaxNum;
-    uint32_t perStageDescriptorConstantBufferMaxNum;
-    uint32_t perStageDescriptorStorageBufferMaxNum;
-    uint32_t perStageDescriptorTextureMaxNum;
-    uint32_t perStageDescriptorStorageTextureMaxNum;
-    uint32_t perStageResourceMaxNum;
+    // Shader stages
+    struct {
+        // Per stage resources
+        uint32_t descriptorSamplerMaxNum;
+        uint32_t descriptorConstantBufferMaxNum;
+        uint32_t descriptorStorageBufferMaxNum;
+        uint32_t descriptorTextureMaxNum;
+        uint32_t descriptorStorageTextureMaxNum;
+        uint32_t resourceMaxNum;
 
-    uint32_t perStageDescriptorUpdateAfterSetSamplerMaxNum;
-    uint32_t perStageDescriptorUpdateAfterSetConstantBufferMaxNum;
-    uint32_t perStageDescriptorUpdateAfterSetStorageBufferMaxNum;
-    uint32_t perStageDescriptorUpdateAfterSetTextureMaxNum;
-    uint32_t perStageDescriptorUpdateAfterSetStorageTextureMaxNum;
-    uint32_t perStageUpdateAfterSetResourceMaxNum;
+        struct {
+            uint32_t descriptorSamplerMaxNum;
+            uint32_t descriptorConstantBufferMaxNum;
+            uint32_t descriptorStorageBufferMaxNum;
+            uint32_t descriptorTextureMaxNum;
+            uint32_t descriptorStorageTextureMaxNum;
+            uint32_t resourceMaxNum;
+        } updateAfterSet;
 
-    // Vertex shader
-    uint32_t vertexShaderAttributeMaxNum;
-    uint32_t vertexShaderStreamMaxNum;
-    uint32_t vertexShaderOutputComponentMaxNum;
+        // Vertex
+        struct {
+            uint32_t attributeMaxNum;
+            uint32_t streamMaxNum;
+            uint32_t outputComponentMaxNum;
+        } vertex;
 
-    // Tessellation shaders
-    float tessControlShaderGenerationMaxLevel;
-    uint32_t tessControlShaderPatchPointMaxNum;
-    uint32_t tessControlShaderPerVertexInputComponentMaxNum;
-    uint32_t tessControlShaderPerVertexOutputComponentMaxNum;
-    uint32_t tessControlShaderPerPatchOutputComponentMaxNum;
-    uint32_t tessControlShaderTotalOutputComponentMaxNum;
-    uint32_t tessEvaluationShaderInputComponentMaxNum;
-    uint32_t tessEvaluationShaderOutputComponentMaxNum;
+        // Tessellation control
+        struct {
+            float generationMaxLevel;
+            uint32_t patchPointMaxNum;
+            uint32_t perVertexInputComponentMaxNum;
+            uint32_t perVertexOutputComponentMaxNum;
+            uint32_t perPatchOutputComponentMaxNum;
+            uint32_t totalOutputComponentMaxNum;
+        } tesselationControl;
 
-    // Geometry shader
-    uint32_t geometryShaderInvocationMaxNum;
-    uint32_t geometryShaderInputComponentMaxNum;
-    uint32_t geometryShaderOutputComponentMaxNum;
-    uint32_t geometryShaderOutputVertexMaxNum;
-    uint32_t geometryShaderTotalOutputComponentMaxNum;
+        // Tessellation evaluation
+        struct {
+            uint32_t inputComponentMaxNum;
+            uint32_t outputComponentMaxNum;
+        } tesselationEvaluation;
 
-    // Fragment shader
-    uint32_t fragmentShaderInputComponentMaxNum;
-    uint32_t fragmentShaderOutputAttachmentMaxNum;
-    uint32_t fragmentShaderDualSourceAttachmentMaxNum;
+        // Geometry
+        struct {
+            uint32_t invocationMaxNum;
+            uint32_t inputComponentMaxNum;
+            uint32_t outputComponentMaxNum;
+            uint32_t outputVertexMaxNum;
+            uint32_t totalOutputComponentMaxNum;
+        } geometry;
 
-    // Compute shader
-    uint32_t computeShaderSharedMemoryMaxSize;
-    uint32_t computeShaderWorkGroupMaxNum[3];
-    uint32_t computeShaderWorkGroupInvocationMaxNum;
-    uint32_t computeShaderWorkGroupMaxDim[3];
+        // Fragment
+        struct {
+            uint32_t inputComponentMaxNum;
+            uint32_t attachmentMaxNum;
+            uint32_t dualSourceAttachmentMaxNum;
+        } fragment;
 
-    // Ray tracing
-    uint32_t rayTracingShaderGroupIdentifierSize;
-    uint32_t rayTracingShaderTableMaxStride;
-    uint32_t rayTracingShaderRecursionMaxDepth;
-    uint32_t rayTracingGeometryObjectMaxNum;
+        // Compute
+        struct {
+            uint32_t sharedMemoryMaxSize;
+            uint32_t workGroupMaxNum[3];
+            uint32_t workGroupInvocationMaxNum;
+            uint32_t workGroupMaxDim[3];
+        } compute;
 
-    // Micromap
-    uint32_t micromapSubdivisionMaxLevel;
+        // Ray tracing
+        struct {
+            uint32_t shaderGroupIdentifierSize;
+            uint32_t tableMaxStride;
+            uint32_t recursionMaxDepth;
+        } rayTracing;
 
-    // Mesh shaders
-    uint32_t meshControlSharedMemoryMaxSize;
-    uint32_t meshControlWorkGroupInvocationMaxNum;
-    uint32_t meshControlPayloadMaxSize;
-    uint32_t meshEvaluationOutputVerticesMaxNum;
-    uint32_t meshEvaluationOutputPrimitiveMaxNum;
-    uint32_t meshEvaluationOutputComponentMaxNum;
-    uint32_t meshEvaluationSharedMemoryMaxSize;
-    uint32_t meshEvaluationWorkGroupInvocationMaxNum;
+        // Mesh control
+        struct {
+            uint32_t sharedMemoryMaxSize;
+            uint32_t workGroupInvocationMaxNum;
+            uint32_t payloadMaxSize;
+        } meshControl;
 
-    // Precision bits
-    uint32_t viewportPrecisionBits;
-    uint32_t subPixelPrecisionBits;
-    uint32_t subTexelPrecisionBits;
-    uint32_t mipmapPrecisionBits;
+        // Mesh evaluation
+        struct {
+            uint32_t outputVerticesMaxNum;
+            uint32_t outputPrimitiveMaxNum;
+            uint32_t outputComponentMaxNum;
+            uint32_t sharedMemoryMaxSize;
+            uint32_t workGroupInvocationMaxNum;
+        } meshEvaluation;
+    } shaderStage;
 
     // Other
-    uint64_t timestampFrequencyHz;
-    uint32_t drawIndirectMaxNum;
-    float samplerLodBiasMin;
-    float samplerLodBiasMax;
-    float samplerAnisotropyMax;
-    int32_t texelOffsetMin;
-    uint32_t texelOffsetMax;
-    int32_t texelGatherOffsetMin;
-    uint32_t texelGatherOffsetMax;
-    uint32_t clipDistanceMaxNum;
-    uint32_t cullDistanceMaxNum;
-    uint32_t combinedClipAndCullDistanceMaxNum;
-    uint32_t viewMaxNum;                            // aka multiview
-    uint8_t shadingRateAttachmentTileSize;          // square size
-    uint8_t shaderModel;                            // major * 10 + minor
+    struct {
+        uint64_t timestampFrequencyHz;
+        uint32_t rayTracingGeometryObjectMaxNum;
+        uint32_t micromapSubdivisionMaxLevel;
+        uint32_t drawIndirectMaxNum;
+        float samplerLodBiasMin;
+        float samplerLodBiasMax;
+        float samplerAnisotropyMax;
+        int32_t texelOffsetMin;
+        uint32_t texelOffsetMax;
+        int32_t texelGatherOffsetMin;
+        uint32_t texelGatherOffsetMax;
+        uint32_t clipDistanceMaxNum;
+        uint32_t cullDistanceMaxNum;
+        uint32_t combinedClipAndCullDistanceMaxNum;
+        uint32_t viewMaxNum;                        // aka multiview
+        uint8_t shadingRateAttachmentTileSize;      // square size
+    } other;
 
     // Tiers (0 - unsupported)
+    struct {
+        // 1 - 1/2 pixel uncertainty region and does not support post-snap degenerates
+        // 2 - reduces the maximum uncertainty region to 1/256 and requires post-snap degenerates not be culled
+        // 3 - maintains a maximum 1/256 uncertainty region and adds support for inner input coverage, aka "SV_InnerCoverage"
+        uint8_t conservativeRaster;
 
-    // 1 - 1/2 pixel uncertainty region and does not support post-snap degenerates
-    // 2 - reduces the maximum uncertainty region to 1/256 and requires post-snap degenerates not be culled
-    // 3 - maintains a maximum 1/256 uncertainty region and adds support for inner input coverage, aka "SV_InnerCoverage"
-    uint8_t conservativeRasterTier;
+        // 1 - a single sample pattern can be specified to repeat for every pixel ("locationNum / sampleNum" must be 1 in "CmdSetSampleLocations")
+        // 2 - four separate sample patterns can be specified for each pixel in a 2x2 grid ("locationNum / sampleNum" can be up to 4 in "CmdSetSampleLocations")
+        uint8_t sampleLocations;
 
-    // 1 - a single sample pattern can be specified to repeat for every pixel ("locationNum / sampleNum" must be 1 in "CmdSetSampleLocations")
-    // 2 - four separate sample patterns can be specified for each pixel in a 2x2 grid ("locationNum / sampleNum" can be up to 4 in "CmdSetSampleLocations")
-    uint8_t sampleLocationsTier;
+        // 1 - DXR 1.0: full raytracing functionality, except features below
+        // 2 - DXR 1.1: adds - ray query, "CmdDispatchRaysIndirect", "GeometryIndex()" intrinsic, additional ray flags & vertex formats
+        uint8_t rayTracing;
 
-    // 1 - DXR 1.0: full raytracing functionality, except features below
-    // 2 - DXR 1.1: adds - ray query, "CmdDispatchRaysIndirect", "GeometryIndex()" intrinsic, additional ray flags & vertex formats
-    uint8_t rayTracingTier;
+        // 1 - shading rate can be specified only per draw
+        // 2 - adds: per primitive shading rate, per "shadingRateAttachmentTileSize" shading rate, combiners, "SV_ShadingRate" support
+        uint8_t shadingRate;
 
-    // 1 - shading rate can be specified only per draw
-    // 2 - adds: per primitive shading rate, per "shadingRateAttachmentTileSize" shading rate, combiners, "SV_ShadingRate" support
-    uint8_t shadingRateTier;
+        // 1 - unbound arrays with dynamic indexing
+        // 2 - D3D12 dynamic resources: https://microsoft.github.io/DirectX-Specs/d3d/HLSL_SM_6_6_DynamicResources.html
+        uint8_t bindless;
 
-    // 1 - unbound arrays with dynamic indexing
-    // 2 - D3D12 dynamic resources: https://microsoft.github.io/DirectX-Specs/d3d/HLSL_SM_6_6_DynamicResources.html
-    uint8_t bindlessTier;
+        // 1 - a "Memory" can support resources from all 3 categories: buffers, attachments, all other textures
+        uint8_t memory;
+    } tiers;
 
     // Features
-    uint32_t isGetMemoryDesc2Supported                                  : 1; // VK: requires "maintenance4", D3D: supported
-    uint32_t isEnchancedBarrierSupported                                : 1; // VK: supported, D3D12: requires "AgilitySDK", D3D11: unsupported
-    uint32_t isMemoryTier2Supported                                     : 1; // a memory object can support resources from all 3 categories (buffers, attachments, all other textures)
+    struct {
+        // Bigger
+        uint32_t getMemoryDesc2                                  : 1; // "GetXxxMemoryDesc2" support (VK: requires "maintenance4", D3D: supported)
+        uint32_t enchancedBarrier                                : 1; // VK: supported, D3D12: requires "AgilitySDK", D3D11: unsupported
+        uint32_t swapChain                                       : 1; // NRISwapChain
+        uint32_t rayTracing                                      : 1; // NRIRayTracing
+        uint32_t meshShader                                      : 1; // NRIMeshShader
+        uint32_t lowLatency                                      : 1; // NRILowLatency
+        uint32_t micromap                                        : 1; // see "Micromap"
 
-    uint32_t isIndependentFrontAndBackStencilReferenceAndMasksSupported : 1; // see "StencilAttachmentDesc::back"
-    uint32_t isTextureFilterMinMaxSupported                             : 1; // see "FilterExt"
-    uint32_t isLogicFuncSupported                                       : 1; // see "LogicFunc"
-    uint32_t isDepthBoundsTestSupported                                 : 1; // see "DepthAttachmentDesc::boundsTest"
-    uint32_t isDrawIndirectCountSupported                               : 1; // see "countBuffer" and "countBufferOffset"
-    uint32_t isLineSmoothingSupported                                   : 1; // see "RasterizationDesc::lineSmoothing"
-    uint32_t isCopyQueueTimestampSupported                              : 1; // see "QueryType::TIMESTAMP_COPY_QUEUE"
-    uint32_t isMeshShaderPipelineStatsSupported                         : 1; // see "PipelineStatisticsDesc"
-    uint32_t isDynamicDepthBiasSupported                                : 1; // see "CmdSetDepthBias"
-    uint32_t isAdditionalShadingRatesSupported                          : 1; // see "ShadingRate"
-    uint32_t isViewportOriginBottomLeftSupported                        : 1; // see "Viewport"
-    uint32_t isRegionResolveSupported                                   : 1; // see "CmdResolveTexture"
-    uint32_t isFlexibleMultiviewSupported                               : 1; // see "Multiview::FLEXIBLE"
-    uint32_t isLayerBasedMultiviewSupported                             : 1; // see "Multiview::LAYRED_BASED"
-    uint32_t isViewportBasedMultiviewSupported                          : 1; // see "Multiview::VIEWPORT_BASED"
-    uint32_t isPresentFromComputeSupported                              : 1; // see "SwapChainDesc::queue"
-    uint32_t isWaitableSwapChainSupported                               : 1; // see "SwapChainDesc::waitable"
-    uint32_t isMicromapSupported                                        : 1; // see "Micromap"
+        // Smaller
+        uint32_t independentFrontAndBackStencilReferenceAndMasks : 1; // see "StencilAttachmentDesc::back"
+        uint32_t textureFilterMinMax                             : 1; // see "FilterExt"
+        uint32_t logicFunc                                       : 1; // see "LogicFunc"
+        uint32_t depthBoundsTest                                 : 1; // see "DepthAttachmentDesc::boundsTest"
+        uint32_t drawIndirectCount                               : 1; // see "countBuffer" and "countBufferOffset"
+        uint32_t lineSmoothing                                   : 1; // see "RasterizationDesc::lineSmoothing"
+        uint32_t copyQueueTimestamp                              : 1; // see "QueryType::TIMESTAMP_COPY_QUEUE"
+        uint32_t meshShaderPipelineStats                         : 1; // see "PipelineStatisticsDesc"
+        uint32_t dynamicDepthBias                                : 1; // see "CmdSetDepthBias"
+        uint32_t additionalShadingRates                          : 1; // see "ShadingRate"
+        uint32_t viewportOriginBottomLeft                        : 1; // see "Viewport"
+        uint32_t regionResolve                                   : 1; // see "CmdResolveTexture"
+        uint32_t flexibleMultiview                               : 1; // see "Multiview::FLEXIBLE"
+        uint32_t layerBasedMultiview                             : 1; // see "Multiview::LAYRED_BASED"
+        uint32_t viewportBasedMultiview                          : 1; // see "Multiview::VIEWPORT_BASED"
+        uint32_t presentFromCompute                              : 1; // see "SwapChainDesc::queue"
+        uint32_t waitableSwapChain                               : 1; // see "SwapChainDesc::waitable"
+    } features;
 
-    // Shader features (I32 + atomics and F32 are always supported)
-    uint32_t isShaderNativeI16Supported                                 : 1;
-    uint32_t isShaderNativeF16Supported                                 : 1;
-    uint32_t isShaderNativeI64Supported                                 : 1;
-    uint32_t isShaderNativeF64Supported                                 : 1;
-    uint32_t isShaderAtomicsI16Supported                                : 1;
-    uint32_t isShaderAtomicsF16Supported                                : 1;
-    uint32_t isShaderAtomicsF32Supported                                : 1;
-    uint32_t isShaderAtomicsI64Supported                                : 1;
-    uint32_t isShaderAtomicsF64Supported                                : 1;
-    uint32_t isShaderViewportIndexSupported                             : 1; // always can be used from geometry shaders
-    uint32_t isShaderLayerSupported                                     : 1; // always can be used from geometry shaders
-    uint32_t isShaderClockSupported                                     : 1;
-    uint32_t isRasterizedOrderedViewSupported                           : 1; // ROV, aka fragment shader interlock
-    uint32_t isBarycentricSupported                                     : 1;
-    uint32_t isRayTracingPositionFetchSupported                         : 1;
-
-    // Extensions (unexposed are always supported)
-    uint32_t isSwapChainSupported                                       : 1; // NRISwapChain
-    uint32_t isRayTracingSupported                                      : 1; // NRIRayTracing
-    uint32_t isMeshShaderSupported                                      : 1; // NRIMeshShader
-    uint32_t isLowLatencySupported                                      : 1; // NRILowLatency
+    // Shader features (I32, F32 and I32 atomics are always supported)
+    struct {
+        uint32_t nativeI16                                       : 1; // "(u)int16_t"
+        uint32_t nativeF16                                       : 1; // "float16_t"
+        uint32_t nativeI64                                       : 1; // "(u)int64_t"
+        uint32_t nativeF64                                       : 1; // "double"
+        uint32_t atomicsI16                                      : 1; // "(u)int16_t" atomics (can be partial support of SMEM, texture or buffer atomics)
+        uint32_t atomicsF16                                      : 1; // "float16_t" atomics (can be partial support of SMEM, texture or buffer atomics)
+        uint32_t atomicsF32                                      : 1; // "float" atomics (can be partial support of SMEM, texture or buffer atomics)
+        uint32_t atomicsI64                                      : 1; // "(u)int64_t" atomics (can be partial support of SMEM, texture or buffer atomics)
+        uint32_t atomicsF64                                      : 1; // "double" atomics (can be partial support of SMEM, texture or buffer atomics)
+        uint32_t viewportIndex                                   : 1; // always can be used from geometry shaders
+        uint32_t layerIndex                                      : 1; // always can be used from geometry shaders
+        uint32_t clock                                           : 1; // shader clock (timer)
+        uint32_t rasterizedOrderedView                           : 1; // ROV, aka fragment shader interlock
+        uint32_t barycentric                                     : 1; // barycentric coordinates
+        uint32_t rayTracingPositionFetch                         : 1; // position fetching directly from AS
+    } shaderFeatures;
 };
 
 #pragma endregion

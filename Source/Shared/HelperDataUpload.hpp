@@ -73,8 +73,8 @@ Result HelperDataUpload::UploadData(const TextureUploadDesc* textureUploadDescs,
         const TextureSubresourceUploadDesc& subresource = textureUploadDescs[i].subresources[0];
 
         uint32_t sliceRowNum = std::max(subresource.slicePitch / subresource.rowPitch, 1u);
-        uint64_t alignedRowPitch = Align(subresource.rowPitch, deviceDesc.uploadBufferTextureRowAlignment);
-        uint64_t alignedSlicePitch = Align(sliceRowNum * alignedRowPitch, deviceDesc.uploadBufferTextureSliceAlignment);
+        uint64_t alignedRowPitch = Align(subresource.rowPitch, deviceDesc.memoryAlignment.uploadBufferTextureRow);
+        uint64_t alignedSlicePitch = Align(sliceRowNum * alignedRowPitch, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
         uint64_t contentSize = alignedSlicePitch * std::max(subresource.sliceNum, 1u);
 
         m_UploadBufferSize = std::max(m_UploadBufferSize, contentSize);
@@ -252,8 +252,8 @@ bool HelperDataUpload::CopyTextureContent(const TextureUploadDesc& textureUpload
             const auto& subresource = textureUploadDesc.subresources[layerOffset * textureDesc.mipNum + mipOffset];
 
             uint32_t sliceRowNum = subresource.slicePitch / subresource.rowPitch;
-            uint32_t alignedRowPitch = Align(subresource.rowPitch, deviceDesc.uploadBufferTextureRowAlignment);
-            uint32_t alignedSlicePitch = Align(sliceRowNum * alignedRowPitch, deviceDesc.uploadBufferTextureSliceAlignment);
+            uint32_t alignedRowPitch = Align(subresource.rowPitch, deviceDesc.memoryAlignment.uploadBufferTextureRow);
+            uint32_t alignedSlicePitch = Align(sliceRowNum * alignedRowPitch, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
             uint64_t contentSize = uint64_t(alignedSlicePitch) * subresource.sliceNum;
             uint64_t freeSpace = m_UploadBufferSize - m_UploadBufferOffset;
 

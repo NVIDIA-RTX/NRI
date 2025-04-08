@@ -232,7 +232,7 @@ NriBits(AccelerationStructureBits, uint8_t,
     NONE                        = 0,
     ALLOW_UPDATE                = NriBit(0), // allows to do "updates", which are faster than "builds" (may increase memory usage, build time and decrease traversal performance)
     ALLOW_COMPACTION            = NriBit(1), // allows to compact the acceleration structure by copying using "COMPACT" mode
-    ALLOW_DATA_ACCESS           = NriBit(2), // allows to access vertex data from shaders (requires "isRayTracingPositionFetchSupported")
+    ALLOW_DATA_ACCESS           = NriBit(2), // allows to access vertex data from shaders (requires "features.rayTracingPositionFetch")
     ALLOW_MICROMAP_UPDATE       = NriBit(3), // allows to update micromaps via acceleration structure update (may increase size and decrease traversal performance)
     ALLOW_DISABLE_MICROMAPS     = NriBit(4), // allows to have "DISABLE_MICROMAPS" flag for instances referencing this BLAS
     PREFER_FAST_TRACE           = NriBit(5), // prioritize traversal performance over build time
@@ -343,10 +343,10 @@ NriStruct(RayTracingInterface) {
 
     // Memory
     void            (NRI_CALL *GetAccelerationStructureMemoryDesc)                  (const NriRef(AccelerationStructure) accelerationStructure, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc);
-    void            (NRI_CALL *GetAccelerationStructureMemoryDesc2)                 (const NriRef(Device) device, const NriRef(AccelerationStructureDesc) accelerationStructureDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "isGetMemoryDesc2Supported"
+    void            (NRI_CALL *GetAccelerationStructureMemoryDesc2)                 (const NriRef(Device) device, const NriRef(AccelerationStructureDesc) accelerationStructureDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "features.getMemoryDesc2"
     Nri(Result)     (NRI_CALL *BindAccelerationStructureMemory)                     (NriRef(Device) device, const NriPtr(AccelerationStructureMemoryBindingDesc) memoryBindingDescs, uint32_t memoryBindingDescNum);
     void            (NRI_CALL *GetMicromapMemoryDesc)                               (const NriRef(Micromap) micromap, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc);
-    void            (NRI_CALL *GetMicromapMemoryDesc2)                              (const NriRef(Device) device, const NriRef(MicromapDesc) micromapDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "isGetMemoryDesc2Supported"
+    void            (NRI_CALL *GetMicromapMemoryDesc2)                              (const NriRef(Device) device, const NriRef(MicromapDesc) micromapDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "features.getMemoryDesc2"
     Nri(Result)     (NRI_CALL *BindMicromapMemory)                                  (NriRef(Device) device, const NriPtr(MicromapMemoryBindingDesc) memoryBindingDescs, uint32_t memoryBindingDescNum);
 
     // Shader table

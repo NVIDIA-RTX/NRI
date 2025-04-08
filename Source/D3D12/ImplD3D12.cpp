@@ -723,7 +723,7 @@ static void NRI_CALL QueueSubmitTrackable(Queue& queue, const QueueSubmitDesc& w
 }
 
 Result DeviceD3D12::FillFunctionTable(LowLatencyInterface& table) const {
-    if (!m_Desc.isLowLatencySupported)
+    if (!m_Desc.features.lowLatency)
         return Result::UNSUPPORTED;
 
     table.SetLatencySleepMode = ::SetLatencySleepMode;
@@ -749,7 +749,7 @@ static void NRI_CALL CmdDrawMeshTasksIndirect(CommandBuffer& commandBuffer, cons
 }
 
 Result DeviceD3D12::FillFunctionTable(MeshShaderInterface& table) const {
-    if (!m_Desc.isMeshShaderSupported)
+    if (!m_Desc.features.meshShader)
         return Result::UNSUPPORTED;
 
     table.CmdDrawMeshTasks = ::CmdDrawMeshTasks;
@@ -906,7 +906,7 @@ static uint64_t NRI_CALL GetMicromapNativeObject(const Micromap& micromap) {
 }
 
 Result DeviceD3D12::FillFunctionTable(RayTracingInterface& table) const {
-    if (!m_Desc.isRayTracingSupported)
+    if (!m_Desc.features.rayTracing)
         return Result::UNSUPPORTED;
 
     table.CreateRayTracingPipeline = ::CreateRayTracingPipeline;
@@ -1072,7 +1072,7 @@ static Result NRI_CALL GetDisplayDesc(SwapChain& swapChain, DisplayDesc& display
 }
 
 Result DeviceD3D12::FillFunctionTable(SwapChainInterface& table) const {
-    if (!m_Desc.isSwapChainSupported)
+    if (!m_Desc.features.swapChain)
         return Result::UNSUPPORTED;
 
     table.CreateSwapChain = ::CreateSwapChain;

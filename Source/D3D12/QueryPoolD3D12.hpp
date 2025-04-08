@@ -17,7 +17,7 @@ Result QueryPoolD3D12::Create(const QueryPoolDesc& queryPoolDesc) {
         desc.Type = D3D12_QUERY_HEAP_TYPE_OCCLUSION;
     } else if (queryPoolDesc.queryType == QueryType::PIPELINE_STATISTICS) {
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
-        if (m_Device.GetDesc().isMeshShaderPipelineStatsSupported) {
+        if (m_Device.GetDesc().features.meshShaderPipelineStats) {
             m_QuerySize = sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS1);
             m_QueryType = D3D12_QUERY_TYPE_PIPELINE_STATISTICS1;
             desc.Type = D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS1;

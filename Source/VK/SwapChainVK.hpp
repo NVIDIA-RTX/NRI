@@ -322,7 +322,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
     // Finalize
     m_PresentId = GetSwapChainId();
     m_Desc = swapChainDesc;
-    m_Desc.waitable = m_Device.GetDesc().isWaitableSwapChainSupported && m_Desc.waitable;
+    m_Desc.waitable = m_Device.GetDesc().features.waitableSwapChain && m_Desc.waitable;
     m_Desc.allowLowLatency = allowLowLatency;
 
     return Result::SUCCESS;

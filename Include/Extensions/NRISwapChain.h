@@ -55,15 +55,15 @@ NriStruct(Window) {
 // queuedFrameNum = 2 - recommended if the GPU frame time is less than the desired frame time, but the sum of 2 frames is greater
 NriStruct(SwapChainDesc) {
     Nri(Window) window;
-    const NriPtr(Queue) queue;      // GRAPHICS or COMPUTE (requires "isPresentFromComputeSupported")
+    const NriPtr(Queue) queue;      // GRAPHICS or COMPUTE (requires "features.presentFromCompute")
     Nri(Dim_t) width;
     Nri(Dim_t) height;
     uint8_t textureNum;
     Nri(SwapChainFormat) format;
     uint8_t verticalSyncInterval;   // 0 - vsync off
     uint8_t queuedFrameNum;         // aka "max frame latency", aka "number of frames in flight" (mostly for D3D11)
-    bool waitable;                  // allows to use "WaitForPresent", which helps to reduce latency (requires "isWaitableSwapChainSupported")
-    bool allowLowLatency;           // unlocks "NRILowLatency" functionality (requires "isLowLatencySupported")
+    bool waitable;                  // allows to use "WaitForPresent", which helps to reduce latency (requires "features.waitableSwapChain")
+    bool allowLowLatency;           // unlocks "NRILowLatency" functionality (requires "features.lowLatency")
 };
 
 NriStruct(ChromaticityCoords) {

@@ -326,7 +326,7 @@ NRI_INLINE void CommandBufferD3D12::SetDepthBounds(float boundsMin, float bounds
 NRI_INLINE void CommandBufferD3D12::SetStencilReference(uint8_t frontRef, uint8_t backRef) {
     MaybeUnused(backRef);
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
-    if (m_Device.GetDesc().isIndependentFrontAndBackStencilReferenceAndMasksSupported)
+    if (m_Device.GetDesc().features.independentFrontAndBackStencilReferenceAndMasks)
         m_GraphicsCommandList->OMSetFrontAndBackStencilRef(frontRef, backRef);
     else
 #endif
@@ -415,7 +415,7 @@ NRI_INLINE void CommandBufferD3D12::BeginRendering(const AttachmentsDesc& attach
     m_GraphicsCommandList->OMSetRenderTargets(m_RenderTargetNum, m_RenderTargets.data(), FALSE, m_DepthStencil.ptr ? &m_DepthStencil : nullptr);
 
     // Shading rate
-    if (m_Device.GetDesc().shadingRateTier >= 2) {
+    if (m_Device.GetDesc().tiers.shadingRate >= 2) {
         ID3D12Resource* shadingRateImage = nullptr;
         if (attachmentsDesc.shadingRate)
             shadingRateImage = *(DescriptorD3D12*)attachmentsDesc.shadingRate;
@@ -424,7 +424,7 @@ NRI_INLINE void CommandBufferD3D12::BeginRendering(const AttachmentsDesc& attach
     }
 
     // Multiview
-    if (m_Device.GetDesc().viewMaxNum > 1 && attachmentsDesc.viewMask)
+    if (m_Device.GetDesc().other.viewMaxNum > 1 && attachmentsDesc.viewMask)
         m_GraphicsCommandList->SetViewInstanceMask(attachmentsDesc.viewMask);
 }
 
@@ -758,7 +758,7 @@ NRI_INLINE void CommandBufferD3D12::DispatchIndirect(const Buffer& buffer, uint6
 
 NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierGroupDesc& barrierGroupDesc) {
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
-    if (m_Device.GetDesc().isEnchancedBarrierSupported) { // Enhanced barriers
+    if (m_Device.GetDesc().features.enchancedBarrier) { // Enhanced barriers
         // Count
         uint32_t barrierNum = barrierGroupDesc.globalNum + barrierGroupDesc.bufferNum + barrierGroupDesc.textureNum;
         if (!barrierNum)

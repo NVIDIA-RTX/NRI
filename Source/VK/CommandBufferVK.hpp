@@ -223,9 +223,9 @@ NRI_INLINE void CommandBufferVK::BeginRendering(const AttachmentsDesc& attachmen
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
 
     // TODO: if there are no attachments, render area has max dimensions. It can be suboptimal even on desktop. It's a no-go on tiled architectures
-    m_RenderLayerNum = deviceDesc.attachmentLayerMaxNum;
-    m_RenderWidth = deviceDesc.attachmentMaxDim;
-    m_RenderHeight = deviceDesc.attachmentMaxDim;
+    m_RenderLayerNum = deviceDesc.dimensions.attachmentLayerMaxNum;
+    m_RenderWidth = deviceDesc.dimensions.attachmentMaxDim;
+    m_RenderHeight = deviceDesc.dimensions.attachmentMaxDim;
 
     // Color
     Scratch<VkRenderingAttachmentInfo> colors = AllocateScratch(m_Device, VkRenderingAttachmentInfo, attachmentsDesc.colorNum);
@@ -284,7 +284,7 @@ NRI_INLINE void CommandBufferVK::BeginRendering(const AttachmentsDesc& attachmen
     // Shading rate
     VkRenderingFragmentShadingRateAttachmentInfoKHR shadingRate = {VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR};
     if (attachmentsDesc.shadingRate) {
-        uint32_t tileSize = m_Device.GetDesc().shadingRateAttachmentTileSize;
+        uint32_t tileSize = m_Device.GetDesc().other.shadingRateAttachmentTileSize;
         const DescriptorVK& descriptor = *(DescriptorVK*)attachmentsDesc.shadingRate;
 
         shadingRate.imageView = descriptor.GetImageView();

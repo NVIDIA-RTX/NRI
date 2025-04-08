@@ -506,7 +506,7 @@ NRI_INLINE void PipelineVK::SetDebugName(const char* name) {
 }
 
 NRI_INLINE Result PipelineVK::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* dst) const {
-    const size_t dataSize = (size_t)shaderGroupNum * m_Device.GetDesc().rayTracingShaderGroupIdentifierSize;
+    const size_t dataSize = (size_t)shaderGroupNum * m_Device.GetDesc().shaderStage.rayTracing.shaderGroupIdentifierSize;
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult result = vk.GetRayTracingShaderGroupHandlesKHR(m_Device, m_Handle, baseShaderGroupIndex, shaderGroupNum, dataSize, dst);
