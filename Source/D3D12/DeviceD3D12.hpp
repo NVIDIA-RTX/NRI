@@ -569,6 +569,12 @@ void DeviceD3D12::FillDesc() {
     m_Desc.pipelineLayoutRootConstantMaxSize = sizeof(uint32_t) * ROOT_SIGNATURE_DWORD_NUM / 1;
     m_Desc.pipelineLayoutRootDescriptorMaxNum = ROOT_SIGNATURE_DWORD_NUM / 2;
 
+    m_Desc.descriptorSetSamplerMaxNum = m_Desc.perStageDescriptorSamplerMaxNum;
+    m_Desc.descriptorSetConstantBufferMaxNum = m_Desc.perStageDescriptorConstantBufferMaxNum;
+    m_Desc.descriptorSetStorageBufferMaxNum = m_Desc.perStageDescriptorStorageBufferMaxNum;
+    m_Desc.descriptorSetTextureMaxNum = m_Desc.perStageDescriptorTextureMaxNum;
+    m_Desc.descriptorSetStorageTextureMaxNum = m_Desc.perStageDescriptorStorageTextureMaxNum;
+
     // https://learn.microsoft.com/en-us/windows/win32/direct3d12/hardware-support
     const uint32_t FULL_HEAP = 1000000; // TODO: even on D3D12_RESOURCE_BINDING_TIER_3 devices the validation still claims that the limit is 1000000
     m_Desc.perStageDescriptorSamplerMaxNum = options.ResourceBindingTier >= D3D12_RESOURCE_BINDING_TIER_2 ? 2048 : 16;
@@ -578,11 +584,18 @@ void DeviceD3D12::FillDesc() {
     m_Desc.perStageDescriptorStorageTextureMaxNum = options.ResourceBindingTier >= D3D12_RESOURCE_BINDING_TIER_3 ? FULL_HEAP : (levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_11_1 ? 64 : 8);
     m_Desc.perStageDescriptorStorageBufferMaxNum = m_Desc.perStageDescriptorStorageTextureMaxNum;
 
-    m_Desc.descriptorSetSamplerMaxNum = m_Desc.perStageDescriptorSamplerMaxNum;
-    m_Desc.descriptorSetConstantBufferMaxNum = m_Desc.perStageDescriptorConstantBufferMaxNum;
-    m_Desc.descriptorSetStorageBufferMaxNum = m_Desc.perStageDescriptorStorageBufferMaxNum;
-    m_Desc.descriptorSetTextureMaxNum = m_Desc.perStageDescriptorTextureMaxNum;
-    m_Desc.descriptorSetStorageTextureMaxNum = m_Desc.perStageDescriptorStorageTextureMaxNum;
+    m_Desc.descriptorSetUpdateAfterSetSamplerMaxNum = m_Desc.descriptorSetSamplerMaxNum;
+    m_Desc.descriptorSetUpdateAfterSetConstantBufferMaxNum = m_Desc.descriptorSetConstantBufferMaxNum;
+    m_Desc.descriptorSetUpdateAfterSetStorageBufferMaxNum = m_Desc.descriptorSetStorageBufferMaxNum;
+    m_Desc.descriptorSetUpdateAfterSetTextureMaxNum = m_Desc.descriptorSetTextureMaxNum;
+    m_Desc.descriptorSetUpdateAfterSetStorageTextureMaxNum = m_Desc.descriptorSetStorageTextureMaxNum;
+
+    m_Desc.perStageDescriptorUpdateAfterSetSamplerMaxNum = m_Desc.perStageDescriptorSamplerMaxNum;
+    m_Desc.perStageDescriptorUpdateAfterSetConstantBufferMaxNum = m_Desc.perStageDescriptorConstantBufferMaxNum;
+    m_Desc.perStageDescriptorUpdateAfterSetStorageBufferMaxNum = m_Desc.perStageDescriptorStorageBufferMaxNum;
+    m_Desc.perStageDescriptorUpdateAfterSetTextureMaxNum = m_Desc.perStageDescriptorTextureMaxNum;
+    m_Desc.perStageDescriptorUpdateAfterSetStorageTextureMaxNum = m_Desc.perStageDescriptorStorageTextureMaxNum;
+    m_Desc.perStageUpdateAfterSetResourceMaxNum = m_Desc.perStageResourceMaxNum;
 
     m_Desc.vertexShaderAttributeMaxNum = D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
     m_Desc.vertexShaderStreamMaxNum = D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;

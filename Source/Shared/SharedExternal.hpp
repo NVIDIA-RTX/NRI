@@ -92,7 +92,10 @@ Result nri::GetResultFromHRESULT(long result) {
     if (result == DXGI_ERROR_UNSUPPORTED)
         return Result::UNSUPPORTED;
 
-    if (result == DXGI_ERROR_DEVICE_REMOVED || result == DXGI_ERROR_DEVICE_RESET)
+    if (result == DXGI_ERROR_DEVICE_REMOVED
+        || result == DXGI_ERROR_DEVICE_RESET
+        || result == DXGI_ERROR_DRIVER_INTERNAL_ERROR
+        || result == DXGI_ERROR_DEVICE_HUNG)
         return Result::DEVICE_LOST;
 
     if (result == E_OUTOFMEMORY)

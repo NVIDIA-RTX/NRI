@@ -30,8 +30,10 @@ Result PipelineLayoutVK::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
         m_PipelineBindPoint = VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
 
     // Binding offsets
+    bool ignoreGlobalSPIRVOffsets = (pipelineLayoutDesc.flags & PipelineLayoutBits::IGNORE_GLOBAL_SPIRV_OFFSETS) != 0;
+
     VKBindingOffsets vkBindingOffsets = {};
-    if (!pipelineLayoutDesc.ignoreGlobalSPIRVOffsets)
+    if (!ignoreGlobalSPIRVOffsets)
         vkBindingOffsets = m_Device.GetBindingOffsets();
 
     std::array<uint32_t, (size_t)DescriptorType::MAX_NUM> bindingOffsets = {};
@@ -67,7 +69,7 @@ Result PipelineLayoutVK::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
         setNum = std::max(setNum, descriptorSetDesc.registerSpace);
 
         // Create set layout
-        VkDescriptorSetLayout descriptorSetLayout = CreateSetLayout(descriptorSetDesc, pipelineLayoutDesc.ignoreGlobalSPIRVOffsets, false); // non-push
+        VkDescriptorSetLayout descriptorSetLayout = CreateSetLayout(descriptorSetDesc, ignoreGlobalSPIRVOffsets, false); // non-push
         m_DescriptorSetLayouts.push_back(descriptorSetLayout);
 
         // Binding info
@@ -118,7 +120,7 @@ Result PipelineLayoutVK::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
             m_BindingInfo.pushDescriptorBindings[i] = {rootSet.registerSpace, registerIndex};
         }
 
-        VkDescriptorSetLayout descriptorSetLayout = CreateSetLayout(rootSet, pipelineLayoutDesc.ignoreGlobalSPIRVOffsets, true); // push
+        VkDescriptorSetLayout descriptorSetLayout = CreateSetLayout(rootSet, ignoreGlobalSPIRVOffsets, true); // push
         m_DescriptorSetLayouts.push_back(descriptorSetLayout);
     }
 
@@ -129,7 +131,7 @@ Result PipelineLayoutVK::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
     bool hasGaps = setNum > pipelineLayoutDesc.descriptorSetNum + (pipelineLayoutDesc.rootDescriptorNum ? 1 : 0);
     if (hasGaps) {
         // Create a "dummy" set layout (needed only if "register space" indices are not consecutive)
-        VkDescriptorSetLayout dummyDescriptorSetLayout = CreateSetLayout({}, pipelineLayoutDesc.ignoreGlobalSPIRVOffsets, false); // non-push
+        VkDescriptorSetLayout dummyDescriptorSetLayout = CreateSetLayout({}, ignoreGlobalSPIRVOffsets, false); // non-push
         m_DescriptorSetLayouts.push_back(dummyDescriptorSetLayout);
 
         for (uint32_t i = 0; i < setNum; i++)
@@ -220,10 +222,15 @@ VkDescriptorSetLayout PipelineLayoutVK::CreateSetLayout(const DescriptorSetDesc&
         const DescriptorRangeDesc& range = descriptorSetDesc.ranges[i];
         uint32_t baseBindingIndex = range.baseRegisterIndex + bindingOffsets[(uint32_t)range.descriptorType];
 
-        VkDescriptorBindingFlags flags = (range.flags & DescriptorRangeBits::PARTIALLY_BOUND) ? VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT : 0;
-        uint32_t descriptorNum = 1;
+        VkDescriptorBindingFlags flags = 0;
+        if (range.flags & DescriptorRangeBits::PARTIALLY_BOUND)
+            flags |= VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+        if (range.flags & DescriptorRangeBits::ALLOW_UPDATE_AFTER_SET)
+            flags |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
 
+        uint32_t descriptorNum = 1;
         bool isArray = range.flags & (DescriptorRangeBits::ARRAY | DescriptorRangeBits::VARIABLE_SIZED_ARRAY);
+
         if (isArray) {
             if (range.flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY)
                 flags |= VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
@@ -266,7 +273,10 @@ VkDescriptorSetLayout PipelineLayoutVK::CreateSetLayout(const DescriptorSetDesc&
     info.pNext = m_Device.m_IsSupported.descriptorIndexing ? &bindingFlagsInfo : nullptr;
     info.bindingCount = bindingNum;
     info.pBindings = bindingsBegin;
-    info.flags = isPush ? VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR : 0;
+    info.flags = (descriptorSetDesc.flags & DescriptorSetBits::ALLOW_UPDATE_AFTER_SET) ? VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT : 0;
+
+    if (isPush)
+        info.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT;
 
     VkDescriptorSetLayout handle = VK_NULL_HANDLE;
     const auto& vk = m_Device.GetDispatchTable();

@@ -359,6 +359,12 @@ void DeviceD3D11::FillDesc() {
     m_Desc.pipelineLayoutRootConstantMaxSize = sizeof(uint32_t) * ROOT_SIGNATURE_DWORD_NUM / 1;
     m_Desc.pipelineLayoutRootDescriptorMaxNum = ROOT_SIGNATURE_DWORD_NUM / 2;
 
+    m_Desc.descriptorSetSamplerMaxNum = m_Desc.perStageDescriptorSamplerMaxNum;
+    m_Desc.descriptorSetConstantBufferMaxNum = m_Desc.perStageDescriptorConstantBufferMaxNum;
+    m_Desc.descriptorSetStorageBufferMaxNum = m_Desc.perStageDescriptorStorageBufferMaxNum;
+    m_Desc.descriptorSetTextureMaxNum = m_Desc.perStageDescriptorTextureMaxNum;
+    m_Desc.descriptorSetStorageTextureMaxNum = m_Desc.perStageDescriptorStorageTextureMaxNum;
+
     m_Desc.perStageDescriptorSamplerMaxNum = D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT;
     m_Desc.perStageDescriptorConstantBufferMaxNum = D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT;
     m_Desc.perStageDescriptorStorageBufferMaxNum = m_Version >= 1 ? D3D11_1_UAV_SLOT_COUNT : D3D11_PS_CS_UAV_REGISTER_COUNT;
@@ -366,11 +372,18 @@ void DeviceD3D11::FillDesc() {
     m_Desc.perStageDescriptorStorageTextureMaxNum = m_Version >= 1 ? D3D11_1_UAV_SLOT_COUNT : D3D11_PS_CS_UAV_REGISTER_COUNT;
     m_Desc.perStageResourceMaxNum = D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT;
 
-    m_Desc.descriptorSetSamplerMaxNum = m_Desc.perStageDescriptorSamplerMaxNum;
-    m_Desc.descriptorSetConstantBufferMaxNum = m_Desc.perStageDescriptorConstantBufferMaxNum;
-    m_Desc.descriptorSetStorageBufferMaxNum = m_Desc.perStageDescriptorStorageBufferMaxNum;
-    m_Desc.descriptorSetTextureMaxNum = m_Desc.perStageDescriptorTextureMaxNum;
-    m_Desc.descriptorSetStorageTextureMaxNum = m_Desc.perStageDescriptorStorageTextureMaxNum;
+    m_Desc.descriptorSetUpdateAfterSetSamplerMaxNum = m_Desc.descriptorSetSamplerMaxNum;
+    m_Desc.descriptorSetUpdateAfterSetConstantBufferMaxNum = m_Desc.descriptorSetConstantBufferMaxNum;
+    m_Desc.descriptorSetUpdateAfterSetStorageBufferMaxNum = m_Desc.descriptorSetStorageBufferMaxNum;
+    m_Desc.descriptorSetUpdateAfterSetTextureMaxNum = m_Desc.descriptorSetTextureMaxNum;
+    m_Desc.descriptorSetUpdateAfterSetStorageTextureMaxNum = m_Desc.descriptorSetStorageTextureMaxNum;
+
+    m_Desc.perStageDescriptorUpdateAfterSetSamplerMaxNum = m_Desc.perStageDescriptorSamplerMaxNum;
+    m_Desc.perStageDescriptorUpdateAfterSetConstantBufferMaxNum = m_Desc.perStageDescriptorConstantBufferMaxNum;
+    m_Desc.perStageDescriptorUpdateAfterSetStorageBufferMaxNum = m_Desc.perStageDescriptorStorageBufferMaxNum;
+    m_Desc.perStageDescriptorUpdateAfterSetTextureMaxNum = m_Desc.perStageDescriptorTextureMaxNum;
+    m_Desc.perStageDescriptorUpdateAfterSetStorageTextureMaxNum = m_Desc.perStageDescriptorStorageTextureMaxNum;
+    m_Desc.perStageUpdateAfterSetResourceMaxNum = m_Desc.perStageResourceMaxNum;
 
     m_Desc.vertexShaderAttributeMaxNum = D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
     m_Desc.vertexShaderStreamMaxNum = D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;

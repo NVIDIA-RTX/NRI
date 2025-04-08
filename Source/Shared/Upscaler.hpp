@@ -588,7 +588,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             pipelineLayoutDesc.descriptorSets = &descriptorSetDesc;
             pipelineLayoutDesc.descriptorSetNum = 1;
             pipelineLayoutDesc.shaderStages = StageBits::COMPUTE_SHADER;
-            pipelineLayoutDesc.ignoreGlobalSPIRVOffsets = true;
+            pipelineLayoutDesc.flags = PipelineLayoutBits::IGNORE_GLOBAL_SPIRV_OFFSETS;
 
             Result result = m_NRI.CreatePipelineLayout(m_Device, pipelineLayoutDesc, m.nis->pipelineLayout);
             if (result != Result::SUCCESS)

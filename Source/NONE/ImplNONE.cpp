@@ -65,6 +65,12 @@ struct DeviceNONE final : public DeviceBase {
         m_Desc.pipelineLayoutRootConstantMaxSize = 256;
         m_Desc.pipelineLayoutRootDescriptorMaxNum = 64;
 
+        m_Desc.descriptorSetSamplerMaxNum = 1000000;
+        m_Desc.descriptorSetConstantBufferMaxNum = 1000000;
+        m_Desc.descriptorSetStorageBufferMaxNum = 1000000;
+        m_Desc.descriptorSetTextureMaxNum = 1000000;
+        m_Desc.descriptorSetStorageTextureMaxNum = 1000000;
+
         m_Desc.perStageDescriptorSamplerMaxNum = 1000000;
         m_Desc.perStageDescriptorConstantBufferMaxNum = 1000000;
         m_Desc.perStageDescriptorStorageBufferMaxNum = 1000000;
@@ -72,11 +78,18 @@ struct DeviceNONE final : public DeviceBase {
         m_Desc.perStageDescriptorStorageTextureMaxNum = 1000000;
         m_Desc.perStageResourceMaxNum = 1000000;
 
-        m_Desc.descriptorSetSamplerMaxNum = m_Desc.perStageDescriptorSamplerMaxNum;
-        m_Desc.descriptorSetConstantBufferMaxNum = m_Desc.perStageDescriptorConstantBufferMaxNum;
-        m_Desc.descriptorSetStorageBufferMaxNum = m_Desc.perStageDescriptorStorageBufferMaxNum;
-        m_Desc.descriptorSetTextureMaxNum = m_Desc.perStageDescriptorTextureMaxNum;
-        m_Desc.descriptorSetStorageTextureMaxNum = m_Desc.perStageDescriptorStorageTextureMaxNum;
+        m_Desc.descriptorSetUpdateAfterSetSamplerMaxNum = m_Desc.descriptorSetSamplerMaxNum;
+        m_Desc.descriptorSetUpdateAfterSetConstantBufferMaxNum = m_Desc.descriptorSetConstantBufferMaxNum;
+        m_Desc.descriptorSetUpdateAfterSetStorageBufferMaxNum = m_Desc.descriptorSetStorageBufferMaxNum;
+        m_Desc.descriptorSetUpdateAfterSetTextureMaxNum = m_Desc.descriptorSetTextureMaxNum;
+        m_Desc.descriptorSetUpdateAfterSetStorageTextureMaxNum = m_Desc.descriptorSetStorageTextureMaxNum;
+
+        m_Desc.perStageDescriptorUpdateAfterSetSamplerMaxNum = m_Desc.perStageDescriptorSamplerMaxNum;
+        m_Desc.perStageDescriptorUpdateAfterSetConstantBufferMaxNum = m_Desc.perStageDescriptorConstantBufferMaxNum;
+        m_Desc.perStageDescriptorUpdateAfterSetStorageBufferMaxNum = m_Desc.perStageDescriptorStorageBufferMaxNum;
+        m_Desc.perStageDescriptorUpdateAfterSetTextureMaxNum = m_Desc.perStageDescriptorTextureMaxNum;
+        m_Desc.perStageDescriptorUpdateAfterSetStorageTextureMaxNum = m_Desc.perStageDescriptorStorageTextureMaxNum;
+        m_Desc.perStageUpdateAfterSetResourceMaxNum = m_Desc.perStageResourceMaxNum;
 
         m_Desc.vertexShaderAttributeMaxNum = 32;
         m_Desc.vertexShaderStreamMaxNum = 32;

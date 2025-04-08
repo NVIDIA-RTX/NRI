@@ -975,6 +975,12 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.pipelineLayoutRootConstantMaxSize = limits.maxPushConstantsSize;
         m_Desc.pipelineLayoutRootDescriptorMaxNum = pushDescriptorProps.maxPushDescriptors;
 
+        m_Desc.descriptorSetSamplerMaxNum = limits.maxDescriptorSetSamplers;
+        m_Desc.descriptorSetConstantBufferMaxNum = limits.maxDescriptorSetUniformBuffers;
+        m_Desc.descriptorSetStorageBufferMaxNum = limits.maxDescriptorSetStorageBuffers;
+        m_Desc.descriptorSetTextureMaxNum = limits.maxDescriptorSetSampledImages;
+        m_Desc.descriptorSetStorageTextureMaxNum = limits.maxDescriptorSetStorageImages;
+
         m_Desc.perStageDescriptorSamplerMaxNum = limits.maxPerStageDescriptorSamplers;
         m_Desc.perStageDescriptorConstantBufferMaxNum = limits.maxPerStageDescriptorUniformBuffers;
         m_Desc.perStageDescriptorStorageBufferMaxNum = limits.maxPerStageDescriptorStorageBuffers;
@@ -982,11 +988,18 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.perStageDescriptorStorageTextureMaxNum = limits.maxPerStageDescriptorStorageImages;
         m_Desc.perStageResourceMaxNum = limits.maxPerStageResources;
 
-        m_Desc.descriptorSetSamplerMaxNum = limits.maxDescriptorSetSamplers;
-        m_Desc.descriptorSetConstantBufferMaxNum = limits.maxDescriptorSetUniformBuffers;
-        m_Desc.descriptorSetStorageBufferMaxNum = limits.maxDescriptorSetStorageBuffers;
-        m_Desc.descriptorSetTextureMaxNum = limits.maxDescriptorSetSampledImages;
-        m_Desc.descriptorSetStorageTextureMaxNum = limits.maxDescriptorSetStorageImages;
+        m_Desc.descriptorSetUpdateAfterSetSamplerMaxNum = props12.maxDescriptorSetUpdateAfterBindSamplers;
+        m_Desc.descriptorSetUpdateAfterSetConstantBufferMaxNum = props12.maxDescriptorSetUpdateAfterBindUniformBuffers;
+        m_Desc.descriptorSetUpdateAfterSetStorageBufferMaxNum = props12.maxDescriptorSetUpdateAfterBindStorageBuffers;
+        m_Desc.descriptorSetUpdateAfterSetTextureMaxNum = props12.maxDescriptorSetUpdateAfterBindSampledImages;
+        m_Desc.descriptorSetUpdateAfterSetStorageTextureMaxNum = props12.maxDescriptorSetUpdateAfterBindStorageImages;
+
+        m_Desc.perStageDescriptorUpdateAfterSetSamplerMaxNum = props12.maxPerStageDescriptorUpdateAfterBindSamplers;
+        m_Desc.perStageDescriptorUpdateAfterSetConstantBufferMaxNum = props12.maxPerStageDescriptorUpdateAfterBindUniformBuffers;
+        m_Desc.perStageDescriptorUpdateAfterSetStorageBufferMaxNum = props12.maxPerStageDescriptorUpdateAfterBindStorageBuffers;
+        m_Desc.perStageDescriptorUpdateAfterSetTextureMaxNum = props12.maxPerStageDescriptorUpdateAfterBindSampledImages;
+        m_Desc.perStageDescriptorUpdateAfterSetStorageTextureMaxNum = props12.maxPerStageDescriptorUpdateAfterBindStorageImages;
+        m_Desc.perStageUpdateAfterSetResourceMaxNum = props12.maxPerStageUpdateAfterBindResources;
 
         m_Desc.vertexShaderAttributeMaxNum = limits.maxVertexInputAttributes;
         m_Desc.vertexShaderStreamMaxNum = limits.maxVertexInputBindings;

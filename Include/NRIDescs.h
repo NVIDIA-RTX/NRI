@@ -451,6 +451,11 @@ NriBits(BufferUsageBits, uint16_t,               // Min compatible access:      
     MICROMAP_STORAGE                    = NriBit(11)  // MICROMAP_READ/WRITE                     (INTERNAL) micromap storage
 );
 
+NriBits(DescriptorPoolBits, uint8_t,
+    NONE                                = 0,
+    ALLOW_UPDATE_AFTER_SET              = NriBit(1) // allows "DescriptorSetBits::ALLOW_UPDATE_AFTER_SET"
+);
+
 // Resources
 NriStruct(TextureDesc) {
     Nri(TextureType) type;
@@ -527,6 +532,7 @@ NriStruct(DescriptorPoolDesc) {
     uint32_t structuredBufferMaxNum;
     uint32_t storageStructuredBufferMaxNum;
     uint32_t accelerationStructureMaxNum;
+    Nri(DescriptorPoolBits) flags;
 };
 
 #pragma endregion
@@ -572,14 +578,26 @@ Pipeline layout example:
     RootDescriptorDesc              #1
 */
 
-// "DescriptorRange" consists of "Descriptor" entities
-NriBits(DescriptorRangeBits, uint8_t,
-    NONE                    = 0,
-    PARTIALLY_BOUND         = NriBit(0), // descriptors in range may not contain valid descriptors at the time the descriptors are consumed (but referenced descriptors must be valid)
-    ARRAY                   = NriBit(1), // descriptors in range are organized into an array
-    VARIABLE_SIZED_ARRAY    = NriBit(2)  // descriptors in range are organized into a variable-sized array, whose size is specified via "variableDescriptorNum" argument of "AllocateDescriptorSets" function
+NriBits(PipelineLayoutBits, uint8_t,
+    NONE                                    = 0,
+    IGNORE_GLOBAL_SPIRV_OFFSETS             = NriBit(0),
+    ENABLE_D3D12_DRAW_PARAMETERS_EMULATION  = NriBit(1)  // (D3D12 only) enable draw parameters emulation, not needed if all vertex shaders for this layout compiled with SM 6.8 (native support)
 );
 
+NriBits(DescriptorSetBits, uint8_t,
+    NONE                                    = 0,
+    ALLOW_UPDATE_AFTER_SET                  = NriBit(1)  // allows "DescriptorRangeBits::ALLOW_UPDATE_AFTER_SET"
+);
+
+NriBits(DescriptorRangeBits, uint8_t,
+    NONE                                    = 0,
+    PARTIALLY_BOUND                         = NriBit(0), // descriptors in range may not contain valid descriptors at the time the descriptors are consumed (but referenced descriptors must be valid)
+    ARRAY                                   = NriBit(1), // descriptors in range are organized into an array
+    VARIABLE_SIZED_ARRAY                    = NriBit(2), // descriptors in range are organized into a variable-sized array, which size is specified via "variableDescriptorNum" argument of "AllocateDescriptorSets" function
+    ALLOW_UPDATE_AFTER_SET                  = NriBit(3)  // descriptors in range can be updated after "CmdSetDescriptorSet" but before "QueueSubmit", also works as "DATA_VOLATILE"
+);
+
+// "DescriptorRange" consists of "Descriptor" entities
 NriStruct(DescriptorRangeDesc) {
     uint32_t baseRegisterIndex;
     uint32_t descriptorNum; // treated as max size if "VARIABLE_SIZED_ARRAY" flag is set
@@ -600,6 +618,7 @@ NriStruct(DescriptorSetDesc) {
     uint32_t rangeNum;
     const NriPtr(DynamicConstantBufferDesc) dynamicConstantBuffers; // a dynamic constant buffer allows to dynamically specify an offset in the buffer via "CmdSetDescriptorSet" call
     uint32_t dynamicConstantBufferNum;
+    Nri(DescriptorSetBits) flags;
 };
 
 // "PipelineLayout" consists of "DescriptorSet" descriptions and root parameters
@@ -624,8 +643,7 @@ NriStruct(PipelineLayoutDesc) {
     const NriPtr(DescriptorSetDesc) descriptorSets;
     uint32_t descriptorSetNum;
     Nri(StageBits) shaderStages;
-    bool ignoreGlobalSPIRVOffsets;
-    bool enableD3D12DrawParametersEmulation; // enable draw parameters emulation, not needed if all vertex shaders for this layout compiled with SM 6.8 (native support)
+    Nri(PipelineLayoutBits) flags;
 };
 
 // Updating descriptors
@@ -1424,6 +1442,12 @@ NriStruct(DeviceDesc) {
     uint32_t descriptorSetTextureMaxNum;
     uint32_t descriptorSetStorageTextureMaxNum;
 
+    uint32_t descriptorSetUpdateAfterSetSamplerMaxNum;
+    uint32_t descriptorSetUpdateAfterSetConstantBufferMaxNum;
+    uint32_t descriptorSetUpdateAfterSetStorageBufferMaxNum;
+    uint32_t descriptorSetUpdateAfterSetTextureMaxNum;
+    uint32_t descriptorSetUpdateAfterSetStorageTextureMaxNum;
+
     // Shader resources
     uint32_t perStageDescriptorSamplerMaxNum;
     uint32_t perStageDescriptorConstantBufferMaxNum;
@@ -1431,6 +1455,13 @@ NriStruct(DeviceDesc) {
     uint32_t perStageDescriptorTextureMaxNum;
     uint32_t perStageDescriptorStorageTextureMaxNum;
     uint32_t perStageResourceMaxNum;
+
+    uint32_t perStageDescriptorUpdateAfterSetSamplerMaxNum;
+    uint32_t perStageDescriptorUpdateAfterSetConstantBufferMaxNum;
+    uint32_t perStageDescriptorUpdateAfterSetStorageBufferMaxNum;
+    uint32_t perStageDescriptorUpdateAfterSetTextureMaxNum;
+    uint32_t perStageDescriptorUpdateAfterSetStorageTextureMaxNum;
+    uint32_t perStageUpdateAfterSetResourceMaxNum;
 
     // Vertex shader
     uint32_t vertexShaderAttributeMaxNum;

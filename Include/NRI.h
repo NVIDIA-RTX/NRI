@@ -37,7 +37,7 @@ Implicit:
 
 #define NRI_VERSION_MAJOR 1
 #define NRI_VERSION_MINOR 165
-#define NRI_VERSION_DATE "25 March 2025"
+#define NRI_VERSION_DATE "8 April 2025"
 
 #include "NRIDescs.h"
 
@@ -140,7 +140,10 @@ NriStruct(CoreInterface) {
         void                (NRI_CALL *CmdSetPipelineLayout)        (NriRef(CommandBuffer) commandBuffer, const NriRef(PipelineLayout) pipelineLayout);
         void                (NRI_CALL *CmdSetPipeline)              (NriRef(CommandBuffer) commandBuffer, const NriRef(Pipeline) pipeline);
 
-        // Setup (expects "CmdSetPipelineLayout" to be called first, descriptor sets updates must be completed before this point)
+        // Setup
+        // - expects "CmdSetPipelineLayout" to be called first
+        // - if "ALLOW_UPDATE_AFTER_SET" not used, descriptor sets (and data pointed to by descriptors) must be updated before "CmdSetDescriptorSet"
+        // - if "ALLOW_UPDATE_AFTER_SET" used, descriptor sets (and data pointed to by descriptors) can be updated after "CmdSetDescriptorSet"
         void                (NRI_CALL *CmdSetDescriptorSet)         (NriRef(CommandBuffer) commandBuffer, uint32_t setIndex, const NriRef(DescriptorSet) descriptorSet, const uint32_t* dynamicConstantBufferOffsets); // expects dynamic constant buffer offsets as in the currently bound pipeline
         void                (NRI_CALL *CmdSetRootConstants)         (NriRef(CommandBuffer) commandBuffer, uint32_t rootConstantIndex, const void* data, uint32_t size); // requires "pipelineLayoutRootConstantMaxSize > 0"
         void                (NRI_CALL *CmdSetRootDescriptor)        (NriRef(CommandBuffer) commandBuffer, uint32_t rootDescriptorIndex, NriRef(Descriptor) descriptor); // requires "pipelineLayoutRootDescriptorMaxNum > 0"

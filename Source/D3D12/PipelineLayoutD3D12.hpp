@@ -84,7 +84,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     Scratch<D3D12_DESCRIPTOR_RANGE1> ranges = AllocateScratch(m_Device, D3D12_DESCRIPTOR_RANGE1, rangeMaxNum);
     Vector<D3D12_ROOT_PARAMETER1> rootParameters(allocator);
 
-    bool enableDrawParametersEmulation = pipelineLayoutDesc.enableD3D12DrawParametersEmulation && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
+    bool enableDrawParametersEmulation = (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_D3D12_DRAW_PARAMETERS_EMULATION) != 0 && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
 
     D3D12_ROOT_PARAMETER1 rootParameterLocal = {};
     if (enableDrawParametersEmulation) {
@@ -129,11 +129,21 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
             rootParameter.ShaderVisibility = shaderVisibility;
             rootParameter.DescriptorTable.pDescriptorRanges = &ranges[rangeNum];
 
+            // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#flags-added-in-root-signature-version-11
             D3D12_DESCRIPTOR_RANGE_FLAGS descriptorRangeFlags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
-            if (descriptorRangeDesc.flags & DescriptorRangeBits::PARTIALLY_BOUND) {
+
+            // "PARTIALLY_BOUND" implies relaxed requirements and validation
+            // "ALLOW_UPDATE_AFTER_SET" allows descriptor updates after "bind"
+            if (descriptorRangeDesc.flags & (DescriptorRangeBits::PARTIALLY_BOUND | DescriptorRangeBits::ALLOW_UPDATE_AFTER_SET))
                 descriptorRangeFlags |= D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE;
-                if (rangeType != D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER)
+
+            // "ALLOW_UPDATE_AFTER_SET" additionally allows to change data, pointed to by descriptors
+            // Samplers are always "DATA_STATIC"
+            if (rangeType != D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER) {
+                if (descriptorRangeDesc.flags & DescriptorRangeBits::ALLOW_UPDATE_AFTER_SET)
                     descriptorRangeFlags |= D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE;
+                else
+                    descriptorRangeFlags |= D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE;
             }
 
             D3D12_DESCRIPTOR_RANGE1& descriptorRange = ranges[rangeNum + groupedRangeNum];
@@ -154,7 +164,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
 
         if (descriptorSetDesc.dynamicConstantBufferNum) {
             rootParameterLocal.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-            rootParameterLocal.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE;
+            rootParameterLocal.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE; // TODO: better flags?
             m_DynamicConstantBufferMappings[i].rootConstantNum = (uint16_t)descriptorSetDesc.dynamicConstantBufferNum;
             m_DynamicConstantBufferMappings[i].rootOffset = (uint16_t)rootParameters.size();
 
@@ -202,7 +212,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
             rootParameterLocal.ShaderVisibility = GetShaderVisibility(rootDescriptorDesc.shaderStages);
             rootParameterLocal.Descriptor.ShaderRegister = rootDescriptorDesc.registerIndex;
             rootParameterLocal.Descriptor.RegisterSpace = pipelineLayoutDesc.rootRegisterSpace;
-            rootParameterLocal.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE;
+            rootParameterLocal.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE; // TODO: better flags?
 
             rootParameters.push_back(rootParameterLocal);
         }
