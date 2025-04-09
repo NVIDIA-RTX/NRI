@@ -427,7 +427,6 @@ void DeviceD3D11::FillDesc() {
 
     m_Desc.other.timestampFrequencyHz = timestampFrequency;
     m_Desc.other.drawIndirectMaxNum = (1ull << D3D11_REQ_DRAWINDEXED_INDEX_COUNT_2_TO_EXP) - 1;
-    m_Desc.other.samplerLodBiasMin = D3D11_MIP_LOD_BIAS_MIN;
     m_Desc.other.samplerLodBiasMax = D3D11_MIP_LOD_BIAS_MAX;
     m_Desc.other.samplerAnisotropyMax = D3D11_DEFAULT_MAX_ANISOTROPY;
     m_Desc.other.texelOffsetMin = D3D11_COMMONSHADER_TEXEL_OFFSET_MAX_NEGATIVE;

@@ -656,10 +656,8 @@ void DeviceD3D12::FillDesc() {
     m_Desc.shaderStage.meshEvaluation.workGroupInvocationMaxNum = 128;
 
     m_Desc.other.timestampFrequencyHz = timestampFrequency;
-    m_Desc.other.rayTracingGeometryObjectMaxNum = (1 << 24) - 1;
     //m_Desc.other.micromapSubdivisionMaxLevel = D3D12_RAYTRACING_OPACITY_MICROMAP_OC1_MAX_SUBDIVISION_LEVEL;
     m_Desc.other.drawIndirectMaxNum = (1ull << D3D12_REQ_DRAWINDEXED_INDEX_COUNT_2_TO_EXP) - 1;
-    m_Desc.other.samplerLodBiasMin = D3D12_MIP_LOD_BIAS_MIN;
     m_Desc.other.samplerLodBiasMax = D3D12_MIP_LOD_BIAS_MAX;
     m_Desc.other.samplerAnisotropyMax = D3D12_DEFAULT_MAX_ANISOTROPY;
     m_Desc.other.texelOffsetMin = D3D12_COMMONSHADER_TEXEL_OFFSET_MAX_NEGATIVE;

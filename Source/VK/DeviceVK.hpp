@@ -1052,20 +1052,18 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.shaderStage.meshEvaluation.workGroupInvocationMaxNum = meshShaderProps.maxMeshWorkGroupInvocations;
 
         m_Desc.other.timestampFrequencyHz = uint64_t(1e9 / double(limits.timestampPeriod) + 0.5);
-        m_Desc.other.rayTracingGeometryObjectMaxNum = (uint32_t)accelerationStructureProps.maxGeometryCount;
         m_Desc.other.micromapSubdivisionMaxLevel = micromapProps.maxOpacity2StateSubdivisionLevel;
         m_Desc.other.drawIndirectMaxNum = limits.maxDrawIndirectCount;
-        m_Desc.other.samplerLodBiasMin = -limits.maxSamplerLodBias;
         m_Desc.other.samplerLodBiasMax = limits.maxSamplerLodBias;
         m_Desc.other.samplerAnisotropyMax = limits.maxSamplerAnisotropy;
-        m_Desc.other.texelOffsetMin = limits.minTexelOffset;
-        m_Desc.other.texelOffsetMax = limits.maxTexelOffset;
-        m_Desc.other.texelGatherOffsetMin = limits.minTexelGatherOffset;
-        m_Desc.other.texelGatherOffsetMax = limits.maxTexelGatherOffset;
-        m_Desc.other.clipDistanceMaxNum = limits.maxClipDistances;
-        m_Desc.other.cullDistanceMaxNum = limits.maxCullDistances;
-        m_Desc.other.combinedClipAndCullDistanceMaxNum = limits.maxCombinedClipAndCullDistances;
-        m_Desc.other.viewMaxNum = features11.multiview ? props11.maxMultiviewViewCount : 1;
+        m_Desc.other.texelOffsetMin = (int8_t)limits.minTexelOffset;
+        m_Desc.other.texelOffsetMax = (uint8_t)limits.maxTexelOffset;
+        m_Desc.other.texelGatherOffsetMin = (int8_t)limits.minTexelGatherOffset;
+        m_Desc.other.texelGatherOffsetMax = (uint8_t)limits.maxTexelGatherOffset;
+        m_Desc.other.clipDistanceMaxNum = (uint8_t)limits.maxClipDistances;
+        m_Desc.other.cullDistanceMaxNum = (uint8_t)limits.maxCullDistances;
+        m_Desc.other.combinedClipAndCullDistanceMaxNum = (uint8_t)limits.maxCombinedClipAndCullDistances;
+        m_Desc.other.viewMaxNum = features11.multiview ? (uint8_t)props11.maxMultiviewViewCount : 1;
         m_Desc.other.shadingRateAttachmentTileSize = (uint8_t)shadingRateProps.minFragmentShadingRateAttachmentTexelSize.width;
 
         if (m_Desc.tiers.conservativeRaster) {

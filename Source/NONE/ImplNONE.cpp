@@ -145,10 +145,8 @@ struct DeviceNONE final : public DeviceBase {
         m_Desc.shaderStage.meshEvaluation.workGroupInvocationMaxNum = 128;
 
         m_Desc.other.timestampFrequencyHz = 1;
-        m_Desc.other.rayTracingGeometryObjectMaxNum = (uint32_t)(-1);
         m_Desc.other.micromapSubdivisionMaxLevel = 12;
         m_Desc.other.drawIndirectMaxNum = uint32_t(-1);
-        m_Desc.other.samplerLodBiasMin = -16.0f;
         m_Desc.other.samplerLodBiasMax = 16.0f;
         m_Desc.other.samplerAnisotropyMax = 16;
         m_Desc.other.texelOffsetMin = -8;

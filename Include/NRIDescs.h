@@ -1564,20 +1564,18 @@ NriStruct(DeviceDesc) {
     // Other
     struct {
         uint64_t timestampFrequencyHz;
-        uint32_t rayTracingGeometryObjectMaxNum;
         uint32_t micromapSubdivisionMaxLevel;
         uint32_t drawIndirectMaxNum;
-        float samplerLodBiasMin;
         float samplerLodBiasMax;
         float samplerAnisotropyMax;
-        int32_t texelOffsetMin;
-        uint32_t texelOffsetMax;
-        int32_t texelGatherOffsetMin;
-        uint32_t texelGatherOffsetMax;
-        uint32_t clipDistanceMaxNum;
-        uint32_t cullDistanceMaxNum;
-        uint32_t combinedClipAndCullDistanceMaxNum;
-        uint32_t viewMaxNum;                        // aka multiview
+        int8_t texelOffsetMin;
+        uint8_t texelOffsetMax;
+        int8_t texelGatherOffsetMin;
+        uint8_t texelGatherOffsetMax;
+        uint8_t clipDistanceMaxNum;
+        uint8_t cullDistanceMaxNum;
+        uint8_t combinedClipAndCullDistanceMaxNum;
+        uint8_t viewMaxNum;                         // multiview is supported if > 1
         uint8_t shadingRateAttachmentTileSize;      // square size
     } other;
 
@@ -1650,8 +1648,8 @@ NriStruct(DeviceDesc) {
         uint32_t atomicsF32                                      : 1; // "float" atomics (can be partial support of SMEM, texture or buffer atomics)
         uint32_t atomicsI64                                      : 1; // "(u)int64_t" atomics (can be partial support of SMEM, texture or buffer atomics)
         uint32_t atomicsF64                                      : 1; // "double" atomics (can be partial support of SMEM, texture or buffer atomics)
-        uint32_t viewportIndex                                   : 1; // always can be used from geometry shaders
-        uint32_t layerIndex                                      : 1; // always can be used from geometry shaders
+        uint32_t viewportIndex                                   : 1; // always can be used in geometry shaders
+        uint32_t layerIndex                                      : 1; // always can be used in geometry shaders
         uint32_t clock                                           : 1; // shader clock (timer)
         uint32_t rasterizedOrderedView                           : 1; // ROV, aka fragment shader interlock
         uint32_t barycentric                                     : 1; // barycentric coordinates
