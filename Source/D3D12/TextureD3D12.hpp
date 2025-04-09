@@ -35,15 +35,12 @@ Result TextureD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset) {
 
         const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_COMMON;
         bool isRenderableSurface = desc1.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
-        uint32_t castableFormatNum = 0;
-        DXGI_FORMAT* castableFormats = nullptr; // TODO: add castable formats, see options12.RelaxedFormatCastingSupported
 
         if (memory->IsDummy()) {
-            HRESULT hr = m_Device->CreateCommittedResource3(&heapDesc.Properties, heapFlagsFixed, &desc1, initialLayout, isRenderableSurface ? &clearValue : nullptr, nullptr,
-                castableFormatNum, castableFormats, IID_PPV_ARGS(&m_Texture));
+            HRESULT hr = m_Device->CreateCommittedResource3(&heapDesc.Properties, heapFlagsFixed, &desc1, initialLayout, isRenderableSurface ? &clearValue : nullptr, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Texture));
             RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreateCommittedResource3()");
         } else {
-            HRESULT hr = m_Device->CreatePlacedResource2(*memory, offset, &desc1, initialLayout, isRenderableSurface ? &clearValue : nullptr, castableFormatNum, castableFormats, IID_PPV_ARGS(&m_Texture));
+            HRESULT hr = m_Device->CreatePlacedResource2(*memory, offset, &desc1, initialLayout, isRenderableSurface ? &clearValue : nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Texture));
             RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreatePlacedResource2()");
         }
     } else
