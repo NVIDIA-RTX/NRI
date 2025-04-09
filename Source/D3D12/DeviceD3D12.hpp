@@ -677,6 +677,11 @@ void DeviceD3D12::FillDesc() {
     else if (levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_12_0)
         m_Desc.tiers.bindless = 1;
 
+    if (options.ResourceBindingTier == D3D12_RESOURCE_BINDING_TIER_3)
+        m_Desc.tiers.resourceBinding = 2;
+    else if (options.ResourceBindingTier == D3D12_RESOURCE_BINDING_TIER_2)
+        m_Desc.tiers.resourceBinding = 1;
+
     m_Desc.features.getMemoryDesc2 = true;
     m_Desc.features.swapChain = HasOutput();
     m_Desc.features.lowLatency = HasNvExt();

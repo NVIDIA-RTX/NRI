@@ -1081,7 +1081,9 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.tiers.rayTracing = accelerationStructureFeatures.accelerationStructure != 0;
         if (m_Desc.tiers.rayTracing) {
             if (rayTracingPipelineFeatures.rayTracingPipelineTraceRaysIndirect && rayQueryFeatures.rayQuery)
-                m_Desc.tiers.rayTracing = 2;
+                m_Desc.tiers.rayTracing++;
+            if (micromapFeatures.micromap)
+                m_Desc.tiers.rayTracing++;
         }
 
         m_Desc.tiers.shadingRate = shadingRateFeatures.pipelineFragmentShadingRate != 0;
@@ -1093,6 +1095,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         }
 
         m_Desc.tiers.bindless = m_IsSupported.descriptorIndexing ? 1 : 0;
+        m_Desc.tiers.resourceBinding = 2; // TODO: seems to be the best match
         m_Desc.tiers.memory = 1; // TODO: seems to be the best match
 
         m_Desc.features.getMemoryDesc2 = m_IsSupported.maintenance4;

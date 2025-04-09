@@ -1592,6 +1592,7 @@ NriStruct(DeviceDesc) {
 
         // 1 - DXR 1.0: full raytracing functionality, except features below
         // 2 - DXR 1.1: adds - ray query, "CmdDispatchRaysIndirect", "GeometryIndex()" intrinsic, additional ray flags & vertex formats
+        // 3 - DXR 1.2: adds - micromap, shader execution reordering
         uint8_t rayTracing;
 
         // 1 - shading rate can be specified only per draw
@@ -1601,6 +1602,11 @@ NriStruct(DeviceDesc) {
         // 1 - unbound arrays with dynamic indexing
         // 2 - D3D12 dynamic resources: https://microsoft.github.io/DirectX-Specs/d3d/HLSL_SM_6_6_DynamicResources.html
         uint8_t bindless;
+
+        // 0 - ALL descriptors in range must be valid by the time the command list executes
+        // 1 - only "CONSTANT_BUFFER" and "STORAGE" descriptors in range must be valid
+        // 2 - only referenced descriptors must be valid
+        uint8_t resourceBinding;
 
         // 1 - a "Memory" can support resources from all 3 categories: buffers, attachments, all other textures
         uint8_t memory;
