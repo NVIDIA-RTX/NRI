@@ -1,7 +1,7 @@
 // © 2024 NVIDIA Corporation
 
-#ifndef NRI_COMPATIBILITY_HLSLI
-#define NRI_COMPATIBILITY_HLSLI
+#ifndef NRI_HLSL
+#define NRI_HLSL
 
 /*
 USAGE:

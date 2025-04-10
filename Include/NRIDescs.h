@@ -1257,8 +1257,16 @@ NriStruct(ClearStorageDesc) {
     uint32_t descriptorIndex;
 };
 
-// Command signatures (default)
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region [ Command signatures ]
+//============================================================================================================================================================================================
+
 // To fill commands for indirect drawing in a shader use one of "NRI_FILL_X_DESC" macros
+
+// Command signatures (default)
+
 NriStruct(DrawDesc) { // see NRI_FILL_DRAW_COMMAND
     uint32_t vertexNum;
     uint32_t instanceNum;
@@ -1279,9 +1287,11 @@ NriStruct(DispatchDesc) {
 };
 
 // Modified draw command signatures (D3D12 only)
-//  If "DeviceDesc::isDrawParametersEmulationEnabled = true" (emulation globally enabled and allowed) and if a shader has "PipelineLayout::enableDrawParametersEmulation = true" (emulation requested)
+
+//  If the bound pipeline layout has "PipelineLayoutBits::ENABLE_D3D12_DRAW_PARAMETERS_EMULATION" (emulation requested)
 //  - the following structs must be used instead
 // - "NRI_ENABLE_DRAW_PARAMETERS_EMULATION" must be defined prior inclusion of "NRI.hlsl"
+
 NriStruct(DrawBaseDesc) { // see NRI_FILL_DRAW_COMMAND
     uint32_t shaderEmulatedBaseVertex; // root constant
     uint32_t shaderEmulatedBaseInstance; // root constant
