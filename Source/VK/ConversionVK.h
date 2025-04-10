@@ -430,7 +430,7 @@ constexpr VkPipelineStageFlags2 GetPipelineStageFlags(StageBits stageBits) {
         flags |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
 
     if (stageBits & StageBits::ACCELERATION_STRUCTURE)
-        flags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+        flags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR; // already includes "VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR" (more strict according to the spec)
 
     if (stageBits & StageBits::MICROMAP)
         flags |= VK_PIPELINE_STAGE_2_MICROMAP_BUILD_BIT_EXT;

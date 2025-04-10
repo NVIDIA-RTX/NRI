@@ -773,6 +773,9 @@ static inline VkAccessFlags2 GetAccessFlags(AccessBits accessBits) {
     if (accessBits & AccessBits::MICROMAP_WRITE)
         flags |= VK_ACCESS_2_MICROMAP_WRITE_BIT_EXT;
 
+    if (accessBits & AccessBits::SHADER_BINDING_TABLE)
+        flags |= VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR;
+
     if (accessBits & AccessBits::SHADER_RESOURCE)
         flags |= VK_ACCESS_2_SHADER_READ_BIT;
 

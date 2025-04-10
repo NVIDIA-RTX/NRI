@@ -103,11 +103,21 @@ static void VKAPI_PTR vkFreeHostMemory(void* pUserData, void* pMemory) {
 }
 
 static VkBool32 VKAPI_PTR MessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT, const VkDebugUtilsMessengerCallbackDataEXT* callbackData, void* userData) {
+    DeviceVK& device = *(DeviceVK*)userData;
+
     // TODO: some messages can be muted here
-    if (callbackData->messageIdNumber == 0) // loader info message
-        return VK_FALSE;
-    if (callbackData->messageIdNumber == 0x76589099) // Validation Warning: [ WARNING-DEBUG-PRINTF ] Internal Warning: Setting VkPhysicalDeviceVulkan12Properties::maxUpdateAfterBindDescriptorsInAllPools to 32
-        return VK_FALSE;
+    { 
+        // Loader info message
+        if (callbackData->messageIdNumber == 0)
+            return VK_FALSE;
+        // Validation Warning: [ WARNING-DEBUG-PRINTF ] Internal Warning: Setting VkPhysicalDeviceVulkan12Properties::maxUpdateAfterBindDescriptorsInAllPools to 32
+        if (callbackData->messageIdNumber == 0x76589099)
+            return VK_FALSE;
+        // The storage image descriptor is accessed by a OpTypeImage that has a Format operand which doesn't match the VkImageView format
+        // TODO: there is no way to enable "storageWithoutFormat" capability in SPIRV in the current version of DXC, so ignore the warning if this feature is supported by the device
+        if (callbackData->messageIdNumber == 0x013365B2 && device.m_IsSupported.storageWithoutFormat)
+            return VK_FALSE;
+    }
 
     Message severity = Message::INFO;
     if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
@@ -115,7 +125,6 @@ static VkBool32 VKAPI_PTR MessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT
     else if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
         severity = Message::WARNING;
 
-    DeviceVK& device = *(DeviceVK*)userData;
     device.ReportMessage(severity, __FILE__, __LINE__, "%s", callbackData->pMessage);
 
     return VK_FALSE;
@@ -730,6 +739,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.robustness = features.features.robustBufferAccess != 0 && (imageRobustnessFeatures.robustImageAccess != 0 || features13.robustImageAccess != 0);
     m_IsSupported.robustness2 = robustness2Features.robustBufferAccess2 != 0 && robustness2Features.robustImageAccess2 != 0;
     m_IsSupported.pipelineRobustness = pipelineRobustnessFeatures.pipelineRobustness;
+    m_IsSupported.storageWithoutFormat = features.features.shaderStorageImageWriteWithoutFormat != 0 && features.features.shaderStorageImageReadWithoutFormat != 0;
 
     { // Check hard requirements
         bool hasDynamicRendering = features13.dynamicRendering != 0 || (dynamicRenderingFeatures.dynamicRendering != 0 && extendedDynamicStateFeatures.extendedDynamicState != 0);
@@ -1096,7 +1106,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
         m_Desc.tiers.bindless = m_IsSupported.descriptorIndexing ? 1 : 0;
         m_Desc.tiers.resourceBinding = 2; // TODO: seems to be the best match
-        m_Desc.tiers.memory = 1; // TODO: seems to be the best match
+        m_Desc.tiers.memory = 1;          // TODO: seems to be the best match
 
         m_Desc.features.getMemoryDesc2 = m_IsSupported.maintenance4;
         m_Desc.features.enchancedBarrier = true;

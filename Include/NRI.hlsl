@@ -49,7 +49,7 @@ Draw parameters:
         NRI_BASE_VERTEX and NRI_BASE_INSTANCE - base vertex / instance from a "Draw" call
         NRI_VERTEX_ID_OFFSET and NRI_INSTANCE_ID_OFFSET - start from "base" vertex / instance
     - To fill commands for indirect drawing in a shader use one of "NRI_FILL_X_DESC" macros
-    - "NRI_ENABLE_DRAW_PARAMETERS_EMULATION" must be defined prior inclusion of "NRICompatibility.hlsli"
+    - "NRI_ENABLE_DRAW_PARAMETERS_EMULATION" must be defined prior inclusion of "NRI.hlsl"
       for pipelines expecting emulation
 */
 
@@ -165,6 +165,9 @@ Draw parameters:
     #define NRI_BLEND_SOURCE(source) \
         [[vk::location(0)]] [[vk::index(source)]]
 
+    #define NRI_FORMAT(format) \
+        [[vk::image_format(format)]]
+
     // Draw parameters (full support, requires SPV_KHR_shader_draw_parameters)
     #define NRI_ENABLE_DRAW_PARAMETERS
 
@@ -188,6 +191,7 @@ Draw parameters:
         ConstantBuffer<structName> name : register(NRI_MERGE_TOKENS(b, bindingIndex), NRI_MERGE_TOKENS(space, setIndex))
 
     #define NRI_BLEND_SOURCE(source)
+    #define NRI_FORMAT(format)
 
     // Draw parameters
     #if (NRI_SHADER_MODEL < 68)
@@ -250,6 +254,7 @@ Draw parameters:
         }
 
     #define NRI_BLEND_SOURCE(source)
+    #define NRI_FORMAT(format)
 
     // Draw parameters (partial support)
     #define NRI_ENABLE_DRAW_PARAMETERS

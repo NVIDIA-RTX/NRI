@@ -66,7 +66,7 @@ NriEnum(MicromapSpecialIndex, int8_t,
     FULLY_UNKNOWN_OPAQUE        = -4  // specifies that the entire triangle is unknown-opaque
 );
 
-NriBits(MicromapBits, uint8_t,  
+NriBits(MicromapBits, uint8_t,
     NONE                        = 0,
     ALLOW_COMPACTION            = NriBit(1), // allows to compact the micromap by copying using "COMPACT" mode
     PREFER_FAST_TRACE           = NriBit(2), // prioritize traversal performance over build time
@@ -356,20 +356,20 @@ NriStruct(RayTracingInterface) {
 
     // Command buffer
     // {
-            // Build or update
+            // Micromap
+            void    (NRI_CALL *CmdBuildMicromaps)                                   (NriRef(CommandBuffer) commandBuffer, const NriPtr(BuildMicromapDesc) buildMicromapDescs, uint32_t buildMicromapDescNum);
+            void    (NRI_CALL *CmdWriteMicromapsSizes)                              (NriRef(CommandBuffer) commandBuffer, const NriPtr(Micromap) const* micromaps, uint32_t micromapNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
+            void    (NRI_CALL *CmdCopyMicromap)                                     (NriRef(CommandBuffer) commandBuffer, NriRef(Micromap) dst, const NriRef(Micromap) src, Nri(CopyMode) copyMode);
+
+            // Acceleration structure
             void    (NRI_CALL *CmdBuildTopLevelAccelerationStructures)              (NriRef(CommandBuffer) commandBuffer, const NriPtr(BuildTopLevelAccelerationStructureDesc) buildTopLevelAccelerationStructureDescs, uint32_t buildTopLevelAccelerationStructureDescNum);
             void    (NRI_CALL *CmdBuildBottomLevelAccelerationStructures)           (NriRef(CommandBuffer) commandBuffer, const NriPtr(BuildBottomLevelAccelerationStructureDesc) buildBotomLevelAccelerationStructureDescs, uint32_t buildBotomLevelAccelerationStructureDescNum);
-            void    (NRI_CALL *CmdBuildMicromaps)                                   (NriRef(CommandBuffer) commandBuffer, const NriPtr(BuildMicromapDesc) buildMicromapDescs, uint32_t buildMicromapDescNum);
+            void    (NRI_CALL *CmdWriteAccelerationStructuresSizes)                 (NriRef(CommandBuffer) commandBuffer, const NriPtr(AccelerationStructure) const* accelerationStructures, uint32_t accelerationStructureNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
+            void    (NRI_CALL *CmdCopyAccelerationStructure)                        (NriRef(CommandBuffer) commandBuffer, NriRef(AccelerationStructure) dst, const NriRef(AccelerationStructure) src, Nri(CopyMode) copyMode);
 
             // Ray tracing
             void    (NRI_CALL *CmdDispatchRays)                                     (NriRef(CommandBuffer) commandBuffer, const NriRef(DispatchRaysDesc) dispatchRaysDesc);
             void    (NRI_CALL *CmdDispatchRaysIndirect)                             (NriRef(CommandBuffer) commandBuffer, const NriRef(Buffer) buffer, uint64_t offset); // buffer contains "DispatchRaysIndirectDesc" commands
-
-            // Copy
-            void    (NRI_CALL *CmdWriteAccelerationStructuresSizes)                 (NriRef(CommandBuffer) commandBuffer, const NriPtr(AccelerationStructure) const* accelerationStructures, uint32_t accelerationStructureNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
-            void    (NRI_CALL *CmdWriteMicromapsSizes)                              (NriRef(CommandBuffer) commandBuffer, const NriPtr(Micromap) const* micromaps, uint32_t micromapNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
-            void    (NRI_CALL *CmdCopyAccelerationStructure)                        (NriRef(CommandBuffer) commandBuffer, NriRef(AccelerationStructure) dst, const NriRef(AccelerationStructure) src, Nri(CopyMode) copyMode);
-            void    (NRI_CALL *CmdCopyMicromap)                                     (NriRef(CommandBuffer) commandBuffer, NriRef(Micromap) dst, const NriRef(Micromap) src, Nri(CopyMode) copyMode);
     // }
 
     // Native object

@@ -22,6 +22,7 @@ struct IsSupported {
     uint32_t robustness : 1;
     uint32_t robustness2 : 1;
     uint32_t pipelineRobustness : 1;
+    uint32_t storageWithoutFormat : 1;
 };
 
 static_assert(sizeof(IsSupported) == sizeof(uint32_t), "4 bytes expected");

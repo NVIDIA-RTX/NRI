@@ -321,7 +321,7 @@ if(NRI_ENABLE_D3D_EXTENSIONS)
         "${amdags_SOURCE_DIR}/ags_lib/hlsl/*.hlsl"
     )
     source_group("External/amdags" FILES ${AMDAGS_HEADERS})
-    set_property(SOURCE ${AMDAGS_HEADERS} PROPERTY VS_SETTINGS "ExcludedFromBuild=true")
+    set_source_files_properties(${AMDAGS_HEADERS} PROPERTIES VS_TOOL_OVERRIDE "None")
 endif()
 
 # NONE
@@ -546,8 +546,9 @@ set_property(TARGET NRI_Shared PROPERTY FOLDER ${PROJECT_NAME})
 # NRI
 file(GLOB NRI_HEADERS
     "Include/*.h"
-    "Include/*.hpp"
+    "Include/*.hlsl"
 )
+set_source_files_properties(${NRI_HEADERS} PROPERTIES VS_TOOL_OVERRIDE "None")
 source_group("Include" FILES ${NRI_HEADERS})
 
 file(GLOB NRI_EXTENSIONS

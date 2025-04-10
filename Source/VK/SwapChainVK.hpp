@@ -149,21 +149,56 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkGetPhysicalDeviceSurfaceFormats2KHR returned %d", (int32_t)result);
 
         auto priority_BT709_G22_16BIT = [](const VkSurfaceFormat2KHR& s) -> uint32_t {
-            return ((s.surfaceFormat.format == VK_FORMAT_R16G16B16A16_SFLOAT) << 0) | ((s.surfaceFormat.colorSpace == VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT) << 1);
+            if (s.surfaceFormat.format != VK_FORMAT_R16G16B16A16_SFLOAT)
+                return 0;
+
+            uint32_t priority = s.surfaceFormat.colorSpace == VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT ? 20 : 10;
+
+            return priority;
         };
 
         auto priority_BT709_G22_8BIT = [](const VkSurfaceFormat2KHR& s) -> uint32_t {
             // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceSurfaceFormatsKHR.html
             // There is always a corresponding UNORM, SRGB just need to consider UNORM
-            return ((s.surfaceFormat.format == VK_FORMAT_R8G8B8A8_UNORM || s.surfaceFormat.format == VK_FORMAT_B8G8R8A8_UNORM) << 0) | ((s.surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) << 1);
+            uint32_t priority = 0;
+            if (s.surfaceFormat.format == VK_FORMAT_R8G8B8A8_UNORM)
+                priority = 4;
+            else if (s.surfaceFormat.format == VK_FORMAT_B8G8R8A8_UNORM)
+                priority = 3;
+            else if (s.surfaceFormat.format == VK_FORMAT_R8G8B8A8_SRGB)
+                priority = 2;
+            else if (s.surfaceFormat.format == VK_FORMAT_B8G8R8A8_SRGB)
+                priority = 1;
+            else
+                return 0;
+
+            priority += s.surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR ? 10 : 0;
+
+            return priority;
         };
 
         auto priority_BT709_G22_10BIT = [](const VkSurfaceFormat2KHR& s) -> uint32_t {
-            return ((s.surfaceFormat.format == VK_FORMAT_A2B10G10R10_UNORM_PACK32) << 0) | ((s.surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) << 1);
+            uint32_t priority = 0;
+            if (s.surfaceFormat.format == VK_FORMAT_A2B10G10R10_UNORM_PACK32)
+                priority = 1;
+            else
+                return 0;
+
+            priority += s.surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR ? 10 : 0;
+
+            return priority;
         };
 
         auto priority_BT2020_G2084_10BIT = [](const VkSurfaceFormat2KHR& s) -> uint32_t {
-            return ((s.surfaceFormat.format == VK_FORMAT_A2B10G10R10_UNORM_PACK32) << 0) | ((s.surfaceFormat.colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT) << 1);
+            uint32_t priority = 0;
+            if (s.surfaceFormat.format == VK_FORMAT_A2B10G10R10_UNORM_PACK32)
+                priority = 1;
+            else
+                return 0;
+
+            priority += s.surfaceFormat.colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT ? 10 : 0;
+
+            return priority;
         };
 
         switch (swapChainDesc.format) {

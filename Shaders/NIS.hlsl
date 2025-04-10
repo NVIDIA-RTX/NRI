@@ -22,7 +22,7 @@
     #define NIS_BLOCK_HEIGHT            24
 #endif
 
-#include "../Include/NRICompatibility.hlsli"
+#include "../Include/NRI.hlsl"
 
 struct Constants { // see NIS.h
     float detectRatio;

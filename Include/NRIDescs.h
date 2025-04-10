@@ -111,17 +111,17 @@ NriEnum(Format, uint8_t,
     R8_UINT,                             // +  +  +  -  -  -  +  +  +  - // SHADING_RATE compatible, see NRI_SHADING_RATE macro
     R8_SINT,                             // +  +  +  -  -  -  +  +  +  -
 
-    RG8_UNORM,                           // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "tiers.rayTracing >= 2")
-    RG8_SNORM,                           // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "tiers.rayTracing >= 2")
+    RG8_UNORM,                           // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
+    RG8_SNORM,                           // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
     RG8_UINT,                            // +  +  +  -  -  -  +  +  +  -
     RG8_SINT,                            // +  +  +  -  -  -  +  +  +  -
 
     BGRA8_UNORM,                         // +  +  +  -  +  -  +  +  +  -
     BGRA8_SRGB,                          // +  -  +  -  +  -  -  -  -  -
 
-    RGBA8_UNORM,                         // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "tiers.rayTracing >= 2")
+    RGBA8_UNORM,                         // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
     RGBA8_SRGB,                          // +  -  +  -  +  -  -  -  -  -
-    RGBA8_SNORM,                         // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "tiers.rayTracing >= 2")
+    RGBA8_SNORM,                         // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
     RGBA8_UINT,                          // +  +  +  -  -  -  +  +  +  -
     RGBA8_SINT,                          // +  +  +  -  -  -  +  +  +  -
 
@@ -132,17 +132,17 @@ NriEnum(Format, uint8_t,
     R16_SINT,                            // +  +  +  -  -  -  +  +  +  -
     R16_SFLOAT,                          // +  +  +  -  +  -  +  +  +  -
 
-    RG16_UNORM,                          // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "tiers.rayTracing >= 2")
-    RG16_SNORM,                          // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible
+    RG16_UNORM,                          // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
+    RG16_SNORM,                          // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible
     RG16_UINT,                           // +  +  +  -  -  -  +  +  +  -
     RG16_SINT,                           // +  +  +  -  -  -  +  +  +  -
-    RG16_SFLOAT,                         // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible
+    RG16_SFLOAT,                         // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible
 
-    RGBA16_UNORM,                        // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "tiers.rayTracing >= 2")
-    RGBA16_SNORM,                        // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible
+    RGBA16_UNORM,                        // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
+    RGBA16_SNORM,                        // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible
     RGBA16_UINT,                         // +  +  +  -  -  -  +  +  +  -
     RGBA16_SINT,                         // +  +  +  -  -  -  +  +  +  -
-    RGBA16_SFLOAT,                       // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible
+    RGBA16_SFLOAT,                       // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible
 
     // Plain: 32 bits per channel
     R32_UINT,                            // +  +  +  -  -  +  +  +  +  +
@@ -151,11 +151,11 @@ NriEnum(Format, uint8_t,
 
     RG32_UINT,                           // +  +  +  -  -  -  +  +  +  -
     RG32_SINT,                           // +  +  +  -  -  -  +  +  +  -
-    RG32_SFLOAT,                         // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible
+    RG32_SFLOAT,                         // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible
 
     RGB32_UINT,                          // +  -  -  -  -  -  +  -  +  -
     RGB32_SINT,                          // +  -  -  -  -  -  +  -  +  -
-    RGB32_SFLOAT,                        // +  -  -  -  -  -  +  -  +  - // ACCELERATION_STRUCTURE compatible
+    RGB32_SFLOAT,                        // +  -  -  -  -  -  +  -  +  - // "AccelerationStructure" compatible
 
     RGBA32_UINT,                         // +  +  +  -  -  -  +  +  +  -
     RGBA32_SINT,                         // +  +  +  -  -  -  +  +  +  -
@@ -167,7 +167,7 @@ NriEnum(Format, uint8_t,
     B4_G4_R4_A4_UNORM,                   // +  -  +  -  +  -  -  -  -  -
 
     // Packed: 32 bits per pixel
-    R10_G10_B10_A2_UNORM,                // +  +  +  -  +  -  +  +  +  - // ACCELERATION_STRUCTURE compatible (requires "tiers.rayTracing >= 2")
+    R10_G10_B10_A2_UNORM,                // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
     R10_G10_B10_A2_UINT,                 // +  +  +  -  -  -  +  +  +  -
     R11_G11_B10_UFLOAT,                  // +  +  +  -  +  -  +  +  +  -
     R9_G9_B9_E5_UFLOAT,                  // +  -  -  -  -  -  -  -  -  -
@@ -254,8 +254,8 @@ NriBits(StageBits, uint32_t,
     ANY_HIT_SHADER                  = NriBit(15), //    Any hit shader
     CALLABLE_SHADER                 = NriBit(16), //    Callable shader
 
-    ACCELERATION_STRUCTURE          = NriBit(17), // Invoked by "CmdBuildAccelerationStructures"
-    MICROMAP                        = NriBit(18), // Invoked by "CmdBuildMicromaps"
+    ACCELERATION_STRUCTURE          = NriBit(17), // Invoked by "Cmd*AccelerationStructure*" commands
+    MICROMAP                        = NriBit(18), // Invoked by "Cmd*Micromap*" commands
 
     // Other
     COPY                            = NriBit(19), // Invoked by "CmdCopy*", "CmdUpload*" and "CmdReadback*"
@@ -426,7 +426,7 @@ NriEnum(DescriptorType, uint8_t,
     ACCELERATION_STRUCTURE
 );
 
-NriBits(TextureUsageBits, uint8_t,               // Min compatible access:                  Usage:
+NriBits(TextureUsageBits, uint8_t,                 // Min compatible access:                  Usage:
     NONE                                = 0,
     SHADER_RESOURCE                     = NriBit(0),  // SHADER_RESOURCE                         Read-only shader resource (SRV)
     SHADER_RESOURCE_STORAGE             = NriBit(1),  // SHADER_RESOURCE_STORAGE                 Read/write shader resource (UAV)
@@ -435,7 +435,7 @@ NriBits(TextureUsageBits, uint8_t,               // Min compatible access:      
     SHADING_RATE_ATTACHMENT             = NriBit(4)   // SHADING_RATE_ATTACHMENT                 Shading rate attachment (source)
 );
 
-NriBits(BufferUsageBits, uint16_t,               // Min compatible access:                  Usage:
+NriBits(BufferUsageBits, uint16_t,                 // Min compatible access:                  Usage:
     NONE                                = 0,
     SHADER_RESOURCE                     = NriBit(0),  // SHADER_RESOURCE                         Read-only shader resource (SRV)
     SHADER_RESOURCE_STORAGE             = NriBit(1),  // SHADER_RESOURCE_STORAGE                 Read/write shader resource (UAV)
@@ -444,7 +444,7 @@ NriBits(BufferUsageBits, uint16_t,               // Min compatible access:      
     CONSTANT_BUFFER                     = NriBit(4),  // CONSTANT_BUFFER                         Constant buffer
     ARGUMENT_BUFFER                     = NriBit(5),  // ARGUMENT_BUFFER                         Argument buffer in "Indirect" commands
     SCRATCH_BUFFER                      = NriBit(6),  // SCRATCH_BUFFER                          Scratch buffer in "CmdBuild*" commands
-    SHADER_BINDING_TABLE                = NriBit(7),  // SHADER_RESOURCE                         Shader binding table (SBT) in "CmdDispatchRays*" commands
+    SHADER_BINDING_TABLE                = NriBit(7),  // SHADER_BINDING_TABLE                    Shader binding table (SBT) in "CmdDispatchRays*" commands
     ACCELERATION_STRUCTURE_BUILD_INPUT  = NriBit(8),  // SHADER_RESOURCE                         Read-only input in "CmdBuildAccelerationStructures" command
     ACCELERATION_STRUCTURE_STORAGE      = NriBit(9),  // ACCELERATION_STRUCTURE_READ/WRITE       (INTERNAL) acceleration structure storage
     MICROMAP_BUILD_INPUT                = NriBit(10), // SHADER_RESOURCE                         Read-only input in "CmdBuildMicromaps" command
@@ -823,9 +823,14 @@ NriStruct(ShadingRateDesc) {
 //============================================================================================================================================================================================
 
 NriEnum(Multiview, uint8_t,
-    FLEXIBLE,                   // destination "viewport" and/or "layer" must be set in shaders explicitly, "viewMask" for rendering can be < than the one used for pipeline creation (D3D12 style)
-    LAYER_BASED,                // view instances go to statically assigned corresponding attachment layers, "viewMask" for rendering must match the one used for pipeline creation (VK style)
-    VIEWPORT_BASED              // view instances go to statically assigned corresponding viewports, "viewMask" for pipeline creation is unused (D3D11 style)
+    // Destination "viewport" and/or "layer" must be set in shaders explicitly, "viewMask" for rendering can be < than the one used for pipeline creation (D3D12 style)
+    FLEXIBLE,                   // requires "features.flexibleMultiview"
+
+    // View instances go to statically assigned corresponding attachment layers, "viewMask" for rendering must match the one used for pipeline creation (VK style)
+    LAYER_BASED,                // requires "features.layerBasedMultiview"
+
+    // View instances go to statically assigned corresponding viewports, "viewMask" for pipeline creation is unused (D3D11 style)
+    VIEWPORT_BASED              // requires "features.viewportBasedMultiview"
 );
 
 // S - source color 0
@@ -1040,7 +1045,7 @@ NriStruct(SamplerDesc) {
 #pragma region [ Pipeline ]
 //============================================================================================================================================================================================
 
-// It's recommended to use "NRICompatibility.hlsli" in the shader code
+// It's recommended to use "NRI.hlsl" in the shader code
 NriStruct(ShaderDesc) {
     Nri(StageBits) stage;
     const void* bytecode;
@@ -1081,7 +1086,7 @@ NriBits(AccessBits, uint32_t,                 // Compatible "StageBits" (includi
     VERTEX_BUFFER                   = NriBit(1),  // VERTEX_SHADER
     CONSTANT_BUFFER                 = NriBit(2),  // GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
     ARGUMENT_BUFFER                 = NriBit(3),  // INDIRECT
-    SCRATCH_BUFFER                  = NriBit(4),  // ACCELERATION_STRUCTURE
+    SCRATCH_BUFFER                  = NriBit(4),  // ACCELERATION_STRUCTURE, MICROMAP
 
     // Attachment
     COLOR_ATTACHMENT                = NriBit(5),  // COLOR_ATTACHMENT
@@ -1100,14 +1105,15 @@ NriBits(AccessBits, uint32_t,                 // Compatible "StageBits" (includi
     // Shader resource
     SHADER_RESOURCE                 = NriBit(13), // GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
     SHADER_RESOURCE_STORAGE         = NriBit(14), // GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS, CLEAR_STORAGE
+    SHADER_BINDING_TABLE            = NriBit(15), // RAY_TRACING_SHADERS
 
     // Copy
-    COPY_SOURCE                     = NriBit(15), // COPY
-    COPY_DESTINATION                = NriBit(16), // COPY
+    COPY_SOURCE                     = NriBit(16), // COPY
+    COPY_DESTINATION                = NriBit(17), // COPY
 
     // Resolve
-    RESOLVE_SOURCE                  = NriBit(17), // RESOLVE
-    RESOLVE_DESTINATION             = NriBit(18)  // RESOLVE
+    RESOLVE_SOURCE                  = NriBit(18), // RESOLVE
+    RESOLVE_DESTINATION             = NriBit(19)  // RESOLVE
 );
 
 // Not used if "features.enchancedBarrier" is "0"
@@ -1275,7 +1281,7 @@ NriStruct(DispatchDesc) {
 // Modified draw command signatures (D3D12 only)
 //  If "DeviceDesc::isDrawParametersEmulationEnabled = true" (emulation globally enabled and allowed) and if a shader has "PipelineLayout::enableDrawParametersEmulation = true" (emulation requested)
 //  - the following structs must be used instead
-// - "NRI_ENABLE_DRAW_PARAMETERS_EMULATION" must be defined prior inclusion of "NRICompatibility.hlsli"
+// - "NRI_ENABLE_DRAW_PARAMETERS_EMULATION" must be defined prior inclusion of "NRI.hlsl"
 NriStruct(DrawBaseDesc) { // see NRI_FILL_DRAW_COMMAND
     uint32_t shaderEmulatedBaseVertex; // root constant
     uint32_t shaderEmulatedBaseInstance; // root constant

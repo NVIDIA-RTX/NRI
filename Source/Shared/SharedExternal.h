@@ -30,7 +30,7 @@ typedef uint32_t DXGI_FORMAT;
 #include "Extensions/NRIWrapperD3D12.h"
 #include "Extensions/NRIWrapperVK.h"
 
-#include "NRICompatibility.hlsli"
+#include "NRI.hlsl"
 
 #include "Lock.h"
 
