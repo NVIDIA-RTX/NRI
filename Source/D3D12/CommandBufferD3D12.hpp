@@ -29,7 +29,7 @@ static uint8_t QueryLatestGraphicsCommandList(ComPtr<ID3D12GraphicsCommandListBe
 }
 
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
-static inline D3D12_BARRIER_SYNC GetBarrierSyncFlags(StageBits stageBits) {
+static inline D3D12_BARRIER_SYNC GetBarrierSyncFlags(StageBits stageBits, AccessBits accessBits) {
     // Check non-mask values first
     if (stageBits == StageBits::ALL)
         return D3D12_BARRIER_SYNC_ALL;
@@ -74,9 +74,12 @@ static inline D3D12_BARRIER_SYNC GetBarrierSyncFlags(StageBits stageBits) {
         flags |= D3D12_BARRIER_SYNC_CLEAR_UNORDERED_ACCESS_VIEW;
 
     if (stageBits & (StageBits::ACCELERATION_STRUCTURE | StageBits::MICROMAP)) {
-        flags |= D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE
-            | D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE
-            | D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO;
+        flags |= D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE | D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE;
+
+        // There is no "EMIT_POSTBUILD_INFO" flag in VK, moreover "VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR" already includes "ACCELERATION_STRUCTURE_COPY".
+        // "EMIT_POSTBUILD_INFO" can't be set if "write" access is expected.
+        if (!(accessBits & AccessBits::ACCELERATION_STRUCTURE_WRITE))
+            flags |= D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO;
     }
 
     return flags;
@@ -784,8 +787,8 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierGroupDesc& barrierGroup
 
                 D3D12_GLOBAL_BARRIER& out = globalBarriers[i];
                 out = {};
-                out.SyncBefore = GetBarrierSyncFlags(in.before.stages);
-                out.SyncAfter = GetBarrierSyncFlags(in.after.stages);
+                out.SyncBefore = GetBarrierSyncFlags(in.before.stages, in.before.access);
+                out.SyncAfter = GetBarrierSyncFlags(in.after.stages, in.after.access);
                 out.AccessBefore = GetBarrierAccessFlags(in.before.access);
                 out.AccessAfter = GetBarrierAccessFlags(in.after.access);
             }
@@ -805,8 +808,8 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierGroupDesc& barrierGroup
 
                 D3D12_BUFFER_BARRIER& out = bufferBarriers[i];
                 out = {};
-                out.SyncBefore = GetBarrierSyncFlags(in.before.stages);
-                out.SyncAfter = GetBarrierSyncFlags(in.after.stages);
+                out.SyncBefore = GetBarrierSyncFlags(in.before.stages, in.before.access);
+                out.SyncAfter = GetBarrierSyncFlags(in.after.stages, in.after.access);
                 out.AccessBefore = GetBarrierAccessFlags(in.before.access);
                 out.AccessAfter = GetBarrierAccessFlags(in.after.access);
                 out.pResource = buffer;
@@ -830,8 +833,8 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierGroupDesc& barrierGroup
 
                 D3D12_TEXTURE_BARRIER& out = textureBarriers[i];
                 out = {};
-                out.SyncBefore = GetBarrierSyncFlags(in.before.stages);
-                out.SyncAfter = GetBarrierSyncFlags(in.after.stages);
+                out.SyncBefore = GetBarrierSyncFlags(in.before.stages, in.before.access);
+                out.SyncAfter = GetBarrierSyncFlags(in.after.stages, in.after.access);
                 out.AccessBefore = in.before.layout == Layout::PRESENT ? D3D12_BARRIER_ACCESS_COMMON : GetBarrierAccessFlags(in.before.access);
                 out.AccessAfter = in.after.layout == Layout::PRESENT ? D3D12_BARRIER_ACCESS_COMMON : GetBarrierAccessFlags(in.after.access);
                 out.LayoutBefore = GetBarrierLayout(in.before.layout);
