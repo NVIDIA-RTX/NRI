@@ -28,8 +28,11 @@ struct QueryPoolD3D12 final : public DebugNameBase {
         return m_Device;
     }
 
+    inline ID3D12Resource* GetBufferForAccelerationStructuresSizes() const {
+        return m_BufferForAccelerationStructuresSizes.GetInterface();
+    }
+
     Result Create(const QueryPoolDesc& queryPoolDesc);
-    ID3D12Resource* GetBufferForAccelerationStructuresSizes(ID3D12GraphicsCommandList* commandList, bool isUAV);
 
     //================================================================================================================
     // DebugNameBase
@@ -55,11 +58,7 @@ private:
     D3D12_QUERY_TYPE m_QueryType = (D3D12_QUERY_TYPE)0;
     uint32_t m_QuerySize = 0;
     ComPtr<ID3D12QueryHeap> m_QueryHeap;
-    ComPtr<ID3D12Resource> m_BufferForAccelerationStructuresSizes; // m_Lock
-    bool m_IsFirstTime = true;
-    bool m_IsUAV = false;
-
-    Lock m_Lock;
+    ComPtr<ID3D12Resource> m_BufferForAccelerationStructuresSizes;
 };
 
 } // namespace nri

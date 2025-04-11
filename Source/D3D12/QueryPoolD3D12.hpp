@@ -74,25 +74,3 @@ Result QueryPoolD3D12::CreateBufferForAccelerationStructuresSizes(const QueryPoo
 
     return Result::SUCCESS;
 }
-
-ID3D12Resource* QueryPoolD3D12::GetBufferForAccelerationStructuresSizes(ID3D12GraphicsCommandList* commandList, bool isUAV) {
-    ExclusiveScope lock(m_Lock);
-    ID3D12Resource* buffer = m_BufferForAccelerationStructuresSizes.GetInterface();
-
-    if (m_IsFirstTime)
-        m_IsFirstTime = false; // promotion
-    else if (m_IsUAV != isUAV) {
-        // TODO: "bufferForAccelerationStructuresSizes" is completely hidden from a user, transition needs to be done under the hood (legacy barrier is used for simplicity)
-        D3D12_RESOURCE_BARRIER barrier = {};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Transition.pResource = buffer;
-        barrier.Transition.StateBefore = isUAV ? D3D12_RESOURCE_STATE_COPY_SOURCE : D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        barrier.Transition.StateAfter = isUAV ? D3D12_RESOURCE_STATE_UNORDERED_ACCESS : D3D12_RESOURCE_STATE_COPY_SOURCE;
-
-        commandList->ResourceBarrier(1, &barrier);
-    }
-
-    m_IsUAV = isUAV;
-
-    return buffer;
-}

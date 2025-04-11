@@ -378,7 +378,8 @@ static void NRI_CALL CmdClearStorage(CommandBuffer& commandBuffer, const ClearSt
     ((CommandBufferD3D12&)commandBuffer).ClearStorage(clearDesc);
 }
 
-static void NRI_CALL CmdResetQueries(CommandBuffer&, QueryPool&, uint32_t, uint32_t) {
+static void NRI_CALL CmdResetQueries(CommandBuffer& commandBuffer, QueryPool& queryPool, uint32_t offset, uint32_t num) {
+    ((CommandBufferD3D12&)commandBuffer).ResetQueries(queryPool, offset, num);
 }
 
 static void NRI_CALL CmdBeginQuery(CommandBuffer& commandBuffer, QueryPool& queryPool, uint32_t offset) {

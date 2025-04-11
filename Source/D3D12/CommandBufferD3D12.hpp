@@ -927,6 +927,21 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierGroupDesc& barrierGroup
     }
 }
 
+NRI_INLINE void CommandBufferD3D12::ResetQueries(QueryPool& queryPool, uint32_t, uint32_t) {
+    QueryPoolD3D12& queryPoolD3D12 = (QueryPoolD3D12&)queryPool;
+    if (queryPoolD3D12.GetType() >= QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE) {
+        // TODO: "bufferForAccelerationStructuresSizes" is completely hidden from a user, transition needs to be done under the hood (legacy barrier is used for simplicity)
+        // "ResetQueries" is a good indicator that next call will be "CmdWrite*Sizes" where UAV state is needed
+        D3D12_RESOURCE_BARRIER barrier = {};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Transition.pResource = queryPoolD3D12.GetBufferForAccelerationStructuresSizes();
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        
+        m_GraphicsCommandList->ResourceBarrier(1, &barrier);
+    }
+}
+
 NRI_INLINE void CommandBufferD3D12::BeginQuery(QueryPool& queryPool, uint32_t offset) {
     QueryPoolD3D12& queryPoolD3D12 = (QueryPoolD3D12&)queryPool;
     m_GraphicsCommandList->BeginQuery(queryPoolD3D12, queryPoolD3D12.GetType(), offset);
@@ -944,7 +959,17 @@ NRI_INLINE void CommandBufferD3D12::CopyQueries(const QueryPool& queryPool, uint
     if (queryPoolD3D12.GetType() >= QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE) {
         const uint64_t srcOffset = offset * queryPoolD3D12.GetQuerySize();
         const uint64_t size = num * queryPoolD3D12.GetQuerySize();
-        ID3D12Resource* bufferSrc = queryPoolD3D12.GetBufferForAccelerationStructuresSizes(m_GraphicsCommandList, false);
+        ID3D12Resource* bufferSrc = queryPoolD3D12.GetBufferForAccelerationStructuresSizes();
+
+        // TODO: "bufferForAccelerationStructuresSizes" is completely hidden from a user, transition needs to be done under the hood (legacy barrier is used for simplicity)
+        // Let's naively assume that "CopyQueries" can be called only once after potentially multiple "CmdWrite*Sizes"
+        D3D12_RESOURCE_BARRIER barrier = {};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Transition.pResource = bufferSrc;
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+        
+        m_GraphicsCommandList->ResourceBarrier(1, &barrier);
 
         m_GraphicsCommandList->CopyBufferRegion(bufferD3D12, alignedBufferOffset, bufferSrc, srcOffset, size);
     }
@@ -1074,7 +1099,7 @@ NRI_INLINE void CommandBufferD3D12::WriteAccelerationStructuresSizes(const Accel
         virtualAddresses[i] = ((AccelerationStructureD3D12*)accelerationStructures[i])->GetHandle();
 
     QueryPoolD3D12& queryPoolD3D12 = (QueryPoolD3D12&)queryPool;
-    ID3D12Resource* buffer = queryPoolD3D12.GetBufferForAccelerationStructuresSizes(m_GraphicsCommandList, true);
+    ID3D12Resource* buffer = queryPoolD3D12.GetBufferForAccelerationStructuresSizes();
 
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC postbuildInfo = {};
     postbuildInfo.DestBuffer = buffer->GetGPUVirtualAddress() + queryPoolOffset;
@@ -1094,7 +1119,7 @@ NRI_INLINE void CommandBufferD3D12::WriteMicromapsSizes(const Micromap* const* m
         virtualAddresses[i] = ((AccelerationStructureD3D12&)micromaps[i]).GetHandle();
 
     QueryPoolD3D12& queryPoolD3D12 = (QueryPoolD3D12&)queryPool;
-    ID3D12Resource* buffer = queryPoolD3D12.GetBufferForAccelerationStructuresSizes(m_GraphicsCommandList, true);
+    ID3D12Resource* buffer = queryPoolD3D12.GetBufferForAccelerationStructuresSizes();
 
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC postbuildInfo = {};
     postbuildInfo.DestBuffer = buffer->GetGPUVirtualAddress() + queryPoolOffset;
