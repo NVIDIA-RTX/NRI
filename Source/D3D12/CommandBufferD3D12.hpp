@@ -188,7 +188,7 @@ static inline D3D12_RESOURCE_STATES GetResourceStates(AccessBits accessBits, D3D
         resourceStates |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
     if (accessBits & (AccessBits::ACCELERATION_STRUCTURE_READ | AccessBits::MICROMAP_READ))
-        resourceStates |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+        resourceStates |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
     if (accessBits & (AccessBits::ACCELERATION_STRUCTURE_WRITE | AccessBits::MICROMAP_WRITE))
         resourceStates |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
