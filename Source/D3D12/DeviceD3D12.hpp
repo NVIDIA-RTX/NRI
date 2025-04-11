@@ -375,6 +375,7 @@ void DeviceD3D12::FillDesc() {
     if (FAILED(hr))
         REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options4) failed, result = 0x%08X!", hr);
 
+    // Windows 10 1809 (build 17763)
     D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
     if (FAILED(hr))
@@ -385,6 +386,7 @@ void DeviceD3D12::FillDesc() {
     else if (options5.RaytracingTier == D3D12_RAYTRACING_TIER_1_1)
         m_Desc.tiers.rayTracing = 2;
 
+    // Windows 10 1903 (build 18362)
     D3D12_FEATURE_DATA_D3D12_OPTIONS6 options6 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &options6, sizeof(options6));
     if (FAILED(hr))
@@ -393,6 +395,7 @@ void DeviceD3D12::FillDesc() {
     m_Desc.other.shadingRateAttachmentTileSize = (uint8_t)options6.ShadingRateImageTileSize;
     m_Desc.features.additionalShadingRates = options6.AdditionalShadingRatesSupported;
 
+    // Windows 10 2004 (build 19041)
     D3D12_FEATURE_DATA_D3D12_OPTIONS7 options7 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &options7, sizeof(options7));
     if (FAILED(hr))
@@ -400,7 +403,7 @@ void DeviceD3D12::FillDesc() {
     m_Desc.features.meshShader = options7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1;
 
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
-    // Minimum supported client: Windows 10 Build 20348 (or Agility SDK)
+    // Windows 11 21H2 (build 22000)
     D3D12_FEATURE_DATA_D3D12_OPTIONS8 options8 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS8, &options8, sizeof(options8));
     if (FAILED(hr))
@@ -412,7 +415,6 @@ void DeviceD3D12::FillDesc() {
         REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options9) failed, result = 0x%08X!", hr);
     m_Desc.features.meshShaderPipelineStats = options9.MeshShaderPipelineStatsSupported;
 
-    // Minimum supported client: Windows 11 Build 22000 (or Agility SDK)
     D3D12_FEATURE_DATA_D3D12_OPTIONS10 options10 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS10, &options10, sizeof(options10));
     if (FAILED(hr))
@@ -423,7 +425,7 @@ void DeviceD3D12::FillDesc() {
     if (FAILED(hr))
         REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options11) failed, result = 0x%08X!", hr);
 
-    // Minimum supported client: Windows 11 22H2 (or Agility SDK)
+    // Windows 11 22H2 (build 22621)
     D3D12_FEATURE_DATA_D3D12_OPTIONS12 options12 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS12, &options12, sizeof(options12));
     if (FAILED(hr))
@@ -438,7 +440,7 @@ void DeviceD3D12::FillDesc() {
     m_Desc.memoryAlignment.uploadBufferTextureSlice = options13.UnrestrictedBufferTextureCopyPitchSupported ? 1 : D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
     m_Desc.features.viewportOriginBottomLeft = options13.InvertedViewportHeightFlipsYSupported ? 1 : 0;
 
-    // Minimum supported client: Agility SDK
+    // Agility SDK
     D3D12_FEATURE_DATA_D3D12_OPTIONS14 options14 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS14, &options14, sizeof(options14));
     if (FAILED(hr))
@@ -488,8 +490,8 @@ void DeviceD3D12::FillDesc() {
         REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(tightAlignment) failed, result = 0x%08X!", hr);
     m_TightAlignmentTier = (uint8_t)tightAlignment.SupportTier;
 #else
-    m_Desc.uploadBufferTextureRowAlignment = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
-    m_Desc.uploadBufferTextureSliceAlignment = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
+    m_Desc.memoryAlignment.uploadBufferTextureRow = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
+    m_Desc.memoryAlignment.uploadBufferTextureSlice = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
 #endif
 
     // Feature level
