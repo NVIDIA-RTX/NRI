@@ -1270,15 +1270,15 @@ NriStruct(ClearStorageDesc) {
 NriStruct(DrawDesc) { // see NRI_FILL_DRAW_COMMAND
     uint32_t vertexNum;
     uint32_t instanceNum;
-    uint32_t baseVertex; // vertex buffer offset = CmdSetVertexBuffers.offset + baseVertex * VertexStreamDesc::stride
+    uint32_t baseVertex;                    // vertex buffer offset = CmdSetVertexBuffers.offset + baseVertex * VertexStreamDesc::stride
     uint32_t baseInstance;
 };
 
-NriStruct(DrawIndexedDesc) { // see NRI_FILL_DRAW_INDEXED_COMMAND
+NriStruct(DrawIndexedDesc) {                // see NRI_FILL_DRAW_INDEXED_COMMAND
     uint32_t indexNum;
     uint32_t instanceNum;
-    uint32_t baseIndex; // index buffer offset = CmdSetIndexBuffer.offset + baseIndex * sizeof(CmdSetIndexBuffer.indexType)
-    int32_t baseVertex; // index += baseVertex
+    uint32_t baseIndex;                     // index buffer offset = CmdSetIndexBuffer.offset + baseIndex * sizeof(CmdSetIndexBuffer.indexType)
+    int32_t baseVertex;                     // index += baseVertex
     uint32_t baseInstance;
 };
 
@@ -1293,21 +1293,21 @@ NriStruct(DispatchDesc) {
 // - "NRI_ENABLE_DRAW_PARAMETERS_EMULATION" must be defined prior inclusion of "NRI.hlsl"
 
 NriStruct(DrawBaseDesc) { // see NRI_FILL_DRAW_COMMAND
-    uint32_t shaderEmulatedBaseVertex; // root constant
-    uint32_t shaderEmulatedBaseInstance; // root constant
+    uint32_t shaderEmulatedBaseVertex;      // root constant
+    uint32_t shaderEmulatedBaseInstance;    // root constant
     uint32_t vertexNum;
     uint32_t instanceNum;
-    uint32_t baseVertex; // vertex buffer offset = CmdSetVertexBuffers.offset + baseVertex * VertexStreamDesc::stride
+    uint32_t baseVertex;                    // vertex buffer offset = CmdSetVertexBuffers.offset + baseVertex * VertexStreamDesc::stride
     uint32_t baseInstance;
 };
 
 NriStruct(DrawIndexedBaseDesc) { // see NRI_FILL_DRAW_INDEXED_COMMAND
-    int32_t shaderEmulatedBaseVertex; // root constant
-    uint32_t shaderEmulatedBaseInstance; // root constant
+    int32_t shaderEmulatedBaseVertex;       // root constant
+    uint32_t shaderEmulatedBaseInstance;    // root constant
     uint32_t indexNum;
     uint32_t instanceNum;
-    uint32_t baseIndex; // index buffer offset = CmdSetIndexBuffer.offset + baseIndex * sizeof(CmdSetIndexBuffer.indexType)
-    int32_t baseVertex; // index += baseVertex
+    uint32_t baseIndex;                     // index buffer offset = CmdSetIndexBuffer.offset + baseIndex * sizeof(CmdSetIndexBuffer.indexType)
+    int32_t baseVertex;                     // index += baseVertex
     uint32_t baseInstance;
 };
 
@@ -1318,13 +1318,13 @@ NriStruct(DrawIndexedBaseDesc) { // see NRI_FILL_DRAW_INDEXED_COMMAND
 //============================================================================================================================================================================================
 
 NriEnum(QueryType, uint8_t,
-    TIMESTAMP,
-    TIMESTAMP_COPY_QUEUE, // requires "features.copyQueueTimestamp"
-    OCCLUSION,
-    PIPELINE_STATISTICS,
-    ACCELERATION_STRUCTURE_SIZE,
-    ACCELERATION_STRUCTURE_COMPACTED_SIZE,
-    MICROMAP_COMPACTED_SIZE
+    TIMESTAMP,                              // uint64_t
+    TIMESTAMP_COPY_QUEUE,                   // uint64_t, requires "features.copyQueueTimestamp"
+    OCCLUSION,                              // uint64_t
+    PIPELINE_STATISTICS,                    // see "PipelineStatisticsDesc"
+    ACCELERATION_STRUCTURE_SIZE,            // uint64_t
+    ACCELERATION_STRUCTURE_COMPACTED_SIZE,  // uint64_t
+    MICROMAP_COMPACTED_SIZE                 // uint64_t
 );
 
 NriStruct(QueryPoolDesc) {
@@ -1333,7 +1333,6 @@ NriStruct(QueryPoolDesc) {
 };
 
 // Data layout for QueryType::PIPELINE_STATISTICS
-// Never used, only describes the data layout for various cases
 NriStruct(PipelineStatisticsDesc) {
     // Common part
     uint64_t inputVertexNum;
