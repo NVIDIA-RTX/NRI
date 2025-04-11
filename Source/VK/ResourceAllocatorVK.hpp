@@ -188,8 +188,9 @@ Result AccelerationStructureVK::Create(const AllocateAccelerationStructureDesc& 
         m_BuildScratchSize = sizesInfo.buildScratchSize;
         m_UpdateScratchSize = sizesInfo.updateScratchSize;
         m_Type = GetAccelerationStructureType(accelerationStructureDesc.desc.type);
+        m_Flags = accelerationStructureDesc.desc.flags;
 
-        FinishCreation();
+        result = FinishCreation();
     }
 
     return result;
@@ -215,8 +216,9 @@ Result MicromapVK::Create(const AllocateMicromapDesc& micromapDesc) {
     Result result = m_Device.CreateImplementation<BufferVK>(m_Buffer, bufferDesc);
     if (result == Result::SUCCESS) {
         m_BuildScratchSize = sizesInfo.buildScratchSize;
+        m_Flags = micromapDesc.desc.flags;
 
-        FinishCreation();
+        result = FinishCreation();
     }
 
     return result;

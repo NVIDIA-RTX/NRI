@@ -23,6 +23,7 @@ Result MicromapVK::Create(const MicromapDesc& micromapDesc) {
         sizesInfo.micromapSize = std::min(sizesInfo.micromapSize, micromapDesc.optimizedSize);
 
     m_BuildScratchSize = sizesInfo.buildScratchSize;
+    m_Flags = micromapDesc.flags;
 
     for (uint32_t i = 0; i < micromapDesc.usageNum; i++) {
         const MicromapUsageDesc& in = micromapDesc.usages[i];

@@ -89,6 +89,7 @@ NriStruct(AccelerationStructureVKDesc) {
     VKNonDispatchableHandle vkAccelerationStructure;
     uint64_t buildScratchSize;
     uint64_t updateScratchSize;
+    Nri(AccelerationStructureBits) flags;
 };
 
 // Threadsafe: yes

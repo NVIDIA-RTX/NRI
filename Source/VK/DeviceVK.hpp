@@ -113,7 +113,7 @@ static VkBool32 VKAPI_PTR MessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT
         // Validation Warning: [ WARNING-DEBUG-PRINTF ] Internal Warning: Setting VkPhysicalDeviceVulkan12Properties::maxUpdateAfterBindDescriptorsInAllPools to 32
         if (callbackData->messageIdNumber == 0x76589099)
             return VK_FALSE;
-        // The storage image descriptor is accessed by a OpTypeImage that has a Format operand which doesn't match the VkImageView format
+        // (v1.4.309 issue) The storage image descriptor is accessed by a OpTypeImage that has a Format operand which doesn't match the VkImageView format
         // TODO: there is no way to enable "storageWithoutFormat" capability in SPIRV in the current version of DXC, so ignore the warning if this feature is supported by the device
         if (callbackData->messageIdNumber == 0x013365B2 && device.m_IsSupported.storageWithoutFormat)
             return VK_FALSE;

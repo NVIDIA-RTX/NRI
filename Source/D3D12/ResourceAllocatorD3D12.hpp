@@ -178,6 +178,7 @@ Result AccelerationStructureD3D12::Create(const AllocateAccelerationStructureDes
         return nriResult;
 
     m_Device.GetAccelerationStructurePrebuildInfo(accelerationStructureDesc.desc, m_PrebuildInfo);
+    m_Flags = accelerationStructureDesc.desc.flags;
 
     AllocateBufferDesc bufferDesc = {};
     bufferDesc.memoryLocation = accelerationStructureDesc.memoryLocation;
@@ -194,6 +195,7 @@ Result MicromapD3D12::Create(const AllocateMicromapDesc& micromapDesc) {
         return nriResult;
 
     m_Device.GetMicromapPrebuildInfo(micromapDesc.desc, m_PrebuildInfo);
+    m_Flags = micromapDesc.desc.flags;
 
     AllocateBufferDesc bufferDesc = {};
     bufferDesc.memoryLocation = micromapDesc.memoryLocation;

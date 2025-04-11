@@ -938,17 +938,18 @@ NRI_INLINE void CommandBufferD3D12::EndQuery(QueryPool& queryPool, uint32_t offs
 }
 
 NRI_INLINE void CommandBufferD3D12::CopyQueries(const QueryPool& queryPool, uint32_t offset, uint32_t num, Buffer& buffer, uint64_t alignedBufferOffset) {
-    const QueryPoolD3D12& queryPoolD3D12 = (QueryPoolD3D12&)queryPool;
+    QueryPoolD3D12& queryPoolD3D12 = (QueryPoolD3D12&)queryPool;
     const BufferD3D12& bufferD3D12 = (BufferD3D12&)buffer;
 
     if (queryPoolD3D12.GetType() >= QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE) {
         const uint64_t srcOffset = offset * queryPoolD3D12.GetQuerySize();
         const uint64_t size = num * queryPoolD3D12.GetQuerySize();
-        m_GraphicsCommandList->CopyBufferRegion(bufferD3D12, alignedBufferOffset, queryPoolD3D12.GetReadbackBuffer(), srcOffset, size);
-        return;
-    }
+        ID3D12Resource* bufferSrc = queryPoolD3D12.GetBufferForAccelerationStructuresSizes(m_GraphicsCommandList, false);
 
-    m_GraphicsCommandList->ResolveQueryData(queryPoolD3D12, queryPoolD3D12.GetType(), offset, num, bufferD3D12, alignedBufferOffset);
+        m_GraphicsCommandList->CopyBufferRegion(bufferD3D12, alignedBufferOffset, bufferSrc, srcOffset, size);
+    }
+    else
+        m_GraphicsCommandList->ResolveQueryData(queryPoolD3D12, queryPoolD3D12.GetType(), offset, num, bufferD3D12, alignedBufferOffset);
 }
 
 NRI_INLINE void CommandBufferD3D12::BeginAnnotation(const char* name, uint32_t bgra) {
@@ -1070,12 +1071,13 @@ NRI_INLINE void CommandBufferD3D12::CopyMicromap(Micromap& dst, const Micromap& 
 NRI_INLINE void CommandBufferD3D12::WriteAccelerationStructuresSizes(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
     Scratch<D3D12_GPU_VIRTUAL_ADDRESS> virtualAddresses = AllocateScratch(m_Device, D3D12_GPU_VIRTUAL_ADDRESS, accelerationStructureNum);
     for (uint32_t i = 0; i < accelerationStructureNum; i++)
-        virtualAddresses[i] = ((AccelerationStructureD3D12&)accelerationStructures[i]).GetHandle();
+        virtualAddresses[i] = ((AccelerationStructureD3D12*)accelerationStructures[i])->GetHandle();
 
-    const QueryPoolD3D12& queryPoolD3D12 = (QueryPoolD3D12&)queryPool;
+    QueryPoolD3D12& queryPoolD3D12 = (QueryPoolD3D12&)queryPool;
+    ID3D12Resource* buffer = queryPoolD3D12.GetBufferForAccelerationStructuresSizes(m_GraphicsCommandList, true);
 
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC postbuildInfo = {};
-    postbuildInfo.DestBuffer = queryPoolD3D12.GetReadbackBuffer()->GetGPUVirtualAddress() + queryPoolOffset;
+    postbuildInfo.DestBuffer = buffer->GetGPUVirtualAddress() + queryPoolOffset;
 
     if (queryPoolD3D12.GetType() == QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE)
         postbuildInfo.InfoType = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_CURRENT_SIZE;
@@ -1091,10 +1093,11 @@ NRI_INLINE void CommandBufferD3D12::WriteMicromapsSizes(const Micromap* const* m
     for (uint32_t i = 0; i < micromapNum; i++)
         virtualAddresses[i] = ((AccelerationStructureD3D12&)micromaps[i]).GetHandle();
 
-    const QueryPoolD3D12& queryPoolD3D12 = (QueryPoolD3D12&)queryPool;
+    QueryPoolD3D12& queryPoolD3D12 = (QueryPoolD3D12&)queryPool;
+    ID3D12Resource* buffer = queryPoolD3D12.GetBufferForAccelerationStructuresSizes(m_GraphicsCommandList, true);
 
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC postbuildInfo = {};
-    postbuildInfo.DestBuffer = queryPoolD3D12.GetReadbackBuffer()->GetGPUVirtualAddress() + queryPoolOffset;
+    postbuildInfo.DestBuffer = buffer->GetGPUVirtualAddress() + queryPoolOffset;
 
     if (queryPoolD3D12.GetType() == QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE)
         postbuildInfo.InfoType = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_CURRENT_SIZE;

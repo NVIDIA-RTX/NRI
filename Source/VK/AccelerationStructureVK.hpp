@@ -19,6 +19,7 @@ Result AccelerationStructureVK::Create(const AccelerationStructureDesc& accelera
     m_BuildScratchSize = sizesInfo.buildScratchSize;
     m_UpdateScratchSize = sizesInfo.updateScratchSize;
     m_Type = GetAccelerationStructureType(accelerationStructureDesc.type);
+    m_Flags = accelerationStructureDesc.flags;
 
     BufferDesc bufferDesc = {};
     bufferDesc.size = sizesInfo.accelerationStructureSize;
@@ -33,8 +34,10 @@ Result AccelerationStructureVK::Create(const AccelerationStructureVKDesc& accele
 
     m_OwnsNativeObjects = false;
     m_Handle = (VkAccelerationStructureKHR)accelerationStructureDesc.vkAccelerationStructure;
+
     m_BuildScratchSize = accelerationStructureDesc.buildScratchSize;
     m_UpdateScratchSize = accelerationStructureDesc.updateScratchSize;
+    m_Flags = accelerationStructureDesc.flags;
 
     // Device address
     if (m_Device.m_IsSupported.deviceAddress) {
