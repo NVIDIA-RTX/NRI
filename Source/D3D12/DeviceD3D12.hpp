@@ -124,6 +124,13 @@ DeviceD3D12::DeviceD3D12(const CallbackInterface& callbacks, const AllocationCal
 }
 
 DeviceD3D12::~DeviceD3D12() {
+#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+    ComPtr<ID3D12InfoQueueBest> pInfoQueue;
+    HRESULT hr = m_Device->QueryInterface(&pInfoQueue);
+    if (SUCCEEDED(hr))
+        pInfoQueue->UnregisterMessageCallback(m_CallbackCookie);
+#endif
+
     for (auto& queueFamily : m_QueueFamilies) {
         for (uint32_t i = 0; i < queueFamily.size(); i++)
             Destroy<QueueD3D12>(queueFamily[i]);
@@ -132,6 +139,9 @@ DeviceD3D12::~DeviceD3D12() {
 #if NRI_ENABLE_D3D_EXTENSIONS
     if (HasAmdExt() && !m_IsWrapped)
         m_AmdExt.DestroyDeviceD3D12(m_AmdExt.context, m_Device, nullptr);
+
+    if (HasNvExt() && m_CallbackHandle)
+        NvAPI_D3D12_UnregisterRaytracingValidationMessageCallback(m_Device, m_CallbackHandle);
 #endif
 }
 
@@ -238,8 +248,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
             RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue::AddStorageFilterEntries()");
 
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
-            DWORD cookie = 0;
-            hr = pInfoQueue->RegisterMessageCallback(MessageCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, this, &cookie);
+            hr = pInfoQueue->RegisterMessageCallback(MessageCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, this, &m_CallbackCookie);
             RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue1::RegisterMessageCallback()");
 #endif
         }
@@ -297,11 +306,10 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         // Enable ray tracing validation
         if (desc.enableD3D12RayTracingValidation) {
             NvAPI_Status status = NvAPI_D3D12_EnableRaytracingValidation(m_Device, NVAPI_D3D12_RAYTRACING_VALIDATION_FLAG_NONE);
-            if (status == NVAPI_OK) {
-                void* unused = nullptr;
-                REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_RegisterRaytracingValidationMessageCallback(m_Device, NvapiMessageCallback, this, &unused));
-                // TODO: add "NvAPI_D3D12_FlushRaytracingValidationMessages" somewhere?
-            }
+            if (status == NVAPI_OK)
+                REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_RegisterRaytracingValidationMessageCallback(m_Device, NvapiMessageCallback, this, &m_CallbackHandle));
+
+            // TODO: add "NvAPI_D3D12_FlushRaytracingValidationMessages" somewhere?
         }
     }
 #endif
@@ -656,7 +664,7 @@ void DeviceD3D12::FillDesc() {
     m_Desc.shaderStage.meshEvaluation.workGroupInvocationMaxNum = 128;
 
     m_Desc.other.timestampFrequencyHz = timestampFrequency;
-    //m_Desc.other.micromapSubdivisionMaxLevel = D3D12_RAYTRACING_OPACITY_MICROMAP_OC1_MAX_SUBDIVISION_LEVEL;
+    // m_Desc.other.micromapSubdivisionMaxLevel = D3D12_RAYTRACING_OPACITY_MICROMAP_OC1_MAX_SUBDIVISION_LEVEL;
     m_Desc.other.drawIndirectMaxNum = (1ull << D3D12_REQ_DRAWINDEXED_INDEX_COUNT_2_TO_EXP) - 1;
     m_Desc.other.samplerLodBiasMax = D3D12_MIP_LOD_BIAS_MAX;
     m_Desc.other.samplerAnisotropyMax = D3D12_DEFAULT_MAX_ANISOTROPY;

@@ -58,6 +58,10 @@ struct DeviceD3D12 final : public DeviceBase {
         return m_Pix;
     }
 
+    inline uint8_t GetTightAlignmentTier() const {
+        return m_TightAlignmentTier;
+    }
+
 #if NRI_ENABLE_D3D_EXTENSIONS
     inline bool HasNvExt() const {
         return m_NvExt.available;
@@ -176,6 +180,8 @@ private:
     std::array<Vector<QueueD3D12*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies;
     CoreInterface m_iCore = {};
     DeviceDesc m_Desc = {};
+    void* m_CallbackHandle = nullptr;
+    DWORD m_CallbackCookie = 0;
     uint8_t m_Version = 0;
     uint8_t m_TightAlignmentTier = 0;
     bool m_IsWrapped = false;
