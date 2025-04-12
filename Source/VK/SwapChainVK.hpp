@@ -264,8 +264,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
 
     { // Swap chain
         VkSwapchainCreateInfoKHR swapchainInfo = {VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
-        if (m_Device.m_IsSupported.swapChainMutableFormat)
-            swapchainInfo.flags = VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR;
+        swapchainInfo.flags = 0;
         swapchainInfo.surface = m_Surface;
         swapchainInfo.minImageCount = textureNum;
         swapchainInfo.imageFormat = surfaceFormat.surfaceFormat.format;
@@ -305,6 +304,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         imageFormatListCreateInfo.viewFormatCount = mutableFormatNum;
 
         if (m_Device.m_IsSupported.swapChainMutableFormat) {
+            swapchainInfo.flags |= VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR;
             APPEND_EXT(imageFormatListCreateInfo);
         }
 
