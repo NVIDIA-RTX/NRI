@@ -79,8 +79,12 @@ static D3D12_RESOURCE_FLAGS GetBufferFlags(BufferUsageBits bufferUsage) {
     if (bufferUsage & (BufferUsageBits::SHADER_RESOURCE_STORAGE | BufferUsageBits::SCRATCH_BUFFER))
         flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-    if (bufferUsage & (BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE | BufferUsageBits::MICROMAP_STORAGE))
-        flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE;
+    if (bufferUsage & (BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE | BufferUsageBits::MICROMAP_STORAGE)) {
+        flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+#if (D3D12_SDK_VERSION >= 6)
+        flags |= D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE;
+#endif
+    }
 
     return flags;
 }
@@ -522,7 +526,11 @@ void DeviceD3D12::FillDesc() {
     }
 
     // Shader model
-    D3D12_FEATURE_DATA_SHADER_MODEL shaderModel = {D3D_HIGHEST_SHADER_MODEL};
+#if (D3D12_SDK_VERSION >= 6)
+    D3D12_FEATURE_DATA_SHADER_MODEL shaderModel = {(D3D_SHADER_MODEL)D3D_HIGHEST_SHADER_MODEL};
+#else
+    D3D12_FEATURE_DATA_SHADER_MODEL shaderModel = {(D3D_SHADER_MODEL)0x69};
+#endif
     for (; shaderModel.HighestShaderModel >= D3D_SHADER_MODEL_6_0; (*(uint32_t*)&shaderModel.HighestShaderModel)--) {
         hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &shaderModel, sizeof(shaderModel));
         if (SUCCEEDED(hr))

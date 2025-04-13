@@ -6,7 +6,7 @@
 #include <pix.h>
 
 #ifdef D3D12_SDK_VERSION
-static_assert(D3D12_SDK_VERSION >= 600, "Outdated Win SDK (need one released after 2022.04)");
+static_assert(D3D12_SDK_VERSION >= 4, "Outdated Win SDK. D3D12 Ultimate needed (SDK 1.4.9+, released 2021.04.20). Always prefer using latest SDK!");
 #else
 #    error "Ancient Windows SDK"
 #endif
