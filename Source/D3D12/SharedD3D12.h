@@ -5,6 +5,12 @@
 #include <d3d12.h>
 #include <pix.h>
 
+#ifdef D3D12_SDK_VERSION
+static_assert(D3D12_SDK_VERSION >= 600, "Outdated Win SDK (need one released after 2022.04)");
+#else
+#    error "Ancient Windows SDK"
+#endif
+
 #include "SharedExternal.h"
 
 struct D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC {
