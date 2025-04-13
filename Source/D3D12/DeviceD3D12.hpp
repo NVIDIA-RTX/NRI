@@ -418,7 +418,7 @@ void DeviceD3D12::FillDesc() {
     D3D12_FEATURE_DATA_D3D12_OPTIONS10 options10 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS10, &options10, sizeof(options10));
     if (FAILED(hr))
-        REPORT_ERROR(this, "ID3D12Device::CheckFeatureSupport(options10) failed, result = 0x%08X!", hr);
+        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options10) failed, result = 0x%08X!", hr);
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS11 options11 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS11, &options11, sizeof(options11));
