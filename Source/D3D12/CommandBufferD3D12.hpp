@@ -930,15 +930,36 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierGroupDesc& barrierGroup
 NRI_INLINE void CommandBufferD3D12::ResetQueries(QueryPool& queryPool, uint32_t, uint32_t) {
     QueryPoolD3D12& queryPoolD3D12 = (QueryPoolD3D12&)queryPool;
     if (queryPoolD3D12.GetType() >= QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE) {
-        // TODO: "bufferForAccelerationStructuresSizes" is completely hidden from a user, transition needs to be done under the hood (legacy barrier is used for simplicity)
+        // TODO: "bufferForAccelerationStructuresSizes" is completely hidden from a user, transition needs to be done under the hood.
         // "ResetQueries" is a good indicator that next call will be "CmdWrite*Sizes" where UAV state is needed
-        D3D12_RESOURCE_BARRIER barrier = {};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Transition.pResource = queryPoolD3D12.GetBufferForAccelerationStructuresSizes();
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        
-        m_GraphicsCommandList->ResourceBarrier(1, &barrier);
+#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+        if (m_Device.GetDesc().features.enchancedBarrier) { // Enhanced barriers
+            D3D12_BUFFER_BARRIER barrier = {};
+            barrier.SyncBefore = D3D12_BARRIER_SYNC_COPY;
+            barrier.SyncAfter = D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO;
+            barrier.AccessBefore = D3D12_BARRIER_ACCESS_COPY_SOURCE;
+            barrier.AccessAfter = D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
+            barrier.pResource = queryPoolD3D12.GetBufferForAccelerationStructuresSizes();
+            barrier.Offset = 0; // TODO: would be good to use "offset and "num", but API says "must be 0 and UINT64_MAX"
+            barrier.Size = UINT64_MAX;
+
+            D3D12_BARRIER_GROUP barrierGroup = {};
+            barrierGroup.Type = D3D12_BARRIER_TYPE_BUFFER;
+            barrierGroup.NumBarriers = 1;
+            barrierGroup.pBufferBarriers = &barrier;
+
+            m_GraphicsCommandList->Barrier(1, &barrierGroup);
+        } else
+#endif
+        {
+            D3D12_RESOURCE_BARRIER resourceBarrier = {};
+            resourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            resourceBarrier.Transition.pResource = queryPoolD3D12.GetBufferForAccelerationStructuresSizes();
+            resourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
+            resourceBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+            m_GraphicsCommandList->ResourceBarrier(1, &resourceBarrier);
+        }
     }
 }
 
@@ -961,19 +982,39 @@ NRI_INLINE void CommandBufferD3D12::CopyQueries(const QueryPool& queryPool, uint
         const uint64_t size = num * queryPoolD3D12.GetQuerySize();
         ID3D12Resource* bufferSrc = queryPoolD3D12.GetBufferForAccelerationStructuresSizes();
 
-        // TODO: "bufferForAccelerationStructuresSizes" is completely hidden from a user, transition needs to be done under the hood (legacy barrier is used for simplicity)
+        // TODO: "bufferForAccelerationStructuresSizes" is completely hidden from a user, transition needs to be done under the hood.
         // Let's naively assume that "CopyQueries" can be called only once after potentially multiple "CmdWrite*Sizes"
-        D3D12_RESOURCE_BARRIER barrier = {};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Transition.pResource = bufferSrc;
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
-        
-        m_GraphicsCommandList->ResourceBarrier(1, &barrier);
+#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+        if (m_Device.GetDesc().features.enchancedBarrier) { // Enhanced barriers
+            D3D12_BUFFER_BARRIER barrier = {};
+            barrier.SyncBefore = D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO;
+            barrier.SyncAfter = D3D12_BARRIER_SYNC_COPY;
+            barrier.AccessBefore = D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
+            barrier.AccessAfter = D3D12_BARRIER_ACCESS_COPY_SOURCE;
+            barrier.pResource = queryPoolD3D12.GetBufferForAccelerationStructuresSizes();
+            barrier.Offset = 0; // TODO: would be good to use "offset and "num", but API says "must be 0 and UINT64_MAX"
+            barrier.Size = UINT64_MAX;
+
+            D3D12_BARRIER_GROUP barrierGroup = {};
+            barrierGroup.Type = D3D12_BARRIER_TYPE_BUFFER;
+            barrierGroup.NumBarriers = 1;
+            barrierGroup.pBufferBarriers = &barrier;
+
+            m_GraphicsCommandList->Barrier(1, &barrierGroup);
+        } else
+#endif
+        {
+            D3D12_RESOURCE_BARRIER barrier = {};
+            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            barrier.Transition.pResource = bufferSrc;
+            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+
+            m_GraphicsCommandList->ResourceBarrier(1, &barrier);
+        }
 
         m_GraphicsCommandList->CopyBufferRegion(bufferD3D12, alignedBufferOffset, bufferSrc, srcOffset, size);
-    }
-    else
+    } else
         m_GraphicsCommandList->ResolveQueryData(queryPoolD3D12, queryPoolD3D12.GetType(), offset, num, bufferD3D12, alignedBufferOffset);
 }
 
