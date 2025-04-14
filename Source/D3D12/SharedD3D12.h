@@ -32,6 +32,8 @@ struct MemoryTypeInfo {
     bool mustBeDedicated;
 };
 
+constexpr D3D12_HEAP_FLAGS HEAP_FLAG_MSAA_ALIGNMENT = (D3D12_HEAP_FLAGS)(1 << 15);
+
 inline MemoryType Pack(const MemoryTypeInfo& memoryTypeInfo) {
     return *(MemoryType*)&memoryTypeInfo;
 }
@@ -95,7 +97,6 @@ D3D12_TEXTURE_ADDRESS_MODE GetAddressMode(AddressMode addressMode);
 D3D12_COMPARISON_FUNC GetComparisonFunc(CompareFunc compareFunc);
 D3D12_COMMAND_LIST_TYPE GetCommandListType(QueueType queueType);
 D3D12_DESCRIPTOR_HEAP_TYPE GetDescriptorHeapType(DescriptorType descriptorType);
-D3D12_HEAP_FLAGS GetHeapFlags(MemoryType memoryType);
 D3D12_PRIMITIVE_TOPOLOGY_TYPE GetPrimitiveTopologyType(Topology topology);
 D3D_PRIMITIVE_TOPOLOGY GetPrimitiveTopology(Topology topology, uint8_t tessControlPointNum);
 D3D12_FILL_MODE GetFillMode(FillMode fillMode);

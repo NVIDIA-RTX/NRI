@@ -2,11 +2,11 @@
 
 #pragma once
 
+namespace nri {
+
 // Redefine unused values to types, we need
 constexpr D3D12_QUERY_TYPE QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE = (D3D12_QUERY_TYPE)100;
 constexpr D3D12_QUERY_TYPE QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE = (D3D12_QUERY_TYPE)101;
-
-namespace nri {
 
 struct QueryPoolD3D12 final : public DebugNameBase {
     inline QueryPoolD3D12(DeviceD3D12& device)

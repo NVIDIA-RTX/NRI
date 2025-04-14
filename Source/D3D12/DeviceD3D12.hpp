@@ -984,6 +984,9 @@ void DeviceD3D12::GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOU
             heapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
     }
 
+    if (resourceDesc.SampleDesc.Count > 1)
+        heapFlags |= HEAP_FLAG_MSAA_ALIGNMENT;
+
     D3D12_RESOURCE_ALLOCATION_INFO resourceAllocationInfo = m_Device->GetResourceAllocationInfo(NODE_MASK, 1, &resourceDesc);
 
     MemoryTypeInfo memoryTypeInfo = {};

@@ -199,11 +199,17 @@ Result DescriptorD3D12::Create(const Texture2DViewDesc& textureViewDesc) {
         case Texture2DViewType::COLOR_ATTACHMENT: {
             D3D12_RENDER_TARGET_VIEW_DESC desc = {};
             desc.Format = format;
-            desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-            desc.Texture2DArray.MipSlice = textureViewDesc.mipOffset;
-            desc.Texture2DArray.FirstArraySlice = textureViewDesc.layerOffset;
-            desc.Texture2DArray.ArraySize = remainingLayers;
-            desc.Texture2DArray.PlaneSlice = GetPlaneIndex(textureViewDesc.format);
+            if (textureDesc.sampleNum > 1) {
+                desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
+                desc.Texture2DMSArray.FirstArraySlice = textureViewDesc.layerOffset;
+                desc.Texture2DMSArray.ArraySize = remainingLayers;
+            } else {
+                desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+                desc.Texture2DArray.MipSlice = textureViewDesc.mipOffset;
+                desc.Texture2DArray.FirstArraySlice = textureViewDesc.layerOffset;
+                desc.Texture2DArray.ArraySize = remainingLayers;
+                desc.Texture2DArray.PlaneSlice = GetPlaneIndex(textureViewDesc.format);
+            }
 
             return CreateRenderTargetView(texture, desc);
         }
@@ -213,10 +219,16 @@ Result DescriptorD3D12::Create(const Texture2DViewDesc& textureViewDesc) {
         case Texture2DViewType::DEPTH_STENCIL_READONLY: {
             D3D12_DEPTH_STENCIL_VIEW_DESC desc = {};
             desc.Format = format;
-            desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
-            desc.Texture2DArray.MipSlice = textureViewDesc.mipOffset;
-            desc.Texture2DArray.FirstArraySlice = textureViewDesc.layerOffset;
-            desc.Texture2DArray.ArraySize = remainingLayers;
+            if (textureDesc.sampleNum > 1) {
+                desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;
+                desc.Texture2DMSArray.FirstArraySlice = textureViewDesc.layerOffset;
+                desc.Texture2DMSArray.ArraySize = remainingLayers;
+            } else {
+                desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+                desc.Texture2DArray.MipSlice = textureViewDesc.mipOffset;
+                desc.Texture2DArray.FirstArraySlice = textureViewDesc.layerOffset;
+                desc.Texture2DArray.ArraySize = remainingLayers;
+            }
 
             if (textureViewDesc.viewType == Texture2DViewType::DEPTH_READONLY_STENCIL_ATTACHMENT)
                 desc.Flags = D3D12_DSV_FLAG_READ_ONLY_DEPTH;

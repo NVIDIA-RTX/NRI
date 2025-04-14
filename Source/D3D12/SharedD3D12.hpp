@@ -246,10 +246,6 @@ D3D12_DESCRIPTOR_HEAP_TYPE nri::GetDescriptorHeapType(DescriptorType descriptorT
     return descriptorType == DescriptorType::SAMPLER ? D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER : D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 }
 
-D3D12_HEAP_FLAGS nri::GetHeapFlags(MemoryType memoryType) {
-    return (D3D12_HEAP_FLAGS)(memoryType & 0xffff);
-}
-
 D3D12_FILTER nri::GetFilterIsotropic(Filter mip, Filter magnification, Filter minification, FilterExt filterExt, bool useComparison) {
     uint32_t combinedMask = 0;
     combinedMask |= mip == Filter::LINEAR ? 0x1 : 0;
