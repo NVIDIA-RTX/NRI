@@ -355,10 +355,10 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
     }
 
     // Finalize
+    m_Hwnd = swapChainDesc.window.windows.hwnd;
     m_PresentId = GetSwapChainId();
     m_Waitable = m_Device.GetDesc().features.waitableSwapChain && swapChainDesc.waitable;
     m_AllowLowLatency = allowLowLatency;
-    m_Hwnd = swapChainDesc.window.windows.hwnd;
 
     return Result::SUCCESS;
 }

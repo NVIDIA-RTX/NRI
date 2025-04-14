@@ -52,8 +52,8 @@ private:
     DeviceD3D11& m_Device;
     ComPtr<IDXGISwapChainBest> m_SwapChain;
     TextureD3D11* m_Texture = nullptr;
-    void* m_Hwnd = nullptr;
     HANDLE m_FrameLatencyWaitableObject = nullptr;
+    void* m_Hwnd = nullptr;
     uint64_t m_PresentId = 0;
     uint32_t m_Flags = 0;
     uint8_t m_Version = 0;

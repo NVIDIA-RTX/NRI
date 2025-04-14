@@ -149,6 +149,7 @@ Result SwapChainD3D11::Create(const SwapChainDesc& swapChainDesc) {
     }
 
     // Finalize
+    m_Hwnd = swapChainDesc.window.windows.hwnd;
     m_PresentId = GetSwapChainId();
     m_Flags = desc.Flags;
     m_AllowLowLatency = swapChainDesc.allowLowLatency && m_Device.HasNvExt();
