@@ -137,14 +137,9 @@ Result SwapChainD3D12::Create(const SwapChainDesc& swapChainDesc) {
             dxgiDevice1->SetMaximumFrameLatency(queuedFrameNum);
     }
 
-    // Finalize
-    m_PresentId = GetSwapChainId();
-    m_Flags = desc.Flags;
-    m_Desc = swapChainDesc;
-    m_Desc.allowLowLatency = swapChainDesc.allowLowLatency && m_Device.HasNvExt();
-
-    m_Textures.reserve(m_Desc.textureNum);
-    for (uint32_t i = 0; i < m_Desc.textureNum; i++) {
+    // Textures
+    m_Textures.reserve(swapChainDesc.textureNum);
+    for (uint32_t i = 0; i < swapChainDesc.textureNum; i++) {
         ComPtr<ID3D12Resource> textureNative;
         hr = m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&textureNative));
         RETURN_ON_BAD_HRESULT(&m_Device, hr, "IDXGISwapChain::GetBuffer()");
@@ -160,11 +155,17 @@ Result SwapChainD3D12::Create(const SwapChainDesc& swapChainDesc) {
         m_Textures.push_back(texture);
     }
 
+    // Finalize
+    m_PresentId = GetSwapChainId();
+    m_Flags = desc.Flags;
+    m_AllowLowLatency = swapChainDesc.allowLowLatency && m_Device.HasNvExt();
+    m_VerticalSyncInterval = swapChainDesc.verticalSyncInterval;
+
     return Result::SUCCESS;
 }
 
 NRI_INLINE Texture* const* SwapChainD3D12::GetTextures(uint32_t& textureNum) const {
-    textureNum = m_Desc.textureNum;
+    textureNum = (uint32_t)m_Textures.size();
 
     return (Texture**)m_Textures.data();
 }
@@ -176,6 +177,7 @@ NRI_INLINE uint32_t SwapChainD3D12::AcquireNextTexture() {
 NRI_INLINE Result SwapChainD3D12::WaitForPresent() {
     if (m_FrameLatencyWaitableObject) {
         uint32_t result = WaitForSingleObjectEx(m_FrameLatencyWaitableObject, TIMEOUT_PRESENT, TRUE);
+
         return result == WAIT_OBJECT_0 ? Result::SUCCESS : Result::FAILURE;
     }
 
@@ -184,16 +186,16 @@ NRI_INLINE Result SwapChainD3D12::WaitForPresent() {
 
 NRI_INLINE Result SwapChainD3D12::Present() {
 #if NRI_ENABLE_D3D_EXTENSIONS
-    if (m_Desc.allowLowLatency)
+    if (m_AllowLowLatency)
         SetLatencyMarker((LatencyMarker)PRESENT_START);
 #endif
 
-    uint32_t flags = (!m_Desc.verticalSyncInterval && (m_Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING)) ? DXGI_PRESENT_ALLOW_TEARING : 0;
-    HRESULT hr = m_SwapChain->Present(m_Desc.verticalSyncInterval, flags);
+    uint32_t flags = (!m_VerticalSyncInterval && (m_Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING)) ? DXGI_PRESENT_ALLOW_TEARING : 0;
+    HRESULT hr = m_SwapChain->Present(m_VerticalSyncInterval, flags);
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "IDXGISwapChain::Present()");
 
 #if NRI_ENABLE_D3D_EXTENSIONS
-    if (m_Desc.allowLowLatency)
+    if (m_AllowLowLatency)
         SetLatencyMarker((LatencyMarker)PRESENT_END);
 #endif
 

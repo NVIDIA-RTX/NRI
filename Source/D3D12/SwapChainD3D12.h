@@ -36,7 +36,7 @@ struct SwapChainD3D12 final : public DisplayDescHelper, DebugNameBase {
     //================================================================================================================
 
     inline Result GetDisplayDesc(DisplayDesc& displayDesc) {
-        return DisplayDescHelper::GetDisplayDesc(m_Desc.window.windows.hwnd, displayDesc);
+        return DisplayDescHelper::GetDisplayDesc(m_Hwnd, displayDesc);
     }
 
     Texture* const* GetTextures(uint32_t& textureNum) const;
@@ -53,11 +53,13 @@ private:
     DeviceD3D12& m_Device;
     ComPtr<IDXGISwapChainBest> m_SwapChain;
     Vector<TextureD3D12*> m_Textures;
-    SwapChainDesc m_Desc = {};
+    void* m_Hwnd = nullptr;
     HANDLE m_FrameLatencyWaitableObject = nullptr;
     uint64_t m_PresentId = 0;
+    uint32_t m_Flags = 0;
     uint8_t m_Version = 0;
-    UINT m_Flags = 0;
+    uint8_t m_VerticalSyncInterval = 0;
+    bool m_AllowLowLatency = false;
 };
 
 } // namespace nri

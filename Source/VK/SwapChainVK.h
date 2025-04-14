@@ -36,7 +36,7 @@ struct SwapChainVK final : public DisplayDescHelper, DebugNameBase {
     //================================================================================================================
 
     inline Result GetDisplayDesc(DisplayDesc& displayDesc) {
-        return DisplayDescHelper::GetDisplayDesc(m_Desc.window.windows.hwnd, displayDesc);
+        return DisplayDescHelper::GetDisplayDesc(m_Hwnd, displayDesc);
     }
 
     Texture* const* GetTextures(uint32_t& textureNum) const;
@@ -55,13 +55,15 @@ private:
     FenceVK* m_LatencyFence = nullptr;
     std::array<VkSemaphore, MAX_NUMBER_OF_FRAMES_IN_FLIGHT> m_ImageAcquiredSemaphores = {VK_NULL_HANDLE};
     std::array<VkSemaphore, MAX_NUMBER_OF_FRAMES_IN_FLIGHT> m_RenderingFinishedSemaphores = {VK_NULL_HANDLE};
-    SwapChainDesc m_Desc = {};
     VkSwapchainKHR m_Handle = VK_NULL_HANDLE;
     VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
     QueueVK* m_Queue = nullptr;
+    void* m_Hwnd = nullptr;
     uint64_t m_PresentId = 0;
     uint32_t m_TextureIndex = 0;
     uint8_t m_FrameIndex = 0; // in flight, not global
+    bool m_AllowLowLatency = false;
+    bool m_Waitable = false;
 };
 
 } // namespace nri

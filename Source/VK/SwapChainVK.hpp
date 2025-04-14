@@ -321,7 +321,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkCreateSwapchainKHR returned %d", (int32_t)result);
     }
 
-    { // Swap chain images
+    { // Textures
         uint32_t imageNum = 0;
         vk.GetSwapchainImagesKHR(m_Device, m_Handle, &imageNum, nullptr);
 
@@ -356,9 +356,9 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
 
     // Finalize
     m_PresentId = GetSwapChainId();
-    m_Desc = swapChainDesc;
-    m_Desc.waitable = m_Device.GetDesc().features.waitableSwapChain && m_Desc.waitable;
-    m_Desc.allowLowLatency = allowLowLatency;
+    m_Waitable = m_Device.GetDesc().features.waitableSwapChain && swapChainDesc.waitable;
+    m_AllowLowLatency = allowLowLatency;
+    m_Hwnd = swapChainDesc.window.windows.hwnd;
 
     return Result::SUCCESS;
 }
@@ -370,6 +370,7 @@ NRI_INLINE void SwapChainVK::SetDebugName(const char* name) {
 
 NRI_INLINE Texture* const* SwapChainVK::GetTextures(uint32_t& textureNum) const {
     textureNum = (uint32_t)m_Textures.size();
+
     return (Texture* const*)m_Textures.data();
 }
 
@@ -392,8 +393,9 @@ NRI_INLINE uint32_t SwapChainVK::AcquireNextTexture() {
 NRI_INLINE Result SwapChainVK::WaitForPresent() {
     const auto& vk = m_Device.GetDispatchTable();
 
-    if (m_Desc.waitable && GetPresentIndex(m_PresentId) != 0) {
+    if (m_Waitable && GetPresentIndex(m_PresentId) != 0) {
         VkResult result = vk.WaitForPresentKHR(m_Device, m_Handle, m_PresentId - 1, MsToUs(TIMEOUT_PRESENT));
+
         return GetReturnCode(result);
     }
 
@@ -427,7 +429,7 @@ NRI_INLINE Result SwapChainVK::Present() {
 
         VkLatencySubmissionPresentIdNV presentId = {VK_STRUCTURE_TYPE_LATENCY_SUBMISSION_PRESENT_ID_NV};
         presentId.presentID = m_PresentId;
-        if (m_Desc.allowLowLatency)
+        if (m_AllowLowLatency)
             submitInfo.pNext = &presentId;
 
         VkResult result = vk.QueueSubmit2(*m_Queue, 1, &submitInfo, VK_NULL_HANDLE);
@@ -451,14 +453,14 @@ NRI_INLINE Result SwapChainVK::Present() {
         if (m_Device.m_IsSupported.presentId)
             presentInfo.pNext = &presentId;
 
-        if (m_Desc.allowLowLatency)
+        if (m_AllowLowLatency)
             SetLatencyMarker((LatencyMarker)VK_LATENCY_MARKER_PRESENT_START_NV);
 
         result = vk.QueuePresentKHR(*m_Queue, &presentInfo);
         if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR && result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_ERROR_SURFACE_LOST_KHR)
             REPORT_ERROR(&m_Device, "vkQueuePresentKHR returned %d", (int32_t)result);
 
-        if (m_Desc.allowLowLatency)
+        if (m_AllowLowLatency)
             SetLatencyMarker((LatencyMarker)VK_LATENCY_MARKER_PRESENT_END_NV);
     }
 

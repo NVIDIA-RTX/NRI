@@ -11,8 +11,7 @@ struct TextureD3D11;
 
 struct SwapChainD3D11 final : public DisplayDescHelper, DebugNameBase {
     inline SwapChainD3D11(DeviceD3D11& device)
-        : m_Device(device)
-        , m_Textures(device.GetStdAllocator()) {
+        : m_Device(device) {
     }
 
     inline DeviceD3D11& GetDevice() const {
@@ -36,7 +35,7 @@ struct SwapChainD3D11 final : public DisplayDescHelper, DebugNameBase {
     //================================================================================================================
 
     inline Result GetDisplayDesc(DisplayDesc& displayDesc) {
-        return DisplayDescHelper::GetDisplayDesc(m_Desc.window.windows.hwnd, displayDesc);
+        return DisplayDescHelper::GetDisplayDesc(m_Hwnd, displayDesc);
     }
 
     Texture* const* GetTextures(uint32_t& textureNum) const;
@@ -52,13 +51,14 @@ struct SwapChainD3D11 final : public DisplayDescHelper, DebugNameBase {
 private:
     DeviceD3D11& m_Device;
     ComPtr<IDXGISwapChainBest> m_SwapChain;
-    Vector<TextureD3D11*> m_Textures;
-    SwapChainDesc m_Desc = {};
-    DisplayDescHelper m_DisplayDescHelper;
+    TextureD3D11* m_Texture = nullptr;
+    void* m_Hwnd = nullptr;
     HANDLE m_FrameLatencyWaitableObject = nullptr;
     uint64_t m_PresentId = 0;
-    UINT m_Flags = 0;
+    uint32_t m_Flags = 0;
     uint8_t m_Version = 0;
+    uint8_t m_VerticalSyncInterval = 0;
+    bool m_AllowLowLatency = false;
 };
 
 } // namespace nri
