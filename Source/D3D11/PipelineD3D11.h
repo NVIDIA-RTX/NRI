@@ -14,7 +14,6 @@ struct RasterizerState {
 struct PipelineD3D11 final : public DebugNameBase {
     inline PipelineD3D11(DeviceD3D11& device)
         : m_Device(device)
-        , m_VertexStreamStrides(device.GetStdAllocator())
         , m_RasterizerStates(device.GetStdAllocator()) {
     }
 
@@ -23,10 +22,6 @@ struct PipelineD3D11 final : public DebugNameBase {
 
     inline DeviceD3D11& GetDevice() const {
         return m_Device;
-    }
-
-    inline uint32_t GetVertexStreamStride(uint32_t bindingSlot) const {
-        return m_VertexStreamStrides[bindingSlot];
     }
 
     Result Create(const GraphicsPipelineDesc& pipelineDesc);
@@ -52,7 +47,6 @@ private:
 private:
     DeviceD3D11& m_Device;
     const PipelineLayoutD3D11* m_PipelineLayout = nullptr;
-    Vector<uint32_t> m_VertexStreamStrides;
     Vector<RasterizerState> m_RasterizerStates;
     ComPtr<ID3D11VertexShader> m_VertexShader;
     ComPtr<ID3D11HullShader> m_TessControlShader;

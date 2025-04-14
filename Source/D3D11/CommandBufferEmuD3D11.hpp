@@ -192,15 +192,11 @@ void CommandBufferEmuD3D11::Submit() {
                 uint32_t baseSlot;
                 Read(m_PushBuffer, i, baseSlot);
 
-                Buffer** buffers;
-                uint32_t bufferNum;
-                Read(m_PushBuffer, i, buffers, bufferNum);
+                VertexBufferDesc* vertexBufferDescs;
+                uint32_t vertexBufferNum;
+                Read(m_PushBuffer, i, vertexBufferDescs, vertexBufferNum);
 
-                uint64_t* offsets;
-                uint32_t offsetNum;
-                Read(m_PushBuffer, i, offsets, offsetNum);
-
-                commandBuffer.SetVertexBuffers(baseSlot, bufferNum, buffers, offsets);
+                commandBuffer.SetVertexBuffers(baseSlot, vertexBufferDescs, vertexBufferNum);
             } break;
             case BIND_INDEX_BUFFER: {
                 Buffer* buffer;
@@ -556,11 +552,10 @@ NRI_INLINE void CommandBufferEmuD3D11::EndRendering() {
     Push(m_PushBuffer, END_RENDERING);
 }
 
-NRI_INLINE void CommandBufferEmuD3D11::SetVertexBuffers(uint32_t baseSlot, uint32_t bufferNum, const Buffer* const* buffers, const uint64_t* offsets) {
+NRI_INLINE void CommandBufferEmuD3D11::SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum) {
     Push(m_PushBuffer, BIND_VERTEX_BUFFERS);
     Push(m_PushBuffer, baseSlot);
-    Push(m_PushBuffer, buffers, bufferNum);
-    Push(m_PushBuffer, offsets, bufferNum);
+    Push(m_PushBuffer, vertexBufferDescs, vertexBufferNum);
 }
 
 NRI_INLINE void CommandBufferEmuD3D11::SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType) {

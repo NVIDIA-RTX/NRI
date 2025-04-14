@@ -422,7 +422,7 @@ static void NRI_CALL CmdBarrier(CommandBuffer&, const BarrierGroupDesc&) {
 static void NRI_CALL CmdSetIndexBuffer(CommandBuffer&, const Buffer&, uint64_t, IndexType) {
 }
 
-static void NRI_CALL CmdSetVertexBuffers(CommandBuffer&, uint32_t, uint32_t, const Buffer* const*, const uint64_t*) {
+static void NRI_CALL CmdSetVertexBuffers(CommandBuffer&, uint32_t, const VertexBufferDesc*, uint32_t) {
 }
 
 static void NRI_CALL CmdSetViewports(CommandBuffer&, const Viewport*, uint32_t) {

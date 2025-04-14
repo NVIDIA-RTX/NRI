@@ -262,8 +262,8 @@ static void NRI_CALL CmdSetIndexBuffer(CommandBuffer& commandBuffer, const Buffe
     ((CommandBufferD3D11&)commandBuffer).SetIndexBuffer(buffer, offset, indexType);
 }
 
-static void NRI_CALL CmdSetVertexBuffers(CommandBuffer& commandBuffer, uint32_t baseSlot, uint32_t bufferNum, const Buffer* const* buffers, const uint64_t* offsets) {
-    ((CommandBufferD3D11&)commandBuffer).SetVertexBuffers(baseSlot, bufferNum, buffers, offsets);
+static void NRI_CALL CmdSetVertexBuffers(CommandBuffer& commandBuffer, uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum) {
+    ((CommandBufferD3D11&)commandBuffer).SetVertexBuffers(baseSlot, vertexBufferDescs, vertexBufferNum);
 }
 
 static void NRI_CALL CmdSetViewports(CommandBuffer& commandBuffer, const Viewport* viewports, uint32_t viewportNum) {
@@ -540,8 +540,8 @@ static void NRI_CALL EmuCmdSetIndexBuffer(CommandBuffer& commandBuffer, const Bu
     ((CommandBufferEmuD3D11&)commandBuffer).SetIndexBuffer(buffer, offset, indexType);
 }
 
-static void NRI_CALL EmuCmdSetVertexBuffers(CommandBuffer& commandBuffer, uint32_t baseSlot, uint32_t bufferNum, const Buffer* const* buffers, const uint64_t* offsets) {
-    ((CommandBufferEmuD3D11&)commandBuffer).SetVertexBuffers(baseSlot, bufferNum, buffers, offsets);
+static void NRI_CALL EmuCmdSetVertexBuffers(CommandBuffer& commandBuffer, uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum) {
+    ((CommandBufferEmuD3D11&)commandBuffer).SetVertexBuffers(baseSlot, vertexBufferDescs, vertexBufferNum);
 }
 
 static void NRI_CALL EmuCmdSetViewports(CommandBuffer& commandBuffer, const Viewport* viewports, uint32_t viewportNum) {

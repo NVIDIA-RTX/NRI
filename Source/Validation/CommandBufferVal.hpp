@@ -212,15 +212,17 @@ NRI_INLINE void CommandBufferVal::EndRendering() {
     GetCoreInterface().CmdEndRendering(*GetImpl());
 }
 
-NRI_INLINE void CommandBufferVal::SetVertexBuffers(uint32_t baseSlot, uint32_t bufferNum, const Buffer* const* buffers, const uint64_t* offsets) {
+NRI_INLINE void CommandBufferVal::SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_Pipeline, ReturnVoid(), "'SetPipeline' has not been called");
 
-    Scratch<Buffer*> buffersImpl = AllocateScratch(m_Device, Buffer*, bufferNum);
-    for (uint32_t i = 0; i < bufferNum; i++)
-        buffersImpl[i] = NRI_GET_IMPL(Buffer, buffers[i]);
+    Scratch<VertexBufferDesc> vertexBufferDescsImpl = AllocateScratch(m_Device, VertexBufferDesc, vertexBufferNum);
+    for (uint32_t i = 0; i < vertexBufferNum; i++) {
+        vertexBufferDescsImpl[i] = vertexBufferDescs[i];
+        vertexBufferDescsImpl[i].buffer = NRI_GET_IMPL(Buffer, vertexBufferDescs[i].buffer);
+    }
 
-    GetCoreInterface().CmdSetVertexBuffers(*GetImpl(), baseSlot, bufferNum, buffersImpl, offsets);
+    GetCoreInterface().CmdSetVertexBuffers(*GetImpl(), baseSlot, vertexBufferDescsImpl, vertexBufferNum);
 }
 
 NRI_INLINE void CommandBufferVal::SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType) {

@@ -58,7 +58,7 @@ struct CommandBufferVK final : public DebugNameBase {
     void ClearAttachments(const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum);
     void ClearStorage(const ClearStorageDesc& clearDesc);
     void SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType);
-    void SetVertexBuffers(uint32_t baseSlot, uint32_t bufferNum, const Buffer* const* buffers, const uint64_t* offsets);
+    void SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum);
     void Draw(const DrawDesc& drawDesc);
     void DrawIndexed(const DrawIndexedDesc& drawIndexedDesc);
     void DrawIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset);

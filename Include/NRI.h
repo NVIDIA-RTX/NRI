@@ -153,7 +153,7 @@ NriStruct(CoreInterface) {
 
         // Input assembly
         void                (NRI_CALL *CmdSetIndexBuffer)           (NriRef(CommandBuffer) commandBuffer, const NriRef(Buffer) buffer, uint64_t offset, Nri(IndexType) indexType);
-        void                (NRI_CALL *CmdSetVertexBuffers)         (NriRef(CommandBuffer) commandBuffer, uint32_t baseSlot, uint32_t bufferNum, const NriPtr(Buffer) const* buffers, NriOptional const uint64_t* offsets); // expects "CmdSetPipeline" to be called first
+        void                (NRI_CALL *CmdSetVertexBuffers)         (NriRef(CommandBuffer) commandBuffer, uint32_t baseSlot, const NriPtr(VertexBufferDesc) vertexBufferDescs, uint32_t vertexBufferNum);
 
         // Initial state
         void                (NRI_CALL *CmdSetViewports)             (NriRef(CommandBuffer) commandBuffer, const NriPtr(Viewport) viewports, uint32_t viewportNum);

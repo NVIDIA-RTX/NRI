@@ -91,20 +91,6 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
             vertexBindingDesc.binding = stream.bindingSlot;
             vertexBindingDesc.inputRate = stream.stepRate == VertexStreamStepRate::PER_VERTEX ? VK_VERTEX_INPUT_RATE_VERTEX : VK_VERTEX_INPUT_RATE_INSTANCE;
         }
-
-        // Strides
-        uint32_t maxBindingSlot = 0;
-        for (uint32_t i = 0; i < vi->streamNum; i++) {
-            const VertexStreamDesc& stream = vi->streams[i];
-            if (stream.bindingSlot > maxBindingSlot)
-                maxBindingSlot = stream.bindingSlot;
-        }
-
-        m_VertexStreamStrides.resize(maxBindingSlot + 1);
-        for (uint32_t i = 0; i < vi->streamNum; i++) {
-            const VertexStreamDesc& stream = vi->streams[i];
-            m_VertexStreamStrides[stream.bindingSlot] = stream.stride;
-        }
     }
 
     // Input assembly

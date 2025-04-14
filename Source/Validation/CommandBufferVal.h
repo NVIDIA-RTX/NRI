@@ -49,7 +49,7 @@ struct CommandBufferVal final : public ObjectVal {
     void ClearStorage(const ClearStorageDesc& clearDesc);
     void BeginRendering(const AttachmentsDesc& attachmentsDesc);
     void EndRendering();
-    void SetVertexBuffers(uint32_t baseSlot, uint32_t bufferNum, const Buffer* const* buffers, const uint64_t* offsets);
+    void SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum);
     void SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType);
     void SetPipelineLayout(const PipelineLayout& pipelineLayout);
     void SetPipeline(const Pipeline& pipeline);

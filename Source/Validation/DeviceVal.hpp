@@ -454,16 +454,6 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
         RETURN_ON_FAILURE(this, color->format > Format::UNKNOWN && color->format < Format::BC1_RGBA_UNORM, Result::INVALID_ARGUMENT, "'outputMerger->color[%u].format = %u' is invalid", i, color->format);
     }
 
-    if (graphicsPipelineDesc.vertexInput) {
-        for (uint32_t i = 0; i < graphicsPipelineDesc.vertexInput->attributeNum; i++) {
-            const VertexAttributeDesc* attribute = graphicsPipelineDesc.vertexInput->attributes + i;
-            uint32_t size = GetFormatProps(attribute->format).stride;
-            uint32_t stride = graphicsPipelineDesc.vertexInput->streams[attribute->streamIndex].stride;
-            RETURN_ON_FAILURE(this, attribute->offset + size <= stride, Result::INVALID_ARGUMENT,
-                "'inputAssembly->attributes[%u]' is out of bounds of 'inputAssembly->streams[%u]' (stride = %u)", i, attribute->streamIndex, stride);
-        }
-    }
-
     if (graphicsPipelineDesc.rasterization.conservativeRaster)
         RETURN_ON_FAILURE(this, GetDesc().tiers.conservativeRaster, Result::UNSUPPORTED, "'tiers.conservativeRaster' must be > 0");
 

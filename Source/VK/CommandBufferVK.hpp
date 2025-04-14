@@ -322,29 +322,40 @@ NRI_INLINE void CommandBufferVK::EndRendering() {
     m_DepthStencil = nullptr;
 }
 
-NRI_INLINE void CommandBufferVK::SetVertexBuffers(uint32_t baseSlot, uint32_t bufferNum, const Buffer* const* buffers, const uint64_t* offsets) {
-    Scratch<VkBuffer> handles = AllocateScratch(m_Device, VkBuffer, bufferNum);
-    Scratch<VkDeviceSize> fixedOffsets = AllocateScratch(m_Device, VkDeviceSize, bufferNum);
-    Scratch<VkDeviceSize> sizes = AllocateScratch(m_Device, VkDeviceSize, bufferNum);
-    Scratch<VkDeviceSize> strides = AllocateScratch(m_Device, VkDeviceSize, bufferNum);
+NRI_INLINE void CommandBufferVK::SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum) {
+    Scratch<uint8_t> scratch = AllocateScratch(m_Device, uint8_t, vertexBufferNum * (sizeof(VkBuffer) + sizeof(VkDeviceSize) * 3));
+    uint8_t* ptr = scratch;
 
-    for (uint32_t i = 0; i < bufferNum; i++) {
-        if (buffers[i]) {
-            const BufferVK& buffer = *(BufferVK*)buffers[i];
-            uint64_t offset = offsets ? offsets[i] : 0;
-            handles[i] = buffer.GetHandle();
-            fixedOffsets[i] = offset;
-            sizes[i] = buffer.GetDesc().size - offset;
-            strides[i] = m_Pipeline->GetVertexStreamStride(baseSlot + i);
+    VkBuffer* handles = (VkBuffer*)ptr;
+    ptr += vertexBufferNum * sizeof(VkBuffer);
+
+    VkDeviceSize* offsets = (VkDeviceSize*)ptr;
+    ptr += vertexBufferNum * sizeof(VkDeviceSize);
+
+    VkDeviceSize* sizes = (VkDeviceSize*)ptr;
+    ptr += vertexBufferNum * sizeof(VkDeviceSize);
+
+    VkDeviceSize* strides = (VkDeviceSize*)ptr;
+
+    for (uint32_t i = 0; i < vertexBufferNum; i++) {
+        const VertexBufferDesc& vertexBufferDesc = vertexBufferDescs[i];
+
+        const BufferVK* bufferVK = (BufferVK*)vertexBufferDesc.buffer;
+        if (bufferVK) {
+            handles[i] = bufferVK->GetHandle();
+            offsets[i] = vertexBufferDesc.offset;
+            sizes[i] = bufferVK->GetDesc().size - vertexBufferDesc.offset;
+            strides[i] = vertexBufferDesc.stride;
         } else {
             handles[i] = VK_NULL_HANDLE;
-            fixedOffsets[i] = 0;
+            offsets[i] = 0;
             sizes[i] = 0;
             strides[i] = 0;
         }
     }
+
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdBindVertexBuffers2(m_Handle, baseSlot, bufferNum, handles, fixedOffsets, sizes, strides);
+    vk.CmdBindVertexBuffers2(m_Handle, baseSlot, vertexBufferNum, handles, offsets, sizes, strides);
 }
 
 NRI_INLINE void CommandBufferVK::SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType) {

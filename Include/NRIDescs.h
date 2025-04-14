@@ -722,7 +722,6 @@ NriStruct(VertexAttributeDesc) {
 };
 
 NriStruct(VertexStreamDesc) {
-    uint16_t stride; // TODO: the code is ready to accept "stride" as a dynamic parameter of "CmdSetVertexBuffers"
     uint16_t bindingSlot;
     Nri(VertexStreamStepRate) stepRate;
 };
@@ -732,6 +731,12 @@ NriStruct(VertexInputDesc) {
     uint8_t attributeNum;
     const NriPtr(VertexStreamDesc) streams;
     uint8_t streamNum;
+};
+
+NriStruct(VertexBufferDesc) {
+    const NriPtr(Buffer) buffer;
+    uint64_t offset;
+    uint32_t stride;
 };
 
 #pragma endregion

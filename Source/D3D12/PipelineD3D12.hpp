@@ -242,24 +242,8 @@ Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipel
     uint32_t attributeNum = graphicsPipelineDesc.vertexInput ? graphicsPipelineDesc.vertexInput->attributeNum : 0;
     Scratch<D3D12_INPUT_ELEMENT_DESC> scratch1 = AllocateScratch(m_Device, D3D12_INPUT_ELEMENT_DESC, attributeNum);
     if (graphicsPipelineDesc.vertexInput) {
-        const VertexInputDesc& vi = *graphicsPipelineDesc.vertexInput;
-
         stateStream.inputLayout.desc.pInputElementDescs = scratch1;
         FillInputLayout(stateStream.inputLayout.desc, graphicsPipelineDesc);
-
-        // Strides
-        uint32_t maxBindingSlot = 0;
-        for (uint32_t i = 0; i < vi.streamNum; i++) {
-            const VertexStreamDesc& stream = vi.streams[i];
-            if (stream.bindingSlot > maxBindingSlot)
-                maxBindingSlot = stream.bindingSlot;
-        }
-
-        m_VertexStreamStrides.resize(maxBindingSlot + 1);
-        for (uint32_t i = 0; i < graphicsPipelineDesc.vertexInput->streamNum; i++) {
-            const VertexStreamDesc& stream = vi.streams[i];
-            m_VertexStreamStrides[stream.bindingSlot] = stream.stride;
-        }
     }
 
     // Input assembly
@@ -357,24 +341,8 @@ Result PipelineD3D12::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     uint32_t attributeNum = graphicsPipelineDesc.vertexInput ? graphicsPipelineDesc.vertexInput->attributeNum : 0;
     Scratch<D3D12_INPUT_ELEMENT_DESC> scratch = AllocateScratch(m_Device, D3D12_INPUT_ELEMENT_DESC, attributeNum);
     if (graphicsPipelineDesc.vertexInput) {
-        const VertexInputDesc& vi = *graphicsPipelineDesc.vertexInput;
-
         graphicsPipleineStateDesc.InputLayout.pInputElementDescs = scratch;
         FillInputLayout(graphicsPipleineStateDesc.InputLayout, graphicsPipelineDesc);
-
-        // Strides
-        uint32_t maxBindingSlot = 0;
-        for (uint32_t i = 0; i < vi.streamNum; i++) {
-            const VertexStreamDesc& stream = vi.streams[i];
-            if (stream.bindingSlot > maxBindingSlot)
-                maxBindingSlot = stream.bindingSlot;
-        }
-
-        m_VertexStreamStrides.resize(maxBindingSlot + 1);
-        for (uint32_t i = 0; i < vi.streamNum; i++) {
-            const VertexStreamDesc& stream = vi.streams[i];
-            m_VertexStreamStrides[stream.bindingSlot] = stream.stride;
-        }
     }
 
     // Input assembly

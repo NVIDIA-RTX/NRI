@@ -435,15 +435,16 @@ NRI_INLINE void CommandBufferD3D12::BeginRendering(const AttachmentsDesc& attach
         m_GraphicsCommandList->SetViewInstanceMask(attachmentsDesc.viewMask);
 }
 
-NRI_INLINE void CommandBufferD3D12::SetVertexBuffers(uint32_t baseSlot, uint32_t bufferNum, const Buffer* const* buffers, const uint64_t* offsets) {
-    Scratch<D3D12_VERTEX_BUFFER_VIEW> vertexBufferViews = AllocateScratch(m_Device, D3D12_VERTEX_BUFFER_VIEW, bufferNum);
-    for (uint32_t i = 0; i < bufferNum; i++) {
-        if (buffers[i]) {
-            const BufferD3D12* buffer = (BufferD3D12*)buffers[i];
-            uint64_t offset = offsets ? offsets[i] : 0;
-            vertexBufferViews[i].BufferLocation = buffer->GetPointerGPU() + offset;
-            vertexBufferViews[i].SizeInBytes = (UINT)(buffer->GetDesc().size - offset);
-            vertexBufferViews[i].StrideInBytes = m_Pipeline->GetVertexStreamStride(baseSlot + i);
+NRI_INLINE void CommandBufferD3D12::SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum) {
+    Scratch<D3D12_VERTEX_BUFFER_VIEW> vertexBufferViews = AllocateScratch(m_Device, D3D12_VERTEX_BUFFER_VIEW, vertexBufferNum);
+    for (uint32_t i = 0; i < vertexBufferNum; i++) {
+        const VertexBufferDesc& vertexBufferDesc = vertexBufferDescs[i];
+
+        const BufferD3D12* bufferD3D12 = (BufferD3D12*)vertexBufferDesc.buffer;
+        if (bufferD3D12) {
+            vertexBufferViews[i].BufferLocation = bufferD3D12->GetPointerGPU() + vertexBufferDesc.offset;
+            vertexBufferViews[i].SizeInBytes = (uint32_t)(bufferD3D12->GetDesc().size - vertexBufferDesc.offset);
+            vertexBufferViews[i].StrideInBytes = vertexBufferDesc.stride;
         } else {
             vertexBufferViews[i].BufferLocation = 0;
             vertexBufferViews[i].SizeInBytes = 0;
@@ -451,7 +452,7 @@ NRI_INLINE void CommandBufferD3D12::SetVertexBuffers(uint32_t baseSlot, uint32_t
         }
     }
 
-    m_GraphicsCommandList->IASetVertexBuffers(baseSlot, bufferNum, vertexBufferViews);
+    m_GraphicsCommandList->IASetVertexBuffers(baseSlot, vertexBufferNum, vertexBufferViews);
 }
 
 NRI_INLINE void CommandBufferD3D12::SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType) {

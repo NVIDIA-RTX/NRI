@@ -60,20 +60,6 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc) {
         CHECK(vertexShader != nullptr, "VS can't be NULL");
         hr = m_Device->CreateInputLayout(&inputElements[0], vi.attributeNum, vertexShader->bytecode, (size_t)vertexShader->size, &m_InputLayout);
         RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateInputLayout()");
-
-        // Strides
-        uint32_t maxBindingSlot = 0;
-        for (uint32_t i = 0; i < vi.streamNum; i++) {
-            const VertexStreamDesc& stream = vi.streams[i];
-            if (stream.bindingSlot > maxBindingSlot)
-                maxBindingSlot = stream.bindingSlot;
-        }
-
-        m_VertexStreamStrides.resize(maxBindingSlot + 1);
-        for (uint32_t i = 0; i < vi.streamNum; i++) {
-            const VertexStreamDesc& stream = vi.streams[i];
-            m_VertexStreamStrides[stream.bindingSlot] = stream.stride;
-        }
     }
 
     // Multisample
