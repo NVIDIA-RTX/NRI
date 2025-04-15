@@ -14,6 +14,10 @@ static_assert(D3D12_SDK_VERSION >= 4, "Outdated Win SDK. D3D12 Ultimate needed (
 #    define NRI_D3D12_HAS_TIGHT_ALIGNMENT
 #endif
 
+#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+//#    define ZERO_BUFFER_USES_SELF_COPIES // self copies require barrier in-between making them slow and useless
+#endif
+
 #include "SharedExternal.h"
 
 struct D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC {

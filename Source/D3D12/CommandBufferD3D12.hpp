@@ -633,14 +633,52 @@ NRI_INLINE void CommandBufferD3D12::ZeroBuffer(Buffer& buffer, uint64_t offset, 
     if (size == WHOLE_SIZE)
         size = dst.GetDesc().size;
 
+#ifdef ZERO_BUFFER_USES_SELF_COPIES
+    // Self copies
+    uint64_t blockSize = std::min(size, zeroBufferDesc.Width);
+    uint64_t offsetOrig = offset;
+
+    D3D12_BUFFER_BARRIER bufferBarrier = {};
+    bufferBarrier.pResource = dst;
+    bufferBarrier.Offset = 0;
+    bufferBarrier.Size = UINT64_MAX;
+    bufferBarrier.AccessBefore = D3D12_BARRIER_ACCESS_COMMON;
+    bufferBarrier.AccessAfter = D3D12_BARRIER_ACCESS_COMMON;
+    bufferBarrier.SyncBefore = D3D12_BARRIER_SYNC_COPY;
+    bufferBarrier.SyncAfter = D3D12_BARRIER_SYNC_COPY;
+
+    D3D12_BARRIER_GROUP barrierGroup = {};
+    barrierGroup.NumBarriers = 1;
+    barrierGroup.pBufferBarriers = &bufferBarrier;
+
+    m_GraphicsCommandList->CopyBufferRegion(dst, offset, zeroBuffer, 0, blockSize);
+
+    offset += blockSize;
+    size -= blockSize;
+
+    while (size >= blockSize) {
+        m_GraphicsCommandList->Barrier(1, &barrierGroup); // doesn't work without this!
+        m_GraphicsCommandList->CopyBufferRegion(dst, offset, dst, offsetOrig, blockSize);
+
+        offset += blockSize;
+        size -= blockSize;
+
+        blockSize <<= 1;
+    }
+
+    if (size)
+        m_GraphicsCommandList->CopyBufferRegion(dst, offset, dst, offsetOrig, size);
+#else
+    // No self copies
     while (size) {
-        uint64_t blockSize = size < zeroBufferDesc.Width ? size : zeroBufferDesc.Width;
+        uint64_t blockSize = std::min(size, zeroBufferDesc.Width);
 
         m_GraphicsCommandList->CopyBufferRegion(dst, offset, zeroBuffer, 0, blockSize);
 
         offset += blockSize;
         size -= blockSize;
     }
+#endif
 }
 
 NRI_INLINE void CommandBufferD3D12::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {

@@ -321,13 +321,17 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     { // Create zero buffer
         D3D12_RESOURCE_DESC zeroBufferDesc = {};
         zeroBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+#ifdef ZERO_BUFFER_USES_SELF_COPIES
+        zeroBufferDesc.Width = 128 * 1024;
+#else
         zeroBufferDesc.Width = desc.d3dZeroBufferSize ? desc.d3dZeroBufferSize : ZERO_BUFFER_DEFAULT_SIZE;
+#endif
         zeroBufferDesc.Height = 1;
         zeroBufferDesc.DepthOrArraySize = 1;
         zeroBufferDesc.MipLevels = 1;
         zeroBufferDesc.SampleDesc.Count = 1;
         zeroBufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        zeroBufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+        zeroBufferDesc.Flags = D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
 
         D3D12_HEAP_PROPERTIES heapProps = {};
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
