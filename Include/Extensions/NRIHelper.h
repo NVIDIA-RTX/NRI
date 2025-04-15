@@ -177,18 +177,18 @@ static inline Nri(TextureBarrierDesc) NriFunc(TextureBarrierFromUnknown)(NriPtr(
     Nri(Dim_t) layerOffset NriDefault(0),
     Nri(Dim_t) layerNum NriDefault(Nri(REMAINING_LAYERS)))
 {
-    Nri(TextureBarrierDesc) textureBarrierDesc = NriZero;
-    textureBarrierDesc.texture = texture;
-    textureBarrierDesc.before.access = NriScopedMember(AccessBits, UNKNOWN);
-    textureBarrierDesc.before.layout = NriScopedMember(Layout, UNKNOWN);
-    textureBarrierDesc.before.stages = NriScopedMember(StageBits, ALL);
-    textureBarrierDesc.after = after;
-    textureBarrierDesc.mipOffset = mipOffset;
-    textureBarrierDesc.mipNum = mipNum;
-    textureBarrierDesc.layerOffset = layerOffset;
-    textureBarrierDesc.layerNum = layerNum;
+    Nri(TextureBarrierDesc) textureBarrier = NriZero;
+    textureBarrier.texture = texture;
+    textureBarrier.before.access = NriScopedMember(AccessBits, UNKNOWN);
+    textureBarrier.before.layout = NriScopedMember(Layout, UNKNOWN);
+    textureBarrier.before.stages = NriScopedMember(StageBits, ALL);
+    textureBarrier.after = after;
+    textureBarrier.mipOffset = mipOffset;
+    textureBarrier.mipNum = mipNum;
+    textureBarrier.layerOffset = layerOffset;
+    textureBarrier.layerNum = layerNum;
 
-    return textureBarrierDesc;
+    return textureBarrier;
 }
 
 static inline Nri(TextureBarrierDesc) NriFunc(TextureBarrierFromState)(NriRef(TextureBarrierDesc) prevState,

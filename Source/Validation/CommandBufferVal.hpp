@@ -1,29 +1,29 @@
 // © 2021 NVIDIA Corporation
 
-static bool ValidateBufferBarrierDesc(const DeviceVal& device, uint32_t i, const BufferBarrierDesc& bufferBarrierDesc) {
-    const BufferVal& bufferVal = *(const BufferVal*)bufferBarrierDesc.buffer;
+static bool ValidateBufferBarrierDesc(const DeviceVal& device, uint32_t i, const BufferBarrierDesc& bufferBarrier) {
+    const BufferVal& bufferVal = *(const BufferVal*)bufferBarrier.buffer;
 
-    RETURN_ON_FAILURE(&device, bufferBarrierDesc.buffer != nullptr, false, "'bufferBarrierDesc.buffers[%u].buffer' is NULL", i);
-    RETURN_ON_FAILURE(&device, IsAccessMaskSupported(bufferVal.GetDesc().usage, bufferBarrierDesc.before.access), false,
-        "'bufferBarrierDesc.buffers[%u].before' is not supported by the usage mask of the buffer ('%s')", i, bufferVal.GetDebugName());
-    RETURN_ON_FAILURE(&device, IsAccessMaskSupported(bufferVal.GetDesc().usage, bufferBarrierDesc.after.access), false,
-        "'bufferBarrierDesc.buffers[%u].after' is not supported by the usage mask of the buffer ('%s')", i, bufferVal.GetDebugName());
+    RETURN_ON_FAILURE(&device, bufferBarrier.buffer != nullptr, false, "'bufferBarrier.buffers[%u].buffer' is NULL", i);
+    RETURN_ON_FAILURE(&device, IsAccessMaskSupported(bufferVal.GetDesc().usage, bufferBarrier.before.access), false,
+        "'bufferBarrier.buffers[%u].before' is not supported by the usage mask of the buffer ('%s')", i, bufferVal.GetDebugName());
+    RETURN_ON_FAILURE(&device, IsAccessMaskSupported(bufferVal.GetDesc().usage, bufferBarrier.after.access), false,
+        "'bufferBarrier.buffers[%u].after' is not supported by the usage mask of the buffer ('%s')", i, bufferVal.GetDebugName());
 
     return true;
 }
 
-static bool ValidateTextureBarrierDesc(const DeviceVal& device, uint32_t i, const TextureBarrierDesc& textureBarrierDesc) {
-    const TextureVal& textureVal = *(const TextureVal*)textureBarrierDesc.texture;
+static bool ValidateTextureBarrierDesc(const DeviceVal& device, uint32_t i, const TextureBarrierDesc& textureBarrier) {
+    const TextureVal& textureVal = *(const TextureVal*)textureBarrier.texture;
 
-    RETURN_ON_FAILURE(&device, textureBarrierDesc.texture != nullptr, false, "'bufferBarrierDesc.textures[%u].texture' is NULL", i);
-    RETURN_ON_FAILURE(&device, IsAccessMaskSupported(textureVal.GetDesc().usage, textureBarrierDesc.before.access), false,
-        "'bufferBarrierDesc.textures[%u].before' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
-    RETURN_ON_FAILURE(&device, IsAccessMaskSupported(textureVal.GetDesc().usage, textureBarrierDesc.after.access), false,
-        "'bufferBarrierDesc.textures[%u].after' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
-    RETURN_ON_FAILURE(&device, IsTextureLayoutSupported(textureVal.GetDesc().usage, textureBarrierDesc.before.layout), false,
-        "'bufferBarrierDesc.textures[%u].prevLayout' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
-    RETURN_ON_FAILURE(&device, IsTextureLayoutSupported(textureVal.GetDesc().usage, textureBarrierDesc.after.layout), false,
-        "'bufferBarrierDesc.textures[%u].nextLayout' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
+    RETURN_ON_FAILURE(&device, textureBarrier.texture != nullptr, false, "'bufferBarrier.textures[%u].texture' is NULL", i);
+    RETURN_ON_FAILURE(&device, IsAccessMaskSupported(textureVal.GetDesc().usage, textureBarrier.before.access), false,
+        "'bufferBarrier.textures[%u].before' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
+    RETURN_ON_FAILURE(&device, IsAccessMaskSupported(textureVal.GetDesc().usage, textureBarrier.after.access), false,
+        "'bufferBarrier.textures[%u].after' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
+    RETURN_ON_FAILURE(&device, IsTextureLayoutSupported(textureVal.GetDesc().usage, textureBarrier.before.layout), false,
+        "'bufferBarrier.textures[%u].prevLayout' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
+    RETURN_ON_FAILURE(&device, IsTextureLayoutSupported(textureVal.GetDesc().usage, textureBarrier.after.layout), false,
+        "'bufferBarrier.textures[%u].nextLayout' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
 
     return true;
 }
