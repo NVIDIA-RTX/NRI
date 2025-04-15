@@ -23,8 +23,8 @@ cmake_dependent_option(NRI_ENABLE_FFX_SDK "Enable AMD FidelityFX SDK" OFF "(NRI_
 cmake_dependent_option(NRI_ENABLE_XESS_SDK "Enable INTEL XeSS SDK" OFF "NRI_ENABLE_D3D12_SUPPORT AND WIN32" OFF)
 
 set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK binaries will be copied to relative to 'CMAKE_RUNTIME_OUTPUT_DIRECTORY'")
-set(NRI_AGILITY_SDK_VERSION_MAJOR 716)
-set(NRI_AGILITY_SDK_VERSION_MINOR 1-preview)
+set(NRI_AGILITY_SDK_VERSION_MAJOR 615) # 716 (can cause D3D12_ERROR_INVALID_REDIST error?)
+set(NRI_AGILITY_SDK_VERSION_MINOR 1) # 1-preview
 set(NRI_SHADERS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_Shaders" CACHE STRING "Shader output path override")
 
 # Is submodule?
@@ -209,10 +209,16 @@ endif()
 
 if(NRI_ENABLE_D3D12_SUPPORT)
     # D3D12 MA
+    if(NRI_AGILITY_SDK_VERSION_MAJOR GREATER_EQUAL 716)
+        set(D3D12MA_TAG feature/resource-tight-alignment)
+    else()
+        set(D3D12MA_TAG master)
+    endif()
+
     FetchContent_Declare(
         d3d12ma
         GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
-        GIT_TAG feature/resource-tight-alignment
+        GIT_TAG ${D3D12MA_TAG}
         GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
         GIT_PROGRESS TRUE
@@ -225,7 +231,7 @@ if(NRI_ENABLE_VK_SUPPORT)
     FetchContent_Declare(
         vulkan_headers
         GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers.git
-        GIT_TAG origin/vulkan-sdk-1.4.304
+        GIT_TAG origin/vulkan-sdk-1.4.309
         GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
         GIT_PROGRESS TRUE

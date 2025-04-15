@@ -487,15 +487,17 @@ void DeviceD3D12::FillDesc() {
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS21, &options21, sizeof(options21));
     if (FAILED(hr))
         REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options21) failed, result = 0x%08X!", hr);
+#else
+    m_Desc.memoryAlignment.uploadBufferTextureRow = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
+    m_Desc.memoryAlignment.uploadBufferTextureSlice = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
+#endif
 
+#ifdef NRI_D3D12_HAS_TIGHT_ALIGNMENT
     D3D12_FEATURE_DATA_TIGHT_ALIGNMENT tightAlignment = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_TIGHT_ALIGNMENT, &tightAlignment, sizeof(tightAlignment));
     if (FAILED(hr))
         REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(tightAlignment) failed, result = 0x%08X!", hr);
     m_TightAlignmentTier = (uint8_t)tightAlignment.SupportTier;
-#else
-    m_Desc.memoryAlignment.uploadBufferTextureRow = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
-    m_Desc.memoryAlignment.uploadBufferTextureSlice = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
 #endif
 
     // Feature level
@@ -942,7 +944,7 @@ void DeviceD3D12::GetResourceDesc(const BufferDesc& bufferDesc, D3D12_RESOURCE_D
     desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
     desc.Flags = GetBufferFlags(bufferDesc.usage);
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#ifdef NRI_D3D12_HAS_TIGHT_ALIGNMENT
     if (m_TightAlignmentTier != 0)
         desc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
 #endif
@@ -963,7 +965,7 @@ void DeviceD3D12::GetResourceDesc(const TextureDesc& textureDesc, D3D12_RESOURCE
     desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
     desc.Flags = GetTextureFlags(textureDesc.usage);
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#ifdef NRI_D3D12_HAS_TIGHT_ALIGNMENT
     if (m_TightAlignmentTier > 1)
         desc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
 #endif

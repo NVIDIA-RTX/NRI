@@ -61,7 +61,7 @@ Result QueryPoolD3D12::CreateBufferForAccelerationStructuresSizes(const QueryPoo
     resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
     resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#ifdef NRI_D3D12_HAS_TIGHT_ALIGNMENT
     if (m_Device.GetTightAlignmentTier() != 0)
         resourceDesc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
 #endif

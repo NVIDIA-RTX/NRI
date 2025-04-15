@@ -5,10 +5,13 @@
 #include <d3d12.h>
 #include <pix.h>
 
-#ifdef D3D12_SDK_VERSION
+#ifndef NRI_ENABLE_AGILITY_SDK_SUPPORT
 static_assert(D3D12_SDK_VERSION >= 4, "Outdated Win SDK. D3D12 Ultimate needed (SDK 1.4.9+, released 2021.04.20). Always prefer using latest SDK!");
-#else
-#    error "Ancient Windows SDK"
+#endif
+
+// TODO: "D3D12_SDK_VERSION" and "D3D12_PREVIEW_SDK_VERSION" are inconsistent and can't be used
+#ifdef D3D12_TIGHT_ALIGNMENT_MIN_COMMITTED_RESOURCE_ALIGNEMNT
+#    define NRI_D3D12_HAS_TIGHT_ALIGNMENT
 #endif
 
 #include "SharedExternal.h"
