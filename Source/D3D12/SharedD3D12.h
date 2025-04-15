@@ -5,21 +5,22 @@
 #include <d3d12.h>
 #include <pix.h>
 
-#ifndef NRI_ENABLE_AGILITY_SDK_SUPPORT
-static_assert(D3D12_SDK_VERSION >= 4, "Outdated Win SDK. D3D12 Ultimate needed (SDK 1.4.9+, released 2021.04.20). Always prefer using latest SDK!");
+// Validate Windows SDK version
+static_assert(D3D12_SDK_VERSION >= 4, "Outdated Windows SDK. D3D12 Ultimate needed (SDK 1.4.9+, released 2021.04.20). Always prefer using latest SDK!");
+
+// "Self" copies require barriers in-between making "CmdZeroBuffer" implementation 2x slower
+#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#    define NRI_D3D12_USE_SELF_COPIES_FOR_ZERO_BUFFER 0
 #endif
 
-// TODO: "D3D12_SDK_VERSION" and "D3D12_PREVIEW_SDK_VERSION" are inconsistent and can't be used
+// TODO: "D3D12_SDK_VERSION" and "D3D12_PREVIEW_SDK_VERSION" are inconsistent and can't be used to check features support
 #ifdef D3D12_TIGHT_ALIGNMENT_MIN_COMMITTED_RESOURCE_ALIGNEMNT
 #    define NRI_D3D12_HAS_TIGHT_ALIGNMENT
 #endif
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
-//#    define ZERO_BUFFER_USES_SELF_COPIES // self copies require barrier in-between making them slow and useless
-#endif
-
-#include "SharedExternal.h"
-
+#ifdef D3D12_RAYTRACING_OPACITY_MICROMAP_ARRAY_BYTE_ALIGNMENT
+#    define NRI_D3D12_HAS_OPACITY_MICROMAP
+#else
 struct D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC {
     uint32_t unused;
 };
@@ -27,6 +28,9 @@ struct D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC {
 struct D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY {
     uint32_t unused;
 };
+#endif
+
+#include "SharedExternal.h"
 
 namespace nri {
 

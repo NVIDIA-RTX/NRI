@@ -321,7 +321,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     { // Create zero buffer
         D3D12_RESOURCE_DESC zeroBufferDesc = {};
         zeroBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-#ifdef ZERO_BUFFER_USES_SELF_COPIES
+#if (NRI_D3D12_USE_SELF_COPIES_FOR_ZERO_BUFFER == 1)
         zeroBufferDesc.Width = 128 * 1024;
 #else
         zeroBufferDesc.Width = desc.d3dZeroBufferSize ? desc.d3dZeroBufferSize : ZERO_BUFFER_DEFAULT_SIZE;
@@ -586,6 +586,9 @@ void DeviceD3D12::FillDesc() {
     m_Desc.memoryAlignment.constantBufferOffset = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
     m_Desc.memoryAlignment.scratchBufferOffset = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
     m_Desc.memoryAlignment.accelerationStructureOffset = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
+#ifdef NRI_D3D12_HAS_OPACITY_MICROMAP
+    m_Desc.memoryAlignment.micromapOffset = D3D12_RAYTRACING_OPACITY_MICROMAP_ARRAY_BYTE_ALIGNMENT;
+#endif
 
     m_Desc.pipelineLayout.descriptorSetMaxNum = ROOT_SIGNATURE_DWORD_NUM / 1;
     m_Desc.pipelineLayout.rootConstantMaxSize = sizeof(uint32_t) * ROOT_SIGNATURE_DWORD_NUM / 1;
@@ -1042,7 +1045,10 @@ void DeviceD3D12::GetAccelerationStructurePrebuildInfo(const AccelerationStructu
 }
 
 void DeviceD3D12::GetMicromapPrebuildInfo(const MicromapDesc& micromapDesc, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO& prebuildInfo) const {
+#ifdef NRI_D3D12_HAS_OPACITY_MICROMAP
+#else
     MaybeUnused(micromapDesc, prebuildInfo);
+#endif
 }
 
 ComPtr<ID3D12CommandSignature> DeviceD3D12::CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE type, uint32_t stride, ID3D12RootSignature* rootSignature, bool enableDrawParametersEmulation) {

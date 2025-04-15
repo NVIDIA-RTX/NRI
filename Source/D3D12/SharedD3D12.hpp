@@ -488,6 +488,9 @@ void nri::ConvertBotomLevelGeometries(const BottomLevelGeometryDesc* geometries,
             const BottomLevelTrianglesDesc& triangles = in.triangles;
             D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC* outTriangles = &out.Triangles;
 
+#ifdef NRI_D3D12_HAS_OPACITY_MICROMAP
+#endif
+
             *outTriangles = {};
             outTriangles->VertexFormat = GetDxgiFormat(triangles.vertexFormat).typed;
             outTriangles->VertexCount = triangles.vertexNum;

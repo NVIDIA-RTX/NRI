@@ -5,9 +5,12 @@ MicromapD3D12::~MicromapD3D12() {
 }
 
 Result MicromapD3D12::Create(const MicromapDesc& micromapDesc) {
+#ifdef NRI_D3D12_HAS_OPACITY_MICROMAP
+#else
     MaybeUnused(micromapDesc);
 
     return Result::UNSUPPORTED;
+#endif
 }
 
 Result MicromapD3D12::BindMemory(Memory* memory, uint64_t offset) {

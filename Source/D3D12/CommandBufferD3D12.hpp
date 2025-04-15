@@ -633,7 +633,7 @@ NRI_INLINE void CommandBufferD3D12::ZeroBuffer(Buffer& buffer, uint64_t offset, 
     if (size == WHOLE_SIZE)
         size = dst.GetDesc().size;
 
-#ifdef ZERO_BUFFER_USES_SELF_COPIES
+#if (NRI_D3D12_USE_SELF_COPIES_FOR_ZERO_BUFFER == 1)
     // Self copies
     uint64_t blockSize = std::min(size, zeroBufferDesc.Width);
     uint64_t offsetOrig = offset;
@@ -1162,7 +1162,10 @@ NRI_INLINE void CommandBufferD3D12::BuildBottomLevelAccelerationStructures(const
 }
 
 NRI_INLINE void CommandBufferD3D12::BuildMicromaps(const BuildMicromapDesc* buildMicromapDescs, uint32_t buildMicromapDescNum) {
+#ifdef NRI_D3D12_HAS_OPACITY_MICROMAP
+#else
     MaybeUnused(buildMicromapDescs, buildMicromapDescNum);
+#endif
 }
 
 NRI_INLINE void CommandBufferD3D12::CopyAccelerationStructure(AccelerationStructure& dst, const AccelerationStructure& src, CopyMode copyMode) {
