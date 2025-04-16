@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstring>
 #include <map>
+#include <numeric>
 
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
 #    include <dxgi1_6.h>

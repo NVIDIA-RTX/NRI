@@ -1,5 +1,6 @@
 // © 2024 NVIDIA Corporation
 
+constexpr uint32_t COPY_BUFFER_ALIGNMENT = 1;
 constexpr uint64_t CHUNK_SIZE = 65536;
 constexpr bool USE_DEDICATED = true;
 
@@ -76,10 +77,16 @@ uint32_t StreamerImpl::UpdateConstantBuffer(const void* data, uint32_t dataSize)
 uint64_t StreamerImpl::AddBufferUpdateRequest(const BufferUpdateRequestDesc& bufferUpdateRequestDesc) {
     ExclusiveScope lock(m_Lock);
 
-    uint64_t alignedSize = Align(bufferUpdateRequestDesc.dataSize, 16);
+    m_DynamicDataOffset = Align(m_DynamicDataOffset, COPY_BUFFER_ALIGNMENT);
 
+    uint64_t alignedSize = Align(bufferUpdateRequestDesc.dataSize, COPY_BUFFER_ALIGNMENT);
     uint64_t offset = m_DynamicDataOffsetBase + m_DynamicDataOffset;
-    m_BufferRequests.push_back({bufferUpdateRequestDesc, m_DynamicDataOffset}); // store local offset
+
+    BufferUpdateRequest& request = m_BufferRequests.emplace_back();
+    request = {};
+    request.desc = bufferUpdateRequestDesc;
+    request.offset = m_DynamicDataOffset; // store local offset
+
     m_DynamicDataOffset += alignedSize;
 
     return offset;
@@ -99,10 +106,17 @@ uint64_t StreamerImpl::AddTextureUpdateRequest(const TextureUpdateRequestDesc& t
 
     uint32_t alignedRowPitch = Align(textureUpdateRequestDesc.dataRowPitch, deviceDesc.memoryAlignment.uploadBufferTextureRow);
     uint32_t alignedSlicePitch = Align(alignedRowPitch * h, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
-    uint64_t alignedSize = alignedSlicePitch * d;
 
+    m_DynamicDataOffset = Align(m_DynamicDataOffset, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
+
+    uint64_t alignedSize = alignedSlicePitch * d;
     uint64_t offset = m_DynamicDataOffsetBase + m_DynamicDataOffset;
-    m_TextureRequests.push_back({textureUpdateRequestDesc, m_DynamicDataOffset}); // store local offset
+
+    TextureUpdateRequest& request = m_TextureRequests.emplace_back();
+    request = {};
+    request.desc = textureUpdateRequestDesc;
+    request.offset = m_DynamicDataOffset; // store local offset
+
     m_DynamicDataOffset += alignedSize;
 
     return offset;

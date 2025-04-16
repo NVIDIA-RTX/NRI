@@ -106,7 +106,7 @@ static VkBool32 VKAPI_PTR MessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT
     DeviceVK& device = *(DeviceVK*)userData;
 
     // TODO: some messages can be muted here
-    { 
+    {
         // Loader info message
         if (callbackData->messageIdNumber == 0)
             return VK_FALSE;
@@ -975,10 +975,17 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.memory.bufferTextureGranularity = (uint32_t)limits.bufferImageGranularity;
         m_Desc.memory.bufferMaxSize = m_MinorVersion >= 3 ? props13.maxBufferSize : maintenance4Props.maxBufferSize;
 
+        // VUID-VkCopyBufferToImageInfo2-dstImage-07975: If "dstImage" does not have either a depth/stencil format or a multi-planar format,
+        //      "bufferOffset" must be a multiple of the texel block size
+        // VUID-VkCopyBufferToImageInfo2-dstImage-07978: If "dstImage" has a depth/stencil format,
+        //      "bufferOffset" must be a multiple of 4
+        // Least Common Multiple stride across all formats: 1, 2, 4, 8, 16 // TODO: rarely used "12" fucks up the beauty of power-of-2 numbers, such formats must be avoided!
+        constexpr uint32_t leastCommonMultipleStrideAccrossAllFormats = 16;
+
         m_Desc.memoryAlignment.uploadBufferTextureRow = (uint32_t)limits.optimalBufferCopyRowPitchAlignment;
-        m_Desc.memoryAlignment.uploadBufferTextureSlice = (uint32_t)limits.optimalBufferCopyOffsetAlignment; // TODO: ?
+        m_Desc.memoryAlignment.uploadBufferTextureSlice = std::lcm((uint32_t)limits.optimalBufferCopyOffsetAlignment, leastCommonMultipleStrideAccrossAllFormats);
         m_Desc.memoryAlignment.shaderBindingTable = rayTracingProps.shaderGroupBaseAlignment;
-        m_Desc.memoryAlignment.bufferShaderResourceOffset = (uint32_t)std::max(limits.minTexelBufferOffsetAlignment, limits.minStorageBufferOffsetAlignment);
+        m_Desc.memoryAlignment.bufferShaderResourceOffset = std::lcm((uint32_t)limits.minTexelBufferOffsetAlignment, (uint32_t)limits.minStorageBufferOffsetAlignment);
         m_Desc.memoryAlignment.constantBufferOffset = (uint32_t)limits.minUniformBufferOffsetAlignment;
         m_Desc.memoryAlignment.scratchBufferOffset = accelerationStructureProps.minAccelerationStructureScratchOffsetAlignment;
         m_Desc.memoryAlignment.accelerationStructureOffset = 256; // see the spec

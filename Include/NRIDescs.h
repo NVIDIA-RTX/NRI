@@ -1201,9 +1201,9 @@ NriStruct(TextureRegionDesc) {
 };
 
 NriStruct(TextureDataLayoutDesc) {
-    uint64_t offset;
-    uint32_t rowPitch; // must respect "uploadBufferTextureRowAlignment"
-    uint32_t slicePitch; // must respect "uploadBufferTextureSliceAlignment"
+    uint64_t offset;        // a buffer offset must be a multiple of "uploadBufferTextureSliceAlignment" (data placement alignment)
+    uint32_t rowPitch;      // must be a multiple of "uploadBufferTextureRowAlignment"
+    uint32_t slicePitch;    // must be a multiple of "uploadBufferTextureSliceAlignment"
 };
 
 // Work submission

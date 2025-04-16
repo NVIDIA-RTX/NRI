@@ -1,7 +1,7 @@
 // © 2021 NVIDIA Corporation
 
 constexpr uint32_t BARRIERS_PER_PASS = 256;
-constexpr uint64_t COPY_ALIGNMENT = 16;
+constexpr uint64_t MAX_UPLOAD_BUFFER_SIZE = 64 * 1024 * 1024;
 
 enum class BarrierMode {
     INITIAL,       // transition to COPY_DEST state
@@ -12,12 +12,12 @@ enum class BarrierMode {
 static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffer, BarrierMode barrierMode, const TextureUploadDesc* textureUploadDescs, uint32_t textureDataDescNum) {
     TextureBarrierDesc textureBarriers[BARRIERS_PER_PASS];
 
-    const AccessLayoutStage state = {AccessBits::COPY_DESTINATION, Layout::COPY_DESTINATION, StageBits::COPY};
-    const AccessLayoutStage initialState = {AccessBits::UNKNOWN, Layout::UNKNOWN, StageBits::NONE};
+    constexpr AccessLayoutStage copyDestState = {AccessBits::COPY_DESTINATION, Layout::COPY_DESTINATION, StageBits::ALL}; // we don't know which stages to wait
+    constexpr AccessLayoutStage unknownState = {AccessBits::UNKNOWN, Layout::UNKNOWN, StageBits::NONE}; // since all subresources are updated, we don't care about the previous state
 
     for (uint32_t i = 0; i < textureDataDescNum;) {
-        const uint32_t passBegin = i;
-        const uint32_t passEnd = std::min(i + BARRIERS_PER_PASS, textureDataDescNum);
+        uint32_t passBegin = i;
+        uint32_t passEnd = std::min(i + BARRIERS_PER_PASS, textureDataDescNum);
 
         for (; i < passEnd; i++) {
             const TextureUploadDesc& textureUploadDesc = textureUploadDescs[i];
@@ -28,19 +28,11 @@ static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffe
             barrier.texture = textureUploadDesc.texture;
             barrier.mipNum = textureDesc.mipNum;
             barrier.layerNum = textureDesc.layerNum;
+            barrier.before = barrierMode == BarrierMode::FINAL ? copyDestState : unknownState;
+            barrier.after = barrierMode == BarrierMode::INITIAL ? copyDestState : textureUploadDesc.after;
 
-            if (barrierMode == BarrierMode::INITIAL) {
-                barrier.before = initialState;
-                barrier.after = state;
-            } else if (barrierMode == BarrierMode::FINAL) {
-                barrier.before = state;
-                barrier.after = textureUploadDesc.after;
+            if (barrierMode != BarrierMode::INITIAL)
                 barrier.planes = textureUploadDesc.planes;
-            } else {
-                barrier.before = initialState;
-                barrier.after = textureUploadDesc.after;
-                barrier.planes = textureUploadDesc.planes;
-            }
         }
 
         BarrierGroupDesc barrierGroup = {};
@@ -54,12 +46,12 @@ static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffe
 static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffer, BarrierMode barrierMode, const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum) {
     BufferBarrierDesc bufferBarriers[BARRIERS_PER_PASS];
 
-    const AccessStage state = {AccessBits::COPY_DESTINATION, StageBits::COPY};
-    const AccessStage initialState = {AccessBits::UNKNOWN, StageBits::NONE};
+    constexpr AccessStage copyDestState = {AccessBits::COPY_DESTINATION, StageBits::ALL}; // we don't know which stages to wait
+    constexpr AccessStage unknownState = {AccessBits::UNKNOWN, StageBits::NONE}; // TODO: a buffer can be updated partially. Is it legit?
 
     for (uint32_t i = 0; i < bufferUploadDescNum;) {
-        const uint32_t passBegin = i;
-        const uint32_t passEnd = std::min(i + BARRIERS_PER_PASS, bufferUploadDescNum);
+        uint32_t passBegin = i;
+        uint32_t passEnd = std::min(i + BARRIERS_PER_PASS, bufferUploadDescNum);
 
         for (; i < passEnd; i++) {
             const BufferUploadDesc& bufferUploadDesc = bufferUploadDescs[i];
@@ -67,17 +59,8 @@ static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffe
             BufferBarrierDesc& barrier = bufferBarriers[i - passBegin];
             barrier = {};
             barrier.buffer = bufferUploadDesc.buffer;
-
-            if (barrierMode == BarrierMode::INITIAL) {
-                barrier.before = initialState;
-                barrier.after = state;
-            } else if (barrierMode == BarrierMode::FINAL) {
-                barrier.before = state;
-                barrier.after = bufferUploadDesc.after;
-            } else {
-                barrier.before = initialState;
-                barrier.after = bufferUploadDesc.after;
-            }
+            barrier.before = barrierMode == BarrierMode::FINAL ? copyDestState : unknownState;
+            barrier.after = barrierMode == BarrierMode::INITIAL ? copyDestState : bufferUploadDesc.after;
         }
 
         BarrierGroupDesc barrierGroup = {};
@@ -89,30 +72,12 @@ static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffe
 }
 
 Result HelperDataUpload::UploadData(const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum, const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum) {
-    const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
+    Result result = Create(textureUploadDescs, textureUploadDescNum, bufferUploadDescs, bufferUploadDescNum);
 
-    for (uint32_t i = 0; i < textureUploadDescNum; i++) {
-        if (!textureUploadDescs[i].subresources)
-            continue;
-
-        const TextureSubresourceUploadDesc& subresource = textureUploadDescs[i].subresources[0];
-
-        uint32_t sliceRowNum = std::max(subresource.slicePitch / subresource.rowPitch, 1u);
-        uint64_t alignedRowPitch = Align(subresource.rowPitch, deviceDesc.memoryAlignment.uploadBufferTextureRow);
-        uint64_t alignedSlicePitch = Align(sliceRowNum * alignedRowPitch, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
-        uint64_t contentSize = alignedSlicePitch * std::max(subresource.sliceNum, 1u);
-
-        m_UploadBufferSize = std::max(m_UploadBufferSize, contentSize);
-    }
-
-    m_UploadBufferSize = Align(m_UploadBufferSize, COPY_ALIGNMENT);
-
-    Result result = Create();
-    if (result == Result::SUCCESS) {
+    if (result == Result::SUCCESS)
         result = UploadTextures(textureUploadDescs, textureUploadDescNum);
-        if (result == Result::SUCCESS)
-            result = UploadBuffers(bufferUploadDescs, bufferUploadDescNum);
-    }
+    if (result == Result::SUCCESS)
+        result = UploadBuffers(bufferUploadDescs, bufferUploadDescNum);
 
     m_NRI.DestroyCommandBuffer(*m_CommandBuffer);
     m_NRI.DestroyCommandAllocator(*m_CommandAllocators);
@@ -123,43 +88,85 @@ Result HelperDataUpload::UploadData(const TextureUploadDesc* textureUploadDescs,
     return result;
 }
 
-Result HelperDataUpload::Create() {
-    BufferDesc bufferDesc = {};
-    bufferDesc.size = m_UploadBufferSize;
+Result HelperDataUpload::Create(const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum, const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum) {
+    const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
 
-    Result result = m_NRI.CreateBuffer(m_Device, bufferDesc, m_UploadBuffer);
-    if (result != Result::SUCCESS)
-        return result;
+    { // Calculate upload buffer size
+        uint64_t maxSubresourceSize = 0;
+        uint64_t totalSize = 0;
 
-    MemoryDesc memoryDesc = {};
-    m_NRI.GetBufferMemoryDesc(*m_UploadBuffer, MemoryLocation::HOST_UPLOAD, memoryDesc);
+        for (uint32_t i = 0; i < textureUploadDescNum; i++) {
+            if (textureUploadDescs[i].subresources) {
+                const TextureSubresourceUploadDesc& subresource0 = textureUploadDescs[i].subresources[0];
 
-    AllocateMemoryDesc allocateMemoryDesc = {};
-    allocateMemoryDesc.type = memoryDesc.type;
-    allocateMemoryDesc.size = memoryDesc.size;
+                uint32_t sliceRowNum = std::max(subresource0.slicePitch / subresource0.rowPitch, 1u);
+                uint64_t alignedRowPitch = Align(subresource0.rowPitch, deviceDesc.memoryAlignment.uploadBufferTextureRow);
+                uint64_t alignedSlicePitch = Align(sliceRowNum * alignedRowPitch, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
+                uint64_t alignedSize = alignedSlicePitch * std::max(subresource0.sliceNum, 1u);
 
-    result = m_NRI.AllocateMemory(m_Device, allocateMemoryDesc, m_UploadBufferMemory);
-    if (result != Result::SUCCESS)
-        return result;
+                maxSubresourceSize = std::max(maxSubresourceSize, alignedSize);
 
-    BufferMemoryBindingDesc bufferMemoryBindingDesc = {m_UploadBuffer, m_UploadBufferMemory, 0};
-    result = m_NRI.BindBufferMemory(m_Device, &bufferMemoryBindingDesc, 1);
-    if (result != Result::SUCCESS)
-        return result;
+                const TextureDesc& textureDesc = m_NRI.GetTextureDesc(*textureUploadDescs[i].texture);
+                alignedSize *= textureDesc.layerNum;
+                if (textureDesc.mipNum < 2)
+                    totalSize += alignedSize;
+                else
+                    totalSize += (alignedSize * 4) / 3;
+            }
+        }
 
-    result = m_NRI.CreateFence(m_Device, 0, m_Fence);
-    if (result != Result::SUCCESS)
-        return result;
+        for (uint32_t i = 0; i < bufferUploadDescNum; i++) {
+            // Doesn't contribute to "maxSubresourceSize" because buffer copies can work with any non-0 upload buffer size
+            totalSize += bufferUploadDescs[i].dataSize;
+        }
 
-    result = m_NRI.CreateCommandAllocator(m_Queue, m_CommandAllocators);
-    if (result != Result::SUCCESS)
-        return result;
+        // Can use up to "MAX_UPLOAD_BUFFER_SIZE" bytes
+        m_UploadBufferSize = std::min(totalSize, MAX_UPLOAD_BUFFER_SIZE);
 
-    result = m_NRI.CreateCommandBuffer(*m_CommandAllocators, m_CommandBuffer);
-    if (result != Result::SUCCESS)
-        return result;
+        // Worst case subresource must fit!
+        m_UploadBufferSize = std::max(m_UploadBufferSize, maxSubresourceSize);
+    }
 
-    return result;
+    { // Create upload buffer
+        BufferDesc bufferDesc = {};
+        bufferDesc.size = m_UploadBufferSize;
+
+        Result result = m_NRI.CreateBuffer(m_Device, bufferDesc, m_UploadBuffer);
+        if (result != Result::SUCCESS)
+            return result;
+
+        MemoryDesc memoryDesc = {};
+        m_NRI.GetBufferMemoryDesc(*m_UploadBuffer, MemoryLocation::HOST_UPLOAD, memoryDesc);
+
+        AllocateMemoryDesc allocateMemoryDesc = {};
+        allocateMemoryDesc.type = memoryDesc.type;
+        allocateMemoryDesc.size = memoryDesc.size;
+
+        result = m_NRI.AllocateMemory(m_Device, allocateMemoryDesc, m_UploadBufferMemory);
+        if (result != Result::SUCCESS)
+            return result;
+
+        BufferMemoryBindingDesc bufferMemoryBindingDesc = {m_UploadBuffer, m_UploadBufferMemory, 0};
+        result = m_NRI.BindBufferMemory(m_Device, &bufferMemoryBindingDesc, 1);
+        if (result != Result::SUCCESS)
+            return result;
+    }
+
+    { // Create other resources
+        Result result = m_NRI.CreateFence(m_Device, 0, m_Fence);
+        if (result != Result::SUCCESS)
+            return result;
+
+        result = m_NRI.CreateCommandAllocator(m_Queue, m_CommandAllocators);
+        if (result != Result::SUCCESS)
+            return result;
+
+        result = m_NRI.CreateCommandBuffer(*m_CommandAllocators, m_CommandBuffer);
+        if (result != Result::SUCCESS)
+            return result;
+    }
+
+    return Result::SUCCESS;
 }
 
 Result HelperDataUpload::UploadTextures(const TextureUploadDesc* textureUploadDescs, uint32_t textureDataDescNum) {
@@ -198,13 +205,8 @@ Result HelperDataUpload::UploadTextures(const TextureUploadDesc* textureUploadDe
         }
 
         m_UploadBufferOffset = 0;
-        bool isCapacityInsufficient = false;
-
-        for (; i < textureDataDescNum && CopyTextureContent(textureUploadDescs[i], layerOffset, mipOffset, isCapacityInsufficient); i++)
+        for (; i < textureDataDescNum && CopyTextureContent(textureUploadDescs[i], layerOffset, mipOffset); i++)
             ;
-
-        if (isCapacityInsufficient)
-            return Result::OUT_OF_MEMORY;
     }
 
     DoTransition(m_NRI, m_CommandBuffer, barrierMode, textureUploadDescs, textureDataDescNum);
@@ -261,31 +263,30 @@ Result HelperDataUpload::UploadBuffers(const BufferUploadDesc* bufferUploadDescs
 }
 
 Result HelperDataUpload::EndCommandBuffersAndSubmit() {
-    const Result result = m_NRI.EndCommandBuffer(*m_CommandBuffer);
-    if (result != Result::SUCCESS)
-        return result;
+    Result result = m_NRI.EndCommandBuffer(*m_CommandBuffer);
 
-    FenceSubmitDesc fenceSubmitDesc = {};
-    fenceSubmitDesc.fence = m_Fence;
-    fenceSubmitDesc.value = m_FenceValue;
+    if (result == Result::SUCCESS) {
+        FenceSubmitDesc fenceSubmitDesc = {};
+        fenceSubmitDesc.fence = m_Fence;
+        fenceSubmitDesc.value = m_FenceValue;
 
-    QueueSubmitDesc queueSubmitDesc = {};
-    queueSubmitDesc.commandBufferNum = 1;
-    queueSubmitDesc.commandBuffers = &m_CommandBuffer;
-    queueSubmitDesc.signalFences = &fenceSubmitDesc;
-    queueSubmitDesc.signalFenceNum = 1;
+        QueueSubmitDesc queueSubmitDesc = {};
+        queueSubmitDesc.commandBufferNum = 1;
+        queueSubmitDesc.commandBuffers = &m_CommandBuffer;
+        queueSubmitDesc.signalFences = &fenceSubmitDesc;
+        queueSubmitDesc.signalFenceNum = 1;
 
-    m_NRI.QueueSubmit(m_Queue, queueSubmitDesc);
-    m_NRI.Wait(*m_Fence, m_FenceValue);
+        m_NRI.QueueSubmit(m_Queue, queueSubmitDesc);
+        m_NRI.Wait(*m_Fence, m_FenceValue);
+        m_NRI.ResetCommandAllocator(*m_CommandAllocators);
 
-    m_FenceValue++;
+        m_FenceValue++;
+    }
 
-    m_NRI.ResetCommandAllocator(*m_CommandAllocators);
-
-    return Result::SUCCESS;
+    return result;
 }
 
-bool HelperDataUpload::CopyTextureContent(const TextureUploadDesc& textureUploadDesc, Dim_t& layerOffset, Mip_t& mipOffset, bool& isCapacityInsufficient) {
+bool HelperDataUpload::CopyTextureContent(const TextureUploadDesc& textureUploadDesc, Dim_t& layerOffset, Mip_t& mipOffset) {
     if (!textureUploadDesc.subresources)
         return true;
 
@@ -299,62 +300,56 @@ bool HelperDataUpload::CopyTextureContent(const TextureUploadDesc& textureUpload
             uint32_t sliceRowNum = subresource.slicePitch / subresource.rowPitch;
             uint32_t alignedRowPitch = Align(subresource.rowPitch, deviceDesc.memoryAlignment.uploadBufferTextureRow);
             uint32_t alignedSlicePitch = Align(sliceRowNum * alignedRowPitch, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
-            uint64_t contentSize = uint64_t(alignedSlicePitch) * subresource.sliceNum;
+            uint64_t alignedSize = uint64_t(alignedSlicePitch) * subresource.sliceNum;
             uint64_t freeSpace = m_UploadBufferSize - m_UploadBufferOffset;
 
-            if (contentSize > freeSpace) {
-                isCapacityInsufficient = contentSize > m_UploadBufferSize;
+            if (alignedSize > freeSpace) {
+                CHECK(alignedSize <= m_UploadBufferSize, "Unexpected");
                 return false;
             }
 
-            CopyTextureSubresourceContent(subresource, alignedRowPitch, alignedSlicePitch);
+            // Upload data (D3D11 does not allow to use upload buffer while it's mapped)
+            uint8_t* slices = (uint8_t*)m_NRI.MapBuffer(*m_UploadBuffer, m_UploadBufferOffset, subresource.sliceNum * alignedSlicePitch);
+            {
+                for (uint32_t k = 0; k < subresource.sliceNum; k++) {
+                    for (uint32_t l = 0; l < sliceRowNum; l++) {
+                        uint8_t* dstRow = slices + k * alignedSlicePitch + l * alignedRowPitch;
+                        uint8_t* srcRow = (uint8_t*)subresource.slices + k * subresource.slicePitch + l * subresource.rowPitch;
+                        memcpy(dstRow, srcRow, subresource.rowPitch);
+                    }
+                }
+            }
+            m_NRI.UnmapBuffer(*m_UploadBuffer);
 
-            TextureDataLayoutDesc srcDataLayout = {};
-            srcDataLayout.offset = m_UploadBufferOffset;
-            srcDataLayout.rowPitch = alignedRowPitch;
-            srcDataLayout.slicePitch = alignedSlicePitch;
+            { // Copy
+                TextureDataLayoutDesc srcDataLayout = {};
+                srcDataLayout.offset = m_UploadBufferOffset;
+                srcDataLayout.rowPitch = alignedRowPitch;
+                srcDataLayout.slicePitch = alignedSlicePitch;
 
-            TextureRegionDesc dstRegion = {};
-            dstRegion.layerOffset = layerOffset;
-            dstRegion.mipOffset = mipOffset;
+                TextureRegionDesc dstRegion = {};
+                dstRegion.layerOffset = layerOffset;
+                dstRegion.mipOffset = mipOffset;
 
-            m_NRI.CmdUploadBufferToTexture(*m_CommandBuffer, *textureUploadDesc.texture, dstRegion, *m_UploadBuffer, srcDataLayout);
+                m_NRI.CmdUploadBufferToTexture(*m_CommandBuffer, *textureUploadDesc.texture, dstRegion, *m_UploadBuffer, srcDataLayout);
+            }
 
-            m_UploadBufferOffset = Align(m_UploadBufferOffset + contentSize, COPY_ALIGNMENT);
+            // Increment buffer offset
+            m_UploadBufferOffset += alignedSize;
         }
         mipOffset = 0;
     }
     layerOffset = 0;
 
-    m_UploadBufferOffset = Align(m_UploadBufferOffset, COPY_ALIGNMENT);
-
     return true;
-}
-
-void HelperDataUpload::CopyTextureSubresourceContent(const TextureSubresourceUploadDesc& subresource, uint64_t alignedRowPitch, uint64_t alignedSlicePitch) {
-    const uint32_t sliceRowNum = subresource.slicePitch / subresource.rowPitch;
-
-    // TODO: D3D11 does not allow to call CmdUploadBufferToTexture() while the upload buffer is mapped
-    m_MappedMemory = (uint8_t*)m_NRI.MapBuffer(*m_UploadBuffer, m_UploadBufferOffset, subresource.sliceNum * alignedSlicePitch);
-
-    uint8_t* slices = m_MappedMemory;
-    for (uint32_t k = 0; k < subresource.sliceNum; k++) {
-        for (uint32_t l = 0; l < sliceRowNum; l++) {
-            uint8_t* dstRow = slices + k * alignedSlicePitch + l * alignedRowPitch;
-            uint8_t* srcRow = (uint8_t*)subresource.slices + k * subresource.slicePitch + l * subresource.rowPitch;
-            memcpy(dstRow, srcRow, subresource.rowPitch);
-        }
-    }
-
-    m_NRI.UnmapBuffer(*m_UploadBuffer);
 }
 
 bool HelperDataUpload::CopyBufferContent(const BufferUploadDesc& bufferUploadDesc, uint64_t& bufferContentOffset) {
     if (!bufferUploadDesc.dataSize)
         return true;
 
-    const uint64_t freeSpace = m_UploadBufferSize - m_UploadBufferOffset;
-    const uint64_t copySize = std::min(bufferUploadDesc.dataSize - bufferContentOffset, freeSpace);
+    uint64_t freeSpace = m_UploadBufferSize - m_UploadBufferOffset;
+    uint64_t copySize = std::min(bufferUploadDesc.dataSize - bufferContentOffset, freeSpace);
 
     if (freeSpace == 0)
         return false;
@@ -370,7 +365,6 @@ bool HelperDataUpload::CopyBufferContent(const BufferUploadDesc& bufferUploadDes
         return false;
 
     bufferContentOffset = 0;
-    m_UploadBufferOffset = Align(m_UploadBufferOffset, COPY_ALIGNMENT);
 
     return true;
 }

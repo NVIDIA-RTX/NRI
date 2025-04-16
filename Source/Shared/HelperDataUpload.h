@@ -17,12 +17,11 @@ struct HelperDataUpload {
     Result UploadData(const TextureUploadDesc* textureDataDescs, uint32_t textureDataDescNum, const BufferUploadDesc* bufferDataDescs, uint32_t bufferDataDescNum);
 
 private:
-    Result Create();
+    Result Create(const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum, const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum);
     Result UploadTextures(const TextureUploadDesc* textureDataDescs, uint32_t textureDataDescNum);
     Result UploadBuffers(const BufferUploadDesc* bufferDataDescs, uint32_t bufferDataDescNum);
     Result EndCommandBuffersAndSubmit();
-    bool CopyTextureContent(const TextureUploadDesc& textureDataDesc, Dim_t& layerOffset, Mip_t& mipOffset, bool& isCapacityInsufficient);
-    void CopyTextureSubresourceContent(const TextureSubresourceUploadDesc& subresource, uint64_t alignedRowPitch, uint64_t alignedSlicePitch);
+    bool CopyTextureContent(const TextureUploadDesc& textureDataDesc, Dim_t& layerOffset, Mip_t& mipOffset);
     bool CopyBufferContent(const BufferUploadDesc& bufferDataDesc, uint64_t& bufferContentOffset);
 
     const CoreInterface& m_NRI;
