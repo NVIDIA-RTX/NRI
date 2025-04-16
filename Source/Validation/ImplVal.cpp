@@ -661,10 +661,8 @@ Result DeviceVal::FillFunctionTable(CoreInterface& table) const {
 #pragma region[  Helper  ]
 
 static bool ValidateTextureUploadDesc(DeviceVal& device, uint32_t i, const TextureUploadDesc& textureUploadDesc) {
-    if (!textureUploadDesc.subresources) {
-        REPORT_WARNING(&device, "the number of subresources in 'textureUploadDescs[%u]' is 0 (nothing to upload)", i);
+    if (!textureUploadDesc.subresources)
         return true;
-    }
 
     const TextureVal& textureVal = *(TextureVal*)textureUploadDesc.texture;
     const TextureDesc& textureDesc = textureVal.GetDesc();
@@ -691,10 +689,8 @@ static bool ValidateTextureUploadDesc(DeviceVal& device, uint32_t i, const Textu
 }
 
 static bool ValidateBufferUploadDesc(DeviceVal& device, uint32_t i, const BufferUploadDesc& bufferUploadDesc) {
-    if (bufferUploadDesc.dataSize == 0) {
-        REPORT_WARNING(&device, "'bufferUploadDescs[%u].dataSize' is 0 (nothing to upload)", i);
+    if (bufferUploadDesc.dataSize == 0)
         return true;
-    }
 
     const BufferVal& bufferVal = *(BufferVal*)bufferUploadDesc.buffer;
     const uint64_t rangeEnd = bufferUploadDesc.bufferOffset + bufferUploadDesc.dataSize;

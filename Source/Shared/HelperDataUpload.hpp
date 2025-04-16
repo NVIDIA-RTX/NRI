@@ -3,7 +3,13 @@
 constexpr uint32_t BARRIERS_PER_PASS = 256;
 constexpr uint64_t COPY_ALIGNMENT = 16;
 
-static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffer, bool isInitial, const TextureUploadDesc* textureUploadDescs, uint32_t textureDataDescNum) {
+enum class BarrierMode {
+    INITIAL,       // transition to COPY_DEST state
+    FINAL,         // transition from COPY_DEST to "final" state
+    FINAL_NO_DATA, // initial state is not needed, since there is nothing to upload
+};
+
+static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffer, BarrierMode barrierMode, const TextureUploadDesc* textureUploadDescs, uint32_t textureDataDescNum) {
     TextureBarrierDesc textureBarriers[BARRIERS_PER_PASS];
 
     const AccessLayoutStage state = {AccessBits::COPY_DESTINATION, Layout::COPY_DESTINATION, StageBits::COPY};
@@ -22,9 +28,19 @@ static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffe
             barrier.texture = textureUploadDesc.texture;
             barrier.mipNum = textureDesc.mipNum;
             barrier.layerNum = textureDesc.layerNum;
-            barrier.before = isInitial ? initialState : state;
-            barrier.after = isInitial ? state : textureUploadDesc.after;
-            barrier.planes = isInitial ? PlaneBits::ALL : textureUploadDesc.planes;
+
+            if (barrierMode == BarrierMode::INITIAL) {
+                barrier.before = initialState;
+                barrier.after = state;
+            } else if (barrierMode == BarrierMode::FINAL) {
+                barrier.before = state;
+                barrier.after = textureUploadDesc.after;
+                barrier.planes = textureUploadDesc.planes;
+            } else {
+                barrier.before = initialState;
+                barrier.after = textureUploadDesc.after;
+                barrier.planes = textureUploadDesc.planes;
+            }
         }
 
         BarrierGroupDesc barrierGroup = {};
@@ -35,7 +51,7 @@ static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffe
     }
 }
 
-static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffer, bool isInitial, const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum) {
+static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffer, BarrierMode barrierMode, const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum) {
     BufferBarrierDesc bufferBarriers[BARRIERS_PER_PASS];
 
     const AccessStage state = {AccessBits::COPY_DESTINATION, StageBits::COPY};
@@ -51,8 +67,17 @@ static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffe
             BufferBarrierDesc& barrier = bufferBarriers[i - passBegin];
             barrier = {};
             barrier.buffer = bufferUploadDesc.buffer;
-            barrier.before = isInitial ? initialState : state;
-            barrier.after = isInitial ? state : bufferUploadDesc.after;
+
+            if (barrierMode == BarrierMode::INITIAL) {
+                barrier.before = initialState;
+                barrier.after = state;
+            } else if (barrierMode == BarrierMode::FINAL) {
+                barrier.before = state;
+                barrier.after = bufferUploadDesc.after;
+            } else {
+                barrier.before = initialState;
+                barrier.after = bufferUploadDesc.after;
+            }
         }
 
         BarrierGroupDesc barrierGroup = {};
@@ -141,10 +166,19 @@ Result HelperDataUpload::UploadTextures(const TextureUploadDesc* textureUploadDe
     if (!textureDataDescNum)
         return Result::SUCCESS;
 
-    bool isInitial = true;
     uint32_t i = 0;
+    for (; i < textureDataDescNum; i++) {
+        const TextureUploadDesc& textureUploadDesc = textureUploadDescs[i];
+        if (textureUploadDesc.subresources)
+            break;
+    }
+
+    BarrierMode barrierMode = i == textureDataDescNum ? BarrierMode::FINAL_NO_DATA : BarrierMode::FINAL;
+
+    bool isInitial = true;
     Dim_t layerOffset = 0;
     Mip_t mipOffset = 0;
+    i = 0;
 
     while (i < textureDataDescNum) {
         if (!isInitial) {
@@ -158,7 +192,8 @@ Result HelperDataUpload::UploadTextures(const TextureUploadDesc* textureUploadDe
             return result;
 
         if (isInitial) {
-            DoTransition(m_NRI, m_CommandBuffer, true, textureUploadDescs, textureDataDescNum);
+            if (barrierMode != BarrierMode::FINAL_NO_DATA)
+                DoTransition(m_NRI, m_CommandBuffer, BarrierMode::INITIAL, textureUploadDescs, textureDataDescNum);
             isInitial = false;
         }
 
@@ -172,7 +207,7 @@ Result HelperDataUpload::UploadTextures(const TextureUploadDesc* textureUploadDe
             return Result::OUT_OF_MEMORY;
     }
 
-    DoTransition(m_NRI, m_CommandBuffer, false, textureUploadDescs, textureDataDescNum);
+    DoTransition(m_NRI, m_CommandBuffer, barrierMode, textureUploadDescs, textureDataDescNum);
 
     return EndCommandBuffersAndSubmit();
 }
@@ -181,9 +216,18 @@ Result HelperDataUpload::UploadBuffers(const BufferUploadDesc* bufferUploadDescs
     if (!bufferUploadDescNum)
         return Result::SUCCESS;
 
-    bool isInitial = true;
     uint32_t i = 0;
+    for (; i < bufferUploadDescNum; i++) {
+        const BufferUploadDesc& bufferUploadDesc = bufferUploadDescs[i];
+        if (bufferUploadDesc.dataSize)
+            break;
+    }
+
+    BarrierMode barrierMode = i == bufferUploadDescNum ? BarrierMode::FINAL_NO_DATA : BarrierMode::FINAL;
+
+    bool isInitial = true;
     uint64_t bufferContentOffset = 0;
+    i = 0;
 
     while (i < bufferUploadDescNum) {
         if (!isInitial) {
@@ -197,7 +241,8 @@ Result HelperDataUpload::UploadBuffers(const BufferUploadDesc* bufferUploadDescs
             return result;
 
         if (isInitial) {
-            DoTransition(m_NRI, m_CommandBuffer, true, bufferUploadDescs, bufferUploadDescNum);
+            if (barrierMode != BarrierMode::FINAL_NO_DATA)
+                DoTransition(m_NRI, m_CommandBuffer, BarrierMode::INITIAL, bufferUploadDescs, bufferUploadDescNum);
             isInitial = false;
         }
 
@@ -210,7 +255,7 @@ Result HelperDataUpload::UploadBuffers(const BufferUploadDesc* bufferUploadDescs
         m_NRI.UnmapBuffer(*m_UploadBuffer);
     }
 
-    DoTransition(m_NRI, m_CommandBuffer, false, bufferUploadDescs, bufferUploadDescNum);
+    DoTransition(m_NRI, m_CommandBuffer, barrierMode, bufferUploadDescs, bufferUploadDescNum);
 
     return EndCommandBuffersAndSubmit();
 }
