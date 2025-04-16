@@ -1191,7 +1191,7 @@ void DeviceVK::FillCreateInfo(const BufferDesc& bufferDesc, VkBufferCreateInfo& 
 void DeviceVK::FillCreateInfo(const TextureDesc& textureDesc, VkImageCreateInfo& info) const {
     VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
     const FormatProps& formatProps = GetFormatProps(textureDesc.format);
-    if (formatProps.blockWidth > 1)
+    if (formatProps.blockWidth > 1 && (textureDesc.usage & TextureUsageBits::SHADER_RESOURCE_STORAGE))
         flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
     if (textureDesc.layerNum >= 6 && textureDesc.width == textureDesc.height)
         flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
