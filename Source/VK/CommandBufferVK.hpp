@@ -275,7 +275,8 @@ NRI_INLINE void CommandBufferVK::BeginRendering(const AttachmentsDesc& attachmen
         m_RenderWidth = std::min(m_RenderWidth, w);
         m_RenderHeight = std::min(m_RenderHeight, h);
 
-        hasStencil = HasStencil(descriptor.GetTexture().GetDesc().format);
+        const FormatProps& formatProps = GetFormatProps(descriptor.GetTexture().GetDesc().format);
+        hasStencil = formatProps.isStencil != 0;
 
         m_DepthStencil = &descriptor;
     } else
@@ -523,9 +524,17 @@ NRI_INLINE void CommandBufferVK::CopyTexture(Texture& dstTexture, const TextureR
         if (!dstRegionDesc)
             dstRegionDesc = &wholeResource;
 
+        VkImageAspectFlags srcAspectFlags = GetImageAspectFlags(srcRegionDesc->planes);
+        if (srcRegionDesc->planes == PlaneBits::ALL)
+            srcAspectFlags = src.GetImageAspectFlags();
+
+        VkImageAspectFlags dstAspectFlags = GetImageAspectFlags(dstRegionDesc->planes);
+        if (dstRegionDesc->planes == PlaneBits::ALL)
+            dstAspectFlags = dst.GetImageAspectFlags();
+
         regions[0] = {VK_STRUCTURE_TYPE_IMAGE_COPY_2};
         regions[0].srcSubresource = {
-            src.GetImageAspectFlags(),
+            srcAspectFlags,
             srcRegionDesc->mipOffset,
             srcRegionDesc->layerOffset,
             1,
@@ -536,7 +545,7 @@ NRI_INLINE void CommandBufferVK::CopyTexture(Texture& dstTexture, const TextureR
             (int32_t)srcRegionDesc->z,
         };
         regions[0].dstSubresource = {
-            dst.GetImageAspectFlags(),
+            dstAspectFlags,
             dstRegionDesc->mipOffset,
             dstRegionDesc->layerOffset,
             1,
@@ -591,9 +600,17 @@ NRI_INLINE void CommandBufferVK::ResolveTexture(Texture& dstTexture, const Textu
         if (!dstRegionDesc)
             dstRegionDesc = &wholeResource;
 
+        VkImageAspectFlags srcAspectFlags = GetImageAspectFlags(srcRegionDesc->planes);
+        if (srcRegionDesc->planes == PlaneBits::ALL)
+            srcAspectFlags = src.GetImageAspectFlags();
+
+        VkImageAspectFlags dstAspectFlags = GetImageAspectFlags(dstRegionDesc->planes);
+        if (dstRegionDesc->planes == PlaneBits::ALL)
+            dstAspectFlags = dst.GetImageAspectFlags();
+
         regions[0] = {VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2};
         regions[0].srcSubresource = {
-            src.GetImageAspectFlags(),
+            srcAspectFlags,
             srcRegionDesc->mipOffset,
             srcRegionDesc->layerOffset,
             1,
@@ -604,7 +621,7 @@ NRI_INLINE void CommandBufferVK::ResolveTexture(Texture& dstTexture, const Textu
             (int32_t)srcRegionDesc->z,
         };
         regions[0].dstSubresource = {
-            dst.GetImageAspectFlags(),
+            dstAspectFlags,
             dstRegionDesc->mipOffset,
             dstRegionDesc->layerOffset,
             1,
@@ -644,12 +661,16 @@ NRI_INLINE void CommandBufferVK::UploadBufferToTexture(Texture& dstTexture, cons
     uint32_t sliceRowNum = srcDataLayoutDesc.slicePitch / srcDataLayoutDesc.rowPitch;
     uint32_t bufferImageHeight = sliceRowNum * formatProps.blockWidth;
 
+    VkImageAspectFlags dstAspectFlags = GetImageAspectFlags(dstRegionDesc.planes);
+    if (dstRegionDesc.planes == PlaneBits::ALL)
+        dstAspectFlags = dst.GetImageAspectFlags();
+
     VkBufferImageCopy2 region = {VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2};
     region.bufferOffset = srcDataLayoutDesc.offset;
     region.bufferRowLength = bufferRowLength;
     region.bufferImageHeight = bufferImageHeight;
     region.imageSubresource = VkImageSubresourceLayers{
-        dst.GetImageAspectFlags(),
+        dstAspectFlags,
         dstRegionDesc.mipOffset,
         dstRegionDesc.layerOffset,
         1,
@@ -687,12 +708,16 @@ NRI_INLINE void CommandBufferVK::ReadbackTextureToBuffer(Buffer& dstBuffer, cons
     uint32_t sliceRowNum = dstDataLayoutDesc.slicePitch / dstDataLayoutDesc.rowPitch;
     uint32_t bufferImageHeight = sliceRowNum * formatProps.blockWidth;
 
+    VkImageAspectFlags srcAspectFlags = GetImageAspectFlags(srcRegionDesc.planes);
+    if (srcRegionDesc.planes == PlaneBits::ALL)
+        srcAspectFlags = src.GetImageAspectFlags();
+
     VkBufferImageCopy2 region = {VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2};
     region.bufferOffset = dstDataLayoutDesc.offset;
     region.bufferRowLength = bufferRowLength;
     region.bufferImageHeight = bufferImageHeight;
     region.imageSubresource = VkImageSubresourceLayers{
-        src.GetImageAspectFlags(),
+        srcAspectFlags,
         srcRegionDesc.mipOffset,
         srcRegionDesc.layerOffset,
         1,
@@ -841,17 +866,9 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierGroupDesc& barrierGroupDes
         const TextureBarrierDesc& in = barrierGroupDesc.textures[i];
         const TextureVK& textureImpl = *(const TextureVK*)in.texture;
 
-        VkImageAspectFlags aspectFlags = 0;
+        VkImageAspectFlags aspectFlags = GetImageAspectFlags(in.planes);
         if (in.planes == PlaneBits::ALL)
             aspectFlags = textureImpl.GetImageAspectFlags();
-        else {
-            if (in.planes & PlaneBits::COLOR)
-                aspectFlags |= VK_IMAGE_ASPECT_COLOR_BIT;
-            if (in.planes & PlaneBits::DEPTH)
-                aspectFlags |= VK_IMAGE_ASPECT_DEPTH_BIT;
-            if (in.planes & PlaneBits::STENCIL)
-                aspectFlags |= VK_IMAGE_ASPECT_STENCIL_BIT;
-        }
 
         VkImageMemoryBarrier2& out = textureBarriers[i];
         out = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};

@@ -219,6 +219,8 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     }
 
     // Formats
+    const FormatProps& depthStencilFormatProps = GetFormatProps(om.depthStencilFormat);
+
     Scratch<VkFormat> colorFormats = AllocateScratch(m_Device, VkFormat, om.colorNum);
     for (uint32_t i = 0; i < om.colorNum; i++)
         colorFormats[i] = GetVkFormat(om.colors[i].format);
@@ -228,7 +230,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     pipelineRenderingCreateInfo.colorAttachmentCount = om.colorNum;
     pipelineRenderingCreateInfo.pColorAttachmentFormats = colorFormats;
     pipelineRenderingCreateInfo.depthAttachmentFormat = GetVkFormat(om.depthStencilFormat);
-    pipelineRenderingCreateInfo.stencilAttachmentFormat = HasStencil(om.depthStencilFormat) ? GetVkFormat(om.depthStencilFormat) : VK_FORMAT_UNDEFINED;
+    pipelineRenderingCreateInfo.stencilAttachmentFormat = depthStencilFormatProps.isStencil ? GetVkFormat(om.depthStencilFormat) : VK_FORMAT_UNDEFINED;
 
     // Dynamic state
     uint32_t dynamicStateNum = 0;

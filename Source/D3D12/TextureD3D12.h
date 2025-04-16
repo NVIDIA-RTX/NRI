@@ -34,17 +34,15 @@ struct TextureD3D12 final : public DebugNameBase {
         return m_Texture.GetInterface();
     }
 
-    inline uint32_t GetSubresourceIndex(uint32_t layerOffset, uint32_t mipOffset, PlaneBits planes = PlaneBits::ALL) const {
+    inline uint32_t GetSubresourceIndex(uint32_t layerOffset, uint32_t mipOffset, PlaneBits planes) const {
         // https://learn.microsoft.com/en-us/windows/win32/direct3d12/subresources#plane-slice
         uint32_t planeIndex = 0;
-        if (planes != PlaneBits::ALL) {
-            if (planes & PlaneBits::DEPTH)
-                planeIndex = 0;
-            else if (planes & PlaneBits::STENCIL)
-                planeIndex = 1;
-            else
-                CHECK(false, "Bad plane");
-        }
+        if (planes == PlaneBits::ALL || (planes & PlaneBits::STENCIL) != 0)
+            planeIndex = 1;
+        if (planes == PlaneBits::ALL || (planes & PlaneBits::DEPTH) != 0) // fallthrough
+            planeIndex = 0;
+        if (planes == PlaneBits::ALL || (planes & PlaneBits::COLOR) != 0) // fallthrough
+            planeIndex = 0;
 
         return mipOffset + (layerOffset + planeIndex * m_Desc.layerNum) * m_Desc.mipNum;
     }

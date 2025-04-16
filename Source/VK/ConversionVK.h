@@ -512,19 +512,16 @@ constexpr VkImageAspectFlags GetImageAspectFlags(Format format) {
     }
 }
 
-constexpr bool HasStencil(Format format) {
-    switch (format) {
-        case Format::D24_UNORM_S8_UINT:
-            return true;
-        case Format::D32_SFLOAT_S8_UINT_X24:
-            return true;
-        case Format::X24_G8_UINT:
-            return true;
-        case Format::X32_G8_UINT_X24:
-            return true;
-        default:
-            return false;
-    }
+constexpr VkImageAspectFlags GetImageAspectFlags(PlaneBits planes) {
+    VkImageAspectFlags aspectFlags = 0;
+    if (planes & PlaneBits::COLOR)
+        aspectFlags |= VK_IMAGE_ASPECT_COLOR_BIT;
+    if (planes & PlaneBits::DEPTH)
+        aspectFlags |= VK_IMAGE_ASPECT_DEPTH_BIT;
+    if (planes & PlaneBits::STENCIL)
+        aspectFlags |= VK_IMAGE_ASPECT_STENCIL_BIT;
+
+    return aspectFlags;
 }
 
 constexpr Result GetReturnCode(VkResult result) {

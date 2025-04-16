@@ -203,9 +203,11 @@ NriEnum(Format, uint8_t,
 
 NriBits(PlaneBits, uint8_t,
     ALL                             = 0,
-    COLOR                           = NriBit(0),
-    DEPTH                           = NriBit(1),
-    STENCIL                         = NriBit(2)
+    COLOR                           = NriBit(0), // indicates "color" plane (same as "ALL" for color formats)
+
+    // D3D11: can't be addressed individually in "copy" operations
+    DEPTH                           = NriBit(1), // indicates "depth" plane (same as "ALL" for depth-only formats)
+    STENCIL                         = NriBit(2)  // indicates "stencil" plane in depth-stencil formats
 );
 
 NriBits(FormatSupportBits, uint16_t,
@@ -1195,6 +1197,7 @@ NriStruct(TextureRegionDesc) {
     Nri(Dim_t) depth;
     Nri(Mip_t) mipOffset;
     Nri(Dim_t) layerOffset;
+    Nri(PlaneBits) planes;
 };
 
 NriStruct(TextureDataLayoutDesc) {
