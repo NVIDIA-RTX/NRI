@@ -127,7 +127,9 @@ Result HelperDataUpload::Create(const TextureUploadDesc* textureUploadDescs, uin
         m_UploadBufferSize = std::max(m_UploadBufferSize, maxSubresourceSize);
     }
 
-    { // Create upload buffer
+    // Create upload buffer
+    if (m_UploadBufferSize)
+    {
         BufferDesc bufferDesc = {};
         bufferDesc.size = m_UploadBufferSize;
 
