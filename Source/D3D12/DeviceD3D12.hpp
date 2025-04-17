@@ -987,6 +987,7 @@ void DeviceD3D12::GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOU
         heapFlags |= HEAP_FLAG_MSAA_ALIGNMENT;
 
     D3D12_RESOURCE_ALLOCATION_INFO resourceAllocationInfo = m_Device->GetResourceAllocationInfo(NODE_MASK, 1, &resourceDesc);
+    CHECK(resourceAllocationInfo.SizeInBytes != UINT64_MAX, "Invalid arg?");
 
     MemoryTypeInfo memoryTypeInfo = {};
     memoryTypeInfo.heapFlags = (uint16_t)heapFlags;
