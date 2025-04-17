@@ -367,7 +367,7 @@ bool HelperDataUpload::CopyBufferContent(const BufferUploadDesc& bufferUploadDes
     if (freeSpace == 0)
         return false;
 
-    memcpy(m_MappedMemory + m_UploadBufferOffset, (uint8_t*)bufferUploadDesc.data + bufferContentOffset, bufferDesc.size);
+    memcpy(m_MappedMemory + m_UploadBufferOffset, (uint8_t*)bufferUploadDesc.data + bufferContentOffset, copySize);
 
     m_NRI.CmdCopyBuffer(*m_CommandBuffer, *bufferUploadDesc.buffer, bufferContentOffset, *m_UploadBuffer, m_UploadBufferOffset, copySize);
 
