@@ -231,8 +231,6 @@ if(NRI_ENABLE_D3D12_SUPPORT)
 endif()
 
 if(NRI_ENABLE_VK_SUPPORT)
-    find_package(Vulkan REQUIRED)
-
     # Vulkan headers
     FetchContent_Declare(
         vulkan_headers
@@ -448,11 +446,14 @@ if(NRI_ENABLE_VK_SUPPORT)
     target_compile_definitions(NRI_VK PRIVATE ${COMPILE_DEFINITIONS})
     target_compile_options(NRI_VK PRIVATE ${COMPILE_OPTIONS})
     target_link_libraries(NRI_VK PRIVATE NRI_Shared)
-    target_link_libraries(NRI_VK PRIVATE
-            NRI_Shared
-            ${Vulkan_LIBRARIES}
-    )
-    target_include_directories(NRI_VK PRIVATE ${Vulkan_INCLUDE_DIRS})
+    if(APPLE)
+        find_package(Vulkan REQUIRED)
+        target_link_libraries(NRI_VK PRIVATE
+                NRI_Shared
+                ${Vulkan_LIBRARIES}
+        )
+        target_include_directories(NRI_VK PRIVATE ${Vulkan_INCLUDE_DIRS})
+    endif()
     set_property(TARGET NRI_VK PROPERTY FOLDER ${PROJECT_NAME})
 
     if(WIN32)
