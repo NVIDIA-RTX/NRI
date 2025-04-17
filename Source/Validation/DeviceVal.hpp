@@ -583,7 +583,7 @@ NRI_INLINE void DeviceVal::DestroyFence(Fence& fence) {
 }
 
 NRI_INLINE Result DeviceVal::AllocateMemory(const AllocateMemoryDesc& allocateMemoryDesc, Memory*& memory) {
-    RETURN_ON_FAILURE(this, allocateMemoryDesc.size > 0, Result::INVALID_ARGUMENT, "'size' is 0");
+    RETURN_ON_FAILURE(this, allocateMemoryDesc.size != 0, Result::INVALID_ARGUMENT, "'size' is 0");
     RETURN_ON_FAILURE(this, allocateMemoryDesc.priority >= -1.0f && allocateMemoryDesc.priority <= 1.0f, Result::INVALID_ARGUMENT, "'priority' outside of [-1; 1] range");
 
     std::unordered_map<MemoryType, MemoryLocation>::iterator it;
@@ -1129,6 +1129,8 @@ NRI_INLINE Result DeviceVal::AllocateAccelerationStructure(const AllocateAcceler
 }
 
 NRI_INLINE Result DeviceVal::AllocateMicromap(const AllocateMicromapDesc& micromapDesc, Micromap*& micromap) {
+    RETURN_ON_FAILURE(this, micromapDesc.desc.usageNum != 0, Result::INVALID_ARGUMENT, "'usageNum' is 0");
+
     Micromap* micromapImpl = nullptr;
     Result result = m_iResourceAllocator.AllocateMicromap(m_Impl, micromapDesc, micromapImpl);
 

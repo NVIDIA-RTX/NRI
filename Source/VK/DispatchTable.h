@@ -19,6 +19,7 @@ struct DispatchTable {
     VK_FUNC(GetPhysicalDeviceMemoryProperties2);
     VK_FUNC(GetDeviceGroupPeerMemoryFeatures);
     VK_FUNC(GetPhysicalDeviceFormatProperties2);
+    VK_FUNC(GetPhysicalDeviceImageFormatProperties2);
     VK_FUNC(CreateDevice);
     VK_FUNC(GetDeviceQueue2);
     VK_FUNC(EnumeratePhysicalDeviceGroups);

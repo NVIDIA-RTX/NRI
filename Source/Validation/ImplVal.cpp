@@ -668,20 +668,16 @@ static bool ValidateTextureUploadDesc(DeviceVal& device, uint32_t i, const Textu
     const TextureDesc& textureDesc = textureVal.GetDesc();
 
     RETURN_ON_FAILURE(&device, textureUploadDesc.texture != nullptr, false, "'textureUploadDescs[%u].texture' is NULL", i);
-    RETURN_ON_FAILURE(&device, textureUploadDesc.after.layout < Layout::MAX_NUM, false, "'textureUploadDescs[%u].nextLayout' is invalid", i);
     RETURN_ON_FAILURE(&device, textureVal.IsBoundToMemory(), false, "'textureUploadDescs[%u].texture' is not bound to memory", i);
+    RETURN_ON_FAILURE(&device, textureUploadDesc.after.layout < Layout::MAX_NUM, false, "'textureUploadDescs[%u].nextLayout' is invalid", i);
 
     uint32_t subresourceNum = (uint32_t)textureDesc.layerNum * (uint32_t)textureDesc.mipNum;
     for (uint32_t j = 0; j < subresourceNum; j++) {
         const TextureSubresourceUploadDesc& subresource = textureUploadDesc.subresources[j];
 
-        if (subresource.sliceNum == 0) {
-            REPORT_WARNING(&device, "No data to upload: the number of subresources in 'textureUploadDescs[%u].subresources[%u].sliceNum' is 0", i, j);
-            continue;
-        }
-
-        RETURN_ON_FAILURE(&device, subresource.slices != nullptr, false, "'textureUploadDescs[%u].subresources[%u].slices' is invalid", i, j);
-        RETURN_ON_FAILURE(&device, subresource.rowPitch != 0, false, "'textureUploadDescs[%u].subresources[%u].rowPitch' is 0", i, j);
+        RETURN_ON_FAILURE(&device, subresource.slices != nullptr, false, "'textureUploadDescs[%u].subresources[%u].slices' is NULL", i, j);
+        RETURN_ON_FAILURE(&device, subresource.sliceNum != 0, false, "'textureUploadDescs[%u].subresources[%u].sliceNum' is 0", i, j);
+        RETURN_ON_FAILURE(&device, subresource.slicePitch != 0, false, "'textureUploadDescs[%u].subresources[%u].slicePitch' is 0", i, j);
         RETURN_ON_FAILURE(&device, subresource.slicePitch != 0, false, "'textureUploadDescs[%u].subresources[%u].slicePitch' is 0", i, j);
     }
 
@@ -689,16 +685,13 @@ static bool ValidateTextureUploadDesc(DeviceVal& device, uint32_t i, const Textu
 }
 
 static bool ValidateBufferUploadDesc(DeviceVal& device, uint32_t i, const BufferUploadDesc& bufferUploadDesc) {
-    if (bufferUploadDesc.dataSize == 0)
+    if (!bufferUploadDesc.data)
         return true;
 
     const BufferVal& bufferVal = *(BufferVal*)bufferUploadDesc.buffer;
-    const uint64_t rangeEnd = bufferUploadDesc.bufferOffset + bufferUploadDesc.dataSize;
 
-    RETURN_ON_FAILURE(&device, bufferUploadDesc.buffer != nullptr, false, "'bufferUploadDescs[%u].buffer' is invalid", i);
-    RETURN_ON_FAILURE(&device, bufferUploadDesc.data != nullptr, false, "'bufferUploadDescs[%u].data' is invalid", i);
+    RETURN_ON_FAILURE(&device, bufferUploadDesc.buffer != nullptr, false, "'bufferUploadDescs[%u].buffer' is NULL", i);
     RETURN_ON_FAILURE(&device, bufferVal.IsBoundToMemory(), false, "'bufferUploadDescs[%u].buffer' is not bound to memory", i);
-    RETURN_ON_FAILURE(&device, rangeEnd <= bufferVal.GetDesc().size, false, "'bufferUploadDescs[%u].bufferOffset + bufferUploadDescs[%u].dataSize' is out of bounds", i, i);
 
     return true;
 }

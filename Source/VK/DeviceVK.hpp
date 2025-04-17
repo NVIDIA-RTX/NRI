@@ -938,16 +938,6 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.viewport.boundsMin = (int16_t)limits.viewportBoundsRange[0];
         m_Desc.viewport.boundsMax = (int16_t)limits.viewportBoundsRange[1];
 
-        m_Desc.multisampling.zeroAttachmentsSampleMaxNum = (Sample_t)limits.framebufferNoAttachmentsSampleCounts;
-        m_Desc.multisampling.attachmentColorSampleMaxNum = (Sample_t)limits.framebufferColorSampleCounts;
-        m_Desc.multisampling.attachmentDepthSampleMaxNum = (Sample_t)limits.framebufferDepthSampleCounts;
-        m_Desc.multisampling.attachmentStencilSampleMaxNum = (Sample_t)limits.framebufferStencilSampleCounts;
-        m_Desc.multisampling.textureColorSampleMaxNum = (Sample_t)limits.sampledImageColorSampleCounts;
-        m_Desc.multisampling.textureIntegerSampleMaxNum = (Sample_t)limits.sampledImageIntegerSampleCounts;
-        m_Desc.multisampling.textureDepthSampleMaxNum = (Sample_t)limits.sampledImageDepthSampleCounts;
-        m_Desc.multisampling.textureStencilSampleMaxNum = (Sample_t)limits.sampledImageStencilSampleCounts;
-        m_Desc.multisampling.storageTextureSampleMaxNum = (Sample_t)limits.storageImageSampleCounts;
-
         m_Desc.dimensions.attachmentMaxDim = (Dim_t)std::min(limits.maxFramebufferWidth, limits.maxFramebufferHeight);
         m_Desc.dimensions.attachmentLayerMaxNum = (Dim_t)limits.maxFramebufferLayers;
         m_Desc.dimensions.texture1DMaxDim = (Dim_t)limits.maxImageDimension1D;
@@ -1637,6 +1627,7 @@ Result DeviceVK::ResolveInstanceDispatchTable(const Vector<const char*>& desired
     GET_INSTANCE_FUNC(GetPhysicalDeviceMemoryProperties2);
     GET_INSTANCE_FUNC(GetDeviceGroupPeerMemoryFeatures);
     GET_INSTANCE_FUNC(GetPhysicalDeviceFormatProperties2);
+    GET_INSTANCE_FUNC(GetPhysicalDeviceImageFormatProperties2);
     GET_INSTANCE_FUNC(CreateDevice);
     GET_INSTANCE_FUNC(GetDeviceQueue2);
     GET_INSTANCE_FUNC(EnumeratePhysicalDeviceGroups);
@@ -2018,40 +2009,67 @@ NRI_INLINE Result DeviceVK::BindMicromapMemory(const MicromapMemoryBindingDesc* 
     return result;
 }
 
+#define UPDATE_TEXTURE_SUPPORT_BITS(required, bit) \
+    if ((props3.optimalTilingFeatures & (required)) == (required)) \
+        supportBits |= bit;
+
+#define UPDATE_BUFFER_SUPPORT_BITS(required, bit) \
+    if ((props3.bufferFeatures & (required)) == (required)) \
+        supportBits |= bit;
+
 NRI_INLINE FormatSupportBits DeviceVK::GetFormatSupport(Format format) const {
-    FormatSupportBits mask = FormatSupportBits::UNSUPPORTED;
+    FormatSupportBits supportBits = FormatSupportBits::UNSUPPORTED;
+    VkFormat vkFormat = GetVkFormat(format);
 
-    const VkFormat vkFormat = GetVkFormat(format);
+    VkFormatProperties3 props3 = {VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3};
+    VkFormatProperties2 props2 = {VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2, &props3};
+    m_VK.GetPhysicalDeviceFormatProperties2(m_PhysicalDevice, vkFormat, &props2);
 
-    VkFormatProperties2 props = {VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2};
-    m_VK.GetPhysicalDeviceFormatProperties2(m_PhysicalDevice, vkFormat, &props);
+    UPDATE_TEXTURE_SUPPORT_BITS(VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT, FormatSupportBits::TEXTURE);
+    UPDATE_TEXTURE_SUPPORT_BITS(VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT, FormatSupportBits::STORAGE_TEXTURE);
+    UPDATE_TEXTURE_SUPPORT_BITS(VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT, FormatSupportBits::COLOR_ATTACHMENT);
+    UPDATE_TEXTURE_SUPPORT_BITS(VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT, FormatSupportBits::DEPTH_STENCIL_ATTACHMENT);
+    UPDATE_TEXTURE_SUPPORT_BITS(VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT, FormatSupportBits::BLEND);
+    UPDATE_TEXTURE_SUPPORT_BITS(VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT, FormatSupportBits::STORAGE_TEXTURE_ATOMICS);
 
-#define UPDATE_SUPPORT_BITS(required, bit) \
-    if ((props.formatProperties.optimalTilingFeatures & (required)) == (required)) \
-        mask |= bit;
+    UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT, FormatSupportBits::BUFFER);
+    UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT, FormatSupportBits::STORAGE_BUFFER);
+    UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT, FormatSupportBits::VERTEX_BUFFER);
+    UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT, FormatSupportBits::STORAGE_BUFFER_ATOMICS);
 
-    UPDATE_SUPPORT_BITS(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT, FormatSupportBits::TEXTURE);
-    UPDATE_SUPPORT_BITS(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT, FormatSupportBits::STORAGE_TEXTURE);
-    UPDATE_SUPPORT_BITS(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT, FormatSupportBits::COLOR_ATTACHMENT);
-    UPDATE_SUPPORT_BITS(VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT, FormatSupportBits::DEPTH_STENCIL_ATTACHMENT);
-    UPDATE_SUPPORT_BITS(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT, FormatSupportBits::BLEND);
-    UPDATE_SUPPORT_BITS(VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT, FormatSupportBits::STORAGE_TEXTURE_ATOMICS);
 
-#undef UPDATE_SUPPORT_BITS
+    if ((props3.optimalTilingFeatures | props3.bufferFeatures) & VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT)
+        supportBits |= FormatSupportBits::STORAGE_LOAD_WITHOUT_FORMAT;
 
-#define UPDATE_SUPPORT_BITS(required, bit) \
-    if ((props.formatProperties.bufferFeatures & (required)) == (required)) \
-        mask |= bit;
+    VkPhysicalDeviceImageFormatInfo2 imageInfo = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2};
+    imageInfo.format = vkFormat;
+    imageInfo.type = VK_IMAGE_TYPE_2D;
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.flags = 0; // TODO: kinda needed, but unknown here
 
-    UPDATE_SUPPORT_BITS(VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT, FormatSupportBits::BUFFER);
-    UPDATE_SUPPORT_BITS(VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT, FormatSupportBits::STORAGE_BUFFER);
-    UPDATE_SUPPORT_BITS(VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT, FormatSupportBits::VERTEX_BUFFER);
-    UPDATE_SUPPORT_BITS(VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT, FormatSupportBits::STORAGE_BUFFER_ATOMICS);
+    imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    if (supportBits & FormatSupportBits::TEXTURE)
+        imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+    if (supportBits & FormatSupportBits::DEPTH_STENCIL_ATTACHMENT)
+        imageInfo.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    if (supportBits & FormatSupportBits::COLOR_ATTACHMENT)
+        imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-#undef UPDATE_SUPPORT_BITS
+    VkImageFormatProperties2 imageProps = {VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2};
+    m_VK.GetPhysicalDeviceImageFormatProperties2(m_PhysicalDevice, &imageInfo, &imageProps);
 
-    return mask;
+    if (imageProps.imageFormatProperties.sampleCounts & VK_SAMPLE_COUNT_2_BIT)
+        supportBits |= FormatSupportBits::MULTISAMPLE_2X;
+    if (imageProps.imageFormatProperties.sampleCounts & VK_SAMPLE_COUNT_4_BIT)
+        supportBits |= FormatSupportBits::MULTISAMPLE_4X;
+    if (imageProps.imageFormatProperties.sampleCounts & VK_SAMPLE_COUNT_8_BIT)
+        supportBits |= FormatSupportBits::MULTISAMPLE_8X;
+
+    return supportBits;
 }
+
+#undef UPDATE_TEXTURE_SUPPORT_BITS
+#undef UPDATE_BUFFER_SUPPORT_BITS
 
 NRI_INLINE Result DeviceVK::QueryVideoMemoryInfo(MemoryLocation memoryLocation, VideoMemoryInfo& videoMemoryInfo) const {
     videoMemoryInfo = {};

@@ -13,7 +13,7 @@ static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffe
     TextureBarrierDesc textureBarriers[BARRIERS_PER_PASS];
 
     constexpr AccessLayoutStage copyDestState = {AccessBits::COPY_DESTINATION, Layout::COPY_DESTINATION, StageBits::ALL}; // we don't know which stages to wait
-    constexpr AccessLayoutStage unknownState = {AccessBits::UNKNOWN, Layout::UNKNOWN, StageBits::NONE}; // since all subresources are updated, we don't care about the previous state
+    constexpr AccessLayoutStage unknownState = {AccessBits::UNKNOWN, Layout::UNKNOWN, StageBits::NONE}; // since the whole resource is updated, don't care about the previous state
 
     for (uint32_t i = 0; i < textureDataDescNum;) {
         uint32_t passBegin = i;
@@ -47,7 +47,7 @@ static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffe
     BufferBarrierDesc bufferBarriers[BARRIERS_PER_PASS];
 
     constexpr AccessStage copyDestState = {AccessBits::COPY_DESTINATION, StageBits::ALL}; // we don't know which stages to wait
-    constexpr AccessStage unknownState = {AccessBits::UNKNOWN, StageBits::NONE}; // TODO: a buffer can be updated partially. Is it legit?
+    constexpr AccessStage unknownState = {AccessBits::UNKNOWN, StageBits::NONE}; // since the whole resource is updated, don't care about the previous state
 
     for (uint32_t i = 0; i < bufferUploadDescNum;) {
         uint32_t passBegin = i;
@@ -96,34 +96,42 @@ Result HelperDataUpload::Create(const TextureUploadDesc* textureUploadDescs, uin
         uint64_t totalSize = 0;
 
         for (uint32_t i = 0; i < textureUploadDescNum; i++) {
-            if (textureUploadDescs[i].subresources) {
-                const TextureSubresourceUploadDesc& subresource0 = textureUploadDescs[i].subresources[0];
+            const TextureUploadDesc& textureUploadDesc = textureUploadDescs[i];
+            if (textureUploadDesc.subresources) {
+                const TextureSubresourceUploadDesc& subresource0 = textureUploadDesc.subresources[0];
+                const TextureDesc& textureDesc = m_NRI.GetTextureDesc(*textureUploadDesc.texture);
 
-                uint32_t sliceRowNum = std::max(subresource0.slicePitch / subresource0.rowPitch, 1u);
+                uint32_t sliceRowNum = subresource0.slicePitch / subresource0.rowPitch;
                 uint64_t alignedRowPitch = Align(subresource0.rowPitch, deviceDesc.memoryAlignment.uploadBufferTextureRow);
                 uint64_t alignedSlicePitch = Align(sliceRowNum * alignedRowPitch, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
-                uint64_t alignedSize = alignedSlicePitch * std::max(subresource0.sliceNum, 1u);
+                uint64_t alignedSize = alignedSlicePitch * subresource0.sliceNum;
+
+                CHECK(alignedSize != 0, "Unexpected");
 
                 maxSubresourceSize = std::max(maxSubresourceSize, alignedSize);
 
-                const TextureDesc& textureDesc = m_NRI.GetTextureDesc(*textureUploadDescs[i].texture);
                 alignedSize *= textureDesc.layerNum;
-                if (textureDesc.mipNum < 2)
-                    totalSize += alignedSize;
+                if (textureDesc.mipNum > 1)
+                    totalSize += (alignedSize * 4) / 3; // assume full mip chain
                 else
-                    totalSize += (alignedSize * 4) / 3;
+                    totalSize += alignedSize;
             }
         }
 
         for (uint32_t i = 0; i < bufferUploadDescNum; i++) {
             // Doesn't contribute to "maxSubresourceSize" because buffer copies can work with any non-0 upload buffer size
-            totalSize += bufferUploadDescs[i].dataSize;
+            const BufferUploadDesc& bufferUploadDesc = bufferUploadDescs[i];
+            if (bufferUploadDesc.data) {
+                const BufferDesc& bufferDesc = m_NRI.GetBufferDesc(*bufferUploadDesc.buffer);
+
+                totalSize += bufferDesc.size;
+            }
         }
 
         // Can use up to "MAX_UPLOAD_BUFFER_SIZE" bytes
         m_UploadBufferSize = std::min(totalSize, MAX_UPLOAD_BUFFER_SIZE);
 
-        // Worst case subresource must fit!
+        // Worst case subresource must fit
         m_UploadBufferSize = std::max(m_UploadBufferSize, maxSubresourceSize);
     }
 
@@ -149,6 +157,7 @@ Result HelperDataUpload::Create(const TextureUploadDesc* textureUploadDescs, uin
             return result;
 
         BufferMemoryBindingDesc bufferMemoryBindingDesc = {m_UploadBuffer, m_UploadBufferMemory, 0};
+
         result = m_NRI.BindBufferMemory(m_Device, &bufferMemoryBindingDesc, 1);
         if (result != Result::SUCCESS)
             return result;
@@ -223,7 +232,7 @@ Result HelperDataUpload::UploadBuffers(const BufferUploadDesc* bufferUploadDescs
     uint32_t i = 0;
     for (; i < bufferUploadDescNum; i++) {
         const BufferUploadDesc& bufferUploadDesc = bufferUploadDescs[i];
-        if (bufferUploadDesc.dataSize)
+        if (bufferUploadDesc.data)
             break;
     }
 
@@ -347,23 +356,25 @@ bool HelperDataUpload::CopyTextureContent(const TextureUploadDesc& textureUpload
 }
 
 bool HelperDataUpload::CopyBufferContent(const BufferUploadDesc& bufferUploadDesc, uint64_t& bufferContentOffset) {
-    if (!bufferUploadDesc.dataSize)
+    if (!bufferUploadDesc.data)
         return true;
 
+    const BufferDesc& bufferDesc = m_NRI.GetBufferDesc(*bufferUploadDesc.buffer);
+
     uint64_t freeSpace = m_UploadBufferSize - m_UploadBufferOffset;
-    uint64_t copySize = std::min(bufferUploadDesc.dataSize - bufferContentOffset, freeSpace);
+    uint64_t copySize = std::min(bufferDesc.size - bufferContentOffset, freeSpace);
 
     if (freeSpace == 0)
         return false;
 
-    memcpy(m_MappedMemory + m_UploadBufferOffset, (uint8_t*)bufferUploadDesc.data + bufferContentOffset, (size_t)copySize);
+    memcpy(m_MappedMemory + m_UploadBufferOffset, (uint8_t*)bufferUploadDesc.data + bufferContentOffset, bufferDesc.size);
 
-    m_NRI.CmdCopyBuffer(*m_CommandBuffer, *bufferUploadDesc.buffer, bufferUploadDesc.bufferOffset + bufferContentOffset, *m_UploadBuffer, m_UploadBufferOffset, copySize);
+    m_NRI.CmdCopyBuffer(*m_CommandBuffer, *bufferUploadDesc.buffer, bufferContentOffset, *m_UploadBuffer, m_UploadBufferOffset, copySize);
 
     bufferContentOffset += copySize;
     m_UploadBufferOffset += copySize;
 
-    if (bufferContentOffset != bufferUploadDesc.dataSize)
+    if (bufferContentOffset != bufferDesc.size)
         return false;
 
     bufferContentOffset = 0;

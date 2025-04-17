@@ -216,16 +216,22 @@ NriBits(FormatSupportBits, uint16_t,
     // Texture
     TEXTURE                         = NriBit(0),
     STORAGE_TEXTURE                 = NriBit(1),
-    COLOR_ATTACHMENT                = NriBit(2),
-    DEPTH_STENCIL_ATTACHMENT        = NriBit(3),
-    BLEND                           = NriBit(4),
-    STORAGE_TEXTURE_ATOMICS         = NriBit(5),  // other than Load / Store
+    STORAGE_TEXTURE_ATOMICS         = NriBit(2),  // other than Load / Store
+    COLOR_ATTACHMENT                = NriBit(3),
+    DEPTH_STENCIL_ATTACHMENT        = NriBit(4),
+    BLEND                           = NriBit(5),
+    MULTISAMPLE_2X                  = NriBit(6),
+    MULTISAMPLE_4X                  = NriBit(7),
+    MULTISAMPLE_8X                  = NriBit(8),
 
     // Buffer
-    BUFFER                          = NriBit(6),
-    STORAGE_BUFFER                  = NriBit(7),
-    VERTEX_BUFFER                   = NriBit(8),
-    STORAGE_BUFFER_ATOMICS          = NriBit(9)   // other than Load / Store
+    BUFFER                          = NriBit(9),
+    STORAGE_BUFFER                  = NriBit(10),
+    STORAGE_BUFFER_ATOMICS          = NriBit(11),  // other than Load / Store
+    VERTEX_BUFFER                   = NriBit(12),
+
+    // Texture / buffer
+    STORAGE_LOAD_WITHOUT_FORMAT     = NriBit(13)
 );
 
 NriBits(StageBits, uint32_t,
@@ -1413,19 +1419,6 @@ NriStruct(DeviceDesc) {
         int16_t boundsMin;
         int16_t boundsMax;
     } viewport;
-
-    // Multisampling
-    struct {
-        Nri(Sample_t) zeroAttachmentsSampleMaxNum;
-        Nri(Sample_t) attachmentColorSampleMaxNum;
-        Nri(Sample_t) attachmentDepthSampleMaxNum;
-        Nri(Sample_t) attachmentStencilSampleMaxNum;
-        Nri(Sample_t) textureColorSampleMaxNum;
-        Nri(Sample_t) textureDepthSampleMaxNum;
-        Nri(Sample_t) textureStencilSampleMaxNum;
-        Nri(Sample_t) textureIntegerSampleMaxNum;
-        Nri(Sample_t) storageTextureSampleMaxNum;
-    } multisampling;
 
     // Dimensions
     struct {

@@ -132,6 +132,7 @@ struct DeviceVal final : public DeviceBase {
     Result CreatePipeline(const ComputePipelineDesc& computePipelineDesc, Pipeline*& pipeline);
     Result CreatePipeline(const RayTracingPipelineDesc& pipelineDesc, Pipeline*& pipeline);
     Result CreateMicromap(const MicromapDesc& micromapDesc, Micromap*& micromap);
+    Result AllocateMemory(const AllocateMemoryDesc& allocateMemoryDesc, Memory*& memory);
     Result AllocateBuffer(const AllocateBufferDesc& bufferDesc, Buffer*& buffer);
     Result AllocateTexture(const AllocateTextureDesc& textureDesc, Texture*& texture);
     Result CreateQueryPool(const QueryPoolDesc& queryPoolDesc, QueryPool*& queryPool);
@@ -175,7 +176,6 @@ struct DeviceVal final : public DeviceBase {
 
     void FreeMemory(Memory& memory);
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
-    Result AllocateMemory(const AllocateMemoryDesc& allocateMemoryDesc, Memory*& memory);
     Result BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
     Result BindTextureMemory(const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
     Result BindMicromapMemory(const MicromapMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);

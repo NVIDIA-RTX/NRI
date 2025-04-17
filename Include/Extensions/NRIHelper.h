@@ -24,10 +24,8 @@ NriStruct(TextureUploadDesc) {
 };
 
 NriStruct(BufferUploadDesc) {
-    const void* data;
-    uint64_t dataSize;
+    NriOptional const void* data; // if provided, must be data for the whole buffer
     NriPtr(Buffer) buffer;
-    uint64_t bufferOffset;
     Nri(AccessStage) after;
 };
 

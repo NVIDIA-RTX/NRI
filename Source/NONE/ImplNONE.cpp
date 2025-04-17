@@ -27,16 +27,6 @@ struct DeviceNONE final : public DeviceBase {
         m_Desc.viewport.boundsMin = -32768;
         m_Desc.viewport.boundsMax = 32767;
 
-        m_Desc.multisampling.zeroAttachmentsSampleMaxNum = 32;
-        m_Desc.multisampling.attachmentColorSampleMaxNum = 32;
-        m_Desc.multisampling.attachmentDepthSampleMaxNum = 32;
-        m_Desc.multisampling.attachmentStencilSampleMaxNum = 32;
-        m_Desc.multisampling.textureColorSampleMaxNum = 32;
-        m_Desc.multisampling.textureDepthSampleMaxNum = 32;
-        m_Desc.multisampling.textureStencilSampleMaxNum = 32;
-        m_Desc.multisampling.textureIntegerSampleMaxNum = 32;
-        m_Desc.multisampling.storageTextureSampleMaxNum = 32;
-
         m_Desc.dimensions.attachmentMaxDim = 16384;
         m_Desc.dimensions.attachmentLayerMaxNum = 2048;
         m_Desc.dimensions.texture1DMaxDim = 16384;

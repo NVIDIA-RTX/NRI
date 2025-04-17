@@ -551,16 +551,6 @@ void DeviceD3D12::FillDesc() {
     m_Desc.viewport.boundsMin = D3D12_VIEWPORT_BOUNDS_MIN;
     m_Desc.viewport.boundsMax = D3D12_VIEWPORT_BOUNDS_MAX;
 
-    m_Desc.multisampling.zeroAttachmentsSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
-    m_Desc.multisampling.attachmentColorSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
-    m_Desc.multisampling.attachmentDepthSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
-    m_Desc.multisampling.attachmentStencilSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
-    m_Desc.multisampling.textureColorSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
-    m_Desc.multisampling.textureDepthSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
-    m_Desc.multisampling.textureStencilSampleMaxNum = D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT;
-    m_Desc.multisampling.textureIntegerSampleMaxNum = 1;
-    m_Desc.multisampling.storageTextureSampleMaxNum = 1;
-
     m_Desc.dimensions.attachmentMaxDim = D3D12_REQ_RENDER_TO_BUFFER_WINDOW_WIDTH;
     m_Desc.dimensions.attachmentLayerMaxNum = D3D12_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
     m_Desc.dimensions.texture1DMaxDim = D3D12_REQ_TEXTURE1D_U_DIMENSION;
@@ -1210,17 +1200,21 @@ NRI_INLINE Result DeviceD3D12::BindMicromapMemory(const MicromapMemoryBindingDes
     return Result::SUCCESS;
 }
 
-NRI_INLINE FormatSupportBits DeviceD3D12::GetFormatSupport(Format format) const {
-    FormatSupportBits mask = FormatSupportBits::UNSUPPORTED;
-
-    D3D12_FEATURE_DATA_FORMAT_SUPPORT formatSupport = {GetDxgiFormat(format).typed};
-    HRESULT hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &formatSupport, sizeof(formatSupport));
-
-    if (SUCCEEDED(hr)) {
 #define UPDATE_SUPPORT_BITS(required, optional, bit) \
     if ((formatSupport.Support1 & (required)) == (required) && ((formatSupport.Support1 & (optional)) != 0 || (optional) == 0)) \
-        mask |= bit;
+        supportBits |= bit;
 
+#define UPDATE_SUPPORT2_BITS(optional, bit) \
+    if ((formatSupport.Support2 & (optional)) != 0) \
+        supportBits |= bit;
+
+NRI_INLINE FormatSupportBits DeviceD3D12::GetFormatSupport(Format format) const {
+    DXGI_FORMAT dxgiFormat = GetDxgiFormat(format).typed;
+    D3D12_FEATURE_DATA_FORMAT_SUPPORT formatSupport = {dxgiFormat};
+    HRESULT hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &formatSupport, sizeof(formatSupport));
+
+    FormatSupportBits supportBits = FormatSupportBits::UNSUPPORTED;
+    if (SUCCEEDED(hr)) {
         UPDATE_SUPPORT_BITS(0, D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE | D3D12_FORMAT_SUPPORT1_SHADER_LOAD, FormatSupportBits::TEXTURE);
         UPDATE_SUPPORT_BITS(D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW, 0, FormatSupportBits::STORAGE_TEXTURE);
         UPDATE_SUPPORT_BITS(D3D12_FORMAT_SUPPORT1_RENDER_TARGET, 0, FormatSupportBits::COLOR_ATTACHMENT);
@@ -1231,22 +1225,32 @@ NRI_INLINE FormatSupportBits DeviceD3D12::GetFormatSupport(Format format) const 
         UPDATE_SUPPORT_BITS(D3D12_FORMAT_SUPPORT1_BUFFER | D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW, 0, FormatSupportBits::STORAGE_BUFFER);
         UPDATE_SUPPORT_BITS(D3D12_FORMAT_SUPPORT1_IA_VERTEX_BUFFER, 0, FormatSupportBits::VERTEX_BUFFER);
 
-#undef UPDATE_SUPPORT_BITS
+        constexpr uint32_t anyAtomics = D3D12_FORMAT_SUPPORT2_UAV_ATOMIC_ADD
+            | D3D12_FORMAT_SUPPORT2_UAV_ATOMIC_BITWISE_OPS
+            | D3D12_FORMAT_SUPPORT2_UAV_ATOMIC_COMPARE_STORE_OR_COMPARE_EXCHANGE
+            | D3D12_FORMAT_SUPPORT2_UAV_ATOMIC_EXCHANGE
+            | D3D12_FORMAT_SUPPORT2_UAV_ATOMIC_SIGNED_MIN_OR_MAX
+            | D3D12_FORMAT_SUPPORT2_UAV_ATOMIC_UNSIGNED_MIN_OR_MAX;
 
-#define UPDATE_SUPPORT_BITS(optional, bit) \
-    if ((formatSupport.Support2 & (optional)) != 0) \
-        mask |= bit;
+        if (supportBits & FormatSupportBits::STORAGE_TEXTURE)
+            UPDATE_SUPPORT2_BITS(anyAtomics, FormatSupportBits::STORAGE_TEXTURE_ATOMICS);
 
-        const uint32_t anyAtomics = D3D12_FORMAT_SUPPORT2_UAV_ATOMIC_ADD | D3D12_FORMAT_SUPPORT2_UAV_ATOMIC_BITWISE_OPS | D3D12_FORMAT_SUPPORT2_UAV_ATOMIC_COMPARE_STORE_OR_COMPARE_EXCHANGE | D3D12_FORMAT_SUPPORT2_UAV_ATOMIC_EXCHANGE | D3D12_FORMAT_SUPPORT2_UAV_ATOMIC_SIGNED_MIN_OR_MAX | D3D12_FORMAT_SUPPORT2_UAV_ATOMIC_UNSIGNED_MIN_OR_MAX;
+        if (supportBits & FormatSupportBits::STORAGE_BUFFER)
+            UPDATE_SUPPORT2_BITS(anyAtomics, FormatSupportBits::STORAGE_BUFFER_ATOMICS);
 
-        if (mask & FormatSupportBits::STORAGE_TEXTURE)
-            UPDATE_SUPPORT_BITS(anyAtomics, FormatSupportBits::STORAGE_TEXTURE_ATOMICS);
-
-        if (mask & FormatSupportBits::STORAGE_BUFFER)
-            UPDATE_SUPPORT_BITS(anyAtomics, FormatSupportBits::STORAGE_BUFFER_ATOMICS);
-
-#undef UPDATE_SUPPORT_BITS
+        D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS qualityLevels = {dxgiFormat};
+        for (uint32_t i = 0; i < 3; i++) {
+            qualityLevels.SampleCount = 2 << i;
+            if (SUCCEEDED(m_Device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &qualityLevels, sizeof(qualityLevels))) && qualityLevels.NumQualityLevels > 0)
+                supportBits |= (FormatSupportBits)((uint32_t)FormatSupportBits::MULTISAMPLE_2X << i);
+        }
     }
 
-    return mask;
+    if (supportBits & (FormatSupportBits::STORAGE_TEXTURE | FormatSupportBits::STORAGE_BUFFER))
+        supportBits |= FormatSupportBits::STORAGE_LOAD_WITHOUT_FORMAT;
+
+    return supportBits;
 }
+
+#undef UPDATE_SUPPORT_BITS
+#undef UPDATE_SUPPORT2_BITS
