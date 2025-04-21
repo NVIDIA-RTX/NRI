@@ -9,7 +9,8 @@ namespace nri {
 struct DescriptorPoolD3D12 final : public DebugNameBase {
     inline DescriptorPoolD3D12(DeviceD3D12& device)
         : m_Device(device)
-        , m_DescriptorSets(device.GetStdAllocator()) {
+        , m_DescriptorSets(device.GetStdAllocator())
+        , m_DynamicConstantBuffers(device.GetStdAllocator()) {
     }
 
     inline ~DescriptorPoolD3D12() {
@@ -23,7 +24,6 @@ struct DescriptorPoolD3D12 final : public DebugNameBase {
     Result Create(const DescriptorPoolD3D12Desc& descriptorPoolDesc);
 
     void Bind(ID3D12GraphicsCommandList* graphicsCommandList) const;
-    uint32_t AllocateDescriptors(DescriptorHeapType descriptorHeapType, uint32_t descriptorNum);
     DescriptorPointerCPU GetDescriptorPointerCPU(DescriptorHeapType descriptorHeapType, uint32_t offset) const;
     DescriptorPointerGPU GetDescriptorPointerGPU(DescriptorHeapType descriptorHeapType, uint32_t offset) const;
 
@@ -45,8 +45,10 @@ private:
     std::array<DescriptorHeapDesc, DescriptorHeapType::MAX_NUM> m_DescriptorHeapDescs = {};
     std::array<ID3D12DescriptorHeap*, DescriptorHeapType::MAX_NUM> m_DescriptorHeaps = {};
     Vector<DescriptorSetD3D12> m_DescriptorSets;
+    Vector<DescriptorPointerGPU> m_DynamicConstantBuffers;
     uint32_t m_DescriptorHeapNum = 0;
     uint32_t m_DescriptorSetNum = 0;
+    uint32_t m_DynamicConstantBufferNum = 0;
     Lock m_Lock;
 };
 

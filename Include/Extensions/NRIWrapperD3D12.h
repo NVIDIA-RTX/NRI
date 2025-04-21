@@ -46,7 +46,8 @@ NriStruct(CommandBufferD3D12Desc) {
 NriStruct(DescriptorPoolD3D12Desc) {
     ID3D12DescriptorHeap* d3d12ResourceDescriptorHeap;
     ID3D12DescriptorHeap* d3d12SamplerDescriptorHeap;
-    uint32_t descriptorSetMaxNum;
+    uint32_t descriptorSetMaxNum;               // TODO: review, since valid usage is unclear
+    uint32_t dynamicConstantBufferMaxNum;       // TODO: review, since valid usage is unclear
 };
 
 NriStruct(BufferD3D12Desc) {

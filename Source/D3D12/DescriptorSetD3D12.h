@@ -8,13 +8,10 @@ struct DescriptorPoolD3D12;
 struct DescriptorSetMapping;
 
 struct DescriptorSetD3D12 final : public DebugNameBase {
-    inline DescriptorSetD3D12(DescriptorPoolD3D12& desriptorPoolD3D12)
-        : m_DescriptorPoolD3D12(desriptorPoolD3D12) {
+    inline DescriptorSetD3D12() {
     }
 
-    ~DescriptorSetD3D12();
-
-    void Create(const DescriptorSetMapping* descriptorSetMapping, uint16_t dynamicConstantBufferNum);
+    void Create(DescriptorPoolD3D12* desriptorPoolD3D12, const DescriptorSetMapping* descriptorSetMapping, DescriptorPointerGPU* dynamicConstantBuffers, std::array<uint32_t, DescriptorHeapType::MAX_NUM>& heapOffsets);
     DeviceD3D12& GetDevice() const;
     DescriptorPointerCPU GetPointerCPU(uint32_t rangeIndex, uint32_t rangeOffset) const;
     DescriptorPointerGPU GetPointerGPU(uint32_t rangeIndex, uint32_t rangeOffset) const;
@@ -29,10 +26,10 @@ struct DescriptorSetD3D12 final : public DebugNameBase {
     void Copy(const DescriptorSetCopyDesc& descriptorSetCopyDesc);
 
 private:
-    DescriptorPoolD3D12& m_DescriptorPoolD3D12;
-    std::array<uint32_t, DescriptorHeapType::MAX_NUM> m_HeapOffset = {};
-    Vector<DescriptorPointerGPU>* m_DynamicConstantBuffers = nullptr;
-    const DescriptorSetMapping* m_DescriptorSetMapping = nullptr;
+    DescriptorPoolD3D12* m_DescriptorPoolD3D12 = nullptr;
+    DescriptorPointerGPU* m_DynamicConstantBuffers = nullptr; // TODO: saves 1 indirection, but makes "bad" access unsafe
+    const DescriptorSetMapping* m_DescriptorSetMapping = nullptr; // saves 1 indirection
+    std::array<uint32_t, DescriptorHeapType::MAX_NUM> m_HeapOffsets = {};
 };
 
 } // namespace nri
