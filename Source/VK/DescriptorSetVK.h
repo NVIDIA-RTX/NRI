@@ -33,7 +33,7 @@ struct DescriptorSetVK final : public DebugNameBase {
     //================================================================================================================
 
     void UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs);
-    void UpdateDynamicConstantBuffers(uint32_t bufferOffset, uint32_t descriptorNum, const Descriptor* const* descriptors);
+    void UpdateDynamicConstantBuffers(uint32_t baseDynamicConstantBuffer, uint32_t dynamicConstantBufferNum, const Descriptor* const* descriptors);
     void Copy(const DescriptorSetCopyDesc& descriptorSetCopyDesc);
 
 private:
