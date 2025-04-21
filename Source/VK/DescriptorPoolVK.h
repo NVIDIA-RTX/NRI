@@ -2,15 +2,14 @@
 
 #pragma once
 
-namespace nri {
+#include "DescriptorSetVK.h"
 
-struct DescriptorSetVK;
+namespace nri {
 
 struct DescriptorPoolVK final : public DebugNameBase {
     inline DescriptorPoolVK(DeviceVK& device)
         : m_Device(device)
-        , m_AllocatedSets(device.GetStdAllocator()) {
-        m_AllocatedSets.reserve(64);
+        , m_DescriptorSets(device.GetStdAllocator()) {
     }
 
     inline operator VkDescriptorPool() const {
@@ -41,9 +40,9 @@ struct DescriptorPoolVK final : public DebugNameBase {
 
 private:
     DeviceVK& m_Device;
-    Vector<DescriptorSetVK*> m_AllocatedSets;
     VkDescriptorPool m_Handle = VK_NULL_HANDLE;
-    uint32_t m_UsedSets = 0;
+    Vector<DescriptorSetVK> m_DescriptorSets;
+    uint32_t m_DescriptorSetNum = 0;
     bool m_OwnsNativeObjects = true;
     Lock m_Lock;
 };

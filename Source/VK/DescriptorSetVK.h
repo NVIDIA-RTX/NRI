@@ -9,6 +9,9 @@ struct DescriptorSetVK final : public DebugNameBase {
         : m_Device(device) {
     }
 
+    inline ~DescriptorSetVK() {
+    }
+
     inline VkDescriptorSet GetHandle() const {
         return m_Handle;
     }
