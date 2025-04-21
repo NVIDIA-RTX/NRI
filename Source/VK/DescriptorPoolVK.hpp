@@ -39,7 +39,7 @@ Result DescriptorPoolVK::Create(const DescriptorPoolDesc& descriptorPoolDesc) {
     VkResult result = vk.CreateDescriptorPool(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
     RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkCreateDescriptorPool returned %d", (int32_t)result);
 
-    m_DescriptorSets.resize(descriptorPoolDesc.descriptorSetMaxNum, DescriptorSetVK(m_Device));
+    m_DescriptorSets.resize(descriptorPoolDesc.descriptorSetMaxNum);
 
     return Result::SUCCESS;
 }
@@ -65,7 +65,7 @@ NRI_INLINE Result DescriptorPoolVK::AllocateDescriptorSets(const PipelineLayout&
     VkDescriptorSetLayout setLayout = pipelineLayoutVK.GetDescriptorSetLayout(setIndex);
 
     const auto& bindingInfo = pipelineLayoutVK.GetBindingInfo();
-    const DescriptorSetDesc& setDesc = bindingInfo.descriptorSetDescs[setIndex];
+    const DescriptorSetDesc* descriptorSetDesc = &bindingInfo.descriptorSetDescs[setIndex];
     bool hasVariableDescriptorNum = bindingInfo.hasVariableDescriptorNum[setIndex];
 
     VkDescriptorSetVariableDescriptorCountAllocateInfo variableDescriptorCountInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO};
@@ -85,7 +85,7 @@ NRI_INLINE Result DescriptorPoolVK::AllocateDescriptorSets(const PipelineLayout&
         RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkAllocateDescriptorSets returned %d", (int32_t)result);
 
         DescriptorSetVK* descriptorSet = &m_DescriptorSets[m_DescriptorSetNum++];
-        descriptorSet->Create(handle, setDesc);
+        descriptorSet->Create(&m_Device, handle, descriptorSetDesc);
 
         descriptorSets[i] = (DescriptorSet*)descriptorSet;
     }

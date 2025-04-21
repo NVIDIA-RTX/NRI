@@ -157,11 +157,6 @@ constexpr std::array<WriteDescriptorsFunc, (size_t)DescriptorType::MAX_NUM> g_Wr
 };
 VALIDATE_ARRAY_BY_PTR(g_WriteFuncs);
 
-void DescriptorSetVK::Create(VkDescriptorSet handle, const DescriptorSetDesc& setDesc) {
-    m_Desc = &setDesc;
-    m_Handle = handle;
-}
-
 NRI_INLINE void DescriptorSetVK::SetDebugName(const char* name) {
     m_Device->SetDebugNameToTrivialObject(VK_OBJECT_TYPE_DESCRIPTOR_SET, (uint64_t)m_Handle, name);
 }

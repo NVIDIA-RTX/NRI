@@ -5,11 +5,7 @@
 namespace nri {
 
 struct DescriptorSetVK final : public DebugNameBase {
-    inline DescriptorSetVK(DeviceVK& device)
-        : m_Device(&device) {
-    }
-
-    inline ~DescriptorSetVK() {
+    inline DescriptorSetVK() {
     }
 
     inline VkDescriptorSet GetHandle() const {
@@ -20,7 +16,11 @@ struct DescriptorSetVK final : public DebugNameBase {
         return m_Desc->dynamicConstantBufferNum;
     }
 
-    void Create(VkDescriptorSet handle, const DescriptorSetDesc& setDesc);
+    inline void Create(DeviceVK* device, VkDescriptorSet handle, const DescriptorSetDesc* desc) {
+        m_Device = device;
+        m_Handle = handle;
+        m_Desc = desc;
+    }
 
     //================================================================================================================
     // DebugNameBase
@@ -37,7 +37,7 @@ struct DescriptorSetVK final : public DebugNameBase {
     void Copy(const DescriptorSetCopyDesc& descriptorSetCopyDesc);
 
 private:
-    DeviceVK* m_Device;
+    DeviceVK* m_Device = nullptr;
     VkDescriptorSet m_Handle = VK_NULL_HANDLE;
     const DescriptorSetDesc* m_Desc = nullptr;
 };
