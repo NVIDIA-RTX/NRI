@@ -52,7 +52,8 @@ struct Nis {
     Descriptor* srvScale = nullptr;
     Descriptor* srvUsm = nullptr;
     Descriptor* sampler = nullptr;
-    std::array<DescriptorSet*, NIS_DESCRIPTOR_SET_NUM> descriptorSets = {};
+    DescriptorSet* descriptorSet0 = nullptr;
+    std::array<DescriptorSet*, NIS_DESCRIPTOR_SET_NUM> descriptorSets1 = {};
     Dim2 blockSize = {};
     uint32_t descriptorSetIndex = 0;
 };
@@ -566,27 +567,38 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         m.nis = Allocate<Nis>(allocationCallbacks);
 
         { // Pipeline layout
-            const DescriptorRangeDesc descriptorRanges[] = {
-                {1, 1, DescriptorType::SAMPLER, StageBits::COMPUTE_SHADER},
-                {2, 3, DescriptorType::TEXTURE, StageBits::COMPUTE_SHADER},
-                {5, 1, DescriptorType::STORAGE_TEXTURE, StageBits::COMPUTE_SHADER},
-            };
-
-            DescriptorSetDesc descriptorSetDesc = {};
-            descriptorSetDesc.registerSpace = 0;
-            descriptorSetDesc.ranges = descriptorRanges;
-            descriptorSetDesc.rangeNum = GetCountOf(descriptorRanges);
-
             RootConstantDesc rootConstants = {};
             rootConstants.registerIndex = 0;
             rootConstants.shaderStages = StageBits::COMPUTE_SHADER;
             rootConstants.size = sizeof(NIS::Constants);
 
+            const DescriptorRangeDesc descriptorSet0Ranges[] = {
+                {1, 1, DescriptorType::SAMPLER, StageBits::COMPUTE_SHADER},
+                {2, 2, DescriptorType::TEXTURE, StageBits::COMPUTE_SHADER},
+            };
+
+            const DescriptorRangeDesc descriptorSet1Ranges[] = {
+                {0, 1, DescriptorType::TEXTURE, StageBits::COMPUTE_SHADER, DescriptorRangeBits::ALLOW_UPDATE_AFTER_SET},
+                {1, 1, DescriptorType::STORAGE_TEXTURE, StageBits::COMPUTE_SHADER, DescriptorRangeBits::ALLOW_UPDATE_AFTER_SET},
+            };
+
+            DescriptorSetDesc descriptorSetDescs[2] = {};
+            {
+                descriptorSetDescs[0].registerSpace = NRI_NIS_SET_STATIC;
+                descriptorSetDescs[0].ranges = descriptorSet0Ranges;
+                descriptorSetDescs[0].rangeNum = GetCountOf(descriptorSet0Ranges);
+
+                descriptorSetDescs[1].registerSpace = NRI_NIS_SET_DYNAMIC;
+                descriptorSetDescs[1].ranges = descriptorSet1Ranges;
+                descriptorSetDescs[1].rangeNum = GetCountOf(descriptorSet1Ranges);
+                descriptorSetDescs[1].flags = DescriptorSetBits::ALLOW_UPDATE_AFTER_SET;
+            }
+
             PipelineLayoutDesc pipelineLayoutDesc = {};
             pipelineLayoutDesc.rootConstants = &rootConstants;
             pipelineLayoutDesc.rootConstantNum = 1;
-            pipelineLayoutDesc.descriptorSets = &descriptorSetDesc;
-            pipelineLayoutDesc.descriptorSetNum = 1;
+            pipelineLayoutDesc.descriptorSets = descriptorSetDescs;
+            pipelineLayoutDesc.descriptorSetNum = GetCountOf(descriptorSetDescs);
             pipelineLayoutDesc.shaderStages = StageBits::COMPUTE_SHADER;
             pipelineLayoutDesc.flags = PipelineLayoutBits::IGNORE_GLOBAL_SPIRV_OFFSETS;
 
@@ -727,20 +739,47 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
                 return result;
         }
 
-        { // Descriptor pool & set
+        { // Descriptor pool
             DescriptorPoolDesc descriptorPoolDesc = {};
-            descriptorPoolDesc.descriptorSetMaxNum = NIS_DESCRIPTOR_SET_NUM;
-            descriptorPoolDesc.samplerMaxNum = 1 * NIS_DESCRIPTOR_SET_NUM;
-            descriptorPoolDesc.textureMaxNum = 3 * NIS_DESCRIPTOR_SET_NUM;
-            descriptorPoolDesc.storageTextureMaxNum = 1 * NIS_DESCRIPTOR_SET_NUM;
+
+            // Static
+            descriptorPoolDesc.descriptorSetMaxNum = 1;
+            descriptorPoolDesc.samplerMaxNum = 1;
+            descriptorPoolDesc.textureMaxNum = 2;
+
+            // Dynamic
+            descriptorPoolDesc.descriptorSetMaxNum += NIS_DESCRIPTOR_SET_NUM;
+            descriptorPoolDesc.textureMaxNum += 1 * NIS_DESCRIPTOR_SET_NUM;
+            descriptorPoolDesc.storageTextureMaxNum += 1 * NIS_DESCRIPTOR_SET_NUM;
+            descriptorPoolDesc.flags = DescriptorPoolBits::ALLOW_UPDATE_AFTER_SET;
 
             Result result = m_NRI.CreateDescriptorPool(m_Device, descriptorPoolDesc, m.nis->descriptorPool);
             if (result != Result::SUCCESS)
                 return result;
+        }
 
-            result = m_NRI.AllocateDescriptorSets(*m.nis->descriptorPool, *m.nis->pipelineLayout, 0, m.nis->descriptorSets.data(), NIS_DESCRIPTOR_SET_NUM, 0);
+        { // Descriptor sets
+            Result result = m_NRI.AllocateDescriptorSets(*m.nis->descriptorPool, *m.nis->pipelineLayout, NRI_NIS_SET_STATIC, &m.nis->descriptorSet0, 1, 0);
             if (result != Result::SUCCESS)
                 return result;
+
+            result = m_NRI.AllocateDescriptorSets(*m.nis->descriptorPool, *m.nis->pipelineLayout, NRI_NIS_SET_DYNAMIC, m.nis->descriptorSets1.data(), NIS_DESCRIPTOR_SET_NUM, 0);
+            if (result != Result::SUCCESS)
+                return result;
+        }
+
+        { // Update static descriptor set
+            Descriptor* resources[] = {
+                m.nis->srvScale,
+                m.nis->srvUsm,
+            };
+
+            const DescriptorRangeUpdateDesc descriptorRangeUpdateDescs[] = {
+                {&m.nis->sampler, 1},
+                {resources, GetCountOf(resources)},
+            };
+
+            m_NRI.UpdateDescriptorRanges(*m.nis->descriptorSet0, 0, GetCountOf(descriptorRangeUpdateDescs), descriptorRangeUpdateDescs);
         }
     }
 #endif
@@ -1161,46 +1200,47 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
 
 #if NRI_ENABLE_NIS_SDK
     if (m_Desc.type == UpscalerType::NIS) {
-        // Update ranges
-        Descriptor* resources[3] = {
-            input.descriptor,
-            m.nis->srvScale,
-            m.nis->srvUsm,
-        };
+        DescriptorSet* descriptorSet1 = m.nis->descriptorSets1[m.nis->descriptorSetIndex];
 
-        const DescriptorRangeUpdateDesc descriptorRangeUpdateDescs[] = {
-            {&m.nis->sampler, 1},
-            {resources, GetCountOf(resources)},
-            {&output.descriptor, 1},
-        };
+        { // Setup
+            m_NRI.CmdSetDescriptorPool(commandBuffer, *m.nis->descriptorPool);
+            m_NRI.CmdSetPipelineLayout(commandBuffer, *m.nis->pipelineLayout);
+            m_NRI.CmdSetPipeline(commandBuffer, *m.nis->pipeline);
+            m_NRI.CmdSetDescriptorSet(commandBuffer, NRI_NIS_SET_STATIC, *m.nis->descriptorSet0, nullptr);
+            m_NRI.CmdSetDescriptorSet(commandBuffer, NRI_NIS_SET_DYNAMIC, *descriptorSet1, nullptr);
+        }
 
-        DescriptorSet* descriptorSet = m.nis->descriptorSets[m.nis->descriptorSetIndex];
-        m_NRI.UpdateDescriptorRanges(*descriptorSet, 0, GetCountOf(descriptorRangeUpdateDescs), descriptorRangeUpdateDescs); // TODO: separate into static and dynamic descriptor sets, move "srvScale", "srvUsm" and "sampler" to static
+        { // Update constants
+            const TextureDesc& inputDesc = m_NRI.GetTextureDesc(*input.texture);
 
-        // Update constants
-        const TextureDesc& inputDesc = m_NRI.GetTextureDesc(*input.texture);
+            NIS::Constants constants = {};
+            NIS::UpdateConstants(constants, dispatchUpscaleDesc.settings.nis.sharpness,
+                dispatchUpscaleDesc.currentResolution.w, dispatchUpscaleDesc.currentResolution.h, // render resolution
+                inputDesc.width, inputDesc.height,                                                // input dims
+                m_Desc.upscaleResolution.w, m_Desc.upscaleResolution.h,                           // output resolution
+                m_Desc.upscaleResolution.w, m_Desc.upscaleResolution.h,                           // output dims
+                (m_Desc.flags & UpscalerBits::HDR) ? NIS::HDRMode::Linear : NIS::HDRMode::None);
 
-        NIS::Constants constants = {};
-        NIS::UpdateConstants(constants, dispatchUpscaleDesc.settings.nis.sharpness,
-            dispatchUpscaleDesc.currentResolution.w, dispatchUpscaleDesc.currentResolution.h, // render resolution
-            inputDesc.width, inputDesc.height,                                                // input dims
-            m_Desc.upscaleResolution.w, m_Desc.upscaleResolution.h,                           // output resolution
-            m_Desc.upscaleResolution.w, m_Desc.upscaleResolution.h,                           // output dims
-            (m_Desc.flags & UpscalerBits::HDR) ? NIS::HDRMode::Linear : NIS::HDRMode::None);
+            m_NRI.CmdSetRootConstants(commandBuffer, 0, &constants, sizeof(constants));
+        }
 
-        // Dispatch
-        m_NRI.CmdSetDescriptorPool(commandBuffer, *m.nis->descriptorPool);
-        m_NRI.CmdSetPipelineLayout(commandBuffer, *m.nis->pipelineLayout);
-        m_NRI.CmdSetPipeline(commandBuffer, *m.nis->pipeline);
-        m_NRI.CmdSetRootConstants(commandBuffer, 0, &constants, sizeof(constants));
-        m_NRI.CmdSetDescriptorSet(commandBuffer, 0, *descriptorSet, nullptr);
+        { // Update dynamic resources
+            const DescriptorRangeUpdateDesc descriptorRangeUpdateDescs[] = {
+                {&input.descriptor, 1},
+                {&output.descriptor, 1},
+            };
 
-        DispatchDesc dispatchDesc = {};
-        dispatchDesc.x = (m_Desc.upscaleResolution.w + m.nis->blockSize.w - 1) / m.nis->blockSize.w;
-        dispatchDesc.y = (m_Desc.upscaleResolution.h + m.nis->blockSize.h - 1) / m.nis->blockSize.h;
-        dispatchDesc.z = 1;
+            m_NRI.UpdateDescriptorRanges(*descriptorSet1, 0, GetCountOf(descriptorRangeUpdateDescs), descriptorRangeUpdateDescs);
+        }
 
-        m_NRI.CmdDispatch(commandBuffer, dispatchDesc);
+        { // Dispatch
+            DispatchDesc dispatchDesc = {};
+            dispatchDesc.x = (m_Desc.upscaleResolution.w + m.nis->blockSize.w - 1) / m.nis->blockSize.w;
+            dispatchDesc.y = (m_Desc.upscaleResolution.h + m.nis->blockSize.h - 1) / m.nis->blockSize.h;
+            dispatchDesc.z = 1;
+
+            m_NRI.CmdDispatch(commandBuffer, dispatchDesc);
+        }
 
         // Update descriptor set for the next time
         m.nis->descriptorSetIndex++;

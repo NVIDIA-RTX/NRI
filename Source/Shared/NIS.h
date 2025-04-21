@@ -5,27 +5,7 @@
 
 namespace NIS {
 
-struct Constants {
-    float kDetectRatio;
-    float kDetectThres;
-    float kMinContrastRatio;
-    float kRatioNorm;
-
-    float kSharpStartY;
-    float kSharpScaleY;
-    float kSharpStrengthMin;
-    float kSharpStrengthScale;
-
-    float kSharpLimitMin;
-    float kSharpLimitScale;
-    float kScaleX;
-    float kScaleY;
-
-    float kDstNormX;
-    float kDstNormY;
-    float kSrcNormX;
-    float kSrcNormY;
-};
+#include "../Shaders/NIS.hlsl"
 
 enum class HDRMode {
     None,
@@ -94,24 +74,24 @@ inline bool UpdateConstants(Constants& constants, float sharpness,
     uint32_t kOutputViewportWidth = outputViewportWidth == 0 ? outputTextureWidth : outputViewportWidth;
     uint32_t kOutputViewportHeight = outputViewportHeight == 0 ? outputTextureHeight : outputViewportHeight;
 
-    constants.kSrcNormX = 1.f / inputTextureWidth;
-    constants.kSrcNormY = 1.f / inputTextureHeight;
-    constants.kDstNormX = 1.f / outputTextureWidth;
-    constants.kDstNormY = 1.f / outputTextureHeight;
-    constants.kScaleX = kInputViewportWidth / float(kOutputViewportWidth);
-    constants.kScaleY = kInputViewportHeight / float(kOutputViewportHeight);
-    constants.kDetectRatio = kDetectRatio;
-    constants.kDetectThres = kDetectThres;
-    constants.kMinContrastRatio = kMinContrastRatio;
-    constants.kRatioNorm = kRatioNorm;
-    constants.kSharpStartY = kSharpStartY;
-    constants.kSharpScaleY = kSharpScaleY;
-    constants.kSharpStrengthMin = kSharpStrengthMin;
-    constants.kSharpStrengthScale = kSharpStrengthScale;
-    constants.kSharpLimitMin = kSharpLimitMin;
-    constants.kSharpLimitScale = kSharpLimitScale;
+    constants.srcNormX = 1.f / inputTextureWidth;
+    constants.srcNormY = 1.f / inputTextureHeight;
+    constants.dstNormX = 1.f / outputTextureWidth;
+    constants.dstNormY = 1.f / outputTextureHeight;
+    constants.scaleX = kInputViewportWidth / float(kOutputViewportWidth);
+    constants.scaleY = kInputViewportHeight / float(kOutputViewportHeight);
+    constants.detectRatio = kDetectRatio;
+    constants.detectThres = kDetectThres;
+    constants.minContrastRatio = kMinContrastRatio;
+    constants.ratioNorm = kRatioNorm;
+    constants.sharpStartY = kSharpStartY;
+    constants.sharpScaleY = kSharpScaleY;
+    constants.sharpStrengthMin = kSharpStrengthMin;
+    constants.sharpStrengthScale = kSharpStrengthScale;
+    constants.sharpLimitMin = kSharpLimitMin;
+    constants.sharpLimitScale = kSharpLimitScale;
 
-    if (constants.kScaleX < 0.5f || constants.kScaleX > 1.f || constants.kScaleY < 0.5f || constants.kScaleY > 1.f || kOutputViewportWidth == 0 || kOutputViewportHeight == 0)
+    if (constants.scaleX < 0.5f || constants.scaleX > 1.f || constants.scaleY < 0.5f || constants.scaleY > 1.f || kOutputViewportWidth == 0 || kOutputViewportHeight == 0)
         return false;
 
     return true;
