@@ -8,6 +8,21 @@ namespace nri {
 
 constexpr uint16_t ROOT_PARAMETER_UNUSED = uint16_t(-1);
 
+struct DescriptorRangeMapping {
+    DescriptorHeapType descriptorHeapType;
+    uint32_t heapOffset;
+    uint32_t descriptorNum;
+};
+
+struct DescriptorSetMapping {
+    inline DescriptorSetMapping(StdAllocator<uint8_t>& allocator)
+        : descriptorRangeMappings(allocator) {
+    }
+
+    std::array<uint32_t, DescriptorHeapType::MAX_NUM> descriptorNum = {};
+    Vector<DescriptorRangeMapping> descriptorRangeMappings;
+};
+
 struct DescriptorSetRootMapping {
     inline DescriptorSetRootMapping(StdAllocator<uint8_t>& allocator)
         : rootOffsets(allocator) {

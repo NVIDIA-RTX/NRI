@@ -111,7 +111,8 @@ NRI_INLINE Result DescriptorPoolD3D12::AllocateDescriptorSets(const PipelineLayo
 
     for (uint32_t i = 0; i < instanceNum; i++) {
         DescriptorSetD3D12* descriptorSet = &m_DescriptorSets[m_DescriptorSetNum++];
-        descriptorSet->Initialize(&descriptorSetMapping, dynamicConstantBufferMapping.rootConstantNum);
+        descriptorSet->Create(&descriptorSetMapping, dynamicConstantBufferMapping.rootConstantNum);
+
         descriptorSets[i] = (DescriptorSet*)descriptorSet;
     }
 

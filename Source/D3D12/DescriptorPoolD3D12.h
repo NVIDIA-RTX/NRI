@@ -13,8 +13,6 @@ struct DescriptorPoolD3D12 final : public DebugNameBase {
     }
 
     inline ~DescriptorPoolD3D12() {
-        Reset();
-        m_DescriptorSets.clear();
     }
 
     inline DeviceD3D12& GetDevice() const {

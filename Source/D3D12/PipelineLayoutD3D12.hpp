@@ -1,6 +1,19 @@
 // © 2021 NVIDIA Corporation
 
-D3D12_ROOT_SIGNATURE_FLAGS GetRootSignatureStageFlags(const PipelineLayoutDesc& pipelineLayoutDesc, const DeviceD3D12& device) {
+static inline void BuildDescriptorSetMapping(const DescriptorSetDesc& descriptorSetDesc, DescriptorSetMapping& descriptorSetMapping) {
+    descriptorSetMapping.descriptorRangeMappings.resize(descriptorSetDesc.rangeNum);
+
+    for (uint32_t i = 0; i < descriptorSetDesc.rangeNum; i++) {
+        D3D12_DESCRIPTOR_HEAP_TYPE descriptorHeapType = GetDescriptorHeapType(descriptorSetDesc.ranges[i].descriptorType);
+        descriptorSetMapping.descriptorRangeMappings[i].descriptorHeapType = (DescriptorHeapType)descriptorHeapType;
+        descriptorSetMapping.descriptorRangeMappings[i].heapOffset = descriptorSetMapping.descriptorNum[descriptorHeapType];
+        descriptorSetMapping.descriptorRangeMappings[i].descriptorNum = descriptorSetDesc.ranges[i].descriptorNum;
+
+        descriptorSetMapping.descriptorNum[descriptorHeapType] += descriptorSetDesc.ranges[i].descriptorNum;
+    }
+}
+
+static inline D3D12_ROOT_SIGNATURE_FLAGS GetRootSignatureStageFlags(const PipelineLayoutDesc& pipelineLayoutDesc, const DeviceD3D12& device) {
     D3D12_ROOT_SIGNATURE_FLAGS flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
 
     if (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER)
@@ -98,7 +111,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
 
     for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++) {
         const DescriptorSetDesc& descriptorSetDesc = pipelineLayoutDesc.descriptorSets[i];
-        DescriptorSetD3D12::BuildDescriptorSetMapping(descriptorSetDesc, m_DescriptorSetMappings[i]);
+        BuildDescriptorSetMapping(descriptorSetDesc, m_DescriptorSetMappings[i]);
         m_DescriptorSetRootMappings[i].rootOffsets.resize(descriptorSetDesc.rangeNum);
 
         uint32_t heapIndex = 0;
