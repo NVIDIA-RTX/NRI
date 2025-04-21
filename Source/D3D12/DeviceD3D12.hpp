@@ -714,6 +714,7 @@ void DeviceD3D12::FillDesc() {
     m_Desc.features.layerBasedMultiview = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED;
     m_Desc.features.viewportBasedMultiview = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED;
     m_Desc.features.waitableSwapChain = true; // TODO: swap chain version >= 2?
+    m_Desc.features.pipelineStatistics = true;
 
     bool isShaderAtomicsF16Supported = false;
     bool isShaderAtomicsF32Supported = false;

@@ -1335,10 +1335,10 @@ NriEnum(QueryType, uint8_t,
     TIMESTAMP,                              // uint64_t
     TIMESTAMP_COPY_QUEUE,                   // uint64_t, requires "features.copyQueueTimestamp"
     OCCLUSION,                              // uint64_t
-    PIPELINE_STATISTICS,                    // see "PipelineStatisticsDesc"
-    ACCELERATION_STRUCTURE_SIZE,            // uint64_t
-    ACCELERATION_STRUCTURE_COMPACTED_SIZE,  // uint64_t
-    MICROMAP_COMPACTED_SIZE                 // uint64_t
+    PIPELINE_STATISTICS,                    // see "PipelineStatisticsDesc", requires "features.pipelineStatistics"
+    ACCELERATION_STRUCTURE_SIZE,            // uint64_t, requires "features.rayTracing"
+    ACCELERATION_STRUCTURE_COMPACTED_SIZE,  // uint64_t, requires "features.rayTracing"
+    MICROMAP_COMPACTED_SIZE                 // uint64_t, requires "features.micromap"
 );
 
 NriStruct(QueryPoolDesc) {
@@ -1657,6 +1657,7 @@ NriStruct(DeviceDesc) {
         uint32_t viewportBasedMultiview                          : 1; // see "Multiview::VIEWPORT_BASED"
         uint32_t presentFromCompute                              : 1; // see "SwapChainDesc::queue"
         uint32_t waitableSwapChain                               : 1; // see "SwapChainDesc::waitable"
+        uint32_t pipelineStatistics                              : 1; // see "QueryType::PIPELINE_STATISTICS"
     } features;
 
     // Shader features (I32, F32 and I32 atomics are always supported)

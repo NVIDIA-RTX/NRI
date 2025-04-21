@@ -1127,6 +1127,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.layerBasedMultiview = features11.multiview;
         m_Desc.features.presentFromCompute = true;
         m_Desc.features.waitableSwapChain = presentIdFeatures.presentId != 0 && presentWaitFeatures.presentWait != 0;
+        m_Desc.features.pipelineStatistics = features.features.pipelineStatisticsQuery;
 
         m_Desc.shaderFeatures.nativeI16 = features.features.shaderInt16;
         m_Desc.shaderFeatures.nativeF16 = features12.shaderFloat16;

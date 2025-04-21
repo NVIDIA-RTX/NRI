@@ -508,8 +508,18 @@ NRI_INLINE Result DeviceVal::CreateQueryPool(const QueryPoolDesc& queryPoolDesc,
     RETURN_ON_FAILURE(this, queryPoolDesc.queryType < QueryType::MAX_NUM, Result::INVALID_ARGUMENT, "'queryType' is invalid");
     RETURN_ON_FAILURE(this, queryPoolDesc.capacity > 0, Result::INVALID_ARGUMENT, "'capacity' is 0");
 
-    if (queryPoolDesc.queryType == QueryType::TIMESTAMP_COPY_QUEUE)
+    if (queryPoolDesc.queryType == QueryType::TIMESTAMP_COPY_QUEUE) {
         RETURN_ON_FAILURE(this, GetDesc().features.copyQueueTimestamp, Result::UNSUPPORTED, "'features.copyQueueTimestamp' is false");
+    }
+    else if (queryPoolDesc.queryType == QueryType::PIPELINE_STATISTICS) {
+        RETURN_ON_FAILURE(this, GetDesc().features.pipelineStatistics, Result::UNSUPPORTED, "'features.pipelineStatistics' is false");
+    }
+    else if (queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_SIZE || queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_COMPACTED_SIZE) {
+        RETURN_ON_FAILURE(this, GetDesc().features.rayTracing, Result::UNSUPPORTED, "'features.rayTracing' is false");
+    }
+    else if (queryPoolDesc.queryType == QueryType::MICROMAP_COMPACTED_SIZE) {
+        RETURN_ON_FAILURE(this, GetDesc().features.micromap, Result::UNSUPPORTED, "'features.micromap' is false");
+    }
 
     QueryPool* queryPoolImpl = nullptr;
     Result result = m_iCore.CreateQueryPool(m_Impl, queryPoolDesc, queryPoolImpl);
