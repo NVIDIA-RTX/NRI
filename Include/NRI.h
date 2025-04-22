@@ -3,7 +3,7 @@
 /*
 Overview:
 - Generalized common denominator for VK, D3D12 and D3D11
-    - VK spec: https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html
+    - VK spec: https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html
        - Best practices: https://developer.nvidia.com/blog/vulkan-dos-donts/
     - D3D12 spec: https://microsoft.github.io/DirectX-Specs/
     - D3D11 spec: https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm
