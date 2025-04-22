@@ -825,8 +825,8 @@ NriStruct(MultisampleDesc) {
 
 NriStruct(ShadingRateDesc) {
     Nri(ShadingRate) shadingRate;
-    Nri(ShadingRateCombiner) primitiveCombiner;
-    Nri(ShadingRateCombiner) attachmentCombiner;
+    Nri(ShadingRateCombiner) primitiveCombiner;  // requires "tiers.sampleLocations >= 2"
+    Nri(ShadingRateCombiner) attachmentCombiner; // requires "tiers.sampleLocations >= 2"
 };
 
 #pragma endregion
@@ -1602,8 +1602,10 @@ NriStruct(DeviceDesc) {
         // 3 - maintains a maximum 1/256 uncertainty region and adds support for inner input coverage, aka "SV_InnerCoverage"
         uint8_t conservativeRaster;
 
-        // 1 - a single sample pattern can be specified to repeat for every pixel ("locationNum / sampleNum" must be 1 in "CmdSetSampleLocations")
-        // 2 - four separate sample patterns can be specified for each pixel in a 2x2 grid ("locationNum / sampleNum" can be up to 4 in "CmdSetSampleLocations")
+        // 1 - a single sample pattern can be specified to repeat for every pixel ("locationNum / sampleNum" ratio must be 1 in "CmdSetSampleLocations").
+        //     1x and 16x sample counts do not support programamble positions
+        // 2 - four separate sample patterns can be specified for each pixel in a 2x2 grid ("locationNum / sampleNum" ratio can be 1 or 4 in "CmdSetSampleLocations")
+        //     All sample counts support programmable positions
         uint8_t sampleLocations;
 
         // 1 - DXR 1.0: full raytracing functionality, except features below
