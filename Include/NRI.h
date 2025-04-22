@@ -37,7 +37,7 @@ Implicit:
 
 #define NRI_VERSION_MAJOR 1
 #define NRI_VERSION_MINOR 165
-#define NRI_VERSION_DATE "9 April 2025"
+#define NRI_VERSION_DATE "22 April 2025"
 
 #include "NRIDescs.h"
 
