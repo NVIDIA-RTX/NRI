@@ -11,6 +11,8 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #include "SharedExternal.h"
 #include "DeviceBase.h"
 
+#include <algorithm>
+
 #define NRI_STRINGIFY_(token) #token
 #define NRI_STRINGIFY(token) NRI_STRINGIFY_(token)
 
@@ -286,21 +288,15 @@ NRI_API uint32_t NRI_CALL nriConvertNRIFormatToDXGI(Format format)
 
 #include <dxgi1_4.h>
 
-static int SortAdaptersByDedicatedVideoMemorySize(const void* a, const void* b)
+static int SortAdaptersByDedicatedVideoMemorySize(IDXGIAdapter1* a, IDXGIAdapter1* b)
 {
     DXGI_ADAPTER_DESC ad = {};
-    (*(IDXGIAdapter1**)a)->GetDesc(&ad);
+    a->GetDesc(&ad);
 
     DXGI_ADAPTER_DESC bd = {};
-    (*(IDXGIAdapter1**)b)->GetDesc(&bd);
+    b->GetDesc(&bd);
 
-    if (ad.DedicatedVideoMemory > bd.DedicatedVideoMemory)
-        return -1;
-
-    if (ad.DedicatedVideoMemory < bd.DedicatedVideoMemory)
-        return 1;
-
-    return 0;
+    return (ad.DedicatedVideoMemory > bd.DedicatedVideoMemory);
 }
 
 NRI_API Result NRI_CALL nriEnumerateAdapters(AdapterDesc* adapterDescs, uint32_t& adapterDescNum)
@@ -332,7 +328,7 @@ NRI_API Result NRI_CALL nriEnumerateAdapters(AdapterDesc* adapterDescs, uint32_t
 
     if (adapterDescs)
     {
-        qsort(adapters, adaptersNum, sizeof(adapters[0]), SortAdaptersByDedicatedVideoMemorySize);
+        std::stable_sort(adapters, adapters + adaptersNum, SortAdaptersByDedicatedVideoMemorySize);
 
         if (adaptersNum < adapterDescNum)
             adapterDescNum = adaptersNum;
