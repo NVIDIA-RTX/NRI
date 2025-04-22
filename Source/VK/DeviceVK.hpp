@@ -1081,7 +1081,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         }
 
         if (m_Desc.tiers.sampleLocations) {
-            if (sampleLocationsProps.variableSampleLocations) // TODO: it's weird...
+            constexpr VkSampleCountFlags allSampleCounts = VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT | VK_SAMPLE_COUNT_8_BIT | VK_SAMPLE_COUNT_16_BIT;
+            if (sampleLocationsProps.sampleLocationSampleCounts == allSampleCounts) // like in D3D12 spec
                 m_Desc.tiers.sampleLocations = 2;
         }
 
@@ -2037,7 +2038,6 @@ NRI_INLINE FormatSupportBits DeviceVK::GetFormatSupport(Format format) const {
     UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT, FormatSupportBits::STORAGE_BUFFER);
     UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT, FormatSupportBits::VERTEX_BUFFER);
     UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT, FormatSupportBits::STORAGE_BUFFER_ATOMICS);
-
 
     if ((props3.optimalTilingFeatures | props3.bufferFeatures) & VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT)
         supportBits |= FormatSupportBits::STORAGE_LOAD_WITHOUT_FORMAT;
