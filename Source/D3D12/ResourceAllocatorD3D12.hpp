@@ -2,20 +2,23 @@
 
 #if defined(__GNUC__)
 #    pragma GCC diagnostic push
+#    pragma GCC diagnostic ignored "-Wswitch"
 #    pragma GCC diagnostic ignored "-Wunused-parameter"
 #    pragma GCC diagnostic ignored "-Wunused-variable"
-#    pragma GCC diagnostic ignored "-Wswitch"
+#    pragma GCC diagnostic ignored "-Wsometimes-uninitialized"
 #elif defined(__clang__)
 #    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wswitch"
 #    pragma clang diagnostic ignored "-Wunused-parameter"
 #    pragma clang diagnostic ignored "-Wunused-variable"
-#    pragma clang diagnostic ignored "-Wswitch"
+#    pragma clang diagnostic ignored "-Wsometimes-uninitialized"
 #else
 #    pragma warning(push)
+#    pragma warning(disable : 4063) // case 'identifier' is not a valid value for switch of enum 'enumeration'
 #    pragma warning(disable : 4100) // unreferenced formal parameter
 #    pragma warning(disable : 4189) // local variable is initialized but not referenced
 #    pragma warning(disable : 4505) // unreferenced function with internal linkage has been removed
-#    pragma warning(disable : 4063) // case 'identifier' is not a valid value for switch of enum 'enumeration'
+#    pragma warning(disable : 4701) // potentially uninitialized local variable
 #endif
 
 #define D3D12MA_D3D12_HEADERS_ALREADY_INCLUDED
@@ -167,7 +170,7 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
         RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority()");
     }
 
-    m_Desc = textureDesc.desc;
+    m_Desc = FixTextureDesc(textureDesc.desc);
 
     return Result::SUCCESS;
 }
