@@ -164,7 +164,7 @@ Result TextureVK::Create(const AllocateTextureDesc& textureDesc) {
     VkResult result = vmaCreateImage(m_Device.GetVma(), &imageCreateInfo, &allocationCreateInfo, &m_Handle, &m_VmaAllocation, nullptr);
     RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vmaCreateImage returned %d", (int32_t)result);
 
-    m_Desc = textureDesc.desc;
+    m_Desc = FixTextureDesc(textureDesc.desc);
 
     return Result::SUCCESS;
 }
