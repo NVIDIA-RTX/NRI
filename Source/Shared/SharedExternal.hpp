@@ -436,12 +436,12 @@ constexpr std::array<FormatProps, (size_t)Format::MAX_NUM> g_formatProps = {{
     {"UNKNOWN",                 Format::UNKNOWN,                   0,  0,  0,  0,  1,  0, 0, _, _, _, _, _, _, _, _, _, _, _}, // UNKNOWN
     //                                                             r   g   b   a   s   w  h  b  c  d  e  f  p  i  n  s  s  s
     {"R8_UNORM",                Format::R8_UNORM,                  8,  0,  0,  0,  1,  1, 1, _, _, _, _, _, _, _, X, _, _, _}, // R8_UNORM
-    {"R8_SNORM",                Format::R8_SNORM,                  8,  0,  0,  0,  1,  1, 1, _, _, _, _, _, _, _, X, _, _, _}, // R8_SNORM
+    {"R8_SNORM",                Format::R8_SNORM,                  8,  0,  0,  0,  1,  1, 1, _, _, _, _, _, _, _, X, X, _, _}, // R8_SNORM
     {"R8_UINT",                 Format::R8_UINT,                   8,  0,  0,  0,  1,  1, 1, _, _, _, _, _, _, X, _, _, _, _}, // R8_UINT
     {"R8_SINT",                 Format::R8_SINT,                   8,  0,  0,  0,  1,  1, 1, _, _, _, _, _, _, X, _, X, _, _}, // R8_SINT
     //                                                             r   g   b   a   s   w  h  b  c  d  e  f  p  i  n  s  s  s
     {"RG8_UNORM",               Format::RG8_UNORM,                 8,  8,  0,  0,  2,  1, 1, _, _, _, _, _, _, _, X, _, _, _}, // RG8_UNORM
-    {"RG8_SNORM",               Format::RG8_SNORM,                 8,  8,  0,  0,  2,  1, 1, _, _, _, _, _, _, _, X, _, _, _}, // RG8_SNORM
+    {"RG8_SNORM",               Format::RG8_SNORM,                 8,  8,  0,  0,  2,  1, 1, _, _, _, _, _, _, _, X, X, _, _}, // RG8_SNORM
     {"RG8_UINT",                Format::RG8_UINT,                  8,  8,  0,  0,  2,  1, 1, _, _, _, _, _, _, X, _, _, _, _}, // RG8_UINT
     {"RG8_SINT",                Format::RG8_SINT,                  8,  8,  0,  0,  2,  1, 1, _, _, _, _, _, _, X, _, X, _, _}, // RG8_SINT
     //                                                             r   g   b   a   s   w  h  b  c  d  e  f  p  i  n  s  s  s
@@ -450,24 +450,24 @@ constexpr std::array<FormatProps, (size_t)Format::MAX_NUM> g_formatProps = {{
     //                                                             r   g   b   a   s   w  h  b  c  d  e  f  p  i  n  s  s  s
     {"RGBA8_UNORM",             Format::RGBA8_UNORM,               8,  8,  8,  8,  4,  1, 1, _, _, _, _, _, _, _, X, _, _, _}, // RGBA8_UNORM
     {"RGBA8_SRGB",              Format::RGBA8_SRGB,                8,  8,  8,  8,  4,  1, 1, _, _, _, _, _, _, _, _, _, X, _}, // RGBA8_SRGB
-    {"RGBA8_SNORM",             Format::RGBA8_SNORM,               8,  8,  8,  8,  4,  1, 1, _, _, _, _, _, _, _, X, _, _, _}, // RGBA8_SNORM
+    {"RGBA8_SNORM",             Format::RGBA8_SNORM,               8,  8,  8,  8,  4,  1, 1, _, _, _, _, _, _, _, X, X, _, _}, // RGBA8_SNORM
     {"RGBA8_UINT",              Format::RGBA8_UINT,                8,  8,  8,  8,  4,  1, 1, _, _, _, _, _, _, X, _, _, _, _}, // RGBA8_UINT
     {"RGBA8_SINT",              Format::RGBA8_SINT,                8,  8,  8,  8,  4,  1, 1, _, _, _, _, _, _, X, _, X, _, _}, // RGBA8_SINT
     //                                                             r   g   b   a   s   w  h  b  c  d  e  f  p  i  n  s  s  s
     {"R16_UNORM",               Format::R16_UNORM,                 16, 0,  0,  0,  2,  1, 1, _, _, _, _, _, _, _, X, _, _, _}, // R16_UNORM
-    {"R16_SNORM",               Format::R16_SNORM,                 16, 0,  0,  0,  2,  1, 1, _, _, _, _, _, _, _, X, _, _, _}, // R16_SNORM
+    {"R16_SNORM",               Format::R16_SNORM,                 16, 0,  0,  0,  2,  1, 1, _, _, _, _, _, _, _, X, X, _, _}, // R16_SNORM
     {"R16_UINT",                Format::R16_UINT,                  16, 0,  0,  0,  2,  1, 1, _, _, _, _, _, _, X, _, _, _, _}, // R16_UINT
     {"R16_SINT",                Format::R16_SINT,                  16, 0,  0,  0,  2,  1, 1, _, _, _, _, _, _, X, _, X, _, _}, // R16_SINT
     {"R16_SFLOAT",              Format::R16_SFLOAT,                16, 0,  0,  0,  2,  1, 1, _, _, _, _, X, _, _, _, X, _, _}, // R16_SFLOAT
     //                                                             r   g   b   a   s   w  h  b  c  d  e  f  p  i  n  s  s  s
     {"RG16_UNORM",              Format::RG16_UNORM,                16, 16, 0,  0,  4,  1, 1, _, _, _, _, _, _, _, X, _, _, _}, // RG16_UNORM
-    {"RG16_SNORM",              Format::RG16_SNORM,                16, 16, 0,  0,  4,  1, 1, _, _, _, _, _, _, _, X, _, _, _}, // RG16_SNORM
+    {"RG16_SNORM",              Format::RG16_SNORM,                16, 16, 0,  0,  4,  1, 1, _, _, _, _, _, _, _, X, X, _, _}, // RG16_SNORM
     {"RG16_UINT",               Format::RG16_UINT,                 16, 16, 0,  0,  4,  1, 1, _, _, _, _, _, _, X, _, _, _, _}, // RG16_UINT
     {"RG16_SINT",               Format::RG16_SINT,                 16, 16, 0,  0,  4,  1, 1, _, _, _, _, _, _, X, _, X, _, _}, // RG16_SINT
     {"RG16_SFLOAT",             Format::RG16_SFLOAT,               16, 16, 0,  0,  4,  1, 1, _, _, _, _, X, _, _, _, X, _, _}, // RG16_SFLOAT
     //                                                             r   g   b   a   s   w  h  b  c  d  e  f  p  i  n  s  s  s
     {"RGBA16_UNORM",            Format::RGBA16_UNORM,              16, 16, 16, 16, 8,  1, 1, _, _, _, _, _, _, _, X, _, _, _}, // RGBA16_UNORM
-    {"RGBA16_SNORM",            Format::RGBA16_SNORM,              16, 16, 16, 16, 8,  1, 1, _, _, _, _, _, _, _, X, _, _, _}, // RGBA16_SNORM
+    {"RGBA16_SNORM",            Format::RGBA16_SNORM,              16, 16, 16, 16, 8,  1, 1, _, _, _, _, _, _, _, X, X, _, _}, // RGBA16_SNORM
     {"RGBA16_UINT",             Format::RGBA16_UINT,               16, 16, 16, 16, 8,  1, 1, _, _, _, _, _, _, X, _, _, _, _}, // RGBA16_UINT
     {"RGBA16_SINT",             Format::RGBA16_SINT,               16, 16, 16, 16, 8,  1, 1, _, _, _, _, _, _, X, _, X, _, _}, // RGBA16_SINT
     {"RGBA16_SFLOAT",           Format::RGBA16_SFLOAT,             16, 16, 16, 16, 8,  1, 1, _, _, _, _, X, _, _, _, X, _, _}, // RGBA16_SFLOAT
@@ -503,9 +503,9 @@ constexpr std::array<FormatProps, (size_t)Format::MAX_NUM> g_formatProps = {{
     {"BC3_RGBA_UNORM",          Format::BC3_RGBA_UNORM,            5,  6,  5,  8,  16, 4, 4, _, X, _, _, _, _, _, X, _, _, _}, // BC3_RGBA_UNORM
     {"BC3_RGBA_SRGB",           Format::BC3_RGBA_SRGB,             5,  6,  5,  8,  16, 4, 4, _, X, _, _, _, _, _, _, _, X, _}, // BC3_RGBA_SRGB
     {"BC4_R_UNORM",             Format::BC4_R_UNORM,               8,  0,  0,  0,  8,  4, 4, _, X, _, _, _, _, _, X, _, _, _}, // BC4_R_UNORM
-    {"BC4_R_SNORM",             Format::BC4_R_SNORM,               8,  0,  0,  0,  8,  4, 4, _, X, _, _, _, _, _, X, _, _, _}, // BC4_R_SNORM
+    {"BC4_R_SNORM",             Format::BC4_R_SNORM,               8,  0,  0,  0,  8,  4, 4, _, X, _, _, _, _, _, X, X, _, _}, // BC4_R_SNORM
     {"BC5_RG_UNORM",            Format::BC5_RG_UNORM,              8,  8,  0,  0,  16, 4, 4, _, X, _, _, _, _, _, X, _, _, _}, // BC5_RG_UNORM
-    {"BC5_RG_SNORM",            Format::BC5_RG_SNORM,              8,  8,  0,  0,  16, 4, 4, _, X, _, _, _, _, _, X, _, _, _}, // BC5_RG_SNORM
+    {"BC5_RG_SNORM",            Format::BC5_RG_SNORM,              8,  8,  0,  0,  16, 4, 4, _, X, _, _, _, _, _, X, X, _, _}, // BC5_RG_SNORM
     {"BC6H_RGB_UFLOAT",         Format::BC6H_RGB_UFLOAT,           16, 16, 16, 0,  16, 4, 4, _, X, _, _, X, _, _, _, _, _, _}, // BC6H_RGB_UFLOAT
     {"BC6H_RGB_SFLOAT",         Format::BC6H_RGB_SFLOAT,           16, 16, 16, 0,  16, 4, 4, _, X, _, _, X, _, _, _, X, _, _}, // BC6H_RGB_SFLOAT
     {"BC7_RGBA_UNORM",          Format::BC7_RGBA_UNORM,            8,  8,  8,  8,  16, 4, 4, _, X, _, _, _, _, _, X, _, _, _}, // BC7_RGBA_UNORM
@@ -794,7 +794,7 @@ constexpr std::array<Format, 131> VK_FORMAT_TABLE = {
 Format nri::VKFormatToNRIFormat(uint32_t format) {
     if (format < VK_FORMAT_TABLE.size())
         return VK_FORMAT_TABLE[format];
-    else if (format == 1000340000) // VK_FORMAT_A4R4G4B4_UNORM_PACK16
+    else if (format == VK_FORMAT_A4R4G4B4_UNORM_PACK16)
         return Format::B4_G4_R4_A4_UNORM;
 
     return Format::UNKNOWN;
