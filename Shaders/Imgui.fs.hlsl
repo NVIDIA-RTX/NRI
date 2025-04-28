@@ -13,11 +13,11 @@ struct PS_INPUT {
 };
 
 NRI_RESOURCE(SamplerState, gLinearClamp, s, 1, IMGUI_SAMPLER_SET);
-NRI_RESOURCE(Texture2D<float>, tex, t, 0, IMGUI_TEXTURE_SET);
+NRI_RESOURCE(Texture2D<float4>, tex, t, 0, IMGUI_TEXTURE_SET);
 
 void main(PS_INPUT input, out float4 color : SV_Target0) {
     color = input.col;
-    color.w *= tex.Sample(gLinearClamp, input.uv);
+    color *= tex.Sample(gLinearClamp, input.uv);
 }
 
 #endif

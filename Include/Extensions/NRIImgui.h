@@ -8,8 +8,8 @@
 // - "drawList->AddCallback" functionality is not supported! But there is a special callback, allowing to override "hdrScale":
 //      drawList->AddCallback(NRI_IMGUI_OVERRIDE_HDR_SCALE(1000.0f)); // to override "DrawImguiDesc::hdrScale"
 //      drawList->AddCallback(NRI_IMGUI_OVERRIDE_HDR_SCALE(0.0f));    // to revert back to "DrawImguiDesc::hdrScale"
-// - "drawList->AddImage*" functionality is supported. "ImTextureID" must be a "SHADER_RESOURCE" descriptor:
-//      drawList->AddImage((ImTextureID)descriptor, ...)
+// - "ImGui::Image*" functions are supported. "ImTextureID" must be a "SHADER_RESOURCE" descriptor:
+//      ImGui::Image((ImTextureID)descriptor, ...)
 // - only one "Imgui" instance is needed per device
 
 NonNriForwardStruct(ImDrawList);
@@ -20,7 +20,7 @@ NriForwardStruct(Imgui);
 NriForwardStruct(Streamer);
 
 NriStruct(ImguiDesc) {
-    const uint8_t* fontAtlasData;               // tightly packed font atlas data (single channel opacity, no row alignment)
+    const uint8_t* fontAtlasData;               // use "GetTexDataAsRGBA32"
     Nri(Dim2) fontAtlasDims;                    // font texture atlas dimensions
     NriOptional uint32_t descriptorPoolSize;    // upper bound of textures used by Imgui for drawing:
                                                 //      {number of frames in flight} * {number of "CmdDrawImgui" calls} * (1 + {"drawList->AddImage*" calls})

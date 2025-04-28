@@ -67,7 +67,7 @@ struct ImDrawList {
 };
 
 // Implementation
-constexpr Format FONT_FORMAT = Format::R8_UNORM;
+constexpr Format FONT_FORMAT = Format::RGBA8_UNORM; // TODO: add A8_UNORM?
 
 ImguiImpl::~ImguiImpl() {
     for (const PipelineAndProps& entry : m_Pipelines)
@@ -140,11 +140,13 @@ Result ImguiImpl::Create(const ImguiDesc& imguiDesc) {
         if (result != Result::SUCCESS)
             return result;
 
+        const FormatProps& formatProps = GetFormatProps(FONT_FORMAT);
+
         TextureSubresourceUploadDesc subresource = {};
         subresource.slices = imguiDesc.fontAtlasData;
         subresource.sliceNum = 1;
-        subresource.rowPitch = imguiDesc.fontAtlasDims.w * sizeof(uint8_t);
-        subresource.slicePitch = imguiDesc.fontAtlasDims.w * imguiDesc.fontAtlasDims.h * sizeof(uint8_t);
+        subresource.rowPitch = imguiDesc.fontAtlasDims.w * formatProps.stride;
+        subresource.slicePitch = imguiDesc.fontAtlasDims.w * imguiDesc.fontAtlasDims.h * formatProps.stride;
 
         TextureUploadDesc textureUploadDesc = {};
         textureUploadDesc.subresources = &subresource;
