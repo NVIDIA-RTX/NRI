@@ -7,19 +7,17 @@
 
 #include "SharedExternal.h"
 
-#include "HelperDataUpload.h"
-#include "HelperDeviceMemoryAllocator.h"
-#include "HelperWaitIdle.h"
-#include "Streamer.h"
-#include "Upscaler.h"
+#include "HelperInterface.h"
+#include "ImguiInterface.h"
+#include "StreamerInterface.h"
+#include "UpscalerInterface.h"
 
 using namespace nri;
 
-#include "HelperDataUpload.hpp"
-#include "HelperDeviceMemoryAllocator.hpp"
-#include "HelperWaitIdle.hpp"
-#include "Streamer.hpp"
-#include "Upscaler.hpp"
+#include "HelperInterface.hpp"
+#include "ImguiInterface.hpp"
+#include "StreamerInterface.hpp"
+#include "UpscalerInterface.hpp"
 
 #include "SharedExternal.hpp"
 #include "SharedLibrary.hpp"

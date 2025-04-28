@@ -330,7 +330,7 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const SamplerDesc& samplerDesc, De
     RETURN_ON_FAILURE(this, samplerDesc.compareFunc < CompareFunc::MAX_NUM, Result::INVALID_ARGUMENT, "'compareFunc' is invalid");
 
     if (samplerDesc.filters.ext != FilterExt::NONE)
-        RETURN_ON_FAILURE(this, GetDesc().features.textureFilterMinMax, Result::UNSUPPORTED, "'features.textureFilterMinMax' is false");
+        RETURN_ON_FAILURE(this, GetDesc().features.textureFilterMinMax, Result::INVALID_ARGUMENT, "'features.textureFilterMinMax' is false");
 
     if ((samplerDesc.addressModes.u != AddressMode::CLAMP_TO_BORDER && samplerDesc.addressModes.v != AddressMode::CLAMP_TO_BORDER && samplerDesc.addressModes.w != AddressMode::CLAMP_TO_BORDER) && (samplerDesc.borderColor.ui.x != 0 || samplerDesc.borderColor.ui.y != 0 || samplerDesc.borderColor.ui.z != 0 && samplerDesc.borderColor.ui.w != 0))
         REPORT_WARNING(this, "'borderColor' is provided, but 'CLAMP_TO_BORDER' is not requested");
@@ -413,10 +413,10 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
     origSettings.enableD3D12DrawParametersEmulation = (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_D3D12_DRAW_PARAMETERS_EMULATION) != 0 && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
 
     PipelineLayoutSettingsDesc fittedSettings = FitPipelineLayoutSettingsIntoDeviceLimits(GetDesc(), origSettings);
-    RETURN_ON_FAILURE(this, origSettings.descriptorSetNum == fittedSettings.descriptorSetNum, Result::UNSUPPORTED, "total number of descriptor sets (=%u) exceeds device limits", origSettings.descriptorSetNum);
-    RETURN_ON_FAILURE(this, origSettings.descriptorRangeNum == fittedSettings.descriptorRangeNum, Result::UNSUPPORTED, "total number of descriptor ranges (=%u) exceeds device limits", origSettings.descriptorRangeNum);
-    RETURN_ON_FAILURE(this, origSettings.rootConstantSize == fittedSettings.rootConstantSize, Result::UNSUPPORTED, "total size of root constants (=%u) exceeds device limits", origSettings.rootConstantSize);
-    RETURN_ON_FAILURE(this, origSettings.rootDescriptorNum == fittedSettings.rootDescriptorNum, Result::UNSUPPORTED, "total number of root descriptors (=%u) exceeds device limits", origSettings.rootDescriptorNum);
+    RETURN_ON_FAILURE(this, origSettings.descriptorSetNum == fittedSettings.descriptorSetNum, Result::INVALID_ARGUMENT, "total number of descriptor sets (=%u) exceeds device limits", origSettings.descriptorSetNum);
+    RETURN_ON_FAILURE(this, origSettings.descriptorRangeNum == fittedSettings.descriptorRangeNum, Result::INVALID_ARGUMENT, "total number of descriptor ranges (=%u) exceeds device limits", origSettings.descriptorRangeNum);
+    RETURN_ON_FAILURE(this, origSettings.rootConstantSize == fittedSettings.rootConstantSize, Result::INVALID_ARGUMENT, "total size of root constants (=%u) exceeds device limits", origSettings.rootConstantSize);
+    RETURN_ON_FAILURE(this, origSettings.rootDescriptorNum == fittedSettings.rootDescriptorNum, Result::INVALID_ARGUMENT, "total number of root descriptors (=%u) exceeds device limits", origSettings.rootDescriptorNum);
 
     PipelineLayout* pipelineLayoutImpl = nullptr;
     Result result = m_iCore.CreatePipelineLayout(m_Impl, pipelineLayoutDesc, pipelineLayoutImpl);
@@ -455,22 +455,22 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
     }
 
     if (graphicsPipelineDesc.rasterization.conservativeRaster)
-        RETURN_ON_FAILURE(this, GetDesc().tiers.conservativeRaster, Result::UNSUPPORTED, "'tiers.conservativeRaster' must be > 0");
+        RETURN_ON_FAILURE(this, GetDesc().tiers.conservativeRaster, Result::INVALID_ARGUMENT, "'tiers.conservativeRaster' must be > 0");
 
     if (graphicsPipelineDesc.rasterization.lineSmoothing)
-        RETURN_ON_FAILURE(this, GetDesc().features.lineSmoothing, Result::UNSUPPORTED, "'features.lineSmoothing' is false");
+        RETURN_ON_FAILURE(this, GetDesc().features.lineSmoothing, Result::INVALID_ARGUMENT, "'features.lineSmoothing' is false");
 
     if (graphicsPipelineDesc.rasterization.shadingRate)
-        RETURN_ON_FAILURE(this, GetDesc().tiers.shadingRate, Result::UNSUPPORTED, "'tiers.shadingRate' must be > 0");
+        RETURN_ON_FAILURE(this, GetDesc().tiers.shadingRate, Result::INVALID_ARGUMENT, "'tiers.shadingRate' must be > 0");
 
     if (graphicsPipelineDesc.multisample && graphicsPipelineDesc.multisample->sampleLocations)
-        RETURN_ON_FAILURE(this, GetDesc().tiers.sampleLocations, Result::UNSUPPORTED, "'tiers.sampleLocations' must be > 0");
+        RETURN_ON_FAILURE(this, GetDesc().tiers.sampleLocations, Result::INVALID_ARGUMENT, "'tiers.sampleLocations' must be > 0");
 
     if (graphicsPipelineDesc.outputMerger.depth.boundsTest)
-        RETURN_ON_FAILURE(this, GetDesc().features.depthBoundsTest, Result::UNSUPPORTED, "'features.depthBoundsTest' is false");
+        RETURN_ON_FAILURE(this, GetDesc().features.depthBoundsTest, Result::INVALID_ARGUMENT, "'features.depthBoundsTest' is false");
 
     if (graphicsPipelineDesc.outputMerger.logicFunc != LogicFunc::NONE)
-        RETURN_ON_FAILURE(this, GetDesc().features.logicFunc, Result::UNSUPPORTED, "'features.logicFunc' is false");
+        RETURN_ON_FAILURE(this, GetDesc().features.logicFunc, Result::INVALID_ARGUMENT, "'features.logicFunc' is false");
 
     auto graphicsPipelineDescImpl = graphicsPipelineDesc;
     graphicsPipelineDescImpl.pipelineLayout = NRI_GET_IMPL(PipelineLayout, graphicsPipelineDesc.pipelineLayout);
@@ -509,16 +509,16 @@ NRI_INLINE Result DeviceVal::CreateQueryPool(const QueryPoolDesc& queryPoolDesc,
     RETURN_ON_FAILURE(this, queryPoolDesc.capacity > 0, Result::INVALID_ARGUMENT, "'capacity' is 0");
 
     if (queryPoolDesc.queryType == QueryType::TIMESTAMP_COPY_QUEUE) {
-        RETURN_ON_FAILURE(this, GetDesc().features.copyQueueTimestamp, Result::UNSUPPORTED, "'features.copyQueueTimestamp' is false");
+        RETURN_ON_FAILURE(this, GetDesc().features.copyQueueTimestamp, Result::INVALID_ARGUMENT, "'features.copyQueueTimestamp' is false");
     }
     else if (queryPoolDesc.queryType == QueryType::PIPELINE_STATISTICS) {
-        RETURN_ON_FAILURE(this, GetDesc().features.pipelineStatistics, Result::UNSUPPORTED, "'features.pipelineStatistics' is false");
+        RETURN_ON_FAILURE(this, GetDesc().features.pipelineStatistics, Result::INVALID_ARGUMENT, "'features.pipelineStatistics' is false");
     }
     else if (queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_SIZE || queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_COMPACTED_SIZE) {
-        RETURN_ON_FAILURE(this, GetDesc().features.rayTracing, Result::UNSUPPORTED, "'features.rayTracing' is false");
+        RETURN_ON_FAILURE(this, GetDesc().features.rayTracing, Result::INVALID_ARGUMENT, "'features.rayTracing' is false");
     }
     else if (queryPoolDesc.queryType == QueryType::MICROMAP_COMPACTED_SIZE) {
-        RETURN_ON_FAILURE(this, GetDesc().features.micromap, Result::UNSUPPORTED, "'features.micromap' is false");
+        RETURN_ON_FAILURE(this, GetDesc().features.micromap, Result::INVALID_ARGUMENT, "'features.micromap' is false");
     }
 
     QueryPool* queryPoolImpl = nullptr;

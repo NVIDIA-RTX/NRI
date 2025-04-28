@@ -130,6 +130,10 @@ struct DeviceD3D11 final : public DeviceBase {
     Result FillFunctionTable(UpscalerInterface& table) const override;
     Result FillFunctionTable(WrapperD3D11Interface& table) const override;
 
+#if NRI_ENABLE_IMGUI_EXTENSION
+    Result FillFunctionTable(ImguiInterface& table) const override;
+#endif
+
     //================================================================================================================
     // NRI
     //================================================================================================================

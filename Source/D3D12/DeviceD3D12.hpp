@@ -68,7 +68,7 @@ static void __stdcall NvapiMessageCallback(void* context, NVAPI_D3D12_RAYTRACING
 
     DeviceD3D12& device = *(DeviceD3D12*)context;
     device.ReportMessage(messageType, __FILE__, __LINE__, "%s: %s", messageCode, message);
-    device.ReportMessage(messageType, __FILE__, __LINE__, "Details: %s", messageDetails);
+    device.ReportMessage(messageType, __FILE__, __LINE__, "Details: %s", messageDetails); // TODO: break only here
 }
 
 #endif
@@ -210,9 +210,9 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
 #if NRI_ENABLE_D3D_EXTENSIONS
             if (HasNvExt()) {
-                REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_SetNvShaderExtnSlotSpace(deviceTemp, d3dShaderExtRegister, 0));
-                REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_UINT64_ATOMIC, &isShaderAtomicsI64Supported));
-                REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_GET_SPECIAL, &isShaderClockSupported));
+                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_SetNvShaderExtnSlotSpace(deviceTemp, d3dShaderExtRegister, 0));
+                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_UINT64_ATOMIC, &isShaderAtomicsI64Supported));
+                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_GET_SPECIAL, &isShaderClockSupported));
             }
         }
 
@@ -303,7 +303,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     if (HasNvExt()) {
         { // Check position fetch support
             bool isSupported = false;
-            REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_RT_TRIANGLE_OBJECT_POSITIONS, &isSupported));
+            REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_RT_TRIANGLE_OBJECT_POSITIONS, &isSupported));
             m_Desc.shaderFeatures.rayTracingPositionFetch = isSupported;
         }
 
@@ -311,7 +311,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         if (desc.enableD3D12RayTracingValidation) {
             NvAPI_Status status = NvAPI_D3D12_EnableRaytracingValidation(m_Device, NVAPI_D3D12_RAYTRACING_VALIDATION_FLAG_NONE);
             if (status == NVAPI_OK)
-                REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_RegisterRaytracingValidationMessageCallback(m_Device, NvapiMessageCallback, this, &m_CallbackHandle));
+                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_RegisterRaytracingValidationMessageCallback(m_Device, NvapiMessageCallback, this, &m_CallbackHandle));
 
             // TODO: add "NvAPI_D3D12_FlushRaytracingValidationMessages" somewhere?
         }
@@ -720,8 +720,8 @@ void DeviceD3D12::FillDesc() {
     bool isShaderAtomicsF32Supported = false;
 #if NRI_ENABLE_D3D_EXTENSIONS
     if (HasNvExt()) {
-        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_FP16_ATOMIC, &isShaderAtomicsF16Supported));
-        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_FP32_ATOMIC, &isShaderAtomicsF32Supported));
+        REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_FP16_ATOMIC, &isShaderAtomicsF16Supported));
+        REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_FP32_ATOMIC, &isShaderAtomicsF32Supported));
     }
 #endif
 

@@ -1,5 +1,6 @@
 // © 2021 NVIDIA Corporation
 
+// Helper data upload
 constexpr uint32_t BARRIERS_PER_PASS = 256;
 constexpr uint64_t MAX_UPLOAD_BUFFER_SIZE = 64 * 1024 * 1024;
 
@@ -9,7 +10,7 @@ enum class BarrierMode {
     FINAL_NO_DATA, // initial state is not needed, since there is nothing to upload
 };
 
-static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffer, BarrierMode barrierMode, const TextureUploadDesc* textureUploadDescs, uint32_t textureDataDescNum) {
+static void DoTransition(const CoreInterface& m_iCore, CommandBuffer* commandBuffer, BarrierMode barrierMode, const TextureUploadDesc* textureUploadDescs, uint32_t textureDataDescNum) {
     TextureBarrierDesc textureBarriers[BARRIERS_PER_PASS];
 
     constexpr AccessLayoutStage copyDestState = {AccessBits::COPY_DESTINATION, Layout::COPY_DESTINATION, StageBits::ALL}; // we don't know which stages to wait
@@ -21,7 +22,7 @@ static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffe
 
         for (; i < passEnd; i++) {
             const TextureUploadDesc& textureUploadDesc = textureUploadDescs[i];
-            const TextureDesc& textureDesc = m_NRI.GetTextureDesc(*textureUploadDesc.texture);
+            const TextureDesc& textureDesc = m_iCore.GetTextureDesc(*textureUploadDesc.texture);
 
             TextureBarrierDesc& barrier = textureBarriers[i - passBegin];
             barrier = {};
@@ -39,11 +40,11 @@ static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffe
         barrierGroup.textures = textureBarriers;
         barrierGroup.textureNum = uint16_t(passEnd - passBegin);
 
-        m_NRI.CmdBarrier(*commandBuffer, barrierGroup);
+        m_iCore.CmdBarrier(*commandBuffer, barrierGroup);
     }
 }
 
-static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffer, BarrierMode barrierMode, const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum) {
+static void DoTransition(const CoreInterface& m_iCore, CommandBuffer* commandBuffer, BarrierMode barrierMode, const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum) {
     BufferBarrierDesc bufferBarriers[BARRIERS_PER_PASS];
 
     constexpr AccessStage copyDestState = {AccessBits::COPY_DESTINATION, StageBits::ALL}; // we don't know which stages to wait
@@ -67,7 +68,7 @@ static void DoTransition(const CoreInterface& m_NRI, CommandBuffer* commandBuffe
         barrierGroup.buffers = bufferBarriers;
         barrierGroup.bufferNum = uint16_t(passEnd - passBegin);
 
-        m_NRI.CmdBarrier(*commandBuffer, barrierGroup);
+        m_iCore.CmdBarrier(*commandBuffer, barrierGroup);
     }
 }
 
@@ -79,17 +80,17 @@ Result HelperDataUpload::UploadData(const TextureUploadDesc* textureUploadDescs,
     if (result == Result::SUCCESS)
         result = UploadBuffers(bufferUploadDescs, bufferUploadDescNum);
 
-    m_NRI.DestroyCommandBuffer(*m_CommandBuffer);
-    m_NRI.DestroyCommandAllocator(*m_CommandAllocators);
-    m_NRI.DestroyFence(*m_Fence);
-    m_NRI.DestroyBuffer(*m_UploadBuffer);
-    m_NRI.FreeMemory(*m_UploadBufferMemory);
+    m_iCore.DestroyCommandBuffer(*m_CommandBuffer);
+    m_iCore.DestroyCommandAllocator(*m_CommandAllocators);
+    m_iCore.DestroyFence(*m_Fence);
+    m_iCore.DestroyBuffer(*m_UploadBuffer);
+    m_iCore.FreeMemory(*m_UploadBufferMemory);
 
     return result;
 }
 
 Result HelperDataUpload::Create(const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum, const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum) {
-    const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
+    const DeviceDesc& deviceDesc = m_iCore.GetDeviceDesc(m_Device);
 
     { // Calculate upload buffer size
         uint64_t maxSubresourceSize = 0;
@@ -99,7 +100,7 @@ Result HelperDataUpload::Create(const TextureUploadDesc* textureUploadDescs, uin
             const TextureUploadDesc& textureUploadDesc = textureUploadDescs[i];
             if (textureUploadDesc.subresources) {
                 const TextureSubresourceUploadDesc& subresource0 = textureUploadDesc.subresources[0];
-                const TextureDesc& textureDesc = m_NRI.GetTextureDesc(*textureUploadDesc.texture);
+                const TextureDesc& textureDesc = m_iCore.GetTextureDesc(*textureUploadDesc.texture);
 
                 uint32_t sliceRowNum = subresource0.slicePitch / subresource0.rowPitch;
                 uint64_t alignedRowPitch = Align(subresource0.rowPitch, deviceDesc.memoryAlignment.uploadBufferTextureRow);
@@ -122,7 +123,7 @@ Result HelperDataUpload::Create(const TextureUploadDesc* textureUploadDescs, uin
             // Doesn't contribute to "maxSubresourceSize" because buffer copies can work with any non-0 upload buffer size
             const BufferUploadDesc& bufferUploadDesc = bufferUploadDescs[i];
             if (bufferUploadDesc.data) {
-                const BufferDesc& bufferDesc = m_NRI.GetBufferDesc(*bufferUploadDesc.buffer);
+                const BufferDesc& bufferDesc = m_iCore.GetBufferDesc(*bufferUploadDesc.buffer);
 
                 totalSize += bufferDesc.size;
             }
@@ -141,38 +142,38 @@ Result HelperDataUpload::Create(const TextureUploadDesc* textureUploadDescs, uin
         BufferDesc bufferDesc = {};
         bufferDesc.size = m_UploadBufferSize;
 
-        Result result = m_NRI.CreateBuffer(m_Device, bufferDesc, m_UploadBuffer);
+        Result result = m_iCore.CreateBuffer(m_Device, bufferDesc, m_UploadBuffer);
         if (result != Result::SUCCESS)
             return result;
 
         MemoryDesc memoryDesc = {};
-        m_NRI.GetBufferMemoryDesc(*m_UploadBuffer, MemoryLocation::HOST_UPLOAD, memoryDesc);
+        m_iCore.GetBufferMemoryDesc(*m_UploadBuffer, MemoryLocation::HOST_UPLOAD, memoryDesc);
 
         AllocateMemoryDesc allocateMemoryDesc = {};
         allocateMemoryDesc.type = memoryDesc.type;
         allocateMemoryDesc.size = memoryDesc.size;
 
-        result = m_NRI.AllocateMemory(m_Device, allocateMemoryDesc, m_UploadBufferMemory);
+        result = m_iCore.AllocateMemory(m_Device, allocateMemoryDesc, m_UploadBufferMemory);
         if (result != Result::SUCCESS)
             return result;
 
         BufferMemoryBindingDesc bufferMemoryBindingDesc = {m_UploadBuffer, m_UploadBufferMemory, 0};
 
-        result = m_NRI.BindBufferMemory(m_Device, &bufferMemoryBindingDesc, 1);
+        result = m_iCore.BindBufferMemory(m_Device, &bufferMemoryBindingDesc, 1);
         if (result != Result::SUCCESS)
             return result;
     }
 
     { // Create other resources
-        Result result = m_NRI.CreateFence(m_Device, 0, m_Fence);
+        Result result = m_iCore.CreateFence(m_Device, 0, m_Fence);
         if (result != Result::SUCCESS)
             return result;
 
-        result = m_NRI.CreateCommandAllocator(m_Queue, m_CommandAllocators);
+        result = m_iCore.CreateCommandAllocator(m_Queue, m_CommandAllocators);
         if (result != Result::SUCCESS)
             return result;
 
-        result = m_NRI.CreateCommandBuffer(*m_CommandAllocators, m_CommandBuffer);
+        result = m_iCore.CreateCommandBuffer(*m_CommandAllocators, m_CommandBuffer);
         if (result != Result::SUCCESS)
             return result;
     }
@@ -205,13 +206,13 @@ Result HelperDataUpload::UploadTextures(const TextureUploadDesc* textureUploadDe
                 return result;
         }
 
-        Result result = m_NRI.BeginCommandBuffer(*m_CommandBuffer, nullptr);
+        Result result = m_iCore.BeginCommandBuffer(*m_CommandBuffer, nullptr);
         if (result != Result::SUCCESS)
             return result;
 
         if (isInitial) {
             if (barrierMode != BarrierMode::FINAL_NO_DATA)
-                DoTransition(m_NRI, m_CommandBuffer, BarrierMode::INITIAL, textureUploadDescs, textureDataDescNum);
+                DoTransition(m_iCore, m_CommandBuffer, BarrierMode::INITIAL, textureUploadDescs, textureDataDescNum);
             isInitial = false;
         }
 
@@ -220,7 +221,7 @@ Result HelperDataUpload::UploadTextures(const TextureUploadDesc* textureUploadDe
             ;
     }
 
-    DoTransition(m_NRI, m_CommandBuffer, barrierMode, textureUploadDescs, textureDataDescNum);
+    DoTransition(m_iCore, m_CommandBuffer, barrierMode, textureUploadDescs, textureDataDescNum);
 
     return EndCommandBuffersAndSubmit();
 }
@@ -249,32 +250,32 @@ Result HelperDataUpload::UploadBuffers(const BufferUploadDesc* bufferUploadDescs
                 return result;
         }
 
-        Result result = m_NRI.BeginCommandBuffer(*m_CommandBuffer, nullptr);
+        Result result = m_iCore.BeginCommandBuffer(*m_CommandBuffer, nullptr);
         if (result != Result::SUCCESS)
             return result;
 
         if (isInitial) {
             if (barrierMode != BarrierMode::FINAL_NO_DATA)
-                DoTransition(m_NRI, m_CommandBuffer, BarrierMode::INITIAL, bufferUploadDescs, bufferUploadDescNum);
+                DoTransition(m_iCore, m_CommandBuffer, BarrierMode::INITIAL, bufferUploadDescs, bufferUploadDescNum);
             isInitial = false;
         }
 
         m_UploadBufferOffset = 0;
-        m_MappedMemory = (uint8_t*)m_NRI.MapBuffer(*m_UploadBuffer, 0, m_UploadBufferSize);
+        m_MappedMemory = (uint8_t*)m_iCore.MapBuffer(*m_UploadBuffer, 0, m_UploadBufferSize);
 
         for (; i < bufferUploadDescNum && CopyBufferContent(bufferUploadDescs[i], bufferContentOffset); i++)
             ;
 
-        m_NRI.UnmapBuffer(*m_UploadBuffer);
+        m_iCore.UnmapBuffer(*m_UploadBuffer);
     }
 
-    DoTransition(m_NRI, m_CommandBuffer, barrierMode, bufferUploadDescs, bufferUploadDescNum);
+    DoTransition(m_iCore, m_CommandBuffer, barrierMode, bufferUploadDescs, bufferUploadDescNum);
 
     return EndCommandBuffersAndSubmit();
 }
 
 Result HelperDataUpload::EndCommandBuffersAndSubmit() {
-    Result result = m_NRI.EndCommandBuffer(*m_CommandBuffer);
+    Result result = m_iCore.EndCommandBuffer(*m_CommandBuffer);
 
     if (result == Result::SUCCESS) {
         FenceSubmitDesc fenceSubmitDesc = {};
@@ -287,9 +288,9 @@ Result HelperDataUpload::EndCommandBuffersAndSubmit() {
         queueSubmitDesc.signalFences = &fenceSubmitDesc;
         queueSubmitDesc.signalFenceNum = 1;
 
-        m_NRI.QueueSubmit(m_Queue, queueSubmitDesc);
-        m_NRI.Wait(*m_Fence, m_FenceValue);
-        m_NRI.ResetCommandAllocator(*m_CommandAllocators);
+        m_iCore.QueueSubmit(m_Queue, queueSubmitDesc);
+        m_iCore.Wait(*m_Fence, m_FenceValue);
+        m_iCore.ResetCommandAllocator(*m_CommandAllocators);
 
         m_FenceValue++;
     }
@@ -301,8 +302,8 @@ bool HelperDataUpload::CopyTextureContent(const TextureUploadDesc& textureUpload
     if (!textureUploadDesc.subresources)
         return true;
 
-    const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
-    const TextureDesc& textureDesc = m_NRI.GetTextureDesc(*textureUploadDesc.texture);
+    const DeviceDesc& deviceDesc = m_iCore.GetDeviceDesc(m_Device);
+    const TextureDesc& textureDesc = m_iCore.GetTextureDesc(*textureUploadDesc.texture);
 
     for (; layerOffset < textureDesc.layerNum; layerOffset++) {
         for (; mipOffset < textureDesc.mipNum; mipOffset++) {
@@ -320,7 +321,7 @@ bool HelperDataUpload::CopyTextureContent(const TextureUploadDesc& textureUpload
             }
 
             // Upload data (D3D11 does not allow to use upload buffer while it's mapped)
-            uint8_t* slices = (uint8_t*)m_NRI.MapBuffer(*m_UploadBuffer, m_UploadBufferOffset, subresource.sliceNum * alignedSlicePitch);
+            uint8_t* slices = (uint8_t*)m_iCore.MapBuffer(*m_UploadBuffer, m_UploadBufferOffset, subresource.sliceNum * alignedSlicePitch);
             {
                 for (uint32_t k = 0; k < subresource.sliceNum; k++) {
                     for (uint32_t l = 0; l < sliceRowNum; l++) {
@@ -330,7 +331,7 @@ bool HelperDataUpload::CopyTextureContent(const TextureUploadDesc& textureUpload
                     }
                 }
             }
-            m_NRI.UnmapBuffer(*m_UploadBuffer);
+            m_iCore.UnmapBuffer(*m_UploadBuffer);
 
             { // Copy
                 TextureDataLayoutDesc srcDataLayout = {};
@@ -342,7 +343,7 @@ bool HelperDataUpload::CopyTextureContent(const TextureUploadDesc& textureUpload
                 dstRegion.layerOffset = layerOffset;
                 dstRegion.mipOffset = mipOffset;
 
-                m_NRI.CmdUploadBufferToTexture(*m_CommandBuffer, *textureUploadDesc.texture, dstRegion, *m_UploadBuffer, srcDataLayout);
+                m_iCore.CmdUploadBufferToTexture(*m_CommandBuffer, *textureUploadDesc.texture, dstRegion, *m_UploadBuffer, srcDataLayout);
             }
 
             // Increment buffer offset
@@ -359,7 +360,7 @@ bool HelperDataUpload::CopyBufferContent(const BufferUploadDesc& bufferUploadDes
     if (!bufferUploadDesc.data)
         return true;
 
-    const BufferDesc& bufferDesc = m_NRI.GetBufferDesc(*bufferUploadDesc.buffer);
+    const BufferDesc& bufferDesc = m_iCore.GetBufferDesc(*bufferUploadDesc.buffer);
 
     uint64_t freeSpace = m_UploadBufferSize - m_UploadBufferOffset;
     uint64_t copySize = std::min(bufferDesc.size - bufferContentOffset, freeSpace);
@@ -369,7 +370,7 @@ bool HelperDataUpload::CopyBufferContent(const BufferUploadDesc& bufferUploadDes
 
     memcpy(m_MappedMemory + m_UploadBufferOffset, (uint8_t*)bufferUploadDesc.data + bufferContentOffset, copySize);
 
-    m_NRI.CmdCopyBuffer(*m_CommandBuffer, *bufferUploadDesc.buffer, bufferContentOffset, *m_UploadBuffer, m_UploadBufferOffset, copySize);
+    m_iCore.CmdCopyBuffer(*m_CommandBuffer, *bufferUploadDesc.buffer, bufferContentOffset, *m_UploadBuffer, m_UploadBufferOffset, copySize);
 
     bufferContentOffset += copySize;
     m_UploadBufferOffset += copySize;
@@ -380,4 +381,232 @@ bool HelperDataUpload::CopyBufferContent(const BufferUploadDesc& bufferUploadDes
     bufferContentOffset = 0;
 
     return true;
+}
+
+// HelperDeviceMemoryAllocator
+HelperDeviceMemoryAllocator::MemoryHeap::MemoryHeap(MemoryType memoryType, const StdAllocator<uint8_t>& stdAllocator)
+    : buffers(stdAllocator)
+    , bufferOffsets(stdAllocator)
+    , textures(stdAllocator)
+    , textureOffsets(stdAllocator)
+    , size(0)
+    , type(memoryType) {
+}
+
+HelperDeviceMemoryAllocator::HelperDeviceMemoryAllocator(const CoreInterface& NRI, Device& device)
+    : m_iCore(NRI)
+    , m_Device(device)
+    , m_Heaps(((DeviceBase&)device).GetStdAllocator())
+    , m_DedicatedBuffers(((DeviceBase&)device).GetStdAllocator())
+    , m_DedicatedTextures(((DeviceBase&)device).GetStdAllocator())
+    , m_BufferBindingDescs(((DeviceBase&)device).GetStdAllocator())
+    , m_TextureBindingDescs(((DeviceBase&)device).GetStdAllocator()) {
+}
+
+uint32_t HelperDeviceMemoryAllocator::CalculateAllocationNumber(const ResourceGroupDesc& resourceGroupDesc) {
+    GroupByMemoryType(resourceGroupDesc.memoryLocation, resourceGroupDesc);
+
+    size_t allocationNum = m_Heaps.size() + m_DedicatedBuffers.size() + m_DedicatedTextures.size();
+
+    return (uint32_t)allocationNum;
+}
+
+Result HelperDeviceMemoryAllocator::AllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDesc, Memory** allocations) {
+    size_t allocationNum = 0;
+    Result result = TryToAllocateAndBindMemory(resourceGroupDesc, allocations, allocationNum);
+
+    if (result != Result::SUCCESS) {
+        for (size_t i = 0; i < allocationNum; i++) {
+            m_iCore.FreeMemory(*allocations[i]);
+            allocations[i] = nullptr;
+        }
+    }
+
+    return result;
+}
+
+Result HelperDeviceMemoryAllocator::TryToAllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDesc, Memory** allocations, size_t& allocationNum) {
+    GroupByMemoryType(resourceGroupDesc.memoryLocation, resourceGroupDesc);
+
+    for (MemoryHeap& heap : m_Heaps) {
+        Memory*& memory = allocations[allocationNum];
+
+        AllocateMemoryDesc allocateMemoryDesc = {};
+        allocateMemoryDesc.type = heap.type;
+        allocateMemoryDesc.size = heap.size;
+
+        Result result = m_iCore.AllocateMemory(m_Device, allocateMemoryDesc, memory);
+        if (result != Result::SUCCESS)
+            return result;
+
+        FillMemoryBindingDescs(heap.buffers.data(), heap.bufferOffsets.data(), (uint32_t)heap.buffers.size(), *memory);
+        FillMemoryBindingDescs(heap.textures.data(), heap.textureOffsets.data(), (uint32_t)heap.textures.size(), *memory);
+
+        allocationNum++;
+    }
+
+    Result result = ProcessDedicatedResources(resourceGroupDesc.memoryLocation, allocations, allocationNum);
+    if (result != Result::SUCCESS)
+        return result;
+
+    result = m_iCore.BindBufferMemory(m_Device, m_BufferBindingDescs.data(), (uint32_t)m_BufferBindingDescs.size());
+    if (result != Result::SUCCESS)
+        return result;
+
+    result = m_iCore.BindTextureMemory(m_Device, m_TextureBindingDescs.data(), (uint32_t)m_TextureBindingDescs.size());
+
+    return result;
+}
+
+Result HelperDeviceMemoryAllocator::ProcessDedicatedResources(MemoryLocation memoryLocation, Memory** allocations, size_t& allocationNum) {
+    constexpr uint64_t zeroOffset = 0;
+    MemoryDesc memoryDesc = {};
+
+    for (size_t i = 0; i < m_DedicatedBuffers.size(); i++) {
+        m_iCore.GetBufferMemoryDesc(*m_DedicatedBuffers[i], memoryLocation, memoryDesc);
+
+        Memory*& memory = allocations[allocationNum];
+
+        AllocateMemoryDesc allocateMemoryDesc = {};
+        allocateMemoryDesc.type = memoryDesc.type;
+        allocateMemoryDesc.size = memoryDesc.size;
+
+        Result result = m_iCore.AllocateMemory(m_Device, allocateMemoryDesc, memory);
+        if (result != Result::SUCCESS)
+            return result;
+
+        FillMemoryBindingDescs(m_DedicatedBuffers.data() + i, &zeroOffset, 1, *memory);
+
+        allocationNum++;
+    }
+
+    for (size_t i = 0; i < m_DedicatedTextures.size(); i++) {
+        m_iCore.GetTextureMemoryDesc(*m_DedicatedTextures[i], memoryLocation, memoryDesc);
+
+        Memory*& memory = allocations[allocationNum];
+
+        AllocateMemoryDesc allocateMemoryDesc = {};
+        allocateMemoryDesc.type = memoryDesc.type;
+        allocateMemoryDesc.size = memoryDesc.size;
+
+        Result result = m_iCore.AllocateMemory(m_Device, allocateMemoryDesc, memory);
+        if (result != Result::SUCCESS)
+            return result;
+
+        FillMemoryBindingDescs(m_DedicatedTextures.data() + i, &zeroOffset, 1, *memory);
+
+        allocationNum++;
+    }
+
+    return Result::SUCCESS;
+}
+
+HelperDeviceMemoryAllocator::MemoryHeap& HelperDeviceMemoryAllocator::FindOrCreateHeap(MemoryDesc& memoryDesc, uint64_t preferredMemorySize) {
+    if (preferredMemorySize == 0)
+        preferredMemorySize = 256 * 1024 * 1024;
+
+    size_t j = 0;
+    for (; j < m_Heaps.size(); j++) {
+        const MemoryHeap& heap = m_Heaps[j];
+
+        uint64_t offset = Align(heap.size, memoryDesc.alignment);
+        uint64_t newSize = offset + memoryDesc.size;
+
+        if (heap.type == memoryDesc.type && newSize <= preferredMemorySize)
+            break;
+    }
+
+    if (j == m_Heaps.size())
+        m_Heaps.push_back(MemoryHeap(memoryDesc.type, ((DeviceBase&)m_Device).GetStdAllocator()));
+
+    return m_Heaps[j];
+}
+
+void HelperDeviceMemoryAllocator::GroupByMemoryType(MemoryLocation memoryLocation, const ResourceGroupDesc& resourceGroupDesc) {
+    for (uint32_t i = 0; i < resourceGroupDesc.bufferNum; i++) {
+        Buffer* buffer = resourceGroupDesc.buffers[i];
+
+        MemoryDesc memoryDesc = {};
+        m_iCore.GetBufferMemoryDesc(*buffer, memoryLocation, memoryDesc);
+
+        if (memoryDesc.mustBeDedicated)
+            m_DedicatedBuffers.push_back(buffer);
+        else {
+            MemoryHeap& heap = FindOrCreateHeap(memoryDesc, resourceGroupDesc.preferredMemorySize);
+
+            uint64_t offset = Align(heap.size, memoryDesc.alignment);
+
+            heap.buffers.push_back(buffer);
+            heap.bufferOffsets.push_back(offset);
+            heap.size = offset + memoryDesc.size;
+        }
+    }
+
+    for (uint32_t i = 0; i < resourceGroupDesc.textureNum; i++) {
+        Texture* texture = resourceGroupDesc.textures[i];
+
+        MemoryDesc memoryDesc = {};
+        m_iCore.GetTextureMemoryDesc(*texture, memoryLocation, memoryDesc);
+
+        if (memoryDesc.mustBeDedicated)
+            m_DedicatedTextures.push_back(texture);
+        else {
+            MemoryHeap& heap = FindOrCreateHeap(memoryDesc, resourceGroupDesc.preferredMemorySize);
+
+            if (heap.textures.empty()) {
+                const DeviceDesc& deviceDesc = m_iCore.GetDeviceDesc(m_Device);
+                heap.size = Align(heap.size, deviceDesc.memory.bufferTextureGranularity);
+            }
+
+            uint64_t offset = Align(heap.size, memoryDesc.alignment);
+
+            heap.textures.push_back(texture);
+            heap.textureOffsets.push_back(offset);
+            heap.size = offset + memoryDesc.size;
+        }
+    }
+}
+
+void HelperDeviceMemoryAllocator::FillMemoryBindingDescs(Buffer* const* buffers, const uint64_t* bufferOffsets, uint32_t bufferNum, Memory& memory) {
+    for (uint32_t i = 0; i < bufferNum; i++) {
+        BufferMemoryBindingDesc desc = {};
+        desc.memory = &memory;
+        desc.buffer = buffers[i];
+        desc.offset = bufferOffsets[i];
+
+        m_BufferBindingDescs.push_back(desc);
+    }
+}
+
+void HelperDeviceMemoryAllocator::FillMemoryBindingDescs(Texture* const* textures, const uint64_t* textureOffsets, uint32_t textureNum, Memory& memory) {
+    for (uint32_t i = 0; i < textureNum; i++) {
+        TextureMemoryBindingDesc desc = {};
+        desc.memory = &memory;
+        desc.texture = textures[i];
+        desc.offset = textureOffsets[i];
+
+        m_TextureBindingDescs.push_back(desc);
+    }
+}
+
+// WaitIdle
+Result nri::WaitIdle(const CoreInterface& NRI, Device& device, Queue& queue) {
+    Fence* fence = nullptr;
+    Result result = NRI.CreateFence(device, 0, fence);
+    if (result != Result::SUCCESS)
+        return result;
+
+    FenceSubmitDesc fenceSubmitDesc = {};
+    fenceSubmitDesc.fence = fence;
+    fenceSubmitDesc.value = 1;
+
+    QueueSubmitDesc queueSubmitDesc = {};
+    queueSubmitDesc.signalFences = &fenceSubmitDesc;
+    queueSubmitDesc.signalFenceNum = 1;
+
+    NRI.QueueSubmit(queue, queueSubmitDesc);
+    NRI.Wait(*fence, 1);
+    NRI.DestroyFence(*fence);
+
+    return Result::SUCCESS;
 }

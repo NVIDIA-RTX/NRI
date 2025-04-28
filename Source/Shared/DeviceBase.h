@@ -61,17 +61,23 @@ struct DeviceBase : public DebugNameBaseVal {
 
     void ReportMessage(Message messageType, const char* file, uint32_t line, const char* format, ...) const;
 
-    virtual ~DeviceBase() {
-    }
-
+    // Pure virtual
     virtual const DeviceDesc& GetDesc() const = 0;
     virtual void Destruct() = 0;
+
+    // Virtual
+    virtual ~DeviceBase() {
+    }
 
     virtual Result FillFunctionTable(CoreInterface&) const {
         return Result::UNSUPPORTED;
     }
 
     virtual Result FillFunctionTable(HelperInterface&) const {
+        return Result::UNSUPPORTED;
+    }
+
+    virtual Result FillFunctionTable(ImguiInterface&) const {
         return Result::UNSUPPORTED;
     }
 

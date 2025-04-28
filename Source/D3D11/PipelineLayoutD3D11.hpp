@@ -53,18 +53,39 @@ constexpr StageBits GetShaderVisibility(StageBits visibility, StageBits stageMas
 Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
     m_IsGraphicsPipelineLayout = pipelineLayoutDesc.shaderStages & StageBits::GRAPHICS_SHADERS;
 
-    BindingSet bindingSet = {};
-
     // Descriptor sets
     for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++) {
         const DescriptorSetDesc& set = pipelineLayoutDesc.descriptorSets[i];
 
-        bindingSet.descriptorNum = 0;
+        BindingSet bindingSet = {};
+        bindingSet.startRangeOfDynamicConstantBuffers = (uint32_t)m_BindingRanges.size();
+
+        // Dynamic constant buffers
+        if (set.dynamicConstantBufferNum && m_Device.GetVersion() == 0)
+            REPORT_ERROR(&m_Device, "Dynamic constant buffers with non-zero offsets require 11.1+ feature level");
+
+        for (uint32_t j = 0; j < set.dynamicConstantBufferNum; j++) {
+            const DynamicConstantBufferDesc& dynamicConstantBuffer = set.dynamicConstantBuffers[j];
+
+            // Add binding range
+            BindingRange bindingRange = {};
+            bindingRange.baseSlot = dynamicConstantBuffer.registerIndex;
+            bindingRange.descriptorOffset = bindingSet.descriptorNum;
+            bindingRange.descriptorNum = 1;
+            bindingRange.descriptorType = DescriptorTypeDX11::DYNAMIC_CONSTANT;
+            bindingRange.shaderStages = GetShaderVisibility(dynamicConstantBuffer.shaderStages, pipelineLayoutDesc.shaderStages);
+            m_BindingRanges.push_back(bindingRange);
+
+            bindingSet.descriptorNum += bindingRange.descriptorNum;
+        }
+
+        bindingSet.endRangeOfDynamicConstantBuffers = (uint32_t)m_BindingRanges.size();
 
         // Descriptor ranges
         for (uint32_t j = 0; j < set.rangeNum; j++) {
             const DescriptorRangeDesc& range = set.ranges[j];
 
+            // Add binding range
             BindingRange bindingRange = {};
             bindingRange.baseSlot = range.baseRegisterIndex;
             bindingRange.descriptorOffset = bindingSet.descriptorNum;
@@ -76,31 +97,10 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
             bindingSet.descriptorNum += bindingRange.descriptorNum;
         }
 
-        bindingSet.rangeEnd = bindingSet.rangeStart + set.rangeNum;
+        bindingSet.endRange = (uint32_t)m_BindingRanges.size();
 
-        // Dynamic constant buffers
-        if (set.dynamicConstantBufferNum && m_Device.GetVersion() == 0)
-            REPORT_ERROR(&m_Device, "Dynamic constant buffers with non-zero offsets require 11.1+ feature level");
-
-        for (uint32_t j = 0; j < set.dynamicConstantBufferNum; j++) {
-            const DynamicConstantBufferDesc& cb = set.dynamicConstantBuffers[j];
-
-            BindingRange bindingRange = {};
-            bindingRange.baseSlot = cb.registerIndex;
-            bindingRange.descriptorNum = 1;
-            bindingRange.descriptorType = DescriptorTypeDX11::DYNAMIC_CONSTANT;
-            bindingRange.shaderStages = GetShaderVisibility(cb.shaderStages, pipelineLayoutDesc.shaderStages);
-            m_BindingRanges.push_back(bindingRange);
-
-            bindingSet.descriptorNum += bindingRange.descriptorNum;
-        }
-
-        bindingSet.rangeEnd += set.dynamicConstantBufferNum;
-
+        // Add binding set
         m_BindingSets.push_back(bindingSet);
-
-        // For next iteration
-        bindingSet.rangeStart = bindingSet.rangeEnd;
     }
 
     // Root descriptors
@@ -109,21 +109,23 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     for (uint32_t i = 0; i < pipelineLayoutDesc.rootDescriptorNum; i++) {
         const RootDescriptorDesc& rootDescriptorSetDesc = pipelineLayoutDesc.rootDescriptors[i];
 
+        BindingSet bindingSet = {};
+        bindingSet.startRangeOfDynamicConstantBuffers = (uint32_t)m_BindingRanges.size();
+        bindingSet.endRangeOfDynamicConstantBuffers = (uint32_t)m_BindingRanges.size();
+
         BindingRange bindingRange = {};
         bindingRange.baseSlot = rootDescriptorSetDesc.registerIndex;
-        bindingRange.descriptorOffset = bindingSet.descriptorNum;
+        bindingRange.descriptorOffset = 0;
         bindingRange.descriptorNum = 1;
         bindingRange.descriptorType = GetDescriptorTypeIndex(rootDescriptorSetDesc.descriptorType);
         bindingRange.shaderStages = GetShaderVisibility(rootDescriptorSetDesc.shaderStages, pipelineLayoutDesc.shaderStages);
         m_BindingRanges.push_back(bindingRange);
 
         bindingSet.descriptorNum = 1;
-        bindingSet.rangeEnd = bindingSet.rangeStart + 1;
+        bindingSet.endRange = (uint32_t)m_BindingRanges.size();
 
+        // Add binding set
         m_BindingSets.push_back(bindingSet);
-
-        // For next iteration
-        bindingSet.rangeStart = bindingSet.rangeEnd;
     }
 
     // Root constants
@@ -191,7 +193,7 @@ void PipelineLayoutD3D11::BindDescriptorSetImpl(BindingState& currentBindingStat
 
     uint32_t* rootConstantNum = (uint32_t*)ptr;
 
-    for (uint32_t j = bindingSet.rangeStart; j < bindingSet.rangeEnd; j++) {
+    for (uint32_t j = bindingSet.startRangeOfDynamicConstantBuffers; j < bindingSet.endRange; j++) {
         const BindingRange& bindingRange = m_BindingRanges[j];
 
         uint32_t hasNonZeroOffset = 0;

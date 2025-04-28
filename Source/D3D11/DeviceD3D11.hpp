@@ -148,10 +148,10 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
 #if NRI_ENABLE_D3D_EXTENSIONS
             if (HasNvExt()) {
-                REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D_RegisterDevice(deviceTemp));
-                REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D11_SetNvShaderExtnSlot(deviceTemp, d3dShaderExtRegister));
-                REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_UINT64_ATOMIC, &isShaderAtomicsI64Supported));
-                REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_GET_SPECIAL, &isShaderClockSupported));
+                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D_RegisterDevice(deviceTemp));
+                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_SetNvShaderExtnSlot(deviceTemp, d3dShaderExtRegister));
+                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_UINT64_ATOMIC, &isShaderAtomicsI64Supported));
+                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_GET_SPECIAL, &isShaderClockSupported));
                 isDepthBoundsTestSupported = true;
             }
         }
@@ -437,11 +437,11 @@ void DeviceD3D11::FillDesc() {
     NV_D3D1x_GRAPHICS_CAPS caps = {};
 
     if (HasNvExt()) {
-        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_FP16_ATOMIC, &isShaderAtomicsF16Supported));
-        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_FP32_ATOMIC, &isShaderAtomicsF32Supported));
-        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_GET_SPECIAL, &isGetSpecialSupported));
-        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D11_CheckFeatureSupport(m_Device, NV_D3D11_FEATURE_RASTERIZER, &rasterizerFeatures, sizeof(rasterizerFeatures)));
-        REPORT_ERROR_ON_BAD_STATUS(this, NvAPI_D3D1x_GetGraphicsCapabilities(m_Device, NV_D3D1x_GRAPHICS_CAPS_VER, &caps));
+        REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_FP16_ATOMIC, &isShaderAtomicsF16Supported));
+        REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_FP32_ATOMIC, &isShaderAtomicsF32Supported));
+        REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_GET_SPECIAL, &isGetSpecialSupported));
+        REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_CheckFeatureSupport(m_Device, NV_D3D11_FEATURE_RASTERIZER, &rasterizerFeatures, sizeof(rasterizerFeatures)));
+        REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D1x_GetGraphicsCapabilities(m_Device, NV_D3D1x_GRAPHICS_CAPS_VER, &caps));
     }
 
     m_Desc.tiers.sampleLocations = rasterizerFeatures.ProgrammableSamplePositions ? 2 : 0;

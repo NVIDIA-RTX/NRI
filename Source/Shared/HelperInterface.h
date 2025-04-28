@@ -7,6 +7,37 @@ using Map = std::map<U, T, std::less<U>, StdAllocator<std::pair<const U, T>>>;
 
 namespace nri {
 
+struct HelperDataUpload {
+    inline HelperDataUpload(const CoreInterface& NRI, Device& device, Queue& queue)
+        : m_iCore(NRI)
+        , m_Device(device)
+        , m_Queue(queue) {
+    }
+
+    Result UploadData(const TextureUploadDesc* textureDataDescs, uint32_t textureDataDescNum, const BufferUploadDesc* bufferDataDescs, uint32_t bufferDataDescNum);
+
+private:
+    Result Create(const TextureUploadDesc* textureUploadDescs, uint32_t textureUploadDescNum, const BufferUploadDesc* bufferUploadDescs, uint32_t bufferUploadDescNum);
+    Result UploadTextures(const TextureUploadDesc* textureDataDescs, uint32_t textureDataDescNum);
+    Result UploadBuffers(const BufferUploadDesc* bufferDataDescs, uint32_t bufferDataDescNum);
+    Result EndCommandBuffersAndSubmit();
+    bool CopyTextureContent(const TextureUploadDesc& textureDataDesc, Dim_t& layerOffset, Mip_t& mipOffset);
+    bool CopyBufferContent(const BufferUploadDesc& bufferDataDesc, uint64_t& bufferContentOffset);
+
+    const CoreInterface& m_iCore;
+    Device& m_Device;
+    Queue& m_Queue;
+    CommandBuffer* m_CommandBuffer = nullptr;
+    Fence* m_Fence = nullptr;
+    CommandAllocator* m_CommandAllocators = nullptr;
+    Buffer* m_UploadBuffer = nullptr;
+    Memory* m_UploadBufferMemory = nullptr;
+    uint8_t* m_MappedMemory = nullptr;
+    uint64_t m_UploadBufferSize = 0;
+    uint64_t m_UploadBufferOffset = 0;
+    uint64_t m_FenceValue = 1;
+};
+
 struct HelperDeviceMemoryAllocator {
     HelperDeviceMemoryAllocator(const CoreInterface& NRI, Device& device);
 
@@ -32,7 +63,7 @@ private:
     void FillMemoryBindingDescs(Buffer* const* buffers, const uint64_t* bufferOffsets, uint32_t bufferNum, Memory& memory);
     void FillMemoryBindingDescs(Texture* const* texture, const uint64_t* textureOffsets, uint32_t textureNum, Memory& memory);
 
-    const CoreInterface& m_NRI;
+    const CoreInterface& m_iCore;
     Device& m_Device;
 
     Vector<MemoryHeap> m_Heaps;
@@ -41,5 +72,7 @@ private:
     Vector<BufferMemoryBindingDesc> m_BufferBindingDescs;
     Vector<TextureMemoryBindingDesc> m_TextureBindingDescs;
 };
+
+Result WaitIdle(const CoreInterface& NRI, Device& device, Queue& queue);
 
 } // namespace nri

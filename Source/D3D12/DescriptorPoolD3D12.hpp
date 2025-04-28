@@ -95,7 +95,7 @@ NRI_INLINE Result DescriptorPoolD3D12::AllocateDescriptorSets(const PipelineLayo
     ExclusiveScope lock(m_Lock);
 
     if (m_DescriptorSetNum + instanceNum > m_DescriptorSets.size())
-        return Result::FAILURE;
+        return Result::OUT_OF_MEMORY;
 
     const PipelineLayoutD3D12& pipelineLayoutD3D12 = (PipelineLayoutD3D12&)pipelineLayout;
     const DescriptorSetMapping& descriptorSetMapping = pipelineLayoutD3D12.GetDescriptorSetMapping(setIndex);

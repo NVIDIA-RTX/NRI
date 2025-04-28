@@ -4,28 +4,17 @@
 
 namespace nri {
 
-struct DescriptorD3D11;
 struct PipelineLayoutD3D11;
-
-struct OffsetNum {
-    uint32_t descriptorOffset;
-    uint32_t descriptorNum;
-};
+struct DescriptorD3D11;
+struct BindingSet;
 
 struct DescriptorSetD3D11 final : public DebugNameBase {
-    inline DescriptorSetD3D11(DeviceD3D11& device)
-        : m_Ranges(device.GetStdAllocator()) {
-    }
-
     inline const DescriptorD3D11* GetDescriptor(uint32_t i) const {
         return m_Descriptors[i];
     }
 
-    inline uint32_t GetDynamicConstantBufferNum() const {
-        return m_DynamicConstantBuffersNum;
-    }
-
-    uint32_t Initialize(const PipelineLayoutD3D11& pipelineLayout, uint32_t setIndex, const DescriptorD3D11** descriptors);
+    uint32_t GetDynamicConstantBufferNum() const;
+    void Create(const PipelineLayoutD3D11* pipelineLayout, const BindingSet* bindingSet, const DescriptorD3D11** descriptors);
 
     //================================================================================================================
     // NRI
@@ -36,9 +25,9 @@ struct DescriptorSetD3D11 final : public DebugNameBase {
     void Copy(const DescriptorSetCopyDesc& descriptorSetCopyDesc);
 
 private:
-    Vector<OffsetNum> m_Ranges;
+    const PipelineLayoutD3D11* m_PipelineLayout = nullptr;
+    const BindingSet* m_BindingSet = nullptr;
     const DescriptorD3D11** m_Descriptors = nullptr;
-    uint32_t m_DynamicConstantBuffersNum = 0;
 };
 
 } // namespace nri

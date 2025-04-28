@@ -11,6 +11,7 @@ option(NRI_ENABLE_NONE_SUPPORT "Enable NONE backend" ON)
 option(NRI_ENABLE_VK_SUPPORT "Enable Vulkan backend" ON)
 option(NRI_ENABLE_VALIDATION_SUPPORT "Enable Validation backend (otherwise 'enableNRIValidation' is ignored)" ON)
 option(NRI_ENABLE_NIS_SDK "Enable NVIDIA Image Sharpening SDK" OFF)
+option(NRI_ENABLE_IMGUI_EXTENSION "Enable 'NRIImgui' extension" OFF)
 
 cmake_dependent_option(NRI_ENABLE_D3D11_SUPPORT "Enable D3D11 backend" ON "WIN32" OFF)
 cmake_dependent_option(NRI_ENABLE_D3D12_SUPPORT "Enable D3D12 backend" ON "WIN32" OFF)
@@ -22,7 +23,7 @@ cmake_dependent_option(NRI_ENABLE_NGX_SDK "Enable NVIDIA NGX (DLSS) SDK" OFF "NR
 cmake_dependent_option(NRI_ENABLE_FFX_SDK "Enable AMD FidelityFX SDK" OFF "(NRI_ENABLE_VK_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT) AND WIN32" OFF)
 cmake_dependent_option(NRI_ENABLE_XESS_SDK "Enable INTEL XeSS SDK" OFF "NRI_ENABLE_D3D12_SUPPORT AND WIN32" OFF)
 
-set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK binaries will be copied to relative to 'CMAKE_RUNTIME_OUTPUT_DIRECTORY'")
+set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK will be copied relative to the directory with binaries")
 set(NRI_AGILITY_SDK_VERSION_MAJOR 615) # 716 (can cause D3D12_ERROR_INVALID_REDIST error?)
 set(NRI_AGILITY_SDK_VERSION_MINOR 1) # 1-preview
 set(NRI_SHADERS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_Shaders" CACHE STRING "Shader output path override")
@@ -108,6 +109,7 @@ add_compile_definition(NRI_ENABLE_NONE_SUPPORT)
 add_compile_definition(NRI_ENABLE_VK_SUPPORT)
 add_compile_definition(NRI_ENABLE_VALIDATION_SUPPORT)
 add_compile_definition(NRI_ENABLE_NIS_SDK)
+add_compile_definition(NRI_ENABLE_IMGUI_EXTENSION)
 add_compile_definition(NRI_ENABLE_D3D11_SUPPORT)
 add_compile_definition(NRI_ENABLE_D3D12_SUPPORT)
 add_compile_definition(NRI_ENABLE_D3D_EXTENSIONS)
@@ -293,7 +295,7 @@ if(NRI_ENABLE_XESS_SDK)
 endif()
 
 # Add dependencies for dependencies
-if(NRI_ENABLE_NIS_SDK AND NOT TARGET ShaderMake)
+if((NRI_ENABLE_NIS_SDK OR NRI_ENABLE_IMGUI_EXTENSION) AND NOT TARGET ShaderMake)
     # ShaderMake
     set(SHADERMAKE_BIN_OUTPUT_PATH ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} CACHE STRING "")
 
@@ -407,10 +409,6 @@ if(NRI_ENABLE_D3D12_SUPPORT)
     if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
         target_include_directories(NRI_D3D12 PRIVATE "${agilitysdk_SOURCE_DIR}/build/native/include")
 
-        # Copy Agility SDK binaries
-        message("NRI: copying Agility SDK binaries to '${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${NRI_AGILITY_SDK_DIR}'")
-        file(COPY "${agilitysdk_SOURCE_DIR}/build/native/bin/x64" DESTINATION "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${NRI_AGILITY_SDK_DIR}")
-
         # Generate "NRIAgilitySDK.h"
         file(WRITE Include/NRIAgilitySDK.h
             "// This file is auto-generated during project deployment. Do not modify!\n"
@@ -419,7 +417,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
             "extern \"C\" {\n"
             "#endif\n\n"
             "__declspec(dllexport) extern const uint32_t D3D12SDKVersion = ${NRI_AGILITY_SDK_VERSION_MAJOR};\n"
-            "__declspec(dllexport) extern const char* D3D12SDKPath = \"../${NRI_AGILITY_SDK_DIR}/x64/\";\n\n"
+            "__declspec(dllexport) extern const char* D3D12SDKPath = \"${NRI_AGILITY_SDK_DIR}/\";\n\n"
             "#ifdef __cplusplus\n"
             "}\n"
             "#endif\n\n"
@@ -596,10 +594,11 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     "${nvtx_SOURCE_DIR}/c/include/"
     "${vulkan_headers_SOURCE_DIR}/include"
 )
+
 target_compile_definitions(${PROJECT_NAME} PRIVATE ${COMPILE_DEFINITIONS})
 
 if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC NRI_ENABLE_AGILITY_SDK_SUPPORT=1)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC NRI_ENABLE_AGILITY_SDK_SUPPORT=1) # make it available in the parent project
 endif()
 
 target_compile_options(${PROJECT_NAME} PRIVATE ${COMPILE_OPTIONS})
@@ -635,17 +634,18 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY FOLDER ${PROJECT_NAME})
 message("NRI: setting output path to '${CMAKE_RUNTIME_OUTPUT_DIRECTORY}'")
 set_target_properties(${PROJECT_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
-# Function - copy a library to the project output folder
-function(copy_library PROJECT LIBRARY_NAME)
-    add_custom_command(TARGET ${PROJECT} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${LIBRARY_NAME}" "$<TARGET_FILE_DIR:${PROJECT}>"
-        COMMAND_EXPAND_LISTS)
-endfunction()
-
-# Copy shared libs to the output folder
+# Copy to the output folder
 if(NRI_ENABLE_D3D_EXTENSIONS)
     find_file(AMD_AGS_DLL NAMES amd_ags_x64.dll PATHS "${amdags_SOURCE_DIR}/ags_lib/lib")
-    copy_library(${PROJECT_NAME} ${AMD_AGS_DLL})
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${AMD_AGS_DLL}" "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        VERBATIM)
+endif()
+
+if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${agilitysdk_SOURCE_DIR}/build/native/bin/x64" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${NRI_AGILITY_SDK_DIR}"
+        VERBATIM)
 endif()
 
 if(NRI_ENABLE_NGX_SDK)
@@ -659,31 +659,39 @@ if(NRI_ENABLE_NGX_SDK)
         set(DLSS_RR_DLL "${ngx_SOURCE_DIR}/lib/Linux_x86_64/${NGX_LIB_DIR}/libnvidia-ngx-dlssd.so.310.1.0")
     endif()
 
-    copy_library(${PROJECT_NAME} ${DLSS_SR_DLL})
-    copy_library(${PROJECT_NAME} ${DLSS_RR_DLL})
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${DLSS_SR_DLL} "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${DLSS_RR_DLL} "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        VERBATIM)
 endif()
 
 if(NRI_ENABLE_FFX_SDK)
     if(NRI_ENABLE_D3D12_SUPPORT)
         find_file(FFX_DX12_DLL NAMES amd_fidelityfx_dx12.dll PATHS "${ffx_SOURCE_DIR}/PrebuiltSignedDLL")
-        copy_library(${PROJECT_NAME} ${FFX_DX12_DLL})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FFX_DX12_DLL} "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+            VERBATIM)
     endif()
 
     if(NRI_ENABLE_VK_SUPPORT AND WIN32)
         find_file(FFX_VK_DLL NAMES amd_fidelityfx_vk.dll PATHS "${ffx_SOURCE_DIR}/PrebuiltSignedDLL")
-        copy_library(${PROJECT_NAME} ${FFX_VK_DLL})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FFX_VK_DLL} "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+            VERBATIM)
     endif()
 endif()
 
 if(NRI_ENABLE_XESS_SDK)
     if(NRI_ENABLE_D3D12_SUPPORT)
         find_file(XESS_DX12_DLL NAMES libxess.dll PATHS "${xess_SOURCE_DIR}/bin")
-        copy_library(${PROJECT_NAME} ${XESS_DX12_DLL})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${XESS_DX12_DLL} "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+            VERBATIM)
     endif()
 endif()
 
 # Shaders
-if(NRI_ENABLE_NIS_SDK)
+if(NRI_ENABLE_NIS_SDK OR NRI_ENABLE_IMGUI_EXTENSION)
     file(GLOB_RECURSE SHADERS
         "Shaders/*.hlsl"
         "Shaders/*.hlsli"
@@ -699,6 +707,7 @@ if(NRI_ENABLE_NIS_SDK)
         -c "Shaders/Shaders.cfg"
         -o "${NRI_SHADERS_PATH}"
         -I "Shaders"
+        -I "Include"
     )
 
     if(WIN32)

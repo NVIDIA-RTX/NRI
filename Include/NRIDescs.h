@@ -77,14 +77,20 @@ NriEnum(GraphicsAPI, uint8_t,
     VK      // Vulkan 1.3 or 1.2+ (can be used on MacOS via MoltenVK), available if "NRI_ENABLE_VK_SUPPORT = ON" in CMake
 );
 
-NriEnum(Result, uint8_t,
-    SUCCESS,
-    FAILURE,
-    INVALID_ARGUMENT,
-    OUT_OF_MEMORY,
-    UNSUPPORTED,
-    DEVICE_LOST,
-    OUT_OF_DATE // VK only: swap chain is out of date
+NriEnum(Result, int8_t,
+    // All bad, but optionally require user action
+    DEVICE_LOST             = -3,
+    OUT_OF_DATE             = -2,   // VK only: swap chain is out of date
+    INVALID_AGILITY_SDK     = -1,   // D3D12 only: unable to load "D3D12Core.dll" or version mismatch
+
+    // All good
+    SUCCESS                 = 0,
+
+    // All bad, most likely a crash or a validation error will happen next
+    FAILURE                 = 1,
+    INVALID_ARGUMENT        = 2,
+    OUT_OF_MEMORY           = 3,
+    UNSUPPORTED             = 4     // Validation can promote some to "INVALID_ARGUMENT"
 );
 
 // left -> right : low -> high bits

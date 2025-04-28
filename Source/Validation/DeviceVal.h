@@ -113,6 +113,10 @@ struct DeviceVal final : public DeviceBase {
     Result FillFunctionTable(WrapperD3D12Interface& table) const override;
     Result FillFunctionTable(WrapperVKInterface& table) const override;
 
+#if NRI_ENABLE_IMGUI_EXTENSION
+    Result FillFunctionTable(ImguiInterface& table) const override;
+#endif
+
     //================================================================================================================
     // NRI
     //================================================================================================================

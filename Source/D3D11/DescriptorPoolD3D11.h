@@ -33,8 +33,8 @@ private:
     DeviceD3D11& m_Device;
     Vector<DescriptorSetD3D11> m_DescriptorSets;
     Vector<const DescriptorD3D11*> m_DescriptorPool;
-    uint32_t m_DescriptorPoolOffset = 0;
-    uint32_t m_DescriptorSetIndex = 0;
+    uint32_t m_DescriptorNum = 0;
+    uint32_t m_DescriptorSetNum = 0;
     Lock m_Lock;
 };
 

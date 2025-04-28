@@ -5,13 +5,17 @@
 namespace nri {
 
 struct BufferUpdateRequest {
-    BufferUpdateRequestDesc desc;
-    uint64_t offset;
+    Buffer* dstBuffer;
+    uint64_t dstOffset;
+    Buffer* srcBuffer;
+    uint64_t srcOffset;
+    uint64_t size;
 };
 
 struct TextureUpdateRequest {
-    TextureUpdateRequestDesc desc;
-    uint64_t offset;
+    StreamTextureDataDesc desc;
+    Buffer* srcBuffer;
+    uint64_t srcOffset;
 };
 
 struct GarbageInFlight {
@@ -22,16 +26,10 @@ struct GarbageInFlight {
 struct StreamerImpl : public DebugNameBase {
     inline StreamerImpl(Device& device, const CoreInterface& NRI)
         : m_Device(device)
-        , m_NRI(NRI)
-        , m_BufferRequests(((DeviceBase&)device).GetStdAllocator())
+        , m_iCore(NRI)
         , m_BufferRequestsWithDst(((DeviceBase&)device).GetStdAllocator())
-        , m_TextureRequests(((DeviceBase&)device).GetStdAllocator())
         , m_TextureRequestsWithDst(((DeviceBase&)device).GetStdAllocator())
         , m_GarbageInFlight(((DeviceBase&)device).GetStdAllocator()) {
-    }
-
-    inline Buffer* GetDynamicBuffer() {
-        return m_DynamicBuffer;
     }
 
     inline Buffer* GetConstantBuffer() {
@@ -45,35 +43,36 @@ struct StreamerImpl : public DebugNameBase {
     ~StreamerImpl();
 
     Result Create(const StreamerDesc& desc);
-    uint32_t UpdateConstantBuffer(const void* data, uint32_t dataSize);
-    uint64_t AddBufferUpdateRequest(const BufferUpdateRequestDesc& bufferUpdateRequestDesc);
-    uint64_t AddTextureUpdateRequest(const TextureUpdateRequestDesc& textureUpdateRequestDesc);
-    Result CopyUpdateRequests();
-    void CmdUploadUpdateRequests(CommandBuffer& commandBuffer);
+    uint32_t StreamConstantData(const void* data, uint32_t dataSize);
+    BufferOffset StreamBufferData(const StreamBufferDataDesc& streamBufferDataDesc);
+    BufferOffset StreamTextureData(const StreamTextureDataDesc& streamTextureDataDesc);
+    void CmdCopyStreamedData(CommandBuffer& commandBuffer);
+    void Finalize();
 
     //================================================================================================================
     // DebugNameBase
     //================================================================================================================
 
     void SetDebugName(const char* name) DEBUG_NAME_OVERRIDE {
-        m_NRI.SetDebugName(m_ConstantBuffer, name);
-        m_NRI.SetDebugName(m_DynamicBuffer, name);
+        m_iCore.SetDebugName(m_ConstantBuffer, name);
+        m_iCore.SetDebugName(m_DynamicBuffer, name);
     }
 
 private:
+    bool Grow();
+
+private:
     Device& m_Device;
-    const CoreInterface& m_NRI;
+    const CoreInterface& m_iCore;
     StreamerDesc m_Desc = {};
-    Vector<BufferUpdateRequest> m_BufferRequests;
+    ResourceAllocatorInterface m_iResourceAllocator = {};
     Vector<BufferUpdateRequest> m_BufferRequestsWithDst;
-    Vector<TextureUpdateRequest> m_TextureRequests;
     Vector<TextureUpdateRequest> m_TextureRequestsWithDst;
     Vector<GarbageInFlight> m_GarbageInFlight;
     Buffer* m_ConstantBuffer = nullptr;
     Buffer* m_DynamicBuffer = nullptr;
     uint32_t m_ConstantDataOffset = 0;
     uint64_t m_DynamicDataOffset = 0;
-    uint64_t m_DynamicDataOffsetBase = 0;
     uint64_t m_DynamicBufferSize = 0;
     uint32_t m_FrameIndex = 0;
     Lock m_Lock;

@@ -14,7 +14,7 @@ bool IsUpscalerSupported(const DeviceDesc& deviceDesc, UpscalerType type);
 struct UpscalerImpl : public DebugNameBase {
     inline UpscalerImpl(Device& device, const CoreInterface& NRI)
         : m_Device(device)
-        , m_NRI(NRI) {
+        , m_iCore(NRI) {
     }
 
     ~UpscalerImpl();
@@ -29,7 +29,7 @@ struct UpscalerImpl : public DebugNameBase {
 
 private:
     Device& m_Device;
-    const CoreInterface& m_NRI;
+    const CoreInterface& m_iCore;
     UpscalerDesc m_Desc = {};
 
     union {

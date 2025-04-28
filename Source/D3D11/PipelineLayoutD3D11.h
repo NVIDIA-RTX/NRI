@@ -9,8 +9,14 @@ struct DescriptorSetD3D11;
 
 struct BindingSet {
     uint32_t descriptorNum;
-    uint32_t rangeStart;
-    uint32_t rangeEnd;
+    uint32_t startRangeOfDynamicConstantBuffers;
+
+    union {
+        uint32_t endRangeOfDynamicConstantBuffers;
+        uint32_t startRange;
+    };
+
+    uint32_t endRange;
 };
 
 struct BindingRange {

@@ -98,6 +98,9 @@ Result nri::GetResultFromHRESULT(long result) {
         || result == DXGI_ERROR_DEVICE_HUNG)
         return Result::DEVICE_LOST;
 
+    if (result == D3D12_ERROR_INVALID_REDIST)
+        return Result::INVALID_AGILITY_SDK;
+
     if (result == E_OUTOFMEMORY)
         return Result::OUT_OF_MEMORY;
 
@@ -837,24 +840,27 @@ void nri::CheckAndSetDefaultCallbacks(CallbackInterface& callbackInterface) {
 }
 
 void DeviceBase::ReportMessage(Message messageType, const char* file, uint32_t line, const char* format, ...) const {
-    const DeviceDesc& desc = GetDesc();
-    const char* graphicsAPIName = nriGetGraphicsAPIString(desc.graphicsAPI);
+    // Report message
+    if (m_CallbackInterface.MessageCallback) { // TODO: "MessageCallback" actually can't be "NULL"
+        const DeviceDesc& desc = GetDesc();
+        const char* graphicsAPIName = nriGetGraphicsAPIString(desc.graphicsAPI);
 
-    const char* temp = strrchr(file, FILE_SEPARATOR);
-    file = temp ? temp + 1 : file;
+        const char* temp = strrchr(file, FILE_SEPARATOR);
+        file = temp ? temp + 1 : file;
 
-    char buf[MAX_MESSAGE_LENGTH];
-    int32_t written = snprintf(buf, sizeof(buf), "%s::%s - ", graphicsAPIName, *desc.adapterDesc.name == '\0' ? "Unknown" : desc.adapterDesc.name);
+        char buf[MAX_MESSAGE_LENGTH];
+        int32_t written = snprintf(buf, sizeof(buf), "%s::%s - ", graphicsAPIName, *desc.adapterDesc.name == '\0' ? "Unknown" : desc.adapterDesc.name);
 
-    va_list argptr;
-    va_start(argptr, format);
-    written += vsnprintf(buf + written, sizeof(buf) - written, format, argptr);
-    va_end(argptr);
+        va_list argptr;
+        va_start(argptr, format);
+        written += vsnprintf(buf + written, sizeof(buf) - written, format, argptr);
+        va_end(argptr);
 
-    if (m_CallbackInterface.MessageCallback)
         m_CallbackInterface.MessageCallback(messageType, file, line, buf, m_CallbackInterface.userArg);
+    }
 
-    if (messageType == Message::ERROR && m_CallbackInterface.AbortExecution != nullptr)
+    // Abort execution
+    if (m_CallbackInterface.AbortExecution && messageType == Message::ERROR)
         m_CallbackInterface.AbortExecution(m_CallbackInterface.userArg);
 }
 

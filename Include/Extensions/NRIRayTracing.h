@@ -58,29 +58,29 @@ NriEnum(MicromapFormat, uint16_t,
 
 NriEnum(MicromapSpecialIndex, int8_t,
     // 2/4 state
-    FULLY_TRANSPARENT           = -1, // specifies that the entire triangle is fully transparent
-    FULLY_OPAQUE                = -2, // specifies that the entire triangle is fully opaque
+    FULLY_TRANSPARENT           = -1,           // specifies that the entire triangle is fully transparent
+    FULLY_OPAQUE                = -2,           // specifies that the entire triangle is fully opaque
 
     // 4 state
-    FULLY_UNKNOWN_TRANSPARENT   = -3, // specifies that the entire triangle is unknown-transparent
-    FULLY_UNKNOWN_OPAQUE        = -4  // specifies that the entire triangle is unknown-opaque
+    FULLY_UNKNOWN_TRANSPARENT   = -3,           // specifies that the entire triangle is unknown-transparent
+    FULLY_UNKNOWN_OPAQUE        = -4            // specifies that the entire triangle is unknown-opaque
 );
 
 NriBits(MicromapBits, uint8_t,
     NONE                        = 0,
-    ALLOW_COMPACTION            = NriBit(1), // allows to compact the micromap by copying using "COMPACT" mode
-    PREFER_FAST_TRACE           = NriBit(2), // prioritize traversal performance over build time
-    PREFER_FAST_BUILD           = NriBit(3)  // prioritize build time over traversal performance
+    ALLOW_COMPACTION            = NriBit(1),    // allows to compact the micromap by copying using "COMPACT" mode
+    PREFER_FAST_TRACE           = NriBit(2),    // prioritize traversal performance over build time
+    PREFER_FAST_BUILD           = NriBit(3)     // prioritize build time over traversal performance
 );
 
 NriStruct(MicromapUsageDesc) {
-    uint32_t triangleNum;       // represents "MicromapTriangle" number for "{format, subdivisionLevel}" pair contained in the micromap
-    uint16_t subdivisionLevel;  // micro triangles count = 4 ^ subdivisionLevel
+    uint32_t triangleNum;                       // represents "MicromapTriangle" number for "{format, subdivisionLevel}" pair contained in the micromap
+    uint16_t subdivisionLevel;                  // micro triangles count = 4 ^ subdivisionLevel
     Nri(MicromapFormat) format;
 };
 
 NriStruct(MicromapDesc) {
-    NriOptional uint64_t optimizedSize; // can be retrieved by "CmdWriteMicromapsSizes" and used for compaction via "CmdCopyMicromap"
+    NriOptional uint64_t optimizedSize;         // can be retrieved by "CmdWriteMicromapsSizes" and used for compaction via "CmdCopyMicromap"
     const NriPtr(MicromapUsageDesc) usages;
     uint32_t usageNum;
     Nri(MicromapBits) flags;
@@ -96,7 +96,7 @@ NriStruct(BuildMicromapDesc) {
     NriPtr(Micromap) dst;
     const NriPtr(Buffer) dataBuffer;
     uint64_t dataOffset;
-    const NriPtr(Buffer) triangleBuffer; // contains "MicromapTriangle" entries
+    const NriPtr(Buffer) triangleBuffer;        // contains "MicromapTriangle" entries
     uint64_t triangleOffset;
     NriPtr(Buffer) scratchBuffer;
     uint64_t scratchOffset;
@@ -135,8 +135,8 @@ NriEnum(BottomLevelGeometryType, uint8_t,
 
 NriBits(BottomLevelGeometryBits, uint8_t,
     NONE                                = 0,
-    OPAQUE_GEOMETRY                     = NriBit(0), // the geometry acts as if no any hit shader is present (can be overriden by "TopLevelInstanceBits" or ray flags)
-    NO_DUPLICATE_ANY_HIT_INVOCATION     = NriBit(1)  // the any-hit shader must be called once for each primitive in this geometry
+    OPAQUE_GEOMETRY                     = NriBit(0),    // the geometry acts as if no any hit shader is present (can be overriden by "TopLevelInstanceBits" or ray flags)
+    NO_DUPLICATE_ANY_HIT_INVOCATION     = NriBit(1)     // the any-hit shader must be called once for each primitive in this geometry
 );
 
 NriStruct(BottomLevelTrianglesDesc) {
@@ -154,7 +154,7 @@ NriStruct(BottomLevelTrianglesDesc) {
     NriOptional Nri(IndexType) indexType;
 
     // Transform
-    NriOptional const NriPtr(Buffer) transformBuffer; // contains "TransformMatrix" entries
+    NriOptional const NriPtr(Buffer) transformBuffer;   // contains "TransformMatrix" entries
     NriOptional uint64_t transformOffset;
 
     // Micromap
@@ -162,7 +162,7 @@ NriStruct(BottomLevelTrianglesDesc) {
 };
 
 NriStruct(BottomLevelAabbsDesc) {
-    const NriPtr(Buffer) buffer; // contains "BottomLevelAabb" entries
+    const NriPtr(Buffer) buffer;                        // contains "BottomLevelAabb" entries
     uint64_t offset;
     uint32_t num;
     uint32_t stride;
@@ -230,19 +230,19 @@ NriEnum(AccelerationStructureType, uint8_t,
 
 NriBits(AccelerationStructureBits, uint8_t,
     NONE                        = 0,
-    ALLOW_UPDATE                = NriBit(0), // allows to do "updates", which are faster than "builds" (may increase memory usage, build time and decrease traversal performance)
-    ALLOW_COMPACTION            = NriBit(1), // allows to compact the acceleration structure by copying using "COMPACT" mode
-    ALLOW_DATA_ACCESS           = NriBit(2), // allows to access vertex data from shaders (requires "features.rayTracingPositionFetch")
-    ALLOW_MICROMAP_UPDATE       = NriBit(3), // allows to update micromaps via acceleration structure update (may increase size and decrease traversal performance)
-    ALLOW_DISABLE_MICROMAPS     = NriBit(4), // allows to have "DISABLE_MICROMAPS" flag for instances referencing this BLAS
-    PREFER_FAST_TRACE           = NriBit(5), // prioritize traversal performance over build time
-    PREFER_FAST_BUILD           = NriBit(6), // prioritize build time over traversal performance
-    MINIMIZE_MEMORY             = NriBit(7)  // minimize the amount of memory used during the build (may increase build time and decrease traversal performance)
+    ALLOW_UPDATE                = NriBit(0),                // allows to do "updates", which are faster than "builds" (may increase memory usage, build time and decrease traversal performance)
+    ALLOW_COMPACTION            = NriBit(1),                // allows to compact the acceleration structure by copying using "COMPACT" mode
+    ALLOW_DATA_ACCESS           = NriBit(2),                // allows to access vertex data from shaders (requires "features.rayTracingPositionFetch")
+    ALLOW_MICROMAP_UPDATE       = NriBit(3),                // allows to update micromaps via acceleration structure update (may increase size and decrease traversal performance)
+    ALLOW_DISABLE_MICROMAPS     = NriBit(4),                // allows to have "DISABLE_MICROMAPS" flag for instances referencing this BLAS
+    PREFER_FAST_TRACE           = NriBit(5),                // prioritize traversal performance over build time
+    PREFER_FAST_BUILD           = NriBit(6),                // prioritize build time over traversal performance
+    MINIMIZE_MEMORY             = NriBit(7)                 // minimize the amount of memory used during the build (may increase build time and decrease traversal performance)
 );
 
 NriStruct(AccelerationStructureDesc) {
-    NriOptional uint64_t optimizedSize; // can be retrieved by "CmdWriteAccelerationStructuresSizes" and used for compaction via "CmdCopyAccelerationStructure"
-    const NriPtr(BottomLevelGeometryDesc) geometries; // needed only for "BOTTOM_LEVEL", "HAS_BUFFER" can be used to indicate a buffer presence (no real entities needed at initialization time)
+    NriOptional uint64_t optimizedSize;                     // can be retrieved by "CmdWriteAccelerationStructuresSizes" and used for compaction via "CmdCopyAccelerationStructure"
+    const NriPtr(BottomLevelGeometryDesc) geometries;       // needed only for "BOTTOM_LEVEL", "HAS_BUFFER" can be used to indicate a buffer presence (no real entities needed at initialization time)
     uint32_t geometryOrInstanceNum;
     Nri(AccelerationStructureBits) flags;
     Nri(AccelerationStructureType) type;
@@ -256,17 +256,17 @@ NriStruct(AccelerationStructureMemoryBindingDesc) {
 
 NriStruct(BuildTopLevelAccelerationStructureDesc) {
     NriPtr(AccelerationStructure) dst;
-    NriOptional const NriPtr(AccelerationStructure) src; // implies "update" instead of "build" if provided (requires "ALLOW_UPDATE")
+    NriOptional const NriPtr(AccelerationStructure) src;    // implies "update" instead of "build" if provided (requires "ALLOW_UPDATE")
     uint32_t instanceNum;
-    const NriPtr(Buffer) instanceBuffer; // contains "TopLevelInstance" entries
+    const NriPtr(Buffer) instanceBuffer;                    // contains "TopLevelInstance" entries
     uint64_t instanceOffset;
-    NriPtr(Buffer) scratchBuffer; // use "GetAccelerationStructureBuildScratchBufferSize" or "GetAccelerationStructureUpdateScratchBufferSize" to determine the required size
+    NriPtr(Buffer) scratchBuffer;                           // use "GetAccelerationStructureBuildScratchBufferSize" or "GetAccelerationStructureUpdateScratchBufferSize" to determine the required size
     uint64_t scratchOffset;
 };
 
 NriStruct(BuildBottomLevelAccelerationStructureDesc) {
     NriPtr(AccelerationStructure) dst;
-    NriOptional const NriPtr(AccelerationStructure) src; // implies "update" instead of "build" if provided (requires "ALLOW_UPDATE")
+    NriOptional const NriPtr(AccelerationStructure) src;    // implies "update" instead of "build" if provided (requires "ALLOW_UPDATE")
     const NriPtr(BottomLevelGeometryDesc) geometries;
     uint32_t geometryNum;
     NriPtr(Buffer) scratchBuffer;

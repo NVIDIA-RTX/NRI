@@ -168,6 +168,7 @@ static inline Nri(PipelineLayoutSettingsDesc) NriFunc(FitPipelineLayoutSettingsI
     return modifiedPipelineLayoutLimitsDesc;
 }
 
+// Deprecated
 static inline Nri(TextureBarrierDesc) NriFunc(TextureBarrierFromUnknown)(NriPtr(Texture) texture,
     Nri(AccessLayoutStage) after,
     Nri(Mip_t) mipOffset NriDefault(0),

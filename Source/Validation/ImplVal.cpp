@@ -20,11 +20,10 @@
 #include "SwapChainVal.h"
 #include "TextureVal.h"
 
-#include "HelperDataUpload.h"
-#include "HelperDeviceMemoryAllocator.h"
-#include "HelperWaitIdle.h"
-#include "Streamer.h"
-#include "Upscaler.h"
+#include "HelperInterface.h"
+#include "ImguiInterface.h"
+#include "StreamerInterface.h"
+#include "UpscalerInterface.h"
 
 using namespace nri;
 
@@ -789,6 +788,66 @@ Result DeviceVal::FillFunctionTable(HelperInterface& table) const {
 #pragma endregion
 
 //============================================================================================================================================================================================
+#pragma region[  Imgui  ]
+
+#if NRI_ENABLE_IMGUI_EXTENSION
+
+struct ImguiVal : public ObjectVal {
+    inline ImguiVal(DeviceVal& device, ImguiImpl* impl)
+        : ObjectVal(device, impl) {
+    }
+
+    inline ImguiImpl* GetImpl() const {
+        return (ImguiImpl*)m_Impl;
+    }
+};
+
+static Result NRI_CALL CreateImgui(Device& device, const ImguiDesc& imguiDesc, Imgui*& imgui) {
+    DeviceVal& deviceVal = (DeviceVal&)device;
+
+    ImguiImpl* impl = Allocate<ImguiImpl>(deviceVal.GetAllocationCallbacks(), device, deviceVal.GetCoreInterfaceVal());
+    Result result = impl->Create(imguiDesc);
+
+    if (result != Result::SUCCESS) {
+        Destroy(impl);
+        imgui = nullptr;
+    } else
+        imgui = (Imgui*)Allocate<ImguiVal>(deviceVal.GetAllocationCallbacks(), deviceVal, impl);
+
+    return result;
+}
+
+static void NRI_CALL DestroyImgui(Imgui& imgui) {
+    if (!(&imgui))
+        return;
+
+    ImguiVal& imguiVal = (ImguiVal&)imgui;
+    ImguiImpl* imguiImpl = imguiVal.GetImpl();
+
+    Destroy(imguiImpl);
+    Destroy(&imguiVal);
+}
+
+static void NRI_CALL CmdDrawImgui(CommandBuffer& commandBuffer, Imgui& imgui, Streamer& streamer, const DrawImguiDesc& drawImguiDesc) {
+    ImguiVal& imguiVal = (ImguiVal&)imgui;
+    ImguiImpl* imguiImpl = imguiVal.GetImpl();
+
+    return imguiImpl->CmdDraw(commandBuffer, streamer, drawImguiDesc);
+}
+
+Result DeviceVal::FillFunctionTable(ImguiInterface& table) const {
+    table.CreateImgui = ::CreateImgui;
+    table.DestroyImgui = ::DestroyImgui;
+    table.CmdDrawImgui = ::CmdDrawImgui;
+
+    return Result::SUCCESS;
+}
+
+#endif
+
+#pragma endregion
+
+//============================================================================================================================================================================================
 #pragma region[  Low latency  ]
 
 static void NRI_CALL QueueSubmitTrackable(Queue& queue, const QueueSubmitDesc& workSubmissionDesc, const SwapChain& swapChain) {
@@ -1106,7 +1165,6 @@ struct StreamerVal : public ObjectVal {
     }
 
     StreamerDesc m_Desc = {}; // only for .natvis
-    bool isDynamicBufferValid = false;
 };
 
 static Result NRI_CALL CreateStreamer(Device& device, const StreamerDesc& streamerDesc, Streamer*& streamer) {
@@ -1148,84 +1206,62 @@ static Buffer* NRI_CALL GetStreamerConstantBuffer(Streamer& streamer) {
     return streamerImpl->GetConstantBuffer();
 }
 
-static uint32_t NRI_CALL UpdateStreamerConstantBuffer(Streamer& streamer, const void* data, uint32_t dataSize) {
+static uint32_t NRI_CALL StreamConstantData(Streamer& streamer, const void* data, uint32_t dataSize) {
     DeviceVal& deviceVal = GetDeviceVal(streamer);
     StreamerVal& streamerVal = (StreamerVal&)streamer;
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
 
-    if (!dataSize)
-        REPORT_WARNING(&deviceVal, "'dataSize = 0'");
+    RETURN_ON_FAILURE(&deviceVal, dataSize, 0, "'dataSize' is 0");
 
-    return streamerImpl->UpdateConstantBuffer(data, dataSize);
+    return streamerImpl->StreamConstantData(data, dataSize);
 }
 
-static uint64_t NRI_CALL AddStreamerBufferUpdateRequest(Streamer& streamer, const BufferUpdateRequestDesc& bufferUpdateRequestDesc) {
+static BufferOffset NRI_CALL StreamBufferData(Streamer& streamer, const StreamBufferDataDesc& streamBufferDataDesc) {
     DeviceVal& deviceVal = GetDeviceVal(streamer);
     StreamerVal& streamerVal = (StreamerVal&)streamer;
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
 
-    streamerVal.isDynamicBufferValid = false;
+    RETURN_ON_FAILURE(&deviceVal, streamBufferDataDesc.dataChunkNum, {}, "'streamBufferDataDesc.dataChunkNum' is 0");
+    RETURN_ON_FAILURE(&deviceVal, streamBufferDataDesc.dataChunks, {}, "'streamBufferDataDesc.dataChunks' is NULL'");
 
-    if (!bufferUpdateRequestDesc.dataSize)
-        REPORT_WARNING(&deviceVal, "'bufferUpdateRequestDesc.dataSize = 0'");
-
-    return streamerImpl->AddBufferUpdateRequest(bufferUpdateRequestDesc);
+    return streamerImpl->StreamBufferData(streamBufferDataDesc);
 }
 
-static uint64_t NRI_CALL AddStreamerTextureUpdateRequest(Streamer& streamer, const TextureUpdateRequestDesc& textureUpdateRequestDesc) {
+static BufferOffset NRI_CALL StreamTextureData(Streamer& streamer, const StreamTextureDataDesc& streamTextureDataDesc) {
     DeviceVal& deviceVal = GetDeviceVal(streamer);
     StreamerVal& streamerVal = (StreamerVal&)streamer;
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
 
-    streamerVal.isDynamicBufferValid = false;
+    RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dstTexture, {}, "'streamTextureDataDesc.dstTexture' is NULL'");
+    RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dataRowPitch, {}, "'streamTextureDataDesc.dataRowPitch = 0'");
+    RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dataSlicePitch, {}, "'streamTextureDataDesc.dataSlicePitch = 0'");
 
-    if (!textureUpdateRequestDesc.dstTexture)
-        REPORT_ERROR(&deviceVal, "'textureUpdateRequestDesc.dstTexture' is NULL");
-    if (!textureUpdateRequestDesc.dataRowPitch)
-        REPORT_WARNING(&deviceVal, "'textureUpdateRequestDesc.dataRowPitch = 0'");
-    if (!textureUpdateRequestDesc.dataSlicePitch)
-        REPORT_WARNING(&deviceVal, "'textureUpdateRequestDesc.dataSlicePitch = 0'");
-
-    return streamerImpl->AddTextureUpdateRequest(textureUpdateRequestDesc);
+    return streamerImpl->StreamTextureData(streamTextureDataDesc);
 }
 
-static Result NRI_CALL CopyStreamerUpdateRequests(Streamer& streamer) {
+static void NRI_CALL StreamerFinalize(Streamer& streamer) {
     StreamerVal& streamerVal = (StreamerVal&)streamer;
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
 
-    streamerVal.isDynamicBufferValid = true;
-
-    return streamerImpl->CopyUpdateRequests();
+    streamerImpl->Finalize();
 }
 
-static Buffer* NRI_CALL GetStreamerDynamicBuffer(Streamer& streamer) {
-    DeviceVal& deviceVal = GetDeviceVal(streamer);
+static void NRI_CALL CmdCopyStreamedData(CommandBuffer& commandBuffer, Streamer& streamer) {
     StreamerVal& streamerVal = (StreamerVal&)streamer;
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
 
-    if (!streamerVal.isDynamicBufferValid && streamerVal.m_Desc.dynamicBufferSize == 0)
-        REPORT_ERROR(&deviceVal, "'GetStreamerDynamicBuffer' must be called after 'CopyStreamerUpdateRequests'");
-
-    return streamerImpl->GetDynamicBuffer();
-}
-
-static void NRI_CALL CmdUploadStreamerUpdateRequests(CommandBuffer& commandBuffer, Streamer& streamer) {
-    StreamerVal& streamerVal = (StreamerVal&)streamer;
-    StreamerImpl* streamerImpl = streamerVal.GetImpl();
-
-    streamerImpl->CmdUploadUpdateRequests(commandBuffer);
+    streamerImpl->CmdCopyStreamedData(commandBuffer);
 }
 
 Result DeviceVal::FillFunctionTable(StreamerInterface& table) const {
     table.CreateStreamer = ::CreateStreamer;
     table.DestroyStreamer = ::DestroyStreamer;
     table.GetStreamerConstantBuffer = ::GetStreamerConstantBuffer;
-    table.GetStreamerDynamicBuffer = ::GetStreamerDynamicBuffer;
-    table.AddStreamerBufferUpdateRequest = ::AddStreamerBufferUpdateRequest;
-    table.AddStreamerTextureUpdateRequest = ::AddStreamerTextureUpdateRequest;
-    table.UpdateStreamerConstantBuffer = ::UpdateStreamerConstantBuffer;
-    table.CopyStreamerUpdateRequests = ::CopyStreamerUpdateRequests;
-    table.CmdUploadStreamerUpdateRequests = ::CmdUploadStreamerUpdateRequests;
+    table.StreamBufferData = ::StreamBufferData;
+    table.StreamTextureData = ::StreamTextureData;
+    table.StreamConstantData = ::StreamConstantData;
+    table.StreamerFinalize = ::StreamerFinalize;
+    table.CmdCopyStreamedData = ::CmdCopyStreamedData;
 
     return Result::SUCCESS;
 }

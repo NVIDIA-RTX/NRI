@@ -140,7 +140,7 @@ NriStruct(UpscalerInterface) {
 
     // Command buffer
     // {
-            // Changes descriptor pool, pipeline layout and pipeline. Barriers are externally controlled
+            // Dispatch (changes descriptor pool, pipeline layout and pipeline, barriers are externally controlled)
             void    (NRI_CALL *CmdDispatchUpscale)      (NriRef(CommandBuffer) commandBuffer, NriRef(Upscaler) upscaler, const NriRef(DispatchUpscaleDesc) dispatchUpscaleDesc);
     // }
 };

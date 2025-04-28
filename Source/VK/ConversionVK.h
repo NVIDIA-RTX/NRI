@@ -548,21 +548,10 @@ constexpr Result GetReturnCode(VkResult result) {
         case VK_ERROR_LAYER_NOT_PRESENT:
             return Result::UNSUPPORTED;
 
-        case VK_ERROR_INVALID_EXTERNAL_HANDLE:
-        case VK_ERROR_VALIDATION_FAILED_EXT:
-        case VK_ERROR_NOT_PERMITTED_EXT:
-        case VK_ERROR_TOO_MANY_OBJECTS:
-        case VK_ERROR_MEMORY_MAP_FAILED:
-        case VK_ERROR_INITIALIZATION_FAILED:
-        case VK_INCOMPLETE:
-        case VK_TIMEOUT:
-        case VK_NOT_READY:
-            return Result::FAILURE;
-
         case VK_ERROR_OUT_OF_HOST_MEMORY:
         case VK_ERROR_OUT_OF_DEVICE_MEMORY:
         case VK_ERROR_OUT_OF_POOL_MEMORY:
-        case VK_ERROR_FRAGMENTATION_EXT:
+        case VK_ERROR_FRAGMENTATION:
         case VK_ERROR_FRAGMENTED_POOL:
             return Result::OUT_OF_MEMORY;
 

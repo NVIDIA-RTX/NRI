@@ -22,17 +22,17 @@
 #    include "ShaderMake/ShaderBlob.h"
 
 #    if NRI_ENABLE_D3D11_SUPPORT
-#        include "NIS.dxbc.h"
+#        include "NIS.cs.dxbc.h"
 #    endif
 
 #    if NRI_ENABLE_D3D12_SUPPORT
-#        include "NIS.dxil.h"
-#        include "NIS_fp16.dxil.h"
+#        include "NIS.cs.dxil.h"
+#        include "NIS.cs_fp16.dxil.h"
 #    endif
 
 #    if NRI_ENABLE_VK_SUPPORT
-#        include "NIS.spirv.h"
-#        include "NIS_fp16.spirv.h"
+#        include "NIS.cs.spirv.h"
+#        include "NIS.cs_fp16.spirv.h"
 #    endif
 
 // Ring buffer, should cover any reasonable number of queued frames even if "CmdDispatchUpscale" is called several times per frame
@@ -454,14 +454,14 @@ bool nri::IsUpscalerSupported(const DeviceDesc& deviceDesc, UpscalerType type) {
 UpscalerImpl::~UpscalerImpl() {
 #if NRI_ENABLE_NIS_SDK
     if (m_Desc.type == UpscalerType::NIS && m.nis) {
-        m_NRI.DestroyDescriptor(*m.nis->srvScale);
-        m_NRI.DestroyDescriptor(*m.nis->srvUsm);
-        m_NRI.DestroyDescriptor(*m.nis->sampler);
-        m_NRI.DestroyTexture(*m.nis->texScale);
-        m_NRI.DestroyTexture(*m.nis->texUsm);
-        m_NRI.DestroyPipeline(*m.nis->pipeline);
-        m_NRI.DestroyPipelineLayout(*m.nis->pipelineLayout);
-        m_NRI.DestroyDescriptorPool(*m.nis->descriptorPool);
+        m_iCore.DestroyDescriptor(*m.nis->srvScale);
+        m_iCore.DestroyDescriptor(*m.nis->srvUsm);
+        m_iCore.DestroyDescriptor(*m.nis->sampler);
+        m_iCore.DestroyTexture(*m.nis->texScale);
+        m_iCore.DestroyTexture(*m.nis->texUsm);
+        m_iCore.DestroyPipeline(*m.nis->pipeline);
+        m_iCore.DestroyPipelineLayout(*m.nis->pipelineLayout);
+        m_iCore.DestroyDescriptorPool(*m.nis->descriptorPool);
 
         const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
         Destroy<Nis>(allocationCallbacks, m.nis);
@@ -496,8 +496,8 @@ UpscalerImpl::~UpscalerImpl() {
     if ((m_Desc.type == UpscalerType::DLSR || m_Desc.type == UpscalerType::DLRR) && m.ngx) {
         ExclusiveScope lock(g_ngx.lock);
 
-        const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
-        void* deviceNative = m_NRI.GetDeviceNativeObject(m_Device);
+        const DeviceDesc& deviceDesc = m_iCore.GetDeviceDesc(m_Device);
+        void* deviceNative = m_iCore.GetDeviceNativeObject(m_Device);
         int32_t refCount = NgxDecrRef(deviceNative);
 
 #    if NRI_ENABLE_D3D11_SUPPORT
@@ -554,7 +554,7 @@ UpscalerImpl::~UpscalerImpl() {
 Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
     m_Desc = upscalerDesc;
 
-    const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
+    const DeviceDesc& deviceDesc = m_iCore.GetDeviceDesc(m_Device);
     if (!IsUpscalerSupported(deviceDesc, upscalerDesc.type))
         return Result::UNSUPPORTED;
 
@@ -602,7 +602,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             pipelineLayoutDesc.shaderStages = StageBits::COMPUTE_SHADER;
             pipelineLayoutDesc.flags = PipelineLayoutBits::IGNORE_GLOBAL_SPIRV_OFFSETS;
 
-            Result result = m_NRI.CreatePipelineLayout(m_Device, pipelineLayoutDesc, m.nis->pipelineLayout);
+            Result result = m_iCore.CreatePipelineLayout(m_Device, pipelineLayoutDesc, m.nis->pipelineLayout);
             if (result != Result::SUCCESS)
                 return result;
         }
@@ -628,22 +628,22 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             bool shaderMakeResult = false;
 #    if NRI_ENABLE_D3D11_SUPPORT
             if (deviceDesc.graphicsAPI == GraphicsAPI::D3D11)
-                shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_dxbc, GetCountOf(g_NIS_dxbc), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
+                shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_cs_dxbc, GetCountOf(g_NIS_cs_dxbc), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
 #    endif
 #    if NRI_ENABLE_D3D12_SUPPORT
             if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
                 if (deviceDesc.shaderModel >= 62)
-                    shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_fp16_dxil, GetCountOf(g_NIS_fp16_dxil), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
+                    shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_cs_fp16_dxil, GetCountOf(g_NIS_cs_fp16_dxil), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
                 else
-                    shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_dxil, GetCountOf(g_NIS_dxil), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
+                    shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_cs_dxil, GetCountOf(g_NIS_cs_dxil), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
             }
 #    endif
 #    if NRI_ENABLE_VK_SUPPORT
             if (deviceDesc.graphicsAPI == GraphicsAPI::VK) {
                 if (deviceDesc.shaderModel >= 62)
-                    shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_fp16_spirv, GetCountOf(g_NIS_fp16_spirv), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
+                    shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_cs_fp16_spirv, GetCountOf(g_NIS_cs_fp16_spirv), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
                 else
-                    shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_spirv, GetCountOf(g_NIS_spirv), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
+                    shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_cs_spirv, GetCountOf(g_NIS_cs_spirv), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
             }
 #    endif
             if (!shaderMakeResult)
@@ -655,7 +655,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             computePipelineDesc.shader.bytecode = bytecode;
             computePipelineDesc.shader.size = size;
 
-            Result result = m_NRI.CreateComputePipeline(m_Device, computePipelineDesc, m.nis->pipeline);
+            Result result = m_iCore.CreateComputePipeline(m_Device, computePipelineDesc, m.nis->pipeline);
             if (result != Result::SUCCESS)
                 return result;
         }
@@ -686,7 +686,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
                 return result;
         }
 
-        { // Upload data
+        { // Upload data // TODO: allow to merge with "UploadData" requests on user side
             HelperInterface iHelper = {};
             Result result = nriGetInterface(m_Device, NRI_INTERFACE(HelperInterface), &iHelper);
             if (result != Result::SUCCESS)
@@ -704,7 +704,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             textureUploadDescs[1] = {&subresources[1], m.nis->texUsm, {AccessBits::SHADER_RESOURCE, Layout::SHADER_RESOURCE}};
 
             Queue* graphicsQueue = nullptr;
-            result = m_NRI.GetQueue(m_Device, QueueType::GRAPHICS, 0, graphicsQueue);
+            result = m_iCore.GetQueue(m_Device, QueueType::GRAPHICS, 0, graphicsQueue);
             if (result != Result::SUCCESS)
                 return result;
 
@@ -718,7 +718,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             samplerDesc.addressModes = {AddressMode::CLAMP_TO_EDGE, AddressMode::CLAMP_TO_EDGE};
             samplerDesc.filters = {Filter::LINEAR, Filter::LINEAR, Filter::LINEAR};
 
-            Result result = m_NRI.CreateSampler(m_Device, samplerDesc, m.nis->sampler);
+            Result result = m_iCore.CreateSampler(m_Device, samplerDesc, m.nis->sampler);
             if (result != Result::SUCCESS)
                 return result;
 
@@ -729,12 +729,12 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             textureViewDesc.layerNum = 1;
 
             textureViewDesc.texture = m.nis->texScale;
-            result = m_NRI.CreateTexture2DView(textureViewDesc, m.nis->srvScale);
+            result = m_iCore.CreateTexture2DView(textureViewDesc, m.nis->srvScale);
             if (result != Result::SUCCESS)
                 return result;
 
             textureViewDesc.texture = m.nis->texUsm;
-            result = m_NRI.CreateTexture2DView(textureViewDesc, m.nis->srvUsm);
+            result = m_iCore.CreateTexture2DView(textureViewDesc, m.nis->srvUsm);
             if (result != Result::SUCCESS)
                 return result;
         }
@@ -753,17 +753,17 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             descriptorPoolDesc.storageTextureMaxNum += 1 * NIS_DESCRIPTOR_SET_NUM;
             descriptorPoolDesc.flags = DescriptorPoolBits::ALLOW_UPDATE_AFTER_SET;
 
-            Result result = m_NRI.CreateDescriptorPool(m_Device, descriptorPoolDesc, m.nis->descriptorPool);
+            Result result = m_iCore.CreateDescriptorPool(m_Device, descriptorPoolDesc, m.nis->descriptorPool);
             if (result != Result::SUCCESS)
                 return result;
         }
 
         { // Descriptor sets
-            Result result = m_NRI.AllocateDescriptorSets(*m.nis->descriptorPool, *m.nis->pipelineLayout, NRI_NIS_SET_STATIC, &m.nis->descriptorSet0, 1, 0);
+            Result result = m_iCore.AllocateDescriptorSets(*m.nis->descriptorPool, *m.nis->pipelineLayout, NRI_NIS_SET_STATIC, &m.nis->descriptorSet0, 1, 0);
             if (result != Result::SUCCESS)
                 return result;
 
-            result = m_NRI.AllocateDescriptorSets(*m.nis->descriptorPool, *m.nis->pipelineLayout, NRI_NIS_SET_DYNAMIC, m.nis->descriptorSets1.data(), NIS_DESCRIPTOR_SET_NUM, 0);
+            result = m_iCore.AllocateDescriptorSets(*m.nis->descriptorPool, *m.nis->pipelineLayout, NRI_NIS_SET_DYNAMIC, m.nis->descriptorSets1.data(), NIS_DESCRIPTOR_SET_NUM, 0);
             if (result != Result::SUCCESS)
                 return result;
         }
@@ -779,7 +779,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
                 {resources, GetCountOf(resources)},
             };
 
-            m_NRI.UpdateDescriptorRanges(*m.nis->descriptorSet0, 0, GetCountOf(descriptorRangeUpdateDescs), descriptorRangeUpdateDescs);
+            m_iCore.UpdateDescriptorRanges(*m.nis->descriptorSet0, 0, GetCountOf(descriptorRangeUpdateDescs), descriptorRangeUpdateDescs);
         }
     }
 #endif
@@ -852,7 +852,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
         if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
             backendD3D12Desc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_DX12;
-            backendD3D12Desc.device = (ID3D12Device*)m_NRI.GetDeviceNativeObject(m_Device);
+            backendD3D12Desc.device = (ID3D12Device*)m_iCore.GetDeviceNativeObject(m_Device);
 
             contextDesc.header.pNext = &backendD3D12Desc.header;
         }
@@ -866,7 +866,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             if (nriGetInterface(m_Device, NRI_INTERFACE(WrapperVKInterface), &iWrapperVK) != Result::SUCCESS)
                 return Result::UNSUPPORTED;
 
-            VkDevice vkDevice = (VkDevice)m_NRI.GetDeviceNativeObject(m_Device);
+            VkDevice vkDevice = (VkDevice)m_iCore.GetDeviceNativeObject(m_Device);
             VkPhysicalDevice vkPhysicalDevice = (VkPhysicalDevice)iWrapperVK.GetPhysicalDeviceVK(m_Device);
             PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr = (PFN_vkGetDeviceProcAddr)iWrapperVK.GetDeviceProcAddrVK(m_Device);
             FfxRegisterDevice(vkDevice, vkGetDeviceProcAddr);
@@ -895,7 +895,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
             ExclusiveScope lock(g_xess.lock);
 
-            ID3D12Device* deviceNative = (ID3D12Device*)m_NRI.GetDeviceNativeObject(m_Device);
+            ID3D12Device* deviceNative = (ID3D12Device*)m_iCore.GetDeviceNativeObject(m_Device);
 
             xess_result_t result = xessD3D12CreateContext(deviceNative, &m.xess->context);
             if (result != XESS_RESULT_SUCCESS)
@@ -964,7 +964,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
 #if NRI_ENABLE_NGX_SDK
     if (upscalerDesc.type == UpscalerType::DLSR || upscalerDesc.type == UpscalerType::DLRR) {
-        void* deviceNative = m_NRI.GetDeviceNativeObject(m_Device);
+        void* deviceNative = m_iCore.GetDeviceNativeObject(m_Device);
         const wchar_t* path = L""; // don't care
         NVSDK_NGX_Result ngxResult = NVSDK_NGX_Result_Fail;
 
@@ -1029,29 +1029,29 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         Fence* fence = nullptr;
 
         if (!upscalerDesc.commandBuffer) {
-            Result result = m_NRI.GetQueue(m_Device, QueueType::GRAPHICS, 0, graphicsQueue);
+            Result result = m_iCore.GetQueue(m_Device, QueueType::GRAPHICS, 0, graphicsQueue);
             if (result != Result::SUCCESS)
                 return result;
 
-            result = m_NRI.CreateCommandAllocator(*graphicsQueue, commandAllocator);
+            result = m_iCore.CreateCommandAllocator(*graphicsQueue, commandAllocator);
             if (result != Result::SUCCESS)
                 return result;
 
-            result = m_NRI.CreateCommandBuffer(*commandAllocator, commandBuffer);
+            result = m_iCore.CreateCommandBuffer(*commandAllocator, commandBuffer);
             if (result != Result::SUCCESS)
                 return result;
 
-            result = m_NRI.CreateFence(m_Device, 0, fence);
+            result = m_iCore.CreateFence(m_Device, 0, fence);
             if (result != Result::SUCCESS)
                 return result;
 
-            m_NRI.BeginCommandBuffer(*commandBuffer, nullptr);
+            m_iCore.BeginCommandBuffer(*commandBuffer, nullptr);
         }
 
         { // Record creation commands
             ExclusiveScope lock(g_ngx.lock);
 
-            void* commandBufferNative = m_NRI.GetCommandBufferNativeObject(*commandBuffer);
+            void* commandBufferNative = m_iCore.GetCommandBufferNativeObject(*commandBuffer);
 
             NVSDK_NGX_PerfQuality_Value qualityValue = NVSDK_NGX_PerfQuality_Value_UltraPerformance;
             if (upscalerDesc.mode == UpscalerMode::NATIVE) {
@@ -1138,7 +1138,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         }
 
         if (!upscalerDesc.commandBuffer) {
-            m_NRI.EndCommandBuffer(*commandBuffer);
+            m_iCore.EndCommandBuffer(*commandBuffer);
 
             // Submit & wait for completion
             FenceSubmitDesc signalFence = {};
@@ -1151,13 +1151,13 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             queueSubmitDesc.signalFences = &signalFence;
             queueSubmitDesc.signalFenceNum = 1;
 
-            m_NRI.QueueSubmit(*graphicsQueue, queueSubmitDesc);
-            m_NRI.Wait(*fence, 1);
+            m_iCore.QueueSubmit(*graphicsQueue, queueSubmitDesc);
+            m_iCore.Wait(*fence, 1);
 
             // Cleanup
-            m_NRI.DestroyFence(*fence);
-            m_NRI.DestroyCommandBuffer(*commandBuffer);
-            m_NRI.DestroyCommandAllocator(*commandAllocator);
+            m_iCore.DestroyFence(*fence);
+            m_iCore.DestroyCommandBuffer(*commandBuffer);
+            m_iCore.DestroyCommandAllocator(*commandAllocator);
         }
 
         if (ngxResult != NVSDK_NGX_Result_Success)
@@ -1203,15 +1203,15 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         DescriptorSet* descriptorSet1 = m.nis->descriptorSets1[m.nis->descriptorSetIndex];
 
         { // Setup
-            m_NRI.CmdSetDescriptorPool(commandBuffer, *m.nis->descriptorPool);
-            m_NRI.CmdSetPipelineLayout(commandBuffer, *m.nis->pipelineLayout);
-            m_NRI.CmdSetPipeline(commandBuffer, *m.nis->pipeline);
-            m_NRI.CmdSetDescriptorSet(commandBuffer, NRI_NIS_SET_STATIC, *m.nis->descriptorSet0, nullptr);
-            m_NRI.CmdSetDescriptorSet(commandBuffer, NRI_NIS_SET_DYNAMIC, *descriptorSet1, nullptr);
+            m_iCore.CmdSetDescriptorPool(commandBuffer, *m.nis->descriptorPool);
+            m_iCore.CmdSetPipelineLayout(commandBuffer, *m.nis->pipelineLayout);
+            m_iCore.CmdSetPipeline(commandBuffer, *m.nis->pipeline);
+            m_iCore.CmdSetDescriptorSet(commandBuffer, NRI_NIS_SET_STATIC, *m.nis->descriptorSet0, nullptr);
+            m_iCore.CmdSetDescriptorSet(commandBuffer, NRI_NIS_SET_DYNAMIC, *descriptorSet1, nullptr);
         }
 
         { // Update constants
-            const TextureDesc& inputDesc = m_NRI.GetTextureDesc(*input.texture);
+            const TextureDesc& inputDesc = m_iCore.GetTextureDesc(*input.texture);
 
             NIS::Constants constants = {};
             NIS::UpdateConstants(constants, dispatchUpscaleDesc.settings.nis.sharpness,
@@ -1221,7 +1221,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
                 m_Desc.upscaleResolution.w, m_Desc.upscaleResolution.h,                           // output dims
                 (m_Desc.flags & UpscalerBits::HDR) ? NIS::HDRMode::Linear : NIS::HDRMode::None);
 
-            m_NRI.CmdSetRootConstants(commandBuffer, 0, &constants, sizeof(constants));
+            m_iCore.CmdSetRootConstants(commandBuffer, 0, &constants, sizeof(constants));
         }
 
         { // Update dynamic resources
@@ -1230,7 +1230,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
                 {&output.descriptor, 1},
             };
 
-            m_NRI.UpdateDescriptorRanges(*descriptorSet1, 0, GetCountOf(descriptorRangeUpdateDescs), descriptorRangeUpdateDescs);
+            m_iCore.UpdateDescriptorRanges(*descriptorSet1, 0, GetCountOf(descriptorRangeUpdateDescs), descriptorRangeUpdateDescs);
         }
 
         { // Dispatch
@@ -1239,7 +1239,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
             dispatchDesc.y = (m_Desc.upscaleResolution.h + m.nis->blockSize.h - 1) / m.nis->blockSize.h;
             dispatchDesc.z = 1;
 
-            m_NRI.CmdDispatch(commandBuffer, dispatchDesc);
+            m_iCore.CmdDispatch(commandBuffer, dispatchDesc);
         }
 
         // Update descriptor set for the next time
@@ -1254,13 +1254,13 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
 
         ffxDispatchDescUpscale dispatchDesc = {};
         dispatchDesc.header.type = FFX_API_DISPATCH_DESC_TYPE_UPSCALE;
-        dispatchDesc.commandList = m_NRI.GetCommandBufferNativeObject(commandBuffer);
-        dispatchDesc.output = FfxGetResource(m_NRI, output, true);
-        dispatchDesc.color = FfxGetResource(m_NRI, input);
-        dispatchDesc.depth = FfxGetResource(m_NRI, guides.depth);
-        dispatchDesc.motionVectors = FfxGetResource(m_NRI, guides.mv);
-        dispatchDesc.exposure = FfxGetResource(m_NRI, guides.exposure);
-        dispatchDesc.reactive = FfxGetResource(m_NRI, guides.reactive);
+        dispatchDesc.commandList = m_iCore.GetCommandBufferNativeObject(commandBuffer);
+        dispatchDesc.output = FfxGetResource(m_iCore, output, true);
+        dispatchDesc.color = FfxGetResource(m_iCore, input);
+        dispatchDesc.depth = FfxGetResource(m_iCore, guides.depth);
+        dispatchDesc.motionVectors = FfxGetResource(m_iCore, guides.mv);
+        dispatchDesc.exposure = FfxGetResource(m_iCore, guides.exposure);
+        dispatchDesc.reactive = FfxGetResource(m_iCore, guides.reactive);
         dispatchDesc.jitterOffset = {dispatchUpscaleDesc.cameraJitter.x, dispatchUpscaleDesc.cameraJitter.y};
         dispatchDesc.motionVectorScale = {dispatchUpscaleDesc.mvScale.x, dispatchUpscaleDesc.mvScale.y};
         dispatchDesc.renderSize = {dispatchUpscaleDesc.currentResolution.w, dispatchUpscaleDesc.currentResolution.h};
@@ -1285,12 +1285,12 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         const UpscalerGuides& guides = dispatchUpscaleDesc.guides.upscaler;
 
         xess_d3d12_execute_params_t executeParams = {};
-        executeParams.pColorTexture = (ID3D12Resource*)m_NRI.GetTextureNativeObject(*input.texture);
-        executeParams.pVelocityTexture = (ID3D12Resource*)m_NRI.GetTextureNativeObject(*guides.mv.texture);
-        executeParams.pDepthTexture = (ID3D12Resource*)m_NRI.GetTextureNativeObject(*guides.depth.texture);
-        executeParams.pExposureScaleTexture = (ID3D12Resource*)m_NRI.GetTextureNativeObject(*guides.exposure.texture);
-        executeParams.pResponsivePixelMaskTexture = (ID3D12Resource*)m_NRI.GetTextureNativeObject(*guides.reactive.texture);
-        executeParams.pOutputTexture = (ID3D12Resource*)m_NRI.GetTextureNativeObject(*output.texture);
+        executeParams.pColorTexture = (ID3D12Resource*)m_iCore.GetTextureNativeObject(*input.texture);
+        executeParams.pVelocityTexture = (ID3D12Resource*)m_iCore.GetTextureNativeObject(*guides.mv.texture);
+        executeParams.pDepthTexture = (ID3D12Resource*)m_iCore.GetTextureNativeObject(*guides.depth.texture);
+        executeParams.pExposureScaleTexture = (ID3D12Resource*)m_iCore.GetTextureNativeObject(*guides.exposure.texture);
+        executeParams.pResponsivePixelMaskTexture = (ID3D12Resource*)m_iCore.GetTextureNativeObject(*guides.reactive.texture);
+        executeParams.pOutputTexture = (ID3D12Resource*)m_iCore.GetTextureNativeObject(*output.texture);
         executeParams.jitterOffsetX = dispatchUpscaleDesc.cameraJitter.x;
         executeParams.jitterOffsetY = dispatchUpscaleDesc.cameraJitter.y;
         executeParams.exposureScale = 1.0f;
@@ -1298,7 +1298,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         executeParams.inputWidth = dispatchUpscaleDesc.currentResolution.w;
         executeParams.inputHeight = dispatchUpscaleDesc.currentResolution.h;
 
-        ID3D12GraphicsCommandList* commandList = (ID3D12GraphicsCommandList*)m_NRI.GetCommandBufferNativeObject(commandBuffer);
+        ID3D12GraphicsCommandList* commandList = (ID3D12GraphicsCommandList*)m_iCore.GetCommandBufferNativeObject(commandBuffer);
 
         xess_result_t result = xessD3D12Execute(m.xess->context, commandList, &executeParams);
         CHECK(result == XESS_RESULT_SUCCESS, "xessD3D12Execute() failed!");
@@ -1309,17 +1309,17 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
     if (m_Desc.type == UpscalerType::DLSR) {
         ExclusiveScope lock(g_ngx.lock);
 
-        const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
+        const DeviceDesc& deviceDesc = m_iCore.GetDeviceDesc(m_Device);
         const UpscalerGuides& guides = dispatchUpscaleDesc.guides.upscaler;
 
-        uint64_t outputNative = m_NRI.GetTextureNativeObject(*output.texture);
-        uint64_t inputNative = m_NRI.GetTextureNativeObject(*input.texture);
-        uint64_t mvNative = m_NRI.GetTextureNativeObject(*guides.mv.texture);
-        uint64_t depthNative = m_NRI.GetTextureNativeObject(*guides.depth.texture);
-        uint64_t exposureNative = m_NRI.GetTextureNativeObject(*guides.exposure.texture);
-        uint64_t reactiveNative = m_NRI.GetTextureNativeObject(*guides.reactive.texture);
+        uint64_t outputNative = m_iCore.GetTextureNativeObject(*output.texture);
+        uint64_t inputNative = m_iCore.GetTextureNativeObject(*input.texture);
+        uint64_t mvNative = m_iCore.GetTextureNativeObject(*guides.mv.texture);
+        uint64_t depthNative = m_iCore.GetTextureNativeObject(*guides.depth.texture);
+        uint64_t exposureNative = m_iCore.GetTextureNativeObject(*guides.exposure.texture);
+        uint64_t reactiveNative = m_iCore.GetTextureNativeObject(*guides.reactive.texture);
 
-        void* commandBufferNative = m_NRI.GetCommandBufferNativeObject(commandBuffer);
+        void* commandBufferNative = m_iCore.GetCommandBufferNativeObject(commandBuffer);
 
         NVSDK_NGX_Result result = NVSDK_NGX_Result_Fail;
 
@@ -1365,12 +1365,12 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
 
 #    if NRI_ENABLE_VK_SUPPORT
         if (deviceDesc.graphicsAPI == GraphicsAPI::VK) {
-            NVSDK_NGX_Resource_VK outputVk = NgxGetResource(m_NRI, output, outputNative, true);
-            NVSDK_NGX_Resource_VK inputVk = NgxGetResource(m_NRI, input, inputNative);
-            NVSDK_NGX_Resource_VK mvVk = NgxGetResource(m_NRI, guides.mv, mvNative);
-            NVSDK_NGX_Resource_VK depthVk = NgxGetResource(m_NRI, guides.depth, depthNative);
-            NVSDK_NGX_Resource_VK exposureVk = NgxGetResource(m_NRI, guides.exposure, exposureNative);
-            NVSDK_NGX_Resource_VK reactiveVk = NgxGetResource(m_NRI, guides.reactive, reactiveNative);
+            NVSDK_NGX_Resource_VK outputVk = NgxGetResource(m_iCore, output, outputNative, true);
+            NVSDK_NGX_Resource_VK inputVk = NgxGetResource(m_iCore, input, inputNative);
+            NVSDK_NGX_Resource_VK mvVk = NgxGetResource(m_iCore, guides.mv, mvNative);
+            NVSDK_NGX_Resource_VK depthVk = NgxGetResource(m_iCore, guides.depth, depthNative);
+            NVSDK_NGX_Resource_VK exposureVk = NgxGetResource(m_iCore, guides.exposure, exposureNative);
+            NVSDK_NGX_Resource_VK reactiveVk = NgxGetResource(m_iCore, guides.reactive, reactiveNative);
 
             NVSDK_NGX_VK_DLSS_Eval_Params srEvalParams = {};
             srEvalParams.Feature.pInColor = &inputVk;
@@ -1396,22 +1396,22 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
     if (m_Desc.type == UpscalerType::DLRR) {
         ExclusiveScope lock(g_ngx.lock);
 
-        const DeviceDesc& deviceDesc = m_NRI.GetDeviceDesc(m_Device);
+        const DeviceDesc& deviceDesc = m_iCore.GetDeviceDesc(m_Device);
         const DenoiserGuides& guides = dispatchUpscaleDesc.guides.denoiser;
 
-        uint64_t outputNative = m_NRI.GetTextureNativeObject(*output.texture);
-        uint64_t inputNative = m_NRI.GetTextureNativeObject(*input.texture);
-        uint64_t mvNative = m_NRI.GetTextureNativeObject(*guides.mv.texture);
-        uint64_t depthNative = m_NRI.GetTextureNativeObject(*guides.depth.texture);
-        uint64_t normalRoughnessNative = m_NRI.GetTextureNativeObject(*guides.normalRoughness.texture);
-        uint64_t diffuseAlbedoNative = m_NRI.GetTextureNativeObject(*guides.diffuseAlbedo.texture);
-        uint64_t specularAlbedoNative = m_NRI.GetTextureNativeObject(*guides.specularAlbedo.texture);
-        uint64_t specularMvOrHitTNative = m_NRI.GetTextureNativeObject(*guides.specularMvOrHitT.texture);
-        uint64_t exposureNative = m_NRI.GetTextureNativeObject(*guides.exposure.texture);
-        uint64_t reactiveNative = m_NRI.GetTextureNativeObject(*guides.reactive.texture);
-        uint64_t sssNative = m_NRI.GetTextureNativeObject(*guides.sss.texture);
+        uint64_t outputNative = m_iCore.GetTextureNativeObject(*output.texture);
+        uint64_t inputNative = m_iCore.GetTextureNativeObject(*input.texture);
+        uint64_t mvNative = m_iCore.GetTextureNativeObject(*guides.mv.texture);
+        uint64_t depthNative = m_iCore.GetTextureNativeObject(*guides.depth.texture);
+        uint64_t normalRoughnessNative = m_iCore.GetTextureNativeObject(*guides.normalRoughness.texture);
+        uint64_t diffuseAlbedoNative = m_iCore.GetTextureNativeObject(*guides.diffuseAlbedo.texture);
+        uint64_t specularAlbedoNative = m_iCore.GetTextureNativeObject(*guides.specularAlbedo.texture);
+        uint64_t specularMvOrHitTNative = m_iCore.GetTextureNativeObject(*guides.specularMvOrHitT.texture);
+        uint64_t exposureNative = m_iCore.GetTextureNativeObject(*guides.exposure.texture);
+        uint64_t reactiveNative = m_iCore.GetTextureNativeObject(*guides.reactive.texture);
+        uint64_t sssNative = m_iCore.GetTextureNativeObject(*guides.sss.texture);
 
-        void* commandBufferNative = m_NRI.GetCommandBufferNativeObject(commandBuffer);
+        void* commandBufferNative = m_iCore.GetCommandBufferNativeObject(commandBuffer);
 
         NVSDK_NGX_Result result = NVSDK_NGX_Result_Fail;
 
@@ -1481,17 +1481,17 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
 
 #    if NRI_ENABLE_VK_SUPPORT
         if (deviceDesc.graphicsAPI == GraphicsAPI::VK) {
-            NVSDK_NGX_Resource_VK outputVk = NgxGetResource(m_NRI, output, outputNative, true);
-            NVSDK_NGX_Resource_VK inputVk = NgxGetResource(m_NRI, input, inputNative);
-            NVSDK_NGX_Resource_VK mvVk = NgxGetResource(m_NRI, guides.mv, mvNative);
-            NVSDK_NGX_Resource_VK depthVk = NgxGetResource(m_NRI, guides.depth, depthNative);
-            NVSDK_NGX_Resource_VK normalRoughnessVk = NgxGetResource(m_NRI, guides.normalRoughness, normalRoughnessNative);
-            NVSDK_NGX_Resource_VK diffuseAlbedoVk = NgxGetResource(m_NRI, guides.diffuseAlbedo, diffuseAlbedoNative);
-            NVSDK_NGX_Resource_VK specularAlbedoVk = NgxGetResource(m_NRI, guides.specularAlbedo, specularAlbedoNative);
-            NVSDK_NGX_Resource_VK specularMvOrHitTVk = NgxGetResource(m_NRI, guides.specularMvOrHitT, specularMvOrHitTNative);
-            NVSDK_NGX_Resource_VK exposureVk = NgxGetResource(m_NRI, guides.exposure, exposureNative);
-            NVSDK_NGX_Resource_VK reactiveVk = NgxGetResource(m_NRI, guides.reactive, reactiveNative);
-            NVSDK_NGX_Resource_VK sssVk = NgxGetResource(m_NRI, guides.sss, sssNative);
+            NVSDK_NGX_Resource_VK outputVk = NgxGetResource(m_iCore, output, outputNative, true);
+            NVSDK_NGX_Resource_VK inputVk = NgxGetResource(m_iCore, input, inputNative);
+            NVSDK_NGX_Resource_VK mvVk = NgxGetResource(m_iCore, guides.mv, mvNative);
+            NVSDK_NGX_Resource_VK depthVk = NgxGetResource(m_iCore, guides.depth, depthNative);
+            NVSDK_NGX_Resource_VK normalRoughnessVk = NgxGetResource(m_iCore, guides.normalRoughness, normalRoughnessNative);
+            NVSDK_NGX_Resource_VK diffuseAlbedoVk = NgxGetResource(m_iCore, guides.diffuseAlbedo, diffuseAlbedoNative);
+            NVSDK_NGX_Resource_VK specularAlbedoVk = NgxGetResource(m_iCore, guides.specularAlbedo, specularAlbedoNative);
+            NVSDK_NGX_Resource_VK specularMvOrHitTVk = NgxGetResource(m_iCore, guides.specularMvOrHitT, specularMvOrHitTNative);
+            NVSDK_NGX_Resource_VK exposureVk = NgxGetResource(m_iCore, guides.exposure, exposureNative);
+            NVSDK_NGX_Resource_VK reactiveVk = NgxGetResource(m_iCore, guides.reactive, reactiveNative);
+            NVSDK_NGX_Resource_VK sssVk = NgxGetResource(m_iCore, guides.sss, sssNative);
 
             NVSDK_NGX_VK_DLSSD_Eval_Params rrEvalParams = {};
             rrEvalParams.pInColor = &inputVk;

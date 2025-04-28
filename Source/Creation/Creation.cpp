@@ -399,6 +399,10 @@ NRI_API Result NRI_CALL nriGetInterface(const Device& device, const char* interf
         realInterfaceSize = sizeof(CoreInterface);
         if (realInterfaceSize == interfaceSize)
             result = deviceBase.FillFunctionTable(*(CoreInterface*)interfacePtr);
+    } else if (hash == Hash(NRI_STRINGIFY(ImguiInterface))) {
+        realInterfaceSize = sizeof(ImguiInterface);
+        if (realInterfaceSize == interfaceSize)
+            result = deviceBase.FillFunctionTable(*(ImguiInterface*)interfacePtr);
     } else if (hash == Hash(NRI_STRINGIFY(HelperInterface))) {
         realInterfaceSize = sizeof(HelperInterface);
         if (realInterfaceSize == interfaceSize)

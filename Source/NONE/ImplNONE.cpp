@@ -179,6 +179,10 @@ struct DeviceNONE final : public DeviceBase {
     Result FillFunctionTable(SwapChainInterface& table) const override;
     Result FillFunctionTable(UpscalerInterface& table) const override;
 
+#if NRI_ENABLE_IMGUI_EXTENSION
+    Result FillFunctionTable(ImguiInterface& table) const override;
+#endif
+
 private:
     DeviceDesc m_Desc = {};
 };
@@ -735,6 +739,35 @@ Result DeviceNONE::FillFunctionTable(HelperInterface& table) const {
 #pragma endregion
 
 //============================================================================================================================================================================================
+#pragma region[  Imgui  ]
+
+#if NRI_ENABLE_IMGUI_EXTENSION
+
+static Result NRI_CALL CreateImgui(Device&, const ImguiDesc&, Imgui*& imgui) {
+    imgui = DummyObject<Imgui>();
+
+    return Result::SUCCESS;
+}
+
+static void NRI_CALL DestroyImgui(Imgui&) {
+}
+
+static void NRI_CALL CmdDrawImgui(CommandBuffer&, Imgui&, Streamer&, const DrawImguiDesc&) {
+}
+
+Result DeviceNONE::FillFunctionTable(ImguiInterface& table) const {
+    table.CreateImgui = ::CreateImgui;
+    table.DestroyImgui = ::DestroyImgui;
+    table.CmdDrawImgui = ::CmdDrawImgui;
+
+    return Result::SUCCESS;
+}
+
+#endif
+
+#pragma endregion
+
+//============================================================================================================================================================================================
 #pragma region[  LowLatency  ]
 
 static Result NRI_CALL SetLatencySleepMode(SwapChain&, const LatencySleepMode&) {
@@ -993,39 +1026,33 @@ static Buffer* NRI_CALL GetStreamerConstantBuffer(Streamer&) {
     return nullptr;
 }
 
-static uint32_t NRI_CALL UpdateStreamerConstantBuffer(Streamer&, const void*, uint32_t) {
+static uint32_t NRI_CALL StreamConstantData(Streamer&, const void*, uint32_t) {
     return 0;
 }
 
-static uint64_t NRI_CALL AddStreamerBufferUpdateRequest(Streamer&, const BufferUpdateRequestDesc&) {
-    return 0;
+static BufferOffset NRI_CALL StreamBufferData(Streamer&, const StreamBufferDataDesc&) {
+    return {};
 }
 
-static uint64_t NRI_CALL AddStreamerTextureUpdateRequest(Streamer&, const TextureUpdateRequestDesc&) {
-    return 0;
+static BufferOffset NRI_CALL StreamTextureData(Streamer&, const StreamTextureDataDesc&) {
+    return {};
 }
 
-static Result NRI_CALL CopyStreamerUpdateRequests(Streamer&) {
-    return Result::SUCCESS;
+static void NRI_CALL StreamerFinalize(Streamer&) {
 }
 
-static Buffer* GetStreamerDynamicBuffer(Streamer&) {
-    return nullptr;
-}
-
-static void NRI_CALL CmdUploadStreamerUpdateRequests(CommandBuffer&, Streamer&) {
+static void NRI_CALL CmdCopyStreamedData(CommandBuffer&, Streamer&) {
 }
 
 Result DeviceNONE::FillFunctionTable(StreamerInterface& table) const {
     table.CreateStreamer = ::CreateStreamer;
     table.DestroyStreamer = ::DestroyStreamer;
     table.GetStreamerConstantBuffer = ::GetStreamerConstantBuffer;
-    table.GetStreamerDynamicBuffer = ::GetStreamerDynamicBuffer;
-    table.AddStreamerBufferUpdateRequest = ::AddStreamerBufferUpdateRequest;
-    table.AddStreamerTextureUpdateRequest = ::AddStreamerTextureUpdateRequest;
-    table.UpdateStreamerConstantBuffer = ::UpdateStreamerConstantBuffer;
-    table.CopyStreamerUpdateRequests = ::CopyStreamerUpdateRequests;
-    table.CmdUploadStreamerUpdateRequests = ::CmdUploadStreamerUpdateRequests;
+    table.StreamBufferData = ::StreamBufferData;
+    table.StreamTextureData = ::StreamTextureData;
+    table.StreamConstantData = ::StreamConstantData;
+    table.StreamerFinalize = ::StreamerFinalize;
+    table.CmdCopyStreamedData = ::CmdCopyStreamedData;
 
     return Result::SUCCESS;
 }

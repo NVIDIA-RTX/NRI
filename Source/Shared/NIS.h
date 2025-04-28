@@ -5,7 +5,7 @@
 
 namespace NIS {
 
-#include "../Shaders/NIS.hlsl"
+#include "../Shaders/NIS.cs.hlsl"
 
 enum class HDRMode {
     None,

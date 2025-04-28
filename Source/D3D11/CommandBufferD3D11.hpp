@@ -288,13 +288,13 @@ NRI_INLINE void CommandBufferD3D11::BeginRendering(const AttachmentsDesc& attach
                 shadingRateDesc.numViewports = (uint32_t)shadingRates.size();
                 shadingRateDesc.pViewports = shadingRates.data();
 
-                REPORT_ERROR_ON_BAD_STATUS(&m_Device, NvAPI_D3D11_RSSetViewportsPixelShadingRates(m_DeferredContext, &shadingRateDesc));
+                REPORT_ERROR_ON_BAD_NVAPI_STATUS(&m_Device, NvAPI_D3D11_RSSetViewportsPixelShadingRates(m_DeferredContext, &shadingRateDesc));
 
                 m_IsShadingRateLookupTableSet = true;
             }
         }
 
-        REPORT_ERROR_ON_BAD_STATUS(&m_Device, NvAPI_D3D11_RSSetShadingRateResourceView(m_DeferredContext, shadingRateImage));
+        REPORT_ERROR_ON_BAD_NVAPI_STATUS(&m_Device, NvAPI_D3D11_RSSetShadingRateResourceView(m_DeferredContext, shadingRateImage));
     }
 
     // Multiview
