@@ -234,9 +234,9 @@ NriStruct(CoreInterface) {
     void                (NRI_CALL *ResetCommandAllocator)           (NriRef(CommandAllocator) commandAllocator);
 
     // Map / Unmap
-    // D3D11: persistent mapping unsupported
-    // D3D12: persistent mapping supported, "Map/Unmap" do nothing
-    // VK: persistent mapping supported, but "Unmap" can do a flush if underlying memory is not HOST_COHERENT (unlikely)
+    // D3D11: no persistent mapping
+    // D3D12: persistent mapping, "Map/Unmap" do nothing
+    // VK: persistent mapping, but "Unmap" can do a flush if underlying memory is not "HOST_COHERENT" (unlikely)
     void*               (NRI_CALL *MapBuffer)                       (NriRef(Buffer) buffer, uint64_t offset, uint64_t size);
     void                (NRI_CALL *UnmapBuffer)                     (NriRef(Buffer) buffer);
 

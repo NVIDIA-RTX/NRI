@@ -826,7 +826,7 @@ NriStruct(MultisampleDesc) {
     uint32_t sampleMask;
     Nri(Sample_t) sampleNum;
     bool alphaToCoverage;
-    bool sampleLocations; // requires "tiers.sampleLocations != 0", expects "CmdSetSampleLocations"
+    bool sampleLocations;       // requires "tiers.sampleLocations != 0", expects "CmdSetSampleLocations"
 };
 
 NriStruct(ShadingRateDesc) {
@@ -999,9 +999,9 @@ NriStruct(OutputMergerDesc) {
     Nri(DepthAttachmentDesc) depth;
     Nri(StencilAttachmentDesc) stencil;
     Nri(Format) depthStencilFormat;
-    Nri(LogicFunc) logicFunc; // requires "features.logicFunc"
-    NriOptional uint32_t viewMask; // if non-0, requires "viewMaxNum > 1"
-    NriOptional Nri(Multiview) multiview; // if viewMask != 0, requires "features.(xxx)Multiview"
+    Nri(LogicFunc) logicFunc;               // requires "features.logicFunc"
+    NriOptional uint32_t viewMask;          // if non-0, requires "viewMaxNum > 1"
+    NriOptional Nri(Multiview) multiview;   // if "viewMask != 0", requires "features.(xxx)Multiview"
 };
 
 NriStruct(AttachmentsDesc) {
@@ -1009,7 +1009,7 @@ NriStruct(AttachmentsDesc) {
     NriOptional const NriPtr(Descriptor) shadingRate; // requires "tiers.shadingRate >= 2"
     const NriPtr(Descriptor) const* colors;
     uint32_t colorNum;
-    NriOptional uint32_t viewMask;
+    NriOptional uint32_t viewMask;          // if non-0, requires "viewMaxNum > 1"
 };
 
 #pragma endregion

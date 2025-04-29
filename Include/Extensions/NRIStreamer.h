@@ -57,11 +57,11 @@ NriStruct(StreamerInterface) {
     // Statically allocated (never changes)
     NriPtr(Buffer)      (NRI_CALL *GetStreamerConstantBuffer)   (NriRef(Streamer) streamer);
 
-    // (HOST) Copy data to a dynamic buffer. Return "buffer & offset" for direct usage in the current frame
+    // (HOST) Stream data to a dynamic buffer. Return "buffer & offset" for direct usage in the current frame
     Nri(BufferOffset)   (NRI_CALL *StreamBufferData)            (NriRef(Streamer) streamer, const NriRef(StreamBufferDataDesc) streamBufferDataDesc);
     Nri(BufferOffset)   (NRI_CALL *StreamTextureData)           (NriRef(Streamer) streamer, const NriRef(StreamTextureDataDesc) streamTextureDataDesc);
 
-    // (HOST) Copy data to a constant buffer. Return "offset" in "GetStreamerConstantBuffer" for direct usage in the current frame
+    // (HOST) Stream data to a constant buffer. Return "offset" in "GetStreamerConstantBuffer" for direct usage in the current frame
     uint32_t            (NRI_CALL *StreamConstantData)          (NriRef(Streamer) streamer, const void* data, uint32_t dataSize);
 
     // Command buffer
