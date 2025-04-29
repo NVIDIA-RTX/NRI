@@ -55,8 +55,7 @@ struct BufferD3D12 final : public DebugNameBase {
     // NRI
     //================================================================================================================
 
-    void* Map(uint64_t offset, uint64_t size);
-    void Unmap();
+    void* Map(uint64_t offset);
 
 private:
     Result SetPriorityAndPersistentlyMap(float priority, const D3D12_HEAP_PROPERTIES& heapProps);

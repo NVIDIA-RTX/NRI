@@ -108,12 +108,8 @@ NRI_INLINE Result BufferD3D12::SetPriorityAndPersistentlyMap(float priority, con
     return Result::SUCCESS;
 }
 
-NRI_INLINE void* BufferD3D12::Map(uint64_t offset, uint64_t size) {
-    MaybeUnused(size);
+NRI_INLINE void* BufferD3D12::Map(uint64_t offset) {
     CHECK(m_MappedMemory, "No CPU access");
 
     return m_MappedMemory + offset;
-}
-
-NRI_INLINE void BufferD3D12::Unmap() {
 }

@@ -478,12 +478,11 @@ static void NRI_CALL ResetCommandAllocator(CommandAllocator& commandAllocator) {
     ((CommandAllocatorD3D12&)commandAllocator).Reset();
 }
 
-static void* NRI_CALL MapBuffer(Buffer& buffer, uint64_t offset, uint64_t size) {
-    return ((BufferD3D12&)buffer).Map(offset, size);
+static void* NRI_CALL MapBuffer(Buffer& buffer, uint64_t offset, uint64_t) {
+    return ((BufferD3D12&)buffer).Map(offset);
 }
 
-static void NRI_CALL UnmapBuffer(Buffer& buffer) {
-    ((BufferD3D12&)buffer).Unmap();
+static void NRI_CALL UnmapBuffer(Buffer&) {
 }
 
 static void NRI_CALL SetDebugName(Object* object, const char* name) {
