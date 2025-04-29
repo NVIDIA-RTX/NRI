@@ -1212,6 +1212,7 @@ static uint32_t NRI_CALL StreamConstantData(Streamer& streamer, const void* data
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
 
     RETURN_ON_FAILURE(&deviceVal, dataSize, 0, "'dataSize' is 0");
+    RETURN_ON_FAILURE(&deviceVal, data, 0, "'data' is NULL");
 
     return streamerImpl->StreamConstantData(data, dataSize);
 }
@@ -1221,8 +1222,8 @@ static BufferOffset NRI_CALL StreamBufferData(Streamer& streamer, const StreamBu
     StreamerVal& streamerVal = (StreamerVal&)streamer;
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
 
-    RETURN_ON_FAILURE(&deviceVal, streamBufferDataDesc.dataChunkNum, {}, "'streamBufferDataDesc.dataChunkNum' is 0");
-    RETURN_ON_FAILURE(&deviceVal, streamBufferDataDesc.dataChunks, {}, "'streamBufferDataDesc.dataChunks' is NULL'");
+    RETURN_ON_FAILURE(&deviceVal, streamBufferDataDesc.dataChunkNum, {}, "'streamBufferDataDesc.dataChunkNum' must be > 0");
+    RETURN_ON_FAILURE(&deviceVal, streamBufferDataDesc.dataChunks, {}, "'streamBufferDataDesc.dataChunks' is NULL");
 
     return streamerImpl->StreamBufferData(streamBufferDataDesc);
 }
@@ -1232,9 +1233,10 @@ static BufferOffset NRI_CALL StreamTextureData(Streamer& streamer, const StreamT
     StreamerVal& streamerVal = (StreamerVal&)streamer;
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
 
-    RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dstTexture, {}, "'streamTextureDataDesc.dstTexture' is NULL'");
-    RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dataRowPitch, {}, "'streamTextureDataDesc.dataRowPitch = 0'");
-    RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dataSlicePitch, {}, "'streamTextureDataDesc.dataSlicePitch = 0'");
+    RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dstTexture, {}, "'streamTextureDataDesc.dstTexture' is NULL");
+    RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dataRowPitch, {}, "'streamTextureDataDesc.dataRowPitch' must be > 0");
+    RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dataSlicePitch, {}, "'streamTextureDataDesc.dataSlicePitch' must be > 0");
+    RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.data, {}, "'streamTextureDataDesc.data' is NULL");
 
     return streamerImpl->StreamTextureData(streamTextureDataDesc);
 }

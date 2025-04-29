@@ -472,6 +472,9 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
     if (graphicsPipelineDesc.outputMerger.logicFunc != LogicFunc::NONE)
         RETURN_ON_FAILURE(this, GetDesc().features.logicFunc, Result::INVALID_ARGUMENT, "'features.logicFunc' is false");
 
+    if (graphicsPipelineDesc.outputMerger.viewMask != 0)
+        RETURN_ON_FAILURE(this, GetDesc().features.flexibleMultiview || GetDesc().features.layerBasedMultiview || GetDesc().features.viewportBasedMultiview, Result::INVALID_ARGUMENT, "multiview is not supported");
+
     auto graphicsPipelineDescImpl = graphicsPipelineDesc;
     graphicsPipelineDescImpl.pipelineLayout = NRI_GET_IMPL(PipelineLayout, graphicsPipelineDesc.pipelineLayout);
 
