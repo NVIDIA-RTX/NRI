@@ -17,14 +17,14 @@ static void DoTransition(const CoreInterface& m_iCore, CommandBuffer* commandBuf
     constexpr AccessLayoutStage unknownState = {AccessBits::UNKNOWN, Layout::UNKNOWN, StageBits::NONE}; // since the whole resource is updated, don't care about the previous state
 
     for (uint32_t i = 0; i < textureDataDescNum;) {
-        uint32_t passBegin = i;
         uint32_t passEnd = std::min(i + BARRIERS_PER_PASS, textureDataDescNum);
 
+        uint32_t n = 0;
         for (; i < passEnd; i++) {
             const TextureUploadDesc& textureUploadDesc = textureUploadDescs[i];
             const TextureDesc& textureDesc = m_iCore.GetTextureDesc(*textureUploadDesc.texture);
 
-            TextureBarrierDesc& barrier = textureBarriers[i - passBegin];
+            TextureBarrierDesc& barrier = textureBarriers[n];
             barrier = {};
             barrier.texture = textureUploadDesc.texture;
             barrier.mipNum = textureDesc.mipNum;
@@ -34,11 +34,15 @@ static void DoTransition(const CoreInterface& m_iCore, CommandBuffer* commandBuf
 
             if (barrierMode != BarrierMode::INITIAL)
                 barrier.planes = textureUploadDesc.planes;
+
+            // Filter out redundant barriers
+            if (barrier.before.access != barrier.after.access || barrier.before.layout != barrier.after.layout)
+                n++;
         }
 
         BarrierGroupDesc barrierGroup = {};
         barrierGroup.textures = textureBarriers;
-        barrierGroup.textureNum = uint16_t(passEnd - passBegin);
+        barrierGroup.textureNum = n;
 
         m_iCore.CmdBarrier(*commandBuffer, barrierGroup);
     }
@@ -51,22 +55,26 @@ static void DoTransition(const CoreInterface& m_iCore, CommandBuffer* commandBuf
     constexpr AccessStage unknownState = {AccessBits::UNKNOWN, StageBits::NONE}; // since the whole resource is updated, don't care about the previous state
 
     for (uint32_t i = 0; i < bufferUploadDescNum;) {
-        uint32_t passBegin = i;
         uint32_t passEnd = std::min(i + BARRIERS_PER_PASS, bufferUploadDescNum);
 
+        uint32_t n = 0;
         for (; i < passEnd; i++) {
             const BufferUploadDesc& bufferUploadDesc = bufferUploadDescs[i];
 
-            BufferBarrierDesc& barrier = bufferBarriers[i - passBegin];
+            BufferBarrierDesc& barrier = bufferBarriers[n];
             barrier = {};
             barrier.buffer = bufferUploadDesc.buffer;
             barrier.before = barrierMode == BarrierMode::FINAL ? copyDestState : unknownState;
             barrier.after = barrierMode == BarrierMode::INITIAL ? copyDestState : bufferUploadDesc.after;
+
+            // Filter out redundant barriers
+            if (barrier.before.access != barrier.after.access)
+                n++;
         }
 
         BarrierGroupDesc barrierGroup = {};
         barrierGroup.buffers = bufferBarriers;
-        barrierGroup.bufferNum = uint16_t(passEnd - passBegin);
+        barrierGroup.bufferNum = n;
 
         m_iCore.CmdBarrier(*commandBuffer, barrierGroup);
     }
