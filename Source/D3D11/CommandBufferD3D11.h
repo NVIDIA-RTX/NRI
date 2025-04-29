@@ -36,7 +36,7 @@ struct CommandBufferD3D11 final : public CommandBufferBase {
     // CommandBufferBase
     //================================================================================================================
 
-    inline ID3D11DeviceContext* GetNativeObject() const override {
+    inline ID3D11DeviceContextBest* GetNativeObject() const override {
         return m_DeferredContext;
     }
 
@@ -102,11 +102,11 @@ private:
     const Buffer* m_IndexBuffer = nullptr;
     BindingState m_BindingState;
     SamplePositionsState m_SamplePositionsState = {};
-    Color32f m_BlendFactor = {};
     uint64_t m_IndexBufferOffset = 0;
+    Color32f m_BlendFactor = {};
+    float m_DepthBounds[2] = {0.0f, 1.0f};
     uint32_t m_RenderTargetNum = 0;
     IndexType m_IndexType = IndexType::UINT32;
-    float m_DepthBounds[2] = {0.0f, 1.0f};
     uint8_t m_StencilRef = 0;
     uint8_t m_Version = 0;
     bool m_IsShadingRateLookupTableSet = false;

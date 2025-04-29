@@ -24,7 +24,7 @@ struct CommandBufferEmuD3D11 final : public CommandBufferBase {
     // CommandBufferBase
     //================================================================================================================
 
-    inline ID3D11DeviceContext* CommandBufferEmuD3D11::GetNativeObject() const override {
+    inline ID3D11DeviceContextBest* CommandBufferEmuD3D11::GetNativeObject() const override {
         return m_Device.GetImmediateContext();
     }
 

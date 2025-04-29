@@ -150,7 +150,7 @@ struct CommandBufferBase : public DebugNameBase {
 
     virtual Result Create(ID3D11DeviceContext* precreatedContext) = 0;
     virtual void Submit() = 0;
-    virtual ID3D11DeviceContext* GetNativeObject() const = 0;
+    virtual ID3D11DeviceContextBest* GetNativeObject() const = 0;
     virtual const AllocationCallbacks& GetAllocationCallbacks() const = 0;
 };
 
