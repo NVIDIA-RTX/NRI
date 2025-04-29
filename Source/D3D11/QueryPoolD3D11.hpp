@@ -40,7 +40,9 @@ void QueryPoolD3D11::GetData(uint8_t* dstMemory, uint32_t offset, uint32_t num) 
 
     for (uint32_t i = 0; i < num; i++) {
         ID3D11Query* query = m_QueryPool[offset + i];
-        m_Device.GetImmediateContext()->GetData(query, dstMemory, querySize, 0);
+
+        while (m_Device.GetImmediateContext()->GetData(query, dstMemory, querySize, 0) == S_FALSE)
+            ;
 
         dstMemory += querySize;
     }
