@@ -452,7 +452,7 @@ NRI_API Result NRI_CALL nriGetInterface(const Device& device, const char* interf
     if (result == Result::INVALID_ARGUMENT)
         REPORT_ERROR(&deviceBase, "Unknown interface '%s'!", interfaceName);
     else if (interfaceSize != realInterfaceSize)
-        REPORT_ERROR(&deviceBase, "Interface '%s' has invalid size = %u bytes, while %u bytes expected by the implementation", interfaceName, interfaceSize, realInterfaceSize);
+        REPORT_ERROR(&deviceBase, "Interface '%s' has invalid size=%u bytes, while %u bytes expected by the implementation", interfaceName, interfaceSize, realInterfaceSize);
     else if (result == Result::UNSUPPORTED)
         REPORT_WARNING(&deviceBase, "Interface '%s' is not supported by the device!", interfaceName);
     else {

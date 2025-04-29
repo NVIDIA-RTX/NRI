@@ -136,8 +136,8 @@ NRI_INLINE void CommandBufferVal::ClearAttachments(const ClearDesc* clearDescs, 
         RETURN_ON_FAILURE(&m_Device, (clearDescs[i].planes & (PlaneBits::COLOR | PlaneBits::DEPTH | PlaneBits::STENCIL)) != 0, ReturnVoid(), "'[%u].planes' is not COLOR, DEPTH or STENCIL", i);
 
         if (clearDescs[i].planes & PlaneBits::COLOR) {
-            RETURN_ON_FAILURE(&m_Device, clearDescs[i].colorAttachmentIndex < deviceDesc.shaderStage.fragment.attachmentMaxNum, ReturnVoid(), "'[%u].colorAttachmentIndex = %u' is out of bounds", i, clearDescs[i].colorAttachmentIndex);
-            RETURN_ON_FAILURE(&m_Device, m_RenderTargets[clearDescs[i].colorAttachmentIndex], ReturnVoid(), "'[%u].colorAttachmentIndex = %u' references a NULL COLOR attachment", i, clearDescs[i].colorAttachmentIndex);
+            RETURN_ON_FAILURE(&m_Device, clearDescs[i].colorAttachmentIndex < deviceDesc.shaderStage.fragment.attachmentMaxNum, ReturnVoid(), "'[%u].colorAttachmentIndex=%u' is out of bounds", i, clearDescs[i].colorAttachmentIndex);
+            RETURN_ON_FAILURE(&m_Device, m_RenderTargets[clearDescs[i].colorAttachmentIndex], ReturnVoid(), "'[%u].colorAttachmentIndex=%u' references a NULL COLOR attachment", i, clearDescs[i].colorAttachmentIndex);
         }
 
         if (clearDescs[i].planes & (PlaneBits::DEPTH | PlaneBits::STENCIL))
@@ -463,7 +463,7 @@ NRI_INLINE void CommandBufferVal::BeginQuery(QueryPool& queryPool, uint32_t offs
     RETURN_ON_FAILURE(&m_Device, queryPoolVal.GetQueryType() != QueryType::TIMESTAMP, ReturnVoid(), "'BeginQuery' is not supported for timestamp queries");
 
     if (!queryPoolVal.IsImported())
-        RETURN_ON_FAILURE(&m_Device, offset < queryPoolVal.GetQueryNum(), ReturnVoid(), "'offset = %u' is out of range", offset);
+        RETURN_ON_FAILURE(&m_Device, offset < queryPoolVal.GetQueryNum(), ReturnVoid(), "'offset=%u' is out of range", offset);
 
     QueryPool* queryPoolImpl = NRI_GET_IMPL(QueryPool, &queryPool);
     GetCoreInterface().CmdBeginQuery(*GetImpl(), *queryPoolImpl, offset);
@@ -475,7 +475,7 @@ NRI_INLINE void CommandBufferVal::EndQuery(QueryPool& queryPool, uint32_t offset
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
 
     if (!queryPoolVal.IsImported())
-        RETURN_ON_FAILURE(&m_Device, offset < queryPoolVal.GetQueryNum(), ReturnVoid(), "'offset = %u' is out of range", offset);
+        RETURN_ON_FAILURE(&m_Device, offset < queryPoolVal.GetQueryNum(), ReturnVoid(), "'offset=%u' is out of range", offset);
 
     QueryPool* queryPoolImpl = NRI_GET_IMPL(QueryPool, &queryPool);
     GetCoreInterface().CmdEndQuery(*GetImpl(), *queryPoolImpl, offset);
@@ -487,7 +487,7 @@ NRI_INLINE void CommandBufferVal::CopyQueries(const QueryPool& queryPool, uint32
 
     const QueryPoolVal& queryPoolVal = (const QueryPoolVal&)queryPool;
     if (!queryPoolVal.IsImported())
-        RETURN_ON_FAILURE(&m_Device, offset + num <= queryPoolVal.GetQueryNum(), ReturnVoid(), "'offset + num =  %u' is out of range", offset + num);
+        RETURN_ON_FAILURE(&m_Device, offset + num <= queryPoolVal.GetQueryNum(), ReturnVoid(), "'offset + num = %u' is out of range", offset + num);
 
     QueryPool* queryPoolImpl = NRI_GET_IMPL(QueryPool, &queryPool);
     Buffer* dstBufferImpl = NRI_GET_IMPL(Buffer, &dstBuffer);
@@ -541,8 +541,8 @@ NRI_INLINE void CommandBufferVal::BuildTopLevelAccelerationStructure(const Build
         RETURN_ON_FAILURE(&m_Device, in.dst, ReturnVoid(), "'dst' is NULL");
         RETURN_ON_FAILURE(&m_Device, in.instanceBuffer, ReturnVoid(), "'instanceBuffer' is NULL");
         RETURN_ON_FAILURE(&m_Device, in.scratchBuffer, ReturnVoid(), "'scratchBuffer' is NULL");
-        RETURN_ON_FAILURE(&m_Device, in.instanceOffset < instanceBufferVal->GetDesc().size, ReturnVoid(), "'instanceOffset = %llu' is out of bounds", in.instanceOffset);
-        RETURN_ON_FAILURE(&m_Device, in.scratchOffset < scratchBufferVal->GetDesc().size, ReturnVoid(), "'scratchOffset = %llu' is out of bounds", in.scratchOffset);
+        RETURN_ON_FAILURE(&m_Device, in.instanceOffset < instanceBufferVal->GetDesc().size, ReturnVoid(), "'instanceOffset=%" PRIu64 "' is out of bounds", in.instanceOffset);
+        RETURN_ON_FAILURE(&m_Device, in.scratchOffset < scratchBufferVal->GetDesc().size, ReturnVoid(), "'scratchOffset=%" PRIu64 "' is out of bounds", in.scratchOffset);
 
         auto& out = buildTopLevelAccelerationStructureDescsImpl[i];
         out = in;
@@ -589,7 +589,7 @@ NRI_INLINE void CommandBufferVal::BuildBottomLevelAccelerationStructure(const Bu
         RETURN_ON_FAILURE(&m_Device, in.dst, ReturnVoid(), "'dst' is NULL");
         RETURN_ON_FAILURE(&m_Device, in.scratchBuffer, ReturnVoid(), "'scratchBuffer' is NULL");
         RETURN_ON_FAILURE(&m_Device, in.geometries, ReturnVoid(), "'geometries' is NULL");
-        RETURN_ON_FAILURE(&m_Device, in.scratchOffset < scratchBufferVal->GetDesc().size, ReturnVoid(), "'scratchOffset = %llu' is out of bounds", in.scratchOffset);
+        RETURN_ON_FAILURE(&m_Device, in.scratchOffset < scratchBufferVal->GetDesc().size, ReturnVoid(), "'scratchOffset=%" PRIu64 "' is out of bounds", in.scratchOffset);
 
         auto& out = buildBottomLevelAccelerationStructureDescsImpl[i];
         out = in;
@@ -620,9 +620,9 @@ NRI_INLINE void CommandBufferVal::BuildMicromaps(const BuildMicromapDesc* buildM
         RETURN_ON_FAILURE(&m_Device, in.dataBuffer, ReturnVoid(), "'dataBuffer' is NULL");
         RETURN_ON_FAILURE(&m_Device, in.triangleBuffer, ReturnVoid(), "'triangleBuffer' is NULL");
         RETURN_ON_FAILURE(&m_Device, in.scratchBuffer, ReturnVoid(), "'scratchBuffer' is NULL");
-        RETURN_ON_FAILURE(&m_Device, in.dataOffset < dataBufferVal->GetDesc().size, ReturnVoid(), "'dataOffset = %llu' is out of bounds", in.dataOffset);
-        RETURN_ON_FAILURE(&m_Device, in.triangleOffset < triangleBufferVal->GetDesc().size, ReturnVoid(), "'triangleOffset = %llu' is out of bounds", in.triangleOffset);
-        RETURN_ON_FAILURE(&m_Device, in.scratchOffset < scratchBufferVal->GetDesc().size, ReturnVoid(), "'scratchOffset = %llu' is out of bounds", in.scratchOffset);
+        RETURN_ON_FAILURE(&m_Device, in.dataOffset < dataBufferVal->GetDesc().size, ReturnVoid(), "'dataOffset=%" PRIu64 "' is out of bounds", in.dataOffset);
+        RETURN_ON_FAILURE(&m_Device, in.triangleOffset < triangleBufferVal->GetDesc().size, ReturnVoid(), "'triangleOffset=%" PRIu64 "' is out of bounds", in.triangleOffset);
+        RETURN_ON_FAILURE(&m_Device, in.scratchOffset < scratchBufferVal->GetDesc().size, ReturnVoid(), "'scratchOffset=%" PRIu64 "' is out of bounds", in.scratchOffset);
 
         auto& out = buildMicromapDescsImpl[i];
         out = in;

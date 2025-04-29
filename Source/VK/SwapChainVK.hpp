@@ -256,7 +256,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
             }
             if (i != presentModeNum)
                 break;
-            REPORT_WARNING(&m_Device, "VkPresentModeKHR = %u is not supported", modes[j]);
+            REPORT_WARNING(&m_Device, "'(VkPresentModeKHR)%u' is not supported", modes[j]);
         }
         if (j == 2)
             REPORT_WARNING(&m_Device, "No a suitable present mode found, switching to VK_PRESENT_MODE_IMMEDIATE_KHR");

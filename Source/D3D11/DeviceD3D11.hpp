@@ -484,7 +484,7 @@ void DeviceD3D11::InitializeNvExt(bool isNVAPILoadedInApp, bool isImported) {
     else {
         NvAPI_Status status = NvAPI_Initialize();
         if (status != NVAPI_OK)
-            REPORT_ERROR(this, "NvAPI_Initialize(): failed, result = %d!", (int32_t)status);
+            REPORT_ERROR(this, "NvAPI_Initialize(): failed, result=%d!", (int32_t)status);
         m_NvExt.available = (status == NVAPI_OK);
     }
 #endif

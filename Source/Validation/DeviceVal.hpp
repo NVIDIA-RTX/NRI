@@ -226,7 +226,7 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const BufferViewDesc& bufferViewDe
     RETURN_ON_FAILURE(this, bufferViewDesc.viewType < BufferViewType::MAX_NUM, Result::INVALID_ARGUMENT, "'viewType' is invalid");
 
     const BufferDesc& bufferDesc = ((BufferVal*)bufferViewDesc.buffer)->GetDesc();
-    RETURN_ON_FAILURE(this, bufferViewDesc.offset + bufferViewDesc.size <= bufferDesc.size, Result::INVALID_ARGUMENT, "'offset=%llu' + 'size=%llu' must be <= buffer 'size = %llu'", bufferViewDesc.offset, bufferViewDesc.size, bufferDesc.size);
+    RETURN_ON_FAILURE(this, bufferViewDesc.offset + bufferViewDesc.size <= bufferDesc.size, Result::INVALID_ARGUMENT, "'offset=%" PRIu64 "' + 'size=%" PRIu64 "' must be <= buffer 'size=%" PRIu64 "'", bufferViewDesc.offset, bufferViewDesc.size, bufferDesc.size);
 
     auto bufferViewDescImpl = bufferViewDesc;
     bufferViewDescImpl.buffer = NRI_GET_IMPL(Buffer, bufferViewDesc.buffer);
@@ -378,7 +378,7 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
         for (; n < i && spaces[n] != descriptorSetDesc.registerSpace; n++)
             ;
 
-        RETURN_ON_FAILURE(this, n == i, Result::INVALID_ARGUMENT, "'descriptorSets[%u].registerSpace = %u' is already in use", i, descriptorSetDesc.registerSpace);
+        RETURN_ON_FAILURE(this, n == i, Result::INVALID_ARGUMENT, "'descriptorSets[%u].registerSpace=%u' is already in use", i, descriptorSetDesc.registerSpace);
         spaces[i] = descriptorSetDesc.registerSpace;
 
         rangeNum += descriptorSetDesc.rangeNum;
@@ -389,7 +389,7 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
         for (; n < pipelineLayoutDesc.descriptorSetNum && spaces[n] != pipelineLayoutDesc.rootRegisterSpace; n++)
             ;
 
-        RETURN_ON_FAILURE(this, n == pipelineLayoutDesc.descriptorSetNum, Result::INVALID_ARGUMENT, "'registerSpace = %u' is already in use", pipelineLayoutDesc.rootRegisterSpace);
+        RETURN_ON_FAILURE(this, n == pipelineLayoutDesc.descriptorSetNum, Result::INVALID_ARGUMENT, "'registerSpace=%u' is already in use", pipelineLayoutDesc.rootRegisterSpace);
     }
 
     for (uint32_t i = 0; i < pipelineLayoutDesc.rootDescriptorNum; i++) {
@@ -451,7 +451,7 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
 
     for (uint32_t i = 0; i < graphicsPipelineDesc.outputMerger.colorNum; i++) {
         const ColorAttachmentDesc* color = graphicsPipelineDesc.outputMerger.colors + i;
-        RETURN_ON_FAILURE(this, color->format > Format::UNKNOWN && color->format < Format::BC1_RGBA_UNORM, Result::INVALID_ARGUMENT, "'outputMerger->color[%u].format = %u' is invalid", i, color->format);
+        RETURN_ON_FAILURE(this, color->format > Format::UNKNOWN && color->format < Format::BC1_RGBA_UNORM, Result::INVALID_ARGUMENT, "'outputMerger->color[%u].format=%u' is invalid", i, color->format);
     }
 
     if (graphicsPipelineDesc.rasterization.conservativeRaster)

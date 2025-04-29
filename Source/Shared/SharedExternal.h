@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cassert>
+#include <cinttypes>
 #include <cstring>
 #include <map>
 #include <numeric>
@@ -365,9 +366,9 @@ inline uint64_t GetPresentIndex(uint64_t presentId) {
 // Windows/D3D specific
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
 
-#define SET_D3D_DEBUG_OBJECT_NAME(obj, name) \
-    if (obj) \
-    obj->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)std::strlen(name), name)
+#    define SET_D3D_DEBUG_OBJECT_NAME(obj, name) \
+        if (obj) \
+        obj->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)std::strlen(name), name)
 
 bool HasOutput();
 Result QueryVideoMemoryInfoDXGI(uint64_t luid, MemoryLocation memoryLocation, VideoMemoryInfo& videoMemoryInfo);
