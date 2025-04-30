@@ -58,8 +58,8 @@ NriStruct(SwapChainDesc) {
     const NriPtr(Queue) queue;      // GRAPHICS or COMPUTE (requires "features.presentFromCompute")
     Nri(Dim_t) width;
     Nri(Dim_t) height;
-    uint8_t textureNum;
-    Nri(SwapChainFormat) format;
+    uint8_t textureNum;             // desired value, real value must be queried using "GetSwapChainTextures"
+    Nri(SwapChainFormat) format;    // desired format, real must be queried using "GetTextureDesc" for one of swap chain textures
     uint8_t verticalSyncInterval;   // 0 - vsync off
     uint8_t queuedFrameNum;         // aka "max frame latency", aka "number of frames in flight" (mostly for D3D11)
     bool waitable;                  // allows to use "WaitForPresent", which helps to reduce latency (requires "features.waitableSwapChain")

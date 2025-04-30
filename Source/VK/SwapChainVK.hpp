@@ -127,7 +127,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         // Silently clamp "textureNum" to supported range
         if (textureNum < sc.surfaceCapabilities.minImageCount)
             textureNum = sc.surfaceCapabilities.minImageCount;
-        else if (textureNum > sc.surfaceCapabilities.maxImageCount)
+        if (sc.surfaceCapabilities.maxImageCount && textureNum > sc.surfaceCapabilities.maxImageCount) // 0 - unlimited (see spec)
             textureNum = sc.surfaceCapabilities.maxImageCount;
     }
 
