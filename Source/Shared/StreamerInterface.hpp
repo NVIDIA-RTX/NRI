@@ -15,7 +15,7 @@ bool StreamerImpl::Grow() {
     if (m_DynamicDataOffset <= m_DynamicBufferSize)
         return true;
 
-    uint64_t newSize = m_DynamicDataOffset * (m_Desc.frameInFlightNum + 1);
+    uint64_t newSize = m_DynamicDataOffset * m_Desc.queuedFrameNum;
     m_DynamicBufferSize = Align(newSize, CHUNK_SIZE);
 
     // Add to garbage, keeping it alive for some frames
@@ -202,7 +202,7 @@ void StreamerImpl::Finalize() {
     // Process garbage
     for (size_t i = 0; i < m_GarbageInFlight.size(); i++) {
         GarbageInFlight& garbageInFlight = m_GarbageInFlight[i];
-        if (garbageInFlight.frameNum < m_Desc.frameInFlightNum)
+        if (garbageInFlight.frameNum < m_Desc.queuedFrameNum)
             garbageInFlight.frameNum++;
         else {
             m_iCore.DestroyBuffer(*garbageInFlight.buffer);
@@ -217,7 +217,7 @@ void StreamerImpl::Finalize() {
     m_TextureRequestsWithDst.clear();
 
     // Next frame
-    m_FrameIndex = (m_FrameIndex + 1) % (m_Desc.frameInFlightNum + 1);
+    m_FrameIndex = (m_FrameIndex + 1) % m_Desc.queuedFrameNum;
 
     if (m_FrameIndex == 0)
         m_DynamicDataOffset = 0;
