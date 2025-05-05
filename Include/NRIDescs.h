@@ -78,7 +78,7 @@ NriEnum(GraphicsAPI, uint8_t,
 );
 
 NriEnum(Result, int8_t,
-    // All bad, but optionally require user action
+    // All bad, but optionally require an action
     DEVICE_LOST             = -3,
     OUT_OF_DATE             = -2,   // VK only: swap chain is out of date
     INVALID_AGILITY_SDK     = -1,   // D3D12 only: unable to load "D3D12Core.dll" or version mismatch
@@ -378,7 +378,7 @@ NriEnum(Robustness, uint8_t,
 
 NriEnum(MemoryLocation, uint8_t,
     DEVICE,
-    DEVICE_UPLOAD, // soft fallback to HOST_UPLOAD
+    DEVICE_UPLOAD, // soft fallback to "HOST_UPLOAD"
     HOST_UPLOAD,
     HOST_READBACK
 );
@@ -455,7 +455,7 @@ NriBits(BufferUsageBits, uint16_t,                 // Min compatible access:    
     SHADER_RESOURCE_STORAGE             = NriBit(1),  // SHADER_RESOURCE_STORAGE                 Read/write shader resource (UAV)
     VERTEX_BUFFER                       = NriBit(2),  // VERTEX_BUFFER                           Vertex buffer
     INDEX_BUFFER                        = NriBit(3),  // INDEX_BUFFER                            Index buffer
-    CONSTANT_BUFFER                     = NriBit(4),  // CONSTANT_BUFFER                         Constant buffer
+    CONSTANT_BUFFER                     = NriBit(4),  // CONSTANT_BUFFER                         Constant buffer (D3D11: can't be combined with other usages)
     ARGUMENT_BUFFER                     = NriBit(5),  // ARGUMENT_BUFFER                         Argument buffer in "Indirect" commands
     SCRATCH_BUFFER                      = NriBit(6),  // SCRATCH_BUFFER                          Scratch buffer in "CmdBuild*" commands
     SHADER_BINDING_TABLE                = NriBit(7),  // SHADER_BINDING_TABLE                    Shader binding table (SBT) in "CmdDispatchRays*" commands
