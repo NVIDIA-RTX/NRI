@@ -41,14 +41,14 @@ struct DispatchTable {
     VK_FUNC(CreateWin32SurfaceKHR);
     VK_FUNC(GetMemoryWin32HandlePropertiesKHR);
 #endif
-#ifdef VK_USE_PLATFORM_METAL_EXT
-    VK_FUNC(CreateMetalSurfaceEXT);
-#endif
 #ifdef VK_USE_PLATFORM_XLIB_KHR
     VK_FUNC(CreateXlibSurfaceKHR);
 #endif
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
     VK_FUNC(CreateWaylandSurfaceKHR);
+#endif
+#ifdef VK_USE_PLATFORM_METAL_EXT
+    VK_FUNC(CreateMetalSurfaceEXT);
 #endif
 
     // VK_EXT_debug_utils

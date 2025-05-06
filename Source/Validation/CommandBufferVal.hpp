@@ -33,7 +33,7 @@ NRI_INLINE Result CommandBufferVal::Begin(const DescriptorPool* descriptorPool) 
 
     DescriptorPool* descriptorPoolImpl = NRI_GET_IMPL(DescriptorPool, descriptorPool);
 
-    Result result = GetCoreInterface().BeginCommandBuffer(*GetImpl(), descriptorPoolImpl);
+    Result result = GetCoreInterfaceImpl().BeginCommandBuffer(*GetImpl(), descriptorPoolImpl);
     if (result == Result::SUCCESS)
         m_IsRecordingStarted = true;
 
@@ -53,7 +53,7 @@ NRI_INLINE Result CommandBufferVal::End() {
     else if (m_AnnotationStack < 0)
         REPORT_ERROR(&m_Device, "'CmdEndAnnotation' is called more times than 'CmdBeginAnnotation'");
 
-    Result result = GetCoreInterface().EndCommandBuffer(*GetImpl());
+    Result result = GetCoreInterfaceImpl().EndCommandBuffer(*GetImpl());
     if (result == Result::SUCCESS)
         m_IsRecordingStarted = m_IsWrapped;
 
@@ -70,13 +70,13 @@ NRI_INLINE void CommandBufferVal::SetViewports(const Viewport* viewports, uint32
         }
     }
 
-    GetCoreInterface().CmdSetViewports(*GetImpl(), viewports, viewportNum);
+    GetCoreInterfaceImpl().CmdSetViewports(*GetImpl(), viewports, viewportNum);
 }
 
 NRI_INLINE void CommandBufferVal::SetScissors(const Rect* rects, uint32_t rectNum) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
 
-    GetCoreInterface().CmdSetScissors(*GetImpl(), rects, rectNum);
+    GetCoreInterfaceImpl().CmdSetScissors(*GetImpl(), rects, rectNum);
 }
 
 NRI_INLINE void CommandBufferVal::SetDepthBounds(float boundsMin, float boundsMax) {
@@ -85,13 +85,13 @@ NRI_INLINE void CommandBufferVal::SetDepthBounds(float boundsMin, float boundsMa
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, deviceDesc.features.depthBoundsTest, ReturnVoid(), "'features.depthBoundsTest' is false");
 
-    GetCoreInterface().CmdSetDepthBounds(*GetImpl(), boundsMin, boundsMax);
+    GetCoreInterfaceImpl().CmdSetDepthBounds(*GetImpl(), boundsMin, boundsMax);
 }
 
 NRI_INLINE void CommandBufferVal::SetStencilReference(uint8_t frontRef, uint8_t backRef) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
 
-    GetCoreInterface().CmdSetStencilReference(*GetImpl(), frontRef, backRef);
+    GetCoreInterfaceImpl().CmdSetStencilReference(*GetImpl(), frontRef, backRef);
 }
 
 NRI_INLINE void CommandBufferVal::SetSampleLocations(const SampleLocation* locations, Sample_t locationNum, Sample_t sampleNum) {
@@ -100,13 +100,13 @@ NRI_INLINE void CommandBufferVal::SetSampleLocations(const SampleLocation* locat
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, deviceDesc.tiers.sampleLocations != 0, ReturnVoid(), "'tiers.sampleLocations > 0' required");
 
-    GetCoreInterface().CmdSetSampleLocations(*GetImpl(), locations, locationNum, sampleNum);
+    GetCoreInterfaceImpl().CmdSetSampleLocations(*GetImpl(), locations, locationNum, sampleNum);
 }
 
 NRI_INLINE void CommandBufferVal::SetBlendConstants(const Color32f& color) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
 
-    GetCoreInterface().CmdSetBlendConstants(*GetImpl(), color);
+    GetCoreInterfaceImpl().CmdSetBlendConstants(*GetImpl(), color);
 }
 
 NRI_INLINE void CommandBufferVal::SetShadingRate(const ShadingRateDesc& shadingRateDesc) {
@@ -115,7 +115,7 @@ NRI_INLINE void CommandBufferVal::SetShadingRate(const ShadingRateDesc& shadingR
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, deviceDesc.tiers.shadingRate, ReturnVoid(), "'tiers.shadingRate > 0' required");
 
-    GetCoreInterface().CmdSetShadingRate(*GetImpl(), shadingRateDesc);
+    GetCoreInterfaceImpl().CmdSetShadingRate(*GetImpl(), shadingRateDesc);
 }
 
 NRI_INLINE void CommandBufferVal::SetDepthBias(const DepthBiasDesc& depthBiasDesc) {
@@ -124,7 +124,7 @@ NRI_INLINE void CommandBufferVal::SetDepthBias(const DepthBiasDesc& depthBiasDes
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, deviceDesc.features.dynamicDepthBias, ReturnVoid(), "'features.dynamicDepthBias' is false");
 
-    GetCoreInterface().CmdSetDepthBias(*GetImpl(), depthBiasDesc);
+    GetCoreInterfaceImpl().CmdSetDepthBias(*GetImpl(), depthBiasDesc);
 }
 
 NRI_INLINE void CommandBufferVal::ClearAttachments(const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum) {
@@ -147,7 +147,7 @@ NRI_INLINE void CommandBufferVal::ClearAttachments(const ClearDesc* clearDescs, 
             RETURN_ON_FAILURE(&m_Device, (clearDescs[i].planes & PlaneBits::COLOR), ReturnVoid(), "'[%u].planes' is not COLOR, but `colorAttachmentIndex != 0`", i);
     }
 
-    GetCoreInterface().CmdClearAttachments(*GetImpl(), clearDescs, clearDescNum, rects, rectNum);
+    GetCoreInterfaceImpl().CmdClearAttachments(*GetImpl(), clearDescs, clearDescNum, rects, rectNum);
 }
 
 NRI_INLINE void CommandBufferVal::ClearStorage(const ClearStorageDesc& clearDesc) {
@@ -161,7 +161,7 @@ NRI_INLINE void CommandBufferVal::ClearStorage(const ClearStorageDesc& clearDesc
     auto clearDescImpl = clearDesc;
     clearDescImpl.storage = NRI_GET_IMPL(Descriptor, clearDesc.storage);
 
-    GetCoreInterface().CmdClearStorage(*GetImpl(), clearDescImpl);
+    GetCoreInterfaceImpl().CmdClearStorage(*GetImpl(), clearDescImpl);
 }
 
 NRI_INLINE void CommandBufferVal::BeginRendering(const AttachmentsDesc& attachmentsDesc) {
@@ -198,7 +198,7 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const AttachmentsDesc& attachme
 
     ValidateReadonlyDepthStencil();
 
-    GetCoreInterface().CmdBeginRendering(*GetImpl(), attachmentsDescImpl);
+    GetCoreInterfaceImpl().CmdBeginRendering(*GetImpl(), attachmentsDescImpl);
 }
 
 NRI_INLINE void CommandBufferVal::EndRendering() {
@@ -209,7 +209,7 @@ NRI_INLINE void CommandBufferVal::EndRendering() {
 
     ResetAttachments();
 
-    GetCoreInterface().CmdEndRendering(*GetImpl());
+    GetCoreInterfaceImpl().CmdEndRendering(*GetImpl());
 }
 
 NRI_INLINE void CommandBufferVal::SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum) {
@@ -222,7 +222,7 @@ NRI_INLINE void CommandBufferVal::SetVertexBuffers(uint32_t baseSlot, const Vert
         vertexBufferDescsImpl[i].buffer = NRI_GET_IMPL(Buffer, vertexBufferDescs[i].buffer);
     }
 
-    GetCoreInterface().CmdSetVertexBuffers(*GetImpl(), baseSlot, vertexBufferDescsImpl, vertexBufferNum);
+    GetCoreInterfaceImpl().CmdSetVertexBuffers(*GetImpl(), baseSlot, vertexBufferDescsImpl, vertexBufferNum);
 }
 
 NRI_INLINE void CommandBufferVal::SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType) {
@@ -230,7 +230,7 @@ NRI_INLINE void CommandBufferVal::SetIndexBuffer(const Buffer& buffer, uint64_t 
 
     Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);
 
-    GetCoreInterface().CmdSetIndexBuffer(*GetImpl(), *bufferImpl, offset, indexType);
+    GetCoreInterfaceImpl().CmdSetIndexBuffer(*GetImpl(), *bufferImpl, offset, indexType);
 }
 
 NRI_INLINE void CommandBufferVal::SetPipelineLayout(const PipelineLayout& pipelineLayout) {
@@ -240,7 +240,7 @@ NRI_INLINE void CommandBufferVal::SetPipelineLayout(const PipelineLayout& pipeli
 
     m_PipelineLayout = (PipelineLayoutVal*)&pipelineLayout;
 
-    GetCoreInterface().CmdSetPipelineLayout(*GetImpl(), *pipelineLayoutImpl);
+    GetCoreInterfaceImpl().CmdSetPipelineLayout(*GetImpl(), *pipelineLayoutImpl);
 }
 
 NRI_INLINE void CommandBufferVal::SetPipeline(const Pipeline& pipeline) {
@@ -252,7 +252,7 @@ NRI_INLINE void CommandBufferVal::SetPipeline(const Pipeline& pipeline) {
 
     ValidateReadonlyDepthStencil();
 
-    GetCoreInterface().CmdSetPipeline(*GetImpl(), *pipelineImpl);
+    GetCoreInterfaceImpl().CmdSetPipeline(*GetImpl(), *pipelineImpl);
 }
 
 NRI_INLINE void CommandBufferVal::SetDescriptorPool(const DescriptorPool& descriptorPool) {
@@ -260,7 +260,7 @@ NRI_INLINE void CommandBufferVal::SetDescriptorPool(const DescriptorPool& descri
 
     DescriptorPool* descriptorPoolImpl = NRI_GET_IMPL(DescriptorPool, &descriptorPool);
 
-    GetCoreInterface().CmdSetDescriptorPool(*GetImpl(), *descriptorPoolImpl);
+    GetCoreInterfaceImpl().CmdSetDescriptorPool(*GetImpl(), *descriptorPoolImpl);
 }
 
 NRI_INLINE void CommandBufferVal::SetDescriptorSet(uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) {
@@ -269,14 +269,14 @@ NRI_INLINE void CommandBufferVal::SetDescriptorSet(uint32_t setIndex, const Desc
 
     DescriptorSet* descriptorSetImpl = NRI_GET_IMPL(DescriptorSet, &descriptorSet);
 
-    GetCoreInterface().CmdSetDescriptorSet(*GetImpl(), setIndex, *descriptorSetImpl, dynamicConstantBufferOffsets);
+    GetCoreInterfaceImpl().CmdSetDescriptorSet(*GetImpl(), setIndex, *descriptorSetImpl, dynamicConstantBufferOffsets);
 }
 
 NRI_INLINE void CommandBufferVal::SetRootConstants(uint32_t rootConstantIndex, const void* data, uint32_t size) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
 
-    GetCoreInterface().CmdSetRootConstants(*GetImpl(), rootConstantIndex, data, size);
+    GetCoreInterfaceImpl().CmdSetRootConstants(*GetImpl(), rootConstantIndex, data, size);
 }
 
 NRI_INLINE void CommandBufferVal::SetRootDescriptor(uint32_t rootDescriptorIndex, Descriptor& descriptor) {
@@ -288,21 +288,21 @@ NRI_INLINE void CommandBufferVal::SetRootDescriptor(uint32_t rootDescriptorIndex
 
     Descriptor* descriptorImpl = NRI_GET_IMPL(Descriptor, &descriptor);
 
-    GetCoreInterface().CmdSetRootDescriptor(*GetImpl(), rootDescriptorIndex, *descriptorImpl);
+    GetCoreInterfaceImpl().CmdSetRootDescriptor(*GetImpl(), rootDescriptorIndex, *descriptorImpl);
 }
 
 NRI_INLINE void CommandBufferVal::Draw(const DrawDesc& drawDesc) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_IsRenderPass, ReturnVoid(), "must be called inside 'CmdBeginRendering/CmdEndRendering'");
 
-    GetCoreInterface().CmdDraw(*GetImpl(), drawDesc);
+    GetCoreInterfaceImpl().CmdDraw(*GetImpl(), drawDesc);
 }
 
 NRI_INLINE void CommandBufferVal::DrawIndexed(const DrawIndexedDesc& drawIndexedDesc) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_IsRenderPass, ReturnVoid(), "must be called inside 'CmdBeginRendering/CmdEndRendering'");
 
-    GetCoreInterface().CmdDrawIndexed(*GetImpl(), drawIndexedDesc);
+    GetCoreInterfaceImpl().CmdDrawIndexed(*GetImpl(), drawIndexedDesc);
 }
 
 NRI_INLINE void CommandBufferVal::DrawIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset) {
@@ -315,7 +315,7 @@ NRI_INLINE void CommandBufferVal::DrawIndirect(const Buffer& buffer, uint64_t of
     Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);
     Buffer* countBufferImpl = NRI_GET_IMPL(Buffer, countBuffer);
 
-    GetCoreInterface().CmdDrawIndirect(*GetImpl(), *bufferImpl, offset, drawNum, stride, countBufferImpl, countBufferOffset);
+    GetCoreInterfaceImpl().CmdDrawIndirect(*GetImpl(), *bufferImpl, offset, drawNum, stride, countBufferImpl, countBufferOffset);
 }
 
 NRI_INLINE void CommandBufferVal::DrawIndexedIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset) {
@@ -328,7 +328,7 @@ NRI_INLINE void CommandBufferVal::DrawIndexedIndirect(const Buffer& buffer, uint
     Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);
     Buffer* countBufferImpl = NRI_GET_IMPL(Buffer, countBuffer);
 
-    GetCoreInterface().CmdDrawIndexedIndirect(*GetImpl(), *bufferImpl, offset, drawNum, stride, countBufferImpl, countBufferOffset);
+    GetCoreInterfaceImpl().CmdDrawIndexedIndirect(*GetImpl(), *bufferImpl, offset, drawNum, stride, countBufferImpl, countBufferOffset);
 }
 
 NRI_INLINE void CommandBufferVal::CopyBuffer(Buffer& dstBuffer, uint64_t dstOffset, const Buffer& srcBuffer, uint64_t srcOffset, uint64_t size) {
@@ -349,7 +349,7 @@ NRI_INLINE void CommandBufferVal::CopyBuffer(Buffer& dstBuffer, uint64_t dstOffs
     Buffer* dstBufferImpl = NRI_GET_IMPL(Buffer, &dstBuffer);
     Buffer* srcBufferImpl = NRI_GET_IMPL(Buffer, &srcBuffer);
 
-    GetCoreInterface().CmdCopyBuffer(*GetImpl(), *dstBufferImpl, dstOffset, *srcBufferImpl, srcOffset, size);
+    GetCoreInterfaceImpl().CmdCopyBuffer(*GetImpl(), *dstBufferImpl, dstOffset, *srcBufferImpl, srcOffset, size);
 }
 
 NRI_INLINE void CommandBufferVal::CopyTexture(Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
@@ -359,7 +359,7 @@ NRI_INLINE void CommandBufferVal::CopyTexture(Texture& dstTexture, const Texture
     Texture* dstTextureImpl = NRI_GET_IMPL(Texture, &dstTexture);
     Texture* srcTextureImpl = NRI_GET_IMPL(Texture, &srcTexture);
 
-    GetCoreInterface().CmdCopyTexture(*GetImpl(), *dstTextureImpl, dstRegionDesc, *srcTextureImpl, srcRegionDesc);
+    GetCoreInterfaceImpl().CmdCopyTexture(*GetImpl(), *dstTextureImpl, dstRegionDesc, *srcTextureImpl, srcRegionDesc);
 }
 
 NRI_INLINE void CommandBufferVal::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
@@ -369,7 +369,7 @@ NRI_INLINE void CommandBufferVal::ResolveTexture(Texture& dstTexture, const Text
     Texture* dstTextureImpl = NRI_GET_IMPL(Texture, &dstTexture);
     Texture* srcTextureImpl = NRI_GET_IMPL(Texture, &srcTexture);
 
-    GetCoreInterface().CmdResolveTexture(*GetImpl(), *dstTextureImpl, dstRegionDesc, *srcTextureImpl, srcRegionDesc);
+    GetCoreInterfaceImpl().CmdResolveTexture(*GetImpl(), *dstTextureImpl, dstRegionDesc, *srcTextureImpl, srcRegionDesc);
 }
 
 NRI_INLINE void CommandBufferVal::UploadBufferToTexture(Texture& dstTexture, const TextureRegionDesc& dstRegionDesc, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayoutDesc) {
@@ -379,7 +379,7 @@ NRI_INLINE void CommandBufferVal::UploadBufferToTexture(Texture& dstTexture, con
     Texture* dstTextureImpl = NRI_GET_IMPL(Texture, &dstTexture);
     Buffer* srcBufferImpl = NRI_GET_IMPL(Buffer, &srcBuffer);
 
-    GetCoreInterface().CmdUploadBufferToTexture(*GetImpl(), *dstTextureImpl, dstRegionDesc, *srcBufferImpl, srcDataLayoutDesc);
+    GetCoreInterfaceImpl().CmdUploadBufferToTexture(*GetImpl(), *dstTextureImpl, dstRegionDesc, *srcBufferImpl, srcDataLayoutDesc);
 }
 
 NRI_INLINE void CommandBufferVal::ReadbackTextureToBuffer(Buffer& dstBuffer, const TextureDataLayoutDesc& dstDataLayoutDesc, const Texture& srcTexture, const TextureRegionDesc& srcRegionDesc) {
@@ -389,7 +389,7 @@ NRI_INLINE void CommandBufferVal::ReadbackTextureToBuffer(Buffer& dstBuffer, con
     Buffer* dstBufferImpl = NRI_GET_IMPL(Buffer, &dstBuffer);
     Texture* srcTextureImpl = NRI_GET_IMPL(Texture, &srcTexture);
 
-    GetCoreInterface().CmdReadbackTextureToBuffer(*GetImpl(), *dstBufferImpl, dstDataLayoutDesc, *srcTextureImpl, srcRegionDesc);
+    GetCoreInterfaceImpl().CmdReadbackTextureToBuffer(*GetImpl(), *dstBufferImpl, dstDataLayoutDesc, *srcTextureImpl, srcRegionDesc);
 }
 
 NRI_INLINE void CommandBufferVal::ZeroBuffer(Buffer& buffer, uint64_t offset, uint64_t size) {
@@ -405,14 +405,14 @@ NRI_INLINE void CommandBufferVal::ZeroBuffer(Buffer& buffer, uint64_t offset, ui
 
     Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);
 
-    GetCoreInterface().CmdZeroBuffer(*GetImpl(), *bufferImpl, offset, size);
+    GetCoreInterfaceImpl().CmdZeroBuffer(*GetImpl(), *bufferImpl, offset, size);
 }
 
 NRI_INLINE void CommandBufferVal::Dispatch(const DispatchDesc& dispatchDesc) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
 
-    GetCoreInterface().CmdDispatch(*GetImpl(), dispatchDesc);
+    GetCoreInterfaceImpl().CmdDispatch(*GetImpl(), dispatchDesc);
 }
 
 NRI_INLINE void CommandBufferVal::DispatchIndirect(const Buffer& buffer, uint64_t offset) {
@@ -423,7 +423,7 @@ NRI_INLINE void CommandBufferVal::DispatchIndirect(const Buffer& buffer, uint64_
     RETURN_ON_FAILURE(&m_Device, offset < bufferDesc.size, ReturnVoid(), "offset is greater than the buffer size");
 
     Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);
-    GetCoreInterface().CmdDispatchIndirect(*GetImpl(), *bufferImpl, offset);
+    GetCoreInterfaceImpl().CmdDispatchIndirect(*GetImpl(), *bufferImpl, offset);
 }
 
 NRI_INLINE void CommandBufferVal::Barrier(const BarrierGroupDesc& barrierGroupDesc) {
@@ -453,7 +453,7 @@ NRI_INLINE void CommandBufferVal::Barrier(const BarrierGroupDesc& barrierGroupDe
     barrierGroupDescImpl.buffers = buffers;
     barrierGroupDescImpl.textures = textures;
 
-    GetCoreInterface().CmdBarrier(*GetImpl(), barrierGroupDescImpl);
+    GetCoreInterfaceImpl().CmdBarrier(*GetImpl(), barrierGroupDescImpl);
 }
 
 NRI_INLINE void CommandBufferVal::BeginQuery(QueryPool& queryPool, uint32_t offset) {
@@ -466,7 +466,7 @@ NRI_INLINE void CommandBufferVal::BeginQuery(QueryPool& queryPool, uint32_t offs
         RETURN_ON_FAILURE(&m_Device, offset < queryPoolVal.GetQueryNum(), ReturnVoid(), "'offset=%u' is out of range", offset);
 
     QueryPool* queryPoolImpl = NRI_GET_IMPL(QueryPool, &queryPool);
-    GetCoreInterface().CmdBeginQuery(*GetImpl(), *queryPoolImpl, offset);
+    GetCoreInterfaceImpl().CmdBeginQuery(*GetImpl(), *queryPoolImpl, offset);
 }
 
 NRI_INLINE void CommandBufferVal::EndQuery(QueryPool& queryPool, uint32_t offset) {
@@ -478,7 +478,7 @@ NRI_INLINE void CommandBufferVal::EndQuery(QueryPool& queryPool, uint32_t offset
         RETURN_ON_FAILURE(&m_Device, offset < queryPoolVal.GetQueryNum(), ReturnVoid(), "'offset=%u' is out of range", offset);
 
     QueryPool* queryPoolImpl = NRI_GET_IMPL(QueryPool, &queryPool);
-    GetCoreInterface().CmdEndQuery(*GetImpl(), *queryPoolImpl, offset);
+    GetCoreInterfaceImpl().CmdEndQuery(*GetImpl(), *queryPoolImpl, offset);
 }
 
 NRI_INLINE void CommandBufferVal::CopyQueries(const QueryPool& queryPool, uint32_t offset, uint32_t num, Buffer& dstBuffer, uint64_t dstOffset) {
@@ -492,7 +492,7 @@ NRI_INLINE void CommandBufferVal::CopyQueries(const QueryPool& queryPool, uint32
     QueryPool* queryPoolImpl = NRI_GET_IMPL(QueryPool, &queryPool);
     Buffer* dstBufferImpl = NRI_GET_IMPL(Buffer, &dstBuffer);
 
-    GetCoreInterface().CmdCopyQueries(*GetImpl(), *queryPoolImpl, offset, num, *dstBufferImpl, dstOffset);
+    GetCoreInterfaceImpl().CmdCopyQueries(*GetImpl(), *queryPoolImpl, offset, num, *dstBufferImpl, dstOffset);
 }
 
 NRI_INLINE void CommandBufferVal::ResetQueries(QueryPool& queryPool, uint32_t offset, uint32_t num) {
@@ -504,27 +504,27 @@ NRI_INLINE void CommandBufferVal::ResetQueries(QueryPool& queryPool, uint32_t of
         RETURN_ON_FAILURE(&m_Device, offset + num <= queryPoolVal.GetQueryNum(), ReturnVoid(), "'offset + num = %u' is out of range", offset + num);
 
     QueryPool* queryPoolImpl = NRI_GET_IMPL(QueryPool, &queryPool);
-    GetCoreInterface().CmdResetQueries(*GetImpl(), *queryPoolImpl, offset, num);
+    GetCoreInterfaceImpl().CmdResetQueries(*GetImpl(), *queryPoolImpl, offset, num);
 }
 
 NRI_INLINE void CommandBufferVal::BeginAnnotation(const char* name, uint32_t bgra) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
 
     m_AnnotationStack++;
-    GetCoreInterface().CmdBeginAnnotation(*GetImpl(), name, bgra);
+    GetCoreInterfaceImpl().CmdBeginAnnotation(*GetImpl(), name, bgra);
 }
 
 NRI_INLINE void CommandBufferVal::EndAnnotation() {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
 
-    GetCoreInterface().CmdEndAnnotation(*GetImpl());
+    GetCoreInterfaceImpl().CmdEndAnnotation(*GetImpl());
     m_AnnotationStack--;
 }
 
 NRI_INLINE void CommandBufferVal::Annotation(const char* name, uint32_t bgra) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
 
-    GetCoreInterface().CmdAnnotation(*GetImpl(), name, bgra);
+    GetCoreInterfaceImpl().CmdAnnotation(*GetImpl(), name, bgra);
 }
 
 NRI_INLINE void CommandBufferVal::BuildTopLevelAccelerationStructure(const BuildTopLevelAccelerationStructureDesc* buildTopLevelAccelerationStructureDescs, uint32_t buildTopLevelAccelerationStructureDescNum) {
@@ -552,7 +552,7 @@ NRI_INLINE void CommandBufferVal::BuildTopLevelAccelerationStructure(const Build
         out.scratchBuffer = NRI_GET_IMPL(Buffer, in.scratchBuffer);
     }
 
-    GetRayTracingInterface().CmdBuildTopLevelAccelerationStructures(*GetImpl(), buildTopLevelAccelerationStructureDescsImpl, buildTopLevelAccelerationStructureDescNum);
+    GetRayTracingInterfaceImpl().CmdBuildTopLevelAccelerationStructures(*GetImpl(), buildTopLevelAccelerationStructureDescsImpl, buildTopLevelAccelerationStructureDescNum);
 }
 
 NRI_INLINE void CommandBufferVal::BuildBottomLevelAccelerationStructure(const BuildBottomLevelAccelerationStructureDesc* buildBottomLevelAccelerationStructureDescs, uint32_t buildBottomLevelAccelerationStructureDescNum) {
@@ -601,7 +601,7 @@ NRI_INLINE void CommandBufferVal::BuildBottomLevelAccelerationStructure(const Bu
         ConvertBotomLevelGeometries(in.geometries, in.geometryNum, geometriesImpl, micromapsImpl);
     }
 
-    GetRayTracingInterface().CmdBuildBottomLevelAccelerationStructures(*GetImpl(), buildBottomLevelAccelerationStructureDescsImpl, buildBottomLevelAccelerationStructureDescNum);
+    GetRayTracingInterfaceImpl().CmdBuildBottomLevelAccelerationStructures(*GetImpl(), buildBottomLevelAccelerationStructureDescsImpl, buildBottomLevelAccelerationStructureDescNum);
 }
 
 NRI_INLINE void CommandBufferVal::BuildMicromaps(const BuildMicromapDesc* buildMicromapDescs, uint32_t buildMicromapDescNum) {
@@ -632,7 +632,7 @@ NRI_INLINE void CommandBufferVal::BuildMicromaps(const BuildMicromapDesc* buildM
         out.scratchBuffer = NRI_GET_IMPL(Buffer, in.scratchBuffer);
     }
 
-    GetRayTracingInterface().CmdBuildMicromaps(*GetImpl(), buildMicromapDescsImpl, buildMicromapDescNum);
+    GetRayTracingInterfaceImpl().CmdBuildMicromaps(*GetImpl(), buildMicromapDescsImpl, buildMicromapDescNum);
 }
 
 NRI_INLINE void CommandBufferVal::CopyMicromap(Micromap& dst, const Micromap& src, CopyMode copyMode) {
@@ -643,7 +643,7 @@ NRI_INLINE void CommandBufferVal::CopyMicromap(Micromap& dst, const Micromap& sr
     Micromap& dstImpl = *NRI_GET_IMPL(Micromap, &dst);
     Micromap& srcImpl = *NRI_GET_IMPL(Micromap, &src);
 
-    GetRayTracingInterface().CmdCopyMicromap(*GetImpl(), dstImpl, srcImpl, copyMode);
+    GetRayTracingInterfaceImpl().CmdCopyMicromap(*GetImpl(), dstImpl, srcImpl, copyMode);
 }
 
 NRI_INLINE void CommandBufferVal::CopyAccelerationStructure(AccelerationStructure& dst, const AccelerationStructure& src, CopyMode copyMode) {
@@ -654,7 +654,7 @@ NRI_INLINE void CommandBufferVal::CopyAccelerationStructure(AccelerationStructur
     AccelerationStructure& dstImpl = *NRI_GET_IMPL(AccelerationStructure, &dst);
     AccelerationStructure& srcImpl = *NRI_GET_IMPL(AccelerationStructure, &src);
 
-    GetRayTracingInterface().CmdCopyAccelerationStructure(*GetImpl(), dstImpl, srcImpl, copyMode);
+    GetRayTracingInterfaceImpl().CmdCopyAccelerationStructure(*GetImpl(), dstImpl, srcImpl, copyMode);
 }
 
 NRI_INLINE void CommandBufferVal::WriteMicromapsSizes(const Micromap* const* micromaps, uint32_t micromapNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
@@ -674,7 +674,7 @@ NRI_INLINE void CommandBufferVal::WriteMicromapsSizes(const Micromap* const* mic
 
     QueryPool& queryPoolImpl = *NRI_GET_IMPL(QueryPool, &queryPool);
 
-    GetRayTracingInterface().CmdWriteMicromapsSizes(*GetImpl(), micromapsImpl, micromapNum, queryPoolImpl, queryPoolOffset);
+    GetRayTracingInterfaceImpl().CmdWriteMicromapsSizes(*GetImpl(), micromapsImpl, micromapNum, queryPoolImpl, queryPoolOffset);
 }
 
 NRI_INLINE void CommandBufferVal::WriteAccelerationStructuresSizes(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
@@ -694,7 +694,7 @@ NRI_INLINE void CommandBufferVal::WriteAccelerationStructuresSizes(const Acceler
 
     QueryPool& queryPoolImpl = *NRI_GET_IMPL(QueryPool, &queryPool);
 
-    GetRayTracingInterface().CmdWriteAccelerationStructuresSizes(*GetImpl(), accelerationStructuresImpl, accelerationStructureNum, queryPoolImpl, queryPoolOffset);
+    GetRayTracingInterfaceImpl().CmdWriteAccelerationStructuresSizes(*GetImpl(), accelerationStructuresImpl, accelerationStructureNum, queryPoolImpl, queryPoolOffset);
 }
 
 NRI_INLINE void CommandBufferVal::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc) {
@@ -716,7 +716,7 @@ NRI_INLINE void CommandBufferVal::DispatchRays(const DispatchRaysDesc& dispatchR
     dispatchRaysDescImpl.hitShaderGroups.buffer = NRI_GET_IMPL(Buffer, dispatchRaysDesc.hitShaderGroups.buffer);
     dispatchRaysDescImpl.callableShaders.buffer = NRI_GET_IMPL(Buffer, dispatchRaysDesc.callableShaders.buffer);
 
-    GetRayTracingInterface().CmdDispatchRays(*GetImpl(), dispatchRaysDescImpl);
+    GetRayTracingInterfaceImpl().CmdDispatchRays(*GetImpl(), dispatchRaysDescImpl);
 }
 
 NRI_INLINE void CommandBufferVal::DispatchRaysIndirect(const Buffer& buffer, uint64_t offset) {
@@ -730,7 +730,7 @@ NRI_INLINE void CommandBufferVal::DispatchRaysIndirect(const Buffer& buffer, uin
 
     Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);
 
-    GetRayTracingInterface().CmdDispatchRaysIndirect(*GetImpl(), *bufferImpl, offset);
+    GetRayTracingInterfaceImpl().CmdDispatchRaysIndirect(*GetImpl(), *bufferImpl, offset);
 }
 
 NRI_INLINE void CommandBufferVal::DrawMeshTasks(const DrawMeshTasksDesc& drawMeshTasksDesc) {
@@ -740,7 +740,7 @@ NRI_INLINE void CommandBufferVal::DrawMeshTasks(const DrawMeshTasksDesc& drawMes
     RETURN_ON_FAILURE(&m_Device, m_IsRenderPass, ReturnVoid(), "must be called inside 'CmdBeginRendering/CmdEndRendering'");
     RETURN_ON_FAILURE(&m_Device, deviceDesc.features.meshShader, ReturnVoid(), "'features.meshShader' is false");
 
-    GetMeshShaderInterface().CmdDrawMeshTasks(*GetImpl(), drawMeshTasksDesc);
+    GetMeshShaderInterfaceImpl().CmdDrawMeshTasks(*GetImpl(), drawMeshTasksDesc);
 }
 
 NRI_INLINE void CommandBufferVal::DrawMeshTasksIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset) {
@@ -756,7 +756,7 @@ NRI_INLINE void CommandBufferVal::DrawMeshTasksIndirect(const Buffer& buffer, ui
     Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);
     Buffer* countBufferImpl = NRI_GET_IMPL(Buffer, countBuffer);
 
-    GetMeshShaderInterface().CmdDrawMeshTasksIndirect(*GetImpl(), *bufferImpl, offset, drawNum, stride, countBufferImpl, countBufferOffset);
+    GetMeshShaderInterfaceImpl().CmdDrawMeshTasksIndirect(*GetImpl(), *bufferImpl, offset, drawNum, stride, countBufferImpl, countBufferOffset);
 }
 
 NRI_INLINE void CommandBufferVal::ValidateReadonlyDepthStencil() {

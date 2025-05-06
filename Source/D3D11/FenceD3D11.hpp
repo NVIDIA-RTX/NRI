@@ -1,6 +1,9 @@
 // © 2021 NVIDIA Corporation
 
 Result FenceD3D11::Create(uint64_t initialValue) {
+    if (initialValue == SWAPCHAIN_SEMAPHORE)
+        return Result::SUCCESS;
+
     if (m_Device.GetVersion() >= 5) {
         HRESULT hr = m_Device->CreateFence(initialValue, D3D11_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_Fence));
         RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device5::CreateFence()");
@@ -29,7 +32,7 @@ NRI_INLINE void FenceD3D11::QueueSignal(uint64_t value) {
     if (m_Fence) {
         HRESULT hr = m_Device.GetImmediateContext()->Signal(m_Fence, value);
         RETURN_ON_FAILURE(&m_Device, hr == S_OK, ReturnVoid(), "D3D11DeviceContext4::Signal()  failed!");
-    } else {
+    } else if (m_Query) {
         m_Device.GetImmediateContext()->End(m_Query);
         m_Value = value;
     }
@@ -54,7 +57,7 @@ NRI_INLINE void FenceD3D11::Wait(uint64_t value) {
             uint32_t result = WaitForSingleObjectEx(m_Event, TIMEOUT_FENCE, TRUE);
             RETURN_ON_FAILURE(&m_Device, result == WAIT_OBJECT_0, ReturnVoid(), "WaitForSingleObjectEx()  failed!");
         }
-    } else {
+    } else if (m_Query) {
         HRESULT hr = S_FALSE;
         while (hr == S_FALSE)
             hr = m_Device.GetImmediateContext()->GetData(m_Query, nullptr, 0, 0);

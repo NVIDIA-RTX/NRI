@@ -171,8 +171,10 @@ NRI_INLINE Texture* const* SwapChainD3D12::GetTextures(uint32_t& textureNum) con
     return (Texture**)m_Textures.data();
 }
 
-NRI_INLINE uint32_t SwapChainD3D12::AcquireNextTexture() {
-    return m_SwapChain->GetCurrentBackBufferIndex();
+NRI_INLINE Result SwapChainD3D12::AcquireNextTexture(uint32_t& textureIndex) {
+    textureIndex = m_SwapChain->GetCurrentBackBufferIndex();
+
+    return Result::SUCCESS;
 }
 
 NRI_INLINE Result SwapChainD3D12::WaitForPresent() {

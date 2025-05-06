@@ -33,8 +33,8 @@ NRI_INLINE Result CommandBufferVK::Begin(const DescriptorPool*) {
     info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.BeginCommandBuffer(m_Handle, &info);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkBeginCommandBuffer returned %d", (int32_t)result);
+    VkResult vkResult = vk.BeginCommandBuffer(m_Handle, &info);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkBeginCommandBuffer returned %d", (int32_t)vkResult);
 
     m_PipelineLayout = nullptr;
     m_Pipeline = nullptr;
@@ -44,8 +44,8 @@ NRI_INLINE Result CommandBufferVK::Begin(const DescriptorPool*) {
 
 NRI_INLINE Result CommandBufferVK::End() {
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.EndCommandBuffer(m_Handle);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkEndCommandBuffer returned %d", (int32_t)result);
+    VkResult vkResult = vk.EndCommandBuffer(m_Handle);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkEndCommandBuffer returned %d", (int32_t)vkResult);
 
     return Result::SUCCESS;
 }
@@ -913,8 +913,11 @@ NRI_INLINE void CommandBufferVK::EndQuery(QueryPool& queryPool, uint32_t offset)
     QueryPoolVK& queryPoolImpl = (QueryPoolVK&)queryPool;
     const auto& vk = m_Device.GetDispatchTable();
 
-    if (queryPoolImpl.GetType() == VK_QUERY_TYPE_TIMESTAMP)
-        vk.CmdWriteTimestamp2(m_Handle, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, queryPoolImpl.GetHandle(), offset);
+    if (queryPoolImpl.GetType() == VK_QUERY_TYPE_TIMESTAMP) {
+        // TODO: https://registry.khronos.org/vulkan/specs/latest/man/html/vkCmdWriteTimestamp.html
+        // https://docs.vulkan.org/samples/latest/samples/api/timestamp_queries/README.html
+        vk.CmdWriteTimestamp2(m_Handle, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, queryPoolImpl.GetHandle(), offset);
+    }
     else
         vk.CmdEndQuery(m_Handle, queryPoolImpl.GetHandle(), offset);
 }
@@ -923,7 +926,7 @@ NRI_INLINE void CommandBufferVK::CopyQueries(const QueryPool& queryPool, uint32_
     const QueryPoolVK& queryPoolImpl = (const QueryPoolVK&)queryPool;
     const BufferVK& bufferVK = (const BufferVK&)dstBuffer;
 
-    // TODO: wait is questionable here, but it's needed to ensure that CopyQueries copies to the destination buffer "complete" values (perf seems unaffected)
+    // TODO: wait is questionable here, but it's needed to ensure that the destination buffer gets "complete" values (perf seems unaffected)
     VkQueryResultFlags flags = VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT;
 
     const auto& vk = m_Device.GetDispatchTable();

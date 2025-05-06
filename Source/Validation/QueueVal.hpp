@@ -1,15 +1,15 @@
 // © 2021 NVIDIA Corporation
 
 NRI_INLINE void QueueVal::BeginAnnotation(const char* name, uint32_t bgra) {
-    GetCoreInterface().QueueBeginAnnotation(*GetImpl(), name, bgra);
+    GetCoreInterfaceImpl().QueueBeginAnnotation(*GetImpl(), name, bgra);
 }
 
 NRI_INLINE void QueueVal::EndAnnotation() {
-    GetCoreInterface().QueueEndAnnotation(*GetImpl());
+    GetCoreInterfaceImpl().QueueEndAnnotation(*GetImpl());
 }
 
 NRI_INLINE void QueueVal::Annotation(const char* name, uint32_t bgra) {
-    GetCoreInterface().QueueAnnotation(*GetImpl(), name, bgra);
+    GetCoreInterfaceImpl().QueueAnnotation(*GetImpl(), name, bgra);
 }
 
 NRI_INLINE void QueueVal::Submit(const QueueSubmitDesc& queueSubmitDesc, const SwapChain* swapChain) {
@@ -36,7 +36,7 @@ NRI_INLINE void QueueVal::Submit(const QueueSubmitDesc& queueSubmitDesc, const S
 
     if (swapChain) {
         SwapChain* swapChainImpl = NRI_GET_IMPL(SwapChain, swapChain);
-        m_Device.GetLowLatencyInterface().QueueSubmitTrackable(*GetImpl(), queueSubmitDescImpl, *swapChainImpl);
+        m_Device.GetLowLatencyInterfaceImpl().QueueSubmitTrackable(*GetImpl(), queueSubmitDescImpl, *swapChainImpl);
     } else
-        GetCoreInterface().QueueSubmit(*GetImpl(), queueSubmitDescImpl);
+        GetCoreInterfaceImpl().QueueSubmit(*GetImpl(), queueSubmitDescImpl);
 }

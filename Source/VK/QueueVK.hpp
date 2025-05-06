@@ -84,16 +84,16 @@ NRI_INLINE void QueueVK::Submit(const QueueSubmitDesc& queueSubmitDesc, const Sw
     }
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.QueueSubmit2(m_Handle, 1, &submitInfo, VK_NULL_HANDLE);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, ReturnVoid(), "vkQueueSubmit returned %d", (int32_t)result);
+    VkResult vkResult = vk.QueueSubmit2(m_Handle, 1, &submitInfo, VK_NULL_HANDLE);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, ReturnVoid(), "vkQueueSubmit returned %d", (int32_t)vkResult);
 }
 
 NRI_INLINE Result QueueVK::WaitForIdle() {
     ExclusiveScope lock(m_Lock);
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.QueueWaitIdle(m_Handle);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkQueueWaitIdle returned %d", (int32_t)result);
+    VkResult vkResult = vk.QueueWaitIdle(m_Handle);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkQueueWaitIdle returned %d", (int32_t)vkResult);
 
     return Result::SUCCESS;
 }

@@ -314,8 +314,8 @@ Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc) {
 
     VkShaderModule module = VK_NULL_HANDLE;
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.CreateShaderModule(m_Device, &moduleInfo, m_Device.GetVkAllocationCallbacks(), &module);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkCreateShaderModule returned %d", (int32_t)result);
+    VkResult vkResult = vk.CreateShaderModule(m_Device, &moduleInfo, m_Device.GetVkAllocationCallbacks(), &module);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateShaderModule returned %d", (int32_t)vkResult);
 
     VkPipelineShaderStageCreateInfo stage = {
         VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -341,8 +341,8 @@ Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc) {
     if (FillPipelineRobustness(m_Device, computePipelineDesc.robustness, robustnessInfo))
         info.pNext = &robustnessInfo;
 
-    result = vk.CreateComputePipelines(m_Device, VK_NULL_HANDLE, 1, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkCreateComputePipelines returned %d", (int32_t)result);
+    vkResult = vk.CreateComputePipelines(m_Device, VK_NULL_HANDLE, 1, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateComputePipelines returned %d", (int32_t)vkResult);
 
     vk.DestroyShaderModule(m_Device, module, m_Device.GetVkAllocationCallbacks());
 
@@ -473,8 +473,8 @@ Result PipelineVK::SetupShaderStage(VkPipelineShaderStageCreateInfo& stage, cons
     };
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.CreateShaderModule(m_Device, &moduleInfo, m_Device.GetVkAllocationCallbacks(), &module);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkCreateShaderModule returned %d", (int32_t)result);
+    VkResult vkResult = vk.CreateShaderModule(m_Device, &moduleInfo, m_Device.GetVkAllocationCallbacks(), &module);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateShaderModule returned %d", (int32_t)vkResult);
 
     stage = {
         VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -497,8 +497,8 @@ NRI_INLINE Result PipelineVK::WriteShaderGroupIdentifiers(uint32_t baseShaderGro
     const size_t dataSize = (size_t)shaderGroupNum * m_Device.GetDesc().shaderStage.rayTracing.shaderGroupIdentifierSize;
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.GetRayTracingShaderGroupHandlesKHR(m_Device, m_Handle, baseShaderGroupIndex, shaderGroupNum, dataSize, dst);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkGetRayTracingShaderGroupHandlesKHR returned %d", (int32_t)result);
+    VkResult vkResult = vk.GetRayTracingShaderGroupHandlesKHR(m_Device, m_Handle, baseShaderGroupIndex, shaderGroupNum, dataSize, dst);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkGetRayTracingShaderGroupHandlesKHR returned %d", (int32_t)vkResult);
 
     return Result::SUCCESS;
 }

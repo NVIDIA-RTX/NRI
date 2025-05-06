@@ -597,7 +597,7 @@ void HelperDeviceMemoryAllocator::FillMemoryBindingDescs(Texture* const* texture
     }
 }
 
-// WaitIdle
+// Wait idle
 Result nri::WaitIdle(const CoreInterface& NRI, Device& device, Queue& queue) {
     Fence* fence = nullptr;
     Result result = NRI.CreateFence(device, 0, fence);

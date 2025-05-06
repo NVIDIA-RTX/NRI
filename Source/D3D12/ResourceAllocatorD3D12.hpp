@@ -78,9 +78,9 @@ Result DeviceD3D12::CreateVma() {
 }
 
 Result BufferD3D12::Create(const AllocateBufferDesc& bufferDesc) {
-    Result nriResult = m_Device.CreateVma();
-    if (nriResult != Result::SUCCESS)
-        return nriResult;
+    Result result = m_Device.CreateVma();
+    if (result != Result::SUCCESS)
+        return result;
 
     uint32_t flags = D3D12MA::ALLOCATION_FLAG_CAN_ALIAS | D3D12MA::ALLOCATION_FLAG_STRATEGY_MIN_MEMORY;
     if (bufferDesc.dedicated)
@@ -127,9 +127,9 @@ Result BufferD3D12::Create(const AllocateBufferDesc& bufferDesc) {
 }
 
 Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
-    Result nriResult = m_Device.CreateVma();
-    if (nriResult != Result::SUCCESS)
-        return nriResult;
+    Result result = m_Device.CreateVma();
+    if (result != Result::SUCCESS)
+        return result;
 
     D3D12_CLEAR_VALUE clearValue = {GetDxgiFormat(textureDesc.desc.format).typed};
 
@@ -176,9 +176,9 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
 }
 
 Result AccelerationStructureD3D12::Create(const AllocateAccelerationStructureDesc& accelerationStructureDesc) {
-    Result nriResult = m_Device.CreateVma();
-    if (nriResult != Result::SUCCESS)
-        return nriResult;
+    Result result = m_Device.CreateVma();
+    if (result != Result::SUCCESS)
+        return result;
 
     m_Device.GetAccelerationStructurePrebuildInfo(accelerationStructureDesc.desc, m_PrebuildInfo);
     m_Flags = accelerationStructureDesc.desc.flags;
@@ -193,9 +193,9 @@ Result AccelerationStructureD3D12::Create(const AllocateAccelerationStructureDes
 }
 
 Result MicromapD3D12::Create(const AllocateMicromapDesc& micromapDesc) {
-    Result nriResult = m_Device.CreateVma();
-    if (nriResult != Result::SUCCESS)
-        return nriResult;
+    Result result = m_Device.CreateVma();
+    if (result != Result::SUCCESS)
+        return result;
 
     m_Device.GetMicromapPrebuildInfo(micromapDesc.desc, m_PrebuildInfo);
     m_Flags = micromapDesc.desc.flags;

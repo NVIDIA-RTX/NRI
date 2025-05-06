@@ -8,15 +8,15 @@ FenceVK::~FenceVK() {
 
 Result FenceVK::Create(uint64_t initialValue) {
     VkSemaphoreTypeCreateInfo semaphoreTypeCreateInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO};
-    semaphoreTypeCreateInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
-    semaphoreTypeCreateInfo.initialValue = initialValue;
+    semaphoreTypeCreateInfo.semaphoreType = initialValue == SWAPCHAIN_SEMAPHORE ? VK_SEMAPHORE_TYPE_BINARY : VK_SEMAPHORE_TYPE_TIMELINE;
+    semaphoreTypeCreateInfo.initialValue = initialValue == SWAPCHAIN_SEMAPHORE ? 0 : initialValue;
 
     VkSemaphoreCreateInfo semaphoreCreateInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     semaphoreCreateInfo.pNext = &semaphoreTypeCreateInfo;
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.CreateSemaphore((VkDevice)m_Device, &semaphoreCreateInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkCreateSemaphore returned %d", (int32_t)result);
+    VkResult vkResult = vk.CreateSemaphore((VkDevice)m_Device, &semaphoreCreateInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateSemaphore returned %d", (int32_t)vkResult);
 
     return Result::SUCCESS;
 }

@@ -170,7 +170,7 @@ static Result EnumerateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDe
     if (!vkCreateInstance)
         return Result::UNSUPPORTED;
 
-    Result nriResult = Result::FAILURE;
+    Result result = Result::FAILURE;
 
     // Create instance
     VkApplicationInfo applicationInfo = {};
@@ -188,9 +188,9 @@ static Result EnumerateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDe
 #    endif
 
     VkInstance instance = VK_NULL_HANDLE;
-    VkResult result = vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
+    VkResult vkResult = vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
 
-    if (result == VK_SUCCESS) {
+    if (vkResult == VK_SUCCESS) {
         // Get needed functions
         const auto vkDestroyInstance = (PFN_vkDestroyInstance)vkGetInstanceProcAddr(instance, "vkDestroyInstance");
         if (!vkDestroyInstance)
@@ -203,9 +203,9 @@ static Result EnumerateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDe
 
         if (vkEnumeratePhysicalDeviceGroups && vkGetPhysicalDeviceProperties2) {
             uint32_t deviceGroupNum = 0;
-            result = vkEnumeratePhysicalDeviceGroups(instance, &deviceGroupNum, nullptr);
+            vkResult = vkEnumeratePhysicalDeviceGroups(instance, &deviceGroupNum, nullptr);
 
-            if (result == VK_SUCCESS && deviceGroupNum) {
+            if (vkResult == VK_SUCCESS && deviceGroupNum) {
                 if (adapterDescs) {
                     // Save LUID for precreated physical device
                     uint64_t precreatedDeviceLuid = 0;
@@ -345,7 +345,7 @@ static Result EnumerateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDe
                 } else
                     adapterDescNum = deviceGroupNum;
 
-                nriResult = Result::SUCCESS;
+                result = Result::SUCCESS;
             }
         }
 
@@ -355,7 +355,7 @@ static Result EnumerateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDe
 
     UnloadSharedLibrary(*loader);
 
-    return nriResult;
+    return result;
 }
 
 #endif

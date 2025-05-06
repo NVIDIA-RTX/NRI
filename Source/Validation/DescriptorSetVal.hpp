@@ -35,7 +35,7 @@ NRI_INLINE void DescriptorSetVal::UpdateDescriptorRanges(uint32_t rangeOffset, u
         descriptorOffset += updateDesc.descriptorNum;
     }
 
-    GetCoreInterface().UpdateDescriptorRanges(*GetImpl(), rangeOffset, rangeNum, rangeUpdateDescsImpl);
+    GetCoreInterfaceImpl().UpdateDescriptorRanges(*GetImpl(), rangeOffset, rangeNum, rangeUpdateDescsImpl);
 }
 
 NRI_INLINE void DescriptorSetVal::UpdateDynamicConstantBuffers(uint32_t baseDynamicConstantBuffer, uint32_t dynamicConstantBufferNum, const Descriptor* const* descriptors) {
@@ -55,7 +55,7 @@ NRI_INLINE void DescriptorSetVal::UpdateDynamicConstantBuffers(uint32_t baseDyna
         descriptorsImpl[i] = NRI_GET_IMPL(Descriptor, descriptors[i]);
     }
 
-    GetCoreInterface().UpdateDynamicConstantBuffers(*GetImpl(), baseDynamicConstantBuffer, dynamicConstantBufferNum, descriptorsImpl);
+    GetCoreInterfaceImpl().UpdateDynamicConstantBuffers(*GetImpl(), baseDynamicConstantBuffer, dynamicConstantBufferNum, descriptorsImpl);
 }
 
 NRI_INLINE void DescriptorSetVal::Copy(const DescriptorSetCopyDesc& descriptorSetCopyDesc) {
@@ -84,5 +84,5 @@ NRI_INLINE void DescriptorSetVal::Copy(const DescriptorSetCopyDesc& descriptorSe
     auto descriptorSetCopyDescImpl = descriptorSetCopyDesc;
     descriptorSetCopyDescImpl.srcDescriptorSet = NRI_GET_IMPL(DescriptorSet, descriptorSetCopyDesc.srcDescriptorSet);
 
-    GetCoreInterface().CopyDescriptorSet(*GetImpl(), descriptorSetCopyDescImpl);
+    GetCoreInterfaceImpl().CopyDescriptorSet(*GetImpl(), descriptorSetCopyDescImpl);
 }

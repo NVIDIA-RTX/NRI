@@ -10,7 +10,7 @@ struct TextureVal final : public ObjectVal {
     TextureVal(DeviceVal& device, Texture* texture, bool isBoundToMemory)
         : ObjectVal(device, texture)
         , m_IsBoundToMemory(isBoundToMemory) {
-        m_Desc = GetCoreInterface().GetTextureDesc(*texture);
+        m_Desc = GetCoreInterfaceImpl().GetTextureDesc(*texture);
     }
 
     ~TextureVal();
@@ -24,7 +24,7 @@ struct TextureVal final : public ObjectVal {
     }
 
     inline uint64_t GetNativeObject() const {
-        return GetCoreInterface().GetTextureNativeObject(*GetImpl());
+        return GetCoreInterfaceImpl().GetTextureNativeObject(*GetImpl());
     }
 
     inline bool IsBoundToMemory() const {

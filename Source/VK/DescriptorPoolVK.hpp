@@ -36,8 +36,8 @@ Result DescriptorPoolVK::Create(const DescriptorPoolDesc& descriptorPoolDesc) {
     info.pPoolSizes = poolSizes.data();
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.CreateDescriptorPool(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkCreateDescriptorPool returned %d", (int32_t)result);
+    VkResult vkResult = vk.CreateDescriptorPool(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateDescriptorPool returned %d", (int32_t)vkResult);
 
     m_DescriptorSets.resize(descriptorPoolDesc.descriptorSetMaxNum);
 
@@ -81,8 +81,8 @@ NRI_INLINE Result DescriptorPoolVK::AllocateDescriptorSets(const PipelineLayout&
     const auto& vk = m_Device.GetDispatchTable();
     for (uint32_t i = 0; i < instanceNum; i++) {
         VkDescriptorSet handle = VK_NULL_HANDLE;
-        VkResult result = vk.AllocateDescriptorSets(m_Device, &info, &handle);
-        RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkAllocateDescriptorSets returned %d", (int32_t)result);
+        VkResult vkResult = vk.AllocateDescriptorSets(m_Device, &info, &handle);
+        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkAllocateDescriptorSets returned %d", (int32_t)vkResult);
 
         DescriptorSetVK* descriptorSet = &m_DescriptorSets[m_DescriptorSetNum++];
         descriptorSet->Create(&m_Device, handle, descriptorSetDesc);
@@ -97,8 +97,8 @@ NRI_INLINE void DescriptorPoolVK::Reset() {
     ExclusiveScope lock(m_Lock);
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.ResetDescriptorPool(m_Device, m_Handle, (VkDescriptorPoolResetFlags)0);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, ReturnVoid(), "vkResetDescriptorPool returned %d", (int32_t)result);
+    VkResult vkResult = vk.ResetDescriptorPool(m_Device, m_Handle, (VkDescriptorPoolResetFlags)0);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, ReturnVoid(), "vkResetDescriptorPool returned %d", (int32_t)vkResult);
 
     m_DescriptorSetNum = 0;
 }

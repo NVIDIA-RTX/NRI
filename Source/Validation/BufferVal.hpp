@@ -15,7 +15,7 @@ NRI_INLINE void* BufferVal::Map(uint64_t offset, uint64_t size) {
 
     m_IsMapped = true;
 
-    return GetCoreInterface().MapBuffer(*GetImpl(), offset, size);
+    return GetCoreInterfaceImpl().MapBuffer(*GetImpl(), offset, size);
 }
 
 NRI_INLINE void BufferVal::Unmap() {
@@ -23,5 +23,5 @@ NRI_INLINE void BufferVal::Unmap() {
 
     m_IsMapped = false;
 
-    GetCoreInterface().UnmapBuffer(*GetImpl());
+    GetCoreInterfaceImpl().UnmapBuffer(*GetImpl());
 }

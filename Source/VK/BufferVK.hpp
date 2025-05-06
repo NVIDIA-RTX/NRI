@@ -18,8 +18,8 @@ Result BufferVK::Create(const BufferDesc& bufferDesc) {
     m_Device.FillCreateInfo(bufferDesc, info);
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.CreateBuffer(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkCreateBuffer returned %d", (int32_t)result);
+    VkResult vkResult = vk.CreateBuffer(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateBuffer returned %d", (int32_t)vkResult);
 
     return Result::SUCCESS;
 }
@@ -113,7 +113,7 @@ NRI_INLINE void BufferVK::Unmap() {
         memoryRange.size = m_MappedMemoryRangeSize;
 
         const auto& vk = m_Device.GetDispatchTable();
-        VkResult result = vk.FlushMappedMemoryRanges(m_Device, 1, &memoryRange);
-        RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, ReturnVoid(), "vkFlushMappedMemoryRanges returned %d", (int32_t)result);
+        VkResult vkResult = vk.FlushMappedMemoryRanges(m_Device, 1, &memoryRange);
+        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, ReturnVoid(), "vkFlushMappedMemoryRanges returned %d", (int32_t)vkResult);
     }
 }

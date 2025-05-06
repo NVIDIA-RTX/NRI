@@ -8,30 +8,30 @@ AccelerationStructureVal::~AccelerationStructureVal() {
 }
 
 NRI_INLINE uint64_t AccelerationStructureVal::GetUpdateScratchBufferSize() const {
-    return GetRayTracingInterface().GetAccelerationStructureUpdateScratchBufferSize(*GetImpl());
+    return GetRayTracingInterfaceImpl().GetAccelerationStructureUpdateScratchBufferSize(*GetImpl());
 }
 
 NRI_INLINE uint64_t AccelerationStructureVal::GetBuildScratchBufferSize() const {
-    return GetRayTracingInterface().GetAccelerationStructureBuildScratchBufferSize(*GetImpl());
+    return GetRayTracingInterfaceImpl().GetAccelerationStructureBuildScratchBufferSize(*GetImpl());
 }
 
 NRI_INLINE uint64_t AccelerationStructureVal::GetHandle() const {
     RETURN_ON_FAILURE(&m_Device, IsBoundToMemory(), 0, "AccelerationStructure is not bound to memory");
 
-    return GetRayTracingInterface().GetAccelerationStructureHandle(*GetImpl());
+    return GetRayTracingInterfaceImpl().GetAccelerationStructureHandle(*GetImpl());
 }
 
 NRI_INLINE uint64_t AccelerationStructureVal::GetNativeObject() const {
     RETURN_ON_FAILURE(&m_Device, IsBoundToMemory(), 0, "AccelerationStructure is not bound to memory");
 
-    return GetRayTracingInterface().GetAccelerationStructureNativeObject(*GetImpl());
+    return GetRayTracingInterfaceImpl().GetAccelerationStructureNativeObject(*GetImpl());
 }
 
 NRI_INLINE Buffer* AccelerationStructureVal::GetBuffer() {
     RETURN_ON_FAILURE(&m_Device, IsBoundToMemory(), 0, "AccelerationStructure is not bound to memory");
 
     if (!m_Buffer) {
-        Buffer* buffer = GetRayTracingInterface().GetAccelerationStructureBuffer(*GetImpl());
+        Buffer* buffer = GetRayTracingInterfaceImpl().GetAccelerationStructureBuffer(*GetImpl());
         m_Buffer = Allocate<BufferVal>(m_Device.GetAllocationCallbacks(), m_Device, buffer, false);
     }
 
@@ -40,7 +40,7 @@ NRI_INLINE Buffer* AccelerationStructureVal::GetBuffer() {
 
 NRI_INLINE Result AccelerationStructureVal::CreateDescriptor(Descriptor*& descriptor) {
     Descriptor* descriptorImpl = nullptr;
-    const Result result = GetRayTracingInterface().CreateAccelerationStructureDescriptor(*GetImpl(), descriptorImpl);
+    const Result result = GetRayTracingInterfaceImpl().CreateAccelerationStructureDescriptor(*GetImpl(), descriptorImpl);
 
     descriptor = nullptr;
     if (result == Result::SUCCESS)

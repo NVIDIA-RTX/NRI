@@ -164,8 +164,10 @@ NRI_INLINE Texture* const* SwapChainD3D11::GetTextures(uint32_t& textureNum) con
     return (Texture**)&m_Texture;
 }
 
-NRI_INLINE uint32_t SwapChainD3D11::AcquireNextTexture() {
-    return 0; // IMPORTANT: only 1 texture is available in D3D11
+NRI_INLINE Result SwapChainD3D11::AcquireNextTexture(uint32_t& textureIndex) {
+    textureIndex = 0; // IMPORTANT: only 1 texture is available in D3D11
+
+    return Result::SUCCESS;
 }
 
 NRI_INLINE Result SwapChainD3D11::WaitForPresent() {

@@ -2,7 +2,7 @@
 
 NRI_INLINE Result CommandAllocatorVal::CreateCommandBuffer(CommandBuffer*& commandBuffer) {
     CommandBuffer* commandBufferImpl;
-    const Result result = GetCoreInterface().CreateCommandBuffer(*GetImpl(), commandBufferImpl);
+    const Result result = GetCoreInterfaceImpl().CreateCommandBuffer(*GetImpl(), commandBufferImpl);
 
     commandBuffer = nullptr;
     if (result == Result::SUCCESS)
@@ -12,5 +12,5 @@ NRI_INLINE Result CommandAllocatorVal::CreateCommandBuffer(CommandBuffer*& comma
 }
 
 NRI_INLINE void CommandAllocatorVal::Reset() {
-    GetCoreInterface().ResetCommandAllocator(*GetImpl());
+    GetCoreInterfaceImpl().ResetCommandAllocator(*GetImpl());
 }

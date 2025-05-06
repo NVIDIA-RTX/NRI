@@ -31,40 +31,40 @@ struct ObjectVal : public DebugNameBaseVal {
         return m_Device;
     }
 
-    inline const CoreInterface& GetCoreInterface() const {
-        return m_Device.GetCoreInterface();
+    inline const CoreInterface& GetCoreInterfaceImpl() const {
+        return m_Device.GetCoreInterfaceImpl();
     }
 
-    inline const HelperInterface& GetHelperInterface() const {
-        return m_Device.GetHelperInterface();
+    inline const HelperInterface& GetHelperInterfaceImpl() const {
+        return m_Device.GetHelperInterfaceImpl();
     }
 
-    inline const LowLatencyInterface& GetLowLatencyInterface() const {
-        return m_Device.GetLowLatencyInterface();
+    inline const LowLatencyInterface& GetLowLatencyInterfaceImpl() const {
+        return m_Device.GetLowLatencyInterfaceImpl();
     }
 
-    inline const MeshShaderInterface& GetMeshShaderInterface() const {
-        return m_Device.GetMeshShaderInterface();
+    inline const MeshShaderInterface& GetMeshShaderInterfaceImpl() const {
+        return m_Device.GetMeshShaderInterfaceImpl();
     }
 
-    inline const RayTracingInterface& GetRayTracingInterface() const {
-        return m_Device.GetRayTracingInterface();
+    inline const RayTracingInterface& GetRayTracingInterfaceImpl() const {
+        return m_Device.GetRayTracingInterfaceImpl();
     }
 
-    inline const SwapChainInterface& GetSwapChainInterface() const {
-        return m_Device.GetSwapChainInterface();
+    inline const SwapChainInterface& GetSwapChainInterfaceImpl() const {
+        return m_Device.GetSwapChainInterfaceImpl();
     }
 
-    inline const WrapperD3D11Interface& GetWrapperD3D11Interface() const {
-        return m_Device.GetWrapperD3D11Interface();
+    inline const WrapperD3D11Interface& GetWrapperD3D11InterfaceImpl() const {
+        return m_Device.GetWrapperD3D11InterfaceImpl();
     }
 
-    inline const WrapperD3D12Interface& GetWrapperD3D12Interface() const {
-        return m_Device.GetWrapperD3D12Interface();
+    inline const WrapperD3D12Interface& GetWrapperD3D12InterfaceImpl() const {
+        return m_Device.GetWrapperD3D12InterfaceImpl();
     }
 
-    inline const WrapperVKInterface& GetWrapperVKInterface() const {
-        return m_Device.GetWrapperVKInterface();
+    inline const WrapperVKInterface& GetWrapperVKInterfaceImpl() const {
+        return m_Device.GetWrapperVKInterfaceImpl();
     }
 
     //================================================================================================================
@@ -80,7 +80,7 @@ struct ObjectVal : public DebugNameBaseVal {
         m_Name = (char*)allocationCallbacks.Allocate(allocationCallbacks.userArg, len + 1, sizeof(size_t));
         strcpy(m_Name, name);
 
-        m_Device.GetCoreInterface().SetDebugName(m_Impl, name);
+        m_Device.GetCoreInterfaceImpl().SetDebugName(m_Impl, name);
     }
 
 protected:

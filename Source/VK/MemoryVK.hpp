@@ -23,8 +23,8 @@ Result MemoryVK::Create(const MemoryVKDesc& memoryDesc) {
 
     const auto& vk = m_Device.GetDispatchTable();
     if (!m_MappedMemory && IsHostVisibleMemory(memoryTypeInfo.location)) {
-        VkResult result = vk.MapMemory(m_Device, m_Handle, 0, memoryDesc.size, 0, (void**)&m_MappedMemory);
-        RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkMapMemory returned %d", (int32_t)result);
+        VkResult vkResult = vk.MapMemory(m_Device, m_Handle, 0, memoryDesc.size, 0, (void**)&m_MappedMemory);
+        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkMapMemory returned %d", (int32_t)vkResult);
     }
 
     return Result::SUCCESS;
@@ -51,12 +51,12 @@ Result MemoryVK::Create(const AllocateMemoryDesc& allocateMemoryDesc) {
     memoryInfo.memoryTypeIndex = memoryTypeInfo.index;
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.AllocateMemory(m_Device, &memoryInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkAllocateMemory returned %d", (int32_t)result);
+    VkResult vkResult = vk.AllocateMemory(m_Device, &memoryInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkAllocateMemory returned %d", (int32_t)vkResult);
 
     if (IsHostVisibleMemory(memoryTypeInfo.location)) {
-        result = vk.MapMemory(m_Device, m_Handle, 0, allocateMemoryDesc.size, 0, (void**)&m_MappedMemory);
-        RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkMapMemory returned %d", (int32_t)result);
+        vkResult = vk.MapMemory(m_Device, m_Handle, 0, allocateMemoryDesc.size, 0, (void**)&m_MappedMemory);
+        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkMapMemory returned %d", (int32_t)vkResult);
     }
 
     return Result::SUCCESS;
@@ -86,12 +86,12 @@ Result MemoryVK::CreateDedicated(const BufferVK& buffer) {
     memoryInfo.memoryTypeIndex = memoryTypeInfo.index;
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.AllocateMemory(m_Device, &memoryInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkAllocateMemory returned %d", (int32_t)result);
+    VkResult vkResult = vk.AllocateMemory(m_Device, &memoryInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkAllocateMemory returned %d", (int32_t)vkResult);
 
     if (IsHostVisibleMemory(memoryTypeInfo.location)) {
-        result = vk.MapMemory(m_Device, m_Handle, 0, memoryDesc.size, 0, (void**)&m_MappedMemory);
-        RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkMapMemory returned %d", (int32_t)result);
+        vkResult = vk.MapMemory(m_Device, m_Handle, 0, memoryDesc.size, 0, (void**)&m_MappedMemory);
+        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkMapMemory returned %d", (int32_t)vkResult);
     }
 
     return Result::SUCCESS;
@@ -121,12 +121,12 @@ Result MemoryVK::CreateDedicated(const TextureVK& texture) {
     memoryInfo.memoryTypeIndex = memoryTypeInfo.index;
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.AllocateMemory(m_Device, &memoryInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkAllocateMemory returned %d", (int32_t)result);
+    VkResult vkResult = vk.AllocateMemory(m_Device, &memoryInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkAllocateMemory returned %d", (int32_t)vkResult);
 
     if (IsHostVisibleMemory(memoryTypeInfo.location)) {
-        result = vk.MapMemory(m_Device, m_Handle, 0, memoryDesc.size, 0, (void**)&m_MappedMemory);
-        RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkMapMemory returned %d", (int32_t)result);
+        vkResult = vk.MapMemory(m_Device, m_Handle, 0, memoryDesc.size, 0, (void**)&m_MappedMemory);
+        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkMapMemory returned %d", (int32_t)vkResult);
     }
 
     return Result::SUCCESS;

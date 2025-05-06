@@ -24,48 +24,48 @@ struct DeviceVal final : public DeviceBase {
         return m_Impl;
     }
 
-    inline const CoreInterface& GetCoreInterfaceVal() const {
-        return m_iCoreVal;
-    }
-
     inline const CoreInterface& GetCoreInterface() const {
         return m_iCore;
     }
 
-    inline const HelperInterface& GetHelperInterface() const {
-        return m_iHelper;
+    inline const CoreInterface& GetCoreInterfaceImpl() const {
+        return m_iCoreImpl;
     }
 
-    inline const LowLatencyInterface& GetLowLatencyInterface() const {
-        return m_iLowLatency;
+    inline const HelperInterface& GetHelperInterfaceImpl() const {
+        return m_iHelperImpl;
     }
 
-    inline const MeshShaderInterface& GetMeshShaderInterface() const {
-        return m_iMeshShader;
+    inline const LowLatencyInterface& GetLowLatencyInterfaceImpl() const {
+        return m_iLowLatencyImpl;
     }
 
-    inline const RayTracingInterface& GetRayTracingInterface() const {
-        return m_iRayTracing;
+    inline const MeshShaderInterface& GetMeshShaderInterfaceImpl() const {
+        return m_iMeshShaderImpl;
     }
 
-    inline const SwapChainInterface& GetSwapChainInterface() const {
-        return m_iSwapChain;
+    inline const RayTracingInterface& GetRayTracingInterfaceImpl() const {
+        return m_iRayTracingImpl;
     }
 
-    inline const WrapperD3D11Interface& GetWrapperD3D11Interface() const {
-        return m_iWrapperD3D11;
+    inline const SwapChainInterface& GetSwapChainInterfaceImpl() const {
+        return m_iSwapChainImpl;
     }
 
-    inline const WrapperD3D12Interface& GetWrapperD3D12Interface() const {
-        return m_iWrapperD3D12;
+    inline const WrapperD3D11Interface& GetWrapperD3D11InterfaceImpl() const {
+        return m_iWrapperD3D11Impl;
     }
 
-    inline const WrapperVKInterface& GetWrapperVKInterface() const {
-        return m_iWrapperVK;
+    inline const WrapperD3D12Interface& GetWrapperD3D12InterfaceImpl() const {
+        return m_iWrapperD3D12Impl;
+    }
+
+    inline const WrapperVKInterface& GetWrapperVKInterfaceImpl() const {
+        return m_iWrapperVKImpl;
     }
 
     inline void* GetNativeObject() const {
-        return m_iCore.GetDeviceNativeObject(m_Impl);
+        return m_iCoreImpl.GetDeviceNativeObject(m_Impl);
     }
 
     inline Lock& GetLock() {
@@ -88,7 +88,7 @@ struct DeviceVal final : public DeviceBase {
         m_Name = (char*)allocationCallbacks.Allocate(allocationCallbacks.userArg, len + 1, sizeof(size_t));
         strcpy(m_Name, name);
 
-        GetCoreInterface().SetDebugName(&m_Impl, name);
+        GetCoreInterfaceImpl().SetDebugName(&m_Impl, name);
     }
 
     //================================================================================================================
@@ -193,20 +193,20 @@ private:
     std::array<QueueVal*, (size_t)QueueType::MAX_NUM> m_Queues = {};
     UnorderedMap<MemoryType, MemoryLocation> m_MemoryTypeMap;
 
-    // Validation interfaces
-    CoreInterface m_iCoreVal = {};
-
-    // Original interfaces
+    // Validation
     CoreInterface m_iCore = {};
-    HelperInterface m_iHelper = {};
-    LowLatencyInterface m_iLowLatency = {};
-    MeshShaderInterface m_iMeshShader = {};
-    RayTracingInterface m_iRayTracing = {};
-    ResourceAllocatorInterface m_iResourceAllocator = {};
-    SwapChainInterface m_iSwapChain = {};
-    WrapperD3D11Interface m_iWrapperD3D11 = {};
-    WrapperD3D12Interface m_iWrapperD3D12 = {};
-    WrapperVKInterface m_iWrapperVK = {};
+
+    // Implementation
+    CoreInterface m_iCoreImpl = {};
+    HelperInterface m_iHelperImpl = {};
+    LowLatencyInterface m_iLowLatencyImpl = {};
+    MeshShaderInterface m_iMeshShaderImpl = {};
+    RayTracingInterface m_iRayTracingImpl = {};
+    ResourceAllocatorInterface m_iResourceAllocatorImpl = {};
+    SwapChainInterface m_iSwapChainImpl = {};
+    WrapperD3D11Interface m_iWrapperD3D11Impl = {};
+    WrapperD3D12Interface m_iWrapperD3D12Impl = {};
+    WrapperVKInterface m_iWrapperVKImpl = {};
 
     union {
         uint32_t m_IsExtSupportedStorage = 0;

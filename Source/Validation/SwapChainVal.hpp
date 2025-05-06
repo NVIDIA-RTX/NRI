@@ -6,7 +6,7 @@ SwapChainVal::~SwapChainVal() {
 }
 
 NRI_INLINE Texture* const* SwapChainVal::GetTextures(uint32_t& textureNum) {
-    Texture* const* textures = GetSwapChainInterface().GetSwapChainTextures(*GetImpl(), textureNum);
+    Texture* const* textures = GetSwapChainInterfaceImpl().GetSwapChainTextures(*GetImpl(), textureNum);
 
     if (m_Textures.empty()) {
         for (uint32_t i = 0; i < textureNum; i++) {
@@ -18,44 +18,48 @@ NRI_INLINE Texture* const* SwapChainVal::GetTextures(uint32_t& textureNum) {
     return (Texture* const*)m_Textures.data();
 }
 
-NRI_INLINE uint32_t SwapChainVal::AcquireNextTexture() {
-    return GetSwapChainInterface().AcquireNextSwapChainTexture(*GetImpl());
+NRI_INLINE Result SwapChainVal::AcquireNextTexture(Fence& textureAcquiredSemaphore, uint32_t& textureIndex) {
+    Fence* textureAcquiredSemaphoreImpl = NRI_GET_IMPL(Fence, &textureAcquiredSemaphore);
+
+    return GetSwapChainInterfaceImpl().AcquireNextTexture(*GetImpl(), *textureAcquiredSemaphoreImpl, textureIndex);
 }
 
 NRI_INLINE Result SwapChainVal::WaitForPresent() {
     RETURN_ON_FAILURE(&m_Device, m_SwapChainDesc.waitable, Result::FAILURE, "Swap chain has not been created with 'waitable = true'");
 
-    return GetSwapChainInterface().WaitForPresent(*GetImpl());
+    return GetSwapChainInterfaceImpl().WaitForPresent(*GetImpl());
 }
 
-NRI_INLINE Result SwapChainVal::Present() {
-    return GetSwapChainInterface().QueuePresent(*GetImpl());
+NRI_INLINE Result SwapChainVal::Present(Fence& renderingFinishedSemaphore) {
+    Fence* renderingFinishedSemaphoreImpl = NRI_GET_IMPL(Fence, &renderingFinishedSemaphore);
+
+    return GetSwapChainInterfaceImpl().QueuePresent(*GetImpl(), *renderingFinishedSemaphoreImpl);
 }
 
 NRI_INLINE Result SwapChainVal::GetDisplayDesc(DisplayDesc& displayDesc) const {
-    return GetSwapChainInterface().GetDisplayDesc(*GetImpl(), displayDesc);
+    return GetSwapChainInterfaceImpl().GetDisplayDesc(*GetImpl(), displayDesc);
 }
 
 NRI_INLINE Result SwapChainVal::SetLatencySleepMode(const LatencySleepMode& latencySleepMode) {
     RETURN_ON_FAILURE(&m_Device, m_SwapChainDesc.allowLowLatency, Result::FAILURE, "Swap chain has not been created with 'allowLowLatency = true'");
 
-    return GetLowLatencyInterface().SetLatencySleepMode(*GetImpl(), latencySleepMode);
+    return GetLowLatencyInterfaceImpl().SetLatencySleepMode(*GetImpl(), latencySleepMode);
 }
 
 NRI_INLINE Result SwapChainVal::SetLatencyMarker(LatencyMarker latencyMarker) {
     RETURN_ON_FAILURE(&m_Device, m_SwapChainDesc.allowLowLatency, Result::FAILURE, "Swap chain has not been created with 'allowLowLatency = true'");
 
-    return GetLowLatencyInterface().SetLatencyMarker(*GetImpl(), latencyMarker);
+    return GetLowLatencyInterfaceImpl().SetLatencyMarker(*GetImpl(), latencyMarker);
 }
 
 NRI_INLINE Result SwapChainVal::LatencySleep() {
     RETURN_ON_FAILURE(&m_Device, m_SwapChainDesc.allowLowLatency, Result::FAILURE, "Swap chain has not been created with 'allowLowLatency = true'");
 
-    return GetLowLatencyInterface().LatencySleep(*GetImpl());
+    return GetLowLatencyInterfaceImpl().LatencySleep(*GetImpl());
 }
 
 NRI_INLINE Result SwapChainVal::GetLatencyReport(LatencyReport& latencyReport) {
     RETURN_ON_FAILURE(&m_Device, m_SwapChainDesc.allowLowLatency, Result::FAILURE, "Swap chain has not been created with 'allowLowLatency = true'");
 
-    return GetLowLatencyInterface().GetLatencyReport(*GetImpl(), latencyReport);
+    return GetLowLatencyInterfaceImpl().GetLatencyReport(*GetImpl(), latencyReport);
 }

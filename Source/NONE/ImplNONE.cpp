@@ -1078,21 +1078,23 @@ static Texture* const* NRI_CALL GetSwapChainTextures(const SwapChain&, uint32_t&
     return (Texture**)textures;
 }
 
-static uint32_t NRI_CALL AcquireNextSwapChainTexture(SwapChain&) {
-    return 0;
+static Result NRI_CALL GetDisplayDesc(SwapChain&, DisplayDesc& displayDesc) {
+    displayDesc = {};
+
+    return Result::SUCCESS;
+}
+
+static Result NRI_CALL AcquireNextTexture(SwapChain&, Fence&, uint32_t& textureIndex) {
+    textureIndex = 0;
+
+    return Result::SUCCESS;
 }
 
 static Result NRI_CALL WaitForPresent(SwapChain&) {
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL QueuePresent(SwapChain&) {
-    return Result::SUCCESS;
-}
-
-static Result NRI_CALL GetDisplayDesc(SwapChain&, DisplayDesc& displayDesc) {
-    displayDesc = {};
-
+static Result NRI_CALL QueuePresent(SwapChain&, Fence&) {
     return Result::SUCCESS;
 }
 
@@ -1100,10 +1102,10 @@ Result DeviceNONE::FillFunctionTable(SwapChainInterface& table) const {
     table.CreateSwapChain = ::CreateSwapChain;
     table.DestroySwapChain = ::DestroySwapChain;
     table.GetSwapChainTextures = ::GetSwapChainTextures;
-    table.AcquireNextSwapChainTexture = ::AcquireNextSwapChainTexture;
+    table.GetDisplayDesc = ::GetDisplayDesc;
+    table.AcquireNextTexture = ::AcquireNextTexture;
     table.WaitForPresent = ::WaitForPresent;
     table.QueuePresent = ::QueuePresent;
-    table.GetDisplayDesc = ::GetDisplayDesc;
 
     return Result::SUCCESS;
 }

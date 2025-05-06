@@ -53,8 +53,8 @@ Result MicromapVK::FinishCreation() {
     createInfo.buffer = m_Buffer->GetHandle();
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.CreateMicromapEXT(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkCreateMicromapEXT returned %d", (int32_t)result);
+    VkResult vkResult = vk.CreateMicromapEXT(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateMicromapEXT returned %d", (int32_t)vkResult);
 
     return Result::SUCCESS;
 }

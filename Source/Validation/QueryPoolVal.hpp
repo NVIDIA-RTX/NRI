@@ -7,9 +7,9 @@ QueryPoolVal::QueryPoolVal(DeviceVal& device, QueryPool* queryPool, QueryType qu
 }
 
 void QueryPoolVal::ResetQueries(uint32_t offset, uint32_t num) {
-    GetCoreInterface().ResetQueries(*GetImpl(), offset, num);
+    GetCoreInterfaceImpl().ResetQueries(*GetImpl(), offset, num);
 }
 
 NRI_INLINE uint32_t QueryPoolVal::GetQuerySize() const {
-    return GetCoreInterface().GetQuerySize(*GetImpl());
+    return GetCoreInterfaceImpl().GetQuerySize(*GetImpl());
 }

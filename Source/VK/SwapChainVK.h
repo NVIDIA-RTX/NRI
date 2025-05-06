@@ -8,11 +8,12 @@ struct QueueVK;
 struct FenceVK;
 struct TextureVK;
 
-// Let's keep things simple and hide it under the hood
-constexpr uint32_t MAX_NUMBER_OF_FRAMES_IN_FLIGHT = 8;
-
 struct SwapChainVK final : public DisplayDescHelper, DebugNameBase {
-    SwapChainVK(DeviceVK& device);
+    SwapChainVK(DeviceVK& device)
+        : m_Device(device)
+        , m_Textures(device.GetStdAllocator()) {
+    }
+
     ~SwapChainVK();
 
     inline DeviceVK& GetDevice() const {
@@ -40,9 +41,9 @@ struct SwapChainVK final : public DisplayDescHelper, DebugNameBase {
     }
 
     Texture* const* GetTextures(uint32_t& textureNum) const;
-    uint32_t AcquireNextTexture();
+    Result AcquireNextTexture(FenceVK& textureAcquiredSemaphore, uint32_t& textureIndex);
     Result WaitForPresent();
-    Result Present();
+    Result Present(FenceVK& renderingFinishedSemaphore);
 
     Result SetLatencySleepMode(const LatencySleepMode& latencySleepMode);
     Result SetLatencyMarker(LatencyMarker latencyMarker);
@@ -53,15 +54,12 @@ private:
     DeviceVK& m_Device;
     Vector<TextureVK*> m_Textures;
     FenceVK* m_LatencyFence = nullptr;
-    std::array<VkSemaphore, MAX_NUMBER_OF_FRAMES_IN_FLIGHT> m_ImageAcquiredSemaphores = {VK_NULL_HANDLE};
-    std::array<VkSemaphore, MAX_NUMBER_OF_FRAMES_IN_FLIGHT> m_RenderingFinishedSemaphores = {VK_NULL_HANDLE};
     VkSwapchainKHR m_Handle = VK_NULL_HANDLE;
     VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
     QueueVK* m_Queue = nullptr;
     void* m_Hwnd = nullptr;
     uint64_t m_PresentId = 0;
     uint32_t m_TextureIndex = 0;
-    uint8_t m_FrameIndex = 0; // in flight, not global
     bool m_AllowLowLatency = false;
     bool m_Waitable = false;
 };

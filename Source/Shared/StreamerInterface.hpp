@@ -53,6 +53,7 @@ Result StreamerImpl::Create(const StreamerDesc& desc) {
     }
 
     m_Desc = desc;
+    m_Desc.queuedFrameNum++; // for the current "not-yet-commited" frame
 
     return Result::SUCCESS;
 }

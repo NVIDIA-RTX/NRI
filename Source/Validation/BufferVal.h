@@ -10,7 +10,7 @@ struct BufferVal final : public ObjectVal {
     BufferVal(DeviceVal& device, Buffer* buffer, bool isBoundToMemory)
         : ObjectVal(device, buffer)
         , m_IsBoundToMemory(isBoundToMemory) {
-        m_Desc = GetCoreInterface().GetBufferDesc(*buffer);
+        m_Desc = GetCoreInterfaceImpl().GetBufferDesc(*buffer);
     }
 
     ~BufferVal();
@@ -24,7 +24,7 @@ struct BufferVal final : public ObjectVal {
     }
 
     inline uint64_t GetNativeObject() const {
-        return GetCoreInterface().GetBufferNativeObject(*GetImpl());
+        return GetCoreInterfaceImpl().GetBufferNativeObject(*GetImpl());
     }
 
     inline bool IsBoundToMemory() const {

@@ -40,7 +40,7 @@ struct SwapChainD3D12 final : public DisplayDescHelper, DebugNameBase {
     }
 
     Texture* const* GetTextures(uint32_t& textureNum) const;
-    uint32_t AcquireNextTexture();
+    Result AcquireNextTexture(uint32_t& textureIndex);
     Result WaitForPresent();
     Result Present();
 

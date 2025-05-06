@@ -13,7 +13,7 @@ NRI_INLINE void DescriptorPoolVal::Reset() {
     m_StorageStructuredBufferNum = 0;
     m_AccelerationStructureNum = 0;
 
-    GetCoreInterface().ResetDescriptorPool(*GetImpl());
+    GetCoreInterfaceImpl().ResetDescriptorPool(*GetImpl());
 }
 
 NRI_INLINE Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum) {
@@ -85,7 +85,7 @@ NRI_INLINE Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout
 
     PipelineLayout* pipelineLayoutImpl = NRI_GET_IMPL(PipelineLayout, &pipelineLayout);
 
-    Result result = GetCoreInterface().AllocateDescriptorSets(*GetImpl(), *pipelineLayoutImpl, setIndex, descriptorSets, instanceNum, variableDescriptorNum);
+    Result result = GetCoreInterfaceImpl().AllocateDescriptorSets(*GetImpl(), *pipelineLayoutImpl, setIndex, descriptorSets, instanceNum, variableDescriptorNum);
     if (result != Result::SUCCESS)
         return result;
 

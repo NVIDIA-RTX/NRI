@@ -177,14 +177,14 @@ void DeviceVK::ProcessInstanceExtensions(Vector<const char*>& desiredInstanceExt
 #ifdef VK_USE_PLATFORM_WIN32_KHR
         desiredInstanceExts.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 #endif
-#ifdef VK_USE_PLATFORM_METAL_EXT
-        desiredInstanceExts.push_back(VK_EXT_METAL_SURFACE_EXTENSION_NAME);
-#endif
 #ifdef VK_USE_PLATFORM_XLIB_KHR
         desiredInstanceExts.push_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
 #endif
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
         desiredInstanceExts.push_back(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
+#endif
+#ifdef VK_USE_PLATFORM_METAL_EXT
+        desiredInstanceExts.push_back(VK_EXT_METAL_SURFACE_EXTENSION_NAME);
 #endif
     }
 
@@ -428,8 +428,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
         if (!isWrapper) {
             uint32_t deviceGroupNum = 0;
-            VkResult result = m_VK.EnumeratePhysicalDeviceGroups(m_Instance, &deviceGroupNum, nullptr);
-            RETURN_ON_FAILURE(this, result == VK_SUCCESS, GetReturnCode(result), "vkEnumeratePhysicalDeviceGroups returned %d", (int32_t)result);
+            VkResult vkResult = m_VK.EnumeratePhysicalDeviceGroups(m_Instance, &deviceGroupNum, nullptr);
+            RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkEnumeratePhysicalDeviceGroups returned %d", (int32_t)vkResult);
 
             Scratch<VkPhysicalDeviceGroupProperties> deviceGroups = AllocateScratch(*this, VkPhysicalDeviceGroupProperties, deviceGroupNum);
             for (uint32_t j = 0; j < deviceGroupNum; j++) {
@@ -437,8 +437,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
                 deviceGroups[j].pNext = nullptr;
             }
 
-            result = m_VK.EnumeratePhysicalDeviceGroups(m_Instance, &deviceGroupNum, deviceGroups);
-            RETURN_ON_FAILURE(this, result == VK_SUCCESS, GetReturnCode(result), "vkEnumeratePhysicalDeviceGroups returned %d", (int32_t)result);
+            vkResult = m_VK.EnumeratePhysicalDeviceGroups(m_Instance, &deviceGroupNum, deviceGroups);
+            RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkEnumeratePhysicalDeviceGroups returned %d", (int32_t)vkResult);
 
             uint32_t i = 0;
             for (i = 0; i < deviceGroupNum; i++) {
@@ -788,8 +788,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
                 }
             }
 
-            VkResult result = m_VK.CreateDevice(m_PhysicalDevice, &deviceCreateInfo, m_AllocationCallbackPtr, &m_Device);
-            RETURN_ON_FAILURE(this, result == VK_SUCCESS, GetReturnCode(result), "vkCreateDevice returned %d", (int32_t)result);
+            VkResult vkResult = m_VK.CreateDevice(m_PhysicalDevice, &deviceCreateInfo, m_AllocationCallbackPtr, &m_Device);
+            RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateDevice returned %d", (int32_t)vkResult);
         }
 
         Result res = ResolveDispatchTable(desiredDeviceExts);
@@ -1489,8 +1489,8 @@ Result DeviceVK::CreateInstance(bool enableGraphicsAPIValidation, const Vector<c
     info.enabledExtensionCount = (uint32_t)desiredInstanceExts.size();
     info.ppEnabledExtensionNames = desiredInstanceExts.data();
 
-    VkResult result = m_VK.CreateInstance(&info, m_AllocationCallbackPtr, &m_Instance);
-    RETURN_ON_FAILURE(this, result == VK_SUCCESS, GetReturnCode(result), "vkCreateInstance returned %d", (int32_t)result);
+    VkResult vkResult = m_VK.CreateInstance(&info, m_AllocationCallbackPtr, &m_Instance);
+    RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateInstance returned %d", (int32_t)vkResult);
 
     if (enableGraphicsAPIValidation) {
         VkDebugUtilsMessengerCreateInfoEXT createInfo = {VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
@@ -1504,9 +1504,9 @@ Result DeviceVK::CreateInstance(bool enableGraphicsAPIValidation, const Vector<c
         createInfo.messageType |= VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
         PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)m_VK.GetInstanceProcAddr(m_Instance, "vkCreateDebugUtilsMessengerEXT");
-        result = vkCreateDebugUtilsMessengerEXT(m_Instance, &createInfo, m_AllocationCallbackPtr, &m_Messenger);
+        vkResult = vkCreateDebugUtilsMessengerEXT(m_Instance, &createInfo, m_AllocationCallbackPtr, &m_Messenger);
 
-        RETURN_ON_FAILURE(this, result == VK_SUCCESS, GetReturnCode(result), "vkCreateDebugUtilsMessengerEXT returned %d", (int32_t)result);
+        RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateDebugUtilsMessengerEXT returned %d", (int32_t)vkResult);
     }
 
     return Result::SUCCESS;
@@ -1518,8 +1518,8 @@ void DeviceVK::SetDebugNameToTrivialObject(VkObjectType objectType, uint64_t han
 
     VkDebugUtilsObjectNameInfoEXT info = {VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, nullptr, objectType, (uint64_t)handle, name};
 
-    VkResult result = m_VK.SetDebugUtilsObjectNameEXT(m_Device, &info);
-    RETURN_ON_FAILURE(this, result == VK_SUCCESS, ReturnVoid(), "vkSetDebugUtilsObjectNameEXT returned %d", (int32_t)result);
+    VkResult vkResult = m_VK.SetDebugUtilsObjectNameEXT(m_Device, &info);
+    RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, ReturnVoid(), "vkSetDebugUtilsObjectNameEXT returned %d", (int32_t)vkResult);
 }
 
 void DeviceVK::ReportDeviceGroupInfo() {
@@ -1662,17 +1662,14 @@ Result DeviceVK::ResolveInstanceDispatchTable(const Vector<const char*>& desired
         GET_INSTANCE_FUNC(CreateWin32SurfaceKHR);
         GET_INSTANCE_FUNC(GetMemoryWin32HandlePropertiesKHR);
 #endif
-
-#ifdef VK_USE_PLATFORM_METAL_EXT
-        GET_INSTANCE_FUNC(CreateMetalSurfaceEXT);
-#endif
-
 #ifdef VK_USE_PLATFORM_XLIB_KHR
         GET_INSTANCE_FUNC(CreateXlibSurfaceKHR);
 #endif
-
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
         GET_INSTANCE_FUNC(CreateWaylandSurfaceKHR);
+#endif
+#ifdef VK_USE_PLATFORM_METAL_EXT
+        GET_INSTANCE_FUNC(CreateMetalSurfaceEXT);
 #endif
     }
 
@@ -1913,8 +1910,8 @@ NRI_INLINE Result DeviceVK::BindBufferMemory(const BufferMemoryBindingDesc* memo
         info.memoryOffset = memoryBindingDesc.offset;
     }
 
-    VkResult result = m_VK.BindBufferMemory2(m_Device, memoryBindingDescNum, infos);
-    RETURN_ON_FAILURE(this, result == VK_SUCCESS, GetReturnCode(result), "vkBindBufferMemory2 returned %d", (int32_t)result);
+    VkResult vkResult = m_VK.BindBufferMemory2(m_Device, memoryBindingDescNum, infos);
+    RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkBindBufferMemory2 returned %d", (int32_t)vkResult);
 
     for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
         const BufferMemoryBindingDesc& memoryBindingDesc = memoryBindingDescs[i];
@@ -1951,8 +1948,8 @@ NRI_INLINE Result DeviceVK::BindTextureMemory(const TextureMemoryBindingDesc* me
         info.memoryOffset = memoryBindingDesc.offset;
     }
 
-    VkResult result = m_VK.BindImageMemory2(m_Device, memoryBindingDescNum, infos);
-    RETURN_ON_FAILURE(this, result == VK_SUCCESS, GetReturnCode(result), "vkBindImageMemory2 returned %d", (int32_t)result);
+    VkResult vkResult = m_VK.BindImageMemory2(m_Device, memoryBindingDescNum, infos);
+    RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkBindImageMemory2 returned %d", (int32_t)vkResult);
 
     return Result::SUCCESS;
 }

@@ -15,8 +15,8 @@ Result CommandAllocatorVK::Create(const Queue& queue) {
     const VkCommandPoolCreateInfo info = {VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, nullptr, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, queueImpl.GetFamilyIndex()};
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.CreateCommandPool(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkCreateCommandPool returned %d", (int32_t)result);
+    VkResult vkResult = vk.CreateCommandPool(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateCommandPool returned %d", (int32_t)vkResult);
 
     return Result::SUCCESS;
 }
@@ -44,8 +44,8 @@ NRI_INLINE Result CommandAllocatorVK::CreateCommandBuffer(CommandBuffer*& comman
     VkCommandBuffer commandBufferHandle = VK_NULL_HANDLE;
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.AllocateCommandBuffers(m_Device, &info, &commandBufferHandle);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkAllocateCommandBuffers returned %d", (int32_t)result);
+    VkResult vkResult = vk.AllocateCommandBuffers(m_Device, &info, &commandBufferHandle);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkAllocateCommandBuffers returned %d", (int32_t)vkResult);
 
     CommandBufferVK* commandBufferImpl = Allocate<CommandBufferVK>(m_Device.GetAllocationCallbacks(), m_Device);
     commandBufferImpl->Create(m_Handle, commandBufferHandle, m_Type);
@@ -59,6 +59,6 @@ NRI_INLINE void CommandAllocatorVK::Reset() {
     ExclusiveScope lock(m_Lock);
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.ResetCommandPool(m_Device, m_Handle, (VkCommandPoolResetFlags)0);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, ReturnVoid(), "vkResetCommandPool returned %d", (int32_t)result);
+    VkResult vkResult = vk.ResetCommandPool(m_Device, m_Handle, (VkCommandPoolResetFlags)0);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, ReturnVoid(), "vkResetCommandPool returned %d", (int32_t)vkResult);
 }

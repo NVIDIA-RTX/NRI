@@ -177,8 +177,8 @@ Result PipelineLayoutVK::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
     pipelineLayoutCreateInfo.pPushConstantRanges = pushConstantRanges;
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.CreatePipelineLayout(m_Device, &pipelineLayoutCreateInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, Result::FAILURE, "vkCreatePipelineLayout returned %d", (int32_t)result);
+    VkResult vkResult = vk.CreatePipelineLayout(m_Device, &pipelineLayoutCreateInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, Result::FAILURE, "vkCreatePipelineLayout returned %d", (int32_t)vkResult);
 
     return Result::SUCCESS;
 }
@@ -280,8 +280,8 @@ VkDescriptorSetLayout PipelineLayoutVK::CreateSetLayout(const DescriptorSetDesc&
 
     VkDescriptorSetLayout handle = VK_NULL_HANDLE;
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.CreateDescriptorSetLayout(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &handle);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, 0, "vkCreateDescriptorSetLayout returned %d", (int32_t)result);
+    VkResult vkResult = vk.CreateDescriptorSetLayout(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &handle);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, 0, "vkCreateDescriptorSetLayout returned %d", (int32_t)vkResult);
 
     return handle;
 }

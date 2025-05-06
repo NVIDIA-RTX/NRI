@@ -1061,20 +1061,20 @@ static Texture* const* NRI_CALL GetSwapChainTextures(const SwapChain& swapChain,
     return ((SwapChainVK&)swapChain).GetTextures(textureNum);
 }
 
-static uint32_t NRI_CALL AcquireNextSwapChainTexture(SwapChain& swapChain) {
-    return ((SwapChainVK&)swapChain).AcquireNextTexture();
+static Result NRI_CALL GetDisplayDesc(SwapChain& swapChain, DisplayDesc& displayDesc) {
+    return ((SwapChainVK&)swapChain).GetDisplayDesc(displayDesc);
+}
+
+static Result NRI_CALL AcquireNextTexture(SwapChain& swapChain, Fence& textureAcquiredSemaphore, uint32_t& textureIndex) {
+    return ((SwapChainVK&)swapChain).AcquireNextTexture((FenceVK&)textureAcquiredSemaphore, textureIndex);
 }
 
 static Result NRI_CALL WaitForPresent(SwapChain& swapChain) {
     return ((SwapChainVK&)swapChain).WaitForPresent();
 }
 
-static Result NRI_CALL QueuePresent(SwapChain& swapChain) {
-    return ((SwapChainVK&)swapChain).Present();
-}
-
-static Result NRI_CALL GetDisplayDesc(SwapChain& swapChain, DisplayDesc& displayDesc) {
-    return ((SwapChainVK&)swapChain).GetDisplayDesc(displayDesc);
+static Result NRI_CALL QueuePresent(SwapChain& swapChain, Fence& renderingFinishedSemaphore) {
+    return ((SwapChainVK&)swapChain).Present((FenceVK&)renderingFinishedSemaphore);
 }
 
 Result DeviceVK::FillFunctionTable(SwapChainInterface& table) const {
@@ -1084,10 +1084,10 @@ Result DeviceVK::FillFunctionTable(SwapChainInterface& table) const {
     table.CreateSwapChain = ::CreateSwapChain;
     table.DestroySwapChain = ::DestroySwapChain;
     table.GetSwapChainTextures = ::GetSwapChainTextures;
-    table.AcquireNextSwapChainTexture = ::AcquireNextSwapChainTexture;
+    table.GetDisplayDesc = ::GetDisplayDesc;
+    table.AcquireNextTexture = ::AcquireNextTexture;
     table.WaitForPresent = ::WaitForPresent;
     table.QueuePresent = ::QueuePresent;
-    table.GetDisplayDesc = ::GetDisplayDesc;
 
     return Result::SUCCESS;
 }

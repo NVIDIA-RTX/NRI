@@ -14,7 +14,7 @@ struct QueueVal final : public ObjectVal {
     }
 
     inline void* GetNativeObject() const {
-        return m_Device.GetCoreInterface().GetQueueNativeObject(*GetImpl());
+        return m_Device.GetCoreInterfaceImpl().GetQueueNativeObject(*GetImpl());
     }
 
     //================================================================================================================

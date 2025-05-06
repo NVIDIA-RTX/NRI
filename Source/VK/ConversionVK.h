@@ -524,11 +524,12 @@ constexpr VkImageAspectFlags GetImageAspectFlags(PlaneBits planes) {
     return aspectFlags;
 }
 
-constexpr Result GetReturnCode(VkResult result) {
-    switch (result) {
+constexpr Result GetReturnCode(VkResult vkResult) {
+    switch (vkResult) {
         case VK_SUCCESS:
         case VK_EVENT_SET:
         case VK_EVENT_RESET:
+        case VK_SUBOPTIMAL_KHR: // TODO: add "VK_TIMEOUT"?
             return Result::SUCCESS;
 
         case VK_ERROR_DEVICE_LOST:
@@ -536,7 +537,6 @@ constexpr Result GetReturnCode(VkResult result) {
 
         case VK_ERROR_SURFACE_LOST_KHR:
         case VK_ERROR_OUT_OF_DATE_KHR:
-        case VK_SUBOPTIMAL_KHR:
             return Result::OUT_OF_DATE;
 
         case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:

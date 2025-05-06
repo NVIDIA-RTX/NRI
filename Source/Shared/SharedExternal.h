@@ -180,9 +180,8 @@ typedef nri::AllocationCallbacks AllocationCallbacks;
 // Message reporting
 #define RETURN_ON_BAD_HRESULT(deviceBase, hr, format) \
     if (FAILED(hr)) { \
-        Result result = GetResultFromHRESULT(hr); \
         (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, "%s: " format " failed, result = 0x%08X!", __FUNCTION__, hr); \
-        return result; \
+        return GetResultFromHRESULT(hr); \
     }
 
 #define RETURN_ON_FAILURE(deviceBase, condition, returnCode, format, ...) \

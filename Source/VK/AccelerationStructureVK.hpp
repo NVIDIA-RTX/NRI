@@ -61,8 +61,8 @@ Result AccelerationStructureVK::FinishCreation() {
     createInfo.buffer = m_Buffer->GetHandle();
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult result = vk.CreateAccelerationStructureKHR(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkCreateAccelerationStructureKHR returned %d", (int32_t)result);
+    VkResult vkResult = vk.CreateAccelerationStructureKHR(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateAccelerationStructureKHR returned %d", (int32_t)vkResult);
 
     // Device address
     if (m_Device.m_IsSupported.deviceAddress) {

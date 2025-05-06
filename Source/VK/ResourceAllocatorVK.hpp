@@ -64,16 +64,16 @@ Result DeviceVK::CreateVma() {
     if (m_IsSupported.maintenance5)
         allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT;
 
-    VkResult result = vmaCreateAllocator(&allocatorCreateInfo, &m_Vma);
-    RETURN_ON_FAILURE(this, result == VK_SUCCESS, GetReturnCode(result), "vmaCreateAllocator returned %d", (int32_t)result);
+    VkResult vkResult = vmaCreateAllocator(&allocatorCreateInfo, &m_Vma);
+    RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vmaCreateAllocator returned %d", (int32_t)vkResult);
 
     return Result::SUCCESS;
 }
 
 Result BufferVK::Create(const AllocateBufferDesc& bufferDesc) {
-    Result nriResult = m_Device.CreateVma();
-    if (nriResult != Result::SUCCESS)
-        return nriResult;
+    Result result = m_Device.CreateVma();
+    if (result != Result::SUCCESS)
+        return result;
 
     // Fill info
     VkBufferCreateInfo bufferCreateInfo = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
@@ -113,8 +113,8 @@ Result BufferVK::Create(const AllocateBufferDesc& bufferDesc) {
         alignment = std::max(alignment, deviceDesc.memoryAlignment.micromapOffset);
 
     VmaAllocationInfo allocationInfo = {};
-    VkResult result = vmaCreateBufferWithAlignment(m_Device.GetVma(), &bufferCreateInfo, &allocationCreateInfo, alignment, &m_Handle, &m_VmaAllocation, &allocationInfo);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vmaCreateBufferWithAlignment returned %d", (int32_t)result);
+    VkResult vkResult = vmaCreateBufferWithAlignment(m_Device.GetVma(), &bufferCreateInfo, &allocationCreateInfo, alignment, &m_Handle, &m_VmaAllocation, &allocationInfo);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vmaCreateBufferWithAlignment returned %d", (int32_t)vkResult);
 
     // Mapped memory
     if (IsHostVisibleMemory(bufferDesc.memoryLocation)) {
@@ -122,8 +122,8 @@ Result BufferVK::Create(const AllocateBufferDesc& bufferDesc) {
         m_MappedMemoryOffset = allocationInfo.offset;
 
         uint32_t memoryTypeIndex = 0;
-        result = vmaFindMemoryTypeIndexForBufferInfo(m_Device.GetVma(), &bufferCreateInfo, &allocationCreateInfo, &memoryTypeIndex);
-        RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vmaFindMemoryTypeIndexForBufferInfo returned %d", (int32_t)result);
+        vkResult = vmaFindMemoryTypeIndexForBufferInfo(m_Device.GetVma(), &bufferCreateInfo, &allocationCreateInfo, &memoryTypeIndex);
+        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vmaFindMemoryTypeIndexForBufferInfo returned %d", (int32_t)vkResult);
 
         if (!m_Device.IsHostCoherentMemory((MemoryTypeIndex)memoryTypeIndex))
             m_NonCoherentDeviceMemory = allocationInfo.deviceMemory;
@@ -144,9 +144,9 @@ Result BufferVK::Create(const AllocateBufferDesc& bufferDesc) {
 }
 
 Result TextureVK::Create(const AllocateTextureDesc& textureDesc) {
-    Result nriResult = m_Device.CreateVma();
-    if (nriResult != Result::SUCCESS)
-        return nriResult;
+    Result result = m_Device.CreateVma();
+    if (result != Result::SUCCESS)
+        return result;
 
     // Fill info
     VkImageCreateInfo imageCreateInfo = {VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
@@ -161,8 +161,8 @@ Result TextureVK::Create(const AllocateTextureDesc& textureDesc) {
     if (textureDesc.dedicated)
         allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 
-    VkResult result = vmaCreateImage(m_Device.GetVma(), &imageCreateInfo, &allocationCreateInfo, &m_Handle, &m_VmaAllocation, nullptr);
-    RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vmaCreateImage returned %d", (int32_t)result);
+    VkResult vkResult = vmaCreateImage(m_Device.GetVma(), &imageCreateInfo, &allocationCreateInfo, &m_Handle, &m_VmaAllocation, nullptr);
+    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vmaCreateImage returned %d", (int32_t)vkResult);
 
     m_Desc = FixTextureDesc(textureDesc.desc);
 
@@ -170,9 +170,9 @@ Result TextureVK::Create(const AllocateTextureDesc& textureDesc) {
 }
 
 Result AccelerationStructureVK::Create(const AllocateAccelerationStructureDesc& accelerationStructureDesc) {
-    Result nriResult = m_Device.CreateVma();
-    if (nriResult != Result::SUCCESS)
-        return nriResult;
+    Result result = m_Device.CreateVma();
+    if (result != Result::SUCCESS)
+        return result;
 
     VkAccelerationStructureBuildSizesInfoKHR sizesInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
     m_Device.GetAccelerationStructureBuildSizesInfo(accelerationStructureDesc.desc, sizesInfo);
@@ -183,7 +183,7 @@ Result AccelerationStructureVK::Create(const AllocateAccelerationStructureDesc& 
     bufferDesc.desc.size = sizesInfo.accelerationStructureSize;
     bufferDesc.desc.usage = BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE;
 
-    Result result = m_Device.CreateImplementation<BufferVK>(m_Buffer, bufferDesc);
+    result = m_Device.CreateImplementation<BufferVK>(m_Buffer, bufferDesc);
     if (result == Result::SUCCESS) {
         m_BuildScratchSize = sizesInfo.buildScratchSize;
         m_UpdateScratchSize = sizesInfo.updateScratchSize;
@@ -200,9 +200,9 @@ Result MicromapVK::Create(const AllocateMicromapDesc& micromapDesc) {
     if (!m_Device.GetDesc().features.micromap)
         return Result::UNSUPPORTED;
 
-    Result nriResult = m_Device.CreateVma();
-    if (nriResult != Result::SUCCESS)
-        return nriResult;
+    Result result = m_Device.CreateVma();
+    if (result != Result::SUCCESS)
+        return result;
 
     VkMicromapBuildSizesInfoEXT sizesInfo = {VK_STRUCTURE_TYPE_MICROMAP_BUILD_SIZES_INFO_EXT};
     m_Device.GetMicromapBuildSizesInfo(micromapDesc.desc, sizesInfo);
@@ -213,7 +213,7 @@ Result MicromapVK::Create(const AllocateMicromapDesc& micromapDesc) {
     bufferDesc.desc.size = sizesInfo.micromapSize;
     bufferDesc.desc.usage = BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE;
 
-    Result result = m_Device.CreateImplementation<BufferVK>(m_Buffer, bufferDesc);
+    result = m_Device.CreateImplementation<BufferVK>(m_Buffer, bufferDesc);
     if (result == Result::SUCCESS) {
         m_BuildScratchSize = sizesInfo.buildScratchSize;
         m_Flags = micromapDesc.desc.flags;
