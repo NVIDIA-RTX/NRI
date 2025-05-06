@@ -15,14 +15,14 @@ bool StreamerImpl::Grow() {
     if (m_DynamicDataOffset <= m_DynamicBufferSize)
         return true;
 
-    uint64_t newSize = m_DynamicDataOffset * m_Desc.queuedFrameNum;
+    uint64_t newSize = m_DynamicDataOffset;
     m_DynamicBufferSize = Align(newSize, CHUNK_SIZE);
 
     // Add to garbage, keeping it alive for some frames
     if (m_DynamicBuffer)
         m_GarbageInFlight.push_back({m_DynamicBuffer, 0});
 
-    // Create a  new dynamic buffer
+    // Create a new dynamic buffer
     AllocateBufferDesc allocateBufferDesc = {};
     allocateBufferDesc.desc.size = m_DynamicBufferSize;
     allocateBufferDesc.desc.usage = m_Desc.dynamicBufferUsageBits;
