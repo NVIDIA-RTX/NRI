@@ -31,8 +31,7 @@ DeviceD3D11::DeviceD3D11(const CallbackInterface& callbacks, const AllocationCal
           Vector<QueueD3D11*>(GetStdAllocator()),
       } {
     m_Desc.graphicsAPI = GraphicsAPI::D3D11;
-    m_Desc.nriVersionMajor = NRI_VERSION_MAJOR;
-    m_Desc.nriVersionMinor = NRI_VERSION_MINOR;
+    m_Desc.nriVersion = NRI_VERSION;
 }
 
 DeviceD3D11::~DeviceD3D11() {

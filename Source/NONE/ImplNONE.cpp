@@ -19,8 +19,7 @@ struct DeviceNONE final : public DeviceBase {
             m_Desc.adapterDesc.queueNum[i] = 4;
 
         m_Desc.graphicsAPI = GraphicsAPI::NONE;
-        m_Desc.nriVersionMajor = NRI_VERSION_MAJOR;
-        m_Desc.nriVersionMinor = NRI_VERSION_MINOR;
+        m_Desc.nriVersion = NRI_VERSION;
         m_Desc.shaderModel = 69;
 
         m_Desc.viewport.maxNum = 16;
