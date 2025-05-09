@@ -56,12 +56,12 @@ NriStruct(DeviceCreationDesc) {
     NriOptional Nri(CallbackInterface) callbackInterface;
     NriOptional Nri(AllocationCallbacks) allocationCallbacks;
 
-    // 1 GRAPHICS queue is created by default
+    // One "GRAPHICS" queue is created by default
     NriOptional const NriPtr(QueueFamilyDesc) queueFamilies;
-    NriOptional uint32_t queueFamilyNum;
+    NriOptional uint32_t queueFamilyNum;        // put "GRAPHICS" queue at the beginning of the list
 
     // D3D specific
-    NriOptional uint32_t d3dShaderExtRegister;  // vendor specific shader extensions (default is NRI_SHADER_EXT_REGISTER, space is always "0")
+    NriOptional uint32_t d3dShaderExtRegister;  // vendor specific shader extensions (default is "NRI_SHADER_EXT_REGISTER", space is always "0")
     NriOptional uint32_t d3dZeroBufferSize;     // no "memset" functionality in D3D, "CmdZeroBuffer" implemented via a bunch of copies (4 Mb by default)
 
     // Vulkan specific

@@ -370,15 +370,15 @@ NriStruct(Float2) {
 //============================================================================================================================================================================================
 
 NriEnum(Robustness, uint8_t,
-    DEFAULT,    // don't care, follow device settings (VK level when used on a device)
-    OFF,        // no overhead, no robust access (out-of-bounds access is not allowed)
-    VK,         // minimal overhead, partial robust access
-    D3D12       // moderate overhead, D3D12-level robust access (requires "VK_EXT_robustness2", soft fallback to VK mode)
+    DEFAULT,        // don't care, follow device settings (VK level when used on a device)
+    OFF,            // no overhead, no robust access (out-of-bounds access is not allowed)
+    VK,             // minimal overhead, partial robust access
+    D3D12           // moderate overhead, D3D12-level robust access (requires "VK_EXT_robustness2", soft fallback to VK mode)
 );
 
 NriEnum(MemoryLocation, uint8_t,
     DEVICE,
-    DEVICE_UPLOAD, // soft fallback to "HOST_UPLOAD"
+    DEVICE_UPLOAD,  // soft fallback to "HOST_UPLOAD"
     HOST_UPLOAD,
     HOST_READBACK
 );
