@@ -2,6 +2,8 @@
 
 #pragma once
 
+#define NRI_MESH_SHADER 1
+
 NriNamespaceBegin
 
 NriStruct(DrawMeshTasksDesc) {

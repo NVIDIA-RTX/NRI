@@ -2,6 +2,8 @@
 
 #pragma once
 
+#define NRI_DEVICE_CREATION 1
+
 NriNamespaceBegin
 
 NriEnum(Message, uint8_t,

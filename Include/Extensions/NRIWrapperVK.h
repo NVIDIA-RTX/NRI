@@ -2,6 +2,8 @@
 
 #pragma once
 
+#define NRI_WRAPPER_VK 1
+
 #include "NRIDeviceCreation.h"
 
 typedef void* VKHandle;
@@ -112,6 +114,6 @@ NriStruct(WrapperVKInterface) {
     void*       (NRI_CALL *GetDeviceProcAddrVK)             (const NriRef(Device) device);
 };
 
-NRI_API Nri(Result) NRI_CALL nriCreateDeviceFromVkDevice(const NriRef(DeviceCreationVKDesc) deviceDesc, NriOut NriRef(Device*) device);
+NRI_API Nri(Result) NRI_CALL nriCreateDeviceFromVKDevice(const NriRef(DeviceCreationVKDesc) deviceDesc, NriOut NriRef(Device*) device);
 
 NriNamespaceEnd

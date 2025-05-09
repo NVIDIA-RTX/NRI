@@ -2,6 +2,8 @@
 
 #pragma once
 
+#define NRI_SWAP_CHAIN 1
+
 NriNamespaceBegin
 
 NriForwardStruct(SwapChain);

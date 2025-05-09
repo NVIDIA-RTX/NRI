@@ -2,6 +2,8 @@
 
 #pragma once
 
+#define NRI_HELPER 1
+
 NriNamespaceBegin
 
 NriStruct(VideoMemoryInfo) {

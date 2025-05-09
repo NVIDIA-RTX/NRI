@@ -2,6 +2,8 @@
 
 #pragma once
 
+#define NRI_RAY_TRACING 1
+
 NriNamespaceBegin
 
 NriForwardStruct(AccelerationStructure); // bottom- or top- level acceleration structure (aka BLAS or TLAS respectively)

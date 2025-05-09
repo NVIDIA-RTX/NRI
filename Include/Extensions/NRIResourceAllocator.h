@@ -2,6 +2,8 @@
 
 #pragma once
 
+#define NRI_RESOURCE_ALLOCATOR 1
+
 #include "NRIRayTracing.h"
 
 // Convenient creation of resources, which get returned already bound to memory.

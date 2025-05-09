@@ -55,6 +55,9 @@ NRI_INLINE void DescriptorSetVal::UpdateDynamicConstantBuffers(uint32_t baseDyna
         descriptorsImpl[i] = NRI_GET_IMPL(Descriptor, descriptors[i]);
     }
 
+    for (uint32_t i = 0; i < dynamicConstantBufferNum; i++)
+        m_DynamicConstantBuffersMask |= 1 << std::min(baseDynamicConstantBuffer + i, 30u);
+
     GetCoreInterfaceImpl().UpdateDynamicConstantBuffers(*GetImpl(), baseDynamicConstantBuffer, dynamicConstantBufferNum, descriptorsImpl);
 }
 

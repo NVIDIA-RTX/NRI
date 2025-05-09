@@ -2,6 +2,8 @@
 
 #pragma once
 
+#define NRI_LOW_LATENCY 1
+
 NriNamespaceBegin
 
 NriForwardStruct(SwapChain);

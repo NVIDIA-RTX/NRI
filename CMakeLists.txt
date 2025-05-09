@@ -37,12 +37,10 @@ endif()
 
 # Create project
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/Include/NRI.h" ver_h)
-string(REGEX MATCH "NRI_VERSION_MAJOR ([0-9]*)" _ ${ver_h})
-set(VERSION_MAJOR ${CMAKE_MATCH_1})
-string(REGEX MATCH "NRI_VERSION_MINOR ([0-9]*)" _ ${ver_h})
-set(VERSION_MINOR ${CMAKE_MATCH_1})
+string(REGEX MATCH "NRI_VERSION ([0-9]*)" _ ${ver_h})
+set(NRI_VERSION ${CMAKE_MATCH_1})
 
-message("NRI: v${VERSION_MAJOR}.${VERSION_MINOR}")
+message("NRI: v${NRI_VERSION}")
 project(NRI LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)

@@ -78,8 +78,7 @@ NRI_INLINE Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout
             }
 
             m_DynamicConstantBufferNum += descriptorSetDesc.dynamicConstantBufferNum;
-            RETURN_ON_FAILURE(&m_Device, m_DynamicConstantBufferNum <= m_Desc.dynamicConstantBufferMaxNum, Result::INVALID_ARGUMENT,
-                "the maximum number of 'DYNAMIC_CONSTANT_BUFFER' descriptors in DescriptorPool exceeded at DescriptorSet instance #%u", i);
+            RETURN_ON_FAILURE(&m_Device, m_DynamicConstantBufferNum <= m_Desc.dynamicConstantBufferMaxNum, Result::INVALID_ARGUMENT, "the maximum number of 'DYNAMIC_CONSTANT_BUFFER' descriptors in DescriptorPool exceeded at DescriptorSet instance #%u", i);
         }
     }
 

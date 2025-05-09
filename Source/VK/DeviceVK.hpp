@@ -347,8 +347,7 @@ DeviceVK::DeviceVK(const CallbackInterface& callbacks, const AllocationCallbacks
     m_AllocationCallbacks.pfnFree = vkFreeHostMemory;
 
     m_Desc.graphicsAPI = GraphicsAPI::VK;
-    m_Desc.nriVersionMajor = NRI_VERSION_MAJOR;
-    m_Desc.nriVersionMinor = NRI_VERSION_MINOR;
+    m_Desc.nriVersion = NRI_VERSION;
 }
 
 DeviceVK::~DeviceVK() {

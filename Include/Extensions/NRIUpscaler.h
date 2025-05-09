@@ -2,6 +2,8 @@
 
 #pragma once
 
+#define NRI_UPSCALER 1
+
 NriNamespaceBegin
 
 NriForwardStruct(Upscaler);

@@ -267,6 +267,9 @@ NRI_INLINE void CommandBufferVal::SetDescriptorSet(uint32_t setIndex, const Desc
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
 
+    DescriptorSetVal& descriptorSetVal = (DescriptorSetVal&)descriptorSet;
+    RETURN_ON_FAILURE(&m_Device, descriptorSetVal.AreDynamicConstantBuffersValid(), ReturnVoid(), "Not all dynamic constant buffers have been updated at least once. Potential use of stale data detected");
+
     DescriptorSet* descriptorSetImpl = NRI_GET_IMPL(DescriptorSet, &descriptorSet);
 
     GetCoreInterfaceImpl().CmdSetDescriptorSet(*GetImpl(), setIndex, *descriptorSetImpl, dynamicConstantBufferOffsets);

@@ -1415,8 +1415,7 @@ NriStruct(DeviceDesc) {
     // Common
     Nri(AdapterDesc) adapterDesc; // "queueNum" reflects available number of queues per "QueueType"
     Nri(GraphicsAPI) graphicsAPI;
-    uint16_t nriVersionMajor;
-    uint16_t nriVersionMinor;
+    uint16_t nriVersion;
     uint8_t shaderModel; // major * 10 + minor
 
     // Viewport

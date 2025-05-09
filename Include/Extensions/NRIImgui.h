@@ -2,6 +2,8 @@
 
 #pragma once
 
+#define NRI_IMGUI 1
+
 // Expected usage:
 // - designed only for rendering
 // - compatible only with unmodified "ImDrawVert" (20 bytes) and "ImDrawIdx" (2 bytes)

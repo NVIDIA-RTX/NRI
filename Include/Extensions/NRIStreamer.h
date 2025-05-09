@@ -2,6 +2,8 @@
 
 #pragma once
 
+#define NRI_STREAMER 1
+
 NriNamespaceBegin
 
 NriForwardStruct(Streamer);
