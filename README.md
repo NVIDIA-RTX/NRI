@@ -5,7 +5,7 @@
 *NRI* is a modular extensible low-level abstract render interface, which has been designed to support all low level features of D3D12 and Vulkan GAPIs, but at the same time to simplify usage and reduce the amount of code needed (especially compared with VK).
 
 Goals:
-- generalization of D3D12 ([spec](https://microsoft.github.io/DirectX-Specs/)) and VK ([spec](https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html)) GAPIs
+- generalization of D3D12 ([spec](https://microsoft.github.io/DirectX-Specs/)) and VK ([spec](https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html)) GAPIs
 - explicitness (providing access to low-level features of modern GAPIs)
 - "quality of life" features (providing high-level improving utilities, organized as extensions)
 - low overhead
@@ -17,8 +17,8 @@ Non-goals (exceptions apply to some extensions, where high-level abstraction and
 - exposing entities not existing in GAPIs
 - hidden management of any kind
 
-Currently supported GAPIs:
-- Vulkan (VK 1.3 or extended 1.2 + additional features)
+Supported GAPIs:
+- Vulkan
 - D3D12
 - D3D11
 - Metal (through [MoltenVK](https://github.com/KhronosGroup/MoltenVK))
@@ -45,6 +45,7 @@ Available interfaces:
  - `NRI.h` - core functionality
  - `NRIDeviceCreation.h` - device creation and related functionality
  - `NRIHelper.h` - a collection of various helpers to ease use of the core interface
+ - `NRIImgui.h` - a light-weight ImGui renderer (no ImGui dependency)
  - `NRILowLatency.h` - low latency support (aka *NVIDIA REFLEX*)
  - `NRIMeshShader.h` - mesh shaders
  - `NRIRayTracing.h` - ray tracing
