@@ -163,10 +163,9 @@ if(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT)
 endif()
 
 # Construct list of dependencies # TODO: update to latest releases from time to time
-# URL            - good (no fat ".git" folder)
-# GIT_REPOSITORY - worse (because of ".git" folder)
 set(DEPS)
 
+# Dependencies: URL - good (no fat ".git" folder)
 if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
     # Agility SDK
     FetchContent_Declare(
@@ -244,6 +243,7 @@ if(NRI_ENABLE_XESS_SDK)
     list(APPEND DEPS xess)
 endif()
 
+# Dependencies: GIT_REPOSITORY - worse (because of ".git" folder)
 if(NRI_ENABLE_D3D12_SUPPORT)
     # D3D12 MA
     if(NRI_AGILITY_SDK_VERSION_MAJOR GREATER_EQUAL 716)
