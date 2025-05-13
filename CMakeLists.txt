@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.30)
 
 include(CMakeDependentOption)
 include(FetchContent)
@@ -162,17 +162,18 @@ if(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT)
     find_library(INPUT_LIB_DXGUID NAMES dxguid HINTS ${WINDOWS_SDK_LIB_PATH} REQUIRED)
 endif()
 
-# Construct list of dependencies
+# Construct list of dependencies # TODO: update to latest releases from time to time
+# URL            - good (no fat ".git" folder)
+# GIT_REPOSITORY - worse (because of ".git" folder)
 set(DEPS)
 
-# set(FETCHCONTENT_QUIET FALSE)
 if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
     # Agility SDK
     FetchContent_Declare(
         agilitysdk
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        DOWNLOAD_EXTRACT_TIMESTAMP 1
+        DOWNLOAD_NO_PROGRESS 1
         URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.${NRI_AGILITY_SDK_VERSION_MAJOR}.${NRI_AGILITY_SDK_VERSION_MINOR}
-        GIT_PROGRESS TRUE
     )
     list(APPEND DEPS agilitysdk)
 endif()
@@ -181,34 +182,66 @@ if(NRI_ENABLE_NVTX_SUPPORT)
     # NVTX
     FetchContent_Declare(
         nvtx
-        GIT_REPOSITORY https://github.com/NVIDIA/NVTX.git
-        GIT_TAG dev
-        GIT_SHALLOW 1
-        GIT_PROGRESS TRUE
+        DOWNLOAD_EXTRACT_TIMESTAMP 1
+        DOWNLOAD_NO_PROGRESS 1
+        URL https://github.com/NVIDIA/NVTX/archive/refs/tags/v3.2.0.zip
     )
     list(APPEND DEPS nvtx)
 endif()
 
-if(NRI_ENABLE_D3D_EXTENSIONS)
-    # NV API
+if(NRI_ENABLE_VK_SUPPORT)
+    # Vulkan headers
     FetchContent_Declare(
-        nvapi
-        GIT_REPOSITORY https://github.com/NVIDIA/nvapi.git
-        GIT_TAG main
-        GIT_SHALLOW 1
-        GIT_PROGRESS TRUE
+        vulkan_headers
+        DOWNLOAD_EXTRACT_TIMESTAMP 1
+        DOWNLOAD_NO_PROGRESS 1
+        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.315.zip
     )
-    list(APPEND DEPS nvapi)
+    list(APPEND DEPS vulkan_headers)
 
-    # AMD AGS
+    # Vulkan MA
     FetchContent_Declare(
-        amdags
-        GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/AGS_SDK.git
-        GIT_TAG master
-        GIT_SHALLOW 1
-        GIT_PROGRESS TRUE
+        vma
+        DOWNLOAD_EXTRACT_TIMESTAMP 1
+        DOWNLOAD_NO_PROGRESS 1
+        SOURCE_SUBDIR "ignore CMakeLists.txt"
+        URL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/refs/tags/v3.3.0.zip
     )
-    list(APPEND DEPS amdags)
+    list(APPEND DEPS vma)
+endif()
+
+if(NRI_ENABLE_NGX_SDK)
+    # NVIDIA NGX SDK
+    FetchContent_Declare(
+        ngx
+        DOWNLOAD_EXTRACT_TIMESTAMP 1
+        DOWNLOAD_NO_PROGRESS 1
+        URL https://github.com/NVIDIA/DLSS/archive/refs/tags/v310.2.1.zip
+    )
+    list(APPEND DEPS ngx)
+endif()
+
+if(NRI_ENABLE_FFX_SDK)
+    # AMD FidelityFX SDK
+    FetchContent_Declare(
+        ffx
+        DOWNLOAD_EXTRACT_TIMESTAMP 1
+        DOWNLOAD_NO_PROGRESS 1
+        SOURCE_SUBDIR "ignore CMakeLists.txt"
+        URL https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/releases/download/v1.1.4/FidelityFX-SDK-v1.1.4.zip
+    )
+    list(APPEND DEPS ffx)
+endif()
+
+if(NRI_ENABLE_XESS_SDK)
+    # INTEL XeSS SDK
+    FetchContent_Declare(
+        xess
+        DOWNLOAD_EXTRACT_TIMESTAMP 1
+        DOWNLOAD_NO_PROGRESS 1
+        URL https://github.com/intel/xess/releases/download/v2.0.1/XeSS_SDK_2.0.1.zip
+    )
+    list(APPEND DEPS xess)
 endif()
 
 if(NRI_ENABLE_D3D12_SUPPORT)
@@ -225,71 +258,28 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         GIT_TAG ${D3D12MA_TAG}
         GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        GIT_PROGRESS TRUE
     )
     list(APPEND DEPS d3d12ma)
 endif()
 
-if(NRI_ENABLE_VK_SUPPORT)
-    # Vulkan headers
+if(NRI_ENABLE_D3D_EXTENSIONS)
+    # AMD AGS
     FetchContent_Declare(
-        vulkan_headers
-        GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers.git
-        GIT_TAG origin/vulkan-sdk-1.4.309
-        GIT_SHALLOW 1
-        SOURCE_SUBDIR "ignore CMakeLists.txt"
-        GIT_PROGRESS TRUE
+        amdags
+        DOWNLOAD_EXTRACT_TIMESTAMP 1
+        DOWNLOAD_NO_PROGRESS 1
+        URL https://github.com/GPUOpen-LibrariesAndSDKs/AGS_SDK/archive/refs/tags/v6.2.0-signed.zip
     )
-    list(APPEND DEPS vulkan_headers)
+    list(APPEND DEPS amdags)
 
-    # Vulkan MA
+    # NV API
     FetchContent_Declare(
-        vma
-        GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
-        GIT_TAG master
+        nvapi
+        GIT_REPOSITORY https://github.com/NVIDIA/nvapi.git
+        GIT_TAG main
         GIT_SHALLOW 1
-        SOURCE_SUBDIR "ignore CMakeLists.txt"
-        GIT_PROGRESS TRUE
     )
-    list(APPEND DEPS vma)
-endif()
-
-if(NRI_ENABLE_NGX_SDK)
-    # NVIDIA NGX SDK
-    FetchContent_Declare(
-        ngx
-        GIT_REPOSITORY https://github.com/NVIDIA/DLSS.git
-        GIT_TAG v310.1.0
-        GIT_SHALLOW 1
-        GIT_PROGRESS TRUE
-    )
-    list(APPEND DEPS ngx)
-endif()
-
-if(NRI_ENABLE_FFX_SDK)
-    # AMD FidelityFX SDK
-    FetchContent_Declare(
-        ffx
-        GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK.git
-        GIT_TAG v1.1.3
-        GIT_SHALLOW 1
-        SOURCE_SUBDIR "ignore CMakeLists.txt"
-        GIT_PROGRESS TRUE
-    )
-    list(APPEND DEPS ffx)
-endif()
-
-if(NRI_ENABLE_XESS_SDK)
-    # INTEL XeSS SDK
-    FetchContent_Declare(
-        xess
-        GIT_REPOSITORY https://github.com/intel/xess.git
-        GIT_TAG v1.3.1
-        GIT_SHALLOW 1
-        SOURCE_SUBDIR "ignore CMakeLists.txt"
-        GIT_PROGRESS TRUE
-    )
-    list(APPEND DEPS xess)
+    list(APPEND DEPS nvapi)
 endif()
 
 # Add dependencies for dependencies
@@ -302,7 +292,6 @@ if((NRI_ENABLE_NIS_SDK OR NRI_ENABLE_IMGUI_EXTENSION) AND NOT TARGET ShaderMake)
         GIT_REPOSITORY https://github.com/NVIDIA-RTX/ShaderMake.git
         GIT_TAG main
         GIT_SHALLOW 1
-        GIT_PROGRESS TRUE
     )
     list(APPEND DEPS shadermake)
 endif()
@@ -311,7 +300,13 @@ endif()
 if(DEPS)
     message("NRI: downloading dependencies:")
     message(STATUS "${DEPS} ...")
+
     FetchContent_MakeAvailable(${DEPS})
+
+    # Delete original archives
+    foreach(DEP IN LISTS DEPS)
+        file(REMOVE_RECURSE "${FETCHCONTENT_BASE_DIR}/${DEP}-tmp")
+    endforeach()
 endif()
 
 # D3D extensions
