@@ -448,8 +448,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
                 m_VK.GetPhysicalDeviceProperties2(deviceGroups[i].physicalDevices[0], &props);
 
-                uint32_t majorVersion = VK_VERSION_MAJOR(props.properties.apiVersion);
-                m_MinorVersion = VK_VERSION_MINOR(props.properties.apiVersion);
+                uint32_t majorVersion = VK_API_VERSION_MAJOR(props.properties.apiVersion);
+                m_MinorVersion = VK_API_VERSION_MINOR(props.properties.apiVersion);
 
                 bool isSupported = (majorVersion * 10 + m_MinorVersion) >= 12;
                 if (desc.adapterDesc) {

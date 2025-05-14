@@ -97,7 +97,7 @@ NRI_INLINE void CommandBufferVK::SetStencilReference(uint8_t frontRef, uint8_t b
     const auto& vk = m_Device.GetDispatchTable();
 
     if (frontRef == backRef)
-        vk.CmdSetStencilReference(m_Handle, VK_STENCIL_FRONT_AND_BACK, frontRef);
+        vk.CmdSetStencilReference(m_Handle, VK_STENCIL_FACE_FRONT_AND_BACK, frontRef);
     else {
         vk.CmdSetStencilReference(m_Handle, VK_STENCIL_FACE_FRONT_BIT, frontRef);
         vk.CmdSetStencilReference(m_Handle, VK_STENCIL_FACE_BACK_BIT, backRef);
