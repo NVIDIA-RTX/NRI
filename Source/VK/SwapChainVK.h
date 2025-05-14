@@ -41,9 +41,9 @@ struct SwapChainVK final : public DisplayDescHelper, DebugNameBase {
     }
 
     Texture* const* GetTextures(uint32_t& textureNum) const;
-    Result AcquireNextTexture(FenceVK& textureAcquiredSemaphore, uint32_t& textureIndex);
+    Result AcquireNextTexture(FenceVK& acquireSemaphore, uint32_t& textureIndex);
     Result WaitForPresent();
-    Result Present(FenceVK& renderingFinishedSemaphore);
+    Result Present(FenceVK& releaseSemaphore);
 
     Result SetLatencySleepMode(const LatencySleepMode& latencySleepMode);
     Result SetLatencyMarker(LatencyMarker latencyMarker);

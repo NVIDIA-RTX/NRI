@@ -103,33 +103,33 @@ NriStruct(SwapChainInterface) {
     Nri(Result)             (NRI_CALL *GetDisplayDesc)          (NriRef(SwapChain) swapChain, NriOut NriRef(DisplayDesc) displayDesc);
 
     // VK only: may return "OUT_OF_DATE", fences must be created with "SWAPCHAIN_SEMAPHORE" initial value
-    Nri(Result)             (NRI_CALL *AcquireNextTexture)      (NriRef(SwapChain) swapChain, NriRef(Fence) textureAcquiredSemaphore, NriOut NonNriRef(uint32_t) textureIndex);
+    Nri(Result)             (NRI_CALL *AcquireNextTexture)      (NriRef(SwapChain) swapChain, NriRef(Fence) acquireSemaphore, NriOut NonNriRef(uint32_t) textureIndex);
     Nri(Result)             (NRI_CALL *WaitForPresent)          (NriRef(SwapChain) swapChain); // call once right before input sampling (must be called starting from the 1st frame)
-    Nri(Result)             (NRI_CALL *QueuePresent)            (NriRef(SwapChain) swapChain, NriRef(Fence) renderingFinishedSemaphore);
+    Nri(Result)             (NRI_CALL *QueuePresent)            (NriRef(SwapChain) swapChain, NriRef(Fence) releaseSemaphore);
 };
 
 /*
-Typical usage example:
+Typical usage example, valid if "swap chain textures count == queued frames count":
 
 // Creation:
     // Create swap chain
         SwapChainDesc swapChainDesc = {};
-        swapChainDesc.textureNum = QUEUED_FRAME_NUM + 1;
+        swapChainDesc.textureNum = QUEUED_FRAME_NUM;
         ...
 
     // Create in-flight data
         struct QueuedFrame {
-            Fence* textureAcquiredSemaphore;
-            Fence* renderingFinishedSemaphore;
+            Fence* swapChainAcquireSemaphore;
+            Fence* swapChainReleaseSemaphore;
             ...
         } queuedFrames[QUEUED_FRAME_NUM] = {};
 
         Fence* frameFence;
         NRI.CreateFence(device, 0, frameFence);
 
-        for (int i = 0 ; i < QUEUED_FRAME_NUM; i++) {
-            NRI.CreateFence(device, SWAPCHAIN_SEMAPHORE, queuedFrames[i].textureAcquiredSemaphore);
-            NRI.CreateFence(device, SWAPCHAIN_SEMAPHORE, queuedFrames[i].renderingFinishedSemaphore);
+        for (uint32_t i = 0; i < QUEUED_FRAME_NUM; i++) {
+            NRI.CreateFence(device, SWAPCHAIN_SEMAPHORE, queuedFrames[i].swapChainAcquireSemaphore);
+            NRI.CreateFence(device, SWAPCHAIN_SEMAPHORE, queuedFrames[i].swapChainReleaseSemaphore);
             ...
         }
 
@@ -141,9 +141,11 @@ Typical usage example:
         const QueuedFrame& queuedFrame = queuedFrames[frameIndex % QUEUED_FRAME_NUM];
 
     // Acquire a swap chain texture
-        NRI.AcquireNextTexture(swapChain, *queuedFrame.textureAcquiredSemaphore, currentSwapChainTextureIndex);
+        NRI.AcquireNextTexture(swapChain, *queuedFrame.swapChainAcquireSemaphore, currentSwapChainTextureIndex);
+        Fence* swapChainReleaseSemaphore = queuedFrames[currentSwapChainTextureIndex].swapChainReleaseSemaphore;
 
     // Record command buffers
+        // Use texture "currentSwapChainTextureIndex" from the array returned by "GetSwapChainTextures"
         ...
 
     // Submit
@@ -152,11 +154,11 @@ Typical usage example:
         frameFence.value = 1 + frameIndex;
 
         FenceSubmitDesc textureAcquiredFence = {};
-        textureAcquiredFence.fence = queuedFrame.textureAcquiredSemaphore;
+        textureAcquiredFence.fence = queuedFrame.swapChainAcquireSemaphore;
         textureAcquiredFence.stages = COLOR_ATTACHMENT; // COPY, ALL
 
         FenceSubmitDesc renderingFinishedFence = {};
-        renderingFinishedFence.fence = queuedFrame.renderingFinishedSemaphore;
+        renderingFinishedFence.fence = swapChainReleaseSemaphore;
 
         FenceSubmitDesc signalFences[] = {renderingFinishedFence, frameFence};
 
@@ -171,7 +173,7 @@ Typical usage example:
         NRI.QueueSubmit(queue, queueSubmitDesc);
 
     // Present
-        NRI.QueuePresent(swapChain, *queuedFrame.renderingFinishedSemaphore);
+        NRI.QueuePresent(swapChain, *swapChainReleaseSemaphore);
 */
 
 NriNamespaceEnd

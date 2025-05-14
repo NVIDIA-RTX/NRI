@@ -18,8 +18,8 @@ NRI_INLINE Texture* const* SwapChainVal::GetTextures(uint32_t& textureNum) {
     return (Texture* const*)m_Textures.data();
 }
 
-NRI_INLINE Result SwapChainVal::AcquireNextTexture(Fence& textureAcquiredSemaphore, uint32_t& textureIndex) {
-    Fence* textureAcquiredSemaphoreImpl = NRI_GET_IMPL(Fence, &textureAcquiredSemaphore);
+NRI_INLINE Result SwapChainVal::AcquireNextTexture(Fence& acquireSemaphore, uint32_t& textureIndex) {
+    Fence* textureAcquiredSemaphoreImpl = NRI_GET_IMPL(Fence, &acquireSemaphore);
 
     return GetSwapChainInterfaceImpl().AcquireNextTexture(*GetImpl(), *textureAcquiredSemaphoreImpl, textureIndex);
 }
@@ -30,8 +30,8 @@ NRI_INLINE Result SwapChainVal::WaitForPresent() {
     return GetSwapChainInterfaceImpl().WaitForPresent(*GetImpl());
 }
 
-NRI_INLINE Result SwapChainVal::Present(Fence& renderingFinishedSemaphore) {
-    Fence* renderingFinishedSemaphoreImpl = NRI_GET_IMPL(Fence, &renderingFinishedSemaphore);
+NRI_INLINE Result SwapChainVal::Present(Fence& releaseSemaphore) {
+    Fence* renderingFinishedSemaphoreImpl = NRI_GET_IMPL(Fence, &releaseSemaphore);
 
     return GetSwapChainInterfaceImpl().QueuePresent(*GetImpl(), *renderingFinishedSemaphoreImpl);
 }

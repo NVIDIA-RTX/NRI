@@ -344,12 +344,12 @@ NRI_INLINE Texture* const* SwapChainVK::GetTextures(uint32_t& textureNum) const 
     return (Texture* const*)m_Textures.data();
 }
 
-NRI_INLINE Result SwapChainVK::AcquireNextTexture(FenceVK& textureAcquiredSemaphore, uint32_t& textureIndex) {
+NRI_INLINE Result SwapChainVK::AcquireNextTexture(FenceVK& acquireSemaphore, uint32_t& textureIndex) {
     ExclusiveScope lock(m_Queue->GetLock());
     const auto& vk = m_Device.GetDispatchTable();
 
     // Acquire next image (signal)
-    VkResult vkResult = vk.AcquireNextImageKHR(m_Device, m_Handle, MsToUs(TIMEOUT_PRESENT), textureAcquiredSemaphore, VK_NULL_HANDLE, &m_TextureIndex);
+    VkResult vkResult = vk.AcquireNextImageKHR(m_Device, m_Handle, MsToUs(TIMEOUT_PRESENT), acquireSemaphore, VK_NULL_HANDLE, &m_TextureIndex);
 
     Result result = GetReturnCode(vkResult);
     if (result != Result::OUT_OF_DATE && result != Result::SUCCESS)
@@ -370,15 +370,15 @@ NRI_INLINE Result SwapChainVK::WaitForPresent() {
     return GetReturnCode(vkResult);
 }
 
-NRI_INLINE Result SwapChainVK::Present(FenceVK& renderingFinishedSemaphore) {
+NRI_INLINE Result SwapChainVK::Present(FenceVK& releaseSemaphore) {
     ExclusiveScope lock(m_Queue->GetLock());
 
     // Present (wait)
-    VkSemaphore vkRenderingFinishedSemaphore = renderingFinishedSemaphore;
+    VkSemaphore vkReleaseSemaphore = releaseSemaphore;
 
     VkPresentInfoKHR presentInfo = {VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
     presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &vkRenderingFinishedSemaphore;
+    presentInfo.pWaitSemaphores = &vkReleaseSemaphore;
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = &m_Handle;
     presentInfo.pImageIndices = &m_TextureIndex;

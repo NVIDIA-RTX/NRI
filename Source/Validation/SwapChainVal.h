@@ -24,9 +24,9 @@ struct SwapChainVal final : public ObjectVal {
     //================================================================================================================
 
     Texture* const* GetTextures(uint32_t& textureNum);
-    Result AcquireNextTexture(Fence& textureAcquiredSemaphore, uint32_t& textureIndex);
+    Result AcquireNextTexture(Fence& acquireSemaphore, uint32_t& textureIndex);
     Result WaitForPresent();
-    Result Present(Fence& renderingFinishedSemaphore);
+    Result Present(Fence& releaseSemaphore);
     Result GetDisplayDesc(DisplayDesc& displayDesc) const;
 
     Result SetLatencySleepMode(const LatencySleepMode& latencySleepMode);

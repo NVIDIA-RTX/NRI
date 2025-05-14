@@ -1292,16 +1292,16 @@ static Result NRI_CALL GetDisplayDesc(SwapChain& swapChain, DisplayDesc& display
     return ((SwapChainVal&)swapChain).GetDisplayDesc(displayDesc);
 }
 
-static Result NRI_CALL AcquireNextTexture(SwapChain& swapChain, Fence& textureAcquiredSemaphore, uint32_t& textureIndex) {
-    return ((SwapChainVal&)swapChain).AcquireNextTexture(textureAcquiredSemaphore, textureIndex);
+static Result NRI_CALL AcquireNextTexture(SwapChain& swapChain, Fence& acquireSemaphore, uint32_t& textureIndex) {
+    return ((SwapChainVal&)swapChain).AcquireNextTexture(acquireSemaphore, textureIndex);
 }
 
 static Result NRI_CALL WaitForPresent(SwapChain& swapChain) {
     return ((SwapChainVal&)swapChain).WaitForPresent();
 }
 
-static Result NRI_CALL QueuePresent(SwapChain& swapChain, Fence& renderingFinishedSemaphore) {
-    return ((SwapChainVal&)swapChain).Present(renderingFinishedSemaphore);
+static Result NRI_CALL QueuePresent(SwapChain& swapChain, Fence& releaseSemaphore) {
+    return ((SwapChainVal&)swapChain).Present(releaseSemaphore);
 }
 
 Result DeviceVal::FillFunctionTable(SwapChainInterface& table) const {
