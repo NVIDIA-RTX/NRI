@@ -7,9 +7,7 @@ Result TextureD3D12::Create(const TextureDesc& textureDesc) {
 }
 
 Result TextureD3D12::Create(const TextureD3D12Desc& textureDesc) {
-    if (textureDesc.desc)
-        m_Desc = FixTextureDesc(*textureDesc.desc);
-    else if (!GetTextureDesc(textureDesc, m_Desc))
+    if (!GetTextureDesc(textureDesc, m_Desc))
         return Result::INVALID_ARGUMENT;
 
     m_Texture = (ID3D12ResourceBest*)textureDesc.d3d12Resource;

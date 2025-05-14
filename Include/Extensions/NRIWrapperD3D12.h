@@ -7,6 +7,8 @@
 #include "NRIDeviceCreation.h"
 #include "NRIRayTracing.h"
 
+typedef int32_t DXGIFormat;
+
 NonNriForwardStruct(AGSContext);
 NonNriForwardStruct(ID3D12Heap);
 NonNriForwardStruct(ID3D12Device);
@@ -42,7 +44,7 @@ NriStruct(DeviceCreationD3D12Desc) {
 
 NriStruct(CommandBufferD3D12Desc) {
     ID3D12GraphicsCommandList* d3d12CommandList;
-    ID3D12CommandAllocator* d3d12CommandAllocator;
+    NriOptional ID3D12CommandAllocator* d3d12CommandAllocator; // needed only for "BeginCommandBuffer"
 };
 
 NriStruct(DescriptorPoolD3D12Desc) {
@@ -60,7 +62,7 @@ NriStruct(BufferD3D12Desc) {
 
 NriStruct(TextureD3D12Desc) {
     ID3D12Resource* d3d12Resource;
-    NriOptional const NriPtr(TextureDesc) desc; // not all information can be retrieved from the resource if not provided
+    NriOptional DXGIFormat format;             // must be provided "as a compatible typed format" if the resource is typeless
 };
 
 NriStruct(MemoryD3D12Desc) {

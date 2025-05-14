@@ -201,6 +201,9 @@ bool nri::GetTextureDesc(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& 
     if (bindFlags & D3D11_BIND_UNORDERED_ACCESS)
         textureDesc.usage |= TextureUsageBits::SHADER_RESOURCE_STORAGE;
 
+    if (textureD3D11Desc.format)
+        textureDesc.format = DXGIFormatToNRIFormat(textureD3D11Desc.format);
+
     return true;
 }
 

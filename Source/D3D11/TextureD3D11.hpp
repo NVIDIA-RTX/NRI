@@ -92,9 +92,7 @@ Result TextureD3D11::Create(const TextureDesc& textureDesc) {
 }
 
 Result TextureD3D11::Create(const TextureD3D11Desc& textureDesc) {
-    if (textureDesc.desc)
-        m_Desc = FixTextureDesc(*textureDesc.desc);
-    else if (!GetTextureDesc(textureDesc, m_Desc))
+    if (!GetTextureDesc(textureDesc, m_Desc))
         return Result::INVALID_ARGUMENT;
 
     m_Texture = textureDesc.d3d11Resource;
