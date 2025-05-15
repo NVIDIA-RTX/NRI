@@ -624,7 +624,7 @@ endif()
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY FOLDER ${PROJECT_NAME})
 
-message("NRI: setting output path to '${CMAKE_RUNTIME_OUTPUT_DIRECTORY}'")
+message("NRI: output path '${CMAKE_RUNTIME_OUTPUT_DIRECTORY}'")
 set_target_properties(${PROJECT_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
 # Copy to the output folder
@@ -729,5 +729,5 @@ if(NRI_ENABLE_NIS_SDK OR NRI_ENABLE_IMGUI_EXTENSION)
     target_include_directories(NRI_Shared PRIVATE "${NRI_SHADERS_PATH}")
     target_link_libraries(NRI_Shared PRIVATE ShaderMakeBlob)
 
-    message("NRI: setting shaders path to '${NRI_SHADERS_PATH}'")
+    message("NRI: shaders path '${NRI_SHADERS_PATH}'")
 endif()
