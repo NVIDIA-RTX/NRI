@@ -12,5 +12,6 @@ compile_commands.json
 # generated
 _Bin/
 _Build/
+_Shaders/
 _NRI_SDK/
 NRIAgilitySDK.h
