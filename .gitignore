@@ -1,32 +1,5 @@
-# cmake
-CMakeFiles/
-.cmake/
-*.dir/
-*.tlog/
-CMakeCache.txt
-cmake_install.cmake
-*.recipe
-
-# make
-Makefile
-
-# VS
-*.vcxproj*
-*.sln
-.vs/
-*.args.json
-*.manifest
-
 # VS Code
 .vscode/
-
-# shaders
-*.dxbc
-*.dxil
-*.spirv
-*.dxbc.h
-*.dxil.h
-*.spirv.h
 
 # ninja
 .ninja_deps
@@ -36,20 +9,8 @@ compile_commands.json
 *.log
 *.ninja
 
-# library
-*.lib
-*.exp
-*.dll
-*.ilk
-*.pdb
-*.so
-*.so.*
-*.manifest
-
-# generated files
-NRIAgilitySDK.h
-
-# generated folders
+# generated
 _Bin/
 _Build/
 _NRI_SDK/
+NRIAgilitySDK.h
