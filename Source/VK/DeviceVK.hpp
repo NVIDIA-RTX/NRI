@@ -1708,7 +1708,6 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(DestroyPipeline);
     GET_DEVICE_CORE_FUNC(FreeMemory);
     GET_DEVICE_CORE_FUNC(FreeCommandBuffers);
-    GET_DEVICE_CORE_FUNC(FreeDescriptorSets);
 
     GET_DEVICE_CORE_FUNC(MapMemory);
     GET_DEVICE_CORE_FUNC(FlushMappedMemoryRanges);

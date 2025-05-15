@@ -95,7 +95,6 @@ struct DispatchTable {
     VK_FUNC(DestroyPipeline);                             // - | +
     VK_FUNC(FreeMemory);                                  // - | +
     VK_FUNC(FreeCommandBuffers);                          // - | +
-    VK_FUNC(FreeDescriptorSets);                          // - | ? TODO: unused, add "FreeDescriptorSet"?
                                                           // -----
     VK_FUNC(MapMemory);                                   // - | + TODO: replace with 2 (VK_KHR_map_memory2 or VK 1.4)
     VK_FUNC(FlushMappedMemoryRanges);                     // + | +
