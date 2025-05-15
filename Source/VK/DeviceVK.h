@@ -7,22 +7,22 @@ namespace nri {
 struct QueueVK;
 
 struct IsSupported {
-    uint32_t descriptorIndexing : 1;
-    uint32_t deviceAddress : 1;
+    uint32_t descriptorIndexing     : 1;
+    uint32_t deviceAddress          : 1;
     uint32_t swapChainMutableFormat : 1;
-    uint32_t presentId : 1;
-    uint32_t lowLatency : 1;
-    uint32_t memoryPriority : 1;
-    uint32_t memoryBudget : 1;
-    uint32_t maintenance4 : 1;
-    uint32_t maintenance5 : 1;
-    uint32_t maintenance6 : 1;
-    uint32_t imageSlicedView : 1;
-    uint32_t customBorderColor : 1;
-    uint32_t robustness : 1;
-    uint32_t robustness2 : 1;
-    uint32_t pipelineRobustness : 1;
-    uint32_t storageWithoutFormat : 1;
+    uint32_t presentId              : 1;
+    uint32_t lowLatency             : 1;
+    uint32_t memoryPriority         : 1;
+    uint32_t memoryBudget           : 1;
+    uint32_t maintenance4           : 1;
+    uint32_t maintenance5           : 1;
+    uint32_t maintenance6           : 1;
+    uint32_t imageSlicedView        : 1;
+    uint32_t customBorderColor      : 1;
+    uint32_t robustness             : 1;
+    uint32_t robustness2            : 1;
+    uint32_t pipelineRobustness     : 1;
+    uint32_t storageWithoutFormat   : 1;
 };
 
 static_assert(sizeof(IsSupported) == sizeof(uint32_t), "4 bytes expected");

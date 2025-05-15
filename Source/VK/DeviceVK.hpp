@@ -1571,7 +1571,7 @@ void DeviceVK::ReportDeviceGroupInfo() {
     }
 }
 
-#define MERGE_TOKENS2(a, b) a##b
+#define MERGE_TOKENS2(a, b)    a##b
 #define MERGE_TOKENS3(a, b, c) a##b##c
 
 #define GET_DEVICE_OPTIONAL_CORE_FUNC(name) \

@@ -61,8 +61,8 @@ enum DescriptorHeapType : uint32_t {
     MAX_NUM
 };
 
-#define DESCRIPTOR_HANDLE_HEAP_TYPE_BIT_NUM 2
-#define DESCRIPTOR_HANDLE_HEAP_INDEX_BIT_NUM 16
+#define DESCRIPTOR_HANDLE_HEAP_TYPE_BIT_NUM   2
+#define DESCRIPTOR_HANDLE_HEAP_INDEX_BIT_NUM  16
 #define DESCRIPTOR_HANDLE_HEAP_OFFSET_BIT_NUM 14
 
 // TODO: no castable formats since typed resources are initially "TYPELESS"

@@ -37,7 +37,7 @@ struct DescriptorSetVal final : public ObjectVal {
     void Copy(const DescriptorSetCopyDesc& descriptorSetCopyDesc);
 
 private:
-    const DescriptorSetDesc* m_Desc = nullptr;   // .natvis
+    const DescriptorSetDesc* m_Desc = nullptr; // .natvis
     uint32_t m_DynamicConstantBuffersMask = 0; // hopefully no one is going to create more than 31
 };
 

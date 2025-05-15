@@ -27,7 +27,7 @@ struct DescriptorSetD3D12 final : public DebugNameBase {
 
 private:
     DescriptorPoolD3D12* m_DescriptorPoolD3D12 = nullptr;
-    DescriptorPointerGPU* m_DynamicConstantBuffers = nullptr; // TODO: saves 1 indirection, but makes "bad" access unsafe
+    DescriptorPointerGPU* m_DynamicConstantBuffers = nullptr;     // TODO: saves 1 indirection, but makes "bad" access unsafe
     const DescriptorSetMapping* m_DescriptorSetMapping = nullptr; // saves 1 indirection
     std::array<uint32_t, DescriptorHeapType::MAX_NUM> m_HeapOffsets = {};
 };

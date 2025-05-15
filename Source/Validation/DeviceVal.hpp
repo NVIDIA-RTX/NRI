@@ -507,14 +507,11 @@ NRI_INLINE Result DeviceVal::CreateQueryPool(const QueryPoolDesc& queryPoolDesc,
 
     if (queryPoolDesc.queryType == QueryType::TIMESTAMP_COPY_QUEUE) {
         RETURN_ON_FAILURE(this, GetDesc().features.copyQueueTimestamp, Result::INVALID_ARGUMENT, "'features.copyQueueTimestamp' is false");
-    }
-    else if (queryPoolDesc.queryType == QueryType::PIPELINE_STATISTICS) {
+    } else if (queryPoolDesc.queryType == QueryType::PIPELINE_STATISTICS) {
         RETURN_ON_FAILURE(this, GetDesc().features.pipelineStatistics, Result::INVALID_ARGUMENT, "'features.pipelineStatistics' is false");
-    }
-    else if (queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_SIZE || queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_COMPACTED_SIZE) {
+    } else if (queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_SIZE || queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_COMPACTED_SIZE) {
         RETURN_ON_FAILURE(this, GetDesc().features.rayTracing, Result::INVALID_ARGUMENT, "'features.rayTracing' is false");
-    }
-    else if (queryPoolDesc.queryType == QueryType::MICROMAP_COMPACTED_SIZE) {
+    } else if (queryPoolDesc.queryType == QueryType::MICROMAP_COMPACTED_SIZE) {
         RETURN_ON_FAILURE(this, GetDesc().features.micromap, Result::INVALID_ARGUMENT, "'features.micromap' is false");
     }
 

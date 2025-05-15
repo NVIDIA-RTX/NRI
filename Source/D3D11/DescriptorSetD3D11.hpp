@@ -13,7 +13,7 @@ void DescriptorSetD3D11::Create(const PipelineLayoutD3D11* pipelineLayout, const
 NRI_INLINE void DescriptorSetD3D11::UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs) {
     rangeOffset += m_BindingSet->startRange;
     CHECK(rangeOffset + rangeNum <= m_BindingSet->endRange, "Out of bounds");
-    
+
     for (uint32_t i = 0; i < rangeNum; i++) {
         const DescriptorRangeUpdateDesc& range = rangeUpdateDescs[i];
         uint32_t descriptorOffset = range.baseDescriptor;
@@ -43,7 +43,7 @@ NRI_INLINE void DescriptorSetD3D11::UpdateDynamicConstantBuffers(uint32_t baseDy
 
 NRI_INLINE void DescriptorSetD3D11::Copy(const DescriptorSetCopyDesc& descriptorSetCopyDesc) {
     DescriptorSetD3D11& srcSet = (DescriptorSetD3D11&)descriptorSetCopyDesc.srcDescriptorSet;
-    
+
     uint32_t dstBaseRange = m_BindingSet->startRange + descriptorSetCopyDesc.dstBaseRange;
     uint32_t srcBaseRange = srcSet.m_BindingSet->startRange + descriptorSetCopyDesc.srcBaseRange;
     CHECK(dstBaseRange + descriptorSetCopyDesc.rangeNum <= m_BindingSet->endRange, "Out of bounds");

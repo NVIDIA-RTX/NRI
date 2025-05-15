@@ -7,13 +7,13 @@ namespace nri {
 struct QueueVal;
 
 struct IsExtSupported {
-    uint32_t lowLatency : 1;
-    uint32_t meshShader : 1;
-    uint32_t rayTracing : 1;
-    uint32_t swapChain : 1;
+    uint32_t lowLatency   : 1;
+    uint32_t meshShader   : 1;
+    uint32_t rayTracing   : 1;
+    uint32_t swapChain    : 1;
     uint32_t wrapperD3D11 : 1;
     uint32_t wrapperD3D12 : 1;
-    uint32_t wrapperVK : 1;
+    uint32_t wrapperVK    : 1;
 };
 
 struct DeviceVal final : public DeviceBase {

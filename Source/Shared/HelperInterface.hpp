@@ -14,7 +14,7 @@ static void DoTransition(const CoreInterface& m_iCore, CommandBuffer* commandBuf
     TextureBarrierDesc textureBarriers[BARRIERS_PER_PASS];
 
     constexpr AccessLayoutStage copyDestState = {AccessBits::COPY_DESTINATION, Layout::COPY_DESTINATION, StageBits::ALL}; // we don't know which stages to wait
-    constexpr AccessLayoutStage unknownState = {AccessBits::UNKNOWN, Layout::UNKNOWN, StageBits::NONE}; // since the whole resource is updated, don't care about the previous state
+    constexpr AccessLayoutStage unknownState = {AccessBits::UNKNOWN, Layout::UNKNOWN, StageBits::NONE};                   // since the whole resource is updated, don't care about the previous state
 
     for (uint32_t i = 0; i < textureDataDescNum;) {
         uint32_t passEnd = std::min(i + BARRIERS_PER_PASS, textureDataDescNum);
@@ -52,7 +52,7 @@ static void DoTransition(const CoreInterface& m_iCore, CommandBuffer* commandBuf
     BufferBarrierDesc bufferBarriers[BARRIERS_PER_PASS];
 
     constexpr AccessStage copyDestState = {AccessBits::COPY_DESTINATION, StageBits::ALL}; // we don't know which stages to wait
-    constexpr AccessStage unknownState = {AccessBits::UNKNOWN, StageBits::NONE}; // since the whole resource is updated, don't care about the previous state
+    constexpr AccessStage unknownState = {AccessBits::UNKNOWN, StageBits::NONE};          // since the whole resource is updated, don't care about the previous state
 
     for (uint32_t i = 0; i < bufferUploadDescNum;) {
         uint32_t passEnd = std::min(i + BARRIERS_PER_PASS, bufferUploadDescNum);
@@ -145,8 +145,7 @@ Result HelperDataUpload::Create(const TextureUploadDesc* textureUploadDescs, uin
     }
 
     // Create upload buffer
-    if (m_UploadBufferSize)
-    {
+    if (m_UploadBufferSize) {
         BufferDesc bufferDesc = {};
         bufferDesc.size = m_UploadBufferSize;
 

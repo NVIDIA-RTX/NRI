@@ -2,25 +2,25 @@
 
 #if NRI_ENABLE_IMGUI_EXTENSION
 
-#include "ShaderMake/ShaderBlob.h"
+#    include "ShaderMake/ShaderBlob.h"
 
-#if NRI_ENABLE_D3D11_SUPPORT
-#    include "Imgui.fs.dxbc.h"
-#    include "Imgui.vs.dxbc.h"
-#endif
+#    if NRI_ENABLE_D3D11_SUPPORT
+#        include "Imgui.fs.dxbc.h"
+#        include "Imgui.vs.dxbc.h"
+#    endif
 
-#if NRI_ENABLE_D3D12_SUPPORT
-#    include "Imgui.fs.dxil.h"
-#    include "Imgui.vs.dxil.h"
-#endif
+#    if NRI_ENABLE_D3D12_SUPPORT
+#        include "Imgui.fs.dxil.h"
+#        include "Imgui.vs.dxil.h"
+#    endif
 
-#if NRI_ENABLE_VK_SUPPORT
-#    include "Imgui.fs.spirv.h"
-#    include "Imgui.vs.spirv.h"
-#endif
+#    if NRI_ENABLE_VK_SUPPORT
+#        include "Imgui.fs.spirv.h"
+#        include "Imgui.vs.spirv.h"
+#    endif
 
-#include "../Shaders/Imgui.fs.hlsl"
-#include "../Shaders/Imgui.vs.hlsl"
+#    include "../Shaders/Imgui.fs.hlsl"
+#    include "../Shaders/Imgui.vs.hlsl"
 
 // Copied from Imgui
 typedef uint16_t ImDrawIdx;
@@ -264,24 +264,24 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, Streamer& streamer, const 
             };
 
             bool shaderMakeResult = false;
-#if NRI_ENABLE_D3D11_SUPPORT
+#    if NRI_ENABLE_D3D11_SUPPORT
             if (deviceDesc.graphicsAPI == GraphicsAPI::D3D11) {
                 shaderMakeResult = ShaderMake::FindPermutationInBlob(g_Imgui_vs_dxbc, GetCountOf(g_Imgui_vs_dxbc), &define, 1, &shaders[0].bytecode, &shaders[0].size);
                 shaderMakeResult |= ShaderMake::FindPermutationInBlob(g_Imgui_fs_dxbc, GetCountOf(g_Imgui_fs_dxbc), nullptr, 0, &shaders[1].bytecode, &shaders[1].size);
             }
-#endif
-#if NRI_ENABLE_D3D12_SUPPORT
+#    endif
+#    if NRI_ENABLE_D3D12_SUPPORT
             if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
                 shaderMakeResult = ShaderMake::FindPermutationInBlob(g_Imgui_vs_dxil, GetCountOf(g_Imgui_vs_dxil), &define, 1, &shaders[0].bytecode, &shaders[0].size);
                 shaderMakeResult |= ShaderMake::FindPermutationInBlob(g_Imgui_fs_dxil, GetCountOf(g_Imgui_fs_dxil), nullptr, 0, &shaders[1].bytecode, &shaders[1].size);
             }
-#endif
-#if NRI_ENABLE_VK_SUPPORT
+#    endif
+#    if NRI_ENABLE_VK_SUPPORT
             if (deviceDesc.graphicsAPI == GraphicsAPI::VK) {
                 shaderMakeResult = ShaderMake::FindPermutationInBlob(g_Imgui_vs_spirv, GetCountOf(g_Imgui_vs_spirv), &define, 1, &shaders[0].bytecode, &shaders[0].size);
                 shaderMakeResult |= ShaderMake::FindPermutationInBlob(g_Imgui_fs_spirv, GetCountOf(g_Imgui_fs_spirv), nullptr, 0, &shaders[1].bytecode, &shaders[1].size);
             }
-#endif
+#    endif
             CHECK(shaderMakeResult, "Unexpected");
 
             const VertexAttributeDesc vertexAttributeDesc[] = {

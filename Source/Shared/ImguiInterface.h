@@ -17,8 +17,7 @@ struct ImguiImpl : public DebugNameBase {
         : m_Device(device)
         , m_iCore(NRI)
         , m_Pipelines(((DeviceBase&)device).GetStdAllocator())
-        , m_DescriptorSets1(((DeviceBase&)device).GetStdAllocator())
-    {
+        , m_DescriptorSets1(((DeviceBase&)device).GetStdAllocator()) {
     }
 
     ~ImguiImpl();

@@ -917,8 +917,7 @@ NRI_INLINE void CommandBufferVK::EndQuery(QueryPool& queryPool, uint32_t offset)
         // TODO: https://registry.khronos.org/vulkan/specs/latest/man/html/vkCmdWriteTimestamp.html
         // https://docs.vulkan.org/samples/latest/samples/api/timestamp_queries/README.html
         vk.CmdWriteTimestamp2(m_Handle, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, queryPoolImpl.GetHandle(), offset);
-    }
-    else
+    } else
         vk.CmdEndQuery(m_Handle, queryPoolImpl.GetHandle(), offset);
 }
 

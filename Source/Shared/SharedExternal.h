@@ -175,7 +175,7 @@ typedef nri::AllocationCallbacks AllocationCallbacks;
 #define NRI_INLINE inline // we want to inline all functions, which are actually wrappers for the interface functions
 
 #define NRI_STRINGIFY_(token) #token
-#define NRI_STRINGIFY(token) NRI_STRINGIFY_(token)
+#define NRI_STRINGIFY(token)  NRI_STRINGIFY_(token)
 
 // Message reporting
 #define RETURN_ON_BAD_HRESULT(deviceBase, hr, format) \
@@ -195,18 +195,18 @@ typedef nri::AllocationCallbacks AllocationCallbacks;
         (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, "%s: " NRI_STRINGIFY(expression) " failed!", __FUNCTION__); \
     }
 
-#define REPORT_INFO(deviceBase, format, ...) (deviceBase)->ReportMessage(Message::INFO, __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define REPORT_INFO(deviceBase, format, ...)    (deviceBase)->ReportMessage(Message::INFO, __FILE__, __LINE__, format, ##__VA_ARGS__)
 #define REPORT_WARNING(deviceBase, format, ...) (deviceBase)->ReportMessage(Message::WARNING, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
-#define REPORT_ERROR(deviceBase, format, ...) (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
+#define REPORT_ERROR(deviceBase, format, ...)   (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
 
 // Queue scores // TODO: improve?
 #define GRAPHICS_QUEUE_SCORE ((graphics ? 100 : 0) + (compute ? 10 : 0) + (copy ? 10 : 0) + (sparse ? 5 : 0) + (videoDecode ? 2 : 0) + (videoEncode ? 2 : 0) + (protect ? 1 : 0) + (opticalFlow ? 1 : 0))
-#define COMPUTE_QUEUE_SCORE ((!graphics ? 10 : 0) + (compute ? 100 : 0) + (!copy ? 10 : 0) + (sparse ? 5 : 0) + (!videoDecode ? 2 : 0) + (!videoEncode ? 2 : 0) + (protect ? 1 : 0) + (!opticalFlow ? 1 : 0))
-#define COPY_QUEUE_SCORE ((!graphics ? 10 : 0) + (!compute ? 10 : 0) + (copy ? 100 * familyProps.queueCount : 0) + (sparse ? 5 : 0) + (!videoDecode ? 2 : 0) + (!videoEncode ? 2 : 0) + (protect ? 1 : 0) + (!opticalFlow ? 1 : 0))
+#define COMPUTE_QUEUE_SCORE  ((!graphics ? 10 : 0) + (compute ? 100 : 0) + (!copy ? 10 : 0) + (sparse ? 5 : 0) + (!videoDecode ? 2 : 0) + (!videoEncode ? 2 : 0) + (protect ? 1 : 0) + (!opticalFlow ? 1 : 0))
+#define COPY_QUEUE_SCORE     ((!graphics ? 10 : 0) + (!compute ? 10 : 0) + (copy ? 100 * familyProps.queueCount : 0) + (sparse ? 5 : 0) + (!videoDecode ? 2 : 0) + (!videoEncode ? 2 : 0) + (protect ? 1 : 0) + (!opticalFlow ? 1 : 0))
 
 // Array validation
-#define VALIDATE_ARRAY(x) static_assert((size_t)x[x.size() - 1] != 0, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
-#define VALIDATE_ARRAY_BY_PTR(x) static_assert(x[x.size() - 1] != nullptr, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
+#define VALIDATE_ARRAY(x)                 static_assert((size_t)x[x.size() - 1] != 0, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
+#define VALIDATE_ARRAY_BY_PTR(x)          static_assert(x[x.size() - 1] != nullptr, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
 #define VALIDATE_ARRAY_BY_FILED(x, field) static_assert(x[x.size() - 1].field != 0, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
 
 // Shared library
