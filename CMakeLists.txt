@@ -4,6 +4,11 @@ include(CMakeDependentOption)
 include(FetchContent)
 
 # Options
+set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK will be copied relative to the directory with binaries")
+set(NRI_AGILITY_SDK_VERSION_MAJOR "615" CACHE STRING "Agility SDK major version") # 716 (can cause D3D12_ERROR_INVALID_REDIST error?)
+set(NRI_AGILITY_SDK_VERSION_MINOR "1" CACHE STRING "Agility SDK minor version") # 1-preview
+set(NRI_SHADERS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_Shaders" CACHE STRING "Shader output path override")
+
 option(NRI_STATIC_LIBRARY "Build static library" OFF)
 option(NRI_ENABLE_NVTX_SUPPORT "Annotations for NVIDIA Nsight Systems" ON)
 option(NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS "Enable debug names, host and device annotations" ON)
@@ -22,11 +27,6 @@ cmake_dependent_option(NRI_ENABLE_WAYLAND_SUPPORT "Enable 'wayland' support" ON 
 cmake_dependent_option(NRI_ENABLE_NGX_SDK "Enable NVIDIA NGX (DLSS) SDK" OFF "NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT OR NRI_ENABLE_VK_SUPPORT" OFF)
 cmake_dependent_option(NRI_ENABLE_FFX_SDK "Enable AMD FidelityFX SDK" OFF "(NRI_ENABLE_VK_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT) AND WIN32" OFF)
 cmake_dependent_option(NRI_ENABLE_XESS_SDK "Enable INTEL XeSS SDK" OFF "NRI_ENABLE_D3D12_SUPPORT AND WIN32" OFF)
-
-set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK will be copied relative to the directory with binaries")
-set(NRI_AGILITY_SDK_VERSION_MAJOR 615) # 716 (can cause D3D12_ERROR_INVALID_REDIST error?)
-set(NRI_AGILITY_SDK_VERSION_MINOR 1) # 1-preview
-set(NRI_SHADERS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_Shaders" CACHE STRING "Shader output path override")
 
 # Is submodule?
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
@@ -400,6 +400,8 @@ if(NRI_ENABLE_D3D12_SUPPORT)
     set_property(TARGET NRI_D3D12 PROPERTY FOLDER ${PROJECT_NAME})
 
     if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
+        message("NRI: using AgilitySDK v1.${NRI_AGILITY_SDK_VERSION_MAJOR}.${NRI_AGILITY_SDK_VERSION_MINOR}")
+
         target_include_directories(NRI_D3D12 PRIVATE "${agilitysdk_SOURCE_DIR}/build/native/include")
 
         # Generate "NRIAgilitySDK.h"
