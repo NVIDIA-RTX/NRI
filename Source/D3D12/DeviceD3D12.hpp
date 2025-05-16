@@ -50,7 +50,7 @@ static void __stdcall MessageCallback(D3D12_MESSAGE_CATEGORY category, D3D12_MES
         messageType = Message::WARNING;
 
     DeviceD3D12& device = *(DeviceD3D12*)context;
-    device.ReportMessage(messageType, __FILE__, __LINE__, "%s", message);
+    device.ReportMessage(messageType, __FILE__, __LINE__, "[%u] %s", id, message);
 }
 
 #else

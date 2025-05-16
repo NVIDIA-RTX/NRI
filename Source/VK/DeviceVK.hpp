@@ -111,11 +111,11 @@ static VkBool32 VKAPI_PTR MessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT
         if (callbackData->messageIdNumber == 0)
             return VK_FALSE;
         // Validation Warning: [ WARNING-DEBUG-PRINTF ] Internal Warning: Setting VkPhysicalDeviceVulkan12Properties::maxUpdateAfterBindDescriptorsInAllPools to 32
-        if (callbackData->messageIdNumber == 0x76589099)
+        if (callbackData->messageIdNumber == 1985515673)
             return VK_FALSE;
-        // (v1.4.309 issue) The storage image descriptor is accessed by a OpTypeImage that has a Format operand which doesn't match the VkImageView format
-        // TODO: there is no way to enable "storageWithoutFormat" capability in SPIRV in the current version of DXC, so ignore the warning if this feature is supported by the device
-        if (callbackData->messageIdNumber == 0x013365B2 && device.m_IsSupported.storageWithoutFormat)
+        // (v1.4.309+) The storage image descriptor is accessed by a OpTypeImage that has a Format operand which doesn't match the VkImageView format
+        // TODO: there is no way to enable "storageWithoutFormat" capability globally in SPIRV in the current version of DXC, so ignore the warning if this feature is supported by the device
+        if (callbackData->messageIdNumber == 20145586 && device.m_IsSupported.storageWithoutFormat)
             return VK_FALSE;
     }
 
@@ -125,7 +125,7 @@ static VkBool32 VKAPI_PTR MessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT
     else if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
         severity = Message::WARNING;
 
-    device.ReportMessage(severity, __FILE__, __LINE__, "%s", callbackData->pMessage);
+    device.ReportMessage(severity, __FILE__, __LINE__, "[%u] %s", callbackData->messageIdNumber, callbackData->pMessage);
 
     return VK_FALSE;
 }
