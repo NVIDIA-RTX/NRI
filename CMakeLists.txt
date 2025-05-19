@@ -71,14 +71,10 @@ endif()
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # Compile options
-if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
-    set(SSE_FLAG -msse4.1)
-endif()
-
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(COMPILE_OPTIONS ${SSE_FLAG} -Wextra -Wno-missing-field-initializers)
+    set(COMPILE_OPTIONS -Wextra -Wno-missing-field-initializers)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    set(COMPILE_OPTIONS ${SSE_FLAG} -Wextra -Wno-missing-field-initializers)
+    set(COMPILE_OPTIONS -Wextra -Wno-missing-field-initializers)
 elseif(MSVC)
     set(COMPILE_OPTIONS
         /W4 /WX
