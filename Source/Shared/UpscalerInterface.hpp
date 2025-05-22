@@ -27,12 +27,10 @@
 
 #    if NRI_ENABLE_D3D12_SUPPORT
 #        include "NIS.cs.dxil.h"
-#        include "NIS.cs_fp16.dxil.h"
 #    endif
 
 #    if NRI_ENABLE_VK_SUPPORT
 #        include "NIS.cs.spirv.h"
-#        include "NIS.cs_fp16.spirv.h"
 #    endif
 
 // Ring buffer, should cover any reasonable number of queued frames even if "CmdDispatchUpscale" is called several times per frame
@@ -631,20 +629,12 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
                 shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_cs_dxbc, GetCountOf(g_NIS_cs_dxbc), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
 #    endif
 #    if NRI_ENABLE_D3D12_SUPPORT
-            if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
-                if (deviceDesc.shaderModel >= 62)
-                    shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_cs_fp16_dxil, GetCountOf(g_NIS_cs_fp16_dxil), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
-                else
-                    shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_cs_dxil, GetCountOf(g_NIS_cs_dxil), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
-            }
+            if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12)
+                shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_cs_dxil, GetCountOf(g_NIS_cs_dxil), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
 #    endif
 #    if NRI_ENABLE_VK_SUPPORT
-            if (deviceDesc.graphicsAPI == GraphicsAPI::VK) {
-                if (deviceDesc.shaderModel >= 62)
-                    shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_cs_fp16_spirv, GetCountOf(g_NIS_cs_fp16_spirv), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
-                else
-                    shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_cs_spirv, GetCountOf(g_NIS_cs_spirv), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
-            }
+            if (deviceDesc.graphicsAPI == GraphicsAPI::VK)
+                shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_cs_spirv, GetCountOf(g_NIS_cs_spirv), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
 #    endif
             if (!shaderMakeResult)
                 return Result::FAILURE;

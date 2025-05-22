@@ -701,25 +701,27 @@ if(NRI_ENABLE_NIS_SDK OR NRI_ENABLE_IMGUI_EXTENSION)
         -I "Include"
     )
 
-    if(WIN32)
-        add_custom_target(NRI_Shaders ALL
-            COMMAND ShaderMake ${SHADERMAKE_GENERAL_ARGS} -p DXBC --compiler "${FXC_PATH}"
-            COMMAND ShaderMake ${SHADERMAKE_GENERAL_ARGS} -p DXIL --compiler "${DXC_PATH}"
-            COMMAND ShaderMake ${SHADERMAKE_GENERAL_ARGS} -p SPIRV --compiler "${DXC_SPIRV_PATH}"
-            DEPENDS ShaderMake
-            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-            VERBATIM
-            SOURCES ${SHADERS}
-        )
-    else()
-        add_custom_target(NRI_Shaders ALL
-            COMMAND ShaderMake ${SHADERMAKE_GENERAL_ARGS} -p SPIRV --compiler "${DXC_SPIRV_PATH}"
-            DEPENDS ShaderMake
-            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-            VERBATIM
-            SOURCES ${SHADERS}
-        )
+    set(SHADERMAKE_COMMANDS "")
+
+    if(NRI_ENABLE_D3D11_SUPPORT)
+        set(SHADERMAKE_COMMANDS ${SHADERMAKE_COMMANDS} COMMAND ShaderMake -p DXBC --compiler "${FXC_PATH}" ${SHADERMAKE_GENERAL_ARGS})
     endif()
+
+    if(NRI_ENABLE_D3D12_SUPPORT)
+        set(SHADERMAKE_COMMANDS ${SHADERMAKE_COMMANDS} COMMAND ShaderMake -p DXIL --compiler "${DXC_PATH}" ${SHADERMAKE_GENERAL_ARGS})
+    endif()
+
+    if(NRI_ENABLE_VK_SUPPORT)
+        set(SHADERMAKE_COMMANDS ${SHADERMAKE_COMMANDS} COMMAND ShaderMake -p SPIRV --compiler "${DXC_SPIRV_PATH}" ${SHADERMAKE_GENERAL_ARGS})
+    endif()
+
+    add_custom_target(NRI_Shaders ALL
+        ${SHADERMAKE_COMMANDS}
+        DEPENDS ShaderMake
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        VERBATIM
+        SOURCES ${SHADERS}
+    )
 
     set_property(TARGET NRI_Shaders PROPERTY FOLDER ${PROJECT_NAME})
 
