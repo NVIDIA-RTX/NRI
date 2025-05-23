@@ -75,7 +75,7 @@ NRI_RESOURCE(Texture2D<float4>, coef_scaler,    t, 2, NRI_NIS_SET_STATIC);
 NRI_RESOURCE(Texture2D<float4>, coef_usm,       t, 3, NRI_NIS_SET_STATIC);
 
 NRI_RESOURCE(Texture2D<float4>, in_texture,     t, 0, NRI_NIS_SET_DYNAMIC);
-NRI_RESOURCE(RWTexture2D<float4>, out_texture,  u, 1, NRI_NIS_SET_DYNAMIC);
+NRI_FORMAT("unknown") NRI_RESOURCE(RWTexture2D<float4>, out_texture,  u, 1, NRI_NIS_SET_DYNAMIC);
 
 // https://github.com/NVIDIAGameWorks/NVIDIAImageScaling/blob/main/NIS/NIS_Scaler.h
 // Add this line in "CalcLTI" function:

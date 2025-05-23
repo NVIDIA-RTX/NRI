@@ -468,6 +468,8 @@ void DeviceD3D11::FillDesc() {
     m_Desc.shaderFeatures.layerIndex = options3.VPAndRTArrayIndexFromAnyShaderFeedingRasterizer;
     m_Desc.shaderFeatures.clock = isGetSpecialSupported;
     m_Desc.shaderFeatures.rasterizedOrderedView = options2.ROVsSupported != 0;
+    m_Desc.shaderFeatures.storageReadWithoutFormat = true; // All desktop GPUs support it since 2014
+    m_Desc.shaderFeatures.storageWriteWithoutFormat = true;
 }
 
 void DeviceD3D11::InitializeNvExt(bool isNVAPILoadedInApp, bool isImported) {

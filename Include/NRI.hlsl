@@ -8,7 +8,6 @@ USAGE:
 
 Textures, buffers, samplers and acceleration structures:
     NRI_RESOURCE(Texture2D<float4>, gInput, t, 0, 2);
-    NRI_RESOURCE(RWTexture2D<float>, gOutput, u, 0, 0);
     NRI_RESOURCE(StructuredBuffer<InstanceData>, gInstanceData, t, 2, 2);
     NRI_RESOURCE(RaytracingAccelerationStructure, gTlas, t, 1, 2);
     NRI_RESOURCE(SamplerState, gLinearMipmapLinearSampler, s, 0, 0);
@@ -16,6 +15,11 @@ Textures, buffers, samplers and acceleration structures:
 Texture and buffer arrays:
     NRI_RESOURCE(Texture2D<float3>, gInputs[], t, 0, 1); // DXIL/SPIRV only
     NRI_RESOURCE(Texture2D<float>, gInputs[8], t, 0, 0); // DXBC compatible
+
+Non-structured storage resources must be used with "NRI_FORMAT" macro. "unknown" is allowed if
+"shaderFeatures.storageReadWithoutFormat" and/or "shaderFeatures.storageWriteWithoutFormat"
+are supported (any desktop GPU supports it since 2014):
+    NRI_FORMAT("unknown") NRI_RESOURCE(RWTexture2D<float>, gOutput, u, 0, 0);
 
 Dual source blending:
     NRI_BLEND_SOURCE(0) out float4 color : SV_Target0,

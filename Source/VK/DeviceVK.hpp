@@ -105,17 +105,12 @@ static void VKAPI_PTR vkFreeHostMemory(void* pUserData, void* pMemory) {
 static VkBool32 VKAPI_PTR MessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT, const VkDebugUtilsMessengerCallbackDataEXT* callbackData, void* userData) {
     DeviceVK& device = *(DeviceVK*)userData;
 
-    // TODO: some messages can be muted here
-    {
+    { // TODO: some messages can be muted here
         // Loader info message
         if (callbackData->messageIdNumber == 0)
             return VK_FALSE;
         // Validation Warning: [ WARNING-DEBUG-PRINTF ] Internal Warning: Setting VkPhysicalDeviceVulkan12Properties::maxUpdateAfterBindDescriptorsInAllPools to 32
         if (callbackData->messageIdNumber == 1985515673)
-            return VK_FALSE;
-        // (v1.4.309+) The storage image descriptor is accessed by a OpTypeImage that has a Format operand which doesn't match the VkImageView format
-        // TODO: there is no way to enable "storageWithoutFormat" capability globally in SPIRV in the current version of DXC, so ignore the warning if this feature is supported by the device
-        if (callbackData->messageIdNumber == 20145586 && device.m_IsSupported.storageWithoutFormat)
             return VK_FALSE;
     }
 
@@ -738,7 +733,6 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.robustness = features.features.robustBufferAccess != 0 && (imageRobustnessFeatures.robustImageAccess != 0 || features13.robustImageAccess != 0);
     m_IsSupported.robustness2 = robustness2Features.robustBufferAccess2 != 0 && robustness2Features.robustImageAccess2 != 0;
     m_IsSupported.pipelineRobustness = pipelineRobustnessFeatures.pipelineRobustness;
-    m_IsSupported.storageWithoutFormat = features.features.shaderStorageImageWriteWithoutFormat != 0 && features.features.shaderStorageImageReadWithoutFormat != 0;
 
     { // Check hard requirements
         bool hasDynamicRendering = features13.dynamicRendering != 0 || (dynamicRenderingFeatures.dynamicRendering != 0 && extendedDynamicStateFeatures.extendedDynamicState != 0);
@@ -1143,6 +1137,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.shaderFeatures.rasterizedOrderedView = fragmentShaderInterlockFeatures.fragmentShaderPixelInterlock != 0 && fragmentShaderInterlockFeatures.fragmentShaderSampleInterlock != 0;
         m_Desc.shaderFeatures.barycentric = fragmentShaderBarycentricFeatures.fragmentShaderBarycentric;
         m_Desc.shaderFeatures.rayTracingPositionFetch = rayTracingPositionFetchFeatures.rayTracingPositionFetch;
+        m_Desc.shaderFeatures.storageReadWithoutFormat = features.features.shaderStorageImageReadWithoutFormat;
+        m_Desc.shaderFeatures.storageWriteWithoutFormat = features.features.shaderStorageImageWriteWithoutFormat;
 
         // Estimate shader model last since it depends on many "m_Desc" fields
         // Based on https://docs.vulkan.org/guide/latest/hlsl.html#_shader_model_coverage // TODO: code below needs to be improved

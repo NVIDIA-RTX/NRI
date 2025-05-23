@@ -740,6 +740,8 @@ void DeviceD3D12::FillDesc() {
     m_Desc.shaderFeatures.layerIndex = options.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation;
     m_Desc.shaderFeatures.rasterizedOrderedView = options.ROVsSupported;
     m_Desc.shaderFeatures.barycentric = options3.BarycentricsSupported;
+    m_Desc.shaderFeatures.storageReadWithoutFormat = true; // All desktop GPUs support it since 2014
+    m_Desc.shaderFeatures.storageWriteWithoutFormat = true;
 }
 
 void DeviceD3D12::InitializeNvExt(bool isNVAPILoadedInApp, bool isImported) {

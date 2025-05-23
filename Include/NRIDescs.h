@@ -1684,6 +1684,8 @@ NriStruct(DeviceDesc) {
         uint32_t rasterizedOrderedView                           : 1; // ROV, aka fragment shader interlock
         uint32_t barycentric                                     : 1; // barycentric coordinates
         uint32_t rayTracingPositionFetch                         : 1; // position fetching directly from AS
+        uint32_t storageReadWithoutFormat                        : 1; // NRI_FORMAT("unknown") is allowed for storage reads
+        uint32_t storageWriteWithoutFormat                       : 1; // NRI_FORMAT("unknown") is allowed for storage writes
     } shaderFeatures;
 };
 
