@@ -3,19 +3,6 @@ cmake_minimum_required(VERSION 3.30)
 include(CMakeDependentOption)
 include(FetchContent)
 
-# Test packages availability
-find_path(XLIB_HEADERS NAMES "X11/Xlib.h")
-
-if(XLIB_HEADERS)
-    message("================= X11 found!")
-endif()
-
-find_path(WAYLAND_HEADERS NAMES "wayland-client.h")
-
-if(WAYLAND_HEADERS)
-    message("================= Wayland found!")
-endif()
-
 # Options
 set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK will be copied relative to the directory with binaries")
 set(NRI_AGILITY_SDK_VERSION_MAJOR "615" CACHE STRING "Agility SDK major version") # 716 (can cause D3D12_ERROR_INVALID_REDIST error?)
@@ -744,3 +731,17 @@ if(NRI_ENABLE_NIS_SDK OR NRI_ENABLE_IMGUI_EXTENSION)
 
     message("NRI: shaders path '${NRI_SHADERS_PATH}'")
 endif()
+
+# Test packages availability
+find_path(XLIB_HEADERS NAMES "X11/Xlib.h")
+
+if(XLIB_HEADERS)
+    message("================= X11 found!")
+endif()
+
+find_path(WAYLAND_HEADERS NAMES "wayland-client.h")
+
+if(WAYLAND_HEADERS)
+    message("================= Wayland found!")
+endif()
+
