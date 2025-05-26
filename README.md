@@ -158,11 +158,7 @@ Repository organization:
 
 ## BUILD INSTRUCTIONS
 
-- Install [*Cmake*](https://cmake.org/download/) 3.18+
-- Install on
-    - Windows: latest *WindowsSDK* and *VulkanSDK*
-    - Linux (x86-64): latest *VulkanSDK* and optional *libx11-dev* and *libwayland-dev*
-    - Linux (aarch64): optional *libx11-dev* and *libwayland-dev*
+- Install [*Cmake*](https://cmake.org/download/) 3.30+
 - Build (variant 1) - using *Git* and *CMake* explicitly
     - Clone project and init submodules
     - Generate and build the project using *CMake*
