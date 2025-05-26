@@ -4,17 +4,17 @@ include(CMakeDependentOption)
 include(FetchContent)
 
 # Test packages availability
-#if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    find_package(X11 QUIET)
-    find_package(Wayland COMPONENTS Client QUIET)
-    message("================ Linux")
-    if(Wayland_FOUND)
-    message("================ Wayland")
-    endif()
-    if(${Wayland_FOUND})
-    message("================ {Wayland}")
-    endif()
-#endif()
+find_path(XLIB_HEADERS NAMES "X11/Xlib.h")
+
+if(XLIB_HEADERS)
+    message("================= X11 found!")
+endif()
+
+find_path(WAYLAND_HEADERS NAMES "wayland-client.h")
+
+if(WAYLAND_HEADERS)
+    message("================= Wayland found!")
+endif()
 
 # Options
 set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK will be copied relative to the directory with binaries")
@@ -461,7 +461,7 @@ if(NRI_ENABLE_VK_SUPPORT)
             find_path(XLIB_HEADERS NAMES "X11/Xlib.h")
 
             if(NOT XLIB_HEADERS)
-                message(FATAL_ERROR "Can't find 'X11/xlib.h'. 'libx11-dev' is not installed?")
+                message(FATAL_ERROR "Can't find 'X11/Xlib.h'. 'libx11-dev' is not installed?")
             endif()
 
             target_compile_definitions(NRI_VK PRIVATE VK_USE_PLATFORM_XLIB_KHR)
