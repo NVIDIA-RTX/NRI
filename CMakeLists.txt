@@ -4,7 +4,7 @@ include(CMakeDependentOption)
 include(FetchContent)
 
 # Test packages availability
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+#if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(X11 QUIET)
     find_package(Wayland QUIET)
     message("================ Linux")
@@ -14,7 +14,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     if(${Wayland_FOUND})
     message("================ {Wayland}")
     endif()
-endif()
+#endif()
 
 # Options
 set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK will be copied relative to the directory with binaries")
