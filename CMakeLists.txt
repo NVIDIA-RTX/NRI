@@ -452,24 +452,10 @@ if(NRI_ENABLE_VK_SUPPORT)
         target_compile_definitions(NRI_VK PRIVATE VK_USE_PLATFORM_METAL_EXT VK_ENABLE_BETA_EXTENSIONS)
     else()
         if(NRI_ENABLE_XLIB_SUPPORT)
-            find_path(XLIB_HEADERS NAMES "X11/Xlib.h")
-
-            if(NOT XLIB_HEADERS)
-                message(FATAL_ERROR "Can't find 'X11/xlib.h'. 'libx11-dev' is not installed?")
-            endif()
-
             target_compile_definitions(NRI_VK PRIVATE VK_USE_PLATFORM_XLIB_KHR)
         endif()
 
         if(NRI_ENABLE_WAYLAND_SUPPORT)
-            set(WAYLAND_INCLUDE_DIR "/usr/include/wayland")
-            MESSAGE(STATUS "  Wayland include path ${WAYLAND_INCLUDE_DIR}")
-            find_path(WAYLAND_HEADERS NAMES "wayland-client.h" HINTS ${WAYLAND_INCLUDE_DIR})
-
-            if(NOT WAYLAND_HEADERS)
-                message(FATAL_ERROR "Can't find 'wayland-client.h'. 'libwayland-dev' is not installed?")
-            endif()
-
             target_compile_definitions(NRI_VK PRIVATE VK_USE_PLATFORM_WAYLAND_KHR)
         endif()
     endif()
