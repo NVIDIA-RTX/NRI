@@ -14,13 +14,15 @@ project(NRI LANGUAGES C CXX)
 # Test packages availability
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(X11 QUIET)
-    find_package(Wayland QUIET)
+    find_package(Wayland COMPONENTS Client QUIET)
     message("================ Linux")
+
     if(Wayland_FOUND)
-    message("================ Wayland")
+        message("================ Wayland")
     endif()
+
     if(X11_FOUND)
-    message("================ X11")
+        message("================ X11")
     endif()
 endif()
 
