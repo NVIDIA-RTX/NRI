@@ -7,6 +7,13 @@ include(FetchContent)
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     find_package(X11 QUIET)
     find_package(Wayland QUIET)
+    message("================ Linux")
+    if(Wayland_FOUND)
+    message("================ Wayland")
+    endif()
+    if(${Wayland_FOUND})
+    message("================ {Wayland}")
+    endif()
 endif()
 
 # Options
