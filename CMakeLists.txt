@@ -11,19 +11,10 @@ set(NRI_VERSION ${CMAKE_MATCH_1})
 message("NRI: v${NRI_VERSION}")
 project(NRI LANGUAGES C CXX)
 
-# Test packages availability
+# Test packages availability ("find_package" works only for X11)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_path(XLIB_HEADERS NAMES "X11/Xlib.h")
-
-    if(XLIB_HEADERS)
-        message("================ X11")
-    endif()
-
     find_path(WAYLAND_HEADERS NAMES "wayland-client.h")
-
-    if(WAYLAND_HEADERS)
-        message("================ Wayland")
-    endif()
 endif()
 
 # Options
@@ -45,8 +36,8 @@ cmake_dependent_option(NRI_ENABLE_D3D11_SUPPORT "Enable D3D11 backend" ON "WIN32
 cmake_dependent_option(NRI_ENABLE_D3D12_SUPPORT "Enable D3D12 backend" ON "WIN32" OFF)
 cmake_dependent_option(NRI_ENABLE_D3D_EXTENSIONS "Enable vendor specific extension libraries for D3D (NVAPI and AMD AGS)" ON "NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT" OFF)
 cmake_dependent_option(NRI_ENABLE_AGILITY_SDK_SUPPORT "Enable Agility SDK support to unlock access to latest D3D12 features" ON "NRI_ENABLE_D3D12_SUPPORT" OFF)
-cmake_dependent_option(NRI_ENABLE_XLIB_SUPPORT "Enable X11 support" ON "X11_FOUND" OFF)
-cmake_dependent_option(NRI_ENABLE_WAYLAND_SUPPORT "Enable Wayland support" ON "Wayland_FOUND" OFF)
+cmake_dependent_option(NRI_ENABLE_XLIB_SUPPORT "Enable X11 support" ON "XLIB_HEADERS" OFF)
+cmake_dependent_option(NRI_ENABLE_WAYLAND_SUPPORT "Enable Wayland support" ON "WAYLAND_HEADERS" OFF)
 cmake_dependent_option(NRI_ENABLE_NGX_SDK "Enable NVIDIA NGX (DLSS) SDK" OFF "NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT OR NRI_ENABLE_VK_SUPPORT" OFF)
 cmake_dependent_option(NRI_ENABLE_FFX_SDK "Enable AMD FidelityFX SDK" OFF "(NRI_ENABLE_VK_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT) AND WIN32" OFF)
 cmake_dependent_option(NRI_ENABLE_XESS_SDK "Enable INTEL XeSS SDK" OFF "NRI_ENABLE_D3D12_SUPPORT AND WIN32" OFF)
