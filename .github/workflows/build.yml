@@ -15,9 +15,6 @@ jobs:
         with:
           submodules: true
 
-      - name: Install dependencies
-        uses: crazy-max/ghaction-chocolatey@v3
-
       - name: Deploy
         run: .\1-Deploy.bat
 
