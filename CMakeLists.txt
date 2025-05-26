@@ -3,6 +3,27 @@ cmake_minimum_required(VERSION 3.30)
 include(CMakeDependentOption)
 include(FetchContent)
 
+# Create project
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/Include/NRI.h" ver_h)
+string(REGEX MATCH "NRI_VERSION ([0-9]*)" _ ${ver_h})
+set(NRI_VERSION ${CMAKE_MATCH_1})
+
+message("NRI: v${NRI_VERSION}")
+project(NRI LANGUAGES C CXX)
+
+# Test packages availability
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    find_package(X11 QUIET)
+    find_package(Wayland QUIET)
+    message("================ Linux")
+    if(Wayland_FOUND)
+    message("================ Wayland")
+    endif()
+    if(X11_FOUND)
+    message("================ X11")
+    endif()
+endif()
+
 # Options
 set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK will be copied relative to the directory with binaries")
 set(NRI_AGILITY_SDK_VERSION_MAJOR "615" CACHE STRING "Agility SDK major version") # 716 (can cause D3D12_ERROR_INVALID_REDIST error?)
@@ -35,14 +56,7 @@ else()
     set(IS_SUBMODULE ON)
 endif()
 
-# Create project
-file(READ "${CMAKE_CURRENT_SOURCE_DIR}/Include/NRI.h" ver_h)
-string(REGEX MATCH "NRI_VERSION ([0-9]*)" _ ${ver_h})
-set(NRI_VERSION ${CMAKE_MATCH_1})
-
-message("NRI: v${NRI_VERSION}")
-project(NRI LANGUAGES C CXX)
-
+# Settings
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
@@ -448,7 +462,7 @@ if(NRI_ENABLE_VK_SUPPORT)
             find_path(XLIB_HEADERS NAMES "X11/Xlib.h")
 
             if(NOT XLIB_HEADERS)
-                message(FATAL_ERROR "Can't find 'X11/Xlib.h'. 'libx11-dev' is not installed?")
+                message(FATAL_ERROR "Can't find 'X11/xlib.h'. 'libx11-dev' is not installed?")
             endif()
 
             target_compile_definitions(NRI_VK PRIVATE VK_USE_PLATFORM_XLIB_KHR)
@@ -731,17 +745,3 @@ if(NRI_ENABLE_NIS_SDK OR NRI_ENABLE_IMGUI_EXTENSION)
 
     message("NRI: shaders path '${NRI_SHADERS_PATH}'")
 endif()
-
-# Test packages availability
-find_path(XLIB_HEADERS NAMES "X11/Xlib.h")
-
-if(XLIB_HEADERS)
-    message("================= X11 found!")
-endif()
-
-find_path(WAYLAND_HEADERS NAMES "wayland-client.h")
-
-if(WAYLAND_HEADERS)
-    message("================= Wayland found!")
-endif()
-
