@@ -4,7 +4,7 @@ include(CMakeDependentOption)
 include(FetchContent)
 
 # Test packages availability
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(X11 QUIET)
     find_package(Wayland QUIET)
     message("================ Linux")
