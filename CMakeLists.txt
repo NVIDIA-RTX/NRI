@@ -6,7 +6,7 @@ include(FetchContent)
 # Test packages availability
 #if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(X11 QUIET)
-    find_package(Wayland QUIET)
+    find_package(Wayland COMPONENTS Client QUIET)
     message("================ Linux")
     if(Wayland_FOUND)
     message("================ Wayland")
