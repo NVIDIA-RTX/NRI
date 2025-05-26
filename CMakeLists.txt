@@ -13,16 +13,16 @@ project(NRI LANGUAGES C CXX)
 
 # Test packages availability
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    find_package(X11 QUIET)
-    find_package(Wayland COMPONENTS Client QUIET)
-    message("================ Linux")
+    find_path(XLIB_HEADERS NAMES "X11/Xlib.h")
 
-    if(Wayland_FOUND)
-        message("================ Wayland")
+    if(XLIB_HEADERS)
+        message("================ X11")
     endif()
 
-    if(X11_FOUND)
-        message("================ X11")
+    find_path(WAYLAND_HEADERS NAMES "wayland-client.h")
+
+    if(WAYLAND_HEADERS)
+        message("================ Wayland")
     endif()
 endif()
 
