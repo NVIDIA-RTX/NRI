@@ -966,7 +966,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
             NVSDK_NGX_FeatureCommonInfo featureCommonInfo = {};
             featureCommonInfo.LoggingInfo.LoggingCallback = NgxLogCallback;
-            featureCommonInfo.LoggingInfo.MinimumLoggingLevel = NVSDK_NGX_LOGGING_LEVEL_OFF;
+            featureCommonInfo.LoggingInfo.MinimumLoggingLevel = NVSDK_NGX_LOGGING_LEVEL_OFF; // TODO: NGX spams to "stdout" if not OFF
             featureCommonInfo.LoggingInfo.DisableOtherLoggingSinks = true;
 
 #    if NRI_ENABLE_D3D11_SUPPORT
