@@ -544,8 +544,8 @@ NRI_INLINE void CommandBufferVal::BuildTopLevelAccelerationStructure(const Build
         RETURN_ON_FAILURE(&m_Device, in.dst, ReturnVoid(), "'dst' is NULL");
         RETURN_ON_FAILURE(&m_Device, in.instanceBuffer, ReturnVoid(), "'instanceBuffer' is NULL");
         RETURN_ON_FAILURE(&m_Device, in.scratchBuffer, ReturnVoid(), "'scratchBuffer' is NULL");
-        RETURN_ON_FAILURE(&m_Device, in.instanceOffset < instanceBufferVal->GetDesc().size, ReturnVoid(), "'instanceOffset=%" PRIu64 "' is out of bounds", in.instanceOffset);
-        RETURN_ON_FAILURE(&m_Device, in.scratchOffset < scratchBufferVal->GetDesc().size, ReturnVoid(), "'scratchOffset=%" PRIu64 "' is out of bounds", in.scratchOffset);
+        RETURN_ON_FAILURE(&m_Device, in.instanceOffset <= instanceBufferVal->GetDesc().size, ReturnVoid(), "'instanceOffset=%" PRIu64 "' is out of bounds", in.instanceOffset);
+        RETURN_ON_FAILURE(&m_Device, in.scratchOffset <= scratchBufferVal->GetDesc().size, ReturnVoid(), "'scratchOffset=%" PRIu64 "' is out of bounds", in.scratchOffset);
 
         auto& out = buildTopLevelAccelerationStructureDescsImpl[i];
         out = in;
@@ -592,7 +592,7 @@ NRI_INLINE void CommandBufferVal::BuildBottomLevelAccelerationStructure(const Bu
         RETURN_ON_FAILURE(&m_Device, in.dst, ReturnVoid(), "'dst' is NULL");
         RETURN_ON_FAILURE(&m_Device, in.scratchBuffer, ReturnVoid(), "'scratchBuffer' is NULL");
         RETURN_ON_FAILURE(&m_Device, in.geometries, ReturnVoid(), "'geometries' is NULL");
-        RETURN_ON_FAILURE(&m_Device, in.scratchOffset < scratchBufferVal->GetDesc().size, ReturnVoid(), "'scratchOffset=%" PRIu64 "' is out of bounds", in.scratchOffset);
+        RETURN_ON_FAILURE(&m_Device, in.scratchOffset <= scratchBufferVal->GetDesc().size, ReturnVoid(), "'scratchOffset=%" PRIu64 "' is out of bounds", in.scratchOffset);
 
         auto& out = buildBottomLevelAccelerationStructureDescsImpl[i];
         out = in;
@@ -623,9 +623,9 @@ NRI_INLINE void CommandBufferVal::BuildMicromaps(const BuildMicromapDesc* buildM
         RETURN_ON_FAILURE(&m_Device, in.dataBuffer, ReturnVoid(), "'dataBuffer' is NULL");
         RETURN_ON_FAILURE(&m_Device, in.triangleBuffer, ReturnVoid(), "'triangleBuffer' is NULL");
         RETURN_ON_FAILURE(&m_Device, in.scratchBuffer, ReturnVoid(), "'scratchBuffer' is NULL");
-        RETURN_ON_FAILURE(&m_Device, in.dataOffset < dataBufferVal->GetDesc().size, ReturnVoid(), "'dataOffset=%" PRIu64 "' is out of bounds", in.dataOffset);
-        RETURN_ON_FAILURE(&m_Device, in.triangleOffset < triangleBufferVal->GetDesc().size, ReturnVoid(), "'triangleOffset=%" PRIu64 "' is out of bounds", in.triangleOffset);
-        RETURN_ON_FAILURE(&m_Device, in.scratchOffset < scratchBufferVal->GetDesc().size, ReturnVoid(), "'scratchOffset=%" PRIu64 "' is out of bounds", in.scratchOffset);
+        RETURN_ON_FAILURE(&m_Device, in.dataOffset <= dataBufferVal->GetDesc().size, ReturnVoid(), "'dataOffset=%" PRIu64 "' is out of bounds", in.dataOffset);
+        RETURN_ON_FAILURE(&m_Device, in.triangleOffset <= triangleBufferVal->GetDesc().size, ReturnVoid(), "'triangleOffset=%" PRIu64 "' is out of bounds", in.triangleOffset);
+        RETURN_ON_FAILURE(&m_Device, in.scratchOffset <= scratchBufferVal->GetDesc().size, ReturnVoid(), "'scratchOffset=%" PRIu64 "' is out of bounds", in.scratchOffset);
 
         auto& out = buildMicromapDescsImpl[i];
         out = in;

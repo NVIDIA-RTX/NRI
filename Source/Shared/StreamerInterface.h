@@ -69,11 +69,11 @@ private:
     Vector<BufferUpdateRequest> m_BufferRequestsWithDst;
     Vector<TextureUpdateRequest> m_TextureRequestsWithDst;
     Vector<GarbageInFlight> m_GarbageInFlight;
-    Buffer* m_ConstantBuffer = nullptr;
     Buffer* m_DynamicBuffer = nullptr;
-    uint32_t m_ConstantDataOffset = 0;
-    uint64_t m_DynamicDataOffset = 0;
-    uint64_t m_DynamicBufferSize = 0;
+    Buffer* m_ConstantBuffer = nullptr;
+    uint64_t m_DynamicBufferOffset = 0;
+    uint64_t m_DynamicBufferSizePerFrame = 0;
+    uint32_t m_ConstantBufferOffset = 0;
     uint32_t m_FrameIndex = 0;
     Lock m_Lock;
 };

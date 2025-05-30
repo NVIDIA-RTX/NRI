@@ -12,11 +12,11 @@ StreamerImpl::~StreamerImpl() {
 }
 
 bool StreamerImpl::Grow() {
-    if (m_DynamicDataOffset <= m_DynamicBufferSize)
+    if (m_DynamicBufferOffset <= m_DynamicBufferSizePerFrame)
         return true;
 
-    uint64_t newSize = m_DynamicDataOffset;
-    m_DynamicBufferSize = Align(newSize, CHUNK_SIZE);
+    uint64_t newSize = m_DynamicBufferOffset;
+    m_DynamicBufferSizePerFrame = Align(newSize, CHUNK_SIZE);
 
     // Add to garbage, keeping it alive for some frames
     if (m_DynamicBuffer)
@@ -24,7 +24,7 @@ bool StreamerImpl::Grow() {
 
     // Create a new dynamic buffer
     AllocateBufferDesc allocateBufferDesc = {};
-    allocateBufferDesc.desc.size = m_DynamicBufferSize;
+    allocateBufferDesc.desc.size = m_DynamicBufferSizePerFrame * m_Desc.queuedFrameNum;
     allocateBufferDesc.desc.usage = m_Desc.dynamicBufferUsageBits;
     allocateBufferDesc.memoryLocation = m_Desc.dynamicBufferMemoryLocation;
     allocateBufferDesc.dedicated = USE_DEDICATED;
@@ -53,7 +53,6 @@ Result StreamerImpl::Create(const StreamerDesc& desc) {
     }
 
     m_Desc = desc;
-    m_Desc.queuedFrameNum++; // for the current "not-yet-committed" frame
 
     return Result::SUCCESS;
 }
@@ -62,21 +61,23 @@ uint32_t StreamerImpl::StreamConstantData(const void* data, uint32_t dataSize) {
     ExclusiveScope lock(m_Lock);
 
     const DeviceDesc& deviceDesc = m_iCore.GetDeviceDesc(m_Device);
-    m_ConstantDataOffset = Align(m_ConstantDataOffset, deviceDesc.memoryAlignment.constantBufferOffset);
+    m_ConstantBufferOffset = Align(m_ConstantBufferOffset, deviceDesc.memoryAlignment.constantBufferOffset);
 
     // Update
-    if (m_ConstantDataOffset + dataSize > m_Desc.constantBufferSize)
-        m_ConstantDataOffset = 0;
+    if (m_ConstantBufferOffset + dataSize > m_Desc.constantBufferSize)
+        m_ConstantBufferOffset = 0;
 
-    uint32_t offset = m_ConstantDataOffset;
+    uint32_t offset = m_ConstantBufferOffset;
 
     // Increment head
-    m_ConstantDataOffset += dataSize;
+    m_ConstantBufferOffset += dataSize;
 
     // Copy
-    uint8_t* dest = (uint8_t*)m_iCore.MapBuffer(*m_ConstantBuffer, offset, dataSize);
-    if (dest) {
-        memcpy(dest, data, dataSize);
+    if (dataSize) {
+        uint8_t* dst = (uint8_t*)m_iCore.MapBuffer(*m_ConstantBuffer, offset, dataSize);
+
+        memcpy(dst, data, dataSize);
+
         m_iCore.UnmapBuffer(*m_ConstantBuffer);
     }
 
@@ -91,20 +92,21 @@ BufferOffset StreamerImpl::StreamBufferData(const StreamBufferDataDesc& streamBu
         dataSize += streamBufferDataDesc.dataChunks[i].size;
 
     uint32_t alignment = std::max(streamBufferDataDesc.placementAlignment, 1u);
-    m_DynamicDataOffset = Align(m_DynamicDataOffset, alignment);
+    m_DynamicBufferOffset = Align(m_DynamicBufferOffset, alignment);
 
-    uint64_t offset = m_DynamicDataOffset;
+    uint64_t offset = m_FrameIndex * m_DynamicBufferSizePerFrame + m_DynamicBufferOffset;
 
     // Increment head
-    m_DynamicDataOffset += dataSize;
+    m_DynamicBufferOffset += dataSize;
 
     // Grow
     if (!Grow())
         return {};
 
     // Copy
-    uint8_t* dst = (uint8_t*)m_iCore.MapBuffer(*m_DynamicBuffer, offset, dataSize);
-    if (dst) {
+    if (dataSize) {
+        uint8_t* dst = (uint8_t*)m_iCore.MapBuffer(*m_DynamicBuffer, offset, dataSize);
+
         for (uint32_t i = 0; i < streamBufferDataDesc.dataChunkNum; i++) {
             const DataSize& dataChunk = streamBufferDataDesc.dataChunks[i];
             memcpy(dst, dataChunk.data, dataChunk.size);
@@ -112,18 +114,17 @@ BufferOffset StreamerImpl::StreamBufferData(const StreamBufferDataDesc& streamBu
         }
 
         m_iCore.UnmapBuffer(*m_DynamicBuffer);
-    } else
-        return {};
 
-    // Gather requests with destinations
-    if (streamBufferDataDesc.dstBuffer) {
-        BufferUpdateRequest& request = m_BufferRequestsWithDst.emplace_back();
-        request = {};
-        request.dstBuffer = streamBufferDataDesc.dstBuffer;
-        request.dstOffset = streamBufferDataDesc.dstBufferOffset;
-        request.srcBuffer = m_DynamicBuffer;
-        request.srcOffset = offset;
-        request.size = dataSize;
+        // Gather requests with destinations
+        if (streamBufferDataDesc.dstBuffer) {
+            BufferUpdateRequest& request = m_BufferRequestsWithDst.emplace_back();
+            request = {};
+            request.dstBuffer = streamBufferDataDesc.dstBuffer;
+            request.dstOffset = streamBufferDataDesc.dstBufferOffset;
+            request.srcBuffer = m_DynamicBuffer;
+            request.srcOffset = offset;
+            request.size = dataSize;
+        }
     }
 
     return {m_DynamicBuffer, offset};
@@ -143,22 +144,23 @@ BufferOffset StreamerImpl::StreamTextureData(const StreamTextureDataDesc& stream
 
     uint32_t alignedRowPitch = Align(streamTextureDataDesc.dataRowPitch, deviceDesc.memoryAlignment.uploadBufferTextureRow);
     uint32_t alignedSlicePitch = Align(alignedRowPitch * h, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
-
-    m_DynamicDataOffset = Align(m_DynamicDataOffset, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
-
     uint64_t dataSize = alignedSlicePitch * d;
-    uint64_t offset = m_DynamicDataOffset;
+
+    m_DynamicBufferOffset = Align(m_DynamicBufferOffset, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
+
+    uint64_t offset = m_FrameIndex * m_DynamicBufferSizePerFrame + m_DynamicBufferOffset;
 
     // Increment head
-    m_DynamicDataOffset += dataSize;
+    m_DynamicBufferOffset += dataSize;
 
     // Grow
     if (!Grow())
         return {};
 
     // Copy
-    uint8_t* dst = (uint8_t*)m_iCore.MapBuffer(*m_DynamicBuffer, offset, dataSize);
-    if (dst) {
+    if (dataSize) {
+        uint8_t* dst = (uint8_t*)m_iCore.MapBuffer(*m_DynamicBuffer, offset, dataSize);
+
         for (uint32_t z = 0; z < d; z++) {
             for (uint32_t y = 0; y < h; y++) {
                 uint8_t* dstRow = dst + z * alignedSlicePitch + y * alignedRowPitch;
@@ -168,21 +170,22 @@ BufferOffset StreamerImpl::StreamTextureData(const StreamTextureDataDesc& stream
         }
 
         m_iCore.UnmapBuffer(*m_DynamicBuffer);
-    } else
-        return {};
 
-    // Gather requests with destinations
-    TextureUpdateRequest& request = m_TextureRequestsWithDst.emplace_back();
-    request = {};
-    request.desc = streamTextureDataDesc;
-    request.srcBuffer = m_DynamicBuffer;
-    request.srcOffset = offset;
+        // Gather requests with destinations
+        TextureUpdateRequest& request = m_TextureRequestsWithDst.emplace_back();
+        request = {};
+        request.desc = streamTextureDataDesc;
+        request.srcBuffer = m_DynamicBuffer;
+        request.srcOffset = offset;
+    }
 
     return {m_DynamicBuffer, offset};
 }
 
 void StreamerImpl::CmdCopyStreamedData(CommandBuffer& commandBuffer) {
     ExclusiveScope lock(m_Lock);
+
+    // TODO: dynamic buffer(s) is in the persistent state, including "COPY_SOURCE", so there is no need to do a barrier... right? :)
 
     // Buffers
     for (const BufferUpdateRequest& request : m_BufferRequestsWithDst)
@@ -219,7 +222,5 @@ void StreamerImpl::Finalize() {
 
     // Next frame
     m_FrameIndex = (m_FrameIndex + 1) % m_Desc.queuedFrameNum;
-
-    if (m_FrameIndex == 0)
-        m_DynamicDataOffset = 0;
+    m_DynamicBufferOffset = 0;
 }

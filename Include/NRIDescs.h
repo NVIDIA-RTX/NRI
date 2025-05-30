@@ -1096,43 +1096,42 @@ NriStruct(ComputePipelineDesc) {
 #pragma region [ Barrier ]
 //============================================================================================================================================================================================
 
-// If AgilitySDK is not available, "UNKNOWN" will be silently mapped to "COMMON", leading to discrepancies with VK
-NriBits(AccessBits, uint32_t,                 // Compatible "StageBits" (including ALL):
-    UNKNOWN                         = 0,
+NriBits(AccessBits, uint32_t,
+    UNKNOWN                         = 0, // mapped to "COMMON", if AgilitySDK is not available, leading to potential discrepancies with VK
 
-    // Buffer
-    INDEX_BUFFER                    = NriBit(0),  // INDEX_INPUT
-    VERTEX_BUFFER                   = NriBit(1),  // VERTEX_SHADER
-    CONSTANT_BUFFER                 = NriBit(2),  // GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
-    ARGUMENT_BUFFER                 = NriBit(3),  // INDIRECT
-    SCRATCH_BUFFER                  = NriBit(4),  // ACCELERATION_STRUCTURE, MICROMAP
+    // Buffer                                // Access  Compatible "StageBits" (including ALL)
+    INDEX_BUFFER                    = NriBit(0),  // R   INDEX_INPUT
+    VERTEX_BUFFER                   = NriBit(1),  // R   VERTEX_SHADER
+    CONSTANT_BUFFER                 = NriBit(2),  // R   GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
+    ARGUMENT_BUFFER                 = NriBit(3),  // R   INDIRECT
+    SCRATCH_BUFFER                  = NriBit(4),  // RW  ACCELERATION_STRUCTURE, MICROMAP
 
     // Attachment
-    COLOR_ATTACHMENT                = NriBit(5),  // COLOR_ATTACHMENT
-    SHADING_RATE_ATTACHMENT         = NriBit(6),  // FRAGMENT_SHADER
-    DEPTH_STENCIL_ATTACHMENT_READ   = NriBit(7),  // DEPTH_STENCIL_ATTACHMENT
-    DEPTH_STENCIL_ATTACHMENT_WRITE  = NriBit(8),  // DEPTH_STENCIL_ATTACHMENT
+    COLOR_ATTACHMENT                = NriBit(5),  // RW  COLOR_ATTACHMENT
+    SHADING_RATE_ATTACHMENT         = NriBit(6),  // R   FRAGMENT_SHADER
+    DEPTH_STENCIL_ATTACHMENT_READ   = NriBit(7),  // R   DEPTH_STENCIL_ATTACHMENT
+    DEPTH_STENCIL_ATTACHMENT_WRITE  = NriBit(8),  //  W  DEPTH_STENCIL_ATTACHMENT
 
     // Acceleration structure
-    ACCELERATION_STRUCTURE_READ     = NriBit(9),  // COMPUTE_SHADER, RAY_TRACING_SHADERS, ACCELERATION_STRUCTURE
-    ACCELERATION_STRUCTURE_WRITE    = NriBit(10), // ACCELERATION_STRUCTURE
+    ACCELERATION_STRUCTURE_READ     = NriBit(9),  // R   COMPUTE_SHADER, RAY_TRACING_SHADERS, ACCELERATION_STRUCTURE
+    ACCELERATION_STRUCTURE_WRITE    = NriBit(10), //  W  ACCELERATION_STRUCTURE
 
     // Micromap
-    MICROMAP_READ                   = NriBit(11), // MICROMAP, ACCELERATION_STRUCTURE
-    MICROMAP_WRITE                  = NriBit(12), // MICROMAP
+    MICROMAP_READ                   = NriBit(11), // R   MICROMAP, ACCELERATION_STRUCTURE
+    MICROMAP_WRITE                  = NriBit(12), //  W  MICROMAP
 
     // Shader resource
-    SHADER_RESOURCE                 = NriBit(13), // GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
-    SHADER_RESOURCE_STORAGE         = NriBit(14), // GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS, CLEAR_STORAGE
-    SHADER_BINDING_TABLE            = NriBit(15), // RAY_TRACING_SHADERS
+    SHADER_RESOURCE                 = NriBit(13), // R   GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
+    SHADER_RESOURCE_STORAGE         = NriBit(14), // RW  GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS, CLEAR_STORAGE
+    SHADER_BINDING_TABLE            = NriBit(15), // R   RAY_TRACING_SHADERS
 
     // Copy
-    COPY_SOURCE                     = NriBit(16), // COPY
-    COPY_DESTINATION                = NriBit(17), // COPY
+    COPY_SOURCE                     = NriBit(16), // R   COPY
+    COPY_DESTINATION                = NriBit(17), //  W  COPY
 
     // Resolve
-    RESOLVE_SOURCE                  = NriBit(18), // RESOLVE
-    RESOLVE_DESTINATION             = NriBit(19)  // RESOLVE
+    RESOLVE_SOURCE                  = NriBit(18), // R   RESOLVE
+    RESOLVE_DESTINATION             = NriBit(19)  //  W  RESOLVE
 );
 
 // Not used if "features.enchancedBarrier" is "0"

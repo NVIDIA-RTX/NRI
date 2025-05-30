@@ -139,7 +139,7 @@ constexpr bool IsAccessMaskSupported(BufferUsageBits usage, AccessBits accessMas
     if (accessMask & AccessBits::SHADER_BINDING_TABLE)
         isSupported = isSupported && (usage & BufferUsageBits::SHADER_BINDING_TABLE) != 0;
     if (accessMask & AccessBits::SHADER_RESOURCE)
-        isSupported = isSupported && (usage & BufferUsageBits::SHADER_RESOURCE) != 0;
+        isSupported = isSupported && (usage & (BufferUsageBits::SHADER_RESOURCE | BufferUsageBits::ACCELERATION_STRUCTURE_BUILD_INPUT)) != 0;
     if (accessMask & AccessBits::SHADER_RESOURCE_STORAGE)
         isSupported = isSupported && (usage & BufferUsageBits::SHADER_RESOURCE_STORAGE) != 0;
     if (accessMask & (AccessBits::RESOLVE_SOURCE | AccessBits::RESOLVE_DESTINATION))

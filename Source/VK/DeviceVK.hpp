@@ -1,7 +1,7 @@
 // © 2021 NVIDIA Corporation
 
 static constexpr VkBufferUsageFlags GetBufferUsageFlags(BufferUsageBits bufferUsageBits, uint32_t structureStride, bool isDeviceAddressSupported) {
-    VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT; // TODO: ban "the opposite" for UPLOAD/READBACK?
 
     if (isDeviceAddressSupported)
         flags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
@@ -108,6 +108,12 @@ static VkBool32 VKAPI_PTR MessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT
     { // TODO: some messages can be muted here
         // Loader info message
         if (callbackData->messageIdNumber == 0)
+            return VK_FALSE;
+        // Validation Information: [ WARNING-CreateInstance-status-message ] vkCreateInstance(): Khronos Validation Layer Active ...
+        if (callbackData->messageIdNumber == 601872502)
+            return VK_FALSE;
+        // Validation Warning: [ VALIDATION-SETTINGS ] vkCreateInstance(): DebugPrintf logs to the Information message severity, enabling Information level logging otherwise the message will not be seen.
+        if (callbackData->messageIdNumber == 2132353751)
             return VK_FALSE;
         // Validation Warning: [ WARNING-DEBUG-PRINTF ] Internal Warning: Setting VkPhysicalDeviceVulkan12Properties::maxUpdateAfterBindDescriptorsInAllPools to 32
         if (callbackData->messageIdNumber == 1985515673)
@@ -1469,37 +1475,45 @@ Result DeviceVK::CreateInstance(bool enableGraphicsAPIValidation, const Vector<c
         VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT, // TODO: add VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT?
     };
 
+    VkInstanceCreateInfo instanceCreateInfo = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
+#ifdef __APPLE__
+    instanceCreateInfo.flags = (VkInstanceCreateFlags)VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR,
+#endif
+    instanceCreateInfo.pApplicationInfo = &appInfo;
+    instanceCreateInfo.enabledLayerCount = (uint32_t)layers.size();
+    instanceCreateInfo.ppEnabledLayerNames = layers.data();
+    instanceCreateInfo.enabledExtensionCount = (uint32_t)desiredInstanceExts.size();
+    instanceCreateInfo.ppEnabledExtensionNames = desiredInstanceExts.data();
+
+    const void** tail = &instanceCreateInfo.pNext;
+
+    VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo = {VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
+    messengerCreateInfo.pUserData = this;
+    messengerCreateInfo.pfnUserCallback = MessageCallback;
+    messengerCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
+        | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
+        | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+        | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    messengerCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
+        | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
+        | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+
+    APPEND_EXT(messengerCreateInfo);
+
     VkValidationFeaturesEXT validationFeatures = {VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT};
     validationFeatures.enabledValidationFeatureCount = GetCountOf(enabledValidationFeatures);
     validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures;
 
-    VkInstanceCreateInfo info = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
-    info.pNext = enableGraphicsAPIValidation ? &validationFeatures : nullptr;
-#ifdef __APPLE__
-    info.flags = (VkInstanceCreateFlags)VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR,
-#endif
-    info.pApplicationInfo = &appInfo;
-    info.enabledLayerCount = (uint32_t)layers.size();
-    info.ppEnabledLayerNames = layers.data();
-    info.enabledExtensionCount = (uint32_t)desiredInstanceExts.size();
-    info.ppEnabledExtensionNames = desiredInstanceExts.data();
+    if (enableGraphicsAPIValidation) {
+        APPEND_EXT(validationFeatures);
+    }
 
-    VkResult vkResult = m_VK.CreateInstance(&info, m_AllocationCallbackPtr, &m_Instance);
+    VkResult vkResult = m_VK.CreateInstance(&instanceCreateInfo, m_AllocationCallbackPtr, &m_Instance);
     RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateInstance returned %d", (int32_t)vkResult);
 
     if (enableGraphicsAPIValidation) {
-        VkDebugUtilsMessengerCreateInfoEXT createInfo = {VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
-        createInfo.pUserData = this;
-        createInfo.pfnUserCallback = MessageCallback;
-
-        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
-        createInfo.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-
-        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
-        createInfo.messageType |= VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-
         PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)m_VK.GetInstanceProcAddr(m_Instance, "vkCreateDebugUtilsMessengerEXT");
-        vkResult = vkCreateDebugUtilsMessengerEXT(m_Instance, &createInfo, m_AllocationCallbackPtr, &m_Messenger);
+        vkResult = vkCreateDebugUtilsMessengerEXT(m_Instance, &messengerCreateInfo, m_AllocationCallbackPtr, &m_Messenger);
 
         RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateDebugUtilsMessengerEXT returned %d", (int32_t)vkResult);
     }
@@ -1511,9 +1525,9 @@ void DeviceVK::SetDebugNameToTrivialObject(VkObjectType objectType, uint64_t han
     if (!m_VK.SetDebugUtilsObjectNameEXT)
         return;
 
-    VkDebugUtilsObjectNameInfoEXT info = {VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, nullptr, objectType, (uint64_t)handle, name};
+    VkDebugUtilsObjectNameInfoEXT objectNameInfo = {VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, nullptr, objectType, (uint64_t)handle, name};
 
-    VkResult vkResult = m_VK.SetDebugUtilsObjectNameEXT(m_Device, &info);
+    VkResult vkResult = m_VK.SetDebugUtilsObjectNameEXT(m_Device, &objectNameInfo);
     RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, ReturnVoid(), "vkSetDebugUtilsObjectNameEXT returned %d", (int32_t)vkResult);
 }
 
