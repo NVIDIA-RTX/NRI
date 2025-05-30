@@ -90,11 +90,15 @@ Result BufferVK::Create(const AllocateBufferDesc& bufferDesc) {
 
     if (IsHostVisibleMemory(bufferDesc.memoryLocation)) {
         allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        allocationCreateInfo.requiredFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
-        if (bufferDesc.memoryLocation == MemoryLocation::HOST_READBACK)
+        if (bufferDesc.memoryLocation == MemoryLocation::HOST_READBACK) {
             allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-        else
+            allocationCreateInfo.preferredFlags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+        } else {
             allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+            allocationCreateInfo.preferredFlags = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        }
     }
 
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
