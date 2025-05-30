@@ -288,6 +288,7 @@ constexpr void ReturnVoid() {
 struct DxgiFormat {
     DXGI_FORMAT typeless;
     DXGI_FORMAT typed;
+    bool IsDepthStencil;
 };
 
 const DxgiFormat& GetDxgiFormat(Format format);
@@ -344,7 +345,8 @@ inline TextureDesc FixTextureDesc(const TextureDesc& textureDesc) {
     desc.mipNum = std::max(desc.mipNum, (Mip_t)1);
     desc.layerNum = std::max(desc.layerNum, (Dim_t)1);
     desc.sampleNum = std::max(desc.sampleNum, (Sample_t)1);
-
+    desc.optimizedClearValue.depthStencil = std::max(desc.optimizedClearValue.depthStencil, {0.0f,0u});
+    desc.optimizedClearValue.color.f = std::max(desc.optimizedClearValue.color.f, {0.0f, 0.0f, 0.0f, 0.0f});
     return desc;
 }
 

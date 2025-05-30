@@ -19,9 +19,17 @@ Result TextureD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset) {
     // Texture was already created externally
     if (m_Texture)
         return Result::SUCCESS;
-
-    D3D12_CLEAR_VALUE clearValue = {GetDxgiFormat(m_Desc.format).typed};
-
+    const DxgiFormat& formatInfo = GetDxgiFormat(m_Desc.format);
+    D3D12_CLEAR_VALUE clearValue = {formatInfo.typed};
+    if (formatInfo.IsDepthStencil) {
+        clearValue.DepthStencil.Depth = m_Desc.optimizedClearValue.depthStencil.depth;
+        clearValue.DepthStencil.Stencil = m_Desc.optimizedClearValue.depthStencil.stencil;
+    } else {
+        clearValue.Color[0] = m_Desc.optimizedClearValue.color.f.x;
+        clearValue.Color[1] = m_Desc.optimizedClearValue.color.f.y;
+        clearValue.Color[2] = m_Desc.optimizedClearValue.color.f.z;
+        clearValue.Color[3] = m_Desc.optimizedClearValue.color.f.w;
+    }
     const D3D12_HEAP_DESC& heapDesc = memory->GetHeapDesc();
     // STATE_CREATION ERROR #640: CREATERESOURCEANDHEAP_INVALIDHEAPMISCFLAGS
     D3D12_HEAP_FLAGS heapFlagsFixed = heapDesc.Flags & ~(D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES | D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES | D3D12_HEAP_FLAG_DENY_BUFFERS);
