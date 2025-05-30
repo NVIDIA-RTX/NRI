@@ -21,7 +21,7 @@ NriStruct(BufferOffset) {
 NriStruct(StreamerDesc) {
     // Statically allocated ring-buffer for dynamic constants
     NriOptional Nri(MemoryLocation) constantBufferMemoryLocation; // UPLOAD or DEVICE_UPLOAD
-    NriOptional uint64_t constantBufferSize;
+    NriOptional uint64_t constantBufferSize;            // should be large enough to avoid overwriting data for enqueued frames
 
     // Dynamically (re)allocated ring-buffer for copying and rendering
     Nri(MemoryLocation) dynamicBufferMemoryLocation;    // UPLOAD or DEVICE_UPLOAD
@@ -68,7 +68,7 @@ NriStruct(StreamerInterface) {
 
     // Command buffer
     // {
-            // (DEVICE) Copy data to destinations (if any), barriers are externally controlled
+            // (DEVICE) Copy data to destinations (if any), which must be in "COPY_DESTINATION" state
             void        (NRI_CALL *CmdCopyStreamedData)         (NriRef(CommandBuffer) commandBuffer, NriRef(Streamer) streamer);
     // }
 
