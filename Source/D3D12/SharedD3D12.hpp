@@ -492,6 +492,28 @@ void nri::ConvertBotomLevelGeometries(const BottomLevelGeometryDesc* geometries,
             D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC* outTriangles = &out.Triangles;
 
 #ifdef NRI_D3D12_HAS_OPACITY_MICROMAP
+            if (in.triangles.micromap) {
+                const BottomLevelMicromapDesc& micromapDesc = *in.triangles.micromap;
+
+                outTriangles = triangleDescs++;
+                D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC* outMicromap = micromapDescs++;
+
+                out.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_OMM_TRIANGLES;
+                out.OmmTriangles.pTriangles = outTriangles;
+                out.OmmTriangles.pOmmLinkage = outMicromap;
+
+                *outMicromap = {};
+                outMicromap->OpacityMicromapBaseLocation = micromapDesc.baseTriangle;
+
+                if (micromapDesc.micromap)
+                    outMicromap->OpacityMicromapArray = ((MicromapD3D12*)micromapDesc.micromap)->GetHandle();
+
+                if (micromapDesc.indexBuffer) {
+                    outMicromap->OpacityMicromapIndexBuffer.StartAddress = GetBufferAddress(micromapDesc.indexBuffer, micromapDesc.indexOffset);
+                    outMicromap->OpacityMicromapIndexBuffer.StrideInBytes = micromapDesc.indexType == IndexType::UINT16 ? sizeof(uint16_t) : sizeof(uint32_t);
+                    outMicromap->OpacityMicromapIndexFormat = micromapDesc.indexType == IndexType::UINT16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+                }
+            }
 #endif
 
             *outTriangles = {};

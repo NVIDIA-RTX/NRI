@@ -81,6 +81,7 @@ static D3D12_RESOURCE_FLAGS GetBufferFlags(BufferUsageBits bufferUsage) {
 
     if (bufferUsage & (BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE | BufferUsageBits::MICROMAP_STORAGE)) {
         flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
 #if (D3D12_SDK_VERSION >= 6)
         flags |= D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE;
 #endif
@@ -1041,6 +1042,29 @@ void DeviceD3D12::GetAccelerationStructurePrebuildInfo(const AccelerationStructu
 
 void DeviceD3D12::GetMicromapPrebuildInfo(const MicromapDesc& micromapDesc, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO& prebuildInfo) const {
 #ifdef NRI_D3D12_HAS_OPACITY_MICROMAP
+    Scratch<D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY> usages = AllocateScratch(*this, D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY, micromapDesc.usageNum);
+    for (uint32_t i = 0; i < micromapDesc.usageNum; i++) {
+        const MicromapUsageDesc& in = micromapDesc.usages[i];
+
+        D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY& out = usages[i];
+        out = {};
+        out.Count = in.triangleNum;
+        out.SubdivisionLevel = in.subdivisionLevel;
+        out.Format = (D3D12_RAYTRACING_OPACITY_MICROMAP_FORMAT)in.format;
+    }
+
+    D3D12_RAYTRACING_OPACITY_MICROMAP_ARRAY_DESC opacityMicromapArrayDesc = {};
+    opacityMicromapArrayDesc.NumOmmHistogramEntries = micromapDesc.usageNum;
+    opacityMicromapArrayDesc.pOmmHistogram = usages;
+
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS accelerationStructureInputs = {};
+    accelerationStructureInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_OPACITY_MICROMAP_ARRAY;
+    accelerationStructureInputs.Flags = GetMicromapFlags(micromapDesc.flags);
+    accelerationStructureInputs.NumDescs = 1;
+    accelerationStructureInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY; // TODO: D3D12_ELEMENTS_LAYOUT_ARRAY_OF_POINTERS support?
+    accelerationStructureInputs.pOpacityMicromapArrayDesc = &opacityMicromapArrayDesc;
+
+    m_Device->GetRaytracingAccelerationStructurePrebuildInfo(&accelerationStructureInputs, &prebuildInfo);
 #else
     MaybeUnused(micromapDesc, prebuildInfo);
 #endif

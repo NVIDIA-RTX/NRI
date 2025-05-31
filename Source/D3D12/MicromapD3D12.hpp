@@ -6,6 +6,34 @@ MicromapD3D12::~MicromapD3D12() {
 
 Result MicromapD3D12::Create(const MicromapDesc& micromapDesc) {
 #ifdef NRI_D3D12_HAS_OPACITY_MICROMAP
+    static_assert((uint32_t)MicromapFormat::OPACITY_2_STATE == D3D12_RAYTRACING_OPACITY_MICROMAP_FORMAT_OC1_2_STATE, "Type mismatch");
+    static_assert((uint32_t)MicromapFormat::OPACITY_4_STATE == D3D12_RAYTRACING_OPACITY_MICROMAP_FORMAT_OC1_4_STATE, "Type mismatch");
+
+    if (!m_Device.GetDesc().features.micromap)
+        return Result::UNSUPPORTED;
+
+    for (uint32_t i = 0; i < micromapDesc.usageNum; i++) {
+        const MicromapUsageDesc& in = micromapDesc.usages[i];
+
+        D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY out = {};
+        out.Count = in.triangleNum;
+        out.SubdivisionLevel = in.subdivisionLevel;
+        out.Format = (D3D12_RAYTRACING_OPACITY_MICROMAP_FORMAT)in.format;
+
+        m_Usages.push_back(out);
+    }
+
+    m_Device.GetMicromapPrebuildInfo(micromapDesc, m_PrebuildInfo);
+    m_Flags = micromapDesc.flags;
+
+    if (micromapDesc.optimizedSize)
+        m_PrebuildInfo.ResultDataMaxSizeInBytes = std::min(m_PrebuildInfo.ResultDataMaxSizeInBytes, micromapDesc.optimizedSize);
+
+    BufferDesc bufferDesc = {};
+    bufferDesc.size = m_PrebuildInfo.ResultDataMaxSizeInBytes;
+    bufferDesc.usage = BufferUsageBits::MICROMAP_STORAGE;
+
+    return m_Device.CreateImplementation<BufferD3D12>(m_Buffer, bufferDesc);
 #else
     MaybeUnused(micromapDesc);
 

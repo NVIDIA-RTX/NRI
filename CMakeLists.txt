@@ -4,11 +4,6 @@ include(CMakeDependentOption)
 include(FetchContent)
 
 # Create project
-file(READ "${CMAKE_CURRENT_SOURCE_DIR}/Include/NRI.h" ver_h)
-string(REGEX MATCH "NRI_VERSION ([0-9]*)" _ ${ver_h})
-set(NRI_VERSION ${CMAKE_MATCH_1})
-
-message("NRI: v${NRI_VERSION}")
 project(NRI LANGUAGES C CXX)
 
 # Test packages availability ("find_package" works only for X11)
@@ -19,8 +14,8 @@ endif()
 
 # Options
 set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK will be copied relative to the directory with binaries")
-set(NRI_AGILITY_SDK_VERSION_MAJOR "615" CACHE STRING "Agility SDK major version") # 716 (can cause D3D12_ERROR_INVALID_REDIST error?)
-set(NRI_AGILITY_SDK_VERSION_MINOR "1" CACHE STRING "Agility SDK minor version") # 1-preview
+set(NRI_AGILITY_SDK_VERSION_MAJOR "616" CACHE STRING "Agility SDK major version") # 717 (can cause D3D12_ERROR_INVALID_REDIST error?)
+set(NRI_AGILITY_SDK_VERSION_MINOR "0" CACHE STRING "Agility SDK minor version") # 0-preview
 set(NRI_SHADERS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_Shaders" CACHE STRING "Shader output path override")
 
 option(NRI_STATIC_LIBRARY "Build static library" OFF)
@@ -88,11 +83,15 @@ elseif(MSVC)
         /wd4324 # padding was added at the end of a structure because you specified an alignment specifier
     )
 else()
-    message(WARNING "Unknown compiler!")
+    message(WARNING "NRI: Unknown compiler!")
 endif()
 
 # Compile definitions
-message("NRI: enabled options:")
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/Include/NRI.h" ver_h)
+string(REGEX MATCH "NRI_VERSION ([0-9]*)" _ ${ver_h})
+set(NRI_VERSION ${CMAKE_MATCH_1})
+
+message("NRI: v${NRI_VERSION}:")
 
 set(COMPILE_DEFINITIONS WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS)
 
@@ -249,16 +248,10 @@ endif()
 # Dependencies: GIT_REPOSITORY - worse (because of ".git" folder)
 if(NRI_ENABLE_D3D12_SUPPORT)
     # D3D12 MA
-    if(NRI_AGILITY_SDK_VERSION_MAJOR GREATER_EQUAL 716)
-        set(D3D12MA_TAG feature/resource-tight-alignment)
-    else()
-        set(D3D12MA_TAG master)
-    endif()
-
     FetchContent_Declare(
         d3d12ma
         GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
-        GIT_TAG ${D3D12MA_TAG}
+        GIT_TAG master
         GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
     )
@@ -288,7 +281,7 @@ endif()
 # Add dependencies for dependencies
 if((NRI_ENABLE_NIS_SDK OR NRI_ENABLE_IMGUI_EXTENSION) AND NOT TARGET ShaderMake)
     # ShaderMake
-    set(SHADERMAKE_BIN_OUTPUT_PATH ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} CACHE STRING "")
+    option(SHADERMAKE_TOOL "" ON)
 
     FetchContent_Declare(
         shadermake
@@ -397,7 +390,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         "${nvapi_SOURCE_DIR}"
         "${amdags_SOURCE_DIR}/ags_lib/inc"
     )
-    target_compile_definitions(NRI_D3D12 PRIVATE ${COMPILE_DEFINITIONS})
+    target_compile_definitions(NRI_D3D12 PRIVATE ${COMPILE_DEFINITIONS} NRI_AGILITY_SDK_VERSION_MAJOR=${NRI_AGILITY_SDK_VERSION_MAJOR})
     target_compile_options(NRI_D3D12 PRIVATE ${COMPILE_OPTIONS})
     target_link_libraries(NRI_D3D12 PRIVATE NRI_Shared ${INPUT_LIB_D3D12} ${INPUT_LIB_DXGI} ${INPUT_LIB_DXGUID})
     set_property(TARGET NRI_D3D12 PROPERTY FOLDER ${PROJECT_NAME})
@@ -683,7 +676,11 @@ if(NRI_ENABLE_NIS_SDK OR NRI_ENABLE_IMGUI_EXTENSION)
     set_source_files_properties(${SHADERS} PROPERTIES VS_TOOL_OVERRIDE "None")
 
     set(SHADERMAKE_GENERAL_ARGS
-        --useAPI --flatten --stripReflection --WX
+        --project "NRI"
+        --compactProgress
+        --flatten
+        --stripReflection
+        --WX
         --sRegShift 0 --tRegShift 0 --bRegShift 0 --uRegShift 0
         --headerBlob
         --sourceDir "Shaders"
@@ -697,15 +694,15 @@ if(NRI_ENABLE_NIS_SDK OR NRI_ENABLE_IMGUI_EXTENSION)
     set(SHADERMAKE_COMMANDS "")
 
     if(NRI_ENABLE_D3D11_SUPPORT)
-        set(SHADERMAKE_COMMANDS ${SHADERMAKE_COMMANDS} COMMAND ShaderMake -p DXBC --compiler "${SHADERMAKE_FXC_PATH}" ${SHADERMAKE_GENERAL_ARGS})
+        set(SHADERMAKE_COMMANDS ${SHADERMAKE_COMMANDS} COMMAND ${SHADERMAKE_PATH} -p DXBC --compiler "${SHADERMAKE_FXC_PATH}" ${SHADERMAKE_GENERAL_ARGS})
     endif()
 
     if(NRI_ENABLE_D3D12_SUPPORT)
-        set(SHADERMAKE_COMMANDS ${SHADERMAKE_COMMANDS} COMMAND ShaderMake -p DXIL --compiler "${SHADERMAKE_DXC_PATH}" ${SHADERMAKE_GENERAL_ARGS})
+        set(SHADERMAKE_COMMANDS ${SHADERMAKE_COMMANDS} COMMAND ${SHADERMAKE_PATH} -p DXIL --compiler "${SHADERMAKE_DXC_PATH}" ${SHADERMAKE_GENERAL_ARGS})
     endif()
 
     if(NRI_ENABLE_VK_SUPPORT)
-        set(SHADERMAKE_COMMANDS ${SHADERMAKE_COMMANDS} COMMAND ShaderMake -p SPIRV --compiler "${SHADERMAKE_DXC_VK_PATH}" ${SHADERMAKE_GENERAL_ARGS})
+        set(SHADERMAKE_COMMANDS ${SHADERMAKE_COMMANDS} COMMAND ${SHADERMAKE_PATH} -p SPIRV --compiler "${SHADERMAKE_DXC_VK_PATH}" ${SHADERMAKE_GENERAL_ARGS})
     endif()
 
     add_custom_target(NRI_Shaders ALL
