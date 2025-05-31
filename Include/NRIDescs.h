@@ -481,6 +481,7 @@ NriStruct(TextureDesc) {
     NriOptional Nri(Mip_t) mipNum;
     NriOptional Nri(Dim_t) layerNum;
     NriOptional Nri(Sample_t) sampleNum;
+    NriOptional Nri(ClearValue) optimizedClearValue;
 };
 
 // "structureStride" values:
