@@ -288,7 +288,6 @@ constexpr void ReturnVoid() {
 struct DxgiFormat {
     DXGI_FORMAT typeless;
     DXGI_FORMAT typed;
-    bool IsDepthStencil;
 };
 
 const DxgiFormat& GetDxgiFormat(Format format);
@@ -338,6 +337,18 @@ inline bool IsDepthBiasEnabled(const DepthBiasDesc& depthBiasDesc) {
     return depthBiasDesc.constant != 0.0f || depthBiasDesc.slope != 0.0f;
 }
 
+inline OptimizedClearValue FixOptimizedClearValue(const OptimizedClearValue& optClearValue)
+{
+    OptimizedClearValue clearValue = optClearValue;
+    clearValue.color.x = std::max(clearValue.color.x, 0.0f);
+    clearValue.color.y = std::max(clearValue.color.y, 0.0f);
+    clearValue.color.z = std::max(clearValue.color.z, 0.0f);
+    clearValue.color.w = std::max(clearValue.color.w, 0.0f);
+    clearValue.depthStencil.depth = std::max(clearValue.depthStencil.depth, 0.0f);
+    clearValue.depthStencil.stencil = std::max(clearValue.depthStencil.stencil, (uint8_t)0);
+    return clearValue;
+}
+
 inline TextureDesc FixTextureDesc(const TextureDesc& textureDesc) {
     TextureDesc desc = textureDesc;
     desc.height = std::max(desc.height, (Dim_t)1);
@@ -345,8 +356,7 @@ inline TextureDesc FixTextureDesc(const TextureDesc& textureDesc) {
     desc.mipNum = std::max(desc.mipNum, (Mip_t)1);
     desc.layerNum = std::max(desc.layerNum, (Dim_t)1);
     desc.sampleNum = std::max(desc.sampleNum, (Sample_t)1);
-    desc.optimizedClearValue.depthStencil = std::max(desc.optimizedClearValue.depthStencil, {0.0f,0u});
-    desc.optimizedClearValue.color.f = std::max(desc.optimizedClearValue.color.f, {0.0f, 0.0f, 0.0f, 0.0f});
+    desc.optimizedClearValue = FixOptimizedClearValue(desc.optimizedClearValue);
     return desc;
 }
 

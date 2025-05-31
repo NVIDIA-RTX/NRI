@@ -351,6 +351,11 @@ NriUnion(ClearValue) {
     Nri(Color) color;
 };
 
+NriUnion(OptimizedClearValue) {
+    Nri(DepthStencil) depthStencil;
+    Nri(Color32f) color;
+};
+
 NriStruct(SampleLocation) {
     int8_t x, y; // [-8; 7]
 };
@@ -481,6 +486,7 @@ NriStruct(TextureDesc) {
     NriOptional Nri(Mip_t) mipNum;
     NriOptional Nri(Dim_t) layerNum;
     NriOptional Nri(Sample_t) sampleNum;
+    NriOptional Nri(OptimizedClearValue) optimizedClearValue;
 };
 
 // "structureStride" values:

@@ -19,16 +19,19 @@ Result TextureD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset) {
     // Texture was already created externally
     if (m_Texture)
         return Result::SUCCESS;
-    const DxgiFormat& formatInfo = GetDxgiFormat(m_Desc.format);
-    D3D12_CLEAR_VALUE clearValue = {formatInfo.typed};
-    if (formatInfo.IsDepthStencil) {
+
+    const FormatProps& texProps = GetFormatProps(m_Desc.format);
+    D3D12_CLEAR_VALUE clearValue = {GetDxgiFormat(m_Desc.format).typed};
+    if (texProps.isDepth || texProps.isStencil)
+    {
         clearValue.DepthStencil.Depth = m_Desc.optimizedClearValue.depthStencil.depth;
         clearValue.DepthStencil.Stencil = m_Desc.optimizedClearValue.depthStencil.stencil;
-    } else {
-        clearValue.Color[0] = m_Desc.optimizedClearValue.color.f.x;
-        clearValue.Color[1] = m_Desc.optimizedClearValue.color.f.y;
-        clearValue.Color[2] = m_Desc.optimizedClearValue.color.f.z;
-        clearValue.Color[3] = m_Desc.optimizedClearValue.color.f.w;
+    }
+    else {
+        clearValue.Color[0] = m_Desc.optimizedClearValue.color.x;
+        clearValue.Color[1] = m_Desc.optimizedClearValue.color.y;
+        clearValue.Color[2] = m_Desc.optimizedClearValue.color.z;
+        clearValue.Color[3] = m_Desc.optimizedClearValue.color.w;
     }
     const D3D12_HEAP_DESC& heapDesc = memory->GetHeapDesc();
     // STATE_CREATION ERROR #640: CREATERESOURCEANDHEAP_INVALIDHEAPMISCFLAGS
