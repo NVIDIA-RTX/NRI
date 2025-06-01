@@ -481,7 +481,7 @@ NriStruct(TextureDesc) {
     NriOptional Nri(Mip_t) mipNum;
     NriOptional Nri(Dim_t) layerNum;
     NriOptional Nri(Sample_t) sampleNum;
-    NriOptional Nri(ClearValue) optimizedClearValue;
+    NriOptional Nri(ClearValue) optimizedClearValue; // D3D12: very optional, since any desktop HW can track many clear values
 };
 
 // "structureStride" values:

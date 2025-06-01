@@ -130,19 +130,20 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
     Result result = m_Device.CreateVma();
     if (result != Result::SUCCESS)
         return result;
-    const FormatProps& formatProps = GetFormatProps(textureDesc.desc.format);
+
     D3D12_CLEAR_VALUE clearValue = {GetDxgiFormat(textureDesc.desc.format).typed};
-    if (formatProps.isDepth || formatProps.isStencil)
-    {
+
+    const FormatProps& formatProps = GetFormatProps(textureDesc.desc.format);
+    if (formatProps.isDepth || formatProps.isStencil) {
         clearValue.DepthStencil.Depth = textureDesc.desc.optimizedClearValue.depthStencil.depth;
         clearValue.DepthStencil.Stencil = textureDesc.desc.optimizedClearValue.depthStencil.stencil;
-    }
-    else {
+    } else {
         clearValue.Color[0] = textureDesc.desc.optimizedClearValue.color.f.x;
         clearValue.Color[1] = textureDesc.desc.optimizedClearValue.color.f.y;
         clearValue.Color[2] = textureDesc.desc.optimizedClearValue.color.f.z;
         clearValue.Color[3] = textureDesc.desc.optimizedClearValue.color.f.w;
     }
+
     uint32_t flags = D3D12MA::ALLOCATION_FLAG_CAN_ALIAS | D3D12MA::ALLOCATION_FLAG_STRATEGY_MIN_MEMORY;
     if (textureDesc.dedicated)
         flags |= D3D12MA::ALLOCATION_FLAG_COMMITTED;
