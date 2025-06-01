@@ -344,6 +344,7 @@ inline TextureDesc FixTextureDesc(const TextureDesc& textureDesc) {
     desc.mipNum = std::max(desc.mipNum, (Mip_t)1);
     desc.layerNum = std::max(desc.layerNum, (Dim_t)1);
     desc.sampleNum = std::max(desc.sampleNum, (Sample_t)1);
+
     return desc;
 }
 
