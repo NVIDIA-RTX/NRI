@@ -73,7 +73,7 @@ NriStruct(StreamerInterface) {
     // }
 
     // (HOST) Must be called once at the very end of the frame
-    void                (NRI_CALL *StreamerFinalize)            (NriRef(Streamer) streamer);
+    void                (NRI_CALL *EndStreamerFrame)            (NriRef(Streamer) streamer);
 };
 
 NriNamespaceEnd

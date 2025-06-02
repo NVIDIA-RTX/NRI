@@ -202,7 +202,7 @@ void StreamerImpl::CmdCopyStreamedData(CommandBuffer& commandBuffer) {
     }
 }
 
-void StreamerImpl::Finalize() {
+void StreamerImpl::EndFrame() {
     // Process garbage
     for (size_t i = 0; i < m_GarbageInFlight.size(); i++) {
         GarbageInFlight& garbageInFlight = m_GarbageInFlight[i];

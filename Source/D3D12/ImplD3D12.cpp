@@ -1052,8 +1052,8 @@ static BufferOffset NRI_CALL StreamTextureData(Streamer& streamer, const StreamT
     return ((StreamerImpl&)streamer).StreamTextureData(streamTextureDataDesc);
 }
 
-static void NRI_CALL StreamerFinalize(Streamer& streamer) {
-    ((StreamerImpl&)streamer).Finalize();
+static void NRI_CALL EndStreamerFrame(Streamer& streamer) {
+    ((StreamerImpl&)streamer).EndFrame();
 }
 
 static void NRI_CALL CmdCopyStreamedData(CommandBuffer& commandBuffer, Streamer& streamer) {
@@ -1067,7 +1067,7 @@ Result DeviceD3D12::FillFunctionTable(StreamerInterface& table) const {
     table.StreamBufferData = ::StreamBufferData;
     table.StreamTextureData = ::StreamTextureData;
     table.StreamConstantData = ::StreamConstantData;
-    table.StreamerFinalize = ::StreamerFinalize;
+    table.EndStreamerFrame = ::EndStreamerFrame;
     table.CmdCopyStreamedData = ::CmdCopyStreamedData;
 
     return Result::SUCCESS;

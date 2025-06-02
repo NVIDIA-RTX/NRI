@@ -47,7 +47,7 @@ struct StreamerImpl : public DebugNameBase {
     BufferOffset StreamBufferData(const StreamBufferDataDesc& streamBufferDataDesc);
     BufferOffset StreamTextureData(const StreamTextureDataDesc& streamTextureDataDesc);
     void CmdCopyStreamedData(CommandBuffer& commandBuffer);
-    void Finalize();
+    void EndFrame();
 
     //================================================================================================================
     // DebugNameBase
