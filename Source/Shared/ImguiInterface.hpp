@@ -263,23 +263,33 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, Streamer& streamer, const 
                 {StageBits::FRAGMENT_SHADER, nullptr, 0},
             };
 
+            // Temporary variables for size_t conversion on macOS ARM64
+            size_t vsSize = 0;
+            size_t fsSize = 0;
+
             bool shaderMakeResult = false;
 #    if NRI_ENABLE_D3D11_SUPPORT
             if (deviceDesc.graphicsAPI == GraphicsAPI::D3D11) {
-                shaderMakeResult = ShaderMake::FindPermutationInBlob(g_Imgui_vs_dxbc, GetCountOf(g_Imgui_vs_dxbc), &define, 1, &shaders[0].bytecode, &shaders[0].size);
-                shaderMakeResult |= ShaderMake::FindPermutationInBlob(g_Imgui_fs_dxbc, GetCountOf(g_Imgui_fs_dxbc), nullptr, 0, &shaders[1].bytecode, &shaders[1].size);
+                shaderMakeResult = ShaderMake::FindPermutationInBlob(g_Imgui_vs_dxbc, GetCountOf(g_Imgui_vs_dxbc), &define, 1, &shaders[0].bytecode, &vsSize);
+                shaderMakeResult |= ShaderMake::FindPermutationInBlob(g_Imgui_fs_dxbc, GetCountOf(g_Imgui_fs_dxbc), nullptr, 0, &shaders[1].bytecode, &fsSize);
+                shaders[0].size = vsSize;
+                shaders[1].size = fsSize;
             }
 #    endif
 #    if NRI_ENABLE_D3D12_SUPPORT
             if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
-                shaderMakeResult = ShaderMake::FindPermutationInBlob(g_Imgui_vs_dxil, GetCountOf(g_Imgui_vs_dxil), &define, 1, &shaders[0].bytecode, &shaders[0].size);
-                shaderMakeResult |= ShaderMake::FindPermutationInBlob(g_Imgui_fs_dxil, GetCountOf(g_Imgui_fs_dxil), nullptr, 0, &shaders[1].bytecode, &shaders[1].size);
+                shaderMakeResult = ShaderMake::FindPermutationInBlob(g_Imgui_vs_dxil, GetCountOf(g_Imgui_vs_dxil), &define, 1, &shaders[0].bytecode, &vsSize);
+                shaderMakeResult |= ShaderMake::FindPermutationInBlob(g_Imgui_fs_dxil, GetCountOf(g_Imgui_fs_dxil), nullptr, 0, &shaders[1].bytecode, &fsSize);
+                shaders[0].size = vsSize;
+                shaders[1].size = fsSize;
             }
 #    endif
 #    if NRI_ENABLE_VK_SUPPORT
             if (deviceDesc.graphicsAPI == GraphicsAPI::VK) {
-                shaderMakeResult = ShaderMake::FindPermutationInBlob(g_Imgui_vs_spirv, GetCountOf(g_Imgui_vs_spirv), &define, 1, &shaders[0].bytecode, &shaders[0].size);
-                shaderMakeResult |= ShaderMake::FindPermutationInBlob(g_Imgui_fs_spirv, GetCountOf(g_Imgui_fs_spirv), nullptr, 0, &shaders[1].bytecode, &shaders[1].size);
+                shaderMakeResult = ShaderMake::FindPermutationInBlob(g_Imgui_vs_spirv, GetCountOf(g_Imgui_vs_spirv), &define, 1, &shaders[0].bytecode, &vsSize);
+                shaderMakeResult |= ShaderMake::FindPermutationInBlob(g_Imgui_fs_spirv, GetCountOf(g_Imgui_fs_spirv), nullptr, 0, &shaders[1].bytecode, &fsSize);
+                shaders[0].size = vsSize;
+                shaders[1].size = fsSize;
             }
 #    endif
             CHECK(shaderMakeResult, "Unexpected");
