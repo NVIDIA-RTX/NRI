@@ -1037,7 +1037,7 @@ static BufferOffset NRI_CALL StreamTextureData(Streamer&, const StreamTextureDat
     return {};
 }
 
-static void NRI_CALL StreamerFinalize(Streamer&) {
+static void NRI_CALL EndStreamerFrame(Streamer&) {
 }
 
 static void NRI_CALL CmdCopyStreamedData(CommandBuffer&, Streamer&) {
@@ -1050,7 +1050,7 @@ Result DeviceNONE::FillFunctionTable(StreamerInterface& table) const {
     table.StreamBufferData = ::StreamBufferData;
     table.StreamTextureData = ::StreamTextureData;
     table.StreamConstantData = ::StreamConstantData;
-    table.StreamerFinalize = ::StreamerFinalize;
+    table.EndStreamerFrame = ::EndStreamerFrame;
     table.CmdCopyStreamedData = ::CmdCopyStreamedData;
 
     return Result::SUCCESS;
