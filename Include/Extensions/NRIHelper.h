@@ -2,7 +2,7 @@
 
 #pragma once
 
-#define NRI_HELPER 1
+#define NRI_HELPER_H 1
 
 NriNamespaceBegin
 

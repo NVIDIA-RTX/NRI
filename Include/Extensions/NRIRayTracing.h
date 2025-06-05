@@ -2,7 +2,7 @@
 
 #pragma once
 
-#define NRI_RAY_TRACING 1
+#define NRI_RAY_TRACING_H 1
 
 NriNamespaceBegin
 

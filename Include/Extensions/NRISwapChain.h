@@ -2,7 +2,7 @@
 
 #pragma once
 
-#define NRI_SWAP_CHAIN 1
+#define NRI_SWAP_CHAIN_H 1
 
 NriNamespaceBegin
 

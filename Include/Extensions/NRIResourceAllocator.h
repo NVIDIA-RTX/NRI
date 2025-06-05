@@ -2,7 +2,7 @@
 
 #pragma once
 
-#define NRI_RESOURCE_ALLOCATOR 1
+#define NRI_RESOURCE_ALLOCATOR_H 1
 
 #include "NRIRayTracing.h"
 

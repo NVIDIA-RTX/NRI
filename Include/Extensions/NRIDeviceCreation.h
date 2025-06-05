@@ -2,7 +2,7 @@
 
 #pragma once
 
-#define NRI_DEVICE_CREATION 1
+#define NRI_DEVICE_CREATION_H 1
 
 NriNamespaceBegin
 

@@ -2,7 +2,7 @@
 
 #pragma once
 
-#define NRI_IMGUI 1
+#define NRI_IMGUI_H 1
 
 // Expected usage:
 // - designed only for rendering

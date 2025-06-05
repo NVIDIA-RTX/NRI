@@ -2,7 +2,7 @@
 
 #pragma once
 
-#define NRI_UPSCALER 1
+#define NRI_UPSCALER_H 1
 
 NriNamespaceBegin
 

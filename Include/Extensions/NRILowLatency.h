@@ -2,7 +2,7 @@
 
 #pragma once
 
-#define NRI_LOW_LATENCY 1
+#define NRI_LOW_LATENCY_H 1
 
 NriNamespaceBegin
 

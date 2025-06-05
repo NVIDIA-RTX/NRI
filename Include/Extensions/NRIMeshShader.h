@@ -2,7 +2,7 @@
 
 #pragma once
 
-#define NRI_MESH_SHADER 1
+#define NRI_MESH_SHADER_H 1
 
 NriNamespaceBegin
 

@@ -2,7 +2,7 @@
 
 #pragma once
 
-#define NRI_STREAMER 1
+#define NRI_STREAMER_H 1
 
 NriNamespaceBegin
 

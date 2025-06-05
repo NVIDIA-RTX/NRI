@@ -2,7 +2,7 @@
 
 #pragma once
 
-#define NRI_WRAPPER_VK 1
+#define NRI_WRAPPER_VK_H 1
 
 #include "NRIDeviceCreation.h"
 

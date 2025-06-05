@@ -2,7 +2,7 @@
 
 #pragma once
 
-#define NRI_WRAPPER_D3D12 1
+#define NRI_WRAPPER_D3D12_H 1
 
 #include "NRIDeviceCreation.h"
 #include "NRIRayTracing.h"
