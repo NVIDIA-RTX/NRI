@@ -783,6 +783,9 @@ NRI_API Result NRI_CALL nriCreateDeviceFromVKDevice(const DeviceCreationVKDesc& 
 }
 
 NRI_API void NRI_CALL nriDestroyDevice(Device& device) {
+    if (!(&device))
+        return;
+
     ((DeviceBase&)device).Destruct();
 }
 
