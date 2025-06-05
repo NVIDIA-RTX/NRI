@@ -601,7 +601,7 @@ NriBits(PipelineLayoutBits, uint8_t,
 
 NriBits(DescriptorSetBits, uint8_t,
     NONE                                    = 0,
-    ALLOW_UPDATE_AFTER_SET                  = NriBit(1)  // allows "DescriptorRangeBits::ALLOW_UPDATE_AFTER_SET"
+    ALLOW_UPDATE_AFTER_SET                  = NriBit(0)  // allows "DescriptorRangeBits::ALLOW_UPDATE_AFTER_SET"
 );
 
 NriBits(DescriptorRangeBits, uint8_t,

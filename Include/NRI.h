@@ -35,8 +35,8 @@ Implicit:
 
 #pragma once
 
-#define NRI_VERSION 170
-#define NRI_VERSION_DATE "1 June 2025"
+#define NRI_VERSION 171
+#define NRI_VERSION_DATE "5 June 2025"
 
 #include "NRIDescs.h"
 
