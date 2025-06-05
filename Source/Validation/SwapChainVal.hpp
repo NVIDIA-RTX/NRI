@@ -25,7 +25,10 @@ NRI_INLINE Result SwapChainVal::AcquireNextTexture(Fence& acquireSemaphore, uint
 }
 
 NRI_INLINE Result SwapChainVal::WaitForPresent() {
-    RETURN_ON_FAILURE(&m_Device, m_SwapChainDesc.waitable, Result::FAILURE, "Swap chain has not been created with 'waitable = true'");
+    RETURN_ON_FAILURE(&m_Device, m_SwapChainDesc.flags & SwapChainBits::WAITABLE, Result::FAILURE, "Swap chain has not been created with 'WAITABLE' flag");
+
+    const DeviceDesc& deviceDesc = m_Device.GetDesc();
+    RETURN_ON_FAILURE(&m_Device, deviceDesc.features.waitableSwapChain, Result::FAILURE, "'features.waitableSwapChain' is false");
 
     return GetSwapChainInterfaceImpl().WaitForPresent(*GetImpl());
 }
@@ -41,25 +44,37 @@ NRI_INLINE Result SwapChainVal::GetDisplayDesc(DisplayDesc& displayDesc) const {
 }
 
 NRI_INLINE Result SwapChainVal::SetLatencySleepMode(const LatencySleepMode& latencySleepMode) {
-    RETURN_ON_FAILURE(&m_Device, m_SwapChainDesc.allowLowLatency, Result::FAILURE, "Swap chain has not been created with 'allowLowLatency = true'");
+    RETURN_ON_FAILURE(&m_Device, m_SwapChainDesc.flags & SwapChainBits::ALLOW_LOW_LATENCY, Result::FAILURE, "Swap chain has not been created with 'ALLOW_LOW_LATENCY' flag");
+
+    const DeviceDesc& deviceDesc = m_Device.GetDesc();
+    RETURN_ON_FAILURE(&m_Device, deviceDesc.features.lowLatency, Result::FAILURE, "'features.lowLatency' is false");
 
     return GetLowLatencyInterfaceImpl().SetLatencySleepMode(*GetImpl(), latencySleepMode);
 }
 
 NRI_INLINE Result SwapChainVal::SetLatencyMarker(LatencyMarker latencyMarker) {
-    RETURN_ON_FAILURE(&m_Device, m_SwapChainDesc.allowLowLatency, Result::FAILURE, "Swap chain has not been created with 'allowLowLatency = true'");
+    RETURN_ON_FAILURE(&m_Device, m_SwapChainDesc.flags & SwapChainBits::ALLOW_LOW_LATENCY, Result::FAILURE, "Swap chain has not been created with 'ALLOW_LOW_LATENCY' flag");
+
+    const DeviceDesc& deviceDesc = m_Device.GetDesc();
+    RETURN_ON_FAILURE(&m_Device, deviceDesc.features.lowLatency, Result::FAILURE, "'features.lowLatency' is false");
 
     return GetLowLatencyInterfaceImpl().SetLatencyMarker(*GetImpl(), latencyMarker);
 }
 
 NRI_INLINE Result SwapChainVal::LatencySleep() {
-    RETURN_ON_FAILURE(&m_Device, m_SwapChainDesc.allowLowLatency, Result::FAILURE, "Swap chain has not been created with 'allowLowLatency = true'");
+    RETURN_ON_FAILURE(&m_Device, m_SwapChainDesc.flags & SwapChainBits::ALLOW_LOW_LATENCY, Result::FAILURE, "Swap chain has not been created with 'ALLOW_LOW_LATENCY' flag");
+
+    const DeviceDesc& deviceDesc = m_Device.GetDesc();
+    RETURN_ON_FAILURE(&m_Device, deviceDesc.features.lowLatency, Result::FAILURE, "'features.lowLatency' is false");
 
     return GetLowLatencyInterfaceImpl().LatencySleep(*GetImpl());
 }
 
 NRI_INLINE Result SwapChainVal::GetLatencyReport(LatencyReport& latencyReport) {
-    RETURN_ON_FAILURE(&m_Device, m_SwapChainDesc.allowLowLatency, Result::FAILURE, "Swap chain has not been created with 'allowLowLatency = true'");
+    RETURN_ON_FAILURE(&m_Device, m_SwapChainDesc.flags & SwapChainBits::ALLOW_LOW_LATENCY, Result::FAILURE, "Swap chain has not been created with 'ALLOW_LOW_LATENCY' flag");
+
+    const DeviceDesc& deviceDesc = m_Device.GetDesc();
+    RETURN_ON_FAILURE(&m_Device, deviceDesc.features.lowLatency, Result::FAILURE, "'features.lowLatency' is false");
 
     return GetLowLatencyInterfaceImpl().GetLatencyReport(*GetImpl(), latencyReport);
 }

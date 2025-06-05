@@ -11,7 +11,6 @@ struct IsSupported {
     uint32_t deviceAddress          : 1;
     uint32_t swapChainMutableFormat : 1;
     uint32_t presentId              : 1;
-    uint32_t lowLatency             : 1;
     uint32_t memoryPriority         : 1;
     uint32_t memoryBudget           : 1;
     uint32_t maintenance4           : 1;
@@ -22,6 +21,8 @@ struct IsSupported {
     uint32_t robustness             : 1;
     uint32_t robustness2            : 1;
     uint32_t pipelineRobustness     : 1;
+    uint32_t swapChainMaintenance1  : 1;
+    uint32_t fifoLatestReady        : 1;
 };
 
 static_assert(sizeof(IsSupported) == sizeof(uint32_t), "4 bytes expected");

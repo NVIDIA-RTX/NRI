@@ -52,14 +52,16 @@ Result SwapChainD3D11::Create(const SwapChainDesc& swapChainDesc) {
     HRESULT hr = m_Device.GetAdapter()->GetParent(IID_PPV_ARGS(&m_DxgiFactory2));
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "IDXGIAdapter::GetParent()");
 
-    // Is tearing supported?
-    bool isTearingAllowed = false;
-    ComPtr<IDXGIFactory5> dxgiFactory5;
-    hr = m_DxgiFactory2->QueryInterface(IID_PPV_ARGS(&dxgiFactory5));
-    if (SUCCEEDED(hr)) {
-        uint32_t tearingSupport = 0;
-        hr = dxgiFactory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &tearingSupport, sizeof(tearingSupport));
-        isTearingAllowed = (SUCCEEDED(hr) && tearingSupport) ? true : false;
+    // Allow tearing?
+    bool allowTearing = false;
+    if (swapChainDesc.flags & SwapChainBits::ALLOW_TEARING) {
+        ComPtr<IDXGIFactory5> dxgiFactory5;
+        hr = m_DxgiFactory2->QueryInterface(IID_PPV_ARGS(&dxgiFactory5));
+        if (SUCCEEDED(hr)) {
+            uint32_t tearingSupport = 0;
+            hr = dxgiFactory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &tearingSupport, sizeof(tearingSupport));
+            allowTearing = (SUCCEEDED(hr) && tearingSupport) ? true : false;
+        }
     }
 
     // Create swapchain
@@ -77,9 +79,9 @@ Result SwapChainD3D11::Create(const SwapChainDesc& swapChainDesc) {
     desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     desc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
 
-    if (swapChainDesc.waitable)
+    if (swapChainDesc.flags & SwapChainBits::WAITABLE)
         desc.Flags |= DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
-    if (isTearingAllowed)
+    if (allowTearing)
         desc.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 
     ComPtr<IDXGISwapChainBest> swapChain;
@@ -117,10 +119,10 @@ Result SwapChainD3D11::Create(const SwapChainDesc& swapChainDesc) {
 
     // Maximum frame latency
     uint8_t queuedFrameNum = swapChainDesc.queuedFrameNum;
-    if (queuedFrameNum == 0)
-        queuedFrameNum = swapChainDesc.waitable ? 1 : 2;
+    if ((swapChainDesc.flags & SwapChainBits::WAITABLE) && m_Version >= 2) {
+        if (queuedFrameNum == 0)
+            queuedFrameNum = 1;
 
-    if (swapChainDesc.waitable && m_Version >= 2) {
         // https://docs.microsoft.com/en-us/windows/uwp/gaming/reduce-latency-with-dxgi-1-3-swap-chains#step-4-wait-before-rendering-each-frame
         // IMPORTANT: SetMaximumFrameLatency must be called BEFORE GetFrameLatencyWaitableObject!
         hr = m_SwapChain->SetMaximumFrameLatency(queuedFrameNum);
@@ -128,6 +130,9 @@ Result SwapChainD3D11::Create(const SwapChainDesc& swapChainDesc) {
 
         m_FrameLatencyWaitableObject = m_SwapChain->GetFrameLatencyWaitableObject();
     } else {
+        if (queuedFrameNum == 0)
+            queuedFrameNum = 2;
+
         ComPtr<IDXGIDevice1> dxgiDevice1;
         hr = m_Device->QueryInterface(IID_PPV_ARGS(&dxgiDevice1));
         if (SUCCEEDED(hr))
@@ -151,9 +156,14 @@ Result SwapChainD3D11::Create(const SwapChainDesc& swapChainDesc) {
     // Finalize
     m_Hwnd = swapChainDesc.window.windows.hwnd;
     m_PresentId = GetSwapChainId();
-    m_Flags = desc.Flags;
-    m_AllowLowLatency = swapChainDesc.allowLowLatency && m_Device.HasNvExt();
-    m_VerticalSyncInterval = swapChainDesc.verticalSyncInterval;
+    
+    m_Flags = swapChainDesc.flags;
+    if (!m_Device.HasNvExt())
+        m_Flags &= ~SwapChainBits::ALLOW_LOW_LATENCY;
+    if (!allowTearing)
+        m_Flags &= ~SwapChainBits::ALLOW_TEARING;
+    if (!m_FrameLatencyWaitableObject)
+        m_Flags &= ~SwapChainBits::WAITABLE;
 
     return Result::SUCCESS;
 }
@@ -173,6 +183,7 @@ NRI_INLINE Result SwapChainD3D11::AcquireNextTexture(uint32_t& textureIndex) {
 NRI_INLINE Result SwapChainD3D11::WaitForPresent() {
     if (m_FrameLatencyWaitableObject) {
         uint32_t result = WaitForSingleObjectEx(m_FrameLatencyWaitableObject, TIMEOUT_PRESENT, TRUE);
+
         return result == WAIT_OBJECT_0 ? Result::SUCCESS : Result::FAILURE;
     }
 
@@ -180,19 +191,17 @@ NRI_INLINE Result SwapChainD3D11::WaitForPresent() {
 }
 
 NRI_INLINE Result SwapChainD3D11::Present() {
-#if NRI_ENABLE_D3D_EXTENSIONS
-    if (m_AllowLowLatency)
+    if (m_Flags & SwapChainBits::ALLOW_LOW_LATENCY)
         SetLatencyMarker((LatencyMarker)PRESENT_START);
-#endif
 
-    uint32_t flags = (!m_VerticalSyncInterval && (m_Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING)) ? DXGI_PRESENT_ALLOW_TEARING : 0;
-    HRESULT hr = m_SwapChain->Present(m_VerticalSyncInterval, flags);
+    bool vsync = (m_Flags & SwapChainBits::VSYNC) != 0;
+    bool allowTearing = (m_Flags & SwapChainBits::ALLOW_TEARING) != 0;
+    uint32_t flags = (!vsync && allowTearing) ? DXGI_PRESENT_ALLOW_TEARING : 0;
+    HRESULT hr = m_SwapChain->Present(vsync ? 1 : 0, flags);
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "IDXGISwapChain::Present()");
 
-#if NRI_ENABLE_D3D_EXTENSIONS
-    if (m_AllowLowLatency)
+    if (m_Flags & SwapChainBits::ALLOW_LOW_LATENCY)
         SetLatencyMarker((LatencyMarker)PRESENT_END);
-#endif
 
     m_PresentId++;
 

@@ -160,7 +160,7 @@ struct DispatchTable {
                                                           // VK_KHR_fragment_shading_rate
     VK_FUNC(CmdSetFragmentShadingRateKHR);                // - | +
                                                           // VK_KHR_swapchain
-    VK_FUNC(AcquireNextImageKHR);                         // - | ?
+    VK_FUNC(AcquireNextImage2KHR);                        // - | ?
     VK_FUNC(QueuePresentKHR);                             // - | ?
     VK_FUNC(CreateSwapchainKHR);                          // + | ?
     VK_FUNC(DestroySwapchainKHR);                         // - | +

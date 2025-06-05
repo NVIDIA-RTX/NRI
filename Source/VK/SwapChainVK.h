@@ -60,8 +60,7 @@ private:
     void* m_Hwnd = nullptr;
     uint64_t m_PresentId = 0;
     uint32_t m_TextureIndex = 0;
-    bool m_AllowLowLatency = false;
-    bool m_Waitable = false;
+    SwapChainBits m_Flags = SwapChainBits::NONE;
 };
 
 } // namespace nri

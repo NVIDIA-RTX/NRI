@@ -27,22 +27,30 @@ NriEnum(SwapChainFormat, uint8_t,
     BT2020_G2084_10BIT
 );
 
-NriStruct(WindowsWindow) {          // Expects "WIN32" platform macro
-    void* hwnd;                     //    HWND
+NriBits(SwapChainBits, uint8_t,
+    NONE                = 0,
+    VSYNC               = NriBit(0), // cap framerate to the monitor refresh rate
+    WAITABLE            = NriBit(1), // unlock "WaitForPresent" reducing latency (requires "features.waitableSwapChain")
+    ALLOW_TEARING       = NriBit(2), // allow screen tearing if possible
+    ALLOW_LOW_LATENCY   = NriBit(3)  // allow "NRILowLatency" functionality (requires "features.lowLatency")
+);
+
+NriStruct(WindowsWindow) {  // Expects "WIN32" platform macro
+    void* hwnd;             //    HWND
 };
 
-NriStruct(X11Window) {              // Expects "NRI_ENABLE_XLIB_SUPPORT"
-    void* dpy;                      //    Display
-    uint64_t window;                //    Window
+NriStruct(X11Window) {      // Expects "NRI_ENABLE_XLIB_SUPPORT"
+    void* dpy;              //    Display
+    uint64_t window;        //    Window
 };
 
-NriStruct(WaylandWindow) {          // Expects "NRI_ENABLE_WAYLAND_SUPPORT"
-    void* display;                  //    wl_display
-    void* surface;                  //    wl_surface
+NriStruct(WaylandWindow) {  // Expects "NRI_ENABLE_WAYLAND_SUPPORT"
+    void* display;          //    wl_display
+    void* surface;          //    wl_surface
 };
 
-NriStruct(MetalWindow) {            // Expects "APPLE" platform macro
-    void* caMetalLayer;             //    CAMetalLayer
+NriStruct(MetalWindow) {    // Expects "APPLE" platform macro
+    void* caMetalLayer;     //    CAMetalLayer
 };
 
 NriStruct(Window) {
@@ -58,15 +66,13 @@ NriStruct(Window) {
 // queuedFrameNum = 2 - recommended if the GPU frame time is less than the desired frame time, but the sum of 2 frames is greater
 NriStruct(SwapChainDesc) {
     Nri(Window) window;
-    const NriPtr(Queue) queue;      // GRAPHICS or COMPUTE (requires "features.presentFromCompute")
+    const NriPtr(Queue) queue;          // GRAPHICS or COMPUTE (requires "features.presentFromCompute")
     Nri(Dim_t) width;
     Nri(Dim_t) height;
-    uint8_t textureNum;             // desired value, real value must be queried using "GetSwapChainTextures"
-    Nri(SwapChainFormat) format;    // desired format, real must be queried using "GetTextureDesc" for one of swap chain textures
-    uint8_t verticalSyncInterval;   // 0 - vsync off
-    uint8_t queuedFrameNum;         // aka "max frame latency", aka "number of frames in flight" (mostly for D3D11)
-    bool waitable;                  // allows to use "WaitForPresent", which helps to reduce latency (requires "features.waitableSwapChain")
-    bool allowLowLatency;           // unlocks "NRILowLatency" functionality (requires "features.lowLatency")
+    uint8_t textureNum;                 // desired value, real value must be queried using "GetSwapChainTextures"
+    Nri(SwapChainFormat) format;        // desired format, real value must be queried using "GetTextureDesc" for one of the swap chain textures
+    Nri(SwapChainBits) flags;
+    NriOptional uint8_t queuedFrameNum; // aka "max frame latency", aka "number of frames in flight" (mostly for D3D11)
 };
 
 NriStruct(ChromaticityCoords) {
@@ -109,7 +115,7 @@ NriStruct(SwapChainInterface) {
 };
 
 /*
-Typical usage example:
+Typical usage example, valid if the number of swap chain images >= queued frames:
 
 // Creation:
     // Create swap chain

@@ -175,6 +175,9 @@ void DeviceVK::ProcessInstanceExtensions(Vector<const char*>& desiredInstanceExt
     if (IsExtensionSupported(VK_KHR_SURFACE_EXTENSION_NAME, supportedExts)) {
         desiredInstanceExts.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
 
+        if (IsExtensionSupported(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME, supportedExts))
+            desiredInstanceExts.push_back(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
+
 #ifdef VK_USE_PLATFORM_WIN32_KHR
         desiredInstanceExts.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 #endif
@@ -281,6 +284,12 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
         desiredDeviceExts.push_back(VK_KHR_SHADER_CLOCK_EXTENSION_NAME);
 
     // Optional (EXT)
+    if (IsExtensionSupported(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME, supportedExts))
+        desiredDeviceExts.push_back(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
+
+    if (IsExtensionSupported(VK_EXT_PRESENT_MODE_FIFO_LATEST_READY_EXTENSION_NAME, supportedExts))
+        desiredDeviceExts.push_back(VK_EXT_PRESENT_MODE_FIFO_LATEST_READY_EXTENSION_NAME);
+
     if (IsExtensionSupported(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME, supportedExts) && !disableRayTracing)
         desiredDeviceExts.push_back(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME);
 
@@ -720,6 +729,16 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         APPEND_EXT(fragmentShaderInterlockFeatures);
     }
 
+    VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT swapchainMaintenance1Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT};
+    if (IsExtensionSupported(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME, desiredDeviceExts)) {
+        APPEND_EXT(swapchainMaintenance1Features);
+    }
+
+    VkPhysicalDevicePresentModeFifoLatestReadyFeaturesEXT presentModeFifoLatestReadyFeaturesEXT = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_MODE_FIFO_LATEST_READY_FEATURES_EXT};
+    if (IsExtensionSupported(VK_EXT_PRESENT_MODE_FIFO_LATEST_READY_EXTENSION_NAME, desiredDeviceExts)) {
+        APPEND_EXT(presentModeFifoLatestReadyFeaturesEXT);
+    }
+
     if (IsExtensionSupported(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME, desiredDeviceExts))
         m_IsSupported.memoryBudget = true;
 
@@ -729,7 +748,6 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.deviceAddress = features12.bufferDeviceAddress;
     m_IsSupported.swapChainMutableFormat = IsExtensionSupported(VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME, desiredDeviceExts);
     m_IsSupported.presentId = presentIdFeatures.presentId;
-    m_IsSupported.lowLatency = presentIdFeatures.presentId != 0 && IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, desiredDeviceExts);
     m_IsSupported.memoryPriority = memoryPriorityFeatures.memoryPriority;
     m_IsSupported.maintenance4 = features13.maintenance4 != 0 || maintenance4Features.maintenance4 != 0;
     m_IsSupported.maintenance5 = maintenance5Features.maintenance5;
@@ -739,6 +757,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.robustness = features.features.robustBufferAccess != 0 && (imageRobustnessFeatures.robustImageAccess != 0 || features13.robustImageAccess != 0);
     m_IsSupported.robustness2 = robustness2Features.robustBufferAccess2 != 0 && robustness2Features.robustImageAccess2 != 0;
     m_IsSupported.pipelineRobustness = pipelineRobustnessFeatures.pipelineRobustness;
+    m_IsSupported.swapChainMaintenance1 = swapchainMaintenance1Features.swapchainMaintenance1;
+    m_IsSupported.fifoLatestReady = presentModeFifoLatestReadyFeaturesEXT.presentModeFifoLatestReady;
 
     { // Check hard requirements
         bool hasDynamicRendering = features13.dynamicRendering != 0 || (dynamicRenderingFeatures.dynamicRendering != 0 && extendedDynamicStateFeatures.extendedDynamicState != 0);
@@ -1110,7 +1130,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.swapChain = IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME, desiredDeviceExts);
         m_Desc.features.rayTracing = m_Desc.tiers.rayTracing != 0;
         m_Desc.features.meshShader = meshShaderFeatures.meshShader != 0 && meshShaderFeatures.taskShader != 0;
-        m_Desc.features.lowLatency = IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, desiredDeviceExts);
+        m_Desc.features.lowLatency = m_IsSupported.presentId != 0 && IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, desiredDeviceExts);
         m_Desc.features.micromap = micromapFeatures.micromap != 0;
 
         m_Desc.features.independentFrontAndBackStencilReferenceAndMasks = true;
@@ -1795,7 +1815,7 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     }
 
     if (IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME, desiredDeviceExts)) {
-        GET_DEVICE_FUNC(AcquireNextImageKHR);
+        GET_DEVICE_FUNC(AcquireNextImage2KHR);
         GET_DEVICE_FUNC(QueuePresentKHR);
         GET_DEVICE_FUNC(CreateSwapchainKHR);
         GET_DEVICE_FUNC(DestroySwapchainKHR);
