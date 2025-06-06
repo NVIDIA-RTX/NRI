@@ -33,7 +33,7 @@ struct MemoryD3D11 final : public DebugNameBase {
         return m_Priority;
     }
 
-    inline Result MemoryD3D11::Create(const AllocateMemoryDesc& allocateMemoryDesc) {
+    inline Result Create(const AllocateMemoryDesc& allocateMemoryDesc) {
         m_Location = (MemoryLocation)allocateMemoryDesc.type;
         m_Priority = allocateMemoryDesc.priority;
 
