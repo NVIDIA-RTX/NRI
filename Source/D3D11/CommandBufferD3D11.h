@@ -40,7 +40,7 @@ struct CommandBufferD3D11 final : public CommandBufferBase {
         return m_DeferredContext;
     }
 
-    inline const AllocationCallbacks& CommandBufferD3D11::GetAllocationCallbacks() const override {
+    inline const AllocationCallbacks& GetAllocationCallbacks() const override {
         return m_Device.GetAllocationCallbacks();
     }
 
