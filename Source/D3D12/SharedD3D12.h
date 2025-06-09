@@ -51,7 +51,7 @@ struct MemoryTypeInfo {
     bool mustBeDedicated;
 };
 
-constexpr D3D12_HEAP_FLAGS HEAP_FLAG_MSAA_ALIGNMENT = (D3D12_HEAP_FLAGS)(1 << 15);
+const D3D12_HEAP_FLAGS HEAP_FLAG_MSAA_ALIGNMENT = (D3D12_HEAP_FLAGS)(1 << 15);
 
 inline MemoryType Pack(const MemoryTypeInfo& memoryTypeInfo) {
     return *(MemoryType*)&memoryTypeInfo;
