@@ -230,8 +230,8 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         };
         
         const VkPresentModeKHR uncappedModes[] = {
-            m_Device.m_IsSupported.fifoLatestReady ? VK_PRESENT_MODE_FIFO_LATEST_READY_EXT : VK_PRESENT_MODE_MAILBOX_KHR,
-            (swapChainDesc.flags & SwapChainBits::ALLOW_TEARING) ? VK_PRESENT_MODE_IMMEDIATE_KHR : VK_PRESENT_MODE_FIFO_KHR,
+            (swapChainDesc.flags & SwapChainBits::ALLOW_TEARING) ? VK_PRESENT_MODE_IMMEDIATE_KHR : VK_PRESENT_MODE_MAILBOX_KHR,
+            (swapChainDesc.flags & SwapChainBits::ALLOW_TEARING) ? VK_PRESENT_MODE_IMMEDIATE_KHR : (m_Device.m_IsSupported.fifoLatestReady ? VK_PRESENT_MODE_FIFO_LATEST_READY_EXT : VK_PRESENT_MODE_FIFO_KHR),
             VK_PRESENT_MODE_FIFO_KHR, // guaranteed to be supported
         };
 
