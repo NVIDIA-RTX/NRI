@@ -609,16 +609,10 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             m.nis->blockSize.w = 32;
             m.nis->blockSize.h = deviceDesc.shaderModel >= 62 ? 32 : 24;
 
-            uint32_t permutation = 0;
-            if (deviceDesc.adapterDesc.vendor != Vendor::NVIDIA) // TODO: verify performance
-                permutation += 2;
-            if (upscalerDesc.flags & UpscalerBits::HDR)
-                permutation += 1;
-
             std::array<ShaderMake::ShaderConstant, 3> defines = {{
                 {"NIS_FP16", (deviceDesc.shaderModel >= 62) ? "1" : "0"},
                 {"NIS_HDR_MODE", (upscalerDesc.flags & UpscalerBits::HDR) ? "1" : "0"},
-                {"NIS_THREAD_GROUP_SIZE", (deviceDesc.adapterDesc.vendor == Vendor::NVIDIA) ? "128" : "256"},
+                {"NIS_THREAD_GROUP_SIZE", (deviceDesc.adapterDesc.vendor == Vendor::NVIDIA) ? "128" : "256"}, // TODO: verify performance
             }};
 
             const void* bytecode = nullptr;
