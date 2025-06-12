@@ -32,11 +32,16 @@ NriStruct(ImguiDesc) {
     NriOptional uint32_t descriptorPoolSize;    // upper bound of textures used by Imgui for drawing: {number of queued frames} * {number of "CmdDrawImgui" calls} * (1 + {"drawList->AddImage*" calls})
 };
 
-NriStruct(DrawImguiDesc) {
+NriStruct(CopyImguiDataDesc) {
     const ImDrawList* const* drawLists;         // ImDrawData::CmdLists.Data
     uint32_t drawListNum;                       // ImDrawData::CmdLists.Size
     ImTextureData* const* textures;             // ImDrawData::Textures->Data (same as "ImGui::GetPlatformIO().Textures.Data")
     uint32_t textureNum;                        // ImDrawData::Textures->Size (same as "ImGui::GetPlatformIO().Textures.Size")
+};
+
+NriStruct(DrawImguiDesc) {
+    const ImDrawList* const* drawLists;         // ImDrawData::CmdLists.Data (same as for "CopyImguiDataDesc")
+    uint32_t drawListNum;                       // ImDrawData::CmdLists.Size (same as for "CopyImguiDataDesc")
     Nri(Dim2) displaySize;                      // ImDrawData::DisplaySize
     float hdrScale;                             // SDR intensity in HDR mode (1 by default)
     Nri(Format) attachmentFormat;               // destination attachment (render target) format
@@ -45,13 +50,16 @@ NriStruct(DrawImguiDesc) {
 
 // Threadsafe: yes
 NriStruct(ImguiInterface) {
-    Nri(Result)     (NRI_CALL *CreateImgui)     (NriRef(Device) device, const NriRef(ImguiDesc) imguiDesc, NriOut NriRef(Imgui*) imgui);
-    void            (NRI_CALL *DestroyImgui)    (NriRef(Imgui) imgui);
+    Nri(Result)     (NRI_CALL *CreateImgui)         (NriRef(Device) device, const NriRef(ImguiDesc) imguiDesc, NriOut NriRef(Imgui*) imgui);
+    void            (NRI_CALL *DestroyImgui)        (NriRef(Imgui) imgui);
 
     // Command buffer
     // {
+            // Copy
+            void    (NRI_CALL *CmdCopyImguiData)    (NriRef(CommandBuffer) commandBuffer, NriRef(Streamer) streamer, NriRef(Imgui) imgui, const NriRef(CopyImguiDataDesc) streamImguiDesc);
+
             // Draw (changes descriptor pool, pipeline layout and pipeline, barriers are externally controlled)
-            void    (NRI_CALL *CmdDrawImgui)    (NriRef(CommandBuffer) commandBuffer, NriRef(Imgui) imgui, NriRef(Streamer) streamer, const NriRef(DrawImguiDesc) drawImguiDesc);
+            void    (NRI_CALL *CmdDrawImgui)        (NriRef(CommandBuffer) commandBuffer, NriRef(Imgui) imgui, const NriRef(DrawImguiDesc) drawImguiDesc);
     // }
 };
 

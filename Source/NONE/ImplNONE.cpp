@@ -751,12 +751,16 @@ static Result NRI_CALL CreateImgui(Device&, const ImguiDesc&, Imgui*& imgui) {
 static void NRI_CALL DestroyImgui(Imgui&) {
 }
 
-static void NRI_CALL CmdDrawImgui(CommandBuffer&, Imgui&, Streamer&, const DrawImguiDesc&) {
+static void NRI_CALL CmdCopyImguiData(CommandBuffer&, Streamer&, Imgui&, const CopyImguiDataDesc&) {
+}
+
+static void NRI_CALL CmdDrawImgui(CommandBuffer&, Imgui&, const DrawImguiDesc&) {
 }
 
 Result DeviceNONE::FillFunctionTable(ImguiInterface& table) const {
     table.CreateImgui = ::CreateImgui;
     table.DestroyImgui = ::DestroyImgui;
+    table.CmdCopyImguiData = ::CmdCopyImguiData;
     table.CmdDrawImgui = ::CmdDrawImgui;
 
     return Result::SUCCESS;

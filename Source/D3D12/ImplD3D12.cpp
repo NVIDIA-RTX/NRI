@@ -721,15 +721,22 @@ static void NRI_CALL DestroyImgui(Imgui& imgui) {
     Destroy((ImguiImpl*)&imgui);
 }
 
-static void NRI_CALL CmdDrawImgui(CommandBuffer& commandBuffer, Imgui& imgui, Streamer& streamer, const DrawImguiDesc& drawImguiDesc) {
+static void NRI_CALL CmdCopyImguiData(CommandBuffer& commandBuffer, Streamer& streamer, Imgui& imgui, const CopyImguiDataDesc& copyImguiDataDesc) {
     ImguiImpl& imguiImpl = (ImguiImpl&)imgui;
 
-    return imguiImpl.CmdDraw(commandBuffer, streamer, drawImguiDesc);
+    return imguiImpl.CmdCopyData(commandBuffer, streamer, copyImguiDataDesc);
+}
+
+static void NRI_CALL CmdDrawImgui(CommandBuffer& commandBuffer, Imgui& imgui, const DrawImguiDesc& drawImguiDesc) {
+    ImguiImpl& imguiImpl = (ImguiImpl&)imgui;
+
+    return imguiImpl.CmdDraw(commandBuffer, drawImguiDesc);
 }
 
 Result DeviceD3D12::FillFunctionTable(ImguiInterface& table) const {
     table.CreateImgui = ::CreateImgui;
     table.DestroyImgui = ::DestroyImgui;
+    table.CmdCopyImguiData = ::CmdCopyImguiData;
     table.CmdDrawImgui = ::CmdDrawImgui;
 
     return Result::SUCCESS;

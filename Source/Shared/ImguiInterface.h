@@ -27,7 +27,8 @@ struct ImguiImpl : public DebugNameBase {
     }
 
     Result Create(const ImguiDesc& imguiDesc);
-    void CmdDraw(CommandBuffer& commandBuffer, Streamer& streamer, const DrawImguiDesc& drawImguiDesc);
+    void CmdCopyData(CommandBuffer& commandBuffer, Streamer& streamer, const CopyImguiDataDesc& copyImguiDataDesc);
+    void CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawImguiDesc);
 
     //================================================================================================================
     // DebugNameBase
@@ -50,6 +51,9 @@ private:
     PipelineLayout* m_PipelineLayout = nullptr;
     DescriptorSet* m_DescriptorSet0_sampler = nullptr;
     ImTextureData* const* m_Textures = nullptr;
+    Buffer* m_CurrentBuffer = nullptr;
+    uint64_t m_VbOffset = 0;
+    uint64_t m_IbOffset = 0;
     uint32_t m_TextureNum = 0;
     uint32_t m_DescriptorSetIndex = 0;
     Lock m_Lock;
