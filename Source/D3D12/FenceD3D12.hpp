@@ -22,7 +22,7 @@ NRI_INLINE void FenceD3D12::QueueSignal(QueueD3D12& queue, uint64_t value) {
 }
 
 NRI_INLINE void FenceD3D12::QueueWait(QueueD3D12& queue, uint64_t value) {
-    if (m_Fence) {
+    if (m_Fence && value) {
         HRESULT hr = ((ID3D12CommandQueue*)queue)->Wait(m_Fence, value);
         RETURN_ON_FAILURE(&m_Device, hr == S_OK, ReturnVoid(), "ID3D12CommandQueue::Wait() failed!");
     }
