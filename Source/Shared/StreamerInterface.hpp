@@ -200,6 +200,10 @@ void StreamerImpl::CmdCopyStreamedData(CommandBuffer& commandBuffer) {
 
         m_iCore.CmdUploadBufferToTexture(commandBuffer, *request.desc.dstTexture, request.desc.dstRegionDesc, *request.srcBuffer, dataLayout);
     }
+
+    // Cleanup
+    m_BufferRequestsWithDst.clear();
+    m_TextureRequestsWithDst.clear();
 }
 
 void StreamerImpl::EndFrame() {
@@ -216,7 +220,7 @@ void StreamerImpl::EndFrame() {
         }
     }
 
-    // Cleanup
+    // Ignore unprocessed requests, they become invalid on the next frame
     m_BufferRequestsWithDst.clear();
     m_TextureRequestsWithDst.clear();
 
