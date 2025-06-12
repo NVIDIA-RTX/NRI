@@ -47,8 +47,8 @@ NriStruct(StreamTextureDataDesc) {
     uint32_t dataSlicePitch;
 
     // Destination
-    NriPtr(Texture) dstTexture;
-    Nri(TextureRegionDesc) dstRegionDesc;
+    NriOptional NriPtr(Texture) dstTexture;
+    NriOptional Nri(TextureRegionDesc) dstRegionDesc;
 };
 
 // Threadsafe: yes

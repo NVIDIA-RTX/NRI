@@ -172,11 +172,13 @@ BufferOffset StreamerImpl::StreamTextureData(const StreamTextureDataDesc& stream
         m_iCore.UnmapBuffer(*m_DynamicBuffer);
 
         // Gather requests with destinations
-        TextureUpdateRequest& request = m_TextureRequestsWithDst.emplace_back();
-        request = {};
-        request.desc = streamTextureDataDesc;
-        request.srcBuffer = m_DynamicBuffer;
-        request.srcOffset = offset;
+        if (streamTextureDataDesc.dstTexture) {
+            TextureUpdateRequest& request = m_TextureRequestsWithDst.emplace_back();
+            request = {};
+            request.desc = streamTextureDataDesc;
+            request.srcBuffer = m_DynamicBuffer;
+            request.srcOffset = offset;
+        }
     }
 
     return {m_DynamicBuffer, offset};
