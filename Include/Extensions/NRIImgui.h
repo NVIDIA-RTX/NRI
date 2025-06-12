@@ -4,17 +4,24 @@
 
 #define NRI_IMGUI_H 1
 
-// Expected usage:
-// - designed only for rendering
-// - compatible only with unmodified "ImDrawVert" (20 bytes) and "ImDrawIdx" (2 bytes)
-// - "drawList->AddCallback" functionality is not supported! But there is a special callback, allowing to override "hdrScale":
-//      drawList->AddCallback(NRI_IMGUI_OVERRIDE_HDR_SCALE(1000.0f)); // to override "DrawImguiDesc::hdrScale"
-//      drawList->AddCallback(NRI_IMGUI_OVERRIDE_HDR_SCALE(0.0f));    // to revert back to "DrawImguiDesc::hdrScale"
-// - "ImGui::Image*" functions are supported. "ImTextureID" must be a "SHADER_RESOURCE" descriptor:
-//      ImGui::Image((ImTextureID)descriptor, ...)
-// - only one "Imgui" instance is needed per device
+/*
+Requirements:
+- ImGui 1.92+ with "ImGuiBackendFlags_RendererHasTextures" flag ("IMGUI_DISABLE_OBSOLETE_FUNCTIONS" is recommended)
+- unmodified "ImDrawVert" (20 bytes) and "ImDrawIdx" (2 bytes)
+- "ImTextureID_Invalid" = 0
+
+Expected usage:
+- the goal of this extension is to support latest ImGui only
+- designed only for rendering
+- "drawList->AddCallback" functionality is not supported! But there is a special callback, allowing to override "hdrScale":
+     drawList->AddCallback(NRI_IMGUI_OVERRIDE_HDR_SCALE(1000.0f)); // to override "DrawImguiDesc::hdrScale"
+     drawList->AddCallback(NRI_IMGUI_OVERRIDE_HDR_SCALE(0.0f));    // to revert back to "DrawImguiDesc::hdrScale"
+- "ImGui::Image*" functions are supported. "ImTextureID" must be a "SHADER_RESOURCE" descriptor:
+     ImGui::Image((ImTextureID)descriptor, ...)
+*/
 
 NonNriForwardStruct(ImDrawList);
+NonNriForwardStruct(ImTextureData);
 
 NriNamespaceBegin
 
@@ -22,15 +29,14 @@ NriForwardStruct(Imgui);
 NriForwardStruct(Streamer);
 
 NriStruct(ImguiDesc) {
-    const uint8_t* fontAtlasData;               // use "GetTexDataAsRGBA32"
-    Nri(Dim2) fontAtlasDims;                    // font texture atlas dimensions
-    NriOptional uint32_t descriptorPoolSize;    // upper bound of textures used by Imgui for drawing:
-                                                //      {number of frames in flight} * {number of "CmdDrawImgui" calls} * (1 + {"drawList->AddImage*" calls})
+    NriOptional uint32_t descriptorPoolSize;    // upper bound of textures used by Imgui for drawing: {number of queued frames} * {number of "CmdDrawImgui" calls} * (1 + {"drawList->AddImage*" calls})
 };
 
 NriStruct(DrawImguiDesc) {
     const ImDrawList* const* drawLists;         // ImDrawData::CmdLists.Data
     uint32_t drawListNum;                       // ImDrawData::CmdLists.Size
+    ImTextureData* const* textures;             // ImDrawData::Textures->Data (same as "ImGui::GetPlatformIO().Textures.Data")
+    uint32_t textureNum;                        // ImDrawData::Textures->Size (same as "ImGui::GetPlatformIO().Textures.Size")
     Nri(Dim2) displaySize;                      // ImDrawData::DisplaySize
     float hdrScale;                             // SDR intensity in HDR mode (1 by default)
     Nri(Format) attachmentFormat;               // destination attachment (render target) format

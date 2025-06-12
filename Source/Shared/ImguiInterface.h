@@ -6,7 +6,7 @@
 
 namespace nri {
 
-struct PipelineAndProps {
+struct ImguiPipeline {
     Pipeline* pipeline;
     Format format;
     bool linearColor;
@@ -34,8 +34,6 @@ struct ImguiImpl : public DebugNameBase {
     //================================================================================================================
 
     void SetDebugName(const char* name) DEBUG_NAME_OVERRIDE {
-        m_iCore.SetDebugName(m_FontTexture, name);
-        m_iCore.SetDebugName(m_FontDescriptor, name);
         m_iCore.SetDebugName(m_Sampler, name);
         m_iCore.SetDebugName(m_DescriptorPool, name);
         m_iCore.SetDebugName(m_PipelineLayout, name);
@@ -45,14 +43,14 @@ private:
     Device& m_Device;
     const CoreInterface& m_iCore;
     StreamerInterface m_iStreamer = {};
-    Vector<PipelineAndProps> m_Pipelines;
+    Vector<ImguiPipeline> m_Pipelines;
     Vector<DescriptorSet*> m_DescriptorSets1;
-    Texture* m_FontTexture = nullptr;
-    Descriptor* m_FontDescriptor = nullptr;
     Descriptor* m_Sampler = nullptr;
     DescriptorPool* m_DescriptorPool = nullptr;
     PipelineLayout* m_PipelineLayout = nullptr;
     DescriptorSet* m_DescriptorSet0_sampler = nullptr;
+    ImTextureData* const* m_Textures = nullptr;
+    uint32_t m_TextureNum = 0;
     uint32_t m_DescriptorSetIndex = 0;
     Lock m_Lock;
 };

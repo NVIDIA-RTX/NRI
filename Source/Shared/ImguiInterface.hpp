@@ -22,8 +22,25 @@
 #    include "../Shaders/Imgui.fs.hlsl"
 #    include "../Shaders/Imgui.vs.hlsl"
 
-// Copied from Imgui
+// Copied from Imgui // TODO: always keep in sync with latest
+
 typedef uint16_t ImDrawIdx;
+typedef uint64_t ImTextureID;
+
+constexpr ImTextureID ImTextureID_Invalid = 0;
+
+enum ImTextureFormat {
+    ImTextureFormat_RGBA32,
+    ImTextureFormat_Alpha8,
+};
+
+enum ImTextureStatus {
+    ImTextureStatus_OK,
+    ImTextureStatus_Destroyed,
+    ImTextureStatus_WantCreate,
+    ImTextureStatus_WantUpdates,
+    ImTextureStatus_WantDestroy,
+};
 
 template <typename T>
 struct ImVector {
@@ -46,9 +63,41 @@ struct ImDrawVert {
     uint32_t col;
 };
 
+struct ImTextureRect {
+    uint16_t x, y, w, h;
+};
+
+struct ImTextureData {
+    int UniqueID;
+    ImTextureStatus Status;
+    void* BackendUserData;
+    ImTextureID TexID;
+    ImTextureFormat Format;
+    int Width;
+    int Height;
+    int BytesPerPixel;
+    unsigned char* Pixels;
+    ImTextureRect UsedRect;
+    ImTextureRect UpdateRect;
+    ImVector<ImTextureRect> Updates;
+    int UnusedFrames;
+    unsigned short RefCount;
+    bool UseColors;
+    bool WantDestroyNextFrame;
+};
+
+struct ImTextureRef {
+    ImTextureData* _TexData;
+    ImTextureID _TexID;
+
+    inline ImTextureID GetTexID() const {
+        return _TexData ? _TexData->TexID : _TexID;
+    }
+};
+
 struct ImDrawCmd {
     ImVec4 ClipRect;
-    uint64_t TextureId;
+    ImTextureRef TexRef;
     uint32_t VtxOffset;
     uint32_t IdxOffset;
     uint32_t ElemCount;
@@ -67,52 +116,39 @@ struct ImDrawList {
 };
 
 // Implementation
-constexpr Format FONT_FORMAT = Format::RGBA8_UNORM; // TODO: add A8_UNORM?
+struct ImguiTexture {
+    Texture* texture = nullptr;
+    Descriptor* descriptor = nullptr;
+};
 
 ImguiImpl::~ImguiImpl() {
-    for (const PipelineAndProps& entry : m_Pipelines)
+    for (uint32_t i = 0; i < m_TextureNum; i++) {
+        ImTextureData* texData = m_Textures[i];
+        ImguiTexture* imguiTexture = (ImguiTexture*)texData->BackendUserData;
+
+        if (imguiTexture) {
+            m_iCore.DestroyDescriptor(*imguiTexture->descriptor);
+            m_iCore.DestroyTexture(*imguiTexture->texture);
+
+            Destroy(((DeviceBase&)m_Device).GetAllocationCallbacks(), imguiTexture);
+        }
+
+        texData->BackendUserData = nullptr;
+        texData->TexID = ImTextureID_Invalid;
+        texData->Status = ImTextureStatus_Destroyed;
+    }
+
+    for (const ImguiPipeline& entry : m_Pipelines)
         m_iCore.DestroyPipeline(*entry.pipeline);
 
     m_iCore.DestroyPipelineLayout(*m_PipelineLayout);
     m_iCore.DestroyDescriptorPool(*m_DescriptorPool);
     m_iCore.DestroyDescriptor(*m_Sampler);
-    m_iCore.DestroyDescriptor(*m_FontDescriptor);
-    m_iCore.DestroyTexture(*m_FontTexture);
 }
 
 Result ImguiImpl::Create(const ImguiDesc& imguiDesc) {
     { // Get streamer interface
         Result result = nriGetInterface(m_Device, NRI_INTERFACE(StreamerInterface), &m_iStreamer);
-        if (result != Result::SUCCESS)
-            return result;
-    }
-
-    { // Create font texture
-        ResourceAllocatorInterface iResourceAllocator = {};
-        Result result = nriGetInterface(m_Device, NRI_INTERFACE(ResourceAllocatorInterface), &iResourceAllocator);
-        if (result != Result::SUCCESS)
-            return result;
-
-        AllocateTextureDesc textureDesc = {};
-        textureDesc.desc.type = TextureType::TEXTURE_2D;
-        textureDesc.desc.usage = TextureUsageBits::SHADER_RESOURCE;
-        textureDesc.desc.format = FONT_FORMAT;
-        textureDesc.desc.width = imguiDesc.fontAtlasDims.w;
-        textureDesc.desc.height = imguiDesc.fontAtlasDims.h;
-        textureDesc.memoryLocation = MemoryLocation::DEVICE;
-
-        result = iResourceAllocator.AllocateTexture(m_Device, textureDesc, m_FontTexture);
-        if (result != Result::SUCCESS)
-            return result;
-    }
-
-    { // Create font descriptor
-        Texture2DViewDesc viewDesc = {};
-        viewDesc.texture = m_FontTexture;
-        viewDesc.viewType = Texture2DViewType::SHADER_RESOURCE_2D;
-        viewDesc.format = FONT_FORMAT;
-
-        Result result = m_iCore.CreateTexture2DView(viewDesc, m_FontDescriptor);
         if (result != Result::SUCCESS)
             return result;
     }
@@ -125,35 +161,6 @@ Result ImguiImpl::Create(const ImguiDesc& imguiDesc) {
         viewDesc.addressModes.v = AddressMode::REPEAT;
 
         Result result = m_iCore.CreateSampler(m_Device, viewDesc, m_Sampler);
-        if (result != Result::SUCCESS)
-            return result;
-    }
-
-    { // Upload data // TODO: allow to merge with "UploadData" requests on user side
-        HelperInterface iHelper = {};
-        Result result = nriGetInterface(m_Device, NRI_INTERFACE(HelperInterface), &iHelper);
-        if (result != Result::SUCCESS)
-            return result;
-
-        Queue* graphicsQueue = nullptr;
-        result = m_iCore.GetQueue(m_Device, QueueType::GRAPHICS, 0, graphicsQueue);
-        if (result != Result::SUCCESS)
-            return result;
-
-        const FormatProps& formatProps = GetFormatProps(FONT_FORMAT);
-
-        TextureSubresourceUploadDesc subresource = {};
-        subresource.slices = imguiDesc.fontAtlasData;
-        subresource.sliceNum = 1;
-        subresource.rowPitch = imguiDesc.fontAtlasDims.w * formatProps.stride;
-        subresource.slicePitch = imguiDesc.fontAtlasDims.w * imguiDesc.fontAtlasDims.h * formatProps.stride;
-
-        TextureUploadDesc textureUploadDesc = {};
-        textureUploadDesc.subresources = &subresource;
-        textureUploadDesc.texture = m_FontTexture;
-        textureUploadDesc.after = {AccessBits::SHADER_RESOURCE, Layout::SHADER_RESOURCE};
-
-        result = iHelper.UploadData(*graphicsQueue, &textureUploadDesc, 1, nullptr, 0);
         if (result != Result::SUCCESS)
             return result;
     }
@@ -240,14 +247,15 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, Streamer& streamer, const 
     if (!drawImguiDesc.drawListNum)
         return;
 
-    // Pipeline
+    // Updates
     Pipeline* pipeline = nullptr;
     {
         ExclusiveScope lock(m_Lock);
 
+        // Pipeline
         for (size_t i = 0; i < m_Pipelines.size(); i++) {
-            const PipelineAndProps& pipelineAndProps = m_Pipelines[i];
-            if (pipelineAndProps.format == drawImguiDesc.attachmentFormat && pipelineAndProps.linearColor == drawImguiDesc.linearColor) {
+            const ImguiPipeline& imguiPipeline = m_Pipelines[i];
+            if (imguiPipeline.format == drawImguiDesc.attachmentFormat && imguiPipeline.linearColor == drawImguiDesc.linearColor) {
                 pipeline = m_Pipelines[i].pipeline;
                 break;
             }
@@ -335,6 +343,97 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, Streamer& streamer, const 
             CHECK(result == Result::SUCCESS, "Unexpected");
 
             m_Pipelines.push_back({pipeline, drawImguiDesc.attachmentFormat, drawImguiDesc.linearColor});
+        }
+
+        // Textures
+        for (uint32_t i = 0; i < drawImguiDesc.textureNum; i++) {
+            ImTextureData* texData = drawImguiDesc.textures[i];
+            Format format = texData->Format == ImTextureFormat_RGBA32 ? Format::RGBA8_UNORM : Format::R8_UNORM;
+            ImguiTexture* imguiTexture = (ImguiTexture*)texData->BackendUserData;
+
+            CHECK(texData->Status != ImTextureStatus_Destroyed, "Unexpected");
+
+            // Create
+            if (texData->Status == ImTextureStatus_WantCreate) {
+                CHECK(!imguiTexture, "Unexpected");
+
+                imguiTexture = Allocate<ImguiTexture>(((DeviceBase&)m_Device).GetAllocationCallbacks());
+
+                { // Create font texture
+                    ResourceAllocatorInterface iResourceAllocator = {};
+                    Result result = nriGetInterface(m_Device, NRI_INTERFACE(ResourceAllocatorInterface), &iResourceAllocator);
+                    CHECK(result == Result::SUCCESS, "Unexpected");
+
+                    AllocateTextureDesc textureDesc = {};
+                    textureDesc.desc.type = TextureType::TEXTURE_2D;
+                    textureDesc.desc.usage = TextureUsageBits::SHADER_RESOURCE;
+                    textureDesc.desc.format = format;
+                    textureDesc.desc.width = (Dim_t)texData->Width;
+                    textureDesc.desc.height = (Dim_t)texData->Height;
+                    textureDesc.memoryLocation = MemoryLocation::DEVICE;
+
+                    result = iResourceAllocator.AllocateTexture(m_Device, textureDesc, imguiTexture->texture);
+                    CHECK(result == Result::SUCCESS, "Unexpected");
+                }
+
+                { // Create font descriptor
+                    Texture2DViewDesc viewDesc = {};
+                    viewDesc.texture = imguiTexture->texture;
+                    viewDesc.viewType = Texture2DViewType::SHADER_RESOURCE_2D;
+                    viewDesc.format = format;
+
+                    Result result = m_iCore.CreateTexture2DView(viewDesc, imguiTexture->descriptor);
+                    CHECK(result == Result::SUCCESS, "Unexpected");
+                }
+
+                // Update status
+                texData->BackendUserData = imguiTexture;
+                texData->TexID = (ImTextureID)imguiTexture->descriptor;
+                texData->Status = ImTextureStatus_WantUpdates;
+            }
+
+            // Update
+            if (texData->Status == ImTextureStatus_WantUpdates) { // TODO: allow to merge with "UploadData" requests on user side
+                HelperInterface iHelper = {};
+                Result result = nriGetInterface(m_Device, NRI_INTERFACE(HelperInterface), &iHelper);
+                CHECK(result == Result::SUCCESS, "Unexpected");
+
+                Queue* graphicsQueue = nullptr;
+                result = m_iCore.GetQueue(m_Device, QueueType::GRAPHICS, 0, graphicsQueue);
+                CHECK(result == Result::SUCCESS, "Unexpected");
+
+                const FormatProps& formatProps = GetFormatProps(format);
+
+                TextureSubresourceUploadDesc subresource = {};
+                subresource.slices = texData->Pixels;
+                subresource.sliceNum = 1;
+                subresource.rowPitch = texData->Width * formatProps.stride;
+                subresource.slicePitch = texData->Width * texData->Height * formatProps.stride;
+
+                TextureUploadDesc textureUploadDesc = {};
+                textureUploadDesc.subresources = &subresource;
+                textureUploadDesc.texture = imguiTexture->texture;
+                textureUploadDesc.after = {AccessBits::SHADER_RESOURCE, Layout::SHADER_RESOURCE};
+
+                result = iHelper.UploadData(*graphicsQueue, &textureUploadDesc, 1, nullptr, 0);
+                CHECK(result == Result::SUCCESS, "Unexpected");
+
+                // Update status
+                texData->Status = ImTextureStatus_OK;
+            }
+
+            // Destroy
+            if (texData->Status == ImTextureStatus_WantDestroy && texData->UnusedFrames > 8) {
+                m_iCore.DestroyDescriptor(*imguiTexture->descriptor);
+                m_iCore.DestroyTexture(*imguiTexture->texture);
+
+                Destroy(((DeviceBase&)m_Device).GetAllocationCallbacks(), imguiTexture);
+
+                // Update status
+                texData->BackendUserData = nullptr;
+                texData->TexID = ImTextureID_Invalid;
+                texData->Status = ImTextureStatus_Destroyed;
+            }
         }
     }
 
@@ -433,9 +532,9 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, Streamer& streamer, const 
                     }
 
                     // Change texture
-                    Descriptor* textureId = drawCmd.TextureId ? (Descriptor*)drawCmd.TextureId : m_FontDescriptor;
-                    if (textureId != currentTexture) {
-                        currentTexture = textureId;
+                    Descriptor* texture = (Descriptor*)drawCmd.TexRef.GetTexID();
+                    if (texture != currentTexture) {
+                        currentTexture = texture;
 
                         DescriptorSet* descriptorSet = m_DescriptorSets1[m_DescriptorSetIndex];
                         m_DescriptorSetIndex = (m_DescriptorSetIndex + 1) % m_DescriptorSets1.size();
@@ -469,6 +568,10 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, Streamer& streamer, const 
             indexOffset += drawList->IdxBuffer.Size;
         }
     }
+
+    // This is always "ImGui::GetPlatformIO().Textures", so can be saved to simplify API
+    m_Textures = drawImguiDesc.textures;
+    m_TextureNum = drawImguiDesc.textureNum;
 }
 
 #endif
