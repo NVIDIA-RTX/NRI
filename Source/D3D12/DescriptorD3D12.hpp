@@ -341,6 +341,9 @@ Result DescriptorD3D12::Create(const BufferViewDesc& bufferViewDesc) {
             desc.Buffer.CounterOffsetInBytes = 0; // TODO: needed?
             desc.Buffer.Flags = isRaw ? D3D12_BUFFER_UAV_FLAG_RAW : D3D12_BUFFER_UAV_FLAG_NONE;
 
+            if (isRaw || structureStride)
+                m_IsIntegerFormat = true;
+
             return CreateUnorderedAccessView(buffer, desc, bufferViewDesc.format);
         }
     }
@@ -353,6 +356,9 @@ Result DescriptorD3D12::Create(const AccelerationStructure& accelerationStructur
     desc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
     desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     desc.RaytracingAccelerationStructure.Location = ((AccelerationStructureD3D12&)accelerationStructure).GetHandle();
+
+    m_BufferLocation = desc.RaytracingAccelerationStructure.Location;
+    m_IsAccelerationStructure = true;
 
     return CreateShaderResourceView(nullptr, desc);
 }

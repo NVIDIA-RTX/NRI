@@ -395,7 +395,8 @@ NRI_INLINE void CommandBufferD3D12::ClearStorage(const ClearStorageDesc& clearDe
     DescriptorSetD3D12* descriptorSet = m_DescriptorSets[clearDesc.setIndex];
     DescriptorD3D12* storage = (DescriptorD3D12*)clearDesc.storage;
 
-    if (storage->IsIntegerFormat() || storage->GetBufferViewType() != BufferViewType::MAX_NUM)
+    // TODO: typed buffers are currently cleared according to the format, it seems to be more reliable than using integers for all buffers
+    if (storage->IsIntegerFormat())
         m_GraphicsCommandList->ClearUnorderedAccessViewUint({descriptorSet->GetPointerGPU(clearDesc.rangeIndex, clearDesc.descriptorIndex)}, {storage->GetPointerCPU()}, *storage, &clearDesc.value.ui.x, 0, nullptr);
     else
         m_GraphicsCommandList->ClearUnorderedAccessViewFloat({descriptorSet->GetPointerGPU(clearDesc.rangeIndex, clearDesc.descriptorIndex)}, {storage->GetPointerCPU()}, *storage, &clearDesc.value.f.x, 0, nullptr);
@@ -509,26 +510,24 @@ NRI_INLINE void CommandBufferD3D12::SetRootDescriptor(uint32_t rootDescriptorInd
     DescriptorD3D12& descriptorD3D12 = (DescriptorD3D12&)descriptor;
     D3D12_GPU_VIRTUAL_ADDRESS bufferLocation = descriptorD3D12.GetPointerGPU();
 
-    switch (descriptorD3D12.GetBufferViewType()) {
-        case BufferViewType::SHADER_RESOURCE:
-            if (m_IsGraphicsPipelineLayout)
-                m_GraphicsCommandList->SetGraphicsRootShaderResourceView(rootParameterIndex, bufferLocation);
-            else
-                m_GraphicsCommandList->SetComputeRootShaderResourceView(rootParameterIndex, bufferLocation);
-            break;
-        case BufferViewType::SHADER_RESOURCE_STORAGE:
-            if (m_IsGraphicsPipelineLayout)
-                m_GraphicsCommandList->SetGraphicsRootUnorderedAccessView(rootParameterIndex, bufferLocation);
-            else
-                m_GraphicsCommandList->SetComputeRootUnorderedAccessView(rootParameterIndex, bufferLocation);
-            break;
-        case BufferViewType::CONSTANT:
-            if (m_IsGraphicsPipelineLayout)
-                m_GraphicsCommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, bufferLocation);
-            else
-                m_GraphicsCommandList->SetComputeRootConstantBufferView(rootParameterIndex, bufferLocation);
-            break;
-    }
+    BufferViewType bufferViewType = descriptorD3D12.GetBufferViewType();
+    if (bufferViewType == BufferViewType::SHADER_RESOURCE || descriptorD3D12.IsAccelerationStructure()) {
+        if (m_IsGraphicsPipelineLayout)
+            m_GraphicsCommandList->SetGraphicsRootShaderResourceView(rootParameterIndex, bufferLocation);
+        else
+            m_GraphicsCommandList->SetComputeRootShaderResourceView(rootParameterIndex, bufferLocation);
+    } else if (bufferViewType == BufferViewType::SHADER_RESOURCE_STORAGE) {
+        if (m_IsGraphicsPipelineLayout)
+            m_GraphicsCommandList->SetGraphicsRootUnorderedAccessView(rootParameterIndex, bufferLocation);
+        else
+            m_GraphicsCommandList->SetComputeRootUnorderedAccessView(rootParameterIndex, bufferLocation);
+    } else if (bufferViewType == BufferViewType::CONSTANT) {
+        if (m_IsGraphicsPipelineLayout)
+            m_GraphicsCommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, bufferLocation);
+        else
+            m_GraphicsCommandList->SetComputeRootConstantBufferView(rootParameterIndex, bufferLocation);
+    } else
+        CHECK(false, "Unexpected");
 }
 
 NRI_INLINE void CommandBufferD3D12::Draw(const DrawDesc& drawDesc) {

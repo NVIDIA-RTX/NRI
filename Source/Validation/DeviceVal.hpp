@@ -391,7 +391,8 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
 
         bool isDescriptorTypeValid = rootDescriptorDesc.descriptorType == DescriptorType::CONSTANT_BUFFER
             || rootDescriptorDesc.descriptorType == DescriptorType::STRUCTURED_BUFFER
-            || rootDescriptorDesc.descriptorType == DescriptorType::STORAGE_STRUCTURED_BUFFER;
+            || rootDescriptorDesc.descriptorType == DescriptorType::STORAGE_STRUCTURED_BUFFER
+            || rootDescriptorDesc.descriptorType == DescriptorType::ACCELERATION_STRUCTURE;
         RETURN_ON_FAILURE(this, isDescriptorTypeValid, Result::INVALID_ARGUMENT, "'rootDescriptors[%u].descriptorType' must be one of 'CONSTANT_BUFFER', 'STRUCTURED_BUFFER' or 'STORAGE_STRUCTURED_BUFFER'", i);
     }
 

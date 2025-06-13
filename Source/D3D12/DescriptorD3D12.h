@@ -35,6 +35,10 @@ struct DescriptorD3D12 final : public DebugNameBase {
         return m_IsIntegerFormat;
     }
 
+    inline bool IsAccelerationStructure() const {
+        return m_IsAccelerationStructure;
+    }
+
     inline DeviceD3D12& GetDevice() const {
         return m_Device;
     }
@@ -61,6 +65,7 @@ private:
     DescriptorHandle m_Handle = {};
     BufferViewType m_BufferViewType = BufferViewType::MAX_NUM;
     bool m_IsIntegerFormat = false;
+    bool m_IsAccelerationStructure = false;
 };
 
 } // namespace nri

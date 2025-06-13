@@ -420,10 +420,17 @@ NRI_INLINE void CommandBufferVK::SetRootConstants(uint32_t rootConstantIndex, co
 
 NRI_INLINE void CommandBufferVK::SetRootDescriptor(uint32_t rootDescriptorIndex, Descriptor& descriptor) {
     const DescriptorVK& descriptorVK = (DescriptorVK&)descriptor;
+
     DescriptorTypeVK descriptorType = descriptorVK.GetType();
+    VkDescriptorBufferInfo bufferInfo = descriptorVK.GetBufferInfo();
+    VkAccelerationStructureKHR accelerationStructure = descriptorVK.GetAccelerationStructure();
 
     const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
     const PushDescriptorBindingDesc& pushDescriptorBindingDesc = bindingInfo.pushDescriptorBindings[rootDescriptorIndex];
+
+    VkWriteDescriptorSetAccelerationStructureKHR accelerationStructureWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR};
+    accelerationStructureWrite.accelerationStructureCount = 1;
+    accelerationStructureWrite.pAccelerationStructures = &accelerationStructure;
 
     VkWriteDescriptorSet descriptorWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
     descriptorWrite.dstSet = VK_NULL_HANDLE;
@@ -431,14 +438,16 @@ NRI_INLINE void CommandBufferVK::SetRootDescriptor(uint32_t rootDescriptorIndex,
     descriptorWrite.dstArrayElement = 0;
     descriptorWrite.descriptorCount = 1;
 
-    VkDescriptorBufferInfo bufferInfo = descriptorVK.GetBufferInfo();
-
     // Let's match D3D12 spec (no textures, no typed buffers)
     if (descriptorType == DescriptorTypeVK::BUFFER_VIEW) {
         const DescriptorBufDesc& bufDesc = descriptorVK.GetBufDesc();
         descriptorWrite.descriptorType = bufDesc.viewType == BufferViewType::CONSTANT ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         descriptorWrite.pBufferInfo = &bufferInfo;
-    }
+    } else if (descriptorType == DescriptorTypeVK::ACCELERATION_STRUCTURE) {
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+        descriptorWrite.pNext = &accelerationStructureWrite;
+    } else
+        CHECK(false, "Unexpected");
 
     VkPipelineLayout pipelineLayout = *m_PipelineLayout;
     VkPipelineBindPoint pipelineBindPoint = m_PipelineLayout->GetPipelineBindPoint();

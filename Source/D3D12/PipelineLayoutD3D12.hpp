@@ -99,14 +99,15 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
 
     bool enableDrawParametersEmulation = (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_D3D12_DRAW_PARAMETERS_EMULATION) != 0 && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
 
-    D3D12_ROOT_PARAMETER1 rootParameterLocal = {};
     if (enableDrawParametersEmulation) {
-        rootParameterLocal.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-        rootParameterLocal.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-        rootParameterLocal.Constants.ShaderRegister = 0;
-        rootParameterLocal.Constants.RegisterSpace = NRI_BASE_ATTRIBUTES_EMULATION_SPACE;
-        rootParameterLocal.Constants.Num32BitValues = 2;
-        rootParameters.push_back(rootParameterLocal);
+        D3D12_ROOT_PARAMETER1 rootParam = {};
+        rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+        rootParam.Constants.ShaderRegister = 0;
+        rootParam.Constants.RegisterSpace = NRI_BASE_ATTRIBUTES_EMULATION_SPACE;
+        rootParam.Constants.Num32BitValues = 2;
+
+        rootParameters.push_back(rootParam);
     }
 
     for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++) {
@@ -115,8 +116,9 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         m_DescriptorSetRootMappings[i].rootOffsets.resize(descriptorSetDesc.rangeNum);
 
         uint32_t heapIndex = 0;
-        D3D12_ROOT_PARAMETER1 rootParameter = {};
-        rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+
+        D3D12_ROOT_PARAMETER1 rootParam = {};
+        rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 
         uint32_t groupedRangeNum = 0;
         D3D12_DESCRIPTOR_RANGE_TYPE groupedRangeType = {};
@@ -127,9 +129,9 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
             D3D12_SHADER_VISIBILITY shaderVisibility = GetShaderVisibility(descriptorRangeDesc.shaderStages);
             D3D12_DESCRIPTOR_RANGE_TYPE rangeType = GetDescriptorRangesType(descriptorRangeDesc.descriptorType);
 
-            if (groupedRangeNum && (rootParameter.ShaderVisibility != shaderVisibility || groupedRangeType != rangeType || descriptorRangeMapping.descriptorHeapType != heapIndex)) {
-                rootParameter.DescriptorTable.NumDescriptorRanges = groupedRangeNum;
-                rootParameters.push_back(rootParameter);
+            if (groupedRangeNum && (rootParam.ShaderVisibility != shaderVisibility || groupedRangeType != rangeType || descriptorRangeMapping.descriptorHeapType != heapIndex)) {
+                rootParam.DescriptorTable.NumDescriptorRanges = groupedRangeNum;
+                rootParameters.push_back(rootParam);
 
                 rangeNum += groupedRangeNum;
                 groupedRangeNum = 0;
@@ -139,8 +141,8 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
             heapIndex = (uint32_t)descriptorRangeMapping.descriptorHeapType;
             m_DescriptorSetRootMappings[i].rootOffsets[j] = groupedRangeNum ? ROOT_PARAMETER_UNUSED : (uint16_t)rootParameters.size();
 
-            rootParameter.ShaderVisibility = shaderVisibility;
-            rootParameter.DescriptorTable.pDescriptorRanges = &ranges[rangeNum];
+            rootParam.ShaderVisibility = shaderVisibility;
+            rootParam.DescriptorTable.pDescriptorRanges = &ranges[rangeNum];
 
             // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#flags-added-in-root-signature-version-11
             D3D12_DESCRIPTOR_RANGE_FLAGS descriptorRangeFlags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
@@ -170,22 +172,24 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         }
 
         if (groupedRangeNum) {
-            rootParameter.DescriptorTable.NumDescriptorRanges = groupedRangeNum;
-            rootParameters.push_back(rootParameter);
+            rootParam.DescriptorTable.NumDescriptorRanges = groupedRangeNum;
+            rootParameters.push_back(rootParam);
             rangeNum += groupedRangeNum;
         }
 
         if (descriptorSetDesc.dynamicConstantBufferNum) {
-            rootParameterLocal.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-            rootParameterLocal.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE; // TODO: better flags?
+            rootParam = {};
+            rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+            rootParam.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE; // TODO: better flags?
+
             m_DynamicConstantBufferMappings[i].rootConstantNum = (uint16_t)descriptorSetDesc.dynamicConstantBufferNum;
             m_DynamicConstantBufferMappings[i].rootOffset = (uint16_t)rootParameters.size();
 
             for (uint32_t j = 0; j < descriptorSetDesc.dynamicConstantBufferNum; j++) {
-                rootParameterLocal.Descriptor.ShaderRegister = descriptorSetDesc.dynamicConstantBuffers[j].registerIndex;
-                rootParameterLocal.Descriptor.RegisterSpace = descriptorSetDesc.registerSpace;
-                rootParameterLocal.ShaderVisibility = GetShaderVisibility(descriptorSetDesc.dynamicConstantBuffers[j].shaderStages);
-                rootParameters.push_back(rootParameterLocal);
+                rootParam.Descriptor.ShaderRegister = descriptorSetDesc.dynamicConstantBuffers[j].registerIndex;
+                rootParam.Descriptor.RegisterSpace = descriptorSetDesc.registerSpace;
+                rootParam.ShaderVisibility = GetShaderVisibility(descriptorSetDesc.dynamicConstantBuffers[j].shaderStages);
+                rootParameters.push_back(rootParam);
             }
         } else {
             m_DynamicConstantBufferMappings[i].rootConstantNum = 0;
@@ -199,13 +203,14 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         for (uint32_t i = 0; i < pipelineLayoutDesc.rootConstantNum; i++) {
             const RootConstantDesc& rootConstantDesc = pipelineLayoutDesc.rootConstants[i];
 
-            rootParameterLocal.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-            rootParameterLocal.ShaderVisibility = GetShaderVisibility(rootConstantDesc.shaderStages);
-            rootParameterLocal.Constants.ShaderRegister = rootConstantDesc.registerIndex;
-            rootParameterLocal.Constants.RegisterSpace = pipelineLayoutDesc.rootRegisterSpace;
-            rootParameterLocal.Constants.Num32BitValues = rootConstantDesc.size / 4;
+            D3D12_ROOT_PARAMETER1 rootParam = {};
+            rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+            rootParam.ShaderVisibility = GetShaderVisibility(rootConstantDesc.shaderStages);
+            rootParam.Constants.ShaderRegister = rootConstantDesc.registerIndex;
+            rootParam.Constants.RegisterSpace = pipelineLayoutDesc.rootRegisterSpace;
+            rootParam.Constants.Num32BitValues = rootConstantDesc.size / 4;
 
-            rootParameters.push_back(rootParameterLocal);
+            rootParameters.push_back(rootParam);
         }
     }
 
@@ -215,19 +220,20 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         for (uint32_t i = 0; i < pipelineLayoutDesc.rootDescriptorNum; i++) {
             const RootDescriptorDesc& rootDescriptorDesc = pipelineLayoutDesc.rootDescriptors[i];
 
+            D3D12_ROOT_PARAMETER1 rootParam = {};
+            rootParam.ShaderVisibility = GetShaderVisibility(rootDescriptorDesc.shaderStages);
+            rootParam.Descriptor.ShaderRegister = rootDescriptorDesc.registerIndex;
+            rootParam.Descriptor.RegisterSpace = pipelineLayoutDesc.rootRegisterSpace;
+            rootParam.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE; // TODO: better flags?
+
             if (rootDescriptorDesc.descriptorType == DescriptorType::CONSTANT_BUFFER)
-                rootParameterLocal.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-            else if (rootDescriptorDesc.descriptorType == DescriptorType::STRUCTURED_BUFFER)
-                rootParameterLocal.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+                rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
             else if (rootDescriptorDesc.descriptorType == DescriptorType::STORAGE_STRUCTURED_BUFFER)
-                rootParameterLocal.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+                rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+            else
+                rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
 
-            rootParameterLocal.ShaderVisibility = GetShaderVisibility(rootDescriptorDesc.shaderStages);
-            rootParameterLocal.Descriptor.ShaderRegister = rootDescriptorDesc.registerIndex;
-            rootParameterLocal.Descriptor.RegisterSpace = pipelineLayoutDesc.rootRegisterSpace;
-            rootParameterLocal.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE; // TODO: better flags?
-
-            rootParameters.push_back(rootParameterLocal);
+            rootParameters.push_back(rootParam);
         }
     }
 
