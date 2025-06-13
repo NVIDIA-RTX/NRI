@@ -119,10 +119,11 @@ Result DescriptorVK::CreateTextureView(const Texture3DViewDesc& textureViewDesc)
 
 Result DescriptorVK::Create(const BufferViewDesc& bufferViewDesc) {
     const BufferVK& buffer = *(const BufferVK*)bufferViewDesc.buffer;
+    const BufferDesc& bufferDesc = buffer.GetDesc();
 
     m_Type = DescriptorTypeVK::BUFFER_VIEW;
     m_BufferDesc.offset = bufferViewDesc.offset;
-    m_BufferDesc.size = (bufferViewDesc.size == WHOLE_SIZE) ? VK_WHOLE_SIZE : bufferViewDesc.size;
+    m_BufferDesc.size = (bufferViewDesc.size == WHOLE_SIZE) ? bufferDesc.size : bufferViewDesc.size;
     m_BufferDesc.handle = buffer.GetHandle();
     m_BufferDesc.viewType = bufferViewDesc.viewType;
 
