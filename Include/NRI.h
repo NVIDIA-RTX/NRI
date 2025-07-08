@@ -70,9 +70,11 @@ NriStruct(CoreInterface) {
     uint32_t                    (NRI_CALL *GetQuerySize)            (const NriRef(QueryPool) queryPool);
     uint64_t                    (NRI_CALL *GetFenceValue)           (NriRef(Fence) fence);
 
-    // Returns one of the pre-created queues (see "DeviceCreationDesc" or wrapper extensions). Return codes: UNSUPPORTED (no queues of "queueType") or INVALID_ARGUMENT (if "queueIndex" is out of bounds).
-    // Getting COMPUTE and/or COPY queues switches VK "sharing mode" to "VK_SHARING_MODE_CONCURRENT", which can be slower on non-NVIDIA HW. This approach is used to avoid
-    // dealing with "queue ownership transitions", but also adds a requirement to "get" all async queues *before* creation of resources participating into multi-queue activities
+    // Returns one of the pre-created queues (see "DeviceCreationDesc" or wrapper extensions)
+    // Return codes: "UNSUPPORTED" (no queues of "queueType") or "INVALID_ARGUMENT" (if "queueIndex" is out of bounds).
+    // Getting "COMPUTE" and/or "COPY" queues switches VK sharing mode to "VK_SHARING_MODE_CONCURRENT" for resources created without "queueExclusive" flag.
+    // This approach is used to minimize number of "queue ownership transfers", but also adds a requirement to "get" all async queues BEFORE creation of
+    // resources participating into multi-queue activities. Explicit use of "queueExclusive" removes any restrictions.
     Nri(Result)         (NRI_CALL *GetQueue)                        (NriRef(Device) device, Nri(QueueType) queueType, uint32_t queueIndex, NriOut NriRef(Queue*) queue);
 
     // Create
