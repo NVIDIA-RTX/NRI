@@ -142,7 +142,7 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
 
         desc.ByteWidth = Align(rootConstantDesc.size, 16);
         HRESULT hr = m_Device->CreateBuffer(&desc, nullptr, &cb.buffer);
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateBuffer()");
+        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateBuffer");
 
         m_ConstantBuffers.push_back(cb);
     }

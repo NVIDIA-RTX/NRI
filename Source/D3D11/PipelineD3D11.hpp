@@ -13,19 +13,19 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc) {
             if (shaderDesc->stage == StageBits::VERTEX_SHADER) {
                 vertexShader = shaderDesc;
                 hr = m_Device->CreateVertexShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_VertexShader);
-                RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateVertexShader()");
+                RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateVertexShader");
             } else if (shaderDesc->stage == StageBits::TESS_CONTROL_SHADER) {
                 hr = m_Device->CreateHullShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_TessControlShader);
-                RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateHullShader()");
+                RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateHullShader");
             } else if (shaderDesc->stage == StageBits::TESS_EVALUATION_SHADER) {
                 hr = m_Device->CreateDomainShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_TessEvaluationShader);
-                RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateDomainShader()");
+                RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateDomainShader");
             } else if (shaderDesc->stage == StageBits::GEOMETRY_SHADER) {
                 hr = m_Device->CreateGeometryShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_GeometryShader);
-                RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateGeometryShader()");
+                RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateGeometryShader");
             } else if (shaderDesc->stage == StageBits::FRAGMENT_SHADER) {
                 hr = m_Device->CreatePixelShader(shaderDesc->bytecode, (size_t)shaderDesc->size, nullptr, &m_FragmentShader);
-                RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreatePixelShader()");
+                RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreatePixelShader");
             } else
                 return Result::INVALID_ARGUMENT;
         }
@@ -59,7 +59,7 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc) {
 
         CHECK(vertexShader != nullptr, "VS can't be NULL");
         hr = m_Device->CreateInputLayout(&inputElements[0], vi.attributeNum, vertexShader->bytecode, (size_t)vertexShader->size, &m_InputLayout);
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateInputLayout()");
+        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateInputLayout");
     }
 
     // Multisample
@@ -94,13 +94,13 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc) {
         RasterizerState rasterizerState = {};
         if (m_Device.GetVersion() >= 3) {
             hr = m_Device->CreateRasterizerState2(&rasterizerDesc, &rasterizerState.ptr);
-            RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device3::CreateRasterizerState2()");
+            RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device3::CreateRasterizerState2");
         } else if (m_Device.GetVersion() >= 1) {
             hr = m_Device->CreateRasterizerState1((D3D11_RASTERIZER_DESC1*)&rasterizerDesc, (ID3D11RasterizerState1**)&rasterizerState.ptr);
-            RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device3::CreateRasterizerState1()");
+            RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device3::CreateRasterizerState1");
         } else {
             hr = m_Device->CreateRasterizerState((D3D11_RASTERIZER_DESC*)&rasterizerDesc, (ID3D11RasterizerState**)&rasterizerState.ptr);
-            RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateRasterizerState()");
+            RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateRasterizerState");
         }
         m_RasterizerStates.push_back(rasterizerState);
 
@@ -120,25 +120,25 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc) {
         const StencilAttachmentDesc& sa = pipelineDesc.outputMerger.stencil;
 
         D3D11_DEPTH_STENCIL_DESC depthStencilState = {};
-        depthStencilState.DepthEnable = da.compareFunc == CompareFunc::NONE ? FALSE : TRUE;
+        depthStencilState.DepthEnable = da.compareOp == CompareOp::NONE ? FALSE : TRUE;
         depthStencilState.DepthWriteMask = da.write ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
-        depthStencilState.DepthFunc = GetD3D11ComparisonFuncFromCompareFunc(da.compareFunc);
-        depthStencilState.StencilEnable = (sa.front.compareFunc == CompareFunc::NONE && sa.back.compareFunc == CompareFunc::NONE) ? FALSE : TRUE;
+        depthStencilState.DepthFunc = GetD3D11ComparisonFuncFromCompareOp(da.compareOp);
+        depthStencilState.StencilEnable = (sa.front.compareOp == CompareOp::NONE && sa.back.compareOp == CompareOp::NONE) ? FALSE : TRUE;
         depthStencilState.StencilReadMask = sa.front.compareMask;
         depthStencilState.StencilWriteMask = sa.front.writeMask;
 
-        depthStencilState.FrontFace.StencilFailOp = GetD3D11StencilOpFromStencilFunc(sa.front.fail);
-        depthStencilState.FrontFace.StencilDepthFailOp = GetD3D11StencilOpFromStencilFunc(sa.front.depthFail);
-        depthStencilState.FrontFace.StencilPassOp = GetD3D11StencilOpFromStencilFunc(sa.front.pass);
-        depthStencilState.FrontFace.StencilFunc = GetD3D11ComparisonFuncFromCompareFunc(sa.front.compareFunc);
+        depthStencilState.FrontFace.StencilFailOp = GetD3D11StencilOpFromStencilOp(sa.front.failOp);
+        depthStencilState.FrontFace.StencilDepthFailOp = GetD3D11StencilOpFromStencilOp(sa.front.depthFailOp);
+        depthStencilState.FrontFace.StencilPassOp = GetD3D11StencilOpFromStencilOp(sa.front.passOp);
+        depthStencilState.FrontFace.StencilFunc = GetD3D11ComparisonFuncFromCompareOp(sa.front.compareOp);
 
-        depthStencilState.BackFace.StencilFailOp = GetD3D11StencilOpFromStencilFunc(sa.front.fail);
-        depthStencilState.BackFace.StencilDepthFailOp = GetD3D11StencilOpFromStencilFunc(sa.front.depthFail);
-        depthStencilState.BackFace.StencilPassOp = GetD3D11StencilOpFromStencilFunc(sa.front.pass);
-        depthStencilState.BackFace.StencilFunc = GetD3D11ComparisonFuncFromCompareFunc(sa.back.compareFunc);
+        depthStencilState.BackFace.StencilFailOp = GetD3D11StencilOpFromStencilOp(sa.front.failOp);
+        depthStencilState.BackFace.StencilDepthFailOp = GetD3D11StencilOpFromStencilOp(sa.front.depthFailOp);
+        depthStencilState.BackFace.StencilPassOp = GetD3D11StencilOpFromStencilOp(sa.front.passOp);
+        depthStencilState.BackFace.StencilFunc = GetD3D11ComparisonFuncFromCompareOp(sa.back.compareOp);
 
         hr = m_Device->CreateDepthStencilState(&depthStencilState, &m_DepthStencilState);
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateDepthStencilState()");
+        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateDepthStencilState");
     }
 
     { // Blending
@@ -152,13 +152,13 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc) {
             blendState1.RenderTarget[i].BlendEnable = bs.blendEnabled;
             blendState1.RenderTarget[i].SrcBlend = GetD3D11BlendFromBlendFactor(bs.colorBlend.srcFactor);
             blendState1.RenderTarget[i].DestBlend = GetD3D11BlendFromBlendFactor(bs.colorBlend.dstFactor);
-            blendState1.RenderTarget[i].BlendOp = GetD3D11BlendOp(bs.colorBlend.func);
+            blendState1.RenderTarget[i].BlendOp = GetD3D11BlendOp(bs.colorBlend.op);
             blendState1.RenderTarget[i].SrcBlendAlpha = GetD3D11BlendFromBlendFactor(bs.alphaBlend.srcFactor);
             blendState1.RenderTarget[i].DestBlendAlpha = GetD3D11BlendFromBlendFactor(bs.alphaBlend.dstFactor);
-            blendState1.RenderTarget[i].BlendOpAlpha = GetD3D11BlendOp(bs.alphaBlend.func);
+            blendState1.RenderTarget[i].BlendOpAlpha = GetD3D11BlendOp(bs.alphaBlend.op);
             blendState1.RenderTarget[i].RenderTargetWriteMask = uint8_t(bs.colorWriteMask);
-            blendState1.RenderTarget[i].LogicOpEnable = om.logicFunc != LogicFunc::NONE ? TRUE : FALSE;
-            blendState1.RenderTarget[i].LogicOp = GetD3D11LogicOp(om.logicFunc);
+            blendState1.RenderTarget[i].LogicOpEnable = om.logicOp != LogicOp::NONE ? TRUE : FALSE;
+            blendState1.RenderTarget[i].LogicOp = GetD3D11LogicOp(om.logicOp);
         }
 
         if (m_Device.GetVersion() >= 1)
@@ -181,7 +181,7 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc) {
             hr = m_Device->CreateBlendState(&blendState, (ID3D11BlendState**)&m_BlendState);
         }
 
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device1::CreateBlendState1()");
+        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device1::CreateBlendState1");
     }
 
     return Result::SUCCESS;
@@ -191,7 +191,7 @@ Result PipelineD3D11::Create(const ComputePipelineDesc& pipelineDesc) {
     if (pipelineDesc.shader.bytecode) {
         HRESULT hr = m_Device->CreateComputeShader(pipelineDesc.shader.bytecode, (size_t)pipelineDesc.shader.size, nullptr, &m_ComputeShader);
 
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateComputeShader()");
+        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateComputeShader");
     }
 
     m_PipelineLayout = (const PipelineLayoutD3D11*)pipelineDesc.pipelineLayout;

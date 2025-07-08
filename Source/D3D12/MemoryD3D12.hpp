@@ -17,13 +17,13 @@ Result MemoryD3D12::Create(const AllocateMemoryDesc& allocateMemoryDesc) {
 
     if (!memoryTypeInfo.mustBeDedicated) {
         HRESULT hr = m_Device->CreateHeap(&heapDesc, IID_PPV_ARGS(&m_Heap));
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateHeap()");
+        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateHeap");
 
         D3D12_RESIDENCY_PRIORITY residencyPriority = (D3D12_RESIDENCY_PRIORITY)ConvertPriority(allocateMemoryDesc.priority);
         if (m_Device.GetVersion() >= 1 && residencyPriority != 0) {
             ID3D12Pageable* obj = m_Heap.GetInterface();
             hr = m_Device->SetResidencyPriority(1, &obj, &residencyPriority);
-            RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority()");
+            RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority");
         }
     }
 

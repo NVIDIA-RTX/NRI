@@ -246,16 +246,19 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     ComPtr<ID3DBlob> rootSignatureBlob;
     ComPtr<ID3DBlob> errorBlob;
     HRESULT hr = D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &rootSignatureBlob, &errorBlob);
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12SerializeVersionedRootSignature");
+
     if (errorBlob)
         REPORT_ERROR(&m_Device, "D3D12SerializeVersionedRootSignature(): %s", (char*)errorBlob->GetBufferPointer());
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12SerializeVersionedRootSignature()");
 
     hr = m_Device->CreateRootSignature(NODE_MASK, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&m_RootSignature));
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateRootSignature()");
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateRootSignature");
 
     m_DrawParametersEmulation = enableDrawParametersEmulation;
-    if (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER)
-        RETURN_ON_FAILURE(&m_Device, m_Device.CreateDefaultDrawSignatures(m_RootSignature.GetInterface(), enableDrawParametersEmulation) != Result::FAILURE, Result::FAILURE, "Failed to create draw signature for pipeline layout");
+    if (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) {
+        Result result = m_Device.CreateDefaultDrawSignatures(m_RootSignature.GetInterface(), enableDrawParametersEmulation);
+        RETURN_ON_FAILURE(&m_Device, result == Result::SUCCESS, result, "Failed to create draw signature for pipeline layout");
+    }
 
     return Result::SUCCESS;
 }

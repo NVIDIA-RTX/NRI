@@ -25,7 +25,7 @@ struct TextureVK final : public DebugNameBase {
         return m_Desc;
     }
 
-    inline Dim_t GetSize(Dim_t dimensionIndex, Mip_t mip = 0) const {
+    inline Dim_t GetSize(Dim_t dimensionIndex, Dim_t mip = 0) const {
         return GetDimension(GraphicsAPI::VK, m_Desc, dimensionIndex, mip);
     }
 

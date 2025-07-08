@@ -12,9 +12,8 @@ struct FenceD3D12 final : public DebugNameBase {
     }
 
     inline ~FenceD3D12() {
-        if (m_Event != 0 && m_Event != INVALID_HANDLE_VALUE) {
+        if (m_Event != 0 && m_Event != INVALID_HANDLE_VALUE)
             CloseHandle(m_Event);
-        }
     }
 
     inline DeviceD3D12& GetDevice() const {

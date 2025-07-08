@@ -166,25 +166,25 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     const StencilAttachmentDesc& sa = graphicsPipelineDesc.outputMerger.stencil;
 
     VkPipelineDepthStencilStateCreateInfo depthStencilState = {VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
-    depthStencilState.depthTestEnable = da.compareFunc != CompareFunc::NONE;
+    depthStencilState.depthTestEnable = da.compareOp != CompareOp::NONE;
     depthStencilState.depthWriteEnable = da.write;
-    depthStencilState.depthCompareOp = GetCompareOp(da.compareFunc);
+    depthStencilState.depthCompareOp = GetCompareOp(da.compareOp);
     depthStencilState.depthBoundsTestEnable = da.boundsTest;
-    depthStencilState.stencilTestEnable = (sa.front.compareFunc == CompareFunc::NONE && sa.back.compareFunc == CompareFunc::NONE) ? VK_FALSE : VK_TRUE;
+    depthStencilState.stencilTestEnable = (sa.front.compareOp == CompareOp::NONE && sa.back.compareOp == CompareOp::NONE) ? VK_FALSE : VK_TRUE;
     depthStencilState.minDepthBounds = 0.0f;
     depthStencilState.maxDepthBounds = 1.0f;
 
-    depthStencilState.front.failOp = GetStencilOp(sa.front.fail);
-    depthStencilState.front.passOp = GetStencilOp(sa.front.pass);
-    depthStencilState.front.depthFailOp = GetStencilOp(sa.front.depthFail);
-    depthStencilState.front.compareOp = GetCompareOp(sa.front.compareFunc);
+    depthStencilState.front.failOp = GetStencilOp(sa.front.failOp);
+    depthStencilState.front.passOp = GetStencilOp(sa.front.passOp);
+    depthStencilState.front.depthFailOp = GetStencilOp(sa.front.depthFailOp);
+    depthStencilState.front.compareOp = GetCompareOp(sa.front.compareOp);
     depthStencilState.front.compareMask = sa.front.compareMask;
     depthStencilState.front.writeMask = sa.front.writeMask;
 
-    depthStencilState.back.failOp = GetStencilOp(sa.back.fail);
-    depthStencilState.back.passOp = GetStencilOp(sa.back.pass);
-    depthStencilState.back.depthFailOp = GetStencilOp(sa.back.depthFail);
-    depthStencilState.back.compareOp = GetCompareOp(sa.back.compareFunc);
+    depthStencilState.back.failOp = GetStencilOp(sa.back.failOp);
+    depthStencilState.back.passOp = GetStencilOp(sa.back.passOp);
+    depthStencilState.back.depthFailOp = GetStencilOp(sa.back.depthFailOp);
+    depthStencilState.back.compareOp = GetCompareOp(sa.back.compareOp);
     depthStencilState.back.compareMask = sa.back.compareMask;
     depthStencilState.back.writeMask = sa.back.writeMask;
 
@@ -193,8 +193,8 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     Scratch<VkPipelineColorBlendAttachmentState> scratch = AllocateScratch(m_Device, VkPipelineColorBlendAttachmentState, om.colorNum);
 
     VkPipelineColorBlendStateCreateInfo colorBlendState = {VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
-    colorBlendState.logicOpEnable = om.logicFunc != LogicFunc::NONE ? VK_TRUE : VK_FALSE;
-    colorBlendState.logicOp = GetLogicOp(om.logicFunc);
+    colorBlendState.logicOpEnable = om.logicOp != LogicOp::NONE ? VK_TRUE : VK_FALSE;
+    colorBlendState.logicOp = GetLogicOp(om.logicOp);
     colorBlendState.attachmentCount = om.colorNum;
     colorBlendState.pAttachments = scratch;
 
@@ -207,10 +207,10 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
             VkBool32(attachmentDesc.blendEnabled),
             GetBlendFactor(attachmentDesc.colorBlend.srcFactor),
             GetBlendFactor(attachmentDesc.colorBlend.dstFactor),
-            GetBlendOp(attachmentDesc.colorBlend.func),
+            GetBlendOp(attachmentDesc.colorBlend.op),
             GetBlendFactor(attachmentDesc.alphaBlend.srcFactor),
             GetBlendFactor(attachmentDesc.alphaBlend.dstFactor),
-            GetBlendOp(attachmentDesc.alphaBlend.func),
+            GetBlendOp(attachmentDesc.alphaBlend.op),
             GetColorComponent(attachmentDesc.colorWriteMask),
         };
 
@@ -290,8 +290,8 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
         pipelineRenderingCreateInfo.pNext = &robustnessInfo;
 
     const auto& vk = m_Device.GetDispatchTable();
-    const VkResult vkResult = vk.CreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateGraphicsPipelines returned %d", (int32_t)vkResult);
+    VkResult vkResult = vk.CreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateGraphicsPipelines");
 
     for (size_t i = 0; i < graphicsPipelineDesc.shaderNum; i++)
         vk.DestroyShaderModule(m_Device, modules[i], m_Device.GetVkAllocationCallbacks());
@@ -315,7 +315,7 @@ Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc) {
     VkShaderModule module = VK_NULL_HANDLE;
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateShaderModule(m_Device, &moduleInfo, m_Device.GetVkAllocationCallbacks(), &module);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateShaderModule returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateShaderModule");
 
     VkPipelineShaderStageCreateInfo stage = {
         VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -342,7 +342,7 @@ Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc) {
         info.pNext = &robustnessInfo;
 
     vkResult = vk.CreateComputePipelines(m_Device, VK_NULL_HANDLE, 1, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateComputePipelines returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateComputePipelines");
 
     vk.DestroyShaderModule(m_Device, module, m_Device.GetVkAllocationCallbacks());
 
@@ -443,8 +443,8 @@ Result PipelineVK::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc) 
         createInfo.pNext = &robustnessInfo;
 
     const auto& vk = m_Device.GetDispatchTable();
-    const VkResult vkResult = vk.CreateRayTracingPipelinesKHR(m_Device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateRayTracingPipelinesKHR returned %d", (int32_t)vkResult);
+    VkResult vkResult = vk.CreateRayTracingPipelinesKHR(m_Device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateRayTracingPipelinesKHR");
 
     for (size_t i = 0; i < stageNum; i++)
         vk.DestroyShaderModule(m_Device, modules[i], m_Device.GetVkAllocationCallbacks());
@@ -474,7 +474,7 @@ Result PipelineVK::SetupShaderStage(VkPipelineShaderStageCreateInfo& stage, cons
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateShaderModule(m_Device, &moduleInfo, m_Device.GetVkAllocationCallbacks(), &module);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateShaderModule returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateShaderModule");
 
     stage = {
         VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -498,7 +498,7 @@ NRI_INLINE Result PipelineVK::WriteShaderGroupIdentifiers(uint32_t baseShaderGro
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.GetRayTracingShaderGroupHandlesKHR(m_Device, m_Handle, baseShaderGroupIndex, shaderGroupNum, dataSize, dst);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkGetRayTracingShaderGroupHandlesKHR returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetRayTracingShaderGroupHandlesKHR");
 
     return Result::SUCCESS;
 }

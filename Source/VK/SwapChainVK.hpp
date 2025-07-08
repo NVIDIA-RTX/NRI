@@ -31,7 +31,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         win32SurfaceInfo.hwnd = (HWND)swapChainDesc.window.windows.hwnd;
 
         VkResult vkResult = vk.CreateWin32SurfaceKHR(m_Device, &win32SurfaceInfo, m_Device.GetVkAllocationCallbacks(), &m_Surface);
-        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateWin32SurfaceKHR returned %d", (int32_t)vkResult);
+        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateWin32SurfaceKHR");
     }
 #endif
 #ifdef VK_USE_PLATFORM_XLIB_KHR
@@ -41,7 +41,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         xlibSurfaceInfo.window = (::Window)swapChainDesc.window.x11.window;
 
         VkResult vkResult = vk.CreateXlibSurfaceKHR(m_Device, &xlibSurfaceInfo, m_Device.GetVkAllocationCallbacks(), &m_Surface);
-        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateXlibSurfaceKHR returned %d", (int32_t)vkResult);
+        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateXlibSurfaceKHR");
     }
 #endif
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
@@ -51,7 +51,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         waylandSurfaceInfo.surface = (wl_surface*)swapChainDesc.window.wayland.surface;
 
         VkResult vkResult = vk.CreateWaylandSurfaceKHR(m_Device, &waylandSurfaceInfo, m_Device.GetVkAllocationCallbacks(), &m_Surface);
-        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateWaylandSurfaceKHR returned %d", (int32_t)vkResult);
+        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateWaylandSurfaceKHR");
     }
 #endif
 #ifdef VK_USE_PLATFORM_METAL_EXT
@@ -60,7 +60,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         metalSurfaceCreateInfo.pLayer = (CAMetalLayer*)swapChainDesc.window.metal.caMetalLayer;
 
         VkResult vkResult = vk.CreateMetalSurfaceEXT(m_Device, &metalSurfaceCreateInfo, m_Device.GetVkAllocationCallbacks(), &m_Surface);
-        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateMetalSurfaceEXT returned %d", (int32_t)vkResult);
+        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateMetalSurfaceEXT");
     }
 #endif
 
@@ -77,7 +77,9 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
     {
         VkBool32 supported = VK_FALSE;
         VkResult vkResult = vk.GetPhysicalDeviceSurfaceSupportKHR(m_Device, familyIndex, m_Surface, &supported);
-        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS && supported, GetReturnCode(vkResult), "Surface is not supported");
+        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "GetPhysicalDeviceSurfaceSupportKHR");
+
+        RETURN_ON_FAILURE(&m_Device, supported, Result::FAILURE, "Surface is not supported");
 
         VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR};
         surfaceInfo.surface = m_Surface;
@@ -89,7 +91,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
             caps2.pNext = &latencySurfaceCapabilities;
 
         vkResult = vk.GetPhysicalDeviceSurfaceCapabilities2KHR(m_Device, &surfaceInfo, &caps2);
-        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkGetPhysicalDeviceSurfaceCapabilities2KHR returned %d", (int32_t)vkResult);
+        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceSurfaceCapabilities2KHR");
 
         bool isWidthValid = swapChainDesc.width >= surfaceCaps.minImageExtent.width && swapChainDesc.width <= surfaceCaps.maxImageExtent.width;
         RETURN_ON_FAILURE(&m_Device, isWidthValid, Result::INVALID_ARGUMENT, "swapChainDesc.width is out of [%u, %u] range", surfaceCaps.minImageExtent.width,
@@ -117,14 +119,14 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
 
         uint32_t formatNum = 0;
         VkResult vkResult = vk.GetPhysicalDeviceSurfaceFormats2KHR(m_Device, &surfaceInfo, &formatNum, nullptr);
-        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkGetPhysicalDeviceSurfaceFormats2KHR returned %d", (int32_t)vkResult);
+        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceSurfaceFormats2KHR");
 
         Scratch<VkSurfaceFormat2KHR> surfaceFormats = AllocateScratch(m_Device, VkSurfaceFormat2KHR, formatNum);
         for (uint32_t i = 0; i < formatNum; i++)
             surfaceFormats[i] = {VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR};
 
         vkResult = vk.GetPhysicalDeviceSurfaceFormats2KHR(m_Device, &surfaceInfo, &formatNum, surfaceFormats);
-        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkGetPhysicalDeviceSurfaceFormats2KHR returned %d", (int32_t)vkResult);
+        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceSurfaceFormats2KHR");
 
         auto priority_BT709_G22_16BIT = [](const VkSurfaceFormat2KHR& s) -> uint32_t {
             if (s.surfaceFormat.format != VK_FORMAT_R16G16B16A16_SFLOAT)
@@ -222,7 +224,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         std::array<VkPresentModeKHR, PRESENT_MODE_MAX_NUM> surfacePresentModes = {};
 
         VkResult vkResult = vk.GetPhysicalDeviceSurfacePresentModesKHR(m_Device, m_Surface, &surfacePresentModeNum, surfacePresentModes.data());
-        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkGetPhysicalDeviceSurfacePresentModesKHR returned %d", (int32_t)vkResult);
+        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceSurfacePresentModesKHR");
 
         const VkPresentModeKHR cappedModes[] = {
             (swapChainDesc.flags & SwapChainBits::ALLOW_TEARING) ? VK_PRESENT_MODE_FIFO_RELAXED_KHR : VK_PRESENT_MODE_FIFO_KHR,
@@ -317,7 +319,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
 
         // Create
         VkResult vkResult = vk.CreateSwapchainKHR(m_Device, &swapchainInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateSwapchainKHR returned %d", (int32_t)vkResult);
+        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateSwapchainKHR");
     }
 
     { // Textures
@@ -379,7 +381,6 @@ NRI_INLINE Texture* const* SwapChainVK::GetTextures(uint32_t& textureNum) const 
 
 NRI_INLINE Result SwapChainVK::AcquireNextTexture(FenceVK& acquireSemaphore, uint32_t& textureIndex) {
     ExclusiveScope lock(m_Queue->GetLock());
-    const auto& vk = m_Device.GetDispatchTable();
 
     // Acquire next image (signal)
     VkAcquireNextImageInfoKHR acquireInfo = {VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR};
@@ -388,15 +389,13 @@ NRI_INLINE Result SwapChainVK::AcquireNextTexture(FenceVK& acquireSemaphore, uin
     acquireInfo.semaphore = acquireSemaphore;
     acquireInfo.deviceMask = NODE_MASK;
 
+    const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.AcquireNextImage2KHR(m_Device, &acquireInfo, &m_TextureIndex);
-
-    Result result = GetReturnCode(vkResult);
-    if (result != Result::OUT_OF_DATE && result != Result::SUCCESS)
-        REPORT_ERROR(&m_Device, "vkAcquireNextImage2KHR returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "AcquireNextImage2KHR");
 
     textureIndex = m_TextureIndex;
 
-    return result;
+    return Result::SUCCESS;
 }
 
 NRI_INLINE Result SwapChainVK::WaitForPresent() {
@@ -405,8 +404,9 @@ NRI_INLINE Result SwapChainVK::WaitForPresent() {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.WaitForPresentKHR(m_Device, m_Handle, m_PresentId - 1, MsToUs(TIMEOUT_PRESENT));
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "WaitForPresentKHR");
 
-    return GetReturnCode(vkResult);
+    return Result::SUCCESS;
 }
 
 NRI_INLINE Result SwapChainVK::Present(FenceVK& releaseSemaphore) {
@@ -426,6 +426,8 @@ NRI_INLINE Result SwapChainVK::Present(FenceVK& releaseSemaphore) {
     presentId.swapchainCount = 1;
     presentId.pPresentIds = &m_PresentId;
 
+    m_PresentId++;
+
     if (m_Device.m_IsSupported.presentId)
         presentInfo.pNext = &presentId;
 
@@ -438,9 +440,9 @@ NRI_INLINE Result SwapChainVK::Present(FenceVK& releaseSemaphore) {
     if (m_Flags & SwapChainBits::ALLOW_LOW_LATENCY)
         SetLatencyMarker((LatencyMarker)VK_LATENCY_MARKER_PRESENT_END_NV);
 
-    m_PresentId++;
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "QueuePresentKHR");
 
-    return GetReturnCode(vkResult);
+    return Result::SUCCESS;
 }
 
 NRI_INLINE Result SwapChainVK::SetLatencySleepMode(const LatencySleepMode& latencySleepMode) {
@@ -451,8 +453,9 @@ NRI_INLINE Result SwapChainVK::SetLatencySleepMode(const LatencySleepMode& laten
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.SetLatencySleepModeNV(m_Device, m_Handle, &sleepModeInfo);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "SetLatencySleepModeNV");
 
-    return GetReturnCode(vkResult);
+    return Result::SUCCESS;
 }
 
 NRI_INLINE Result SwapChainVK::SetLatencyMarker(LatencyMarker latencyMarker) {
@@ -473,11 +476,11 @@ NRI_INLINE Result SwapChainVK::LatencySleep() {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.LatencySleepNV(m_Device, m_Handle, &sleepInfo);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "LatencySleepNV");
 
-    if (vkResult == VK_SUCCESS)
-        m_LatencyFence->Wait(m_PresentId);
+    m_LatencyFence->Wait(m_PresentId); // VK_SUCCESS is guaranteed by "RETURN_ON_BAD_VKRESULT"
 
-    return GetReturnCode(vkResult);
+    return Result::SUCCESS;
 }
 
 NRI_INLINE Result SwapChainVK::GetLatencyReport(LatencyReport& latencyReport) {

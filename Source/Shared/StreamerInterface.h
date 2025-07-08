@@ -13,9 +13,10 @@ struct BufferUpdateRequest {
 };
 
 struct TextureUpdateRequest {
-    StreamTextureDataDesc desc;
+    Texture* dstTexture;
+    TextureRegionDesc dstRegion;
     Buffer* srcBuffer;
-    uint64_t srcOffset;
+    TextureDataLayoutDesc srcDataLayout;
 };
 
 struct GarbageInFlight {

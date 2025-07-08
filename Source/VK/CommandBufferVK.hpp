@@ -34,7 +34,7 @@ NRI_INLINE Result CommandBufferVK::Begin(const DescriptorPool*) {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.BeginCommandBuffer(m_Handle, &info);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkBeginCommandBuffer returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkBeginCommandBuffer");
 
     m_PipelineLayout = nullptr;
     m_Pipeline = nullptr;
@@ -45,7 +45,7 @@ NRI_INLINE Result CommandBufferVK::Begin(const DescriptorPool*) {
 NRI_INLINE Result CommandBufferVK::End() {
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.EndCommandBuffer(m_Handle);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkEndCommandBuffer returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkEndCommandBuffer");
 
     return Result::SUCCESS;
 }
@@ -237,7 +237,7 @@ NRI_INLINE void CommandBufferVK::BeginRendering(const AttachmentsDesc& attachmen
         color = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
         color.imageView = descriptor.GetImageView();
         color.imageLayout = descriptor.GetTexDesc().layout;
-        color.resolveMode = VK_RESOLVE_MODE_NONE;
+        color.resolveMode = VK_RESOLVE_MODE_NONE; // TODO: add support for "on-the-fly" resolve
         color.resolveImageView = VK_NULL_HANDLE;
         color.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         color.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
@@ -507,18 +507,18 @@ NRI_INLINE void CommandBufferVK::CopyBuffer(Buffer& dstBuffer, uint64_t dstOffse
     vk.CmdCopyBuffer2(m_Handle, &info);
 }
 
-NRI_INLINE void CommandBufferVK::CopyTexture(Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
+NRI_INLINE void CommandBufferVK::CopyTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion) {
     const TextureVK& src = (const TextureVK&)srcTexture;
     const TextureVK& dst = (const TextureVK&)dstTexture;
     const TextureDesc& dstDesc = dst.GetDesc();
     const TextureDesc& srcDesc = src.GetDesc();
 
-    bool isWholeResource = !dstRegionDesc && !srcRegionDesc;
+    bool isWholeResource = !dstRegion && !srcRegion;
     uint32_t regionNum = isWholeResource ? dstDesc.mipNum : 1;
     Scratch<VkImageCopy2> regions = AllocateScratch(m_Device, VkImageCopy2, regionNum);
 
     if (isWholeResource) {
-        for (Mip_t i = 0; i < dstDesc.mipNum; i++) {
+        for (Dim_t i = 0; i < dstDesc.mipNum; i++) {
             regions[i] = {VK_STRUCTURE_TYPE_IMAGE_COPY_2};
             regions[i].srcSubresource = {src.GetImageAspectFlags(), i, 0, srcDesc.layerNum};
             regions[i].srcOffset = {};
@@ -528,46 +528,46 @@ NRI_INLINE void CommandBufferVK::CopyTexture(Texture& dstTexture, const TextureR
         }
     } else {
         TextureRegionDesc wholeResource = {};
-        if (!srcRegionDesc)
-            srcRegionDesc = &wholeResource;
-        if (!dstRegionDesc)
-            dstRegionDesc = &wholeResource;
+        if (!srcRegion)
+            srcRegion = &wholeResource;
+        if (!dstRegion)
+            dstRegion = &wholeResource;
 
-        VkImageAspectFlags srcAspectFlags = GetImageAspectFlags(srcRegionDesc->planes);
-        if (srcRegionDesc->planes == PlaneBits::ALL)
+        VkImageAspectFlags srcAspectFlags = GetImageAspectFlags(srcRegion->planes);
+        if (srcRegion->planes == PlaneBits::ALL)
             srcAspectFlags = src.GetImageAspectFlags();
 
-        VkImageAspectFlags dstAspectFlags = GetImageAspectFlags(dstRegionDesc->planes);
-        if (dstRegionDesc->planes == PlaneBits::ALL)
+        VkImageAspectFlags dstAspectFlags = GetImageAspectFlags(dstRegion->planes);
+        if (dstRegion->planes == PlaneBits::ALL)
             dstAspectFlags = dst.GetImageAspectFlags();
 
         regions[0] = {VK_STRUCTURE_TYPE_IMAGE_COPY_2};
         regions[0].srcSubresource = {
             srcAspectFlags,
-            srcRegionDesc->mipOffset,
-            srcRegionDesc->layerOffset,
+            srcRegion->mipOffset,
+            srcRegion->layerOffset,
             1,
         };
         regions[0].srcOffset = {
-            (int32_t)srcRegionDesc->x,
-            (int32_t)srcRegionDesc->y,
-            (int32_t)srcRegionDesc->z,
+            (int32_t)srcRegion->x,
+            (int32_t)srcRegion->y,
+            (int32_t)srcRegion->z,
         };
         regions[0].dstSubresource = {
             dstAspectFlags,
-            dstRegionDesc->mipOffset,
-            dstRegionDesc->layerOffset,
+            dstRegion->mipOffset,
+            dstRegion->layerOffset,
             1,
         };
         regions[0].dstOffset = {
-            (int32_t)dstRegionDesc->x,
-            (int32_t)dstRegionDesc->y,
-            (int32_t)dstRegionDesc->z,
+            (int32_t)dstRegion->x,
+            (int32_t)dstRegion->y,
+            (int32_t)dstRegion->z,
         };
         regions[0].extent = {
-            (srcRegionDesc->width == WHOLE_SIZE) ? src.GetSize(0, srcRegionDesc->mipOffset) : srcRegionDesc->width,
-            (srcRegionDesc->height == WHOLE_SIZE) ? src.GetSize(1, srcRegionDesc->mipOffset) : srcRegionDesc->height,
-            (srcRegionDesc->depth == WHOLE_SIZE) ? src.GetSize(2, srcRegionDesc->mipOffset) : srcRegionDesc->depth,
+            (srcRegion->width == WHOLE_SIZE) ? src.GetSize(0, srcRegion->mipOffset) : srcRegion->width,
+            (srcRegion->height == WHOLE_SIZE) ? src.GetSize(1, srcRegion->mipOffset) : srcRegion->height,
+            (srcRegion->depth == WHOLE_SIZE) ? src.GetSize(2, srcRegion->mipOffset) : srcRegion->depth,
         };
     }
 
@@ -583,18 +583,18 @@ NRI_INLINE void CommandBufferVK::CopyTexture(Texture& dstTexture, const TextureR
     vk.CmdCopyImage2(m_Handle, &info);
 }
 
-NRI_INLINE void CommandBufferVK::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
+NRI_INLINE void CommandBufferVK::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion) {
     const TextureVK& src = (const TextureVK&)srcTexture;
     const TextureVK& dst = (const TextureVK&)dstTexture;
     const TextureDesc& dstDesc = dst.GetDesc();
     const TextureDesc& srcDesc = src.GetDesc();
 
-    bool isWholeResource = !dstRegionDesc && !srcRegionDesc;
+    bool isWholeResource = !dstRegion && !srcRegion;
     uint32_t regionNum = isWholeResource ? dstDesc.mipNum : 1;
     Scratch<VkImageResolve2> regions = AllocateScratch(m_Device, VkImageResolve2, dstDesc.mipNum);
 
     if (isWholeResource) {
-        for (Mip_t i = 0; i < dstDesc.mipNum; i++) {
+        for (Dim_t i = 0; i < dstDesc.mipNum; i++) {
             regions[i] = {VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2};
             regions[i].srcSubresource = {src.GetImageAspectFlags(), i, 0, srcDesc.layerNum};
             regions[i].srcOffset = {};
@@ -604,46 +604,46 @@ NRI_INLINE void CommandBufferVK::ResolveTexture(Texture& dstTexture, const Textu
         }
     } else {
         TextureRegionDesc wholeResource = {};
-        if (!srcRegionDesc)
-            srcRegionDesc = &wholeResource;
-        if (!dstRegionDesc)
-            dstRegionDesc = &wholeResource;
+        if (!srcRegion)
+            srcRegion = &wholeResource;
+        if (!dstRegion)
+            dstRegion = &wholeResource;
 
-        VkImageAspectFlags srcAspectFlags = GetImageAspectFlags(srcRegionDesc->planes);
-        if (srcRegionDesc->planes == PlaneBits::ALL)
+        VkImageAspectFlags srcAspectFlags = GetImageAspectFlags(srcRegion->planes);
+        if (srcRegion->planes == PlaneBits::ALL)
             srcAspectFlags = src.GetImageAspectFlags();
 
-        VkImageAspectFlags dstAspectFlags = GetImageAspectFlags(dstRegionDesc->planes);
-        if (dstRegionDesc->planes == PlaneBits::ALL)
+        VkImageAspectFlags dstAspectFlags = GetImageAspectFlags(dstRegion->planes);
+        if (dstRegion->planes == PlaneBits::ALL)
             dstAspectFlags = dst.GetImageAspectFlags();
 
         regions[0] = {VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2};
         regions[0].srcSubresource = {
             srcAspectFlags,
-            srcRegionDesc->mipOffset,
-            srcRegionDesc->layerOffset,
+            srcRegion->mipOffset,
+            srcRegion->layerOffset,
             1,
         };
         regions[0].srcOffset = {
-            (int32_t)srcRegionDesc->x,
-            (int32_t)srcRegionDesc->y,
-            (int32_t)srcRegionDesc->z,
+            (int32_t)srcRegion->x,
+            (int32_t)srcRegion->y,
+            (int32_t)srcRegion->z,
         };
         regions[0].dstSubresource = {
             dstAspectFlags,
-            dstRegionDesc->mipOffset,
-            dstRegionDesc->layerOffset,
+            dstRegion->mipOffset,
+            dstRegion->layerOffset,
             1,
         };
         regions[0].dstOffset = {
-            (int32_t)dstRegionDesc->x,
-            (int32_t)dstRegionDesc->y,
-            (int32_t)dstRegionDesc->z,
+            (int32_t)dstRegion->x,
+            (int32_t)dstRegion->y,
+            (int32_t)dstRegion->z,
         };
         regions[0].extent = {
-            (srcRegionDesc->width == WHOLE_SIZE) ? src.GetSize(0, srcRegionDesc->mipOffset) : srcRegionDesc->width,
-            (srcRegionDesc->height == WHOLE_SIZE) ? src.GetSize(1, srcRegionDesc->mipOffset) : srcRegionDesc->height,
-            (srcRegionDesc->depth == WHOLE_SIZE) ? src.GetSize(2, srcRegionDesc->mipOffset) : srcRegionDesc->depth,
+            (srcRegion->width == WHOLE_SIZE) ? src.GetSize(0, srcRegion->mipOffset) : srcRegion->width,
+            (srcRegion->height == WHOLE_SIZE) ? src.GetSize(1, srcRegion->mipOffset) : srcRegion->height,
+            (srcRegion->depth == WHOLE_SIZE) ? src.GetSize(2, srcRegion->mipOffset) : srcRegion->depth,
         };
     }
 
@@ -659,40 +659,40 @@ NRI_INLINE void CommandBufferVK::ResolveTexture(Texture& dstTexture, const Textu
     vk.CmdResolveImage2(m_Handle, &info);
 }
 
-NRI_INLINE void CommandBufferVK::UploadBufferToTexture(Texture& dstTexture, const TextureRegionDesc& dstRegionDesc, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayoutDesc) {
+NRI_INLINE void CommandBufferVK::UploadBufferToTexture(Texture& dstTexture, const TextureRegionDesc& dstRegion, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayout) {
     const BufferVK& src = (const BufferVK&)srcBuffer;
     const TextureVK& dst = (const TextureVK&)dstTexture;
     const FormatProps& formatProps = GetFormatProps(dst.GetDesc().format);
 
-    uint32_t rowBlockNum = srcDataLayoutDesc.rowPitch / formatProps.stride;
+    uint32_t rowBlockNum = srcDataLayout.rowPitch / formatProps.stride;
     uint32_t bufferRowLength = rowBlockNum * formatProps.blockWidth;
 
-    uint32_t sliceRowNum = srcDataLayoutDesc.slicePitch / srcDataLayoutDesc.rowPitch;
+    uint32_t sliceRowNum = srcDataLayout.slicePitch / srcDataLayout.rowPitch;
     uint32_t bufferImageHeight = sliceRowNum * formatProps.blockWidth;
 
-    VkImageAspectFlags dstAspectFlags = GetImageAspectFlags(dstRegionDesc.planes);
-    if (dstRegionDesc.planes == PlaneBits::ALL)
+    VkImageAspectFlags dstAspectFlags = GetImageAspectFlags(dstRegion.planes);
+    if (dstRegion.planes == PlaneBits::ALL)
         dstAspectFlags = dst.GetImageAspectFlags();
 
     VkBufferImageCopy2 region = {VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2};
-    region.bufferOffset = srcDataLayoutDesc.offset;
+    region.bufferOffset = srcDataLayout.offset;
     region.bufferRowLength = bufferRowLength;
     region.bufferImageHeight = bufferImageHeight;
     region.imageSubresource = VkImageSubresourceLayers{
         dstAspectFlags,
-        dstRegionDesc.mipOffset,
-        dstRegionDesc.layerOffset,
+        dstRegion.mipOffset,
+        dstRegion.layerOffset,
         1,
     };
     region.imageOffset = VkOffset3D{
-        dstRegionDesc.x,
-        dstRegionDesc.y,
-        dstRegionDesc.z,
+        dstRegion.x,
+        dstRegion.y,
+        dstRegion.z,
     };
     region.imageExtent = VkExtent3D{
-        (dstRegionDesc.width == WHOLE_SIZE) ? dst.GetSize(0, dstRegionDesc.mipOffset) : dstRegionDesc.width,
-        (dstRegionDesc.height == WHOLE_SIZE) ? dst.GetSize(1, dstRegionDesc.mipOffset) : dstRegionDesc.height,
-        (dstRegionDesc.depth == WHOLE_SIZE) ? dst.GetSize(2, dstRegionDesc.mipOffset) : dstRegionDesc.depth,
+        (dstRegion.width == WHOLE_SIZE) ? dst.GetSize(0, dstRegion.mipOffset) : dstRegion.width,
+        (dstRegion.height == WHOLE_SIZE) ? dst.GetSize(1, dstRegion.mipOffset) : dstRegion.height,
+        (dstRegion.depth == WHOLE_SIZE) ? dst.GetSize(2, dstRegion.mipOffset) : dstRegion.depth,
     };
 
     VkCopyBufferToImageInfo2 info = {VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2};
@@ -706,40 +706,40 @@ NRI_INLINE void CommandBufferVK::UploadBufferToTexture(Texture& dstTexture, cons
     vk.CmdCopyBufferToImage2(m_Handle, &info);
 }
 
-NRI_INLINE void CommandBufferVK::ReadbackTextureToBuffer(Buffer& dstBuffer, const TextureDataLayoutDesc& dstDataLayoutDesc, const Texture& srcTexture, const TextureRegionDesc& srcRegionDesc) {
+NRI_INLINE void CommandBufferVK::ReadbackTextureToBuffer(Buffer& dstBuffer, const TextureDataLayoutDesc& dstDataLayout, const Texture& srcTexture, const TextureRegionDesc& srcRegion) {
     const TextureVK& src = (const TextureVK&)srcTexture;
     const BufferVK& dst = (const BufferVK&)dstBuffer;
     const FormatProps& formatProps = GetFormatProps(src.GetDesc().format);
 
-    uint32_t rowBlockNum = dstDataLayoutDesc.rowPitch / formatProps.stride;
+    uint32_t rowBlockNum = dstDataLayout.rowPitch / formatProps.stride;
     uint32_t bufferRowLength = rowBlockNum * formatProps.blockWidth;
 
-    uint32_t sliceRowNum = dstDataLayoutDesc.slicePitch / dstDataLayoutDesc.rowPitch;
+    uint32_t sliceRowNum = dstDataLayout.slicePitch / dstDataLayout.rowPitch;
     uint32_t bufferImageHeight = sliceRowNum * formatProps.blockWidth;
 
-    VkImageAspectFlags srcAspectFlags = GetImageAspectFlags(srcRegionDesc.planes);
-    if (srcRegionDesc.planes == PlaneBits::ALL)
+    VkImageAspectFlags srcAspectFlags = GetImageAspectFlags(srcRegion.planes);
+    if (srcRegion.planes == PlaneBits::ALL)
         srcAspectFlags = src.GetImageAspectFlags();
 
     VkBufferImageCopy2 region = {VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2};
-    region.bufferOffset = dstDataLayoutDesc.offset;
+    region.bufferOffset = dstDataLayout.offset;
     region.bufferRowLength = bufferRowLength;
     region.bufferImageHeight = bufferImageHeight;
     region.imageSubresource = VkImageSubresourceLayers{
         srcAspectFlags,
-        srcRegionDesc.mipOffset,
-        srcRegionDesc.layerOffset,
+        srcRegion.mipOffset,
+        srcRegion.layerOffset,
         1,
     };
     region.imageOffset = VkOffset3D{
-        srcRegionDesc.x,
-        srcRegionDesc.y,
-        srcRegionDesc.z,
+        srcRegion.x,
+        srcRegion.y,
+        srcRegion.z,
     };
     region.imageExtent = VkExtent3D{
-        (srcRegionDesc.width == WHOLE_SIZE) ? src.GetSize(0, srcRegionDesc.mipOffset) : srcRegionDesc.width,
-        (srcRegionDesc.height == WHOLE_SIZE) ? src.GetSize(1, srcRegionDesc.mipOffset) : srcRegionDesc.height,
-        (srcRegionDesc.depth == WHOLE_SIZE) ? src.GetSize(2, srcRegionDesc.mipOffset) : srcRegionDesc.depth,
+        (srcRegion.width == WHOLE_SIZE) ? src.GetSize(0, srcRegion.mipOffset) : srcRegion.width,
+        (srcRegion.height == WHOLE_SIZE) ? src.GetSize(1, srcRegion.mipOffset) : srcRegion.height,
+        (srcRegion.depth == WHOLE_SIZE) ? src.GetSize(2, srcRegion.mipOffset) : srcRegion.depth,
     };
 
     VkCopyImageToBufferInfo2 info = {VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2};
@@ -893,9 +893,9 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierGroupDesc& barrierGroupDes
         out.subresourceRange = {
             aspectFlags,
             in.mipOffset,
-            (in.mipNum == REMAINING_MIPS) ? VK_REMAINING_MIP_LEVELS : in.mipNum,
+            (in.mipNum == REMAINING) ? VK_REMAINING_MIP_LEVELS : in.mipNum,
             in.layerOffset,
-            (in.layerNum == REMAINING_LAYERS) ? VK_REMAINING_ARRAY_LAYERS : in.layerNum,
+            (in.layerNum == REMAINING) ? VK_REMAINING_ARRAY_LAYERS : in.layerNum,
         };
     }
 

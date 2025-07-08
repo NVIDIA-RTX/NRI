@@ -36,10 +36,10 @@ Result BufferD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset) {
 
         if (memory->IsDummy()) {
             HRESULT hr = m_Device->CreateCommittedResource3(&heapDesc.Properties, heapFlagsFixed, &desc1, initialLayout, nullptr, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Buffer));
-            RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreateCommittedResource3()");
+            RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreateCommittedResource3");
         } else {
             HRESULT hr = m_Device->CreatePlacedResource2(*memory, offset, &desc1, initialLayout, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Buffer));
-            RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreatePlacedResource2()");
+            RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreatePlacedResource2");
         }
     } else
 #endif
@@ -67,10 +67,10 @@ Result BufferD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset) {
 
         if (memory->IsDummy()) {
             HRESULT hr = m_Device->CreateCommittedResource(&heapDesc.Properties, heapFlagsFixed, &desc, initialState, nullptr, IID_PPV_ARGS(&m_Buffer));
-            RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommittedResource()");
+            RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommittedResource");
         } else {
             HRESULT hr = m_Device->CreatePlacedResource(*memory, offset, &desc, initialState, nullptr, IID_PPV_ARGS(&m_Buffer));
-            RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreatePlacedResource()");
+            RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreatePlacedResource");
         }
     }
 
@@ -83,7 +83,7 @@ NRI_INLINE Result BufferD3D12::SetPriorityAndPersistentlyMap(float priority, con
     if (m_Device.GetVersion() >= 1 && residencyPriority != 0) {
         ID3D12Pageable* obj = m_Buffer.GetInterface();
         HRESULT hr = m_Device->SetResidencyPriority(1, &obj, &residencyPriority);
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority()");
+        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority");
     }
 
     // Mapping
@@ -102,7 +102,7 @@ NRI_INLINE Result BufferD3D12::SetPriorityAndPersistentlyMap(float priority, con
             readRange.End = m_Desc.size;
 
         HRESULT hr = m_Buffer->Map(0, &readRange, (void**)&m_MappedMemory);
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Resource::Map()");
+        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Resource::Map");
     }
 
     return Result::SUCCESS;

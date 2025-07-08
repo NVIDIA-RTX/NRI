@@ -28,39 +28,40 @@
 
 #include "NRIMacro.h"
 
-// TIP: designated initializers are highly recommended
+// Tips:
+// - designated initializers are highly recommended!
+// - documentation is embedded (more details can be requested by creating a GitHub issue)
+// - data types are grouped into collapsible logical blocks via "#pragma region"
 
 NriNamespaceBegin
 
 // Entities
-NriForwardStruct(Fence);
-NriForwardStruct(Queue);
-NriForwardStruct(Memory); // heap
-NriForwardStruct(Buffer);
-NriForwardStruct(Device);
-NriForwardStruct(Texture);
-NriForwardStruct(Pipeline);
-NriForwardStruct(QueryPool);
-NriForwardStruct(Descriptor);
-NriForwardStruct(CommandBuffer); // command list
-NriForwardStruct(DescriptorSet); // continuous set of descriptors in a descriptor heap
-NriForwardStruct(DescriptorPool); // descriptor heap
-NriForwardStruct(PipelineLayout); // root signature
-NriForwardStruct(CommandAllocator);
+NriForwardStruct(Fence);            // a synchronization primitive that can be used to insert a dependency between queue operations or between a queue operation and the host
+NriForwardStruct(Queue);            // a logical queue, providing access to a HW queue
+NriForwardStruct(Memory);           // a memory blob allocated on DEVICE or HOST
+NriForwardStruct(Buffer);           // a buffer object: linear arrays of data
+NriForwardStruct(Device);           // a logical device
+NriForwardStruct(Texture);          // a texture object: multidimansional arrays of data
+NriForwardStruct(Pipeline);         // a collection of state needed for rendering: shaders + fixed
+NriForwardStruct(QueryPool);        // a collection of queries of the same type
+NriForwardStruct(Descriptor);       // a handle or pointer to a resource (potentially with a header)
+NriForwardStruct(CommandBuffer);    // used to record commands which can be subsequently submitted to a device queue for execution (aka command list)
+NriForwardStruct(DescriptorSet);    // a continuous set of descriptors
+NriForwardStruct(DescriptorPool);   // maintains a pool of descriptors, descriptor sets are allocated from (aka descriptor heap)
+NriForwardStruct(PipelineLayout);   // determines the interface between shader stages and shader resources (aka root signature)
+NriForwardStruct(CommandAllocator); // an object that command buffer memory is allocated from
 
 // Types
-typedef uint8_t Nri(Mip_t);
 typedef uint8_t Nri(Sample_t);
 typedef uint16_t Nri(Dim_t);
 typedef uint32_t Nri(MemoryType);
 typedef void Nri(Object);
 
 // Aliases
-static const uint32_t NriConstant(BGRA_UNUSED) = 0;         // only for "bgra" color for profiling
-static const uint32_t NriConstant(ALL_SAMPLES) = 0;         // only for "sampleMask"
-static const Nri(Dim_t) NriConstant(WHOLE_SIZE) = 0;        // only for "Dim_t" and "size"
-static const Nri(Mip_t) NriConstant(REMAINING_MIPS) = 0;    // only for "mipNum"
-static const Nri(Dim_t) NriConstant(REMAINING_LAYERS) = 0;  // only for "layerNum"
+static const uint32_t NriConstant(BGRA_UNUSED) = 0;  // only for "bgra" color for profiling
+static const uint32_t NriConstant(ALL_SAMPLES) = 0;  // only for "sampleMask"
+static const Nri(Dim_t) NriConstant(WHOLE_SIZE) = 0; // only for "Dim_t" and "size"
+static const Nri(Dim_t) NriConstant(REMAINING) = 0;  // only for "mipNum" and "layerNum"
 
 // Readability
 #define NriOptional // i.e. can be 0 (keep an eye on comments)
@@ -79,9 +80,9 @@ NriEnum(GraphicsAPI, uint8_t,
 
 NriEnum(Result, int8_t,
     // All bad, but optionally require an action
-    DEVICE_LOST             = -3,
-    OUT_OF_DATE             = -2,   // VK only: swap chain is out of date
-    INVALID_AGILITY_SDK     = -1,   // D3D12 only: unable to load "D3D12Core.dll" or version mismatch
+    DEVICE_LOST             = -3, // may be returned by "QueueSubmit*", "*WaitIdle", "AcquireNextTexture", "QueuePresent", "WaitForPresent"
+    OUT_OF_DATE             = -2, // VK: swap chain is out of date
+    INVALID_AGILITY_SDK     = -1, // D3D12: unable to load "D3D12Core.dll" or version mismatch
 
     // All good
     SUCCESS                 = 0,
@@ -90,9 +91,10 @@ NriEnum(Result, int8_t,
     FAILURE                 = 1,
     INVALID_ARGUMENT        = 2,
     OUT_OF_MEMORY           = 3,
-    UNSUPPORTED             = 4     // Validation can promote some to "INVALID_ARGUMENT"
+    UNSUPPORTED             = 4   // if enabled, NRI validation can promote some to "INVALID_ARGUMENT"
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkFormat.html
 // left -> right : low -> high bits
 // Expected (but not guaranteed) "FormatSupportBits" are provided, but "GetFormatSupport" should be used for querying real HW support
 // To demote sRGB use the previous format, i.e. "format - 1"
@@ -207,6 +209,8 @@ NriEnum(Format, uint8_t,
     X32_G8_UINT_X24     // .y - stencil  // +  -  -  -  -  -  -  -  -  -
 );
 
+// https://learn.microsoft.com/en-us/windows/win32/direct3d12/subresources#plane-slice
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkImageAspectFlagBits.html
 NriBits(PlaneBits, uint8_t,
     ALL                             = 0,
     COLOR                           = NriBit(0), // indicates "color" plane (same as "ALL" for color formats)
@@ -383,12 +387,14 @@ NriEnum(MemoryLocation, uint8_t,
     HOST_READBACK
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkImageType.html
 NriEnum(TextureType, uint8_t,
     TEXTURE_1D,
     TEXTURE_2D,
     TEXTURE_3D
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkImageUsageFlagBits.html
 NriEnum(Texture1DViewType, uint8_t,
     SHADER_RESOURCE_1D,
     SHADER_RESOURCE_1D_ARRAY,
@@ -428,6 +434,7 @@ NriEnum(BufferViewType, uint8_t,
     CONSTANT
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkDescriptorType.html
 NriEnum(DescriptorType, uint8_t,
     SAMPLER,
     CONSTANT_BUFFER,
@@ -440,6 +447,7 @@ NriEnum(DescriptorType, uint8_t,
     ACCELERATION_STRUCTURE
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkImageUsageFlagBits.html
 NriBits(TextureUsageBits, uint8_t,                 // Min compatible access:                  Usage:
     NONE                                = 0,
     SHADER_RESOURCE                     = NriBit(0),  // SHADER_RESOURCE                         Read-only shader resource (SRV)
@@ -449,6 +457,7 @@ NriBits(TextureUsageBits, uint8_t,                 // Min compatible access:    
     SHADING_RATE_ATTACHMENT             = NriBit(4)   // SHADING_RATE_ATTACHMENT                 Shading rate attachment (source)
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkBufferUsageFlagBits.html
 NriBits(BufferUsageBits, uint16_t,                 // Min compatible access:                  Usage:
     NONE                                = 0,
     SHADER_RESOURCE                     = NriBit(0),  // SHADER_RESOURCE                         Read-only shader resource (SRV)
@@ -478,7 +487,7 @@ NriStruct(TextureDesc) {
     Nri(Dim_t) width;
     NriOptional Nri(Dim_t) height;
     NriOptional Nri(Dim_t) depth;
-    NriOptional Nri(Mip_t) mipNum;
+    NriOptional Nri(Dim_t) mipNum;
     NriOptional Nri(Dim_t) layerNum;
     NriOptional Nri(Sample_t) sampleNum;
     NriOptional Nri(ClearValue) optimizedClearValue; // D3D12: very optional, since any desktop HW can track many clear values
@@ -499,8 +508,8 @@ NriStruct(Texture1DViewDesc) {
     const NriPtr(Texture) texture;
     Nri(Texture1DViewType) viewType;
     Nri(Format) format;
-    Nri(Mip_t) mipOffset;
-    Nri(Mip_t) mipNum;
+    Nri(Dim_t) mipOffset;
+    Nri(Dim_t) mipNum;
     Nri(Dim_t) layerOffset;
     Nri(Dim_t) layerNum;
 };
@@ -509,8 +518,8 @@ NriStruct(Texture2DViewDesc) {
     const NriPtr(Texture) texture;
     Nri(Texture2DViewType) viewType;
     Nri(Format) format;
-    Nri(Mip_t) mipOffset;
-    Nri(Mip_t) mipNum;
+    Nri(Dim_t) mipOffset;
+    Nri(Dim_t) mipNum;
     Nri(Dim_t) layerOffset;
     Nri(Dim_t) layerNum;
 };
@@ -519,8 +528,8 @@ NriStruct(Texture3DViewDesc) {
     const NriPtr(Texture) texture;
     Nri(Texture3DViewType) viewType;
     Nri(Format) format;
-    Nri(Mip_t) mipOffset;
-    Nri(Mip_t) mipNum;
+    Nri(Dim_t) mipOffset;
+    Nri(Dim_t) mipNum;
     Nri(Dim_t) sliceOffset;
     Nri(Dim_t) sliceNum;
 };
@@ -595,8 +604,8 @@ Pipeline layout example:
 
 NriBits(PipelineLayoutBits, uint8_t,
     NONE                                    = 0,
-    IGNORE_GLOBAL_SPIRV_OFFSETS             = NriBit(0),
-    ENABLE_D3D12_DRAW_PARAMETERS_EMULATION  = NriBit(1)  // (D3D12 only) enable draw parameters emulation, not needed if all vertex shaders for this layout compiled with SM 6.8 (native support)
+    IGNORE_GLOBAL_SPIRV_OFFSETS             = NriBit(0), // VK: ignore "DeviceCreationDesc::vkBindingOffsets"
+    ENABLE_D3D12_DRAW_PARAMETERS_EMULATION  = NriBit(1)  // D3D12: enable draw parameters emulation, not needed if all vertex shaders for this layout compiled with SM 6.8 (native support)
 );
 
 NriBits(DescriptorSetBits, uint8_t,
@@ -609,6 +618,8 @@ NriBits(DescriptorRangeBits, uint8_t,
     PARTIALLY_BOUND                         = NriBit(0), // descriptors in range may not contain valid descriptors at the time the descriptors are consumed (but referenced descriptors must be valid)
     ARRAY                                   = NriBit(1), // descriptors in range are organized into an array
     VARIABLE_SIZED_ARRAY                    = NriBit(2), // descriptors in range are organized into a variable-sized array, which size is specified via "variableDescriptorNum" argument of "AllocateDescriptorSets" function
+
+    // https://docs.vulkan.org/samples/latest/samples/extensions/descriptor_indexing/README.html#_update_after_bind_streaming_descriptors_concurrently
     ALLOW_UPDATE_AFTER_SET                  = NriBit(3)  // descriptors in range can be updated after "CmdSetDescriptorSet" but before "QueueSubmit", also works as "DATA_VOLATILE"
 );
 
@@ -696,10 +707,11 @@ NriEnum(IndexType, uint8_t,
 
 NriEnum(PrimitiveRestart, uint8_t,
     DISABLED,
-    INDICES_UINT16,
-    INDICES_UINT32
+    INDICES_UINT16, // index "0xFFFF" enforces primitive restart
+    INDICES_UINT32  // index "0xFFFFFFFF" enforces primitive restart
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPrimitiveTopology.html
 NriEnum(Topology, uint8_t,
     POINT_LIST,
     LINE_LIST,
@@ -783,7 +795,7 @@ NriEnum(ShadingRate, uint8_t,
     FRAGMENT_SIZE_4X4
 );
 
-//     "primitiveCombiner"      "attachmentCombiner"
+//    "primitiveCombiner"      "attachmentCombiner"
 // A   Pipeline shading rate    Result of Op1
 // B   Primitive shading rate   Attachment shading rate
 NriEnum(ShadingRateCombiner, uint8_t,
@@ -853,9 +865,10 @@ NriEnum(Multiview, uint8_t,
     VIEWPORT_BASED              // requires "features.viewportBasedMultiview"
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkLogicOp.html
 // S - source color 0
 // D - destination color
-NriEnum(LogicFunc, uint8_t,
+NriEnum(LogicOp, uint8_t,
     NONE,
     CLEAR,                      // 0
     AND,                        // S & D
@@ -874,9 +887,10 @@ NriEnum(LogicFunc, uint8_t,
     SET                         // 1
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkCompareOp.html
 // R - fragment's depth or stencil reference
 // D - depth or stencil buffer
-NriEnum(CompareFunc, uint8_t,
+NriEnum(CompareOp, uint8_t,
     NONE,                       // test is disabled
     ALWAYS,                     // true
     NEVER,                      // false
@@ -888,9 +902,10 @@ NriEnum(CompareFunc, uint8_t,
     GREATER_EQUAL               // R >= D
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkStencilOp.html
 // R - reference, set by "CmdSetStencilReference"
 // D - stencil buffer
-NriEnum(StencilFunc, uint8_t,
+NriEnum(StencilOp, uint8_t,
     KEEP,                       // D = D
     ZERO,                       // D = 0
     REPLACE,                    // D = R
@@ -901,6 +916,7 @@ NriEnum(StencilFunc, uint8_t,
     DECREMENT_AND_WRAP          // D--
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkBlendFactor.html
 // S0 - source color 0
 // S1 - source color 1
 // D - destination color
@@ -927,11 +943,12 @@ NriEnum(BlendFactor, uint8_t,   // RGB                               ALPHA
     ONE_MINUS_SRC1_ALPHA        // 1 - S1.a                          1 - S1.a
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkBlendOp.html
 // S - source color
 // D - destination color
 // Sf - source factor, produced by "BlendFactor"
 // Df - destination factor, produced by "BlendFactor"
-NriEnum(BlendFunc, uint8_t,
+NriEnum(BlendOp, uint8_t,
     ADD,                        // S * Sf + D * Df
     SUBTRACT,                   // S * Sf - D * Df
     REVERSE_SUBTRACT,           // D * Df - S * Sf
@@ -939,6 +956,7 @@ NriEnum(BlendFunc, uint8_t,
     MAX                         // max(S, D)
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkColorComponentFlagBits.html
 NriBits(ColorWriteBits, uint8_t,
     NONE    = 0,
     R       = NriBit(0),
@@ -954,37 +972,19 @@ NriBits(ColorWriteBits, uint8_t,
               NriMember(ColorWriteBits, A)
 );
 
-NriStruct(ClearDesc) {
-    Nri(ClearValue) value;
-    Nri(PlaneBits) planes;
-    uint32_t colorAttachmentIndex;
-};
-
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkStencilOpState.html
 NriStruct(StencilDesc) {
-    Nri(CompareFunc) compareFunc; // compareFunc != NONE, expects "CmdSetStencilReference"
-    Nri(StencilFunc) fail;
-    Nri(StencilFunc) pass;
-    Nri(StencilFunc) depthFail;
+    Nri(CompareOp) compareOp; // compareOp != NONE, expects "CmdSetStencilReference"
+    Nri(StencilOp) failOp;
+    Nri(StencilOp) passOp;
+    Nri(StencilOp) depthFailOp;
     uint8_t writeMask;
     uint8_t compareMask;
 };
 
-NriStruct(BlendingDesc) {
-    Nri(BlendFactor) srcFactor;
-    Nri(BlendFactor) dstFactor;
-    Nri(BlendFunc) func;
-};
-
-NriStruct(ColorAttachmentDesc) {
-    Nri(Format) format;
-    Nri(BlendingDesc) colorBlend;
-    Nri(BlendingDesc) alphaBlend;
-    Nri(ColorWriteBits) colorWriteMask;
-    bool blendEnabled;
-};
-
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPipelineDepthStencilStateCreateInfo.html
 NriStruct(DepthAttachmentDesc) {
-    Nri(CompareFunc) compareFunc;
+    Nri(CompareOp) compareOp;
     bool write;
     bool boundsTest; // requires "features.depthBoundsTest", expects "CmdSetDepthBounds"
 };
@@ -994,13 +994,28 @@ NriStruct(StencilAttachmentDesc) {
     Nri(StencilDesc) back; // requires "features.independentFrontAndBackStencilReferenceAndMasks" for "back.writeMask"
 };
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPipelineColorBlendAttachmentState.html
+NriStruct(BlendDesc) {
+    Nri(BlendFactor) srcFactor;
+    Nri(BlendFactor) dstFactor;
+    Nri(BlendOp) op;
+};
+
+NriStruct(ColorAttachmentDesc) {
+    Nri(Format) format;
+    Nri(BlendDesc) colorBlend;
+    Nri(BlendDesc) alphaBlend;
+    Nri(ColorWriteBits) colorWriteMask;
+    bool blendEnabled;
+};
+
 NriStruct(OutputMergerDesc) {
     const NriPtr(ColorAttachmentDesc) colors;
     uint32_t colorNum;
     Nri(DepthAttachmentDesc) depth;
     Nri(StencilAttachmentDesc) stencil;
     Nri(Format) depthStencilFormat;
-    Nri(LogicFunc) logicFunc;               // requires "features.logicFunc"
+    Nri(LogicOp) logicOp;                   // requires "features.logicOp"
     NriOptional uint32_t viewMask;          // if non-0, requires "viewMaxNum > 1"
     NriOptional Nri(Multiview) multiview;   // if "viewMask != 0", requires "features.(xxx)Multiview"
 };
@@ -1019,17 +1034,21 @@ NriStruct(AttachmentsDesc) {
 #pragma region [ Sampler ]
 //============================================================================================================================================================================================
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkFilter.html
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerMipmapMode.html
 NriEnum(Filter, uint8_t,
     NEAREST,
     LINEAR
 );
 
-NriEnum(FilterExt, uint8_t,
-    NONE,
-    MIN,
-    MAX
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerReductionMode.html
+NriEnum(ReductionMode, uint8_t,
+    AVERAGE,    // a weighted average of values in the footprint
+    MIN,        // a component-wise minimum of values in the footprint with non-zero weights
+    MAX         // a component-wise maximum of values in the footprint with non-zero weights
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerAddressMode.html
 NriEnum(AddressMode, uint8_t,
     REPEAT,
     MIRRORED_REPEAT,
@@ -1044,7 +1063,7 @@ NriStruct(AddressModes) {
 
 NriStruct(Filters) {
     Nri(Filter) min, mag, mip;
-    Nri(FilterExt) ext; // requires "features.textureFilterMinMax"
+    Nri(ReductionMode) ext; // requires "features.textureFilterMinMax"
 };
 
 NriStruct(SamplerDesc) {
@@ -1054,7 +1073,7 @@ NriStruct(SamplerDesc) {
     float mipMin;
     float mipMax;
     Nri(AddressModes) addressModes;
-    Nri(CompareFunc) compareFunc;
+    Nri(CompareOp) compareOp;
     Nri(Color) borderColor;
     bool isInteger;
 };
@@ -1097,6 +1116,17 @@ NriStruct(ComputePipelineDesc) {
 #pragma region [ Barrier ]
 //============================================================================================================================================================================================
 
+// A barrier consists of two phases:
+// - before:
+//   - "AccessBits" corresponding with any relevant resource usage since the preceding barrier or the start of "QueueSubmit" scope
+//   - "StagesBits" of all preceding GPU work that must be completed before executing the barrier (stages to wait before the barrier)
+//   - "Layout" for textures
+// - after:
+//   - "AccessBits" corresponding with any relevant resource usage after the barrier completes
+//   - "StagesBits" of all subsequent GPU work that must wait until the barrier execution is finished (stages to halt until the barrier is executed)
+//   - "Layout" for textures
+
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkAccessFlagBits2.html
 NriBits(AccessBits, uint32_t,
     UNKNOWN                         = 0, // mapped to "COMMON", if AgilitySDK is not available, leading to potential discrepancies with VK
 
@@ -1135,7 +1165,8 @@ NriBits(AccessBits, uint32_t,
     RESOLVE_DESTINATION             = NriBit(19)  //  W  RESOLVE
 );
 
-// Not used if "features.enchancedBarrier" is "0"
+// Not used if "features.enhancedBarriers" is "0"
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkImageLayout.html
 NriEnum(Layout, uint8_t,    // Compatible "AccessBits":
     UNKNOWN,
     PRESENT,                    // UNKNOWN
@@ -1177,8 +1208,8 @@ NriStruct(TextureBarrierDesc) {
     NriPtr(Texture) texture;
     Nri(AccessLayoutStage) before;
     Nri(AccessLayoutStage) after;
-    Nri(Mip_t) mipOffset;
-    Nri(Mip_t) mipNum;
+    Nri(Dim_t) mipOffset;
+    Nri(Dim_t) mipNum;
     Nri(Dim_t) layerOffset;
     Nri(Dim_t) layerNum;
     Nri(PlaneBits) planes;
@@ -1201,13 +1232,13 @@ NriStruct(BarrierGroupDesc) {
 
 // Copy
 NriStruct(TextureRegionDesc) {
-    uint16_t x;
-    uint16_t y;
-    uint16_t z;
+    Nri(Dim_t) x;
+    Nri(Dim_t) y;
+    Nri(Dim_t) z;
     Nri(Dim_t) width;
     Nri(Dim_t) height;
     Nri(Dim_t) depth;
-    Nri(Mip_t) mipOffset;
+    Nri(Dim_t) mipOffset;
     Nri(Dim_t) layerOffset;
     Nri(PlaneBits) planes;
 };
@@ -1260,7 +1291,13 @@ NriStruct(TextureMemoryBindingDesc) {
     uint64_t offset;
 };
 
-// Clear storage
+// Clear
+NriStruct(ClearDesc) {
+    Nri(ClearValue) value;
+    Nri(PlaneBits) planes;
+    uint32_t colorAttachmentIndex;
+};
+
 NriStruct(ClearStorageDesc) {
     // For any buffers and textures with integer formats:
     //  - Clears a storage view with bit-precise values, copying the lower "N" bits from "value.[f/ui/i].channel"
@@ -1287,14 +1324,14 @@ NriStruct(ClearStorageDesc) {
 
 // Command signatures (default)
 
-NriStruct(DrawDesc) { // see NRI_FILL_DRAW_COMMAND
+NriStruct(DrawDesc) {                    // see NRI_FILL_DRAW_COMMAND
     uint32_t vertexNum;
     uint32_t instanceNum;
     uint32_t baseVertex;                    // vertex buffer offset = CmdSetVertexBuffers.offset + baseVertex * VertexStreamDesc::stride
     uint32_t baseInstance;
 };
 
-NriStruct(DrawIndexedDesc) {                // see NRI_FILL_DRAW_INDEXED_COMMAND
+NriStruct(DrawIndexedDesc) {             // see NRI_FILL_DRAW_INDEXED_COMMAND
     uint32_t indexNum;
     uint32_t instanceNum;
     uint32_t baseIndex;                     // index buffer offset = CmdSetIndexBuffer.offset + baseIndex * sizeof(CmdSetIndexBuffer.indexType)
@@ -1306,13 +1343,11 @@ NriStruct(DispatchDesc) {
     uint32_t x, y, z;
 };
 
-// Modified draw command signatures (D3D12 only)
-
-//  If the bound pipeline layout has "PipelineLayoutBits::ENABLE_D3D12_DRAW_PARAMETERS_EMULATION" (emulation requested)
+// D3D12: modified draw command signatures, if the bound pipeline layout has "PipelineLayoutBits::ENABLE_D3D12_DRAW_PARAMETERS_EMULATION"
 //  - the following structs must be used instead
 // - "NRI_ENABLE_DRAW_PARAMETERS_EMULATION" must be defined prior inclusion of "NRI.hlsl"
 
-NriStruct(DrawBaseDesc) { // see NRI_FILL_DRAW_COMMAND
+NriStruct(DrawBaseDesc) {                // see NRI_FILL_DRAW_COMMAND
     uint32_t shaderEmulatedBaseVertex;      // root constant
     uint32_t shaderEmulatedBaseInstance;    // root constant
     uint32_t vertexNum;
@@ -1321,7 +1356,7 @@ NriStruct(DrawBaseDesc) { // see NRI_FILL_DRAW_COMMAND
     uint32_t baseInstance;
 };
 
-NriStruct(DrawIndexedBaseDesc) { // see NRI_FILL_DRAW_INDEXED_COMMAND
+NriStruct(DrawIndexedBaseDesc) {         // see NRI_FILL_DRAW_INDEXED_COMMAND
     int32_t shaderEmulatedBaseVertex;       // root constant
     uint32_t shaderEmulatedBaseInstance;    // root constant
     uint32_t indexNum;
@@ -1371,7 +1406,7 @@ NriStruct(PipelineStatisticsDesc) {
     uint64_t meshControlShaderInvocationNum;
     uint64_t meshEvaluationShaderInvocationNum;
 
-    // If "features.meshShaderPipelineStats" and D3D12
+    // D3D12: if "features.meshShaderPipelineStats"
     uint64_t meshEvaluationShaderPrimitiveNum;
 };
 
@@ -1411,6 +1446,7 @@ NriStruct(AdapterDesc) {
     Nri(Architecture) architecture;
 };
 
+// Feature support coverage: https://vulkan.gpuinfo.org/
 NriStruct(DeviceDesc) {
     // Common
     Nri(AdapterDesc) adapterDesc; // "queueNum" reflects available number of queues per "QueueType"
@@ -1639,7 +1675,7 @@ NriStruct(DeviceDesc) {
     struct {
         // Bigger
         uint32_t getMemoryDesc2                                  : 1; // "GetXxxMemoryDesc2" support (VK: requires "maintenance4", D3D: supported)
-        uint32_t enchancedBarrier                                : 1; // VK: supported, D3D12: requires "AgilitySDK", D3D11: unsupported
+        uint32_t enhancedBarriers                                : 1; // VK: supported, D3D12: requires "AgilitySDK", D3D11: unsupported (https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html)
         uint32_t swapChain                                       : 1; // NRISwapChain
         uint32_t rayTracing                                      : 1; // NRIRayTracing
         uint32_t meshShader                                      : 1; // NRIMeshShader
@@ -1648,8 +1684,8 @@ NriStruct(DeviceDesc) {
 
         // Smaller
         uint32_t independentFrontAndBackStencilReferenceAndMasks : 1; // see "StencilAttachmentDesc::back"
-        uint32_t textureFilterMinMax                             : 1; // see "FilterExt"
-        uint32_t logicFunc                                       : 1; // see "LogicFunc"
+        uint32_t textureFilterMinMax                             : 1; // see "ReductionMode"
+        uint32_t logicOp                                         : 1; // see "LogicOp"
         uint32_t depthBoundsTest                                 : 1; // see "DepthAttachmentDesc::boundsTest"
         uint32_t drawIndirectCount                               : 1; // see "countBuffer" and "countBufferOffset"
         uint32_t lineSmoothing                                   : 1; // see "RasterizationDesc::lineSmoothing"

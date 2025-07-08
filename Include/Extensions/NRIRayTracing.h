@@ -1,5 +1,7 @@
 // © 2021 NVIDIA Corporation
 
+// Spec: https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html
+
 #pragma once
 
 #define NRI_RAY_TRACING_H 1

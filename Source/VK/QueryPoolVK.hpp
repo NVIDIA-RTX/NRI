@@ -32,7 +32,7 @@ Result QueryPoolVK::Create(const QueryPoolDesc& queryPoolDesc) {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateQueryPool(m_Device, &poolInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateQueryPool returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateQueryPool");
 
     m_QuerySize = (m_Type == VK_QUERY_TYPE_PIPELINE_STATISTICS ? (m_Device.GetDesc().features.meshShader ? 13 : 11) : 1) * sizeof(uint64_t);
 

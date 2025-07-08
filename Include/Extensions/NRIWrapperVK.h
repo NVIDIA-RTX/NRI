@@ -70,7 +70,7 @@ NriStruct(TextureVKDesc) {
     Nri(Dim_t) width;
     Nri(Dim_t) height;
     Nri(Dim_t) depth;
-    Nri(Mip_t) mipNum;
+    Nri(Dim_t) mipNum;
     Nri(Dim_t) layerNum;
     Nri(Sample_t) sampleNum;
 };

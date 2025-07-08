@@ -20,7 +20,8 @@ struct QueueD3D11 final : public DebugNameBase {
     // NRI
     //================================================================================================================
 
-    void Submit(const QueueSubmitDesc& queueSubmitDesc);
+    Result Submit(const QueueSubmitDesc& queueSubmitDesc);
+    Result WaitIdle();
 
 private:
     DeviceD3D11& m_Device;

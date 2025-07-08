@@ -43,7 +43,7 @@ struct BufferD3D11 final : public DebugNameBase {
     Result Create(const BufferDesc& bufferDesc);
     Result Create(const BufferD3D11Desc& bufferDesc);
     Result Create(MemoryLocation memoryLocation, float priority);
-    TextureD3D11& RecreateReadbackTexture(const TextureD3D11& srcTexture, const TextureRegionDesc& srcRegionDesc, const TextureDataLayoutDesc& readbackDataLayoutDesc);
+    TextureD3D11& RecreateReadbackTexture(const TextureD3D11& srcTexture, const TextureRegionDesc& srcRegion, const TextureDataLayoutDesc& readbackDataLayoutDesc);
 
     //================================================================================================================
     // DebugNameBase

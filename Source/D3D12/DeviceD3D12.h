@@ -150,6 +150,7 @@ struct DeviceD3D12 final : public DeviceBase {
     //================================================================================================================
 
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
+    Result WaitIdle();
     Result BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
     Result BindTextureMemory(const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
     Result BindAccelerationStructureMemory(const AccelerationStructureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
@@ -157,7 +158,7 @@ struct DeviceD3D12 final : public DeviceBase {
     FormatSupportBits GetFormatSupport(Format format) const;
 
 private:
-    void FillDesc();
+    void FillDesc(bool disableD3D12EnhancedBarrier);
     void InitializeNvExt(bool isNVAPILoadedInApp, bool isImported);
     void InitializeAmdExt(AGSContext* agsContext, bool isImported);
     void InitializePixExt();

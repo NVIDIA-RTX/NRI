@@ -64,20 +64,20 @@ static void FillRasterizerState(D3D12_RASTERIZER_DESC& rasterizerDesc, const Gra
 }
 
 static void FillDepthStencilState(D3D12_DEPTH_STENCIL_DESC* depthStencilDesc, const OutputMergerDesc& om) {
-    depthStencilDesc->DepthEnable = om.depth.compareFunc == CompareFunc::NONE ? FALSE : TRUE;
+    depthStencilDesc->DepthEnable = om.depth.compareOp == CompareOp::NONE ? FALSE : TRUE;
     depthStencilDesc->DepthWriteMask = om.depth.write ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
-    depthStencilDesc->DepthFunc = GetComparisonFunc(om.depth.compareFunc);
-    depthStencilDesc->StencilEnable = (om.stencil.front.compareFunc == CompareFunc::NONE && om.stencil.back.compareFunc == CompareFunc::NONE) ? FALSE : TRUE;
+    depthStencilDesc->DepthFunc = GetCompareOp(om.depth.compareOp);
+    depthStencilDesc->StencilEnable = (om.stencil.front.compareOp == CompareOp::NONE && om.stencil.back.compareOp == CompareOp::NONE) ? FALSE : TRUE;
     depthStencilDesc->StencilReadMask = (UINT8)om.stencil.front.compareMask;
     depthStencilDesc->StencilWriteMask = (UINT8)om.stencil.front.writeMask;
-    depthStencilDesc->FrontFace.StencilFailOp = GetStencilOp(om.stencil.front.fail);
-    depthStencilDesc->FrontFace.StencilDepthFailOp = GetStencilOp(om.stencil.front.depthFail);
-    depthStencilDesc->FrontFace.StencilPassOp = GetStencilOp(om.stencil.front.pass);
-    depthStencilDesc->FrontFace.StencilFunc = GetComparisonFunc(om.stencil.front.compareFunc);
-    depthStencilDesc->BackFace.StencilFailOp = GetStencilOp(om.stencil.back.fail);
-    depthStencilDesc->BackFace.StencilDepthFailOp = GetStencilOp(om.stencil.back.depthFail);
-    depthStencilDesc->BackFace.StencilPassOp = GetStencilOp(om.stencil.back.pass);
-    depthStencilDesc->BackFace.StencilFunc = GetComparisonFunc(om.stencil.back.compareFunc);
+    depthStencilDesc->FrontFace.StencilFailOp = GetStencilOp(om.stencil.front.failOp);
+    depthStencilDesc->FrontFace.StencilDepthFailOp = GetStencilOp(om.stencil.front.depthFailOp);
+    depthStencilDesc->FrontFace.StencilPassOp = GetStencilOp(om.stencil.front.passOp);
+    depthStencilDesc->FrontFace.StencilFunc = GetCompareOp(om.stencil.front.compareOp);
+    depthStencilDesc->BackFace.StencilFailOp = GetStencilOp(om.stencil.back.failOp);
+    depthStencilDesc->BackFace.StencilDepthFailOp = GetStencilOp(om.stencil.back.depthFailOp);
+    depthStencilDesc->BackFace.StencilPassOp = GetStencilOp(om.stencil.back.passOp);
+    depthStencilDesc->BackFace.StencilFunc = GetCompareOp(om.stencil.back.compareOp);
 }
 
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
@@ -101,20 +101,20 @@ static void FillRasterizerState(D3D12_RASTERIZER_DESC1& rasterizerDesc, const Gr
 }
 
 static void FillDepthStencilState(D3D12_DEPTH_STENCIL_DESC2& depthStencilDesc, const OutputMergerDesc& om) {
-    depthStencilDesc.DepthEnable = om.depth.compareFunc == CompareFunc::NONE ? FALSE : TRUE;
+    depthStencilDesc.DepthEnable = om.depth.compareOp == CompareOp::NONE ? FALSE : TRUE;
     depthStencilDesc.DepthWriteMask = om.depth.write ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
-    depthStencilDesc.DepthFunc = GetComparisonFunc(om.depth.compareFunc);
-    depthStencilDesc.StencilEnable = (om.stencil.front.compareFunc == CompareFunc::NONE && om.stencil.back.compareFunc == CompareFunc::NONE) ? FALSE : TRUE;
-    depthStencilDesc.FrontFace.StencilFailOp = GetStencilOp(om.stencil.front.fail);
-    depthStencilDesc.FrontFace.StencilDepthFailOp = GetStencilOp(om.stencil.front.depthFail);
-    depthStencilDesc.FrontFace.StencilPassOp = GetStencilOp(om.stencil.front.pass);
-    depthStencilDesc.FrontFace.StencilFunc = GetComparisonFunc(om.stencil.front.compareFunc);
+    depthStencilDesc.DepthFunc = GetCompareOp(om.depth.compareOp);
+    depthStencilDesc.StencilEnable = (om.stencil.front.compareOp == CompareOp::NONE && om.stencil.back.compareOp == CompareOp::NONE) ? FALSE : TRUE;
+    depthStencilDesc.FrontFace.StencilFailOp = GetStencilOp(om.stencil.front.failOp);
+    depthStencilDesc.FrontFace.StencilDepthFailOp = GetStencilOp(om.stencil.front.depthFailOp);
+    depthStencilDesc.FrontFace.StencilPassOp = GetStencilOp(om.stencil.front.passOp);
+    depthStencilDesc.FrontFace.StencilFunc = GetCompareOp(om.stencil.front.compareOp);
     depthStencilDesc.FrontFace.StencilReadMask = om.stencil.front.compareMask;
     depthStencilDesc.FrontFace.StencilWriteMask = om.stencil.front.writeMask;
-    depthStencilDesc.BackFace.StencilFailOp = GetStencilOp(om.stencil.back.fail);
-    depthStencilDesc.BackFace.StencilDepthFailOp = GetStencilOp(om.stencil.back.depthFail);
-    depthStencilDesc.BackFace.StencilPassOp = GetStencilOp(om.stencil.back.pass);
-    depthStencilDesc.BackFace.StencilFunc = GetComparisonFunc(om.stencil.back.compareFunc);
+    depthStencilDesc.BackFace.StencilFailOp = GetStencilOp(om.stencil.back.failOp);
+    depthStencilDesc.BackFace.StencilDepthFailOp = GetStencilOp(om.stencil.back.depthFailOp);
+    depthStencilDesc.BackFace.StencilPassOp = GetStencilOp(om.stencil.back.passOp);
+    depthStencilDesc.BackFace.StencilFunc = GetCompareOp(om.stencil.back.compareOp);
     depthStencilDesc.BackFace.StencilReadMask = om.stencil.back.compareMask;
     depthStencilDesc.BackFace.StencilWriteMask = om.stencil.back.writeMask;
 }
@@ -162,14 +162,14 @@ static void FillBlendState(D3D12_BLEND_DESC& blendDesc, const GraphicsPipelineDe
         blendDesc.RenderTarget[i].BlendEnable = colorAttachmentDesc.blendEnabled;
 
         if (colorAttachmentDesc.blendEnabled) {
-            blendDesc.RenderTarget[i].LogicOp = GetLogicOp(om.logicFunc);
-            blendDesc.RenderTarget[i].LogicOpEnable = om.logicFunc != LogicFunc::NONE ? TRUE : FALSE;
+            blendDesc.RenderTarget[i].LogicOp = GetLogicOp(om.logicOp);
+            blendDesc.RenderTarget[i].LogicOpEnable = om.logicOp != LogicOp::NONE ? TRUE : FALSE;
             blendDesc.RenderTarget[i].SrcBlend = GetBlend(colorAttachmentDesc.colorBlend.srcFactor);
             blendDesc.RenderTarget[i].DestBlend = GetBlend(colorAttachmentDesc.colorBlend.dstFactor);
-            blendDesc.RenderTarget[i].BlendOp = GetBlendOp(colorAttachmentDesc.colorBlend.func);
+            blendDesc.RenderTarget[i].BlendOp = GetBlendOp(colorAttachmentDesc.colorBlend.op);
             blendDesc.RenderTarget[i].SrcBlendAlpha = GetBlend(colorAttachmentDesc.alphaBlend.srcFactor);
             blendDesc.RenderTarget[i].DestBlendAlpha = GetBlend(colorAttachmentDesc.alphaBlend.dstFactor);
-            blendDesc.RenderTarget[i].BlendOpAlpha = GetBlendOp(colorAttachmentDesc.alphaBlend.func);
+            blendDesc.RenderTarget[i].BlendOpAlpha = GetBlendOp(colorAttachmentDesc.alphaBlend.op);
         }
     }
 }
@@ -304,7 +304,7 @@ Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipel
     pipelineStateStreamDesc.SizeInBytes = sizeof(stateStream);
 
     HRESULT hr = m_Device->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState));
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device2::CreatePipelineState()");
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device2::CreatePipelineState");
 
     return Result::SUCCESS;
 }
@@ -373,7 +373,7 @@ Result PipelineD3D12::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
 
     // Create
     HRESULT hr = m_Device->CreateGraphicsPipelineState(&graphicsPipleineStateDesc, IID_PPV_ARGS(&m_PipelineState));
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateGraphicsPipelineState()");
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateGraphicsPipelineState");
 
     return Result::SUCCESS;
 }
@@ -388,7 +388,7 @@ Result PipelineD3D12::Create(const ComputePipelineDesc& computePipelineDesc) {
     FillShaderBytecode(computePipleineStateDesc.CS, computePipelineDesc.shader);
 
     HRESULT hr = m_Device->CreateComputePipelineState(&computePipleineStateDesc, IID_PPV_ARGS(&m_PipelineState));
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateComputePipelineState()");
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateComputePipelineState");
 
     return Result::SUCCESS;
 }
@@ -417,7 +417,10 @@ Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDes
             rayTracingPipelineConfig.Flags |= D3D12_RAYTRACING_PIPELINE_FLAG_SKIP_TRIANGLES;
         if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::SKIP_AABBS)
             rayTracingPipelineConfig.Flags |= D3D12_RAYTRACING_PIPELINE_FLAG_SKIP_PROCEDURAL_PRIMITIVES;
-        // TODO: if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::ALLOW_MICROMAPS)
+#ifdef NRI_D3D12_HAS_OPACITY_MICROMAP
+        if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::ALLOW_MICROMAPS)
+            rayTracingPipelineConfig.Flags |= D3D12_RAYTRACING_PIPELINE_FLAG_ALLOW_OPACITY_MICROMAPS;
+#endif
 
         stateSubobjects[stateSubobjectNum].Type = m_Device.GetDesc().tiers.rayTracing > 1 ? D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG1 : D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG;
         stateSubobjects[stateSubobjectNum].pDesc = &rayTracingPipelineConfig;
@@ -527,7 +530,7 @@ Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDes
     stateObjectDesc.pSubobjects = stateSubobjectNum ? &stateSubobjects[0] : nullptr;
 
     HRESULT hr = m_Device->CreateStateObject(&stateObjectDesc, IID_PPV_ARGS(&m_StateObject));
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device5::CreateStateObject()");
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device5::CreateStateObject");
 
     m_StateObject->QueryInterface(&m_StateObjectProperties);
 

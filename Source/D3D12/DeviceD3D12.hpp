@@ -67,8 +67,8 @@ static void __stdcall NvapiMessageCallback(void* context, NVAPI_D3D12_RAYTRACING
         messageType = Message::WARNING;
 
     DeviceD3D12& device = *(DeviceD3D12*)context;
-    device.ReportMessage(messageType, __FILE__, __LINE__, "%s: %s", messageCode, message);
-    device.ReportMessage(messageType, __FILE__, __LINE__, "Details: %s", messageDetails); // TODO: break only here
+    device.ReportMessage(Message::WARNING, __FILE__, __LINE__, "Details: %s", messageDetails);
+    device.ReportMessage(messageType, __FILE__, __LINE__, "%s: %s (see above)", messageCode, message);
 }
 
 #endif
@@ -136,8 +136,8 @@ DeviceD3D12::~DeviceD3D12() {
 #endif
 
     for (auto& queueFamily : m_QueueFamilies) {
-        for (uint32_t i = 0; i < queueFamily.size(); i++)
-            Destroy<QueueD3D12>(queueFamily[i]);
+        for (auto queue : queueFamily)
+            Destroy<QueueD3D12>(queue);
     }
 
 #if NRI_ENABLE_D3D_EXTENSIONS
@@ -165,11 +165,11 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     { // Get adapter
         ComPtr<IDXGIFactory4> dxgiFactory;
         HRESULT hr = CreateDXGIFactory2(desc.enableGraphicsAPIValidation ? DXGI_CREATE_FACTORY_DEBUG : 0, IID_PPV_ARGS(&dxgiFactory));
-        RETURN_ON_BAD_HRESULT(this, hr, "CreateDXGIFactory2()");
+        RETURN_ON_BAD_HRESULT(this, hr, "CreateDXGIFactory2");
 
         LUID luid = *(LUID*)&desc.adapterDesc->luid;
         hr = dxgiFactory->EnumAdapterByLuid(luid, IID_PPV_ARGS(&m_Adapter));
-        RETURN_ON_BAD_HRESULT(this, hr, "IDXGIFactory4::EnumAdapterByLuid()");
+        RETURN_ON_BAD_HRESULT(this, hr, "IDXGIFactory4::EnumAdapterByLuid");
     }
 
     // Extensions
@@ -206,7 +206,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         } else {
 #endif
             HRESULT hr = D3D12CreateDevice(m_Adapter, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), (void**)&deviceTemp);
-            RETURN_ON_BAD_HRESULT(this, hr, "D3D12CreateDevice()");
+            RETURN_ON_BAD_HRESULT(this, hr, "D3D12CreateDevice");
 
 #if NRI_ENABLE_D3D_EXTENSIONS
             if (HasNvExt()) {
@@ -231,10 +231,10 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
         if (SUCCEEDED(hr)) {
             hr = pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
-            RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue::SetBreakOnSeverity()");
+            RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue::SetBreakOnSeverity");
 
             hr = pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
-            RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue::SetBreakOnSeverity()");
+            RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue::SetBreakOnSeverity");
 
             // TODO: this code is currently needed to disable known false-positive errors reported by the debug layer
             D3D12_MESSAGE_ID disableMessageIDs[] = {
@@ -251,11 +251,11 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
             filter.DenyList.pIDList = disableMessageIDs;
             filter.DenyList.NumIDs = GetCountOf(disableMessageIDs);
             hr = pInfoQueue->AddStorageFilterEntries(&filter);
-            RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue::AddStorageFilterEntries()");
+            RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue::AddStorageFilterEntries");
 
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
             hr = pInfoQueue->RegisterMessageCallback(MessageCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, this, &m_CallbackCookie);
-            RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue1::RegisterMessageCallback()");
+            RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue1::RegisterMessageCallback");
 #endif
         }
     }
@@ -315,7 +315,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
             if (status == NVAPI_OK)
                 REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_RegisterRaytracingValidationMessageCallback(m_Device, NvapiMessageCallback, this, &m_CallbackHandle));
 
-            // TODO: add "NvAPI_D3D12_FlushRaytracingValidationMessages" somewhere?
+            // TODO: if enabled, call "NvAPI_D3D12_FlushRaytracingValidationMessages()" after each submit? present? DEVICE_LOST?
         }
     }
 #endif
@@ -343,21 +343,25 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         heapProps.VisibleNodeMask = NODE_MASK;
 
         HRESULT hr = m_Device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &zeroBufferDesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&m_ZeroBuffer));
-        RETURN_ON_BAD_HRESULT(this, hr, "ID3D12Device::CreateCommittedResource()");
+        RETURN_ON_BAD_HRESULT(this, hr, "ID3D12Device::CreateCommittedResource");
     }
 
     // Fill desc
-    FillDesc();
+    FillDesc(desc.disableD3D12EnhancedBarriers);
 
     // Create indirect command signatures
     m_DispatchCommandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH, sizeof(DispatchDesc), nullptr);
     if (m_Desc.tiers.rayTracing >= 2)
         m_DispatchRaysCommandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_RAYS, sizeof(DispatchRaysIndirectDesc), nullptr);
 
+    // Is device lost?
+    HRESULT hr = m_Device->GetDeviceRemovedReason() == S_OK ? S_OK : DXGI_ERROR_DEVICE_REMOVED;
+    RETURN_ON_BAD_HRESULT(this, hr, "Create");
+
     return FillFunctionTable(m_iCore);
 }
 
-void DeviceD3D12::FillDesc() {
+void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
     HRESULT hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
     if (FAILED(hr))
@@ -440,7 +444,7 @@ void DeviceD3D12::FillDesc() {
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS12, &options12, sizeof(options12));
     if (FAILED(hr))
         REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options12) failed, result = 0x%08X!", hr);
-    m_Desc.features.enchancedBarrier = options12.EnhancedBarriersSupported;
+    m_Desc.features.enhancedBarriers = options12.EnhancedBarriersSupported && !disableD3D12EnhancedBarrier;
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS13 options13 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS13, &options13, sizeof(options13));
@@ -707,7 +711,7 @@ void DeviceD3D12::FillDesc() {
     m_Desc.features.micromap = m_Desc.tiers.rayTracing >= 3;
 
     m_Desc.features.textureFilterMinMax = levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_11_1 ? true : false;
-    m_Desc.features.logicFunc = options.OutputMergerLogicOp != 0;
+    m_Desc.features.logicOp = options.OutputMergerLogicOp != 0;
     m_Desc.features.depthBoundsTest = options2.DepthBoundsTestSupported != 0;
     m_Desc.features.drawIndirectCount = true;
     m_Desc.features.lineSmoothing = true;
@@ -872,7 +876,7 @@ Result DeviceD3D12::GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, Descrip
 
         ComPtr<ID3D12DescriptorHeap> descriptorHeap;
         HRESULT hr = m_Device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&descriptorHeap));
-        RETURN_ON_BAD_HRESULT(this, hr, "ID3D12Device::CreateDescriptorHeap()");
+        RETURN_ON_BAD_HRESULT(this, hr, "ID3D12Device::CreateDescriptorHeap");
 
         DescriptorHeapDesc descriptorHeapDesc = {};
         descriptorHeapDesc.heap = descriptorHeap;
@@ -961,7 +965,7 @@ void DeviceD3D12::GetResourceDesc(const TextureDesc& textureDesc, D3D12_RESOURCE
     desc.Width = Align(textureDesc.width, blockWidth);
     desc.Height = Align(std::max(textureDesc.height, (Dim_t)1), blockWidth);
     desc.DepthOrArraySize = std::max(textureDesc.type == TextureType::TEXTURE_3D ? textureDesc.depth : textureDesc.layerNum, (Dim_t)1);
-    desc.MipLevels = std::max(textureDesc.mipNum, (Mip_t)1);
+    desc.MipLevels = std::max(textureDesc.mipNum, (Dim_t)1);
     desc.Format = (textureDesc.usage & TextureUsageBits::SHADING_RATE_ATTACHMENT) ? dxgiFormat.typed : dxgiFormat.typeless;
     desc.SampleDesc.Count = std::max(textureDesc.sampleNum, (Sample_t)1);
     desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
@@ -1187,6 +1191,18 @@ NRI_INLINE Result DeviceD3D12::GetQueue(QueueType queueType, uint32_t queueIndex
     }
 
     return Result::FAILURE;
+}
+
+NRI_INLINE Result DeviceD3D12::WaitIdle() {
+    for (auto& queueFamily : m_QueueFamilies) {
+        for (auto queue : queueFamily) {
+            Result result = queue->WaitIdle();
+            if (result != Result::SUCCESS)
+                return result;
+        }
+    }
+
+    return Result::SUCCESS;
 }
 
 NRI_INLINE Result DeviceD3D12::BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {

@@ -37,7 +37,7 @@ NriStruct(StreamBufferDataDesc) {
 
     // Destination
     NriOptional NriPtr(Buffer) dstBuffer;
-    NriOptional uint64_t dstBufferOffset;
+    NriOptional uint64_t dstOffset;
 };
 
 NriStruct(StreamTextureDataDesc) {
@@ -48,7 +48,7 @@ NriStruct(StreamTextureDataDesc) {
 
     // Destination
     NriOptional NriPtr(Texture) dstTexture;
-    NriOptional Nri(TextureRegionDesc) dstRegionDesc;
+    NriOptional Nri(TextureRegionDesc) dstRegion;
 };
 
 // Threadsafe: yes

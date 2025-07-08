@@ -23,8 +23,8 @@ NriStruct(AllocationCallbacks) {
 
 NriStruct(CallbackInterface) {
     void (*MessageCallback)(Nri(Message) messageType, const char* file, uint32_t line, const char* message, void* userArg);
-    void (*AbortExecution)(void* userArg);
-    void* userArg;
+    NriOptional void (*AbortExecution)(void* userArg); // break on "Message::ERROR" if provided
+    NriOptional void* userArg;
 };
 
 // Use largest offset for the resource type planned to be used as an unbounded array
@@ -76,6 +76,8 @@ NriStruct(DeviceCreationDesc) {
 
     // Switches (enabled by default)
     bool disableVKRayTracing;                   // to save CPU memory in some implementations
+    bool disableD3D12EnhancedBarriers;          // even if AgilitySDK is in use, some apps still use legacy barriers. It can be important for integrations
+    bool disableDefaultAbortExecution;          // "debug break" is useful during development, but many errors like "DEVICE_LOST" can be gracefully handled without execution abortion
 };
 
 // if "adapterDescs == NULL", then "adapterDescNum" is set to the number of adapters

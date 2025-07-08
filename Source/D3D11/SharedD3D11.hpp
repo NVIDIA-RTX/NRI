@@ -1,6 +1,6 @@
 // © 2021 NVIDIA Corporation
 
-constexpr std::array<D3D11_LOGIC_OP, (size_t)LogicFunc::MAX_NUM> g_LogicOps = {
+constexpr std::array<D3D11_LOGIC_OP, (size_t)LogicOp::MAX_NUM> g_LogicOps = {
     D3D11_LOGIC_OP_CLEAR,         // NONE,
     D3D11_LOGIC_OP_CLEAR,         // CLEAR,
     D3D11_LOGIC_OP_AND,           // AND,
@@ -20,11 +20,11 @@ constexpr std::array<D3D11_LOGIC_OP, (size_t)LogicFunc::MAX_NUM> g_LogicOps = {
 };
 VALIDATE_ARRAY(g_LogicOps);
 
-D3D11_LOGIC_OP nri::GetD3D11LogicOp(LogicFunc logicFunc) {
-    return g_LogicOps[(size_t)logicFunc];
+D3D11_LOGIC_OP nri::GetD3D11LogicOp(LogicOp logicOp) {
+    return g_LogicOps[(size_t)logicOp];
 }
 
-constexpr std::array<D3D11_BLEND_OP, (size_t)BlendFunc::MAX_NUM> g_BlendOps = {
+constexpr std::array<D3D11_BLEND_OP, (size_t)BlendOp::MAX_NUM> g_BlendOps = {
     D3D11_BLEND_OP_ADD,          // ADD,
     D3D11_BLEND_OP_SUBTRACT,     // SUBTRACT,
     D3D11_BLEND_OP_REV_SUBTRACT, // REVERSE_SUBTRACT,
@@ -33,7 +33,7 @@ constexpr std::array<D3D11_BLEND_OP, (size_t)BlendFunc::MAX_NUM> g_BlendOps = {
 };
 VALIDATE_ARRAY(g_BlendOps);
 
-D3D11_BLEND_OP nri::GetD3D11BlendOp(BlendFunc blendFunc) {
+D3D11_BLEND_OP nri::GetD3D11BlendOp(BlendOp blendFunc) {
     return g_BlendOps[(size_t)blendFunc];
 }
 
@@ -64,7 +64,7 @@ D3D11_BLEND nri::GetD3D11BlendFromBlendFactor(BlendFactor blendFactor) {
     return g_BlendFactors[(size_t)blendFactor];
 }
 
-constexpr std::array<D3D11_STENCIL_OP, (size_t)StencilFunc::MAX_NUM> g_StencilOps = {
+constexpr std::array<D3D11_STENCIL_OP, (size_t)StencilOp::MAX_NUM> g_StencilOps = {
     D3D11_STENCIL_OP_KEEP,     // KEEP,
     D3D11_STENCIL_OP_ZERO,     // ZERO,
     D3D11_STENCIL_OP_REPLACE,  // REPLACE,
@@ -76,11 +76,11 @@ constexpr std::array<D3D11_STENCIL_OP, (size_t)StencilFunc::MAX_NUM> g_StencilOp
 };
 VALIDATE_ARRAY(g_StencilOps);
 
-D3D11_STENCIL_OP nri::GetD3D11StencilOpFromStencilFunc(StencilFunc stencilFunc) {
+D3D11_STENCIL_OP nri::GetD3D11StencilOpFromStencilOp(StencilOp stencilFunc) {
     return g_StencilOps[(size_t)stencilFunc];
 }
 
-constexpr std::array<D3D11_COMPARISON_FUNC, (size_t)CompareFunc::MAX_NUM> g_ComparisonFuncs = {
+constexpr std::array<D3D11_COMPARISON_FUNC, (size_t)CompareOp::MAX_NUM> g_ComparisonFuncs = {
     D3D11_COMPARISON_FUNC(0),       // NONE,
     D3D11_COMPARISON_ALWAYS,        // ALWAYS,
     D3D11_COMPARISON_NEVER,         // NEVER,
@@ -93,8 +93,8 @@ constexpr std::array<D3D11_COMPARISON_FUNC, (size_t)CompareFunc::MAX_NUM> g_Comp
 };
 VALIDATE_ARRAY(g_ComparisonFuncs);
 
-D3D11_COMPARISON_FUNC nri::GetD3D11ComparisonFuncFromCompareFunc(CompareFunc compareFunc) {
-    return g_ComparisonFuncs[(size_t)compareFunc];
+D3D11_COMPARISON_FUNC nri::GetD3D11ComparisonFuncFromCompareOp(CompareOp compareOp) {
+    return g_ComparisonFuncs[(size_t)compareOp];
 }
 
 constexpr std::array<D3D11_CULL_MODE, (size_t)CullMode::MAX_NUM> g_CullModes = {
@@ -153,7 +153,7 @@ bool nri::GetTextureDesc(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& 
         textureDesc.width = (Dim_t)desc.Width;
         textureDesc.height = 1;
         textureDesc.depth = 1;
-        textureDesc.mipNum = (Mip_t)desc.MipLevels;
+        textureDesc.mipNum = (Dim_t)desc.MipLevels;
         textureDesc.layerNum = (Dim_t)desc.ArraySize;
         textureDesc.sampleNum = 1;
         textureDesc.type = TextureType::TEXTURE_1D;
@@ -168,7 +168,7 @@ bool nri::GetTextureDesc(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& 
         textureDesc.width = (Dim_t)desc.Width;
         textureDesc.height = (Dim_t)desc.Height;
         textureDesc.depth = 1;
-        textureDesc.mipNum = (Mip_t)desc.MipLevels;
+        textureDesc.mipNum = (Dim_t)desc.MipLevels;
         textureDesc.layerNum = (Dim_t)desc.ArraySize;
         textureDesc.sampleNum = (Sample_t)desc.SampleDesc.Count;
         textureDesc.type = TextureType::TEXTURE_2D;
@@ -183,7 +183,7 @@ bool nri::GetTextureDesc(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& 
         textureDesc.width = (Dim_t)desc.Width;
         textureDesc.height = (Dim_t)desc.Height;
         textureDesc.depth = (Dim_t)desc.Depth;
-        textureDesc.mipNum = (Mip_t)desc.MipLevels;
+        textureDesc.mipNum = (Dim_t)desc.MipLevels;
         textureDesc.layerNum = 1;
         textureDesc.sampleNum = 1;
         textureDesc.type = TextureType::TEXTURE_3D;

@@ -438,7 +438,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         if (!isWrapper) {
             uint32_t deviceGroupNum = 0;
             VkResult vkResult = m_VK.EnumeratePhysicalDeviceGroups(m_Instance, &deviceGroupNum, nullptr);
-            RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkEnumeratePhysicalDeviceGroups returned %d", (int32_t)vkResult);
+            RETURN_ON_BAD_VKRESULT(this, vkResult, "vkEnumeratePhysicalDeviceGroups");
 
             Scratch<VkPhysicalDeviceGroupProperties> deviceGroups = AllocateScratch(*this, VkPhysicalDeviceGroupProperties, deviceGroupNum);
             for (uint32_t j = 0; j < deviceGroupNum; j++) {
@@ -447,7 +447,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
             }
 
             vkResult = m_VK.EnumeratePhysicalDeviceGroups(m_Instance, &deviceGroupNum, deviceGroups);
-            RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkEnumeratePhysicalDeviceGroups returned %d", (int32_t)vkResult);
+            RETURN_ON_BAD_VKRESULT(this, vkResult, "vkEnumeratePhysicalDeviceGroups");
 
             uint32_t i = 0;
             for (i = 0; i < deviceGroupNum; i++) {
@@ -808,7 +808,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
             }
 
             VkResult vkResult = m_VK.CreateDevice(m_PhysicalDevice, &deviceCreateInfo, m_AllocationCallbackPtr, &m_Device);
-            RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateDevice returned %d", (int32_t)vkResult);
+            RETURN_ON_BAD_VKRESULT(this, vkResult, "vkCreateDevice");
         }
 
         Result res = ResolveDispatchTable(desiredDeviceExts);
@@ -1126,7 +1126,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.tiers.memory = 1;          // TODO: seems to be the best match
 
         m_Desc.features.getMemoryDesc2 = m_IsSupported.maintenance4;
-        m_Desc.features.enchancedBarrier = true;
+        m_Desc.features.enhancedBarriers = true;
         m_Desc.features.swapChain = IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME, desiredDeviceExts);
         m_Desc.features.rayTracing = m_Desc.tiers.rayTracing != 0;
         m_Desc.features.meshShader = meshShaderFeatures.meshShader != 0 && meshShaderFeatures.taskShader != 0;
@@ -1135,7 +1135,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
         m_Desc.features.independentFrontAndBackStencilReferenceAndMasks = true;
         m_Desc.features.textureFilterMinMax = features12.samplerFilterMinmax;
-        m_Desc.features.logicFunc = features.features.logicOp;
+        m_Desc.features.logicOp = features.features.logicOp;
         m_Desc.features.depthBoundsTest = features.features.depthBounds;
         m_Desc.features.drawIndirectCount = features12.drawIndirectCount;
         m_Desc.features.lineSmoothing = lineRasterizationFeatures.smoothLines;
@@ -1220,7 +1220,7 @@ void DeviceVK::FillCreateInfo(const TextureDesc& textureDesc, VkImageCreateInfo&
     info.extent.width = textureDesc.width;
     info.extent.height = std::max(textureDesc.height, (Dim_t)1);
     info.extent.depth = std::max(textureDesc.depth, (Dim_t)1);
-    info.mipLevels = std::max(textureDesc.mipNum, (Mip_t)1);
+    info.mipLevels = std::max(textureDesc.mipNum, (Dim_t)1);
     info.arrayLayers = std::max(textureDesc.layerNum, (Dim_t)1);
     info.samples = (VkSampleCountFlagBits)std::max(textureDesc.sampleNum, (Sample_t)1);
     info.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -1529,13 +1529,13 @@ Result DeviceVK::CreateInstance(bool enableGraphicsAPIValidation, const Vector<c
     }
 
     VkResult vkResult = m_VK.CreateInstance(&instanceCreateInfo, m_AllocationCallbackPtr, &m_Instance);
-    RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateInstance returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(this, vkResult, "vkCreateInstance");
 
     if (enableGraphicsAPIValidation) {
         PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)m_VK.GetInstanceProcAddr(m_Instance, "vkCreateDebugUtilsMessengerEXT");
         vkResult = vkCreateDebugUtilsMessengerEXT(m_Instance, &messengerCreateInfo, m_AllocationCallbackPtr, &m_Messenger);
 
-        RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateDebugUtilsMessengerEXT returned %d", (int32_t)vkResult);
+        RETURN_ON_BAD_VKRESULT(this, vkResult, "vkCreateDebugUtilsMessengerEXT");
     }
 
     return Result::SUCCESS;
@@ -1548,7 +1548,7 @@ void DeviceVK::SetDebugNameToTrivialObject(VkObjectType objectType, uint64_t han
     VkDebugUtilsObjectNameInfoEXT objectNameInfo = {VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, nullptr, objectType, (uint64_t)handle, name};
 
     VkResult vkResult = m_VK.SetDebugUtilsObjectNameEXT(m_Device, &objectNameInfo);
-    RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, ReturnVoid(), "vkSetDebugUtilsObjectNameEXT returned %d", (int32_t)vkResult);
+    RETURN_VOID_ON_BAD_VKRESULT(this, vkResult, "vkSetDebugUtilsObjectNameEXT");
 }
 
 void DeviceVK::ReportDeviceGroupInfo() {
@@ -1915,6 +1915,19 @@ NRI_INLINE Result DeviceVK::GetQueue(QueueType queueType, uint32_t queueIndex, Q
     return Result::FAILURE;
 }
 
+NRI_INLINE Result DeviceVK::WaitIdle() {
+    // Don't use "vkDeviceWaitIdle" because it requires host access synchronization to all queues, better do it one by one instead
+    for (auto& queueFamily : m_QueueFamilies) {
+        for (auto queue : queueFamily) {
+            Result result = queue->WaitIdle();
+            if (result != Result::SUCCESS)
+                return result;
+        }
+    }
+
+    return Result::SUCCESS;
+}
+
 NRI_INLINE Result DeviceVK::BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
     if (!memoryBindingDescNum)
         return Result::SUCCESS;
@@ -1939,7 +1952,7 @@ NRI_INLINE Result DeviceVK::BindBufferMemory(const BufferMemoryBindingDesc* memo
     }
 
     VkResult vkResult = m_VK.BindBufferMemory2(m_Device, memoryBindingDescNum, infos);
-    RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkBindBufferMemory2 returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(this, vkResult, "vkBindBufferMemory2");
 
     for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
         const BufferMemoryBindingDesc& memoryBindingDesc = memoryBindingDescs[i];
@@ -1977,7 +1990,7 @@ NRI_INLINE Result DeviceVK::BindTextureMemory(const TextureMemoryBindingDesc* me
     }
 
     VkResult vkResult = m_VK.BindImageMemory2(m_Device, memoryBindingDescNum, infos);
-    RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkBindImageMemory2 returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(this, vkResult, "vkBindImageMemory2");
 
     return Result::SUCCESS;
 }

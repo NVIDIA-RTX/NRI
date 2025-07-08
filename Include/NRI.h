@@ -5,24 +5,26 @@ Overview:
 - Generalized common denominator for VK, D3D12 and D3D11
     - VK spec: https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html
        - Best practices: https://developer.nvidia.com/blog/vulkan-dos-donts/
+       - Feature support coverage: https://vulkan.gpuinfo.org/
     - D3D12 spec: https://microsoft.github.io/DirectX-Specs/
     - D3D11 spec: https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm
-- C/C++ compatible interface (auto-selection or via "NRI_FORCE_C" macro)
 
 Goals:
 - generalization of VK and D3D12
-- explicitness (providing access to low-level features of modern GAPIs)
-- "quality of life" features (providing high-level improving utilities, organized as extensions)
+- explicitness (access to low-level features of modern GAPIs)
+- "quality of life" extensions (like streaming)
+- high-level extensions (like upscaling)
 - low overhead
 - cross platform and platform independence (AMD/INTEL friendly)
 - D3D11 support (as much as possible)
 
-Non-goals (exceptions apply to helper interfaces, where high-level abstraction and hidden management are desired):
+Non-goals:
+- exposing entities not existing in GAPIs
 - high level (D3D11-like) abstraction
-- exposing entities not existing in gAPIs
-- hidden management of any kind
+- hidden management of any kind (except some high-level extensions, where it's desired)
+- automatic barriers (better do it in a higher level abstraction)
 
-Thread safety (a comment applies to a whole block unless stated otherwise, sub-blocks can be different):
+Thread safety:
 - Threadsafe: yes - free-threaded access
 - Threadsafe: no  - external synchronization required, i.e. one thread at a time (additional restrictions can apply)
 - Threadsafe: ?   - unclear status
@@ -36,8 +38,9 @@ Implicit:
 #pragma once
 
 #define NRI_VERSION 172
-#define NRI_VERSION_DATE "12 June 2025"
+#define NRI_VERSION_DATE "8 July 2025"
 
+// C/C++ compatible interface (auto-selection or via "NRI_FORCE_C" macro)
 #include "NRIDescs.h"
 
 // Can be used with "name", "nri::name" and "NriName"
@@ -65,6 +68,7 @@ NriStruct(CoreInterface) {
     const NriRef(TextureDesc)   (NRI_CALL *GetTextureDesc)          (const NriRef(Texture) texture);
     Nri(FormatSupportBits)      (NRI_CALL *GetFormatSupport)        (const NriRef(Device) device, Nri(Format) format);
     uint32_t                    (NRI_CALL *GetQuerySize)            (const NriRef(QueryPool) queryPool);
+    uint64_t                    (NRI_CALL *GetFenceValue)           (NriRef(Fence) fence);
 
     // Returns one of the pre-created queues (see "DeviceCreationDesc" or wrapper extensions). Return codes: UNSUPPORTED (no queues of "queueType") or INVALID_ARGUMENT (if "queueIndex" is out of bounds).
     // Getting COMPUTE and/or COPY queues switches VK "sharing mode" to "VK_SHARING_MODE_CONCURRENT", which can be slower on non-NVIDIA HW. This approach is used to avoid
@@ -192,13 +196,13 @@ NriStruct(CoreInterface) {
 
         // Copy
         void                (NRI_CALL *CmdCopyBuffer)               (NriRef(CommandBuffer) commandBuffer, NriRef(Buffer) dstBuffer, uint64_t dstOffset, const NriRef(Buffer) srcBuffer, uint64_t srcOffset, uint64_t size);
-        void                (NRI_CALL *CmdCopyTexture)              (NriRef(CommandBuffer) commandBuffer, NriRef(Texture) dstTexture, NriOptional const NriPtr(TextureRegionDesc) dstRegionDesc, const NriRef(Texture) srcTexture, NriOptional const NriPtr(TextureRegionDesc) srcRegionDesc);
-        void                (NRI_CALL *CmdUploadBufferToTexture)    (NriRef(CommandBuffer) commandBuffer, NriRef(Texture) dstTexture, const NriRef(TextureRegionDesc) dstRegionDesc, const NriRef(Buffer) srcBuffer, const NriRef(TextureDataLayoutDesc) srcDataLayoutDesc);
-        void                (NRI_CALL *CmdReadbackTextureToBuffer)  (NriRef(CommandBuffer) commandBuffer, NriRef(Buffer) dstBuffer, const NriRef(TextureDataLayoutDesc) dstDataLayoutDesc, const NriRef(Texture) srcTexture, const NriRef(TextureRegionDesc) srcRegionDesc);
+        void                (NRI_CALL *CmdCopyTexture)              (NriRef(CommandBuffer) commandBuffer, NriRef(Texture) dstTexture, NriOptional const NriPtr(TextureRegionDesc) dstRegion, const NriRef(Texture) srcTexture, NriOptional const NriPtr(TextureRegionDesc) srcRegion);
+        void                (NRI_CALL *CmdUploadBufferToTexture)    (NriRef(CommandBuffer) commandBuffer, NriRef(Texture) dstTexture, const NriRef(TextureRegionDesc) dstRegion, const NriRef(Buffer) srcBuffer, const NriRef(TextureDataLayoutDesc) srcDataLayout);
+        void                (NRI_CALL *CmdReadbackTextureToBuffer)  (NriRef(CommandBuffer) commandBuffer, NriRef(Buffer) dstBuffer, const NriRef(TextureDataLayoutDesc) dstDataLayout, const NriRef(Texture) srcTexture, const NriRef(TextureRegionDesc) srcRegion);
         void                (NRI_CALL *CmdZeroBuffer)               (NriRef(CommandBuffer) commandBuffer, NriRef(Buffer) buffer, uint64_t offset, uint64_t size);
 
         // Resolve
-        void                (NRI_CALL *CmdResolveTexture)           (NriRef(CommandBuffer) commandBuffer, NriRef(Texture) dstTexture, NriOptional const NriPtr(TextureRegionDesc) dstRegionDesc, const NriRef(Texture) srcTexture, NriOptional const NriPtr(TextureRegionDesc) srcRegionDesc); // "features.regionResolve" is needed for region specification
+        void                (NRI_CALL *CmdResolveTexture)           (NriRef(CommandBuffer) commandBuffer, NriRef(Texture) dstTexture, NriOptional const NriPtr(TextureRegionDesc) dstRegion, const NriRef(Texture) srcTexture, NriOptional const NriPtr(TextureRegionDesc) srcRegion); // "features.regionResolve" is needed for region specification
 
         // Clear (potentially slow)
         void                (NRI_CALL *CmdClearStorage)             (NriRef(CommandBuffer) commandBuffer, const NriRef(ClearStorageDesc) clearDesc);
@@ -225,9 +229,10 @@ NriStruct(CoreInterface) {
     void                (NRI_CALL *ResetQueries)                    (NriRef(QueryPool) queryPool, uint32_t offset, uint32_t num); // on host
 
     // Work submission and synchronization
-    void                (NRI_CALL *QueueSubmit)                     (NriRef(Queue) queue, const NriRef(QueueSubmitDesc) queueSubmitDesc); // to device
+    Nri(Result)         (NRI_CALL *QueueSubmit)                     (NriRef(Queue) queue, const NriRef(QueueSubmitDesc) queueSubmitDesc); // to device
+    Nri(Result)         (NRI_CALL *DeviceWaitIdle)                  (NriRef(Device) device);
+    Nri(Result)         (NRI_CALL *QueueWaitIdle)                   (NriRef(Queue) queue);
     void                (NRI_CALL *Wait)                            (NriRef(Fence) fence, uint64_t value); // on host
-    uint64_t            (NRI_CALL *GetFenceValue)                   (NriRef(Fence) fence);
 
     // Command allocator
     void                (NRI_CALL *ResetCommandAllocator)           (NriRef(CommandAllocator) commandAllocator);
@@ -242,7 +247,7 @@ NriStruct(CoreInterface) {
     // Debug name for any object declared as "NriForwardStruct" (skipped for buffers & textures in D3D if they are not bound to a memory)
     void                (NRI_CALL *SetDebugName)                    (NriPtr(Object) object, const char* name);
 
-    // Native objects                                                                                            ___D3D11___________________________|_D3D12_______________________|_VK_________________________________
+    // Native objects                                                                                            ___D3D11 (latest interface)________|_D3D12 (latest interface)____|_VK_________________________________
     void*               (NRI_CALL *GetDeviceNativeObject)           (const NriRef(Device) device);               // ID3D11Device*                   | ID3D12Device*               | VkDevice
     void*               (NRI_CALL *GetQueueNativeObject)            (const NriRef(Queue) queue);                 // -                               | ID3D12CommandQueue*         | VkQueue
     void*               (NRI_CALL *GetCommandBufferNativeObject)    (const NriRef(CommandBuffer) commandBuffer); // ID3D11DeviceContext*            | ID3D12GraphicsCommandList*  | VkCommandBuffer
@@ -250,29 +255,5 @@ NriStruct(CoreInterface) {
     uint64_t            (NRI_CALL *GetTextureNativeObject)          (const NriRef(Texture) texture);             // ID3D11Resource*                 | ID3D12Resource*             | VkImage
     uint64_t            (NRI_CALL *GetDescriptorNativeObject)       (const NriRef(Descriptor) descriptor);       // ID3D11View/ID3D11SamplerState*  | D3D12_CPU_DESCRIPTOR_HANDLE | VkImageView/VkBufferView/VkSampler
 };
-
-// A friendly way to get a supported depth format
-static inline Nri(Format) NriFunc(GetSupportedDepthFormat)(const NriRef(CoreInterface) coreInterface, const NriRef(Device) device, uint32_t minBits, bool stencil) {
-    if (minBits <= 16 && !stencil) {
-        if (NriDeref(coreInterface)->GetFormatSupport(device, NriScopedMember(Format, D16_UNORM)) & NriScopedMember(FormatSupportBits, DEPTH_STENCIL_ATTACHMENT))
-            return NriScopedMember(Format, D16_UNORM);
-    }
-
-    if (minBits <= 24) {
-        if (NriDeref(coreInterface)->GetFormatSupport(device, NriScopedMember(Format, D24_UNORM_S8_UINT)) & NriScopedMember(FormatSupportBits, DEPTH_STENCIL_ATTACHMENT))
-            return NriScopedMember(Format, D24_UNORM_S8_UINT);
-    }
-
-    if (minBits <= 32 && !stencil) {
-        if (NriDeref(coreInterface)->GetFormatSupport(device, NriScopedMember(Format, D32_SFLOAT)) & NriScopedMember(FormatSupportBits, DEPTH_STENCIL_ATTACHMENT))
-            return NriScopedMember(Format, D32_SFLOAT);
-    }
-
-    if (NriDeref(coreInterface)->GetFormatSupport(device, NriScopedMember(Format, D32_SFLOAT_S8_UINT_X24)) & NriScopedMember(FormatSupportBits, DEPTH_STENCIL_ATTACHMENT))
-        return NriScopedMember(Format, D32_SFLOAT_S8_UINT_X24);
-
-    // Should be unreachable
-    return NriScopedMember(Format, UNKNOWN);
-}
 
 NriNamespaceEnd

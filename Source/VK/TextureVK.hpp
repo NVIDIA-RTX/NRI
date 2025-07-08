@@ -19,7 +19,7 @@ Result TextureVK::Create(const TextureDesc& textureDesc) {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateImage(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateImage returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImage");
 
     return Result::SUCCESS;
 }

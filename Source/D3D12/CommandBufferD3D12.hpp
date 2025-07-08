@@ -249,12 +249,12 @@ static inline void ConvertRects(const Rect* in, uint32_t rectNum, D3D12_RECT* ou
 Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D12CommandAllocator* commandAllocator) {
     ComPtr<ID3D12GraphicsCommandListBest> graphicsCommandList;
     HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&graphicsCommandList);
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommandList()");
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommandList");
 
     m_Version = QueryLatestGraphicsCommandList(graphicsCommandList, m_GraphicsCommandList);
 
     hr = m_GraphicsCommandList->Close();
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::Close()");
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::Close");
 
     m_CommandAllocator = commandAllocator;
 
@@ -274,7 +274,7 @@ Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferDes
 
 NRI_INLINE Result CommandBufferD3D12::Begin(const DescriptorPool* descriptorPool) {
     HRESULT hr = m_GraphicsCommandList->Reset(m_CommandAllocator, nullptr);
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::Reset()");
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::Reset");
 
     if (descriptorPool)
         SetDescriptorPool(*descriptorPool);
@@ -579,48 +579,48 @@ NRI_INLINE void CommandBufferD3D12::CopyBuffer(Buffer& dstBuffer, uint64_t dstOf
     m_GraphicsCommandList->CopyBufferRegion((BufferD3D12&)dstBuffer, dstOffset, (BufferD3D12&)srcBuffer, srcOffset, size);
 }
 
-NRI_INLINE void CommandBufferD3D12::CopyTexture(Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
+NRI_INLINE void CommandBufferD3D12::CopyTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion) {
     const TextureD3D12& dst = (TextureD3D12&)dstTexture;
     const TextureD3D12& src = (TextureD3D12&)srcTexture;
 
-    bool isWholeResource = !dstRegionDesc && !srcRegionDesc;
+    bool isWholeResource = !dstRegion && !srcRegion;
     if (isWholeResource)
         m_GraphicsCommandList->CopyResource(dst, src);
     else {
         TextureRegionDesc wholeResource = {};
-        if (!srcRegionDesc)
-            srcRegionDesc = &wholeResource;
-        if (!dstRegionDesc)
-            dstRegionDesc = &wholeResource;
+        if (!srcRegion)
+            srcRegion = &wholeResource;
+        if (!dstRegion)
+            dstRegion = &wholeResource;
 
         D3D12_TEXTURE_COPY_LOCATION dstTextureCopyLocation = {
             dst,
             D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-            dst.GetSubresourceIndex(dstRegionDesc->layerOffset, dstRegionDesc->mipOffset, dstRegionDesc->planes),
+            dst.GetSubresourceIndex(dstRegion->layerOffset, dstRegion->mipOffset, dstRegion->planes),
         };
 
         D3D12_TEXTURE_COPY_LOCATION srcTextureCopyLocation = {
             src,
             D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-            src.GetSubresourceIndex(srcRegionDesc->layerOffset, srcRegionDesc->mipOffset, srcRegionDesc->planes),
+            src.GetSubresourceIndex(srcRegion->layerOffset, srcRegion->mipOffset, srcRegion->planes),
         };
 
         const uint32_t size[3] = {
-            srcRegionDesc->width == WHOLE_SIZE ? src.GetSize(0, srcRegionDesc->mipOffset) : srcRegionDesc->width,
-            srcRegionDesc->height == WHOLE_SIZE ? src.GetSize(1, srcRegionDesc->mipOffset) : srcRegionDesc->height,
-            srcRegionDesc->depth == WHOLE_SIZE ? src.GetSize(2, srcRegionDesc->mipOffset) : srcRegionDesc->depth,
+            srcRegion->width == WHOLE_SIZE ? src.GetSize(0, srcRegion->mipOffset) : srcRegion->width,
+            srcRegion->height == WHOLE_SIZE ? src.GetSize(1, srcRegion->mipOffset) : srcRegion->height,
+            srcRegion->depth == WHOLE_SIZE ? src.GetSize(2, srcRegion->mipOffset) : srcRegion->depth,
         };
 
         D3D12_BOX box = {
-            srcRegionDesc->x,
-            srcRegionDesc->y,
-            srcRegionDesc->z,
-            srcRegionDesc->x + size[0],
-            srcRegionDesc->y + size[1],
-            srcRegionDesc->z + size[2],
+            srcRegion->x,
+            srcRegion->y,
+            srcRegion->z,
+            srcRegion->x + size[0],
+            srcRegion->y + size[1],
+            srcRegion->z + size[2],
         };
 
-        m_GraphicsCommandList->CopyTextureRegion(&dstTextureCopyLocation, dstRegionDesc->x, dstRegionDesc->y, dstRegionDesc->z, &srcTextureCopyLocation, &box);
+        m_GraphicsCommandList->CopyTextureRegion(&dstTextureCopyLocation, dstRegion->x, dstRegion->y, dstRegion->z, &srcTextureCopyLocation, &box);
     }
 }
 
@@ -680,115 +680,97 @@ NRI_INLINE void CommandBufferD3D12::ZeroBuffer(Buffer& buffer, uint64_t offset, 
 #endif
 }
 
-NRI_INLINE void CommandBufferD3D12::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
+NRI_INLINE void CommandBufferD3D12::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion) {
     const TextureD3D12& dst = (TextureD3D12&)dstTexture;
     const TextureD3D12& src = (TextureD3D12&)srcTexture;
     const TextureDesc& dstDesc = dst.GetDesc();
     const DxgiFormat& dstFormat = GetDxgiFormat(dstDesc.format);
 
-    bool isWholeResource = !dstRegionDesc && !srcRegionDesc;
+    bool isWholeResource = !dstRegion && !srcRegion;
     if (isWholeResource || m_Version < 1) {
         for (Dim_t layer = 0; layer < dstDesc.layerNum; layer++) {
-            for (Mip_t mip = 0; mip < dstDesc.mipNum; mip++) {
+            for (Dim_t mip = 0; mip < dstDesc.mipNum; mip++) {
                 uint32_t subresource = dst.GetSubresourceIndex(layer, mip, PlaneBits::ALL);
                 m_GraphicsCommandList->ResolveSubresource(dst, subresource, src, subresource, dstFormat.typed);
             }
         }
     } else {
         TextureRegionDesc wholeResource = {};
-        if (!srcRegionDesc)
-            srcRegionDesc = &wholeResource;
-        if (!dstRegionDesc)
-            dstRegionDesc = &wholeResource;
+        if (!srcRegion)
+            srcRegion = &wholeResource;
+        if (!dstRegion)
+            dstRegion = &wholeResource;
 
-        uint32_t dstSubresource = dst.GetSubresourceIndex(dstRegionDesc->layerOffset, dstRegionDesc->mipOffset, dstRegionDesc->planes);
-        uint32_t srcSubresource = src.GetSubresourceIndex(srcRegionDesc->layerOffset, srcRegionDesc->mipOffset, srcRegionDesc->planes);
+        uint32_t dstSubresource = dst.GetSubresourceIndex(dstRegion->layerOffset, dstRegion->mipOffset, dstRegion->planes);
+        uint32_t srcSubresource = src.GetSubresourceIndex(srcRegion->layerOffset, srcRegion->mipOffset, srcRegion->planes);
 
         D3D12_RECT srcRect = {
-            srcRegionDesc->x,
-            srcRegionDesc->y,
-            srcRegionDesc->width,
-            srcRegionDesc->height,
+            srcRegion->x,
+            srcRegion->y,
+            srcRegion->width,
+            srcRegion->height,
         };
 
-        m_GraphicsCommandList->ResolveSubresourceRegion(dst, dstSubresource, dstRegionDesc->x, dstRegionDesc->y, src, srcSubresource, &srcRect, dstFormat.typed, D3D12_RESOLVE_MODE_AVERAGE);
+        m_GraphicsCommandList->ResolveSubresourceRegion(dst, dstSubresource, dstRegion->x, dstRegion->y, src, srcSubresource, &srcRect, dstFormat.typed, D3D12_RESOLVE_MODE_AVERAGE);
     }
 }
 
-NRI_INLINE void CommandBufferD3D12::UploadBufferToTexture(Texture& dstTexture, const TextureRegionDesc& dstRegionDesc, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayoutDesc) {
+NRI_INLINE void CommandBufferD3D12::UploadBufferToTexture(Texture& dstTexture, const TextureRegionDesc& dstRegion, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayout) {
     const TextureD3D12& dst = (TextureD3D12&)dstTexture;
     const TextureDesc& dstDesc = dst.GetDesc();
 
     D3D12_TEXTURE_COPY_LOCATION dstTextureCopyLocation = {
         dst,
         D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-        dst.GetSubresourceIndex(dstRegionDesc.layerOffset, dstRegionDesc.mipOffset, dstRegionDesc.planes),
+        dst.GetSubresourceIndex(dstRegion.layerOffset, dstRegion.mipOffset, dstRegion.planes),
     };
 
     const uint32_t size[3] = {
-        dstRegionDesc.width == WHOLE_SIZE ? dst.GetSize(0, dstRegionDesc.mipOffset) : dstRegionDesc.width,
-        dstRegionDesc.height == WHOLE_SIZE ? dst.GetSize(1, dstRegionDesc.mipOffset) : dstRegionDesc.height,
-        dstRegionDesc.depth == WHOLE_SIZE ? dst.GetSize(2, dstRegionDesc.mipOffset) : dstRegionDesc.depth,
+        dstRegion.width == WHOLE_SIZE ? dst.GetSize(0, dstRegion.mipOffset) : dstRegion.width,
+        dstRegion.height == WHOLE_SIZE ? dst.GetSize(1, dstRegion.mipOffset) : dstRegion.height,
+        dstRegion.depth == WHOLE_SIZE ? dst.GetSize(2, dstRegion.mipOffset) : dstRegion.depth,
     };
 
     D3D12_TEXTURE_COPY_LOCATION srcTextureCopyLocation = {};
     srcTextureCopyLocation.pResource = (BufferD3D12&)srcBuffer;
     srcTextureCopyLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-    srcTextureCopyLocation.PlacedFootprint.Offset = srcDataLayoutDesc.offset;
+    srcTextureCopyLocation.PlacedFootprint.Offset = srcDataLayout.offset;
     srcTextureCopyLocation.PlacedFootprint.Footprint.Format = GetDxgiFormat(dstDesc.format).typeless;
     srcTextureCopyLocation.PlacedFootprint.Footprint.Width = size[0];
     srcTextureCopyLocation.PlacedFootprint.Footprint.Height = size[1];
     srcTextureCopyLocation.PlacedFootprint.Footprint.Depth = size[2];
-    srcTextureCopyLocation.PlacedFootprint.Footprint.RowPitch = srcDataLayoutDesc.rowPitch;
+    srcTextureCopyLocation.PlacedFootprint.Footprint.RowPitch = srcDataLayout.rowPitch;
 
-    D3D12_BOX box = {
-        dstRegionDesc.x,
-        dstRegionDesc.y,
-        dstRegionDesc.z,
-        dstRegionDesc.x + size[0],
-        dstRegionDesc.y + size[1],
-        dstRegionDesc.z + size[2],
-    };
-
-    m_GraphicsCommandList->CopyTextureRegion(&dstTextureCopyLocation, dstRegionDesc.x, dstRegionDesc.y, dstRegionDesc.z, &srcTextureCopyLocation, &box);
+    m_GraphicsCommandList->CopyTextureRegion(&dstTextureCopyLocation, dstRegion.x, dstRegion.y, dstRegion.z, &srcTextureCopyLocation, nullptr);
 }
 
-NRI_INLINE void CommandBufferD3D12::ReadbackTextureToBuffer(Buffer& dstBuffer, const TextureDataLayoutDesc& dstDataLayoutDesc, const Texture& srcTexture, const TextureRegionDesc& srcRegionDesc) {
+NRI_INLINE void CommandBufferD3D12::ReadbackTextureToBuffer(Buffer& dstBuffer, const TextureDataLayoutDesc& dstDataLayout, const Texture& srcTexture, const TextureRegionDesc& srcRegion) {
     const TextureD3D12& src = (TextureD3D12&)srcTexture;
     const TextureDesc& srcDesc = src.GetDesc();
 
     D3D12_TEXTURE_COPY_LOCATION srcTextureCopyLocation = {
         src,
         D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-        src.GetSubresourceIndex(srcRegionDesc.layerOffset, srcRegionDesc.mipOffset, srcRegionDesc.planes),
+        src.GetSubresourceIndex(srcRegion.layerOffset, srcRegion.mipOffset, srcRegion.planes),
     };
 
     D3D12_TEXTURE_COPY_LOCATION dstTextureCopyLocation = {};
     dstTextureCopyLocation.pResource = (BufferD3D12&)dstBuffer;
     dstTextureCopyLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-    dstTextureCopyLocation.PlacedFootprint.Offset = dstDataLayoutDesc.offset;
+    dstTextureCopyLocation.PlacedFootprint.Offset = dstDataLayout.offset;
     dstTextureCopyLocation.PlacedFootprint.Footprint.Format = GetDxgiFormat(srcDesc.format).typeless;
-    dstTextureCopyLocation.PlacedFootprint.Footprint.Width = srcRegionDesc.width;
-    dstTextureCopyLocation.PlacedFootprint.Footprint.Height = srcRegionDesc.height;
-    dstTextureCopyLocation.PlacedFootprint.Footprint.Depth = srcRegionDesc.depth;
-    dstTextureCopyLocation.PlacedFootprint.Footprint.RowPitch = dstDataLayoutDesc.rowPitch;
+    dstTextureCopyLocation.PlacedFootprint.Footprint.Width = srcRegion.width;
+    dstTextureCopyLocation.PlacedFootprint.Footprint.Height = srcRegion.height;
+    dstTextureCopyLocation.PlacedFootprint.Footprint.Depth = srcRegion.depth;
+    dstTextureCopyLocation.PlacedFootprint.Footprint.RowPitch = dstDataLayout.rowPitch;
 
     const uint32_t size[3] = {
-        srcRegionDesc.width == WHOLE_SIZE ? src.GetSize(0, srcRegionDesc.mipOffset) : srcRegionDesc.width,
-        srcRegionDesc.height == WHOLE_SIZE ? src.GetSize(1, srcRegionDesc.mipOffset) : srcRegionDesc.height,
-        srcRegionDesc.depth == WHOLE_SIZE ? src.GetSize(2, srcRegionDesc.mipOffset) : srcRegionDesc.depth,
+        srcRegion.width == WHOLE_SIZE ? src.GetSize(0, srcRegion.mipOffset) : srcRegion.width,
+        srcRegion.height == WHOLE_SIZE ? src.GetSize(1, srcRegion.mipOffset) : srcRegion.height,
+        srcRegion.depth == WHOLE_SIZE ? src.GetSize(2, srcRegion.mipOffset) : srcRegion.depth,
     };
 
-    D3D12_BOX box = {
-        srcRegionDesc.x,
-        srcRegionDesc.y,
-        srcRegionDesc.z,
-        srcRegionDesc.x + size[0],
-        srcRegionDesc.y + size[1],
-        srcRegionDesc.z + size[2],
-    };
-
-    m_GraphicsCommandList->CopyTextureRegion(&dstTextureCopyLocation, 0, 0, 0, &srcTextureCopyLocation, &box);
+    m_GraphicsCommandList->CopyTextureRegion(&dstTextureCopyLocation, 0, 0, 0, &srcTextureCopyLocation, nullptr);
 }
 
 NRI_INLINE void CommandBufferD3D12::Dispatch(const DispatchDesc& dispatchDesc) {
@@ -803,7 +785,7 @@ NRI_INLINE void CommandBufferD3D12::DispatchIndirect(const Buffer& buffer, uint6
 
 NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierGroupDesc& barrierGroupDesc) {
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
-    if (m_Device.GetDesc().features.enchancedBarrier) { // Enhanced barriers
+    if (m_Device.GetDesc().features.enhancedBarriers) {
         // Count
         uint32_t barrierNum = barrierGroupDesc.globalNum + barrierGroupDesc.bufferNum + barrierGroupDesc.textureNum;
         if (!barrierNum)
@@ -879,9 +861,9 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierGroupDesc& barrierGroup
                 out.LayoutAfter = GetBarrierLayout(in.after.layout);
                 out.pResource = texture;
                 out.Subresources.IndexOrFirstMipLevel = in.mipOffset;
-                out.Subresources.NumMipLevels = in.mipNum == REMAINING_MIPS ? desc.mipNum : in.mipNum;
+                out.Subresources.NumMipLevels = in.mipNum == REMAINING ? desc.mipNum : in.mipNum;
                 out.Subresources.FirstArraySlice = in.layerOffset;
-                out.Subresources.NumArraySlices = in.layerNum == REMAINING_LAYERS ? desc.layerNum : in.layerNum;
+                out.Subresources.NumArraySlices = in.layerNum == REMAINING ? desc.layerNum : in.layerNum;
 
                 const FormatProps& formatProps = GetFormatProps(desc.format);
                 if (in.planes == PlaneBits::ALL || (in.planes & PlaneBits::STENCIL)) { // fallthrough
@@ -914,8 +896,8 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierGroupDesc& barrierGroup
             const TextureBarrierDesc& barrierDesc = barrierGroupDesc.textures[i];
             const TextureD3D12& texture = *(TextureD3D12*)barrierDesc.texture;
             const TextureDesc& textureDesc = texture.GetDesc();
-            const Dim_t layerNum = barrierDesc.layerNum == REMAINING_LAYERS ? textureDesc.layerNum : barrierDesc.layerNum;
-            const Mip_t mipNum = barrierDesc.mipNum == REMAINING_MIPS ? textureDesc.mipNum : barrierDesc.mipNum;
+            const Dim_t layerNum = barrierDesc.layerNum == REMAINING ? textureDesc.layerNum : barrierDesc.layerNum;
+            const Dim_t mipNum = barrierDesc.mipNum == REMAINING ? textureDesc.mipNum : barrierDesc.mipNum;
 
             if (barrierDesc.layerOffset == 0 && layerNum == textureDesc.layerNum && barrierDesc.mipOffset == 0 && mipNum == textureDesc.mipNum)
                 barrierNum++;
@@ -952,14 +934,14 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierGroupDesc& barrierGroup
             const TextureBarrierDesc& barrierDesc = barrierGroupDesc.textures[i];
             const TextureD3D12& texture = *(TextureD3D12*)barrierDesc.texture;
             const TextureDesc& textureDesc = texture.GetDesc();
-            const Dim_t layerNum = barrierDesc.layerNum == REMAINING_LAYERS ? textureDesc.layerNum : barrierDesc.layerNum;
-            const Mip_t mipNum = barrierDesc.mipNum == REMAINING_MIPS ? textureDesc.mipNum : barrierDesc.mipNum;
+            const Dim_t layerNum = barrierDesc.layerNum == REMAINING ? textureDesc.layerNum : barrierDesc.layerNum;
+            const Dim_t mipNum = barrierDesc.mipNum == REMAINING ? textureDesc.mipNum : barrierDesc.mipNum;
 
             if (barrierDesc.layerOffset == 0 && layerNum == textureDesc.layerNum && barrierDesc.mipOffset == 0 && mipNum == textureDesc.mipNum && barrierDesc.planes == PlaneBits::ALL)
                 AddResourceBarrier(commandListType, texture, barrierDesc.before.access, barrierDesc.after.access, *ptr++, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
             else {
                 for (Dim_t layerOffset = barrierDesc.layerOffset; layerOffset < barrierDesc.layerOffset + layerNum; layerOffset++) {
-                    for (Mip_t mipOffset = barrierDesc.mipOffset; mipOffset < barrierDesc.mipOffset + mipNum; mipOffset++) {
+                    for (Dim_t mipOffset = barrierDesc.mipOffset; mipOffset < barrierDesc.mipOffset + mipNum; mipOffset++) {
                         uint32_t subresource = texture.GetSubresourceIndex(layerOffset, mipOffset, barrierDesc.planes);
                         AddResourceBarrier(commandListType, texture, barrierDesc.before.access, barrierDesc.after.access, *ptr++, subresource);
                     }
@@ -983,7 +965,7 @@ NRI_INLINE void CommandBufferD3D12::ResetQueries(QueryPool& queryPool, uint32_t,
         // TODO: "bufferForAccelerationStructuresSizes" is completely hidden from a user, transition needs to be done under the hood.
         // "ResetQueries" is a good indicator that next call will be "CmdWrite*Sizes" where UAV state is needed
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
-        if (m_Device.GetDesc().features.enchancedBarrier) { // Enhanced barriers
+        if (m_Device.GetDesc().features.enhancedBarriers) {
             D3D12_BUFFER_BARRIER barrier = {};
             barrier.SyncBefore = D3D12_BARRIER_SYNC_COPY;
             barrier.SyncAfter = D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO;
@@ -1035,7 +1017,7 @@ NRI_INLINE void CommandBufferD3D12::CopyQueries(const QueryPool& queryPool, uint
         // TODO: "bufferForAccelerationStructuresSizes" is completely hidden from a user, transition needs to be done under the hood.
         // Let's naively assume that "CopyQueries" can be called only once after potentially multiple "CmdWrite*Sizes"
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
-        if (m_Device.GetDesc().features.enchancedBarrier) { // Enhanced barriers
+        if (m_Device.GetDesc().features.enhancedBarriers) {
             D3D12_BUFFER_BARRIER barrier = {};
             barrier.SyncBefore = D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO;
             barrier.SyncAfter = D3D12_BARRIER_SYNC_COPY;

@@ -178,21 +178,39 @@ typedef nri::AllocationCallbacks AllocationCallbacks;
 #define NRI_STRINGIFY(token)  NRI_STRINGIFY_(token)
 
 // Message reporting
-#define RETURN_ON_BAD_HRESULT(deviceBase, hr, format) \
-    if (FAILED(hr)) { \
-        (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, "%s: " format " failed, result = 0x%08X!", __FUNCTION__, hr); \
+#define RETURN_ON_BAD_HRESULT(deviceBase, hr, funcName) \
+    if (hr < 0) { \
+        (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, hr, hr); \
         return GetResultFromHRESULT(hr); \
+    }
+
+#define RETURN_VOID_ON_BAD_HRESULT(deviceBase, hr, funcName) \
+    if (hr < 0) { \
+        (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, hr, hr); \
+        return; \
+    }
+
+#define RETURN_ON_BAD_VKRESULT(deviceBase, vkResult, funcName) \
+    if (vkResult < 0) { \
+        (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, vkResult, vkResult); \
+        return GetResultFromVkResult(vkResult); \
+    }
+
+#define RETURN_VOID_ON_BAD_VKRESULT(deviceBase, vkResult, funcName) \
+    if (vkResult < 0) { \
+        (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, vkResult, vkResult); \
+        return; \
+    }
+
+#define REPORT_ERROR_ON_BAD_NVAPI_STATUS(deviceBase, expression) \
+    if ((expression) != 0) { \
+        (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, "%s: " NRI_STRINGIFY(expression) " failed!", __FUNCTION__); \
     }
 
 #define RETURN_ON_FAILURE(deviceBase, condition, returnCode, format, ...) \
     if (!(condition)) { \
         (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, "%s: " format, __FUNCTION__, ##__VA_ARGS__); \
         return returnCode; \
-    }
-
-#define REPORT_ERROR_ON_BAD_NVAPI_STATUS(deviceBase, expression) \
-    if ((expression) != 0) { \
-        (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, "%s: " NRI_STRINGIFY(expression) " failed!", __FUNCTION__); \
     }
 
 #define REPORT_INFO(deviceBase, format, ...)    (deviceBase)->ReportMessage(Message::INFO, __FILE__, __LINE__, format, ##__VA_ARGS__)
@@ -315,7 +333,7 @@ inline Vendor GetVendorFromID(uint32_t vendorID) {
     return Vendor::UNKNOWN;
 }
 
-inline Dim_t GetDimension(GraphicsAPI api, const TextureDesc& textureDesc, Dim_t dimensionIndex, Mip_t mip) {
+inline Dim_t GetDimension(GraphicsAPI api, const TextureDesc& textureDesc, Dim_t dimensionIndex, Dim_t mip) {
     assert(dimensionIndex < 3);
 
     Dim_t dim = textureDesc.depth;
@@ -341,7 +359,7 @@ inline TextureDesc FixTextureDesc(const TextureDesc& textureDesc) {
     TextureDesc desc = textureDesc;
     desc.height = std::max(desc.height, (Dim_t)1);
     desc.depth = std::max(desc.depth, (Dim_t)1);
-    desc.mipNum = std::max(desc.mipNum, (Mip_t)1);
+    desc.mipNum = std::max(desc.mipNum, (Dim_t)1);
     desc.layerNum = std::max(desc.layerNum, (Dim_t)1);
     desc.sampleNum = std::max(desc.sampleNum, (Sample_t)1);
 
@@ -351,9 +369,6 @@ inline TextureDesc FixTextureDesc(const TextureDesc& textureDesc) {
 // Strings
 void ConvertCharToWchar(const char* in, wchar_t* out, size_t outLen);
 void ConvertWcharToChar(const wchar_t* in, char* out, size_t outLen);
-
-// Callbacks setup
-void CheckAndSetDefaultCallbacks(CallbackInterface& callbackInterface);
 
 // Swap chain ID
 uint64_t GetSwapChainId();

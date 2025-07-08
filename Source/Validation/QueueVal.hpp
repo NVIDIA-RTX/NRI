@@ -12,7 +12,7 @@ NRI_INLINE void QueueVal::Annotation(const char* name, uint32_t bgra) {
     GetCoreInterfaceImpl().QueueAnnotation(*GetImpl(), name, bgra);
 }
 
-NRI_INLINE void QueueVal::Submit(const QueueSubmitDesc& queueSubmitDesc, const SwapChain* swapChain) {
+NRI_INLINE Result QueueVal::Submit(const QueueSubmitDesc& queueSubmitDesc, const SwapChain* swapChain) {
     auto queueSubmitDescImpl = queueSubmitDesc;
 
     Scratch<FenceSubmitDesc> waitFences = AllocateScratch(m_Device, FenceSubmitDesc, queueSubmitDesc.waitFenceNum);
@@ -36,7 +36,12 @@ NRI_INLINE void QueueVal::Submit(const QueueSubmitDesc& queueSubmitDesc, const S
 
     if (swapChain) {
         SwapChain* swapChainImpl = NRI_GET_IMPL(SwapChain, swapChain);
-        m_Device.GetLowLatencyInterfaceImpl().QueueSubmitTrackable(*GetImpl(), queueSubmitDescImpl, *swapChainImpl);
+
+        return m_Device.GetLowLatencyInterfaceImpl().QueueSubmitTrackable(*GetImpl(), queueSubmitDescImpl, *swapChainImpl);
     } else
-        GetCoreInterfaceImpl().QueueSubmit(*GetImpl(), queueSubmitDescImpl);
+        return GetCoreInterfaceImpl().QueueSubmit(*GetImpl(), queueSubmitDescImpl);
+}
+
+NRI_INLINE Result QueueVal::WaitIdle() {
+    return GetCoreInterfaceImpl().QueueWaitIdle(*GetImpl());
 }

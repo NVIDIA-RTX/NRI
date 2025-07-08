@@ -44,7 +44,7 @@ NRI_INLINE void QueueVK::Annotation(const char* name, uint32_t bgra) {
         vk.QueueInsertDebugUtilsLabelEXT(m_Handle, &info);
 }
 
-NRI_INLINE void QueueVK::Submit(const QueueSubmitDesc& queueSubmitDesc, const SwapChain* swapChain) {
+NRI_INLINE Result QueueVK::Submit(const QueueSubmitDesc& queueSubmitDesc, const SwapChain* swapChain) {
     ExclusiveScope lock(m_Lock);
 
     Scratch<VkSemaphoreSubmitInfo> waitSemaphores = AllocateScratch(m_Device, VkSemaphoreSubmitInfo, queueSubmitDesc.waitFenceNum);
@@ -85,15 +85,17 @@ NRI_INLINE void QueueVK::Submit(const QueueSubmitDesc& queueSubmitDesc, const Sw
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.QueueSubmit2(m_Handle, 1, &submitInfo, VK_NULL_HANDLE);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, ReturnVoid(), "vkQueueSubmit returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "QueueSubmit2");
+
+    return Result::SUCCESS;
 }
 
-NRI_INLINE Result QueueVK::WaitForIdle() {
+NRI_INLINE Result QueueVK::WaitIdle() {
     ExclusiveScope lock(m_Lock);
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.QueueWaitIdle(m_Handle);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkQueueWaitIdle returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "QueueWaitIdle");
 
     return Result::SUCCESS;
 }

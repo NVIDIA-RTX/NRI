@@ -44,8 +44,8 @@ struct QueueVK final : public DebugNameBase {
     void BeginAnnotation(const char* name, uint32_t bgra);
     void EndAnnotation();
     void Annotation(const char* name, uint32_t bgra);
-    void Submit(const QueueSubmitDesc& queueSubmitDesc, const SwapChain* swapChain);
-    Result WaitForIdle();
+    Result Submit(const QueueSubmitDesc& queueSubmitDesc, const SwapChain* swapChain);
+    Result WaitIdle();
 
 private:
     DeviceVK& m_Device;

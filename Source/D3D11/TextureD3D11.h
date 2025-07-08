@@ -41,7 +41,7 @@ struct TextureD3D11 final : public DebugNameBase {
         return mipOffset + layerOffset * m_Desc.mipNum;
     }
 
-    inline Dim_t GetSize(Dim_t dimensionIndex, Mip_t mip = 0) const {
+    inline Dim_t GetSize(Dim_t dimensionIndex, Dim_t mip = 0) const {
         return GetDimension(GraphicsAPI::D3D11, m_Desc, dimensionIndex, mip);
     }
 

@@ -50,8 +50,8 @@ DeviceD3D11::~DeviceD3D11() {
 #endif
 
     for (auto& queueFamily : m_QueueFamilies) {
-        for (uint32_t i = 0; i < queueFamily.size(); i++)
-            Destroy<QueueD3D11>(queueFamily[i]);
+        for (auto queue : queueFamily)
+            Destroy<QueueD3D11>(queue);
     }
 
     DeleteCriticalSection(&m_CriticalSection);
@@ -75,15 +75,15 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         RETURN_ON_BAD_HRESULT(this, hr, "QueryInterface(IDXGIDevice)");
 
         hr = dxgiDevice->GetAdapter(&m_Adapter);
-        RETURN_ON_BAD_HRESULT(this, hr, "IDXGIDevice::GetAdapter()");
+        RETURN_ON_BAD_HRESULT(this, hr, "IDXGIDevice::GetAdapter");
     } else {
         ComPtr<IDXGIFactory4> dxgiFactory;
         HRESULT hr = CreateDXGIFactory2(desc.enableGraphicsAPIValidation ? DXGI_CREATE_FACTORY_DEBUG : 0, IID_PPV_ARGS(&dxgiFactory));
-        RETURN_ON_BAD_HRESULT(this, hr, "CreateDXGIFactory2()");
+        RETURN_ON_BAD_HRESULT(this, hr, "CreateDXGIFactory2");
 
         LUID luid = *(LUID*)&m_Desc.adapterDesc.luid;
         hr = dxgiFactory->EnumAdapterByLuid(luid, IID_PPV_ARGS(&m_Adapter));
-        RETURN_ON_BAD_HRESULT(this, hr, "IDXGIFactory4::EnumAdapterByLuid()");
+        RETURN_ON_BAD_HRESULT(this, hr, "IDXGIFactory4::EnumAdapterByLuid");
     }
 
     // Extensions
@@ -138,12 +138,12 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         } else {
 #endif
             HRESULT hr = D3D11CreateDevice(m_Adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags, levels, levelNum, D3D11_SDK_VERSION, (ID3D11Device**)&deviceTemp, nullptr, nullptr);
-            if (flags && (uint32_t)hr == 0x887a002d) {
-                // If Debug Layer is not available, try without D3D11_CREATE_DEVICE_DEBUG
-                hr = D3D11CreateDevice(m_Adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, levels, levelNum, D3D11_SDK_VERSION, (ID3D11Device**)&deviceTemp, nullptr, nullptr);
-            }
 
-            RETURN_ON_BAD_HRESULT(this, hr, "D3D11CreateDevice()");
+            // If Debug Layer is not available, try without D3D11_CREATE_DEVICE_DEBUG
+            if (flags && hr == DXGI_ERROR_SDK_COMPONENT_MISSING)                
+                hr = D3D11CreateDevice(m_Adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, levels, levelNum, D3D11_SDK_VERSION, (ID3D11Device**)&deviceTemp, nullptr, nullptr);
+
+            RETURN_ON_BAD_HRESULT(this, hr, "D3D11CreateDevice");
 
 #if NRI_ENABLE_D3D_EXTENSIONS
             if (HasNvExt()) {
@@ -172,10 +172,10 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
         if (SUCCEEDED(hr)) {
             hr = pInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
-            RETURN_ON_BAD_HRESULT(this, hr, "ID3D11InfoQueue::SetBreakOnSeverity()");
+            RETURN_ON_BAD_HRESULT(this, hr, "ID3D11InfoQueue::SetBreakOnSeverity");
 
             hr = pInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
-            RETURN_ON_BAD_HRESULT(this, hr, "ID3D11InfoQueue::SetBreakOnSeverity()");
+            RETURN_ON_BAD_HRESULT(this, hr, "ID3D11InfoQueue::SetBreakOnSeverity");
 
             // TODO: this code is currently needed to disable known false-positive errors reported by the debug layer
             D3D11_MESSAGE_ID disableMessageIDs[] = {
@@ -187,7 +187,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
             filter.DenyList.pIDList = disableMessageIDs;
             filter.DenyList.NumIDs = GetCountOf(disableMessageIDs);
             hr = pInfoQueue->AddStorageFilterEntries(&filter);
-            RETURN_ON_BAD_HRESULT(this, hr, "ID3D11InfoQueue::AddStorageFilterEntries()");
+            RETURN_ON_BAD_HRESULT(this, hr, "ID3D11InfoQueue::AddStorageFilterEntries");
         }
     }
 
@@ -257,7 +257,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         data.pSysMem = zeros;
 
         hr = m_Device->CreateBuffer(&zeroBufferDesc, nullptr, &m_ZeroBuffer);
-        RETURN_ON_BAD_HRESULT(this, hr, "ID3D11Device::CreateBuffer()");
+        RETURN_ON_BAD_HRESULT(this, hr, "ID3D11Device::CreateBuffer");
 
         allocator.Free(allocator.userArg, zeros);
     }
@@ -455,9 +455,9 @@ void DeviceD3D11::FillDesc() {
     m_Desc.features.lowLatency = HasNvExt();
 
     m_Desc.features.textureFilterMinMax = options1.MinMaxFiltering != 0;
-    m_Desc.features.logicFunc = options.OutputMergerLogicOp != 0;
+    m_Desc.features.logicOp = options.OutputMergerLogicOp != 0;
     m_Desc.features.lineSmoothing = true;
-    m_Desc.features.enchancedBarrier = true;  // don't care, but advertise support
+    m_Desc.features.enhancedBarriers = true;  // don't care, but advertise support
     m_Desc.features.waitableSwapChain = true; // TODO: swap chain version >= 2?
     m_Desc.features.pipelineStatistics = true;
 
@@ -602,8 +602,18 @@ NRI_INLINE Result DeviceD3D11::GetQueue(QueueType queueType, uint32_t queueIndex
     return Result::INVALID_ARGUMENT;
 }
 
-NRI_INLINE Result DeviceD3D11::CreateCommandAllocator(const Queue&, CommandAllocator*& commandAllocator) {
-    commandAllocator = (CommandAllocator*)Allocate<CommandAllocatorD3D11>(GetAllocationCallbacks(), *this);
+NRI_INLINE Result DeviceD3D11::WaitIdle() {
+    QueueD3D11* anyQueue = nullptr;
+    for (auto& queueFamily : m_QueueFamilies) {
+        if (!queueFamily.empty()) {
+            anyQueue = queueFamily[0];
+            break;
+        }
+    }
+
+    // Can wait only once on any queue, because there are no real queues in D3D11
+    if (anyQueue)
+        return anyQueue->WaitIdle();
 
     return Result::SUCCESS;
 }

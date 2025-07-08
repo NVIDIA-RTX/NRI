@@ -65,7 +65,7 @@ Result DeviceVK::CreateVma() {
         allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT;
 
     VkResult vkResult = vmaCreateAllocator(&allocatorCreateInfo, &m_Vma);
-    RETURN_ON_FAILURE(this, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vmaCreateAllocator returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(this, vkResult, "vmaCreateAllocator");
 
     return Result::SUCCESS;
 }
@@ -118,7 +118,7 @@ Result BufferVK::Create(const AllocateBufferDesc& bufferDesc) {
 
     VmaAllocationInfo allocationInfo = {};
     VkResult vkResult = vmaCreateBufferWithAlignment(m_Device.GetVma(), &bufferCreateInfo, &allocationCreateInfo, alignment, &m_Handle, &m_VmaAllocation, &allocationInfo);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vmaCreateBufferWithAlignment returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vmaCreateBufferWithAlignment");
 
     // Mapped memory
     if (IsHostVisibleMemory(bufferDesc.memoryLocation)) {
@@ -127,7 +127,7 @@ Result BufferVK::Create(const AllocateBufferDesc& bufferDesc) {
 
         uint32_t memoryTypeIndex = 0;
         vkResult = vmaFindMemoryTypeIndexForBufferInfo(m_Device.GetVma(), &bufferCreateInfo, &allocationCreateInfo, &memoryTypeIndex);
-        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vmaFindMemoryTypeIndexForBufferInfo returned %d", (int32_t)vkResult);
+        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vmaFindMemoryTypeIndexForBufferInfo");
 
         if (!m_Device.IsHostCoherentMemory((MemoryTypeIndex)memoryTypeIndex))
             m_NonCoherentDeviceMemory = allocationInfo.deviceMemory;
@@ -166,7 +166,7 @@ Result TextureVK::Create(const AllocateTextureDesc& textureDesc) {
         allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 
     VkResult vkResult = vmaCreateImage(m_Device.GetVma(), &imageCreateInfo, &allocationCreateInfo, &m_Handle, &m_VmaAllocation, nullptr);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vmaCreateImage returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vmaCreateImage");
 
     m_Desc = FixTextureDesc(textureDesc.desc);
 

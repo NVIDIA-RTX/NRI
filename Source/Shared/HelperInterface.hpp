@@ -203,7 +203,7 @@ Result HelperDataUpload::UploadTextures(const TextureUploadDesc* textureUploadDe
 
     bool isInitial = true;
     Dim_t layerOffset = 0;
-    Mip_t mipOffset = 0;
+    Dim_t mipOffset = 0;
     i = 0;
 
     while (i < textureDataDescNum) {
@@ -295,17 +295,19 @@ Result HelperDataUpload::EndCommandBuffersAndSubmit() {
         queueSubmitDesc.signalFences = &fenceSubmitDesc;
         queueSubmitDesc.signalFenceNum = 1;
 
-        m_iCore.QueueSubmit(m_Queue, queueSubmitDesc);
-        m_iCore.Wait(*m_Fence, m_FenceValue);
-        m_iCore.ResetCommandAllocator(*m_CommandAllocators);
+        result = m_iCore.QueueSubmit(m_Queue, queueSubmitDesc);
+        if (result == Result::SUCCESS) {
+            m_iCore.Wait(*m_Fence, m_FenceValue);
+            m_iCore.ResetCommandAllocator(*m_CommandAllocators);
 
-        m_FenceValue++;
+            m_FenceValue++;
+        }
     }
 
     return result;
 }
 
-bool HelperDataUpload::CopyTextureContent(const TextureUploadDesc& textureUploadDesc, Dim_t& layerOffset, Mip_t& mipOffset) {
+bool HelperDataUpload::CopyTextureContent(const TextureUploadDesc& textureUploadDesc, Dim_t& layerOffset, Dim_t& mipOffset) {
     if (!textureUploadDesc.subresources)
         return true;
 
@@ -594,26 +596,4 @@ void HelperDeviceMemoryAllocator::FillMemoryBindingDescs(Texture* const* texture
 
         m_TextureBindingDescs.push_back(desc);
     }
-}
-
-// Wait idle
-Result nri::WaitIdle(const CoreInterface& NRI, Device& device, Queue& queue) {
-    Fence* fence = nullptr;
-    Result result = NRI.CreateFence(device, 0, fence);
-    if (result != Result::SUCCESS)
-        return result;
-
-    FenceSubmitDesc fenceSubmitDesc = {};
-    fenceSubmitDesc.fence = fence;
-    fenceSubmitDesc.value = 1;
-
-    QueueSubmitDesc queueSubmitDesc = {};
-    queueSubmitDesc.signalFences = &fenceSubmitDesc;
-    queueSubmitDesc.signalFenceNum = 1;
-
-    NRI.QueueSubmit(queue, queueSubmitDesc);
-    NRI.Wait(*fence, 1);
-    NRI.DestroyFence(*fence);
-
-    return Result::SUCCESS;
 }

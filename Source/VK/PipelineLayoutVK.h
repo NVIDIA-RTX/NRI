@@ -63,7 +63,7 @@ struct PipelineLayoutVK final : public DebugNameBase {
     void SetDebugName(const char* name) DEBUG_NAME_OVERRIDE;
 
 private:
-    VkDescriptorSetLayout CreateSetLayout(const DescriptorSetDesc& descriptorSetDesc, bool ignoreGlobalSPIRVOffsets, bool isPush);
+    void CreateSetLayout(VkDescriptorSetLayout* setLayout, const DescriptorSetDesc& descriptorSetDesc, bool ignoreGlobalSPIRVOffsets, bool isPush);
 
 private:
     DeviceVK& m_Device;

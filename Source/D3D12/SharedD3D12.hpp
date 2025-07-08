@@ -99,7 +99,7 @@ D3D12_CULL_MODE nri::GetCullMode(CullMode cullMode) {
     return g_CullModes[(size_t)cullMode];
 }
 
-constexpr std::array<D3D12_COMPARISON_FUNC, (size_t)CompareFunc::MAX_NUM> g_ComparisonFuncs = {
+constexpr std::array<D3D12_COMPARISON_FUNC, (size_t)CompareOp::MAX_NUM> g_ComparisonFuncs = {
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_COMPARISON_FUNC_NONE, // NONE
 #else
@@ -116,11 +116,11 @@ constexpr std::array<D3D12_COMPARISON_FUNC, (size_t)CompareFunc::MAX_NUM> g_Comp
 };
 VALIDATE_ARRAY(g_ComparisonFuncs);
 
-D3D12_COMPARISON_FUNC nri::GetComparisonFunc(CompareFunc compareFunc) {
-    return g_ComparisonFuncs[(size_t)compareFunc];
+D3D12_COMPARISON_FUNC nri::GetCompareOp(CompareOp compareOp) {
+    return g_ComparisonFuncs[(size_t)compareOp];
 }
 
-constexpr std::array<D3D12_STENCIL_OP, (size_t)StencilFunc::MAX_NUM> g_StencilOps = {
+constexpr std::array<D3D12_STENCIL_OP, (size_t)StencilOp::MAX_NUM> g_StencilOps = {
     D3D12_STENCIL_OP_KEEP,     // KEEP
     D3D12_STENCIL_OP_ZERO,     // ZERO
     D3D12_STENCIL_OP_REPLACE,  // REPLACE
@@ -132,11 +132,11 @@ constexpr std::array<D3D12_STENCIL_OP, (size_t)StencilFunc::MAX_NUM> g_StencilOp
 };
 VALIDATE_ARRAY(g_StencilOps);
 
-D3D12_STENCIL_OP nri::GetStencilOp(StencilFunc stencilFunc) {
+D3D12_STENCIL_OP nri::GetStencilOp(StencilOp stencilFunc) {
     return g_StencilOps[(size_t)stencilFunc];
 }
 
-constexpr std::array<D3D12_LOGIC_OP, (size_t)LogicFunc::MAX_NUM> g_LogicOps = {
+constexpr std::array<D3D12_LOGIC_OP, (size_t)LogicOp::MAX_NUM> g_LogicOps = {
     D3D12_LOGIC_OP_NOOP,          // NONE
     D3D12_LOGIC_OP_CLEAR,         // CLEAR
     D3D12_LOGIC_OP_AND,           // AND
@@ -156,8 +156,8 @@ constexpr std::array<D3D12_LOGIC_OP, (size_t)LogicFunc::MAX_NUM> g_LogicOps = {
 };
 VALIDATE_ARRAY(g_LogicOps);
 
-D3D12_LOGIC_OP nri::GetLogicOp(LogicFunc logicFunc) {
-    return g_LogicOps[(size_t)logicFunc];
+D3D12_LOGIC_OP nri::GetLogicOp(LogicOp logicOp) {
+    return g_LogicOps[(size_t)logicOp];
 }
 
 constexpr std::array<D3D12_BLEND, (size_t)BlendFactor::MAX_NUM> g_BlendFactors = {
@@ -193,7 +193,7 @@ D3D12_BLEND nri::GetBlend(BlendFactor blendFactor) {
     return g_BlendFactors[(size_t)blendFactor];
 }
 
-constexpr std::array<D3D12_BLEND_OP, (size_t)BlendFunc::MAX_NUM> g_BlendOps = {
+constexpr std::array<D3D12_BLEND_OP, (size_t)BlendOp::MAX_NUM> g_BlendOps = {
     D3D12_BLEND_OP_ADD,          // ADD
     D3D12_BLEND_OP_SUBTRACT,     // SUBTRACT
     D3D12_BLEND_OP_REV_SUBTRACT, // REVERSE_SUBTRACT
@@ -202,7 +202,7 @@ constexpr std::array<D3D12_BLEND_OP, (size_t)BlendFunc::MAX_NUM> g_BlendOps = {
 };
 VALIDATE_ARRAY(g_BlendOps);
 
-D3D12_BLEND_OP nri::GetBlendOp(BlendFunc blendFunc) {
+D3D12_BLEND_OP nri::GetBlendOp(BlendOp blendFunc) {
     return g_BlendOps[(size_t)blendFunc];
 }
 
@@ -244,31 +244,6 @@ UINT8 nri::GetRenderTargetWriteMask(ColorWriteBits colorWriteMask) {
 
 D3D12_DESCRIPTOR_HEAP_TYPE nri::GetDescriptorHeapType(DescriptorType descriptorType) {
     return descriptorType == DescriptorType::SAMPLER ? D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER : D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-}
-
-D3D12_FILTER nri::GetFilterIsotropic(Filter mip, Filter magnification, Filter minification, FilterExt filterExt, bool useComparison) {
-    uint32_t combinedMask = 0;
-    combinedMask |= mip == Filter::LINEAR ? 0x1 : 0;
-    combinedMask |= magnification == Filter::LINEAR ? 0x4 : 0;
-    combinedMask |= minification == Filter::LINEAR ? 0x10 : 0;
-
-    if (useComparison)
-        combinedMask |= 0x80;
-    else if (filterExt == FilterExt::MIN)
-        combinedMask |= 0x100;
-    else if (filterExt == FilterExt::MAX)
-        combinedMask |= 0x180;
-
-    return (D3D12_FILTER)combinedMask;
-}
-
-D3D12_FILTER nri::GetFilterAnisotropic(FilterExt filterExt, bool useComparison) {
-    if (filterExt == FilterExt::MIN)
-        return D3D12_FILTER_MINIMUM_ANISOTROPIC;
-    else if (filterExt == FilterExt::MAX)
-        return D3D12_FILTER_MAXIMUM_ANISOTROPIC;
-
-    return useComparison ? D3D12_FILTER_COMPARISON_ANISOTROPIC : D3D12_FILTER_ANISOTROPIC;
 }
 
 D3D12_SHADER_VISIBILITY nri::GetShaderVisibility(StageBits shaderStages) {
@@ -429,7 +404,7 @@ bool nri::GetTextureDesc(const TextureD3D12Desc& textureD3D12Desc, TextureDesc& 
     textureDesc.width = (Dim_t)desc.Width;
     textureDesc.height = (Dim_t)desc.Height;
     textureDesc.depth = textureDesc.type == TextureType::TEXTURE_3D ? (Dim_t)desc.DepthOrArraySize : 1;
-    textureDesc.mipNum = (Mip_t)desc.MipLevels;
+    textureDesc.mipNum = (Dim_t)desc.MipLevels;
     textureDesc.layerNum = textureDesc.type == TextureType::TEXTURE_3D ? 1 : (Dim_t)desc.DepthOrArraySize;
     textureDesc.sampleNum = (uint8_t)desc.SampleDesc.Count;
 

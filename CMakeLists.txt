@@ -15,7 +15,7 @@ endif()
 # Options
 set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK will be copied relative to the directory with binaries")
 set(NRI_AGILITY_SDK_VERSION_MAJOR "616" CACHE STRING "Agility SDK major version") # 717 (can cause D3D12_ERROR_INVALID_REDIST error?)
-set(NRI_AGILITY_SDK_VERSION_MINOR "0" CACHE STRING "Agility SDK minor version") # 0-preview
+set(NRI_AGILITY_SDK_VERSION_MINOR "1" CACHE STRING "Agility SDK minor version") # 1-preview
 set(NRI_SHADERS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_Shaders" CACHE STRING "Shader output path override")
 
 option(NRI_STATIC_LIBRARY "Build static library" OFF)
@@ -190,7 +190,7 @@ if(NRI_ENABLE_NVTX_SUPPORT)
         nvtx
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
-        URL https://github.com/NVIDIA/NVTX/archive/refs/tags/v3.2.0.zip
+        URL https://github.com/NVIDIA/NVTX/archive/refs/tags/v3.2.1.zip
     )
     list(APPEND DEPS nvtx)
 endif()
@@ -201,7 +201,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         vulkan_headers
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
-        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.315.zip
+        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.319.zip
     )
     list(APPEND DEPS vulkan_headers)
 
@@ -222,7 +222,7 @@ if(NRI_ENABLE_NGX_SDK)
         ngx
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
-        URL https://github.com/NVIDIA/DLSS/archive/refs/tags/v310.2.1.zip
+        URL https://github.com/NVIDIA/DLSS/archive/refs/tags/v310.3.0.zip
     )
     list(APPEND DEPS ngx)
 endif()
@@ -256,7 +256,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
     FetchContent_Declare(
         d3d12ma
         GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
-        GIT_TAG master
+        GIT_TAG v3.0.1
         GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
     )
@@ -269,7 +269,7 @@ if(NRI_ENABLE_D3D_EXTENSIONS)
         amdags
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
-        URL https://github.com/GPUOpen-LibrariesAndSDKs/AGS_SDK/archive/refs/tags/v6.2.0-signed.zip
+        URL https://github.com/GPUOpen-LibrariesAndSDKs/AGS_SDK/archive/refs/tags/v6.3.0.zip
     )
     list(APPEND DEPS amdags)
 
@@ -395,7 +395,6 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         "${nvapi_SOURCE_DIR}"
         "${amdags_SOURCE_DIR}/ags_lib/inc"
     )
-    target_compile_definitions(NRI_D3D12 PRIVATE ${COMPILE_DEFINITIONS} NRI_AGILITY_SDK_VERSION_MAJOR=${NRI_AGILITY_SDK_VERSION_MAJOR})
     target_compile_options(NRI_D3D12 PRIVATE ${COMPILE_OPTIONS})
     target_link_libraries(NRI_D3D12 PRIVATE NRI_Shared ${INPUT_LIB_D3D12} ${INPUT_LIB_DXGI} ${INPUT_LIB_DXGUID})
     set_property(TARGET NRI_D3D12 PROPERTY FOLDER ${PROJECT_NAME})
@@ -403,6 +402,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
     if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
         message("NRI: using AgilitySDK v1.${NRI_AGILITY_SDK_VERSION_MAJOR}.${NRI_AGILITY_SDK_VERSION_MINOR}")
 
+        target_compile_definitions(NRI_D3D12 PRIVATE ${COMPILE_DEFINITIONS} NRI_AGILITY_SDK_VERSION_MAJOR=${NRI_AGILITY_SDK_VERSION_MAJOR})
         target_include_directories(NRI_D3D12 PRIVATE "${agilitysdk_SOURCE_DIR}/build/native/include")
 
         # Generate "NRIAgilitySDK.h"
@@ -419,6 +419,8 @@ if(NRI_ENABLE_D3D12_SUPPORT)
             "#endif\n\n"
             "#endif\n"
         )
+    else()
+        target_compile_definitions(NRI_D3D12 PRIVATE ${COMPILE_DEFINITIONS} NRI_AGILITY_SDK_VERSION_MAJOR=D3D12_SDK_VERSION)
     endif()
 endif()
 
@@ -505,7 +507,7 @@ if(NRI_ENABLE_NGX_SDK)
     target_include_directories(NRI_Shared PRIVATE "${ngx_SOURCE_DIR}/include")
 
     if(WIN32)
-        if((NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY) OR(${CMAKE_MSVC_RUNTIME_LIBRARY} MATCHES "DLL"))
+        if((NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY) OR (${CMAKE_MSVC_RUNTIME_LIBRARY} MATCHES "DLL"))
             set(NGX_SUFFIX "d")
             message("NRI: using NGX LIB with dynamic runtime")
         else()

@@ -635,36 +635,36 @@ NRI_INLINE void CommandBufferEmuD3D11::CopyBuffer(Buffer& dstBuffer, uint64_t ds
     Push(m_PushBuffer, size);
 }
 
-NRI_INLINE void CommandBufferEmuD3D11::CopyTexture(Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
+NRI_INLINE void CommandBufferEmuD3D11::CopyTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion) {
     TextureRegionDesc wholeResource = {};
     wholeResource.mipOffset = NULL_TEXTURE_REGION_DESC;
 
-    if (!dstRegionDesc)
-        dstRegionDesc = &wholeResource;
-    if (!srcRegionDesc)
-        srcRegionDesc = &wholeResource;
+    if (!dstRegion)
+        dstRegion = &wholeResource;
+    if (!srcRegion)
+        srcRegion = &wholeResource;
 
     Push(m_PushBuffer, COPY_TEXTURE);
     Push(m_PushBuffer, &dstTexture);
-    Push(m_PushBuffer, *dstRegionDesc);
+    Push(m_PushBuffer, *dstRegion);
     Push(m_PushBuffer, &srcTexture);
-    Push(m_PushBuffer, *srcRegionDesc);
+    Push(m_PushBuffer, *srcRegion);
 }
 
-NRI_INLINE void CommandBufferEmuD3D11::UploadBufferToTexture(Texture& dstTexture, const TextureRegionDesc& dstRegionDesc, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayoutDesc) {
+NRI_INLINE void CommandBufferEmuD3D11::UploadBufferToTexture(Texture& dstTexture, const TextureRegionDesc& dstRegion, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayout) {
     Push(m_PushBuffer, UPLOAD_BUFFER_TO_TEXTURE);
     Push(m_PushBuffer, &dstTexture);
-    Push(m_PushBuffer, dstRegionDesc);
+    Push(m_PushBuffer, dstRegion);
     Push(m_PushBuffer, &srcBuffer);
-    Push(m_PushBuffer, srcDataLayoutDesc);
+    Push(m_PushBuffer, srcDataLayout);
 }
 
-NRI_INLINE void CommandBufferEmuD3D11::ReadbackTextureToBuffer(Buffer& dstBuffer, const TextureDataLayoutDesc& dstDataLayoutDesc, const Texture& srcTexture, const TextureRegionDesc& srcRegionDesc) {
+NRI_INLINE void CommandBufferEmuD3D11::ReadbackTextureToBuffer(Buffer& dstBuffer, const TextureDataLayoutDesc& dstDataLayout, const Texture& srcTexture, const TextureRegionDesc& srcRegion) {
     Push(m_PushBuffer, READBACK_TEXTURE_TO_BUFFER);
     Push(m_PushBuffer, &dstBuffer);
-    Push(m_PushBuffer, dstDataLayoutDesc);
+    Push(m_PushBuffer, dstDataLayout);
     Push(m_PushBuffer, &srcTexture);
-    Push(m_PushBuffer, srcRegionDesc);
+    Push(m_PushBuffer, srcRegion);
 }
 
 NRI_INLINE void CommandBufferEmuD3D11::ZeroBuffer(Buffer& buffer, uint64_t offset, uint64_t size) {
@@ -674,20 +674,20 @@ NRI_INLINE void CommandBufferEmuD3D11::ZeroBuffer(Buffer& buffer, uint64_t offse
     Push(m_PushBuffer, size);
 }
 
-NRI_INLINE void CommandBufferEmuD3D11::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegionDesc, const Texture& srcTexture, const TextureRegionDesc* srcRegionDesc) {
+NRI_INLINE void CommandBufferEmuD3D11::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion) {
     TextureRegionDesc wholeResource = {};
     wholeResource.mipOffset = NULL_TEXTURE_REGION_DESC;
 
-    if (!dstRegionDesc)
-        dstRegionDesc = &wholeResource;
-    if (!srcRegionDesc)
-        srcRegionDesc = &wholeResource;
+    if (!dstRegion)
+        dstRegion = &wholeResource;
+    if (!srcRegion)
+        srcRegion = &wholeResource;
 
     Push(m_PushBuffer, RESOLVE_TEXTURE);
     Push(m_PushBuffer, &dstTexture);
-    Push(m_PushBuffer, *dstRegionDesc);
+    Push(m_PushBuffer, *dstRegion);
     Push(m_PushBuffer, &srcTexture);
-    Push(m_PushBuffer, *srcRegionDesc);
+    Push(m_PushBuffer, *srcRegion);
 }
 
 NRI_INLINE void CommandBufferEmuD3D11::Dispatch(const DispatchDesc& dispatchDesc) {

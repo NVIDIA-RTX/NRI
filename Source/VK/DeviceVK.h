@@ -131,6 +131,7 @@ struct DeviceVK final : public DeviceBase {
     //================================================================================================================
 
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
+    Result WaitIdle();
     Result BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
     Result BindTextureMemory(const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
     Result QueryVideoMemoryInfo(MemoryLocation memoryLocation, VideoMemoryInfo& videoMemoryInfo) const;

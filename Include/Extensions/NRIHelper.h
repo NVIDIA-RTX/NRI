@@ -67,16 +67,12 @@ NriStruct(FormatProps) {
 // Threadsafe: yes
 NriStruct(HelperInterface) {
     // Optimized memory allocation for a group of resources
-    // "allocations" must have entries >= returned by "CalculateAllocationNumber"
     uint32_t    (NRI_CALL *CalculateAllocationNumber)   (const NriRef(Device) device, const NriRef(ResourceGroupDesc) resourceGroupDesc);
-    Nri(Result) (NRI_CALL *AllocateAndBindMemory)       (NriRef(Device) device, const NriRef(ResourceGroupDesc) resourceGroupDesc, NriOut NriPtr(Memory)* allocations);
+    Nri(Result) (NRI_CALL *AllocateAndBindMemory)       (NriRef(Device) device, const NriRef(ResourceGroupDesc) resourceGroupDesc, NriOut NriPtr(Memory)* allocations); // "allocations" must have entries >= returned by "CalculateAllocationNumber"
 
     // Populate resources with data (not for streaming!)
     Nri(Result) (NRI_CALL *UploadData)                  (NriRef(Queue) queue, const NriPtr(TextureUploadDesc) textureUploadDescs, uint32_t textureUploadDescNum,
                                                             const NriPtr(BufferUploadDesc) bufferUploadDescs, uint32_t bufferUploadDescNum);
-
-    // WFI
-    Nri(Result) (NRI_CALL *WaitForIdle)                 (NriRef(Queue) queue);
 
     // Information about video memory
     Nri(Result) (NRI_CALL *QueryVideoMemoryInfo)        (const NriRef(Device) device, Nri(MemoryLocation) memoryLocation, NriOut NriRef(VideoMemoryInfo) videoMemoryInfo);
@@ -91,6 +87,30 @@ NRI_API const NriRef(FormatProps) NRI_CALL nriGetFormatProps(Nri(Format) format)
 
 // Strings
 NRI_API const char* NRI_CALL nriGetGraphicsAPIString(Nri(GraphicsAPI) graphicsAPI);
+
+// A friendly way to get a supported depth format
+static inline Nri(Format) NriFunc(GetSupportedDepthFormat)(const NriRef(CoreInterface) coreInterface, const NriRef(Device) device, uint32_t minBits, bool stencil) {
+    if (minBits <= 16 && !stencil) {
+        if (NriDeref(coreInterface)->GetFormatSupport(device, NriScopedMember(Format, D16_UNORM)) & NriScopedMember(FormatSupportBits, DEPTH_STENCIL_ATTACHMENT))
+            return NriScopedMember(Format, D16_UNORM);
+    }
+
+    if (minBits <= 24) {
+        if (NriDeref(coreInterface)->GetFormatSupport(device, NriScopedMember(Format, D24_UNORM_S8_UINT)) & NriScopedMember(FormatSupportBits, DEPTH_STENCIL_ATTACHMENT))
+            return NriScopedMember(Format, D24_UNORM_S8_UINT);
+    }
+
+    if (minBits <= 32 && !stencil) {
+        if (NriDeref(coreInterface)->GetFormatSupport(device, NriScopedMember(Format, D32_SFLOAT)) & NriScopedMember(FormatSupportBits, DEPTH_STENCIL_ATTACHMENT))
+            return NriScopedMember(Format, D32_SFLOAT);
+    }
+
+    if (NriDeref(coreInterface)->GetFormatSupport(device, NriScopedMember(Format, D32_SFLOAT_S8_UINT_X24)) & NriScopedMember(FormatSupportBits, DEPTH_STENCIL_ATTACHMENT))
+        return NriScopedMember(Format, D32_SFLOAT_S8_UINT_X24);
+
+    // Should be unreachable
+    return NriScopedMember(Format, UNKNOWN);
+}
 
 // A convinient way to fit pipeline layout settings into the device limits, respecting various restrictions
 NriStruct(PipelineLayoutSettingsDesc) {
@@ -173,10 +193,10 @@ static inline Nri(PipelineLayoutSettingsDesc) NriFunc(FitPipelineLayoutSettingsI
 // Deprecated
 static inline Nri(TextureBarrierDesc) NriFunc(TextureBarrierFromUnknown)(NriPtr(Texture) texture,
     Nri(AccessLayoutStage) after,
-    Nri(Mip_t) mipOffset NriDefault(0),
-    Nri(Mip_t) mipNum NriDefault(Nri(REMAINING_MIPS)),
+    Nri(Dim_t) mipOffset NriDefault(0),
+    Nri(Dim_t) mipNum NriDefault(Nri(REMAINING)),
     Nri(Dim_t) layerOffset NriDefault(0),
-    Nri(Dim_t) layerNum NriDefault(Nri(REMAINING_LAYERS)))
+    Nri(Dim_t) layerNum NriDefault(Nri(REMAINING)))
 {
     Nri(TextureBarrierDesc) textureBarrier = NriZero;
     textureBarrier.texture = texture;
@@ -194,8 +214,8 @@ static inline Nri(TextureBarrierDesc) NriFunc(TextureBarrierFromUnknown)(NriPtr(
 
 static inline Nri(TextureBarrierDesc) NriFunc(TextureBarrierFromState)(NriRef(TextureBarrierDesc) prevState,
     Nri(AccessLayoutStage) after,
-    Nri(Mip_t) mipOffset NriDefault(0),
-    Nri(Mip_t) mipNum NriDefault(Nri(REMAINING_MIPS)))
+    Nri(Dim_t) mipOffset NriDefault(0),
+    Nri(Dim_t) mipNum NriDefault(Nri(REMAINING)))
 {
     NriDeref(prevState)->mipOffset = mipOffset;
     NriDeref(prevState)->mipNum = mipNum;

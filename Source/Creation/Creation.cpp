@@ -34,6 +34,47 @@ constexpr uint64_t Hash(const char* name) {
     return *name != 0 ? *name ^ (33 * Hash(name + 1)) : 5381;
 }
 
+constexpr std::array<const char*, (size_t)Message::MAX_NUM> g_messageTypes = {
+    "INFO",    // INFO,
+    "WARNING", // WARNING,
+    "ERROR",   // ERROR
+};
+VALIDATE_ARRAY_BY_PTR(g_messageTypes);
+
+static void MessageCallback(Message messageType, const char* file, uint32_t line, const char* message, void* userArg) {
+    MaybeUnused(userArg);
+
+    const char* messageTypeName = g_messageTypes[(size_t)messageType];
+
+    char buf[MAX_MESSAGE_LENGTH];
+    snprintf(buf, sizeof(buf), "%s (%s:%u) - %s\n", messageTypeName, file, line, message);
+
+    fprintf(stderr, "%s", buf);
+#ifdef _WIN32
+    OutputDebugStringA(buf);
+#endif
+}
+
+static void AbortExecution(void* userArg) {
+    MaybeUnused(userArg);
+
+#ifdef _WIN32
+    DebugBreak();
+#else
+    raise(SIGTRAP);
+#endif
+}
+
+static void CheckAndSetDefaultCallbacks(DeviceCreationDesc& deviceCreationDesc) {
+    if (!deviceCreationDesc.callbackInterface.MessageCallback)
+        deviceCreationDesc.callbackInterface.MessageCallback = MessageCallback;
+
+    if (!deviceCreationDesc.callbackInterface.AbortExecution && !deviceCreationDesc.disableDefaultAbortExecution)
+        deviceCreationDesc.callbackInterface.AbortExecution = AbortExecution;
+
+    CheckAndSetDefaultAllocator(deviceCreationDesc.allocationCallbacks);
+}
+
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT || NRI_ENABLE_VK_SUPPORT)
 
 static int SortAdapters(const void* pa, const void* pb) {
@@ -567,8 +608,7 @@ NRI_API Result NRI_CALL nriCreateDevice(const DeviceCreationDesc& deviceCreation
     DeviceBase* deviceImpl = nullptr;
 
     DeviceCreationDesc modifiedDeviceCreationDesc = deviceCreationDesc;
-    CheckAndSetDefaultCallbacks(modifiedDeviceCreationDesc.callbackInterface);
-    CheckAndSetDefaultAllocator(modifiedDeviceCreationDesc.allocationCallbacks);
+    CheckAndSetDefaultCallbacks(modifiedDeviceCreationDesc);
 
     // Valid adapter expected (take 1st)
     uint32_t adapterDescNum = 1;
@@ -638,8 +678,7 @@ NRI_API Result NRI_CALL nriCreateDeviceFromD3D11Device(const DeviceCreationD3D11
     deviceCreationDesc.enableNRIValidation = deviceCreationD3D11Desc.enableNRIValidation;
     deviceCreationDesc.enableD3D11CommandBufferEmulation = deviceCreationD3D11Desc.enableD3D11CommandBufferEmulation;
 
-    CheckAndSetDefaultCallbacks(deviceCreationDesc.callbackInterface);
-    CheckAndSetDefaultAllocator(deviceCreationDesc.allocationCallbacks);
+    CheckAndSetDefaultCallbacks(deviceCreationDesc);
 
     Result result = Result::UNSUPPORTED;
     DeviceBase* deviceImpl = nullptr;
@@ -696,8 +735,7 @@ NRI_API Result NRI_CALL nriCreateDeviceFromD3D12Device(const DeviceCreationD3D12
     deviceCreationDesc.d3dZeroBufferSize = deviceCreationD3D12Desc.d3dZeroBufferSize;
     deviceCreationDesc.enableNRIValidation = deviceCreationD3D12Desc.enableNRIValidation;
 
-    CheckAndSetDefaultCallbacks(deviceCreationDesc.callbackInterface);
-    CheckAndSetDefaultAllocator(deviceCreationDesc.allocationCallbacks);
+    CheckAndSetDefaultCallbacks(deviceCreationDesc);
 
     Result result = Result::UNSUPPORTED;
     DeviceBase* deviceImpl = nullptr;
@@ -746,8 +784,7 @@ NRI_API Result NRI_CALL nriCreateDeviceFromVKDevice(const DeviceCreationVKDesc& 
     deviceCreationDesc.vkBindingOffsets = deviceCreationVKDesc.vkBindingOffsets;
     deviceCreationDesc.vkExtensions = deviceCreationVKDesc.vkExtensions;
 
-    CheckAndSetDefaultCallbacks(deviceCreationDesc.callbackInterface);
-    CheckAndSetDefaultAllocator(deviceCreationDesc.allocationCallbacks);
+    CheckAndSetDefaultCallbacks(deviceCreationDesc);
 
     Result result = Result::UNSUPPORTED;
     DeviceBase* deviceImpl = nullptr;

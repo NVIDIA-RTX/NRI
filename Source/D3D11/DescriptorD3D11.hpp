@@ -4,16 +4,16 @@ static inline D3D11_TEXTURE_ADDRESS_MODE GetAddressMode(AddressMode mode) {
     return (D3D11_TEXTURE_ADDRESS_MODE)(D3D11_TEXTURE_ADDRESS_WRAP + (uint32_t)mode);
 }
 
-static inline D3D11_FILTER GetFilterIsotropic(Filter mip, Filter magnification, Filter minification, FilterExt filterExt, bool useComparison) {
+static inline D3D11_FILTER GetFilterIsotropic(Filter mip, Filter magnification, Filter minification, ReductionMode filterExt, bool useComparison) {
     uint32_t combinedMask = mip == Filter::LINEAR ? 0x1 : 0;
     combinedMask |= magnification == Filter::LINEAR ? 0x4 : 0;
     combinedMask |= minification == Filter::LINEAR ? 0x10 : 0;
 
     if (useComparison)
         combinedMask |= 0x80;
-    else if (filterExt == FilterExt::MIN)
+    else if (filterExt == ReductionMode::MIN)
         combinedMask |= 0x100;
-    else if (filterExt == FilterExt::MAX)
+    else if (filterExt == ReductionMode::MAX)
         combinedMask |= 0x180;
 
     return (D3D11_FILTER)combinedMask;
@@ -34,10 +34,10 @@ static inline DXGI_FORMAT GetShaderFormatForDepth(DXGI_FORMAT format) {
     }
 }
 
-static inline D3D11_FILTER GetFilterAnisotropic(FilterExt filterExt, bool useComparison) {
-    if (filterExt == FilterExt::MIN)
+static inline D3D11_FILTER GetFilterAnisotropic(ReductionMode filterExt, bool useComparison) {
+    if (filterExt == ReductionMode::MIN)
         return D3D11_FILTER_MINIMUM_ANISOTROPIC;
-    else if (filterExt == FilterExt::MAX)
+    else if (filterExt == ReductionMode::MAX)
         return D3D11_FILTER_MAXIMUM_ANISOTROPIC;
 
     return useComparison ? D3D11_FILTER_COMPARISON_ANISOTROPIC : D3D11_FILTER_ANISOTROPIC;
@@ -48,8 +48,8 @@ Result DescriptorD3D11::Create(const Texture1DViewDesc& textureViewDesc) {
     DXGI_FORMAT format = GetDxgiFormat(textureViewDesc.format).typed;
 
     const TextureDesc& textureDesc = texture.GetDesc();
-    Mip_t remainingMips = textureViewDesc.mipNum == REMAINING_MIPS ? (textureDesc.mipNum - textureViewDesc.mipOffset) : textureViewDesc.mipNum;
-    Dim_t remainingLayers = textureViewDesc.layerNum == REMAINING_LAYERS ? (textureDesc.layerNum - textureViewDesc.layerOffset) : textureViewDesc.layerNum;
+    Dim_t remainingMips = textureViewDesc.mipNum == REMAINING ? (textureDesc.mipNum - textureViewDesc.mipOffset) : textureViewDesc.mipNum;
+    Dim_t remainingLayers = textureViewDesc.layerNum == REMAINING ? (textureDesc.layerNum - textureViewDesc.layerOffset) : textureViewDesc.layerNum;
 
     HRESULT hr = E_INVALIDARG;
     switch (textureViewDesc.viewType) {
@@ -135,7 +135,7 @@ Result DescriptorD3D11::Create(const Texture1DViewDesc& textureViewDesc) {
         } break;
     };
 
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView()");
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView");
 
     const FormatProps& formatProps = GetFormatProps(textureViewDesc.format);
     m_IsIntegerFormat = formatProps.isInteger;
@@ -149,8 +149,8 @@ Result DescriptorD3D11::Create(const Texture2DViewDesc& textureViewDesc) {
     DXGI_FORMAT format = GetDxgiFormat(textureViewDesc.format).typed;
 
     const TextureDesc& textureDesc = texture.GetDesc();
-    Mip_t remainingMips = textureViewDesc.mipNum == REMAINING_MIPS ? (textureDesc.mipNum - textureViewDesc.mipOffset) : textureViewDesc.mipNum;
-    Dim_t remainingLayers = textureViewDesc.layerNum == REMAINING_LAYERS ? (textureDesc.layerNum - textureViewDesc.layerOffset) : textureViewDesc.layerNum;
+    Dim_t remainingMips = textureViewDesc.mipNum == REMAINING ? (textureDesc.mipNum - textureViewDesc.mipOffset) : textureViewDesc.mipNum;
+    Dim_t remainingLayers = textureViewDesc.layerNum == REMAINING ? (textureDesc.layerNum - textureViewDesc.layerOffset) : textureViewDesc.layerNum;
 
     HRESULT hr = E_INVALIDARG;
     switch (textureViewDesc.viewType) {
@@ -316,7 +316,7 @@ Result DescriptorD3D11::Create(const Texture2DViewDesc& textureViewDesc) {
         }
     };
 
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView()");
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView");
 
     const FormatProps& formatProps = GetFormatProps(textureViewDesc.format);
     m_IsIntegerFormat = formatProps.isInteger;
@@ -330,7 +330,7 @@ Result DescriptorD3D11::Create(const Texture3DViewDesc& textureViewDesc) {
     DXGI_FORMAT format = GetDxgiFormat(textureViewDesc.format).typed;
 
     const TextureDesc& textureDesc = texture.GetDesc();
-    Mip_t remainingMips = textureViewDesc.mipNum == REMAINING_MIPS ? (textureDesc.mipNum - textureViewDesc.mipOffset) : textureViewDesc.mipNum;
+    Dim_t remainingMips = textureViewDesc.mipNum == REMAINING ? (textureDesc.mipNum - textureViewDesc.mipOffset) : textureViewDesc.mipNum;
 
     HRESULT hr = E_INVALIDARG;
     switch (textureViewDesc.viewType) {
@@ -371,7 +371,7 @@ Result DescriptorD3D11::Create(const Texture3DViewDesc& textureViewDesc) {
         } break;
     };
 
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView()");
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView");
 
     const FormatProps& formatProps = GetFormatProps(textureViewDesc.format);
     m_IsIntegerFormat = formatProps.isInteger;
@@ -439,7 +439,7 @@ Result DescriptorD3D11::Create(const BufferViewDesc& bufferViewDesc) {
         } break;
     };
 
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView()");
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView");
 
     m_IsIntegerFormat = formatProps.isInteger;
     m_SubresourceInfo.Initialize(bufferViewDesc.buffer);
@@ -449,7 +449,7 @@ Result DescriptorD3D11::Create(const BufferViewDesc& bufferViewDesc) {
 
 Result DescriptorD3D11::Create(const SamplerDesc& samplerDesc) {
     bool isAnisotropy = samplerDesc.anisotropy > 1;
-    bool isComparison = samplerDesc.compareFunc != CompareFunc::NONE;
+    bool isComparison = samplerDesc.compareOp != CompareOp::NONE;
 
     D3D11_SAMPLER_DESC desc = {};
     desc.AddressU = GetAddressMode(samplerDesc.addressModes.u);
@@ -457,7 +457,7 @@ Result DescriptorD3D11::Create(const SamplerDesc& samplerDesc) {
     desc.AddressW = GetAddressMode(samplerDesc.addressModes.w);
     desc.MipLODBias = samplerDesc.mipBias;
     desc.MaxAnisotropy = samplerDesc.anisotropy;
-    desc.ComparisonFunc = GetD3D11ComparisonFuncFromCompareFunc(samplerDesc.compareFunc);
+    desc.ComparisonFunc = GetD3D11ComparisonFuncFromCompareOp(samplerDesc.compareOp);
     desc.MinLOD = samplerDesc.mipMin;
     desc.MaxLOD = samplerDesc.mipMax;
     desc.Filter = isAnisotropy
@@ -472,7 +472,7 @@ Result DescriptorD3D11::Create(const SamplerDesc& samplerDesc) {
     }
 
     HRESULT hr = m_Device->CreateSamplerState(&desc, (ID3D11SamplerState**)&m_Descriptor);
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateSamplerState()");
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateSamplerState");
 
     m_Type = DescriptorTypeDX11::SAMPLER;
 

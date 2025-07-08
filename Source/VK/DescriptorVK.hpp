@@ -26,7 +26,7 @@ template <typename T>
 Result DescriptorVK::CreateTextureView(const T& textureViewDesc) {
     const TextureVK& texture = *(const TextureVK*)textureViewDesc.texture;
     const TextureDesc& textureDesc = texture.GetDesc();
-    Mip_t remainingMips = textureDesc.mipNum - textureViewDesc.mipOffset;
+    Dim_t remainingMips = textureDesc.mipNum - textureViewDesc.mipOffset;
     Dim_t remainingLayers = textureDesc.layerNum - textureViewDesc.layerOffset;
 
     VkImageViewUsageCreateInfo usageInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO};
@@ -35,9 +35,9 @@ Result DescriptorVK::CreateTextureView(const T& textureViewDesc) {
     VkImageSubresourceRange subresource = {
         GetImageAspectFlags(textureViewDesc.format),
         textureViewDesc.mipOffset,
-        textureViewDesc.mipNum == REMAINING_MIPS ? remainingMips : textureViewDesc.mipNum,
+        textureViewDesc.mipNum == REMAINING ? remainingMips : textureViewDesc.mipNum,
         textureViewDesc.layerOffset,
-        textureViewDesc.layerNum == REMAINING_LAYERS ? remainingLayers : textureViewDesc.layerNum,
+        textureViewDesc.layerNum == REMAINING ? remainingLayers : textureViewDesc.layerNum,
     };
 
     VkImageViewCreateInfo createInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
@@ -49,7 +49,7 @@ Result DescriptorVK::CreateTextureView(const T& textureViewDesc) {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateImageView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_ImageView);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateImageView returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImageView");
 
     m_Type = DescriptorTypeVK::IMAGE_VIEW;
     m_TextureDesc.handle = texture.GetHandle();
@@ -61,7 +61,7 @@ Result DescriptorVK::CreateTextureView(const T& textureViewDesc) {
     m_TextureDesc.sliceOffset = 0;
     m_TextureDesc.sliceNum = 1;
     m_TextureDesc.mipOffset = textureViewDesc.mipOffset;
-    m_TextureDesc.mipNum = (Mip_t)subresource.levelCount;
+    m_TextureDesc.mipNum = (Dim_t)subresource.levelCount;
 
     return Result::SUCCESS;
 }
@@ -70,12 +70,12 @@ template <>
 Result DescriptorVK::CreateTextureView(const Texture3DViewDesc& textureViewDesc) {
     const TextureVK& texture = *(const TextureVK*)textureViewDesc.texture;
     const TextureDesc& textureDesc = texture.GetDesc();
-    Mip_t remainingMips = textureDesc.mipNum - textureViewDesc.mipOffset;
+    Dim_t remainingMips = textureDesc.mipNum - textureViewDesc.mipOffset;
     Dim_t remainingLayers = textureDesc.layerNum - textureViewDesc.sliceOffset;
 
     VkImageViewSlicedCreateInfoEXT slicesInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_SLICED_CREATE_INFO_EXT};
     slicesInfo.sliceOffset = textureViewDesc.sliceOffset;
-    slicesInfo.sliceCount = textureViewDesc.sliceNum == REMAINING_LAYERS ? remainingLayers : textureViewDesc.sliceNum;
+    slicesInfo.sliceCount = textureViewDesc.sliceNum == REMAINING ? remainingLayers : textureViewDesc.sliceNum;
 
     VkImageViewUsageCreateInfo usageInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO};
     usageInfo.usage = GetImageViewUsage(textureViewDesc.viewType);
@@ -86,7 +86,7 @@ Result DescriptorVK::CreateTextureView(const Texture3DViewDesc& textureViewDesc)
     VkImageSubresourceRange subresource = {
         GetImageAspectFlags(textureViewDesc.format),
         textureViewDesc.mipOffset,
-        textureViewDesc.mipNum == REMAINING_MIPS ? remainingMips : textureViewDesc.mipNum,
+        textureViewDesc.mipNum == REMAINING ? remainingMips : textureViewDesc.mipNum,
         0,
         1,
     };
@@ -100,7 +100,7 @@ Result DescriptorVK::CreateTextureView(const Texture3DViewDesc& textureViewDesc)
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateImageView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_ImageView);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateImageView returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImageView");
 
     m_Type = DescriptorTypeVK::IMAGE_VIEW;
     m_TextureDesc.handle = texture.GetHandle();
@@ -112,7 +112,7 @@ Result DescriptorVK::CreateTextureView(const Texture3DViewDesc& textureViewDesc)
     m_TextureDesc.sliceOffset = textureViewDesc.sliceOffset;
     m_TextureDesc.sliceNum = (Dim_t)slicesInfo.sliceCount;
     m_TextureDesc.mipOffset = textureViewDesc.mipOffset;
-    m_TextureDesc.mipNum = (Mip_t)subresource.levelCount;
+    m_TextureDesc.mipNum = (Dim_t)subresource.levelCount;
 
     return Result::SUCCESS;
 }
@@ -139,7 +139,7 @@ Result DescriptorVK::Create(const BufferViewDesc& bufferViewDesc) {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateBufferView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_BufferView);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateBufferView returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateBufferView");
 
     return Result::SUCCESS;
 }
@@ -156,23 +156,33 @@ Result DescriptorVK::Create(const SamplerDesc& samplerDesc) {
     info.mipLodBias = samplerDesc.mipBias;
     info.anisotropyEnable = VkBool32(samplerDesc.anisotropy > 1.0f);
     info.maxAnisotropy = (float)samplerDesc.anisotropy;
-    info.compareEnable = VkBool32(samplerDesc.compareFunc != CompareFunc::NONE);
-    info.compareOp = GetCompareOp(samplerDesc.compareFunc);
+    info.compareEnable = VkBool32(samplerDesc.compareOp != CompareOp::NONE);
+    info.compareOp = GetCompareOp(samplerDesc.compareOp);
     info.minLod = samplerDesc.mipMin;
     info.maxLod = samplerDesc.mipMax;
 
+    const void** tail = &info.pNext;
+
+    VkSamplerReductionModeCreateInfo reductionModeInfo = {VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO};
+    if (m_Device.GetDesc().features.textureFilterMinMax) {
+        reductionModeInfo.reductionMode = GetFilterExt(samplerDesc.filters.ext);
+
+        APPEND_EXT(reductionModeInfo);
+    }
+
     VkSamplerCustomBorderColorCreateInfoEXT borderColorInfo = {VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT};
     if (m_Device.m_IsSupported.customBorderColor) {
-        info.pNext = &borderColorInfo;
         info.borderColor = samplerDesc.isInteger ? VK_BORDER_COLOR_INT_CUSTOM_EXT : VK_BORDER_COLOR_FLOAT_CUSTOM_EXT;
 
         static_assert(sizeof(VkClearColorValue) == sizeof(samplerDesc.borderColor), "Unexpected sizeof");
         memcpy(&borderColorInfo.customBorderColor, &samplerDesc.borderColor, sizeof(borderColorInfo.customBorderColor));
+
+        APPEND_EXT(borderColorInfo);
     }
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateSampler(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Sampler);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateSampler returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateSampler");
 
     m_Type = DescriptorTypeVK::SAMPLER;
 

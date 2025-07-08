@@ -228,6 +228,10 @@ static uint32_t NRI_CALL GetQuerySize(const QueryPool&) {
     return 0;
 }
 
+static uint64_t NRI_CALL GetFenceValue(Fence&) {
+    return 0;
+}
+
 static void NRI_CALL GetBufferMemoryDesc(const Buffer&, MemoryLocation, MemoryDesc& memoryDesc) {
     memoryDesc = {1};
 }
@@ -527,14 +531,19 @@ static void NRI_CALL QueueAnnotation(Queue&, const char*, uint32_t) {
 static void NRI_CALL ResetQueries(QueryPool&, uint32_t, uint32_t) {
 }
 
-static void NRI_CALL QueueSubmit(Queue&, const QueueSubmitDesc&) {
+static Result NRI_CALL QueueSubmit(Queue&, const QueueSubmitDesc&) {
+    return Result::SUCCESS;
+}
+
+static Result NRI_CALL DeviceWaitIdle(Device&) {
+    return Result::SUCCESS;
+}
+
+static Result NRI_CALL QueueWaitIdle(Queue&) {
+    return Result::SUCCESS;
 }
 
 static void NRI_CALL Wait(Fence&, uint64_t) {
-}
-
-static uint64_t NRI_CALL GetFenceValue(Fence&) {
-    return 0;
 }
 
 static void NRI_CALL UpdateDescriptorRanges(DescriptorSet&, uint32_t, uint32_t, const DescriptorRangeUpdateDesc*) {
@@ -676,6 +685,8 @@ Result DeviceNONE::FillFunctionTable(CoreInterface& table) const {
     table.QueueEndAnnotation = ::QueueEndAnnotation;
     table.QueueAnnotation = ::QueueAnnotation;
     table.ResetQueries = ::ResetQueries;
+    table.DeviceWaitIdle = ::DeviceWaitIdle;
+    table.QueueWaitIdle = ::QueueWaitIdle;
     table.QueueSubmit = ::QueueSubmit;
     table.Wait = ::Wait;
     table.GetFenceValue = ::GetFenceValue;
@@ -715,10 +726,6 @@ static Result NRI_CALL UploadData(Queue&, const TextureUploadDesc*, uint32_t, co
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL WaitForIdle(Queue&) {
-    return Result::SUCCESS;
-}
-
 static Result NRI_CALL QueryVideoMemoryInfo(const Device&, MemoryLocation, VideoMemoryInfo& videoMemoryInfo) {
     videoMemoryInfo = {};
 
@@ -729,7 +736,6 @@ Result DeviceNONE::FillFunctionTable(HelperInterface& table) const {
     table.CalculateAllocationNumber = ::CalculateAllocationNumber;
     table.AllocateAndBindMemory = ::AllocateAndBindMemory;
     table.UploadData = ::UploadData;
-    table.WaitForIdle = ::WaitForIdle;
     table.QueryVideoMemoryInfo = ::QueryVideoMemoryInfo;
 
     return Result::SUCCESS;
@@ -789,7 +795,8 @@ static Result NRI_CALL GetLatencyReport(const SwapChain&, LatencyReport&) {
     return Result::SUCCESS;
 }
 
-static void NRI_CALL QueueSubmitTrackable(Queue&, const QueueSubmitDesc&, const SwapChain&) {
+static Result NRI_CALL QueueSubmitTrackable(Queue&, const QueueSubmitDesc&, const SwapChain&) {
+    return Result::SUCCESS;
 }
 
 Result DeviceNONE::FillFunctionTable(LowLatencyInterface& table) const {

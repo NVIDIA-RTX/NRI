@@ -104,7 +104,7 @@ Result BufferD3D12::Create(const AllocateBufferDesc& bufferDesc) {
         const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_UNDEFINED;
 
         HRESULT hr = m_Device.GetVma()->CreateResource3(&allocationDesc, &desc1, initialLayout, nullptr, NO_CASTABLE_FORMATS, &m_VmaAllocation, IID_PPV_ARGS(&m_Buffer));
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3()");
+        RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3");
     } else
 #endif
     {
@@ -121,7 +121,7 @@ Result BufferD3D12::Create(const AllocateBufferDesc& bufferDesc) {
             initialState |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
 
         HRESULT hr = m_Device.GetVma()->CreateResource(&allocationDesc, &desc, initialState, nullptr, &m_VmaAllocation, IID_PPV_ARGS(&m_Buffer));
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3()");
+        RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3");
     }
 
     m_Desc = bufferDesc.desc;
@@ -176,7 +176,7 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
         bool isRenderableSurface = desc1.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
         HRESULT hr = m_Device.GetVma()->CreateResource3(&allocationDesc, &desc1, D3D12_BARRIER_LAYOUT_COMMON, isRenderableSurface ? &clearValue : nullptr, NO_CASTABLE_FORMATS, &m_VmaAllocation, IID_PPV_ARGS(&m_Texture));
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3()");
+        RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3");
     } else
 #endif
     {
@@ -186,7 +186,7 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
         bool isRenderableSurface = desc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
         HRESULT hr = m_Device.GetVma()->CreateResource(&allocationDesc, &desc, D3D12_RESOURCE_STATE_COMMON, isRenderableSurface ? &clearValue : nullptr, &m_VmaAllocation, IID_PPV_ARGS(&m_Texture));
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3()");
+        RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3");
     }
 
     // Priority
@@ -194,7 +194,7 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
     if (m_Device.GetVersion() >= 1 && residencyPriority != 0) {
         ID3D12Pageable* obj = m_Texture.GetInterface();
         HRESULT hr = m_Device->SetResidencyPriority(1, &obj, &residencyPriority);
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority()");
+        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority");
     }
 
     m_Desc = FixTextureDesc(textureDesc.desc);

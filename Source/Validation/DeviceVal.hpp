@@ -15,8 +15,8 @@ static inline bool IsShaderStageValid(StageBits shaderStages, uint32_t& uniqueSh
     return n == 1 && isUnique;
 }
 
-static inline Mip_t GetMaxMipNum(uint16_t w, uint16_t h, uint16_t d) {
-    Mip_t mipNum = 1;
+static inline Dim_t GetMaxMipNum(uint16_t w, uint16_t h, uint16_t d) {
+    Dim_t mipNum = 1;
 
     while (w > 1 || h > 1 || d > 1) {
         if (w > 1)
@@ -130,6 +130,10 @@ NRI_INLINE Result DeviceVal::GetQueue(QueueType queueType, uint32_t queueIndex, 
     return result;
 }
 
+NRI_INLINE Result DeviceVal::WaitIdle() {
+    return GetCoreInterfaceImpl().DeviceWaitIdle(m_Impl);
+}
+
 NRI_INLINE Result DeviceVal::CreateCommandAllocator(const Queue& queue, CommandAllocator*& commandAllocator) {
     auto queueImpl = NRI_GET_IMPL(Queue, &queue);
 
@@ -181,7 +185,7 @@ NRI_INLINE Result DeviceVal::AllocateBuffer(const AllocateBufferDesc& bufferDesc
 }
 
 NRI_INLINE Result DeviceVal::CreateTexture(const TextureDesc& textureDesc, Texture*& texture) {
-    Mip_t maxMipNum = GetMaxMipNum(textureDesc.width, textureDesc.height, textureDesc.depth);
+    Dim_t maxMipNum = GetMaxMipNum(textureDesc.width, textureDesc.height, textureDesc.depth);
 
     RETURN_ON_FAILURE(this, textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
     RETURN_ON_FAILURE(this, textureDesc.width != 0, Result::INVALID_ARGUMENT, "'width' is 0");
@@ -198,7 +202,7 @@ NRI_INLINE Result DeviceVal::CreateTexture(const TextureDesc& textureDesc, Textu
 }
 
 NRI_INLINE Result DeviceVal::AllocateTexture(const AllocateTextureDesc& textureDesc, Texture*& texture) {
-    Mip_t maxMipNum = GetMaxMipNum(textureDesc.desc.width, textureDesc.desc.height, textureDesc.desc.depth);
+    Dim_t maxMipNum = GetMaxMipNum(textureDesc.desc.width, textureDesc.desc.height, textureDesc.desc.depth);
 
     RETURN_ON_FAILURE(this, textureDesc.desc.format > Format::UNKNOWN && textureDesc.desc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'desc.format' is invalid");
     RETURN_ON_FAILURE(this, textureDesc.desc.width != 0, Result::INVALID_ARGUMENT, "'desc.width' is 0");
@@ -317,13 +321,13 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const SamplerDesc& samplerDesc, De
     RETURN_ON_FAILURE(this, samplerDesc.filters.mag < Filter::MAX_NUM, Result::INVALID_ARGUMENT, "'filters.mag' is invalid");
     RETURN_ON_FAILURE(this, samplerDesc.filters.min < Filter::MAX_NUM, Result::INVALID_ARGUMENT, "'filters.min' is invalid");
     RETURN_ON_FAILURE(this, samplerDesc.filters.mip < Filter::MAX_NUM, Result::INVALID_ARGUMENT, "'filters.mip' is invalid");
-    RETURN_ON_FAILURE(this, samplerDesc.filters.ext < FilterExt::MAX_NUM, Result::INVALID_ARGUMENT, "'filters.ext' is invalid");
+    RETURN_ON_FAILURE(this, samplerDesc.filters.ext < ReductionMode::MAX_NUM, Result::INVALID_ARGUMENT, "'filters.ext' is invalid");
     RETURN_ON_FAILURE(this, samplerDesc.addressModes.u < AddressMode::MAX_NUM, Result::INVALID_ARGUMENT, "'addressModes.u' is invalid");
     RETURN_ON_FAILURE(this, samplerDesc.addressModes.v < AddressMode::MAX_NUM, Result::INVALID_ARGUMENT, "'addressModes.v' is invalid");
     RETURN_ON_FAILURE(this, samplerDesc.addressModes.w < AddressMode::MAX_NUM, Result::INVALID_ARGUMENT, "'addressModes.w' is invalid");
-    RETURN_ON_FAILURE(this, samplerDesc.compareFunc < CompareFunc::MAX_NUM, Result::INVALID_ARGUMENT, "'compareFunc' is invalid");
+    RETURN_ON_FAILURE(this, samplerDesc.compareOp < CompareOp::MAX_NUM, Result::INVALID_ARGUMENT, "'compareOp' is invalid");
 
-    if (samplerDesc.filters.ext != FilterExt::NONE)
+    if (samplerDesc.filters.ext != ReductionMode::AVERAGE)
         RETURN_ON_FAILURE(this, GetDesc().features.textureFilterMinMax, Result::INVALID_ARGUMENT, "'features.textureFilterMinMax' is false");
 
     if ((samplerDesc.addressModes.u != AddressMode::CLAMP_TO_BORDER && samplerDesc.addressModes.v != AddressMode::CLAMP_TO_BORDER && samplerDesc.addressModes.w != AddressMode::CLAMP_TO_BORDER) && (samplerDesc.borderColor.ui.x != 0 || samplerDesc.borderColor.ui.y != 0 || samplerDesc.borderColor.ui.z != 0 && samplerDesc.borderColor.ui.w != 0))
@@ -464,8 +468,8 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
     if (graphicsPipelineDesc.outputMerger.depth.boundsTest)
         RETURN_ON_FAILURE(this, GetDesc().features.depthBoundsTest, Result::INVALID_ARGUMENT, "'features.depthBoundsTest' is false");
 
-    if (graphicsPipelineDesc.outputMerger.logicFunc != LogicFunc::NONE)
-        RETURN_ON_FAILURE(this, GetDesc().features.logicFunc, Result::INVALID_ARGUMENT, "'features.logicFunc' is false");
+    if (graphicsPipelineDesc.outputMerger.logicOp != LogicOp::NONE)
+        RETURN_ON_FAILURE(this, GetDesc().features.logicOp, Result::INVALID_ARGUMENT, "'features.logicOp' is false");
 
     if (graphicsPipelineDesc.outputMerger.viewMask != 0)
         RETURN_ON_FAILURE(this, GetDesc().features.flexibleMultiview || GetDesc().features.layerBasedMultiview || GetDesc().features.viewportBasedMultiview, Result::INVALID_ARGUMENT, "multiview is not supported");

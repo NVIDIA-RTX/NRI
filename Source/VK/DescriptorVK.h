@@ -30,8 +30,8 @@ struct DescriptorTexDesc {
     Dim_t layerNum;
     Dim_t sliceOffset;
     Dim_t sliceNum;
-    Mip_t mipOffset;
-    Mip_t mipNum;
+    Dim_t mipOffset;
+    Dim_t mipNum;
 };
 
 struct DescriptorVK final : public DebugNameBase {

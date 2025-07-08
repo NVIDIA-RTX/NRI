@@ -86,25 +86,32 @@ Result nri::GetResultFromHRESULT(long result) {
     if (SUCCEEDED(result))
         return Result::SUCCESS;
 
-    if (result == E_INVALIDARG || result == E_POINTER || result == E_HANDLE)
-        return Result::INVALID_ARGUMENT;
+    switch (result) {
+        case E_INVALIDARG:
+        case E_POINTER:
+        case E_HANDLE:
+            return Result::INVALID_ARGUMENT;
 
-    if (result == DXGI_ERROR_UNSUPPORTED)
-        return Result::UNSUPPORTED;
+        case DXGI_ERROR_UNSUPPORTED:
+            return Result::UNSUPPORTED;
 
-    if (result == DXGI_ERROR_DEVICE_REMOVED
-        || result == DXGI_ERROR_DEVICE_RESET
-        || result == DXGI_ERROR_DRIVER_INTERNAL_ERROR
-        || result == DXGI_ERROR_DEVICE_HUNG)
-        return Result::DEVICE_LOST;
+        case DXGI_ERROR_DEVICE_REMOVED:
+        case DXGI_ERROR_DEVICE_RESET:
+        case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
+        case DXGI_ERROR_DEVICE_HUNG:
+            return Result::DEVICE_LOST;
 
-    if (result == D3D12_ERROR_INVALID_REDIST)
-        return Result::INVALID_AGILITY_SDK;
+        case D3D12_ERROR_INVALID_REDIST:
+            return Result::INVALID_AGILITY_SDK;
 
-    if (result == E_OUTOFMEMORY)
-        return Result::OUT_OF_MEMORY;
+        case E_OUTOFMEMORY:
+        case DXGI_ERROR_REMOTE_OUTOFMEMORY:
+        case DXGI_ERROR_HW_PROTECTION_OUTOFMEMORY:
+            return Result::OUT_OF_MEMORY;
 
-    return Result::FAILURE;
+        default:
+            return Result::FAILURE;
+    }
 }
 
 uint32_t nri::NRIFormatToDXGIFormat(Format format) {
@@ -798,45 +805,6 @@ Format nri::VKFormatToNRIFormat(uint32_t format) {
         return Format::B4_G4_R4_A4_UNORM;
 
     return Format::UNKNOWN;
-}
-
-constexpr std::array<const char*, (size_t)Message::MAX_NUM> g_messageTypes = {
-    "INFO",    // INFO,
-    "WARNING", // WARNING,
-    "ERROR",   // ERROR
-};
-VALIDATE_ARRAY_BY_PTR(g_messageTypes);
-
-static void MessageCallback(Message messageType, const char* file, uint32_t line, const char* message, void* userArg) {
-    MaybeUnused(userArg);
-
-    const char* messageTypeName = g_messageTypes[(size_t)messageType];
-
-    char buf[MAX_MESSAGE_LENGTH];
-    snprintf(buf, sizeof(buf), "%s (%s:%u) - %s\n", messageTypeName, file, line, message);
-
-    fprintf(stderr, "%s", buf);
-#ifdef _WIN32
-    OutputDebugStringA(buf);
-#endif
-}
-
-static void AbortExecution(void* userArg) {
-    MaybeUnused(userArg);
-
-#ifdef _WIN32
-    DebugBreak();
-#else
-    raise(SIGTRAP);
-#endif
-}
-
-void nri::CheckAndSetDefaultCallbacks(CallbackInterface& callbackInterface) {
-    if (!callbackInterface.MessageCallback)
-        callbackInterface.MessageCallback = MessageCallback;
-
-    if (!callbackInterface.AbortExecution)
-        callbackInterface.AbortExecution = AbortExecution;
 }
 
 void DeviceBase::ReportMessage(Message messageType, const char* file, uint32_t line, const char* format, ...) const {

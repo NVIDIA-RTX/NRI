@@ -180,6 +180,7 @@ struct DeviceVal final : public DeviceBase {
 
     void FreeMemory(Memory& memory);
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
+    Result WaitIdle();
     Result BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
     Result BindTextureMemory(const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
     Result BindMicromapMemory(const MicromapMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);

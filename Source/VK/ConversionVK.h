@@ -98,7 +98,7 @@ constexpr VkPolygonMode GetPolygonMode(FillMode fillMode) {
     return g_FillModes[(size_t)fillMode];
 }
 
-constexpr std::array<VkCompareOp, (size_t)CompareFunc::MAX_NUM> g_CompareOps = {
+constexpr std::array<VkCompareOp, (size_t)CompareOp::MAX_NUM> g_CompareOps = {
     VK_COMPARE_OP_NEVER,            // NONE
     VK_COMPARE_OP_ALWAYS,           // ALWAYS
     VK_COMPARE_OP_NEVER,            // NEVER
@@ -111,11 +111,11 @@ constexpr std::array<VkCompareOp, (size_t)CompareFunc::MAX_NUM> g_CompareOps = {
 };
 VALIDATE_ARRAY(g_CompareOps);
 
-constexpr VkCompareOp GetCompareOp(CompareFunc compareFunc) {
-    return g_CompareOps[(size_t)compareFunc];
+constexpr VkCompareOp GetCompareOp(CompareOp compareOp) {
+    return g_CompareOps[(size_t)compareOp];
 }
 
-constexpr std::array<VkStencilOp, (size_t)StencilFunc::MAX_NUM> g_StencilOps = {
+constexpr std::array<VkStencilOp, (size_t)StencilOp::MAX_NUM> g_StencilOps = {
     VK_STENCIL_OP_KEEP,                // KEEP,
     VK_STENCIL_OP_ZERO,                // ZERO,
     VK_STENCIL_OP_REPLACE,             // REPLACE,
@@ -127,11 +127,11 @@ constexpr std::array<VkStencilOp, (size_t)StencilFunc::MAX_NUM> g_StencilOps = {
 };
 VALIDATE_ARRAY(g_StencilOps);
 
-constexpr VkStencilOp GetStencilOp(StencilFunc stencilFunc) {
+constexpr VkStencilOp GetStencilOp(StencilOp stencilFunc) {
     return g_StencilOps[(size_t)stencilFunc];
 }
 
-constexpr std::array<VkLogicOp, (size_t)LogicFunc::MAX_NUM> g_LogicOps = {
+constexpr std::array<VkLogicOp, (size_t)LogicOp::MAX_NUM> g_LogicOps = {
     VK_LOGIC_OP_MAX_ENUM,      // NONE
     VK_LOGIC_OP_CLEAR,         // CLEAR
     VK_LOGIC_OP_AND,           // AND
@@ -151,8 +151,8 @@ constexpr std::array<VkLogicOp, (size_t)LogicFunc::MAX_NUM> g_LogicOps = {
 };
 VALIDATE_ARRAY(g_LogicOps);
 
-constexpr VkLogicOp GetLogicOp(LogicFunc logicFunc) {
-    return g_LogicOps[(size_t)logicFunc];
+constexpr VkLogicOp GetLogicOp(LogicOp logicOp) {
+    return g_LogicOps[(size_t)logicOp];
 }
 
 constexpr std::array<VkBlendFactor, (size_t)BlendFactor::MAX_NUM> g_BlendFactors = {
@@ -182,7 +182,7 @@ constexpr VkBlendFactor GetBlendFactor(BlendFactor blendFactor) {
     return g_BlendFactors[(size_t)blendFactor];
 }
 
-constexpr std::array<VkBlendOp, (size_t)BlendFunc::MAX_NUM> g_BlendOps = {
+constexpr std::array<VkBlendOp, (size_t)BlendOp::MAX_NUM> g_BlendOps = {
     VK_BLEND_OP_ADD,              // ADD
     VK_BLEND_OP_SUBTRACT,         // SUBTRACT
     VK_BLEND_OP_REVERSE_SUBTRACT, // REVERSE_SUBTRACT
@@ -191,7 +191,7 @@ constexpr std::array<VkBlendOp, (size_t)BlendFunc::MAX_NUM> g_BlendOps = {
 };
 VALIDATE_ARRAY(g_BlendOps);
 
-constexpr VkBlendOp GetBlendOp(BlendFunc blendFunc) {
+constexpr VkBlendOp GetBlendOp(BlendOp blendFunc) {
     return g_BlendOps[(size_t)blendFunc];
 }
 
@@ -214,6 +214,17 @@ VALIDATE_ARRAY(g_Filters);
 
 constexpr VkFilter GetFilter(Filter filter) {
     return g_Filters[(size_t)filter];
+}
+
+constexpr std::array<VkSamplerReductionMode, (size_t)ReductionMode::MAX_NUM> g_ExtFilters = {
+    VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE, // NONE
+    VK_SAMPLER_REDUCTION_MODE_MIN,              // MIN
+    VK_SAMPLER_REDUCTION_MODE_MAX,              // MAX
+};
+VALIDATE_ARRAY(g_ExtFilters);
+
+constexpr VkSamplerReductionMode GetFilterExt(ReductionMode filterExt) {
+    return g_ExtFilters[(size_t)filterExt];
 }
 
 constexpr std::array<VkSamplerMipmapMode, (size_t)Filter::MAX_NUM> g_SamplerMipmapModes = {
@@ -524,14 +535,11 @@ constexpr VkImageAspectFlags GetImageAspectFlags(PlaneBits planes) {
     return aspectFlags;
 }
 
-constexpr Result GetReturnCode(VkResult vkResult) {
-    switch (vkResult) {
-        case VK_SUCCESS:
-        case VK_EVENT_SET:
-        case VK_EVENT_RESET:
-        case VK_SUBOPTIMAL_KHR: // TODO: add "VK_TIMEOUT"?
-            return Result::SUCCESS;
+constexpr Result GetResultFromVkResult(VkResult vkResult) {
+    if (vkResult >= 0)
+        return Result::SUCCESS;
 
+    switch (vkResult) {
         case VK_ERROR_DEVICE_LOST:
             return Result::DEVICE_LOST;
 

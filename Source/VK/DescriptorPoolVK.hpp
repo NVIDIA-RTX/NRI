@@ -37,7 +37,7 @@ Result DescriptorPoolVK::Create(const DescriptorPoolDesc& descriptorPoolDesc) {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateDescriptorPool(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkCreateDescriptorPool returned %d", (int32_t)vkResult);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateDescriptorPool");
 
     m_DescriptorSets.resize(descriptorPoolDesc.descriptorSetMaxNum);
 
@@ -82,7 +82,7 @@ NRI_INLINE Result DescriptorPoolVK::AllocateDescriptorSets(const PipelineLayout&
     for (uint32_t i = 0; i < instanceNum; i++) {
         VkDescriptorSet handle = VK_NULL_HANDLE;
         VkResult vkResult = vk.AllocateDescriptorSets(m_Device, &info, &handle);
-        RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, GetReturnCode(vkResult), "vkAllocateDescriptorSets returned %d", (int32_t)vkResult);
+        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkAllocateDescriptorSets");
 
         DescriptorSetVK* descriptorSet = &m_DescriptorSets[m_DescriptorSetNum++];
         descriptorSet->Create(&m_Device, handle, descriptorSetDesc);
@@ -98,7 +98,7 @@ NRI_INLINE void DescriptorPoolVK::Reset() {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.ResetDescriptorPool(m_Device, m_Handle, (VkDescriptorPoolResetFlags)0);
-    RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, ReturnVoid(), "vkResetDescriptorPool returned %d", (int32_t)vkResult);
+    RETURN_VOID_ON_BAD_VKRESULT(&m_Device, vkResult, "vkResetDescriptorPool");
 
     m_DescriptorSetNum = 0;
 }

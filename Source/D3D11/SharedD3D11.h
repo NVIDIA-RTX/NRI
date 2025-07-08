@@ -16,7 +16,7 @@ typedef ID3D11DeviceContext4 ID3D11DeviceContextBest;
 
 namespace nri {
 
-constexpr Mip_t NULL_TEXTURE_REGION_DESC = Mip_t(-1);
+constexpr Dim_t NULL_TEXTURE_REGION_DESC = Dim_t(-1);
 
 enum class DescriptorTypeDX11 : uint8_t {
     // don't change order
@@ -31,11 +31,11 @@ enum class DescriptorTypeDX11 : uint8_t {
 
 D3D11_PRIMITIVE_TOPOLOGY GetD3D11TopologyFromTopology(Topology topology, uint32_t patchPoints);
 D3D11_CULL_MODE GetD3D11CullModeFromCullMode(CullMode cullMode);
-D3D11_COMPARISON_FUNC GetD3D11ComparisonFuncFromCompareFunc(CompareFunc compareFunc);
-D3D11_STENCIL_OP GetD3D11StencilOpFromStencilFunc(StencilFunc stencilFunc);
-D3D11_BLEND_OP GetD3D11BlendOp(BlendFunc blendFunc);
+D3D11_COMPARISON_FUNC GetD3D11ComparisonFuncFromCompareOp(CompareOp compareOp);
+D3D11_STENCIL_OP GetD3D11StencilOpFromStencilOp(StencilOp stencilFunc);
+D3D11_BLEND_OP GetD3D11BlendOp(BlendOp blendFunc);
 D3D11_BLEND GetD3D11BlendFromBlendFactor(BlendFactor blendFactor);
-D3D11_LOGIC_OP GetD3D11LogicOp(LogicFunc logicalFunc);
+D3D11_LOGIC_OP GetD3D11LogicOp(LogicOp logicalFunc);
 bool GetTextureDesc(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& textureDesc);
 bool GetBufferDesc(const BufferD3D11Desc& bufferD3D11Desc, BufferDesc& bufferDesc);
 uint32_t ConvertPriority(float priority);
@@ -44,7 +44,7 @@ struct SubresourceInfo {
     const void* resource = nullptr;
     uint64_t data = 0;
 
-    inline void Initialize(const void* tex, Mip_t mipOffset, Mip_t mipNum, Dim_t layerOffset, Dim_t layerNum) {
+    inline void Initialize(const void* tex, Dim_t mipOffset, Dim_t mipNum, Dim_t layerOffset, Dim_t layerNum) {
         resource = tex;
         data = (uint64_t(layerNum) << 48) | (uint64_t(layerOffset) << 32) | (uint64_t(mipNum) << 16) | uint64_t(mipOffset);
     }

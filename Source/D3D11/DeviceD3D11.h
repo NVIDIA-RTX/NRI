@@ -138,8 +138,8 @@ struct DeviceD3D11 final : public DeviceBase {
     // NRI
     //================================================================================================================
 
-    Result CreateCommandAllocator(const Queue& queue, CommandAllocator*& commandAllocator);
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
+    Result WaitIdle();
     Result BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
     Result BindTextureMemory(const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
     FormatSupportBits GetFormatSupport(Format format) const;

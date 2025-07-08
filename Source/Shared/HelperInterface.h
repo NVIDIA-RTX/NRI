@@ -21,7 +21,7 @@ private:
     Result UploadTextures(const TextureUploadDesc* textureDataDescs, uint32_t textureDataDescNum);
     Result UploadBuffers(const BufferUploadDesc* bufferDataDescs, uint32_t bufferDataDescNum);
     Result EndCommandBuffersAndSubmit();
-    bool CopyTextureContent(const TextureUploadDesc& textureDataDesc, Dim_t& layerOffset, Mip_t& mipOffset);
+    bool CopyTextureContent(const TextureUploadDesc& textureDataDesc, Dim_t& layerOffset, Dim_t& mipOffset);
     bool CopyBufferContent(const BufferUploadDesc& bufferDataDesc, uint64_t& bufferContentOffset);
 
     const CoreInterface& m_iCore;
@@ -72,7 +72,5 @@ private:
     Vector<BufferMemoryBindingDesc> m_BufferBindingDescs;
     Vector<TextureMemoryBindingDesc> m_TextureBindingDescs;
 };
-
-Result WaitIdle(const CoreInterface& NRI, Device& device, Queue& queue);
 
 } // namespace nri

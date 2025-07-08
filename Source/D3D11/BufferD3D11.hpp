@@ -70,7 +70,7 @@ Result BufferD3D11::Create(MemoryLocation memoryLocation, float priority) {
         desc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
 
     HRESULT hr = m_Device->CreateBuffer(&desc, nullptr, &m_Buffer);
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateBuffer()");
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateBuffer");
 
     // Priority
     uint32_t evictionPriority = ConvertPriority(priority);
@@ -97,11 +97,11 @@ Result BufferD3D11::Create(const BufferD3D11Desc& bufferDesc) {
     return Result::SUCCESS;
 }
 
-TextureD3D11& BufferD3D11::RecreateReadbackTexture(const TextureD3D11& srcTexture, const TextureRegionDesc& srcRegionDesc, const TextureDataLayoutDesc& readbackDataLayoutDesc) {
+TextureD3D11& BufferD3D11::RecreateReadbackTexture(const TextureD3D11& srcTexture, const TextureRegionDesc& srcRegion, const TextureDataLayoutDesc& readbackDataLayoutDesc) {
     bool isChanged = true;
     if (m_ReadbackTexture) {
         const TextureDesc& curr = m_ReadbackTexture->GetDesc();
-        isChanged = curr.format != srcTexture.GetDesc().format || curr.width != srcRegionDesc.width || curr.height != srcRegionDesc.height || curr.depth != srcRegionDesc.depth;
+        isChanged = curr.format != srcTexture.GetDesc().format || curr.width != srcRegion.width || curr.height != srcRegion.height || curr.depth != srcRegion.depth;
     }
 
     if (isChanged) {
@@ -110,14 +110,14 @@ TextureD3D11& BufferD3D11::RecreateReadbackTexture(const TextureD3D11& srcTextur
         textureDesc.sampleNum = 1;
         textureDesc.layerNum = 1;
         textureDesc.format = srcTexture.GetDesc().format;
-        textureDesc.width = srcRegionDesc.width;
-        textureDesc.height = srcRegionDesc.height;
-        textureDesc.depth = srcRegionDesc.depth;
+        textureDesc.width = srcRegion.width;
+        textureDesc.height = srcRegion.height;
+        textureDesc.depth = srcRegion.depth;
 
         textureDesc.type = TextureType::TEXTURE_2D;
-        if (srcRegionDesc.depth > 1)
+        if (srcRegion.depth > 1)
             textureDesc.type = TextureType::TEXTURE_3D;
-        else if (srcRegionDesc.height == 1)
+        else if (srcRegion.height == 1)
             textureDesc.type = TextureType::TEXTURE_1D;
 
         Destroy(m_ReadbackTexture);
@@ -156,7 +156,7 @@ NRI_INLINE void* BufferD3D11::Map(uint64_t offset) {
     D3D11_MAPPED_SUBRESOURCE mappedData = {};
     HRESULT hr = m_Device.GetImmediateContext()->Map(m_Buffer, 0, map, 0, &mappedData);
     if (FAILED(hr)) {
-        REPORT_ERROR(&m_Device, "ID3D11DeviceContext::Map()  failed!");
+        REPORT_ERROR(&m_Device, "ID3D11DeviceContext::Map() failed!");
         return nullptr;
     }
 
@@ -174,7 +174,7 @@ NRI_INLINE void* BufferD3D11::Map(uint64_t offset) {
         hr = m_Device.GetImmediateContext()->Map(*m_ReadbackTexture, 0, D3D11_MAP_READ, 0, &srcData);
         if (FAILED(hr)) {
             m_Device.GetImmediateContext()->Unmap(m_Buffer, 0);
-            REPORT_ERROR(&m_Device, "ID3D11DeviceContext::Map()  failed!");
+            REPORT_ERROR(&m_Device, "ID3D11DeviceContext::Map() failed!");
             return nullptr;
         }
 

@@ -46,7 +46,8 @@ struct QueueD3D12 final : public DebugNameBase {
     void BeginAnnotation(const char* name, uint32_t bgra);
     void EndAnnotation();
     void Annotation(const char* name, uint32_t bgra);
-    void Submit(const QueueSubmitDesc& queueSubmitDesc);
+    Result Submit(const QueueSubmitDesc& queueSubmitDesc);
+    Result WaitIdle();
 
 private:
     DeviceD3D12& m_Device;

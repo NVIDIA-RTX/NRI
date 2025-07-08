@@ -20,7 +20,7 @@ struct DispatchTable {
     VK_FUNC(GetDeviceGroupPeerMemoryFeatures);
     VK_FUNC(GetPhysicalDeviceFormatProperties2);
     VK_FUNC(GetPhysicalDeviceImageFormatProperties2);
-    VK_FUNC(CreateDevice);
+    VK_FUNC(CreateDevice); // may return "VK_ERROR_DEVICE_LOST"
     VK_FUNC(GetDeviceQueue2);
     VK_FUNC(EnumeratePhysicalDeviceGroups);
     VK_FUNC(GetPhysicalDeviceProperties2);
@@ -98,10 +98,10 @@ struct DispatchTable {
                                                           // -----
     VK_FUNC(MapMemory);                                   // - | + TODO: replace with 2 (VK_KHR_map_memory2 or VK 1.4)
     VK_FUNC(FlushMappedMemoryRanges);                     // + | +
-    VK_FUNC(QueueWaitIdle);                               // - | +
-    VK_FUNC(QueueSubmit2);                                // - | +
-    VK_FUNC(GetSemaphoreCounterValue);                    // + | +
-    VK_FUNC(WaitSemaphores);                              // + | +
+    VK_FUNC(QueueWaitIdle);                               // - | + may return "VK_ERROR_DEVICE_LOST"
+    VK_FUNC(QueueSubmit2);                                // - | + may return "VK_ERROR_DEVICE_LOST"
+    VK_FUNC(GetSemaphoreCounterValue);                    // + | + TODO: may return "VK_ERROR_DEVICE_LOST"
+    VK_FUNC(WaitSemaphores);                              // + | + TODO: may return "VK_ERROR_DEVICE_LOST"
     VK_FUNC(ResetCommandPool);                            // - | +
     VK_FUNC(ResetDescriptorPool);                         // - | +
     VK_FUNC(AllocateCommandBuffers);                      // - | +
@@ -160,13 +160,13 @@ struct DispatchTable {
                                                           // VK_KHR_fragment_shading_rate
     VK_FUNC(CmdSetFragmentShadingRateKHR);                // - | +
                                                           // VK_KHR_swapchain
-    VK_FUNC(AcquireNextImage2KHR);                        // - | ?
-    VK_FUNC(QueuePresentKHR);                             // - | ?
-    VK_FUNC(CreateSwapchainKHR);                          // + | ?
+    VK_FUNC(AcquireNextImage2KHR);                        // - | ? may return "VK_ERROR_DEVICE_LOST"
+    VK_FUNC(QueuePresentKHR);                             // - | ? may return "VK_ERROR_DEVICE_LOST"
+    VK_FUNC(CreateSwapchainKHR);                          // + | ? may return "VK_ERROR_DEVICE_LOST"
     VK_FUNC(DestroySwapchainKHR);                         // - | +
     VK_FUNC(GetSwapchainImagesKHR);                       // + | +
                                                           // VK_KHR_present_wait
-    VK_FUNC(WaitForPresentKHR);                           // - | ?
+    VK_FUNC(WaitForPresentKHR);                           // - | ? may return "VK_ERROR_DEVICE_LOST"
                                                           // VK_KHR_acceleration_structure
     VK_FUNC(CreateAccelerationStructureKHR);              // + | +
     VK_FUNC(DestroyAccelerationStructureKHR);             // - | +

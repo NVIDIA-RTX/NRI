@@ -120,7 +120,7 @@ BufferOffset StreamerImpl::StreamBufferData(const StreamBufferDataDesc& streamBu
             BufferUpdateRequest& request = m_BufferRequestsWithDst.emplace_back();
             request = {};
             request.dstBuffer = streamBufferDataDesc.dstBuffer;
-            request.dstOffset = streamBufferDataDesc.dstBufferOffset;
+            request.dstOffset = streamBufferDataDesc.dstOffset;
             request.srcBuffer = m_DynamicBuffer;
             request.srcOffset = offset;
             request.size = dataSize;
@@ -136,13 +136,19 @@ BufferOffset StreamerImpl::StreamTextureData(const StreamTextureDataDesc& stream
     const DeviceDesc& deviceDesc = m_iCore.GetDeviceDesc(m_Device);
     const TextureDesc& textureDesc = m_iCore.GetTextureDesc(*streamTextureDataDesc.dstTexture);
 
-    Dim_t h = streamTextureDataDesc.dstRegionDesc.height;
-    h = h == WHOLE_SIZE ? GetDimension(deviceDesc.graphicsAPI, textureDesc, 1, streamTextureDataDesc.dstRegionDesc.mipOffset) : h;
+    Dim_t w = streamTextureDataDesc.dstRegion.width;
+    w = w == WHOLE_SIZE ? GetDimension(deviceDesc.graphicsAPI, textureDesc, 0, streamTextureDataDesc.dstRegion.mipOffset) : w;
 
-    Dim_t d = streamTextureDataDesc.dstRegionDesc.depth;
-    d = d == WHOLE_SIZE ? GetDimension(deviceDesc.graphicsAPI, textureDesc, 2, streamTextureDataDesc.dstRegionDesc.mipOffset) : d;
+    Dim_t h = streamTextureDataDesc.dstRegion.height;
+    h = h == WHOLE_SIZE ? GetDimension(deviceDesc.graphicsAPI, textureDesc, 1, streamTextureDataDesc.dstRegion.mipOffset) : h;
 
-    uint32_t alignedRowPitch = Align(streamTextureDataDesc.dataRowPitch, deviceDesc.memoryAlignment.uploadBufferTextureRow);
+    Dim_t d = streamTextureDataDesc.dstRegion.depth;
+    d = d == WHOLE_SIZE ? GetDimension(deviceDesc.graphicsAPI, textureDesc, 2, streamTextureDataDesc.dstRegion.mipOffset) : d;
+
+    // Allocate a minimum continous region in a buffer encompassing the destination texture region
+    const FormatProps& formatProps = GetFormatProps(textureDesc.format);
+    uint32_t rowPitch = w * formatProps.stride;
+    uint32_t alignedRowPitch = Align(rowPitch, deviceDesc.memoryAlignment.uploadBufferTextureRow);
     uint32_t alignedSlicePitch = Align(alignedRowPitch * h, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
     uint64_t dataSize = alignedSlicePitch * d;
 
@@ -165,7 +171,7 @@ BufferOffset StreamerImpl::StreamTextureData(const StreamTextureDataDesc& stream
             for (uint32_t y = 0; y < h; y++) {
                 uint8_t* dstRow = dst + z * alignedSlicePitch + y * alignedRowPitch;
                 const uint8_t* srcRow = (uint8_t*)streamTextureDataDesc.data + z * streamTextureDataDesc.dataSlicePitch + y * streamTextureDataDesc.dataRowPitch;
-                memcpy(dstRow, srcRow, streamTextureDataDesc.dataRowPitch);
+                memcpy(dstRow, srcRow, rowPitch);
             }
         }
 
@@ -175,9 +181,10 @@ BufferOffset StreamerImpl::StreamTextureData(const StreamTextureDataDesc& stream
         if (streamTextureDataDesc.dstTexture) {
             TextureUpdateRequest& request = m_TextureRequestsWithDst.emplace_back();
             request = {};
-            request.desc = streamTextureDataDesc;
+            request.dstTexture = streamTextureDataDesc.dstTexture;
+            request.dstRegion = streamTextureDataDesc.dstRegion;
             request.srcBuffer = m_DynamicBuffer;
-            request.srcOffset = offset;
+            request.srcDataLayout = {offset, alignedRowPitch, alignedSlicePitch};
         }
     }
 
@@ -194,14 +201,8 @@ void StreamerImpl::CmdCopyStreamedData(CommandBuffer& commandBuffer) {
         m_iCore.CmdCopyBuffer(commandBuffer, *request.dstBuffer, request.dstOffset, *request.srcBuffer, request.srcOffset, request.size);
 
     // Textures
-    for (const TextureUpdateRequest& request : m_TextureRequestsWithDst) {
-        TextureDataLayoutDesc dataLayout = {};
-        dataLayout.offset = request.srcOffset;
-        dataLayout.rowPitch = request.desc.dataRowPitch;
-        dataLayout.slicePitch = request.desc.dataSlicePitch;
-
-        m_iCore.CmdUploadBufferToTexture(commandBuffer, *request.desc.dstTexture, request.desc.dstRegionDesc, *request.srcBuffer, dataLayout);
-    }
+    for (const TextureUpdateRequest& request : m_TextureRequestsWithDst)
+        m_iCore.CmdUploadBufferToTexture(commandBuffer, *request.dstTexture, request.dstRegion, *request.srcBuffer, request.srcDataLayout);
 
     // Cleanup
     m_BufferRequestsWithDst.clear();

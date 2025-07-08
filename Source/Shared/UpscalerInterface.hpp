@@ -1135,7 +1135,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             queueSubmitDesc.signalFences = &signalFence;
             queueSubmitDesc.signalFenceNum = 1;
 
-            m_iCore.QueueSubmit(*graphicsQueue, queueSubmitDesc);
+            m_iCore.QueueSubmit(*graphicsQueue, queueSubmitDesc); // TODO: DEVICE_LOST?
             m_iCore.Wait(*fence, 1);
 
             // Cleanup

@@ -17,7 +17,7 @@ Result QueryPoolD3D11::Create(const QueryPoolDesc& queryPoolDesc) {
     for (uint32_t i = 0; i < queryPoolDesc.capacity; i++) {
         ComPtr<ID3D11Query> query = nullptr;
         HRESULT hr = m_Device->CreateQuery(&queryDesc, &query);
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateQuery()");
+        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateQuery");
 
         m_QueryPool.push_back(query);
     }
