@@ -380,6 +380,7 @@ NriEnum(Robustness, uint8_t,
     D3D12           // moderate overhead, D3D12-level robust access (requires "VK_EXT_robustness2", soft fallback to VK mode)
 );
 
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_heap_type
 NriEnum(MemoryLocation, uint8_t,
     DEVICE,
     DEVICE_UPLOAD,  // soft fallback to "HOST_UPLOAD"
@@ -697,11 +698,6 @@ NriStruct(DescriptorSetCopyDesc) {
 #pragma region [ Input assembly ]
 //============================================================================================================================================================================================
 
-NriEnum(VertexStreamStepRate, uint8_t,
-    PER_VERTEX,
-    PER_INSTANCE
-);
-
 NriEnum(IndexType, uint8_t,
     UINT16,
     UINT32
@@ -711,6 +707,12 @@ NriEnum(PrimitiveRestart, uint8_t,
     DISABLED,
     INDICES_UINT16, // index "0xFFFF" enforces primitive restart
     INDICES_UINT32  // index "0xFFFFFFFF" enforces primitive restart
+);
+
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkVertexInputRate.html
+NriEnum(VertexStreamStepRate, uint8_t,
+    PER_VERTEX,
+    PER_INSTANCE
 );
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkPrimitiveTopology.html
@@ -774,17 +776,20 @@ NriStruct(VertexBufferDesc) {
 #pragma region [ Rasterization ]
 //============================================================================================================================================================================================
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPolygonMode.html
 NriEnum(FillMode, uint8_t,
     SOLID,
     WIREFRAME
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkCullModeFlagBits.html
 NriEnum(CullMode, uint8_t,
     NONE,
     FRONT,
     BACK
 );
 
+// https://microsoft.github.io/DirectX-Specs/d3d/VariableRateShading.html
 NriEnum(ShadingRate, uint8_t,
     FRAGMENT_SIZE_1X1,
     FRAGMENT_SIZE_1X2,
@@ -797,6 +802,7 @@ NriEnum(ShadingRate, uint8_t,
     FRAGMENT_SIZE_4X4
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkFragmentShadingRateCombinerOpKHR.html
 //    "primitiveCombiner"      "attachmentCombiner"
 // A   Pipeline shading rate    Result of Op1
 // B   Primitive shading rate   Attachment shading rate
@@ -809,6 +815,8 @@ NriEnum(ShadingRateCombiner, uint8_t,
 );
 
 /*
+https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#primsrast-depthbias-computation
+
 R - minimum resolvable difference
 S - maximum slope
 
@@ -1379,11 +1387,13 @@ NriStruct(DrawIndexedBaseDesc) {         // see NRI_FILL_DRAW_INDEXED_COMMAND
 #pragma region [ Queries ]
 //============================================================================================================================================================================================
 
+// https://microsoft.github.io/DirectX-Specs/d3d/CountersAndQueries.html
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkQueryType.html
 NriEnum(QueryType, uint8_t,
     TIMESTAMP,                              // uint64_t
-    TIMESTAMP_COPY_QUEUE,                   // uint64_t, requires "features.copyQueueTimestamp"
+    TIMESTAMP_COPY_QUEUE,                   // uint64_t (requires "features.copyQueueTimestamp"), same as "TIMESTAMP" but for a "COPY" queue
     OCCLUSION,                              // uint64_t
-    PIPELINE_STATISTICS,                    // see "PipelineStatisticsDesc", requires "features.pipelineStatistics"
+    PIPELINE_STATISTICS,                    // see "PipelineStatisticsDesc" (requires "features.pipelineStatistics")
     ACCELERATION_STRUCTURE_SIZE,            // uint64_t, requires "features.rayTracing"
     ACCELERATION_STRUCTURE_COMPACTED_SIZE,  // uint64_t, requires "features.rayTracing"
     MICROMAP_COMPACTED_SIZE                 // uint64_t, requires "features.micromap"
