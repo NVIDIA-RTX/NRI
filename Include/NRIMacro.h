@@ -183,7 +183,7 @@
     #define NriNamespaceBegin namespace nri {
     #define NriNamespaceEnd }
     #define NriForwardStruct(name) struct name
-    #define NriStruct(name) NriForwardStruct(name)
+    #define NriStruct(name) struct name
     #define NriUnion(name) union name
     #define NriMember(name, member) member
     #define NonNriForwardStruct(name) struct name
