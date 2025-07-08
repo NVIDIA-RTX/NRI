@@ -449,8 +449,11 @@ NRI_INLINE void CommandBufferVal::Barrier(const BarrierGroupDesc& barrierGroupDe
 
     Scratch<TextureBarrierDesc> textures = AllocateScratch(m_Device, TextureBarrierDesc, barrierGroupDesc.textureNum);
     memcpy(textures, barrierGroupDesc.textures, sizeof(TextureBarrierDesc) * barrierGroupDesc.textureNum);
-    for (uint32_t i = 0; i < barrierGroupDesc.textureNum; i++)
+    for (uint32_t i = 0; i < barrierGroupDesc.textureNum; i++) {
         textures[i].texture = NRI_GET_IMPL(Texture, barrierGroupDesc.textures[i].texture);
+        textures[i].srcQueue = NRI_GET_IMPL(Queue, barrierGroupDesc.textures[i].srcQueue);
+        textures[i].dstQueue = NRI_GET_IMPL(Queue, barrierGroupDesc.textures[i].dstQueue);
+    }
 
     auto barrierGroupDescImpl = barrierGroupDesc;
     barrierGroupDescImpl.buffers = buffers;

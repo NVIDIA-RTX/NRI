@@ -1251,6 +1251,13 @@ static BufferOffset NRI_CALL StreamTextureData(Streamer& streamer, const StreamT
     RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dataSlicePitch, {}, "'streamTextureDataDesc.dataSlicePitch' must be > 0");
     RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.data, {}, "'streamTextureDataDesc.data' is NULL");
 
+    if (streamTextureDataDesc.dstTexture) {
+        constexpr TextureUsageBits attachmentBits = TextureUsageBits::COLOR_ATTACHMENT | TextureUsageBits::DEPTH_STENCIL_ATTACHMENT | TextureUsageBits::SHADING_RATE_ATTACHMENT;
+        const TextureVal& textureVal = *(TextureVal*)streamTextureDataDesc.dstTexture;
+        const TextureDesc& textureDesc = textureVal.GetDesc();
+        RETURN_ON_FAILURE(&deviceVal, !(textureDesc.usage & attachmentBits), {}, "streaming data into potentially compressed attachments is unrecommended");
+    }
+
     return streamerImpl->StreamTextureData(streamTextureDataDesc);
 }
 

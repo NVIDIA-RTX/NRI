@@ -862,7 +862,7 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierGroupDesc& barrierGroupDes
         out.srcAccessMask = GetAccessFlags(in.before.access);
         out.dstStageMask = GetPipelineStageFlags(in.after.stages);
         out.dstAccessMask = GetAccessFlags(in.after.access);
-        out.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; // TODO: VK_SHARING_MODE_EXCLUSIVE could be used instead of VK_SHARING_MODE_CONCURRENT with queue ownership transfers
+        out.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; // "VK_SHARING_MODE_CONCURRENT" is intentionally used for buffers to match D3D12 spec
         out.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         out.buffer = bufferVK.GetHandle();
         out.offset = 0;
@@ -873,7 +873,9 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierGroupDesc& barrierGroupDes
     Scratch<VkImageMemoryBarrier2> textureBarriers = AllocateScratch(m_Device, VkImageMemoryBarrier2, barrierGroupDesc.textureNum);
     for (uint32_t i = 0; i < barrierGroupDesc.textureNum; i++) {
         const TextureBarrierDesc& in = barrierGroupDesc.textures[i];
-        const TextureVK& textureImpl = *(const TextureVK*)in.texture;
+        const TextureVK& textureImpl = *(TextureVK*)in.texture;
+        const QueueVK& srcQueue = *(QueueVK*)in.srcQueue;
+        const QueueVK& dstQueue = *(QueueVK*)in.dstQueue;
 
         VkImageAspectFlags aspectFlags = GetImageAspectFlags(in.planes);
         if (in.planes == PlaneBits::ALL)
@@ -887,8 +889,8 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierGroupDesc& barrierGroupDes
         out.dstAccessMask = in.after.layout == Layout::PRESENT ? VK_ACCESS_2_MEMORY_READ_BIT : GetAccessFlags(in.after.access);
         out.oldLayout = GetImageLayout(in.before.layout);
         out.newLayout = GetImageLayout(in.after.layout);
-        out.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; // TODO: VK_SHARING_MODE_EXCLUSIVE could be used instead of VK_SHARING_MODE_CONCURRENT with queue ownership transfers
-        out.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        out.srcQueueFamilyIndex = in.srcQueue ? srcQueue.GetFamilyIndex() : VK_QUEUE_FAMILY_IGNORED;
+        out.dstQueueFamilyIndex = in.dstQueue ? dstQueue.GetFamilyIndex() : VK_QUEUE_FAMILY_IGNORED;
         out.image = textureImpl.GetHandle();
         out.subresourceRange = {
             aspectFlags,

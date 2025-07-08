@@ -491,12 +491,14 @@ NriStruct(TextureDesc) {
     NriOptional Nri(Dim_t) layerNum;
     NriOptional Nri(Sample_t) sampleNum;
     NriOptional Nri(ClearValue) optimizedClearValue; // D3D12: very optional, since any desktop HW can track many clear values
+    NriOptional bool queueExclusive;                 // VK: useful for HW disabling DCC for attachments with "VK_SHARING_MODE_CONCURRENT", a queue ownership transfer is needed (see "TextureBarrierDesc")
 };
 
 // "structureStride" values:
 // 0  = allows "typed" views
 // 4  = allows "typed", "byte address" (raw) and "structured" views (D3D11: allows to create multiple "structured" views for a single resource, disobeying the spec)
 // >4 = allows "structured" and potentially "typed" views (D3D11: locks this buffer to a single "structured" layout, no "typed" views)
+// VK: buffers always created with "VK_SHARING_MODE_CONCURRENT" to match D3D12 spec
 NriStruct(BufferDesc) {
     uint64_t size;
     uint32_t structureStride;
@@ -1213,6 +1215,11 @@ NriStruct(TextureBarrierDesc) {
     Nri(Dim_t) layerOffset;
     Nri(Dim_t) layerNum;
     Nri(PlaneBits) planes;
+
+    // Queue ownership transfer is potentially needed only for "queueExclusive" textures
+    // https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#synchronization-queue-transfers
+    NriOptional NriPtr(Queue) srcQueue;
+    NriOptional NriPtr(Queue) dstQueue;
 };
 
 NriStruct(BarrierGroupDesc) {
