@@ -554,8 +554,8 @@ NriStruct(TextureDesc) {
     // D3D12: very optional, since any desktop HW can track many clear values
     NriOptional Nri(ClearValue) optimizedClearValue;
 
-    // VK: useful for HW disabling DCC for attachments with "VK_SHARING_MODE_CONCURRENT", which gets used if there are multiple queues of different types.
-    // If "true", a queue ownership transfer is needed (see "TextureBarrierDesc")
+    // VK: if there are multiple queues of different types, the implementation switches to "VK_SHARING_MODE_CONCURRENT" mode. It may disable DCC for attachments on some HW.
+    // "queueExclusive" may be used to force "VK_SHARING_MODE_EXCLUSIVE" to preserve DCC in the cost of making a "queue ownership transfer" (see "TextureBarrierDesc")
     NriOptional bool queueExclusive;
 };
 
