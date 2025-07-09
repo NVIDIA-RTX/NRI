@@ -192,7 +192,7 @@ NRI_INLINE Result DeviceVal::CreateTexture(const TextureDesc& textureDesc, Textu
     RETURN_ON_FAILURE(this, textureDesc.mipNum <= maxMipNum, Result::INVALID_ARGUMENT, "'mipNum=%u' can't be > %u", textureDesc.mipNum, maxMipNum);
 
     constexpr TextureUsageBits attachmentBits = TextureUsageBits::COLOR_ATTACHMENT | TextureUsageBits::DEPTH_STENCIL_ATTACHMENT | TextureUsageBits::SHADING_RATE_ATTACHMENT;
-    RETURN_ON_FAILURE(this, !textureDesc.queueExclusive || (textureDesc.usage & attachmentBits), Result::INVALID_ARGUMENT, "'queueExclusive' is needed only for attachments to enable DCC on some HW");
+    RETURN_ON_FAILURE(this, textureDesc.sharingMode != SharingMode::EXCLUSIVE || (textureDesc.usage & attachmentBits), Result::INVALID_ARGUMENT, "'EXCLUSIVE' is needed only for attachments to enable DCC on some HW");
 
     Texture* textureImpl = nullptr;
     Result result = m_iCoreImpl.CreateTexture(m_Impl, textureDesc, textureImpl);

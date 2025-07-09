@@ -202,8 +202,8 @@ static inline Nri(TextureBarrierDesc) NriFunc(TextureBarrierFromUnknown)(NriPtr(
 {
     Nri(TextureBarrierDesc) textureBarrier = NriZero;
     textureBarrier.texture = texture;
-    textureBarrier.before.access = NriScopedMember(AccessBits, UNKNOWN);
-    textureBarrier.before.layout = NriScopedMember(Layout, UNKNOWN);
+    textureBarrier.before.access = NriScopedMember(AccessBits, NONE);
+    textureBarrier.before.layout = NriScopedMember(Layout, UNDEFINED);
     textureBarrier.before.stages = NriScopedMember(StageBits, ALL);
     textureBarrier.after = after;
     textureBarrier.mipOffset = mipOffset;

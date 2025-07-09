@@ -777,7 +777,7 @@ NRI_INLINE void CommandBufferVK::DispatchIndirect(const Buffer& buffer, uint64_t
 }
 
 static inline VkAccessFlags2 GetAccessFlags(AccessBits accessBits) {
-    VkAccessFlags2 flags = 0;
+    VkAccessFlags2 flags = VK_ACCESS_2_NONE; // = 0
 
     if (accessBits & AccessBits::INDEX_BUFFER)
         flags |= VK_ACCESS_2_INDEX_READ_BIT;

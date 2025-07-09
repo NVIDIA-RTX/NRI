@@ -971,6 +971,9 @@ void DeviceD3D12::GetResourceDesc(const TextureDesc& textureDesc, D3D12_RESOURCE
     desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
     desc.Flags = GetTextureFlags(textureDesc.usage);
 
+    if (textureDesc.sharingMode == SharingMode::SIMULTANEOUS)
+        desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS;
+
 #ifdef NRI_D3D12_HAS_TIGHT_ALIGNMENT
     if (m_TightAlignmentTier > 1)
         desc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;

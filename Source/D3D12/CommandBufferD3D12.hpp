@@ -38,7 +38,7 @@ static inline D3D12_BARRIER_SYNC GetBarrierSyncFlags(StageBits stageBits, Access
         return D3D12_BARRIER_SYNC_NONE;
 
     // Gather bits
-    D3D12_BARRIER_SYNC flags = D3D12_BARRIER_SYNC_NONE;
+    D3D12_BARRIER_SYNC flags = D3D12_BARRIER_SYNC_NONE; // = 0
 
     if (stageBits & StageBits::INDEX_INPUT)
         flags |= D3D12_BARRIER_SYNC_INDEX_INPUT;
@@ -86,9 +86,11 @@ static inline D3D12_BARRIER_SYNC GetBarrierSyncFlags(StageBits stageBits, Access
 }
 
 static inline D3D12_BARRIER_ACCESS GetBarrierAccessFlags(AccessBits accessBits) {
-    if (accessBits == AccessBits::UNKNOWN)
+    // Check non-mask values first
+    if (accessBits == AccessBits::NONE)
         return D3D12_BARRIER_ACCESS_NO_ACCESS;
 
+    // Gather bits
     D3D12_BARRIER_ACCESS flags = D3D12_BARRIER_ACCESS_COMMON; // = 0
 
     if (accessBits & AccessBits::INDEX_BUFFER)
@@ -143,7 +145,8 @@ static inline D3D12_BARRIER_ACCESS GetBarrierAccessFlags(AccessBits accessBits) 
 }
 
 constexpr std::array<D3D12_BARRIER_LAYOUT, (size_t)Layout::MAX_NUM> g_BarrierLayouts = {
-    D3D12_BARRIER_LAYOUT_UNDEFINED,           // UNKNOWN
+    D3D12_BARRIER_LAYOUT_UNDEFINED,           // UNDEFINED
+    D3D12_BARRIER_LAYOUT_COMMON,              // GENERAL
     D3D12_BARRIER_LAYOUT_PRESENT,             // PRESENT
     D3D12_BARRIER_LAYOUT_RENDER_TARGET,       // COLOR_ATTACHMENT
     D3D12_BARRIER_LAYOUT_SHADING_RATE_SOURCE, // SHADING_RATE_ATTACHMENT
@@ -605,22 +608,20 @@ NRI_INLINE void CommandBufferD3D12::CopyTexture(Texture& dstTexture, const Textu
             src.GetSubresourceIndex(srcRegion->layerOffset, srcRegion->mipOffset, srcRegion->planes),
         };
 
-        const uint32_t size[3] = {
-            srcRegion->width == WHOLE_SIZE ? src.GetSize(0, srcRegion->mipOffset) : srcRegion->width,
-            srcRegion->height == WHOLE_SIZE ? src.GetSize(1, srcRegion->mipOffset) : srcRegion->height,
-            srcRegion->depth == WHOLE_SIZE ? src.GetSize(2, srcRegion->mipOffset) : srcRegion->depth,
-        };
+        uint32_t w = srcRegion->width == WHOLE_SIZE ? src.GetSize(0, srcRegion->mipOffset) : srcRegion->width;
+        uint32_t h = srcRegion->height == WHOLE_SIZE ? src.GetSize(1, srcRegion->mipOffset) : srcRegion->height;
+        uint32_t d = srcRegion->depth == WHOLE_SIZE ? src.GetSize(2, srcRegion->mipOffset) : srcRegion->depth;
 
-        D3D12_BOX box = {
+        D3D12_BOX srcBox = {
             srcRegion->x,
             srcRegion->y,
             srcRegion->z,
-            srcRegion->x + size[0],
-            srcRegion->y + size[1],
-            srcRegion->z + size[2],
+            srcRegion->x + w,
+            srcRegion->y + h,
+            srcRegion->z + d,
         };
 
-        m_GraphicsCommandList->CopyTextureRegion(&dstTextureCopyLocation, dstRegion->x, dstRegion->y, dstRegion->z, &srcTextureCopyLocation, &box);
+        m_GraphicsCommandList->CopyTextureRegion(&dstTextureCopyLocation, dstRegion->x, dstRegion->y, dstRegion->z, &srcTextureCopyLocation, &srcBox);
     }
 }
 
@@ -764,13 +765,20 @@ NRI_INLINE void CommandBufferD3D12::ReadbackTextureToBuffer(Buffer& dstBuffer, c
     dstTextureCopyLocation.PlacedFootprint.Footprint.Depth = srcRegion.depth;
     dstTextureCopyLocation.PlacedFootprint.Footprint.RowPitch = dstDataLayout.rowPitch;
 
-    const uint32_t size[3] = {
-        srcRegion.width == WHOLE_SIZE ? src.GetSize(0, srcRegion.mipOffset) : srcRegion.width,
-        srcRegion.height == WHOLE_SIZE ? src.GetSize(1, srcRegion.mipOffset) : srcRegion.height,
-        srcRegion.depth == WHOLE_SIZE ? src.GetSize(2, srcRegion.mipOffset) : srcRegion.depth,
+    uint32_t w = srcRegion.width == WHOLE_SIZE ? src.GetSize(0, srcRegion.mipOffset) : srcRegion.width;
+    uint32_t h = srcRegion.height == WHOLE_SIZE ? src.GetSize(1, srcRegion.mipOffset) : srcRegion.height;
+    uint32_t d = srcRegion.depth == WHOLE_SIZE ? src.GetSize(2, srcRegion.mipOffset) : srcRegion.depth;
+
+    D3D12_BOX srcBox = {
+        srcRegion.x,
+        srcRegion.y,
+        srcRegion.z,
+        srcRegion.x + w,
+        srcRegion.y + h,
+        srcRegion.z + d,
     };
 
-    m_GraphicsCommandList->CopyTextureRegion(&dstTextureCopyLocation, 0, 0, 0, &srcTextureCopyLocation, nullptr);
+    m_GraphicsCommandList->CopyTextureRegion(&dstTextureCopyLocation, 0, 0, 0, &srcTextureCopyLocation, &srcBox);
 }
 
 NRI_INLINE void CommandBufferD3D12::Dispatch(const DispatchDesc& dispatchDesc) {
@@ -880,7 +888,7 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierGroupDesc& barrierGroup
                 }
 
                 // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_texture_barrier_flags
-                out.Flags = in.before.layout == Layout::UNKNOWN ? D3D12_TEXTURE_BARRIER_FLAG_DISCARD : D3D12_TEXTURE_BARRIER_FLAG_NONE; // TODO: verify that it works
+                out.Flags = in.before.layout == Layout::UNDEFINED ? D3D12_TEXTURE_BARRIER_FLAG_DISCARD : D3D12_TEXTURE_BARRIER_FLAG_NONE; // TODO: verify that it works
             }
         }
 

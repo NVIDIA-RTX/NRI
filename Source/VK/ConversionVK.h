@@ -23,7 +23,8 @@ constexpr VkIndexType GetIndexType(IndexType indexType) {
 }
 
 constexpr std::array<VkImageLayout, (size_t)Layout::MAX_NUM> g_ImageLayouts = {
-    VK_IMAGE_LAYOUT_UNDEFINED,                                    // UNKNOWN
+    VK_IMAGE_LAYOUT_UNDEFINED,                                    // UNDEFINED
+    VK_IMAGE_LAYOUT_GENERAL,                                      // GENERAL
     VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,                              // PRESENT
     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,                     // COLOR_ATTACHMENT
     VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR, // SHADING_RATE_ATTACHMENT

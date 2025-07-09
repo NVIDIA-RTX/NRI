@@ -250,6 +250,15 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     if (IsExtensionSupported(VK_KHR_MAINTENANCE_6_EXTENSION_NAME, supportedExts))
         desiredDeviceExts.push_back(VK_KHR_MAINTENANCE_6_EXTENSION_NAME);
 
+    if (IsExtensionSupported(VK_KHR_MAINTENANCE_7_EXTENSION_NAME, supportedExts))
+        desiredDeviceExts.push_back(VK_KHR_MAINTENANCE_7_EXTENSION_NAME);
+
+    if (IsExtensionSupported(VK_KHR_MAINTENANCE_8_EXTENSION_NAME, supportedExts))
+        desiredDeviceExts.push_back(VK_KHR_MAINTENANCE_8_EXTENSION_NAME);
+
+    if (IsExtensionSupported(VK_KHR_MAINTENANCE_9_EXTENSION_NAME, supportedExts))
+        desiredDeviceExts.push_back(VK_KHR_MAINTENANCE_9_EXTENSION_NAME);
+
     if (IsExtensionSupported(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME, supportedExts))
         desiredDeviceExts.push_back(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
 
@@ -633,6 +642,21 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         APPEND_EXT(maintenance6Features);
     }
 
+    VkPhysicalDeviceMaintenance7FeaturesKHR maintenance7Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR};
+    if (IsExtensionSupported(VK_KHR_MAINTENANCE_7_EXTENSION_NAME, desiredDeviceExts)) {
+        APPEND_EXT(maintenance7Features);
+    }
+
+    VkPhysicalDeviceMaintenance8FeaturesKHR maintenance8Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_8_FEATURES_KHR};
+    if (IsExtensionSupported(VK_KHR_MAINTENANCE_8_EXTENSION_NAME, desiredDeviceExts)) {
+        APPEND_EXT(maintenance8Features);
+    }
+
+    VkPhysicalDeviceMaintenance9FeaturesKHR maintenance9Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_9_FEATURES_KHR};
+    if (IsExtensionSupported(VK_KHR_MAINTENANCE_9_EXTENSION_NAME, desiredDeviceExts)) {
+        APPEND_EXT(maintenance9Features);
+    }
+
     VkPhysicalDeviceFragmentShadingRateFeaturesKHR shadingRateFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR};
     if (IsExtensionSupported(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME, desiredDeviceExts)) {
         APPEND_EXT(shadingRateFeatures);
@@ -899,6 +923,16 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         VkPhysicalDeviceMaintenance6PropertiesKHR maintenance6Props = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_PROPERTIES_KHR};
         if (IsExtensionSupported(VK_KHR_MAINTENANCE_6_EXTENSION_NAME, desiredDeviceExts)) {
             APPEND_EXT(maintenance6Props);
+        }
+
+        VkPhysicalDeviceMaintenance7PropertiesKHR maintenance7Props = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_PROPERTIES_KHR};
+        if (IsExtensionSupported(VK_KHR_MAINTENANCE_7_EXTENSION_NAME, desiredDeviceExts)) {
+            APPEND_EXT(maintenance7Props);
+        }
+
+        VkPhysicalDeviceMaintenance9PropertiesKHR maintenance9Props = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_9_PROPERTIES_KHR};
+        if (IsExtensionSupported(VK_KHR_MAINTENANCE_9_EXTENSION_NAME, desiredDeviceExts)) {
+            APPEND_EXT(maintenance9Props);
         }
 
         VkPhysicalDeviceLineRasterizationPropertiesKHR lineRasterizationProps = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_KHR};
@@ -1225,7 +1259,7 @@ void DeviceVK::FillCreateInfo(const TextureDesc& textureDesc, VkImageCreateInfo&
     info.samples = (VkSampleCountFlagBits)std::max(textureDesc.sampleNum, (Sample_t)1);
     info.tiling = VK_IMAGE_TILING_OPTIMAL;
     info.usage = GetImageUsageFlags(textureDesc.usage);
-    info.sharingMode = (m_NumActiveFamilyIndices <= 1 || textureDesc.queueExclusive) ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
+    info.sharingMode = (m_NumActiveFamilyIndices <= 1 || textureDesc.sharingMode == SharingMode::EXCLUSIVE) ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
     info.queueFamilyIndexCount = m_NumActiveFamilyIndices;
     info.pQueueFamilyIndices = m_ActiveQueueFamilyIndices.data();
     info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;

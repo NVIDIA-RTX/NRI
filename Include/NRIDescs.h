@@ -42,7 +42,7 @@ NriForwardStruct(Queue);            // a logical queue, providing access to a HW
 NriForwardStruct(Memory);           // a memory blob allocated on DEVICE or HOST
 NriForwardStruct(Buffer);           // a buffer object: linear arrays of data
 NriForwardStruct(Device);           // a logical device
-NriForwardStruct(Texture);          // a texture object: multidimansional arrays of data
+NriForwardStruct(Texture);          // a texture object: multidimensional arrays of data
 NriForwardStruct(Pipeline);         // a collection of state needed for rendering: shaders + fixed
 NriForwardStruct(QueryPool);        // a collection of queries of the same type
 NriForwardStruct(Descriptor);       // a handle or pointer to a resource (potentially with a header)
@@ -317,12 +317,16 @@ NriBits(FormatSupportBits, uint16_t,
 #pragma region [ Pipeline stages and barriers ]
 //============================================================================================================================================================================================
 
+// https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html
+// https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#compatibility-with-legacy-d3d12_resource_states
+// https://docs.vulkan.org/samples/latest/samples/performance/pipeline_barriers/README.html
+
 // A barrier consists of two phases:
-// - before:
+// - before (source scope, 1st synchronization scope):
 //   - "AccessBits" corresponding with any relevant resource usage since the preceding barrier or the start of "QueueSubmit" scope
 //   - "StagesBits" of all preceding GPU work that must be completed before executing the barrier (stages to wait before the barrier)
 //   - "Layout" for textures
-// - after:
+// - after (destination scope, 2nd synchronization scope):
 //   - "AccessBits" corresponding with any relevant resource usage after the barrier completes
 //   - "StagesBits" of all subsequent GPU work that must wait until the barrier execution is finished (stages to halt until the barrier is executed)
 //   - "Layout" for textures
@@ -397,7 +401,7 @@ NriBits(StageBits, uint32_t,
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkAccessFlagBits2.html
 // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_access
 NriBits(AccessBits, uint32_t,
-    UNKNOWN                         = 0, // mapped to "COMMON", if AgilitySDK is not available, leading to potential discrepancies with VK
+    NONE                            = 0,          // Mapped to "COMMON" (aka "GENERAL" access), if AgilitySDK is not available, leading to potential discrepancies with VK
 
     // Buffer                                // Access  Compatible "StageBits" (including ALL)
     INDEX_BUFFER                    = NriBit(0),  // R   INDEX_INPUT
@@ -438,8 +442,12 @@ NriBits(AccessBits, uint32_t,
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkImageLayout.html
 // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_layout
 NriEnum(Layout, uint8_t,    // Compatible "AccessBits":
-    UNKNOWN,
-    PRESENT,                    // UNKNOWN
+    // Special
+    UNDEFINED,                  // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_layout_undefined
+    GENERAL,                    // ~ALL access, but not optimal
+    PRESENT,                    // NONE
+
+    // Access specific
     COLOR_ATTACHMENT,           // COLOR_ATTACHMENT
     SHADING_RATE_ATTACHMENT,    // SHADING_RATE_ATTACHMENT
     DEPTH_STENCIL_ATTACHMENT,   // DEPTH_STENCIL_ATTACHMENT_WRITE
@@ -484,7 +492,7 @@ NriStruct(TextureBarrierDesc) {
     Nri(Dim_t) layerNum;
     Nri(PlaneBits) planes;
 
-    // Queue ownership transfer is potentially needed only for "queueExclusive" textures
+    // Queue ownership transfer is potentially needed only for "EXCLUSIVE" textures
     // https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#synchronization-queue-transfers
     NriOptional NriPtr(Queue) srcQueue;
     NriOptional NriPtr(Queue) dstQueue;
@@ -510,6 +518,20 @@ NriEnum(TextureType, uint8_t,
     TEXTURE_1D,
     TEXTURE_2D,
     TEXTURE_3D
+);
+
+// NRI tries to ease your life and avoid using "queue ownership transfers" (see "TextureBarrierDesc").
+// In most of cases "SharingMode" can be ignored. Where is it needed?
+// - VK: use "EXCLUSIVE" for attachments participating into multi-queue activities to preserve DCC (Delta Color Compression) on some HW
+// - D3D12: use "SIMULTANEOUS" to concurrently use a texture as a "SHADER_RESOURCE" (or "SHADER_RESOURCE_STORAGE") and a "COPY_DESTINATION" for non overlapping texture regions
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkSharingMode.html
+NriEnum(SharingMode, uint8_t,
+    CONCURRENT,     // VK: lazy default to avoid dealing with "queue ownership transfers", auto-optimized to "EXCLUSIVE" if all queues have the same type
+    EXCLUSIVE,      // VK: may be used for attachments to preserve DCC on some HW in the cost of making a "queue ownership transfer"
+
+    // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#single-queue-simultaneous-access
+    // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_resource_flags
+    SIMULTANEOUS    // D3D12: strengthened variant of "CONCURRENT", allowing simultaneous multiple readers and one writer for a texture (requires "Layout::GENERAL")
 );
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkImageUsageFlagBits.html
@@ -550,13 +572,8 @@ NriStruct(TextureDesc) {
     NriOptional Nri(Dim_t) mipNum;
     NriOptional Nri(Dim_t) layerNum;
     NriOptional Nri(Sample_t) sampleNum;
-
-    // D3D12: very optional, since any desktop HW can track many clear values
-    NriOptional Nri(ClearValue) optimizedClearValue;
-
-    // VK: if there are multiple queues of different types, the implementation switches to "VK_SHARING_MODE_CONCURRENT" mode. It may disable DCC for attachments on some HW.
-    // "queueExclusive" may be used to force "VK_SHARING_MODE_EXCLUSIVE" to preserve DCC in the cost of making a "queue ownership transfer" (see "TextureBarrierDesc")
-    NriOptional bool queueExclusive;
+    NriOptional Nri(SharingMode) sharingMode;
+    NriOptional Nri(ClearValue) optimizedClearValue; // D3D12: not needed on desktop, since any HW can track many clear values
 };
 
 // "structureStride" values:
@@ -1705,7 +1722,7 @@ NriStruct(DeviceDesc) {
         uint8_t conservativeRaster;
 
         // 1 - a single sample pattern can be specified to repeat for every pixel ("locationNum / sampleNum" ratio must be 1 in "CmdSetSampleLocations").
-        //     1x and 16x sample counts do not support programamble positions
+        //     1x and 16x sample counts do not support programmable locations
         // 2 - four separate sample patterns can be specified for each pixel in a 2x2 grid ("locationNum / sampleNum" ratio can be 1 or 4 in "CmdSetSampleLocations")
         //     All sample counts support programmable positions
         uint8_t sampleLocations;
@@ -1736,7 +1753,7 @@ NriStruct(DeviceDesc) {
     struct {
         // Bigger
         uint32_t getMemoryDesc2                                  : 1; // "GetXxxMemoryDesc2" support (VK: requires "maintenance4", D3D: supported)
-        uint32_t enhancedBarriers                                : 1; // VK: supported, D3D12: requires "AgilitySDK", D3D11: unsupported (https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html)
+        uint32_t enhancedBarriers                                : 1; // VK: supported, D3D12: requires "AgilitySDK", D3D11: unsupported
         uint32_t swapChain                                       : 1; // NRISwapChain
         uint32_t rayTracing                                      : 1; // NRIRayTracing
         uint32_t meshShader                                      : 1; // NRIMeshShader
