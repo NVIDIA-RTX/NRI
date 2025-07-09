@@ -1,5 +1,7 @@
 // © 2021 NVIDIA Corporation
 
+// Goal: presentation functionality
+
 #pragma once
 
 #define NRI_SWAP_CHAIN_H 1

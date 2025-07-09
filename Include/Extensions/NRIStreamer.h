@@ -1,5 +1,7 @@
 // © 2024 NVIDIA Corporation
 
+// Goal: data streaming
+
 #pragma once
 
 #define NRI_STREAMER_H 1

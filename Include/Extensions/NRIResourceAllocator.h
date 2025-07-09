@@ -1,22 +1,26 @@
 // © 2021 NVIDIA Corporation
 
+// Goal: convenient creation of resources, which get returned already bound to a memory.
+// AMD Virtual Memory Allocator is used for "under the hood" memory allocations management:
+//  https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+//  https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator
+
 #pragma once
 
 #define NRI_RESOURCE_ALLOCATOR_H 1
 
 #include "NRIRayTracing.h"
 
-// Convenient creation of resources, which get returned already bound to memory.
-// AMD Virtual Memory Allocator is used for "under the hood" memory allocations management:
-//  https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
-//  https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator
-
 NriNamespaceBegin
+
+// See "Resources: binding to memory" section for more information
+// "memoryPriority" - [-1; 1]: low < 0, normal = 0, high > 0
+// "dedicated" - put a resource into a dedicated memory heap, containing only 1 object with offset = 0
 
 NriStruct(AllocateBufferDesc) {
     Nri(BufferDesc) desc;
     Nri(MemoryLocation) memoryLocation;
-    float memoryPriority; // [-1; 1]: low < 0, normal = 0, high > 0
+    float memoryPriority;
     bool dedicated;
 };
 

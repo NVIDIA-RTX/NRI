@@ -30,6 +30,7 @@
 
 // Tips:
 // - designated initializers are highly recommended!
+// - always zero initialize structs via "{}" if designated initializers are not used (at least to honor "NriOptional")
 // - documentation is embedded (more details can be requested by creating a GitHub issue)
 // - data types are grouped into collapsible logical blocks via "#pragma region"
 
@@ -94,7 +95,72 @@ NriEnum(Result, int8_t,
     UNSUPPORTED             = 4   // if enabled, NRI validation can promote some to "INVALID_ARGUMENT"
 );
 
+// The viewport origin is top-left (D3D native) by default, but can be changed to bottom-left (VK native)
+NriStruct(Viewport) {
+    float x;
+    float y;
+    float width;
+    float height;
+    float depthMin;
+    float depthMax;
+    bool originBottomLeft; // expects "features.viewportOriginBottomLeft"
+};
+
+NriStruct(Rect) {
+    int16_t x;
+    int16_t y;
+    Nri(Dim_t) width;
+    Nri(Dim_t) height;
+};
+
+NriStruct(Color32f) {
+    float x, y, z, w;
+};
+
+NriStruct(Color32ui) {
+    uint32_t x, y, z, w;
+};
+
+NriStruct(Color32i) {
+    int32_t x, y, z, w;
+};
+
+NriStruct(DepthStencil) {
+    float depth;
+    uint8_t stencil;
+};
+
+NriUnion(Color) {
+    Nri(Color32f) f;
+    Nri(Color32ui) ui;
+    Nri(Color32i) i;
+};
+
+NriUnion(ClearValue) {
+    Nri(DepthStencil) depthStencil;
+    Nri(Color) color;
+};
+
+NriStruct(SampleLocation) {
+    int8_t x, y; // [-8; 7]
+};
+
+NriStruct(Dim2) {
+    Nri(Dim_t) w, h;
+};
+
+NriStruct(Float2) {
+    float x, y;
+};
+
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region [ Formats ]
+//============================================================================================================================================================================================
+
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkFormat.html
+// https://learn.microsoft.com/en-us/windows/win32/api/dxgiformat/ne-dxgiformat-dxgi_format
 // left -> right : low -> high bits
 // Expected (but not guaranteed) "FormatSupportBits" are provided, but "GetFormatSupport" should be used for querying real HW support
 // To demote sRGB use the previous format, i.e. "format - 1"
@@ -220,6 +286,7 @@ NriBits(PlaneBits, uint8_t,
     STENCIL                         = NriBit(2)  // indicates "stencil" plane in depth-stencil formats
 );
 
+// A bit represents a feature, supported by a format
 NriBits(FormatSupportBits, uint16_t,
     UNSUPPORTED                     = 0,
 
@@ -244,6 +311,24 @@ NriBits(FormatSupportBits, uint16_t,
     STORAGE_LOAD_WITHOUT_FORMAT     = NriBit(13)
 );
 
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region [ Pipeline stages and barriers ]
+//============================================================================================================================================================================================
+
+// A barrier consists of two phases:
+// - before:
+//   - "AccessBits" corresponding with any relevant resource usage since the preceding barrier or the start of "QueueSubmit" scope
+//   - "StagesBits" of all preceding GPU work that must be completed before executing the barrier (stages to wait before the barrier)
+//   - "Layout" for textures
+// - after:
+//   - "AccessBits" corresponding with any relevant resource usage after the barrier completes
+//   - "StagesBits" of all subsequent GPU work that must wait until the barrier execution is finished (stages to halt until the barrier is executed)
+//   - "Layout" for textures
+
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPipelineStageFlagBits2.html
+// https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_sync
 NriBits(StageBits, uint32_t,
     // Special
     ALL                             = 0,          // Lazy default for barriers
@@ -309,84 +394,116 @@ NriBits(StageBits, uint32_t,
                                       NriMember(StageBits, CALLABLE_SHADER)
 );
 
-// The viewport origin is top-left (D3D native) by default, but can be changed to bottom-left (VK native)
-NriStruct(Viewport) {
-    float x;
-    float y;
-    float width;
-    float height;
-    float depthMin;
-    float depthMax;
-    bool originBottomLeft; // expects "features.viewportOriginBottomLeft"
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkAccessFlagBits2.html
+// https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_access
+NriBits(AccessBits, uint32_t,
+    UNKNOWN                         = 0, // mapped to "COMMON", if AgilitySDK is not available, leading to potential discrepancies with VK
+
+    // Buffer                                // Access  Compatible "StageBits" (including ALL)
+    INDEX_BUFFER                    = NriBit(0),  // R   INDEX_INPUT
+    VERTEX_BUFFER                   = NriBit(1),  // R   VERTEX_SHADER
+    CONSTANT_BUFFER                 = NriBit(2),  // R   GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
+    ARGUMENT_BUFFER                 = NriBit(3),  // R   INDIRECT
+    SCRATCH_BUFFER                  = NriBit(4),  // RW  ACCELERATION_STRUCTURE, MICROMAP
+
+    // Attachment
+    COLOR_ATTACHMENT                = NriBit(5),  // RW  COLOR_ATTACHMENT
+    SHADING_RATE_ATTACHMENT         = NriBit(6),  // R   FRAGMENT_SHADER
+    DEPTH_STENCIL_ATTACHMENT_READ   = NriBit(7),  // R   DEPTH_STENCIL_ATTACHMENT
+    DEPTH_STENCIL_ATTACHMENT_WRITE  = NriBit(8),  //  W  DEPTH_STENCIL_ATTACHMENT
+
+    // Acceleration structure
+    ACCELERATION_STRUCTURE_READ     = NriBit(9),  // R   COMPUTE_SHADER, RAY_TRACING_SHADERS, ACCELERATION_STRUCTURE
+    ACCELERATION_STRUCTURE_WRITE    = NriBit(10), //  W  ACCELERATION_STRUCTURE
+
+    // Micromap
+    MICROMAP_READ                   = NriBit(11), // R   MICROMAP, ACCELERATION_STRUCTURE
+    MICROMAP_WRITE                  = NriBit(12), //  W  MICROMAP
+
+    // Shader resource
+    SHADER_RESOURCE                 = NriBit(13), // R   GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
+    SHADER_RESOURCE_STORAGE         = NriBit(14), // RW  GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS, CLEAR_STORAGE
+    SHADER_BINDING_TABLE            = NriBit(15), // R   RAY_TRACING_SHADERS
+
+    // Copy
+    COPY_SOURCE                     = NriBit(16), // R   COPY
+    COPY_DESTINATION                = NriBit(17), //  W  COPY
+
+    // Resolve
+    RESOLVE_SOURCE                  = NriBit(18), // R   RESOLVE
+    RESOLVE_DESTINATION             = NriBit(19)  //  W  RESOLVE
+);
+
+// Not used if "features.enhancedBarriers" is "0"
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkImageLayout.html
+// https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_layout
+NriEnum(Layout, uint8_t,    // Compatible "AccessBits":
+    UNKNOWN,
+    PRESENT,                    // UNKNOWN
+    COLOR_ATTACHMENT,           // COLOR_ATTACHMENT
+    SHADING_RATE_ATTACHMENT,    // SHADING_RATE_ATTACHMENT
+    DEPTH_STENCIL_ATTACHMENT,   // DEPTH_STENCIL_ATTACHMENT_WRITE
+    DEPTH_STENCIL_READONLY,     // DEPTH_STENCIL_ATTACHMENT_READ, SHADER_RESOURCE
+    SHADER_RESOURCE,            // SHADER_RESOURCE
+    SHADER_RESOURCE_STORAGE,    // SHADER_RESOURCE_STORAGE
+    COPY_SOURCE,                // COPY_SOURCE
+    COPY_DESTINATION,           // COPY_DESTINATION
+    RESOLVE_SOURCE,             // RESOLVE_SOURCE
+    RESOLVE_DESTINATION         // RESOLVE_DESTINATION
+);
+
+NriStruct(AccessStage) {
+    Nri(AccessBits) access;
+    Nri(StageBits) stages;
 };
 
-NriStruct(Rect) {
-    int16_t x;
-    int16_t y;
-    Nri(Dim_t) width;
-    Nri(Dim_t) height;
+NriStruct(AccessLayoutStage) {
+    Nri(AccessBits) access;
+    Nri(Layout) layout;
+    Nri(StageBits) stages;
 };
 
-NriStruct(Color32f) {
-    float x, y, z, w;
+NriStruct(GlobalBarrierDesc) {
+    Nri(AccessStage) before;
+    Nri(AccessStage) after;
 };
 
-NriStruct(Color32ui) {
-    uint32_t x, y, z, w;
+NriStruct(BufferBarrierDesc) {
+    NriPtr(Buffer) buffer;
+    Nri(AccessStage) before;
+    Nri(AccessStage) after;
 };
 
-NriStruct(Color32i) {
-    int32_t x, y, z, w;
+NriStruct(TextureBarrierDesc) {
+    NriPtr(Texture) texture;
+    Nri(AccessLayoutStage) before;
+    Nri(AccessLayoutStage) after;
+    Nri(Dim_t) mipOffset;
+    Nri(Dim_t) mipNum;
+    Nri(Dim_t) layerOffset;
+    Nri(Dim_t) layerNum;
+    Nri(PlaneBits) planes;
+
+    // Queue ownership transfer is potentially needed only for "queueExclusive" textures
+    // https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#synchronization-queue-transfers
+    NriOptional NriPtr(Queue) srcQueue;
+    NriOptional NriPtr(Queue) dstQueue;
 };
 
-NriStruct(DepthStencil) {
-    float depth;
-    uint8_t stencil;
-};
-
-NriUnion(Color) {
-    Nri(Color32f) f;
-    Nri(Color32ui) ui;
-    Nri(Color32i) i;
-};
-
-NriUnion(ClearValue) {
-    Nri(DepthStencil) depthStencil;
-    Nri(Color) color;
-};
-
-NriStruct(SampleLocation) {
-    int8_t x, y; // [-8; 7]
-};
-
-NriStruct(Dim2) {
-    Nri(Dim_t) w, h;
-};
-
-NriStruct(Float2) {
-    float x, y;
+NriStruct(BarrierGroupDesc) {
+    const NriPtr(GlobalBarrierDesc) globals;
+    uint32_t globalNum;
+    const NriPtr(BufferBarrierDesc) buffers;
+    uint32_t bufferNum;
+    const NriPtr(TextureBarrierDesc) textures;
+    uint32_t textureNum;
 };
 
 #pragma endregion
 
 //============================================================================================================================================================================================
-#pragma region [ Creation ]
+#pragma region [ Resources: creation ]
 //============================================================================================================================================================================================
-
-NriEnum(Robustness, uint8_t,
-    DEFAULT,        // don't care, follow device settings (VK level when used on a device)
-    OFF,            // no overhead, no robust access (out-of-bounds access is not allowed)
-    VK,             // minimal overhead, partial robust access
-    D3D12           // moderate overhead, D3D12-level robust access (requires "VK_EXT_robustness2", soft fallback to VK mode)
-);
-
-// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_heap_type
-NriEnum(MemoryLocation, uint8_t,
-    DEVICE,
-    DEVICE_UPLOAD,  // soft fallback to "HOST_UPLOAD"
-    HOST_UPLOAD,
-    HOST_READBACK
-);
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkImageType.html
 NriEnum(TextureType, uint8_t,
@@ -396,6 +513,112 @@ NriEnum(TextureType, uint8_t,
 );
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkImageUsageFlagBits.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_resource_flags
+NriBits(TextureUsageBits, uint8_t,                 // Min compatible access:                  Usage:
+    NONE                                = 0,
+    SHADER_RESOURCE                     = NriBit(0),  // SHADER_RESOURCE                         Read-only shader resource (SRV)
+    SHADER_RESOURCE_STORAGE             = NriBit(1),  // SHADER_RESOURCE_STORAGE                 Read/write shader resource (UAV)
+    COLOR_ATTACHMENT                    = NriBit(2),  // COLOR_ATTACHMENT                        Color attachment (render target)
+    DEPTH_STENCIL_ATTACHMENT            = NriBit(3),  // DEPTH_STENCIL_ATTACHMENT_READ/WRITE     Depth-stencil attachment (depth-stencil target)
+    SHADING_RATE_ATTACHMENT             = NriBit(4)   // SHADING_RATE_ATTACHMENT                 Shading rate attachment (source)
+);
+
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkBufferUsageFlagBits.html
+NriBits(BufferUsageBits, uint16_t,                 // Min compatible access:                  Usage:
+    NONE                                = 0,
+    SHADER_RESOURCE                     = NriBit(0),  // SHADER_RESOURCE                         Read-only shader resource (SRV)
+    SHADER_RESOURCE_STORAGE             = NriBit(1),  // SHADER_RESOURCE_STORAGE                 Read/write shader resource (UAV)
+    VERTEX_BUFFER                       = NriBit(2),  // VERTEX_BUFFER                           Vertex buffer
+    INDEX_BUFFER                        = NriBit(3),  // INDEX_BUFFER                            Index buffer
+    CONSTANT_BUFFER                     = NriBit(4),  // CONSTANT_BUFFER                         Constant buffer (D3D11: can't be combined with other usages)
+    ARGUMENT_BUFFER                     = NriBit(5),  // ARGUMENT_BUFFER                         Argument buffer in "Indirect" commands
+    SCRATCH_BUFFER                      = NriBit(6),  // SCRATCH_BUFFER                          Scratch buffer in "CmdBuild*" commands
+    SHADER_BINDING_TABLE                = NriBit(7),  // SHADER_BINDING_TABLE                    Shader binding table (SBT) in "CmdDispatchRays*" commands
+    ACCELERATION_STRUCTURE_BUILD_INPUT  = NriBit(8),  // SHADER_RESOURCE                         Read-only input in "CmdBuildAccelerationStructures" command
+    ACCELERATION_STRUCTURE_STORAGE      = NriBit(9),  // ACCELERATION_STRUCTURE_READ/WRITE       (INTERNAL) acceleration structure storage
+    MICROMAP_BUILD_INPUT                = NriBit(10), // SHADER_RESOURCE                         Read-only input in "CmdBuildMicromaps" command
+    MICROMAP_STORAGE                    = NriBit(11)  // MICROMAP_READ/WRITE                     (INTERNAL) micromap storage
+);
+
+NriStruct(TextureDesc) {
+    Nri(TextureType) type;
+    Nri(TextureUsageBits) usage;
+    Nri(Format) format;
+    Nri(Dim_t) width;
+    NriOptional Nri(Dim_t) height;
+    NriOptional Nri(Dim_t) depth;
+    NriOptional Nri(Dim_t) mipNum;
+    NriOptional Nri(Dim_t) layerNum;
+    NriOptional Nri(Sample_t) sampleNum;
+
+    // D3D12: very optional, since any desktop HW can track many clear values
+    NriOptional Nri(ClearValue) optimizedClearValue;
+
+    // VK: useful for HW disabling DCC for attachments with "VK_SHARING_MODE_CONCURRENT", which gets used if there are multiple queues of different types.
+    // If "true", a queue ownership transfer is needed (see "TextureBarrierDesc")
+    NriOptional bool queueExclusive;
+};
+
+// "structureStride" values:
+// 0  = allows "typed" views
+// 4  = allows "typed", "byte address" (raw) and "structured" views (D3D11: allows to create multiple "structured" views for a single resource, disobeying the spec)
+// >4 = allows "structured" and potentially "typed" views (D3D11: locks this buffer to a single "structured" layout, no "typed" views)
+// VK: buffers always created with "VK_SHARING_MODE_CONCURRENT" to match D3D12 spec
+NriStruct(BufferDesc) {
+    uint64_t size;
+    uint32_t structureStride;
+    Nri(BufferUsageBits) usage;
+};
+
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region [ Resources: binding to memory ]
+//============================================================================================================================================================================================
+
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_heap_type
+NriEnum(MemoryLocation, uint8_t,
+    DEVICE,
+    DEVICE_UPLOAD,  // soft fallback to "HOST_UPLOAD"
+    HOST_UPLOAD,
+    HOST_READBACK
+);
+
+// https://learn.microsoft.com/en-us/windows/win32/direct3d12/residency
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_residency_priority
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkMemoryPriorityAllocateInfoEXT.html
+NriStruct(MemoryDesc) {
+    uint64_t size;
+    uint32_t alignment;
+    Nri(MemoryType) type;
+    bool mustBeDedicated; // must be put into a dedicated "Memory" object, containing only 1 object with offset = 0
+};
+
+NriStruct(AllocateMemoryDesc) {
+    uint64_t size;
+    Nri(MemoryType) type;
+    float priority; // [-1; 1]: low < 0, normal = 0, high > 0
+};
+
+NriStruct(BufferMemoryBindingDesc) {
+    NriPtr(Buffer) buffer;
+    NriPtr(Memory) memory;
+    uint64_t offset;
+};
+
+NriStruct(TextureMemoryBindingDesc) {
+    NriPtr(Texture) texture;
+    NriPtr(Memory) memory;
+    uint64_t offset;
+};
+
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region [ Resource view or sampler creation (descriptor) ]
+//============================================================================================================================================================================================
+
+// https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#creating-descriptors
 NriEnum(Texture1DViewType, uint8_t,
     SHADER_RESOURCE_1D,
     SHADER_RESOURCE_1D_ARRAY,
@@ -435,78 +658,47 @@ NriEnum(BufferViewType, uint8_t,
     CONSTANT
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkDescriptorType.html
-NriEnum(DescriptorType, uint8_t,
-    SAMPLER,
-    CONSTANT_BUFFER,
-    TEXTURE,
-    STORAGE_TEXTURE,
-    BUFFER,
-    STORAGE_BUFFER,
-    STRUCTURED_BUFFER,
-    STORAGE_STRUCTURED_BUFFER,
-    ACCELERATION_STRUCTURE
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkFilter.html
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerMipmapMode.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_filter
+NriEnum(Filter, uint8_t,
+    NEAREST,
+    LINEAR
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkImageUsageFlagBits.html
-NriBits(TextureUsageBits, uint8_t,                 // Min compatible access:                  Usage:
-    NONE                                = 0,
-    SHADER_RESOURCE                     = NriBit(0),  // SHADER_RESOURCE                         Read-only shader resource (SRV)
-    SHADER_RESOURCE_STORAGE             = NriBit(1),  // SHADER_RESOURCE_STORAGE                 Read/write shader resource (UAV)
-    COLOR_ATTACHMENT                    = NriBit(2),  // COLOR_ATTACHMENT                        Color attachment (render target)
-    DEPTH_STENCIL_ATTACHMENT            = NriBit(3),  // DEPTH_STENCIL_ATTACHMENT_READ/WRITE     Depth-stencil attachment (depth-stencil target)
-    SHADING_RATE_ATTACHMENT             = NriBit(4)   // SHADING_RATE_ATTACHMENT                 Shading rate attachment (source)
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerReductionMode.html
+NriEnum(ReductionMode, uint8_t,
+    AVERAGE,    // a weighted average of values in the footprint
+    MIN,        // a component-wise minimum of values in the footprint with non-zero weights
+    MAX         // a component-wise maximum of values in the footprint with non-zero weights
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkBufferUsageFlagBits.html
-NriBits(BufferUsageBits, uint16_t,                 // Min compatible access:                  Usage:
-    NONE                                = 0,
-    SHADER_RESOURCE                     = NriBit(0),  // SHADER_RESOURCE                         Read-only shader resource (SRV)
-    SHADER_RESOURCE_STORAGE             = NriBit(1),  // SHADER_RESOURCE_STORAGE                 Read/write shader resource (UAV)
-    VERTEX_BUFFER                       = NriBit(2),  // VERTEX_BUFFER                           Vertex buffer
-    INDEX_BUFFER                        = NriBit(3),  // INDEX_BUFFER                            Index buffer
-    CONSTANT_BUFFER                     = NriBit(4),  // CONSTANT_BUFFER                         Constant buffer (D3D11: can't be combined with other usages)
-    ARGUMENT_BUFFER                     = NriBit(5),  // ARGUMENT_BUFFER                         Argument buffer in "Indirect" commands
-    SCRATCH_BUFFER                      = NriBit(6),  // SCRATCH_BUFFER                          Scratch buffer in "CmdBuild*" commands
-    SHADER_BINDING_TABLE                = NriBit(7),  // SHADER_BINDING_TABLE                    Shader binding table (SBT) in "CmdDispatchRays*" commands
-    ACCELERATION_STRUCTURE_BUILD_INPUT  = NriBit(8),  // SHADER_RESOURCE                         Read-only input in "CmdBuildAccelerationStructures" command
-    ACCELERATION_STRUCTURE_STORAGE      = NriBit(9),  // ACCELERATION_STRUCTURE_READ/WRITE       (INTERNAL) acceleration structure storage
-    MICROMAP_BUILD_INPUT                = NriBit(10), // SHADER_RESOURCE                         Read-only input in "CmdBuildMicromaps" command
-    MICROMAP_STORAGE                    = NriBit(11)  // MICROMAP_READ/WRITE                     (INTERNAL) micromap storage
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerAddressMode.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_texture_address_mode
+NriEnum(AddressMode, uint8_t,
+    REPEAT,
+    MIRRORED_REPEAT,
+    CLAMP_TO_EDGE,
+    CLAMP_TO_BORDER,
+    MIRROR_CLAMP_TO_EDGE
 );
 
-NriBits(DescriptorPoolBits, uint8_t,
-    NONE                                = 0,
-    ALLOW_UPDATE_AFTER_SET              = NriBit(1) // allows "DescriptorSetBits::ALLOW_UPDATE_AFTER_SET"
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkCompareOp.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_comparison_func
+// R - fragment depth, stencil reference or "SampleCmp" reference
+// D - depth or stencil buffer
+NriEnum(CompareOp, uint8_t,
+    NONE,                       // test is disabled
+    ALWAYS,                     // true
+    NEVER,                      // false
+    EQUAL,                      // R == D
+    NOT_EQUAL,                  // R != D
+    LESS,                       // R < D
+    LESS_EQUAL,                 // R <= D
+    GREATER,                    // R > D
+    GREATER_EQUAL               // R >= D
 );
 
-// Resources
-NriStruct(TextureDesc) {
-    Nri(TextureType) type;
-    Nri(TextureUsageBits) usage;
-    Nri(Format) format;
-    Nri(Dim_t) width;
-    NriOptional Nri(Dim_t) height;
-    NriOptional Nri(Dim_t) depth;
-    NriOptional Nri(Dim_t) mipNum;
-    NriOptional Nri(Dim_t) layerNum;
-    NriOptional Nri(Sample_t) sampleNum;
-    NriOptional Nri(ClearValue) optimizedClearValue; // D3D12: very optional, since any desktop HW can track many clear values
-    NriOptional bool queueExclusive;                 // VK: useful for HW disabling DCC for attachments with "VK_SHARING_MODE_CONCURRENT", a queue ownership transfer is needed (see "TextureBarrierDesc")
-};
-
-// "structureStride" values:
-// 0  = allows "typed" views
-// 4  = allows "typed", "byte address" (raw) and "structured" views (D3D11: allows to create multiple "structured" views for a single resource, disobeying the spec)
-// >4 = allows "structured" and potentially "typed" views (D3D11: locks this buffer to a single "structured" layout, no "typed" views)
-// VK: buffers always created with "VK_SHARING_MODE_CONCURRENT" to match D3D12 spec
-NriStruct(BufferDesc) {
-    uint64_t size;
-    uint32_t structureStride;
-    Nri(BufferUsageBits) usage;
-};
-
-// Descriptors (Views)
 NriStruct(Texture1DViewDesc) {
     const NriPtr(Texture) texture;
     Nri(Texture1DViewType) viewType;
@@ -546,20 +738,27 @@ NriStruct(BufferViewDesc) {
     NriOptional uint32_t structureStride; // = structure stride from "BufferDesc" if not provided
 };
 
-// Descriptor pool
-NriStruct(DescriptorPoolDesc) {
-    uint32_t descriptorSetMaxNum;
-    uint32_t samplerMaxNum;
-    uint32_t constantBufferMaxNum;
-    uint32_t dynamicConstantBufferMaxNum;
-    uint32_t textureMaxNum;
-    uint32_t storageTextureMaxNum;
-    uint32_t bufferMaxNum;
-    uint32_t storageBufferMaxNum;
-    uint32_t structuredBufferMaxNum;
-    uint32_t storageStructuredBufferMaxNum;
-    uint32_t accelerationStructureMaxNum;
-    Nri(DescriptorPoolBits) flags;
+NriStruct(AddressModes) {
+    Nri(AddressMode) u, v, w;
+};
+
+NriStruct(Filters) {
+    Nri(Filter) min, mag, mip;
+    Nri(ReductionMode) ext; // requires "features.textureFilterMinMax"
+};
+
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerCreateInfo.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_sampler_desc
+NriStruct(SamplerDesc) {
+    Nri(Filters) filters;
+    uint8_t anisotropy;
+    float mipBias;
+    float mipMin;
+    float mipMax;
+    Nri(AddressModes) addressModes;
+    Nri(CompareOp) compareOp;
+    Nri(Color) borderColor;
+    bool isInteger;
 };
 
 #pragma endregion
@@ -611,11 +810,17 @@ NriBits(PipelineLayoutBits, uint8_t,
     ENABLE_D3D12_DRAW_PARAMETERS_EMULATION  = NriBit(1)  // D3D12: enable draw parameters emulation, not needed if all vertex shaders for this layout compiled with SM 6.8 (native support)
 );
 
+NriBits(DescriptorPoolBits, uint8_t,
+    NONE                                    = 0,
+    ALLOW_UPDATE_AFTER_SET                  = NriBit(1)  // allows "DescriptorSetBits::ALLOW_UPDATE_AFTER_SET"
+);
+
 NriBits(DescriptorSetBits, uint8_t,
     NONE                                    = 0,
     ALLOW_UPDATE_AFTER_SET                  = NriBit(0)  // allows "DescriptorRangeBits::ALLOW_UPDATE_AFTER_SET"
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkDescriptorBindingFlagBits.html
 NriBits(DescriptorRangeBits, uint8_t,
     NONE                                    = 0,
     PARTIALLY_BOUND                         = NriBit(0), // descriptors in range may not contain valid descriptors at the time the descriptors are consumed (but referenced descriptors must be valid)
@@ -624,6 +829,19 @@ NriBits(DescriptorRangeBits, uint8_t,
 
     // https://docs.vulkan.org/samples/latest/samples/extensions/descriptor_indexing/README.html#_update_after_bind_streaming_descriptors_concurrently
     ALLOW_UPDATE_AFTER_SET                  = NriBit(3)  // descriptors in range can be updated after "CmdSetDescriptorSet" but before "QueueSubmit", also works as "DATA_VOLATILE"
+);
+
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkDescriptorType.html
+NriEnum(DescriptorType, uint8_t,
+    SAMPLER,
+    CONSTANT_BUFFER,
+    TEXTURE,
+    STORAGE_TEXTURE,
+    BUFFER,
+    STORAGE_BUFFER,
+    STRUCTURED_BUFFER,
+    STORAGE_STRUCTURED_BUFFER,
+    ACCELERATION_STRUCTURE
 );
 
 // "DescriptorRange" consists of "Descriptor" entities
@@ -663,6 +881,9 @@ NriStruct(RootDescriptorDesc) { // aka push descriptor
     Nri(StageBits) shaderStages;
 };
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPipelineLayoutCreateInfo.html
+// https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#root-signature
+// https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#root-signature-version-11
 NriStruct(PipelineLayoutDesc) {
     uint32_t rootRegisterSpace;
     const NriPtr(RootConstantDesc) rootConstants;
@@ -675,7 +896,25 @@ NriStruct(PipelineLayoutDesc) {
     Nri(PipelineLayoutBits) flags;
 };
 
-// Updating descriptors
+// Descriptor pool
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_descriptor_heap_desc
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkDescriptorPoolCreateInfo.html
+NriStruct(DescriptorPoolDesc) {
+    uint32_t descriptorSetMaxNum;
+    uint32_t samplerMaxNum;
+    uint32_t constantBufferMaxNum;
+    uint32_t dynamicConstantBufferMaxNum;
+    uint32_t textureMaxNum;
+    uint32_t storageTextureMaxNum;
+    uint32_t bufferMaxNum;
+    uint32_t storageBufferMaxNum;
+    uint32_t structuredBufferMaxNum;
+    uint32_t storageStructuredBufferMaxNum;
+    uint32_t accelerationStructureMaxNum;
+    Nri(DescriptorPoolBits) flags;
+};
+
+// Updating descriptors in a descriptor set, allocated from a descriptor pool
 NriStruct(DescriptorRangeUpdateDesc) {
     const NriPtr(Descriptor) const* descriptors;
     uint32_t descriptorNum;
@@ -695,7 +934,7 @@ NriStruct(DescriptorSetCopyDesc) {
 #pragma endregion
 
 //============================================================================================================================================================================================
-#pragma region [ Input assembly ]
+#pragma region [ Graphics pipeline: input assembly ]
 //============================================================================================================================================================================================
 
 NriEnum(IndexType, uint8_t,
@@ -716,6 +955,8 @@ NriEnum(VertexStreamStepRate, uint8_t,
 );
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkPrimitiveTopology.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3dcommon/ne-d3dcommon-d3d_primitive_topology
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_primitive_topology_type
 NriEnum(Topology, uint8_t,
     POINT_LIST,
     LINE_LIST,
@@ -773,7 +1014,7 @@ NriStruct(VertexBufferDesc) {
 #pragma endregion
 
 //============================================================================================================================================================================================
-#pragma region [ Rasterization ]
+#pragma region [ Graphics pipeline: rasterization ]
 //============================================================================================================================================================================================
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkPolygonMode.html
@@ -861,7 +1102,7 @@ NriStruct(ShadingRateDesc) {
 #pragma endregion
 
 //============================================================================================================================================================================================
-#pragma region [ Output merger ]
+#pragma region [ Graphics pipeline: output merger ]
 //============================================================================================================================================================================================
 
 NriEnum(Multiview, uint8_t,
@@ -876,6 +1117,7 @@ NriEnum(Multiview, uint8_t,
 );
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkLogicOp.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_logic_op
 // S - source color 0
 // D - destination color
 NriEnum(LogicOp, uint8_t,
@@ -897,22 +1139,8 @@ NriEnum(LogicOp, uint8_t,
     SET                         // 1
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkCompareOp.html
-// R - fragment's depth or stencil reference
-// D - depth or stencil buffer
-NriEnum(CompareOp, uint8_t,
-    NONE,                       // test is disabled
-    ALWAYS,                     // true
-    NEVER,                      // false
-    EQUAL,                      // R == D
-    NOT_EQUAL,                  // R != D
-    LESS,                       // R < D
-    LESS_EQUAL,                 // R <= D
-    GREATER,                    // R > D
-    GREATER_EQUAL               // R >= D
-);
-
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkStencilOp.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_stencil_op
 // R - reference, set by "CmdSetStencilReference"
 // D - stencil buffer
 NriEnum(StencilOp, uint8_t,
@@ -927,6 +1155,7 @@ NriEnum(StencilOp, uint8_t,
 );
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkBlendFactor.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_blend
 // S0 - source color 0
 // S1 - source color 1
 // D - destination color
@@ -954,6 +1183,7 @@ NriEnum(BlendFactor, uint8_t,   // RGB                               ALPHA
 );
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkBlendOp.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_blend_op
 // S - source color
 // D - destination color
 // Sf - source factor, produced by "BlendFactor"
@@ -983,6 +1213,7 @@ NriBits(ColorWriteBits, uint8_t,
 );
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkStencilOpState.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_depth_stencil_desc
 NriStruct(StencilDesc) {
     Nri(CompareOp) compareOp; // compareOp != NONE, expects "CmdSetStencilReference"
     Nri(StencilOp) failOp;
@@ -1005,6 +1236,7 @@ NriStruct(StencilAttachmentDesc) {
 };
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkPipelineColorBlendAttachmentState.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_render_target_blend_desc
 NriStruct(BlendDesc) {
     Nri(BlendFactor) srcFactor;
     Nri(BlendFactor) dstFactor;
@@ -1041,58 +1273,15 @@ NriStruct(AttachmentsDesc) {
 #pragma endregion
 
 //============================================================================================================================================================================================
-#pragma region [ Sampler ]
+#pragma region [ Pipelines ]
 //============================================================================================================================================================================================
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkFilter.html
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerMipmapMode.html
-NriEnum(Filter, uint8_t,
-    NEAREST,
-    LINEAR
+NriEnum(Robustness, uint8_t,
+    DEFAULT,        // don't care, follow device settings (VK level when used on a device)
+    OFF,            // no overhead, no robust access (out-of-bounds access is not allowed)
+    VK,             // minimal overhead, partial robust access
+    D3D12           // moderate overhead, D3D12-level robust access (requires "VK_EXT_robustness2", soft fallback to VK mode)
 );
-
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerReductionMode.html
-NriEnum(ReductionMode, uint8_t,
-    AVERAGE,    // a weighted average of values in the footprint
-    MIN,        // a component-wise minimum of values in the footprint with non-zero weights
-    MAX         // a component-wise maximum of values in the footprint with non-zero weights
-);
-
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerAddressMode.html
-NriEnum(AddressMode, uint8_t,
-    REPEAT,
-    MIRRORED_REPEAT,
-    CLAMP_TO_EDGE,
-    CLAMP_TO_BORDER,
-    MIRROR_CLAMP_TO_EDGE
-);
-
-NriStruct(AddressModes) {
-    Nri(AddressMode) u, v, w;
-};
-
-NriStruct(Filters) {
-    Nri(Filter) min, mag, mip;
-    Nri(ReductionMode) ext; // requires "features.textureFilterMinMax"
-};
-
-NriStruct(SamplerDesc) {
-    Nri(Filters) filters;
-    uint8_t anisotropy;
-    float mipBias;
-    float mipMin;
-    float mipMax;
-    Nri(AddressModes) addressModes;
-    Nri(CompareOp) compareOp;
-    Nri(Color) borderColor;
-    bool isInteger;
-};
-
-#pragma endregion
-
-//============================================================================================================================================================================================
-#pragma region [ Pipeline ]
-//============================================================================================================================================================================================
 
 // It's recommended to use "NRI.hlsl" in the shader code
 NriStruct(ShaderDesc) {
@@ -1123,210 +1312,47 @@ NriStruct(ComputePipelineDesc) {
 #pragma endregion
 
 //============================================================================================================================================================================================
-#pragma region [ Barrier ]
+#pragma region [ Queries ]
 //============================================================================================================================================================================================
 
-// A barrier consists of two phases:
-// - before:
-//   - "AccessBits" corresponding with any relevant resource usage since the preceding barrier or the start of "QueueSubmit" scope
-//   - "StagesBits" of all preceding GPU work that must be completed before executing the barrier (stages to wait before the barrier)
-//   - "Layout" for textures
-// - after:
-//   - "AccessBits" corresponding with any relevant resource usage after the barrier completes
-//   - "StagesBits" of all subsequent GPU work that must wait until the barrier execution is finished (stages to halt until the barrier is executed)
-//   - "Layout" for textures
-
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkAccessFlagBits2.html
-NriBits(AccessBits, uint32_t,
-    UNKNOWN                         = 0, // mapped to "COMMON", if AgilitySDK is not available, leading to potential discrepancies with VK
-
-    // Buffer                                // Access  Compatible "StageBits" (including ALL)
-    INDEX_BUFFER                    = NriBit(0),  // R   INDEX_INPUT
-    VERTEX_BUFFER                   = NriBit(1),  // R   VERTEX_SHADER
-    CONSTANT_BUFFER                 = NriBit(2),  // R   GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
-    ARGUMENT_BUFFER                 = NriBit(3),  // R   INDIRECT
-    SCRATCH_BUFFER                  = NriBit(4),  // RW  ACCELERATION_STRUCTURE, MICROMAP
-
-    // Attachment
-    COLOR_ATTACHMENT                = NriBit(5),  // RW  COLOR_ATTACHMENT
-    SHADING_RATE_ATTACHMENT         = NriBit(6),  // R   FRAGMENT_SHADER
-    DEPTH_STENCIL_ATTACHMENT_READ   = NriBit(7),  // R   DEPTH_STENCIL_ATTACHMENT
-    DEPTH_STENCIL_ATTACHMENT_WRITE  = NriBit(8),  //  W  DEPTH_STENCIL_ATTACHMENT
-
-    // Acceleration structure
-    ACCELERATION_STRUCTURE_READ     = NriBit(9),  // R   COMPUTE_SHADER, RAY_TRACING_SHADERS, ACCELERATION_STRUCTURE
-    ACCELERATION_STRUCTURE_WRITE    = NriBit(10), //  W  ACCELERATION_STRUCTURE
-
-    // Micromap
-    MICROMAP_READ                   = NriBit(11), // R   MICROMAP, ACCELERATION_STRUCTURE
-    MICROMAP_WRITE                  = NriBit(12), //  W  MICROMAP
-
-    // Shader resource
-    SHADER_RESOURCE                 = NriBit(13), // R   GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
-    SHADER_RESOURCE_STORAGE         = NriBit(14), // RW  GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS, CLEAR_STORAGE
-    SHADER_BINDING_TABLE            = NriBit(15), // R   RAY_TRACING_SHADERS
-
-    // Copy
-    COPY_SOURCE                     = NriBit(16), // R   COPY
-    COPY_DESTINATION                = NriBit(17), //  W  COPY
-
-    // Resolve
-    RESOLVE_SOURCE                  = NriBit(18), // R   RESOLVE
-    RESOLVE_DESTINATION             = NriBit(19)  //  W  RESOLVE
+// https://microsoft.github.io/DirectX-Specs/d3d/CountersAndQueries.html
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkQueryType.html
+NriEnum(QueryType, uint8_t,
+    TIMESTAMP,                              // uint64_t
+    TIMESTAMP_COPY_QUEUE,                   // uint64_t (requires "features.copyQueueTimestamp"), same as "TIMESTAMP" but for a "COPY" queue
+    OCCLUSION,                              // uint64_t
+    PIPELINE_STATISTICS,                    // see "PipelineStatisticsDesc" (requires "features.pipelineStatistics")
+    ACCELERATION_STRUCTURE_SIZE,            // uint64_t, requires "features.rayTracing"
+    ACCELERATION_STRUCTURE_COMPACTED_SIZE,  // uint64_t, requires "features.rayTracing"
+    MICROMAP_COMPACTED_SIZE                 // uint64_t, requires "features.micromap"
 );
 
-// Not used if "features.enhancedBarriers" is "0"
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkImageLayout.html
-NriEnum(Layout, uint8_t,    // Compatible "AccessBits":
-    UNKNOWN,
-    PRESENT,                    // UNKNOWN
-    COLOR_ATTACHMENT,           // COLOR_ATTACHMENT
-    SHADING_RATE_ATTACHMENT,    // SHADING_RATE_ATTACHMENT
-    DEPTH_STENCIL_ATTACHMENT,   // DEPTH_STENCIL_ATTACHMENT_WRITE
-    DEPTH_STENCIL_READONLY,     // DEPTH_STENCIL_ATTACHMENT_READ, SHADER_RESOURCE
-    SHADER_RESOURCE,            // SHADER_RESOURCE
-    SHADER_RESOURCE_STORAGE,    // SHADER_RESOURCE_STORAGE
-    COPY_SOURCE,                // COPY_SOURCE
-    COPY_DESTINATION,           // COPY_DESTINATION
-    RESOLVE_SOURCE,             // RESOLVE_SOURCE
-    RESOLVE_DESTINATION         // RESOLVE_DESTINATION
-);
-
-NriStruct(AccessStage) {
-    Nri(AccessBits) access;
-    Nri(StageBits) stages;
+NriStruct(QueryPoolDesc) {
+    Nri(QueryType) queryType;
+    uint32_t capacity;
 };
 
-NriStruct(AccessLayoutStage) {
-    Nri(AccessBits) access;
-    Nri(Layout) layout;
-    Nri(StageBits) stages;
-};
+// Data layout for QueryType::PIPELINE_STATISTICS
+NriStruct(PipelineStatisticsDesc) {
+    // Common part
+    uint64_t inputVertexNum;
+    uint64_t inputPrimitiveNum;
+    uint64_t vertexShaderInvocationNum;
+    uint64_t geometryShaderInvocationNum;
+    uint64_t geometryShaderPrimitiveNum;
+    uint64_t rasterizerInPrimitiveNum;
+    uint64_t rasterizerOutPrimitiveNum;
+    uint64_t fragmentShaderInvocationNum;
+    uint64_t tessControlShaderInvocationNum;
+    uint64_t tessEvaluationShaderInvocationNum;
+    uint64_t computeShaderInvocationNum;
 
-NriStruct(GlobalBarrierDesc) {
-    Nri(AccessStage) before;
-    Nri(AccessStage) after;
-};
+    // If "features.meshShaderPipelineStats"
+    uint64_t meshControlShaderInvocationNum;
+    uint64_t meshEvaluationShaderInvocationNum;
 
-NriStruct(BufferBarrierDesc) {
-    NriPtr(Buffer) buffer;
-    Nri(AccessStage) before;
-    Nri(AccessStage) after;
-};
-
-NriStruct(TextureBarrierDesc) {
-    NriPtr(Texture) texture;
-    Nri(AccessLayoutStage) before;
-    Nri(AccessLayoutStage) after;
-    Nri(Dim_t) mipOffset;
-    Nri(Dim_t) mipNum;
-    Nri(Dim_t) layerOffset;
-    Nri(Dim_t) layerNum;
-    Nri(PlaneBits) planes;
-
-    // Queue ownership transfer is potentially needed only for "queueExclusive" textures
-    // https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#synchronization-queue-transfers
-    NriOptional NriPtr(Queue) srcQueue;
-    NriOptional NriPtr(Queue) dstQueue;
-};
-
-NriStruct(BarrierGroupDesc) {
-    const NriPtr(GlobalBarrierDesc) globals;
-    uint32_t globalNum;
-    const NriPtr(BufferBarrierDesc) buffers;
-    uint32_t bufferNum;
-    const NriPtr(TextureBarrierDesc) textures;
-    uint32_t textureNum;
-};
-
-#pragma endregion
-
-//============================================================================================================================================================================================
-#pragma region [ Other ]
-//============================================================================================================================================================================================
-
-// Copy
-NriStruct(TextureRegionDesc) {
-    Nri(Dim_t) x;
-    Nri(Dim_t) y;
-    Nri(Dim_t) z;
-    Nri(Dim_t) width;
-    Nri(Dim_t) height;
-    Nri(Dim_t) depth;
-    Nri(Dim_t) mipOffset;
-    Nri(Dim_t) layerOffset;
-    Nri(PlaneBits) planes;
-};
-
-NriStruct(TextureDataLayoutDesc) {
-    uint64_t offset;        // a buffer offset must be a multiple of "uploadBufferTextureSliceAlignment" (data placement alignment)
-    uint32_t rowPitch;      // must be a multiple of "uploadBufferTextureRowAlignment"
-    uint32_t slicePitch;    // must be a multiple of "uploadBufferTextureSliceAlignment"
-};
-
-// Work submission
-NriStruct(FenceSubmitDesc) {
-    NriPtr(Fence) fence;
-    uint64_t value;
-    Nri(StageBits) stages;
-};
-
-NriStruct(QueueSubmitDesc) {
-    const NriPtr(FenceSubmitDesc) waitFences;
-    uint32_t waitFenceNum;
-    const NriPtr(CommandBuffer) const* commandBuffers;
-    uint32_t commandBufferNum;
-    const NriPtr(FenceSubmitDesc) signalFences;
-    uint32_t signalFenceNum;
-};
-
-// Memory
-NriStruct(MemoryDesc) {
-    uint64_t size;
-    uint32_t alignment;
-    Nri(MemoryType) type;
-    bool mustBeDedicated; // must be put into a dedicated Memory, containing only 1 object with offset = 0
-};
-
-NriStruct(AllocateMemoryDesc) {
-    uint64_t size;
-    Nri(MemoryType) type;
-    float priority; // [-1; 1]: low < 0, normal = 0, high > 0
-};
-
-NriStruct(BufferMemoryBindingDesc) {
-    NriPtr(Buffer) buffer;
-    NriPtr(Memory) memory;
-    uint64_t offset;
-};
-
-NriStruct(TextureMemoryBindingDesc) {
-    NriPtr(Texture) texture;
-    NriPtr(Memory) memory;
-    uint64_t offset;
-};
-
-// Clear
-NriStruct(ClearDesc) {
-    Nri(ClearValue) value;
-    Nri(PlaneBits) planes;
-    uint32_t colorAttachmentIndex;
-};
-
-NriStruct(ClearStorageDesc) {
-    // For any buffers and textures with integer formats:
-    //  - Clears a storage view with bit-precise values, copying the lower "N" bits from "value.[f/ui/i].channel"
-    //    to the corresponding channel, where "N" is the number of bits in the "channel" of the resource format
-    // For textures with non-integer formats:
-    //  - Clears a storage view with float values with format conversion from "FLOAT" to "UNORM/SNORM" where appropriate
-    // For buffers:
-    //  - To avoid discrepancies in behavior between GAPIs use "R32f/ui/i" formats for views
-    //  - D3D: structured buffers are unsupported!
-    const NriPtr(Descriptor) storage; // a "STORAGE" descriptor
-    Nri(Color) value; // avoid overflow
-    uint32_t setIndex;
-    uint32_t rangeIndex;
-    uint32_t descriptorIndex;
+    // D3D12: if "features.meshShaderPipelineStats"
+    uint64_t meshEvaluationShaderPrimitiveNum;
 };
 
 #pragma endregion
@@ -1384,53 +1410,71 @@ NriStruct(DrawIndexedBaseDesc) {         // see NRI_FILL_DRAW_INDEXED_COMMAND
 #pragma endregion
 
 //============================================================================================================================================================================================
-#pragma region [ Queries ]
+#pragma region [ Other ]
 //============================================================================================================================================================================================
 
-// https://microsoft.github.io/DirectX-Specs/d3d/CountersAndQueries.html
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkQueryType.html
-NriEnum(QueryType, uint8_t,
-    TIMESTAMP,                              // uint64_t
-    TIMESTAMP_COPY_QUEUE,                   // uint64_t (requires "features.copyQueueTimestamp"), same as "TIMESTAMP" but for a "COPY" queue
-    OCCLUSION,                              // uint64_t
-    PIPELINE_STATISTICS,                    // see "PipelineStatisticsDesc" (requires "features.pipelineStatistics")
-    ACCELERATION_STRUCTURE_SIZE,            // uint64_t, requires "features.rayTracing"
-    ACCELERATION_STRUCTURE_COMPACTED_SIZE,  // uint64_t, requires "features.rayTracing"
-    MICROMAP_COMPACTED_SIZE                 // uint64_t, requires "features.micromap"
-);
-
-NriStruct(QueryPoolDesc) {
-    Nri(QueryType) queryType;
-    uint32_t capacity;
+// Copy
+NriStruct(TextureRegionDesc) {
+    Nri(Dim_t) x;
+    Nri(Dim_t) y;
+    Nri(Dim_t) z;
+    Nri(Dim_t) width;
+    Nri(Dim_t) height;
+    Nri(Dim_t) depth;
+    Nri(Dim_t) mipOffset;
+    Nri(Dim_t) layerOffset;
+    Nri(PlaneBits) planes;
 };
 
-// Data layout for QueryType::PIPELINE_STATISTICS
-NriStruct(PipelineStatisticsDesc) {
-    // Common part
-    uint64_t inputVertexNum;
-    uint64_t inputPrimitiveNum;
-    uint64_t vertexShaderInvocationNum;
-    uint64_t geometryShaderInvocationNum;
-    uint64_t geometryShaderPrimitiveNum;
-    uint64_t rasterizerInPrimitiveNum;
-    uint64_t rasterizerOutPrimitiveNum;
-    uint64_t fragmentShaderInvocationNum;
-    uint64_t tessControlShaderInvocationNum;
-    uint64_t tessEvaluationShaderInvocationNum;
-    uint64_t computeShaderInvocationNum;
+NriStruct(TextureDataLayoutDesc) {
+    uint64_t offset;        // a buffer offset must be a multiple of "uploadBufferTextureSliceAlignment" (data placement alignment)
+    uint32_t rowPitch;      // must be a multiple of "uploadBufferTextureRowAlignment"
+    uint32_t slicePitch;    // must be a multiple of "uploadBufferTextureSliceAlignment"
+};
 
-    // If "features.meshShaderPipelineStats"
-    uint64_t meshControlShaderInvocationNum;
-    uint64_t meshEvaluationShaderInvocationNum;
+// Work submission
+NriStruct(FenceSubmitDesc) {
+    NriPtr(Fence) fence;
+    uint64_t value;
+    Nri(StageBits) stages;
+};
 
-    // D3D12: if "features.meshShaderPipelineStats"
-    uint64_t meshEvaluationShaderPrimitiveNum;
+NriStruct(QueueSubmitDesc) {
+    const NriPtr(FenceSubmitDesc) waitFences;
+    uint32_t waitFenceNum;
+    const NriPtr(CommandBuffer) const* commandBuffers;
+    uint32_t commandBufferNum;
+    const NriPtr(FenceSubmitDesc) signalFences;
+    uint32_t signalFenceNum;
+};
+
+// Clear
+NriStruct(ClearDesc) {
+    Nri(ClearValue) value;
+    Nri(PlaneBits) planes;
+    uint32_t colorAttachmentIndex;
+};
+
+NriStruct(ClearStorageDesc) {
+    // For any buffers and textures with integer formats:
+    //  - Clears a storage view with bit-precise values, copying the lower "N" bits from "value.[f/ui/i].channel"
+    //    to the corresponding channel, where "N" is the number of bits in the "channel" of the resource format
+    // For textures with non-integer formats:
+    //  - Clears a storage view with float values with format conversion from "FLOAT" to "UNORM/SNORM" where appropriate
+    // For buffers:
+    //  - To avoid discrepancies in behavior between GAPIs use "R32f/ui/i" formats for views
+    //  - D3D: structured buffers are unsupported!
+    const NriPtr(Descriptor) storage; // a "STORAGE" descriptor
+    Nri(Color) value; // avoid overflow
+    uint32_t setIndex;
+    uint32_t rangeIndex;
+    uint32_t descriptorIndex;
 };
 
 #pragma endregion
 
 //============================================================================================================================================================================================
-#pragma region [ Device desc ]
+#pragma region [ Device description ]
 //============================================================================================================================================================================================
 
 NriEnum(Vendor, uint8_t,

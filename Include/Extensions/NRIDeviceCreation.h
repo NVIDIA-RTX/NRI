@@ -1,5 +1,7 @@
 // © 2021 NVIDIA Corporation
 
+// Goal: device creation
+
 #pragma once
 
 #define NRI_DEVICE_CREATION_H 1

@@ -1,5 +1,7 @@
 // © 2025 NVIDIA Corporation
 
+// Goal: ImGui rendering
+
 #pragma once
 
 #define NRI_IMGUI_H 1

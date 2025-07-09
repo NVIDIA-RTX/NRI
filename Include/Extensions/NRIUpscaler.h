@@ -1,5 +1,7 @@
 // © 2025 NVIDIA Corporation
 
+// Goal: providing easy-to-use access to modern upscalers: DLSS, FSR, XESS, NIS
+
 #pragma once
 
 #define NRI_UPSCALER_H 1

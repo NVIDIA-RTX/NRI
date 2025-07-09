@@ -1,5 +1,7 @@
 // © 2021 NVIDIA Corporation
 
+// Goal: wrapping native D3D11 objects into NRI objects
+
 #pragma once
 
 #define NRI_WRAPPER_D3D11_H 1

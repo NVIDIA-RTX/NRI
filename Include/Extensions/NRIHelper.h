@@ -1,5 +1,7 @@
 // © 2021 NVIDIA Corporation
 
+// Goal: utilities
+
 #pragma once
 
 #define NRI_HELPER_H 1

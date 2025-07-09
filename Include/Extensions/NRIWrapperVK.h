@@ -1,5 +1,7 @@
 // © 2021 NVIDIA Corporation
 
+// Goal: wrapping native VK objects into NRI objects
+
 #pragma once
 
 #define NRI_WRAPPER_VK_H 1

@@ -1,5 +1,7 @@
 // © 2024 NVIDIA Corporation
 
+// Goal: minimizing latency between input sampling and frame presentation
+
 #pragma once
 
 #define NRI_LOW_LATENCY_H 1

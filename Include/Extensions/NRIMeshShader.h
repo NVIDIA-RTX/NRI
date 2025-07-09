@@ -1,5 +1,7 @@
 // © 2021 NVIDIA Corporation
 
+// Goal: mesh shaders
+
 #pragma once
 
 #define NRI_MESH_SHADER_H 1

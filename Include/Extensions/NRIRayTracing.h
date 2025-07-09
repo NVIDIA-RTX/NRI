@@ -1,5 +1,6 @@
 // © 2021 NVIDIA Corporation
 
+// Goal: ray tracing
 // Spec: https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html
 
 #pragma once
