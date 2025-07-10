@@ -368,6 +368,8 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 }
 
 void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
+    MaybeUnused(disableD3D12EnhancedBarrier);
+
     D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
     HRESULT hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
     if (FAILED(hr))

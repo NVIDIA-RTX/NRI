@@ -27,7 +27,7 @@ Supported GAPIs:
 
 ## WHY NRI?
 
-There is [NVRHI](https://github.com/NVIDIA-RTX/NVRHI), which offers a D3D11-like abstraction layer, implying some overhead. There is [vkd3d-proton](https://github.com/HansKristian-Work/vkd3d-proton), which was designed for D3D12 emulation using Vulkan. There is [nvpro-samples](https://github.com/nvpro-samples), which explores all "dark corners" of Vulkan usage, but does not offer any cross-API support. There are some other good, unmentioned projects, but NRI was designed to offer a reasonably simple, low-overhead, and high-performance render interface suitable for game development, professional rendering and hobby projects.
+There is [NVRHI](https://github.com/NVIDIA-RTX/NVRHI), which offers a D3D11-like abstraction layer, implying some overhead. There is [vkd3d-proton](https://github.com/HansKristian-Work/vkd3d-proton), which was designed for D3D12 emulation using Vulkan. There is [nvpro-samples](https://github.com/nvpro-samples), which explores all "dark corners" of Vulkan usage, but does not offer any cross-API support. There are some other good, unmentioned projects, but *NRI* was designed to offer a reasonably simple, low-overhead, and high-performance render interface suitable for game development, professional rendering and hobby projects. Additionally, *NRI* can serve as a middleware for integrations. For instance, the [NRD integration layer](https://github.com/NVIDIA-RTX/NRD/tree/master/Integration) is based on *NRI*, unifying multiple GAPI support within a single codebase.
 
 ## KEY FEATURES:
  - *C++* and *C* compatible interfaces
@@ -180,7 +180,7 @@ Steps (already enabled by default):
 - modify `NRI_AGILITY_SDK_VERSION_MAJOR` and `NRI_AGILITY_SDK_VERSION_MINOR` to the desired value
 - enable or disable `NRI_ENABLE_AGILITY_SDK_SUPPORT`
 - re-deploy project
-- include auto-generated `NRIAgilitySDK.h` header in the code of your executable using NRI
+- include auto-generated `NRIAgilitySDK.h` header in the code of your executable using *NRI*
 
 ## SAMPLES OVERVIEW
 
@@ -201,7 +201,7 @@ Steps (already enabled by default):
 - MultiGPU - multi GPU example
 - RayTracingTriangle - simple triangle rendering through ray tracing
 - RayTracingBoxes - a more advanced ray tracing example with many BLASes in TLAS
-- Wrapper - shows how to wrap native D3D11/D3D12/VK objects into NRI entities
+- Wrapper - shows how to wrap native D3D11/D3D12/VK objects into *NRI* entities
 - Resize - demonstrates window resize
 
 ## C/C++ INTERFACE DIFFERENCES
@@ -236,4 +236,4 @@ Steps (already enabled by default):
 
 ## LICENSE
 
-NRI is licensed under the MIT License.
+*NRI* is licensed under the MIT License.
