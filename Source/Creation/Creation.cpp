@@ -1,5 +1,9 @@
 // © 2021 NVIDIA Corporation
 
+#ifndef _WIN32
+#    include <csignal> // raise
+#endif
+
 #if NRI_ENABLE_NVTX_SUPPORT
 #    include "nvtx3/nvToolsExt.h"
 #endif

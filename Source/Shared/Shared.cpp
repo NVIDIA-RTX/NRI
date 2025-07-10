@@ -1,7 +1,6 @@
 // © 2021 NVIDIA Corporation
 
 #ifndef _WIN32
-#    include <csignal> // raise
 #    include <cstdarg> // va_start, va_end
 #endif
 
