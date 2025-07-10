@@ -52,7 +52,7 @@ struct Nis {
     Descriptor* sampler = nullptr;
     DescriptorSet* descriptorSet0 = nullptr;
     std::array<DescriptorSet*, NIS_DESCRIPTOR_SET_NUM> descriptorSets1 = {};
-    Dim2 blockSize = {};
+    Dim2_t blockSize = {};
     uint32_t descriptorSetIndex = 0;
 };
 

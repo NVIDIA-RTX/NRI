@@ -47,7 +47,7 @@ NriBits(DispatchUpscaleBits, uint8_t,
 );
 
 NriStruct(UpscalerDesc) {
-    Nri(Dim2) upscaleResolution;                        // output resolution
+    Nri(Dim2_t) upscaleResolution;                      // output resolution
     Nri(UpscalerType) type;
     Nri(UpscalerMode) mode;                             // not needed for NIS
     Nri(UpscalerBits) flags;
@@ -58,9 +58,9 @@ NriStruct(UpscalerDesc) {
 NriStruct(UpscalerProps) {
     float scalingFactor;                                // per dimension scaling factor
     float mipBias;                                      // mip bias for materials textures, computed as "-log2(scalingFactor) - 1" (keep an eye on normal maps)
-    Nri(Dim2) upscaleResolution;                        // output resolution
-    Nri(Dim2) renderResolution;                         // optimal render resolution
-    Nri(Dim2) renderResolutionMin;                      // minimal render resolution (for Dynamic Resolution Scaling)
+    Nri(Dim2_t) upscaleResolution;                      // output resolution
+    Nri(Dim2_t) renderResolution;                       // optimal render resolution
+    Nri(Dim2_t) renderResolutionMin;                    // minimal render resolution (for Dynamic Resolution Scaling)
     uint8_t jitterPhaseNum;                             // minimal number of phases in the jitter sequence, computed as "ceil(8 * scalingFactor ^ 2)" ("Halton(2, 3)" recommended)
 };
 
@@ -128,9 +128,9 @@ NriStruct(DispatchUpscaleDesc) {
         Nri(DLRRSettings) dlrr;                         //      DLRR settings
     } settings;
 
-    Nri(Dim2) currentResolution;                        // current render resolution for inputs and guides, renderResolutionMin <= currentResolution <= renderResolution
-    Nri(Float2) cameraJitter;                           // pointing towards the pixel center, in [-0.5; 0.5] range
-    Nri(Float2) mvScale;                                // used to convert motion vectors to pixel space
+    Nri(Dim2_t) currentResolution;                      // current render resolution for inputs and guides, renderResolutionMin <= currentResolution <= renderResolution
+    Nri(Float2_t) cameraJitter;                         // pointing towards the pixel center, in [-0.5; 0.5] range
+    Nri(Float2_t) mvScale;                              // used to convert motion vectors to pixel space
     Nri(DispatchUpscaleBits) flags;
 };
 

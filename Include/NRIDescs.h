@@ -52,11 +52,18 @@ NriForwardStruct(DescriptorPool);   // maintains a pool of descriptors, descript
 NriForwardStruct(PipelineLayout);   // determines the interface between shader stages and shader resources (aka root signature)
 NriForwardStruct(CommandAllocator); // an object that command buffer memory is allocated from
 
-// Types
+// Basic types
 typedef uint8_t Nri(Sample_t);
 typedef uint16_t Nri(Dim_t);
-typedef uint32_t Nri(MemoryType);
 typedef void Nri(Object);
+
+NriStruct(Dim2_t) {
+    Nri(Dim_t) w, h;
+};
+
+NriStruct(Float2_t) {
+    float x, y;
+};
 
 // Aliases
 static const uint32_t NriConstant(BGRA_UNUSED) = 0;  // only for "bgra" color for profiling
@@ -74,9 +81,9 @@ static const Nri(Dim_t) NriConstant(REMAINING) = 0;  // only for "mipNum" and "l
 
 NriEnum(GraphicsAPI, uint8_t,
     NONE,   // Supports everything, does nothing, returns dummy non-NULL objects and ~0-filled descs, available if "NRI_ENABLE_NONE_SUPPORT = ON" in CMake
-    D3D11,  // Direct3D 11 (feature set 11.1), available if "NRI_ENABLE_D3D11_SUPPORT = ON" in CMake
-    D3D12,  // Direct3D 12 (feature set 11.1+), available if "NRI_ENABLE_D3D12_SUPPORT = ON" in CMake
-    VK      // Vulkan 1.3 or 1.2+ (can be used on MacOS via MoltenVK), available if "NRI_ENABLE_VK_SUPPORT = ON" in CMake
+    D3D11,  // Direct3D 11 (feature set 11.1), available if "NRI_ENABLE_D3D11_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm)
+    D3D12,  // Direct3D 12 (feature set 11.1+), available if "NRI_ENABLE_D3D12_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/)
+    VK      // Vulkan 1.3 or 1.2+ (can be used on MacOS via MoltenVK), available if "NRI_ENABLE_VK_SUPPORT = ON" in CMake (https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html)
 );
 
 NriEnum(Result, int8_t,
@@ -96,6 +103,8 @@ NriEnum(Result, int8_t,
 );
 
 // The viewport origin is top-left (D3D native) by default, but can be changed to bottom-left (VK native)
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkViewport.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_viewport
 NriStruct(Viewport) {
     float x;
     float y;
@@ -106,6 +115,7 @@ NriStruct(Viewport) {
     bool originBottomLeft; // expects "features.viewportOriginBottomLeft"
 };
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkRect2D.html
 NriStruct(Rect) {
     int16_t x;
     int16_t y;
@@ -143,14 +153,6 @@ NriUnion(ClearValue) {
 
 NriStruct(SampleLocation) {
     int8_t x, y; // [-8; 7]
-};
-
-NriStruct(Dim2) {
-    Nri(Dim_t) w, h;
-};
-
-NriStruct(Float2) {
-    float x, y;
 };
 
 #pragma endregion
@@ -318,7 +320,6 @@ NriBits(FormatSupportBits, uint16_t,
 //============================================================================================================================================================================================
 
 // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html
-// https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#compatibility-with-legacy-d3d12_resource_states
 // https://docs.vulkan.org/samples/latest/samples/performance/pipeline_barriers/README.html
 
 // A barrier consists of two phases:
@@ -330,6 +331,9 @@ NriBits(FormatSupportBits, uint16_t,
 //   - "AccessBits" corresponding with any relevant resource usage after the barrier completes
 //   - "StagesBits" of all subsequent GPU work that must wait until the barrier execution is finished (stages to halt until the barrier is executed)
 //   - "Layout" for textures
+// If "features.enhancedBarriers" is not supported:
+//   - https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#compatibility-with-legacy-d3d12_resource_states
+//   - "AccessBits::NONE" gets mapped to "COMMON" (aka "GENERAL" access), leading to potential discrepancies with VK
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkPipelineStageFlagBits2.html
 // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_sync
@@ -438,13 +442,13 @@ NriBits(AccessBits, uint32_t,
     RESOLVE_DESTINATION             = NriBit(19)  //  W  RESOLVE
 );
 
-// Not used if "features.enhancedBarriers" is "0"
+// "Layout" is ignored if "features.enhancedBarriers" is not supported
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkImageLayout.html
 // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_layout
 NriEnum(Layout, uint8_t,    // Compatible "AccessBits":
     // Special
     UNDEFINED,                  // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_layout_undefined
-    GENERAL,                    // ~ALL access, but not optimal
+    GENERAL,                    // ~ALL access, but not optimal (required for "SharingMode::SIMULTANEOUS")
     PRESENT,                    // NONE
 
     // Access specific
@@ -492,7 +496,7 @@ NriStruct(TextureBarrierDesc) {
     Nri(Dim_t) layerNum;
     Nri(PlaneBits) planes;
 
-    // Queue ownership transfer is potentially needed only for "EXCLUSIVE" textures
+    // Queue ownership transfer is potentially needed only for "SharingMode::EXCLUSIVE" textures
     // https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#synchronization-queue-transfers
     NriOptional NriPtr(Queue) srcQueue;
     NriOptional NriPtr(Queue) dstQueue;
@@ -514,6 +518,7 @@ NriStruct(BarrierGroupDesc) {
 //============================================================================================================================================================================================
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkImageType.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_resource_dimension
 NriEnum(TextureType, uint8_t,
     TEXTURE_1D,
     TEXTURE_2D,
@@ -523,7 +528,7 @@ NriEnum(TextureType, uint8_t,
 // NRI tries to ease your life and avoid using "queue ownership transfers" (see "TextureBarrierDesc").
 // In most of cases "SharingMode" can be ignored. Where is it needed?
 // - VK: use "EXCLUSIVE" for attachments participating into multi-queue activities to preserve DCC (Delta Color Compression) on some HW
-// - D3D12: use "SIMULTANEOUS" to concurrently use a texture as a "SHADER_RESOURCE" (or "SHADER_RESOURCE_STORAGE") and a "COPY_DESTINATION" for non overlapping texture regions
+// - D3D12: use "SIMULTANEOUS" to concurrently use a texture as a "SHADER_RESOURCE" (or "SHADER_RESOURCE_STORAGE") and as a "COPY_DESTINATION" for non overlapping texture regions
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkSharingMode.html
 NriEnum(SharingMode, uint8_t,
     CONCURRENT,     // VK: lazy default to avoid dealing with "queue ownership transfers", auto-optimized to "EXCLUSIVE" if all queues have the same type
@@ -580,7 +585,7 @@ NriStruct(TextureDesc) {
 // 0  = allows "typed" views
 // 4  = allows "typed", "byte address" (raw) and "structured" views (D3D11: allows to create multiple "structured" views for a single resource, disobeying the spec)
 // >4 = allows "structured" and potentially "typed" views (D3D11: locks this buffer to a single "structured" layout, no "typed" views)
-// VK: buffers always created with "VK_SHARING_MODE_CONCURRENT" to match D3D12 spec
+// VK: buffers always created with sharing mode "CONCURRENT" to match D3D12 spec
 NriStruct(BufferDesc) {
     uint64_t size;
     uint32_t structureStride;
@@ -593,17 +598,18 @@ NriStruct(BufferDesc) {
 #pragma region [ Resources: binding to memory ]
 //============================================================================================================================================================================================
 
+// Contains some encoded implementation specific details
+typedef uint32_t Nri(MemoryType);
+
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_heap_type
 NriEnum(MemoryLocation, uint8_t,
     DEVICE,
-    DEVICE_UPLOAD,  // soft fallback to "HOST_UPLOAD"
+    DEVICE_UPLOAD, // soft fallback to "HOST_UPLOAD" if "deviceUploadHeapSize = 0"
     HOST_UPLOAD,
     HOST_READBACK
 );
 
-// https://learn.microsoft.com/en-us/windows/win32/direct3d12/residency
-// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_residency_priority
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkMemoryPriorityAllocateInfoEXT.html
+// Memory requirements for a resource (buffer or texture)
 NriStruct(MemoryDesc) {
     uint64_t size;
     uint32_t alignment;
@@ -611,22 +617,28 @@ NriStruct(MemoryDesc) {
     bool mustBeDedicated; // must be put into a dedicated "Memory" object, containing only 1 object with offset = 0
 };
 
+// A group of non-dedicated "MemoryDesc"s of the SAME "MemoryType" can be merged into a single memory allocation
 NriStruct(AllocateMemoryDesc) {
     uint64_t size;
     Nri(MemoryType) type;
+
+    // https://learn.microsoft.com/en-us/windows/win32/direct3d12/residency
+    // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_residency_priority
+    // https://registry.khronos.org/vulkan/specs/latest/man/html/VkMemoryPriorityAllocateInfoEXT.html
     float priority; // [-1; 1]: low < 0, normal = 0, high > 0
 };
 
+// Binding resources to a memory (resources can overlap, i.e. alias)
 NriStruct(BufferMemoryBindingDesc) {
     NriPtr(Buffer) buffer;
     NriPtr(Memory) memory;
-    uint64_t offset;
+    uint64_t offset; // in memory
 };
 
 NriStruct(TextureMemoryBindingDesc) {
     NriPtr(Texture) texture;
     NriPtr(Memory) memory;
-    uint64_t offset;
+    uint64_t offset; // in memory
 };
 
 #pragma endregion
@@ -685,7 +697,7 @@ NriEnum(Filter, uint8_t,
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerReductionMode.html
 NriEnum(ReductionMode, uint8_t,
-    AVERAGE,    // a weighted average of values in the footprint
+    AVERAGE,    // a weighted average (sum) of values in the footprint (default)
     MIN,        // a component-wise minimum of values in the footprint with non-zero weights
     MAX         // a component-wise maximum of values in the footprint with non-zero weights
 );
@@ -1035,18 +1047,21 @@ NriStruct(VertexBufferDesc) {
 //============================================================================================================================================================================================
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkPolygonMode.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_fill_mode
 NriEnum(FillMode, uint8_t,
     SOLID,
     WIREFRAME
 );
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkCullModeFlagBits.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_cull_mode
 NriEnum(CullMode, uint8_t,
     NONE,
     FRONT,
     BACK
 );
 
+// https://docs.vulkan.org/samples/latest/samples/extensions/fragment_shading_rate_dynamic/README.html
 // https://microsoft.github.io/DirectX-Specs/d3d/VariableRateShading.html
 NriEnum(ShadingRate, uint8_t,
     FRAGMENT_SIZE_1X1,
@@ -1061,6 +1076,7 @@ NriEnum(ShadingRate, uint8_t,
 );
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkFragmentShadingRateCombinerOpKHR.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_shading_rate_combiner
 //    "primitiveCombiner"      "attachmentCombiner"
 // A   Pipeline shading rate    Result of Op1
 // B   Primitive shading rate   Attachment shading rate
@@ -1074,7 +1090,7 @@ NriEnum(ShadingRateCombiner, uint8_t,
 
 /*
 https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#primsrast-depthbias-computation
-
+https://learn.microsoft.com/en-us/windows/win32/direct3d11/d3d10-graphics-programming-guide-output-merger-stage-depth-bias
 R - minimum resolvable difference
 S - maximum slope
 
@@ -1232,7 +1248,7 @@ NriBits(ColorWriteBits, uint8_t,
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkStencilOpState.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_depth_stencil_desc
 NriStruct(StencilDesc) {
-    Nri(CompareOp) compareOp; // compareOp != NONE, expects "CmdSetStencilReference"
+    Nri(CompareOp) compareOp; // "compareOp != NONE", expects "CmdSetStencilReference"
     Nri(StencilOp) failOp;
     Nri(StencilOp) passOp;
     Nri(StencilOp) depthFailOp;
@@ -1293,6 +1309,7 @@ NriStruct(AttachmentsDesc) {
 #pragma region [ Pipelines ]
 //============================================================================================================================================================================================
 
+// https://docs.vulkan.org/guide/latest/robustness.html
 NriEnum(Robustness, uint8_t,
     DEFAULT,        // don't care, follow device settings (VK level when used on a device)
     OFF,            // no overhead, no robust access (out-of-bounds access is not allowed)
@@ -1350,6 +1367,8 @@ NriStruct(QueryPoolDesc) {
 };
 
 // Data layout for QueryType::PIPELINE_STATISTICS
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkQueryPipelineStatisticFlagBits.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_query_data_pipeline_statistics
 NriStruct(PipelineStatisticsDesc) {
     // Common part
     uint64_t inputVertexNum;
@@ -1491,7 +1510,7 @@ NriStruct(ClearStorageDesc) {
 #pragma endregion
 
 //============================================================================================================================================================================================
-#pragma region [ Device description ]
+#pragma region [ Device description and capabilities ]
 //============================================================================================================================================================================================
 
 NriEnum(Vendor, uint8_t,
@@ -1501,12 +1520,15 @@ NriEnum(Vendor, uint8_t,
     INTEL
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPhysicalDeviceType.html
 NriEnum(Architecture, uint8_t,
     UNKNOWN,    // CPU device, virtual GPU or other
     INTEGRATED, // UMA
     DESCRETE    // yes, please!
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkQueueFlagBits.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_command_list_type
 NriEnum(QueueType, uint8_t,
     GRAPHICS,
     COMPUTE,

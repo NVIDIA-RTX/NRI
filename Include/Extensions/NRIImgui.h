@@ -44,7 +44,7 @@ NriStruct(CopyImguiDataDesc) {
 NriStruct(DrawImguiDesc) {
     const ImDrawList* const* drawLists;         // ImDrawData::CmdLists.Data (same as for "CopyImguiDataDesc")
     uint32_t drawListNum;                       // ImDrawData::CmdLists.Size (same as for "CopyImguiDataDesc")
-    Nri(Dim2) displaySize;                      // ImDrawData::DisplaySize
+    Nri(Dim2_t) displaySize;                    // ImDrawData::DisplaySize
     float hdrScale;                             // SDR intensity in HDR mode (1 by default)
     Nri(Format) attachmentFormat;               // destination attachment (render target) format
     bool linearColor;                           // apply de-gamma to vertex colors (needed for sRGB attachments and HDR)
