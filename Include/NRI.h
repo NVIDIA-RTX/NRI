@@ -10,19 +10,18 @@ Overview:
     - D3D11 spec: https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm
 
 Goals:
-- generalization of VK and D3D12
-- explicitness (access to low-level features of modern GAPIs)
-- "quality of life" extensions (like streaming)
-- high-level extensions (like upscaling)
+- generalization and unification of D3D12 and VK
+- explicitness (providing access to low-level features of modern GAPIs)
+- quality-of-life and high-level extensions (e.g., streaming and upscaling)
 - low overhead
-- cross platform and platform independence (AMD/INTEL friendly)
+- cross-platform and platform independence (AMD/INTEL friendly)
 - D3D11 support (as much as possible)
 
 Non-goals:
 - exposing entities not existing in GAPIs
-- high level (D3D11-like) abstraction
-- hidden management of any kind (except some high-level extensions, where it's desired)
-- automatic barriers (better do it in a higher level abstraction)
+- high-level (D3D11-like) abstraction
+- hidden management of any kind (except for some high-level extensions where it's desired)
+- automatic barriers (better handled in a higher-level abstraction)
 
 Thread safety:
 - Threadsafe: yes - free-threaded access

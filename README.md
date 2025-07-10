@@ -2,31 +2,36 @@
 
 [![Status](https://github.com/NVIDIA-RTX/NRI/actions/workflows/build.yml/badge.svg)](https://github.com/NVIDIA-RTX/NRI/actions/workflows/build.yml)
 
-*NRI* is a modular extensible low-level abstract render interface, which has been designed to support all low level features of D3D12 and Vulkan GAPIs, but at the same time to simplify usage and reduce the amount of code needed (especially compared with VK).
+*NRI* is a modular, extensible, low-level abstract rendering interface that was designed to support all low-level features of D3D12 and Vulkan GAPIs. At the same time, it aims to simplify usage and reduce the amount of code needed (especially compared with VK).
 
 Goals:
-- generalization of D3D12 ([spec](https://microsoft.github.io/DirectX-Specs/)) and VK ([spec](https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html)) GAPIs
-- explicitness (providing access to low-level features of modern GAPIs)
-- "quality of life" features (providing high-level improving utilities, organized as extensions)
-- low overhead
-- cross platform and platform independence (AMD/INTEL friendly)
-- D3D11 ([spec](https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm)) support (as much as possible)
+- Generalization and unification of D3D12 ([spec](https://microsoft.github.io/DirectX-Specs/)) and VK ([spec](https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html))
+- Explicitness (providing access to low-level features of modern GAPIs)
+- Quality-of-life and high-level extensions (e.g., streaming and upscaling)
+- Low overhead
+- Cross-platform and platform independence (AMD/INTEL friendly)
+- D3D11 support ([spec](https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm)) (as much as possible)
 
-Non-goals (exceptions apply to some extensions, where high-level abstraction and hidden management are desired):
-- high level (D3D11-like) abstraction
-- exposing entities not existing in GAPIs
-- hidden management of any kind
+Non-goals:
+- Exposing entities not existing in GAPIs
+- High-level (D3D11-like) abstraction
+- Hidden management of any kind (except for some high-level extensions where it's desired)
+- Automatic barriers (better handled in a higher-level abstraction)
 
 Supported GAPIs:
 - Vulkan
 - D3D12
 - D3D11
 - Metal (through [MoltenVK](https://github.com/KhronosGroup/MoltenVK))
-- None / dummy (everything is supported, but does nothing)
+- None / dummy (everything is supported but does nothing)
 
-Key features:
+## WHY NRI?
+
+There is [NVRHI](https://github.com/NVIDIA-RTX/NVRHI), which offers a D3D11-like abstraction layer, implying some overhead. There is [vkd3d-proton](https://github.com/HansKristian-Work/vkd3d-proton), which was designed for D3D12 emulation using Vulkan. There is [nvpro-samples](https://github.com/nvpro-samples), which explores all "dark corners" of Vulkan usage, but does not offer any cross-API support. There are some other good, unmentioned projects, but NRI was designed to offer a reasonably simple, low-overhead, and high-performance render interface suitable for game development, professional rendering and hobby projects.
+
+## KEY FEATURES:
  - *C++* and *C* compatible interfaces
- - generalized common denominator for D3D12, VK and D3D11 GAPIs
+ - generalized common denominator for D3D12, VK and D3D11
  - low overhead
  - no memory allocations at runtime
  - descriptor indexing support
@@ -57,11 +62,6 @@ Available interfaces:
 Repository organization:
 - there is only `main` branch used for development
 - stable versions are in `Releases` section
-- it's recommended to use the latest release
-
-*NRI* sample code:
- - [*NRI samples*](https://github.com/NVIDIA-RTX/NRISamples)
- - [*NRD sample*](https://github.com/NVIDIA-RTX/NRD-Sample)
 
 <details>
 <summary>Required Vulkan extensions:</summary>
@@ -95,6 +95,9 @@ Repository organization:
     - _VK_KHR_maintenance4_ (for Vulkan 1.2)
     - _VK_KHR_maintenance5_
     - _VK_KHR_maintenance6_
+    - _VK_KHR_maintenance7_
+    - _VK_KHR_maintenance8_
+    - _VK_KHR_maintenance9_
     - _VK_KHR_fragment_shading_rate_
     - _VK_KHR_push_descriptor_
     - _VK_KHR_pipeline_library_
@@ -106,6 +109,8 @@ Repository organization:
     - _VK_KHR_line_rasterization_
     - _VK_KHR_fragment_shader_barycentric_
     - _VK_KHR_shader_clock_
+    - _VK_EXT_swapchain_maintenance1_
+    - _VK_EXT_present_mode_fifo_latest_ready_
     - _VK_EXT_opacity_micromap_
     - _VK_EXT_sample_locations_
     - _VK_EXT_conservative_rasterization_
@@ -125,6 +130,79 @@ Repository organization:
     - _VK_NVX_image_view_handle_
 
 </details>
+
+## BUILD INSTRUCTIONS
+
+- Install [*Cmake*](https://cmake.org/download/) 3.30+
+- Build (variant 1) - using *Git* and *CMake* explicitly
+    - Clone project and init submodules
+    - Generate and build the project using *CMake*
+    - To build the binary with static MSVC runtime, add `-DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>"` parameter when deploying the project
+- Build (variant 2) - by running scripts:
+    - Run `1-Deploy`
+    - Run `2-Build`
+
+Notes:
+- *Xlib* and *Wayland* can be both enabled
+- Minimal supported client is Windows 8.1+. Windows 7 support requires minimal effort and can be added by request
+
+## CMAKE OPTIONS
+
+- `NRI_AGILITY_SDK_DIR` - Directory where Agility SDK will be copied relative to the directory with binaries
+- `NRI_AGILITY_SDK_VERSION_MAJOR`- Agility SDK major version
+- `NRI_AGILITY_SDK_VERSION_MINOR` - Agility SDK minor version
+- `NRI_SHADERS_PATH` - Shader output path override
+- `NRI_STATIC_LIBRARY` - Build static library
+- `NRI_ENABLE_NVTX_SUPPORT` - Annotations for NVIDIA Nsight Systems
+- `NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS` - Enable debug names, host and device annotations
+- `NRI_ENABLE_NONE_SUPPORT` - Enable NONE backend
+- `NRI_ENABLE_VK_SUPPORT` - Enable Vulkan backend
+- `NRI_ENABLE_VALIDATION_SUPPORT` - Enable Validation backend (otherwise `enableNRIValidation` is ignored)
+- `NRI_ENABLE_NIS_SDK` - Enable NVIDIA Image Sharpening SDK
+- `NRI_ENABLE_IMGUI_EXTENSION` - Enable `NRIImgui` extension
+- `NRI_ENABLE_D3D11_SUPPORT` - Enable D3D11 backend
+- `NRI_ENABLE_D3D12_SUPPORT` - Enable D3D12 backend
+- `NRI_ENABLE_D3D_EXTENSIONS` - Enable vendor specific extension libraries for D3D (NVAPI and AMD AGS)
+- `NRI_ENABLE_AGILITY_SDK_SUPPORT` - Enable Agility SDK support to unlock access to latest D3D12 features
+- `NRI_ENABLE_XLIB_SUPPORT` - Enable X11 support
+- `NRI_ENABLE_WAYLAND_SUPPORT` - Enable Wayland support
+- `NRI_ENABLE_NGX_SDK` - Enable NVIDIA NGX (DLSS) SDK
+- `NRI_ENABLE_FFX_SDK` - Enable AMD FidelityFX SDK
+- `NRI_ENABLE_XESS_SDK` - Enable INTEL XeSS SDK
+
+## AGILITY SDK
+
+*Overview* and *Download* sections can be found [*here*](https://devblogs.microsoft.com/directx/directx12agility/).
+
+D3D12 backend uses Agility SDK to get access to most recent D3D12 features. It's highly recommended to use it.
+
+Steps (already enabled by default):
+- modify `NRI_AGILITY_SDK_VERSION_MAJOR` and `NRI_AGILITY_SDK_VERSION_MINOR` to the desired value
+- enable or disable `NRI_ENABLE_AGILITY_SDK_SUPPORT`
+- re-deploy project
+- include auto-generated `NRIAgilitySDK.h` header in the code of your executable using NRI
+
+## SAMPLES OVERVIEW
+
+[*NRD sample*](https://github.com/NVIDIA-RTX/NRD-Sample):
+- main sample demonstrating path tracing best practices
+
+[*NRI samples*](https://github.com/NVIDIA-RTX/NRISamples):
+- DeviceInfo - queries and prints out information about device groups in the system
+- Clear - minimal example of rendering using framebuffer clears only
+- CTest - very simple example of C interface usage
+- Triangle - simple textured triangle rendering (also multiview demonstration in _FLEXIBLE_ mode)
+- SceneViewer - loading & rendering of meshes with materials (also tests programmable sample locations, shading rate and pipeline statistics)
+- BindlessSceneViewer - bindless GPU-driven rendering test
+- Readback - getting data from the GPU back to the CPU
+- AsyncCompute - demonstrates parallel execution of graphic and compute workloads
+- MultiThreading - shows advantages of multi-threaded command buffer recording
+- Multiview - multiview demonstration in _LAYER_BASED_ mode (VK and D3D12 compatible)
+- MultiGPU - multi GPU example
+- RayTracingTriangle - simple triangle rendering through ray tracing
+- RayTracingBoxes - a more advanced ray tracing example with many BLASes in TLAS
+- Wrapper - shows how to wrap native D3D11/D3D12/VK objects into NRI entities
+- Resize - demonstrates window resize
 
 ## C/C++ INTERFACE DIFFERENCES
 
@@ -156,75 +234,6 @@ Repository organization:
 | `Pipeline`              | `ID3D11*Shader` and `ID3D11*State`    | `ID3D12StateObject`           | `VkPipeline`                 |
 | `AccelerationStructure` | N/A                                   | `ID3D12Resource`              | `VkAccelerationStructure`    |
 
-## BUILD INSTRUCTIONS
-
-- Install [*Cmake*](https://cmake.org/download/) 3.30+
-- Build (variant 1) - using *Git* and *CMake* explicitly
-    - Clone project and init submodules
-    - Generate and build the project using *CMake*
-    - To build the binary with static MSVC runtime, add `-DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>"` parameter when deploying the project
-- Build (variant 2) - by running scripts:
-    - Run `1-Deploy`
-    - Run `2-Build`
-
-Notes:
-- *Xlib* and *Wayland* can be both enabled
-- Minimal supported client is Windows 8.1+. Windows 7 support requires minimal effort and can be added by request
-
-## CMAKE OPTIONS
-
-- `NRI_STATIC_LIBRARY` - build NRI as a static library (`off` by default)
-- `NRI_ENABLE_NVTX_SUPPORT` - annotations for NVIDIA Nsight Systems (`on` by default)
-- `NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS` - enable debug names, host and device annotations (`on` by default)
-- `NRI_ENABLE_NONE_SUPPORT` - enable NONE backend (`on` by default)
-- `NRI_ENABLE_VK_SUPPORT` - enable VULKAN backend (`on` by default)
-- `NRI_ENABLE_VALIDATION_SUPPORT` - enable Validation backend (otherwise `enableNRIValidation` is ignored, `on` by default)
-- `NRI_ENABLE_D3D11_SUPPORT` - enable D3D11 backend (`on` by default on Windows)
-- `NRI_ENABLE_D3D12_SUPPORT` - enable D3D12 backend (`on` by default on Windows)
-- `NRI_ENABLE_AGILITY_SDK_SUPPORT` - enable D3D12 Agility SDK (`on` by default)
-- `NRI_ENABLE_XLIB_SUPPORT` - enable *Xlib* support (if `libx11-dev` installed)
-- `NRI_ENABLE_WAYLAND_SUPPORT` - enable *Wayland* support (if `libwayland-dev` installed)
-- `NRI_ENABLE_D3D_EXTENSIONS` - enable vendor specific extension libraries for D3D (NVAPI and AMD AGS) (`on` by default if there is a D3D backend)
-- `NRI_ENABLE_NIS_SDK` - enable NVIDIA Image Sharpening SDK (`off` by default)
-- `NRI_ENABLE_NGX_SDK` - enable NVIDIA NGX (DLSS) SDK (`off` by default)
-- `NRI_ENABLE_FFX_SDK` - enable AMD FidelityFX SDK (`off` by default)
-- `NRI_ENABLE_XESS_SDK` - enable INTEL XeSS SDK (`off` by default)
-- `NRI_AGILITY_SDK_DIR` - directory where Agility SDK binaries will be copied to relative to `CMAKE_RUNTIME_OUTPUT_DIRECTORY` (`AgilitySDK` by default)
-- `NRI_AGILITY_SDK_VERSION` - Agility SDK version
-
-## AGILITY SDK
-
-*Overview* and *Download* sections can be found [*here*](https://devblogs.microsoft.com/directx/directx12agility/).
-
-D3D12 backend uses Agility SDK to get access to most recent D3D12 features. It's highly recommended to use it.
-
-Steps (already enabled by default):
-- modify `NRI_AGILITY_SDK_VERSION_MAJOR` and `NRI_AGILITY_SDK_VERSION_MINOR` to the desired value
-- enable or disable `NRI_ENABLE_AGILITY_SDK_SUPPORT`
-- re-deploy project
-- include auto-generated `NRIAgilitySDK.h` header in the code of your executable using NRI
-
-## SAMPLES OVERVIEW
-
-NRI samples can be found [*here*](https://github.com/NVIDIA-RTX/NRISamples).
-
-Samples:
-- DeviceInfo - queries and prints out information about device groups in the system
-- Clear - minimal example of rendering using framebuffer clears only
-- CTest - very simple example of C interface usage
-- Triangle - simple textured triangle rendering (also multiview demonstration in _FLEXIBLE_ mode)
-- SceneViewer - loading & rendering of meshes with materials (also tests programmable sample locations, shading rate and pipeline statistics)
-- BindlessSceneViewer - bindless GPU-driven rendering test
-- Readback - getting data from the GPU back to the CPU
-- AsyncCompute - demonstrates parallel execution of graphic and compute workloads
-- MultiThreading - shows advantages of multi-threaded command buffer recording
-- Multiview - multiview demonstration in _LAYER_BASED_ mode (VK and D3D12 compatible)
-- MultiGPU - multi GPU example
-- RayTracingTriangle - simple triangle rendering through ray tracing
-- RayTracingBoxes - a more advanced ray tracing example with many BLASes in TLAS
-- Wrapper - shows how to wrap native D3D11/D3D12/VK objects into NRI entities
-- Resize - demonstrates window resize
-
 ## LICENSE
 
-NRI is licensed under the MIT License. This project includes NVAPI software. All uses of NVAPI software are governed by the license terms specified [*here*](https://github.com/NVIDIA/nvapi/blob/main/License.txt).
+NRI is licensed under the MIT License.
