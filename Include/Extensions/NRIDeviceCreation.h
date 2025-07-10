@@ -79,7 +79,6 @@ NriStruct(DeviceCreationDesc) {
     // Switches (enabled by default)
     bool disableVKRayTracing;                   // to save CPU memory in some implementations
     bool disableD3D12EnhancedBarriers;          // even if AgilitySDK is in use, some apps still use legacy barriers. It can be important for integrations
-    bool disableDefaultAbortExecution;          // "debug break" is useful during development, but many errors like "DEVICE_LOST" can be gracefully handled without execution abortion
 };
 
 // if "adapterDescs == NULL", then "adapterDescNum" is set to the number of adapters

@@ -87,7 +87,7 @@ NriEnum(GraphicsAPI, uint8_t,
 );
 
 NriEnum(Result, int8_t,
-    // All bad, but optionally require an action
+    // All bad, but optionally require an action ("callbackInterface.AbortExecution" is not triggered)
     DEVICE_LOST             = -3, // may be returned by "QueueSubmit*", "*WaitIdle", "AcquireNextTexture", "QueuePresent", "WaitForPresent"
     OUT_OF_DATE             = -2, // VK: swap chain is out of date
     INVALID_AGILITY_SDK     = -1, // D3D12: unable to load "D3D12Core.dll" or version mismatch
@@ -95,7 +95,7 @@ NriEnum(Result, int8_t,
     // All good
     SUCCESS                 = 0,
 
-    // All bad, most likely a crash or a validation error will happen next
+    // All bad, most likely a crash or a validation error will happen next ("callbackInterface.AbortExecution" is triggered)
     FAILURE                 = 1,
     INVALID_ARGUMENT        = 2,
     OUT_OF_MEMORY           = 3,

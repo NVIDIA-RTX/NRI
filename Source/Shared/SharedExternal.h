@@ -180,42 +180,46 @@ typedef nri::AllocationCallbacks AllocationCallbacks;
 // Message reporting
 #define RETURN_ON_BAD_HRESULT(deviceBase, hr, funcName) \
     if (hr < 0) { \
-        (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, hr, hr); \
-        return GetResultFromHRESULT(hr); \
+        Result _result = GetResultFromHRESULT(hr); \
+        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, hr, hr); \
+        return _result; \
     }
 
 #define RETURN_VOID_ON_BAD_HRESULT(deviceBase, hr, funcName) \
     if (hr < 0) { \
-        (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, hr, hr); \
+        Result _result = GetResultFromHRESULT(hr); \
+        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, hr, hr); \
         return; \
     }
 
 #define RETURN_ON_BAD_VKRESULT(deviceBase, vkResult, funcName) \
     if (vkResult < 0) { \
-        (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, vkResult, vkResult); \
-        return GetResultFromVkResult(vkResult); \
+        Result _result = GetResultFromVkResult(vkResult); \
+        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, vkResult, vkResult); \
+        return _result; \
     }
 
 #define RETURN_VOID_ON_BAD_VKRESULT(deviceBase, vkResult, funcName) \
     if (vkResult < 0) { \
-        (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, vkResult, vkResult); \
+        Result _result = GetResultFromVkResult(vkResult); \
+        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, vkResult, vkResult); \
         return; \
     }
 
 #define REPORT_ERROR_ON_BAD_NVAPI_STATUS(deviceBase, expression) \
     if ((expression) != 0) { \
-        (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, "%s: " NRI_STRINGIFY(expression) " failed!", __FUNCTION__); \
+        (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s: " NRI_STRINGIFY(expression) " failed!", __FUNCTION__); \
     }
 
 #define RETURN_ON_FAILURE(deviceBase, condition, returnCode, format, ...) \
     if (!(condition)) { \
-        (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, "%s: " format, __FUNCTION__, ##__VA_ARGS__); \
+        (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s: " format, __FUNCTION__, ##__VA_ARGS__); \
         return returnCode; \
     }
 
-#define REPORT_INFO(deviceBase, format, ...)    (deviceBase)->ReportMessage(Message::INFO, __FILE__, __LINE__, format, ##__VA_ARGS__)
-#define REPORT_WARNING(deviceBase, format, ...) (deviceBase)->ReportMessage(Message::WARNING, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
-#define REPORT_ERROR(deviceBase, format, ...)   (deviceBase)->ReportMessage(Message::ERROR, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
+#define REPORT_INFO(deviceBase, format, ...)    (deviceBase)->ReportMessage(Message::INFO, Result::SUCCESS, __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define REPORT_WARNING(deviceBase, format, ...) (deviceBase)->ReportMessage(Message::WARNING, Result::SUCCESS, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
+#define REPORT_ERROR(deviceBase, format, ...)   (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
 
 // Queue scores // TODO: improve?
 #define GRAPHICS_QUEUE_SCORE ((graphics ? 100 : 0) + (compute ? 10 : 0) + (copy ? 10 : 0) + (sparse ? 5 : 0) + (videoDecode ? 2 : 0) + (videoEncode ? 2 : 0) + (protect ? 1 : 0) + (opticalFlow ? 1 : 0))

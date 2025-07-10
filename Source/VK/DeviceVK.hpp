@@ -121,12 +121,15 @@ static VkBool32 VKAPI_PTR MessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT
     }
 
     Message severity = Message::INFO;
-    if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+    Result result = Result::SUCCESS;
+    if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
         severity = Message::ERROR;
+        result = Result::FAILURE;
+    }
     else if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
         severity = Message::WARNING;
 
-    device.ReportMessage(severity, __FILE__, __LINE__, "[%u] %s", callbackData->messageIdNumber, callbackData->pMessage);
+    device.ReportMessage(severity, result, __FILE__, __LINE__, "[%u] %s", callbackData->messageIdNumber, callbackData->pMessage);
 
     return VK_FALSE;
 }

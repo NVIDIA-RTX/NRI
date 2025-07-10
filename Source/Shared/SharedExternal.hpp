@@ -807,7 +807,7 @@ Format nri::VKFormatToNRIFormat(uint32_t format) {
     return Format::UNKNOWN;
 }
 
-void DeviceBase::ReportMessage(Message messageType, const char* file, uint32_t line, const char* format, ...) const {
+void DeviceBase::ReportMessage(Message messageType, Result result, const char* file, uint32_t line, const char* format, ...) const {
     // Report message
     if (m_CallbackInterface.MessageCallback) { // TODO: "MessageCallback" actually can't be "NULL"
         const DeviceDesc& desc = GetDesc();
@@ -828,7 +828,7 @@ void DeviceBase::ReportMessage(Message messageType, const char* file, uint32_t l
     }
 
     // Abort execution
-    if (m_CallbackInterface.AbortExecution && messageType == Message::ERROR)
+    if (m_CallbackInterface.AbortExecution && (int8_t)result > 0)
         m_CallbackInterface.AbortExecution(m_CallbackInterface.userArg);
 }
 

@@ -59,7 +59,7 @@ struct DeviceBase : public DebugNameBaseVal {
         return m_AllocationCallbacks;
     }
 
-    void ReportMessage(Message messageType, const char* file, uint32_t line, const char* format, ...) const;
+    void ReportMessage(Message messageType, Result result, const char* file, uint32_t line, const char* format, ...) const;
 
     // Pure virtual
     virtual const DeviceDesc& GetDesc() const = 0;

@@ -73,7 +73,7 @@ static void CheckAndSetDefaultCallbacks(DeviceCreationDesc& deviceCreationDesc) 
     if (!deviceCreationDesc.callbackInterface.MessageCallback)
         deviceCreationDesc.callbackInterface.MessageCallback = MessageCallback;
 
-    if (!deviceCreationDesc.callbackInterface.AbortExecution && !deviceCreationDesc.disableDefaultAbortExecution)
+    if (!deviceCreationDesc.callbackInterface.AbortExecution)
         deviceCreationDesc.callbackInterface.AbortExecution = AbortExecution;
 
     CheckAndSetDefaultAllocator(deviceCreationDesc.allocationCallbacks);

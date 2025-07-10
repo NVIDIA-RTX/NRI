@@ -44,13 +44,16 @@ static void __stdcall MessageCallback(D3D12_MESSAGE_CATEGORY category, D3D12_MES
     MaybeUnused(id, category);
 
     Message messageType = Message::INFO;
-    if (severity < D3D12_MESSAGE_SEVERITY_WARNING)
+    Result result = Result::SUCCESS;
+    if (severity < D3D12_MESSAGE_SEVERITY_WARNING) {
         messageType = Message::ERROR;
+        result = Result::FAILURE;
+    }
     else if (severity == D3D12_MESSAGE_SEVERITY_WARNING)
         messageType = Message::WARNING;
 
     DeviceD3D12& device = *(DeviceD3D12*)context;
-    device.ReportMessage(messageType, __FILE__, __LINE__, "[%u] %s", id, message);
+    device.ReportMessage(messageType, result, __FILE__, __LINE__, "[%u] %s", id, message);
 }
 
 #else
@@ -61,14 +64,17 @@ typedef ID3D12InfoQueue ID3D12InfoQueueBest;
 
 static void __stdcall NvapiMessageCallback(void* context, NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY severity, const char* messageCode, const char* message, const char* messageDetails) {
     Message messageType = Message::INFO;
-    if (severity == NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY_ERROR)
+    Result result = Result::SUCCESS;
+    if (severity == NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY_ERROR) {
         messageType = Message::ERROR;
+        result = Result::FAILURE;
+    }
     else if (severity == NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY_WARNING)
         messageType = Message::WARNING;
 
     DeviceD3D12& device = *(DeviceD3D12*)context;
-    device.ReportMessage(Message::WARNING, __FILE__, __LINE__, "Details: %s", messageDetails);
-    device.ReportMessage(messageType, __FILE__, __LINE__, "%s: %s (see above)", messageCode, message);
+    device.ReportMessage(Message::WARNING, Result::SUCCESS, __FILE__, __LINE__, "Details: %s", messageDetails);
+    device.ReportMessage(messageType, result, __FILE__, __LINE__, "%s: %s (see above)", messageCode, message);
 }
 
 #endif
