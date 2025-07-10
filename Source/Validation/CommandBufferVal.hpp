@@ -287,7 +287,7 @@ NRI_INLINE void CommandBufferVal::SetRootDescriptor(uint32_t rootDescriptorIndex
 
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
-    RETURN_ON_FAILURE(&m_Device, descriptorVal.IsBufferView(), ReturnVoid(), "'descriptor' must be a buffer view");
+    RETURN_ON_FAILURE(&m_Device, descriptorVal.IsBufferView() || descriptorVal.IsAccelerationStructure(), ReturnVoid(), "'descriptor' must be a buffer or acceleration structure");
 
     Descriptor* descriptorImpl = NRI_GET_IMPL(Descriptor, &descriptor);
 
