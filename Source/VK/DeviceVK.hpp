@@ -1222,6 +1222,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
             m_Desc.shaderModel = 66;
         if (features.features.shaderStorageImageMultisample)
             m_Desc.shaderModel = 67;
+        // TODO: add SM 6.8 and 6.9 detection
     }
 
     ReportDeviceGroupInfo();
