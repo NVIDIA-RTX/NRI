@@ -102,6 +102,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         bool isDrawIndirectCountSupported = false;
         bool isShaderAtomicsI64Supported = false;
         bool isShaderClockSupported = false;
+        bool areWaveIntrinsicsSupported = false;
 
 #if NRI_ENABLE_D3D_EXTENSIONS
         uint32_t d3dShaderExtRegister = desc.d3dShaderExtRegister ? desc.d3dShaderExtRegister : NRI_SHADER_EXT_REGISTER;
@@ -132,15 +133,20 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
             isDrawIndirectCountSupported = agsParams.extensionsSupported.multiDrawIndirectCountIndirect;
             isShaderAtomicsI64Supported = agsParams.extensionsSupported.intrinsics19;
 
-            m_Desc.shaderFeatures.barycentric = agsParams.extensionsSupported.intrinsics16;
             m_Desc.other.viewMaxNum = agsParams.extensionsSupported.multiView ? 4 : 1;
             m_Desc.features.viewportBasedMultiview = agsParams.extensionsSupported.multiView;
+            m_Desc.shaderFeatures.barycentric = agsParams.extensionsSupported.intrinsics16;
+
+            areWaveIntrinsicsSupported = agsParams.extensionsSupported.intrinsics16
+                && agsParams.extensionsSupported.intrinsics17
+                && agsParams.extensionsSupported.intrinsics19
+                && agsParams.extensionsSupported.getWaveSize;
         } else {
 #endif
             HRESULT hr = D3D11CreateDevice(m_Adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags, levels, levelNum, D3D11_SDK_VERSION, (ID3D11Device**)&deviceTemp, nullptr, nullptr);
 
             // If Debug Layer is not available, try without D3D11_CREATE_DEVICE_DEBUG
-            if (flags && hr == DXGI_ERROR_SDK_COMPONENT_MISSING)                
+            if (flags && hr == DXGI_ERROR_SDK_COMPONENT_MISSING)
                 hr = D3D11CreateDevice(m_Adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, levels, levelNum, D3D11_SDK_VERSION, (ID3D11Device**)&deviceTemp, nullptr, nullptr);
 
             RETURN_ON_BAD_HRESULT(this, hr, "D3D11CreateDevice");
@@ -151,6 +157,35 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
                 REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_SetNvShaderExtnSlot(deviceTemp, d3dShaderExtRegister));
                 REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_UINT64_ATOMIC, &isShaderAtomicsI64Supported));
                 REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_GET_SPECIAL, &isShaderClockSupported));
+
+                bool isSupported = false;
+                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_SHFL, &isSupported));
+                areWaveIntrinsicsSupported = isSupported;
+
+                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_SHFL_UP, &isSupported));
+                areWaveIntrinsicsSupported = areWaveIntrinsicsSupported && isSupported;
+
+                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_SHFL_DOWN, &isSupported));
+                areWaveIntrinsicsSupported = areWaveIntrinsicsSupported && isSupported;
+
+                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_SHFL_XOR, &isSupported));
+                areWaveIntrinsicsSupported = areWaveIntrinsicsSupported && isSupported;
+
+                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_VOTE_ALL, &isSupported));
+                areWaveIntrinsicsSupported = areWaveIntrinsicsSupported && isSupported;
+
+                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_VOTE_ANY, &isSupported));
+                areWaveIntrinsicsSupported = areWaveIntrinsicsSupported && isSupported;
+
+                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_VOTE_BALLOT, &isSupported));
+                areWaveIntrinsicsSupported = areWaveIntrinsicsSupported && isSupported;
+
+                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_GET_LANE_ID, &isSupported));
+                areWaveIntrinsicsSupported = areWaveIntrinsicsSupported && isSupported;
+
+                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_MATCH_ANY, &isSupported));
+                areWaveIntrinsicsSupported = areWaveIntrinsicsSupported && isSupported;
+
                 isDepthBoundsTestSupported = true;
             }
         }
@@ -161,6 +196,14 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         m_Desc.features.drawIndirectCount = isDrawIndirectCountSupported;
         m_Desc.shaderFeatures.atomicsI64 = isShaderAtomicsI64Supported;
         m_Desc.shaderFeatures.clock = isShaderClockSupported;
+
+        // If "all known" intrinsics are supported assume that "all possible" intrinsics are supported, since it's unclear which of them are really available via extensions
+        m_Desc.shaderFeatures.waveQuery = areWaveIntrinsicsSupported;
+        m_Desc.shaderFeatures.waveVote = areWaveIntrinsicsSupported;
+        m_Desc.shaderFeatures.waveShuffle = areWaveIntrinsicsSupported;
+        m_Desc.shaderFeatures.waveArithmetic = areWaveIntrinsicsSupported;
+        m_Desc.shaderFeatures.waveReduction = areWaveIntrinsicsSupported;
+        m_Desc.shaderFeatures.waveQuad = areWaveIntrinsicsSupported;
     }
 
     m_Version = QueryLatestDevice(deviceTemp, m_Device);
@@ -405,14 +448,19 @@ void DeviceD3D11::FillDesc() {
     m_Desc.shaderStage.fragment.attachmentMaxNum = D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT;
     m_Desc.shaderStage.fragment.dualSourceAttachmentMaxNum = 1;
 
-    m_Desc.shaderStage.compute.sharedMemoryMaxSize = D3D11_CS_THREAD_LOCAL_TEMP_REGISTER_POOL;
     m_Desc.shaderStage.compute.workGroupMaxNum[0] = D3D11_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION;
     m_Desc.shaderStage.compute.workGroupMaxNum[1] = D3D11_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION;
     m_Desc.shaderStage.compute.workGroupMaxNum[2] = D3D11_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION;
-    m_Desc.shaderStage.compute.workGroupInvocationMaxNum = D3D11_CS_THREAD_GROUP_MAX_THREADS_PER_GROUP;
     m_Desc.shaderStage.compute.workGroupMaxDim[0] = D3D11_CS_THREAD_GROUP_MAX_X;
     m_Desc.shaderStage.compute.workGroupMaxDim[1] = D3D11_CS_THREAD_GROUP_MAX_Y;
     m_Desc.shaderStage.compute.workGroupMaxDim[2] = D3D11_CS_THREAD_GROUP_MAX_Z;
+    m_Desc.shaderStage.compute.workGroupInvocationMaxNum = D3D11_CS_THREAD_GROUP_MAX_THREADS_PER_GROUP;
+    m_Desc.shaderStage.compute.sharedMemoryMaxSize = D3D11_CS_THREAD_LOCAL_TEMP_REGISTER_POOL;
+
+    m_Desc.wave.laneMinNum = m_Desc.adapterDesc.vendor == Vendor::AMD ? 64 : 32; // TODO: yes, AMD nowadays can do 32, but 64 seems to be a more generic match
+    m_Desc.wave.laneMaxNum = m_Desc.adapterDesc.vendor == Vendor::AMD ? 64 : 32;
+    m_Desc.wave.derivativeOpsStages = StageBits::FRAGMENT_SHADER;
+    m_Desc.wave.waveOpsStages = StageBits::ALL_SHADERS;
 
     m_Desc.other.timestampFrequencyHz = timestampFrequency;
     m_Desc.other.drawIndirectMaxNum = (1ull << D3D11_REQ_DRAWINDEXED_INDEX_COUNT_2_TO_EXP) - 1;
