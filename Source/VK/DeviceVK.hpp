@@ -125,8 +125,7 @@ static VkBool32 VKAPI_PTR MessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT
     if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
         severity = Message::ERROR;
         result = Result::FAILURE;
-    }
-    else if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+    } else if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
         severity = Message::WARNING;
 
     device.ReportMessage(severity, result, __FILE__, __LINE__, "[%u] %s", callbackData->messageIdNumber, callbackData->pMessage);
@@ -294,6 +293,9 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
 
     if (IsExtensionSupported(VK_KHR_SHADER_CLOCK_EXTENSION_NAME, supportedExts))
         desiredDeviceExts.push_back(VK_KHR_SHADER_CLOCK_EXTENSION_NAME);
+
+    if (IsExtensionSupported(VK_KHR_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME, supportedExts))
+        desiredDeviceExts.push_back(VK_KHR_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME);
 
     // Optional (EXT)
     if (IsExtensionSupported(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME, supportedExts))
@@ -705,6 +707,11 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         APPEND_EXT(shaderClockFeatures);
     }
 
+    VkPhysicalDeviceComputeShaderDerivativesFeaturesKHR computeShaderDerivativesFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_KHR};
+    if (IsExtensionSupported(VK_KHR_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME, desiredDeviceExts)) {
+        APPEND_EXT(computeShaderDerivativesFeatures);
+    }
+
     // Optional (EXT)
     VkPhysicalDeviceOpacityMicromapFeaturesEXT micromapFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_FEATURES_EXT};
     if (IsExtensionSupported(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME, desiredDeviceExts)) {
@@ -913,8 +920,13 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
             APPEND_EXT(props13);
         }
 
+        VkPhysicalDeviceSubgroupSizeControlProperties subgroupSizeControlProps = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES};
+        if (m_MinorVersion < 3) {
+            APPEND_EXT(subgroupSizeControlProps);
+        }
+
         VkPhysicalDeviceMaintenance4PropertiesKHR maintenance4Props = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES_KHR};
-        if (IsExtensionSupported(VK_KHR_MAINTENANCE_4_EXTENSION_NAME, desiredDeviceExts)) {
+        if (m_MinorVersion < 3 && IsExtensionSupported(VK_KHR_MAINTENANCE_4_EXTENSION_NAME, desiredDeviceExts)) {
             APPEND_EXT(maintenance4Props);
         }
 
@@ -983,6 +995,11 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         VkPhysicalDeviceOpacityMicromapPropertiesEXT micromapProps = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_PROPERTIES_EXT};
         if (IsExtensionSupported(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME, desiredDeviceExts)) {
             APPEND_EXT(micromapProps);
+        }
+
+        VkPhysicalDeviceComputeShaderDerivativesPropertiesKHR computeShaderDerivativesProps = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_PROPERTIES_KHR};
+        if (IsExtensionSupported(VK_KHR_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME, desiredDeviceExts)) {
+            APPEND_EXT(computeShaderDerivativesProps);
         }
 
         m_VK.GetPhysicalDeviceProperties2(m_PhysicalDevice, &props);
@@ -1091,14 +1108,14 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.shaderStage.fragment.attachmentMaxNum = limits.maxFragmentOutputAttachments;
         m_Desc.shaderStage.fragment.dualSourceAttachmentMaxNum = limits.maxFragmentDualSrcAttachments;
 
-        m_Desc.shaderStage.compute.sharedMemoryMaxSize = limits.maxComputeSharedMemorySize;
         m_Desc.shaderStage.compute.workGroupMaxNum[0] = limits.maxComputeWorkGroupCount[0];
         m_Desc.shaderStage.compute.workGroupMaxNum[1] = limits.maxComputeWorkGroupCount[1];
         m_Desc.shaderStage.compute.workGroupMaxNum[2] = limits.maxComputeWorkGroupCount[2];
-        m_Desc.shaderStage.compute.workGroupInvocationMaxNum = limits.maxComputeWorkGroupInvocations;
         m_Desc.shaderStage.compute.workGroupMaxDim[0] = limits.maxComputeWorkGroupSize[0];
         m_Desc.shaderStage.compute.workGroupMaxDim[1] = limits.maxComputeWorkGroupSize[1];
         m_Desc.shaderStage.compute.workGroupMaxDim[2] = limits.maxComputeWorkGroupSize[2];
+        m_Desc.shaderStage.compute.workGroupInvocationMaxNum = limits.maxComputeWorkGroupInvocations;
+        m_Desc.shaderStage.compute.sharedMemoryMaxSize = limits.maxComputeSharedMemorySize;
 
         m_Desc.shaderStage.rayTracing.shaderGroupIdentifierSize = rayTracingProps.shaderGroupHandleSize;
         m_Desc.shaderStage.rayTracing.tableMaxStride = rayTracingProps.maxShaderGroupStride;
@@ -1113,6 +1130,47 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.shaderStage.meshEvaluation.outputComponentMaxNum = meshShaderProps.maxMeshOutputComponents;
         m_Desc.shaderStage.meshEvaluation.sharedMemoryMaxSize = meshShaderProps.maxMeshSharedMemorySize;
         m_Desc.shaderStage.meshEvaluation.workGroupInvocationMaxNum = meshShaderProps.maxMeshWorkGroupInvocations;
+
+        m_Desc.wave.laneMinNum = m_MinorVersion >= 3 ? props13.minSubgroupSize : subgroupSizeControlProps.minSubgroupSize;
+        m_Desc.wave.laneMaxNum = m_MinorVersion >= 3 ? props13.maxSubgroupSize : subgroupSizeControlProps.minSubgroupSize;
+
+        m_Desc.wave.derivativeOpsStages = StageBits::FRAGMENT_SHADER;
+        if (computeShaderDerivativesFeatures.computeDerivativeGroupQuads || computeShaderDerivativesFeatures.computeDerivativeGroupLinear)
+            m_Desc.wave.derivativeOpsStages |= StageBits::COMPUTE_SHADER;
+        if (computeShaderDerivativesProps.meshAndTaskShaderDerivatives)
+            m_Desc.wave.derivativeOpsStages |= StageBits::MESH_CONTROL_SHADER | StageBits::MESH_EVALUATION_SHADER;
+
+        if (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_QUAD_BIT)
+            m_Desc.wave.quadOpsStages = props11.subgroupQuadOperationsInAllStages ? StageBits::ALL_SHADERS : (StageBits::FRAGMENT_SHADER | StageBits::COMPUTE_SHADER);
+
+        if (props11.subgroupSupportedStages & VK_SHADER_STAGE_VERTEX_BIT)
+            m_Desc.wave.waveOpsStages |= StageBits::VERTEX_SHADER;
+        if (props11.subgroupSupportedStages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)
+            m_Desc.wave.waveOpsStages |= StageBits::TESS_CONTROL_SHADER;
+        if (props11.subgroupSupportedStages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
+            m_Desc.wave.waveOpsStages |= StageBits::TESS_EVALUATION_SHADER;
+        if (props11.subgroupSupportedStages & VK_SHADER_STAGE_GEOMETRY_BIT)
+            m_Desc.wave.waveOpsStages |= StageBits::GEOMETRY_SHADER;
+        if (props11.subgroupSupportedStages & VK_SHADER_STAGE_FRAGMENT_BIT)
+            m_Desc.wave.waveOpsStages |= StageBits::FRAGMENT_SHADER;
+        if (props11.subgroupSupportedStages & VK_SHADER_STAGE_COMPUTE_BIT)
+            m_Desc.wave.waveOpsStages |= StageBits::COMPUTE_SHADER;
+        if (props11.subgroupSupportedStages & VK_SHADER_STAGE_RAYGEN_BIT_KHR)
+            m_Desc.wave.waveOpsStages |= StageBits::RAYGEN_SHADER;
+        if (props11.subgroupSupportedStages & VK_SHADER_STAGE_ANY_HIT_BIT_KHR)
+            m_Desc.wave.waveOpsStages |= StageBits::ANY_HIT_SHADER;
+        if (props11.subgroupSupportedStages & VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
+            m_Desc.wave.waveOpsStages |= StageBits::CLOSEST_HIT_SHADER;
+        if (props11.subgroupSupportedStages & VK_SHADER_STAGE_MISS_BIT_KHR)
+            m_Desc.wave.waveOpsStages |= StageBits::MISS_SHADER;
+        if (props11.subgroupSupportedStages & VK_SHADER_STAGE_INTERSECTION_BIT_KHR)
+            m_Desc.wave.waveOpsStages |= StageBits::INTERSECTION_SHADER;
+        if (props11.subgroupSupportedStages & VK_SHADER_STAGE_CALLABLE_BIT_KHR)
+            m_Desc.wave.waveOpsStages |= StageBits::CALLABLE_SHADER;
+        if (props11.subgroupSupportedStages & VK_SHADER_STAGE_TASK_BIT_EXT)
+            m_Desc.wave.waveOpsStages |= StageBits::MESH_CONTROL_SHADER;
+        if (props11.subgroupSupportedStages & VK_SHADER_STAGE_MESH_BIT_EXT)
+            m_Desc.wave.waveOpsStages |= StageBits::MESH_EVALUATION_SHADER;
 
         m_Desc.other.timestampFrequencyHz = uint64_t(1e9 / double(limits.timestampPeriod) + 0.5);
         m_Desc.other.micromapSubdivisionMaxLevel = micromapProps.maxOpacity2StateSubdivisionLevel;
@@ -1202,6 +1260,12 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.shaderFeatures.rayTracingPositionFetch = rayTracingPositionFetchFeatures.rayTracingPositionFetch;
         m_Desc.shaderFeatures.storageReadWithoutFormat = features.features.shaderStorageImageReadWithoutFormat;
         m_Desc.shaderFeatures.storageWriteWithoutFormat = features.features.shaderStorageImageWriteWithoutFormat;
+        m_Desc.shaderFeatures.waveQuery = (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_BASIC_BIT) ? true : false;
+        m_Desc.shaderFeatures.waveVote = (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_VOTE_BIT) ? true : false;
+        m_Desc.shaderFeatures.waveShuffle = (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_SHUFFLE_BIT) ? true : false;
+        m_Desc.shaderFeatures.waveArithmetic = (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) ? true : false;
+        m_Desc.shaderFeatures.waveReduction = (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT) ? true : false;
+        m_Desc.shaderFeatures.waveQuad = (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_QUAD_BIT) ? true : false;
 
         // Estimate shader model last since it depends on many "m_Desc" fields
         // Based on https://docs.vulkan.org/guide/latest/hlsl.html#_shader_model_coverage // TODO: code below needs to be improved

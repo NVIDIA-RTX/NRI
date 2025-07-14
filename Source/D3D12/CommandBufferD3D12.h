@@ -122,7 +122,6 @@ private:
     PipelineD3D12* m_Pipeline = nullptr;
     D3D12_PRIMITIVE_TOPOLOGY m_PrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
     uint32_t m_RenderTargetNum = 0;
-    uint8_t m_Version = 0;
     bool m_IsGraphicsPipelineLayout = false;
 };
 

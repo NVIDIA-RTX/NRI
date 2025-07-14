@@ -44,55 +44,56 @@ static_assert((uint32_t)PrimitiveRestart::DISABLED == D3D12_INDEX_BUFFER_STRIP_C
 static_assert((uint32_t)PrimitiveRestart::INDICES_UINT16 == D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF, "Enum mismatch");
 static_assert((uint32_t)PrimitiveRestart::INDICES_UINT32 == D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFFFFFF, "Enum mismatch");
 
-static void FillRasterizerState(D3D12_RASTERIZER_DESC& rasterizerDesc, const GraphicsPipelineDesc& graphicsPipelineDesc) {
-    const RasterizationDesc& r = graphicsPipelineDesc.rasterization;
+static D3D12_SHADER_VISIBILITY GetShaderVisibility(StageBits shaderStages) {
+    if (shaderStages == StageBits::ALL || shaderStages == StageBits::COMPUTE_SHADER || (shaderStages & StageBits::RAY_TRACING_SHADERS) != 0)
+        return D3D12_SHADER_VISIBILITY_ALL;
 
-    rasterizerDesc.FillMode = GetFillMode(r.fillMode);
-    rasterizerDesc.CullMode = GetCullMode(r.cullMode);
-    rasterizerDesc.FrontCounterClockwise = (BOOL)r.frontCounterClockwise;
-    rasterizerDesc.DepthBias = (INT)r.depthBias.constant;
-    rasterizerDesc.DepthBiasClamp = r.depthBias.clamp;
-    rasterizerDesc.SlopeScaledDepthBias = r.depthBias.slope;
-    rasterizerDesc.DepthClipEnable = (BOOL)r.depthClamp;
-    rasterizerDesc.AntialiasedLineEnable = (BOOL)r.lineSmoothing;
-    rasterizerDesc.ConservativeRaster = r.conservativeRaster ? D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON : D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+    if (shaderStages == StageBits::VERTEX_SHADER)
+        return D3D12_SHADER_VISIBILITY_VERTEX;
 
-    if (graphicsPipelineDesc.multisample) {
-        rasterizerDesc.MultisampleEnable = graphicsPipelineDesc.multisample->sampleNum > 1 ? TRUE : FALSE;
-        // TODO: rasterizerDesc.ForcedSampleCount?
-    }
-}
+    if (shaderStages == StageBits::TESS_CONTROL_SHADER)
+        return D3D12_SHADER_VISIBILITY_HULL;
 
-static void FillDepthStencilState(D3D12_DEPTH_STENCIL_DESC* depthStencilDesc, const OutputMergerDesc& om) {
-    depthStencilDesc->DepthEnable = om.depth.compareOp == CompareOp::NONE ? FALSE : TRUE;
-    depthStencilDesc->DepthWriteMask = om.depth.write ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
-    depthStencilDesc->DepthFunc = GetCompareOp(om.depth.compareOp);
-    depthStencilDesc->StencilEnable = (om.stencil.front.compareOp == CompareOp::NONE && om.stencil.back.compareOp == CompareOp::NONE) ? FALSE : TRUE;
-    depthStencilDesc->StencilReadMask = (UINT8)om.stencil.front.compareMask;
-    depthStencilDesc->StencilWriteMask = (UINT8)om.stencil.front.writeMask;
-    depthStencilDesc->FrontFace.StencilFailOp = GetStencilOp(om.stencil.front.failOp);
-    depthStencilDesc->FrontFace.StencilDepthFailOp = GetStencilOp(om.stencil.front.depthFailOp);
-    depthStencilDesc->FrontFace.StencilPassOp = GetStencilOp(om.stencil.front.passOp);
-    depthStencilDesc->FrontFace.StencilFunc = GetCompareOp(om.stencil.front.compareOp);
-    depthStencilDesc->BackFace.StencilFailOp = GetStencilOp(om.stencil.back.failOp);
-    depthStencilDesc->BackFace.StencilDepthFailOp = GetStencilOp(om.stencil.back.depthFailOp);
-    depthStencilDesc->BackFace.StencilPassOp = GetStencilOp(om.stencil.back.passOp);
-    depthStencilDesc->BackFace.StencilFunc = GetCompareOp(om.stencil.back.compareOp);
+    if (shaderStages == StageBits::TESS_EVALUATION_SHADER)
+        return D3D12_SHADER_VISIBILITY_DOMAIN;
+
+    if (shaderStages == StageBits::GEOMETRY_SHADER)
+        return D3D12_SHADER_VISIBILITY_GEOMETRY;
+
+    if (shaderStages == StageBits::FRAGMENT_SHADER)
+        return D3D12_SHADER_VISIBILITY_PIXEL;
+
+    if (shaderStages == StageBits::MESH_CONTROL_SHADER)
+        return D3D12_SHADER_VISIBILITY_AMPLIFICATION;
+
+    if (shaderStages == StageBits::MESH_EVALUATION_SHADER)
+        return D3D12_SHADER_VISIBILITY_MESH;
+
+    // Should be unreachable
+    return D3D12_SHADER_VISIBILITY_ALL;
 }
 
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
 static void FillRasterizerState(D3D12_RASTERIZER_DESC1& rasterizerDesc, const GraphicsPipelineDesc& graphicsPipelineDesc) {
+#else
+static void FillRasterizerState(D3D12_RASTERIZER_DESC& rasterizerDesc, const GraphicsPipelineDesc& graphicsPipelineDesc) {
+#endif
     const RasterizationDesc& r = graphicsPipelineDesc.rasterization;
 
     rasterizerDesc.FillMode = GetFillMode(r.fillMode);
     rasterizerDesc.CullMode = GetCullMode(r.cullMode);
     rasterizerDesc.FrontCounterClockwise = (BOOL)r.frontCounterClockwise;
-    rasterizerDesc.DepthBias = r.depthBias.constant;
     rasterizerDesc.DepthBiasClamp = r.depthBias.clamp;
     rasterizerDesc.SlopeScaledDepthBias = r.depthBias.slope;
     rasterizerDesc.DepthClipEnable = (BOOL)r.depthClamp;
     rasterizerDesc.AntialiasedLineEnable = (BOOL)r.lineSmoothing;
     rasterizerDesc.ConservativeRaster = r.conservativeRaster ? D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON : D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+
+#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+    rasterizerDesc.DepthBias = r.depthBias.constant;
+#else
+    rasterizerDesc.DepthBias = (int32_t)r.depthBias.constant;
+#endif
 
     if (graphicsPipelineDesc.multisample) {
         rasterizerDesc.MultisampleEnable = graphicsPipelineDesc.multisample->sampleNum > 1 ? TRUE : FALSE;
@@ -100,7 +101,11 @@ static void FillRasterizerState(D3D12_RASTERIZER_DESC1& rasterizerDesc, const Gr
     }
 }
 
+#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
 static void FillDepthStencilState(D3D12_DEPTH_STENCIL_DESC2& depthStencilDesc, const OutputMergerDesc& om) {
+#else
+static void FillDepthStencilState(D3D12_DEPTH_STENCIL_DESC1& depthStencilDesc, const OutputMergerDesc& om) {
+#endif
     depthStencilDesc.DepthEnable = om.depth.compareOp == CompareOp::NONE ? FALSE : TRUE;
     depthStencilDesc.DepthWriteMask = om.depth.write ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
     depthStencilDesc.DepthFunc = GetCompareOp(om.depth.compareOp);
@@ -109,16 +114,22 @@ static void FillDepthStencilState(D3D12_DEPTH_STENCIL_DESC2& depthStencilDesc, c
     depthStencilDesc.FrontFace.StencilDepthFailOp = GetStencilOp(om.stencil.front.depthFailOp);
     depthStencilDesc.FrontFace.StencilPassOp = GetStencilOp(om.stencil.front.passOp);
     depthStencilDesc.FrontFace.StencilFunc = GetCompareOp(om.stencil.front.compareOp);
-    depthStencilDesc.FrontFace.StencilReadMask = om.stencil.front.compareMask;
-    depthStencilDesc.FrontFace.StencilWriteMask = om.stencil.front.writeMask;
     depthStencilDesc.BackFace.StencilFailOp = GetStencilOp(om.stencil.back.failOp);
     depthStencilDesc.BackFace.StencilDepthFailOp = GetStencilOp(om.stencil.back.depthFailOp);
     depthStencilDesc.BackFace.StencilPassOp = GetStencilOp(om.stencil.back.passOp);
     depthStencilDesc.BackFace.StencilFunc = GetCompareOp(om.stencil.back.compareOp);
+    depthStencilDesc.DepthBoundsTestEnable = om.depth.boundsTest ? 1 : 0;
+
+#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+    depthStencilDesc.FrontFace.StencilReadMask = om.stencil.front.compareMask;
+    depthStencilDesc.FrontFace.StencilWriteMask = om.stencil.front.writeMask;
     depthStencilDesc.BackFace.StencilReadMask = om.stencil.back.compareMask;
     depthStencilDesc.BackFace.StencilWriteMask = om.stencil.back.writeMask;
-}
+#else
+    depthStencilDesc.StencilReadMask = (UINT8)om.stencil.front.compareMask;
+    depthStencilDesc.StencilWriteMask = (UINT8)om.stencil.front.writeMask;
 #endif
+}
 
 static void FillInputLayout(D3D12_INPUT_LAYOUT_DESC& inputLayoutDesc, const GraphicsPipelineDesc& graphicsPipelineDesc) {
     if (!graphicsPipelineDesc.vertexInput)
@@ -187,8 +198,6 @@ static uint32_t FillSampleDesc(DXGI_SAMPLE_DESC& sampleDesc, const GraphicsPipel
 }
 
 Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipelineDesc) {
-    CHECK(m_Device.GetVersion() >= 2, "Newer interface needed");
-
     struct PipelineStateStream {
         PipelineRootSignature rootSignature;
         PipelinePrimitiveTopology primitiveTopology;
@@ -262,12 +271,7 @@ Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipel
 #endif
 
     // Depth stencil
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
     FillDepthStencilState(stateStream.depthStencil.desc, graphicsPipelineDesc.outputMerger);
-#else
-    FillDepthStencilState((D3D12_DEPTH_STENCIL_DESC*)&stateStream.depthStencil.desc, graphicsPipelineDesc.outputMerger);
-#endif
-    stateStream.depthStencil.desc.DepthBoundsTestEnable = graphicsPipelineDesc.outputMerger.depth.boundsTest ? 1 : 0;
     stateStream.depthStencilFormat = GetDxgiFormat(graphicsPipelineDesc.outputMerger.depthStencilFormat).typed;
 
     // Output merger
@@ -313,69 +317,7 @@ Result PipelineD3D12::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     m_PipelineLayout = (const PipelineLayoutD3D12*)graphicsPipelineDesc.pipelineLayout;
     m_IsGraphicsPipeline = true;
 
-    if (m_Device.GetVersion() >= 2)
-        return CreateFromStream(graphicsPipelineDesc);
-
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPipleineStateDesc = {};
-    graphicsPipleineStateDesc.NodeMask = NODE_MASK;
-    graphicsPipleineStateDesc.pRootSignature = *m_PipelineLayout;
-
-    // Shaders
-    for (uint32_t i = 0; i < graphicsPipelineDesc.shaderNum; i++) {
-        const ShaderDesc& shader = graphicsPipelineDesc.shaders[i];
-        if (shader.stage == StageBits::VERTEX_SHADER)
-            FillShaderBytecode(graphicsPipleineStateDesc.VS, shader);
-        else if (shader.stage == StageBits::TESS_CONTROL_SHADER)
-            FillShaderBytecode(graphicsPipleineStateDesc.HS, shader);
-        else if (shader.stage == StageBits::TESS_EVALUATION_SHADER)
-            FillShaderBytecode(graphicsPipleineStateDesc.DS, shader);
-        else if (shader.stage == StageBits::GEOMETRY_SHADER)
-            FillShaderBytecode(graphicsPipleineStateDesc.GS, shader);
-        else if (shader.stage == StageBits::FRAGMENT_SHADER)
-            FillShaderBytecode(graphicsPipleineStateDesc.PS, shader);
-        else
-            return Result::INVALID_ARGUMENT;
-    }
-
-    // Vertex input
-    uint32_t attributeNum = graphicsPipelineDesc.vertexInput ? graphicsPipelineDesc.vertexInput->attributeNum : 0;
-    Scratch<D3D12_INPUT_ELEMENT_DESC> scratch = AllocateScratch(m_Device, D3D12_INPUT_ELEMENT_DESC, attributeNum);
-    if (graphicsPipelineDesc.vertexInput) {
-        graphicsPipleineStateDesc.InputLayout.pInputElementDescs = scratch;
-        FillInputLayout(graphicsPipleineStateDesc.InputLayout, graphicsPipelineDesc);
-    }
-
-    // Input assembly
-    m_PrimitiveTopology = ::GetPrimitiveTopology(graphicsPipelineDesc.inputAssembly.topology, graphicsPipelineDesc.inputAssembly.tessControlPointNum);
-    graphicsPipleineStateDesc.PrimitiveTopologyType = GetPrimitiveTopologyType(graphicsPipelineDesc.inputAssembly.topology);
-    graphicsPipleineStateDesc.IBStripCutValue = (D3D12_INDEX_BUFFER_STRIP_CUT_VALUE)graphicsPipelineDesc.inputAssembly.primitiveRestart;
-
-    // Multisample
-    graphicsPipleineStateDesc.SampleMask = FillSampleDesc(graphicsPipleineStateDesc.SampleDesc, graphicsPipelineDesc);
-
-    // Rasterizer
-    FillRasterizerState(graphicsPipleineStateDesc.RasterizerState, graphicsPipelineDesc);
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
-    if (IsDepthBiasEnabled(graphicsPipelineDesc.rasterization.depthBias))
-        graphicsPipleineStateDesc.Flags = D3D12_PIPELINE_STATE_FLAG_DYNAMIC_DEPTH_BIAS;
-#endif
-
-    // Depth stencil
-    FillDepthStencilState(&graphicsPipleineStateDesc.DepthStencilState, graphicsPipelineDesc.outputMerger);
-    graphicsPipleineStateDesc.DSVFormat = GetDxgiFormat(graphicsPipelineDesc.outputMerger.depthStencilFormat).typed;
-
-    // Blending
-    FillBlendState(graphicsPipleineStateDesc.BlendState, graphicsPipelineDesc);
-
-    graphicsPipleineStateDesc.NumRenderTargets = graphicsPipelineDesc.outputMerger.colorNum;
-    for (uint32_t i = 0; i < graphicsPipelineDesc.outputMerger.colorNum; i++)
-        graphicsPipleineStateDesc.RTVFormats[i] = GetDxgiFormat(graphicsPipelineDesc.outputMerger.colors[i].format).typed;
-
-    // Create
-    HRESULT hr = m_Device->CreateGraphicsPipelineState(&graphicsPipleineStateDesc, IID_PPV_ARGS(&m_PipelineState));
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateGraphicsPipelineState");
-
-    return Result::SUCCESS;
+    return CreateFromStream(graphicsPipelineDesc);
 }
 
 Result PipelineD3D12::Create(const ComputePipelineDesc& computePipelineDesc) {

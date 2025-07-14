@@ -1,6 +1,6 @@
 ﻿// © 2021 NVIDIA Corporation
 
-static uint8_t QueryLatestGraphicsCommandList(ComPtr<ID3D12GraphicsCommandListBest>& in, ComPtr<ID3D12GraphicsCommandListBest>& out) {
+static HRESULT QueryRequiredGraphicsCommandListInterface(ComPtr<ID3D12GraphicsCommandListBest>& in, ComPtr<ID3D12GraphicsCommandListBest>& out) {
     static const IID versions[] = {
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
         __uuidof(ID3D12GraphicsCommandList10),
@@ -25,7 +25,7 @@ static uint8_t QueryLatestGraphicsCommandList(ComPtr<ID3D12GraphicsCommandListBe
             break;
     }
 
-    return n - i - 1;
+    return i == 0 ? S_OK : D3D12_ERROR_INVALID_REDIST;
 }
 
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
@@ -254,7 +254,8 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
     HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&graphicsCommandList);
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommandList");
 
-    m_Version = QueryLatestGraphicsCommandList(graphicsCommandList, m_GraphicsCommandList);
+    hr = QueryRequiredGraphicsCommandListInterface(graphicsCommandList, m_GraphicsCommandList);
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "QueryRequiredGraphicsCommandListInterface");
 
     hr = m_GraphicsCommandList->Close();
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::Close");
@@ -266,7 +267,9 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
 
 Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferDesc) {
     ComPtr<ID3D12GraphicsCommandListBest> graphicsCommandList = (ID3D12GraphicsCommandListBest*)commandBufferDesc.d3d12CommandList;
-    m_Version = QueryLatestGraphicsCommandList(graphicsCommandList, m_GraphicsCommandList);
+
+    HRESULT hr = QueryRequiredGraphicsCommandListInterface(graphicsCommandList, m_GraphicsCommandList);
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "QueryRequiredGraphicsCommandListInterface");
 
     // TODO: what if opened?
 
@@ -329,8 +332,7 @@ NRI_INLINE void CommandBufferD3D12::SetScissors(const Rect* rects, uint32_t rect
 }
 
 NRI_INLINE void CommandBufferD3D12::SetDepthBounds(float boundsMin, float boundsMax) {
-    if (m_Version >= 1)
-        m_GraphicsCommandList->OMSetDepthBounds(boundsMin, boundsMax);
+    m_GraphicsCommandList->OMSetDepthBounds(boundsMin, boundsMax);
 }
 
 NRI_INLINE void CommandBufferD3D12::SetStencilReference(uint8_t frontRef, uint8_t backRef) {
@@ -347,8 +349,7 @@ NRI_INLINE void CommandBufferD3D12::SetSampleLocations(const SampleLocation* loc
     static_assert(sizeof(D3D12_SAMPLE_POSITION) == sizeof(SampleLocation));
 
     uint32_t pixelNum = locationNum / sampleNum;
-    if (m_Version >= 1)
-        m_GraphicsCommandList->SetSamplePositions(sampleNum, pixelNum, (D3D12_SAMPLE_POSITION*)locations);
+    m_GraphicsCommandList->SetSamplePositions(sampleNum, pixelNum, (D3D12_SAMPLE_POSITION*)locations);
 }
 
 NRI_INLINE void CommandBufferD3D12::SetBlendConstants(const Color32f& color) {
@@ -688,7 +689,7 @@ NRI_INLINE void CommandBufferD3D12::ResolveTexture(Texture& dstTexture, const Te
     const DxgiFormat& dstFormat = GetDxgiFormat(dstDesc.format);
 
     bool isWholeResource = !dstRegion && !srcRegion;
-    if (isWholeResource || m_Version < 1) {
+    if (isWholeResource) {
         for (Dim_t layer = 0; layer < dstDesc.layerNum; layer++) {
             for (Dim_t mip = 0; mip < dstDesc.mipNum; mip++) {
                 uint32_t subresource = dst.GetSubresourceIndex(layer, mip, PlaneBits::ALL);
@@ -1082,9 +1083,6 @@ NRI_INLINE void CommandBufferD3D12::Annotation(const char* name, uint32_t bgra) 
 NRI_INLINE void CommandBufferD3D12::BuildTopLevelAccelerationStructures(const BuildTopLevelAccelerationStructureDesc* buildTopLevelAccelerationStructureDescs, uint32_t buildTopLevelAccelerationStructureDescNum) {
     static_assert(sizeof(D3D12_RAYTRACING_INSTANCE_DESC) == sizeof(TopLevelInstance), "Mismatched sizeof");
 
-    if (m_Version < 4)
-        return;
-
     for (uint32_t i = 0; i < buildTopLevelAccelerationStructureDescNum; i++) {
         const BuildTopLevelAccelerationStructureDesc& in = buildTopLevelAccelerationStructureDescs[i];
 
@@ -1110,9 +1108,6 @@ NRI_INLINE void CommandBufferD3D12::BuildTopLevelAccelerationStructures(const Bu
 }
 
 NRI_INLINE void CommandBufferD3D12::BuildBottomLevelAccelerationStructures(const BuildBottomLevelAccelerationStructureDesc* buildBottomLevelAccelerationStructureDescs, uint32_t buildBottomLevelAccelerationStructureDescNum) {
-    if (m_Version < 4)
-        return;
-
     // Scratch memory
     uint32_t geometryMaxNum = 0;
     uint32_t micromapMaxNum = 0;
@@ -1227,8 +1222,7 @@ NRI_INLINE void CommandBufferD3D12::WriteAccelerationStructuresSizes(const Accel
     else
         postbuildInfo.InfoType = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_COMPACTED_SIZE;
 
-    if (m_Version >= 4)
-        m_GraphicsCommandList->EmitRaytracingAccelerationStructurePostbuildInfo(&postbuildInfo, accelerationStructureNum, virtualAddresses);
+    m_GraphicsCommandList->EmitRaytracingAccelerationStructurePostbuildInfo(&postbuildInfo, accelerationStructureNum, virtualAddresses);
 }
 
 NRI_INLINE void CommandBufferD3D12::WriteMicromapsSizes(const Micromap* const* micromaps, uint32_t micromapNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
@@ -1247,8 +1241,7 @@ NRI_INLINE void CommandBufferD3D12::WriteMicromapsSizes(const Micromap* const* m
     else
         postbuildInfo.InfoType = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_COMPACTED_SIZE;
 
-    if (m_Version >= 4)
-        m_GraphicsCommandList->EmitRaytracingAccelerationStructurePostbuildInfo(&postbuildInfo, micromapNum, virtualAddresses);
+    m_GraphicsCommandList->EmitRaytracingAccelerationStructurePostbuildInfo(&postbuildInfo, micromapNum, virtualAddresses);
 }
 
 NRI_INLINE void CommandBufferD3D12::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc) {
@@ -1279,20 +1272,17 @@ NRI_INLINE void CommandBufferD3D12::DispatchRays(const DispatchRaysDesc& dispatc
     desc.Height = dispatchRaysDesc.y;
     desc.Depth = dispatchRaysDesc.z;
 
-    if (m_Version >= 4)
-        m_GraphicsCommandList->DispatchRays(&desc);
+    m_GraphicsCommandList->DispatchRays(&desc);
 }
 
 NRI_INLINE void CommandBufferD3D12::DispatchRaysIndirect(const Buffer& buffer, uint64_t offset) {
     static_assert(sizeof(DispatchRaysIndirectDesc) == sizeof(D3D12_DISPATCH_RAYS_DESC));
 
-    if (m_Version >= 4)
-        m_GraphicsCommandList->ExecuteIndirect(m_Device.GetDispatchRaysCommandSignature(), 1, (BufferD3D12&)buffer, offset, nullptr, 0);
+    m_GraphicsCommandList->ExecuteIndirect(m_Device.GetDispatchRaysCommandSignature(), 1, (BufferD3D12&)buffer, offset, nullptr, 0);
 }
 
 NRI_INLINE void CommandBufferD3D12::DrawMeshTasks(const DrawMeshTasksDesc& drawMeshTasksDesc) {
-    if (m_Version >= 6)
-        m_GraphicsCommandList->DispatchMesh(drawMeshTasksDesc.x, drawMeshTasksDesc.y, drawMeshTasksDesc.z);
+    m_GraphicsCommandList->DispatchMesh(drawMeshTasksDesc.x, drawMeshTasksDesc.y, drawMeshTasksDesc.z);
 }
 
 NRI_INLINE void CommandBufferD3D12::DrawMeshTasksIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset) {
@@ -1302,6 +1292,5 @@ NRI_INLINE void CommandBufferD3D12::DrawMeshTasksIndirect(const Buffer& buffer, 
     if (countBuffer)
         pCountBuffer = *(BufferD3D12*)countBuffer;
 
-    if (m_Version >= 6)
-        m_GraphicsCommandList->ExecuteIndirect(m_Device.GetDrawMeshCommandSignature(stride), drawNum, (BufferD3D12&)buffer, offset, pCountBuffer, countBufferOffset);
+    m_GraphicsCommandList->ExecuteIndirect(m_Device.GetDrawMeshCommandSignature(stride), drawNum, (BufferD3D12&)buffer, offset, pCountBuffer, countBufferOffset);
 }

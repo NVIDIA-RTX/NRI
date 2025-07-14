@@ -90,7 +90,7 @@ NriEnum(Result, int8_t,
     // All bad, but optionally require an action ("callbackInterface.AbortExecution" is not triggered)
     DEVICE_LOST             = -3, // may be returned by "QueueSubmit*", "*WaitIdle", "AcquireNextTexture", "QueuePresent", "WaitForPresent"
     OUT_OF_DATE             = -2, // VK: swap chain is out of date
-    INVALID_AGILITY_SDK     = -1, // D3D12: unable to load "D3D12Core.dll" or version mismatch
+    INVALID_SDK             = -1, // D3D: some interfaces are missing (potential reasons: unable to load "D3D12Core.dll", version or SDK mismatch)
 
     // All good
     SUCCESS                 = 0,
@@ -348,8 +348,8 @@ NriBits(StageBits, uint32_t,
     TESS_CONTROL_SHADER             = NriBit(2),  //    Tessellation control (hull) shader
     TESS_EVALUATION_SHADER          = NriBit(3),  //    Tessellation evaluation (domain) shader
     GEOMETRY_SHADER                 = NriBit(4),  //    Geometry shader
-    MESH_CONTROL_SHADER             = NriBit(5),  //    Mesh control (task) shader
-    MESH_EVALUATION_SHADER          = NriBit(6),  //    Mesh evaluation (amplification) shader
+    MESH_CONTROL_SHADER             = NriBit(5),  //    Mesh control (amplification, task) shader
+    MESH_EVALUATION_SHADER          = NriBit(6),  //    Mesh evaluation (mesh) shader
     FRAGMENT_SHADER                 = NriBit(7),  //    Fragment (pixel) shader
     DEPTH_STENCIL_ATTACHMENT        = NriBit(8),  //    Depth-stencil R/W operations
     COLOR_ATTACHMENT                = NriBit(9),  //    Color R/W operations
@@ -377,29 +377,34 @@ NriBits(StageBits, uint32_t,
     INDIRECT                        = NriBit(22), // Invoked by "Indirect" commands (used in addition to other bits)
 
     // Umbrella stages
-    TESSELLATION_SHADERS            = NriMember(StageBits, TESS_CONTROL_SHADER) |
-                                      NriMember(StageBits, TESS_EVALUATION_SHADER),
+    TESSELLATION_SHADERS            = NriMember(StageBits, TESS_CONTROL_SHADER)
+                                    | NriMember(StageBits, TESS_EVALUATION_SHADER),
 
-    MESH_SHADERS                    = NriMember(StageBits, MESH_CONTROL_SHADER) |
-                                      NriMember(StageBits, MESH_EVALUATION_SHADER),
+    MESH_SHADERS                    = NriMember(StageBits, MESH_CONTROL_SHADER)
+                                    | NriMember(StageBits, MESH_EVALUATION_SHADER),
 
-    GRAPHICS_SHADERS                = NriMember(StageBits, VERTEX_SHADER) |
-                                      NriMember(StageBits, TESSELLATION_SHADERS) |
-                                      NriMember(StageBits, GEOMETRY_SHADER) |
-                                      NriMember(StageBits, MESH_SHADERS) |
-                                      NriMember(StageBits, FRAGMENT_SHADER),
+    GRAPHICS_SHADERS                = NriMember(StageBits, VERTEX_SHADER)
+                                    | NriMember(StageBits, TESSELLATION_SHADERS)
+                                    | NriMember(StageBits, GEOMETRY_SHADER)
+                                    | NriMember(StageBits, MESH_SHADERS)
+                                    | NriMember(StageBits, FRAGMENT_SHADER),
 
-    DRAW                            = NriMember(StageBits, INDEX_INPUT) |
-                                      NriMember(StageBits, GRAPHICS_SHADERS) |
-                                      NriMember(StageBits, DEPTH_STENCIL_ATTACHMENT) |
-                                      NriMember(StageBits, COLOR_ATTACHMENT),
+    RAY_TRACING_SHADERS             = NriMember(StageBits, RAYGEN_SHADER)
+                                    | NriMember(StageBits, MISS_SHADER)
+                                    | NriMember(StageBits, INTERSECTION_SHADER)
+                                    | NriMember(StageBits, CLOSEST_HIT_SHADER)
+                                    | NriMember(StageBits, ANY_HIT_SHADER)
+                                    | NriMember(StageBits, CALLABLE_SHADER),
 
-    RAY_TRACING_SHADERS             = NriMember(StageBits, RAYGEN_SHADER) |
-                                      NriMember(StageBits, MISS_SHADER) |
-                                      NriMember(StageBits, INTERSECTION_SHADER) |
-                                      NriMember(StageBits, CLOSEST_HIT_SHADER) |
-                                      NriMember(StageBits, ANY_HIT_SHADER) |
-                                      NriMember(StageBits, CALLABLE_SHADER)
+    ALL_SHADERS                     = NriMember(StageBits, TESSELLATION_SHADERS)
+                                    | NriMember(StageBits, MESH_SHADERS)
+                                    | NriMember(StageBits, GRAPHICS_SHADERS)
+                                    | NriMember(StageBits, RAY_TRACING_SHADERS),
+
+    DRAW                            = NriMember(StageBits, INDEX_INPUT)
+                                    | NriMember(StageBits, GRAPHICS_SHADERS)
+                                    | NriMember(StageBits, DEPTH_STENCIL_ATTACHMENT)
+                                    | NriMember(StageBits, COLOR_ATTACHMENT)
 );
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkAccessFlagBits2.html
@@ -841,7 +846,7 @@ NriBits(PipelineLayoutBits, uint8_t,
 
 NriBits(DescriptorPoolBits, uint8_t,
     NONE                                    = 0,
-    ALLOW_UPDATE_AFTER_SET                  = NriBit(1)  // allows "DescriptorSetBits::ALLOW_UPDATE_AFTER_SET"
+    ALLOW_UPDATE_AFTER_SET                  = NriBit(0)  // allows "DescriptorSetBits::ALLOW_UPDATE_AFTER_SET"
 );
 
 NriBits(DescriptorSetBits, uint8_t,
@@ -1237,12 +1242,12 @@ NriBits(ColorWriteBits, uint8_t,
     B       = NriBit(2),
     A       = NriBit(3),
 
-    RGB     = NriMember(ColorWriteBits, R) | // "wingdi.h" must not be included after
-              NriMember(ColorWriteBits, G) |
-              NriMember(ColorWriteBits, B),
+    RGB     = NriMember(ColorWriteBits, R) // "wingdi.h" must not be included after
+            | NriMember(ColorWriteBits, G)
+            | NriMember(ColorWriteBits, B),
 
-    RGBA    = NriMember(ColorWriteBits, RGB) |
-              NriMember(ColorWriteBits, A)
+    RGBA    = NriMember(ColorWriteBits, RGB)
+            | NriMember(ColorWriteBits, A)
 );
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkStencilOpState.html
@@ -1546,7 +1551,7 @@ NriStruct(AdapterDesc) {
     Nri(Architecture) architecture;
 };
 
-// Feature support coverage: https://vulkan.gpuinfo.org/
+// Feature support coverage: https://vulkan.gpuinfo.org/ and https://d3d12infodb.boolka.dev/
 NriStruct(DeviceDesc) {
     // Common
     Nri(AdapterDesc) adapterDesc; // "queueNum" reflects available number of queues per "QueueType"
@@ -1687,11 +1692,19 @@ NriStruct(DeviceDesc) {
         } fragment;
 
         // Compute
+        //  - a "dispatch" consists of "work groups" (aka "thread groups")
+        //  - a "work group" consists of "waves" (aka "subgroups" or "warps")
+        //  - a "wave" consists of "lanes", which can can be active, inactive or a helper:
+        //    - active: the "lane" is performing its computations
+        //    - inactive: the "lane" is part of the "wave" but is currently masked out
+        //    - helper: these "lanes" are executed to provide auxiliary information (like derivatives) for active threads in the same 2x2 quad
+        //  - "invocation" or "thread" is the more general term for a single shader instance, "lane" specifically refers to the position of that thread within a hardware "wave"
+        //  - the concept of "wave/lane" execution applies to all shader stages
         struct {
-            uint32_t sharedMemoryMaxSize;
             uint32_t workGroupMaxNum[3];
-            uint32_t workGroupInvocationMaxNum;
             uint32_t workGroupMaxDim[3];
+            uint32_t workGroupInvocationMaxNum;
+            uint32_t sharedMemoryMaxSize;
         } compute;
 
         // Ray tracing
@@ -1718,6 +1731,17 @@ NriStruct(DeviceDesc) {
         } meshEvaluation;
     } shaderStage;
 
+    // Wave (subgroup)
+    // https://github.com/microsoft/directxshadercompiler/wiki/wave-intrinsics
+    // https://microsoft.github.io/DirectX-Specs/d3d/HLSL_SM_6_6_Derivatives.html
+    struct {
+        uint32_t laneMinNum;
+        uint32_t laneMaxNum;
+        Nri(StageBits) waveOpsStages;       // SM 6.0+ (see "shaderFeatures.waveX")
+        Nri(StageBits) quadOpsStages;       // SM 6.0+ (see "shaderFeatures.waveQuad")
+        Nri(StageBits) derivativeOpsStages; // SM 6.6+ (https://microsoft.github.io/DirectX-Specs/d3d/HLSL_SM_6_6_Derivatives.html#derivative-functions)
+    } wave;
+
     // Other
     struct {
         uint64_t timestampFrequencyHz;
@@ -1725,9 +1749,9 @@ NriStruct(DeviceDesc) {
         uint32_t drawIndirectMaxNum;
         float samplerLodBiasMax;
         float samplerAnisotropyMax;
+        int8_t texelGatherOffsetMin;
         int8_t texelOffsetMin;
         uint8_t texelOffsetMax;
-        int8_t texelGatherOffsetMin;
         uint8_t texelGatherOffsetMax;
         uint8_t clipDistanceMaxNum;
         uint8_t cullDistanceMaxNum;
@@ -1738,35 +1762,41 @@ NriStruct(DeviceDesc) {
 
     // Tiers (0 - unsupported)
     struct {
+        // https://microsoft.github.io/DirectX-Specs/d3d/ConservativeRasterization.html#tiered-support
         // 1 - 1/2 pixel uncertainty region and does not support post-snap degenerates
         // 2 - reduces the maximum uncertainty region to 1/256 and requires post-snap degenerates not be culled
         // 3 - maintains a maximum 1/256 uncertainty region and adds support for inner input coverage, aka "SV_InnerCoverage"
         uint8_t conservativeRaster;
 
-        // 1 - a single sample pattern can be specified to repeat for every pixel ("locationNum / sampleNum" ratio must be 1 in "CmdSetSampleLocations").
+        // https://microsoft.github.io/DirectX-Specs/d3d/ProgrammableSamplePositions.html#hardware-tiers
+        // 1 - a single sample pattern can be specified to repeat for every pixel ("locationNum / sampleNum" ratio must be 1 in "CmdSetSampleLocations"),
         //     1x and 16x sample counts do not support programmable locations
-        // 2 - four separate sample patterns can be specified for each pixel in a 2x2 grid ("locationNum / sampleNum" ratio can be 1 or 4 in "CmdSetSampleLocations")
-        //     All sample counts support programmable positions
+        // 2 - four separate sample patterns can be specified for each pixel in a 2x2 grid ("locationNum / sampleNum" ratio can be 1 or 4 in "CmdSetSampleLocations"),
+        //     all sample counts support programmable positions
         uint8_t sampleLocations;
 
+        // https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html#checkfeaturesupport-structures
         // 1 - DXR 1.0: full raytracing functionality, except features below
         // 2 - DXR 1.1: adds - ray query, "CmdDispatchRaysIndirect", "GeometryIndex()" intrinsic, additional ray flags & vertex formats
         // 3 - DXR 1.2: adds - micromap, shader execution reordering
         uint8_t rayTracing;
 
+        // https://microsoft.github.io/DirectX-Specs/d3d/VariableRateShading.html#feature-tiering
         // 1 - shading rate can be specified only per draw
         // 2 - adds: per primitive shading rate, per "shadingRateAttachmentTileSize" shading rate, combiners, "SV_ShadingRate" support
         uint8_t shadingRate;
 
-        // 1 - unbound arrays with dynamic indexing
-        // 2 - D3D12 dynamic resources: https://microsoft.github.io/DirectX-Specs/d3d/HLSL_SM_6_6_DynamicResources.html
-        uint8_t bindless;
-
+        // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#limitations-on-static-samplers
         // 0 - ALL descriptors in range must be valid by the time the command list executes
         // 1 - only "CONSTANT_BUFFER" and "STORAGE" descriptors in range must be valid
         // 2 - only referenced descriptors must be valid
         uint8_t resourceBinding;
 
+        // 1 - unbound arrays with dynamic indexing
+        // 2 - D3D12 dynamic resources: https://microsoft.github.io/DirectX-Specs/d3d/HLSL_SM_6_6_DynamicResources.html
+        uint8_t bindless;
+
+        // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_resource_heap_tier
         // 1 - a "Memory" can support resources from all 3 categories: buffers, attachments, all other textures
         uint8_t memory;
     } tiers;
@@ -1822,6 +1852,12 @@ NriStruct(DeviceDesc) {
         uint32_t rayTracingPositionFetch                         : 1; // position fetching directly from AS
         uint32_t storageReadWithoutFormat                        : 1; // NRI_FORMAT("unknown") is allowed for storage reads
         uint32_t storageWriteWithoutFormat                       : 1; // NRI_FORMAT("unknown") is allowed for storage writes
+        uint32_t waveQuery                                       : 1; // WaveIsFirstLane, WaveGetLaneCount, WaveGetLaneIndex
+        uint32_t waveVote                                        : 1; // WaveActiveAllTrue, WaveActiveAnyTrue, WaveActiveAllEqual
+        uint32_t waveShuffle                                     : 1; // WaveReadLaneFirst, WaveReadLaneAt
+        uint32_t waveArithmetic                                  : 1; // WaveActiveSum, WaveActiveProduct, WaveActiveMin, WaveActiveMax, WavePrefixProduct, WavePrefixSum
+        uint32_t waveReduction                                   : 1; // WaveActiveCountBits, WaveActiveBitAnd, WaveActiveBitOr, WaveActiveBitXor, WavePrefixCountBits
+        uint32_t waveQuad                                        : 1; // QuadReadLaneAt, QuadReadAcrossX, QuadReadAcrossY, QuadReadAcrossDiagonal
     } shaderFeatures;
 };
 

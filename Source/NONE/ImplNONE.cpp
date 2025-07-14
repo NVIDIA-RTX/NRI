@@ -110,14 +110,14 @@ struct DeviceNONE final : public DeviceBase {
         m_Desc.shaderStage.fragment.attachmentMaxNum = 8;
         m_Desc.shaderStage.fragment.dualSourceAttachmentMaxNum = 1;
 
-        m_Desc.shaderStage.compute.sharedMemoryMaxSize = 64 * 1024;
         m_Desc.shaderStage.compute.workGroupMaxNum[0] = 64 * 1024;
         m_Desc.shaderStage.compute.workGroupMaxNum[1] = 64 * 1024;
         m_Desc.shaderStage.compute.workGroupMaxNum[2] = 64 * 1024;
-        m_Desc.shaderStage.compute.workGroupInvocationMaxNum = 64 * 1024;
         m_Desc.shaderStage.compute.workGroupMaxDim[0] = 64 * 1024;
         m_Desc.shaderStage.compute.workGroupMaxDim[1] = 64 * 1024;
         m_Desc.shaderStage.compute.workGroupMaxDim[2] = 64 * 1024;
+        m_Desc.shaderStage.compute.workGroupInvocationMaxNum = 64 * 1024;
+        m_Desc.shaderStage.compute.sharedMemoryMaxSize = 64 * 1024;
 
         m_Desc.shaderStage.rayTracing.shaderGroupIdentifierSize = 32;
         m_Desc.shaderStage.rayTracing.tableMaxStride = (uint32_t)(-1);
@@ -132,6 +132,12 @@ struct DeviceNONE final : public DeviceBase {
         m_Desc.shaderStage.meshEvaluation.outputComponentMaxNum = 128;
         m_Desc.shaderStage.meshEvaluation.sharedMemoryMaxSize = 64 * 1024;
         m_Desc.shaderStage.meshEvaluation.workGroupInvocationMaxNum = 128;
+
+        m_Desc.wave.laneMinNum = 32;
+        m_Desc.wave.laneMaxNum = 32;
+        m_Desc.wave.waveOpsStages = StageBits::ALL_SHADERS;
+        m_Desc.wave.derivativeOpsStages = StageBits::ALL_SHADERS;
+        m_Desc.wave.quadOpsStages = StageBits::ALL_SHADERS;
 
         m_Desc.other.timestampFrequencyHz = 1;
         m_Desc.other.micromapSubdivisionMaxLevel = 12;

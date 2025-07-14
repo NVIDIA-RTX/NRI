@@ -101,8 +101,10 @@ Result nri::GetResultFromHRESULT(long result) {
         case DXGI_ERROR_DEVICE_HUNG:
             return Result::DEVICE_LOST;
 
+        case E_NOINTERFACE:
         case D3D12_ERROR_INVALID_REDIST:
-            return Result::INVALID_AGILITY_SDK;
+        case DXGI_ERROR_SDK_COMPONENT_MISSING:
+            return Result::INVALID_SDK;
 
         case E_OUTOFMEMORY:
         case DXGI_ERROR_REMOTE_OUTOFMEMORY:

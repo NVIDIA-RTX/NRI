@@ -246,35 +246,6 @@ D3D12_DESCRIPTOR_HEAP_TYPE nri::GetDescriptorHeapType(DescriptorType descriptorT
     return descriptorType == DescriptorType::SAMPLER ? D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER : D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 }
 
-D3D12_SHADER_VISIBILITY nri::GetShaderVisibility(StageBits shaderStages) {
-    if (shaderStages == StageBits::ALL || shaderStages == StageBits::COMPUTE_SHADER || (shaderStages & StageBits::RAY_TRACING_SHADERS) != 0)
-        return D3D12_SHADER_VISIBILITY_ALL;
-
-    if (shaderStages == StageBits::VERTEX_SHADER)
-        return D3D12_SHADER_VISIBILITY_VERTEX;
-
-    if (shaderStages == StageBits::TESS_CONTROL_SHADER)
-        return D3D12_SHADER_VISIBILITY_HULL;
-
-    if (shaderStages == StageBits::TESS_EVALUATION_SHADER)
-        return D3D12_SHADER_VISIBILITY_DOMAIN;
-
-    if (shaderStages == StageBits::GEOMETRY_SHADER)
-        return D3D12_SHADER_VISIBILITY_GEOMETRY;
-
-    if (shaderStages == StageBits::FRAGMENT_SHADER)
-        return D3D12_SHADER_VISIBILITY_PIXEL;
-
-    if (shaderStages == StageBits::MESH_CONTROL_SHADER)
-        return D3D12_SHADER_VISIBILITY_AMPLIFICATION;
-
-    if (shaderStages == StageBits::MESH_EVALUATION_SHADER)
-        return D3D12_SHADER_VISIBILITY_MESH;
-
-    // Should be unreachable
-    return D3D12_SHADER_VISIBILITY_ALL;
-}
-
 D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE nri::GetAccelerationStructureType(AccelerationStructureType accelerationStructureType) {
     static_assert(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL == (uint32_t)AccelerationStructureType::TOP_LEVEL, "Enum mismatch");
     static_assert(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL == (uint32_t)AccelerationStructureType::BOTTOM_LEVEL, "Enum mismatch");

@@ -7,6 +7,7 @@ Overview:
        - Best practices: https://developer.nvidia.com/blog/vulkan-dos-donts/
        - Feature support coverage: https://vulkan.gpuinfo.org/
     - D3D12 spec: https://microsoft.github.io/DirectX-Specs/
+       - Feature support coverage: https://d3d12infodb.boolka.dev/
     - D3D11 spec: https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm
 
 Goals:
@@ -36,8 +37,8 @@ Implicit:
 
 #pragma once
 
-#define NRI_VERSION 172
-#define NRI_VERSION_DATE "8 July 2025"
+#define NRI_VERSION 173
+#define NRI_VERSION_DATE "14 July 2025"
 
 // C/C++ compatible interface (auto-selection or via "NRI_FORCE_C" macro)
 #include "NRIDescs.h"

@@ -123,7 +123,6 @@ UINT8 GetRenderTargetWriteMask(ColorWriteBits colorWriteMask);
 D3D12_LOGIC_OP GetLogicOp(LogicOp logicOp);
 D3D12_BLEND GetBlend(BlendFactor blendFactor);
 D3D12_BLEND_OP GetBlendOp(BlendOp blendFunc);
-D3D12_SHADER_VISIBILITY GetShaderVisibility(StageBits shaderStage);
 D3D12_DESCRIPTOR_RANGE_TYPE GetDescriptorRangesType(DescriptorType descriptorType);
 D3D12_RESOURCE_DIMENSION GetResourceDimension(TextureType textureType);
 D3D12_SHADING_RATE GetShadingRate(ShadingRate shadingRate);

@@ -1,6 +1,6 @@
 ﻿// © 2021 NVIDIA Corporation
 
-static uint8_t QueryLatestDevice(ComPtr<ID3D12DeviceBest>& in, ComPtr<ID3D12DeviceBest>& out) {
+static HRESULT QueryRequiredDeviceInterface(ComPtr<ID3D12DeviceBest>& in, ComPtr<ID3D12DeviceBest>& out) {
     static const IID versions[] = {
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
         __uuidof(ID3D12Device14),
@@ -29,7 +29,7 @@ static uint8_t QueryLatestDevice(ComPtr<ID3D12DeviceBest>& in, ComPtr<ID3D12Devi
             break;
     }
 
-    return n - i - 1;
+    return i == 0 ? S_OK : D3D12_ERROR_INVALID_REDIST;
 }
 
 static inline uint64_t HashRootSignatureAndStride(ID3D12RootSignature* rootSignature, uint32_t stride) {
@@ -48,8 +48,7 @@ static void __stdcall MessageCallback(D3D12_MESSAGE_CATEGORY category, D3D12_MES
     if (severity < D3D12_MESSAGE_SEVERITY_WARNING) {
         messageType = Message::ERROR;
         result = Result::FAILURE;
-    }
-    else if (severity == D3D12_MESSAGE_SEVERITY_WARNING)
+    } else if (severity == D3D12_MESSAGE_SEVERITY_WARNING)
         messageType = Message::WARNING;
 
     DeviceD3D12& device = *(DeviceD3D12*)context;
@@ -68,8 +67,7 @@ static void __stdcall NvapiMessageCallback(void* context, NVAPI_D3D12_RAYTRACING
     if (severity == NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY_ERROR) {
         messageType = Message::ERROR;
         result = Result::FAILURE;
-    }
-    else if (severity == NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY_WARNING)
+    } else if (severity == NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY_WARNING)
         messageType = Message::WARNING;
 
     DeviceD3D12& device = *(DeviceD3D12*)context;
@@ -228,8 +226,10 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 #endif
     }
 
-    m_Version = QueryLatestDevice(deviceTemp, m_Device);
-    REPORT_INFO(this, "Using ID3D12Device%u", m_Version);
+    { // Query latest interface
+        HRESULT hr = QueryRequiredDeviceInterface(deviceTemp, m_Device);
+        RETURN_ON_BAD_HRESULT(this, hr, "QueryRequiredDeviceInterface");
+    }
 
     if (desc.enableGraphicsAPIValidation) {
         ComPtr<ID3D12InfoQueueBest> pInfoQueue;
@@ -402,11 +402,8 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
     if (FAILED(hr))
         REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options5) failed, result = 0x%08X!", hr);
-    m_Desc.features.rayTracing = options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0;
-    if (options5.RaytracingTier == D3D12_RAYTRACING_TIER_1_0)
-        m_Desc.tiers.rayTracing = 1;
-    else if (options5.RaytracingTier == D3D12_RAYTRACING_TIER_1_1)
-        m_Desc.tiers.rayTracing = 2;
+    m_Desc.features.rayTracing = options5.RaytracingTier != 0;
+    m_Desc.tiers.rayTracing = (uint8_t)(options5.RaytracingTier - D3D12_RAYTRACING_TIER_1_0 + 1);
 
     // Windows 10 1903 (build 18362)
     D3D12_FEATURE_DATA_D3D12_OPTIONS6 options6 = {};
@@ -663,14 +660,14 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.shaderStage.fragment.attachmentMaxNum = D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT;
     m_Desc.shaderStage.fragment.dualSourceAttachmentMaxNum = 1;
 
-    m_Desc.shaderStage.compute.sharedMemoryMaxSize = D3D12_CS_THREAD_LOCAL_TEMP_REGISTER_POOL;
     m_Desc.shaderStage.compute.workGroupMaxNum[0] = D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION;
     m_Desc.shaderStage.compute.workGroupMaxNum[1] = D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION;
     m_Desc.shaderStage.compute.workGroupMaxNum[2] = D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION;
-    m_Desc.shaderStage.compute.workGroupInvocationMaxNum = D3D12_CS_THREAD_GROUP_MAX_THREADS_PER_GROUP;
     m_Desc.shaderStage.compute.workGroupMaxDim[0] = D3D12_CS_THREAD_GROUP_MAX_X;
     m_Desc.shaderStage.compute.workGroupMaxDim[1] = D3D12_CS_THREAD_GROUP_MAX_Y;
     m_Desc.shaderStage.compute.workGroupMaxDim[2] = D3D12_CS_THREAD_GROUP_MAX_Z;
+    m_Desc.shaderStage.compute.workGroupInvocationMaxNum = D3D12_CS_THREAD_GROUP_MAX_THREADS_PER_GROUP;
+    m_Desc.shaderStage.compute.sharedMemoryMaxSize = D3D12_CS_THREAD_LOCAL_TEMP_REGISTER_POOL;
 
     m_Desc.shaderStage.rayTracing.shaderGroupIdentifierSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     m_Desc.shaderStage.rayTracing.tableMaxStride = D3D12_RAYTRACING_MAX_SHADER_RECORD_STRIDE;
@@ -686,8 +683,27 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.shaderStage.meshEvaluation.sharedMemoryMaxSize = 28 * 1024;
     m_Desc.shaderStage.meshEvaluation.workGroupInvocationMaxNum = 128;
 
+    m_Desc.wave.laneMinNum = options1.WaveLaneCountMin;
+    m_Desc.wave.laneMaxNum = options1.WaveLaneCountMax;
+
+    m_Desc.wave.derivativeOpsStages = StageBits::FRAGMENT_SHADER;
+    if (m_Desc.shaderModel >= 66) {
+        m_Desc.wave.derivativeOpsStages |= StageBits::COMPUTE_SHADER;
+#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+        if (options9.DerivativesInMeshAndAmplificationShadersSupported)
+            m_Desc.wave.derivativeOpsStages |= StageBits::MESH_CONTROL_SHADER | StageBits::MESH_EVALUATION_SHADER;
+#endif
+    }
+
+    if (m_Desc.shaderModel >= 60 && options1.WaveOps) {
+        m_Desc.wave.waveOpsStages = StageBits::ALL_SHADERS;
+        m_Desc.wave.quadOpsStages = StageBits::FRAGMENT_SHADER | StageBits::COMPUTE_SHADER;
+    }
+
     m_Desc.other.timestampFrequencyHz = timestampFrequency;
-    // m_Desc.other.micromapSubdivisionMaxLevel = D3D12_RAYTRACING_OPACITY_MICROMAP_OC1_MAX_SUBDIVISION_LEVEL;
+#ifdef NRI_D3D12_HAS_OPACITY_MICROMAP
+    m_Desc.other.micromapSubdivisionMaxLevel = D3D12_RAYTRACING_OPACITY_MICROMAP_OC1_MAX_SUBDIVISION_LEVEL;
+#endif
     m_Desc.other.drawIndirectMaxNum = (1ull << D3D12_REQ_DRAWINDEXED_INDEX_COUNT_2_TO_EXP) - 1;
     m_Desc.other.samplerLodBiasMax = D3D12_MIP_LOD_BIAS_MAX;
     m_Desc.other.samplerAnisotropyMax = D3D12_DEFAULT_MAX_ANISOTROPY;
@@ -748,13 +764,21 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
     m_Desc.shaderFeatures.atomicsI64 = m_Desc.shaderFeatures.atomicsI64 || options9.AtomicInt64OnTypedResourceSupported || options9.AtomicInt64OnGroupSharedSupported || options11.AtomicInt64OnDescriptorHeapResourceSupported;
 #endif
-
     m_Desc.shaderFeatures.viewportIndex = options.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation;
     m_Desc.shaderFeatures.layerIndex = options.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation;
     m_Desc.shaderFeatures.rasterizedOrderedView = options.ROVsSupported;
     m_Desc.shaderFeatures.barycentric = options3.BarycentricsSupported;
     m_Desc.shaderFeatures.storageReadWithoutFormat = true; // All desktop GPUs support it since 2014
     m_Desc.shaderFeatures.storageWriteWithoutFormat = true;
+
+    if (m_Desc.wave.waveOpsStages != StageBits::NONE) {
+        m_Desc.shaderFeatures.waveQuery = true;
+        m_Desc.shaderFeatures.waveVote = true;
+        m_Desc.shaderFeatures.waveShuffle = true;
+        m_Desc.shaderFeatures.waveArithmetic = true;
+        m_Desc.shaderFeatures.waveReduction = true;
+        m_Desc.shaderFeatures.waveQuad = true;
+    }
 }
 
 void DeviceD3D12::InitializeNvExt(bool isNVAPILoadedInApp, bool isImported) {

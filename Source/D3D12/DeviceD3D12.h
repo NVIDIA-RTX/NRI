@@ -30,10 +30,6 @@ struct DeviceD3D12 final : public DeviceBase {
         return m_Device;
     }
 
-    inline uint8_t GetVersion() const {
-        return m_Version;
-    }
-
     inline IDXGIAdapter* GetAdapter() const {
         return m_Adapter;
     }
@@ -187,7 +183,6 @@ private:
     DeviceDesc m_Desc = {};
     void* m_CallbackHandle = nullptr;
     DWORD m_CallbackCookie = 0;
-    uint8_t m_Version = 0;
     uint8_t m_TightAlignmentTier = 0;
     bool m_IsWrapped = false;
 

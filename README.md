@@ -109,6 +109,7 @@ Repository organization:
     - _VK_KHR_line_rasterization_
     - _VK_KHR_fragment_shader_barycentric_
     - _VK_KHR_shader_clock_
+    - _VK_KHR_compute_shader_derivatives_
     - _VK_EXT_swapchain_maintenance1_
     - _VK_EXT_present_mode_fifo_latest_ready_
     - _VK_EXT_opacity_micromap_
