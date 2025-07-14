@@ -1834,6 +1834,7 @@ NriStruct(DeviceDesc) {
     } features;
 
     // Shader features (I32, F32 and I32 atomics are always supported)
+    // https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst
     struct {
         uint32_t nativeI16                                       : 1; // "(u)int16_t"
         uint32_t nativeF16                                       : 1; // "float16_t"
@@ -1847,9 +1848,9 @@ NriStruct(DeviceDesc) {
         uint32_t viewportIndex                                   : 1; // always can be used in geometry shaders
         uint32_t layerIndex                                      : 1; // always can be used in geometry shaders
         uint32_t clock                                           : 1; // shader clock (timer)
-        uint32_t rasterizedOrderedView                           : 1; // ROV, aka fragment shader interlock
-        uint32_t barycentric                                     : 1; // barycentric coordinates
-        uint32_t rayTracingPositionFetch                         : 1; // position fetching directly from AS
+        uint32_t rasterizedOrderedView                           : 1; // https://microsoft.github.io/DirectX-Specs/d3d/RasterOrderViews.html (aka fragment shader interlock)
+        uint32_t barycentric                                     : 1; // https://github.com/microsoft/DirectXShaderCompiler/wiki/SV_Barycentrics
+        uint32_t rayTracingPositionFetch                         : 1; // https://docs.vulkan.org/features/latest/features/proposals/VK_KHR_ray_tracing_position_fetch.html
         uint32_t storageReadWithoutFormat                        : 1; // NRI_FORMAT("unknown") is allowed for storage reads
         uint32_t storageWriteWithoutFormat                       : 1; // NRI_FORMAT("unknown") is allowed for storage writes
         uint32_t waveQuery                                       : 1; // WaveIsFirstLane, WaveGetLaneCount, WaveGetLaneIndex
