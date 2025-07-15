@@ -146,7 +146,7 @@ struct DeviceD3D11 final : public DeviceBase {
 
 private:
     void FillDesc();
-    void InitializeNvExt(bool isNVAPILoadedInApp, bool isImported);
+    void InitializeNvExt(bool disableNVAPIInitialization, bool isImported);
     void InitializeAmdExt(AGSContext* agsContext, bool isImported);
 
 private:

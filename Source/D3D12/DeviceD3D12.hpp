@@ -179,7 +179,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     // Extensions
     InitializePixExt();
     if (m_Desc.adapterDesc.vendor == Vendor::NVIDIA)
-        InitializeNvExt(descD3D12.isNVAPILoaded, descD3D12.d3d12Device != nullptr);
+        InitializeNvExt(descD3D12.disableNVAPIInitialization, descD3D12.d3d12Device != nullptr);
     else if (m_Desc.adapterDesc.vendor == Vendor::AMD)
         InitializeAmdExt(descD3D12.agsContext, descD3D12.d3d12Device != nullptr);
 
@@ -781,15 +781,15 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     }
 }
 
-void DeviceD3D12::InitializeNvExt(bool isNVAPILoadedInApp, bool isImported) {
-    MaybeUnused(isNVAPILoadedInApp, isImported);
+void DeviceD3D12::InitializeNvExt(bool disableNVAPIInitialization, bool isImported) {
+    MaybeUnused(disableNVAPIInitialization, isImported);
 #if NRI_ENABLE_D3D_EXTENSIONS
     if (GetModuleHandleA("renderdoc.dll") != nullptr) {
         REPORT_WARNING(this, "NVAPI is disabled, because RenderDoc library has been loaded");
         return;
     }
 
-    if (isImported && !isNVAPILoadedInApp)
+    if (isImported && !disableNVAPIInitialization)
         REPORT_WARNING(this, "NVAPI is disabled, because it's not loaded on the application side");
     else {
         NvAPI_Status status = NvAPI_Initialize();

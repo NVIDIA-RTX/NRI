@@ -88,7 +88,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
     // Extensions
     if (m_Desc.adapterDesc.vendor == Vendor::NVIDIA)
-        InitializeNvExt(descD3D11.isNVAPILoaded, m_IsWrapped);
+        InitializeNvExt(descD3D11.disableNVAPIInitialization, m_IsWrapped);
     else if (m_Desc.adapterDesc.vendor == Vendor::AMD)
         InitializeAmdExt(descD3D11.agsContext, m_IsWrapped);
 
@@ -520,15 +520,15 @@ void DeviceD3D11::FillDesc() {
     m_Desc.shaderFeatures.storageWriteWithoutFormat = true;
 }
 
-void DeviceD3D11::InitializeNvExt(bool isNVAPILoadedInApp, bool isImported) {
-    MaybeUnused(isNVAPILoadedInApp, isImported);
+void DeviceD3D11::InitializeNvExt(bool disableNVAPIInitialization, bool isImported) {
+    MaybeUnused(disableNVAPIInitialization, isImported);
 #if NRI_ENABLE_D3D_EXTENSIONS
     if (GetModuleHandleA("renderdoc.dll") != nullptr) {
         REPORT_WARNING(this, "NVAPI is disabled, because RenderDoc library has been loaded");
         return;
     }
 
-    if (isImported && !isNVAPILoadedInApp)
+    if (isImported && !disableNVAPIInitialization)
         REPORT_WARNING(this, "NVAPI is disabled, because it's not loaded on the application side");
     else {
         NvAPI_Status status = NvAPI_Initialize();

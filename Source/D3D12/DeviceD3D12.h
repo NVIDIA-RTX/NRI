@@ -155,7 +155,7 @@ struct DeviceD3D12 final : public DeviceBase {
 
 private:
     void FillDesc(bool disableD3D12EnhancedBarrier);
-    void InitializeNvExt(bool isNVAPILoadedInApp, bool isImported);
+    void InitializeNvExt(bool disableNVAPIInitialization, bool isImported);
     void InitializeAmdExt(AGSContext* agsContext, bool isImported);
     void InitializePixExt();
     ComPtr<ID3D12CommandSignature> CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE type, uint32_t stride, ID3D12RootSignature* rootSignature, bool enableDrawParametersEmulation = false);

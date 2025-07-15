@@ -350,7 +350,7 @@ NriBits(StageBits, uint32_t,
     TESS_EVALUATION_SHADER          = NriBit(3),  //    Tessellation evaluation (domain) shader         X
     GEOMETRY_SHADER                 = NriBit(4),  //    Geometry shader                                 X
     TASK_SHADER                     = NriBit(5),  //    Task (amplification) shader                     X
-    MESH_SHADER                     = NriBit(6),  //    Mesh shader                                     X
+    MESH_SHADER                     = NriBit(6),  //    Mesh shader                                     X (or required within graphics)
     FRAGMENT_SHADER                 = NriBit(7),  //    Fragment (pixel) shader                         X
     DEPTH_STENCIL_ATTACHMENT        = NriBit(8),  //    Depth-stencil R/W operations
     COLOR_ATTACHMENT                = NriBit(9),  //    Color R/W operations
