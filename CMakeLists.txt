@@ -179,6 +179,7 @@ if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
         agilitysdk
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
+        SOURCE_SUBDIR "ignore CMakeLists.txt"
         URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.${NRI_AGILITY_SDK_VERSION_MAJOR}.${NRI_AGILITY_SDK_VERSION_MINOR}
     )
     list(APPEND DEPS agilitysdk)
@@ -190,6 +191,7 @@ if(NRI_ENABLE_NVTX_SUPPORT)
         nvtx
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
+        SOURCE_SUBDIR "ignore CMakeLists.txt"
         URL https://github.com/NVIDIA/NVTX/archive/refs/tags/v3.2.1.zip
     )
     list(APPEND DEPS nvtx)
@@ -223,6 +225,7 @@ if(NRI_ENABLE_NGX_SDK)
         ngx
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
+        SOURCE_SUBDIR "ignore CMakeLists.txt"
         URL https://github.com/NVIDIA/DLSS/archive/refs/tags/v310.3.0.zip
     )
     list(APPEND DEPS ngx)
@@ -246,6 +249,7 @@ if(NRI_ENABLE_XESS_SDK)
         xess
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
+        SOURCE_SUBDIR "ignore CMakeLists.txt"
         URL https://github.com/intel/xess/releases/download/v2.0.1/XeSS_SDK_2.0.1.zip
     )
     list(APPEND DEPS xess)
@@ -270,6 +274,7 @@ if(NRI_ENABLE_D3D_EXTENSIONS)
         amdags
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
+        SOURCE_SUBDIR "ignore CMakeLists.txt"
         URL https://github.com/GPUOpen-LibrariesAndSDKs/AGS_SDK/archive/refs/tags/v6.3.0.zip
     )
     list(APPEND DEPS amdags)
@@ -280,6 +285,7 @@ if(NRI_ENABLE_D3D_EXTENSIONS)
         GIT_REPOSITORY https://github.com/NVIDIA/nvapi.git
         GIT_TAG main
         GIT_SHALLOW 1
+        SOURCE_SUBDIR "ignore CMakeLists.txt"
     )
     list(APPEND DEPS nvapi)
 endif()
