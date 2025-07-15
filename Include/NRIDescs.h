@@ -340,32 +340,31 @@ NriBits(FormatSupportBits, uint16_t,
 // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_sync
 NriBits(StageBits, uint32_t,
     // Special
-    ALL                             = 0,          // Lazy default for barriers
+    ALL                             = 0,          // Lazy default for barriers                          Shader stage
     NONE                            = 0x7FFFFFFF,
 
     // Graphics                                   // Invoked by "CmdDraw*"
     INDEX_INPUT                     = NriBit(0),  //    Index buffer consumption
-    VERTEX_SHADER                   = NriBit(1),  //    Vertex shader
-    TESS_CONTROL_SHADER             = NriBit(2),  //    Tessellation control (hull) shader
-    TESS_EVALUATION_SHADER          = NriBit(3),  //    Tessellation evaluation (domain) shader
-    GEOMETRY_SHADER                 = NriBit(4),  //    Geometry shader
-    TASK_SHADER                     = NriBit(5),  //    Task (amplification) shader
-    MESH_SHADER                     = NriBit(6),  //    Mesh shader
-    FRAGMENT_SHADER                 = NriBit(7),  //    Fragment (pixel) shader
+    VERTEX_SHADER                   = NriBit(1),  //    Vertex shader                                   X (required within graphics)
+    TESS_CONTROL_SHADER             = NriBit(2),  //    Tessellation control (hull) shader              X
+    TESS_EVALUATION_SHADER          = NriBit(3),  //    Tessellation evaluation (domain) shader         X
+    GEOMETRY_SHADER                 = NriBit(4),  //    Geometry shader                                 X
+    TASK_SHADER                     = NriBit(5),  //    Task (amplification) shader                     X
+    MESH_SHADER                     = NriBit(6),  //    Mesh shader                                     X
+    FRAGMENT_SHADER                 = NriBit(7),  //    Fragment (pixel) shader                         X
     DEPTH_STENCIL_ATTACHMENT        = NriBit(8),  //    Depth-stencil R/W operations
     COLOR_ATTACHMENT                = NriBit(9),  //    Color R/W operations
 
-    // Compute                                    // Invoked by  "CmdDispatch*" (not Rays)
-    COMPUTE_SHADER                  = NriBit(10), //    Compute shader
+    // Compute                                    // Invoked by "CmdDispatch*" (not Rays)
+    COMPUTE_SHADER                  = NriBit(10), //    Compute shader                                  X (required within compute)
 
     // Ray tracing                                // Invoked by "CmdDispatchRays*"
-    RAYGEN_SHADER                   = NriBit(11), //    Ray generation shader
-    MISS_SHADER                     = NriBit(12), //    Miss shader
-    INTERSECTION_SHADER             = NriBit(13), //    Intersection shader
-    CLOSEST_HIT_SHADER              = NriBit(14), //    Closest hit shader
-    ANY_HIT_SHADER                  = NriBit(15), //    Any hit shader
-    CALLABLE_SHADER                 = NriBit(16), //    Callable shader
-
+    RAYGEN_SHADER                   = NriBit(11), //    Ray generation shader                           X (required within raytracing)
+    MISS_SHADER                     = NriBit(12), //    Miss shader                                     X
+    INTERSECTION_SHADER             = NriBit(13), //    Intersection shader                             X
+    CLOSEST_HIT_SHADER              = NriBit(14), //    Closest hit shader                              X
+    ANY_HIT_SHADER                  = NriBit(15), //    Any hit shader                                  X
+    CALLABLE_SHADER                 = NriBit(16), //    Callable shader                                 X
     ACCELERATION_STRUCTURE          = NriBit(17), // Invoked by "Cmd*AccelerationStructure*" commands
     MICROMAP                        = NriBit(18), // Invoked by "Cmd*Micromap*" commands
 
@@ -397,12 +396,11 @@ NriBits(StageBits, uint32_t,
                                     | NriMember(StageBits, ANY_HIT_SHADER)
                                     | NriMember(StageBits, CALLABLE_SHADER),
 
-    ALL_SHADERS                     = NriMember(StageBits, TESSELLATION_SHADERS)
-                                    | NriMember(StageBits, MESH_SHADERS)
-                                    | NriMember(StageBits, GRAPHICS_SHADERS)
+    ALL_SHADERS                     = NriMember(StageBits, GRAPHICS_SHADERS)
+                                    | NriMember(StageBits, COMPUTE_SHADER)
                                     | NriMember(StageBits, RAY_TRACING_SHADERS),
 
-    DRAW                            = NriMember(StageBits, INDEX_INPUT)
+    GRAPHICS                        = NriMember(StageBits, INDEX_INPUT)
                                     | NriMember(StageBits, GRAPHICS_SHADERS)
                                     | NriMember(StageBits, DEPTH_STENCIL_ATTACHMENT)
                                     | NriMember(StageBits, COLOR_ATTACHMENT)

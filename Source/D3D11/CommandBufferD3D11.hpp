@@ -617,7 +617,7 @@ NRI_INLINE void CommandBufferD3D11::Barrier(const BarrierGroupDesc& barrierGroup
     for (uint32_t i = 0; i < barrierGroupDesc.globalNum; i++) {
         const GlobalBarrierDesc& barrier = barrierGroupDesc.globals[i];
         if ((barrier.before.access & AccessBits::SHADER_RESOURCE_STORAGE) && (barrier.after.access & AccessBits::SHADER_RESOURCE_STORAGE)) {
-            bool isGraphics = barrier.before.stages == StageBits::ALL || (barrier.before.stages & (StageBits::DRAW));
+            bool isGraphics = barrier.before.stages == StageBits::ALL || (barrier.before.stages & (StageBits::GRAPHICS));
             if (isGraphics)
                 flags |= NVAPI_D3D_BEGIN_UAV_OVERLAP_GFX_WFI;
 
@@ -630,7 +630,7 @@ NRI_INLINE void CommandBufferD3D11::Barrier(const BarrierGroupDesc& barrierGroup
     for (uint32_t i = 0; i < barrierGroupDesc.bufferNum; i++) {
         const BufferBarrierDesc& barrier = barrierGroupDesc.buffers[i];
         if ((barrier.before.access & AccessBits::SHADER_RESOURCE_STORAGE) && (barrier.after.access & AccessBits::SHADER_RESOURCE_STORAGE)) {
-            bool isGraphics = barrier.before.stages == StageBits::ALL || (barrier.before.stages & (StageBits::DRAW));
+            bool isGraphics = barrier.before.stages == StageBits::ALL || (barrier.before.stages & (StageBits::GRAPHICS));
             if (isGraphics)
                 flags |= NVAPI_D3D_BEGIN_UAV_OVERLAP_GFX_WFI;
 
@@ -643,7 +643,7 @@ NRI_INLINE void CommandBufferD3D11::Barrier(const BarrierGroupDesc& barrierGroup
     for (uint32_t i = 0; i < barrierGroupDesc.textureNum; i++) {
         const TextureBarrierDesc& barrier = barrierGroupDesc.textures[i];
         if ((barrier.before.access & AccessBits::SHADER_RESOURCE_STORAGE) && (barrier.after.access & AccessBits::SHADER_RESOURCE_STORAGE)) {
-            bool isGraphics = barrier.before.stages == StageBits::ALL || (barrier.before.stages & (StageBits::DRAW));
+            bool isGraphics = barrier.before.stages == StageBits::ALL || (barrier.before.stages & (StageBits::GRAPHICS));
             if (isGraphics)
                 flags |= NVAPI_D3D_BEGIN_UAV_OVERLAP_GFX_WFI;
 
