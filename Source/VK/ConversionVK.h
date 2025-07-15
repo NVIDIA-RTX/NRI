@@ -414,10 +414,10 @@ constexpr VkPipelineStageFlags2 GetPipelineStageFlags(StageBits stageBits) {
     if (stageBits & StageBits::GEOMETRY_SHADER)
         flags |= VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT;
 
-    if (stageBits & StageBits::MESH_CONTROL_SHADER)
+    if (stageBits & StageBits::TASK_SHADER)
         flags |= VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT;
 
-    if (stageBits & StageBits::MESH_EVALUATION_SHADER)
+    if (stageBits & StageBits::MESH_SHADER)
         flags |= VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
 
     if (stageBits & StageBits::FRAGMENT_SHADER)
@@ -494,10 +494,10 @@ constexpr VkShaderStageFlags GetShaderStageFlags(StageBits stage) {
     if (stage & StageBits::CALLABLE_SHADER)
         stageFlags |= VK_SHADER_STAGE_CALLABLE_BIT_KHR;
 
-    if (stage & StageBits::MESH_CONTROL_SHADER)
+    if (stage & StageBits::TASK_SHADER)
         stageFlags |= VK_SHADER_STAGE_TASK_BIT_EXT;
 
-    if (stage & StageBits::MESH_EVALUATION_SHADER)
+    if (stage & StageBits::MESH_SHADER)
         stageFlags |= VK_SHADER_STAGE_MESH_BIT_EXT;
 
     return stageFlags;

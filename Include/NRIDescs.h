@@ -349,8 +349,8 @@ NriBits(StageBits, uint32_t,
     TESS_CONTROL_SHADER             = NriBit(2),  //    Tessellation control (hull) shader
     TESS_EVALUATION_SHADER          = NriBit(3),  //    Tessellation evaluation (domain) shader
     GEOMETRY_SHADER                 = NriBit(4),  //    Geometry shader
-    MESH_CONTROL_SHADER             = NriBit(5),  //    Mesh control (amplification, task) shader
-    MESH_EVALUATION_SHADER          = NriBit(6),  //    Mesh evaluation (mesh) shader
+    TASK_SHADER                     = NriBit(5),  //    Task (amplification) shader
+    MESH_SHADER                     = NriBit(6),  //    Mesh shader
     FRAGMENT_SHADER                 = NriBit(7),  //    Fragment (pixel) shader
     DEPTH_STENCIL_ATTACHMENT        = NriBit(8),  //    Depth-stencil R/W operations
     COLOR_ATTACHMENT                = NriBit(9),  //    Color R/W operations
@@ -381,8 +381,8 @@ NriBits(StageBits, uint32_t,
     TESSELLATION_SHADERS            = NriMember(StageBits, TESS_CONTROL_SHADER)
                                     | NriMember(StageBits, TESS_EVALUATION_SHADER),
 
-    MESH_SHADERS                    = NriMember(StageBits, MESH_CONTROL_SHADER)
-                                    | NriMember(StageBits, MESH_EVALUATION_SHADER),
+    MESH_SHADERS                    = NriMember(StageBits, TASK_SHADER)
+                                    | NriMember(StageBits, MESH_SHADER),
 
     GRAPHICS_SHADERS                = NriMember(StageBits, VERTEX_SHADER)
                                     | NriMember(StageBits, TESSELLATION_SHADERS)
@@ -1859,7 +1859,7 @@ NriStruct(DeviceDesc) {
         uint32_t atomicsF32                                      : 1; // "float" atomics
         uint32_t atomicsI64                                      : 1; // "(u)int64_t" atomics
         uint32_t atomicsF64                                      : 1; // "double" atomics
-        
+
         // https://learn.microsoft.com/en-us/windows/win32/direct3d12/typed-unordered-access-view-loads#using-unorm-and-snorm-typed-uav-loads-from-hlsl
         uint32_t storageReadWithoutFormat                        : 1; // NRI_FORMAT("unknown") is allowed for storage reads
         uint32_t storageWriteWithoutFormat                       : 1; // NRI_FORMAT("unknown") is allowed for storage writes

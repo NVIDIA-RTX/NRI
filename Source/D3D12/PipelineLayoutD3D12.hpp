@@ -35,9 +35,9 @@ static inline D3D12_ROOT_SIGNATURE_FLAGS GetRootSignatureStageFlags(const Pipeli
     // only add these mesh shading pipeline flags when the device
     // (and thus Windows) supports mesh shading.
     if (device.GetDesc().features.meshShader) {
-        if (!(pipelineLayoutDesc.shaderStages & StageBits::MESH_CONTROL_SHADER))
+        if (!(pipelineLayoutDesc.shaderStages & StageBits::TASK_SHADER))
             flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS;
-        if (!(pipelineLayoutDesc.shaderStages & StageBits::MESH_EVALUATION_SHADER))
+        if (!(pipelineLayoutDesc.shaderStages & StageBits::MESH_SHADER))
             flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
     }
 

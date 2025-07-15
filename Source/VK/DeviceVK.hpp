@@ -1138,7 +1138,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         if (computeShaderDerivativesFeatures.computeDerivativeGroupQuads || computeShaderDerivativesFeatures.computeDerivativeGroupLinear)
             m_Desc.wave.derivativeOpsStages |= StageBits::COMPUTE_SHADER;
         if (computeShaderDerivativesProps.meshAndTaskShaderDerivatives)
-            m_Desc.wave.derivativeOpsStages |= StageBits::MESH_CONTROL_SHADER | StageBits::MESH_EVALUATION_SHADER;
+            m_Desc.wave.derivativeOpsStages |= StageBits::TASK_SHADER | StageBits::MESH_SHADER;
 
         if (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_QUAD_BIT)
             m_Desc.wave.quadOpsStages = props11.subgroupQuadOperationsInAllStages ? StageBits::ALL_SHADERS : (StageBits::FRAGMENT_SHADER | StageBits::COMPUTE_SHADER);
@@ -1168,9 +1168,9 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         if (props11.subgroupSupportedStages & VK_SHADER_STAGE_CALLABLE_BIT_KHR)
             m_Desc.wave.waveOpsStages |= StageBits::CALLABLE_SHADER;
         if (props11.subgroupSupportedStages & VK_SHADER_STAGE_TASK_BIT_EXT)
-            m_Desc.wave.waveOpsStages |= StageBits::MESH_CONTROL_SHADER;
+            m_Desc.wave.waveOpsStages |= StageBits::TASK_SHADER;
         if (props11.subgroupSupportedStages & VK_SHADER_STAGE_MESH_BIT_EXT)
-            m_Desc.wave.waveOpsStages |= StageBits::MESH_EVALUATION_SHADER;
+            m_Desc.wave.waveOpsStages |= StageBits::MESH_SHADER;
 
         m_Desc.other.timestampFrequencyHz = uint64_t(1e9 / double(limits.timestampPeriod) + 0.5);
         m_Desc.other.micromapSubdivisionMaxLevel = micromapProps.maxOpacity2StateSubdivisionLevel;

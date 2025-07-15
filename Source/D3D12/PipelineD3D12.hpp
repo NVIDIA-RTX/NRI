@@ -63,10 +63,10 @@ static D3D12_SHADER_VISIBILITY GetShaderVisibility(StageBits shaderStages) {
     if (shaderStages == StageBits::FRAGMENT_SHADER)
         return D3D12_SHADER_VISIBILITY_PIXEL;
 
-    if (shaderStages == StageBits::MESH_CONTROL_SHADER)
+    if (shaderStages == StageBits::TASK_SHADER)
         return D3D12_SHADER_VISIBILITY_AMPLIFICATION;
 
-    if (shaderStages == StageBits::MESH_EVALUATION_SHADER)
+    if (shaderStages == StageBits::MESH_SHADER)
         return D3D12_SHADER_VISIBILITY_MESH;
 
     // Should be unreachable
@@ -237,9 +237,9 @@ Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipel
             FillShaderBytecode(stateStream.domainShader.desc, shader);
         else if (shader.stage == StageBits::GEOMETRY_SHADER)
             FillShaderBytecode(stateStream.geometryShader.desc, shader);
-        else if (shader.stage == StageBits::MESH_CONTROL_SHADER)
+        else if (shader.stage == StageBits::TASK_SHADER)
             FillShaderBytecode(stateStream.amplificationShader.desc, shader);
-        else if (shader.stage == StageBits::MESH_EVALUATION_SHADER)
+        else if (shader.stage == StageBits::MESH_SHADER)
             FillShaderBytecode(stateStream.meshShader.desc, shader);
         else if (shader.stage == StageBits::FRAGMENT_SHADER)
             FillShaderBytecode(stateStream.pixelShader.desc, shader);

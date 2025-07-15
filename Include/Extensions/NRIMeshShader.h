@@ -1,6 +1,8 @@
 // © 2021 NVIDIA Corporation
 
 // Goal: mesh shaders
+// https://www.khronos.org/blog/mesh-shading-for-vulkan
+// https://microsoft.github.io/DirectX-Specs/d3d/MeshShader.html
 
 #pragma once
 

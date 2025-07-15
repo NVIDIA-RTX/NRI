@@ -691,7 +691,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
         m_Desc.wave.derivativeOpsStages |= StageBits::COMPUTE_SHADER;
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
         if (options9.DerivativesInMeshAndAmplificationShadersSupported)
-            m_Desc.wave.derivativeOpsStages |= StageBits::MESH_CONTROL_SHADER | StageBits::MESH_EVALUATION_SHADER;
+            m_Desc.wave.derivativeOpsStages |= StageBits::TASK_SHADER | StageBits::MESH_SHADER;
 #endif
     }
 
