@@ -310,7 +310,8 @@ NriBits(FormatSupportBits, uint16_t,
     VERTEX_BUFFER                   = NriBit(12),
 
     // Texture / buffer
-    STORAGE_LOAD_WITHOUT_FORMAT     = NriBit(13)
+    STORAGE_READ_WITHOUT_FORMAT     = NriBit(13),
+    STORAGE_WRITE_WITHOUT_FORMAT    = NriBit(14)
 );
 
 #pragma endregion
@@ -1833,26 +1834,37 @@ NriStruct(DeviceDesc) {
         uint32_t pipelineStatistics                              : 1; // see "QueryType::PIPELINE_STATISTICS"
     } features;
 
-    // Shader features (I32, F32 and I32 atomics are always supported)
+    // Shader features
     // https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst
     struct {
+        uint32_t viewportIndex                                   : 1; // SV_ViewportArrayIndex, always can be used in geometry shaders
+        uint32_t layerIndex                                      : 1; // SV_RenderTargetArrayIndex, always can be used in geometry shaders
+        uint32_t clock                                           : 1; // https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#readclock
+        uint32_t rasterizedOrderedView                           : 1; // https://microsoft.github.io/DirectX-Specs/d3d/RasterOrderViews.html (aka fragment shader interlock)
+        uint32_t barycentric                                     : 1; // https://github.com/microsoft/DirectXShaderCompiler/wiki/SV_Barycentrics
+        uint32_t rayTracingPositionFetch                         : 1; // https://docs.vulkan.org/features/latest/features/proposals/VK_KHR_ray_tracing_position_fetch.html
+
+        // https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-scalar
+        // I32 and F32 are always supported
         uint32_t nativeI16                                       : 1; // "(u)int16_t"
         uint32_t nativeF16                                       : 1; // "float16_t"
         uint32_t nativeI64                                       : 1; // "(u)int64_t"
         uint32_t nativeF64                                       : 1; // "double"
-        uint32_t atomicsI16                                      : 1; // "(u)int16_t" atomics (can be partial support of SMEM, texture or buffer atomics)
-        uint32_t atomicsF16                                      : 1; // "float16_t" atomics (can be partial support of SMEM, texture or buffer atomics)
-        uint32_t atomicsF32                                      : 1; // "float" atomics (can be partial support of SMEM, texture or buffer atomics)
-        uint32_t atomicsI64                                      : 1; // "(u)int64_t" atomics (can be partial support of SMEM, texture or buffer atomics)
-        uint32_t atomicsF64                                      : 1; // "double" atomics (can be partial support of SMEM, texture or buffer atomics)
-        uint32_t viewportIndex                                   : 1; // always can be used in geometry shaders
-        uint32_t layerIndex                                      : 1; // always can be used in geometry shaders
-        uint32_t clock                                           : 1; // shader clock (timer)
-        uint32_t rasterizedOrderedView                           : 1; // https://microsoft.github.io/DirectX-Specs/d3d/RasterOrderViews.html (aka fragment shader interlock)
-        uint32_t barycentric                                     : 1; // https://github.com/microsoft/DirectXShaderCompiler/wiki/SV_Barycentrics
-        uint32_t rayTracingPositionFetch                         : 1; // https://docs.vulkan.org/features/latest/features/proposals/VK_KHR_ray_tracing_position_fetch.html
+
+        // https://learn.microsoft.com/en-us/windows/win32/direct3d11/direct3d-11-advanced-stages-cs-atomic-functions
+        // https://microsoft.github.io/DirectX-Specs/d3d/HLSL_SM_6_6_Int64_and_Float_Atomics.html
+        // I32 atomics are always supported (for others it can be partial support of SMEM, texture or buffer atomics)
+        uint32_t atomicsI16                                      : 1; // "(u)int16_t" atomics
+        uint32_t atomicsF16                                      : 1; // "float16_t" atomics
+        uint32_t atomicsF32                                      : 1; // "float" atomics
+        uint32_t atomicsI64                                      : 1; // "(u)int64_t" atomics
+        uint32_t atomicsF64                                      : 1; // "double" atomics
+        
+        // https://learn.microsoft.com/en-us/windows/win32/direct3d12/typed-unordered-access-view-loads#using-unorm-and-snorm-typed-uav-loads-from-hlsl
         uint32_t storageReadWithoutFormat                        : 1; // NRI_FORMAT("unknown") is allowed for storage reads
         uint32_t storageWriteWithoutFormat                       : 1; // NRI_FORMAT("unknown") is allowed for storage writes
+
+        // https://github.com/microsoft/directxshadercompiler/wiki/wave-intrinsics
         uint32_t waveQuery                                       : 1; // WaveIsFirstLane, WaveGetLaneCount, WaveGetLaneIndex
         uint32_t waveVote                                        : 1; // WaveActiveAllTrue, WaveActiveAnyTrue, WaveActiveAllEqual
         uint32_t waveShuffle                                     : 1; // WaveReadLaneFirst, WaveReadLaneAt

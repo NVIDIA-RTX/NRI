@@ -2184,7 +2184,10 @@ NRI_INLINE FormatSupportBits DeviceVK::GetFormatSupport(Format format) const {
     UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT, FormatSupportBits::STORAGE_BUFFER_ATOMICS);
 
     if ((props3.optimalTilingFeatures | props3.bufferFeatures) & VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT)
-        supportBits |= FormatSupportBits::STORAGE_LOAD_WITHOUT_FORMAT;
+        supportBits |= FormatSupportBits::STORAGE_READ_WITHOUT_FORMAT;
+
+    if ((props3.optimalTilingFeatures | props3.bufferFeatures) & VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT)
+        supportBits |= FormatSupportBits::STORAGE_WRITE_WITHOUT_FORMAT;
 
     VkPhysicalDeviceImageFormatInfo2 imageInfo = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2};
     imageInfo.format = vkFormat;

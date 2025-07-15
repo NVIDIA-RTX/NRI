@@ -1326,8 +1326,9 @@ NRI_INLINE FormatSupportBits DeviceD3D12::GetFormatSupport(Format format) const 
         }
     }
 
+    // D3D requires only "unorm / snorm" specification, not a fully qualified format like in VK
     if (supportBits & (FormatSupportBits::STORAGE_TEXTURE | FormatSupportBits::STORAGE_BUFFER))
-        supportBits |= FormatSupportBits::STORAGE_LOAD_WITHOUT_FORMAT;
+        supportBits |= FormatSupportBits::STORAGE_READ_WITHOUT_FORMAT | FormatSupportBits::STORAGE_WRITE_WITHOUT_FORMAT;
 
     return supportBits;
 }
