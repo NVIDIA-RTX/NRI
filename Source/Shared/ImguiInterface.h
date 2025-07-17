@@ -60,7 +60,6 @@ private:
     Buffer* m_CurrentBuffer = nullptr;
     uint64_t m_VbOffset = 0;
     uint64_t m_IbOffset = 0;
-    uint64_t m_UpdateTick = 0;
     uint32_t m_DescriptorSetIndex = 0;
     Lock m_Lock;
 };

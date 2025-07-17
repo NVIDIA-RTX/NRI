@@ -30,6 +30,7 @@ const uint8_t g_Imgui_vs_dxbc[] = {
     70, 18, 16, 0, 2, 0, 0, 0, 47, 0, 0, 5, 114, 0, 16, 0, 0, 0, 0, 0, 70, 2, 16, 0, 0, 0, 0, 0, 56, 0, 0, 8, 114, 0, 16, 0, 0, 0, 0, 0, 70, 2, 16, 0, 0, 0, 0, 0, 246, 143, 32, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 25, 0, 0, 5, 114, 0, 16, 0, 0, 0, 0, 0, 70, 2, 16, 0, 0, 0, 0, 0, 56, 0, 0, 8, 114, 32, 16, 0, 2, 0, 0, 0, 70, 2, 16, 0, 0, 0, 0, 0, 166, 138, 32, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 54, 0, 0, 5, 130, 32, 16, 0, 2, 0, 0, 0, 58, 16, 16, 0, 2, 0, 0, 0, 62, 0, 0, 1};
+
 const uint8_t g_Imgui_fs_dxbc[] = {
     68, 88, 66, 67, 36, 169, 178, 81, 77, 59, 111, 137, 198, 5, 254, 201, 9, 246, 203, 154, 1, 0, 0, 0, 124, 1, 0, 0, 3, 0, 0, 0, 44, 0, 0, 0, 160, 0, 0, 0, 212, 0, 0, 0, 73, 83,
     71, 78, 108, 0, 0, 0, 3, 0, 0, 0, 8, 0, 0, 0, 80, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 92, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 1, 0, 0, 0, 3, 3, 0,
@@ -103,6 +104,7 @@ const uint8_t g_Imgui_vs_dxil[] = {
     65, 25, 140, 24, 36, 0, 8, 130, 1, 82, 10, 160, 16, 10, 125, 112, 7, 222, 136, 65, 2, 128, 32, 24, 32, 165, 0, 10, 161, 208, 7, 111, 208, 141, 24, 36, 0, 8, 130, 1, 82, 10,
     160, 160, 7, 125, 112, 7, 195, 136, 65, 2, 128, 32, 24, 32, 165, 0, 10, 122, 208, 7, 111, 32, 140, 24, 36, 0, 8, 130, 1, 82, 10, 160, 160, 7, 125, 96, 7, 193, 136, 65, 2,
     128, 32, 24, 32, 165, 0, 10, 122, 208, 7, 116, 240, 33, 0, 0, 0, 0, 0};
+
 const uint8_t g_Imgui_fs_dxil[] = {
     68, 88, 66, 67, 74, 47, 160, 220, 219, 159, 163, 249, 161, 133, 1, 24, 57, 89, 88, 94, 1, 0, 0, 0, 60, 9, 0, 0, 6, 0, 0, 0, 56, 0, 0, 0, 72, 0, 0, 0, 212, 0, 0, 0, 16, 1, 0, 0,
     32, 2, 0, 0, 60, 2, 0, 0, 83, 70, 73, 48, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 73, 83, 71, 49, 132, 0, 0, 0, 3, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 104, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 3, 0,
@@ -195,6 +197,7 @@ const uint8_t g_Imgui_vs_spirv[] = {
     57, 0, 0, 0, 79, 0, 9, 0, 30, 0, 0, 0, 60, 0, 0, 0, 41, 0, 0, 0, 59, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0, 3, 0, 0, 0, 81, 0, 5, 0, 14, 0, 0, 0, 61, 0, 0, 0, 49, 0, 0, 0, 0, 0, 0, 0,
     81, 0, 5, 0, 14, 0, 0, 0, 62, 0, 0, 0, 49, 0, 0, 0, 1, 0, 0, 0, 80, 0, 7, 0, 30, 0, 0, 0, 63, 0, 0, 0, 61, 0, 0, 0, 62, 0, 0, 0, 23, 0, 0, 0, 20, 0, 0, 0, 62, 0, 3, 0, 6, 0, 0, 0, 63, 0,
     0, 0, 62, 0, 3, 0, 7, 0, 0, 0, 40, 0, 0, 0, 62, 0, 3, 0, 8, 0, 0, 0, 60, 0, 0, 0, 253, 0, 1, 0, 56, 0, 1, 0};
+
 const uint8_t g_Imgui_fs_spirv[] = {
     3, 2, 35, 7, 0, 6, 1, 0, 0, 0, 14, 0, 28, 0, 0, 0, 0, 0, 0, 0, 17, 0, 2, 0, 1, 0, 0, 0, 14, 0, 3, 0, 0, 0, 0, 0, 1, 0, 0, 0, 15, 0, 10, 0, 4, 0, 0, 0, 1, 0, 0, 0, 109, 97, 105, 110, 0, 0,
     0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0, 16, 0, 3, 0, 1, 0, 0, 0, 7, 0, 0, 0, 3, 0, 3, 0, 5, 0, 0, 0, 138, 2, 0, 0, 5, 0, 6, 0, 7, 0, 0, 0, 116, 121, 112, 101, 46,
@@ -314,10 +317,7 @@ ImguiImpl::~ImguiImpl() {
         m_iCore.DestroyDescriptor(*entry.second.descriptor);
         m_iCore.DestroyTexture(*entry.second.texture);
 
-        ImTextureData* imguiTextureData = (ImTextureData*)entry.first;
-        imguiTextureData->BackendUserData = nullptr;
-        imguiTextureData->TexID = ImTextureID_Invalid;
-        imguiTextureData->Status = ImTextureStatus_Destroyed;
+        // TODO: need to update "ImTextureData"? saving a pointer to do this is invalid since its memory state is unknown
     }
 
     for (const ImguiPipeline& entry : m_Pipelines)
@@ -431,8 +431,6 @@ void ImguiImpl::CmdCopyData(CommandBuffer& commandBuffer, Streamer& streamer, co
     if (!copyImguiDataDesc.drawListNum)
         return;
 
-    m_UpdateTick++;
-
     Scratch<TextureBarrierDesc> textureBarriers = AllocateScratch((DeviceBase&)m_Device, TextureBarrierDesc, copyImguiDataDesc.textureNum);
     uint32_t textureBarrierNum = 0;
 
@@ -441,24 +439,24 @@ void ImguiImpl::CmdCopyData(CommandBuffer& commandBuffer, Streamer& streamer, co
 
     // Update textures
     for (uint32_t i = 0; i < copyImguiDataDesc.textureNum; i++) {
-        ImTextureData* imguiTextureData = copyImguiDataDesc.textures[i];
-        uint64_t key = (uint64_t)imguiTextureData; // TODO: can't use a better "key", because of "(ImTextureData*)entry.first"
+        ImTextureData* imTextureData = copyImguiDataDesc.textures[i];
+        uint64_t key = (uint64_t)imTextureData | ((uint64_t)imTextureData->UniqueID << 54ull);
 
-        { // Phase 1: satisfy ImGui - which naively assumes that the only one device renders a UI instance
-            CHECK(imguiTextureData->Status != ImTextureStatus_Destroyed, "Unexpected");
+        ImTextureStatus currentStatus = imTextureData->Status;
 
+        { // Phase 1: satisfy ImGui - naively assumes that the only one device renders a UI instance
             // Destroy
-            if (imguiTextureData->Status == ImTextureStatus_WantDestroy && imguiTextureData->UnusedFrames > 8) { // TODO: keep an eye on 8...
-                imguiTextureData->TexID = ImTextureID_Invalid;
-                imguiTextureData->BackendUserData = nullptr;
-                imguiTextureData->Status = ImTextureStatus_Destroyed;
+            if (currentStatus == ImTextureStatus_WantDestroy && imTextureData->UnusedFrames > 8) { // TODO: keep an eye on 8...
+                imTextureData->TexID = ImTextureID_Invalid;
+                imTextureData->BackendUserData = nullptr; // reset counter
+                imTextureData->Status = ImTextureStatus_Destroyed;
             }
 
             // Create or update
-            if (imguiTextureData->Status == ImTextureStatus_WantCreate || imguiTextureData->Status == ImTextureStatus_WantUpdates) {
-                imguiTextureData->TexID = key;
-                imguiTextureData->BackendUserData = (void*)m_UpdateTick;
-                imguiTextureData->Status = ImTextureStatus_OK;
+            if (currentStatus == ImTextureStatus_WantCreate || currentStatus == ImTextureStatus_WantUpdates) {
+                imTextureData->TexID = key;
+                imTextureData->BackendUserData = (void*)((uint64_t)imTextureData->BackendUserData + 1); // increment counter
+                imTextureData->Status = ImTextureStatus_OK;
             }
         }
 
@@ -468,11 +466,15 @@ void ImguiImpl::CmdCopyData(CommandBuffer& commandBuffer, Streamer& streamer, co
                 entry = m_Textures.insert({key, {}}).first;
 
             ImguiTexture& imguiTexture = entry->second;
-            Format format = imguiTextureData->Format == ImTextureFormat_RGBA32 ? Format::RGBA8_UNORM : Format::R8_UNORM;
-            uint64_t updateTick = (uint64_t)imguiTextureData->BackendUserData;
+            Format format = imTextureData->Format == ImTextureFormat_RGBA32 ? Format::RGBA8_UNORM : Format::R8_UNORM;
+            uint64_t updateTick = (uint64_t)imTextureData->BackendUserData;
 
             // Destroy
-            if (imguiTextureData->Status == ImTextureStatus_Destroyed) {
+            if (updateTick == 0) {
+                CHECK(imTextureData->Status == ImTextureStatus_Destroyed, "Unexpected");
+
+                // TODO: this is valid only in the current frame. Otherwise an "ImguiImpl" instance can get a zombie texture in "m_Textures" because
+                // starting from the next frame "copyImguiDataDesc.textures" won't contain textures with "ImTextureStatus_Destroyed" status
                 m_iCore.DestroyDescriptor(*imguiTexture.descriptor);
                 m_iCore.DestroyTexture(*imguiTexture.texture);
 
@@ -481,61 +483,58 @@ void ImguiImpl::CmdCopyData(CommandBuffer& commandBuffer, Streamer& streamer, co
                 continue;
             }
 
-            // Create
-            bool isCreated = false;
-            if (!imguiTexture.texture) {
-                { // Create texture
-                    ResourceAllocatorInterface iResourceAllocator = {};
-                    Result result = nriGetInterface(m_Device, NRI_INTERFACE(ResourceAllocatorInterface), &iResourceAllocator);
-                    CHECK(result == Result::SUCCESS, "Unexpected");
+            // A newly added texture requires creation
+            if (imguiTexture.updateTick == 0) {
+                // Create texture
+                ResourceAllocatorInterface iResourceAllocator = {};
+                Result result = nriGetInterface(m_Device, NRI_INTERFACE(ResourceAllocatorInterface), &iResourceAllocator);
+                CHECK(result == Result::SUCCESS, "Unexpected");
 
-                    AllocateTextureDesc textureDesc = {};
-                    textureDesc.desc.type = TextureType::TEXTURE_2D;
-                    textureDesc.desc.usage = TextureUsageBits::SHADER_RESOURCE;
-                    textureDesc.desc.format = format;
-                    textureDesc.desc.width = (Dim_t)imguiTextureData->Width;
-                    textureDesc.desc.height = (Dim_t)imguiTextureData->Height;
-                    textureDesc.memoryLocation = MemoryLocation::DEVICE;
+                AllocateTextureDesc textureDesc = {};
+                textureDesc.desc.type = TextureType::TEXTURE_2D;
+                textureDesc.desc.usage = TextureUsageBits::SHADER_RESOURCE;
+                textureDesc.desc.format = format;
+                textureDesc.desc.width = (Dim_t)imTextureData->Width;
+                textureDesc.desc.height = (Dim_t)imTextureData->Height;
+                textureDesc.memoryLocation = MemoryLocation::DEVICE;
 
-                    result = iResourceAllocator.AllocateTexture(m_Device, textureDesc, imguiTexture.texture);
-                    CHECK(result == Result::SUCCESS, "Unexpected");
-                }
+                result = iResourceAllocator.AllocateTexture(m_Device, textureDesc, imguiTexture.texture);
+                CHECK(result == Result::SUCCESS, "Unexpected");
 
-                { // Create descriptor
-                    Texture2DViewDesc viewDesc = {};
-                    viewDesc.texture = imguiTexture.texture;
-                    viewDesc.viewType = Texture2DViewType::SHADER_RESOURCE_2D;
-                    viewDesc.format = format;
+                // Create descriptor
+                Texture2DViewDesc viewDesc = {};
+                viewDesc.texture = imguiTexture.texture;
+                viewDesc.viewType = Texture2DViewType::SHADER_RESOURCE_2D;
+                viewDesc.format = format;
 
-                    Result result = m_iCore.CreateTexture2DView(viewDesc, imguiTexture.descriptor);
-                    CHECK(result == Result::SUCCESS, "Unexpected");
-                }
-
-                isCreated = true; // ImGui doesn't provide anything in "Updates" on creation
+                result = m_iCore.CreateTexture2DView(viewDesc, imguiTexture.descriptor);
+                CHECK(result == Result::SUCCESS, "Unexpected");
             }
 
-            // Update
+            // Update if needed
+            CHECK(imguiTexture.texture && imguiTexture.descriptor, "Unexpected");
+
             if (imguiTexture.updateTick < updateTick) {
                 const FormatProps& formatProps = GetFormatProps(format);
 
-                if (isCreated || !imguiTextureData->Updates.Size) {
-                    // Full update
+                if (imguiTexture.updateTick == 0) {
+                    // A newly created texture must be fully updated
                     StreamTextureDataDesc streamTextureDataDesc = {};
-                    streamTextureDataDesc.data = imguiTextureData->Pixels;
-                    streamTextureDataDesc.dataRowPitch = imguiTextureData->Width * formatProps.stride;
-                    streamTextureDataDesc.dataSlicePitch = imguiTextureData->Height * streamTextureDataDesc.dataRowPitch;
+                    streamTextureDataDesc.data = imTextureData->Pixels;
+                    streamTextureDataDesc.dataRowPitch = imTextureData->Width * formatProps.stride;
+                    streamTextureDataDesc.dataSlicePitch = imTextureData->Height * streamTextureDataDesc.dataRowPitch;
                     streamTextureDataDesc.dstTexture = imguiTexture.texture;
 
                     m_iStreamer.StreamTextureData(streamer, streamTextureDataDesc);
-                } else {
-                    // Partial updates // TODO: what if some updates are skipped due to inactivity?
-                    for (int32_t j = 0; j < imguiTextureData->Updates.Size; j++) {
-                        const ImTextureRect& rect = imguiTextureData->Updates.Data[j];
+                } else if (currentStatus == ImTextureStatus_WantUpdates) {
+                    // "Updates" vector is valid only "here and now", i.e. first renderer encountering "ImTextureStatus_WantUpdates" takes it // TODO: improve
+                    for (int32_t j = 0; j < imTextureData->Updates.Size; j++) {
+                        const ImTextureRect& rect = imTextureData->Updates.Data[j];
 
                         StreamTextureDataDesc streamTextureDataDesc = {};
-                        streamTextureDataDesc.data = imguiTextureData->Pixels + (rect.x + rect.y * imguiTextureData->Width) * formatProps.stride;
-                        streamTextureDataDesc.dataRowPitch = imguiTextureData->Width * formatProps.stride;
-                        streamTextureDataDesc.dataSlicePitch = imguiTextureData->Height * streamTextureDataDesc.dataRowPitch;
+                        streamTextureDataDesc.data = imTextureData->Pixels + (rect.x + rect.y * imTextureData->Width) * formatProps.stride;
+                        streamTextureDataDesc.dataRowPitch = imTextureData->Width * formatProps.stride;
+                        streamTextureDataDesc.dataSlicePitch = imTextureData->Height * streamTextureDataDesc.dataRowPitch;
                         streamTextureDataDesc.dstTexture = imguiTexture.texture;
                         streamTextureDataDesc.dstRegion.x = rect.x;
                         streamTextureDataDesc.dstRegion.y = rect.y;
@@ -544,6 +543,21 @@ void ImguiImpl::CmdCopyData(CommandBuffer& commandBuffer, Streamer& streamer, co
 
                         m_iStreamer.StreamTextureData(streamer, streamTextureDataDesc);
                     }
+                } else {
+                    // If a texture is outdated, use "UsedRect" since "Updates" are valid only in the current frame
+                    const ImTextureRect& rect = imTextureData->UsedRect;
+
+                    StreamTextureDataDesc streamTextureDataDesc = {};
+                    streamTextureDataDesc.data = imTextureData->Pixels + (rect.x + rect.y * imTextureData->Width) * formatProps.stride;
+                    streamTextureDataDesc.dataRowPitch = imTextureData->Width * formatProps.stride;
+                    streamTextureDataDesc.dataSlicePitch = imTextureData->Height * streamTextureDataDesc.dataRowPitch;
+                    streamTextureDataDesc.dstTexture = imguiTexture.texture;
+                    streamTextureDataDesc.dstRegion.x = rect.x;
+                    streamTextureDataDesc.dstRegion.y = rect.y;
+                    streamTextureDataDesc.dstRegion.width = rect.w;
+                    streamTextureDataDesc.dstRegion.height = rect.h;
+
+                    m_iStreamer.StreamTextureData(streamer, streamTextureDataDesc);
                 }
 
                 { // Add a barrier
@@ -554,10 +568,11 @@ void ImguiImpl::CmdCopyData(CommandBuffer& commandBuffer, Streamer& streamer, co
                     textureBarrier.before = drawState;
                     textureBarrier.after = copyState;
 
-                    if (isCreated)
+                    if (imguiTexture.updateTick == 0)
                         textureBarrier.before = {};
                 }
 
+                // Mark as "up to date"
                 imguiTexture.updateTick = updateTick;
             }
         }
@@ -574,15 +589,15 @@ void ImguiImpl::CmdCopyData(CommandBuffer& commandBuffer, Streamer& streamer, co
 
         uint64_t totalVertexDataSize = 0;
         for (uint32_t n = 0; n < copyImguiDataDesc.drawListNum; n++) {
-            const ImDrawList* drawList = copyImguiDataDesc.drawLists[n];
+            const ImDrawList* imDrawList = copyImguiDataDesc.drawLists[n];
 
             DataSize& vertexDataChunk = dataChunks[n];
-            vertexDataChunk.data = drawList->VtxBuffer.Data;
-            vertexDataChunk.size = drawList->VtxBuffer.Size * sizeof(ImDrawVert);
+            vertexDataChunk.data = imDrawList->VtxBuffer.Data;
+            vertexDataChunk.size = imDrawList->VtxBuffer.Size * sizeof(ImDrawVert);
 
             DataSize& indexDataChunk = dataChunks[copyImguiDataDesc.drawListNum + n];
-            indexDataChunk.data = drawList->IdxBuffer.Data;
-            indexDataChunk.size = drawList->IdxBuffer.Size * sizeof(ImDrawIdx);
+            indexDataChunk.data = imDrawList->IdxBuffer.Data;
+            indexDataChunk.size = imDrawList->IdxBuffer.Size * sizeof(ImDrawIdx);
 
             totalVertexDataSize += vertexDataChunk.size;
         }
@@ -750,11 +765,11 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
     uint32_t indexOffset = 0;
 
     for (uint32_t n = 0; n < drawImguiDesc.drawListNum; n++) {
-        const ImDrawList* drawList = drawImguiDesc.drawLists[n];
+        const ImDrawList* imDrawList = drawImguiDesc.drawLists[n];
 
         // For each draw command
-        for (int32_t i = 0; i < drawList->CmdBuffer.Size; i++) {
-            const ImDrawCmd& drawCmd = drawList->CmdBuffer.Data[i];
+        for (int32_t i = 0; i < imDrawList->CmdBuffer.Size; i++) {
+            const ImDrawCmd& drawCmd = imDrawList->CmdBuffer.Data[i];
 
             // Clipped?
             const ImVec4& clipRect = drawCmd.ClipRect; // min.x, min.y, max.x, max.y
@@ -816,8 +831,8 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
             }
         }
 
-        vertexOffset += drawList->VtxBuffer.Size;
-        indexOffset += drawList->IdxBuffer.Size;
+        vertexOffset += imDrawList->VtxBuffer.Size;
+        indexOffset += imDrawList->IdxBuffer.Size;
     }
 }
 
