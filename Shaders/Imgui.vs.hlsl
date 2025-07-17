@@ -4,6 +4,7 @@ struct ImguiConstants {
     float invDisplayWidth;
     float invDisplayHeight;
     float hdrScale;
+    float gamma;
 };
 
 // Shader
@@ -28,9 +29,7 @@ PS_INPUT main(VS_INPUT input) {
     p = NRI_UV_TO_CLIP(p);
 
     float4 col = input.col;
-#if IMGUI_LINEAR_COLOR
-    col.xyz = pow(saturate(col.xyz), 2.2);
-#endif
+    col.xyz = pow(saturate(col.xyz), g_PushConstants.gamma);
     col.xyz *= g_PushConstants.hdrScale;
 
     PS_INPUT output;

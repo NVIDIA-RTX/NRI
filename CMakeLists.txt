@@ -125,6 +125,14 @@ add_compile_definition(NRI_ENABLE_NGX_SDK)
 add_compile_definition(NRI_ENABLE_FFX_SDK)
 add_compile_definition(NRI_ENABLE_XESS_SDK)
 
+if(NRI_ENABLE_NIS_SDK)
+    set(NRI_REQUIRES_SHADERMAKE 1)
+else()
+    set(NRI_REQUIRES_SHADERMAKE 0)
+endif()
+
+add_compile_definition(NRI_REQUIRES_SHADERMAKE)
+
 # Find Windows SDK
 if(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT)
     message("NRI: looking for Windows SDK:")
@@ -291,7 +299,7 @@ if(NRI_ENABLE_D3D_EXTENSIONS)
 endif()
 
 # Add dependencies for dependencies
-if((NRI_ENABLE_NIS_SDK OR NRI_ENABLE_IMGUI_EXTENSION) AND NOT TARGET ShaderMake)
+if(NRI_REQUIRES_SHADERMAKE AND NOT TARGET ShaderMake)
     # ShaderMake
     option(SHADERMAKE_TOOL "" ON)
 
@@ -682,7 +690,7 @@ if(NRI_ENABLE_XESS_SDK)
 endif()
 
 # Shaders
-if(NRI_ENABLE_NIS_SDK OR NRI_ENABLE_IMGUI_EXTENSION)
+if(NRI_REQUIRES_SHADERMAKE)
     file(GLOB_RECURSE SHADERS
         "Shaders/*.hlsl"
         "Shaders/*.hlsli"

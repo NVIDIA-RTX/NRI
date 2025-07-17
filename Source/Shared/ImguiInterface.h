@@ -9,7 +9,6 @@ namespace nri {
 struct ImguiPipeline {
     Pipeline* pipeline = nullptr;
     Format format = Format::UNKNOWN;
-    bool linearColor = false;
 };
 
 struct ImguiTexture {
