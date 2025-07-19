@@ -452,14 +452,14 @@ bool nri::IsUpscalerSupported(const DeviceDesc& deviceDesc, UpscalerType type) {
 UpscalerImpl::~UpscalerImpl() {
 #if NRI_ENABLE_NIS_SDK
     if (m_Desc.type == UpscalerType::NIS && m.nis) {
-        m_iCore.DestroyDescriptor(*m.nis->srvScale);
-        m_iCore.DestroyDescriptor(*m.nis->srvUsm);
-        m_iCore.DestroyDescriptor(*m.nis->sampler);
-        m_iCore.DestroyTexture(*m.nis->texScale);
-        m_iCore.DestroyTexture(*m.nis->texUsm);
-        m_iCore.DestroyPipeline(*m.nis->pipeline);
-        m_iCore.DestroyPipelineLayout(*m.nis->pipelineLayout);
-        m_iCore.DestroyDescriptorPool(*m.nis->descriptorPool);
+        m_iCore.DestroyDescriptor(m.nis->srvScale);
+        m_iCore.DestroyDescriptor(m.nis->srvUsm);
+        m_iCore.DestroyDescriptor(m.nis->sampler);
+        m_iCore.DestroyTexture(m.nis->texScale);
+        m_iCore.DestroyTexture(m.nis->texUsm);
+        m_iCore.DestroyPipeline(m.nis->pipeline);
+        m_iCore.DestroyPipelineLayout(m.nis->pipelineLayout);
+        m_iCore.DestroyDescriptorPool(m.nis->descriptorPool);
 
         const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
         Destroy<Nis>(allocationCallbacks, m.nis);
@@ -495,7 +495,7 @@ UpscalerImpl::~UpscalerImpl() {
         ExclusiveScope lock(g_ngx.lock);
 
         const DeviceDesc& deviceDesc = m_iCore.GetDeviceDesc(m_Device);
-        void* deviceNative = m_iCore.GetDeviceNativeObject(m_Device);
+        void* deviceNative = m_iCore.GetDeviceNativeObject(&m_Device);
         int32_t refCount = NgxDecrRef(deviceNative);
 
 #    if NRI_ENABLE_D3D11_SUPPORT
@@ -836,7 +836,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
         if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
             backendD3D12Desc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_DX12;
-            backendD3D12Desc.device = (ID3D12Device*)m_iCore.GetDeviceNativeObject(m_Device);
+            backendD3D12Desc.device = (ID3D12Device*)m_iCore.GetDeviceNativeObject(&m_Device);
 
             contextDesc.header.pNext = &backendD3D12Desc.header;
         }
@@ -850,7 +850,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             if (nriGetInterface(m_Device, NRI_INTERFACE(WrapperVKInterface), &iWrapperVK) != Result::SUCCESS)
                 return Result::UNSUPPORTED;
 
-            VkDevice vkDevice = (VkDevice)m_iCore.GetDeviceNativeObject(m_Device);
+            VkDevice vkDevice = (VkDevice)m_iCore.GetDeviceNativeObject(&m_Device);
             VkPhysicalDevice vkPhysicalDevice = (VkPhysicalDevice)iWrapperVK.GetPhysicalDeviceVK(m_Device);
             PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr = (PFN_vkGetDeviceProcAddr)iWrapperVK.GetDeviceProcAddrVK(m_Device);
             FfxRegisterDevice(vkDevice, vkGetDeviceProcAddr);
@@ -879,7 +879,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
             ExclusiveScope lock(g_xess.lock);
 
-            ID3D12Device* deviceNative = (ID3D12Device*)m_iCore.GetDeviceNativeObject(m_Device);
+            ID3D12Device* deviceNative = (ID3D12Device*)m_iCore.GetDeviceNativeObject(&m_Device);
 
             xess_result_t result = xessD3D12CreateContext(deviceNative, &m.xess->context);
             if (result != XESS_RESULT_SUCCESS)
@@ -948,7 +948,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
 #if NRI_ENABLE_NGX_SDK
     if (upscalerDesc.type == UpscalerType::DLSR || upscalerDesc.type == UpscalerType::DLRR) {
-        void* deviceNative = m_iCore.GetDeviceNativeObject(m_Device);
+        void* deviceNative = m_iCore.GetDeviceNativeObject(&m_Device);
         const wchar_t* path = L""; // don't care
         NVSDK_NGX_Result ngxResult = NVSDK_NGX_Result_Fail;
 
@@ -1139,9 +1139,9 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             m_iCore.Wait(*fence, 1);
 
             // Cleanup
-            m_iCore.DestroyFence(*fence);
-            m_iCore.DestroyCommandBuffer(*commandBuffer);
-            m_iCore.DestroyCommandAllocator(*commandAllocator);
+            m_iCore.DestroyFence(fence);
+            m_iCore.DestroyCommandBuffer(commandBuffer);
+            m_iCore.DestroyCommandAllocator(commandAllocator);
         }
 
         if (ngxResult != NVSDK_NGX_Result_Success)
@@ -1238,7 +1238,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
 
         ffxDispatchDescUpscale dispatchDesc = {};
         dispatchDesc.header.type = FFX_API_DISPATCH_DESC_TYPE_UPSCALE;
-        dispatchDesc.commandList = m_iCore.GetCommandBufferNativeObject(commandBuffer);
+        dispatchDesc.commandList = m_iCore.GetCommandBufferNativeObject(&commandBuffer);
         dispatchDesc.output = FfxGetResource(m_iCore, output, true);
         dispatchDesc.color = FfxGetResource(m_iCore, input);
         dispatchDesc.depth = FfxGetResource(m_iCore, guides.depth);
@@ -1282,7 +1282,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         executeParams.inputWidth = dispatchUpscaleDesc.currentResolution.w;
         executeParams.inputHeight = dispatchUpscaleDesc.currentResolution.h;
 
-        ID3D12GraphicsCommandList* commandList = (ID3D12GraphicsCommandList*)m_iCore.GetCommandBufferNativeObject(commandBuffer);
+        ID3D12GraphicsCommandList* commandList = (ID3D12GraphicsCommandList*)m_iCore.GetCommandBufferNativeObject(&commandBuffer);
 
         xess_result_t result = xessD3D12Execute(m.xess->context, commandList, &executeParams);
         CHECK(result == XESS_RESULT_SUCCESS, "xessD3D12Execute() failed!");
@@ -1303,7 +1303,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         uint64_t exposureNative = m_iCore.GetTextureNativeObject(guides.exposure.texture);
         uint64_t reactiveNative = m_iCore.GetTextureNativeObject(guides.reactive.texture);
 
-        void* commandBufferNative = m_iCore.GetCommandBufferNativeObject(commandBuffer);
+        void* commandBufferNative = m_iCore.GetCommandBufferNativeObject(&commandBuffer);
 
         NVSDK_NGX_Result result = NVSDK_NGX_Result_Fail;
 
@@ -1395,7 +1395,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         uint64_t reactiveNative = m_iCore.GetTextureNativeObject(guides.reactive.texture);
         uint64_t sssNative = m_iCore.GetTextureNativeObject(guides.sss.texture);
 
-        void* commandBufferNative = m_iCore.GetCommandBufferNativeObject(commandBuffer);
+        void* commandBufferNative = m_iCore.GetCommandBufferNativeObject(&commandBuffer);
 
         NVSDK_NGX_Result result = NVSDK_NGX_Result_Fail;
 
