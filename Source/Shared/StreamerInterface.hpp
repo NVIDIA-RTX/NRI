@@ -7,7 +7,9 @@ StreamerImpl::~StreamerImpl() {
     for (GarbageInFlight& garbageInFlight : m_GarbageInFlight)
         m_iCore.DestroyBuffer(*garbageInFlight.buffer);
 
-    m_iCore.DestroyBuffer(*m_ConstantBuffer);
+    if (m_ConstantBuffer) {
+        m_iCore.DestroyBuffer(*m_ConstantBuffer);
+    }
     m_iCore.DestroyBuffer(*m_DynamicBuffer);
 }
 
