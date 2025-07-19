@@ -13,9 +13,7 @@ NriForwardStruct(Queue);
 
 // us = microseconds
 
-NriEnum(LatencyMarker, uint8_t,
-
-                                        // Should be called:
+NriEnum(LatencyMarker, uint8_t,      // Should be called:
     SIMULATION_START    = 0,            // at the start of the simulation execution each frame, but after the call to "LatencySleep"
     SIMULATION_END      = 1,            // at the end of the simulation execution each frame
     RENDER_SUBMIT_START = 2,            // at the beginning of the render submission execution each frame (must not span into asynchronous rendering)
@@ -29,8 +27,7 @@ NriStruct(LatencySleepMode) {
     bool lowLatencyBoost;               // hint to increase performance to provide additional latency savings at a cost of increased power consumption
 };
 
-NriStruct(LatencyReport) {
-                                        // The time stamp written:
+NriStruct(LatencyReport) {            // The time stamp written:
     uint64_t inputSampleTimeUs;         // when "SetLatencyMarker(INPUT_SAMPLE)" is called
     uint64_t simulationStartTimeUs;     // when "SetLatencyMarker(SIMULATION_START)" is called
     uint64_t simulationEndTimeUs;       // when "SetLatencyMarker(SIMULATION_END)" is called

@@ -191,8 +191,10 @@ NRI_INLINE Result SwapChainD3D11::WaitForPresent() {
 }
 
 NRI_INLINE Result SwapChainD3D11::Present() {
+#if NRI_ENABLE_D3D_EXTENSIONS
     if (m_Flags & SwapChainBits::ALLOW_LOW_LATENCY)
         SetLatencyMarker((LatencyMarker)PRESENT_START);
+#endif
 
     bool vsync = (m_Flags & SwapChainBits::VSYNC) != 0;
     bool allowTearing = (m_Flags & SwapChainBits::ALLOW_TEARING) != 0;
@@ -200,8 +202,10 @@ NRI_INLINE Result SwapChainD3D11::Present() {
     HRESULT hr = m_SwapChain->Present(vsync ? 1 : 0, flags);
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "IDXGISwapChain::Present");
 
+#if NRI_ENABLE_D3D_EXTENSIONS
     if (m_Flags & SwapChainBits::ALLOW_LOW_LATENCY)
         SetLatencyMarker((LatencyMarker)PRESENT_END);
+#endif
 
     m_PresentId++;
 
