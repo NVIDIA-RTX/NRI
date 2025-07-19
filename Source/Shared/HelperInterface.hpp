@@ -88,11 +88,11 @@ Result HelperDataUpload::UploadData(const TextureUploadDesc* textureUploadDescs,
     if (result == Result::SUCCESS)
         result = UploadBuffers(bufferUploadDescs, bufferUploadDescNum);
 
-    m_iCore.DestroyCommandBuffer(*m_CommandBuffer);
-    m_iCore.DestroyCommandAllocator(*m_CommandAllocators);
-    m_iCore.DestroyFence(*m_Fence);
-    m_iCore.DestroyBuffer(*m_UploadBuffer);
-    m_iCore.FreeMemory(*m_UploadBufferMemory);
+    m_iCore.DestroyCommandBuffer(m_CommandBuffer);
+    m_iCore.DestroyCommandAllocator(m_CommandAllocator);
+    m_iCore.DestroyFence(m_Fence);
+    m_iCore.DestroyBuffer(m_UploadBuffer);
+    m_iCore.FreeMemory(m_UploadBufferMemory);
 
     return result;
 }
@@ -176,11 +176,11 @@ Result HelperDataUpload::Create(const TextureUploadDesc* textureUploadDescs, uin
         if (result != Result::SUCCESS)
             return result;
 
-        result = m_iCore.CreateCommandAllocator(m_Queue, m_CommandAllocators);
+        result = m_iCore.CreateCommandAllocator(m_Queue, m_CommandAllocator);
         if (result != Result::SUCCESS)
             return result;
 
-        result = m_iCore.CreateCommandBuffer(*m_CommandAllocators, m_CommandBuffer);
+        result = m_iCore.CreateCommandBuffer(*m_CommandAllocator, m_CommandBuffer);
         if (result != Result::SUCCESS)
             return result;
     }
@@ -298,7 +298,7 @@ Result HelperDataUpload::EndCommandBuffersAndSubmit() {
         result = m_iCore.QueueSubmit(m_Queue, queueSubmitDesc);
         if (result == Result::SUCCESS) {
             m_iCore.Wait(*m_Fence, m_FenceValue);
-            m_iCore.ResetCommandAllocator(*m_CommandAllocators);
+            m_iCore.ResetCommandAllocator(*m_CommandAllocator);
 
             m_FenceValue++;
         }
@@ -426,7 +426,7 @@ Result HelperDeviceMemoryAllocator::AllocateAndBindMemory(const ResourceGroupDes
 
     if (result != Result::SUCCESS) {
         for (size_t i = 0; i < allocationNum; i++) {
-            m_iCore.FreeMemory(*allocations[i]);
+            m_iCore.FreeMemory(allocations[i]);
             allocations[i] = nullptr;
         }
     }

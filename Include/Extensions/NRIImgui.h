@@ -53,7 +53,7 @@ NriStruct(DrawImguiDesc) {
 // Threadsafe: yes
 NriStruct(ImguiInterface) {
     Nri(Result)     (NRI_CALL *CreateImgui)         (NriRef(Device) device, const NriRef(ImguiDesc) imguiDesc, NriOut NriRef(Imgui*) imgui);
-    void            (NRI_CALL *DestroyImgui)        (NriRef(Imgui) imgui);
+    void            (NRI_CALL *DestroyImgui)        (NriPtr(Imgui) imgui);
 
     // Command buffer
     // {

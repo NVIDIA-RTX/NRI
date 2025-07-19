@@ -65,7 +65,7 @@ struct DeviceVal final : public DeviceBase {
     }
 
     inline void* GetNativeObject() const {
-        return m_iCoreImpl.GetDeviceNativeObject(m_Impl);
+        return m_iCoreImpl.GetDeviceNativeObject(&m_Impl);
     }
 
     inline Lock& GetLock() {
@@ -164,21 +164,21 @@ struct DeviceVal final : public DeviceBase {
     Result CreateAccelerationStructure(const AccelerationStructureD3D12Desc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
     Result AllocateAccelerationStructure(const AllocateAccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
 
-    void DestroyFence(Fence& fence);
-    void DestroyBuffer(Buffer& buffer);
-    void DestroyTexture(Texture& texture);
-    void DestroyPipeline(Pipeline& pipeline);
-    void DestroyMicromap(Micromap& micromap);
-    void DestroyQueryPool(QueryPool& queryPool);
-    void DestroySwapChain(SwapChain& swapChain);
-    void DestroyDescriptor(Descriptor& descriptor);
-    void DestroyDescriptorPool(DescriptorPool& descriptorPool);
-    void DestroyPipelineLayout(PipelineLayout& pipelineLayout);
-    void DestroyCommandBuffer(CommandBuffer& commandBuffer);
-    void DestroyCommandAllocator(CommandAllocator& commandAllocator);
-    void DestroyAccelerationStructure(AccelerationStructure& accelerationStructure);
+    void DestroyFence(Fence* fence);
+    void DestroyBuffer(Buffer* buffer);
+    void DestroyTexture(Texture* texture);
+    void DestroyPipeline(Pipeline* pipeline);
+    void DestroyMicromap(Micromap* micromap);
+    void DestroyQueryPool(QueryPool* queryPool);
+    void DestroySwapChain(SwapChain* swapChain);
+    void DestroyDescriptor(Descriptor* descriptor);
+    void DestroyDescriptorPool(DescriptorPool* descriptorPool);
+    void DestroyPipelineLayout(PipelineLayout* pipelineLayout);
+    void DestroyCommandBuffer(CommandBuffer* commandBuffer);
+    void DestroyCommandAllocator(CommandAllocator* commandAllocator);
+    void DestroyAccelerationStructure(AccelerationStructure* accelerationStructure);
 
-    void FreeMemory(Memory& memory);
+    void FreeMemory(Memory* memory);
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
     Result WaitIdle();
     Result BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);

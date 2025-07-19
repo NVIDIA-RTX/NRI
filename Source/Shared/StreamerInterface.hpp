@@ -5,10 +5,10 @@ constexpr bool USE_DEDICATED = true;
 
 StreamerImpl::~StreamerImpl() {
     for (GarbageInFlight& garbageInFlight : m_GarbageInFlight)
-        m_iCore.DestroyBuffer(*garbageInFlight.buffer);
+        m_iCore.DestroyBuffer(garbageInFlight.buffer);
 
-    m_iCore.DestroyBuffer(*m_ConstantBuffer);
-    m_iCore.DestroyBuffer(*m_DynamicBuffer);
+    m_iCore.DestroyBuffer(m_ConstantBuffer);
+    m_iCore.DestroyBuffer(m_DynamicBuffer);
 }
 
 bool StreamerImpl::Grow() {
@@ -216,7 +216,7 @@ void StreamerImpl::EndFrame() {
         if (garbageInFlight.frameNum < m_Desc.queuedFrameNum)
             garbageInFlight.frameNum++;
         else {
-            m_iCore.DestroyBuffer(*garbageInFlight.buffer);
+            m_iCore.DestroyBuffer(garbageInFlight.buffer);
 
             m_GarbageInFlight[i--] = m_GarbageInFlight.back();
             m_GarbageInFlight.pop_back();

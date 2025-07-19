@@ -29,7 +29,7 @@ private:
     Queue& m_Queue;
     CommandBuffer* m_CommandBuffer = nullptr;
     Fence* m_Fence = nullptr;
-    CommandAllocator* m_CommandAllocators = nullptr;
+    CommandAllocator* m_CommandAllocator = nullptr;
     Buffer* m_UploadBuffer = nullptr;
     Memory* m_UploadBufferMemory = nullptr;
     uint8_t* m_MappedMemory = nullptr;

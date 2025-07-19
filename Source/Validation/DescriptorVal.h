@@ -35,7 +35,7 @@ struct DescriptorVal final : public ObjectVal {
     }
 
     inline uint64_t GetNativeObject() const {
-        return GetCoreInterfaceImpl().GetDescriptorNativeObject(*GetImpl());
+        return GetCoreInterfaceImpl().GetDescriptorNativeObject(GetImpl());
     }
 
     inline bool IsBufferView() const {

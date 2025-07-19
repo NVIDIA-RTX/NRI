@@ -411,7 +411,7 @@ static Result FinalizeDeviceCreation(const DeviceCreationDesc& deviceCreationDes
     if (deviceCreationDesc.enableNRIValidation && deviceCreationDesc.graphicsAPI != GraphicsAPI::NONE) {
         Device* deviceVal = (Device*)CreateDeviceValidation(deviceCreationDesc, deviceImpl);
         if (!deviceVal) {
-            nriDestroyDevice((Device&)deviceImpl);
+            nriDestroyDevice((Device*)&deviceImpl);
             return Result::FAILURE;
         }
 
@@ -824,11 +824,9 @@ NRI_API Result NRI_CALL nriCreateDeviceFromVKDevice(const DeviceCreationVKDesc& 
     return FinalizeDeviceCreation(deviceCreationDesc, *deviceImpl, device);
 }
 
-NRI_API void NRI_CALL nriDestroyDevice(Device& device) {
-    if (!(&device))
-        return;
-
-    ((DeviceBase&)device).Destruct();
+NRI_API void NRI_CALL nriDestroyDevice(Device* device) {
+    if (device)
+        ((DeviceBase*)device)->Destruct();
 }
 
 NRI_API Format NRI_CALL nriConvertVKFormatToNRI(uint32_t vkFormat) {

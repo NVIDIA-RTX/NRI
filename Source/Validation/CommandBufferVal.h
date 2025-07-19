@@ -20,7 +20,7 @@ struct CommandBufferVal final : public ObjectVal {
     }
 
     inline void* GetNativeObject() const {
-        return GetCoreInterfaceImpl().GetCommandBufferNativeObject(*GetImpl());
+        return GetCoreInterfaceImpl().GetCommandBufferNativeObject(GetImpl());
     }
 
     inline void ResetAttachments() {

@@ -343,13 +343,14 @@ NriStruct(RayTracingInterface) {
     NriPtr(Buffer)  (NRI_CALL *GetMicromapBuffer)                                   (const NriRef(Micromap) micromap); // needed for barriers
 
     // Destroy
-    void            (NRI_CALL *DestroyAccelerationStructure)                        (NriRef(AccelerationStructure) accelerationStructure);
-    void            (NRI_CALL *DestroyMicromap)                                     (NriRef(Micromap) micromap);
+    void            (NRI_CALL *DestroyAccelerationStructure)                        (NriPtr(AccelerationStructure) accelerationStructure);
+    void            (NRI_CALL *DestroyMicromap)                                     (NriPtr(Micromap) micromap);
 
     // Memory
     void            (NRI_CALL *GetAccelerationStructureMemoryDesc)                  (const NriRef(AccelerationStructure) accelerationStructure, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc);
     void            (NRI_CALL *GetAccelerationStructureMemoryDesc2)                 (const NriRef(Device) device, const NriRef(AccelerationStructureDesc) accelerationStructureDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "features.getMemoryDesc2"
     Nri(Result)     (NRI_CALL *BindAccelerationStructureMemory)                     (NriRef(Device) device, const NriPtr(AccelerationStructureMemoryBindingDesc) memoryBindingDescs, uint32_t memoryBindingDescNum);
+
     void            (NRI_CALL *GetMicromapMemoryDesc)                               (const NriRef(Micromap) micromap, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc);
     void            (NRI_CALL *GetMicromapMemoryDesc2)                              (const NriRef(Device) device, const NriRef(MicromapDesc) micromapDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "features.getMemoryDesc2"
     Nri(Result)     (NRI_CALL *BindMicromapMemory)                                  (NriRef(Device) device, const NriPtr(MicromapMemoryBindingDesc) memoryBindingDescs, uint32_t memoryBindingDescNum);
@@ -378,8 +379,8 @@ NriStruct(RayTracingInterface) {
     // }
 
     // Native object
-    uint64_t        (NRI_CALL* GetAccelerationStructureNativeObject)                (const NriRef(AccelerationStructure) accelerationStructure); // ID3D12Resource* or VkAccelerationStructureKHR
-    uint64_t        (NRI_CALL* GetMicromapNativeObject)                             (const NriRef(Micromap) micromap);                           // ID3D12Resource* or VkMicromapEXT
+    uint64_t        (NRI_CALL* GetAccelerationStructureNativeObject)                (const NriPtr(AccelerationStructure) accelerationStructure); // ID3D12Resource* or VkAccelerationStructureKHR
+    uint64_t        (NRI_CALL* GetMicromapNativeObject)                             (const NriPtr(Micromap) micromap);                           // ID3D12Resource* or VkMicromapEXT
 };
 
 NriNamespaceEnd

@@ -56,7 +56,7 @@ NriStruct(StreamTextureDataDesc) {
 // Threadsafe: yes
 NriStruct(StreamerInterface) {
     Nri(Result)         (NRI_CALL *CreateStreamer)              (NriRef(Device) device, const NriRef(StreamerDesc) streamerDesc, NriOut NriRef(Streamer*) streamer);
-    void                (NRI_CALL *DestroyStreamer)             (NriRef(Streamer) streamer);
+    void                (NRI_CALL *DestroyStreamer)             (NriPtr(Streamer) streamer);
 
     // Statically allocated (never changes)
     NriPtr(Buffer)      (NRI_CALL *GetStreamerConstantBuffer)   (NriRef(Streamer) streamer);

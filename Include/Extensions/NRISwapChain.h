@@ -104,7 +104,7 @@ NriStruct(DisplayDesc) {
 // Threadsafe: yes
 NriStruct(SwapChainInterface) {
     Nri(Result)             (NRI_CALL *CreateSwapChain)         (NriRef(Device) device, const NriRef(SwapChainDesc) swapChainDesc, NriOut NriRef(SwapChain*) swapChain);
-    void                    (NRI_CALL *DestroySwapChain)        (NriRef(SwapChain) swapChain);
+    void                    (NRI_CALL *DestroySwapChain)        (NriPtr(SwapChain) swapChain);
     NriPtr(Texture) const*  (NRI_CALL *GetSwapChainTextures)    (const NriRef(SwapChain) swapChain, NriOut NonNriRef(uint32_t) textureNum);
 
     // Returns "FAILURE" if swap chain's window is outside of all monitors

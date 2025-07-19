@@ -314,18 +314,18 @@ struct ImDrawList {
 
 ImguiImpl::~ImguiImpl() {
     for (auto& entry : m_Textures) {
-        m_iCore.DestroyDescriptor(*entry.second.descriptor);
-        m_iCore.DestroyTexture(*entry.second.texture);
+        m_iCore.DestroyDescriptor(entry.second.descriptor);
+        m_iCore.DestroyTexture(entry.second.texture);
 
         // TODO: need to update "ImTextureData"? saving a pointer to do this is invalid since its memory state is unknown
     }
 
     for (const ImguiPipeline& entry : m_Pipelines)
-        m_iCore.DestroyPipeline(*entry.pipeline);
+        m_iCore.DestroyPipeline(entry.pipeline);
 
-    m_iCore.DestroyPipelineLayout(*m_PipelineLayout);
-    m_iCore.DestroyDescriptorPool(*m_DescriptorPool);
-    m_iCore.DestroyDescriptor(*m_Sampler);
+    m_iCore.DestroyPipelineLayout(m_PipelineLayout);
+    m_iCore.DestroyDescriptorPool(m_DescriptorPool);
+    m_iCore.DestroyDescriptor(m_Sampler);
 }
 
 Result ImguiImpl::Create(const ImguiDesc& imguiDesc) {
@@ -475,8 +475,8 @@ void ImguiImpl::CmdCopyData(CommandBuffer& commandBuffer, Streamer& streamer, co
 
                 // TODO: this is valid only in the current frame. Otherwise an "ImguiImpl" instance can get a zombie texture in "m_Textures" because
                 // starting from the next frame "copyImguiDataDesc.textures" won't contain textures with "ImTextureStatus_Destroyed" status
-                m_iCore.DestroyDescriptor(*imguiTexture.descriptor);
-                m_iCore.DestroyTexture(*imguiTexture.texture);
+                m_iCore.DestroyDescriptor(imguiTexture.descriptor);
+                m_iCore.DestroyTexture(imguiTexture.texture);
 
                 m_Textures.erase(key);
 

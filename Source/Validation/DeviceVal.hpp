@@ -107,9 +107,9 @@ NRI_INLINE Result DeviceVal::CreateSwapChain(const SwapChainDesc& swapChainDesc,
     return result;
 }
 
-NRI_INLINE void DeviceVal::DestroySwapChain(SwapChain& swapChain) {
-    m_iSwapChainImpl.DestroySwapChain(*NRI_GET_IMPL(SwapChain, &swapChain));
-    Destroy((SwapChainVal*)&swapChain);
+NRI_INLINE void DeviceVal::DestroySwapChain(SwapChain* swapChain) {
+    m_iSwapChainImpl.DestroySwapChain(NRI_GET_IMPL(SwapChain, swapChain));
+    Destroy((SwapChainVal*)swapChain);
 }
 
 NRI_INLINE Result DeviceVal::GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue) {
@@ -131,7 +131,7 @@ NRI_INLINE Result DeviceVal::GetQueue(QueueType queueType, uint32_t queueIndex, 
 }
 
 NRI_INLINE Result DeviceVal::WaitIdle() {
-    return GetCoreInterfaceImpl().DeviceWaitIdle(m_Impl);
+    return GetCoreInterfaceImpl().DeviceWaitIdle(&m_Impl);
 }
 
 NRI_INLINE Result DeviceVal::CreateCommandAllocator(const Queue& queue, CommandAllocator*& commandAllocator) {
@@ -544,54 +544,54 @@ NRI_INLINE Result DeviceVal::CreateFence(uint64_t initialValue, Fence*& fence) {
     return result;
 }
 
-NRI_INLINE void DeviceVal::DestroyCommandBuffer(CommandBuffer& commandBuffer) {
-    m_iCoreImpl.DestroyCommandBuffer(*NRI_GET_IMPL(CommandBuffer, &commandBuffer));
-    Destroy((CommandBufferVal*)&commandBuffer);
+NRI_INLINE void DeviceVal::DestroyCommandBuffer(CommandBuffer* commandBuffer) {
+    m_iCoreImpl.DestroyCommandBuffer(NRI_GET_IMPL(CommandBuffer, commandBuffer));
+    Destroy((CommandBufferVal*)commandBuffer);
 }
 
-NRI_INLINE void DeviceVal::DestroyCommandAllocator(CommandAllocator& commandAllocator) {
-    m_iCoreImpl.DestroyCommandAllocator(*NRI_GET_IMPL(CommandAllocator, &commandAllocator));
-    Destroy((CommandAllocatorVal*)&commandAllocator);
+NRI_INLINE void DeviceVal::DestroyCommandAllocator(CommandAllocator* commandAllocator) {
+    m_iCoreImpl.DestroyCommandAllocator(NRI_GET_IMPL(CommandAllocator, commandAllocator));
+    Destroy((CommandAllocatorVal*)commandAllocator);
 }
 
-NRI_INLINE void DeviceVal::DestroyDescriptorPool(DescriptorPool& descriptorPool) {
-    m_iCoreImpl.DestroyDescriptorPool(*NRI_GET_IMPL(DescriptorPool, &descriptorPool));
-    Destroy((DescriptorPoolVal*)&descriptorPool);
+NRI_INLINE void DeviceVal::DestroyDescriptorPool(DescriptorPool* descriptorPool) {
+    m_iCoreImpl.DestroyDescriptorPool(NRI_GET_IMPL(DescriptorPool, descriptorPool));
+    Destroy((DescriptorPoolVal*)descriptorPool);
 }
 
-NRI_INLINE void DeviceVal::DestroyBuffer(Buffer& buffer) {
-    m_iCoreImpl.DestroyBuffer(*NRI_GET_IMPL(Buffer, &buffer));
-    Destroy((BufferVal*)&buffer);
+NRI_INLINE void DeviceVal::DestroyBuffer(Buffer* buffer) {
+    m_iCoreImpl.DestroyBuffer(NRI_GET_IMPL(Buffer, buffer));
+    Destroy((BufferVal*)buffer);
 }
 
-NRI_INLINE void DeviceVal::DestroyTexture(Texture& texture) {
-    m_iCoreImpl.DestroyTexture(*NRI_GET_IMPL(Texture, &texture));
-    Destroy((TextureVal*)&texture);
+NRI_INLINE void DeviceVal::DestroyTexture(Texture* texture) {
+    m_iCoreImpl.DestroyTexture(NRI_GET_IMPL(Texture, texture));
+    Destroy((TextureVal*)texture);
 }
 
-NRI_INLINE void DeviceVal::DestroyDescriptor(Descriptor& descriptor) {
-    m_iCoreImpl.DestroyDescriptor(*NRI_GET_IMPL(Descriptor, &descriptor));
-    Destroy((DescriptorVal*)&descriptor);
+NRI_INLINE void DeviceVal::DestroyDescriptor(Descriptor* descriptor) {
+    m_iCoreImpl.DestroyDescriptor(NRI_GET_IMPL(Descriptor, descriptor));
+    Destroy((DescriptorVal*)descriptor);
 }
 
-NRI_INLINE void DeviceVal::DestroyPipelineLayout(PipelineLayout& pipelineLayout) {
-    m_iCoreImpl.DestroyPipelineLayout(*NRI_GET_IMPL(PipelineLayout, &pipelineLayout));
-    Destroy((PipelineLayoutVal*)&pipelineLayout);
+NRI_INLINE void DeviceVal::DestroyPipelineLayout(PipelineLayout* pipelineLayout) {
+    m_iCoreImpl.DestroyPipelineLayout(NRI_GET_IMPL(PipelineLayout, pipelineLayout));
+    Destroy((PipelineLayoutVal*)pipelineLayout);
 }
 
-NRI_INLINE void DeviceVal::DestroyPipeline(Pipeline& pipeline) {
-    m_iCoreImpl.DestroyPipeline(*NRI_GET_IMPL(Pipeline, &pipeline));
-    Destroy((PipelineVal*)&pipeline);
+NRI_INLINE void DeviceVal::DestroyPipeline(Pipeline* pipeline) {
+    m_iCoreImpl.DestroyPipeline(NRI_GET_IMPL(Pipeline, pipeline));
+    Destroy((PipelineVal*)pipeline);
 }
 
-NRI_INLINE void DeviceVal::DestroyQueryPool(QueryPool& queryPool) {
-    m_iCoreImpl.DestroyQueryPool(*NRI_GET_IMPL(QueryPool, &queryPool));
-    Destroy((QueryPoolVal*)&queryPool);
+NRI_INLINE void DeviceVal::DestroyQueryPool(QueryPool* queryPool) {
+    m_iCoreImpl.DestroyQueryPool(NRI_GET_IMPL(QueryPool, queryPool));
+    Destroy((QueryPoolVal*)queryPool);
 }
 
-NRI_INLINE void DeviceVal::DestroyFence(Fence& fence) {
-    m_iCoreImpl.DestroyFence(*NRI_GET_IMPL(Fence, &fence));
-    Destroy((FenceVal*)&fence);
+NRI_INLINE void DeviceVal::DestroyFence(Fence* fence) {
+    m_iCoreImpl.DestroyFence(NRI_GET_IMPL(Fence, fence));
+    Destroy((FenceVal*)fence);
 }
 
 NRI_INLINE Result DeviceVal::AllocateMemory(const AllocateMemoryDesc& allocateMemoryDesc, Memory*& memory) {
@@ -706,17 +706,19 @@ NRI_INLINE Result DeviceVal::BindTextureMemory(const TextureMemoryBindingDesc* m
     return result;
 }
 
-NRI_INLINE void DeviceVal::FreeMemory(Memory& memory) {
-    MemoryVal& memoryVal = (MemoryVal&)memory;
+NRI_INLINE void DeviceVal::FreeMemory(Memory* memory) {
+    MemoryVal* memoryVal = (MemoryVal*)memory;
+    if (!memoryVal)
+        return;
 
-    if (memoryVal.HasBoundResources()) {
-        memoryVal.ReportBoundResources();
+    if (memoryVal->HasBoundResources()) {
+        memoryVal->ReportBoundResources();
         REPORT_ERROR(this, "some resources are still bound to the memory");
         return;
     }
 
-    m_iCoreImpl.FreeMemory(*NRI_GET_IMPL(Memory, &memory));
-    Destroy(&memoryVal);
+    m_iCoreImpl.FreeMemory(NRI_GET_IMPL(Memory, memory));
+    Destroy(memoryVal);
 }
 
 NRI_INLINE FormatSupportBits DeviceVal::GetFormatSupport(Format format) const {
@@ -1236,12 +1238,12 @@ NRI_INLINE Result DeviceVal::BindAccelerationStructureMemory(const AccelerationS
     return result;
 }
 
-NRI_INLINE void DeviceVal::DestroyAccelerationStructure(AccelerationStructure& accelerationStructure) {
-    m_iRayTracingImpl.DestroyAccelerationStructure(*NRI_GET_IMPL(AccelerationStructure, &accelerationStructure));
-    Destroy((AccelerationStructureVal*)&accelerationStructure);
+NRI_INLINE void DeviceVal::DestroyAccelerationStructure(AccelerationStructure* accelerationStructure) {
+    m_iRayTracingImpl.DestroyAccelerationStructure(NRI_GET_IMPL(AccelerationStructure, accelerationStructure));
+    Destroy((AccelerationStructureVal*)accelerationStructure);
 }
 
-NRI_INLINE void DeviceVal::DestroyMicromap(Micromap& micromap) {
-    m_iRayTracingImpl.DestroyMicromap(*NRI_GET_IMPL(Micromap, &micromap));
-    Destroy((MicromapVal*)&micromap);
+NRI_INLINE void DeviceVal::DestroyMicromap(Micromap* micromap) {
+    m_iRayTracingImpl.DestroyMicromap(NRI_GET_IMPL(Micromap, micromap));
+    Destroy((MicromapVal*)micromap);
 }

@@ -24,7 +24,7 @@ struct BufferVal final : public ObjectVal {
     }
 
     inline uint64_t GetNativeObject() const {
-        return GetCoreInterfaceImpl().GetBufferNativeObject(*GetImpl());
+        return GetCoreInterfaceImpl().GetBufferNativeObject(GetImpl());
     }
 
     inline bool IsBoundToMemory() const {

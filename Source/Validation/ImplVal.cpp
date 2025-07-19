@@ -184,74 +184,54 @@ static Result NRI_CALL CreateTexture3DView(const Texture3DViewDesc& textureViewD
     return device.CreateDescriptor(textureViewDesc, textureView);
 }
 
-static void NRI_CALL DestroyCommandAllocator(CommandAllocator& commandAllocator) {
-    if (!(&commandAllocator))
-        return;
-
-    GetDeviceVal(commandAllocator).DestroyCommandAllocator(commandAllocator);
+static void NRI_CALL DestroyCommandAllocator(CommandAllocator* commandAllocator) {
+    if (commandAllocator)
+        GetDeviceVal(*commandAllocator).DestroyCommandAllocator(commandAllocator);
 }
 
-static void NRI_CALL DestroyCommandBuffer(CommandBuffer& commandBuffer) {
-    if (!(&commandBuffer))
-        return;
-
-    GetDeviceVal(commandBuffer).DestroyCommandBuffer(commandBuffer);
+static void NRI_CALL DestroyCommandBuffer(CommandBuffer* commandBuffer) {
+    if (commandBuffer)
+        GetDeviceVal(*commandBuffer).DestroyCommandBuffer(commandBuffer);
 }
 
-static void NRI_CALL DestroyDescriptorPool(DescriptorPool& descriptorPool) {
-    if (!(&descriptorPool))
-        return;
-
-    GetDeviceVal(descriptorPool).DestroyDescriptorPool(descriptorPool);
+static void NRI_CALL DestroyDescriptorPool(DescriptorPool* descriptorPool) {
+    if (descriptorPool)
+        GetDeviceVal(*descriptorPool).DestroyDescriptorPool(descriptorPool);
 }
 
-static void NRI_CALL DestroyBuffer(Buffer& buffer) {
-    if (!(&buffer))
-        return;
-
-    GetDeviceVal(buffer).DestroyBuffer(buffer);
+static void NRI_CALL DestroyBuffer(Buffer* buffer) {
+    if (buffer)
+        GetDeviceVal(*buffer).DestroyBuffer(buffer);
 }
 
-static void NRI_CALL DestroyTexture(Texture& texture) {
-    if (!(&texture))
-        return;
-
-    GetDeviceVal(texture).DestroyTexture(texture);
+static void NRI_CALL DestroyTexture(Texture* texture) {
+    if (texture)
+        GetDeviceVal(*texture).DestroyTexture(texture);
 }
 
-static void NRI_CALL DestroyDescriptor(Descriptor& descriptor) {
-    if (!(&descriptor))
-        return;
-
-    GetDeviceVal(descriptor).DestroyDescriptor(descriptor);
+static void NRI_CALL DestroyDescriptor(Descriptor* descriptor) {
+    if (descriptor)
+        GetDeviceVal(*descriptor).DestroyDescriptor(descriptor);
 }
 
-static void NRI_CALL DestroyPipelineLayout(PipelineLayout& pipelineLayout) {
-    if (!(&pipelineLayout))
-        return;
-
-    GetDeviceVal(pipelineLayout).DestroyPipelineLayout(pipelineLayout);
+static void NRI_CALL DestroyPipelineLayout(PipelineLayout* pipelineLayout) {
+    if (pipelineLayout)
+        GetDeviceVal(*pipelineLayout).DestroyPipelineLayout(pipelineLayout);
 }
 
-static void NRI_CALL DestroyPipeline(Pipeline& pipeline) {
-    if (!(&pipeline))
-        return;
-
-    GetDeviceVal(pipeline).DestroyPipeline(pipeline);
+static void NRI_CALL DestroyPipeline(Pipeline* pipeline) {
+    if (pipeline)
+        GetDeviceVal(*pipeline).DestroyPipeline(pipeline);
 }
 
-static void NRI_CALL DestroyQueryPool(QueryPool& queryPool) {
-    if (!(&queryPool))
-        return;
-
-    GetDeviceVal(queryPool).DestroyQueryPool(queryPool);
+static void NRI_CALL DestroyQueryPool(QueryPool* queryPool) {
+    if (queryPool)
+        GetDeviceVal(*queryPool).DestroyQueryPool(queryPool);
 }
 
-static void NRI_CALL DestroyFence(Fence& fence) {
-    if (!(&fence))
-        return;
-
-    GetDeviceVal(fence).DestroyFence(fence);
+static void NRI_CALL DestroyFence(Fence* fence) {
+    if (fence)
+        GetDeviceVal(*fence).DestroyFence(fence);
 }
 
 static Result NRI_CALL AllocateMemory(Device& device, const AllocateMemoryDesc& allocateMemoryDesc, Memory*& memory) {
@@ -266,11 +246,9 @@ static Result NRI_CALL BindTextureMemory(Device& device, const TextureMemoryBind
     return ((DeviceVal&)device).BindTextureMemory(memoryBindingDescs, memoryBindingDescNum);
 }
 
-static void NRI_CALL FreeMemory(Memory& memory) {
-    if (!(&memory))
-        return;
-
-    GetDeviceVal(memory).FreeMemory(memory);
+static void NRI_CALL FreeMemory(Memory* memory) {
+    if (memory)
+        GetDeviceVal(*memory).FreeMemory(memory);
 }
 
 static Result NRI_CALL BeginCommandBuffer(CommandBuffer& commandBuffer, const DescriptorPool* descriptorPool) {
@@ -461,18 +439,18 @@ static Result NRI_CALL QueueSubmit(Queue& queue, const QueueSubmitDesc& queueSub
     return ((QueueVal&)queue).Submit(queueSubmitDesc, nullptr);
 }
 
-static Result NRI_CALL DeviceWaitIdle(Device& device) {
-    if (!(&device))
+static Result NRI_CALL DeviceWaitIdle(Device* device) {
+    if (!device)
         return Result::SUCCESS;
 
-    return ((DeviceVal&)device).WaitIdle();
+    return ((DeviceVal*)device)->WaitIdle();
 }
 
-static Result NRI_CALL QueueWaitIdle(Queue& queue) {
-    if (!(&queue))
+static Result NRI_CALL QueueWaitIdle(Queue* queue) {
+    if (!queue)
         return Result::SUCCESS;
 
-    return ((QueueVal&)queue).WaitIdle();
+    return ((QueueVal*)queue)->WaitIdle();
 }
 
 static void NRI_CALL Wait(Fence& fence, uint64_t value) {
@@ -518,46 +496,46 @@ static void NRI_CALL SetDebugName(Object* object, const char* name) {
     }
 }
 
-static void* NRI_CALL GetDeviceNativeObject(const Device& device) {
-    if (!(&device))
+static void* NRI_CALL GetDeviceNativeObject(const Device* device) {
+    if (!device)
         return nullptr;
 
-    return ((DeviceVal&)device).GetNativeObject();
+    return ((DeviceVal*)device)->GetNativeObject();
 }
 
-static void* NRI_CALL GetQueueNativeObject(const Queue& queue) {
-    if (!(&queue))
+static void* NRI_CALL GetQueueNativeObject(const Queue* queue) {
+    if (!queue)
         return nullptr;
 
-    return ((QueueVal&)queue).GetNativeObject();
+    return ((QueueVal*)queue)->GetNativeObject();
 }
 
-static void* NRI_CALL GetCommandBufferNativeObject(const CommandBuffer& commandBuffer) {
-    if (!(&commandBuffer))
+static void* NRI_CALL GetCommandBufferNativeObject(const CommandBuffer* commandBuffer) {
+    if (!commandBuffer)
         return nullptr;
 
-    return ((CommandBufferVal&)commandBuffer).GetNativeObject();
+    return ((CommandBufferVal*)commandBuffer)->GetNativeObject();
 }
 
-static uint64_t NRI_CALL GetBufferNativeObject(const Buffer& buffer) {
-    if (!(&buffer))
+static uint64_t NRI_CALL GetBufferNativeObject(const Buffer* buffer) {
+    if (!buffer)
         return 0;
 
-    return ((BufferVal&)buffer).GetNativeObject();
+    return ((BufferVal*)buffer)->GetNativeObject();
 }
 
-static uint64_t NRI_CALL GetTextureNativeObject(const Texture& texture) {
-    if (!(&texture))
+static uint64_t NRI_CALL GetTextureNativeObject(const Texture* texture) {
+    if (!texture)
         return 0;
 
-    return ((TextureVal&)texture).GetNativeObject();
+    return ((TextureVal*)texture)->GetNativeObject();
 }
 
-static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor& descriptor) {
-    if (!(&descriptor))
+static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor* descriptor) {
+    if (!descriptor)
         return 0;
 
-    return ((DescriptorVal&)descriptor).GetNativeObject();
+    return ((DescriptorVal*)descriptor)->GetNativeObject();
 }
 
 Result DeviceVal::FillFunctionTable(CoreInterface& table) const {
@@ -822,15 +800,15 @@ static Result NRI_CALL CreateImgui(Device& device, const ImguiDesc& imguiDesc, I
     return result;
 }
 
-static void NRI_CALL DestroyImgui(Imgui& imgui) {
-    if (!(&imgui))
+static void NRI_CALL DestroyImgui(Imgui* imgui) {
+    if (!imgui)
         return;
 
-    ImguiVal& imguiVal = (ImguiVal&)imgui;
-    ImguiImpl* imguiImpl = imguiVal.GetImpl();
+    ImguiVal* imguiVal = (ImguiVal*)imgui;
+    ImguiImpl* imguiImpl = imguiVal->GetImpl();
 
     Destroy(imguiImpl);
-    Destroy(&imguiVal);
+    Destroy(imguiVal);
 }
 
 static void NRI_CALL CmdCopyImguiData(CommandBuffer& commandBuffer, Streamer& streamer, Imgui& imgui, const CopyImguiDataDesc& copyImguiDataDesc) {
@@ -964,18 +942,14 @@ static Buffer* NRI_CALL GetMicromapBuffer(const Micromap& micromap) {
     return ((MicromapVal&)micromap).GetBuffer();
 }
 
-static void NRI_CALL DestroyAccelerationStructure(AccelerationStructure& accelerationStructure) {
-    if (!(&accelerationStructure))
-        return;
-
-    GetDeviceVal(accelerationStructure).DestroyAccelerationStructure(accelerationStructure);
+static void NRI_CALL DestroyAccelerationStructure(AccelerationStructure* accelerationStructure) {
+    if (accelerationStructure)
+        GetDeviceVal(*accelerationStructure).DestroyAccelerationStructure(accelerationStructure);
 }
 
-static void NRI_CALL DestroyMicromap(Micromap& micromap) {
-    if (!(&micromap))
-        return;
-
-    GetDeviceVal(micromap).DestroyMicromap(micromap);
+static void NRI_CALL DestroyMicromap(Micromap* micromap) {
+    if (micromap)
+        GetDeviceVal(*micromap).DestroyMicromap(micromap);
 }
 
 static void NRI_CALL GetAccelerationStructureMemoryDesc(const AccelerationStructure& accelerationStructure, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
@@ -1086,12 +1060,18 @@ static void NRI_CALL CmdCopyMicromap(CommandBuffer& commandBuffer, Micromap& dst
     ((CommandBufferVal&)commandBuffer).CopyMicromap(dst, src, copyMode);
 }
 
-static uint64_t NRI_CALL GetAccelerationStructureNativeObject(const AccelerationStructure& accelerationStructure) {
-    return ((AccelerationStructureVal&)accelerationStructure).GetNativeObject();
+static uint64_t NRI_CALL GetAccelerationStructureNativeObject(const AccelerationStructure* accelerationStructure) {
+    if (!accelerationStructure)
+        return 0;
+
+    return ((AccelerationStructureVal*)accelerationStructure)->GetNativeObject();
 }
 
-static uint64_t NRI_CALL GetMicromapNativeObject(const Micromap& micromap) {
-    return ((MicromapVal&)micromap).GetNativeObject();
+static uint64_t NRI_CALL GetMicromapNativeObject(const Micromap* micromap) {
+    if (!micromap)
+        return 0;
+
+    return ((MicromapVal*)micromap)->GetNativeObject();
 }
 
 Result DeviceVal::FillFunctionTable(RayTracingInterface& table) const {
@@ -1201,15 +1181,15 @@ static Result NRI_CALL CreateStreamer(Device& device, const StreamerDesc& stream
     return result;
 }
 
-static void NRI_CALL DestroyStreamer(Streamer& streamer) {
-    if (!(&streamer))
+static void NRI_CALL DestroyStreamer(Streamer* streamer) {
+    if (!streamer)
         return;
 
-    StreamerVal& streamerVal = (StreamerVal&)streamer;
-    StreamerImpl* streamerImpl = streamerVal.GetImpl();
+    StreamerVal* streamerVal = (StreamerVal*)streamer;
+    StreamerImpl* streamerImpl = streamerVal->GetImpl();
 
     Destroy(streamerImpl);
-    Destroy(&streamerVal);
+    Destroy(streamerVal);
 }
 
 static Buffer* NRI_CALL GetStreamerConstantBuffer(Streamer& streamer) {
@@ -1297,11 +1277,9 @@ static Result NRI_CALL CreateSwapChain(Device& device, const SwapChainDesc& swap
     return ((DeviceVal&)device).CreateSwapChain(swapChainDesc, swapChain);
 }
 
-static void NRI_CALL DestroySwapChain(SwapChain& swapChain) {
-    if (!(&swapChain))
-        return;
-
-    GetDeviceVal(swapChain).DestroySwapChain(swapChain);
+static void NRI_CALL DestroySwapChain(SwapChain* swapChain) {
+    if (swapChain)
+        GetDeviceVal(*swapChain).DestroySwapChain(swapChain);
 }
 
 static Texture* const* NRI_CALL GetSwapChainTextures(const SwapChain& swapChain, uint32_t& textureNum) {
@@ -1372,15 +1350,15 @@ static Result NRI_CALL CreateUpscaler(Device& device, const UpscalerDesc& upscal
     return result;
 }
 
-static void NRI_CALL DestroyUpscaler(Upscaler& upscaler) {
-    if (!(&upscaler))
+static void NRI_CALL DestroyUpscaler(Upscaler* upscaler) {
+    if (!upscaler)
         return;
 
-    UpscalerVal& upscalerVal = (UpscalerVal&)upscaler;
-    UpscalerImpl* upscalerImpl = upscalerVal.GetImpl();
+    UpscalerVal* upscalerVal = (UpscalerVal*)upscaler;
+    UpscalerImpl* upscalerImpl = upscalerVal->GetImpl();
 
     Destroy(upscalerImpl);
-    Destroy(&upscalerVal);
+    Destroy(upscalerVal);
 }
 
 static bool NRI_CALL IsUpscalerSupported(const Device& device, UpscalerType upscalerType) {

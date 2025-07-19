@@ -350,34 +350,34 @@ static Result NRI_CALL CreateTexture3DView(const Texture3DViewDesc&, Descriptor*
     return Result::SUCCESS;
 }
 
-static void NRI_CALL DestroyCommandAllocator(CommandAllocator&) {
+static void NRI_CALL DestroyCommandAllocator(CommandAllocator*) {
 }
 
-static void NRI_CALL DestroyCommandBuffer(CommandBuffer&) {
+static void NRI_CALL DestroyCommandBuffer(CommandBuffer*) {
 }
 
-static void NRI_CALL DestroyDescriptorPool(DescriptorPool&) {
+static void NRI_CALL DestroyDescriptorPool(DescriptorPool*) {
 }
 
-static void NRI_CALL DestroyBuffer(Buffer&) {
+static void NRI_CALL DestroyBuffer(Buffer*) {
 }
 
-static void NRI_CALL DestroyTexture(Texture&) {
+static void NRI_CALL DestroyTexture(Texture*) {
 }
 
-static void NRI_CALL DestroyDescriptor(Descriptor&) {
+static void NRI_CALL DestroyDescriptor(Descriptor*) {
 }
 
-static void NRI_CALL DestroyPipelineLayout(PipelineLayout&) {
+static void NRI_CALL DestroyPipelineLayout(PipelineLayout*) {
 }
 
-static void NRI_CALL DestroyPipeline(Pipeline&) {
+static void NRI_CALL DestroyPipeline(Pipeline*) {
 }
 
-static void NRI_CALL DestroyQueryPool(QueryPool&) {
+static void NRI_CALL DestroyQueryPool(QueryPool*) {
 }
 
-static void NRI_CALL DestroyFence(Fence&) {
+static void NRI_CALL DestroyFence(Fence*) {
 }
 
 static Result NRI_CALL AllocateMemory(Device&, const AllocateMemoryDesc&, Memory*& memory) {
@@ -394,7 +394,7 @@ static Result NRI_CALL BindTextureMemory(Device&, const TextureMemoryBindingDesc
     return Result::SUCCESS;
 }
 
-static void NRI_CALL FreeMemory(Memory&) {
+static void NRI_CALL FreeMemory(Memory*) {
 }
 
 static Result NRI_CALL BeginCommandBuffer(CommandBuffer&, const DescriptorPool*) {
@@ -541,11 +541,11 @@ static Result NRI_CALL QueueSubmit(Queue&, const QueueSubmitDesc&) {
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL DeviceWaitIdle(Device&) {
+static Result NRI_CALL DeviceWaitIdle(Device*) {
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL QueueWaitIdle(Queue&) {
+static Result NRI_CALL QueueWaitIdle(Queue*) {
     return Result::SUCCESS;
 }
 
@@ -581,27 +581,27 @@ static void NRI_CALL UnmapBuffer(Buffer&) {
 static void NRI_CALL SetDebugName(Object*, const char*) {
 }
 
-static void* NRI_CALL GetDeviceNativeObject(const Device&) {
+static void* NRI_CALL GetDeviceNativeObject(const Device*) {
     return nullptr;
 }
 
-static void* NRI_CALL GetQueueNativeObject(const Queue&) {
+static void* NRI_CALL GetQueueNativeObject(const Queue*) {
     return nullptr;
 }
 
-static void* NRI_CALL GetCommandBufferNativeObject(const CommandBuffer&) {
+static void* NRI_CALL GetCommandBufferNativeObject(const CommandBuffer*) {
     return nullptr;
 }
 
-static uint64_t NRI_CALL GetBufferNativeObject(const Buffer&) {
+static uint64_t NRI_CALL GetBufferNativeObject(const Buffer*) {
     return 0;
 }
 
-static uint64_t NRI_CALL GetTextureNativeObject(const Texture&) {
+static uint64_t NRI_CALL GetTextureNativeObject(const Texture*) {
     return 0;
 }
 
-static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor&) {
+static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor*) {
     return 0;
 }
 
@@ -760,7 +760,7 @@ static Result NRI_CALL CreateImgui(Device&, const ImguiDesc&, Imgui*& imgui) {
     return Result::SUCCESS;
 }
 
-static void NRI_CALL DestroyImgui(Imgui&) {
+static void NRI_CALL DestroyImgui(Imgui*) {
 }
 
 static void NRI_CALL CmdCopyImguiData(CommandBuffer&, Streamer&, Imgui&, const CopyImguiDataDesc&) {
@@ -886,10 +886,10 @@ static Buffer* NRI_CALL GetMicromapBuffer(const Micromap&) {
     return DummyObject<Buffer>();
 }
 
-static void NRI_CALL DestroyAccelerationStructure(AccelerationStructure&) {
+static void NRI_CALL DestroyAccelerationStructure(AccelerationStructure*) {
 }
 
-static void NRI_CALL DestroyMicromap(Micromap&) {
+static void NRI_CALL DestroyMicromap(Micromap*) {
 }
 
 static void NRI_CALL GetAccelerationStructureMemoryDesc(const AccelerationStructure&, MemoryLocation, MemoryDesc&) {
@@ -943,11 +943,11 @@ static void NRI_CALL CmdCopyAccelerationStructure(CommandBuffer&, AccelerationSt
 static void NRI_CALL CmdCopyMicromap(CommandBuffer&, Micromap&, const Micromap&, CopyMode) {
 }
 
-static uint64_t NRI_CALL GetAccelerationStructureNativeObject(const AccelerationStructure&) {
+static uint64_t NRI_CALL GetAccelerationStructureNativeObject(const AccelerationStructure*) {
     return 0;
 }
 
-static uint64_t NRI_CALL GetMicromapNativeObject(const Micromap&) {
+static uint64_t NRI_CALL GetMicromapNativeObject(const Micromap*) {
     return 0;
 }
 
@@ -1035,7 +1035,7 @@ static Result NRI_CALL CreateStreamer(Device&, const StreamerDesc&, Streamer*& s
     return Result::SUCCESS;
 }
 
-static void NRI_CALL DestroyStreamer(Streamer&) {
+static void NRI_CALL DestroyStreamer(Streamer*) {
 }
 
 static Buffer* NRI_CALL GetStreamerConstantBuffer(Streamer&) {
@@ -1084,7 +1084,7 @@ static Result NRI_CALL CreateSwapChain(Device&, const SwapChainDesc&, SwapChain*
     return Result::SUCCESS;
 }
 
-static void NRI_CALL DestroySwapChain(SwapChain&) {
+static void NRI_CALL DestroySwapChain(SwapChain*) {
 }
 
 static Texture* const* NRI_CALL GetSwapChainTextures(const SwapChain&, uint32_t& textureNum) {
@@ -1137,7 +1137,7 @@ static Result NRI_CALL CreateUpscaler(Device&, const UpscalerDesc&, Upscaler*& u
     return Result::SUCCESS;
 }
 
-static void NRI_CALL DestroyUpscaler(Upscaler&) {
+static void NRI_CALL DestroyUpscaler(Upscaler*) {
 }
 
 static bool NRI_CALL IsUpscalerSupported(const Device&, UpscalerType) {

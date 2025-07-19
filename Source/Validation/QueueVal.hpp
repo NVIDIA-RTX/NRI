@@ -43,5 +43,5 @@ NRI_INLINE Result QueueVal::Submit(const QueueSubmitDesc& queueSubmitDesc, const
 }
 
 NRI_INLINE Result QueueVal::WaitIdle() {
-    return GetCoreInterfaceImpl().QueueWaitIdle(*GetImpl());
+    return GetCoreInterfaceImpl().QueueWaitIdle(GetImpl());
 }

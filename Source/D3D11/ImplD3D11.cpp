@@ -171,48 +171,48 @@ static Result NRI_CALL CreateTexture3DView(const Texture3DViewDesc& textureViewD
     return device.CreateImplementation<DescriptorD3D11>(textureView, textureViewDesc);
 }
 
-static void NRI_CALL DestroyCommandAllocator(CommandAllocator& commandAllocator) {
-    Destroy((CommandAllocatorD3D11*)&commandAllocator);
+static void NRI_CALL DestroyCommandAllocator(CommandAllocator* commandAllocator) {
+    Destroy((CommandAllocatorD3D11*)commandAllocator);
 }
 
-static void NRI_CALL DestroyCommandBuffer(CommandBuffer& commandBuffer) {
-    if (!(&commandBuffer))
+static void NRI_CALL DestroyCommandBuffer(CommandBuffer* commandBuffer) {
+    if (!commandBuffer)
         return;
 
-    CommandBufferBase& commandBufferBase = (CommandBufferBase&)commandBuffer;
-    Destroy(commandBufferBase.GetAllocationCallbacks(), &commandBufferBase);
+    CommandBufferBase* commandBufferBase = (CommandBufferBase*)commandBuffer;
+    Destroy(commandBufferBase->GetAllocationCallbacks(), commandBufferBase);
 }
 
-static void NRI_CALL DestroyDescriptorPool(DescriptorPool& descriptorPool) {
-    Destroy((DescriptorPoolD3D11*)&descriptorPool);
+static void NRI_CALL DestroyDescriptorPool(DescriptorPool* descriptorPool) {
+    Destroy((DescriptorPoolD3D11*)descriptorPool);
 }
 
-static void NRI_CALL DestroyBuffer(Buffer& buffer) {
-    Destroy((BufferD3D11*)&buffer);
+static void NRI_CALL DestroyBuffer(Buffer* buffer) {
+    Destroy((BufferD3D11*)buffer);
 }
 
-static void NRI_CALL DestroyTexture(Texture& texture) {
-    Destroy((TextureD3D11*)&texture);
+static void NRI_CALL DestroyTexture(Texture* texture) {
+    Destroy((TextureD3D11*)texture);
 }
 
-static void NRI_CALL DestroyDescriptor(Descriptor& descriptor) {
-    Destroy((DescriptorD3D11*)&descriptor);
+static void NRI_CALL DestroyDescriptor(Descriptor* descriptor) {
+    Destroy((DescriptorD3D11*)descriptor);
 }
 
-static void NRI_CALL DestroyPipelineLayout(PipelineLayout& pipelineLayout) {
-    Destroy((PipelineLayoutD3D11*)&pipelineLayout);
+static void NRI_CALL DestroyPipelineLayout(PipelineLayout* pipelineLayout) {
+    Destroy((PipelineLayoutD3D11*)pipelineLayout);
 }
 
-static void NRI_CALL DestroyPipeline(Pipeline& pipeline) {
-    Destroy((PipelineD3D11*)&pipeline);
+static void NRI_CALL DestroyPipeline(Pipeline* pipeline) {
+    Destroy((PipelineD3D11*)pipeline);
 }
 
-static void NRI_CALL DestroyQueryPool(QueryPool& queryPool) {
-    Destroy((QueryPoolD3D11*)&queryPool);
+static void NRI_CALL DestroyQueryPool(QueryPool* queryPool) {
+    Destroy((QueryPoolD3D11*)queryPool);
 }
 
-static void NRI_CALL DestroyFence(Fence& fence) {
-    Destroy((FenceD3D11*)&fence);
+static void NRI_CALL DestroyFence(Fence* fence) {
+    Destroy((FenceD3D11*)fence);
 }
 
 static Result NRI_CALL AllocateMemory(Device& device, const AllocateMemoryDesc& allocateMemoryDesc, Memory*& memory) {
@@ -227,8 +227,8 @@ static Result NRI_CALL BindTextureMemory(Device& device, const TextureMemoryBind
     return ((DeviceD3D11&)device).BindTextureMemory(memoryBindingDescs, memoryBindingDescNum);
 }
 
-static void NRI_CALL FreeMemory(Memory& memory) {
-    Destroy((MemoryD3D11*)&memory);
+static void NRI_CALL FreeMemory(Memory* memory) {
+    Destroy((MemoryD3D11*)memory);
 }
 
 static Result NRI_CALL BeginCommandBuffer(CommandBuffer& commandBuffer, const DescriptorPool* descriptorPool) {
@@ -421,18 +421,18 @@ static Result NRI_CALL QueueSubmit(Queue& queue, const QueueSubmitDesc& queueSub
     return ((QueueD3D11&)queue).Submit(queueSubmitDesc);
 }
 
-static Result NRI_CALL DeviceWaitIdle(Device& device) {
-    if (!(&device))
+static Result NRI_CALL DeviceWaitIdle(Device* device) {
+    if (!device)
         return Result::SUCCESS;
 
-    return ((DeviceD3D11&)device).WaitIdle();
+    return ((DeviceD3D11*)device)->WaitIdle();
 }
 
-static Result NRI_CALL QueueWaitIdle(Queue& queue) {
-    if (!(&queue))
+static Result NRI_CALL QueueWaitIdle(Queue* queue) {
+    if (!queue)
         return Result::SUCCESS;
 
-    return ((QueueD3D11&)queue).WaitIdle();
+    return ((QueueD3D11*)queue)->WaitIdle();
 }
 
 static void NRI_CALL Wait(Fence& fence, uint64_t value) {
@@ -479,43 +479,43 @@ static void NRI_CALL SetDebugName(Object* object, const char* name) {
 #endif
 }
 
-static void* NRI_CALL GetDeviceNativeObject(const Device& device) {
-    if (!(&device))
+static void* NRI_CALL GetDeviceNativeObject(const Device* device) {
+    if (!device)
         return nullptr;
 
-    return ((DeviceD3D11&)device).GetNativeObject();
+    return ((DeviceD3D11*)device)->GetNativeObject();
 }
 
-static void* NRI_CALL GetQueueNativeObject(const Queue&) {
+static void* NRI_CALL GetQueueNativeObject(const Queue*) {
     return nullptr;
 }
 
-static void* NRI_CALL GetCommandBufferNativeObject(const CommandBuffer& commandBuffer) {
-    if (!(&commandBuffer))
+static void* NRI_CALL GetCommandBufferNativeObject(const CommandBuffer* commandBuffer) {
+    if (!commandBuffer)
         return nullptr;
 
-    return ((CommandBufferD3D11&)commandBuffer).GetNativeObject();
+    return ((CommandBufferD3D11*)commandBuffer)->GetNativeObject();
 }
 
-static uint64_t NRI_CALL GetBufferNativeObject(const Buffer& buffer) {
-    if (!(&buffer))
+static uint64_t NRI_CALL GetBufferNativeObject(const Buffer* buffer) {
+    if (!buffer)
         return 0;
 
-    return uint64_t((ID3D11Buffer*)((BufferD3D11&)buffer));
+    return uint64_t((ID3D11Buffer*)(*(BufferD3D11*)buffer));
 }
 
-static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor& descriptor) {
-    if (!(&descriptor))
+static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor* descriptor) {
+    if (!descriptor)
         return 0;
 
-    return uint64_t((ID3D11View*)((DescriptorD3D11&)descriptor));
+    return uint64_t((ID3D11View*)(*(DescriptorD3D11*)descriptor));
 }
 
-static uint64_t NRI_CALL GetTextureNativeObject(const Texture& texture) {
-    if (!(&texture))
+static uint64_t NRI_CALL GetTextureNativeObject(const Texture* texture) {
+    if (!texture)
         return 0;
 
-    return uint64_t((ID3D11Resource*)((TextureD3D11&)texture));
+    return uint64_t((ID3D11Resource*)(*(TextureD3D11*)texture));
 }
 
 // Command buffer emulation
@@ -693,12 +693,12 @@ static Result NRI_CALL EmuEndCommandBuffer(CommandBuffer& commandBuffer) {
     return ((CommandBufferEmuD3D11&)commandBuffer).End();
 }
 
-static void* NRI_CALL EmuGetCommandBufferNativeObject(const CommandBuffer& commandBuffer) {
-    if (!(&commandBuffer))
+static void* NRI_CALL EmuGetCommandBufferNativeObject(const CommandBuffer* commandBuffer) {
+    if (!commandBuffer)
         return nullptr;
 
-    CommandBufferBase& commandBufferBase = (CommandBufferBase&)commandBuffer;
-    return commandBufferBase.GetNativeObject();
+    CommandBufferBase* commandBufferBase = (CommandBufferBase*)commandBuffer;
+    return commandBufferBase->GetNativeObject();
 }
 
 Result DeviceD3D11::FillFunctionTable(CoreInterface& table) const {
@@ -921,8 +921,8 @@ static Result NRI_CALL CreateImgui(Device& device, const ImguiDesc& imguiDesc, I
     return result;
 }
 
-static void NRI_CALL DestroyImgui(Imgui& imgui) {
-    Destroy((ImguiImpl*)&imgui);
+static void NRI_CALL DestroyImgui(Imgui* imgui) {
+    Destroy((ImguiImpl*)imgui);
 }
 
 static void NRI_CALL CmdCopyImguiData(CommandBuffer& commandBuffer, Streamer& streamer, Imgui& imgui, const CopyImguiDataDesc& copyImguiDataDesc) {
@@ -1057,8 +1057,8 @@ static Result NRI_CALL CreateStreamer(Device& device, const StreamerDesc& stream
     return result;
 }
 
-static void NRI_CALL DestroyStreamer(Streamer& streamer) {
-    Destroy((StreamerImpl*)&streamer);
+static void NRI_CALL DestroyStreamer(Streamer* streamer) {
+    Destroy((StreamerImpl*)streamer);
 }
 
 static Buffer* NRI_CALL GetStreamerConstantBuffer(Streamer& streamer) {
@@ -1107,8 +1107,8 @@ static Result NRI_CALL CreateSwapChain(Device& device, const SwapChainDesc& swap
     return ((DeviceD3D11&)device).CreateImplementation<SwapChainD3D11>(swapChain, swapChainDesc);
 }
 
-static void NRI_CALL DestroySwapChain(SwapChain& swapChain) {
-    Destroy((SwapChainD3D11*)&swapChain);
+static void NRI_CALL DestroySwapChain(SwapChain* swapChain) {
+    Destroy((SwapChainD3D11*)swapChain);
 }
 
 static Texture* const* NRI_CALL GetSwapChainTextures(const SwapChain& swapChain, uint32_t& textureNum) {
@@ -1165,8 +1165,8 @@ static Result NRI_CALL CreateUpscaler(Device& device, const UpscalerDesc& upscal
     return result;
 }
 
-static void NRI_CALL DestroyUpscaler(Upscaler& upscaler) {
-    Destroy((UpscalerImpl*)&upscaler);
+static void NRI_CALL DestroyUpscaler(Upscaler* upscaler) {
+    Destroy((UpscalerImpl*)upscaler);
 }
 
 static bool NRI_CALL IsUpscalerSupported(const Device& device, UpscalerType upscalerType) {

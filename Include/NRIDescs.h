@@ -33,6 +33,7 @@
 // - always zero initialize structs via "{}" if designated initializers are not used (at least to honor "NriOptional")
 // - documentation is embedded (more details can be requested by creating a GitHub issue)
 // - data types are grouped into collapsible logical blocks via "#pragma region"
+// - in function declarations "NriRef" implies a valid object, "NriPtr" means "NULL" is allowed
 
 NriNamespaceBegin
 

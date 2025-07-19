@@ -24,7 +24,7 @@ struct TextureVal final : public ObjectVal {
     }
 
     inline uint64_t GetNativeObject() const {
-        return GetCoreInterfaceImpl().GetTextureNativeObject(*GetImpl());
+        return GetCoreInterfaceImpl().GetTextureNativeObject(GetImpl());
     }
 
     inline bool IsBoundToMemory() const {

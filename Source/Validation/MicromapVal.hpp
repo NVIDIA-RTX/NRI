@@ -14,7 +14,7 @@ NRI_INLINE uint64_t MicromapVal::GetBuildScratchBufferSize() const {
 NRI_INLINE uint64_t MicromapVal::GetNativeObject() const {
     RETURN_ON_FAILURE(&m_Device, IsBoundToMemory(), 0, "Micromap is not bound to memory");
 
-    return GetRayTracingInterfaceImpl().GetMicromapNativeObject(*GetImpl());
+    return GetRayTracingInterfaceImpl().GetMicromapNativeObject(GetImpl());
 }
 
 NRI_INLINE Buffer* MicromapVal::GetBuffer() {

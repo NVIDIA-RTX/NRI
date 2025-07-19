@@ -228,7 +228,7 @@ static inline FfxApiSurfaceFormat FfxConvertFormat(Format format) {
 
 static inline FfxApiResource FfxGetResource(const CoreInterface& NRI, const UpscalerResource& resource, bool isStorage = false) {
     FfxApiResource res{};
-    res.resource = (void*)NRI.GetTextureNativeObject(*resource.texture);
+    res.resource = (void*)NRI.GetTextureNativeObject(resource.texture);
     res.state = isStorage ? FFX_API_RESOURCE_STATE_UNORDERED_ACCESS : FFX_API_RESOURCE_STATE_COMPUTE_READ;
     res.description.flags = FFX_API_RESOURCE_FLAGS_NONE;
 
@@ -402,7 +402,7 @@ static inline NVSDK_NGX_Resource_VK NgxGetResource(const CoreInterface& NRI, con
         return {};
 
     const TextureDesc& textureDesc = NRI.GetTextureDesc(*resource.texture);
-    VkImageView view = (VkImageView)NRI.GetDescriptorNativeObject(*resource.descriptor);
+    VkImageView view = (VkImageView)NRI.GetDescriptorNativeObject(resource.descriptor);
     VkImageSubresourceRange subresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
     VkFormat format = (VkFormat)nriConvertNRIFormatToVK(textureDesc.format);
 
@@ -1035,7 +1035,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         { // Record creation commands
             ExclusiveScope lock(g_ngx.lock);
 
-            void* commandBufferNative = m_iCore.GetCommandBufferNativeObject(*commandBuffer);
+            void* commandBufferNative = m_iCore.GetCommandBufferNativeObject(commandBuffer);
 
             NVSDK_NGX_PerfQuality_Value qualityValue = NVSDK_NGX_PerfQuality_Value_UltraPerformance;
             if (upscalerDesc.mode == UpscalerMode::NATIVE) {
@@ -1269,12 +1269,12 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         const UpscalerGuides& guides = dispatchUpscaleDesc.guides.upscaler;
 
         xess_d3d12_execute_params_t executeParams = {};
-        executeParams.pColorTexture = (ID3D12Resource*)m_iCore.GetTextureNativeObject(*input.texture);
-        executeParams.pVelocityTexture = (ID3D12Resource*)m_iCore.GetTextureNativeObject(*guides.mv.texture);
-        executeParams.pDepthTexture = (ID3D12Resource*)m_iCore.GetTextureNativeObject(*guides.depth.texture);
-        executeParams.pExposureScaleTexture = (ID3D12Resource*)m_iCore.GetTextureNativeObject(*guides.exposure.texture);
-        executeParams.pResponsivePixelMaskTexture = (ID3D12Resource*)m_iCore.GetTextureNativeObject(*guides.reactive.texture);
-        executeParams.pOutputTexture = (ID3D12Resource*)m_iCore.GetTextureNativeObject(*output.texture);
+        executeParams.pColorTexture = (ID3D12Resource*)m_iCore.GetTextureNativeObject(input.texture);
+        executeParams.pVelocityTexture = (ID3D12Resource*)m_iCore.GetTextureNativeObject(guides.mv.texture);
+        executeParams.pDepthTexture = (ID3D12Resource*)m_iCore.GetTextureNativeObject(guides.depth.texture);
+        executeParams.pExposureScaleTexture = (ID3D12Resource*)m_iCore.GetTextureNativeObject(guides.exposure.texture);
+        executeParams.pResponsivePixelMaskTexture = (ID3D12Resource*)m_iCore.GetTextureNativeObject(guides.reactive.texture);
+        executeParams.pOutputTexture = (ID3D12Resource*)m_iCore.GetTextureNativeObject(output.texture);
         executeParams.jitterOffsetX = dispatchUpscaleDesc.cameraJitter.x;
         executeParams.jitterOffsetY = dispatchUpscaleDesc.cameraJitter.y;
         executeParams.exposureScale = 1.0f;
@@ -1296,12 +1296,12 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         const DeviceDesc& deviceDesc = m_iCore.GetDeviceDesc(m_Device);
         const UpscalerGuides& guides = dispatchUpscaleDesc.guides.upscaler;
 
-        uint64_t outputNative = m_iCore.GetTextureNativeObject(*output.texture);
-        uint64_t inputNative = m_iCore.GetTextureNativeObject(*input.texture);
-        uint64_t mvNative = m_iCore.GetTextureNativeObject(*guides.mv.texture);
-        uint64_t depthNative = m_iCore.GetTextureNativeObject(*guides.depth.texture);
-        uint64_t exposureNative = m_iCore.GetTextureNativeObject(*guides.exposure.texture);
-        uint64_t reactiveNative = m_iCore.GetTextureNativeObject(*guides.reactive.texture);
+        uint64_t outputNative = m_iCore.GetTextureNativeObject(output.texture);
+        uint64_t inputNative = m_iCore.GetTextureNativeObject(input.texture);
+        uint64_t mvNative = m_iCore.GetTextureNativeObject(guides.mv.texture);
+        uint64_t depthNative = m_iCore.GetTextureNativeObject(guides.depth.texture);
+        uint64_t exposureNative = m_iCore.GetTextureNativeObject(guides.exposure.texture);
+        uint64_t reactiveNative = m_iCore.GetTextureNativeObject(guides.reactive.texture);
 
         void* commandBufferNative = m_iCore.GetCommandBufferNativeObject(commandBuffer);
 
@@ -1383,17 +1383,17 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         const DeviceDesc& deviceDesc = m_iCore.GetDeviceDesc(m_Device);
         const DenoiserGuides& guides = dispatchUpscaleDesc.guides.denoiser;
 
-        uint64_t outputNative = m_iCore.GetTextureNativeObject(*output.texture);
-        uint64_t inputNative = m_iCore.GetTextureNativeObject(*input.texture);
-        uint64_t mvNative = m_iCore.GetTextureNativeObject(*guides.mv.texture);
-        uint64_t depthNative = m_iCore.GetTextureNativeObject(*guides.depth.texture);
-        uint64_t normalRoughnessNative = m_iCore.GetTextureNativeObject(*guides.normalRoughness.texture);
-        uint64_t diffuseAlbedoNative = m_iCore.GetTextureNativeObject(*guides.diffuseAlbedo.texture);
-        uint64_t specularAlbedoNative = m_iCore.GetTextureNativeObject(*guides.specularAlbedo.texture);
-        uint64_t specularMvOrHitTNative = m_iCore.GetTextureNativeObject(*guides.specularMvOrHitT.texture);
-        uint64_t exposureNative = m_iCore.GetTextureNativeObject(*guides.exposure.texture);
-        uint64_t reactiveNative = m_iCore.GetTextureNativeObject(*guides.reactive.texture);
-        uint64_t sssNative = m_iCore.GetTextureNativeObject(*guides.sss.texture);
+        uint64_t outputNative = m_iCore.GetTextureNativeObject(output.texture);
+        uint64_t inputNative = m_iCore.GetTextureNativeObject(input.texture);
+        uint64_t mvNative = m_iCore.GetTextureNativeObject(guides.mv.texture);
+        uint64_t depthNative = m_iCore.GetTextureNativeObject(guides.depth.texture);
+        uint64_t normalRoughnessNative = m_iCore.GetTextureNativeObject(guides.normalRoughness.texture);
+        uint64_t diffuseAlbedoNative = m_iCore.GetTextureNativeObject(guides.diffuseAlbedo.texture);
+        uint64_t specularAlbedoNative = m_iCore.GetTextureNativeObject(guides.specularAlbedo.texture);
+        uint64_t specularMvOrHitTNative = m_iCore.GetTextureNativeObject(guides.specularMvOrHitT.texture);
+        uint64_t exposureNative = m_iCore.GetTextureNativeObject(guides.exposure.texture);
+        uint64_t reactiveNative = m_iCore.GetTextureNativeObject(guides.reactive.texture);
+        uint64_t sssNative = m_iCore.GetTextureNativeObject(guides.sss.texture);
 
         void* commandBufferNative = m_iCore.GetCommandBufferNativeObject(commandBuffer);
 
