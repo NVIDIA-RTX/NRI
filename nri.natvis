@@ -120,7 +120,7 @@
     <Type Name="nri::Device">
         <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 80)} }}</DisplayString>
         <Expand>
-            <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(NriDeviceDesc*)((uint8_t*)this + 88)</Item>
+            <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(nri::DeviceDesc*)((uint8_t*)this + 88)</Item>
         </Expand>
     </Type>
     <Type Name="nri::Fence">
