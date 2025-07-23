@@ -157,6 +157,7 @@ NRI_INLINE void CommandBufferVal::ClearStorage(const ClearStorageDesc& clearDesc
     RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
     RETURN_ON_FAILURE(&m_Device, clearDesc.storage, ReturnVoid(), "'.storage' is NULL");
     RETURN_ON_FAILURE(&m_Device, descriptorVal.IsShaderResourceStorage(), ReturnVoid(), "'.storage' is not a 'SHADER_RESOURCE_STORAGE' resource");
+    // TODO: check that a descriptor set is bound, minimal tracking of sets is needed
 
     auto clearDescImpl = clearDesc;
     clearDescImpl.storage = NRI_GET_IMPL(Descriptor, clearDesc.storage);

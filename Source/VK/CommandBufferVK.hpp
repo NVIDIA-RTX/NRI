@@ -215,7 +215,7 @@ NRI_INLINE void CommandBufferVK::ClearStorage(const ClearStorageDesc& clearDesc)
 
         const VkClearColorValue* value = (VkClearColorValue*)&clearDesc.value;
         VkImageSubresourceRange range = storage.GetImageSubresourceRange();
-        vk.CmdClearColorImage(m_Handle, storage.GetImage(), IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, value, 1, &range);
+        vk.CmdClearColorImage(m_Handle, storage.GetImage(), VK_IMAGE_LAYOUT_GENERAL, value, 1, &range);
     }
 }
 
@@ -830,7 +830,7 @@ static inline VkAccessFlags2 GetAccessFlags(AccessBits accessBits) {
     if (accessBits & (AccessBits::COPY_SOURCE | AccessBits::RESOLVE_SOURCE))
         flags |= VK_ACCESS_2_TRANSFER_READ_BIT;
 
-    if (accessBits & (AccessBits::COPY_DESTINATION | AccessBits::RESOLVE_DESTINATION))
+    if (accessBits & (AccessBits::COPY_DESTINATION | AccessBits::RESOLVE_DESTINATION | AccessBits::CLEAR_STORAGE))
         flags |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
 
     return flags;

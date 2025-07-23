@@ -423,7 +423,6 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         # Generate "NRIAgilitySDK.h"
         file(WRITE Include/NRIAgilitySDK.h
             "// This file is auto-generated during project deployment. Do not modify!\n"
-            "#if NRI_ENABLE_AGILITY_SDK_SUPPORT\n\n"
             "#ifdef __cplusplus\n"
             "extern \"C\" {\n"
             "#endif\n\n"
@@ -431,7 +430,6 @@ if(NRI_ENABLE_D3D12_SUPPORT)
             "__declspec(dllexport) extern const char* D3D12SDKPath = \"${NRI_AGILITY_SDK_DIR}/\";\n\n"
             "#ifdef __cplusplus\n"
             "}\n"
-            "#endif\n\n"
             "#endif\n"
         )
     else()

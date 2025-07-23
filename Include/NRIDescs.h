@@ -435,7 +435,7 @@ NriBits(AccessBits, uint32_t,
 
     // Shader resource
     SHADER_RESOURCE                 = NriBit(13), // R   GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
-    SHADER_RESOURCE_STORAGE         = NriBit(14), // RW  GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS, CLEAR_STORAGE
+    SHADER_RESOURCE_STORAGE         = NriBit(14), // RW  GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS, CLEAR_STORAGE + shaders
     SHADER_BINDING_TABLE            = NriBit(15), // R   RAY_TRACING_SHADERS
 
     // Copy
@@ -444,7 +444,10 @@ NriBits(AccessBits, uint32_t,
 
     // Resolve
     RESOLVE_SOURCE                  = NriBit(18), // R   RESOLVE
-    RESOLVE_DESTINATION             = NriBit(19)  //  W  RESOLVE
+    RESOLVE_DESTINATION             = NriBit(19), //  W  RESOLVE
+
+    // Clear storage
+    CLEAR_STORAGE                   = NriBit(20)  //  W  CLEAR_STORAGE
 );
 
 // "Layout" is ignored if "features.enhancedBarriers" is not supported
@@ -1496,6 +1499,9 @@ NriStruct(ClearDesc) {
     uint32_t colorAttachmentIndex;
 };
 
+// Required synchronization
+// - variant 1: "SHADER_RESOURCE_STORAGE" access ("SHADER_RESOURCE_STORAGE" layout) and "CLEAR_STORAGE" stage + any shader stage (or "ALL")
+// - variant 2: "CLEAR_STORAGE" access ("SHADER_RESOURCE_STORAGE" layout) and "CLEAR_STORAGE" stage
 NriStruct(ClearStorageDesc) {
     // For any buffers and textures with integer formats:
     //  - Clears a storage view with bit-precise values, copying the lower "N" bits from "value.[f/ui/i].channel"

@@ -166,7 +166,7 @@ constexpr bool IsAccessMaskSupported(TextureUsageBits usage, AccessBits accessMa
         isSupported = false;
     if (accessMask & AccessBits::SHADER_RESOURCE)
         isSupported = isSupported && (usage & TextureUsageBits::SHADER_RESOURCE) != 0;
-    if (accessMask & AccessBits::SHADER_RESOURCE_STORAGE)
+    if (accessMask & (AccessBits::SHADER_RESOURCE_STORAGE | AccessBits::CLEAR_STORAGE))
         isSupported = isSupported && (usage & TextureUsageBits::SHADER_RESOURCE_STORAGE) != 0;
 
     return isSupported;

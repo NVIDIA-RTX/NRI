@@ -1,9 +1,5 @@
 // © 2021 NVIDIA Corporation
 
-#ifndef _WIN32
-#    include <cstdarg> // va_start, va_end
-#endif
-
 #include "SharedExternal.h"
 
 #include "HelperInterface.h"

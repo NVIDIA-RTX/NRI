@@ -646,6 +646,7 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
 
     if (!pipeline) {
         const DeviceDesc& deviceDesc = m_iCore.GetDeviceDesc(m_Device);
+        MaybeUnused(deviceDesc);
 
         ShaderDesc shaders[] = {
             {StageBits::VERTEX_SHADER, nullptr, 0},

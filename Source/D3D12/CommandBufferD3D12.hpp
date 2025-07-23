@@ -126,7 +126,7 @@ static inline D3D12_BARRIER_ACCESS GetBarrierAccessFlags(AccessBits accessBits) 
     if (accessBits & (AccessBits::SHADER_RESOURCE | AccessBits::SHADER_BINDING_TABLE))
         flags |= D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
 
-    if (accessBits & (AccessBits::SHADER_RESOURCE_STORAGE | AccessBits::SCRATCH_BUFFER))
+    if (accessBits & (AccessBits::SHADER_RESOURCE_STORAGE | AccessBits::SCRATCH_BUFFER | AccessBits::CLEAR_STORAGE))
         flags |= D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
 
     if (accessBits & AccessBits::COPY_SOURCE)
@@ -206,7 +206,7 @@ static inline D3D12_RESOURCE_STATES GetResourceStates(AccessBits accessBits, D3D
     if (accessBits & AccessBits::SHADER_BINDING_TABLE)
         resourceStates |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
 
-    if (accessBits & (AccessBits::SHADER_RESOURCE_STORAGE | AccessBits::SCRATCH_BUFFER))
+    if (accessBits & (AccessBits::SHADER_RESOURCE_STORAGE | AccessBits::SCRATCH_BUFFER | AccessBits::CLEAR_STORAGE))
         resourceStates |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
     if (accessBits & AccessBits::COPY_SOURCE)

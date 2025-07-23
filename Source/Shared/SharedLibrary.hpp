@@ -1,6 +1,7 @@
 // © 2021 NVIDIA Corporation
 
 #if defined(_WIN32)
+#    include <windows.h>
 #    undef LoadLibrary
 
 const char* VULKAN_LOADER_NAME = "vulkan-1.dll";

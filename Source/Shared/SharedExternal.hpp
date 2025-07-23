@@ -1,5 +1,7 @@
 // © 2021 NVIDIA Corporation
 
+#include <cstdarg> // va_start, va_end
+
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
 
 constexpr std::array<DxgiFormat, (size_t)Format::MAX_NUM> g_dxgiFormats = {{
@@ -660,8 +662,12 @@ constexpr std::array<Format, 116> NRI_FORMAT_TABLE = {
 };
 
 Format nri::DXGIFormatToNRIFormat(uint32_t dxgiFormat) {
+    MaybeUnused(dxgiFormat);
+
+#if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
     if (dxgiFormat < NRI_FORMAT_TABLE.size())
         return NRI_FORMAT_TABLE[dxgiFormat];
+#endif
 
     return Format::UNKNOWN;
 }
@@ -801,10 +807,14 @@ constexpr std::array<Format, 131> VK_FORMAT_TABLE = {
 };
 
 Format nri::VKFormatToNRIFormat(uint32_t format) {
+    MaybeUnused(format);
+
+#if NRI_ENABLE_VK_SUPPORT
     if (format < VK_FORMAT_TABLE.size())
         return VK_FORMAT_TABLE[format];
     else if (format == VK_FORMAT_A4R4G4B4_UNORM_PACK16)
         return Format::B4_G4_R4_A4_UNORM;
+#endif
 
     return Format::UNKNOWN;
 }
