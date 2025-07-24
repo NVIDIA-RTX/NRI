@@ -63,12 +63,8 @@ if(NOT IS_SUBMODULE)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/_Bin" CACHE STRING "")
 endif()
 
+# Debugger markup
 if(MSVC)
-    # Generate PDB for Release builds
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi")
-    set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /DEBUG /OPT:REF /OPT:ICF")
-
-    # Debugger markup
     set(NRI_NATVIS "nri.natvis")
 else()
     set(NRI_NATVIS "")
@@ -86,6 +82,7 @@ elseif(MSVC)
     set(COMPILE_OPTIONS
         /W4 /WX
         /wd4324 # padding was added at the end of a structure because you specified an alignment specifier
+        $<$<CONFIG:Release>:/Zi> # generate a PDB for Release build
     )
 else()
     message(WARNING "NRI: Unknown compiler!")
@@ -583,6 +580,13 @@ else()
     else()
         target_compile_definitions(${PROJECT_NAME} PRIVATE "NRI_API=extern \"C\" __attribute__((visibility(\"default\")))")
     endif()
+
+    if(MSVC)
+        target_link_options(${PROJECT_NAME} PRIVATE
+            $<$<CONFIG:Release>:/DEBUG> # generate a PDB for Release build
+            $<$<CONFIG:Release>:/OPT:ICF> # perform identical COMDAT folding (removes duplicate code/data)
+        )
+    endif()
 endif()
 
 target_include_directories(${PROJECT_NAME} PUBLIC "Include")
@@ -626,10 +630,12 @@ if(NRI_ENABLE_VALIDATION_SUPPORT)
     target_link_libraries(${PROJECT_NAME} PRIVATE NRI_Validation)
 endif()
 
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ${PROJECT_NAME})
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    FOLDER ${PROJECT_NAME}
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+)
 
 message("NRI: output path '${CMAKE_RUNTIME_OUTPUT_DIRECTORY}'")
-set_target_properties(${PROJECT_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
 # Copy to the output folder
 if(NRI_ENABLE_D3D_EXTENSIONS)
