@@ -1,6 +1,6 @@
 ﻿// © 2021 NVIDIA Corporation
 
-static HRESULT QueryRequiredGraphicsCommandListInterface(ComPtr<ID3D12GraphicsCommandListBest>& in, ComPtr<ID3D12GraphicsCommandListBest>& out) {
+static HRESULT QueryRequiredGraphicsCommandListInterface(ComPtr<ID3D12GraphicsCommandListBest>& in, ComPtr<ID3D12GraphicsCommandListBest>& out, bool isWrapped) {
     static const IID versions[] = {
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
         __uuidof(ID3D12GraphicsCommandList10),
@@ -25,7 +25,9 @@ static HRESULT QueryRequiredGraphicsCommandListInterface(ComPtr<ID3D12GraphicsCo
             break;
     }
 
-    return i == 0 ? S_OK : D3D12_ERROR_INVALID_REDIST;
+    bool isOK = isWrapped ? i < n : i == 0; // TODO: store "version" for a wrapped object to report errors if an unavailable interface is getting implicitly used
+
+    return isOK ? S_OK : D3D12_ERROR_INVALID_REDIST;
 }
 
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
@@ -254,7 +256,7 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
     HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&graphicsCommandList);
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommandList");
 
-    hr = QueryRequiredGraphicsCommandListInterface(graphicsCommandList, m_GraphicsCommandList);
+    hr = QueryRequiredGraphicsCommandListInterface(graphicsCommandList, m_GraphicsCommandList, false);
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "QueryRequiredGraphicsCommandListInterface");
 
     hr = m_GraphicsCommandList->Close();
@@ -268,7 +270,7 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
 Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferDesc) {
     ComPtr<ID3D12GraphicsCommandListBest> graphicsCommandList = (ID3D12GraphicsCommandListBest*)commandBufferDesc.d3d12CommandList;
 
-    HRESULT hr = QueryRequiredGraphicsCommandListInterface(graphicsCommandList, m_GraphicsCommandList);
+    HRESULT hr = QueryRequiredGraphicsCommandListInterface(graphicsCommandList, m_GraphicsCommandList, true);
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "QueryRequiredGraphicsCommandListInterface");
 
     // TODO: what if opened?
