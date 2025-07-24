@@ -356,7 +356,7 @@ if(NRI_ENABLE_NONE_SUPPORT)
     )
     target_compile_definitions(NRI_NONE PRIVATE ${COMPILE_DEFINITIONS})
     target_compile_options(NRI_NONE PRIVATE ${COMPILE_OPTIONS})
-    set_property(TARGET NRI_NONE PROPERTY FOLDER ${PROJECT_NAME})
+    set_target_properties(NRI_NONE PROPERTIES FOLDER ${PROJECT_NAME})
 endif()
 
 # D3D11
@@ -382,7 +382,7 @@ if(NRI_ENABLE_D3D11_SUPPORT)
     target_compile_definitions(NRI_D3D11 PRIVATE ${COMPILE_DEFINITIONS})
     target_compile_options(NRI_D3D11 PRIVATE ${COMPILE_OPTIONS})
     target_link_libraries(NRI_D3D11 PRIVATE NRI_Shared ${INPUT_LIB_D3D11} ${INPUT_LIB_DXGI} ${INPUT_LIB_DXGUID})
-    set_property(TARGET NRI_D3D11 PROPERTY FOLDER ${PROJECT_NAME})
+    set_target_properties(NRI_D3D11 PROPERTIES FOLDER ${PROJECT_NAME})
 endif()
 
 # D3D12
@@ -412,7 +412,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
     )
     target_compile_options(NRI_D3D12 PRIVATE ${COMPILE_OPTIONS})
     target_link_libraries(NRI_D3D12 PRIVATE NRI_Shared ${INPUT_LIB_D3D12} ${INPUT_LIB_DXGI} ${INPUT_LIB_DXGUID})
-    set_property(TARGET NRI_D3D12 PROPERTY FOLDER ${PROJECT_NAME})
+    set_target_properties(NRI_D3D12 PROPERTIES FOLDER ${PROJECT_NAME})
 
     if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
         message("NRI: using AgilitySDK v1.${NRI_AGILITY_SDK_VERSION_MAJOR}.${NRI_AGILITY_SDK_VERSION_MINOR}")
@@ -455,7 +455,7 @@ if(NRI_ENABLE_VK_SUPPORT)
     target_compile_definitions(NRI_VK PRIVATE ${COMPILE_DEFINITIONS})
     target_compile_options(NRI_VK PRIVATE ${COMPILE_OPTIONS})
     target_link_libraries(NRI_VK PRIVATE NRI_Shared)
-    set_property(TARGET NRI_VK PROPERTY FOLDER ${PROJECT_NAME})
+    set_target_properties(NRI_VK PROPERTIES FOLDER ${PROJECT_NAME})
 
     if(WIN32)
         target_compile_definitions(NRI_VK PRIVATE VK_USE_PLATFORM_WIN32_KHR)
@@ -491,7 +491,7 @@ if(NRI_ENABLE_VALIDATION_SUPPORT)
     target_compile_definitions(NRI_Validation PRIVATE ${COMPILE_DEFINITIONS})
     target_compile_options(NRI_Validation PRIVATE ${COMPILE_OPTIONS})
     target_link_libraries(NRI_Validation PRIVATE NRI_Shared)
-    set_property(TARGET NRI_Validation PROPERTY FOLDER ${PROJECT_NAME})
+    set_target_properties(NRI_Validation PROPERTIES FOLDER ${PROJECT_NAME})
 endif()
 
 # Shared
@@ -548,7 +548,7 @@ endif()
 
 target_compile_definitions(NRI_Shared PRIVATE ${COMPILE_DEFINITIONS})
 target_compile_options(NRI_Shared PRIVATE ${COMPILE_OPTIONS})
-set_property(TARGET NRI_Shared PROPERTY FOLDER ${PROJECT_NAME})
+set_target_properties(NRI_Shared PROPERTIES FOLDER ${PROJECT_NAME})
 
 # NRI
 file(GLOB NRI_HEADERS
@@ -626,7 +626,7 @@ if(NRI_ENABLE_VALIDATION_SUPPORT)
     target_link_libraries(${PROJECT_NAME} PRIVATE NRI_Validation)
 endif()
 
-set_property(TARGET ${PROJECT_NAME} PROPERTY FOLDER ${PROJECT_NAME})
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ${PROJECT_NAME})
 
 message("NRI: output path '${CMAKE_RUNTIME_OUTPUT_DIRECTORY}'")
 set_target_properties(${PROJECT_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
@@ -733,7 +733,7 @@ if(NRI_REQUIRES_SHADERMAKE)
         SOURCES ${SHADERS}
     )
 
-    set_property(TARGET NRI_Shaders PROPERTY FOLDER ${PROJECT_NAME})
+    set_target_properties(NRI_Shaders PROPERTIES FOLDER ${PROJECT_NAME})
 
     add_dependencies(NRI_Shared NRI_Shaders)
     target_include_directories(NRI_Shared PRIVATE "${NRI_SHADERS_PATH}")
