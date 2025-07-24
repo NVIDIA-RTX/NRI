@@ -1,5 +1,45 @@
 // © 2021 NVIDIA Corporation
 
+constexpr VkImageViewType GetImageViewType(Texture1DViewType type, uint32_t layerNum) {
+    switch (type) {
+        case Texture1DViewType::SHADER_RESOURCE_1D:
+        case Texture1DViewType::SHADER_RESOURCE_STORAGE_1D:
+            return VK_IMAGE_VIEW_TYPE_1D;
+
+        case Texture1DViewType::SHADER_RESOURCE_1D_ARRAY:
+        case Texture1DViewType::SHADER_RESOURCE_STORAGE_1D_ARRAY:
+            return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+
+        default:
+            return layerNum > 1 ? VK_IMAGE_VIEW_TYPE_1D_ARRAY : VK_IMAGE_VIEW_TYPE_1D; // honor layered rendering
+    }
+}
+
+constexpr VkImageViewType GetImageViewType(Texture2DViewType type, uint32_t layerNum) {
+    switch (type) {
+        case Texture2DViewType::SHADER_RESOURCE_2D:
+        case Texture2DViewType::SHADER_RESOURCE_STORAGE_2D:
+            return VK_IMAGE_VIEW_TYPE_2D;
+
+        case Texture2DViewType::SHADER_RESOURCE_2D_ARRAY:
+        case Texture2DViewType::SHADER_RESOURCE_STORAGE_2D_ARRAY:
+            return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+
+        case Texture2DViewType::SHADER_RESOURCE_CUBE:
+            return VK_IMAGE_VIEW_TYPE_CUBE;
+
+        case Texture2DViewType::SHADER_RESOURCE_CUBE_ARRAY:
+            return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+
+        default:
+            return layerNum > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D; // honor layered rendering
+    }
+}
+
+constexpr VkImageViewType GetImageViewType(Texture3DViewType, uint32_t) {
+    return VK_IMAGE_VIEW_TYPE_3D;
+}
+
 DescriptorVK::~DescriptorVK() {
     const auto& vk = m_Device.GetDispatchTable();
 

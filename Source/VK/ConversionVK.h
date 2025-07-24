@@ -242,29 +242,6 @@ constexpr VkSamplerAddressMode GetSamplerAddressMode(AddressMode addressMode) {
     return (VkSamplerAddressMode)(VK_SAMPLER_ADDRESS_MODE_REPEAT + (uint32_t)addressMode);
 }
 
-constexpr VkImageViewType GetImageViewType(Texture1DViewType type, uint32_t layerNum) {
-    if (type == Texture1DViewType::SHADER_RESOURCE_1D_ARRAY || type == Texture1DViewType::SHADER_RESOURCE_STORAGE_1D_ARRAY)
-        return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
-
-    return layerNum > 1 ? VK_IMAGE_VIEW_TYPE_1D_ARRAY : VK_IMAGE_VIEW_TYPE_1D;
-}
-
-constexpr VkImageViewType GetImageViewType(Texture2DViewType type, uint32_t layerNum) {
-    if (type == Texture2DViewType::SHADER_RESOURCE_2D_ARRAY || type == Texture2DViewType::SHADER_RESOURCE_STORAGE_2D_ARRAY)
-        return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-
-    if (type == Texture2DViewType::SHADER_RESOURCE_CUBE_ARRAY)
-        return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
-
-    return layerNum > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
-}
-
-constexpr VkImageViewType GetImageViewType(Texture3DViewType type, uint32_t layerNum) {
-    MaybeUnused(type, layerNum);
-
-    return VK_IMAGE_VIEW_TYPE_3D;
-}
-
 constexpr std::array<VkImageUsageFlags, (size_t)Texture1DViewType::MAX_NUM> g_ImageViewUsage1D = {
     VK_IMAGE_USAGE_SAMPLED_BIT,                  // SHADER_RESOURCE_1D,
     VK_IMAGE_USAGE_SAMPLED_BIT,                  // SHADER_RESOURCE_1D_ARRAY,
