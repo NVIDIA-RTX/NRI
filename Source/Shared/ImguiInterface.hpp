@@ -771,9 +771,13 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
         // For each draw command
         for (int32_t i = 0; i < imDrawList->CmdBuffer.Size; i++) {
             const ImDrawCmd& drawCmd = imDrawList->CmdBuffer.Data[i];
+            ImVec4 clipRect = drawCmd.ClipRect; // min.x, min.y, max.x, max.y
+
+            // VK doesn't allow negative values
+            clipRect.x = std::max(clipRect.x, 0.0f);
+            clipRect.y = std::max(clipRect.y, 0.0f);
 
             // Clipped?
-            const ImVec4& clipRect = drawCmd.ClipRect; // min.x, min.y, max.x, max.y
             if (clipRect.z <= clipRect.x || clipRect.w <= clipRect.y)
                 continue;
 
