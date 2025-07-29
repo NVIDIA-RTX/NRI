@@ -41,6 +41,7 @@ NriStruct(DeviceCreationD3D12Desc) {
 
     // Switches (disabled by default)
     bool enableNRIValidation;
+    bool enableMemoryZeroInitialization;        // page-clears are fast, not enabled by default to match VK (the extension needed)
 
     // Switches (enabled by default)
     bool disableD3D12EnhancedBarriers;          // even if AgilitySDK is in use, some apps still use legacy barriers. It can be important for integrations

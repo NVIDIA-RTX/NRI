@@ -60,6 +60,10 @@ struct DeviceVK final : public DeviceBase {
         return (m_MemoryProps.memoryTypes[memoryTypeIndex].propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
     }
 
+    inline bool IsMemoryZeroInitializationEnabled() const {
+        return m_IsMemoryZeroInitializationEnabled;
+    }
+
     inline VmaAllocator_T* GetVma() const {
         return m_Vma;
     }
@@ -174,6 +178,8 @@ private:
     uint32_t m_NumActiveFamilyIndices = 0;
     uint32_t m_MinorVersion = 0;
     bool m_OwnsNativeObjects = true;
+    bool m_IsMemoryZeroInitializationEnabled = false;
+
     Lock m_Lock;
 };
 

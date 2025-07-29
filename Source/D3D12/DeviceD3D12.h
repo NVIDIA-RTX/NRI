@@ -46,6 +46,10 @@ struct DeviceD3D12 final : public DeviceBase {
         return m_ZeroBuffer;
     }
 
+    inline bool IsMemoryZeroInitializationEnabled() const {
+        return m_IsMemoryZeroInitializationEnabled;
+    }
+
     inline bool HasPix() const {
         return m_Pix.library != nullptr;
     }
@@ -185,6 +189,7 @@ private:
     DWORD m_CallbackCookie = 0;
     uint8_t m_TightAlignmentTier = 0;
     bool m_IsWrapped = false;
+    bool m_IsMemoryZeroInitializationEnabled = false;
 
     std::array<Lock, D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES> m_FreeDescriptorLocks;
     Lock m_DescriptorHeapLock;

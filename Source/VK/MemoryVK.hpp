@@ -45,6 +45,9 @@ Result MemoryVK::Create(const AllocateMemoryDesc& allocateMemoryDesc) {
     flagsInfo.pNext = m_Priority == 0.5f ? nullptr : &priorityInfo;
     flagsInfo.flags = m_Device.m_IsSupported.deviceAddress ? VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT : 0;
 
+    if (m_Device.IsMemoryZeroInitializationEnabled())
+        flagsInfo.flags |= VK_MEMORY_ALLOCATE_ZERO_INITIALIZE_BIT_EXT;
+
     VkMemoryAllocateInfo memoryInfo = {VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     memoryInfo.pNext = &flagsInfo;
     memoryInfo.allocationSize = allocateMemoryDesc.size;
@@ -75,6 +78,9 @@ Result MemoryVK::CreateDedicated(const BufferVK& buffer) {
     VkMemoryAllocateFlagsInfo flagsInfo = {VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO};
     flagsInfo.pNext = m_Priority == 0.5f ? nullptr : &priorityInfo;
     flagsInfo.flags = m_Device.m_IsSupported.deviceAddress ? VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT : 0;
+
+    if (m_Device.IsMemoryZeroInitializationEnabled())
+        flagsInfo.flags |= VK_MEMORY_ALLOCATE_ZERO_INITIALIZE_BIT_EXT;
 
     VkMemoryDedicatedAllocateInfo dedicatedAllocateInfo = {VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO};
     dedicatedAllocateInfo.pNext = &flagsInfo;
@@ -110,6 +116,9 @@ Result MemoryVK::CreateDedicated(const TextureVK& texture) {
     VkMemoryAllocateFlagsInfo flagsInfo = {VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO};
     flagsInfo.pNext = m_Priority == 0.5f ? nullptr : &priorityInfo;
     flagsInfo.flags = m_Device.m_IsSupported.deviceAddress ? VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT : 0;
+
+    if (m_Device.IsMemoryZeroInitializationEnabled())
+        flagsInfo.flags |= VK_MEMORY_ALLOCATE_ZERO_INITIALIZE_BIT_EXT;
 
     VkMemoryDedicatedAllocateInfo dedicatedAllocateInfo = {VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO};
     dedicatedAllocateInfo.pNext = &flagsInfo;

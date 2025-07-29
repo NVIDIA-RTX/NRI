@@ -39,6 +39,7 @@ NriStruct(DeviceCreationVKDesc) {
 
     // Switches (disabled by default)
     bool enableNRIValidation;
+    bool enableMemoryZeroInitialization;        // page-clears are fast, but memory is not cleared by default in VK
 };
 
 NriStruct(CommandAllocatorVKDesc) {

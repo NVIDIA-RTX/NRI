@@ -69,7 +69,9 @@ Result QueryPoolD3D12::CreateBufferForAccelerationStructuresSizes(const QueryPoo
     D3D12_HEAP_PROPERTIES heapProperties = {};
     heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
 
-    HRESULT hr = m_Device->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_CREATE_NOT_ZEROED, &resourceDesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&m_BufferForAccelerationStructuresSizes));
+    D3D12_HEAP_FLAGS heapFlags = m_Device.IsMemoryZeroInitializationEnabled() ? D3D12_HEAP_FLAG_NONE : D3D12_HEAP_FLAG_CREATE_NOT_ZEROED;
+
+    HRESULT hr = m_Device->CreateCommittedResource(&heapProperties, heapFlags, &resourceDesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&m_BufferForAccelerationStructuresSizes));
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommittedResource");
 
     return Result::SUCCESS;

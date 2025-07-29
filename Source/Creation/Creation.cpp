@@ -738,6 +738,7 @@ NRI_API Result NRI_CALL nriCreateDeviceFromD3D12Device(const DeviceCreationD3D12
     deviceCreationDesc.d3dShaderExtRegister = deviceCreationD3D12Desc.d3dShaderExtRegister;
     deviceCreationDesc.d3dZeroBufferSize = deviceCreationD3D12Desc.d3dZeroBufferSize;
     deviceCreationDesc.enableNRIValidation = deviceCreationD3D12Desc.enableNRIValidation;
+    deviceCreationDesc.enableMemoryZeroInitialization = deviceCreationD3D12Desc.enableMemoryZeroInitialization;
     deviceCreationDesc.disableD3D12EnhancedBarriers = deviceCreationD3D12Desc.disableD3D12EnhancedBarriers;
 
     CheckAndSetDefaultCallbacks(deviceCreationDesc);
@@ -786,6 +787,7 @@ NRI_API Result NRI_CALL nriCreateDeviceFromVKDevice(const DeviceCreationVKDesc& 
     deviceCreationDesc.callbackInterface = deviceCreationVKDesc.callbackInterface;
     deviceCreationDesc.allocationCallbacks = deviceCreationVKDesc.allocationCallbacks;
     deviceCreationDesc.enableNRIValidation = deviceCreationVKDesc.enableNRIValidation;
+    deviceCreationDesc.enableMemoryZeroInitialization = deviceCreationVKDesc.enableMemoryZeroInitialization;
     deviceCreationDesc.vkBindingOffsets = deviceCreationVKDesc.vkBindingOffsets;
     deviceCreationDesc.vkExtensions = deviceCreationVKDesc.vkExtensions;
 

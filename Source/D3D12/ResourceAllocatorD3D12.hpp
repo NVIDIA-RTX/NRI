@@ -65,8 +65,11 @@ Result DeviceD3D12::CreateVma() {
     D3D12MA::ALLOCATOR_DESC allocatorDesc = {};
     allocatorDesc.pDevice = m_Device;
     allocatorDesc.pAdapter = m_Adapter;
-    allocatorDesc.Flags = (D3D12MA::ALLOCATOR_FLAGS)(D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED | D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED | D3D12MA::ALLOCATOR_FLAG_DONT_PREFER_SMALL_BUFFERS_COMMITTED);
+    allocatorDesc.Flags = (D3D12MA::ALLOCATOR_FLAGS)(D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED | D3D12MA::ALLOCATOR_FLAG_DONT_PREFER_SMALL_BUFFERS_COMMITTED);
     allocatorDesc.PreferredBlockSize = VMA_PREFERRED_BLOCK_SIZE;
+
+    if (!IsMemoryZeroInitializationEnabled())
+        allocatorDesc.Flags = (D3D12MA::ALLOCATOR_FLAGS)(allocatorDesc.Flags | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED);
 
     if (!GetAllocationCallbacks().disable3rdPartyAllocationCallbacks)
         allocatorDesc.pAllocationCallbacks = &allocationCallbacks;

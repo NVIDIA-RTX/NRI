@@ -343,6 +343,9 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     if (IsExtensionSupported(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME, supportedExts))
         desiredDeviceExts.push_back(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME);
 
+    if (IsExtensionSupported(VK_EXT_ZERO_INITIALIZE_DEVICE_MEMORY_EXTENSION_NAME, supportedExts))
+        desiredDeviceExts.push_back(VK_EXT_ZERO_INITIALIZE_DEVICE_MEMORY_EXTENSION_NAME);
+
     // Optional
     if (IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, supportedExts))
         desiredDeviceExts.push_back(VK_NV_LOW_LATENCY_2_EXTENSION_NAME);
@@ -773,6 +776,11 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         APPEND_EXT(presentModeFifoLatestReadyFeaturesEXT);
     }
 
+    VkPhysicalDeviceZeroInitializeDeviceMemoryFeaturesEXT zeroInitializeDeviceMemoryFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_DEVICE_MEMORY_FEATURES_EXT};
+    if (IsExtensionSupported(VK_EXT_ZERO_INITIALIZE_DEVICE_MEMORY_EXTENSION_NAME, desiredDeviceExts)) {
+        APPEND_EXT(zeroInitializeDeviceMemoryFeatures);
+    }
+
     if (IsExtensionSupported(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME, desiredDeviceExts))
         m_IsSupported.memoryBudget = true;
 
@@ -793,6 +801,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.pipelineRobustness = pipelineRobustnessFeatures.pipelineRobustness;
     m_IsSupported.swapChainMaintenance1 = swapchainMaintenance1Features.swapchainMaintenance1;
     m_IsSupported.fifoLatestReady = presentModeFifoLatestReadyFeaturesEXT.presentModeFifoLatestReady;
+
+    m_IsMemoryZeroInitializationEnabled = desc.enableMemoryZeroInitialization && zeroInitializeDeviceMemoryFeatures.zeroInitializeDeviceMemory;
 
     { // Check hard requirements
         bool hasDynamicRendering = features13.dynamicRendering != 0 || (dynamicRenderingFeatures.dynamicRendering != 0 && extendedDynamicStateFeatures.extendedDynamicState != 0);
@@ -1334,7 +1344,7 @@ void DeviceVK::FillCreateInfo(const TextureDesc& textureDesc, VkImageCreateInfo&
     info.sharingMode = (m_NumActiveFamilyIndices <= 1 || textureDesc.sharingMode == SharingMode::EXCLUSIVE) ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
     info.queueFamilyIndexCount = m_NumActiveFamilyIndices;
     info.pQueueFamilyIndices = m_ActiveQueueFamilyIndices.data();
-    info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    info.initialLayout = IsMemoryZeroInitializationEnabled() ? VK_IMAGE_LAYOUT_ZERO_INITIALIZED_EXT : VK_IMAGE_LAYOUT_UNDEFINED;
 }
 
 void DeviceVK::GetMemoryDesc2(const BufferDesc& bufferDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {

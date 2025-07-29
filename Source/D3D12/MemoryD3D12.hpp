@@ -13,7 +13,10 @@ Result MemoryD3D12::Create(const AllocateMemoryDesc& allocateMemoryDesc) {
     heapDesc.Properties.CreationNodeMask = NODE_MASK;
     heapDesc.Properties.VisibleNodeMask = NODE_MASK;
     heapDesc.Alignment = isMsaaAlignmentNeeded ? D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT : D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-    heapDesc.Flags = (allocateMemoryDesc.size ? heapFlags : D3D12_HEAP_FLAG_NONE) | D3D12_HEAP_FLAG_CREATE_NOT_ZEROED;
+    heapDesc.Flags = allocateMemoryDesc.size ? heapFlags : D3D12_HEAP_FLAG_NONE;
+
+    if (!m_Device.IsMemoryZeroInitializationEnabled())
+        heapDesc.Flags |= D3D12_HEAP_FLAG_CREATE_NOT_ZEROED;
 
     if (!memoryTypeInfo.mustBeDedicated) {
         HRESULT hr = m_Device->CreateHeap(&heapDesc, IID_PPV_ARGS(&m_Heap));

@@ -350,11 +350,13 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         heapProps.CreationNodeMask = NODE_MASK;
         heapProps.VisibleNodeMask = NODE_MASK;
 
-        HRESULT hr = m_Device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &zeroBufferDesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&m_ZeroBuffer));
+        HRESULT hr = m_Device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &zeroBufferDesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&m_ZeroBuffer)); // yes, create zero-ed
         RETURN_ON_BAD_HRESULT(this, hr, "ID3D12Device::CreateCommittedResource");
     }
 
     // Fill desc
+    m_IsMemoryZeroInitializationEnabled = desc.enableMemoryZeroInitialization;
+
     FillDesc(desc.disableD3D12EnhancedBarriers);
 
     // Create indirect command signatures

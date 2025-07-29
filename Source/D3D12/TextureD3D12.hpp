@@ -36,6 +36,8 @@ Result TextureD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset) {
     const D3D12_HEAP_DESC& heapDesc = memory->GetHeapDesc();
     // STATE_CREATION ERROR #640: CREATERESOURCEANDHEAP_INVALIDHEAPMISCFLAGS
     D3D12_HEAP_FLAGS heapFlagsFixed = heapDesc.Flags & ~(D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES | D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES | D3D12_HEAP_FLAG_DENY_BUFFERS);
+    if (!m_Device.IsMemoryZeroInitializationEnabled())
+        heapFlagsFixed |= D3D12_HEAP_FLAG_CREATE_NOT_ZEROED;
 
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_RESOURCE_DESC1 desc1 = {};
