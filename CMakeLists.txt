@@ -209,7 +209,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.321.zip
+        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.323.zip
     )
     list(APPEND DEPS vulkan_headers)
 
@@ -303,7 +303,7 @@ if(NRI_REQUIRES_SHADERMAKE AND NOT TARGET ShaderMake)
     FetchContent_Declare(
         shadermake
         GIT_REPOSITORY https://github.com/NVIDIA-RTX/ShaderMake.git
-        GIT_TAG main
+        GIT_TAG 757594f0539314467f74950c8d898e815ecbd383
         GIT_SHALLOW 1
     )
     list(APPEND DEPS shadermake)
