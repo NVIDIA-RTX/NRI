@@ -226,7 +226,11 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const BufferViewDesc& bufferViewDe
     RETURN_ON_FAILURE(this, bufferViewDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
     RETURN_ON_FAILURE(this, bufferViewDesc.viewType < BufferViewType::MAX_NUM, Result::INVALID_ARGUMENT, "'viewType' is invalid");
 
-    const BufferDesc& bufferDesc = ((BufferVal*)bufferViewDesc.buffer)->GetDesc();
+    const BufferVal& bufferVal = *(BufferVal*)bufferViewDesc.buffer;
+    const BufferDesc& bufferDesc = bufferVal.GetDesc();
+
+    RETURN_ON_FAILURE(this, bufferVal.IsBoundToMemory(), Result::INVALID_ARGUMENT, "'bufferViewDesc.buffer' is not bound to memory");
+
     RETURN_ON_FAILURE(this, bufferViewDesc.offset + bufferViewDesc.size <= bufferDesc.size, Result::INVALID_ARGUMENT, "'offset=%" PRIu64 "' + 'size=%" PRIu64 "' must be <= buffer 'size=%" PRIu64 "'", bufferViewDesc.offset, bufferViewDesc.size, bufferDesc.size);
 
     auto bufferViewDescImpl = bufferViewDesc;
@@ -247,7 +251,10 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const Texture1DViewDesc& textureVi
     RETURN_ON_FAILURE(this, textureViewDesc.viewType < Texture1DViewType::MAX_NUM, Result::INVALID_ARGUMENT, "'viewType' is invalid");
     RETURN_ON_FAILURE(this, textureViewDesc.format > Format::UNKNOWN && textureViewDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
 
-    const TextureDesc& textureDesc = ((TextureVal*)textureViewDesc.texture)->GetDesc();
+    const TextureVal& textureVal = *(TextureVal*)textureViewDesc.texture;
+    const TextureDesc& textureDesc = textureVal.GetDesc();
+
+    RETURN_ON_FAILURE(this, textureVal.IsBoundToMemory(), Result::INVALID_ARGUMENT, "'textureViewDesc.texture' is not bound to memory");
 
     RETURN_ON_FAILURE(this, textureViewDesc.mipOffset + textureViewDesc.mipNum <= textureDesc.mipNum, Result::INVALID_ARGUMENT,
         "'mipOffset=%u' + 'mipNum=%u' must be <= texture 'mipNum=%u'", textureViewDesc.mipOffset, textureViewDesc.mipNum, textureDesc.mipNum);
@@ -273,7 +280,10 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const Texture2DViewDesc& textureVi
     RETURN_ON_FAILURE(this, textureViewDesc.viewType < Texture2DViewType::MAX_NUM, Result::INVALID_ARGUMENT, "'viewType' is invalid");
     RETURN_ON_FAILURE(this, textureViewDesc.format > Format::UNKNOWN && textureViewDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
 
-    const TextureDesc& textureDesc = ((TextureVal*)textureViewDesc.texture)->GetDesc();
+    const TextureVal& textureVal = *(TextureVal*)textureViewDesc.texture;
+    const TextureDesc& textureDesc = textureVal.GetDesc();
+
+    RETURN_ON_FAILURE(this, textureVal.IsBoundToMemory(), Result::INVALID_ARGUMENT, "'textureViewDesc.texture' is not bound to memory");
 
     RETURN_ON_FAILURE(this, textureViewDesc.mipOffset + textureViewDesc.mipNum <= textureDesc.mipNum, Result::INVALID_ARGUMENT,
         "'mipOffset=%u' + 'mipNum=%u' must be <= texture 'mipNum=%u'", textureViewDesc.mipOffset, textureViewDesc.mipNum, textureDesc.mipNum);
@@ -299,7 +309,10 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const Texture3DViewDesc& textureVi
     RETURN_ON_FAILURE(this, textureViewDesc.viewType < Texture3DViewType::MAX_NUM, Result::INVALID_ARGUMENT, "'viewType' is invalid");
     RETURN_ON_FAILURE(this, textureViewDesc.format > Format::UNKNOWN && textureViewDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
 
-    const TextureDesc& textureDesc = ((TextureVal*)textureViewDesc.texture)->GetDesc();
+    const TextureVal& textureVal = *(TextureVal*)textureViewDesc.texture;
+    const TextureDesc& textureDesc = textureVal.GetDesc();
+
+    RETURN_ON_FAILURE(this, textureVal.IsBoundToMemory(), Result::INVALID_ARGUMENT, "'textureViewDesc.texture' is not bound to memory");
 
     RETURN_ON_FAILURE(this, textureViewDesc.mipOffset + textureViewDesc.mipNum <= textureDesc.mipNum, Result::INVALID_ARGUMENT,
         "'mipOffset=%u' + 'mipNum=%u' must be <= texture 'mipNum=%u'", textureViewDesc.mipOffset, textureViewDesc.mipNum, textureDesc.mipNum);
