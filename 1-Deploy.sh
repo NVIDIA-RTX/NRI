@@ -1,6 +1,5 @@
 #!/bin/bash
-
-git submodule update --init --recursive
+set -e
 
 mkdir -p "_Build"
 
