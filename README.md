@@ -153,6 +153,7 @@ Notes:
 - `NRI_AGILITY_SDK_VERSION_MAJOR`- Agility SDK major version
 - `NRI_AGILITY_SDK_VERSION_MINOR` - Agility SDK minor version
 - `NRI_SHADERS_PATH` - Shader output path override
+- `NRI_NVAPI_CUSTOM_PATH` - Path to a custom NVAPI library directory
 - `NRI_STATIC_LIBRARY` - Build static library
 - `NRI_ENABLE_NVTX_SUPPORT` - Annotations for NVIDIA Nsight Systems
 - `NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS` - Enable debug names, host and device annotations
@@ -163,7 +164,8 @@ Notes:
 - `NRI_ENABLE_IMGUI_EXTENSION` - Enable `NRIImgui` extension
 - `NRI_ENABLE_D3D11_SUPPORT` - Enable D3D11 backend
 - `NRI_ENABLE_D3D12_SUPPORT` - Enable D3D12 backend
-- `NRI_ENABLE_D3D_EXTENSIONS` - Enable vendor specific extension libraries for D3D (NVAPI and AMD AGS)
+- `NRI_ENABLE_AMDAGS`- Enable AMD AGS library for D3D
+- `NRI_ENABLE_NVAPI` - Enable NVAPI library for D3D
 - `NRI_ENABLE_AGILITY_SDK_SUPPORT` - Enable Agility SDK support to unlock access to latest D3D12 features
 - `NRI_ENABLE_XLIB_SUPPORT` - Enable X11 support
 - `NRI_ENABLE_WAYLAND_SUPPORT` - Enable Wayland support

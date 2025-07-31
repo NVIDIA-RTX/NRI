@@ -187,10 +187,8 @@ struct SamplePositionsState {
 
 } // namespace nri
 
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_AMDAGS
 #    include "amd_ags.h"
-#    include "nvShaderExtnEnums.h"
-#    include "nvapi.h"
 
 struct AmdExtD3D11 {
     // Funcs first
@@ -219,6 +217,12 @@ struct AmdExtD3D11 {
     }
 };
 
+#endif
+
+#if NRI_ENABLE_NVAPI
+#    include "nvShaderExtnEnums.h"
+#    include "nvapi.h"
+
 struct NvExt {
     bool available;
 
@@ -227,6 +231,7 @@ struct NvExt {
             NvAPI_Unload();
     }
 };
+
 #endif
 
 #include "DeviceD3D11.h"

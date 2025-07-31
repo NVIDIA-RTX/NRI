@@ -29,20 +29,23 @@ CommandBufferD3D11::CommandBufferD3D11(DeviceD3D11& device)
 }
 
 CommandBufferD3D11::~CommandBufferD3D11() {
-#if NRI_ENABLE_D3D_EXTENSIONS
     if (m_DeferredContext && m_DeferredContext->GetType() == D3D11_DEVICE_CONTEXT_DEFERRED) {
+#if NRI_ENABLE_NVAPI
         if (m_Device.HasNvExt()) {
             NvAPI_Status status = NvAPI_D3D11_EndUAVOverlap(m_DeferredContext);
             if (status != NVAPI_OK)
                 REPORT_WARNING(&m_Device, "NvAPI_D3D11_EndUAVOverlap() failed!");
-        } else if (m_Device.HasAmdExt()) {
+        }
+#endif
+#if NRI_ENABLE_AMDAGS
+        if (m_Device.HasAmdExt()) {
             const AmdExtD3D11& amdExt = m_Device.GetAmdExt();
             AGSReturnCode res = amdExt.EndUAVOverlap(amdExt.context, m_DeferredContext);
             if (res != AGS_SUCCESS)
                 REPORT_WARNING(&m_Device, "agsDriverExtensionsDX11_EndUAVOverlap() failed!");
         }
-    }
 #endif
+    }
 }
 
 Result CommandBufferD3D11::Create(ID3D11DeviceContext* precreatedContext) {
@@ -63,18 +66,21 @@ Result CommandBufferD3D11::Create(ID3D11DeviceContext* precreatedContext) {
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "QueryInterface(ID3DUserDefinedAnnotation)");
 
     // Skip UAV barriers by default on the deferred context
-#if NRI_ENABLE_D3D_EXTENSIONS
     if (m_DeferredContext && m_DeferredContext->GetType() == D3D11_DEVICE_CONTEXT_DEFERRED) {
+#if NRI_ENABLE_NVAPI
         if (m_Device.HasNvExt()) {
             NvAPI_Status res = NvAPI_D3D11_BeginUAVOverlap(m_DeferredContext);
             RETURN_ON_FAILURE(&m_Device, res == NVAPI_OK, Result::FAILURE, "NvAPI_D3D11_BeginUAVOverlap() failed!");
-        } else if (m_Device.HasAmdExt()) {
+        }
+#endif
+#if NRI_ENABLE_AMDAGS
+        if (m_Device.HasAmdExt()) {
             const AmdExtD3D11& amdExt = m_Device.GetAmdExt();
             AGSReturnCode res = amdExt.BeginUAVOverlap(amdExt.context, m_DeferredContext);
             RETURN_ON_FAILURE(&m_Device, res == AGS_SUCCESS, Result::FAILURE, "agsDriverExtensionsDX11_BeginUAVOverlap() failed!");
         }
-    }
 #endif
+    }
 
     return Result::SUCCESS;
 }
@@ -141,12 +147,16 @@ NRI_INLINE void CommandBufferD3D11::SetScissors(const Rect* rects, uint32_t rect
 
 NRI_INLINE void CommandBufferD3D11::SetDepthBounds(float boundsMin, float boundsMax) {
     if (m_DepthBounds[0] != boundsMin || m_DepthBounds[1] != boundsMax) {
-#if NRI_ENABLE_D3D_EXTENSIONS
         bool isEnabled = boundsMin != 0.0f || boundsMax != 1.0f;
+        MaybeUnused(isEnabled);
+#if NRI_ENABLE_NVAPI
         if (m_Device.HasNvExt()) {
             NvAPI_Status status = NvAPI_D3D11_SetDepthBoundsTest(m_DeferredContext, isEnabled, boundsMin, boundsMax);
             RETURN_ON_FAILURE(&m_Device, status == NVAPI_OK, ReturnVoid(), "NvAPI_D3D11_SetDepthBoundsTest() failed!");
-        } else if (m_Device.HasAmdExt()) {
+        }
+#endif
+#if NRI_ENABLE_AMDAGS
+        if (m_Device.HasAmdExt()) {
             const AmdExtD3D11& amdExt = m_Device.GetAmdExt();
             AGSReturnCode res = amdExt.SetDepthBounds(amdExt.context, m_DeferredContext, isEnabled, boundsMin, boundsMax);
             RETURN_ON_FAILURE(&m_Device, res == AGS_SUCCESS, ReturnVoid(), "agsDriverExtensionsDX11_SetDepthBounds() failed!");
@@ -258,8 +268,8 @@ NRI_INLINE void CommandBufferD3D11::BeginRendering(const AttachmentsDesc& attach
 
     m_DeferredContext->OMSetRenderTargets(m_RenderTargetNum, m_RenderTargets.data(), m_DepthStencil);
 
-#if NRI_ENABLE_D3D_EXTENSIONS
     // Shading rate
+#if NRI_ENABLE_NVAPI
     if (m_Device.HasNvExt() && m_Device.GetDesc().tiers.shadingRate >= 2) {
         ID3D11NvShadingRateResourceView* shadingRateImage = nullptr;
         if (attachmentsDesc.shadingRate) {
@@ -296,8 +306,10 @@ NRI_INLINE void CommandBufferD3D11::BeginRendering(const AttachmentsDesc& attach
 
         REPORT_ERROR_ON_BAD_NVAPI_STATUS(&m_Device, NvAPI_D3D11_RSSetShadingRateResourceView(m_DeferredContext, shadingRateImage));
     }
+#endif
 
     // Multiview
+#if NRI_ENABLE_AMDAGS
     if (m_Device.HasAmdExt() && m_Device.GetDesc().other.viewMaxNum > 1) {
         const AmdExtD3D11& amdExt = m_Device.GetAmdExt();
         AGSReturnCode res = amdExt.SetViewBroadcastMasks(amdExt.context, attachmentsDesc.viewMask, attachmentsDesc.viewMask ? 0x1 : 0x0, 0);
@@ -394,22 +406,25 @@ NRI_INLINE void CommandBufferD3D11::DrawIndirect(const Buffer& buffer, uint64_t 
     MaybeUnused(countBuffer, countBufferOffset);
 
     const BufferD3D11& bufferD3D11 = (BufferD3D11&)buffer;
-#if NRI_ENABLE_D3D_EXTENSIONS
     if (countBuffer && m_Device.HasAmdExt()) {
+#if NRI_ENABLE_AMDAGS
         const BufferD3D11* countBufferD3D11 = (BufferD3D11*)countBuffer;
         const AmdExtD3D11& amdExt = m_Device.GetAmdExt();
         AGSReturnCode res = amdExt.DrawIndirectCount(amdExt.context, m_DeferredContext, *countBufferD3D11, (uint32_t)countBufferOffset, bufferD3D11, (uint32_t)offset, stride);
         RETURN_ON_FAILURE(&m_Device, res == AGS_SUCCESS, ReturnVoid(), "agsDriverExtensionsDX11_MultiDrawInstancedIndirectCountIndirect() failed!");
+#endif
     } else if (m_Device.HasNvExt() && drawNum > 1) {
+#if NRI_ENABLE_NVAPI
         NvAPI_Status status = NvAPI_D3D11_MultiDrawInstancedIndirect(m_DeferredContext, drawNum, bufferD3D11, (uint32_t)offset, stride);
         RETURN_ON_FAILURE(&m_Device, status == NVAPI_OK, ReturnVoid(), "NvAPI_D3D11_MultiDrawInstancedIndirect() failed!");
+#endif
     } else if (m_Device.HasAmdExt() && drawNum > 1) {
+#if NRI_ENABLE_AMDAGS
         const AmdExtD3D11& amdExt = m_Device.GetAmdExt();
         AGSReturnCode res = amdExt.DrawIndirect(amdExt.context, m_DeferredContext, drawNum, bufferD3D11, (uint32_t)offset, stride);
         RETURN_ON_FAILURE(&m_Device, res == AGS_SUCCESS, ReturnVoid(), "agsDriverExtensionsDX11_MultiDrawInstancedIndirect() failed!");
-    } else
 #endif
-    {
+    } else {
         CHECK(!countBuffer, "'countBuffer' is unsupported");
 
         for (uint32_t i = 0; i < drawNum; i++) {
@@ -423,22 +438,25 @@ NRI_INLINE void CommandBufferD3D11::DrawIndexedIndirect(const Buffer& buffer, ui
     MaybeUnused(countBuffer, countBufferOffset);
 
     const BufferD3D11& bufferD3D11 = (BufferD3D11&)buffer;
-#if NRI_ENABLE_D3D_EXTENSIONS
     if (countBuffer && m_Device.HasAmdExt()) {
+#if NRI_ENABLE_AMDAGS
         const BufferD3D11* countBufferD3D11 = (BufferD3D11*)countBuffer;
         const AmdExtD3D11& amdExt = m_Device.GetAmdExt();
         AGSReturnCode res = amdExt.DrawIndexedIndirectCount(amdExt.context, m_DeferredContext, *countBufferD3D11, (uint32_t)countBufferOffset, bufferD3D11, (uint32_t)offset, stride);
         RETURN_ON_FAILURE(&m_Device, res == AGS_SUCCESS, ReturnVoid(), "agsDriverExtensionsDX11_MultiDrawIndexedInstancedIndirectCountIndirect() failed!");
+#endif
     } else if (m_Device.HasNvExt() && drawNum > 1) {
+#if NRI_ENABLE_NVAPI
         NvAPI_Status status = NvAPI_D3D11_MultiDrawIndexedInstancedIndirect(m_DeferredContext, drawNum, bufferD3D11, (uint32_t)offset, stride);
         RETURN_ON_FAILURE(&m_Device, status == NVAPI_OK, ReturnVoid(), "NvAPI_D3D11_MultiDrawIndexedInstancedIndirect() failed!");
+#endif
     } else if (m_Device.HasAmdExt() && drawNum > 1) {
+#if NRI_ENABLE_AMDAGS
         const AmdExtD3D11& amdExt = m_Device.GetAmdExt();
         AGSReturnCode res = amdExt.DrawIndexedIndirect(amdExt.context, m_DeferredContext, drawNum, bufferD3D11, (uint32_t)offset, stride);
         RETURN_ON_FAILURE(&m_Device, res == AGS_SUCCESS, ReturnVoid(), "agsDriverExtensionsDX11_MultiDrawIndexedInstancedIndirect() failed!");
-    } else
 #endif
-    {
+    } else {
         CHECK(!countBuffer, "'countBuffer' is unsupported");
 
         for (uint32_t i = 0; i < drawNum; i++) {
@@ -607,8 +625,6 @@ NRI_INLINE void CommandBufferD3D11::DispatchIndirect(const Buffer& buffer, uint6
 }
 
 NRI_INLINE void CommandBufferD3D11::Barrier(const BarrierGroupDesc& barrierGroupDesc) {
-    MaybeUnused(barrierGroupDesc);
-#if NRI_ENABLE_D3D_EXTENSIONS
     if (barrierGroupDesc.textureNum == 0 && barrierGroupDesc.bufferNum == 0)
         return;
 
@@ -618,12 +634,17 @@ NRI_INLINE void CommandBufferD3D11::Barrier(const BarrierGroupDesc& barrierGroup
         const GlobalBarrierDesc& barrier = barrierGroupDesc.globals[i];
         if ((barrier.before.access & AccessBits::SHADER_RESOURCE_STORAGE) && (barrier.after.access & AccessBits::SHADER_RESOURCE_STORAGE)) {
             bool isGraphics = barrier.before.stages == StageBits::ALL || (barrier.before.stages & (StageBits::GRAPHICS));
+            bool isCompute = barrier.before.stages == StageBits::ALL || (barrier.before.stages & StageBits::COMPUTE_SHADER);
+
+#if NRI_ENABLE_NVAPI
             if (isGraphics)
                 flags |= NVAPI_D3D_BEGIN_UAV_OVERLAP_GFX_WFI;
-
-            bool isCompute = barrier.before.stages == StageBits::ALL || (barrier.before.stages & StageBits::COMPUTE_SHADER);
             if (isCompute)
                 flags |= NVAPI_D3D_BEGIN_UAV_OVERLAP_COMP_WFI;
+#else
+            if (isGraphics || isCompute)
+                flags |= 1;
+#endif
         }
     }
 
@@ -631,12 +652,17 @@ NRI_INLINE void CommandBufferD3D11::Barrier(const BarrierGroupDesc& barrierGroup
         const BufferBarrierDesc& barrier = barrierGroupDesc.buffers[i];
         if ((barrier.before.access & AccessBits::SHADER_RESOURCE_STORAGE) && (barrier.after.access & AccessBits::SHADER_RESOURCE_STORAGE)) {
             bool isGraphics = barrier.before.stages == StageBits::ALL || (barrier.before.stages & (StageBits::GRAPHICS));
+            bool isCompute = barrier.before.stages == StageBits::ALL || (barrier.before.stages & StageBits::COMPUTE_SHADER);
+
+#if NRI_ENABLE_NVAPI
             if (isGraphics)
                 flags |= NVAPI_D3D_BEGIN_UAV_OVERLAP_GFX_WFI;
-
-            bool isCompute = barrier.before.stages == StageBits::ALL || (barrier.before.stages & StageBits::COMPUTE_SHADER);
             if (isCompute)
                 flags |= NVAPI_D3D_BEGIN_UAV_OVERLAP_COMP_WFI;
+#else
+            if (isGraphics || isCompute)
+                flags |= 1;
+#endif
         }
     }
 
@@ -644,29 +670,37 @@ NRI_INLINE void CommandBufferD3D11::Barrier(const BarrierGroupDesc& barrierGroup
         const TextureBarrierDesc& barrier = barrierGroupDesc.textures[i];
         if ((barrier.before.access & AccessBits::SHADER_RESOURCE_STORAGE) && (barrier.after.access & AccessBits::SHADER_RESOURCE_STORAGE)) {
             bool isGraphics = barrier.before.stages == StageBits::ALL || (barrier.before.stages & (StageBits::GRAPHICS));
+            bool isCompute = barrier.before.stages == StageBits::ALL || (barrier.before.stages & StageBits::COMPUTE_SHADER);
+
+#if NRI_ENABLE_NVAPI
             if (isGraphics)
                 flags |= NVAPI_D3D_BEGIN_UAV_OVERLAP_GFX_WFI;
-
-            bool isCompute = barrier.before.stages == StageBits::ALL || (barrier.before.stages & StageBits::COMPUTE_SHADER);
             if (isCompute)
                 flags |= NVAPI_D3D_BEGIN_UAV_OVERLAP_COMP_WFI;
+#else
+            if (isGraphics || isCompute)
+                flags |= 1;
+#endif
         }
     }
 
     if (flags) {
         if (m_Device.HasNvExt()) {
+#if NRI_ENABLE_NVAPI
             NvAPI_Status res = NvAPI_D3D11_BeginUAVOverlapEx(m_DeferredContext, flags);
             RETURN_ON_FAILURE(&m_Device, res == NVAPI_OK, ReturnVoid(), "NvAPI_D3D11_BeginUAVOverlap() failed!");
+#endif
         } else if (m_Device.HasAmdExt()) {
+#if NRI_ENABLE_AMDAGS
             // TODO: verify that this code actually works on AMD!
             const AmdExtD3D11& amdExt = m_Device.GetAmdExt();
             AGSReturnCode res1 = amdExt.EndUAVOverlap(amdExt.context, m_DeferredContext);
             RETURN_ON_FAILURE(&m_Device, res1 == AGS_SUCCESS, ReturnVoid(), "agsDriverExtensionsDX11_EndUAVOverlap() failed!");
             AGSReturnCode res2 = amdExt.BeginUAVOverlap(amdExt.context, m_DeferredContext);
             RETURN_ON_FAILURE(&m_Device, res2 == AGS_SUCCESS, ReturnVoid(), "agsDriverExtensionsDX11_BeginUAVOverlap() failed!");
+#endif
         }
     }
-#endif
 }
 
 NRI_INLINE void CommandBufferD3D11::BeginQuery(QueryPool& queryPool, uint32_t offset) {

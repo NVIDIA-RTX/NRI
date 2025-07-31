@@ -106,7 +106,7 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc) {
 
         // Ex
         memcpy(&m_RasterizerDesc, &rasterizerDesc, sizeof(D3D11_RASTERIZER_DESC));
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_NVAPI
         // TODO: m_RasterizerDesc.ForcedSampleCount?
         m_RasterizerDesc.ProgrammableSamplePositionsEnable = true;
         m_RasterizerDesc.SampleCount = sampleNum;
@@ -201,7 +201,7 @@ Result PipelineD3D11::Create(const ComputePipelineDesc& pipelineDesc) {
 
 void PipelineD3D11::ChangeSamplePositions(ID3D11DeviceContextBest* deferredContext, const SamplePositionsState& samplePositionState) {
     MaybeUnused(deferredContext, samplePositionState);
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_NVAPI
     if (IsCompute())
         return;
 

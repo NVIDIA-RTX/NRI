@@ -62,24 +62,21 @@ struct DeviceD3D12 final : public DeviceBase {
         return m_TightAlignmentTier;
     }
 
-#if NRI_ENABLE_D3D_EXTENSIONS
     inline bool HasNvExt() const {
+#if NRI_ENABLE_NVAPI
         return m_NvExt.available;
-    }
-
-    inline bool HasAmdExt() const {
-        return m_AmdExt.context != nullptr;
-    }
-
 #else
-    inline bool HasNvExt() const {
         return false;
+#endif
     }
 
     inline bool HasAmdExt() const {
+#if NRI_ENABLE_AMDAGS
+        return m_AmdExt.context != nullptr;
+#else
         return false;
-    }
 #endif
+    }
 
     template <typename Implementation, typename Interface, typename... Args>
     inline Result CreateImplementation(Interface*& entity, const Args&... args) {
@@ -167,10 +164,15 @@ private:
 private:
     // Order of destructors is important
     PixExt m_Pix = {};
-#if NRI_ENABLE_D3D_EXTENSIONS
+
+#if NRI_ENABLE_NVAPI
     NvExt m_NvExt = {};
+#endif
+
+#if NRI_ENABLE_AMDAGS
     AmdExtD3D12 m_AmdExt = {};
 #endif
+
     ComPtr<ID3D12DeviceBest> m_Device;
     ComPtr<IDXGIAdapter> m_Adapter;
     ComPtr<ID3D12CommandSignature> m_DispatchCommandSignature;

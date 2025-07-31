@@ -61,7 +61,7 @@ static void __stdcall MessageCallback(D3D12_MESSAGE_CATEGORY category, D3D12_MES
 typedef ID3D12InfoQueue ID3D12InfoQueueBest;
 #endif
 
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_NVAPI
 
 static void __stdcall NvapiMessageCallback(void* context, NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY severity, const char* messageCode, const char* message, const char* messageDetails) {
     Message messageType = Message::INFO;
@@ -146,10 +146,12 @@ DeviceD3D12::~DeviceD3D12() {
             Destroy<QueueD3D12>(queue);
     }
 
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_AMDAGS
     if (HasAmdExt() && !m_IsWrapped)
         m_AmdExt.DestroyDeviceD3D12(m_AmdExt.context, m_Device, nullptr);
+#endif
 
+#if NRI_ENABLE_NVAPI
     if (HasNvExt() && m_CallbackHandle)
         NvAPI_D3D12_UnregisterRaytracingValidationMessageCallback(m_Device, m_CallbackHandle);
 #endif
@@ -188,12 +190,14 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     // Device
     ComPtr<ID3D12DeviceBest> deviceTemp = (ID3D12DeviceBest*)descD3D12.d3d12Device;
     if (!m_IsWrapped) {
-#if NRI_ENABLE_D3D_EXTENSIONS
         bool isShaderAtomicsI64Supported = false;
         bool isShaderClockSupported = false;
+        
         uint32_t d3dShaderExtRegister = desc.d3dShaderExtRegister ? desc.d3dShaderExtRegister : NRI_SHADER_EXT_REGISTER;
+        MaybeUnused(d3dShaderExtRegister);
 
         if (HasAmdExt()) {
+#if NRI_ENABLE_AMDAGS
             AGSDX12DeviceCreationParams deviceCreationParams = {};
             deviceCreationParams.pAdapter = m_Adapter;
             deviceCreationParams.iid = __uuidof(ID3D12DeviceBest);
@@ -209,23 +213,23 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
             deviceTemp = (ID3D12DeviceBest*)agsParams.pDevice;
             isShaderAtomicsI64Supported = agsParams.extensionsSupported.intrinsics19;
             isShaderClockSupported = agsParams.extensionsSupported.shaderClock;
-        } else {
 #endif
+        } else {
             HRESULT hr = D3D12CreateDevice(m_Adapter, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), (void**)&deviceTemp);
             RETURN_ON_BAD_HRESULT(this, hr, "D3D12CreateDevice");
 
-#if NRI_ENABLE_D3D_EXTENSIONS
             if (HasNvExt()) {
+#if NRI_ENABLE_NVAPI
                 REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_SetNvShaderExtnSlotSpace(deviceTemp, d3dShaderExtRegister, 0));
                 REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_UINT64_ATOMIC, &isShaderAtomicsI64Supported));
                 REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_GET_SPECIAL, &isShaderClockSupported));
+#endif
             }
         }
 
         // Start filling here to avoid passing additional arguments into "FillDesc"
         m_Desc.shaderFeatures.atomicsI64 = isShaderAtomicsI64Supported;
         m_Desc.shaderFeatures.clock = isShaderClockSupported;
-#endif
     }
 
     { // Query latest interface
@@ -309,7 +313,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     }
 
     // NV-specific ray tracing features
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_NVAPI
     if (HasNvExt()) {
         { // Check position fetch support
             bool isSupported = false;
@@ -752,7 +756,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
 
     bool isShaderAtomicsF16Supported = false;
     bool isShaderAtomicsF32Supported = false;
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_NVAPI
     if (HasNvExt()) {
         REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_FP16_ATOMIC, &isShaderAtomicsF16Supported));
         REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_FP32_ATOMIC, &isShaderAtomicsF32Supported));
@@ -787,7 +791,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
 
 void DeviceD3D12::InitializeNvExt(bool disableNVAPIInitialization, bool isImported) {
     MaybeUnused(disableNVAPIInitialization, isImported);
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_NVAPI
     if (GetModuleHandleA("renderdoc.dll") != nullptr) {
         REPORT_WARNING(this, "NVAPI is disabled, because RenderDoc library has been loaded");
         return;
@@ -806,7 +810,7 @@ void DeviceD3D12::InitializeNvExt(bool disableNVAPIInitialization, bool isImport
 
 void DeviceD3D12::InitializeAmdExt(AGSContext* agsContext, bool isImported) {
     MaybeUnused(agsContext, isImported);
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_AMDAGS
     if (isImported && !agsContext) {
         REPORT_WARNING(this, "AMDAGS is disabled, because 'agsContext' is not provided");
         return;

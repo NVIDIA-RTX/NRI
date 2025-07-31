@@ -130,10 +130,8 @@ D3D12_SHADING_RATE_COMBINER GetShadingRateCombiner(ShadingRateCombiner shadingRa
 
 } // namespace nri
 
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_AMDAGS
 #    include "amd_ags.h"
-#    include "nvShaderExtnEnums.h"
-#    include "nvapi.h"
 
 struct AmdExtD3D12 {
     // Funcs first
@@ -154,6 +152,12 @@ struct AmdExtD3D12 {
     }
 };
 
+#endif
+
+#if NRI_ENABLE_NVAPI
+#    include "nvShaderExtnEnums.h"
+#    include "nvapi.h"
+
 struct NvExt {
     bool available;
 
@@ -162,6 +166,7 @@ struct NvExt {
             NvAPI_Unload();
     }
 };
+
 #endif
 
 typedef HRESULT(WINAPI* PIX_BEGINEVENTONCOMMANDLIST)(ID3D12GraphicsCommandList* commandList, UINT64 color, _In_ PCSTR formatString);

@@ -35,19 +35,21 @@ DeviceD3D11::DeviceD3D11(const CallbackInterface& callbacks, const AllocationCal
 }
 
 DeviceD3D11::~DeviceD3D11() {
-#if NRI_ENABLE_D3D_EXTENSIONS
     if (m_ImmediateContext) {
         if (HasNvExt()) {
+#if NRI_ENABLE_NVAPI
             NvAPI_Status status = NvAPI_D3D11_EndUAVOverlap(m_ImmediateContext);
             if (status != NVAPI_OK)
                 REPORT_WARNING(this, "NvAPI_D3D11_EndUAVOverlap() failed!");
+#endif
         } else if (HasAmdExt()) {
+#if NRI_ENABLE_AMDAGS
             AGSReturnCode res = m_AmdExt.EndUAVOverlap(m_AmdExt.context, m_ImmediateContext);
             if (res != AGS_SUCCESS)
                 REPORT_WARNING(this, "agsDriverExtensionsDX11_EndUAVOverlap() failed!");
+#endif
         }
     }
-#endif
 
     for (auto& queueFamily : m_QueueFamilies) {
         for (auto queue : queueFamily)
@@ -56,7 +58,7 @@ DeviceD3D11::~DeviceD3D11() {
 
     DeleteCriticalSection(&m_CriticalSection);
 
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_AMDAGS
     if (HasAmdExt() && !m_IsWrapped)
         m_AmdExt.DestroyDeviceD3D11(m_AmdExt.context, m_Device, nullptr, m_ImmediateContext, nullptr);
 #endif
@@ -104,9 +106,11 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         bool isShaderClockSupported = false;
         bool areWaveIntrinsicsSupported = false;
 
-#if NRI_ENABLE_D3D_EXTENSIONS
         uint32_t d3dShaderExtRegister = desc.d3dShaderExtRegister ? desc.d3dShaderExtRegister : NRI_SHADER_EXT_REGISTER;
+        MaybeUnused(d3dShaderExtRegister);
+
         if (HasAmdExt()) {
+#if NRI_ENABLE_AMDAGS
             AGSDX11DeviceCreationParams deviceCreationParams = {};
             deviceCreationParams.pAdapter = m_Adapter;
             deviceCreationParams.DriverType = D3D_DRIVER_TYPE_UNKNOWN;
@@ -141,8 +145,8 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
                 && agsParams.extensionsSupported.intrinsics17
                 && agsParams.extensionsSupported.intrinsics19
                 && agsParams.extensionsSupported.getWaveSize;
-        } else {
 #endif
+        } else {
             HRESULT hr = D3D11CreateDevice(m_Adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags, levels, levelNum, D3D11_SDK_VERSION, (ID3D11Device**)&deviceTemp, nullptr, nullptr);
 
             // If Debug Layer is not available, try without D3D11_CREATE_DEVICE_DEBUG
@@ -151,8 +155,8 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
             RETURN_ON_BAD_HRESULT(this, hr, "D3D11CreateDevice");
 
-#if NRI_ENABLE_D3D_EXTENSIONS
             if (HasNvExt()) {
+#if NRI_ENABLE_NVAPI
                 REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D_RegisterDevice(deviceTemp));
                 REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_SetNvShaderExtnSlot(deviceTemp, d3dShaderExtRegister));
                 REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_UINT64_ATOMIC, &isShaderAtomicsI64Supported));
@@ -187,9 +191,9 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
                 areWaveIntrinsicsSupported = areWaveIntrinsicsSupported && isSupported;
 
                 isDepthBoundsTestSupported = true;
+#endif
             }
         }
-#endif
 
         // Start filling here to avoid passing additional arguments into "FillDesc"
         m_Desc.features.depthBoundsTest = isDepthBoundsTestSupported;
@@ -242,17 +246,19 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     REPORT_INFO(this, "Using ID3D11DeviceContext%u", m_ImmediateContextVersion);
 
     // Skip UAV barriers by default on the immediate context
-#if NRI_ENABLE_D3D_EXTENSIONS
     if (HasNvExt()) {
+#if NRI_ENABLE_NVAPI
         NvAPI_Status status = NvAPI_D3D11_BeginUAVOverlap(m_ImmediateContext);
         if (status != NVAPI_OK)
             REPORT_WARNING(this, "NvAPI_D3D11_BeginUAVOverlap() failed!");
+#endif
     } else if (HasAmdExt()) {
+#if NRI_ENABLE_AMDAGS
         AGSReturnCode res = m_AmdExt.BeginUAVOverlap(m_AmdExt.context, m_ImmediateContext);
         if (res != AGS_SUCCESS)
             REPORT_WARNING(this, "agsDriverExtensionsDX11_BeginUAVOverlap() failed!");
-    }
 #endif
+    }
 
     // Threading
     D3D11_FEATURE_DATA_THREADING threadingCaps = {};
@@ -479,7 +485,7 @@ void DeviceD3D11::FillDesc() {
     bool isShaderAtomicsF16Supported = false;
     bool isShaderAtomicsF32Supported = false;
     bool isGetSpecialSupported = false;
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_NVAPI
     NV_D3D11_FEATURE_DATA_RASTERIZER_SUPPORT rasterizerFeatures = {};
     NV_D3D1x_GRAPHICS_CAPS caps = {};
 
@@ -522,7 +528,7 @@ void DeviceD3D11::FillDesc() {
 
 void DeviceD3D11::InitializeNvExt(bool disableNVAPIInitialization, bool isImported) {
     MaybeUnused(disableNVAPIInitialization, isImported);
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_NVAPI
     if (GetModuleHandleA("renderdoc.dll") != nullptr) {
         REPORT_WARNING(this, "NVAPI is disabled, because RenderDoc library has been loaded");
         return;
@@ -541,7 +547,7 @@ void DeviceD3D11::InitializeNvExt(bool disableNVAPIInitialization, bool isImport
 
 void DeviceD3D11::InitializeAmdExt(AGSContext* agsContext, bool isImported) {
     MaybeUnused(agsContext, isImported);
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_AMDAGS
     if (isImported && !agsContext) {
         REPORT_WARNING(this, "AMDAGS is disabled, because 'agsContext' is not provided");
         return;

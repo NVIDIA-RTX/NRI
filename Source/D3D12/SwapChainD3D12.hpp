@@ -206,7 +206,7 @@ NRI_INLINE Result SwapChainD3D12::WaitForPresent() {
 }
 
 NRI_INLINE Result SwapChainD3D12::Present() {
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_NVAPI
     if (m_Flags & SwapChainBits::ALLOW_LOW_LATENCY)
         SetLatencyMarker((LatencyMarker)PRESENT_START);
 #endif
@@ -217,7 +217,7 @@ NRI_INLINE Result SwapChainD3D12::Present() {
     HRESULT hr = m_SwapChain->Present(vsync ? 1 : 0, flags);
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "IDXGISwapChain::Present");
 
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_NVAPI
     if (m_Flags & SwapChainBits::ALLOW_LOW_LATENCY)
         SetLatencyMarker((LatencyMarker)PRESENT_END);
 #endif
@@ -228,7 +228,7 @@ NRI_INLINE Result SwapChainD3D12::Present() {
 }
 
 NRI_INLINE Result SwapChainD3D12::SetLatencySleepMode(const LatencySleepMode& latencySleepMode) {
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_NVAPI
     NV_SET_SLEEP_MODE_PARAMS params = {NV_SET_SLEEP_MODE_PARAMS_VER};
     params.bLowLatencyMode = latencySleepMode.lowLatencyMode;
     params.bLowLatencyBoost = latencySleepMode.lowLatencyBoost;
@@ -246,7 +246,7 @@ NRI_INLINE Result SwapChainD3D12::SetLatencySleepMode(const LatencySleepMode& la
 }
 
 NRI_INLINE Result SwapChainD3D12::SetLatencyMarker(LatencyMarker latencyMarker) {
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_NVAPI
     NV_LATENCY_MARKER_PARAMS params = {NV_LATENCY_MARKER_PARAMS_VER};
     params.frameID = m_PresentId;
     params.markerType = (NV_LATENCY_MARKER_TYPE)latencyMarker;
@@ -262,7 +262,7 @@ NRI_INLINE Result SwapChainD3D12::SetLatencyMarker(LatencyMarker latencyMarker) 
 }
 
 NRI_INLINE Result SwapChainD3D12::LatencySleep() {
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_NVAPI
     NvAPI_Status status = NvAPI_D3D_Sleep(m_Device.GetNativeObject());
 
     return status == NVAPI_OK ? Result::SUCCESS : Result::FAILURE;
@@ -273,7 +273,7 @@ NRI_INLINE Result SwapChainD3D12::LatencySleep() {
 
 NRI_INLINE Result SwapChainD3D12::GetLatencyReport(LatencyReport& latencyReport) {
     latencyReport = {};
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_NVAPI
     NV_LATENCY_RESULT_PARAMS params = {NV_LATENCY_RESULT_PARAMS_VER};
     NvAPI_Status status = NvAPI_D3D_GetLatency(m_Device.GetNativeObject(), &params);
 

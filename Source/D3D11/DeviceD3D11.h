@@ -63,25 +63,25 @@ struct DeviceD3D11 final : public DeviceBase {
             ::LeaveCriticalSection(&m_CriticalSection);
     }
 
-#if NRI_ENABLE_D3D_EXTENSIONS
     inline bool HasNvExt() const {
+#if NRI_ENABLE_NVAPI
         return m_NvExt.available;
+#else
+        return false;
+#endif
     }
 
     inline bool HasAmdExt() const {
+#if NRI_ENABLE_AMDAGS
         return m_AmdExt.context != nullptr;
+#else
+        return false;
+#endif
     }
 
+#if NRI_ENABLE_AMDAGS
     inline const AmdExtD3D11& GetAmdExt() const {
         return m_AmdExt;
-    }
-#else
-    inline bool HasNvExt() const {
-        return false;
-    }
-
-    inline bool HasAmdExt() const {
-        return false;
     }
 #endif
 
@@ -151,10 +151,14 @@ private:
 
 private:
     // Order of destructors is important
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_NVAPI
     NvExt m_NvExt = {};
+#endif
+
+#if NRI_ENABLE_AMDAGS
     AmdExtD3D11 m_AmdExt = {};
 #endif
+
     ComPtr<ID3D11DeviceBest> m_Device;
     ComPtr<IDXGIAdapter> m_Adapter;
     ComPtr<ID3D11DeviceContextBest> m_ImmediateContext;

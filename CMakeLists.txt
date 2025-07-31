@@ -12,11 +12,19 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_path(WAYLAND_HEADERS NAMES "wayland-client.h")
 endif()
 
+# Arm64?
+if((CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64") OR (CMAKE_SYSTEM_PROCESSOR MATCHES "arm64"))
+    set(IS_ARM64 TRUE)
+else()
+    set(IS_ARM64 FALSE)
+endif()
+
 # Options
 set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK will be copied relative to the directory with binaries")
 set(NRI_AGILITY_SDK_VERSION_MAJOR "616" CACHE STRING "Agility SDK major version") # 717 (can cause D3D12_ERROR_INVALID_REDIST error?)
 set(NRI_AGILITY_SDK_VERSION_MINOR "1" CACHE STRING "Agility SDK minor version") # 1-preview
 set(NRI_SHADERS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_Shaders" CACHE STRING "Shader output path override")
+set(NRI_NVAPI_CUSTOM_PATH "" CACHE STRING "Path to a custom NVAPI library directory")
 
 option(NRI_STATIC_LIBRARY "Build static library" OFF)
 option(NRI_ENABLE_NVTX_SUPPORT "Annotations for NVIDIA Nsight Systems" ON)
@@ -29,19 +37,34 @@ option(NRI_ENABLE_IMGUI_EXTENSION "Enable 'NRIImgui' extension" OFF)
 
 cmake_dependent_option(NRI_ENABLE_D3D11_SUPPORT "Enable D3D11 backend" ON "WIN32" OFF)
 cmake_dependent_option(NRI_ENABLE_D3D12_SUPPORT "Enable D3D12 backend" ON "WIN32" OFF)
-cmake_dependent_option(NRI_ENABLE_D3D_EXTENSIONS "Enable vendor specific extension libraries for D3D (NVAPI and AMD AGS)" ON "NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT" OFF)
+cmake_dependent_option(NRI_ENABLE_AMDAGS "Enable AMD AGS library for D3D" ON "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT) AND NOT IS_ARM64" OFF)
+cmake_dependent_option(NRI_ENABLE_NVAPI "Enable NVAPI library for D3D" ON "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT) AND NOT IS_ARM64" OFF)
 cmake_dependent_option(NRI_ENABLE_AGILITY_SDK_SUPPORT "Enable Agility SDK support to unlock access to latest D3D12 features" ON "NRI_ENABLE_D3D12_SUPPORT" OFF)
 cmake_dependent_option(NRI_ENABLE_XLIB_SUPPORT "Enable X11 support" ON "XLIB_HEADERS" OFF)
 cmake_dependent_option(NRI_ENABLE_WAYLAND_SUPPORT "Enable Wayland support" ON "WAYLAND_HEADERS" OFF)
-cmake_dependent_option(NRI_ENABLE_NGX_SDK "Enable NVIDIA NGX (DLSS) SDK" OFF "NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT OR NRI_ENABLE_VK_SUPPORT" OFF)
-cmake_dependent_option(NRI_ENABLE_FFX_SDK "Enable AMD FidelityFX SDK" OFF "(NRI_ENABLE_VK_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT) AND WIN32" OFF)
-cmake_dependent_option(NRI_ENABLE_XESS_SDK "Enable INTEL XeSS SDK" OFF "NRI_ENABLE_D3D12_SUPPORT AND WIN32" OFF)
+cmake_dependent_option(NRI_ENABLE_NGX_SDK "Enable NVIDIA NGX (DLSS) SDK" OFF "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT OR NRI_ENABLE_VK_SUPPORT) AND NOT IS_ARM64" OFF)
+cmake_dependent_option(NRI_ENABLE_FFX_SDK "Enable AMD FidelityFX SDK" OFF "(NRI_ENABLE_VK_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT) AND WIN32 AND NOT IS_ARM64" OFF)
+cmake_dependent_option(NRI_ENABLE_XESS_SDK "Enable INTEL XeSS SDK" OFF "NRI_ENABLE_D3D12_SUPPORT AND WIN32 AND NOT IS_ARM64" OFF)
 
-# Is submodule?
+# Submodule?
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
-    set(IS_SUBMODULE OFF)
+    set(IS_SUBMODULE FALSE)
 else()
-    set(IS_SUBMODULE ON)
+    set(IS_SUBMODULE TRUE)
+endif()
+
+# Architecture?
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    if(IS_ARM64)
+        set(BIN_ARCHITECTURE "arm64")
+        set(NVAPI_BIN_ARCHITECTURE "arm64")
+    else()
+        set(BIN_ARCHITECTURE "x64")
+        set(NVAPI_BIN_ARCHITECTURE "amd64")
+    endif()
+else()
+    set(BIN_ARCHITECTURE "x86")
+    set(NVAPI_BIN_ARCHITECTURE "x86")
 endif()
 
 # Settings
@@ -114,7 +137,8 @@ add_compile_definition(NRI_ENABLE_NIS_SDK)
 add_compile_definition(NRI_ENABLE_IMGUI_EXTENSION)
 add_compile_definition(NRI_ENABLE_D3D11_SUPPORT)
 add_compile_definition(NRI_ENABLE_D3D12_SUPPORT)
-add_compile_definition(NRI_ENABLE_D3D_EXTENSIONS)
+add_compile_definition(NRI_ENABLE_NVAPI)
+add_compile_definition(NRI_ENABLE_AMDAGS)
 add_compile_definition(NRI_ENABLE_AGILITY_SDK_SUPPORT)
 add_compile_definition(NRI_ENABLE_XLIB_SUPPORT)
 add_compile_definition(NRI_ENABLE_WAYLAND_SUPPORT)
@@ -133,14 +157,6 @@ add_compile_definition(NRI_REQUIRES_SHADERMAKE)
 # Find Windows SDK
 if(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT)
     message("NRI: looking for Windows SDK:")
-
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-        set(BIN_ARCHITECTURE "x64")
-        set(NVAPI_BIN_ARCHITECTURE "amd64")
-    else()
-        set(BIN_ARCHITECTURE "x86")
-        set(NVAPI_BIN_ARCHITECTURE "x86")
-    endif()
 
     if("$ENV{WIN10_SDK_PATH}$ENV{WIN10_SDK_VERSION}" STREQUAL "")
         get_filename_component(WINDOWS_SDK_PATH "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots;KitsRoot10]" ABSOLUTE CACHE)
@@ -273,7 +289,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
     list(APPEND DEPS d3d12ma)
 endif()
 
-if(NRI_ENABLE_D3D_EXTENSIONS)
+if(NRI_ENABLE_AMDAGS)
     # AMD AGS
     FetchContent_Declare(
         amdags
@@ -283,16 +299,23 @@ if(NRI_ENABLE_D3D_EXTENSIONS)
         URL https://github.com/GPUOpen-LibrariesAndSDKs/AGS_SDK/archive/refs/tags/v6.3.0.zip
     )
     list(APPEND DEPS amdags)
+endif()
 
+if(NRI_ENABLE_NVAPI)
     # NV API
-    FetchContent_Declare(
-        nvapi
-        GIT_REPOSITORY https://github.com/NVIDIA/nvapi.git
-        GIT_TAG main
-        GIT_SHALLOW 1
-        SOURCE_SUBDIR "ignore CMakeLists.txt"
-    )
-    list(APPEND DEPS nvapi)
+    if(NRI_NVAPI_CUSTOM_PATH)
+        get_filename_component(nvapi_SOURCE_DIR "${NRI_NVAPI_CUSTOM_PATH}" ABSOLUTE)
+        message("NRI: using custom NVAPI from '${nvapi_SOURCE_DIR}'")
+    else()
+        FetchContent_Declare(
+            nvapi
+            GIT_REPOSITORY https://github.com/NVIDIA/nvapi.git
+            GIT_TAG main
+            GIT_SHALLOW 1
+            SOURCE_SUBDIR "ignore CMakeLists.txt"
+        )
+        list(APPEND DEPS nvapi)
+    endif()
 endif()
 
 # Add dependencies for dependencies
@@ -322,10 +345,9 @@ if(DEPS)
     endforeach()
 endif()
 
-# D3D extensions
-if(NRI_ENABLE_D3D_EXTENSIONS)
+# NVAPI
+if(NRI_ENABLE_NVAPI)
     find_library(NVAPI_LIB NAMES nvapi64 nvapi PATHS "${nvapi_SOURCE_DIR}/${NVAPI_BIN_ARCHITECTURE}" REQUIRED) # statically linked
-    find_library(AGS_LIB NAMES amd_ags_${BIN_ARCHITECTURE} PATHS "${amdags_SOURCE_DIR}/ags_lib/lib" REQUIRED) # dynamically loaded
 
     file(GLOB NVAPI_HEADERS
         "${nvapi_SOURCE_DIR}/nvapi.h"
@@ -333,6 +355,11 @@ if(NRI_ENABLE_D3D_EXTENSIONS)
         "${nvapi_SOURCE_DIR}/nvShaderExtnEnums.h"
     )
     source_group("External/nvapi" FILES ${NVAPI_HEADERS})
+endif()
+
+# AMDAGS
+if(NRI_ENABLE_AMDAGS)
+    find_library(AGS_LIB NAMES amd_ags_${BIN_ARCHITECTURE} PATHS "${amdags_SOURCE_DIR}/ags_lib/lib" REQUIRED) # dynamically loaded
 
     file(GLOB AMDAGS_HEADERS
         "${amdags_SOURCE_DIR}/ags_lib/inc/*.h"
@@ -346,6 +373,7 @@ endif()
 if(NRI_ENABLE_NONE_SUPPORT)
     file(GLOB NONE_SOURCE "Source/NONE/*")
     source_group("" FILES ${NONE_SOURCE})
+
     add_library(NRI_NONE STATIC ${NONE_SOURCE})
     target_include_directories(NRI_NONE PRIVATE
         "Include"
@@ -358,47 +386,49 @@ endif()
 
 # D3D11
 if(NRI_ENABLE_D3D11_SUPPORT)
+    find_library(INPUT_LIB_D3D11 NAMES d3d11 HINTS ${WINDOWS_SDK_LIB_PATH} REQUIRED)
+
     file(GLOB D3D11_SOURCE "Source/D3D11/*")
     source_group("" FILES ${D3D11_SOURCE})
 
-    if(NRI_ENABLE_D3D_EXTENSIONS)
-        add_library(NRI_D3D11 STATIC ${D3D11_SOURCE} ${NVAPI_HEADERS} ${AMDAGS_HEADERS})
-        target_link_libraries(NRI_D3D11 PRIVATE ${NVAPI_LIB})
-    else()
-        add_library(NRI_D3D11 STATIC ${D3D11_SOURCE})
-    endif()
-
-    find_library(INPUT_LIB_D3D11 NAMES d3d11 HINTS ${WINDOWS_SDK_LIB_PATH} REQUIRED)
-
+    add_library(NRI_D3D11 STATIC ${D3D11_SOURCE})
+    target_sources(NRI_D3D11 PRIVATE
+        $<$<BOOL:${NRI_ENABLE_NVAPI}>:${NVAPI_HEADERS}>
+        $<$<BOOL:${NRI_ENABLE_AMDAGS}>:${AMDAGS_HEADERS}>
+    )
     target_include_directories(NRI_D3D11 PRIVATE
         "Include"
         "Source/Shared"
         "${nvapi_SOURCE_DIR}"
         "${amdags_SOURCE_DIR}/ags_lib/inc"
     )
+    target_link_libraries(NRI_D3D11 PRIVATE
+        NRI_Shared
+        ${INPUT_LIB_D3D11}
+        ${INPUT_LIB_DXGI}
+        ${INPUT_LIB_DXGUID}
+        $<$<BOOL:${NRI_ENABLE_NVAPI}>:${NVAPI_LIB}>
+    )
     target_compile_definitions(NRI_D3D11 PRIVATE ${COMPILE_DEFINITIONS})
     target_compile_options(NRI_D3D11 PRIVATE ${COMPILE_OPTIONS})
-    target_link_libraries(NRI_D3D11 PRIVATE NRI_Shared ${INPUT_LIB_D3D11} ${INPUT_LIB_DXGI} ${INPUT_LIB_DXGUID})
     set_target_properties(NRI_D3D11 PROPERTIES FOLDER ${PROJECT_NAME})
 endif()
 
 # D3D12
 if(NRI_ENABLE_D3D12_SUPPORT)
+    find_library(INPUT_LIB_D3D12 NAMES d3d12 HINTS ${WINDOWS_SDK_LIB_PATH} REQUIRED)
+
     file(GLOB D3D12_VMA "${d3d12ma_SOURCE_DIR}/include/D3D12MemAlloc.h")
     source_group("External/vma" FILES ${D3D12_VMA})
 
     file(GLOB D3D12_SOURCE "Source/D3D12/*")
     source_group("" FILES ${D3D12_SOURCE})
 
-    if(NRI_ENABLE_D3D_EXTENSIONS)
-        add_library(NRI_D3D12 STATIC ${D3D12_SOURCE} ${D3D12_VMA} ${NVAPI_HEADERS} ${AMDAGS_HEADERS})
-        target_link_libraries(NRI_D3D12 PRIVATE ${NVAPI_LIB})
-    else()
-        add_library(NRI_D3D12 STATIC ${D3D12_SOURCE})
-    endif()
-
-    find_library(INPUT_LIB_D3D12 NAMES d3d12 HINTS ${WINDOWS_SDK_LIB_PATH} REQUIRED)
-
+    add_library(NRI_D3D12 STATIC ${D3D12_SOURCE} ${D3D12_VMA})
+    target_sources(NRI_D3D12 PRIVATE
+        $<$<BOOL:${NRI_ENABLE_NVAPI}>:${NVAPI_HEADERS}>
+        $<$<BOOL:${NRI_ENABLE_AMDAGS}>:${AMDAGS_HEADERS}>
+    )
     target_include_directories(NRI_D3D12 PRIVATE
         "Include"
         "Source/Shared"
@@ -406,16 +436,24 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         "${d3d12ma_SOURCE_DIR}/src"
         "${nvapi_SOURCE_DIR}"
         "${amdags_SOURCE_DIR}/ags_lib/inc"
+        $<$<BOOL:${NRI_ENABLE_AGILITY_SDK_SUPPORT}>:${agilitysdk_SOURCE_DIR}/build/native/include>
+    )
+    target_link_libraries(NRI_D3D12 PRIVATE
+        NRI_Shared
+        ${INPUT_LIB_D3D12}
+        ${INPUT_LIB_DXGI}
+        ${INPUT_LIB_DXGUID}
+        $<$<BOOL:${NRI_ENABLE_NVAPI}>:${NVAPI_LIB}>
+    )
+    target_compile_definitions(NRI_D3D12 PRIVATE
+        ${COMPILE_DEFINITIONS}
+        NRI_AGILITY_SDK_VERSION_MAJOR=$<IF:$<BOOL:${NRI_ENABLE_AGILITY_SDK_SUPPORT}>,${NRI_AGILITY_SDK_VERSION_MAJOR},D3D12_SDK_VERSION>
     )
     target_compile_options(NRI_D3D12 PRIVATE ${COMPILE_OPTIONS})
-    target_link_libraries(NRI_D3D12 PRIVATE NRI_Shared ${INPUT_LIB_D3D12} ${INPUT_LIB_DXGI} ${INPUT_LIB_DXGUID})
     set_target_properties(NRI_D3D12 PROPERTIES FOLDER ${PROJECT_NAME})
 
     if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
         message("NRI: using AgilitySDK v1.${NRI_AGILITY_SDK_VERSION_MAJOR}.${NRI_AGILITY_SDK_VERSION_MINOR}")
-
-        target_compile_definitions(NRI_D3D12 PRIVATE ${COMPILE_DEFINITIONS} NRI_AGILITY_SDK_VERSION_MAJOR=${NRI_AGILITY_SDK_VERSION_MAJOR})
-        target_include_directories(NRI_D3D12 PRIVATE "${agilitysdk_SOURCE_DIR}/build/native/include")
 
         # Generate "NRIAgilitySDK.h"
         file(WRITE Include/NRIAgilitySDK.h
@@ -429,8 +467,6 @@ if(NRI_ENABLE_D3D12_SUPPORT)
             "}\n"
             "#endif\n"
         )
-    else()
-        target_compile_definitions(NRI_D3D12 PRIVATE ${COMPILE_DEFINITIONS} NRI_AGILITY_SDK_VERSION_MAJOR=D3D12_SDK_VERSION)
     endif()
 endif()
 
@@ -449,9 +485,9 @@ if(NRI_ENABLE_VK_SUPPORT)
         "${vma_SOURCE_DIR}/include"
         "${vulkan_headers_SOURCE_DIR}/include"
     )
+    target_link_libraries(NRI_VK PRIVATE NRI_Shared)
     target_compile_definitions(NRI_VK PRIVATE ${COMPILE_DEFINITIONS})
     target_compile_options(NRI_VK PRIVATE ${COMPILE_OPTIONS})
-    target_link_libraries(NRI_VK PRIVATE NRI_Shared)
     set_target_properties(NRI_VK PROPERTIES FOLDER ${PROJECT_NAME})
 
     if(WIN32)
@@ -485,37 +521,14 @@ if(NRI_ENABLE_VALIDATION_SUPPORT)
         "Include"
         "Source/Shared"
     )
+    target_link_libraries(NRI_Validation PRIVATE NRI_Shared)
     target_compile_definitions(NRI_Validation PRIVATE ${COMPILE_DEFINITIONS})
     target_compile_options(NRI_Validation PRIVATE ${COMPILE_OPTIONS})
-    target_link_libraries(NRI_Validation PRIVATE NRI_Shared)
     set_target_properties(NRI_Validation PROPERTIES FOLDER ${PROJECT_NAME})
 endif()
 
 # Shared
-file(GLOB SHARED_SOURCE
-    "Source/Shared/*.cpp"
-    "Source/Shared/*.h"
-    "Source/Shared/*.hpp"
-)
-source_group("" FILES ${SHARED_SOURCE})
-add_library(NRI_Shared STATIC ${SHARED_SOURCE})
-
-target_include_directories(NRI_Shared PRIVATE
-    "Include"
-    "Source/Shared"
-)
-
-if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
-    target_include_directories(NRI_Shared PRIVATE "${agilitysdk_SOURCE_DIR}/build/native/include")
-endif()
-
-if(NRI_ENABLE_VK_SUPPORT)
-    target_include_directories(NRI_Shared PRIVATE "${vulkan_headers_SOURCE_DIR}/include")
-endif()
-
 if(NRI_ENABLE_NGX_SDK)
-    target_include_directories(NRI_Shared PRIVATE "${ngx_SOURCE_DIR}/include")
-
     if(WIN32)
         if((NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY) OR (${CMAKE_MSVC_RUNTIME_LIBRARY} MATCHES "DLL"))
             set(NGX_SUFFIX "d")
@@ -525,24 +538,33 @@ if(NRI_ENABLE_NGX_SDK)
             message("NRI: using NGX LIB with static runtime")
         endif()
 
-        set(NGX_LIB "${ngx_SOURCE_DIR}/lib/Windows_x86_64/x64/nvsdk_ngx_${NGX_SUFFIX}")
-
-        target_link_libraries(NRI_Shared PRIVATE debug ${NGX_LIB}_dbg.lib)
-        target_link_libraries(NRI_Shared PRIVATE optimized ${NGX_LIB}.lib)
+        set(NGX_LIB "${ngx_SOURCE_DIR}/lib/Windows_x86_64/x64/nvsdk_ngx_${NGX_SUFFIX}.lib") # don't use "dbg" version in Debug mode
     else()
-        target_link_libraries(NRI_Shared PRIVATE "${ngx_SOURCE_DIR}/lib/Linux_x86_64/libnvsdk_ngx.a")
+        set(NGX_LIB "${ngx_SOURCE_DIR}/lib/Linux_x86_64/libnvsdk_ngx.a")
     endif()
 endif()
 
-if(NRI_ENABLE_FFX_SDK)
-    target_include_directories(NRI_Shared PRIVATE "${ffx_SOURCE_DIR}/ffx-api/include/ffx_api")
-endif()
+file(GLOB SHARED_SOURCE
+    "Source/Shared/*.cpp"
+    "Source/Shared/*.h"
+    "Source/Shared/*.hpp"
+)
+source_group("" FILES ${SHARED_SOURCE})
 
-if(NRI_ENABLE_XESS_SDK)
-    target_include_directories(NRI_Shared PRIVATE "${xess_SOURCE_DIR}/inc/xess")
-    target_link_libraries(NRI_Shared PRIVATE "${xess_SOURCE_DIR}/lib/libxess.lib")
-endif()
-
+add_library(NRI_Shared STATIC ${SHARED_SOURCE})
+target_include_directories(NRI_Shared PRIVATE
+    "Include"
+    "Source/Shared"
+    $<$<BOOL:${NRI_ENABLE_AGILITY_SDK_SUPPORT}>:${agilitysdk_SOURCE_DIR}/build/native/include>
+    $<$<BOOL:${NRI_ENABLE_VK_SUPPORT}>:${vulkan_headers_SOURCE_DIR}/include>
+    $<$<BOOL:${NRI_ENABLE_NGX_SDK}>:${ngx_SOURCE_DIR}/include>
+    $<$<BOOL:${NRI_ENABLE_FFX_SDK}>:${ffx_SOURCE_DIR}/ffx-api/include/ffx_api>
+    $<$<BOOL:${NRI_ENABLE_XESS_SDK}>:${xess_SOURCE_DIR}/inc/xess>
+)
+target_link_libraries(NRI_Shared PRIVATE
+    $<$<BOOL:${NRI_ENABLE_NGX_SDK}>:${NGX_LIB}>
+    $<$<BOOL:${NRI_ENABLE_XESS_SDK}>:${xess_SOURCE_DIR}/lib/libxess.lib>
+)
 target_compile_definitions(NRI_Shared PRIVATE ${COMPILE_DEFINITIONS})
 target_compile_options(NRI_Shared PRIVATE ${COMPILE_OPTIONS})
 set_target_properties(NRI_Shared PROPERTIES FOLDER ${PROJECT_NAME})
@@ -589,47 +611,26 @@ else()
     endif()
 endif()
 
-target_include_directories(${PROJECT_NAME} PUBLIC "Include")
 target_include_directories(${PROJECT_NAME} PRIVATE
     "Source/Shared"
     "${nvtx_SOURCE_DIR}/c/include/"
     "${vulkan_headers_SOURCE_DIR}/include"
+    PUBLIC "Include"
 )
-
-target_compile_definitions(${PROJECT_NAME} PRIVATE ${COMPILE_DEFINITIONS})
-
-if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC NRI_ENABLE_AGILITY_SDK_SUPPORT=1) # make it available in the parent project
-endif()
-
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    NRI_Shared
+    $<$<NOT:$<BOOL:WIN32>>:${CMAKE_DL_LIBS}>
+    $<$<BOOL:${NRI_ENABLE_NONE_SUPPORT}>:NRI_NONE>
+    $<$<BOOL:${NRI_ENABLE_D3D11_SUPPORT}>:NRI_D3D11>
+    $<$<BOOL:${NRI_ENABLE_D3D12_SUPPORT}>:NRI_D3D12>
+    $<$<BOOL:${NRI_ENABLE_VK_SUPPORT}>:NRI_VK>
+    $<$<BOOL:${NRI_ENABLE_VALIDATION_SUPPORT}>:NRI_Validation>
+)
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    ${COMPILE_DEFINITIONS}
+    PUBLIC $<$<BOOL:${NRI_ENABLE_AGILITY_SDK_SUPPORT}>:NRI_ENABLE_AGILITY_SDK_SUPPORT=1>
+)
 target_compile_options(${PROJECT_NAME} PRIVATE ${COMPILE_OPTIONS})
-
-target_link_libraries(${PROJECT_NAME} PRIVATE NRI_Shared)
-
-if(NOT WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_DL_LIBS})
-endif()
-
-if(NRI_ENABLE_NONE_SUPPORT)
-    target_link_libraries(${PROJECT_NAME} PRIVATE NRI_NONE)
-endif()
-
-if(NRI_ENABLE_D3D11_SUPPORT)
-    target_link_libraries(${PROJECT_NAME} PRIVATE NRI_D3D11)
-endif()
-
-if(NRI_ENABLE_D3D12_SUPPORT)
-    target_link_libraries(${PROJECT_NAME} PRIVATE NRI_D3D12)
-endif()
-
-if(NRI_ENABLE_VK_SUPPORT)
-    target_link_libraries(${PROJECT_NAME} PRIVATE NRI_VK)
-endif()
-
-if(NRI_ENABLE_VALIDATION_SUPPORT)
-    target_link_libraries(${PROJECT_NAME} PRIVATE NRI_Validation)
-endif()
-
 set_target_properties(${PROJECT_NAME} PROPERTIES
     FOLDER ${PROJECT_NAME}
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
@@ -638,8 +639,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 message("NRI: output path '${CMAKE_RUNTIME_OUTPUT_DIRECTORY}'")
 
 # Copy to the output folder
-if(NRI_ENABLE_D3D_EXTENSIONS)
-    find_file(AMD_AGS_DLL NAMES amd_ags_x64.dll PATHS "${amdags_SOURCE_DIR}/ags_lib/lib")
+if(NRI_ENABLE_AMDAGS)
+    find_file(AMD_AGS_DLL NAMES amd_ags_${BIN_ARCHITECTURE}.dll PATHS "${amdags_SOURCE_DIR}/ags_lib/lib")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${AMD_AGS_DLL}" "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
         VERBATIM)
@@ -647,7 +648,7 @@ endif()
 
 if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${agilitysdk_SOURCE_DIR}/build/native/bin/x64" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${NRI_AGILITY_SDK_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${agilitysdk_SOURCE_DIR}/build/native/bin/${BIN_ARCHITECTURE}" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${NRI_AGILITY_SDK_DIR}"
         VERBATIM)
 endif()
 
@@ -738,7 +739,6 @@ if(NRI_REQUIRES_SHADERMAKE)
         VERBATIM
         SOURCES ${SHADERS}
     )
-
     set_target_properties(NRI_Shaders PROPERTIES FOLDER ${PROJECT_NAME})
 
     add_dependencies(NRI_Shared NRI_Shaders)

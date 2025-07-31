@@ -57,7 +57,7 @@ private:
     ComPtr<ID3D11InputLayout> m_InputLayout;
     ComPtr<ID3D11DepthStencilState> m_DepthStencilState;
     ComPtr<ID3D11BlendState1> m_BlendState;
-#if NRI_ENABLE_D3D_EXTENSIONS
+#if NRI_ENABLE_NVAPI
     NvAPI_D3D11_RASTERIZER_DESC_EX m_RasterizerDesc = {};
 #else
     D3D11_RASTERIZER_DESC m_RasterizerDesc = {};
