@@ -538,7 +538,7 @@ if(NRI_ENABLE_NGX_SDK)
             message("NRI: using NGX LIB with static runtime")
         endif()
 
-        set(NGX_LIB "${ngx_SOURCE_DIR}/lib/Windows_x86_64/x64/nvsdk_ngx_${NGX_SUFFIX}.lib") # don't use "dbg" version in Debug mode
+        set(NGX_LIB "${ngx_SOURCE_DIR}/lib/Windows_x86_64/x64/nvsdk_ngx_${NGX_SUFFIX}")
     else()
         set(NGX_LIB "${ngx_SOURCE_DIR}/lib/Linux_x86_64/libnvsdk_ngx.a")
     endif()
@@ -561,8 +561,18 @@ target_include_directories(NRI_Shared PRIVATE
     $<$<BOOL:${NRI_ENABLE_FFX_SDK}>:${ffx_SOURCE_DIR}/ffx-api/include/ffx_api>
     $<$<BOOL:${NRI_ENABLE_XESS_SDK}>:${xess_SOURCE_DIR}/inc/xess>
 )
+
+if(NRI_ENABLE_NGX_SDK)
+    if(WIN32)
+        # NGX leaks STD, we must use specialized libs
+        target_link_libraries(NRI_Shared PRIVATE debug ${NGX_LIB}_dbg.lib)
+        target_link_libraries(NRI_Shared PRIVATE optimized ${NGX_LIB}.lib)
+    else()
+        target_link_libraries(NRI_Shared PRIVATE ${NGX_LIB})
+    endif()
+endif()
+
 target_link_libraries(NRI_Shared PRIVATE
-    $<$<BOOL:${NRI_ENABLE_NGX_SDK}>:${NGX_LIB}>
     $<$<BOOL:${NRI_ENABLE_XESS_SDK}>:${xess_SOURCE_DIR}/lib/libxess.lib>
 )
 target_compile_definitions(NRI_Shared PRIVATE ${COMPILE_DEFINITIONS})
