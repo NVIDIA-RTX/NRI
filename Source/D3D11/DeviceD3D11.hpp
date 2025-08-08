@@ -305,7 +305,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         D3D11_SUBRESOURCE_DATA data = {};
         data.pSysMem = zeros;
 
-        hr = m_Device->CreateBuffer(&zeroBufferDesc, nullptr, &m_ZeroBuffer);
+        hr = m_Device->CreateBuffer(&zeroBufferDesc, &data, &m_ZeroBuffer);
         RETURN_ON_BAD_HRESULT(this, hr, "ID3D11Device::CreateBuffer");
 
         allocator.Free(allocator.userArg, zeros);
