@@ -213,7 +213,7 @@ if(NRI_ENABLE_NVTX_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/NVIDIA/NVTX/archive/refs/tags/v3.2.1.zip
+        URL https://github.com/NVIDIA/NVTX/archive/refs/tags/v3.2.2.zip
     )
     list(APPEND DEPS nvtx)
 endif()
@@ -225,7 +225,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.323.zip
+        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.325.zip
     )
     list(APPEND DEPS vulkan_headers)
 
@@ -271,7 +271,7 @@ if(NRI_ENABLE_XESS_SDK)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/intel/xess/releases/download/v2.0.1/XeSS_SDK_2.0.1.zip
+        URL https://github.com/intel/xess/releases/download/v2.0.1/XeSS_SDK_2.1.0.zip
     )
     list(APPEND DEPS xess)
 endif()
