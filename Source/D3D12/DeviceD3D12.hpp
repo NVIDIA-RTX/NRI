@@ -1,6 +1,6 @@
 ﻿// © 2021 NVIDIA Corporation
 
-static HRESULT QueryRequiredDeviceInterface(ComPtr<ID3D12DeviceBest>& in, ComPtr<ID3D12DeviceBest>& out, bool isWrapped) {
+static HRESULT QueryLatestInterface(ComPtr<ID3D12DeviceBest>& in, ComPtr<ID3D12DeviceBest>& out, uint8_t& version) {
     static const IID versions[] = {
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
         __uuidof(ID3D12Device14),
@@ -29,9 +29,9 @@ static HRESULT QueryRequiredDeviceInterface(ComPtr<ID3D12DeviceBest>& in, ComPtr
             break;
     }
 
-    bool isOK = isWrapped ? i < n : i == 0; // TODO: store "version" for a wrapped object to report errors if an unavailable interface is getting implicitly used
+    version = n - i - 1;
 
-    return isOK ? S_OK : D3D12_ERROR_INVALID_REDIST;
+    return i == 0 ? S_OK : D3D12_ERROR_INVALID_REDIST;
 }
 
 static inline uint64_t HashRootSignatureAndStride(ID3D12RootSignature* rootSignature, uint32_t stride) {
@@ -192,7 +192,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     if (!m_IsWrapped) {
         bool isShaderAtomicsI64Supported = false;
         bool isShaderClockSupported = false;
-        
+
         uint32_t d3dShaderExtRegister = desc.d3dShaderExtRegister ? desc.d3dShaderExtRegister : NRI_SHADER_EXT_REGISTER;
         MaybeUnused(d3dShaderExtRegister);
 
@@ -233,8 +233,14 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     }
 
     { // Query latest interface
-        HRESULT hr = QueryRequiredDeviceInterface(deviceTemp, m_Device, m_IsWrapped);
-        RETURN_ON_BAD_HRESULT(this, hr, "QueryRequiredDeviceInterface");
+        HRESULT hr = QueryLatestInterface(deviceTemp, m_Device, m_Version);
+        REPORT_INFO(this, "Using ID3D12Device%u", m_Version);
+
+        if (m_IsWrapped) {
+            if (hr == D3D12_ERROR_INVALID_REDIST)
+                REPORT_WARNING(this, "ID3D12Device version is lower than expected, some functionality may be not available...");
+        } else
+            RETURN_ON_BAD_HRESULT(this, hr, "ID3D12Device::QueryLatestInterface");
     }
 
     if (desc.enableGraphicsAPIValidation) {

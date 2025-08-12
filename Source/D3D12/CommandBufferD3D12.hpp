@@ -1,6 +1,6 @@
 ﻿// © 2021 NVIDIA Corporation
 
-static HRESULT QueryRequiredGraphicsCommandListInterface(ComPtr<ID3D12GraphicsCommandListBest>& in, ComPtr<ID3D12GraphicsCommandListBest>& out, bool isWrapped) {
+static HRESULT QueryLatestInterface(ComPtr<ID3D12GraphicsCommandListBest>& in, ComPtr<ID3D12GraphicsCommandListBest>& out, uint8_t& version) {
     static const IID versions[] = {
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
         __uuidof(ID3D12GraphicsCommandList10),
@@ -25,9 +25,9 @@ static HRESULT QueryRequiredGraphicsCommandListInterface(ComPtr<ID3D12GraphicsCo
             break;
     }
 
-    bool isOK = isWrapped ? i < n : i == 0; // TODO: store "version" for a wrapped object to report errors if an unavailable interface is getting implicitly used
+    version = n - i - 1;
 
-    return isOK ? S_OK : D3D12_ERROR_INVALID_REDIST;
+    return i == 0 ? S_OK : D3D12_ERROR_INVALID_REDIST;
 }
 
 #ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
@@ -256,8 +256,8 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
     HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&graphicsCommandList);
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommandList");
 
-    hr = QueryRequiredGraphicsCommandListInterface(graphicsCommandList, m_GraphicsCommandList, false);
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "QueryRequiredGraphicsCommandListInterface");
+    hr = QueryLatestInterface(graphicsCommandList, m_GraphicsCommandList, m_Version);
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::QueryLatestInterface");
 
     hr = m_GraphicsCommandList->Close();
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::Close");
@@ -270,8 +270,9 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
 Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferDesc) {
     ComPtr<ID3D12GraphicsCommandListBest> graphicsCommandList = (ID3D12GraphicsCommandListBest*)commandBufferDesc.d3d12CommandList;
 
-    HRESULT hr = QueryRequiredGraphicsCommandListInterface(graphicsCommandList, m_GraphicsCommandList, true);
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "QueryRequiredGraphicsCommandListInterface");
+    HRESULT hr = QueryLatestInterface(graphicsCommandList, m_GraphicsCommandList, m_Version);
+    if (hr == D3D12_ERROR_INVALID_REDIST)
+        REPORT_WARNING(&m_Device, "ID3D12GraphicsCommandList version is lower than expected, some functionality may be not available...");
 
     // TODO: what if opened?
 

@@ -143,7 +143,7 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
     D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
     if (deviceDesc.tiers.memory == 0) {
-        if (textureDesc.desc.usage & (TextureUsageBits::COLOR_ATTACHMENT | TextureUsageBits::DEPTH_STENCIL_ATTACHMENT) )
+        if (textureDesc.desc.usage & (TextureUsageBits::COLOR_ATTACHMENT | TextureUsageBits::DEPTH_STENCIL_ATTACHMENT))
             heapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
         else
             heapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;

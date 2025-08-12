@@ -35,6 +35,10 @@ struct CommandBufferD3D12 final : public DebugNameBase {
         return m_Device;
     }
 
+    inline uint8_t GetVersion() const {
+        return m_Version;
+    }
+
     inline void ResetAttachments() {
         m_RenderTargetNum = 0;
         for (size_t i = 0; i < m_RenderTargets.size(); i++)
@@ -122,6 +126,7 @@ private:
     PipelineD3D12* m_Pipeline = nullptr;
     D3D12_PRIMITIVE_TOPOLOGY m_PrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
     uint32_t m_RenderTargetNum = 0;
+    uint8_t m_Version = 0;
     bool m_IsGraphicsPipelineLayout = false;
 };
 

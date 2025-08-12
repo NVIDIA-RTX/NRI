@@ -62,6 +62,10 @@ struct DeviceD3D12 final : public DeviceBase {
         return m_TightAlignmentTier;
     }
 
+    inline uint8_t GetVersion() const {
+        return m_Version;
+    }
+
     inline bool HasNvExt() const {
 #if NRI_ENABLE_NVAPI
         return m_NvExt.available;
@@ -190,6 +194,7 @@ private:
     void* m_CallbackHandle = nullptr;
     DWORD m_CallbackCookie = 0;
     uint8_t m_TightAlignmentTier = 0;
+    uint8_t m_Version = 0;
     bool m_IsWrapped = false;
     bool m_IsMemoryZeroInitializationEnabled = false;
 
