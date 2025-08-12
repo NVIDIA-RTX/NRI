@@ -22,8 +22,8 @@ struct AccelerationStructureVK final : public DebugNameBase {
     ~AccelerationStructureVK();
 
     Result Create(const AccelerationStructureDesc& accelerationStructureDesc);
-    Result Create(const AccelerationStructureVKDesc& accelerationStructureDesc);
-    Result Create(const AllocateAccelerationStructureDesc& accelerationStructureDesc);
+    Result Create(const AccelerationStructureVKDesc& accelerationStructureVKDesc);
+    Result Create(const AllocateAccelerationStructureDesc& allocateAccelerationStructureDesc);
     Result FinishCreation();
 
     //================================================================================================================

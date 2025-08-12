@@ -11,6 +11,13 @@ Result FenceD3D12::Create(uint64_t initialValue) {
     return Result::SUCCESS;
 }
 
+Result FenceD3D12::Create(const FenceD3D12Desc& fenceD3D12Desc) {
+    m_Fence = fenceD3D12Desc.d3d12Fence;
+    m_Event = CreateEventA(nullptr, FALSE, FALSE, nullptr);
+
+    return Result::SUCCESS;
+}
+
 NRI_INLINE uint64_t FenceD3D12::GetFenceValue() const {
     return m_Fence ? m_Fence->GetCompletedValue() : 0;
 }
@@ -34,9 +41,11 @@ NRI_INLINE void FenceD3D12::Wait(uint64_t value) {
         return;
 
     if (m_Event == 0 || m_Event == INVALID_HANDLE_VALUE) {
+        // Busy wait
         while (m_Fence->GetCompletedValue() < value)
             ;
     } else if (m_Fence->GetCompletedValue() < value) {
+        // Event-based wait
         HRESULT hr = m_Fence->SetEventOnCompletion(value, m_Event);
         RETURN_VOID_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Fence::SetEventOnCompletion");
 

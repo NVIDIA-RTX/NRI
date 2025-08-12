@@ -1006,16 +1006,16 @@ Result DeviceD3D12::FillFunctionTable(RayTracingInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  ResourceAllocator  ]
 
-static Result NRI_CALL AllocateBuffer(Device& device, const AllocateBufferDesc& bufferDesc, Buffer*& buffer) {
-    return ((DeviceD3D12&)device).CreateImplementation<BufferD3D12>(buffer, bufferDesc);
+static Result NRI_CALL AllocateBuffer(Device& device, const AllocateBufferDesc& allocateBufferDesc, Buffer*& buffer) {
+    return ((DeviceD3D12&)device).CreateImplementation<BufferD3D12>(buffer, allocateBufferDesc);
 }
 
-static Result NRI_CALL AllocateTexture(Device& device, const AllocateTextureDesc& textureDesc, Texture*& texture) {
-    return ((DeviceD3D12&)device).CreateImplementation<TextureD3D12>(texture, textureDesc);
+static Result NRI_CALL AllocateTexture(Device& device, const AllocateTextureDesc& allocateTextureDesc, Texture*& texture) {
+    return ((DeviceD3D12&)device).CreateImplementation<TextureD3D12>(texture, allocateTextureDesc);
 }
 
-static Result NRI_CALL AllocateAccelerationStructure(Device& device, const AllocateAccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    return ((DeviceD3D12&)device).CreateImplementation<AccelerationStructureD3D12>(accelerationStructure, accelerationStructureDesc);
+static Result NRI_CALL AllocateAccelerationStructure(Device& device, const AllocateAccelerationStructureDesc& allocateAccelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
+    return ((DeviceD3D12&)device).CreateImplementation<AccelerationStructureD3D12>(accelerationStructure, allocateAccelerationStructureDesc);
 }
 
 static Result NRI_CALL AllocateMicromap(Device& device, const AllocateMicromapDesc& allocateMicromapDesc, Micromap*& micromap) {
@@ -1195,28 +1195,32 @@ Result DeviceD3D12::FillFunctionTable(UpscalerInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  WrapperD3D12  ]
 
-static Result NRI_CALL CreateCommandBufferD3D12(Device& device, const CommandBufferD3D12Desc& commandBufferDesc, CommandBuffer*& commandBuffer) {
-    return ((DeviceD3D12&)device).CreateImplementation<CommandBufferD3D12>(commandBuffer, commandBufferDesc);
+static Result NRI_CALL CreateCommandBufferD3D12(Device& device, const CommandBufferD3D12Desc& commandBufferD3D12Desc, CommandBuffer*& commandBuffer) {
+    return ((DeviceD3D12&)device).CreateImplementation<CommandBufferD3D12>(commandBuffer, commandBufferD3D12Desc);
 }
 
-static Result NRI_CALL CreateDescriptorPoolD3D12(Device& device, const DescriptorPoolD3D12Desc& descriptorPoolDesc, DescriptorPool*& descriptorPool) {
-    return ((DeviceD3D12&)device).CreateImplementation<DescriptorPoolD3D12>(descriptorPool, descriptorPoolDesc);
+static Result NRI_CALL CreateDescriptorPoolD3D12(Device& device, const DescriptorPoolD3D12Desc& descriptorPoolD3D12Desc, DescriptorPool*& descriptorPool) {
+    return ((DeviceD3D12&)device).CreateImplementation<DescriptorPoolD3D12>(descriptorPool, descriptorPoolD3D12Desc);
 }
 
-static Result NRI_CALL CreateBufferD3D12(Device& device, const BufferD3D12Desc& bufferDesc, Buffer*& buffer) {
-    return ((DeviceD3D12&)device).CreateImplementation<BufferD3D12>(buffer, bufferDesc);
+static Result NRI_CALL CreateBufferD3D12(Device& device, const BufferD3D12Desc& bufferD3D12Desc, Buffer*& buffer) {
+    return ((DeviceD3D12&)device).CreateImplementation<BufferD3D12>(buffer, bufferD3D12Desc);
 }
 
-static Result NRI_CALL CreateTextureD3D12(Device& device, const TextureD3D12Desc& textureDesc, Texture*& texture) {
-    return ((DeviceD3D12&)device).CreateImplementation<TextureD3D12>(texture, textureDesc);
+static Result NRI_CALL CreateTextureD3D12(Device& device, const TextureD3D12Desc& textureD3D12Desc, Texture*& texture) {
+    return ((DeviceD3D12&)device).CreateImplementation<TextureD3D12>(texture, textureD3D12Desc);
 }
 
-static Result NRI_CALL CreateMemoryD3D12(Device& device, const MemoryD3D12Desc& memoryDesc, Memory*& memory) {
-    return ((DeviceD3D12&)device).CreateImplementation<MemoryD3D12>(memory, memoryDesc);
+static Result NRI_CALL CreateMemoryD3D12(Device& device, const MemoryD3D12Desc& memoryD3D12Desc, Memory*& memory) {
+    return ((DeviceD3D12&)device).CreateImplementation<MemoryD3D12>(memory, memoryD3D12Desc);
 }
 
-static Result NRI_CALL CreateAccelerationStructureD3D12(Device& device, const AccelerationStructureD3D12Desc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    return ((DeviceD3D12&)device).CreateImplementation<AccelerationStructureD3D12>(accelerationStructure, accelerationStructureDesc);
+static Result NRI_CALL CreateFenceD3D12(Device& device, const FenceD3D12Desc& fenceD3D12Desc, Fence*& fence) {
+    return ((DeviceD3D12&)device).CreateImplementation<FenceD3D12>(fence, fenceD3D12Desc);
+}
+
+static Result NRI_CALL CreateAccelerationStructureD3D12(Device& device, const AccelerationStructureD3D12Desc& accelerationStructureD3D12Desc, AccelerationStructure*& accelerationStructure) {
+    return ((DeviceD3D12&)device).CreateImplementation<AccelerationStructureD3D12>(accelerationStructure, accelerationStructureD3D12Desc);
 }
 
 Result DeviceD3D12::FillFunctionTable(WrapperD3D12Interface& table) const {
@@ -1225,6 +1229,7 @@ Result DeviceD3D12::FillFunctionTable(WrapperD3D12Interface& table) const {
     table.CreateBufferD3D12 = ::CreateBufferD3D12;
     table.CreateTextureD3D12 = ::CreateTextureD3D12;
     table.CreateMemoryD3D12 = ::CreateMemoryD3D12;
+    table.CreateFenceD3D12 = ::CreateFenceD3D12;
     table.CreateAccelerationStructureD3D12 = ::CreateAccelerationStructureD3D12;
 
     return Result::SUCCESS;

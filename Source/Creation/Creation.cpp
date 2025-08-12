@@ -759,15 +759,15 @@ NRI_API Result NRI_CALL nriCreateDeviceFromD3D12Device(const DeviceCreationD3D12
 
     // Valid queue families expected
     for (uint32_t i = 0; i < deviceCreationD3D12Desc.queueFamilyNum; i++) {
-        QueueFamilyD3D12Desc& queueFamily = (QueueFamilyD3D12Desc&)deviceCreationD3D12Desc.queueFamilies[i];
+        QueueFamilyD3D12Desc& queueFamilyD3D12Desc = (QueueFamilyD3D12Desc&)deviceCreationD3D12Desc.queueFamilies[i];
 
-        uint32_t queueType = (uint32_t)queueFamily.queueType;
+        uint32_t queueType = (uint32_t)queueFamilyD3D12Desc.queueType;
         if (queueType >= (uint32_t)QueueType::MAX_NUM)
             return Result::INVALID_ARGUMENT;
 
         uint32_t supportedQueueNum = deviceCreationDesc.adapterDesc->queueNum[queueType];
-        if (queueFamily.queueNum > supportedQueueNum)
-            queueFamily.queueNum = supportedQueueNum;
+        if (queueFamilyD3D12Desc.queueNum > supportedQueueNum)
+            queueFamilyD3D12Desc.queueNum = supportedQueueNum;
     }
 
     result = CreateDeviceD3D12(deviceCreationDesc, deviceCreationD3D12Desc, deviceImpl);
@@ -806,15 +806,15 @@ NRI_API Result NRI_CALL nriCreateDeviceFromVKDevice(const DeviceCreationVKDesc& 
 
     // Valid queue families expected
     for (uint32_t i = 0; i < deviceCreationVKDesc.queueFamilyNum; i++) {
-        QueueFamilyVKDesc& queueFamily = (QueueFamilyVKDesc&)deviceCreationVKDesc.queueFamilies[i];
+        QueueFamilyVKDesc& queueFamilyVKDesc = (QueueFamilyVKDesc&)deviceCreationVKDesc.queueFamilies[i];
 
-        uint32_t queueType = (uint32_t)queueFamily.queueType;
+        uint32_t queueType = (uint32_t)queueFamilyVKDesc.queueType;
         if (queueType >= (uint32_t)QueueType::MAX_NUM)
             return Result::INVALID_ARGUMENT;
 
         uint32_t supportedQueueNum = deviceCreationDesc.adapterDesc->queueNum[queueType];
-        if (queueFamily.queueNum > supportedQueueNum)
-            queueFamily.queueNum = supportedQueueNum;
+        if (queueFamilyVKDesc.queueNum > supportedQueueNum)
+            queueFamilyVKDesc.queueNum = supportedQueueNum;
     }
 
     result = CreateDeviceVK(deviceCreationDesc, deviceCreationVKDesc, deviceImpl);

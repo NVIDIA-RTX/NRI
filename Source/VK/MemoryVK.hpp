@@ -7,23 +7,20 @@ MemoryVK::~MemoryVK() {
     }
 }
 
-Result MemoryVK::Create(const MemoryVKDesc& memoryDesc) {
-    if (!memoryDesc.vkDeviceMemory)
-        return Result::INVALID_ARGUMENT;
-
+Result MemoryVK::Create(const MemoryVKDesc& memoryVKDesc) {
     MemoryTypeInfo memoryTypeInfo = {};
 
-    bool found = m_Device.GetMemoryTypeByIndex(memoryDesc.memoryTypeIndex, memoryTypeInfo);
+    bool found = m_Device.GetMemoryTypeByIndex(memoryVKDesc.memoryTypeIndex, memoryTypeInfo);
     RETURN_ON_FAILURE(&m_Device, found, Result::INVALID_ARGUMENT, "Can't find memory by index");
 
     m_OwnsNativeObjects = false;
-    m_Handle = (VkDeviceMemory)memoryDesc.vkDeviceMemory;
-    m_MappedMemory = (uint8_t*)memoryDesc.vkMappedMemory;
+    m_Handle = (VkDeviceMemory)memoryVKDesc.vkDeviceMemory;
+    m_MappedMemory = (uint8_t*)memoryVKDesc.vkMappedMemory;
     m_Type = Pack(memoryTypeInfo);
 
     const auto& vk = m_Device.GetDispatchTable();
     if (!m_MappedMemory && IsHostVisibleMemory(memoryTypeInfo.location)) {
-        VkResult vkResult = vk.MapMemory(m_Device, m_Handle, 0, memoryDesc.size, 0, (void**)&m_MappedMemory);
+        VkResult vkResult = vk.MapMemory(m_Device, m_Handle, 0, memoryVKDesc.size, 0, (void**)&m_MappedMemory);
         RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkMapMemory");
     }
 

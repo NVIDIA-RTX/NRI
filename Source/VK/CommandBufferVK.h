@@ -24,7 +24,7 @@ struct CommandBufferVK final : public DebugNameBase {
     ~CommandBufferVK();
 
     void Create(VkCommandPool commandPool, VkCommandBuffer commandBuffer, QueueType type);
-    Result Create(const CommandBufferVKDesc& commandBufferDesc);
+    Result Create(const CommandBufferVKDesc& commandBufferVKDesc);
 
     //================================================================================================================
     // DebugNameBase

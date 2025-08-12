@@ -1117,16 +1117,16 @@ Result DeviceVal::FillFunctionTable(RayTracingInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  ResourceAllocator  ]
 
-static Result NRI_CALL AllocateBuffer(Device& device, const AllocateBufferDesc& bufferDesc, Buffer*& buffer) {
-    return ((DeviceVal&)device).AllocateBuffer(bufferDesc, buffer);
+static Result NRI_CALL AllocateBuffer(Device& device, const AllocateBufferDesc& allocateBufferDesc, Buffer*& buffer) {
+    return ((DeviceVal&)device).AllocateBuffer(allocateBufferDesc, buffer);
 }
 
-static Result NRI_CALL AllocateTexture(Device& device, const AllocateTextureDesc& textureDesc, Texture*& texture) {
-    return ((DeviceVal&)device).AllocateTexture(textureDesc, texture);
+static Result NRI_CALL AllocateTexture(Device& device, const AllocateTextureDesc& allocateTextureDesc, Texture*& texture) {
+    return ((DeviceVal&)device).AllocateTexture(allocateTextureDesc, texture);
 }
 
-static Result NRI_CALL AllocateAccelerationStructure(Device& device, const AllocateAccelerationStructureDesc& acelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    return ((DeviceVal&)device).AllocateAccelerationStructure(acelerationStructureDesc, accelerationStructure);
+static Result NRI_CALL AllocateAccelerationStructure(Device& device, const AllocateAccelerationStructureDesc& allocateAcelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
+    return ((DeviceVal&)device).AllocateAccelerationStructure(allocateAcelerationStructureDesc, accelerationStructure);
 }
 
 static Result NRI_CALL AllocateMicromap(Device& device, const AllocateMicromapDesc& allocateMicromapDesc, Micromap*& micromap) {
@@ -1456,6 +1456,10 @@ static Result NRI_CALL CreateMemoryD3D12(Device& device, const MemoryD3D12Desc& 
     return ((DeviceVal&)device).CreateMemory(memoryD3D12Desc, memory);
 }
 
+static Result NRI_CALL CreateFenceD3D12(Device& device, const FenceD3D12Desc& fenceD3D12Desc, Fence*& fence) {
+    return ((DeviceVal&)device).CreateFence(fenceD3D12Desc, fence);
+}
+
 static Result NRI_CALL CreateAccelerationStructureD3D12(Device& device, const AccelerationStructureD3D12Desc& accelerationStructureD3D12Desc, AccelerationStructure*& accelerationStructure) {
     return ((DeviceVal&)device).CreateAccelerationStructure(accelerationStructureD3D12Desc, accelerationStructure);
 }
@@ -1472,6 +1476,7 @@ Result DeviceVal::FillFunctionTable(WrapperD3D12Interface& table) const {
     table.CreateBufferD3D12 = ::CreateBufferD3D12;
     table.CreateTextureD3D12 = ::CreateTextureD3D12;
     table.CreateMemoryD3D12 = ::CreateMemoryD3D12;
+    table.CreateFenceD3D12 = ::CreateFenceD3D12;
     table.CreateAccelerationStructureD3D12 = ::CreateAccelerationStructureD3D12;
 
     return Result::SUCCESS;
@@ -1513,16 +1518,17 @@ static Result NRI_CALL CreateMemoryVK(Device& device, const MemoryVKDesc& memory
     return ((DeviceVal&)device).CreateMemory(memoryVKDesc, memory);
 }
 
-static Result NRI_CALL CreateGraphicsPipelineVK(Device& device, VKNonDispatchableHandle vkPipeline, Pipeline*& pipeline) {
-    return ((DeviceVal&)device).CreateGraphicsPipeline(vkPipeline, pipeline);
-}
 
-static Result NRI_CALL CreateComputePipelineVK(Device& device, VKNonDispatchableHandle vkPipeline, Pipeline*& pipeline) {
-    return ((DeviceVal&)device).CreateComputePipeline(vkPipeline, pipeline);
+static Result NRI_CALL CreatePipelineVK(Device& device, const PipelineVKDesc& pipelineVKDesc, Pipeline*& pipeline) {
+    return ((DeviceVal&)device).CreatePipeline(pipelineVKDesc, pipeline);
 }
 
 static Result NRI_CALL CreateQueryPoolVK(Device& device, const QueryPoolVKDesc& queryPoolVKDesc, QueryPool*& queryPool) {
     return ((DeviceVal&)device).CreateQueryPool(queryPoolVKDesc, queryPool);
+}
+
+static Result NRI_CALL CreateFenceVK(Device& device, const FenceVKDesc& fenceVKDesc, Fence*& fence) {
+    return ((DeviceVal&)device).CreateFence(fenceVKDesc, fence);
 }
 
 static Result NRI_CALL CreateAccelerationStructureVK(Device& device, const AccelerationStructureVKDesc& accelerationStructureVKDesc, AccelerationStructure*& accelerationStructure) {
@@ -1563,9 +1569,9 @@ Result DeviceVal::FillFunctionTable(WrapperVKInterface& table) const {
     table.CreateBufferVK = ::CreateBufferVK;
     table.CreateTextureVK = ::CreateTextureVK;
     table.CreateMemoryVK = ::CreateMemoryVK;
-    table.CreateGraphicsPipelineVK = ::CreateGraphicsPipelineVK;
-    table.CreateComputePipelineVK = ::CreateComputePipelineVK;
+    table.CreatePipelineVK = ::CreatePipelineVK;
     table.CreateQueryPoolVK = ::CreateQueryPoolVK;
+    table.CreateFenceVK = ::CreateFenceVK;
     table.CreateAccelerationStructureVK = ::CreateAccelerationStructureVK;
     table.GetPhysicalDeviceVK = ::GetPhysicalDeviceVK;
     table.GetQueueFamilyIndexVK = ::GetQueueFamilyIndexVK;

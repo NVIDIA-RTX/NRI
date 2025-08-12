@@ -74,9 +74,9 @@ HRESULT DeviceD3D12::CreateVma() {
     return D3D12MA::CreateAllocator(&allocatorDesc, &m_Vma);
 }
 
-Result BufferD3D12::Create(const AllocateBufferDesc& bufferDesc) {
+Result BufferD3D12::Create(const AllocateBufferDesc& allocateBufferDesc) {
     uint32_t flags = D3D12MA::ALLOCATION_FLAG_CAN_ALIAS | D3D12MA::ALLOCATION_FLAG_STRATEGY_MIN_MEMORY;
-    if (bufferDesc.dedicated)
+    if (allocateBufferDesc.dedicated)
         flags |= D3D12MA::ALLOCATION_FLAG_COMMITTED;
 
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
@@ -85,13 +85,13 @@ Result BufferD3D12::Create(const AllocateBufferDesc& bufferDesc) {
         heapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
 
     D3D12MA::ALLOCATION_DESC allocationDesc = {};
-    allocationDesc.HeapType = m_Device.GetHeapType(bufferDesc.memoryLocation);
+    allocationDesc.HeapType = m_Device.GetHeapType(allocateBufferDesc.memoryLocation);
     allocationDesc.Flags = (D3D12MA::ALLOCATION_FLAGS)flags;
     allocationDesc.ExtraHeapFlags = heapFlags;
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_RESOURCE_DESC1 desc1 = {};
-    m_Device.GetResourceDesc(bufferDesc.desc, (D3D12_RESOURCE_DESC&)desc1);
+    m_Device.GetResourceDesc(allocateBufferDesc.desc, (D3D12_RESOURCE_DESC&)desc1);
 
     const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_UNDEFINED;
 
@@ -99,64 +99,64 @@ Result BufferD3D12::Create(const AllocateBufferDesc& bufferDesc) {
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3");
 #else
     D3D12_RESOURCE_DESC desc = {};
-    m_Device.GetResourceDesc(bufferDesc.desc, desc);
+    m_Device.GetResourceDesc(allocateBufferDesc.desc, desc);
 
     D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
-    if (bufferDesc.memoryLocation == MemoryLocation::HOST_UPLOAD || bufferDesc.memoryLocation == MemoryLocation::DEVICE_UPLOAD)
+    if (allocateBufferDesc.memoryLocation == MemoryLocation::HOST_UPLOAD || allocateBufferDesc.memoryLocation == MemoryLocation::DEVICE_UPLOAD)
         initialState |= D3D12_RESOURCE_STATE_GENERIC_READ;
-    else if (bufferDesc.memoryLocation == MemoryLocation::HOST_READBACK)
+    else if (allocateBufferDesc.memoryLocation == MemoryLocation::HOST_READBACK)
         initialState |= D3D12_RESOURCE_STATE_COPY_DEST;
 
-    if (bufferDesc.desc.usage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE)
+    if (allocateBufferDesc.desc.usage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE)
         initialState |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
 
     HRESULT hr = m_Device.GetVma()->CreateResource(&allocationDesc, &desc, initialState, nullptr, &m_VmaAllocation, IID_PPV_ARGS(&m_Buffer));
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource");
 #endif
 
-    m_Desc = bufferDesc.desc;
+    m_Desc = allocateBufferDesc.desc;
 
     D3D12_HEAP_PROPERTIES heapProps = {};
     heapProps.Type = allocationDesc.HeapType;
 
-    return SetPriorityAndPersistentlyMap(bufferDesc.memoryPriority, heapProps);
+    return SetPriorityAndPersistentlyMap(allocateBufferDesc.memoryPriority, heapProps);
 }
 
-Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
-    D3D12_CLEAR_VALUE clearValue = {GetDxgiFormat(textureDesc.desc.format).typed};
+Result TextureD3D12::Create(const AllocateTextureDesc& allocateTextureDesc) {
+    D3D12_CLEAR_VALUE clearValue = {GetDxgiFormat(allocateTextureDesc.desc.format).typed};
 
-    const FormatProps& formatProps = GetFormatProps(textureDesc.desc.format);
+    const FormatProps& formatProps = GetFormatProps(allocateTextureDesc.desc.format);
     if (formatProps.isDepth || formatProps.isStencil) {
-        clearValue.DepthStencil.Depth = textureDesc.desc.optimizedClearValue.depthStencil.depth;
-        clearValue.DepthStencil.Stencil = textureDesc.desc.optimizedClearValue.depthStencil.stencil;
+        clearValue.DepthStencil.Depth = allocateTextureDesc.desc.optimizedClearValue.depthStencil.depth;
+        clearValue.DepthStencil.Stencil = allocateTextureDesc.desc.optimizedClearValue.depthStencil.stencil;
     } else {
-        clearValue.Color[0] = textureDesc.desc.optimizedClearValue.color.f.x;
-        clearValue.Color[1] = textureDesc.desc.optimizedClearValue.color.f.y;
-        clearValue.Color[2] = textureDesc.desc.optimizedClearValue.color.f.z;
-        clearValue.Color[3] = textureDesc.desc.optimizedClearValue.color.f.w;
+        clearValue.Color[0] = allocateTextureDesc.desc.optimizedClearValue.color.f.x;
+        clearValue.Color[1] = allocateTextureDesc.desc.optimizedClearValue.color.f.y;
+        clearValue.Color[2] = allocateTextureDesc.desc.optimizedClearValue.color.f.z;
+        clearValue.Color[3] = allocateTextureDesc.desc.optimizedClearValue.color.f.w;
     }
 
     uint32_t flags = D3D12MA::ALLOCATION_FLAG_CAN_ALIAS | D3D12MA::ALLOCATION_FLAG_STRATEGY_MIN_MEMORY;
-    if (textureDesc.dedicated)
+    if (allocateTextureDesc.dedicated)
         flags |= D3D12MA::ALLOCATION_FLAG_COMMITTED;
 
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
     D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
     if (deviceDesc.tiers.memory == 0) {
-        if (textureDesc.desc.usage & (TextureUsageBits::COLOR_ATTACHMENT | TextureUsageBits::DEPTH_STENCIL_ATTACHMENT))
+        if (allocateTextureDesc.desc.usage & (TextureUsageBits::COLOR_ATTACHMENT | TextureUsageBits::DEPTH_STENCIL_ATTACHMENT))
             heapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
         else
             heapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
     }
 
     D3D12MA::ALLOCATION_DESC allocationDesc = {};
-    allocationDesc.HeapType = m_Device.GetHeapType(textureDesc.memoryLocation);
+    allocationDesc.HeapType = m_Device.GetHeapType(allocateTextureDesc.memoryLocation);
     allocationDesc.Flags = (D3D12MA::ALLOCATION_FLAGS)flags;
     allocationDesc.ExtraHeapFlags = heapFlags;
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_RESOURCE_DESC1 desc1 = {};
-    m_Device.GetResourceDesc(textureDesc.desc, (D3D12_RESOURCE_DESC&)desc1);
+    m_Device.GetResourceDesc(allocateTextureDesc.desc, (D3D12_RESOURCE_DESC&)desc1);
 
     bool isRenderableSurface = desc1.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
@@ -164,7 +164,7 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3");
 #else
     D3D12_RESOURCE_DESC desc = {};
-    m_Device.GetResourceDesc(textureDesc.desc, desc);
+    m_Device.GetResourceDesc(allocateTextureDesc.desc, desc);
 
     bool isRenderableSurface = desc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
@@ -173,38 +173,38 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
 #endif
 
     // Priority
-    D3D12_RESIDENCY_PRIORITY residencyPriority = (D3D12_RESIDENCY_PRIORITY)ConvertPriority(textureDesc.memoryPriority);
+    D3D12_RESIDENCY_PRIORITY residencyPriority = (D3D12_RESIDENCY_PRIORITY)ConvertPriority(allocateTextureDesc.memoryPriority);
     if (residencyPriority != 0) {
         ID3D12Pageable* obj = m_Texture.GetInterface();
         hr = m_Device->SetResidencyPriority(1, &obj, &residencyPriority);
         RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority");
     }
 
-    m_Desc = FixTextureDesc(textureDesc.desc);
+    m_Desc = FixTextureDesc(allocateTextureDesc.desc);
 
     return Result::SUCCESS;
 }
 
-Result AccelerationStructureD3D12::Create(const AllocateAccelerationStructureDesc& accelerationStructureDesc) {
-    m_Device.GetAccelerationStructurePrebuildInfo(accelerationStructureDesc.desc, m_PrebuildInfo);
-    m_Flags = accelerationStructureDesc.desc.flags;
+Result AccelerationStructureD3D12::Create(const AllocateAccelerationStructureDesc& allocateAccelerationStructureDesc) {
+    m_Device.GetAccelerationStructurePrebuildInfo(allocateAccelerationStructureDesc.desc, m_PrebuildInfo);
+    m_Flags = allocateAccelerationStructureDesc.desc.flags;
 
     AllocateBufferDesc bufferDesc = {};
-    bufferDesc.memoryLocation = accelerationStructureDesc.memoryLocation;
-    bufferDesc.memoryPriority = accelerationStructureDesc.memoryPriority;
+    bufferDesc.memoryLocation = allocateAccelerationStructureDesc.memoryLocation;
+    bufferDesc.memoryPriority = allocateAccelerationStructureDesc.memoryPriority;
     bufferDesc.desc.size = m_PrebuildInfo.ResultDataMaxSizeInBytes;
     bufferDesc.desc.usage = BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE;
 
     return m_Device.CreateImplementation<BufferD3D12>(m_Buffer, bufferDesc);
 }
 
-Result MicromapD3D12::Create(const AllocateMicromapDesc& micromapDesc) {
-    m_Device.GetMicromapPrebuildInfo(micromapDesc.desc, m_PrebuildInfo);
-    m_Flags = micromapDesc.desc.flags;
+Result MicromapD3D12::Create(const AllocateMicromapDesc& allocateMicromapDesc) {
+    m_Device.GetMicromapPrebuildInfo(allocateMicromapDesc.desc, m_PrebuildInfo);
+    m_Flags = allocateMicromapDesc.desc.flags;
 
     AllocateBufferDesc bufferDesc = {};
-    bufferDesc.memoryLocation = micromapDesc.memoryLocation;
-    bufferDesc.memoryPriority = micromapDesc.memoryPriority;
+    bufferDesc.memoryLocation = allocateMicromapDesc.memoryLocation;
+    bufferDesc.memoryPriority = allocateMicromapDesc.memoryPriority;
     bufferDesc.desc.size = m_PrebuildInfo.ResultDataMaxSizeInBytes;
     bufferDesc.desc.usage = BufferUsageBits::MICROMAP_STORAGE;
 

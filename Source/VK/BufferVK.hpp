@@ -24,18 +24,15 @@ Result BufferVK::Create(const BufferDesc& bufferDesc) {
     return Result::SUCCESS;
 }
 
-Result BufferVK::Create(const BufferVKDesc& bufferDesc) {
-    if (!bufferDesc.vkBuffer)
-        return Result::INVALID_ARGUMENT;
-
+Result BufferVK::Create(const BufferVKDesc& bufferVKDesc) {
     m_OwnsNativeObjects = false;
-    m_Handle = (VkBuffer)bufferDesc.vkBuffer;
-    m_MappedMemory = bufferDesc.mappedMemory;
-    m_NonCoherentDeviceMemory = (VkDeviceMemory)bufferDesc.vkDeviceMemory;
-    m_DeviceAddress = (VkDeviceAddress)bufferDesc.deviceAddress;
+    m_Handle = (VkBuffer)bufferVKDesc.vkBuffer;
+    m_MappedMemory = bufferVKDesc.mappedMemory;
+    m_NonCoherentDeviceMemory = (VkDeviceMemory)bufferVKDesc.vkDeviceMemory;
+    m_DeviceAddress = (VkDeviceAddress)bufferVKDesc.deviceAddress;
 
-    m_Desc.size = bufferDesc.size;
-    m_Desc.structureStride = bufferDesc.structureStride;
+    m_Desc.size = bufferVKDesc.size;
+    m_Desc.structureStride = bufferVKDesc.structureStride;
 
     return Result::SUCCESS;
 }

@@ -30,8 +30,8 @@ struct BufferVK final : public DebugNameBase {
     ~BufferVK();
 
     Result Create(const BufferDesc& bufferDesc);
-    Result Create(const BufferVKDesc& bufferDesc);
-    Result Create(const AllocateBufferDesc& bufferDesc);
+    Result Create(const BufferVKDesc& bufferVKDesc);
+    Result Create(const AllocateBufferDesc& allocateBufferDesc);
     void FinishMemoryBinding(MemoryVK& memory, uint64_t memoryOffset);
     void DestroyVma();
     void GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;

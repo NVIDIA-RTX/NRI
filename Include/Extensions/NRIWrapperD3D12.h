@@ -13,6 +13,7 @@ typedef int32_t DXGIFormat;
 
 NonNriForwardStruct(AGSContext);
 NonNriForwardStruct(ID3D12Heap);
+NonNriForwardStruct(ID3D12Fence);
 NonNriForwardStruct(ID3D12Device);
 NonNriForwardStruct(ID3D12Resource);
 NonNriForwardStruct(ID3D12CommandQueue);
@@ -70,11 +71,15 @@ NriStruct(BufferD3D12Desc) {
 
 NriStruct(TextureD3D12Desc) {
     ID3D12Resource* d3d12Resource;
-    NriOptional DXGIFormat format;             // must be provided "as a compatible typed format" if the resource is typeless
+    NriOptional DXGIFormat format;              // must be provided "as a compatible typed format" if the resource is typeless
 };
 
 NriStruct(MemoryD3D12Desc) {
     ID3D12Heap* d3d12Heap;
+};
+
+NriStruct(FenceD3D12Desc) {
+    ID3D12Fence* d3d12Fence;
 };
 
 NriStruct(AccelerationStructureD3D12Desc) {
@@ -94,6 +99,7 @@ NriStruct(WrapperD3D12Interface) {
     Nri(Result) (NRI_CALL *CreateBufferD3D12)                   (NriRef(Device) device, const NriRef(BufferD3D12Desc) bufferD3D12Desc, NriOut NriRef(Buffer*) buffer);
     Nri(Result) (NRI_CALL *CreateTextureD3D12)                  (NriRef(Device) device, const NriRef(TextureD3D12Desc) textureD3D12Desc, NriOut NriRef(Texture*) texture);
     Nri(Result) (NRI_CALL *CreateMemoryD3D12)                   (NriRef(Device) device, const NriRef(MemoryD3D12Desc) memoryD3D12Desc, NriOut NriRef(Memory*) memory);
+    Nri(Result) (NRI_CALL *CreateFenceD3D12)                    (NriRef(Device) device, const NriRef(FenceD3D12Desc) fenceD3D12Desc, NriOut NriRef(Fence*) fence);
     Nri(Result) (NRI_CALL *CreateAccelerationStructureD3D12)    (NriRef(Device) device, const NriRef(AccelerationStructureD3D12Desc) accelerationStructureD3D12Desc, NriOut NriRef(AccelerationStructure*) accelerationStructure);
 };
 

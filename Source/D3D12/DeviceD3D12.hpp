@@ -284,23 +284,23 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     memset(m_Desc.adapterDesc.queueNum, 0, sizeof(m_Desc.adapterDesc.queueNum)); // patch to reflect available queues
     if (m_IsWrapped) {
         for (uint32_t i = 0; i < descD3D12.queueFamilyNum; i++) {
-            const QueueFamilyD3D12Desc& queueFamilyDesc = descD3D12.queueFamilies[i];
-            auto& queueFamily = m_QueueFamilies[(size_t)queueFamilyDesc.queueType];
+            const QueueFamilyD3D12Desc& queueFamilyD3D12Desc = descD3D12.queueFamilies[i];
+            auto& queueFamily = m_QueueFamilies[(size_t)queueFamilyD3D12Desc.queueType];
 
-            for (uint32_t j = 0; j < queueFamilyDesc.queueNum; j++) {
+            for (uint32_t j = 0; j < queueFamilyD3D12Desc.queueNum; j++) {
                 QueueD3D12* queue = nullptr;
                 Result result = Result::FAILURE;
-                if (queueFamilyDesc.d3d12Queues) {
-                    ID3D12CommandQueue* commandQueue = queueFamilyDesc.d3d12Queues[j];
+                if (queueFamilyD3D12Desc.d3d12Queues) {
+                    ID3D12CommandQueue* commandQueue = queueFamilyD3D12Desc.d3d12Queues[j];
                     result = CreateImplementation<QueueD3D12>(queue, commandQueue);
                 } else
-                    result = CreateImplementation<QueueD3D12>(queue, queueFamilyDesc.queueType, 0.0f);
+                    result = CreateImplementation<QueueD3D12>(queue, queueFamilyD3D12Desc.queueType, 0.0f);
 
                 if (result == Result::SUCCESS)
                     queueFamily.push_back(queue);
             }
 
-            m_Desc.adapterDesc.queueNum[(size_t)queueFamilyDesc.queueType] = queueFamilyDesc.queueNum;
+            m_Desc.adapterDesc.queueNum[(size_t)queueFamilyD3D12Desc.queueType] = queueFamilyD3D12Desc.queueNum;
         }
     } else {
         for (uint32_t i = 0; i < desc.queueFamilyNum; i++) {

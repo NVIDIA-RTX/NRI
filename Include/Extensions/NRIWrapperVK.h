@@ -29,17 +29,17 @@ NriStruct(DeviceCreationVKDesc) {
     NriOptional Nri(AllocationCallbacks) allocationCallbacks;
     NriOptional const char* libraryPath;
     Nri(VKBindingOffsets) vkBindingOffsets;
-    Nri(VKExtensions) vkExtensions; // enabled
+    Nri(VKExtensions) vkExtensions;                     // enabled
     VKHandle vkInstance;
     VKHandle vkDevice;
     VKHandle vkPhysicalDevice;
     const NriPtr(QueueFamilyVKDesc) queueFamilies;
     uint32_t queueFamilyNum;
-    uint8_t minorVersion; // >= 2
+    uint8_t minorVersion;                               // >= 2
 
     // Switches (disabled by default)
     bool enableNRIValidation;
-    bool enableMemoryZeroInitialization;        // page-clears are fast, but memory is not cleared by default in VK
+    bool enableMemoryZeroInitialization;                // page-clears are fast, but memory is not cleared by default in VK
 };
 
 NriStruct(CommandAllocatorVKDesc) {
@@ -85,9 +85,19 @@ NriStruct(MemoryVKDesc) {
     uint32_t memoryTypeIndex;
 };
 
+NriStruct(PipelineVKDesc) {
+    VKNonDispatchableHandle vkPipeline;
+    VKEnum vkPipelineBindPoint;
+    NriOptional Nri(DepthBiasDesc) depthBias;           // optional even for graphics pipelines
+};
+
 NriStruct(QueryPoolVKDesc) {
     VKNonDispatchableHandle vkQueryPool;
     VKEnum vkQueryType;
+};
+
+NriStruct(FenceVKDesc) {
+    VKNonDispatchableHandle vkTimelineSemaphore;
 };
 
 NriStruct(AccelerationStructureVKDesc) {
@@ -105,9 +115,9 @@ NriStruct(WrapperVKInterface) {
     Nri(Result) (NRI_CALL *CreateBufferVK)                  (NriRef(Device) device, const NriRef(BufferVKDesc) bufferVKDesc, NriOut NriRef(Buffer*) buffer);
     Nri(Result) (NRI_CALL *CreateTextureVK)                 (NriRef(Device) device, const NriRef(TextureVKDesc) textureVKDesc, NriOut NriRef(Texture*) texture);
     Nri(Result) (NRI_CALL *CreateMemoryVK)                  (NriRef(Device) device, const NriRef(MemoryVKDesc) memoryVKDesc, NriOut NriRef(Memory*) memory);
-    Nri(Result) (NRI_CALL *CreateGraphicsPipelineVK)        (NriRef(Device) device, VKNonDispatchableHandle vkPipeline, NriOut NriRef(Pipeline*) pipeline);
-    Nri(Result) (NRI_CALL *CreateComputePipelineVK)         (NriRef(Device) device, VKNonDispatchableHandle vkPipeline, NriOut NriRef(Pipeline*) pipeline);
+    Nri(Result) (NRI_CALL *CreatePipelineVK)                (NriRef(Device) device, const NriRef(PipelineVKDesc) pipelineVKDesc, NriOut NriRef(Pipeline*) pipeline);
     Nri(Result) (NRI_CALL *CreateQueryPoolVK)               (NriRef(Device) device, const NriRef(QueryPoolVKDesc) queryPoolVKDesc, NriOut NriRef(QueryPool*) queryPool);
+    Nri(Result) (NRI_CALL *CreateFenceVK)                   (NriRef(Device) device, const NriRef(FenceVKDesc) fenceVKDesc, NriOut NriRef(Fence*) fence);
     Nri(Result) (NRI_CALL *CreateAccelerationStructureVK)   (NriRef(Device) device, const NriRef(AccelerationStructureVKDesc) accelerationStructureVKDesc, NriOut NriRef(AccelerationStructure*) accelerationStructure);
 
     uint32_t    (NRI_CALL *GetQueueFamilyIndexVK)           (const NriRef(Queue) queue);

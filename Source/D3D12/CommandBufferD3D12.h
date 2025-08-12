@@ -48,7 +48,7 @@ struct CommandBufferD3D12 final : public DebugNameBase {
     }
 
     Result Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D12CommandAllocator* commandAllocator);
-    Result Create(const CommandBufferD3D12Desc& commandBufferDesc);
+    Result Create(const CommandBufferD3D12Desc& commandBufferD3D12Desc);
 
     //================================================================================================================
     // DebugNameBase

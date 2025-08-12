@@ -52,8 +52,8 @@ struct TextureD3D12 final : public DebugNameBase {
     }
 
     Result Create(const TextureDesc& textureDesc);
-    Result Create(const TextureD3D12Desc& textureDesc);
-    Result Create(const AllocateTextureDesc& textureDesc);
+    Result Create(const TextureD3D12Desc& textureD3D12Desc);
+    Result Create(const AllocateTextureDesc& allocateTextureDesc);
     Result BindMemory(const MemoryD3D12* memory, uint64_t offset);
 
     //================================================================================================================

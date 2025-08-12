@@ -24,22 +24,19 @@ Result TextureVK::Create(const TextureDesc& textureDesc) {
     return Result::SUCCESS;
 }
 
-Result TextureVK::Create(const TextureVKDesc& textureDesc) {
-    if (!textureDesc.vkImage)
-        return Result::INVALID_ARGUMENT;
-
-    m_Desc.type = GetTextureType((VkImageType)textureDesc.vkImageType);
+Result TextureVK::Create(const TextureVKDesc& textureVKDesc) {
+    m_Desc.type = GetTextureType((VkImageType)textureVKDesc.vkImageType);
     m_Desc.usage = (TextureUsageBits)(-1); // TODO: it's not right...
-    m_Desc.format = VKFormatToNRIFormat((VkFormat)textureDesc.vkFormat);
-    m_Desc.width = textureDesc.width;
-    m_Desc.height = textureDesc.height;
-    m_Desc.depth = textureDesc.depth;
-    m_Desc.mipNum = textureDesc.mipNum;
-    m_Desc.layerNum = textureDesc.layerNum;
-    m_Desc.sampleNum = textureDesc.sampleNum;
+    m_Desc.format = VKFormatToNRIFormat((VkFormat)textureVKDesc.vkFormat);
+    m_Desc.width = textureVKDesc.width;
+    m_Desc.height = textureVKDesc.height;
+    m_Desc.depth = textureVKDesc.depth;
+    m_Desc.mipNum = textureVKDesc.mipNum;
+    m_Desc.layerNum = textureVKDesc.layerNum;
+    m_Desc.sampleNum = textureVKDesc.sampleNum;
 
     m_OwnsNativeObjects = false;
-    m_Handle = (VkImage)textureDesc.vkImage;
+    m_Handle = (VkImage)textureVKDesc.vkImage;
 
     return Result::SUCCESS;
 }

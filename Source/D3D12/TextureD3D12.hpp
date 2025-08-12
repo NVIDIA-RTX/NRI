@@ -6,11 +6,11 @@ Result TextureD3D12::Create(const TextureDesc& textureDesc) {
     return Result::SUCCESS;
 }
 
-Result TextureD3D12::Create(const TextureD3D12Desc& textureDesc) {
-    if (!GetTextureDesc(textureDesc, m_Desc))
+Result TextureD3D12::Create(const TextureD3D12Desc& textureD3D12Desc) {
+    if (!GetTextureDesc(textureD3D12Desc, m_Desc))
         return Result::INVALID_ARGUMENT;
 
-    m_Texture = (ID3D12ResourceBest*)textureDesc.d3d12Resource;
+    m_Texture = (ID3D12ResourceBest*)textureD3D12Desc.d3d12Resource;
 
     return Result::SUCCESS;
 }

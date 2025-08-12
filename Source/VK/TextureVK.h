@@ -32,8 +32,8 @@ struct TextureVK final : public DebugNameBase {
     ~TextureVK();
 
     Result Create(const TextureDesc& textureDesc);
-    Result Create(const TextureVKDesc& textureDesc);
-    Result Create(const AllocateTextureDesc& textureDesc);
+    Result Create(const TextureVKDesc& textureVKDesc);
+    Result Create(const AllocateTextureDesc& allocateTextureDesc);
     VkImageAspectFlags GetImageAspectFlags() const;
     void DestroyVma();
     void GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;

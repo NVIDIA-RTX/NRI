@@ -171,11 +171,11 @@ NRI_INLINE Result DeviceVal::CreateBuffer(const BufferDesc& bufferDesc, Buffer*&
     return result;
 }
 
-NRI_INLINE Result DeviceVal::AllocateBuffer(const AllocateBufferDesc& bufferDesc, Buffer*& buffer) {
-    RETURN_ON_FAILURE(this, bufferDesc.desc.size != 0, Result::INVALID_ARGUMENT, "'size' is 0");
+NRI_INLINE Result DeviceVal::AllocateBuffer(const AllocateBufferDesc& allocateBufferDesc, Buffer*& buffer) {
+    RETURN_ON_FAILURE(this, allocateBufferDesc.desc.size != 0, Result::INVALID_ARGUMENT, "'size' is 0");
 
     Buffer* bufferImpl = nullptr;
-    Result result = m_iResourceAllocatorImpl.AllocateBuffer(m_Impl, bufferDesc, bufferImpl);
+    Result result = m_iResourceAllocatorImpl.AllocateBuffer(m_Impl, allocateBufferDesc, bufferImpl);
 
     buffer = nullptr;
     if (result == Result::SUCCESS)
@@ -204,15 +204,15 @@ NRI_INLINE Result DeviceVal::CreateTexture(const TextureDesc& textureDesc, Textu
     return result;
 }
 
-NRI_INLINE Result DeviceVal::AllocateTexture(const AllocateTextureDesc& textureDesc, Texture*& texture) {
-    Dim_t maxMipNum = GetMaxMipNum(textureDesc.desc.width, textureDesc.desc.height, textureDesc.desc.depth);
+NRI_INLINE Result DeviceVal::AllocateTexture(const AllocateTextureDesc& allocateTextureDesc, Texture*& texture) {
+    Dim_t maxMipNum = GetMaxMipNum(allocateTextureDesc.desc.width, allocateTextureDesc.desc.height, allocateTextureDesc.desc.depth);
 
-    RETURN_ON_FAILURE(this, textureDesc.desc.format > Format::UNKNOWN && textureDesc.desc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'desc.format' is invalid");
-    RETURN_ON_FAILURE(this, textureDesc.desc.width != 0, Result::INVALID_ARGUMENT, "'desc.width' is 0");
-    RETURN_ON_FAILURE(this, textureDesc.desc.mipNum <= maxMipNum, Result::INVALID_ARGUMENT, "'desc.mipNum=%u' can't be > %u", textureDesc.desc.mipNum, maxMipNum);
+    RETURN_ON_FAILURE(this, allocateTextureDesc.desc.format > Format::UNKNOWN && allocateTextureDesc.desc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'desc.format' is invalid");
+    RETURN_ON_FAILURE(this, allocateTextureDesc.desc.width != 0, Result::INVALID_ARGUMENT, "'desc.width' is 0");
+    RETURN_ON_FAILURE(this, allocateTextureDesc.desc.mipNum <= maxMipNum, Result::INVALID_ARGUMENT, "'desc.mipNum=%u' can't be > %u", allocateTextureDesc.desc.mipNum, maxMipNum);
 
     Texture* textureImpl = nullptr;
-    Result result = m_iResourceAllocatorImpl.AllocateTexture(m_Impl, textureDesc, textureImpl);
+    Result result = m_iResourceAllocatorImpl.AllocateTexture(m_Impl, allocateTextureDesc, textureImpl);
 
     texture = nullptr;
     if (result == Result::SUCCESS)
@@ -782,12 +782,12 @@ NRI_INLINE Result DeviceVal::CreateDescriptorPool(const DescriptorPoolVKDesc& de
     return result;
 }
 
-NRI_INLINE Result DeviceVal::CreateBuffer(const BufferVKDesc& bufferDesc, Buffer*& buffer) {
-    RETURN_ON_FAILURE(this, bufferDesc.vkBuffer != 0, Result::INVALID_ARGUMENT, "'vkBuffer' is NULL");
-    RETURN_ON_FAILURE(this, bufferDesc.size > 0, Result::INVALID_ARGUMENT, "'bufferSize' is 0");
+NRI_INLINE Result DeviceVal::CreateBuffer(const BufferVKDesc& bufferVKDesc, Buffer*& buffer) {
+    RETURN_ON_FAILURE(this, bufferVKDesc.vkBuffer != 0, Result::INVALID_ARGUMENT, "'vkBuffer' is NULL");
+    RETURN_ON_FAILURE(this, bufferVKDesc.size > 0, Result::INVALID_ARGUMENT, "'bufferSize' is 0");
 
     Buffer* bufferImpl = nullptr;
-    Result result = m_iWrapperVKImpl.CreateBufferVK(m_Impl, bufferDesc, bufferImpl);
+    Result result = m_iWrapperVKImpl.CreateBufferVK(m_Impl, bufferVKDesc, bufferImpl);
 
     buffer = nullptr;
     if (result == Result::SUCCESS)
@@ -827,24 +827,11 @@ NRI_INLINE Result DeviceVal::CreateMemory(const MemoryVKDesc& memoryVKDesc, Memo
     return result;
 }
 
-NRI_INLINE Result DeviceVal::CreateGraphicsPipeline(VKNonDispatchableHandle vkPipeline, Pipeline*& pipeline) {
-    RETURN_ON_FAILURE(this, vkPipeline != 0, Result::INVALID_ARGUMENT, "'vkPipeline' is NULL");
+NRI_INLINE Result DeviceVal::CreatePipeline(const PipelineVKDesc& pipelineVKDesc, Pipeline*& pipeline) {
+    RETURN_ON_FAILURE(this, pipelineVKDesc.vkPipeline != 0, Result::INVALID_ARGUMENT, "'vkPipeline' is NULL");
 
     Pipeline* pipelineImpl = nullptr;
-    Result result = m_iWrapperVKImpl.CreateGraphicsPipelineVK(m_Impl, vkPipeline, pipelineImpl);
-
-    pipeline = nullptr;
-    if (result == Result::SUCCESS)
-        pipeline = (Pipeline*)Allocate<PipelineVal>(GetAllocationCallbacks(), *this, pipelineImpl);
-
-    return result;
-}
-
-NRI_INLINE Result DeviceVal::CreateComputePipeline(VKNonDispatchableHandle vkPipeline, Pipeline*& pipeline) {
-    RETURN_ON_FAILURE(this, vkPipeline != 0, Result::INVALID_ARGUMENT, "'vkPipeline' is NULL");
-
-    Pipeline* pipelineImpl = nullptr;
-    Result result = m_iWrapperVKImpl.CreateComputePipelineVK(m_Impl, vkPipeline, pipelineImpl);
+    Result result = m_iWrapperVKImpl.CreatePipelineVK(m_Impl, pipelineVKDesc, pipelineImpl);
 
     pipeline = nullptr;
     if (result == Result::SUCCESS)
@@ -868,11 +855,24 @@ NRI_INLINE Result DeviceVal::CreateQueryPool(const QueryPoolVKDesc& queryPoolVKD
     return result;
 }
 
-NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStructureVKDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    RETURN_ON_FAILURE(this, accelerationStructureDesc.vkAccelerationStructure != 0, Result::INVALID_ARGUMENT, "'vkAccelerationStructure' is NULL");
+NRI_INLINE Result DeviceVal::CreateFence(const FenceVKDesc& fenceVKDesc, Fence*& fence) {
+    RETURN_ON_FAILURE(this, fenceVKDesc.vkTimelineSemaphore != 0, Result::INVALID_ARGUMENT, "'vkTimelineSemaphore' is NULL");
+
+    Fence* fenceImpl;
+    Result result = m_iWrapperVKImpl.CreateFenceVK(m_Impl, fenceVKDesc, fenceImpl);
+
+    fence = nullptr;
+    if (result == Result::SUCCESS)
+        fence = (Fence*)Allocate<FenceVal>(GetAllocationCallbacks(), *this, fenceImpl);
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStructureVKDesc& accelerationStructureVKDesc, AccelerationStructure*& accelerationStructure) {
+    RETURN_ON_FAILURE(this, accelerationStructureVKDesc.vkAccelerationStructure != 0, Result::INVALID_ARGUMENT, "'vkAccelerationStructure' is NULL");
 
     AccelerationStructure* accelerationStructureImpl = nullptr;
-    Result result = m_iWrapperVKImpl.CreateAccelerationStructureVK(m_Impl, accelerationStructureDesc, accelerationStructureImpl);
+    Result result = m_iWrapperVKImpl.CreateAccelerationStructureVK(m_Impl, accelerationStructureVKDesc, accelerationStructureImpl);
 
     accelerationStructure = nullptr;
     if (result == Result::SUCCESS) {
@@ -887,11 +887,11 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
 
 #if NRI_ENABLE_D3D11_SUPPORT
 
-NRI_INLINE Result DeviceVal::CreateCommandBuffer(const CommandBufferD3D11Desc& commandBufferDesc, CommandBuffer*& commandBuffer) {
-    RETURN_ON_FAILURE(this, commandBufferDesc.d3d11DeviceContext != nullptr, Result::INVALID_ARGUMENT, "'d3d11DeviceContext' is NULL");
+NRI_INLINE Result DeviceVal::CreateCommandBuffer(const CommandBufferD3D11Desc& commandBufferD3D11Desc, CommandBuffer*& commandBuffer) {
+    RETURN_ON_FAILURE(this, commandBufferD3D11Desc.d3d11DeviceContext != nullptr, Result::INVALID_ARGUMENT, "'d3d11DeviceContext' is NULL");
 
     CommandBuffer* commandBufferImpl = nullptr;
-    Result result = m_iWrapperD3D11Impl.CreateCommandBufferD3D11(m_Impl, commandBufferDesc, commandBufferImpl);
+    Result result = m_iWrapperD3D11Impl.CreateCommandBufferD3D11(m_Impl, commandBufferD3D11Desc, commandBufferImpl);
 
     if (result == Result::SUCCESS)
         commandBuffer = (CommandBuffer*)Allocate<CommandBufferVal>(GetAllocationCallbacks(), *this, commandBufferImpl, true);
@@ -899,11 +899,11 @@ NRI_INLINE Result DeviceVal::CreateCommandBuffer(const CommandBufferD3D11Desc& c
     return result;
 }
 
-NRI_INLINE Result DeviceVal::CreateBuffer(const BufferD3D11Desc& bufferDesc, Buffer*& buffer) {
-    RETURN_ON_FAILURE(this, bufferDesc.d3d11Resource != nullptr, Result::INVALID_ARGUMENT, "'d3d11Resource' is NULL");
+NRI_INLINE Result DeviceVal::CreateBuffer(const BufferD3D11Desc& bufferD3D11Desc, Buffer*& buffer) {
+    RETURN_ON_FAILURE(this, bufferD3D11Desc.d3d11Resource != nullptr, Result::INVALID_ARGUMENT, "'d3d11Resource' is NULL");
 
     Buffer* bufferImpl = nullptr;
-    Result result = m_iWrapperD3D11Impl.CreateBufferD3D11(m_Impl, bufferDesc, bufferImpl);
+    Result result = m_iWrapperD3D11Impl.CreateBufferD3D11(m_Impl, bufferD3D11Desc, bufferImpl);
 
     buffer = nullptr;
     if (result == Result::SUCCESS)
@@ -912,11 +912,11 @@ NRI_INLINE Result DeviceVal::CreateBuffer(const BufferD3D11Desc& bufferDesc, Buf
     return result;
 }
 
-NRI_INLINE Result DeviceVal::CreateTexture(const TextureD3D11Desc& textureDesc, Texture*& texture) {
-    RETURN_ON_FAILURE(this, textureDesc.d3d11Resource != nullptr, Result::INVALID_ARGUMENT, "'d3d11Resource' is NULL");
+NRI_INLINE Result DeviceVal::CreateTexture(const TextureD3D11Desc& textureD3D11Desc, Texture*& texture) {
+    RETURN_ON_FAILURE(this, textureD3D11Desc.d3d11Resource != nullptr, Result::INVALID_ARGUMENT, "'d3d11Resource' is NULL");
 
     Texture* textureImpl = nullptr;
-    Result result = m_iWrapperD3D11Impl.CreateTextureD3D11(m_Impl, textureDesc, textureImpl);
+    Result result = m_iWrapperD3D11Impl.CreateTextureD3D11(m_Impl, textureD3D11Desc, textureImpl);
 
     texture = nullptr;
     if (result == Result::SUCCESS)
@@ -929,11 +929,11 @@ NRI_INLINE Result DeviceVal::CreateTexture(const TextureD3D11Desc& textureDesc, 
 
 #if NRI_ENABLE_D3D12_SUPPORT
 
-NRI_INLINE Result DeviceVal::CreateCommandBuffer(const CommandBufferD3D12Desc& commandBufferDesc, CommandBuffer*& commandBuffer) {
-    RETURN_ON_FAILURE(this, commandBufferDesc.d3d12CommandList != nullptr, Result::INVALID_ARGUMENT, "'d3d12CommandList' is NULL");
+NRI_INLINE Result DeviceVal::CreateCommandBuffer(const CommandBufferD3D12Desc& commandBufferD3D12Desc, CommandBuffer*& commandBuffer) {
+    RETURN_ON_FAILURE(this, commandBufferD3D12Desc.d3d12CommandList != nullptr, Result::INVALID_ARGUMENT, "'d3d12CommandList' is NULL");
 
     CommandBuffer* commandBufferImpl = nullptr;
-    Result result = m_iWrapperD3D12Impl.CreateCommandBufferD3D12(m_Impl, commandBufferDesc, commandBufferImpl);
+    Result result = m_iWrapperD3D12Impl.CreateCommandBufferD3D12(m_Impl, commandBufferD3D12Desc, commandBufferImpl);
 
     commandBuffer = nullptr;
     if (result == Result::SUCCESS)
@@ -955,11 +955,11 @@ NRI_INLINE Result DeviceVal::CreateDescriptorPool(const DescriptorPoolD3D12Desc&
     return result;
 }
 
-NRI_INLINE Result DeviceVal::CreateBuffer(const BufferD3D12Desc& bufferDesc, Buffer*& buffer) {
-    RETURN_ON_FAILURE(this, bufferDesc.d3d12Resource != nullptr, Result::INVALID_ARGUMENT, "'d3d12Resource' is NULL");
+NRI_INLINE Result DeviceVal::CreateBuffer(const BufferD3D12Desc& bufferD3D12Desc, Buffer*& buffer) {
+    RETURN_ON_FAILURE(this, bufferD3D12Desc.d3d12Resource != nullptr, Result::INVALID_ARGUMENT, "'d3d12Resource' is NULL");
 
     Buffer* bufferImpl = nullptr;
-    Result result = m_iWrapperD3D12Impl.CreateBufferD3D12(m_Impl, bufferDesc, bufferImpl);
+    Result result = m_iWrapperD3D12Impl.CreateBufferD3D12(m_Impl, bufferD3D12Desc, bufferImpl);
 
     buffer = nullptr;
     if (result == Result::SUCCESS)
@@ -968,11 +968,11 @@ NRI_INLINE Result DeviceVal::CreateBuffer(const BufferD3D12Desc& bufferDesc, Buf
     return result;
 }
 
-NRI_INLINE Result DeviceVal::CreateTexture(const TextureD3D12Desc& textureDesc, Texture*& texture) {
-    RETURN_ON_FAILURE(this, textureDesc.d3d12Resource != nullptr, Result::INVALID_ARGUMENT, "'d3d12Resource' is NULL");
+NRI_INLINE Result DeviceVal::CreateTexture(const TextureD3D12Desc& textureD3D12Desc, Texture*& texture) {
+    RETURN_ON_FAILURE(this, textureD3D12Desc.d3d12Resource != nullptr, Result::INVALID_ARGUMENT, "'d3d12Resource' is NULL");
 
     Texture* textureImpl = nullptr;
-    Result result = m_iWrapperD3D12Impl.CreateTextureD3D12(m_Impl, textureDesc, textureImpl);
+    Result result = m_iWrapperD3D12Impl.CreateTextureD3D12(m_Impl, textureD3D12Desc, textureImpl);
 
     texture = nullptr;
     if (result == Result::SUCCESS)
@@ -981,13 +981,13 @@ NRI_INLINE Result DeviceVal::CreateTexture(const TextureD3D12Desc& textureDesc, 
     return result;
 }
 
-NRI_INLINE Result DeviceVal::CreateMemory(const MemoryD3D12Desc& memoryDesc, Memory*& memory) {
-    RETURN_ON_FAILURE(this, memoryDesc.d3d12Heap != nullptr, Result::INVALID_ARGUMENT, "'d3d12Heap' is NULL");
+NRI_INLINE Result DeviceVal::CreateMemory(const MemoryD3D12Desc& memoryD3D12Desc, Memory*& memory) {
+    RETURN_ON_FAILURE(this, memoryD3D12Desc.d3d12Heap != nullptr, Result::INVALID_ARGUMENT, "'d3d12Heap' is NULL");
 
     Memory* memoryImpl = nullptr;
-    Result result = m_iWrapperD3D12Impl.CreateMemoryD3D12(m_Impl, memoryDesc, memoryImpl);
+    Result result = m_iWrapperD3D12Impl.CreateMemoryD3D12(m_Impl, memoryD3D12Desc, memoryImpl);
 
-    const uint64_t size = GetMemorySizeD3D12(memoryDesc);
+    const uint64_t size = GetMemorySizeD3D12(memoryD3D12Desc);
 
     memory = nullptr;
     if (result == Result::SUCCESS)
@@ -996,11 +996,24 @@ NRI_INLINE Result DeviceVal::CreateMemory(const MemoryD3D12Desc& memoryDesc, Mem
     return result;
 }
 
-NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStructureD3D12Desc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    RETURN_ON_FAILURE(this, accelerationStructureDesc.d3d12Resource != nullptr, Result::INVALID_ARGUMENT, "'d3d12Resource' is NULL");
+NRI_INLINE Result DeviceVal::CreateFence(const FenceD3D12Desc& fenceD3D12Desc, Fence*& fence) {
+    RETURN_ON_FAILURE(this, fenceD3D12Desc.d3d12Fence != 0, Result::INVALID_ARGUMENT, "'d3d12Fence' is NULL");
+
+    Fence* fenceImpl;
+    Result result = m_iWrapperD3D12Impl.CreateFenceD3D12(m_Impl, fenceD3D12Desc, fenceImpl);
+
+    fence = nullptr;
+    if (result == Result::SUCCESS)
+        fence = (Fence*)Allocate<FenceVal>(GetAllocationCallbacks(), *this, fenceImpl);
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStructureD3D12Desc& accelerationStructureD3D12Desc, AccelerationStructure*& accelerationStructure) {
+    RETURN_ON_FAILURE(this, accelerationStructureD3D12Desc.d3d12Resource != nullptr, Result::INVALID_ARGUMENT, "'d3d12Resource' is NULL");
 
     AccelerationStructure* accelerationStructureImpl = nullptr;
-    Result result = m_iWrapperD3D12Impl.CreateAccelerationStructureD3D12(m_Impl, accelerationStructureDesc, accelerationStructureImpl);
+    Result result = m_iWrapperD3D12Impl.CreateAccelerationStructureD3D12(m_Impl, accelerationStructureD3D12Desc, accelerationStructureImpl);
 
     accelerationStructure = nullptr;
     if (result == Result::SUCCESS) {
@@ -1013,16 +1026,16 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
 
 #endif
 
-NRI_INLINE Result DeviceVal::CreatePipeline(const RayTracingPipelineDesc& pipelineDesc, Pipeline*& pipeline) {
-    RETURN_ON_FAILURE(this, pipelineDesc.pipelineLayout != nullptr, Result::INVALID_ARGUMENT, "'pipelineLayout' is NULL");
-    RETURN_ON_FAILURE(this, pipelineDesc.shaderLibrary != nullptr, Result::INVALID_ARGUMENT, "'shaderLibrary' is NULL");
-    RETURN_ON_FAILURE(this, pipelineDesc.shaderGroups != nullptr, Result::INVALID_ARGUMENT, "'shaderGroups' is NULL");
-    RETURN_ON_FAILURE(this, pipelineDesc.shaderGroupNum != 0, Result::INVALID_ARGUMENT, "'shaderGroupNum' is 0");
-    RETURN_ON_FAILURE(this, pipelineDesc.recursionMaxDepth != 0, Result::INVALID_ARGUMENT, "'recursionDepthMax' is 0");
+NRI_INLINE Result DeviceVal::CreatePipeline(const RayTracingPipelineDesc& rayTracingPipelineDesc, Pipeline*& pipeline) {
+    RETURN_ON_FAILURE(this, rayTracingPipelineDesc.pipelineLayout != nullptr, Result::INVALID_ARGUMENT, "'pipelineLayout' is NULL");
+    RETURN_ON_FAILURE(this, rayTracingPipelineDesc.shaderLibrary != nullptr, Result::INVALID_ARGUMENT, "'shaderLibrary' is NULL");
+    RETURN_ON_FAILURE(this, rayTracingPipelineDesc.shaderGroups != nullptr, Result::INVALID_ARGUMENT, "'shaderGroups' is NULL");
+    RETURN_ON_FAILURE(this, rayTracingPipelineDesc.shaderGroupNum != 0, Result::INVALID_ARGUMENT, "'shaderGroupNum' is 0");
+    RETURN_ON_FAILURE(this, rayTracingPipelineDesc.recursionMaxDepth != 0, Result::INVALID_ARGUMENT, "'recursionDepthMax' is 0");
 
     uint32_t uniqueShaderStages = 0;
-    for (uint32_t i = 0; i < pipelineDesc.shaderLibrary->shaderNum; i++) {
-        const ShaderDesc& shaderDesc = pipelineDesc.shaderLibrary->shaders[i];
+    for (uint32_t i = 0; i < rayTracingPipelineDesc.shaderLibrary->shaderNum; i++) {
+        const ShaderDesc& shaderDesc = rayTracingPipelineDesc.shaderLibrary->shaders[i];
 
         RETURN_ON_FAILURE(this, shaderDesc.bytecode != nullptr, Result::INVALID_ARGUMENT, "'shaderLibrary->shaders[%u].bytecode' is invalid", i);
         RETURN_ON_FAILURE(this, shaderDesc.size != 0, Result::INVALID_ARGUMENT, "'shaderLibrary->shaders[%u].size' is 0", i);
@@ -1030,8 +1043,8 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const RayTracingPipelineDesc& pipeli
             "'shaderLibrary->shaders[%u].stage' must include only 1 ray tracing shader stage, unique for the entire pipeline", i);
     }
 
-    auto pipelineDescImpl = pipelineDesc;
-    pipelineDescImpl.pipelineLayout = NRI_GET_IMPL(PipelineLayout, pipelineDesc.pipelineLayout);
+    auto pipelineDescImpl = rayTracingPipelineDesc;
+    pipelineDescImpl.pipelineLayout = NRI_GET_IMPL(PipelineLayout, rayTracingPipelineDesc.pipelineLayout);
 
     Pipeline* pipelineImpl = nullptr;
     Result result = m_iRayTracingImpl.CreateRayTracingPipeline(m_Impl, pipelineDescImpl, pipelineImpl);
@@ -1107,18 +1120,18 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
     return result;
 }
 
-NRI_INLINE Result DeviceVal::AllocateAccelerationStructure(const AllocateAccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    RETURN_ON_FAILURE(this, accelerationStructureDesc.desc.geometryOrInstanceNum != 0, Result::INVALID_ARGUMENT, "'geometryOrInstanceNum' is 0");
+NRI_INLINE Result DeviceVal::AllocateAccelerationStructure(const AllocateAccelerationStructureDesc& allocateAccelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
+    RETURN_ON_FAILURE(this, allocateAccelerationStructureDesc.desc.geometryOrInstanceNum != 0, Result::INVALID_ARGUMENT, "'geometryOrInstanceNum' is 0");
 
     // Allocate scratch
     uint32_t geometryNum = 0;
     uint32_t micromapNum = 0;
 
-    if (accelerationStructureDesc.desc.type == AccelerationStructureType::BOTTOM_LEVEL) {
-        geometryNum = accelerationStructureDesc.desc.geometryOrInstanceNum;
+    if (allocateAccelerationStructureDesc.desc.type == AccelerationStructureType::BOTTOM_LEVEL) {
+        geometryNum = allocateAccelerationStructureDesc.desc.geometryOrInstanceNum;
 
         for (uint32_t i = 0; i < geometryNum; i++) {
-            const BottomLevelGeometryDesc& geometryDesc = accelerationStructureDesc.desc.geometries[i];
+            const BottomLevelGeometryDesc& geometryDesc = allocateAccelerationStructureDesc.desc.geometries[i];
 
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
                 micromapNum++;
@@ -1132,16 +1145,16 @@ NRI_INLINE Result DeviceVal::AllocateAccelerationStructure(const AllocateAcceler
     BottomLevelMicromapDesc* micromapsImpl = micromapsImplScratch;
 
     // Convert
-    auto accelerationStructureDescImpl = accelerationStructureDesc;
+    auto allocateAccelerationStructureDescImpl = allocateAccelerationStructureDesc;
 
-    if (accelerationStructureDesc.desc.type == AccelerationStructureType::BOTTOM_LEVEL) {
-        accelerationStructureDescImpl.desc.geometries = geometriesImplScratch;
-        ConvertBotomLevelGeometries(accelerationStructureDesc.desc.geometries, geometryNum, geometriesImpl, micromapsImpl);
+    if (allocateAccelerationStructureDesc.desc.type == AccelerationStructureType::BOTTOM_LEVEL) {
+        allocateAccelerationStructureDescImpl.desc.geometries = geometriesImplScratch;
+        ConvertBotomLevelGeometries(allocateAccelerationStructureDesc.desc.geometries, geometryNum, geometriesImpl, micromapsImpl);
     }
 
     // Call
     AccelerationStructure* accelerationStructureImpl = nullptr;
-    Result result = m_iResourceAllocatorImpl.AllocateAccelerationStructure(m_Impl, accelerationStructureDescImpl, accelerationStructureImpl);
+    Result result = m_iResourceAllocatorImpl.AllocateAccelerationStructure(m_Impl, allocateAccelerationStructureDescImpl, accelerationStructureImpl);
 
     accelerationStructure = nullptr;
     if (result == Result::SUCCESS) {
@@ -1154,11 +1167,11 @@ NRI_INLINE Result DeviceVal::AllocateAccelerationStructure(const AllocateAcceler
     return result;
 }
 
-NRI_INLINE Result DeviceVal::AllocateMicromap(const AllocateMicromapDesc& micromapDesc, Micromap*& micromap) {
-    RETURN_ON_FAILURE(this, micromapDesc.desc.usageNum != 0, Result::INVALID_ARGUMENT, "'usageNum' is 0");
+NRI_INLINE Result DeviceVal::AllocateMicromap(const AllocateMicromapDesc& allocateMicromapDesc, Micromap*& micromap) {
+    RETURN_ON_FAILURE(this, allocateMicromapDesc.desc.usageNum != 0, Result::INVALID_ARGUMENT, "'usageNum' is 0");
 
     Micromap* micromapImpl = nullptr;
-    Result result = m_iResourceAllocatorImpl.AllocateMicromap(m_Impl, micromapDesc, micromapImpl);
+    Result result = m_iResourceAllocatorImpl.AllocateMicromap(m_Impl, allocateMicromapDesc, micromapImpl);
 
     micromap = nullptr;
     if (result == Result::SUCCESS) {

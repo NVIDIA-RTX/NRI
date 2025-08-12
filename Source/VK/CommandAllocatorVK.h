@@ -20,7 +20,7 @@ struct CommandAllocatorVK final : public DebugNameBase {
     ~CommandAllocatorVK();
 
     Result Create(const Queue& queue);
-    Result Create(const CommandAllocatorVKDesc& commandAllocatorDesc);
+    Result Create(const CommandAllocatorVKDesc& commandAllocatorVKDesc);
 
     //================================================================================================================
     // DebugNameBase

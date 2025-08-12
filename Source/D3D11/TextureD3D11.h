@@ -46,7 +46,7 @@ struct TextureD3D11 final : public DebugNameBase {
     }
 
     Result Create(const TextureDesc& textureDesc);
-    Result Create(const TextureD3D11Desc& textureDesc);
+    Result Create(const TextureD3D11Desc& textureD3D11Desc);
     Result Create(MemoryLocation memoryLocation, float priority);
 
     static uint32_t GetMipmappedSize(const TextureDesc& textureDesc);

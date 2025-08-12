@@ -37,14 +37,14 @@ Result DescriptorPoolD3D12::Create(const DescriptorPoolDesc& descriptorPoolDesc)
     return Result::SUCCESS;
 }
 
-Result DescriptorPoolD3D12::Create(const DescriptorPoolD3D12Desc& descriptorPoolDesc) {
+Result DescriptorPoolD3D12::Create(const DescriptorPoolD3D12Desc& descriptorPoolD3D12Desc) {
     static_assert(static_cast<size_t>(DescriptorHeapType::MAX_NUM) == 2, "DescriptorHeapType::MAX_NUM != 2");
     static_assert(static_cast<uint32_t>(DescriptorHeapType::RESOURCE) == 0, "DescriptorHeapType::RESOURCE != 0");
     static_assert(static_cast<uint32_t>(DescriptorHeapType::SAMPLER) == 1, "DescriptorHeapType::SAMPLER != 1");
 
     const std::array<ID3D12DescriptorHeap*, DescriptorHeapType::MAX_NUM> descriptorHeaps = {
-        descriptorPoolDesc.d3d12ResourceDescriptorHeap,
-        descriptorPoolDesc.d3d12SamplerDescriptorHeap,
+        descriptorPoolD3D12Desc.d3d12ResourceDescriptorHeap,
+        descriptorPoolD3D12Desc.d3d12SamplerDescriptorHeap,
     };
 
     for (uint32_t i = 0; i < DescriptorHeapType::MAX_NUM; i++) {
@@ -62,8 +62,8 @@ Result DescriptorPoolD3D12::Create(const DescriptorPoolD3D12Desc& descriptorPool
         }
     }
 
-    m_DynamicConstantBuffers.resize(descriptorPoolDesc.dynamicConstantBufferMaxNum);
-    m_DescriptorSets.resize(descriptorPoolDesc.descriptorSetMaxNum);
+    m_DynamicConstantBuffers.resize(descriptorPoolD3D12Desc.dynamicConstantBufferMaxNum);
+    m_DescriptorSets.resize(descriptorPoolD3D12Desc.descriptorSetMaxNum);
 
     return Result::SUCCESS;
 }

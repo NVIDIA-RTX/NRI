@@ -21,13 +21,10 @@ Result CommandAllocatorVK::Create(const Queue& queue) {
     return Result::SUCCESS;
 }
 
-Result CommandAllocatorVK::Create(const CommandAllocatorVKDesc& commandAllocatorDesc) {
-    if (!commandAllocatorDesc.vkCommandPool)
-        return Result::INVALID_ARGUMENT;
-
+Result CommandAllocatorVK::Create(const CommandAllocatorVKDesc& commandAllocatorVKDesc) {
     m_OwnsNativeObjects = false;
-    m_Handle = (VkCommandPool)commandAllocatorDesc.vkCommandPool;
-    m_Type = commandAllocatorDesc.queueType;
+    m_Handle = (VkCommandPool)commandAllocatorVKDesc.vkCommandPool;
+    m_Type = commandAllocatorVKDesc.queueType;
 
     return Result::SUCCESS;
 }

@@ -1,9 +1,10 @@
 // © 2021 NVIDIA Corporation
 
 FenceVK::~FenceVK() {
-    const auto& vk = m_Device.GetDispatchTable();
-    if (m_Handle != VK_NULL_HANDLE)
+    if (m_OwnsNativeObjects && m_Handle) {
+        const auto& vk = m_Device.GetDispatchTable();
         vk.DestroySemaphore(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
+    }
 }
 
 Result FenceVK::Create(uint64_t initialValue) {
@@ -17,6 +18,13 @@ Result FenceVK::Create(uint64_t initialValue) {
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateSemaphore((VkDevice)m_Device, &semaphoreCreateInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
     RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateSemaphore");
+
+    return Result::SUCCESS;
+}
+
+Result FenceVK::Create(const FenceVKDesc& fenceVKDesc) {
+    m_OwnsNativeObjects = false;
+    m_Handle = (VkSemaphore)fenceVKDesc.vkTimelineSemaphore;
 
     return Result::SUCCESS;
 }

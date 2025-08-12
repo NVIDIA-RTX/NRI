@@ -33,7 +33,7 @@ struct MemoryD3D12 final : public DebugNameBase {
     }
 
     Result Create(const AllocateMemoryDesc& allocateMemoryDesc);
-    Result Create(const MemoryD3D12Desc& memoryDesc);
+    Result Create(const MemoryD3D12Desc& memoryD3D12Desc);
 
     //================================================================================================================
     // DebugNameBase

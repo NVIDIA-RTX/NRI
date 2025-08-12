@@ -4,14 +4,14 @@ AccelerationStructureD3D12::~AccelerationStructureD3D12() {
     Destroy(m_Buffer);
 }
 
-Result AccelerationStructureD3D12::Create(const AccelerationStructureD3D12Desc& accelerationStructureDesc) {
-    m_PrebuildInfo.ResultDataMaxSizeInBytes = accelerationStructureDesc.size;
-    m_PrebuildInfo.ScratchDataSizeInBytes = accelerationStructureDesc.buildScratchSize;
-    m_PrebuildInfo.UpdateScratchDataSizeInBytes = accelerationStructureDesc.updateScratchSize;
-    m_Flags = accelerationStructureDesc.flags;
+Result AccelerationStructureD3D12::Create(const AccelerationStructureD3D12Desc& accelerationStructureD3D12Desc) {
+    m_PrebuildInfo.ResultDataMaxSizeInBytes = accelerationStructureD3D12Desc.size;
+    m_PrebuildInfo.ScratchDataSizeInBytes = accelerationStructureD3D12Desc.buildScratchSize;
+    m_PrebuildInfo.UpdateScratchDataSizeInBytes = accelerationStructureD3D12Desc.updateScratchSize;
+    m_Flags = accelerationStructureD3D12Desc.flags;
 
     BufferD3D12Desc bufferDesc = {};
-    bufferDesc.d3d12Resource = accelerationStructureDesc.d3d12Resource;
+    bufferDesc.d3d12Resource = accelerationStructureD3D12Desc.d3d12Resource;
 
     return m_Device.CreateImplementation<BufferD3D12>(m_Buffer, bufferDesc);
 }

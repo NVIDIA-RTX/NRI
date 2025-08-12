@@ -36,8 +36,8 @@ Result MemoryD3D12::Create(const AllocateMemoryDesc& allocateMemoryDesc) {
     return Result::SUCCESS;
 }
 
-Result MemoryD3D12::Create(const MemoryD3D12Desc& memoryDesc) {
-    m_Heap = memoryDesc.d3d12Heap;
+Result MemoryD3D12::Create(const MemoryD3D12Desc& memoryD3D12Desc) {
+    m_Heap = memoryD3D12Desc.d3d12Heap;
     m_HeapDesc = m_Heap->GetDesc();
 
     return Result::SUCCESS;

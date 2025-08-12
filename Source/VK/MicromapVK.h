@@ -31,7 +31,7 @@ struct MicromapVK final : public DebugNameBase {
     ~MicromapVK();
 
     Result Create(const MicromapDesc& accelerationStructureDesc);
-    Result Create(const AllocateMicromapDesc& accelerationStructureDesc);
+    Result Create(const AllocateMicromapDesc& allocateMicromapDesc);
     Result FinishCreation();
 
     //================================================================================================================

@@ -6,13 +6,13 @@ Result BufferD3D12::Create(const BufferDesc& bufferDesc) {
     return Result::SUCCESS;
 }
 
-Result BufferD3D12::Create(const BufferD3D12Desc& bufferDesc) {
-    if (bufferDesc.desc)
-        m_Desc = *bufferDesc.desc;
-    else if (!GetBufferDesc(bufferDesc, m_Desc))
+Result BufferD3D12::Create(const BufferD3D12Desc& bufferD3D12Desc) {
+    if (bufferD3D12Desc.desc)
+        m_Desc = *bufferD3D12Desc.desc;
+    else if (!GetBufferDesc(bufferD3D12Desc, m_Desc))
         return Result::INVALID_ARGUMENT;
 
-    m_Buffer = (ID3D12ResourceBest*)bufferDesc.d3d12Resource;
+    m_Buffer = (ID3D12ResourceBest*)bufferD3D12Desc.d3d12Resource;
 
     return Result::SUCCESS;
 }

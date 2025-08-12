@@ -39,8 +39,8 @@ struct BufferD3D12 final : public DebugNameBase {
     }
 
     Result Create(const BufferDesc& bufferDesc);
-    Result Create(const BufferD3D12Desc& bufferDesc);
-    Result Create(const AllocateBufferDesc& bufferDesc);
+    Result Create(const BufferD3D12Desc& bufferD3D12Desc);
+    Result Create(const AllocateBufferDesc& allocateBufferDesc);
     Result BindMemory(const MemoryD3D12* memory, uint64_t offset);
 
     //================================================================================================================

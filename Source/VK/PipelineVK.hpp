@@ -452,13 +452,11 @@ Result PipelineVK::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc) 
     return Result::SUCCESS;
 }
 
-Result PipelineVK::Create(VkPipelineBindPoint bindPoint, VKNonDispatchableHandle vkPipeline) {
-    if (!vkPipeline)
-        return Result::INVALID_ARGUMENT;
-
+Result PipelineVK::Create(const PipelineVKDesc& pipelineVKDesc) {
     m_OwnsNativeObjects = false;
-    m_Handle = (VkPipeline)vkPipeline;
-    m_BindPoint = bindPoint;
+    m_Handle = (VkPipeline)pipelineVKDesc.vkPipeline;
+    m_BindPoint = (VkPipelineBindPoint)pipelineVKDesc.vkPipelineBindPoint;
+    m_DepthBias = pipelineVKDesc.depthBias;
 
     return Result::SUCCESS;
 }

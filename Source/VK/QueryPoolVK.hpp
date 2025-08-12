@@ -49,13 +49,10 @@ Result QueryPoolVK::Create(const QueryPoolDesc& queryPoolDesc) {
     return Result::SUCCESS;
 }
 
-Result QueryPoolVK::Create(const QueryPoolVKDesc& queryPoolDesc) {
-    if (!queryPoolDesc.vkQueryPool)
-        return Result::INVALID_ARGUMENT;
-
+Result QueryPoolVK::Create(const QueryPoolVKDesc& queryPoolVKDesc) {
     m_OwnsNativeObjects = false;
-    m_Type = (VkQueryType)queryPoolDesc.vkQueryType;
-    m_Handle = (VkQueryPool)queryPoolDesc.vkQueryPool;
+    m_Type = (VkQueryType)queryPoolVKDesc.vkQueryType;
+    m_Handle = (VkQueryPool)queryPoolVKDesc.vkQueryPool;
     m_QuerySize = (m_Type == VK_QUERY_TYPE_PIPELINE_STATISTICS ? (m_Device.GetDesc().features.meshShader ? 13 : 11) : 1) * sizeof(uint64_t);
 
     return Result::SUCCESS;

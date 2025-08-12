@@ -45,9 +45,6 @@ Result DescriptorPoolVK::Create(const DescriptorPoolDesc& descriptorPoolDesc) {
 }
 
 Result DescriptorPoolVK::Create(const DescriptorPoolVKDesc& descriptorPoolVKDesc) {
-    if (!descriptorPoolVKDesc.vkDescriptorPool)
-        return Result::INVALID_ARGUMENT;
-
     m_OwnsNativeObjects = false;
     m_Handle = (VkDescriptorPool)descriptorPoolVKDesc.vkDescriptorPool;
 

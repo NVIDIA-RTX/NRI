@@ -21,6 +21,7 @@ struct FenceD3D12 final : public DebugNameBase {
     }
 
     Result Create(uint64_t initialValue);
+    Result Create(const FenceD3D12Desc& fenceD3D12Desc);
 
     //================================================================================================================
     // DebugNameBase

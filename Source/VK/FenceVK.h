@@ -20,6 +20,7 @@ struct FenceVK final : public DebugNameBase {
     ~FenceVK();
 
     Result Create(uint64_t initialValue);
+    Result Create(const FenceVKDesc& fenceVKDesc);
 
     //================================================================================================================
     // DebugNameBase
@@ -37,6 +38,7 @@ struct FenceVK final : public DebugNameBase {
 private:
     DeviceVK& m_Device;
     VkSemaphore m_Handle = VK_NULL_HANDLE;
+    bool m_OwnsNativeObjects = true;
 };
 
 } // namespace nri

@@ -24,7 +24,7 @@ struct QueryPoolVK final : public DebugNameBase {
     ~QueryPoolVK();
 
     Result Create(const QueryPoolDesc& queryPoolDesc);
-    Result Create(const QueryPoolVKDesc& queryPoolDesc);
+    Result Create(const QueryPoolVKDesc& queryPoolVKDesc);
 
     //================================================================================================================
     // DebugNameBase

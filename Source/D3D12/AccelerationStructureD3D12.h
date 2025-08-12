@@ -22,8 +22,8 @@ struct AccelerationStructureD3D12 final : public DebugNameBase {
     ~AccelerationStructureD3D12();
 
     Result Create(const AccelerationStructureDesc& accelerationStructureDesc);
-    Result Create(const AccelerationStructureD3D12Desc& accelerationStructureDesc);
-    Result Create(const AllocateAccelerationStructureDesc& accelerationStructureDesc);
+    Result Create(const AccelerationStructureD3D12Desc& accelerationStructureD3D12Desc);
+    Result Create(const AllocateAccelerationStructureDesc& allocateAccelerationStructureDesc);
     Result BindMemory(Memory* memory, uint64_t offset);
     void GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
 

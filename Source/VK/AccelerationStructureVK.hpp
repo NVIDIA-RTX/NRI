@@ -28,21 +28,18 @@ Result AccelerationStructureVK::Create(const AccelerationStructureDesc& accelera
     return m_Device.CreateImplementation<BufferVK>(m_Buffer, bufferDesc);
 }
 
-Result AccelerationStructureVK::Create(const AccelerationStructureVKDesc& accelerationStructureDesc) {
-    if (!accelerationStructureDesc.vkAccelerationStructure)
-        return Result::INVALID_ARGUMENT;
-
+Result AccelerationStructureVK::Create(const AccelerationStructureVKDesc& accelerationStructureVKDesc) {
     m_OwnsNativeObjects = false;
-    m_Handle = (VkAccelerationStructureKHR)accelerationStructureDesc.vkAccelerationStructure;
+    m_Handle = (VkAccelerationStructureKHR)accelerationStructureVKDesc.vkAccelerationStructure;
 
-    m_BuildScratchSize = accelerationStructureDesc.buildScratchSize;
-    m_UpdateScratchSize = accelerationStructureDesc.updateScratchSize;
-    m_Flags = accelerationStructureDesc.flags;
+    m_BuildScratchSize = accelerationStructureVKDesc.buildScratchSize;
+    m_UpdateScratchSize = accelerationStructureVKDesc.updateScratchSize;
+    m_Flags = accelerationStructureVKDesc.flags;
 
     // Device address
     if (m_Device.m_IsSupported.deviceAddress) {
         VkAccelerationStructureDeviceAddressInfoKHR deviceAddressInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR};
-        deviceAddressInfo.accelerationStructure = (VkAccelerationStructureKHR)accelerationStructureDesc.vkAccelerationStructure;
+        deviceAddressInfo.accelerationStructure = (VkAccelerationStructureKHR)accelerationStructureVKDesc.vkAccelerationStructure;
 
         const auto& vk = m_Device.GetDispatchTable();
         m_DeviceAddress = vk.GetAccelerationStructureDeviceAddressKHR(m_Device, &deviceAddressInfo);

@@ -32,7 +32,7 @@ struct MemoryVK final : public DebugNameBase {
 
     ~MemoryVK();
 
-    Result Create(const MemoryVKDesc& memoryDesc);
+    Result Create(const MemoryVKDesc& memoryVKDesc);
     Result Create(const AllocateMemoryDesc& allocateMemoryDesc);
     Result CreateDedicated(const BufferVK& buffer);
     Result CreateDedicated(const TextureVK& texture);

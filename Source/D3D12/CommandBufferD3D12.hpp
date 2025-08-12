@@ -267,8 +267,8 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
     return Result::SUCCESS;
 }
 
-Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferDesc) {
-    ComPtr<ID3D12GraphicsCommandListBest> graphicsCommandList = (ID3D12GraphicsCommandListBest*)commandBufferDesc.d3d12CommandList;
+Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferD3D12Desc) {
+    ComPtr<ID3D12GraphicsCommandListBest> graphicsCommandList = (ID3D12GraphicsCommandListBest*)commandBufferD3D12Desc.d3d12CommandList;
 
     HRESULT hr = QueryLatestInterface(graphicsCommandList, m_GraphicsCommandList, m_Version);
     if (hr == D3D12_ERROR_INVALID_REDIST)
@@ -276,7 +276,7 @@ Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferDes
 
     // TODO: what if opened?
 
-    m_CommandAllocator = commandBufferDesc.d3d12CommandAllocator;
+    m_CommandAllocator = commandBufferD3D12Desc.d3d12CommandAllocator;
 
     return Result::SUCCESS;
 }

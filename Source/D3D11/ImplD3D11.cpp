@@ -991,10 +991,10 @@ Result DeviceD3D11::FillFunctionTable(LowLatencyInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  ResourceAllocator  ]
 
-static Result NRI_CALL AllocateBuffer(Device& device, const AllocateBufferDesc& bufferDesc, Buffer*& buffer) {
-    Result result = ((DeviceD3D11&)device).CreateImplementation<BufferD3D11>(buffer, bufferDesc.desc);
+static Result NRI_CALL AllocateBuffer(Device& device, const AllocateBufferDesc& allocateBufferDesc, Buffer*& buffer) {
+    Result result = ((DeviceD3D11&)device).CreateImplementation<BufferD3D11>(buffer, allocateBufferDesc.desc);
     if (result == Result::SUCCESS) {
-        result = ((BufferD3D11*)buffer)->Create(bufferDesc.memoryLocation, bufferDesc.memoryPriority);
+        result = ((BufferD3D11*)buffer)->Create(allocateBufferDesc.memoryLocation, allocateBufferDesc.memoryPriority);
         if (result != Result::SUCCESS) {
             Destroy((BufferD3D11*)buffer);
             buffer = nullptr;
@@ -1004,10 +1004,10 @@ static Result NRI_CALL AllocateBuffer(Device& device, const AllocateBufferDesc& 
     return result;
 }
 
-static Result NRI_CALL AllocateTexture(Device& device, const AllocateTextureDesc& textureDesc, Texture*& texture) {
-    Result result = ((DeviceD3D11&)device).CreateImplementation<TextureD3D11>(texture, textureDesc.desc);
+static Result NRI_CALL AllocateTexture(Device& device, const AllocateTextureDesc& allocateTextureDesc, Texture*& texture) {
+    Result result = ((DeviceD3D11&)device).CreateImplementation<TextureD3D11>(texture, allocateTextureDesc.desc);
     if (result == Result::SUCCESS) {
-        result = ((TextureD3D11*)texture)->Create(textureDesc.memoryLocation, textureDesc.memoryPriority);
+        result = ((TextureD3D11*)texture)->Create(allocateTextureDesc.memoryLocation, allocateTextureDesc.memoryPriority);
         if (result != Result::SUCCESS) {
             Destroy((TextureD3D11*)texture);
             texture = nullptr;
@@ -1202,18 +1202,18 @@ Result DeviceD3D11::FillFunctionTable(UpscalerInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  WrapperD3D11  ]
 
-static Result NRI_CALL CreateCommandBufferD3D11(Device& device, const CommandBufferD3D11Desc& commandBufferDesc, CommandBuffer*& commandBuffer) {
+static Result NRI_CALL CreateCommandBufferD3D11(Device& device, const CommandBufferD3D11Desc& commandBufferD3D11Desc, CommandBuffer*& commandBuffer) {
     DeviceD3D11& deviceD3D11 = (DeviceD3D11&)device;
 
-    return CreateCommandBuffer(deviceD3D11, commandBufferDesc.d3d11DeviceContext, commandBuffer);
+    return CreateCommandBuffer(deviceD3D11, commandBufferD3D11Desc.d3d11DeviceContext, commandBuffer);
 }
 
-static Result NRI_CALL CreateBufferD3D11(Device& device, const BufferD3D11Desc& bufferDesc, Buffer*& buffer) {
-    return ((DeviceD3D11&)device).CreateImplementation<BufferD3D11>(buffer, bufferDesc);
+static Result NRI_CALL CreateBufferD3D11(Device& device, const BufferD3D11Desc& bufferD3D11Desc, Buffer*& buffer) {
+    return ((DeviceD3D11&)device).CreateImplementation<BufferD3D11>(buffer, bufferD3D11Desc);
 }
 
-static Result NRI_CALL CreateTextureD3D11(Device& device, const TextureD3D11Desc& textureDesc, Texture*& texture) {
-    return ((DeviceD3D11&)device).CreateImplementation<TextureD3D11>(texture, textureDesc);
+static Result NRI_CALL CreateTextureD3D11(Device& device, const TextureD3D11Desc& textureD3D11Desc, Texture*& texture) {
+    return ((DeviceD3D11&)device).CreateImplementation<TextureD3D11>(texture, textureD3D11Desc);
 }
 
 Result DeviceD3D11::FillFunctionTable(WrapperD3D11Interface& table) const {

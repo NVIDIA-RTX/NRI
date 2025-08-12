@@ -3,11 +3,10 @@
 #include <math.h>
 
 CommandBufferVK::~CommandBufferVK() {
-    if (m_CommandPool == VK_NULL_HANDLE)
-        return;
-
-    const auto& vk = m_Device.GetDispatchTable();
-    vk.FreeCommandBuffers(m_Device, m_CommandPool, 1, &m_Handle);
+    if (m_CommandPool) {
+        const auto& vk = m_Device.GetDispatchTable();
+        vk.FreeCommandBuffers(m_Device, m_CommandPool, 1, &m_Handle);
+    }
 }
 
 void CommandBufferVK::Create(VkCommandPool commandPool, VkCommandBuffer commandBuffer, QueueType type) {
@@ -16,10 +15,10 @@ void CommandBufferVK::Create(VkCommandPool commandPool, VkCommandBuffer commandB
     m_Type = type;
 }
 
-Result CommandBufferVK::Create(const CommandBufferVKDesc& commandBufferDesc) {
+Result CommandBufferVK::Create(const CommandBufferVKDesc& commandBufferVKDesc) {
     m_CommandPool = VK_NULL_HANDLE;
-    m_Handle = (VkCommandBuffer)commandBufferDesc.vkCommandBuffer;
-    m_Type = commandBufferDesc.queueType;
+    m_Handle = (VkCommandBuffer)commandBufferVKDesc.vkCommandBuffer;
+    m_Type = commandBufferVKDesc.queueType;
 
     return Result::SUCCESS;
 }

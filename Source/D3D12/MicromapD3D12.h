@@ -31,7 +31,7 @@ struct MicromapD3D12 final : public DebugNameBase {
     ~MicromapD3D12();
 
     Result Create(const MicromapDesc& micromapDesc);
-    Result Create(const AllocateMicromapDesc& micromapDesc);
+    Result Create(const AllocateMicromapDesc& allocateMicromapDesc);
     Result BindMemory(Memory* memory, uint64_t offset);
     void GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
 

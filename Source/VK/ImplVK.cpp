@@ -980,16 +980,16 @@ Result DeviceVK::FillFunctionTable(RayTracingInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  ResourceAllocator  ]
 
-static Result NRI_CALL AllocateBuffer(Device& device, const AllocateBufferDesc& bufferDesc, Buffer*& buffer) {
-    return ((DeviceVK&)device).CreateImplementation<BufferVK>(buffer, bufferDesc);
+static Result NRI_CALL AllocateBuffer(Device& device, const AllocateBufferDesc& allocateBufferDesc, Buffer*& buffer) {
+    return ((DeviceVK&)device).CreateImplementation<BufferVK>(buffer, allocateBufferDesc);
 }
 
-static Result NRI_CALL AllocateTexture(Device& device, const AllocateTextureDesc& textureDesc, Texture*& texture) {
-    return ((DeviceVK&)device).CreateImplementation<TextureVK>(texture, textureDesc);
+static Result NRI_CALL AllocateTexture(Device& device, const AllocateTextureDesc& allocateTextureDesc, Texture*& texture) {
+    return ((DeviceVK&)device).CreateImplementation<TextureVK>(texture, allocateTextureDesc);
 }
 
-static Result NRI_CALL AllocateAccelerationStructure(Device& device, const AllocateAccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    return ((DeviceVK&)device).CreateImplementation<AccelerationStructureVK>(accelerationStructure, accelerationStructureDesc);
+static Result NRI_CALL AllocateAccelerationStructure(Device& device, const AllocateAccelerationStructureDesc& allocateAccelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
+    return ((DeviceVK&)device).CreateImplementation<AccelerationStructureVK>(accelerationStructure, allocateAccelerationStructureDesc);
 }
 
 static Result NRI_CALL AllocateMicromap(Device& device, const AllocateMicromapDesc& allocateMicromapDesc, Micromap*& micromap) {
@@ -1169,44 +1169,44 @@ Result DeviceVK::FillFunctionTable(UpscalerInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  WrapperVK  ]
 
-static Result NRI_CALL CreateCommandAllocatorVK(Device& device, const CommandAllocatorVKDesc& commandAllocatorDesc, CommandAllocator*& commandAllocator) {
-    return ((DeviceVK&)device).CreateImplementation<CommandAllocatorVK>(commandAllocator, commandAllocatorDesc);
+static Result NRI_CALL CreateCommandAllocatorVK(Device& device, const CommandAllocatorVKDesc& commandAllocatorVKDesc, CommandAllocator*& commandAllocator) {
+    return ((DeviceVK&)device).CreateImplementation<CommandAllocatorVK>(commandAllocator, commandAllocatorVKDesc);
 }
 
-static Result NRI_CALL CreateCommandBufferVK(Device& device, const CommandBufferVKDesc& commandBufferDesc, CommandBuffer*& commandBuffer) {
-    return ((DeviceVK&)device).CreateImplementation<CommandBufferVK>(commandBuffer, commandBufferDesc);
+static Result NRI_CALL CreateCommandBufferVK(Device& device, const CommandBufferVKDesc& commandBufferVKDesc, CommandBuffer*& commandBuffer) {
+    return ((DeviceVK&)device).CreateImplementation<CommandBufferVK>(commandBuffer, commandBufferVKDesc);
 }
 
-static Result NRI_CALL CreateDescriptorPoolVK(Device& device, const DescriptorPoolVKDesc& descriptorPoolDesc, DescriptorPool*& descriptorPool) {
-    return ((DeviceVK&)device).CreateImplementation<DescriptorPoolVK>(descriptorPool, descriptorPoolDesc);
+static Result NRI_CALL CreateDescriptorPoolVK(Device& device, const DescriptorPoolVKDesc& descriptorPoolVKDesc, DescriptorPool*& descriptorPool) {
+    return ((DeviceVK&)device).CreateImplementation<DescriptorPoolVK>(descriptorPool, descriptorPoolVKDesc);
 }
 
-static Result NRI_CALL CreateBufferVK(Device& device, const BufferVKDesc& bufferDesc, Buffer*& buffer) {
-    return ((DeviceVK&)device).CreateImplementation<BufferVK>(buffer, bufferDesc);
+static Result NRI_CALL CreateBufferVK(Device& device, const BufferVKDesc& bufferVKDesc, Buffer*& buffer) {
+    return ((DeviceVK&)device).CreateImplementation<BufferVK>(buffer, bufferVKDesc);
 }
 
-static Result NRI_CALL CreateTextureVK(Device& device, const TextureVKDesc& textureDesc, Texture*& texture) {
-    return ((DeviceVK&)device).CreateImplementation<TextureVK>(texture, textureDesc);
+static Result NRI_CALL CreateTextureVK(Device& device, const TextureVKDesc& textureVKDesc, Texture*& texture) {
+    return ((DeviceVK&)device).CreateImplementation<TextureVK>(texture, textureVKDesc);
 }
 
-static Result NRI_CALL CreateMemoryVK(Device& device, const MemoryVKDesc& memoryDesc, Memory*& memory) {
-    return ((DeviceVK&)device).CreateImplementation<MemoryVK>(memory, memoryDesc);
+static Result NRI_CALL CreateMemoryVK(Device& device, const MemoryVKDesc& memoryVKDesc, Memory*& memory) {
+    return ((DeviceVK&)device).CreateImplementation<MemoryVK>(memory, memoryVKDesc);
 }
 
-static Result NRI_CALL CreateGraphicsPipelineVK(Device& device, VKNonDispatchableHandle vkPipeline, Pipeline*& pipeline) {
-    return ((DeviceVK&)device).CreateImplementation<PipelineVK>(pipeline, VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipeline);
+static Result NRI_CALL CreatePipelineVK(Device& device, const PipelineVKDesc& pipelineVKDesc, Pipeline*& pipeline) {
+    return ((DeviceVK&)device).CreateImplementation<PipelineVK>(pipeline, pipelineVKDesc);
 }
 
-static Result NRI_CALL CreateComputePipelineVK(Device& device, VKNonDispatchableHandle vkPipeline, Pipeline*& pipeline) {
-    return ((DeviceVK&)device).CreateImplementation<PipelineVK>(pipeline, VK_PIPELINE_BIND_POINT_COMPUTE, vkPipeline);
+static Result NRI_CALL CreateQueryPoolVK(Device& device, const QueryPoolVKDesc& queryPoolVKDesc, QueryPool*& queryPool) {
+    return ((DeviceVK&)device).CreateImplementation<QueryPoolVK>(queryPool, queryPoolVKDesc);
 }
 
-static Result NRI_CALL CreateQueryPoolVK(Device& device, const QueryPoolVKDesc& queryPoolDesc, QueryPool*& queryPool) {
-    return ((DeviceVK&)device).CreateImplementation<QueryPoolVK>(queryPool, queryPoolDesc);
+static Result NRI_CALL CreateFenceVK(Device& device, const FenceVKDesc& fenceVKDesc, Fence*& fence) {
+    return ((DeviceVK&)device).CreateImplementation<FenceVK>(fence, fenceVKDesc);
 }
 
-static Result NRI_CALL CreateAccelerationStructureVK(Device& device, const AccelerationStructureVKDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    return ((DeviceVK&)device).CreateImplementation<AccelerationStructureVK>(accelerationStructure, accelerationStructureDesc);
+static Result NRI_CALL CreateAccelerationStructureVK(Device& device, const AccelerationStructureVKDesc& accelerationStructureVKDesc, AccelerationStructure*& accelerationStructure) {
+    return ((DeviceVK&)device).CreateImplementation<AccelerationStructureVK>(accelerationStructure, accelerationStructureVKDesc);
 }
 
 static uint32_t NRI_CALL GetQueueFamilyIndexVK(const Queue& queue) {
@@ -1236,9 +1236,9 @@ Result DeviceVK::FillFunctionTable(WrapperVKInterface& table) const {
     table.CreateBufferVK = ::CreateBufferVK;
     table.CreateTextureVK = ::CreateTextureVK;
     table.CreateMemoryVK = ::CreateMemoryVK;
-    table.CreateGraphicsPipelineVK = ::CreateGraphicsPipelineVK;
-    table.CreateComputePipelineVK = ::CreateComputePipelineVK;
+    table.CreatePipelineVK = ::CreatePipelineVK;
     table.CreateQueryPoolVK = ::CreateQueryPoolVK;
+    table.CreateFenceVK = ::CreateFenceVK;
     table.CreateAccelerationStructureVK = ::CreateAccelerationStructureVK;
     table.GetQueueFamilyIndexVK = ::GetQueueFamilyIndexVK;
     table.GetPhysicalDeviceVK = ::GetPhysicalDeviceVK;

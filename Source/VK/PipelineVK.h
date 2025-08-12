@@ -30,7 +30,7 @@ struct PipelineVK final : public DebugNameBase {
     Result Create(const GraphicsPipelineDesc& graphicsPipelineDesc);
     Result Create(const ComputePipelineDesc& computePipelineDesc);
     Result Create(const RayTracingPipelineDesc& rayTracingPipelineDesc);
-    Result Create(VkPipelineBindPoint bindPoint, VKNonDispatchableHandle vkPipeline);
+    Result Create(const PipelineVKDesc& pipelineVKDesc);
 
     //================================================================================================================
     // DebugNameBase
