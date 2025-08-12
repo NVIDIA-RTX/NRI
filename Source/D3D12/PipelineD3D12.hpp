@@ -12,7 +12,7 @@ struct alignas(void*) PipelineDescComponent {
     DescComponent desc = {};
 };
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
 typedef PipelineDescComponent<D3D12_RASTERIZER_DESC1, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER> PipelineRasterizer;
 typedef PipelineDescComponent<D3D12_DEPTH_STENCIL_DESC2, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL2> PipelineDepthStencil;
 #else
@@ -73,7 +73,7 @@ static D3D12_SHADER_VISIBILITY GetShaderVisibility(StageBits shaderStages) {
     return D3D12_SHADER_VISIBILITY_ALL;
 }
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
 static void FillRasterizerState(D3D12_RASTERIZER_DESC1& rasterizerDesc, const GraphicsPipelineDesc& graphicsPipelineDesc) {
 #else
 static void FillRasterizerState(D3D12_RASTERIZER_DESC& rasterizerDesc, const GraphicsPipelineDesc& graphicsPipelineDesc) {
@@ -89,7 +89,7 @@ static void FillRasterizerState(D3D12_RASTERIZER_DESC& rasterizerDesc, const Gra
     rasterizerDesc.AntialiasedLineEnable = (BOOL)r.lineSmoothing;
     rasterizerDesc.ConservativeRaster = r.conservativeRaster ? D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON : D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     rasterizerDesc.DepthBias = r.depthBias.constant;
 #else
     rasterizerDesc.DepthBias = (int32_t)r.depthBias.constant;
@@ -101,7 +101,7 @@ static void FillRasterizerState(D3D12_RASTERIZER_DESC& rasterizerDesc, const Gra
     }
 }
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
 static void FillDepthStencilState(D3D12_DEPTH_STENCIL_DESC2& depthStencilDesc, const OutputMergerDesc& om) {
 #else
 static void FillDepthStencilState(D3D12_DEPTH_STENCIL_DESC1& depthStencilDesc, const OutputMergerDesc& om) {
@@ -120,7 +120,7 @@ static void FillDepthStencilState(D3D12_DEPTH_STENCIL_DESC1& depthStencilDesc, c
     depthStencilDesc.BackFace.StencilFunc = GetCompareOp(om.stencil.back.compareOp);
     depthStencilDesc.DepthBoundsTestEnable = om.depth.boundsTest ? 1 : 0;
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     depthStencilDesc.FrontFace.StencilReadMask = om.stencil.front.compareMask;
     depthStencilDesc.FrontFace.StencilWriteMask = om.stencil.front.writeMask;
     depthStencilDesc.BackFace.StencilReadMask = om.stencil.back.compareMask;
@@ -265,7 +265,7 @@ Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipel
 
     // Rasterizer
     FillRasterizerState(stateStream.rasterizer.desc, graphicsPipelineDesc);
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     if (IsDepthBiasEnabled(graphicsPipelineDesc.rasterization.depthBias))
         stateStream.flags = D3D12_PIPELINE_STATE_FLAG_DYNAMIC_DEPTH_BIAS;
 #endif

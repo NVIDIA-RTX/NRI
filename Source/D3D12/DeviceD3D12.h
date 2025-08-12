@@ -6,7 +6,7 @@ struct IDXGIAdapter;
 struct ID3D12DescriptorHeap;
 struct ID3D12CommandSignature;
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
 struct ID3D12Device14;
 typedef ID3D12Device14 ID3D12DeviceBest;
 #else

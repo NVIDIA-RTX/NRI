@@ -2,7 +2,7 @@
 
 static HRESULT QueryLatestInterface(ComPtr<ID3D12GraphicsCommandListBest>& in, ComPtr<ID3D12GraphicsCommandListBest>& out, uint8_t& version) {
     static const IID versions[] = {
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         __uuidof(ID3D12GraphicsCommandList10),
         __uuidof(ID3D12GraphicsCommandList9),
         __uuidof(ID3D12GraphicsCommandList8),
@@ -30,7 +30,7 @@ static HRESULT QueryLatestInterface(ComPtr<ID3D12GraphicsCommandListBest>& in, C
     return i == 0 ? S_OK : D3D12_ERROR_INVALID_REDIST;
 }
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
 static inline D3D12_BARRIER_SYNC GetBarrierSyncFlags(StageBits stageBits, AccessBits accessBits) {
     // Check non-mask values first
     if (stageBits == StageBits::ALL)
@@ -340,7 +340,7 @@ NRI_INLINE void CommandBufferD3D12::SetDepthBounds(float boundsMin, float bounds
 
 NRI_INLINE void CommandBufferD3D12::SetStencilReference(uint8_t frontRef, uint8_t backRef) {
     MaybeUnused(backRef);
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     if (m_Device.GetDesc().features.independentFrontAndBackStencilReferenceAndMasks)
         m_GraphicsCommandList->OMSetFrontAndBackStencilRef(frontRef, backRef);
     else
@@ -371,7 +371,7 @@ NRI_INLINE void CommandBufferD3D12::SetShadingRate(const ShadingRateDesc& shadin
 
 NRI_INLINE void CommandBufferD3D12::SetDepthBias(const DepthBiasDesc& depthBiasDesc) {
     MaybeUnused(depthBiasDesc);
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     m_GraphicsCommandList->RSSetDepthBias(depthBiasDesc.constant, depthBiasDesc.clamp, depthBiasDesc.slope);
 #endif
 }
@@ -796,7 +796,7 @@ NRI_INLINE void CommandBufferD3D12::DispatchIndirect(const Buffer& buffer, uint6
 }
 
 NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierGroupDesc& barrierGroupDesc) {
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     if (m_Device.GetDesc().features.enhancedBarriers) {
         // Count
         uint32_t barrierNum = barrierGroupDesc.globalNum + barrierGroupDesc.bufferNum + barrierGroupDesc.textureNum;
@@ -976,7 +976,7 @@ NRI_INLINE void CommandBufferD3D12::ResetQueries(QueryPool& queryPool, uint32_t,
     if (queryPoolD3D12.GetType() >= QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE) {
         // TODO: "bufferForAccelerationStructuresSizes" is completely hidden from a user, transition needs to be done under the hood.
         // "ResetQueries" is a good indicator that next call will be "CmdWrite*Sizes" where UAV state is needed
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         if (m_Device.GetDesc().features.enhancedBarriers) {
             D3D12_BUFFER_BARRIER barrier = {};
             barrier.SyncBefore = D3D12_BARRIER_SYNC_COPY;
@@ -1028,7 +1028,7 @@ NRI_INLINE void CommandBufferD3D12::CopyQueries(const QueryPool& queryPool, uint
 
         // TODO: "bufferForAccelerationStructuresSizes" is completely hidden from a user, transition needs to be done under the hood.
         // Let's naively assume that "CopyQueries" can be called only once after potentially multiple "CmdWrite*Sizes"
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         if (m_Device.GetDesc().features.enhancedBarriers) {
             D3D12_BUFFER_BARRIER barrier = {};
             barrier.SyncBefore = D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO;

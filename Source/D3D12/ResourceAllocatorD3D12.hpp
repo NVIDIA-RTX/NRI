@@ -89,7 +89,7 @@ Result BufferD3D12::Create(const AllocateBufferDesc& bufferDesc) {
     allocationDesc.Flags = (D3D12MA::ALLOCATION_FLAGS)flags;
     allocationDesc.ExtraHeapFlags = heapFlags;
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_RESOURCE_DESC1 desc1 = {};
     m_Device.GetResourceDesc(bufferDesc.desc, (D3D12_RESOURCE_DESC&)desc1);
 
@@ -154,7 +154,7 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
     allocationDesc.Flags = (D3D12MA::ALLOCATION_FLAGS)flags;
     allocationDesc.ExtraHeapFlags = heapFlags;
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_RESOURCE_DESC1 desc1 = {};
     m_Device.GetResourceDesc(textureDesc.desc, (D3D12_RESOURCE_DESC&)desc1);
 

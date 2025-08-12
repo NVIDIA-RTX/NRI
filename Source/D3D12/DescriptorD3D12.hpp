@@ -389,7 +389,7 @@ Result DescriptorD3D12::Create(const SamplerDesc& samplerDesc) {
     bool comparison = samplerDesc.compareOp != CompareOp::NONE;
     D3D12_FILTER filter = GetFilter(samplerDesc.filters.mip, samplerDesc.filters.mag, samplerDesc.filters.min, samplerDesc.filters.ext, comparison, anisotropy);
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_SAMPLER_DESC2 desc = {};
     desc.Filter = filter;
     desc.AddressU = GetAddressMode(samplerDesc.addressModes.u);

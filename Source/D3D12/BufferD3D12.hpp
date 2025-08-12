@@ -29,7 +29,7 @@ Result BufferD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset) {
     if (!m_Device.IsMemoryZeroInitializationEnabled())
         heapFlagsFixed |= D3D12_HEAP_FLAG_CREATE_NOT_ZEROED;
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_RESOURCE_DESC1 desc1 = {};
     m_Device.GetResourceDesc(m_Desc, (D3D12_RESOURCE_DESC&)desc1);
 
@@ -44,7 +44,7 @@ Result BufferD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset) {
     }
 #else
     bool isUpload = heapDesc.Properties.Type == D3D12_HEAP_TYPE_UPLOAD
-#    ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#    if NRI_ENABLE_AGILITY_SDK_SUPPORT
         || heapDesc.Properties.Type == D3D12_HEAP_TYPE_GPU_UPLOAD
 #    endif
         || (heapDesc.Properties.Type == D3D12_HEAP_TYPE_CUSTOM && heapDesc.Properties.CPUPageProperty == D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE);
@@ -87,7 +87,7 @@ NRI_INLINE Result BufferD3D12::SetPriorityAndPersistentlyMap(float priority, con
 
     // Mapping
     bool isUpload = heapProps.Type == D3D12_HEAP_TYPE_UPLOAD
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         || heapProps.Type == D3D12_HEAP_TYPE_GPU_UPLOAD
 #endif
         || (heapProps.Type == D3D12_HEAP_TYPE_CUSTOM && heapProps.CPUPageProperty == D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE);

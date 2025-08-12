@@ -5,7 +5,7 @@
 struct ID3D12CommandAllocator;
 struct ID3D12Resource;
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
 struct ID3D12GraphicsCommandList10;
 typedef ID3D12GraphicsCommandList10 ID3D12GraphicsCommandListBest;
 #else

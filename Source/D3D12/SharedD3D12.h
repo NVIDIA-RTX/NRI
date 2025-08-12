@@ -6,10 +6,10 @@
 #include <pix.h>
 
 // Validate Windows SDK version
-static_assert(D3D12_SDK_VERSION >= 4, "Outdated Windows SDK. D3D12 Ultimate needed (SDK 1.4.9+, released 2021.04.20). Always prefer using latest SDK!");
+static_assert(D3D12_SDK_VERSION >= 4, "Outdated Windows SDK. D3D12 Ultimate needed (SDK 1.4.9+, released 2021.04.20). Always prefer using latest Agility SDK!");
 
 // "Self" copies require barriers in-between making "CmdZeroBuffer" implementation 2x slower
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
 #    define NRI_D3D12_USE_SELF_COPIES_FOR_ZERO_BUFFER 0
 #endif
 

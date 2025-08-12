@@ -2,7 +2,7 @@
 
 static HRESULT QueryLatestInterface(ComPtr<ID3D12DeviceBest>& in, ComPtr<ID3D12DeviceBest>& out, uint8_t& version) {
     static const IID versions[] = {
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         __uuidof(ID3D12Device14),
         __uuidof(ID3D12Device13),
         __uuidof(ID3D12Device12),
@@ -39,7 +39,7 @@ static inline uint64_t HashRootSignatureAndStride(ID3D12RootSignature* rootSigna
     return ((uint64_t)stride << 52ull) | ((uint64_t)rootSignature & ((1ull << 52) - 1));
 }
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
 typedef ID3D12InfoQueue1 ID3D12InfoQueueBest;
 
 static void __stdcall MessageCallback(D3D12_MESSAGE_CATEGORY category, D3D12_MESSAGE_SEVERITY severity, D3D12_MESSAGE_ID id, LPCSTR message, void* context) {
@@ -134,7 +134,7 @@ DeviceD3D12::DeviceD3D12(const CallbackInterface& callbacks, const AllocationCal
 }
 
 DeviceD3D12::~DeviceD3D12() {
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     ComPtr<ID3D12InfoQueueBest> pInfoQueue;
     HRESULT hr = m_Device->QueryInterface(&pInfoQueue);
     if (SUCCEEDED(hr))
@@ -259,7 +259,9 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
                 // It's almost impossible to match. Doesn't hurt perf on modern HW
                 D3D12_MESSAGE_ID_CLEARDEPTHSTENCILVIEW_MISMATCHINGCLEARVALUE,
                 D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
-#ifndef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+                // All good
+#else
                 // Descriptor validation doesn't understand acceleration structures used outside of RAYGEN shaders
                 D3D12_MESSAGE_ID_COMMAND_LIST_STATIC_DESCRIPTOR_RESOURCE_DIMENSION_MISMATCH,
 #endif
@@ -271,7 +273,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
             hr = pInfoQueue->AddStorageFilterEntries(&filter);
             RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue::AddStorageFilterEntries");
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
             hr = pInfoQueue->RegisterMessageCallback(MessageCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, this, &m_CallbackCookie);
             RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue1::RegisterMessageCallback");
 #endif
@@ -439,7 +441,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
         REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options7) failed, result = 0x%08X!", hr);
     m_Desc.features.meshShader = options7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1;
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     // Windows 11 21H2 (build 22000)
     D3D12_FEATURE_DATA_D3D12_OPTIONS8 options8 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS8, &options8, sizeof(options8));
@@ -707,7 +709,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.wave.derivativeOpsStages = StageBits::FRAGMENT_SHADER;
     if (m_Desc.shaderModel >= 66) {
         m_Desc.wave.derivativeOpsStages |= StageBits::COMPUTE_SHADER;
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         if (options9.DerivativesInMeshAndAmplificationShadersSupported)
             m_Desc.wave.derivativeOpsStages |= StageBits::TASK_SHADER | StageBits::MESH_SHADER;
 #endif
@@ -779,7 +781,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.shaderFeatures.nativeF64 = options.DoublePrecisionFloatShaderOps;
     m_Desc.shaderFeatures.atomicsF16 = isShaderAtomicsF16Supported;
     m_Desc.shaderFeatures.atomicsF32 = isShaderAtomicsF32Supported;
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     m_Desc.shaderFeatures.atomicsI64 = m_Desc.shaderFeatures.atomicsI64 || options9.AtomicInt64OnTypedResourceSupported || options9.AtomicInt64OnGroupSharedSupported || options11.AtomicInt64OnDescriptorHeapResourceSupported;
 #endif
     m_Desc.shaderFeatures.viewportIndex = options.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation;
@@ -972,7 +974,7 @@ DescriptorPointerCPU DeviceD3D12::GetDescriptorPointerCPU(const DescriptorHandle
 
 constexpr std::array<D3D12_HEAP_TYPE, (size_t)MemoryLocation::MAX_NUM> g_HeapTypes = {
     D3D12_HEAP_TYPE_DEFAULT, // DEVICE
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_HEAP_TYPE_GPU_UPLOAD, // DEVICE_UPLOAD (Prerequisite: D3D12_FEATURE_D3D12_OPTIONS16)
 #else
     D3D12_HEAP_TYPE_UPLOAD, // DEVICE_UPLOAD (silent fallback to HOST_UPLOAD)

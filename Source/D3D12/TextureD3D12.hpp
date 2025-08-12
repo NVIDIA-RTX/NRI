@@ -39,7 +39,7 @@ Result TextureD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset) {
     if (!m_Device.IsMemoryZeroInitializationEnabled())
         heapFlagsFixed |= D3D12_HEAP_FLAG_CREATE_NOT_ZEROED;
 
-#ifdef NRI_ENABLE_AGILITY_SDK_SUPPORT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_RESOURCE_DESC1 desc1 = {};
     m_Device.GetResourceDesc(m_Desc, (D3D12_RESOURCE_DESC&)desc1);
 

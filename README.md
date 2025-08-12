@@ -177,7 +177,7 @@ Notes:
 
 *Overview* and *Download* sections can be found [*here*](https://devblogs.microsoft.com/directx/directx12agility/).
 
-D3D12 backend uses Agility SDK to get access to most recent D3D12 features. It's highly recommended to use it.
+D3D12 backend uses Agility SDK to get access to most recent D3D12 features and improved validation. It's highly recommended to use the latest Agility SDK.
 
 Steps (already enabled by default):
 - modify `NRI_AGILITY_SDK_VERSION_MAJOR` and `NRI_AGILITY_SDK_VERSION_MINOR` to the desired value
