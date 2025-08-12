@@ -368,8 +368,12 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     if (m_Desc.tiers.rayTracing >= 2)
         m_DispatchRaysCommandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_RAYS, sizeof(DispatchRaysIndirectDesc), nullptr);
 
+    // Create VMA
+    HRESULT hr = CreateVma();
+    RETURN_ON_BAD_HRESULT(this, hr, "D3D12MA::CreateAllocator");
+
     // Is device lost?
-    HRESULT hr = m_Device->GetDeviceRemovedReason() == S_OK ? S_OK : DXGI_ERROR_DEVICE_REMOVED;
+    hr = m_Device->GetDeviceRemovedReason() == S_OK ? S_OK : DXGI_ERROR_DEVICE_REMOVED;
     RETURN_ON_BAD_HRESULT(this, hr, "Create");
 
     return FillFunctionTable(m_iCore);

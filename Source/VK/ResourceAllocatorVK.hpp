@@ -37,10 +37,7 @@
 #    pragma warning(pop)
 #endif
 
-Result DeviceVK::CreateVma() {
-    if (m_Vma)
-        return Result::SUCCESS;
-
+VkResult DeviceVK::CreateVma() {
     VmaVulkanFunctions vulkanFunctions = {};
     vulkanFunctions.vkGetInstanceProcAddr = m_VK.GetInstanceProcAddr;
     vulkanFunctions.vkGetDeviceProcAddr = m_VK.GetDeviceProcAddr;
@@ -64,17 +61,10 @@ Result DeviceVK::CreateVma() {
     if (m_IsSupported.maintenance5)
         allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT;
 
-    VkResult vkResult = vmaCreateAllocator(&allocatorCreateInfo, &m_Vma);
-    RETURN_ON_BAD_VKRESULT(this, vkResult, "vmaCreateAllocator");
-
-    return Result::SUCCESS;
+    return vmaCreateAllocator(&allocatorCreateInfo, &m_Vma);
 }
 
 Result BufferVK::Create(const AllocateBufferDesc& bufferDesc) {
-    Result result = m_Device.CreateVma();
-    if (result != Result::SUCCESS)
-        return result;
-
     // Fill info
     VkBufferCreateInfo bufferCreateInfo = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     m_Device.FillCreateInfo(bufferDesc.desc, bufferCreateInfo);
@@ -148,10 +138,6 @@ Result BufferVK::Create(const AllocateBufferDesc& bufferDesc) {
 }
 
 Result TextureVK::Create(const AllocateTextureDesc& textureDesc) {
-    Result result = m_Device.CreateVma();
-    if (result != Result::SUCCESS)
-        return result;
-
     // Fill info
     VkImageCreateInfo imageCreateInfo = {VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
     m_Device.FillCreateInfo(textureDesc.desc, imageCreateInfo);
@@ -174,10 +160,6 @@ Result TextureVK::Create(const AllocateTextureDesc& textureDesc) {
 }
 
 Result AccelerationStructureVK::Create(const AllocateAccelerationStructureDesc& accelerationStructureDesc) {
-    Result result = m_Device.CreateVma();
-    if (result != Result::SUCCESS)
-        return result;
-
     VkAccelerationStructureBuildSizesInfoKHR sizesInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
     m_Device.GetAccelerationStructureBuildSizesInfo(accelerationStructureDesc.desc, sizesInfo);
 
@@ -187,7 +169,7 @@ Result AccelerationStructureVK::Create(const AllocateAccelerationStructureDesc& 
     bufferDesc.desc.size = sizesInfo.accelerationStructureSize;
     bufferDesc.desc.usage = BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE;
 
-    result = m_Device.CreateImplementation<BufferVK>(m_Buffer, bufferDesc);
+    Result result = m_Device.CreateImplementation<BufferVK>(m_Buffer, bufferDesc);
     if (result == Result::SUCCESS) {
         m_BuildScratchSize = sizesInfo.buildScratchSize;
         m_UpdateScratchSize = sizesInfo.updateScratchSize;
@@ -204,10 +186,6 @@ Result MicromapVK::Create(const AllocateMicromapDesc& micromapDesc) {
     if (!m_Device.GetDesc().features.micromap)
         return Result::UNSUPPORTED;
 
-    Result result = m_Device.CreateVma();
-    if (result != Result::SUCCESS)
-        return result;
-
     VkMicromapBuildSizesInfoEXT sizesInfo = {VK_STRUCTURE_TYPE_MICROMAP_BUILD_SIZES_INFO_EXT};
     m_Device.GetMicromapBuildSizesInfo(micromapDesc.desc, sizesInfo);
 
@@ -217,7 +195,7 @@ Result MicromapVK::Create(const AllocateMicromapDesc& micromapDesc) {
     bufferDesc.desc.size = sizesInfo.micromapSize;
     bufferDesc.desc.usage = BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE;
 
-    result = m_Device.CreateImplementation<BufferVK>(m_Buffer, bufferDesc);
+    Result result = m_Device.CreateImplementation<BufferVK>(m_Buffer, bufferDesc);
     if (result == Result::SUCCESS) {
         m_BuildScratchSize = sizesInfo.buildScratchSize;
         m_Flags = micromapDesc.desc.flags;

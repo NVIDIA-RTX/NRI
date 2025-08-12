@@ -92,7 +92,6 @@ struct DeviceD3D12 final : public DeviceBase {
         return result;
     }
 
-    Result CreateVma();
     Result Create(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationD3D12Desc& deviceCreationD3D12Desc);
     Result CreateDefaultDrawSignatures(ID3D12RootSignature* rootSignature, bool enableDrawParametersEmulation);
     Result GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, DescriptorHandle& descriptorHandle);
@@ -155,6 +154,7 @@ struct DeviceD3D12 final : public DeviceBase {
     FormatSupportBits GetFormatSupport(Format format) const;
 
 private:
+    HRESULT CreateVma();
     void FillDesc(bool disableD3D12EnhancedBarrier);
     void InitializeNvExt(bool disableNVAPIInitialization, bool isImported);
     void InitializeAmdExt(AGSContext* agsContext, bool isImported);

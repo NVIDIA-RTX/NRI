@@ -53,10 +53,7 @@ static void vmaFree(void* pMemory, void* pPrivateData) {
     return allocationCallbacks.Free(allocationCallbacks.userArg, pMemory);
 }
 
-Result DeviceD3D12::CreateVma() {
-    if (m_Vma)
-        return Result::SUCCESS;
-
+HRESULT DeviceD3D12::CreateVma() {
     D3D12MA::ALLOCATION_CALLBACKS allocationCallbacks = {};
     allocationCallbacks.pPrivateData = (void*)&GetAllocationCallbacks();
     allocationCallbacks.pAllocate = vmaAllocate;
@@ -74,17 +71,10 @@ Result DeviceD3D12::CreateVma() {
     if (!GetAllocationCallbacks().disable3rdPartyAllocationCallbacks)
         allocatorDesc.pAllocationCallbacks = &allocationCallbacks;
 
-    HRESULT hr = D3D12MA::CreateAllocator(&allocatorDesc, &m_Vma);
-    RETURN_ON_BAD_HRESULT(this, hr, "D3D12MA::CreateAllocator");
-
-    return Result::SUCCESS;
+    return D3D12MA::CreateAllocator(&allocatorDesc, &m_Vma);
 }
 
 Result BufferD3D12::Create(const AllocateBufferDesc& bufferDesc) {
-    Result result = m_Device.CreateVma();
-    if (result != Result::SUCCESS)
-        return result;
-
     uint32_t flags = D3D12MA::ALLOCATION_FLAG_CAN_ALIAS | D3D12MA::ALLOCATION_FLAG_STRATEGY_MIN_MEMORY;
     if (bufferDesc.dedicated)
         flags |= D3D12MA::ALLOCATION_FLAG_COMMITTED;
@@ -133,10 +123,6 @@ Result BufferD3D12::Create(const AllocateBufferDesc& bufferDesc) {
 }
 
 Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
-    Result result = m_Device.CreateVma();
-    if (result != Result::SUCCESS)
-        return result;
-
     D3D12_CLEAR_VALUE clearValue = {GetDxgiFormat(textureDesc.desc.format).typed};
 
     const FormatProps& formatProps = GetFormatProps(textureDesc.desc.format);
@@ -200,10 +186,6 @@ Result TextureD3D12::Create(const AllocateTextureDesc& textureDesc) {
 }
 
 Result AccelerationStructureD3D12::Create(const AllocateAccelerationStructureDesc& accelerationStructureDesc) {
-    Result result = m_Device.CreateVma();
-    if (result != Result::SUCCESS)
-        return result;
-
     m_Device.GetAccelerationStructurePrebuildInfo(accelerationStructureDesc.desc, m_PrebuildInfo);
     m_Flags = accelerationStructureDesc.desc.flags;
 
@@ -217,10 +199,6 @@ Result AccelerationStructureD3D12::Create(const AllocateAccelerationStructureDes
 }
 
 Result MicromapD3D12::Create(const AllocateMicromapDesc& micromapDesc) {
-    Result result = m_Device.CreateVma();
-    if (result != Result::SUCCESS)
-        return result;
-
     m_Device.GetMicromapPrebuildInfo(micromapDesc.desc, m_PrebuildInfo);
     m_Flags = micromapDesc.desc.flags;
 

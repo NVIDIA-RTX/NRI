@@ -1299,6 +1299,10 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         // TODO: add SM 6.8 and 6.9 detection
     }
 
+    // Create VMA
+    VkResult vkResult = CreateVma();
+    RETURN_ON_BAD_VKRESULT(this, vkResult, "vmaCreateAllocator");
+
     ReportDeviceGroupInfo();
 
     return FillFunctionTable(m_iCore);
