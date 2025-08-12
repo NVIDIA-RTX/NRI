@@ -2,7 +2,7 @@
 
 uint8_t QueryLatestDeviceContext(ComPtr<ID3D11DeviceContextBest>& in, ComPtr<ID3D11DeviceContextBest>& out);
 
-static uint8_t QueryLatestDevice(ComPtr<ID3D11DeviceBest>& in, ComPtr<ID3D11DeviceBest>& out) {
+static uint8_t QueryLatestInterface(ComPtr<ID3D11DeviceBest>& in, ComPtr<ID3D11DeviceBest>& out) {
     static const IID versions[] = {
         __uuidof(ID3D11Device5),
         __uuidof(ID3D11Device4),
@@ -210,7 +210,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         m_Desc.shaderFeatures.waveQuad = areWaveIntrinsicsSupported;
     }
 
-    m_Version = QueryLatestDevice(deviceTemp, m_Device);
+    m_Version = QueryLatestInterface(deviceTemp, m_Device);
     REPORT_INFO(this, "Using ID3D11Device%u", m_Version);
 
     if (desc.enableGraphicsAPIValidation) {

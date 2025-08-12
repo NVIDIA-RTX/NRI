@@ -16,7 +16,7 @@ constexpr std::array<DXGI_COLOR_SPACE_TYPE, (size_t)SwapChainFormat::MAX_NUM> g_
 };
 VALIDATE_ARRAY(g_colorSpace);
 
-static uint8_t QueryLatestSwapChain(ComPtr<IDXGISwapChainBest>& in, ComPtr<IDXGISwapChainBest>& out) {
+static uint8_t QueryLatestInterface(ComPtr<IDXGISwapChainBest>& in, ComPtr<IDXGISwapChainBest>& out) {
     static const IID versions[] = {
         __uuidof(IDXGISwapChain4),
         __uuidof(IDXGISwapChain3),
@@ -88,7 +88,7 @@ Result SwapChainD3D11::Create(const SwapChainDesc& swapChainDesc) {
     hr = m_DxgiFactory2->CreateSwapChainForHwnd(m_Device.GetNativeObject(), hwnd, &desc, nullptr, nullptr, (IDXGISwapChain1**)&swapChain);
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "IDXGIFactory2::CreateSwapChainForHwnd");
 
-    m_Version = QueryLatestSwapChain(swapChain, m_SwapChain);
+    m_Version = QueryLatestInterface(swapChain, m_SwapChain);
 
     hr = m_DxgiFactory2->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER);
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "IDXGIFactory::MakeWindowAssociation");
