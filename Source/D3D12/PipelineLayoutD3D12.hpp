@@ -245,19 +245,18 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
 
     ComPtr<ID3DBlob> rootSignatureBlob;
     ComPtr<ID3DBlob> errorBlob;
-    
+
+    HRESULT hr = S_OK;
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     ComPtr<ID3D12DeviceConfiguration1> deviceConfig;
     m_Device->QueryInterface(IID_PPV_ARGS(&deviceConfig));
 
-    HRESULT hr;
-    
-    if(deviceConfig)
-        hr = deviceConfig->SerializeVersionedRootSignature(
-            &rootSignatureDesc, &rootSignatureBlob, &errorBlob
-        );
-    
-    else hr = D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &rootSignatureBlob, &errorBlob);
-    
+    if (deviceConfig)
+        hr = deviceConfig->SerializeVersionedRootSignature(&rootSignatureDesc, &rootSignatureBlob, &errorBlob);
+    else
+#endif
+        hr = D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &rootSignatureBlob, &errorBlob);
+
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12SerializeVersionedRootSignature");
 
     if (errorBlob)
