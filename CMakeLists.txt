@@ -284,7 +284,7 @@ if(NRI_ENABLE_XESS_SDK)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/intel/xess/releases/download/v2.0.1/XeSS_SDK_2.1.0.zip
+        URL https://github.com/intel/xess/releases/download/v2.1.0/XeSS_SDK_2.1.0.zip
     )
     list(APPEND DEPS xess)
 endif()
@@ -399,7 +399,7 @@ if(NRI_ENABLE_AMDAGS)
     )
     set_source_files_properties(${AMDAGS_HEADERS}
         PROPERTIES
-            HEADER_FILE_ONLY TRUE # do not compile HLSL
+            VS_SETTINGS "ExcludedFromBuild=true" # do not compile HLSL
     )
 endif()
 
@@ -845,9 +845,9 @@ if(NRI_ENABLE_NGX_SDK)
             message("NRI: using NGX LIB with static runtime")
         endif()
 
-        set(NGX_LIB "${ngx_SOURCE_DIR}/lib/Windows_x86_64/x64/nvsdk_ngx_${NGX_SUFFIX}")
+        set(NGX_LIB "${ngx_SOURCE_DIR}/lib/Windows_x86_64/x64/nvsdk_ngx_${NGX_SUFFIX}$<$<CONFIG:Debug>:_dbg>.lib")
     else()
-        set(NGX_LIB "${ngx_SOURCE_DIR}/lib/Linux_x86_64/libnvsdk_ngx")
+        set(NGX_LIB "${ngx_SOURCE_DIR}/lib/Linux_x86_64/libnvsdk_ngx.a")
     endif()
 endif()
 
@@ -910,13 +910,7 @@ target_compile_options(NRI_Shared
 target_link_libraries(NRI_Shared
     PRIVATE
         $<$<BOOL:${NRI_ENABLE_NGX_SDK}>:
-            $<$<BOOL:${WIN32}>:
-                $<IF:$<CONFIG:Debug>,${NGX_LIB}_dbg.lib>
-                $<IF:$<CONFIG:Release>,${NGX_LIB}.lib>
-            >
-            $<$<NOT:$<BOOL:${WIN32}>>:
-                ${NGX_LIB}.a
-            >
+            ${NGX_LIB}
         >
         $<$<BOOL:${NRI_ENABLE_XESS_SDK}>:
             ${xess_SOURCE_DIR}/lib/libxess.lib
@@ -940,7 +934,7 @@ source_group("Include"
 )
 set_source_files_properties(${NRI_HEADERS}
     PROPERTIES
-        HEADER_FILE_ONLY TRUE # do not compile HLSL
+        VS_SETTINGS "ExcludedFromBuild=true" # do not compile HLSL
 )
 
 # Extensions headers
@@ -1160,7 +1154,7 @@ if(NRI_REQUIRES_SHADERMAKE)
     )
     set_source_files_properties(${SHADERS}
         PROPERTIES
-            HEADER_FILE_ONLY TRUE # do not compile HLSL
+            VS_SETTINGS "ExcludedFromBuild=true" # do not compile HLSL
     )
 
     set(SHADERMAKE_GENERAL_ARGS
