@@ -53,13 +53,6 @@ else()
     set(NRI_REQUIRES_SHADERMAKE 0)
 endif()
 
-# Submodule?
-if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
-    set(IS_SUBMODULE FALSE)
-else()
-    set(IS_SUBMODULE TRUE)
-endif()
-
 # Architecture?
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     if(IS_ARM64)
@@ -74,16 +67,23 @@ else()
     set(NVAPI_BIN_ARCHITECTURE "x86")
 endif()
 
-# Settings
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_POSITION_INDEPENDENT_BINARIES ON)
-set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
+# Common properties
+set(COMMON_PROPERTIES
+    # Enforce C++17 standard
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED TRUE
 
-if(NOT IS_SUBMODULE)
+    # Disable compiler-specific extensions for portability
+    CXX_EXTENSIONS FALSE
+
+    # Set default visibility to hidden for internal symbols
+    CXX_VISIBILITY_PRESET hidden
+
+    # Ensure inline functions are hidden by default
+    VISIBILITY_INLINES_HIDDEN TRUE
+)
+
+if(PROJECT_IS_TOP_LEVEL)
     get_property(IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 
     if(IS_MULTI_CONFIG)
@@ -103,12 +103,10 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     set(COMPILE_OPTIONS -Wextra -Wno-missing-field-initializers)
 elseif(MSVC)
     set(COMPILE_OPTIONS
-        /W4     # warning level 4
-        /WX     # warnings as errors
+        /W4 # warning level 4
+        /WX # warnings as errors
         /wd4324 # padding was added at the end of a structure because you specified an alignment specifier
-        $<$<CONFIG:Release>:
-            /Zi
-        >       # generate a PDB for Release build
+        $<$<CONFIG:Release>:/Zi>  # generate a PDB for Release build
     )
 else()
     message(WARNING "NRI: Unknown compiler!")
@@ -431,6 +429,7 @@ if(NRI_ENABLE_NONE_SUPPORT)
     )
     set_target_properties(NRI_NONE
         PROPERTIES
+            ${COMMON_PROPERTIES}
             FOLDER "NRI"
     )
 endif()
@@ -524,6 +523,7 @@ if(NRI_ENABLE_D3D11_SUPPORT)
     )
     set_target_properties(NRI_D3D11
         PROPERTIES
+            ${COMMON_PROPERTIES}
             FOLDER "NRI"
     )
 endif()
@@ -634,6 +634,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
     )
     set_target_properties(NRI_D3D12
         PROPERTIES
+            ${COMMON_PROPERTIES}
             FOLDER "NRI"
     )
 
@@ -756,6 +757,7 @@ if(NRI_ENABLE_VK_SUPPORT)
     )
     set_target_properties(NRI_VK
         PROPERTIES
+            ${COMMON_PROPERTIES}
             FOLDER "NRI"
     )
 endif()
@@ -830,6 +832,7 @@ if(NRI_ENABLE_VALIDATION_SUPPORT)
     )
     set_target_properties(NRI_Validation
         PROPERTIES
+            ${COMMON_PROPERTIES}
             FOLDER "NRI"
     )
 endif()
@@ -918,6 +921,7 @@ target_link_libraries(NRI_Shared
 )
 set_target_properties(NRI_Shared
     PROPERTIES
+        ${COMMON_PROPERTIES}
         FOLDER "NRI"
 )
 
@@ -1051,6 +1055,7 @@ target_link_libraries(NRI
 )
 set_target_properties(NRI
     PROPERTIES
+        ${COMMON_PROPERTIES}
         FOLDER "NRI"
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
 )
