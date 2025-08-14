@@ -97,16 +97,19 @@ endif()
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # Compile options
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(COMPILE_OPTIONS -Wextra -Wno-missing-field-initializers)
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    set(COMPILE_OPTIONS -Wextra -Wno-missing-field-initializers)
+if((CMAKE_CXX_COMPILER_ID MATCHES "Clang") OR (CMAKE_CXX_COMPILER_ID MATCHES "GNU"))
+    set(COMPILE_OPTIONS
+        -Wextra                         # extra warnings
+        -Werror                         # warnings as errors
+        -Wno-missing-field-initializers # not needed, all variables are {} initialized
+        -fPIC                           # position independent code
+    )
 elseif(MSVC)
     set(COMPILE_OPTIONS
-        /W4 # warning level 4
-        /WX # warnings as errors
-        /wd4324 # padding was added at the end of a structure because you specified an alignment specifier
-        $<$<CONFIG:Release>:/Zi>  # generate a PDB for Release build
+        /W4                             # warning level 4
+        /WX                             # warnings as errors
+        /wd4324                         # disable: padding was added at the end of a structure because you specified an alignment specifier
+        $<$<CONFIG:Release>:/Zi>        # generate a PDB for Release build
     )
 else()
     message(WARNING "NRI: Unknown compiler!")
