@@ -4,7 +4,12 @@ include(CMakeDependentOption)
 include(FetchContent)
 
 # Create project
-project(NRI LANGUAGES C CXX)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/Include/NRI.h" ver_h)
+string(REGEX MATCH "NRI_VERSION ([0-9]*)" _ ${ver_h})
+set(NRI_VERSION ${CMAKE_MATCH_1})
+
+project(NRI VERSION ${NRI_VERSION} LANGUAGES CXX)
+message("NRI: v${NRI_VERSION}:")
 
 # Test packages availability ("find_package" works only for X11)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -13,7 +18,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 # Arm64?
-if((CMAKE_GENERATOR_PLATFORM MATCHES "ARM64") OR (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64") OR (CMAKE_SYSTEM_PROCESSOR MATCHES "arm64"))
+if((CMAKE_GENERATOR_PLATFORM MATCHES "ARM64") OR (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64"))
     set(IS_ARM64 TRUE)
 else()
     set(IS_ARM64 FALSE)
@@ -67,13 +72,7 @@ else()
     set(NVAPI_BIN_ARCHITECTURE "x86")
 endif()
 
-# Common properties
-set(COMMON_PROPERTIES
-    # Enforce C++17 standard
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED TRUE
-)
-
+# Top level?
 if(PROJECT_IS_TOP_LEVEL)
     get_property(IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 
@@ -87,33 +86,7 @@ endif()
 # Enable grouping of source files into folders in IDEs
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-# Compile options
-if((CMAKE_CXX_COMPILER_ID MATCHES "Clang") OR (CMAKE_CXX_COMPILER_ID MATCHES "GNU"))
-    set(COMPILE_OPTIONS
-        -Wextra                         # extra warnings
-        -Werror                         # warnings as errors
-        -Wno-missing-field-initializers # not needed, all variables are {} initialized
-        -fPIC                           # position independent code
-        -fvisibility=hidden             # hide all symbols by default
-    )
-elseif(MSVC)
-    set(COMPILE_OPTIONS
-        /W4                             # warning level 4
-        /WX                             # warnings as errors
-        /wd4324                         # disable: padding was added at the end of a structure because you specified an alignment specifier
-        $<$<CONFIG:Release>:/Zi>        # generate a PDB for Release build
-    )
-else()
-    message(WARNING "NRI: Unknown compiler!")
-endif()
-
 # Compile definitions
-file(READ "${CMAKE_CURRENT_SOURCE_DIR}/Include/NRI.h" ver_h)
-string(REGEX MATCH "NRI_VERSION ([0-9]*)" _ ${ver_h})
-set(NRI_VERSION ${CMAKE_MATCH_1})
-
-message("NRI: v${NRI_VERSION}:")
-
 set(COMPILE_DEFINITIONS
     WIN32_LEAN_AND_MEAN
     NOMINMAX
@@ -396,6 +369,112 @@ if(NRI_ENABLE_AMDAGS)
     )
 endif()
 
+# Shared
+if(NRI_ENABLE_NGX_SDK)
+    if(WIN32)
+        if((NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY) OR (${CMAKE_MSVC_RUNTIME_LIBRARY} MATCHES "DLL"))
+            set(NGX_SUFFIX "d")
+            message("NRI: using NGX LIB with dynamic runtime")
+        else()
+            set(NGX_SUFFIX "s")
+            message("NRI: using NGX LIB with static runtime")
+        endif()
+
+        set(NGX_LIB "${ngx_SOURCE_DIR}/lib/Windows_x86_64/x64/nvsdk_ngx_${NGX_SUFFIX}$<$<CONFIG:Debug>:_dbg>.lib")
+    else()
+        set(NGX_LIB "${ngx_SOURCE_DIR}/lib/Linux_x86_64/libnvsdk_ngx.a")
+    endif()
+endif()
+
+set(SHARED_SOURCE
+    "Source/Shared/DeviceBase.h"
+    "Source/Shared/HelperInterface.h"
+    "Source/Shared/HelperInterface.hpp"
+    "Source/Shared/ImguiInterface.h"
+    "Source/Shared/ImguiInterface.hpp"
+    "Source/Shared/Lock.h"
+    "Source/Shared/NIS.h"
+    "Source/Shared/Shared.cpp"
+    "Source/Shared/SharedExternal.h"
+    "Source/Shared/SharedExternal.hpp"
+    "Source/Shared/SharedLibrary.hpp"
+    "Source/Shared/StdAllocator.h"
+    "Source/Shared/StreamerInterface.h"
+    "Source/Shared/StreamerInterface.hpp"
+    "Source/Shared/UpscalerInterface.h"
+    "Source/Shared/UpscalerInterface.hpp"
+)
+source_group(""
+    FILES
+        ${SHARED_SOURCE}
+)
+
+add_library(NRI_Shared STATIC)
+target_sources(NRI_Shared
+    PRIVATE
+        ${SHARED_SOURCE}
+)
+target_include_directories(NRI_Shared
+    PUBLIC
+        "Include"
+        "Source/Shared"
+    PRIVATE
+        $<$<BOOL:${NRI_ENABLE_AGILITY_SDK_SUPPORT}>:
+            ${agilitysdk_SOURCE_DIR}/build/native/include
+        >
+        $<$<BOOL:${NRI_ENABLE_VK_SUPPORT}>:
+            ${vulkan_headers_SOURCE_DIR}/include
+        >
+        $<$<BOOL:${NRI_ENABLE_NGX_SDK}>:
+            ${ngx_SOURCE_DIR}/include
+        >
+        $<$<BOOL:${NRI_ENABLE_FFX_SDK}>:
+            ${ffx_SOURCE_DIR}/ffx-api/include/ffx_api
+        >
+        $<$<BOOL:${NRI_ENABLE_XESS_SDK}>:
+            ${xess_SOURCE_DIR}/inc/xess
+        >
+)
+target_compile_definitions(NRI_Shared
+    PUBLIC
+        ${COMPILE_DEFINITIONS}
+)
+target_compile_options(NRI_Shared
+    PUBLIC
+        # GCC/Clang
+        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
+            -Wextra
+            -Werror
+            -Wno-missing-field-initializers
+            -fPIC
+            -fvisibility=hidden
+        >
+        # MSVC specific options
+        $<$<CXX_COMPILER_ID:MSVC>:
+            /W4
+            /WX
+            /wd4324
+            $<$<CONFIG:Release>:/Zi>
+        >
+)
+target_compile_features(NRI_Shared
+    PUBLIC
+        cxx_std_17
+)
+target_link_libraries(NRI_Shared
+    PRIVATE
+        $<$<BOOL:${NRI_ENABLE_NGX_SDK}>:
+            ${NGX_LIB}
+        >
+        $<$<BOOL:${NRI_ENABLE_XESS_SDK}>:
+            ${xess_SOURCE_DIR}/lib/libxess.lib
+        >
+)
+set_target_properties(NRI_Shared
+    PROPERTIES
+        FOLDER "NRI"
+)
+
 # NONE
 if(NRI_ENABLE_NONE_SUPPORT)
     set(NONE_SOURCE "Source/NONE/ImplNONE.cpp")
@@ -409,22 +488,12 @@ if(NRI_ENABLE_NONE_SUPPORT)
         PRIVATE
             ${NONE_SOURCE}
     )
-    target_include_directories(NRI_NONE
+    target_link_libraries(NRI_NONE
         PRIVATE
-            "Include"
-            "Source/Shared"
-    )
-    target_compile_definitions(NRI_NONE
-        PRIVATE
-            ${COMPILE_DEFINITIONS}
-    )
-    target_compile_options(NRI_NONE
-        PRIVATE
-            ${COMPILE_OPTIONS}
+            NRI_Shared
     )
     set_target_properties(NRI_NONE
         PROPERTIES
-            ${COMMON_PROPERTIES}
             FOLDER "NRI"
     )
 endif()
@@ -493,18 +562,8 @@ if(NRI_ENABLE_D3D11_SUPPORT)
     )
     target_include_directories(NRI_D3D11
         PRIVATE
-            "Include"
-            "Source/Shared"
             "${nvapi_SOURCE_DIR}"
             "${amdags_SOURCE_DIR}/ags_lib/inc"
-    )
-    target_compile_definitions(NRI_D3D11
-        PRIVATE
-            ${COMPILE_DEFINITIONS}
-    )
-    target_compile_options(NRI_D3D11
-        PRIVATE
-            ${COMPILE_OPTIONS}
     )
     target_link_libraries(NRI_D3D11
         PRIVATE
@@ -518,7 +577,6 @@ if(NRI_ENABLE_D3D11_SUPPORT)
     )
     set_target_properties(NRI_D3D11
         PROPERTIES
-            ${COMMON_PROPERTIES}
             FOLDER "NRI"
     )
 endif()
@@ -598,8 +656,6 @@ if(NRI_ENABLE_D3D12_SUPPORT)
     )
     target_include_directories(NRI_D3D12
         PRIVATE
-            "Include"
-            "Source/Shared"
             "${d3d12ma_SOURCE_DIR}/include"
             "${d3d12ma_SOURCE_DIR}/src"
             "${nvapi_SOURCE_DIR}"
@@ -610,12 +666,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
     )
     target_compile_definitions(NRI_D3D12
         PRIVATE
-            ${COMPILE_DEFINITIONS}
             NRI_AGILITY_SDK_VERSION_MAJOR=$<IF:$<BOOL:${NRI_ENABLE_AGILITY_SDK_SUPPORT}>,${NRI_AGILITY_SDK_VERSION_MAJOR},D3D12_SDK_VERSION>
-    )
-    target_compile_options(NRI_D3D12
-        PRIVATE
-            ${COMPILE_OPTIONS}
     )
     target_link_libraries(NRI_D3D12
         PRIVATE
@@ -629,7 +680,6 @@ if(NRI_ENABLE_D3D12_SUPPORT)
     )
     set_target_properties(NRI_D3D12
         PROPERTIES
-            ${COMMON_PROPERTIES}
             FOLDER "NRI"
     )
 
@@ -718,14 +768,11 @@ if(NRI_ENABLE_VK_SUPPORT)
     )
     target_include_directories(NRI_VK
         PRIVATE
-            "Include"
-            "Source/Shared"
             "${vma_SOURCE_DIR}/include"
             "${vulkan_headers_SOURCE_DIR}/include"
     )
     target_compile_definitions(NRI_VK
         PRIVATE
-            ${COMPILE_DEFINITIONS}
             $<$<BOOL:${WIN32}>:
                 VK_USE_PLATFORM_WIN32_KHR
             >
@@ -739,10 +786,6 @@ if(NRI_ENABLE_VK_SUPPORT)
                 VK_USE_PLATFORM_WAYLAND_KHR
             >
     )
-    target_compile_options(NRI_VK
-        PRIVATE
-            ${COMPILE_OPTIONS}
-    )
     target_link_libraries(NRI_VK
         PRIVATE
             NRI_Shared
@@ -752,7 +795,6 @@ if(NRI_ENABLE_VK_SUPPORT)
     )
     set_target_properties(NRI_VK
         PROPERTIES
-            ${COMMON_PROPERTIES}
             FOLDER "NRI"
     )
 endif()
@@ -808,117 +850,15 @@ if(NRI_ENABLE_VALIDATION_SUPPORT)
         PRIVATE
             ${NRI_VALIDATION_SOURCE}
     )
-    target_include_directories(NRI_Validation
-        PRIVATE
-            "Include"
-            "Source/Shared"
-    )
-    target_compile_definitions(NRI_Validation
-        PRIVATE
-            ${COMPILE_DEFINITIONS}
-    )
-    target_compile_options(NRI_Validation
-        PRIVATE
-            ${COMPILE_OPTIONS}
-    )
     target_link_libraries(NRI_Validation
         PRIVATE
             NRI_Shared
     )
     set_target_properties(NRI_Validation
         PROPERTIES
-            ${COMMON_PROPERTIES}
             FOLDER "NRI"
     )
 endif()
-
-# Shared
-if(NRI_ENABLE_NGX_SDK)
-    if(WIN32)
-        if((NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY) OR (${CMAKE_MSVC_RUNTIME_LIBRARY} MATCHES "DLL"))
-            set(NGX_SUFFIX "d")
-            message("NRI: using NGX LIB with dynamic runtime")
-        else()
-            set(NGX_SUFFIX "s")
-            message("NRI: using NGX LIB with static runtime")
-        endif()
-
-        set(NGX_LIB "${ngx_SOURCE_DIR}/lib/Windows_x86_64/x64/nvsdk_ngx_${NGX_SUFFIX}$<$<CONFIG:Debug>:_dbg>.lib")
-    else()
-        set(NGX_LIB "${ngx_SOURCE_DIR}/lib/Linux_x86_64/libnvsdk_ngx.a")
-    endif()
-endif()
-
-set(SHARED_SOURCE
-    "Source/Shared/DeviceBase.h"
-    "Source/Shared/HelperInterface.h"
-    "Source/Shared/HelperInterface.hpp"
-    "Source/Shared/ImguiInterface.h"
-    "Source/Shared/ImguiInterface.hpp"
-    "Source/Shared/Lock.h"
-    "Source/Shared/NIS.h"
-    "Source/Shared/Shared.cpp"
-    "Source/Shared/SharedExternal.h"
-    "Source/Shared/SharedExternal.hpp"
-    "Source/Shared/SharedLibrary.hpp"
-    "Source/Shared/StdAllocator.h"
-    "Source/Shared/StreamerInterface.h"
-    "Source/Shared/StreamerInterface.hpp"
-    "Source/Shared/UpscalerInterface.h"
-    "Source/Shared/UpscalerInterface.hpp"
-)
-source_group(""
-    FILES
-        ${SHARED_SOURCE}
-)
-
-add_library(NRI_Shared STATIC)
-target_sources(NRI_Shared
-    PRIVATE
-        ${SHARED_SOURCE}
-)
-target_include_directories(NRI_Shared
-    PRIVATE
-        "Include"
-        "Source/Shared"
-        $<$<BOOL:${NRI_ENABLE_AGILITY_SDK_SUPPORT}>:
-            ${agilitysdk_SOURCE_DIR}/build/native/include
-        >
-        $<$<BOOL:${NRI_ENABLE_VK_SUPPORT}>:
-            ${vulkan_headers_SOURCE_DIR}/include
-        >
-        $<$<BOOL:${NRI_ENABLE_NGX_SDK}>:
-            ${ngx_SOURCE_DIR}/include
-        >
-        $<$<BOOL:${NRI_ENABLE_FFX_SDK}>:
-            ${ffx_SOURCE_DIR}/ffx-api/include/ffx_api
-        >
-        $<$<BOOL:${NRI_ENABLE_XESS_SDK}>:
-            ${xess_SOURCE_DIR}/inc/xess
-        >
-)
-target_compile_definitions(NRI_Shared
-    PRIVATE
-        ${COMPILE_DEFINITIONS}
-)
-target_compile_options(NRI_Shared
-    PRIVATE
-        ${COMPILE_OPTIONS}
-)
-target_link_libraries(NRI_Shared
-    PRIVATE
-        $<$<BOOL:${NRI_ENABLE_NGX_SDK}>:
-            ${NGX_LIB}
-        >
-        $<$<BOOL:${NRI_ENABLE_XESS_SDK}>:
-            ${xess_SOURCE_DIR}/lib/libxess.lib
-        >
-)
-set_target_properties(NRI_Shared
-    PROPERTIES
-        ${COMMON_PROPERTIES}
-        FOLDER "NRI"
-)
 
 # Core headers
 set(NRI_HEADERS
@@ -1000,7 +940,6 @@ target_sources(NRI
 )
 target_include_directories(NRI
     PRIVATE
-        "Source/Shared"
         "${nvtx_SOURCE_DIR}/c/include/"
         "${vulkan_headers_SOURCE_DIR}/include"
     PUBLIC
@@ -1008,7 +947,6 @@ target_include_directories(NRI
 )
 target_compile_definitions(NRI
     PRIVATE
-        ${COMPILE_DEFINITIONS}
         $<$<NOT:$<BOOL:${NRI_STATIC_LIBRARY}>>:
             $<$<BOOL:${WIN32}>:
                 "NRI_API=extern \"C\" __declspec(dllexport)"
@@ -1021,10 +959,6 @@ target_compile_definitions(NRI
         $<$<BOOL:${NRI_ENABLE_AGILITY_SDK_SUPPORT}>:
             NRI_ENABLE_AGILITY_SDK_SUPPORT=1
         >
-)
-target_compile_options(NRI
-    PRIVATE
-        ${COMPILE_OPTIONS}
 )
 target_link_libraries(NRI
     PRIVATE
@@ -1050,7 +984,6 @@ target_link_libraries(NRI
 )
 set_target_properties(NRI
     PROPERTIES
-        ${COMMON_PROPERTIES}
         FOLDER "NRI"
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
 )
