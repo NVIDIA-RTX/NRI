@@ -21,14 +21,6 @@ PipelineLayoutVK::~PipelineLayoutVK() {
 }
 
 Result PipelineLayoutVK::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
-    // Binding point
-    if (pipelineLayoutDesc.shaderStages & StageBits::GRAPHICS_SHADERS)
-        m_PipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    else if (pipelineLayoutDesc.shaderStages & StageBits::COMPUTE_SHADER)
-        m_PipelineBindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
-    else if (pipelineLayoutDesc.shaderStages & StageBits::RAY_TRACING_SHADERS)
-        m_PipelineBindPoint = VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
-
     // Binding offsets
     bool ignoreGlobalSPIRVOffsets = (pipelineLayoutDesc.flags & PipelineLayoutBits::IGNORE_GLOBAL_SPIRV_OFFSETS) != 0;
 
@@ -170,7 +162,7 @@ Result PipelineLayoutVK::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
         range.size = pushConstantDesc.size;
 
         // Binding info
-        m_BindingInfo.pushConstantBindings[i] = {GetShaderStageFlags(pushConstantDesc.shaderStages), offset};
+        m_BindingInfo.pushConstantBindings[i] = {range.stageFlags, range.offset};
 
         offset += pushConstantDesc.size;
     }

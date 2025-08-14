@@ -4,7 +4,7 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc) {
     const ShaderDesc* vertexShader = nullptr;
     HRESULT hr;
 
-    m_PipelineLayout = (const PipelineLayoutD3D11*)pipelineDesc.pipelineLayout;
+    m_PipelineLayout = (PipelineLayoutD3D11*)pipelineDesc.pipelineLayout;
 
     { // Shaders
         for (uint32_t i = 0; i < pipelineDesc.shaderNum; i++) {
@@ -194,7 +194,7 @@ Result PipelineD3D11::Create(const ComputePipelineDesc& pipelineDesc) {
         RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateComputeShader");
     }
 
-    m_PipelineLayout = (const PipelineLayoutD3D11*)pipelineDesc.pipelineLayout;
+    m_PipelineLayout = (PipelineLayoutD3D11*)pipelineDesc.pipelineLayout;
 
     return Result::SUCCESS;
 }
@@ -202,8 +202,7 @@ Result PipelineD3D11::Create(const ComputePipelineDesc& pipelineDesc) {
 void PipelineD3D11::ChangeSamplePositions(ID3D11DeviceContextBest* deferredContext, const SamplePositionsState& samplePositionState) {
     MaybeUnused(deferredContext, samplePositionState);
 #if NRI_ENABLE_NVAPI
-    if (IsCompute())
-        return;
+    CHECK(!IsCompute(), "A graphics pipeline expected");
 
     // Find in cached states
     size_t i = 0;
@@ -239,16 +238,12 @@ void PipelineD3D11::ChangeSamplePositions(ID3D11DeviceContextBest* deferredConte
 }
 
 void PipelineD3D11::ChangeStencilReference(ID3D11DeviceContextBest* deferredContext, uint8_t stencilRef) {
-    if (IsCompute())
-        return;
-
+    CHECK(!IsCompute(), "A graphics pipeline expected");
     deferredContext->OMSetDepthStencilState(m_DepthStencilState, stencilRef);
 }
 
 void PipelineD3D11::ChangeBlendConstants(ID3D11DeviceContextBest* deferredContext, const Color32f& color) {
-    if (IsCompute())
-        return;
-
+    CHECK(!IsCompute(), "A graphics pipeline expected");
     deferredContext->OMSetBlendState(m_BlendState, &color.x, m_SampleMask);
 }
 

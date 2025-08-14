@@ -53,11 +53,11 @@ struct CommandBufferEmuD3D11 final : public CommandBufferBase {
     void EndRendering();
     void SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum);
     void SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType);
-    void SetPipelineLayout(const PipelineLayout& pipelineLayout);
+    void SetPipelineLayout(BindPoint bindPoint, const PipelineLayout& pipelineLayout);
     void SetPipeline(const Pipeline& pipeline);
-    void SetDescriptorSet(uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets);
-    void SetRootConstants(uint32_t rootConstantIndex, const void* data, uint32_t size);
-    void SetRootDescriptor(uint32_t rootDescriptorIndex, Descriptor& descriptor);
+    void SetDescriptorSet(const DescriptorSetBindingDesc& descriptorSetBindingDesc);
+    void SetRootConstants(const RootConstantBindingDesc& rootConstantBindingDesc);
+    void SetRootDescriptor(const RootDescriptorBindingDesc& rootDescriptorBindingDesc);
     void Draw(const DrawDesc& drawDesc);
     void DrawIndexed(const DrawIndexedDesc& drawIndexedDesc);
     void DrawIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset);

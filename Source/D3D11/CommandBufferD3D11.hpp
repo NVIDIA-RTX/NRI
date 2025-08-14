@@ -95,6 +95,7 @@ NRI_INLINE Result CommandBufferD3D11::Begin(const DescriptorPool* descriptorPool
     m_Pipeline = nullptr;
     m_PipelineLayout = nullptr;
     m_IndexBuffer = nullptr;
+    m_PipelineBindPoint = BindPoint::INHERIT;
 
     ResetAttachments();
 
@@ -361,37 +362,41 @@ NRI_INLINE void CommandBufferD3D11::SetIndexBuffer(const Buffer& buffer, uint64_
     }
 }
 
-NRI_INLINE void CommandBufferD3D11::SetPipelineLayout(const PipelineLayout& pipelineLayout) {
+NRI_INLINE void CommandBufferD3D11::SetPipelineLayout(BindPoint bindPoint, const PipelineLayout& pipelineLayout) {
     PipelineLayoutD3D11* pipelineLayoutD3D11 = (PipelineLayoutD3D11*)&pipelineLayout;
     pipelineLayoutD3D11->Bind(m_DeferredContext);
 
     m_PipelineLayout = pipelineLayoutD3D11;
+    m_PipelineBindPoint = bindPoint;
 }
 
 NRI_INLINE void CommandBufferD3D11::SetPipeline(const Pipeline& pipeline) {
     PipelineD3D11* pipelineD3D11 = (PipelineD3D11*)&pipeline;
     pipelineD3D11->Bind(m_DeferredContext, m_Pipeline, m_StencilRef, m_BlendFactor, m_SamplePositionsState);
 
-    m_Pipeline = pipelineD3D11;
+    m_Pipeline = pipelineD3D11; // needed only for "SetStencilReference", "SetBlendConstants" and "SetSampleLocations"
 }
 
 NRI_INLINE void CommandBufferD3D11::SetDescriptorPool(const DescriptorPool&) {
 }
 
-NRI_INLINE void CommandBufferD3D11::SetDescriptorSet(uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) {
-    const DescriptorSetD3D11& descriptorSetImpl = (DescriptorSetD3D11&)descriptorSet;
-    m_PipelineLayout->BindDescriptorSet(m_BindingState, m_DeferredContext, setIndex, &descriptorSetImpl, nullptr, dynamicConstantBufferOffsets);
+NRI_INLINE void CommandBufferD3D11::SetDescriptorSet(const DescriptorSetBindingDesc& descriptorSetBindingDesc) {
+    BindPoint bindPoint = descriptorSetBindingDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : descriptorSetBindingDesc.bindPoint;
+    const DescriptorSetD3D11& descriptorSetD3D11 = *(DescriptorSetD3D11*)descriptorSetBindingDesc.descriptorSet;
+
+    m_PipelineLayout->SetDescriptorSet(bindPoint, m_BindingState, m_DeferredContext, descriptorSetBindingDesc.setIndex, &descriptorSetD3D11, nullptr, descriptorSetBindingDesc.dynamicConstantBufferOffsets);
 }
 
-NRI_INLINE void CommandBufferD3D11::SetRootConstants(uint32_t rootConstantIndex, const void* data, uint32_t size) {
-    m_PipelineLayout->SetRootConstants(m_DeferredContext, rootConstantIndex, data, size);
+NRI_INLINE void CommandBufferD3D11::SetRootConstants(const RootConstantBindingDesc& rootConstantBindingDesc) {
+    m_PipelineLayout->SetRootConstants(m_DeferredContext, rootConstantBindingDesc);
 }
 
-NRI_INLINE void CommandBufferD3D11::SetRootDescriptor(uint32_t rootDescriptorIndex, Descriptor& descriptor) {
-    const DescriptorD3D11& descriptorImpl = (DescriptorD3D11&)descriptor;
-    const uint32_t setIndex = m_PipelineLayout->GetRootBindingIndex(rootDescriptorIndex);
+NRI_INLINE void CommandBufferD3D11::SetRootDescriptor(const RootDescriptorBindingDesc& rootDescriptorBindingDesc) {
+    BindPoint bindPoint = rootDescriptorBindingDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : rootDescriptorBindingDesc.bindPoint;
+    uint32_t setIndex = m_PipelineLayout->GetRootBindingIndex(rootDescriptorBindingDesc.rootDescriptorIndex);
+    const DescriptorD3D11& descriptorD3D11 = *(DescriptorD3D11*)rootDescriptorBindingDesc.descriptor;
 
-    m_PipelineLayout->BindDescriptorSet(m_BindingState, m_DeferredContext, setIndex, nullptr, &descriptorImpl, nullptr);
+    m_PipelineLayout->SetDescriptorSet(bindPoint, m_BindingState, m_DeferredContext, setIndex, nullptr, &descriptorD3D11, nullptr);
 }
 
 NRI_INLINE void CommandBufferD3D11::Draw(const DrawDesc& drawDesc) {
@@ -539,8 +544,12 @@ NRI_INLINE void CommandBufferD3D11::UploadBufferToTexture(Texture& dstTexture, c
 
     uint32_t dstSubresource = dst.GetSubresourceIndex(dstRegion.layerOffset, dstRegion.mipOffset);
 
+    uint32_t flags = D3D11_COPY_NO_OVERWRITE;
+    if (dstRegion.x == 0 && dstRegion.width == WHOLE_SIZE && dstRegion.y == 0 && dstRegion.height == WHOLE_SIZE && dstRegion.z == 0 && dstRegion.depth == WHOLE_SIZE)
+        flags = D3D11_COPY_DISCARD;
+
     uint8_t* data = (uint8_t*)src.Map(srcDataLayout.offset);
-    m_DeferredContext->UpdateSubresource(dst, dstSubresource, &dstBox, data, srcDataLayout.rowPitch, srcDataLayout.slicePitch);
+    m_DeferredContext->UpdateSubresource1(dst, dstSubresource, &dstBox, data, srcDataLayout.rowPitch, srcDataLayout.slicePitch, flags);
     src.Unmap();
 }
 

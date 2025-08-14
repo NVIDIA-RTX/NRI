@@ -37,7 +37,12 @@ struct DynamicConstantBufferMapping {
 };
 
 struct PipelineLayoutD3D12 final : public DebugNameBase {
-    PipelineLayoutD3D12(DeviceD3D12& device);
+    inline PipelineLayoutD3D12(DeviceD3D12& device)
+        : m_Device(device)
+        , m_DescriptorSetMappings(device.GetStdAllocator())
+        , m_DescriptorSetRootMappings(device.GetStdAllocator())
+        , m_DynamicConstantBufferMappings(device.GetStdAllocator()) {
+    }
 
     inline operator ID3D12RootSignature*() const {
         return m_RootSignature.GetInterface();
@@ -45,10 +50,6 @@ struct PipelineLayoutD3D12 final : public DebugNameBase {
 
     inline DeviceD3D12& GetDevice() const {
         return m_Device;
-    }
-
-    inline bool IsGraphicsPipelineLayout() const {
-        return m_IsGraphicsPipelineLayout;
     }
 
     inline bool IsDrawParametersEmulationEnabled() const {
@@ -63,16 +64,10 @@ struct PipelineLayoutD3D12 final : public DebugNameBase {
         return m_DynamicConstantBufferMappings[setIndex];
     }
 
-    inline uint32_t GetBaseRootConstant() const {
-        return m_BaseRootConstant;
-    }
-
-    inline uint32_t GetBaseRootDescriptor() const {
-        return m_BaseRootDescriptor;
-    }
-
     Result Create(const PipelineLayoutDesc& pipelineLayoutDesc);
-    void SetDescriptorSet(ID3D12GraphicsCommandList& graphicsCommandList, bool isGraphics, uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const;
+    void SetDescriptorSet(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const DescriptorSetBindingDesc& descriptorSetBindingDesc) const;
+    void SetRootConstants(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const RootConstantBindingDesc& rootConstantBindingDesc) const;
+    void SetRootDescriptor(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const RootDescriptorBindingDesc& rootDescriptorBindingDesc) const;
 
     //================================================================================================================
     // DebugNameBase
@@ -83,10 +78,6 @@ struct PipelineLayoutD3D12 final : public DebugNameBase {
     }
 
 private:
-    template <bool isGraphics>
-    void SetDescriptorSetImpl(ID3D12GraphicsCommandList& graphicsCommandList, uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const;
-
-private:
     DeviceD3D12& m_Device;
     ComPtr<ID3D12RootSignature> m_RootSignature;
     Vector<DescriptorSetMapping> m_DescriptorSetMappings;
@@ -94,7 +85,6 @@ private:
     Vector<DynamicConstantBufferMapping> m_DynamicConstantBufferMappings;
     uint32_t m_BaseRootConstant = 0;
     uint32_t m_BaseRootDescriptor = 0;
-    bool m_IsGraphicsPipelineLayout = false;
     bool m_DrawParametersEmulation = false;
 };
 

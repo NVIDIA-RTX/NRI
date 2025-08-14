@@ -1188,10 +1188,14 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
 
         { // Setup
             m_iCore.CmdSetDescriptorPool(commandBuffer, *m.nis->descriptorPool);
-            m_iCore.CmdSetPipelineLayout(commandBuffer, *m.nis->pipelineLayout);
+            m_iCore.CmdSetPipelineLayout(commandBuffer, BindPoint::COMPUTE, *m.nis->pipelineLayout);
             m_iCore.CmdSetPipeline(commandBuffer, *m.nis->pipeline);
-            m_iCore.CmdSetDescriptorSet(commandBuffer, NRI_NIS_SET_STATIC, *m.nis->descriptorSet0, nullptr);
-            m_iCore.CmdSetDescriptorSet(commandBuffer, NRI_NIS_SET_DYNAMIC, *descriptorSet1, nullptr);
+
+            DescriptorSetBindingDesc staticSet = {NRI_NIS_SET_STATIC, m.nis->descriptorSet0};
+            m_iCore.CmdSetDescriptorSet(commandBuffer, staticSet);
+
+            DescriptorSetBindingDesc dynamicSet = {NRI_NIS_SET_DYNAMIC, descriptorSet1};
+            m_iCore.CmdSetDescriptorSet(commandBuffer, dynamicSet);
         }
 
         { // Update constants
@@ -1205,7 +1209,8 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
                 m_Desc.upscaleResolution.w, m_Desc.upscaleResolution.h,                           // output dims
                 (m_Desc.flags & UpscalerBits::HDR) ? NIS::HDRMode::Linear : NIS::HDRMode::None);
 
-            m_iCore.CmdSetRootConstants(commandBuffer, 0, &constants, sizeof(constants));
+            RootConstantBindingDesc rootConstants = {0, &constants, sizeof(constants)};
+            m_iCore.CmdSetRootConstants(commandBuffer, rootConstants);
         }
 
         { // Update dynamic resources

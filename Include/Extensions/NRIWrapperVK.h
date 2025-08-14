@@ -88,7 +88,6 @@ NriStruct(MemoryVKDesc) {
 NriStruct(PipelineVKDesc) {
     VKNonDispatchableHandle vkPipeline;
     VKEnum vkPipelineBindPoint;
-    NriOptional Nri(DepthBiasDesc) depthBias;           // optional even for graphics pipelines
 };
 
 NriStruct(QueryPoolVKDesc) {

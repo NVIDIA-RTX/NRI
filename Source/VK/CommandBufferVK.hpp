@@ -2,6 +2,17 @@
 
 #include <math.h>
 
+static inline VkPipelineBindPoint GetPipelineBindPoint(BindPoint bindPoint) {
+    switch (bindPoint) {
+        case BindPoint::COMPUTE:
+            return VK_PIPELINE_BIND_POINT_COMPUTE;
+        case BindPoint::RAY_TRACING:
+            return VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
+        default:
+            return VK_PIPELINE_BIND_POINT_GRAPHICS;
+    }
+}
+
 CommandBufferVK::~CommandBufferVK() {
     if (m_CommandPool) {
         const auto& vk = m_Device.GetDispatchTable();
@@ -36,7 +47,7 @@ NRI_INLINE Result CommandBufferVK::Begin(const DescriptorPool*) {
     RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkBeginCommandBuffer");
 
     m_PipelineLayout = nullptr;
-    m_Pipeline = nullptr;
+    m_PipelineBindPoint = BindPoint::INHERIT;
 
     return Result::SUCCESS;
 }
@@ -137,10 +148,8 @@ NRI_INLINE void CommandBufferVK::SetShadingRate(const ShadingRateDesc& shadingRa
 }
 
 NRI_INLINE void CommandBufferVK::SetDepthBias(const DepthBiasDesc& depthBiasDesc) {
-    if (!m_Pipeline || IsDepthBiasEnabled(m_Pipeline->GetDepthBias())) {
-        const auto& vk = m_Device.GetDispatchTable();
-        vk.CmdSetDepthBias(m_Handle, depthBiasDesc.constant, depthBiasDesc.clamp, depthBiasDesc.slope);
-    }
+    const auto& vk = m_Device.GetDispatchTable();
+    vk.CmdSetDepthBias(m_Handle, depthBiasDesc.constant, depthBiasDesc.clamp, depthBiasDesc.slope);
 }
 
 NRI_INLINE void CommandBufferVK::ClearAttachments(const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum) {
@@ -359,7 +368,7 @@ NRI_INLINE void CommandBufferVK::SetVertexBuffers(uint32_t baseSlot, const Verte
 }
 
 NRI_INLINE void CommandBufferVK::SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType) {
-    const BufferVK& bufferVK = (const BufferVK&)buffer;
+    const BufferVK& bufferVK = (BufferVK&)buffer;
 
     const auto& vk = m_Device.GetDispatchTable();
 
@@ -370,62 +379,56 @@ NRI_INLINE void CommandBufferVK::SetIndexBuffer(const Buffer& buffer, uint64_t o
         vk.CmdBindIndexBuffer(m_Handle, bufferVK.GetHandle(), offset, GetIndexType(indexType));
 }
 
-NRI_INLINE void CommandBufferVK::SetPipelineLayout(const PipelineLayout& pipelineLayout) {
-    const PipelineLayoutVK& pipelineLayoutVK = (const PipelineLayoutVK&)pipelineLayout;
-    m_PipelineLayout = &pipelineLayoutVK;
+NRI_INLINE void CommandBufferVK::SetPipelineLayout(BindPoint bindPoint, const PipelineLayout& pipelineLayout) {
+    m_PipelineLayout = (PipelineLayoutVK*)&pipelineLayout;
+    m_PipelineBindPoint = bindPoint;
 }
 
 NRI_INLINE void CommandBufferVK::SetPipeline(const Pipeline& pipeline) {
-    const PipelineVK& pipelineImpl = (const PipelineVK&)pipeline;
-    m_Pipeline = &pipelineImpl;
+    const PipelineVK& pipelineVK = (PipelineVK&)pipeline;
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdBindPipeline(m_Handle, pipelineImpl.GetBindPoint(), pipelineImpl);
+    vk.CmdBindPipeline(m_Handle, pipelineVK.GetBindPoint(), pipelineVK);
 
-    // In D3D12 dynamic depth bias overrides pipeline values...
-    const DepthBiasDesc& depthBias = pipelineImpl.GetDepthBias();
+    // Set depth bias provided at pipeline creation time to match D3D12 behavior
+    const DepthBiasDesc& depthBias = pipelineVK.GetDepthBias();
     if (IsDepthBiasEnabled(depthBias))
         vk.CmdSetDepthBias(m_Handle, depthBias.constant, depthBias.clamp, depthBias.slope);
 }
 
-NRI_INLINE void CommandBufferVK::SetDescriptorPool(const DescriptorPool& descriptorPool) {
-    MaybeUnused(descriptorPool);
-}
-
-NRI_INLINE void CommandBufferVK::SetDescriptorSet(uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) {
-    const DescriptorSetVK& descriptorSetImpl = (DescriptorSetVK&)descriptorSet;
-    VkDescriptorSet vkDescriptorSet = descriptorSetImpl.GetHandle();
-    uint32_t dynamicConstantBufferNum = descriptorSetImpl.GetDynamicConstantBufferNum();
+NRI_INLINE void CommandBufferVK::SetDescriptorSet(const DescriptorSetBindingDesc& descriptorSetBindingDesc) {
+    const DescriptorSetVK& descriptorSetVK = *(DescriptorSetVK*)descriptorSetBindingDesc.descriptorSet;
+    VkDescriptorSet vkDescriptorSet = descriptorSetVK.GetHandle();
+    uint32_t dynamicConstantBufferNum = descriptorSetVK.GetDynamicConstantBufferNum();
 
     const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
-    uint32_t space = bindingInfo.descriptorSetDescs[setIndex].registerSpace;
+    uint32_t registerSpace = bindingInfo.descriptorSetDescs[descriptorSetBindingDesc.setIndex].registerSpace;
 
-    VkPipelineLayout pipelineLayout = *m_PipelineLayout;
-    VkPipelineBindPoint pipelineBindPoint = m_PipelineLayout->GetPipelineBindPoint();
+    BindPoint bindPoint = descriptorSetBindingDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : descriptorSetBindingDesc.bindPoint;
+    VkPipelineBindPoint vkPipelineBindPoint = GetPipelineBindPoint(bindPoint);
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdBindDescriptorSets(m_Handle, pipelineBindPoint, pipelineLayout, space, 1, &vkDescriptorSet, dynamicConstantBufferNum, dynamicConstantBufferOffsets);
+    vk.CmdBindDescriptorSets(m_Handle, vkPipelineBindPoint, *m_PipelineLayout, registerSpace, 1, &vkDescriptorSet, dynamicConstantBufferNum, descriptorSetBindingDesc.dynamicConstantBufferOffsets);
 }
 
-NRI_INLINE void CommandBufferVK::SetRootConstants(uint32_t rootConstantIndex, const void* data, uint32_t size) {
+NRI_INLINE void CommandBufferVK::SetRootConstants(const RootConstantBindingDesc& rootConstantBindingDesc) {
     const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
-    const PushConstantBindingDesc& pushConstantBindingDesc = bindingInfo.pushConstantBindings[rootConstantIndex];
-
-    VkPipelineLayout pipelineLayout = *m_PipelineLayout;
+    const PushConstantBindingDesc& pushConstantBindingDesc = bindingInfo.pushConstantBindings[rootConstantBindingDesc.rootConstantIndex];
+    uint32_t offset = pushConstantBindingDesc.offset + rootConstantBindingDesc.offset;
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdPushConstants(m_Handle, pipelineLayout, pushConstantBindingDesc.stages, pushConstantBindingDesc.offset, size, data);
+    vk.CmdPushConstants(m_Handle, *m_PipelineLayout, pushConstantBindingDesc.stages, offset, rootConstantBindingDesc.size, rootConstantBindingDesc.data);
 }
 
-NRI_INLINE void CommandBufferVK::SetRootDescriptor(uint32_t rootDescriptorIndex, Descriptor& descriptor) {
-    const DescriptorVK& descriptorVK = (DescriptorVK&)descriptor;
+NRI_INLINE void CommandBufferVK::SetRootDescriptor(const RootDescriptorBindingDesc& rootDescriptorBindingDesc) {
+    const DescriptorVK& descriptorVK = *(DescriptorVK*)rootDescriptorBindingDesc.descriptor;
 
     DescriptorTypeVK descriptorType = descriptorVK.GetType();
     VkDescriptorBufferInfo bufferInfo = descriptorVK.GetBufferInfo();
     VkAccelerationStructureKHR accelerationStructure = descriptorVK.GetAccelerationStructure();
 
     const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
-    const PushDescriptorBindingDesc& pushDescriptorBindingDesc = bindingInfo.pushDescriptorBindings[rootDescriptorIndex];
+    const PushDescriptorBindingDesc& pushDescriptorBindingDesc = bindingInfo.pushDescriptorBindings[rootDescriptorBindingDesc.rootDescriptorIndex];
 
     VkWriteDescriptorSetAccelerationStructureKHR accelerationStructureWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR};
     accelerationStructureWrite.accelerationStructureCount = 1;
@@ -448,11 +451,11 @@ NRI_INLINE void CommandBufferVK::SetRootDescriptor(uint32_t rootDescriptorIndex,
     } else
         CHECK(false, "Unexpected");
 
-    VkPipelineLayout pipelineLayout = *m_PipelineLayout;
-    VkPipelineBindPoint pipelineBindPoint = m_PipelineLayout->GetPipelineBindPoint();
+    BindPoint bindPoint = rootDescriptorBindingDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : rootDescriptorBindingDesc.bindPoint;
+    VkPipelineBindPoint vkPipelineBindPoint = GetPipelineBindPoint(bindPoint);
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdPushDescriptorSetKHR(m_Handle, pipelineBindPoint, pipelineLayout, pushDescriptorBindingDesc.registerSpace, 1, &descriptorWrite);
+    vk.CmdPushDescriptorSetKHR(m_Handle, vkPipelineBindPoint, *m_PipelineLayout, pushDescriptorBindingDesc.registerSpace, 1, &descriptorWrite);
 }
 
 NRI_INLINE void CommandBufferVK::Draw(const DrawDesc& drawDesc) {
@@ -466,30 +469,30 @@ NRI_INLINE void CommandBufferVK::DrawIndexed(const DrawIndexedDesc& drawIndexedD
 }
 
 NRI_INLINE void CommandBufferVK::DrawIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset) {
-    const BufferVK& bufferVK = (const BufferVK&)buffer;
+    const BufferVK& bufferVK = (BufferVK&)buffer;
     const auto& vk = m_Device.GetDispatchTable();
 
     if (countBuffer) {
-        const BufferVK& countBufferImpl = *(BufferVK*)countBuffer;
-        vk.CmdDrawIndirectCount(m_Handle, bufferVK.GetHandle(), offset, countBufferImpl.GetHandle(), countBufferOffset, drawNum, stride);
+        const BufferVK& countBufferVK = *(BufferVK*)countBuffer;
+        vk.CmdDrawIndirectCount(m_Handle, bufferVK.GetHandle(), offset, countBufferVK.GetHandle(), countBufferOffset, drawNum, stride);
     } else
         vk.CmdDrawIndirect(m_Handle, bufferVK.GetHandle(), offset, drawNum, stride);
 }
 
 NRI_INLINE void CommandBufferVK::DrawIndexedIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset) {
-    const BufferVK& bufferVK = (const BufferVK&)buffer;
+    const BufferVK& bufferVK = (BufferVK&)buffer;
     const auto& vk = m_Device.GetDispatchTable();
 
     if (countBuffer) {
-        const BufferVK& countBufferImpl = *(BufferVK*)countBuffer;
-        vk.CmdDrawIndexedIndirectCount(m_Handle, bufferVK.GetHandle(), offset, countBufferImpl.GetHandle(), countBufferOffset, drawNum, stride);
+        const BufferVK& countBufferVK = *(BufferVK*)countBuffer;
+        vk.CmdDrawIndexedIndirectCount(m_Handle, bufferVK.GetHandle(), offset, countBufferVK.GetHandle(), countBufferOffset, drawNum, stride);
     } else
         vk.CmdDrawIndexedIndirect(m_Handle, bufferVK.GetHandle(), offset, drawNum, stride);
 }
 
 NRI_INLINE void CommandBufferVK::CopyBuffer(Buffer& dstBuffer, uint64_t dstOffset, const Buffer& srcBuffer, uint64_t srcOffset, uint64_t size) {
-    const BufferVK& src = (const BufferVK&)srcBuffer;
-    const BufferVK& dstBufferImpl = (const BufferVK&)dstBuffer;
+    const BufferVK& src = (BufferVK&)srcBuffer;
+    const BufferVK& dstBufferVK = (BufferVK&)dstBuffer;
 
     VkBufferCopy2 region = {VK_STRUCTURE_TYPE_BUFFER_COPY_2};
     region.srcOffset = srcOffset;
@@ -498,7 +501,7 @@ NRI_INLINE void CommandBufferVK::CopyBuffer(Buffer& dstBuffer, uint64_t dstOffse
 
     VkCopyBufferInfo2 info = {VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2};
     info.srcBuffer = src.GetHandle();
-    info.dstBuffer = dstBufferImpl.GetHandle();
+    info.dstBuffer = dstBufferVK.GetHandle();
     info.regionCount = 1;
     info.pRegions = &region;
 
@@ -507,8 +510,8 @@ NRI_INLINE void CommandBufferVK::CopyBuffer(Buffer& dstBuffer, uint64_t dstOffse
 }
 
 NRI_INLINE void CommandBufferVK::CopyTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion) {
-    const TextureVK& src = (const TextureVK&)srcTexture;
-    const TextureVK& dst = (const TextureVK&)dstTexture;
+    const TextureVK& src = (TextureVK&)srcTexture;
+    const TextureVK& dst = (TextureVK&)dstTexture;
     const TextureDesc& dstDesc = dst.GetDesc();
     const TextureDesc& srcDesc = src.GetDesc();
 
@@ -583,8 +586,8 @@ NRI_INLINE void CommandBufferVK::CopyTexture(Texture& dstTexture, const TextureR
 }
 
 NRI_INLINE void CommandBufferVK::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion) {
-    const TextureVK& src = (const TextureVK&)srcTexture;
-    const TextureVK& dst = (const TextureVK&)dstTexture;
+    const TextureVK& src = (TextureVK&)srcTexture;
+    const TextureVK& dst = (TextureVK&)dstTexture;
     const TextureDesc& dstDesc = dst.GetDesc();
     const TextureDesc& srcDesc = src.GetDesc();
 
@@ -659,8 +662,8 @@ NRI_INLINE void CommandBufferVK::ResolveTexture(Texture& dstTexture, const Textu
 }
 
 NRI_INLINE void CommandBufferVK::UploadBufferToTexture(Texture& dstTexture, const TextureRegionDesc& dstRegion, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayout) {
-    const BufferVK& src = (const BufferVK&)srcBuffer;
-    const TextureVK& dst = (const TextureVK&)dstTexture;
+    const BufferVK& src = (BufferVK&)srcBuffer;
+    const TextureVK& dst = (TextureVK&)dstTexture;
     const FormatProps& formatProps = GetFormatProps(dst.GetDesc().format);
 
     uint32_t rowBlockNum = srcDataLayout.rowPitch / formatProps.stride;
@@ -706,8 +709,8 @@ NRI_INLINE void CommandBufferVK::UploadBufferToTexture(Texture& dstTexture, cons
 }
 
 NRI_INLINE void CommandBufferVK::ReadbackTextureToBuffer(Buffer& dstBuffer, const TextureDataLayoutDesc& dstDataLayout, const Texture& srcTexture, const TextureRegionDesc& srcRegion) {
-    const TextureVK& src = (const TextureVK&)srcTexture;
-    const BufferVK& dst = (const BufferVK&)dstBuffer;
+    const TextureVK& src = (TextureVK&)srcTexture;
+    const BufferVK& dst = (BufferVK&)dstBuffer;
     const FormatProps& formatProps = GetFormatProps(src.GetDesc().format);
 
     uint32_t rowBlockNum = dstDataLayout.rowPitch / formatProps.stride;
@@ -770,7 +773,7 @@ NRI_INLINE void CommandBufferVK::Dispatch(const DispatchDesc& dispatchDesc) {
 NRI_INLINE void CommandBufferVK::DispatchIndirect(const Buffer& buffer, uint64_t offset) {
     static_assert(sizeof(DispatchDesc) == sizeof(VkDispatchIndirectCommand));
 
-    const BufferVK& bufferVK = (const BufferVK&)buffer;
+    const BufferVK& bufferVK = (BufferVK&)buffer;
     const auto& vk = m_Device.GetDispatchTable();
     vk.CmdDispatchIndirect(m_Handle, bufferVK.GetHandle(), offset);
 }
@@ -872,13 +875,13 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierGroupDesc& barrierGroupDes
     Scratch<VkImageMemoryBarrier2> textureBarriers = AllocateScratch(m_Device, VkImageMemoryBarrier2, barrierGroupDesc.textureNum);
     for (uint32_t i = 0; i < barrierGroupDesc.textureNum; i++) {
         const TextureBarrierDesc& in = barrierGroupDesc.textures[i];
-        const TextureVK& textureImpl = *(TextureVK*)in.texture;
+        const TextureVK& textureVK = *(TextureVK*)in.texture;
         const QueueVK& srcQueue = *(QueueVK*)in.srcQueue;
         const QueueVK& dstQueue = *(QueueVK*)in.dstQueue;
 
         VkImageAspectFlags aspectFlags = GetImageAspectFlags(in.planes);
         if (in.planes == PlaneBits::ALL)
-            aspectFlags = textureImpl.GetImageAspectFlags();
+            aspectFlags = textureVK.GetImageAspectFlags();
 
         VkImageMemoryBarrier2& out = textureBarriers[i];
         out = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
@@ -890,7 +893,7 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierGroupDesc& barrierGroupDes
         out.newLayout = GetImageLayout(in.after.layout);
         out.srcQueueFamilyIndex = in.srcQueue ? srcQueue.GetFamilyIndex() : VK_QUEUE_FAMILY_IGNORED;
         out.dstQueueFamilyIndex = in.dstQueue ? dstQueue.GetFamilyIndex() : VK_QUEUE_FAMILY_IGNORED;
-        out.image = textureImpl.GetHandle();
+        out.image = textureVK.GetHandle();
         out.subresourceRange = {
             aspectFlags,
             in.mipOffset,
@@ -914,39 +917,39 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierGroupDesc& barrierGroupDes
 }
 
 NRI_INLINE void CommandBufferVK::BeginQuery(QueryPool& queryPool, uint32_t offset) {
-    QueryPoolVK& queryPoolImpl = (QueryPoolVK&)queryPool;
+    QueryPoolVK& queryPoolVK = (QueryPoolVK&)queryPool;
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdBeginQuery(m_Handle, queryPoolImpl.GetHandle(), offset, (VkQueryControlFlagBits)0);
+    vk.CmdBeginQuery(m_Handle, queryPoolVK.GetHandle(), offset, (VkQueryControlFlagBits)0);
 }
 
 NRI_INLINE void CommandBufferVK::EndQuery(QueryPool& queryPool, uint32_t offset) {
-    QueryPoolVK& queryPoolImpl = (QueryPoolVK&)queryPool;
+    QueryPoolVK& queryPoolVK = (QueryPoolVK&)queryPool;
     const auto& vk = m_Device.GetDispatchTable();
 
-    if (queryPoolImpl.GetType() == VK_QUERY_TYPE_TIMESTAMP) {
+    if (queryPoolVK.GetType() == VK_QUERY_TYPE_TIMESTAMP) {
         // TODO: https://registry.khronos.org/vulkan/specs/latest/man/html/vkCmdWriteTimestamp.html
         // https://docs.vulkan.org/samples/latest/samples/api/timestamp_queries/README.html
-        vk.CmdWriteTimestamp2(m_Handle, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, queryPoolImpl.GetHandle(), offset);
+        vk.CmdWriteTimestamp2(m_Handle, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, queryPoolVK.GetHandle(), offset);
     } else
-        vk.CmdEndQuery(m_Handle, queryPoolImpl.GetHandle(), offset);
+        vk.CmdEndQuery(m_Handle, queryPoolVK.GetHandle(), offset);
 }
 
 NRI_INLINE void CommandBufferVK::CopyQueries(const QueryPool& queryPool, uint32_t offset, uint32_t num, Buffer& dstBuffer, uint64_t dstOffset) {
-    const QueryPoolVK& queryPoolImpl = (const QueryPoolVK&)queryPool;
-    const BufferVK& bufferVK = (const BufferVK&)dstBuffer;
+    const QueryPoolVK& queryPoolVK = (QueryPoolVK&)queryPool;
+    const BufferVK& bufferVK = (BufferVK&)dstBuffer;
 
     // TODO: wait is questionable here, but it's needed to ensure that the destination buffer gets "complete" values (perf seems unaffected)
     VkQueryResultFlags flags = VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT;
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdCopyQueryPoolResults(m_Handle, queryPoolImpl.GetHandle(), offset, num, bufferVK.GetHandle(), dstOffset, queryPoolImpl.GetQuerySize(), flags);
+    vk.CmdCopyQueryPoolResults(m_Handle, queryPoolVK.GetHandle(), offset, num, bufferVK.GetHandle(), dstOffset, queryPoolVK.GetQuerySize(), flags);
 }
 
 NRI_INLINE void CommandBufferVK::ResetQueries(QueryPool& queryPool, uint32_t offset, uint32_t num) {
-    QueryPoolVK& queryPoolImpl = (QueryPoolVK&)queryPool;
+    QueryPoolVK& queryPoolVK = (QueryPoolVK&)queryPool;
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdResetQueryPool(m_Handle, queryPoolImpl.GetHandle(), offset, num);
+    vk.CmdResetQueryPool(m_Handle, queryPoolVK.GetHandle(), offset, num);
 }
 
 NRI_INLINE void CommandBufferVK::BeginAnnotation(const char* name, uint32_t bgra) {
@@ -1221,12 +1224,12 @@ NRI_INLINE void CommandBufferVK::DrawMeshTasks(const DrawMeshTasksDesc& drawMesh
 NRI_INLINE void CommandBufferVK::DrawMeshTasksIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset) {
     static_assert(sizeof(DrawMeshTasksDesc) == sizeof(VkDrawMeshTasksIndirectCommandEXT));
 
-    const BufferVK& bufferVK = (const BufferVK&)buffer;
+    const BufferVK& bufferVK = (BufferVK&)buffer;
     const auto& vk = m_Device.GetDispatchTable();
 
     if (countBuffer) {
-        const BufferVK& countBufferImpl = *(BufferVK*)countBuffer;
-        vk.CmdDrawMeshTasksIndirectCountEXT(m_Handle, bufferVK.GetHandle(), offset, countBufferImpl.GetHandle(), countBufferOffset, drawNum, stride);
+        const BufferVK& countBufferVK = *(BufferVK*)countBuffer;
+        vk.CmdDrawMeshTasksIndirectCountEXT(m_Handle, bufferVK.GetHandle(), offset, countBufferVK.GetHandle(), countBufferOffset, drawNum, stride);
     } else
         vk.CmdDrawMeshTasksIndirectEXT(m_Handle, bufferVK.GetHandle(), offset, drawNum, stride);
 }

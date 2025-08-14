@@ -64,12 +64,12 @@ struct CommandBufferD3D11 final : public CommandBufferBase {
     void BeginRendering(const AttachmentsDesc& attachmentsDesc);
     void SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum);
     void SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType);
-    void SetPipelineLayout(const PipelineLayout& pipelineLayout);
+    void SetPipelineLayout(BindPoint bindPoint, const PipelineLayout& pipelineLayout);
     void SetPipeline(const Pipeline& pipeline);
     void SetDescriptorPool(const DescriptorPool& descriptorPool);
-    void SetDescriptorSet(uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets);
-    void SetRootConstants(uint32_t rootConstantIndex, const void* data, uint32_t size);
-    void SetRootDescriptor(uint32_t rootDescriptorIndex, Descriptor& descriptor);
+    void SetDescriptorSet(const DescriptorSetBindingDesc& descriptorSetBindingDesc);
+    void SetRootConstants(const RootConstantBindingDesc& rootConstantBindingDesc);
+    void SetRootDescriptor(const RootDescriptorBindingDesc& rootDescriptorBindingDesc);
     void Draw(const DrawDesc& drawDesc);
     void DrawIndexed(const DrawIndexedDesc& drawIndexedDesc);
     void DrawIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset);
@@ -106,6 +106,7 @@ private:
     Color32f m_BlendFactor = {};
     float m_DepthBounds[2] = {0.0f, 1.0f};
     uint32_t m_RenderTargetNum = 0;
+    BindPoint m_PipelineBindPoint = BindPoint::INHERIT;
     IndexType m_IndexType = IndexType::UINT32;
     uint8_t m_StencilRef = 0;
     uint8_t m_Version = 0;

@@ -234,14 +234,15 @@ NRI_INLINE void CommandBufferVal::SetIndexBuffer(const Buffer& buffer, uint64_t 
     GetCoreInterfaceImpl().CmdSetIndexBuffer(*GetImpl(), *bufferImpl, offset, indexType);
 }
 
-NRI_INLINE void CommandBufferVal::SetPipelineLayout(const PipelineLayout& pipelineLayout) {
+NRI_INLINE void CommandBufferVal::SetPipelineLayout(BindPoint bindPoint, const PipelineLayout& pipelineLayout) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
+    RETURN_ON_FAILURE(&m_Device, bindPoint != BindPoint::INHERIT, ReturnVoid(), "'INHERIT' is not allowed");
 
     PipelineLayout* pipelineLayoutImpl = NRI_GET_IMPL(PipelineLayout, &pipelineLayout);
 
     m_PipelineLayout = (PipelineLayoutVal*)&pipelineLayout;
 
-    GetCoreInterfaceImpl().CmdSetPipelineLayout(*GetImpl(), *pipelineLayoutImpl);
+    GetCoreInterfaceImpl().CmdSetPipelineLayout(*GetImpl(), bindPoint, *pipelineLayoutImpl);
 }
 
 NRI_INLINE void CommandBufferVal::SetPipeline(const Pipeline& pipeline) {
@@ -264,35 +265,37 @@ NRI_INLINE void CommandBufferVal::SetDescriptorPool(const DescriptorPool& descri
     GetCoreInterfaceImpl().CmdSetDescriptorPool(*GetImpl(), *descriptorPoolImpl);
 }
 
-NRI_INLINE void CommandBufferVal::SetDescriptorSet(uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) {
+NRI_INLINE void CommandBufferVal::SetDescriptorSet(const DescriptorSetBindingDesc& descriptorSetBindingDesc) {
+    const DescriptorSetVal& descriptorSetVal = *(DescriptorSetVal*)descriptorSetBindingDesc.descriptorSet;
+
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
-
-    DescriptorSetVal& descriptorSetVal = (DescriptorSetVal&)descriptorSet;
     RETURN_ON_FAILURE(&m_Device, descriptorSetVal.AreDynamicConstantBuffersValid(), ReturnVoid(), "Not all dynamic constant buffers have been updated at least once. Potential use of stale data detected");
 
-    DescriptorSet* descriptorSetImpl = NRI_GET_IMPL(DescriptorSet, &descriptorSet);
+    auto descriptorSetBindingDescImpl = descriptorSetBindingDesc;
+    descriptorSetBindingDescImpl.descriptorSet = NRI_GET_IMPL(DescriptorSet, descriptorSetBindingDesc.descriptorSet);
 
-    GetCoreInterfaceImpl().CmdSetDescriptorSet(*GetImpl(), setIndex, *descriptorSetImpl, dynamicConstantBufferOffsets);
+    GetCoreInterfaceImpl().CmdSetDescriptorSet(*GetImpl(), descriptorSetBindingDescImpl);
 }
 
-NRI_INLINE void CommandBufferVal::SetRootConstants(uint32_t rootConstantIndex, const void* data, uint32_t size) {
+NRI_INLINE void CommandBufferVal::SetRootConstants(const RootConstantBindingDesc& rootConstantBindingDesc) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
 
-    GetCoreInterfaceImpl().CmdSetRootConstants(*GetImpl(), rootConstantIndex, data, size);
+    GetCoreInterfaceImpl().CmdSetRootConstants(*GetImpl(), rootConstantBindingDesc);
 }
 
-NRI_INLINE void CommandBufferVal::SetRootDescriptor(uint32_t rootDescriptorIndex, Descriptor& descriptor) {
-    const DescriptorVal& descriptorVal = (DescriptorVal&)descriptor;
+NRI_INLINE void CommandBufferVal::SetRootDescriptor(const RootDescriptorBindingDesc& rootDescriptorBindingDesc) {
+    const DescriptorVal& descriptorVal = *(DescriptorVal*)rootDescriptorBindingDesc.descriptor;
 
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
     RETURN_ON_FAILURE(&m_Device, descriptorVal.IsBufferView() || descriptorVal.IsAccelerationStructure(), ReturnVoid(), "'descriptor' must be a buffer or acceleration structure");
 
-    Descriptor* descriptorImpl = NRI_GET_IMPL(Descriptor, &descriptor);
+    auto rootDescriptorBindingDescImpl = rootDescriptorBindingDesc;
+    rootDescriptorBindingDescImpl.descriptor = NRI_GET_IMPL(Descriptor, rootDescriptorBindingDesc.descriptor);
 
-    GetCoreInterfaceImpl().CmdSetRootDescriptor(*GetImpl(), rootDescriptorIndex, *descriptorImpl);
+    GetCoreInterfaceImpl().CmdSetRootDescriptor(*GetImpl(), rootDescriptorBindingDescImpl);
 }
 
 NRI_INLINE void CommandBufferVal::Draw(const DrawDesc& drawDesc) {
@@ -492,7 +495,7 @@ NRI_INLINE void CommandBufferVal::CopyQueries(const QueryPool& queryPool, uint32
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
 
-    const QueryPoolVal& queryPoolVal = (const QueryPoolVal&)queryPool;
+    const QueryPoolVal& queryPoolVal = (QueryPoolVal&)queryPool;
     if (!queryPoolVal.IsImported())
         RETURN_ON_FAILURE(&m_Device, offset + num <= queryPoolVal.GetQueryNum(), ReturnVoid(), "'offset + num = %u' is out of range", offset + num);
 

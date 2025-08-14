@@ -747,10 +747,12 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
     float defaultHdrScale = drawImguiDesc.hdrScale == 0.0f ? 1.0f : drawImguiDesc.hdrScale;
 
     m_iCore.CmdSetDescriptorPool(commandBuffer, *m_DescriptorPool);
-    m_iCore.CmdSetPipelineLayout(commandBuffer, *m_PipelineLayout);
+    m_iCore.CmdSetPipelineLayout(commandBuffer, BindPoint::GRAPHICS, *m_PipelineLayout);
     m_iCore.CmdSetPipeline(commandBuffer, *pipeline);
     m_iCore.CmdSetIndexBuffer(commandBuffer, *m_CurrentBuffer, m_IbOffset, IndexType::UINT16);
-    m_iCore.CmdSetDescriptorSet(commandBuffer, IMGUI_SAMPLER_SET, *m_DescriptorSet0_sampler, nullptr);
+
+    DescriptorSetBindingDesc samplerBindingDesc = {IMGUI_SAMPLER_SET, m_DescriptorSet0_sampler};
+    m_iCore.CmdSetDescriptorSet(commandBuffer, samplerBindingDesc);
 
     VertexBufferDesc vertexBufferDesc = {};
     vertexBufferDesc.buffer = m_CurrentBuffer;
@@ -775,7 +777,8 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
     constants.invDisplayHeight = 1.0f / viewport.height;
     constants.gamma = drawImguiDesc.linearColor ? 2.2f : 1.0f;
 
-    m_iCore.CmdSetRootConstants(commandBuffer, 0, &constants, sizeof(constants));
+    RootConstantBindingDesc rootConstantBindingDesc = {0, &constants, sizeof(constants)};
+    m_iCore.CmdSetRootConstants(commandBuffer, rootConstantBindingDesc);
 
     // For each draw list
     Descriptor* currentDescriptor = nullptr;
@@ -810,7 +813,7 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
 
                     constants.hdrScale = currentHdrScale == 0.0f ? defaultHdrScale : currentHdrScale;
 
-                    m_iCore.CmdSetRootConstants(commandBuffer, 0, &constants, sizeof(constants));
+                    m_iCore.CmdSetRootConstants(commandBuffer, rootConstantBindingDesc);
                 }
 
                 // Change texture
@@ -830,7 +833,8 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
                     DescriptorSet* descriptorSet = m_DescriptorSets1[m_DescriptorSetIndex];
                     m_DescriptorSetIndex = (m_DescriptorSetIndex + 1) % m_DescriptorSets1.size();
 
-                    m_iCore.CmdSetDescriptorSet(commandBuffer, IMGUI_TEXTURE_SET, *descriptorSet, nullptr);
+                    DescriptorSetBindingDesc textureBindingDesc = {IMGUI_TEXTURE_SET, descriptorSet};
+                    m_iCore.CmdSetDescriptorSet(commandBuffer, textureBindingDesc);
 
                     DescriptorRangeUpdateDesc descriptorRangeUpdateDesc = {&currentDescriptor, 1};
                     m_iCore.UpdateDescriptorRanges(*descriptorSet, 0, 1, &descriptorRangeUpdateDesc);

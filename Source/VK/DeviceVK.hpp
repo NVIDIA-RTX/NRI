@@ -2057,17 +2057,17 @@ NRI_INLINE Result DeviceVK::BindBufferMemory(const BufferMemoryBindingDesc* memo
     for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
         const BufferMemoryBindingDesc& memoryBindingDesc = memoryBindingDescs[i];
 
-        BufferVK& bufferImpl = *(BufferVK*)memoryBindingDesc.buffer;
-        MemoryVK& memoryImpl = *(MemoryVK*)memoryBindingDesc.memory;
+        BufferVK& bufferVK = *(BufferVK*)memoryBindingDesc.buffer;
+        MemoryVK& memoryVK = *(MemoryVK*)memoryBindingDesc.memory;
 
-        MemoryTypeInfo memoryTypeInfo = Unpack(memoryImpl.GetType());
+        MemoryTypeInfo memoryTypeInfo = Unpack(memoryVK.GetType());
         if (memoryTypeInfo.mustBeDedicated)
-            memoryImpl.CreateDedicated(bufferImpl);
+            memoryVK.CreateDedicated(bufferVK);
 
         VkBindBufferMemoryInfo& info = infos[i];
         info = {VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO};
-        info.buffer = bufferImpl.GetHandle();
-        info.memory = memoryImpl.GetHandle();
+        info.buffer = bufferVK.GetHandle();
+        info.memory = memoryVK.GetHandle();
         info.memoryOffset = memoryBindingDesc.offset;
     }
 
@@ -2077,10 +2077,10 @@ NRI_INLINE Result DeviceVK::BindBufferMemory(const BufferMemoryBindingDesc* memo
     for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
         const BufferMemoryBindingDesc& memoryBindingDesc = memoryBindingDescs[i];
 
-        BufferVK& bufferImpl = *(BufferVK*)memoryBindingDesc.buffer;
-        MemoryVK& memoryImpl = *(MemoryVK*)memoryBindingDesc.memory;
+        BufferVK& bufferVK = *(BufferVK*)memoryBindingDesc.buffer;
+        MemoryVK& memoryVK = *(MemoryVK*)memoryBindingDesc.memory;
 
-        bufferImpl.FinishMemoryBinding(memoryImpl, memoryBindingDesc.offset);
+        bufferVK.FinishMemoryBinding(memoryVK, memoryBindingDesc.offset);
     }
 
     return Result::SUCCESS;
@@ -2095,17 +2095,17 @@ NRI_INLINE Result DeviceVK::BindTextureMemory(const TextureMemoryBindingDesc* me
     for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
         const TextureMemoryBindingDesc& memoryBindingDesc = memoryBindingDescs[i];
 
-        MemoryVK& memoryImpl = *(MemoryVK*)memoryBindingDesc.memory;
-        TextureVK& textureImpl = *(TextureVK*)memoryBindingDesc.texture;
+        MemoryVK& memoryVK = *(MemoryVK*)memoryBindingDesc.memory;
+        TextureVK& textureVK = *(TextureVK*)memoryBindingDesc.texture;
 
-        MemoryTypeInfo memoryTypeInfo = Unpack(memoryImpl.GetType());
+        MemoryTypeInfo memoryTypeInfo = Unpack(memoryVK.GetType());
         if (memoryTypeInfo.mustBeDedicated)
-            memoryImpl.CreateDedicated(textureImpl);
+            memoryVK.CreateDedicated(textureVK);
 
         VkBindImageMemoryInfo& info = infos[i];
         info = {VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO};
-        info.image = textureImpl.GetHandle();
-        info.memory = memoryImpl.GetHandle();
+        info.image = textureVK.GetHandle();
+        info.memory = memoryVK.GetHandle();
         info.memoryOffset = memoryBindingDesc.offset;
     }
 

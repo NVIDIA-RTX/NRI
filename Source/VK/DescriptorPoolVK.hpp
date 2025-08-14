@@ -58,7 +58,7 @@ NRI_INLINE void DescriptorPoolVK::SetDebugName(const char* name) {
 NRI_INLINE Result DescriptorPoolVK::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum) {
     ExclusiveScope lock(m_Lock);
 
-    const PipelineLayoutVK& pipelineLayoutVK = (const PipelineLayoutVK&)pipelineLayout;
+    const PipelineLayoutVK& pipelineLayoutVK = (PipelineLayoutVK&)pipelineLayout;
     VkDescriptorSetLayout setLayout = pipelineLayoutVK.GetDescriptorSetLayout(setIndex);
 
     const auto& bindingInfo = pipelineLayoutVK.GetBindingInfo();

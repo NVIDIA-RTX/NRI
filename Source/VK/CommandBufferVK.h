@@ -39,11 +39,10 @@ struct CommandBufferVK final : public DebugNameBase {
     Result Begin(const DescriptorPool* descriptorPool);
     Result End();
     void SetPipeline(const Pipeline& pipeline);
-    void SetPipelineLayout(const PipelineLayout& pipelineLayout);
-    void SetDescriptorSet(uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets);
-    void SetRootConstants(uint32_t rootConstantIndex, const void* data, uint32_t size);
-    void SetRootDescriptor(uint32_t rootDescriptorIndex, Descriptor& descriptor);
-    void SetDescriptorPool(const DescriptorPool& descriptorPool);
+    void SetPipelineLayout(BindPoint bindPoint, const PipelineLayout& pipelineLayout);
+    void SetDescriptorSet(const DescriptorSetBindingDesc& descriptorSetBindingDesc);
+    void SetRootConstants(const RootConstantBindingDesc& rootConstantBindingDesc);
+    void SetRootDescriptor(const RootDescriptorBindingDesc& rootDescriptorBindingDesc);
     void Barrier(const BarrierGroupDesc& barrierGroupDesc);
     void BeginRendering(const AttachmentsDesc& attachmentsDesc);
     void EndRendering();
@@ -92,13 +91,13 @@ struct CommandBufferVK final : public DebugNameBase {
 
 private:
     DeviceVK& m_Device;
-    const PipelineVK* m_Pipeline = nullptr;
     const PipelineLayoutVK* m_PipelineLayout = nullptr;
     const DescriptorVK* m_DepthStencil = nullptr;
     VkCommandBuffer m_Handle = VK_NULL_HANDLE;
     VkCommandPool m_CommandPool = VK_NULL_HANDLE;
     QueueType m_Type = (QueueType)0;
     uint32_t m_ViewMask = 0;
+    BindPoint m_PipelineBindPoint = BindPoint::INHERIT;
     Dim_t m_RenderLayerNum = 0;
     Dim_t m_RenderWidth = 0;
     Dim_t m_RenderHeight = 0;

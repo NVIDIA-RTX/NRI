@@ -77,12 +77,12 @@ struct CommandBufferD3D12 final : public DebugNameBase {
     void BeginRendering(const AttachmentsDesc& attachmentsDesc);
     void SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum);
     void SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType);
-    void SetPipelineLayout(const PipelineLayout& pipelineLayout);
+    void SetPipelineLayout(BindPoint bindPoint, const PipelineLayout& pipelineLayout);
     void SetPipeline(const Pipeline& pipeline);
     void SetDescriptorPool(const DescriptorPool& descriptorPool);
-    void SetDescriptorSet(uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets);
-    void SetRootConstants(uint32_t rootConstantIndex, const void* data, uint32_t size);
-    void SetRootDescriptor(uint32_t rootDescriptorIndex, Descriptor& descriptor);
+    void SetDescriptorSet(const DescriptorSetBindingDesc& descriptorSetBindingDesc);
+    void SetRootConstants(const RootConstantBindingDesc& rootConstantBindingDesc);
+    void SetRootDescriptor(const RootDescriptorBindingDesc& rootDescriptorBindingDesc);
     void Draw(const DrawDesc& drawDesc);
     void DrawIndexed(const DrawIndexedDesc& drawIndexedDesc);
     void DrawIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset);
@@ -120,14 +120,12 @@ private:
     ComPtr<ID3D12CommandAllocator> m_CommandAllocator;
     ComPtr<ID3D12GraphicsCommandListBest> m_GraphicsCommandList;
     std::array<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT> m_RenderTargets = {};
-    std::array<DescriptorSetD3D12*, ROOT_SIGNATURE_DWORD_NUM> m_DescriptorSets = {};
+    std::array<DescriptorSetD3D12*, ROOT_SIGNATURE_DWORD_NUM> m_DescriptorSets = {}; // TODO: needed only for "ClearStorage"
     D3D12_CPU_DESCRIPTOR_HANDLE m_DepthStencil = {};
     const PipelineLayoutD3D12* m_PipelineLayout = nullptr;
-    PipelineD3D12* m_Pipeline = nullptr;
-    D3D12_PRIMITIVE_TOPOLOGY m_PrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
     uint32_t m_RenderTargetNum = 0;
+    BindPoint m_PipelineBindPoint = BindPoint::INHERIT;
     uint8_t m_Version = 0;
-    bool m_IsGraphicsPipelineLayout = false;
 };
 
 } // namespace nri

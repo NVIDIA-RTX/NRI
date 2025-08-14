@@ -239,20 +239,20 @@ static void NRI_CALL CmdSetDescriptorPool(CommandBuffer& commandBuffer, const De
     ((CommandBufferD3D11&)commandBuffer).SetDescriptorPool(descriptorPool);
 }
 
-static void NRI_CALL CmdSetPipelineLayout(CommandBuffer& commandBuffer, const PipelineLayout& pipelineLayout) {
-    ((CommandBufferD3D11&)commandBuffer).SetPipelineLayout(pipelineLayout);
+static void NRI_CALL CmdSetPipelineLayout(CommandBuffer& commandBuffer, BindPoint bindPoint, const PipelineLayout& pipelineLayout) {
+    ((CommandBufferD3D11&)commandBuffer).SetPipelineLayout(bindPoint, pipelineLayout);
 }
 
-static void NRI_CALL CmdSetDescriptorSet(CommandBuffer& commandBuffer, uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) {
-    ((CommandBufferD3D11&)commandBuffer).SetDescriptorSet(setIndex, descriptorSet, dynamicConstantBufferOffsets);
+static void NRI_CALL CmdSetDescriptorSet(CommandBuffer& commandBuffer, const DescriptorSetBindingDesc& descriptorSetBindingDesc) {
+    ((CommandBufferD3D11&)commandBuffer).SetDescriptorSet(descriptorSetBindingDesc);
 }
 
-static void NRI_CALL CmdSetRootConstants(CommandBuffer& commandBuffer, uint32_t rootConstantIndex, const void* data, uint32_t size) {
-    ((CommandBufferD3D11&)commandBuffer).SetRootConstants(rootConstantIndex, data, size);
+static void NRI_CALL CmdSetRootConstants(CommandBuffer& commandBuffer, const RootConstantBindingDesc& rootConstantBindingDesc) {
+    ((CommandBufferD3D11&)commandBuffer).SetRootConstants(rootConstantBindingDesc);
 }
 
-static void NRI_CALL CmdSetRootDescriptor(CommandBuffer& commandBuffer, uint32_t rootDescriptorIndex, Descriptor& descriptor) {
-    ((CommandBufferD3D11&)commandBuffer).SetRootDescriptor(rootDescriptorIndex, descriptor);
+static void NRI_CALL CmdSetRootDescriptor(CommandBuffer& commandBuffer, const RootDescriptorBindingDesc& rootDescriptorBindingDesc) {
+    ((CommandBufferD3D11&)commandBuffer).SetRootDescriptor(rootDescriptorBindingDesc);
 }
 
 static void NRI_CALL CmdSetPipeline(CommandBuffer& commandBuffer, const Pipeline& pipeline) {
@@ -527,20 +527,20 @@ static Result NRI_CALL EmuBeginCommandBuffer(CommandBuffer& commandBuffer, const
 static void NRI_CALL EmuCmdSetDescriptorPool(CommandBuffer&, const DescriptorPool&) {
 }
 
-static void NRI_CALL EmuCmdSetPipelineLayout(CommandBuffer& commandBuffer, const PipelineLayout& pipelineLayout) {
-    ((CommandBufferEmuD3D11&)commandBuffer).SetPipelineLayout(pipelineLayout);
+static void NRI_CALL EmuCmdSetPipelineLayout(CommandBuffer& commandBuffer, BindPoint bindPoint, const PipelineLayout& pipelineLayout) {
+    ((CommandBufferEmuD3D11&)commandBuffer).SetPipelineLayout(bindPoint, pipelineLayout);
 }
 
-static void NRI_CALL EmuCmdSetDescriptorSet(CommandBuffer& commandBuffer, uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) {
-    ((CommandBufferEmuD3D11&)commandBuffer).SetDescriptorSet(setIndex, descriptorSet, dynamicConstantBufferOffsets);
+static void NRI_CALL EmuCmdSetDescriptorSet(CommandBuffer& commandBuffer, const DescriptorSetBindingDesc& descriptorSetBindingDesc) {
+    ((CommandBufferEmuD3D11&)commandBuffer).SetDescriptorSet(descriptorSetBindingDesc);
 }
 
-static void NRI_CALL EmuSetRootConstants(CommandBuffer& commandBuffer, uint32_t rootConstantIndex, const void* data, uint32_t size) {
-    ((CommandBufferEmuD3D11&)commandBuffer).SetRootConstants(rootConstantIndex, data, size);
+static void NRI_CALL EmuSetRootConstants(CommandBuffer& commandBuffer, const RootConstantBindingDesc& rootConstantBindingDesc) {
+    ((CommandBufferEmuD3D11&)commandBuffer).SetRootConstants(rootConstantBindingDesc);
 }
 
-static void NRI_CALL EmuCmdSetRootDescriptor(CommandBuffer& commandBuffer, uint32_t rootDescriptorIndex, Descriptor& descriptor) {
-    ((CommandBufferEmuD3D11&)commandBuffer).SetRootDescriptor(rootDescriptorIndex, descriptor);
+static void NRI_CALL EmuCmdSetRootDescriptor(CommandBuffer& commandBuffer, const RootDescriptorBindingDesc& rootDescriptorBindingDesc) {
+    ((CommandBufferEmuD3D11&)commandBuffer).SetRootDescriptor(rootDescriptorBindingDesc);
 }
 
 static void NRI_CALL EmuCmdSetPipeline(CommandBuffer& commandBuffer, const Pipeline& pipeline) {

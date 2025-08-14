@@ -48,10 +48,6 @@ struct PipelineLayoutVK final : public DebugNameBase {
         return m_DescriptorSetLayouts[setIndex];
     }
 
-    inline VkPipelineBindPoint GetPipelineBindPoint() const {
-        return m_PipelineBindPoint;
-    }
-
     ~PipelineLayoutVK();
 
     Result Create(const PipelineLayoutDesc& pipelineLayoutDesc);
@@ -68,7 +64,6 @@ private:
 private:
     DeviceVK& m_Device;
     VkPipelineLayout m_Handle = VK_NULL_HANDLE;
-    VkPipelineBindPoint m_PipelineBindPoint = VK_PIPELINE_BIND_POINT_MAX_ENUM;
     BindingInfo m_BindingInfo;
     Vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
 };

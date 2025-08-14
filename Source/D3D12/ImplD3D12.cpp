@@ -253,20 +253,20 @@ static void NRI_CALL CmdSetDescriptorPool(CommandBuffer& commandBuffer, const De
     ((CommandBufferD3D12&)commandBuffer).SetDescriptorPool(descriptorPool);
 }
 
-static void NRI_CALL CmdSetPipelineLayout(CommandBuffer& commandBuffer, const PipelineLayout& pipelineLayout) {
-    ((CommandBufferD3D12&)commandBuffer).SetPipelineLayout(pipelineLayout);
+static void NRI_CALL CmdSetPipelineLayout(CommandBuffer& commandBuffer, BindPoint bindPoint, const PipelineLayout& pipelineLayout) {
+    ((CommandBufferD3D12&)commandBuffer).SetPipelineLayout(bindPoint, pipelineLayout);
 }
 
-static void NRI_CALL CmdSetDescriptorSet(CommandBuffer& commandBuffer, uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) {
-    ((CommandBufferD3D12&)commandBuffer).SetDescriptorSet(setIndex, descriptorSet, dynamicConstantBufferOffsets);
+static void NRI_CALL CmdSetDescriptorSet(CommandBuffer& commandBuffer, const DescriptorSetBindingDesc& descriptorSetBindingDesc) {
+    ((CommandBufferD3D12&)commandBuffer).SetDescriptorSet(descriptorSetBindingDesc);
 }
 
-static void NRI_CALL CmdSetRootConstants(CommandBuffer& commandBuffer, uint32_t rootConstantIndex, const void* data, uint32_t size) {
-    ((CommandBufferD3D12&)commandBuffer).SetRootConstants(rootConstantIndex, data, size);
+static void NRI_CALL CmdSetRootConstants(CommandBuffer& commandBuffer, const RootConstantBindingDesc& rootConstantBindingDesc) {
+    ((CommandBufferD3D12&)commandBuffer).SetRootConstants(rootConstantBindingDesc);
 }
 
-static void NRI_CALL CmdSetRootDescriptor(CommandBuffer& commandBuffer, uint32_t rootDescriptorIndex, Descriptor& descriptor) {
-    ((CommandBufferD3D12&)commandBuffer).SetRootDescriptor(rootDescriptorIndex, descriptor);
+static void NRI_CALL CmdSetRootDescriptor(CommandBuffer& commandBuffer, const RootDescriptorBindingDesc& rootDescriptorBindingDesc) {
+    ((CommandBufferD3D12&)commandBuffer).SetRootDescriptor(rootDescriptorBindingDesc);
 }
 
 static void NRI_CALL CmdSetPipeline(CommandBuffer& commandBuffer, const Pipeline& pipeline) {

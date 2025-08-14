@@ -259,20 +259,20 @@ static void NRI_CALL CmdSetDescriptorPool(CommandBuffer& commandBuffer, const De
     ((CommandBufferVal&)commandBuffer).SetDescriptorPool(descriptorPool);
 }
 
-static void NRI_CALL CmdSetPipelineLayout(CommandBuffer& commandBuffer, const PipelineLayout& pipelineLayout) {
-    ((CommandBufferVal&)commandBuffer).SetPipelineLayout(pipelineLayout);
+static void NRI_CALL CmdSetPipelineLayout(CommandBuffer& commandBuffer, BindPoint bindPoint, const PipelineLayout& pipelineLayout) {
+    ((CommandBufferVal&)commandBuffer).SetPipelineLayout(bindPoint, pipelineLayout);
 }
 
-static void NRI_CALL CmdSetDescriptorSet(CommandBuffer& commandBuffer, uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) {
-    ((CommandBufferVal&)commandBuffer).SetDescriptorSet(setIndex, descriptorSet, dynamicConstantBufferOffsets);
+static void NRI_CALL CmdSetDescriptorSet(CommandBuffer& commandBuffer, const DescriptorSetBindingDesc& descriptorSetBindingDesc) {
+    ((CommandBufferVal&)commandBuffer).SetDescriptorSet(descriptorSetBindingDesc);
 }
 
-static void NRI_CALL CmdSetRootConstants(CommandBuffer& commandBuffer, uint32_t rootConstantIndex, const void* data, uint32_t size) {
-    ((CommandBufferVal&)commandBuffer).SetRootConstants(rootConstantIndex, data, size);
+static void NRI_CALL CmdSetRootConstants(CommandBuffer& commandBuffer, const RootConstantBindingDesc& rootConstantBindingDesc) {
+    ((CommandBufferVal&)commandBuffer).SetRootConstants(rootConstantBindingDesc);
 }
 
-static void NRI_CALL CmdSetRootDescriptor(CommandBuffer& commandBuffer, uint32_t rootDescriptorIndex, Descriptor& descriptor) {
-    ((CommandBufferVal&)commandBuffer).SetRootDescriptor(rootDescriptorIndex, descriptor);
+static void NRI_CALL CmdSetRootDescriptor(CommandBuffer& commandBuffer, const RootDescriptorBindingDesc& rootDescriptorBindingDesc) {
+    ((CommandBufferVal&)commandBuffer).SetRootDescriptor(rootDescriptorBindingDesc);
 }
 
 static void NRI_CALL CmdSetPipeline(CommandBuffer& commandBuffer, const Pipeline& pipeline) {

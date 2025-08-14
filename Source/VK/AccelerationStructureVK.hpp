@@ -77,16 +77,15 @@ NRI_INLINE void AccelerationStructureVK::SetDebugName(const char* name) {
 }
 
 NRI_INLINE Result AccelerationStructureVK::CreateDescriptor(Descriptor*& descriptor) const {
-    DescriptorVK* descriptorImpl = Allocate<DescriptorVK>(m_Device.GetAllocationCallbacks(), m_Device);
-
-    Result result = descriptorImpl->Create(m_Handle);
+    DescriptorVK* descriptorVK = Allocate<DescriptorVK>(m_Device.GetAllocationCallbacks(), m_Device);
+    Result result = descriptorVK->Create(m_Handle);
 
     if (result == Result::SUCCESS) {
-        descriptor = (Descriptor*)descriptorImpl;
+        descriptor = (Descriptor*)descriptorVK;
         return Result::SUCCESS;
     }
 
-    Destroy(descriptorImpl);
+    Destroy(descriptorVK);
 
     return Result::SUCCESS;
 }

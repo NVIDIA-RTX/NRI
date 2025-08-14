@@ -21,10 +21,6 @@ struct PipelineD3D12 final : public DebugNameBase {
         return m_PipelineState.GetInterface();
     }
 
-    inline bool IsGraphicsPipeline() const {
-        return m_IsGraphicsPipeline;
-    }
-
     inline DeviceD3D12& GetDevice() const {
         return m_Device;
     }
@@ -37,7 +33,7 @@ struct PipelineD3D12 final : public DebugNameBase {
     Result Create(const ComputePipelineDesc& computePipelineDesc);
     Result Create(const RayTracingPipelineDesc& rayTracingPipelineDesc);
 
-    void Bind(ID3D12GraphicsCommandList* graphicsCommandList, D3D12_PRIMITIVE_TOPOLOGY& primitiveTopology) const;
+    void Bind(ID3D12GraphicsCommandList* graphicsCommandList) const;
 
     //================================================================================================================
     // DebugNameBase
@@ -64,7 +60,6 @@ private:
     Vector<std::wstring> m_ShaderGroupNames;
     const PipelineLayoutD3D12* m_PipelineLayout = nullptr;
     D3D_PRIMITIVE_TOPOLOGY m_PrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
-    bool m_IsGraphicsPipeline = false;
 };
 
 } // namespace nri

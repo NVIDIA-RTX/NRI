@@ -5,10 +5,10 @@ static void WriteSamplers(VkWriteDescriptorSet& writeDescriptorSet, size_t& scra
     scratchOffset += rangeUpdateDesc.descriptorNum * sizeof(VkDescriptorImageInfo);
 
     for (uint32_t i = 0; i < rangeUpdateDesc.descriptorNum; i++) {
-        const DescriptorVK& descriptorImpl = *(DescriptorVK*)rangeUpdateDesc.descriptors[i];
+        const DescriptorVK& descriptorVK = *(DescriptorVK*)rangeUpdateDesc.descriptors[i];
         imageInfos[i].imageView = VK_NULL_HANDLE;
         imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageInfos[i].sampler = descriptorImpl.GetSampler();
+        imageInfos[i].sampler = descriptorVK.GetSampler();
     }
 
     writeDescriptorSet.pImageInfo = imageInfos;
@@ -19,10 +19,10 @@ static void WriteTextures(VkWriteDescriptorSet& writeDescriptorSet, size_t& scra
     scratchOffset += rangeUpdateDesc.descriptorNum * sizeof(VkDescriptorImageInfo);
 
     for (uint32_t i = 0; i < rangeUpdateDesc.descriptorNum; i++) {
-        const DescriptorVK& descriptorImpl = *(DescriptorVK*)rangeUpdateDesc.descriptors[i];
+        const DescriptorVK& descriptorVK = *(DescriptorVK*)rangeUpdateDesc.descriptors[i];
 
-        imageInfos[i].imageView = descriptorImpl.GetImageView();
-        imageInfos[i].imageLayout = descriptorImpl.GetTexDesc().layout;
+        imageInfos[i].imageView = descriptorVK.GetImageView();
+        imageInfos[i].imageLayout = descriptorVK.GetTexDesc().layout;
         imageInfos[i].sampler = VK_NULL_HANDLE;
     }
 
@@ -46,8 +46,8 @@ static void WriteTypedBuffers(VkWriteDescriptorSet& writeDescriptorSet, size_t& 
     scratchOffset += rangeUpdateDesc.descriptorNum * sizeof(VkBufferView);
 
     for (uint32_t i = 0; i < rangeUpdateDesc.descriptorNum; i++) {
-        const DescriptorVK& descriptorImpl = *(DescriptorVK*)rangeUpdateDesc.descriptors[i];
-        bufferViews[i] = descriptorImpl.GetBufferView();
+        const DescriptorVK& descriptorVK = *(DescriptorVK*)rangeUpdateDesc.descriptors[i];
+        bufferViews[i] = descriptorVK.GetBufferView();
     }
 
     writeDescriptorSet.pTexelBufferView = bufferViews;
@@ -58,8 +58,8 @@ static void WriteAccelerationStructures(VkWriteDescriptorSet& writeDescriptorSet
     scratchOffset += rangeUpdateDesc.descriptorNum * sizeof(VkAccelerationStructureKHR);
 
     for (uint32_t i = 0; i < rangeUpdateDesc.descriptorNum; i++) {
-        const DescriptorVK& descriptorImpl = *(DescriptorVK*)rangeUpdateDesc.descriptors[i];
-        accelerationStructures[i] = descriptorImpl.GetAccelerationStructure();
+        const DescriptorVK& descriptorVK = *(DescriptorVK*)rangeUpdateDesc.descriptors[i];
+        accelerationStructures[i] = descriptorVK.GetAccelerationStructure();
     }
 
     VkWriteDescriptorSetAccelerationStructureKHR* accelerationStructureInfo = (VkWriteDescriptorSetAccelerationStructureKHR*)(scratch + scratchOffset);
@@ -157,10 +157,10 @@ NRI_INLINE void DescriptorSetVK::UpdateDynamicConstantBuffers(uint32_t baseDynam
 
     for (uint32_t j = 0; j < dynamicConstantBufferNum; j++) {
         const DynamicConstantBufferDesc& bufferDesc = m_Desc->dynamicConstantBuffers[baseDynamicConstantBuffer + j];
-        const DescriptorVK& descriptorImpl = *(const DescriptorVK*)descriptors[j];
+        const DescriptorVK& descriptorVK = *(const DescriptorVK*)descriptors[j];
 
         VkDescriptorBufferInfo& bufferInfo = infos[j];
-        bufferInfo = descriptorImpl.GetBufferInfo();
+        bufferInfo = descriptorVK.GetBufferInfo();
 
         VkWriteDescriptorSet& writeDescriptorSet = writes[j];
         writeDescriptorSet = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};

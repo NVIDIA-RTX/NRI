@@ -289,9 +289,7 @@ NRI_INLINE Result CommandBufferD3D12::Begin(const DescriptorPool* descriptorPool
         SetDescriptorPool(*descriptorPool);
 
     m_PipelineLayout = nullptr;
-    m_IsGraphicsPipelineLayout = false;
-    m_Pipeline = nullptr;
-    m_PrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+    m_PipelineBindPoint = BindPoint::INHERIT;
 
     ResetAttachments();
 
@@ -474,67 +472,41 @@ NRI_INLINE void CommandBufferD3D12::SetIndexBuffer(const Buffer& buffer, uint64_
     m_GraphicsCommandList->IASetIndexBuffer(&indexBufferView);
 }
 
-NRI_INLINE void CommandBufferD3D12::SetPipelineLayout(const PipelineLayout& pipelineLayout) {
-    const PipelineLayoutD3D12& pipelineLayoutD3D12 = (const PipelineLayoutD3D12&)pipelineLayout;
-
-    m_PipelineLayout = &pipelineLayoutD3D12;
-    m_IsGraphicsPipelineLayout = pipelineLayoutD3D12.IsGraphicsPipelineLayout();
-
-    if (m_IsGraphicsPipelineLayout)
+NRI_INLINE void CommandBufferD3D12::SetPipelineLayout(BindPoint bindPoint, const PipelineLayout& pipelineLayout) {
+    const PipelineLayoutD3D12& pipelineLayoutD3D12 = (PipelineLayoutD3D12&)pipelineLayout;
+    if (bindPoint == BindPoint::GRAPHICS)
         m_GraphicsCommandList->SetGraphicsRootSignature(pipelineLayoutD3D12);
     else
         m_GraphicsCommandList->SetComputeRootSignature(pipelineLayoutD3D12);
+
+    m_PipelineLayout = &pipelineLayoutD3D12;
+    m_PipelineBindPoint = bindPoint;
 }
 
 NRI_INLINE void CommandBufferD3D12::SetPipeline(const Pipeline& pipeline) {
     PipelineD3D12* pipelineD3D12 = (PipelineD3D12*)&pipeline;
-    pipelineD3D12->Bind(m_GraphicsCommandList, m_PrimitiveTopology);
-
-    m_Pipeline = pipelineD3D12;
+    pipelineD3D12->Bind(m_GraphicsCommandList);
 }
 
 NRI_INLINE void CommandBufferD3D12::SetDescriptorPool(const DescriptorPool& descriptorPool) {
     ((DescriptorPoolD3D12&)descriptorPool).Bind(m_GraphicsCommandList);
 }
 
-NRI_INLINE void CommandBufferD3D12::SetDescriptorSet(uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) {
-    m_PipelineLayout->SetDescriptorSet(*m_GraphicsCommandList, m_IsGraphicsPipelineLayout, setIndex, descriptorSet, dynamicConstantBufferOffsets);
-    m_DescriptorSets[setIndex] = (DescriptorSetD3D12*)&descriptorSet;
+NRI_INLINE void CommandBufferD3D12::SetDescriptorSet(const DescriptorSetBindingDesc& descriptorSetBindingDesc) {
+    BindPoint bindPoint = descriptorSetBindingDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : descriptorSetBindingDesc.bindPoint;
+    m_PipelineLayout->SetDescriptorSet(m_GraphicsCommandList, bindPoint, descriptorSetBindingDesc);
+
+    m_DescriptorSets[descriptorSetBindingDesc.setIndex] = (DescriptorSetD3D12*)descriptorSetBindingDesc.descriptorSet;
 }
 
-NRI_INLINE void CommandBufferD3D12::SetRootConstants(uint32_t rootConstantIndex, const void* data, uint32_t size) {
-    uint32_t rootParameterIndex = m_PipelineLayout->GetBaseRootConstant() + rootConstantIndex;
-    uint32_t rootConstantNum = size / 4;
-
-    if (m_IsGraphicsPipelineLayout)
-        m_GraphicsCommandList->SetGraphicsRoot32BitConstants(rootParameterIndex, rootConstantNum, data, 0);
-    else
-        m_GraphicsCommandList->SetComputeRoot32BitConstants(rootParameterIndex, rootConstantNum, data, 0);
+NRI_INLINE void CommandBufferD3D12::SetRootConstants(const RootConstantBindingDesc& rootConstantBindingDesc) {
+    BindPoint bindPoint = rootConstantBindingDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : rootConstantBindingDesc.bindPoint;
+    m_PipelineLayout->SetRootConstants(m_GraphicsCommandList, bindPoint, rootConstantBindingDesc);
 }
 
-NRI_INLINE void CommandBufferD3D12::SetRootDescriptor(uint32_t rootDescriptorIndex, Descriptor& descriptor) {
-    uint32_t rootParameterIndex = m_PipelineLayout->GetBaseRootDescriptor() + rootDescriptorIndex;
-    DescriptorD3D12& descriptorD3D12 = (DescriptorD3D12&)descriptor;
-    D3D12_GPU_VIRTUAL_ADDRESS bufferLocation = descriptorD3D12.GetPointerGPU();
-
-    BufferViewType bufferViewType = descriptorD3D12.GetBufferViewType();
-    if (bufferViewType == BufferViewType::SHADER_RESOURCE || descriptorD3D12.IsAccelerationStructure()) {
-        if (m_IsGraphicsPipelineLayout)
-            m_GraphicsCommandList->SetGraphicsRootShaderResourceView(rootParameterIndex, bufferLocation);
-        else
-            m_GraphicsCommandList->SetComputeRootShaderResourceView(rootParameterIndex, bufferLocation);
-    } else if (bufferViewType == BufferViewType::SHADER_RESOURCE_STORAGE) {
-        if (m_IsGraphicsPipelineLayout)
-            m_GraphicsCommandList->SetGraphicsRootUnorderedAccessView(rootParameterIndex, bufferLocation);
-        else
-            m_GraphicsCommandList->SetComputeRootUnorderedAccessView(rootParameterIndex, bufferLocation);
-    } else if (bufferViewType == BufferViewType::CONSTANT) {
-        if (m_IsGraphicsPipelineLayout)
-            m_GraphicsCommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, bufferLocation);
-        else
-            m_GraphicsCommandList->SetComputeRootConstantBufferView(rootParameterIndex, bufferLocation);
-    } else
-        CHECK(false, "Unexpected");
+NRI_INLINE void CommandBufferD3D12::SetRootDescriptor(const RootDescriptorBindingDesc& rootDescriptorBindingDesc) {
+    BindPoint bindPoint = rootDescriptorBindingDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : rootDescriptorBindingDesc.bindPoint;
+    m_PipelineLayout->SetRootDescriptor(m_GraphicsCommandList, bindPoint, rootDescriptorBindingDesc);
 }
 
 NRI_INLINE void CommandBufferD3D12::Draw(const DrawDesc& drawDesc) {

@@ -38,21 +38,24 @@ constexpr std::array<DescriptorTypeDX11, (size_t)DescriptorType::MAX_NUM> g_Rema
 };
 VALIDATE_ARRAY(g_RemapDescriptorTypeToIndex);
 
-constexpr DescriptorTypeDX11 GetDescriptorTypeIndex(DescriptorType type) {
+static inline DescriptorTypeDX11 GetDescriptorTypeIndex(DescriptorType type) {
     return g_RemapDescriptorTypeToIndex[(uint32_t)type];
 }
 
-constexpr bool IsShaderVisible(StageBits shaderVisibility, StageBits stage) {
+static inline bool IsShaderVisible(StageBits shaderVisibility, StageBits stage) {
     return shaderVisibility & stage;
 }
 
-constexpr StageBits GetShaderVisibility(StageBits visibility, StageBits stageMask) {
-    return (visibility == StageBits::ALL) ? stageMask : (StageBits)(visibility & stageMask);
+static inline StageBits GetShaderVisibility(StageBits shaderStages, StageBits pipelineLayoutShaderStages) {
+    if (shaderStages == StageBits::ALL)
+        shaderStages = StageBits::ALL_SHADERS;
+    if (pipelineLayoutShaderStages == StageBits::ALL)
+        pipelineLayoutShaderStages = StageBits::ALL_SHADERS;
+
+    return (StageBits)(shaderStages & pipelineLayoutShaderStages);
 }
 
 Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
-    m_IsGraphicsPipelineLayout = pipelineLayoutDesc.shaderStages & StageBits::GRAPHICS_SHADERS;
-
     // Descriptor sets
     for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++) {
         const DescriptorSetDesc& set = pipelineLayoutDesc.descriptorSets[i];
@@ -163,22 +166,14 @@ void PipelineLayoutD3D11::Bind(ID3D11DeviceContextBest* deferredContext) {
     }
 }
 
-void PipelineLayoutD3D11::SetRootConstants(ID3D11DeviceContextBest* deferredContext, uint32_t rootConstantIndex, const void* data, uint32_t size) const {
-    MaybeUnused(size);
+void PipelineLayoutD3D11::SetRootConstants(ID3D11DeviceContextBest* deferredContext, const RootConstantBindingDesc& rootConstantBindingDesc) const {
+    const ConstantBuffer& cb = m_ConstantBuffers[rootConstantBindingDesc.rootConstantIndex];
 
-    const ConstantBuffer& cb = m_ConstantBuffers[rootConstantIndex];
-    deferredContext->UpdateSubresource(cb.buffer, 0, nullptr, data, 0, 0);
+    deferredContext->UpdateSubresource(cb.buffer, 0, nullptr, rootConstantBindingDesc.data, 0, 0);
 }
 
-void PipelineLayoutD3D11::BindDescriptorSet(BindingState& currentBindingState, ID3D11DeviceContextBest* deferredContext, uint32_t setIndex, const DescriptorSetD3D11* descriptorSet, const DescriptorD3D11* descriptor, const uint32_t* dynamicConstantBufferOffsets) const {
-    if (m_IsGraphicsPipelineLayout)
-        BindDescriptorSetImpl<true>(currentBindingState, deferredContext, setIndex, descriptorSet, descriptor, dynamicConstantBufferOffsets);
-    else
-        BindDescriptorSetImpl<false>(currentBindingState, deferredContext, setIndex, descriptorSet, descriptor, dynamicConstantBufferOffsets);
-}
-
-template <bool isGraphics>
-void PipelineLayoutD3D11::BindDescriptorSetImpl(BindingState& currentBindingState, ID3D11DeviceContextBest* deferredContext, uint32_t setIndex, const DescriptorSetD3D11* descriptorSet, const DescriptorD3D11* descriptor, const uint32_t* dynamicConstantBufferOffsets) const {
+void PipelineLayoutD3D11::SetDescriptorSet(BindPoint bindPoint, BindingState& currentBindingState, ID3D11DeviceContextBest* deferredContext, uint32_t setIndex, const DescriptorSetD3D11* descriptorSet, const DescriptorD3D11* descriptor, const uint32_t* dynamicConstantBufferOffsets) const {
+    bool isGraphics = bindPoint == BindPoint::GRAPHICS;
     const BindingSet& bindingSet = m_BindingSets[setIndex];
     bool isStorageRebindNeededInGraphics = false;
 

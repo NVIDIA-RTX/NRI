@@ -232,24 +232,23 @@ static Result NRI_CALL BeginCommandBuffer(CommandBuffer& commandBuffer, const De
     return ((CommandBufferVK&)commandBuffer).Begin(descriptorPool);
 }
 
-static void NRI_CALL CmdSetDescriptorPool(CommandBuffer& commandBuffer, const DescriptorPool& descriptorPool) {
-    ((CommandBufferVK&)commandBuffer).SetDescriptorPool(descriptorPool);
+static void NRI_CALL CmdSetDescriptorPool(CommandBuffer&, const DescriptorPool&) {
 }
 
-static void NRI_CALL CmdSetPipelineLayout(CommandBuffer& commandBuffer, const PipelineLayout& pipelineLayout) {
-    ((CommandBufferVK&)commandBuffer).SetPipelineLayout(pipelineLayout);
+static void NRI_CALL CmdSetPipelineLayout(CommandBuffer& commandBuffer, BindPoint bindPoint, const PipelineLayout& pipelineLayout) {
+    ((CommandBufferVK&)commandBuffer).SetPipelineLayout(bindPoint, pipelineLayout);
 }
 
-static void NRI_CALL CmdSetDescriptorSet(CommandBuffer& commandBuffer, uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) {
-    ((CommandBufferVK&)commandBuffer).SetDescriptorSet(setIndex, descriptorSet, dynamicConstantBufferOffsets);
+static void NRI_CALL CmdSetDescriptorSet(CommandBuffer& commandBuffer, const DescriptorSetBindingDesc& descriptorSetBindingDesc) {
+    ((CommandBufferVK&)commandBuffer).SetDescriptorSet(descriptorSetBindingDesc);
 }
 
-static void NRI_CALL CmdSetRootConstants(CommandBuffer& commandBuffer, uint32_t rootConstantIndex, const void* data, uint32_t size) {
-    ((CommandBufferVK&)commandBuffer).SetRootConstants(rootConstantIndex, data, size);
+static void NRI_CALL CmdSetRootConstants(CommandBuffer& commandBuffer, const RootConstantBindingDesc& rootConstantBindingDesc) {
+    ((CommandBufferVK&)commandBuffer).SetRootConstants(rootConstantBindingDesc);
 }
 
-static void NRI_CALL CmdSetRootDescriptor(CommandBuffer& commandBuffer, uint32_t rootDescriptorIndex, Descriptor& descriptor) {
-    ((CommandBufferVK&)commandBuffer).SetRootDescriptor(rootDescriptorIndex, descriptor);
+static void NRI_CALL CmdSetRootDescriptor(CommandBuffer& commandBuffer, const RootDescriptorBindingDesc& rootDescriptorBindingDesc) {
+    ((CommandBufferVK&)commandBuffer).SetRootDescriptor(rootDescriptorBindingDesc);
 }
 
 static void NRI_CALL CmdSetPipeline(CommandBuffer& commandBuffer, const Pipeline& pipeline) {
@@ -1143,15 +1142,15 @@ static bool NRI_CALL IsUpscalerSupported(const Device& device, UpscalerType upsc
 }
 
 static void NRI_CALL GetUpscalerProps(const Upscaler& upscaler, UpscalerProps& upscalerProps) {
-    UpscalerImpl& upscalerImpl = (UpscalerImpl&)upscaler;
+    UpscalerImpl& upscalerVK = (UpscalerImpl&)upscaler;
 
-    return upscalerImpl.GetUpscalerProps(upscalerProps);
+    return upscalerVK.GetUpscalerProps(upscalerProps);
 }
 
 static void NRI_CALL CmdDispatchUpscale(CommandBuffer& commandBuffer, Upscaler& upscaler, const DispatchUpscaleDesc& dispatchUpscalerDesc) {
-    UpscalerImpl& upscalerImpl = (UpscalerImpl&)upscaler;
+    UpscalerImpl& upscalerVK = (UpscalerImpl&)upscaler;
 
-    upscalerImpl.CmdDispatchUpscale(commandBuffer, dispatchUpscalerDesc);
+    upscalerVK.CmdDispatchUpscale(commandBuffer, dispatchUpscalerDesc);
 }
 
 Result DeviceVK::FillFunctionTable(UpscalerInterface& table) const {

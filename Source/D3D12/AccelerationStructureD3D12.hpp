@@ -37,7 +37,7 @@ Result AccelerationStructureD3D12::BindMemory(Memory* memory, uint64_t offset) {
 }
 
 Result AccelerationStructureD3D12::CreateDescriptor(Descriptor*& descriptor) const {
-    const AccelerationStructure& accelerationStructure = (const AccelerationStructure&)*this;
+    const AccelerationStructure& accelerationStructure = (AccelerationStructure&)*this;
 
     return m_Device.CreateImplementation<DescriptorD3D12>(descriptor, accelerationStructure);
 }

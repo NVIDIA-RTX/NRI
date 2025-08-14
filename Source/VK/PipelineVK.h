@@ -50,7 +50,7 @@ private:
 private:
     DeviceVK& m_Device;
     VkPipeline m_Handle = VK_NULL_HANDLE;
-    VkPipelineBindPoint m_BindPoint = (VkPipelineBindPoint)0;
+    VkPipelineBindPoint m_BindPoint = VK_PIPELINE_BIND_POINT_MAX_ENUM;
     DepthBiasDesc m_DepthBias = {};
     bool m_OwnsNativeObjects = true;
 };

@@ -346,21 +346,21 @@ NriBits(StageBits, uint32_t,
 
     // Graphics                                   // Invoked by "CmdDraw*"
     INDEX_INPUT                     = NriBit(0),  //    Index buffer consumption
-    VERTEX_SHADER                   = NriBit(1),  //    Vertex shader                                   X (required within graphics)
+    VERTEX_SHADER                   = NriBit(1),  //    Vertex shader                                   X (required within GRAPHICS bind point)
     TESS_CONTROL_SHADER             = NriBit(2),  //    Tessellation control (hull) shader              X
     TESS_EVALUATION_SHADER          = NriBit(3),  //    Tessellation evaluation (domain) shader         X
     GEOMETRY_SHADER                 = NriBit(4),  //    Geometry shader                                 X
     TASK_SHADER                     = NriBit(5),  //    Task (amplification) shader                     X
-    MESH_SHADER                     = NriBit(6),  //    Mesh shader                                     X (or required within graphics)
+    MESH_SHADER                     = NriBit(6),  //    Mesh shader                                     X (or required within GRAPHICS bind point)
     FRAGMENT_SHADER                 = NriBit(7),  //    Fragment (pixel) shader                         X
     DEPTH_STENCIL_ATTACHMENT        = NriBit(8),  //    Depth-stencil R/W operations
     COLOR_ATTACHMENT                = NriBit(9),  //    Color R/W operations
 
     // Compute                                    // Invoked by "CmdDispatch*" (not Rays)
-    COMPUTE_SHADER                  = NriBit(10), //    Compute shader                                  X (required within compute)
+    COMPUTE_SHADER                  = NriBit(10), //    Compute shader                                  X (required within COMPUTE bind point)
 
     // Ray tracing                                // Invoked by "CmdDispatchRays*"
-    RAYGEN_SHADER                   = NriBit(11), //    Ray generation shader                           X (required within raytracing)
+    RAYGEN_SHADER                   = NriBit(11), //    Ray generation shader                           X (required within RAY_TRACING bind point)
     MISS_SHADER                     = NriBit(12), //    Miss shader                                     X
     INTERSECTION_SHADER             = NriBit(13), //    Intersection shader                             X
     CLOSEST_HIT_SHADER              = NriBit(14), //    Closest hit shader                              X
@@ -456,7 +456,7 @@ NriBits(AccessBits, uint32_t,
 NriEnum(Layout, uint8_t,    // Compatible "AccessBits":
     // Special
     UNDEFINED,                  // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_layout_undefined
-    GENERAL,                    // ~ALL access, but not optimal (required for "SharingMode::SIMULTANEOUS")
+    GENERAL,                    // ~ALL access, but potentially not optimal (required for "SharingMode::SIMULTANEOUS")
     PRESENT,                    // NONE
 
     // Access specific
@@ -841,6 +841,14 @@ Pipeline layout example:
     RootDescriptorDesc              #1
 */
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPipelineBindPoint.html
+NriEnum(BindPoint, uint8_t,
+    INHERIT,                                    // inherit from the last "CmdSetPipelineLayout" call
+    GRAPHICS,
+    COMPUTE,
+    RAY_TRACING
+);
+
 NriBits(PipelineLayoutBits, uint8_t,
     NONE                                    = 0,
     IGNORE_GLOBAL_SPIRV_OFFSETS             = NriBit(0), // VK: ignore "DeviceCreationDesc::vkBindingOffsets"
@@ -966,6 +974,28 @@ NriStruct(DescriptorSetCopyDesc) {
     uint32_t srcBaseDynamicConstantBuffer;
     uint32_t dstBaseDynamicConstantBuffer;
     uint32_t dynamicConstantBufferNum;
+};
+
+// Binding
+NriStruct(DescriptorSetBindingDesc) {
+    uint32_t setIndex;
+    const NriPtr(DescriptorSet) descriptorSet;
+    NriOptional const uint32_t* dynamicConstantBufferOffsets; // expects dynamic constant buffer offsets as in the currently bound pipeline layout
+    NriOptional Nri(BindPoint) bindPoint;
+};
+
+NriStruct(RootConstantBindingDesc) { // requires "pipelineLayoutRootConstantMaxSize > 0"
+    uint32_t rootConstantIndex;
+    const void* data;
+    uint32_t size;
+    uint32_t offset; // D3D11: partial updates are not supported
+    NriOptional Nri(BindPoint) bindPoint;
+};
+
+NriStruct(RootDescriptorBindingDesc) { // requires "pipelineLayoutRootDescriptorMaxNum > 0"
+    uint32_t rootDescriptorIndex;
+    NriPtr(Descriptor) descriptor;
+    NriOptional Nri(BindPoint) bindPoint;
 };
 
 #pragma endregion

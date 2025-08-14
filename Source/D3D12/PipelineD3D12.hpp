@@ -45,9 +45,6 @@ static_assert((uint32_t)PrimitiveRestart::INDICES_UINT16 == D3D12_INDEX_BUFFER_S
 static_assert((uint32_t)PrimitiveRestart::INDICES_UINT32 == D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFFFFFF, "Enum mismatch");
 
 static D3D12_SHADER_VISIBILITY GetShaderVisibility(StageBits shaderStages) {
-    if (shaderStages == StageBits::ALL || shaderStages == StageBits::COMPUTE_SHADER || (shaderStages & StageBits::RAY_TRACING_SHADERS) != 0)
-        return D3D12_SHADER_VISIBILITY_ALL;
-
     if (shaderStages == StageBits::VERTEX_SHADER)
         return D3D12_SHADER_VISIBILITY_VERTEX;
 
@@ -69,7 +66,6 @@ static D3D12_SHADER_VISIBILITY GetShaderVisibility(StageBits shaderStages) {
     if (shaderStages == StageBits::MESH_SHADER)
         return D3D12_SHADER_VISIBILITY_MESH;
 
-    // Should be unreachable
     return D3D12_SHADER_VISIBILITY_ALL;
 }
 
@@ -314,14 +310,13 @@ Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipel
 }
 
 Result PipelineD3D12::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
-    m_PipelineLayout = (const PipelineLayoutD3D12*)graphicsPipelineDesc.pipelineLayout;
-    m_IsGraphicsPipeline = true;
+    m_PipelineLayout = (PipelineLayoutD3D12*)graphicsPipelineDesc.pipelineLayout;
 
     return CreateFromStream(graphicsPipelineDesc);
 }
 
 Result PipelineD3D12::Create(const ComputePipelineDesc& computePipelineDesc) {
-    m_PipelineLayout = (const PipelineLayoutD3D12*)computePipelineDesc.pipelineLayout;
+    m_PipelineLayout = (PipelineLayoutD3D12*)computePipelineDesc.pipelineLayout;
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC computePipleineStateDesc = {};
     computePipleineStateDesc.NodeMask = NODE_MASK;
@@ -336,7 +331,7 @@ Result PipelineD3D12::Create(const ComputePipelineDesc& computePipelineDesc) {
 }
 
 Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc) {
-    m_PipelineLayout = (const PipelineLayoutD3D12*)rayTracingPipelineDesc.pipelineLayout;
+    m_PipelineLayout = (PipelineLayoutD3D12*)rayTracingPipelineDesc.pipelineLayout;
 
     ID3D12RootSignature* rootSignature = *m_PipelineLayout;
 
@@ -479,16 +474,14 @@ Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDes
     return Result::SUCCESS;
 }
 
-void PipelineD3D12::Bind(ID3D12GraphicsCommandList* graphicsCommandList, D3D12_PRIMITIVE_TOPOLOGY& primitiveTopology) const {
+void PipelineD3D12::Bind(ID3D12GraphicsCommandList* graphicsCommandList) const {
     if (m_StateObject)
         ((ID3D12GraphicsCommandList4*)graphicsCommandList)->SetPipelineState1(m_StateObject);
     else
         graphicsCommandList->SetPipelineState(m_PipelineState);
 
-    if (m_IsGraphicsPipeline) {
-        primitiveTopology = m_PrimitiveTopology;
+    if (m_PrimitiveTopology != D3D_PRIMITIVE_TOPOLOGY_UNDEFINED)
         graphicsCommandList->IASetPrimitiveTopology(m_PrimitiveTopology);
-    }
 }
 
 NRI_INLINE Result PipelineD3D12::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* dst) const {

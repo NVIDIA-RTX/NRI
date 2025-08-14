@@ -15,29 +15,28 @@ static inline void BuildDescriptorSetMapping(const DescriptorSetDesc& descriptor
 
 static inline D3D12_ROOT_SIGNATURE_FLAGS GetRootSignatureStageFlags(const PipelineLayoutDesc& pipelineLayoutDesc, const DeviceD3D12& device) {
     D3D12_ROOT_SIGNATURE_FLAGS flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
+    StageBits shaderStages = pipelineLayoutDesc.shaderStages == StageBits::ALL ? StageBits::ALL_SHADERS : pipelineLayoutDesc.shaderStages;
 
-    if (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER)
+    if (shaderStages & StageBits::VERTEX_SHADER)
         flags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
     else
         flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS;
 
-    if (!(pipelineLayoutDesc.shaderStages & StageBits::TESS_CONTROL_SHADER))
+    if (!(shaderStages & StageBits::TESS_CONTROL_SHADER))
         flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS;
-    if (!(pipelineLayoutDesc.shaderStages & StageBits::TESS_EVALUATION_SHADER))
+    if (!(shaderStages & StageBits::TESS_EVALUATION_SHADER))
         flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS;
-    if (!(pipelineLayoutDesc.shaderStages & StageBits::GEOMETRY_SHADER))
+    if (!(shaderStages & StageBits::GEOMETRY_SHADER))
         flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
-    if (!(pipelineLayoutDesc.shaderStages & StageBits::FRAGMENT_SHADER))
+    if (!(shaderStages & StageBits::FRAGMENT_SHADER))
         flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
 
-    // Windows versions prior to 20H1 (which introduced DirectX Ultimate) can
-    // produce errors when the following flags are added. To avoid this, we
-    // only add these mesh shading pipeline flags when the device
-    // (and thus Windows) supports mesh shading.
+    // Windows versions prior to 20H1 (which introduced DirectX Ultimate) can produce errors when the following flags are added. To avoid this, we
+    // only add these mesh shading pipeline flags when the device (and thus Windows) supports mesh shading
     if (device.GetDesc().features.meshShader) {
-        if (!(pipelineLayoutDesc.shaderStages & StageBits::TASK_SHADER))
+        if (!(shaderStages & StageBits::TASK_SHADER))
             flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS;
-        if (!(pipelineLayoutDesc.shaderStages & StageBits::MESH_SHADER))
+        if (!(shaderStages & StageBits::MESH_SHADER))
             flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
     }
 
@@ -74,16 +73,7 @@ static inline D3D12_ROOT_SIGNATURE_FLAGS GetRootSignatureStageFlags(const Pipeli
     return flags;
 }
 
-PipelineLayoutD3D12::PipelineLayoutD3D12(DeviceD3D12& device)
-    : m_DescriptorSetMappings(device.GetStdAllocator())
-    , m_DescriptorSetRootMappings(device.GetStdAllocator())
-    , m_DynamicConstantBufferMappings(device.GetStdAllocator())
-    , m_Device(device) {
-}
-
 Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
-    m_IsGraphicsPipelineLayout = pipelineLayoutDesc.shaderStages & StageBits::GRAPHICS_SHADERS;
-
     uint32_t rangeNum = 0;
     uint32_t rangeMaxNum = 0;
     for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++)
@@ -257,10 +247,10 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
 #endif
         hr = D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &rootSignatureBlob, &errorBlob);
 
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12SerializeVersionedRootSignature");
-
     if (errorBlob)
-        REPORT_ERROR(&m_Device, "D3D12SerializeVersionedRootSignature(): %s", (char*)errorBlob->GetBufferPointer());
+        REPORT_ERROR(&m_Device, "SerializeVersionedRootSignature(): %s", (char*)errorBlob->GetBufferPointer());
+
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "SerializeVersionedRootSignature");
 
     hr = m_Device->CreateRootSignature(NODE_MASK, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&m_RootSignature));
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateRootSignature");
@@ -274,39 +264,72 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     return Result::SUCCESS;
 }
 
-template <bool isGraphics>
-void PipelineLayoutD3D12::SetDescriptorSetImpl(ID3D12GraphicsCommandList& graphicsCommandList, uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const {
-    const DescriptorSetD3D12& descriptorSetImpl = (const DescriptorSetD3D12&)descriptorSet;
-
-    const auto& rootOffsets = m_DescriptorSetRootMappings[setIndex].rootOffsets;
+void PipelineLayoutD3D12::SetDescriptorSet(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const DescriptorSetBindingDesc& descriptorSetBindingDesc) const {
+    bool isGraphics = bindPoint == BindPoint::GRAPHICS;
+    const DescriptorSetD3D12& descriptorSetD3D12 = *(DescriptorSetD3D12*)descriptorSetBindingDesc.descriptorSet;
+    const auto& rootOffsets = m_DescriptorSetRootMappings[descriptorSetBindingDesc.setIndex].rootOffsets;
     uint32_t rangeNum = (uint32_t)rootOffsets.size();
+
     for (uint32_t j = 0; j < rangeNum; j++) {
         uint16_t rootParameterIndex = rootOffsets[j];
         if (rootParameterIndex == ROOT_PARAMETER_UNUSED)
             continue;
 
-        DescriptorPointerGPU descriptorPointerGPU = descriptorSetImpl.GetPointerGPU(j, 0);
+        DescriptorPointerGPU descriptorPointerGPU = descriptorSetD3D12.GetPointerGPU(j, 0);
         if (isGraphics)
-            graphicsCommandList.SetGraphicsRootDescriptorTable(rootParameterIndex, {descriptorPointerGPU});
+            graphicsCommandList->SetGraphicsRootDescriptorTable(rootParameterIndex, {descriptorPointerGPU});
         else
-            graphicsCommandList.SetComputeRootDescriptorTable(rootParameterIndex, {descriptorPointerGPU});
+            graphicsCommandList->SetComputeRootDescriptorTable(rootParameterIndex, {descriptorPointerGPU});
     }
 
-    const auto& dynamicConstantBufferMapping = m_DynamicConstantBufferMappings[setIndex];
+    const auto& dynamicConstantBufferMapping = m_DynamicConstantBufferMappings[descriptorSetBindingDesc.setIndex];
     for (uint16_t j = 0; j < dynamicConstantBufferMapping.rootConstantNum; j++) {
         uint16_t rootParameterIndex = dynamicConstantBufferMapping.rootOffset + j;
 
-        DescriptorPointerGPU descriptorPointerGPU = descriptorSetImpl.GetDynamicPointerGPU(j) + dynamicConstantBufferOffsets[j];
+        DescriptorPointerGPU descriptorPointerGPU = descriptorSetD3D12.GetDynamicPointerGPU(j) + descriptorSetBindingDesc.dynamicConstantBufferOffsets[j];
         if (isGraphics)
-            graphicsCommandList.SetGraphicsRootConstantBufferView(rootParameterIndex, descriptorPointerGPU);
+            graphicsCommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, descriptorPointerGPU);
         else
-            graphicsCommandList.SetComputeRootConstantBufferView(rootParameterIndex, descriptorPointerGPU);
+            graphicsCommandList->SetComputeRootConstantBufferView(rootParameterIndex, descriptorPointerGPU);
     }
 }
 
-void PipelineLayoutD3D12::SetDescriptorSet(ID3D12GraphicsCommandList& graphicsCommandList, bool isGraphics, uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) const {
+void PipelineLayoutD3D12::SetRootConstants(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const RootConstantBindingDesc& rootConstantBindingDesc) const {
+    bool isGraphics = bindPoint == BindPoint::GRAPHICS;
+    uint32_t rootParameterIndex = m_BaseRootConstant + rootConstantBindingDesc.rootConstantIndex;
+    uint32_t num = rootConstantBindingDesc.size / 4;
+    uint32_t offset = rootConstantBindingDesc.offset / 4;
+
+    // TODO: push constants in VK is a global state, visible for any bind point. But "bindPoint" is used
+    // explicitly, because using shader visibility associated with the root constant is inefficient if "ALL" is used.
     if (isGraphics)
-        SetDescriptorSetImpl<true>(graphicsCommandList, setIndex, descriptorSet, dynamicConstantBufferOffsets);
+        graphicsCommandList->SetGraphicsRoot32BitConstants(rootParameterIndex, num, rootConstantBindingDesc.data, offset);
     else
-        SetDescriptorSetImpl<false>(graphicsCommandList, setIndex, descriptorSet, dynamicConstantBufferOffsets);
+        graphicsCommandList->SetComputeRoot32BitConstants(rootParameterIndex, num, rootConstantBindingDesc.data, offset);
+}
+
+void PipelineLayoutD3D12::SetRootDescriptor(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const RootDescriptorBindingDesc& rootDescriptorBindingDesc) const {
+    bool isGraphics = bindPoint == BindPoint::GRAPHICS;
+    uint32_t rootParameterIndex = m_BaseRootDescriptor + rootDescriptorBindingDesc.rootDescriptorIndex;
+    const DescriptorD3D12& descriptorD3D12 = *(DescriptorD3D12*)rootDescriptorBindingDesc.descriptor;
+    D3D12_GPU_VIRTUAL_ADDRESS bufferLocation = descriptorD3D12.GetPointerGPU();
+
+    BufferViewType bufferViewType = descriptorD3D12.GetBufferViewType();
+    if (bufferViewType == BufferViewType::SHADER_RESOURCE || descriptorD3D12.IsAccelerationStructure()) {
+        if (isGraphics)
+            graphicsCommandList->SetGraphicsRootShaderResourceView(rootParameterIndex, bufferLocation);
+        else
+            graphicsCommandList->SetComputeRootShaderResourceView(rootParameterIndex, bufferLocation);
+    } else if (bufferViewType == BufferViewType::SHADER_RESOURCE_STORAGE) {
+        if (isGraphics)
+            graphicsCommandList->SetGraphicsRootUnorderedAccessView(rootParameterIndex, bufferLocation);
+        else
+            graphicsCommandList->SetComputeRootUnorderedAccessView(rootParameterIndex, bufferLocation);
+    } else if (bufferViewType == BufferViewType::CONSTANT) {
+        if (isGraphics)
+            graphicsCommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, bufferLocation);
+        else
+            graphicsCommandList->SetComputeRootConstantBufferView(rootParameterIndex, bufferLocation);
+    } else
+        CHECK(false, "Unexpected");
 }

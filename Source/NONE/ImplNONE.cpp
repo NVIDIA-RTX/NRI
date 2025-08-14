@@ -404,16 +404,16 @@ static Result NRI_CALL BeginCommandBuffer(CommandBuffer&, const DescriptorPool*)
 static void NRI_CALL CmdSetDescriptorPool(CommandBuffer&, const DescriptorPool&) {
 }
 
-static void NRI_CALL CmdSetPipelineLayout(CommandBuffer&, const PipelineLayout&) {
+static void NRI_CALL CmdSetPipelineLayout(CommandBuffer&, BindPoint, const PipelineLayout&) {
 }
 
-static void NRI_CALL CmdSetDescriptorSet(CommandBuffer&, uint32_t, const DescriptorSet&, const uint32_t*) {
+static void NRI_CALL CmdSetDescriptorSet(CommandBuffer&, const DescriptorSetBindingDesc&) {
 }
 
-static void NRI_CALL CmdSetRootConstants(CommandBuffer&, uint32_t, const void*, uint32_t) {
+static void NRI_CALL CmdSetRootConstants(CommandBuffer&, const RootConstantBindingDesc&) {
 }
 
-static void NRI_CALL CmdSetRootDescriptor(CommandBuffer&, uint32_t, Descriptor&) {
+static void NRI_CALL CmdSetRootDescriptor(CommandBuffer&, const RootDescriptorBindingDesc&) {
 }
 
 static void NRI_CALL CmdSetPipeline(CommandBuffer&, const Pipeline&) {

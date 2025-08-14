@@ -13,11 +13,11 @@ enum OpCode : uint32_t {
     CLEAR_STORAGE,
     BEGIN_RENDERING,
     END_RENDERING,
-    BIND_VERTEX_BUFFERS,
-    BIND_INDEX_BUFFER,
-    BIND_PIPELINE_LAYOUT,
-    BIND_PIPELINE,
-    BIND_DESCRIPTOR_SET,
+    SET_VERTEX_BUFFERS,
+    SET_INDEX_BUFFER,
+    SET_PIPELINE_LAYOUT,
+    SET_PIPELINE,
+    SET_DESCRIPTOR_SET,
     SET_ROOT_CONSTANTS,
     SET_ROOT_DESCRIPTOR,
     DRAW,
@@ -180,15 +180,15 @@ void CommandBufferEmuD3D11::Submit() {
             } break;
             case BEGIN_RENDERING: {
                 AttachmentsDesc attachmentsDesc = {};
+                Read(m_PushBuffer, i, attachmentsDesc);
                 Read(m_PushBuffer, i, attachmentsDesc.colors, attachmentsDesc.colorNum);
-                Read(m_PushBuffer, i, attachmentsDesc.depthStencil);
 
                 commandBuffer.BeginRendering(attachmentsDesc);
             } break;
             case END_RENDERING: {
                 commandBuffer.ResetAttachments();
             } break;
-            case BIND_VERTEX_BUFFERS: {
+            case SET_VERTEX_BUFFERS: {
                 uint32_t baseSlot;
                 Read(m_PushBuffer, i, baseSlot);
 
@@ -198,7 +198,7 @@ void CommandBufferEmuD3D11::Submit() {
 
                 commandBuffer.SetVertexBuffers(baseSlot, vertexBufferDescs, vertexBufferNum);
             } break;
-            case BIND_INDEX_BUFFER: {
+            case SET_INDEX_BUFFER: {
                 Buffer* buffer;
                 Read(m_PushBuffer, i, buffer);
 
@@ -210,49 +210,45 @@ void CommandBufferEmuD3D11::Submit() {
 
                 commandBuffer.SetIndexBuffer(*buffer, offset, indexType);
             } break;
-            case BIND_PIPELINE_LAYOUT: {
+            case SET_PIPELINE_LAYOUT: {
+                BindPoint bindPoint;
+                Read(m_PushBuffer, i, bindPoint);
+
                 PipelineLayout* pipelineLayout;
                 Read(m_PushBuffer, i, pipelineLayout);
 
-                commandBuffer.SetPipelineLayout(*pipelineLayout);
+                commandBuffer.SetPipelineLayout(bindPoint, *pipelineLayout);
             } break;
-            case BIND_PIPELINE: {
+            case SET_PIPELINE: {
                 Pipeline* pipeline;
                 Read(m_PushBuffer, i, pipeline);
 
                 commandBuffer.SetPipeline(*pipeline);
             } break;
-            case BIND_DESCRIPTOR_SET: {
-                uint32_t setIndex;
-                Read(m_PushBuffer, i, setIndex);
+            case SET_DESCRIPTOR_SET: {
+                DescriptorSetBindingDesc descriptorSetBindingDesc = {};
+                Read(m_PushBuffer, i, descriptorSetBindingDesc);
 
-                DescriptorSet* descriptorSet;
-                Read(m_PushBuffer, i, descriptorSet);
-
-                uint32_t* dynamicConstantBufferOffsets;
                 uint32_t dynamicConstantBufferNum;
-                Read(m_PushBuffer, i, dynamicConstantBufferOffsets, dynamicConstantBufferNum);
+                Read(m_PushBuffer, i, descriptorSetBindingDesc.dynamicConstantBufferOffsets, dynamicConstantBufferNum);
 
-                commandBuffer.SetDescriptorSet(setIndex, *descriptorSet, dynamicConstantBufferOffsets);
+                commandBuffer.SetDescriptorSet(descriptorSetBindingDesc);
             } break;
             case SET_ROOT_CONSTANTS: {
-                uint32_t rootConstantIndex;
-                Read(m_PushBuffer, i, rootConstantIndex);
+                RootConstantBindingDesc rootConstantBindingDesc = {};
+                Read(m_PushBuffer, i, rootConstantBindingDesc);
 
                 uint8_t* data;
-                uint32_t size;
-                Read(m_PushBuffer, i, data, size);
+                Read(m_PushBuffer, i, data, rootConstantBindingDesc.size);
+                rootConstantBindingDesc.data = data;
 
-                commandBuffer.SetRootConstants(rootConstantIndex, data, size);
+                commandBuffer.SetRootConstants(rootConstantBindingDesc);
             } break;
             case SET_ROOT_DESCRIPTOR: {
-                uint32_t rootDescriptorIndex;
-                Read(m_PushBuffer, i, rootDescriptorIndex);
+                RootDescriptorBindingDesc rootDescriptorBindingDesc = {};
+                Read(m_PushBuffer, i, rootDescriptorBindingDesc);
 
-                Descriptor* descriptor;
-                Read(m_PushBuffer, i, descriptor);
-
-                commandBuffer.SetRootDescriptor(rootDescriptorIndex, *descriptor);
+                commandBuffer.SetRootDescriptor(rootDescriptorBindingDesc);
             } break;
             case DRAW: {
                 DrawDesc drawDesc = {};
@@ -544,8 +540,8 @@ NRI_INLINE void CommandBufferEmuD3D11::ClearStorage(const ClearStorageDesc& clea
 
 NRI_INLINE void CommandBufferEmuD3D11::BeginRendering(const AttachmentsDesc& attachmentsDesc) {
     Push(m_PushBuffer, BEGIN_RENDERING);
+    Push(m_PushBuffer, attachmentsDesc);
     Push(m_PushBuffer, attachmentsDesc.colors, attachmentsDesc.colorNum);
-    Push(m_PushBuffer, attachmentsDesc.depthStencil);
 }
 
 NRI_INLINE void CommandBufferEmuD3D11::EndRendering() {
@@ -553,47 +549,46 @@ NRI_INLINE void CommandBufferEmuD3D11::EndRendering() {
 }
 
 NRI_INLINE void CommandBufferEmuD3D11::SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum) {
-    Push(m_PushBuffer, BIND_VERTEX_BUFFERS);
+    Push(m_PushBuffer, SET_VERTEX_BUFFERS);
     Push(m_PushBuffer, baseSlot);
     Push(m_PushBuffer, vertexBufferDescs, vertexBufferNum);
 }
 
 NRI_INLINE void CommandBufferEmuD3D11::SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType) {
-    Push(m_PushBuffer, BIND_INDEX_BUFFER);
+    Push(m_PushBuffer, SET_INDEX_BUFFER);
     Push(m_PushBuffer, &buffer);
     Push(m_PushBuffer, offset);
     Push(m_PushBuffer, indexType);
 }
 
-NRI_INLINE void CommandBufferEmuD3D11::SetPipelineLayout(const PipelineLayout& pipelineLayout) {
-    Push(m_PushBuffer, BIND_PIPELINE_LAYOUT);
+NRI_INLINE void CommandBufferEmuD3D11::SetPipelineLayout(BindPoint bindPoint, const PipelineLayout& pipelineLayout) {
+    Push(m_PushBuffer, SET_PIPELINE_LAYOUT);
+    Push(m_PushBuffer, bindPoint);
     Push(m_PushBuffer, &pipelineLayout);
 }
 
 NRI_INLINE void CommandBufferEmuD3D11::SetPipeline(const Pipeline& pipeline) {
-    Push(m_PushBuffer, BIND_PIPELINE);
+    Push(m_PushBuffer, SET_PIPELINE);
     Push(m_PushBuffer, &pipeline);
 }
 
-NRI_INLINE void CommandBufferEmuD3D11::SetDescriptorSet(uint32_t setIndex, const DescriptorSet& descriptorSet, const uint32_t* dynamicConstantBufferOffsets) {
-    uint32_t dynamicConstantBufferNum = ((DescriptorSetD3D11&)descriptorSet).GetDynamicConstantBufferNum();
+NRI_INLINE void CommandBufferEmuD3D11::SetDescriptorSet(const DescriptorSetBindingDesc& descriptorSetBindingDesc) {
+    uint32_t dynamicConstantBufferNum = ((DescriptorSetD3D11*)descriptorSetBindingDesc.descriptorSet)->GetDynamicConstantBufferNum();
 
-    Push(m_PushBuffer, BIND_DESCRIPTOR_SET);
-    Push(m_PushBuffer, setIndex);
-    Push(m_PushBuffer, &descriptorSet);
-    Push(m_PushBuffer, dynamicConstantBufferOffsets, dynamicConstantBufferNum);
+    Push(m_PushBuffer, SET_DESCRIPTOR_SET);
+    Push(m_PushBuffer, descriptorSetBindingDesc);
+    Push(m_PushBuffer, descriptorSetBindingDesc.dynamicConstantBufferOffsets, dynamicConstantBufferNum);
 }
 
-NRI_INLINE void CommandBufferEmuD3D11::SetRootConstants(uint32_t rootConstantIndex, const void* data, uint32_t size) {
+NRI_INLINE void CommandBufferEmuD3D11::SetRootConstants(const RootConstantBindingDesc& rootConstantBindingDesc) {
     Push(m_PushBuffer, SET_ROOT_CONSTANTS);
-    Push(m_PushBuffer, rootConstantIndex);
-    Push(m_PushBuffer, (uint8_t*)data, size);
+    Push(m_PushBuffer, rootConstantBindingDesc);
+    Push(m_PushBuffer, (uint8_t*)rootConstantBindingDesc.data, rootConstantBindingDesc.size);
 }
 
-NRI_INLINE void CommandBufferEmuD3D11::SetRootDescriptor(uint32_t rootDescriptorIndex, Descriptor& descriptor) {
+NRI_INLINE void CommandBufferEmuD3D11::SetRootDescriptor(const RootDescriptorBindingDesc& rootDescriptorBindingDesc) {
     Push(m_PushBuffer, SET_ROOT_DESCRIPTOR);
-    Push(m_PushBuffer, rootDescriptorIndex);
-    Push(m_PushBuffer, &descriptor);
+    Push(m_PushBuffer, rootDescriptorBindingDesc);
 }
 
 NRI_INLINE void CommandBufferEmuD3D11::Draw(const DrawDesc& drawDesc) {

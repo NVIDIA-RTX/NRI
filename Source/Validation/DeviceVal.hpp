@@ -360,13 +360,6 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const SamplerDesc& samplerDesc, De
 }
 
 NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipelineLayoutDesc, PipelineLayout*& pipelineLayout) {
-    bool isGraphics = pipelineLayoutDesc.shaderStages & StageBits::GRAPHICS_SHADERS;
-    bool isCompute = pipelineLayoutDesc.shaderStages & StageBits::COMPUTE_SHADER;
-    bool isRayTracing = pipelineLayoutDesc.shaderStages & StageBits::RAY_TRACING_SHADERS;
-    uint32_t supportedTypes = (uint32_t)isGraphics + (uint32_t)isCompute + (uint32_t)isRayTracing;
-
-    RETURN_ON_FAILURE(this, supportedTypes > 0, Result::INVALID_ARGUMENT, "'shaderStages' doesn't include any shader stages");
-    RETURN_ON_FAILURE(this, supportedTypes == 1, Result::INVALID_ARGUMENT, "'shaderStages' is invalid, it can't be compatible with more than one type of pipeline");
     RETURN_ON_FAILURE(this, pipelineLayoutDesc.shaderStages != StageBits::NONE, Result::INVALID_ARGUMENT, "'shaderStages' can't be 'NONE'");
 
     Scratch<uint32_t> spaces = AllocateScratch(*this, uint32_t, pipelineLayoutDesc.descriptorSetNum);

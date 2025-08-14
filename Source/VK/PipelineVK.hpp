@@ -456,7 +456,6 @@ Result PipelineVK::Create(const PipelineVKDesc& pipelineVKDesc) {
     m_OwnsNativeObjects = false;
     m_Handle = (VkPipeline)pipelineVKDesc.vkPipeline;
     m_BindPoint = (VkPipelineBindPoint)pipelineVKDesc.vkPipelineBindPoint;
-    m_DepthBias = pipelineVKDesc.depthBias;
 
     return Result::SUCCESS;
 }
