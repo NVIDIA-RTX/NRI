@@ -72,15 +72,6 @@ set(COMMON_PROPERTIES
     # Enforce C++17 standard
     CXX_STANDARD 17
     CXX_STANDARD_REQUIRED TRUE
-
-    # Disable compiler-specific extensions for portability
-    CXX_EXTENSIONS FALSE
-
-    # Set default visibility to hidden for internal symbols
-    CXX_VISIBILITY_PRESET hidden
-
-    # Ensure inline functions are hidden by default
-    VISIBILITY_INLINES_HIDDEN TRUE
 )
 
 if(PROJECT_IS_TOP_LEVEL)
@@ -103,6 +94,7 @@ if((CMAKE_CXX_COMPILER_ID MATCHES "Clang") OR (CMAKE_CXX_COMPILER_ID MATCHES "GN
         -Werror                         # warnings as errors
         -Wno-missing-field-initializers # not needed, all variables are {} initialized
         -fPIC                           # position independent code
+        -fvisibility=hidden             # hide all symbols by default
     )
 elseif(MSVC)
     set(COMPILE_OPTIONS
