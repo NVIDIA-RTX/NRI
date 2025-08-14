@@ -215,7 +215,6 @@ NRI_INLINE void CommandBufferVal::EndRendering() {
 
 NRI_INLINE void CommandBufferVal::SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
-    RETURN_ON_FAILURE(&m_Device, m_Pipeline, ReturnVoid(), "'SetPipeline' has not been called");
 
     Scratch<VertexBufferDesc> vertexBufferDescsImpl = AllocateScratch(m_Device, VertexBufferDesc, vertexBufferNum);
     for (uint32_t i = 0; i < vertexBufferNum; i++) {
