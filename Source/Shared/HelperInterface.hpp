@@ -40,7 +40,7 @@ static void DoTransition(const CoreInterface& m_iCore, CommandBuffer* commandBuf
                 n++;
         }
 
-        BarrierGroupDesc barrierGroup = {};
+        BarrierDesc barrierGroup = {};
         barrierGroup.textures = textureBarriers;
         barrierGroup.textureNum = n;
 
@@ -72,7 +72,7 @@ static void DoTransition(const CoreInterface& m_iCore, CommandBuffer* commandBuf
                 n++;
         }
 
-        BarrierGroupDesc barrierGroup = {};
+        BarrierDesc barrierGroup = {};
         barrierGroup.buffers = bufferBarriers;
         barrierGroup.bufferNum = n;
 
@@ -164,7 +164,7 @@ Result HelperDataUpload::Create(const TextureUploadDesc* textureUploadDescs, uin
         if (result != Result::SUCCESS)
             return result;
 
-        BufferMemoryBindingDesc bufferMemoryBindingDesc = {m_UploadBuffer, m_UploadBufferMemory, 0};
+        BindBufferMemoryDesc bufferMemoryBindingDesc = {m_UploadBuffer, m_UploadBufferMemory, 0};
 
         result = m_iCore.BindBufferMemory(m_Device, &bufferMemoryBindingDesc, 1);
         if (result != Result::SUCCESS)
@@ -578,7 +578,7 @@ void HelperDeviceMemoryAllocator::GroupByMemoryType(MemoryLocation memoryLocatio
 
 void HelperDeviceMemoryAllocator::FillMemoryBindingDescs(Buffer* const* buffers, const uint64_t* bufferOffsets, uint32_t bufferNum, Memory& memory) {
     for (uint32_t i = 0; i < bufferNum; i++) {
-        BufferMemoryBindingDesc desc = {};
+        BindBufferMemoryDesc desc = {};
         desc.memory = &memory;
         desc.buffer = buffers[i];
         desc.offset = bufferOffsets[i];
@@ -589,7 +589,7 @@ void HelperDeviceMemoryAllocator::FillMemoryBindingDescs(Buffer* const* buffers,
 
 void HelperDeviceMemoryAllocator::FillMemoryBindingDescs(Texture* const* textures, const uint64_t* textureOffsets, uint32_t textureNum, Memory& memory) {
     for (uint32_t i = 0; i < textureNum; i++) {
-        TextureMemoryBindingDesc desc = {};
+        BindTextureMemoryDesc desc = {};
         desc.memory = &memory;
         desc.texture = textures[i];
         desc.offset = textureOffsets[i];

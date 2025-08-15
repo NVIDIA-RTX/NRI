@@ -264,35 +264,35 @@ NRI_INLINE void CommandBufferVal::SetDescriptorPool(const DescriptorPool& descri
     GetCoreInterfaceImpl().CmdSetDescriptorPool(*GetImpl(), *descriptorPoolImpl);
 }
 
-NRI_INLINE void CommandBufferVal::SetDescriptorSet(const DescriptorSetBindingDesc& descriptorSetBindingDesc) {
-    const DescriptorSetVal& descriptorSetVal = *(DescriptorSetVal*)descriptorSetBindingDesc.descriptorSet;
+NRI_INLINE void CommandBufferVal::SetDescriptorSet(const SetDescriptorSetDesc& setDescriptorSetDesc) {
+    const DescriptorSetVal& descriptorSetVal = *(DescriptorSetVal*)setDescriptorSetDesc.descriptorSet;
 
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
     RETURN_ON_FAILURE(&m_Device, descriptorSetVal.AreDynamicConstantBuffersValid(), ReturnVoid(), "Not all dynamic constant buffers have been updated at least once. Potential use of stale data detected");
 
-    auto descriptorSetBindingDescImpl = descriptorSetBindingDesc;
-    descriptorSetBindingDescImpl.descriptorSet = NRI_GET_IMPL(DescriptorSet, descriptorSetBindingDesc.descriptorSet);
+    auto descriptorSetBindingDescImpl = setDescriptorSetDesc;
+    descriptorSetBindingDescImpl.descriptorSet = NRI_GET_IMPL(DescriptorSet, setDescriptorSetDesc.descriptorSet);
 
     GetCoreInterfaceImpl().CmdSetDescriptorSet(*GetImpl(), descriptorSetBindingDescImpl);
 }
 
-NRI_INLINE void CommandBufferVal::SetRootConstants(const RootConstantBindingDesc& rootConstantBindingDesc) {
+NRI_INLINE void CommandBufferVal::SetRootConstants(const SetRootConstantsDesc& setRootConstantsDesc) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
 
-    GetCoreInterfaceImpl().CmdSetRootConstants(*GetImpl(), rootConstantBindingDesc);
+    GetCoreInterfaceImpl().CmdSetRootConstants(*GetImpl(), setRootConstantsDesc);
 }
 
-NRI_INLINE void CommandBufferVal::SetRootDescriptor(const RootDescriptorBindingDesc& rootDescriptorBindingDesc) {
-    const DescriptorVal& descriptorVal = *(DescriptorVal*)rootDescriptorBindingDesc.descriptor;
+NRI_INLINE void CommandBufferVal::SetRootDescriptor(const SetRootDescriptorDesc& setRootDescriptorDesc) {
+    const DescriptorVal& descriptorVal = *(DescriptorVal*)setRootDescriptorDesc.descriptor;
 
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
     RETURN_ON_FAILURE(&m_Device, descriptorVal.IsBufferView() || descriptorVal.IsAccelerationStructure(), ReturnVoid(), "'descriptor' must be a buffer or acceleration structure");
 
-    auto rootDescriptorBindingDescImpl = rootDescriptorBindingDesc;
-    rootDescriptorBindingDescImpl.descriptor = NRI_GET_IMPL(Descriptor, rootDescriptorBindingDesc.descriptor);
+    auto rootDescriptorBindingDescImpl = setRootDescriptorDesc;
+    rootDescriptorBindingDescImpl.descriptor = NRI_GET_IMPL(Descriptor, setRootDescriptorDesc.descriptor);
 
     GetCoreInterfaceImpl().CmdSetRootDescriptor(*GetImpl(), rootDescriptorBindingDescImpl);
 }
@@ -432,33 +432,33 @@ NRI_INLINE void CommandBufferVal::DispatchIndirect(const Buffer& buffer, uint64_
     GetCoreInterfaceImpl().CmdDispatchIndirect(*GetImpl(), *bufferImpl, offset);
 }
 
-NRI_INLINE void CommandBufferVal::Barrier(const BarrierGroupDesc& barrierGroupDesc) {
+NRI_INLINE void CommandBufferVal::Barrier(const BarrierDesc& barrierDesc) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
 
-    for (uint32_t i = 0; i < barrierGroupDesc.bufferNum; i++) {
-        if (!ValidateBufferBarrierDesc(m_Device, i, barrierGroupDesc.buffers[i]))
+    for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
+        if (!ValidateBufferBarrierDesc(m_Device, i, barrierDesc.buffers[i]))
             return;
     }
 
-    for (uint32_t i = 0; i < barrierGroupDesc.textureNum; i++) {
-        if (!ValidateTextureBarrierDesc(m_Device, i, barrierGroupDesc.textures[i]))
+    for (uint32_t i = 0; i < barrierDesc.textureNum; i++) {
+        if (!ValidateTextureBarrierDesc(m_Device, i, barrierDesc.textures[i]))
             return;
     }
 
-    Scratch<BufferBarrierDesc> buffers = AllocateScratch(m_Device, BufferBarrierDesc, barrierGroupDesc.bufferNum);
-    memcpy(buffers, barrierGroupDesc.buffers, sizeof(BufferBarrierDesc) * barrierGroupDesc.bufferNum);
-    for (uint32_t i = 0; i < barrierGroupDesc.bufferNum; i++)
-        buffers[i].buffer = NRI_GET_IMPL(Buffer, barrierGroupDesc.buffers[i].buffer);
+    Scratch<BufferBarrierDesc> buffers = AllocateScratch(m_Device, BufferBarrierDesc, barrierDesc.bufferNum);
+    memcpy(buffers, barrierDesc.buffers, sizeof(BufferBarrierDesc) * barrierDesc.bufferNum);
+    for (uint32_t i = 0; i < barrierDesc.bufferNum; i++)
+        buffers[i].buffer = NRI_GET_IMPL(Buffer, barrierDesc.buffers[i].buffer);
 
-    Scratch<TextureBarrierDesc> textures = AllocateScratch(m_Device, TextureBarrierDesc, barrierGroupDesc.textureNum);
-    memcpy(textures, barrierGroupDesc.textures, sizeof(TextureBarrierDesc) * barrierGroupDesc.textureNum);
-    for (uint32_t i = 0; i < barrierGroupDesc.textureNum; i++) {
-        textures[i].texture = NRI_GET_IMPL(Texture, barrierGroupDesc.textures[i].texture);
-        textures[i].srcQueue = NRI_GET_IMPL(Queue, barrierGroupDesc.textures[i].srcQueue);
-        textures[i].dstQueue = NRI_GET_IMPL(Queue, barrierGroupDesc.textures[i].dstQueue);
+    Scratch<TextureBarrierDesc> textures = AllocateScratch(m_Device, TextureBarrierDesc, barrierDesc.textureNum);
+    memcpy(textures, barrierDesc.textures, sizeof(TextureBarrierDesc) * barrierDesc.textureNum);
+    for (uint32_t i = 0; i < barrierDesc.textureNum; i++) {
+        textures[i].texture = NRI_GET_IMPL(Texture, barrierDesc.textures[i].texture);
+        textures[i].srcQueue = NRI_GET_IMPL(Queue, barrierDesc.textures[i].srcQueue);
+        textures[i].dstQueue = NRI_GET_IMPL(Queue, barrierDesc.textures[i].dstQueue);
     }
 
-    auto barrierGroupDescImpl = barrierGroupDesc;
+    auto barrierGroupDescImpl = barrierDesc;
     barrierGroupDescImpl.buffers = buffers;
     barrierGroupDescImpl.textures = textures;
 

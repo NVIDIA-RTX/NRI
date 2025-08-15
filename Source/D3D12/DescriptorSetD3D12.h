@@ -23,7 +23,7 @@ struct DescriptorSetD3D12 final : public DebugNameBase {
 
     void UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs);
     void UpdateDynamicConstantBuffers(uint32_t baseDynamicConstantBuffer, uint32_t dynamicConstantBufferNum, const Descriptor* const* descriptors);
-    void Copy(const DescriptorSetCopyDesc& descriptorSetCopyDesc);
+    void Copy(const CopyDescriptorSetDesc& copyDescriptorSetDesc);
 
 private:
     DescriptorPoolD3D12* m_DescriptorPoolD3D12 = nullptr;

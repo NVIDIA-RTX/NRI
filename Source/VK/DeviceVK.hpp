@@ -2048,17 +2048,17 @@ NRI_INLINE Result DeviceVK::WaitIdle() {
     return Result::SUCCESS;
 }
 
-NRI_INLINE Result DeviceVK::BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
-    if (!memoryBindingDescNum)
+NRI_INLINE Result DeviceVK::BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum) {
+    if (!bindBufferMemoryDescNum)
         return Result::SUCCESS;
 
-    Scratch<VkBindBufferMemoryInfo> infos = AllocateScratch(*this, VkBindBufferMemoryInfo, memoryBindingDescNum);
+    Scratch<VkBindBufferMemoryInfo> infos = AllocateScratch(*this, VkBindBufferMemoryInfo, bindBufferMemoryDescNum);
 
-    for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
-        const BufferMemoryBindingDesc& memoryBindingDesc = memoryBindingDescs[i];
+    for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
+        const BindBufferMemoryDesc& bindBufferMemoryDesc = bindBufferMemoryDescs[i];
 
-        BufferVK& bufferVK = *(BufferVK*)memoryBindingDesc.buffer;
-        MemoryVK& memoryVK = *(MemoryVK*)memoryBindingDesc.memory;
+        BufferVK& bufferVK = *(BufferVK*)bindBufferMemoryDesc.buffer;
+        MemoryVK& memoryVK = *(MemoryVK*)bindBufferMemoryDesc.memory;
 
         MemoryTypeInfo memoryTypeInfo = Unpack(memoryVK.GetType());
         if (memoryTypeInfo.mustBeDedicated)
@@ -2068,14 +2068,14 @@ NRI_INLINE Result DeviceVK::BindBufferMemory(const BufferMemoryBindingDesc* memo
         info = {VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO};
         info.buffer = bufferVK.GetHandle();
         info.memory = memoryVK.GetHandle();
-        info.memoryOffset = memoryBindingDesc.offset;
+        info.memoryOffset = bindBufferMemoryDesc.offset;
     }
 
-    VkResult vkResult = m_VK.BindBufferMemory2(m_Device, memoryBindingDescNum, infos);
+    VkResult vkResult = m_VK.BindBufferMemory2(m_Device, bindBufferMemoryDescNum, infos);
     RETURN_ON_BAD_VKRESULT(this, vkResult, "vkBindBufferMemory2");
 
-    for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
-        const BufferMemoryBindingDesc& memoryBindingDesc = memoryBindingDescs[i];
+    for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
+        const BindBufferMemoryDesc& memoryBindingDesc = bindBufferMemoryDescs[i];
 
         BufferVK& bufferVK = *(BufferVK*)memoryBindingDesc.buffer;
         MemoryVK& memoryVK = *(MemoryVK*)memoryBindingDesc.memory;
@@ -2086,17 +2086,17 @@ NRI_INLINE Result DeviceVK::BindBufferMemory(const BufferMemoryBindingDesc* memo
     return Result::SUCCESS;
 }
 
-NRI_INLINE Result DeviceVK::BindTextureMemory(const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
-    if (!memoryBindingDescNum)
+NRI_INLINE Result DeviceVK::BindTextureMemory(const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum) {
+    if (!bindTextureMemoryDescNum)
         return Result::SUCCESS;
 
-    Scratch<VkBindImageMemoryInfo> infos = AllocateScratch(*this, VkBindImageMemoryInfo, memoryBindingDescNum);
+    Scratch<VkBindImageMemoryInfo> infos = AllocateScratch(*this, VkBindImageMemoryInfo, bindTextureMemoryDescNum);
 
-    for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
-        const TextureMemoryBindingDesc& memoryBindingDesc = memoryBindingDescs[i];
+    for (uint32_t i = 0; i < bindTextureMemoryDescNum; i++) {
+        const BindTextureMemoryDesc& bindTextureMemoryDesc = bindTextureMemoryDescs[i];
 
-        MemoryVK& memoryVK = *(MemoryVK*)memoryBindingDesc.memory;
-        TextureVK& textureVK = *(TextureVK*)memoryBindingDesc.texture;
+        MemoryVK& memoryVK = *(MemoryVK*)bindTextureMemoryDesc.memory;
+        TextureVK& textureVK = *(TextureVK*)bindTextureMemoryDesc.texture;
 
         MemoryTypeInfo memoryTypeInfo = Unpack(memoryVK.GetType());
         if (memoryTypeInfo.mustBeDedicated)
@@ -2106,63 +2106,63 @@ NRI_INLINE Result DeviceVK::BindTextureMemory(const TextureMemoryBindingDesc* me
         info = {VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO};
         info.image = textureVK.GetHandle();
         info.memory = memoryVK.GetHandle();
-        info.memoryOffset = memoryBindingDesc.offset;
+        info.memoryOffset = bindTextureMemoryDesc.offset;
     }
 
-    VkResult vkResult = m_VK.BindImageMemory2(m_Device, memoryBindingDescNum, infos);
+    VkResult vkResult = m_VK.BindImageMemory2(m_Device, bindTextureMemoryDescNum, infos);
     RETURN_ON_BAD_VKRESULT(this, vkResult, "vkBindImageMemory2");
 
     return Result::SUCCESS;
 }
 
-NRI_INLINE Result DeviceVK::BindAccelerationStructureMemory(const AccelerationStructureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
-    if (!memoryBindingDescNum)
+NRI_INLINE Result DeviceVK::BindAccelerationStructureMemory(const BindAccelerationStructureMemoryDesc* bindAccelerationStructureMemoryDescs, uint32_t bindAccelerationStructureMemoryDescNum) {
+    if (!bindAccelerationStructureMemoryDescNum)
         return Result::SUCCESS;
 
-    Scratch<BufferMemoryBindingDesc> bufferMemoryBindingDescs = AllocateScratch(*this, BufferMemoryBindingDesc, memoryBindingDescNum);
+    Scratch<BindBufferMemoryDesc> bufferMemoryBindingDescs = AllocateScratch(*this, BindBufferMemoryDesc, bindAccelerationStructureMemoryDescNum);
 
-    for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
-        const AccelerationStructureMemoryBindingDesc& memoryBindingDesc = memoryBindingDescs[i];
+    for (uint32_t i = 0; i < bindAccelerationStructureMemoryDescNum; i++) {
+        const BindAccelerationStructureMemoryDesc& memoryBindingDesc = bindAccelerationStructureMemoryDescs[i];
         AccelerationStructureVK& accelerationStructure = *(AccelerationStructureVK*)memoryBindingDesc.accelerationStructure;
 
-        BufferMemoryBindingDesc& bufferMemoryBinding = bufferMemoryBindingDescs[i];
-        bufferMemoryBinding = {};
-        bufferMemoryBinding.buffer = (Buffer*)accelerationStructure.GetBuffer();
-        bufferMemoryBinding.memory = memoryBindingDesc.memory;
-        bufferMemoryBinding.offset = memoryBindingDesc.offset;
+        BindBufferMemoryDesc& desc = bufferMemoryBindingDescs[i];
+        desc = {};
+        desc.buffer = (Buffer*)accelerationStructure.GetBuffer();
+        desc.memory = memoryBindingDesc.memory;
+        desc.offset = memoryBindingDesc.offset;
     }
 
-    Result result = BindBufferMemory(bufferMemoryBindingDescs, memoryBindingDescNum);
+    Result result = BindBufferMemory(bufferMemoryBindingDescs, bindAccelerationStructureMemoryDescNum);
 
-    for (uint32_t i = 0; i < memoryBindingDescNum && result == Result::SUCCESS; i++) {
-        AccelerationStructureVK& accelerationStructure = *(AccelerationStructureVK*)memoryBindingDescs[i].accelerationStructure;
+    for (uint32_t i = 0; i < bindAccelerationStructureMemoryDescNum && result == Result::SUCCESS; i++) {
+        AccelerationStructureVK& accelerationStructure = *(AccelerationStructureVK*)bindAccelerationStructureMemoryDescs[i].accelerationStructure;
         result = accelerationStructure.FinishCreation();
     }
 
     return result;
 }
 
-NRI_INLINE Result DeviceVK::BindMicromapMemory(const MicromapMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
-    if (!memoryBindingDescNum)
+NRI_INLINE Result DeviceVK::BindMicromapMemory(const BindMicromapMemoryDesc* bindMicromapMemoryDescs, uint32_t bindMicromapMemoryDescNum) {
+    if (!bindMicromapMemoryDescNum)
         return Result::SUCCESS;
 
-    Scratch<BufferMemoryBindingDesc> bufferMemoryBindingDescs = AllocateScratch(*this, BufferMemoryBindingDesc, memoryBindingDescNum);
+    Scratch<BindBufferMemoryDesc> bindBufferMemoryDescs = AllocateScratch(*this, BindBufferMemoryDesc, bindMicromapMemoryDescNum);
 
-    for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
-        const MicromapMemoryBindingDesc& memoryBindingDesc = memoryBindingDescs[i];
-        MicromapVK& micromap = *(MicromapVK*)memoryBindingDesc.micromap;
+    for (uint32_t i = 0; i < bindMicromapMemoryDescNum; i++) {
+        const BindMicromapMemoryDesc& bindMicromapMemoryDesc = bindMicromapMemoryDescs[i];
+        MicromapVK& micromap = *(MicromapVK*)bindMicromapMemoryDesc.micromap;
 
-        BufferMemoryBindingDesc& bufferMemoryBinding = bufferMemoryBindingDescs[i];
-        bufferMemoryBinding = {};
-        bufferMemoryBinding.buffer = (Buffer*)micromap.GetBuffer();
-        bufferMemoryBinding.memory = memoryBindingDesc.memory;
-        bufferMemoryBinding.offset = memoryBindingDesc.offset;
+        BindBufferMemoryDesc& desc = bindBufferMemoryDescs[i];
+        desc = {};
+        desc.buffer = (Buffer*)micromap.GetBuffer();
+        desc.memory = bindMicromapMemoryDesc.memory;
+        desc.offset = bindMicromapMemoryDesc.offset;
     }
 
-    Result result = BindBufferMemory(bufferMemoryBindingDescs, memoryBindingDescNum);
+    Result result = BindBufferMemory(bindBufferMemoryDescs, bindMicromapMemoryDescNum);
 
-    for (uint32_t i = 0; i < memoryBindingDescNum && result == Result::SUCCESS; i++) {
-        MicromapVK& micromap = *(MicromapVK*)memoryBindingDescs[i].micromap;
+    for (uint32_t i = 0; i < bindMicromapMemoryDescNum && result == Result::SUCCESS; i++) {
+        MicromapVK& micromap = *(MicromapVK*)bindMicromapMemoryDescs[i].micromap;
         result = micromap.FinishCreation();
     }
 

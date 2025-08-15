@@ -380,21 +380,21 @@ NRI_INLINE void CommandBufferD3D11::SetPipeline(const Pipeline& pipeline) {
 NRI_INLINE void CommandBufferD3D11::SetDescriptorPool(const DescriptorPool&) {
 }
 
-NRI_INLINE void CommandBufferD3D11::SetDescriptorSet(const DescriptorSetBindingDesc& descriptorSetBindingDesc) {
-    BindPoint bindPoint = descriptorSetBindingDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : descriptorSetBindingDesc.bindPoint;
-    const DescriptorSetD3D11& descriptorSetD3D11 = *(DescriptorSetD3D11*)descriptorSetBindingDesc.descriptorSet;
+NRI_INLINE void CommandBufferD3D11::SetDescriptorSet(const SetDescriptorSetDesc& setDescriptorSetDesc) {
+    BindPoint bindPoint = setDescriptorSetDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : setDescriptorSetDesc.bindPoint;
+    const DescriptorSetD3D11& descriptorSetD3D11 = *(DescriptorSetD3D11*)setDescriptorSetDesc.descriptorSet;
 
-    m_PipelineLayout->SetDescriptorSet(bindPoint, m_BindingState, m_DeferredContext, descriptorSetBindingDesc.setIndex, &descriptorSetD3D11, nullptr, descriptorSetBindingDesc.dynamicConstantBufferOffsets);
+    m_PipelineLayout->SetDescriptorSet(bindPoint, m_BindingState, m_DeferredContext, setDescriptorSetDesc.setIndex, &descriptorSetD3D11, nullptr, setDescriptorSetDesc.dynamicConstantBufferOffsets);
 }
 
-NRI_INLINE void CommandBufferD3D11::SetRootConstants(const RootConstantBindingDesc& rootConstantBindingDesc) {
-    m_PipelineLayout->SetRootConstants(m_DeferredContext, rootConstantBindingDesc);
+NRI_INLINE void CommandBufferD3D11::SetRootConstants(const SetRootConstantsDesc& setRootConstantsDesc) {
+    m_PipelineLayout->SetRootConstants(m_DeferredContext, setRootConstantsDesc);
 }
 
-NRI_INLINE void CommandBufferD3D11::SetRootDescriptor(const RootDescriptorBindingDesc& rootDescriptorBindingDesc) {
-    BindPoint bindPoint = rootDescriptorBindingDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : rootDescriptorBindingDesc.bindPoint;
-    uint32_t setIndex = m_PipelineLayout->GetRootBindingIndex(rootDescriptorBindingDesc.rootDescriptorIndex);
-    const DescriptorD3D11& descriptorD3D11 = *(DescriptorD3D11*)rootDescriptorBindingDesc.descriptor;
+NRI_INLINE void CommandBufferD3D11::SetRootDescriptor(const SetRootDescriptorDesc& setRootDescriptorDesc) {
+    BindPoint bindPoint = setRootDescriptorDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : setRootDescriptorDesc.bindPoint;
+    uint32_t setIndex = m_PipelineLayout->GetRootBindingIndex(setRootDescriptorDesc.rootDescriptorIndex);
+    const DescriptorD3D11& descriptorD3D11 = *(DescriptorD3D11*)setRootDescriptorDesc.descriptor;
 
     m_PipelineLayout->SetDescriptorSet(bindPoint, m_BindingState, m_DeferredContext, setIndex, nullptr, &descriptorD3D11, nullptr);
 }
@@ -633,14 +633,14 @@ NRI_INLINE void CommandBufferD3D11::DispatchIndirect(const Buffer& buffer, uint6
     m_DeferredContext->DispatchIndirect((BufferD3D11&)buffer, (uint32_t)offset);
 }
 
-NRI_INLINE void CommandBufferD3D11::Barrier(const BarrierGroupDesc& barrierGroupDesc) {
-    if (barrierGroupDesc.textureNum == 0 && barrierGroupDesc.bufferNum == 0)
+NRI_INLINE void CommandBufferD3D11::Barrier(const BarrierDesc& barrierDesc) {
+    if (barrierDesc.textureNum == 0 && barrierDesc.bufferNum == 0)
         return;
 
     uint32_t flags = 0;
 
-    for (uint32_t i = 0; i < barrierGroupDesc.globalNum; i++) {
-        const GlobalBarrierDesc& barrier = barrierGroupDesc.globals[i];
+    for (uint32_t i = 0; i < barrierDesc.globalNum; i++) {
+        const GlobalBarrierDesc& barrier = barrierDesc.globals[i];
         if ((barrier.before.access & AccessBits::SHADER_RESOURCE_STORAGE) && (barrier.after.access & AccessBits::SHADER_RESOURCE_STORAGE)) {
             bool isGraphics = barrier.before.stages == StageBits::ALL || (barrier.before.stages & (StageBits::GRAPHICS));
             bool isCompute = barrier.before.stages == StageBits::ALL || (barrier.before.stages & StageBits::COMPUTE_SHADER);
@@ -657,8 +657,8 @@ NRI_INLINE void CommandBufferD3D11::Barrier(const BarrierGroupDesc& barrierGroup
         }
     }
 
-    for (uint32_t i = 0; i < barrierGroupDesc.bufferNum; i++) {
-        const BufferBarrierDesc& barrier = barrierGroupDesc.buffers[i];
+    for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
+        const BufferBarrierDesc& barrier = barrierDesc.buffers[i];
         if ((barrier.before.access & AccessBits::SHADER_RESOURCE_STORAGE) && (barrier.after.access & AccessBits::SHADER_RESOURCE_STORAGE)) {
             bool isGraphics = barrier.before.stages == StageBits::ALL || (barrier.before.stages & (StageBits::GRAPHICS));
             bool isCompute = barrier.before.stages == StageBits::ALL || (barrier.before.stages & StageBits::COMPUTE_SHADER);
@@ -675,8 +675,8 @@ NRI_INLINE void CommandBufferD3D11::Barrier(const BarrierGroupDesc& barrierGroup
         }
     }
 
-    for (uint32_t i = 0; i < barrierGroupDesc.textureNum; i++) {
-        const TextureBarrierDesc& barrier = barrierGroupDesc.textures[i];
+    for (uint32_t i = 0; i < barrierDesc.textureNum; i++) {
+        const TextureBarrierDesc& barrier = barrierDesc.textures[i];
         if ((barrier.before.access & AccessBits::SHADER_RESOURCE_STORAGE) && (barrier.after.access & AccessBits::SHADER_RESOURCE_STORAGE)) {
             bool isGraphics = barrier.before.stages == StageBits::ALL || (barrier.before.stages & (StageBits::GRAPHICS));
             bool isCompute = barrier.before.stages == StageBits::ALL || (barrier.before.stages & StageBits::COMPUTE_SHADER);

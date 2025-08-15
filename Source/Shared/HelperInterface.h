@@ -69,8 +69,8 @@ private:
     Vector<MemoryHeap> m_Heaps;
     Vector<Buffer*> m_DedicatedBuffers;
     Vector<Texture*> m_DedicatedTextures;
-    Vector<BufferMemoryBindingDesc> m_BufferBindingDescs;
-    Vector<TextureMemoryBindingDesc> m_TextureBindingDescs;
+    Vector<BindBufferMemoryDesc> m_BufferBindingDescs;
+    Vector<BindTextureMemoryDesc> m_TextureBindingDescs;
 };
 
 } // namespace nri

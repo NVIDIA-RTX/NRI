@@ -510,7 +510,7 @@ NriStruct(TextureBarrierDesc) {
     NriOptional NriPtr(Queue) dstQueue;
 };
 
-NriStruct(BarrierGroupDesc) {
+NriStruct(BarrierDesc) {
     const NriPtr(GlobalBarrierDesc) globals;
     uint32_t globalNum;
     const NriPtr(BufferBarrierDesc) buffers;
@@ -637,13 +637,13 @@ NriStruct(AllocateMemoryDesc) {
 };
 
 // Binding resources to a memory (resources can overlap, i.e. alias)
-NriStruct(BufferMemoryBindingDesc) {
+NriStruct(BindBufferMemoryDesc) {
     NriPtr(Buffer) buffer;
     NriPtr(Memory) memory;
     uint64_t offset; // in memory
 };
 
-NriStruct(TextureMemoryBindingDesc) {
+NriStruct(BindTextureMemoryDesc) {
     NriPtr(Texture) texture;
     NriPtr(Memory) memory;
     uint64_t offset; // in memory
@@ -966,7 +966,7 @@ NriStruct(DescriptorRangeUpdateDesc) {
     uint32_t baseDescriptor;
 };
 
-NriStruct(DescriptorSetCopyDesc) {
+NriStruct(CopyDescriptorSetDesc) {
     const NriPtr(DescriptorSet) srcDescriptorSet;
     uint32_t srcBaseRange;
     uint32_t dstBaseRange;
@@ -977,22 +977,22 @@ NriStruct(DescriptorSetCopyDesc) {
 };
 
 // Binding
-NriStruct(DescriptorSetBindingDesc) {
+NriStruct(SetDescriptorSetDesc) {
     uint32_t setIndex;
     const NriPtr(DescriptorSet) descriptorSet;
     NriOptional const uint32_t* dynamicConstantBufferOffsets; // expects dynamic constant buffer offsets as in the currently bound pipeline layout
     NriOptional Nri(BindPoint) bindPoint;
 };
 
-NriStruct(RootConstantBindingDesc) { // requires "pipelineLayoutRootConstantMaxSize > 0"
+NriStruct(SetRootConstantsDesc) { // requires "pipelineLayoutRootConstantMaxSize > 0"
     uint32_t rootConstantIndex;
     const void* data;
     uint32_t size;
-    uint32_t offset; // D3D11: partial updates are not supported
+    NriOptional uint32_t offset; // D3D11: partial updates are not supported
     NriOptional Nri(BindPoint) bindPoint;
 };
 
-NriStruct(RootDescriptorBindingDesc) { // requires "pipelineLayoutRootDescriptorMaxNum > 0"
+NriStruct(SetRootDescriptorDesc) { // requires "pipelineLayoutRootDescriptorMaxNum > 0"
     uint32_t rootDescriptorIndex;
     NriPtr(Descriptor) descriptor;
     NriOptional Nri(BindPoint) bindPoint;

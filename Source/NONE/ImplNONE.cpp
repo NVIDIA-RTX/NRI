@@ -386,11 +386,11 @@ static Result NRI_CALL AllocateMemory(Device&, const AllocateMemoryDesc&, Memory
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL BindBufferMemory(Device&, const BufferMemoryBindingDesc*, uint32_t) {
+static Result NRI_CALL BindBufferMemory(Device&, const BindBufferMemoryDesc*, uint32_t) {
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL BindTextureMemory(Device&, const TextureMemoryBindingDesc*, uint32_t) {
+static Result NRI_CALL BindTextureMemory(Device&, const BindTextureMemoryDesc*, uint32_t) {
     return Result::SUCCESS;
 }
 
@@ -407,19 +407,19 @@ static void NRI_CALL CmdSetDescriptorPool(CommandBuffer&, const DescriptorPool&)
 static void NRI_CALL CmdSetPipelineLayout(CommandBuffer&, BindPoint, const PipelineLayout&) {
 }
 
-static void NRI_CALL CmdSetDescriptorSet(CommandBuffer&, const DescriptorSetBindingDesc&) {
+static void NRI_CALL CmdSetDescriptorSet(CommandBuffer&, const SetDescriptorSetDesc&) {
 }
 
-static void NRI_CALL CmdSetRootConstants(CommandBuffer&, const RootConstantBindingDesc&) {
+static void NRI_CALL CmdSetRootConstants(CommandBuffer&, const SetRootConstantsDesc&) {
 }
 
-static void NRI_CALL CmdSetRootDescriptor(CommandBuffer&, const RootDescriptorBindingDesc&) {
+static void NRI_CALL CmdSetRootDescriptor(CommandBuffer&, const SetRootDescriptorDesc&) {
 }
 
 static void NRI_CALL CmdSetPipeline(CommandBuffer&, const Pipeline&) {
 }
 
-static void NRI_CALL CmdBarrier(CommandBuffer&, const BarrierGroupDesc&) {
+static void NRI_CALL CmdBarrier(CommandBuffer&, const BarrierDesc&) {
 }
 
 static void NRI_CALL CmdSetIndexBuffer(CommandBuffer&, const Buffer&, uint64_t, IndexType) {
@@ -558,7 +558,7 @@ static void NRI_CALL UpdateDescriptorRanges(DescriptorSet&, uint32_t, uint32_t, 
 static void NRI_CALL UpdateDynamicConstantBuffers(DescriptorSet&, uint32_t, uint32_t, const Descriptor* const*) {
 }
 
-static void NRI_CALL CopyDescriptorSet(DescriptorSet&, const DescriptorSetCopyDesc&) {
+static void NRI_CALL CopyDescriptorSet(DescriptorSet&, const CopyDescriptorSetDesc&) {
 }
 
 static Result NRI_CALL AllocateDescriptorSets(DescriptorPool&, const PipelineLayout&, uint32_t, DescriptorSet**, uint32_t, uint32_t) {
@@ -898,7 +898,7 @@ static void NRI_CALL GetAccelerationStructureMemoryDesc(const AccelerationStruct
 static void NRI_CALL GetAccelerationStructureMemoryDesc2(const Device&, const AccelerationStructureDesc&, MemoryLocation, MemoryDesc&) {
 }
 
-static Result NRI_CALL BindAccelerationStructureMemory(Device&, const AccelerationStructureMemoryBindingDesc*, uint32_t) {
+static Result NRI_CALL BindAccelerationStructureMemory(Device&, const BindAccelerationStructureMemoryDesc*, uint32_t) {
     return Result::SUCCESS;
 }
 
@@ -908,7 +908,7 @@ static void NRI_CALL GetMicromapMemoryDesc(const Micromap&, MemoryLocation, Memo
 static void NRI_CALL GetMicromapMemoryDesc2(const Device&, const MicromapDesc&, MemoryLocation, MemoryDesc&) {
 }
 
-static Result NRI_CALL BindMicromapMemory(Device&, const MicromapMemoryBindingDesc*, uint32_t) {
+static Result NRI_CALL BindMicromapMemory(Device&, const BindMicromapMemoryDesc*, uint32_t) {
     return Result::SUCCESS;
 }
 

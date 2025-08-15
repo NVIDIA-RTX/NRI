@@ -61,31 +61,31 @@ NRI_INLINE void DescriptorSetVal::UpdateDynamicConstantBuffers(uint32_t baseDyna
     GetCoreInterfaceImpl().UpdateDynamicConstantBuffers(*GetImpl(), baseDynamicConstantBuffer, dynamicConstantBufferNum, descriptorsImpl);
 }
 
-NRI_INLINE void DescriptorSetVal::Copy(const DescriptorSetCopyDesc& descriptorSetCopyDesc) {
-    RETURN_ON_FAILURE(&m_Device, descriptorSetCopyDesc.srcDescriptorSet != nullptr, ReturnVoid(), "'srcDescriptorSet' is NULL");
+NRI_INLINE void DescriptorSetVal::Copy(const CopyDescriptorSetDesc& copyDescriptorSetDesc) {
+    RETURN_ON_FAILURE(&m_Device, copyDescriptorSetDesc.srcDescriptorSet != nullptr, ReturnVoid(), "'srcDescriptorSet' is NULL");
 
-    DescriptorSetVal& srcDescriptorSetVal = *(DescriptorSetVal*)descriptorSetCopyDesc.srcDescriptorSet;
+    DescriptorSetVal& srcDescriptorSetVal = *(DescriptorSetVal*)copyDescriptorSetDesc.srcDescriptorSet;
     const DescriptorSetDesc& srcDesc = srcDescriptorSetVal.GetDesc();
 
-    RETURN_ON_FAILURE(&m_Device, descriptorSetCopyDesc.srcBaseRange < srcDesc.rangeNum, ReturnVoid(), "'srcBaseRange' is invalid");
+    RETURN_ON_FAILURE(&m_Device, copyDescriptorSetDesc.srcBaseRange < srcDesc.rangeNum, ReturnVoid(), "'srcBaseRange' is invalid");
 
-    bool srcRangeValid = descriptorSetCopyDesc.srcBaseRange + descriptorSetCopyDesc.rangeNum < srcDesc.rangeNum;
-    bool dstRangeValid = descriptorSetCopyDesc.dstBaseRange + descriptorSetCopyDesc.rangeNum < GetDesc().rangeNum;
-    bool srcOffsetValid = descriptorSetCopyDesc.srcBaseDynamicConstantBuffer < srcDesc.dynamicConstantBufferNum;
-    bool srcDynamicConstantBufferValid = descriptorSetCopyDesc.srcBaseDynamicConstantBuffer + descriptorSetCopyDesc.dynamicConstantBufferNum < srcDesc.dynamicConstantBufferNum;
-    bool dstOffsetValid = descriptorSetCopyDesc.dstBaseDynamicConstantBuffer < GetDesc().dynamicConstantBufferNum;
-    bool dstDynamicConstantBufferValid = descriptorSetCopyDesc.dstBaseDynamicConstantBuffer + descriptorSetCopyDesc.dynamicConstantBufferNum < GetDesc().dynamicConstantBufferNum;
+    bool srcRangeValid = copyDescriptorSetDesc.srcBaseRange + copyDescriptorSetDesc.rangeNum < srcDesc.rangeNum;
+    bool dstRangeValid = copyDescriptorSetDesc.dstBaseRange + copyDescriptorSetDesc.rangeNum < GetDesc().rangeNum;
+    bool srcOffsetValid = copyDescriptorSetDesc.srcBaseDynamicConstantBuffer < srcDesc.dynamicConstantBufferNum;
+    bool srcDynamicConstantBufferValid = copyDescriptorSetDesc.srcBaseDynamicConstantBuffer + copyDescriptorSetDesc.dynamicConstantBufferNum < srcDesc.dynamicConstantBufferNum;
+    bool dstOffsetValid = copyDescriptorSetDesc.dstBaseDynamicConstantBuffer < GetDesc().dynamicConstantBufferNum;
+    bool dstDynamicConstantBufferValid = copyDescriptorSetDesc.dstBaseDynamicConstantBuffer + copyDescriptorSetDesc.dynamicConstantBufferNum < GetDesc().dynamicConstantBufferNum;
 
     RETURN_ON_FAILURE(&m_Device, srcRangeValid, ReturnVoid(), "'rangeNum' is invalid");
-    RETURN_ON_FAILURE(&m_Device, descriptorSetCopyDesc.dstBaseRange < GetDesc().rangeNum, ReturnVoid(), "'dstBaseRange' is invalid");
+    RETURN_ON_FAILURE(&m_Device, copyDescriptorSetDesc.dstBaseRange < GetDesc().rangeNum, ReturnVoid(), "'dstBaseRange' is invalid");
     RETURN_ON_FAILURE(&m_Device, dstRangeValid, ReturnVoid(), "'rangeNum' is invalid");
     RETURN_ON_FAILURE(&m_Device, srcOffsetValid, ReturnVoid(), "'srcBaseDynamicConstantBuffer' is invalid");
     RETURN_ON_FAILURE(&m_Device, srcDynamicConstantBufferValid, ReturnVoid(), "source range of dynamic constant buffers is invalid");
     RETURN_ON_FAILURE(&m_Device, dstOffsetValid, ReturnVoid(), "'dstBaseDynamicConstantBuffer' is invalid");
     RETURN_ON_FAILURE(&m_Device, dstDynamicConstantBufferValid, ReturnVoid(), "destination range of dynamic constant buffers is invalid");
 
-    auto descriptorSetCopyDescImpl = descriptorSetCopyDesc;
-    descriptorSetCopyDescImpl.srcDescriptorSet = NRI_GET_IMPL(DescriptorSet, descriptorSetCopyDesc.srcDescriptorSet);
+    auto descriptorSetCopyDescImpl = copyDescriptorSetDesc;
+    descriptorSetCopyDescImpl.srcDescriptorSet = NRI_GET_IMPL(DescriptorSet, copyDescriptorSetDesc.srcDescriptorSet);
 
     GetCoreInterfaceImpl().CopyDescriptorSet(*GetImpl(), descriptorSetCopyDescImpl);
 }

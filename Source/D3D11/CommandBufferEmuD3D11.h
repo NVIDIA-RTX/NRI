@@ -55,9 +55,9 @@ struct CommandBufferEmuD3D11 final : public CommandBufferBase {
     void SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType);
     void SetPipelineLayout(BindPoint bindPoint, const PipelineLayout& pipelineLayout);
     void SetPipeline(const Pipeline& pipeline);
-    void SetDescriptorSet(const DescriptorSetBindingDesc& descriptorSetBindingDesc);
-    void SetRootConstants(const RootConstantBindingDesc& rootConstantBindingDesc);
-    void SetRootDescriptor(const RootDescriptorBindingDesc& rootDescriptorBindingDesc);
+    void SetDescriptorSet(const SetDescriptorSetDesc& setDescriptorSetDesc);
+    void SetRootConstants(const SetRootConstantsDesc& setRootConstantsDesc);
+    void SetRootDescriptor(const SetRootDescriptorDesc& setRootDescriptorDesc);
     void Draw(const DrawDesc& drawDesc);
     void DrawIndexed(const DrawIndexedDesc& drawIndexedDesc);
     void DrawIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset);
@@ -70,7 +70,7 @@ struct CommandBufferEmuD3D11 final : public CommandBufferBase {
     void ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion);
     void Dispatch(const DispatchDesc& dispatchDesc);
     void DispatchIndirect(const Buffer& buffer, uint64_t offset);
-    void Barrier(const BarrierGroupDesc& barrierGroupDesc);
+    void Barrier(const BarrierDesc& barrierDesc);
     void BeginQuery(QueryPool& queryPool, uint32_t offset);
     void EndQuery(QueryPool& queryPool, uint32_t offset);
     void CopyQueries(const QueryPool& queryPool, uint32_t offset, uint32_t num, Buffer& dstBuffer, uint64_t dstOffset);

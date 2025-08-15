@@ -140,8 +140,8 @@ struct DeviceD3D11 final : public DeviceBase {
 
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
     Result WaitIdle();
-    Result BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
-    Result BindTextureMemory(const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum);
+    Result BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum);
+    Result BindTextureMemory(const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum);
     FormatSupportBits GetFormatSupport(Format format) const;
 
 private:

@@ -40,10 +40,10 @@ struct CommandBufferVK final : public DebugNameBase {
     Result End();
     void SetPipeline(const Pipeline& pipeline);
     void SetPipelineLayout(BindPoint bindPoint, const PipelineLayout& pipelineLayout);
-    void SetDescriptorSet(const DescriptorSetBindingDesc& descriptorSetBindingDesc);
-    void SetRootConstants(const RootConstantBindingDesc& rootConstantBindingDesc);
-    void SetRootDescriptor(const RootDescriptorBindingDesc& rootDescriptorBindingDesc);
-    void Barrier(const BarrierGroupDesc& barrierGroupDesc);
+    void SetDescriptorSet(const SetDescriptorSetDesc& setDescriptorSetDesc);
+    void SetRootConstants(const SetRootConstantsDesc& setRootConstantsDesc);
+    void SetRootDescriptor(const SetRootDescriptorDesc& setRootDescriptorDesc);
+    void Barrier(const BarrierDesc& barrierDesc);
     void BeginRendering(const AttachmentsDesc& attachmentsDesc);
     void EndRendering();
     void SetViewports(const Viewport* viewports, uint32_t viewportNum);

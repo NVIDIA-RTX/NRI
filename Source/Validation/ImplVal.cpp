@@ -238,12 +238,12 @@ static Result NRI_CALL AllocateMemory(Device& device, const AllocateMemoryDesc& 
     return ((DeviceVal&)device).AllocateMemory(allocateMemoryDesc, memory);
 }
 
-static Result NRI_CALL BindBufferMemory(Device& device, const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
-    return ((DeviceVal&)device).BindBufferMemory(memoryBindingDescs, memoryBindingDescNum);
+static Result NRI_CALL BindBufferMemory(Device& device, const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum) {
+    return ((DeviceVal&)device).BindBufferMemory(bindBufferMemoryDescs, bindBufferMemoryDescNum);
 }
 
-static Result NRI_CALL BindTextureMemory(Device& device, const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
-    return ((DeviceVal&)device).BindTextureMemory(memoryBindingDescs, memoryBindingDescNum);
+static Result NRI_CALL BindTextureMemory(Device& device, const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum) {
+    return ((DeviceVal&)device).BindTextureMemory(bindTextureMemoryDescs, bindTextureMemoryDescNum);
 }
 
 static void NRI_CALL FreeMemory(Memory* memory) {
@@ -263,24 +263,24 @@ static void NRI_CALL CmdSetPipelineLayout(CommandBuffer& commandBuffer, BindPoin
     ((CommandBufferVal&)commandBuffer).SetPipelineLayout(bindPoint, pipelineLayout);
 }
 
-static void NRI_CALL CmdSetDescriptorSet(CommandBuffer& commandBuffer, const DescriptorSetBindingDesc& descriptorSetBindingDesc) {
-    ((CommandBufferVal&)commandBuffer).SetDescriptorSet(descriptorSetBindingDesc);
+static void NRI_CALL CmdSetDescriptorSet(CommandBuffer& commandBuffer, const SetDescriptorSetDesc& setDescriptorSetDesc) {
+    ((CommandBufferVal&)commandBuffer).SetDescriptorSet(setDescriptorSetDesc);
 }
 
-static void NRI_CALL CmdSetRootConstants(CommandBuffer& commandBuffer, const RootConstantBindingDesc& rootConstantBindingDesc) {
-    ((CommandBufferVal&)commandBuffer).SetRootConstants(rootConstantBindingDesc);
+static void NRI_CALL CmdSetRootConstants(CommandBuffer& commandBuffer, const SetRootConstantsDesc& setRootConstantsDesc) {
+    ((CommandBufferVal&)commandBuffer).SetRootConstants(setRootConstantsDesc);
 }
 
-static void NRI_CALL CmdSetRootDescriptor(CommandBuffer& commandBuffer, const RootDescriptorBindingDesc& rootDescriptorBindingDesc) {
-    ((CommandBufferVal&)commandBuffer).SetRootDescriptor(rootDescriptorBindingDesc);
+static void NRI_CALL CmdSetRootDescriptor(CommandBuffer& commandBuffer, const SetRootDescriptorDesc& setRootDescriptorDesc) {
+    ((CommandBufferVal&)commandBuffer).SetRootDescriptor(setRootDescriptorDesc);
 }
 
 static void NRI_CALL CmdSetPipeline(CommandBuffer& commandBuffer, const Pipeline& pipeline) {
     ((CommandBufferVal&)commandBuffer).SetPipeline(pipeline);
 }
 
-static void NRI_CALL CmdBarrier(CommandBuffer& commandBuffer, const BarrierGroupDesc& barrierGroupDesc) {
-    ((CommandBufferVal&)commandBuffer).Barrier(barrierGroupDesc);
+static void NRI_CALL CmdBarrier(CommandBuffer& commandBuffer, const BarrierDesc& barrierDesc) {
+    ((CommandBufferVal&)commandBuffer).Barrier(barrierDesc);
 }
 
 static void NRI_CALL CmdSetIndexBuffer(CommandBuffer& commandBuffer, const Buffer& buffer, uint64_t offset, IndexType indexType) {
@@ -465,8 +465,8 @@ static void NRI_CALL UpdateDynamicConstantBuffers(DescriptorSet& descriptorSet, 
     ((DescriptorSetVal&)descriptorSet).UpdateDynamicConstantBuffers(baseDynamicConstantBuffer, dynamicConstantBufferNum, descriptors);
 }
 
-static void NRI_CALL CopyDescriptorSet(DescriptorSet& descriptorSet, const DescriptorSetCopyDesc& descriptorSetCopyDesc) {
-    ((DescriptorSetVal&)descriptorSet).Copy(descriptorSetCopyDesc);
+static void NRI_CALL CopyDescriptorSet(DescriptorSet& descriptorSet, const CopyDescriptorSetDesc& copyDescriptorSetDesc) {
+    ((DescriptorSetVal&)descriptorSet).Copy(copyDescriptorSetDesc);
 }
 
 static Result NRI_CALL AllocateDescriptorSets(DescriptorPool& descriptorPool, const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum) {
@@ -997,8 +997,8 @@ static void NRI_CALL GetAccelerationStructureMemoryDesc2(const Device& device, c
     deviceVal.RegisterMemoryType(memoryDesc.type, memoryLocation);
 }
 
-static Result NRI_CALL BindAccelerationStructureMemory(Device& device, const AccelerationStructureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
-    return ((DeviceVal&)device).BindAccelerationStructureMemory(memoryBindingDescs, memoryBindingDescNum);
+static Result NRI_CALL BindAccelerationStructureMemory(Device& device, const BindAccelerationStructureMemoryDesc* bindAccelerationStructureMemoryDescs, uint32_t bindAccelerationStructureMemoryDescNum) {
+    return ((DeviceVal&)device).BindAccelerationStructureMemory(bindAccelerationStructureMemoryDescs, bindAccelerationStructureMemoryDescNum);
 }
 
 static void NRI_CALL GetMicromapMemoryDesc(const Micromap& micromap, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
@@ -1016,8 +1016,8 @@ static void NRI_CALL GetMicromapMemoryDesc2(const Device& device, const Micromap
     deviceVal.RegisterMemoryType(memoryDesc.type, memoryLocation);
 }
 
-static Result NRI_CALL BindMicromapMemory(Device& device, const MicromapMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
-    return ((DeviceVal&)device).BindMicromapMemory(memoryBindingDescs, memoryBindingDescNum);
+static Result NRI_CALL BindMicromapMemory(Device& device, const BindMicromapMemoryDesc* bindMicromapMemoryDescs, uint32_t bindMicromapMemoryDescNum) {
+    return ((DeviceVal&)device).BindMicromapMemory(bindMicromapMemoryDescs, bindMicromapMemoryDescNum);
 }
 
 static Result NRI_CALL WriteShaderGroupIdentifiers(const Pipeline& pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* dst) {

@@ -1191,10 +1191,10 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
             m_iCore.CmdSetPipelineLayout(commandBuffer, BindPoint::COMPUTE, *m.nis->pipelineLayout);
             m_iCore.CmdSetPipeline(commandBuffer, *m.nis->pipeline);
 
-            DescriptorSetBindingDesc staticSet = {NRI_NIS_SET_STATIC, m.nis->descriptorSet0};
+            SetDescriptorSetDesc staticSet = {NRI_NIS_SET_STATIC, m.nis->descriptorSet0};
             m_iCore.CmdSetDescriptorSet(commandBuffer, staticSet);
 
-            DescriptorSetBindingDesc dynamicSet = {NRI_NIS_SET_DYNAMIC, descriptorSet1};
+            SetDescriptorSetDesc dynamicSet = {NRI_NIS_SET_DYNAMIC, descriptorSet1};
             m_iCore.CmdSetDescriptorSet(commandBuffer, dynamicSet);
         }
 
@@ -1209,7 +1209,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
                 m_Desc.upscaleResolution.w, m_Desc.upscaleResolution.h,                           // output dims
                 (m_Desc.flags & UpscalerBits::HDR) ? NIS::HDRMode::Linear : NIS::HDRMode::None);
 
-            RootConstantBindingDesc rootConstants = {0, &constants, sizeof(constants)};
+            SetRootConstantsDesc rootConstants = {0, &constants, sizeof(constants)};
             m_iCore.CmdSetRootConstants(commandBuffer, rootConstants);
         }
 

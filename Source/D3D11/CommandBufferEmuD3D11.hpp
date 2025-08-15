@@ -226,29 +226,29 @@ void CommandBufferEmuD3D11::Submit() {
                 commandBuffer.SetPipeline(*pipeline);
             } break;
             case SET_DESCRIPTOR_SET: {
-                DescriptorSetBindingDesc descriptorSetBindingDesc = {};
-                Read(m_PushBuffer, i, descriptorSetBindingDesc);
+                SetDescriptorSetDesc setDescriptorSetDesc = {};
+                Read(m_PushBuffer, i, setDescriptorSetDesc);
 
                 uint32_t dynamicConstantBufferNum;
-                Read(m_PushBuffer, i, descriptorSetBindingDesc.dynamicConstantBufferOffsets, dynamicConstantBufferNum);
+                Read(m_PushBuffer, i, setDescriptorSetDesc.dynamicConstantBufferOffsets, dynamicConstantBufferNum);
 
-                commandBuffer.SetDescriptorSet(descriptorSetBindingDesc);
+                commandBuffer.SetDescriptorSet(setDescriptorSetDesc);
             } break;
             case SET_ROOT_CONSTANTS: {
-                RootConstantBindingDesc rootConstantBindingDesc = {};
-                Read(m_PushBuffer, i, rootConstantBindingDesc);
+                SetRootConstantsDesc setRootConstantsDesc = {};
+                Read(m_PushBuffer, i, setRootConstantsDesc);
 
                 uint8_t* data;
-                Read(m_PushBuffer, i, data, rootConstantBindingDesc.size);
-                rootConstantBindingDesc.data = data;
+                Read(m_PushBuffer, i, data, setRootConstantsDesc.size);
+                setRootConstantsDesc.data = data;
 
-                commandBuffer.SetRootConstants(rootConstantBindingDesc);
+                commandBuffer.SetRootConstants(setRootConstantsDesc);
             } break;
             case SET_ROOT_DESCRIPTOR: {
-                RootDescriptorBindingDesc rootDescriptorBindingDesc = {};
-                Read(m_PushBuffer, i, rootDescriptorBindingDesc);
+                SetRootDescriptorDesc setRootDescriptorDesc = {};
+                Read(m_PushBuffer, i, setRootDescriptorDesc);
 
-                commandBuffer.SetRootDescriptor(rootDescriptorBindingDesc);
+                commandBuffer.SetRootDescriptor(setRootDescriptorDesc);
             } break;
             case DRAW: {
                 DrawDesc drawDesc = {};
@@ -410,12 +410,12 @@ void CommandBufferEmuD3D11::Submit() {
                 commandBuffer.DispatchIndirect(*buffer, offset);
             } break;
             case BARRIER: {
-                BarrierGroupDesc barrierGroupDesc = {};
-                Read(m_PushBuffer, i, barrierGroupDesc.globals, barrierGroupDesc.globalNum);
-                Read(m_PushBuffer, i, barrierGroupDesc.buffers, barrierGroupDesc.bufferNum);
-                Read(m_PushBuffer, i, barrierGroupDesc.textures, barrierGroupDesc.textureNum);
+                BarrierDesc barrierDesc = {};
+                Read(m_PushBuffer, i, barrierDesc.globals, barrierDesc.globalNum);
+                Read(m_PushBuffer, i, barrierDesc.buffers, barrierDesc.bufferNum);
+                Read(m_PushBuffer, i, barrierDesc.textures, barrierDesc.textureNum);
 
-                commandBuffer.Barrier(barrierGroupDesc);
+                commandBuffer.Barrier(barrierDesc);
             } break;
             case BEGIN_QUERY: {
                 QueryPool* queryPool;
@@ -572,23 +572,23 @@ NRI_INLINE void CommandBufferEmuD3D11::SetPipeline(const Pipeline& pipeline) {
     Push(m_PushBuffer, &pipeline);
 }
 
-NRI_INLINE void CommandBufferEmuD3D11::SetDescriptorSet(const DescriptorSetBindingDesc& descriptorSetBindingDesc) {
-    uint32_t dynamicConstantBufferNum = ((DescriptorSetD3D11*)descriptorSetBindingDesc.descriptorSet)->GetDynamicConstantBufferNum();
+NRI_INLINE void CommandBufferEmuD3D11::SetDescriptorSet(const SetDescriptorSetDesc& setDescriptorSetDesc) {
+    uint32_t dynamicConstantBufferNum = ((DescriptorSetD3D11*)setDescriptorSetDesc.descriptorSet)->GetDynamicConstantBufferNum();
 
     Push(m_PushBuffer, SET_DESCRIPTOR_SET);
-    Push(m_PushBuffer, descriptorSetBindingDesc);
-    Push(m_PushBuffer, descriptorSetBindingDesc.dynamicConstantBufferOffsets, dynamicConstantBufferNum);
+    Push(m_PushBuffer, setDescriptorSetDesc);
+    Push(m_PushBuffer, setDescriptorSetDesc.dynamicConstantBufferOffsets, dynamicConstantBufferNum);
 }
 
-NRI_INLINE void CommandBufferEmuD3D11::SetRootConstants(const RootConstantBindingDesc& rootConstantBindingDesc) {
+NRI_INLINE void CommandBufferEmuD3D11::SetRootConstants(const SetRootConstantsDesc& setRootConstantsDesc) {
     Push(m_PushBuffer, SET_ROOT_CONSTANTS);
-    Push(m_PushBuffer, rootConstantBindingDesc);
-    Push(m_PushBuffer, (uint8_t*)rootConstantBindingDesc.data, rootConstantBindingDesc.size);
+    Push(m_PushBuffer, setRootConstantsDesc);
+    Push(m_PushBuffer, (uint8_t*)setRootConstantsDesc.data, setRootConstantsDesc.size);
 }
 
-NRI_INLINE void CommandBufferEmuD3D11::SetRootDescriptor(const RootDescriptorBindingDesc& rootDescriptorBindingDesc) {
+NRI_INLINE void CommandBufferEmuD3D11::SetRootDescriptor(const SetRootDescriptorDesc& setRootDescriptorDesc) {
     Push(m_PushBuffer, SET_ROOT_DESCRIPTOR);
-    Push(m_PushBuffer, rootDescriptorBindingDesc);
+    Push(m_PushBuffer, setRootDescriptorDesc);
 }
 
 NRI_INLINE void CommandBufferEmuD3D11::Draw(const DrawDesc& drawDesc) {
@@ -696,11 +696,11 @@ NRI_INLINE void CommandBufferEmuD3D11::DispatchIndirect(const Buffer& buffer, ui
     Push(m_PushBuffer, offset);
 }
 
-NRI_INLINE void CommandBufferEmuD3D11::Barrier(const BarrierGroupDesc& barrierGroupDesc) {
+NRI_INLINE void CommandBufferEmuD3D11::Barrier(const BarrierDesc& barrierDesc) {
     Push(m_PushBuffer, BARRIER);
-    Push(m_PushBuffer, barrierGroupDesc.globals, barrierGroupDesc.globalNum);
-    Push(m_PushBuffer, barrierGroupDesc.buffers, barrierGroupDesc.bufferNum);
-    Push(m_PushBuffer, barrierGroupDesc.textures, barrierGroupDesc.textureNum);
+    Push(m_PushBuffer, barrierDesc.globals, barrierDesc.globalNum);
+    Push(m_PushBuffer, barrierDesc.buffers, barrierDesc.bufferNum);
+    Push(m_PushBuffer, barrierDesc.textures, barrierDesc.textureNum);
 }
 
 NRI_INLINE void CommandBufferEmuD3D11::BeginQuery(QueryPool& queryPool, uint32_t offset) {

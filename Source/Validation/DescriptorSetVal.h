@@ -34,7 +34,7 @@ struct DescriptorSetVal final : public ObjectVal {
 
     void UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs);
     void UpdateDynamicConstantBuffers(uint32_t baseDynamicConstantBuffer, uint32_t dynamicConstantBufferNum, const Descriptor* const* descriptors);
-    void Copy(const DescriptorSetCopyDesc& descriptorSetCopyDesc);
+    void Copy(const CopyDescriptorSetDesc& copyDescriptorSetDesc);
 
 private:
     const DescriptorSetDesc* m_Desc = nullptr; // .natvis

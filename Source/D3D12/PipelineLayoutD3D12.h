@@ -65,9 +65,9 @@ struct PipelineLayoutD3D12 final : public DebugNameBase {
     }
 
     Result Create(const PipelineLayoutDesc& pipelineLayoutDesc);
-    void SetDescriptorSet(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const DescriptorSetBindingDesc& descriptorSetBindingDesc) const;
-    void SetRootConstants(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const RootConstantBindingDesc& rootConstantBindingDesc) const;
-    void SetRootDescriptor(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const RootDescriptorBindingDesc& rootDescriptorBindingDesc) const;
+    void SetDescriptorSet(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const SetDescriptorSetDesc& setDescriptorSetDesc) const;
+    void SetRootConstants(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const SetRootConstantsDesc& setRootConstantsDesc) const;
+    void SetRootDescriptor(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const SetRootDescriptorDesc& setRootDescriptorDesc) const;
 
     //================================================================================================================
     // DebugNameBase

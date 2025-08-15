@@ -59,7 +59,7 @@ struct PipelineLayoutD3D11 final : public DebugNameBase {
 
     Result Create(const PipelineLayoutDesc& pipelineDesc);
     void Bind(ID3D11DeviceContextBest* deferredContext);
-    void SetRootConstants(ID3D11DeviceContextBest* deferredContext, const RootConstantBindingDesc& rootConstantBindingDesc) const;
+    void SetRootConstants(ID3D11DeviceContextBest* deferredContext, const SetRootConstantsDesc& setRootConstantsDesc) const;
     void SetDescriptorSet(BindPoint bindPoint, BindingState& currentBindingState, ID3D11DeviceContextBest* deferredContext, uint32_t setIndex, const DescriptorSetD3D11* descriptorSet, const DescriptorD3D11* descriptor, const uint32_t* dynamicConstantBufferOffsets) const;
 
 private:

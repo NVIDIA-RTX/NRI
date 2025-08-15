@@ -58,20 +58,20 @@ NRI_INLINE void DescriptorSetD3D12::UpdateDynamicConstantBuffers(uint32_t baseDy
         m_DynamicConstantBuffers[baseDynamicConstantBuffer + i] = ((DescriptorD3D12*)descriptors[i])->GetPointerGPU();
 }
 
-NRI_INLINE void DescriptorSetD3D12::Copy(const DescriptorSetCopyDesc& descriptorSetCopyDesc) {
-    const DescriptorSetD3D12* srcDescriptorSet = (DescriptorSetD3D12*)descriptorSetCopyDesc.srcDescriptorSet;
+NRI_INLINE void DescriptorSetD3D12::Copy(const CopyDescriptorSetDesc& copyDescriptorSetDesc) {
+    const DescriptorSetD3D12* srcDescriptorSet = (DescriptorSetD3D12*)copyDescriptorSetDesc.srcDescriptorSet;
 
-    for (uint32_t i = 0; i < descriptorSetCopyDesc.rangeNum; i++) {
+    for (uint32_t i = 0; i < copyDescriptorSetDesc.rangeNum; i++) {
         const DescriptorRangeMapping& rangeMapping = m_DescriptorSetMapping->descriptorRangeMappings[i];
 
-        DescriptorPointerCPU dstPointer = GetPointerCPU(descriptorSetCopyDesc.dstBaseRange + i, 0);
-        DescriptorPointerCPU srcPointer = srcDescriptorSet->GetPointerCPU(descriptorSetCopyDesc.srcBaseRange + i, 0);
+        DescriptorPointerCPU dstPointer = GetPointerCPU(copyDescriptorSetDesc.dstBaseRange + i, 0);
+        DescriptorPointerCPU srcPointer = srcDescriptorSet->GetPointerCPU(copyDescriptorSetDesc.srcBaseRange + i, 0);
 
         GetDevice()->CopyDescriptorsSimple(rangeMapping.descriptorNum, {dstPointer}, {srcPointer}, (D3D12_DESCRIPTOR_HEAP_TYPE)rangeMapping.descriptorHeapType);
     }
 
-    for (uint32_t i = 0; i < descriptorSetCopyDesc.dynamicConstantBufferNum; i++) {
-        DescriptorPointerGPU descriptorPointerGPU = srcDescriptorSet->GetDynamicPointerGPU(descriptorSetCopyDesc.srcBaseDynamicConstantBuffer + i);
-        m_DynamicConstantBuffers[descriptorSetCopyDesc.dstBaseDynamicConstantBuffer + i] = descriptorPointerGPU;
+    for (uint32_t i = 0; i < copyDescriptorSetDesc.dynamicConstantBufferNum; i++) {
+        DescriptorPointerGPU descriptorPointerGPU = srcDescriptorSet->GetDynamicPointerGPU(copyDescriptorSetDesc.srcBaseDynamicConstantBuffer + i);
+        m_DynamicConstantBuffers[copyDescriptorSetDesc.dstBaseDynamicConstantBuffer + i] = descriptorPointerGPU;
     }
 }

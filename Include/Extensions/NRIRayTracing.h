@@ -91,7 +91,7 @@ NriStruct(MicromapDesc) {
     Nri(MicromapBits) flags;
 };
 
-NriStruct(MicromapMemoryBindingDesc) {
+NriStruct(BindMicromapMemoryDesc) {
     NriPtr(Micromap) micromap;
     NriPtr(Memory) memory;
     uint64_t offset;
@@ -253,7 +253,7 @@ NriStruct(AccelerationStructureDesc) {
     Nri(AccelerationStructureType) type;
 };
 
-NriStruct(AccelerationStructureMemoryBindingDesc) {
+NriStruct(BindAccelerationStructureMemoryDesc) {
     NriPtr(AccelerationStructure) accelerationStructure;
     NriPtr(Memory) memory;
     uint64_t offset;
@@ -349,11 +349,11 @@ NriStruct(RayTracingInterface) {
     // Memory
     void            (NRI_CALL *GetAccelerationStructureMemoryDesc)                  (const NriRef(AccelerationStructure) accelerationStructure, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc);
     void            (NRI_CALL *GetAccelerationStructureMemoryDesc2)                 (const NriRef(Device) device, const NriRef(AccelerationStructureDesc) accelerationStructureDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "features.getMemoryDesc2"
-    Nri(Result)     (NRI_CALL *BindAccelerationStructureMemory)                     (NriRef(Device) device, const NriPtr(AccelerationStructureMemoryBindingDesc) memoryBindingDescs, uint32_t memoryBindingDescNum);
+    Nri(Result)     (NRI_CALL *BindAccelerationStructureMemory)                     (NriRef(Device) device, const NriPtr(BindAccelerationStructureMemoryDesc) bindAccelerationStructureMemoryDescs, uint32_t bindAccelerationStructureMemoryDescNum);
 
     void            (NRI_CALL *GetMicromapMemoryDesc)                               (const NriRef(Micromap) micromap, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc);
     void            (NRI_CALL *GetMicromapMemoryDesc2)                              (const NriRef(Device) device, const NriRef(MicromapDesc) micromapDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "features.getMemoryDesc2"
-    Nri(Result)     (NRI_CALL *BindMicromapMemory)                                  (NriRef(Device) device, const NriPtr(MicromapMemoryBindingDesc) memoryBindingDescs, uint32_t memoryBindingDescNum);
+    Nri(Result)     (NRI_CALL *BindMicromapMemory)                                  (NriRef(Device) device, const NriPtr(BindMicromapMemoryDesc) bindMicromapMemoryDescs, uint32_t bindMicromapMemoryDescNum);
 
     // Shader table
     // "dst" size must be >= "shaderGroupNum * rayTracingShaderGroupIdentifierSize" bytes

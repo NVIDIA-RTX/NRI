@@ -343,11 +343,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     { // Create zero buffer
         D3D12_RESOURCE_DESC zeroBufferDesc = {};
         zeroBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-#if (NRI_D3D12_USE_SELF_COPIES_FOR_ZERO_BUFFER == 1)
-        zeroBufferDesc.Width = 128 * 1024;
-#else
         zeroBufferDesc.Width = desc.d3dZeroBufferSize ? desc.d3dZeroBufferSize : ZERO_BUFFER_DEFAULT_SIZE;
-#endif
         zeroBufferDesc.Height = 1;
         zeroBufferDesc.DepthOrArraySize = 1;
         zeroBufferDesc.MipLevels = 1;
@@ -1260,9 +1256,10 @@ NRI_INLINE Result DeviceD3D12::WaitIdle() {
     return Result::SUCCESS;
 }
 
-NRI_INLINE Result DeviceD3D12::BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
-    for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
-        Result result = ((BufferD3D12*)memoryBindingDescs[i].buffer)->BindMemory((MemoryD3D12*)memoryBindingDescs[i].memory, memoryBindingDescs[i].offset);
+NRI_INLINE Result DeviceD3D12::BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum) {
+    for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
+        const auto& desc = bindBufferMemoryDescs[i];
+        Result result = ((BufferD3D12*)desc.buffer)->BindMemory((MemoryD3D12*)desc.memory, desc.offset);
         if (result != Result::SUCCESS)
             return result;
     }
@@ -1270,9 +1267,10 @@ NRI_INLINE Result DeviceD3D12::BindBufferMemory(const BufferMemoryBindingDesc* m
     return Result::SUCCESS;
 }
 
-NRI_INLINE Result DeviceD3D12::BindTextureMemory(const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
-    for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
-        Result result = ((TextureD3D12*)memoryBindingDescs[i].texture)->BindMemory((MemoryD3D12*)memoryBindingDescs[i].memory, memoryBindingDescs[i].offset);
+NRI_INLINE Result DeviceD3D12::BindTextureMemory(const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum) {
+    for (uint32_t i = 0; i < bindTextureMemoryDescNum; i++) {
+        const auto& desc = bindTextureMemoryDescs[i];
+        Result result = ((TextureD3D12*)desc.texture)->BindMemory((MemoryD3D12*)desc.memory, desc.offset);
         if (result != Result::SUCCESS)
             return result;
     }
@@ -1280,9 +1278,10 @@ NRI_INLINE Result DeviceD3D12::BindTextureMemory(const TextureMemoryBindingDesc*
     return Result::SUCCESS;
 }
 
-NRI_INLINE Result DeviceD3D12::BindAccelerationStructureMemory(const AccelerationStructureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
-    for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
-        Result result = ((AccelerationStructureD3D12*)memoryBindingDescs[i].accelerationStructure)->BindMemory(memoryBindingDescs[i].memory, memoryBindingDescs[i].offset);
+NRI_INLINE Result DeviceD3D12::BindAccelerationStructureMemory(const BindAccelerationStructureMemoryDesc* bindAccelerationStructureMemoryDescs, uint32_t bindAccelerationStructureMemoryDescNum) {
+    for (uint32_t i = 0; i < bindAccelerationStructureMemoryDescNum; i++) {
+        const auto& desc = bindAccelerationStructureMemoryDescs[i];
+        Result result = ((AccelerationStructureD3D12*)desc.accelerationStructure)->BindMemory(desc.memory, desc.offset);
         if (result != Result::SUCCESS)
             return result;
     }
@@ -1290,9 +1289,10 @@ NRI_INLINE Result DeviceD3D12::BindAccelerationStructureMemory(const Acceleratio
     return Result::SUCCESS;
 }
 
-NRI_INLINE Result DeviceD3D12::BindMicromapMemory(const MicromapMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
-    for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
-        Result result = ((MicromapD3D12*)memoryBindingDescs[i].micromap)->BindMemory(memoryBindingDescs[i].memory, memoryBindingDescs[i].offset);
+NRI_INLINE Result DeviceD3D12::BindMicromapMemory(const BindMicromapMemoryDesc* bindMicromapMemoryDescs, uint32_t bindMicromapMemoryDescNum) {
+    for (uint32_t i = 0; i < bindMicromapMemoryDescNum; i++) {
+        const auto& desc = bindMicromapMemoryDescs[i];
+        Result result = ((MicromapD3D12*)desc.micromap)->BindMemory(desc.memory, desc.offset);
         if (result != Result::SUCCESS)
             return result;
     }

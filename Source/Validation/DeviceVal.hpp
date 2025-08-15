@@ -624,10 +624,10 @@ NRI_INLINE Result DeviceVal::AllocateMemory(const AllocateMemoryDesc& allocateMe
     return result;
 }
 
-NRI_INLINE Result DeviceVal::BindBufferMemory(const BufferMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
-    Scratch<BufferMemoryBindingDesc> memoryBindingDescsImpl = AllocateScratch(*this, BufferMemoryBindingDesc, memoryBindingDescNum);
-    for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
-        const BufferMemoryBindingDesc& srcDesc = memoryBindingDescs[i];
+NRI_INLINE Result DeviceVal::BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum) {
+    Scratch<BindBufferMemoryDesc> bindBufferMemoryDescsImpl = AllocateScratch(*this, BindBufferMemoryDesc, bindBufferMemoryDescNum);
+    for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
+        const BindBufferMemoryDesc& srcDesc = bindBufferMemoryDescs[i];
         MemoryVal& memoryVal = (MemoryVal&)*srcDesc.memory;
         BufferVal& bufferVal = (BufferVal&)*srcDesc.buffer;
 
@@ -635,7 +635,7 @@ NRI_INLINE Result DeviceVal::BindBufferMemory(const BufferMemoryBindingDesc* mem
         RETURN_ON_FAILURE(this, srcDesc.memory != nullptr, Result::INVALID_ARGUMENT, "'[%u].memory' is NULL", i);
         RETURN_ON_FAILURE(this, !bufferVal.IsBoundToMemory(), Result::INVALID_ARGUMENT, "'[%u].buffer' is already bound to memory", i);
 
-        BufferMemoryBindingDesc& destDesc = memoryBindingDescsImpl[i];
+        BindBufferMemoryDesc& destDesc = bindBufferMemoryDescsImpl[i];
         destDesc = srcDesc;
         destDesc.memory = memoryVal.GetImpl();
         destDesc.buffer = bufferVal.GetImpl();
@@ -656,22 +656,22 @@ NRI_INLINE Result DeviceVal::BindBufferMemory(const BufferMemoryBindingDesc* mem
         RETURN_ON_FAILURE(this, memorySizeIsUnknown || rangeMax <= memoryVal.GetSize(), Result::INVALID_ARGUMENT, "'[%u].offset' is invalid", i);
     }
 
-    Result result = m_iCoreImpl.BindBufferMemory(m_Impl, memoryBindingDescsImpl, memoryBindingDescNum);
+    Result result = m_iCoreImpl.BindBufferMemory(m_Impl, bindBufferMemoryDescsImpl, bindBufferMemoryDescNum);
 
     if (result == Result::SUCCESS) {
-        for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
-            MemoryVal& memory = *(MemoryVal*)memoryBindingDescs[i].memory;
-            memory.Bind(*(BufferVal*)memoryBindingDescs[i].buffer);
+        for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
+            MemoryVal& memory = *(MemoryVal*)bindBufferMemoryDescs[i].memory;
+            memory.Bind(*(BufferVal*)bindBufferMemoryDescs[i].buffer);
         }
     }
 
     return result;
 }
 
-NRI_INLINE Result DeviceVal::BindTextureMemory(const TextureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
-    Scratch<TextureMemoryBindingDesc> memoryBindingDescsImpl = AllocateScratch(*this, TextureMemoryBindingDesc, memoryBindingDescNum);
-    for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
-        const TextureMemoryBindingDesc& srcDesc = memoryBindingDescs[i];
+NRI_INLINE Result DeviceVal::BindTextureMemory(const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum) {
+    Scratch<BindTextureMemoryDesc> bindTextureMemoryDescsImpl = AllocateScratch(*this, BindTextureMemoryDesc, bindTextureMemoryDescNum);
+    for (uint32_t i = 0; i < bindTextureMemoryDescNum; i++) {
+        const BindTextureMemoryDesc& srcDesc = bindTextureMemoryDescs[i];
         MemoryVal& memoryVal = (MemoryVal&)*srcDesc.memory;
         TextureVal& textureVal = (TextureVal&)*srcDesc.texture;
 
@@ -679,7 +679,7 @@ NRI_INLINE Result DeviceVal::BindTextureMemory(const TextureMemoryBindingDesc* m
         RETURN_ON_FAILURE(this, srcDesc.memory != nullptr, Result::INVALID_ARGUMENT, "'[%u].memory' is NULL", i);
         RETURN_ON_FAILURE(this, !textureVal.IsBoundToMemory(), Result::INVALID_ARGUMENT, "'[%u].texture' is already bound to memory", i);
 
-        TextureMemoryBindingDesc& destDesc = memoryBindingDescsImpl[i];
+        BindTextureMemoryDesc& destDesc = bindTextureMemoryDescsImpl[i];
         destDesc = srcDesc;
         destDesc.memory = memoryVal.GetImpl();
         destDesc.texture = textureVal.GetImpl();
@@ -700,12 +700,12 @@ NRI_INLINE Result DeviceVal::BindTextureMemory(const TextureMemoryBindingDesc* m
         RETURN_ON_FAILURE(this, memorySizeIsUnknown || rangeMax <= memoryVal.GetSize(), Result::INVALID_ARGUMENT, "'[%u].offset' is invalid", i);
     }
 
-    Result result = m_iCoreImpl.BindTextureMemory(m_Impl, memoryBindingDescsImpl, memoryBindingDescNum);
+    Result result = m_iCoreImpl.BindTextureMemory(m_Impl, bindTextureMemoryDescsImpl, bindTextureMemoryDescNum);
 
     if (result == Result::SUCCESS) {
-        for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
-            MemoryVal& memory = *(MemoryVal*)memoryBindingDescs[i].memory;
-            memory.Bind(*(TextureVal*)memoryBindingDescs[i].texture);
+        for (uint32_t i = 0; i < bindTextureMemoryDescNum; i++) {
+            MemoryVal& memory = *(MemoryVal*)bindTextureMemoryDescs[i].memory;
+            memory.Bind(*(TextureVal*)bindTextureMemoryDescs[i].texture);
         }
     }
 
@@ -1177,16 +1177,16 @@ NRI_INLINE Result DeviceVal::AllocateMicromap(const AllocateMicromapDesc& alloca
     return result;
 }
 
-NRI_INLINE Result DeviceVal::BindMicromapMemory(const MicromapMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
-    Scratch<MicromapMemoryBindingDesc> memoryBindingDescsImpl = AllocateScratch(*this, MicromapMemoryBindingDesc, memoryBindingDescNum);
-    for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
-        const MicromapMemoryBindingDesc& srcDesc = memoryBindingDescs[i];
+NRI_INLINE Result DeviceVal::BindMicromapMemory(const BindMicromapMemoryDesc* bindMicromapMemoryDescs, uint32_t bindMicromapMemoryDescNum) {
+    Scratch<BindMicromapMemoryDesc> bindMicromapMemoryDescsImpl = AllocateScratch(*this, BindMicromapMemoryDesc, bindMicromapMemoryDescNum);
+    for (uint32_t i = 0; i < bindMicromapMemoryDescNum; i++) {
+        const BindMicromapMemoryDesc& srcDesc = bindMicromapMemoryDescs[i];
         MemoryVal& memoryVal = (MemoryVal&)*srcDesc.memory;
         MicromapVal& micromapVal = (MicromapVal&)*srcDesc.micromap;
 
         RETURN_ON_FAILURE(this, !micromapVal.IsBoundToMemory(), Result::INVALID_ARGUMENT, "'[%u].micromap' is already bound to memory", i);
 
-        MicromapMemoryBindingDesc& destDesc = memoryBindingDescsImpl[i];
+        BindMicromapMemoryDesc& destDesc = bindMicromapMemoryDescsImpl[i];
         destDesc = srcDesc;
         destDesc.memory = memoryVal.GetImpl();
         destDesc.micromap = micromapVal.GetImpl();
@@ -1205,28 +1205,28 @@ NRI_INLINE Result DeviceVal::BindMicromapMemory(const MicromapMemoryBindingDesc*
         RETURN_ON_FAILURE(this, memorySizeIsUnknown || rangeMax <= memoryVal.GetSize(), Result::INVALID_ARGUMENT, "'[%u].offset' is invalid", i);
     }
 
-    Result result = m_iRayTracingImpl.BindMicromapMemory(m_Impl, memoryBindingDescsImpl, memoryBindingDescNum);
+    Result result = m_iRayTracingImpl.BindMicromapMemory(m_Impl, bindMicromapMemoryDescsImpl, bindMicromapMemoryDescNum);
 
     if (result == Result::SUCCESS) {
-        for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
-            MemoryVal& memory = *(MemoryVal*)memoryBindingDescs[i].memory;
-            memory.Bind(*(MicromapVal*)memoryBindingDescs[i].micromap);
+        for (uint32_t i = 0; i < bindMicromapMemoryDescNum; i++) {
+            MemoryVal& memory = *(MemoryVal*)bindMicromapMemoryDescs[i].memory;
+            memory.Bind(*(MicromapVal*)bindMicromapMemoryDescs[i].micromap);
         }
     }
 
     return result;
 }
 
-NRI_INLINE Result DeviceVal::BindAccelerationStructureMemory(const AccelerationStructureMemoryBindingDesc* memoryBindingDescs, uint32_t memoryBindingDescNum) {
-    Scratch<AccelerationStructureMemoryBindingDesc> memoryBindingDescsImpl = AllocateScratch(*this, AccelerationStructureMemoryBindingDesc, memoryBindingDescNum);
-    for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
-        const AccelerationStructureMemoryBindingDesc& srcDesc = memoryBindingDescs[i];
+NRI_INLINE Result DeviceVal::BindAccelerationStructureMemory(const BindAccelerationStructureMemoryDesc* bindAccelerationStructureMemoryDescs, uint32_t bindAccelerationStructureMemoryDescNum) {
+    Scratch<BindAccelerationStructureMemoryDesc> memoryBindingDescsImpl = AllocateScratch(*this, BindAccelerationStructureMemoryDesc, bindAccelerationStructureMemoryDescNum);
+    for (uint32_t i = 0; i < bindAccelerationStructureMemoryDescNum; i++) {
+        const BindAccelerationStructureMemoryDesc& srcDesc = bindAccelerationStructureMemoryDescs[i];
         MemoryVal& memoryVal = (MemoryVal&)*srcDesc.memory;
         AccelerationStructureVal& accelerationStructureVal = (AccelerationStructureVal&)*srcDesc.accelerationStructure;
 
         RETURN_ON_FAILURE(this, !accelerationStructureVal.IsBoundToMemory(), Result::INVALID_ARGUMENT, "'[%u].accelerationStructure' is already bound to memory", i);
 
-        AccelerationStructureMemoryBindingDesc& destDesc = memoryBindingDescsImpl[i];
+        BindAccelerationStructureMemoryDesc& destDesc = memoryBindingDescsImpl[i];
         destDesc = srcDesc;
         destDesc.memory = memoryVal.GetImpl();
         destDesc.accelerationStructure = accelerationStructureVal.GetImpl();
@@ -1245,12 +1245,12 @@ NRI_INLINE Result DeviceVal::BindAccelerationStructureMemory(const AccelerationS
         RETURN_ON_FAILURE(this, memorySizeIsUnknown || rangeMax <= memoryVal.GetSize(), Result::INVALID_ARGUMENT, "'[%u].offset' is invalid", i);
     }
 
-    Result result = m_iRayTracingImpl.BindAccelerationStructureMemory(m_Impl, memoryBindingDescsImpl, memoryBindingDescNum);
+    Result result = m_iRayTracingImpl.BindAccelerationStructureMemory(m_Impl, memoryBindingDescsImpl, bindAccelerationStructureMemoryDescNum);
 
     if (result == Result::SUCCESS) {
-        for (uint32_t i = 0; i < memoryBindingDescNum; i++) {
-            MemoryVal& memory = *(MemoryVal*)memoryBindingDescs[i].memory;
-            memory.Bind(*(AccelerationStructureVal*)memoryBindingDescs[i].accelerationStructure);
+        for (uint32_t i = 0; i < bindAccelerationStructureMemoryDescNum; i++) {
+            MemoryVal& memory = *(MemoryVal*)bindAccelerationStructureMemoryDescs[i].memory;
+            memory.Bind(*(AccelerationStructureVal*)bindAccelerationStructureMemoryDescs[i].accelerationStructure);
         }
     }
 

@@ -8,11 +8,6 @@
 // Validate Windows SDK version
 static_assert(D3D12_SDK_VERSION >= 4, "Outdated Windows SDK. D3D12 Ultimate needed (SDK 1.4.9+, released 2021.04.20). Always prefer using latest Agility SDK!");
 
-// "Self" copies require barriers in-between making "CmdZeroBuffer" implementation 2x slower
-#if NRI_ENABLE_AGILITY_SDK_SUPPORT
-#    define NRI_D3D12_USE_SELF_COPIES_FOR_ZERO_BUFFER 0
-#endif
-
 // TODO: "D3D12_SDK_VERSION" and "D3D12_PREVIEW_SDK_VERSION" are inconsistent and can't be used to check features support
 #if (NRI_AGILITY_SDK_VERSION_MAJOR >= 717)
 #    define NRI_D3D12_HAS_TIGHT_ALIGNMENT

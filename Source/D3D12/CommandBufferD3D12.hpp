@@ -492,21 +492,21 @@ NRI_INLINE void CommandBufferD3D12::SetDescriptorPool(const DescriptorPool& desc
     ((DescriptorPoolD3D12&)descriptorPool).Bind(m_GraphicsCommandList);
 }
 
-NRI_INLINE void CommandBufferD3D12::SetDescriptorSet(const DescriptorSetBindingDesc& descriptorSetBindingDesc) {
-    BindPoint bindPoint = descriptorSetBindingDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : descriptorSetBindingDesc.bindPoint;
-    m_PipelineLayout->SetDescriptorSet(m_GraphicsCommandList, bindPoint, descriptorSetBindingDesc);
+NRI_INLINE void CommandBufferD3D12::SetDescriptorSet(const SetDescriptorSetDesc& setDescriptorSetDesc) {
+    BindPoint bindPoint = setDescriptorSetDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : setDescriptorSetDesc.bindPoint;
+    m_PipelineLayout->SetDescriptorSet(m_GraphicsCommandList, bindPoint, setDescriptorSetDesc);
 
-    m_DescriptorSets[descriptorSetBindingDesc.setIndex] = (DescriptorSetD3D12*)descriptorSetBindingDesc.descriptorSet;
+    m_DescriptorSets[setDescriptorSetDesc.setIndex] = (DescriptorSetD3D12*)setDescriptorSetDesc.descriptorSet;
 }
 
-NRI_INLINE void CommandBufferD3D12::SetRootConstants(const RootConstantBindingDesc& rootConstantBindingDesc) {
-    BindPoint bindPoint = rootConstantBindingDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : rootConstantBindingDesc.bindPoint;
-    m_PipelineLayout->SetRootConstants(m_GraphicsCommandList, bindPoint, rootConstantBindingDesc);
+NRI_INLINE void CommandBufferD3D12::SetRootConstants(const SetRootConstantsDesc& setRootConstantsDesc) {
+    BindPoint bindPoint = setRootConstantsDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : setRootConstantsDesc.bindPoint;
+    m_PipelineLayout->SetRootConstants(m_GraphicsCommandList, bindPoint, setRootConstantsDesc);
 }
 
-NRI_INLINE void CommandBufferD3D12::SetRootDescriptor(const RootDescriptorBindingDesc& rootDescriptorBindingDesc) {
-    BindPoint bindPoint = rootDescriptorBindingDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : rootDescriptorBindingDesc.bindPoint;
-    m_PipelineLayout->SetRootDescriptor(m_GraphicsCommandList, bindPoint, rootDescriptorBindingDesc);
+NRI_INLINE void CommandBufferD3D12::SetRootDescriptor(const SetRootDescriptorDesc& setRootDescriptorDesc) {
+    BindPoint bindPoint = setRootDescriptorDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : setRootDescriptorDesc.bindPoint;
+    m_PipelineLayout->SetRootDescriptor(m_GraphicsCommandList, bindPoint, setRootDescriptorDesc);
 }
 
 NRI_INLINE void CommandBufferD3D12::Draw(const DrawDesc& drawDesc) {
@@ -609,43 +609,7 @@ NRI_INLINE void CommandBufferD3D12::ZeroBuffer(Buffer& buffer, uint64_t offset, 
     if (size == WHOLE_SIZE)
         size = dst.GetDesc().size;
 
-#if (NRI_D3D12_USE_SELF_COPIES_FOR_ZERO_BUFFER == 1)
-    // Self copies
-    uint64_t blockSize = std::min(size, zeroBufferDesc.Width);
-    uint64_t offsetOrig = offset;
-
-    D3D12_BUFFER_BARRIER bufferBarrier = {};
-    bufferBarrier.pResource = dst;
-    bufferBarrier.Offset = 0;
-    bufferBarrier.Size = UINT64_MAX;
-    bufferBarrier.AccessBefore = D3D12_BARRIER_ACCESS_COMMON;
-    bufferBarrier.AccessAfter = D3D12_BARRIER_ACCESS_COMMON;
-    bufferBarrier.SyncBefore = D3D12_BARRIER_SYNC_COPY;
-    bufferBarrier.SyncAfter = D3D12_BARRIER_SYNC_COPY;
-
-    D3D12_BARRIER_GROUP barrierGroup = {};
-    barrierGroup.NumBarriers = 1;
-    barrierGroup.pBufferBarriers = &bufferBarrier;
-
-    m_GraphicsCommandList->CopyBufferRegion(dst, offset, zeroBuffer, 0, blockSize);
-
-    offset += blockSize;
-    size -= blockSize;
-
-    while (size >= blockSize) {
-        m_GraphicsCommandList->Barrier(1, &barrierGroup); // doesn't work without this!
-        m_GraphicsCommandList->CopyBufferRegion(dst, offset, dst, offsetOrig, blockSize);
-
-        offset += blockSize;
-        size -= blockSize;
-
-        blockSize <<= 1;
-    }
-
-    if (size)
-        m_GraphicsCommandList->CopyBufferRegion(dst, offset, dst, offsetOrig, size);
-#else
-    // No self copies
+    // "Self" copies require COMMON to COMMON barrier in-between, making the implementation 2x slower
     while (size) {
         uint64_t blockSize = std::min(size, zeroBufferDesc.Width);
 
@@ -654,7 +618,6 @@ NRI_INLINE void CommandBufferD3D12::ZeroBuffer(Buffer& buffer, uint64_t offset, 
         offset += blockSize;
         size -= blockSize;
     }
-#endif
 }
 
 NRI_INLINE void CommandBufferD3D12::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion) {
@@ -767,11 +730,11 @@ NRI_INLINE void CommandBufferD3D12::DispatchIndirect(const Buffer& buffer, uint6
     m_GraphicsCommandList->ExecuteIndirect(m_Device.GetDispatchCommandSignature(), 1, (BufferD3D12&)buffer, offset, nullptr, 0);
 }
 
-NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierGroupDesc& barrierGroupDesc) {
+NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
     if (m_Device.GetDesc().features.enhancedBarriers) {
         // Count
-        uint32_t barrierNum = barrierGroupDesc.globalNum + barrierGroupDesc.bufferNum + barrierGroupDesc.textureNum;
+        uint32_t barrierNum = barrierDesc.globalNum + barrierDesc.bufferNum + barrierDesc.textureNum;
         if (!barrierNum)
             return;
 
@@ -779,15 +742,15 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierGroupDesc& barrierGroup
         uint32_t barriersGroupsNum = 0;
 
         // Global
-        Scratch<D3D12_GLOBAL_BARRIER> globalBarriers = AllocateScratch(m_Device, D3D12_GLOBAL_BARRIER, barrierGroupDesc.globalNum);
-        if (barrierGroupDesc.globalNum) {
+        Scratch<D3D12_GLOBAL_BARRIER> globalBarriers = AllocateScratch(m_Device, D3D12_GLOBAL_BARRIER, barrierDesc.globalNum);
+        if (barrierDesc.globalNum) {
             D3D12_BARRIER_GROUP* barrierGroup = &barrierGroups[barriersGroupsNum++];
             barrierGroup->Type = D3D12_BARRIER_TYPE_GLOBAL;
-            barrierGroup->NumBarriers = barrierGroupDesc.globalNum;
+            barrierGroup->NumBarriers = barrierDesc.globalNum;
             barrierGroup->pGlobalBarriers = globalBarriers;
 
-            for (uint32_t i = 0; i < barrierGroupDesc.globalNum; i++) {
-                const GlobalBarrierDesc& in = barrierGroupDesc.globals[i];
+            for (uint32_t i = 0; i < barrierDesc.globalNum; i++) {
+                const GlobalBarrierDesc& in = barrierDesc.globals[i];
 
                 D3D12_GLOBAL_BARRIER& out = globalBarriers[i];
                 out = {};
@@ -799,15 +762,15 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierGroupDesc& barrierGroup
         }
 
         // Buffer
-        Scratch<D3D12_BUFFER_BARRIER> bufferBarriers = AllocateScratch(m_Device, D3D12_BUFFER_BARRIER, barrierGroupDesc.bufferNum);
-        if (barrierGroupDesc.bufferNum) {
+        Scratch<D3D12_BUFFER_BARRIER> bufferBarriers = AllocateScratch(m_Device, D3D12_BUFFER_BARRIER, barrierDesc.bufferNum);
+        if (barrierDesc.bufferNum) {
             D3D12_BARRIER_GROUP* barrierGroup = &barrierGroups[barriersGroupsNum++];
             barrierGroup->Type = D3D12_BARRIER_TYPE_BUFFER;
-            barrierGroup->NumBarriers = barrierGroupDesc.bufferNum;
+            barrierGroup->NumBarriers = barrierDesc.bufferNum;
             barrierGroup->pBufferBarriers = bufferBarriers;
 
-            for (uint32_t i = 0; i < barrierGroupDesc.bufferNum; i++) {
-                const BufferBarrierDesc& in = barrierGroupDesc.buffers[i];
+            for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
+                const BufferBarrierDesc& in = barrierDesc.buffers[i];
                 const BufferD3D12& buffer = *(BufferD3D12*)in.buffer;
 
                 D3D12_BUFFER_BARRIER& out = bufferBarriers[i];
@@ -823,15 +786,15 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierGroupDesc& barrierGroup
         }
 
         // Texture
-        Scratch<D3D12_TEXTURE_BARRIER> textureBarriers = AllocateScratch(m_Device, D3D12_TEXTURE_BARRIER, barrierGroupDesc.textureNum);
-        if (barrierGroupDesc.textureNum) {
+        Scratch<D3D12_TEXTURE_BARRIER> textureBarriers = AllocateScratch(m_Device, D3D12_TEXTURE_BARRIER, barrierDesc.textureNum);
+        if (barrierDesc.textureNum) {
             D3D12_BARRIER_GROUP* barrierGroup = &barrierGroups[barriersGroupsNum++];
             barrierGroup->Type = D3D12_BARRIER_TYPE_TEXTURE;
-            barrierGroup->NumBarriers = barrierGroupDesc.textureNum;
+            barrierGroup->NumBarriers = barrierDesc.textureNum;
             barrierGroup->pTextureBarriers = textureBarriers;
 
-            for (uint32_t i = 0; i < barrierGroupDesc.textureNum; i++) {
-                const TextureBarrierDesc& in = barrierGroupDesc.textures[i];
+            for (uint32_t i = 0; i < barrierDesc.textureNum; i++) {
+                const TextureBarrierDesc& in = barrierDesc.textures[i];
                 const TextureD3D12& texture = *(TextureD3D12*)in.texture;
                 const TextureDesc& desc = texture.GetDesc();
 
@@ -874,25 +837,25 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierGroupDesc& barrierGroup
 #endif
     { // Legacy barriers
         // Count
-        uint32_t barrierNum = barrierGroupDesc.bufferNum;
+        uint32_t barrierNum = barrierDesc.bufferNum;
 
-        for (uint32_t i = 0; i < barrierGroupDesc.textureNum; i++) {
-            const TextureBarrierDesc& barrierDesc = barrierGroupDesc.textures[i];
-            const TextureD3D12& texture = *(TextureD3D12*)barrierDesc.texture;
+        for (uint32_t i = 0; i < barrierDesc.textureNum; i++) {
+            const TextureBarrierDesc& barrier = barrierDesc.textures[i];
+            const TextureD3D12& texture = *(TextureD3D12*)barrier.texture;
             const TextureDesc& textureDesc = texture.GetDesc();
-            const Dim_t layerNum = barrierDesc.layerNum == REMAINING ? textureDesc.layerNum : barrierDesc.layerNum;
-            const Dim_t mipNum = barrierDesc.mipNum == REMAINING ? textureDesc.mipNum : barrierDesc.mipNum;
+            const Dim_t layerNum = barrier.layerNum == REMAINING ? textureDesc.layerNum : barrier.layerNum;
+            const Dim_t mipNum = barrier.mipNum == REMAINING ? textureDesc.mipNum : barrier.mipNum;
 
-            if (barrierDesc.layerOffset == 0 && layerNum == textureDesc.layerNum && barrierDesc.mipOffset == 0 && mipNum == textureDesc.mipNum)
+            if (barrier.layerOffset == 0 && layerNum == textureDesc.layerNum && barrier.mipOffset == 0 && mipNum == textureDesc.mipNum)
                 barrierNum++;
             else
                 barrierNum += layerNum * mipNum;
         }
 
         bool isGlobalUavBarrierNeeded = false;
-        for (uint32_t i = 0; i < barrierGroupDesc.globalNum && !isGlobalUavBarrierNeeded; i++) {
-            const GlobalBarrierDesc& barrierDesc = barrierGroupDesc.globals[i];
-            if ((barrierDesc.before.access & AccessBits::SHADER_RESOURCE_STORAGE) && (barrierDesc.after.access & AccessBits::SHADER_RESOURCE_STORAGE))
+        for (uint32_t i = 0; i < barrierDesc.globalNum && !isGlobalUavBarrierNeeded; i++) {
+            const GlobalBarrierDesc& barrier = barrierDesc.globals[i];
+            if ((barrier.before.access & AccessBits::SHADER_RESOURCE_STORAGE) && (barrier.after.access & AccessBits::SHADER_RESOURCE_STORAGE))
                 isGlobalUavBarrierNeeded = true;
         }
 
@@ -909,25 +872,25 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierGroupDesc& barrierGroup
         D3D12_RESOURCE_BARRIER* ptr = barriers;
         D3D12_COMMAND_LIST_TYPE commandListType = m_GraphicsCommandList->GetType();
 
-        for (uint32_t i = 0; i < barrierGroupDesc.bufferNum; i++) {
-            const BufferBarrierDesc& barrierDesc = barrierGroupDesc.buffers[i];
-            AddResourceBarrier(commandListType, *((BufferD3D12*)barrierDesc.buffer), barrierDesc.before.access, barrierDesc.after.access, *ptr++, 0);
+        for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
+            const BufferBarrierDesc& barrier = barrierDesc.buffers[i];
+            AddResourceBarrier(commandListType, *((BufferD3D12*)barrier.buffer), barrier.before.access, barrier.after.access, *ptr++, 0);
         }
 
-        for (uint32_t i = 0; i < barrierGroupDesc.textureNum; i++) {
-            const TextureBarrierDesc& barrierDesc = barrierGroupDesc.textures[i];
-            const TextureD3D12& texture = *(TextureD3D12*)barrierDesc.texture;
+        for (uint32_t i = 0; i < barrierDesc.textureNum; i++) {
+            const TextureBarrierDesc& barrier = barrierDesc.textures[i];
+            const TextureD3D12& texture = *(TextureD3D12*)barrier.texture;
             const TextureDesc& textureDesc = texture.GetDesc();
-            const Dim_t layerNum = barrierDesc.layerNum == REMAINING ? textureDesc.layerNum : barrierDesc.layerNum;
-            const Dim_t mipNum = barrierDesc.mipNum == REMAINING ? textureDesc.mipNum : barrierDesc.mipNum;
+            const Dim_t layerNum = barrier.layerNum == REMAINING ? textureDesc.layerNum : barrier.layerNum;
+            const Dim_t mipNum = barrier.mipNum == REMAINING ? textureDesc.mipNum : barrier.mipNum;
 
-            if (barrierDesc.layerOffset == 0 && layerNum == textureDesc.layerNum && barrierDesc.mipOffset == 0 && mipNum == textureDesc.mipNum && barrierDesc.planes == PlaneBits::ALL)
-                AddResourceBarrier(commandListType, texture, barrierDesc.before.access, barrierDesc.after.access, *ptr++, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
+            if (barrier.layerOffset == 0 && layerNum == textureDesc.layerNum && barrier.mipOffset == 0 && mipNum == textureDesc.mipNum && barrier.planes == PlaneBits::ALL)
+                AddResourceBarrier(commandListType, texture, barrier.before.access, barrier.after.access, *ptr++, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
             else {
-                for (Dim_t layerOffset = barrierDesc.layerOffset; layerOffset < barrierDesc.layerOffset + layerNum; layerOffset++) {
-                    for (Dim_t mipOffset = barrierDesc.mipOffset; mipOffset < barrierDesc.mipOffset + mipNum; mipOffset++) {
-                        uint32_t subresource = texture.GetSubresourceIndex(layerOffset, mipOffset, barrierDesc.planes);
-                        AddResourceBarrier(commandListType, texture, barrierDesc.before.access, barrierDesc.after.access, *ptr++, subresource);
+                for (Dim_t layerOffset = barrier.layerOffset; layerOffset < barrier.layerOffset + layerNum; layerOffset++) {
+                    for (Dim_t mipOffset = barrier.mipOffset; mipOffset < barrier.mipOffset + mipNum; mipOffset++) {
+                        uint32_t subresource = texture.GetSubresourceIndex(layerOffset, mipOffset, barrier.planes);
+                        AddResourceBarrier(commandListType, texture, barrier.before.access, barrier.after.access, *ptr++, subresource);
                     }
                 }
             }

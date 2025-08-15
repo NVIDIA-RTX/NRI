@@ -396,39 +396,39 @@ NRI_INLINE void CommandBufferVK::SetPipeline(const Pipeline& pipeline) {
         vk.CmdSetDepthBias(m_Handle, depthBias.constant, depthBias.clamp, depthBias.slope);
 }
 
-NRI_INLINE void CommandBufferVK::SetDescriptorSet(const DescriptorSetBindingDesc& descriptorSetBindingDesc) {
-    const DescriptorSetVK& descriptorSetVK = *(DescriptorSetVK*)descriptorSetBindingDesc.descriptorSet;
+NRI_INLINE void CommandBufferVK::SetDescriptorSet(const SetDescriptorSetDesc& setDescriptorSetDesc) {
+    const DescriptorSetVK& descriptorSetVK = *(DescriptorSetVK*)setDescriptorSetDesc.descriptorSet;
     VkDescriptorSet vkDescriptorSet = descriptorSetVK.GetHandle();
     uint32_t dynamicConstantBufferNum = descriptorSetVK.GetDynamicConstantBufferNum();
 
     const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
-    uint32_t registerSpace = bindingInfo.descriptorSetDescs[descriptorSetBindingDesc.setIndex].registerSpace;
+    uint32_t registerSpace = bindingInfo.descriptorSetDescs[setDescriptorSetDesc.setIndex].registerSpace;
 
-    BindPoint bindPoint = descriptorSetBindingDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : descriptorSetBindingDesc.bindPoint;
+    BindPoint bindPoint = setDescriptorSetDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : setDescriptorSetDesc.bindPoint;
     VkPipelineBindPoint vkPipelineBindPoint = GetPipelineBindPoint(bindPoint);
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdBindDescriptorSets(m_Handle, vkPipelineBindPoint, *m_PipelineLayout, registerSpace, 1, &vkDescriptorSet, dynamicConstantBufferNum, descriptorSetBindingDesc.dynamicConstantBufferOffsets);
+    vk.CmdBindDescriptorSets(m_Handle, vkPipelineBindPoint, *m_PipelineLayout, registerSpace, 1, &vkDescriptorSet, dynamicConstantBufferNum, setDescriptorSetDesc.dynamicConstantBufferOffsets);
 }
 
-NRI_INLINE void CommandBufferVK::SetRootConstants(const RootConstantBindingDesc& rootConstantBindingDesc) {
+NRI_INLINE void CommandBufferVK::SetRootConstants(const SetRootConstantsDesc& setRootConstantsDesc) {
     const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
-    const PushConstantBindingDesc& pushConstantBindingDesc = bindingInfo.pushConstantBindings[rootConstantBindingDesc.rootConstantIndex];
-    uint32_t offset = pushConstantBindingDesc.offset + rootConstantBindingDesc.offset;
+    const PushConstantBindingDesc& pushConstantBindingDesc = bindingInfo.pushConstantBindings[setRootConstantsDesc.rootConstantIndex];
+    uint32_t offset = pushConstantBindingDesc.offset + setRootConstantsDesc.offset;
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdPushConstants(m_Handle, *m_PipelineLayout, pushConstantBindingDesc.stages, offset, rootConstantBindingDesc.size, rootConstantBindingDesc.data);
+    vk.CmdPushConstants(m_Handle, *m_PipelineLayout, pushConstantBindingDesc.stages, offset, setRootConstantsDesc.size, setRootConstantsDesc.data);
 }
 
-NRI_INLINE void CommandBufferVK::SetRootDescriptor(const RootDescriptorBindingDesc& rootDescriptorBindingDesc) {
-    const DescriptorVK& descriptorVK = *(DescriptorVK*)rootDescriptorBindingDesc.descriptor;
+NRI_INLINE void CommandBufferVK::SetRootDescriptor(const SetRootDescriptorDesc& setRootDescriptorDesc) {
+    const DescriptorVK& descriptorVK = *(DescriptorVK*)setRootDescriptorDesc.descriptor;
 
     DescriptorTypeVK descriptorType = descriptorVK.GetType();
     VkDescriptorBufferInfo bufferInfo = descriptorVK.GetBufferInfo();
     VkAccelerationStructureKHR accelerationStructure = descriptorVK.GetAccelerationStructure();
 
     const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
-    const PushDescriptorBindingDesc& pushDescriptorBindingDesc = bindingInfo.pushDescriptorBindings[rootDescriptorBindingDesc.rootDescriptorIndex];
+    const PushDescriptorBindingDesc& pushDescriptorBindingDesc = bindingInfo.pushDescriptorBindings[setRootDescriptorDesc.rootDescriptorIndex];
 
     VkWriteDescriptorSetAccelerationStructureKHR accelerationStructureWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR};
     accelerationStructureWrite.accelerationStructureCount = 1;
@@ -451,7 +451,7 @@ NRI_INLINE void CommandBufferVK::SetRootDescriptor(const RootDescriptorBindingDe
     } else
         CHECK(false, "Unexpected");
 
-    BindPoint bindPoint = rootDescriptorBindingDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : rootDescriptorBindingDesc.bindPoint;
+    BindPoint bindPoint = setRootDescriptorDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : setRootDescriptorDesc.bindPoint;
     VkPipelineBindPoint vkPipelineBindPoint = GetPipelineBindPoint(bindPoint);
 
     const auto& vk = m_Device.GetDispatchTable();
@@ -838,11 +838,11 @@ static inline VkAccessFlags2 GetAccessFlags(AccessBits accessBits) {
     return flags;
 }
 
-NRI_INLINE void CommandBufferVK::Barrier(const BarrierGroupDesc& barrierGroupDesc) {
+NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
     // Global
-    Scratch<VkMemoryBarrier2> memoryBarriers = AllocateScratch(m_Device, VkMemoryBarrier2, barrierGroupDesc.globalNum);
-    for (uint32_t i = 0; i < barrierGroupDesc.globalNum; i++) {
-        const GlobalBarrierDesc& in = barrierGroupDesc.globals[i];
+    Scratch<VkMemoryBarrier2> memoryBarriers = AllocateScratch(m_Device, VkMemoryBarrier2, barrierDesc.globalNum);
+    for (uint32_t i = 0; i < barrierDesc.globalNum; i++) {
+        const GlobalBarrierDesc& in = barrierDesc.globals[i];
 
         VkMemoryBarrier2& out = memoryBarriers[i];
         out = {VK_STRUCTURE_TYPE_MEMORY_BARRIER_2};
@@ -853,9 +853,9 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierGroupDesc& barrierGroupDes
     }
 
     // Buffer
-    Scratch<VkBufferMemoryBarrier2> bufferBarriers = AllocateScratch(m_Device, VkBufferMemoryBarrier2, barrierGroupDesc.bufferNum);
-    for (uint32_t i = 0; i < barrierGroupDesc.bufferNum; i++) {
-        const BufferBarrierDesc& in = barrierGroupDesc.buffers[i];
+    Scratch<VkBufferMemoryBarrier2> bufferBarriers = AllocateScratch(m_Device, VkBufferMemoryBarrier2, barrierDesc.bufferNum);
+    for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
+        const BufferBarrierDesc& in = barrierDesc.buffers[i];
         const BufferVK& bufferVK = *(const BufferVK*)in.buffer;
 
         VkBufferMemoryBarrier2& out = bufferBarriers[i];
@@ -872,9 +872,9 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierGroupDesc& barrierGroupDes
     }
 
     // Texture
-    Scratch<VkImageMemoryBarrier2> textureBarriers = AllocateScratch(m_Device, VkImageMemoryBarrier2, barrierGroupDesc.textureNum);
-    for (uint32_t i = 0; i < barrierGroupDesc.textureNum; i++) {
-        const TextureBarrierDesc& in = barrierGroupDesc.textures[i];
+    Scratch<VkImageMemoryBarrier2> textureBarriers = AllocateScratch(m_Device, VkImageMemoryBarrier2, barrierDesc.textureNum);
+    for (uint32_t i = 0; i < barrierDesc.textureNum; i++) {
+        const TextureBarrierDesc& in = barrierDesc.textures[i];
         const TextureVK& textureVK = *(TextureVK*)in.texture;
         const QueueVK& srcQueue = *(QueueVK*)in.srcQueue;
         const QueueVK& dstQueue = *(QueueVK*)in.dstQueue;
@@ -905,11 +905,11 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierGroupDesc& barrierGroupDes
 
     // Submit
     VkDependencyInfo dependencyInfo = {VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
-    dependencyInfo.memoryBarrierCount = barrierGroupDesc.globalNum;
+    dependencyInfo.memoryBarrierCount = barrierDesc.globalNum;
     dependencyInfo.pMemoryBarriers = memoryBarriers;
-    dependencyInfo.bufferMemoryBarrierCount = barrierGroupDesc.bufferNum;
+    dependencyInfo.bufferMemoryBarrierCount = barrierDesc.bufferNum;
     dependencyInfo.pBufferMemoryBarriers = bufferBarriers;
-    dependencyInfo.imageMemoryBarrierCount = barrierGroupDesc.textureNum;
+    dependencyInfo.imageMemoryBarrierCount = barrierDesc.textureNum;
     dependencyInfo.pImageMemoryBarriers = textureBarriers;
 
     const auto& vk = m_Device.GetDispatchTable();

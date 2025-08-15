@@ -166,10 +166,10 @@ void PipelineLayoutD3D11::Bind(ID3D11DeviceContextBest* deferredContext) {
     }
 }
 
-void PipelineLayoutD3D11::SetRootConstants(ID3D11DeviceContextBest* deferredContext, const RootConstantBindingDesc& rootConstantBindingDesc) const {
-    const ConstantBuffer& cb = m_ConstantBuffers[rootConstantBindingDesc.rootConstantIndex];
+void PipelineLayoutD3D11::SetRootConstants(ID3D11DeviceContextBest* deferredContext, const SetRootConstantsDesc& setRootConstantsDesc) const {
+    const ConstantBuffer& cb = m_ConstantBuffers[setRootConstantsDesc.rootConstantIndex];
 
-    deferredContext->UpdateSubresource(cb.buffer, 0, nullptr, rootConstantBindingDesc.data, 0, 0);
+    deferredContext->UpdateSubresource(cb.buffer, 0, nullptr, setRootConstantsDesc.data, 0, 0);
 }
 
 void PipelineLayoutD3D11::SetDescriptorSet(BindPoint bindPoint, BindingState& currentBindingState, ID3D11DeviceContextBest* deferredContext, uint32_t setIndex, const DescriptorSetD3D11* descriptorSet, const DescriptorD3D11* descriptor, const uint32_t* dynamicConstantBufferOffsets) const {

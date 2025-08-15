@@ -41,15 +41,15 @@ NRI_INLINE void DescriptorSetD3D11::UpdateDynamicConstantBuffers(uint32_t baseDy
     }
 }
 
-NRI_INLINE void DescriptorSetD3D11::Copy(const DescriptorSetCopyDesc& descriptorSetCopyDesc) {
-    DescriptorSetD3D11& srcSet = (DescriptorSetD3D11&)descriptorSetCopyDesc.srcDescriptorSet;
+NRI_INLINE void DescriptorSetD3D11::Copy(const CopyDescriptorSetDesc& copyDescriptorSetDesc) {
+    DescriptorSetD3D11& srcSet = (DescriptorSetD3D11&)copyDescriptorSetDesc.srcDescriptorSet;
 
-    uint32_t dstBaseRange = m_BindingSet->startRange + descriptorSetCopyDesc.dstBaseRange;
-    uint32_t srcBaseRange = srcSet.m_BindingSet->startRange + descriptorSetCopyDesc.srcBaseRange;
-    CHECK(dstBaseRange + descriptorSetCopyDesc.rangeNum <= m_BindingSet->endRange, "Out of bounds");
-    CHECK(srcBaseRange + descriptorSetCopyDesc.rangeNum <= srcSet.m_BindingSet->endRange, "Out of bounds");
+    uint32_t dstBaseRange = m_BindingSet->startRange + copyDescriptorSetDesc.dstBaseRange;
+    uint32_t srcBaseRange = srcSet.m_BindingSet->startRange + copyDescriptorSetDesc.srcBaseRange;
+    CHECK(dstBaseRange + copyDescriptorSetDesc.rangeNum <= m_BindingSet->endRange, "Out of bounds");
+    CHECK(srcBaseRange + copyDescriptorSetDesc.rangeNum <= srcSet.m_BindingSet->endRange, "Out of bounds");
 
-    for (uint32_t i = 0; i < descriptorSetCopyDesc.rangeNum; i++) {
+    for (uint32_t i = 0; i < copyDescriptorSetDesc.rangeNum; i++) {
         const BindingRange& dst = m_PipelineLayout->GetBindingRange(dstBaseRange + i);
         const DescriptorD3D11** dstDescriptors = m_Descriptors + dst.descriptorOffset;
 
@@ -59,12 +59,12 @@ NRI_INLINE void DescriptorSetD3D11::Copy(const DescriptorSetCopyDesc& descriptor
         memcpy(dstDescriptors, srcDescriptors, dst.descriptorNum * sizeof(DescriptorD3D11*));
     }
 
-    uint32_t dstBaseDynamicConstantBuffer = m_BindingSet->startRangeOfDynamicConstantBuffers + descriptorSetCopyDesc.dstBaseDynamicConstantBuffer;
-    uint32_t srcBaseDynamicConstantBuffer = srcSet.m_BindingSet->startRangeOfDynamicConstantBuffers + descriptorSetCopyDesc.srcBaseDynamicConstantBuffer;
-    CHECK(dstBaseDynamicConstantBuffer + descriptorSetCopyDesc.dynamicConstantBufferNum <= m_BindingSet->endRangeOfDynamicConstantBuffers, "Out of bounds");
-    CHECK(srcBaseDynamicConstantBuffer + descriptorSetCopyDesc.dynamicConstantBufferNum <= srcSet.m_BindingSet->endRangeOfDynamicConstantBuffers, "Out of bounds");
+    uint32_t dstBaseDynamicConstantBuffer = m_BindingSet->startRangeOfDynamicConstantBuffers + copyDescriptorSetDesc.dstBaseDynamicConstantBuffer;
+    uint32_t srcBaseDynamicConstantBuffer = srcSet.m_BindingSet->startRangeOfDynamicConstantBuffers + copyDescriptorSetDesc.srcBaseDynamicConstantBuffer;
+    CHECK(dstBaseDynamicConstantBuffer + copyDescriptorSetDesc.dynamicConstantBufferNum <= m_BindingSet->endRangeOfDynamicConstantBuffers, "Out of bounds");
+    CHECK(srcBaseDynamicConstantBuffer + copyDescriptorSetDesc.dynamicConstantBufferNum <= srcSet.m_BindingSet->endRangeOfDynamicConstantBuffers, "Out of bounds");
 
-    for (uint32_t i = 0; i < descriptorSetCopyDesc.dynamicConstantBufferNum; i++) {
+    for (uint32_t i = 0; i < copyDescriptorSetDesc.dynamicConstantBufferNum; i++) {
         const BindingRange& dst = m_PipelineLayout->GetBindingRange(dstBaseDynamicConstantBuffer + i);
         const BindingRange& src = m_PipelineLayout->GetBindingRange(srcBaseDynamicConstantBuffer + i);
 

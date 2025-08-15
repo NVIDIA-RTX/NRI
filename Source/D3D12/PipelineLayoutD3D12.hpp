@@ -264,10 +264,10 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     return Result::SUCCESS;
 }
 
-void PipelineLayoutD3D12::SetDescriptorSet(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const DescriptorSetBindingDesc& descriptorSetBindingDesc) const {
+void PipelineLayoutD3D12::SetDescriptorSet(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const SetDescriptorSetDesc& setDescriptorSetDesc) const {
     bool isGraphics = bindPoint == BindPoint::GRAPHICS;
-    const DescriptorSetD3D12& descriptorSetD3D12 = *(DescriptorSetD3D12*)descriptorSetBindingDesc.descriptorSet;
-    const auto& rootOffsets = m_DescriptorSetRootMappings[descriptorSetBindingDesc.setIndex].rootOffsets;
+    const DescriptorSetD3D12& descriptorSetD3D12 = *(DescriptorSetD3D12*)setDescriptorSetDesc.descriptorSet;
+    const auto& rootOffsets = m_DescriptorSetRootMappings[setDescriptorSetDesc.setIndex].rootOffsets;
     uint32_t rangeNum = (uint32_t)rootOffsets.size();
 
     for (uint32_t j = 0; j < rangeNum; j++) {
@@ -282,11 +282,11 @@ void PipelineLayoutD3D12::SetDescriptorSet(ID3D12GraphicsCommandList* graphicsCo
             graphicsCommandList->SetComputeRootDescriptorTable(rootParameterIndex, {descriptorPointerGPU});
     }
 
-    const auto& dynamicConstantBufferMapping = m_DynamicConstantBufferMappings[descriptorSetBindingDesc.setIndex];
+    const auto& dynamicConstantBufferMapping = m_DynamicConstantBufferMappings[setDescriptorSetDesc.setIndex];
     for (uint16_t j = 0; j < dynamicConstantBufferMapping.rootConstantNum; j++) {
         uint16_t rootParameterIndex = dynamicConstantBufferMapping.rootOffset + j;
 
-        DescriptorPointerGPU descriptorPointerGPU = descriptorSetD3D12.GetDynamicPointerGPU(j) + descriptorSetBindingDesc.dynamicConstantBufferOffsets[j];
+        DescriptorPointerGPU descriptorPointerGPU = descriptorSetD3D12.GetDynamicPointerGPU(j) + setDescriptorSetDesc.dynamicConstantBufferOffsets[j];
         if (isGraphics)
             graphicsCommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, descriptorPointerGPU);
         else
@@ -294,24 +294,24 @@ void PipelineLayoutD3D12::SetDescriptorSet(ID3D12GraphicsCommandList* graphicsCo
     }
 }
 
-void PipelineLayoutD3D12::SetRootConstants(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const RootConstantBindingDesc& rootConstantBindingDesc) const {
+void PipelineLayoutD3D12::SetRootConstants(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const SetRootConstantsDesc& setRootConstantsDesc) const {
     bool isGraphics = bindPoint == BindPoint::GRAPHICS;
-    uint32_t rootParameterIndex = m_BaseRootConstant + rootConstantBindingDesc.rootConstantIndex;
-    uint32_t num = rootConstantBindingDesc.size / 4;
-    uint32_t offset = rootConstantBindingDesc.offset / 4;
+    uint32_t rootParameterIndex = m_BaseRootConstant + setRootConstantsDesc.rootConstantIndex;
+    uint32_t num = setRootConstantsDesc.size / 4;
+    uint32_t offset = setRootConstantsDesc.offset / 4;
 
     // TODO: push constants in VK is a global state, visible for any bind point. But "bindPoint" is used
     // explicitly, because using shader visibility associated with the root constant is inefficient if "ALL" is used.
     if (isGraphics)
-        graphicsCommandList->SetGraphicsRoot32BitConstants(rootParameterIndex, num, rootConstantBindingDesc.data, offset);
+        graphicsCommandList->SetGraphicsRoot32BitConstants(rootParameterIndex, num, setRootConstantsDesc.data, offset);
     else
-        graphicsCommandList->SetComputeRoot32BitConstants(rootParameterIndex, num, rootConstantBindingDesc.data, offset);
+        graphicsCommandList->SetComputeRoot32BitConstants(rootParameterIndex, num, setRootConstantsDesc.data, offset);
 }
 
-void PipelineLayoutD3D12::SetRootDescriptor(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const RootDescriptorBindingDesc& rootDescriptorBindingDesc) const {
+void PipelineLayoutD3D12::SetRootDescriptor(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const SetRootDescriptorDesc& setRootDescriptorDesc) const {
     bool isGraphics = bindPoint == BindPoint::GRAPHICS;
-    uint32_t rootParameterIndex = m_BaseRootDescriptor + rootDescriptorBindingDesc.rootDescriptorIndex;
-    const DescriptorD3D12& descriptorD3D12 = *(DescriptorD3D12*)rootDescriptorBindingDesc.descriptor;
+    uint32_t rootParameterIndex = m_BaseRootDescriptor + setRootDescriptorDesc.rootDescriptorIndex;
+    const DescriptorD3D12& descriptorD3D12 = *(DescriptorD3D12*)setRootDescriptorDesc.descriptor;
     D3D12_GPU_VIRTUAL_ADDRESS bufferLocation = descriptorD3D12.GetPointerGPU();
 
     BufferViewType bufferViewType = descriptorD3D12.GetBufferViewType();

@@ -630,11 +630,11 @@ void ImguiImpl::CmdCopyData(CommandBuffer& commandBuffer, Streamer& streamer, co
 
     // Copy texture data
     if (textureBarrierNum) {
-        BarrierGroupDesc barrierGroupDesc = {};
-        barrierGroupDesc.textureNum = textureBarrierNum;
-        barrierGroupDesc.textures = textureBarriers;
+        BarrierDesc barrierDesc = {};
+        barrierDesc.textureNum = textureBarrierNum;
+        barrierDesc.textures = textureBarriers;
 
-        m_iCore.CmdBarrier(commandBuffer, barrierGroupDesc);
+        m_iCore.CmdBarrier(commandBuffer, barrierDesc);
 
         m_iStreamer.CmdCopyStreamedData(commandBuffer, streamer);
 
@@ -643,7 +643,7 @@ void ImguiImpl::CmdCopyData(CommandBuffer& commandBuffer, Streamer& streamer, co
             textureBarriers[i].after = drawState;
         }
 
-        m_iCore.CmdBarrier(commandBuffer, barrierGroupDesc);
+        m_iCore.CmdBarrier(commandBuffer, barrierDesc);
     }
 }
 
@@ -751,7 +751,7 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
     m_iCore.CmdSetPipeline(commandBuffer, *pipeline);
     m_iCore.CmdSetIndexBuffer(commandBuffer, *m_CurrentBuffer, m_IbOffset, IndexType::UINT16);
 
-    DescriptorSetBindingDesc samplerBindingDesc = {IMGUI_SAMPLER_SET, m_DescriptorSet0_sampler};
+    SetDescriptorSetDesc samplerBindingDesc = {IMGUI_SAMPLER_SET, m_DescriptorSet0_sampler};
     m_iCore.CmdSetDescriptorSet(commandBuffer, samplerBindingDesc);
 
     VertexBufferDesc vertexBufferDesc = {};
@@ -777,8 +777,8 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
     constants.invDisplayHeight = 1.0f / viewport.height;
     constants.gamma = drawImguiDesc.linearColor ? 2.2f : 1.0f;
 
-    RootConstantBindingDesc rootConstantBindingDesc = {0, &constants, sizeof(constants)};
-    m_iCore.CmdSetRootConstants(commandBuffer, rootConstantBindingDesc);
+    SetRootConstantsDesc setRootConstantsDesc = {0, &constants, sizeof(constants)};
+    m_iCore.CmdSetRootConstants(commandBuffer, setRootConstantsDesc);
 
     // For each draw list
     Descriptor* currentDescriptor = nullptr;
@@ -813,7 +813,7 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
 
                     constants.hdrScale = currentHdrScale == 0.0f ? defaultHdrScale : currentHdrScale;
 
-                    m_iCore.CmdSetRootConstants(commandBuffer, rootConstantBindingDesc);
+                    m_iCore.CmdSetRootConstants(commandBuffer, setRootConstantsDesc);
                 }
 
                 // Change texture
@@ -833,7 +833,7 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
                     DescriptorSet* descriptorSet = m_DescriptorSets1[m_DescriptorSetIndex];
                     m_DescriptorSetIndex = (m_DescriptorSetIndex + 1) % m_DescriptorSets1.size();
 
-                    DescriptorSetBindingDesc textureBindingDesc = {IMGUI_TEXTURE_SET, descriptorSet};
+                    SetDescriptorSetDesc textureBindingDesc = {IMGUI_TEXTURE_SET, descriptorSet};
                     m_iCore.CmdSetDescriptorSet(commandBuffer, textureBindingDesc);
 
                     DescriptorRangeUpdateDesc descriptorRangeUpdateDesc = {&currentDescriptor, 1};

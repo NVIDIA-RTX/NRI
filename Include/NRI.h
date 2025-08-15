@@ -122,8 +122,8 @@ NriStruct(CoreInterface) {
     void                (NRI_CALL *GetBufferMemoryDesc2)            (const NriRef(Device) device, const NriRef(BufferDesc) bufferDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "features.getMemoryDesc2"
     void                (NRI_CALL *GetTextureMemoryDesc2)           (const NriRef(Device) device, const NriRef(TextureDesc) textureDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "features.getMemoryDesc2"
     Nri(Result)         (NRI_CALL *AllocateMemory)                  (NriRef(Device) device, const NriRef(AllocateMemoryDesc) allocateMemoryDesc, NriOut NriRef(Memory*) memory);
-    Nri(Result)         (NRI_CALL *BindBufferMemory)                (NriRef(Device) device, const NriPtr(BufferMemoryBindingDesc) memoryBindingDescs, uint32_t memoryBindingDescNum);
-    Nri(Result)         (NRI_CALL *BindTextureMemory)               (NriRef(Device) device, const NriPtr(TextureMemoryBindingDesc) memoryBindingDescs, uint32_t memoryBindingDescNum);
+    Nri(Result)         (NRI_CALL *BindBufferMemory)                (NriRef(Device) device, const NriPtr(BindBufferMemoryDesc) bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum);
+    Nri(Result)         (NRI_CALL *BindTextureMemory)               (NriRef(Device) device, const NriPtr(BindTextureMemoryDesc) bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum);
     void                (NRI_CALL *FreeMemory)                      (NriPtr(Memory) memory);
 
     // Descriptor pool ("DescriptorSet" entities don't require destroying)
@@ -135,7 +135,7 @@ NriStruct(CoreInterface) {
     // - if "ALLOW_UPDATE_AFTER_SET" used, descriptor sets (and data pointed to by descriptors) can be updated after "CmdSetDescriptorSet"
     void                (NRI_CALL *UpdateDescriptorRanges)          (NriRef(DescriptorSet) descriptorSet, uint32_t baseRange, uint32_t rangeNum, const NriPtr(DescriptorRangeUpdateDesc) rangeUpdateDescs);
     void                (NRI_CALL *UpdateDynamicConstantBuffers)    (NriRef(DescriptorSet) descriptorSet, uint32_t baseDynamicConstantBuffer, uint32_t dynamicConstantBufferNum, const NriPtr(Descriptor) const* descriptors);
-    void                (NRI_CALL *CopyDescriptorSet)               (NriRef(DescriptorSet) descriptorSet, const NriRef(DescriptorSetCopyDesc) descriptorSetCopyDesc);
+    void                (NRI_CALL *CopyDescriptorSet)               (NriRef(DescriptorSet) descriptorSet, const NriRef(CopyDescriptorSetDesc) copyDescriptorSetDesc);
 
     // Command buffer (one time submit)
     Nri(Result)         (NRI_CALL *BeginCommandBuffer)              (NriRef(CommandBuffer) commandBuffer, const NriPtr(DescriptorPool) descriptorPool);
@@ -145,15 +145,15 @@ NriStruct(CoreInterface) {
 
         // Resource binding (expect "CmdSetPipelineLayout" to be called first)
         void                (NRI_CALL *CmdSetPipelineLayout)        (NriRef(CommandBuffer) commandBuffer, Nri(BindPoint) bindPoint, const NriRef(PipelineLayout) pipelineLayout);
-        void                (NRI_CALL *CmdSetDescriptorSet)         (NriRef(CommandBuffer) commandBuffer, const NriRef(DescriptorSetBindingDesc) descriptorSetBindingDesc);
-        void                (NRI_CALL *CmdSetRootConstants)         (NriRef(CommandBuffer) commandBuffer, const NriRef(RootConstantBindingDesc) rootConstantBindingDesc);
-        void                (NRI_CALL *CmdSetRootDescriptor)        (NriRef(CommandBuffer) commandBuffer, const NriRef(RootDescriptorBindingDesc) rootDescriptorBindingDesc);
+        void                (NRI_CALL *CmdSetDescriptorSet)         (NriRef(CommandBuffer) commandBuffer, const NriRef(SetDescriptorSetDesc) setDescriptorSetDesc);
+        void                (NRI_CALL *CmdSetRootConstants)         (NriRef(CommandBuffer) commandBuffer, const NriRef(SetRootConstantsDesc) setRootConstantsDesc);
+        void                (NRI_CALL *CmdSetRootDescriptor)        (NriRef(CommandBuffer) commandBuffer, const NriRef(SetRootDescriptorDesc) setRootDescriptorDesc);
 
         // Pipeline
         void                (NRI_CALL *CmdSetPipeline)              (NriRef(CommandBuffer) commandBuffer, const NriRef(Pipeline) pipeline);
 
         // Barrier
-        void                (NRI_CALL *CmdBarrier)                  (NriRef(CommandBuffer) commandBuffer, const NriRef(BarrierGroupDesc) barrierGroupDesc);
+        void                (NRI_CALL *CmdBarrier)                  (NriRef(CommandBuffer) commandBuffer, const NriRef(BarrierDesc) barrierDesc);
 
         // Input assembly
         void                (NRI_CALL *CmdSetIndexBuffer)           (NriRef(CommandBuffer) commandBuffer, const NriRef(Buffer) buffer, uint64_t offset, Nri(IndexType) indexType);
