@@ -45,6 +45,7 @@ NriForwardStruct(Buffer);           // a buffer object: linear arrays of data
 NriForwardStruct(Device);           // a logical device
 NriForwardStruct(Texture);          // a texture object: multidimensional arrays of data
 NriForwardStruct(Pipeline);         // a collection of state needed for rendering: shaders + fixed
+NriForwardStruct(SwapChain);        // an array of presentable images that are associated with a surface
 NriForwardStruct(QueryPool);        // a collection of queries of the same type
 NriForwardStruct(Descriptor);       // a handle or pointer to a resource (potentially with a header)
 NriForwardStruct(CommandBuffer);    // used to record commands which can be subsequently submitted to a device queue for execution (aka command list)
@@ -1520,6 +1521,7 @@ NriStruct(QueueSubmitDesc) {
     uint32_t commandBufferNum;
     const NriPtr(FenceSubmitDesc) signalFences;
     uint32_t signalFenceNum;
+    NriOptional const NriPtr(SwapChain) swapChain; // required if "NRILowLatency" is enabled in the swap chain
 };
 
 // Clear

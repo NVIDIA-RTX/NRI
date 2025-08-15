@@ -430,7 +430,7 @@ static void NRI_CALL ResetQueries(QueryPool& queryPool, uint32_t offset, uint32_
 }
 
 static Result NRI_CALL QueueSubmit(Queue& queue, const QueueSubmitDesc& workSubmissionDesc) {
-    return ((QueueVK&)queue).Submit(workSubmissionDesc, nullptr);
+    return ((QueueVK&)queue).Submit(workSubmissionDesc);
 }
 
 static Result NRI_CALL DeviceWaitIdle(Device* device) {
@@ -748,10 +748,6 @@ Result DeviceVK::FillFunctionTable(ImguiInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  Low latency  ]
 
-static Result NRI_CALL QueueSubmitTrackable(Queue& queue, const QueueSubmitDesc& workSubmissionDesc, const SwapChain& swapChain) {
-    return ((QueueVK&)queue).Submit(workSubmissionDesc, &swapChain);
-}
-
 static Result NRI_CALL SetLatencySleepMode(SwapChain& swapChain, const LatencySleepMode& latencySleepMode) {
     return ((SwapChainVK&)swapChain).SetLatencySleepMode(latencySleepMode);
 }
@@ -776,7 +772,6 @@ Result DeviceVK::FillFunctionTable(LowLatencyInterface& table) const {
     table.SetLatencyMarker = ::SetLatencyMarker;
     table.LatencySleep = ::LatencySleep;
     table.GetLatencyReport = ::GetLatencyReport;
-    table.QueueSubmitTrackable = ::QueueSubmitTrackable;
 
     return Result::SUCCESS;
 }

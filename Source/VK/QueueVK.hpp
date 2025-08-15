@@ -44,7 +44,7 @@ NRI_INLINE void QueueVK::Annotation(const char* name, uint32_t bgra) {
         vk.QueueInsertDebugUtilsLabelEXT(m_Handle, &info);
 }
 
-NRI_INLINE Result QueueVK::Submit(const QueueSubmitDesc& queueSubmitDesc, const SwapChain* swapChain) {
+NRI_INLINE Result QueueVK::Submit(const QueueSubmitDesc& queueSubmitDesc) {
     ExclusiveScope lock(m_Lock);
 
     Scratch<VkSemaphoreSubmitInfo> waitSemaphores = AllocateScratch(m_Device, VkSemaphoreSubmitInfo, queueSubmitDesc.waitFenceNum);
@@ -78,8 +78,8 @@ NRI_INLINE Result QueueVK::Submit(const QueueSubmitDesc& queueSubmitDesc, const 
     submitInfo.pSignalSemaphoreInfos = signalSemaphores;
 
     VkLatencySubmissionPresentIdNV presentId = {VK_STRUCTURE_TYPE_LATENCY_SUBMISSION_PRESENT_ID_NV};
-    if (swapChain && m_Device.m_IsSupported.presentId) {
-        presentId.presentID = ((const SwapChainVK*)swapChain)->GetPresentId();
+    if (queueSubmitDesc.swapChain && m_Device.m_IsSupported.presentId) {
+        presentId.presentID = ((SwapChainVK*)queueSubmitDesc.swapChain)->GetPresentId();
         submitInfo.pNext = &presentId;
     }
 

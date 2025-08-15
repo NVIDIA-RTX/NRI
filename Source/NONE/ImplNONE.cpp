@@ -801,16 +801,11 @@ static Result NRI_CALL GetLatencyReport(const SwapChain&, LatencyReport&) {
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL QueueSubmitTrackable(Queue&, const QueueSubmitDesc&, const SwapChain&) {
-    return Result::SUCCESS;
-}
-
 Result DeviceNONE::FillFunctionTable(LowLatencyInterface& table) const {
     table.SetLatencySleepMode = ::SetLatencySleepMode;
     table.SetLatencyMarker = ::SetLatencyMarker;
     table.LatencySleep = ::LatencySleep;
     table.GetLatencyReport = ::GetLatencyReport;
-    table.QueueSubmitTrackable = ::QueueSubmitTrackable;
 
     return Result::SUCCESS;
 }

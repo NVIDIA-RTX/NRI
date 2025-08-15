@@ -24,7 +24,7 @@ struct QueueVal final : public ObjectVal {
     void BeginAnnotation(const char* name, uint32_t bgra);
     void EndAnnotation();
     void Annotation(const char* name, uint32_t bgra);
-    Result Submit(const QueueSubmitDesc& queueSubmitDesc, const SwapChain* swapChain);
+    Result Submit(const QueueSubmitDesc& queueSubmitDesc);
     Result WaitIdle();
 };
 

@@ -770,10 +770,6 @@ static Result NRI_CALL GetLatencyReport(const SwapChain& swapChain, LatencyRepor
     return ((SwapChainD3D12&)swapChain).GetLatencyReport(latencyReport);
 }
 
-static Result NRI_CALL QueueSubmitTrackable(Queue& queue, const QueueSubmitDesc& workSubmissionDesc, const SwapChain&) {
-    return ((QueueD3D12&)queue).Submit(workSubmissionDesc);
-}
-
 Result DeviceD3D12::FillFunctionTable(LowLatencyInterface& table) const {
     if (!m_Desc.features.lowLatency)
         return Result::UNSUPPORTED;
@@ -782,7 +778,6 @@ Result DeviceD3D12::FillFunctionTable(LowLatencyInterface& table) const {
     table.SetLatencyMarker = ::SetLatencyMarker;
     table.LatencySleep = ::LatencySleep;
     table.GetLatencyReport = ::GetLatencyReport;
-    table.QueueSubmitTrackable = ::QueueSubmitTrackable;
 
     return Result::SUCCESS;
 }
