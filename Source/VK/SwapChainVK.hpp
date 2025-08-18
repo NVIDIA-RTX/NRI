@@ -2,6 +2,19 @@
 
 constexpr uint32_t PRESENT_MODE_MAX_NUM = 16;
 
+constexpr VkPresentGravityFlagBitsEXT GetGravity(Gravity gravity) {
+    switch (gravity) {
+        case Gravity::CENTERED:
+            return VK_PRESENT_GRAVITY_CENTERED_BIT_EXT;
+
+        case Gravity::MAX:
+            return VK_PRESENT_GRAVITY_MAX_BIT_EXT;
+
+        default:
+            return VK_PRESENT_GRAVITY_MIN_BIT_EXT;
+    }
+}
+
 SwapChainVK::~SwapChainVK() {
     // TODO: use "vkReleaseSwapchainImagesEXT" to release acquired but not presented images?
 
@@ -230,7 +243,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
             (swapChainDesc.flags & SwapChainBits::ALLOW_TEARING) ? VK_PRESENT_MODE_FIFO_RELAXED_KHR : VK_PRESENT_MODE_FIFO_KHR,
             VK_PRESENT_MODE_FIFO_KHR, // guaranteed to be supported
         };
-        
+
         const VkPresentModeKHR uncappedModes[] = {
             (swapChainDesc.flags & SwapChainBits::ALLOW_TEARING) ? VK_PRESENT_MODE_IMMEDIATE_KHR : VK_PRESENT_MODE_MAILBOX_KHR,
             (swapChainDesc.flags & SwapChainBits::ALLOW_TEARING) ? VK_PRESENT_MODE_IMMEDIATE_KHR : (m_Device.m_IsSupported.fifoLatestReady ? VK_PRESENT_MODE_FIFO_LATEST_READY_EXT : VK_PRESENT_MODE_FIFO_KHR),
@@ -280,6 +293,15 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         swapchainInfo.presentMode = presentMode;
         const void** tail = &swapchainInfo.pNext;
+
+        // Scaling mode
+        VkSwapchainPresentScalingCreateInfoEXT scalingInfo = {VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_EXT};
+        if (m_Device.m_IsSupported.swapChainMaintenance1) {
+            scalingInfo.scalingBehavior = swapChainDesc.scaling == Scaling::STRETCH ? VK_PRESENT_SCALING_STRETCH_BIT_EXT : VK_PRESENT_SCALING_ONE_TO_ONE_BIT_EXT;
+            scalingInfo.presentGravityX = GetGravity(swapChainDesc.gravityX);
+            scalingInfo.presentGravityY = GetGravity(swapChainDesc.gravityY);
+            APPEND_EXT(scalingInfo);
+        }
 
         // Mutable formats
         VkFormat mutableFormats[2];

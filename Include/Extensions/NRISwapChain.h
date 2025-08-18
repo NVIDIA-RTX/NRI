@@ -29,6 +29,19 @@ NriEnum(SwapChainFormat, uint8_t,
     BT2020_G2084_10BIT
 );
 
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPresentScalingFlagBitsKHR.html
+NriEnum(Scaling, uint8_t,
+    ONE_TO_ONE,                      // no scaling, 1:1 pixel mapping
+    STRETCH                          // minified or magnified stretching
+);
+
+// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPresentGravityFlagBitsKHR.html
+NriEnum(Gravity, uint8_t,
+    MIN,                             // pixels will gravitate towards the top or left side of the surface (Windows style)
+    MAX,                             // VK: pixels will gravitate towards the bottom or right side of the surface
+    CENTERED                         // VK: pixels will be centered in the surface
+);
+
 NriBits(SwapChainBits, uint8_t,
     NONE                = 0,
     VSYNC               = NriBit(0), // cap framerate to the monitor refresh rate
@@ -68,13 +81,18 @@ NriStruct(Window) {
 // queuedFrameNum = 2 - recommended if the GPU frame time is less than the desired frame time, but the sum of 2 frames is greater
 NriStruct(SwapChainDesc) {
     Nri(Window) window;
-    const NriPtr(Queue) queue;          // GRAPHICS or COMPUTE (requires "features.presentFromCompute")
+    const NriPtr(Queue) queue;                  // GRAPHICS or COMPUTE (requires "features.presentFromCompute")
     Nri(Dim_t) width;
     Nri(Dim_t) height;
-    uint8_t textureNum;                 // desired value, real value must be queried using "GetSwapChainTextures"
-    Nri(SwapChainFormat) format;        // desired format, real value must be queried using "GetTextureDesc" for one of the swap chain textures
+    uint8_t textureNum;                         // desired value, real value must be queried using "GetSwapChainTextures"
+    Nri(SwapChainFormat) format;                // desired format, real value must be queried using "GetTextureDesc" for one of the swap chain textures
     Nri(SwapChainBits) flags;
-    NriOptional uint8_t queuedFrameNum; // aka "max frame latency", aka "number of frames in flight" (mostly for D3D11)
+    NriOptional uint8_t queuedFrameNum;         // aka "max frame latency", aka "number of frames in flight" (mostly for D3D11)
+
+    // Present scaling and positioning
+    NriOptional Nri(Scaling) scaling;           // VK: if scaling is not supported, "OUT_OF_DATE" error is triggered on resizing
+    NriOptional Nri(Gravity) gravityX;
+    NriOptional Nri(Gravity) gravityY;
 };
 
 NriStruct(ChromaticityCoords) {

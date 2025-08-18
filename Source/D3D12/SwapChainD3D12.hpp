@@ -78,7 +78,7 @@ Result SwapChainD3D12::Create(const SwapChainDesc& swapChainDesc) {
     desc.SampleDesc.Count = 1;
     desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     desc.BufferCount = swapChainDesc.textureNum;
-    desc.Scaling = DXGI_SCALING_NONE;
+    desc.Scaling = swapChainDesc.scaling == Scaling::STRETCH ? DXGI_SCALING_STRETCH : DXGI_SCALING_NONE;
     desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     desc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
 
