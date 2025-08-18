@@ -59,6 +59,11 @@ typedef uint8_t Nri(Sample_t);
 typedef uint16_t Nri(Dim_t);
 typedef void Nri(Object);
 
+NriStruct(Uid_t) {
+    uint64_t low;
+    uint64_t high;
+};
+
 NriStruct(Dim2_t) {
     Nri(Dim_t) w, h;
 };
@@ -1580,7 +1585,7 @@ NriEnum(QueueType, uint8_t,
 
 NriStruct(AdapterDesc) {
     char name[256];
-    uint64_t luid;
+    Nri(Uid_t) uid; // "LUID" (preferred) if "uid.high = 0", or "UUID" otherwise
     uint64_t videoMemorySize;
     uint64_t sharedSystemMemorySize;
     uint32_t deviceId;

@@ -687,7 +687,7 @@ static Result NRI_CALL AllocateAndBindMemory(Device& device, const ResourceGroup
 }
 
 static Result NRI_CALL QueryVideoMemoryInfo(const Device& device, MemoryLocation memoryLocation, VideoMemoryInfo& videoMemoryInfo) {
-    uint64_t luid = ((DeviceD3D12&)device).GetDesc().adapterDesc.luid;
+    uint64_t luid = ((DeviceD3D12&)device).GetDesc().adapterDesc.uid.low;
 
     return QueryVideoMemoryInfoDXGI(luid, memoryLocation, videoMemoryInfo);
 }

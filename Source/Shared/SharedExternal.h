@@ -370,6 +370,23 @@ inline TextureDesc FixTextureDesc(const TextureDesc& textureDesc) {
     return desc;
 }
 
+inline Uid_t ConstructUid(uint8_t luid[8], uint8_t uuid[16], bool isLuidValid) {
+    Uid_t out = {};
+
+    if (isLuidValid)
+        out.low = *(uint64_t*)luid;
+    else {
+        out.low = *(uint64_t*)uuid;
+        out.high = *(uint64_t*)(uuid + 8);
+    }
+
+    return out;
+}
+
+inline bool CompareUid(const Uid_t& a, const Uid_t& b) {
+    return a.low == b.low && a.high == b.high;
+}
+
 // Strings
 void ConvertCharToWchar(const char* in, wchar_t* out, size_t outLen);
 void ConvertWcharToChar(const wchar_t* in, char* out, size_t outLen);

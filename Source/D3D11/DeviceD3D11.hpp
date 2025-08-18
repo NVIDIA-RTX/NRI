@@ -83,7 +83,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         HRESULT hr = CreateDXGIFactory2(desc.enableGraphicsAPIValidation ? DXGI_CREATE_FACTORY_DEBUG : 0, IID_PPV_ARGS(&dxgiFactory));
         RETURN_ON_BAD_HRESULT(this, hr, "CreateDXGIFactory2");
 
-        LUID luid = *(LUID*)&m_Desc.adapterDesc.luid;
+        LUID luid = *(LUID*)&m_Desc.adapterDesc.uid.low;
         hr = dxgiFactory->EnumAdapterByLuid(luid, IID_PPV_ARGS(&m_Adapter));
         RETURN_ON_BAD_HRESULT(this, hr, "IDXGIFactory4::EnumAdapterByLuid");
     }

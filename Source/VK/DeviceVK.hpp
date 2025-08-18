@@ -480,8 +480,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
                 bool isSupported = (majorVersion * 10 + m_MinorVersion) >= 12;
                 if (desc.adapterDesc) {
-                    const uint64_t luid = *(uint64_t*)idProps.deviceLUID;
-                    if (luid == desc.adapterDesc->luid) {
+                    Uid_t uid = ConstructUid(idProps.deviceLUID, idProps.deviceUUID, idProps.deviceLUIDValid);
+                    if (CompareUid(uid, desc.adapterDesc->uid)) {
                         RETURN_ON_FAILURE(this, isSupported, Result::UNSUPPORTED, "Can't create a device: the specified physical device does not support Vulkan 1.2+!");
                         break;
                     }

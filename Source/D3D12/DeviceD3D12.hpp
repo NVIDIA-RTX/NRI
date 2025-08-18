@@ -175,7 +175,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         HRESULT hr = CreateDXGIFactory2(desc.enableGraphicsAPIValidation ? DXGI_CREATE_FACTORY_DEBUG : 0, IID_PPV_ARGS(&dxgiFactory));
         RETURN_ON_BAD_HRESULT(this, hr, "CreateDXGIFactory2");
 
-        LUID luid = *(LUID*)&desc.adapterDesc->luid;
+        LUID luid = *(LUID*)&desc.adapterDesc->uid.low;
         hr = dxgiFactory->EnumAdapterByLuid(luid, IID_PPV_ARGS(&m_Adapter));
         RETURN_ON_BAD_HRESULT(this, hr, "IDXGIFactory4::EnumAdapterByLuid");
     }
@@ -419,7 +419,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     if (FAILED(hr))
         REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options5) failed, result = 0x%08X!", hr);
     m_Desc.features.rayTracing = options5.RaytracingTier != 0;
-    m_Desc.tiers.rayTracing = (uint8_t)(options5.RaytracingTier - D3D12_RAYTRACING_TIER_1_0 + 1);
+    m_Desc.tiers.rayTracing = (uint8_t)std::max(options5.RaytracingTier - D3D12_RAYTRACING_TIER_1_0 + 1, 0);
 
     // Windows 10 1903 (build 18362)
     D3D12_FEATURE_DATA_D3D12_OPTIONS6 options6 = {};

@@ -138,7 +138,7 @@ static Result EnumerateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterD
 
             AdapterDesc& adapterDesc = adapterDescsSorted[i];
             adapterDesc = {};
-            adapterDesc.luid = *(uint64_t*)&desc.AdapterLuid;
+            adapterDesc.uid.low = *(uint64_t*)&desc.AdapterLuid;
             adapterDesc.deviceId = desc.DeviceId;
             adapterDesc.vendor = GetVendorFromID(desc.VendorId);
             adapterDesc.videoMemorySize = desc.DedicatedVideoMemory; // TODO: add "desc.DedicatedSystemMemory"?
@@ -186,7 +186,7 @@ static Result EnumerateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterD
             adapterDescs[i] = *adapterDescsSorted++;
 
             // Update "deviceCreationDesc"
-            if (deviceCreationDesc && precreatedDeviceLuid == adapterDescs[i].luid)
+            if (deviceCreationDesc && precreatedDeviceLuid == adapterDescs[i].uid.low)
                 deviceCreationDesc->adapterDesc = &adapterDescs[i];
         }
     } else
@@ -253,7 +253,7 @@ static Result EnumerateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDe
             if (vkResult == VK_SUCCESS && deviceGroupNum) {
                 if (adapterDescs) {
                     // Save LUID for precreated physical device
-                    uint64_t precreatedDeviceLuid = 0;
+                    Uid_t precreatedUid = {};
                     if (precreatedPhysicalDevice) {
                         VkPhysicalDeviceProperties2 deviceProps2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
 
@@ -262,7 +262,7 @@ static Result EnumerateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDe
 
                         vkGetPhysicalDeviceProperties2(precreatedPhysicalDevice, &deviceProps2);
 
-                        precreatedDeviceLuid = *(uint64_t*)&deviceIDProperties.deviceLUID[0];
+                        precreatedUid = ConstructUid(deviceIDProperties.deviceLUID, deviceIDProperties.deviceUUID, deviceIDProperties.deviceLUIDValid);
                     }
 
                     // Query device groups
@@ -287,7 +287,7 @@ static Result EnumerateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDe
 
                         AdapterDesc& adapterDesc = adapterDescsSorted[i];
                         adapterDesc = {};
-                        adapterDesc.luid = *(uint64_t*)&deviceIDProperties.deviceLUID[0];
+                        adapterDesc.uid = ConstructUid(deviceIDProperties.deviceLUID, deviceIDProperties.deviceUUID, deviceIDProperties.deviceLUIDValid);
                         adapterDesc.deviceId = deviceProps.deviceID;
                         adapterDesc.vendor = GetVendorFromID(deviceProps.vendorID);
                         strncpy(adapterDesc.name, deviceProps.deviceName, sizeof(adapterDesc.name));
@@ -384,7 +384,7 @@ static Result EnumerateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDe
                         adapterDescs[i] = *adapterDescsSorted++;
 
                         // Update "deviceCreationDesc"
-                        if (deviceCreationDesc && precreatedDeviceLuid == adapterDescs[i].luid)
+                        if (deviceCreationDesc && CompareUid(precreatedUid, adapterDescs[i].uid))
                             deviceCreationDesc->adapterDesc = &adapterDescs[i];
                     }
                 } else
