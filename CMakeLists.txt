@@ -17,11 +17,19 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_path(WAYLAND_HEADERS NAMES "wayland-client.h")
 endif()
 
-# Arm64?
+# Architecture
 if((CMAKE_GENERATOR_PLATFORM MATCHES "ARM64") OR (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64"))
     set(IS_ARM64 TRUE)
+    set(BIN_ARCHITECTURE "arm64")
+    set(NVAPI_BIN_ARCHITECTURE "arm64")
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(IS_ARM64 FALSE)
+    set(BIN_ARCHITECTURE "x64")
+    set(NVAPI_BIN_ARCHITECTURE "amd64")
 else()
     set(IS_ARM64 FALSE)
+    set(BIN_ARCHITECTURE "x86")
+    set(NVAPI_BIN_ARCHITECTURE "x86")
 endif()
 
 # Options
@@ -53,23 +61,9 @@ cmake_dependent_option(NRI_ENABLE_XESS_SDK "Enable INTEL XeSS SDK" OFF "NRI_ENAB
 
 # ShaderMake required?
 if(NRI_ENABLE_NIS_SDK)
-    set(NRI_REQUIRES_SHADERMAKE 1)
+    set(NRI_ENABLE_SHADERMAKE ON)
 else()
-    set(NRI_REQUIRES_SHADERMAKE 0)
-endif()
-
-# Architecture?
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    if(IS_ARM64)
-        set(BIN_ARCHITECTURE "arm64")
-        set(NVAPI_BIN_ARCHITECTURE "arm64")
-    else()
-        set(BIN_ARCHITECTURE "x64")
-        set(NVAPI_BIN_ARCHITECTURE "amd64")
-    endif()
-else()
-    set(BIN_ARCHITECTURE "x86")
-    set(NVAPI_BIN_ARCHITECTURE "x86")
+    set(NRI_ENABLE_SHADERMAKE OFF)
 endif()
 
 # Top level?
@@ -87,87 +81,33 @@ endif()
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # Compile definitions
-set(COMPILE_DEFINITIONS
-    WIN32_LEAN_AND_MEAN
-    NOMINMAX
-    _CRT_SECURE_NO_WARNINGS
+set(COMPILE_DEFINITIONS "")
+foreach(opt IN ITEMS
+    NRI_STATIC_LIBRARY
+    NRI_ENABLE_NVTX_SUPPORT
+    NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS
+    NRI_ENABLE_NONE_SUPPORT
+    NRI_ENABLE_VK_SUPPORT
+    NRI_ENABLE_VALIDATION_SUPPORT
+    NRI_ENABLE_NIS_SDK
+    NRI_ENABLE_IMGUI_EXTENSION
+    NRI_ENABLE_D3D11_SUPPORT
+    NRI_ENABLE_D3D12_SUPPORT
+    NRI_ENABLE_NVAPI
+    NRI_ENABLE_AMDAGS
+    NRI_ENABLE_AGILITY_SDK_SUPPORT
+    NRI_ENABLE_XLIB_SUPPORT
+    NRI_ENABLE_WAYLAND_SUPPORT
+    NRI_ENABLE_NGX_SDK
+    NRI_ENABLE_FFX_SDK
+    NRI_ENABLE_XESS_SDK
+    NRI_ENABLE_SHADERMAKE
 )
-
-function(add_compile_definition DEFINITION)
-    if(${DEFINITION})
-        message(STATUS "${DEFINITION}")
-        set(COMPILE_DEFINITIONS ${COMPILE_DEFINITIONS} ${DEFINITION}=1 PARENT_SCOPE)
+    if(${opt})
+        message(STATUS "${opt}")
+        list(APPEND COMPILE_DEFINITIONS "${opt}=1")
     endif()
-endfunction()
-
-add_compile_definition(NRI_STATIC_LIBRARY)
-add_compile_definition(NRI_ENABLE_NVTX_SUPPORT)
-add_compile_definition(NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS)
-add_compile_definition(NRI_ENABLE_NONE_SUPPORT)
-add_compile_definition(NRI_ENABLE_VK_SUPPORT)
-add_compile_definition(NRI_ENABLE_VALIDATION_SUPPORT)
-add_compile_definition(NRI_ENABLE_NIS_SDK)
-add_compile_definition(NRI_ENABLE_IMGUI_EXTENSION)
-add_compile_definition(NRI_ENABLE_D3D11_SUPPORT)
-add_compile_definition(NRI_ENABLE_D3D12_SUPPORT)
-add_compile_definition(NRI_ENABLE_NVAPI)
-add_compile_definition(NRI_ENABLE_AMDAGS)
-add_compile_definition(NRI_ENABLE_AGILITY_SDK_SUPPORT)
-add_compile_definition(NRI_ENABLE_XLIB_SUPPORT)
-add_compile_definition(NRI_ENABLE_WAYLAND_SUPPORT)
-add_compile_definition(NRI_ENABLE_NGX_SDK)
-add_compile_definition(NRI_ENABLE_FFX_SDK)
-add_compile_definition(NRI_ENABLE_XESS_SDK)
-add_compile_definition(NRI_REQUIRES_SHADERMAKE)
-
-# Find Windows SDK
-if(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT)
-    message("NRI: looking for Windows SDK:")
-
-    if("$ENV{WIN10_SDK_PATH}$ENV{WIN10_SDK_VERSION}" STREQUAL "")
-        get_filename_component(WINDOWS_SDK_PATH "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots;KitsRoot10]" ABSOLUTE CACHE)
-        set(WINDOWS_SDK_VERSION ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION})
-
-        if("${WINDOWS_SDK_VERSION}" STREQUAL "")
-            set(WINDOWS_SDK_VERSION ${CMAKE_SYSTEM_VERSION})
-            message(STATUS "Using CMAKE_SYSTEM_VERSION as WindowsSDK version.(${CMAKE_SYSTEM_VERSION})")
-        endif()
-    else()
-        set(WINDOWS_SDK_PATH $ENV{WIN10_SDK_PATH})
-        set(WINDOWS_SDK_VERSION $ENV{WIN10_SDK_VERSION})
-    endif()
-
-    if("${WINDOWS_SDK_PATH}" STREQUAL "")
-        message(FATAL_ERROR "Failed to detect WindowsSDK path. Please add enviroment variables WIN10_SDK_PATH and WIN10_SDK_VERSION or use MSVC")
-    endif()
-
-    if("${WINDOWS_SDK_VERSION}" STREQUAL "")
-        message(FATAL_ERROR "Failed to detect WindowsSDK version. Please add enviroment variables WIN10_SDK_PATH and WIN10_SDK_VERSION or use MSVC")
-    endif()
-
-    if(IS_DIRECTORY "${WINDOWS_SDK_PATH}/Include/${WINDOWS_SDK_VERSION}.0")
-        set(WINDOWS_SDK_VERSION "${WINDOWS_SDK_VERSION}.0")
-    endif()
-
-    set(WINDOWS_SDK_LIB_PATH "${WINDOWS_SDK_PATH}/Lib/${WINDOWS_SDK_VERSION}/um/${BIN_ARCHITECTURE}")
-    message(STATUS "${WINDOWS_SDK_LIB_PATH}")
-
-    find_library(INPUT_LIB_DXGI
-        NAMES
-            dxgi
-        HINTS
-            ${WINDOWS_SDK_LIB_PATH}
-        REQUIRED
-    )
-
-    find_library(INPUT_LIB_DXGUID
-        NAMES
-            dxguid
-        HINTS
-            ${WINDOWS_SDK_LIB_PATH}
-        REQUIRED
-    )
-endif()
+endforeach()
 
 # Construct list of dependencies # TODO: update to latest releases from time to time
 set(DEPS)
@@ -297,7 +237,7 @@ if(NRI_ENABLE_NVAPI)
     endif()
 endif()
 
-if(NRI_REQUIRES_SHADERMAKE AND NOT TARGET ShaderMake)
+if(NRI_ENABLE_SHADERMAKE AND NOT TARGET ShaderMake)
     # ShaderMake
     option(SHADERMAKE_TOOL "" ON)
 
@@ -437,6 +377,9 @@ target_include_directories(NRI_Shared
 )
 target_compile_definitions(NRI_Shared
     PUBLIC
+        WIN32_LEAN_AND_MEAN
+        NOMINMAX
+        _CRT_SECURE_NO_WARNINGS
         ${COMPILE_DEFINITIONS}
 )
 target_compile_options(NRI_Shared
@@ -503,14 +446,6 @@ endif()
 
 # D3D11
 if(NRI_ENABLE_D3D11_SUPPORT)
-    find_library(INPUT_LIB_D3D11
-        NAMES
-            d3d11
-        HINTS
-            ${WINDOWS_SDK_LIB_PATH}
-        REQUIRED
-    )
-
     set(D3D11_SOURCE
         "Source/D3D11/BufferD3D11.h"
         "Source/D3D11/BufferD3D11.hpp"
@@ -571,9 +506,9 @@ if(NRI_ENABLE_D3D11_SUPPORT)
     target_link_libraries(NRI_D3D11
         PRIVATE
             NRI_Shared
-            ${INPUT_LIB_D3D11}
-            ${INPUT_LIB_DXGI}
-            ${INPUT_LIB_DXGUID}
+            d3d11
+            dxgi
+            dxguid
             $<$<BOOL:${NRI_ENABLE_NVAPI}>:
                 ${NVAPI_LIB}
             >
@@ -586,13 +521,7 @@ endif()
 
 # D3D12
 if(NRI_ENABLE_D3D12_SUPPORT)
-    find_library(INPUT_LIB_D3D12
-        NAMES
-            d3d12
-        HINTS
-            ${WINDOWS_SDK_LIB_PATH}
-        REQUIRED
-    )
+    message("NRI: using Windows SDK ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}")
 
     set(D3D12_VMA "${d3d12ma_SOURCE_DIR}/include/D3D12MemAlloc.h")
     source_group("External/Vma"
@@ -674,9 +603,9 @@ if(NRI_ENABLE_D3D12_SUPPORT)
     target_link_libraries(NRI_D3D12
         PRIVATE
             NRI_Shared
-            ${INPUT_LIB_D3D12}
-            ${INPUT_LIB_DXGI}
-            ${INPUT_LIB_DXGUID}
+            d3d12
+            dxgi
+            dxguid
             $<$<BOOL:${NRI_ENABLE_NVAPI}>:
                 ${NVAPI_LIB}
             >
@@ -1081,7 +1010,7 @@ if(NRI_ENABLE_XESS_SDK)
 endif()
 
 # Shaders
-if(NRI_REQUIRES_SHADERMAKE)
+if(NRI_ENABLE_SHADERMAKE)
     set(SHADERS
         "Shaders/Imgui.fs.hlsl"
         "Shaders/Imgui.vs.hlsl"

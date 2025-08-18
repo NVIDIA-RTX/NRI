@@ -1,7 +1,7 @@
 // © 2025 NVIDIA Corporation
 
 #if NRI_ENABLE_IMGUI_EXTENSION
-#    if NRI_REQUIRES_SHADERMAKE
+#    if NRI_ENABLE_SHADERMAKE
 #        if NRI_ENABLE_D3D11_SUPPORT
 #            include "Imgui.fs.dxbc.h"
 #            include "Imgui.vs.dxbc.h"
