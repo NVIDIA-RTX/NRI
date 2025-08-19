@@ -66,8 +66,8 @@ else()
     set(NRI_ENABLE_SHADERMAKE OFF)
 endif()
 
-# Top level?
-if(PROJECT_IS_TOP_LEVEL)
+# Self-build?
+if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR}) # if not submodule
     get_property(IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 
     if(IS_MULTI_CONFIG)
@@ -1048,6 +1048,7 @@ if(NRI_ENABLE_SHADERMAKE)
     if(NRI_ENABLE_VK_SUPPORT)
         list(APPEND SHADERMAKE_COMMANDS COMMAND ${SHADERMAKE_PATH} -p SPIRV --compiler "${SHADERMAKE_DXC_VK_PATH}" ${SHADERMAKE_GENERAL_ARGS})
     endif()
+    list(APPEND SHADERMAKE_COMMANDS "") # fix for "The system cannot find the batch label specified - VCEnd"
 
     add_custom_target(NRI_Shaders
         ALL

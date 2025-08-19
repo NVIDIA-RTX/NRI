@@ -5,6 +5,8 @@ mkdir "_Build"
 cd "_Build"
 
 cmake .. %*
-if %ERRORLEVEL% NEQ 0 exit /B %ERRORLEVEL%
+if %ERRORLEVEL% NEQ 0 goto END
 
+:END
 cd ..
+exit /B %ERRORLEVEL%
