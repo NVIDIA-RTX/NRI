@@ -1,6 +1,8 @@
 // © 2021 NVIDIA Corporation
 
-#ifndef _WIN32
+#ifdef _WIN32
+#    include <windows.h> // OutputDebugStringA
+#else
 #    include <csignal> // raise
 #endif
 
