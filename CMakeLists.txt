@@ -28,10 +28,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(X11 QUIET)
 
     if(WaylandClient_FOUND)
-        message("================ Xlib find_path")
+        message("================ Xlib find_package")
     endif()
     if(X11_Found)
-        message("================ Wayland find_path")
+        message("================ Wayland find_package")
     endif()
 
     message(FATAL_ERROR "End of test")
