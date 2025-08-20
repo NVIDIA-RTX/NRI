@@ -27,10 +27,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(WaylandClient QUIET)
     find_package(X11 QUIET)
 
-    if(WaylandClient_FOUND)
-        message("================ Xlib find_package")
+    if(X11_FOUND)
+        message("================ X11 find_package")
     endif()
-    if(X11_Found)
+    if(WaylandClient_FOUND)
         message("================ Wayland find_package")
     endif()
 
