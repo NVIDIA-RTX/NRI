@@ -24,8 +24,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         message("================ Wayland find_path")
     endif()
 
-    find_package(WaylandClient OPTIONAL)
-    find_package(X11 OPTIONAL)
+    find_package(WaylandClient QUIET)
+    find_package(X11 QUIET)
 
     if(WaylandClient_FOUND)
         message("================ Xlib find_path")
