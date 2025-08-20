@@ -344,10 +344,6 @@ set(SHARED_SOURCE
     "Source/Shared/UpscalerInterface.h"
     "Source/Shared/UpscalerInterface.hpp"
 )
-source_group(""
-    FILES
-        ${SHARED_SOURCE}
-)
 
 add_library(NRI_Shared STATIC)
 target_sources(NRI_Shared
@@ -424,10 +420,6 @@ set_target_properties(NRI_Shared
 # NONE
 if(NRI_ENABLE_NONE_SUPPORT)
     set(NONE_SOURCE "Source/NONE/ImplNONE.cpp")
-    source_group(""
-        FILES
-            ${NONE_SOURCE}
-    )
 
     add_library(NRI_NONE STATIC)
     target_sources(NRI_NONE
@@ -481,10 +473,6 @@ if(NRI_ENABLE_D3D11_SUPPORT)
         "Source/D3D11/SwapChainD3D11.hpp"
         "Source/D3D11/TextureD3D11.h"
         "Source/D3D11/TextureD3D11.hpp"
-    )
-    source_group(""
-        FILES
-            ${D3D11_SOURCE}
     )
 
     add_library(NRI_D3D11 STATIC)
@@ -568,10 +556,6 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         "Source/D3D12/SwapChainD3D12.hpp"
         "Source/D3D12/TextureD3D12.h"
         "Source/D3D12/TextureD3D12.hpp"
-    )
-    source_group(""
-        FILES
-            ${D3D12_SOURCE}
     )
 
     add_library(NRI_D3D12 STATIC)
@@ -687,10 +671,6 @@ if(NRI_ENABLE_VK_SUPPORT)
         "Source/VK/TextureVK.h"
         "Source/VK/TextureVK.hpp"
     )
-    source_group(""
-        FILES
-            ${VK_SOURCE}
-    )
 
     add_library(NRI_VK STATIC)
     target_sources(NRI_VK
@@ -771,10 +751,6 @@ if(NRI_ENABLE_VALIDATION_SUPPORT)
         "Source/Validation/SwapChainVal.hpp"
         "Source/Validation/TextureVal.h"
         "Source/Validation/TextureVal.hpp"
-    )
-    source_group(""
-        FILES
-            ${NRI_VALIDATION_SOURCE}
     )
 
     add_library(NRI_Validation STATIC)
