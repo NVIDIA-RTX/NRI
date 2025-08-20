@@ -15,6 +15,27 @@ message("NRI: v${NRI_VERSION}:")
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_path(XLIB_HEADERS NAMES "X11/Xlib.h")
     find_path(WAYLAND_HEADERS NAMES "wayland-client.h")
+
+#===
+    if(XLIB_HEADERS)
+        message("================ Xlib find_path")
+    endif()
+    if(WAYLAND_HEADERS)
+        message("================ Wayland find_path")
+    endif()
+
+    find_package(WaylandClient OPTIONAL)
+    find_package(X11 OPTIONAL)
+
+    if(WaylandClient_FOUND)
+        message("================ Xlib find_path")
+    endif()
+    if(X11_Found)
+        message("================ Wayland find_path")
+    endif()
+
+    message(FATAL_ERROR "End of test")
+#===
 endif()
 
 # Architecture
