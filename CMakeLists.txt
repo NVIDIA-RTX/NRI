@@ -16,7 +16,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_path(XLIB_HEADERS NAMES "X11/Xlib.h")
     find_path(WAYLAND_HEADERS NAMES "wayland-client.h")
 
-#===
     if(XLIB_HEADERS)
         message("================ Xlib find_path")
     endif()
@@ -24,8 +23,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         message("================ Wayland find_path")
     endif()
 
-    find_package(WaylandClient QUIET)
-    find_package(X11 QUIET)
+    find_package(WaylandClient)
+    find_package(X11)
 
     if(X11_FOUND)
         message("================ X11 find_package")
@@ -35,7 +34,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     endif()
 
     message(FATAL_ERROR "End of test")
-#===
 endif()
 
 # Architecture
