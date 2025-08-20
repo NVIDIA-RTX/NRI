@@ -23,13 +23,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         message("================ Wayland find_path")
     endif()
 
-    find_package(WaylandClient)
+    find_package(Wayland)
     find_package(X11)
 
     if(X11_FOUND)
         message("================ X11 find_package")
     endif()
-    if(WaylandClient_FOUND)
+    if(Wayland_FOUND)
         message("================ Wayland find_package")
     endif()
 
