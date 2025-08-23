@@ -28,6 +28,19 @@ static bool ValidateTextureBarrierDesc(const DeviceVal& device, uint32_t i, cons
     return true;
 }
 
+static bool ValidateAccelerationStructureBarrierDesc(const DeviceVal& device, uint32_t i, const AccelerationStructureBarrierDesc& accelStructBarrier) {
+    AccelerationStructureVal& accelStructVal = *(AccelerationStructureVal*)accelStructBarrier.accelerationStructure;
+    const BufferVal& bufferVal = *(const BufferVal*)accelStructVal.GetBuffer();
+
+    RETURN_ON_FAILURE(&device, accelStructBarrier.accelerationStructure != nullptr, false, "'bufferBarrier.accelerationStructures[%u].accelerationStructure' is NULL", i);
+    RETURN_ON_FAILURE(&device, IsAccessMaskSupported(bufferVal.GetDesc().usage, accelStructBarrier.before.access), false,
+        "'bufferBarrier.accelerationStructures[%u].before' is not supported by the acceleration structure", i);
+    RETURN_ON_FAILURE(&device, IsAccessMaskSupported(bufferVal.GetDesc().usage, accelStructBarrier.after.access), false,
+        "'bufferBarrier.accelerationStructures[%u].after' is not supported by the acceleration structure", i);
+
+    return true;
+}
+
 NRI_INLINE Result CommandBufferVal::Begin(const DescriptorPool* descriptorPool) {
     RETURN_ON_FAILURE(&m_Device, !m_IsRecordingStarted, Result::FAILURE, "already in the recording state");
 
@@ -445,6 +458,11 @@ NRI_INLINE void CommandBufferVal::Barrier(const BarrierDesc& barrierDesc) {
             return;
     }
 
+    for (uint32_t i = 0; i < barrierDesc.accelerationStructureNum; i++) {
+        if (!ValidateAccelerationStructureBarrierDesc(m_Device, i, barrierDesc.accelerationStructures[i]))
+            return;
+    }
+
     Scratch<BufferBarrierDesc> buffers = AllocateScratch(m_Device, BufferBarrierDesc, barrierDesc.bufferNum);
     memcpy(buffers, barrierDesc.buffers, sizeof(BufferBarrierDesc) * barrierDesc.bufferNum);
     for (uint32_t i = 0; i < barrierDesc.bufferNum; i++)
@@ -458,9 +476,15 @@ NRI_INLINE void CommandBufferVal::Barrier(const BarrierDesc& barrierDesc) {
         textures[i].dstQueue = NRI_GET_IMPL(Queue, barrierDesc.textures[i].dstQueue);
     }
 
+    Scratch<AccelerationStructureBarrierDesc> accelStructs = AllocateScratch(m_Device, AccelerationStructureBarrierDesc, barrierDesc.accelerationStructureNum);
+    memcpy(accelStructs, barrierDesc.accelerationStructures, sizeof(AccelerationStructureBarrierDesc) * barrierDesc.accelerationStructureNum);
+    for (uint32_t i = 0; i < barrierDesc.accelerationStructureNum; i++)
+        accelStructs[i].accelerationStructure = NRI_GET_IMPL(AccelerationStructure, barrierDesc.accelerationStructures[i].accelerationStructure);
+
     auto barrierGroupDescImpl = barrierDesc;
     barrierGroupDescImpl.buffers = buffers;
     barrierGroupDescImpl.textures = textures;
+    barrierGroupDescImpl.accelerationStructures = accelStructs;
 
     GetCoreInterfaceImpl().CmdBarrier(*GetImpl(), barrierGroupDescImpl);
 }

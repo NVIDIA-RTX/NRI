@@ -853,12 +853,30 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
     }
 
     // Buffer
-    Scratch<VkBufferMemoryBarrier2> bufferBarriers = AllocateScratch(m_Device, VkBufferMemoryBarrier2, barrierDesc.bufferNum);
+    Scratch<VkBufferMemoryBarrier2> bufferBarriers = AllocateScratch(m_Device, VkBufferMemoryBarrier2, barrierDesc.bufferNum + barrierDesc.accelerationStructureNum);
     for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
         const BufferBarrierDesc& in = barrierDesc.buffers[i];
         const BufferVK& bufferVK = *(const BufferVK*)in.buffer;
 
         VkBufferMemoryBarrier2& out = bufferBarriers[i];
+        out = {VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
+        out.srcStageMask = GetPipelineStageFlags(in.before.stages);
+        out.srcAccessMask = GetAccessFlags(in.before.access);
+        out.dstStageMask = GetPipelineStageFlags(in.after.stages);
+        out.dstAccessMask = GetAccessFlags(in.after.access);
+        out.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; // "VK_SHARING_MODE_CONCURRENT" is intentionally used for buffers to match D3D12 spec
+        out.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        out.buffer = bufferVK.GetHandle();
+        out.offset = 0;
+        out.size = VK_WHOLE_SIZE;
+    }
+
+    // Acceleration Structures
+    for (uint32_t i = 0; i < barrierDesc.accelerationStructureNum; i++) {
+        const AccelerationStructureBarrierDesc& in = barrierDesc.accelerationStructures[i];
+        const BufferVK& bufferVK =  *((const AccelerationStructureVK*)in.accelerationStructure)->GetBuffer();
+
+        VkBufferMemoryBarrier2& out = bufferBarriers[barrierDesc.bufferNum + i];
         out = {VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
         out.srcStageMask = GetPipelineStageFlags(in.before.stages);
         out.srcAccessMask = GetAccessFlags(in.before.access);
@@ -907,7 +925,7 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
     VkDependencyInfo dependencyInfo = {VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
     dependencyInfo.memoryBarrierCount = barrierDesc.globalNum;
     dependencyInfo.pMemoryBarriers = memoryBarriers;
-    dependencyInfo.bufferMemoryBarrierCount = barrierDesc.bufferNum;
+    dependencyInfo.bufferMemoryBarrierCount = barrierDesc.bufferNum + barrierDesc.accelerationStructureNum;
     dependencyInfo.pBufferMemoryBarriers = bufferBarriers;
     dependencyInfo.imageMemoryBarrierCount = barrierDesc.textureNum;
     dependencyInfo.pImageMemoryBarriers = textureBarriers;

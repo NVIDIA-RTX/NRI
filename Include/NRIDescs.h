@@ -53,6 +53,7 @@ NriForwardStruct(DescriptorSet);    // a continuous set of descriptors
 NriForwardStruct(DescriptorPool);   // maintains a pool of descriptors, descriptor sets are allocated from (aka descriptor heap)
 NriForwardStruct(PipelineLayout);   // determines the interface between shader stages and shader resources (aka root signature)
 NriForwardStruct(CommandAllocator); // an object that command buffer memory is allocated from
+NriForwardStruct(AccelerationStructure); // bottom- or top- level acceleration structure (aka BLAS or TLAS respectively)
 
 // Basic types
 typedef uint8_t Nri(Sample_t);
@@ -516,6 +517,12 @@ NriStruct(TextureBarrierDesc) {
     NriOptional NriPtr(Queue) dstQueue;
 };
 
+NriStruct(AccelerationStructureBarrierDesc) {
+    NriPtr(AccelerationStructure) accelerationStructure;
+    Nri(AccessLayoutStage) before;
+    Nri(AccessLayoutStage) after;
+};
+
 NriStruct(BarrierDesc) {
     const NriPtr(GlobalBarrierDesc) globals;
     uint32_t globalNum;
@@ -523,6 +530,8 @@ NriStruct(BarrierDesc) {
     uint32_t bufferNum;
     const NriPtr(TextureBarrierDesc) textures;
     uint32_t textureNum;
+    const NriPtr(AccelerationStructureBarrierDesc) accelerationStructures;
+    uint32_t accelerationStructureNum;
 };
 
 #pragma endregion

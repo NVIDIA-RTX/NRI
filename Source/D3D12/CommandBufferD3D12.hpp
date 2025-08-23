@@ -734,7 +734,7 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
     if (m_Device.GetDesc().features.enhancedBarriers) {
         // Count
-        uint32_t barrierNum = barrierDesc.globalNum + barrierDesc.bufferNum + barrierDesc.textureNum;
+        uint32_t barrierNum = barrierDesc.globalNum + barrierDesc.bufferNum + barrierDesc.textureNum + barrierDesc.accelerationStructureNum;
         if (!barrierNum)
             return;
 
@@ -762,11 +762,11 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
         }
 
         // Buffer
-        Scratch<D3D12_BUFFER_BARRIER> bufferBarriers = AllocateScratch(m_Device, D3D12_BUFFER_BARRIER, barrierDesc.bufferNum);
-        if (barrierDesc.bufferNum) {
+        Scratch<D3D12_BUFFER_BARRIER> bufferBarriers = AllocateScratch(m_Device, D3D12_BUFFER_BARRIER, barrierDesc.bufferNum + barrierDesc.accelerationStructureNum);
+        if (barrierDesc.bufferNum || barrierDesc.accelerationStructureNum) {
             D3D12_BARRIER_GROUP* barrierGroup = &barrierGroups[barriersGroupsNum++];
             barrierGroup->Type = D3D12_BARRIER_TYPE_BUFFER;
-            barrierGroup->NumBarriers = barrierDesc.bufferNum;
+            barrierGroup->NumBarriers = barrierDesc.bufferNum + barrierDesc.accelerationStructureNum;
             barrierGroup->pBufferBarriers = bufferBarriers;
 
             for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
@@ -774,6 +774,21 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
                 const BufferD3D12& buffer = *(BufferD3D12*)in.buffer;
 
                 D3D12_BUFFER_BARRIER& out = bufferBarriers[i];
+                out = {};
+                out.SyncBefore = GetBarrierSyncFlags(in.before.stages, in.before.access);
+                out.SyncAfter = GetBarrierSyncFlags(in.after.stages, in.after.access);
+                out.AccessBefore = GetBarrierAccessFlags(in.before.access);
+                out.AccessAfter = GetBarrierAccessFlags(in.after.access);
+                out.pResource = buffer;
+                out.Offset = 0;
+                out.Size = UINT64_MAX;
+            }
+
+            for (uint32_t i = 0; i < barrierDesc.accelerationStructureNum; i++) {
+                const AccelerationStructureBarrierDesc& in = barrierDesc.accelerationStructures[i];
+                const BufferD3D12& buffer = *((AccelerationStructureD3D12*)in.accelerationStructure)->GetBuffer();
+
+                D3D12_BUFFER_BARRIER& out = bufferBarriers[barrierDesc.bufferNum + i];
                 out = {};
                 out.SyncBefore = GetBarrierSyncFlags(in.before.stages, in.before.access);
                 out.SyncAfter = GetBarrierSyncFlags(in.after.stages, in.after.access);
@@ -837,7 +852,7 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
 #endif
     { // Legacy barriers
         // Count
-        uint32_t barrierNum = barrierDesc.bufferNum;
+        uint32_t barrierNum = barrierDesc.bufferNum + barrierDesc.accelerationStructureNum;
 
         for (uint32_t i = 0; i < barrierDesc.textureNum; i++) {
             const TextureBarrierDesc& barrier = barrierDesc.textures[i];
@@ -875,6 +890,11 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
         for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
             const BufferBarrierDesc& barrier = barrierDesc.buffers[i];
             AddResourceBarrier(commandListType, *((BufferD3D12*)barrier.buffer), barrier.before.access, barrier.after.access, *ptr++, 0);
+        }
+
+        for (uint32_t i = 0; i < barrierDesc.accelerationStructureNum; i++) {
+            const AccelerationStructureBarrierDesc& barrier = barrierDesc.accelerationStructures[i];
+            AddResourceBarrier(commandListType, *((AccelerationStructureD3D12*)barrier.accelerationStructure)->GetBuffer(), barrier.before.access, barrier.after.access, *ptr++, 0);
         }
 
         for (uint32_t i = 0; i < barrierDesc.textureNum; i++) {
