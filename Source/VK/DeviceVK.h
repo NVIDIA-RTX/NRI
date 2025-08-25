@@ -88,6 +88,7 @@ struct DeviceVK final : public DeviceBase {
     Result Create(const DeviceCreationDesc& desc, const DeviceCreationVKDesc& descVK);
     void FillCreateInfo(const BufferDesc& bufferDesc, VkBufferCreateInfo& info) const;
     void FillCreateInfo(const TextureDesc& bufferDesc, VkImageCreateInfo& info) const;
+    void FillCreateInfo(const SamplerDesc& samplerDesc, VkSamplerCreateInfo& info, VkSamplerReductionModeCreateInfo& reductionModeInfo, VkSamplerCustomBorderColorCreateInfoEXT& borderColorInfo) const;
     void GetMemoryDesc2(const BufferDesc& bufferDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
     void GetMemoryDesc2(const TextureDesc& textureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
     void GetMemoryDesc2(const AccelerationStructureDesc& accelerationStructureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc);

@@ -1,5 +1,33 @@
 // © 2021 NVIDIA Corporation
 
+static inline D3D11_TEXTURE_ADDRESS_MODE GetAddressMode(AddressMode mode) {
+    return (D3D11_TEXTURE_ADDRESS_MODE)(D3D11_TEXTURE_ADDRESS_WRAP + (uint32_t)mode);
+}
+
+static inline D3D11_FILTER GetFilterIsotropic(Filter mip, Filter magnification, Filter minification, ReductionMode filterExt, bool useComparison) {
+    uint32_t combinedMask = mip == Filter::LINEAR ? 0x1 : 0;
+    combinedMask |= magnification == Filter::LINEAR ? 0x4 : 0;
+    combinedMask |= minification == Filter::LINEAR ? 0x10 : 0;
+
+    if (useComparison)
+        combinedMask |= 0x80;
+    else if (filterExt == ReductionMode::MIN)
+        combinedMask |= 0x100;
+    else if (filterExt == ReductionMode::MAX)
+        combinedMask |= 0x180;
+
+    return (D3D11_FILTER)combinedMask;
+}
+
+static inline D3D11_FILTER GetFilterAnisotropic(ReductionMode filterExt, bool useComparison) {
+    if (filterExt == ReductionMode::MIN)
+        return D3D11_FILTER_MINIMUM_ANISOTROPIC;
+    else if (filterExt == ReductionMode::MAX)
+        return D3D11_FILTER_MAXIMUM_ANISOTROPIC;
+
+    return useComparison ? D3D11_FILTER_COMPARISON_ANISOTROPIC : D3D11_FILTER_ANISOTROPIC;
+}
+
 constexpr std::array<D3D11_LOGIC_OP, (size_t)LogicOp::MAX_NUM> g_LogicOps = {
     D3D11_LOGIC_OP_CLEAR,         // NONE,
     D3D11_LOGIC_OP_CLEAR,         // CLEAR,
@@ -129,6 +157,31 @@ D3D11_PRIMITIVE_TOPOLOGY nri::GetD3D11TopologyFromTopology(Topology topology, ui
         res += patchPoints - 1;
 
     return (D3D11_PRIMITIVE_TOPOLOGY)res;
+}
+
+void nri::FillSamplerDesc(const SamplerDesc& samplerDesc, D3D11_SAMPLER_DESC& desc) {
+    bool isAnisotropy = samplerDesc.anisotropy > 1;
+    bool isComparison = samplerDesc.compareOp != CompareOp::NONE;
+
+    desc = {};
+    desc.AddressU = GetAddressMode(samplerDesc.addressModes.u);
+    desc.AddressV = GetAddressMode(samplerDesc.addressModes.v);
+    desc.AddressW = GetAddressMode(samplerDesc.addressModes.w);
+    desc.MipLODBias = samplerDesc.mipBias;
+    desc.MaxAnisotropy = samplerDesc.anisotropy;
+    desc.ComparisonFunc = GetD3D11ComparisonFuncFromCompareOp(samplerDesc.compareOp);
+    desc.MinLOD = samplerDesc.mipMin;
+    desc.MaxLOD = samplerDesc.mipMax;
+    desc.Filter = isAnisotropy
+        ? GetFilterAnisotropic(samplerDesc.filters.ext, isComparison)
+        : GetFilterIsotropic(samplerDesc.filters.mip, samplerDesc.filters.mag, samplerDesc.filters.min, samplerDesc.filters.ext, isComparison);
+
+    if (!samplerDesc.isInteger) { // TODO: the spec is not clear about the behavior, keep black
+        desc.BorderColor[0] = samplerDesc.borderColor.f.x;
+        desc.BorderColor[1] = samplerDesc.borderColor.f.y;
+        desc.BorderColor[2] = samplerDesc.borderColor.f.z;
+        desc.BorderColor[3] = samplerDesc.borderColor.f.w;
+    }
 }
 
 bool nri::GetTextureDesc(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& textureDesc) {

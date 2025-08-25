@@ -27,21 +27,6 @@ static inline uint32_t GetPlaneIndex(Format format) { // TODO: still unclear, is
     }
 }
 
-static inline D3D12_FILTER GetFilter(Filter mip, Filter mag, Filter min, ReductionMode filterExt, bool comparison, bool anisotropic) {
-    D3D12_FILTER_REDUCTION_TYPE reductionType = D3D12_FILTER_REDUCTION_TYPE_STANDARD;
-    if (filterExt == ReductionMode::MIN)
-        reductionType = D3D12_FILTER_REDUCTION_TYPE_MINIMUM;
-    else if (filterExt == ReductionMode::MAX)
-        reductionType = D3D12_FILTER_REDUCTION_TYPE_MAXIMUM;
-    reductionType = comparison ? D3D12_FILTER_REDUCTION_TYPE_COMPARISON : reductionType;
-
-    uint32_t filter = D3D12_ENCODE_BASIC_FILTER((D3D12_FILTER_TYPE)min, (D3D12_FILTER_TYPE)mag, (D3D12_FILTER_TYPE)mip, reductionType);
-    if (anisotropic)
-        filter |= D3D12_ANISOTROPIC_FILTERING_BIT;
-
-    return (D3D12_FILTER)filter;
-}
-
 Result DescriptorD3D12::Create(const Texture1DViewDesc& textureViewDesc) {
     const TextureD3D12& texture = (TextureD3D12&)*textureViewDesc.texture;
     DXGI_FORMAT format = GetDxgiFormat(textureViewDesc.format).typed;
@@ -385,13 +370,9 @@ Result DescriptorD3D12::Create(const SamplerDesc& samplerDesc) {
 
     m_DescriptorPointerCPU = m_Device.GetDescriptorPointerCPU(m_Handle);
 
-    bool anisotropy = samplerDesc.anisotropy > 1 ? true : false;
-    bool comparison = samplerDesc.compareOp != CompareOp::NONE;
-    D3D12_FILTER filter = GetFilter(samplerDesc.filters.mip, samplerDesc.filters.mag, samplerDesc.filters.min, samplerDesc.filters.ext, comparison, anisotropy);
-
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_SAMPLER_DESC2 desc = {};
-    desc.Filter = filter;
+    desc.Filter = GetFilter(samplerDesc);
     desc.AddressU = GetAddressMode(samplerDesc.addressModes.u);
     desc.AddressV = GetAddressMode(samplerDesc.addressModes.v);
     desc.AddressW = GetAddressMode(samplerDesc.addressModes.w);
@@ -400,6 +381,9 @@ Result DescriptorD3D12::Create(const SamplerDesc& samplerDesc) {
     desc.ComparisonFunc = GetCompareOp(samplerDesc.compareOp);
     desc.MinLOD = samplerDesc.mipMin;
     desc.MaxLOD = samplerDesc.mipMax;
+
+    if (samplerDesc.unnormalizedCoordinates)
+        desc.Flags |= D3D12_SAMPLER_FLAG_NON_NORMALIZED_COORDINATES;
 
     if (samplerDesc.isInteger) {
         desc.UintBorderColor[0] = samplerDesc.borderColor.ui.x;
@@ -418,7 +402,7 @@ Result DescriptorD3D12::Create(const SamplerDesc& samplerDesc) {
     m_Device->CreateSampler2(&desc, {m_DescriptorPointerCPU});
 #else
     D3D12_SAMPLER_DESC desc = {};
-    desc.Filter = filter;
+    desc.Filter = GetFilter(samplerDesc);
     desc.AddressU = GetAddressMode(samplerDesc.addressModes.u);
     desc.AddressV = GetAddressMode(samplerDesc.addressModes.v);
     desc.AddressW = GetAddressMode(samplerDesc.addressModes.w);

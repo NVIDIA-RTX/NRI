@@ -122,6 +122,7 @@ D3D12_DESCRIPTOR_RANGE_TYPE GetDescriptorRangesType(DescriptorType descriptorTyp
 D3D12_RESOURCE_DIMENSION GetResourceDimension(TextureType textureType);
 D3D12_SHADING_RATE GetShadingRate(ShadingRate shadingRate);
 D3D12_SHADING_RATE_COMBINER GetShadingRateCombiner(ShadingRateCombiner shadingRateCombiner);
+D3D12_FILTER GetFilter(const SamplerDesc& samplerDesc);
 
 } // namespace nri
 

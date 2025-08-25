@@ -17,9 +17,10 @@ static inline D3D12_ROOT_SIGNATURE_FLAGS GetRootSignatureStageFlags(const Pipeli
     D3D12_ROOT_SIGNATURE_FLAGS flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
     StageBits shaderStages = pipelineLayoutDesc.shaderStages == StageBits::ALL ? StageBits::ALL_SHADERS : pipelineLayoutDesc.shaderStages;
 
-    if (shaderStages & StageBits::VERTEX_SHADER)
-        flags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-    else
+    if (shaderStages & StageBits::VERTEX_SHADER) {
+        // The optimization is minor (based on https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_root_signature_flags)
+        flags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT; // TODO: do we care if a vertex shader doesn't use IA?
+    } else
         flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS;
 
     if (!(shaderStages & StageBits::TESS_CONTROL_SHADER))
@@ -85,10 +86,16 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     m_DynamicConstantBufferMappings.resize(pipelineLayoutDesc.descriptorSetNum);
 
     Scratch<D3D12_DESCRIPTOR_RANGE1> ranges = AllocateScratch(m_Device, D3D12_DESCRIPTOR_RANGE1, rangeMaxNum);
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    Scratch<D3D12_STATIC_SAMPLER_DESC1> staticSamplers = AllocateScratch(m_Device, D3D12_STATIC_SAMPLER_DESC1, pipelineLayoutDesc.rootSamplerNum);
+#else
+    Scratch<D3D12_STATIC_SAMPLER_DESC> staticSamplers = AllocateScratch(m_Device, D3D12_STATIC_SAMPLER_DESC, pipelineLayoutDesc.rootSamplerNum);
+#endif
+
     Vector<D3D12_ROOT_PARAMETER1> rootParameters(allocator);
 
+    // Draw parameters emulation
     bool enableDrawParametersEmulation = (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_D3D12_DRAW_PARAMETERS_EMULATION) != 0 && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
-
     if (enableDrawParametersEmulation) {
         D3D12_ROOT_PARAMETER1 rootParam = {};
         rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
@@ -100,6 +107,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         rootParameters.push_back(rootParam);
     }
 
+    // Descriptor sets
     for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++) {
         const DescriptorSetDesc& descriptorSetDesc = pipelineLayoutDesc.descriptorSets[i];
         BuildDescriptorSetMapping(descriptorSetDesc, m_DescriptorSetMappings[i]);
@@ -110,6 +118,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         D3D12_ROOT_PARAMETER1 rootParam = {};
         rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 
+        // Ranges
         uint32_t groupedRangeNum = 0;
         D3D12_DESCRIPTOR_RANGE_TYPE groupedRangeType = {};
         for (uint32_t j = 0; j < descriptorSetDesc.rangeNum; j++) {
@@ -152,6 +161,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
             }
 
             D3D12_DESCRIPTOR_RANGE1& descriptorRange = ranges[rangeNum + groupedRangeNum];
+            descriptorRange = {};
             descriptorRange.RangeType = rangeType;
             descriptorRange.NumDescriptors = descriptorRangeDesc.descriptorNum;
             descriptorRange.BaseShaderRegister = descriptorRangeDesc.baseRegisterIndex;
@@ -187,6 +197,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         }
     }
 
+    // Root constants
     if (pipelineLayoutDesc.rootConstantNum) {
         m_BaseRootConstant = (uint32_t)rootParameters.size();
 
@@ -204,6 +215,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         }
     }
 
+    // Root descriptors
     if (pipelineLayoutDesc.rootDescriptorNum) {
         m_BaseRootDescriptor = (uint32_t)rootParameters.size();
 
@@ -227,25 +239,74 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         }
     }
 
-    D3D12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
-    rootSignatureDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
-    rootSignatureDesc.Desc_1_1.NumParameters = (UINT)rootParameters.size();
-    rootSignatureDesc.Desc_1_1.pParameters = rootParameters.empty() ? nullptr : &rootParameters[0];
-    rootSignatureDesc.Desc_1_1.Flags = GetRootSignatureStageFlags(pipelineLayoutDesc, m_Device);
+    // Root samplers
+    for (uint32_t i = 0; i < pipelineLayoutDesc.rootSamplerNum; i++) {
+        const RootSamplerDesc& rootSamplerDesc = pipelineLayoutDesc.rootSamplers[i];
+        const SamplerDesc& samplerDesc = rootSamplerDesc.desc;
+
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+        D3D12_STATIC_SAMPLER_DESC1& staticSamplerDesc = staticSamplers[i];
+#else
+        D3D12_STATIC_SAMPLER_DESC& staticSamplerDesc = staticSamplers[i];
+#endif
+        staticSamplerDesc = {};
+        staticSamplerDesc.Filter = GetFilter(samplerDesc);
+        staticSamplerDesc.AddressU = GetAddressMode(samplerDesc.addressModes.u);
+        staticSamplerDesc.AddressV = GetAddressMode(samplerDesc.addressModes.v);
+        staticSamplerDesc.AddressW = GetAddressMode(samplerDesc.addressModes.w);
+        staticSamplerDesc.MipLODBias = samplerDesc.mipBias;
+        staticSamplerDesc.MaxAnisotropy = samplerDesc.anisotropy;
+        staticSamplerDesc.ComparisonFunc = GetCompareOp(samplerDesc.compareOp);
+        staticSamplerDesc.MinLOD = samplerDesc.mipMin;
+        staticSamplerDesc.MaxLOD = samplerDesc.mipMax;
+        staticSamplerDesc.ShaderRegister = rootSamplerDesc.registerIndex;
+        staticSamplerDesc.RegisterSpace = pipelineLayoutDesc.rootRegisterSpace;
+        staticSamplerDesc.ShaderVisibility = GetShaderVisibility(rootSamplerDesc.shaderStages);
+
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+        if (samplerDesc.unnormalizedCoordinates)
+            staticSamplerDesc.Flags |= D3D12_SAMPLER_FLAG_NON_NORMALIZED_COORDINATES;
+#endif
+
+        const Color& borderColor = samplerDesc.borderColor;
+        bool isZeroColor = borderColor.ui.x == 0 && borderColor.ui.y == 0 && borderColor.ui.z == 0;
+        bool isZeroAlpha = borderColor.ui.w == 0;
+        if (isZeroColor && isZeroAlpha)
+            staticSamplerDesc.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+        else if (isZeroColor)
+            staticSamplerDesc.BorderColor = samplerDesc.isInteger ? D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK_UINT : D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+        else
+            staticSamplerDesc.BorderColor = samplerDesc.isInteger ? D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE_UINT : D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+    }
+
+    // Root signature
+    D3D12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureVersionedDesc = {};
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    rootSignatureVersionedDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_2;
+    D3D12_ROOT_SIGNATURE_DESC2& rootSignatureDesc = rootSignatureVersionedDesc.Desc_1_2;
+#else
+    rootSignatureVersionedDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
+    D3D12_ROOT_SIGNATURE_DESC1& rootSignatureDesc = rootSignatureVersionedDesc.Desc_1_1;
+#endif
+    rootSignatureDesc.NumParameters = (UINT)rootParameters.size();
+    rootSignatureDesc.pParameters = rootParameters.empty() ? nullptr : rootParameters.data();
+    rootSignatureDesc.NumStaticSamplers = pipelineLayoutDesc.rootSamplerNum;
+    rootSignatureDesc.pStaticSamplers = staticSamplers;
+    rootSignatureDesc.Flags = GetRootSignatureStageFlags(pipelineLayoutDesc, m_Device);
 
     ComPtr<ID3DBlob> rootSignatureBlob;
     ComPtr<ID3DBlob> errorBlob;
 
     HRESULT hr = S_OK;
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-    ComPtr<ID3D12DeviceConfiguration1> deviceConfig;
+    ComPtr<ID3D12DeviceConfiguration> deviceConfig;
     m_Device->QueryInterface(IID_PPV_ARGS(&deviceConfig));
 
     if (deviceConfig)
-        hr = deviceConfig->SerializeVersionedRootSignature(&rootSignatureDesc, &rootSignatureBlob, &errorBlob);
+        hr = deviceConfig->SerializeVersionedRootSignature(&rootSignatureVersionedDesc, &rootSignatureBlob, &errorBlob);
     else
 #endif
-        hr = D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &rootSignatureBlob, &errorBlob);
+        hr = D3D12SerializeVersionedRootSignature(&rootSignatureVersionedDesc, &rootSignatureBlob, &errorBlob);
 
     if (errorBlob)
         REPORT_ERROR(&m_Device, "SerializeVersionedRootSignature(): %s", (char*)errorBlob->GetBufferPointer());

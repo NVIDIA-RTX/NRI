@@ -238,6 +238,32 @@ D3D12_SHADING_RATE_COMBINER nri::GetShadingRateCombiner(ShadingRateCombiner shad
     return g_ShadingRateCombiners[(size_t)shadingRateCombiner];
 }
 
+D3D12_FILTER nri::GetFilter(const SamplerDesc& samplerDesc) {
+    bool anisotropy = samplerDesc.anisotropy > 1 ? true : false;
+    bool comparison = samplerDesc.compareOp != CompareOp::NONE;
+
+    D3D12_FILTER_REDUCTION_TYPE reductionType = D3D12_FILTER_REDUCTION_TYPE_STANDARD;
+    if (samplerDesc.filters.ext == ReductionMode::MIN)
+        reductionType = D3D12_FILTER_REDUCTION_TYPE_MINIMUM;
+    else if (samplerDesc.filters.ext == ReductionMode::MAX)
+        reductionType = D3D12_FILTER_REDUCTION_TYPE_MAXIMUM;
+    reductionType = comparison ? D3D12_FILTER_REDUCTION_TYPE_COMPARISON : reductionType;
+
+    D3D12_FILTER_TYPE min = (D3D12_FILTER_TYPE)samplerDesc.filters.min;
+    D3D12_FILTER_TYPE mag = (D3D12_FILTER_TYPE)samplerDesc.filters.mag;
+    if (anisotropy) {
+        min = D3D12_FILTER_TYPE_LINEAR;
+        mag = D3D12_FILTER_TYPE_LINEAR;
+    }
+
+    uint32_t filter = D3D12_ENCODE_BASIC_FILTER(min, mag, (D3D12_FILTER_TYPE)samplerDesc.filters.mip, reductionType);
+
+    if (anisotropy)
+        filter |= D3D12_ANISOTROPIC_FILTERING_BIT;
+
+    return (D3D12_FILTER)filter;
+}
+
 UINT8 nri::GetRenderTargetWriteMask(ColorWriteBits colorWriteMask) {
     return colorWriteMask & ColorWriteBits::RGBA;
 }

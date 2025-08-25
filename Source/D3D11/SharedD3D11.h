@@ -36,6 +36,7 @@ D3D11_STENCIL_OP GetD3D11StencilOpFromStencilOp(StencilOp stencilFunc);
 D3D11_BLEND_OP GetD3D11BlendOp(BlendOp blendFunc);
 D3D11_BLEND GetD3D11BlendFromBlendFactor(BlendFactor blendFactor);
 D3D11_LOGIC_OP GetD3D11LogicOp(LogicOp logicalFunc);
+void FillSamplerDesc(const SamplerDesc& samplerDesc, D3D11_SAMPLER_DESC& desc);
 bool GetTextureDesc(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& textureDesc);
 bool GetBufferDesc(const BufferD3D11Desc& bufferD3D11Desc, BufferDesc& bufferDesc);
 uint32_t ConvertPriority(float priority);

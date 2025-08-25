@@ -1252,6 +1252,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.layerBasedMultiview = features11.multiview;
         m_Desc.features.presentFromCompute = true;
         m_Desc.features.waitableSwapChain = presentIdFeatures.presentId != 0 && presentWaitFeatures.presentWait != 0;
+        m_Desc.features.resizableSwapChain = m_IsSupported.swapChainMaintenance1;
         m_Desc.features.pipelineStatistics = features.features.pipelineStatisticsQuery;
 
         m_Desc.shaderFeatures.nativeI16 = features.features.shaderInt16;
@@ -1264,6 +1265,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.shaderFeatures.atomicsF64 = (shaderAtomicFloatFeatures.shaderBufferFloat64Atomics || shaderAtomicFloatFeatures.shaderSharedFloat64Atomics) ? true : false;
         m_Desc.shaderFeatures.viewportIndex = features12.shaderOutputViewportIndex;
         m_Desc.shaderFeatures.layerIndex = features12.shaderOutputLayer;
+        m_Desc.shaderFeatures.unnormalizedCoordinates = true;
         m_Desc.shaderFeatures.clock = (shaderClockFeatures.shaderDeviceClock || shaderClockFeatures.shaderSubgroupClock) ? true : false;
         m_Desc.shaderFeatures.rasterizedOrderedView = fragmentShaderInterlockFeatures.fragmentShaderPixelInterlock != 0 && fragmentShaderInterlockFeatures.fragmentShaderSampleInterlock != 0;
         m_Desc.shaderFeatures.barycentric = fragmentShaderBarycentricFeatures.fragmentShaderBarycentric;
@@ -1309,7 +1311,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 }
 
 void DeviceVK::FillCreateInfo(const BufferDesc& bufferDesc, VkBufferCreateInfo& info) const {
-    info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO; // should be already set
+    info = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO}; // should be already set
     info.size = bufferDesc.size;
     info.usage = GetBufferUsageFlags(bufferDesc.usage, bufferDesc.structureStride, m_IsSupported.deviceAddress);
     info.sharingMode = m_NumActiveFamilyIndices <= 1 ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
@@ -1333,7 +1335,7 @@ void DeviceVK::FillCreateInfo(const TextureDesc& textureDesc, VkImageCreateInfo&
     if (m_Desc.tiers.sampleLocations && formatProps.isDepth)
         flags |= VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT;
 
-    info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO; // should be already set
+    info = {VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO}; // should be already set
     info.flags = flags;
     info.imageType = ::GetImageType(textureDesc.type);
     info.format = ::GetVkFormat(textureDesc.format, true);
@@ -1349,6 +1351,54 @@ void DeviceVK::FillCreateInfo(const TextureDesc& textureDesc, VkImageCreateInfo&
     info.queueFamilyIndexCount = m_NumActiveFamilyIndices;
     info.pQueueFamilyIndices = m_ActiveQueueFamilyIndices.data();
     info.initialLayout = IsMemoryZeroInitializationEnabled() ? VK_IMAGE_LAYOUT_ZERO_INITIALIZED_EXT : VK_IMAGE_LAYOUT_UNDEFINED;
+}
+
+void DeviceVK::FillCreateInfo(const SamplerDesc& samplerDesc, VkSamplerCreateInfo& info, VkSamplerReductionModeCreateInfo& reductionModeInfo, VkSamplerCustomBorderColorCreateInfoEXT& borderColorInfo) const {
+    info = {VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO}; // should be already set
+    info.magFilter = GetFilter(samplerDesc.filters.mag);
+    info.minFilter = GetFilter(samplerDesc.filters.min);
+    info.mipmapMode = GetSamplerMipmapMode(samplerDesc.filters.mip);
+    info.addressModeU = GetSamplerAddressMode(samplerDesc.addressModes.u);
+    info.addressModeV = GetSamplerAddressMode(samplerDesc.addressModes.v);
+    info.addressModeW = GetSamplerAddressMode(samplerDesc.addressModes.w);
+    info.mipLodBias = samplerDesc.mipBias;
+    info.anisotropyEnable = VkBool32(samplerDesc.anisotropy > 1.0f);
+    info.maxAnisotropy = (float)samplerDesc.anisotropy;
+    info.compareEnable = VkBool32(samplerDesc.compareOp != CompareOp::NONE);
+    info.compareOp = GetCompareOp(samplerDesc.compareOp);
+    info.minLod = samplerDesc.mipMin;
+    info.maxLod = samplerDesc.mipMax;
+    info.unnormalizedCoordinates = samplerDesc.unnormalizedCoordinates ? VK_TRUE : VK_FALSE;
+
+    const void** tail = &info.pNext;
+
+    reductionModeInfo = {VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO}; // should be already set
+    if (m_Desc.features.textureFilterMinMax) {
+        reductionModeInfo.reductionMode = GetFilterExt(samplerDesc.filters.ext);
+
+        APPEND_EXT(reductionModeInfo);
+    }
+
+    borderColorInfo = {VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT}; // should be already set
+    const Color& borderColor = samplerDesc.borderColor;
+    if (borderColor.ui.x == 0 && borderColor.ui.y == 0 && borderColor.ui.z == 0 && borderColor.ui.w == 0)
+        info.borderColor = samplerDesc.isInteger ? VK_BORDER_COLOR_INT_TRANSPARENT_BLACK : VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    else if (samplerDesc.isInteger && borderColor.ui.x == 1 && borderColor.ui.y == 1 && borderColor.ui.z == 1 && borderColor.ui.w == 1)
+        info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_WHITE;
+    else if (samplerDesc.isInteger && borderColor.ui.x == 0 && borderColor.ui.y == 0 && borderColor.ui.z == 0 && borderColor.ui.w == 1)
+        info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    else if (!samplerDesc.isInteger && borderColor.f.x == 1.0f && borderColor.f.y == 1.0f && borderColor.f.z == 1.0f && borderColor.f.w == 1.0f)
+        info.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+    else if (!samplerDesc.isInteger && borderColor.f.x == 0.0f && borderColor.f.y == 0.0f && borderColor.f.z == 0.0f && borderColor.f.w == 1.0f)
+        info.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+    else if (m_IsSupported.customBorderColor) {
+        info.borderColor = samplerDesc.isInteger ? VK_BORDER_COLOR_INT_CUSTOM_EXT : VK_BORDER_COLOR_FLOAT_CUSTOM_EXT;
+
+        static_assert(sizeof(VkClearColorValue) == sizeof(samplerDesc.borderColor), "Unexpected sizeof");
+        memcpy(&borderColorInfo.customBorderColor, &samplerDesc.borderColor, sizeof(borderColorInfo.customBorderColor));
+
+        APPEND_EXT(borderColorInfo);
+    }
 }
 
 void DeviceVK::GetMemoryDesc2(const BufferDesc& bufferDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {

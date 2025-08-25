@@ -382,6 +382,28 @@ NRI_INLINE void CommandBufferVK::SetIndexBuffer(const Buffer& buffer, uint64_t o
 NRI_INLINE void CommandBufferVK::SetPipelineLayout(BindPoint bindPoint, const PipelineLayout& pipelineLayout) {
     m_PipelineLayout = (PipelineLayoutVK*)&pipelineLayout;
     m_PipelineBindPoint = bindPoint;
+
+    { // Push immutable samplers
+        const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
+
+        for (uint32_t i = bindingInfo.rootSamplerBindingOffset; i < (uint32_t)bindingInfo.pushDescriptors.size(); i++) {
+            // https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#descriptorsets-push-descriptors
+            // To push an immutable sampler...
+            VkDescriptorImageInfo imageInfo = {};
+
+            VkWriteDescriptorSet descriptorWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+            descriptorWrite.dstBinding = bindingInfo.pushDescriptors[i];
+            descriptorWrite.dstArrayElement = 0;
+            descriptorWrite.descriptorCount = 1;
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+            descriptorWrite.pImageInfo = &imageInfo;
+
+            VkPipelineBindPoint vkPipelineBindPoint = GetPipelineBindPoint(bindPoint);
+
+            const auto& vk = m_Device.GetDispatchTable();
+            vk.CmdPushDescriptorSetKHR(m_Handle, vkPipelineBindPoint, *m_PipelineLayout, bindingInfo.rootRegisterSpace, 1, &descriptorWrite);
+        }
+    }
 }
 
 NRI_INLINE void CommandBufferVK::SetPipeline(const Pipeline& pipeline) {
@@ -402,7 +424,7 @@ NRI_INLINE void CommandBufferVK::SetDescriptorSet(const SetDescriptorSetDesc& se
     uint32_t dynamicConstantBufferNum = descriptorSetVK.GetDynamicConstantBufferNum();
 
     const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
-    uint32_t registerSpace = bindingInfo.descriptorSetDescs[setDescriptorSetDesc.setIndex].registerSpace;
+    uint32_t registerSpace = bindingInfo.sets[setDescriptorSetDesc.setIndex].registerSpace;
 
     BindPoint bindPoint = setDescriptorSetDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : setDescriptorSetDesc.bindPoint;
     VkPipelineBindPoint vkPipelineBindPoint = GetPipelineBindPoint(bindPoint);
@@ -413,7 +435,7 @@ NRI_INLINE void CommandBufferVK::SetDescriptorSet(const SetDescriptorSetDesc& se
 
 NRI_INLINE void CommandBufferVK::SetRootConstants(const SetRootConstantsDesc& setRootConstantsDesc) {
     const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
-    const PushConstantBindingDesc& pushConstantBindingDesc = bindingInfo.pushConstantBindings[setRootConstantsDesc.rootConstantIndex];
+    const PushConstantBindingDesc& pushConstantBindingDesc = bindingInfo.pushConstants[setRootConstantsDesc.rootConstantIndex];
     uint32_t offset = pushConstantBindingDesc.offset + setRootConstantsDesc.offset;
 
     const auto& vk = m_Device.GetDispatchTable();
@@ -428,15 +450,13 @@ NRI_INLINE void CommandBufferVK::SetRootDescriptor(const SetRootDescriptorDesc& 
     VkAccelerationStructureKHR accelerationStructure = descriptorVK.GetAccelerationStructure();
 
     const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
-    const PushDescriptorBindingDesc& pushDescriptorBindingDesc = bindingInfo.pushDescriptorBindings[setRootDescriptorDesc.rootDescriptorIndex];
 
     VkWriteDescriptorSetAccelerationStructureKHR accelerationStructureWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR};
     accelerationStructureWrite.accelerationStructureCount = 1;
     accelerationStructureWrite.pAccelerationStructures = &accelerationStructure;
 
     VkWriteDescriptorSet descriptorWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-    descriptorWrite.dstSet = VK_NULL_HANDLE;
-    descriptorWrite.dstBinding = pushDescriptorBindingDesc.registerIndex;
+    descriptorWrite.dstBinding = bindingInfo.pushDescriptors[setRootDescriptorDesc.rootDescriptorIndex];
     descriptorWrite.dstArrayElement = 0;
     descriptorWrite.descriptorCount = 1;
 
@@ -455,7 +475,7 @@ NRI_INLINE void CommandBufferVK::SetRootDescriptor(const SetRootDescriptorDesc& 
     VkPipelineBindPoint vkPipelineBindPoint = GetPipelineBindPoint(bindPoint);
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdPushDescriptorSetKHR(m_Handle, vkPipelineBindPoint, *m_PipelineLayout, pushDescriptorBindingDesc.registerSpace, 1, &descriptorWrite);
+    vk.CmdPushDescriptorSetKHR(m_Handle, vkPipelineBindPoint, *m_PipelineLayout, bindingInfo.rootRegisterSpace, 1, &descriptorWrite);
 }
 
 NRI_INLINE void CommandBufferVK::Draw(const DrawDesc& drawDesc) {

@@ -186,39 +186,9 @@ Result DescriptorVK::Create(const BufferViewDesc& bufferViewDesc) {
 
 Result DescriptorVK::Create(const SamplerDesc& samplerDesc) {
     VkSamplerCreateInfo info = {VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-    info.flags = (VkSamplerCreateFlags)0;
-    info.magFilter = GetFilter(samplerDesc.filters.mag);
-    info.minFilter = GetFilter(samplerDesc.filters.min);
-    info.mipmapMode = GetSamplerMipmapMode(samplerDesc.filters.mip);
-    info.addressModeU = GetSamplerAddressMode(samplerDesc.addressModes.u);
-    info.addressModeV = GetSamplerAddressMode(samplerDesc.addressModes.v);
-    info.addressModeW = GetSamplerAddressMode(samplerDesc.addressModes.w);
-    info.mipLodBias = samplerDesc.mipBias;
-    info.anisotropyEnable = VkBool32(samplerDesc.anisotropy > 1.0f);
-    info.maxAnisotropy = (float)samplerDesc.anisotropy;
-    info.compareEnable = VkBool32(samplerDesc.compareOp != CompareOp::NONE);
-    info.compareOp = GetCompareOp(samplerDesc.compareOp);
-    info.minLod = samplerDesc.mipMin;
-    info.maxLod = samplerDesc.mipMax;
-
-    const void** tail = &info.pNext;
-
     VkSamplerReductionModeCreateInfo reductionModeInfo = {VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO};
-    if (m_Device.GetDesc().features.textureFilterMinMax) {
-        reductionModeInfo.reductionMode = GetFilterExt(samplerDesc.filters.ext);
-
-        APPEND_EXT(reductionModeInfo);
-    }
-
     VkSamplerCustomBorderColorCreateInfoEXT borderColorInfo = {VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT};
-    if (m_Device.m_IsSupported.customBorderColor) {
-        info.borderColor = samplerDesc.isInteger ? VK_BORDER_COLOR_INT_CUSTOM_EXT : VK_BORDER_COLOR_FLOAT_CUSTOM_EXT;
-
-        static_assert(sizeof(VkClearColorValue) == sizeof(samplerDesc.borderColor), "Unexpected sizeof");
-        memcpy(&borderColorInfo.customBorderColor, &samplerDesc.borderColor, sizeof(borderColorInfo.customBorderColor));
-
-        APPEND_EXT(borderColorInfo);
-    }
+    m_Device.FillCreateInfo(samplerDesc, info, reductionModeInfo, borderColorInfo);
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateSampler(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Sampler);

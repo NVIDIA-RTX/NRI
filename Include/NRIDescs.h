@@ -96,7 +96,7 @@ NriEnum(GraphicsAPI, uint8_t,
 NriEnum(Result, int8_t,
     // All bad, but optionally require an action ("callbackInterface.AbortExecution" is not triggered)
     DEVICE_LOST             = -3, // may be returned by "QueueSubmit*", "*WaitIdle", "AcquireNextTexture", "QueuePresent", "WaitForPresent"
-    OUT_OF_DATE             = -2, // VK: swap chain is out of date
+    OUT_OF_DATE             = -2, // VK: swap chain is out of date, can be triggered if "features.resizableSwapChain" is not supported
     INVALID_SDK             = -1, // D3D: some interfaces are missing (potential reasons: unable to load "D3D12Core.dll", version or SDK mismatch)
 
     // All good
@@ -495,7 +495,7 @@ NriStruct(GlobalBarrierDesc) {
 };
 
 NriStruct(BufferBarrierDesc) {
-    NriPtr(Buffer) buffer;
+    NriPtr(Buffer) buffer; // use "GetAccelerationStructureBuffer" and "GetMicromapBuffer" for related barriers
     Nri(AccessStage) before;
     Nri(AccessStage) after;
 };
@@ -802,6 +802,7 @@ NriStruct(SamplerDesc) {
     Nri(CompareOp) compareOp;
     Nri(Color) borderColor;
     bool isInteger;
+    bool unnormalizedCoordinates; // requires "shaderFeatures.unnormalizedCoordinates"
 };
 
 #pragma endregion
@@ -898,37 +899,45 @@ NriEnum(DescriptorType, uint8_t,
 // "DescriptorRange" consists of "Descriptor" entities
 NriStruct(DescriptorRangeDesc) {
     uint32_t baseRegisterIndex;
-    uint32_t descriptorNum; // treated as max size if "VARIABLE_SIZED_ARRAY" flag is set
+    uint32_t descriptorNum;             // treated as max size if "VARIABLE_SIZED_ARRAY" flag is set
     Nri(DescriptorType) descriptorType;
     Nri(StageBits) shaderStages;
     Nri(DescriptorRangeBits) flags;
 };
 
-// "DescriptorSet" consists of "DescriptorRange" entities
+// "DescriptorSet" consists of "DescriptorRange" entities and dynamic constant buffers.
+// A dynamic constant buffer allows to dynamically specify an offset in the buffer via "CmdSetDescriptorSet" call
 NriStruct(DynamicConstantBufferDesc) {
     uint32_t registerIndex;
     Nri(StageBits) shaderStages;
 };
 
 NriStruct(DescriptorSetDesc) {
-    uint32_t registerSpace; // must be unique, avoid big gaps
+    uint32_t registerSpace;             // must be unique, avoid big gaps
     const NriPtr(DescriptorRangeDesc) ranges;
     uint32_t rangeNum;
-    const NriPtr(DynamicConstantBufferDesc) dynamicConstantBuffers; // a dynamic constant buffer allows to dynamically specify an offset in the buffer via "CmdSetDescriptorSet" call
+    const NriPtr(DynamicConstantBufferDesc) dynamicConstantBuffers;
     uint32_t dynamicConstantBufferNum;
     Nri(DescriptorSetBits) flags;
 };
 
 // "PipelineLayout" consists of "DescriptorSet" descriptions and root parameters
-NriStruct(RootConstantDesc) { // aka push constants block
+NriStruct(RootConstantDesc) {           // aka push constants block
     uint32_t registerIndex;
     uint32_t size;
     Nri(StageBits) shaderStages;
 };
 
-NriStruct(RootDescriptorDesc) { // aka push descriptor
+NriStruct(RootDescriptorDesc) {         // aka push descriptor
     uint32_t registerIndex;
     Nri(DescriptorType) descriptorType; // CONSTANT_BUFFER, STRUCTURED_BUFFER or STORAGE_STRUCTURED_BUFFER
+    Nri(StageBits) shaderStages;
+};
+
+// https://learn.microsoft.com/en-us/windows/win32/direct3d12/root-signature-limits#static-samplers
+NriStruct(RootSamplerDesc) {            // aka static (immutable) sampler
+    uint32_t registerIndex;
+    Nri(SamplerDesc) desc;
     Nri(StageBits) shaderStages;
 };
 
@@ -936,11 +945,13 @@ NriStruct(RootDescriptorDesc) { // aka push descriptor
 // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#root-signature
 // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#root-signature-version-11
 NriStruct(PipelineLayoutDesc) {
-    uint32_t rootRegisterSpace;
+    uint32_t rootRegisterSpace;         // must be unique, avoid big gaps
     const NriPtr(RootConstantDesc) rootConstants;
     uint32_t rootConstantNum;
     const NriPtr(RootDescriptorDesc) rootDescriptors;
     uint32_t rootDescriptorNum;
+    const NriPtr(RootSamplerDesc) rootSamplers;
+    uint32_t rootSamplerNum;
     const NriPtr(DescriptorSetDesc) descriptorSets;
     uint32_t descriptorSetNum;
     Nri(StageBits) shaderStages;
@@ -952,7 +963,7 @@ NriStruct(PipelineLayoutDesc) {
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkDescriptorPoolCreateInfo.html
 NriStruct(DescriptorPoolDesc) {
     uint32_t descriptorSetMaxNum;
-    uint32_t samplerMaxNum;
+    uint32_t samplerMaxNum;             // excluding root samplers
     uint32_t constantBufferMaxNum;
     uint32_t dynamicConstantBufferMaxNum;
     uint32_t textureMaxNum;
@@ -1873,6 +1884,7 @@ NriStruct(DeviceDesc) {
         uint32_t viewportBasedMultiview                          : 1; // see "Multiview::VIEWPORT_BASED"
         uint32_t presentFromCompute                              : 1; // see "SwapChainDesc::queue"
         uint32_t waitableSwapChain                               : 1; // see "SwapChainDesc::waitable"
+        uint32_t resizableSwapChain                              : 1; // swap chain can be resized without triggering an "OUT_OF_DATE" error
         uint32_t pipelineStatistics                              : 1; // see "QueryType::PIPELINE_STATISTICS"
     } features;
 
@@ -1881,6 +1893,7 @@ NriStruct(DeviceDesc) {
     struct {
         uint32_t viewportIndex                                   : 1; // SV_ViewportArrayIndex, always can be used in geometry shaders
         uint32_t layerIndex                                      : 1; // SV_RenderTargetArrayIndex, always can be used in geometry shaders
+        uint32_t unnormalizedCoordinates                         : 1; // https://microsoft.github.io/DirectX-Specs/d3d/VulkanOn12.html#non-normalized-texture-sampling-coordinates
         uint32_t clock                                           : 1; // https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#readclock
         uint32_t rasterizedOrderedView                           : 1; // https://microsoft.github.io/DirectX-Specs/d3d/RasterOrderViews.html (aka fragment shader interlock)
         uint32_t barycentric                                     : 1; // https://github.com/microsoft/DirectXShaderCompiler/wiki/SV_Barycentrics

@@ -106,6 +106,25 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         m_BindingSets.push_back(bindingSet);
     }
 
+    // Root constants
+    for (uint32_t i = 0; i < pipelineLayoutDesc.rootConstantNum; i++) {
+        const RootConstantDesc& rootConstantDesc = pipelineLayoutDesc.rootConstants[i];
+
+        ConstantBuffer cb = {};
+        cb.shaderStages = GetShaderVisibility(rootConstantDesc.shaderStages, pipelineLayoutDesc.shaderStages);
+        cb.slot = rootConstantDesc.registerIndex;
+
+        D3D11_BUFFER_DESC desc = {};
+        desc.Usage = D3D11_USAGE_DEFAULT;
+        desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        desc.ByteWidth = Align(rootConstantDesc.size, 16);
+
+        HRESULT hr = m_Device->CreateBuffer(&desc, nullptr, &cb.buffer);
+        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateBuffer");
+
+        m_ConstantBuffers.push_back(cb);
+    }
+
     // Root descriptors
     m_RootBindingOffset = (uint32_t)m_BindingSets.size();
 
@@ -131,23 +150,21 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         m_BindingSets.push_back(bindingSet);
     }
 
-    // Root constants
-    D3D11_BUFFER_DESC desc = {};
-    desc.Usage = D3D11_USAGE_DEFAULT;
-    desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    // Root samplers
+    for (uint32_t i = 0; i < pipelineLayoutDesc.rootSamplerNum; i++) {
+        const RootSamplerDesc& rootSamplerDesc = pipelineLayoutDesc.rootSamplers[i];
 
-    for (uint32_t i = 0; i < pipelineLayoutDesc.rootConstantNum; i++) {
-        const RootConstantDesc& rootConstantDesc = pipelineLayoutDesc.rootConstants[i];
+        RootSampler ss = {};
+        ss.slot = rootSamplerDesc.registerIndex;
+        ss.shaderStages = GetShaderVisibility(rootSamplerDesc.shaderStages, pipelineLayoutDesc.shaderStages);
 
-        ConstantBuffer cb = {};
-        cb.shaderStages = GetShaderVisibility(rootConstantDesc.shaderStages, pipelineLayoutDesc.shaderStages);
-        cb.slot = rootConstantDesc.registerIndex;
+        D3D11_SAMPLER_DESC desc = {};
+        FillSamplerDesc(rootSamplerDesc.desc, desc);
 
-        desc.ByteWidth = Align(rootConstantDesc.size, 16);
-        HRESULT hr = m_Device->CreateBuffer(&desc, nullptr, &cb.buffer);
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateBuffer");
+        HRESULT hr = m_Device->CreateSamplerState(&desc, &ss.sampler);
+        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateSamplerState");
 
-        m_ConstantBuffers.push_back(cb);
+        m_RootSamplers.push_back(ss);
     }
 
     return Result::SUCCESS;
@@ -163,6 +180,18 @@ void PipelineLayoutD3D11::Bind(ID3D11DeviceContextBest* deferredContext) {
         SET_CONSTANT_BUFFER(GS, StageBits::GEOMETRY_SHADER);
         SET_CONSTANT_BUFFER(PS, StageBits::FRAGMENT_SHADER);
         SET_CONSTANT_BUFFER(CS, StageBits::COMPUTE_SHADER);
+    }
+
+    for (size_t i = 0; i < m_RootSamplers.size(); i++)
+    {
+        const RootSampler& ss = m_RootSamplers[i];
+
+        SET_SAMPLER(VS, StageBits::VERTEX_SHADER);
+        SET_SAMPLER(HS, StageBits::TESS_CONTROL_SHADER);
+        SET_SAMPLER(DS, StageBits::TESS_EVALUATION_SHADER);
+        SET_SAMPLER(GS, StageBits::GEOMETRY_SHADER);
+        SET_SAMPLER(PS, StageBits::FRAGMENT_SHADER);
+        SET_SAMPLER(CS, StageBits::COMPUTE_SHADER);
     }
 }
 

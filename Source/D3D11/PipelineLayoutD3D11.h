@@ -33,12 +33,19 @@ struct ConstantBuffer {
     StageBits shaderStages;
 };
 
+struct RootSampler {
+    ComPtr<ID3D11SamplerState> sampler;
+    uint32_t slot;
+    StageBits shaderStages;
+};
+
 struct PipelineLayoutD3D11 final : public DebugNameBase {
     inline PipelineLayoutD3D11(DeviceD3D11& device)
         : m_Device(device)
         , m_BindingSets(device.GetStdAllocator())
         , m_BindingRanges(device.GetStdAllocator())
-        , m_ConstantBuffers(device.GetStdAllocator()) {
+        , m_ConstantBuffers(device.GetStdAllocator())
+        , m_RootSamplers(device.GetStdAllocator()) {
     }
 
     inline DeviceD3D11& GetDevice() const {
@@ -63,11 +70,11 @@ struct PipelineLayoutD3D11 final : public DebugNameBase {
     void SetDescriptorSet(BindPoint bindPoint, BindingState& currentBindingState, ID3D11DeviceContextBest* deferredContext, uint32_t setIndex, const DescriptorSetD3D11* descriptorSet, const DescriptorD3D11* descriptor, const uint32_t* dynamicConstantBufferOffsets) const;
 
 private:
-
     DeviceD3D11& m_Device;
     Vector<BindingSet> m_BindingSets;
     Vector<BindingRange> m_BindingRanges;
     Vector<ConstantBuffer> m_ConstantBuffers;
+    Vector<RootSampler> m_RootSamplers;
     uint32_t m_RootBindingOffset = 0;
 };
 

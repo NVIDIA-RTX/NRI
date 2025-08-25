@@ -338,9 +338,11 @@ NriStruct(RayTracingInterface) {
     uint64_t        (NRI_CALL *GetAccelerationStructureUpdateScratchBufferSize)     (const NriRef(AccelerationStructure) accelerationStructure);
     uint64_t        (NRI_CALL *GetAccelerationStructureBuildScratchBufferSize)      (const NriRef(AccelerationStructure) accelerationStructure);
     uint64_t        (NRI_CALL *GetAccelerationStructureHandle)                      (const NriRef(AccelerationStructure) accelerationStructure);
-    NriPtr(Buffer)  (NRI_CALL *GetAccelerationStructureBuffer)                      (const NriRef(AccelerationStructure) accelerationStructure); // needed for barriers
     uint64_t        (NRI_CALL *GetMicromapBuildScratchBufferSize)                   (const NriRef(Micromap) micromap);
-    NriPtr(Buffer)  (NRI_CALL *GetMicromapBuffer)                                   (const NriRef(Micromap) micromap); // needed for barriers
+
+    // For barriers
+    NriPtr(Buffer)  (NRI_CALL *GetAccelerationStructureBuffer)                      (const NriRef(AccelerationStructure) accelerationStructure);
+    NriPtr(Buffer)  (NRI_CALL *GetMicromapBuffer)                                   (const NriRef(Micromap) micromap);
 
     // Destroy
     void            (NRI_CALL *DestroyAccelerationStructure)                        (NriPtr(AccelerationStructure) accelerationStructure);

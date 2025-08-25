@@ -9,27 +9,30 @@ struct PushConstantBindingDesc {
     uint32_t offset;
 };
 
-struct PushDescriptorBindingDesc {
-    uint32_t registerSpace;
-    uint32_t registerIndex;
-};
-
 struct BindingInfo {
-    BindingInfo(StdAllocator<uint8_t>& allocator);
+    BindingInfo(StdAllocator<uint8_t>& allocator)
+        : ranges(allocator)
+        , dynamicConstantBuffers(allocator)
+        , sets(allocator)
+        , pushConstants(allocator)
+        , pushDescriptors(allocator) {
+    }
 
-    Vector<bool> hasVariableDescriptorNum;
-    Vector<DescriptorRangeDesc> descriptorSetRangeDescs;
-    Vector<DynamicConstantBufferDesc> dynamicConstantBufferDescs;
-    Vector<DescriptorSetDesc> descriptorSetDescs;
-    Vector<PushConstantBindingDesc> pushConstantBindings;
-    Vector<PushDescriptorBindingDesc> pushDescriptorBindings;
+    Vector<DescriptorRangeDesc> ranges;
+    Vector<DynamicConstantBufferDesc> dynamicConstantBuffers;
+    Vector<DescriptorSetDesc> sets;
+    Vector<PushConstantBindingDesc> pushConstants;
+    Vector<uint32_t> pushDescriptors;
+    uint32_t rootRegisterSpace;
+    uint32_t rootSamplerBindingOffset;
 };
 
 struct PipelineLayoutVK final : public DebugNameBase {
     inline PipelineLayoutVK(DeviceVK& device)
         : m_Device(device)
         , m_BindingInfo(device.GetStdAllocator())
-        , m_DescriptorSetLayouts(device.GetStdAllocator()) {
+        , m_DescriptorSetLayouts(device.GetStdAllocator())
+        , m_ImmutableSamplers(device.GetStdAllocator()) {
     }
 
     inline operator VkPipelineLayout() const {
@@ -59,13 +62,14 @@ struct PipelineLayoutVK final : public DebugNameBase {
     void SetDebugName(const char* name) DEBUG_NAME_OVERRIDE;
 
 private:
-    void CreateSetLayout(VkDescriptorSetLayout* setLayout, const DescriptorSetDesc& descriptorSetDesc, bool ignoreGlobalSPIRVOffsets, bool isPush);
+    void CreateSetLayout(VkDescriptorSetLayout* setLayout, const DescriptorSetDesc& descriptorSetDesc, const RootSamplerDesc* rootSamplers, uint32_t rootSamplerNum, bool ignoreGlobalSPIRVOffsets, bool isPush);
 
 private:
     DeviceVK& m_Device;
     VkPipelineLayout m_Handle = VK_NULL_HANDLE;
     BindingInfo m_BindingInfo;
     Vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
+    Vector<VkSampler> m_ImmutableSamplers;
 };
 
 } // namespace nri

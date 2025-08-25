@@ -62,8 +62,15 @@ NRI_INLINE Result DescriptorPoolVK::AllocateDescriptorSets(const PipelineLayout&
     VkDescriptorSetLayout setLayout = pipelineLayoutVK.GetDescriptorSetLayout(setIndex);
 
     const auto& bindingInfo = pipelineLayoutVK.GetBindingInfo();
-    const DescriptorSetDesc* descriptorSetDesc = &bindingInfo.descriptorSetDescs[setIndex];
-    bool hasVariableDescriptorNum = bindingInfo.hasVariableDescriptorNum[setIndex];
+    const DescriptorSetDesc* descriptorSetDesc = &bindingInfo.sets[setIndex];
+
+    bool hasVariableDescriptorNum = false;
+    for (uint32_t i = 0; i < descriptorSetDesc->rangeNum; i++) {
+        if (m_Device.m_IsSupported.descriptorIndexing && (descriptorSetDesc->ranges[i].flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY)) {
+            hasVariableDescriptorNum = true;
+            break;
+        }
+    }
 
     VkDescriptorSetVariableDescriptorCountAllocateInfo variableDescriptorCountInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO};
     variableDescriptorCountInfo.descriptorSetCount = 1;

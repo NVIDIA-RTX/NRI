@@ -391,7 +391,7 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
         rangeNum += descriptorSetDesc.rangeNum;
     }
 
-    if (pipelineLayoutDesc.rootDescriptorNum) {
+    if (pipelineLayoutDesc.rootDescriptorNum || pipelineLayoutDesc.rootSamplerNum) {
         uint32_t n = 0;
         for (; n < pipelineLayoutDesc.descriptorSetNum && spaces[n] != pipelineLayoutDesc.rootRegisterSpace; n++)
             ;
@@ -406,6 +406,7 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
             || rootDescriptorDesc.descriptorType == DescriptorType::STRUCTURED_BUFFER
             || rootDescriptorDesc.descriptorType == DescriptorType::STORAGE_STRUCTURED_BUFFER
             || rootDescriptorDesc.descriptorType == DescriptorType::ACCELERATION_STRUCTURE;
+
         RETURN_ON_FAILURE(this, isDescriptorTypeValid, Result::INVALID_ARGUMENT, "'rootDescriptors[%u].descriptorType' must be one of 'CONSTANT_BUFFER', 'STRUCTURED_BUFFER' or 'STORAGE_STRUCTURED_BUFFER'", i);
     }
 
