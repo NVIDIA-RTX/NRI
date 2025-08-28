@@ -308,7 +308,7 @@ Result DescriptorD3D12::Create(const BufferViewDesc& bufferViewDesc) {
     uint64_t elementOffset = (uint32_t)(bufferViewDesc.offset / elementSize);
     uint32_t elementNum = (uint32_t)(size / elementSize);
 
-    m_BufferLocation = buffer.GetPointerGPU() + bufferViewDesc.offset;
+    m_BufferLocation = buffer.GetGPUVA() + bufferViewDesc.offset;
     m_BufferViewType = bufferViewDesc.viewType;
 
     switch (bufferViewDesc.viewType) {

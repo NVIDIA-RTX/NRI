@@ -20,7 +20,6 @@ private:
     Vector<DescriptorSetDesc> m_DescriptorSetDescs;
     Vector<RootConstantDesc> m_RootConstantDescs;
     Vector<DescriptorRangeDesc> m_DescriptorRangeDescs;
-    Vector<DynamicConstantBufferDesc> m_DynamicConstantBufferDescs;
 };
 
 } // namespace nri

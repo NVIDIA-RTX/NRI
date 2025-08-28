@@ -214,6 +214,8 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
         REPORT_INFO(this, "    %s (v%u)", props.extensionName, props.specVersion);
 
     // Mandatory
+    desiredDeviceExts.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+
     if (m_MinorVersion < 3) {
         desiredDeviceExts.push_back(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
         desiredDeviceExts.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
@@ -263,9 +265,6 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
 
     if (IsExtensionSupported(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME, supportedExts))
         desiredDeviceExts.push_back(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
-
-    if (IsExtensionSupported(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME, supportedExts))
-        desiredDeviceExts.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
 
     if (IsExtensionSupported(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME, supportedExts))
         desiredDeviceExts.push_back(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
@@ -1254,6 +1253,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.waitableSwapChain = presentIdFeatures.presentId != 0 && presentWaitFeatures.presentWait != 0;
         m_Desc.features.resizableSwapChain = m_IsSupported.swapChainMaintenance1;
         m_Desc.features.pipelineStatistics = features.features.pipelineStatisticsQuery;
+        m_Desc.features.rootConstantsOffset = true;
+        m_Desc.features.nonConstantBufferRootDescriptorOffset = true;
 
         m_Desc.shaderFeatures.nativeI16 = features.features.shaderInt16;
         m_Desc.shaderFeatures.nativeF16 = features12.shaderFloat16;

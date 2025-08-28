@@ -134,7 +134,6 @@ NriStruct(CoreInterface) {
     // - if "ALLOW_UPDATE_AFTER_SET" not used, descriptor sets (and data pointed to by descriptors) must be updated before "CmdSetDescriptorSet"
     // - if "ALLOW_UPDATE_AFTER_SET" used, descriptor sets (and data pointed to by descriptors) can be updated after "CmdSetDescriptorSet"
     void                (NRI_CALL *UpdateDescriptorRanges)          (NriRef(DescriptorSet) descriptorSet, uint32_t baseRange, uint32_t rangeNum, const NriPtr(DescriptorRangeUpdateDesc) rangeUpdateDescs);
-    void                (NRI_CALL *UpdateDynamicConstantBuffers)    (NriRef(DescriptorSet) descriptorSet, uint32_t baseDynamicConstantBuffer, uint32_t dynamicConstantBufferNum, const NriPtr(Descriptor) const* descriptors);
     void                (NRI_CALL *CopyDescriptorSet)               (NriRef(DescriptorSet) descriptorSet, const NriRef(CopyDescriptorSetDesc) copyDescriptorSetDesc);
 
     // Command buffer (one time submit)

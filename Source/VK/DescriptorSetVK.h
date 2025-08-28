@@ -12,10 +12,6 @@ struct DescriptorSetVK final : public DebugNameBase {
         return m_Handle;
     }
 
-    inline uint32_t GetDynamicConstantBufferNum() const {
-        return m_Desc->dynamicConstantBufferNum;
-    }
-
     inline void Create(DeviceVK* device, VkDescriptorSet handle, const DescriptorSetDesc* desc) {
         m_Device = device;
         m_Handle = handle;
@@ -33,7 +29,6 @@ struct DescriptorSetVK final : public DebugNameBase {
     //================================================================================================================
 
     void UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs);
-    void UpdateDynamicConstantBuffers(uint32_t baseDynamicConstantBuffer, uint32_t dynamicConstantBufferNum, const Descriptor* const* descriptors);
     void Copy(const CopyDescriptorSetDesc& copyDescriptorSetDesc);
 
 private:

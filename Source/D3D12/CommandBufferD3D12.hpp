@@ -402,9 +402,9 @@ NRI_INLINE void CommandBufferD3D12::ClearStorage(const ClearStorageDesc& clearDe
 
     // TODO: typed buffers are currently cleared according to the format, it seems to be more reliable than using integers for all buffers
     if (storage->IsIntegerFormat())
-        m_GraphicsCommandList->ClearUnorderedAccessViewUint({descriptorSet->GetPointerGPU(clearDesc.rangeIndex, clearDesc.descriptorIndex)}, {storage->GetPointerCPU()}, *storage, &clearDesc.value.ui.x, 0, nullptr);
+        m_GraphicsCommandList->ClearUnorderedAccessViewUint({descriptorSet->GetDescriptorPointerGPU(clearDesc.rangeIndex, clearDesc.descriptorIndex)}, {storage->GetDescriptorPointerCPU()}, *storage, &clearDesc.value.ui.x, 0, nullptr);
     else
-        m_GraphicsCommandList->ClearUnorderedAccessViewFloat({descriptorSet->GetPointerGPU(clearDesc.rangeIndex, clearDesc.descriptorIndex)}, {storage->GetPointerCPU()}, *storage, &clearDesc.value.f.x, 0, nullptr);
+        m_GraphicsCommandList->ClearUnorderedAccessViewFloat({descriptorSet->GetDescriptorPointerGPU(clearDesc.rangeIndex, clearDesc.descriptorIndex)}, {storage->GetDescriptorPointerCPU()}, *storage, &clearDesc.value.f.x, 0, nullptr);
 }
 
 NRI_INLINE void CommandBufferD3D12::BeginRendering(const AttachmentsDesc& attachmentsDesc) {
@@ -414,14 +414,14 @@ NRI_INLINE void CommandBufferD3D12::BeginRendering(const AttachmentsDesc& attach
     uint32_t i = 0;
     for (; i < m_RenderTargetNum; i++) {
         const DescriptorD3D12& descriptor = *(DescriptorD3D12*)attachmentsDesc.colors[i];
-        m_RenderTargets[i].ptr = descriptor.GetPointerCPU();
+        m_RenderTargets[i].ptr = descriptor.GetDescriptorPointerCPU();
     }
     for (; i < (uint32_t)m_RenderTargets.size(); i++)
         m_RenderTargets[i].ptr = NULL;
 
     if (attachmentsDesc.depthStencil) {
         const DescriptorD3D12& descriptor = *(DescriptorD3D12*)attachmentsDesc.depthStencil;
-        m_DepthStencil.ptr = descriptor.GetPointerCPU();
+        m_DepthStencil.ptr = descriptor.GetDescriptorPointerCPU();
     } else
         m_DepthStencil.ptr = NULL;
 
@@ -448,7 +448,7 @@ NRI_INLINE void CommandBufferD3D12::SetVertexBuffers(uint32_t baseSlot, const Ve
 
         const BufferD3D12* bufferD3D12 = (BufferD3D12*)vertexBufferDesc.buffer;
         if (bufferD3D12) {
-            vertexBufferViews[i].BufferLocation = bufferD3D12->GetPointerGPU() + vertexBufferDesc.offset;
+            vertexBufferViews[i].BufferLocation = bufferD3D12->GetGPUVA() + vertexBufferDesc.offset;
             vertexBufferViews[i].SizeInBytes = (uint32_t)(bufferD3D12->GetDesc().size - vertexBufferDesc.offset);
             vertexBufferViews[i].StrideInBytes = vertexBufferDesc.stride;
         } else {
@@ -465,8 +465,8 @@ NRI_INLINE void CommandBufferD3D12::SetIndexBuffer(const Buffer& buffer, uint64_
     const BufferD3D12& bufferD3D12 = (BufferD3D12&)buffer;
 
     D3D12_INDEX_BUFFER_VIEW indexBufferView;
-    indexBufferView.BufferLocation = bufferD3D12.GetPointerGPU() + offset;
-    indexBufferView.SizeInBytes = (UINT)(bufferD3D12.GetDesc().size - offset);
+    indexBufferView.BufferLocation = bufferD3D12.GetGPUVA() + offset;
+    indexBufferView.SizeInBytes = (uint32_t)(bufferD3D12.GetDesc().size - offset);
     indexBufferView.Format = indexType == IndexType::UINT16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
 
     m_GraphicsCommandList->IASetIndexBuffer(&indexBufferView);
@@ -1185,23 +1185,23 @@ NRI_INLINE void CommandBufferD3D12::WriteMicromapsSizes(const Micromap* const* m
 NRI_INLINE void CommandBufferD3D12::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc) {
     D3D12_DISPATCH_RAYS_DESC desc = {};
 
-    desc.RayGenerationShaderRecord.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.raygenShader.buffer).GetPointerGPU() + dispatchRaysDesc.raygenShader.offset;
+    desc.RayGenerationShaderRecord.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.raygenShader.buffer).GetGPUVA() + dispatchRaysDesc.raygenShader.offset;
     desc.RayGenerationShaderRecord.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
 
     if (dispatchRaysDesc.missShaders.buffer) {
-        desc.MissShaderTable.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.missShaders.buffer).GetPointerGPU() + dispatchRaysDesc.missShaders.offset;
+        desc.MissShaderTable.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.missShaders.buffer).GetGPUVA() + dispatchRaysDesc.missShaders.offset;
         desc.MissShaderTable.SizeInBytes = dispatchRaysDesc.missShaders.size;
         desc.MissShaderTable.StrideInBytes = dispatchRaysDesc.missShaders.stride;
     }
 
     if (dispatchRaysDesc.hitShaderGroups.buffer) {
-        desc.HitGroupTable.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.hitShaderGroups.buffer).GetPointerGPU() + dispatchRaysDesc.hitShaderGroups.offset;
+        desc.HitGroupTable.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.hitShaderGroups.buffer).GetGPUVA() + dispatchRaysDesc.hitShaderGroups.offset;
         desc.HitGroupTable.SizeInBytes = dispatchRaysDesc.hitShaderGroups.size;
         desc.HitGroupTable.StrideInBytes = dispatchRaysDesc.hitShaderGroups.stride;
     }
 
     if (dispatchRaysDesc.callableShaders.buffer) {
-        desc.CallableShaderTable.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.callableShaders.buffer).GetPointerGPU() + dispatchRaysDesc.callableShaders.offset;
+        desc.CallableShaderTable.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.callableShaders.buffer).GetGPUVA() + dispatchRaysDesc.callableShaders.offset;
         desc.CallableShaderTable.SizeInBytes = dispatchRaysDesc.callableShaders.size;
         desc.CallableShaderTable.StrideInBytes = dispatchRaysDesc.callableShaders.stride;
     }

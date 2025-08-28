@@ -762,6 +762,8 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.features.waitableSwapChain = true; // TODO: swap chain version >= 2?
     m_Desc.features.resizableSwapChain = true;
     m_Desc.features.pipelineStatistics = true;
+    m_Desc.features.rootConstantsOffset = true;
+    m_Desc.features.nonConstantBufferRootDescriptorOffset = true;
 
     bool isShaderAtomicsF16Supported = false;
     bool isShaderAtomicsF32Supported = false;

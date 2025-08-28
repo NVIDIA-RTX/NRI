@@ -421,7 +421,6 @@ NRI_INLINE void CommandBufferVK::SetPipeline(const Pipeline& pipeline) {
 NRI_INLINE void CommandBufferVK::SetDescriptorSet(const SetDescriptorSetDesc& setDescriptorSetDesc) {
     const DescriptorSetVK& descriptorSetVK = *(DescriptorSetVK*)setDescriptorSetDesc.descriptorSet;
     VkDescriptorSet vkDescriptorSet = descriptorSetVK.GetHandle();
-    uint32_t dynamicConstantBufferNum = descriptorSetVK.GetDynamicConstantBufferNum();
 
     const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
     uint32_t registerSpace = bindingInfo.sets[setDescriptorSetDesc.setIndex].registerSpace;
@@ -430,7 +429,7 @@ NRI_INLINE void CommandBufferVK::SetDescriptorSet(const SetDescriptorSetDesc& se
     VkPipelineBindPoint vkPipelineBindPoint = GetPipelineBindPoint(bindPoint);
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdBindDescriptorSets(m_Handle, vkPipelineBindPoint, *m_PipelineLayout, registerSpace, 1, &vkDescriptorSet, dynamicConstantBufferNum, setDescriptorSetDesc.dynamicConstantBufferOffsets);
+    vk.CmdBindDescriptorSets(m_Handle, vkPipelineBindPoint, *m_PipelineLayout, registerSpace, 1, &vkDescriptorSet, 0, nullptr);
 }
 
 NRI_INLINE void CommandBufferVK::SetRootConstants(const SetRootConstantsDesc& setRootConstantsDesc) {
@@ -446,10 +445,12 @@ NRI_INLINE void CommandBufferVK::SetRootDescriptor(const SetRootDescriptorDesc& 
     const DescriptorVK& descriptorVK = *(DescriptorVK*)setRootDescriptorDesc.descriptor;
 
     DescriptorTypeVK descriptorType = descriptorVK.GetType();
-    VkDescriptorBufferInfo bufferInfo = descriptorVK.GetBufferInfo();
     VkAccelerationStructureKHR accelerationStructure = descriptorVK.GetAccelerationStructure();
 
     const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
+
+    VkDescriptorBufferInfo bufferInfo = descriptorVK.GetBufferInfo();
+    bufferInfo.offset += setRootDescriptorDesc.offset; // TODO: adjust "size"?
 
     VkWriteDescriptorSetAccelerationStructureKHR accelerationStructureWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR};
     accelerationStructureWrite.accelerationStructureCount = 1;

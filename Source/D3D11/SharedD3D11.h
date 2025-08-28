@@ -26,7 +26,6 @@ enum class DescriptorTypeDX11 : uint8_t {
     STORAGE,
     // must be last!
     CONSTANT,
-    DYNAMIC_CONSTANT
 };
 
 D3D11_PRIMITIVE_TOPOLOGY GetD3D11TopologyFromTopology(Topology topology, uint32_t patchPoints);

@@ -60,7 +60,6 @@ NriStruct(DescriptorPoolD3D12Desc) {
 
     // Allocation limits (D3D12 unrelated, but must match expected usage)
     uint32_t descriptorSetMaxNum;
-    uint32_t dynamicConstantBufferMaxNum;
 };
 
 NriStruct(BufferD3D12Desc) {

@@ -44,7 +44,6 @@ private:
     uint32_t m_DescriptorSetsNum = 0;
     uint32_t m_SamplerNum = 0;
     uint32_t m_ConstantBufferNum = 0;
-    uint32_t m_DynamicConstantBufferNum = 0;
     uint32_t m_TextureNum = 0;
     uint32_t m_StorageTextureNum = 0;
     uint32_t m_BufferNum = 0;

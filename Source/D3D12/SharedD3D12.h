@@ -58,7 +58,7 @@ inline MemoryTypeInfo Unpack(const MemoryType& memoryType) {
 
 static_assert(sizeof(MemoryTypeInfo) == sizeof(MemoryType), "Must be equal");
 
-enum DescriptorHeapType : uint32_t {
+enum DescriptorHeapType : uint8_t {
     RESOURCE = 0,
     SAMPLER,
     MAX_NUM

@@ -12,14 +12,12 @@ struct PushConstantBindingDesc {
 struct BindingInfo {
     BindingInfo(StdAllocator<uint8_t>& allocator)
         : ranges(allocator)
-        , dynamicConstantBuffers(allocator)
         , sets(allocator)
         , pushConstants(allocator)
         , pushDescriptors(allocator) {
     }
 
     Vector<DescriptorRangeDesc> ranges;
-    Vector<DynamicConstantBufferDesc> dynamicConstantBuffers;
     Vector<DescriptorSetDesc> sets;
     Vector<PushConstantBindingDesc> pushConstants;
     Vector<uint32_t> pushDescriptors;

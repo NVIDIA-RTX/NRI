@@ -13,7 +13,6 @@ struct DescriptorSetD3D11 final : public DebugNameBase {
         return m_Descriptors[i];
     }
 
-    uint32_t GetDynamicConstantBufferNum() const;
     void Create(const PipelineLayoutD3D11* pipelineLayout, const BindingSet* bindingSet, const DescriptorD3D11** descriptors);
 
     //================================================================================================================
@@ -21,7 +20,6 @@ struct DescriptorSetD3D11 final : public DebugNameBase {
     //================================================================================================================
 
     void UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs);
-    void UpdateDynamicConstantBuffers(uint32_t baseDynamicConstantBuffer, uint32_t dynamicConstantBufferNum, const Descriptor* const* descriptors);
     void Copy(const CopyDescriptorSetDesc& copyDescriptorSetDesc);
 
 private:

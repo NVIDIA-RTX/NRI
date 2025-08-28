@@ -472,10 +472,6 @@ static void NRI_CALL UpdateDescriptorRanges(DescriptorSet& descriptorSet, uint32
     ((DescriptorSetD3D12&)descriptorSet).UpdateDescriptorRanges(baseRange, rangeNum, rangeUpdateDescs);
 }
 
-static void NRI_CALL UpdateDynamicConstantBuffers(DescriptorSet& descriptorSet, uint32_t baseDynamicConstantBuffer, uint32_t dynamicConstantBufferNum, const Descriptor* const* descriptors) {
-    ((DescriptorSetD3D12&)descriptorSet).UpdateDynamicConstantBuffers(baseDynamicConstantBuffer, dynamicConstantBufferNum, descriptors);
-}
-
 static void NRI_CALL CopyDescriptorSet(DescriptorSet& descriptorSet, const CopyDescriptorSetDesc& copyDescriptorSetDesc) {
     ((DescriptorSetD3D12&)descriptorSet).Copy(copyDescriptorSetDesc);
 }
@@ -546,7 +542,7 @@ static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor* descriptor)
     if (!descriptor)
         return 0;
 
-    return uint64_t(((DescriptorD3D12*)descriptor)->GetPointerCPU());
+    return uint64_t(((DescriptorD3D12*)descriptor)->GetDescriptorPointerCPU());
 }
 
 Result DeviceD3D12::FillFunctionTable(CoreInterface& table) const {
@@ -641,7 +637,6 @@ Result DeviceD3D12::FillFunctionTable(CoreInterface& table) const {
     table.Wait = ::Wait;
     table.GetFenceValue = ::GetFenceValue;
     table.UpdateDescriptorRanges = ::UpdateDescriptorRanges;
-    table.UpdateDynamicConstantBuffers = ::UpdateDynamicConstantBuffers;
     table.CopyDescriptorSet = ::CopyDescriptorSet;
     table.AllocateDescriptorSets = ::AllocateDescriptorSets;
     table.ResetDescriptorPool = ::ResetDescriptorPool;

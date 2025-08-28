@@ -57,7 +57,7 @@ NRI_INLINE void AccelerationStructureD3D12::SetDebugName(const char* name) {
 }
 
 NRI_INLINE uint64_t AccelerationStructureD3D12::GetHandle() const {
-    return m_Buffer->GetPointerGPU();
+    return m_Buffer->GetGPUVA();
 }
 
 NRI_INLINE AccelerationStructureD3D12::operator ID3D12Resource*() const {

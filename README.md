@@ -66,6 +66,7 @@ Repository organization:
 <details>
 <summary>Required Vulkan extensions:</summary>
 
+- _VK_KHR_push_descriptor_
 - for Vulkan 1.2:
     - _VK_KHR_synchronization2_
     - _VK_KHR_dynamic_rendering_
@@ -99,7 +100,6 @@ Repository organization:
     - _VK_KHR_maintenance8_
     - _VK_KHR_maintenance9_
     - _VK_KHR_fragment_shading_rate_
-    - _VK_KHR_push_descriptor_
     - _VK_KHR_pipeline_library_
     - _VK_KHR_ray_tracing_pipeline_
     - _VK_KHR_acceleration_structure_ (depends on _VK_KHR_deferred_host_operations_)

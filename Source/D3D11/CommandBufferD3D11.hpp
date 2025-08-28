@@ -94,7 +94,6 @@ NRI_INLINE Result CommandBufferD3D11::Begin(const DescriptorPool* descriptorPool
     m_CommandList = nullptr;
     m_Pipeline = nullptr;
     m_PipelineLayout = nullptr;
-    m_IndexBuffer = nullptr;
     m_PipelineBindPoint = BindPoint::INHERIT;
 
     ResetAttachments();
@@ -350,16 +349,10 @@ NRI_INLINE void CommandBufferD3D11::SetVertexBuffers(uint32_t baseSlot, const Ve
 }
 
 NRI_INLINE void CommandBufferD3D11::SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType) {
-    if (m_IndexBuffer != &buffer || m_IndexBufferOffset != offset || m_IndexType != indexType) {
-        const BufferD3D11& bufferD3D11 = (BufferD3D11&)buffer;
-        const DXGI_FORMAT format = indexType == IndexType::UINT16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+    const BufferD3D11& bufferD3D11 = (BufferD3D11&)buffer;
+    const DXGI_FORMAT format = indexType == IndexType::UINT16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
 
-        m_DeferredContext->IASetIndexBuffer(bufferD3D11, format, (uint32_t)offset);
-
-        m_IndexBuffer = &buffer;
-        m_IndexBufferOffset = offset;
-        m_IndexType = indexType;
-    }
+    m_DeferredContext->IASetIndexBuffer(bufferD3D11, format, (uint32_t)offset);
 }
 
 NRI_INLINE void CommandBufferD3D11::SetPipelineLayout(BindPoint bindPoint, const PipelineLayout& pipelineLayout) {
@@ -384,7 +377,7 @@ NRI_INLINE void CommandBufferD3D11::SetDescriptorSet(const SetDescriptorSetDesc&
     BindPoint bindPoint = setDescriptorSetDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : setDescriptorSetDesc.bindPoint;
     const DescriptorSetD3D11& descriptorSetD3D11 = *(DescriptorSetD3D11*)setDescriptorSetDesc.descriptorSet;
 
-    m_PipelineLayout->SetDescriptorSet(bindPoint, m_BindingState, m_DeferredContext, setDescriptorSetDesc.setIndex, &descriptorSetD3D11, nullptr, setDescriptorSetDesc.dynamicConstantBufferOffsets);
+    m_PipelineLayout->SetDescriptorSet(bindPoint, m_BindingState, m_DeferredContext, setDescriptorSetDesc.setIndex, &descriptorSetD3D11, nullptr, 0);
 }
 
 NRI_INLINE void CommandBufferD3D11::SetRootConstants(const SetRootConstantsDesc& setRootConstantsDesc) {
@@ -396,7 +389,7 @@ NRI_INLINE void CommandBufferD3D11::SetRootDescriptor(const SetRootDescriptorDes
     uint32_t setIndex = m_PipelineLayout->GetRootBindingIndex(setRootDescriptorDesc.rootDescriptorIndex);
     const DescriptorD3D11& descriptorD3D11 = *(DescriptorD3D11*)setRootDescriptorDesc.descriptor;
 
-    m_PipelineLayout->SetDescriptorSet(bindPoint, m_BindingState, m_DeferredContext, setIndex, nullptr, &descriptorD3D11, nullptr);
+    m_PipelineLayout->SetDescriptorSet(bindPoint, m_BindingState, m_DeferredContext, setIndex, nullptr, &descriptorD3D11, setRootDescriptorDesc.offset);
 }
 
 NRI_INLINE void CommandBufferD3D11::Draw(const DrawDesc& drawDesc) {

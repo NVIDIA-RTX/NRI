@@ -4,7 +4,6 @@ Result DescriptorPoolD3D11::Create(const DescriptorPoolDesc& descriptorPoolDesc)
     uint32_t descriptorNum = descriptorPoolDesc.samplerMaxNum;
     descriptorNum += descriptorPoolDesc.samplerMaxNum;
     descriptorNum += descriptorPoolDesc.constantBufferMaxNum;
-    descriptorNum += descriptorPoolDesc.dynamicConstantBufferMaxNum;
     descriptorNum += descriptorPoolDesc.textureMaxNum;
     descriptorNum += descriptorPoolDesc.storageTextureMaxNum;
     descriptorNum += descriptorPoolDesc.bufferMaxNum;

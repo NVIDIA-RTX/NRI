@@ -265,11 +265,8 @@ NRI_INLINE void CommandBufferVal::SetDescriptorPool(const DescriptorPool& descri
 }
 
 NRI_INLINE void CommandBufferVal::SetDescriptorSet(const SetDescriptorSetDesc& setDescriptorSetDesc) {
-    const DescriptorSetVal& descriptorSetVal = *(DescriptorSetVal*)setDescriptorSetDesc.descriptorSet;
-
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
-    RETURN_ON_FAILURE(&m_Device, descriptorSetVal.AreDynamicConstantBuffersValid(), ReturnVoid(), "Not all dynamic constant buffers have been updated at least once. Potential use of stale data detected");
 
     auto descriptorSetBindingDescImpl = setDescriptorSetDesc;
     descriptorSetBindingDescImpl.descriptorSet = NRI_GET_IMPL(DescriptorSet, setDescriptorSetDesc.descriptorSet);
@@ -278,18 +275,25 @@ NRI_INLINE void CommandBufferVal::SetDescriptorSet(const SetDescriptorSetDesc& s
 }
 
 NRI_INLINE void CommandBufferVal::SetRootConstants(const SetRootConstantsDesc& setRootConstantsDesc) {
+    const DeviceDesc& deviceDesc = m_Device.GetDesc();
+
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
+    RETURN_ON_FAILURE(&m_Device, setRootConstantsDesc.offset == 0 || deviceDesc.features.rootConstantsOffset, ReturnVoid(), "Non-zero 'setRootConstantsDesc.offset' is not supported");
 
     GetCoreInterfaceImpl().CmdSetRootConstants(*GetImpl(), setRootConstantsDesc);
 }
 
 NRI_INLINE void CommandBufferVal::SetRootDescriptor(const SetRootDescriptorDesc& setRootDescriptorDesc) {
     const DescriptorVal& descriptorVal = *(DescriptorVal*)setRootDescriptorDesc.descriptor;
+    const DeviceDesc& deviceDesc = m_Device.GetDesc();
 
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
     RETURN_ON_FAILURE(&m_Device, descriptorVal.IsBufferView() || descriptorVal.IsAccelerationStructure(), ReturnVoid(), "'descriptor' must be a buffer or acceleration structure");
+
+    if (!descriptorVal.IsConstantBuffer())
+        RETURN_ON_FAILURE(&m_Device, setRootDescriptorDesc.offset == 0 || deviceDesc.features.nonConstantBufferRootDescriptorOffset, ReturnVoid(), "Non-zero 'setRootDescriptorDesc.offset' is supported only for 'CONSTANT_BUFFER'");
 
     auto rootDescriptorBindingDescImpl = setRootDescriptorDesc;
     rootDescriptorBindingDescImpl.descriptor = NRI_GET_IMPL(Descriptor, setRootDescriptorDesc.descriptor);

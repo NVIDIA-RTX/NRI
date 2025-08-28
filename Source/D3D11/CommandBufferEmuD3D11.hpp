@@ -229,9 +229,6 @@ void CommandBufferEmuD3D11::Submit() {
                 SetDescriptorSetDesc setDescriptorSetDesc = {};
                 Read(m_PushBuffer, i, setDescriptorSetDesc);
 
-                uint32_t dynamicConstantBufferNum;
-                Read(m_PushBuffer, i, setDescriptorSetDesc.dynamicConstantBufferOffsets, dynamicConstantBufferNum);
-
                 commandBuffer.SetDescriptorSet(setDescriptorSetDesc);
             } break;
             case SET_ROOT_CONSTANTS: {
@@ -573,11 +570,8 @@ NRI_INLINE void CommandBufferEmuD3D11::SetPipeline(const Pipeline& pipeline) {
 }
 
 NRI_INLINE void CommandBufferEmuD3D11::SetDescriptorSet(const SetDescriptorSetDesc& setDescriptorSetDesc) {
-    uint32_t dynamicConstantBufferNum = ((DescriptorSetD3D11*)setDescriptorSetDesc.descriptorSet)->GetDynamicConstantBufferNum();
-
     Push(m_PushBuffer, SET_DESCRIPTOR_SET);
     Push(m_PushBuffer, setDescriptorSetDesc);
-    Push(m_PushBuffer, setDescriptorSetDesc.dynamicConstantBufferOffsets, dynamicConstantBufferNum);
 }
 
 NRI_INLINE void CommandBufferEmuD3D11::SetRootConstants(const SetRootConstantsDesc& setRootConstantsDesc) {

@@ -455,10 +455,6 @@ static void NRI_CALL UpdateDescriptorRanges(DescriptorSet& descriptorSet, uint32
     ((DescriptorSetVK&)descriptorSet).UpdateDescriptorRanges(baseRange, rangeNum, rangeUpdateDescs);
 }
 
-static void NRI_CALL UpdateDynamicConstantBuffers(DescriptorSet& descriptorSet, uint32_t baseDynamicConstantBuffer, uint32_t dynamicConstantBufferNum, const Descriptor* const* descriptors) {
-    ((DescriptorSetVK&)descriptorSet).UpdateDynamicConstantBuffers(baseDynamicConstantBuffer, dynamicConstantBufferNum, descriptors);
-}
-
 static void NRI_CALL CopyDescriptorSet(DescriptorSet& descriptorSet, const CopyDescriptorSetDesc& copyDescriptorSetDesc) {
     ((DescriptorSetVK&)descriptorSet).Copy(copyDescriptorSetDesc);
 }
@@ -637,7 +633,6 @@ Result DeviceVK::FillFunctionTable(CoreInterface& table) const {
     table.Wait = ::Wait;
     table.GetFenceValue = ::GetFenceValue;
     table.UpdateDescriptorRanges = ::UpdateDescriptorRanges;
-    table.UpdateDynamicConstantBuffers = ::UpdateDynamicConstantBuffers;
     table.CopyDescriptorSet = ::CopyDescriptorSet;
     table.AllocateDescriptorSets = ::AllocateDescriptorSets;
     table.ResetDescriptorPool = ::ResetDescriptorPool;

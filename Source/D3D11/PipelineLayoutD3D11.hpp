@@ -61,28 +61,7 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         const DescriptorSetDesc& set = pipelineLayoutDesc.descriptorSets[i];
 
         BindingSet bindingSet = {};
-        bindingSet.startRangeOfDynamicConstantBuffers = (uint32_t)m_BindingRanges.size();
-
-        // Dynamic constant buffers
-        if (set.dynamicConstantBufferNum && m_Device.GetVersion() == 0)
-            REPORT_ERROR(&m_Device, "Dynamic constant buffers with non-zero offsets require 11.1+ feature level");
-
-        for (uint32_t j = 0; j < set.dynamicConstantBufferNum; j++) {
-            const DynamicConstantBufferDesc& dynamicConstantBuffer = set.dynamicConstantBuffers[j];
-
-            // Add binding range
-            BindingRange bindingRange = {};
-            bindingRange.baseSlot = dynamicConstantBuffer.registerIndex;
-            bindingRange.descriptorOffset = bindingSet.descriptorNum;
-            bindingRange.descriptorNum = 1;
-            bindingRange.descriptorType = DescriptorTypeDX11::DYNAMIC_CONSTANT;
-            bindingRange.shaderStages = GetShaderVisibility(dynamicConstantBuffer.shaderStages, pipelineLayoutDesc.shaderStages);
-            m_BindingRanges.push_back(bindingRange);
-
-            bindingSet.descriptorNum += bindingRange.descriptorNum;
-        }
-
-        bindingSet.endRangeOfDynamicConstantBuffers = (uint32_t)m_BindingRanges.size();
+        bindingSet.startRange = (uint32_t)m_BindingRanges.size();
 
         // Descriptor ranges
         for (uint32_t j = 0; j < set.rangeNum; j++) {
@@ -95,6 +74,7 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
             bindingRange.descriptorNum = range.descriptorNum;
             bindingRange.descriptorType = GetDescriptorTypeIndex(range.descriptorType);
             bindingRange.shaderStages = GetShaderVisibility(range.shaderStages, pipelineLayoutDesc.shaderStages);
+
             m_BindingRanges.push_back(bindingRange);
 
             bindingSet.descriptorNum += bindingRange.descriptorNum;
@@ -132,8 +112,7 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         const RootDescriptorDesc& rootDescriptorSetDesc = pipelineLayoutDesc.rootDescriptors[i];
 
         BindingSet bindingSet = {};
-        bindingSet.startRangeOfDynamicConstantBuffers = (uint32_t)m_BindingRanges.size();
-        bindingSet.endRangeOfDynamicConstantBuffers = (uint32_t)m_BindingRanges.size();
+        bindingSet.startRange = (uint32_t)m_BindingRanges.size();
 
         BindingRange bindingRange = {};
         bindingRange.baseSlot = rootDescriptorSetDesc.registerIndex;
@@ -182,8 +161,7 @@ void PipelineLayoutD3D11::Bind(ID3D11DeviceContextBest* deferredContext) {
         SET_CONSTANT_BUFFER(CS, StageBits::COMPUTE_SHADER);
     }
 
-    for (size_t i = 0; i < m_RootSamplers.size(); i++)
-    {
+    for (size_t i = 0; i < m_RootSamplers.size(); i++) {
         const RootSampler& ss = m_RootSamplers[i];
 
         SET_SAMPLER(VS, StageBits::VERTEX_SHADER);
@@ -201,7 +179,7 @@ void PipelineLayoutD3D11::SetRootConstants(ID3D11DeviceContextBest* deferredCont
     deferredContext->UpdateSubresource(cb.buffer, 0, nullptr, setRootConstantsDesc.data, 0, 0);
 }
 
-void PipelineLayoutD3D11::SetDescriptorSet(BindPoint bindPoint, BindingState& currentBindingState, ID3D11DeviceContextBest* deferredContext, uint32_t setIndex, const DescriptorSetD3D11* descriptorSet, const DescriptorD3D11* descriptor, const uint32_t* dynamicConstantBufferOffsets) const {
+void PipelineLayoutD3D11::SetDescriptorSet(BindPoint bindPoint, BindingState& currentBindingState, ID3D11DeviceContextBest* deferredContext, uint32_t setIndex, const DescriptorSetD3D11* descriptorSet, const DescriptorD3D11* descriptor, uint32_t bufferOffset) const {
     bool isGraphics = bindPoint == BindPoint::GRAPHICS;
     const BindingSet& bindingSet = m_BindingSets[setIndex];
     bool isStorageRebindNeededInGraphics = false;
@@ -217,22 +195,21 @@ void PipelineLayoutD3D11::SetDescriptorSet(BindPoint bindPoint, BindingState& cu
 
     uint32_t* rootConstantNum = (uint32_t*)ptr;
 
-    for (uint32_t j = bindingSet.startRangeOfDynamicConstantBuffers; j < bindingSet.endRange; j++) {
+    for (uint32_t j = bindingSet.startRange; j < bindingSet.endRange; j++) {
         const BindingRange& bindingRange = m_BindingRanges[j];
 
         uint32_t hasNonZeroOffset = 0;
         uint32_t descriptorIndex = bindingRange.descriptorOffset;
 
         for (uint32_t i = 0; i < bindingRange.descriptorNum; i++) {
-            descriptor = descriptorSet ? descriptorSet->GetDescriptor(descriptorIndex++) : descriptor;
+            if (descriptorSet)
+                descriptor = descriptorSet->GetDescriptor(descriptorIndex++);
 
             if (descriptor) {
                 descriptors[i] = *descriptor;
 
-                if (bindingRange.descriptorType >= DescriptorTypeDX11::CONSTANT) {
-                    uint32_t offset = descriptor->GetElementOffset();
-                    if (bindingRange.descriptorType == DescriptorTypeDX11::DYNAMIC_CONSTANT)
-                        offset += (*dynamicConstantBufferOffsets++) >> 4; // TODO: can easily go out of bounds...
+                if (bindingRange.descriptorType == DescriptorTypeDX11::CONSTANT) {
+                    uint32_t offset = descriptor->GetElementOffset() + (bufferOffset >> 4);
                     hasNonZeroOffset |= offset;
 
                     constantFirst[i] = offset;
@@ -248,8 +225,11 @@ void PipelineLayoutD3D11::SetDescriptorSet(BindPoint bindPoint, BindingState& cu
             }
         }
 
-        if (bindingRange.descriptorType >= DescriptorTypeDX11::CONSTANT) {
+        if (bindingRange.descriptorType == DescriptorTypeDX11::CONSTANT) {
             if (hasNonZeroOffset) {
+                if (m_Device.GetVersion() < 1)
+                    REPORT_ERROR(&m_Device, "Constant buffers with non-zero offsets require 11.1+ feature level");
+
                 if (isGraphics) {
                     SET_CONSTANT_BUFFERS1(VS, StageBits::VERTEX_SHADER);
                     SET_CONSTANT_BUFFERS1(HS, StageBits::TESS_CONTROL_SHADER);

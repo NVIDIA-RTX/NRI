@@ -35,15 +35,11 @@ Result PipelineLayoutVK::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
 
     // Binding info
     size_t rangeNum = 0;
-    size_t dynamicConstantBufferNum = 0;
-    for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++) {
+    for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++)
         rangeNum += pipelineLayoutDesc.descriptorSets[i].rangeNum;
-        dynamicConstantBufferNum += pipelineLayoutDesc.descriptorSets[i].dynamicConstantBufferNum;
-    }
 
     m_BindingInfo.sets.insert(m_BindingInfo.sets.begin(), pipelineLayoutDesc.descriptorSets, pipelineLayoutDesc.descriptorSets + pipelineLayoutDesc.descriptorSetNum);
     m_BindingInfo.ranges.reserve(rangeNum);
-    m_BindingInfo.dynamicConstantBuffers.reserve(dynamicConstantBufferNum);
     m_BindingInfo.pushConstants.reserve(pipelineLayoutDesc.rootConstantNum);
     m_BindingInfo.pushDescriptors.reserve(pipelineLayoutDesc.rootDescriptorNum + pipelineLayoutDesc.rootSamplerNum);
     m_BindingInfo.rootRegisterSpace = pipelineLayoutDesc.rootRegisterSpace;
@@ -64,17 +60,11 @@ Result PipelineLayoutVK::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
 
         // Binding info
         m_BindingInfo.sets[i].ranges = m_BindingInfo.ranges.data() + m_BindingInfo.ranges.size();
-        m_BindingInfo.sets[i].dynamicConstantBuffers = m_BindingInfo.dynamicConstantBuffers.data() + m_BindingInfo.dynamicConstantBuffers.size();
         m_BindingInfo.ranges.insert(m_BindingInfo.ranges.end(), descriptorSetDesc.ranges, descriptorSetDesc.ranges + descriptorSetDesc.rangeNum);
-        m_BindingInfo.dynamicConstantBuffers.insert(m_BindingInfo.dynamicConstantBuffers.end(), descriptorSetDesc.dynamicConstantBuffers, descriptorSetDesc.dynamicConstantBuffers + descriptorSetDesc.dynamicConstantBufferNum);
 
         DescriptorRangeDesc* ranges = (DescriptorRangeDesc*)m_BindingInfo.sets[i].ranges;
         for (uint32_t j = 0; j < descriptorSetDesc.rangeNum; j++)
             ranges[j].baseRegisterIndex += bindingOffsets[(uint32_t)descriptorSetDesc.ranges[j].descriptorType];
-
-        DynamicConstantBufferDesc* dynamicConstantBuffers = (DynamicConstantBufferDesc*)m_BindingInfo.sets[i].dynamicConstantBuffers;
-        for (uint32_t j = 0; j < descriptorSetDesc.dynamicConstantBufferNum; j++)
-            dynamicConstantBuffers[j].registerIndex += bindingOffsets[(uint32_t)DescriptorType::CONSTANT_BUFFER];
     }
 
     // Root constants
@@ -198,8 +188,7 @@ void PipelineLayoutVK::CreateSetLayout(VkDescriptorSetLayout* setLayout, const D
     bindingOffsets[(size_t)DescriptorType::ACCELERATION_STRUCTURE] = vkBindingOffsets.textureOffset;
 
     // Count
-    uint32_t bindingMaxNum = descriptorSetDesc.dynamicConstantBufferNum;
-    bindingMaxNum += rootSamplerNum;
+    uint32_t bindingMaxNum = rootSamplerNum;
     for (uint32_t i = 0; i < descriptorSetDesc.rangeNum; i++) {
         const DescriptorRangeDesc& range = descriptorSetDesc.ranges[i];
         bool isArray = range.flags & (DescriptorRangeBits::ARRAY | DescriptorRangeBits::VARIABLE_SIZED_ARRAY);
@@ -247,20 +236,6 @@ void PipelineLayoutVK::CreateSetLayout(VkDescriptorSetLayout* setLayout, const D
             binding.binding = baseBindingIndex + j;
             binding.descriptorCount = isArray ? range.descriptorNum : 1;
         }
-    }
-
-    // Add dynamic constant buffers
-    for (uint32_t i = 0; i < descriptorSetDesc.dynamicConstantBufferNum; i++) {
-        const DynamicConstantBufferDesc& buffer = descriptorSetDesc.dynamicConstantBuffers[i];
-
-        *bindingFlags++ = 0;
-
-        VkDescriptorSetLayoutBinding& binding = *bindings++;
-        binding = {};
-        binding.binding = buffer.registerIndex + bindingOffsets[(uint32_t)DescriptorType::CONSTANT_BUFFER];
-        binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        binding.descriptorCount = 1;
-        binding.stageFlags = GetShaderStageFlags(buffer.shaderStages);
     }
 
     // Add root samplers

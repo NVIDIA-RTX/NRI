@@ -555,9 +555,6 @@ static void NRI_CALL Wait(Fence&, uint64_t) {
 static void NRI_CALL UpdateDescriptorRanges(DescriptorSet&, uint32_t, uint32_t, const DescriptorRangeUpdateDesc*) {
 }
 
-static void NRI_CALL UpdateDynamicConstantBuffers(DescriptorSet&, uint32_t, uint32_t, const Descriptor* const*) {
-}
-
 static void NRI_CALL CopyDescriptorSet(DescriptorSet&, const CopyDescriptorSetDesc&) {
 }
 
@@ -697,7 +694,6 @@ Result DeviceNONE::FillFunctionTable(CoreInterface& table) const {
     table.Wait = ::Wait;
     table.GetFenceValue = ::GetFenceValue;
     table.UpdateDescriptorRanges = ::UpdateDescriptorRanges;
-    table.UpdateDynamicConstantBuffers = ::UpdateDynamicConstantBuffers;
     table.CopyDescriptorSet = ::CopyDescriptorSet;
     table.AllocateDescriptorSets = ::AllocateDescriptorSets;
     table.ResetDescriptorPool = ::ResetDescriptorPool;

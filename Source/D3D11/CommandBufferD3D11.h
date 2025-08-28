@@ -99,15 +99,12 @@ private:
     ID3D11DepthStencilView* m_DepthStencil = nullptr;
     PipelineLayoutD3D11* m_PipelineLayout = nullptr;
     PipelineD3D11* m_Pipeline = nullptr;
-    const Buffer* m_IndexBuffer = nullptr;
     BindingState m_BindingState;
     SamplePositionsState m_SamplePositionsState = {};
-    uint64_t m_IndexBufferOffset = 0;
     Color32f m_BlendFactor = {};
     float m_DepthBounds[2] = {0.0f, 1.0f};
     uint32_t m_RenderTargetNum = 0;
     BindPoint m_PipelineBindPoint = BindPoint::INHERIT;
-    IndexType m_IndexType = IndexType::UINT32;
     uint8_t m_StencilRef = 0;
     uint8_t m_Version = 0;
     bool m_IsShadingRateLookupTableSet = false;

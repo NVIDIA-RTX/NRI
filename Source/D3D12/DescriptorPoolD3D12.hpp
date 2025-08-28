@@ -31,7 +31,6 @@ Result DescriptorPoolD3D12::Create(const DescriptorPoolDesc& descriptorPoolDesc)
         }
     }
 
-    m_DynamicConstantBuffers.resize(descriptorPoolDesc.dynamicConstantBufferMaxNum);
     m_DescriptorSets.resize(descriptorPoolDesc.descriptorSetMaxNum);
 
     return Result::SUCCESS;
@@ -62,7 +61,6 @@ Result DescriptorPoolD3D12::Create(const DescriptorPoolD3D12Desc& descriptorPool
         }
     }
 
-    m_DynamicConstantBuffers.resize(descriptorPoolD3D12Desc.dynamicConstantBufferMaxNum);
     m_DescriptorSets.resize(descriptorPoolD3D12Desc.descriptorSetMaxNum);
 
     return Result::SUCCESS;
@@ -99,17 +97,9 @@ NRI_INLINE Result DescriptorPoolD3D12::AllocateDescriptorSets(const PipelineLayo
 
     const PipelineLayoutD3D12& pipelineLayoutD3D12 = (PipelineLayoutD3D12&)pipelineLayout;
     const DescriptorSetMapping& descriptorSetMapping = pipelineLayoutD3D12.GetDescriptorSetMapping(setIndex);
-    const DynamicConstantBufferMapping& dynamicConstantBufferMapping = pipelineLayoutD3D12.GetDynamicConstantBufferMapping(setIndex);
 
     // Since there is no "free" functionality allocation strategy is "linear grow"
     for (uint32_t i = 0; i < instanceNum; i++) {
-        // Dynamic constant buffers
-        DescriptorPointerGPU* dynamicConstantBuffers = nullptr;
-        if (dynamicConstantBufferMapping.rootConstantNum) {
-            dynamicConstantBuffers = &m_DynamicConstantBuffers[m_DynamicConstantBufferNum];
-            m_DynamicConstantBufferNum += dynamicConstantBufferMapping.rootConstantNum;
-        }
-
         // Heap offsets
         std::array<uint32_t, DescriptorHeapType::MAX_NUM> heapOffsets = {};
         for (uint32_t h = 0; h < heapOffsets.size(); h++) {
@@ -124,7 +114,7 @@ NRI_INLINE Result DescriptorPoolD3D12::AllocateDescriptorSets(const PipelineLayo
 
         // Create descriptor set
         DescriptorSetD3D12* descriptorSet = &m_DescriptorSets[m_DescriptorSetNum++];
-        descriptorSet->Create(this, &descriptorSetMapping, dynamicConstantBuffers, heapOffsets);
+        descriptorSet->Create(this, &descriptorSetMapping, heapOffsets);
 
         descriptorSets[i] = (DescriptorSet*)descriptorSet;
     }
@@ -139,5 +129,4 @@ NRI_INLINE void DescriptorPoolD3D12::Reset() {
         descriptorHeapDesc.num = 0;
 
     m_DescriptorSetNum = 0;
-    m_DynamicConstantBufferNum = 0;
 }

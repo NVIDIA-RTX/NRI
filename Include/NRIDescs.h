@@ -823,8 +823,6 @@ Pipeline layout example:
         Descriptor range                #1
             Descriptor                      #0
             Descriptor                      #1
-        Dynamic constant buffer         #0      // "baseDynamicConstantBuffer" - an offset in "dynamicConstantBuffers" in the currently bound pipeline layout for the provided descriptor set
-        Dynamic constant buffer         #1
 
     Descriptor set                  #1
         Descriptor range                #0
@@ -840,7 +838,6 @@ Pipeline layout example:
             Descriptor                      #1
         Descriptor range                #2
             Descriptor                      #0
-        Dynamic constant buffer         #0
 
     RootConstantDesc                #0          // "rootConstantIndex" - an index in "rootConstants" in the currently bound pipeline layout
 
@@ -905,19 +902,11 @@ NriStruct(DescriptorRangeDesc) {
     Nri(DescriptorRangeBits) flags;
 };
 
-// "DescriptorSet" consists of "DescriptorRange" entities and dynamic constant buffers.
-// A dynamic constant buffer allows to dynamically specify an offset in the buffer via "CmdSetDescriptorSet" call
-NriStruct(DynamicConstantBufferDesc) {
-    uint32_t registerIndex;
-    Nri(StageBits) shaderStages;
-};
-
+// "DescriptorSet" consists of "DescriptorRange" entities
 NriStruct(DescriptorSetDesc) {
     uint32_t registerSpace;             // must be unique, avoid big gaps
     const NriPtr(DescriptorRangeDesc) ranges;
     uint32_t rangeNum;
-    const NriPtr(DynamicConstantBufferDesc) dynamicConstantBuffers;
-    uint32_t dynamicConstantBufferNum;
     Nri(DescriptorSetBits) flags;
 };
 
@@ -965,7 +954,6 @@ NriStruct(DescriptorPoolDesc) {
     uint32_t descriptorSetMaxNum;
     uint32_t samplerMaxNum;             // excluding root samplers
     uint32_t constantBufferMaxNum;
-    uint32_t dynamicConstantBufferMaxNum;
     uint32_t textureMaxNum;
     uint32_t storageTextureMaxNum;
     uint32_t bufferMaxNum;
@@ -988,30 +976,27 @@ NriStruct(CopyDescriptorSetDesc) {
     uint32_t srcBaseRange;
     uint32_t dstBaseRange;
     uint32_t rangeNum;
-    uint32_t srcBaseDynamicConstantBuffer;
-    uint32_t dstBaseDynamicConstantBuffer;
-    uint32_t dynamicConstantBufferNum;
 };
 
 // Binding
 NriStruct(SetDescriptorSetDesc) {
     uint32_t setIndex;
     const NriPtr(DescriptorSet) descriptorSet;
-    NriOptional const uint32_t* dynamicConstantBufferOffsets; // expects dynamic constant buffer offsets as in the currently bound pipeline layout
     NriOptional Nri(BindPoint) bindPoint;
 };
 
-NriStruct(SetRootConstantsDesc) { // requires "pipelineLayoutRootConstantMaxSize > 0"
+NriStruct(SetRootConstantsDesc) {  // requires "pipelineLayoutRootConstantMaxSize > 0"
     uint32_t rootConstantIndex;
     const void* data;
     uint32_t size;
-    NriOptional uint32_t offset; // D3D11: partial updates are not supported
+    uint32_t offset;               // requires "features.rootConstantsOffset"
     NriOptional Nri(BindPoint) bindPoint;
 };
 
 NriStruct(SetRootDescriptorDesc) { // requires "pipelineLayoutRootDescriptorMaxNum > 0"
     uint32_t rootDescriptorIndex;
     NriPtr(Descriptor) descriptor;
+    uint32_t offset;               // a non-"CONSTANT_BUFFER" descriptor requires "features.nonConstantBufferRootDescriptorOffset"
     NriOptional Nri(BindPoint) bindPoint;
 };
 
@@ -1886,6 +1871,8 @@ NriStruct(DeviceDesc) {
         uint32_t waitableSwapChain                               : 1; // see "SwapChainDesc::waitable"
         uint32_t resizableSwapChain                              : 1; // swap chain can be resized without triggering an "OUT_OF_DATE" error
         uint32_t pipelineStatistics                              : 1; // see "QueryType::PIPELINE_STATISTICS"
+        uint32_t rootConstantsOffset                             : 1; // see "SetRootConstantsDesc" (unsupported only in D3D11)
+        uint32_t nonConstantBufferRootDescriptorOffset           : 1; // see "SetRootDescriptorDesc" (unsupported only in D3D11)
     } features;
 
     // Shader features

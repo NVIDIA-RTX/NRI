@@ -19,11 +19,11 @@ struct DescriptorD3D12 final : public DebugNameBase {
         return m_Resource;
     }
 
-    inline DescriptorPointerCPU GetPointerCPU() const {
+    inline DescriptorPointerCPU GetDescriptorPointerCPU() const {
         return m_DescriptorPointerCPU;
     }
 
-    inline D3D12_GPU_VIRTUAL_ADDRESS GetPointerGPU() const {
+    inline D3D12_GPU_VIRTUAL_ADDRESS GetGPUVA() const {
         return m_BufferLocation;
     }
 
