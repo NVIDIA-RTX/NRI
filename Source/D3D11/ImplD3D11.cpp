@@ -219,12 +219,20 @@ static Result NRI_CALL AllocateMemory(Device& device, const AllocateMemoryDesc& 
     return ((DeviceD3D11&)device).CreateImplementation<MemoryD3D11>(memory, allocateMemoryDesc);
 }
 
-static Result NRI_CALL BindBufferMemory(Device& device, const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum) {
-    return ((DeviceD3D11&)device).BindBufferMemory(bindBufferMemoryDescs, bindBufferMemoryDescNum);
+static Result NRI_CALL BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum) {
+    if (!bindBufferMemoryDescNum)
+        return Result::SUCCESS;
+
+    DeviceD3D11& deviceD3D11 = ((BufferD3D11*)bindBufferMemoryDescs->buffer)->GetDevice();
+    return deviceD3D11.BindBufferMemory(bindBufferMemoryDescs, bindBufferMemoryDescNum);
 }
 
-static Result NRI_CALL BindTextureMemory(Device& device, const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum) {
-    return ((DeviceD3D11&)device).BindTextureMemory(bindTextureMemoryDescs, bindTextureMemoryDescNum);
+static Result NRI_CALL BindTextureMemory(const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum) {
+    if (!bindTextureMemoryDescNum)
+        return Result::SUCCESS;
+
+    DeviceD3D11& deviceD3D11 = ((TextureD3D11*)bindTextureMemoryDescs->texture)->GetDevice();
+    return deviceD3D11.BindTextureMemory(bindTextureMemoryDescs, bindTextureMemoryDescNum);
 }
 
 static void NRI_CALL FreeMemory(Memory* memory) {
@@ -443,8 +451,9 @@ static void NRI_CALL UpdateDescriptorRanges(DescriptorSet& descriptorSet, uint32
     ((DescriptorSetD3D11&)descriptorSet).UpdateDescriptorRanges(baseRange, rangeNum, rangeUpdateDescs);
 }
 
-static void NRI_CALL CopyDescriptorSet(DescriptorSet& descriptorSet, const CopyDescriptorSetDesc& copyDescriptorSetDesc) {
-    ((DescriptorSetD3D11&)descriptorSet).Copy(copyDescriptorSetDesc);
+static void NRI_CALL CopyDescriptorSets(const CopyDescriptorSetDesc* copyDescriptorSetDescs, uint32_t copyDescriptorSetDescNum) {
+    for (uint32_t i = 0; i < copyDescriptorSetDescNum; i++)
+        DescriptorSetD3D11::Copy(copyDescriptorSetDescs[i]);
 }
 
 static Result NRI_CALL AllocateDescriptorSets(DescriptorPool& descriptorPool, const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum) {
@@ -747,7 +756,7 @@ Result DeviceD3D11::FillFunctionTable(CoreInterface& table) const {
     table.Wait = ::Wait;
     table.GetFenceValue = ::GetFenceValue;
     table.UpdateDescriptorRanges = ::UpdateDescriptorRanges;
-    table.CopyDescriptorSet = ::CopyDescriptorSet;
+    table.CopyDescriptorSets = ::CopyDescriptorSets;
     table.AllocateDescriptorSets = ::AllocateDescriptorSets;
     table.ResetDescriptorPool = ::ResetDescriptorPool;
     table.ResetCommandAllocator = ::ResetCommandAllocator;

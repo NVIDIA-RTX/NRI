@@ -37,23 +37,3 @@ NRI_INLINE void DescriptorSetVal::UpdateDescriptorRanges(uint32_t rangeOffset, u
 
     GetCoreInterfaceImpl().UpdateDescriptorRanges(*GetImpl(), rangeOffset, rangeNum, rangeUpdateDescsImpl);
 }
-
-NRI_INLINE void DescriptorSetVal::Copy(const CopyDescriptorSetDesc& copyDescriptorSetDesc) {
-    RETURN_ON_FAILURE(&m_Device, copyDescriptorSetDesc.srcDescriptorSet != nullptr, ReturnVoid(), "'srcDescriptorSet' is NULL");
-
-    DescriptorSetVal& srcDescriptorSetVal = *(DescriptorSetVal*)copyDescriptorSetDesc.srcDescriptorSet;
-    const DescriptorSetDesc& srcDesc = srcDescriptorSetVal.GetDesc();
-
-    bool srcRangeValid = copyDescriptorSetDesc.srcBaseRange + copyDescriptorSetDesc.rangeNum < srcDesc.rangeNum;
-    srcRangeValid = srcRangeValid && (copyDescriptorSetDesc.srcBaseRange < srcDesc.rangeNum);
-    RETURN_ON_FAILURE(&m_Device, srcRangeValid, ReturnVoid(), "source range is invalid");
-
-    bool dstRangeValid = copyDescriptorSetDesc.dstBaseRange + copyDescriptorSetDesc.rangeNum < GetDesc().rangeNum;
-    dstRangeValid = dstRangeValid && (copyDescriptorSetDesc.dstBaseRange < GetDesc().rangeNum);
-    RETURN_ON_FAILURE(&m_Device, dstRangeValid, ReturnVoid(), "destination range is invalid");
-
-    auto descriptorSetCopyDescImpl = copyDescriptorSetDesc;
-    descriptorSetCopyDescImpl.srcDescriptorSet = NRI_GET_IMPL(DescriptorSet, copyDescriptorSetDesc.srcDescriptorSet);
-
-    GetCoreInterfaceImpl().CopyDescriptorSet(*GetImpl(), descriptorSetCopyDescImpl);
-}

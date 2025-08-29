@@ -166,7 +166,7 @@ Result HelperDataUpload::Create(const TextureUploadDesc* textureUploadDescs, uin
 
         BindBufferMemoryDesc bufferMemoryBindingDesc = {m_UploadBuffer, m_UploadBufferMemory, 0};
 
-        result = m_iCore.BindBufferMemory(m_Device, &bufferMemoryBindingDesc, 1);
+        result = m_iCore.BindBufferMemory(&bufferMemoryBindingDesc, 1);
         if (result != Result::SUCCESS)
             return result;
     }
@@ -458,11 +458,11 @@ Result HelperDeviceMemoryAllocator::TryToAllocateAndBindMemory(const ResourceGro
     if (result != Result::SUCCESS)
         return result;
 
-    result = m_iCore.BindBufferMemory(m_Device, m_BufferBindingDescs.data(), (uint32_t)m_BufferBindingDescs.size());
+    result = m_iCore.BindBufferMemory( m_BufferBindingDescs.data(), (uint32_t)m_BufferBindingDescs.size());
     if (result != Result::SUCCESS)
         return result;
 
-    result = m_iCore.BindTextureMemory(m_Device, m_TextureBindingDescs.data(), (uint32_t)m_TextureBindingDescs.size());
+    result = m_iCore.BindTextureMemory(m_TextureBindingDescs.data(), (uint32_t)m_TextureBindingDescs.size());
 
     return result;
 }

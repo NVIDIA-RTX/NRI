@@ -180,6 +180,7 @@ struct DeviceVal final : public DeviceBase {
     void DestroyAccelerationStructure(AccelerationStructure* accelerationStructure);
 
     void FreeMemory(Memory* memory);
+    void CopyDescriptorSets(const CopyDescriptorSetDesc* copyDescriptorSetDescs, uint32_t copyDescriptorSetDescNum);
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
     Result WaitIdle();
     Result BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum);

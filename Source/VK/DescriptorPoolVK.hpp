@@ -65,7 +65,7 @@ NRI_INLINE Result DescriptorPoolVK::AllocateDescriptorSets(const PipelineLayout&
 
     bool hasVariableDescriptorNum = false;
     for (uint32_t i = 0; i < descriptorSetDesc->rangeNum; i++) {
-        if (m_Device.m_IsSupported.descriptorIndexing && (descriptorSetDesc->ranges[i].flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY)) {
+        if (descriptorSetDesc->ranges[i].flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY) {
             hasVariableDescriptorNum = true;
             break;
         }

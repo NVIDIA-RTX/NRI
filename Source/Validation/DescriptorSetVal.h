@@ -27,7 +27,6 @@ struct DescriptorSetVal final : public ObjectVal {
     //================================================================================================================
 
     void UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs);
-    void Copy(const CopyDescriptorSetDesc& copyDescriptorSetDesc);
 
 private:
     const DescriptorSetDesc* m_Desc = nullptr; // .natvis

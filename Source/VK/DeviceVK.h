@@ -7,7 +7,6 @@ namespace nri {
 struct QueueVK;
 
 struct IsSupported {
-    uint32_t descriptorIndexing     : 1;
     uint32_t deviceAddress          : 1;
     uint32_t swapChainMutableFormat : 1;
     uint32_t presentId              : 1;
@@ -134,6 +133,7 @@ struct DeviceVK final : public DeviceBase {
     // NRI
     //================================================================================================================
 
+    void CopyDescriptorSets(const CopyDescriptorSetDesc* copyDescriptorSetDescs, uint32_t copyDescriptorSetDescNum);
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
     Result WaitIdle();
     Result BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum);

@@ -8,7 +8,6 @@ void DescriptorSetD3D11::Create(const PipelineLayoutD3D11* pipelineLayout, const
 
 NRI_INLINE void DescriptorSetD3D11::UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs) {
     rangeOffset += m_BindingSet->startRange;
-    CHECK(rangeOffset + rangeNum <= m_BindingSet->endRange, "Out of bounds");
 
     for (uint32_t i = 0; i < rangeNum; i++) {
         const DescriptorRangeUpdateDesc& range = rangeUpdateDescs[i];
@@ -25,20 +24,19 @@ NRI_INLINE void DescriptorSetD3D11::UpdateDescriptorRanges(uint32_t rangeOffset,
 }
 
 NRI_INLINE void DescriptorSetD3D11::Copy(const CopyDescriptorSetDesc& copyDescriptorSetDesc) {
-    DescriptorSetD3D11& srcSet = (DescriptorSetD3D11&)copyDescriptorSetDesc.srcDescriptorSet;
+    DescriptorSetD3D11& dstDescriptorSetD3D11 = *(DescriptorSetD3D11*)copyDescriptorSetDesc.dstDescriptorSet;
+    DescriptorSetD3D11& srcDescriptorSetD3D11 = *(DescriptorSetD3D11*)copyDescriptorSetDesc.srcDescriptorSet;
 
-    uint32_t dstBaseRange = m_BindingSet->startRange + copyDescriptorSetDesc.dstBaseRange;
-    uint32_t srcBaseRange = srcSet.m_BindingSet->startRange + copyDescriptorSetDesc.srcBaseRange;
-    CHECK(dstBaseRange + copyDescriptorSetDesc.rangeNum <= m_BindingSet->endRange, "Out of bounds");
-    CHECK(srcBaseRange + copyDescriptorSetDesc.rangeNum <= srcSet.m_BindingSet->endRange, "Out of bounds");
+    uint32_t dstBaseRange = dstDescriptorSetD3D11.m_BindingSet->startRange + copyDescriptorSetDesc.dstBaseRange;
+    uint32_t srcBaseRange = srcDescriptorSetD3D11.m_BindingSet->startRange + copyDescriptorSetDesc.srcBaseRange;
 
     for (uint32_t i = 0; i < copyDescriptorSetDesc.rangeNum; i++) {
-        const BindingRange& dst = m_PipelineLayout->GetBindingRange(dstBaseRange + i);
-        const DescriptorD3D11** dstDescriptors = m_Descriptors + dst.descriptorOffset;
+        const BindingRange& dstRange = dstDescriptorSetD3D11.m_PipelineLayout->GetBindingRange(dstBaseRange + i);
+        const DescriptorD3D11** dstDescriptors = dstDescriptorSetD3D11.m_Descriptors + dstRange.descriptorOffset;
 
-        const BindingRange& src = m_PipelineLayout->GetBindingRange(srcBaseRange + i);
-        const DescriptorD3D11** srcDescriptors = srcSet.m_Descriptors + src.descriptorOffset;
+        const BindingRange& srcRange = srcDescriptorSetD3D11.m_PipelineLayout->GetBindingRange(srcBaseRange + i);
+        const DescriptorD3D11** srcDescriptors = srcDescriptorSetD3D11.m_Descriptors + srcRange.descriptorOffset;
 
-        memcpy(dstDescriptors, srcDescriptors, dst.descriptorNum * sizeof(DescriptorD3D11*));
+        memcpy(dstDescriptors, srcDescriptors, srcRange.descriptorNum * sizeof(DescriptorD3D11*));
     }
 }

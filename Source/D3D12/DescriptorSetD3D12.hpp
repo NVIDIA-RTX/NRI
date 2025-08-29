@@ -15,7 +15,7 @@ DescriptorPointerCPU DescriptorSetD3D12::GetDescriptorPointerCPU(uint32_t rangeI
 
     uint32_t heapOffset = m_HeapOffsets[rangeMapping.descriptorHeapType];
     uint32_t offset = rangeMapping.heapOffset + heapOffset + rangeOffset;
-    
+
     DescriptorPointerCPU descriptorPointerCPU = m_DescriptorPoolD3D12->GetDescriptorPointerCPU(rangeMapping.descriptorHeapType, offset);
 
     return descriptorPointerCPU;
@@ -49,14 +49,15 @@ NRI_INLINE void DescriptorSetD3D12::UpdateDescriptorRanges(uint32_t rangeOffset,
 }
 
 NRI_INLINE void DescriptorSetD3D12::Copy(const CopyDescriptorSetDesc& copyDescriptorSetDesc) {
-    const DescriptorSetD3D12* srcDescriptorSet = (DescriptorSetD3D12*)copyDescriptorSetDesc.srcDescriptorSet;
+    DescriptorSetD3D12& dstDescriptorSetD3D12 = *(DescriptorSetD3D12*)copyDescriptorSetDesc.dstDescriptorSet;
+    const DescriptorSetD3D12& srcDescriptorSetD3D12 = *(DescriptorSetD3D12*)copyDescriptorSetDesc.srcDescriptorSet;
 
     for (uint32_t i = 0; i < copyDescriptorSetDesc.rangeNum; i++) {
-        const DescriptorRangeMapping& rangeMapping = m_DescriptorSetMapping->descriptorRangeMappings[i];
+        const DescriptorRangeMapping& rangeMapping = dstDescriptorSetD3D12.m_DescriptorSetMapping->descriptorRangeMappings[i];
 
-        DescriptorPointerCPU dstPointer = GetDescriptorPointerCPU(copyDescriptorSetDesc.dstBaseRange + i, 0);
-        DescriptorPointerCPU srcPointer = srcDescriptorSet->GetDescriptorPointerCPU(copyDescriptorSetDesc.srcBaseRange + i, 0);
+        DescriptorPointerCPU dstPointer = dstDescriptorSetD3D12.GetDescriptorPointerCPU(copyDescriptorSetDesc.dstBaseRange + i, 0);
+        DescriptorPointerCPU srcPointer = srcDescriptorSetD3D12.GetDescriptorPointerCPU(copyDescriptorSetDesc.srcBaseRange + i, 0);
 
-        GetDevice()->CopyDescriptorsSimple(rangeMapping.descriptorNum, {dstPointer}, {srcPointer}, (D3D12_DESCRIPTOR_HEAP_TYPE)rangeMapping.descriptorHeapType);
+        dstDescriptorSetD3D12.GetDevice()->CopyDescriptorsSimple(rangeMapping.descriptorNum, {dstPointer}, {srcPointer}, (D3D12_DESCRIPTOR_HEAP_TYPE)rangeMapping.descriptorHeapType);
     }
 }

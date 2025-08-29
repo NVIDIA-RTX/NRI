@@ -386,11 +386,11 @@ static Result NRI_CALL AllocateMemory(Device&, const AllocateMemoryDesc&, Memory
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL BindBufferMemory(Device&, const BindBufferMemoryDesc*, uint32_t) {
+static Result NRI_CALL BindBufferMemory(const BindBufferMemoryDesc*, uint32_t) {
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL BindTextureMemory(Device&, const BindTextureMemoryDesc*, uint32_t) {
+static Result NRI_CALL BindTextureMemory(const BindTextureMemoryDesc*, uint32_t) {
     return Result::SUCCESS;
 }
 
@@ -555,7 +555,7 @@ static void NRI_CALL Wait(Fence&, uint64_t) {
 static void NRI_CALL UpdateDescriptorRanges(DescriptorSet&, uint32_t, uint32_t, const DescriptorRangeUpdateDesc*) {
 }
 
-static void NRI_CALL CopyDescriptorSet(DescriptorSet&, const CopyDescriptorSetDesc&) {
+static void NRI_CALL CopyDescriptorSets(const CopyDescriptorSetDesc*, uint32_t) {
 }
 
 static Result NRI_CALL AllocateDescriptorSets(DescriptorPool&, const PipelineLayout&, uint32_t, DescriptorSet**, uint32_t, uint32_t) {
@@ -694,7 +694,7 @@ Result DeviceNONE::FillFunctionTable(CoreInterface& table) const {
     table.Wait = ::Wait;
     table.GetFenceValue = ::GetFenceValue;
     table.UpdateDescriptorRanges = ::UpdateDescriptorRanges;
-    table.CopyDescriptorSet = ::CopyDescriptorSet;
+    table.CopyDescriptorSets = ::CopyDescriptorSets;
     table.AllocateDescriptorSets = ::AllocateDescriptorSets;
     table.ResetDescriptorPool = ::ResetDescriptorPool;
     table.ResetCommandAllocator = ::ResetCommandAllocator;
@@ -889,7 +889,7 @@ static void NRI_CALL GetAccelerationStructureMemoryDesc(const AccelerationStruct
 static void NRI_CALL GetAccelerationStructureMemoryDesc2(const Device&, const AccelerationStructureDesc&, MemoryLocation, MemoryDesc&) {
 }
 
-static Result NRI_CALL BindAccelerationStructureMemory(Device&, const BindAccelerationStructureMemoryDesc*, uint32_t) {
+static Result NRI_CALL BindAccelerationStructureMemory(const BindAccelerationStructureMemoryDesc*, uint32_t) {
     return Result::SUCCESS;
 }
 
@@ -899,7 +899,7 @@ static void NRI_CALL GetMicromapMemoryDesc(const Micromap&, MemoryLocation, Memo
 static void NRI_CALL GetMicromapMemoryDesc2(const Device&, const MicromapDesc&, MemoryLocation, MemoryDesc&) {
 }
 
-static Result NRI_CALL BindMicromapMemory(Device&, const BindMicromapMemoryDesc*, uint32_t) {
+static Result NRI_CALL BindMicromapMemory(const BindMicromapMemoryDesc*, uint32_t) {
     return Result::SUCCESS;
 }
 

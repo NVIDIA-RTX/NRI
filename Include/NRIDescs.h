@@ -972,6 +972,7 @@ NriStruct(DescriptorRangeUpdateDesc) {
 };
 
 NriStruct(CopyDescriptorSetDesc) {
+    NriPtr(DescriptorSet) dstDescriptorSet;
     const NriPtr(DescriptorSet) srcDescriptorSet;
     uint32_t srcBaseRange;
     uint32_t dstBaseRange;

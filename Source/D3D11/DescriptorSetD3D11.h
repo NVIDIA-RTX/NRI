@@ -20,7 +20,7 @@ struct DescriptorSetD3D11 final : public DebugNameBase {
     //================================================================================================================
 
     void UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs);
-    void Copy(const CopyDescriptorSetDesc& copyDescriptorSetDesc);
+    static void Copy(const CopyDescriptorSetDesc& copyDescriptorSetDesc);
 
 private:
     const PipelineLayoutD3D11* m_PipelineLayout = nullptr;

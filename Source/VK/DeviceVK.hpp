@@ -785,7 +785,6 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
     m_VK.GetPhysicalDeviceFeatures2(m_PhysicalDevice, &features);
 
-    m_IsSupported.descriptorIndexing = features12.descriptorIndexing;
     m_IsSupported.deviceAddress = features12.bufferDeviceAddress;
     m_IsSupported.swapChainMutableFormat = IsExtensionSupported(VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME, desiredDeviceExts);
     m_IsSupported.presentId = presentIdFeatures.presentId;
@@ -1225,7 +1224,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
             m_Desc.features.additionalShadingRates = shadingRateProps.maxFragmentSize.height > 2 || shadingRateProps.maxFragmentSize.width > 2;
         }
 
-        m_Desc.tiers.bindless = m_IsSupported.descriptorIndexing ? 1 : 0;
+        m_Desc.tiers.bindless = features12.descriptorIndexing ? 1 : 0;
         m_Desc.tiers.resourceBinding = 2; // TODO: seems to be the best match
         m_Desc.tiers.memory = 1;          // TODO: seems to be the best match
 
@@ -2099,12 +2098,38 @@ NRI_INLINE Result DeviceVK::WaitIdle() {
     return Result::SUCCESS;
 }
 
+NRI_INLINE void DeviceVK::CopyDescriptorSets(const CopyDescriptorSetDesc* copyDescriptorSetDescs, uint32_t copyDescriptorSetDescNum) {
+    uint32_t copyNum = 0;
+    uint32_t n = 0;
+    for (uint32_t i = 0; i < copyDescriptorSetDescNum; i++)
+        copyNum += copyDescriptorSetDescs[i].rangeNum;
+
+    Scratch<VkCopyDescriptorSet> copies = AllocateScratch(*this, VkCopyDescriptorSet, copyNum);
+    for (uint32_t i = 0; i < copyDescriptorSetDescNum; i++) {
+        const CopyDescriptorSetDesc& copyDescriptorSetDesc = copyDescriptorSetDescs[i];
+
+        const DescriptorSetVK& dstDescriptorSetVK = *(DescriptorSetVK*)copyDescriptorSetDesc.dstDescriptorSet;
+        const DescriptorSetVK& srcDescriptorSetVK = *(DescriptorSetVK*)copyDescriptorSetDesc.srcDescriptorSet;
+
+        for (uint32_t j = 0; j < copyDescriptorSetDesc.rangeNum; j++) {
+            const DescriptorRangeDesc& srcRangeDesc = srcDescriptorSetVK.GetDesc()->ranges[copyDescriptorSetDesc.srcBaseRange + j];
+            const DescriptorRangeDesc& dstRangeDesc = dstDescriptorSetVK.GetDesc()->ranges[copyDescriptorSetDesc.dstBaseRange + j];
+
+            VkCopyDescriptorSet& copy = copies[n++];
+            copy = {VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET}; // TODO: no "array element", since there is no "baseDescriptor"
+            copy.srcSet = srcDescriptorSetVK.GetHandle();
+            copy.dstSet = dstDescriptorSetVK.GetHandle();
+            copy.srcBinding = srcRangeDesc.baseRegisterIndex;
+            copy.dstBinding = dstRangeDesc.baseRegisterIndex;
+            copy.descriptorCount = dstRangeDesc.descriptorNum;
+        }
+    }
+
+    m_VK.UpdateDescriptorSets(m_Device, 0, nullptr, copyNum, copies);
+}
+
 NRI_INLINE Result DeviceVK::BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum) {
-    if (!bindBufferMemoryDescNum)
-        return Result::SUCCESS;
-
     Scratch<VkBindBufferMemoryInfo> infos = AllocateScratch(*this, VkBindBufferMemoryInfo, bindBufferMemoryDescNum);
-
     for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
         const BindBufferMemoryDesc& bindBufferMemoryDesc = bindBufferMemoryDescs[i];
 
@@ -2138,11 +2163,7 @@ NRI_INLINE Result DeviceVK::BindBufferMemory(const BindBufferMemoryDesc* bindBuf
 }
 
 NRI_INLINE Result DeviceVK::BindTextureMemory(const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum) {
-    if (!bindTextureMemoryDescNum)
-        return Result::SUCCESS;
-
     Scratch<VkBindImageMemoryInfo> infos = AllocateScratch(*this, VkBindImageMemoryInfo, bindTextureMemoryDescNum);
-
     for (uint32_t i = 0; i < bindTextureMemoryDescNum; i++) {
         const BindTextureMemoryDesc& bindTextureMemoryDesc = bindTextureMemoryDescs[i];
 
@@ -2167,11 +2188,7 @@ NRI_INLINE Result DeviceVK::BindTextureMemory(const BindTextureMemoryDesc* bindT
 }
 
 NRI_INLINE Result DeviceVK::BindAccelerationStructureMemory(const BindAccelerationStructureMemoryDesc* bindAccelerationStructureMemoryDescs, uint32_t bindAccelerationStructureMemoryDescNum) {
-    if (!bindAccelerationStructureMemoryDescNum)
-        return Result::SUCCESS;
-
     Scratch<BindBufferMemoryDesc> bufferMemoryBindingDescs = AllocateScratch(*this, BindBufferMemoryDesc, bindAccelerationStructureMemoryDescNum);
-
     for (uint32_t i = 0; i < bindAccelerationStructureMemoryDescNum; i++) {
         const BindAccelerationStructureMemoryDesc& memoryBindingDesc = bindAccelerationStructureMemoryDescs[i];
         AccelerationStructureVK& accelerationStructure = *(AccelerationStructureVK*)memoryBindingDesc.accelerationStructure;
@@ -2194,11 +2211,7 @@ NRI_INLINE Result DeviceVK::BindAccelerationStructureMemory(const BindAccelerati
 }
 
 NRI_INLINE Result DeviceVK::BindMicromapMemory(const BindMicromapMemoryDesc* bindMicromapMemoryDescs, uint32_t bindMicromapMemoryDescNum) {
-    if (!bindMicromapMemoryDescNum)
-        return Result::SUCCESS;
-
     Scratch<BindBufferMemoryDesc> bindBufferMemoryDescs = AllocateScratch(*this, BindBufferMemoryDesc, bindMicromapMemoryDescNum);
-
     for (uint32_t i = 0; i < bindMicromapMemoryDescNum; i++) {
         const BindMicromapMemoryDesc& bindMicromapMemoryDesc = bindMicromapMemoryDescs[i];
         MicromapVK& micromap = *(MicromapVK*)bindMicromapMemoryDesc.micromap;

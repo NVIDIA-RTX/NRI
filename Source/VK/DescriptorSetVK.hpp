@@ -94,7 +94,8 @@ NRI_INLINE void DescriptorSetVK::SetDebugName(const char* name) {
 
 NRI_INLINE void DescriptorSetVK::UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs) {
     // Count and allocate scratch memory
-    uint32_t scratchSize = 0;
+    size_t scratchOffset = rangeNum * sizeof(VkWriteDescriptorSet);
+    size_t scratchSize = scratchOffset;
     for (uint32_t i = 0; i < rangeNum; i++) {
         const DescriptorRangeUpdateDesc& rangeUpdateDesc = rangeUpdateDescs[i];
         const DescriptorRangeDesc& rangeDesc = m_Desc->ranges[rangeOffset + i];
@@ -119,12 +120,9 @@ NRI_INLINE void DescriptorSetVK::UpdateDescriptorRanges(uint32_t rangeOffset, ui
                 scratchSize += sizeof(VkAccelerationStructureKHR) * rangeUpdateDesc.descriptorNum + sizeof(VkWriteDescriptorSetAccelerationStructureKHR);
                 break;
         }
-
-        scratchSize += sizeof(VkWriteDescriptorSet);
     }
 
     Scratch<uint8_t> scratch = AllocateScratch(*m_Device, uint8_t, scratchSize);
-    size_t scratchOffset = rangeNum * sizeof(VkWriteDescriptorSet);
 
     // Update ranges
     for (uint32_t i = 0; i < rangeNum; i++) {
@@ -149,28 +147,4 @@ NRI_INLINE void DescriptorSetVK::UpdateDescriptorRanges(uint32_t rangeOffset, ui
 
     const auto& vk = m_Device->GetDispatchTable();
     vk.UpdateDescriptorSets(*m_Device, rangeNum, (VkWriteDescriptorSet*)(scratch + 0), 0, nullptr);
-}
-
-NRI_INLINE void DescriptorSetVK::Copy(const CopyDescriptorSetDesc& copyDescriptorSetDesc) {
-    Scratch<VkCopyDescriptorSet> copies = AllocateScratch(*m_Device, VkCopyDescriptorSet, copyDescriptorSetDesc.rangeNum);
-
-    const DescriptorSetVK& srcDescriptorSetVK = *(DescriptorSetVK*)copyDescriptorSetDesc.srcDescriptorSet;
-
-    for (uint32_t j = 0; j < copyDescriptorSetDesc.rangeNum; j++) {
-        const DescriptorRangeDesc& srcRangeDesc = srcDescriptorSetVK.m_Desc->ranges[copyDescriptorSetDesc.srcBaseRange + j];
-        const DescriptorRangeDesc& dstRangeDesc = m_Desc->ranges[copyDescriptorSetDesc.dstBaseRange + j];
-
-        VkCopyDescriptorSet& copy = copies[j];
-        copy = {VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET};
-        copy.srcSet = srcDescriptorSetVK.GetHandle();
-        copy.srcBinding = srcRangeDesc.baseRegisterIndex;
-        copy.srcArrayElement = 0; // TODO: special support needed?
-        copy.dstSet = m_Handle;
-        copy.dstBinding = dstRangeDesc.baseRegisterIndex;
-        copy.dstArrayElement = 0; // TODO: special support needed?
-        copy.descriptorCount = dstRangeDesc.descriptorNum;
-    }
-
-    const auto& vk = m_Device->GetDispatchTable();
-    vk.UpdateDescriptorSets(*m_Device, 0, nullptr, copyDescriptorSetDesc.rangeNum, copies);
 }

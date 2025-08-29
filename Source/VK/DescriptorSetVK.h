@@ -12,6 +12,14 @@ struct DescriptorSetVK final : public DebugNameBase {
         return m_Handle;
     }
 
+    inline DeviceVK& GetDevice() const {
+        return *m_Device;
+    }
+
+    inline const DescriptorSetDesc* GetDesc() const {
+        return m_Desc;
+    }
+
     inline void Create(DeviceVK* device, VkDescriptorSet handle, const DescriptorSetDesc* desc) {
         m_Device = device;
         m_Handle = handle;
@@ -29,7 +37,6 @@ struct DescriptorSetVK final : public DebugNameBase {
     //================================================================================================================
 
     void UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs);
-    void Copy(const CopyDescriptorSetDesc& copyDescriptorSetDesc);
 
 private:
     DeviceVK* m_Device = nullptr;
