@@ -44,7 +44,7 @@ static_assert((uint32_t)PrimitiveRestart::DISABLED == D3D12_INDEX_BUFFER_STRIP_C
 static_assert((uint32_t)PrimitiveRestart::INDICES_UINT16 == D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF, "Enum mismatch");
 static_assert((uint32_t)PrimitiveRestart::INDICES_UINT32 == D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFFFFFF, "Enum mismatch");
 
-static D3D12_SHADER_VISIBILITY GetShaderVisibility(StageBits shaderStages) {
+static inline D3D12_SHADER_VISIBILITY GetShaderVisibility(StageBits shaderStages) {
     if (shaderStages == StageBits::VERTEX_SHADER)
         return D3D12_SHADER_VISIBILITY_VERTEX;
 
@@ -70,9 +70,9 @@ static D3D12_SHADER_VISIBILITY GetShaderVisibility(StageBits shaderStages) {
 }
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-static void FillRasterizerState(D3D12_RASTERIZER_DESC1& rasterizerDesc, const GraphicsPipelineDesc& graphicsPipelineDesc) {
+static inline void FillRasterizerState(D3D12_RASTERIZER_DESC1& rasterizerDesc, const GraphicsPipelineDesc& graphicsPipelineDesc) {
 #else
-static void FillRasterizerState(D3D12_RASTERIZER_DESC& rasterizerDesc, const GraphicsPipelineDesc& graphicsPipelineDesc) {
+static inline void FillRasterizerState(D3D12_RASTERIZER_DESC& rasterizerDesc, const GraphicsPipelineDesc& graphicsPipelineDesc) {
 #endif
     const RasterizationDesc& r = graphicsPipelineDesc.rasterization;
 
@@ -98,9 +98,9 @@ static void FillRasterizerState(D3D12_RASTERIZER_DESC& rasterizerDesc, const Gra
 }
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-static void FillDepthStencilState(D3D12_DEPTH_STENCIL_DESC2& depthStencilDesc, const OutputMergerDesc& om) {
+static inline void FillDepthStencilState(D3D12_DEPTH_STENCIL_DESC2& depthStencilDesc, const OutputMergerDesc& om) {
 #else
-static void FillDepthStencilState(D3D12_DEPTH_STENCIL_DESC1& depthStencilDesc, const OutputMergerDesc& om) {
+static inline void FillDepthStencilState(D3D12_DEPTH_STENCIL_DESC1& depthStencilDesc, const OutputMergerDesc& om) {
 #endif
     depthStencilDesc.DepthEnable = om.depth.compareOp == CompareOp::NONE ? FALSE : TRUE;
     depthStencilDesc.DepthWriteMask = om.depth.write ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
@@ -127,7 +127,7 @@ static void FillDepthStencilState(D3D12_DEPTH_STENCIL_DESC1& depthStencilDesc, c
 #endif
 }
 
-static void FillInputLayout(D3D12_INPUT_LAYOUT_DESC& inputLayoutDesc, const GraphicsPipelineDesc& graphicsPipelineDesc) {
+static inline void FillInputLayout(D3D12_INPUT_LAYOUT_DESC& inputLayoutDesc, const GraphicsPipelineDesc& graphicsPipelineDesc) {
     if (!graphicsPipelineDesc.vertexInput)
         return;
 
@@ -151,12 +151,12 @@ static void FillInputLayout(D3D12_INPUT_LAYOUT_DESC& inputLayoutDesc, const Grap
     }
 }
 
-static void FillShaderBytecode(D3D12_SHADER_BYTECODE& shaderBytecode, const ShaderDesc& shaderDesc) {
+static inline void FillShaderBytecode(D3D12_SHADER_BYTECODE& shaderBytecode, const ShaderDesc& shaderDesc) {
     shaderBytecode.pShaderBytecode = shaderDesc.bytecode;
     shaderBytecode.BytecodeLength = (size_t)shaderDesc.size;
 }
 
-static void FillBlendState(D3D12_BLEND_DESC& blendDesc, const GraphicsPipelineDesc& graphicsPipelineDesc) {
+static inline void FillBlendState(D3D12_BLEND_DESC& blendDesc, const GraphicsPipelineDesc& graphicsPipelineDesc) {
     const OutputMergerDesc& om = graphicsPipelineDesc.outputMerger;
 
     blendDesc.AlphaToCoverageEnable = (graphicsPipelineDesc.multisample && graphicsPipelineDesc.multisample->alphaToCoverage) ? TRUE : FALSE;
@@ -181,7 +181,7 @@ static void FillBlendState(D3D12_BLEND_DESC& blendDesc, const GraphicsPipelineDe
     }
 }
 
-static uint32_t FillSampleDesc(DXGI_SAMPLE_DESC& sampleDesc, const GraphicsPipelineDesc& graphicsPipelineDesc) {
+static inline uint32_t FillSampleDesc(DXGI_SAMPLE_DESC& sampleDesc, const GraphicsPipelineDesc& graphicsPipelineDesc) {
     if (!graphicsPipelineDesc.multisample) {
         sampleDesc.Count = 1;
         return uint32_t(-1);
