@@ -132,7 +132,7 @@ if(NRI_ENABLE_NVTX_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/NVIDIA/NVTX/archive/refs/tags/v3.2.2.zip
+        URL https://github.com/NVIDIA/NVTX/archive/refs/tags/v3.3.0.zip
     )
     list(APPEND DEPS nvtx)
 endif()
@@ -144,7 +144,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.325.zip
+        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.326.zip
     )
     list(APPEND DEPS vulkan_headers)
 
@@ -159,6 +159,7 @@ if(NRI_ENABLE_VK_SUPPORT)
     list(APPEND DEPS vma)
 endif()
 
+set(NGX_VERSION "310.4.0")
 if(NRI_ENABLE_NGX_SDK)
     # NVIDIA NGX SDK
     FetchContent_Declare(
@@ -166,7 +167,7 @@ if(NRI_ENABLE_NGX_SDK)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/NVIDIA/DLSS/archive/refs/tags/v310.3.0.zip
+        URL https://github.com/NVIDIA/DLSS/archive/refs/tags/v${NGX_VERSION}.zip
     )
     list(APPEND DEPS ngx)
 endif()
@@ -190,20 +191,19 @@ if(NRI_ENABLE_XESS_SDK)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/intel/xess/releases/download/v2.1.0/XeSS_SDK_2.1.0.zip
+        URL https://github.com/intel/xess/archive/refs/tags/v2.1.0.zip
     )
     list(APPEND DEPS xess)
 endif()
 
-# Dependencies: GIT_REPOSITORY - worse (because of ".git" folder)
 if(NRI_ENABLE_D3D12_SUPPORT)
     # D3D12 MA
     FetchContent_Declare(
         d3d12ma
-        GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
-        GIT_TAG v3.0.1
-        GIT_SHALLOW 1
+        DOWNLOAD_EXTRACT_TIMESTAMP 1
+        DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
+        URL https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/refs/tags/v3.0.1.zip
     )
     list(APPEND DEPS d3d12ma)
 endif()
@@ -220,6 +220,7 @@ if(NRI_ENABLE_AMDAGS)
     list(APPEND DEPS amdags)
 endif()
 
+# Dependencies: GIT_REPOSITORY - worse (because of ".git" folder)
 if(NRI_ENABLE_NVAPI)
     # NV API
     if(NRI_NVAPI_CUSTOM_PATH)
@@ -927,8 +928,8 @@ if(NRI_ENABLE_NGX_SDK)
         set(DLSS_SR_DLL "${ngx_SOURCE_DIR}/lib/Windows_x86_64/${NGX_LIB_DIR}/nvngx_dlss.dll")
         set(DLSS_RR_DLL "${ngx_SOURCE_DIR}/lib/Windows_x86_64/${NGX_LIB_DIR}/nvngx_dlssd.dll")
     else()
-        set(DLSS_SR_DLL "${ngx_SOURCE_DIR}/lib/Linux_x86_64/${NGX_LIB_DIR}/libnvidia-ngx-dlss.so.310.3.0")
-        set(DLSS_RR_DLL "${ngx_SOURCE_DIR}/lib/Linux_x86_64/${NGX_LIB_DIR}/libnvidia-ngx-dlssd.so.310.3.0")
+        set(DLSS_SR_DLL "${ngx_SOURCE_DIR}/lib/Linux_x86_64/${NGX_LIB_DIR}/libnvidia-ngx-dlss.so.${NGX_VERSION}")
+        set(DLSS_RR_DLL "${ngx_SOURCE_DIR}/lib/Linux_x86_64/${NGX_LIB_DIR}/libnvidia-ngx-dlssd.so.${NGX_VERSION}")
     endif()
 
     add_custom_command(TARGET NRI
