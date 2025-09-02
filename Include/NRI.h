@@ -126,20 +126,19 @@ NriStruct(CoreInterface) {
     Nri(Result)         (NRI_CALL *BindTextureMemory)               (const NriPtr(BindTextureMemoryDesc) bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum);
     void                (NRI_CALL *FreeMemory)                      (NriPtr(Memory) memory);
 
-    // Descriptor pool ("DescriptorSet" entities don't require destroying)
-    Nri(Result)         (NRI_CALL *AllocateDescriptorSets)          (NriRef(DescriptorPool) descriptorPool, const NriRef(PipelineLayout) pipelineLayout, uint32_t setIndex, NriOut NriPtr(DescriptorSet)* descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum);
-    void                (NRI_CALL *ResetDescriptorPool)             (NriRef(DescriptorPool) descriptorPool);
-
-    // Descriptor set
+    // Descriptor set management (entities don't require destroying)
     // - if "ALLOW_UPDATE_AFTER_SET" not used, descriptor sets (and data pointed to by descriptors) must be updated before "CmdSetDescriptorSet"
     // - if "ALLOW_UPDATE_AFTER_SET" used, descriptor sets (and data pointed to by descriptors) can be updated after "CmdSetDescriptorSet"
+    // - "ResetDescriptorPool" resets the pool and and wipes out all allocated descriptor sets
+    Nri(Result)         (NRI_CALL *AllocateDescriptorSets)          (NriRef(DescriptorPool) descriptorPool, const NriRef(PipelineLayout) pipelineLayout, uint32_t setIndex, NriOut NriPtr(DescriptorSet)* descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum);
     void                (NRI_CALL *UpdateDescriptorRanges)          (const NriPtr(UpdateDescriptorRangeDesc) updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum);
     void                (NRI_CALL *CopyDescriptorRanges)            (const NriPtr(CopyDescriptorRangeDesc) copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum);
+    void                (NRI_CALL *ResetDescriptorPool)             (NriRef(DescriptorPool) descriptorPool);
 
     // Command buffer (one time submit)
     Nri(Result)         (NRI_CALL *BeginCommandBuffer)              (NriRef(CommandBuffer) commandBuffer, const NriPtr(DescriptorPool) descriptorPool);
     // {                {
-        // Change descriptor pool (initially can be set via "BeginCommandBuffer")
+        // Set descriptor pool (initially can be set via "BeginCommandBuffer")
         void                (NRI_CALL *CmdSetDescriptorPool)        (NriRef(CommandBuffer) commandBuffer, const NriRef(DescriptorPool) descriptorPool);
 
         // Resource binding (expect "CmdSetPipelineLayout" to be called first)
@@ -162,14 +161,14 @@ NriStruct(CoreInterface) {
         void                (NRI_CALL *CmdSetViewports)             (NriRef(CommandBuffer) commandBuffer, const NriPtr(Viewport) viewports, uint32_t viewportNum);
         void                (NRI_CALL *CmdSetScissors)              (NriRef(CommandBuffer) commandBuffer, const NriPtr(Rect) rects, uint32_t rectNum);
 
-        // Initial state, if enabled in the pipeline
+        // Initial state, if enabled in any pipeline used in this command buffer
         void                (NRI_CALL *CmdSetStencilReference)      (NriRef(CommandBuffer) commandBuffer, uint8_t frontRef, uint8_t backRef); // "backRef" requires "features.independentFrontAndBackStencilReferenceAndMasks"
         void                (NRI_CALL *CmdSetDepthBounds)           (NriRef(CommandBuffer) commandBuffer, float boundsMin, float boundsMax); // requires "features.depthBoundsTest"
         void                (NRI_CALL *CmdSetBlendConstants)        (NriRef(CommandBuffer) commandBuffer, const NriRef(Color32f) color);
         void                (NRI_CALL *CmdSetSampleLocations)       (NriRef(CommandBuffer) commandBuffer, const NriPtr(SampleLocation) locations, Nri(Sample_t) locationNum, Nri(Sample_t) sampleNum); // requires "tiers.sampleLocations != 0"
         void                (NRI_CALL *CmdSetShadingRate)           (NriRef(CommandBuffer) commandBuffer, const NriRef(ShadingRateDesc) shadingRateDesc); // requires "tiers.shadingRate != 0"
 
-        // State override, if enabled in the pipeline
+        // State override
         void                (NRI_CALL *CmdSetDepthBias)             (NriRef(CommandBuffer) commandBuffer, const NriRef(DepthBiasDesc) depthBiasDesc); // requires "features.dynamicDepthBias"
 
         // Graphics
