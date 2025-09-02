@@ -199,13 +199,13 @@ Result PipelineD3D11::Create(const ComputePipelineDesc& pipelineDesc) {
     return Result::SUCCESS;
 }
 
-void PipelineD3D11::ChangeSamplePositions(ID3D11DeviceContextBest* deferredContext, const SamplePositionsState& samplePositionState) {
+void PipelineD3D11::ChangeRasterizerState(ID3D11DeviceContextBest* deferredContext, const SamplePositionsState& samplePositionState) {
     MaybeUnused(deferredContext, samplePositionState);
-#if NRI_ENABLE_NVAPI
     CHECK(!IsCompute(), "A graphics pipeline expected");
 
     // Find in cached states
     size_t i = 0;
+#if NRI_ENABLE_NVAPI
     for (; i < m_RasterizerStates.size(); i++) {
         if (m_RasterizerStates[i].samplePositionHash == samplePositionState.positionHash)
             break;
@@ -230,11 +230,11 @@ void PipelineD3D11::ChangeSamplePositions(ID3D11DeviceContextBest* deferredConte
         else
             i = 0;
     }
+#endif
 
     // Bind
     ID3D11RasterizerState2* stateWithPSL = m_RasterizerStates[i].ptr;
     deferredContext->RSSetState(stateWithPSL);
-#endif
 }
 
 void PipelineD3D11::ChangeStencilReference(ID3D11DeviceContextBest* deferredContext, uint8_t stencilRef) {
@@ -275,14 +275,10 @@ void PipelineD3D11::Bind(ID3D11DeviceContextBest* deferredContext, const Pipelin
             deferredContext->PSSetShader(m_FragmentShader, nullptr, 0);
 
         // Dynamic state // TODO: uncached
-        if (!m_RasterizerStates.empty())
-            ChangeSamplePositions(deferredContext, samplePositionState);
+        deferredContext->OMSetDepthStencilState(m_DepthStencilState, stencilRef);
+        deferredContext->OMSetBlendState(m_BlendState, &blendFactor.x, m_SampleMask);
 
-        if (m_DepthStencilState)
-            deferredContext->OMSetDepthStencilState(m_DepthStencilState, stencilRef);
-
-        if (m_BlendState)
-            deferredContext->OMSetBlendState(m_BlendState, &blendFactor.x, m_SampleMask);
+        ChangeRasterizerState(deferredContext, samplePositionState);
     }
 }
 

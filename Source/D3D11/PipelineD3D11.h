@@ -29,7 +29,7 @@ struct PipelineD3D11 final : public DebugNameBase {
     void Bind(ID3D11DeviceContextBest* deferredContext, const PipelineD3D11* currentPipeline, uint8_t stencilRef, const Color32f& blendFactor, const SamplePositionsState& samplePositionState);
 
     // Dynamic state
-    void ChangeSamplePositions(ID3D11DeviceContextBest* deferredContext, const SamplePositionsState& samplePositionState);
+    void ChangeRasterizerState(ID3D11DeviceContextBest* deferredContext, const SamplePositionsState& samplePositionState);
     void ChangeStencilReference(ID3D11DeviceContextBest* deferredContext, uint8_t stencilRef);
     void ChangeBlendConstants(ID3D11DeviceContextBest* deferredContext, const Color32f& color);
 

@@ -183,7 +183,7 @@ NRI_INLINE void CommandBufferD3D11::SetSampleLocations(const SampleLocation* loc
     m_SamplePositionsState.Set(locations, locationNum);
 
     if (m_Pipeline)
-        m_Pipeline->ChangeSamplePositions(m_DeferredContext, m_SamplePositionsState);
+        m_Pipeline->ChangeRasterizerState(m_DeferredContext, m_SamplePositionsState);
 }
 
 NRI_INLINE void CommandBufferD3D11::SetBlendConstants(const Color32f& color) {
