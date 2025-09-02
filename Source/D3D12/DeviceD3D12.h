@@ -106,7 +106,7 @@ struct DeviceD3D12 final : public DeviceBase {
     void GetAccelerationStructurePrebuildInfo(const AccelerationStructureDesc& accelerationStructureDesc, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO& prebuildInfo) const;
     void GetMicromapPrebuildInfo(const MicromapDesc& micromapDesc, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO& prebuildInfo) const;
     D3D12_HEAP_TYPE GetHeapType(MemoryLocation memoryLocation) const;
-    DescriptorPointerCPU GetDescriptorPointerCPU(const DescriptorHandle& descriptorHandle);
+    DescriptorHandleCPU GetDescriptorHandleCPU(const DescriptorHandle& descriptorHandle);
     ID3D12CommandSignature* GetDrawCommandSignature(uint32_t stride, ID3D12RootSignature* rootSignature);
     ID3D12CommandSignature* GetDrawIndexedCommandSignature(uint32_t stride, ID3D12RootSignature* rootSignature);
     ID3D12CommandSignature* GetDrawMeshCommandSignature(uint32_t stride);

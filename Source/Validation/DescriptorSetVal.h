@@ -17,16 +17,7 @@ struct DescriptorSetVal final : public ObjectVal {
         return *m_Desc;
     }
 
-    inline void SetImpl(DescriptorSet* impl, const DescriptorSetDesc* desc) {
-        m_Impl = impl;
-        m_Desc = desc;
-    }
-
-    //================================================================================================================
-    // NRI
-    //================================================================================================================
-
-    void UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs);
+    void SetImpl(DescriptorSet* impl, const DescriptorSetDesc* desc);
 
 private:
     const DescriptorSetDesc* m_Desc = nullptr; // .natvis

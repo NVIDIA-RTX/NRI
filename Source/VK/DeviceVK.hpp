@@ -2098,34 +2098,188 @@ NRI_INLINE Result DeviceVK::WaitIdle() {
     return Result::SUCCESS;
 }
 
-NRI_INLINE void DeviceVK::CopyDescriptorSets(const CopyDescriptorSetDesc* copyDescriptorSetDescs, uint32_t copyDescriptorSetDescNum) {
-    uint32_t copyNum = 0;
-    uint32_t n = 0;
-    for (uint32_t i = 0; i < copyDescriptorSetDescNum; i++)
-        copyNum += copyDescriptorSetDescs[i].rangeNum;
+NRI_INLINE void DeviceVK::CopyDescriptorRanges(const CopyDescriptorRangeDesc* copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum) {
+    Scratch<VkCopyDescriptorSet> copies = AllocateScratch(*this, VkCopyDescriptorSet, copyDescriptorRangeDescNum);
+    for (uint32_t i = 0; i < copyDescriptorRangeDescNum; i++) {
+        const CopyDescriptorRangeDesc& copyDescriptorSetDesc = copyDescriptorRangeDescs[i];
 
-    Scratch<VkCopyDescriptorSet> copies = AllocateScratch(*this, VkCopyDescriptorSet, copyNum);
-    for (uint32_t i = 0; i < copyDescriptorSetDescNum; i++) {
-        const CopyDescriptorSetDesc& copyDescriptorSetDesc = copyDescriptorSetDescs[i];
+        const DescriptorSetVK& dst = *(DescriptorSetVK*)copyDescriptorSetDesc.dstDescriptorSet;
+        const DescriptorSetVK& src = *(DescriptorSetVK*)copyDescriptorSetDesc.srcDescriptorSet;
 
-        const DescriptorSetVK& dstDescriptorSetVK = *(DescriptorSetVK*)copyDescriptorSetDesc.dstDescriptorSet;
-        const DescriptorSetVK& srcDescriptorSetVK = *(DescriptorSetVK*)copyDescriptorSetDesc.srcDescriptorSet;
+        const DescriptorRangeDesc& dstRangeDesc = dst.GetDesc()->ranges[copyDescriptorSetDesc.dstRangeIndex];
+        const DescriptorRangeDesc& srcRangeDesc = src.GetDesc()->ranges[copyDescriptorSetDesc.srcRangeIndex];
 
-        for (uint32_t j = 0; j < copyDescriptorSetDesc.rangeNum; j++) {
-            const DescriptorRangeDesc& srcRangeDesc = srcDescriptorSetVK.GetDesc()->ranges[copyDescriptorSetDesc.srcBaseRange + j];
-            const DescriptorRangeDesc& dstRangeDesc = dstDescriptorSetVK.GetDesc()->ranges[copyDescriptorSetDesc.dstBaseRange + j];
+        uint32_t descriptorNum = copyDescriptorSetDesc.descriptorNum;
+        if (!descriptorNum)
+            descriptorNum = srcRangeDesc.descriptorNum;
 
-            VkCopyDescriptorSet& copy = copies[n++];
-            copy = {VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET}; // TODO: no "array element", since there is no "baseDescriptor"
-            copy.srcSet = srcDescriptorSetVK.GetHandle();
-            copy.dstSet = dstDescriptorSetVK.GetHandle();
-            copy.srcBinding = srcRangeDesc.baseRegisterIndex;
+        VkCopyDescriptorSet& copy = copies[i];
+        copy = {VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET};
+        copy.srcSet = src.GetHandle();
+        copy.dstSet = dst.GetHandle();
+        copy.descriptorCount = descriptorNum;
+
+        bool isDstArray = dstRangeDesc.flags & (DescriptorRangeBits::ARRAY | DescriptorRangeBits::VARIABLE_SIZED_ARRAY);
+        if (isDstArray) {
             copy.dstBinding = dstRangeDesc.baseRegisterIndex;
-            copy.descriptorCount = dstRangeDesc.descriptorNum;
+            copy.dstArrayElement = copyDescriptorSetDesc.dstBaseDescriptor;
+        } else
+            copy.dstBinding = dstRangeDesc.baseRegisterIndex + copyDescriptorSetDesc.dstBaseDescriptor;
+        bool isSrcArray = srcRangeDesc.flags & (DescriptorRangeBits::ARRAY | DescriptorRangeBits::VARIABLE_SIZED_ARRAY);
+        if (isSrcArray) {
+            copy.srcBinding = srcRangeDesc.baseRegisterIndex;
+            copy.srcArrayElement = copyDescriptorSetDesc.srcBaseDescriptor;
+        } else
+            copy.srcBinding = srcRangeDesc.baseRegisterIndex + copyDescriptorSetDesc.srcBaseDescriptor;
+    }
+
+    m_VK.UpdateDescriptorSets(m_Device, 0, nullptr, copyDescriptorRangeDescNum, copies);
+}
+
+static void WriteSamplers(VkWriteDescriptorSet& writeDescriptorSet, size_t& scratchOffset, uint8_t* scratch, const UpdateDescriptorRangeDesc& rangeUpdateDesc) {
+    VkDescriptorImageInfo* imageInfos = (VkDescriptorImageInfo*)(scratch + scratchOffset);
+    scratchOffset += rangeUpdateDesc.descriptorNum * sizeof(VkDescriptorImageInfo);
+
+    for (uint32_t i = 0; i < rangeUpdateDesc.descriptorNum; i++) {
+        const DescriptorVK& descriptorVK = *(DescriptorVK*)rangeUpdateDesc.descriptors[i];
+        imageInfos[i].imageView = VK_NULL_HANDLE;
+        imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageInfos[i].sampler = descriptorVK.GetSampler();
+    }
+
+    writeDescriptorSet.pImageInfo = imageInfos;
+}
+
+static void WriteTextures(VkWriteDescriptorSet& writeDescriptorSet, size_t& scratchOffset, uint8_t* scratch, const UpdateDescriptorRangeDesc& rangeUpdateDesc) {
+    VkDescriptorImageInfo* imageInfos = (VkDescriptorImageInfo*)(scratch + scratchOffset);
+    scratchOffset += rangeUpdateDesc.descriptorNum * sizeof(VkDescriptorImageInfo);
+
+    for (uint32_t i = 0; i < rangeUpdateDesc.descriptorNum; i++) {
+        const DescriptorVK& descriptorVK = *(DescriptorVK*)rangeUpdateDesc.descriptors[i];
+
+        imageInfos[i].imageView = descriptorVK.GetImageView();
+        imageInfos[i].imageLayout = descriptorVK.GetTexDesc().layout;
+        imageInfos[i].sampler = VK_NULL_HANDLE;
+    }
+
+    writeDescriptorSet.pImageInfo = imageInfos;
+}
+
+static void WriteBuffers(VkWriteDescriptorSet& writeDescriptorSet, size_t& scratchOffset, uint8_t* scratch, const UpdateDescriptorRangeDesc& rangeUpdateDesc) {
+    VkDescriptorBufferInfo* bufferInfos = (VkDescriptorBufferInfo*)(scratch + scratchOffset);
+    scratchOffset += rangeUpdateDesc.descriptorNum * sizeof(VkDescriptorBufferInfo);
+
+    for (uint32_t i = 0; i < rangeUpdateDesc.descriptorNum; i++) {
+        const DescriptorVK& descriptor = *(DescriptorVK*)rangeUpdateDesc.descriptors[i];
+        bufferInfos[i] = descriptor.GetBufferInfo();
+    }
+
+    writeDescriptorSet.pBufferInfo = bufferInfos;
+}
+
+static void WriteTypedBuffers(VkWriteDescriptorSet& writeDescriptorSet, size_t& scratchOffset, uint8_t* scratch, const UpdateDescriptorRangeDesc& rangeUpdateDesc) {
+    VkBufferView* bufferViews = (VkBufferView*)(scratch + scratchOffset);
+    scratchOffset += rangeUpdateDesc.descriptorNum * sizeof(VkBufferView);
+
+    for (uint32_t i = 0; i < rangeUpdateDesc.descriptorNum; i++) {
+        const DescriptorVK& descriptorVK = *(DescriptorVK*)rangeUpdateDesc.descriptors[i];
+        bufferViews[i] = descriptorVK.GetBufferView();
+    }
+
+    writeDescriptorSet.pTexelBufferView = bufferViews;
+}
+
+static void WriteAccelerationStructures(VkWriteDescriptorSet& writeDescriptorSet, size_t& scratchOffset, uint8_t* scratch, const UpdateDescriptorRangeDesc& rangeUpdateDesc) {
+    VkAccelerationStructureKHR* accelerationStructures = (VkAccelerationStructureKHR*)(scratch + scratchOffset);
+    scratchOffset += rangeUpdateDesc.descriptorNum * sizeof(VkAccelerationStructureKHR);
+
+    for (uint32_t i = 0; i < rangeUpdateDesc.descriptorNum; i++) {
+        const DescriptorVK& descriptorVK = *(DescriptorVK*)rangeUpdateDesc.descriptors[i];
+        accelerationStructures[i] = descriptorVK.GetAccelerationStructure();
+    }
+
+    VkWriteDescriptorSetAccelerationStructureKHR* accelerationStructureInfo = (VkWriteDescriptorSetAccelerationStructureKHR*)(scratch + scratchOffset);
+    scratchOffset += sizeof(VkWriteDescriptorSetAccelerationStructureKHR);
+
+    accelerationStructureInfo->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+    accelerationStructureInfo->pNext = nullptr;
+    accelerationStructureInfo->accelerationStructureCount = rangeUpdateDesc.descriptorNum;
+    accelerationStructureInfo->pAccelerationStructures = accelerationStructures;
+
+    writeDescriptorSet.pNext = accelerationStructureInfo;
+}
+
+typedef void (*WriteDescriptorsFunc)(VkWriteDescriptorSet& writeDescriptorSet, size_t& scratchOffset, uint8_t* scratch, const UpdateDescriptorRangeDesc& rangeUpdateDesc);
+
+constexpr std::array<WriteDescriptorsFunc, (size_t)DescriptorType::MAX_NUM> g_WriteFuncs = {
+    WriteSamplers,               // SAMPLER
+    WriteBuffers,                // CONSTANT_BUFFER
+    WriteTextures,               // TEXTURE
+    WriteTextures,               // STORAGE_TEXTURE
+    WriteTypedBuffers,           // BUFFER
+    WriteTypedBuffers,           // STORAGE_BUFFER
+    WriteBuffers,                // STRUCTURED_BUFFER
+    WriteBuffers,                // STORAGE_STRUCTURED_BUFFER
+    WriteAccelerationStructures, // ACCELERATION_STRUCTURE
+};
+VALIDATE_ARRAY_BY_PTR(g_WriteFuncs);
+
+NRI_INLINE void DeviceVK::UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum) {
+    // Count and allocate scratch memory
+    size_t scratchOffset = updateDescriptorRangeDescNum * sizeof(VkWriteDescriptorSet);
+    size_t scratchSize = scratchOffset;
+    for (uint32_t i = 0; i < updateDescriptorRangeDescNum; i++) {
+        const UpdateDescriptorRangeDesc& updateDescriptorRangeDesc = updateDescriptorRangeDescs[i];
+        const DescriptorSetVK& dst = *(DescriptorSetVK*)updateDescriptorRangeDesc.descriptorSet;
+        const DescriptorRangeDesc& rangeDesc = dst.GetDesc()->ranges[updateDescriptorRangeDesc.rangeIndex];
+
+        switch (rangeDesc.descriptorType) {
+            case DescriptorType::SAMPLER:
+            case DescriptorType::TEXTURE:
+            case DescriptorType::STORAGE_TEXTURE:
+                scratchSize += sizeof(VkDescriptorImageInfo) * updateDescriptorRangeDesc.descriptorNum;
+                break;
+            case DescriptorType::CONSTANT_BUFFER:
+            case DescriptorType::STRUCTURED_BUFFER:
+            case DescriptorType::STORAGE_STRUCTURED_BUFFER:
+                scratchSize += sizeof(VkDescriptorBufferInfo) * updateDescriptorRangeDesc.descriptorNum;
+                break;
+            case DescriptorType::BUFFER:
+            case DescriptorType::STORAGE_BUFFER:
+                scratchSize += sizeof(VkBufferView) * updateDescriptorRangeDesc.descriptorNum;
+                break;
+
+            case DescriptorType::ACCELERATION_STRUCTURE:
+                scratchSize += sizeof(VkAccelerationStructureKHR) * updateDescriptorRangeDesc.descriptorNum + sizeof(VkWriteDescriptorSetAccelerationStructureKHR);
+                break;
         }
     }
 
-    m_VK.UpdateDescriptorSets(m_Device, 0, nullptr, copyNum, copies);
+    Scratch<uint8_t> writes = AllocateScratch(*this, uint8_t, scratchSize);
+
+    // Update ranges
+    for (uint32_t i = 0; i < updateDescriptorRangeDescNum; i++) {
+        const UpdateDescriptorRangeDesc& updateDescriptorRangeDesc = updateDescriptorRangeDescs[i];
+        const DescriptorSetVK& dst = *(DescriptorSetVK*)updateDescriptorRangeDesc.descriptorSet;
+        const DescriptorRangeDesc& rangeDesc = dst.GetDesc()->ranges[updateDescriptorRangeDesc.rangeIndex];
+
+        VkWriteDescriptorSet& write = *(VkWriteDescriptorSet*)(writes + i * sizeof(VkWriteDescriptorSet)); // must be first and consecutive in "scratch"
+        write = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        write.dstSet = dst.GetHandle();
+        write.descriptorCount = updateDescriptorRangeDesc.descriptorNum;
+        write.descriptorType = GetDescriptorType(rangeDesc.descriptorType);
+
+        bool isArray = rangeDesc.flags & (DescriptorRangeBits::ARRAY | DescriptorRangeBits::VARIABLE_SIZED_ARRAY);
+        if (isArray) {
+            write.dstBinding = rangeDesc.baseRegisterIndex;
+            write.dstArrayElement = updateDescriptorRangeDesc.baseDescriptor;
+        } else
+            write.dstBinding = rangeDesc.baseRegisterIndex + updateDescriptorRangeDesc.baseDescriptor;
+
+        g_WriteFuncs[(uint32_t)rangeDesc.descriptorType](write, scratchOffset, writes, updateDescriptorRangeDesc);
+    }
+
+    m_VK.UpdateDescriptorSets(m_Device, updateDescriptorRangeDescNum, (VkWriteDescriptorSet*)(writes + 0), 0, nullptr);
 }
 
 NRI_INLINE Result DeviceVK::BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum) {

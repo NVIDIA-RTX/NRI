@@ -932,7 +932,7 @@ Result DeviceD3D12::GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, Descrip
 
         DescriptorHeapDesc descriptorHeapDesc = {};
         descriptorHeapDesc.heap = descriptorHeap;
-        descriptorHeapDesc.basePointerCPU = descriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr;
+        descriptorHeapDesc.baseHandleCPU = descriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr;
         descriptorHeapDesc.descriptorSize = m_Device->GetDescriptorHandleIncrementSize(type);
         m_DescriptorHeaps.push_back(descriptorHeapDesc);
 
@@ -963,13 +963,13 @@ void DeviceD3D12::FreeDescriptorHandle(const DescriptorHandle& descriptorHandle)
     freeDescriptors.push_back(descriptorHandle);
 }
 
-DescriptorPointerCPU DeviceD3D12::GetDescriptorPointerCPU(const DescriptorHandle& descriptorHandle) {
+DescriptorHandleCPU DeviceD3D12::GetDescriptorHandleCPU(const DescriptorHandle& descriptorHandle) {
     ExclusiveScope lock(m_DescriptorHeapLock);
 
     const DescriptorHeapDesc& descriptorHeapDesc = m_DescriptorHeaps[descriptorHandle.heapIndex];
-    DescriptorPointerCPU descriptorPointerCPU = descriptorHeapDesc.basePointerCPU + descriptorHandle.heapOffset * descriptorHeapDesc.descriptorSize;
+    DescriptorHandleCPU descriptorHandleCPU = descriptorHeapDesc.baseHandleCPU + descriptorHandle.heapOffset * descriptorHeapDesc.descriptorSize;
 
-    return descriptorPointerCPU;
+    return descriptorHandleCPU;
 }
 
 constexpr std::array<D3D12_HEAP_TYPE, (size_t)MemoryLocation::MAX_NUM> g_HeapTypes = {

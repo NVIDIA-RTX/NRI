@@ -133,7 +133,8 @@ struct DeviceVK final : public DeviceBase {
     // NRI
     //================================================================================================================
 
-    void CopyDescriptorSets(const CopyDescriptorSetDesc* copyDescriptorSetDescs, uint32_t copyDescriptorSetDescNum);
+    void CopyDescriptorRanges(const CopyDescriptorRangeDesc* copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum);
+    void UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum);
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
     Result WaitIdle();
     Result BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum);

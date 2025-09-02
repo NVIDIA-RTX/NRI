@@ -476,13 +476,12 @@ static void NRI_CALL Wait(Fence& fence, uint64_t value) {
     ((FenceD3D12&)fence).Wait(value);
 }
 
-static void NRI_CALL UpdateDescriptorRanges(DescriptorSet& descriptorSet, uint32_t baseRange, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs) {
-    ((DescriptorSetD3D12&)descriptorSet).UpdateDescriptorRanges(baseRange, rangeNum, rangeUpdateDescs);
+static void NRI_CALL UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum) {
+    DescriptorSetD3D12::UpdateDescriptorRanges(updateDescriptorRangeDescs, updateDescriptorRangeDescNum);
 }
 
-static void NRI_CALL CopyDescriptorSets(const CopyDescriptorSetDesc* copyDescriptorSetDescs, uint32_t copyDescriptorSetDescNum) {
-    for (uint32_t i = 0; i < copyDescriptorSetDescNum; i++)
-        DescriptorSetD3D12::Copy(copyDescriptorSetDescs[i]);
+static void NRI_CALL CopyDescriptorRanges(const CopyDescriptorRangeDesc* copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum) {
+    DescriptorSetD3D12::Copy(copyDescriptorRangeDescs, copyDescriptorRangeDescNum);
 }
 
 static Result NRI_CALL AllocateDescriptorSets(DescriptorPool& descriptorPool, const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum) {
@@ -551,7 +550,7 @@ static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor* descriptor)
     if (!descriptor)
         return 0;
 
-    return uint64_t(((DescriptorD3D12*)descriptor)->GetDescriptorPointerCPU());
+    return uint64_t(((DescriptorD3D12*)descriptor)->GetDescriptorHandleCPU());
 }
 
 Result DeviceD3D12::FillFunctionTable(CoreInterface& table) const {
@@ -646,7 +645,7 @@ Result DeviceD3D12::FillFunctionTable(CoreInterface& table) const {
     table.Wait = ::Wait;
     table.GetFenceValue = ::GetFenceValue;
     table.UpdateDescriptorRanges = ::UpdateDescriptorRanges;
-    table.CopyDescriptorSets = ::CopyDescriptorSets;
+    table.CopyDescriptorRanges = ::CopyDescriptorRanges;
     table.AllocateDescriptorSets = ::AllocateDescriptorSets;
     table.ResetDescriptorPool = ::ResetDescriptorPool;
     table.ResetCommandAllocator = ::ResetCommandAllocator;

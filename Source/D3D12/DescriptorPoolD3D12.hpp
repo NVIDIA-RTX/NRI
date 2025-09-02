@@ -23,8 +23,8 @@ Result DescriptorPoolD3D12::Create(const DescriptorPoolDesc& descriptorPoolDesc)
             RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateDescriptorHeap");
 
             descriptorHeapDesc.heap = descriptorHeap;
-            descriptorHeapDesc.basePointerCPU = descriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr;
-            descriptorHeapDesc.basePointerGPU = descriptorHeap->GetGPUDescriptorHandleForHeapStart().ptr;
+            descriptorHeapDesc.baseHandleCPU = descriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr;
+            descriptorHeapDesc.baseHandleGPU = descriptorHeap->GetGPUDescriptorHandleForHeapStart().ptr;
             descriptorHeapDesc.descriptorSize = m_Device->GetDescriptorHandleIncrementSize((D3D12_DESCRIPTOR_HEAP_TYPE)i);
 
             m_DescriptorHeaps[m_DescriptorHeapNum++] = descriptorHeap;
@@ -53,8 +53,8 @@ Result DescriptorPoolD3D12::Create(const DescriptorPoolD3D12Desc& descriptorPool
         if (descriptorHeaps[i]) {
             D3D12_DESCRIPTOR_HEAP_DESC desc = descriptorHeaps[i]->GetDesc();
             descriptorHeapDesc.heap = descriptorHeaps[i];
-            descriptorHeapDesc.basePointerCPU = descriptorHeaps[i]->GetCPUDescriptorHandleForHeapStart().ptr;
-            descriptorHeapDesc.basePointerGPU = descriptorHeaps[i]->GetGPUDescriptorHandleForHeapStart().ptr;
+            descriptorHeapDesc.baseHandleCPU = descriptorHeaps[i]->GetCPUDescriptorHandleForHeapStart().ptr;
+            descriptorHeapDesc.baseHandleGPU = descriptorHeaps[i]->GetGPUDescriptorHandleForHeapStart().ptr;
             descriptorHeapDesc.descriptorSize = m_Device->GetDescriptorHandleIncrementSize(desc.Type);
 
             m_DescriptorHeaps[m_DescriptorHeapNum++] = descriptorHeaps[i];
@@ -70,18 +70,18 @@ void DescriptorPoolD3D12::Bind(ID3D12GraphicsCommandList* graphicsCommandList) c
     graphicsCommandList->SetDescriptorHeaps(m_DescriptorHeapNum, m_DescriptorHeaps.data());
 }
 
-DescriptorPointerCPU DescriptorPoolD3D12::GetDescriptorPointerCPU(DescriptorHeapType descriptorHeapType, uint32_t offset) const {
+DescriptorHandleCPU DescriptorPoolD3D12::GetDescriptorHandleCPU(DescriptorHeapType descriptorHeapType, uint32_t offset) const {
     const DescriptorHeapDesc& descriptorHeapDesc = m_DescriptorHeapDescs[descriptorHeapType];
-    DescriptorPointerCPU descriptorPointerCPU = descriptorHeapDesc.basePointerCPU + offset * descriptorHeapDesc.descriptorSize;
+    DescriptorHandleCPU descriptorHandleCPU = descriptorHeapDesc.baseHandleCPU + offset * descriptorHeapDesc.descriptorSize;
 
-    return descriptorPointerCPU;
+    return descriptorHandleCPU;
 }
 
-DescriptorPointerGPU DescriptorPoolD3D12::GetDescriptorPointerGPU(DescriptorHeapType descriptorHeapType, uint32_t offset) const {
+DescriptorHandleGPU DescriptorPoolD3D12::GetDescriptorHandleGPU(DescriptorHeapType descriptorHeapType, uint32_t offset) const {
     const DescriptorHeapDesc& descriptorHeapDesc = m_DescriptorHeapDescs[descriptorHeapType];
-    DescriptorPointerGPU descriptorPointerGPU = descriptorHeapDesc.basePointerGPU + offset * descriptorHeapDesc.descriptorSize;
+    DescriptorHandleGPU descriptorHandleGPU = descriptorHeapDesc.baseHandleGPU + offset * descriptorHeapDesc.descriptorSize;
 
-    return descriptorPointerGPU;
+    return descriptorHandleGPU;
 }
 
 NRI_INLINE void DescriptorPoolD3D12::SetDebugName(const char* name) {

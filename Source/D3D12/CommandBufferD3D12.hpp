@@ -402,9 +402,9 @@ NRI_INLINE void CommandBufferD3D12::ClearStorage(const ClearStorageDesc& clearDe
 
     // TODO: typed buffers are currently cleared according to the format, it seems to be more reliable than using integers for all buffers
     if (storage->IsIntegerFormat())
-        m_GraphicsCommandList->ClearUnorderedAccessViewUint({descriptorSet->GetDescriptorPointerGPU(clearDesc.rangeIndex, clearDesc.descriptorIndex)}, {storage->GetDescriptorPointerCPU()}, *storage, &clearDesc.value.ui.x, 0, nullptr);
+        m_GraphicsCommandList->ClearUnorderedAccessViewUint({descriptorSet->GetDescriptorHandleGPU(clearDesc.rangeIndex, clearDesc.descriptorIndex)}, {storage->GetDescriptorHandleCPU()}, *storage, &clearDesc.value.ui.x, 0, nullptr);
     else
-        m_GraphicsCommandList->ClearUnorderedAccessViewFloat({descriptorSet->GetDescriptorPointerGPU(clearDesc.rangeIndex, clearDesc.descriptorIndex)}, {storage->GetDescriptorPointerCPU()}, *storage, &clearDesc.value.f.x, 0, nullptr);
+        m_GraphicsCommandList->ClearUnorderedAccessViewFloat({descriptorSet->GetDescriptorHandleGPU(clearDesc.rangeIndex, clearDesc.descriptorIndex)}, {storage->GetDescriptorHandleCPU()}, *storage, &clearDesc.value.f.x, 0, nullptr);
 }
 
 NRI_INLINE void CommandBufferD3D12::BeginRendering(const AttachmentsDesc& attachmentsDesc) {
@@ -414,14 +414,14 @@ NRI_INLINE void CommandBufferD3D12::BeginRendering(const AttachmentsDesc& attach
     uint32_t i = 0;
     for (; i < m_RenderTargetNum; i++) {
         const DescriptorD3D12& descriptor = *(DescriptorD3D12*)attachmentsDesc.colors[i];
-        m_RenderTargets[i].ptr = descriptor.GetDescriptorPointerCPU();
+        m_RenderTargets[i].ptr = descriptor.GetDescriptorHandleCPU();
     }
     for (; i < (uint32_t)m_RenderTargets.size(); i++)
         m_RenderTargets[i].ptr = NULL;
 
     if (attachmentsDesc.depthStencil) {
         const DescriptorD3D12& descriptor = *(DescriptorD3D12*)attachmentsDesc.depthStencil;
-        m_DepthStencil.ptr = descriptor.GetDescriptorPointerCPU();
+        m_DepthStencil.ptr = descriptor.GetDescriptorHandleCPU();
     } else
         m_DepthStencil.ptr = NULL;
 

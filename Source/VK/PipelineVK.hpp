@@ -115,7 +115,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     if (graphicsPipelineDesc.multisample) {
         multisampleState.sampleShadingEnable = false;
         multisampleState.minSampleShading = 0.0f;
-        multisampleState.pSampleMask = ms->sampleMask != ALL_SAMPLES ? &ms->sampleMask : nullptr;
+        multisampleState.pSampleMask = ms->sampleMask != ALL ? &ms->sampleMask : nullptr;
         multisampleState.alphaToCoverageEnable = ms->alphaToCoverage;
         multisampleState.alphaToOneEnable = false;
 

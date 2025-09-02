@@ -13,15 +13,14 @@ struct DescriptorSetD3D12 final : public DebugNameBase {
 
     void Create(DescriptorPoolD3D12* desriptorPoolD3D12, const DescriptorSetMapping* descriptorSetMapping, std::array<uint32_t, DescriptorHeapType::MAX_NUM>& heapOffsets);
     DeviceD3D12& GetDevice() const;
-    DescriptorPointerCPU GetDescriptorPointerCPU(uint32_t rangeIndex, uint32_t rangeOffset) const;
-    DescriptorPointerGPU GetDescriptorPointerGPU(uint32_t rangeIndex, uint32_t rangeOffset) const;
+    DescriptorHandleGPU GetDescriptorHandleGPU(uint32_t rangeIndex, uint32_t baseDescriptor) const;
 
     //================================================================================================================
     // NRI
     //================================================================================================================
 
-    void UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs);
-    static void Copy(const CopyDescriptorSetDesc& copyDescriptorSetDesc);
+    static void UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum);
+    static void Copy(const CopyDescriptorRangeDesc* copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum);
 
 private:
     DescriptorPoolD3D12* m_DescriptorPoolD3D12 = nullptr;

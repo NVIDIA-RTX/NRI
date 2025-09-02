@@ -38,7 +38,7 @@ Implicit:
 #pragma once
 
 #define NRI_VERSION 175
-#define NRI_VERSION_DATE "29 August 2025"
+#define NRI_VERSION_DATE "2 September 2025"
 
 // C/C++ compatible interface (auto-selection or via "NRI_FORCE_C" macro)
 #include "NRIDescs.h"
@@ -133,8 +133,8 @@ NriStruct(CoreInterface) {
     // Descriptor set
     // - if "ALLOW_UPDATE_AFTER_SET" not used, descriptor sets (and data pointed to by descriptors) must be updated before "CmdSetDescriptorSet"
     // - if "ALLOW_UPDATE_AFTER_SET" used, descriptor sets (and data pointed to by descriptors) can be updated after "CmdSetDescriptorSet"
-    void                (NRI_CALL *UpdateDescriptorRanges)          (NriRef(DescriptorSet) descriptorSet, uint32_t baseRange, uint32_t rangeNum, const NriPtr(DescriptorRangeUpdateDesc) rangeUpdateDescs);
-    void                (NRI_CALL *CopyDescriptorSets)              (const NriPtr(CopyDescriptorSetDesc) copyDescriptorSetDescs, uint32_t copyDescriptorSetDescNum);
+    void                (NRI_CALL *UpdateDescriptorRanges)          (const NriPtr(UpdateDescriptorRangeDesc) updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum);
+    void                (NRI_CALL *CopyDescriptorRanges)            (const NriPtr(CopyDescriptorRangeDesc) copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum);
 
     // Command buffer (one time submit)
     Nri(Result)         (NRI_CALL *BeginCommandBuffer)              (NriRef(CommandBuffer) commandBuffer, const NriPtr(DescriptorPool) descriptorPool);

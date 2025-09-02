@@ -19,8 +19,8 @@ struct DescriptorD3D12 final : public DebugNameBase {
         return m_Resource;
     }
 
-    inline DescriptorPointerCPU GetDescriptorPointerCPU() const {
-        return m_DescriptorPointerCPU;
+    inline DescriptorHandleCPU GetDescriptorHandleCPU() const {
+        return m_DescriptorHandleCPU;
     }
 
     inline D3D12_GPU_VIRTUAL_ADDRESS GetGPUVA() const {
@@ -61,7 +61,7 @@ private:
     DeviceD3D12& m_Device;
     ID3D12Resource* m_Resource = nullptr;
     D3D12_GPU_VIRTUAL_ADDRESS m_BufferLocation = 0;
-    DescriptorPointerCPU m_DescriptorPointerCPU = {};
+    DescriptorHandleCPU m_DescriptorHandleCPU = {};
     DescriptorHandle m_Handle = {};
     BufferViewType m_BufferViewType = BufferViewType::MAX_NUM;
     bool m_IsIntegerFormat = false;

@@ -10,54 +10,64 @@ void DescriptorSetD3D12::Create(DescriptorPoolD3D12* desriptorPoolD3D12, const D
     m_HeapOffsets = heapOffsets;
 }
 
-DescriptorPointerCPU DescriptorSetD3D12::GetDescriptorPointerCPU(uint32_t rangeIndex, uint32_t rangeOffset) const {
+DescriptorHandleGPU DescriptorSetD3D12::GetDescriptorHandleGPU(uint32_t rangeIndex, uint32_t baseDescriptor) const {
     const DescriptorRangeMapping& rangeMapping = m_DescriptorSetMapping->descriptorRangeMappings[rangeIndex];
 
-    uint32_t heapOffset = m_HeapOffsets[rangeMapping.descriptorHeapType];
-    uint32_t offset = rangeMapping.heapOffset + heapOffset + rangeOffset;
+    uint32_t offset = m_HeapOffsets[rangeMapping.descriptorHeapType];
+    offset += rangeMapping.heapOffset;
+    offset += baseDescriptor;
 
-    DescriptorPointerCPU descriptorPointerCPU = m_DescriptorPoolD3D12->GetDescriptorPointerCPU(rangeMapping.descriptorHeapType, offset);
+    DescriptorHandleGPU descriptorHandleGPU = m_DescriptorPoolD3D12->GetDescriptorHandleGPU(rangeMapping.descriptorHeapType, offset);
 
-    return descriptorPointerCPU;
+    return descriptorHandleGPU;
 }
 
-DescriptorPointerGPU DescriptorSetD3D12::GetDescriptorPointerGPU(uint32_t rangeIndex, uint32_t rangeOffset) const {
-    const DescriptorRangeMapping& rangeMapping = m_DescriptorSetMapping->descriptorRangeMappings[rangeIndex];
+NRI_INLINE void DescriptorSetD3D12::UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum) {
+    for (uint32_t i = 0; i < updateDescriptorRangeDescNum; i++) {
+        const UpdateDescriptorRangeDesc& updateDescriptorRangeDesc = updateDescriptorRangeDescs[i];
 
-    uint32_t heapOffset = m_HeapOffsets[rangeMapping.descriptorHeapType];
-    uint32_t offset = rangeMapping.heapOffset + heapOffset + rangeOffset;
+        DescriptorSetD3D12& dst = *(DescriptorSetD3D12*)updateDescriptorRangeDesc.descriptorSet;
+        
+        const DescriptorRangeMapping& dstRangeMapping = dst.m_DescriptorSetMapping->descriptorRangeMappings[updateDescriptorRangeDesc.rangeIndex];
 
-    DescriptorPointerGPU descriptorPointerGPU = m_DescriptorPoolD3D12->GetDescriptorPointerGPU(rangeMapping.descriptorHeapType, offset);
+        uint32_t dstOffset = dst.m_HeapOffsets[dstRangeMapping.descriptorHeapType];
+        dstOffset += dstRangeMapping.heapOffset;
+        dstOffset += updateDescriptorRangeDesc.baseDescriptor;
 
-    return descriptorPointerGPU;
-}
+        for (uint32_t j = 0; j < updateDescriptorRangeDesc.descriptorNum; j++) {
+            DescriptorHandleCPU dstHandle = dst.m_DescriptorPoolD3D12->GetDescriptorHandleCPU(dstRangeMapping.descriptorHeapType, dstOffset + j);
+            DescriptorHandleCPU srcHandle = ((DescriptorD3D12*)updateDescriptorRangeDesc.descriptors[j])->GetDescriptorHandleCPU();
 
-NRI_INLINE void DescriptorSetD3D12::UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs) {
-    for (uint32_t i = 0; i < rangeNum; i++) {
-        const DescriptorRangeMapping& rangeMapping = m_DescriptorSetMapping->descriptorRangeMappings[rangeOffset + i];
-
-        uint32_t heapOffset = m_HeapOffsets[rangeMapping.descriptorHeapType];
-        uint32_t baseOffset = rangeMapping.heapOffset + heapOffset + rangeUpdateDescs[i].baseDescriptor;
-
-        for (uint32_t j = 0; j < rangeUpdateDescs[i].descriptorNum; j++) {
-            DescriptorPointerCPU dstPointer = m_DescriptorPoolD3D12->GetDescriptorPointerCPU(rangeMapping.descriptorHeapType, baseOffset + j);
-            DescriptorPointerCPU srcPointer = ((DescriptorD3D12*)rangeUpdateDescs[i].descriptors[j])->GetDescriptorPointerCPU();
-
-            GetDevice()->CopyDescriptorsSimple(1, {dstPointer}, {srcPointer}, (D3D12_DESCRIPTOR_HEAP_TYPE)rangeMapping.descriptorHeapType);
+            dst.GetDevice()->CopyDescriptorsSimple(1, {dstHandle}, {srcHandle}, (D3D12_DESCRIPTOR_HEAP_TYPE)dstRangeMapping.descriptorHeapType);
         }
     }
 }
 
-NRI_INLINE void DescriptorSetD3D12::Copy(const CopyDescriptorSetDesc& copyDescriptorSetDesc) {
-    DescriptorSetD3D12& dstDescriptorSetD3D12 = *(DescriptorSetD3D12*)copyDescriptorSetDesc.dstDescriptorSet;
-    const DescriptorSetD3D12& srcDescriptorSetD3D12 = *(DescriptorSetD3D12*)copyDescriptorSetDesc.srcDescriptorSet;
+NRI_INLINE void DescriptorSetD3D12::Copy(const CopyDescriptorRangeDesc* copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum) {
+    for (uint32_t i = 0; i < copyDescriptorRangeDescNum; i++) {
+        const CopyDescriptorRangeDesc& copyDescriptorSetDesc = copyDescriptorRangeDescs[i];
 
-    for (uint32_t i = 0; i < copyDescriptorSetDesc.rangeNum; i++) {
-        const DescriptorRangeMapping& rangeMapping = dstDescriptorSetD3D12.m_DescriptorSetMapping->descriptorRangeMappings[i];
+        DescriptorSetD3D12& dst = *(DescriptorSetD3D12*)copyDescriptorSetDesc.dstDescriptorSet;
+        const DescriptorSetD3D12& src = *(DescriptorSetD3D12*)copyDescriptorSetDesc.srcDescriptorSet;
 
-        DescriptorPointerCPU dstPointer = dstDescriptorSetD3D12.GetDescriptorPointerCPU(copyDescriptorSetDesc.dstBaseRange + i, 0);
-        DescriptorPointerCPU srcPointer = srcDescriptorSetD3D12.GetDescriptorPointerCPU(copyDescriptorSetDesc.srcBaseRange + i, 0);
+        const DescriptorRangeMapping& dstRangeMapping = dst.m_DescriptorSetMapping->descriptorRangeMappings[copyDescriptorSetDesc.dstRangeIndex];
+        const DescriptorRangeMapping& srcRangeMapping = src.m_DescriptorSetMapping->descriptorRangeMappings[copyDescriptorSetDesc.srcRangeIndex];
 
-        dstDescriptorSetD3D12.GetDevice()->CopyDescriptorsSimple(rangeMapping.descriptorNum, {dstPointer}, {srcPointer}, (D3D12_DESCRIPTOR_HEAP_TYPE)rangeMapping.descriptorHeapType);
+        uint32_t dstOffset = dst.m_HeapOffsets[dstRangeMapping.descriptorHeapType];
+        dstOffset += dstRangeMapping.heapOffset;
+        dstOffset += copyDescriptorSetDesc.dstBaseDescriptor;
+
+        uint32_t srcOffset = src.m_HeapOffsets[srcRangeMapping.descriptorHeapType];
+        srcOffset += srcRangeMapping.heapOffset;
+        srcOffset += copyDescriptorSetDesc.srcBaseDescriptor;
+
+        DescriptorHandleCPU dstHandle = dst.m_DescriptorPoolD3D12->GetDescriptorHandleCPU(dstRangeMapping.descriptorHeapType, dstOffset);
+        DescriptorHandleCPU srcHandle = src.m_DescriptorPoolD3D12->GetDescriptorHandleCPU(srcRangeMapping.descriptorHeapType, srcOffset);
+
+        uint32_t descriptorNum = copyDescriptorSetDesc.descriptorNum;
+        if (!descriptorNum)
+            descriptorNum = srcRangeMapping.descriptorNum;
+
+        dst.GetDevice()->CopyDescriptorsSimple(descriptorNum, {dstHandle}, {srcHandle}, (D3D12_DESCRIPTOR_HEAP_TYPE)dstRangeMapping.descriptorHeapType);
     }
 }

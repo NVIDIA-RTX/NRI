@@ -728,25 +728,37 @@ NRI_INLINE void DeviceVal::FreeMemory(Memory* memory) {
     Destroy(memoryVal);
 }
 
-NRI_INLINE void DeviceVal::CopyDescriptorSets(const CopyDescriptorSetDesc* copyDescriptorSetDescs, uint32_t copyDescriptorSetDescNum) {
-    Scratch<CopyDescriptorSetDesc> copyDescriptorSetDescsImpl = AllocateScratch(*this, CopyDescriptorSetDesc, copyDescriptorSetDescNum);
-    for (uint32_t i = 0; i < copyDescriptorSetDescNum; i++) {
-        const CopyDescriptorSetDesc& copyDescriptorSetDesc = copyDescriptorSetDescs[i];
+NRI_INLINE void DeviceVal::CopyDescriptorRanges(const CopyDescriptorRangeDesc* copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum) {
+    Scratch<CopyDescriptorRangeDesc> copyDescriptorSetDescsImpl = AllocateScratch(*this, CopyDescriptorRangeDesc, copyDescriptorRangeDescNum);
+    for (uint32_t i = 0; i < copyDescriptorRangeDescNum; i++) {
+        const CopyDescriptorRangeDesc& copyDescriptorSetDesc = copyDescriptorRangeDescs[i];
 
-        RETURN_ON_FAILURE(this, copyDescriptorSetDesc.dstDescriptorSet != nullptr, ReturnVoid(), "'dstDescriptorSet' is NULL");
-        RETURN_ON_FAILURE(this, copyDescriptorSetDesc.srcDescriptorSet != nullptr, ReturnVoid(), "'srcDescriptorSet' is NULL");
+        RETURN_ON_FAILURE(this, copyDescriptorSetDesc.dstDescriptorSet != nullptr, ReturnVoid(), "'[%u].dstDescriptorSet' is NULL", i);
+        RETURN_ON_FAILURE(this, copyDescriptorSetDesc.srcDescriptorSet != nullptr, ReturnVoid(), "'[%u].srcDescriptorSet' is NULL", i);
 
-        DescriptorSetVal& srcDescriptorSetVal = *(DescriptorSetVal*)copyDescriptorSetDesc.srcDescriptorSet;
-        const DescriptorSetDesc& srcDescriptorSetDesc = srcDescriptorSetVal.GetDesc();
+        DescriptorSetVal& dstSetVal = *(DescriptorSetVal*)copyDescriptorSetDesc.dstDescriptorSet;
+        DescriptorSetVal& srcSetVal = *(DescriptorSetVal*)copyDescriptorSetDesc.srcDescriptorSet;
 
-        bool srcRangeValid = copyDescriptorSetDesc.srcBaseRange + copyDescriptorSetDesc.rangeNum <= srcDescriptorSetDesc.rangeNum;
-        RETURN_ON_FAILURE(this, srcRangeValid, ReturnVoid(), "src range is invalid");
+        const DescriptorSetDesc& dstSetDesc = dstSetVal.GetDesc();
+        const DescriptorSetDesc& srcSetDesc = srcSetVal.GetDesc();
 
-        DescriptorSetVal& dstDescriptorSetVal = *(DescriptorSetVal*)copyDescriptorSetDesc.dstDescriptorSet;
-        const DescriptorSetDesc& dstDescriptorSetDesc = dstDescriptorSetVal.GetDesc();
+        RETURN_ON_FAILURE(this, copyDescriptorSetDesc.dstRangeIndex < dstSetDesc.rangeNum, ReturnVoid(), "'[%u].dstRangeIndex = %u' is out of bounds", copyDescriptorSetDesc.dstRangeIndex, i);
+        RETURN_ON_FAILURE(this, copyDescriptorSetDesc.srcRangeIndex < srcSetDesc.rangeNum, ReturnVoid(), "'[%u].srcRangeIndex = %u' is out of bounds", copyDescriptorSetDesc.srcRangeIndex, i);
 
-        bool dstRangeValid = copyDescriptorSetDesc.dstBaseRange + copyDescriptorSetDesc.rangeNum <= dstDescriptorSetDesc.rangeNum;
-        RETURN_ON_FAILURE(this, dstRangeValid, ReturnVoid(), "dst range is invalid");
+        const DescriptorRangeDesc& dstRangeDesc = dstSetDesc.ranges[copyDescriptorSetDesc.dstRangeIndex];
+        const DescriptorRangeDesc& srcRangeDesc = srcSetDesc.ranges[copyDescriptorSetDesc.srcRangeIndex];
+
+        uint32_t descriptorNum = copyDescriptorSetDesc.descriptorNum;
+        if (!descriptorNum)
+            descriptorNum = srcRangeDesc.descriptorNum;
+
+        RETURN_ON_FAILURE(this, copyDescriptorSetDesc.dstBaseDescriptor + descriptorNum <= dstRangeDesc.descriptorNum, ReturnVoid(),
+            "'[%u].dstBaseDescriptor = %u + [%u].descriptorNum = %u' is greater than 'descriptorNum = %u' in the range (descriptorType=%s)",
+            i, copyDescriptorSetDesc.dstBaseDescriptor, i, descriptorNum, dstRangeDesc.descriptorNum, GetDescriptorTypeName(dstRangeDesc.descriptorType));
+
+        RETURN_ON_FAILURE(this, copyDescriptorSetDesc.srcBaseDescriptor + descriptorNum <= srcRangeDesc.descriptorNum, ReturnVoid(),
+            "'[%u].srcBaseDescriptor = %u + [%u].descriptorNum = %u' is greater than 'descriptorNum = %u' in the range (descriptorType=%s)",
+            i, copyDescriptorSetDesc.srcBaseDescriptor, i, descriptorNum, srcRangeDesc.descriptorNum, GetDescriptorTypeName(srcRangeDesc.descriptorType));
 
         auto& copyDescriptorSetDescImpl = copyDescriptorSetDescsImpl[i];
         copyDescriptorSetDescImpl = copyDescriptorSetDesc;
@@ -754,7 +766,49 @@ NRI_INLINE void DeviceVal::CopyDescriptorSets(const CopyDescriptorSetDesc* copyD
         copyDescriptorSetDescImpl.srcDescriptorSet = NRI_GET_IMPL(DescriptorSet, copyDescriptorSetDesc.srcDescriptorSet);
     }
 
-    GetCoreInterfaceImpl().CopyDescriptorSets(copyDescriptorSetDescsImpl, copyDescriptorSetDescNum);
+    GetCoreInterfaceImpl().CopyDescriptorRanges(copyDescriptorSetDescsImpl, copyDescriptorRangeDescNum);
+}
+
+NRI_INLINE void DeviceVal::UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum) {
+    uint32_t descriptorNum = 0;
+    for (uint32_t i = 0; i < updateDescriptorRangeDescNum; i++)
+        descriptorNum += updateDescriptorRangeDescs[i].descriptorNum;
+
+    Scratch<UpdateDescriptorRangeDesc> updateDescriptorRangeDescsImpl = AllocateScratch(*this, UpdateDescriptorRangeDesc, updateDescriptorRangeDescNum);
+    Scratch<Descriptor*> descriptorsImpl = AllocateScratch(*this, Descriptor*, descriptorNum);
+
+    uint32_t descriptorOffset = 0;
+    for (uint32_t i = 0; i < updateDescriptorRangeDescNum; i++) {
+        const UpdateDescriptorRangeDesc& updateDescriptorRangeDesc = updateDescriptorRangeDescs[i];
+        const DescriptorSetVal& set = *(DescriptorSetVal*)updateDescriptorRangeDesc.descriptorSet;
+        const DescriptorSetDesc& setDesc = set.GetDesc();
+
+        RETURN_ON_FAILURE(this, updateDescriptorRangeDesc.rangeIndex < setDesc.rangeNum, ReturnVoid(), "'rangeIndex = %u' is out of 'rangeNum = %u' in the set", updateDescriptorRangeDesc.rangeIndex, setDesc.rangeNum);
+
+        const DescriptorRangeDesc& rangeDesc = setDesc.ranges[updateDescriptorRangeDesc.rangeIndex];
+
+        RETURN_ON_FAILURE(this, updateDescriptorRangeDesc.descriptorNum != 0, ReturnVoid(), "'[%u].descriptorNum' is 0", i);
+        RETURN_ON_FAILURE(this, updateDescriptorRangeDesc.descriptors != nullptr, ReturnVoid(), "'[%u].descriptors' is NULL", i);
+        RETURN_ON_FAILURE(this, updateDescriptorRangeDesc.baseDescriptor + updateDescriptorRangeDesc.descriptorNum <= rangeDesc.descriptorNum, ReturnVoid(),
+            "'[%u].baseDescriptor = %u + [%u].descriptorNum = %u' is greater than 'descriptorNum = %u' in the range (descriptorType=%s)",
+            i, updateDescriptorRangeDesc.baseDescriptor, i, updateDescriptorRangeDesc.descriptorNum, rangeDesc.descriptorNum, GetDescriptorTypeName(rangeDesc.descriptorType));
+
+        auto& updateDescriptorRangeDescImpl = updateDescriptorRangeDescsImpl[i];
+        updateDescriptorRangeDescImpl = updateDescriptorRangeDesc;
+        updateDescriptorRangeDescImpl.descriptorSet = NRI_GET_IMPL(DescriptorSet, updateDescriptorRangeDesc.descriptorSet);
+        updateDescriptorRangeDescImpl.descriptors = descriptorsImpl + descriptorOffset;
+
+        Descriptor** descriptors = (Descriptor**)updateDescriptorRangeDescImpl.descriptors;
+        for (uint32_t j = 0; j < updateDescriptorRangeDesc.descriptorNum; j++) {
+            RETURN_ON_FAILURE(this, updateDescriptorRangeDesc.descriptors[j] != nullptr, ReturnVoid(), "'[%u].descriptors[%u]' is NULL", i, j);
+
+            descriptors[j] = NRI_GET_IMPL(Descriptor, updateDescriptorRangeDesc.descriptors[j]);
+        }
+
+        descriptorOffset += updateDescriptorRangeDesc.descriptorNum;
+    }
+
+    GetCoreInterfaceImpl().UpdateDescriptorRanges(updateDescriptorRangeDescsImpl, updateDescriptorRangeDescNum);
 }
 
 NRI_INLINE FormatSupportBits DeviceVal::GetFormatSupport(Format format) const {

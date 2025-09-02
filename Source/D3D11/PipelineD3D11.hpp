@@ -65,7 +65,7 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc) {
     // Multisample
     Sample_t sampleNum = 1;
     if (pipelineDesc.multisample) {
-        if (pipelineDesc.multisample->sampleMask != ALL_SAMPLES)
+        if (pipelineDesc.multisample->sampleMask != ALL)
             m_SampleMask = pipelineDesc.multisample->sampleMask;
 
         sampleNum = pipelineDesc.multisample->sampleNum;

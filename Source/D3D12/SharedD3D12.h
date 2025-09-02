@@ -37,8 +37,8 @@ struct D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY {
 
 namespace nri {
 
-typedef size_t DescriptorPointerCPU;
-typedef uint64_t DescriptorPointerGPU;
+typedef size_t DescriptorHandleCPU;   // D3D12_CPU_DESCRIPTOR_HANDLE
+typedef uint64_t DescriptorHandleGPU; // D3D12_GPU_DESCRIPTOR_HANDLE
 
 struct MemoryTypeInfo {
     uint16_t heapFlags;
@@ -84,8 +84,8 @@ static_assert(DESCRIPTORS_BATCH_SIZE <= (1 << DESCRIPTOR_HANDLE_HEAP_OFFSET_BIT_
 
 struct DescriptorHeapDesc {
     ComPtr<ID3D12DescriptorHeap> heap;
-    DescriptorPointerCPU basePointerCPU = 0;
-    DescriptorPointerGPU basePointerGPU = 0;
+    DescriptorHandleGPU baseHandleGPU = 0;
+    DescriptorHandleCPU baseHandleCPU = 0;
     uint32_t descriptorSize = 0;
     uint32_t num = 0;
 };

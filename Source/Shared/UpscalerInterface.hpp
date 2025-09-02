@@ -758,12 +758,12 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
                 m.nis->srvUsm,
             };
 
-            const DescriptorRangeUpdateDesc descriptorRangeUpdateDescs[] = {
+            const UpdateDescriptorRangeDesc updateDescriptorRangeDescs[] = {
                 {&m.nis->sampler, 1},
                 {resources, GetCountOf(resources)},
             };
 
-            m_iCore.UpdateDescriptorRanges(*m.nis->descriptorSet0, 0, GetCountOf(descriptorRangeUpdateDescs), descriptorRangeUpdateDescs);
+            m_iCore.UpdateDescriptorRanges(*m.nis->descriptorSet0, 0, GetCountOf(updateDescriptorRangeDescs), updateDescriptorRangeDescs);
         }
     }
 #endif
@@ -1214,12 +1214,12 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         }
 
         { // Update dynamic resources
-            const DescriptorRangeUpdateDesc descriptorRangeUpdateDescs[] = {
+            const UpdateDescriptorRangeDesc updateDescriptorRangeDescs[] = {
                 {&input.descriptor, 1},
                 {&output.descriptor, 1},
             };
 
-            m_iCore.UpdateDescriptorRanges(*descriptorSet1, 0, GetCountOf(descriptorRangeUpdateDescs), descriptorRangeUpdateDescs);
+            m_iCore.UpdateDescriptorRanges(*descriptorSet1, 0, GetCountOf(updateDescriptorRangeDescs), updateDescriptorRangeDescs);
         }
 
         { // Dispatch

@@ -552,10 +552,10 @@ static Result NRI_CALL QueueWaitIdle(Queue*) {
 static void NRI_CALL Wait(Fence&, uint64_t) {
 }
 
-static void NRI_CALL UpdateDescriptorRanges(DescriptorSet&, uint32_t, uint32_t, const DescriptorRangeUpdateDesc*) {
+static void NRI_CALL UpdateDescriptorRanges(const UpdateDescriptorRangeDesc*, uint32_t) {
 }
 
-static void NRI_CALL CopyDescriptorSets(const CopyDescriptorSetDesc*, uint32_t) {
+static void NRI_CALL CopyDescriptorRanges(const CopyDescriptorRangeDesc*, uint32_t) {
 }
 
 static Result NRI_CALL AllocateDescriptorSets(DescriptorPool&, const PipelineLayout&, uint32_t, DescriptorSet**, uint32_t, uint32_t) {
@@ -694,7 +694,7 @@ Result DeviceNONE::FillFunctionTable(CoreInterface& table) const {
     table.Wait = ::Wait;
     table.GetFenceValue = ::GetFenceValue;
     table.UpdateDescriptorRanges = ::UpdateDescriptorRanges;
-    table.CopyDescriptorSets = ::CopyDescriptorSets;
+    table.CopyDescriptorRanges = ::CopyDescriptorRanges;
     table.AllocateDescriptorSets = ::AllocateDescriptorSets;
     table.ResetDescriptorPool = ::ResetDescriptorPool;
     table.ResetCommandAllocator = ::ResetCommandAllocator;

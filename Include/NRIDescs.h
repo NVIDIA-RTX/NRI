@@ -73,10 +73,10 @@ NriStruct(Float2_t) {
 };
 
 // Aliases
-static const uint32_t NriConstant(BGRA_UNUSED) = 0;  // only for "bgra" color for profiling
-static const uint32_t NriConstant(ALL_SAMPLES) = 0;  // only for "sampleMask"
-static const Nri(Dim_t) NriConstant(WHOLE_SIZE) = 0; // only for "Dim_t" and "size"
-static const Nri(Dim_t) NriConstant(REMAINING) = 0;  // only for "mipNum" and "layerNum"
+static const uint32_t NriConstant(BGRA_UNUSED) = 0;     // only for "bgra" color for profiling
+static const uint32_t NriConstant(ALL) = 0;             // only for "sampleMask" and "descriptorNum"
+static const Nri(Dim_t) NriConstant(WHOLE_SIZE) = 0;    // only for "Dim_t" and "size"
+static const Nri(Dim_t) NriConstant(REMAINING) = 0;     // only for "mipNum" and "layerNum"
 
 // Readability
 #define NriOptional // i.e. can be 0 (keep an eye on comments)
@@ -495,7 +495,7 @@ NriStruct(GlobalBarrierDesc) {
 };
 
 NriStruct(BufferBarrierDesc) {
-    NriPtr(Buffer) buffer; // use "GetAccelerationStructureBuffer" and "GetMicromapBuffer" for related barriers
+    NriPtr(Buffer) buffer;  // use "GetAccelerationStructureBuffer" and "GetMicromapBuffer" for related barriers
     Nri(AccessStage) before;
     Nri(AccessStage) after;
 };
@@ -505,9 +505,9 @@ NriStruct(TextureBarrierDesc) {
     Nri(AccessLayoutStage) before;
     Nri(AccessLayoutStage) after;
     Nri(Dim_t) mipOffset;
-    Nri(Dim_t) mipNum;
+    Nri(Dim_t) mipNum;      // can be "REMAINING"
     Nri(Dim_t) layerOffset;
-    Nri(Dim_t) layerNum;
+    Nri(Dim_t) layerNum;    // can be "REMAINING"
     Nri(PlaneBits) planes;
 
     // Queue ownership transfer is potentially needed only for "SharingMode::EXCLUSIVE" textures
@@ -747,9 +747,9 @@ NriStruct(Texture1DViewDesc) {
     Nri(Texture1DViewType) viewType;
     Nri(Format) format;
     Nri(Dim_t) mipOffset;
-    Nri(Dim_t) mipNum;
+    Nri(Dim_t) mipNum;          // can be "REMAINING"
     Nri(Dim_t) layerOffset;
-    Nri(Dim_t) layerNum;
+    Nri(Dim_t) layerNum;        // can be "REMAINING"
 };
 
 NriStruct(Texture2DViewDesc) {
@@ -757,9 +757,9 @@ NriStruct(Texture2DViewDesc) {
     Nri(Texture2DViewType) viewType;
     Nri(Format) format;
     Nri(Dim_t) mipOffset;
-    Nri(Dim_t) mipNum;
+    Nri(Dim_t) mipNum;          // can be "REMAINING"
     Nri(Dim_t) layerOffset;
-    Nri(Dim_t) layerNum;
+    Nri(Dim_t) layerNum;        // can be "REMAINING"
 };
 
 NriStruct(Texture3DViewDesc) {
@@ -767,17 +767,17 @@ NriStruct(Texture3DViewDesc) {
     Nri(Texture3DViewType) viewType;
     Nri(Format) format;
     Nri(Dim_t) mipOffset;
-    Nri(Dim_t) mipNum;
+    Nri(Dim_t) mipNum;          // can be "REMAINING"
     Nri(Dim_t) sliceOffset;
-    Nri(Dim_t) sliceNum;
+    Nri(Dim_t) sliceNum;        // can be "REMAINING"
 };
 
 NriStruct(BufferViewDesc) {
     const NriPtr(Buffer) buffer;
     Nri(BufferViewType) viewType;
     Nri(Format) format;
-    uint64_t offset; // expects "memoryAlignment.bufferShaderResourceOffset" for shader resources
-    uint64_t size;
+    uint64_t offset;            // expects "memoryAlignment.bufferShaderResourceOffset" for shader resources
+    uint64_t size;              // can be "WHOLE_SIZE"
     NriOptional uint32_t structureStride; // = structure stride from "BufferDesc" if not provided
 };
 
@@ -787,7 +787,7 @@ NriStruct(AddressModes) {
 
 NriStruct(Filters) {
     Nri(Filter) min, mag, mip;
-    Nri(ReductionMode) ext; // requires "features.textureFilterMinMax"
+    Nri(ReductionMode) ext;     // requires "features.textureFilterMinMax"
 };
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerCreateInfo.html
@@ -816,8 +816,8 @@ All indices are local in the currently bound pipeline layout.
 
 Pipeline layout example:
     Descriptor set                  #0          // "setIndex" - a descriptor set index in the pipeline layout, provided as an argument or bound to the pipeline
-        Descriptor range                #0      // "rangeIndex" and "baseRange" - a descriptor range (base) index in the descriptor set
-            Descriptor                      #0  // "descriptorIndex" and "baseDescriptor" - a descriptor (base) index in the descriptor range
+        Descriptor range                #0      // "rangeIndex" - a descriptor range index in the descriptor set
+            Descriptor                      #0  // "descriptorIndex" and "baseDescriptor" - a descriptor (base) index in the descriptor range, i.e. sub-range start
             Descriptor                      #1
             Descriptor                      #2
         Descriptor range                #1
@@ -964,19 +964,28 @@ NriStruct(DescriptorPoolDesc) {
     Nri(DescriptorPoolBits) flags;
 };
 
-// Updating descriptors in a descriptor set, allocated from a descriptor pool
-NriStruct(DescriptorRangeUpdateDesc) {
+// Updating/initializing descriptors in a descriptor set
+NriStruct(UpdateDescriptorRangeDesc) {
+    // Destination
+    NriPtr(DescriptorSet) descriptorSet;
+    uint32_t rangeIndex;
+    uint32_t baseDescriptor;
+    // Source & count
     const NriPtr(Descriptor) const* descriptors;
     uint32_t descriptorNum;
-    uint32_t baseDescriptor;
 };
 
-NriStruct(CopyDescriptorSetDesc) {
+// Copying descriptors between descriptor sets
+NriStruct(CopyDescriptorRangeDesc) {
+    // Destination
     NriPtr(DescriptorSet) dstDescriptorSet;
+    uint32_t dstRangeIndex;
+    uint32_t dstBaseDescriptor;
+    // Source & count
     const NriPtr(DescriptorSet) srcDescriptorSet;
-    uint32_t srcBaseRange;
-    uint32_t dstBaseRange;
-    uint32_t rangeNum;
+    uint32_t srcRangeIndex;
+    uint32_t srcBaseDescriptor;
+    uint32_t descriptorNum;         // can be "ALL" (source)
 };
 
 // Binding
@@ -1161,7 +1170,7 @@ NriStruct(RasterizationDesc) {
 };
 
 NriStruct(MultisampleDesc) {
-    uint32_t sampleMask;
+    uint32_t sampleMask;        // can be "ALL"
     Nri(Sample_t) sampleNum;
     bool alphaToCoverage;
     bool sampleLocations;       // requires "tiers.sampleLocations != 0", expects "CmdSetSampleLocations"
@@ -1495,9 +1504,9 @@ NriStruct(TextureRegionDesc) {
     Nri(Dim_t) x;
     Nri(Dim_t) y;
     Nri(Dim_t) z;
-    Nri(Dim_t) width;
-    Nri(Dim_t) height;
-    Nri(Dim_t) depth;
+    Nri(Dim_t) width;       // can be "WHOLE_SIZE" (mip)
+    Nri(Dim_t) height;      // can be "WHOLE_SIZE" (mip)
+    Nri(Dim_t) depth;       // can be "WHOLE_SIZE" (mip)
     Nri(Dim_t) mipOffset;
     Nri(Dim_t) layerOffset;
     Nri(PlaneBits) planes;

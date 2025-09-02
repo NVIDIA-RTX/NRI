@@ -447,13 +447,12 @@ static void NRI_CALL Wait(Fence& fence, uint64_t value) {
     ((FenceD3D11&)fence).Wait(value);
 }
 
-static void NRI_CALL UpdateDescriptorRanges(DescriptorSet& descriptorSet, uint32_t baseRange, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs) {
-    ((DescriptorSetD3D11&)descriptorSet).UpdateDescriptorRanges(baseRange, rangeNum, rangeUpdateDescs);
+static void NRI_CALL UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum) {
+    DescriptorSetD3D11::UpdateDescriptorRanges(updateDescriptorRangeDescs, updateDescriptorRangeDescNum);
 }
 
-static void NRI_CALL CopyDescriptorSets(const CopyDescriptorSetDesc* copyDescriptorSetDescs, uint32_t copyDescriptorSetDescNum) {
-    for (uint32_t i = 0; i < copyDescriptorSetDescNum; i++)
-        DescriptorSetD3D11::Copy(copyDescriptorSetDescs[i]);
+static void NRI_CALL CopyDescriptorRanges(const CopyDescriptorRangeDesc* copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum) {
+    DescriptorSetD3D11::Copy(copyDescriptorRangeDescs, copyDescriptorRangeDescNum);
 }
 
 static Result NRI_CALL AllocateDescriptorSets(DescriptorPool& descriptorPool, const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum) {
@@ -756,7 +755,7 @@ Result DeviceD3D11::FillFunctionTable(CoreInterface& table) const {
     table.Wait = ::Wait;
     table.GetFenceValue = ::GetFenceValue;
     table.UpdateDescriptorRanges = ::UpdateDescriptorRanges;
-    table.CopyDescriptorSets = ::CopyDescriptorSets;
+    table.CopyDescriptorRanges = ::CopyDescriptorRanges;
     table.AllocateDescriptorSets = ::AllocateDescriptorSets;
     table.ResetDescriptorPool = ::ResetDescriptorPool;
     table.ResetCommandAllocator = ::ResetCommandAllocator;

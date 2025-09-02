@@ -23,8 +23,8 @@ struct DescriptorPoolD3D12 final : public DebugNameBase {
     Result Create(const DescriptorPoolD3D12Desc& descriptorPoolD3D12Desc);
 
     void Bind(ID3D12GraphicsCommandList* graphicsCommandList) const;
-    DescriptorPointerCPU GetDescriptorPointerCPU(DescriptorHeapType descriptorHeapType, uint32_t offset) const;
-    DescriptorPointerGPU GetDescriptorPointerGPU(DescriptorHeapType descriptorHeapType, uint32_t offset) const;
+    DescriptorHandleCPU GetDescriptorHandleCPU(DescriptorHeapType descriptorHeapType, uint32_t offset) const;
+    DescriptorHandleGPU GetDescriptorHandleGPU(DescriptorHeapType descriptorHeapType, uint32_t offset) const;
 
     //================================================================================================================
     // DebugNameBase

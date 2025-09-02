@@ -32,12 +32,6 @@ struct DescriptorSetVK final : public DebugNameBase {
 
     void SetDebugName(const char* name) DEBUG_NAME_OVERRIDE;
 
-    //================================================================================================================
-    // NRI
-    //================================================================================================================
-
-    void UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs);
-
 private:
     DeviceVK* m_Device = nullptr;
     VkDescriptorSet m_Handle = VK_NULL_HANDLE;

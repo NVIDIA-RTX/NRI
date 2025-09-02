@@ -437,8 +437,8 @@ Result ImguiImpl::Create(const ImguiDesc& imguiDesc) {
     }
 
     { // Update static set with sampler
-        DescriptorRangeUpdateDesc descriptorRangeUpdateDesc = {&m_Sampler, 1};
-        m_iCore.UpdateDescriptorRanges(*m_DescriptorSet0_sampler, 0, 1, &descriptorRangeUpdateDesc);
+        UpdateDescriptorRangeDesc updateDescriptorRangeDesc = {m_DescriptorSet0_sampler, 0, 0, &m_Sampler, 1};
+        m_iCore.UpdateDescriptorRanges(&updateDescriptorRangeDesc, 1);
     }
 
     return Result::SUCCESS;
@@ -836,8 +836,8 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
                     SetDescriptorSetDesc textureBindingDesc = {IMGUI_TEXTURE_SET, descriptorSet};
                     m_iCore.CmdSetDescriptorSet(commandBuffer, textureBindingDesc);
 
-                    DescriptorRangeUpdateDesc descriptorRangeUpdateDesc = {&currentDescriptor, 1};
-                    m_iCore.UpdateDescriptorRanges(*descriptorSet, 0, 1, &descriptorRangeUpdateDesc);
+                    UpdateDescriptorRangeDesc updateDescriptorRangeDesc = {descriptorSet, 0, 0, &currentDescriptor, 1};
+                    m_iCore.UpdateDescriptorRanges(&updateDescriptorRangeDesc, 1);
                 }
 
                 // Draw

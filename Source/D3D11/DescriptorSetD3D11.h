@@ -19,8 +19,8 @@ struct DescriptorSetD3D11 final : public DebugNameBase {
     // NRI
     //================================================================================================================
 
-    void UpdateDescriptorRanges(uint32_t rangeOffset, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs);
-    static void Copy(const CopyDescriptorSetDesc& copyDescriptorSetDesc);
+    static void UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum);
+    static void Copy(const CopyDescriptorRangeDesc* copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum);
 
 private:
     const PipelineLayoutD3D11* m_PipelineLayout = nullptr;

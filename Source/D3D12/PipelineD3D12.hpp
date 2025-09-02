@@ -190,7 +190,7 @@ static inline uint32_t FillSampleDesc(DXGI_SAMPLE_DESC& sampleDesc, const Graphi
     sampleDesc.Count = graphicsPipelineDesc.multisample->sampleNum;
     sampleDesc.Quality = 0;
 
-    return graphicsPipelineDesc.multisample->sampleMask != ALL_SAMPLES ? graphicsPipelineDesc.multisample->sampleMask : uint32_t(-1);
+    return graphicsPipelineDesc.multisample->sampleMask != ALL ? graphicsPipelineDesc.multisample->sampleMask : uint32_t(-1);
 }
 
 Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipelineDesc) {

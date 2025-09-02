@@ -326,11 +326,11 @@ void PipelineLayoutD3D12::SetDescriptorSet(ID3D12GraphicsCommandList* graphicsCo
         if (rootParameterIndex == ROOT_PARAMETER_UNUSED)
             continue;
 
-        DescriptorPointerGPU descriptorPointerGPU = descriptorSetD3D12.GetDescriptorPointerGPU(i, 0);
+        DescriptorHandleGPU descriptorHandleGPU = descriptorSetD3D12.GetDescriptorHandleGPU(i, 0);
         if (isGraphics)
-            graphicsCommandList->SetGraphicsRootDescriptorTable(rootParameterIndex, {descriptorPointerGPU});
+            graphicsCommandList->SetGraphicsRootDescriptorTable(rootParameterIndex, {descriptorHandleGPU});
         else
-            graphicsCommandList->SetComputeRootDescriptorTable(rootParameterIndex, {descriptorPointerGPU});
+            graphicsCommandList->SetComputeRootDescriptorTable(rootParameterIndex, {descriptorHandleGPU});
     }
 }
 

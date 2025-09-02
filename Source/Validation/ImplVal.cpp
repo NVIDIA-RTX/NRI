@@ -471,16 +471,24 @@ static void NRI_CALL Wait(Fence& fence, uint64_t value) {
     ((FenceVal&)fence).Wait(value);
 }
 
-static void NRI_CALL UpdateDescriptorRanges(DescriptorSet& descriptorSet, uint32_t baseRange, uint32_t rangeNum, const DescriptorRangeUpdateDesc* rangeUpdateDescs) {
-    ((DescriptorSetVal&)descriptorSet).UpdateDescriptorRanges(baseRange, rangeNum, rangeUpdateDescs);
-}
-
-static void NRI_CALL CopyDescriptorSets(const CopyDescriptorSetDesc* copyDescriptorSetDescs, uint32_t copyDescriptorSetDescNum) {
-    if (!copyDescriptorSetDescNum)
+static void NRI_CALL UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum) {
+    if (!updateDescriptorRangeDescNum)
         return;
 
-    DeviceVal& deviceVal = ((BufferVal*)copyDescriptorSetDescs->dstDescriptorSet)->GetDevice();
-    return deviceVal.CopyDescriptorSets(copyDescriptorSetDescs, copyDescriptorSetDescNum);
+    CHECK(updateDescriptorRangeDescs && updateDescriptorRangeDescs->descriptorSet, "Invalid argument!");
+
+    DeviceVal& deviceVal = ((DescriptorSetVal*)updateDescriptorRangeDescs->descriptorSet)->GetDevice();
+    return deviceVal.UpdateDescriptorRanges(updateDescriptorRangeDescs, updateDescriptorRangeDescNum);
+}
+
+static void NRI_CALL CopyDescriptorRanges(const CopyDescriptorRangeDesc* copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum) {
+    if (!copyDescriptorRangeDescNum)
+        return;
+
+    CHECK(copyDescriptorRangeDescs && copyDescriptorRangeDescs->dstDescriptorSet, "Invalid argument!");
+
+    DeviceVal& deviceVal = ((DescriptorSetVal*)copyDescriptorRangeDescs->dstDescriptorSet)->GetDevice();
+    return deviceVal.CopyDescriptorRanges(copyDescriptorRangeDescs, copyDescriptorRangeDescNum);
 }
 
 static Result NRI_CALL AllocateDescriptorSets(DescriptorPool& descriptorPool, const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum) {
@@ -644,7 +652,7 @@ Result DeviceVal::FillFunctionTable(CoreInterface& table) const {
     table.Wait = ::Wait;
     table.GetFenceValue = ::GetFenceValue;
     table.UpdateDescriptorRanges = ::UpdateDescriptorRanges;
-    table.CopyDescriptorSets = ::CopyDescriptorSets;
+    table.CopyDescriptorRanges = ::CopyDescriptorRanges;
     table.AllocateDescriptorSets = ::AllocateDescriptorSets;
     table.ResetDescriptorPool = ::ResetDescriptorPool;
     table.ResetCommandAllocator = ::ResetCommandAllocator;
