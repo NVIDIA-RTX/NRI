@@ -438,6 +438,9 @@ constexpr VkShaderStageFlags GetShaderStageFlags(StageBits stage) {
     if (stage == StageBits::ALL)
         return VK_SHADER_STAGE_ALL;
 
+    if (stage == StageBits::NONE)
+        return 0;
+
     // Gather bits
     VkShaderStageFlags stageFlags = 0;
 
