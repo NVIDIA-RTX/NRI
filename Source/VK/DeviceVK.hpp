@@ -1,5 +1,7 @@
 // © 2021 NVIDIA Corporation
 
+constexpr bool VERBOSE = false;
+
 static constexpr VkBufferUsageFlags GetBufferUsageFlags(BufferUsageBits bufferUsageBits, uint32_t structureStride, bool isDeviceAddressSupported) {
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT; // TODO: ban "the opposite" for UPLOAD/READBACK?
 
@@ -160,9 +162,11 @@ void DeviceVK::ProcessInstanceExtensions(Vector<const char*>& desiredInstanceExt
     Vector<VkExtensionProperties> supportedExts(extensionNum, GetStdAllocator());
     m_VK.EnumerateInstanceExtensionProperties(nullptr, &extensionNum, supportedExts.data());
 
-    REPORT_INFO(this, "Supported instance extensions:");
-    for (const VkExtensionProperties& props : supportedExts)
-        REPORT_INFO(this, "    %s (v%u)", props.extensionName, props.specVersion);
+    if constexpr (VERBOSE) {
+        REPORT_INFO(this, "Supported instance extensions:");
+        for (const VkExtensionProperties& props : supportedExts)
+            REPORT_INFO(this, "    %s (v%u)", props.extensionName, props.specVersion);
+    }
 
 #ifdef __APPLE__
     // Mandatory
@@ -209,9 +213,11 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     Vector<VkExtensionProperties> supportedExts(extensionNum, GetStdAllocator());
     m_VK.EnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &extensionNum, supportedExts.data());
 
-    REPORT_INFO(this, "Supported device extensions:");
-    for (const VkExtensionProperties& props : supportedExts)
-        REPORT_INFO(this, "    %s (v%u)", props.extensionName, props.specVersion);
+    if constexpr (VERBOSE) {
+        REPORT_INFO(this, "Supported device extensions:");
+        for (const VkExtensionProperties& props : supportedExts)
+            REPORT_INFO(this, "    %s (v%u)", props.extensionName, props.specVersion);
+    }
 
     // Mandatory
     desiredDeviceExts.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
@@ -422,15 +428,14 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         }
     }
 
-    // Create instance
-    Vector<const char*> desiredInstanceExts(GetStdAllocator());
-    {
+    { // Create instance
+        Vector<const char*> desiredInstanceExts(GetStdAllocator());
+        for (uint32_t i = 0; i < desc.vkExtensions.instanceExtensionNum; i++)
+            desiredInstanceExts.push_back(desc.vkExtensions.instanceExtensions[i]);
+
         Result res = ResolvePreInstanceDispatchTable();
         if (res != Result::SUCCESS)
             return res;
-
-        for (uint32_t i = 0; i < desc.vkExtensions.instanceExtensionNum; i++)
-            desiredInstanceExts.push_back(desc.vkExtensions.instanceExtensions[i]);
 
         m_Instance = (VkInstance)descVK.vkInstance;
 
@@ -573,11 +578,13 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
     // Device extensions
     Vector<const char*> desiredDeviceExts(GetStdAllocator());
+    for (uint32_t i = 0; i < desc.vkExtensions.deviceExtensionNum; i++)
+        desiredDeviceExts.push_back(desc.vkExtensions.deviceExtensions[i]);
+
     if (!isWrapper)
         ProcessDeviceExtensions(desiredDeviceExts, desc.disableVKRayTracing);
 
-    for (uint32_t i = 0; i < desc.vkExtensions.deviceExtensionNum; i++)
-        desiredDeviceExts.push_back(desc.vkExtensions.deviceExtensions[i]);
+    REPORT_INFO(this, "Using Vulkan v1.%u: %u device extensions initialized", m_MinorVersion, (uint32_t)desiredDeviceExts.size());
 
     // Device features
     VkPhysicalDeviceFeatures2 features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
@@ -1305,7 +1312,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     VkResult vkResult = CreateVma();
     RETURN_ON_BAD_VKRESULT(this, vkResult, "vmaCreateAllocator");
 
-    ReportDeviceGroupInfo();
+    if constexpr (VERBOSE)
+        ReportMemoryTypes();
 
     return FillFunctionTable(m_iCore);
 }
@@ -1721,7 +1729,7 @@ void DeviceVK::SetDebugNameToTrivialObject(VkObjectType objectType, uint64_t han
     RETURN_VOID_ON_BAD_VKRESULT(this, vkResult, "vkSetDebugUtilsObjectNameEXT");
 }
 
-void DeviceVK::ReportDeviceGroupInfo() {
+void DeviceVK::ReportMemoryTypes() {
     String text(GetStdAllocator());
 
     REPORT_INFO(this, "Memory heaps:");

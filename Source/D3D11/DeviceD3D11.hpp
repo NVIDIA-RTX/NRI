@@ -211,7 +211,6 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     }
 
     m_Version = QueryLatestInterface(deviceTemp, m_Device);
-    REPORT_INFO(this, "Using ID3D11Device%u", m_Version);
 
     if (desc.enableGraphicsAPIValidation) {
         ComPtr<ID3D11InfoQueue> pInfoQueue;
@@ -243,7 +242,8 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     m_Device->GetImmediateContext((ID3D11DeviceContext**)&immediateContext);
 
     m_ImmediateContextVersion = QueryLatestDeviceContext(immediateContext, m_ImmediateContext);
-    REPORT_INFO(this, "Using ID3D11DeviceContext%u", m_ImmediateContextVersion);
+
+    REPORT_INFO(this, "Using ID3D11Device%u and ID3D11DeviceContext%u", m_Version, m_ImmediateContextVersion);
 
     // Skip UAV barriers by default on the immediate context
     if (HasNvExt()) {
@@ -267,7 +267,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         REPORT_WARNING(this, "Concurrent resource creation is not supported by the driver!");
 
     m_IsDeferredContextEmulated = !HasNvExt() || desc.enableD3D11CommandBufferEmulation;
-    if (!threadingCaps.DriverCommandLists) {
+    if (!threadingCaps.DriverCommandLists && !desc.enableD3D11CommandBufferEmulation) {
         REPORT_WARNING(this, "Deferred Contexts are not supported by the driver and will be emulated!");
         m_IsDeferredContextEmulated = true;
     }
