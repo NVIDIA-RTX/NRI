@@ -36,8 +36,7 @@ Result AccelerationStructureVK::Create(const AccelerationStructureVKDesc& accele
     m_UpdateScratchSize = accelerationStructureVKDesc.updateScratchSize;
     m_Flags = accelerationStructureVKDesc.flags;
 
-    // Device address
-    if (m_Device.m_IsSupported.deviceAddress) {
+    { // Device address
         VkAccelerationStructureDeviceAddressInfoKHR deviceAddressInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR};
         deviceAddressInfo.accelerationStructure = (VkAccelerationStructureKHR)accelerationStructureVKDesc.vkAccelerationStructure;
 
@@ -61,8 +60,7 @@ Result AccelerationStructureVK::FinishCreation() {
     VkResult vkResult = vk.CreateAccelerationStructureKHR(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
     RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateAccelerationStructureKHR");
 
-    // Device address
-    if (m_Device.m_IsSupported.deviceAddress) {
+    { // Device address
         VkAccelerationStructureDeviceAddressInfoKHR deviceAddressInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR};
         deviceAddressInfo.accelerationStructure = m_Handle;
         m_DeviceAddress = vk.GetAccelerationStructureDeviceAddressKHR(m_Device, &deviceAddressInfo);
