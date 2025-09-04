@@ -22,9 +22,25 @@ struct VmaAllocation_T;
 #endif
 
 // Requires {}
-#define APPEND_EXT(desc) \
+#define APPEND_STRUCT(desc) \
     *tail = &desc; \
     tail = &desc.pNext
+
+#define APPEND_FEATURES(condition, ext, nameLower, nameUpper) \
+    VkPhysicalDevice##nameLower##Features##ext nameLower##Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_##nameUpper##_FEATURES_##ext}; \
+    if (IsExtensionSupported(VK_##ext##_##nameUpper##_EXTENSION_NAME, desiredDeviceExts) && (condition)) { \
+        APPEND_STRUCT(nameLower##Features); \
+    }
+
+#define APPEND_PROPS(condition, ext, nameLower, nameUpper) \
+    VkPhysicalDevice##nameLower##Properties##ext nameLower##Props = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_##nameUpper##_PROPERTIES_##ext}; \
+    if (IsExtensionSupported(VK_##ext##_##nameUpper##_EXTENSION_NAME, desiredDeviceExts) && (condition)) { \
+        APPEND_STRUCT(nameLower##Props); \
+    }
+
+#define APPEND_EXT(condition, ext) \
+    if (IsExtensionSupported(ext, supportedExts) && (condition)) \
+        desiredDeviceExts.push_back(ext)
 
 namespace nri {
 

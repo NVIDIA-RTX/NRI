@@ -51,13 +51,15 @@ VkResult DeviceVK::CreateVma() {
     allocatorCreateInfo.pAllocationCallbacks = m_AllocationCallbackPtr;
     allocatorCreateInfo.preferredLargeHeapBlockSize = VMA_PREFERRED_BLOCK_SIZE;
 
-    allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE4_BIT;
+    allocatorCreateInfo.flags = 0;
     if (m_IsSupported.memoryBudget)
         allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
     if (m_IsSupported.deviceAddress)
         allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     if (m_IsSupported.memoryPriority)
         allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_PRIORITY_BIT;
+    if (m_IsSupported.maintenance4)
+        allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE4_BIT;
     if (m_IsSupported.maintenance5)
         allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT;
 

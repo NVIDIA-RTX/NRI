@@ -371,10 +371,9 @@ NRI_INLINE void CommandBufferVK::SetIndexBuffer(const Buffer& buffer, uint64_t o
     const BufferVK& bufferVK = (BufferVK&)buffer;
 
     const auto& vk = m_Device.GetDispatchTable();
-
     if (m_Device.m_IsSupported.maintenance5) {
         uint64_t size = bufferVK.GetDesc().size - offset;
-        vk.CmdBindIndexBuffer2KHR(m_Handle, bufferVK.GetHandle(), offset, size, GetIndexType(indexType));
+        vk.CmdBindIndexBuffer2(m_Handle, bufferVK.GetHandle(), offset, size, GetIndexType(indexType));
     } else
         vk.CmdBindIndexBuffer(m_Handle, bufferVK.GetHandle(), offset, GetIndexType(indexType));
 }
@@ -401,7 +400,7 @@ NRI_INLINE void CommandBufferVK::SetPipelineLayout(BindPoint bindPoint, const Pi
             VkPipelineBindPoint vkPipelineBindPoint = GetPipelineBindPoint(bindPoint);
 
             const auto& vk = m_Device.GetDispatchTable();
-            vk.CmdPushDescriptorSetKHR(m_Handle, vkPipelineBindPoint, *m_PipelineLayout, bindingInfo.rootRegisterSpace, 1, &descriptorWrite);
+            vk.CmdPushDescriptorSet(m_Handle, vkPipelineBindPoint, *m_PipelineLayout, bindingInfo.rootRegisterSpace, 1, &descriptorWrite);
         }
     }
 }
@@ -426,10 +425,39 @@ NRI_INLINE void CommandBufferVK::SetDescriptorSet(const SetDescriptorSetDesc& se
     uint32_t registerSpace = bindingInfo.sets[setDescriptorSetDesc.setIndex].registerSpace;
 
     BindPoint bindPoint = setDescriptorSetDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : setDescriptorSetDesc.bindPoint;
-    VkPipelineBindPoint vkPipelineBindPoint = GetPipelineBindPoint(bindPoint);
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdBindDescriptorSets(m_Handle, vkPipelineBindPoint, *m_PipelineLayout, registerSpace, 1, &vkDescriptorSet, 0, nullptr);
+#if 0 // TODO: NV driver can crash if VVL is enabled...
+    if (m_Device.m_IsSupported.maintenance6) {
+        StageBits shaderStages = StageBits::NONE;
+        if (bindPoint == BindPoint::GRAPHICS) {
+            shaderStages = StageBits::VERTEX_SHADER
+                | StageBits::TESSELLATION_SHADERS
+                | StageBits::GEOMETRY_SHADER
+                | StageBits::FRAGMENT_SHADER;
+
+            if (m_Device.GetDesc().features.meshShader)
+                shaderStages |= StageBits::MESH_SHADERS;
+        } else if (bindPoint == BindPoint::COMPUTE)
+            shaderStages = StageBits::COMPUTE_SHADER;
+        else if (bindPoint == BindPoint::RAY_TRACING)
+            shaderStages = StageBits::RAY_TRACING_SHADERS;
+
+        VkBindDescriptorSetsInfo info = {VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO};
+        info.stageFlags = GetShaderStageFlags(shaderStages);
+        info.layout = *m_PipelineLayout;
+        info.firstSet = registerSpace;
+        info.descriptorSetCount = 1;
+        info.pDescriptorSets = &vkDescriptorSet;
+
+        vk.CmdBindDescriptorSets2(m_Handle, &info);
+    } else
+#endif
+    {
+        VkPipelineBindPoint vkPipelineBindPoint = GetPipelineBindPoint(bindPoint);
+
+        vk.CmdBindDescriptorSets(m_Handle, vkPipelineBindPoint, *m_PipelineLayout, registerSpace, 1, &vkDescriptorSet, 0, nullptr);
+    }
 }
 
 NRI_INLINE void CommandBufferVK::SetRootConstants(const SetRootConstantsDesc& setRootConstantsDesc) {
@@ -438,7 +466,17 @@ NRI_INLINE void CommandBufferVK::SetRootConstants(const SetRootConstantsDesc& se
     uint32_t offset = pushConstantBindingDesc.offset + setRootConstantsDesc.offset;
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdPushConstants(m_Handle, *m_PipelineLayout, pushConstantBindingDesc.stages, offset, setRootConstantsDesc.size, setRootConstantsDesc.data);
+    if (m_Device.m_IsSupported.maintenance6) {
+        VkPushConstantsInfo info = {VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO};
+        info.layout = *m_PipelineLayout;
+        info.stageFlags = pushConstantBindingDesc.stages;
+        info.offset = offset;
+        info.size = setRootConstantsDesc.size;
+        info.pValues = setRootConstantsDesc.data;
+
+        vk.CmdPushConstants2(m_Handle, &info);
+    } else
+        vk.CmdPushConstants(m_Handle, *m_PipelineLayout, pushConstantBindingDesc.stages, offset, setRootConstantsDesc.size, setRootConstantsDesc.data);
 }
 
 NRI_INLINE void CommandBufferVK::SetRootDescriptor(const SetRootDescriptorDesc& setRootDescriptorDesc) {
@@ -476,7 +514,7 @@ NRI_INLINE void CommandBufferVK::SetRootDescriptor(const SetRootDescriptorDesc& 
     VkPipelineBindPoint vkPipelineBindPoint = GetPipelineBindPoint(bindPoint);
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdPushDescriptorSetKHR(m_Handle, vkPipelineBindPoint, *m_PipelineLayout, bindingInfo.rootRegisterSpace, 1, &descriptorWrite);
+    vk.CmdPushDescriptorSet(m_Handle, vkPipelineBindPoint, *m_PipelineLayout, bindingInfo.rootRegisterSpace, 1, &descriptorWrite);
 }
 
 NRI_INLINE void CommandBufferVK::Draw(const DrawDesc& drawDesc) {

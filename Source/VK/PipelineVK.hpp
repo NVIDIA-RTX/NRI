@@ -123,7 +123,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
         if (ms->sampleLocations) {
             sampleLocationsState.sampleLocationsEnable = VK_TRUE;
 
-            APPEND_EXT(sampleLocationsState);
+            APPEND_STRUCT(sampleLocationsState);
         }
     }
 
@@ -148,13 +148,13 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
         consetvativeRasterizationState.conservativeRasterizationMode = VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
         consetvativeRasterizationState.extraPrimitiveOverestimationSize = 0.0f;
 
-        APPEND_EXT(consetvativeRasterizationState);
+        APPEND_STRUCT(consetvativeRasterizationState);
     }
 
     VkPipelineRasterizationLineStateCreateInfoKHR lineState = {VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_KHR};
     if (r.lineSmoothing) {
         lineState.lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_KHR;
-        APPEND_EXT(lineState);
+        APPEND_STRUCT(lineState);
     }
 
     m_DepthBias = r.depthBias;

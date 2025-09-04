@@ -300,7 +300,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
             scalingInfo.scalingBehavior = swapChainDesc.scaling == Scaling::STRETCH ? VK_PRESENT_SCALING_STRETCH_BIT_EXT : VK_PRESENT_SCALING_ONE_TO_ONE_BIT_EXT;
             scalingInfo.presentGravityX = GetGravity(swapChainDesc.gravityX);
             scalingInfo.presentGravityY = GetGravity(swapChainDesc.gravityY);
-            APPEND_EXT(scalingInfo);
+            APPEND_STRUCT(scalingInfo);
         }
 
         // Mutable formats
@@ -328,7 +328,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
 
         if (m_Device.m_IsSupported.swapChainMutableFormat) {
             swapchainInfo.flags |= VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR;
-            APPEND_EXT(imageFormatListCreateInfo);
+            APPEND_STRUCT(imageFormatListCreateInfo);
         }
 
         // Low latency mode
@@ -336,7 +336,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         latencyCreateInfo.latencyModeEnable = allowLowLatency;
 
         if (allowLowLatency) {
-            APPEND_EXT(latencyCreateInfo);
+            APPEND_STRUCT(latencyCreateInfo);
         }
 
         // Create
