@@ -72,7 +72,6 @@ Repository organization:
     - _VK_KHR_copy_commands2_
     - _VK_KHR_maintenance4_ (optional, but recommended)
     - _VK_EXT_extended_dynamic_state_
-    - _VK_EXT_subgroup_size_control_
 - for Vulkan < 1.4:
     - _VK_KHR_push_descriptor
     - _VK_KHR_maintenance5 (optional, but recommended)
@@ -112,6 +111,7 @@ Repository organization:
     - _VK_KHR_fragment_shader_barycentric_
     - _VK_KHR_shader_clock_
     - _VK_KHR_compute_shader_derivatives_
+    - _VK_EXT_subgroup_size_control_
     - _VK_EXT_swapchain_maintenance1_
     - _VK_EXT_present_mode_fifo_latest_ready_
     - _VK_EXT_opacity_micromap_

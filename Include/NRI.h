@@ -38,7 +38,7 @@ Implicit:
 #pragma once
 
 #define NRI_VERSION 175
-#define NRI_VERSION_DATE "2 September 2025"
+#define NRI_VERSION_DATE "8 September 2025"
 
 // C/C++ compatible interface (auto-selection or via "NRI_FORCE_C" macro)
 #include "NRIDescs.h"
