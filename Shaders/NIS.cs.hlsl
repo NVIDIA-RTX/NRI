@@ -5,7 +5,7 @@
 #define NIS_HLSL                        1
 #define NIS_SCALER                      1 // upscaling needed
 #define NIS_CLAMP_OUTPUT                1 // it's for free
-#define NIS_VIEWPORT_SUPPORT            0 // not needed
+#define NIS_VIEWPORT_SUPPORT            1 // needed for proper resolution scaling support
 #define NIS_BLOCK_WIDTH                 32
 #define kContrastBoost                  1.0
 
@@ -44,6 +44,13 @@ struct Constants { // see NIS.h
     float dstNormY;
     float srcNormX;
     float srcNormY;
+
+#if (NIS_VIEWPORT_SUPPORT == 1)
+    uint inputViewportW;
+    uint inputViewportH;
+    uint outputViewportW;
+    uint outputViewportH;
+#endif
 };
 
 #define NRI_NIS_SET_STATIC              0
@@ -68,6 +75,13 @@ struct Constants { // see NIS.h
 #define kDstNormY                       constants.dstNormY
 #define kSrcNormX                       constants.srcNormX
 #define kSrcNormY                       constants.srcNormY
+
+#if (NIS_VIEWPORT_SUPPORT == 1)
+    #define kInputViewportWidth         constants.inputViewportW
+    #define kInputViewportHeight        constants.inputViewportH
+    #define kOutputViewportWidth        constants.outputViewportW
+    #define kOutputViewportHeight       constants.outputViewportH
+#endif
 
 NRI_ROOT_CONSTANTS(Constants, constants,           0, NRI_NIS_SET_STATIC);
 NRI_RESOURCE(SamplerState, samplerLinearClamp,  s, 1, NRI_NIS_SET_STATIC);

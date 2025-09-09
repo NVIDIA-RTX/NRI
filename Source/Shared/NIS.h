@@ -5,6 +5,8 @@
 
 namespace NIS {
 
+typedef uint32_t uint;
+
 #include "../Shaders/NIS.cs.hlsl"
 
 enum class HDRMode {
@@ -90,6 +92,13 @@ inline bool UpdateConstants(Constants& constants, float sharpness,
     constants.sharpStrengthScale = kSharpStrengthScale;
     constants.sharpLimitMin = kSharpLimitMin;
     constants.sharpLimitScale = kSharpLimitScale;
+
+#if (NIS_VIEWPORT_SUPPORT == 1)
+    constants.inputViewportW = kInputViewportWidth;
+    constants.inputViewportH = kInputViewportHeight;
+    constants.outputViewportW = kOutputViewportWidth;
+    constants.outputViewportH = kOutputViewportHeight;
+#endif
 
     if (constants.scaleX < 0.5f || constants.scaleX > 1.f || constants.scaleY < 0.5f || constants.scaleY > 1.f || kOutputViewportWidth == 0 || kOutputViewportHeight == 0)
         return false;
