@@ -388,8 +388,6 @@ target_compile_options(NRI_Shared
         >
         # GCC/Clang, but not over MSVC
         $<$<AND:$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>,$<NOT:$<BOOL:${MSVC}>>>:
-            -Werror
-            -fPIC
             -fvisibility=hidden
         >
         # MSVC specific options
