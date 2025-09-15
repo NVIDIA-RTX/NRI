@@ -389,7 +389,7 @@ target_compile_options(NRI_Shared
             -fPIC
             -fvisibility=hidden
         >
-        # Options for MSVC-style frontends
+        # Options for MSVC frontend
         $<$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>:
             /W4
             /WX
@@ -825,7 +825,7 @@ if(NRI_STATIC_LIBRARY)
 else()
     add_library(NRI SHARED)
 
-    if(MSVC)
+    if(CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
         target_link_options(NRI
             PRIVATE
                 $<$<CONFIG:Release>:/DEBUG> # generate a PDB for Release build
@@ -840,7 +840,7 @@ target_sources(NRI
         ${NRI_HEADERS}
         ${NRI_RESOURCES}
         ${NRI_EXTENSIONS}
-        $<$<BOOL:${MSVC}>:
+        $<$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>:
             nri.natvis
         > # debugger markup
 )
