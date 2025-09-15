@@ -71,6 +71,9 @@ NRI_INLINE Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout
                         m_AccelerationStructureNum += descriptorNum;
                         enoughDescriptors = m_AccelerationStructureNum <= m_Desc.accelerationStructureMaxNum;
                         break;
+                    default:
+                        CHECK(false, "Unexpected");
+                        break;
                 }
 
                 RETURN_ON_FAILURE(&m_Device, enoughDescriptors, Result::INVALID_ARGUMENT, "the maximum number of '%s' descriptors in DescriptorPool exceeded at DescriptorSet instance #%u", GetDescriptorTypeName(rangeDesc.descriptorType), i);
