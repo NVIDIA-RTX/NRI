@@ -43,7 +43,7 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "NVIDIA"
             VALUE "FileVersion", VERSION_STRING
-            VALUE "LegalCopyright", "Copyright 2021"
+            VALUE "LegalCopyright", "Copyright (c) 2021"
             VALUE "ProductName", "NVIDIA Rendering Interface"
             VALUE "ProductVersion", VERSION_STRING
         END
