@@ -385,6 +385,7 @@ target_compile_options(NRI_Shared
         $<$<AND:$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:
             -Wextra
             -Wno-missing-field-initializers
+            -Wno-return-type-c-linkage
             -Werror
             -fPIC
             -fvisibility=hidden
