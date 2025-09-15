@@ -5,6 +5,7 @@
 #include <array>
 #include <cassert>
 #include <cinttypes>
+#include <cstddef>
 #include <cstring>
 #include <map>
 #include <numeric>
@@ -251,11 +252,6 @@ constexpr uint32_t ROOT_SIGNATURE_DWORD_NUM = 64; // https://learn.microsoft.com
 constexpr uint32_t ZERO_BUFFER_DEFAULT_SIZE = 4 * 1024 * 1024;
 
 // Helpers
-template <typename T, typename U>
-constexpr uint32_t GetOffsetOf(U T::* member) {
-    return (uint32_t)((char*)&((T*)nullptr->*member) - (char*)nullptr);
-}
-
 template <typename T, uint32_t N>
 constexpr uint32_t GetCountOf(T const (&)[N]) {
     return N;

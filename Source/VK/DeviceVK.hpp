@@ -271,6 +271,7 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(true, VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_ZERO_INITIALIZE_DEVICE_MEMORY_EXTENSION_NAME);
+    APPEND_EXT(true, VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME);
     APPEND_EXT(true, VK_NVX_BINARY_IMPORT_EXTENSION_NAME);
     APPEND_EXT(true, VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME);
     APPEND_EXT(true, VK_NV_LOW_LATENCY_2_EXTENSION_NAME);
@@ -554,6 +555,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     APPEND_FEATURES(true, EXT, ShaderAtomicFloat2, SHADER_ATOMIC_FLOAT_2);
     APPEND_FEATURES(true, EXT, SwapchainMaintenance1, SWAPCHAIN_MAINTENANCE_1);
     APPEND_FEATURES(true, EXT, ZeroInitializeDeviceMemory, ZERO_INITIALIZE_DEVICE_MEMORY);
+    APPEND_FEATURES(true, EXT, MutableDescriptorType, MUTABLE_DESCRIPTOR_TYPE);
 
 #ifdef __APPLE__
     APPEND_FEATURES(true, KHR, PortabilitySubset, PORTABILITY_SUBSET);
@@ -1996,6 +1998,10 @@ NRI_INLINE void DeviceVK::UpdateDescriptorRanges(const UpdateDescriptorRangeDesc
 
             case DescriptorType::ACCELERATION_STRUCTURE:
                 scratchSize += sizeof(VkAccelerationStructureKHR) * updateDescriptorRangeDesc.descriptorNum + sizeof(VkWriteDescriptorSetAccelerationStructureKHR);
+                break;
+
+            default:
+                CHECK(false, "Unexpected");
                 break;
         }
     }

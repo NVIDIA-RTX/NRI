@@ -8,6 +8,7 @@
 #    pragma clang diagnostic push
 #    pragma clang diagnostic ignored "-Wunused-variable"
 #    pragma clang diagnostic ignored "-Wunused-parameter"
+#    pragma clang diagnostic ignored "-Wnullability-completeness"
 #else
 #    pragma warning(push)
 #    pragma warning(disable : 4100) // unreferenced formal parameter

@@ -657,8 +657,6 @@ inline VkFormat GetVkFormat(Format format, bool demoteSrgb = false) {
 
 inline VkExtent2D GetShadingRate(ShadingRate shadingRate) {
     switch (shadingRate) {
-        case ShadingRate::FRAGMENT_SIZE_1X1:
-            return {1, 1};
         case ShadingRate::FRAGMENT_SIZE_1X2:
             return {1, 2};
         case ShadingRate::FRAGMENT_SIZE_2X1:
@@ -671,9 +669,9 @@ inline VkExtent2D GetShadingRate(ShadingRate shadingRate) {
             return {4, 2};
         case ShadingRate::FRAGMENT_SIZE_4X4:
             return {4, 4};
+        default:
+            return {1, 1};
     }
-
-    return {};
 }
 
 } // namespace nri

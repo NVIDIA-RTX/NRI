@@ -381,19 +381,16 @@ target_compile_definitions(NRI_Shared
 )
 target_compile_options(NRI_Shared
     PUBLIC
-        # GCC/Clang
-        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
+        # Options for Clang/GCC compilers (non-MSVC frontends)
+        $<$<AND:$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:
             -Wextra
             -Wno-missing-field-initializers
-        >
-        # GCC/Clang, but not over MSVC
-        $<$<AND:$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>,$<NOT:$<BOOL:${MSVC}>>>:
             -Werror
             -fPIC
             -fvisibility=hidden
         >
-        # MSVC specific options
-        $<$<CXX_COMPILER_ID:MSVC>:
+        # Options for MSVC-style frontends
+        $<$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>:
             /W4
             /WX
             /wd4324

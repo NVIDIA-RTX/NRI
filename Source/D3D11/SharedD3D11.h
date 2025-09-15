@@ -188,6 +188,7 @@ struct SamplePositionsState {
 } // namespace nri
 
 #if NRI_ENABLE_AMDAGS
+#    define AGS_GCC // Fixes Clang warning: 'dllexport' attribute only applies to functions, variables, classes, and Objective-C interfaces [-Werror,-Wignored-attributes]
 #    include "amd_ags.h"
 
 struct AmdExtD3D11 {
