@@ -701,9 +701,9 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
 #    endif
 
         const VertexAttributeDesc vertexAttributeDesc[] = {
-            {{"POSITION", 0}, {0}, GetOffsetOf(&ImDrawVert::pos), Format::RG32_SFLOAT},
-            {{"TEXCOORD", 0}, {1}, GetOffsetOf(&ImDrawVert::uv), Format::RG32_SFLOAT},
-            {{"COLOR", 0}, {2}, GetOffsetOf(&ImDrawVert::col), Format::RGBA8_UNORM},
+            {{"POSITION", 0}, {0}, offsetof(ImDrawVert, pos), Format::RG32_SFLOAT},
+            {{"TEXCOORD", 0}, {1}, offsetof(ImDrawVert, uv), Format::RG32_SFLOAT},
+            {{"COLOR", 0}, {2}, offsetof(ImDrawVert, col), Format::RGBA8_UNORM},
         };
 
         VertexStreamDesc stream = {};
