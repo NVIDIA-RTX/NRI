@@ -4,11 +4,10 @@
 #    pragma GCC diagnostic push
 #    pragma GCC diagnostic ignored "-Wunused-variable"
 #    pragma GCC diagnostic ignored "-Wunused-parameter"
-#elif defined(__clang__)
+#elif (defined(__clang__) && !defined(_MSC_VER))
 #    pragma clang diagnostic push
 #    pragma clang diagnostic ignored "-Wunused-variable"
 #    pragma clang diagnostic ignored "-Wunused-parameter"
-#    pragma clang diagnostic ignored "-Wnullability-completeness"
 #else
 #    pragma warning(push)
 #    pragma warning(disable : 4100) // unreferenced formal parameter

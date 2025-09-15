@@ -385,6 +385,7 @@ target_compile_options(NRI_Shared
         $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
             -Wno-missing-field-initializers
             -Wno-return-type-c-linkage
+            -Wno-nullability-completeness
         >
         # Options for Clang/GCC compilers (non-MSVC frontends)
         $<$<AND:$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:
