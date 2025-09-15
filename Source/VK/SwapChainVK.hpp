@@ -215,6 +215,9 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
                     return priority_BT2020_G2084_10BIT(a1) > priority_BT2020_G2084_10BIT(b1);
                 });
                 break;
+            default:
+                CHECK(false, "Unexpected");
+                break;
         }
 
         surfaceFormat = surfaceFormats[0];
@@ -319,6 +322,8 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
                 break;
             case VK_FORMAT_B8G8R8A8_SRGB:
                 mutableFormats[mutableFormatNum++] = VK_FORMAT_B8G8R8A8_UNORM;
+                break;
+            default:
                 break;
         }
 
