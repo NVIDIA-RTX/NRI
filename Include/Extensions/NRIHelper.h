@@ -85,7 +85,7 @@ NRI_API Nri(Format) NRI_CALL nriConvertDXGIFormatToNRI(uint32_t dxgiFormat);
 NRI_API Nri(Format) NRI_CALL nriConvertVKFormatToNRI(uint32_t vkFormat);
 NRI_API uint32_t NRI_CALL nriConvertNRIFormatToDXGI(Nri(Format) format);
 NRI_API uint32_t NRI_CALL nriConvertNRIFormatToVK(Nri(Format) format);
-NRI_API const NriRef(FormatProps) NRI_CALL nriGetFormatProps(Nri(Format) format);
+NRI_API const NriPtr(FormatProps) NRI_CALL nriGetFormatProps(Nri(Format) format);
 
 // Strings
 NRI_API const char* NRI_CALL nriGetGraphicsAPIString(Nri(GraphicsAPI) graphicsAPI);

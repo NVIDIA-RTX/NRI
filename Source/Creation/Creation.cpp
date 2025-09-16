@@ -861,8 +861,8 @@ NRI_API uint32_t NRI_CALL nriConvertNRIFormatToDXGI(Format format) {
 #endif
 }
 
-NRI_API const FormatProps& NRI_CALL nriGetFormatProps(Format format) {
-    return GetFormatProps(format);
+NRI_API const FormatProps* NRI_CALL nriGetFormatProps(Format format) {
+    return &GetFormatProps(format);
 }
 
 NRI_API const char* NRI_CALL nriGetGraphicsAPIString(GraphicsAPI graphicsAPI) {

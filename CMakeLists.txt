@@ -382,11 +382,8 @@ target_compile_definitions(NRI_Shared
 target_compile_options(NRI_Shared
     PUBLIC
         # Options for Clang/GCC compilers
-        #   -Wno-missing-field-initializers   - won't fix
-        #   -Wno-return-type-c-linkage        - "nriGetFormatProps" returns a reference
         $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
             -Wno-missing-field-initializers
-            -Wno-return-type-c-linkage
             $<$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:
                 -Wextra
                 -Werror
@@ -611,8 +608,10 @@ if(NRI_ENABLE_D3D12_SUPPORT)
             "#ifdef __cplusplus\n"
             "extern \"C\" {\n"
             "#endif\n\n"
-            "__declspec(dllexport) extern const uint32_t D3D12SDKVersion = ${NRI_AGILITY_SDK_VERSION_MAJOR};\n"
-            "__declspec(dllexport) extern const char* D3D12SDKPath = \"${NRI_AGILITY_SDK_DIR}/\";\n\n"
+            "__declspec(dllexport) extern const uint32_t D3D12SDKVersion;\n"
+            "const uint32_t D3D12SDKVersion = ${NRI_AGILITY_SDK_VERSION_MAJOR};\n\n"
+            "__declspec(dllexport) extern const char* D3D12SDKPath;\n"
+            "const char* D3D12SDKPath = \"${NRI_AGILITY_SDK_DIR}/\";\n\n"
             "#ifdef __cplusplus\n"
             "}\n"
             "#endif\n"

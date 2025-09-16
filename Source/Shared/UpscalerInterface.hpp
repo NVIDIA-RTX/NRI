@@ -234,7 +234,7 @@ static inline FfxApiResource FfxGetResource(const CoreInterface& NRI, const Upsc
 
     if (res.resource) {
         const TextureDesc& textureDesc = NRI.GetTextureDesc(*resource.texture);
-        const FormatProps& formatProps = nriGetFormatProps(textureDesc.format);
+        const FormatProps& formatProps = GetFormatProps(textureDesc.format);
 
         res.description.format = FfxConvertFormat(textureDesc.format);
 
@@ -261,6 +261,9 @@ static inline FfxApiResource FfxGetResource(const CoreInterface& NRI, const Upsc
                 break;
             case TextureType::TEXTURE_3D:
                 res.description.type = FFX_API_RESOURCE_TYPE_TEXTURE3D;
+                break;
+            default:
+                CHECK(false, "Unexpected");
                 break;
         }
     }
@@ -324,9 +327,10 @@ static inline Result XessConvertError(xess_result_t code) {
         case XESS_RESULT_ERROR_UNSUPPORTED_DEVICE:
         case XESS_RESULT_ERROR_UNSUPPORTED_DRIVER:
             return Result::UNSUPPORTED;
-    }
 
-    return Result::FAILURE;
+        default:
+            return Result::FAILURE;
+    }
 }
 
 #endif
@@ -335,6 +339,16 @@ static inline Result XessConvertError(xess_result_t code) {
 // NGX
 //=====================================================================================================================================
 #if NRI_ENABLE_NGX_SDK
+#    if defined(__GNUC__)
+#        pragma GCC diagnostic push
+#        pragma GCC diagnostic ignored "-Wsign-compare"
+#        pragma GCC diagnostic ignored "-Wmissing-braces"
+#    elif defined(__clang__)
+#        pragma clang diagnostic push
+#        pragma clang diagnostic ignored "-Wsign-compare"
+#        pragma clang diagnostic ignored "-Wmissing-braces"
+#    endif
+
 #    include "nvsdk_ngx_helpers.h"
 #    if NRI_ENABLE_VK_SUPPORT
 #        include "nvsdk_ngx_helpers_vk.h"
@@ -342,6 +356,12 @@ static inline Result XessConvertError(xess_result_t code) {
 #    include "nvsdk_ngx_helpers_dlssd.h"
 #    if NRI_ENABLE_VK_SUPPORT
 #        include "nvsdk_ngx_helpers_dlssd_vk.h"
+#    endif
+
+#    if defined(__GNUC__)
+#        pragma GCC diagnostic pop
+#    elif defined(__clang__)
+#        pragma clang diagnostic pop
 #    endif
 
 struct Ngx {
