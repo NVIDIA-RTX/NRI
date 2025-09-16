@@ -22,8 +22,8 @@ uint8_t QueryLatestDeviceContext(ComPtr<ID3D11DeviceContextBest>& in, ComPtr<ID3
 
 CommandBufferD3D11::CommandBufferD3D11(DeviceD3D11& device)
     : m_Device(device)
-    , m_BindingState(device.GetStdAllocator())
     , m_DeferredContext(device.GetImmediateContext())
+    , m_BindingState(device.GetStdAllocator())
     , m_Version(device.GetImmediateContextVersion()) {
     m_DeferredContext->QueryInterface(IID_PPV_ARGS(&m_Annotation));
 }

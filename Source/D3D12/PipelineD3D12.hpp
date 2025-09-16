@@ -443,6 +443,9 @@ Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDes
                     case StageBits::ANY_HIT_SHADER:
                         hitGroups[hitGroupNum].AnyHitShaderImport = entryPointName.c_str();
                         break;
+                    default:
+                        CHECK(false, "Unexpected");
+                        break;
                 }
 
                 shaderIndentifierName = std::to_wstring(i);

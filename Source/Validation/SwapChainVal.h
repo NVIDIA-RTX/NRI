@@ -9,8 +9,8 @@ struct TextureVal;
 struct SwapChainVal final : public ObjectVal {
     SwapChainVal(DeviceVal& device, SwapChain* swapChain, const SwapChainDesc& swapChainDesc)
         : ObjectVal(device, swapChain)
-        , m_Textures(device.GetStdAllocator())
-        , m_SwapChainDesc(swapChainDesc) {
+        , m_SwapChainDesc(swapChainDesc)
+        , m_Textures(device.GetStdAllocator()) {
     }
 
     ~SwapChainVal();

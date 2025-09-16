@@ -12,8 +12,8 @@ namespace nri {
 
 struct ObjectVal : public DebugNameBaseVal {
     inline ObjectVal(DeviceVal& device, Object* object = nullptr)
-        : m_Device(device)
-        , m_Impl(object) {
+        : m_Impl(object)
+        , m_Device(device) {
     }
 
     inline ~ObjectVal() {

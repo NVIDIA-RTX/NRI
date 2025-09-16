@@ -105,7 +105,10 @@ Result DescriptorD3D11::Create(const Texture1DViewDesc& textureViewDesc) {
 
             m_Type = DescriptorTypeDX11::NO_SHADER_VISIBLE;
         } break;
-    };
+        default:
+            CHECK(false, "Unexpected");
+            return Result::INVALID_ARGUMENT;
+    }
 
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView");
 
@@ -286,7 +289,10 @@ Result DescriptorD3D11::Create(const Texture2DViewDesc& textureViewDesc) {
 
             break;
         }
-    };
+        default:
+            CHECK(false, "Unexpected");
+            return Result::INVALID_ARGUMENT;
+    }
 
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView");
 
@@ -341,7 +347,10 @@ Result DescriptorD3D11::Create(const Texture3DViewDesc& textureViewDesc) {
 
             m_Type = DescriptorTypeDX11::NO_SHADER_VISIBLE;
         } break;
-    };
+        default:
+            CHECK(false, "Unexpected");
+            return Result::INVALID_ARGUMENT;
+    }
 
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView");
 
@@ -409,6 +418,9 @@ Result DescriptorD3D11::Create(const BufferViewDesc& bufferViewDesc) {
 
             m_Type = DescriptorTypeDX11::STORAGE;
         } break;
+        default:
+            CHECK(false, "Unexpected");
+            return Result::INVALID_ARGUMENT;
     };
 
     RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView");
@@ -432,39 +444,39 @@ Result DescriptorD3D11::Create(const SamplerDesc& samplerDesc) {
 }
 
 DescriptorD3D11::DescriptorD3D11(DeviceD3D11& device, ID3D11ShaderResourceView* resource)
-    : m_Descriptor(resource)
-    , m_Device(device) {
+    : m_Device(device)
+    , m_Descriptor(resource) {
     m_Type = DescriptorTypeDX11::RESOURCE;
 }
 
 DescriptorD3D11::DescriptorD3D11(DeviceD3D11& device, ID3D11UnorderedAccessView* storage)
-    : m_Descriptor(storage)
-    , m_Device(device) {
+    : m_Device(device)
+    , m_Descriptor(storage) {
     m_Type = DescriptorTypeDX11::STORAGE;
 }
 
 DescriptorD3D11::DescriptorD3D11(DeviceD3D11& device, ID3D11RenderTargetView* randerTarget)
-    : m_Descriptor(randerTarget)
-    , m_Device(device) {
+    : m_Device(device)
+    , m_Descriptor(randerTarget) {
     m_Type = DescriptorTypeDX11::NO_SHADER_VISIBLE;
 }
 
 DescriptorD3D11::DescriptorD3D11(DeviceD3D11& device, ID3D11DepthStencilView* depthStencil)
-    : m_Descriptor(depthStencil)
-    , m_Device(device) {
+    : m_Device(device)
+    , m_Descriptor(depthStencil) {
     m_Type = DescriptorTypeDX11::NO_SHADER_VISIBLE;
 }
 
 DescriptorD3D11::DescriptorD3D11(DeviceD3D11& device, ID3D11Buffer* constantBuffer, uint32_t elementOffset, uint32_t elementNum)
-    : m_Descriptor(constantBuffer)
+    : m_Device(device)
+    , m_Descriptor(constantBuffer)
     , m_ElementOffset(elementOffset)
-    , m_ElementNum(elementNum)
-    , m_Device(device) {
+    , m_ElementNum(elementNum) {
     m_Type = DescriptorTypeDX11::CONSTANT;
 }
 
 DescriptorD3D11::DescriptorD3D11(DeviceD3D11& device, ID3D11SamplerState* sampler)
-    : m_Descriptor(sampler)
-    , m_Device(device) {
+    : m_Device(device)
+    , m_Descriptor(sampler) {
     m_Type = DescriptorTypeDX11::SAMPLER;
 }

@@ -106,9 +106,10 @@ Result DescriptorD3D12::Create(const Texture1DViewDesc& textureViewDesc) {
 
             return CreateDepthStencilView(texture, desc);
         }
+        default:
+            CHECK(false, "Unexpected");
+            return Result::INVALID_ARGUMENT;
     }
-
-    return Result::FAILURE;
 }
 
 Result DescriptorD3D12::Create(const Texture2DViewDesc& textureViewDesc) {
@@ -243,9 +244,10 @@ Result DescriptorD3D12::Create(const Texture2DViewDesc& textureViewDesc) {
             m_Resource = texture; // a resource view is not needed
             return Result::SUCCESS;
         }
+        default:
+            CHECK(false, "Unexpected");
+            return Result::INVALID_ARGUMENT;
     }
-
-    return Result::FAILURE;
 }
 
 Result DescriptorD3D12::Create(const Texture3DViewDesc& textureViewDesc) {
@@ -286,9 +288,10 @@ Result DescriptorD3D12::Create(const Texture3DViewDesc& textureViewDesc) {
 
             return CreateRenderTargetView(texture, desc);
         }
+        default:
+            CHECK(false, "Unexpected");
+            return Result::INVALID_ARGUMENT;
     }
-
-    return Result::FAILURE;
 }
 
 Result DescriptorD3D12::Create(const BufferViewDesc& bufferViewDesc) {
@@ -346,9 +349,10 @@ Result DescriptorD3D12::Create(const BufferViewDesc& bufferViewDesc) {
 
             return CreateUnorderedAccessView(buffer, desc, bufferViewDesc.format);
         }
+        default:
+            CHECK(false, "Unexpected");
+            return Result::INVALID_ARGUMENT;
     }
-
-    return Result::FAILURE;
 }
 
 Result DescriptorD3D12::Create(const AccelerationStructure& accelerationStructure) {

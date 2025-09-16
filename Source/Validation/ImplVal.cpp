@@ -796,7 +796,7 @@ Result DeviceVal::FillFunctionTable(HelperInterface& table) const {
 
 #if NRI_ENABLE_IMGUI_EXTENSION
 
-struct ImguiVal : public ObjectVal {
+struct ImguiVal final : public ObjectVal {
     inline ImguiVal(DeviceVal& device, ImguiImpl* impl)
         : ObjectVal(device, impl) {
     }
@@ -1177,7 +1177,7 @@ Result DeviceVal::FillFunctionTable(ResourceAllocatorInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  Streamer  ]
 
-struct StreamerVal : public ObjectVal {
+struct StreamerVal final : public ObjectVal {
     inline StreamerVal(DeviceVal& device, StreamerImpl* impl, const StreamerDesc& desc)
         : ObjectVal(device, impl)
         , m_Desc(desc) {
@@ -1352,7 +1352,7 @@ Result DeviceVal::FillFunctionTable(SwapChainInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  Upscaler  ]
 
-struct UpscalerVal : public ObjectVal {
+struct UpscalerVal final : public ObjectVal {
     inline UpscalerVal(DeviceVal& device, UpscalerImpl* impl, const UpscalerDesc& desc)
         : ObjectVal(device, impl)
         , m_Desc(desc) {

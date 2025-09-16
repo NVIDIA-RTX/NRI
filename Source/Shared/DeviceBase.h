@@ -43,12 +43,12 @@ struct DeviceBase : public DebugNameBaseVal {
     inline DeviceBase(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks, uint64_t signature = 0)
         : m_CallbackInterface(callbacks)
         , m_AllocationCallbacks(allocationCallbacks)
-        , m_StdAllocator(m_AllocationCallbacks)
+        , m_StdAllocator(m_AllocationCallbacks) {
 #ifndef NDEBUG
-        , m_Signature(signature)
-#endif
-    {
+        m_Signature = signature;
+#else
         MaybeUnused(signature);
+#endif
     }
 
     inline StdAllocator<uint8_t>& GetStdAllocator() {

@@ -572,17 +572,11 @@ NRI_INLINE void CommandBufferD3D12::CopyTexture(Texture& dstTexture, const Textu
         if (!dstRegion)
             dstRegion = &wholeResource;
 
-        D3D12_TEXTURE_COPY_LOCATION dstTextureCopyLocation = {
-            dst,
-            D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-            dst.GetSubresourceIndex(dstRegion->layerOffset, dstRegion->mipOffset, dstRegion->planes),
-        };
+        D3D12_TEXTURE_COPY_LOCATION dstTextureCopyLocation = {dst, D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX};
+        dstTextureCopyLocation.SubresourceIndex = dst.GetSubresourceIndex(dstRegion->layerOffset, dstRegion->mipOffset, dstRegion->planes);
 
-        D3D12_TEXTURE_COPY_LOCATION srcTextureCopyLocation = {
-            src,
-            D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-            src.GetSubresourceIndex(srcRegion->layerOffset, srcRegion->mipOffset, srcRegion->planes),
-        };
+        D3D12_TEXTURE_COPY_LOCATION srcTextureCopyLocation = {src, D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX};
+        srcTextureCopyLocation.SubresourceIndex = src.GetSubresourceIndex(srcRegion->layerOffset, srcRegion->mipOffset, srcRegion->planes);
 
         uint32_t w = srcRegion->width == WHOLE_SIZE ? src.GetSize(0, srcRegion->mipOffset) : srcRegion->width;
         uint32_t h = srcRegion->height == WHOLE_SIZE ? src.GetSize(1, srcRegion->mipOffset) : srcRegion->height;
@@ -659,11 +653,8 @@ NRI_INLINE void CommandBufferD3D12::UploadBufferToTexture(Texture& dstTexture, c
     const TextureD3D12& dst = (TextureD3D12&)dstTexture;
     const TextureDesc& dstDesc = dst.GetDesc();
 
-    D3D12_TEXTURE_COPY_LOCATION dstTextureCopyLocation = {
-        dst,
-        D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-        dst.GetSubresourceIndex(dstRegion.layerOffset, dstRegion.mipOffset, dstRegion.planes),
-    };
+    D3D12_TEXTURE_COPY_LOCATION dstTextureCopyLocation = {dst, D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX};
+    dstTextureCopyLocation.SubresourceIndex = dst.GetSubresourceIndex(dstRegion.layerOffset, dstRegion.mipOffset, dstRegion.planes);
 
     const uint32_t size[3] = {
         dstRegion.width == WHOLE_SIZE ? dst.GetSize(0, dstRegion.mipOffset) : dstRegion.width,
@@ -688,11 +679,8 @@ NRI_INLINE void CommandBufferD3D12::ReadbackTextureToBuffer(Buffer& dstBuffer, c
     const TextureD3D12& src = (TextureD3D12&)srcTexture;
     const TextureDesc& srcDesc = src.GetDesc();
 
-    D3D12_TEXTURE_COPY_LOCATION srcTextureCopyLocation = {
-        src,
-        D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-        src.GetSubresourceIndex(srcRegion.layerOffset, srcRegion.mipOffset, srcRegion.planes),
-    };
+    D3D12_TEXTURE_COPY_LOCATION srcTextureCopyLocation = {src, D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX};
+    srcTextureCopyLocation.SubresourceIndex = src.GetSubresourceIndex(srcRegion.layerOffset, srcRegion.mipOffset, srcRegion.planes);
 
     D3D12_TEXTURE_COPY_LOCATION dstTextureCopyLocation = {};
     dstTextureCopyLocation.pResource = (BufferD3D12&)dstBuffer;

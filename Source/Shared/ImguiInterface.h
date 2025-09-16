@@ -17,7 +17,7 @@ struct ImguiTexture {
     uint64_t updateTick = 0;
 };
 
-struct ImguiImpl : public DebugNameBase {
+struct ImguiImpl final : public DebugNameBase {
     inline ImguiImpl(Device& device, const CoreInterface& NRI)
         : m_Device(device)
         , m_iCore(NRI)

@@ -20,8 +20,8 @@ struct DescriptorPoolVal final : public ObjectVal {
 
     DescriptorPoolVal(DeviceVal& device, DescriptorPool* descriptorPool, const DescriptorPoolDesc& descriptorPoolDesc)
         : ObjectVal(device, descriptorPool)
-        , m_DescriptorSets(device.GetStdAllocator())
-        , m_Desc(descriptorPoolDesc) {
+        , m_Desc(descriptorPoolDesc)
+        , m_DescriptorSets(device.GetStdAllocator()) {
         m_DescriptorSets.reserve(m_Desc.descriptorSetMaxNum);
         for (uint32_t i = 0; i < m_Desc.descriptorSetMaxNum; i++)
             m_DescriptorSets.emplace_back(DescriptorSetVal(device));

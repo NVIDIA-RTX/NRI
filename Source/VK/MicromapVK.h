@@ -8,8 +8,8 @@ struct BufferVK;
 
 struct MicromapVK final : public DebugNameBase {
     inline MicromapVK(DeviceVK& device)
-        : m_Usages(device.GetStdAllocator())
-        , m_Device(device) {
+        : m_Device(device)
+        , m_Usages(device.GetStdAllocator()) {
     }
 
     inline DeviceVK& GetDevice() const {

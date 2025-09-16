@@ -590,7 +590,7 @@ NRI_INLINE void CommandBufferVal::BuildBottomLevelAccelerationStructure(const Bu
 
     Scratch<BuildBottomLevelAccelerationStructureDesc> buildBottomLevelAccelerationStructureDescsImpl = AllocateScratch(m_Device, BuildBottomLevelAccelerationStructureDesc, buildBottomLevelAccelerationStructureDescNum);
     Scratch<BottomLevelGeometryDesc> geometriesImplScratch = AllocateScratch(m_Device, BottomLevelGeometryDesc, geometryTotalNum);
-    Scratch<BottomLevelMicromapDesc> micromapsImplScratch = AllocateScratch(m_Device, BottomLevelMicromapDesc, geometryTotalNum);
+    Scratch<BottomLevelMicromapDesc> micromapsImplScratch = AllocateScratch(m_Device, BottomLevelMicromapDesc, micromapTotalNum);
 
     BottomLevelGeometryDesc* geometriesImpl = geometriesImplScratch;
     BottomLevelMicromapDesc* micromapsImpl = micromapsImplScratch;

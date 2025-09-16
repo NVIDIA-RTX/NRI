@@ -20,8 +20,6 @@ Result TextureD3D11::Create(MemoryLocation memoryLocation, float priority) {
     D3D11_USAGE usage = D3D11_USAGE_DEFAULT;
     uint32_t cpuAccessFlags = 0;
     switch (memoryLocation) {
-        case MemoryLocation::DEVICE:
-            break;
         case MemoryLocation::DEVICE_UPLOAD:
         case MemoryLocation::HOST_UPLOAD:
             usage = D3D11_USAGE_DYNAMIC;
@@ -30,6 +28,8 @@ Result TextureD3D11::Create(MemoryLocation memoryLocation, float priority) {
         case MemoryLocation::HOST_READBACK:
             usage = D3D11_USAGE_STAGING;
             cpuAccessFlags = D3D11_CPU_ACCESS_READ;
+            break;
+        default:
             break;
     }
 

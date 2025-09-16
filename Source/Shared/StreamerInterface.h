@@ -24,7 +24,7 @@ struct GarbageInFlight {
     uint32_t frameNum;
 };
 
-struct StreamerImpl : public DebugNameBase {
+struct StreamerImpl final : public DebugNameBase {
     inline StreamerImpl(Device& device, const CoreInterface& NRI)
         : m_Device(device)
         , m_iCore(NRI)

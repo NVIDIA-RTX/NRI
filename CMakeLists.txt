@@ -381,18 +381,18 @@ target_compile_definitions(NRI_Shared
 )
 target_compile_options(NRI_Shared
     PUBLIC
-        # Options for Clang/GCC compilers (any frontends)
+        # Options for Clang/GCC compilers
+        #   -Wno-missing-field-initializers   - won't fix
+        #   -Wno-return-type-c-linkage        - "nriGetFormatProps" returns a reference
         $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
             -Wno-missing-field-initializers
             -Wno-return-type-c-linkage
-            -Wno-nullability-completeness
-        >
-        # Options for Clang/GCC compilers (non-MSVC frontends)
-        $<$<AND:$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:
-            -Wextra
-            -Werror
-            -fPIC
-            -fvisibility=hidden
+            $<$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:
+                -Wextra
+                -Werror
+                -fPIC
+                -fvisibility=hidden
+            >
         >
         # Options for MSVC frontend
         $<$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>:

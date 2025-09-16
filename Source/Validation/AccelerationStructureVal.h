@@ -10,8 +10,8 @@ struct MemoryVal;
 struct AccelerationStructureVal final : public ObjectVal {
     AccelerationStructureVal(DeviceVal& device, AccelerationStructure* accelerationStructure, bool isBoundToMemory, const MemoryDesc& memoryDesc)
         : ObjectVal(device, accelerationStructure)
-        , m_IsBoundToMemory(isBoundToMemory)
-        , m_MemoryDesc(memoryDesc) {
+        , m_MemoryDesc(memoryDesc)
+        , m_IsBoundToMemory(isBoundToMemory) {
     }
 
     ~AccelerationStructureVal();

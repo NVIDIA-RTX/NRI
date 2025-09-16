@@ -10,8 +10,8 @@ struct MemoryVal;
 struct MicromapVal final : public ObjectVal {
     MicromapVal(DeviceVal& device, Micromap* micromap, bool isBoundToMemory, const MemoryDesc& memoryDesc)
         : ObjectVal(device, micromap)
-        , m_IsBoundToMemory(isBoundToMemory)
-        , m_MemoryDesc(memoryDesc) {
+        , m_MemoryDesc(memoryDesc)
+        , m_IsBoundToMemory(isBoundToMemory) {
     }
 
     ~MicromapVal();

@@ -11,7 +11,7 @@ namespace nri {
 
 bool IsUpscalerSupported(const DeviceDesc& deviceDesc, UpscalerType type);
 
-struct UpscalerImpl : public DebugNameBase {
+struct UpscalerImpl final : public DebugNameBase {
     inline UpscalerImpl(Device& device, const CoreInterface& NRI)
         : m_Device(device)
         , m_iCore(NRI) {
@@ -32,12 +32,14 @@ private:
     const CoreInterface& m_iCore;
     UpscalerDesc m_Desc = {};
 
+#if (NRI_ENABLE_NIS_SDK || NRI_ENABLE_FFX_SDK || NRI_ENABLE_XESS_SDK || NRI_ENABLE_NGX_SDK)
     union {
         Nis* nis;
         Ffx* ffx;
         Xess* xess;
         Ngx* ngx;
     } m = {};
+#endif
 };
 
 } // namespace nri

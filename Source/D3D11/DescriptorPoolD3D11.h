@@ -8,9 +8,9 @@ namespace nri {
 
 struct DescriptorPoolD3D11 final : public DebugNameBase {
     inline DescriptorPoolD3D11(DeviceD3D11& device)
-        : m_DescriptorSets(device.GetStdAllocator())
-        , m_DescriptorPool(device.GetStdAllocator())
-        , m_Device(device) {
+        : m_Device(device)
+        , m_DescriptorSets(device.GetStdAllocator())
+        , m_DescriptorPool(device.GetStdAllocator()) {
     }
 
     inline ~DescriptorPoolD3D11() {
