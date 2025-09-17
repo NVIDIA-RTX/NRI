@@ -383,13 +383,13 @@ target_compile_options(NRI_Shared
     PUBLIC
         # Options for Clang/GCC compilers
         $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
-            -Wno-missing-field-initializers
             $<$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:
                 -Wextra
                 -Werror
-                -fPIC
+                $<$<NOT:$<BOOL:${WIN32}>>:-fPIC> # add fPIC if not on windows
                 -fvisibility=hidden
             >
+            -Wno-missing-field-initializers # add after werror and wextra
         >
         # Options for MSVC frontend
         $<$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>:
