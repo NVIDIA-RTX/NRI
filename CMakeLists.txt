@@ -386,10 +386,9 @@ target_compile_options(NRI_Shared
             $<$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:
                 -Wextra
                 -Werror
-                $<$<NOT:$<BOOL:${WIN32}>>:-fPIC> # add fPIC if not on windows
                 -fvisibility=hidden
             >
-            -Wno-missing-field-initializers # add after werror and wextra
+            -Wno-missing-field-initializers
         >
         # Options for MSVC frontend
         $<$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>:
@@ -414,6 +413,8 @@ target_link_libraries(NRI_Shared
 )
 set_target_properties(NRI_Shared
     PROPERTIES
+        POSITION_INDEPENDENT_CODE ON           # enable PIC...
+        INTERFACE_POSITION_INDEPENDENT_CODE ON # ...and propagate to all consumers
         FOLDER "NRI"
 )
 
