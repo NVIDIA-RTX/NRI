@@ -58,13 +58,20 @@ Draw parameters:
 */
 
 // Compiler detection
-#ifdef __hlsl_dx_compiler
+#if defined __hlsl_dx_compiler
     #ifdef __spirv__
         #define NRI_SPIRV
         #define NRI_PRINTF_AVAILABLE
     #else
         #define NRI_DXIL
     #endif
+#elif defined __SLANG__
+    #if defined __spirv__
+        #define NRI_SPIRV
+        #define NRI_PRINTF_AVAILABLE
+    #elif defined __dxil__
+        #define NRI_DXIL
+    #endif 
 #else
     #if (defined(__cplusplus) || defined(__STDC__) || defined(__STDC_VERSION__))
         #define NRI_C
@@ -80,7 +87,13 @@ Draw parameters:
 #endif
 
 // Shader model
-#ifdef __hlsl_dx_compiler
+#if (defined(__hlsl_dx_compiler) || defined(__SLANG__))
+    #ifndef __SHADER_TARGET_MAJOR
+        #define __SHADER_TARGET_MAJOR 6
+    #endif
+    #ifndef __SHADER_TARGET_MAJOR
+        #define __SHADER_TARGET_MINOR 7
+    #endif
     #define NRI_SHADER_MODEL (__SHADER_TARGET_MAJOR * 10 + __SHADER_TARGET_MINOR)
 #else
     #define NRI_SHADER_MODEL 50
@@ -160,8 +173,13 @@ Draw parameters:
 
 // SPIRV
 #ifdef NRI_SPIRV
-    #define NRI_RESOURCE(resourceType, name, regName, bindingIndex, setIndex) \
-        resourceType name : register(NRI_MERGE_TOKENS(regName, bindingIndex), NRI_MERGE_TOKENS(space, setIndex))
+    #ifdef __SLANG__
+        #define NRI_RESOURCE(resourceType, name, regName, bindingIndex, setIndex) \
+            [[vk::binding(bindingIndex, setIndex)]] resourceType name : register(NRI_MERGE_TOKENS(regName, bindingIndex), NRI_MERGE_TOKENS(space, setIndex))
+    #else
+        #define NRI_RESOURCE(resourceType, name, regName, bindingIndex, setIndex) \
+            resourceType name : register(NRI_MERGE_TOKENS(regName, bindingIndex), NRI_MERGE_TOKENS(space, setIndex))
+    #endif 
 
     #define NRI_ROOT_CONSTANTS(structName, name, bindingIndex, setIndex) \
         [[vk::push_constant]] structName name
