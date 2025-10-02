@@ -63,35 +63,11 @@ static inline D3D12_ROOT_SIGNATURE_FLAGS GetRootSignatureStageFlags(const Pipeli
             flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
     }
 
-    if (device.GetDesc().shaderModel >= 66) { // TODO: an extension is needed because of VK, or add "samplersDirectlyIndexed" and "resourcesDirectlyIndexed" into "PipelineLayoutDesc"
-        bool hasSamplers = false;
-        bool hasResources = false;
+    if (pipelineLayoutDesc.flags & PipelineLayoutBits::SAMPLER_HEAP_DIRECTLY_INDEXED)
+        flags |= D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED;
 
-        for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++) {
-            const DescriptorSetDesc& descriptorSetDesc = pipelineLayoutDesc.descriptorSets[i];
-
-            for (uint32_t j = 0; j < descriptorSetDesc.rangeNum; j++) {
-                const DescriptorRangeDesc& descriptorRangeDesc = descriptorSetDesc.ranges[j];
-
-                if (descriptorRangeDesc.descriptorType == DescriptorType::SAMPLER)
-                    hasSamplers = true;
-                else if (descriptorRangeDesc.descriptorType == DescriptorType::CONSTANT_BUFFER
-                    || descriptorRangeDesc.descriptorType == DescriptorType::TEXTURE
-                    || descriptorRangeDesc.descriptorType == DescriptorType::STORAGE_TEXTURE
-                    || descriptorRangeDesc.descriptorType == DescriptorType::BUFFER
-                    || descriptorRangeDesc.descriptorType == DescriptorType::STORAGE_BUFFER
-                    || descriptorRangeDesc.descriptorType == DescriptorType::STRUCTURED_BUFFER
-                    || descriptorRangeDesc.descriptorType == DescriptorType::STORAGE_STRUCTURED_BUFFER)
-                    hasResources = true;
-            }
-        }
-
-        if (hasSamplers)
-            flags |= D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED;
-
-        if (hasResources)
-            flags |= D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED;
-    }
+    if (pipelineLayoutDesc.flags & PipelineLayoutBits::RESOURCE_HEAP_DIRECTLY_INDEXED)
+        flags |= D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED;
 
     return flags;
 }

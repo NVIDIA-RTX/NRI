@@ -10,6 +10,7 @@ Result DescriptorPoolD3D11::Create(const DescriptorPoolDesc& descriptorPoolDesc)
     descriptorNum += descriptorPoolDesc.storageBufferMaxNum;
     descriptorNum += descriptorPoolDesc.structuredBufferMaxNum;
     descriptorNum += descriptorPoolDesc.storageStructuredBufferMaxNum;
+    descriptorNum += descriptorPoolDesc.mutableMaxNum;
 
     m_DescriptorPool.resize(descriptorNum, nullptr);
     m_DescriptorSets.resize(descriptorPoolDesc.descriptorSetMaxNum);

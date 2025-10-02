@@ -856,7 +856,12 @@ NriEnum(BindPoint, uint8_t,
 NriBits(PipelineLayoutBits, uint8_t,
     NONE                                    = 0,
     IGNORE_GLOBAL_SPIRV_OFFSETS             = NriBit(0), // VK: ignore "DeviceCreationDesc::vkBindingOffsets"
-    ENABLE_D3D12_DRAW_PARAMETERS_EMULATION  = NriBit(1)  // D3D12: enable draw parameters emulation, not needed if all vertex shaders for this layout compiled with SM 6.8 (native support)
+    ENABLE_D3D12_DRAW_PARAMETERS_EMULATION  = NriBit(1),  // D3D12: enable draw parameters emulation, not needed if all vertex shaders for this layout compiled with SM 6.8 (native support)
+
+    // https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#resourcedescriptorheaps--samplerdescriptorheaps
+    // Default VK bindings (0) can be changed via "-fvk-bind-sampler-heap" and "-fvk-bind-resource-heap" DXC options
+    SAMPLER_HEAP_DIRECTLY_INDEXED           = NriBit(2), // requires "shaderModel >= 66"
+    RESOURCE_HEAP_DIRECTLY_INDEXED          = NriBit(3)  // requires "shaderModel >= 66"
 );
 
 NriBits(DescriptorPoolBits, uint8_t,
@@ -877,7 +882,10 @@ NriBits(DescriptorRangeBits, uint8_t,
     VARIABLE_SIZED_ARRAY                    = NriBit(2), // descriptors in range are organized into a variable-sized array, which size is specified via "variableDescriptorNum" argument of "AllocateDescriptorSets" function
 
     // https://docs.vulkan.org/samples/latest/samples/extensions/descriptor_indexing/README.html#_update_after_bind_streaming_descriptors_concurrently
-    ALLOW_UPDATE_AFTER_SET                  = NriBit(3)  // descriptors in range can be updated after "CmdSetDescriptorSet" but before "QueueSubmit", also works as "DATA_VOLATILE"
+    ALLOW_UPDATE_AFTER_SET                  = NriBit(3), // descriptors in range can be updated after "CmdSetDescriptorSet" but before "QueueSubmit", also works as "DATA_VOLATILE"
+
+    // https://docs.vulkan.org/features/latest/features/proposals/VK_EXT_mutable_descriptor_type.html
+    MUTABLE                                 = NriBit(4)  // descriptors in range may have various non-sampler types (aka "resource heap" concept)
 );
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkDescriptorType.html
@@ -948,19 +956,32 @@ NriStruct(PipelineLayoutDesc) {
 };
 
 // Descriptor pool
+// https://learn.microsoft.com/en-us/windows/win32/direct3d12/descriptor-heaps
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_descriptor_heap_desc
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkDescriptorPoolCreateInfo.html
 NriStruct(DescriptorPoolDesc) {
+    // Maximum number of descriptor sets that can be allocated from this pool
     uint32_t descriptorSetMaxNum;
-    uint32_t samplerMaxNum;             // excluding root samplers
-    uint32_t constantBufferMaxNum;
-    uint32_t textureMaxNum;
-    uint32_t storageTextureMaxNum;
-    uint32_t bufferMaxNum;
-    uint32_t storageBufferMaxNum;
-    uint32_t structuredBufferMaxNum;
-    uint32_t storageStructuredBufferMaxNum;
-    uint32_t accelerationStructureMaxNum;
+
+    // Sampler heap:
+    // - can be directly indexed in shaders if flag "SAMPLER_HEAP_DIRECTLY_INDEXED" is set
+    // - root samplers do not count (not allocated from a descriptor pool)
+    uint32_t samplerMaxNum;                 // number of "SAMPLER" descriptors
+
+    // Resource heap:
+    // - can be directly indexed in shaders if flag "RESOURCE_HEAP_DIRECTLY_INDEXED" is set
+    // - a mutable descriptor is a proxy "union" descriptor for all resource descriptors
+    // - a mutable descriptor must "mutate" to any non-mutable resource descriptor (i.e. non-sampler) via "UpdateDescriptorRanges" or "CopyDescriptorRanges"
+    uint32_t constantBufferMaxNum;          // number of "CONSTANT_BUFFER" descriptors
+    uint32_t textureMaxNum;                 // number of "TEXTURE" descriptors
+    uint32_t storageTextureMaxNum;          // number of "STORAGE_TEXTURE" descriptors
+    uint32_t bufferMaxNum;                  // number of "BUFFER" descriptors
+    uint32_t storageBufferMaxNum;           // number of "STORAGE_BUFFER" descriptors
+    uint32_t structuredBufferMaxNum;        // number of "STRUCTURED_BUFFER" descriptors
+    uint32_t storageStructuredBufferMaxNum; // number of "STORAGE_STRUCTURED_BUFFER" descriptors
+    uint32_t accelerationStructureMaxNum;   // number of "ACCELERATION_STRUCTURE" descriptors, requires "features.rayTracing"
+    uint32_t mutableMaxNum;                 // number of descriptors for "DescriptorRangeBits::MUTABLE", requires "features.mutableDescriptorType"
+
     Nri(DescriptorPoolBits) flags;
 };
 
@@ -1883,6 +1904,7 @@ NriStruct(DeviceDesc) {
         uint32_t pipelineStatistics                              : 1; // see "QueryType::PIPELINE_STATISTICS"
         uint32_t rootConstantsOffset                             : 1; // see "SetRootConstantsDesc" (unsupported only in D3D11)
         uint32_t nonConstantBufferRootDescriptorOffset           : 1; // see "SetRootDescriptorDesc" (unsupported only in D3D11)
+        uint32_t mutableDescriptorType                           : 1; // see "DescriptorRangeBits::MUTABLE"
     } features;
 
     // Shader features

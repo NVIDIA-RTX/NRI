@@ -1005,6 +1005,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.pipelineStatistics = features.features.pipelineStatisticsQuery;
         m_Desc.features.rootConstantsOffset = true;
         m_Desc.features.nonConstantBufferRootDescriptorOffset = true;
+        m_Desc.features.mutableDescriptorType = MutableDescriptorTypeFeatures.mutableDescriptorType;
 
         m_Desc.shaderFeatures.nativeI16 = features.features.shaderInt16;
         m_Desc.shaderFeatures.nativeF16 = features12.shaderFloat16;
@@ -1045,6 +1046,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
             m_Desc.shaderModel = 64;
         if (m_Desc.features.meshShader || m_Desc.tiers.rayTracing >= 2)
             m_Desc.shaderModel = 65;
+        // TODO: "m_Desc.features.mutableDescriptorType" is an optional feature, despite that it's needed to emulate SM 6.6 "ultimate" bindless
         if (m_Desc.shaderFeatures.atomicsI64)
             m_Desc.shaderModel = 66;
         if (features.features.shaderStorageImageMultisample)

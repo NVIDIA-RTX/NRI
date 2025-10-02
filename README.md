@@ -34,7 +34,7 @@ There is [NVRHI](https://github.com/NVIDIA-RTX/NVRHI), which offers a D3D11-like
  - generalized common denominator for D3D12, VK and D3D11
  - low overhead
  - no memory allocations at runtime
- - descriptor indexing support
+ - descriptor indexing support, including directly indexed descriptor heaps
  - ray tracing support
  - mesh shaders support
  - D3D12 Ultimate features support, including enhanced barriers
@@ -111,6 +111,7 @@ Repository organization:
     - _VK_KHR_fragment_shader_barycentric_
     - _VK_KHR_shader_clock_
     - _VK_KHR_compute_shader_derivatives_
+    - _VK_EXT_mutable_descriptor_type_
     - _VK_EXT_subgroup_size_control_
     - _VK_EXT_swapchain_maintenance1_
     - _VK_EXT_present_mode_fifo_latest_ready_

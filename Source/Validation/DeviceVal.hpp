@@ -148,6 +148,8 @@ NRI_INLINE Result DeviceVal::CreateCommandAllocator(const Queue& queue, CommandA
 }
 
 NRI_INLINE Result DeviceVal::CreateDescriptorPool(const DescriptorPoolDesc& descriptorPoolDesc, DescriptorPool*& descriptorPool) {
+    RETURN_ON_FAILURE(this, descriptorPoolDesc.mutableMaxNum == 0 || GetDesc().features.mutableDescriptorType, Result::INVALID_ARGUMENT, "'features.mutableDescriptorType' is false");
+
     DescriptorPool* descriptorPoolImpl = nullptr;
     Result result = m_iCoreImpl.CreateDescriptorPool(m_Impl, descriptorPoolDesc, descriptorPoolImpl);
 

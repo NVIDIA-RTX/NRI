@@ -1,7 +1,10 @@
 // © 2021 NVIDIA Corporation
 
 Result DescriptorPoolD3D12::Create(const DescriptorPoolDesc& descriptorPoolDesc) {
-    uint32_t descriptorHeapSize[DescriptorHeapType::MAX_NUM] = {};
+    std::array<uint32_t, DescriptorHeapType::MAX_NUM> descriptorHeapSize = {};
+
+    descriptorHeapSize[DescriptorHeapType::SAMPLER] += descriptorPoolDesc.samplerMaxNum;
+
     descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.constantBufferMaxNum;
     descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.textureMaxNum;
     descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.storageTextureMaxNum;
@@ -10,7 +13,7 @@ Result DescriptorPoolD3D12::Create(const DescriptorPoolDesc& descriptorPoolDesc)
     descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.structuredBufferMaxNum;
     descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.storageStructuredBufferMaxNum;
     descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.accelerationStructureMaxNum;
-    descriptorHeapSize[DescriptorHeapType::SAMPLER] += descriptorPoolDesc.samplerMaxNum;
+    descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.mutableMaxNum;
 
     for (uint32_t i = 0; i < DescriptorHeapType::MAX_NUM; i++) {
         DescriptorHeapDesc& descriptorHeapDesc = m_DescriptorHeapDescs[i];

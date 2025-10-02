@@ -171,6 +171,8 @@ Result PipelineLayoutVK::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
 }
 
 void PipelineLayoutVK::CreateSetLayout(VkDescriptorSetLayout* setLayout, const DescriptorSetDesc& descriptorSetDesc, const RootSamplerDesc* rootSamplers, uint32_t rootSamplerNum, bool ignoreGlobalSPIRVOffsets, bool isPush) {
+    const DeviceDesc& deviceDesc = m_Device.GetDesc();
+
     // Binding offsets
     VKBindingOffsets vkBindingOffsets = {};
     if (!ignoreGlobalSPIRVOffsets)
@@ -196,17 +198,24 @@ void PipelineLayoutVK::CreateSetLayout(VkDescriptorSetLayout* setLayout, const D
     }
 
     // Allocate scratch
-    Scratch<VkDescriptorSetLayoutBinding> bindingsScratch = AllocateScratch(m_Device, VkDescriptorSetLayoutBinding, bindingMaxNum);
-    VkDescriptorSetLayoutBinding* bindingsBegin = bindingsScratch;
-    VkDescriptorSetLayoutBinding* bindings = bindingsScratch;
-
-    Scratch<VkDescriptorBindingFlags> bindingFlagsScratch = AllocateScratch(m_Device, VkDescriptorBindingFlags, bindingMaxNum);
-    VkDescriptorBindingFlags* bindingFlagsBegin = bindingFlagsScratch;
-    VkDescriptorBindingFlags* bindingFlags = bindingFlagsScratch;
-
+    Scratch<VkDescriptorSetLayoutBinding> bindings = AllocateScratch(m_Device, VkDescriptorSetLayoutBinding, bindingMaxNum);
+    Scratch<VkDescriptorBindingFlags> bindingFlags = AllocateScratch(m_Device, VkDescriptorBindingFlags, bindingMaxNum);
+    Scratch<VkMutableDescriptorTypeListEXT> mutableTypeLists = AllocateScratch(m_Device, VkMutableDescriptorTypeListEXT, bindingMaxNum);
     Scratch<VkSampler> immutableSamplers = AllocateScratch(m_Device, VkSampler, rootSamplerNum);
+    uint32_t bindingNum = 0;
 
     // Add ranges
+    const VkDescriptorType mutableTypes[] = {
+        VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+        VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+    };
+    const VkMutableDescriptorTypeListEXT mutableTypeList = {deviceDesc.features.rayTracing ? 7u : 6u, mutableTypes};
+
     for (uint32_t i = 0; i < descriptorSetDesc.rangeNum; i++) {
         const DescriptorRangeDesc& range = descriptorSetDesc.ranges[i];
         uint32_t baseBindingIndex = range.baseRegisterIndex + bindingOffsets[(uint32_t)range.descriptorType];
@@ -227,14 +236,23 @@ void PipelineLayoutVK::CreateSetLayout(VkDescriptorSetLayout* setLayout, const D
             descriptorNum = range.descriptorNum;
 
         for (uint32_t j = 0; j < descriptorNum; j++) {
-            *bindingFlags++ = flags;
-
-            VkDescriptorSetLayoutBinding& binding = *bindings++;
+            VkDescriptorSetLayoutBinding& binding = bindings[bindingNum];
             binding = {};
-            binding.descriptorType = GetDescriptorType(range.descriptorType);
-            binding.stageFlags = GetShaderStageFlags(range.shaderStages);
             binding.binding = baseBindingIndex + j;
             binding.descriptorCount = isArray ? range.descriptorNum : 1;
+            binding.stageFlags = GetShaderStageFlags(range.shaderStages);
+
+            bindingFlags[bindingNum] = flags;
+
+            if (range.flags & DescriptorRangeBits::MUTABLE) {
+                binding.descriptorType = VK_DESCRIPTOR_TYPE_MUTABLE_EXT;
+                mutableTypeLists[bindingNum] = mutableTypeList;
+            } else {
+                binding.descriptorType = GetDescriptorType(range.descriptorType);
+                mutableTypeLists[bindingNum] = {};
+            }
+
+            bindingNum++;
         }
     }
 
@@ -253,28 +271,34 @@ void PipelineLayoutVK::CreateSetLayout(VkDescriptorSetLayout* setLayout, const D
 
         m_ImmutableSamplers.push_back(immutableSamplers[i]);
 
-        *bindingFlags++ = 0;
-
-        VkDescriptorSetLayoutBinding& binding = *bindings++;
+        VkDescriptorSetLayoutBinding& binding = bindings[bindingNum];
         binding = {};
         binding.binding = rootSamplerDesc.registerIndex + bindingOffsets[(uint32_t)DescriptorType::SAMPLER];
         binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
         binding.descriptorCount = 1;
         binding.stageFlags = GetShaderStageFlags(rootSamplerDesc.shaderStages);
         binding.pImmutableSamplers = &immutableSamplers[i];
+
+        bindingFlags[bindingNum] = 0;
+        mutableTypeLists[bindingNum] = {};
+
+        bindingNum++;
     }
 
     // Create layout
-    uint32_t bindingNum = uint32_t(bindings - bindingsBegin);
+    VkMutableDescriptorTypeCreateInfoEXT mutableTypeInfo = {VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT};
+    mutableTypeInfo.mutableDescriptorTypeListCount = bindingNum;
+    mutableTypeInfo.pMutableDescriptorTypeLists = mutableTypeLists;
 
     VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO};
+    bindingFlagsInfo.pNext = deviceDesc.features.mutableDescriptorType ? &mutableTypeInfo : nullptr;
     bindingFlagsInfo.bindingCount = bindingNum;
-    bindingFlagsInfo.pBindingFlags = bindingFlagsBegin;
+    bindingFlagsInfo.pBindingFlags = bindingFlags;
 
     VkDescriptorSetLayoutCreateInfo info = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-    info.pNext = m_Device.GetDesc().tiers.bindless != 0 ? &bindingFlagsInfo : nullptr;
+    info.pNext = deviceDesc.tiers.bindless != 0 ? &bindingFlagsInfo : nullptr;
     info.bindingCount = bindingNum;
-    info.pBindings = bindingsBegin;
+    info.pBindings = bindings;
     info.flags = (descriptorSetDesc.flags & DescriptorSetBits::ALLOW_UPDATE_AFTER_SET) ? VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT : 0;
 
     if (isPush)

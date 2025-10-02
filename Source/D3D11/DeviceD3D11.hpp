@@ -515,6 +515,7 @@ void DeviceD3D11::FillDesc() {
     m_Desc.features.waitableSwapChain = true; // TODO: swap chain version >= 2?
     m_Desc.features.resizableSwapChain = true;
     m_Desc.features.pipelineStatistics = true;
+    m_Desc.features.mutableDescriptorType = true;
 
     m_Desc.shaderFeatures.nativeF64 = options.ExtendedDoublesShaderInstructions;
     m_Desc.shaderFeatures.atomicsF16 = isShaderAtomicsF16Supported;
