@@ -91,7 +91,7 @@ Draw parameters:
     #ifndef __SHADER_TARGET_MAJOR
         #define __SHADER_TARGET_MAJOR 6
     #endif
-    #ifndef __SHADER_TARGET_MAJOR
+    #ifndef __SHADER_TARGET_MINOR
         #define __SHADER_TARGET_MINOR 7
     #endif
     #define NRI_SHADER_MODEL (__SHADER_TARGET_MAJOR * 10 + __SHADER_TARGET_MINOR)
