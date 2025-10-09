@@ -73,8 +73,7 @@ NriStruct(HelperInterface) {
     Nri(Result) (NRI_CALL *AllocateAndBindMemory)       (NriRef(Device) device, const NriRef(ResourceGroupDesc) resourceGroupDesc, NriOut NriPtr(Memory)* allocations); // "allocations" must have entries >= returned by "CalculateAllocationNumber"
 
     // Populate resources with data (not for streaming!)
-    Nri(Result) (NRI_CALL *UploadData)                  (NriRef(Queue) queue, const NriPtr(TextureUploadDesc) textureUploadDescs, uint32_t textureUploadDescNum,
-                                                            const NriPtr(BufferUploadDesc) bufferUploadDescs, uint32_t bufferUploadDescNum);
+    Nri(Result) (NRI_CALL *UploadData)                  (NriRef(Queue) queue, const NriPtr(TextureUploadDesc) textureUploadDescs, uint32_t textureUploadDescNum, const NriPtr(BufferUploadDesc) bufferUploadDescs, uint32_t bufferUploadDescNum);
 
     // Information about video memory
     Nri(Result) (NRI_CALL *QueryVideoMemoryInfo)        (const NriRef(Device) device, Nri(MemoryLocation) memoryLocation, NriOut NriRef(VideoMemoryInfo) videoMemoryInfo);

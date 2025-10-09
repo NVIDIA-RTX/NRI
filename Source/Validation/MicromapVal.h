@@ -8,9 +8,8 @@ struct BufferVal;
 struct MemoryVal;
 
 struct MicromapVal final : public ObjectVal {
-    MicromapVal(DeviceVal& device, Micromap* micromap, bool isBoundToMemory, const MemoryDesc& memoryDesc)
+    MicromapVal(DeviceVal& device, Micromap* micromap, bool isBoundToMemory)
         : ObjectVal(device, micromap)
-        , m_MemoryDesc(memoryDesc)
         , m_IsBoundToMemory(isBoundToMemory) {
     }
 
@@ -24,13 +23,9 @@ struct MicromapVal final : public ObjectVal {
         return m_IsBoundToMemory;
     }
 
-    inline void SetBoundToMemory(MemoryVal& memory) {
-        m_Memory = &memory;
+    inline void SetBoundToMemory(MemoryVal* memory) {
+        m_Memory = memory;
         m_IsBoundToMemory = true;
-    }
-
-    inline const MemoryDesc& GetMemoryDesc() const {
-        return m_MemoryDesc;
     }
 
     //================================================================================================================
@@ -44,7 +39,6 @@ struct MicromapVal final : public ObjectVal {
 private:
     MemoryVal* m_Memory = nullptr;
     BufferVal* m_Buffer = nullptr;
-    MemoryDesc m_MemoryDesc = {};
     bool m_IsBoundToMemory = false;
 };
 

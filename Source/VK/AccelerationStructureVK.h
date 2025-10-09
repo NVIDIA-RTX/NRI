@@ -5,6 +5,7 @@
 namespace nri {
 
 struct BufferVK;
+struct MemoryVK;
 
 struct AccelerationStructureVK final : public DebugNameBase {
     inline AccelerationStructureVK(DeviceVK& device)
@@ -23,8 +24,8 @@ struct AccelerationStructureVK final : public DebugNameBase {
 
     Result Create(const AccelerationStructureDesc& accelerationStructureDesc);
     Result Create(const AccelerationStructureVKDesc& accelerationStructureVKDesc);
-    Result Create(const AllocateAccelerationStructureDesc& allocateAccelerationStructureDesc);
-    Result FinishCreation();
+    Result AllocateAndBindMemory(MemoryLocation memoryLocation, float priority, bool committed);
+    Result BindMemory(const MemoryVK* memory, uint64_t offset);
 
     //================================================================================================================
     // DebugNameBase
@@ -65,7 +66,7 @@ private:
     BufferVK* m_Buffer = nullptr;
     uint64_t m_BuildScratchSize = 0;
     uint64_t m_UpdateScratchSize = 0;
-    VkAccelerationStructureTypeKHR m_Type = (VkAccelerationStructureTypeKHR)0; // needed only for FinishCreation
+    VkAccelerationStructureTypeKHR m_Type = (VkAccelerationStructureTypeKHR)0; // needed only for "BindMemory"
     AccelerationStructureBits m_Flags = AccelerationStructureBits::NONE;
     bool m_OwnsNativeObjects = true;
 };

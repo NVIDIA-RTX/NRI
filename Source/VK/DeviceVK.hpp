@@ -135,6 +135,35 @@ static VkBool32 VKAPI_PTR MessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT
     return VK_FALSE;
 }
 
+VkResult DeviceVK::CreateVma() {
+    VmaVulkanFunctions vulkanFunctions = {};
+    vulkanFunctions.vkGetInstanceProcAddr = m_VK.GetInstanceProcAddr;
+    vulkanFunctions.vkGetDeviceProcAddr = m_VK.GetDeviceProcAddr;
+
+    VmaAllocatorCreateInfo allocatorCreateInfo = {};
+    allocatorCreateInfo.vulkanApiVersion = VK_MAKE_API_VERSION(0, 1, m_MinorVersion, 0);
+    allocatorCreateInfo.physicalDevice = m_PhysicalDevice;
+    allocatorCreateInfo.device = m_Device;
+    allocatorCreateInfo.instance = m_Instance;
+    allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+    allocatorCreateInfo.pAllocationCallbacks = m_AllocationCallbackPtr;
+    allocatorCreateInfo.preferredLargeHeapBlockSize = VMA_PREFERRED_BLOCK_SIZE;
+
+    allocatorCreateInfo.flags = 0;
+    if (m_IsSupported.memoryBudget)
+        allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+    if (m_IsSupported.deviceAddress)
+        allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+    if (m_IsSupported.memoryPriority)
+        allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_PRIORITY_BIT;
+    if (m_IsSupported.maintenance4)
+        allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE4_BIT;
+    if (m_IsSupported.maintenance5)
+        allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT;
+
+    return vmaCreateAllocator(&allocatorCreateInfo, &m_Vma);
+}
+
 void DeviceVK::FilterInstanceLayers(Vector<const char*>& layers) {
     uint32_t layerNum = 0;
     m_VK.EnumerateInstanceLayerProperties(&layerNum, nullptr);
@@ -294,7 +323,8 @@ DeviceVK::DeviceVK(const CallbackInterface& callbacks, const AllocationCallbacks
 }
 
 DeviceVK::~DeviceVK() {
-    DestroyVma();
+    if (m_Vma)
+        vmaDestroyAllocator(m_Vma);
 
     for (auto& queueFamily : m_QueueFamilies) {
         for (uint32_t i = 0; i < queueFamily.size(); i++)
@@ -2045,25 +2075,25 @@ NRI_INLINE Result DeviceVK::BindBufferMemory(const BindBufferMemoryDesc* bindBuf
 
         MemoryTypeInfo memoryTypeInfo = Unpack(memoryVK.GetType());
         if (memoryTypeInfo.mustBeDedicated)
-            memoryVK.CreateDedicated(bufferVK);
+            memoryVK.CreateDedicated(&bufferVK, nullptr);
 
         VkBindBufferMemoryInfo& info = infos[i];
         info = {VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO};
         info.buffer = bufferVK.GetHandle();
         info.memory = memoryVK.GetHandle();
-        info.memoryOffset = bindBufferMemoryDesc.offset;
+        info.memoryOffset = memoryVK.GetOffset() + bindBufferMemoryDesc.offset;
     }
 
     VkResult vkResult = m_VK.BindBufferMemory2(m_Device, bindBufferMemoryDescNum, infos);
     RETURN_ON_BAD_VKRESULT(this, vkResult, "vkBindBufferMemory2");
 
     for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
-        const BindBufferMemoryDesc& memoryBindingDesc = bindBufferMemoryDescs[i];
+        const BindBufferMemoryDesc& bindBufferMemoryDesc = bindBufferMemoryDescs[i];
 
-        BufferVK& bufferVK = *(BufferVK*)memoryBindingDesc.buffer;
-        MemoryVK& memoryVK = *(MemoryVK*)memoryBindingDesc.memory;
+        BufferVK& bufferVK = *(BufferVK*)bindBufferMemoryDesc.buffer;
+        MemoryVK& memoryVK = *(MemoryVK*)bindBufferMemoryDesc.memory;
 
-        bufferVK.FinishMemoryBinding(memoryVK, memoryBindingDesc.offset);
+        bufferVK.BindMemory(memoryVK, bindBufferMemoryDesc.offset, false);
     }
 
     return Result::SUCCESS;
@@ -2079,13 +2109,13 @@ NRI_INLINE Result DeviceVK::BindTextureMemory(const BindTextureMemoryDesc* bindT
 
         MemoryTypeInfo memoryTypeInfo = Unpack(memoryVK.GetType());
         if (memoryTypeInfo.mustBeDedicated)
-            memoryVK.CreateDedicated(textureVK);
+            memoryVK.CreateDedicated(nullptr, &textureVK);
 
         VkBindImageMemoryInfo& info = infos[i];
         info = {VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO};
         info.image = textureVK.GetHandle();
         info.memory = memoryVK.GetHandle();
-        info.memoryOffset = bindTextureMemoryDesc.offset;
+        info.memoryOffset = memoryVK.GetOffset() + bindTextureMemoryDesc.offset;
     }
 
     VkResult vkResult = m_VK.BindImageMemory2(m_Device, bindTextureMemoryDescNum, infos);
@@ -2097,21 +2127,24 @@ NRI_INLINE Result DeviceVK::BindTextureMemory(const BindTextureMemoryDesc* bindT
 NRI_INLINE Result DeviceVK::BindAccelerationStructureMemory(const BindAccelerationStructureMemoryDesc* bindAccelerationStructureMemoryDescs, uint32_t bindAccelerationStructureMemoryDescNum) {
     Scratch<BindBufferMemoryDesc> bufferMemoryBindingDescs = AllocateScratch(*this, BindBufferMemoryDesc, bindAccelerationStructureMemoryDescNum);
     for (uint32_t i = 0; i < bindAccelerationStructureMemoryDescNum; i++) {
-        const BindAccelerationStructureMemoryDesc& memoryBindingDesc = bindAccelerationStructureMemoryDescs[i];
-        AccelerationStructureVK& accelerationStructure = *(AccelerationStructureVK*)memoryBindingDesc.accelerationStructure;
+        const BindAccelerationStructureMemoryDesc& bindAccelerationStructureMemoryDesc = bindAccelerationStructureMemoryDescs[i];
+        AccelerationStructureVK& accelerationStructureVK = *(AccelerationStructureVK*)bindAccelerationStructureMemoryDesc.accelerationStructure;
 
         BindBufferMemoryDesc& desc = bufferMemoryBindingDescs[i];
+
         desc = {};
-        desc.buffer = (Buffer*)accelerationStructure.GetBuffer();
-        desc.memory = memoryBindingDesc.memory;
-        desc.offset = memoryBindingDesc.offset;
+        desc.buffer = (Buffer*)accelerationStructureVK.GetBuffer();
+        desc.memory = bindAccelerationStructureMemoryDesc.memory;
+        desc.offset = bindAccelerationStructureMemoryDesc.offset;
     }
 
     Result result = BindBufferMemory(bufferMemoryBindingDescs, bindAccelerationStructureMemoryDescNum);
 
     for (uint32_t i = 0; i < bindAccelerationStructureMemoryDescNum && result == Result::SUCCESS; i++) {
-        AccelerationStructureVK& accelerationStructure = *(AccelerationStructureVK*)bindAccelerationStructureMemoryDescs[i].accelerationStructure;
-        result = accelerationStructure.FinishCreation();
+        const BindAccelerationStructureMemoryDesc& bindAccelerationStructureMemoryDesc = bindAccelerationStructureMemoryDescs[i];
+        AccelerationStructureVK& accelerationStructureVK = *(AccelerationStructureVK*)bindAccelerationStructureMemoryDesc.accelerationStructure;
+
+        result = accelerationStructureVK.BindMemory(nullptr, 0);
     }
 
     return result;
@@ -2121,11 +2154,12 @@ NRI_INLINE Result DeviceVK::BindMicromapMemory(const BindMicromapMemoryDesc* bin
     Scratch<BindBufferMemoryDesc> bindBufferMemoryDescs = AllocateScratch(*this, BindBufferMemoryDesc, bindMicromapMemoryDescNum);
     for (uint32_t i = 0; i < bindMicromapMemoryDescNum; i++) {
         const BindMicromapMemoryDesc& bindMicromapMemoryDesc = bindMicromapMemoryDescs[i];
-        MicromapVK& micromap = *(MicromapVK*)bindMicromapMemoryDesc.micromap;
+        MicromapVK& micromapVK = *(MicromapVK*)bindMicromapMemoryDesc.micromap;
 
         BindBufferMemoryDesc& desc = bindBufferMemoryDescs[i];
+
         desc = {};
-        desc.buffer = (Buffer*)micromap.GetBuffer();
+        desc.buffer = (Buffer*)micromapVK.GetBuffer();
         desc.memory = bindMicromapMemoryDesc.memory;
         desc.offset = bindMicromapMemoryDesc.offset;
     }
@@ -2133,8 +2167,10 @@ NRI_INLINE Result DeviceVK::BindMicromapMemory(const BindMicromapMemoryDesc* bin
     Result result = BindBufferMemory(bindBufferMemoryDescs, bindMicromapMemoryDescNum);
 
     for (uint32_t i = 0; i < bindMicromapMemoryDescNum && result == Result::SUCCESS; i++) {
-        MicromapVK& micromap = *(MicromapVK*)bindMicromapMemoryDescs[i].micromap;
-        result = micromap.FinishCreation();
+        const BindMicromapMemoryDesc& bindMicromapMemoryDesc = bindMicromapMemoryDescs[i];
+        MicromapVK& micromap = *(MicromapVK*)bindMicromapMemoryDesc.micromap;
+
+        result = micromap.BindMemory(nullptr, 0);
     }
 
     return result;

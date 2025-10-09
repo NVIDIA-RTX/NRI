@@ -17,10 +17,8 @@ BufferD3D11::~BufferD3D11() {
     Destroy(m_ReadbackTexture);
 }
 
-Result BufferD3D11::Create(MemoryLocation memoryLocation, float priority) {
-    // Buffer was already created externally
-    if (m_Buffer)
-        return Result::SUCCESS;
+Result BufferD3D11::Allocate(MemoryLocation memoryLocation, float priority) {
+    CHECK(!m_Buffer, "Unexpected");
 
     D3D11_BUFFER_DESC desc = {};
     desc.ByteWidth = (uint32_t)m_Desc.size;
@@ -124,7 +122,7 @@ TextureD3D11& BufferD3D11::RecreateReadbackTexture(const TextureD3D11& srcTextur
 
         Result result = m_Device.CreateImplementation<TextureD3D11>(m_ReadbackTexture, textureDesc);
         if (result == Result::SUCCESS) {
-            result = m_ReadbackTexture->Create(MemoryLocation::HOST_READBACK, 0.0f);
+            result = m_ReadbackTexture->Allocate(MemoryLocation::HOST_READBACK, 0.0f);
             if (result != Result::SUCCESS)
                 Destroy(m_ReadbackTexture);
         }
@@ -151,7 +149,7 @@ NRI_INLINE void* BufferD3D11::Map(uint64_t offset) {
     else if (desc.CPUAccessFlags == (D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE))
         map = D3D11_MAP_READ_WRITE;
     else
-        CHECK(false, "Unmappable");
+        CHECK(false, "No CPU access");
 
     D3D11_MAPPED_SUBRESOURCE mappedData = {};
     HRESULT hr = m_Device.GetImmediateContext()->Map(m_Buffer, 0, map, 0, &mappedData);

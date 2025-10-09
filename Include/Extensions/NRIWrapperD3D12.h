@@ -75,6 +75,7 @@ NriStruct(TextureD3D12Desc) {
 
 NriStruct(MemoryD3D12Desc) {
     ID3D12Heap* d3d12Heap;
+    uint64_t offset;
 };
 
 NriStruct(FenceD3D12Desc) {

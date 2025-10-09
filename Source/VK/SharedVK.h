@@ -10,9 +10,6 @@
 
 typedef uint16_t MemoryTypeIndex;
 
-struct VmaAllocator_T;
-struct VmaAllocation_T;
-
 #if 1
 #    define IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
 #    define IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL

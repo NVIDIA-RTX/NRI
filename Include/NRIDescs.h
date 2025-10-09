@@ -640,6 +640,11 @@ NriStruct(AllocateMemoryDesc) {
     // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_residency_priority
     // https://registry.khronos.org/vulkan/specs/latest/man/html/VkMemoryPriorityAllocateInfoEXT.html
     float priority; // [-1; 1]: low < 0, normal = 0, high > 0
+
+    // Memory allocation goes through "AMD Virtual Memory Allocator" (most likely a sub-allocation from a larger allocation)
+    // https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+    // https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator
+    bool useVMA;
 };
 
 // Binding resources to a memory (resources can overlap, i.e. alias)
@@ -1670,10 +1675,10 @@ NriStruct(DeviceDesc) {
     struct {
         uint32_t uploadBufferTextureRow;
         uint32_t uploadBufferTextureSlice;
-        uint32_t shaderBindingTable;
         uint32_t bufferShaderResourceOffset;
         uint32_t constantBufferOffset;
         uint32_t scratchBufferOffset;
+        uint32_t shaderBindingTable;
         uint32_t accelerationStructureOffset;
         uint32_t micromapOffset;
     } memoryAlignment;

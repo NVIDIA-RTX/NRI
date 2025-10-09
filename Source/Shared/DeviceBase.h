@@ -93,10 +93,6 @@ struct DeviceBase : public DebugNameBaseVal {
         return Result::UNSUPPORTED;
     }
 
-    virtual Result FillFunctionTable(ResourceAllocatorInterface&) const {
-        return Result::UNSUPPORTED;
-    }
-
     virtual Result FillFunctionTable(StreamerInterface&) const {
         return Result::UNSUPPORTED;
     }

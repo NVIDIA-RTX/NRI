@@ -17,17 +17,21 @@ Result BufferD3D12::Create(const BufferD3D12Desc& bufferD3D12Desc) {
     return Result::SUCCESS;
 }
 
-Result BufferD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset) {
-    // Buffer was already created externally
-    if (m_Buffer)
-        return Result::SUCCESS;
+Result BufferD3D12::Allocate(MemoryLocation memoryLocation, float priority, bool committed) {
+    CHECK(!m_Buffer, "Unexpected");
 
-    const D3D12_HEAP_DESC& heapDesc = memory->GetHeapDesc();
+    uint32_t flags = D3D12MA::ALLOCATION_FLAG_STRATEGY_MIN_MEMORY;
+    flags |= committed ? D3D12MA::ALLOCATION_FLAG_COMMITTED : D3D12MA::ALLOCATION_FLAG_CAN_ALIAS;
 
-    // STATE_CREATION ERROR #640: CREATERESOURCEANDHEAP_INVALIDHEAPMISCFLAGS
-    D3D12_HEAP_FLAGS heapFlagsFixed = heapDesc.Flags & ~(D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES | D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES | D3D12_HEAP_FLAG_DENY_BUFFERS);
-    if (!m_Device.IsMemoryZeroInitializationEnabled())
-        heapFlagsFixed |= D3D12_HEAP_FLAG_CREATE_NOT_ZEROED;
+    const DeviceDesc& deviceDesc = m_Device.GetDesc();
+    D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
+    if (deviceDesc.tiers.memory == 0)
+        heapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+
+    D3D12MA::ALLOCATION_DESC allocationDesc = {};
+    allocationDesc.HeapType = m_Device.GetHeapType(memoryLocation);
+    allocationDesc.Flags = (D3D12MA::ALLOCATION_FLAGS)flags;
+    allocationDesc.ExtraHeapFlags = heapFlags;
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_RESOURCE_DESC1 desc1 = {};
@@ -35,11 +39,54 @@ Result BufferD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset) {
 
     const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_UNDEFINED;
 
-    if (memory->IsDummy()) {
+    HRESULT hr = m_Device.GetVma()->CreateResource3(&allocationDesc, &desc1, initialLayout, nullptr, NO_CASTABLE_FORMATS, &m_VmaAllocation, IID_PPV_ARGS(&m_Buffer));
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3");
+#else
+    D3D12_RESOURCE_DESC desc = {};
+    m_Device.GetResourceDesc(m_Desc, desc);
+
+    D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
+    if (memoryLocation == MemoryLocation::HOST_UPLOAD || memoryLocation == MemoryLocation::DEVICE_UPLOAD)
+        initialState |= D3D12_RESOURCE_STATE_GENERIC_READ;
+    else if (memoryLocation == MemoryLocation::HOST_READBACK)
+        initialState |= D3D12_RESOURCE_STATE_COPY_DEST;
+
+    if (m_Desc.usage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE)
+        initialState |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+
+    HRESULT hr = m_Device.GetVma()->CreateResource(&allocationDesc, &desc, initialState, nullptr, &m_VmaAllocation, IID_PPV_ARGS(&m_Buffer));
+    RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource");
+#endif
+
+    D3D12_HEAP_PROPERTIES heapProps = {};
+    heapProps.Type = allocationDesc.HeapType;
+
+    return SetPriorityAndPersistentlyMap(priority, heapProps);
+}
+
+Result BufferD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
+    CHECK(!m_Buffer, "Unexpected");
+
+    const D3D12_HEAP_DESC& heapDesc = memory.GetHeapDesc();
+
+    // STATE_CREATION ERROR #640: CREATERESOURCEANDHEAP_INVALIDHEAPMISCFLAGS
+    D3D12_HEAP_FLAGS heapFlagsFixed = heapDesc.Flags & ~(D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES | D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES | D3D12_HEAP_FLAG_DENY_BUFFERS);
+    if (!m_Device.IsMemoryZeroInitializationEnabled())
+        heapFlagsFixed |= D3D12_HEAP_FLAG_CREATE_NOT_ZEROED;
+
+    offset += memory.GetOffset();
+
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    D3D12_RESOURCE_DESC1 desc1 = {};
+    m_Device.GetResourceDesc(m_Desc, (D3D12_RESOURCE_DESC&)desc1);
+
+    const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_UNDEFINED;
+
+    if (memory.IsDummy()) {
         HRESULT hr = m_Device->CreateCommittedResource3(&heapDesc.Properties, heapFlagsFixed, &desc1, initialLayout, nullptr, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Buffer));
         RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreateCommittedResource3");
     } else {
-        HRESULT hr = m_Device->CreatePlacedResource2(*memory, offset, &desc1, initialLayout, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Buffer));
+        HRESULT hr = m_Device->CreatePlacedResource2(memory, offset, &desc1, initialLayout, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Buffer));
         RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreatePlacedResource2");
     }
 #else
@@ -64,16 +111,15 @@ Result BufferD3D12::BindMemory(const MemoryD3D12* memory, uint64_t offset) {
     if (m_Desc.usage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE)
         initialState |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
 
-    if (memory->IsDummy()) {
+    if (memory.IsDummy()) {
         HRESULT hr = m_Device->CreateCommittedResource(&heapDesc.Properties, heapFlagsFixed, &desc, initialState, nullptr, IID_PPV_ARGS(&m_Buffer));
         RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommittedResource");
     } else {
-        HRESULT hr = m_Device->CreatePlacedResource(*memory, offset, &desc, initialState, nullptr, IID_PPV_ARGS(&m_Buffer));
+        HRESULT hr = m_Device->CreatePlacedResource(memory, offset, &desc, initialState, nullptr, IID_PPV_ARGS(&m_Buffer));
         RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreatePlacedResource");
     }
 #endif
-
-    return SetPriorityAndPersistentlyMap(memory->GetPriority(), heapDesc.Properties);
+    return SetPriorityAndPersistentlyMap(memory.GetPriority(), heapDesc.Properties);
 }
 
 NRI_INLINE Result BufferD3D12::SetPriorityAndPersistentlyMap(float priority, const D3D12_HEAP_PROPERTIES& heapProps) {

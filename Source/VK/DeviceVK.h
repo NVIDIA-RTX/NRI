@@ -97,7 +97,6 @@ struct DeviceVK final : public DeviceBase {
     void GetAccelerationStructureBuildSizesInfo(const AccelerationStructureDesc& accelerationStructureDesc, VkAccelerationStructureBuildSizesInfoKHR& sizesInfo);
     void GetMicromapBuildSizesInfo(const MicromapDesc& micromapDesc, VkMicromapBuildSizesInfoEXT& sizesInfo);
     void SetDebugNameToTrivialObject(VkObjectType objectType, uint64_t handle, const char* name);
-    void DestroyVma();
 
     //================================================================================================================
     // DebugNameBase
@@ -119,7 +118,6 @@ struct DeviceVK final : public DeviceBase {
     Result FillFunctionTable(LowLatencyInterface& table) const override;
     Result FillFunctionTable(MeshShaderInterface& table) const override;
     Result FillFunctionTable(RayTracingInterface& table) const override;
-    Result FillFunctionTable(ResourceAllocatorInterface& table) const override;
     Result FillFunctionTable(StreamerInterface& table) const override;
     Result FillFunctionTable(SwapChainInterface& table) const override;
     Result FillFunctionTable(UpscalerInterface& table) const override;

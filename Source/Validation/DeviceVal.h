@@ -105,7 +105,6 @@ struct DeviceVal final : public DeviceBase {
     Result FillFunctionTable(LowLatencyInterface& table) const override;
     Result FillFunctionTable(MeshShaderInterface& table) const override;
     Result FillFunctionTable(RayTracingInterface& table) const override;
-    Result FillFunctionTable(ResourceAllocatorInterface& table) const override;
     Result FillFunctionTable(StreamerInterface& table) const override;
     Result FillFunctionTable(SwapChainInterface& table) const override;
     Result FillFunctionTable(UpscalerInterface& table) const override;
@@ -139,13 +138,9 @@ struct DeviceVal final : public DeviceBase {
     Result CreatePipeline(const RayTracingPipelineDesc& rayTracingPipelineDesc, Pipeline*& pipeline);
     Result CreatePipeline(const PipelineVKDesc& pipelineVKDesc, Pipeline*& pipeline);
     Result CreateMicromap(const MicromapDesc& micromapDesc, Micromap*& micromap);
-    Result AllocateMemory(const AllocateMemoryDesc& allocateMemoryDesc, Memory*& memory);
-    Result AllocateBuffer(const AllocateBufferDesc& allocateBufferDesc, Buffer*& buffer);
-    Result AllocateTexture(const AllocateTextureDesc& allocateTextureDesc, Texture*& texture);
     Result CreateQueryPool(const QueryPoolDesc& queryPoolDesc, QueryPool*& queryPool);
     Result CreateQueryPool(const QueryPoolVKDesc& queryPoolVKDesc, QueryPool*& queryPool);
     Result CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*& swapChain);
-    Result AllocateMicromap(const AllocateMicromapDesc& allocateMicromapDesc, Micromap*& micromap);
     Result CreateDescriptor(const SamplerDesc& samplerDesc, Descriptor*& sampler);
     Result CreateDescriptor(const BufferViewDesc& bufferViewDesc, Descriptor*& bufferView);
     Result CreateDescriptor(const Texture1DViewDesc& textureViewDesc, Descriptor*& textureView);
@@ -163,8 +158,23 @@ struct DeviceVal final : public DeviceBase {
     Result CreateAccelerationStructure(const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
     Result CreateAccelerationStructure(const AccelerationStructureVKDesc& accelerationStructureVKDesc, AccelerationStructure*& accelerationStructure);
     Result CreateAccelerationStructure(const AccelerationStructureD3D12Desc& accelerationStructureD3D12Desc, AccelerationStructure*& accelerationStructure);
-    Result AllocateAccelerationStructure(const AllocateAccelerationStructureDesc& allocateAccelerationStructureDesc, AccelerationStructure*& accelerationStructure);
+    Result CreateCommittedBuffer(MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer);
+    Result CreateCommittedTexture(MemoryLocation memoryLocation, float priority, const TextureDesc& textureDesc, Texture*& texture);
+    Result CreateCommittedMicromap(MemoryLocation memoryLocation, float priority, const MicromapDesc& micromapDesc, Micromap*& micromap);
+    Result CreateCommittedAccelerationStructure(MemoryLocation memoryLocation, float priority, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
+    Result CreatePlacedBuffer(Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer);
+    Result CreatePlacedTexture(Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture);
+    Result CreatePlacedMicromap(Memory* memory, uint64_t offset, const MicromapDesc& micromapDesc, Micromap*& micromap);
+    Result CreatePlacedAccelerationStructure(Memory* memory, uint64_t offset, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
+    Result AllocateMemory(const AllocateMemoryDesc& allocateMemoryDesc, Memory*& memory);
+    Result BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum);
+    Result BindTextureMemory(const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum);
+    Result BindMicromapMemory(const BindMicromapMemoryDesc* bindMicromapMemoryDescs, uint32_t bindMicromapMemoryDescNum);
+    Result BindAccelerationStructureMemory(const BindAccelerationStructureMemoryDesc* bindAccelerationStructureMemoryDescs, uint32_t bindAccelerationStructureMemoryDescNum);
+    Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
+    Result WaitIdle();
 
+    void FreeMemory(Memory* memory);
     void DestroyFence(Fence* fence);
     void DestroyBuffer(Buffer* buffer);
     void DestroyTexture(Texture* texture);
@@ -178,16 +188,9 @@ struct DeviceVal final : public DeviceBase {
     void DestroyCommandBuffer(CommandBuffer* commandBuffer);
     void DestroyCommandAllocator(CommandAllocator* commandAllocator);
     void DestroyAccelerationStructure(AccelerationStructure* accelerationStructure);
-
-    void FreeMemory(Memory* memory);
     void CopyDescriptorRanges(const CopyDescriptorRangeDesc* copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum);
     void UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum);
-    Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
-    Result WaitIdle();
-    Result BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum);
-    Result BindTextureMemory(const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum);
-    Result BindMicromapMemory(const BindMicromapMemoryDesc* bindMicromapMemoryDescs, uint32_t bindMicromapMemoryDescNum);
-    Result BindAccelerationStructureMemory(const BindAccelerationStructureMemoryDesc* bindAccelerationStructureMemoryDescs, uint32_t bindAccelerationStructureMemoryDescNum);
+
     FormatSupportBits GetFormatSupport(Format format) const;
 
 private:
@@ -206,7 +209,6 @@ private:
     LowLatencyInterface m_iLowLatencyImpl = {};
     MeshShaderInterface m_iMeshShaderImpl = {};
     RayTracingInterface m_iRayTracingImpl = {};
-    ResourceAllocatorInterface m_iResourceAllocatorImpl = {};
     SwapChainInterface m_iSwapChainImpl = {};
     WrapperD3D11Interface m_iWrapperD3D11Impl = {};
     WrapperD3D12Interface m_iWrapperD3D12Impl = {};

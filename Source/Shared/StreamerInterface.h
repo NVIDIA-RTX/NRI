@@ -66,7 +66,6 @@ private:
     Device& m_Device;
     const CoreInterface& m_iCore;
     StreamerDesc m_Desc = {};
-    ResourceAllocatorInterface m_iResourceAllocator = {};
     Vector<BufferUpdateRequest> m_BufferRequestsWithDst;
     Vector<TextureUpdateRequest> m_TextureRequestsWithDst;
     Vector<GarbageInFlight> m_GarbageInFlight;

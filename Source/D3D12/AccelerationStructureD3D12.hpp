@@ -30,16 +30,16 @@ Result AccelerationStructureD3D12::Create(const AccelerationStructureDesc& accel
     return m_Device.CreateImplementation<BufferD3D12>(m_Buffer, bufferDesc);
 }
 
-Result AccelerationStructureD3D12::BindMemory(Memory* memory, uint64_t offset) {
-    Result result = m_Buffer->BindMemory((MemoryD3D12*)memory, offset);
+Result AccelerationStructureD3D12::Allocate(MemoryLocation memoryLocation, float priority, bool committed) {
+    return m_Buffer->Allocate(memoryLocation, priority, committed);
+}
 
-    return result;
+Result AccelerationStructureD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
+    return m_Buffer->BindMemory(memory, offset);
 }
 
 Result AccelerationStructureD3D12::CreateDescriptor(Descriptor*& descriptor) const {
-    const AccelerationStructure& accelerationStructure = (AccelerationStructure&)*this;
-
-    return m_Device.CreateImplementation<DescriptorD3D12>(descriptor, accelerationStructure);
+    return m_Device.CreateImplementation<DescriptorD3D12>(descriptor, *this);
 }
 
 void AccelerationStructureD3D12::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {

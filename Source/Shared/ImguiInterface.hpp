@@ -505,19 +505,14 @@ void ImguiImpl::CmdCopyData(CommandBuffer& commandBuffer, Streamer& streamer, co
             // A newly added texture requires creation
             if (imguiTexture.updateTick == 0) {
                 // Create texture
-                ResourceAllocatorInterface iResourceAllocator = {};
-                Result result = nriGetInterface(m_Device, NRI_INTERFACE(ResourceAllocatorInterface), &iResourceAllocator);
-                CHECK(result == Result::SUCCESS, "Unexpected");
+                TextureDesc textureDesc = {};
+                textureDesc.type = TextureType::TEXTURE_2D;
+                textureDesc.usage = TextureUsageBits::SHADER_RESOURCE;
+                textureDesc.format = format;
+                textureDesc.width = (Dim_t)imTextureData->Width;
+                textureDesc.height = (Dim_t)imTextureData->Height;
 
-                AllocateTextureDesc textureDesc = {};
-                textureDesc.desc.type = TextureType::TEXTURE_2D;
-                textureDesc.desc.usage = TextureUsageBits::SHADER_RESOURCE;
-                textureDesc.desc.format = format;
-                textureDesc.desc.width = (Dim_t)imTextureData->Width;
-                textureDesc.desc.height = (Dim_t)imTextureData->Height;
-                textureDesc.memoryLocation = MemoryLocation::DEVICE;
-
-                result = iResourceAllocator.AllocateTexture(m_Device, textureDesc, imguiTexture.texture);
+                Result result = m_iCore.CreateCommittedTexture(m_Device, MemoryLocation::DEVICE, 0.0f, textureDesc, imguiTexture.texture);
                 CHECK(result == Result::SUCCESS, "Unexpected");
 
                 // Create descriptor

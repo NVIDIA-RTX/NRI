@@ -39,6 +39,8 @@ NRI_INLINE Buffer* AccelerationStructureVal::GetBuffer() {
 }
 
 NRI_INLINE Result AccelerationStructureVal::CreateDescriptor(Descriptor*& descriptor) {
+    RETURN_ON_FAILURE(&m_Device, IsBoundToMemory(), Result::INVALID_ARGUMENT, "AccelerationStructure is not bound to memory");
+
     Descriptor* descriptorImpl = nullptr;
     const Result result = GetRayTracingInterfaceImpl().CreateAccelerationStructureDescriptor(*GetImpl(), descriptorImpl);
 

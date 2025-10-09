@@ -329,60 +329,65 @@ NriStruct(DispatchRaysIndirectDesc) {
 // Threadsafe: yes
 NriStruct(RayTracingInterface) {
     // Create
-    Nri(Result)     (NRI_CALL *CreateRayTracingPipeline)                            (NriRef(Device) device, const NriRef(RayTracingPipelineDesc) rayTracingPipelineDesc, NriOut NriRef(Pipeline*) pipeline);
-    Nri(Result)     (NRI_CALL *CreateAccelerationStructure)                         (NriRef(Device) device, const NriRef(AccelerationStructureDesc) accelerationStructureDesc, NriOut NriRef(AccelerationStructure*) accelerationStructure);
-    Nri(Result)     (NRI_CALL *CreateAccelerationStructureDescriptor)               (const NriRef(AccelerationStructure) accelerationStructure, NriOut NriRef(Descriptor*) descriptor);
-    Nri(Result)     (NRI_CALL *CreateMicromap)                                      (NriRef(Device) device, const NriRef(MicromapDesc) micromapDesc, NriOut NriRef(Micromap*) micromap);
+    Nri(Result)     (NRI_CALL *CreateRayTracingPipeline)                        (NriRef(Device) device, const NriRef(RayTracingPipelineDesc) rayTracingPipelineDesc, NriOut NriRef(Pipeline*) pipeline);
+    Nri(Result)     (NRI_CALL *CreateAccelerationStructureDescriptor)           (const NriRef(AccelerationStructure) accelerationStructure, NriOut NriRef(Descriptor*) descriptor);
 
     // Get
-    uint64_t        (NRI_CALL *GetAccelerationStructureUpdateScratchBufferSize)     (const NriRef(AccelerationStructure) accelerationStructure);
-    uint64_t        (NRI_CALL *GetAccelerationStructureBuildScratchBufferSize)      (const NriRef(AccelerationStructure) accelerationStructure);
-    uint64_t        (NRI_CALL *GetAccelerationStructureHandle)                      (const NriRef(AccelerationStructure) accelerationStructure);
-    uint64_t        (NRI_CALL *GetMicromapBuildScratchBufferSize)                   (const NriRef(Micromap) micromap);
+    uint64_t        (NRI_CALL *GetAccelerationStructureHandle)                  (const NriRef(AccelerationStructure) accelerationStructure);
+    uint64_t        (NRI_CALL *GetAccelerationStructureUpdateScratchBufferSize) (const NriRef(AccelerationStructure) accelerationStructure);
+    uint64_t        (NRI_CALL *GetAccelerationStructureBuildScratchBufferSize)  (const NriRef(AccelerationStructure) accelerationStructure);
+    uint64_t        (NRI_CALL *GetMicromapBuildScratchBufferSize)               (const NriRef(Micromap) micromap);
 
     // For barriers
-    NriPtr(Buffer)  (NRI_CALL *GetAccelerationStructureBuffer)                      (const NriRef(AccelerationStructure) accelerationStructure);
-    NriPtr(Buffer)  (NRI_CALL *GetMicromapBuffer)                                   (const NriRef(Micromap) micromap);
+    NriPtr(Buffer)  (NRI_CALL *GetAccelerationStructureBuffer)                  (const NriRef(AccelerationStructure) accelerationStructure);
+    NriPtr(Buffer)  (NRI_CALL *GetMicromapBuffer)                               (const NriRef(Micromap) micromap);
 
     // Destroy
-    void            (NRI_CALL *DestroyAccelerationStructure)                        (NriPtr(AccelerationStructure) accelerationStructure);
-    void            (NRI_CALL *DestroyMicromap)                                     (NriPtr(Micromap) micromap);
+    void            (NRI_CALL *DestroyAccelerationStructure)                    (NriPtr(AccelerationStructure) accelerationStructure);
+    void            (NRI_CALL *DestroyMicromap)                                 (NriPtr(Micromap) micromap);
 
-    // Memory
-    void            (NRI_CALL *GetAccelerationStructureMemoryDesc)                  (const NriRef(AccelerationStructure) accelerationStructure, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc);
-    void            (NRI_CALL *GetAccelerationStructureMemoryDesc2)                 (const NriRef(Device) device, const NriRef(AccelerationStructureDesc) accelerationStructureDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "features.getMemoryDesc2"
-    Nri(Result)     (NRI_CALL *BindAccelerationStructureMemory)                     (const NriPtr(BindAccelerationStructureMemoryDesc) bindAccelerationStructureMemoryDescs, uint32_t bindAccelerationStructureMemoryDescNum);
+    // Resources and memory (VK style)
+    Nri(Result)     (NRI_CALL *CreateAccelerationStructure)                     (NriRef(Device) device, const NriRef(AccelerationStructureDesc) accelerationStructureDesc, NriOut NriRef(AccelerationStructure*) accelerationStructure);
+    Nri(Result)     (NRI_CALL *CreateMicromap)                                  (NriRef(Device) device, const NriRef(MicromapDesc) micromapDesc, NriOut NriRef(Micromap*) micromap);
+    void            (NRI_CALL *GetAccelerationStructureMemoryDesc)              (const NriRef(AccelerationStructure) accelerationStructure, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc);
+    void            (NRI_CALL *GetMicromapMemoryDesc)                           (const NriRef(Micromap) micromap, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc);
+    Nri(Result)     (NRI_CALL *BindAccelerationStructureMemory)                 (const NriPtr(BindAccelerationStructureMemoryDesc) bindAccelerationStructureMemoryDescs, uint32_t bindAccelerationStructureMemoryDescNum);
+    Nri(Result)     (NRI_CALL *BindMicromapMemory)                              (const NriPtr(BindMicromapMemoryDesc) bindMicromapMemoryDescs, uint32_t bindMicromapMemoryDescNum);
 
-    void            (NRI_CALL *GetMicromapMemoryDesc)                               (const NriRef(Micromap) micromap, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc);
-    void            (NRI_CALL *GetMicromapMemoryDesc2)                              (const NriRef(Device) device, const NriRef(MicromapDesc) micromapDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "features.getMemoryDesc2"
-    Nri(Result)     (NRI_CALL *BindMicromapMemory)                                  (const NriPtr(BindMicromapMemoryDesc) bindMicromapMemoryDescs, uint32_t bindMicromapMemoryDescNum);
+    // Resources and memory (D3D12 style)
+    void            (NRI_CALL *GetAccelerationStructureMemoryDesc2)             (const NriRef(Device) device, const NriRef(AccelerationStructureDesc) accelerationStructureDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "features.getMemoryDesc2"
+    void            (NRI_CALL *GetMicromapMemoryDesc2)                          (const NriRef(Device) device, const NriRef(MicromapDesc) micromapDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "features.getMemoryDesc2"
+    Nri(Result)     (NRI_CALL *CreateCommittedAccelerationStructure)            (NriRef(Device) device, Nri(MemoryLocation) memoryLocation, float priority, const NriRef(AccelerationStructureDesc) accelerationStructureDesc, NriOut NriRef(AccelerationStructure*) accelerationStructure);
+    Nri(Result)     (NRI_CALL *CreateCommittedMicromap)                         (NriRef(Device) device, Nri(MemoryLocation) memoryLocation, float priority, const NriRef(MicromapDesc) micromapDesc, NriOut NriRef(Micromap*) micromap);
+    Nri(Result)     (NRI_CALL *CreatePlacedAccelerationStructure)               (NriRef(Device) device, NriOptional NriPtr(Memory) memory, uint64_t offset, const NriRef(AccelerationStructureDesc) accelerationStructureDesc, NriOut NriRef(AccelerationStructure*) accelerationStructure);
+    Nri(Result)     (NRI_CALL *CreatePlacedMicromap)                            (NriRef(Device) device, NriOptional NriPtr(Memory) memory, uint64_t offset, const NriRef(MicromapDesc) micromapDesc, NriOut NriRef(Micromap*) micromap);
 
     // Shader table
     // "dst" size must be >= "shaderGroupNum * rayTracingShaderGroupIdentifierSize" bytes
     // VK doesn't have a "local root signature" analog, thus stride = "rayTracingShaderGroupIdentifierSize", i.e. tight packing
-    Nri(Result)     (NRI_CALL *WriteShaderGroupIdentifiers)                         (const NriRef(Pipeline) pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, NriOut void* dst);
+    Nri(Result)     (NRI_CALL *WriteShaderGroupIdentifiers)                     (const NriRef(Pipeline) pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, NriOut void* dst);
 
     // Command buffer
     // {
-            // Micromap
-            void    (NRI_CALL *CmdBuildMicromaps)                                   (NriRef(CommandBuffer) commandBuffer, const NriPtr(BuildMicromapDesc) buildMicromapDescs, uint32_t buildMicromapDescNum);
-            void    (NRI_CALL *CmdWriteMicromapsSizes)                              (NriRef(CommandBuffer) commandBuffer, const NriPtr(Micromap) const* micromaps, uint32_t micromapNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
-            void    (NRI_CALL *CmdCopyMicromap)                                     (NriRef(CommandBuffer) commandBuffer, NriRef(Micromap) dst, const NriRef(Micromap) src, Nri(CopyMode) copyMode);
+        // Micromap
+        void        (NRI_CALL *CmdBuildMicromaps)                               (NriRef(CommandBuffer) commandBuffer, const NriPtr(BuildMicromapDesc) buildMicromapDescs, uint32_t buildMicromapDescNum);
+        void        (NRI_CALL *CmdWriteMicromapsSizes)                          (NriRef(CommandBuffer) commandBuffer, const NriPtr(Micromap) const* micromaps, uint32_t micromapNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
+        void        (NRI_CALL *CmdCopyMicromap)                                 (NriRef(CommandBuffer) commandBuffer, NriRef(Micromap) dst, const NriRef(Micromap) src, Nri(CopyMode) copyMode);
 
-            // Acceleration structure
-            void    (NRI_CALL *CmdBuildTopLevelAccelerationStructures)              (NriRef(CommandBuffer) commandBuffer, const NriPtr(BuildTopLevelAccelerationStructureDesc) buildTopLevelAccelerationStructureDescs, uint32_t buildTopLevelAccelerationStructureDescNum);
-            void    (NRI_CALL *CmdBuildBottomLevelAccelerationStructures)           (NriRef(CommandBuffer) commandBuffer, const NriPtr(BuildBottomLevelAccelerationStructureDesc) buildBotomLevelAccelerationStructureDescs, uint32_t buildBotomLevelAccelerationStructureDescNum);
-            void    (NRI_CALL *CmdWriteAccelerationStructuresSizes)                 (NriRef(CommandBuffer) commandBuffer, const NriPtr(AccelerationStructure) const* accelerationStructures, uint32_t accelerationStructureNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
-            void    (NRI_CALL *CmdCopyAccelerationStructure)                        (NriRef(CommandBuffer) commandBuffer, NriRef(AccelerationStructure) dst, const NriRef(AccelerationStructure) src, Nri(CopyMode) copyMode);
+        // Acceleration structure
+        void        (NRI_CALL *CmdBuildTopLevelAccelerationStructures)          (NriRef(CommandBuffer) commandBuffer, const NriPtr(BuildTopLevelAccelerationStructureDesc) buildTopLevelAccelerationStructureDescs, uint32_t buildTopLevelAccelerationStructureDescNum);
+        void        (NRI_CALL *CmdBuildBottomLevelAccelerationStructures)       (NriRef(CommandBuffer) commandBuffer, const NriPtr(BuildBottomLevelAccelerationStructureDesc) buildBotomLevelAccelerationStructureDescs, uint32_t buildBotomLevelAccelerationStructureDescNum);
+        void        (NRI_CALL *CmdWriteAccelerationStructuresSizes)             (NriRef(CommandBuffer) commandBuffer, const NriPtr(AccelerationStructure) const* accelerationStructures, uint32_t accelerationStructureNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
+        void        (NRI_CALL *CmdCopyAccelerationStructure)                    (NriRef(CommandBuffer) commandBuffer, NriRef(AccelerationStructure) dst, const NriRef(AccelerationStructure) src, Nri(CopyMode) copyMode);
 
-            // Ray tracing
-            void    (NRI_CALL *CmdDispatchRays)                                     (NriRef(CommandBuffer) commandBuffer, const NriRef(DispatchRaysDesc) dispatchRaysDesc);
-            void    (NRI_CALL *CmdDispatchRaysIndirect)                             (NriRef(CommandBuffer) commandBuffer, const NriRef(Buffer) buffer, uint64_t offset); // buffer contains "DispatchRaysIndirectDesc" commands
+        // Ray tracing
+        void        (NRI_CALL *CmdDispatchRays)                                 (NriRef(CommandBuffer) commandBuffer, const NriRef(DispatchRaysDesc) dispatchRaysDesc);
+        void        (NRI_CALL *CmdDispatchRaysIndirect)                         (NriRef(CommandBuffer) commandBuffer, const NriRef(Buffer) buffer, uint64_t offset); // buffer contains "DispatchRaysIndirectDesc" commands
     // }
 
     // Native object
-    uint64_t        (NRI_CALL* GetAccelerationStructureNativeObject)                (const NriPtr(AccelerationStructure) accelerationStructure); // ID3D12Resource* or VkAccelerationStructureKHR
-    uint64_t        (NRI_CALL* GetMicromapNativeObject)                             (const NriPtr(Micromap) micromap);                           // ID3D12Resource* or VkMicromapEXT
+    uint64_t        (NRI_CALL* GetAccelerationStructureNativeObject)            (const NriPtr(AccelerationStructure) accelerationStructure); // ID3D12Resource* or VkAccelerationStructureKHR
+    uint64_t        (NRI_CALL* GetMicromapNativeObject)                         (const NriPtr(Micromap) micromap);                           // ID3D12Resource* or VkMicromapEXT
 };
 
 NriNamespaceEnd

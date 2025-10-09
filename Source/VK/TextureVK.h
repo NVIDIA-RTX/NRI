@@ -33,10 +33,10 @@ struct TextureVK final : public DebugNameBase {
 
     Result Create(const TextureDesc& textureDesc);
     Result Create(const TextureVKDesc& textureVKDesc);
-    Result Create(const AllocateTextureDesc& allocateTextureDesc);
-    VkImageAspectFlags GetImageAspectFlags() const;
-    void DestroyVma();
+    Result AllocateAndBindMemory(MemoryLocation memoryLocation, float priority, bool committed);
+    Result BindMemory(const MemoryVK& memory, uint64_t offset);
     void GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
+    VkImageAspectFlags GetImageAspectFlags() const;
 
     //================================================================================================================
     // DebugNameBase
@@ -48,7 +48,7 @@ private:
     DeviceVK& m_Device;
     VkImage m_Handle = VK_NULL_HANDLE;
     TextureDesc m_Desc = {};
-    VmaAllocation_T* m_VmaAllocation = nullptr;
+    VmaAllocation m_VmaAllocation = nullptr;
     bool m_OwnsNativeObjects = true;
 };
 

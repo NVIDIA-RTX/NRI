@@ -4,9 +4,9 @@ AccelerationStructureVK::~AccelerationStructureVK() {
     if (m_OwnsNativeObjects) {
         const auto& vk = m_Device.GetDispatchTable();
         vk.DestroyAccelerationStructureKHR(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
-
-        Destroy(m_Buffer);
     }
+
+    Destroy(m_Buffer);
 }
 
 Result AccelerationStructureVK::Create(const AccelerationStructureDesc& accelerationStructureDesc) {
@@ -44,25 +44,54 @@ Result AccelerationStructureVK::Create(const AccelerationStructureVKDesc& accele
         m_DeviceAddress = vk.GetAccelerationStructureDeviceAddressKHR(m_Device, &deviceAddressInfo);
     }
 
-    return m_DeviceAddress ? Result::SUCCESS : Result::FAILURE;
+    BufferVKDesc bufferVKDesc = {};
+    bufferVKDesc.vkBuffer = accelerationStructureVKDesc.vkBuffer;
+    bufferVKDesc.size = accelerationStructureVKDesc.bufferSize;
+
+    return m_Device.CreateImplementation<BufferVK>(m_Buffer, bufferVKDesc);
 }
 
-Result AccelerationStructureVK::FinishCreation() {
-    if (!m_Buffer)
-        return Result::FAILURE;
+Result AccelerationStructureVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float priority, bool committed) {
+    CHECK(m_Buffer, "Unexpected");
 
-    VkAccelerationStructureCreateInfoKHR createInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR};
-    createInfo.type = m_Type;
-    createInfo.size = m_Buffer->GetDesc().size;
-    createInfo.buffer = m_Buffer->GetHandle();
+    Result result = m_Buffer->AllocateAndBindMemory(memoryLocation, priority, committed);
+    if (result == Result::SUCCESS)
+        result = BindMemory(nullptr, 0);
 
-    const auto& vk = m_Device.GetDispatchTable();
-    VkResult vkResult = vk.CreateAccelerationStructureKHR(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateAccelerationStructureKHR");
+    return result;
+}
 
-    { // Device address
+Result AccelerationStructureVK::BindMemory(const MemoryVK* memory, uint64_t offset) {
+    CHECK(m_Buffer, "Unexpected");
+
+    // Bind memory
+    if (memory) {
+        BindBufferMemoryDesc desc = {};
+        desc.buffer = (Buffer*)m_Buffer;
+        desc.memory = (Memory*)memory;
+        desc.offset = offset;
+
+        Result result = m_Device.BindBufferMemory(&desc, 1);
+        if(result != Result::SUCCESS)
+            return result;
+    }
+
+    { // Create acceleration structure
+        VkAccelerationStructureCreateInfoKHR createInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR};
+        createInfo.type = m_Type;
+        createInfo.size = m_Buffer->GetDesc().size;
+        createInfo.buffer = m_Buffer->GetHandle();
+
+        const auto& vk = m_Device.GetDispatchTable();
+        VkResult vkResult = vk.CreateAccelerationStructureKHR(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateAccelerationStructureKHR");
+    }
+
+    { // Get device address
         VkAccelerationStructureDeviceAddressInfoKHR deviceAddressInfo = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR};
         deviceAddressInfo.accelerationStructure = m_Handle;
+
+        const auto& vk = m_Device.GetDispatchTable();
         m_DeviceAddress = vk.GetAccelerationStructureDeviceAddressKHR(m_Device, &deviceAddressInfo);
     }
 
@@ -75,15 +104,5 @@ NRI_INLINE void AccelerationStructureVK::SetDebugName(const char* name) {
 }
 
 NRI_INLINE Result AccelerationStructureVK::CreateDescriptor(Descriptor*& descriptor) const {
-    DescriptorVK* descriptorVK = Allocate<DescriptorVK>(m_Device.GetAllocationCallbacks(), m_Device);
-    Result result = descriptorVK->Create(m_Handle);
-
-    if (result == Result::SUCCESS) {
-        descriptor = (Descriptor*)descriptorVK;
-        return Result::SUCCESS;
-    }
-
-    Destroy(descriptorVK);
-
-    return Result::SUCCESS;
+    return m_Device.CreateImplementation<DescriptorVK>(descriptor, m_Handle);
 }

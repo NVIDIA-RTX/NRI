@@ -70,8 +70,8 @@ NriStruct(StreamerInterface) {
 
     // Command buffer
     // {
-            // (DEVICE) Copy data to destinations (if any), which must be in "COPY_DESTINATION" state
-            void        (NRI_CALL *CmdCopyStreamedData)         (NriRef(CommandBuffer) commandBuffer, NriRef(Streamer) streamer);
+        // (DEVICE) Copy data to destinations (if any), which must be in "COPY_DESTINATION" state
+        void            (NRI_CALL *CmdCopyStreamedData)         (NriRef(CommandBuffer) commandBuffer, NriRef(Streamer) streamer);
     // }
 
     // (HOST) Must be called once at the very end of the frame

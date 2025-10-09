@@ -665,27 +665,20 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         }
 
         { // Textures
-            ResourceAllocatorInterface iResourceAllocator = {};
-            Result result = nriGetInterface(m_Device, NRI_INTERFACE(ResourceAllocatorInterface), &iResourceAllocator);
+            TextureDesc textureDesc = {};
+            textureDesc.type = TextureType::TEXTURE_2D;
+            textureDesc.usage = TextureUsageBits::SHADER_RESOURCE;
+            textureDesc.format = Format::RGBA16_SFLOAT;
+            textureDesc.width = NIS::kFilterSize / 4;
+            textureDesc.height = NIS::kPhaseCount;
+            textureDesc.mipNum = 1;
+            textureDesc.layerNum = 1;
+
+            Result result = m_iCore.CreateCommittedTexture(m_Device, MemoryLocation::DEVICE, 0.0f, textureDesc, m.nis->texScale);
             if (result != Result::SUCCESS)
                 return result;
 
-            AllocateTextureDesc allocateTextureDesc = {};
-            allocateTextureDesc.memoryLocation = MemoryLocation::DEVICE;
-            allocateTextureDesc.dedicated = true;
-            allocateTextureDesc.desc.type = TextureType::TEXTURE_2D;
-            allocateTextureDesc.desc.usage = TextureUsageBits::SHADER_RESOURCE;
-            allocateTextureDesc.desc.format = Format::RGBA16_SFLOAT;
-            allocateTextureDesc.desc.width = NIS::kFilterSize / 4;
-            allocateTextureDesc.desc.height = NIS::kPhaseCount;
-            allocateTextureDesc.desc.mipNum = 1;
-            allocateTextureDesc.desc.layerNum = 1;
-
-            result = iResourceAllocator.AllocateTexture(m_Device, allocateTextureDesc, m.nis->texScale);
-            if (result != Result::SUCCESS)
-                return result;
-
-            result = iResourceAllocator.AllocateTexture(m_Device, allocateTextureDesc, m.nis->texUsm);
+            result = m_iCore.CreateCommittedTexture(m_Device, MemoryLocation::DEVICE, 0.0f, textureDesc, m.nis->texUsm);
             if (result != Result::SUCCESS)
                 return result;
         }

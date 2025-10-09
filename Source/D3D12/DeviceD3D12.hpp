@@ -115,6 +115,18 @@ static D3D12_RESOURCE_FLAGS GetTextureFlags(TextureUsageBits textureUsage) {
     return flags;
 }
 
+static void* vmaAllocate(size_t size, size_t alignment, void* pPrivateData) {
+    const auto& allocationCallbacks = *(AllocationCallbacks*)pPrivateData;
+
+    return allocationCallbacks.Allocate(allocationCallbacks.userArg, size, alignment);
+}
+
+static void vmaFree(void* pMemory, void* pPrivateData) {
+    const auto& allocationCallbacks = *(AllocationCallbacks*)pPrivateData;
+
+    return allocationCallbacks.Free(allocationCallbacks.userArg, pMemory);
+}
+
 DeviceD3D12::DeviceD3D12(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks)
     : DeviceBase(callbacks, allocationCallbacks)
     , m_DescriptorHeaps(GetStdAllocator())
@@ -381,6 +393,27 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     RETURN_ON_BAD_HRESULT(this, hr, "Create");
 
     return FillFunctionTable(m_iCore);
+}
+
+HRESULT DeviceD3D12::CreateVma() {
+    D3D12MA::ALLOCATION_CALLBACKS allocationCallbacks = {};
+    allocationCallbacks.pPrivateData = (void*)&GetAllocationCallbacks();
+    allocationCallbacks.pAllocate = vmaAllocate;
+    allocationCallbacks.pFree = vmaFree;
+
+    D3D12MA::ALLOCATOR_DESC allocatorDesc = {};
+    allocatorDesc.pDevice = m_Device;
+    allocatorDesc.pAdapter = m_Adapter;
+    allocatorDesc.Flags = (D3D12MA::ALLOCATOR_FLAGS)(D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED | D3D12MA::ALLOCATOR_FLAG_DONT_PREFER_SMALL_BUFFERS_COMMITTED);
+    allocatorDesc.PreferredBlockSize = VMA_PREFERRED_BLOCK_SIZE;
+
+    if (!IsMemoryZeroInitializationEnabled())
+        allocatorDesc.Flags = (D3D12MA::ALLOCATOR_FLAGS)(allocatorDesc.Flags | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED);
+
+    if (!GetAllocationCallbacks().disable3rdPartyAllocationCallbacks)
+        allocatorDesc.pAllocationCallbacks = &allocationCallbacks;
+
+    return D3D12MA::CreateAllocator(&allocatorDesc, &m_Vma);
 }
 
 void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
@@ -1264,7 +1297,7 @@ NRI_INLINE Result DeviceD3D12::WaitIdle() {
 NRI_INLINE Result DeviceD3D12::BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum) {
     for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
         const auto& desc = bindBufferMemoryDescs[i];
-        Result result = ((BufferD3D12*)desc.buffer)->BindMemory((MemoryD3D12*)desc.memory, desc.offset);
+        Result result = ((BufferD3D12*)desc.buffer)->BindMemory(*(MemoryD3D12*)desc.memory, desc.offset);
         if (result != Result::SUCCESS)
             return result;
     }
@@ -1275,7 +1308,7 @@ NRI_INLINE Result DeviceD3D12::BindBufferMemory(const BindBufferMemoryDesc* bind
 NRI_INLINE Result DeviceD3D12::BindTextureMemory(const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum) {
     for (uint32_t i = 0; i < bindTextureMemoryDescNum; i++) {
         const auto& desc = bindTextureMemoryDescs[i];
-        Result result = ((TextureD3D12*)desc.texture)->BindMemory((MemoryD3D12*)desc.memory, desc.offset);
+        Result result = ((TextureD3D12*)desc.texture)->BindMemory(*(MemoryD3D12*)desc.memory, desc.offset);
         if (result != Result::SUCCESS)
             return result;
     }
@@ -1286,7 +1319,7 @@ NRI_INLINE Result DeviceD3D12::BindTextureMemory(const BindTextureMemoryDesc* bi
 NRI_INLINE Result DeviceD3D12::BindAccelerationStructureMemory(const BindAccelerationStructureMemoryDesc* bindAccelerationStructureMemoryDescs, uint32_t bindAccelerationStructureMemoryDescNum) {
     for (uint32_t i = 0; i < bindAccelerationStructureMemoryDescNum; i++) {
         const auto& desc = bindAccelerationStructureMemoryDescs[i];
-        Result result = ((AccelerationStructureD3D12*)desc.accelerationStructure)->BindMemory(desc.memory, desc.offset);
+        Result result = ((AccelerationStructureD3D12*)desc.accelerationStructure)->BindMemory(*(MemoryD3D12*)desc.memory, desc.offset);
         if (result != Result::SUCCESS)
             return result;
     }
@@ -1297,7 +1330,7 @@ NRI_INLINE Result DeviceD3D12::BindAccelerationStructureMemory(const BindAcceler
 NRI_INLINE Result DeviceD3D12::BindMicromapMemory(const BindMicromapMemoryDesc* bindMicromapMemoryDescs, uint32_t bindMicromapMemoryDescNum) {
     for (uint32_t i = 0; i < bindMicromapMemoryDescNum; i++) {
         const auto& desc = bindMicromapMemoryDescs[i];
-        Result result = ((MicromapD3D12*)desc.micromap)->BindMemory(desc.memory, desc.offset);
+        Result result = ((MicromapD3D12*)desc.micromap)->BindMemory(*(MemoryD3D12*)desc.memory, desc.offset);
         if (result != Result::SUCCESS)
             return result;
     }

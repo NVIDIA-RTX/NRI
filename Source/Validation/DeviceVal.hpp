@@ -61,9 +61,6 @@ bool DeviceVal::Create() {
     result = deviceBaseImpl.FillFunctionTable(m_iHelperImpl);
     RETURN_ON_FAILURE(this, result == Result::SUCCESS, false, "Failed to get 'HelperInterface' interface");
 
-    result = deviceBaseImpl.FillFunctionTable(m_iResourceAllocatorImpl);
-    RETURN_ON_FAILURE(this, result == Result::SUCCESS, false, "Failed to get 'ResourceAllocatorInterface' interface");
-
     m_IsExtSupported.lowLatency = deviceBaseImpl.FillFunctionTable(m_iLowLatencyImpl) == Result::SUCCESS;
     m_IsExtSupported.meshShader = deviceBaseImpl.FillFunctionTable(m_iMeshShaderImpl) == Result::SUCCESS;
     m_IsExtSupported.rayTracing = deviceBaseImpl.FillFunctionTable(m_iRayTracingImpl) == Result::SUCCESS;
@@ -97,7 +94,7 @@ NRI_INLINE Result DeviceVal::CreateSwapChain(const SwapChainDesc& swapChainDesc,
     auto swapChainDescImpl = swapChainDesc;
     swapChainDescImpl.queue = NRI_GET_IMPL(Queue, swapChainDesc.queue);
 
-    SwapChain* swapChainImpl;
+    SwapChain* swapChainImpl = nullptr;
     Result result = m_iSwapChainImpl.CreateSwapChain(m_Impl, swapChainDescImpl, swapChainImpl);
 
     swapChain = nullptr;
@@ -115,7 +112,7 @@ NRI_INLINE void DeviceVal::DestroySwapChain(SwapChain* swapChain) {
 NRI_INLINE Result DeviceVal::GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue) {
     RETURN_ON_FAILURE(this, queueType < QueueType::MAX_NUM, Result::INVALID_ARGUMENT, "'queueType' is invalid");
 
-    Queue* queueImpl;
+    Queue* queueImpl = nullptr;
     Result result = m_iCoreImpl.GetQueue(m_Impl, queueType, queueIndex, queueImpl);
 
     queue = nullptr;
@@ -173,24 +170,11 @@ NRI_INLINE Result DeviceVal::CreateBuffer(const BufferDesc& bufferDesc, Buffer*&
     return result;
 }
 
-NRI_INLINE Result DeviceVal::AllocateBuffer(const AllocateBufferDesc& allocateBufferDesc, Buffer*& buffer) {
-    RETURN_ON_FAILURE(this, allocateBufferDesc.desc.size != 0, Result::INVALID_ARGUMENT, "'size' is 0");
-
-    Buffer* bufferImpl = nullptr;
-    Result result = m_iResourceAllocatorImpl.AllocateBuffer(m_Impl, allocateBufferDesc, bufferImpl);
-
-    buffer = nullptr;
-    if (result == Result::SUCCESS)
-        buffer = (Buffer*)Allocate<BufferVal>(GetAllocationCallbacks(), *this, bufferImpl, true);
-
-    return result;
-}
-
 NRI_INLINE Result DeviceVal::CreateTexture(const TextureDesc& textureDesc, Texture*& texture) {
-    Dim_t maxMipNum = GetMaxMipNum(textureDesc.width, textureDesc.height, textureDesc.depth);
-
     RETURN_ON_FAILURE(this, textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
     RETURN_ON_FAILURE(this, textureDesc.width != 0, Result::INVALID_ARGUMENT, "'width' is 0");
+
+    Dim_t maxMipNum = GetMaxMipNum(textureDesc.width, textureDesc.height, textureDesc.depth);
     RETURN_ON_FAILURE(this, textureDesc.mipNum <= maxMipNum, Result::INVALID_ARGUMENT, "'mipNum=%u' can't be > %u", textureDesc.mipNum, maxMipNum);
 
     constexpr TextureUsageBits attachmentBits = TextureUsageBits::COLOR_ATTACHMENT | TextureUsageBits::DEPTH_STENCIL_ATTACHMENT | TextureUsageBits::SHADING_RATE_ATTACHMENT;
@@ -202,23 +186,6 @@ NRI_INLINE Result DeviceVal::CreateTexture(const TextureDesc& textureDesc, Textu
     texture = nullptr;
     if (result == Result::SUCCESS)
         texture = (Texture*)Allocate<TextureVal>(GetAllocationCallbacks(), *this, textureImpl, false);
-
-    return result;
-}
-
-NRI_INLINE Result DeviceVal::AllocateTexture(const AllocateTextureDesc& allocateTextureDesc, Texture*& texture) {
-    Dim_t maxMipNum = GetMaxMipNum(allocateTextureDesc.desc.width, allocateTextureDesc.desc.height, allocateTextureDesc.desc.depth);
-
-    RETURN_ON_FAILURE(this, allocateTextureDesc.desc.format > Format::UNKNOWN && allocateTextureDesc.desc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'desc.format' is invalid");
-    RETURN_ON_FAILURE(this, allocateTextureDesc.desc.width != 0, Result::INVALID_ARGUMENT, "'desc.width' is 0");
-    RETURN_ON_FAILURE(this, allocateTextureDesc.desc.mipNum <= maxMipNum, Result::INVALID_ARGUMENT, "'desc.mipNum=%u' can't be > %u", allocateTextureDesc.desc.mipNum, maxMipNum);
-
-    Texture* textureImpl = nullptr;
-    Result result = m_iResourceAllocatorImpl.AllocateTexture(m_Impl, allocateTextureDesc, textureImpl);
-
-    texture = nullptr;
-    if (result == Result::SUCCESS)
-        texture = (Texture*)Allocate<TextureVal>(GetAllocationCallbacks(), *this, textureImpl, true);
 
     return result;
 }
@@ -543,7 +510,7 @@ NRI_INLINE Result DeviceVal::CreateQueryPool(const QueryPoolDesc& queryPoolDesc,
 }
 
 NRI_INLINE Result DeviceVal::CreateFence(uint64_t initialValue, Fence*& fence) {
-    Fence* fenceImpl;
+    Fence* fenceImpl = nullptr;
     Result result = m_iCoreImpl.CreateFence(m_Impl, initialValue, fenceImpl);
 
     fence = nullptr;
@@ -603,6 +570,283 @@ NRI_INLINE void DeviceVal::DestroyFence(Fence* fence) {
     Destroy((FenceVal*)fence);
 }
 
+NRI_INLINE Result DeviceVal::CreateCommittedBuffer(MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {
+    RETURN_ON_FAILURE(this, priority >= -1.0f && priority <= 1.0f, Result::INVALID_ARGUMENT, "'priority' outside of [-1; 1] range");
+    RETURN_ON_FAILURE(this, bufferDesc.size != 0, Result::INVALID_ARGUMENT, "'size' is 0");
+
+    Buffer* bufferImpl = nullptr;
+    Result result = m_iCoreImpl.CreateCommittedBuffer(m_Impl, memoryLocation, priority, bufferDesc, bufferImpl);
+
+    buffer = nullptr;
+    if (result == Result::SUCCESS)
+        buffer = (Buffer*)Allocate<BufferVal>(GetAllocationCallbacks(), *this, bufferImpl, true);
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVal::CreateCommittedTexture(MemoryLocation memoryLocation, float priority, const TextureDesc& textureDesc, Texture*& texture) {
+    RETURN_ON_FAILURE(this, priority >= -1.0f && priority <= 1.0f, Result::INVALID_ARGUMENT, "'priority' outside of [-1; 1] range");
+    RETURN_ON_FAILURE(this, textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
+    RETURN_ON_FAILURE(this, textureDesc.width != 0, Result::INVALID_ARGUMENT, "'width' is 0");
+
+    Dim_t maxMipNum = GetMaxMipNum(textureDesc.width, textureDesc.height, textureDesc.depth);
+    RETURN_ON_FAILURE(this, textureDesc.mipNum <= maxMipNum, Result::INVALID_ARGUMENT, "'mipNum=%u' can't be > %u", textureDesc.mipNum, maxMipNum);
+
+    constexpr TextureUsageBits attachmentBits = TextureUsageBits::COLOR_ATTACHMENT | TextureUsageBits::DEPTH_STENCIL_ATTACHMENT | TextureUsageBits::SHADING_RATE_ATTACHMENT;
+    RETURN_ON_FAILURE(this, textureDesc.sharingMode != SharingMode::EXCLUSIVE || (textureDesc.usage & attachmentBits), Result::INVALID_ARGUMENT, "'EXCLUSIVE' is needed only for attachments to enable DCC on some HW");
+
+    Texture* textureImpl = nullptr;
+    Result result = m_iCoreImpl.CreateCommittedTexture(m_Impl, memoryLocation, priority, textureDesc, textureImpl);
+
+    texture = nullptr;
+    if (result == Result::SUCCESS)
+        texture = (Texture*)Allocate<TextureVal>(GetAllocationCallbacks(), *this, textureImpl, true);
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVal::CreateCommittedMicromap(MemoryLocation memoryLocation, float priority, const MicromapDesc& micromapDesc, Micromap*& micromap) {
+    RETURN_ON_FAILURE(this, priority >= -1.0f && priority <= 1.0f, Result::INVALID_ARGUMENT, "'priority' outside of [-1; 1] range");
+    RETURN_ON_FAILURE(this, micromapDesc.usageNum != 0, Result::INVALID_ARGUMENT, "'usageNum' is 0");
+
+    Micromap* micromapImpl = nullptr;
+    Result result = m_iRayTracingImpl.CreateCommittedMicromap(m_Impl, memoryLocation, priority, micromapDesc, micromapImpl);
+
+    micromap = nullptr;
+    if (result == Result::SUCCESS)
+        micromap = (Micromap*)Allocate<MicromapVal>(GetAllocationCallbacks(), *this, micromapImpl, true);
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVal::CreateCommittedAccelerationStructure(MemoryLocation memoryLocation, float priority, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
+    RETURN_ON_FAILURE(this, priority >= -1.0f && priority <= 1.0f, Result::INVALID_ARGUMENT, "'priority' outside of [-1; 1] range");
+    RETURN_ON_FAILURE(this, accelerationStructureDesc.geometryOrInstanceNum != 0, Result::INVALID_ARGUMENT, "'geometryOrInstanceNum' is 0");
+
+    // Convert desc
+    uint32_t geometryNum = 0;
+    uint32_t micromapNum = 0;
+
+    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
+        geometryNum = accelerationStructureDesc.geometryOrInstanceNum;
+
+        for (uint32_t i = 0; i < geometryNum; i++) {
+            const BottomLevelGeometryDesc& geometryDesc = accelerationStructureDesc.geometries[i];
+
+            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
+                micromapNum++;
+        }
+    }
+
+    Scratch<BottomLevelGeometryDesc> geometriesImplScratch = AllocateScratch(*this, BottomLevelGeometryDesc, geometryNum);
+    Scratch<BottomLevelMicromapDesc> micromapsImplScratch = AllocateScratch(*this, BottomLevelMicromapDesc, micromapNum);
+
+    BottomLevelGeometryDesc* geometriesImpl = geometriesImplScratch;
+    BottomLevelMicromapDesc* micromapsImpl = micromapsImplScratch;
+
+    auto accelerationStructureDescImpl = accelerationStructureDesc;
+    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
+        accelerationStructureDescImpl.geometries = geometriesImplScratch;
+        ConvertBotomLevelGeometries(accelerationStructureDesc.geometries, geometryNum, geometriesImpl, micromapsImpl);
+    }
+
+    // Create
+    AccelerationStructure* accelerationStructureImpl = nullptr;
+    Result result = m_iRayTracingImpl.CreateCommittedAccelerationStructure(m_Impl, memoryLocation, priority, accelerationStructureDescImpl, accelerationStructureImpl);
+
+    accelerationStructure = nullptr;
+    if (result == Result::SUCCESS)
+        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, true);
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVal::CreatePlacedBuffer(Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer) {
+    RETURN_ON_FAILURE(this, bufferDesc.size != 0, Result::INVALID_ARGUMENT, "'size' is 0");
+
+    if (memory) {
+        MemoryVal& memoryVal = *(MemoryVal*)memory;
+        if (!memoryVal.IsWrapped() && GetDesc().features.getMemoryDesc2) {
+            MemoryDesc memoryDesc = {};
+            m_iCoreImpl.GetBufferMemoryDesc2(m_Impl, bufferDesc, memoryVal.GetMemoryLocation(), memoryDesc);
+
+            const uint64_t rangeMax = offset + memoryDesc.size;
+            const bool memorySizeIsUnknown = memoryVal.GetSize() == 0;
+
+            RETURN_ON_FAILURE(this, !memoryDesc.mustBeDedicated || offset == 0, Result::INVALID_ARGUMENT, "'offset' must be 0 for dedicated allocation");
+            RETURN_ON_FAILURE(this, memoryDesc.alignment != 0, Result::INVALID_ARGUMENT, "'alignment' is 0");
+            RETURN_ON_FAILURE(this, offset % memoryDesc.alignment == 0, Result::INVALID_ARGUMENT, "'offset' is misaligned");
+            RETURN_ON_FAILURE(this, memorySizeIsUnknown || rangeMax <= memoryVal.GetSize(), Result::INVALID_ARGUMENT, "'offset' is invalid");
+        }
+    }
+
+    // Create
+    Memory* memoryImpl = NRI_GET_IMPL(Memory, memory);
+
+    Buffer* bufferImpl = nullptr;
+    Result result = m_iCoreImpl.CreatePlacedBuffer(m_Impl, memoryImpl, offset, bufferDesc, bufferImpl);
+
+    buffer = nullptr;
+    if (result == Result::SUCCESS)
+        buffer = (Buffer*)Allocate<BufferVal>(GetAllocationCallbacks(), *this, bufferImpl, !memory);
+
+    // Update
+    if (buffer && memory) {
+        MemoryVal& memoryVal = *(MemoryVal*)memory;
+        memoryVal.Bind(*(BufferVal*)buffer);
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVal::CreatePlacedTexture(Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture) {
+    RETURN_ON_FAILURE(this, textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
+    RETURN_ON_FAILURE(this, textureDesc.width != 0, Result::INVALID_ARGUMENT, "'width' is 0");
+
+    Dim_t maxMipNum = GetMaxMipNum(textureDesc.width, textureDesc.height, textureDesc.depth);
+    RETURN_ON_FAILURE(this, textureDesc.mipNum <= maxMipNum, Result::INVALID_ARGUMENT, "'mipNum=%u' can't be > %u", textureDesc.mipNum, maxMipNum);
+
+    constexpr TextureUsageBits attachmentBits = TextureUsageBits::COLOR_ATTACHMENT | TextureUsageBits::DEPTH_STENCIL_ATTACHMENT | TextureUsageBits::SHADING_RATE_ATTACHMENT;
+    RETURN_ON_FAILURE(this, textureDesc.sharingMode != SharingMode::EXCLUSIVE || (textureDesc.usage & attachmentBits), Result::INVALID_ARGUMENT, "'EXCLUSIVE' is needed only for attachments to enable DCC on some HW");
+
+    if (memory) {
+        MemoryVal& memoryVal = *(MemoryVal*)memory;
+        if (!memoryVal.IsWrapped() && GetDesc().features.getMemoryDesc2) {
+            MemoryDesc memoryDesc = {};
+            m_iCoreImpl.GetTextureMemoryDesc2(m_Impl, textureDesc, memoryVal.GetMemoryLocation(), memoryDesc);
+
+            const uint64_t rangeMax = offset + memoryDesc.size;
+            const bool memorySizeIsUnknown = memoryVal.GetSize() == 0;
+
+            RETURN_ON_FAILURE(this, !memoryDesc.mustBeDedicated || offset == 0, Result::INVALID_ARGUMENT, "'offset' must be 0 for dedicated allocation");
+            RETURN_ON_FAILURE(this, memoryDesc.alignment != 0, Result::INVALID_ARGUMENT, "'alignment' is 0");
+            RETURN_ON_FAILURE(this, offset % memoryDesc.alignment == 0, Result::INVALID_ARGUMENT, "'offset' is misaligned");
+            RETURN_ON_FAILURE(this, memorySizeIsUnknown || rangeMax <= memoryVal.GetSize(), Result::INVALID_ARGUMENT, "'offset' is invalid");
+        }
+    }
+
+    // Create
+    Memory* memoryImpl = NRI_GET_IMPL(Memory, memory);
+
+    Texture* textureImpl = nullptr;
+    Result result = m_iCoreImpl.CreatePlacedTexture(m_Impl, memoryImpl, offset, textureDesc, textureImpl);
+
+    texture = nullptr;
+    if (result == Result::SUCCESS)
+        texture = (Texture*)Allocate<TextureVal>(GetAllocationCallbacks(), *this, textureImpl, !memory);
+
+    // Update
+    if (texture && memory) {
+        MemoryVal& memoryVal = *(MemoryVal*)memory;
+        memoryVal.Bind(*(TextureVal*)texture);
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVal::CreatePlacedMicromap(Memory* memory, uint64_t offset, const MicromapDesc& micromapDesc, Micromap*& micromap) {
+    RETURN_ON_FAILURE(this, micromapDesc.usageNum != 0, Result::INVALID_ARGUMENT, "'usageNum' is 0");
+
+    if (memory) {
+        MemoryVal& memoryVal = *(MemoryVal*)memory;
+        if (!memoryVal.IsWrapped() && GetDesc().features.getMemoryDesc2) {
+            MemoryDesc memoryDesc = {};
+            m_iRayTracingImpl.GetMicromapMemoryDesc2(m_Impl, micromapDesc, memoryVal.GetMemoryLocation(), memoryDesc);
+
+            const uint64_t rangeMax = offset + memoryDesc.size;
+            const bool memorySizeIsUnknown = memoryVal.GetSize() == 0;
+
+            RETURN_ON_FAILURE(this, !memoryDesc.mustBeDedicated || offset == 0, Result::INVALID_ARGUMENT, "'offset' must be 0 for dedicated allocation");
+            RETURN_ON_FAILURE(this, memoryDesc.alignment != 0, Result::INVALID_ARGUMENT, "'alignment' is 0");
+            RETURN_ON_FAILURE(this, offset % memoryDesc.alignment == 0, Result::INVALID_ARGUMENT, "'offset' is misaligned");
+            RETURN_ON_FAILURE(this, memorySizeIsUnknown || rangeMax <= memoryVal.GetSize(), Result::INVALID_ARGUMENT, "'offset' is invalid");
+        }
+    }
+
+    // Create
+    Memory* memoryImpl = NRI_GET_IMPL(Memory, memory);
+
+    Micromap* micromapImpl = nullptr;
+    Result result = m_iRayTracingImpl.CreatePlacedMicromap(m_Impl, memoryImpl, offset, micromapDesc, micromapImpl);
+
+    micromap = nullptr;
+    if (result == Result::SUCCESS)
+        micromap = (Micromap*)Allocate<MicromapVal>(GetAllocationCallbacks(), *this, micromapImpl, !memory);
+
+    // Update
+    if (micromap && memory) {
+        MemoryVal& memoryVal = *(MemoryVal*)memory;
+        memoryVal.Bind(*(MicromapVal*)micromap);
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVal::CreatePlacedAccelerationStructure(Memory* memory, uint64_t offset, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
+    RETURN_ON_FAILURE(this, accelerationStructureDesc.geometryOrInstanceNum != 0, Result::INVALID_ARGUMENT, "'geometryOrInstanceNum' is 0");
+
+    if (memory) {
+        MemoryVal& memoryVal = *(MemoryVal*)memory;
+        if (!memoryVal.IsWrapped() && GetDesc().features.getMemoryDesc2) {
+            MemoryDesc memoryDesc = {};
+            m_iRayTracingImpl.GetAccelerationStructureMemoryDesc2(m_Impl, accelerationStructureDesc, memoryVal.GetMemoryLocation(), memoryDesc);
+
+            const uint64_t rangeMax = offset + memoryDesc.size;
+            const bool memorySizeIsUnknown = memoryVal.GetSize() == 0;
+
+            RETURN_ON_FAILURE(this, !memoryDesc.mustBeDedicated || offset == 0, Result::INVALID_ARGUMENT, "'offset' must be 0 for dedicated allocation");
+            RETURN_ON_FAILURE(this, memoryDesc.alignment != 0, Result::INVALID_ARGUMENT, "'alignment' is 0");
+            RETURN_ON_FAILURE(this, offset % memoryDesc.alignment == 0, Result::INVALID_ARGUMENT, "'offset' is misaligned");
+            RETURN_ON_FAILURE(this, memorySizeIsUnknown || rangeMax <= memoryVal.GetSize(), Result::INVALID_ARGUMENT, "'offset' is invalid");
+        }
+    }
+
+    // Convert desc
+    uint32_t geometryNum = 0;
+    uint32_t micromapNum = 0;
+
+    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
+        geometryNum = accelerationStructureDesc.geometryOrInstanceNum;
+
+        for (uint32_t i = 0; i < geometryNum; i++) {
+            const BottomLevelGeometryDesc& geometryDesc = accelerationStructureDesc.geometries[i];
+
+            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
+                micromapNum++;
+        }
+    }
+
+    Scratch<BottomLevelGeometryDesc> geometriesImplScratch = AllocateScratch(*this, BottomLevelGeometryDesc, geometryNum);
+    Scratch<BottomLevelMicromapDesc> micromapsImplScratch = AllocateScratch(*this, BottomLevelMicromapDesc, micromapNum);
+
+    BottomLevelGeometryDesc* geometriesImpl = geometriesImplScratch;
+    BottomLevelMicromapDesc* micromapsImpl = micromapsImplScratch;
+
+    auto accelerationStructureDescImpl = accelerationStructureDesc;
+    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
+        accelerationStructureDescImpl.geometries = geometriesImplScratch;
+        ConvertBotomLevelGeometries(accelerationStructureDesc.geometries, geometryNum, geometriesImpl, micromapsImpl);
+    }
+
+    // Create
+    Memory* memoryImpl = NRI_GET_IMPL(Memory, memory);
+
+    AccelerationStructure* accelerationStructureImpl = nullptr;
+    Result result = m_iRayTracingImpl.CreatePlacedAccelerationStructure(m_Impl, memoryImpl, offset, accelerationStructureDescImpl, accelerationStructureImpl);
+
+    accelerationStructure = nullptr;
+    if (result == Result::SUCCESS)
+        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, !memory);
+
+    // Update
+    if (accelerationStructure && memory) {
+        MemoryVal& memoryVal = *(MemoryVal*)memory;
+        memoryVal.Bind(*(AccelerationStructureVal*)accelerationStructure);
+    }
+
+    return result;
+}
+
 NRI_INLINE Result DeviceVal::AllocateMemory(const AllocateMemoryDesc& allocateMemoryDesc, Memory*& memory) {
     RETURN_ON_FAILURE(this, allocateMemoryDesc.size != 0, Result::INVALID_ARGUMENT, "'size' is 0");
     RETURN_ON_FAILURE(this, allocateMemoryDesc.priority >= -1.0f && allocateMemoryDesc.priority <= 1.0f, Result::INVALID_ARGUMENT, "'priority' outside of [-1; 1] range");
@@ -617,100 +861,12 @@ NRI_INLINE Result DeviceVal::AllocateMemory(const AllocateMemoryDesc& allocateMe
 
     RETURN_ON_FAILURE(this, it != end, Result::FAILURE, "'memoryType' is invalid");
 
-    Memory* memoryImpl;
+    Memory* memoryImpl = nullptr;
     Result result = m_iCoreImpl.AllocateMemory(m_Impl, allocateMemoryDesc, memoryImpl);
 
     memory = nullptr;
     if (result == Result::SUCCESS)
         memory = (Memory*)Allocate<MemoryVal>(GetAllocationCallbacks(), *this, memoryImpl, allocateMemoryDesc.size, it->second);
-
-    return result;
-}
-
-NRI_INLINE Result DeviceVal::BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum) {
-    Scratch<BindBufferMemoryDesc> bindBufferMemoryDescsImpl = AllocateScratch(*this, BindBufferMemoryDesc, bindBufferMemoryDescNum);
-    for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
-        const BindBufferMemoryDesc& bindBufferMemoryDesc = bindBufferMemoryDescs[i];
-        MemoryVal& memoryVal = *(MemoryVal*)bindBufferMemoryDesc.memory;
-        BufferVal& bufferVal = *(BufferVal*)bindBufferMemoryDesc.buffer;
-
-        RETURN_ON_FAILURE(this, bindBufferMemoryDesc.buffer != nullptr, Result::INVALID_ARGUMENT, "'[%u].buffer' is NULL", i);
-        RETURN_ON_FAILURE(this, bindBufferMemoryDesc.memory != nullptr, Result::INVALID_ARGUMENT, "'[%u].memory' is NULL", i);
-        RETURN_ON_FAILURE(this, !bufferVal.IsBoundToMemory(), Result::INVALID_ARGUMENT, "'[%u].buffer' is already bound to memory", i);
-
-        BindBufferMemoryDesc& bindBufferMemoryDescImpl = bindBufferMemoryDescsImpl[i];
-        bindBufferMemoryDescImpl = bindBufferMemoryDesc;
-        bindBufferMemoryDescImpl.memory = memoryVal.GetImpl();
-        bindBufferMemoryDescImpl.buffer = bufferVal.GetImpl();
-
-        // Skip additional validation if the memory is wrapped
-        if (memoryVal.GetMemoryLocation() == MemoryLocation::MAX_NUM)
-            continue;
-
-        MemoryDesc memoryDesc = {};
-        m_iCoreImpl.GetBufferMemoryDesc(*bufferVal.GetImpl(), memoryVal.GetMemoryLocation(), memoryDesc);
-
-        const uint64_t rangeMax = bindBufferMemoryDesc.offset + memoryDesc.size;
-        const bool memorySizeIsUnknown = memoryVal.GetSize() == 0;
-
-        RETURN_ON_FAILURE(this, !memoryDesc.mustBeDedicated || bindBufferMemoryDesc.offset == 0, Result::INVALID_ARGUMENT, "'[%u].offset' must be zero for dedicated allocation", i);
-        RETURN_ON_FAILURE(this, memoryDesc.alignment != 0, Result::INVALID_ARGUMENT, "'[%u].alignment' is 0", i);
-        RETURN_ON_FAILURE(this, bindBufferMemoryDesc.offset % memoryDesc.alignment == 0, Result::INVALID_ARGUMENT, "'[%u].offset' is misaligned", i);
-        RETURN_ON_FAILURE(this, memorySizeIsUnknown || rangeMax <= memoryVal.GetSize(), Result::INVALID_ARGUMENT, "'[%u].offset' is invalid", i);
-    }
-
-    Result result = m_iCoreImpl.BindBufferMemory(bindBufferMemoryDescsImpl, bindBufferMemoryDescNum);
-
-    if (result == Result::SUCCESS) {
-        for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
-            MemoryVal& memory = *(MemoryVal*)bindBufferMemoryDescs[i].memory;
-            memory.Bind(*(BufferVal*)bindBufferMemoryDescs[i].buffer);
-        }
-    }
-
-    return result;
-}
-
-NRI_INLINE Result DeviceVal::BindTextureMemory(const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum) {
-    Scratch<BindTextureMemoryDesc> bindTextureMemoryDescsImpl = AllocateScratch(*this, BindTextureMemoryDesc, bindTextureMemoryDescNum);
-    for (uint32_t i = 0; i < bindTextureMemoryDescNum; i++) {
-        const BindTextureMemoryDesc& bindTextureMemoryDesc = bindTextureMemoryDescs[i];
-        MemoryVal& memoryVal = *(MemoryVal*)bindTextureMemoryDesc.memory;
-        TextureVal& textureVal = *(TextureVal*)bindTextureMemoryDesc.texture;
-
-        RETURN_ON_FAILURE(this, bindTextureMemoryDesc.texture != nullptr, Result::INVALID_ARGUMENT, "'[%u].texture' is NULL", i);
-        RETURN_ON_FAILURE(this, bindTextureMemoryDesc.memory != nullptr, Result::INVALID_ARGUMENT, "'[%u].memory' is NULL", i);
-        RETURN_ON_FAILURE(this, !textureVal.IsBoundToMemory(), Result::INVALID_ARGUMENT, "'[%u].texture' is already bound to memory", i);
-
-        BindTextureMemoryDesc& bindTextureMemoryDescImpl = bindTextureMemoryDescsImpl[i];
-        bindTextureMemoryDescImpl = bindTextureMemoryDesc;
-        bindTextureMemoryDescImpl.memory = memoryVal.GetImpl();
-        bindTextureMemoryDescImpl.texture = textureVal.GetImpl();
-
-        // Skip additional validation if the memory is wrapped
-        if (memoryVal.GetMemoryLocation() == MemoryLocation::MAX_NUM)
-            continue;
-
-        MemoryDesc memoryDesc = {};
-        m_iCoreImpl.GetTextureMemoryDesc(*textureVal.GetImpl(), memoryVal.GetMemoryLocation(), memoryDesc);
-
-        const uint64_t rangeMax = bindTextureMemoryDesc.offset + memoryDesc.size;
-        const bool memorySizeIsUnknown = memoryVal.GetSize() == 0;
-
-        RETURN_ON_FAILURE(this, !memoryDesc.mustBeDedicated || bindTextureMemoryDesc.offset == 0, Result::INVALID_ARGUMENT, "'[%u].offset' must be zero for dedicated allocation", i);
-        RETURN_ON_FAILURE(this, memoryDesc.alignment != 0, Result::INVALID_ARGUMENT, "'[%u].alignment' is 0", i);
-        RETURN_ON_FAILURE(this, bindTextureMemoryDesc.offset % memoryDesc.alignment == 0, Result::INVALID_ARGUMENT, "'[%u].offset' is misaligned", i);
-        RETURN_ON_FAILURE(this, memorySizeIsUnknown || rangeMax <= memoryVal.GetSize(), Result::INVALID_ARGUMENT, "'[%u].offset' is invalid", i);
-    }
-
-    Result result = m_iCoreImpl.BindTextureMemory(bindTextureMemoryDescsImpl, bindTextureMemoryDescNum);
-
-    if (result == Result::SUCCESS) {
-        for (uint32_t i = 0; i < bindTextureMemoryDescNum; i++) {
-            MemoryVal& memory = *(MemoryVal*)bindTextureMemoryDescs[i].memory;
-            memory.Bind(*(TextureVal*)bindTextureMemoryDescs[i].texture);
-        }
-    }
 
     return result;
 }
@@ -727,6 +883,7 @@ NRI_INLINE void DeviceVal::FreeMemory(Memory* memory) {
     }
 
     m_iCoreImpl.FreeMemory(NRI_GET_IMPL(Memory, memory));
+
     Destroy(memoryVal);
 }
 
@@ -937,7 +1094,7 @@ NRI_INLINE Result DeviceVal::CreateQueryPool(const QueryPoolVKDesc& queryPoolVKD
 NRI_INLINE Result DeviceVal::CreateFence(const FenceVKDesc& fenceVKDesc, Fence*& fence) {
     RETURN_ON_FAILURE(this, fenceVKDesc.vkTimelineSemaphore != 0, Result::INVALID_ARGUMENT, "'vkTimelineSemaphore' is NULL");
 
-    Fence* fenceImpl;
+    Fence* fenceImpl = nullptr;
     Result result = m_iWrapperVKImpl.CreateFenceVK(m_Impl, fenceVKDesc, fenceImpl);
 
     fence = nullptr;
@@ -954,10 +1111,8 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
     Result result = m_iWrapperVKImpl.CreateAccelerationStructureVK(m_Impl, accelerationStructureVKDesc, accelerationStructureImpl);
 
     accelerationStructure = nullptr;
-    if (result == Result::SUCCESS) {
-        MemoryDesc memoryDesc = {};
-        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, true, memoryDesc);
-    }
+    if (result == Result::SUCCESS)
+        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, true);
 
     return result;
 }
@@ -972,6 +1127,7 @@ NRI_INLINE Result DeviceVal::CreateCommandBuffer(const CommandBufferD3D11Desc& c
     CommandBuffer* commandBufferImpl = nullptr;
     Result result = m_iWrapperD3D11Impl.CreateCommandBufferD3D11(m_Impl, commandBufferD3D11Desc, commandBufferImpl);
 
+    commandBuffer = nullptr;
     if (result == Result::SUCCESS)
         commandBuffer = (CommandBuffer*)Allocate<CommandBufferVal>(GetAllocationCallbacks(), *this, commandBufferImpl, true);
 
@@ -1078,7 +1234,7 @@ NRI_INLINE Result DeviceVal::CreateMemory(const MemoryD3D12Desc& memoryD3D12Desc
 NRI_INLINE Result DeviceVal::CreateFence(const FenceD3D12Desc& fenceD3D12Desc, Fence*& fence) {
     RETURN_ON_FAILURE(this, fenceD3D12Desc.d3d12Fence != 0, Result::INVALID_ARGUMENT, "'d3d12Fence' is NULL");
 
-    Fence* fenceImpl;
+    Fence* fenceImpl = nullptr;
     Result result = m_iWrapperD3D12Impl.CreateFenceD3D12(m_Impl, fenceD3D12Desc, fenceImpl);
 
     fence = nullptr;
@@ -1095,10 +1251,8 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
     Result result = m_iWrapperD3D12Impl.CreateAccelerationStructureD3D12(m_Impl, accelerationStructureD3D12Desc, accelerationStructureImpl);
 
     accelerationStructure = nullptr;
-    if (result == Result::SUCCESS) {
-        MemoryDesc memoryDesc = {};
-        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, true, memoryDesc);
-    }
+    if (result == Result::SUCCESS)
+        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, true);
 
     return result;
 }
@@ -1142,12 +1296,8 @@ NRI_INLINE Result DeviceVal::CreateMicromap(const MicromapDesc& micromapDesc, Mi
     Result result = m_iRayTracingImpl.CreateMicromap(m_Impl, micromapDesc, micromapImpl);
 
     micromap = nullptr;
-    if (result == Result::SUCCESS) {
-        MemoryDesc memoryDesc = {};
-        m_iRayTracingImpl.GetMicromapMemoryDesc(*micromapImpl, MemoryLocation::DEVICE, memoryDesc);
-
-        micromap = (Micromap*)Allocate<MicromapVal>(GetAllocationCallbacks(), *this, micromapImpl, false, memoryDesc);
-    }
+    if (result == Result::SUCCESS)
+        micromap = (Micromap*)Allocate<MicromapVal>(GetAllocationCallbacks(), *this, micromapImpl, false);
 
     return result;
 }
@@ -1155,7 +1305,7 @@ NRI_INLINE Result DeviceVal::CreateMicromap(const MicromapDesc& micromapDesc, Mi
 NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
     RETURN_ON_FAILURE(this, accelerationStructureDesc.geometryOrInstanceNum != 0, Result::INVALID_ARGUMENT, "'geometryOrInstanceNum' is 0");
 
-    // Allocate scratch
+    // Convert desc
     uint32_t geometryNum = 0;
     uint32_t micromapNum = 0;
 
@@ -1176,88 +1326,102 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
     BottomLevelGeometryDesc* geometriesImpl = geometriesImplScratch;
     BottomLevelMicromapDesc* micromapsImpl = micromapsImplScratch;
 
-    // Convert
     auto accelerationStructureDescImpl = accelerationStructureDesc;
-
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
         accelerationStructureDescImpl.geometries = geometriesImplScratch;
         ConvertBotomLevelGeometries(accelerationStructureDesc.geometries, geometryNum, geometriesImpl, micromapsImpl);
     }
 
-    // Call
+    // Create
     AccelerationStructure* accelerationStructureImpl = nullptr;
     Result result = m_iRayTracingImpl.CreateAccelerationStructure(m_Impl, accelerationStructureDescImpl, accelerationStructureImpl);
 
     accelerationStructure = nullptr;
-    if (result == Result::SUCCESS) {
-        MemoryDesc memoryDesc = {};
-        m_iRayTracingImpl.GetAccelerationStructureMemoryDesc(*accelerationStructureImpl, MemoryLocation::DEVICE, memoryDesc);
-
-        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, false, memoryDesc);
-    }
+    if (result == Result::SUCCESS)
+        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, false);
 
     return result;
 }
 
-NRI_INLINE Result DeviceVal::AllocateAccelerationStructure(const AllocateAccelerationStructureDesc& allocateAccelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    RETURN_ON_FAILURE(this, allocateAccelerationStructureDesc.desc.geometryOrInstanceNum != 0, Result::INVALID_ARGUMENT, "'geometryOrInstanceNum' is 0");
+NRI_INLINE Result DeviceVal::BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum) {
+    Scratch<BindBufferMemoryDesc> bindBufferMemoryDescsImpl = AllocateScratch(*this, BindBufferMemoryDesc, bindBufferMemoryDescNum);
+    for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
+        const BindBufferMemoryDesc& bindBufferMemoryDesc = bindBufferMemoryDescs[i];
+        MemoryVal& memoryVal = *(MemoryVal*)bindBufferMemoryDesc.memory;
+        BufferVal& bufferVal = *(BufferVal*)bindBufferMemoryDesc.buffer;
 
-    // Allocate scratch
-    uint32_t geometryNum = 0;
-    uint32_t micromapNum = 0;
+        RETURN_ON_FAILURE(this, bindBufferMemoryDesc.buffer != nullptr, Result::INVALID_ARGUMENT, "'[%u].buffer' is NULL", i);
+        RETURN_ON_FAILURE(this, bindBufferMemoryDesc.memory != nullptr, Result::INVALID_ARGUMENT, "'[%u].memory' is NULL", i);
+        RETURN_ON_FAILURE(this, !bufferVal.IsBoundToMemory(), Result::INVALID_ARGUMENT, "'[%u].buffer' is already bound to memory", i);
 
-    if (allocateAccelerationStructureDesc.desc.type == AccelerationStructureType::BOTTOM_LEVEL) {
-        geometryNum = allocateAccelerationStructureDesc.desc.geometryOrInstanceNum;
+        BindBufferMemoryDesc& bindBufferMemoryDescImpl = bindBufferMemoryDescsImpl[i];
+        bindBufferMemoryDescImpl = bindBufferMemoryDesc;
+        bindBufferMemoryDescImpl.memory = memoryVal.GetImpl();
+        bindBufferMemoryDescImpl.buffer = bufferVal.GetImpl();
 
-        for (uint32_t i = 0; i < geometryNum; i++) {
-            const BottomLevelGeometryDesc& geometryDesc = allocateAccelerationStructureDesc.desc.geometries[i];
+        if (!memoryVal.IsWrapped()) {
+            MemoryDesc memoryDesc = {};
+            m_iCoreImpl.GetBufferMemoryDesc(*bufferVal.GetImpl(), memoryVal.GetMemoryLocation(), memoryDesc);
 
-            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
-                micromapNum++;
+            const uint64_t rangeMax = bindBufferMemoryDesc.offset + memoryDesc.size;
+            const bool memorySizeIsUnknown = memoryVal.GetSize() == 0;
+
+            RETURN_ON_FAILURE(this, !memoryDesc.mustBeDedicated || bindBufferMemoryDesc.offset == 0, Result::INVALID_ARGUMENT, "'[%u].offset' must be 0 for dedicated allocation", i);
+            RETURN_ON_FAILURE(this, memoryDesc.alignment != 0, Result::INVALID_ARGUMENT, "'[%u].alignment' is 0", i);
+            RETURN_ON_FAILURE(this, bindBufferMemoryDesc.offset % memoryDesc.alignment == 0, Result::INVALID_ARGUMENT, "'[%u].offset' is misaligned", i);
+            RETURN_ON_FAILURE(this, memorySizeIsUnknown || rangeMax <= memoryVal.GetSize(), Result::INVALID_ARGUMENT, "'[%u].offset' is invalid", i);
         }
     }
 
-    Scratch<BottomLevelGeometryDesc> geometriesImplScratch = AllocateScratch(*this, BottomLevelGeometryDesc, geometryNum);
-    Scratch<BottomLevelMicromapDesc> micromapsImplScratch = AllocateScratch(*this, BottomLevelMicromapDesc, micromapNum);
+    Result result = m_iCoreImpl.BindBufferMemory(bindBufferMemoryDescsImpl, bindBufferMemoryDescNum);
 
-    BottomLevelGeometryDesc* geometriesImpl = geometriesImplScratch;
-    BottomLevelMicromapDesc* micromapsImpl = micromapsImplScratch;
-
-    // Convert
-    auto allocateAccelerationStructureDescImpl = allocateAccelerationStructureDesc;
-
-    if (allocateAccelerationStructureDesc.desc.type == AccelerationStructureType::BOTTOM_LEVEL) {
-        allocateAccelerationStructureDescImpl.desc.geometries = geometriesImplScratch;
-        ConvertBotomLevelGeometries(allocateAccelerationStructureDesc.desc.geometries, geometryNum, geometriesImpl, micromapsImpl);
-    }
-
-    // Call
-    AccelerationStructure* accelerationStructureImpl = nullptr;
-    Result result = m_iResourceAllocatorImpl.AllocateAccelerationStructure(m_Impl, allocateAccelerationStructureDescImpl, accelerationStructureImpl);
-
-    accelerationStructure = nullptr;
     if (result == Result::SUCCESS) {
-        MemoryDesc memoryDesc = {};
-        m_iRayTracingImpl.GetAccelerationStructureMemoryDesc(*accelerationStructureImpl, MemoryLocation::DEVICE, memoryDesc);
-
-        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, true, memoryDesc);
+        for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
+            MemoryVal& memoryVal = *(MemoryVal*)bindBufferMemoryDescs[i].memory;
+            memoryVal.Bind(*(BufferVal*)bindBufferMemoryDescs[i].buffer);
+        }
     }
 
     return result;
 }
 
-NRI_INLINE Result DeviceVal::AllocateMicromap(const AllocateMicromapDesc& allocateMicromapDesc, Micromap*& micromap) {
-    RETURN_ON_FAILURE(this, allocateMicromapDesc.desc.usageNum != 0, Result::INVALID_ARGUMENT, "'usageNum' is 0");
+NRI_INLINE Result DeviceVal::BindTextureMemory(const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum) {
+    Scratch<BindTextureMemoryDesc> bindTextureMemoryDescsImpl = AllocateScratch(*this, BindTextureMemoryDesc, bindTextureMemoryDescNum);
+    for (uint32_t i = 0; i < bindTextureMemoryDescNum; i++) {
+        const BindTextureMemoryDesc& bindTextureMemoryDesc = bindTextureMemoryDescs[i];
+        MemoryVal& memoryVal = *(MemoryVal*)bindTextureMemoryDesc.memory;
+        TextureVal& textureVal = *(TextureVal*)bindTextureMemoryDesc.texture;
 
-    Micromap* micromapImpl = nullptr;
-    Result result = m_iResourceAllocatorImpl.AllocateMicromap(m_Impl, allocateMicromapDesc, micromapImpl);
+        RETURN_ON_FAILURE(this, bindTextureMemoryDesc.texture != nullptr, Result::INVALID_ARGUMENT, "'[%u].texture' is NULL", i);
+        RETURN_ON_FAILURE(this, bindTextureMemoryDesc.memory != nullptr, Result::INVALID_ARGUMENT, "'[%u].memory' is NULL", i);
+        RETURN_ON_FAILURE(this, !textureVal.IsBoundToMemory(), Result::INVALID_ARGUMENT, "'[%u].texture' is already bound to memory", i);
 
-    micromap = nullptr;
+        BindTextureMemoryDesc& bindTextureMemoryDescImpl = bindTextureMemoryDescsImpl[i];
+        bindTextureMemoryDescImpl = bindTextureMemoryDesc;
+        bindTextureMemoryDescImpl.memory = memoryVal.GetImpl();
+        bindTextureMemoryDescImpl.texture = textureVal.GetImpl();
+
+        if (!memoryVal.IsWrapped()) {
+            MemoryDesc memoryDesc = {};
+            m_iCoreImpl.GetTextureMemoryDesc(*textureVal.GetImpl(), memoryVal.GetMemoryLocation(), memoryDesc);
+
+            const uint64_t rangeMax = bindTextureMemoryDesc.offset + memoryDesc.size;
+            const bool memorySizeIsUnknown = memoryVal.GetSize() == 0;
+
+            RETURN_ON_FAILURE(this, !memoryDesc.mustBeDedicated || bindTextureMemoryDesc.offset == 0, Result::INVALID_ARGUMENT, "'[%u].offset' must be 0 for dedicated allocation", i);
+            RETURN_ON_FAILURE(this, memoryDesc.alignment != 0, Result::INVALID_ARGUMENT, "'[%u].alignment' is 0", i);
+            RETURN_ON_FAILURE(this, bindTextureMemoryDesc.offset % memoryDesc.alignment == 0, Result::INVALID_ARGUMENT, "'[%u].offset' is misaligned", i);
+            RETURN_ON_FAILURE(this, memorySizeIsUnknown || rangeMax <= memoryVal.GetSize(), Result::INVALID_ARGUMENT, "'[%u].offset' is invalid", i);
+        }
+    }
+
+    Result result = m_iCoreImpl.BindTextureMemory(bindTextureMemoryDescsImpl, bindTextureMemoryDescNum);
+
     if (result == Result::SUCCESS) {
-        MemoryDesc memoryDesc = {};
-        m_iRayTracingImpl.GetMicromapMemoryDesc(*micromapImpl, MemoryLocation::DEVICE, memoryDesc);
-
-        micromap = (Micromap*)Allocate<MicromapVal>(GetAllocationCallbacks(), *this, micromapImpl, true, memoryDesc);
+        for (uint32_t i = 0; i < bindTextureMemoryDescNum; i++) {
+            MemoryVal& memoryVal = *(MemoryVal*)bindTextureMemoryDescs[i].memory;
+            memoryVal.Bind(*(TextureVal*)bindTextureMemoryDescs[i].texture);
+        }
     }
 
     return result;
@@ -1277,26 +1441,26 @@ NRI_INLINE Result DeviceVal::BindMicromapMemory(const BindMicromapMemoryDesc* bi
         bindMicromapMemoryDescImpl.memory = memoryVal.GetImpl();
         bindMicromapMemoryDescImpl.micromap = micromapVal.GetImpl();
 
-        // Skip additional validation if the memory is wrapped
-        if (memoryVal.GetMemoryLocation() == MemoryLocation::MAX_NUM)
-            continue;
+        if (!memoryVal.IsWrapped()) {
+            MemoryDesc memoryDesc = {};
+            m_iRayTracingImpl.GetMicromapMemoryDesc(*micromapVal.GetImpl(), memoryVal.GetMemoryLocation(), memoryDesc);
 
-        const MemoryDesc& memoryDesc = micromapVal.GetMemoryDesc();
-        const uint64_t rangeMax = bindMicromapMemoryDesc.offset + memoryDesc.size;
-        const bool memorySizeIsUnknown = memoryVal.GetSize() == 0;
+            const uint64_t rangeMax = bindMicromapMemoryDesc.offset + memoryDesc.size;
+            const bool memorySizeIsUnknown = memoryVal.GetSize() == 0;
 
-        RETURN_ON_FAILURE(this, !memoryDesc.mustBeDedicated || bindMicromapMemoryDesc.offset == 0, Result::INVALID_ARGUMENT, "'[%u].offset' must be 0 for dedicated allocation", i);
-        RETURN_ON_FAILURE(this, memoryDesc.alignment != 0, Result::INVALID_ARGUMENT, "'[%u].alignment' is 0", i);
-        RETURN_ON_FAILURE(this, bindMicromapMemoryDesc.offset % memoryDesc.alignment == 0, Result::INVALID_ARGUMENT, "'[%u].offset' is misaligned", i);
-        RETURN_ON_FAILURE(this, memorySizeIsUnknown || rangeMax <= memoryVal.GetSize(), Result::INVALID_ARGUMENT, "'[%u].offset' is invalid", i);
+            RETURN_ON_FAILURE(this, !memoryDesc.mustBeDedicated || bindMicromapMemoryDesc.offset == 0, Result::INVALID_ARGUMENT, "'[%u].offset' must be 0 for dedicated allocation", i);
+            RETURN_ON_FAILURE(this, memoryDesc.alignment != 0, Result::INVALID_ARGUMENT, "'[%u].alignment' is 0", i);
+            RETURN_ON_FAILURE(this, bindMicromapMemoryDesc.offset % memoryDesc.alignment == 0, Result::INVALID_ARGUMENT, "'[%u].offset' is misaligned", i);
+            RETURN_ON_FAILURE(this, memorySizeIsUnknown || rangeMax <= memoryVal.GetSize(), Result::INVALID_ARGUMENT, "'[%u].offset' is invalid", i);
+        }
     }
 
     Result result = m_iRayTracingImpl.BindMicromapMemory(bindMicromapMemoryDescsImpl, bindMicromapMemoryDescNum);
 
     if (result == Result::SUCCESS) {
         for (uint32_t i = 0; i < bindMicromapMemoryDescNum; i++) {
-            MemoryVal& memory = *(MemoryVal*)bindMicromapMemoryDescs[i].memory;
-            memory.Bind(*(MicromapVal*)bindMicromapMemoryDescs[i].micromap);
+            MemoryVal& memoryVal = *(MemoryVal*)bindMicromapMemoryDescs[i].memory;
+            memoryVal.Bind(*(MicromapVal*)bindMicromapMemoryDescs[i].micromap);
         }
     }
 
@@ -1317,26 +1481,26 @@ NRI_INLINE Result DeviceVal::BindAccelerationStructureMemory(const BindAccelerat
         destDesc.memory = memoryVal.GetImpl();
         destDesc.accelerationStructure = accelerationStructureVal.GetImpl();
 
-        // Skip additional validation if the memory is wrapped
-        if (memoryVal.GetMemoryLocation() == MemoryLocation::MAX_NUM)
-            continue;
+        if (!memoryVal.IsWrapped()) {
+            MemoryDesc memoryDesc = {};
+            m_iRayTracingImpl.GetAccelerationStructureMemoryDesc(*accelerationStructureVal.GetImpl(), memoryVal.GetMemoryLocation(), memoryDesc);
 
-        const MemoryDesc& memoryDesc = accelerationStructureVal.GetMemoryDesc();
-        const uint64_t rangeMax = srcDesc.offset + memoryDesc.size;
-        const bool memorySizeIsUnknown = memoryVal.GetSize() == 0;
+            const uint64_t rangeMax = srcDesc.offset + memoryDesc.size;
+            const bool memorySizeIsUnknown = memoryVal.GetSize() == 0;
 
-        RETURN_ON_FAILURE(this, !memoryDesc.mustBeDedicated || srcDesc.offset == 0, Result::INVALID_ARGUMENT, "'[%u].offset' must be 0 for dedicated allocation", i);
-        RETURN_ON_FAILURE(this, memoryDesc.alignment != 0, Result::INVALID_ARGUMENT, "'[%u].alignment' is 0", i);
-        RETURN_ON_FAILURE(this, srcDesc.offset % memoryDesc.alignment == 0, Result::INVALID_ARGUMENT, "'[%u].offset' is misaligned", i);
-        RETURN_ON_FAILURE(this, memorySizeIsUnknown || rangeMax <= memoryVal.GetSize(), Result::INVALID_ARGUMENT, "'[%u].offset' is invalid", i);
+            RETURN_ON_FAILURE(this, !memoryDesc.mustBeDedicated || srcDesc.offset == 0, Result::INVALID_ARGUMENT, "'[%u].offset' must be 0 for dedicated allocation", i);
+            RETURN_ON_FAILURE(this, memoryDesc.alignment != 0, Result::INVALID_ARGUMENT, "'[%u].alignment' is 0", i);
+            RETURN_ON_FAILURE(this, srcDesc.offset % memoryDesc.alignment == 0, Result::INVALID_ARGUMENT, "'[%u].offset' is misaligned", i);
+            RETURN_ON_FAILURE(this, memorySizeIsUnknown || rangeMax <= memoryVal.GetSize(), Result::INVALID_ARGUMENT, "'[%u].offset' is invalid", i);
+        }
     }
 
     Result result = m_iRayTracingImpl.BindAccelerationStructureMemory(memoryBindingDescsImpl, bindAccelerationStructureMemoryDescNum);
 
     if (result == Result::SUCCESS) {
         for (uint32_t i = 0; i < bindAccelerationStructureMemoryDescNum; i++) {
-            MemoryVal& memory = *(MemoryVal*)bindAccelerationStructureMemoryDescs[i].memory;
-            memory.Bind(*(AccelerationStructureVal*)bindAccelerationStructureMemoryDescs[i].accelerationStructure);
+            MemoryVal& memoryVal = *(MemoryVal*)bindAccelerationStructureMemoryDescs[i].memory;
+            memoryVal.Bind(*(AccelerationStructureVal*)bindAccelerationStructureMemoryDescs[i].accelerationStructure);
         }
     }
 

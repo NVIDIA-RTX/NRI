@@ -5,6 +5,7 @@
 namespace nri {
 
 struct BufferD3D12;
+struct MemoryD3D12;
 
 struct AccelerationStructureD3D12 final : public DebugNameBase {
     inline AccelerationStructureD3D12(DeviceD3D12& device)
@@ -23,8 +24,8 @@ struct AccelerationStructureD3D12 final : public DebugNameBase {
 
     Result Create(const AccelerationStructureDesc& accelerationStructureDesc);
     Result Create(const AccelerationStructureD3D12Desc& accelerationStructureD3D12Desc);
-    Result Create(const AllocateAccelerationStructureDesc& allocateAccelerationStructureDesc);
-    Result BindMemory(Memory* memory, uint64_t offset);
+    Result Allocate(MemoryLocation memoryLocation, float priority, bool committed);
+    Result BindMemory(const MemoryD3D12& memory, uint64_t offset);
     void GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
 
     //================================================================================================================

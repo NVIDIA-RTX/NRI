@@ -9,7 +9,8 @@
 static_assert(D3D12_SDK_VERSION >= 4, "Outdated Windows SDK. D3D12 Ultimate needed (SDK 1.4.9+, released 2021.04.20). Always prefer using latest Agility SDK!");
 
 // TODO: "D3D12_SDK_VERSION" and "D3D12_PREVIEW_SDK_VERSION" are inconsistent and can't be used to check features support
-#if (NRI_AGILITY_SDK_VERSION_MAJOR >= 717)
+
+#if (NRI_AGILITY_SDK_VERSION_MAJOR >= 618)
 #    define NRI_D3D12_HAS_TIGHT_ALIGNMENT
 #endif
 
@@ -188,10 +189,5 @@ struct PixExt {
             UnloadSharedLibrary(*library);
     }
 };
-
-namespace D3D12MA {
-class Allocator;
-class Allocation;
-} // namespace D3D12MA
 
 #include "DeviceD3D12.h"

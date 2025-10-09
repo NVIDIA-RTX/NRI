@@ -8,9 +8,8 @@ struct BufferVal;
 struct MemoryVal;
 
 struct AccelerationStructureVal final : public ObjectVal {
-    AccelerationStructureVal(DeviceVal& device, AccelerationStructure* accelerationStructure, bool isBoundToMemory, const MemoryDesc& memoryDesc)
+    AccelerationStructureVal(DeviceVal& device, AccelerationStructure* accelerationStructure, bool isBoundToMemory)
         : ObjectVal(device, accelerationStructure)
-        , m_MemoryDesc(memoryDesc)
         , m_IsBoundToMemory(isBoundToMemory) {
     }
 
@@ -24,13 +23,9 @@ struct AccelerationStructureVal final : public ObjectVal {
         return m_IsBoundToMemory;
     }
 
-    inline void SetBoundToMemory(MemoryVal& memory) {
-        m_Memory = &memory;
+    inline void SetBoundToMemory(MemoryVal* memory) {
+        m_Memory = memory;
         m_IsBoundToMemory = true;
-    }
-
-    inline const MemoryDesc& GetMemoryDesc() const {
-        return m_MemoryDesc;
     }
 
     //================================================================================================================
@@ -47,7 +42,6 @@ struct AccelerationStructureVal final : public ObjectVal {
 private:
     MemoryVal* m_Memory = nullptr;
     BufferVal* m_Buffer = nullptr;
-    MemoryDesc m_MemoryDesc = {};
     bool m_IsBoundToMemory = false;
 };
 

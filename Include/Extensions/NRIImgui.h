@@ -52,16 +52,16 @@ NriStruct(DrawImguiDesc) {
 
 // Threadsafe: yes
 NriStruct(ImguiInterface) {
-    Nri(Result)     (NRI_CALL *CreateImgui)         (NriRef(Device) device, const NriRef(ImguiDesc) imguiDesc, NriOut NriRef(Imgui*) imgui);
-    void            (NRI_CALL *DestroyImgui)        (NriPtr(Imgui) imgui);
+    Nri(Result) (NRI_CALL *CreateImgui)         (NriRef(Device) device, const NriRef(ImguiDesc) imguiDesc, NriOut NriRef(Imgui*) imgui);
+    void        (NRI_CALL *DestroyImgui)        (NriPtr(Imgui) imgui);
 
     // Command buffer
     // {
-            // Copy
-            void    (NRI_CALL *CmdCopyImguiData)    (NriRef(CommandBuffer) commandBuffer, NriRef(Streamer) streamer, NriRef(Imgui) imgui, const NriRef(CopyImguiDataDesc) streamImguiDesc);
+        // Copy
+        void    (NRI_CALL *CmdCopyImguiData)    (NriRef(CommandBuffer) commandBuffer, NriRef(Streamer) streamer, NriRef(Imgui) imgui, const NriRef(CopyImguiDataDesc) streamImguiDesc);
 
-            // Draw (changes descriptor pool, pipeline layout and pipeline, barriers are externally controlled)
-            void    (NRI_CALL *CmdDrawImgui)        (NriRef(CommandBuffer) commandBuffer, NriRef(Imgui) imgui, const NriRef(DrawImguiDesc) drawImguiDesc);
+        // Draw (changes descriptor pool, pipeline layout and pipeline, barriers are externally controlled)
+        void    (NRI_CALL *CmdDrawImgui)        (NriRef(CommandBuffer) commandBuffer, NriRef(Imgui) imgui, const NriRef(DrawImguiDesc) drawImguiDesc);
     // }
 };
 

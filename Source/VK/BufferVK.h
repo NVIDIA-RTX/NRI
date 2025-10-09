@@ -31,9 +31,8 @@ struct BufferVK final : public DebugNameBase {
 
     Result Create(const BufferDesc& bufferDesc);
     Result Create(const BufferVKDesc& bufferVKDesc);
-    Result Create(const AllocateBufferDesc& allocateBufferDesc);
-    void FinishMemoryBinding(MemoryVK& memory, uint64_t memoryOffset);
-    void DestroyVma();
+    Result AllocateAndBindMemory(MemoryLocation memoryLocation, float priority, bool committed);
+    Result BindMemory(const MemoryVK& memory, uint64_t offset, bool bindMemory);
     void GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
 
     //================================================================================================================
@@ -55,11 +54,11 @@ private:
     VkDeviceAddress m_DeviceAddress = 0;
     uint8_t* m_MappedMemory = nullptr;
     VkDeviceMemory m_NonCoherentDeviceMemory = VK_NULL_HANDLE;
-    uint64_t m_MappedMemoryOffset = 0;
+    uint64_t m_NonCoherentDeviceMemoryOffset = 0;
     uint64_t m_MappedMemoryRangeSize = 0;
     uint64_t m_MappedMemoryRangeOffset = 0;
     BufferDesc m_Desc = {};
-    VmaAllocation_T* m_VmaAllocation = nullptr;
+    VmaAllocation m_VmaAllocation = nullptr;
     bool m_OwnsNativeObjects = true;
 };
 

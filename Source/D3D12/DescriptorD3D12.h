@@ -6,6 +6,8 @@ struct ID3D12Resource;
 
 namespace nri {
 
+struct AccelerationStructureD3D12;
+
 struct DescriptorD3D12 final : public DebugNameBase {
     inline DescriptorD3D12(DeviceD3D12& device)
         : m_Device(device) {
@@ -47,7 +49,7 @@ struct DescriptorD3D12 final : public DebugNameBase {
     Result Create(const Texture1DViewDesc& textureViewDesc);
     Result Create(const Texture2DViewDesc& textureViewDesc);
     Result Create(const Texture3DViewDesc& textureViewDesc);
-    Result Create(const AccelerationStructure& accelerationStructure);
+    Result Create(const AccelerationStructureD3D12& accelerationStructure);
     Result Create(const SamplerDesc& samplerDesc);
 
 private:

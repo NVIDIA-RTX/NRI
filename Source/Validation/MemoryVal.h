@@ -32,6 +32,10 @@ struct MemoryVal final : public ObjectVal {
         return m_MemoryLocation;
     }
 
+    inline bool IsWrapped() const {
+        return m_MemoryLocation == MemoryLocation::MAX_NUM;
+    }
+
     bool HasBoundResources();
     void ReportBoundResources();
     void Bind(BufferVal& buffer);

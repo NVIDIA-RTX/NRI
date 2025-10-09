@@ -678,7 +678,7 @@ NRI_INLINE Result DeviceD3D11::BindBufferMemory(const BindBufferMemoryDesc* bind
     for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
         const BindBufferMemoryDesc& desc = bindBufferMemoryDescs[i];
         const MemoryD3D11& memory = *(MemoryD3D11*)desc.memory;
-        Result res = ((BufferD3D11*)desc.buffer)->Create(memory.GetLocation(), memory.GetPriority());
+        Result res = ((BufferD3D11*)desc.buffer)->Allocate(memory.GetLocation(), memory.GetPriority());
         if (res != Result::SUCCESS)
             return res;
     }
@@ -690,7 +690,7 @@ NRI_INLINE Result DeviceD3D11::BindTextureMemory(const BindTextureMemoryDesc* bi
     for (uint32_t i = 0; i < bindTextureMemoryDescNum; i++) {
         const BindTextureMemoryDesc& desc = bindTextureMemoryDescs[i];
         const MemoryD3D11& memory = *(MemoryD3D11*)desc.memory;
-        Result res = ((TextureD3D11*)desc.texture)->Create(memory.GetLocation(), memory.GetPriority());
+        Result res = ((TextureD3D11*)desc.texture)->Allocate(memory.GetLocation(), memory.GetPriority());
         if (res != Result::SUCCESS)
             return res;
     }

@@ -1,5 +1,7 @@
 // © 2021 NVIDIA Corporation
 
+#include "MemoryAllocatorVK.h"
+
 #include "SharedVK.h"
 
 #include "AccelerationStructureVK.h"
@@ -43,7 +45,6 @@ using namespace nri;
 #include "PipelineVK.hpp"
 #include "QueryPoolVK.hpp"
 #include "QueueVK.hpp"
-#include "ResourceAllocatorVK.hpp"
 #include "SwapChainVK.hpp"
 #include "TextureVK.hpp"
 
@@ -87,22 +88,6 @@ static uint64_t NRI_CALL GetFenceValue(Fence& fence) {
     return ((FenceVK&)fence).GetFenceValue();
 }
 
-static void NRI_CALL GetBufferMemoryDesc(const Buffer& buffer, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
-    ((BufferVK&)buffer).GetMemoryDesc(memoryLocation, memoryDesc);
-}
-
-static void NRI_CALL GetTextureMemoryDesc(const Texture& texture, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
-    ((TextureVK&)texture).GetMemoryDesc(memoryLocation, memoryDesc);
-}
-
-static void NRI_CALL GetBufferMemoryDesc2(const Device& device, const BufferDesc& bufferDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
-    ((DeviceVK&)device).GetMemoryDesc2(bufferDesc, memoryLocation, memoryDesc);
-}
-
-static void NRI_CALL GetTextureMemoryDesc2(const Device& device, const TextureDesc& textureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
-    ((DeviceVK&)device).GetMemoryDesc2(textureDesc, memoryLocation, memoryDesc);
-}
-
 static Result NRI_CALL GetQueue(Device& device, QueueType queueType, uint32_t queueIndex, Queue*& queue) {
     return ((DeviceVK&)device).GetQueue(queueType, queueIndex, queue);
 }
@@ -122,14 +107,6 @@ static Result NRI_CALL CreateFence(Device& device, uint64_t initialValue, Fence*
 
 static Result NRI_CALL CreateDescriptorPool(Device& device, const DescriptorPoolDesc& descriptorPoolDesc, DescriptorPool*& descriptorPool) {
     return ((DeviceVK&)device).CreateImplementation<DescriptorPoolVK>(descriptorPool, descriptorPoolDesc);
-}
-
-static Result NRI_CALL CreateBuffer(Device& device, const BufferDesc& bufferDesc, Buffer*& buffer) {
-    return ((DeviceVK&)device).CreateImplementation<BufferVK>(buffer, bufferDesc);
-}
-
-static Result NRI_CALL CreateTexture(Device& device, const TextureDesc& textureDesc, Texture*& texture) {
-    return ((DeviceVK&)device).CreateImplementation<TextureVK>(texture, textureDesc);
 }
 
 static Result NRI_CALL CreatePipelineLayout(Device& device, const PipelineLayoutDesc& pipelineLayoutDesc, PipelineLayout*& pipelineLayout) {
@@ -216,6 +193,26 @@ static Result NRI_CALL AllocateMemory(Device& device, const AllocateMemoryDesc& 
     return ((DeviceVK&)device).CreateImplementation<MemoryVK>(memory, allocateMemoryDesc);
 }
 
+static void NRI_CALL FreeMemory(Memory* memory) {
+    Destroy((MemoryVK*)memory);
+}
+
+static Result NRI_CALL CreateBuffer(Device& device, const BufferDesc& bufferDesc, Buffer*& buffer) {
+    return ((DeviceVK&)device).CreateImplementation<BufferVK>(buffer, bufferDesc);
+}
+
+static Result NRI_CALL CreateTexture(Device& device, const TextureDesc& textureDesc, Texture*& texture) {
+    return ((DeviceVK&)device).CreateImplementation<TextureVK>(texture, textureDesc);
+}
+
+static void NRI_CALL GetBufferMemoryDesc(const Buffer& buffer, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
+    ((BufferVK&)buffer).GetMemoryDesc(memoryLocation, memoryDesc);
+}
+
+static void NRI_CALL GetTextureMemoryDesc(const Texture& texture, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
+    ((TextureVK&)texture).GetMemoryDesc(memoryLocation, memoryDesc);
+}
+
 static Result NRI_CALL BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum) {
     if (!bindBufferMemoryDescNum)
         return Result::SUCCESS;
@@ -232,8 +229,86 @@ static Result NRI_CALL BindTextureMemory(const BindTextureMemoryDesc* bindTextur
     return deviceVK.BindTextureMemory(bindTextureMemoryDescs, bindTextureMemoryDescNum);
 }
 
-static void NRI_CALL FreeMemory(Memory* memory) {
-    Destroy((MemoryVK*)memory);
+static void NRI_CALL GetBufferMemoryDesc2(const Device& device, const BufferDesc& bufferDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
+    ((DeviceVK&)device).GetMemoryDesc2(bufferDesc, memoryLocation, memoryDesc);
+}
+
+static void NRI_CALL GetTextureMemoryDesc2(const Device& device, const TextureDesc& textureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
+    ((DeviceVK&)device).GetMemoryDesc2(textureDesc, memoryLocation, memoryDesc);
+}
+
+static Result NRI_CALL CreateCommittedBuffer(Device& device, MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {
+    DeviceVK& deviceVK = (DeviceVK&)device;
+
+    Result result = deviceVK.CreateImplementation<BufferVK>(buffer, bufferDesc);
+    if (result != Result::SUCCESS)
+        return result;
+
+    return ((BufferVK*)buffer)->AllocateAndBindMemory(memoryLocation, priority, true);
+}
+
+static Result NRI_CALL CreateCommittedTexture(Device& device, MemoryLocation memoryLocation, float priority, const TextureDesc& textureDesc, Texture*& texture) {
+    DeviceVK& deviceVK = (DeviceVK&)device;
+
+    Result result = deviceVK.CreateImplementation<TextureVK>(texture, textureDesc);
+    if (result != Result::SUCCESS)
+        return result;
+
+    return ((TextureVK*)texture)->AllocateAndBindMemory(memoryLocation, priority, true);
+}
+
+static Result NRI_CALL CreatePlacedBuffer(Device& device, Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer) {
+    DeviceVK& deviceVK = (DeviceVK&)device;
+
+    Result result = deviceVK.CreateImplementation<BufferVK>(buffer, bufferDesc);
+    if (result != Result::SUCCESS)
+        return result;
+
+    if (memory)
+        result = ((BufferVK*)buffer)->BindMemory(*(MemoryVK*)memory, offset, true);
+    else
+        result = ((BufferVK*)buffer)->AllocateAndBindMemory(MemoryLocation::DEVICE, 0.0f, false);
+
+    return result;
+}
+
+static Result NRI_CALL CreatePlacedTexture(Device& device, Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture) {
+    DeviceVK& deviceVK = (DeviceVK&)device;
+
+    Result result = deviceVK.CreateImplementation<TextureVK>(texture, textureDesc);
+    if (result != Result::SUCCESS)
+        return result;
+
+    if (memory)
+        result = ((TextureVK*)texture)->BindMemory(*(MemoryVK*)memory, offset);
+    else
+        result = ((TextureVK*)texture)->AllocateAndBindMemory(MemoryLocation::DEVICE, 0.0f, false);
+
+    return result;
+}
+
+static Result NRI_CALL AllocateDescriptorSets(DescriptorPool& descriptorPool, const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum) {
+    return ((DescriptorPoolVK&)descriptorPool).AllocateDescriptorSets(pipelineLayout, setIndex, descriptorSets, instanceNum, variableDescriptorNum);
+}
+
+static void NRI_CALL UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum) {
+    if (!updateDescriptorRangeDescNum)
+        return;
+
+    DeviceVK& deviceVK = ((DescriptorSetVK*)updateDescriptorRangeDescs->descriptorSet)->GetDevice();
+    deviceVK.UpdateDescriptorRanges(updateDescriptorRangeDescs, updateDescriptorRangeDescNum);
+}
+
+static void NRI_CALL CopyDescriptorRanges(const CopyDescriptorRangeDesc* copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum) {
+    if (!copyDescriptorRangeDescNum)
+        return;
+
+    DeviceVK& deviceVK = ((DescriptorSetVK*)copyDescriptorRangeDescs->dstDescriptorSet)->GetDevice();
+    deviceVK.CopyDescriptorRanges(copyDescriptorRangeDescs, copyDescriptorRangeDescNum);
+}
+
+static void NRI_CALL ResetDescriptorPool(DescriptorPool& descriptorPool) {
+    ((DescriptorPoolVK&)descriptorPool).Reset();
 }
 
 static Result NRI_CALL BeginCommandBuffer(CommandBuffer& commandBuffer, const DescriptorPool* descriptorPool) {
@@ -441,13 +516,6 @@ static Result NRI_CALL QueueSubmit(Queue& queue, const QueueSubmitDesc& workSubm
     return ((QueueVK&)queue).Submit(workSubmissionDesc);
 }
 
-static Result NRI_CALL DeviceWaitIdle(Device* device) {
-    if (!device)
-        return Result::SUCCESS;
-
-    return ((DeviceVK*)device)->WaitIdle();
-}
-
 static Result NRI_CALL QueueWaitIdle(Queue* queue) {
     if (!queue)
         return Result::SUCCESS;
@@ -455,32 +523,15 @@ static Result NRI_CALL QueueWaitIdle(Queue* queue) {
     return ((QueueVK*)queue)->WaitIdle();
 }
 
+static Result NRI_CALL DeviceWaitIdle(Device* device) {
+    if (!device)
+        return Result::SUCCESS;
+
+    return ((DeviceVK*)device)->WaitIdle();
+}
+
 static void NRI_CALL Wait(Fence& fence, uint64_t value) {
     ((FenceVK&)fence).Wait(value);
-}
-
-static void NRI_CALL UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum) {
-    if (!updateDescriptorRangeDescNum)
-        return;
-
-    DeviceVK& deviceVK = ((DescriptorSetVK*)updateDescriptorRangeDescs->descriptorSet)->GetDevice();
-    deviceVK.UpdateDescriptorRanges(updateDescriptorRangeDescs, updateDescriptorRangeDescNum);
-}
-
-static void NRI_CALL CopyDescriptorRanges(const CopyDescriptorRangeDesc* copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum) {
-    if (!copyDescriptorRangeDescNum)
-        return;
-
-    DeviceVK& deviceVK = ((DescriptorSetVK*)copyDescriptorRangeDescs->dstDescriptorSet)->GetDevice();
-    deviceVK.CopyDescriptorRanges(copyDescriptorRangeDescs, copyDescriptorRangeDescNum);
-}
-
-static Result NRI_CALL AllocateDescriptorSets(DescriptorPool& descriptorPool, const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum) {
-    return ((DescriptorPoolVK&)descriptorPool).AllocateDescriptorSets(pipelineLayout, setIndex, descriptorSets, instanceNum, variableDescriptorNum);
-}
-
-static void NRI_CALL ResetDescriptorPool(DescriptorPool& descriptorPool) {
-    ((DescriptorPoolVK&)descriptorPool).Reset();
 }
 
 static void NRI_CALL ResetCommandAllocator(CommandAllocator& commandAllocator) {
@@ -562,17 +613,12 @@ Result DeviceVK::FillFunctionTable(CoreInterface& table) const {
     table.GetBufferDesc = ::GetBufferDesc;
     table.GetTextureDesc = ::GetTextureDesc;
     table.GetFormatSupport = ::GetFormatSupport;
+    table.GetFenceValue = ::GetFenceValue;
     table.GetQuerySize = ::GetQuerySize;
-    table.GetBufferMemoryDesc = ::GetBufferMemoryDesc;
-    table.GetTextureMemoryDesc = ::GetTextureMemoryDesc;
-    table.GetBufferMemoryDesc2 = ::GetBufferMemoryDesc2;
-    table.GetTextureMemoryDesc2 = ::GetTextureMemoryDesc2;
     table.GetQueue = ::GetQueue;
     table.CreateCommandAllocator = ::CreateCommandAllocator;
     table.CreateCommandBuffer = ::CreateCommandBuffer;
     table.CreateDescriptorPool = ::CreateDescriptorPool;
-    table.CreateBuffer = ::CreateBuffer;
-    table.CreateTexture = ::CreateTexture;
     table.CreateBufferView = ::CreateBufferView;
     table.CreateTexture1DView = ::CreateTexture1DView;
     table.CreateTexture2DView = ::CreateTexture2DView;
@@ -594,9 +640,23 @@ Result DeviceVK::FillFunctionTable(CoreInterface& table) const {
     table.DestroyQueryPool = ::DestroyQueryPool;
     table.DestroyFence = ::DestroyFence;
     table.AllocateMemory = ::AllocateMemory;
+    table.FreeMemory = ::FreeMemory;
+    table.CreateBuffer = ::CreateBuffer;
+    table.CreateTexture = ::CreateTexture;
+    table.GetBufferMemoryDesc = ::GetBufferMemoryDesc;
+    table.GetTextureMemoryDesc = ::GetTextureMemoryDesc;
     table.BindBufferMemory = ::BindBufferMemory;
     table.BindTextureMemory = ::BindTextureMemory;
-    table.FreeMemory = ::FreeMemory;
+    table.GetBufferMemoryDesc2 = ::GetBufferMemoryDesc2;
+    table.GetTextureMemoryDesc2 = ::GetTextureMemoryDesc2;
+    table.CreateCommittedBuffer = ::CreateCommittedBuffer;
+    table.CreateCommittedTexture = ::CreateCommittedTexture;
+    table.CreatePlacedBuffer = ::CreatePlacedBuffer;
+    table.CreatePlacedTexture = ::CreatePlacedTexture;
+    table.AllocateDescriptorSets = ::AllocateDescriptorSets;
+    table.UpdateDescriptorRanges = ::UpdateDescriptorRanges;
+    table.CopyDescriptorRanges = ::CopyDescriptorRanges;
+    table.ResetDescriptorPool = ::ResetDescriptorPool;
     table.BeginCommandBuffer = ::BeginCommandBuffer;
     table.CmdSetDescriptorPool = ::CmdSetDescriptorPool;
     table.CmdSetDescriptorSet = ::CmdSetDescriptorSet;
@@ -643,15 +703,10 @@ Result DeviceVK::FillFunctionTable(CoreInterface& table) const {
     table.QueueEndAnnotation = ::QueueEndAnnotation;
     table.QueueAnnotation = ::QueueAnnotation;
     table.ResetQueries = ::ResetQueries;
-    table.DeviceWaitIdle = ::DeviceWaitIdle;
-    table.QueueWaitIdle = ::QueueWaitIdle;
     table.QueueSubmit = ::QueueSubmit;
+    table.QueueWaitIdle = ::QueueWaitIdle;
+    table.DeviceWaitIdle = ::DeviceWaitIdle;
     table.Wait = ::Wait;
-    table.GetFenceValue = ::GetFenceValue;
-    table.UpdateDescriptorRanges = ::UpdateDescriptorRanges;
-    table.CopyDescriptorRanges = ::CopyDescriptorRanges;
-    table.AllocateDescriptorSets = ::AllocateDescriptorSets;
-    table.ResetDescriptorPool = ::ResetDescriptorPool;
     table.ResetCommandAllocator = ::ResetCommandAllocator;
     table.MapBuffer = ::MapBuffer;
     table.UnmapBuffer = ::UnmapBuffer;
@@ -819,16 +874,13 @@ static Result NRI_CALL CreateRayTracingPipeline(Device& device, const RayTracing
     return ((DeviceVK&)device).CreateImplementation<PipelineVK>(pipeline, pipelineDesc);
 }
 
-static Result NRI_CALL CreateAccelerationStructure(Device& device, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    return ((DeviceVK&)device).CreateImplementation<AccelerationStructureVK>(accelerationStructure, accelerationStructureDesc);
-}
-
 static Result NRI_CALL CreateAccelerationStructureDescriptor(const AccelerationStructure& accelerationStructure, Descriptor*& descriptor) {
     return ((AccelerationStructureVK&)accelerationStructure).CreateDescriptor(descriptor);
 }
 
-static Result NRI_CALL CreateMicromap(Device& device, const MicromapDesc& micromapDesc, Micromap*& micromap) {
-    return ((DeviceVK&)device).CreateImplementation<MicromapVK>(micromap, micromapDesc);
+static uint64_t NRI_CALL GetAccelerationStructureHandle(const AccelerationStructure& accelerationStructure) {
+    static_assert(sizeof(uint64_t) == sizeof(VkDeviceAddress), "type mismatch");
+    return (uint64_t)((AccelerationStructureVK&)accelerationStructure).GetDeviceAddress();
 }
 
 static uint64_t NRI_CALL GetAccelerationStructureUpdateScratchBufferSize(const AccelerationStructure& accelerationStructure) {
@@ -839,17 +891,12 @@ static uint64_t NRI_CALL GetAccelerationStructureBuildScratchBufferSize(const Ac
     return ((AccelerationStructureVK&)accelerationStructure).GetBuildScratchBufferSize();
 }
 
-static uint64_t NRI_CALL GetAccelerationStructureHandle(const AccelerationStructure& accelerationStructure) {
-    static_assert(sizeof(uint64_t) == sizeof(VkDeviceAddress), "type mismatch");
-    return (uint64_t)((AccelerationStructureVK&)accelerationStructure).GetDeviceAddress();
+static uint64_t NRI_CALL GetMicromapBuildScratchBufferSize(const Micromap& micromap) {
+    return ((MicromapVK&)micromap).GetBuildScratchBufferSize();
 }
 
 static Buffer* NRI_CALL GetAccelerationStructureBuffer(const AccelerationStructure& accelerationStructure) {
     return (Buffer*)((AccelerationStructureVK&)accelerationStructure).GetBuffer();
-}
-
-static uint64_t NRI_CALL GetMicromapBuildScratchBufferSize(const Micromap& micromap) {
-    return ((MicromapVK&)micromap).GetBuildScratchBufferSize();
 }
 
 static Buffer* NRI_CALL GetMicromapBuffer(const Micromap& micromap) {
@@ -864,12 +911,20 @@ static void NRI_CALL DestroyMicromap(Micromap* micromap) {
     Destroy((MicromapVK*)micromap);
 }
 
+static Result NRI_CALL CreateAccelerationStructure(Device& device, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
+    return ((DeviceVK&)device).CreateImplementation<AccelerationStructureVK>(accelerationStructure, accelerationStructureDesc);
+}
+
+static Result NRI_CALL CreateMicromap(Device& device, const MicromapDesc& micromapDesc, Micromap*& micromap) {
+    return ((DeviceVK&)device).CreateImplementation<MicromapVK>(micromap, micromapDesc);
+}
+
 static void NRI_CALL GetAccelerationStructureMemoryDesc(const AccelerationStructure& accelerationStructure, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
     ((AccelerationStructureVK&)accelerationStructure).GetBuffer()->GetMemoryDesc(memoryLocation, memoryDesc);
 }
 
-static void NRI_CALL GetAccelerationStructureMemoryDesc2(const Device& device, const AccelerationStructureDesc& accelerationStructureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
-    ((DeviceVK&)device).GetMemoryDesc2(accelerationStructureDesc, memoryLocation, memoryDesc);
+static void NRI_CALL GetMicromapMemoryDesc(const Micromap& micromap, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
+    ((MicromapVK&)micromap).GetBuffer()->GetMemoryDesc(memoryLocation, memoryDesc);
 }
 
 static Result NRI_CALL BindAccelerationStructureMemory(const BindAccelerationStructureMemoryDesc* bindAccelerationStructureMemoryDescs, uint32_t bindAccelerationStructureMemoryDescNum) {
@@ -880,20 +935,70 @@ static Result NRI_CALL BindAccelerationStructureMemory(const BindAccelerationStr
     return deviceVK.BindAccelerationStructureMemory(bindAccelerationStructureMemoryDescs, bindAccelerationStructureMemoryDescNum);
 }
 
-static void NRI_CALL GetMicromapMemoryDesc(const Micromap& micromap, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
-    ((MicromapVK&)micromap).GetBuffer()->GetMemoryDesc(memoryLocation, memoryDesc);
-}
-
-static void NRI_CALL GetMicromapMemoryDesc2(const Device& device, const MicromapDesc& micromapDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
-    ((DeviceVK&)device).GetMemoryDesc2(micromapDesc, memoryLocation, memoryDesc);
-}
-
 static Result NRI_CALL BindMicromapMemory(const BindMicromapMemoryDesc* bindMicromapMemoryDescs, uint32_t bindMicromapMemoryDescNum) {
     if (!bindMicromapMemoryDescNum)
         return Result::SUCCESS;
 
     DeviceVK& deviceVK = ((MicromapVK*)bindMicromapMemoryDescs->micromap)->GetDevice();
     return deviceVK.BindMicromapMemory(bindMicromapMemoryDescs, bindMicromapMemoryDescNum);
+}
+
+static void NRI_CALL GetAccelerationStructureMemoryDesc2(const Device& device, const AccelerationStructureDesc& accelerationStructureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
+    ((DeviceVK&)device).GetMemoryDesc2(accelerationStructureDesc, memoryLocation, memoryDesc);
+}
+
+static void NRI_CALL GetMicromapMemoryDesc2(const Device& device, const MicromapDesc& micromapDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
+    ((DeviceVK&)device).GetMemoryDesc2(micromapDesc, memoryLocation, memoryDesc);
+}
+
+static Result NRI_CALL CreateCommittedAccelerationStructure(Device& device, MemoryLocation memoryLocation, float priority, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
+    DeviceVK& deviceVK = (DeviceVK&)device;
+
+    Result result = deviceVK.CreateImplementation<AccelerationStructureVK>(accelerationStructure, accelerationStructureDesc);
+    if (result != Result::SUCCESS)
+        return result;
+
+    return ((AccelerationStructureVK*)accelerationStructure)->AllocateAndBindMemory(memoryLocation, priority, true);
+}
+
+static Result NRI_CALL CreateCommittedMicromap(Device& device, MemoryLocation memoryLocation, float priority, const MicromapDesc& micromapDesc, Micromap*& micromap) {
+    DeviceVK& deviceVK = (DeviceVK&)device;
+
+    Result result = deviceVK.CreateImplementation<MicromapVK>(micromap, micromapDesc);
+    if (result != Result::SUCCESS)
+        return result;
+
+    return ((MicromapVK*)micromap)->AllocateAndBindMemory(memoryLocation, priority, true);
+}
+
+static Result NRI_CALL CreatePlacedAccelerationStructure(Device& device, Memory* memory, uint64_t offset, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
+    DeviceVK& deviceVK = (DeviceVK&)device;
+
+    Result result = deviceVK.CreateImplementation<AccelerationStructureVK>(accelerationStructure, accelerationStructureDesc);
+    if (result != Result::SUCCESS)
+        return result;
+
+    if (memory)
+        result = ((AccelerationStructureVK*)accelerationStructure)->BindMemory((MemoryVK*)memory, offset);
+    else
+        result = ((AccelerationStructureVK*)accelerationStructure)->AllocateAndBindMemory(MemoryLocation::DEVICE, 0.0f, false);
+
+    return result;
+}
+
+static Result NRI_CALL CreatePlacedMicromap(Device& device, Memory* memory, uint64_t offset, const MicromapDesc& micromapDesc, Micromap*& micromap) {
+    DeviceVK& deviceVK = (DeviceVK&)device;
+
+    Result result = deviceVK.CreateImplementation<MicromapVK>(micromap, micromapDesc);
+    if (result != Result::SUCCESS)
+        return result;
+
+    if (memory)
+        result = ((MicromapVK*)micromap)->BindMemory((MemoryVK*)memory, offset);
+    else
+        result = ((MicromapVK*)micromap)->AllocateAndBindMemory(MemoryLocation::DEVICE, 0.0f, false);
+
+    return result;
 }
 
 static Result NRI_CALL WriteShaderGroupIdentifiers(const Pipeline& pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* dst) {
@@ -955,23 +1060,27 @@ Result DeviceVK::FillFunctionTable(RayTracingInterface& table) const {
         return Result::UNSUPPORTED;
 
     table.CreateRayTracingPipeline = ::CreateRayTracingPipeline;
-    table.CreateAccelerationStructure = ::CreateAccelerationStructure;
     table.CreateAccelerationStructureDescriptor = ::CreateAccelerationStructureDescriptor;
-    table.CreateMicromap = ::CreateMicromap;
+    table.GetAccelerationStructureHandle = ::GetAccelerationStructureHandle;
     table.GetAccelerationStructureUpdateScratchBufferSize = ::GetAccelerationStructureUpdateScratchBufferSize;
     table.GetAccelerationStructureBuildScratchBufferSize = ::GetAccelerationStructureBuildScratchBufferSize;
-    table.GetAccelerationStructureHandle = ::GetAccelerationStructureHandle;
-    table.GetAccelerationStructureBuffer = ::GetAccelerationStructureBuffer;
     table.GetMicromapBuildScratchBufferSize = ::GetMicromapBuildScratchBufferSize;
+    table.GetAccelerationStructureBuffer = ::GetAccelerationStructureBuffer;
     table.GetMicromapBuffer = ::GetMicromapBuffer;
     table.DestroyAccelerationStructure = ::DestroyAccelerationStructure;
     table.DestroyMicromap = ::DestroyMicromap;
+    table.CreateAccelerationStructure = ::CreateAccelerationStructure;
+    table.CreateMicromap = ::CreateMicromap;
     table.GetAccelerationStructureMemoryDesc = ::GetAccelerationStructureMemoryDesc;
-    table.GetAccelerationStructureMemoryDesc2 = ::GetAccelerationStructureMemoryDesc2;
-    table.BindAccelerationStructureMemory = ::BindAccelerationStructureMemory;
     table.GetMicromapMemoryDesc = ::GetMicromapMemoryDesc;
-    table.GetMicromapMemoryDesc2 = ::GetMicromapMemoryDesc2;
+    table.BindAccelerationStructureMemory = ::BindAccelerationStructureMemory;
     table.BindMicromapMemory = ::BindMicromapMemory;
+    table.GetAccelerationStructureMemoryDesc2 = ::GetAccelerationStructureMemoryDesc2;
+    table.GetMicromapMemoryDesc2 = ::GetMicromapMemoryDesc2;
+    table.CreateCommittedAccelerationStructure = ::CreateCommittedAccelerationStructure;
+    table.CreateCommittedMicromap = ::CreateCommittedMicromap;
+    table.CreatePlacedAccelerationStructure = ::CreatePlacedAccelerationStructure;
+    table.CreatePlacedMicromap = ::CreatePlacedMicromap;
     table.WriteShaderGroupIdentifiers = ::WriteShaderGroupIdentifiers;
     table.CmdBuildTopLevelAccelerationStructures = ::CmdBuildTopLevelAccelerationStructures;
     table.CmdBuildBottomLevelAccelerationStructures = ::CmdBuildBottomLevelAccelerationStructures;
@@ -984,36 +1093,6 @@ Result DeviceVK::FillFunctionTable(RayTracingInterface& table) const {
     table.CmdCopyMicromap = ::CmdCopyMicromap;
     table.GetAccelerationStructureNativeObject = ::GetAccelerationStructureNativeObject;
     table.GetMicromapNativeObject = ::GetMicromapNativeObject;
-
-    return Result::SUCCESS;
-}
-
-#pragma endregion
-
-//============================================================================================================================================================================================
-#pragma region[  ResourceAllocator  ]
-
-static Result NRI_CALL AllocateBuffer(Device& device, const AllocateBufferDesc& allocateBufferDesc, Buffer*& buffer) {
-    return ((DeviceVK&)device).CreateImplementation<BufferVK>(buffer, allocateBufferDesc);
-}
-
-static Result NRI_CALL AllocateTexture(Device& device, const AllocateTextureDesc& allocateTextureDesc, Texture*& texture) {
-    return ((DeviceVK&)device).CreateImplementation<TextureVK>(texture, allocateTextureDesc);
-}
-
-static Result NRI_CALL AllocateAccelerationStructure(Device& device, const AllocateAccelerationStructureDesc& allocateAccelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    return ((DeviceVK&)device).CreateImplementation<AccelerationStructureVK>(accelerationStructure, allocateAccelerationStructureDesc);
-}
-
-static Result NRI_CALL AllocateMicromap(Device& device, const AllocateMicromapDesc& allocateMicromapDesc, Micromap*& micromap) {
-    return ((DeviceVK&)device).CreateImplementation<MicromapVK>(micromap, allocateMicromapDesc);
-}
-
-Result DeviceVK::FillFunctionTable(ResourceAllocatorInterface& table) const {
-    table.AllocateBuffer = ::AllocateBuffer;
-    table.AllocateTexture = ::AllocateTexture;
-    table.AllocateAccelerationStructure = ::AllocateAccelerationStructure;
-    table.AllocateMicromap = ::AllocateMicromap;
 
     return Result::SUCCESS;
 }

@@ -37,8 +37,8 @@ Implicit:
 
 #pragma once
 
-#define NRI_VERSION 175
-#define NRI_VERSION_DATE "8 September 2025"
+#define NRI_VERSION 176
+#define NRI_VERSION_DATE "9 October 2025"
 
 // C/C++ compatible interface (auto-selection or via "NRI_FORCE_C" macro)
 #include "NRIDescs.h"
@@ -77,15 +77,11 @@ NriStruct(CoreInterface) {
     // resources participating into multi-queue activities. Explicit use of "queueExclusive" removes any restrictions.
     Nri(Result)         (NRI_CALL *GetQueue)                        (NriRef(Device) device, Nri(QueueType) queueType, uint32_t queueIndex, NriOut NriRef(Queue*) queue);
 
-    // Create
-    // "Creation" doesn't assume allocation of big chunks of memory on the device, but it happens for some entities implicitly
-    // "Allocation" emphasizes the fact that there is a chunk of memory allocated under the hood
+    // Create (doesn't assume allocation of big chunks of memory on the device, but it happens for some entities implicitly)
     Nri(Result)         (NRI_CALL *CreateCommandAllocator)          (NriRef(Queue) queue, NriOut NriRef(CommandAllocator*) commandAllocator);
     Nri(Result)         (NRI_CALL *CreateCommandBuffer)             (NriRef(CommandAllocator) commandAllocator, NriOut NriRef(CommandBuffer*) commandBuffer);
     Nri(Result)         (NRI_CALL *CreateFence)                     (NriRef(Device) device, uint64_t initialValue, NriOut NriRef(Fence*) fence);
     Nri(Result)         (NRI_CALL *CreateDescriptorPool)            (NriRef(Device) device, const NriRef(DescriptorPoolDesc) descriptorPoolDesc, NriOut NriRef(DescriptorPool*) descriptorPool);
-    Nri(Result)         (NRI_CALL *CreateBuffer)                    (NriRef(Device) device, const NriRef(BufferDesc) bufferDesc, NriOut NriRef(Buffer*) buffer); // requires "BindBufferMemory"
-    Nri(Result)         (NRI_CALL *CreateTexture)                   (NriRef(Device) device, const NriRef(TextureDesc) textureDesc, NriOut NriRef(Texture*) texture); // requires "BindTextureMemory"
     Nri(Result)         (NRI_CALL *CreatePipelineLayout)            (NriRef(Device) device, const NriRef(PipelineLayoutDesc) pipelineLayoutDesc, NriOut NriRef(PipelineLayout*) pipelineLayout);
     Nri(Result)         (NRI_CALL *CreateGraphicsPipeline)          (NriRef(Device) device, const NriRef(GraphicsPipelineDesc) graphicsPipelineDesc, NriOut NriRef(Pipeline*) pipeline);
     Nri(Result)         (NRI_CALL *CreateComputePipeline)           (NriRef(Device) device, const NriRef(ComputePipelineDesc) computePipelineDesc, NriOut NriRef(Pipeline*) pipeline);
@@ -109,22 +105,32 @@ NriStruct(CoreInterface) {
     void                (NRI_CALL *DestroyFence)                    (NriPtr(Fence) fence);
 
     // Memory
-    //  Low level:
-    //      - use "Get[Resource]MemoryDesc[2]" to get "MemoryDesc" ("usageBits" and "MemoryLocation" affect returned "MemoryType")
-    //      - (optional) group returned "MemoryDesc"s by "MemoryType", but don't group if "mustBeDedicated = true"
-    //      - call "Bind[Resource]Memory" to bind resources to "Memory" objects
-    //  Mid level:
-    //      - "CalculateAllocationNumber" and "AllocateAndBindMemory" simplify this process for buffers and textures
-    //  High level:
-    //      - "ResourceAllocatorInterface" allows to create resources already bound to memory
+    Nri(Result)         (NRI_CALL *AllocateMemory)                  (NriRef(Device) device, const NriRef(AllocateMemoryDesc) allocateMemoryDesc, NriOut NriRef(Memory*) memory);
+    void                (NRI_CALL *FreeMemory)                      (NriPtr(Memory) memory);
+
+    // Resources and memory (VK style)
+    //  - create a resource (buffer or texture)
+    //  - use "Get[Resource]MemoryDesc" to get "MemoryDesc" ("usageBits" and "MemoryLocation" affect returned "MemoryType")
+    //  - (optional) group returned "MemoryDesc"s by "MemoryType", but don't group if "mustBeDedicated = true"
+    //  - call "AllocateMemory" (even if "mustBeDedicated = true")
+    //  - call "Bind[Resource]Memory" to bind resources to "Memory" objects
+    //  - (optional) "CalculateAllocationNumber" and "AllocateAndBindMemory" from "NRIHelper" interface simplify this process for buffers and textures
+    Nri(Result)         (NRI_CALL *CreateBuffer)                    (NriRef(Device) device, const NriRef(BufferDesc) bufferDesc, NriOut NriRef(Buffer*) buffer);
+    Nri(Result)         (NRI_CALL *CreateTexture)                   (NriRef(Device) device, const NriRef(TextureDesc) textureDesc, NriOut NriRef(Texture*) texture);
     void                (NRI_CALL *GetBufferMemoryDesc)             (const NriRef(Buffer) buffer, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc);
     void                (NRI_CALL *GetTextureMemoryDesc)            (const NriRef(Texture) texture, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc);
-    void                (NRI_CALL *GetBufferMemoryDesc2)            (const NriRef(Device) device, const NriRef(BufferDesc) bufferDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "features.getMemoryDesc2"
-    void                (NRI_CALL *GetTextureMemoryDesc2)           (const NriRef(Device) device, const NriRef(TextureDesc) textureDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "features.getMemoryDesc2"
-    Nri(Result)         (NRI_CALL *AllocateMemory)                  (NriRef(Device) device, const NriRef(AllocateMemoryDesc) allocateMemoryDesc, NriOut NriRef(Memory*) memory);
     Nri(Result)         (NRI_CALL *BindBufferMemory)                (const NriPtr(BindBufferMemoryDesc) bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum);
     Nri(Result)         (NRI_CALL *BindTextureMemory)               (const NriPtr(BindTextureMemoryDesc) bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum);
-    void                (NRI_CALL *FreeMemory)                      (NriPtr(Memory) memory);
+
+    // Resources and memory (D3D12 style)
+    // - "Get[Resource]MemoryDesc2" requires "maintenance4" support on Vulkan
+    // - pass "memory = NULL" to create a placed resource in "DEVICE" memory using VMA (AMD Virtual Memory Allocator) implicitly
+    void                (NRI_CALL *GetBufferMemoryDesc2)            (const NriRef(Device) device, const NriRef(BufferDesc) bufferDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "features.getMemoryDesc2"
+    void                (NRI_CALL *GetTextureMemoryDesc2)           (const NriRef(Device) device, const NriRef(TextureDesc) textureDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "features.getMemoryDesc2"
+    Nri(Result)         (NRI_CALL *CreateCommittedBuffer)           (NriRef(Device) device, Nri(MemoryLocation) memoryLocation, float priority, const NriRef(BufferDesc) bufferDesc, NriOut NriRef(Buffer*) buffer);
+    Nri(Result)         (NRI_CALL *CreateCommittedTexture)          (NriRef(Device) device, Nri(MemoryLocation) memoryLocation, float priority, const NriRef(TextureDesc) textureDesc, NriOut NriRef(Texture*) texture);
+    Nri(Result)         (NRI_CALL *CreatePlacedBuffer)              (NriRef(Device) device, NriOptional NriPtr(Memory) memory, uint64_t offset, const NriRef(BufferDesc) bufferDesc, NriOut NriRef(Buffer*) buffer);
+    Nri(Result)         (NRI_CALL *CreatePlacedTexture)             (NriRef(Device) device, NriOptional NriPtr(Memory) memory, uint64_t offset, const NriRef(TextureDesc) textureDesc, NriOut NriRef(Texture*) texture);
 
     // Descriptor set management (entities don't require destroying)
     // - if "ALLOW_UPDATE_AFTER_SET" not used, descriptor sets (and data pointed to by descriptors) must be updated before "CmdSetDescriptorSet"
@@ -229,8 +235,8 @@ NriStruct(CoreInterface) {
 
     // Work submission and synchronization
     Nri(Result)         (NRI_CALL *QueueSubmit)                     (NriRef(Queue) queue, const NriRef(QueueSubmitDesc) queueSubmitDesc); // to device
-    Nri(Result)         (NRI_CALL *DeviceWaitIdle)                  (NriPtr(Device) device);
     Nri(Result)         (NRI_CALL *QueueWaitIdle)                   (NriPtr(Queue) queue);
+    Nri(Result)         (NRI_CALL *DeviceWaitIdle)                  (NriPtr(Device) device);
     void                (NRI_CALL *Wait)                            (NriRef(Fence) fence, uint64_t value); // on host
 
     // Command allocator

@@ -5,6 +5,7 @@
 namespace nri {
 
 struct BufferVK;
+struct MemoryVK;
 
 struct MicromapVK final : public DebugNameBase {
     inline MicromapVK(DeviceVK& device)
@@ -31,8 +32,8 @@ struct MicromapVK final : public DebugNameBase {
     ~MicromapVK();
 
     Result Create(const MicromapDesc& accelerationStructureDesc);
-    Result Create(const AllocateMicromapDesc& allocateMicromapDesc);
-    Result FinishCreation();
+    Result AllocateAndBindMemory(MemoryLocation memoryLocation, float priority, bool committed);
+    Result BindMemory(const MemoryVK* memory, uint64_t offset);
 
     //================================================================================================================
     // DebugNameBase

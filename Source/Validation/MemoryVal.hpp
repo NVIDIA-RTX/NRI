@@ -50,14 +50,14 @@ void MemoryVal::Bind(AccelerationStructureVal& accelerationStructure) {
     ExclusiveScope lock(m_Lock);
 
     m_AccelerationStructures.push_back(&accelerationStructure);
-    accelerationStructure.SetBoundToMemory(*this);
+    accelerationStructure.SetBoundToMemory(this);
 }
 
 void MemoryVal::Bind(MicromapVal& micromap) {
     ExclusiveScope lock(m_Lock);
 
     m_Micromaps.push_back(&micromap);
-    micromap.SetBoundToMemory(*this);
+    micromap.SetBoundToMemory(this);
 }
 
 void MemoryVal::Unbind(BufferVal& buffer) {

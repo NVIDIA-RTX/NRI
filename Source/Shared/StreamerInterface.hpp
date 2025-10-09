@@ -1,7 +1,6 @@
 // © 2024 NVIDIA Corporation
 
 constexpr uint64_t CHUNK_SIZE = 65536;
-constexpr bool USE_DEDICATED = true;
 
 StreamerImpl::~StreamerImpl() {
     for (GarbageInFlight& garbageInFlight : m_GarbageInFlight)
@@ -23,31 +22,23 @@ bool StreamerImpl::Grow() {
         m_GarbageInFlight.push_back({m_DynamicBuffer, 0});
 
     // Create a new dynamic buffer
-    AllocateBufferDesc allocateBufferDesc = {};
-    allocateBufferDesc.desc.size = m_DynamicBufferSizePerFrame * m_Desc.queuedFrameNum;
-    allocateBufferDesc.desc.usage = m_Desc.dynamicBufferUsageBits;
-    allocateBufferDesc.memoryLocation = m_Desc.dynamicBufferMemoryLocation;
-    allocateBufferDesc.dedicated = USE_DEDICATED;
+    BufferDesc bufferDesc = {};
+    bufferDesc.size = m_DynamicBufferSizePerFrame * m_Desc.queuedFrameNum;
+    bufferDesc.usage = m_Desc.dynamicBufferUsageBits;
 
-    Result result = m_iResourceAllocator.AllocateBuffer(m_Device, allocateBufferDesc, m_DynamicBuffer);
+    Result result = m_iCore.CreateCommittedBuffer(m_Device, m_Desc.dynamicBufferMemoryLocation, 0.0f, bufferDesc, m_DynamicBuffer);
 
     return result == Result::SUCCESS;
 }
 
 Result StreamerImpl::Create(const StreamerDesc& desc) {
-    Result result = nriGetInterface(m_Device, NRI_INTERFACE(ResourceAllocatorInterface), &m_iResourceAllocator);
-    if (result != Result::SUCCESS)
-        return result;
-
     if (desc.constantBufferSize) {
         // Create the constant buffer
-        AllocateBufferDesc allocateBufferDesc = {};
-        allocateBufferDesc.desc.size = desc.constantBufferSize;
-        allocateBufferDesc.desc.usage = BufferUsageBits::CONSTANT_BUFFER;
-        allocateBufferDesc.memoryLocation = desc.constantBufferMemoryLocation;
-        allocateBufferDesc.dedicated = USE_DEDICATED;
+        BufferDesc bufferDesc = {};
+        bufferDesc.size = desc.constantBufferSize;
+        bufferDesc.usage = BufferUsageBits::CONSTANT_BUFFER;
 
-        result = m_iResourceAllocator.AllocateBuffer(m_Device, allocateBufferDesc, m_ConstantBuffer);
+        Result result = m_iCore.CreateCommittedBuffer(m_Device, desc.constantBufferMemoryLocation, 0.0f, bufferDesc, m_ConstantBuffer);
         if (result != Result::SUCCESS)
             return result;
     }

@@ -466,10 +466,6 @@ NRI_API Result NRI_CALL nriGetInterface(const Device& device, const char* interf
         realInterfaceSize = sizeof(RayTracingInterface);
         if (realInterfaceSize == interfaceSize)
             result = deviceBase.FillFunctionTable(*(RayTracingInterface*)interfacePtr);
-    } else if (hash == Hash(NRI_STRINGIFY(ResourceAllocatorInterface))) {
-        realInterfaceSize = sizeof(ResourceAllocatorInterface);
-        if (realInterfaceSize == interfaceSize)
-            result = deviceBase.FillFunctionTable(*(ResourceAllocatorInterface*)interfacePtr);
     } else if (hash == Hash(NRI_STRINGIFY(StreamerInterface))) {
         realInterfaceSize = sizeof(StreamerInterface);
         if (realInterfaceSize == interfaceSize)

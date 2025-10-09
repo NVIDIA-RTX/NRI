@@ -80,7 +80,8 @@ NriStruct(TextureVKDesc) {
 
 NriStruct(MemoryVKDesc) {
     VKNonDispatchableHandle vkDeviceMemory;
-    void* vkMappedMemory;
+    NriOptional uint64_t offset;
+    NriOptional void* mappedMemory; // at "offset"
     uint64_t size;
     uint32_t memoryTypeIndex;
 };
@@ -101,6 +102,8 @@ NriStruct(FenceVKDesc) {
 
 NriStruct(AccelerationStructureVKDesc) {
     VKNonDispatchableHandle vkAccelerationStructure;
+    VKNonDispatchableHandle vkBuffer;
+    uint64_t bufferSize;
     uint64_t buildScratchSize;
     uint64_t updateScratchSize;
     Nri(AccelerationStructureBits) flags;

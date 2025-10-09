@@ -27,7 +27,6 @@ typedef uint32_t DXGI_FORMAT;
 #include "Extensions/NRILowLatency.h"
 #include "Extensions/NRIMeshShader.h"
 #include "Extensions/NRIRayTracing.h"
-#include "Extensions/NRIResourceAllocator.h"
 #include "Extensions/NRIStreamer.h"
 #include "Extensions/NRISwapChain.h"
 #include "Extensions/NRIUpscaler.h"

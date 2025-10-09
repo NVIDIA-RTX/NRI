@@ -31,7 +31,7 @@ struct TextureVal final : public ObjectVal {
         return m_IsBoundToMemory;
     }
 
-    inline void SetBoundToMemory(MemoryVal* memory = nullptr) {
+    inline void SetBoundToMemory(MemoryVal* memory) {
         m_Memory = memory;
         m_IsBoundToMemory = true;
     }

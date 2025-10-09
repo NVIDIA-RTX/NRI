@@ -38,6 +38,7 @@ There is [NVRHI](https://github.com/NVIDIA-RTX/NVRHI), which offers a D3D11-like
  - ray tracing support
  - mesh shaders support
  - D3D12 Ultimate features support, including enhanced barriers
+ - *AMD Virtual Memory Allocator* support
  - VK [printf](https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/main/docs/debug_printf.md) support
  - validation layers (GAPI- and NRI- provided)
  - user provided memory allocator support
@@ -54,7 +55,6 @@ Available interfaces:
  - `NRILowLatency.h` - low latency support (aka *NVIDIA REFLEX*)
  - `NRIMeshShader.h` - mesh shaders
  - `NRIRayTracing.h` - ray tracing
- - `NRIResourceAllocator.h` - convenient creation of resources using *AMD Virtual Memory Allocator*, which get returned already bound to memory
  - `NRIStreamer.h` - a convenient way to stream data into resources
  - `NRISwapChain.h` - swap chain and related functionality
  - `NRIUpscaler.h` - a configurable collection of common upscalers (NIS, FSR, DLSS-SR, DLSS-RR)

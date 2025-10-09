@@ -41,10 +41,12 @@ Result MicromapD3D12::Create(const MicromapDesc& micromapDesc) {
 #endif
 }
 
-Result MicromapD3D12::BindMemory(Memory* memory, uint64_t offset) {
-    Result result = m_Buffer->BindMemory((MemoryD3D12*)memory, offset);
+Result MicromapD3D12::Allocate(MemoryLocation memoryLocation, float priority, bool committed) {
+    return m_Buffer->Allocate(memoryLocation, priority, committed);
+}
 
-    return result;
+Result MicromapD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
+    return m_Buffer->BindMemory(memory, offset);
 }
 
 void MicromapD3D12::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {

@@ -5,7 +5,7 @@ TextureVK::~TextureVK() {
         const auto& vk = m_Device.GetDispatchTable();
 
         if (m_VmaAllocation)
-            DestroyVma();
+            vmaDestroyImage(m_Device.GetVma(), m_Handle, m_VmaAllocation);
         else
             vk.DestroyImage(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
     }
@@ -41,8 +41,53 @@ Result TextureVK::Create(const TextureVKDesc& textureVKDesc) {
     return Result::SUCCESS;
 }
 
-VkImageAspectFlags TextureVK::GetImageAspectFlags() const {
-    return ::GetImageAspectFlags(m_Desc.format);
+Result TextureVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float priority, bool committed) {
+    CHECK(m_Handle, "Unexpected");
+
+    MemoryDesc memoryDesc = {};
+    GetMemoryDesc(memoryLocation, memoryDesc);
+
+    MemoryTypeInfo memoryTypeInfo = Unpack(memoryDesc.type);
+    if (memoryTypeInfo.mustBeDedicated)
+        committed = true;
+
+    VkMemoryRequirements memoryRequirements = {};
+    memoryRequirements.size = memoryDesc.size;
+    memoryRequirements.alignment = memoryDesc.alignment;
+    memoryRequirements.memoryTypeBits = 1 << memoryTypeInfo.index;
+
+    VmaAllocationCreateInfo allocationCreateInfo = {};
+    allocationCreateInfo.flags = VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
+    allocationCreateInfo.flags |= committed ? VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT : VMA_ALLOCATION_CREATE_CAN_ALIAS_BIT;
+    allocationCreateInfo.flags |= IsHostVisibleMemory(memoryTypeInfo.location) ? VMA_ALLOCATION_CREATE_MAPPED_BIT : 0;
+    allocationCreateInfo.priority = priority * 0.5f + 0.5f;
+    allocationCreateInfo.memoryTypeBits = 1 << memoryTypeInfo.index; // "usage, requiredFlags and preferredFlags" not needed because of this
+
+    VmaAllocationInfo allocationInfo = {};
+
+    VkResult vkResult = vmaAllocateMemory(m_Device.GetVma(), &memoryRequirements, &allocationCreateInfo, &m_VmaAllocation, &allocationInfo);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vmaAllocateMemory");
+
+    vkResult = vmaBindImageMemory(m_Device.GetVma(), m_VmaAllocation, m_Handle);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vmaBindImageMemory");
+
+    return Result::SUCCESS;
+}
+
+Result TextureVK::BindMemory(const MemoryVK& memory, uint64_t offset) {
+    CHECK(m_Handle, "Unexpected");
+    CHECK(m_OwnsNativeObjects, "Not for wrapped objects");
+
+    VkBindImageMemoryInfo bindImageMemoryInfo = {VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO};
+    bindImageMemoryInfo.image = m_Handle;
+    bindImageMemoryInfo.memory = memory.GetHandle();
+    bindImageMemoryInfo.memoryOffset = memory.GetOffset() + offset;
+
+    const auto& vk = m_Device.GetDispatchTable();
+    VkResult vkResult = vk.BindImageMemory2(m_Device, 1, &bindImageMemoryInfo);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkBindImageMemory2");
+
+    return Result::SUCCESS;
 }
 
 void TextureVK::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {
@@ -67,6 +112,10 @@ void TextureVK::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryD
         memoryDesc.type = Pack(memoryTypeInfo);
         memoryDesc.mustBeDedicated = memoryTypeInfo.mustBeDedicated;
     }
+}
+
+VkImageAspectFlags TextureVK::GetImageAspectFlags() const {
+    return ::GetImageAspectFlags(m_Desc.format);
 }
 
 NRI_INLINE void TextureVK::SetDebugName(const char* name) {

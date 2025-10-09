@@ -1,9 +1,7 @@
 // © 2021 NVIDIA Corporation
 
-Result TextureD3D11::Create(MemoryLocation memoryLocation, float priority) {
-    // Texture was already created externally
-    if (m_Texture)
-        return Result::SUCCESS;
+Result TextureD3D11::Allocate(MemoryLocation memoryLocation, float priority) {
+    CHECK(!m_Texture, "Unexpected");
 
     const DxgiFormat& dxgiFormat = GetDxgiFormat(m_Desc.format);
 

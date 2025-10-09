@@ -4,9 +4,9 @@ MicromapVK::~MicromapVK() {
     if (m_OwnsNativeObjects) {
         const auto& vk = m_Device.GetDispatchTable();
         vk.DestroyMicromapEXT(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
-
-        Destroy(m_Buffer);
     }
+
+    Destroy(m_Buffer);
 }
 
 Result MicromapVK::Create(const MicromapDesc& micromapDesc) {
@@ -43,18 +43,41 @@ Result MicromapVK::Create(const MicromapDesc& micromapDesc) {
     return m_Device.CreateImplementation<BufferVK>(m_Buffer, bufferDesc);
 }
 
-Result MicromapVK::FinishCreation() {
-    if (!m_Buffer)
-        return Result::FAILURE;
+Result MicromapVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float priority, bool committed) {
+    CHECK(m_Buffer, "Unexpected");
 
-    VkMicromapCreateInfoEXT createInfo = {VK_STRUCTURE_TYPE_MICROMAP_CREATE_INFO_EXT};
-    createInfo.type = VK_MICROMAP_TYPE_OPACITY_MICROMAP_EXT;
-    createInfo.size = m_Buffer->GetDesc().size;
-    createInfo.buffer = m_Buffer->GetHandle();
+    Result result = m_Buffer->AllocateAndBindMemory(memoryLocation, priority, committed);
+    if (result == Result::SUCCESS)
+        result = BindMemory(nullptr, 0);
 
-    const auto& vk = m_Device.GetDispatchTable();
-    VkResult vkResult = vk.CreateMicromapEXT(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateMicromapEXT");
+    return result;
+}
+
+Result MicromapVK::BindMemory(const MemoryVK* memory, uint64_t offset) {
+    CHECK(m_Buffer, "Unexpected");
+
+    // Bind memory
+    if (memory) {
+        BindBufferMemoryDesc desc = {};
+        desc.buffer = (Buffer*)m_Buffer;
+        desc.memory = (Memory*)memory;
+        desc.offset = offset;
+
+        Result result = m_Device.BindBufferMemory(&desc, 1);
+        if(result != Result::SUCCESS)
+            return result;
+    }
+
+    { // Create micromap
+        VkMicromapCreateInfoEXT createInfo = {VK_STRUCTURE_TYPE_MICROMAP_CREATE_INFO_EXT};
+        createInfo.type = VK_MICROMAP_TYPE_OPACITY_MICROMAP_EXT;
+        createInfo.size = m_Buffer->GetDesc().size;
+        createInfo.buffer = m_Buffer->GetHandle();
+
+        const auto& vk = m_Device.GetDispatchTable();
+        VkResult vkResult = vk.CreateMicromapEXT(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateMicromapEXT");
+    }
 
     return Result::SUCCESS;
 }

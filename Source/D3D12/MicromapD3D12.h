@@ -5,6 +5,7 @@
 namespace nri {
 
 struct BufferD3D12;
+struct MemoryD3D12;
 
 struct MicromapD3D12 final : public DebugNameBase {
     inline MicromapD3D12(DeviceD3D12& device)
@@ -31,8 +32,8 @@ struct MicromapD3D12 final : public DebugNameBase {
     ~MicromapD3D12();
 
     Result Create(const MicromapDesc& micromapDesc);
-    Result Create(const AllocateMicromapDesc& allocateMicromapDesc);
-    Result BindMemory(Memory* memory, uint64_t offset);
+    Result Allocate(MemoryLocation memoryLocation, float priority, bool committed);
+    Result BindMemory(const MemoryD3D12& memory, uint64_t offset);
     void GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
 
     //================================================================================================================
