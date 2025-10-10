@@ -389,6 +389,8 @@ target_compile_options(NRI_Shared
                 -fvisibility=hidden
             >
             -Wno-missing-field-initializers
+            -Wno-nullability-completeness
+            -Wno-deprecated-declarations
         >
         # Options for MSVC frontend
         $<$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>:
