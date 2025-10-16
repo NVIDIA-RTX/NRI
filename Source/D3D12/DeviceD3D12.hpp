@@ -1043,13 +1043,13 @@ void DeviceD3D12::GetResourceDesc(const BufferDesc& bufferDesc, D3D12_RESOURCE_D
 }
 
 void DeviceD3D12::GetResourceDesc(const TextureDesc& textureDesc, D3D12_RESOURCE_DESC& desc) const {
-    uint16_t blockWidth = (uint16_t)GetFormatProps(textureDesc.format).blockWidth;
+    const FormatProps& formatProps = GetFormatProps(textureDesc.format);
     const DxgiFormat& dxgiFormat = GetDxgiFormat(textureDesc.format);
 
     desc = {};
     desc.Dimension = GetResourceDimension(textureDesc.type);
-    desc.Width = Align(textureDesc.width, blockWidth);
-    desc.Height = Align(std::max(textureDesc.height, (Dim_t)1), blockWidth);
+    desc.Width = Align(textureDesc.width, formatProps.blockWidth);
+    desc.Height = Align(std::max(textureDesc.height, (Dim_t)1), formatProps.blockHeight);
     desc.DepthOrArraySize = std::max(textureDesc.type == TextureType::TEXTURE_3D ? textureDesc.depth : textureDesc.layerNum, (Dim_t)1);
     desc.MipLevels = std::max(textureDesc.mipNum, (Dim_t)1);
     desc.Format = (textureDesc.usage & TextureUsageBits::SHADING_RATE_ATTACHMENT) ? dxgiFormat.typed : dxgiFormat.typeless;
@@ -1060,6 +1060,22 @@ void DeviceD3D12::GetResourceDesc(const TextureDesc& textureDesc, D3D12_RESOURCE
     if (textureDesc.sharingMode == SharingMode::SIMULTANEOUS)
         desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS;
 
+    // "Small resource" alignment
+    // https://github.com/microsoft/DirectX-Specs/blob/master/d3d/D3D12TightPlacedResourceAlignment.md
+    bool isRTorDS = desc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+    if (!isRTorDS) {
+        uint64_t mip0size = desc.Width * desc.Height;
+        mip0size *= desc.DepthOrArraySize;
+        mip0size *= formatProps.stride;
+        mip0size /= formatProps.blockWidth;
+        mip0size /= formatProps.blockHeight;
+
+        if (mip0size <= 64 * 1024) {
+            bool isMSAA = desc.SampleDesc.Count > 1;
+            desc.Alignment = isMSAA ? D3D12_SMALL_MSAA_RESOURCE_PLACEMENT_ALIGNMENT : D3D12_SMALL_RESOURCE_PLACEMENT_ALIGNMENT;
+        }
+    }
+
 #ifdef NRI_D3D12_HAS_TIGHT_ALIGNMENT
     if (m_TightAlignmentTier > 1)
         desc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
@@ -1069,23 +1085,29 @@ void DeviceD3D12::GetResourceDesc(const TextureDesc& textureDesc, D3D12_RESOURCE
 void DeviceD3D12::GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOURCE_DESC& resourceDesc, MemoryDesc& memoryDesc) const {
     D3D12_HEAP_TYPE heapType = GetHeapType(memoryLocation);
     D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
+    bool isMSAA = resourceDesc.SampleDesc.Count > 1;
+    bool isRTorDS = resourceDesc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
     bool mustBeDedicated = false;
     if (m_Desc.tiers.memory == 0) {
         if (resourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
             heapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
-        else if (resourceDesc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)) {
+        else if (isRTorDS) {
             heapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
             mustBeDedicated = true;
         } else
             heapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
     }
 
-    if (resourceDesc.SampleDesc.Count > 1)
-        heapFlags |= HEAP_FLAG_MSAA_ALIGNMENT;
-
+    // Not "1" - "offset" is not needed (we always pass 1 resource, not an array)
+    // Not "2" - "D3D12_RESOURCE_DESC1" is not in use
+    // Not "3" - no castable formats
     D3D12_RESOURCE_ALLOCATION_INFO resourceAllocationInfo = m_Device->GetResourceAllocationInfo(NODE_MASK, 1, &resourceDesc);
     CHECK(resourceAllocationInfo.SizeInBytes != UINT64_MAX, "Invalid arg?");
+
+    // Patch for internal needs
+    if (isMSAA)
+        heapFlags |= HEAP_FLAG_MSAA_ALIGNMENT;
 
     MemoryTypeInfo memoryTypeInfo = {};
     memoryTypeInfo.heapFlags = (uint16_t)heapFlags;
