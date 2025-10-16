@@ -144,7 +144,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.328.zip
+        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.329.zip
     )
     list(APPEND DEPS vulkan_headers)
 
