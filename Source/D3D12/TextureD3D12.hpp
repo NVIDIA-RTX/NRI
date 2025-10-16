@@ -51,6 +51,7 @@ Result TextureD3D12::Allocate(MemoryLocation memoryLocation, float priority, boo
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_RESOURCE_DESC1 desc1 = {};
     m_Device.GetResourceDesc(m_Desc, (D3D12_RESOURCE_DESC&)desc1);
+    desc1.Alignment = 0; // TODO: D3D12MA naively adds "D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT" even if "Alignment" is already set (it's an error)
 
     bool isRenderableSurface = desc1.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 

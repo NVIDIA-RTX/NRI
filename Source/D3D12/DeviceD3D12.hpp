@@ -1060,26 +1060,27 @@ void DeviceD3D12::GetResourceDesc(const TextureDesc& textureDesc, D3D12_RESOURCE
     if (textureDesc.sharingMode == SharingMode::SIMULTANEOUS)
         desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS;
 
-    // "Small resource" alignment
     // https://github.com/microsoft/DirectX-Specs/blob/master/d3d/D3D12TightPlacedResourceAlignment.md
-    bool isRTorDS = desc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
-    if (!isRTorDS) {
-        uint64_t mip0size = desc.Width * desc.Height;
-        mip0size *= desc.DepthOrArraySize;
-        mip0size *= formatProps.stride;
-        mip0size /= formatProps.blockWidth;
-        mip0size /= formatProps.blockHeight;
-
-        if (mip0size <= 64 * 1024) {
-            bool isMSAA = desc.SampleDesc.Count > 1;
-            desc.Alignment = isMSAA ? D3D12_SMALL_MSAA_RESOURCE_PLACEMENT_ALIGNMENT : D3D12_SMALL_RESOURCE_PLACEMENT_ALIGNMENT;
-        }
-    }
-
 #ifdef NRI_D3D12_HAS_TIGHT_ALIGNMENT
     if (m_TightAlignmentTier > 1)
         desc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
+    else
 #endif
+    { // "Small resource" alignment
+        bool isRTorDS = desc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+        if (!isRTorDS) {
+            uint64_t mip0size = desc.Width * desc.Height;
+            mip0size *= desc.DepthOrArraySize;
+            mip0size *= formatProps.stride;
+            mip0size /= formatProps.blockWidth;
+            mip0size /= formatProps.blockHeight;
+
+            if (mip0size <= 64 * 1024) {
+                bool isMSAA = desc.SampleDesc.Count > 1;
+                desc.Alignment = isMSAA ? D3D12_SMALL_MSAA_RESOURCE_PLACEMENT_ALIGNMENT : D3D12_SMALL_RESOURCE_PLACEMENT_ALIGNMENT;
+            }
+        }
+    }
 }
 
 void DeviceD3D12::GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOURCE_DESC& resourceDesc, MemoryDesc& memoryDesc) const {
