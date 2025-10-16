@@ -82,6 +82,12 @@ static const Nri(Dim_t) NriConstant(REMAINING) = 0;     // only for "mipNum" and
 #define NriOptional // i.e. can be 0 (keep an eye on comments)
 #define NriOut      // highlights an output argument
 
+// Implicit memory heaps for "CreatePlacedX"
+#define NriDeviceHeap 0, 0
+#define NriDeviceUploadHeap 0, 1
+#define NriHostUploadHeap 0, 2
+#define NriHostReadbackHeap 0, 3
+
 //============================================================================================================================================================================================
 #pragma region [ Common ]
 //============================================================================================================================================================================================

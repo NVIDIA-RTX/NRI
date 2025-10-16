@@ -38,7 +38,7 @@ Implicit:
 #pragma once
 
 #define NRI_VERSION 176
-#define NRI_VERSION_DATE "9 October 2025"
+#define NRI_VERSION_DATE "16 October 2025"
 
 // C/C++ compatible interface (auto-selection or via "NRI_FORCE_C" macro)
 #include "NRIDescs.h"
@@ -124,13 +124,13 @@ NriStruct(CoreInterface) {
 
     // Resources and memory (D3D12 style)
     // - "Get[Resource]MemoryDesc2" requires "maintenance4" support on Vulkan
-    // - pass "memory = NULL" to create a placed resource in "DEVICE" memory using VMA (AMD Virtual Memory Allocator) implicitly
+    // - "memory, offset" pair can be replaced with a "Nri[Device/DeviceUpload/HostUpload/HostReadback]Heap" macro to create a placed resource in the corresponding memory using VMA (AMD Virtual Memory Allocator) implicitly
     void                (NRI_CALL *GetBufferMemoryDesc2)            (const NriRef(Device) device, const NriRef(BufferDesc) bufferDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "features.getMemoryDesc2"
     void                (NRI_CALL *GetTextureMemoryDesc2)           (const NriRef(Device) device, const NriRef(TextureDesc) textureDesc, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc); // requires "features.getMemoryDesc2"
     Nri(Result)         (NRI_CALL *CreateCommittedBuffer)           (NriRef(Device) device, Nri(MemoryLocation) memoryLocation, float priority, const NriRef(BufferDesc) bufferDesc, NriOut NriRef(Buffer*) buffer);
     Nri(Result)         (NRI_CALL *CreateCommittedTexture)          (NriRef(Device) device, Nri(MemoryLocation) memoryLocation, float priority, const NriRef(TextureDesc) textureDesc, NriOut NriRef(Texture*) texture);
-    Nri(Result)         (NRI_CALL *CreatePlacedBuffer)              (NriRef(Device) device, NriOptional NriPtr(Memory) memory, uint64_t offset, const NriRef(BufferDesc) bufferDesc, NriOut NriRef(Buffer*) buffer);
-    Nri(Result)         (NRI_CALL *CreatePlacedTexture)             (NriRef(Device) device, NriOptional NriPtr(Memory) memory, uint64_t offset, const NriRef(TextureDesc) textureDesc, NriOut NriRef(Texture*) texture);
+    Nri(Result)         (NRI_CALL *CreatePlacedBuffer)              (NriRef(Device) device, NriPtr(Memory) memory, uint64_t offset, const NriRef(BufferDesc) bufferDesc, NriOut NriRef(Buffer*) buffer);
+    Nri(Result)         (NRI_CALL *CreatePlacedTexture)             (NriRef(Device) device, NriPtr(Memory) memory, uint64_t offset, const NriRef(TextureDesc) textureDesc, NriOut NriRef(Texture*) texture);
 
     // Descriptor set management (entities don't require destroying)
     // - if "ALLOW_UPDATE_AFTER_SET" not used, descriptor sets (and data pointed to by descriptors) must be updated before "CmdSetDescriptorSet"

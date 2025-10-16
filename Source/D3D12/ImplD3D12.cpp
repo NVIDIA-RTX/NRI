@@ -288,7 +288,7 @@ static Result NRI_CALL CreatePlacedBuffer(Device& device, Memory* memory, uint64
     if (memory)
         result = ((BufferD3D12*)buffer)->BindMemory(*(MemoryD3D12*)memory, offset);
     else
-        result = ((BufferD3D12*)buffer)->Allocate(MemoryLocation::DEVICE, 0.0f, false);
+        result = ((BufferD3D12*)buffer)->Allocate((MemoryLocation)offset, 0.0f, false);
 
     return result;
 }
@@ -303,7 +303,7 @@ static Result NRI_CALL CreatePlacedTexture(Device& device, Memory* memory, uint6
     if (memory)
         result = ((TextureD3D12*)texture)->BindMemory(*(MemoryD3D12*)memory, offset);
     else
-        result = ((TextureD3D12*)texture)->Allocate(MemoryLocation::DEVICE, 0.0f, false);
+        result = ((TextureD3D12*)texture)->Allocate((MemoryLocation)offset, 0.0f, false);
 
     return result;
 }
@@ -1004,7 +1004,7 @@ static Result NRI_CALL CreatePlacedAccelerationStructure(Device& device, Memory*
     if (memory)
         result = ((AccelerationStructureD3D12*)accelerationStructure)->BindMemory(*(MemoryD3D12*)memory, offset);
     else
-        result = ((AccelerationStructureD3D12*)accelerationStructure)->Allocate(MemoryLocation::DEVICE, 0.0f, false);
+        result = ((AccelerationStructureD3D12*)accelerationStructure)->Allocate((MemoryLocation)offset, 0.0f, false);
 
     return result;
 }
@@ -1019,7 +1019,7 @@ static Result NRI_CALL CreatePlacedMicromap(Device& device, Memory* memory, uint
     if (memory)
         result = ((MicromapD3D12*)micromap)->BindMemory(*(MemoryD3D12*)memory, offset);
     else
-        result = ((MicromapD3D12*)micromap)->Allocate(MemoryLocation::DEVICE, 0.0f, false);
+        result = ((MicromapD3D12*)micromap)->Allocate((MemoryLocation)offset, 0.0f, false);
 
     return result;
 }
