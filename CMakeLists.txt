@@ -151,10 +151,10 @@ if(NRI_ENABLE_VK_SUPPORT)
     # Vulkan MA
     FetchContent_Declare(
         vma
-        DOWNLOAD_EXTRACT_TIMESTAMP 1
-        DOWNLOAD_NO_PROGRESS 1
+        GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+        GIT_TAG 6d36dca2c71a7f0468a129f664bc9b474da5a886
+        GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/refs/tags/v3.3.0.zip
     )
     list(APPEND DEPS vma)
 endif()
@@ -200,10 +200,10 @@ if(NRI_ENABLE_D3D12_SUPPORT)
     # D3D12 MA
     FetchContent_Declare(
         d3d12ma
-        DOWNLOAD_EXTRACT_TIMESTAMP 1
-        DOWNLOAD_NO_PROGRESS 1
+        GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
+        GIT_TAG 2ac8a9bdada39ad75210be7b6da8b2b0f61e84f5
+        GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/refs/tags/v3.0.1.zip
     )
     list(APPEND DEPS d3d12ma)
 endif()
