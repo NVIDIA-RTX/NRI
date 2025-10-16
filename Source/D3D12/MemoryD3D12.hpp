@@ -32,7 +32,7 @@ Result MemoryD3D12::Create(const AllocateMemoryDesc& allocateMemoryDesc) {
         allocationDesc.ExtraHeapFlags = m_HeapDesc.Flags;
 
         D3D12_RESOURCE_ALLOCATION_INFO allocInfo = {};
-        allocInfo.SizeInBytes = allocateMemoryDesc.size;
+        allocInfo.SizeInBytes = Align(allocateMemoryDesc.size, 64 * 1024); // TODO: alignment is a silly requirement of D3D12MA!
         allocInfo.Alignment = m_HeapDesc.Alignment;
 
         HRESULT hr = m_Device.GetVma()->AllocateMemory(&allocationDesc, &allocInfo, &m_VmaAllocation);
