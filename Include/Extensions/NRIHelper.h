@@ -80,7 +80,7 @@ NriStruct(HelperInterface) {
 };
 
 // Format utilities
-NRI_API Nri(Format) NRI_CALL nriConvertDXGIFormatToNRI(uint32_t dxgiFormat);
+NRI_API Nri(Format) NRI_CALL nriConvertDXGIFormatToNRI(uint32_t dxgiFormat); // returns best-matched typed format for "TYPELESS"
 NRI_API Nri(Format) NRI_CALL nriConvertVKFormatToNRI(uint32_t vkFormat);
 NRI_API uint32_t NRI_CALL nriConvertNRIFormatToDXGI(Nri(Format) format);
 NRI_API uint32_t NRI_CALL nriConvertNRIFormatToVK(Nri(Format) format);
