@@ -16,16 +16,16 @@ NriEnum(Message, uint8_t,
 
 // Callbacks must be thread safe
 NriStruct(AllocationCallbacks) {
-    void* (*Allocate)(void* userArg, size_t size, size_t alignment);
-    void* (*Reallocate)(void* userArg, void* memory, size_t size, size_t alignment);
-    void (*Free)(void* userArg, void* memory);
+    void* (NRI_CALL *Allocate)(void* userArg, size_t size, size_t alignment);
+    void* (NRI_CALL *Reallocate)(void* userArg, void* memory, size_t size, size_t alignment);
+    void (NRI_CALL *Free)(void* userArg, void* memory);
     void* userArg;
     bool disable3rdPartyAllocationCallbacks; // to use "AllocationCallbacks" only for NRI needs
 };
 
 NriStruct(CallbackInterface) {
-    void (*MessageCallback)(Nri(Message) messageType, const char* file, uint32_t line, const char* message, void* userArg);
-    NriOptional void (*AbortExecution)(void* userArg); // break on "Message::ERROR" if provided
+    void (NRI_CALL *MessageCallback)(Nri(Message) messageType, const char* file, uint32_t line, const char* message, void* userArg);
+    NriOptional void (NRI_CALL *AbortExecution)(void* userArg); // break on "Message::ERROR" if provided
     NriOptional void* userArg;
 };
 
