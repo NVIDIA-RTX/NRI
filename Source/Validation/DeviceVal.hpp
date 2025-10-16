@@ -15,6 +15,17 @@ static inline bool IsShaderStageValid(StageBits shaderStages, uint32_t& uniqueSh
     return n == 1 && isUnique;
 }
 
+static inline bool IsRayTracingShaderStageValid(StageBits shaderStages, StageBits allowedStages) {
+    uint32_t x = (uint32_t)(shaderStages & allowedStages);
+    uint32_t n = 0;
+    while (x) {
+        n += x & 1;
+        x >>= 1;
+    }
+
+    return n == 1;
+}
+
 static inline Dim_t GetMaxMipNum(uint16_t w, uint16_t h, uint16_t d) {
     Dim_t mipNum = 1;
 
@@ -1266,14 +1277,12 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const RayTracingPipelineDesc& rayTra
     RETURN_ON_FAILURE(this, rayTracingPipelineDesc.shaderGroupNum != 0, Result::INVALID_ARGUMENT, "'shaderGroupNum' is 0");
     RETURN_ON_FAILURE(this, rayTracingPipelineDesc.recursionMaxDepth != 0, Result::INVALID_ARGUMENT, "'recursionDepthMax' is 0");
 
-    uint32_t uniqueShaderStages = 0;
     for (uint32_t i = 0; i < rayTracingPipelineDesc.shaderLibrary->shaderNum; i++) {
         const ShaderDesc& shaderDesc = rayTracingPipelineDesc.shaderLibrary->shaders[i];
 
-        RETURN_ON_FAILURE(this, shaderDesc.bytecode != nullptr, Result::INVALID_ARGUMENT, "'shaderLibrary->shaders[%u].bytecode' is invalid", i);
+        RETURN_ON_FAILURE(this, shaderDesc.bytecode != nullptr, Result::INVALID_ARGUMENT, "'shaderLibrary->shaders[%u].bytecode' is NULL", i);
         RETURN_ON_FAILURE(this, shaderDesc.size != 0, Result::INVALID_ARGUMENT, "'shaderLibrary->shaders[%u].size' is 0", i);
-        RETURN_ON_FAILURE(this, IsShaderStageValid(shaderDesc.stage, uniqueShaderStages, StageBits::RAY_TRACING_SHADERS), Result::INVALID_ARGUMENT,
-            "'shaderLibrary->shaders[%u].stage' must include only 1 ray tracing shader stage, unique for the entire pipeline", i);
+        RETURN_ON_FAILURE(this, IsRayTracingShaderStageValid(shaderDesc.stage, StageBits::RAY_TRACING_SHADERS), Result::INVALID_ARGUMENT, "'shaderLibrary->shaders[%u].stage' must include only 1 ray tracing shader stage", i);
     }
 
     auto pipelineDescImpl = rayTracingPipelineDesc;
