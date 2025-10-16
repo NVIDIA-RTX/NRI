@@ -255,8 +255,8 @@ static Result NRI_CALL CreateCommittedTexture(Device& device, MemoryLocation mem
     return result;
 }
 
-static Result NRI_CALL CreatePlacedBuffer(Device& device, Memory* memory, uint64_t, const BufferDesc& bufferDesc, Buffer*& buffer) {
-    MemoryLocation memoryLocation = MemoryLocation::DEVICE;
+static Result NRI_CALL CreatePlacedBuffer(Device& device, Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer) {
+    MemoryLocation memoryLocation = (MemoryLocation)offset;
     float priority = 0.0f;
     if (memory) {
         memoryLocation = ((MemoryD3D11*)memory)->GetLocation();
@@ -266,8 +266,8 @@ static Result NRI_CALL CreatePlacedBuffer(Device& device, Memory* memory, uint64
     return CreateCommittedBuffer(device, memoryLocation, priority, bufferDesc, buffer);
 }
 
-static Result NRI_CALL CreatePlacedTexture(Device& device, Memory* memory, uint64_t, const TextureDesc& textureDesc, Texture*& texture) {
-    MemoryLocation memoryLocation = MemoryLocation::DEVICE;
+static Result NRI_CALL CreatePlacedTexture(Device& device, Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture) {
+    MemoryLocation memoryLocation = (MemoryLocation)offset;
     float priority = 0.0f;
     if (memory) {
         memoryLocation = ((MemoryD3D11*)memory)->GetLocation();
