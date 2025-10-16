@@ -396,6 +396,15 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 }
 
 HRESULT DeviceD3D12::CreateVma() {
+    uint32_t flags = (IsMemoryZeroInitializationEnabled() ? 0 : D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED)
+        // NRI uses "tight alignment" under the hood
+        | D3D12MA::ALLOCATOR_FLAG_DONT_PREFER_SMALL_BUFFERS_COMMITTED
+        // TODO: the doc says "you should always use this flag", but D3D12MA could do better :(
+        // The presence of this flag can trigger a "wrong alignment" issue if a "Memory" is created via "AllocateMemory(useVMA = true)" and a big MSAA texture gets placed into it
+        // | D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED
+        // TODO: currently broken on D3D12MA side. Most likely not needed at all, because NRI passes proper "alignment" and "tight alignment" flag
+        | D3D12MA::ALLOCATOR_FLAG_DONT_USE_TIGHT_ALIGNMENT;
+
     D3D12MA::ALLOCATION_CALLBACKS allocationCallbacks = {};
     allocationCallbacks.pPrivateData = (void*)&GetAllocationCallbacks();
     allocationCallbacks.pAllocate = vmaAllocate;
@@ -404,11 +413,8 @@ HRESULT DeviceD3D12::CreateVma() {
     D3D12MA::ALLOCATOR_DESC allocatorDesc = {};
     allocatorDesc.pDevice = m_Device;
     allocatorDesc.pAdapter = m_Adapter;
-    allocatorDesc.Flags = (D3D12MA::ALLOCATOR_FLAGS)(D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED | D3D12MA::ALLOCATOR_FLAG_DONT_PREFER_SMALL_BUFFERS_COMMITTED);
+    allocatorDesc.Flags = (D3D12MA::ALLOCATOR_FLAGS)flags;
     allocatorDesc.PreferredBlockSize = VMA_PREFERRED_BLOCK_SIZE;
-
-    if (!IsMemoryZeroInitializationEnabled())
-        allocatorDesc.Flags = (D3D12MA::ALLOCATOR_FLAGS)(allocatorDesc.Flags | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED);
 
     if (!GetAllocationCallbacks().disable3rdPartyAllocationCallbacks)
         allocatorDesc.pAllocationCallbacks = &allocationCallbacks;
