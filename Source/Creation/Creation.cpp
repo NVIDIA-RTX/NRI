@@ -587,15 +587,18 @@ NRI_API void NRI_CALL nriAnnotation(const char* name, uint32_t bgra) {
 #    endif
 
 NRI_API void NRI_CALL nriSetThreadName(const char* name) {
+    uint64_t tid = 0;
 #    if (defined __linux__)
-    nvtxNameOsThreadA(syscall(SYS_gettid), name);
+    tid = syscall(SYS_gettid);
 #    elif (defined __APPLE__)
-    nvtxNameOsThreadA(syscall(SYS_thread_selfid), name);
+    pthread_threadid_np(nullptr, &tid);
 #    elif (defined __ANDROID__)
-    nvtxNameOsThreadA(gettid(), name);
+    tid = gettid();
 #    elif (defined _WIN64)
-    nvtxNameOsThreadA(GetCurrentThreadId(), name);
+    tid = GetCurrentThreadId();
 #    endif
+
+    nvtxNameOsThreadA((uint32_t)tid, name);
 }
 
 #else
