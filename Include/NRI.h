@@ -112,6 +112,7 @@ NriStruct(CoreInterface) {
     //  - create a resource (buffer or texture)
     //  - use "Get[Resource]MemoryDesc" to get "MemoryDesc" ("usageBits" and "MemoryLocation" affect returned "MemoryType")
     //  - (optional) group returned "MemoryDesc"s by "MemoryType", but don't group if "mustBeDedicated = true"
+    //  - (optional) sort returned "MemoryDesc"s by alignment
     //  - call "AllocateMemory" (even if "mustBeDedicated = true")
     //  - call "Bind[Resource]Memory" to bind resources to "Memory" objects
     //  - (optional) "CalculateAllocationNumber" and "AllocateAndBindMemory" from "NRIHelper" interface simplify this process for buffers and textures

@@ -1,5 +1,7 @@
 // © 2021 NVIDIA Corporation
 
+#include <algorithm>
+
 // Helper data upload
 constexpr uint32_t BARRIERS_PER_PASS = 256;
 constexpr uint64_t MAX_UPLOAD_BUFFER_SIZE = 64 * 1024 * 1024;
@@ -458,7 +460,7 @@ Result HelperDeviceMemoryAllocator::TryToAllocateAndBindMemory(const ResourceGro
     if (result != Result::SUCCESS)
         return result;
 
-    result = m_iCore.BindBufferMemory( m_BufferBindingDescs.data(), (uint32_t)m_BufferBindingDescs.size());
+    result = m_iCore.BindBufferMemory(m_BufferBindingDescs.data(), (uint32_t)m_BufferBindingDescs.size());
     if (result != Result::SUCCESS)
         return result;
 
@@ -510,7 +512,7 @@ Result HelperDeviceMemoryAllocator::ProcessDedicatedResources(MemoryLocation mem
     return Result::SUCCESS;
 }
 
-HelperDeviceMemoryAllocator::MemoryHeap& HelperDeviceMemoryAllocator::FindOrCreateHeap(MemoryDesc& memoryDesc, uint64_t preferredMemorySize) {
+HelperDeviceMemoryAllocator::MemoryHeap& HelperDeviceMemoryAllocator::FindOrCreateHeap(const MemoryDesc& memoryDesc, uint64_t preferredMemorySize) {
     if (preferredMemorySize == 0)
         preferredMemorySize = 256 * 1024 * 1024;
 
@@ -532,11 +534,62 @@ HelperDeviceMemoryAllocator::MemoryHeap& HelperDeviceMemoryAllocator::FindOrCrea
 }
 
 void HelperDeviceMemoryAllocator::GroupByMemoryType(MemoryLocation memoryLocation, const ResourceGroupDesc& resourceGroupDesc) {
+    struct BufferAndMemoryDesc {
+        Buffer* buffer;
+        MemoryDesc memoryDesc;
+    };
+
+    struct TextureAndMemoryDesc {
+        Texture* texture;
+        MemoryDesc memoryDesc;
+    };
+
+    // Copy to temp memory
+    Scratch<BufferAndMemoryDesc> buffers = AllocateScratch((DeviceBase&)m_Device, BufferAndMemoryDesc, resourceGroupDesc.bufferNum);
     for (uint32_t i = 0; i < resourceGroupDesc.bufferNum; i++) {
         Buffer* buffer = resourceGroupDesc.buffers[i];
 
-        MemoryDesc memoryDesc = {};
-        m_iCore.GetBufferMemoryDesc(*buffer, memoryLocation, memoryDesc);
+        buffers[i].buffer = buffer;
+        m_iCore.GetBufferMemoryDesc(*buffer, memoryLocation, buffers[i].memoryDesc);
+    }
+
+    Scratch<TextureAndMemoryDesc> textures = AllocateScratch((DeviceBase&)m_Device, TextureAndMemoryDesc, resourceGroupDesc.textureNum);
+    for (uint32_t i = 0; i < resourceGroupDesc.textureNum; i++) {
+        Texture* texture = resourceGroupDesc.textures[i];
+
+        textures[i].texture = texture;
+        m_iCore.GetTextureMemoryDesc(*texture, memoryLocation, textures[i].memoryDesc);
+    }
+
+    // Sort by "alignment"
+    if (resourceGroupDesc.bufferNum > 1) {
+        std::sort(&buffers[0], &buffers[resourceGroupDesc.bufferNum - 1],
+            [](const BufferAndMemoryDesc& a, const BufferAndMemoryDesc& b) -> bool {
+                // Primary key: group by type
+                if (a.memoryDesc.type != b.memoryDesc.type)
+                    return a.memoryDesc.type < b.memoryDesc.type;
+
+                // Secondary key: smallest to largest alignment
+                return a.memoryDesc.alignment < b.memoryDesc.alignment;
+            });
+    }
+
+    if (resourceGroupDesc.textureNum > 1) {
+        std::sort(&textures[0], &textures[resourceGroupDesc.textureNum - 1],
+            [](const TextureAndMemoryDesc& a, const TextureAndMemoryDesc& b) -> bool {
+                // Primary key: group by type
+                if (a.memoryDesc.type != b.memoryDesc.type)
+                    return a.memoryDesc.type < b.memoryDesc.type;
+
+                // Secondary key: smallest to largest alignment
+                return a.memoryDesc.alignment < b.memoryDesc.alignment;
+            });
+    }
+
+    // Linearly assign memory
+    for (uint32_t i = 0; i < resourceGroupDesc.bufferNum; i++) {
+        Buffer* buffer = buffers[i].buffer;
+        const MemoryDesc& memoryDesc = buffers[i].memoryDesc;
 
         if (memoryDesc.mustBeDedicated)
             m_DedicatedBuffers.push_back(buffer);
@@ -552,10 +605,8 @@ void HelperDeviceMemoryAllocator::GroupByMemoryType(MemoryLocation memoryLocatio
     }
 
     for (uint32_t i = 0; i < resourceGroupDesc.textureNum; i++) {
-        Texture* texture = resourceGroupDesc.textures[i];
-
-        MemoryDesc memoryDesc = {};
-        m_iCore.GetTextureMemoryDesc(*texture, memoryLocation, memoryDesc);
+        Texture* texture = textures[i].texture;
+        const MemoryDesc& memoryDesc = textures[i].memoryDesc;
 
         if (memoryDesc.mustBeDedicated)
             m_DedicatedTextures.push_back(texture);
