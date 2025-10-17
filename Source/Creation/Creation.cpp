@@ -47,9 +47,7 @@ constexpr std::array<const char*, (size_t)Message::MAX_NUM> g_messageTypes = {
 };
 VALIDATE_ARRAY_BY_PTR(g_messageTypes);
 
-static void MessageCallback(Message messageType, const char* file, uint32_t line, const char* message, void* userArg) {
-    MaybeUnused(userArg);
-
+static void NRI_CALL MessageCallback(Message messageType, const char* file, uint32_t line, const char* message, void*) {
     const char* messageTypeName = g_messageTypes[(size_t)messageType];
 
     char buf[MAX_MESSAGE_LENGTH];
@@ -61,15 +59,73 @@ static void MessageCallback(Message messageType, const char* file, uint32_t line
 #endif
 }
 
-static void AbortExecution(void* userArg) {
-    MaybeUnused(userArg);
-
+static void NRI_CALL AbortExecution(void*) {
 #ifdef _WIN32
     DebugBreak();
 #else
     raise(SIGTRAP);
 #endif
 }
+
+#ifdef _WIN32
+
+static void* NRI_CALL AlignedMalloc(void*, size_t size, size_t alignment) {
+    return _aligned_malloc(size, alignment);
+}
+
+static void* NRI_CALL AlignedRealloc(void*, void* memory, size_t size, size_t alignment) {
+    return _aligned_realloc(memory, size, alignment);
+}
+
+static void NRI_CALL AlignedFree(void*, void* memory) {
+    _aligned_free(memory);
+}
+
+#elif (defined(__linux__) || defined(__APPLE__))
+
+static void* NRI_CALL AlignedMalloc(void*, size_t size, size_t alignment) {
+    uint8_t* memory = (uint8_t*)malloc(size + sizeof(uint8_t*) + alignment - 1);
+    if (!memory)
+        return nullptr;
+
+    uint8_t* alignedMemory = Align(memory + sizeof(uint8_t*), alignment);
+    uint8_t** memoryHeader = (uint8_t**)alignedMemory - 1;
+    *memoryHeader = memory;
+
+    return alignedMemory;
+}
+
+static void* NRI_CALL AlignedRealloc(void* userArg, void* memory, size_t size, size_t alignment) {
+    if (!memory)
+        return AlignedMalloc(userArg, size, alignment);
+
+    uint8_t** memoryHeader = (uint8_t**)memory - 1;
+    uint8_t* oldMemory = *memoryHeader;
+
+    uint8_t* newMemory = (uint8_t*)realloc(oldMemory, size + sizeof(uint8_t*) + alignment - 1);
+    if (!newMemory)
+        return nullptr;
+
+    if (newMemory == oldMemory)
+        return memory;
+
+    uint8_t* alignedMemory = Align(newMemory + sizeof(uint8_t*), alignment);
+    memoryHeader = (uint8_t**)alignedMemory - 1;
+    *memoryHeader = newMemory;
+
+    return alignedMemory;
+}
+
+static void NRI_CALL AlignedFree(void*, void* memory) {
+    if (!memory)
+        return;
+
+    uint8_t** memoryHeader = (uint8_t**)memory - 1;
+    uint8_t* oldMemory = *memoryHeader;
+    free(oldMemory);
+}
+
+#endif
 
 static void CheckAndSetDefaultCallbacks(DeviceCreationDesc& deviceCreationDesc) {
     if (!deviceCreationDesc.callbackInterface.MessageCallback)
@@ -78,7 +134,11 @@ static void CheckAndSetDefaultCallbacks(DeviceCreationDesc& deviceCreationDesc) 
     if (!deviceCreationDesc.callbackInterface.AbortExecution)
         deviceCreationDesc.callbackInterface.AbortExecution = AbortExecution;
 
-    CheckAndSetDefaultAllocator(deviceCreationDesc.allocationCallbacks);
+    if (!deviceCreationDesc.allocationCallbacks.Allocate || !deviceCreationDesc.allocationCallbacks.Reallocate || !deviceCreationDesc.allocationCallbacks.Free) {
+        deviceCreationDesc.allocationCallbacks.Allocate = AlignedMalloc;
+        deviceCreationDesc.allocationCallbacks.Reallocate = AlignedRealloc;
+        deviceCreationDesc.allocationCallbacks.Free = AlignedFree;
+    }
 }
 
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT || NRI_ENABLE_VK_SUPPORT)

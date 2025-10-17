@@ -2,9 +2,6 @@
 
 #pragma once
 
-template <typename U, typename T>
-using Map = std::map<U, T, std::less<U>, StdAllocator<std::pair<const U, T>>>;
-
 namespace nri {
 
 struct HelperDataUpload {

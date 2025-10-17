@@ -339,7 +339,6 @@ set(SHARED_SOURCE
     "Source/Shared/SharedExternal.h"
     "Source/Shared/SharedExternal.hpp"
     "Source/Shared/SharedLibrary.hpp"
-    "Source/Shared/StdAllocator.h"
     "Source/Shared/StreamerInterface.h"
     "Source/Shared/StreamerInterface.hpp"
     "Source/Shared/UpscalerInterface.h"

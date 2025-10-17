@@ -2,18 +2,20 @@
 
 #pragma once
 
-#include <array>
-#include <cassert>
-#include <cinttypes>
-#include <cstddef>
+#include <cassert>   // assert
+#include <cinttypes> // PRIu64
 #include <cstring>
+#include <numeric> // lcm
+
+#include <array>
 #include <map>
-#include <numeric>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
 #    include <dxgi1_6.h>
 #else
-#    include <cstdint>
 typedef uint32_t DXGI_FORMAT;
 #endif
 
@@ -153,8 +155,122 @@ constexpr void MaybeUnused([[maybe_unused]] const Args&... args) {
 }
 
 // Allocator
+#ifdef _WIN32
+#    include <malloc.h>
+#elif defined(__linux__) || defined(__APPLE__)
+#    include <alloca.h>
+#    include <cstdlib>
+#endif
+
 typedef nri::AllocationCallbacks AllocationCallbacks;
-#include "StdAllocator.h"
+
+template <typename T>
+struct StdAllocator {
+    typedef T value_type;
+    typedef size_t size_type;
+    typedef ptrdiff_t difference_type;
+    typedef std::true_type propagate_on_container_move_assignment;
+    typedef std::false_type is_always_equal;
+
+    StdAllocator(const AllocationCallbacks& allocationCallbacks)
+        : m_Interface(allocationCallbacks) {
+    }
+
+    StdAllocator(const StdAllocator<T>& allocator)
+        : m_Interface(allocator.GetInterface()) {
+    }
+
+    template <class U>
+    StdAllocator(const StdAllocator<U>& allocator)
+        : m_Interface(allocator.GetInterface()) {
+    }
+
+    StdAllocator<T>& operator=(const StdAllocator<T>& allocator) {
+        m_Interface = allocator.GetInterface();
+        return *this;
+    }
+
+    T* allocate(size_t n) noexcept {
+        return (T*)m_Interface.Allocate(m_Interface.userArg, n * sizeof(T), alignof(T));
+    }
+
+    void deallocate(T* memory, size_t) noexcept {
+        m_Interface.Free(m_Interface.userArg, memory);
+    }
+
+    const AllocationCallbacks& GetInterface() const {
+        return m_Interface;
+    }
+
+    template <typename U>
+    using other = StdAllocator<U>;
+
+private:
+    const AllocationCallbacks& m_Interface = {}; // IMPORTANT: yes, it's a pointer to the real location (DeviceBase)
+};
+
+template <typename T>
+bool operator==(const StdAllocator<T>& left, const StdAllocator<T>& right) {
+    return left.GetInterface() == right.GetInterface();
+}
+
+template <typename T>
+bool operator!=(const StdAllocator<T>& left, const StdAllocator<T>& right) {
+    return !operator==(left, right);
+}
+
+// Types with "StdAllocator"
+template <typename T>
+using Vector = std::vector<T, StdAllocator<T>>;
+
+template <typename U, typename T>
+using UnorderedMap = std::unordered_map<U, T, std::hash<U>, std::equal_to<U>, StdAllocator<std::pair<const U, T>>>;
+
+template <typename U, typename T>
+using Map = std::map<U, T, std::less<U>, StdAllocator<std::pair<const U, T>>>;
+
+using String = std::basic_string<char, std::char_traits<char>, StdAllocator<char>>;
+
+// Scratch
+constexpr size_t MAX_STACK_ALLOC_SIZE = 32 * 1024;
+
+template <typename T>
+class Scratch {
+public:
+    Scratch(const AllocationCallbacks& allocator, T* mem, size_t num)
+        : m_Allocator(allocator)
+        , m_Mem(mem)
+        , m_Num(num) {
+        m_IsHeap = (num * sizeof(T) + alignof(T)) > MAX_STACK_ALLOC_SIZE;
+    }
+
+    ~Scratch() {
+        if (m_IsHeap)
+            m_Allocator.Free(m_Allocator.userArg, m_Mem);
+    }
+
+    inline operator T*() const {
+        return m_Mem;
+    }
+
+    inline T& operator[](size_t i) const {
+        assert(i < m_Num);
+        return m_Mem[i];
+    }
+
+private:
+    const AllocationCallbacks& m_Allocator;
+    T* m_Mem = nullptr;
+    size_t m_Num = 0;
+    bool m_IsHeap = false;
+};
+
+#define AllocateScratch(device, T, elementNum) \
+    {(device).GetAllocationCallbacks(), \
+        ((elementNum) * sizeof(T) + alignof(T)) > MAX_STACK_ALLOC_SIZE \
+            ? (T*)(device).GetAllocationCallbacks().Allocate((device).GetAllocationCallbacks().userArg, (elementNum) * sizeof(T), alignof(T)) \
+            : (T*)Align((elementNum) ? (T*)alloca(((elementNum) * sizeof(T) + alignof(T))) : nullptr, alignof(T)), \
+        (elementNum)}
 
 // Base classes
 #include "DeviceBase.h"
