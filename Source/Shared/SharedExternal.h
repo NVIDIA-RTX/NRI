@@ -155,8 +155,6 @@ constexpr void MaybeUnused([[maybe_unused]] const Args&... args) {
 }
 
 // Allocator
-typedef nri::AllocationCallbacks AllocationCallbacks;
-
 template <typename T>
 struct StdAllocator {
     typedef T value_type;
@@ -165,7 +163,7 @@ struct StdAllocator {
     typedef std::true_type propagate_on_container_move_assignment;
     typedef std::false_type is_always_equal;
 
-    StdAllocator(const AllocationCallbacks& allocationCallbacks)
+    StdAllocator(const nri::AllocationCallbacks& allocationCallbacks)
         : m_Interface(allocationCallbacks) {
     }
 
@@ -191,7 +189,7 @@ struct StdAllocator {
         m_Interface.Free(m_Interface.userArg, memory);
     }
 
-    const AllocationCallbacks& GetInterface() const {
+    const nri::AllocationCallbacks& GetInterface() const {
         return m_Interface;
     }
 
@@ -199,7 +197,7 @@ struct StdAllocator {
     using other = StdAllocator<U>;
 
 private:
-    const AllocationCallbacks& m_Interface = {}; // IMPORTANT: yes, it's a pointer to the real location (DeviceBase)
+    const nri::AllocationCallbacks& m_Interface = {}; // IMPORTANT: yes, it's a pointer to the real location (DeviceBase)
 };
 
 template <typename T>
@@ -234,7 +232,7 @@ constexpr size_t MAX_STACK_ALLOC_SIZE = 32 * 1024;
 template <typename T>
 class Scratch {
 public:
-    Scratch(const AllocationCallbacks& allocator, T* mem, size_t num)
+    Scratch(const nri::AllocationCallbacks& allocator, T* mem, size_t num)
         : m_Allocator(allocator)
         , m_Mem(mem)
         , m_Num(num) {
@@ -256,7 +254,7 @@ public:
     }
 
 private:
-    const AllocationCallbacks& m_Allocator;
+    const nri::AllocationCallbacks& m_Allocator;
     T* m_Mem = nullptr;
     size_t m_Num = 0;
     bool m_IsHeap = false;
