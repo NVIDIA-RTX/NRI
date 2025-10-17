@@ -397,11 +397,13 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
 HRESULT DeviceD3D12::CreateVma() {
     uint32_t flags = (IsMemoryZeroInitializationEnabled() ? 0 : D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED)
+#ifdef NRI_D3D12_HAS_TIGHT_ALIGNMENT
         // NRI uses "tight alignment" under the hood
         | D3D12MA::ALLOCATOR_FLAG_DONT_PREFER_SMALL_BUFFERS_COMMITTED
+#endif
         // TODO: the doc says "you should always use this flag", but D3D12MA could do better and respect "heap alignment" in "D3D12MA::AllocateMemory"
         // The presence of this flag can trigger a "wrong alignment" issue if a "Memory" is created via "AllocateMemory(useVMA = true)" and a big MSAA texture gets placed into it.
-        // "D3D12MA::ALLOCATION_FLAG_COMMITTED" could be applied on an allocation inside "AllocateMemory", but it ruins the idea using VMA for "AllocateMemory"
+        // "D3D12MA::ALLOCATION_FLAG_COMMITTED" could be applied on an allocation inside "AllocateMemory", but it ruins the idea of using VMA for "AllocateMemory"
         // | D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED
         // TODO: currently broken on D3D12MA side. Most likely not needed at all, because NRI passes proper "alignment" and "tight alignment" flag
         | D3D12MA::ALLOCATOR_FLAG_DONT_USE_TIGHT_ALIGNMENT;
