@@ -4,8 +4,8 @@
 
 #include <cassert>   // assert
 #include <cinttypes> // PRIu64
-#include <cstring>
-#include <numeric> // lcm
+#include <cstdlib>   // malloc
+#include <numeric>   // lcm
 
 #include <array>
 #include <map>
@@ -155,13 +155,6 @@ constexpr void MaybeUnused([[maybe_unused]] const Args&... args) {
 }
 
 // Allocator
-#ifdef _WIN32
-#    include <malloc.h>
-#elif defined(__linux__) || defined(__APPLE__)
-#    include <alloca.h>
-#    include <cstdlib>
-#endif
-
 typedef nri::AllocationCallbacks AllocationCallbacks;
 
 template <typename T>
@@ -232,6 +225,10 @@ using Map = std::map<U, T, std::less<U>, StdAllocator<std::pair<const U, T>>>;
 using String = std::basic_string<char, std::char_traits<char>, StdAllocator<char>>;
 
 // Scratch
+#ifndef _WIN32
+#    include <alloca.h>
+#endif
+
 constexpr size_t MAX_STACK_ALLOC_SIZE = 32 * 1024;
 
 template <typename T>
