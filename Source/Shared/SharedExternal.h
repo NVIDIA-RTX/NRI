@@ -5,6 +5,7 @@
 #include <cassert>   // assert
 #include <cinttypes> // PRIu64
 #include <cstdlib>   // malloc
+#include <cstring>   // memcpy
 #include <numeric>   // lcm
 
 #include <array>
