@@ -4,6 +4,7 @@
 #    include <windows.h> // OutputDebugStringA
 #else
 #    include <csignal> // raise
+#    include <cstdlib> // malloc
 #endif
 
 #if NRI_ENABLE_NVTX_SUPPORT
@@ -81,7 +82,7 @@ static void NRI_CALL AlignedFree(void*, void* memory) {
     _aligned_free(memory);
 }
 
-#elif (defined(__linux__) || defined(__APPLE__))
+#else
 
 static void* NRI_CALL AlignedMalloc(void*, size_t size, size_t alignment) {
     uint8_t* memory = (uint8_t*)malloc(size + sizeof(uint8_t*) + alignment - 1);
