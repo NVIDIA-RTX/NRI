@@ -102,16 +102,8 @@ void TextureVK::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryD
     const auto& vk = m_Device.GetDispatchTable();
     vk.GetImageMemoryRequirements2(m_Device, &imageMemoryRequirements, &requirements);
 
-    MemoryTypeInfo memoryTypeInfo = {};
-    memoryTypeInfo.mustBeDedicated = dedicatedRequirements.prefersDedicatedAllocation;
-
     memoryDesc = {};
-    if (m_Device.GetMemoryTypeInfo(memoryLocation, requirements.memoryRequirements.memoryTypeBits, memoryTypeInfo)) {
-        memoryDesc.size = requirements.memoryRequirements.size;
-        memoryDesc.alignment = (uint32_t)requirements.memoryRequirements.alignment;
-        memoryDesc.type = Pack(memoryTypeInfo);
-        memoryDesc.mustBeDedicated = memoryTypeInfo.mustBeDedicated;
-    }
+    m_Device.GetMemoryDesc(memoryLocation, requirements.memoryRequirements, dedicatedRequirements, memoryDesc);
 }
 
 VkImageAspectFlags TextureVK::GetImageAspectFlags() const {

@@ -1200,16 +1200,8 @@ void DeviceVK::GetMemoryDesc2(const BufferDesc& bufferDesc, MemoryLocation memor
     const auto& vk = GetDispatchTable();
     vk.GetDeviceBufferMemoryRequirements(m_Device, &bufferMemoryRequirements, &requirements);
 
-    MemoryTypeInfo memoryTypeInfo = {};
-    memoryTypeInfo.mustBeDedicated = dedicatedRequirements.prefersDedicatedAllocation;
-
     memoryDesc = {};
-    if (GetMemoryTypeInfo(memoryLocation, requirements.memoryRequirements.memoryTypeBits, memoryTypeInfo)) {
-        memoryDesc.size = requirements.memoryRequirements.size;
-        memoryDesc.alignment = (uint32_t)requirements.memoryRequirements.alignment;
-        memoryDesc.type = Pack(memoryTypeInfo);
-        memoryDesc.mustBeDedicated = memoryTypeInfo.mustBeDedicated;
-    }
+    GetMemoryDesc(memoryLocation, requirements.memoryRequirements, dedicatedRequirements, memoryDesc);
 }
 
 void DeviceVK::GetMemoryDesc2(const TextureDesc& textureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {
@@ -1227,16 +1219,8 @@ void DeviceVK::GetMemoryDesc2(const TextureDesc& textureDesc, MemoryLocation mem
     const auto& vk = GetDispatchTable();
     vk.GetDeviceImageMemoryRequirements(m_Device, &imageMemoryRequirements, &requirements);
 
-    MemoryTypeInfo memoryTypeInfo = {};
-    memoryTypeInfo.mustBeDedicated = dedicatedRequirements.prefersDedicatedAllocation;
-
     memoryDesc = {};
-    if (GetMemoryTypeInfo(memoryLocation, requirements.memoryRequirements.memoryTypeBits, memoryTypeInfo)) {
-        memoryDesc.size = requirements.memoryRequirements.size;
-        memoryDesc.alignment = (uint32_t)requirements.memoryRequirements.alignment;
-        memoryDesc.type = Pack(memoryTypeInfo);
-        memoryDesc.mustBeDedicated = memoryTypeInfo.mustBeDedicated;
-    }
+    GetMemoryDesc(memoryLocation, requirements.memoryRequirements, dedicatedRequirements, memoryDesc);
 }
 
 void DeviceVK::GetMemoryDesc2(const AccelerationStructureDesc& accelerationStructureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
@@ -1261,11 +1245,10 @@ void DeviceVK::GetMemoryDesc2(const MicromapDesc& micromapDesc, MemoryLocation m
     GetMemoryDesc2(bufferDesc, memoryLocation, memoryDesc);
 }
 
-bool DeviceVK::GetMemoryTypeInfo(MemoryLocation memoryLocation, uint32_t memoryTypeMask, MemoryTypeInfo& memoryTypeInfo) const {
+bool DeviceVK::GetMemoryDesc(MemoryLocation memoryLocation, const VkMemoryRequirements& memoryRequirements, const VkMemoryDedicatedRequirements& memoryDedicatedRequirements, MemoryDesc& memoryDesc) const {
     VkMemoryPropertyFlags neededFlags = 0;    // must have
     VkMemoryPropertyFlags undesiredFlags = 0; // have higher priority than desired
     VkMemoryPropertyFlags desiredFlags = 0;   // nice to have
-
     if (memoryLocation == MemoryLocation::DEVICE) {
         neededFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
         undesiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
@@ -1279,59 +1262,38 @@ bool DeviceVK::GetMemoryTypeInfo(MemoryLocation memoryLocation, uint32_t memoryT
         desiredFlags = (memoryLocation == MemoryLocation::HOST_READBACK ? VK_MEMORY_PROPERTY_HOST_CACHED_BIT : 0) | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     }
 
-    // Phase 1: needed, undesired and desired
-    for (uint32_t i = 0; i < m_MemoryProps.memoryTypeCount; i++) {
-        bool isSupported = memoryTypeMask & (1 << i);
-        bool hasNeededFlags = (m_MemoryProps.memoryTypes[i].propertyFlags & neededFlags) == neededFlags;
-        bool hasUndesiredFlags = undesiredFlags == 0 ? false : (m_MemoryProps.memoryTypes[i].propertyFlags & undesiredFlags) == undesiredFlags;
-        bool hasDesiredFlags = (m_MemoryProps.memoryTypes[i].propertyFlags & desiredFlags) == desiredFlags;
+    memoryDesc = {};
 
-        if (isSupported && hasNeededFlags && !hasUndesiredFlags && hasDesiredFlags) {
-            memoryTypeInfo.index = (MemoryTypeIndex)i;
-            memoryTypeInfo.location = memoryLocation;
+    for (uint32_t phase = 0; phase < 4; phase++) {
+        for (uint32_t i = 0; i < m_MemoryProps.memoryTypeCount; i++) {
+            bool isSupported = memoryRequirements.memoryTypeBits & (1 << i);
+            bool hasNeededFlags = (m_MemoryProps.memoryTypes[i].propertyFlags & neededFlags) == neededFlags;
+            bool hasUndesiredFlags = undesiredFlags == 0 ? false : (m_MemoryProps.memoryTypes[i].propertyFlags & undesiredFlags) == undesiredFlags;
+            bool hasDesiredFlags = (m_MemoryProps.memoryTypes[i].propertyFlags & desiredFlags) == desiredFlags;
 
-            return true;
-        }
-    }
+            bool isOK = isSupported && hasNeededFlags; // phase 3 - only needed
+            if (phase == 0)
+                isOK = isOK && !hasUndesiredFlags && hasDesiredFlags; // phase 0 - needed, undesired and desired
+            else if (phase == 1)
+                isOK = isOK && !hasUndesiredFlags; // phase 1 - needed, undesired
+            else if (phase == 2)
+                isOK = isOK && hasDesiredFlags; // phase 2 - needed and desired
 
-    // Phase 2: needed and undesired
-    for (uint32_t i = 0; i < m_MemoryProps.memoryTypeCount; i++) {
-        bool isSupported = memoryTypeMask & (1 << i);
-        bool hasNeededFlags = (m_MemoryProps.memoryTypes[i].propertyFlags & neededFlags) == neededFlags;
-        bool hasUndesiredFlags = undesiredFlags == 0 ? false : (m_MemoryProps.memoryTypes[i].propertyFlags & undesiredFlags) == undesiredFlags;
+            if (isOK) {
+                MemoryTypeInfo memoryTypeInfo = {};
+                memoryTypeInfo.index = (MemoryTypeIndex)i;
+                memoryTypeInfo.location = memoryLocation;
 
-        if (isSupported && hasNeededFlags && !hasUndesiredFlags) {
-            memoryTypeInfo.index = (MemoryTypeIndex)i;
-            memoryTypeInfo.location = memoryLocation;
+                // "prefersDedicatedAllocation" seems to be "too soft" making more allocations "dedicated", "requiresDedicatedAllocation" better matches D3D12
+                memoryTypeInfo.mustBeDedicated = memoryDedicatedRequirements.requiresDedicatedAllocation;
 
-            return true;
-        }
-    }
+                memoryDesc.size = memoryRequirements.size;
+                memoryDesc.alignment = (uint32_t)memoryRequirements.alignment;
+                memoryDesc.type = Pack(memoryTypeInfo);
+                memoryDesc.mustBeDedicated = memoryTypeInfo.mustBeDedicated;
 
-    // Phase 3: needed and desired
-    for (uint32_t i = 0; i < m_MemoryProps.memoryTypeCount; i++) {
-        bool isSupported = memoryTypeMask & (1 << i);
-        bool hasNeededFlags = (m_MemoryProps.memoryTypes[i].propertyFlags & neededFlags) == neededFlags;
-        bool hasDesiredFlags = (m_MemoryProps.memoryTypes[i].propertyFlags & desiredFlags) == desiredFlags;
-
-        if (isSupported && hasNeededFlags && hasDesiredFlags) {
-            memoryTypeInfo.index = (MemoryTypeIndex)i;
-            memoryTypeInfo.location = memoryLocation;
-
-            return true;
-        }
-    }
-
-    // Phase 4: only needed
-    for (uint32_t i = 0; i < m_MemoryProps.memoryTypeCount; i++) {
-        bool isSupported = memoryTypeMask & (1 << i);
-        bool hasNeededFlags = (m_MemoryProps.memoryTypes[i].propertyFlags & neededFlags) == neededFlags;
-
-        if (isSupported && hasNeededFlags) {
-            memoryTypeInfo.index = (MemoryTypeIndex)i;
-            memoryTypeInfo.location = memoryLocation;
-
-            return true;
+                return true;
+            }
         }
     }
 

@@ -89,12 +89,16 @@ Result BufferVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float prio
     return Result::SUCCESS;
 }
 
-Result BufferVK::BindMemory(const MemoryVK& memory, uint64_t offset, bool bindMemory) {
+Result BufferVK::BindMemory(MemoryVK& memory, uint64_t offset, bool bindMemory) {
     CHECK(m_Handle, "Unexpected");
     CHECK(m_OwnsNativeObjects, "Not for wrapped objects");
 
     // Bind memory
     if (bindMemory) {
+        MemoryTypeInfo memoryTypeInfo = Unpack(memory.GetType());
+        if (memoryTypeInfo.mustBeDedicated)
+            memory.CreateDedicated(this, nullptr);
+
         VkBindBufferMemoryInfo bindBufferMemoryInfo = {VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO};
         bindBufferMemoryInfo.buffer = m_Handle;
         bindBufferMemoryInfo.memory = memory.GetHandle();
@@ -146,16 +150,8 @@ void BufferVK::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDe
         requirements.memoryRequirements.alignment = std::max(requirements.memoryRequirements.alignment, scratchBufferOffset);
     }
 
-    MemoryTypeInfo memoryTypeInfo = {};
-    memoryTypeInfo.mustBeDedicated = dedicatedRequirements.prefersDedicatedAllocation;
-
     memoryDesc = {};
-    if (m_Device.GetMemoryTypeInfo(memoryLocation, requirements.memoryRequirements.memoryTypeBits, memoryTypeInfo)) {
-        memoryDesc.size = requirements.memoryRequirements.size;
-        memoryDesc.alignment = (uint32_t)requirements.memoryRequirements.alignment;
-        memoryDesc.type = Pack(memoryTypeInfo);
-        memoryDesc.mustBeDedicated = memoryTypeInfo.mustBeDedicated;
-    }
+    m_Device.GetMemoryDesc(memoryLocation, requirements.memoryRequirements, dedicatedRequirements, memoryDesc);
 }
 
 NRI_INLINE void BufferVK::SetDebugName(const char* name) {

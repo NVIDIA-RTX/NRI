@@ -32,7 +32,7 @@ struct BufferVK final : public DebugNameBase {
     Result Create(const BufferDesc& bufferDesc);
     Result Create(const BufferVKDesc& bufferVKDesc);
     Result AllocateAndBindMemory(MemoryLocation memoryLocation, float priority, bool committed);
-    Result BindMemory(const MemoryVK& memory, uint64_t offset, bool bindMemory);
+    Result BindMemory(MemoryVK& memory, uint64_t offset, bool bindMemory);
     void GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
 
     //================================================================================================================
