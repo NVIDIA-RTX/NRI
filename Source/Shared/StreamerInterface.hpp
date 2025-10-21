@@ -22,9 +22,8 @@ bool StreamerImpl::Grow() {
         m_GarbageInFlight.push_back({m_DynamicBuffer, 0});
 
     // Create a new dynamic buffer
-    BufferDesc bufferDesc = {};
+    BufferDesc bufferDesc = m_Desc.dynamicBufferDesc;
     bufferDesc.size = m_DynamicBufferSizePerFrame * m_Desc.queuedFrameNum;
-    bufferDesc.usage = m_Desc.dynamicBufferUsageBits;
 
     Result result = m_iCore.CreateCommittedBuffer(m_Device, m_Desc.dynamicBufferMemoryLocation, 0.0f, bufferDesc, m_DynamicBuffer);
 

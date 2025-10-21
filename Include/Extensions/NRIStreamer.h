@@ -27,7 +27,7 @@ NriStruct(StreamerDesc) {
 
     // Dynamically (re)allocated ring-buffer for copying and rendering
     Nri(MemoryLocation) dynamicBufferMemoryLocation;    // UPLOAD or DEVICE_UPLOAD
-    Nri(BufferUsageBits) dynamicBufferUsageBits;
+    Nri(BufferDesc) dynamicBufferDesc;                  // "size" is ignored
     uint32_t queuedFrameNum;                            // number of frames "in-flight" (usually 1-3), adds 1 under the hood for the current "not-yet-committed" frame
 };
 
