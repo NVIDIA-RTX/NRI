@@ -381,6 +381,7 @@ target_compile_definitions(NRI_Shared
 target_compile_options(NRI_Shared
     PUBLIC
         # Options for Clang/GCC compilers
+        # No "nullability-completeness" caused by VMA
         $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
             $<$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:
                 -Wextra
@@ -388,6 +389,7 @@ target_compile_options(NRI_Shared
                 -fvisibility=hidden
             >
             -Wno-missing-field-initializers
+            -Wno-nullability-completeness
         >
         # Options for MSVC frontend
         $<$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>:

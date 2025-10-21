@@ -8,7 +8,6 @@
 #    pragma clang diagnostic push
 #    pragma clang diagnostic ignored "-Wunused-variable"
 #    pragma clang diagnostic ignored "-Wunused-parameter"
-#    pragma clang diagnostic ignored "-Wnullability-completeness"
 #elif defined(_MSC_VER)
 #    pragma warning(push)           // applicable to Clang in MSVC environment
 #    pragma warning(disable : 4100) // unreferenced formal parameter
