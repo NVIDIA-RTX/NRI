@@ -44,7 +44,7 @@ struct BufferVal final : public ObjectVal {
     void Unmap();
 
 private:
-    BufferDesc m_Desc = {}; // (only for) .natvis
+    BufferDesc m_Desc = {}; // .natvis
     MemoryVal* m_Memory = nullptr;
     bool m_IsBoundToMemory = false;
     bool m_IsMapped = false;

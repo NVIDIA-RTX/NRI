@@ -790,8 +790,8 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
                 out = {};
                 out.SyncBefore = GetBarrierSyncFlags(in.before.stages, in.before.access);
                 out.SyncAfter = GetBarrierSyncFlags(in.after.stages, in.after.access);
-                out.AccessBefore = in.before.layout == Layout::PRESENT ? D3D12_BARRIER_ACCESS_COMMON : GetBarrierAccessFlags(in.before.access);
-                out.AccessAfter = in.after.layout == Layout::PRESENT ? D3D12_BARRIER_ACCESS_COMMON : GetBarrierAccessFlags(in.after.access);
+                out.AccessBefore = GetBarrierAccessFlags(in.before.access);
+                out.AccessAfter = GetBarrierAccessFlags(in.after.access);
                 out.LayoutBefore = GetBarrierLayout(in.before.layout);
                 out.LayoutAfter = GetBarrierLayout(in.after.layout);
                 out.pResource = texture;

@@ -118,77 +118,7 @@ constexpr const char* GetDescriptorTypeName(DescriptorType descriptorType) {
     return g_descriptorTypeNames[(uint32_t)descriptorType];
 }
 
-constexpr bool IsAccessMaskSupported(BufferUsageBits usage, AccessBits accessMask) {
-    bool isSupported = true;
-    if (accessMask & AccessBits::INDEX_BUFFER)
-        isSupported = isSupported && (usage & BufferUsageBits::INDEX_BUFFER) != 0;
-    if (accessMask & AccessBits::VERTEX_BUFFER)
-        isSupported = isSupported && (usage & BufferUsageBits::VERTEX_BUFFER) != 0;
-    if (accessMask & AccessBits::CONSTANT_BUFFER)
-        isSupported = isSupported && (usage & BufferUsageBits::CONSTANT_BUFFER) != 0;
-    if (accessMask & AccessBits::ARGUMENT_BUFFER)
-        isSupported = isSupported && (usage & BufferUsageBits::ARGUMENT_BUFFER) != 0;
-    if (accessMask & AccessBits::SCRATCH_BUFFER)
-        isSupported = isSupported && (usage & BufferUsageBits::SCRATCH_BUFFER) != 0;
-    if (accessMask & (AccessBits::COLOR_ATTACHMENT | AccessBits::SHADING_RATE_ATTACHMENT | AccessBits::DEPTH_STENCIL_ATTACHMENT_READ | AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE))
-        isSupported = false;
-    if (accessMask & (AccessBits::ACCELERATION_STRUCTURE_READ | AccessBits::ACCELERATION_STRUCTURE_WRITE))
-        isSupported = isSupported && (usage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE) != 0;
-    if (accessMask & (AccessBits::MICROMAP_READ | AccessBits::MICROMAP_WRITE))
-        isSupported = isSupported && (usage & BufferUsageBits::MICROMAP_STORAGE) != 0;
-    if (accessMask & AccessBits::SHADER_BINDING_TABLE)
-        isSupported = isSupported && (usage & BufferUsageBits::SHADER_BINDING_TABLE) != 0;
-    if (accessMask & AccessBits::SHADER_RESOURCE)
-        isSupported = isSupported && (usage & (BufferUsageBits::SHADER_RESOURCE | BufferUsageBits::ACCELERATION_STRUCTURE_BUILD_INPUT)) != 0;
-    if (accessMask & AccessBits::SHADER_RESOURCE_STORAGE)
-        isSupported = isSupported && (usage & BufferUsageBits::SHADER_RESOURCE_STORAGE) != 0;
-    if (accessMask & (AccessBits::RESOLVE_SOURCE | AccessBits::RESOLVE_DESTINATION))
-        isSupported = false;
-
-    return isSupported;
-}
-
-constexpr bool IsAccessMaskSupported(TextureUsageBits usage, AccessBits accessMask) {
-    bool isSupported = true;
-    if (accessMask & (AccessBits::INDEX_BUFFER | AccessBits::VERTEX_BUFFER | AccessBits::CONSTANT_BUFFER | AccessBits::ARGUMENT_BUFFER | AccessBits::SCRATCH_BUFFER))
-        isSupported = false;
-    if (accessMask & AccessBits::COLOR_ATTACHMENT)
-        isSupported = isSupported && (usage & TextureUsageBits::COLOR_ATTACHMENT) != 0;
-    if (accessMask & AccessBits::SHADING_RATE_ATTACHMENT)
-        isSupported = isSupported && (usage & TextureUsageBits::SHADING_RATE_ATTACHMENT) != 0;
-    if (accessMask & (AccessBits::DEPTH_STENCIL_ATTACHMENT_READ | AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE))
-        isSupported = isSupported && (usage & TextureUsageBits::DEPTH_STENCIL_ATTACHMENT) != 0;
-    if (accessMask & (AccessBits::ACCELERATION_STRUCTURE_READ | AccessBits::ACCELERATION_STRUCTURE_WRITE))
-        isSupported = false;
-    if (accessMask & (AccessBits::MICROMAP_READ | AccessBits::MICROMAP_WRITE))
-        isSupported = false;
-    if (accessMask & AccessBits::SHADER_BINDING_TABLE)
-        isSupported = false;
-    if (accessMask & AccessBits::SHADER_RESOURCE)
-        isSupported = isSupported && (usage & TextureUsageBits::SHADER_RESOURCE) != 0;
-    if (accessMask & (AccessBits::SHADER_RESOURCE_STORAGE | AccessBits::CLEAR_STORAGE))
-        isSupported = isSupported && (usage & TextureUsageBits::SHADER_RESOURCE_STORAGE) != 0;
-
-    return isSupported;
-}
-
-constexpr bool IsTextureLayoutSupported(TextureUsageBits usage, Layout layout) {
-    if (layout == Layout::COLOR_ATTACHMENT)
-        return (usage & TextureUsageBits::COLOR_ATTACHMENT) != 0;
-    if (layout == Layout::SHADING_RATE_ATTACHMENT)
-        return (usage & TextureUsageBits::SHADING_RATE_ATTACHMENT) != 0;
-    if (layout == Layout::DEPTH_STENCIL_ATTACHMENT || layout == Layout::DEPTH_STENCIL_READONLY)
-        return (usage & TextureUsageBits::DEPTH_STENCIL_ATTACHMENT) != 0;
-    if (layout == Layout::SHADER_RESOURCE)
-        return (usage & TextureUsageBits::SHADER_RESOURCE) != 0;
-    if (layout == Layout::SHADER_RESOURCE_STORAGE)
-        return (usage & TextureUsageBits::SHADER_RESOURCE_STORAGE) != 0;
-
-    return true;
-}
-
 void ConvertBotomLevelGeometries(const BottomLevelGeometryDesc* geometries, uint32_t geometryNum, BottomLevelGeometryDesc*& outGeometries, BottomLevelMicromapDesc*& outMicromaps);
-
 QueryType GetQueryTypeVK(uint32_t queryTypeVK);
 
 } // namespace nri

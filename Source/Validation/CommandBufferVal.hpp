@@ -1,13 +1,86 @@
 // © 2021 NVIDIA Corporation
 
+static inline bool IsAccessMaskSupported(const BufferDesc& bufferDesc, AccessBits accessMask) {
+    bool isSupported = true;
+    if (accessMask & AccessBits::INDEX_BUFFER)
+        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::INDEX_BUFFER) != 0;
+    if (accessMask & AccessBits::VERTEX_BUFFER)
+        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::VERTEX_BUFFER) != 0;
+    if (accessMask & AccessBits::CONSTANT_BUFFER)
+        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::CONSTANT_BUFFER) != 0;
+    if (accessMask & AccessBits::ARGUMENT_BUFFER)
+        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::ARGUMENT_BUFFER) != 0;
+    if (accessMask & AccessBits::SCRATCH_BUFFER)
+        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::SCRATCH_BUFFER) != 0;
+    if (accessMask & (AccessBits::COLOR_ATTACHMENT | AccessBits::SHADING_RATE_ATTACHMENT | AccessBits::DEPTH_STENCIL_ATTACHMENT_READ | AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE))
+        isSupported = false;
+    if (accessMask & (AccessBits::ACCELERATION_STRUCTURE_READ | AccessBits::ACCELERATION_STRUCTURE_WRITE))
+        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE) != 0;
+    if (accessMask & (AccessBits::MICROMAP_READ | AccessBits::MICROMAP_WRITE))
+        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::MICROMAP_STORAGE) != 0;
+    if (accessMask & AccessBits::SHADER_BINDING_TABLE)
+        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::SHADER_BINDING_TABLE) != 0;
+    if (accessMask & AccessBits::SHADER_RESOURCE)
+        isSupported = isSupported && (bufferDesc.usage & (BufferUsageBits::SHADER_RESOURCE | BufferUsageBits::ACCELERATION_STRUCTURE_BUILD_INPUT)) != 0;
+    if (accessMask & AccessBits::SHADER_RESOURCE_STORAGE)
+        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::SHADER_RESOURCE_STORAGE) != 0;
+    if (accessMask & (AccessBits::RESOLVE_SOURCE | AccessBits::RESOLVE_DESTINATION))
+        isSupported = false;
+
+    return isSupported;
+}
+
+static inline bool IsAccessMaskSupported(const TextureDesc& textureDesc, AccessBits accessMask) {
+    bool isSupported = true;
+    if (accessMask & (AccessBits::INDEX_BUFFER | AccessBits::VERTEX_BUFFER | AccessBits::CONSTANT_BUFFER | AccessBits::ARGUMENT_BUFFER | AccessBits::SCRATCH_BUFFER))
+        isSupported = false;
+    if (accessMask & AccessBits::COLOR_ATTACHMENT)
+        isSupported = isSupported && (textureDesc.usage & TextureUsageBits::COLOR_ATTACHMENT) != 0;
+    if (accessMask & AccessBits::SHADING_RATE_ATTACHMENT)
+        isSupported = isSupported && (textureDesc.usage & TextureUsageBits::SHADING_RATE_ATTACHMENT) != 0;
+    if (accessMask & (AccessBits::DEPTH_STENCIL_ATTACHMENT_READ | AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE))
+        isSupported = isSupported && (textureDesc.usage & TextureUsageBits::DEPTH_STENCIL_ATTACHMENT) != 0;
+    if (accessMask & (AccessBits::ACCELERATION_STRUCTURE_READ | AccessBits::ACCELERATION_STRUCTURE_WRITE))
+        isSupported = false;
+    if (accessMask & (AccessBits::MICROMAP_READ | AccessBits::MICROMAP_WRITE))
+        isSupported = false;
+    if (accessMask & AccessBits::SHADER_BINDING_TABLE)
+        isSupported = false;
+    if (accessMask & AccessBits::SHADER_RESOURCE)
+        isSupported = isSupported && (textureDesc.usage & TextureUsageBits::SHADER_RESOURCE) != 0;
+    if (accessMask & (AccessBits::SHADER_RESOURCE_STORAGE | AccessBits::CLEAR_STORAGE))
+        isSupported = isSupported && (textureDesc.usage & TextureUsageBits::SHADER_RESOURCE_STORAGE) != 0;
+
+    return isSupported;
+}
+
+static inline bool IsTextureLayoutSupported(const TextureDesc& textureDesc, Layout layout) {
+    if (layout == Layout::COLOR_ATTACHMENT)
+        return (textureDesc.usage & TextureUsageBits::COLOR_ATTACHMENT) != 0;
+    else if (layout == Layout::SHADING_RATE_ATTACHMENT)
+        return (textureDesc.usage & TextureUsageBits::SHADING_RATE_ATTACHMENT) != 0;
+    else if (layout == Layout::DEPTH_STENCIL_ATTACHMENT || layout == Layout::DEPTH_STENCIL_READONLY)
+        return (textureDesc.usage & TextureUsageBits::DEPTH_STENCIL_ATTACHMENT) != 0;
+    else if (layout == Layout::SHADER_RESOURCE)
+        return (textureDesc.usage & TextureUsageBits::SHADER_RESOURCE) != 0;
+    else if (layout == Layout::SHADER_RESOURCE_STORAGE)
+        return (textureDesc.usage & TextureUsageBits::SHADER_RESOURCE_STORAGE) != 0;
+    else if (layout == Layout::RESOLVE_DESTINATION)
+        return textureDesc.sampleNum <= 1;
+    else if (layout == Layout::RESOLVE_SOURCE)
+        return textureDesc.sampleNum > 1;
+
+    return true;
+}
+
 static bool ValidateBufferBarrierDesc(const DeviceVal& device, uint32_t i, const BufferBarrierDesc& bufferBarrier) {
     const BufferVal& bufferVal = *(const BufferVal*)bufferBarrier.buffer;
 
-    RETURN_ON_FAILURE(&device, bufferBarrier.buffer != nullptr, false, "'bufferBarrier.buffers[%u].buffer' is NULL", i);
-    RETURN_ON_FAILURE(&device, IsAccessMaskSupported(bufferVal.GetDesc().usage, bufferBarrier.before.access), false,
-        "'bufferBarrier.buffers[%u].before' is not supported by the usage mask of the buffer ('%s')", i, bufferVal.GetDebugName());
-    RETURN_ON_FAILURE(&device, IsAccessMaskSupported(bufferVal.GetDesc().usage, bufferBarrier.after.access), false,
-        "'bufferBarrier.buffers[%u].after' is not supported by the usage mask of the buffer ('%s')", i, bufferVal.GetDebugName());
+    RETURN_ON_FAILURE(&device, bufferBarrier.buffer, false, "'barrierDesc.buffers[%u].buffer' is NULL", i);
+    RETURN_ON_FAILURE(&device, IsAccessMaskSupported(bufferVal.GetDesc(), bufferBarrier.before.access), false,
+        "'barrierDesc.buffers[%u].before.access' is not supported by the usage mask of the buffer ('%s')", i, bufferVal.GetDebugName());
+    RETURN_ON_FAILURE(&device, IsAccessMaskSupported(bufferVal.GetDesc(), bufferBarrier.after.access), false,
+        "'barrierDesc.buffers[%u].after.access' is not supported by the usage mask of the buffer ('%s')", i, bufferVal.GetDebugName());
 
     return true;
 }
@@ -15,15 +88,19 @@ static bool ValidateBufferBarrierDesc(const DeviceVal& device, uint32_t i, const
 static bool ValidateTextureBarrierDesc(const DeviceVal& device, uint32_t i, const TextureBarrierDesc& textureBarrier) {
     const TextureVal& textureVal = *(const TextureVal*)textureBarrier.texture;
 
-    RETURN_ON_FAILURE(&device, textureBarrier.texture != nullptr, false, "'bufferBarrier.textures[%u].texture' is NULL", i);
-    RETURN_ON_FAILURE(&device, IsAccessMaskSupported(textureVal.GetDesc().usage, textureBarrier.before.access), false,
-        "'bufferBarrier.textures[%u].before' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
-    RETURN_ON_FAILURE(&device, IsAccessMaskSupported(textureVal.GetDesc().usage, textureBarrier.after.access), false,
-        "'bufferBarrier.textures[%u].after' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
-    RETURN_ON_FAILURE(&device, IsTextureLayoutSupported(textureVal.GetDesc().usage, textureBarrier.before.layout), false,
-        "'bufferBarrier.textures[%u].prevLayout' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
-    RETURN_ON_FAILURE(&device, IsTextureLayoutSupported(textureVal.GetDesc().usage, textureBarrier.after.layout), false,
-        "'bufferBarrier.textures[%u].nextLayout' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
+    RETURN_ON_FAILURE(&device, textureBarrier.texture, false, "'barrierDesc.textures[%u].texture' is NULL", i);
+    RETURN_ON_FAILURE(&device, IsAccessMaskSupported(textureVal.GetDesc(), textureBarrier.before.access), false,
+        "'barrierDesc.textures[%u].before.access' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
+    RETURN_ON_FAILURE(&device, IsAccessMaskSupported(textureVal.GetDesc(), textureBarrier.after.access), false,
+        "'barrierDesc.textures[%u].after.access' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
+    RETURN_ON_FAILURE(&device, IsTextureLayoutSupported(textureVal.GetDesc(), textureBarrier.before.layout), false,
+        "'barrierDesc.textures[%u].before.layout' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
+    RETURN_ON_FAILURE(&device, IsTextureLayoutSupported(textureVal.GetDesc(), textureBarrier.after.layout), false,
+        "'barrierDesc.textures[%u].after.layout' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
+    if (textureBarrier.after.layout == Layout::PRESENT) {
+        RETURN_ON_FAILURE(&device, textureBarrier.after.access == AccessBits::NONE && textureBarrier.after.stages == StageBits::NONE, false,
+            "'barrierDesc.textures[%u].after.layout = Layout::PRESENT' for texture ('%s') expects 'AccessBits::NONE' and 'StageBits::NONE'", i, textureVal.GetDebugName());
+    }
 
     return true;
 }

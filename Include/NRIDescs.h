@@ -470,7 +470,7 @@ NriEnum(Layout, uint8_t,    // Compatible "AccessBits":
     // Special
     UNDEFINED,                  // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_layout_undefined
     GENERAL,                    // ~ALL access, but potentially not optimal (required for "SharingMode::SIMULTANEOUS")
-    PRESENT,                    // NONE
+    PRESENT,                    // NONE (use "after.stages = StageBits::NONE")
 
     // Access specific
     COLOR_ATTACHMENT,           // COLOR_ATTACHMENT
@@ -1674,11 +1674,11 @@ NriStruct(DeviceDesc) {
         uint32_t samplerAllocationMaxNum;
         uint32_t constantBufferMaxRange;
         uint32_t storageBufferMaxRange;
-        uint32_t bufferTextureGranularity;
+        uint32_t bufferTextureGranularity; // specifies a page-like granularity at which linear and non-linear resources must be placed in adjacent memory locations to avoid aliasing
         uint64_t bufferMaxSize;
     } memory;
 
-    // Memory alignment
+    // Memory alignment requirements
     struct {
         uint32_t uploadBufferTextureRow;
         uint32_t uploadBufferTextureSlice;

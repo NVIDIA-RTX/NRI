@@ -37,7 +37,7 @@ struct TextureVal final : public ObjectVal {
     }
 
 private:
-    TextureDesc m_Desc = {}; // (only for) .natvis
+    TextureDesc m_Desc = {}; // .natvis
     MemoryVal* m_Memory = nullptr;
     bool m_IsBoundToMemory = false;
 };
