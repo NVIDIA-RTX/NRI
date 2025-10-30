@@ -191,39 +191,4 @@ static inline Nri(PipelineLayoutSettingsDesc) NriFunc(FitPipelineLayoutSettingsI
     return modifiedPipelineLayoutLimitsDesc;
 }
 
-// Deprecated
-static inline Nri(TextureBarrierDesc) NriFunc(TextureBarrierFromUnknown)(NriPtr(Texture) texture,
-    Nri(AccessLayoutStage) after,
-    Nri(Dim_t) mipOffset NriDefault(0),
-    Nri(Dim_t) mipNum NriDefault(Nri(REMAINING)),
-    Nri(Dim_t) layerOffset NriDefault(0),
-    Nri(Dim_t) layerNum NriDefault(Nri(REMAINING)))
-{
-    Nri(TextureBarrierDesc) textureBarrier = NriZero;
-    textureBarrier.texture = texture;
-    textureBarrier.before.access = NriScopedMember(AccessBits, NONE);
-    textureBarrier.before.layout = NriScopedMember(Layout, UNDEFINED);
-    textureBarrier.before.stages = NriScopedMember(StageBits, ALL);
-    textureBarrier.after = after;
-    textureBarrier.mipOffset = mipOffset;
-    textureBarrier.mipNum = mipNum;
-    textureBarrier.layerOffset = layerOffset;
-    textureBarrier.layerNum = layerNum;
-
-    return textureBarrier;
-}
-
-static inline Nri(TextureBarrierDesc) NriFunc(TextureBarrierFromState)(NriRef(TextureBarrierDesc) prevState,
-    Nri(AccessLayoutStage) after,
-    Nri(Dim_t) mipOffset NriDefault(0),
-    Nri(Dim_t) mipNum NriDefault(Nri(REMAINING)))
-{
-    NriDeref(prevState)->mipOffset = mipOffset;
-    NriDeref(prevState)->mipNum = mipNum;
-    NriDeref(prevState)->before = NriDeref(prevState)->after;
-    NriDeref(prevState)->after = after;
-
-    return *NriDeref(prevState);
-}
-
 NriNamespaceEnd
