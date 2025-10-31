@@ -648,10 +648,18 @@ NriStruct(AllocateMemoryDesc) {
     // https://registry.khronos.org/vulkan/specs/latest/man/html/VkMemoryPriorityAllocateInfoEXT.html
     float priority; // [-1; 1]: low < 0, normal = 0, high > 0
 
-    // Memory allocation goes through "AMD Virtual Memory Allocator" (most likely a sub-allocation from a larger allocation)
-    // https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
-    // https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator
-    bool useVMA;
+    // Memory allocation goes through "AMD Virtual Memory Allocator"
+    //  - most likely a sub-allocation from a larger allocation
+    //  - alignment is the maximum of all "memoryDesc.alignment" values for all resources bound to this allocation
+    //  - https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+    //  - https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator
+    struct {
+        bool enable;
+        NriOptional uint32_t alignment; // by default worst-case alignment applied
+    } vma;
+
+    // If "false", may reduce alignment requirements
+    bool allowMultisampleTextures;
 };
 
 // Binding resources to a memory (resources can overlap, i.e. alias)
@@ -1670,12 +1678,15 @@ NriStruct(DeviceDesc) {
     // Memory
     struct {
         uint64_t deviceUploadHeapSize; // ReBAR
+        uint64_t bufferMaxSize;
+        uint64_t allocationMaxSize;
         uint32_t allocationMaxNum;
         uint32_t samplerAllocationMaxNum;
         uint32_t constantBufferMaxRange;
         uint32_t storageBufferMaxRange;
         uint32_t bufferTextureGranularity; // specifies a page-like granularity at which linear and non-linear resources must be placed in adjacent memory locations to avoid aliasing
-        uint64_t bufferMaxSize;
+        uint32_t alignmentDefault; // (INTERNAL) worst-case alignment for a memory allocation respecting all possible placed resources, excluding multisample textures
+        uint32_t alignmentMultisample; // (INTERNAL) worst-case alignment for a memory allocation respecting all possible placed resources, including multisample textures
     } memory;
 
     // Memory alignment requirements

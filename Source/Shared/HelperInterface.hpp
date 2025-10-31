@@ -94,7 +94,6 @@ Result HelperDataUpload::UploadData(const TextureUploadDesc* textureUploadDescs,
     m_iCore.DestroyCommandAllocator(m_CommandAllocator);
     m_iCore.DestroyFence(m_Fence);
     m_iCore.DestroyBuffer(m_UploadBuffer);
-    m_iCore.FreeMemory(m_UploadBufferMemory);
 
     return result;
 }
@@ -151,24 +150,7 @@ Result HelperDataUpload::Create(const TextureUploadDesc* textureUploadDescs, uin
         BufferDesc bufferDesc = {};
         bufferDesc.size = m_UploadBufferSize;
 
-        Result result = m_iCore.CreateBuffer(m_Device, bufferDesc, m_UploadBuffer);
-        if (result != Result::SUCCESS)
-            return result;
-
-        MemoryDesc memoryDesc = {};
-        m_iCore.GetBufferMemoryDesc(*m_UploadBuffer, MemoryLocation::HOST_UPLOAD, memoryDesc);
-
-        AllocateMemoryDesc allocateMemoryDesc = {};
-        allocateMemoryDesc.type = memoryDesc.type;
-        allocateMemoryDesc.size = memoryDesc.size;
-
-        result = m_iCore.AllocateMemory(m_Device, allocateMemoryDesc, m_UploadBufferMemory);
-        if (result != Result::SUCCESS)
-            return result;
-
-        BindBufferMemoryDesc bufferMemoryBindingDesc = {m_UploadBuffer, m_UploadBufferMemory, 0};
-
-        result = m_iCore.BindBufferMemory(&bufferMemoryBindingDesc, 1);
+        Result result = m_iCore.CreateCommittedBuffer(m_Device, MemoryLocation::HOST_UPLOAD, 0.0f, bufferDesc, m_UploadBuffer);
         if (result != Result::SUCCESS)
             return result;
     }
@@ -442,9 +424,19 @@ Result HelperDeviceMemoryAllocator::TryToAllocateAndBindMemory(const ResourceGro
     for (MemoryHeap& heap : m_Heaps) {
         Memory*& memory = allocations[allocationNum];
 
+        bool hasMultisampleTextures = false;
+        for (Texture* texture : heap.textures) {
+            const TextureDesc& textureDesc = m_iCore.GetTextureDesc(*texture);
+            if (textureDesc.sampleNum > 1) {
+                hasMultisampleTextures = true;
+                break;
+            }
+        }
+
         AllocateMemoryDesc allocateMemoryDesc = {};
         allocateMemoryDesc.type = heap.type;
         allocateMemoryDesc.size = heap.size;
+        allocateMemoryDesc.allowMultisampleTextures = hasMultisampleTextures;
 
         Result result = m_iCore.AllocateMemory(m_Device, allocateMemoryDesc, memory);
         if (result != Result::SUCCESS)
@@ -516,21 +508,17 @@ HelperDeviceMemoryAllocator::MemoryHeap& HelperDeviceMemoryAllocator::FindOrCrea
     if (preferredMemorySize == 0)
         preferredMemorySize = 256 * 1024 * 1024;
 
-    size_t j = 0;
-    for (; j < m_Heaps.size(); j++) {
-        const MemoryHeap& heap = m_Heaps[j];
-
+    for (MemoryHeap& heap : m_Heaps) {
         uint64_t offset = Align(heap.size, memoryDesc.alignment);
         uint64_t newSize = offset + memoryDesc.size;
 
         if (heap.type == memoryDesc.type && newSize <= preferredMemorySize)
-            break;
+            return heap;
     }
 
-    if (j == m_Heaps.size())
-        m_Heaps.push_back(MemoryHeap(memoryDesc.type, ((DeviceBase&)m_Device).GetStdAllocator()));
+    m_Heaps.push_back(MemoryHeap(memoryDesc.type, ((DeviceBase&)m_Device).GetStdAllocator()));
 
-    return m_Heaps[j];
+    return m_Heaps.back();
 }
 
 void HelperDeviceMemoryAllocator::GroupByMemoryType(MemoryLocation memoryLocation, const ResourceGroupDesc& resourceGroupDesc) {

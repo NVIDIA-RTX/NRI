@@ -386,12 +386,15 @@ void DeviceD3D11::FillDesc() {
     m_Desc.precision.subTexelBits = D3D11_SUBTEXEL_FRACTIONAL_BIT_COUNT;
     m_Desc.precision.mipmapBits = D3D11_MIP_LOD_FRACTIONAL_BIT_COUNT;
 
-    m_Desc.memory.allocationMaxNum = (uint32_t)(-1);
+    m_Desc.memory.bufferMaxSize = D3D11_REQ_RESOURCE_SIZE_IN_MEGABYTES_EXPRESSION_C_TERM * 1024ull * 1024ull;
+    m_Desc.memory.allocationMaxSize = 0xFFFFFFFF;
+    m_Desc.memory.allocationMaxNum = 0xFFFFFFFF;
     m_Desc.memory.samplerAllocationMaxNum = D3D11_REQ_SAMPLER_OBJECT_COUNT_PER_DEVICE;
     m_Desc.memory.constantBufferMaxRange = D3D11_REQ_IMMEDIATE_CONSTANT_BUFFER_ELEMENT_COUNT * 16;
     m_Desc.memory.storageBufferMaxRange = 1 << D3D11_REQ_BUFFER_RESOURCE_TEXEL_COUNT_2_TO_EXP;
     m_Desc.memory.bufferTextureGranularity = 1;
-    m_Desc.memory.bufferMaxSize = D3D11_REQ_RESOURCE_SIZE_IN_MEGABYTES_EXPRESSION_C_TERM * 1024ull * 1024ull;
+    m_Desc.memory.alignmentDefault = 1;
+    m_Desc.memory.alignmentMultisample = 1;
 
     m_Desc.memoryAlignment.uploadBufferTextureRow = 256;   // D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
     m_Desc.memoryAlignment.uploadBufferTextureSlice = 512; // D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;

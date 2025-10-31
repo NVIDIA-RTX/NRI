@@ -2,9 +2,8 @@
 
 Result MemoryD3D12::Create(const AllocateMemoryDesc& allocateMemoryDesc) {
     MemoryTypeInfo memoryTypeInfo = Unpack(allocateMemoryDesc.type);
-    bool isMsaaAlignmentNeeded = (memoryTypeInfo.heapFlags & HEAP_FLAG_MSAA_ALIGNMENT) != 0;
 
-    D3D12_HEAP_FLAGS heapFlags = (D3D12_HEAP_FLAGS)(memoryTypeInfo.heapFlags & ~HEAP_FLAG_MSAA_ALIGNMENT);
+    D3D12_HEAP_FLAGS heapFlags = (D3D12_HEAP_FLAGS)memoryTypeInfo.heapFlags;
     if (!m_Device.IsMemoryZeroInitializationEnabled())
         heapFlags |= D3D12_HEAP_FLAG_CREATE_NOT_ZEROED;
 
@@ -14,7 +13,7 @@ Result MemoryD3D12::Create(const AllocateMemoryDesc& allocateMemoryDesc) {
     m_HeapDesc.Properties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
     m_HeapDesc.Properties.CreationNodeMask = NODE_MASK;
     m_HeapDesc.Properties.VisibleNodeMask = NODE_MASK;
-    m_HeapDesc.Alignment = isMsaaAlignmentNeeded ? D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT : D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+    m_HeapDesc.Alignment = allocateMemoryDesc.allowMultisampleTextures ? D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT : D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
     m_HeapDesc.Flags = allocateMemoryDesc.size ? heapFlags : D3D12_HEAP_FLAG_NONE;
 
     m_Priority = allocateMemoryDesc.priority;
@@ -23,7 +22,7 @@ Result MemoryD3D12::Create(const AllocateMemoryDesc& allocateMemoryDesc) {
     if (memoryTypeInfo.mustBeDedicated)
         return Result::SUCCESS;
 
-    if (allocateMemoryDesc.useVMA) { // TODO: no residency priority, because a custom pool is needed
+    if (allocateMemoryDesc.vma.enable) { // TODO: no residency priority, because a custom pool is needed
         uint32_t flags = D3D12MA::ALLOCATION_FLAG_STRATEGY_MIN_MEMORY | D3D12MA::ALLOCATION_FLAG_CAN_ALIAS;
 
         D3D12MA::ALLOCATION_DESC allocationDesc = {};
@@ -32,8 +31,14 @@ Result MemoryD3D12::Create(const AllocateMemoryDesc& allocateMemoryDesc) {
         allocationDesc.ExtraHeapFlags = m_HeapDesc.Flags;
 
         D3D12_RESOURCE_ALLOCATION_INFO allocInfo = {};
-        allocInfo.SizeInBytes = Align(allocateMemoryDesc.size, 64 * 1024); // TODO: alignment is a silly requirement of D3D12MA!
+#if 1
+        allocInfo.SizeInBytes = Align(allocateMemoryDesc.size, 65536);
         allocInfo.Alignment = m_HeapDesc.Alignment;
+#else
+        // TODO: can't be used because of "D3D12MA::ValidateAllocateMemoryParameters"
+        allocInfo.SizeInBytes = allocateMemoryDesc.size;
+        allocInfo.Alignment = allocateMemoryDesc.vma.alignment ? allocateMemoryDesc.vma.alignment : m_HeapDesc.Alignment;
+#endif
 
         HRESULT hr = m_Device.GetVma()->AllocateMemory(&allocationDesc, &allocInfo, &m_VmaAllocation);
         RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::AllocateMemory");

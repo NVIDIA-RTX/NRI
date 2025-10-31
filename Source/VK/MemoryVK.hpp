@@ -43,19 +43,16 @@ Result MemoryVK::Create(const AllocateMemoryDesc& allocateMemoryDesc) {
     if (memoryTypeInfo.mustBeDedicated)
         return Result::SUCCESS;
 
-    if (allocateMemoryDesc.useVMA) {
-        // Respect worst-case alignment
+    if (allocateMemoryDesc.vma.enable) {
         const DeviceDesc& deviceDesc = m_Device.GetDesc();
-        uint32_t alignment = 1;
-        alignment = std::max(alignment, deviceDesc.memoryAlignment.bufferShaderResourceOffset);
-        alignment = std::max(alignment, deviceDesc.memoryAlignment.constantBufferOffset);
-        if (deviceDesc.features.rayTracing) {
-            alignment = std::max(alignment, deviceDesc.memoryAlignment.scratchBufferOffset);
-            alignment = std::max(alignment, deviceDesc.memoryAlignment.shaderBindingTable);
-            alignment = std::max(alignment, deviceDesc.memoryAlignment.accelerationStructureOffset);
+        uint32_t alignment = allocateMemoryDesc.vma.alignment;
+        if (!alignment) {
+            // Worst-case alignment
+            if (allocateMemoryDesc.allowMultisampleTextures)
+                alignment = deviceDesc.memory.alignmentMultisample;
+            else
+                alignment = deviceDesc.memory.alignmentDefault;
         }
-        if (deviceDesc.features.micromap)
-            alignment = std::max(alignment, deviceDesc.memoryAlignment.micromapOffset);
 
         // (Sub) allocate memory
         VkMemoryRequirements memoryRequirements = {};

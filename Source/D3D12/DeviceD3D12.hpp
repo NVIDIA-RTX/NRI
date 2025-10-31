@@ -633,12 +633,15 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.precision.subTexelBits = D3D12_SUBTEXEL_FRACTIONAL_BIT_COUNT;
     m_Desc.precision.mipmapBits = D3D12_MIP_LOD_FRACTIONAL_BIT_COUNT;
 
+    m_Desc.memory.bufferMaxSize = D3D12_REQ_RESOURCE_SIZE_IN_MEGABYTES_EXPRESSION_C_TERM * 1024ull * 1024ull;
+    m_Desc.memory.allocationMaxSize = 0xFFFFFFFF;
     m_Desc.memory.allocationMaxNum = 0xFFFFFFFF;
     m_Desc.memory.samplerAllocationMaxNum = D3D12_REQ_SAMPLER_OBJECT_COUNT_PER_DEVICE;
     m_Desc.memory.constantBufferMaxRange = D3D12_REQ_IMMEDIATE_CONSTANT_BUFFER_ELEMENT_COUNT * 16;
     m_Desc.memory.storageBufferMaxRange = 1 << D3D12_REQ_BUFFER_RESOURCE_TEXEL_COUNT_2_TO_EXP;
-    m_Desc.memory.bufferTextureGranularity = D3D12_SMALL_RESOURCE_PLACEMENT_ALIGNMENT;
-    m_Desc.memory.bufferMaxSize = D3D12_REQ_RESOURCE_SIZE_IN_MEGABYTES_EXPRESSION_C_TERM * 1024ull * 1024ull;
+    m_Desc.memory.bufferTextureGranularity = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+    m_Desc.memory.alignmentDefault = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+    m_Desc.memory.alignmentMultisample = D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT;
 
     m_Desc.memoryAlignment.shaderBindingTable = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
     m_Desc.memoryAlignment.bufferShaderResourceOffset = D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT;
@@ -1095,7 +1098,6 @@ void DeviceD3D12::GetResourceDesc(const TextureDesc& textureDesc, D3D12_RESOURCE
 void DeviceD3D12::GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOURCE_DESC& resourceDesc, MemoryDesc& memoryDesc) const {
     D3D12_HEAP_TYPE heapType = GetHeapType(memoryLocation);
     D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
-    bool isMSAA = resourceDesc.SampleDesc.Count > 1;
     bool isRTorDS = resourceDesc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
     bool mustBeDedicated = false;
@@ -1114,10 +1116,6 @@ void DeviceD3D12::GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOU
     // Not "3" - no castable formats
     D3D12_RESOURCE_ALLOCATION_INFO resourceAllocationInfo = m_Device->GetResourceAllocationInfo(NODE_MASK, 1, &resourceDesc);
     CHECK(resourceAllocationInfo.SizeInBytes != UINT64_MAX, "Invalid arg?");
-
-    // Patch for internal needs
-    if (isMSAA)
-        heapFlags |= HEAP_FLAG_MSAA_ALIGNMENT;
 
     MemoryTypeInfo memoryTypeInfo = {};
     memoryTypeInfo.heapFlags = (uint16_t)heapFlags;

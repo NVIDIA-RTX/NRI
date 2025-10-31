@@ -28,7 +28,6 @@ private:
     Fence* m_Fence = nullptr;
     CommandAllocator* m_CommandAllocator = nullptr;
     Buffer* m_UploadBuffer = nullptr;
-    Memory* m_UploadBufferMemory = nullptr;
     uint8_t* m_MappedMemory = nullptr;
     uint64_t m_UploadBufferSize = 0;
     uint64_t m_UploadBufferOffset = 0;

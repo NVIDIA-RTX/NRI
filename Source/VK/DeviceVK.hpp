@@ -2,6 +2,21 @@
 
 constexpr bool VERBOSE = false;
 
+static inline uint32_t NextPow2(uint32_t n) {
+    if (n <= 1)
+        return 1;
+
+    n--;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    n++;
+
+    return n;
+}
+
 static constexpr VkBufferUsageFlags GetBufferUsageFlags(BufferUsageBits bufferUsageBits, uint32_t structureStride, bool isDeviceAddressSupported) {
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT; // TODO: ban "the opposite" for UPLOAD/READBACK?
 
@@ -746,6 +761,9 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         VkPhysicalDeviceProperties2 props = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
         tail = &props.pNext;
 
+        VkPhysicalDeviceMaintenance3Properties propsExtra = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES};
+        APPEND_STRUCT(propsExtra);
+
         VkPhysicalDeviceVulkan11Properties props11 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES};
         APPEND_STRUCT(props11);
 
@@ -819,11 +837,12 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
                 m_Desc.memory.deviceUploadHeapSize += m_MemoryProps.memoryHeaps[memoryType.heapIndex].size;
         }
 
+        m_Desc.memory.allocationMaxSize = propsExtra.maxMemoryAllocationSize;
         m_Desc.memory.allocationMaxNum = limits.maxMemoryAllocationCount;
         m_Desc.memory.samplerAllocationMaxNum = limits.maxSamplerAllocationCount;
         m_Desc.memory.constantBufferMaxRange = limits.maxUniformBufferRange;
         m_Desc.memory.storageBufferMaxRange = limits.maxStorageBufferRange;
-        m_Desc.memory.bufferTextureGranularity = (uint32_t)limits.bufferImageGranularity;
+        m_Desc.memory.bufferTextureGranularity = NextPow2((uint32_t)limits.bufferImageGranularity); // there is a vendor returning "9990"!
         m_Desc.memory.bufferMaxSize = props13.maxBufferSize;
 
         // VUID-VkCopyBufferToImageInfo2-dstImage-07975: If "dstImage" does not have either a depth/stencil format or a multi-planar format,
@@ -835,12 +854,56 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
         m_Desc.memoryAlignment.uploadBufferTextureRow = (uint32_t)limits.optimalBufferCopyRowPitchAlignment;
         m_Desc.memoryAlignment.uploadBufferTextureSlice = std::lcm((uint32_t)limits.optimalBufferCopyOffsetAlignment, leastCommonMultipleStrideAccrossAllFormats);
-        m_Desc.memoryAlignment.shaderBindingTable = RayTracingPipelineProps.shaderGroupBaseAlignment;
         m_Desc.memoryAlignment.bufferShaderResourceOffset = std::lcm((uint32_t)limits.minTexelBufferOffsetAlignment, (uint32_t)limits.minStorageBufferOffsetAlignment);
         m_Desc.memoryAlignment.constantBufferOffset = (uint32_t)limits.minUniformBufferOffsetAlignment;
         m_Desc.memoryAlignment.scratchBufferOffset = AccelerationStructureProps.minAccelerationStructureScratchOffsetAlignment;
+        m_Desc.memoryAlignment.shaderBindingTable = RayTracingPipelineProps.shaderGroupBaseAlignment;
         m_Desc.memoryAlignment.accelerationStructureOffset = 256; // see the spec
         m_Desc.memoryAlignment.micromapOffset = 256;              // see the spec
+
+        { // Estimate "worst-case" alignment
+            // 1. Buffers
+            uint32_t alignment = m_Desc.memoryAlignment.bufferShaderResourceOffset;
+            alignment = std::max(alignment, m_Desc.memoryAlignment.constantBufferOffset);
+            alignment = std::max(alignment, m_Desc.memoryAlignment.scratchBufferOffset);
+            alignment = std::max(alignment, m_Desc.memoryAlignment.shaderBindingTable);
+            alignment = std::max(alignment, m_Desc.memoryAlignment.accelerationStructureOffset);
+            alignment = std::max(alignment, m_Desc.memoryAlignment.micromapOffset);
+
+            // 2. Buffer-texture neighborhood requirement
+            alignment = std::max(alignment, m_Desc.memory.bufferTextureGranularity);
+
+            // 3. Large non-MSAA texture
+            MemoryDesc memoryDesc = {};
+
+            TextureDesc texDesc = {};
+            texDesc.type = TextureType::TEXTURE_2D;
+            texDesc.usage = TextureUsageBits::COLOR_ATTACHMENT;
+            texDesc.format = Format::RGBA8_UNORM;
+            texDesc.width = 4096;
+            texDesc.height = 4096;
+
+            TextureVK tex(*this);
+            tex.Create(texDesc);
+            tex.GetMemoryDesc(MemoryLocation::DEVICE, memoryDesc);
+            uint32_t textureAlignment = memoryDesc.alignment;
+
+            // 4. Large MSAA texture
+            FormatSupportBits formatSupportBits = GetFormatSupport(texDesc.format);
+            if (formatSupportBits & FormatSupportBits::MULTISAMPLE_4X)
+                texDesc.sampleNum = 4;
+            else if (formatSupportBits & FormatSupportBits::MULTISAMPLE_2X)
+                texDesc.sampleNum = 2;
+
+            TextureVK texMs(*this);
+            texMs.Create(texDesc);
+            texMs.GetMemoryDesc(MemoryLocation::DEVICE, memoryDesc);
+            uint32_t multisampleTextureAlignment = memoryDesc.alignment;
+
+            // Final
+            m_Desc.memory.alignmentDefault = std::max(textureAlignment, alignment);
+            m_Desc.memory.alignmentMultisample = std::max(multisampleTextureAlignment, alignment);
+        }
 
         m_Desc.pipelineLayout.descriptorSetMaxNum = limits.maxBoundDescriptorSets;
         m_Desc.pipelineLayout.rootConstantMaxSize = limits.maxPushConstantsSize;
