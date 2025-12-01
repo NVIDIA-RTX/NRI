@@ -552,14 +552,19 @@ NRI_INLINE void CommandBufferD3D11::ReadbackTextureToBuffer(Buffer& dstBuffer, c
     BufferD3D11& dst = (BufferD3D11&)dstBuffer;
     const TextureD3D11& src = (TextureD3D11&)srcTexture;
 
-    TextureD3D11& dstTemp = dst.RecreateReadbackTexture(src, srcRegion, dstDataLayout);
+    TextureRegionDesc srcRegionFixed = srcRegion;
+    srcRegionFixed.width = srcRegion.width == WHOLE_SIZE ? src.GetSize(0, srcRegion.mipOffset) : srcRegion.width;
+    srcRegionFixed.height = srcRegion.height == WHOLE_SIZE ? src.GetSize(1, srcRegion.mipOffset) : srcRegion.height;
+    srcRegionFixed.depth = srcRegion.depth == WHOLE_SIZE ? src.GetSize(2, srcRegion.mipOffset) : srcRegion.depth;
+
+    TextureD3D11& dstTemp = dst.RecreateReadbackTexture(src, srcRegionFixed, dstDataLayout);
 
     TextureRegionDesc dstRegion = {};
-    dstRegion.mipOffset = srcRegion.mipOffset;
-    dstRegion.layerOffset = srcRegion.layerOffset;
-    dstRegion.width = srcRegion.width == WHOLE_SIZE ? src.GetSize(0, srcRegion.mipOffset) : srcRegion.width;
-    dstRegion.height = srcRegion.height == WHOLE_SIZE ? src.GetSize(1, srcRegion.mipOffset) : srcRegion.height;
-    dstRegion.depth = srcRegion.depth == WHOLE_SIZE ? src.GetSize(2, srcRegion.mipOffset) : srcRegion.depth;
+    dstRegion.mipOffset = srcRegionFixed.mipOffset;
+    dstRegion.layerOffset = srcRegionFixed.layerOffset;
+    dstRegion.width = srcRegionFixed.width;
+    dstRegion.height = srcRegionFixed.height;
+    dstRegion.depth = srcRegionFixed.depth;
 
     CopyTexture((Texture&)dstTemp, &dstRegion, srcTexture, &srcRegion);
 }

@@ -798,9 +798,9 @@ NRI_INLINE void CommandBufferVK::ReadbackTextureToBuffer(Buffer& dstBuffer, cons
         srcRegion.z,
     };
     region.imageExtent = VkExtent3D{
-        (srcRegion.width == WHOLE_SIZE) ? src.GetSize(0, srcRegion.mipOffset) : srcRegion.width,
-        (srcRegion.height == WHOLE_SIZE) ? src.GetSize(1, srcRegion.mipOffset) : srcRegion.height,
-        (srcRegion.depth == WHOLE_SIZE) ? src.GetSize(2, srcRegion.mipOffset) : srcRegion.depth,
+        srcRegion.width == WHOLE_SIZE ? src.GetSize(0, srcRegion.mipOffset) : srcRegion.width,
+        srcRegion.height == WHOLE_SIZE ? src.GetSize(1, srcRegion.mipOffset) : srcRegion.height,
+        srcRegion.depth == WHOLE_SIZE ? src.GetSize(2, srcRegion.mipOffset) : srcRegion.depth,
     };
 
     VkCopyImageToBufferInfo2 info = {VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2};

@@ -682,19 +682,19 @@ NRI_INLINE void CommandBufferD3D12::ReadbackTextureToBuffer(Buffer& dstBuffer, c
     D3D12_TEXTURE_COPY_LOCATION srcTextureCopyLocation = {src, D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX};
     srcTextureCopyLocation.SubresourceIndex = src.GetSubresourceIndex(srcRegion.layerOffset, srcRegion.mipOffset, srcRegion.planes);
 
+    uint32_t w = srcRegion.width == WHOLE_SIZE ? src.GetSize(0, srcRegion.mipOffset) : srcRegion.width;
+    uint32_t h = srcRegion.height == WHOLE_SIZE ? src.GetSize(1, srcRegion.mipOffset) : srcRegion.height;
+    uint32_t d = srcRegion.depth == WHOLE_SIZE ? src.GetSize(2, srcRegion.mipOffset) : srcRegion.depth;
+
     D3D12_TEXTURE_COPY_LOCATION dstTextureCopyLocation = {};
     dstTextureCopyLocation.pResource = (BufferD3D12&)dstBuffer;
     dstTextureCopyLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
     dstTextureCopyLocation.PlacedFootprint.Offset = dstDataLayout.offset;
     dstTextureCopyLocation.PlacedFootprint.Footprint.Format = GetDxgiFormat(srcDesc.format).typeless;
-    dstTextureCopyLocation.PlacedFootprint.Footprint.Width = srcRegion.width;
-    dstTextureCopyLocation.PlacedFootprint.Footprint.Height = srcRegion.height;
-    dstTextureCopyLocation.PlacedFootprint.Footprint.Depth = srcRegion.depth;
+    dstTextureCopyLocation.PlacedFootprint.Footprint.Width = w;
+    dstTextureCopyLocation.PlacedFootprint.Footprint.Height = h;
+    dstTextureCopyLocation.PlacedFootprint.Footprint.Depth = d;
     dstTextureCopyLocation.PlacedFootprint.Footprint.RowPitch = dstDataLayout.rowPitch;
-
-    uint32_t w = srcRegion.width == WHOLE_SIZE ? src.GetSize(0, srcRegion.mipOffset) : srcRegion.width;
-    uint32_t h = srcRegion.height == WHOLE_SIZE ? src.GetSize(1, srcRegion.mipOffset) : srcRegion.height;
-    uint32_t d = srcRegion.depth == WHOLE_SIZE ? src.GetSize(2, srcRegion.mipOffset) : srcRegion.depth;
 
     D3D12_BOX srcBox = {
         srcRegion.x,

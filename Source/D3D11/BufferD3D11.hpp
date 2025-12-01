@@ -96,6 +96,7 @@ Result BufferD3D11::Create(const BufferD3D11Desc& bufferD3D11Desc) {
 }
 
 TextureD3D11& BufferD3D11::RecreateReadbackTexture(const TextureD3D11& srcTexture, const TextureRegionDesc& srcRegion, const TextureDataLayoutDesc& readbackDataLayoutDesc) {
+    // This function expects non-"WHOLE_SIZE" dims in "srcRegion"
     bool isChanged = true;
     if (m_ReadbackTexture) {
         const TextureDesc& curr = m_ReadbackTexture->GetDesc();
