@@ -152,7 +152,7 @@ if(NRI_ENABLE_VK_SUPPORT)
     FetchContent_Declare(
         vma
         GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
-        GIT_TAG 6d36dca2c71a7f0468a129f664bc9b474da5a886
+        GIT_TAG e722e57c891a8fbe3cc73ca56c19dd76be242759
         GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
     )
@@ -201,7 +201,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
     FetchContent_Declare(
         d3d12ma
         GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
-        GIT_TAG 2ac8a9bdada39ad75210be7b6da8b2b0f61e84f5
+        GIT_TAG c06cd9a6ec4578016aadf650af104c4055ec609a
         GIT_SHALLOW 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
     )
