@@ -31,11 +31,11 @@ Result MemoryD3D12::Create(const AllocateMemoryDesc& allocateMemoryDesc) {
         allocationDesc.ExtraHeapFlags = m_HeapDesc.Flags;
 
         D3D12_RESOURCE_ALLOCATION_INFO allocInfo = {};
-#if 1
+#if 0
+        // TODO: not needed because of recent "D3D12MA::ValidateAllocateMemoryParameters" fixes (remove this code block)
         allocInfo.SizeInBytes = Align(allocateMemoryDesc.size, 65536);
         allocInfo.Alignment = m_HeapDesc.Alignment;
 #else
-        // TODO: can't be used because of "D3D12MA::ValidateAllocateMemoryParameters"
         allocInfo.SizeInBytes = allocateMemoryDesc.size;
         allocInfo.Alignment = allocateMemoryDesc.vma.alignment ? allocateMemoryDesc.vma.alignment : m_HeapDesc.Alignment;
 #endif
