@@ -260,12 +260,17 @@ private:
     bool m_IsHeap = false;
 };
 
-#define AllocateScratch(device, T, elementNum) \
-    {(device).GetAllocationCallbacks(), \
-        ((elementNum) * sizeof(T) + alignof(T)) > MAX_STACK_ALLOC_SIZE \
-            ? (T*)(device).GetAllocationCallbacks().Allocate((device).GetAllocationCallbacks().userArg, (elementNum) * sizeof(T), alignof(T)) \
-            : (T*)Align((elementNum) ? (T*)alloca(((elementNum) * sizeof(T) + alignof(T))) : nullptr, alignof(T)), \
-        (elementNum)}
+// clang-format off
+#define AllocateScratch(device, T, elementNum) { \
+        (device).GetAllocationCallbacks(), \
+        !(elementNum) ? nullptr : ( \
+            ((elementNum) * sizeof(T) + alignof(T)) > MAX_STACK_ALLOC_SIZE \
+                ? (T*)(device).GetAllocationCallbacks().Allocate((device).GetAllocationCallbacks().userArg, (elementNum) * sizeof(T), alignof(T)) \
+                : (T*)Align((T*)alloca((elementNum) * sizeof(T) + alignof(T)), alignof(T)) \
+        ), \
+        (elementNum) \
+    }
+// clang-format on
 
 // Base classes
 #include "DeviceBase.h"
