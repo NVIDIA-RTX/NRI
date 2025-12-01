@@ -26,6 +26,7 @@
 
 // see StageSlots
 constexpr std::array<DescriptorTypeDX11, (size_t)DescriptorType::MAX_NUM> g_RemapDescriptorTypeToIndex = {
+    DescriptorTypeDX11::RESOURCE, // MUTABLE
     DescriptorTypeDX11::SAMPLER,  // SAMPLER
     DescriptorTypeDX11::CONSTANT, // CONSTANT_BUFFER
     DescriptorTypeDX11::RESOURCE, // TEXTURE

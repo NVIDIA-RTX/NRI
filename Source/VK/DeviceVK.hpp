@@ -1929,6 +1929,7 @@ NRI_INLINE void DeviceVK::CopyDescriptorRanges(const CopyDescriptorRangeDesc* co
             copy.dstArrayElement = copyDescriptorSetDesc.dstBaseDescriptor;
         } else
             copy.dstBinding = dstRangeDesc.baseRegisterIndex + copyDescriptorSetDesc.dstBaseDescriptor;
+
         bool isSrcArray = srcRangeDesc.flags & (DescriptorRangeBits::ARRAY | DescriptorRangeBits::VARIABLE_SIZED_ARRAY);
         if (isSrcArray) {
             copy.srcBinding = srcRangeDesc.baseRegisterIndex;
@@ -1974,8 +1975,8 @@ static void WriteBuffers(VkWriteDescriptorSet& writeDescriptorSet, size_t& scrat
     scratchOffset += rangeUpdateDesc.descriptorNum * sizeof(VkDescriptorBufferInfo);
 
     for (uint32_t i = 0; i < rangeUpdateDesc.descriptorNum; i++) {
-        const DescriptorVK& descriptor = *(DescriptorVK*)rangeUpdateDesc.descriptors[i];
-        bufferInfos[i] = descriptor.GetBufferInfo();
+        const DescriptorVK& descriptorVK = *(DescriptorVK*)rangeUpdateDesc.descriptors[i];
+        bufferInfos[i] = descriptorVK.GetBufferInfo();
     }
 
     writeDescriptorSet.pBufferInfo = bufferInfos;
@@ -2016,6 +2017,7 @@ static void WriteAccelerationStructures(VkWriteDescriptorSet& writeDescriptorSet
 typedef void (*WriteDescriptorsFunc)(VkWriteDescriptorSet& writeDescriptorSet, size_t& scratchOffset, uint8_t* scratch, const UpdateDescriptorRangeDesc& rangeUpdateDesc);
 
 constexpr std::array<WriteDescriptorsFunc, (size_t)DescriptorType::MAX_NUM> g_WriteFuncs = {
+    nullptr,                     // MUTABLE (never used)
     WriteSamplers,               // SAMPLER
     WriteBuffers,                // CONSTANT_BUFFER
     WriteTextures,               // TEXTURE
@@ -2037,7 +2039,11 @@ NRI_INLINE void DeviceVK::UpdateDescriptorRanges(const UpdateDescriptorRangeDesc
         const DescriptorSetVK& dst = *(DescriptorSetVK*)updateDescriptorRangeDesc.descriptorSet;
         const DescriptorRangeDesc& rangeDesc = dst.GetDesc()->ranges[updateDescriptorRangeDesc.rangeIndex];
 
-        switch (rangeDesc.descriptorType) {
+        DescriptorType descriptorType = rangeDesc.descriptorType;
+        if (descriptorType == DescriptorType::MUTABLE)
+            descriptorType = updateDescriptorRangeDesc.descriptorType;
+
+        switch (descriptorType) {
             case DescriptorType::SAMPLER:
             case DescriptorType::TEXTURE:
             case DescriptorType::STORAGE_TEXTURE:
@@ -2071,11 +2077,15 @@ NRI_INLINE void DeviceVK::UpdateDescriptorRanges(const UpdateDescriptorRangeDesc
         const DescriptorSetVK& dst = *(DescriptorSetVK*)updateDescriptorRangeDesc.descriptorSet;
         const DescriptorRangeDesc& rangeDesc = dst.GetDesc()->ranges[updateDescriptorRangeDesc.rangeIndex];
 
+        DescriptorType descriptorType = rangeDesc.descriptorType;
+        if (descriptorType == DescriptorType::MUTABLE)
+            descriptorType = updateDescriptorRangeDesc.descriptorType;
+
         VkWriteDescriptorSet& write = *(VkWriteDescriptorSet*)(writes + i * sizeof(VkWriteDescriptorSet)); // must be first and consecutive in "scratch"
         write = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
         write.dstSet = dst.GetHandle();
         write.descriptorCount = updateDescriptorRangeDesc.descriptorNum;
-        write.descriptorType = GetDescriptorType(rangeDesc.descriptorType);
+        write.descriptorType = GetDescriptorType(descriptorType);
 
         bool isArray = rangeDesc.flags & (DescriptorRangeBits::ARRAY | DescriptorRangeBits::VARIABLE_SIZED_ARRAY);
         if (isArray) {
@@ -2084,7 +2094,7 @@ NRI_INLINE void DeviceVK::UpdateDescriptorRanges(const UpdateDescriptorRangeDesc
         } else
             write.dstBinding = rangeDesc.baseRegisterIndex + updateDescriptorRangeDesc.baseDescriptor;
 
-        g_WriteFuncs[(uint32_t)rangeDesc.descriptorType](write, scratchOffset, writes, updateDescriptorRangeDesc);
+        g_WriteFuncs[(uint32_t)descriptorType](write, scratchOffset, writes, updateDescriptorRangeDesc);
     }
 
     m_VK.UpdateDescriptorSets(m_Device, updateDescriptorRangeDescNum, (VkWriteDescriptorSet*)(writes + 0), 0, nullptr);

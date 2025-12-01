@@ -19,6 +19,12 @@ struct DescriptorSetVal final : public ObjectVal {
 
     void SetImpl(DescriptorSet* impl, const DescriptorSetDesc* desc);
 
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+
+    void GetOffsets(uint32_t& resourceHeapOffset, uint32_t& samplerHeapOffset) const;
+
 private:
     const DescriptorSetDesc* m_Desc = nullptr; // .natvis
 };

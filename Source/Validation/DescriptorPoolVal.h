@@ -51,6 +51,7 @@ private:
     uint32_t m_StructuredBufferNum = 0;
     uint32_t m_StorageStructuredBufferNum = 0;
     uint32_t m_AccelerationStructureNum = 0;
+    uint32_t m_MutableNum = 0;
     bool m_SkipValidation = false;
 };
 

@@ -4,3 +4,8 @@ NRI_INLINE void DescriptorSetVal::SetImpl(DescriptorSet* impl, const DescriptorS
     m_Impl = impl;
     m_Desc = desc;
 }
+
+NRI_INLINE void DescriptorSetVal::GetOffsets(uint32_t& resourceHeapOffset, uint32_t& samplerHeapOffset) const {
+    GetCoreInterfaceImpl().GetDescriptorSetOffsets(*GetImpl(), resourceHeapOffset, samplerHeapOffset);
+}
+

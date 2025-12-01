@@ -244,13 +244,11 @@ void PipelineLayoutVK::CreateSetLayout(VkDescriptorSetLayout* setLayout, const D
 
             bindingFlags[bindingNum] = flags;
 
-            if (range.flags & DescriptorRangeBits::MUTABLE) {
-                binding.descriptorType = VK_DESCRIPTOR_TYPE_MUTABLE_EXT;
+            binding.descriptorType = GetDescriptorType(range.descriptorType);
+            if (range.descriptorType == DescriptorType::MUTABLE)
                 mutableTypeLists[bindingNum] = mutableTypeList;
-            } else {
-                binding.descriptorType = GetDescriptorType(range.descriptorType);
+            else
                 mutableTypeLists[bindingNum] = {};
-            }
 
             bindingNum++;
         }

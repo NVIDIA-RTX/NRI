@@ -11,6 +11,11 @@ struct DescriptorSetD3D12 final : public DebugNameBase {
     inline DescriptorSetD3D12() {
     }
 
+    inline void GetOffsets(uint32_t& resourceHeapOffset, uint32_t& samplerHeapOffset) const {
+        resourceHeapOffset = m_HeapOffsets[DescriptorHeapType::RESOURCE];
+        samplerHeapOffset = m_HeapOffsets[DescriptorHeapType::SAMPLER];
+    }
+
     void Create(DescriptorPoolD3D12* desriptorPoolD3D12, const DescriptorSetMapping* descriptorSetMapping, std::array<uint32_t, DescriptorHeapType::MAX_NUM>& heapOffsets);
     DeviceD3D12& GetDevice() const;
     DescriptorHandleGPU GetDescriptorHandleGPU(uint32_t rangeIndex, uint32_t baseDescriptor) const;

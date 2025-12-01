@@ -11,13 +11,14 @@ NRI_INLINE void DescriptorPoolVal::Reset() {
     m_StructuredBufferNum = 0;
     m_StorageStructuredBufferNum = 0;
     m_AccelerationStructureNum = 0;
+    m_MutableNum = 0;
 
     GetCoreInterfaceImpl().ResetDescriptorPool(*GetImpl());
 }
 
 NRI_INLINE Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum) {
     RETURN_ON_FAILURE(&m_Device, instanceNum != 0, Result::INVALID_ARGUMENT, "'instanceNum' is 0");
-    RETURN_ON_FAILURE(&m_Device, m_DescriptorSetsNum + instanceNum <= m_Desc.descriptorSetMaxNum, Result::INVALID_ARGUMENT, "the maximum number of descriptor sets exceeded");
+    RETURN_ON_FAILURE(&m_Device, m_DescriptorSetsNum + instanceNum <= m_Desc.descriptorSetMaxNum, Result::INVALID_ARGUMENT, "exceeded the maximum number of descriptor sets (=%u)", m_Desc.descriptorSetMaxNum);
 
     const PipelineLayoutVal& pipelineLayoutVal = (PipelineLayoutVal&)pipelineLayout;
     const PipelineLayoutDesc& pipelineLayoutDesc = pipelineLayoutVal.GetPipelineLayoutDesc();
@@ -35,6 +36,10 @@ NRI_INLINE Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout
 
                 bool enoughDescriptors = false;
                 switch (rangeDesc.descriptorType) {
+                    case DescriptorType::MUTABLE:
+                        m_MutableNum += descriptorNum;
+                        enoughDescriptors = m_MutableNum <= m_Desc.mutableMaxNum;
+                        break;
                     case DescriptorType::SAMPLER:
                         m_SamplerNum += descriptorNum;
                         enoughDescriptors = m_SamplerNum <= m_Desc.samplerMaxNum;

@@ -229,14 +229,6 @@ static FormatSupportBits NRI_CALL GetFormatSupport(const Device&, Format) {
     return (FormatSupportBits)(-1);
 }
 
-static uint32_t NRI_CALL GetQuerySize(const QueryPool&) {
-    return 0;
-}
-
-static uint64_t NRI_CALL GetFenceValue(Fence&) {
-    return 0;
-}
-
 static Result NRI_CALL GetQueue(Device&, QueueType, uint32_t, Queue*& queue) {
     queue = DummyObject<Queue>();
 
@@ -433,6 +425,11 @@ static void NRI_CALL CopyDescriptorRanges(const CopyDescriptorRangeDesc*, uint32
 static void NRI_CALL ResetDescriptorPool(DescriptorPool&) {
 }
 
+static void NRI_CALL GetDescriptorSetOffsets(const DescriptorSet&, uint32_t& resourceHeapOffset, uint32_t& samplerHeapOffset) {
+    resourceHeapOffset = 0;
+    samplerHeapOffset = 0;
+}
+
 static Result NRI_CALL BeginCommandBuffer(CommandBuffer&, const DescriptorPool*) {
     return Result::SUCCESS;
 }
@@ -573,6 +570,10 @@ static void NRI_CALL QueueAnnotation(Queue&, const char*, uint32_t) {
 static void NRI_CALL ResetQueries(QueryPool&, uint32_t, uint32_t) {
 }
 
+static uint32_t NRI_CALL GetQuerySize(const QueryPool&) {
+    return 0;
+}
+
 static Result NRI_CALL QueueSubmit(Queue&, const QueueSubmitDesc&) {
     return Result::SUCCESS;
 }
@@ -586,6 +587,10 @@ static Result NRI_CALL QueueWaitIdle(Queue*) {
 }
 
 static void NRI_CALL Wait(Fence&, uint64_t) {
+}
+
+static uint64_t NRI_CALL GetFenceValue(Fence&) {
+    return 0;
 }
 
 static void NRI_CALL ResetCommandAllocator(CommandAllocator&) {
@@ -632,6 +637,7 @@ Result DeviceNONE::FillFunctionTable(CoreInterface& table) const {
     table.GetFormatSupport = ::GetFormatSupport;
     table.GetQuerySize = ::GetQuerySize;
     table.GetFenceValue = ::GetFenceValue;
+    table.GetDescriptorSetOffsets = ::GetDescriptorSetOffsets;
     table.GetQueue = ::GetQueue;
     table.CreateCommandAllocator = ::CreateCommandAllocator;
     table.CreateCommandBuffer = ::CreateCommandBuffer;

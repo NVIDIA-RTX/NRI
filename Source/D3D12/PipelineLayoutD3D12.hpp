@@ -1,20 +1,5 @@
 // © 2021 NVIDIA Corporation
 
-static inline void BuildDescriptorSetMapping(const DescriptorSetDesc& descriptorSetDesc, DescriptorSetMapping& descriptorSetMapping) {
-    descriptorSetMapping.descriptorRangeMappings.resize(descriptorSetDesc.rangeNum);
-
-    for (uint32_t i = 0; i < descriptorSetDesc.rangeNum; i++) {
-        const DescriptorRangeDesc& descriptorRangeDesc = descriptorSetDesc.ranges[i];
-        D3D12_DESCRIPTOR_HEAP_TYPE descriptorHeapType = GetDescriptorHeapType(descriptorRangeDesc.descriptorType);
-
-        descriptorSetMapping.descriptorRangeMappings[i].descriptorHeapType = (DescriptorHeapType)descriptorHeapType;
-        descriptorSetMapping.descriptorRangeMappings[i].heapOffset = descriptorSetMapping.descriptorNum[descriptorHeapType];
-        descriptorSetMapping.descriptorRangeMappings[i].descriptorNum = descriptorRangeDesc.descriptorNum;
-
-        descriptorSetMapping.descriptorNum[descriptorHeapType] += descriptorRangeDesc.descriptorNum;
-    }
-}
-
 static inline D3D12_DESCRIPTOR_RANGE_FLAGS GetDescriptorRangeFlags(const DescriptorRangeDesc& descriptorRangeDesc) {
     // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#flags-added-in-root-signature-version-11
     D3D12_DESCRIPTOR_RANGE_FLAGS descriptorRangeFlags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
@@ -106,36 +91,44 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     // Descriptor sets
     for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++) {
         const DescriptorSetDesc& descriptorSetDesc = pipelineLayoutDesc.descriptorSets[i];
-        BuildDescriptorSetMapping(descriptorSetDesc, m_DescriptorSetMappings[i]);
 
         // Ranges
         D3D12_ROOT_PARAMETER1 rootTable = {};
         rootTable.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 
-        uint32_t heapIndex = 0;
-        uint32_t groupedRangeNum = 0;
         D3D12_DESCRIPTOR_RANGE_TYPE groupedRangeType = {};
+        uint32_t groupedRangeNum = 0;
+
+        m_DescriptorSetMappings[i].descriptorRangeMappings.resize(descriptorSetDesc.rangeNum);
 
         for (uint32_t j = 0; j < descriptorSetDesc.rangeNum; j++) {
             const DescriptorRangeDesc& descriptorRangeDesc = descriptorSetDesc.ranges[j];
-            auto& descriptorRangeMapping = m_DescriptorSetMappings[i].descriptorRangeMappings[j];
 
+            auto& descriptorRangeMapping = m_DescriptorSetMappings[i].descriptorRangeMappings[j];
+            descriptorRangeMapping.descriptorHeapType = (DescriptorHeapType)GetDescriptorHeapType(descriptorRangeDesc.descriptorType);
+            descriptorRangeMapping.heapOffset = m_DescriptorSetMappings[i].descriptorNum[descriptorRangeMapping.descriptorHeapType];
+            descriptorRangeMapping.descriptorNum = descriptorRangeDesc.descriptorNum;
+
+            m_DescriptorSetMappings[i].descriptorNum[descriptorRangeMapping.descriptorHeapType] += descriptorRangeDesc.descriptorNum;
+
+            // Skip ranges representing a "directly indexed heap"
+            if (descriptorRangeDesc.descriptorType == DescriptorType::MUTABLE) {
+                descriptorRangeMapping.rootParameterIndex = ROOT_PARAMETER_UNUSED;
+                continue;
+            }
+
+            // Try to group ranges
             D3D12_SHADER_VISIBILITY shaderVisibility = GetShaderVisibility(descriptorRangeDesc.shaderStages);
             D3D12_DESCRIPTOR_RANGE_TYPE rangeType = GetDescriptorRangesType(descriptorRangeDesc.descriptorType);
 
-            // Try to merge
-            if (groupedRangeNum) {
-                if (rootTable.ShaderVisibility != shaderVisibility || groupedRangeType != rangeType || descriptorRangeMapping.descriptorHeapType != heapIndex) {
-                    rootTable.DescriptorTable.NumDescriptorRanges = groupedRangeNum;
-                    rootParameters.push_back(rootTable);
+            if (groupedRangeNum && (rootTable.ShaderVisibility != shaderVisibility || groupedRangeType != rangeType)) {
+                rootTable.DescriptorTable.NumDescriptorRanges = groupedRangeNum;
+                rootParameters.push_back(rootTable);
+                rangeNum += groupedRangeNum;
 
-                    rangeNum += groupedRangeNum;
-                    groupedRangeNum = 0;
-                }
+                groupedRangeNum = 0;
             }
-
             groupedRangeType = rangeType;
-            heapIndex = (uint32_t)descriptorRangeMapping.descriptorHeapType;
 
             descriptorRangeMapping.rootParameterIndex = groupedRangeNum ? ROOT_PARAMETER_UNUSED : (RootParameterIndexType)rootParameters.size();
 
@@ -150,6 +143,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
             descriptorRange.RegisterSpace = descriptorSetDesc.registerSpace;
             descriptorRange.Flags = GetDescriptorRangeFlags(descriptorRangeDesc);
             descriptorRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
             groupedRangeNum++;
         }
 
@@ -290,7 +284,6 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
 }
 
 void PipelineLayoutD3D12::SetDescriptorSet(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const SetDescriptorSetDesc& setDescriptorSetDesc) const {
-    bool isGraphics = bindPoint == BindPoint::GRAPHICS;
     const DescriptorSetD3D12& descriptorSetD3D12 = *(DescriptorSetD3D12*)setDescriptorSetDesc.descriptorSet;
     const DescriptorSetMapping& descriptorSetMapping = m_DescriptorSetMappings[setDescriptorSetDesc.setIndex];
     uint32_t rangeNum = (uint32_t)descriptorSetMapping.descriptorRangeMappings.size();
@@ -303,7 +296,7 @@ void PipelineLayoutD3D12::SetDescriptorSet(ID3D12GraphicsCommandList* graphicsCo
             continue;
 
         DescriptorHandleGPU descriptorHandleGPU = descriptorSetD3D12.GetDescriptorHandleGPU(i, 0);
-        if (isGraphics)
+        if (bindPoint == BindPoint::GRAPHICS)
             graphicsCommandList->SetGraphicsRootDescriptorTable(rootParameterIndex, {descriptorHandleGPU});
         else
             graphicsCommandList->SetComputeRootDescriptorTable(rootParameterIndex, {descriptorHandleGPU});
@@ -311,38 +304,36 @@ void PipelineLayoutD3D12::SetDescriptorSet(ID3D12GraphicsCommandList* graphicsCo
 }
 
 void PipelineLayoutD3D12::SetRootConstants(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const SetRootConstantsDesc& setRootConstantsDesc) const {
-    bool isGraphics = bindPoint == BindPoint::GRAPHICS;
     uint32_t rootParameterIndex = m_BaseRootConstant + setRootConstantsDesc.rootConstantIndex;
     uint32_t num = setRootConstantsDesc.size / 4;
     uint32_t offset = setRootConstantsDesc.offset / 4;
 
     // TODO: push constants in VK is a global state, visible for any bind point. But "bindPoint" is used explicitly,
     // because using shader visibility associated with the root constant instead is inefficient if "ALL" is used.
-    if (isGraphics)
+    if (bindPoint == BindPoint::GRAPHICS)
         graphicsCommandList->SetGraphicsRoot32BitConstants(rootParameterIndex, num, setRootConstantsDesc.data, offset);
     else
         graphicsCommandList->SetComputeRoot32BitConstants(rootParameterIndex, num, setRootConstantsDesc.data, offset);
 }
 
 void PipelineLayoutD3D12::SetRootDescriptor(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const SetRootDescriptorDesc& setRootDescriptorDesc) const {
-    bool isGraphics = bindPoint == BindPoint::GRAPHICS;
     uint32_t rootParameterIndex = m_BaseRootDescriptor + setRootDescriptorDesc.rootDescriptorIndex;
     const DescriptorD3D12& descriptorD3D12 = *(DescriptorD3D12*)setRootDescriptorDesc.descriptor;
     D3D12_GPU_VIRTUAL_ADDRESS bufferLocation = descriptorD3D12.GetGPUVA() + setRootDescriptorDesc.offset;
 
     BufferViewType bufferViewType = descriptorD3D12.GetBufferViewType();
     if (bufferViewType == BufferViewType::CONSTANT) {
-        if (isGraphics)
+        if (bindPoint == BindPoint::GRAPHICS)
             graphicsCommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, bufferLocation);
         else
             graphicsCommandList->SetComputeRootConstantBufferView(rootParameterIndex, bufferLocation);
     } else if (bufferViewType == BufferViewType::SHADER_RESOURCE || descriptorD3D12.IsAccelerationStructure()) {
-        if (isGraphics)
+        if (bindPoint == BindPoint::GRAPHICS)
             graphicsCommandList->SetGraphicsRootShaderResourceView(rootParameterIndex, bufferLocation);
         else
             graphicsCommandList->SetComputeRootShaderResourceView(rootParameterIndex, bufferLocation);
     } else if (bufferViewType == BufferViewType::SHADER_RESOURCE_STORAGE) {
-        if (isGraphics)
+        if (bindPoint == BindPoint::GRAPHICS)
             graphicsCommandList->SetGraphicsRootUnorderedAccessView(rootParameterIndex, bufferLocation);
         else
             graphicsCommandList->SetComputeRootUnorderedAccessView(rootParameterIndex, bufferLocation);

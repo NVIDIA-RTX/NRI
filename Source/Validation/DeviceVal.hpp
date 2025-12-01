@@ -967,6 +967,12 @@ NRI_INLINE void DeviceVal::UpdateDescriptorRanges(const UpdateDescriptorRangeDes
             "'[%u].baseDescriptor = %u + [%u].descriptorNum = %u' is greater than 'descriptorNum = %u' in the range (descriptorType=%s)",
             i, updateDescriptorRangeDesc.baseDescriptor, i, updateDescriptorRangeDesc.descriptorNum, rangeDesc.descriptorNum, GetDescriptorTypeName(rangeDesc.descriptorType));
 
+        if (rangeDesc.descriptorType == DescriptorType::MUTABLE)
+            RETURN_ON_FAILURE(this, updateDescriptorRangeDesc.descriptorType != DescriptorType::MUTABLE, ReturnVoid(), "'[%u].descriptorType' can't be 'MUTABLE', because the descriptor range type is mutable", i);
+
+        if (rangeDesc.descriptorType != DescriptorType::MUTABLE)
+            RETURN_ON_FAILURE(this, updateDescriptorRangeDesc.descriptorType == DescriptorType::MUTABLE, ReturnVoid(), "'[%u].descriptorType' must not be set, because the descriptor range type is non-mutable", i);
+
         auto& updateDescriptorRangeDescImpl = updateDescriptorRangeDescsImpl[i];
         updateDescriptorRangeDescImpl = updateDescriptorRangeDesc;
         updateDescriptorRangeDescImpl.descriptorSet = NRI_GET_IMPL(DescriptorSet, updateDescriptorRangeDesc.descriptorSet);

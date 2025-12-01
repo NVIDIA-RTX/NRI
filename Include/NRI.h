@@ -2,7 +2,7 @@
 
 /*
 Overview:
-- Generalized common denominator for VK, D3D12 and D3D11
+ - Generalized common denominator for VK, D3D12 and D3D11
     - VK spec: https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html
        - Best practices: https://developer.nvidia.com/blog/vulkan-dos-donts/
        - Feature support coverage: https://vulkan.gpuinfo.org/
@@ -11,34 +11,34 @@ Overview:
     - D3D11 spec: https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm
 
 Goals:
-- generalization and unification of D3D12 and VK
-- explicitness (providing access to low-level features of modern GAPIs)
-- quality-of-life and high-level extensions (e.g., streaming and upscaling)
-- low overhead
-- cross-platform and platform independence (AMD/INTEL friendly)
-- D3D11 support (as much as possible)
+ - generalization and unification of D3D12 and VK
+ - explicitness (providing access to low-level features of modern GAPIs)
+ - quality-of-life and high-level extensions (e.g., streaming and upscaling)
+ - low overhead
+ - cross-platform and platform independence (AMD/INTEL friendly)
+ - D3D11 support (as much as possible)
 
 Non-goals:
-- exposing entities not existing in GAPIs
-- high-level (D3D11-like) abstraction
-- hidden management of any kind (except for some high-level extensions where it's desired)
-- automatic barriers (better handled in a higher-level abstraction)
+ - exposing entities not existing in GAPIs
+ - high-level (D3D11-like) abstraction
+ - hidden management of any kind (except for some high-level extensions where it's desired)
+ - automatic barriers (better handled in a higher-level abstraction)
 
 Thread safety:
-- Threadsafe: yes - free-threaded access
-- Threadsafe: no  - external synchronization required, i.e. one thread at a time (additional restrictions can apply)
-- Threadsafe: ?   - unclear status
+ - Threadsafe: yes - free-threaded access
+ - Threadsafe: no  - external synchronization required, i.e. one thread at a time (additional restrictions can apply)
+ - Threadsafe: ?   - unclear status
 
 Implicit:
-- Create*         - thread safe
-- Destroy*        - not thread safe (because of VK)
-- Cmd*            - not thread safe
+ - Create*         - thread safe
+ - Destroy*        - not thread safe (because of VK)
+ - Cmd*            - not thread safe
 */
 
 #pragma once
 
-#define NRI_VERSION 177
-#define NRI_VERSION_DATE "31 October 2025"
+#define NRI_VERSION 178
+#define NRI_VERSION_DATE "1 December 2025"
 
 // C/C++ compatible interface (auto-selection or via "NRI_FORCE_C" macro)
 #include "NRIDescs.h"
@@ -67,8 +67,6 @@ NriStruct(CoreInterface) {
     const NriRef(BufferDesc)    (NRI_CALL *GetBufferDesc)           (const NriRef(Buffer) buffer);
     const NriRef(TextureDesc)   (NRI_CALL *GetTextureDesc)          (const NriRef(Texture) texture);
     Nri(FormatSupportBits)      (NRI_CALL *GetFormatSupport)        (const NriRef(Device) device, Nri(Format) format);
-    uint32_t                    (NRI_CALL *GetQuerySize)            (const NriRef(QueryPool) queryPool);
-    uint64_t                    (NRI_CALL *GetFenceValue)           (NriRef(Fence) fence);
 
     // Returns one of the pre-created queues (see "DeviceCreationDesc" or wrapper extensions)
     // Return codes: "UNSUPPORTED" (no queues of "queueType") or "INVALID_ARGUMENT" (if "queueIndex" is out of bounds).
@@ -135,12 +133,18 @@ NriStruct(CoreInterface) {
 
     // Descriptor set management (entities don't require destroying)
     // - if "ALLOW_UPDATE_AFTER_SET" not used, descriptor sets (and data pointed to by descriptors) must be updated before "CmdSetDescriptorSet"
-    // - if "ALLOW_UPDATE_AFTER_SET" used, descriptor sets (and data pointed to by descriptors) can be updated after "CmdSetDescriptorSet"
-    // - "ResetDescriptorPool" resets the pool and and wipes out all allocated descriptor sets
+    // - "ResetDescriptorPool" resets the entire pool and wipes out all allocated descriptor sets. "DescriptorSet" is a tiny struct (<= 48 bytes),
+    //   so lots of descriptor sets can be created in advance and reused without calling "ResetDescriptorPool"
+    // - if there is a directly indexed descriptor heap:
+    //    - D3D12: "GetDescriptorSetOffsets" returns offsets in resource and sampler descriptor heaps
+    //       - these offsets are needed in shaders, if the corresponding descriptor set is not the first allocated from the descriptor pool
+    //    - VK: "GetDescriptorSetOffsets" returns "0"
+    //       - use "-fvk-bind-resource-heap" and "-fvk-bind-sampler-heap" DXC options to define bindings mimicking corresponding heaps
     Nri(Result)         (NRI_CALL *AllocateDescriptorSets)          (NriRef(DescriptorPool) descriptorPool, const NriRef(PipelineLayout) pipelineLayout, uint32_t setIndex, NriOut NriPtr(DescriptorSet)* descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum);
     void                (NRI_CALL *UpdateDescriptorRanges)          (const NriPtr(UpdateDescriptorRangeDesc) updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum);
     void                (NRI_CALL *CopyDescriptorRanges)            (const NriPtr(CopyDescriptorRangeDesc) copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum);
     void                (NRI_CALL *ResetDescriptorPool)             (NriRef(DescriptorPool) descriptorPool);
+    void                (NRI_CALL *GetDescriptorSetOffsets)         (const NriRef(DescriptorSet) descriptorSet, NriOut NonNriRef(uint32_t) resourceHeapOffset, NriOut NonNriRef(uint32_t) samplerHeapOffset);
 
     // Command buffer (one time submit)
     Nri(Result)         (NRI_CALL *BeginCommandBuffer)              (NriRef(CommandBuffer) commandBuffer, const NriPtr(DescriptorPool) descriptorPool);
@@ -233,12 +237,14 @@ NriStruct(CoreInterface) {
 
     // Query
     void                (NRI_CALL *ResetQueries)                    (NriRef(QueryPool) queryPool, uint32_t offset, uint32_t num); // on host
+    uint32_t            (NRI_CALL *GetQuerySize)                    (const NriRef(QueryPool) queryPool);
 
     // Work submission and synchronization
     Nri(Result)         (NRI_CALL *QueueSubmit)                     (NriRef(Queue) queue, const NriRef(QueueSubmitDesc) queueSubmitDesc); // to device
     Nri(Result)         (NRI_CALL *QueueWaitIdle)                   (NriPtr(Queue) queue);
     Nri(Result)         (NRI_CALL *DeviceWaitIdle)                  (NriPtr(Device) device);
     void                (NRI_CALL *Wait)                            (NriRef(Fence) fence, uint64_t value); // on host
+    uint64_t            (NRI_CALL *GetFenceValue)                   (NriRef(Fence) fence);
 
     // Command allocator
     void                (NRI_CALL *ResetCommandAllocator)           (NriRef(CommandAllocator) commandAllocator);

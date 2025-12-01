@@ -76,14 +76,6 @@ static FormatSupportBits NRI_CALL GetFormatSupport(const Device& device, Format 
     return ((DeviceVal&)device).GetFormatSupport(format);
 }
 
-static uint32_t NRI_CALL GetQuerySize(const QueryPool& queryPool) {
-    return ((QueryPoolVal&)queryPool).GetQuerySize();
-}
-
-static uint64_t NRI_CALL GetFenceValue(Fence& fence) {
-    return ((FenceVal&)fence).GetFenceValue();
-}
-
 static Result NRI_CALL GetQueue(Device& device, QueueType queueType, uint32_t queueIndex, Queue*& queue) {
     return ((DeviceVal&)device).GetQueue(queueType, queueIndex, queue);
 }
@@ -305,6 +297,10 @@ static void NRI_CALL CopyDescriptorRanges(const CopyDescriptorRangeDesc* copyDes
     return deviceVal.CopyDescriptorRanges(copyDescriptorRangeDescs, copyDescriptorRangeDescNum);
 }
 
+static void NRI_CALL GetDescriptorSetOffsets(const DescriptorSet& descriptorSet, uint32_t& resourceHeapOffset, uint32_t& samplerHeapOffset) {
+    ((DescriptorSetVal&)descriptorSet).GetOffsets(resourceHeapOffset, samplerHeapOffset);
+}
+
 static void NRI_CALL ResetDescriptorPool(DescriptorPool& descriptorPool) {
     ((DescriptorPoolVal&)descriptorPool).Reset();
 }
@@ -493,6 +489,10 @@ static void NRI_CALL ResetQueries(QueryPool& queryPool, uint32_t offset, uint32_
     ((QueryPoolVal&)queryPool).ResetQueries(offset, num);
 }
 
+static uint32_t NRI_CALL GetQuerySize(const QueryPool& queryPool) {
+    return ((QueryPoolVal&)queryPool).GetQuerySize();
+}
+
 static Result NRI_CALL QueueSubmit(Queue& queue, const QueueSubmitDesc& queueSubmitDesc) {
     return ((QueueVal&)queue).Submit(queueSubmitDesc);
 }
@@ -513,6 +513,10 @@ static Result NRI_CALL DeviceWaitIdle(Device* device) {
 
 static void NRI_CALL Wait(Fence& fence, uint64_t value) {
     ((FenceVal&)fence).Wait(value);
+}
+
+static uint64_t NRI_CALL GetFenceValue(Fence& fence) {
+    return ((FenceVal&)fence).GetFenceValue();
 }
 
 static void NRI_CALL ResetCommandAllocator(CommandAllocator& commandAllocator) {
@@ -581,8 +585,9 @@ Result DeviceVal::FillFunctionTable(CoreInterface& table) const {
     table.GetBufferDesc = ::GetBufferDesc;
     table.GetTextureDesc = ::GetTextureDesc;
     table.GetFormatSupport = ::GetFormatSupport;
-    table.GetFenceValue = ::GetFenceValue;
     table.GetQuerySize = ::GetQuerySize;
+    table.GetFenceValue = ::GetFenceValue;
+    table.GetDescriptorSetOffsets = ::GetDescriptorSetOffsets;
     table.GetQueue = ::GetQueue;
     table.CreateCommandAllocator = ::CreateCommandAllocator;
     table.CreateCommandBuffer = ::CreateCommandBuffer;
