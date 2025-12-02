@@ -112,7 +112,10 @@ endforeach()
 # Construct list of dependencies # TODO: update to latest releases from time to time
 set(DEPS)
 
-# Dependencies: URL - good (no fat ".git" folder)
+# Dependencies:
+# - URL - good (no fat ".git" folder)
+# - GIT_REPOSITORY - worse (because of ".git" folder)
+# - GIT_SHALLOW = 0 - worse ^ 2 (needed to workaround Cmake's inability to shalow-clone a commit hash, which is a non-ToT PR, so even more fat useless ".git" folder)
 if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
     # Agility SDK
     FetchContent_Declare(
@@ -132,7 +135,7 @@ if(NRI_ENABLE_NVTX_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/NVIDIA/NVTX/archive/refs/tags/v3.3.0.zip
+        URL https://github.com/NVIDIA/NVTX/archive/refs/tags/v3.4.0.zip
     )
     list(APPEND DEPS nvtx)
 endif()
@@ -151,10 +154,10 @@ if(NRI_ENABLE_VK_SUPPORT)
     # Vulkan MA
     FetchContent_Declare(
         vma
-        GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
-        GIT_TAG master
-        GIT_SHALLOW 1
+        DOWNLOAD_EXTRACT_TIMESTAMP 1
+        DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
+        URL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/e722e57c891a8fbe3cc73ca56c19dd76be242759.zip
     )
     list(APPEND DEPS vma)
 endif()
@@ -200,10 +203,10 @@ if(NRI_ENABLE_D3D12_SUPPORT)
     # D3D12 MA
     FetchContent_Declare(
         d3d12ma
-        GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
-        GIT_TAG master
-        GIT_SHALLOW 1
+        DOWNLOAD_EXTRACT_TIMESTAMP 1
+        DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
+        URL https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/c06cd9a6ec4578016aadf650af104c4055ec609a.zip
     )
     list(APPEND DEPS d3d12ma)
 endif()
@@ -220,7 +223,6 @@ if(NRI_ENABLE_AMDAGS)
     list(APPEND DEPS amdags)
 endif()
 
-# Dependencies: GIT_REPOSITORY - worse (because of ".git" folder)
 if(NRI_ENABLE_NVAPI)
     # NV API
     if(NRI_NVAPI_CUSTOM_PATH)
@@ -229,10 +231,10 @@ if(NRI_ENABLE_NVAPI)
     else()
         FetchContent_Declare(
             nvapi
-            GIT_REPOSITORY https://github.com/NVIDIA/nvapi.git
-            GIT_TAG main
-            GIT_SHALLOW 1
+            DOWNLOAD_EXTRACT_TIMESTAMP 1
+            DOWNLOAD_NO_PROGRESS 1
             SOURCE_SUBDIR "ignore CMakeLists.txt"
+            URL https://github.com/NVIDIA/nvapi/archive/3d34a4faf095996663321646ebe003539a908f89.zip
         )
         list(APPEND DEPS nvapi)
     endif()
@@ -244,9 +246,10 @@ if(NRI_ENABLE_SHADERMAKE AND NOT TARGET ShaderMake)
 
     FetchContent_Declare(
         shadermake
-        GIT_REPOSITORY https://github.com/NVIDIA-RTX/ShaderMake.git
-        GIT_TAG main
-        GIT_SHALLOW 1
+        DOWNLOAD_EXTRACT_TIMESTAMP 1
+        DOWNLOAD_NO_PROGRESS 1
+        SOURCE_SUBDIR "ignore CMakeLists.txt"
+        URL https://github.com/NVIDIA-RTX/ShaderMake/archive/18f5a344e7ca8fa65daaf079d07bc8ce38453e05.zip
     )
     list(APPEND DEPS shadermake)
 endif()
