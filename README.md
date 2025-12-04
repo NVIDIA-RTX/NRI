@@ -72,10 +72,14 @@ Repository organization:
     - _VK_KHR_copy_commands2_
     - _VK_KHR_maintenance4_ (optional, but recommended)
     - _VK_EXT_extended_dynamic_state_
+    - _VK_EXT_image_robustness_
+    - _VK_EXT_subgroup_size_control_
 - for Vulkan < 1.4:
     - _VK_KHR_push_descriptor
     - _VK_KHR_maintenance5 (optional, but recommended)
     - _VK_KHR_maintenance6 (optional, but recommended)
+    - _VK_KHR_line_rasterization_
+    - _VK_EXT_pipeline_robustness_
 - for APPLE:
     - _VK_KHR_portability_enumeration_ (instance extension)
     - _VK_KHR_get_physical_device_properties2_ (instance extension)
@@ -107,12 +111,11 @@ Repository organization:
     - _VK_KHR_ray_query_
     - _VK_KHR_ray_tracing_position_fetch_
     - _VK_KHR_ray_tracing_maintenance1_
-    - _VK_KHR_line_rasterization_
     - _VK_KHR_fragment_shader_barycentric_
     - _VK_KHR_shader_clock_
     - _VK_KHR_compute_shader_derivatives_
+    - _VK_KHR_unified_image_layouts_
     - _VK_EXT_mutable_descriptor_type_
-    - _VK_EXT_subgroup_size_control_
     - _VK_EXT_swapchain_maintenance1_
     - _VK_EXT_present_mode_fifo_latest_ready_
     - _VK_EXT_opacity_micromap_
@@ -125,10 +128,11 @@ Repository organization:
     - _VK_EXT_memory_priority_
     - _VK_EXT_image_sliced_view_of_3d_
     - _VK_EXT_custom_border_color_
-    - _VK_EXT_image_robustness_
     - _VK_EXT_robustness2_
-    - _VK_EXT_pipeline_robustness_
     - _VK_EXT_fragment_shader_interlock_
+    - _VK_EXT_present_mode_fifo_latest_ready_
+    - _VK_EXT_zero_initialize_memory_
+    - _VK_EXT_mutable_descriptor_type_
     - _VK_NV_low_latency2_
     - _VK_NVX_binary_import_
     - _VK_NVX_image_view_handle_

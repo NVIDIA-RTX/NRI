@@ -307,6 +307,7 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(true, VK_KHR_SHADER_CLOCK_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME);
@@ -594,6 +595,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     APPEND_FEATURES(true, KHR, RayTracingPipeline, RAY_TRACING_PIPELINE);
     APPEND_FEATURES(true, KHR, RayTracingPositionFetch, RAY_TRACING_POSITION_FETCH);
     APPEND_FEATURES(true, KHR, ShaderClock, SHADER_CLOCK);
+    APPEND_FEATURES(true, KHR, UnifiedImageLayouts, UNIFIED_IMAGE_LAYOUTS);
     APPEND_FEATURES(true, EXT, CustomBorderColor, CUSTOM_BORDER_COLOR);
     APPEND_FEATURES(true, EXT, FragmentShaderInterlock, FRAGMENT_SHADER_INTERLOCK);
     APPEND_FEATURES(true, EXT, ImageSlicedViewOf3D, IMAGE_SLICED_VIEW_OF_3D);
@@ -651,6 +653,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.pipelineRobustness = features14.pipelineRobustness;
     m_IsSupported.swapChainMaintenance1 = SwapchainMaintenance1Features.swapchainMaintenance1;
     m_IsSupported.fifoLatestReady = PresentModeFifoLatestReadyFeatures.presentModeFifoLatestReady;
+    m_IsSupported.unifiedImageLayoutsVideo = UnifiedImageLayoutsFeatures.unifiedImageLayoutsVideo;
 
     m_IsMemoryZeroInitializationEnabled = desc.enableMemoryZeroInitialization && ZeroInitializeDeviceMemoryFeatures.zeroInitializeDeviceMemory;
 
@@ -1110,6 +1113,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.rootConstantsOffset = true;
         m_Desc.features.nonConstantBufferRootDescriptorOffset = true;
         m_Desc.features.mutableDescriptorType = MutableDescriptorTypeFeatures.mutableDescriptorType;
+        m_Desc.features.unifiedTextureLayouts = UnifiedImageLayoutsFeatures.unifiedImageLayouts;
 
         m_Desc.shaderFeatures.nativeI16 = features.features.shaderInt16;
         m_Desc.shaderFeatures.nativeF16 = features12.shaderFloat16;

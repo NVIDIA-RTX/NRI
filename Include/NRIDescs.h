@@ -1923,6 +1923,7 @@ NriStruct(DeviceDesc) {
         uint32_t rootConstantsOffset                             : 1; // see "SetRootConstantsDesc" (unsupported only in D3D11)
         uint32_t nonConstantBufferRootDescriptorOffset           : 1; // see "SetRootDescriptorDesc" (unsupported only in D3D11)
         uint32_t mutableDescriptorType                           : 1; // see "DescriptorType::MUTABLE"
+        uint32_t unifiedTextureLayouts                           : 1; // allows to use "GENERAL" everywhere: https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_unified_image_layouts.html
     } features;
 
     // Shader features

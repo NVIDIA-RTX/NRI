@@ -23,6 +23,8 @@ constexpr VkIndexType GetIndexType(IndexType indexType) {
 }
 
 constexpr std::array<VkImageLayout, (size_t)Layout::MAX_NUM> g_ImageLayouts = {
+    // TODO: just use GENERAL everywhere if "VK_KHR_unified_image_layouts" is supported! but D3D12 is the limiter here...
+    // https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_unified_image_layouts.html
     VK_IMAGE_LAYOUT_UNDEFINED,                                    // UNDEFINED
     VK_IMAGE_LAYOUT_GENERAL,                                      // GENERAL
     VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,                              // PRESENT
