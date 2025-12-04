@@ -44,20 +44,24 @@ DescriptorVK::~DescriptorVK() {
     const auto& vk = m_Device.GetDispatchTable();
 
     switch (m_Type) {
-        case DescriptorTypeVK::NONE:
-        case DescriptorTypeVK::ACCELERATION_STRUCTURE:
+        case DescriptorType::SAMPLER:
+            if (m_Sampler)
+                vk.DestroySampler(m_Device, m_Sampler, m_Device.GetVkAllocationCallbacks());
             break;
-        case DescriptorTypeVK::BUFFER_VIEW:
+        case DescriptorType::BUFFER:
+        case DescriptorType::STORAGE_BUFFER:
+        case DescriptorType::CONSTANT_BUFFER:
+        case DescriptorType::STRUCTURED_BUFFER:
+        case DescriptorType::STORAGE_STRUCTURED_BUFFER:
             if (m_BufferView)
                 vk.DestroyBufferView(m_Device, m_BufferView, m_Device.GetVkAllocationCallbacks());
             break;
-        case DescriptorTypeVK::IMAGE_VIEW:
+        case DescriptorType::ACCELERATION_STRUCTURE:
+            // skip
+            break;
+        default: // all textures (including HOST only)
             if (m_ImageView)
                 vk.DestroyImageView(m_Device, m_ImageView, m_Device.GetVkAllocationCallbacks());
-            break;
-        case DescriptorTypeVK::SAMPLER:
-            if (m_Sampler)
-                vk.DestroySampler(m_Device, m_Sampler, m_Device.GetVkAllocationCallbacks());
             break;
     }
 }
@@ -91,17 +95,17 @@ Result DescriptorVK::CreateTextureView(const T& textureViewDesc) {
     VkResult vkResult = vk.CreateImageView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_ImageView);
     RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImageView");
 
-    m_Type = DescriptorTypeVK::IMAGE_VIEW;
-    m_TextureDesc.handle = texture.GetHandle();
+    m_Type = GetDescriptorTypeForView(textureViewDesc.viewType);
+
     m_TextureDesc.texture = &texture;
     m_TextureDesc.layout = GetImageLayoutForView(textureViewDesc.viewType);
-    m_TextureDesc.aspectFlags = GetImageAspectFlags(textureViewDesc.format);
     m_TextureDesc.layerOffset = textureViewDesc.layerOffset;
     m_TextureDesc.layerNum = (Dim_t)subresource.layerCount;
     m_TextureDesc.sliceOffset = 0;
     m_TextureDesc.sliceNum = 1;
     m_TextureDesc.mipOffset = textureViewDesc.mipOffset;
     m_TextureDesc.mipNum = (Dim_t)subresource.levelCount;
+    m_TextureDesc.format = textureViewDesc.format;
 
     return Result::SUCCESS;
 }
@@ -142,17 +146,17 @@ Result DescriptorVK::CreateTextureView(const Texture3DViewDesc& textureViewDesc)
     VkResult vkResult = vk.CreateImageView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_ImageView);
     RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImageView");
 
-    m_Type = DescriptorTypeVK::IMAGE_VIEW;
-    m_TextureDesc.handle = texture.GetHandle();
+    m_Type = GetDescriptorTypeForView(textureViewDesc.viewType);
+
     m_TextureDesc.texture = &texture;
     m_TextureDesc.layout = GetImageLayoutForView(textureViewDesc.viewType);
-    m_TextureDesc.aspectFlags = GetImageAspectFlags(textureViewDesc.format);
     m_TextureDesc.layerOffset = 0;
     m_TextureDesc.layerNum = 1;
     m_TextureDesc.sliceOffset = textureViewDesc.sliceOffset;
     m_TextureDesc.sliceNum = (Dim_t)slicesInfo.sliceCount;
     m_TextureDesc.mipOffset = textureViewDesc.mipOffset;
     m_TextureDesc.mipNum = (Dim_t)subresource.levelCount;
+    m_TextureDesc.format = textureViewDesc.format;
 
     return Result::SUCCESS;
 }
@@ -161,25 +165,29 @@ Result DescriptorVK::Create(const BufferViewDesc& bufferViewDesc) {
     const BufferVK& buffer = *(const BufferVK*)bufferViewDesc.buffer;
     const BufferDesc& bufferDesc = buffer.GetDesc();
 
-    m_Type = DescriptorTypeVK::BUFFER_VIEW;
+    if (bufferViewDesc.viewType == BufferViewType::CONSTANT)
+        m_Type = DescriptorType::CONSTANT_BUFFER;
+    else if (bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE)
+        m_Type = bufferViewDesc.format == Format::UNKNOWN ? DescriptorType::STRUCTURED_BUFFER : DescriptorType::BUFFER;
+    else if (bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_STORAGE)
+        m_Type = bufferViewDesc.format == Format::UNKNOWN ? DescriptorType::STORAGE_STRUCTURED_BUFFER : DescriptorType::STORAGE_BUFFER;
+
+    m_BufferDesc.handle = buffer.GetHandle();
     m_BufferDesc.offset = bufferViewDesc.offset;
     m_BufferDesc.size = (bufferViewDesc.size == WHOLE_SIZE) ? bufferDesc.size : bufferViewDesc.size;
-    m_BufferDesc.handle = buffer.GetHandle();
-    m_BufferDesc.viewType = bufferViewDesc.viewType;
 
-    if (bufferViewDesc.format == Format::UNKNOWN)
-        return Result::SUCCESS;
+    if (bufferViewDesc.format != Format::UNKNOWN) {
+        VkBufferViewCreateInfo createInfo = {VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO};
+        createInfo.flags = (VkBufferViewCreateFlags)0;
+        createInfo.buffer = buffer.GetHandle();
+        createInfo.format = GetVkFormat(bufferViewDesc.format);
+        createInfo.offset = bufferViewDesc.offset;
+        createInfo.range = m_BufferDesc.size;
 
-    VkBufferViewCreateInfo createInfo = {VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO};
-    createInfo.flags = (VkBufferViewCreateFlags)0;
-    createInfo.buffer = buffer.GetHandle();
-    createInfo.format = GetVkFormat(bufferViewDesc.format);
-    createInfo.offset = bufferViewDesc.offset;
-    createInfo.range = m_BufferDesc.size;
-
-    const auto& vk = m_Device.GetDispatchTable();
-    VkResult vkResult = vk.CreateBufferView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_BufferView);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateBufferView");
+        const auto& vk = m_Device.GetDispatchTable();
+        VkResult vkResult = vk.CreateBufferView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_BufferView);
+        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateBufferView");
+    }
 
     return Result::SUCCESS;
 }
@@ -194,14 +202,14 @@ Result DescriptorVK::Create(const SamplerDesc& samplerDesc) {
     VkResult vkResult = vk.CreateSampler(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Sampler);
     RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateSampler");
 
-    m_Type = DescriptorTypeVK::SAMPLER;
+    m_Type = DescriptorType::SAMPLER;
 
     return Result::SUCCESS;
 }
 
 Result DescriptorVK::Create(VkAccelerationStructureKHR accelerationStructure) {
+    m_Type = DescriptorType::ACCELERATION_STRUCTURE;
     m_AccelerationStructure = accelerationStructure;
-    m_Type = DescriptorTypeVK::ACCELERATION_STRUCTURE;
 
     return Result::SUCCESS;
 }
@@ -220,24 +228,21 @@ Result DescriptorVK::Create(const Texture3DViewDesc& textureViewDesc) {
 
 NRI_INLINE void DescriptorVK::SetDebugName(const char* name) {
     switch (m_Type) {
-        case DescriptorTypeVK::BUFFER_VIEW:
-            m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_BUFFER_VIEW, (uint64_t)m_BufferView, name);
-            break;
-
-        case DescriptorTypeVK::IMAGE_VIEW:
-            m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)m_ImageView, name);
-            break;
-
-        case DescriptorTypeVK::SAMPLER:
+        case DescriptorType::SAMPLER:
             m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_SAMPLER, (uint64_t)m_Sampler, name);
             break;
-
-        case DescriptorTypeVK::ACCELERATION_STRUCTURE:
+        case DescriptorType::BUFFER:
+        case DescriptorType::STORAGE_BUFFER:
+        case DescriptorType::CONSTANT_BUFFER:
+        case DescriptorType::STRUCTURED_BUFFER:
+        case DescriptorType::STORAGE_STRUCTURED_BUFFER:
+            m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_BUFFER_VIEW, (uint64_t)m_BufferView, name);
+            break;
+        case DescriptorType::ACCELERATION_STRUCTURE:
             m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR, (uint64_t)m_AccelerationStructure, name);
             break;
-
-        default:
-            CHECK(false, "unexpected descriptor type");
+        default: // all textures (including HOST only)
+            m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)m_ImageView, name);
             break;
     }
 }

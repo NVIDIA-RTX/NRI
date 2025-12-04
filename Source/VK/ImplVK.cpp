@@ -599,16 +599,27 @@ static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor* descriptor)
         return 0;
 
     const DescriptorVK& d = *(DescriptorVK*)descriptor;
+    DescriptorType descriptorType = d.GetType();
 
     uint64_t handle = 0;
-    if (d.GetType() == DescriptorTypeVK::BUFFER_VIEW)
-        handle = (uint64_t)d.GetBufferView();
-    else if (d.GetType() == DescriptorTypeVK::IMAGE_VIEW)
-        handle = (uint64_t)d.GetImageView();
-    else if (d.GetType() == DescriptorTypeVK::SAMPLER)
-        handle = (uint64_t)d.GetSampler();
-    else if (d.GetType() == DescriptorTypeVK::ACCELERATION_STRUCTURE)
-        handle = (uint64_t)d.GetAccelerationStructure();
+    switch (descriptorType) {
+        case DescriptorType::SAMPLER:
+            handle = (uint64_t)d.GetSampler();
+            break;
+        case DescriptorType::BUFFER:
+        case DescriptorType::STORAGE_BUFFER:
+        case DescriptorType::CONSTANT_BUFFER:
+        case DescriptorType::STRUCTURED_BUFFER:
+        case DescriptorType::STORAGE_STRUCTURED_BUFFER:
+            handle = (uint64_t)d.GetBufferView(); // 0 for non-typed views
+            break;
+        case DescriptorType::ACCELERATION_STRUCTURE:
+            handle = (uint64_t)d.GetAccelerationStructure();
+            break;
+        default: // all textures (including HOST only)
+            handle = (uint64_t)d.GetImageView();
+            break;
+    }
 
     return handle;
 }

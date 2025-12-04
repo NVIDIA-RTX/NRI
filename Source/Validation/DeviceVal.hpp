@@ -334,7 +334,7 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const SamplerDesc& samplerDesc, De
 
     sampler = nullptr;
     if (result == Result::SUCCESS)
-        sampler = (Descriptor*)Allocate<DescriptorVal>(GetAllocationCallbacks(), *this, samplerImpl);
+        sampler = (Descriptor*)Allocate<DescriptorVal>(GetAllocationCallbacks(), *this, samplerImpl, DescriptorType::SAMPLER);
 
     return result;
 }
@@ -954,8 +954,8 @@ NRI_INLINE void DeviceVal::UpdateDescriptorRanges(const UpdateDescriptorRangeDes
     uint32_t descriptorOffset = 0;
     for (uint32_t i = 0; i < updateDescriptorRangeDescNum; i++) {
         const UpdateDescriptorRangeDesc& updateDescriptorRangeDesc = updateDescriptorRangeDescs[i];
-        const DescriptorSetVal& set = *(DescriptorSetVal*)updateDescriptorRangeDesc.descriptorSet;
-        const DescriptorSetDesc& setDesc = set.GetDesc();
+        const DescriptorSetVal& setVal = *(DescriptorSetVal*)updateDescriptorRangeDesc.descriptorSet;
+        const DescriptorSetDesc& setDesc = setVal.GetDesc();
 
         RETURN_ON_FAILURE(this, updateDescriptorRangeDesc.rangeIndex < setDesc.rangeNum, ReturnVoid(), "'rangeIndex = %u' is out of 'rangeNum = %u' in the set", updateDescriptorRangeDesc.rangeIndex, setDesc.rangeNum);
 
@@ -967,20 +967,23 @@ NRI_INLINE void DeviceVal::UpdateDescriptorRanges(const UpdateDescriptorRangeDes
             "'[%u].baseDescriptor = %u + [%u].descriptorNum = %u' is greater than 'descriptorNum = %u' in the range (descriptorType=%s)",
             i, updateDescriptorRangeDesc.baseDescriptor, i, updateDescriptorRangeDesc.descriptorNum, rangeDesc.descriptorNum, GetDescriptorTypeName(rangeDesc.descriptorType));
 
-        if (rangeDesc.descriptorType == DescriptorType::MUTABLE)
-            RETURN_ON_FAILURE(this, updateDescriptorRangeDesc.descriptorType != DescriptorType::MUTABLE, ReturnVoid(), "'[%u].descriptorType' can't be 'MUTABLE', because the descriptor range type is mutable", i);
-
-        if (rangeDesc.descriptorType != DescriptorType::MUTABLE)
-            RETURN_ON_FAILURE(this, updateDescriptorRangeDesc.descriptorType == DescriptorType::MUTABLE, ReturnVoid(), "'[%u].descriptorType' must not be set, because the descriptor range type is non-mutable", i);
-
         auto& updateDescriptorRangeDescImpl = updateDescriptorRangeDescsImpl[i];
         updateDescriptorRangeDescImpl = updateDescriptorRangeDesc;
         updateDescriptorRangeDescImpl.descriptorSet = NRI_GET_IMPL(DescriptorSet, updateDescriptorRangeDesc.descriptorSet);
         updateDescriptorRangeDescImpl.descriptors = descriptorsImpl + descriptorOffset;
 
+        DescriptorType descriptorType = rangeDesc.descriptorType;
+
         Descriptor** descriptors = (Descriptor**)updateDescriptorRangeDescImpl.descriptors;
         for (uint32_t j = 0; j < updateDescriptorRangeDesc.descriptorNum; j++) {
-            RETURN_ON_FAILURE(this, updateDescriptorRangeDesc.descriptors[j] != nullptr, ReturnVoid(), "'[%u].descriptors[%u]' is NULL", i, j);
+            const DescriptorVal* descriptorVal = (DescriptorVal*)updateDescriptorRangeDesc.descriptors[j];
+
+            RETURN_ON_FAILURE(this, descriptorVal != nullptr, ReturnVoid(), "'[%u].descriptors[%u]' is NULL", i, j);
+
+            if (descriptorType == DescriptorType::MUTABLE)
+                descriptorType = descriptorVal->GetType();
+            else
+                RETURN_ON_FAILURE(this, descriptorType == descriptorVal->GetType(), ReturnVoid(), "'[%u].descriptors[%u]' doesn't match the descriptor type of the range", i, j);
 
             descriptors[j] = NRI_GET_IMPL(Descriptor, updateDescriptorRangeDesc.descriptors[j]);
         }

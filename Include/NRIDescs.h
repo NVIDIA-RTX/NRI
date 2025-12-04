@@ -96,8 +96,8 @@ static const Nri(Dim_t) NriConstant(REMAINING) = 0;     // only for "mipNum" and
 NriEnum(GraphicsAPI, uint8_t,
     NONE,   // Supports everything, does nothing, returns dummy non-NULL objects and ~0-filled descs, available if "NRI_ENABLE_NONE_SUPPORT = ON" in CMake
     D3D11,  // Direct3D 11 (feature set 11.1), available if "NRI_ENABLE_D3D11_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm)
-    D3D12,  // Direct3D 12 (feature set 11.1+), available if "NRI_ENABLE_D3D12_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/)
-    VK      // Vulkan 1.3 or 1.2+ (can be used on MacOS via MoltenVK), available if "NRI_ENABLE_VK_SUPPORT = ON" in CMake (https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html)
+    D3D12,  // Direct3D 12 (D3D12_SDK_VERSION 4 or 618+), available if "NRI_ENABLE_D3D12_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/)
+    VK      // Vulkan 1.4, 1.3 or 1.2+ (can be used on MacOS via MoltenVK), available if "NRI_ENABLE_VK_SUPPORT = ON" in CMake (https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html)
 );
 
 NriEnum(Result, int8_t,
@@ -603,9 +603,11 @@ NriStruct(TextureDesc) {
 };
 
 // "structureStride" values:
-// 0  = allows "typed" views
-// 4  = allows "typed", "byte address" (raw) and "structured" views (D3D11: allows to create multiple "structured" views for a single resource, disobeying the spec)
-// >4 = allows "structured" and potentially "typed" views (D3D11: locks this buffer to a single "structured" layout, no "typed" views)
+// 0  - allows only "typed" views
+// 4  - allows "typed", "byte address (raw)" and "structured" views
+//      D3D11: allows to create multiple "structured" views for a single resource, disobeying the spec)
+// >4 - allows only "structured" views
+//      D3D11: locks this buffer to a single "structured" layout
 // VK: buffers always created with sharing mode "CONCURRENT" to match D3D12 spec
 NriStruct(BufferDesc) {
     uint64_t size;
@@ -682,43 +684,43 @@ NriStruct(BindTextureMemoryDesc) {
 //============================================================================================================================================================================================
 
 // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#creating-descriptors
-NriEnum(Texture1DViewType, uint8_t,
-    SHADER_RESOURCE_1D,
-    SHADER_RESOURCE_1D_ARRAY,
-    SHADER_RESOURCE_STORAGE_1D,
-    SHADER_RESOURCE_STORAGE_1D_ARRAY,
-    COLOR_ATTACHMENT,
-    DEPTH_STENCIL_ATTACHMENT,
-    DEPTH_READONLY_STENCIL_ATTACHMENT,
-    DEPTH_ATTACHMENT_STENCIL_READONLY,
-    DEPTH_STENCIL_READONLY
+NriEnum(Texture1DViewType, uint8_t,     // HOST only?   Compatible "DescriptorType"
+    SHADER_RESOURCE_1D,                     // no           TEXTURE
+    SHADER_RESOURCE_1D_ARRAY,               // no           TEXTURE
+    SHADER_RESOURCE_STORAGE_1D,             // no           STORAGE_TEXTURE
+    SHADER_RESOURCE_STORAGE_1D_ARRAY,       // no           STORAGE_TEXTURE
+    COLOR_ATTACHMENT,                       // yes
+    DEPTH_STENCIL_ATTACHMENT,               // yes
+    DEPTH_READONLY_STENCIL_ATTACHMENT,      // yes
+    DEPTH_ATTACHMENT_STENCIL_READONLY,      // yes
+    DEPTH_STENCIL_READONLY                  // yes
 );
 
-NriEnum(Texture2DViewType, uint8_t,
-    SHADER_RESOURCE_2D,
-    SHADER_RESOURCE_2D_ARRAY,
-    SHADER_RESOURCE_CUBE,
-    SHADER_RESOURCE_CUBE_ARRAY,
-    SHADER_RESOURCE_STORAGE_2D,
-    SHADER_RESOURCE_STORAGE_2D_ARRAY,
-    COLOR_ATTACHMENT,
-    DEPTH_STENCIL_ATTACHMENT,
-    DEPTH_READONLY_STENCIL_ATTACHMENT,
-    DEPTH_ATTACHMENT_STENCIL_READONLY,
-    DEPTH_STENCIL_READONLY,
-    SHADING_RATE_ATTACHMENT
+NriEnum(Texture2DViewType, uint8_t,     // HOST only?   Compatible "DescriptorType"
+    SHADER_RESOURCE_2D,                     // no           TEXTURE
+    SHADER_RESOURCE_2D_ARRAY,               // no           TEXTURE
+    SHADER_RESOURCE_CUBE,                   // no           TEXTURE
+    SHADER_RESOURCE_CUBE_ARRAY,             // no           TEXTURE
+    SHADER_RESOURCE_STORAGE_2D,             // no           STORAGE_TEXTURE
+    SHADER_RESOURCE_STORAGE_2D_ARRAY,       // no           STORAGE_TEXTURE
+    COLOR_ATTACHMENT,                       // yes
+    DEPTH_STENCIL_ATTACHMENT,               // yes
+    DEPTH_READONLY_STENCIL_ATTACHMENT,      // yes
+    DEPTH_ATTACHMENT_STENCIL_READONLY,      // yes
+    DEPTH_STENCIL_READONLY,                 // yes
+    SHADING_RATE_ATTACHMENT                 // yes
 );
 
-NriEnum(Texture3DViewType, uint8_t,
-    SHADER_RESOURCE_3D,
-    SHADER_RESOURCE_STORAGE_3D,
-    COLOR_ATTACHMENT
+NriEnum(Texture3DViewType, uint8_t,     // HOST only?   Compatible "DescriptorType"
+    SHADER_RESOURCE_3D,                     // no           TEXTURE
+    SHADER_RESOURCE_STORAGE_3D,             // no           STORAGE_TEXTURE
+    COLOR_ATTACHMENT                        // yes
 );
 
-NriEnum(BufferViewType, uint8_t,
-    SHADER_RESOURCE,
-    SHADER_RESOURCE_STORAGE,
-    CONSTANT
+NriEnum(BufferViewType, uint8_t,        // HOST only?   Compatible "DescriptorType"
+    SHADER_RESOURCE,                        // no           BUFFER or STRUCTURED_BUFFER (if "structureStride" != 0)
+    SHADER_RESOURCE_STORAGE,                // no           STORAGE_BUFFER or STORAGE_STRUCTURED_BUFFER (if "structureStride" != 0)
+    CONSTANT                                // no           CONSTANT_BUFFER
 );
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkFilter.html
@@ -798,7 +800,7 @@ NriStruct(BufferViewDesc) {
     Nri(Format) format;
     uint64_t offset;            // expects "memoryAlignment.bufferShaderResourceOffset" for shader resources
     uint64_t size;              // can be "WHOLE_SIZE"
-    NriOptional uint32_t structureStride; // = structure stride from "BufferDesc" if not provided
+    NriOptional uint32_t structureStride; // = "BufferDesc::structureStride", if not provided and "format" is "UNKNOWN"
 };
 
 NriStruct(AddressModes) {
@@ -830,40 +832,6 @@ NriStruct(SamplerDesc) {
 //============================================================================================================================================================================================
 #pragma region [ Pipeline layout and descriptors management ]
 //============================================================================================================================================================================================
-
-/*
-All indices are local in the currently bound pipeline layout.
-
-Pipeline layout example:
-    Descriptor set                  #0          // "setIndex" - a descriptor set index in the pipeline layout, provided as an argument or bound to the pipeline
-        Descriptor range                #0      // "rangeIndex" - a descriptor range index in the descriptor set
-            Descriptor                      #0  // "descriptorIndex" and "baseDescriptor" - a descriptor (base) index in the descriptor range, i.e. sub-range start
-            Descriptor                      #1
-            Descriptor                      #2
-        Descriptor range                #1
-            Descriptor                      #0
-            Descriptor                      #1
-
-    Descriptor set                  #1
-        Descriptor range                #0
-            Descriptor                      #0
-
-    Descriptor set                  #2
-        Descriptor range                #0
-            Descriptor                      #0
-            Descriptor                      #1
-            Descriptor                      #2
-        Descriptor range                #1
-            Descriptor                      #0
-            Descriptor                      #1
-        Descriptor range                #2
-            Descriptor                      #0
-
-    RootConstantDesc                #0          // "rootConstantIndex" - an index in "rootConstants" in the currently bound pipeline layout
-
-    RootDescriptorDesc              #0          // "rootDescriptorIndex" - an index in "rootDescriptors" in the currently bound pipeline layout
-    RootDescriptorDesc              #1
-*/
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkPipelineBindPoint.html
 NriEnum(BindPoint, uint8_t,
@@ -909,21 +877,25 @@ NriBits(DescriptorRangeBits, uint8_t,
 NriEnum(DescriptorType, uint8_t,
     // Resource heap
     // - a mutable descriptor is a proxy "union" descriptor for all resource descriptor types, i.e. non-sampler
+    // - a mutable descriptor can't be created, it can only be allocated from a pool (i.e. used in a "DescriptorRangeDesc")
     // - a mutable descriptor must "mutate" to any resource descriptor via "UpdateDescriptorRanges" or "CopyDescriptorRanges"
     MUTABLE,
 
     // Sampler heap
     SAMPLER,
 
-    // Optimized resources (may have various sizes depending on a Vulkan implementation)
-    CONSTANT_BUFFER,
-    TEXTURE,
-    STORAGE_TEXTURE,
-    BUFFER,
-    STORAGE_BUFFER,
-    STRUCTURED_BUFFER,
-    STORAGE_STRUCTURED_BUFFER,
-    ACCELERATION_STRUCTURE
+    // VK: may have various implementation dependent sizes
+    // Optimized resources      // Typed    // Can be placed in root?
+    TEXTURE,                        // yes      // no
+    STORAGE_TEXTURE,                // yes      // no
+
+    BUFFER,                         // yes      // no
+    STORAGE_BUFFER,                 // yes      // no
+    CONSTANT_BUFFER,                // no       // yes
+    STRUCTURED_BUFFER,              // no       // yes
+    STORAGE_STRUCTURED_BUFFER,      // no       // yes
+
+    ACCELERATION_STRUCTURE          // no       // yes
 );
 
 // "DescriptorRange" consists of "Descriptor" entities
@@ -952,7 +924,7 @@ NriStruct(RootConstantDesc) {           // aka push constants block
 
 NriStruct(RootDescriptorDesc) {         // aka push descriptor
     uint32_t registerIndex;
-    Nri(DescriptorType) descriptorType; // CONSTANT_BUFFER, STRUCTURED_BUFFER or STORAGE_STRUCTURED_BUFFER
+    Nri(DescriptorType) descriptorType; // "CONSTANT_BUFFER", "STRUCTURED_BUFFER" or "STORAGE_STRUCTURED_BUFFER"
     Nri(StageBits) shaderStages;
 };
 
@@ -966,6 +938,23 @@ NriStruct(RootSamplerDesc) {            // aka static (immutable) sampler
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkPipelineLayoutCreateInfo.html
 // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#root-signature
 // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#root-signature-version-11
+/*
+All indices are local in the currently bound pipeline layout. Pipeline layout example:
+    RootConstantDesc                #0          // "rootConstantIndex" - an index in "rootConstants" in the currently bound pipeline layout
+    ...
+
+    RootDescriptorDesc              #0          // "rootDescriptorIndex" - an index in "rootDescriptors" in the currently bound pipeline layout
+    ...
+
+    RootSamplerDesc                 #0
+    ...
+
+    Descriptor set                  #0          // "setIndex" - a descriptor set index in the pipeline layout, provided as an argument or bound to the pipeline
+        Descriptor range                #0      // "rangeIndex" - a descriptor range index in the descriptor set
+            Descriptor num                  N   // "descriptorIndex" and "baseDescriptor" - a descriptor (base) index in the descriptor range, i.e. sub-range start
+        ...
+    ...
+*/
 NriStruct(PipelineLayoutDesc) {
     uint32_t rootRegisterSpace;         // must be unique, avoid big gaps
     const NriPtr(RootConstantDesc) rootConstants;
@@ -1018,9 +1007,8 @@ NriStruct(UpdateDescriptorRangeDesc) {
     uint32_t rangeIndex;
     uint32_t baseDescriptor;
     // Source & count
-    const NriPtr(Descriptor) const* descriptors;
+    const NriPtr(Descriptor) const* descriptors; // all descriptors must have the same type
     uint32_t descriptorNum;
-    Nri(DescriptorType) descriptorType; // if the range is "MUTABLE" in the pipeline layout, this must be a non-mutable type
 };
 
 // Copying descriptors between descriptor sets

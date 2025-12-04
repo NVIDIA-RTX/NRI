@@ -44,10 +44,6 @@ NRI_INLINE Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout
                         m_SamplerNum += descriptorNum;
                         enoughDescriptors = m_SamplerNum <= m_Desc.samplerMaxNum;
                         break;
-                    case DescriptorType::CONSTANT_BUFFER:
-                        m_ConstantBufferNum += descriptorNum;
-                        enoughDescriptors = m_ConstantBufferNum <= m_Desc.constantBufferMaxNum;
-                        break;
                     case DescriptorType::TEXTURE:
                         m_TextureNum += descriptorNum;
                         enoughDescriptors = m_TextureNum <= m_Desc.textureMaxNum;
@@ -63,6 +59,10 @@ NRI_INLINE Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout
                     case DescriptorType::STORAGE_BUFFER:
                         m_StorageBufferNum += descriptorNum;
                         enoughDescriptors = m_StorageBufferNum <= m_Desc.storageBufferMaxNum;
+                        break;
+                    case DescriptorType::CONSTANT_BUFFER:
+                        m_ConstantBufferNum += descriptorNum;
+                        enoughDescriptors = m_ConstantBufferNum <= m_Desc.constantBufferMaxNum;
                         break;
                     case DescriptorType::STRUCTURED_BUFFER:
                         m_StructuredBufferNum += descriptorNum;

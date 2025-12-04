@@ -28,11 +28,11 @@
 constexpr std::array<DescriptorTypeDX11, (size_t)DescriptorType::MAX_NUM> g_RemapDescriptorTypeToIndex = {
     DescriptorTypeDX11::RESOURCE, // MUTABLE
     DescriptorTypeDX11::SAMPLER,  // SAMPLER
-    DescriptorTypeDX11::CONSTANT, // CONSTANT_BUFFER
     DescriptorTypeDX11::RESOURCE, // TEXTURE
     DescriptorTypeDX11::STORAGE,  // STORAGE_TEXTURE
     DescriptorTypeDX11::RESOURCE, // BUFFER
     DescriptorTypeDX11::STORAGE,  // STORAGE_BUFFER
+    DescriptorTypeDX11::CONSTANT, // CONSTANT_BUFFER
     DescriptorTypeDX11::RESOURCE, // STRUCTURED_BUFFER
     DescriptorTypeDX11::STORAGE,  // STORAGE_STRUCTURED_BUFFER
     DescriptorTypeDX11::RESOURCE, // ACCELERATION_STRUCTURE

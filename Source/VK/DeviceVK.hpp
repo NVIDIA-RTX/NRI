@@ -53,11 +53,17 @@ static constexpr VkBufferUsageFlags GetBufferUsageFlags(BufferUsageBits bufferUs
     if (bufferUsageBits & BufferUsageBits::MICROMAP_BUILD_INPUT)
         flags |= VK_BUFFER_USAGE_MICROMAP_BUILD_INPUT_READ_ONLY_BIT_EXT;
 
-    if (bufferUsageBits & BufferUsageBits::SHADER_RESOURCE)
-        flags |= structureStride ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+    // Based on comments for "BufferDesc::structureStride"
+    if (structureStride == 0 || structureStride == 4) {
+        if (bufferUsageBits & BufferUsageBits::SHADER_RESOURCE)
+            flags |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
-    if (bufferUsageBits & BufferUsageBits::SHADER_RESOURCE_STORAGE)
-        flags |= structureStride ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+        if (bufferUsageBits & BufferUsageBits::SHADER_RESOURCE_STORAGE)
+            flags |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+    }
+
+    if (structureStride)
+        flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT; // so called SSBO, can be R/W in shaders
 
     return flags;
 }
@@ -778,6 +784,11 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         VkPhysicalDeviceVulkan14Properties props14 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_PROPERTIES};
         if (m_MinorVersion >= 4) {
             APPEND_STRUCT(props14);
+        }
+
+        VkPhysicalDevicePipelineRobustnessProperties propsRobustness = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_PROPERTIES};
+        if (m_MinorVersion >= 4) {
+            APPEND_STRUCT(propsRobustness);
         }
 
         APPEND_PROPS(m_MinorVersion < 3, KHR, Maintenance4, MAINTENANCE_4);
@@ -1521,7 +1532,7 @@ Result DeviceVK::CreateInstance(bool enableGraphicsAPIValidation, const Vector<c
 }
 
 void DeviceVK::SetDebugNameToTrivialObject(VkObjectType objectType, uint64_t handle, const char* name) {
-    if (!m_VK.SetDebugUtilsObjectNameEXT)
+    if (!m_VK.SetDebugUtilsObjectNameEXT || !handle)
         return;
 
     VkDebugUtilsObjectNameInfoEXT objectNameInfo = {VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, nullptr, objectType, (uint64_t)handle, name};
@@ -1920,22 +1931,22 @@ NRI_INLINE void DeviceVK::CopyDescriptorRanges(const CopyDescriptorRangeDesc* co
         VkCopyDescriptorSet& copy = copies[i];
         copy = {VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET};
         copy.srcSet = src.GetHandle();
+        copy.srcBinding = srcRangeDesc.baseRegisterIndex;
         copy.dstSet = dst.GetHandle();
+        copy.dstBinding = dstRangeDesc.baseRegisterIndex;
         copy.descriptorCount = descriptorNum;
 
-        bool isDstArray = dstRangeDesc.flags & (DescriptorRangeBits::ARRAY | DescriptorRangeBits::VARIABLE_SIZED_ARRAY);
-        if (isDstArray) {
-            copy.dstBinding = dstRangeDesc.baseRegisterIndex;
-            copy.dstArrayElement = copyDescriptorSetDesc.dstBaseDescriptor;
-        } else
-            copy.dstBinding = dstRangeDesc.baseRegisterIndex + copyDescriptorSetDesc.dstBaseDescriptor;
-
         bool isSrcArray = srcRangeDesc.flags & (DescriptorRangeBits::ARRAY | DescriptorRangeBits::VARIABLE_SIZED_ARRAY);
-        if (isSrcArray) {
-            copy.srcBinding = srcRangeDesc.baseRegisterIndex;
+        if (isSrcArray)
             copy.srcArrayElement = copyDescriptorSetDesc.srcBaseDescriptor;
-        } else
-            copy.srcBinding = srcRangeDesc.baseRegisterIndex + copyDescriptorSetDesc.srcBaseDescriptor;
+        else
+            copy.srcBinding += copyDescriptorSetDesc.srcBaseDescriptor;
+
+        bool isDstArray = dstRangeDesc.flags & (DescriptorRangeBits::ARRAY | DescriptorRangeBits::VARIABLE_SIZED_ARRAY);
+        if (isDstArray)
+            copy.dstArrayElement = copyDescriptorSetDesc.dstBaseDescriptor;
+        else
+            copy.dstBinding += copyDescriptorSetDesc.dstBaseDescriptor;
     }
 
     m_VK.UpdateDescriptorSets(m_Device, 0, nullptr, copyDescriptorRangeDescNum, copies);
@@ -1982,7 +1993,7 @@ static void WriteBuffers(VkWriteDescriptorSet& writeDescriptorSet, size_t& scrat
     writeDescriptorSet.pBufferInfo = bufferInfos;
 }
 
-static void WriteTypedBuffers(VkWriteDescriptorSet& writeDescriptorSet, size_t& scratchOffset, uint8_t* scratch, const UpdateDescriptorRangeDesc& rangeUpdateDesc) {
+static void WriteBufferViews(VkWriteDescriptorSet& writeDescriptorSet, size_t& scratchOffset, uint8_t* scratch, const UpdateDescriptorRangeDesc& rangeUpdateDesc) {
     VkBufferView* bufferViews = (VkBufferView*)(scratch + scratchOffset);
     scratchOffset += rangeUpdateDesc.descriptorNum * sizeof(VkBufferView);
 
@@ -2017,16 +2028,16 @@ static void WriteAccelerationStructures(VkWriteDescriptorSet& writeDescriptorSet
 typedef void (*WriteDescriptorsFunc)(VkWriteDescriptorSet& writeDescriptorSet, size_t& scratchOffset, uint8_t* scratch, const UpdateDescriptorRangeDesc& rangeUpdateDesc);
 
 constexpr std::array<WriteDescriptorsFunc, (size_t)DescriptorType::MAX_NUM> g_WriteFuncs = {
-    nullptr,                     // MUTABLE (never used)
-    WriteSamplers,               // SAMPLER
-    WriteBuffers,                // CONSTANT_BUFFER
-    WriteTextures,               // TEXTURE
-    WriteTextures,               // STORAGE_TEXTURE
-    WriteTypedBuffers,           // BUFFER
-    WriteTypedBuffers,           // STORAGE_BUFFER
-    WriteBuffers,                // STRUCTURED_BUFFER
-    WriteBuffers,                // STORAGE_STRUCTURED_BUFFER
-    WriteAccelerationStructures, // ACCELERATION_STRUCTURE
+    nullptr,                        // MUTABLE (never used)
+    WriteSamplers,                  // SAMPLER
+    WriteTextures,                  // TEXTURE
+    WriteTextures,                  // STORAGE_TEXTURE
+    WriteBufferViews,               // BUFFER
+    WriteBufferViews,               // STORAGE_BUFFER
+    WriteBuffers,                   // CONSTANT_BUFFER
+    WriteBuffers,                   // STRUCTURED_BUFFER
+    WriteBuffers,                   // STORAGE_STRUCTURED_BUFFER
+    WriteAccelerationStructures,    // ACCELERATION_STRUCTURE
 };
 VALIDATE_ARRAY_BY_PTR(g_WriteFuncs);
 
@@ -2036,12 +2047,9 @@ NRI_INLINE void DeviceVK::UpdateDescriptorRanges(const UpdateDescriptorRangeDesc
     size_t scratchSize = scratchOffset;
     for (uint32_t i = 0; i < updateDescriptorRangeDescNum; i++) {
         const UpdateDescriptorRangeDesc& updateDescriptorRangeDesc = updateDescriptorRangeDescs[i];
-        const DescriptorSetVK& dst = *(DescriptorSetVK*)updateDescriptorRangeDesc.descriptorSet;
-        const DescriptorRangeDesc& rangeDesc = dst.GetDesc()->ranges[updateDescriptorRangeDesc.rangeIndex];
 
-        DescriptorType descriptorType = rangeDesc.descriptorType;
-        if (descriptorType == DescriptorType::MUTABLE)
-            descriptorType = updateDescriptorRangeDesc.descriptorType;
+        const DescriptorVK& descriptor0 = *(DescriptorVK*)updateDescriptorRangeDesc.descriptors[0];
+        DescriptorType descriptorType = descriptor0.GetType();
 
         switch (descriptorType) {
             case DescriptorType::SAMPLER:
@@ -2058,11 +2066,9 @@ NRI_INLINE void DeviceVK::UpdateDescriptorRanges(const UpdateDescriptorRangeDesc
             case DescriptorType::STORAGE_BUFFER:
                 scratchSize += sizeof(VkBufferView) * updateDescriptorRangeDesc.descriptorNum;
                 break;
-
             case DescriptorType::ACCELERATION_STRUCTURE:
                 scratchSize += sizeof(VkAccelerationStructureKHR) * updateDescriptorRangeDesc.descriptorNum + sizeof(VkWriteDescriptorSetAccelerationStructureKHR);
                 break;
-
             default:
                 CHECK(false, "Unexpected");
                 break;
@@ -2077,22 +2083,21 @@ NRI_INLINE void DeviceVK::UpdateDescriptorRanges(const UpdateDescriptorRangeDesc
         const DescriptorSetVK& dst = *(DescriptorSetVK*)updateDescriptorRangeDesc.descriptorSet;
         const DescriptorRangeDesc& rangeDesc = dst.GetDesc()->ranges[updateDescriptorRangeDesc.rangeIndex];
 
-        DescriptorType descriptorType = rangeDesc.descriptorType;
-        if (descriptorType == DescriptorType::MUTABLE)
-            descriptorType = updateDescriptorRangeDesc.descriptorType;
+        const DescriptorVK& descriptor0 = *(DescriptorVK*)updateDescriptorRangeDesc.descriptors[0];
+        DescriptorType descriptorType = descriptor0.GetType();
 
         VkWriteDescriptorSet& write = *(VkWriteDescriptorSet*)(writes + i * sizeof(VkWriteDescriptorSet)); // must be first and consecutive in "scratch"
         write = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
         write.dstSet = dst.GetHandle();
+        write.dstBinding = rangeDesc.baseRegisterIndex;
         write.descriptorCount = updateDescriptorRangeDesc.descriptorNum;
         write.descriptorType = GetDescriptorType(descriptorType);
 
         bool isArray = rangeDesc.flags & (DescriptorRangeBits::ARRAY | DescriptorRangeBits::VARIABLE_SIZED_ARRAY);
-        if (isArray) {
-            write.dstBinding = rangeDesc.baseRegisterIndex;
+        if (isArray)
             write.dstArrayElement = updateDescriptorRangeDesc.baseDescriptor;
-        } else
-            write.dstBinding = rangeDesc.baseRegisterIndex + updateDescriptorRangeDesc.baseDescriptor;
+        else
+            write.dstBinding += updateDescriptorRangeDesc.baseDescriptor;
 
         g_WriteFuncs[(uint32_t)descriptorType](write, scratchOffset, writes, updateDescriptorRangeDesc);
     }

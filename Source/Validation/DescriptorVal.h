@@ -4,74 +4,65 @@
 
 namespace nri {
 
-enum class ResourceType {
-    NONE,
-    BUFFER,
-    TEXTURE,
+enum class DescriptorTypeExt : uint8_t {
+    // Must match "DescriptorType"
+    MUTABLE,
     SAMPLER,
-    ACCELERATION_STRUCTURE
-};
+    TEXTURE,
+    STORAGE_TEXTURE,
+    BUFFER,
+    STORAGE_BUFFER,
+    CONSTANT_BUFFER,
+    STRUCTURED_BUFFER,
+    STORAGE_STRUCTURED_BUFFER,
+    ACCELERATION_STRUCTURE,
 
-enum class ResourceViewType {
-    NONE,
+    // Extra
     COLOR_ATTACHMENT,
     DEPTH_STENCIL_ATTACHMENT,
-    SHADER_RESOURCE,
-    SHADER_RESOURCE_STORAGE,
-    CONSTANT_BUFFER,
-    SHADING_RATE_ATTACHMENT
+    SHADING_RATE_ATTACHMENT,
+
+    MAX_NUM
 };
 
 struct DescriptorVal final : public ObjectVal {
-    DescriptorVal(DeviceVal& device, Descriptor* descriptor, ResourceType resourceType);
+    DescriptorVal(DeviceVal& device, Descriptor* descriptor, DescriptorType type);
     DescriptorVal(DeviceVal& device, Descriptor* descriptor, const BufferViewDesc& bufferViewDesc);
     DescriptorVal(DeviceVal& device, Descriptor* descriptor, const Texture1DViewDesc& textureViewDesc);
     DescriptorVal(DeviceVal& device, Descriptor* descriptor, const Texture2DViewDesc& textureViewDesc);
     DescriptorVal(DeviceVal& device, Descriptor* descriptor, const Texture3DViewDesc& textureViewDesc);
-    DescriptorVal(DeviceVal& device, Descriptor* descriptor);
 
     inline Descriptor* GetImpl() const {
         return (Descriptor*)m_Impl;
+    }
+
+    inline DescriptorType GetType() const {
+        return (DescriptorType)m_Type;
+    }
+
+    inline DescriptorTypeExt GetTypeExt() const {
+        return m_Type;
     }
 
     inline uint64_t GetNativeObject() const {
         return GetCoreInterfaceImpl().GetDescriptorNativeObject(GetImpl());
     }
 
-    inline bool IsBufferView() const {
-        return m_ResourceType == ResourceType::BUFFER;
-    }
-
-    inline bool IsTextureView() const {
-        return m_ResourceType == ResourceType::TEXTURE;
-    }
-
-    inline bool IsSampler() const {
-        return m_ResourceType == ResourceType::SAMPLER;
-    }
-
-    inline bool IsAccelerationStructure() const {
-        return m_ResourceType == ResourceType::ACCELERATION_STRUCTURE;
+    inline bool CanBeRoot() const {
+        return m_Type == DescriptorTypeExt::CONSTANT_BUFFER
+            || m_Type == DescriptorTypeExt::STRUCTURED_BUFFER
+            || m_Type == DescriptorTypeExt::STORAGE_STRUCTURED_BUFFER
+            || m_Type == DescriptorTypeExt::ACCELERATION_STRUCTURE;
     }
 
     inline bool IsConstantBuffer() const {
-        return m_ResourceType == ResourceType::BUFFER && m_ResourceViewType == ResourceViewType::CONSTANT_BUFFER;
-    }
-
-    inline bool IsColorAttachment() const {
-        return IsTextureView() && m_ResourceViewType == ResourceViewType::COLOR_ATTACHMENT;
-    }
-
-    inline bool IsDepthStencilAttachment() const {
-        return IsTextureView() && m_ResourceViewType == ResourceViewType::DEPTH_STENCIL_ATTACHMENT;
-    }
-
-    inline bool IsShaderResource() const {
-        return m_ResourceType != ResourceType::NONE && !IsSampler() && m_ResourceViewType == ResourceViewType::SHADER_RESOURCE;
+        return m_Type == DescriptorTypeExt::CONSTANT_BUFFER;
     }
 
     inline bool IsShaderResourceStorage() const {
-        return m_ResourceType != ResourceType::NONE && !IsSampler() && m_ResourceViewType == ResourceViewType::SHADER_RESOURCE_STORAGE;
+        return m_Type == DescriptorTypeExt::STORAGE_TEXTURE
+            || m_Type == DescriptorTypeExt::STORAGE_BUFFER
+            || m_Type == DescriptorTypeExt::STORAGE_STRUCTURED_BUFFER;
     }
 
     inline bool IsDepthReadonly() const {
@@ -83,8 +74,7 @@ struct DescriptorVal final : public ObjectVal {
     }
 
 private:
-    ResourceType m_ResourceType = ResourceType::NONE;
-    ResourceViewType m_ResourceViewType = ResourceViewType::NONE;
+    DescriptorTypeExt m_Type = DescriptorTypeExt::MAX_NUM;
     bool m_IsDepthReadonly = false;
     bool m_IsStencilReadonly = false;
 };

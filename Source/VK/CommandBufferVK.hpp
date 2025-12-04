@@ -215,15 +215,26 @@ NRI_INLINE void CommandBufferVK::ClearStorage(const ClearStorageDesc& clearDesc)
     const DescriptorVK& storage = *(DescriptorVK*)clearDesc.storage;
 
     const auto& vk = m_Device.GetDispatchTable();
-    if (storage.GetType() == DescriptorTypeVK::BUFFER_VIEW) {
-        const DescriptorBufDesc& bufDesc = storage.GetBufDesc();
-        vk.CmdFillBuffer(m_Handle, bufDesc.handle, bufDesc.offset, bufDesc.size, clearDesc.value.ui.x);
-    } else {
-        static_assert(sizeof(VkClearColorValue) == sizeof(clearDesc.value), "Unexpected sizeof");
 
-        const VkClearColorValue* value = (VkClearColorValue*)&clearDesc.value;
-        VkImageSubresourceRange range = storage.GetImageSubresourceRange();
-        vk.CmdClearColorImage(m_Handle, storage.GetImage(), VK_IMAGE_LAYOUT_GENERAL, value, 1, &range);
+    DescriptorType descriptorType = storage.GetType();
+    switch (descriptorType) {
+        case DescriptorType::STORAGE_TEXTURE: {
+            static_assert(sizeof(VkClearColorValue) == sizeof(clearDesc.value), "Unexpected sizeof");
+
+            const VkClearColorValue* value = (VkClearColorValue*)&clearDesc.value;
+            VkImageSubresourceRange range = storage.GetImageSubresourceRange();
+            VkImage image = storage.GetTexture().GetHandle();
+
+            vk.CmdClearColorImage(m_Handle, image, VK_IMAGE_LAYOUT_GENERAL, value, 1, &range);
+        } break;
+        case DescriptorType::STORAGE_BUFFER:
+        case DescriptorType::STORAGE_STRUCTURED_BUFFER: {
+            const DescriptorBufDesc& bufDesc = storage.GetBufDesc();
+            vk.CmdFillBuffer(m_Handle, bufDesc.handle, bufDesc.offset, bufDesc.size, clearDesc.value.ui.x);
+        } break;
+        default:
+            CHECK(false, "Unexpected");
+            break;
     }
 }
 
@@ -244,7 +255,7 @@ NRI_INLINE void CommandBufferVK::BeginRendering(const AttachmentsDesc& attachmen
         VkRenderingAttachmentInfo& color = colors[i];
         color = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
         color.imageView = descriptor.GetImageView();
-        color.imageLayout = descriptor.GetTexDesc().layout;
+        color.imageLayout = desc.layout;
         color.resolveMode = VK_RESOLVE_MODE_NONE; // TODO: add support for "on-the-fly" resolve
         color.resolveImageView = VK_NULL_HANDLE;
         color.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -392,7 +403,6 @@ NRI_INLINE void CommandBufferVK::SetPipelineLayout(BindPoint bindPoint, const Pi
 
             VkWriteDescriptorSet descriptorWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
             descriptorWrite.dstBinding = bindingInfo.pushDescriptors[i];
-            descriptorWrite.dstArrayElement = 0;
             descriptorWrite.descriptorCount = 1;
             descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
             descriptorWrite.pImageInfo = &imageInfo;
@@ -482,7 +492,6 @@ NRI_INLINE void CommandBufferVK::SetRootConstants(const SetRootConstantsDesc& se
 NRI_INLINE void CommandBufferVK::SetRootDescriptor(const SetRootDescriptorDesc& setRootDescriptorDesc) {
     const DescriptorVK& descriptorVK = *(DescriptorVK*)setRootDescriptorDesc.descriptor;
 
-    DescriptorTypeVK descriptorType = descriptorVK.GetType();
     VkAccelerationStructureKHR accelerationStructure = descriptorVK.GetAccelerationStructure();
 
     const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
@@ -496,19 +505,28 @@ NRI_INLINE void CommandBufferVK::SetRootDescriptor(const SetRootDescriptorDesc& 
 
     VkWriteDescriptorSet descriptorWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
     descriptorWrite.dstBinding = bindingInfo.pushDescriptors[setRootDescriptorDesc.rootDescriptorIndex];
-    descriptorWrite.dstArrayElement = 0;
     descriptorWrite.descriptorCount = 1;
 
     // Let's match D3D12 spec (no textures, no typed buffers)
-    if (descriptorType == DescriptorTypeVK::BUFFER_VIEW) {
-        const DescriptorBufDesc& bufDesc = descriptorVK.GetBufDesc();
-        descriptorWrite.descriptorType = bufDesc.viewType == BufferViewType::CONSTANT ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptorWrite.pBufferInfo = &bufferInfo;
-    } else if (descriptorType == DescriptorTypeVK::ACCELERATION_STRUCTURE) {
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-        descriptorWrite.pNext = &accelerationStructureWrite;
-    } else
-        CHECK(false, "Unexpected");
+    DescriptorType descriptorType = descriptorVK.GetType();
+    switch (descriptorType) {
+        case DescriptorType::CONSTANT_BUFFER:
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            descriptorWrite.pBufferInfo = &bufferInfo;
+            break;
+        case DescriptorType::STRUCTURED_BUFFER:
+        case DescriptorType::STORAGE_STRUCTURED_BUFFER:
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            descriptorWrite.pBufferInfo = &bufferInfo;
+            break;
+        case DescriptorType::ACCELERATION_STRUCTURE:
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+            descriptorWrite.pNext = &accelerationStructureWrite;
+            break;
+        default:
+            CHECK(false, "Unexpected");
+            break;
+    }
 
     BindPoint bindPoint = setRootDescriptorDesc.bindPoint == BindPoint::INHERIT ? m_PipelineBindPoint : setRootDescriptorDesc.bindPoint;
     VkPipelineBindPoint vkPipelineBindPoint = GetPipelineBindPoint(bindPoint);

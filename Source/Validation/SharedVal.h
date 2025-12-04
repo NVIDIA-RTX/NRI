@@ -104,11 +104,11 @@ uint64_t GetMemorySizeD3D12(const MemoryD3D12Desc& memoryD3D12Desc);
 constexpr std::array<const char*, (size_t)DescriptorType::MAX_NUM> g_descriptorTypeNames = {
     "MUTABLE",                   // MUTABLE
     "SAMPLER",                   // SAMPLER
-    "CONSTANT_BUFFER",           // CONSTANT_BUFFER
     "TEXTURE",                   // TEXTURE
     "STORAGE_TEXTURE",           // STORAGE_TEXTURE
     "BUFFER",                    // BUFFER
     "STORAGE_BUFFER",            // STORAGE_BUFFER
+    "CONSTANT_BUFFER",           // CONSTANT_BUFFER
     "STRUCTURED_BUFFER",         // STRUCTURED_BUFFER
     "STORAGE_STRUCTURED_BUFFER", // STORAGE_STRUCTURED_BUFFER
     "ACCELERATION_STRUCTURE",    // ACCELERATION_STRUCTURE

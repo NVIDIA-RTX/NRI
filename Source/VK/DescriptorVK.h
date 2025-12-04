@@ -6,32 +6,22 @@ namespace nri {
 
 struct TextureVK;
 
-enum class DescriptorTypeVK {
-    NONE = 0,
-    BUFFER_VIEW,
-    IMAGE_VIEW,
-    SAMPLER,
-    ACCELERATION_STRUCTURE
-};
-
 struct DescriptorBufDesc {
     VkBuffer handle;
     uint64_t offset;
     uint64_t size;
-    BufferViewType viewType;
 };
 
 struct DescriptorTexDesc {
-    VkImage handle;
     const TextureVK* texture;
     VkImageLayout layout;
-    VkImageAspectFlags aspectFlags;
     Dim_t layerOffset;
     Dim_t layerNum;
     Dim_t sliceOffset;
     Dim_t sliceNum;
     Dim_t mipOffset;
     Dim_t mipNum;
+    Format format;
 };
 
 struct DescriptorVK final : public DebugNameBase {
@@ -63,15 +53,11 @@ struct DescriptorVK final : public DebugNameBase {
         return m_BufferDesc.handle;
     }
 
-    inline VkImage GetImage() const {
-        return m_TextureDesc.handle;
-    }
-
     inline const TextureVK& GetTexture() const {
         return *m_TextureDesc.texture;
     }
 
-    inline DescriptorTypeVK GetType() const {
+    inline DescriptorType GetType() const {
         return m_Type;
     }
 
@@ -102,7 +88,7 @@ struct DescriptorVK final : public DebugNameBase {
 
     inline VkImageSubresourceRange GetImageSubresourceRange() const {
         VkImageSubresourceRange range = {};
-        range.aspectMask = m_TextureDesc.aspectFlags;
+        range.aspectMask = GetImageAspectFlags(m_TextureDesc.format);
         range.baseMipLevel = m_TextureDesc.mipOffset;
         range.levelCount = m_TextureDesc.mipNum;
         range.baseArrayLayer = m_TextureDesc.layerOffset;
@@ -145,7 +131,7 @@ private:
         DescriptorBufDesc m_BufferDesc;
     };
 
-    DescriptorTypeVK m_Type = DescriptorTypeVK::NONE;
+    DescriptorType m_Type = DescriptorType::MAX_NUM;
 };
 
 } // namespace nri

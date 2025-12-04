@@ -46,7 +46,7 @@ NRI_INLINE Result AccelerationStructureVal::CreateDescriptor(Descriptor*& descri
 
     descriptor = nullptr;
     if (result == Result::SUCCESS)
-        descriptor = (Descriptor*)Allocate<DescriptorVal>(m_Device.GetAllocationCallbacks(), m_Device, descriptorImpl, ResourceType::ACCELERATION_STRUCTURE);
+        descriptor = (Descriptor*)Allocate<DescriptorVal>(m_Device.GetAllocationCallbacks(), m_Device, descriptorImpl, DescriptorType::ACCELERATION_STRUCTURE);
 
     return result;
 }

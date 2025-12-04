@@ -367,7 +367,7 @@ NRI_INLINE void CommandBufferVal::SetRootDescriptor(const SetRootDescriptorDesc&
 
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
-    RETURN_ON_FAILURE(&m_Device, descriptorVal.IsBufferView() || descriptorVal.IsAccelerationStructure(), ReturnVoid(), "'descriptor' must be a buffer or acceleration structure");
+    RETURN_ON_FAILURE(&m_Device, descriptorVal.CanBeRoot(), ReturnVoid(), "'descriptor' must be a non-typed buffer or an acceleration structure");
 
     if (!descriptorVal.IsConstantBuffer())
         RETURN_ON_FAILURE(&m_Device, setRootDescriptorDesc.offset == 0 || deviceDesc.features.nonConstantBufferRootDescriptorOffset, ReturnVoid(), "Non-zero 'setRootDescriptorDesc.offset' is supported only for 'CONSTANT_BUFFER'");
