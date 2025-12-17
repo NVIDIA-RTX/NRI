@@ -277,6 +277,7 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(m_MinorVersion < 3, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 3, VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 3, VK_KHR_MAINTENANCE_4_EXTENSION_NAME);
+    APPEND_EXT(m_MinorVersion < 3, VK_KHR_SHADER_INTEGER_DOT_PRODUCT_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 3, VK_EXT_IMAGE_ROBUSTNESS_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 3, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME); // TODO: there are 2 and 3 versions...
     APPEND_EXT(m_MinorVersion < 3, VK_EXT_SUBGROUP_SIZE_CONTROL_EXTENSION_NAME);
@@ -573,6 +574,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     APPEND_FEATURES(m_MinorVersion < 3, KHR, DynamicRendering, DYNAMIC_RENDERING);
     APPEND_FEATURES(m_MinorVersion < 3, KHR, Maintenance4, MAINTENANCE_4);
     APPEND_FEATURES(m_MinorVersion < 3, KHR, Synchronization2, SYNCHRONIZATION_2);
+    APPEND_FEATURES(m_MinorVersion < 3, KHR, ShaderIntegerDotProduct, SHADER_INTEGER_DOT_PRODUCT);
     APPEND_FEATURES(m_MinorVersion < 3, EXT, ExtendedDynamicState, EXTENDED_DYNAMIC_STATE);
     APPEND_FEATURES(m_MinorVersion < 3, EXT, ImageRobustness, IMAGE_ROBUSTNESS);
     APPEND_FEATURES(m_MinorVersion < 3, EXT, SubgroupSizeControl, SUBGROUP_SIZE_CONTROL);
@@ -623,6 +625,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         features13.synchronization2 = Synchronization2Features.synchronization2;
         features13.maintenance4 = Maintenance4Features.maintenance4;
         features13.robustImageAccess = ImageRobustnessFeatures.robustImageAccess;
+        features13.shaderIntegerDotProduct = ShaderIntegerDotProductFeatures.shaderIntegerDotProduct;
     }
 
     if (m_MinorVersion < 4) {
@@ -1085,13 +1088,12 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
                 m_Desc.tiers.sampleLocations = 2;
         }
 
-        m_Desc.tiers.rayTracing = AccelerationStructureFeatures.accelerationStructure != 0;
-        if (m_Desc.tiers.rayTracing) {
-            if (RayTracingPipelineFeatures.rayTracingPipelineTraceRaysIndirect && RayQueryFeatures.rayQuery)
-                m_Desc.tiers.rayTracing++;
-            if (OpacityMicromapFeatures.micromap)
-                m_Desc.tiers.rayTracing++;
-        }
+        if (AccelerationStructureFeatures.accelerationStructure)
+            m_Desc.tiers.rayTracing = 1;
+        if (m_Desc.tiers.rayTracing == 1 && RayTracingPipelineFeatures.rayTracingPipelineTraceRaysIndirect && RayQueryFeatures.rayQuery)
+            m_Desc.tiers.rayTracing = 2;
+        if (m_Desc.tiers.rayTracing == 2 && OpacityMicromapFeatures.micromap)
+            m_Desc.tiers.rayTracing = 3;
 
         m_Desc.tiers.shadingRate = FragmentShadingRateFeatures.pipelineFragmentShadingRate != 0;
         if (m_Desc.tiers.shadingRate) {
@@ -1109,13 +1111,11 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.getMemoryDesc2 = m_IsSupported.maintenance4;
         m_Desc.features.enhancedBarriers = true;
         m_Desc.features.swapChain = IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME, desiredDeviceExts);
-        m_Desc.features.rayTracing = m_Desc.tiers.rayTracing != 0;
         m_Desc.features.meshShader = MeshShaderFeatures.meshShader != 0 && MeshShaderFeatures.taskShader != 0;
         m_Desc.features.lowLatency = m_IsSupported.presentId != 0 && IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, desiredDeviceExts);
-        m_Desc.features.micromap = OpacityMicromapFeatures.micromap != 0;
 
         m_Desc.features.independentFrontAndBackStencilReferenceAndMasks = true;
-        m_Desc.features.textureFilterMinMax = features12.samplerFilterMinmax;
+        m_Desc.features.filterOpMinMax = features12.samplerFilterMinmax;
         m_Desc.features.logicOp = features.features.logicOp;
         m_Desc.features.depthBoundsTest = features.features.depthBounds;
         m_Desc.features.drawIndirectCount = features12.drawIndirectCount;
@@ -1135,6 +1135,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.mutableDescriptorType = MutableDescriptorTypeFeatures.mutableDescriptorType;
         m_Desc.features.unifiedTextureLayouts = UnifiedImageLayoutsFeatures.unifiedImageLayouts;
 
+        m_Desc.shaderFeatures.nativeI8 = features12.shaderInt8;
         m_Desc.shaderFeatures.nativeI16 = features.features.shaderInt16;
         m_Desc.shaderFeatures.nativeF16 = features12.shaderFloat16;
         m_Desc.shaderFeatures.nativeI64 = features.features.shaderInt64;
@@ -1143,6 +1144,17 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.shaderFeatures.atomicsF32 = (ShaderAtomicFloatFeatures.shaderBufferFloat32Atomics || ShaderAtomicFloatFeatures.shaderSharedFloat32Atomics) ? true : false;
         m_Desc.shaderFeatures.atomicsI64 = (features12.shaderBufferInt64Atomics || features12.shaderSharedInt64Atomics) ? true : false;
         m_Desc.shaderFeatures.atomicsF64 = (ShaderAtomicFloatFeatures.shaderBufferFloat64Atomics || ShaderAtomicFloatFeatures.shaderSharedFloat64Atomics) ? true : false;
+
+        m_Desc.shaderFeatures.storageReadWithoutFormat = features.features.shaderStorageImageReadWithoutFormat;
+        m_Desc.shaderFeatures.storageWriteWithoutFormat = features.features.shaderStorageImageWriteWithoutFormat;
+
+        m_Desc.shaderFeatures.waveQuery = (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_BASIC_BIT) ? true : false;
+        m_Desc.shaderFeatures.waveVote = (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_VOTE_BIT) ? true : false;
+        m_Desc.shaderFeatures.waveShuffle = (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_SHUFFLE_BIT) ? true : false;
+        m_Desc.shaderFeatures.waveArithmetic = (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) ? true : false;
+        m_Desc.shaderFeatures.waveReduction = (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT) ? true : false;
+        m_Desc.shaderFeatures.waveQuad = (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_QUAD_BIT) ? true : false;
+
         m_Desc.shaderFeatures.viewportIndex = features12.shaderOutputViewportIndex;
         m_Desc.shaderFeatures.layerIndex = features12.shaderOutputLayer;
         m_Desc.shaderFeatures.unnormalizedCoordinates = true;
@@ -1150,14 +1162,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.shaderFeatures.rasterizedOrderedView = FragmentShaderInterlockFeatures.fragmentShaderPixelInterlock != 0 && FragmentShaderInterlockFeatures.fragmentShaderSampleInterlock != 0;
         m_Desc.shaderFeatures.barycentric = FragmentShaderBarycentricFeatures.fragmentShaderBarycentric;
         m_Desc.shaderFeatures.rayTracingPositionFetch = RayTracingPositionFetchFeatures.rayTracingPositionFetch;
-        m_Desc.shaderFeatures.storageReadWithoutFormat = features.features.shaderStorageImageReadWithoutFormat;
-        m_Desc.shaderFeatures.storageWriteWithoutFormat = features.features.shaderStorageImageWriteWithoutFormat;
-        m_Desc.shaderFeatures.waveQuery = (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_BASIC_BIT) ? true : false;
-        m_Desc.shaderFeatures.waveVote = (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_VOTE_BIT) ? true : false;
-        m_Desc.shaderFeatures.waveShuffle = (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_SHUFFLE_BIT) ? true : false;
-        m_Desc.shaderFeatures.waveArithmetic = (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) ? true : false;
-        m_Desc.shaderFeatures.waveReduction = (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT) ? true : false;
-        m_Desc.shaderFeatures.waveQuad = (props11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_QUAD_BIT) ? true : false;
+        m_Desc.shaderFeatures.integerDotProduct = features13.shaderIntegerDotProduct;
 
         // Estimate shader model last since it depends on many "m_Desc" fields
         // Based on https://docs.vulkan.org/guide/latest/hlsl.html#_shader_model_coverage // TODO: code below needs to be improved
@@ -1168,7 +1173,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
             m_Desc.shaderModel = 61;
         if (m_Desc.shaderFeatures.nativeF16 || m_Desc.shaderFeatures.nativeI16)
             m_Desc.shaderModel = 62;
-        if (m_Desc.features.rayTracing)
+        if (m_Desc.tiers.rayTracing)
             m_Desc.shaderModel = 63;
         if (m_Desc.tiers.shadingRate >= 2)
             m_Desc.shaderModel = 64;
@@ -1255,8 +1260,8 @@ void DeviceVK::FillCreateInfo(const SamplerDesc& samplerDesc, VkSamplerCreateInf
     const void** tail = &info.pNext;
 
     reductionModeInfo = {VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO}; // should be already set
-    if (m_Desc.features.textureFilterMinMax) {
-        reductionModeInfo.reductionMode = GetFilterExt(samplerDesc.filters.ext);
+    if (m_Desc.features.filterOpMinMax) {
+        reductionModeInfo.reductionMode = GetFilterExt(samplerDesc.filters.op);
 
         APPEND_STRUCT(reductionModeInfo);
     }
@@ -2052,16 +2057,16 @@ static void WriteAccelerationStructures(VkWriteDescriptorSet& writeDescriptorSet
 typedef void (*WriteDescriptorsFunc)(VkWriteDescriptorSet& writeDescriptorSet, size_t& scratchOffset, uint8_t* scratch, const UpdateDescriptorRangeDesc& rangeUpdateDesc);
 
 constexpr std::array<WriteDescriptorsFunc, (size_t)DescriptorType::MAX_NUM> g_WriteFuncs = {
-    WriteSamplers,                  // SAMPLER
-    nullptr,                        // MUTABLE (never used)
-    WriteTextures,                  // TEXTURE
-    WriteTextures,                  // STORAGE_TEXTURE
-    WriteBufferViews,               // BUFFER
-    WriteBufferViews,               // STORAGE_BUFFER
-    WriteBuffers,                   // CONSTANT_BUFFER
-    WriteBuffers,                   // STRUCTURED_BUFFER
-    WriteBuffers,                   // STORAGE_STRUCTURED_BUFFER
-    WriteAccelerationStructures,    // ACCELERATION_STRUCTURE
+    WriteSamplers,               // SAMPLER
+    nullptr,                     // MUTABLE (never used)
+    WriteTextures,               // TEXTURE
+    WriteTextures,               // STORAGE_TEXTURE
+    WriteBufferViews,            // BUFFER
+    WriteBufferViews,            // STORAGE_BUFFER
+    WriteBuffers,                // CONSTANT_BUFFER
+    WriteBuffers,                // STRUCTURED_BUFFER
+    WriteBuffers,                // STORAGE_STRUCTURED_BUFFER
+    WriteAccelerationStructures, // ACCELERATION_STRUCTURE
 };
 VALIDATE_ARRAY_BY_PTR(g_WriteFuncs);
 

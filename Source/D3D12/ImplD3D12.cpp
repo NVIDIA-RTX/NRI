@@ -1084,7 +1084,7 @@ static uint64_t NRI_CALL GetMicromapNativeObject(const Micromap* micromap) {
 }
 
 Result DeviceD3D12::FillFunctionTable(RayTracingInterface& table) const {
-    if (!m_Desc.features.rayTracing)
+    if (m_Desc.tiers.rayTracing == 0)
         return Result::UNSUPPORTED;
 
     table.CreateAccelerationStructureDescriptor = ::CreateAccelerationStructureDescriptor;

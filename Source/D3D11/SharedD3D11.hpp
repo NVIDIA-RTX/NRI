@@ -4,25 +4,25 @@ static inline D3D11_TEXTURE_ADDRESS_MODE GetAddressMode(AddressMode mode) {
     return (D3D11_TEXTURE_ADDRESS_MODE)(D3D11_TEXTURE_ADDRESS_WRAP + (uint32_t)mode);
 }
 
-static inline D3D11_FILTER GetFilterIsotropic(Filter mip, Filter magnification, Filter minification, ReductionMode filterExt, bool useComparison) {
+static inline D3D11_FILTER GetFilterIsotropic(Filter mip, Filter magnification, Filter minification, FilterOp filterExt, bool useComparison) {
     uint32_t combinedMask = mip == Filter::LINEAR ? 0x1 : 0;
     combinedMask |= magnification == Filter::LINEAR ? 0x4 : 0;
     combinedMask |= minification == Filter::LINEAR ? 0x10 : 0;
 
     if (useComparison)
         combinedMask |= 0x80;
-    else if (filterExt == ReductionMode::MIN)
+    else if (filterExt == FilterOp::MIN)
         combinedMask |= 0x100;
-    else if (filterExt == ReductionMode::MAX)
+    else if (filterExt == FilterOp::MAX)
         combinedMask |= 0x180;
 
     return (D3D11_FILTER)combinedMask;
 }
 
-static inline D3D11_FILTER GetFilterAnisotropic(ReductionMode filterExt, bool useComparison) {
-    if (filterExt == ReductionMode::MIN)
+static inline D3D11_FILTER GetFilterAnisotropic(FilterOp filterExt, bool useComparison) {
+    if (filterExt == FilterOp::MIN)
         return D3D11_FILTER_MINIMUM_ANISOTROPIC;
-    else if (filterExt == ReductionMode::MAX)
+    else if (filterExt == FilterOp::MAX)
         return D3D11_FILTER_MAXIMUM_ANISOTROPIC;
 
     return useComparison ? D3D11_FILTER_COMPARISON_ANISOTROPIC : D3D11_FILTER_ANISOTROPIC;
@@ -173,8 +173,8 @@ void nri::FillSamplerDesc(const SamplerDesc& samplerDesc, D3D11_SAMPLER_DESC& de
     desc.MinLOD = samplerDesc.mipMin;
     desc.MaxLOD = samplerDesc.mipMax;
     desc.Filter = isAnisotropy
-        ? GetFilterAnisotropic(samplerDesc.filters.ext, isComparison)
-        : GetFilterIsotropic(samplerDesc.filters.mip, samplerDesc.filters.mag, samplerDesc.filters.min, samplerDesc.filters.ext, isComparison);
+        ? GetFilterAnisotropic(samplerDesc.filters.op, isComparison)
+        : GetFilterIsotropic(samplerDesc.filters.mip, samplerDesc.filters.mag, samplerDesc.filters.min, samplerDesc.filters.op, isComparison);
 
     if (!samplerDesc.isInteger) { // TODO: the spec is not clear about the behavior, keep black
         desc.BorderColor[0] = samplerDesc.borderColor.f.x;

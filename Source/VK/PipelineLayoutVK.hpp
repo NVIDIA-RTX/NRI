@@ -214,7 +214,7 @@ void PipelineLayoutVK::CreateSetLayout(VkDescriptorSetLayout* setLayout, const D
         VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
     };
-    const VkMutableDescriptorTypeListEXT mutableTypeList = {deviceDesc.features.rayTracing ? 7u : 6u, mutableTypes};
+    const VkMutableDescriptorTypeListEXT mutableTypeList = {deviceDesc.tiers.rayTracing ? 7u : 6u, mutableTypes};
 
     for (uint32_t i = 0; i < descriptorSetDesc.rangeNum; i++) {
         const DescriptorRangeDesc& range = descriptorSetDesc.ranges[i];

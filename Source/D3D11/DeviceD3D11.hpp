@@ -511,7 +511,7 @@ void DeviceD3D11::FillDesc() {
     m_Desc.features.swapChain = HasOutput();
     m_Desc.features.lowLatency = HasNvExt();
 
-    m_Desc.features.textureFilterMinMax = options1.MinMaxFiltering != 0;
+    m_Desc.features.filterOpMinMax = options1.MinMaxFiltering != 0;
     m_Desc.features.logicOp = options.OutputMergerLogicOp != 0;
     m_Desc.features.lineSmoothing = true;
     m_Desc.features.enhancedBarriers = true;  // don't care, but advertise support
@@ -523,12 +523,14 @@ void DeviceD3D11::FillDesc() {
     m_Desc.shaderFeatures.nativeF64 = options.ExtendedDoublesShaderInstructions;
     m_Desc.shaderFeatures.atomicsF16 = isShaderAtomicsF16Supported;
     m_Desc.shaderFeatures.atomicsF32 = isShaderAtomicsF32Supported;
+
+    m_Desc.shaderFeatures.storageReadWithoutFormat = true; // All desktop GPUs support it since 2014
+    m_Desc.shaderFeatures.storageWriteWithoutFormat = true;
+
     m_Desc.shaderFeatures.viewportIndex = options3.VPAndRTArrayIndexFromAnyShaderFeedingRasterizer;
     m_Desc.shaderFeatures.layerIndex = options3.VPAndRTArrayIndexFromAnyShaderFeedingRasterizer;
     m_Desc.shaderFeatures.clock = isGetSpecialSupported;
     m_Desc.shaderFeatures.rasterizedOrderedView = options2.ROVsSupported != 0;
-    m_Desc.shaderFeatures.storageReadWithoutFormat = true; // All desktop GPUs support it since 2014
-    m_Desc.shaderFeatures.storageWriteWithoutFormat = true;
 }
 
 void DeviceD3D11::InitializeNvExt(bool disableNVAPIInitialization, bool isImported) {

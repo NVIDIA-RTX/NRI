@@ -317,14 +317,14 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const SamplerDesc& samplerDesc, De
     RETURN_ON_FAILURE(this, samplerDesc.filters.mag < Filter::MAX_NUM, Result::INVALID_ARGUMENT, "'filters.mag' is invalid");
     RETURN_ON_FAILURE(this, samplerDesc.filters.min < Filter::MAX_NUM, Result::INVALID_ARGUMENT, "'filters.min' is invalid");
     RETURN_ON_FAILURE(this, samplerDesc.filters.mip < Filter::MAX_NUM, Result::INVALID_ARGUMENT, "'filters.mip' is invalid");
-    RETURN_ON_FAILURE(this, samplerDesc.filters.ext < ReductionMode::MAX_NUM, Result::INVALID_ARGUMENT, "'filters.ext' is invalid");
+    RETURN_ON_FAILURE(this, samplerDesc.filters.op < FilterOp::MAX_NUM, Result::INVALID_ARGUMENT, "'filters.op' is invalid");
     RETURN_ON_FAILURE(this, samplerDesc.addressModes.u < AddressMode::MAX_NUM, Result::INVALID_ARGUMENT, "'addressModes.u' is invalid");
     RETURN_ON_FAILURE(this, samplerDesc.addressModes.v < AddressMode::MAX_NUM, Result::INVALID_ARGUMENT, "'addressModes.v' is invalid");
     RETURN_ON_FAILURE(this, samplerDesc.addressModes.w < AddressMode::MAX_NUM, Result::INVALID_ARGUMENT, "'addressModes.w' is invalid");
     RETURN_ON_FAILURE(this, samplerDesc.compareOp < CompareOp::MAX_NUM, Result::INVALID_ARGUMENT, "'compareOp' is invalid");
 
-    if (samplerDesc.filters.ext != ReductionMode::AVERAGE)
-        RETURN_ON_FAILURE(this, GetDesc().features.textureFilterMinMax, Result::INVALID_ARGUMENT, "'features.textureFilterMinMax' is false");
+    if (samplerDesc.filters.op != FilterOp::AVERAGE)
+        RETURN_ON_FAILURE(this, GetDesc().features.filterOpMinMax, Result::INVALID_ARGUMENT, "'features.filterOpMinMax' is false");
 
     if ((samplerDesc.addressModes.u != AddressMode::CLAMP_TO_BORDER && samplerDesc.addressModes.v != AddressMode::CLAMP_TO_BORDER && samplerDesc.addressModes.w != AddressMode::CLAMP_TO_BORDER) && (samplerDesc.borderColor.ui.x != 0 || samplerDesc.borderColor.ui.y != 0 || samplerDesc.borderColor.ui.z != 0 || samplerDesc.borderColor.ui.w != 0))
         REPORT_WARNING(this, "'borderColor' is provided, but 'CLAMP_TO_BORDER' is not requested");
@@ -505,9 +505,9 @@ NRI_INLINE Result DeviceVal::CreateQueryPool(const QueryPoolDesc& queryPoolDesc,
     } else if (queryPoolDesc.queryType == QueryType::PIPELINE_STATISTICS) {
         RETURN_ON_FAILURE(this, GetDesc().features.pipelineStatistics, Result::INVALID_ARGUMENT, "'features.pipelineStatistics' is false");
     } else if (queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_SIZE || queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_COMPACTED_SIZE) {
-        RETURN_ON_FAILURE(this, GetDesc().features.rayTracing, Result::INVALID_ARGUMENT, "'features.rayTracing' is false");
+        RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing != 0, Result::INVALID_ARGUMENT, "'tiers.rayTracing = 0'");
     } else if (queryPoolDesc.queryType == QueryType::MICROMAP_COMPACTED_SIZE) {
-        RETURN_ON_FAILURE(this, GetDesc().features.micromap, Result::INVALID_ARGUMENT, "'features.micromap' is false");
+        RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing, Result::INVALID_ARGUMENT, "'tiers.rayTracing < 3'");
     }
 
     QueryPool* queryPoolImpl = nullptr;

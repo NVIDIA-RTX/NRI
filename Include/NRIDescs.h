@@ -748,10 +748,10 @@ NriEnum(Filter, uint8_t,
 
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_filter_reduction_type
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerReductionMode.html
-NriEnum(ReductionMode, uint8_t,
+NriEnum(FilterOp, uint8_t,
     AVERAGE,    // a weighted average (sum) of values in the footprint (default)
-    MIN,        // a component-wise minimum of values in the footprint with non-zero weights
-    MAX         // a component-wise maximum of values in the footprint with non-zero weights
+    MIN,        // a component-wise minimum of values in the footprint with non-zero weights, requires "features.filterOpMinMax"
+    MAX         // a component-wise maximum of values in the footprint with non-zero weights, requires "features.filterOpMinMax"
 );
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerAddressMode.html
@@ -825,7 +825,7 @@ NriStruct(AddressModes) {
 
 NriStruct(Filters) {
     Nri(Filter) min, mag, mip;
-    Nri(ReductionMode) ext;     // requires "features.textureFilterMinMax"
+    Nri(FilterOp) op;
 };
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerCreateInfo.html
@@ -1910,14 +1910,12 @@ NriStruct(DeviceDesc) {
         uint32_t getMemoryDesc2                                  : 1; // "GetXxxMemoryDesc2" support (VK: requires "maintenance4", D3D: supported)
         uint32_t enhancedBarriers                                : 1; // VK: supported, D3D12: requires "AgilitySDK", D3D11: unsupported
         uint32_t swapChain                                       : 1; // NRISwapChain
-        uint32_t rayTracing                                      : 1; // NRIRayTracing
         uint32_t meshShader                                      : 1; // NRIMeshShader
         uint32_t lowLatency                                      : 1; // NRILowLatency
-        uint32_t micromap                                        : 1; // see "Micromap"
 
         // Smaller
         uint32_t independentFrontAndBackStencilReferenceAndMasks : 1; // see "StencilAttachmentDesc::back"
-        uint32_t textureFilterMinMax                             : 1; // see "ReductionMode"
+        uint32_t filterOpMinMax                                  : 1; // see "FilterOp"
         uint32_t logicOp                                         : 1; // see "LogicOp"
         uint32_t depthBoundsTest                                 : 1; // see "DepthAttachmentDesc::boundsTest"
         uint32_t drawIndirectCount                               : 1; // see "countBuffer" and "countBufferOffset"
@@ -1944,34 +1942,29 @@ NriStruct(DeviceDesc) {
     // Shader features
     // https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst
     struct {
-        uint32_t viewportIndex                                   : 1; // SV_ViewportArrayIndex, always can be used in geometry shaders
-        uint32_t layerIndex                                      : 1; // SV_RenderTargetArrayIndex, always can be used in geometry shaders
-        uint32_t unnormalizedCoordinates                         : 1; // https://microsoft.github.io/DirectX-Specs/d3d/VulkanOn12.html#non-normalized-texture-sampling-coordinates
-        uint32_t clock                                           : 1; // https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#readclock
-        uint32_t rasterizedOrderedView                           : 1; // https://microsoft.github.io/DirectX-Specs/d3d/RasterOrderViews.html (aka fragment shader interlock)
-        uint32_t barycentric                                     : 1; // https://github.com/microsoft/DirectXShaderCompiler/wiki/SV_Barycentrics
-        uint32_t rayTracingPositionFetch                         : 1; // https://docs.vulkan.org/features/latest/features/proposals/VK_KHR_ray_tracing_position_fetch.html
-
+        // Native types (I32 and F32 are always supported)
         // https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-scalar
-        // I32 and F32 are always supported
+        uint32_t nativeI8                                        : 1; // "(u)int8_t"
         uint32_t nativeI16                                       : 1; // "(u)int16_t"
         uint32_t nativeF16                                       : 1; // "float16_t"
         uint32_t nativeI64                                       : 1; // "(u)int64_t"
         uint32_t nativeF64                                       : 1; // "double"
 
+        // Atomics on native types (I32 atomics are always supported, for others it can be partial support of SMEM, texture or buffer atomics)
         // https://learn.microsoft.com/en-us/windows/win32/direct3d11/direct3d-11-advanced-stages-cs-atomic-functions
         // https://microsoft.github.io/DirectX-Specs/d3d/HLSL_SM_6_6_Int64_and_Float_Atomics.html
-        // I32 atomics are always supported (for others it can be partial support of SMEM, texture or buffer atomics)
         uint32_t atomicsI16                                      : 1; // "(u)int16_t" atomics
         uint32_t atomicsF16                                      : 1; // "float16_t" atomics
         uint32_t atomicsF32                                      : 1; // "float" atomics
         uint32_t atomicsI64                                      : 1; // "(u)int64_t" atomics
         uint32_t atomicsF64                                      : 1; // "double" atomics
 
+        // Storage without format
         // https://learn.microsoft.com/en-us/windows/win32/direct3d12/typed-unordered-access-view-loads#using-unorm-and-snorm-typed-uav-loads-from-hlsl
         uint32_t storageReadWithoutFormat                        : 1; // NRI_FORMAT("unknown") is allowed for storage reads
         uint32_t storageWriteWithoutFormat                       : 1; // NRI_FORMAT("unknown") is allowed for storage writes
 
+        // Wave intrinsics
         // https://github.com/microsoft/directxshadercompiler/wiki/wave-intrinsics
         uint32_t waveQuery                                       : 1; // WaveIsFirstLane, WaveGetLaneCount, WaveGetLaneIndex
         uint32_t waveVote                                        : 1; // WaveActiveAllTrue, WaveActiveAnyTrue, WaveActiveAllEqual
@@ -1979,6 +1972,16 @@ NriStruct(DeviceDesc) {
         uint32_t waveArithmetic                                  : 1; // WaveActiveSum, WaveActiveProduct, WaveActiveMin, WaveActiveMax, WavePrefixProduct, WavePrefixSum
         uint32_t waveReduction                                   : 1; // WaveActiveCountBits, WaveActiveBitAnd, WaveActiveBitOr, WaveActiveBitXor, WavePrefixCountBits
         uint32_t waveQuad                                        : 1; // QuadReadLaneAt, QuadReadAcrossX, QuadReadAcrossY, QuadReadAcrossDiagonal
+
+        // Other
+        uint32_t viewportIndex                                   : 1; // SV_ViewportArrayIndex, always can be used in geometry shaders
+        uint32_t layerIndex                                      : 1; // SV_RenderTargetArrayIndex, always can be used in geometry shaders
+        uint32_t unnormalizedCoordinates                         : 1; // https://microsoft.github.io/DirectX-Specs/d3d/VulkanOn12.html#non-normalized-texture-sampling-coordinates
+        uint32_t clock                                           : 1; // https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#readclock
+        uint32_t rasterizedOrderedView                           : 1; // https://microsoft.github.io/DirectX-Specs/d3d/RasterOrderViews.html (aka fragment shader interlock)
+        uint32_t barycentric                                     : 1; // https://github.com/microsoft/DirectXShaderCompiler/wiki/SV_Barycentrics
+        uint32_t rayTracingPositionFetch                         : 1; // https://docs.vulkan.org/features/latest/features/proposals/VK_KHR_ray_tracing_position_fetch.html
+        uint32_t integerDotProduct                               : 1; // https://github.com/microsoft/DirectXShaderCompiler/wiki/Shader-Model-6.4
     } shaderFeatures;
 };
 

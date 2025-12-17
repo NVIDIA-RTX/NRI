@@ -460,7 +460,6 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
     if (FAILED(hr))
         REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options5) failed, result = 0x%08X!", hr);
-    m_Desc.features.rayTracing = options5.RaytracingTier != 0;
     m_Desc.tiers.rayTracing = (uint8_t)std::max(options5.RaytracingTier - D3D12_RAYTRACING_TIER_1_0 + 1, 0);
 
     // Windows 10 1903 (build 18362)
@@ -793,9 +792,8 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.features.getMemoryDesc2 = true;
     m_Desc.features.swapChain = HasOutput();
     m_Desc.features.lowLatency = HasNvExt();
-    m_Desc.features.micromap = m_Desc.tiers.rayTracing >= 3;
 
-    m_Desc.features.textureFilterMinMax = levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_11_1 ? true : false;
+    m_Desc.features.filterOpMinMax = levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_11_1 ? true : false;
     m_Desc.features.logicOp = options.OutputMergerLogicOp != 0;
     m_Desc.features.depthBoundsTest = options2.DepthBoundsTestSupported != 0;
     m_Desc.features.drawIndirectCount = true;
@@ -820,6 +818,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     }
 #endif
 
+    m_Desc.shaderFeatures.nativeI8 = m_Desc.shaderModel >= 62; // TODO: ?
     m_Desc.shaderFeatures.nativeI16 = options4.Native16BitShaderOpsSupported;
     m_Desc.shaderFeatures.nativeF16 = options4.Native16BitShaderOpsSupported;
     m_Desc.shaderFeatures.nativeI64 = options1.Int64ShaderOps;
@@ -828,12 +827,8 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.shaderFeatures.atomicsF32 = isShaderAtomicsF32Supported;
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
     m_Desc.shaderFeatures.atomicsI64 = m_Desc.shaderFeatures.atomicsI64 || options9.AtomicInt64OnTypedResourceSupported || options9.AtomicInt64OnGroupSharedSupported || options11.AtomicInt64OnDescriptorHeapResourceSupported;
-    m_Desc.shaderFeatures.unnormalizedCoordinates = true;
 #endif
-    m_Desc.shaderFeatures.viewportIndex = options.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation;
-    m_Desc.shaderFeatures.layerIndex = options.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation;
-    m_Desc.shaderFeatures.rasterizedOrderedView = options.ROVsSupported;
-    m_Desc.shaderFeatures.barycentric = options3.BarycentricsSupported;
+
     m_Desc.shaderFeatures.storageReadWithoutFormat = true; // All desktop GPUs support it since 2014
     m_Desc.shaderFeatures.storageWriteWithoutFormat = true;
 
@@ -845,6 +840,15 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
         m_Desc.shaderFeatures.waveReduction = true;
         m_Desc.shaderFeatures.waveQuad = true;
     }
+
+    m_Desc.shaderFeatures.viewportIndex = options.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation;
+    m_Desc.shaderFeatures.layerIndex = options.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation;
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    m_Desc.shaderFeatures.unnormalizedCoordinates = true;
+#endif
+    m_Desc.shaderFeatures.rasterizedOrderedView = options.ROVsSupported;
+    m_Desc.shaderFeatures.barycentric = options3.BarycentricsSupported;
+    m_Desc.shaderFeatures.integerDotProduct = m_Desc.shaderModel >= 64;
 }
 
 void DeviceD3D12::InitializeNvExt(bool disableNVAPIInitialization, bool isImported) {

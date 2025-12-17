@@ -9,7 +9,7 @@ Result MicromapD3D12::Create(const MicromapDesc& micromapDesc) {
     static_assert((uint32_t)MicromapFormat::OPACITY_2_STATE == D3D12_RAYTRACING_OPACITY_MICROMAP_FORMAT_OC1_2_STATE, "Type mismatch");
     static_assert((uint32_t)MicromapFormat::OPACITY_4_STATE == D3D12_RAYTRACING_OPACITY_MICROMAP_FORMAT_OC1_4_STATE, "Type mismatch");
 
-    if (!m_Device.GetDesc().features.micromap)
+    if (m_Device.GetDesc().tiers.rayTracing < 3)
         return Result::UNSUPPORTED;
 
     for (uint32_t i = 0; i < micromapDesc.usageNum; i++) {

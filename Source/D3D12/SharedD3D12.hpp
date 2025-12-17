@@ -243,9 +243,9 @@ D3D12_FILTER nri::GetFilter(const SamplerDesc& samplerDesc) {
     bool comparison = samplerDesc.compareOp != CompareOp::NONE;
 
     D3D12_FILTER_REDUCTION_TYPE reductionType = D3D12_FILTER_REDUCTION_TYPE_STANDARD;
-    if (samplerDesc.filters.ext == ReductionMode::MIN)
+    if (samplerDesc.filters.op == FilterOp::MIN)
         reductionType = D3D12_FILTER_REDUCTION_TYPE_MINIMUM;
-    else if (samplerDesc.filters.ext == ReductionMode::MAX)
+    else if (samplerDesc.filters.op == FilterOp::MAX)
         reductionType = D3D12_FILTER_REDUCTION_TYPE_MAXIMUM;
     reductionType = comparison ? D3D12_FILTER_REDUCTION_TYPE_COMPARISON : reductionType;
 

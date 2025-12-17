@@ -71,6 +71,7 @@ Repository organization:
     - _VK_KHR_dynamic_rendering_
     - _VK_KHR_copy_commands2_
     - _VK_KHR_maintenance4_ (optional, but recommended)
+    - _VK_KHR_shader_integer_dot_product_
     - _VK_EXT_extended_dynamic_state_
     - _VK_EXT_image_robustness_
     - _VK_EXT_subgroup_size_control_
