@@ -47,6 +47,7 @@ option(NRI_ENABLE_VK_SUPPORT "Enable Vulkan backend" ON)
 option(NRI_ENABLE_VALIDATION_SUPPORT "Enable Validation backend (otherwise 'enableNRIValidation' is ignored)" ON)
 option(NRI_ENABLE_NIS_SDK "Enable NVIDIA Image Sharpening SDK" OFF)
 option(NRI_ENABLE_IMGUI_EXTENSION "Enable 'NRIImgui' extension" OFF)
+option(NRI_STREAMER_THREAD_SAFE "'NRIStreamer' thread safety (OFF is faster)" ON)
 
 cmake_dependent_option(NRI_ENABLE_D3D11_SUPPORT "Enable D3D11 backend" ON "WIN32" OFF)
 cmake_dependent_option(NRI_ENABLE_D3D12_SUPPORT "Enable D3D12 backend" ON "WIN32" OFF)
@@ -102,6 +103,7 @@ foreach(opt IN ITEMS
     NRI_ENABLE_FFX_SDK
     NRI_ENABLE_XESS_SDK
     NRI_ENABLE_SHADERMAKE
+    NRI_STREAMER_THREAD_SAFE
 )
     if(${opt})
         message(STATUS "${opt}")

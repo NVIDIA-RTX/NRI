@@ -53,7 +53,7 @@ NriStruct(StreamTextureDataDesc) {
     NriOptional Nri(TextureRegionDesc) dstRegion;
 };
 
-// Threadsafe: yes
+// Threadsafe: yes by default (see NRI_STREAMER_THREAD_SAFE CMake option)
 NriStruct(StreamerInterface) {
     Nri(Result)         (NRI_CALL *CreateStreamer)              (NriRef(Device) device, const NriRef(StreamerDesc) streamerDesc, NriOut NriRef(Streamer*) streamer);
     void                (NRI_CALL *DestroyStreamer)             (NriPtr(Streamer) streamer);

@@ -75,7 +75,10 @@ private:
     uint64_t m_DynamicBufferSizePerFrame = 0;
     uint32_t m_ConstantBufferOffset = 0;
     uint32_t m_FrameIndex = 0;
+
+#if NRI_STREAMER_THREAD_SAFE
     Lock m_Lock;
+#endif
 };
 
 }

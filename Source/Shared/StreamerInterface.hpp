@@ -48,7 +48,9 @@ Result StreamerImpl::Create(const StreamerDesc& desc) {
 }
 
 uint32_t StreamerImpl::StreamConstantData(const void* data, uint32_t dataSize) {
+#if NRI_STREAMER_THREAD_SAFE
     ExclusiveScope lock(m_Lock);
+#endif
 
     const DeviceDesc& deviceDesc = m_iCore.GetDeviceDesc(m_Device);
     m_ConstantBufferOffset = Align(m_ConstantBufferOffset, deviceDesc.memoryAlignment.constantBufferOffset);
@@ -75,7 +77,9 @@ uint32_t StreamerImpl::StreamConstantData(const void* data, uint32_t dataSize) {
 }
 
 BufferOffset StreamerImpl::StreamBufferData(const StreamBufferDataDesc& streamBufferDataDesc) {
+#if NRI_STREAMER_THREAD_SAFE
     ExclusiveScope lock(m_Lock);
+#endif
 
     uint64_t dataSize = 0;
     for (uint32_t i = 0; i < streamBufferDataDesc.dataChunkNum; i++)
@@ -121,7 +125,9 @@ BufferOffset StreamerImpl::StreamBufferData(const StreamBufferDataDesc& streamBu
 }
 
 BufferOffset StreamerImpl::StreamTextureData(const StreamTextureDataDesc& streamTextureDataDesc) {
+#if NRI_STREAMER_THREAD_SAFE
     ExclusiveScope lock(m_Lock);
+#endif
 
     const DeviceDesc& deviceDesc = m_iCore.GetDeviceDesc(m_Device);
     const TextureDesc& textureDesc = m_iCore.GetTextureDesc(*streamTextureDataDesc.dstTexture);
@@ -182,7 +188,9 @@ BufferOffset StreamerImpl::StreamTextureData(const StreamTextureDataDesc& stream
 }
 
 void StreamerImpl::CmdCopyStreamedData(CommandBuffer& commandBuffer) {
+#if NRI_STREAMER_THREAD_SAFE
     ExclusiveScope lock(m_Lock);
+#endif
 
     // TODO: dynamic buffer(s) is in the persistent state, including "COPY_SOURCE", so there is no need to do a barrier... right? :)
 
