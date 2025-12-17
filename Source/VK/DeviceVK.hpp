@@ -2004,7 +2004,7 @@ static void WriteTextures(VkWriteDescriptorSet& writeDescriptorSet, size_t& scra
         const DescriptorVK& descriptorVK = *(DescriptorVK*)rangeUpdateDesc.descriptors[i];
 
         imageInfos[i].imageView = descriptorVK.GetImageView();
-        imageInfos[i].imageLayout = descriptorVK.GetTexDesc().layout;
+        imageInfos[i].imageLayout = descriptorVK.GetTexViewDesc().layout;
         imageInfos[i].sampler = VK_NULL_HANDLE;
     }
 

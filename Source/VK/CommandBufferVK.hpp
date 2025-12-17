@@ -13,6 +13,25 @@ static inline VkPipelineBindPoint GetPipelineBindPoint(BindPoint bindPoint) {
     }
 }
 
+static inline void FillRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, const Descriptor* descriptor, Dim_t& renderWidth, Dim_t& renderHeight, Dim_t& layerNum) {
+    const DescriptorVK& descriptorVK = *(DescriptorVK*)descriptor;
+    const TexViewDesc& texViewDesc = descriptorVK.GetTexViewDesc();
+
+    attachmentInfo = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
+    attachmentInfo.imageView = descriptorVK.GetImageView();
+    attachmentInfo.imageLayout = texViewDesc.layout;
+    attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachmentInfo.resolveMode = VK_RESOLVE_MODE_NONE; // TODO: add support for "on-the-fly" resolve
+
+    Dim_t w = texViewDesc.texture->GetSize(0, texViewDesc.mipOffset);
+    Dim_t h = texViewDesc.texture->GetSize(1, texViewDesc.mipOffset);
+
+    renderWidth = std::min(renderWidth, w);
+    renderHeight = std::min(renderHeight, h);
+    layerNum = std::min(layerNum, texViewDesc.layerOrSliceNum);
+}
+
 CommandBufferVK::~CommandBufferVK() {
     if (m_CommandPool) {
         const auto& vk = m_Device.GetDispatchTable();
@@ -210,25 +229,32 @@ NRI_INLINE void CommandBufferVK::ClearAttachments(const ClearAttachmentDesc* cle
 }
 
 NRI_INLINE void CommandBufferVK::ClearStorage(const ClearStorageDesc& clearStorageDesc) {
-    const DescriptorVK& storage = *(DescriptorVK*)clearStorageDesc.descriptor;
+    const DescriptorVK& descriptorVK = *(DescriptorVK*)clearStorageDesc.descriptor;
 
     const auto& vk = m_Device.GetDispatchTable();
 
-    DescriptorType descriptorType = storage.GetType();
+    DescriptorType descriptorType = descriptorVK.GetType();
     switch (descriptorType) {
         case DescriptorType::STORAGE_TEXTURE: {
             static_assert(sizeof(VkClearColorValue) == sizeof(clearStorageDesc.value), "Unexpected sizeof");
 
             const VkClearColorValue* value = (VkClearColorValue*)&clearStorageDesc.value;
-            VkImageSubresourceRange range = storage.GetImageSubresourceRange();
-            VkImage image = storage.GetTexture().GetHandle();
+            const TexViewDesc& texViewDesc = descriptorVK.GetTexViewDesc();
+            VkImage image = texViewDesc.texture->GetHandle();
 
-            vk.CmdClearColorImage(m_Handle, image, VK_IMAGE_LAYOUT_GENERAL, value, 1, &range);
+            VkImageSubresourceRange subresourceRange = {};
+            subresourceRange.aspectMask = GetImageAspectFlags(descriptorVK.GetFormat());
+            subresourceRange.baseMipLevel = texViewDesc.mipOffset;
+            subresourceRange.levelCount = texViewDesc.mipNum;
+            subresourceRange.baseArrayLayer = texViewDesc.layerOrSliceOffset;
+            subresourceRange.layerCount = texViewDesc.layerOrSliceNum;
+
+            vk.CmdClearColorImage(m_Handle, image, VK_IMAGE_LAYOUT_GENERAL, value, 1, &subresourceRange);
         } break;
         case DescriptorType::STORAGE_BUFFER:
         case DescriptorType::STORAGE_STRUCTURED_BUFFER: {
-            const DescriptorBufDesc& bufDesc = storage.GetBufDesc();
-            vk.CmdFillBuffer(m_Handle, bufDesc.handle, bufDesc.offset, bufDesc.size, clearStorageDesc.value.ui.x);
+            const VkDescriptorBufferInfo& descriptorBufferInfo = descriptorVK.GetBufferInfo();
+            vk.CmdFillBuffer(m_Handle, descriptorBufferInfo.buffer, descriptorBufferInfo.offset, descriptorBufferInfo.range, clearStorageDesc.value.ui.x);
         } break;
         default:
             CHECK(false, "Unexpected");
@@ -246,56 +272,19 @@ NRI_INLINE void CommandBufferVK::BeginRendering(const AttachmentsDesc& attachmen
 
     // Color
     Scratch<VkRenderingAttachmentInfo> colors = AllocateScratch(m_Device, VkRenderingAttachmentInfo, attachmentsDesc.colorNum);
-    for (uint32_t i = 0; i < attachmentsDesc.colorNum; i++) {
-        const DescriptorVK& descriptor = *(DescriptorVK*)attachmentsDesc.colors[i];
-        const DescriptorTexDesc& desc = descriptor.GetTexDesc();
-
-        VkRenderingAttachmentInfo& color = colors[i];
-        color = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-        color.imageView = descriptor.GetImageView();
-        color.imageLayout = desc.layout;
-        color.resolveMode = VK_RESOLVE_MODE_NONE; // TODO: add support for "on-the-fly" resolve
-        color.resolveImageView = VK_NULL_HANDLE;
-        color.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        color.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-        color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        color.clearValue = {};
-
-        Dim_t w = desc.texture->GetSize(0, desc.mipOffset);
-        Dim_t h = desc.texture->GetSize(1, desc.mipOffset);
-
-        m_RenderLayerNum = std::min(m_RenderLayerNum, desc.layerNum);
-        m_RenderWidth = std::min(m_RenderWidth, w);
-        m_RenderHeight = std::min(m_RenderHeight, h);
-    }
+    for (uint32_t i = 0; i < attachmentsDesc.colorNum; i++)
+        FillRenderingAttachmentInfo(colors[i], attachmentsDesc.colors[i], m_RenderWidth, m_RenderHeight, m_RenderLayerNum);
 
     // Depth-stencil
     VkRenderingAttachmentInfo depthStencil = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
     bool hasStencil = false;
     if (attachmentsDesc.depthStencil) {
-        const DescriptorVK& descriptor = *(DescriptorVK*)attachmentsDesc.depthStencil;
-        const DescriptorTexDesc& desc = descriptor.GetTexDesc();
+        FillRenderingAttachmentInfo(depthStencil, attachmentsDesc.depthStencil, m_RenderWidth, m_RenderHeight, m_RenderLayerNum);
 
-        depthStencil.imageView = descriptor.GetImageView();
-        depthStencil.imageLayout = desc.layout;
-        depthStencil.resolveMode = VK_RESOLVE_MODE_NONE;
-        depthStencil.resolveImageView = VK_NULL_HANDLE;
-        depthStencil.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        depthStencil.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-        depthStencil.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        depthStencil.clearValue = {};
+        m_DepthStencil = (DescriptorVK*)attachmentsDesc.depthStencil;
 
-        Dim_t w = desc.texture->GetSize(0, desc.mipOffset);
-        Dim_t h = desc.texture->GetSize(1, desc.mipOffset);
-
-        m_RenderLayerNum = std::min(m_RenderLayerNum, desc.layerNum);
-        m_RenderWidth = std::min(m_RenderWidth, w);
-        m_RenderHeight = std::min(m_RenderHeight, h);
-
-        const FormatProps& formatProps = GetFormatProps(descriptor.GetTexture().GetDesc().format);
+        const FormatProps& formatProps = GetFormatProps(m_DepthStencil->GetFormat());
         hasStencil = formatProps.isStencil != 0;
-
-        m_DepthStencil = &descriptor;
     } else
         m_DepthStencil = nullptr;
 
@@ -303,10 +292,11 @@ NRI_INLINE void CommandBufferVK::BeginRendering(const AttachmentsDesc& attachmen
     VkRenderingFragmentShadingRateAttachmentInfoKHR shadingRate = {VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR};
     if (attachmentsDesc.shadingRate) {
         uint32_t tileSize = m_Device.GetDesc().other.shadingRateAttachmentTileSize;
-        const DescriptorVK& descriptor = *(DescriptorVK*)attachmentsDesc.shadingRate;
+        const DescriptorVK& descriptorVK = *(DescriptorVK*)attachmentsDesc.shadingRate;
+        const TexViewDesc& texViewDesc = descriptorVK.GetTexViewDesc();
 
-        shadingRate.imageView = descriptor.GetImageView();
-        shadingRate.imageLayout = descriptor.GetTexDesc().layout;
+        shadingRate.imageView = descriptorVK.GetImageView();
+        shadingRate.imageLayout = texViewDesc.layout;
         shadingRate.shadingRateAttachmentTexelSize = {tileSize, tileSize};
     }
 

@@ -5,6 +5,7 @@ Result DescriptorPoolD3D12::Create(const DescriptorPoolDesc& descriptorPoolDesc)
 
     descriptorHeapSize[DescriptorHeapType::SAMPLER] += descriptorPoolDesc.samplerMaxNum;
 
+    descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.mutableMaxNum;
     descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.constantBufferMaxNum;
     descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.textureMaxNum;
     descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.storageTextureMaxNum;
@@ -13,7 +14,6 @@ Result DescriptorPoolD3D12::Create(const DescriptorPoolDesc& descriptorPoolDesc)
     descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.structuredBufferMaxNum;
     descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.storageStructuredBufferMaxNum;
     descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.accelerationStructureMaxNum;
-    descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.mutableMaxNum;
 
     for (uint32_t i = 0; i < DescriptorHeapType::MAX_NUM; i++) {
         DescriptorHeapDesc& descriptorHeapDesc = m_DescriptorHeapDescs[i];

@@ -21,6 +21,7 @@ Result DescriptorPoolVK::Create(const DescriptorPoolDesc& descriptorPoolDesc) {
 
     AddDescriptorPoolSize(poolSizes, poolSizeNum, VK_DESCRIPTOR_TYPE_SAMPLER, descriptorPoolDesc.samplerMaxNum);
 
+    AddDescriptorPoolSize(poolSizes, poolSizeNum, VK_DESCRIPTOR_TYPE_MUTABLE_EXT, descriptorPoolDesc.mutableMaxNum);
     AddDescriptorPoolSize(poolSizes, poolSizeNum, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, descriptorPoolDesc.constantBufferMaxNum);
     AddDescriptorPoolSize(poolSizes, poolSizeNum, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, descriptorPoolDesc.textureMaxNum);
     AddDescriptorPoolSize(poolSizes, poolSizeNum, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, descriptorPoolDesc.storageTextureMaxNum);
@@ -28,7 +29,6 @@ Result DescriptorPoolVK::Create(const DescriptorPoolDesc& descriptorPoolDesc) {
     AddDescriptorPoolSize(poolSizes, poolSizeNum, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, descriptorPoolDesc.storageBufferMaxNum);
     AddDescriptorPoolSize(poolSizes, poolSizeNum, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, descriptorPoolDesc.structuredBufferMaxNum + descriptorPoolDesc.storageStructuredBufferMaxNum);
     AddDescriptorPoolSize(poolSizes, poolSizeNum, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, descriptorPoolDesc.accelerationStructureMaxNum);
-    AddDescriptorPoolSize(poolSizes, poolSizeNum, VK_DESCRIPTOR_TYPE_MUTABLE_EXT, descriptorPoolDesc.mutableMaxNum);
 
     VkDescriptorPoolCreateInfo info = {VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
     info.flags = (descriptorPoolDesc.flags & DescriptorPoolBits::ALLOW_UPDATE_AFTER_SET) ? VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT : 0;

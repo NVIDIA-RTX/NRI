@@ -89,6 +89,19 @@ struct DescriptorHeapDesc {
     uint32_t num = 0;
 };
 
+inline uint32_t GetSubresourceIndex(uint32_t layerOffset, uint32_t resourceLayerNum, uint32_t mipOffset, uint32_t resourceMipNum, PlaneBits planes) {
+    // https://learn.microsoft.com/en-us/windows/win32/direct3d12/subresources#plane-slice
+    uint32_t planeIndex = 0;
+    if (planes == PlaneBits::ALL || (planes & PlaneBits::STENCIL) != 0)
+        planeIndex = 1;
+    if (planes == PlaneBits::ALL || (planes & PlaneBits::DEPTH) != 0) // fallthrough
+        planeIndex = 0;
+    if (planes == PlaneBits::ALL || (planes & PlaneBits::COLOR) != 0) // fallthrough
+        planeIndex = 0;
+
+    return mipOffset + (layerOffset + planeIndex * resourceLayerNum) * resourceMipNum;
+}
+
 void ConvertBotomLevelGeometries(const BottomLevelGeometryDesc* geometries, uint32_t geometryNum,
     D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs,
     D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC* triangleDescs,

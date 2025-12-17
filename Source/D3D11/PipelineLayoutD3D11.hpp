@@ -210,11 +210,13 @@ void PipelineLayoutD3D11::SetDescriptorSet(BindPoint bindPoint, BindingState& cu
                 descriptors[i] = *descriptor;
 
                 if (bindingRange.descriptorType == DescriptorTypeDX11::CONSTANT) {
-                    uint32_t offset = descriptor->GetElementOffset() + (bufferOffset >> 4);
+                    const SubresourceInfo& subresourceInfo = descriptor->GetSubresourceInfo();
+
+                    uint32_t offset = subresourceInfo.buffer.elementOffset + (bufferOffset >> 4);
                     hasNonZeroOffset |= offset;
 
                     constantFirst[i] = offset;
-                    rootConstantNum[i] = descriptor->GetElementNum();
+                    rootConstantNum[i] = subresourceInfo.buffer.elementNum;
                 } else if (bindingRange.descriptorType == DescriptorTypeDX11::STORAGE)
                     currentBindingState.TrackSubresource_UnbindIfNeeded_PostponeGraphicsStorageBinding(deferredContext, descriptor->GetSubresourceInfo(), *descriptor, bindingRange.baseSlot + i, isGraphics, true);
                 else if (bindingRange.descriptorType == DescriptorTypeDX11::RESOURCE)

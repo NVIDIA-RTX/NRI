@@ -239,7 +239,8 @@ NRI_INLINE void CommandBufferD3D11::ClearAttachments(const ClearAttachmentDesc* 
 NRI_INLINE void CommandBufferD3D11::ClearStorage(const ClearStorageDesc& clearStorageDesc) {
     DescriptorD3D11& descriptorD3D11 = *(DescriptorD3D11*)clearStorageDesc.descriptor;
 
-    if (descriptorD3D11.IsIntegerFormat())
+    const FormatProps& formatProps = GetFormatProps(descriptorD3D11.GetFormat());
+    if (formatProps.isInteger)
         m_DeferredContext->ClearUnorderedAccessViewUint(descriptorD3D11, &clearStorageDesc.value.ui.x);
     else
         m_DeferredContext->ClearUnorderedAccessViewFloat(descriptorD3D11, &clearStorageDesc.value.f.x);

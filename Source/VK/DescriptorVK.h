@@ -6,22 +6,13 @@ namespace nri {
 
 struct TextureVK;
 
-struct DescriptorBufDesc {
-    VkBuffer handle;
-    uint64_t offset;
-    uint64_t size;
-};
-
-struct DescriptorTexDesc {
-    const TextureVK* texture;
+struct TexViewDesc {
+    const TextureVK* texture; // needed
     VkImageLayout layout;
-    Dim_t layerOffset;
-    Dim_t layerNum;
-    Dim_t sliceOffset;
-    Dim_t sliceNum;
+    Dim_t layerOrSliceOffset; // this is valid, because it's used only for https://docs.vulkan.org/refpages/latest/refpages/source/VkImageSubresourceRange.html
+    Dim_t layerOrSliceNum;
     Dim_t mipOffset;
     Dim_t mipNum;
-    Format format;
 };
 
 struct DescriptorVK final : public DebugNameBase {
@@ -33,68 +24,45 @@ struct DescriptorVK final : public DebugNameBase {
         return m_Device;
     }
 
-    inline VkBufferView GetBufferView() const {
-        return m_BufferView;
-    }
-
-    inline VkImageView GetImageView() const {
-        return m_ImageView;
-    }
-
-    inline const VkSampler& GetSampler() const {
-        return m_Sampler;
-    }
-
-    inline VkAccelerationStructureKHR GetAccelerationStructure() const {
-        return m_AccelerationStructure;
-    }
-
-    inline VkBuffer GetBuffer() const {
-        return m_BufferDesc.handle;
-    }
-
-    inline const TextureVK& GetTexture() const {
-        return *m_TextureDesc.texture;
-    }
-
     inline DescriptorType GetType() const {
         return m_Type;
     }
 
-    inline const DescriptorTexDesc& GetTexDesc() const {
-        return m_TextureDesc;
+    inline Format GetFormat() const {
+        return m_Format;
     }
 
-    inline const DescriptorBufDesc& GetBufDesc() const {
-        return m_BufferDesc;
+    inline const TexViewDesc& GetTexViewDesc() const {
+        return m_ViewDesc.texture;
     }
 
+    inline const VkDescriptorBufferInfo& GetBufferInfo() const {
+        return m_ViewDesc.buffer;
+    }
+
+    inline VkBufferView GetBufferView() const {
+        return m_View.buffer;
+    }
+
+    inline VkImageView GetImageView() const {
+        return m_View.image;
+    }
+
+    inline const VkSampler& GetSampler() const {
+        return m_View.sampler;
+    }
+
+    inline VkAccelerationStructureKHR GetAccelerationStructure() const {
+        return m_View.accelerationStructure;
+    }
+
+    // TODO: these 2 functions don't work if GENERAL is used everywhere!
     inline bool IsDepthWritable() const {
-        return m_TextureDesc.layout != VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL && m_TextureDesc.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+        return m_ViewDesc.texture.layout != VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL && m_ViewDesc.texture.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
     }
 
     inline bool IsStencilWritable() const {
-        return m_TextureDesc.layout != VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL && m_TextureDesc.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-    }
-
-    inline VkDescriptorBufferInfo GetBufferInfo() const {
-        VkDescriptorBufferInfo info = {};
-        info.buffer = m_BufferDesc.handle;
-        info.offset = m_BufferDesc.offset;
-        info.range = m_BufferDesc.size;
-
-        return info;
-    }
-
-    inline VkImageSubresourceRange GetImageSubresourceRange() const {
-        VkImageSubresourceRange range = {};
-        range.aspectMask = GetImageAspectFlags(m_TextureDesc.format);
-        range.baseMipLevel = m_TextureDesc.mipOffset;
-        range.levelCount = m_TextureDesc.mipNum;
-        range.baseArrayLayer = m_TextureDesc.layerOffset;
-        range.layerCount = m_TextureDesc.layerNum;
-
-        return range;
+        return m_ViewDesc.texture.layout != VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL && m_ViewDesc.texture.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
     }
 
     ~DescriptorVK();
@@ -119,19 +87,20 @@ private:
 private:
     DeviceVK& m_Device;
 
-    union {
-        VkImageView m_ImageView = VK_NULL_HANDLE;
-        VkBufferView m_BufferView;
-        VkAccelerationStructureKHR m_AccelerationStructure;
-        VkSampler m_Sampler;
-    };
+    union View {
+        VkImageView image = VK_NULL_HANDLE;
+        VkBufferView buffer;
+        VkSampler sampler;
+        VkAccelerationStructureKHR accelerationStructure;
+    } m_View;
 
-    union {
-        DescriptorTexDesc m_TextureDesc = {};
-        DescriptorBufDesc m_BufferDesc;
-    };
+    union ViewDesc {
+        TexViewDesc texture = {}; // larger first
+        VkDescriptorBufferInfo buffer;
+    } m_ViewDesc;
 
     DescriptorType m_Type = DescriptorType::MAX_NUM;
+    Format m_Format = Format::UNKNOWN;
 };
 
 } // namespace nri

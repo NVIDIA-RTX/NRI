@@ -321,18 +321,18 @@ void PipelineLayoutD3D12::SetRootDescriptor(ID3D12GraphicsCommandList* graphicsC
     const DescriptorD3D12& descriptorD3D12 = *(DescriptorD3D12*)setRootDescriptorDesc.descriptor;
     D3D12_GPU_VIRTUAL_ADDRESS bufferLocation = descriptorD3D12.GetGPUVA() + setRootDescriptorDesc.offset;
 
-    BufferViewType bufferViewType = descriptorD3D12.GetBufferViewType();
-    if (bufferViewType == BufferViewType::CONSTANT) {
+    DescriptorType descriptorType = descriptorD3D12.GetType();
+    if (descriptorType == DescriptorType::CONSTANT_BUFFER) {
         if (bindPoint == BindPoint::GRAPHICS)
             graphicsCommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, bufferLocation);
         else
             graphicsCommandList->SetComputeRootConstantBufferView(rootParameterIndex, bufferLocation);
-    } else if (bufferViewType == BufferViewType::SHADER_RESOURCE || descriptorD3D12.IsAccelerationStructure()) {
+    } else if (descriptorType == DescriptorType::STRUCTURED_BUFFER) {
         if (bindPoint == BindPoint::GRAPHICS)
             graphicsCommandList->SetGraphicsRootShaderResourceView(rootParameterIndex, bufferLocation);
         else
             graphicsCommandList->SetComputeRootShaderResourceView(rootParameterIndex, bufferLocation);
-    } else if (bufferViewType == BufferViewType::SHADER_RESOURCE_STORAGE) {
+    } else if (descriptorType == DescriptorType::STORAGE_STRUCTURED_BUFFER) {
         if (bindPoint == BindPoint::GRAPHICS)
             graphicsCommandList->SetGraphicsRootUnorderedAccessView(rootParameterIndex, bufferLocation);
         else

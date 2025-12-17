@@ -40,22 +40,45 @@ bool GetTextureDesc(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& textu
 bool GetBufferDesc(const BufferD3D11Desc& bufferD3D11Desc, BufferDesc& bufferDesc);
 uint32_t ConvertPriority(float priority);
 
-struct SubresourceInfo {
-    const void* resource = nullptr;
-    uint64_t data = 0;
+struct TextureD3D11;
+struct BufferD3D11;
 
-    inline void Initialize(const void* tex, Dim_t mipOffset, Dim_t mipNum, Dim_t layerOffset, Dim_t layerNum) {
-        resource = tex;
-        data = (uint64_t(layerNum) << 48) | (uint64_t(layerOffset) << 32) | (uint64_t(mipNum) << 16) | uint64_t(mipOffset);
+union SubresourceInfo {
+    struct RawViewDesc {
+        const void* resource;
+        uint64_t data;
+    } raw = {};
+
+    struct TextureSubresourceInfo {
+        const TextureD3D11* texture;
+        Dim_t mipOffset;
+        Dim_t mipNum;
+        Dim_t layerOffset;
+        Dim_t layerNum;
+    } texture;
+
+    struct BufferSubresourceInfo {
+        const BufferD3D11* buffer;
+        uint32_t elementOffset;
+        uint32_t elementNum;
+    } buffer;
+
+    inline void Initialize(const TextureD3D11* tex, Dim_t mipOffset, Dim_t mipNum, Dim_t layerOffset, Dim_t layerNum) {
+        texture.texture = tex;
+        texture.mipOffset = mipOffset;
+        texture.mipNum = mipNum;
+        texture.layerOffset = layerOffset;
+        texture.layerNum = layerNum;
     }
 
-    inline void Initialize(const void* buf) {
-        resource = buf;
-        data = 0;
+    inline void Initialize(const BufferD3D11* buf, uint32_t elementOffset, uint32_t elementNum) {
+        buffer.buffer = buf;
+        buffer.elementOffset = elementOffset;
+        buffer.elementNum = elementNum;
     }
 
     friend bool operator==(const SubresourceInfo& a, const SubresourceInfo& b) {
-        return a.resource == b.resource && a.data == b.data;
+        return a.raw.resource == b.raw.resource && a.raw.data == b.raw.data;
     }
 };
 

@@ -411,13 +411,14 @@ NRI_INLINE void CommandBufferD3D12::ClearStorage(const ClearStorageDesc& clearSt
     const DescriptorD3D12& descriptorD3D12 = *(DescriptorD3D12*)clearStorageDesc.descriptor;
 
     // TODO: typed buffers are currently cleared according to the format, it seems to be more reliable than using integers for all buffers
+    const FormatProps& formatProps = GetFormatProps(descriptorD3D12.GetFormat());
     DescriptorHandleGPU handleGPU = descriptorSet->GetDescriptorHandleGPU(clearStorageDesc.rangeIndex, clearStorageDesc.descriptorIndex);
     DescriptorHandleCPU handleCPU = descriptorD3D12.GetDescriptorHandleCPU();
 
-    if (descriptorD3D12.IsIntegerFormat())
-        m_GraphicsCommandList->ClearUnorderedAccessViewUint({handleGPU}, {handleCPU}, descriptorD3D12, &clearStorageDesc.value.ui.x, 0, nullptr);
+    if (formatProps.isInteger)
+        m_GraphicsCommandList->ClearUnorderedAccessViewUint({handleGPU}, {handleCPU}, descriptorD3D12.GetResource(), &clearStorageDesc.value.ui.x, 0, nullptr);
     else
-        m_GraphicsCommandList->ClearUnorderedAccessViewFloat({handleGPU}, {handleCPU}, descriptorD3D12, &clearStorageDesc.value.f.x, 0, nullptr);
+        m_GraphicsCommandList->ClearUnorderedAccessViewFloat({handleGPU}, {handleCPU}, descriptorD3D12.GetResource(), &clearStorageDesc.value.f.x, 0, nullptr);
 }
 NRI_INLINE void CommandBufferD3D12::BeginRendering(const AttachmentsDesc& attachmentsDesc) {
     // Render targets
@@ -443,7 +444,7 @@ NRI_INLINE void CommandBufferD3D12::BeginRendering(const AttachmentsDesc& attach
     if (m_Device.GetDesc().tiers.shadingRate >= 2) {
         ID3D12Resource* shadingRateImage = nullptr;
         if (attachmentsDesc.shadingRate)
-            shadingRateImage = *(DescriptorD3D12*)attachmentsDesc.shadingRate;
+            shadingRateImage = ((DescriptorD3D12*)attachmentsDesc.shadingRate)->GetResource();
 
         m_GraphicsCommandList->RSSetShadingRateImage(shadingRateImage);
     }
@@ -584,11 +585,13 @@ NRI_INLINE void CommandBufferD3D12::CopyTexture(Texture& dstTexture, const Textu
         if (!dstRegion)
             dstRegion = &wholeResource;
 
+        const TextureDesc& dstDesc = dst.GetDesc();
         D3D12_TEXTURE_COPY_LOCATION dstTextureCopyLocation = {dst, D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX};
-        dstTextureCopyLocation.SubresourceIndex = dst.GetSubresourceIndex(dstRegion->layerOffset, dstRegion->mipOffset, dstRegion->planes);
+        dstTextureCopyLocation.SubresourceIndex = GetSubresourceIndex(dstRegion->layerOffset, dstDesc.layerNum, dstRegion->mipOffset, dstDesc.mipNum, dstRegion->planes);
 
+        const TextureDesc& srcDesc = src.GetDesc();
         D3D12_TEXTURE_COPY_LOCATION srcTextureCopyLocation = {src, D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX};
-        srcTextureCopyLocation.SubresourceIndex = src.GetSubresourceIndex(srcRegion->layerOffset, srcRegion->mipOffset, srcRegion->planes);
+        srcTextureCopyLocation.SubresourceIndex = GetSubresourceIndex(srcRegion->layerOffset, srcDesc.layerNum, srcRegion->mipOffset, srcDesc.mipNum, srcRegion->planes);
 
         uint32_t w = srcRegion->width == WHOLE_SIZE ? src.GetSize(0, srcRegion->mipOffset) : srcRegion->width;
         uint32_t h = srcRegion->height == WHOLE_SIZE ? src.GetSize(1, srcRegion->mipOffset) : srcRegion->height;
@@ -630,13 +633,14 @@ NRI_INLINE void CommandBufferD3D12::ResolveTexture(Texture& dstTexture, const Te
     const TextureD3D12& dst = (TextureD3D12&)dstTexture;
     const TextureD3D12& src = (TextureD3D12&)srcTexture;
     const TextureDesc& dstDesc = dst.GetDesc();
+    const TextureDesc& srcDesc = src.GetDesc();
     const DxgiFormat& dstFormat = GetDxgiFormat(dstDesc.format);
 
     bool isWholeResource = !dstRegion && !srcRegion && resolveOp == ResolveOp::AVERAGE; // old API supports only AVERAGE
     if (isWholeResource) {
         for (Dim_t layer = 0; layer < dstDesc.layerNum; layer++) {
             for (Dim_t mip = 0; mip < dstDesc.mipNum; mip++) {
-                uint32_t subresource = dst.GetSubresourceIndex(layer, mip, PlaneBits::ALL);
+                uint32_t subresource = GetSubresourceIndex(layer, dstDesc.layerNum, mip, dstDesc.mipNum, PlaneBits::ALL);
                 m_GraphicsCommandList->ResolveSubresource(dst, subresource, src, subresource, dstFormat.typed);
             }
         }
@@ -647,8 +651,8 @@ NRI_INLINE void CommandBufferD3D12::ResolveTexture(Texture& dstTexture, const Te
         if (!dstRegion)
             dstRegion = &wholeResource;
 
-        uint32_t dstSubresource = dst.GetSubresourceIndex(dstRegion->layerOffset, dstRegion->mipOffset, dstRegion->planes);
-        uint32_t srcSubresource = src.GetSubresourceIndex(srcRegion->layerOffset, srcRegion->mipOffset, srcRegion->planes);
+        uint32_t dstSubresource = GetSubresourceIndex(dstRegion->layerOffset, dstDesc.layerNum, dstRegion->mipOffset, dstDesc.mipNum, dstRegion->planes);
+        uint32_t srcSubresource = GetSubresourceIndex(srcRegion->layerOffset, srcDesc.layerNum, srcRegion->mipOffset, srcDesc.mipNum, srcRegion->planes);
 
         Dim_t w = srcRegion->width == WHOLE_SIZE ? src.GetSize(0, srcRegion->mipOffset) : srcRegion->width;
         Dim_t h = srcRegion->height == WHOLE_SIZE ? src.GetSize(1, srcRegion->mipOffset) : srcRegion->height;
@@ -671,7 +675,7 @@ NRI_INLINE void CommandBufferD3D12::UploadBufferToTexture(Texture& dstTexture, c
     const TextureDesc& dstDesc = dst.GetDesc();
 
     D3D12_TEXTURE_COPY_LOCATION dstTextureCopyLocation = {dst, D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX};
-    dstTextureCopyLocation.SubresourceIndex = dst.GetSubresourceIndex(dstRegion.layerOffset, dstRegion.mipOffset, dstRegion.planes);
+    dstTextureCopyLocation.SubresourceIndex = GetSubresourceIndex(dstRegion.layerOffset, dstDesc.layerNum, dstRegion.mipOffset, dstDesc.mipNum, dstRegion.planes);
 
     const uint32_t size[3] = {
         dstRegion.width == WHOLE_SIZE ? dst.GetSize(0, dstRegion.mipOffset) : dstRegion.width,
@@ -697,7 +701,7 @@ NRI_INLINE void CommandBufferD3D12::ReadbackTextureToBuffer(Buffer& dstBuffer, c
     const TextureDesc& srcDesc = src.GetDesc();
 
     D3D12_TEXTURE_COPY_LOCATION srcTextureCopyLocation = {src, D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX};
-    srcTextureCopyLocation.SubresourceIndex = src.GetSubresourceIndex(srcRegion.layerOffset, srcRegion.mipOffset, srcRegion.planes);
+    srcTextureCopyLocation.SubresourceIndex = GetSubresourceIndex(srcRegion.layerOffset, srcDesc.layerNum, srcRegion.mipOffset, srcDesc.mipNum, srcRegion.planes);
 
     uint32_t w = srcRegion.width == WHOLE_SIZE ? src.GetSize(0, srcRegion.mipOffset) : srcRegion.width;
     uint32_t h = srcRegion.height == WHOLE_SIZE ? src.GetSize(1, srcRegion.mipOffset) : srcRegion.height;
@@ -894,7 +898,7 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
             else {
                 for (Dim_t layerOffset = barrier.layerOffset; layerOffset < barrier.layerOffset + layerNum; layerOffset++) {
                     for (Dim_t mipOffset = barrier.mipOffset; mipOffset < barrier.mipOffset + mipNum; mipOffset++) {
-                        uint32_t subresource = texture.GetSubresourceIndex(layerOffset, mipOffset, barrier.planes);
+                        uint32_t subresource = GetSubresourceIndex(layerOffset, textureDesc.layerNum, mipOffset, textureDesc.mipNum, barrier.planes);
                         AddResourceBarrier(commandListType, texture, barrier.before.access, barrier.after.access, *ptr++, subresource);
                     }
                 }

@@ -21,7 +21,7 @@ struct TextureD3D11 final : public DebugNameBase {
     }
 
     inline operator ID3D11Resource*() const {
-        return m_Texture;
+        return m_Texture.GetInterface();
     }
 
     inline operator ID3D11Texture1D*() const {
