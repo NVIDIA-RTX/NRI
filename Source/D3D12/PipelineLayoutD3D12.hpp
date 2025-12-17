@@ -327,7 +327,7 @@ void PipelineLayoutD3D12::SetRootDescriptor(ID3D12GraphicsCommandList* graphicsC
             graphicsCommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, bufferLocation);
         else
             graphicsCommandList->SetComputeRootConstantBufferView(rootParameterIndex, bufferLocation);
-    } else if (descriptorType == DescriptorType::STRUCTURED_BUFFER) {
+    } else if (descriptorType == DescriptorType::STRUCTURED_BUFFER || descriptorType == DescriptorType::ACCELERATION_STRUCTURE) {
         if (bindPoint == BindPoint::GRAPHICS)
             graphicsCommandList->SetGraphicsRootShaderResourceView(rootParameterIndex, bufferLocation);
         else

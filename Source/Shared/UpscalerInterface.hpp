@@ -461,7 +461,7 @@ bool nri::IsUpscalerSupported(const DeviceDesc& deviceDesc, UpscalerType type) {
 
 #if NRI_ENABLE_NGX_SDK
     if (type == UpscalerType::DLSR || type == UpscalerType::DLRR) {
-        if (deviceDesc.adapterDesc.vendor == Vendor::NVIDIA && deviceDesc.features.rayTracing) // an elegant way to detect an RTX GPU?
+        if (deviceDesc.adapterDesc.vendor == Vendor::NVIDIA && deviceDesc.tiers.rayTracing) // an elegant way to detect an RTX GPU?
             return true;
     }
 #endif
