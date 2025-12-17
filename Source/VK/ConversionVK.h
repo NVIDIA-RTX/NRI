@@ -46,8 +46,8 @@ constexpr VkImageLayout GetImageLayout(Layout layout) {
 }
 
 constexpr std::array<VkDescriptorType, (size_t)DescriptorType::MAX_NUM> g_DescriptorTypes = {
-    VK_DESCRIPTOR_TYPE_MUTABLE_EXT,                // MUTABLE
     VK_DESCRIPTOR_TYPE_SAMPLER,                    // SAMPLER
+    VK_DESCRIPTOR_TYPE_MUTABLE_EXT,                // MUTABLE
     VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,              // TEXTURE
     VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,              // STORAGE_TEXTURE
     VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,       // BUFFER

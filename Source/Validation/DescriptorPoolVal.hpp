@@ -36,13 +36,13 @@ NRI_INLINE Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout
 
                 bool enoughDescriptors = false;
                 switch (rangeDesc.descriptorType) {
-                    case DescriptorType::MUTABLE:
-                        m_MutableNum += descriptorNum;
-                        enoughDescriptors = m_MutableNum <= m_Desc.mutableMaxNum;
-                        break;
                     case DescriptorType::SAMPLER:
                         m_SamplerNum += descriptorNum;
                         enoughDescriptors = m_SamplerNum <= m_Desc.samplerMaxNum;
+                        break;
+                    case DescriptorType::MUTABLE:
+                        m_MutableNum += descriptorNum;
+                        enoughDescriptors = m_MutableNum <= m_Desc.mutableMaxNum;
                         break;
                     case DescriptorType::TEXTURE:
                         m_TextureNum += descriptorNum;

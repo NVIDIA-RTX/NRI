@@ -15,6 +15,10 @@ struct IsSupported {
     uint32_t maintenance4               : 1;
     uint32_t maintenance5               : 1;
     uint32_t maintenance6               : 1;
+    uint32_t maintenance7               : 1;
+    uint32_t maintenance8               : 1;
+    uint32_t maintenance9               : 1;
+    uint32_t maintenance10              : 1;
     uint32_t imageSlicedView            : 1;
     uint32_t customBorderColor          : 1;
     uint32_t robustness                 : 1;

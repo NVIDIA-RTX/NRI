@@ -6,15 +6,19 @@ namespace nri {
 
 enum class DescriptorTypeExt : uint8_t {
     // Must match "DescriptorType"
-    MUTABLE,
     SAMPLER,
+
+    MUTABLE,
+
     TEXTURE,
     STORAGE_TEXTURE,
+
     BUFFER,
     STORAGE_BUFFER,
     CONSTANT_BUFFER,
     STRUCTURED_BUFFER,
     STORAGE_STRUCTURED_BUFFER,
+
     ACCELERATION_STRUCTURE,
 
     // Extra
@@ -63,6 +67,11 @@ struct DescriptorVal final : public ObjectVal {
         return m_Type == DescriptorTypeExt::STORAGE_TEXTURE
             || m_Type == DescriptorTypeExt::STORAGE_BUFFER
             || m_Type == DescriptorTypeExt::STORAGE_STRUCTURED_BUFFER;
+    }
+
+    inline bool IsAttachment() const {
+        return m_Type == DescriptorTypeExt::COLOR_ATTACHMENT
+            || m_Type == DescriptorTypeExt::DEPTH_STENCIL_ATTACHMENT;
     }
 
     inline bool IsDepthReadonly() const {

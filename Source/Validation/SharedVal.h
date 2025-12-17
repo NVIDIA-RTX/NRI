@@ -102,8 +102,8 @@ inline DeviceVal& GetDeviceVal(T& object) {
 uint64_t GetMemorySizeD3D12(const MemoryD3D12Desc& memoryD3D12Desc);
 
 constexpr std::array<const char*, (size_t)DescriptorType::MAX_NUM> g_descriptorTypeNames = {
-    "MUTABLE",                   // MUTABLE
     "SAMPLER",                   // SAMPLER
+    "MUTABLE",                   // MUTABLE
     "TEXTURE",                   // TEXTURE
     "STORAGE_TEXTURE",           // STORAGE_TEXTURE
     "BUFFER",                    // BUFFER

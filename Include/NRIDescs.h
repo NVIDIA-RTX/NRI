@@ -180,115 +180,120 @@ NriStruct(SampleLocation) {
 // left -> right : low -> high bits
 // Expected (but not guaranteed) "FormatSupportBits" are provided, but "GetFormatSupport" should be used for querying real HW support
 // To demote sRGB use the previous format, i.e. "format - 1"
-//                                                STORAGE_BUFFER_ATOMICS
-//                                                      VERTEX_BUFFER  |
-//                                                  STORAGE_BUFFER  |  |
-//                                                       BUFFER  |  |  |
-//                                   STORAGE_TEXTURE_ATOMICS  |  |  |  |
-//                                                  BLEND  |  |  |  |  |
-//                            DEPTH_STENCIL_ATTACHMENT  |  |  |  |  |  |
-//                                 COLOR_ATTACHMENT  |  |  |  |  |  |  |
-//                               STORAGE_TEXTURE  |  |  |  |  |  |  |  |
-//                                    TEXTURE  |  |  |  |  |  |  |  |  |
-//                                          |  |  |  |  |  |  |  |  |  |
-//                                          |    FormatSupportBits     |
-NriEnum(Format, uint8_t,
-    UNKNOWN,                             // -  -  -  -  -  -  -  -  -  -
+//                                            STORAGE_WRITE_WITHOUT_FORMAT
+//                                           STORAGE_READ_WITHOUT_FORMAT |
+//                                                       VERTEX_BUFFER | |
+//                                            STORAGE_BUFFER_ATOMICS | | |
+//                                                  STORAGE_BUFFER | | | |
+//                                                        BUFFER | | | | |
+//                                         MULTISAMPLE_RESOLVE | | | | | |
+//                                            MULTISAMPLE_8X | | | | | | |
+//                                          MULTISAMPLE_4X | | | | | | | |
+//                                        MULTISAMPLE_2X | | | | | | | | |
+//                                               BLEND | | | | | | | | | |
+//                          DEPTH_STENCIL_ATTACHMENT | | | | | | | | | | |
+//                                COLOR_ATTACHMENT | | | | | | | | | | | |
+//                       STORAGE_TEXTURE_ATOMICS | | | | | | | | | | | | |
+//                             STORAGE_TEXTURE | | | | | | | | | | | | | |
+//                                   TEXTURE | | | | | | | | | | | | | | |
+//                                         | | | | | | | | | | | | | | | |
+NriEnum(Format, uint8_t,                // |      FormatSupportBits      |
+    UNKNOWN,                            // . . . . . . . . . . . . . . . .
 
     // Plain: 8 bits per channel
-    R8_UNORM,                            // +  +  +  -  +  -  +  +  +  -
-    R8_SNORM,                            // +  +  +  -  +  -  +  +  +  -
-    R8_UINT,                             // +  +  +  -  -  -  +  +  +  - // SHADING_RATE compatible, see NRI_SHADING_RATE macro
-    R8_SINT,                             // +  +  +  -  -  -  +  +  +  -
+    R8_UNORM,                           // + + . + . + + + + + + + . + + +
+    R8_SNORM,                           // + + . + . + + + + + + + . + + +
+    R8_UINT,                            // + + . + . . + + + . + + . + + +  // SHADING_RATE compatible, see NRI_SHADING_RATE macro
+    R8_SINT,                            // + + . + . . + + + . + + . + + +
 
-    RG8_UNORM,                           // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
-    RG8_SNORM,                           // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
-    RG8_UINT,                            // +  +  +  -  -  -  +  +  +  -
-    RG8_SINT,                            // +  +  +  -  -  -  +  +  +  -
+    RG8_UNORM,                          // + + . + . + + + + + + + . + + +  // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
+    RG8_SNORM,                          // + + . + . + + + + + + + . + + +  // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
+    RG8_UINT,                           // + + . + . . + + + . + + . + + +
+    RG8_SINT,                           // + + . + . . + + + . + + . + + +
 
-    BGRA8_UNORM,                         // +  +  +  -  +  -  +  +  +  -
-    BGRA8_SRGB,                          // +  -  +  -  +  -  -  -  -  -
+    BGRA8_UNORM,                        // + + . + . + + + + + + + . + + +
+    BGRA8_SRGB,                         // + . . + . + + + + + . . . . . .
 
-    RGBA8_UNORM,                         // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
-    RGBA8_SRGB,                          // +  -  +  -  +  -  -  -  -  -
-    RGBA8_SNORM,                         // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
-    RGBA8_UINT,                          // +  +  +  -  -  -  +  +  +  -
-    RGBA8_SINT,                          // +  +  +  -  -  -  +  +  +  -
+    RGBA8_UNORM,                        // + + . + . + + + + + + + . + + +  // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
+    RGBA8_SRGB,                         // + . . + . + + + + + . . . . . .
+    RGBA8_SNORM,                        // + + . + . + + + + + + + . + + +  // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
+    RGBA8_UINT,                         // + + . + . . + + + . + + . + + +
+    RGBA8_SINT,                         // + + . + . . + + + . + + . + + +
 
     // Plain: 16 bits per channel
-    R16_UNORM,                           // +  +  +  -  +  -  +  +  +  -
-    R16_SNORM,                           // +  +  +  -  +  -  +  +  +  -
-    R16_UINT,                            // +  +  +  -  -  -  +  +  +  -
-    R16_SINT,                            // +  +  +  -  -  -  +  +  +  -
-    R16_SFLOAT,                          // +  +  +  -  +  -  +  +  +  -
+    R16_UNORM,                          // + + . + . + + + + + + + . + + +
+    R16_SNORM,                          // + + . + . + + + + + + + . + + +
+    R16_UINT,                           // + + . + . . + + + . + + . + + +
+    R16_SINT,                           // + + . + . . + + + . + + . + + +
+    R16_SFLOAT,                         // + + . + . + + + + + + + . + + +
 
-    RG16_UNORM,                          // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
-    RG16_SNORM,                          // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible
-    RG16_UINT,                           // +  +  +  -  -  -  +  +  +  -
-    RG16_SINT,                           // +  +  +  -  -  -  +  +  +  -
-    RG16_SFLOAT,                         // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible
+    RG16_UNORM,                         // + + . + . + + + + + + + . + + +  // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
+    RG16_SNORM,                         // + + . + . + + + + + + + . + + +  // "AccelerationStructure" compatible
+    RG16_UINT,                          // + + . + . . + + + . + + . + + +
+    RG16_SINT,                          // + + . + . . + + + . + + . + + +
+    RG16_SFLOAT,                        // + + . + . + + + + + + + . + + +  // "AccelerationStructure" compatible
 
-    RGBA16_UNORM,                        // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
-    RGBA16_SNORM,                        // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible
-    RGBA16_UINT,                         // +  +  +  -  -  -  +  +  +  -
-    RGBA16_SINT,                         // +  +  +  -  -  -  +  +  +  -
-    RGBA16_SFLOAT,                       // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible
+    RGBA16_UNORM,                       // + + . + . + + + + + + + . + + +  // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
+    RGBA16_SNORM,                       // + + . + . + + + + + + + . + + +  // "AccelerationStructure" compatible
+    RGBA16_UINT,                        // + + . + . . + + + . + + . + + +
+    RGBA16_SINT,                        // + + . + . . + + + . + + . + + +
+    RGBA16_SFLOAT,                      // + + . + . + + + + + + + . + + +  // "AccelerationStructure" compatible
 
     // Plain: 32 bits per channel
-    R32_UINT,                            // +  +  +  -  -  +  +  +  +  +
-    R32_SINT,                            // +  +  +  -  -  +  +  +  +  +
-    R32_SFLOAT,                          // +  +  +  -  +  +  +  +  +  +
+    R32_UINT,                           // + + + + . . + + + . + + + + + +
+    R32_SINT,                           // + + + + . . + + + . + + + + + +
+    R32_SFLOAT,                         // + + + + . + + + + + + + + + + +
 
-    RG32_UINT,                           // +  +  +  -  -  -  +  +  +  -
-    RG32_SINT,                           // +  +  +  -  -  -  +  +  +  -
-    RG32_SFLOAT,                         // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible
+    RG32_UINT,                          // + + . + . . + + + . + + . + + +
+    RG32_SINT,                          // + + . + . . + + + . + + . + + +
+    RG32_SFLOAT,                        // + + . + . + + + + + + + . + + +  // "AccelerationStructure" compatible
 
-    RGB32_UINT,                          // +  -  -  -  -  -  +  -  +  -
-    RGB32_SINT,                          // +  -  -  -  -  -  +  -  +  -
-    RGB32_SFLOAT,                        // +  -  -  -  -  -  +  -  +  - // "AccelerationStructure" compatible
+    RGB32_UINT,                         // + . . . . . . . . . + . . + . .
+    RGB32_SINT,                         // + . . . . . . . . . + . . + . .
+    RGB32_SFLOAT,                       // + . . . . . . . . + + . . + . .  // "AccelerationStructure" compatible
 
-    RGBA32_UINT,                         // +  +  +  -  -  -  +  +  +  -
-    RGBA32_SINT,                         // +  +  +  -  -  -  +  +  +  -
-    RGBA32_SFLOAT,                       // +  +  +  -  +  -  +  +  +  -
+    RGBA32_UINT,                        // + + . + . . + + + . + + . + + +
+    RGBA32_SINT,                        // + + . + . . + + + . + + . + + +
+    RGBA32_SFLOAT,                      // + + . + . + + + + + + + . + + +
 
     // Packed: 16 bits per pixel
-    B5_G6_R5_UNORM,                      // +  -  +  -  +  -  -  -  -  -
-    B5_G5_R5_A1_UNORM,                   // +  -  +  -  +  -  -  -  -  -
-    B4_G4_R4_A4_UNORM,                   // +  -  +  -  +  -  -  -  -  -
+    B5_G6_R5_UNORM,                     // + . . + . + + + + + . . . . . .
+    B5_G5_R5_A1_UNORM,                  // + . . + . + + + + + . . . . . .
+    B4_G4_R4_A4_UNORM,                  // + . . . . . . . . + . . . . . .
 
     // Packed: 32 bits per pixel
-    R10_G10_B10_A2_UNORM,                // +  +  +  -  +  -  +  +  +  - // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
-    R10_G10_B10_A2_UINT,                 // +  +  +  -  -  -  +  +  +  -
-    R11_G11_B10_UFLOAT,                  // +  +  +  -  +  -  +  +  +  -
-    R9_G9_B9_E5_UFLOAT,                  // +  -  -  -  -  -  -  -  -  -
+    R10_G10_B10_A2_UNORM,               // + + . + . + + + + + + + . + + +  // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
+    R10_G10_B10_A2_UINT,                // + + . + . . + + + . + + . + + +
+    R11_G11_B10_UFLOAT,                 // + + . + . + + + + + + + . + + +
+    R9_G9_B9_E5_UFLOAT,                 // + . . . . . . . . . . . . . . .
 
     // Block-compressed
-    BC1_RGBA_UNORM,                      // +  -  -  -  -  -  -  -  -  -
-    BC1_RGBA_SRGB,                       // +  -  -  -  -  -  -  -  -  -
-    BC2_RGBA_UNORM,                      // +  -  -  -  -  -  -  -  -  -
-    BC2_RGBA_SRGB,                       // +  -  -  -  -  -  -  -  -  -
-    BC3_RGBA_UNORM,                      // +  -  -  -  -  -  -  -  -  -
-    BC3_RGBA_SRGB,                       // +  -  -  -  -  -  -  -  -  -
-    BC4_R_UNORM,                         // +  -  -  -  -  -  -  -  -  -
-    BC4_R_SNORM,                         // +  -  -  -  -  -  -  -  -  -
-    BC5_RG_UNORM,                        // +  -  -  -  -  -  -  -  -  -
-    BC5_RG_SNORM,                        // +  -  -  -  -  -  -  -  -  -
-    BC6H_RGB_UFLOAT,                     // +  -  -  -  -  -  -  -  -  -
-    BC6H_RGB_SFLOAT,                     // +  -  -  -  -  -  -  -  -  -
-    BC7_RGBA_UNORM,                      // +  -  -  -  -  -  -  -  -  -
-    BC7_RGBA_SRGB,                       // +  -  -  -  -  -  -  -  -  -
+    BC1_RGBA_UNORM,                     // + . . . . . . . . . . . . . . .
+    BC1_RGBA_SRGB,                      // + . . . . . . . . . . . . . . .
+    BC2_RGBA_UNORM,                     // + . . . . . . . . . . . . . . .
+    BC2_RGBA_SRGB,                      // + . . . . . . . . . . . . . . .
+    BC3_RGBA_UNORM,                     // + . . . . . . . . . . . . . . .
+    BC3_RGBA_SRGB,                      // + . . . . . . . . . . . . . . .
+    BC4_R_UNORM,                        // + . . . . . . . . . . . . . . .
+    BC4_R_SNORM,                        // + . . . . . . . . . . . . . . .
+    BC5_RG_UNORM,                       // + . . . . . . . . . . . . . . .
+    BC5_RG_SNORM,                       // + . . . . . . . . . . . . . . .
+    BC6H_RGB_UFLOAT,                    // + . . . . . . . . . . . . . . .
+    BC6H_RGB_SFLOAT,                    // + . . . . . . . . . . . . . . .
+    BC7_RGBA_UNORM,                     // + . . . . . . . . . . . . . . .
+    BC7_RGBA_SRGB,                      // + . . . . . . . . . . . . . . .
 
     // Depth-stencil
-    D16_UNORM,                           // -  -  -  +  -  -  -  -  -  -
-    D24_UNORM_S8_UINT,                   // -  -  -  +  -  -  -  -  -  -
-    D32_SFLOAT,                          // -  -  -  +  -  -  -  -  -  -
-    D32_SFLOAT_S8_UINT_X24,              // -  -  -  +  -  -  -  -  -  -
+    D16_UNORM,                          // . . . . + . + + + . . . . . . .
+    D24_UNORM_S8_UINT,                  // . . . . + . + + + . . . . . . .
+    D32_SFLOAT,                         // . . . . + . + + + . . . . . . .
+    D32_SFLOAT_S8_UINT_X24,             // . . . . + . + + + . . . . . . .
 
     // Depth-stencil (SHADER_RESOURCE)
-    R24_UNORM_X8,       // .x - depth    // +  -  -  -  -  -  -  -  -  -
-    X24_G8_UINT,        // .y - stencil  // +  -  -  -  -  -  -  -  -  -
-    R32_SFLOAT_X8_X24,  // .x - depth    // +  -  -  -  -  -  -  -  -  -
-    X32_G8_UINT_X24     // .y - stencil  // +  -  -  -  -  -  -  -  -  -
+    R24_UNORM_X8,       // .x - depth   // + . . . . . . . . . . . . . . .
+    X24_G8_UINT,        // .y - stencil // + . . . . . . . . . . . . . . .
+    R32_SFLOAT_X8_X24,  // .x - depth   // + . . . . . . . . . . . . . . .
+    X32_G8_UINT_X24     // .y - stencil // + . . . . . . . . . . . . . . .
 );
 
 // https://learn.microsoft.com/en-us/windows/win32/direct3d12/subresources#plane-slice
@@ -303,6 +308,8 @@ NriBits(PlaneBits, uint8_t,
 );
 
 // A bit represents a feature, supported by a format
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_feature_data_format_support
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkFormatFeatureFlagBits2.html
 NriBits(FormatSupportBits, uint16_t,
     UNSUPPORTED                     = 0,
 
@@ -316,16 +323,17 @@ NriBits(FormatSupportBits, uint16_t,
     MULTISAMPLE_2X                  = NriBit(6),
     MULTISAMPLE_4X                  = NriBit(7),
     MULTISAMPLE_8X                  = NriBit(8),
+    MULTISAMPLE_RESOLVE             = NriBit(9),
 
     // Buffer
-    BUFFER                          = NriBit(9),
-    STORAGE_BUFFER                  = NriBit(10),
-    STORAGE_BUFFER_ATOMICS          = NriBit(11),  // other than Load / Store
-    VERTEX_BUFFER                   = NriBit(12),
+    BUFFER                          = NriBit(10),
+    STORAGE_BUFFER                  = NriBit(11),
+    STORAGE_BUFFER_ATOMICS          = NriBit(12),  // other than Load / Store
+    VERTEX_BUFFER                   = NriBit(13),
 
     // Texture / buffer
-    STORAGE_READ_WITHOUT_FORMAT     = NriBit(13),
-    STORAGE_WRITE_WITHOUT_FORMAT    = NriBit(14)
+    STORAGE_READ_WITHOUT_FORMAT     = NriBit(14),
+    STORAGE_WRITE_WITHOUT_FORMAT    = NriBit(15)
 );
 
 #pragma endregion
@@ -428,7 +436,7 @@ NriBits(AccessBits, uint32_t,
     // Buffer                                // Access  Compatible "StageBits" (including ALL)
     INDEX_BUFFER                    = NriBit(0),  // R   INDEX_INPUT
     VERTEX_BUFFER                   = NriBit(1),  // R   VERTEX_SHADER
-    CONSTANT_BUFFER                 = NriBit(2),  // R   GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
+    CONSTANT_BUFFER                 = NriBit(2),  // R   ALL_SHADERS
     ARGUMENT_BUFFER                 = NriBit(3),  // R   INDIRECT
     SCRATCH_BUFFER                  = NriBit(4),  // RW  ACCELERATION_STRUCTURE, MICROMAP
 
@@ -447,8 +455,8 @@ NriBits(AccessBits, uint32_t,
     MICROMAP_WRITE                  = NriBit(12), //  W  MICROMAP
 
     // Shader resource
-    SHADER_RESOURCE                 = NriBit(13), // R   GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS
-    SHADER_RESOURCE_STORAGE         = NriBit(14), // RW  GRAPHICS_SHADERS, COMPUTE_SHADER, RAY_TRACING_SHADERS, CLEAR_STORAGE + shaders
+    SHADER_RESOURCE                 = NriBit(13), // R   ALL_SHADERS
+    SHADER_RESOURCE_STORAGE         = NriBit(14), // RW  ALL_SHADERS, CLEAR_STORAGE
     SHADER_BINDING_TABLE            = NriBit(15), // R   RAY_TRACING_SHADERS
 
     // Copy
@@ -469,7 +477,7 @@ NriBits(AccessBits, uint32_t,
 NriEnum(Layout, uint8_t,    // Compatible "AccessBits":
     // Special
     UNDEFINED,                  // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_layout_undefined
-    GENERAL,                    // ~ALL access, but potentially not optimal (required for "SharingMode::SIMULTANEOUS")
+    GENERAL,                    // ALL access, but may be suboptimal if "features.unifiedTextureLayouts" is not supported (required for "SharingMode::SIMULTANEOUS")
     PRESENT,                    // NONE (use "after.stages = StageBits::NONE")
 
     // Access specific
@@ -684,43 +692,50 @@ NriStruct(BindTextureMemoryDesc) {
 //============================================================================================================================================================================================
 
 // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#creating-descriptors
-NriEnum(Texture1DViewType, uint8_t,     // HOST only?   Compatible "DescriptorType"
-    SHADER_RESOURCE_1D,                     // no           TEXTURE
-    SHADER_RESOURCE_1D_ARRAY,               // no           TEXTURE
-    SHADER_RESOURCE_STORAGE_1D,             // no           STORAGE_TEXTURE
-    SHADER_RESOURCE_STORAGE_1D_ARRAY,       // no           STORAGE_TEXTURE
-    COLOR_ATTACHMENT,                       // yes
-    DEPTH_STENCIL_ATTACHMENT,               // yes
-    DEPTH_READONLY_STENCIL_ATTACHMENT,      // yes
-    DEPTH_ATTACHMENT_STENCIL_READONLY,      // yes
-    DEPTH_STENCIL_READONLY                  // yes
+NriEnum(Texture1DViewType, uint8_t,     // HLSL type                Compatible "DescriptorType"
+    SHADER_RESOURCE_1D,                     // Texture1D                TEXTURE
+    SHADER_RESOURCE_1D_ARRAY,               // Texture1DArray           TEXTURE
+    SHADER_RESOURCE_STORAGE_1D,             // RWTexture1D              STORAGE_TEXTURE
+    SHADER_RESOURCE_STORAGE_1D_ARRAY,       // RWTexture1DArray         STORAGE_TEXTURE
+
+    // Host-only
+    COLOR_ATTACHMENT,
+    DEPTH_STENCIL_ATTACHMENT,
+    DEPTH_READONLY_STENCIL_ATTACHMENT,
+    DEPTH_ATTACHMENT_STENCIL_READONLY,
+    DEPTH_STENCIL_READONLY
 );
 
-NriEnum(Texture2DViewType, uint8_t,     // HOST only?   Compatible "DescriptorType"
-    SHADER_RESOURCE_2D,                     // no           TEXTURE
-    SHADER_RESOURCE_2D_ARRAY,               // no           TEXTURE
-    SHADER_RESOURCE_CUBE,                   // no           TEXTURE
-    SHADER_RESOURCE_CUBE_ARRAY,             // no           TEXTURE
-    SHADER_RESOURCE_STORAGE_2D,             // no           STORAGE_TEXTURE
-    SHADER_RESOURCE_STORAGE_2D_ARRAY,       // no           STORAGE_TEXTURE
-    COLOR_ATTACHMENT,                       // yes
-    DEPTH_STENCIL_ATTACHMENT,               // yes
-    DEPTH_READONLY_STENCIL_ATTACHMENT,      // yes
-    DEPTH_ATTACHMENT_STENCIL_READONLY,      // yes
-    DEPTH_STENCIL_READONLY,                 // yes
-    SHADING_RATE_ATTACHMENT                 // yes
+NriEnum(Texture2DViewType, uint8_t,     // HLSL type                Compatible "DescriptorType"
+    SHADER_RESOURCE_2D,                     // Texture2D(MS)            TEXTURE
+    SHADER_RESOURCE_2D_ARRAY,               // Texture2D(MS)Array       TEXTURE
+    SHADER_RESOURCE_CUBE,                   // TextureCube              TEXTURE
+    SHADER_RESOURCE_CUBE_ARRAY,             // TextureCubeArray         TEXTURE
+    SHADER_RESOURCE_STORAGE_2D,             // RWTexture2D(MS)          STORAGE_TEXTURE
+    SHADER_RESOURCE_STORAGE_2D_ARRAY,       // RWTexture2D(MS)Array     STORAGE_TEXTURE
+
+    // Host-only
+    COLOR_ATTACHMENT,
+    DEPTH_STENCIL_ATTACHMENT,
+    DEPTH_READONLY_STENCIL_ATTACHMENT,
+    DEPTH_ATTACHMENT_STENCIL_READONLY,
+    DEPTH_STENCIL_READONLY,
+    SHADING_RATE_ATTACHMENT
 );
 
-NriEnum(Texture3DViewType, uint8_t,     // HOST only?   Compatible "DescriptorType"
-    SHADER_RESOURCE_3D,                     // no           TEXTURE
-    SHADER_RESOURCE_STORAGE_3D,             // no           STORAGE_TEXTURE
-    COLOR_ATTACHMENT                        // yes
+NriEnum(Texture3DViewType, uint8_t,     // HLSL type                Compatible "DescriptorType"
+    SHADER_RESOURCE_3D,                     // Texture3D                TEXTURE
+    SHADER_RESOURCE_STORAGE_3D,             // RWTexture3D              STORAGE_TEXTURE
+
+    // Host-only
+    COLOR_ATTACHMENT
 );
 
-NriEnum(BufferViewType, uint8_t,        // HOST only?   Compatible "DescriptorType"
-    SHADER_RESOURCE,                        // no           BUFFER or STRUCTURED_BUFFER (if "structureStride" != 0)
-    SHADER_RESOURCE_STORAGE,                // no           STORAGE_BUFFER or STORAGE_STRUCTURED_BUFFER (if "structureStride" != 0)
-    CONSTANT                                // no           CONSTANT_BUFFER
+NriEnum(BufferViewType, uint8_t,        // HLSL type                Compatible "DescriptorType"
+    SHADER_RESOURCE,                        // (*)Buffer                BUFFER, STRUCTURED_BUFFER
+    SHADER_RESOURCE_STORAGE,                // RW(*)Buffer              STORAGE_BUFFER, STORAGE_STRUCTURED_BUFFER
+    CONSTANT                                // ConstantBuffer           CONSTANT_BUFFER
+                                        // * = Structured/ByteAddress
 );
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkFilter.html
@@ -731,6 +746,7 @@ NriEnum(Filter, uint8_t,
     LINEAR
 );
 
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_filter_reduction_type
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerReductionMode.html
 NriEnum(ReductionMode, uint8_t,
     AVERAGE,    // a weighted average (sum) of values in the footprint (default)
@@ -875,27 +891,26 @@ NriBits(DescriptorRangeBits, uint8_t,
 
 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkDescriptorType.html
 NriEnum(DescriptorType, uint8_t,
+    // Sampler heap
+    SAMPLER,
+
     // Resource heap
     // - a mutable descriptor is a proxy "union" descriptor for all resource descriptor types, i.e. non-sampler
     // - a mutable descriptor can't be created, it can only be allocated from a pool (i.e. used in a "DescriptorRangeDesc")
     // - a mutable descriptor must "mutate" to any resource descriptor via "UpdateDescriptorRanges" or "CopyDescriptorRanges"
     MUTABLE,
 
-    // Sampler heap
-    SAMPLER,
+    // Optimized resources      // Typed    // VK: may have various implementation dependent sizes
+    TEXTURE,                        // +
+    STORAGE_TEXTURE,                // +
 
-    // VK: may have various implementation dependent sizes
-    // Optimized resources      // Typed    // Can be placed in root?
-    TEXTURE,                        // yes      // no
-    STORAGE_TEXTURE,                // yes      // no
+    BUFFER,                         // +
+    STORAGE_BUFFER,                 // +
+    CONSTANT_BUFFER,                // -
+    STRUCTURED_BUFFER,              // -
+    STORAGE_STRUCTURED_BUFFER,      // -
 
-    BUFFER,                         // yes      // no
-    STORAGE_BUFFER,                 // yes      // no
-    CONSTANT_BUFFER,                // no       // yes
-    STRUCTURED_BUFFER,              // no       // yes
-    STORAGE_STRUCTURED_BUFFER,      // no       // yes
-
-    ACCELERATION_STRUCTURE          // no       // yes
+    ACCELERATION_STRUCTURE          // -    // requires "features.rayTracing"
 );
 
 // "DescriptorRange" consists of "Descriptor" entities
@@ -924,7 +939,7 @@ NriStruct(RootConstantDesc) {           // aka push constants block
 
 NriStruct(RootDescriptorDesc) {         // aka push descriptor
     uint32_t registerIndex;
-    Nri(DescriptorType) descriptorType; // "CONSTANT_BUFFER", "STRUCTURED_BUFFER" or "STORAGE_STRUCTURED_BUFFER"
+    Nri(DescriptorType) descriptorType; // a non-typed descriptor type
     Nri(StageBits) shaderStages;
 };
 
@@ -1575,7 +1590,7 @@ NriStruct(QueueSubmitDesc) {
 NriStruct(ClearDesc) {
     Nri(ClearValue) value;
     Nri(PlaneBits) planes;
-    uint32_t colorAttachmentIndex;
+    uint8_t colorAttachmentIndex;
 };
 
 // Required synchronization

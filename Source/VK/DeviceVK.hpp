@@ -301,6 +301,7 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(true, VK_KHR_MAINTENANCE_7_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_MAINTENANCE_8_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_MAINTENANCE_9_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_MAINTENANCE_10_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_PRESENT_ID_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
@@ -588,6 +589,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     APPEND_FEATURES(true, KHR, Maintenance7, MAINTENANCE_7);
     APPEND_FEATURES(true, KHR, Maintenance8, MAINTENANCE_8);
     APPEND_FEATURES(true, KHR, Maintenance9, MAINTENANCE_9);
+    APPEND_FEATURES(true, KHR, Maintenance10, MAINTENANCE_10);
     APPEND_FEATURES(true, KHR, PresentId, PRESENT_ID);
     APPEND_FEATURES(true, KHR, PresentWait, PRESENT_WAIT);
     APPEND_FEATURES(true, KHR, RayQuery, RAY_QUERY);
@@ -641,6 +643,10 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.maintenance4 = features13.maintenance4;
     m_IsSupported.maintenance5 = features14.maintenance5;
     m_IsSupported.maintenance6 = features14.maintenance6;
+    m_IsSupported.maintenance7 = Maintenance7Features.maintenance7;
+    m_IsSupported.maintenance8 = Maintenance8Features.maintenance8;
+    m_IsSupported.maintenance9 = Maintenance9Features.maintenance9;
+    m_IsSupported.maintenance10 = Maintenance10Features.maintenance10;
     m_IsSupported.deviceAddress = features12.bufferDeviceAddress;
     m_IsSupported.swapChainMutableFormat = IsExtensionSupported(VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME, desiredDeviceExts);
     m_IsSupported.presentId = PresentIdFeatures.presentId;
@@ -796,16 +802,18 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
         APPEND_PROPS(m_MinorVersion < 3, KHR, Maintenance4, MAINTENANCE_4);
         APPEND_PROPS(m_MinorVersion < 3, EXT, SubgroupSizeControl, SUBGROUP_SIZE_CONTROL);
+
         APPEND_PROPS(m_MinorVersion < 4, KHR, PushDescriptor, PUSH_DESCRIPTOR);
+        APPEND_PROPS(m_MinorVersion < 4, KHR, Maintenance5, MAINTENANCE_5);
+        APPEND_PROPS(m_MinorVersion < 4, KHR, Maintenance6, MAINTENANCE_6);
 
         APPEND_PROPS(true, KHR, AccelerationStructure, ACCELERATION_STRUCTURE);
         APPEND_PROPS(true, KHR, ComputeShaderDerivatives, COMPUTE_SHADER_DERIVATIVES);
         APPEND_PROPS(true, KHR, FragmentShadingRate, FRAGMENT_SHADING_RATE);
         APPEND_PROPS(true, KHR, LineRasterization, LINE_RASTERIZATION);
-        APPEND_PROPS(true, KHR, Maintenance5, MAINTENANCE_5);
-        APPEND_PROPS(true, KHR, Maintenance6, MAINTENANCE_6);
         APPEND_PROPS(true, KHR, Maintenance7, MAINTENANCE_7);
         APPEND_PROPS(true, KHR, Maintenance9, MAINTENANCE_9);
+        APPEND_PROPS(true, KHR, Maintenance10, MAINTENANCE_10);
         APPEND_PROPS(true, KHR, RayTracingPipeline, RAY_TRACING_PIPELINE);
         APPEND_PROPS(true, EXT, ConservativeRasterization, CONSERVATIVE_RASTERIZATION);
         APPEND_PROPS(true, EXT, MeshShader, MESH_SHADER);
@@ -821,6 +829,17 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         }
 
         if (m_MinorVersion < 4) {
+            props14.earlyFragmentMultisampleCoverageAfterSampleCounting = Maintenance5Props.earlyFragmentMultisampleCoverageAfterSampleCounting;
+            props14.earlyFragmentSampleMaskTestBeforeSampleCounting = Maintenance5Props.earlyFragmentSampleMaskTestBeforeSampleCounting;
+            props14.depthStencilSwizzleOneSupport = Maintenance5Props.depthStencilSwizzleOneSupport;
+            props14.polygonModePointSize = Maintenance5Props.polygonModePointSize;
+            props14.nonStrictSinglePixelWideLinesUseParallelogram = Maintenance5Props.nonStrictSinglePixelWideLinesUseParallelogram;
+            props14.nonStrictWideLinesUseParallelogram = Maintenance5Props.nonStrictWideLinesUseParallelogram;
+
+            props14.blockTexelViewCompatibleMultipleLayers = Maintenance6Props.blockTexelViewCompatibleMultipleLayers;
+            props14.maxCombinedImageSamplerDescriptorCount = Maintenance6Props.maxCombinedImageSamplerDescriptorCount;
+            props14.fragmentShadingRateClampCombinerInputs = Maintenance6Props.fragmentShadingRateClampCombinerInputs;
+
             props14.maxPushDescriptors = PushDescriptorProps.maxPushDescriptors;
         }
 
@@ -1082,9 +1101,10 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
             m_Desc.features.additionalShadingRates = FragmentShadingRateProps.maxFragmentSize.height > 2 || FragmentShadingRateProps.maxFragmentSize.width > 2;
         }
 
+        // TODO: seems to be the best match
         m_Desc.tiers.bindless = features12.descriptorIndexing ? 1 : 0;
-        m_Desc.tiers.resourceBinding = 2; // TODO: seems to be the best match
-        m_Desc.tiers.memory = 1;          // TODO: seems to be the best match
+        m_Desc.tiers.resourceBinding = 2;
+        m_Desc.tiers.memory = 1;
 
         m_Desc.features.getMemoryDesc2 = m_IsSupported.maintenance4;
         m_Desc.features.enhancedBarriers = true;
@@ -2032,8 +2052,8 @@ static void WriteAccelerationStructures(VkWriteDescriptorSet& writeDescriptorSet
 typedef void (*WriteDescriptorsFunc)(VkWriteDescriptorSet& writeDescriptorSet, size_t& scratchOffset, uint8_t* scratch, const UpdateDescriptorRangeDesc& rangeUpdateDesc);
 
 constexpr std::array<WriteDescriptorsFunc, (size_t)DescriptorType::MAX_NUM> g_WriteFuncs = {
-    nullptr,                        // MUTABLE (never used)
     WriteSamplers,                  // SAMPLER
+    nullptr,                        // MUTABLE (never used)
     WriteTextures,                  // TEXTURE
     WriteTextures,                  // STORAGE_TEXTURE
     WriteBufferViews,               // BUFFER
@@ -2247,6 +2267,11 @@ NRI_INLINE FormatSupportBits DeviceVK::GetFormatSupport(Format format) const {
     UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT, FormatSupportBits::STORAGE_BUFFER);
     UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT, FormatSupportBits::VERTEX_BUFFER);
     UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT, FormatSupportBits::STORAGE_BUFFER_ATOMICS);
+
+    if (supportBits & FormatSupportBits::COLOR_ATTACHMENT)
+        supportBits |= FormatSupportBits::MULTISAMPLE_RESOLVE;
+    if ((supportBits & FormatSupportBits::DEPTH_STENCIL_ATTACHMENT) && m_IsSupported.maintenance10)
+        supportBits |= FormatSupportBits::MULTISAMPLE_RESOLVE;
 
     if ((props3.optimalTilingFeatures | props3.bufferFeatures) & VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT)
         supportBits |= FormatSupportBits::STORAGE_READ_WITHOUT_FORMAT;

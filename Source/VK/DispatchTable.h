@@ -146,7 +146,7 @@ struct DispatchTable {
     VK_FUNC(CmdResetQueryPool);                           // - | +
     VK_FUNC(CmdFillBuffer);                               // - | +
     VK_FUNC(CmdBeginRendering);                           // - | +
-    VK_FUNC(CmdEndRendering);                             // - | +
+    VK_FUNC(CmdEndRendering);                             // - | + TODO: use "vkCmdEndRendering2KHR" from "VK_KHR_maintenance10"
     VK_FUNC(CmdPushDescriptorSet);                        // - | +
     VK_FUNC(EndCommandBuffer);                            // - | +
                                                           // VK_KHR_maintenance4

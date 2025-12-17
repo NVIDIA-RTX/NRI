@@ -43,6 +43,7 @@ private:
     Vector<DescriptorSetVal> m_DescriptorSets;
     uint32_t m_DescriptorSetsNum = 0;
     uint32_t m_SamplerNum = 0;
+    uint32_t m_MutableNum = 0;
     uint32_t m_ConstantBufferNum = 0;
     uint32_t m_TextureNum = 0;
     uint32_t m_StorageTextureNum = 0;
@@ -51,7 +52,6 @@ private:
     uint32_t m_StructuredBufferNum = 0;
     uint32_t m_StorageStructuredBufferNum = 0;
     uint32_t m_AccelerationStructureNum = 0;
-    uint32_t m_MutableNum = 0;
     bool m_SkipValidation = false;
 };
 

@@ -481,14 +481,14 @@ NRI_INLINE void CommandBufferVal::ReadbackTextureToBuffer(Buffer& dstBuffer, con
 
 NRI_INLINE void CommandBufferVal::ZeroBuffer(Buffer& buffer, uint64_t offset, uint64_t size) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
+    RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
+
     if (size == WHOLE_SIZE) {
         RETURN_ON_FAILURE(&m_Device, offset == 0, ReturnVoid(), "'WHOLE_SIZE' is used but 'offset' is not 0");
     } else {
         const BufferDesc& bufferDesc = ((BufferVal&)buffer).GetDesc();
         RETURN_ON_FAILURE(&m_Device, offset + size <= bufferDesc.size, ReturnVoid(), "'offset + size' > buffer.size");
     }
-    RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
-    RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
 
     Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);
 
@@ -515,6 +515,7 @@ NRI_INLINE void CommandBufferVal::DispatchIndirect(const Buffer& buffer, uint64_
 
 NRI_INLINE void CommandBufferVal::Barrier(const BarrierDesc& barrierDesc) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
+    RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
 
     for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
         if (!ValidateBufferBarrierDesc(m_Device, i, barrierDesc.buffers[i]))
