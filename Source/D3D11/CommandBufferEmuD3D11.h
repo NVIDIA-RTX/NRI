@@ -47,8 +47,8 @@ struct CommandBufferEmuD3D11 final : public CommandBufferBase {
     void SetStencilReference(uint8_t frontRef, uint8_t backRef);
     void SetSampleLocations(const SampleLocation* locations, Sample_t locationNum, Sample_t sampleNum);
     void SetBlendConstants(const Color32f& color);
-    void ClearAttachments(const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum);
-    void ClearStorage(const ClearStorageDesc& clearDesc);
+    void ClearAttachments(const ClearAttachmentDesc* clearAttachmentDescs, uint32_t clearAttachmentDescNum, const Rect* rects, uint32_t rectNum);
+    void ClearStorage(const ClearStorageDesc& clearStorageDesc);
     void BeginRendering(const AttachmentsDesc& attachmentsDesc);
     void EndRendering();
     void SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum);

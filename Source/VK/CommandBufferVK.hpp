@@ -152,36 +152,36 @@ NRI_INLINE void CommandBufferVK::SetDepthBias(const DepthBiasDesc& depthBiasDesc
     vk.CmdSetDepthBias(m_Handle, depthBiasDesc.constant, depthBiasDesc.clamp, depthBiasDesc.slope);
 }
 
-NRI_INLINE void CommandBufferVK::ClearAttachments(const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum) {
+NRI_INLINE void CommandBufferVK::ClearAttachments(const ClearAttachmentDesc* clearAttachmentDescs, uint32_t clearAttachmentDescNum, const Rect* rects, uint32_t rectNum) {
     static_assert(sizeof(VkClearValue) == sizeof(ClearValue), "Sizeof mismatch");
 
-    if (!clearDescNum)
-        return;
-
     // Attachments
-    uint32_t attachmentNum = 0;
-    Scratch<VkClearAttachment> attachments = AllocateScratch(m_Device, VkClearAttachment, clearDescNum);
+    uint32_t clearAttachmentNum = 0;
+    Scratch<VkClearAttachment> clearAttachments = AllocateScratch(m_Device, VkClearAttachment, clearAttachmentDescNum);
 
-    for (uint32_t i = 0; i < clearDescNum; i++) {
-        const ClearDesc& desc = clearDescs[i];
+    for (uint32_t i = 0; i < clearAttachmentDescNum; i++) {
+        const ClearAttachmentDesc& clearAttachmentDesc = clearAttachmentDescs[i];
 
         VkImageAspectFlags aspectMask = 0;
-        if (desc.planes & PlaneBits::COLOR)
+        if (clearAttachmentDesc.planes & PlaneBits::COLOR)
             aspectMask |= VK_IMAGE_ASPECT_COLOR_BIT;
-        if ((desc.planes & PlaneBits::DEPTH) && m_DepthStencil->IsDepthWritable())
+        if ((clearAttachmentDesc.planes & PlaneBits::DEPTH) && m_DepthStencil->IsDepthWritable())
             aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
-        if ((desc.planes & PlaneBits::STENCIL) && m_DepthStencil->IsStencilWritable())
+        if ((clearAttachmentDesc.planes & PlaneBits::STENCIL) && m_DepthStencil->IsStencilWritable())
             aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
         if (aspectMask) {
-            VkClearAttachment& attachment = attachments[attachmentNum++];
+            VkClearAttachment& clearAttachment = clearAttachments[clearAttachmentNum++];
 
-            attachment = {};
-            attachment.aspectMask = aspectMask;
-            attachment.colorAttachment = desc.colorAttachmentIndex;
-            attachment.clearValue = *(VkClearValue*)&desc.value;
+            clearAttachment = {};
+            clearAttachment.aspectMask = aspectMask;
+            clearAttachment.colorAttachment = clearAttachmentDesc.colorAttachmentIndex;
+            clearAttachment.clearValue = *(VkClearValue*)&clearAttachmentDesc.value;
         }
     }
+
+    if (!clearAttachmentNum)
+        return;
 
     // Rects
     bool hasRects = rectNum != 0;
@@ -194,9 +194,9 @@ NRI_INLINE void CommandBufferVK::ClearAttachments(const ClearDesc* clearDescs, u
 
         clearRect = {};
 
-        // TODO: allow layer specification for clears?
+        // TODO: layer specification for clears? but not supported by D3D12
         clearRect.baseArrayLayer = 0;
-        clearRect.layerCount = m_ViewMask ? 1 : m_RenderLayerNum; // per VK spec...
+        clearRect.layerCount = m_ViewMask ? 1 : m_RenderLayerNum; // VUID-vkCmdClearAttachments-baseArrayLayer-00018
 
         if (hasRects) {
             const Rect& rect = rects[i];
@@ -205,23 +205,21 @@ NRI_INLINE void CommandBufferVK::ClearAttachments(const ClearDesc* clearDescs, u
             clearRect.rect = {{0, 0}, {m_RenderWidth, m_RenderHeight}};
     }
 
-    if (attachmentNum) {
-        const auto& vk = m_Device.GetDispatchTable();
-        vk.CmdClearAttachments(m_Handle, attachmentNum, attachments, rectNum, clearRects);
-    }
+    const auto& vk = m_Device.GetDispatchTable();
+    vk.CmdClearAttachments(m_Handle, clearAttachmentNum, clearAttachments, rectNum, clearRects);
 }
 
-NRI_INLINE void CommandBufferVK::ClearStorage(const ClearStorageDesc& clearDesc) {
-    const DescriptorVK& storage = *(DescriptorVK*)clearDesc.storage;
+NRI_INLINE void CommandBufferVK::ClearStorage(const ClearStorageDesc& clearStorageDesc) {
+    const DescriptorVK& storage = *(DescriptorVK*)clearStorageDesc.descriptor;
 
     const auto& vk = m_Device.GetDispatchTable();
 
     DescriptorType descriptorType = storage.GetType();
     switch (descriptorType) {
         case DescriptorType::STORAGE_TEXTURE: {
-            static_assert(sizeof(VkClearColorValue) == sizeof(clearDesc.value), "Unexpected sizeof");
+            static_assert(sizeof(VkClearColorValue) == sizeof(clearStorageDesc.value), "Unexpected sizeof");
 
-            const VkClearColorValue* value = (VkClearColorValue*)&clearDesc.value;
+            const VkClearColorValue* value = (VkClearColorValue*)&clearStorageDesc.value;
             VkImageSubresourceRange range = storage.GetImageSubresourceRange();
             VkImage image = storage.GetTexture().GetHandle();
 
@@ -230,7 +228,7 @@ NRI_INLINE void CommandBufferVK::ClearStorage(const ClearStorageDesc& clearDesc)
         case DescriptorType::STORAGE_BUFFER:
         case DescriptorType::STORAGE_STRUCTURED_BUFFER: {
             const DescriptorBufDesc& bufDesc = storage.GetBufDesc();
-            vk.CmdFillBuffer(m_Handle, bufDesc.handle, bufDesc.offset, bufDesc.size, clearDesc.value.ui.x);
+            vk.CmdFillBuffer(m_Handle, bufDesc.handle, bufDesc.offset, bufDesc.size, clearStorageDesc.value.ui.x);
         } break;
         default:
             CHECK(false, "Unexpected");

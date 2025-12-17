@@ -45,8 +45,8 @@ struct CommandBufferVal final : public ObjectVal {
     void SetBlendConstants(const Color32f& color);
     void SetShadingRate(const ShadingRateDesc& shadingRateDesc);
     void SetDepthBias(const DepthBiasDesc& depthBiasDesc);
-    void ClearAttachments(const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum);
-    void ClearStorage(const ClearStorageDesc& clearDesc);
+    void ClearAttachments(const ClearAttachmentDesc* clearAttachmentDescs, uint32_t clearAttachmentDescNum, const Rect* rects, uint32_t rectNum);
+    void ClearStorage(const ClearStorageDesc& clearStorageDesc);
     void BeginRendering(const AttachmentsDesc& attachmentsDesc);
     void EndRendering();
     void SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum);

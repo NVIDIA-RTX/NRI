@@ -396,8 +396,8 @@ static void NRI_CALL CmdBeginRendering(CommandBuffer& commandBuffer, const Attac
     ((CommandBufferD3D12&)commandBuffer).BeginRendering(attachmentsDesc);
 }
 
-static void NRI_CALL CmdClearAttachments(CommandBuffer& commandBuffer, const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum) {
-    ((CommandBufferD3D12&)commandBuffer).ClearAttachments(clearDescs, clearDescNum, rects, rectNum);
+static void NRI_CALL CmdClearAttachments(CommandBuffer& commandBuffer, const ClearAttachmentDesc* clearAttachmentDescs, uint32_t clearAttachmentDescNum, const Rect* rects, uint32_t rectNum) {
+    ((CommandBufferD3D12&)commandBuffer).ClearAttachments(clearAttachmentDescs, clearAttachmentDescNum, rects, rectNum);
 }
 
 static void NRI_CALL CmdDraw(CommandBuffer& commandBuffer, const DrawDesc& drawDesc) {
@@ -452,8 +452,8 @@ static void NRI_CALL CmdResolveTexture(CommandBuffer& commandBuffer, Texture& ds
     ((CommandBufferD3D12&)commandBuffer).ResolveTexture(dstTexture, dstRegion, srcTexture, srcRegion);
 }
 
-static void NRI_CALL CmdClearStorage(CommandBuffer& commandBuffer, const ClearStorageDesc& clearDesc) {
-    ((CommandBufferD3D12&)commandBuffer).ClearStorage(clearDesc);
+static void NRI_CALL CmdClearStorage(CommandBuffer& commandBuffer, const ClearStorageDesc& clearStorageDesc) {
+    ((CommandBufferD3D12&)commandBuffer).ClearStorage(clearStorageDesc);
 }
 
 static void NRI_CALL CmdResetQueries(CommandBuffer& commandBuffer, QueryPool& queryPool, uint32_t offset, uint32_t num) {

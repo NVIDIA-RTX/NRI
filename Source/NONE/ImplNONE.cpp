@@ -488,7 +488,7 @@ static void NRI_CALL CmdSetDepthBias(CommandBuffer&, const DepthBiasDesc&) {
 static void NRI_CALL CmdBeginRendering(CommandBuffer&, const AttachmentsDesc&) {
 }
 
-static void NRI_CALL CmdClearAttachments(CommandBuffer&, const ClearDesc*, uint32_t, const Rect*, uint32_t) {
+static void NRI_CALL CmdClearAttachments(CommandBuffer&, const ClearAttachmentDesc*, uint32_t, const Rect*, uint32_t) {
 }
 
 static void NRI_CALL CmdDraw(CommandBuffer&, const DrawDesc&) {

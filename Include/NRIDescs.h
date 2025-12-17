@@ -1587,7 +1587,7 @@ NriStruct(QueueSubmitDesc) {
 };
 
 // Clear
-NriStruct(ClearDesc) {
+NriStruct(ClearAttachmentDesc) {
     Nri(ClearValue) value;
     Nri(PlaneBits) planes;
     uint8_t colorAttachmentIndex;
@@ -1605,8 +1605,8 @@ NriStruct(ClearStorageDesc) {
     // For buffers:
     //  - To avoid discrepancies in behavior between GAPIs use "R32f/ui/i" formats for views
     //  - D3D: structured buffers are unsupported!
-    const NriPtr(Descriptor) storage; // a "STORAGE" descriptor
-    Nri(Color) value; // avoid overflow
+    NriPtr(Descriptor) descriptor;  // a "STORAGE" descriptor
+    Nri(Color) value;               // avoid overflow
     uint32_t setIndex;
     uint32_t rangeIndex;
     uint32_t descriptorIndex;

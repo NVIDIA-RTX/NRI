@@ -162,21 +162,21 @@ void CommandBufferEmuD3D11::Submit() {
                 commandBuffer.SetBlendConstants(color);
             } break;
             case CLEAR_ATTACHMENTS: {
-                ClearDesc* clearDescs;
-                uint32_t clearDescNum;
-                Read(m_PushBuffer, i, clearDescs, clearDescNum);
+                ClearAttachmentDesc* clearAttachmentDescs;
+                uint32_t clearAttachmentDescNum;
+                Read(m_PushBuffer, i, clearAttachmentDescs, clearAttachmentDescNum);
 
                 Rect* rects;
                 uint32_t rectNum;
                 Read(m_PushBuffer, i, rects, rectNum);
 
-                commandBuffer.ClearAttachments(clearDescs, clearDescNum, rects, rectNum);
+                commandBuffer.ClearAttachments(clearAttachmentDescs, clearAttachmentDescNum, rects, rectNum);
             } break;
             case CLEAR_STORAGE: {
-                ClearStorageDesc clearDesc = {};
-                Read(m_PushBuffer, i, clearDesc);
+                ClearStorageDesc clearStorageDesc = {};
+                Read(m_PushBuffer, i, clearStorageDesc);
 
-                commandBuffer.ClearStorage(clearDesc);
+                commandBuffer.ClearStorage(clearStorageDesc);
             } break;
             case BEGIN_RENDERING: {
                 AttachmentsDesc attachmentsDesc = {};
@@ -527,15 +527,15 @@ NRI_INLINE void CommandBufferEmuD3D11::SetBlendConstants(const Color32f& color) 
     Push(m_PushBuffer, color);
 }
 
-NRI_INLINE void CommandBufferEmuD3D11::ClearAttachments(const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum) {
+NRI_INLINE void CommandBufferEmuD3D11::ClearAttachments(const ClearAttachmentDesc* clearAttachmentDescs, uint32_t clearAttachmentDescNum, const Rect* rects, uint32_t rectNum) {
     Push(m_PushBuffer, CLEAR_ATTACHMENTS);
-    Push(m_PushBuffer, clearDescs, clearDescNum);
+    Push(m_PushBuffer, clearAttachmentDescs, clearAttachmentDescNum);
     Push(m_PushBuffer, rects, rectNum);
 }
 
-NRI_INLINE void CommandBufferEmuD3D11::ClearStorage(const ClearStorageDesc& clearDesc) {
+NRI_INLINE void CommandBufferEmuD3D11::ClearStorage(const ClearStorageDesc& clearStorageDesc) {
     Push(m_PushBuffer, CLEAR_STORAGE);
-    Push(m_PushBuffer, clearDesc);
+    Push(m_PushBuffer, clearStorageDesc);
 }
 
 NRI_INLINE void CommandBufferEmuD3D11::BeginRendering(const AttachmentsDesc& attachmentsDesc) {

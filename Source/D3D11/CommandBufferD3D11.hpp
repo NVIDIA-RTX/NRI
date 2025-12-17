@@ -193,24 +193,21 @@ NRI_INLINE void CommandBufferD3D11::SetBlendConstants(const Color32f& color) {
     m_BlendFactor = color;
 }
 
-NRI_INLINE void CommandBufferD3D11::ClearAttachments(const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum) {
-    if (!clearDescNum)
-        return;
-
+NRI_INLINE void CommandBufferD3D11::ClearAttachments(const ClearAttachmentDesc* clearAttachmentDescs, uint32_t clearAttachmentDescNum, const Rect* rects, uint32_t rectNum) {
     if (!rectNum) {
-        for (uint32_t i = 0; i < clearDescNum; i++) {
-            const ClearDesc& clearDesc = clearDescs[i];
+        for (uint32_t i = 0; i < clearAttachmentDescNum; i++) {
+            const ClearAttachmentDesc& clearAttachmentDesc = clearAttachmentDescs[i];
 
-            if (clearDesc.planes & PlaneBits::COLOR)
-                m_DeferredContext->ClearRenderTargetView(m_RenderTargets[clearDesc.colorAttachmentIndex], &clearDesc.value.color.f.x);
+            if (clearAttachmentDesc.planes & PlaneBits::COLOR)
+                m_DeferredContext->ClearRenderTargetView(m_RenderTargets[clearAttachmentDesc.colorAttachmentIndex], &clearAttachmentDesc.value.color.f.x);
             else {
                 uint32_t clearFlags = 0;
-                if (clearDescs[i].planes & PlaneBits::DEPTH)
+                if (clearAttachmentDesc.planes & PlaneBits::DEPTH)
                     clearFlags |= D3D11_CLEAR_DEPTH;
-                if (clearDescs[i].planes & PlaneBits::STENCIL)
+                if (clearAttachmentDesc.planes & PlaneBits::STENCIL)
                     clearFlags |= D3D11_CLEAR_STENCIL;
 
-                m_DeferredContext->ClearDepthStencilView(m_DepthStencil, clearFlags, clearDesc.value.depthStencil.depth, clearDesc.value.depthStencil.stencil);
+                m_DeferredContext->ClearDepthStencilView(m_DepthStencil, clearFlags, clearAttachmentDesc.value.depthStencil.depth, clearAttachmentDesc.value.depthStencil.stencil);
             }
         }
     } else {
@@ -223,13 +220,13 @@ NRI_INLINE void CommandBufferD3D11::ClearAttachments(const ClearDesc* clearDescs
         if (m_Version >= 1) {
             // https://learn.microsoft.com/en-us/windows/win32/api/d3d11_1/nf-d3d11_1-id3d11devicecontext1-clearview
             FLOAT color[4] = {};
-            for (uint32_t i = 0; i < clearDescNum; i++) {
-                const ClearDesc& clearDesc = clearDescs[i];
+            for (uint32_t i = 0; i < clearAttachmentDescNum; i++) {
+                const ClearAttachmentDesc& clearAttachmentDesc = clearAttachmentDescs[i];
 
-                if (clearDesc.planes & PlaneBits::COLOR)
-                    m_DeferredContext->ClearView(m_RenderTargets[clearDesc.colorAttachmentIndex], &clearDesc.value.color.f.x, rectsD3D, rectNum);
-                else if (clearDesc.planes & PlaneBits::DEPTH) {
-                    color[0] = clearDesc.value.depthStencil.depth;
+                if (clearAttachmentDesc.planes & PlaneBits::COLOR)
+                    m_DeferredContext->ClearView(m_RenderTargets[clearAttachmentDesc.colorAttachmentIndex], &clearAttachmentDesc.value.color.f.x, rectsD3D, rectNum);
+                else if (clearAttachmentDesc.planes & PlaneBits::DEPTH) {
+                    color[0] = clearAttachmentDesc.value.depthStencil.depth;
                     m_DeferredContext->ClearView(m_DepthStencil, color, rectsD3D, rectNum);
                 } else
                     CHECK(false, "Bad or unsupported plane");
@@ -239,13 +236,13 @@ NRI_INLINE void CommandBufferD3D11::ClearAttachments(const ClearDesc* clearDescs
     }
 }
 
-NRI_INLINE void CommandBufferD3D11::ClearStorage(const ClearStorageDesc& clearDesc) {
-    DescriptorD3D11& storage = *(DescriptorD3D11*)clearDesc.storage;
+NRI_INLINE void CommandBufferD3D11::ClearStorage(const ClearStorageDesc& clearStorageDesc) {
+    DescriptorD3D11& descriptorD3D11 = *(DescriptorD3D11*)clearStorageDesc.descriptor;
 
-    if (storage.IsIntegerFormat() || storage.IsBuffer())
-        m_DeferredContext->ClearUnorderedAccessViewUint(storage, &clearDesc.value.ui.x);
+    if (descriptorD3D11.IsIntegerFormat())
+        m_DeferredContext->ClearUnorderedAccessViewUint(descriptorD3D11, &clearStorageDesc.value.ui.x);
     else
-        m_DeferredContext->ClearUnorderedAccessViewFloat(storage, &clearDesc.value.f.x);
+        m_DeferredContext->ClearUnorderedAccessViewFloat(descriptorD3D11, &clearStorageDesc.value.f.x);
 }
 
 NRI_INLINE void CommandBufferD3D11::BeginRendering(const AttachmentsDesc& attachmentsDesc) {

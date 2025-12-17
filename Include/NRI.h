@@ -184,7 +184,7 @@ NriStruct(CoreInterface) {
         void                (NRI_CALL *CmdBeginRendering)           (NriRef(CommandBuffer) commandBuffer, const NriRef(AttachmentsDesc) attachmentsDesc);
         // {                {
             // Clear
-            void                (NRI_CALL *CmdClearAttachments)     (NriRef(CommandBuffer) commandBuffer, const NriPtr(ClearDesc) clearDescs, uint32_t clearDescNum, const NriPtr(Rect) rects, uint32_t rectNum);
+            void                (NRI_CALL *CmdClearAttachments)     (NriRef(CommandBuffer) commandBuffer, const NriPtr(ClearAttachmentDesc) clearAttachmentDescs, uint32_t clearAttachmentDescNum, const NriPtr(Rect) rects, uint32_t rectNum);
 
             // Draw
             void                (NRI_CALL *CmdDraw)                 (NriRef(CommandBuffer) commandBuffer, const NriRef(DrawDesc) drawDesc);
@@ -213,7 +213,7 @@ NriStruct(CoreInterface) {
         void                (NRI_CALL *CmdResolveTexture)           (NriRef(CommandBuffer) commandBuffer, NriRef(Texture) dstTexture, NriOptional const NriPtr(TextureRegionDesc) dstRegion, const NriRef(Texture) srcTexture, NriOptional const NriPtr(TextureRegionDesc) srcRegion); // "features.regionResolve" is needed for region specification
 
         // Clear (outside of rendering)
-        void                (NRI_CALL *CmdClearStorage)             (NriRef(CommandBuffer) commandBuffer, const NriRef(ClearStorageDesc) clearDesc);
+        void                (NRI_CALL *CmdClearStorage)             (NriRef(CommandBuffer) commandBuffer, const NriRef(ClearStorageDesc) clearStorageDesc);
 
         // Query (outside of rendering, except Begin/End query)
         void                (NRI_CALL *CmdResetQueries)             (NriRef(CommandBuffer) commandBuffer, NriRef(QueryPool) queryPool, uint32_t offset, uint32_t num);

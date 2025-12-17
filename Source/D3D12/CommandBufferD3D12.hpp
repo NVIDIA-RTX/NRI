@@ -374,39 +374,40 @@ NRI_INLINE void CommandBufferD3D12::SetDepthBias(const DepthBiasDesc& depthBiasD
 #endif
 }
 
-NRI_INLINE void CommandBufferD3D12::ClearAttachments(const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum) {
-    if (!clearDescNum)
-        return;
-
+NRI_INLINE void CommandBufferD3D12::ClearAttachments(const ClearAttachmentDesc* clearAttachmentDescs, uint32_t clearAttachmentDescNum, const Rect* rects, uint32_t rectNum) {
     Scratch<D3D12_RECT> d3dRects = AllocateScratch(m_Device, D3D12_RECT, rectNum);
     ConvertRects(rects, rectNum, d3dRects);
 
-    for (uint32_t i = 0; i < clearDescNum; i++) {
-        if (clearDescs[i].planes & PlaneBits::COLOR)
-            m_GraphicsCommandList->ClearRenderTargetView(m_RenderTargets[clearDescs[i].colorAttachmentIndex], &clearDescs[i].value.color.f.x, rectNum, d3dRects);
+    for (uint32_t i = 0; i < clearAttachmentDescNum; i++) {
+        const ClearAttachmentDesc& clearAttachmentDesc = clearAttachmentDescs[i];
+
+        if (clearAttachmentDescs[i].planes & PlaneBits::COLOR)
+            m_GraphicsCommandList->ClearRenderTargetView(m_RenderTargets[clearAttachmentDesc.colorAttachmentIndex], &clearAttachmentDesc.value.color.f.x, rectNum, d3dRects);
         else {
             D3D12_CLEAR_FLAGS clearFlags = (D3D12_CLEAR_FLAGS)0;
-            if (clearDescs[i].planes & PlaneBits::DEPTH)
+            if (clearAttachmentDesc.planes & PlaneBits::DEPTH)
                 clearFlags |= D3D12_CLEAR_FLAG_DEPTH;
-            if (clearDescs[i].planes & PlaneBits::STENCIL)
+            if (clearAttachmentDesc.planes & PlaneBits::STENCIL)
                 clearFlags |= D3D12_CLEAR_FLAG_STENCIL;
 
-            m_GraphicsCommandList->ClearDepthStencilView(m_DepthStencil, clearFlags, clearDescs[i].value.depthStencil.depth, clearDescs[i].value.depthStencil.stencil, rectNum, d3dRects);
+            m_GraphicsCommandList->ClearDepthStencilView(m_DepthStencil, clearFlags, clearAttachmentDesc.value.depthStencil.depth, clearAttachmentDesc.value.depthStencil.stencil, rectNum, d3dRects);
         }
     }
 }
 
-NRI_INLINE void CommandBufferD3D12::ClearStorage(const ClearStorageDesc& clearDesc) {
-    DescriptorSetD3D12* descriptorSet = m_DescriptorSets[clearDesc.setIndex];
-    DescriptorD3D12* storage = (DescriptorD3D12*)clearDesc.storage;
+NRI_INLINE void CommandBufferD3D12::ClearStorage(const ClearStorageDesc& clearStorageDesc) {
+    DescriptorSetD3D12* descriptorSet = m_DescriptorSets[clearStorageDesc.setIndex];
+    const DescriptorD3D12& descriptorD3D12 = *(DescriptorD3D12*)clearStorageDesc.descriptor;
 
     // TODO: typed buffers are currently cleared according to the format, it seems to be more reliable than using integers for all buffers
-    if (storage->IsIntegerFormat())
-        m_GraphicsCommandList->ClearUnorderedAccessViewUint({descriptorSet->GetDescriptorHandleGPU(clearDesc.rangeIndex, clearDesc.descriptorIndex)}, {storage->GetDescriptorHandleCPU()}, *storage, &clearDesc.value.ui.x, 0, nullptr);
-    else
-        m_GraphicsCommandList->ClearUnorderedAccessViewFloat({descriptorSet->GetDescriptorHandleGPU(clearDesc.rangeIndex, clearDesc.descriptorIndex)}, {storage->GetDescriptorHandleCPU()}, *storage, &clearDesc.value.f.x, 0, nullptr);
-}
+    DescriptorHandleGPU handleGPU = descriptorSet->GetDescriptorHandleGPU(clearStorageDesc.rangeIndex, clearStorageDesc.descriptorIndex);
+    DescriptorHandleCPU handleCPU = descriptorD3D12.GetDescriptorHandleCPU();
 
+    if (descriptorD3D12.IsIntegerFormat())
+        m_GraphicsCommandList->ClearUnorderedAccessViewUint({handleGPU}, {handleCPU}, descriptorD3D12, &clearStorageDesc.value.ui.x, 0, nullptr);
+    else
+        m_GraphicsCommandList->ClearUnorderedAccessViewFloat({handleGPU}, {handleCPU}, descriptorD3D12, &clearStorageDesc.value.f.x, 0, nullptr);
+}
 NRI_INLINE void CommandBufferD3D12::BeginRendering(const AttachmentsDesc& attachmentsDesc) {
     // Render targets
     m_RenderTargetNum = attachmentsDesc.colors ? attachmentsDesc.colorNum : 0;

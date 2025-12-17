@@ -204,42 +204,45 @@ NRI_INLINE void CommandBufferVal::SetDepthBias(const DepthBiasDesc& depthBiasDes
     GetCoreInterfaceImpl().CmdSetDepthBias(*GetImpl(), depthBiasDesc);
 }
 
-NRI_INLINE void CommandBufferVal::ClearAttachments(const ClearDesc* clearDescs, uint32_t clearDescNum, const Rect* rects, uint32_t rectNum) {
+NRI_INLINE void CommandBufferVal::ClearAttachments(const ClearAttachmentDesc* clearAttachmentDescs, uint32_t clearAttachmentDescNum, const Rect* rects, uint32_t rectNum) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, m_IsRenderPass, ReturnVoid(), "must be called inside 'CmdBeginRendering/CmdEndRendering'");
 
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
-    for (uint32_t i = 0; i < clearDescNum; i++) {
-        RETURN_ON_FAILURE(&m_Device, (clearDescs[i].planes & (PlaneBits::COLOR | PlaneBits::DEPTH | PlaneBits::STENCIL)) != 0, ReturnVoid(), "'[%u].planes' is not COLOR, DEPTH or STENCIL", i);
+    for (uint32_t i = 0; i < clearAttachmentDescNum; i++) {
+        const ClearAttachmentDesc& clearAttachmentDesc = clearAttachmentDescs[i];
 
-        if (clearDescs[i].planes & PlaneBits::COLOR) {
-            RETURN_ON_FAILURE(&m_Device, clearDescs[i].colorAttachmentIndex < deviceDesc.shaderStage.fragment.attachmentMaxNum, ReturnVoid(), "'[%u].colorAttachmentIndex=%u' is out of bounds", i, clearDescs[i].colorAttachmentIndex);
-            RETURN_ON_FAILURE(&m_Device, m_RenderTargets[clearDescs[i].colorAttachmentIndex], ReturnVoid(), "'[%u].colorAttachmentIndex=%u' references a NULL COLOR attachment", i, clearDescs[i].colorAttachmentIndex);
+        bool isColor = clearAttachmentDesc.planes & PlaneBits::COLOR;
+        bool isDepthStencil = clearAttachmentDesc.planes & (PlaneBits::DEPTH | PlaneBits::STENCIL);
+        RETURN_ON_FAILURE(&m_Device, isColor != isDepthStencil, ReturnVoid(), "'[%u].planes' must represent a color or a depth-stencil", i);
+
+        if (clearAttachmentDesc.planes & PlaneBits::COLOR) {
+            RETURN_ON_FAILURE(&m_Device, clearAttachmentDesc.colorAttachmentIndex < deviceDesc.shaderStage.fragment.attachmentMaxNum, ReturnVoid(), "'[%u].colorAttachmentIndex=%u' is out of bounds", i, clearAttachmentDesc.colorAttachmentIndex);
+            RETURN_ON_FAILURE(&m_Device, m_RenderTargets[clearAttachmentDesc.colorAttachmentIndex], ReturnVoid(), "'[%u].colorAttachmentIndex=%u' references a NULL COLOR attachment", i, clearAttachmentDesc.colorAttachmentIndex);
         }
 
-        if (clearDescs[i].planes & (PlaneBits::DEPTH | PlaneBits::STENCIL))
+        if (clearAttachmentDesc.planes & (PlaneBits::DEPTH | PlaneBits::STENCIL)) {
             RETURN_ON_FAILURE(&m_Device, m_DepthStencil, ReturnVoid(), "DEPTH_STENCIL attachment is NULL", i);
-
-        if (clearDescs[i].colorAttachmentIndex != 0)
-            RETURN_ON_FAILURE(&m_Device, (clearDescs[i].planes & PlaneBits::COLOR), ReturnVoid(), "'[%u].planes' is not COLOR, but `colorAttachmentIndex != 0`", i);
+            RETURN_ON_FAILURE(&m_Device, clearAttachmentDesc.colorAttachmentIndex == 0, ReturnVoid(), "'[%u].planes' is not COLOR, but `colorAttachmentIndex != 0`", i);
+        }
     }
 
-    GetCoreInterfaceImpl().CmdClearAttachments(*GetImpl(), clearDescs, clearDescNum, rects, rectNum);
+    GetCoreInterfaceImpl().CmdClearAttachments(*GetImpl(), clearAttachmentDescs, clearAttachmentDescNum, rects, rectNum);
 }
 
-NRI_INLINE void CommandBufferVal::ClearStorage(const ClearStorageDesc& clearDesc) {
-    const DescriptorVal& descriptorVal = *(DescriptorVal*)clearDesc.storage;
-
+NRI_INLINE void CommandBufferVal::ClearStorage(const ClearStorageDesc& clearStorageDesc) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
-    RETURN_ON_FAILURE(&m_Device, clearDesc.storage, ReturnVoid(), "'.storage' is NULL");
-    RETURN_ON_FAILURE(&m_Device, descriptorVal.IsShaderResourceStorage(), ReturnVoid(), "'.storage' is not a 'SHADER_RESOURCE_STORAGE' resource");
+    RETURN_ON_FAILURE(&m_Device, clearStorageDesc.descriptor, ReturnVoid(), "'.storage' is NULL");
+
+    const DescriptorVal& descriptorVal = *(DescriptorVal*)clearStorageDesc.descriptor;
+    RETURN_ON_FAILURE(&m_Device, descriptorVal.IsShaderResourceStorage(), ReturnVoid(), "'.storage' is not a 'SHADER_RESOURCE_STORAGE' descriptor");
     // TODO: check that a descriptor set is bound, minimal tracking of sets is needed
 
-    auto clearDescImpl = clearDesc;
-    clearDescImpl.storage = NRI_GET_IMPL(Descriptor, clearDesc.storage);
+    auto clearStorageDescImpl = clearStorageDesc;
+    clearStorageDescImpl.descriptor = NRI_GET_IMPL(Descriptor, clearStorageDesc.descriptor);
 
-    GetCoreInterfaceImpl().CmdClearStorage(*GetImpl(), clearDescImpl);
+    GetCoreInterfaceImpl().CmdClearStorage(*GetImpl(), clearStorageDescImpl);
 }
 
 NRI_INLINE void CommandBufferVal::BeginRendering(const AttachmentsDesc& attachmentsDesc) {
