@@ -423,10 +423,10 @@ static inline NVSDK_NGX_Resource_VK NgxGetResource(const CoreInterface& NRI, con
 
     const TextureDesc& textureDesc = NRI.GetTextureDesc(*resource.texture);
     VkImageView view = (VkImageView)NRI.GetDescriptorNativeObject(resource.descriptor);
-    VkImageSubresourceRange subresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    VkImageSubresourceRange subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
     VkFormat format = (VkFormat)nriConvertNRIFormatToVK(textureDesc.format);
 
-    return NVSDK_NGX_Create_ImageView_Resource_VK(view, (VkImage)resourceNative, subresource, format, textureDesc.width, textureDesc.height, isStorage);
+    return NVSDK_NGX_Create_ImageView_Resource_VK(view, (VkImage)resourceNative, subresourceRange, format, textureDesc.width, textureDesc.height, isStorage);
 }
 
 #    endif

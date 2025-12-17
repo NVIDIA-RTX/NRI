@@ -22,6 +22,17 @@ constexpr VkIndexType GetIndexType(IndexType indexType) {
     return g_IndexTypes[(size_t)indexType];
 }
 
+constexpr std::array<VkResolveModeFlagBits, (size_t)ResolveOp::MAX_NUM> g_ResolveOps = {
+    VK_RESOLVE_MODE_AVERAGE_BIT, // AVERAGE
+    VK_RESOLVE_MODE_MIN_BIT,     // MIN
+    VK_RESOLVE_MODE_MAX_BIT,     // MAX
+};
+VALIDATE_ARRAY(g_ResolveOps);
+
+constexpr VkResolveModeFlagBits GetResolveOp(ResolveOp resolveOp) {
+    return g_ResolveOps[(size_t)resolveOp];
+}
+
 constexpr std::array<VkImageLayout, (size_t)Layout::MAX_NUM> g_ImageLayouts = {
     // TODO: just use GENERAL everywhere if "VK_KHR_unified_image_layouts" is supported! but D3D12 is the limiter here...
     // https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_unified_image_layouts.html

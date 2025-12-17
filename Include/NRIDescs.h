@@ -1396,14 +1396,6 @@ NriStruct(OutputMergerDesc) {
     NriOptional Nri(Multiview) multiview;   // if "viewMask != 0", requires "features.(xxx)Multiview"
 };
 
-NriStruct(AttachmentsDesc) {
-    NriOptional const NriPtr(Descriptor) depthStencil;
-    NriOptional const NriPtr(Descriptor) shadingRate; // requires "tiers.shadingRate >= 2"
-    const NriPtr(Descriptor) const* colors;
-    uint32_t colorNum;
-    NriOptional uint32_t viewMask;          // if non-0, requires "viewMaxNum > 1"
-};
-
 #pragma endregion
 
 //============================================================================================================================================================================================
@@ -1442,6 +1434,28 @@ NriStruct(ComputePipelineDesc) {
     const NriPtr(PipelineLayout) pipelineLayout;
     Nri(ShaderDesc) shader;
     NriOptional Nri(Robustness) robustness;
+};
+
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region [ Rendering (render pass) ]
+//============================================================================================================================================================================================
+
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_resolve_mode
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkResolveModeFlagBits.html
+NriEnum(ResolveOp, uint8_t,
+    AVERAGE,    // resolves the source samples to their average value
+    MIN,        // resolves the source samples to their minimum value, requires "features.resolveOpMinMax"
+    MAX         // resolves the source samples to their maximum value, requires "features.resolveOpMinMax"
+);
+
+NriStruct(AttachmentsDesc) {
+    NriOptional const NriPtr(Descriptor) depthStencil;
+    NriOptional const NriPtr(Descriptor) shadingRate; // requires "tiers.shadingRate >= 2"
+    const NriPtr(Descriptor) const* colors;
+    uint32_t colorNum;
+    NriOptional uint32_t viewMask;          // if non-0, requires "viewMaxNum > 1"
 };
 
 #pragma endregion
@@ -1926,6 +1940,7 @@ NriStruct(DeviceDesc) {
         uint32_t additionalShadingRates                          : 1; // see "ShadingRate"
         uint32_t viewportOriginBottomLeft                        : 1; // see "Viewport"
         uint32_t regionResolve                                   : 1; // see "CmdResolveTexture"
+        uint32_t resolveOpMinMax                                 : 1; // see "ResolveOp"
         uint32_t flexibleMultiview                               : 1; // see "Multiview::FLEXIBLE"
         uint32_t layerBasedMultiview                             : 1; // see "Multiview::LAYRED_BASED"
         uint32_t viewportBasedMultiview                          : 1; // see "Multiview::VIEWPORT_BASED"

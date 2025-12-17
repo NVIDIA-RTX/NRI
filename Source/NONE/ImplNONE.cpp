@@ -527,7 +527,7 @@ static void NRI_CALL CmdReadbackTextureToBuffer(CommandBuffer&, Buffer&, const T
 static void NRI_CALL CmdZeroBuffer(CommandBuffer&, Buffer&, uint64_t, uint64_t) {
 }
 
-static void NRI_CALL CmdResolveTexture(CommandBuffer&, Texture&, const TextureRegionDesc*, const Texture&, const TextureRegionDesc*) {
+static void NRI_CALL CmdResolveTexture(CommandBuffer&, Texture&, const TextureRegionDesc*, const Texture&, const TextureRegionDesc*, ResolveOp) {
 }
 
 static void NRI_CALL CmdClearStorage(CommandBuffer&, const ClearStorageDesc&) {

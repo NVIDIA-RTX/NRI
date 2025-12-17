@@ -1125,6 +1125,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.dynamicDepthBias = true;
         m_Desc.features.viewportOriginBottomLeft = true;
         m_Desc.features.regionResolve = true;
+        m_Desc.features.resolveOpMinMax = m_IsSupported.maintenance10 ? true : false; // TODO: it's "all or nothing", without it "min/max" resolve is supported only in a render pass
         m_Desc.features.layerBasedMultiview = features11.multiview;
         m_Desc.features.presentFromCompute = true;
         m_Desc.features.waitableSwapChain = PresentIdFeatures.presentId != 0 && PresentWaitFeatures.presentWait != 0;

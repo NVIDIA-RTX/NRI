@@ -660,7 +660,7 @@ NRI_INLINE void CommandBufferVK::CopyTexture(Texture& dstTexture, const TextureR
     vk.CmdCopyImage2(m_Handle, &info);
 }
 
-NRI_INLINE void CommandBufferVK::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion) {
+NRI_INLINE void CommandBufferVK::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion, ResolveOp resolveOp) {
     const TextureVK& src = (TextureVK&)srcTexture;
     const TextureVK& dst = (TextureVK&)dstTexture;
     const TextureDesc& dstDesc = dst.GetDesc();
@@ -731,6 +731,15 @@ NRI_INLINE void CommandBufferVK::ResolveTexture(Texture& dstTexture, const Textu
     info.dstImageLayout = IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     info.regionCount = regionNum;
     info.pRegions = regions;
+
+    VkResolveImageModeInfoKHR resolveModeInfo = {VK_STRUCTURE_TYPE_RESOLVE_IMAGE_MODE_INFO_KHR};
+    if (m_Device.m_IsSupported.maintenance10) {
+        resolveModeInfo.resolveMode = GetResolveOp(resolveOp);
+        resolveModeInfo.stencilResolveMode = GetResolveOp(resolveOp);
+        // TODO: resolveModeInfo.flags?
+
+        info.pNext = &resolveModeInfo;
+    }
 
     const auto& vk = m_Device.GetDispatchTable();
     vk.CmdResolveImage2(m_Handle, &info);

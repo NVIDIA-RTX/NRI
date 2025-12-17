@@ -416,7 +416,7 @@ static void NRI_CALL CmdZeroBuffer(CommandBuffer& commandBuffer, Buffer& buffer,
     ((CommandBufferD3D11&)commandBuffer).ZeroBuffer(buffer, offset, size);
 }
 
-static void NRI_CALL CmdResolveTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion) {
+static void NRI_CALL CmdResolveTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion, ResolveOp) {
     ((CommandBufferD3D11&)commandBuffer).ResolveTexture(dstTexture, dstRegion, srcTexture, srcRegion);
 }
 
@@ -692,7 +692,7 @@ static void NRI_CALL EmuCmdFillBuffer(CommandBuffer& commandBuffer, Buffer& buff
     ((CommandBufferEmuD3D11&)commandBuffer).ZeroBuffer(buffer, offset, size);
 }
 
-static void NRI_CALL EmuCmdResolveTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion) {
+static void NRI_CALL EmuCmdResolveTexture(CommandBuffer& commandBuffer, Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion, ResolveOp) {
     ((CommandBufferEmuD3D11&)commandBuffer).ResolveTexture(dstTexture, dstRegion, srcTexture, srcRegion);
 }
 

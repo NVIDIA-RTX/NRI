@@ -251,6 +251,17 @@ static inline void ConvertRects(const Rect* in, uint32_t rectNum, D3D12_RECT* ou
     }
 }
 
+constexpr std::array<D3D12_RESOLVE_MODE, (size_t)ResolveOp::MAX_NUM> g_ResolveOps = {
+    D3D12_RESOLVE_MODE_AVERAGE, // AVERAGE
+    D3D12_RESOLVE_MODE_MIN,     // MIN
+    D3D12_RESOLVE_MODE_MAX,     // MAX
+};
+VALIDATE_ARRAY(g_ResolveOps);
+
+constexpr D3D12_RESOLVE_MODE GetResolveOp(ResolveOp resolveOp) {
+    return g_ResolveOps[(size_t)resolveOp];
+}
+
 Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D12CommandAllocator* commandAllocator) {
     ComPtr<ID3D12GraphicsCommandListBest> graphicsCommandList;
     HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&graphicsCommandList);
@@ -615,13 +626,13 @@ NRI_INLINE void CommandBufferD3D12::ZeroBuffer(Buffer& buffer, uint64_t offset, 
     }
 }
 
-NRI_INLINE void CommandBufferD3D12::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion) {
+NRI_INLINE void CommandBufferD3D12::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion, ResolveOp resolveOp) {
     const TextureD3D12& dst = (TextureD3D12&)dstTexture;
     const TextureD3D12& src = (TextureD3D12&)srcTexture;
     const TextureDesc& dstDesc = dst.GetDesc();
     const DxgiFormat& dstFormat = GetDxgiFormat(dstDesc.format);
 
-    bool isWholeResource = !dstRegion && !srcRegion;
+    bool isWholeResource = !dstRegion && !srcRegion && resolveOp == ResolveOp::AVERAGE; // old API supports only AVERAGE
     if (isWholeResource) {
         for (Dim_t layer = 0; layer < dstDesc.layerNum; layer++) {
             for (Dim_t mip = 0; mip < dstDesc.mipNum; mip++) {
@@ -639,14 +650,19 @@ NRI_INLINE void CommandBufferD3D12::ResolveTexture(Texture& dstTexture, const Te
         uint32_t dstSubresource = dst.GetSubresourceIndex(dstRegion->layerOffset, dstRegion->mipOffset, dstRegion->planes);
         uint32_t srcSubresource = src.GetSubresourceIndex(srcRegion->layerOffset, srcRegion->mipOffset, srcRegion->planes);
 
+        Dim_t w = srcRegion->width == WHOLE_SIZE ? src.GetSize(0, srcRegion->mipOffset) : srcRegion->width;
+        Dim_t h = srcRegion->height == WHOLE_SIZE ? src.GetSize(1, srcRegion->mipOffset) : srcRegion->height;
+
         D3D12_RECT srcRect = {
             srcRegion->x,
             srcRegion->y,
-            srcRegion->width,
-            srcRegion->height,
+            srcRegion->x + w,
+            srcRegion->y + h,
         };
 
-        m_GraphicsCommandList->ResolveSubresourceRegion(dst, dstSubresource, dstRegion->x, dstRegion->y, src, srcSubresource, &srcRect, dstFormat.typed, D3D12_RESOLVE_MODE_AVERAGE);
+        D3D12_RESOLVE_MODE resolveMode = GetResolveOp(resolveOp);
+
+        m_GraphicsCommandList->ResolveSubresourceRegion(dst, dstSubresource, dstRegion->x, dstRegion->y, src, srcSubresource, &srcRect, dstFormat.typed, resolveMode);
     }
 }
 
