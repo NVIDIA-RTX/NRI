@@ -66,25 +66,13 @@ Repository organization:
 <details>
 <summary>Required Vulkan extensions:</summary>
 
-- for Vulkan < 1.3:
     - _VK_KHR_synchronization2_
     - _VK_KHR_dynamic_rendering_
     - _VK_KHR_copy_commands2_
-    - _VK_KHR_maintenance4_ (optional, but recommended)
-    - _VK_KHR_shader_integer_dot_product_
     - _VK_EXT_extended_dynamic_state_
-    - _VK_EXT_image_robustness_
-    - _VK_EXT_subgroup_size_control_
-- for Vulkan < 1.4:
-    - _VK_KHR_push_descriptor
-    - _VK_KHR_maintenance5 (optional, but recommended)
-    - _VK_KHR_maintenance6 (optional, but recommended)
-    - _VK_KHR_line_rasterization_
-    - _VK_EXT_pipeline_robustness_
-- for APPLE:
-    - _VK_KHR_portability_enumeration_ (instance extension)
-    - _VK_KHR_get_physical_device_properties2_ (instance extension)
-    - _VK_KHR_portability_subset_
+    - _VK_KHR_portability_enumeration_ (for APPLE)
+    - _VK_KHR_get_physical_device_properties2_ (for APPLE)
+    - _VK_KHR_portability_subset_ (for for APPLE)
 
 </details>
 
@@ -102,9 +90,14 @@ Repository organization:
     - _VK_KHR_present_id_
     - _VK_KHR_present_wait_
     - _VK_KHR_swapchain_mutable_format_
+    - _VK_KHR_push_descriptor_
+    - _VK_KHR_maintenance4_ (optional, but recommended)
+    - _VK_KHR_maintenance5_ (optional, but recommended)
+    - _VK_KHR_maintenance6_ (optional, but recommended)
     - _VK_KHR_maintenance7_
     - _VK_KHR_maintenance8_
     - _VK_KHR_maintenance9_
+    - _VK_KHR_line_rasterization_
     - _VK_KHR_fragment_shading_rate_
     - _VK_KHR_pipeline_library_
     - _VK_KHR_ray_tracing_pipeline_
@@ -116,6 +109,10 @@ Repository organization:
     - _VK_KHR_shader_clock_
     - _VK_KHR_compute_shader_derivatives_
     - _VK_KHR_unified_image_layouts_
+    - _VK_KHR_shader_integer_dot_product_
+    - _VK_EXT_pipeline_robustness_
+    - _VK_EXT_image_robustness_
+    - _VK_EXT_subgroup_size_control_
     - _VK_EXT_mutable_descriptor_type_
     - _VK_EXT_swapchain_maintenance1_
     - _VK_EXT_present_mode_fifo_latest_ready_
