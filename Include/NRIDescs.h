@@ -1516,14 +1516,14 @@ NriStruct(PipelineStatisticsDesc) {
 
 // Command signatures (default)
 
-NriStruct(DrawDesc) {                   // see NRI_FILL_DRAW_COMMAND
+NriStruct(DrawDesc) {                   // see NRI_FILL_DRAW_DESC
     uint32_t vertexNum;
     uint32_t instanceNum;
     uint32_t baseVertex;                    // vertex buffer offset = CmdSetVertexBuffers.offset + baseVertex * VertexStreamDesc::stride
     uint32_t baseInstance;
 };
 
-NriStruct(DrawIndexedDesc) {            // see NRI_FILL_DRAW_INDEXED_COMMAND
+NriStruct(DrawIndexedDesc) {            // see NRI_FILL_DRAW_INDEXED_DESC
     uint32_t indexNum;
     uint32_t instanceNum;
     uint32_t baseIndex;                     // index buffer offset = CmdSetIndexBuffer.offset + baseIndex * sizeof(CmdSetIndexBuffer.indexType)
@@ -1539,7 +1539,7 @@ NriStruct(DispatchDesc) {
 //  - the following structs must be used instead
 // - "NRI_ENABLE_DRAW_PARAMETERS_EMULATION" must be defined prior inclusion of "NRI.hlsl"
 
-NriStruct(DrawBaseDesc) {               // see NRI_FILL_DRAW_COMMAND
+NriStruct(DrawBaseDesc) {               // see NRI_FILL_DRAW_DESC
     uint32_t shaderEmulatedBaseVertex;      // root constant
     uint32_t shaderEmulatedBaseInstance;    // root constant
     uint32_t vertexNum;
@@ -1548,7 +1548,7 @@ NriStruct(DrawBaseDesc) {               // see NRI_FILL_DRAW_COMMAND
     uint32_t baseInstance;
 };
 
-NriStruct(DrawIndexedBaseDesc) {        // see NRI_FILL_DRAW_INDEXED_COMMAND
+NriStruct(DrawIndexedBaseDesc) {        // see NRI_FILL_DRAW_INDEXED_DESC
     int32_t shaderEmulatedBaseVertex;       // root constant
     uint32_t shaderEmulatedBaseInstance;    // root constant
     uint32_t indexNum;
