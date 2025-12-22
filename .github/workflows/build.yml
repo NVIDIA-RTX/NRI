@@ -21,6 +21,15 @@ jobs:
       - name: Build
         run: .\2-Build.bat
 
+      - name: Prepare SDK
+        run: .\3-PrepareSDK.bat
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NRI SDK (Windows x64)
+          path: _NRI_SDK
+
   Build-Ubuntu:
     runs-on: ubuntu-latest
     steps:
@@ -47,3 +56,12 @@ jobs:
 
       - name: Build
         run: bash 2-Build.sh
+
+      - name: Prepare SDK
+        run: bash 3-PrepareSDK.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NRI SDK (Linux x64)
+          path: _NRI_SDK

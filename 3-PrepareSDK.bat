@@ -2,26 +2,25 @@
 
 set ROOT=%cd%
 set SELF=%~dp0
+set SDK=_NRI_SDK
 
-rd /q /s "_NRI_SDK"
-mkdir "_NRI_SDK"
-cd "_NRI_SDK"
+echo %SDK%: ROOT=%ROOT%, SELF=%SELF%
 
-mkdir "Include\Extensions"
-mkdir "Lib\Debug"
-mkdir "Lib\Release"
+rd /q /s "%SDK%"
 
-copy "%SELF%\Include\*" "Include"
-copy "%SELF%\Include\Extensions\*" "Include\Extensions"
-copy "%SELF%\LICENSE.txt" "."
-copy "%SELF%\README.md" "."
-copy "%SELF%\nri.natvis" "."
+mkdir "%SDK%\Include\Extensions"
+mkdir "%SDK%\Lib\Debug"
+mkdir "%SDK%\Lib\Release"
 
-copy "%ROOT%\_Bin\Debug\NRI.dll" "Lib\Debug"
-copy "%ROOT%\_Bin\Debug\NRI.lib" "Lib\Debug"
-copy "%ROOT%\_Bin\Debug\NRI.pdb" "Lib\Debug"
-copy "%ROOT%\_Bin\Release\NRI.dll" "Lib\Release"
-copy "%ROOT%\_Bin\Release\NRI.lib" "Lib\Release"
-copy "%ROOT%\_Bin\Release\NRI.pdb" "Lib\Release"
+copy "%SELF%\Include\*" "%SDK%\Include"
+copy "%SELF%\Include\Extensions\*" "%SDK%\Include\Extensions"
+copy "%SELF%\LICENSE.txt" "%SDK%"
+copy "%SELF%\README.md" "%SDK%"
+copy "%SELF%\nri.natvis" "%SDK%"
 
-cd ..
+copy "%ROOT%\_Bin\Debug\NRI.dll" "%SDK%\Lib\Debug"
+copy "%ROOT%\_Bin\Debug\NRI.lib" "%SDK%\Lib\Debug"
+copy "%ROOT%\_Bin\Debug\NRI.pdb" "%SDK%\Lib\Debug"
+copy "%ROOT%\_Bin\Release\NRI.dll" "%SDK%\Lib\Release"
+copy "%ROOT%\_Bin\Release\NRI.lib" "%SDK%\Lib\Release"
+copy "%ROOT%\_Bin\Release\NRI.pdb" "%SDK%\Lib\Release"

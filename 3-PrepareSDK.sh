@@ -2,22 +2,19 @@
 
 ROOT=$(pwd)
 SELF=$(dirname "$0")
+SDK=_NRI_SDK
 
-rm -rf "_NRI_SDK"
-mkdir -p "_NRI_SDK"
-cd "_NRI_SDK"
+echo ${SDK}: ROOT=${ROOT}, SELF=${SELF}
 
-mkdir -p "Include"
-mkdir -p "Lib/Debug"
-mkdir -p "Lib/Release"
+rm -rf "${SDK}"
 
-cp -r "$(SELF)/Include/" "Include"
-cp "$(SELF)/LICENSE.txt" "."
-cp "$(SELF)/README.md" "."
-cp "$(SELF)/nri.natvis" "."
+mkdir -p "${SDK}/Include/Extensions"
+mkdir -p "${SDK}/Lib"
 
-cp -H "$(ROOT)/_Bin/Debug/libNRI.so" "Lib/Debug"
-cp -H "$(ROOT)/_Bin/Release/libNRI.so" "Lib/Release"
+cp -r "${SELF}/Include/." "${SDK}/Include"
+cp -r "${SELF}/Include/Extensions/." "${SDK}/Include/Extensions"
+cp "${SELF}/LICENSE.txt" "${SDK}/"
+cp "${SELF}/README.md" "${SDK}/"
+cp "${SELF}/nri.natvis" "${SDK}/"
 
-cd ..
-
+cp -H "${ROOT}/_Bin/libNRI.so" "${SDK}/Lib"
