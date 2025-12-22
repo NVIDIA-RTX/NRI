@@ -13,8 +13,8 @@ mkdir -p "${SDK}/Lib"
 
 cp -r "${SELF}/Include/." "${SDK}/Include"
 cp -r "${SELF}/Include/Extensions/." "${SDK}/Include/Extensions"
-cp "${SELF}/LICENSE.txt" "${SDK}/"
-cp "${SELF}/README.md" "${SDK}/"
-cp "${SELF}/nri.natvis" "${SDK}/"
+cp "${SELF}/LICENSE.txt" "${SDK}"
+cp "${SELF}/README.md" "${SDK}"
+cp "${SELF}/nri.natvis" "${SDK}"
 
 cp -H "${ROOT}/_Bin/libNRI.so" "${SDK}/Lib"
