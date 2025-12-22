@@ -132,20 +132,21 @@ static VkBool32 VKAPI_PTR MessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT
     DeviceVK& device = *(DeviceVK*)userData;
 
     { // TODO: some messages can be muted here
+        uint32_t messageId = (uint32_t)callbackData->messageIdNumber;
         // Loader info message
-        if (callbackData->messageIdNumber == 0)
+        if (messageId == 0)
             return VK_FALSE;
         // Validation Information: [ WARNING-CreateInstance-status-message ] vkCreateInstance(): Khronos Validation Layer Active ...
-        if (callbackData->messageIdNumber == 601872502)
+        if (messageId == 601872502)
             return VK_FALSE;
         // Validation Warning: [ VALIDATION-SETTINGS ] vkCreateInstance(): DebugPrintf logs to the Information message severity, enabling Information level logging otherwise the message will not be seen.
-        if (callbackData->messageIdNumber == 2132353751)
+        if (messageId == 2132353751)
             return VK_FALSE;
         // Validation Warning: [ WARNING-DEBUG-PRINTF ] Internal Warning: Setting VkPhysicalDeviceVulkan12Properties::maxUpdateAfterBindDescriptorsInAllPools to 32
-        if (callbackData->messageIdNumber == 1985515673)
+        if (messageId == 1985515673)
             return VK_FALSE;
         // vkGetPhysicalDeviceProperties2(): Internal Warning: Setting VkPhysicalDeviceVulkan12Properties::maxUpdateAfterBindDescriptorsInAllPools to 4194304
-        if (callbackData->messageIdNumber == 2264819489)
+        if (messageId == 2264819489)
             return VK_FALSE;
     }
 
