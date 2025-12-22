@@ -379,8 +379,8 @@ static void NRI_CALL CmdSetDepthBias(CommandBuffer& commandBuffer, const DepthBi
     ((CommandBufferVK&)commandBuffer).SetDepthBias(depthBiasDesc);
 }
 
-static void NRI_CALL CmdBeginRendering(CommandBuffer& commandBuffer, const AttachmentsDesc& attachmentsDesc) {
-    ((CommandBufferVK&)commandBuffer).BeginRendering(attachmentsDesc);
+static void NRI_CALL CmdBeginRendering(CommandBuffer& commandBuffer, const RenderingDesc& renderingDesc) {
+    ((CommandBufferVK&)commandBuffer).BeginRendering(renderingDesc);
 }
 
 static void NRI_CALL CmdClearAttachments(CommandBuffer& commandBuffer, const ClearAttachmentDesc* clearAttachmentDescs, uint32_t clearAttachmentDescNum, const Rect* rects, uint32_t rectNum) {

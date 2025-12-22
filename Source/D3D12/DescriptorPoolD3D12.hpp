@@ -14,6 +14,7 @@ Result DescriptorPoolD3D12::Create(const DescriptorPoolDesc& descriptorPoolDesc)
     descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.structuredBufferMaxNum;
     descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.storageStructuredBufferMaxNum;
     descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.accelerationStructureMaxNum;
+    descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.inputAttachmentMaxNum;
 
     for (uint32_t i = 0; i < DescriptorHeapType::MAX_NUM; i++) {
         DescriptorHeapDesc& descriptorHeapDesc = m_DescriptorHeapDescs[i];

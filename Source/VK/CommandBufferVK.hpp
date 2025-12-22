@@ -13,16 +13,29 @@ static inline VkPipelineBindPoint GetPipelineBindPoint(BindPoint bindPoint) {
     }
 }
 
-static inline void FillRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, const Descriptor* descriptor, Dim_t& renderWidth, Dim_t& renderHeight, Dim_t& layerNum) {
-    const DescriptorVK& descriptorVK = *(DescriptorVK*)descriptor;
+static inline void FillRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, const AttachmentDesc& attachmentDesc, Dim_t& renderWidth, Dim_t& renderHeight, Dim_t& layerNum) {
+    const DescriptorVK& descriptorVK = *(DescriptorVK*)attachmentDesc.descriptor;
     const TexViewDesc& texViewDesc = descriptorVK.GetTexViewDesc();
 
     attachmentInfo = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
     attachmentInfo.imageView = descriptorVK.GetImageView();
-    attachmentInfo.imageLayout = texViewDesc.layout;
-    attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-    attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    attachmentInfo.resolveMode = VK_RESOLVE_MODE_NONE; // TODO: add support for "on-the-fly" resolve
+    attachmentInfo.imageLayout = texViewDesc.expectedLayout;
+    attachmentInfo.loadOp = GetLoadOp(attachmentDesc.loadOp);
+    attachmentInfo.storeOp = GetStoreOp(attachmentDesc.storeOp);
+    attachmentInfo.clearValue = *(VkClearValue*)&attachmentDesc.clearValue;
+
+    if (attachmentDesc.resolveDst) {
+        const DescriptorVK& resolveDst = *(DescriptorVK*)attachmentDesc.resolveDst;
+
+        attachmentInfo.resolveMode = GetResolveOp(attachmentDesc.resolveOp);
+        attachmentInfo.resolveImageView = resolveDst.GetImageView();
+        attachmentInfo.resolveImageLayout = resolveDst.GetTexViewDesc().expectedLayout;
+    }
+
+    // If "INPUT_ATTACHMENT" usage is set, "VK_IMAGE_LAYOUT_RENDERING_LOCAL_READ" is expected
+    const TextureDesc& textureDesc = texViewDesc.texture->GetDesc();
+    if(textureDesc.usage & TextureUsageBits::INPUT_ATTACHMENT)
+        attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_RENDERING_LOCAL_READ;
 
     Dim_t w = texViewDesc.texture->GetSize(0, texViewDesc.mipOffset);
     Dim_t h = texViewDesc.texture->GetSize(1, texViewDesc.mipOffset);
@@ -262,65 +275,72 @@ NRI_INLINE void CommandBufferVK::ClearStorage(const ClearStorageDesc& clearStora
     }
 }
 
-NRI_INLINE void CommandBufferVK::BeginRendering(const AttachmentsDesc& attachmentsDesc) {
+NRI_INLINE void CommandBufferVK::BeginRendering(const RenderingDesc& renderingDesc) {
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
+    Dim_t renderWidth = deviceDesc.dimensions.attachmentMaxDim;
+    Dim_t renderHeight = deviceDesc.dimensions.attachmentMaxDim;
+    Dim_t renderLayerNum = deviceDesc.dimensions.attachmentLayerMaxNum;
 
-    // TODO: if there are no attachments, render area has max dimensions. It can be suboptimal even on desktop. It's a no-go on tiled architectures
-    m_RenderLayerNum = deviceDesc.dimensions.attachmentLayerMaxNum;
-    m_RenderWidth = deviceDesc.dimensions.attachmentMaxDim;
-    m_RenderHeight = deviceDesc.dimensions.attachmentMaxDim;
+    Scratch<VkRenderingAttachmentInfo> colors = AllocateScratch(m_Device, VkRenderingAttachmentInfo, renderingDesc.colorNum);
 
-    // Color
-    Scratch<VkRenderingAttachmentInfo> colors = AllocateScratch(m_Device, VkRenderingAttachmentInfo, attachmentsDesc.colorNum);
-    for (uint32_t i = 0; i < attachmentsDesc.colorNum; i++)
-        FillRenderingAttachmentInfo(colors[i], attachmentsDesc.colors[i], m_RenderWidth, m_RenderHeight, m_RenderLayerNum);
+    VkRenderingInfo renderingInfo = {VK_STRUCTURE_TYPE_RENDERING_INFO};
+    renderingInfo.viewMask = renderingDesc.viewMask;
+    renderingInfo.colorAttachmentCount = renderingDesc.colorNum;
+    renderingInfo.pColorAttachments = colors;
 
-    // Depth-stencil
-    VkRenderingAttachmentInfo depthStencil = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    bool hasStencil = false;
-    if (attachmentsDesc.depthStencil) {
-        FillRenderingAttachmentInfo(depthStencil, attachmentsDesc.depthStencil, m_RenderWidth, m_RenderHeight, m_RenderLayerNum);
+    for (uint32_t i = 0; i < renderingDesc.colorNum; i++)
+        FillRenderingAttachmentInfo(colors[i], renderingDesc.colors[i], renderWidth, renderHeight, renderLayerNum);
 
-        m_DepthStencil = (DescriptorVK*)attachmentsDesc.depthStencil;
+    VkRenderingAttachmentInfo depth = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
+    if (renderingDesc.depth.descriptor) {
+        m_DepthStencil = (DescriptorVK*)renderingDesc.depth.descriptor;
+
+        FillRenderingAttachmentInfo(depth, renderingDesc.depth, renderWidth, renderHeight, renderLayerNum);
+        renderingInfo.pDepthAttachment = &depth;
 
         const FormatProps& formatProps = GetFormatProps(m_DepthStencil->GetFormat());
-        hasStencil = formatProps.isStencil != 0;
+        if (formatProps.isStencil)
+            renderingInfo.pStencilAttachment = &depth;
     } else
         m_DepthStencil = nullptr;
 
-    // Shading rate
-    VkRenderingFragmentShadingRateAttachmentInfoKHR shadingRate = {VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR};
-    if (attachmentsDesc.shadingRate) {
-        uint32_t tileSize = m_Device.GetDesc().other.shadingRateAttachmentTileSize;
-        const DescriptorVK& descriptorVK = *(DescriptorVK*)attachmentsDesc.shadingRate;
-        const TexViewDesc& texViewDesc = descriptorVK.GetTexViewDesc();
+    VkRenderingAttachmentInfo stencil = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
+    if (renderingDesc.stencil.descriptor) { // it's safe to do it this way, since there are no "stencil-only" formats
+        m_DepthStencil = (DescriptorVK*)renderingDesc.stencil.descriptor;
 
-        shadingRate.imageView = descriptorVK.GetImageView();
-        shadingRate.imageLayout = texViewDesc.layout;
-        shadingRate.shadingRateAttachmentTexelSize = {tileSize, tileSize};
+        FillRenderingAttachmentInfo(stencil, renderingDesc.stencil, renderWidth, renderHeight, renderLayerNum);
+        renderingInfo.pStencilAttachment = &stencil;
     }
 
-    bool hasAttachment = attachmentsDesc.depthStencil || attachmentsDesc.colors;
+    // TODO: if there are no attachments, the render area is set to max dims. It may be suboptimal...
+    bool hasAttachment = renderingDesc.colors || renderingDesc.depth.descriptor || renderingDesc.stencil.descriptor;
     if (!hasAttachment)
-        m_RenderLayerNum = 1;
+        renderLayerNum = 1;
 
-    VkRenderingInfo renderingInfo = {VK_STRUCTURE_TYPE_RENDERING_INFO};
-    renderingInfo.flags = 0;
-    renderingInfo.renderArea = {{0, 0}, {m_RenderWidth, m_RenderHeight}};
-    renderingInfo.layerCount = m_RenderLayerNum;
-    renderingInfo.viewMask = attachmentsDesc.viewMask;
-    renderingInfo.colorAttachmentCount = attachmentsDesc.colorNum;
-    renderingInfo.pColorAttachments = colors;
-    renderingInfo.pDepthAttachment = attachmentsDesc.depthStencil ? &depthStencil : nullptr;
-    renderingInfo.pStencilAttachment = hasStencil ? &depthStencil : nullptr;
+    renderingInfo.renderArea = {{0, 0}, {renderWidth, renderHeight}};
+    renderingInfo.layerCount = renderLayerNum;
 
-    if (attachmentsDesc.shadingRate)
+    // Shading rate
+    VkRenderingFragmentShadingRateAttachmentInfoKHR shadingRate = {VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR};
+    if (renderingDesc.shadingRate) {
+        uint32_t tileSize = m_Device.GetDesc().other.shadingRateAttachmentTileSize;
+        const DescriptorVK& descriptorVK = *(DescriptorVK*)renderingDesc.shadingRate;
+
+        shadingRate.imageView = descriptorVK.GetImageView();
+        shadingRate.imageLayout = descriptorVK.GetTexViewDesc().expectedLayout;
+        shadingRate.shadingRateAttachmentTexelSize = {tileSize, tileSize};
+
         renderingInfo.pNext = &shadingRate;
+    }
 
     const auto& vk = m_Device.GetDispatchTable();
     vk.CmdBeginRendering(m_Handle, &renderingInfo);
 
-    m_ViewMask = attachmentsDesc.viewMask;
+    m_RenderWidth = renderWidth;
+    m_RenderHeight = renderHeight;
+    m_RenderLayerNum = renderLayerNum;
+    m_ViewMask = renderingDesc.viewMask;
+    m_RenderPass = true;
 }
 
 NRI_INLINE void CommandBufferVK::EndRendering() {
@@ -328,6 +348,7 @@ NRI_INLINE void CommandBufferVK::EndRendering() {
     vk.CmdEndRendering(m_Handle);
 
     m_DepthStencil = nullptr;
+    m_RenderPass = false;
 }
 
 NRI_INLINE void CommandBufferVK::SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum) {
@@ -640,9 +661,9 @@ NRI_INLINE void CommandBufferVK::CopyTexture(Texture& dstTexture, const TextureR
 
     VkCopyImageInfo2 info = {VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2};
     info.srcImage = src.GetHandle();
-    info.srcImageLayout = IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    info.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
     info.dstImage = dst.GetHandle();
-    info.dstImageLayout = IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    info.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     info.regionCount = regionNum;
     info.pRegions = regions;
 
@@ -716,9 +737,9 @@ NRI_INLINE void CommandBufferVK::ResolveTexture(Texture& dstTexture, const Textu
 
     VkResolveImageInfo2 info = {VK_STRUCTURE_TYPE_RESOLVE_IMAGE_INFO_2};
     info.srcImage = src.GetHandle();
-    info.srcImageLayout = IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    info.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
     info.dstImage = dst.GetHandle();
-    info.dstImageLayout = IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    info.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     info.regionCount = regionNum;
     info.pRegions = regions;
 
@@ -774,7 +795,7 @@ NRI_INLINE void CommandBufferVK::UploadBufferToTexture(Texture& dstTexture, cons
     VkCopyBufferToImageInfo2 info = {VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2};
     info.srcBuffer = src.GetHandle();
     info.dstImage = dst.GetHandle();
-    info.dstImageLayout = IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    info.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     info.regionCount = 1;
     info.pRegions = &region;
 
@@ -820,7 +841,7 @@ NRI_INLINE void CommandBufferVK::ReadbackTextureToBuffer(Buffer& dstBuffer, cons
 
     VkCopyImageToBufferInfo2 info = {VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2};
     info.srcImage = src.GetHandle();
-    info.srcImageLayout = IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    info.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
     info.dstBuffer = dst.GetHandle();
     info.regionCount = 1;
     info.pRegions = &region;
@@ -909,6 +930,9 @@ static inline VkAccessFlags2 GetAccessFlags(AccessBits accessBits) {
     if (accessBits & (AccessBits::COPY_DESTINATION | AccessBits::RESOLVE_DESTINATION | AccessBits::CLEAR_STORAGE))
         flags |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
 
+    if (accessBits & AccessBits::INPUT_ATTACHMENT)
+        flags |= VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT;
+
     return flags;
 }
 
@@ -946,6 +970,7 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
     }
 
     // Texture
+    bool isRegionLocal = false;
     Scratch<VkImageMemoryBarrier2> textureBarriers = AllocateScratch(m_Device, VkImageMemoryBarrier2, barrierDesc.textureNum);
     for (uint32_t i = 0; i < barrierDesc.textureNum; i++) {
         const TextureBarrierDesc& in = barrierDesc.textures[i];
@@ -975,6 +1000,9 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
             in.layerOffset,
             (in.layerNum == REMAINING) ? VK_REMAINING_ARRAY_LAYERS : in.layerNum,
         };
+
+        if (m_RenderPass && in.after.layout == Layout::INPUT_ATTACHMENT)
+            isRegionLocal = true;
     }
 
     // Submit
@@ -985,6 +1013,9 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
     dependencyInfo.pBufferMemoryBarriers = bufferBarriers;
     dependencyInfo.imageMemoryBarrierCount = barrierDesc.textureNum;
     dependencyInfo.pImageMemoryBarriers = textureBarriers;
+
+    if (isRegionLocal)
+        dependencyInfo.dependencyFlags |= VK_DEPENDENCY_BY_REGION_BIT;
 
     const auto& vk = m_Device.GetDispatchTable();
     vk.CmdPipelineBarrier2(m_Handle, &dependencyInfo);

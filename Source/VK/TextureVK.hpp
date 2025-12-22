@@ -25,8 +25,8 @@ Result TextureVK::Create(const TextureDesc& textureDesc) {
 }
 
 Result TextureVK::Create(const TextureVKDesc& textureVKDesc) {
+    m_Desc = {};
     m_Desc.type = GetTextureType((VkImageType)textureVKDesc.vkImageType);
-    m_Desc.usage = (TextureUsageBits)(-1); // TODO: it's not right...
     m_Desc.format = VKFormatToNRIFormat((VkFormat)textureVKDesc.vkFormat);
     m_Desc.width = textureVKDesc.width;
     m_Desc.height = textureVKDesc.height;
@@ -34,6 +34,24 @@ Result TextureVK::Create(const TextureVKDesc& textureVKDesc) {
     m_Desc.mipNum = textureVKDesc.mipNum;
     m_Desc.layerNum = textureVKDesc.layerNum;
     m_Desc.sampleNum = textureVKDesc.sampleNum;
+
+    if (textureVKDesc.vkImageUsageFlags & VK_IMAGE_USAGE_SAMPLED_BIT)
+        m_Desc.usage |= TextureUsageBits::SHADER_RESOURCE;
+
+    if (textureVKDesc.vkImageUsageFlags & VK_IMAGE_USAGE_STORAGE_BIT)
+        m_Desc.usage |= TextureUsageBits::SHADER_RESOURCE_STORAGE;
+
+    if (textureVKDesc.vkImageUsageFlags & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+        m_Desc.usage |= TextureUsageBits::COLOR_ATTACHMENT;
+
+    if (textureVKDesc.vkImageUsageFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+        m_Desc.usage |= TextureUsageBits::DEPTH_STENCIL_ATTACHMENT;
+
+    if (textureVKDesc.vkImageUsageFlags & VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR)
+        m_Desc.usage |= TextureUsageBits::SHADING_RATE_ATTACHMENT;
+
+    if (textureVKDesc.vkImageUsageFlags & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)
+        m_Desc.usage |= TextureUsageBits::INPUT_ATTACHMENT;
 
     m_OwnsNativeObjects = false;
     m_Handle = (VkImage)textureVKDesc.vkImage;

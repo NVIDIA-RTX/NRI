@@ -1,7 +1,7 @@
 // © 2021 NVIDIA Corporation
 
 Result DescriptorPoolD3D11::Create(const DescriptorPoolDesc& descriptorPoolDesc) {
-    uint32_t descriptorNum = descriptorPoolDesc.samplerMaxNum;
+    uint32_t descriptorNum = descriptorPoolDesc.mutableMaxNum;
     descriptorNum += descriptorPoolDesc.samplerMaxNum;
     descriptorNum += descriptorPoolDesc.constantBufferMaxNum;
     descriptorNum += descriptorPoolDesc.textureMaxNum;
@@ -10,7 +10,7 @@ Result DescriptorPoolD3D11::Create(const DescriptorPoolDesc& descriptorPoolDesc)
     descriptorNum += descriptorPoolDesc.storageBufferMaxNum;
     descriptorNum += descriptorPoolDesc.structuredBufferMaxNum;
     descriptorNum += descriptorPoolDesc.storageStructuredBufferMaxNum;
-    descriptorNum += descriptorPoolDesc.mutableMaxNum;
+    descriptorNum += descriptorPoolDesc.inputAttachmentMaxNum;
 
     m_DescriptorPool.resize(descriptorNum, nullptr);
     m_DescriptorSets.resize(descriptorPoolDesc.descriptorSetMaxNum);

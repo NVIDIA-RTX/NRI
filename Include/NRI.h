@@ -38,7 +38,7 @@ Implicit:
 #pragma once
 
 #define NRI_VERSION 177
-#define NRI_VERSION_DATE "17 December 2025"
+#define NRI_VERSION_DATE "22 December 2025"
 
 // C/C++ compatible interface (auto-selection or via "NRI_FORCE_C" macro)
 #include "NRIDescs.h"
@@ -181,7 +181,7 @@ NriStruct(CoreInterface) {
         void                (NRI_CALL *CmdSetDepthBias)             (NriRef(CommandBuffer) commandBuffer, const NriRef(DepthBiasDesc) depthBiasDesc); // requires "features.dynamicDepthBias", actually it's an override
 
         // Graphics
-        void                (NRI_CALL *CmdBeginRendering)           (NriRef(CommandBuffer) commandBuffer, const NriRef(AttachmentsDesc) attachmentsDesc);
+        void                (NRI_CALL *CmdBeginRendering)           (NriRef(CommandBuffer) commandBuffer, const NriRef(RenderingDesc) renderingDesc);
         // {                {
             // Clear
             void                (NRI_CALL *CmdClearAttachments)     (NriRef(CommandBuffer) commandBuffer, const NriPtr(ClearAttachmentDesc) clearAttachmentDescs, uint32_t clearAttachmentDescNum, const NriPtr(Rect) rects, uint32_t rectNum);

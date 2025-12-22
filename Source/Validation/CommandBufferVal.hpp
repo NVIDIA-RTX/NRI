@@ -12,7 +12,7 @@ static inline bool IsAccessMaskSupported(const BufferDesc& bufferDesc, AccessBit
         isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::ARGUMENT_BUFFER) != 0;
     if (accessMask & AccessBits::SCRATCH_BUFFER)
         isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::SCRATCH_BUFFER) != 0;
-    if (accessMask & (AccessBits::COLOR_ATTACHMENT | AccessBits::SHADING_RATE_ATTACHMENT | AccessBits::DEPTH_STENCIL_ATTACHMENT_READ | AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE))
+    if (accessMask & (AccessBits::COLOR_ATTACHMENT | AccessBits::SHADING_RATE_ATTACHMENT | AccessBits::DEPTH_STENCIL_ATTACHMENT_READ | AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE | AccessBits::INPUT_ATTACHMENT))
         isSupported = false;
     if (accessMask & (AccessBits::ACCELERATION_STRUCTURE_READ | AccessBits::ACCELERATION_STRUCTURE_WRITE))
         isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE) != 0;
@@ -48,6 +48,8 @@ static inline bool IsAccessMaskSupported(const TextureDesc& textureDesc, AccessB
         isSupported = false;
     if (accessMask & AccessBits::SHADER_RESOURCE)
         isSupported = isSupported && (textureDesc.usage & TextureUsageBits::SHADER_RESOURCE) != 0;
+    if (accessMask & AccessBits::INPUT_ATTACHMENT)
+        isSupported = isSupported && (textureDesc.usage & TextureUsageBits::INPUT_ATTACHMENT) != 0;
     if (accessMask & (AccessBits::SHADER_RESOURCE_STORAGE | AccessBits::CLEAR_STORAGE))
         isSupported = isSupported && (textureDesc.usage & TextureUsageBits::SHADER_RESOURCE_STORAGE) != 0;
 
@@ -59,7 +61,10 @@ static inline bool IsTextureLayoutSupported(const TextureDesc& textureDesc, Layo
         return (textureDesc.usage & TextureUsageBits::COLOR_ATTACHMENT) != 0;
     else if (layout == Layout::SHADING_RATE_ATTACHMENT)
         return (textureDesc.usage & TextureUsageBits::SHADING_RATE_ATTACHMENT) != 0;
-    else if (layout == Layout::DEPTH_STENCIL_ATTACHMENT || layout == Layout::DEPTH_STENCIL_READONLY)
+    else if (layout == Layout::DEPTH_STENCIL_ATTACHMENT
+        || layout == Layout::DEPTH_READONLY_STENCIL_ATTACHMENT
+        || layout == Layout::DEPTH_ATTACHMENT_STENCIL_READONLY
+        || layout == Layout::DEPTH_STENCIL_READONLY)
         return (textureDesc.usage & TextureUsageBits::DEPTH_STENCIL_ATTACHMENT) != 0;
     else if (layout == Layout::SHADER_RESOURCE)
         return (textureDesc.usage & TextureUsageBits::SHADER_RESOURCE) != 0;
@@ -69,6 +74,8 @@ static inline bool IsTextureLayoutSupported(const TextureDesc& textureDesc, Layo
         return textureDesc.sampleNum <= 1;
     else if (layout == Layout::RESOLVE_SOURCE)
         return textureDesc.sampleNum > 1;
+    else if (layout == Layout::INPUT_ATTACHMENT)
+        return (textureDesc.usage & TextureUsageBits::INPUT_ATTACHMENT) != 0;
 
     return true;
 }
@@ -245,37 +252,39 @@ NRI_INLINE void CommandBufferVal::ClearStorage(const ClearStorageDesc& clearStor
     GetCoreInterfaceImpl().CmdClearStorage(*GetImpl(), clearStorageDescImpl);
 }
 
-NRI_INLINE void CommandBufferVal::BeginRendering(const AttachmentsDesc& attachmentsDesc) {
+NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingDesc) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
-    RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "'CmdBeginRendering' has been already called");
+    RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "'CmdBeginRendering' has already been called");
 
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
-    if (attachmentsDesc.shadingRate)
+    if (renderingDesc.shadingRate)
         RETURN_ON_FAILURE(&m_Device, deviceDesc.tiers.shadingRate, ReturnVoid(), "'tiers.shadingRate >= 2' required");
 
-    Scratch<Descriptor*> colors = AllocateScratch(m_Device, Descriptor*, attachmentsDesc.colorNum);
-    for (uint32_t i = 0; i < attachmentsDesc.colorNum; i++)
-        colors[i] = NRI_GET_IMPL(Descriptor, attachmentsDesc.colors[i]);
+    ResetAttachments();
 
-    auto attachmentsDescImpl = attachmentsDesc;
-    attachmentsDescImpl.depthStencil = NRI_GET_IMPL(Descriptor, attachmentsDesc.depthStencil);
-    attachmentsDescImpl.shadingRate = NRI_GET_IMPL(Descriptor, attachmentsDesc.shadingRate);
+    Scratch<AttachmentDesc> colors = AllocateScratch(m_Device, AttachmentDesc, renderingDesc.colorNum);
+    for (uint32_t i = 0; i < renderingDesc.colorNum; i++) {
+        colors[i] = renderingDesc.colors[i];
+        colors[i].descriptor = NRI_GET_IMPL(Descriptor, renderingDesc.colors[i].descriptor);
+        colors[i].resolveDst = NRI_GET_IMPL(Descriptor, renderingDesc.colors[i].resolveDst);
+
+        m_RenderTargets[i] = (DescriptorVal*)renderingDesc.colors[i].descriptor;
+    }
+
+    auto attachmentsDescImpl = renderingDesc;
     attachmentsDescImpl.colors = colors;
-    attachmentsDescImpl.colorNum = attachmentsDesc.colorNum;
+    attachmentsDescImpl.colorNum = renderingDesc.colorNum;
+    attachmentsDescImpl.depth.descriptor = NRI_GET_IMPL(Descriptor, renderingDesc.depth.descriptor);
+    attachmentsDescImpl.depth.resolveDst = NRI_GET_IMPL(Descriptor, renderingDesc.depth.resolveDst);
+    attachmentsDescImpl.stencil.descriptor = NRI_GET_IMPL(Descriptor, renderingDesc.stencil.descriptor);
+    attachmentsDescImpl.stencil.resolveDst = NRI_GET_IMPL(Descriptor, renderingDesc.stencil.resolveDst);
+    attachmentsDescImpl.shadingRate = NRI_GET_IMPL(Descriptor, renderingDesc.shadingRate);
 
+    Descriptor* depthStencil = renderingDesc.depth.descriptor ? renderingDesc.depth.descriptor : renderingDesc.stencil.descriptor;
+    m_DepthStencil = depthStencil ? (DescriptorVal*)depthStencil : nullptr;
+
+    m_RenderTargetNum = renderingDesc.colorNum;
     m_IsRenderPass = true;
-    m_RenderTargetNum = attachmentsDesc.colors ? attachmentsDesc.colorNum : 0;
-
-    size_t i = 0;
-    for (; i < m_RenderTargetNum; i++)
-        m_RenderTargets[i] = (DescriptorVal*)attachmentsDesc.colors[i];
-    for (; i < m_RenderTargets.size(); i++)
-        m_RenderTargets[i] = nullptr;
-
-    if (attachmentsDesc.depthStencil)
-        m_DepthStencil = (DescriptorVal*)attachmentsDesc.depthStencil;
-    else
-        m_DepthStencil = nullptr;
 
     ValidateReadonlyDepthStencil();
 
@@ -524,7 +533,6 @@ NRI_INLINE void CommandBufferVal::DispatchIndirect(const Buffer& buffer, uint64_
 
 NRI_INLINE void CommandBufferVal::Barrier(const BarrierDesc& barrierDesc) {
     RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
-    RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
 
     for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
         if (!ValidateBufferBarrierDesc(m_Device, i, barrierDesc.buffers[i]))

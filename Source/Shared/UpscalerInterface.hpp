@@ -720,7 +720,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
                 return result;
 
             Texture2DViewDesc textureViewDesc = {};
-            textureViewDesc.viewType = Texture2DViewType::SHADER_RESOURCE_2D;
+            textureViewDesc.viewType = Texture2DViewType::SHADER_RESOURCE;
             textureViewDesc.format = Format::RGBA16_SFLOAT;
             textureViewDesc.mipNum = 1;
             textureViewDesc.layerNum = 1;

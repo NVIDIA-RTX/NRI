@@ -485,7 +485,7 @@ static void NRI_CALL CmdSetShadingRate(CommandBuffer&, const ShadingRateDesc&) {
 static void NRI_CALL CmdSetDepthBias(CommandBuffer&, const DepthBiasDesc&) {
 }
 
-static void NRI_CALL CmdBeginRendering(CommandBuffer&, const AttachmentsDesc&) {
+static void NRI_CALL CmdBeginRendering(CommandBuffer&, const RenderingDesc&) {
 }
 
 static void NRI_CALL CmdClearAttachments(CommandBuffer&, const ClearAttachmentDesc*, uint32_t, const Rect*, uint32_t) {

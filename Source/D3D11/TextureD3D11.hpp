@@ -6,7 +6,7 @@ Result TextureD3D11::Allocate(MemoryLocation memoryLocation, float priority) {
     const DxgiFormat& dxgiFormat = GetDxgiFormat(m_Desc.format);
 
     uint32_t bindFlags = 0;
-    if (m_Desc.usage & TextureUsageBits::SHADER_RESOURCE)
+    if (m_Desc.usage & (TextureUsageBits::SHADER_RESOURCE | TextureUsageBits::INPUT_ATTACHMENT))
         bindFlags |= D3D11_BIND_SHADER_RESOURCE;
     if (m_Desc.usage & TextureUsageBits::SHADER_RESOURCE_STORAGE)
         bindFlags |= D3D11_BIND_UNORDERED_ACCESS;

@@ -108,7 +108,8 @@ static D3D12_RESOURCE_FLAGS GetTextureFlags(TextureUsageBits textureUsage) {
     if (textureUsage & TextureUsageBits::DEPTH_STENCIL_ATTACHMENT) {
         flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
-        if (!(textureUsage & TextureUsageBits::SHADER_RESOURCE))
+        bool isShaderResource = textureUsage & (TextureUsageBits::SHADER_RESOURCE | TextureUsageBits::INPUT_ATTACHMENT);
+        if (!isShaderResource)
             flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
     }
 
@@ -850,6 +851,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.shaderFeatures.rasterizedOrderedView = options.ROVsSupported;
     m_Desc.shaderFeatures.barycentric = options3.BarycentricsSupported;
     m_Desc.shaderFeatures.integerDotProduct = m_Desc.shaderModel >= 64;
+    m_Desc.shaderFeatures.inputAttachments = true;
 }
 
 void DeviceD3D12::InitializeNvExt(bool disableNVAPIInitialization, bool isImported) {

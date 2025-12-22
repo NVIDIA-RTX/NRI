@@ -392,8 +392,8 @@ static void NRI_CALL CmdSetDepthBias(CommandBuffer& commandBuffer, const DepthBi
     ((CommandBufferD3D12&)commandBuffer).SetDepthBias(depthBiasDesc);
 }
 
-static void NRI_CALL CmdBeginRendering(CommandBuffer& commandBuffer, const AttachmentsDesc& attachmentsDesc) {
-    ((CommandBufferD3D12&)commandBuffer).BeginRendering(attachmentsDesc);
+static void NRI_CALL CmdBeginRendering(CommandBuffer& commandBuffer, const RenderingDesc& renderingDesc) {
+    ((CommandBufferD3D12&)commandBuffer).BeginRendering(renderingDesc);
 }
 
 static void NRI_CALL CmdClearAttachments(CommandBuffer& commandBuffer, const ClearAttachmentDesc* clearAttachmentDescs, uint32_t clearAttachmentDescNum, const Rect* rects, uint32_t rectNum) {
@@ -417,7 +417,7 @@ static void NRI_CALL CmdDrawIndexedIndirect(CommandBuffer& commandBuffer, const 
 }
 
 static void NRI_CALL CmdEndRendering(CommandBuffer& commandBuffer) {
-    ((CommandBufferD3D12&)commandBuffer).ResetAttachments();
+    ((CommandBufferD3D12&)commandBuffer).EndRendering();
 }
 
 static void NRI_CALL CmdDispatch(CommandBuffer& commandBuffer, const DispatchDesc& dispatchDesc) {

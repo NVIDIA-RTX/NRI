@@ -7,13 +7,19 @@
 USAGE:
 
 Textures, buffers, samplers and acceleration structures:
-    NRI_RESOURCE(Texture2D<float4>, gInput, t, 0, 2);
-    NRI_RESOURCE(StructuredBuffer<InstanceData>, gInstanceData, t, 2, 2);
-    NRI_RESOURCE(RaytracingAccelerationStructure, gTlas, t, 1, 2);
+    NRI_RESOURCE(Texture2D<float4>, gTexture, t, 0, 0);
+    NRI_RESOURCE(Buffer<float2>, gBuffer, t, 1, 0);
+    NRI_RESOURCE(StructuredBuffer<MyStruct>, gStructuredBuffer, t, 2, 0);
+    NRI_RESOURCE(RaytracingAccelerationStructure, gTlas, t, 3, 0);
     NRI_RESOURCE(SamplerState, gLinearMipmapLinearSampler, s, 0, 0);
 
+Storage textures and buffers:
+    NRI_RESOURCE(RWTexture2D<float4>, gStorageTexture, u, 0, 1);
+    NRI_RESOURCE(RWBuffer<float2>, gStorageBuffer, u, 1, 1);
+    NRI_RESOURCE(RWStructuredBuffer<MyStruct>, gStorageStructuredBuffer, u, 2, 1);
+
 Texture and buffer arrays:
-    NRI_RESOURCE(Texture2D<float3>, gInputs[], t, 0, 1); // DXIL/SPIRV only
+    NRI_RESOURCE(Texture2D<float3>, gInputs[], t, 0, 0); // DXIL/SPIRV only
     NRI_RESOURCE(Texture2D<float>, gInputs[8], t, 0, 0); // DXBC compatible
 
 Non-structured storage resources must be used with "NRI_FORMAT" macro. "unknown" is allowed if
@@ -40,6 +46,9 @@ Push constants:
     };
 
     NRI_ROOT_CONSTANTS(RootConstants, gRootConstants, 7, 0); // a constant buffer in DXBC
+
+Input attachments (reading on-chip memory):
+    NRI_INPUT_ATTACHMENT(gGbuffer, 1, 1, 0); // use "NRI_INPUT_ATTACHMENT_LOAD" for loading data
 
 Draw parameters:
     - Add to the global scope:
@@ -71,7 +80,7 @@ Draw parameters:
         #define NRI_PRINTF_AVAILABLE
     #elif defined __dxil__
         #define NRI_DXIL
-    #endif 
+    #endif
 #else
     #if (defined(__cplusplus) || defined(__STDC__) || defined(__STDC_VERSION__))
         #define NRI_C
@@ -179,7 +188,7 @@ Draw parameters:
     #else
         #define NRI_RESOURCE(resourceType, name, regName, bindingIndex, setIndex) \
             resourceType name : register(NRI_MERGE_TOKENS(regName, bindingIndex), NRI_MERGE_TOKENS(space, setIndex))
-    #endif 
+    #endif
 
     #define NRI_ROOT_CONSTANTS(structName, name, bindingIndex, setIndex) \
         [[vk::push_constant]] structName name
@@ -189,6 +198,14 @@ Draw parameters:
 
     #define NRI_FORMAT(format) \
         [[vk::image_format(format)]]
+
+    // Input attachment
+    #define NRI_INPUT_ATTACHMENT(name, attachmentIndex, bindingIndex, setIndex) \
+        [[vk::input_attachment_index(attachmentIndex)]] \
+        [[vk::binding(bindingIndex, setIndex)]] \
+        SubpassInput name
+
+    #define NRI_INPUT_ATTACHMENT_LOAD(inputAttachment, pixelPos) inputAttachment.SubpassLoad()
 
     // Draw parameters (full support, requires SPV_KHR_shader_draw_parameters)
     #define NRI_ENABLE_DRAW_PARAMETERS
@@ -214,6 +231,12 @@ Draw parameters:
 
     #define NRI_BLEND_SOURCE(source)
     #define NRI_FORMAT(format)
+
+    // Input attachment
+    #define NRI_INPUT_ATTACHMENT(name, attachmentIndex, bindingIndex, setIndex) \
+        NRI_RESOURCE(Texture2D, g_Normals, t, bindingIndex, setIndex)
+
+    #define NRI_INPUT_ATTACHMENT_LOAD(inputAttachment, pixelPos) inputAttachment[int2(pixelPos.xy)]
 
     // Draw parameters
     #if (NRI_SHADER_MODEL < 68)
@@ -277,6 +300,12 @@ Draw parameters:
 
     #define NRI_BLEND_SOURCE(source)
     #define NRI_FORMAT(format)
+
+    // Input attachment
+    #define NRI_INPUT_ATTACHMENT(name, attachmentIndex, bindingIndex, setIndex) \
+        NRI_RESOURCE(Texture2D, g_Normals, t, bindingIndex, setIndex)
+
+    #define NRI_INPUT_ATTACHMENT_LOAD(inputAttachment, pixelPos) inputAttachment[int2(pixelPos.xy)]
 
     // Draw parameters (partial support)
     #define NRI_ENABLE_DRAW_PARAMETERS

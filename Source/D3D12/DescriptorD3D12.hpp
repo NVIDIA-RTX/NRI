@@ -40,12 +40,12 @@ Result DescriptorD3D12::Create(const Texture1DViewDesc& textureViewDesc) {
     m_ViewDesc.texture.layerNum = layerNum;
     m_ViewDesc.texture.mipOffset = textureViewDesc.mipOffset;
     m_ViewDesc.texture.mipNum = mipNum;
-    
+
     m_Format = textureViewDesc.format;
     m_Resource = textureD3D12;
 
     switch (textureViewDesc.viewType) {
-        case Texture1DViewType::SHADER_RESOURCE_1D: {
+        case Texture1DViewType::SHADER_RESOURCE: {
             D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
             desc.Format = format;
             desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
@@ -55,7 +55,7 @@ Result DescriptorD3D12::Create(const Texture1DViewDesc& textureViewDesc) {
 
             return CreateShaderResourceView(textureD3D12, desc);
         }
-        case Texture1DViewType::SHADER_RESOURCE_1D_ARRAY: {
+        case Texture1DViewType::SHADER_RESOURCE_ARRAY: {
             D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
             desc.Format = format;
             desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1DARRAY;
@@ -67,7 +67,7 @@ Result DescriptorD3D12::Create(const Texture1DViewDesc& textureViewDesc) {
 
             return CreateShaderResourceView(textureD3D12, desc);
         }
-        case Texture1DViewType::SHADER_RESOURCE_STORAGE_1D: {
+        case Texture1DViewType::SHADER_RESOURCE_STORAGE: {
             D3D12_UNORDERED_ACCESS_VIEW_DESC desc = {};
             desc.Format = format;
             desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1D;
@@ -75,7 +75,7 @@ Result DescriptorD3D12::Create(const Texture1DViewDesc& textureViewDesc) {
 
             return CreateUnorderedAccessView(textureD3D12, desc);
         }
-        case Texture1DViewType::SHADER_RESOURCE_STORAGE_1D_ARRAY: {
+        case Texture1DViewType::SHADER_RESOURCE_STORAGE_ARRAY: {
             D3D12_UNORDERED_ACCESS_VIEW_DESC desc = {};
             desc.Format = format;
             desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1DARRAY;
@@ -95,10 +95,7 @@ Result DescriptorD3D12::Create(const Texture1DViewDesc& textureViewDesc) {
 
             return CreateRenderTargetView(textureD3D12, desc);
         }
-        case Texture1DViewType::DEPTH_STENCIL_ATTACHMENT:
-        case Texture1DViewType::DEPTH_READONLY_STENCIL_ATTACHMENT:
-        case Texture1DViewType::DEPTH_ATTACHMENT_STENCIL_READONLY:
-        case Texture1DViewType::DEPTH_STENCIL_READONLY: {
+        case Texture1DViewType::DEPTH_STENCIL_ATTACHMENT: {
             D3D12_DEPTH_STENCIL_VIEW_DESC desc = {};
             desc.Format = format;
             desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1DARRAY;
@@ -106,12 +103,10 @@ Result DescriptorD3D12::Create(const Texture1DViewDesc& textureViewDesc) {
             desc.Texture1DArray.FirstArraySlice = textureViewDesc.layerOffset;
             desc.Texture1DArray.ArraySize = layerNum;
 
-            if (textureViewDesc.viewType == Texture1DViewType::DEPTH_READONLY_STENCIL_ATTACHMENT)
-                desc.Flags = D3D12_DSV_FLAG_READ_ONLY_DEPTH;
-            else if (textureViewDesc.viewType == Texture1DViewType::DEPTH_ATTACHMENT_STENCIL_READONLY)
-                desc.Flags = D3D12_DSV_FLAG_READ_ONLY_STENCIL;
-            else if (textureViewDesc.viewType == Texture1DViewType::DEPTH_STENCIL_READONLY)
-                desc.Flags = D3D12_DSV_FLAG_READ_ONLY_DEPTH | D3D12_DSV_FLAG_READ_ONLY_STENCIL;
+            if (textureViewDesc.readonlyPlanes & PlaneBits::DEPTH)
+                desc.Flags |= D3D12_DSV_FLAG_READ_ONLY_DEPTH;
+            if (textureViewDesc.readonlyPlanes & PlaneBits::STENCIL)
+                desc.Flags |= D3D12_DSV_FLAG_READ_ONLY_STENCIL;
 
             return CreateDepthStencilView(textureD3D12, desc);
         }
@@ -134,12 +129,13 @@ Result DescriptorD3D12::Create(const Texture2DViewDesc& textureViewDesc) {
     m_ViewDesc.texture.layerNum = layerNum;
     m_ViewDesc.texture.mipOffset = textureViewDesc.mipOffset;
     m_ViewDesc.texture.mipNum = mipNum;
-    
+
     m_Format = textureViewDesc.format;
     m_Resource = textureD3D12;
 
     switch (textureViewDesc.viewType) {
-        case Texture2DViewType::SHADER_RESOURCE_2D: {
+        case Texture2DViewType::INPUT_ATTACHMENT:
+        case Texture2DViewType::SHADER_RESOURCE: {
             D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
             desc.Format = GetShaderFormatForDepth(format);
             desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -154,7 +150,7 @@ Result DescriptorD3D12::Create(const Texture2DViewDesc& textureViewDesc) {
 
             return CreateShaderResourceView(textureD3D12, desc);
         }
-        case Texture2DViewType::SHADER_RESOURCE_2D_ARRAY: {
+        case Texture2DViewType::SHADER_RESOURCE_ARRAY: {
             D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
             desc.Format = GetShaderFormatForDepth(format);
             desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -195,7 +191,7 @@ Result DescriptorD3D12::Create(const Texture2DViewDesc& textureViewDesc) {
 
             return CreateShaderResourceView(textureD3D12, desc);
         }
-        case Texture2DViewType::SHADER_RESOURCE_STORAGE_2D: {
+        case Texture2DViewType::SHADER_RESOURCE_STORAGE: {
             D3D12_UNORDERED_ACCESS_VIEW_DESC desc = {};
             desc.Format = format;
             desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
@@ -204,7 +200,7 @@ Result DescriptorD3D12::Create(const Texture2DViewDesc& textureViewDesc) {
 
             return CreateUnorderedAccessView(textureD3D12, desc);
         }
-        case Texture2DViewType::SHADER_RESOURCE_STORAGE_2D_ARRAY: {
+        case Texture2DViewType::SHADER_RESOURCE_STORAGE_ARRAY: {
             D3D12_UNORDERED_ACCESS_VIEW_DESC desc = {};
             desc.Format = format;
             desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
@@ -232,10 +228,7 @@ Result DescriptorD3D12::Create(const Texture2DViewDesc& textureViewDesc) {
 
             return CreateRenderTargetView(textureD3D12, desc);
         }
-        case Texture2DViewType::DEPTH_STENCIL_ATTACHMENT:
-        case Texture2DViewType::DEPTH_READONLY_STENCIL_ATTACHMENT:
-        case Texture2DViewType::DEPTH_ATTACHMENT_STENCIL_READONLY:
-        case Texture2DViewType::DEPTH_STENCIL_READONLY: {
+        case Texture2DViewType::DEPTH_STENCIL_ATTACHMENT: {
             D3D12_DEPTH_STENCIL_VIEW_DESC desc = {};
             desc.Format = format;
             if (textureDesc.sampleNum > 1) {
@@ -249,18 +242,15 @@ Result DescriptorD3D12::Create(const Texture2DViewDesc& textureViewDesc) {
                 desc.Texture2DArray.ArraySize = layerNum;
             }
 
-            if (textureViewDesc.viewType == Texture2DViewType::DEPTH_READONLY_STENCIL_ATTACHMENT)
-                desc.Flags = D3D12_DSV_FLAG_READ_ONLY_DEPTH;
-            else if (textureViewDesc.viewType == Texture2DViewType::DEPTH_ATTACHMENT_STENCIL_READONLY)
-                desc.Flags = D3D12_DSV_FLAG_READ_ONLY_STENCIL;
-            else if (textureViewDesc.viewType == Texture2DViewType::DEPTH_STENCIL_READONLY)
-                desc.Flags = D3D12_DSV_FLAG_READ_ONLY_DEPTH | D3D12_DSV_FLAG_READ_ONLY_STENCIL;
+            if (textureViewDesc.readonlyPlanes & PlaneBits::DEPTH)
+                desc.Flags |= D3D12_DSV_FLAG_READ_ONLY_DEPTH;
+            if (textureViewDesc.readonlyPlanes & PlaneBits::STENCIL)
+                desc.Flags |= D3D12_DSV_FLAG_READ_ONLY_STENCIL;
 
             return CreateDepthStencilView(textureD3D12, desc);
         }
-        case Texture2DViewType::SHADING_RATE_ATTACHMENT: {
+        case Texture2DViewType::SHADING_RATE_ATTACHMENT:
             return Result::SUCCESS; // a resource view is not needed
-        }
         default:
             CHECK(false, "Unexpected");
             return Result::INVALID_ARGUMENT;
@@ -285,7 +275,7 @@ Result DescriptorD3D12::Create(const Texture3DViewDesc& textureViewDesc) {
     m_Resource = textureD3D12;
 
     switch (textureViewDesc.viewType) {
-        case Texture3DViewType::SHADER_RESOURCE_3D: {
+        case Texture3DViewType::SHADER_RESOURCE: {
             D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
             desc.Format = format;
             desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
@@ -295,7 +285,7 @@ Result DescriptorD3D12::Create(const Texture3DViewDesc& textureViewDesc) {
 
             return CreateShaderResourceView(textureD3D12, desc);
         }
-        case Texture3DViewType::SHADER_RESOURCE_STORAGE_3D: {
+        case Texture3DViewType::SHADER_RESOURCE_STORAGE: {
             D3D12_UNORDERED_ACCESS_VIEW_DESC desc = {};
             desc.Format = format;
             desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
@@ -484,8 +474,7 @@ Result DescriptorD3D12::CreateShaderResourceView(ID3D12Resource* resource, const
     else if (desc.ViewDimension == D3D12_SRV_DIMENSION_BUFFER) {
         bool isStructured = desc.Buffer.StructureByteStride != 0 || (desc.Buffer.Flags & D3D12_BUFFER_SRV_FLAG_RAW) != 0;
         m_Type = isStructured ? DescriptorType::STRUCTURED_BUFFER : DescriptorType::BUFFER;
-    }
-    else
+    } else
         m_Type = DescriptorType::TEXTURE;
 
     return result;

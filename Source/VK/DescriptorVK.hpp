@@ -2,12 +2,12 @@
 
 constexpr VkImageViewType GetImageViewType(Texture1DViewType type, uint32_t layerNum) {
     switch (type) {
-        case Texture1DViewType::SHADER_RESOURCE_1D:
-        case Texture1DViewType::SHADER_RESOURCE_STORAGE_1D:
+        case Texture1DViewType::SHADER_RESOURCE:
+        case Texture1DViewType::SHADER_RESOURCE_STORAGE:
             return VK_IMAGE_VIEW_TYPE_1D;
 
-        case Texture1DViewType::SHADER_RESOURCE_1D_ARRAY:
-        case Texture1DViewType::SHADER_RESOURCE_STORAGE_1D_ARRAY:
+        case Texture1DViewType::SHADER_RESOURCE_ARRAY:
+        case Texture1DViewType::SHADER_RESOURCE_STORAGE_ARRAY:
             return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
 
         default:
@@ -17,12 +17,12 @@ constexpr VkImageViewType GetImageViewType(Texture1DViewType type, uint32_t laye
 
 constexpr VkImageViewType GetImageViewType(Texture2DViewType type, uint32_t layerNum) {
     switch (type) {
-        case Texture2DViewType::SHADER_RESOURCE_2D:
-        case Texture2DViewType::SHADER_RESOURCE_STORAGE_2D:
+        case Texture2DViewType::SHADER_RESOURCE:
+        case Texture2DViewType::SHADER_RESOURCE_STORAGE:
             return VK_IMAGE_VIEW_TYPE_2D;
 
-        case Texture2DViewType::SHADER_RESOURCE_2D_ARRAY:
-        case Texture2DViewType::SHADER_RESOURCE_STORAGE_2D_ARRAY:
+        case Texture2DViewType::SHADER_RESOURCE_ARRAY:
+        case Texture2DViewType::SHADER_RESOURCE_STORAGE_ARRAY:
             return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
 
         case Texture2DViewType::SHADER_RESOURCE_CUBE:
@@ -66,8 +66,7 @@ DescriptorVK::~DescriptorVK() {
     }
 }
 
-template <typename T>
-Result DescriptorVK::CreateTextureView(const T& textureViewDesc) {
+Result DescriptorVK::CreateTextureView(const Texture1DViewDesc& textureViewDesc) {
     const TextureVK& textureVK = *(const TextureVK*)textureViewDesc.texture;
     const TextureDesc& textureDesc = textureVK.GetDesc();
     Dim_t mipNum = textureViewDesc.mipNum == REMAINING ? (textureDesc.mipNum - textureViewDesc.mipOffset) : textureViewDesc.mipNum;
@@ -95,12 +94,22 @@ Result DescriptorVK::CreateTextureView(const T& textureViewDesc) {
     VkResult vkResult = vk.CreateImageView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_View.image);
     RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImageView");
 
+    VkImageLayout expectedLayout = GetImageLayoutForView(textureViewDesc.viewType);
+    if (textureViewDesc.viewType == Texture1DViewType::DEPTH_STENCIL_ATTACHMENT) {
+        if (textureViewDesc.readonlyPlanes == (PlaneBits::DEPTH | PlaneBits::STENCIL))
+            expectedLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+        else if (textureViewDesc.readonlyPlanes == PlaneBits::DEPTH)
+            expectedLayout = VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
+        else if (textureViewDesc.readonlyPlanes == PlaneBits::STENCIL)
+            expectedLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
+    }
+
     m_Type = GetDescriptorTypeForView(textureViewDesc.viewType);
     m_Format = textureViewDesc.format;
 
     m_ViewDesc.texture = {};
     m_ViewDesc.texture.texture = &textureVK;
-    m_ViewDesc.texture.layout = GetImageLayoutForView(textureViewDesc.viewType);
+    m_ViewDesc.texture.expectedLayout = expectedLayout;
     m_ViewDesc.texture.layerOrSliceOffset = textureViewDesc.layerOffset;
     m_ViewDesc.texture.layerOrSliceNum = layerNum;
     m_ViewDesc.texture.mipOffset = textureViewDesc.mipOffset;
@@ -109,7 +118,58 @@ Result DescriptorVK::CreateTextureView(const T& textureViewDesc) {
     return Result::SUCCESS;
 }
 
-template <>
+Result DescriptorVK::CreateTextureView(const Texture2DViewDesc& textureViewDesc) {
+    const TextureVK& textureVK = *(const TextureVK*)textureViewDesc.texture;
+    const TextureDesc& textureDesc = textureVK.GetDesc();
+    Dim_t mipNum = textureViewDesc.mipNum == REMAINING ? (textureDesc.mipNum - textureViewDesc.mipOffset) : textureViewDesc.mipNum;
+    Dim_t layerNum = textureViewDesc.layerNum == REMAINING ? (textureDesc.layerNum - textureViewDesc.layerOffset) : textureViewDesc.layerNum;
+
+    VkImageViewUsageCreateInfo usageInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO};
+    usageInfo.usage = GetImageViewUsage(textureViewDesc.viewType);
+
+    VkImageSubresourceRange subresourceRange = {
+        GetImageAspectFlags(textureViewDesc.format),
+        textureViewDesc.mipOffset,
+        mipNum,
+        textureViewDesc.layerOffset,
+        layerNum,
+    };
+
+    VkImageViewCreateInfo createInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+    createInfo.pNext = &usageInfo;
+    createInfo.viewType = GetImageViewType(textureViewDesc.viewType, subresourceRange.layerCount);
+    createInfo.format = GetVkFormat(textureViewDesc.format);
+    createInfo.subresourceRange = subresourceRange;
+    createInfo.image = textureVK.GetHandle();
+
+    const auto& vk = m_Device.GetDispatchTable();
+    VkResult vkResult = vk.CreateImageView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_View.image);
+    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImageView");
+
+    VkImageLayout expectedLayout = GetImageLayoutForView(textureViewDesc.viewType);
+    if (textureViewDesc.viewType == Texture2DViewType::DEPTH_STENCIL_ATTACHMENT) {
+        if (textureViewDesc.readonlyPlanes == (PlaneBits::DEPTH | PlaneBits::STENCIL))
+            expectedLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+        else if (textureViewDesc.readonlyPlanes == PlaneBits::DEPTH)
+            expectedLayout = VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
+        else if (textureViewDesc.readonlyPlanes == PlaneBits::STENCIL)
+            expectedLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
+    }
+
+    m_Type = GetDescriptorTypeForView(textureViewDesc.viewType);
+    m_Format = textureViewDesc.format;
+
+    m_ViewDesc.texture = {};
+    m_ViewDesc.texture.texture = &textureVK;
+    m_ViewDesc.texture.expectedLayout = expectedLayout;
+    m_ViewDesc.texture.layerOrSliceOffset = textureViewDesc.layerOffset;
+    m_ViewDesc.texture.layerOrSliceNum = layerNum;
+    m_ViewDesc.texture.mipOffset = textureViewDesc.mipOffset;
+    m_ViewDesc.texture.mipNum = mipNum;
+
+    return Result::SUCCESS;
+}
+
 Result DescriptorVK::CreateTextureView(const Texture3DViewDesc& textureViewDesc) {
     const TextureVK& textureVK = *(const TextureVK*)textureViewDesc.texture;
     const TextureDesc& textureDesc = textureVK.GetDesc();
@@ -150,7 +210,7 @@ Result DescriptorVK::CreateTextureView(const Texture3DViewDesc& textureViewDesc)
 
     m_ViewDesc.texture = {};
     m_ViewDesc.texture.texture = &textureVK;
-    m_ViewDesc.texture.layout = GetImageLayoutForView(textureViewDesc.viewType);
+    m_ViewDesc.texture.expectedLayout = GetImageLayoutForView(textureViewDesc.viewType);
     m_ViewDesc.texture.layerOrSliceOffset = textureViewDesc.sliceOffset;
     m_ViewDesc.texture.layerOrSliceNum = sliceNum;
     m_ViewDesc.texture.mipOffset = textureViewDesc.mipOffset;

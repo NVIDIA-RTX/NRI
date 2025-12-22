@@ -7,8 +7,8 @@ namespace nri {
 struct TextureVK;
 
 struct TexViewDesc {
-    const TextureVK* texture; // needed
-    VkImageLayout layout;
+    const TextureVK* texture;
+    VkImageLayout expectedLayout;
     Dim_t layerOrSliceOffset; // this is valid, because it's used only for https://docs.vulkan.org/refpages/latest/refpages/source/VkImageSubresourceRange.html
     Dim_t layerOrSliceNum;
     Dim_t mipOffset;
@@ -56,13 +56,12 @@ struct DescriptorVK final : public DebugNameBase {
         return m_View.accelerationStructure;
     }
 
-    // TODO: these 2 functions don't work if GENERAL is used everywhere!
     inline bool IsDepthWritable() const {
-        return m_ViewDesc.texture.layout != VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL && m_ViewDesc.texture.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+        return m_ViewDesc.texture.expectedLayout != VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL && m_ViewDesc.texture.expectedLayout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
     }
 
     inline bool IsStencilWritable() const {
-        return m_ViewDesc.texture.layout != VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL && m_ViewDesc.texture.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+        return m_ViewDesc.texture.expectedLayout != VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL && m_ViewDesc.texture.expectedLayout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
     }
 
     ~DescriptorVK();
@@ -81,8 +80,9 @@ struct DescriptorVK final : public DebugNameBase {
     void SetDebugName(const char* name) DEBUG_NAME_OVERRIDE;
 
 private:
-    template <typename T>
-    Result CreateTextureView(const T& textureViewDesc);
+    Result CreateTextureView(const Texture1DViewDesc& textureViewDesc);
+    Result CreateTextureView(const Texture2DViewDesc& textureViewDesc);
+    Result CreateTextureView(const Texture3DViewDesc& textureViewDesc);
 
 private:
     DeviceVK& m_Device;

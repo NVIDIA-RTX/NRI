@@ -199,7 +199,7 @@ NRI_INLINE void CommandBufferD3D11::ClearAttachments(const ClearAttachmentDesc* 
             const ClearAttachmentDesc& clearAttachmentDesc = clearAttachmentDescs[i];
 
             if (clearAttachmentDesc.planes & PlaneBits::COLOR)
-                m_DeferredContext->ClearRenderTargetView(m_RenderTargets[clearAttachmentDesc.colorAttachmentIndex], &clearAttachmentDesc.value.color.f.x);
+                m_DeferredContext->ClearRenderTargetView(*m_RenderTargets[clearAttachmentDesc.colorAttachmentIndex].attachment, &clearAttachmentDesc.value.color.f.x);
             else {
                 uint32_t clearFlags = 0;
                 if (clearAttachmentDesc.planes & PlaneBits::DEPTH)
@@ -224,7 +224,7 @@ NRI_INLINE void CommandBufferD3D11::ClearAttachments(const ClearAttachmentDesc* 
                 const ClearAttachmentDesc& clearAttachmentDesc = clearAttachmentDescs[i];
 
                 if (clearAttachmentDesc.planes & PlaneBits::COLOR)
-                    m_DeferredContext->ClearView(m_RenderTargets[clearAttachmentDesc.colorAttachmentIndex], &clearAttachmentDesc.value.color.f.x, rectsD3D, rectNum);
+                    m_DeferredContext->ClearView(*m_RenderTargets[clearAttachmentDesc.colorAttachmentIndex].attachment, &clearAttachmentDesc.value.color.f.x, rectsD3D, rectNum);
                 else if (clearAttachmentDesc.planes & PlaneBits::DEPTH) {
                     color[0] = clearAttachmentDesc.value.depthStencil.depth;
                     m_DeferredContext->ClearView(m_DepthStencil, color, rectsD3D, rectNum);
@@ -246,38 +246,54 @@ NRI_INLINE void CommandBufferD3D11::ClearStorage(const ClearStorageDesc& clearSt
         m_DeferredContext->ClearUnorderedAccessViewFloat(descriptorD3D11, &clearStorageDesc.value.f.x);
 }
 
-NRI_INLINE void CommandBufferD3D11::BeginRendering(const AttachmentsDesc& attachmentsDesc) {
-    // Render targets
-    m_RenderTargetNum = attachmentsDesc.colors ? attachmentsDesc.colorNum : 0;
+NRI_INLINE void CommandBufferD3D11::BeginRendering(const RenderingDesc& renderingDesc) {
+    ResetAttachments();
 
-    size_t i = 0;
-    for (; i < m_RenderTargetNum; i++) {
-        const DescriptorD3D11& descriptor = *(DescriptorD3D11*)attachmentsDesc.colors[i];
-        m_RenderTargets[i] = descriptor;
+    std::array<ID3D11RenderTargetView*, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> renderTargets = {};
+    for (uint32_t i = 0; i < renderingDesc.colorNum; i++) {
+        const AttachmentDesc& attachmentDesc = renderingDesc.colors[i];
+
+        m_RenderTargets[i].attachment = (DescriptorD3D11*)attachmentDesc.descriptor;
+        m_RenderTargets[i].resolveDst = (DescriptorD3D11*)attachmentDesc.resolveDst;
+
+        renderTargets[i] = *m_RenderTargets[i].attachment;
     }
-    for (; i < m_RenderTargets.size(); i++)
-        m_RenderTargets[i] = nullptr;
 
-    if (attachmentsDesc.depthStencil) {
-        const DescriptorD3D11& descriptor = *(DescriptorD3D11*)attachmentsDesc.depthStencil;
-        m_DepthStencil = descriptor;
-    } else
-        m_DepthStencil = nullptr;
+    if (renderingDesc.depth.descriptor)
+        m_DepthStencil = *(DescriptorD3D11*)renderingDesc.depth.descriptor;
+    if (renderingDesc.stencil.descriptor) // it's safe to do it this way, since there are no "stencil-only" formats
+        m_DepthStencil = *(DescriptorD3D11*)renderingDesc.stencil.descriptor;
 
-    m_DeferredContext->OMSetRenderTargets(m_RenderTargetNum, m_RenderTargets.data(), m_DepthStencil);
+    // Bind
+    m_DeferredContext->OMSetRenderTargets(renderingDesc.colorNum, renderTargets.data(), m_DepthStencil);
+
+    // Clear
+    for (uint32_t i = 0; i < renderingDesc.colorNum; i++) {
+        if (renderingDesc.colors[i].loadOp == LoadOp::CLEAR)
+            m_DeferredContext->ClearRenderTargetView(renderTargets[i], &renderingDesc.colors[i].clearValue.color.f.x);
+    }
+
+    uint32_t clearFlags = 0;
+    if (renderingDesc.depth.loadOp == LoadOp::CLEAR)
+        clearFlags |= D3D11_CLEAR_DEPTH;
+    if (renderingDesc.stencil.loadOp == LoadOp::CLEAR)
+        clearFlags |= D3D11_CLEAR_STENCIL;
+
+    if (clearFlags)
+        m_DeferredContext->ClearDepthStencilView(m_DepthStencil, clearFlags, renderingDesc.depth.clearValue.depthStencil.depth, renderingDesc.stencil.clearValue.depthStencil.stencil);
 
     // Shading rate
 #if NRI_ENABLE_NVAPI
     if (m_Device.HasNvExt() && m_Device.GetDesc().tiers.shadingRate >= 2) {
         ID3D11NvShadingRateResourceView* shadingRateImage = nullptr;
-        if (attachmentsDesc.shadingRate) {
-            const DescriptorD3D11& descriptor = *(DescriptorD3D11*)attachmentsDesc.shadingRate;
-            shadingRateImage = descriptor;
+        if (renderingDesc.shadingRate) {
+            const DescriptorD3D11& descriptorD3D11 = *(DescriptorD3D11*)renderingDesc.shadingRate;
+            shadingRateImage = descriptorD3D11;
 
             // Program shading rate lookup table
             if (!m_IsShadingRateLookupTableSet) {
                 std::array<NV_D3D11_VIEWPORT_SHADING_RATE_DESC_V1, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> shadingRates = {};
-                for (i = 0; i < shadingRates.size(); i++) {
+                for (size_t i = 0; i < shadingRates.size(); i++) {
                     shadingRates[i].enableVariablePixelShadingRate = true;
 
                     for (size_t j = 0; j < GetCountOf(shadingRates[i].shadingRateTable); j++)
@@ -310,10 +326,32 @@ NRI_INLINE void CommandBufferD3D11::BeginRendering(const AttachmentsDesc& attach
 #if NRI_ENABLE_AMDAGS
     if (m_Device.HasAmdExt() && m_Device.GetDesc().other.viewMaxNum > 1) {
         const AmdExtD3D11& amdExt = m_Device.GetAmdExt();
-        AGSReturnCode res = amdExt.SetViewBroadcastMasks(amdExt.context, attachmentsDesc.viewMask, attachmentsDesc.viewMask ? 0x1 : 0x0, 0);
+        AGSReturnCode res = amdExt.SetViewBroadcastMasks(amdExt.context, renderingDesc.viewMask, renderingDesc.viewMask ? 0x1 : 0x0, 0);
         RETURN_ON_FAILURE(&m_Device, res == AGS_SUCCESS, ReturnVoid(), "agsDriverExtensionsDX11_SetViewBroadcastMasks() failed!");
     }
 #endif
+}
+
+NRI_INLINE void CommandBufferD3D11::EndRendering() {
+    // D3D11 doesn't support depth-stencil resolve
+    for (const AttachmentDescD3D11& attachmentDesc : m_RenderTargets) {
+        if (!attachmentDesc.resolveDst)
+            continue;
+
+        const DxgiFormat& format = GetDxgiFormat(attachmentDesc.resolveDst->GetFormat());
+
+        const SubresourceInfo& srcInfo = attachmentDesc.attachment->GetSubresourceInfo();
+        ID3D11Resource* srcResource = *srcInfo.texture.texture;
+        uint32_t srcSubresource = srcInfo.texture.texture->GetSubresourceIndex(srcInfo.texture.layerOffset, srcInfo.texture.mipOffset);
+
+        const SubresourceInfo& dstInfo = attachmentDesc.resolveDst->GetSubresourceInfo();
+        ID3D11Resource* dstResource = *dstInfo.texture.texture;
+        uint32_t dstSubresource = dstInfo.texture.texture->GetSubresourceIndex(dstInfo.texture.layerOffset, dstInfo.texture.mipOffset);
+
+        m_DeferredContext->ResolveSubresource(dstResource, dstSubresource, srcResource, srcSubresource, format.typed);
+    }
+
+    ResetAttachments();
 }
 
 NRI_INLINE void CommandBufferD3D11::SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum) {

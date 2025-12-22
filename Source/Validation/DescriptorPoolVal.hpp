@@ -52,6 +52,10 @@ NRI_INLINE Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout
                         m_StorageTextureNum += descriptorNum;
                         enoughDescriptors = m_StorageTextureNum <= m_Desc.storageTextureMaxNum;
                         break;
+                    case DescriptorType::INPUT_ATTACHMENT:
+                        m_InputAttachmentNum += descriptorNum;
+                        enoughDescriptors = m_InputAttachmentNum <= m_Desc.inputAttachmentMaxNum;
+                        break;
                     case DescriptorType::BUFFER:
                         m_BufferNum += descriptorNum;
                         enoughDescriptors = m_BufferNum <= m_Desc.bufferMaxNum;

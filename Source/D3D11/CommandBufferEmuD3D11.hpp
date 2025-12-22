@@ -179,14 +179,14 @@ void CommandBufferEmuD3D11::Submit() {
                 commandBuffer.ClearStorage(clearStorageDesc);
             } break;
             case BEGIN_RENDERING: {
-                AttachmentsDesc attachmentsDesc = {};
-                Read(m_PushBuffer, i, attachmentsDesc);
-                Read(m_PushBuffer, i, attachmentsDesc.colors, attachmentsDesc.colorNum);
+                RenderingDesc renderingDesc = {};
+                Read(m_PushBuffer, i, renderingDesc);
+                Read(m_PushBuffer, i, renderingDesc.colors, renderingDesc.colorNum);
 
-                commandBuffer.BeginRendering(attachmentsDesc);
+                commandBuffer.BeginRendering(renderingDesc);
             } break;
             case END_RENDERING: {
-                commandBuffer.ResetAttachments();
+                commandBuffer.EndRendering();
             } break;
             case SET_VERTEX_BUFFERS: {
                 uint32_t baseSlot;
@@ -538,10 +538,10 @@ NRI_INLINE void CommandBufferEmuD3D11::ClearStorage(const ClearStorageDesc& clea
     Push(m_PushBuffer, clearStorageDesc);
 }
 
-NRI_INLINE void CommandBufferEmuD3D11::BeginRendering(const AttachmentsDesc& attachmentsDesc) {
+NRI_INLINE void CommandBufferEmuD3D11::BeginRendering(const RenderingDesc& renderingDesc) {
     Push(m_PushBuffer, BEGIN_RENDERING);
-    Push(m_PushBuffer, attachmentsDesc);
-    Push(m_PushBuffer, attachmentsDesc.colors, attachmentsDesc.colorNum);
+    Push(m_PushBuffer, renderingDesc);
+    Push(m_PushBuffer, renderingDesc.colors, renderingDesc.colorNum);
 }
 
 NRI_INLINE void CommandBufferEmuD3D11::EndRendering() {

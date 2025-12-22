@@ -279,6 +279,10 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         }
     }
 
+    constexpr VkImageUsageFlags swapchainImageUsageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+        | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+        | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
     { // Swap chain
         VkSwapchainCreateInfoKHR swapchainInfo = {VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
         swapchainInfo.flags = 0;
@@ -288,7 +292,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         swapchainInfo.imageColorSpace = surfaceFormat.surfaceFormat.colorSpace;
         swapchainInfo.imageExtent = {swapChainDesc.width, swapChainDesc.height};
         swapchainInfo.imageArrayLayers = 1;
-        swapchainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        swapchainInfo.imageUsage = swapchainImageUsageFlags;
         swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
         swapchainInfo.queueFamilyIndexCount = 1;
         swapchainInfo.pQueueFamilyIndices = &familyIndex;
@@ -362,6 +366,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
             desc.vkImage = (VKNonDispatchableHandle)imageHandles[i];
             desc.vkFormat = surfaceFormat.surfaceFormat.format;
             desc.vkImageType = VK_IMAGE_TYPE_2D;
+            desc.vkImageUsageFlags = swapchainImageUsageFlags;
             desc.width = swapChainDesc.width;
             desc.height = swapChainDesc.height;
             desc.depth = 1;

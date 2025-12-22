@@ -102,16 +102,17 @@ inline DeviceVal& GetDeviceVal(T& object) {
 uint64_t GetMemorySizeD3D12(const MemoryD3D12Desc& memoryD3D12Desc);
 
 constexpr std::array<const char*, (size_t)DescriptorType::MAX_NUM> g_descriptorTypeNames = {
-    "SAMPLER",                   // SAMPLER
-    "MUTABLE",                   // MUTABLE
-    "TEXTURE",                   // TEXTURE
-    "STORAGE_TEXTURE",           // STORAGE_TEXTURE
-    "BUFFER",                    // BUFFER
-    "STORAGE_BUFFER",            // STORAGE_BUFFER
-    "CONSTANT_BUFFER",           // CONSTANT_BUFFER
-    "STRUCTURED_BUFFER",         // STRUCTURED_BUFFER
-    "STORAGE_STRUCTURED_BUFFER", // STORAGE_STRUCTURED_BUFFER
-    "ACCELERATION_STRUCTURE",    // ACCELERATION_STRUCTURE
+    "SAMPLER",                      // SAMPLER
+    "MUTABLE",                      // MUTABLE
+    "TEXTURE",                      // TEXTURE
+    "STORAGE_TEXTURE",              // STORAGE_TEXTURE
+    "INPUT_ATTACHMENT",             // INPUT_ATTACHMENT
+    "BUFFER",                       // BUFFER
+    "STORAGE_BUFFER",               // STORAGE_BUFFER
+    "CONSTANT_BUFFER",              // CONSTANT_BUFFER
+    "STRUCTURED_BUFFER",            // STRUCTURED_BUFFER
+    "STORAGE_STRUCTURED_BUFFER",    // STORAGE_STRUCTURED_BUFFER
+    "ACCELERATION_STRUCTURE",       // ACCELERATION_STRUCTURE
 };
 VALIDATE_ARRAY_BY_PTR(g_descriptorTypeNames);
 

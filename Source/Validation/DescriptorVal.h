@@ -12,6 +12,7 @@ enum class DescriptorTypeExt : uint8_t {
 
     TEXTURE,
     STORAGE_TEXTURE,
+    INPUT_ATTACHMENT,
 
     BUFFER,
     STORAGE_BUFFER,
@@ -42,10 +43,6 @@ struct DescriptorVal final : public ObjectVal {
 
     inline DescriptorType GetType() const {
         return (DescriptorType)m_Type;
-    }
-
-    inline DescriptorTypeExt GetTypeExt() const {
-        return m_Type;
     }
 
     inline uint64_t GetNativeObject() const {

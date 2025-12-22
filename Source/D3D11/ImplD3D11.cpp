@@ -360,8 +360,8 @@ static void NRI_CALL CmdSetShadingRate(CommandBuffer&, const ShadingRateDesc&) {
 static void NRI_CALL CmdSetDepthBias(CommandBuffer&, const DepthBiasDesc&) {
 }
 
-static void NRI_CALL CmdBeginRendering(CommandBuffer& commandBuffer, const AttachmentsDesc& attachmentsDesc) {
-    ((CommandBufferD3D11&)commandBuffer).BeginRendering(attachmentsDesc);
+static void NRI_CALL CmdBeginRendering(CommandBuffer& commandBuffer, const RenderingDesc& renderingDesc) {
+    ((CommandBufferD3D11&)commandBuffer).BeginRendering(renderingDesc);
 }
 
 static void NRI_CALL CmdClearAttachments(CommandBuffer& commandBuffer, const ClearAttachmentDesc* clearAttachmentDescs, uint32_t clearAttachmentDescNum, const Rect* rects, uint32_t rectNum) {
@@ -385,9 +385,8 @@ static void NRI_CALL CmdDrawIndexedIndirect(CommandBuffer& commandBuffer, const 
 }
 
 static void NRI_CALL CmdEndRendering(CommandBuffer& commandBuffer) {
-    ((CommandBufferD3D11&)commandBuffer).ResetAttachments();
+    ((CommandBufferD3D11&)commandBuffer).EndRendering();
 }
-
 static void NRI_CALL CmdDispatch(CommandBuffer& commandBuffer, const DispatchDesc& dispatchDesc) {
     ((CommandBufferD3D11&)commandBuffer).Dispatch(dispatchDesc);
 }
@@ -636,8 +635,8 @@ static void NRI_CALL EmuCmdSetShadingRate(CommandBuffer&, const ShadingRateDesc&
 static void NRI_CALL EmuCmdSetDepthBias(CommandBuffer&, const DepthBiasDesc&) {
 }
 
-static void NRI_CALL EmuCmdBeginRendering(CommandBuffer& commandBuffer, const AttachmentsDesc& attachmentsDesc) {
-    ((CommandBufferEmuD3D11&)commandBuffer).BeginRendering(attachmentsDesc);
+static void NRI_CALL EmuCmdBeginRendering(CommandBuffer& commandBuffer, const RenderingDesc& renderingDesc) {
+    ((CommandBufferEmuD3D11&)commandBuffer).BeginRendering(renderingDesc);
 }
 
 static void NRI_CALL EmuCmdClearAttachments(CommandBuffer& commandBuffer, const ClearAttachmentDesc* clearAttachmentDescs, uint32_t clearAttachmentDescNum, const Rect* rects, uint32_t rectNum) {
@@ -660,8 +659,7 @@ static void NRI_CALL EmuCmdDrawIndexedIndirect(CommandBuffer& commandBuffer, con
     ((CommandBufferEmuD3D11&)commandBuffer).DrawIndexedIndirect(buffer, offset, drawNum, stride, countBuffer, countBufferOffset);
 }
 
-static void NRI_CALL EmuCmdEndRendering(CommandBuffer& commandBuffer) {
-    ((CommandBufferEmuD3D11&)commandBuffer).EndRendering();
+static void NRI_CALL EmuCmdEndRendering(CommandBuffer&) {
 }
 
 static void NRI_CALL EmuCmdDispatch(CommandBuffer& commandBuffer, const DispatchDesc& dispatchDesc) {

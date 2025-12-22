@@ -70,6 +70,7 @@ NriStruct(TextureVKDesc) {
     VKNonDispatchableHandle vkImage;
     VKEnum vkFormat;
     VKEnum vkImageType;
+    VKFlags vkImageUsageFlags;
     Nri(Dim_t) width;
     Nri(Dim_t) height;
     Nri(Dim_t) depth;

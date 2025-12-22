@@ -86,6 +86,9 @@ static constexpr VkImageUsageFlags GetImageUsageFlags(TextureUsageBits textureUs
     if (textureUsageBits & TextureUsageBits::SHADING_RATE_ATTACHMENT)
         flags |= VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
 
+    if (textureUsageBits & TextureUsageBits::INPUT_ATTACHMENT)
+        flags |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+
     return flags;
 }
 
@@ -140,6 +143,9 @@ static VkBool32 VKAPI_PTR MessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT
             return VK_FALSE;
         // Validation Warning: [ WARNING-DEBUG-PRINTF ] Internal Warning: Setting VkPhysicalDeviceVulkan12Properties::maxUpdateAfterBindDescriptorsInAllPools to 32
         if (callbackData->messageIdNumber == 1985515673)
+            return VK_FALSE;
+        // vkGetPhysicalDeviceProperties2(): Internal Warning: Setting VkPhysicalDeviceVulkan12Properties::maxUpdateAfterBindDescriptorsInAllPools to 4194304
+        if (callbackData->messageIdNumber == 2264819489)
             return VK_FALSE;
     }
 
@@ -286,6 +292,7 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_MAINTENANCE_5_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_MAINTENANCE_6_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+    APPEND_EXT(m_MinorVersion < 4, VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 4, VK_EXT_PIPELINE_ROBUSTNESS_EXTENSION_NAME);
 
     APPEND_EXT(!disableRayTracing, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
@@ -599,6 +606,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     APPEND_FEATURES(true, KHR, RayTracingPipeline, RAY_TRACING_PIPELINE);
     APPEND_FEATURES(true, KHR, RayTracingPositionFetch, RAY_TRACING_POSITION_FETCH);
     APPEND_FEATURES(true, KHR, ShaderClock, SHADER_CLOCK);
+    APPEND_FEATURES(true, KHR, DynamicRenderingLocalRead, DYNAMIC_RENDERING_LOCAL_READ);
     APPEND_FEATURES(true, KHR, UnifiedImageLayouts, UNIFIED_IMAGE_LAYOUTS);
     APPEND_FEATURES(true, EXT, CustomBorderColor, CUSTOM_BORDER_COLOR);
     APPEND_FEATURES(true, EXT, FragmentShaderInterlock, FRAGMENT_SHADER_INTERLOCK);
@@ -638,6 +646,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         features14.stippledRectangularLines = LineRasterizationFeatures.stippledRectangularLines;
         features14.stippledBresenhamLines = LineRasterizationFeatures.stippledBresenhamLines;
         features14.stippledSmoothLines = LineRasterizationFeatures.stippledSmoothLines;
+        features14.dynamicRenderingLocalRead = DynamicRenderingLocalReadFeatures.dynamicRenderingLocalRead;
     }
 
     if (m_MinorVersion > 2)
@@ -844,6 +853,10 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
             props14.fragmentShadingRateClampCombinerInputs = Maintenance6Props.fragmentShadingRateClampCombinerInputs;
 
             props14.maxPushDescriptors = PushDescriptorProps.maxPushDescriptors;
+
+            // These "local read" features were "all or nothing" before 1.4
+            props14.dynamicRenderingLocalReadDepthStencilAttachments = DynamicRenderingLocalReadFeatures.dynamicRenderingLocalRead;
+            props14.dynamicRenderingLocalReadMultisampledAttachments = DynamicRenderingLocalReadFeatures.dynamicRenderingLocalRead;
         }
 
         // Fill desc
@@ -1164,6 +1177,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.shaderFeatures.barycentric = FragmentShaderBarycentricFeatures.fragmentShaderBarycentric;
         m_Desc.shaderFeatures.rayTracingPositionFetch = RayTracingPositionFetchFeatures.rayTracingPositionFetch;
         m_Desc.shaderFeatures.integerDotProduct = features13.shaderIntegerDotProduct;
+        m_Desc.shaderFeatures.inputAttachments = features14.dynamicRenderingLocalRead;
 
         // Estimate shader model last since it depends on many "m_Desc" fields
         // Based on https://docs.vulkan.org/guide/latest/hlsl.html#_shader_model_coverage // TODO: code below needs to be improved
@@ -2004,7 +2018,7 @@ static void WriteTextures(VkWriteDescriptorSet& writeDescriptorSet, size_t& scra
         const DescriptorVK& descriptorVK = *(DescriptorVK*)rangeUpdateDesc.descriptors[i];
 
         imageInfos[i].imageView = descriptorVK.GetImageView();
-        imageInfos[i].imageLayout = descriptorVK.GetTexViewDesc().layout;
+        imageInfos[i].imageLayout = descriptorVK.GetTexViewDesc().expectedLayout;
         imageInfos[i].sampler = VK_NULL_HANDLE;
     }
 
@@ -2062,6 +2076,7 @@ constexpr std::array<WriteDescriptorsFunc, (size_t)DescriptorType::MAX_NUM> g_Wr
     nullptr,                     // MUTABLE (never used)
     WriteTextures,               // TEXTURE
     WriteTextures,               // STORAGE_TEXTURE
+    WriteTextures,               // INPUT_ATTACHMENT
     WriteBufferViews,            // BUFFER
     WriteBufferViews,            // STORAGE_BUFFER
     WriteBuffers,                // CONSTANT_BUFFER
@@ -2085,6 +2100,7 @@ NRI_INLINE void DeviceVK::UpdateDescriptorRanges(const UpdateDescriptorRangeDesc
             case DescriptorType::SAMPLER:
             case DescriptorType::TEXTURE:
             case DescriptorType::STORAGE_TEXTURE:
+            case DescriptorType::INPUT_ATTACHMENT:
                 scratchSize += sizeof(VkDescriptorImageInfo) * updateDescriptorRangeDesc.descriptorNum;
                 break;
             case DescriptorType::CONSTANT_BUFFER:
@@ -2113,8 +2129,11 @@ NRI_INLINE void DeviceVK::UpdateDescriptorRanges(const UpdateDescriptorRangeDesc
         const DescriptorSetVK& dst = *(DescriptorSetVK*)updateDescriptorRangeDesc.descriptorSet;
         const DescriptorRangeDesc& rangeDesc = dst.GetDesc()->ranges[updateDescriptorRangeDesc.rangeIndex];
 
-        const DescriptorVK& descriptor0 = *(DescriptorVK*)updateDescriptorRangeDesc.descriptors[0];
-        DescriptorType descriptorType = descriptor0.GetType();
+        DescriptorType descriptorType = rangeDesc.descriptorType; // this may be MUTABLE
+        if (descriptorType == DescriptorType::MUTABLE) {
+            const DescriptorVK& descriptor0 = *(DescriptorVK*)updateDescriptorRangeDesc.descriptors[0];
+            descriptorType = descriptor0.GetType();
+        }
 
         VkWriteDescriptorSet& write = *(VkWriteDescriptorSet*)(writes + i * sizeof(VkWriteDescriptorSet)); // must be first and consecutive in "scratch"
         write = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};

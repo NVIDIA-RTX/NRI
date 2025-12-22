@@ -377,8 +377,8 @@ static void NRI_CALL CmdSetDepthBias(CommandBuffer& commandBuffer, const DepthBi
     ((CommandBufferVal&)commandBuffer).SetDepthBias(depthBiasDesc);
 }
 
-static void NRI_CALL CmdBeginRendering(CommandBuffer& commandBuffer, const AttachmentsDesc& attachmentsDesc) {
-    ((CommandBufferVal&)commandBuffer).BeginRendering(attachmentsDesc);
+static void NRI_CALL CmdBeginRendering(CommandBuffer& commandBuffer, const RenderingDesc& renderingDesc) {
+    ((CommandBufferVal&)commandBuffer).BeginRendering(renderingDesc);
 }
 
 static void NRI_CALL CmdClearAttachments(CommandBuffer& commandBuffer, const ClearAttachmentDesc* clearAttachmentDescs, uint32_t clearAttachmentDescNum, const Rect* rects, uint32_t rectNum) {
@@ -708,7 +708,7 @@ static bool ValidateTextureUploadDesc(DeviceVal& device, uint32_t i, const Textu
 
     RETURN_ON_FAILURE(&device, textureUploadDesc.texture != nullptr, false, "'textureUploadDescs[%u].texture' is NULL", i);
     RETURN_ON_FAILURE(&device, textureVal.IsBoundToMemory(), false, "'textureUploadDescs[%u].texture' is not bound to memory", i);
-    RETURN_ON_FAILURE(&device, textureUploadDesc.after.layout < Layout::MAX_NUM, false, "'textureUploadDescs[%u].nextLayout' is invalid", i);
+    RETURN_ON_FAILURE(&device, textureUploadDesc.after.layout < Layout::MAX_NUM, false, "'textureUploadDescs[%u].after.layout' is invalid", i);
 
     uint32_t subresourceNum = (uint32_t)textureDesc.layerNum * (uint32_t)textureDesc.mipNum;
     for (uint32_t j = 0; j < subresourceNum; j++) {

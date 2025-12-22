@@ -30,6 +30,7 @@ constexpr std::array<DescriptorTypeDX11, (size_t)DescriptorType::MAX_NUM> g_Rema
     DescriptorTypeDX11::RESOURCE, // MUTABLE
     DescriptorTypeDX11::RESOURCE, // TEXTURE
     DescriptorTypeDX11::STORAGE,  // STORAGE_TEXTURE
+    DescriptorTypeDX11::RESOURCE, // INPUT_ATTACHMENT
     DescriptorTypeDX11::RESOURCE, // BUFFER
     DescriptorTypeDX11::STORAGE,  // STORAGE_BUFFER
     DescriptorTypeDX11::CONSTANT, // CONSTANT_BUFFER

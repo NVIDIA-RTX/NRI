@@ -518,7 +518,7 @@ void ImguiImpl::CmdCopyData(CommandBuffer& commandBuffer, Streamer& streamer, co
                 // Create descriptor
                 Texture2DViewDesc viewDesc = {};
                 viewDesc.texture = imguiTexture.texture;
-                viewDesc.viewType = Texture2DViewType::SHADER_RESOURCE_2D;
+                viewDesc.viewType = Texture2DViewType::SHADER_RESOURCE;
                 viewDesc.format = format;
 
                 result = m_iCore.CreateTexture2DView(viewDesc, imguiTexture.descriptor);

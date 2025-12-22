@@ -22,6 +22,26 @@ constexpr VkIndexType GetIndexType(IndexType indexType) {
     return g_IndexTypes[(size_t)indexType];
 }
 
+constexpr std::array<VkAttachmentLoadOp, (size_t)LoadOp::MAX_NUM> g_LoadOps = {
+    VK_ATTACHMENT_LOAD_OP_LOAD,  // LOAD
+    VK_ATTACHMENT_LOAD_OP_CLEAR, // CLEAR
+};
+VALIDATE_ARRAY(g_LoadOps);
+
+constexpr VkAttachmentLoadOp GetLoadOp(LoadOp loadOp) {
+    return g_LoadOps[(size_t)loadOp];
+}
+
+constexpr std::array<VkAttachmentStoreOp, (size_t)StoreOp::MAX_NUM> g_StoreOps = {
+    VK_ATTACHMENT_STORE_OP_STORE,     // STORE
+    VK_ATTACHMENT_STORE_OP_DONT_CARE, // DISCARD
+};
+VALIDATE_ARRAY(g_StoreOps);
+
+constexpr VkAttachmentStoreOp GetStoreOp(StoreOp storeOp) {
+    return g_StoreOps[(size_t)storeOp];
+}
+
 constexpr std::array<VkResolveModeFlagBits, (size_t)ResolveOp::MAX_NUM> g_ResolveOps = {
     VK_RESOLVE_MODE_AVERAGE_BIT, // AVERAGE
     VK_RESOLVE_MODE_MIN_BIT,     // MIN
@@ -33,22 +53,25 @@ constexpr VkResolveModeFlagBits GetResolveOp(ResolveOp resolveOp) {
     return g_ResolveOps[(size_t)resolveOp];
 }
 
+// TODO: just use GENERAL everywhere if "VK_KHR_unified_image_layouts" is supported! but D3D12 is the limiter here...
+// https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_unified_image_layouts.html
 constexpr std::array<VkImageLayout, (size_t)Layout::MAX_NUM> g_ImageLayouts = {
-    // TODO: just use GENERAL everywhere if "VK_KHR_unified_image_layouts" is supported! but D3D12 is the limiter here...
-    // https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_unified_image_layouts.html
     VK_IMAGE_LAYOUT_UNDEFINED,                                    // UNDEFINED
     VK_IMAGE_LAYOUT_GENERAL,                                      // GENERAL
     VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,                              // PRESENT
     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,                     // COLOR_ATTACHMENT
-    VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR, // SHADING_RATE_ATTACHMENT
     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,             // DEPTH_STENCIL_ATTACHMENT
+    VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,   // DEPTH_READONLY_STENCIL_ATTACHMENT
+    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,   // DEPTH_ATTACHMENT_STENCIL_READONLY
     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,              // DEPTH_STENCIL_READONLY
+    VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR, // SHADING_RATE_ATTACHMENT
+    VK_IMAGE_LAYOUT_RENDERING_LOCAL_READ,                         // INPUT_ATTACHMENT
     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                     // SHADER_RESOURCE
     VK_IMAGE_LAYOUT_GENERAL,                                      // SHADER_RESOURCE_STORAGE
-    IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,                            // COPY_SOURCE
-    IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,                            // COPY_DESTINATION
-    IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,                            // RESOLVE_SOURCE
-    IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,                            // RESOLVE_DESTINATION
+    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,                         // COPY_SOURCE
+    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,                         // COPY_DESTINATION
+    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,                         // RESOLVE_SOURCE
+    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,                         // RESOLVE_DESTINATION
 };
 VALIDATE_ARRAY(g_ImageLayouts);
 
@@ -61,6 +84,7 @@ constexpr std::array<VkDescriptorType, (size_t)DescriptorType::MAX_NUM> g_Descri
     VK_DESCRIPTOR_TYPE_MUTABLE_EXT,                // MUTABLE
     VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,              // TEXTURE
     VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,              // STORAGE_TEXTURE
+    VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,           // INPUT_ATTACHMENT
     VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,       // BUFFER
     VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,       // STORAGE_BUFFER
     VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,             // CONSTANT_BUFFER
@@ -263,9 +287,6 @@ constexpr std::array<VkImageUsageFlags, (size_t)Texture1DViewType::MAX_NUM> g_Im
     VK_IMAGE_USAGE_STORAGE_BIT,                  // SHADER_RESOURCE_STORAGE_1D_ARRAY
     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,         // COLOR_ATTACHMENT
     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, // DEPTH_STENCIL_ATTACHMENT
-    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, // DEPTH_READONLY_STENCIL_ATTACHMENT
-    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, // DEPTH_ATTACHMENT_STENCIL_READONLY
-    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, // DEPTH_STENCIL_READONLY
 };
 VALIDATE_ARRAY(g_ImageViewUsage1D);
 
@@ -274,17 +295,15 @@ constexpr VkImageUsageFlags GetImageViewUsage(Texture1DViewType type) {
 }
 
 constexpr std::array<VkImageUsageFlags, (size_t)Texture2DViewType::MAX_NUM> g_ImageViewUsage2D = {
-    VK_IMAGE_USAGE_SAMPLED_BIT,                              // SHADER_RESOURCE_2D
-    VK_IMAGE_USAGE_SAMPLED_BIT,                              // SHADER_RESOURCE_2D_ARRAY
+    VK_IMAGE_USAGE_SAMPLED_BIT,                              // SHADER_RESOURCE
+    VK_IMAGE_USAGE_SAMPLED_BIT,                              // SHADER_RESOURCE_ARRAY
     VK_IMAGE_USAGE_SAMPLED_BIT,                              // SHADER_RESOURCE_CUBE
     VK_IMAGE_USAGE_SAMPLED_BIT,                              // SHADER_RESOURCE_CUBE_ARRAY
-    VK_IMAGE_USAGE_STORAGE_BIT,                              // SHADER_RESOURCE_STORAGE_2D
-    VK_IMAGE_USAGE_STORAGE_BIT,                              // SHADER_RESOURCE_STORAGE_2D_ARRAY
+    VK_IMAGE_USAGE_STORAGE_BIT,                              // SHADER_RESOURCE_STORAGE
+    VK_IMAGE_USAGE_STORAGE_BIT,                              // SHADER_RESOURCE_STORAGE_ARRAY
+    VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT,                     // INPUT_ATTACHMENT
     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,                     // COLOR_ATTACHMENT
     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,             // DEPTH_STENCIL_ATTACHMENT
-    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,             // DEPTH_READONLY_STENCIL_ATTACHMENT
-    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,             // DEPTH_ATTACHMENT_STENCIL_READONLY
-    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,             // DEPTH_STENCIL_READONLY
     VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR, // SHADING_RATE_ATTACHMENT
 };
 VALIDATE_ARRAY(g_ImageViewUsage2D);
@@ -294,8 +313,8 @@ constexpr VkImageUsageFlags GetImageViewUsage(Texture2DViewType type) {
 }
 
 constexpr std::array<VkImageUsageFlags, (size_t)Texture3DViewType::MAX_NUM> g_ImageViewUsage3D = {
-    VK_IMAGE_USAGE_SAMPLED_BIT,          // SHADER_RESOURCE_3D
-    VK_IMAGE_USAGE_STORAGE_BIT,          // SHADER_RESOURCE_STORAGE_3D
+    VK_IMAGE_USAGE_SAMPLED_BIT,          // SHADER_RESOURCE
+    VK_IMAGE_USAGE_STORAGE_BIT,          // SHADER_RESOURCE_STORAGE
     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, // COLOR_ATTACHMENT
 };
 VALIDATE_ARRAY(g_ImageViewUsage3D);
@@ -305,15 +324,12 @@ constexpr VkImageUsageFlags GetImageViewUsage(Texture3DViewType type) {
 }
 
 constexpr std::array<VkImageLayout, (size_t)Texture1DViewType::MAX_NUM> g_ImageLayout1D = {
-    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                   // SHADER_RESOURCE_1D
-    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                   // SHADER_RESOURCE_1D_ARRAY
-    VK_IMAGE_LAYOUT_GENERAL,                                    // SHADER_RESOURCE_STORAGE_1D
-    VK_IMAGE_LAYOUT_GENERAL,                                    // SHADER_RESOURCE_STORAGE_1D_ARRAY
-    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,                   // COLOR_ATTACHMENT
-    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,           // DEPTH_STENCIL_ATTACHMENT
-    VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL, // DEPTH_READONLY_STENCIL_ATTACHMENT
-    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL, // DEPTH_ATTACHMENT_STENCIL_READONLY
-    VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,            // DEPTH_STENCIL_READONLY
+    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,         // SHADER_RESOURCE_1D
+    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,         // SHADER_RESOURCE_1D_ARRAY
+    VK_IMAGE_LAYOUT_GENERAL,                          // SHADER_RESOURCE_STORAGE_1D
+    VK_IMAGE_LAYOUT_GENERAL,                          // SHADER_RESOURCE_STORAGE_1D_ARRAY
+    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,         // COLOR_ATTACHMENT
+    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // DEPTH_STENCIL_ATTACHMENT
 };
 VALIDATE_ARRAY(g_ImageLayout1D);
 
@@ -322,17 +338,15 @@ constexpr VkImageLayout GetImageLayoutForView(Texture1DViewType type) {
 }
 
 constexpr std::array<VkImageLayout, (size_t)Texture2DViewType::MAX_NUM> g_ImageLayout2D = {
-    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                     // SHADER_RESOURCE_2D
-    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                     // SHADER_RESOURCE_2D_ARRAY
+    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                     // SHADER_RESOURCE
+    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                     // SHADER_RESOURCE_ARRAY
     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                     // SHADER_RESOURCE_CUBE
     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                     // SHADER_RESOURCE_CUBE_ARRAY
-    VK_IMAGE_LAYOUT_GENERAL,                                      // SHADER_RESOURCE_STORAGE_2D
-    VK_IMAGE_LAYOUT_GENERAL,                                      // SHADER_RESOURCE_STORAGE_2D_ARRAY
+    VK_IMAGE_LAYOUT_GENERAL,                                      // SHADER_RESOURCE_STORAGE
+    VK_IMAGE_LAYOUT_GENERAL,                                      // SHADER_RESOURCE_STORAGE_ARRAY
+    VK_IMAGE_LAYOUT_RENDERING_LOCAL_READ,                         // INPUT_ATTACHMENT
     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,                     // COLOR_ATTACHMENT
     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,             // DEPTH_STENCIL_ATTACHMENT
-    VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,   // DEPTH_READONLY_STENCIL_ATTACHMENT
-    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,   // DEPTH_ATTACHMENT_STENCIL_READONLY
-    VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,              // DEPTH_STENCIL_READONLY
     VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR, // SHADING_RATE_ATTACHMENT
 };
 VALIDATE_ARRAY(g_ImageLayout2D);
@@ -342,8 +356,8 @@ constexpr VkImageLayout GetImageLayoutForView(Texture2DViewType type) {
 }
 
 constexpr std::array<VkImageLayout, (size_t)Texture3DViewType::MAX_NUM> g_ImageLayout3D = {
-    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, // SHADER_RESOURCE_3D
-    VK_IMAGE_LAYOUT_GENERAL,                  // SHADER_RESOURCE_STORAGE_3D
+    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, // SHADER_RESOURCE
+    VK_IMAGE_LAYOUT_GENERAL,                  // SHADER_RESOURCE_STORAGE
     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, // COLOR_ATTACHMENT
 };
 VALIDATE_ARRAY(g_ImageLayout3D);
@@ -353,15 +367,12 @@ constexpr VkImageLayout GetImageLayoutForView(Texture3DViewType type) {
 }
 
 constexpr std::array<DescriptorType, (size_t)Texture1DViewType::MAX_NUM> g_DescriptorType1D = {
-    DescriptorType::TEXTURE,            // SHADER_RESOURCE_1D
-    DescriptorType::TEXTURE,            // SHADER_RESOURCE_1D_ARRAY
-    DescriptorType::STORAGE_TEXTURE,    // SHADER_RESOURCE_STORAGE_1D
-    DescriptorType::STORAGE_TEXTURE,    // SHADER_RESOURCE_STORAGE_1D_ARRAY
-    DescriptorType::MAX_NUM,            // COLOR_ATTACHMENT
-    DescriptorType::MAX_NUM,            // DEPTH_STENCIL_ATTACHMENT
-    DescriptorType::MAX_NUM,            // DEPTH_READONLY_STENCIL_ATTACHMENT
-    DescriptorType::MAX_NUM,            // DEPTH_ATTACHMENT_STENCIL_READONLY
-    DescriptorType::MAX_NUM,            // DEPTH_STENCIL_READONLY
+    DescriptorType::TEXTURE,         // SHADER_RESOURCE_1D
+    DescriptorType::TEXTURE,         // SHADER_RESOURCE_1D_ARRAY
+    DescriptorType::STORAGE_TEXTURE, // SHADER_RESOURCE_STORAGE_1D
+    DescriptorType::STORAGE_TEXTURE, // SHADER_RESOURCE_STORAGE_1D_ARRAY
+    DescriptorType::MAX_NUM,         // COLOR_ATTACHMENT
+    DescriptorType::MAX_NUM,         // DEPTH_STENCIL_ATTACHMENT
 };
 VALIDATE_ARRAY(g_DescriptorType1D);
 
@@ -370,18 +381,16 @@ constexpr DescriptorType GetDescriptorTypeForView(Texture1DViewType type) {
 }
 
 constexpr std::array<DescriptorType, (size_t)Texture2DViewType::MAX_NUM> g_DescriptorType2D = {
-    DescriptorType::TEXTURE,            // SHADER_RESOURCE_2D
-    DescriptorType::TEXTURE,            // SHADER_RESOURCE_2D_ARRAY
-    DescriptorType::TEXTURE,            // SHADER_RESOURCE_CUBE
-    DescriptorType::TEXTURE,            // SHADER_RESOURCE_CUBE_ARRAY
-    DescriptorType::STORAGE_TEXTURE,    // SHADER_RESOURCE_STORAGE_2D
-    DescriptorType::STORAGE_TEXTURE,    // SHADER_RESOURCE_STORAGE_2D_ARRAY
-    DescriptorType::MAX_NUM,            // COLOR_ATTACHMENT
-    DescriptorType::MAX_NUM,            // DEPTH_STENCIL_ATTACHMENT
-    DescriptorType::MAX_NUM,            // DEPTH_READONLY_STENCIL_ATTACHMENT
-    DescriptorType::MAX_NUM,            // DEPTH_ATTACHMENT_STENCIL_READONLY
-    DescriptorType::MAX_NUM,            // DEPTH_STENCIL_READONLY
-    DescriptorType::MAX_NUM,            // SHADING_RATE_ATTACHMENT
+    DescriptorType::TEXTURE,          // SHADER_RESOURCE
+    DescriptorType::TEXTURE,          // SHADER_RESOURCE_ARRAY
+    DescriptorType::TEXTURE,          // SHADER_RESOURCE_CUBE
+    DescriptorType::TEXTURE,          // SHADER_RESOURCE_CUBE_ARRAY
+    DescriptorType::STORAGE_TEXTURE,  // SHADER_RESOURCE_STORAGE
+    DescriptorType::STORAGE_TEXTURE,  // SHADER_RESOURCE_STORAGE_ARRAY
+    DescriptorType::INPUT_ATTACHMENT, // INPUT_ATTACHMENT
+    DescriptorType::MAX_NUM,          // COLOR_ATTACHMENT
+    DescriptorType::MAX_NUM,          // DEPTH_STENCIL_ATTACHMENT
+    DescriptorType::MAX_NUM,          // SHADING_RATE_ATTACHMENT
 };
 VALIDATE_ARRAY(g_DescriptorType2D);
 
@@ -390,9 +399,9 @@ constexpr DescriptorType GetDescriptorTypeForView(Texture2DViewType type) {
 }
 
 constexpr std::array<DescriptorType, (size_t)Texture3DViewType::MAX_NUM> g_DescriptorType3D = {
-    DescriptorType::TEXTURE,            // SHADER_RESOURCE_3D
-    DescriptorType::STORAGE_TEXTURE,    // SHADER_RESOURCE_STORAGE_3D
-    DescriptorType::MAX_NUM,            // COLOR_ATTACHMENT
+    DescriptorType::TEXTURE,         // SHADER_RESOURCE
+    DescriptorType::STORAGE_TEXTURE, // SHADER_RESOURCE_STORAGE
+    DescriptorType::MAX_NUM,         // COLOR_ATTACHMENT
 };
 VALIDATE_ARRAY(g_DescriptorType3D);
 
@@ -463,7 +472,7 @@ constexpr VkPipelineStageFlags2 GetPipelineStageFlags(StageBits stageBits) {
         flags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
 
     if (stageBits & StageBits::DEPTH_STENCIL_ATTACHMENT)
-        flags |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+        flags |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT; // TODO: separate?
 
     if (stageBits & StageBits::COLOR_ATTACHMENT)
         flags |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;

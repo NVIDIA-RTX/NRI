@@ -250,7 +250,7 @@ bool nri::GetTextureDesc(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& 
     if (bindFlags & D3D11_BIND_DEPTH_STENCIL)
         textureDesc.usage |= TextureUsageBits::DEPTH_STENCIL_ATTACHMENT;
     if (bindFlags & D3D11_BIND_SHADER_RESOURCE)
-        textureDesc.usage |= TextureUsageBits::SHADER_RESOURCE;
+        textureDesc.usage |= TextureUsageBits::SHADER_RESOURCE | TextureUsageBits::INPUT_ATTACHMENT;
     if (bindFlags & D3D11_BIND_UNORDERED_ACCESS)
         textureDesc.usage |= TextureUsageBits::SHADER_RESOURCE_STORAGE;
 

@@ -31,10 +31,10 @@ NriStruct(CallbackInterface) {
 
 // Use largest offset for the resource type planned to be used as an unbounded array
 NriStruct(VKBindingOffsets) {
-    uint32_t samplerOffset;
-    uint32_t textureOffset;
-    uint32_t constantBufferOffset;
-    uint32_t storageTextureAndBufferOffset;
+    uint32_t sRegister; // samplers
+    uint32_t tRegister; // shader resources, including acceleration structures (SRVs)
+    uint32_t bRegister; // constant buffers
+    uint32_t uRegister; // storage shader resources (UAVs)
 };
 
 NriStruct(VKExtensions) {

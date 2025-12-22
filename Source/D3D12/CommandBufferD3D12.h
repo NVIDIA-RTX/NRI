@@ -18,6 +18,13 @@ namespace nri {
 struct PipelineD3D12;
 struct PipelineLayoutD3D12;
 struct DescriptorSetD3D12;
+struct DescriptorD3D12;
+
+struct AttachmentDescD3D12 {
+    DescriptorD3D12* attachment;
+    DescriptorD3D12* resolveDst;
+    ResolveOp resolveOp;
+};
 
 struct CommandBufferD3D12 final : public DebugNameBase {
     inline CommandBufferD3D12(DeviceD3D12& device)
@@ -40,11 +47,11 @@ struct CommandBufferD3D12 final : public DebugNameBase {
     }
 
     inline void ResetAttachments() {
-        m_RenderTargetNum = 0;
-        for (size_t i = 0; i < m_RenderTargets.size(); i++)
-            m_RenderTargets[i].ptr = NULL;
+        memset(m_RenderTargets.data(), 0, sizeof(m_RenderTargets));
 
-        m_DepthStencil.ptr = NULL;
+        m_Depth = {};
+        m_Stencil = {};
+        m_RenderTargetNum = 0;
     }
 
     Result Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D12CommandAllocator* commandAllocator);
@@ -74,7 +81,8 @@ struct CommandBufferD3D12 final : public DebugNameBase {
     void SetDepthBias(const DepthBiasDesc& depthBiasDesc);
     void ClearAttachments(const ClearAttachmentDesc* clearAttachmentDescs, uint32_t clearAttachmentDescNum, const Rect* rects, uint32_t rectNum);
     void ClearStorage(const ClearStorageDesc& clearStorageDesc);
-    void BeginRendering(const AttachmentsDesc& attachmentsDesc);
+    void BeginRendering(const RenderingDesc& renderingDesc);
+    void EndRendering();
     void SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum);
     void SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType);
     void SetPipelineLayout(BindPoint bindPoint, const PipelineLayout& pipelineLayout);
@@ -119,13 +127,15 @@ private:
     DeviceD3D12& m_Device;
     ComPtr<ID3D12CommandAllocator> m_CommandAllocator;
     ComPtr<ID3D12GraphicsCommandListBest> m_GraphicsCommandList;
-    std::array<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT> m_RenderTargets = {};
     std::array<DescriptorSetD3D12*, ROOT_SIGNATURE_DWORD_NUM> m_DescriptorSets = {}; // TODO: needed only for "ClearStorage"
-    D3D12_CPU_DESCRIPTOR_HANDLE m_DepthStencil = {};
+    std::array<AttachmentDescD3D12, D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT> m_RenderTargets = {};
+    AttachmentDescD3D12 m_Depth = {};
+    AttachmentDescD3D12 m_Stencil = {};
     const PipelineLayoutD3D12* m_PipelineLayout = nullptr;
     uint32_t m_RenderTargetNum = 0;
     BindPoint m_PipelineBindPoint = BindPoint::INHERIT;
     uint8_t m_Version = 0;
+    bool m_RenderPass = false;
 };
 
 } // namespace nri

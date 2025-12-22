@@ -6,6 +6,12 @@ namespace nri {
 
 struct PipelineLayoutD3D11;
 struct PipelineD3D11;
+struct DescriptorD3D11;
+
+struct AttachmentDescD3D11 {
+    DescriptorD3D11* attachment;
+    DescriptorD3D11* resolveDst;
+};
 
 struct CommandBufferD3D11 final : public CommandBufferBase {
     CommandBufferD3D11(DeviceD3D11& device);
@@ -16,11 +22,10 @@ struct CommandBufferD3D11 final : public CommandBufferBase {
     }
 
     inline void ResetAttachments() {
-        m_RenderTargetNum = 0;
-        for (size_t i = 0; i < m_RenderTargets.size(); i++)
-            m_RenderTargets[i] = nullptr;
+        memset(m_RenderTargets.data(), 0, sizeof(m_RenderTargets));
 
         m_DepthStencil = nullptr;
+        m_RenderTargetNum = 0;
     }
 
     //================================================================================================================
@@ -61,7 +66,8 @@ struct CommandBufferD3D11 final : public CommandBufferBase {
     void SetBlendConstants(const Color32f& color);
     void ClearAttachments(const ClearAttachmentDesc* clearAttachmentDescs, uint32_t clearAttachmentDescNum, const Rect* rects, uint32_t rectNum);
     void ClearStorage(const ClearStorageDesc& clearStorageDesc);
-    void BeginRendering(const AttachmentsDesc& attachmentsDesc);
+    void BeginRendering(const RenderingDesc& renderingDesc);
+    void EndRendering();
     void SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum);
     void SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType);
     void SetPipelineLayout(BindPoint bindPoint, const PipelineLayout& pipelineLayout);
@@ -95,7 +101,7 @@ private:
     ComPtr<ID3D11DeviceContextBest> m_DeferredContext; // can be immediate to redirect data from emulation
     ComPtr<ID3D11CommandList> m_CommandList;
     ComPtr<ID3DUserDefinedAnnotation> m_Annotation;
-    std::array<ID3D11RenderTargetView*, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> m_RenderTargets = {};
+    std::array<AttachmentDescD3D11, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> m_RenderTargets = {};
     ID3D11DepthStencilView* m_DepthStencil = nullptr;
     PipelineLayoutD3D11* m_PipelineLayout = nullptr;
     PipelineD3D11* m_Pipeline = nullptr;

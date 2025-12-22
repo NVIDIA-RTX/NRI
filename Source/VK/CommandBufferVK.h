@@ -44,7 +44,7 @@ struct CommandBufferVK final : public DebugNameBase {
     void SetRootConstants(const SetRootConstantsDesc& setRootConstantsDesc);
     void SetRootDescriptor(const SetRootDescriptorDesc& setRootDescriptorDesc);
     void Barrier(const BarrierDesc& barrierDesc);
-    void BeginRendering(const AttachmentsDesc& attachmentsDesc);
+    void BeginRendering(const RenderingDesc& renderingDesc);
     void EndRendering();
     void SetViewports(const Viewport* viewports, uint32_t viewportNum);
     void SetScissors(const Rect* rects, uint32_t rectNum);
@@ -101,6 +101,7 @@ private:
     Dim_t m_RenderLayerNum = 0;
     Dim_t m_RenderWidth = 0;
     Dim_t m_RenderHeight = 0;
+    bool m_RenderPass = false;
 };
 
 } // namespace nri

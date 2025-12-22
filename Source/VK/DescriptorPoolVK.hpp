@@ -29,6 +29,7 @@ Result DescriptorPoolVK::Create(const DescriptorPoolDesc& descriptorPoolDesc) {
     AddDescriptorPoolSize(poolSizes, poolSizeNum, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, descriptorPoolDesc.storageBufferMaxNum);
     AddDescriptorPoolSize(poolSizes, poolSizeNum, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, descriptorPoolDesc.structuredBufferMaxNum + descriptorPoolDesc.storageStructuredBufferMaxNum);
     AddDescriptorPoolSize(poolSizes, poolSizeNum, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, descriptorPoolDesc.accelerationStructureMaxNum);
+    AddDescriptorPoolSize(poolSizes, poolSizeNum, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, descriptorPoolDesc.inputAttachmentMaxNum);
 
     VkDescriptorPoolCreateInfo info = {VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
     info.flags = (descriptorPoolDesc.flags & DescriptorPoolBits::ALLOW_UPDATE_AFTER_SET) ? VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT : 0;

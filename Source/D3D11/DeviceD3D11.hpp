@@ -531,6 +531,9 @@ void DeviceD3D11::FillDesc() {
     m_Desc.shaderFeatures.layerIndex = options3.VPAndRTArrayIndexFromAnyShaderFeedingRasterizer;
     m_Desc.shaderFeatures.clock = isGetSpecialSupported;
     m_Desc.shaderFeatures.rasterizedOrderedView = options2.ROVsSupported != 0;
+
+    // TODO: "inputAttachments" can be supported by doing mumbo-jumbo under the hood. Simultaneous SRV/RTV bindings are prohibited. Descriptor volatility needs to be emulated!
+    m_Desc.shaderFeatures.inputAttachments = false;
 }
 
 void DeviceD3D11::InitializeNvExt(bool disableNVAPIInitialization, bool isImported) {

@@ -125,7 +125,7 @@ static inline D3D12_BARRIER_ACCESS GetBarrierAccessFlags(AccessBits accessBits) 
     if (accessBits & (AccessBits::ACCELERATION_STRUCTURE_WRITE | AccessBits::MICROMAP_WRITE))
         flags |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
 
-    if (accessBits & (AccessBits::SHADER_RESOURCE | AccessBits::SHADER_BINDING_TABLE))
+    if (accessBits & (AccessBits::SHADER_RESOURCE | AccessBits::SHADER_BINDING_TABLE | AccessBits::INPUT_ATTACHMENT))
         flags |= D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
 
     if (accessBits & (AccessBits::SHADER_RESOURCE_STORAGE | AccessBits::SCRATCH_BUFFER | AccessBits::CLEAR_STORAGE))
@@ -151,9 +151,12 @@ constexpr std::array<D3D12_BARRIER_LAYOUT, (size_t)Layout::MAX_NUM> g_BarrierLay
     D3D12_BARRIER_LAYOUT_COMMON,              // GENERAL
     D3D12_BARRIER_LAYOUT_PRESENT,             // PRESENT
     D3D12_BARRIER_LAYOUT_RENDER_TARGET,       // COLOR_ATTACHMENT
-    D3D12_BARRIER_LAYOUT_SHADING_RATE_SOURCE, // SHADING_RATE_ATTACHMENT
     D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE, // DEPTH_STENCIL_ATTACHMENT
+    D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE, // DEPTH_READONLY_STENCIL_ATTACHMENT
+    D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE, // DEPTH_ATTACHMENT_STENCIL_READONLY
     D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ,  // DEPTH_STENCIL_READONLY
+    D3D12_BARRIER_LAYOUT_SHADING_RATE_SOURCE, // SHADING_RATE_ATTACHMENT
+    D3D12_BARRIER_LAYOUT_RENDER_TARGET,       // INPUT_ATTACHMENT
     D3D12_BARRIER_LAYOUT_SHADER_RESOURCE,     // SHADER_RESOURCE
     D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS,    // SHADER_RESOURCE_STORAGE
     D3D12_BARRIER_LAYOUT_COPY_SOURCE,         // COPY_SOURCE
@@ -163,7 +166,11 @@ constexpr std::array<D3D12_BARRIER_LAYOUT, (size_t)Layout::MAX_NUM> g_BarrierLay
 };
 VALIDATE_ARRAY(g_BarrierLayouts);
 
-static inline D3D12_BARRIER_LAYOUT GetBarrierLayout(Layout layout) {
+constexpr D3D12_BARRIER_LAYOUT GetBarrierLayout(Layout layout, AccessBits accessBits) {
+    // Special case
+    if (layout == Layout::INPUT_ATTACHMENT && (accessBits & AccessBits::INPUT_ATTACHMENT) != 0)
+        return D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
+
     return g_BarrierLayouts[(uint32_t)layout];
 }
 #endif
@@ -204,6 +211,9 @@ static inline D3D12_RESOURCE_STATES GetResourceStates(AccessBits accessBits, D3D
         if (commandListType == D3D12_COMMAND_LIST_TYPE_DIRECT)
             resourceStates |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
     }
+
+    if (accessBits & AccessBits::INPUT_ATTACHMENT)
+        resourceStates |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
     if (accessBits & AccessBits::SHADER_BINDING_TABLE)
         resourceStates |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
@@ -249,6 +259,36 @@ static inline void ConvertRects(const Rect* in, uint32_t rectNum, D3D12_RECT* ou
         out[i].right = in[i].x + in[i].width;
         out[i].bottom = in[i].y + in[i].height;
     }
+}
+
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+static inline void FillResolveBarrier(DescriptorD3D12& descriptor, PlaneBits planeBits, D3D12_TEXTURE_BARRIER& textureBarrier) {
+    const TexViewDesc& srcDesc = descriptor.GetTexViewDesc();
+
+    textureBarrier = {};
+    textureBarrier.SyncBefore = D3D12_BARRIER_SYNC_RENDER_TARGET;
+    textureBarrier.SyncAfter = D3D12_BARRIER_SYNC_RESOLVE;
+    textureBarrier.AccessBefore = D3D12_BARRIER_ACCESS_RENDER_TARGET;
+    textureBarrier.AccessAfter = D3D12_BARRIER_ACCESS_RESOLVE_SOURCE;
+    textureBarrier.LayoutBefore = D3D12_BARRIER_LAYOUT_RENDER_TARGET;
+    textureBarrier.LayoutAfter = D3D12_BARRIER_LAYOUT_RESOLVE_SOURCE;
+    textureBarrier.pResource = descriptor.GetResource();
+    textureBarrier.Subresources.IndexOrFirstMipLevel = srcDesc.mipOffset;
+    textureBarrier.Subresources.NumMipLevels = 1;
+    textureBarrier.Subresources.FirstArraySlice = srcDesc.layerOffset;
+    textureBarrier.Subresources.NumArraySlices = srcDesc.layerNum;
+    textureBarrier.Subresources.NumPlanes = 1; // TODO: can be optimized for depth-stencil resolve
+    textureBarrier.Subresources.FirstPlane = (planeBits & PlaneBits::STENCIL) ? 1 : 0;
+}
+#endif
+
+static inline void FillLegacyResolveBarrier(DescriptorD3D12& descriptor, uint32_t subresource, D3D12_RESOURCE_BARRIER& resourceBarrier) {
+    resourceBarrier = {};
+    resourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    resourceBarrier.Transition.pResource = descriptor.GetResource();
+    resourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    resourceBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+    resourceBarrier.Transition.Subresource = subresource;
 }
 
 constexpr std::array<D3D12_RESOLVE_MODE, (size_t)ResolveOp::MAX_NUM> g_ResolveOps = {
@@ -392,16 +432,18 @@ NRI_INLINE void CommandBufferD3D12::ClearAttachments(const ClearAttachmentDesc* 
     for (uint32_t i = 0; i < clearAttachmentDescNum; i++) {
         const ClearAttachmentDesc& clearAttachmentDesc = clearAttachmentDescs[i];
 
-        if (clearAttachmentDescs[i].planes & PlaneBits::COLOR)
-            m_GraphicsCommandList->ClearRenderTargetView(m_RenderTargets[clearAttachmentDesc.colorAttachmentIndex], &clearAttachmentDesc.value.color.f.x, rectNum, d3dRects);
-        else {
+        if (clearAttachmentDescs[i].planes & PlaneBits::COLOR) {
+            D3D12_CPU_DESCRIPTOR_HANDLE handle = {m_RenderTargets[clearAttachmentDesc.colorAttachmentIndex].attachment->GetDescriptorHandleCPU()};
+            m_GraphicsCommandList->ClearRenderTargetView(handle, &clearAttachmentDesc.value.color.f.x, rectNum, d3dRects);
+        } else {
             D3D12_CLEAR_FLAGS clearFlags = (D3D12_CLEAR_FLAGS)0;
             if (clearAttachmentDesc.planes & PlaneBits::DEPTH)
                 clearFlags |= D3D12_CLEAR_FLAG_DEPTH;
             if (clearAttachmentDesc.planes & PlaneBits::STENCIL)
                 clearFlags |= D3D12_CLEAR_FLAG_STENCIL;
 
-            m_GraphicsCommandList->ClearDepthStencilView(m_DepthStencil, clearFlags, clearAttachmentDesc.value.depthStencil.depth, clearAttachmentDesc.value.depthStencil.stencil, rectNum, d3dRects);
+            D3D12_CPU_DESCRIPTOR_HANDLE handle = {m_Depth.attachment->GetDescriptorHandleCPU()};
+            m_GraphicsCommandList->ClearDepthStencilView(handle, clearFlags, clearAttachmentDesc.value.depthStencil.depth, clearAttachmentDesc.value.depthStencil.stencil, rectNum, d3dRects);
         }
     }
 }
@@ -420,38 +462,212 @@ NRI_INLINE void CommandBufferD3D12::ClearStorage(const ClearStorageDesc& clearSt
     else
         m_GraphicsCommandList->ClearUnorderedAccessViewFloat({handleGPU}, {handleCPU}, descriptorD3D12.GetResource(), &clearStorageDesc.value.f.x, 0, nullptr);
 }
-NRI_INLINE void CommandBufferD3D12::BeginRendering(const AttachmentsDesc& attachmentsDesc) {
-    // Render targets
-    m_RenderTargetNum = attachmentsDesc.colors ? attachmentsDesc.colorNum : 0;
 
-    uint32_t i = 0;
-    for (; i < m_RenderTargetNum; i++) {
-        const DescriptorD3D12& descriptor = *(DescriptorD3D12*)attachmentsDesc.colors[i];
-        m_RenderTargets[i].ptr = descriptor.GetDescriptorHandleCPU();
+NRI_INLINE void CommandBufferD3D12::BeginRendering(const RenderingDesc& renderingDesc) {
+    ResetAttachments();
+
+    std::array<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT> renderTargets = {};
+    for (uint32_t i = 0; i < renderingDesc.colorNum; i++) {
+        const AttachmentDesc& attachmentDesc = renderingDesc.colors[i];
+
+        m_RenderTargets[i].attachment = (DescriptorD3D12*)attachmentDesc.descriptor;
+        m_RenderTargets[i].resolveDst = (DescriptorD3D12*)attachmentDesc.resolveDst;
+        m_RenderTargets[i].resolveOp = attachmentDesc.resolveOp;
+
+        renderTargets[i].ptr = m_RenderTargets[i].attachment->GetDescriptorHandleCPU();
     }
-    for (; i < (uint32_t)m_RenderTargets.size(); i++)
-        m_RenderTargets[i].ptr = NULL;
 
-    if (attachmentsDesc.depthStencil) {
-        const DescriptorD3D12& descriptor = *(DescriptorD3D12*)attachmentsDesc.depthStencil;
-        m_DepthStencil.ptr = descriptor.GetDescriptorHandleCPU();
-    } else
-        m_DepthStencil.ptr = NULL;
+    D3D12_CPU_DESCRIPTOR_HANDLE depthStencil = {};
+    if (renderingDesc.depth.descriptor) {
+        m_Depth.attachment = (DescriptorD3D12*)renderingDesc.depth.descriptor;
+        m_Depth.resolveDst = (DescriptorD3D12*)renderingDesc.depth.resolveDst;
+        m_Depth.resolveOp = renderingDesc.depth.resolveOp;
 
-    m_GraphicsCommandList->OMSetRenderTargets(m_RenderTargetNum, m_RenderTargets.data(), FALSE, m_DepthStencil.ptr ? &m_DepthStencil : nullptr);
+        depthStencil.ptr = m_Depth.attachment->GetDescriptorHandleCPU();
+
+        const FormatProps& formatProps = GetFormatProps(m_Depth.attachment->GetFormat());
+        if (formatProps.isStencil)
+            m_Stencil = m_Depth;
+    }
+
+    if (renderingDesc.stencil.descriptor) { // it's safe to do it this way, since there are no "stencil-only" formats
+        m_Stencil.attachment = (DescriptorD3D12*)renderingDesc.stencil.descriptor;
+        m_Stencil.resolveDst = (DescriptorD3D12*)renderingDesc.stencil.resolveDst;
+        m_Stencil.resolveOp = renderingDesc.stencil.resolveOp;
+
+        depthStencil.ptr = m_Stencil.attachment->GetDescriptorHandleCPU();
+    }
+
+    // Bind
+    m_GraphicsCommandList->OMSetRenderTargets(renderingDesc.colorNum, renderTargets.data(), FALSE, depthStencil.ptr ? &depthStencil : nullptr);
+
+    // Clear
+    for (uint32_t i = 0; i < renderingDesc.colorNum; i++) {
+        const AttachmentDesc& attachmentDesc = renderingDesc.colors[i];
+
+        if (attachmentDesc.loadOp == LoadOp::CLEAR)
+            m_GraphicsCommandList->ClearRenderTargetView(renderTargets[i], &attachmentDesc.clearValue.color.f.x, 0, nullptr);
+    }
+
+    D3D12_CLEAR_FLAGS clearFlags = (D3D12_CLEAR_FLAGS)0;
+    if (renderingDesc.depth.loadOp == LoadOp::CLEAR)
+        clearFlags |= D3D12_CLEAR_FLAG_DEPTH;
+    if (renderingDesc.stencil.loadOp == LoadOp::CLEAR)
+        clearFlags |= D3D12_CLEAR_FLAG_STENCIL;
+
+    if (clearFlags)
+        m_GraphicsCommandList->ClearDepthStencilView(depthStencil, clearFlags, renderingDesc.depth.clearValue.depthStencil.depth, renderingDesc.stencil.clearValue.depthStencil.stencil, 0, nullptr);
 
     // Shading rate
     if (m_Device.GetDesc().tiers.shadingRate >= 2) {
         ID3D12Resource* shadingRateImage = nullptr;
-        if (attachmentsDesc.shadingRate)
-            shadingRateImage = ((DescriptorD3D12*)attachmentsDesc.shadingRate)->GetResource();
+        if (renderingDesc.shadingRate) {
+            const DescriptorD3D12& descriptorD3D12 = *(DescriptorD3D12*)renderingDesc.shadingRate;
+            shadingRateImage = descriptorD3D12.GetResource();
+        }
 
         m_GraphicsCommandList->RSSetShadingRateImage(shadingRateImage);
     }
 
     // Multiview
-    if (m_Device.GetDesc().other.viewMaxNum > 1 && attachmentsDesc.viewMask)
-        m_GraphicsCommandList->SetViewInstanceMask(attachmentsDesc.viewMask);
+    if (m_Device.GetDesc().other.viewMaxNum > 1 && renderingDesc.viewMask)
+        m_GraphicsCommandList->SetViewInstanceMask(renderingDesc.viewMask);
+
+    m_RenderPass = true;
+}
+
+NRI_INLINE void CommandBufferD3D12::EndRendering() {
+    uint32_t resourceBarrierNum = 0;
+    if (!m_Device.GetDesc().features.enhancedBarriers) {
+        for (const AttachmentDescD3D12& attachmentDesc : m_RenderTargets) {
+            if (attachmentDesc.resolveDst) {
+                const TexViewDesc& srcDesc = attachmentDesc.attachment->GetTexViewDesc();
+                resourceBarrierNum += srcDesc.layerNum;
+            }
+        }
+
+        if (m_Depth.resolveDst) {
+            const TexViewDesc& srcDesc = m_Depth.attachment->GetTexViewDesc();
+            resourceBarrierNum += srcDesc.layerNum;
+        }
+
+        if (m_Stencil.resolveDst) {
+            const TexViewDesc& srcDesc = m_Stencil.attachment->GetTexViewDesc();
+            resourceBarrierNum += srcDesc.layerNum;
+        }
+    }
+    Scratch<D3D12_RESOURCE_BARRIER> resourceBarriers = AllocateScratch(m_Device, D3D12_RESOURCE_BARRIER, resourceBarrierNum);
+    uint32_t barrierNum = 0;
+
+    constexpr uint32_t attachmentNum = D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT + 2;
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    std::array<D3D12_TEXTURE_BARRIER, attachmentNum> textureBarriers = {};
+
+    D3D12_BARRIER_GROUP barrierGroup = {};
+    barrierGroup.Type = D3D12_BARRIER_TYPE_TEXTURE;
+    barrierGroup.pTextureBarriers = textureBarriers.data();
+#endif
+
+    for (size_t i = 0; i < attachmentNum; i++) {
+        const AttachmentDescD3D12* attachmentDesc = &m_Stencil;
+        PlaneBits planeBits = PlaneBits::STENCIL;
+        if (i < m_RenderTargets.size()) {
+            attachmentDesc = &m_RenderTargets[i];
+            planeBits = PlaneBits::COLOR;
+        } else if (i == m_RenderTargets.size()) {
+            attachmentDesc = &m_Depth;
+            planeBits = PlaneBits::DEPTH;
+        }
+
+        if (!attachmentDesc->resolveDst)
+            continue;
+
+        DescriptorD3D12* resolveSrc = attachmentDesc->attachment;
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+        if (m_Device.GetDesc().features.enhancedBarriers)
+            FillResolveBarrier(*resolveSrc, planeBits, textureBarriers[barrierNum++]);
+        else
+#endif
+        {
+            const TexViewDesc& srcDesc = resolveSrc->GetTexViewDesc();
+            D3D12_RESOURCE_DESC resourceDesc = resolveSrc->GetResource()->GetDesc();
+
+            for (uint32_t layer = 0; layer < srcDesc.layerNum; layer++) {
+                uint32_t srcSubresource = GetSubresourceIndex(srcDesc.layerOffset + layer, resourceDesc.DepthOrArraySize, srcDesc.mipOffset, resourceDesc.MipLevels, planeBits);
+                FillLegacyResolveBarrier(*resolveSrc, srcSubresource, resourceBarriers[barrierNum++]);
+            }
+        }
+    }
+
+    if (barrierNum) {
+        // Barriers to "RESOLVE_SOURCE"
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+        barrierGroup.NumBarriers = barrierNum;
+        if (m_Device.GetDesc().features.enhancedBarriers)
+            m_GraphicsCommandList->Barrier(1, &barrierGroup);
+        else
+#endif
+            m_GraphicsCommandList->ResourceBarrier(barrierNum, resourceBarriers);
+
+        // Resolve
+        for (size_t i = 0; i < attachmentNum; i++) {
+            const AttachmentDescD3D12* attachmentDesc = &m_Stencil;
+            PlaneBits planeBits = PlaneBits::STENCIL;
+            if (i < m_RenderTargets.size()) {
+                attachmentDesc = &m_RenderTargets[i];
+                planeBits = PlaneBits::COLOR;
+            } else if (i == m_RenderTargets.size()) {
+                attachmentDesc = &m_Depth;
+                planeBits = PlaneBits::DEPTH;
+            }
+
+            if (!attachmentDesc->resolveDst)
+                continue;
+
+            D3D12_RESOLVE_MODE resolveMode = GetResolveOp(attachmentDesc->resolveOp);
+            const DxgiFormat& format = GetDxgiFormat(attachmentDesc->resolveDst->GetFormat());
+
+            ID3D12Resource* srcResource = attachmentDesc->attachment->GetResource();
+            D3D12_RESOURCE_DESC srcResourceDesc = srcResource->GetDesc();
+            const TexViewDesc& srcDesc = attachmentDesc->attachment->GetTexViewDesc();
+            uint32_t srcSubresource = GetSubresourceIndex(srcDesc.layerOffset, srcResourceDesc.DepthOrArraySize, srcDesc.mipOffset, srcResourceDesc.MipLevels, planeBits);
+
+            ID3D12Resource* dstResource = attachmentDesc->resolveDst->GetResource();
+            D3D12_RESOURCE_DESC dstResourceDesc = dstResource->GetDesc();
+            const TexViewDesc& dstDesc = attachmentDesc->resolveDst->GetTexViewDesc();
+            uint32_t dstSubresource = GetSubresourceIndex(dstDesc.layerOffset, dstResourceDesc.DepthOrArraySize, dstDesc.mipOffset, dstResourceDesc.DepthOrArraySize, planeBits);
+
+            m_GraphicsCommandList->ResolveSubresourceRegion(dstResource, dstSubresource, 0, 0, srcResource, srcSubresource, nullptr, format.typed, resolveMode);
+        }
+
+        // Restore state
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+        if (m_Device.GetDesc().features.enhancedBarriers) {
+            for (uint32_t i = 0; i < barrierNum; i++) {
+                D3D12_TEXTURE_BARRIER& textureBarrier = textureBarriers[i];
+
+                std::swap(textureBarrier.SyncAfter, textureBarrier.SyncBefore);
+                std::swap(textureBarrier.AccessAfter, textureBarrier.AccessBefore);
+                std::swap(textureBarrier.LayoutAfter, textureBarrier.LayoutBefore);
+            }
+
+            m_GraphicsCommandList->Barrier(1, &barrierGroup);
+        } else
+#endif
+        {
+            for (uint32_t i = 0; i < barrierNum; i++) {
+                D3D12_RESOURCE_BARRIER& resourceBarrier = resourceBarriers[i];
+
+                std::swap(resourceBarrier.Transition.StateAfter, resourceBarrier.Transition.StateBefore);
+            }
+
+            m_GraphicsCommandList->ResourceBarrier(barrierNum, resourceBarriers);
+        }
+    }
+
+    ResetAttachments();
+
+    m_RenderPass = false;
 }
 
 NRI_INLINE void CommandBufferD3D12::SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum) {
@@ -813,8 +1029,8 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
                 out.SyncAfter = GetBarrierSyncFlags(in.after.stages, in.after.access);
                 out.AccessBefore = GetBarrierAccessFlags(in.before.access);
                 out.AccessAfter = GetBarrierAccessFlags(in.after.access);
-                out.LayoutBefore = GetBarrierLayout(in.before.layout);
-                out.LayoutAfter = GetBarrierLayout(in.after.layout);
+                out.LayoutBefore = GetBarrierLayout(in.before.layout, in.before.access);
+                out.LayoutAfter = GetBarrierLayout(in.after.layout, in.after.access);
                 out.pResource = texture;
                 out.Subresources.IndexOrFirstMipLevel = in.mipOffset;
                 out.Subresources.NumMipLevels = in.mipNum == REMAINING ? desc.mipNum : in.mipNum;

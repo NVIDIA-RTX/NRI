@@ -25,8 +25,8 @@ struct CommandBufferVal final : public ObjectVal {
 
     inline void ResetAttachments() {
         m_RenderTargetNum = 0;
-        for (size_t i = 0; i < m_RenderTargets.size(); i++)
-            m_RenderTargets[i] = nullptr;
+        for (auto& renderTarget : m_RenderTargets)
+            renderTarget = nullptr;
 
         m_DepthStencil = nullptr;
     }
@@ -47,7 +47,7 @@ struct CommandBufferVal final : public ObjectVal {
     void SetDepthBias(const DepthBiasDesc& depthBiasDesc);
     void ClearAttachments(const ClearAttachmentDesc* clearAttachmentDescs, uint32_t clearAttachmentDescNum, const Rect* rects, uint32_t rectNum);
     void ClearStorage(const ClearStorageDesc& clearStorageDesc);
-    void BeginRendering(const AttachmentsDesc& attachmentsDesc);
+    void BeginRendering(const RenderingDesc& renderingDesc);
     void EndRendering();
     void SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum);
     void SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType);

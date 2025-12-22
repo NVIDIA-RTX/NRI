@@ -47,6 +47,7 @@ private:
     uint32_t m_ConstantBufferNum = 0;
     uint32_t m_TextureNum = 0;
     uint32_t m_StorageTextureNum = 0;
+    uint32_t m_InputAttachmentNum = 0;
     uint32_t m_BufferNum = 0;
     uint32_t m_StorageBufferNum = 0;
     uint32_t m_StructuredBufferNum = 0;

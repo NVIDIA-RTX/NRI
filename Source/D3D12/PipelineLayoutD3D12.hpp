@@ -4,9 +4,11 @@ static inline D3D12_DESCRIPTOR_RANGE_FLAGS GetDescriptorRangeFlags(const Descrip
     // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#flags-added-in-root-signature-version-11
     D3D12_DESCRIPTOR_RANGE_FLAGS descriptorRangeFlags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
 
-    // "PARTIALLY_BOUND" implies relaxed requirements and validation
-    // "ALLOW_UPDATE_AFTER_SET" allows descriptor updates after "bind"
-    if (descriptorRangeDesc.flags & (DescriptorRangeBits::PARTIALLY_BOUND | DescriptorRangeBits::ALLOW_UPDATE_AFTER_SET))
+    bool descriptorsVolatile = (descriptorRangeDesc.flags & DescriptorRangeBits::PARTIALLY_BOUND) != 0;    // implies relaxed requirements and validation
+    descriptorsVolatile |= (descriptorRangeDesc.flags & DescriptorRangeBits::ALLOW_UPDATE_AFTER_SET) != 0; // allows descriptor updates "after bind"
+    descriptorsVolatile |= descriptorRangeDesc.descriptorType == DescriptorType::INPUT_ATTACHMENT;         // allows layout changes "after bind"
+
+    if (descriptorsVolatile)
         descriptorRangeFlags |= D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE;
 
     // "ALLOW_UPDATE_AFTER_SET" additionally allows to change data, pointed to by descriptors. Samplers are always "DATA_STATIC"
