@@ -59,75 +59,73 @@ Repository organization:
 <details>
 <summary>Required Vulkan extensions:</summary>
 
-    - _VK_KHR_synchronization2_
-    - _VK_KHR_dynamic_rendering_
-    - _VK_KHR_copy_commands2_
-    - _VK_EXT_extended_dynamic_state_
-    - _VK_KHR_portability_enumeration_ (for APPLE)
-    - _VK_KHR_get_physical_device_properties2_ (for APPLE)
-    - _VK_KHR_portability_subset_ (for for APPLE)
+ - _VK_KHR_synchronization2_
+ - _VK_KHR_dynamic_rendering_
+ - _VK_KHR_copy_commands2_
+ - _VK_EXT_extended_dynamic_state_
+ - _VK_KHR_portability_enumeration_ (for APPLE)
+ - _VK_KHR_get_physical_device_properties2_ (for APPLE)
+ - _VK_KHR_portability_subset_ (for for APPLE)
 
 </details>
 
 <details>
 <summary>Supported Vulkan extensions:</summary>
 
-- Instance:
-    - _VK_KHR_get_surface_capabilities2_
-    - _VK_KHR_surface_
-    - _VK_KHR_win32_surface_ (_VK_KHR_xlib_surface_, _VK_KHR_wayland_surface_, _VK_EXT_metal_surface_)
-    - _VK_EXT_swapchain_colorspace_
-    - _VK_EXT_debug_utils_
-- Device:
-    - _VK_KHR_swapchain_
-    - _VK_KHR_present_id_
-    - _VK_KHR_present_wait_
-    - _VK_KHR_swapchain_mutable_format_
-    - _VK_KHR_push_descriptor_
-    - _VK_KHR_maintenance4_ (optional, but recommended)
-    - _VK_KHR_maintenance5_ (optional, but recommended)
-    - _VK_KHR_maintenance6_ (optional, but recommended)
-    - _VK_KHR_maintenance7_
-    - _VK_KHR_maintenance8_
-    - _VK_KHR_maintenance9_
-    - _VK_KHR_line_rasterization_
-    - _VK_KHR_fragment_shading_rate_
-    - _VK_KHR_pipeline_library_
-    - _VK_KHR_ray_tracing_pipeline_
-    - _VK_KHR_acceleration_structure_ (depends on _VK_KHR_deferred_host_operations_)
-    - _VK_KHR_ray_query_
-    - _VK_KHR_ray_tracing_position_fetch_
-    - _VK_KHR_ray_tracing_maintenance1_
-    - _VK_KHR_fragment_shader_barycentric_
-    - _VK_KHR_shader_clock_
-    - _VK_KHR_compute_shader_derivatives_
-    - _VK_KHR_unified_image_layouts_
-    - _VK_KHR_shader_integer_dot_product_
-    - _VK_KHR_dynamic_redering_local_read_
-    - _VK_EXT_pipeline_robustness_
-    - _VK_EXT_image_robustness_
-    - _VK_EXT_subgroup_size_control_
-    - _VK_EXT_mutable_descriptor_type_
-    - _VK_EXT_swapchain_maintenance1_
-    - _VK_EXT_present_mode_fifo_latest_ready_
-    - _VK_EXT_opacity_micromap_
-    - _VK_EXT_sample_locations_
-    - _VK_EXT_conservative_rasterization_
-    - _VK_EXT_mesh_shader_
-    - _VK_EXT_shader_atomic_float_
-    - _VK_EXT_shader_atomic_float2_
-    - _VK_EXT_memory_budget_
-    - _VK_EXT_memory_priority_
-    - _VK_EXT_image_sliced_view_of_3d_
-    - _VK_EXT_custom_border_color_
-    - _VK_EXT_robustness2_
-    - _VK_EXT_fragment_shader_interlock_
-    - _VK_EXT_present_mode_fifo_latest_ready_
-    - _VK_EXT_zero_initialize_memory_
-    - _VK_EXT_mutable_descriptor_type_
-    - _VK_NV_low_latency2_
-    - _VK_NVX_binary_import_
-    - _VK_NVX_image_view_handle_
+ - (Instance) _VK_KHR_get_surface_capabilities2_
+ - (Instance) _VK_KHR_surface_
+ - (Instance) _VK_KHR_win32_surface_ (_VK_KHR_xlib_surface_, _VK_KHR_wayland_surface_,  _VK_EXT_metal_surface_)
+ - (Instance) _VK_EXT_swapchain_colorspace_
+ - (Instance) _VK_EXT_debug_utils_
+ - _VK_KHR_swapchain_
+ - _VK_KHR_present_id_
+ - _VK_KHR_present_wait_
+ - _VK_KHR_swapchain_mutable_format_
+ - _VK_KHR_push_descriptor_
+ - _VK_KHR_maintenance4_ (optional, but recommended)
+ - _VK_KHR_maintenance5_ (optional, but recommended)
+ - _VK_KHR_maintenance6_ (optional, but recommended)
+ - _VK_KHR_maintenance7_
+ - _VK_KHR_maintenance8_
+ - _VK_KHR_maintenance9_
+ - _VK_KHR_line_rasterization_
+ - _VK_KHR_fragment_shading_rate_
+ - _VK_KHR_pipeline_library_
+ - _VK_KHR_ray_tracing_pipeline_
+ - _VK_KHR_acceleration_structure_ (depends on _VK_KHR_deferred_host_operations_)
+ - _VK_KHR_ray_query_
+ - _VK_KHR_ray_tracing_position_fetch_
+ - _VK_KHR_ray_tracing_maintenance1_
+ - _VK_KHR_fragment_shader_barycentric_
+ - _VK_KHR_shader_clock_
+ - _VK_KHR_compute_shader_derivatives_
+ - _VK_KHR_unified_image_layouts_
+ - _VK_KHR_shader_integer_dot_product_
+ - _VK_KHR_dynamic_redering_local_read_
+ - _VK_EXT_pipeline_robustness_
+ - _VK_EXT_image_robustness_
+ - _VK_EXT_subgroup_size_control_
+ - _VK_EXT_mutable_descriptor_type_
+ - _VK_EXT_swapchain_maintenance1_
+ - _VK_EXT_present_mode_fifo_latest_ready_
+ - _VK_EXT_opacity_micromap_
+ - _VK_EXT_sample_locations_
+ - _VK_EXT_conservative_rasterization_
+ - _VK_EXT_mesh_shader_
+ - _VK_EXT_shader_atomic_float_
+ - _VK_EXT_shader_atomic_float2_
+ - _VK_EXT_memory_budget_
+ - _VK_EXT_memory_priority_
+ - _VK_EXT_image_sliced_view_of_3d_
+ - _VK_EXT_custom_border_color_
+ - _VK_EXT_robustness2_
+ - _VK_EXT_fragment_shader_interlock_
+ - _VK_EXT_present_mode_fifo_latest_ready_
+ - _VK_EXT_zero_initialize_memory_
+ - _VK_EXT_mutable_descriptor_type_
+ - _VK_NV_low_latency2_
+ - _VK_NVX_binary_import_
+ - _VK_NVX_image_view_handle_
 
 </details>
 
