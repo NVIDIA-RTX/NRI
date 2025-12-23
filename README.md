@@ -29,23 +29,16 @@ Supported GAPIs:
 
 There is [NVRHI](https://github.com/NVIDIA-RTX/NVRHI), which offers a D3D11-like abstraction layer, implying some overhead. There is [vkd3d-proton](https://github.com/HansKristian-Work/vkd3d-proton), which was designed for D3D12 emulation using Vulkan. There is [nvpro-samples](https://github.com/nvpro-samples), which explores all "dark corners" of Vulkan usage, but does not offer any cross-API support. There are some other good, unmentioned projects, but *NRI* was designed to offer a reasonably simple, low-overhead, and high-performance render interface suitable for game development, professional rendering and hobby projects. Additionally, *NRI* can serve as a middleware for integrations. For instance, the [NRD integration layer](https://github.com/NVIDIA-RTX/NRD/tree/master/Integration) is based on *NRI*, unifying multiple GAPI support within a single codebase.
 
-## KEY FEATURES:
- - *C++* and *C* compatible interfaces
- - generalized common denominator for D3D12, VK and D3D11
- - low overhead
- - no memory allocations at runtime
- - descriptor indexing support, including directly indexed descriptor heaps
- - ray tracing support
- - mesh shaders support
- - D3D12 Ultimate features support, including enhanced barriers
- - *AMD Virtual Memory Allocator* support
- - VK [printf](https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/main/docs/debug_printf.md) support
- - validation layers (GAPI- and NRI- provided)
- - user provided memory allocator support
- - default D3D11 behavior is changed to match D3D12/VK using *NVAPI* or *AMD AGS* libraries, where applicable
- - supporting as much as possible VK-enabled platforms: Windows, Linux, MacOS, Android
- - debug names and annotations for CPU and GPU timelines (GAPI, [NVTX](https://github.com/NVIDIA/NVTX) and [PIX](https://devblogs.microsoft.com/pix/winpixeventruntime/), if "WinPixEventRuntime.dll" is nearby)
- - can be used as a *shared* or *static* library
+## KEY FEATURES
+ - *Multi-API support* - generalized common denominator for D3D12, Vulkan, and D3D11 (default D3D11 behavior is changed to match D3D12/VK using *NVAPI* or *AMD AGS* libraries, where applicable)
+ - *C/C++ compatible* - native interface, compatible with both languages (can be used as a *shared* or *static* library)
+ - *High performance* - low overhead with zero memory allocations at runtime, honored user-provided memory allocator
+ - *Modern hardware tech* - support for Ray Tracing, Mesh Shaders, descriptor indexing (including directly indexed descriptor heaps) and more
+ - *Mobile-ready* - optimized for Tile-Based Rendering (TBR/TBDR) architectures
+ - *D3D12 Ultimate* - full support, including Enhanced Barriers
+ - *Platform Flexibility* - Windows, Linux, MacOS, and Android support
+ - *Developer Experience* - integrated GAPI- and NRI- validation, VK [printf](https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/main/docs/debug_printf.md), and timeline annotations (GAPI, [NVTX](https://github.com/NVIDIA/NVTX) and [PIX](https://devblogs.microsoft.com/pix/winpixeventruntime/), if "WinPixEventRuntime.dll" is nearby)
+ - *Memory Management* - deep integration with *AMD Virtual Memory Allocator* to ease memory management and memory reuse
 
 Available interfaces:
  - `NRI.h` - core functionality
@@ -110,6 +103,7 @@ Repository organization:
     - _VK_KHR_compute_shader_derivatives_
     - _VK_KHR_unified_image_layouts_
     - _VK_KHR_shader_integer_dot_product_
+    - _VK_KHR_dynamic_redering_local_read_
     - _VK_EXT_pipeline_robustness_
     - _VK_EXT_image_robustness_
     - _VK_EXT_subgroup_size_control_

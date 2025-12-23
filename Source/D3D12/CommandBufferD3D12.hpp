@@ -199,12 +199,6 @@ static inline D3D12_RESOURCE_STATES GetResourceStates(AccessBits accessBits, D3D
     if (accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE)
         resourceStates |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
-    if (accessBits & (AccessBits::ACCELERATION_STRUCTURE_READ | AccessBits::MICROMAP_READ))
-        resourceStates |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-
-    if (accessBits & (AccessBits::ACCELERATION_STRUCTURE_WRITE | AccessBits::MICROMAP_WRITE))
-        resourceStates |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-
     if (accessBits & AccessBits::SHADER_RESOURCE) {
         resourceStates |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
 
@@ -218,7 +212,7 @@ static inline D3D12_RESOURCE_STATES GetResourceStates(AccessBits accessBits, D3D
     if (accessBits & AccessBits::SHADER_BINDING_TABLE)
         resourceStates |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
 
-    if (accessBits & (AccessBits::SHADER_RESOURCE_STORAGE | AccessBits::SCRATCH_BUFFER | AccessBits::CLEAR_STORAGE))
+    if (accessBits & (AccessBits::SHADER_RESOURCE_STORAGE | AccessBits::ACCELERATION_STRUCTURE | AccessBits::MICROMAP | AccessBits::SCRATCH_BUFFER | AccessBits::CLEAR_STORAGE))
         resourceStates |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
     if (accessBits & AccessBits::COPY_SOURCE)

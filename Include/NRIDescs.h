@@ -441,35 +441,49 @@ NriBits(AccessBits, uint32_t,
     SCRATCH_BUFFER                  = NriBit(4),    // RW       ACCELERATION_STRUCTURE, MICROMAP
 
     // Attachment
-    COLOR_ATTACHMENT                = NriBit(5),    // RW       COLOR_ATTACHMENT (R by ROP)
-    DEPTH_STENCIL_ATTACHMENT_READ   = NriBit(6),    // R        DEPTH_STENCIL_ATTACHMENT
-    DEPTH_STENCIL_ATTACHMENT_WRITE  = NriBit(7),    //  W       DEPTH_STENCIL_ATTACHMENT
-    SHADING_RATE_ATTACHMENT         = NriBit(8),    // R        FRAGMENT_SHADER
-    INPUT_ATTACHMENT                = NriBit(9),    // R        FRAGMENT_SHADER
+    COLOR_ATTACHMENT_READ           = NriBit(5),    // R        COLOR_ATTACHMENT (implicitly by ROP)
+    COLOR_ATTACHMENT_WRITE          = NriBit(6),    //  W       COLOR_ATTACHMENT
+    DEPTH_STENCIL_ATTACHMENT_READ   = NriBit(7),    // R        DEPTH_STENCIL_ATTACHMENT
+    DEPTH_STENCIL_ATTACHMENT_WRITE  = NriBit(8),    //  W       DEPTH_STENCIL_ATTACHMENT
+    SHADING_RATE_ATTACHMENT         = NriBit(9),    // R        FRAGMENT_SHADER
+    INPUT_ATTACHMENT                = NriBit(10),   // R        FRAGMENT_SHADER
 
     // Acceleration structure
-    ACCELERATION_STRUCTURE_READ     = NriBit(10),   // R        COMPUTE_SHADER, RAY_TRACING_SHADERS, ACCELERATION_STRUCTURE
-    ACCELERATION_STRUCTURE_WRITE    = NriBit(11),   //  W       ACCELERATION_STRUCTURE
+    ACCELERATION_STRUCTURE_READ     = NriBit(11),   // R        COMPUTE_SHADER, RAY_TRACING_SHADERS, ACCELERATION_STRUCTURE
+    ACCELERATION_STRUCTURE_WRITE    = NriBit(12),   //  W       ACCELERATION_STRUCTURE
 
     // Micromap
-    MICROMAP_READ                   = NriBit(12),   // R        MICROMAP, ACCELERATION_STRUCTURE
-    MICROMAP_WRITE                  = NriBit(13),   //  W       MICROMAP
+    MICROMAP_READ                   = NriBit(13),   // R        MICROMAP, ACCELERATION_STRUCTURE
+    MICROMAP_WRITE                  = NriBit(14),   //  W       MICROMAP
 
     // Shader resource
-    SHADER_RESOURCE                 = NriBit(14),   // R        ALL_SHADERS
-    SHADER_RESOURCE_STORAGE         = NriBit(15),   // RW       ALL_SHADERS, CLEAR_STORAGE
-    SHADER_BINDING_TABLE            = NriBit(16),   // R        RAY_TRACING_SHADERS
+    SHADER_RESOURCE                 = NriBit(15),   // R        ALL_SHADERS
+    SHADER_RESOURCE_STORAGE         = NriBit(16),   // RW       ALL_SHADERS, CLEAR_STORAGE
+    SHADER_BINDING_TABLE            = NriBit(17),   // R        RAY_TRACING_SHADERS
 
     // Copy
-    COPY_SOURCE                     = NriBit(17),   // R        COPY
-    COPY_DESTINATION                = NriBit(18),   //  W       COPY
+    COPY_SOURCE                     = NriBit(18),   // R        COPY
+    COPY_DESTINATION                = NriBit(19),   //  W       COPY
 
     // Resolve
-    RESOLVE_SOURCE                  = NriBit(19),   // R        RESOLVE
-    RESOLVE_DESTINATION             = NriBit(20),   //  W       RESOLVE
+    RESOLVE_SOURCE                  = NriBit(20),   // R        RESOLVE
+    RESOLVE_DESTINATION             = NriBit(21),   //  W       RESOLVE
 
     // Clear storage
-    CLEAR_STORAGE                   = NriBit(21)    //  W       CLEAR_STORAGE
+    CLEAR_STORAGE                   = NriBit(22),   //  W       CLEAR_STORAGE
+
+    // Umbrella access
+    COLOR_ATTACHMENT                = NriMember(AccessBits, COLOR_ATTACHMENT_READ)
+                                    | NriMember(AccessBits, COLOR_ATTACHMENT_WRITE),
+
+    DEPTH_STENCIL_ATTACHMENT        = NriMember(AccessBits, DEPTH_STENCIL_ATTACHMENT_READ)
+                                    | NriMember(AccessBits, DEPTH_STENCIL_ATTACHMENT_WRITE),
+
+    ACCELERATION_STRUCTURE          = NriMember(AccessBits, ACCELERATION_STRUCTURE_READ)
+                                    | NriMember(AccessBits, ACCELERATION_STRUCTURE_WRITE),
+
+    MICROMAP                        = NriMember(AccessBits, MICROMAP_READ)
+                                    | NriMember(AccessBits, MICROMAP_WRITE)
 );
 
 // "Layout" is ignored if "features.enhancedBarriers" is not supported
@@ -482,7 +496,7 @@ NriEnum(Layout, uint8_t,            // Compatible "AccessBits":
     PRESENT,                            // NONE (use "after.stages = StageBits::NONE")
 
     // Attachment
-    COLOR_ATTACHMENT,                   // COLOR_ATTACHMENT
+    COLOR_ATTACHMENT,                   // COLOR_ATTACHMENT_READ/WRITE
     DEPTH_STENCIL_ATTACHMENT,           // DEPTH_STENCIL_ATTACHMENT_READ/WRITE
     DEPTH_READONLY_STENCIL_ATTACHMENT,  // DEPTH_STENCIL_ATTACHMENT_READ/WRITE, SHADER_RESOURCE (readonlyPlanes = "DEPTH")
     DEPTH_ATTACHMENT_STENCIL_READONLY,  // DEPTH_STENCIL_ATTACHMENT_READ/WRITE, SHADER_RESOURCE (readonlyPlanes = "STENCIL")

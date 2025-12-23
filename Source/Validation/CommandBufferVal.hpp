@@ -12,11 +12,11 @@ static inline bool IsAccessMaskSupported(const BufferDesc& bufferDesc, AccessBit
         isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::ARGUMENT_BUFFER) != 0;
     if (accessMask & AccessBits::SCRATCH_BUFFER)
         isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::SCRATCH_BUFFER) != 0;
-    if (accessMask & (AccessBits::COLOR_ATTACHMENT | AccessBits::SHADING_RATE_ATTACHMENT | AccessBits::DEPTH_STENCIL_ATTACHMENT_READ | AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE | AccessBits::INPUT_ATTACHMENT))
+    if (accessMask & (AccessBits::COLOR_ATTACHMENT | AccessBits::DEPTH_STENCIL_ATTACHMENT | AccessBits::SHADING_RATE_ATTACHMENT | AccessBits::INPUT_ATTACHMENT))
         isSupported = false;
-    if (accessMask & (AccessBits::ACCELERATION_STRUCTURE_READ | AccessBits::ACCELERATION_STRUCTURE_WRITE))
+    if (accessMask & AccessBits::ACCELERATION_STRUCTURE)
         isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE) != 0;
-    if (accessMask & (AccessBits::MICROMAP_READ | AccessBits::MICROMAP_WRITE))
+    if (accessMask & AccessBits::MICROMAP)
         isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::MICROMAP_STORAGE) != 0;
     if (accessMask & AccessBits::SHADER_BINDING_TABLE)
         isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::SHADER_BINDING_TABLE) != 0;
@@ -38,11 +38,11 @@ static inline bool IsAccessMaskSupported(const TextureDesc& textureDesc, AccessB
         isSupported = isSupported && (textureDesc.usage & TextureUsageBits::COLOR_ATTACHMENT) != 0;
     if (accessMask & AccessBits::SHADING_RATE_ATTACHMENT)
         isSupported = isSupported && (textureDesc.usage & TextureUsageBits::SHADING_RATE_ATTACHMENT) != 0;
-    if (accessMask & (AccessBits::DEPTH_STENCIL_ATTACHMENT_READ | AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE))
+    if (accessMask & AccessBits::DEPTH_STENCIL_ATTACHMENT)
         isSupported = isSupported && (textureDesc.usage & TextureUsageBits::DEPTH_STENCIL_ATTACHMENT) != 0;
-    if (accessMask & (AccessBits::ACCELERATION_STRUCTURE_READ | AccessBits::ACCELERATION_STRUCTURE_WRITE))
+    if (accessMask & AccessBits::ACCELERATION_STRUCTURE)
         isSupported = false;
-    if (accessMask & (AccessBits::MICROMAP_READ | AccessBits::MICROMAP_WRITE))
+    if (accessMask & AccessBits::MICROMAP)
         isSupported = false;
     if (accessMask & AccessBits::SHADER_BINDING_TABLE)
         isSupported = false;
