@@ -27,7 +27,7 @@ NRI_INLINE void DescriptorSetD3D12::UpdateDescriptorRanges(const UpdateDescripto
         const UpdateDescriptorRangeDesc& updateDescriptorRangeDesc = updateDescriptorRangeDescs[i];
 
         DescriptorSetD3D12& dst = *(DescriptorSetD3D12*)updateDescriptorRangeDesc.descriptorSet;
-        
+
         const DescriptorRangeMapping& dstRangeMapping = dst.m_DescriptorSetMapping->descriptorRangeMappings[updateDescriptorRangeDesc.rangeIndex];
 
         uint32_t dstOffset = dst.m_HeapOffsets[dstRangeMapping.descriptorHeapType];
@@ -65,7 +65,7 @@ NRI_INLINE void DescriptorSetD3D12::Copy(const CopyDescriptorRangeDesc* copyDesc
         DescriptorHandleCPU srcHandle = src.m_DescriptorPoolD3D12->GetDescriptorHandleCPU(srcRangeMapping.descriptorHeapType, srcOffset);
 
         uint32_t descriptorNum = copyDescriptorSetDesc.descriptorNum;
-        if (!descriptorNum)
+        if (descriptorNum == ALL)
             descriptorNum = srcRangeMapping.descriptorNum;
 
         dst.GetDevice()->CopyDescriptorsSimple(descriptorNum, {dstHandle}, {srcHandle}, (D3D12_DESCRIPTOR_HEAP_TYPE)dstRangeMapping.descriptorHeapType);

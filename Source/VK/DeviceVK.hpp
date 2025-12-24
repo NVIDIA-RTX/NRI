@@ -1970,7 +1970,7 @@ NRI_INLINE void DeviceVK::CopyDescriptorRanges(const CopyDescriptorRangeDesc* co
         const DescriptorRangeDesc& srcRangeDesc = src.GetDesc()->ranges[copyDescriptorSetDesc.srcRangeIndex];
 
         uint32_t descriptorNum = copyDescriptorSetDesc.descriptorNum;
-        if (!descriptorNum)
+        if (descriptorNum == ALL)
             descriptorNum = srcRangeDesc.descriptorNum;
 
         VkCopyDescriptorSet& copy = copies[i];

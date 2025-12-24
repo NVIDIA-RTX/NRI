@@ -976,7 +976,7 @@ NRI_INLINE void DeviceVal::CopyDescriptorRanges(const CopyDescriptorRangeDesc* c
         const DescriptorRangeDesc& srcRangeDesc = srcSetDesc.ranges[copyDescriptorSetDesc.srcRangeIndex];
 
         uint32_t descriptorNum = copyDescriptorSetDesc.descriptorNum;
-        if (!descriptorNum)
+        if (descriptorNum == ALL)
             descriptorNum = srcRangeDesc.descriptorNum;
 
         RETURN_ON_FAILURE(this, copyDescriptorSetDesc.dstBaseDescriptor + descriptorNum <= dstRangeDesc.descriptorNum, ReturnVoid(),

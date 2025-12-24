@@ -12,7 +12,7 @@ NRI_INLINE void DescriptorSetD3D11::UpdateDescriptorRanges(const UpdateDescripto
         const DescriptorSetD3D11& dst = *(DescriptorSetD3D11*)updateDescriptorRangeDesc.descriptorSet;
 
         uint32_t rangeIndex = dst.m_BindingSet->startRange + updateDescriptorRangeDesc.rangeIndex;
-        
+
         const BindingRange& dstRange = dst.m_PipelineLayout->GetBindingRange(rangeIndex);
         uint32_t descriptorOffset = dstRange.descriptorOffset + updateDescriptorRangeDesc.baseDescriptor;
 
@@ -40,7 +40,7 @@ NRI_INLINE void DescriptorSetD3D11::Copy(const CopyDescriptorRangeDesc* copyDesc
         const DescriptorD3D11** srcDescriptors = src.m_Descriptors + srcRange.descriptorOffset + copyDescriptorSetDesc.srcBaseDescriptor;
 
         uint32_t descriptorNum = copyDescriptorSetDesc.descriptorNum;
-        if (!descriptorNum)
+        if (descriptorNum == ALL)
             descriptorNum = srcRange.descriptorNum;
 
         memcpy(dstDescriptors, srcDescriptors, descriptorNum * sizeof(DescriptorD3D11*));
