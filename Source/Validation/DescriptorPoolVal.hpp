@@ -17,22 +17,22 @@ NRI_INLINE void DescriptorPoolVal::Reset() {
 }
 
 NRI_INLINE Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum) {
-    RETURN_ON_FAILURE(&m_Device, instanceNum != 0, Result::INVALID_ARGUMENT, "'instanceNum' is 0");
-    RETURN_ON_FAILURE(&m_Device, m_DescriptorSetsNum + instanceNum <= m_Desc.descriptorSetMaxNum, Result::INVALID_ARGUMENT, "exceeded the maximum number of descriptor sets (=%u)", m_Desc.descriptorSetMaxNum);
+    NRI_RETURN_ON_FAILURE(&m_Device, instanceNum != 0, Result::INVALID_ARGUMENT, "'instanceNum' is 0");
+    NRI_RETURN_ON_FAILURE(&m_Device, m_DescriptorSetsNum + instanceNum <= m_Desc.descriptorSetMaxNum, Result::INVALID_ARGUMENT, "exceeded the maximum number of descriptor sets (=%u)", m_Desc.descriptorSetMaxNum);
 
     const PipelineLayoutVal& pipelineLayoutVal = (PipelineLayoutVal&)pipelineLayout;
     const PipelineLayoutDesc& pipelineLayoutDesc = pipelineLayoutVal.GetPipelineLayoutDesc();
-    RETURN_ON_FAILURE(&m_Device, m_SkipValidation || setIndex < pipelineLayoutDesc.descriptorSetNum, Result::INVALID_ARGUMENT, "'setIndex' is invalid");
+    NRI_RETURN_ON_FAILURE(&m_Device, m_SkipValidation || setIndex < pipelineLayoutDesc.descriptorSetNum, Result::INVALID_ARGUMENT, "'setIndex' is invalid");
 
     const DescriptorSetDesc& descriptorSetDesc = pipelineLayoutDesc.descriptorSets[setIndex];
     if (!m_SkipValidation) {
         for (uint32_t i = 0; i < instanceNum; i++) {
             for (uint32_t j = 0; j < descriptorSetDesc.rangeNum; j++) {
                 const DescriptorRangeDesc& rangeDesc = descriptorSetDesc.ranges[j];
-                RETURN_ON_FAILURE(&m_Device, (uint32_t)rangeDesc.descriptorType < (uint32_t)DescriptorType::MAX_NUM, Result::INVALID_ARGUMENT, "Invalid DescriptorType=%u", (uint32_t)rangeDesc.descriptorType);
+                NRI_RETURN_ON_FAILURE(&m_Device, (uint32_t)rangeDesc.descriptorType < (uint32_t)DescriptorType::MAX_NUM, Result::INVALID_ARGUMENT, "Invalid DescriptorType=%u", (uint32_t)rangeDesc.descriptorType);
 
                 uint32_t descriptorNum = (rangeDesc.flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY) ? variableDescriptorNum : rangeDesc.descriptorNum;
-                RETURN_ON_FAILURE(&m_Device, descriptorNum <= rangeDesc.descriptorNum, Result::INVALID_ARGUMENT, "'variableDescriptorNum=%u' is greater than 'descriptorNum=%u'", variableDescriptorNum, rangeDesc.descriptorNum);
+                NRI_RETURN_ON_FAILURE(&m_Device, descriptorNum <= rangeDesc.descriptorNum, Result::INVALID_ARGUMENT, "'variableDescriptorNum=%u' is greater than 'descriptorNum=%u'", variableDescriptorNum, rangeDesc.descriptorNum);
 
                 bool enoughDescriptors = false;
                 switch (rangeDesc.descriptorType) {
@@ -81,11 +81,11 @@ NRI_INLINE Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout
                         enoughDescriptors = m_AccelerationStructureNum <= m_Desc.accelerationStructureMaxNum;
                         break;
                     default:
-                        CHECK(false, "Unexpected");
+                        NRI_CHECK(false, "Unexpected");
                         break;
                 }
 
-                RETURN_ON_FAILURE(&m_Device, enoughDescriptors, Result::INVALID_ARGUMENT, "the maximum number of '%s' descriptors in DescriptorPool exceeded at DescriptorSet instance #%u", GetDescriptorTypeName(rangeDesc.descriptorType), i);
+                NRI_RETURN_ON_FAILURE(&m_Device, enoughDescriptors, Result::INVALID_ARGUMENT, "the maximum number of '%s' descriptors in DescriptorPool exceeded at DescriptorSet instance #%u", GetDescriptorTypeName(rangeDesc.descriptorType), i);
             }
         }
     }

@@ -108,8 +108,8 @@ struct DeviceD3D11 final : public DeviceBase {
     //================================================================================================================
 
     void SetDebugName(const char* name) DEBUG_NAME_OVERRIDE {
-        SET_D3D_DEBUG_OBJECT_NAME(m_Device, name);
-        SET_D3D_DEBUG_OBJECT_NAME(m_ImmediateContext, name);
+        NRI_SET_D3D_DEBUG_OBJECT_NAME(m_Device, name);
+        NRI_SET_D3D_DEBUG_OBJECT_NAME(m_ImmediateContext, name);
     }
 
     //================================================================================================================

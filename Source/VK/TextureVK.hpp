@@ -19,7 +19,7 @@ Result TextureVK::Create(const TextureDesc& textureDesc) {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateImage(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImage");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImage");
 
     return Result::SUCCESS;
 }
@@ -60,7 +60,7 @@ Result TextureVK::Create(const TextureVKDesc& textureVKDesc) {
 }
 
 Result TextureVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float priority, bool committed) {
-    CHECK(m_Handle, "Unexpected");
+    NRI_CHECK(m_Handle, "Unexpected");
 
     MemoryDesc memoryDesc = {};
     GetMemoryDesc(memoryLocation, memoryDesc);
@@ -84,17 +84,17 @@ Result TextureVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float pri
     VmaAllocationInfo allocationInfo = {};
 
     VkResult vkResult = vmaAllocateMemory(m_Device.GetVma(), &memoryRequirements, &allocationCreateInfo, &m_VmaAllocation, &allocationInfo);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vmaAllocateMemory");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vmaAllocateMemory");
 
     vkResult = vmaBindImageMemory(m_Device.GetVma(), m_VmaAllocation, m_Handle);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vmaBindImageMemory");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vmaBindImageMemory");
 
     return Result::SUCCESS;
 }
 
 Result TextureVK::BindMemory(const MemoryVK& memory, uint64_t offset) {
-    CHECK(m_Handle, "Unexpected");
-    CHECK(m_OwnsNativeObjects, "Not for wrapped objects");
+    NRI_CHECK(m_Handle, "Unexpected");
+    NRI_CHECK(m_OwnsNativeObjects, "Not for wrapped objects");
 
     VkBindImageMemoryInfo bindImageMemoryInfo = {VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO};
     bindImageMemoryInfo.image = m_Handle;
@@ -103,7 +103,7 @@ Result TextureVK::BindMemory(const MemoryVK& memory, uint64_t offset) {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.BindImageMemory2(m_Device, 1, &bindImageMemoryInfo);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkBindImageMemory2");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkBindImageMemory2");
 
     return Result::SUCCESS;
 }

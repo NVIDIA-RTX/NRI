@@ -16,7 +16,7 @@ Result TextureD3D12::Create(const TextureD3D12Desc& textureD3D12Desc) {
 }
 
 Result TextureD3D12::Allocate(MemoryLocation memoryLocation, float priority, bool committed) {
-    CHECK(!m_Texture, "Unexpected");
+    NRI_CHECK(!m_Texture, "Unexpected");
 
     D3D12_CLEAR_VALUE clearValue = {GetDxgiFormat(m_Desc.format).typed};
 
@@ -56,7 +56,7 @@ Result TextureD3D12::Allocate(MemoryLocation memoryLocation, float priority, boo
     bool isRenderableSurface = desc1.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
     HRESULT hr = m_Device.GetVma()->CreateResource3(&allocationDesc, &desc1, D3D12_BARRIER_LAYOUT_COMMON, isRenderableSurface ? &clearValue : nullptr, NO_CASTABLE_FORMATS, &m_VmaAllocation, IID_PPV_ARGS(&m_Texture));
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3");
 #else
     D3D12_RESOURCE_DESC desc = {};
     m_Device.GetResourceDesc(m_Desc, desc);
@@ -64,7 +64,7 @@ Result TextureD3D12::Allocate(MemoryLocation memoryLocation, float priority, boo
     bool isRenderableSurface = desc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
     HRESULT hr = m_Device.GetVma()->CreateResource(&allocationDesc, &desc, D3D12_RESOURCE_STATE_COMMON, isRenderableSurface ? &clearValue : nullptr, &m_VmaAllocation, IID_PPV_ARGS(&m_Texture));
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource");
 #endif
 
     // Priority
@@ -72,14 +72,14 @@ Result TextureD3D12::Allocate(MemoryLocation memoryLocation, float priority, boo
     if (residencyPriority != 0) {
         ID3D12Pageable* obj = m_Texture.GetInterface();
         hr = m_Device->SetResidencyPriority(1, &obj, &residencyPriority);
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority");
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority");
     }
 
     return Result::SUCCESS;
 }
 
 Result TextureD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
-    CHECK(!m_Texture, "Unexpected");
+    NRI_CHECK(!m_Texture, "Unexpected");
 
     D3D12_CLEAR_VALUE clearValue = {GetDxgiFormat(m_Desc.format).typed};
 
@@ -111,10 +111,10 @@ Result TextureD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
 
     if (memory.IsDummy()) {
         HRESULT hr = m_Device->CreateCommittedResource3(&heapDesc.Properties, heapFlagsFixed, &desc1, initialLayout, isRenderableSurface ? &clearValue : nullptr, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Texture));
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreateCommittedResource3");
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreateCommittedResource3");
     } else {
         HRESULT hr = m_Device->CreatePlacedResource2(memory, offset, &desc1, initialLayout, isRenderableSurface ? &clearValue : nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Texture));
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreatePlacedResource2");
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreatePlacedResource2");
     }
 #else
     // TODO: by design textures should not be created in UPLOAD/READBACK heaps, since they can't be mapped. But what about a wrapped texture?
@@ -126,10 +126,10 @@ Result TextureD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
 
     if (memory.IsDummy()) {
         HRESULT hr = m_Device->CreateCommittedResource(&heapDesc.Properties, heapFlagsFixed, &desc, initialState, isRenderableSurface ? &clearValue : nullptr, IID_PPV_ARGS(&m_Texture));
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommittedResource");
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommittedResource");
     } else {
         HRESULT hr = m_Device->CreatePlacedResource(memory, offset, &desc, initialState, isRenderableSurface ? &clearValue : nullptr, IID_PPV_ARGS(&m_Texture));
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreatePlacedResource");
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreatePlacedResource");
     }
 #endif
 
@@ -138,7 +138,7 @@ Result TextureD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
     if (residencyPriority != 0) {
         ID3D12Pageable* obj = m_Texture.GetInterface();
         HRESULT hr = m_Device->SetResidencyPriority(1, &obj, &residencyPriority);
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority");
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority");
     }
 
     return Result::SUCCESS;

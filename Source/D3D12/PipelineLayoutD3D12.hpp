@@ -68,11 +68,11 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     StdAllocator<uint8_t>& allocator = m_Device.GetStdAllocator();
     m_DescriptorSetMappings.resize(pipelineLayoutDesc.descriptorSetNum, DescriptorSetMapping(allocator));
 
-    Scratch<D3D12_DESCRIPTOR_RANGE1> ranges = AllocateScratch(m_Device, D3D12_DESCRIPTOR_RANGE1, rangeMaxNum);
+    Scratch<D3D12_DESCRIPTOR_RANGE1> ranges = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_DESCRIPTOR_RANGE1, rangeMaxNum);
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-    Scratch<D3D12_STATIC_SAMPLER_DESC1> staticSamplers = AllocateScratch(m_Device, D3D12_STATIC_SAMPLER_DESC1, pipelineLayoutDesc.rootSamplerNum);
+    Scratch<D3D12_STATIC_SAMPLER_DESC1> staticSamplers = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_STATIC_SAMPLER_DESC1, pipelineLayoutDesc.rootSamplerNum);
 #else
-    Scratch<D3D12_STATIC_SAMPLER_DESC> staticSamplers = AllocateScratch(m_Device, D3D12_STATIC_SAMPLER_DESC, pipelineLayoutDesc.rootSamplerNum);
+    Scratch<D3D12_STATIC_SAMPLER_DESC> staticSamplers = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_STATIC_SAMPLER_DESC, pipelineLayoutDesc.rootSamplerNum);
 #endif
 
     Vector<D3D12_ROOT_PARAMETER1> rootParameters(allocator);
@@ -269,17 +269,17 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         hr = D3D12SerializeVersionedRootSignature(&rootSignatureVersionedDesc, &rootSignatureBlob, &errorBlob);
 
     if (errorBlob)
-        REPORT_ERROR(&m_Device, "SerializeVersionedRootSignature(): %s", (char*)errorBlob->GetBufferPointer());
+        NRI_REPORT_ERROR(&m_Device, "SerializeVersionedRootSignature(): %s", (char*)errorBlob->GetBufferPointer());
 
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "SerializeVersionedRootSignature");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "SerializeVersionedRootSignature");
 
     hr = m_Device->CreateRootSignature(NODE_MASK, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&m_RootSignature));
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateRootSignature");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateRootSignature");
 
     m_DrawParametersEmulation = enableDrawParametersEmulation;
     if (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) {
         Result result = m_Device.CreateDefaultDrawSignatures(m_RootSignature.GetInterface(), enableDrawParametersEmulation);
-        RETURN_ON_FAILURE(&m_Device, result == Result::SUCCESS, result, "Failed to create draw signature for pipeline layout");
+        NRI_RETURN_ON_FAILURE(&m_Device, result == Result::SUCCESS, result, "Failed to create draw signature for pipeline layout");
     }
 
     return Result::SUCCESS;
@@ -340,5 +340,5 @@ void PipelineLayoutD3D12::SetRootDescriptor(ID3D12GraphicsCommandList* graphicsC
         else
             graphicsCommandList->SetComputeRootUnorderedAccessView(rootParameterIndex, bufferLocation);
     } else
-        CHECK(false, "Unexpected");
+        NRI_CHECK(false, "Unexpected");
 }

@@ -111,7 +111,7 @@ Result DescriptorD3D12::Create(const Texture1DViewDesc& textureViewDesc) {
             return CreateDepthStencilView(textureD3D12, desc);
         }
         default:
-            CHECK(false, "Unexpected");
+            NRI_CHECK(false, "Unexpected");
             return Result::INVALID_ARGUMENT;
     }
 }
@@ -252,7 +252,7 @@ Result DescriptorD3D12::Create(const Texture2DViewDesc& textureViewDesc) {
         case Texture2DViewType::SHADING_RATE_ATTACHMENT:
             return Result::SUCCESS; // a resource view is not needed
         default:
-            CHECK(false, "Unexpected");
+            NRI_CHECK(false, "Unexpected");
             return Result::INVALID_ARGUMENT;
     }
 }
@@ -306,7 +306,7 @@ Result DescriptorD3D12::Create(const Texture3DViewDesc& textureViewDesc) {
             return CreateRenderTargetView(textureD3D12, desc);
         }
         default:
-            CHECK(false, "Unexpected");
+            NRI_CHECK(false, "Unexpected");
             return Result::INVALID_ARGUMENT;
     }
 }
@@ -366,7 +366,7 @@ Result DescriptorD3D12::Create(const BufferViewDesc& bufferViewDesc) {
             return CreateUnorderedAccessView(bufferD3D12, desc);
         }
         default:
-            CHECK(false, "Unexpected");
+            NRI_CHECK(false, "Unexpected");
             return Result::INVALID_ARGUMENT;
     }
 }

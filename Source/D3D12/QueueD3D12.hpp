@@ -8,7 +8,7 @@ Result QueueD3D12::Create(QueueType queueType, float priority) {
     queueDesc.Type = GetCommandListType(queueType);
 
     HRESULT hr = m_Device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_Queue));
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateQueue");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateQueue");
 
     m_CommandListType = queueDesc.Type;
 
@@ -56,7 +56,7 @@ NRI_INLINE Result QueueD3D12::Submit(const QueueSubmitDesc& queueSubmitDesc) {
     }
 
     if (queueSubmitDesc.commandBufferNum) {
-        Scratch<ID3D12CommandList*> commandLists = AllocateScratch(m_Device, ID3D12CommandList*, queueSubmitDesc.commandBufferNum);
+        Scratch<ID3D12CommandList*> commandLists = NRI_ALLOCATE_SCRATCH(m_Device, ID3D12CommandList*, queueSubmitDesc.commandBufferNum);
         for (uint32_t j = 0; j < queueSubmitDesc.commandBufferNum; j++)
             commandLists[j] = *(CommandBufferD3D12*)queueSubmitDesc.commandBuffers[j];
 
@@ -71,7 +71,7 @@ NRI_INLINE Result QueueD3D12::Submit(const QueueSubmitDesc& queueSubmitDesc) {
 
     // Is device lost?
     HRESULT hr = m_Device->GetDeviceRemovedReason() == S_OK ? S_OK : DXGI_ERROR_DEVICE_REMOVED;
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "Submit");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "Submit");
 
     return Result::SUCCESS;
 }

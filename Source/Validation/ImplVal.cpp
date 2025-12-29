@@ -281,7 +281,7 @@ static void NRI_CALL UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* upd
     if (!updateDescriptorRangeDescNum)
         return;
 
-    CHECK(updateDescriptorRangeDescs && updateDescriptorRangeDescs->descriptorSet, "Invalid argument!");
+    NRI_CHECK(updateDescriptorRangeDescs && updateDescriptorRangeDescs->descriptorSet, "Invalid argument!");
 
     DeviceVal& deviceVal = ((DescriptorSetVal*)updateDescriptorRangeDescs->descriptorSet)->GetDevice();
     return deviceVal.UpdateDescriptorRanges(updateDescriptorRangeDescs, updateDescriptorRangeDescNum);
@@ -291,7 +291,7 @@ static void NRI_CALL CopyDescriptorRanges(const CopyDescriptorRangeDesc* copyDes
     if (!copyDescriptorRangeDescNum)
         return;
 
-    CHECK(copyDescriptorRangeDescs && copyDescriptorRangeDescs->dstDescriptorSet, "Invalid argument!");
+    NRI_CHECK(copyDescriptorRangeDescs && copyDescriptorRangeDescs->dstDescriptorSet, "Invalid argument!");
 
     DeviceVal& deviceVal = ((DescriptorSetVal*)copyDescriptorRangeDescs->dstDescriptorSet)->GetDevice();
     return deviceVal.CopyDescriptorRanges(copyDescriptorRangeDescs, copyDescriptorRangeDescNum);
@@ -533,7 +533,7 @@ static void NRI_CALL UnmapBuffer(Buffer& buffer) {
 
 static void NRI_CALL SetDebugName(Object* object, const char* name) {
     if (object) {
-        CHECK(((uint64_t*)object)[1] == NRI_OBJECT_SIGNATURE, "Invalid NRI object!");
+        NRI_CHECK(((uint64_t*)object)[1] == NRI_OBJECT_SIGNATURE, "Invalid NRI object!");
         ((DebugNameBaseVal*)object)->SetDebugName(name);
     }
 }
@@ -706,18 +706,18 @@ static bool ValidateTextureUploadDesc(DeviceVal& device, uint32_t i, const Textu
     const TextureVal& textureVal = *(TextureVal*)textureUploadDesc.texture;
     const TextureDesc& textureDesc = textureVal.GetDesc();
 
-    RETURN_ON_FAILURE(&device, textureUploadDesc.texture != nullptr, false, "'textureUploadDescs[%u].texture' is NULL", i);
-    RETURN_ON_FAILURE(&device, textureVal.IsBoundToMemory(), false, "'textureUploadDescs[%u].texture' is not bound to memory", i);
-    RETURN_ON_FAILURE(&device, textureUploadDesc.after.layout < Layout::MAX_NUM, false, "'textureUploadDescs[%u].after.layout' is invalid", i);
+    NRI_RETURN_ON_FAILURE(&device, textureUploadDesc.texture != nullptr, false, "'textureUploadDescs[%u].texture' is NULL", i);
+    NRI_RETURN_ON_FAILURE(&device, textureVal.IsBoundToMemory(), false, "'textureUploadDescs[%u].texture' is not bound to memory", i);
+    NRI_RETURN_ON_FAILURE(&device, textureUploadDesc.after.layout < Layout::MAX_NUM, false, "'textureUploadDescs[%u].after.layout' is invalid", i);
 
     uint32_t subresourceNum = (uint32_t)textureDesc.layerNum * (uint32_t)textureDesc.mipNum;
     for (uint32_t j = 0; j < subresourceNum; j++) {
         const TextureSubresourceUploadDesc& subresource = textureUploadDesc.subresources[j];
 
-        RETURN_ON_FAILURE(&device, subresource.slices != nullptr, false, "'textureUploadDescs[%u].subresources[%u].slices' is NULL", i, j);
-        RETURN_ON_FAILURE(&device, subresource.sliceNum != 0, false, "'textureUploadDescs[%u].subresources[%u].sliceNum' is 0", i, j);
-        RETURN_ON_FAILURE(&device, subresource.slicePitch != 0, false, "'textureUploadDescs[%u].subresources[%u].slicePitch' is 0", i, j);
-        RETURN_ON_FAILURE(&device, subresource.slicePitch != 0, false, "'textureUploadDescs[%u].subresources[%u].slicePitch' is 0", i, j);
+        NRI_RETURN_ON_FAILURE(&device, subresource.slices != nullptr, false, "'textureUploadDescs[%u].subresources[%u].slices' is NULL", i, j);
+        NRI_RETURN_ON_FAILURE(&device, subresource.sliceNum != 0, false, "'textureUploadDescs[%u].subresources[%u].sliceNum' is 0", i, j);
+        NRI_RETURN_ON_FAILURE(&device, subresource.slicePitch != 0, false, "'textureUploadDescs[%u].subresources[%u].slicePitch' is 0", i, j);
+        NRI_RETURN_ON_FAILURE(&device, subresource.slicePitch != 0, false, "'textureUploadDescs[%u].subresources[%u].slicePitch' is 0", i, j);
     }
 
     return true;
@@ -729,8 +729,8 @@ static bool ValidateBufferUploadDesc(DeviceVal& device, uint32_t i, const Buffer
 
     const BufferVal& bufferVal = *(BufferVal*)bufferUploadDesc.buffer;
 
-    RETURN_ON_FAILURE(&device, bufferUploadDesc.buffer != nullptr, false, "'bufferUploadDescs[%u].buffer' is NULL", i);
-    RETURN_ON_FAILURE(&device, bufferVal.IsBoundToMemory(), false, "'bufferUploadDescs[%u].buffer' is not bound to memory", i);
+    NRI_RETURN_ON_FAILURE(&device, bufferUploadDesc.buffer != nullptr, false, "'bufferUploadDescs[%u].buffer' is NULL", i);
+    NRI_RETURN_ON_FAILURE(&device, bufferVal.IsBoundToMemory(), false, "'bufferUploadDescs[%u].buffer' is not bound to memory", i);
 
     return true;
 }
@@ -739,8 +739,8 @@ static Result NRI_CALL UploadData(Queue& queue, const TextureUploadDesc* texture
     QueueVal& queueVal = (QueueVal&)queue;
     DeviceVal& deviceVal = queueVal.GetDevice();
 
-    RETURN_ON_FAILURE(&deviceVal, textureUploadDescNum == 0 || textureUploadDescs != nullptr, Result::INVALID_ARGUMENT, "'textureUploadDescs' is NULL");
-    RETURN_ON_FAILURE(&deviceVal, bufferUploadDescNum == 0 || bufferUploadDescs != nullptr, Result::INVALID_ARGUMENT, "'bufferUploadDescs' is NULL");
+    NRI_RETURN_ON_FAILURE(&deviceVal, textureUploadDescNum == 0 || textureUploadDescs != nullptr, Result::INVALID_ARGUMENT, "'textureUploadDescs' is NULL");
+    NRI_RETURN_ON_FAILURE(&deviceVal, bufferUploadDescNum == 0 || bufferUploadDescs != nullptr, Result::INVALID_ARGUMENT, "'bufferUploadDescs' is NULL");
 
     for (uint32_t i = 0; i < textureUploadDescNum; i++) {
         if (!ValidateTextureUploadDesc(deviceVal, i, textureUploadDescs[i]))
@@ -760,16 +760,16 @@ static Result NRI_CALL UploadData(Queue& queue, const TextureUploadDesc* texture
 static uint32_t NRI_CALL CalculateAllocationNumber(const Device& device, const ResourceGroupDesc& resourceGroupDesc) {
     DeviceVal& deviceVal = (DeviceVal&)device;
 
-    RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.memoryLocation < MemoryLocation::MAX_NUM, 0, "'memoryLocation' is invalid");
-    RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.bufferNum == 0 || resourceGroupDesc.buffers != nullptr, 0, "'buffers' is NULL");
-    RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.textureNum == 0 || resourceGroupDesc.textures != nullptr, 0, "'textures' is NULL");
+    NRI_RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.memoryLocation < MemoryLocation::MAX_NUM, 0, "'memoryLocation' is invalid");
+    NRI_RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.bufferNum == 0 || resourceGroupDesc.buffers != nullptr, 0, "'buffers' is NULL");
+    NRI_RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.textureNum == 0 || resourceGroupDesc.textures != nullptr, 0, "'textures' is NULL");
 
     for (uint32_t i = 0; i < resourceGroupDesc.bufferNum; i++) {
-        RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.buffers[i] != nullptr, 0, "'buffers[%u]' is NULL", i);
+        NRI_RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.buffers[i] != nullptr, 0, "'buffers[%u]' is NULL", i);
     }
 
     for (uint32_t i = 0; i < resourceGroupDesc.textureNum; i++) {
-        RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.textures[i] != nullptr, 0, "'textures[%u]' is NULL", i);
+        NRI_RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.textures[i] != nullptr, 0, "'textures[%u]' is NULL", i);
     }
 
     HelperDeviceMemoryAllocator allocator(deviceVal.GetCoreInterface(), (Device&)device);
@@ -780,17 +780,17 @@ static uint32_t NRI_CALL CalculateAllocationNumber(const Device& device, const R
 static Result NRI_CALL AllocateAndBindMemory(Device& device, const ResourceGroupDesc& resourceGroupDesc, Memory** allocations) {
     DeviceVal& deviceVal = (DeviceVal&)device;
 
-    RETURN_ON_FAILURE(&deviceVal, allocations != nullptr, Result::INVALID_ARGUMENT, "'allocations' is NULL");
-    RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.memoryLocation < MemoryLocation::MAX_NUM, Result::INVALID_ARGUMENT, "'memoryLocation' is invalid");
-    RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.bufferNum == 0 || resourceGroupDesc.buffers != nullptr, Result::INVALID_ARGUMENT, "'buffers' is NULL");
-    RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.textureNum == 0 || resourceGroupDesc.textures != nullptr, Result::INVALID_ARGUMENT, "'textures' is NULL");
+    NRI_RETURN_ON_FAILURE(&deviceVal, allocations != nullptr, Result::INVALID_ARGUMENT, "'allocations' is NULL");
+    NRI_RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.memoryLocation < MemoryLocation::MAX_NUM, Result::INVALID_ARGUMENT, "'memoryLocation' is invalid");
+    NRI_RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.bufferNum == 0 || resourceGroupDesc.buffers != nullptr, Result::INVALID_ARGUMENT, "'buffers' is NULL");
+    NRI_RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.textureNum == 0 || resourceGroupDesc.textures != nullptr, Result::INVALID_ARGUMENT, "'textures' is NULL");
 
     for (uint32_t i = 0; i < resourceGroupDesc.bufferNum; i++) {
-        RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.buffers[i] != nullptr, Result::INVALID_ARGUMENT, "'buffers[%u]' is NULL", i);
+        NRI_RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.buffers[i] != nullptr, Result::INVALID_ARGUMENT, "'buffers[%u]' is NULL", i);
     }
 
     for (uint32_t i = 0; i < resourceGroupDesc.textureNum; i++) {
-        RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.textures[i] != nullptr, Result::INVALID_ARGUMENT, "'textures[%u]' is NULL", i);
+        NRI_RETURN_ON_FAILURE(&deviceVal, resourceGroupDesc.textures[i] != nullptr, Result::INVALID_ARGUMENT, "'textures[%u]' is NULL", i);
     }
 
     HelperDeviceMemoryAllocator allocator(deviceVal.GetCoreInterface(), device);
@@ -1049,8 +1049,8 @@ static void NRI_CALL GetAccelerationStructureMemoryDesc2(const Device& device, c
         }
     }
 
-    Scratch<BottomLevelGeometryDesc> geometriesImplScratch = AllocateScratch(deviceVal, BottomLevelGeometryDesc, geometryNum);
-    Scratch<BottomLevelMicromapDesc> micromapsImplScratch = AllocateScratch(deviceVal, BottomLevelMicromapDesc, micromapNum);
+    Scratch<BottomLevelGeometryDesc> geometriesImplScratch = NRI_ALLOCATE_SCRATCH(deviceVal, BottomLevelGeometryDesc, geometryNum);
+    Scratch<BottomLevelMicromapDesc> micromapsImplScratch = NRI_ALLOCATE_SCRATCH(deviceVal, BottomLevelMicromapDesc, micromapNum);
 
     BottomLevelGeometryDesc* geometriesImpl = geometriesImplScratch;
     BottomLevelMicromapDesc* micromapsImpl = micromapsImplScratch;
@@ -1209,10 +1209,10 @@ static Result NRI_CALL CreateStreamer(Device& device, const StreamerDesc& stream
     DeviceVal& deviceVal = (DeviceVal&)device;
 
     bool isUpload = streamerDesc.constantBufferMemoryLocation == MemoryLocation::HOST_UPLOAD || streamerDesc.constantBufferMemoryLocation == MemoryLocation::DEVICE_UPLOAD;
-    RETURN_ON_FAILURE(&deviceVal, isUpload, Result::INVALID_ARGUMENT, "'constantBufferMemoryLocation' must be an UPLOAD heap");
+    NRI_RETURN_ON_FAILURE(&deviceVal, isUpload, Result::INVALID_ARGUMENT, "'constantBufferMemoryLocation' must be an UPLOAD heap");
 
     isUpload = streamerDesc.dynamicBufferMemoryLocation == MemoryLocation::HOST_UPLOAD || streamerDesc.dynamicBufferMemoryLocation == MemoryLocation::DEVICE_UPLOAD;
-    RETURN_ON_FAILURE(&deviceVal, isUpload, Result::INVALID_ARGUMENT, "'dynamicBufferMemoryLocation' must be an UPLOAD heap");
+    NRI_RETURN_ON_FAILURE(&deviceVal, isUpload, Result::INVALID_ARGUMENT, "'dynamicBufferMemoryLocation' must be an UPLOAD heap");
 
     StreamerImpl* impl = Allocate<StreamerImpl>(deviceVal.GetAllocationCallbacks(), device, deviceVal.GetCoreInterface());
     Result result = impl->Create(streamerDesc);
@@ -1249,8 +1249,8 @@ static uint32_t NRI_CALL StreamConstantData(Streamer& streamer, const void* data
     StreamerVal& streamerVal = (StreamerVal&)streamer;
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
 
-    RETURN_ON_FAILURE(&deviceVal, dataSize, 0, "'dataSize' is 0");
-    RETURN_ON_FAILURE(&deviceVal, data, 0, "'data' is NULL");
+    NRI_RETURN_ON_FAILURE(&deviceVal, dataSize, 0, "'dataSize' is 0");
+    NRI_RETURN_ON_FAILURE(&deviceVal, data, 0, "'data' is NULL");
 
     return streamerImpl->StreamConstantData(data, dataSize);
 }
@@ -1260,8 +1260,8 @@ static BufferOffset NRI_CALL StreamBufferData(Streamer& streamer, const StreamBu
     StreamerVal& streamerVal = (StreamerVal&)streamer;
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
 
-    RETURN_ON_FAILURE(&deviceVal, streamBufferDataDesc.dataChunkNum, {}, "'streamBufferDataDesc.dataChunkNum' must be > 0");
-    RETURN_ON_FAILURE(&deviceVal, streamBufferDataDesc.dataChunks, {}, "'streamBufferDataDesc.dataChunks' is NULL");
+    NRI_RETURN_ON_FAILURE(&deviceVal, streamBufferDataDesc.dataChunkNum, {}, "'streamBufferDataDesc.dataChunkNum' must be > 0");
+    NRI_RETURN_ON_FAILURE(&deviceVal, streamBufferDataDesc.dataChunks, {}, "'streamBufferDataDesc.dataChunks' is NULL");
 
     return streamerImpl->StreamBufferData(streamBufferDataDesc);
 }
@@ -1271,16 +1271,16 @@ static BufferOffset NRI_CALL StreamTextureData(Streamer& streamer, const StreamT
     StreamerVal& streamerVal = (StreamerVal&)streamer;
     StreamerImpl* streamerImpl = streamerVal.GetImpl();
 
-    RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dstTexture, {}, "'streamTextureDataDesc.dstTexture' is NULL");
-    RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dataRowPitch, {}, "'streamTextureDataDesc.dataRowPitch' must be > 0");
-    RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dataSlicePitch, {}, "'streamTextureDataDesc.dataSlicePitch' must be > 0");
-    RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.data, {}, "'streamTextureDataDesc.data' is NULL");
+    NRI_RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dstTexture, {}, "'streamTextureDataDesc.dstTexture' is NULL");
+    NRI_RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dataRowPitch, {}, "'streamTextureDataDesc.dataRowPitch' must be > 0");
+    NRI_RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.dataSlicePitch, {}, "'streamTextureDataDesc.dataSlicePitch' must be > 0");
+    NRI_RETURN_ON_FAILURE(&deviceVal, streamTextureDataDesc.data, {}, "'streamTextureDataDesc.data' is NULL");
 
     if (streamTextureDataDesc.dstTexture) {
         constexpr TextureUsageBits attachmentBits = TextureUsageBits::COLOR_ATTACHMENT | TextureUsageBits::DEPTH_STENCIL_ATTACHMENT | TextureUsageBits::SHADING_RATE_ATTACHMENT;
         const TextureVal& textureVal = *(TextureVal*)streamTextureDataDesc.dstTexture;
         const TextureDesc& textureDesc = textureVal.GetDesc();
-        RETURN_ON_FAILURE(&deviceVal, !(textureDesc.usage & attachmentBits), {}, "streaming data into potentially compressed attachments is unrecommended");
+        NRI_RETURN_ON_FAILURE(&deviceVal, !(textureDesc.usage & attachmentBits), {}, "streaming data into potentially compressed attachments is unrecommended");
     }
 
     return streamerImpl->StreamTextureData(streamTextureDataDesc);

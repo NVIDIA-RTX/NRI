@@ -1,7 +1,7 @@
 // © 2021 NVIDIA Corporation
 
 Result TextureD3D11::Allocate(MemoryLocation memoryLocation, float priority) {
-    CHECK(!m_Texture, "Unexpected");
+    NRI_CHECK(!m_Texture, "Unexpected");
 
     const DxgiFormat& dxgiFormat = GetDxgiFormat(m_Desc.format);
 
@@ -73,7 +73,7 @@ Result TextureD3D11::Allocate(MemoryLocation memoryLocation, float priority) {
         hr = m_Device->CreateTexture2D(&desc, nullptr, (ID3D11Texture2D**)&m_Texture);
     }
 
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateTextureXx");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateTextureXx");
 
     // Priority
     uint32_t evictionPriority = ConvertPriority(priority);

@@ -19,6 +19,10 @@
 typedef uint32_t DXGI_FORMAT;
 #endif
 
+#ifndef _WIN32
+#    include <alloca.h>
+#endif
+
 // IMPORTANT: "SharedExternal.h" must be included after inclusion of "windows.h" (can be implicit) because ERROR gets undef-ed below
 #include "NRI.h"
 #include "NRI.hlsl"
@@ -43,7 +47,6 @@ typedef uint32_t DXGI_FORMAT;
 
 struct IUnknown;
 
-// This struct acts as a smart pointer for IUnknown pointers making sure to call AddRef() and Release() as needed.
 template <typename T>
 struct ComPtr {
     inline ComPtr(T* lComPtr = nullptr)
@@ -144,95 +147,24 @@ protected:
 
 #endif
 
-// Prerequisites // TODO: improve
-template <typename T>
-inline T Align(T x, size_t alignment) {
-    return (T)((size_t(x) + alignment - 1) & ~(alignment - 1));
-}
+namespace nri {
 
-template <typename... Args>
-constexpr void MaybeUnused([[maybe_unused]] const Args&... args) {
-}
-
-// Allocator
-template <typename T>
-struct StdAllocator {
-    typedef T value_type;
-    typedef size_t size_type;
-    typedef ptrdiff_t difference_type;
-    typedef std::true_type propagate_on_container_move_assignment;
-    typedef std::false_type is_always_equal;
-
-    StdAllocator(const nri::AllocationCallbacks& allocationCallbacks)
-        : m_Interface(allocationCallbacks) {
-    }
-
-    StdAllocator(const StdAllocator<T>& allocator)
-        : m_Interface(allocator.GetInterface()) {
-    }
-
-    template <class U>
-    StdAllocator(const StdAllocator<U>& allocator)
-        : m_Interface(allocator.GetInterface()) {
-    }
-
-    StdAllocator<T>& operator=(const StdAllocator<T>& allocator) {
-        m_Interface = allocator.GetInterface();
-        return *this;
-    }
-
-    T* allocate(size_t n) noexcept {
-        return (T*)m_Interface.Allocate(m_Interface.userArg, n * sizeof(T), alignof(T));
-    }
-
-    void deallocate(T* memory, size_t) noexcept {
-        m_Interface.Free(m_Interface.userArg, memory);
-    }
-
-    const nri::AllocationCallbacks& GetInterface() const {
-        return m_Interface;
-    }
-
-    template <typename U>
-    using other = StdAllocator<U>;
-
-private:
-    const nri::AllocationCallbacks& m_Interface = {}; // IMPORTANT: yes, it's a pointer to the real location (DeviceBase)
-};
-
-template <typename T>
-bool operator==(const StdAllocator<T>& left, const StdAllocator<T>& right) {
-    return left.GetInterface() == right.GetInterface();
-}
-
-template <typename T>
-bool operator!=(const StdAllocator<T>& left, const StdAllocator<T>& right) {
-    return !operator==(left, right);
-}
-
-// Types with "StdAllocator"
-template <typename T>
-using Vector = std::vector<T, StdAllocator<T>>;
-
-template <typename U, typename T>
-using UnorderedMap = std::unordered_map<U, T, std::hash<U>, std::equal_to<U>, StdAllocator<std::pair<const U, T>>>;
-
-template <typename U, typename T>
-using Map = std::map<U, T, std::less<U>, StdAllocator<std::pair<const U, T>>>;
-
-using String = std::basic_string<char, std::char_traits<char>, StdAllocator<char>>;
-
-// Scratch
-#ifndef _WIN32
-#    include <alloca.h>
-#endif
-
+// Consts
+constexpr uint32_t NODE_MASK = 0x1;        // mGPU is not planned
+constexpr uint32_t TIMEOUT_PRESENT = 1000; // 1 sec
+constexpr uint32_t TIMEOUT_FENCE = 5000;   // 5 sec
+constexpr uint64_t PRESENT_INDEX_BIT_NUM = 56ull;
+constexpr uint32_t MAX_MESSAGE_LENGTH = 2048;
+constexpr uint64_t VMA_PREFERRED_BLOCK_SIZE = 64 * 1024 * 1024;
+constexpr uint32_t ROOT_SIGNATURE_DWORD_NUM = 64; // https://learn.microsoft.com/en-us/windows/win32/direct3d12/root-signature-limits
+constexpr uint32_t ZERO_BUFFER_DEFAULT_SIZE = 4 * 1024 * 1024;
 constexpr size_t MAX_STACK_ALLOC_SIZE = 32 * 1024;
 
+// Scratch
 template <typename T>
 class Scratch {
 public:
-    Scratch(const nri::AllocationCallbacks& allocator, T* mem, size_t num)
+    Scratch(const AllocationCallbacks& allocator, T* mem, size_t num)
         : m_Allocator(allocator)
         , m_Mem(mem)
         , m_Num(num) {
@@ -254,119 +186,29 @@ public:
     }
 
 private:
-    const nri::AllocationCallbacks& m_Allocator;
+    const AllocationCallbacks& m_Allocator;
     T* m_Mem = nullptr;
     size_t m_Num = 0;
     bool m_IsHeap = false;
 };
 
-// clang-format off
-#define AllocateScratch(device, T, elementNum) { \
-        (device).GetAllocationCallbacks(), \
-        !(elementNum) ? nullptr : ( \
-            ((elementNum) * sizeof(T) + alignof(T)) > MAX_STACK_ALLOC_SIZE \
-                ? (T*)(device).GetAllocationCallbacks().Allocate((device).GetAllocationCallbacks().userArg, (elementNum) * sizeof(T), alignof(T)) \
-                : (T*)Align((T*)alloca((elementNum) * sizeof(T) + alignof(T)), alignof(T)) \
-        ), \
-        (elementNum) \
-    }
-// clang-format on
-
-// Base classes
-#include "DeviceBase.h"
-
-// Macro stuff
-#ifdef _WIN32
-#    define FILE_SEPARATOR '\\'
-#else
-#    define FILE_SEPARATOR '/'
-#endif
-
-#ifdef NDEBUG
-#    define CHECK(condition, message) MaybeUnused(condition)
-#else
-#    define CHECK(condition, message) assert((condition) && message)
-#endif
-
-#define NRI_INLINE inline // we want to inline all functions, which are actually wrappers for the interface functions
-
-#define NRI_STRINGIFY_(token) #token
-#define NRI_STRINGIFY(token)  NRI_STRINGIFY_(token)
-
-// Message reporting
-#define RETURN_ON_BAD_HRESULT(deviceBase, hr, funcName) \
-    if (hr < 0) { \
-        Result _result = GetResultFromHRESULT(hr); \
-        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, hr, hr); \
-        return _result; \
-    }
-
-#define RETURN_VOID_ON_BAD_HRESULT(deviceBase, hr, funcName) \
-    if (hr < 0) { \
-        Result _result = GetResultFromHRESULT(hr); \
-        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, hr, hr); \
-        return; \
-    }
-
-#define RETURN_ON_BAD_VKRESULT(deviceBase, vkResult, funcName) \
-    if (vkResult < 0) { \
-        Result _result = GetResultFromVkResult(vkResult); \
-        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, vkResult, vkResult); \
-        return _result; \
-    }
-
-#define RETURN_VOID_ON_BAD_VKRESULT(deviceBase, vkResult, funcName) \
-    if (vkResult < 0) { \
-        Result _result = GetResultFromVkResult(vkResult); \
-        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, vkResult, vkResult); \
-        return; \
-    }
-
-#define REPORT_ERROR_ON_BAD_NVAPI_STATUS(deviceBase, expression) \
-    if ((expression) != 0) { \
-        (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s: " NRI_STRINGIFY(expression) " failed!", __FUNCTION__); \
-    }
-
-#define RETURN_ON_FAILURE(deviceBase, condition, returnCode, format, ...) \
-    if (!(condition)) { \
-        (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s: " format, __FUNCTION__, ##__VA_ARGS__); \
-        return returnCode; \
-    }
-
-#define REPORT_INFO(deviceBase, format, ...)    (deviceBase)->ReportMessage(Message::INFO, Result::SUCCESS, __FILE__, __LINE__, format, ##__VA_ARGS__)
-#define REPORT_WARNING(deviceBase, format, ...) (deviceBase)->ReportMessage(Message::WARNING, Result::SUCCESS, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
-#define REPORT_ERROR(deviceBase, format, ...)   (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
-
-// Queue scores // TODO: improve?
-#define GRAPHICS_QUEUE_SCORE ((graphics ? 100 : 0) + (compute ? 10 : 0) + (copy ? 10 : 0) + (sparse ? 5 : 0) + (videoDecode ? 2 : 0) + (videoEncode ? 2 : 0) + (protect ? 1 : 0) + (opticalFlow ? 1 : 0))
-#define COMPUTE_QUEUE_SCORE  ((!graphics ? 10 : 0) + (compute ? 100 : 0) + (!copy ? 10 : 0) + (sparse ? 5 : 0) + (!videoDecode ? 2 : 0) + (!videoEncode ? 2 : 0) + (protect ? 1 : 0) + (!opticalFlow ? 1 : 0))
-#define COPY_QUEUE_SCORE     ((!graphics ? 10 : 0) + (!compute ? 10 : 0) + (copy ? 100 * familyProps.queueCount : 0) + (sparse ? 5 : 0) + (!videoDecode ? 2 : 0) + (!videoEncode ? 2 : 0) + (protect ? 1 : 0) + (!opticalFlow ? 1 : 0))
-
-// Array validation
-#define VALIDATE_ARRAY(x)                 static_assert((size_t)x[x.size() - 1] != 0, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
-#define VALIDATE_ARRAY_BY_PTR(x)          static_assert(x[x.size() - 1] != nullptr, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
-#define VALIDATE_ARRAY_BY_FILED(x, field) static_assert(x[x.size() - 1].field != 0, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
-
 // Shared library
 struct Library;
+
 Library* LoadSharedLibrary(const char* path);
 void* GetSharedLibraryFunction(Library& library, const char* name);
 void UnloadSharedLibrary(Library& library);
-extern const char* VULKAN_LOADER_NAME;
-
-namespace nri {
-
-// Consts
-constexpr uint32_t NODE_MASK = 0x1;        // mGPU is not planned
-constexpr uint32_t TIMEOUT_PRESENT = 1000; // 1 sec
-constexpr uint32_t TIMEOUT_FENCE = 5000;   // 5 sec
-constexpr uint64_t PRESENT_INDEX_BIT_NUM = 56ull;
-constexpr uint32_t MAX_MESSAGE_LENGTH = 2048;
-constexpr uint64_t VMA_PREFERRED_BLOCK_SIZE = 64 * 1024 * 1024;
-constexpr uint32_t ROOT_SIGNATURE_DWORD_NUM = 64; // https://learn.microsoft.com/en-us/windows/win32/direct3d12/root-signature-limits
-constexpr uint32_t ZERO_BUFFER_DEFAULT_SIZE = 4 * 1024 * 1024;
 
 // Helpers
+template <typename T>
+inline T Align(T x, size_t alignment) {
+    return (T)((size_t(x) + alignment - 1) & ~(alignment - 1));
+}
+
+template <typename... Args>
+constexpr void MaybeUnused([[maybe_unused]] const Args&... args) {
+}
+
 template <typename T, uint32_t N>
 constexpr uint32_t GetCountOf(T const (&)[N]) {
     return N;
@@ -416,6 +258,74 @@ constexpr uint64_t MsToUs(uint32_t x) {
 
 constexpr void ReturnVoid() {
 }
+
+// Allocator
+template <typename T>
+struct StdAllocator {
+    typedef T value_type;
+    typedef size_t size_type;
+    typedef ptrdiff_t difference_type;
+    typedef std::true_type propagate_on_container_move_assignment;
+    typedef std::false_type is_always_equal;
+
+    StdAllocator(const AllocationCallbacks& allocationCallbacks)
+        : m_Interface(allocationCallbacks) {
+    }
+
+    StdAllocator(const StdAllocator<T>& allocator)
+        : m_Interface(allocator.GetInterface()) {
+    }
+
+    template <class U>
+    StdAllocator(const StdAllocator<U>& allocator)
+        : m_Interface(allocator.GetInterface()) {
+    }
+
+    StdAllocator<T>& operator=(const StdAllocator<T>& allocator) {
+        m_Interface = allocator.GetInterface();
+        return *this;
+    }
+
+    T* allocate(size_t n) noexcept {
+        return (T*)m_Interface.Allocate(m_Interface.userArg, n * sizeof(T), alignof(T));
+    }
+
+    void deallocate(T* memory, size_t) noexcept {
+        m_Interface.Free(m_Interface.userArg, memory);
+    }
+
+    const AllocationCallbacks& GetInterface() const {
+        return m_Interface;
+    }
+
+    template <typename U>
+    using other = StdAllocator<U>;
+
+private:
+    const AllocationCallbacks& m_Interface = {}; // IMPORTANT: yes, it's a pointer to the real location (DeviceBase)
+};
+
+template <typename T>
+bool operator==(const StdAllocator<T>& left, const StdAllocator<T>& right) {
+    return left.GetInterface() == right.GetInterface();
+}
+
+template <typename T>
+bool operator!=(const StdAllocator<T>& left, const StdAllocator<T>& right) {
+    return !operator==(left, right);
+}
+
+// Types with "StdAllocator"
+template <typename T>
+using Vector = std::vector<T, StdAllocator<T>>;
+
+template <typename U, typename T>
+using UnorderedMap = std::unordered_map<U, T, std::hash<U>, std::equal_to<U>, StdAllocator<std::pair<const U, T>>>;
+
+template <typename U, typename T>
+using Map = std::map<U, T, std::less<U>, StdAllocator<std::pair<const U, T>>>;
+
+using String = std::basic_string<char, std::char_traits<char>, StdAllocator<char>>;
 
 // Format conversion
 struct DxgiFormat {
@@ -512,10 +422,6 @@ inline uint64_t GetPresentIndex(uint64_t presentId) {
 // Windows/D3D specific
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
 
-#    define SET_D3D_DEBUG_OBJECT_NAME(obj, name) \
-        if (obj) \
-        obj->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)std::strlen(name), name)
-
 bool HasOutput();
 Result QueryVideoMemoryInfoDXGI(uint64_t luid, MemoryLocation memoryLocation, VideoMemoryInfo& videoMemoryInfo);
 
@@ -542,3 +448,102 @@ struct DisplayDescHelper {
 #endif
 
 } // namespace nri
+
+#include "DeviceBase.h" // TODO: a weird place, but needs to be here...
+
+//==============================================================================================================================================================
+// Macro stuff
+//==============================================================================================================================================================
+
+#if defined(_WIN32)
+#    define NRI_VULKAN_LOADER_NAME "vulkan-1.dll"
+#elif defined(__APPLE__)
+#    define NRI_VULKAN_LOADER_NAME "libvulkan.1.dylib" // TODO: libvulkan.dylib?
+#else
+#    define NRI_VULKAN_LOADER_NAME "libvulkan.1.so" // TODO: libvulkan.so?
+#endif
+
+#ifdef NDEBUG
+#    define NRI_CHECK(condition, message) MaybeUnused(condition)
+#else
+#    define NRI_CHECK(condition, message) assert((condition) && message)
+#endif
+
+#define NRI_INLINE inline // we want to inline all functions, which are actually wrappers for the interface functions
+
+#define NRI_STRINGIFY_(token) #token
+#define NRI_STRINGIFY(token)  NRI_STRINGIFY_(token)
+
+// Message reporting
+#define NRI_RETURN_ON_BAD_HRESULT(deviceBase, hr, funcName) \
+    if (hr < 0) { \
+        Result _result = GetResultFromHRESULT(hr); \
+        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, hr, hr); \
+        return _result; \
+    }
+
+#define NRI_RETURN_VOID_ON_BAD_HRESULT(deviceBase, hr, funcName) \
+    if (hr < 0) { \
+        Result _result = GetResultFromHRESULT(hr); \
+        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, hr, hr); \
+        return; \
+    }
+
+#define NRI_RETURN_ON_BAD_VKRESULT(deviceBase, vkResult, funcName) \
+    if (vkResult < 0) { \
+        Result _result = GetResultFromVkResult(vkResult); \
+        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, vkResult, vkResult); \
+        return _result; \
+    }
+
+#define NRI_RETURN_VOID_ON_BAD_VKRESULT(deviceBase, vkResult, funcName) \
+    if (vkResult < 0) { \
+        Result _result = GetResultFromVkResult(vkResult); \
+        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, vkResult, vkResult); \
+        return; \
+    }
+
+#define NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(deviceBase, expression) \
+    if ((expression) != 0) { \
+        (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s: " NRI_STRINGIFY(expression) " failed!", __FUNCTION__); \
+    }
+
+#define NRI_RETURN_ON_FAILURE(deviceBase, condition, returnCode, format, ...) \
+    if (!(condition)) { \
+        (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s: " format, __FUNCTION__, ##__VA_ARGS__); \
+        return returnCode; \
+    }
+
+#define NRI_REPORT_INFO(deviceBase, format, ...)    (deviceBase)->ReportMessage(Message::INFO, Result::SUCCESS, __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define NRI_REPORT_WARNING(deviceBase, format, ...) (deviceBase)->ReportMessage(Message::WARNING, Result::SUCCESS, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
+#define NRI_REPORT_ERROR(deviceBase, format, ...)   (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
+
+// Queue scores // TODO: improve?
+#define GRAPHICS_QUEUE_SCORE \
+    ((graphics ? 100 : 0) + (compute ? 10 : 0) + (copy ? 10 : 0) + (sparse ? 5 : 0) + (videoDecode ? 2 : 0) + (videoEncode ? 2 : 0) + (protect ? 1 : 0) + (opticalFlow ? 1 : 0))
+#define COMPUTE_QUEUE_SCORE \
+    ((!graphics ? 10 : 0) + (compute ? 100 : 0) + (!copy ? 10 : 0) + (sparse ? 5 : 0) + (!videoDecode ? 2 : 0) + (!videoEncode ? 2 : 0) + (protect ? 1 : 0) + (!opticalFlow ? 1 : 0))
+#define COPY_QUEUE_SCORE \
+    ((!graphics ? 10 : 0) + (!compute ? 10 : 0) + (copy ? 100 * familyProps.queueCount : 0) + (sparse ? 5 : 0) + (!videoDecode ? 2 : 0) + (!videoEncode ? 2 : 0) + (protect ? 1 : 0) + (!opticalFlow ? 1 : 0))
+
+// Array validation
+#define NRI_VALIDATE_ARRAY(x)                 static_assert((size_t)x[x.size() - 1] != 0, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
+#define NRI_VALIDATE_ARRAY_BY_PTR(x)          static_assert(x[x.size() - 1] != nullptr, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
+#define NRI_VALIDATE_ARRAY_BY_FIELD(x, field) static_assert(x[x.size() - 1].field != 0, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
+
+// D3D
+#define NRI_SET_D3D_DEBUG_OBJECT_NAME(obj, name) \
+    if (obj) \
+    obj->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)std::strlen(name), name)
+
+// clang-format off
+#define NRI_ALLOCATE_SCRATCH(device, T, elementNum) { \
+        (device).GetAllocationCallbacks(), \
+        !(elementNum) ? nullptr : ( \
+            ((elementNum) * sizeof(T) + alignof(T)) > MAX_STACK_ALLOC_SIZE \
+                ? (T*)(device).GetAllocationCallbacks().Allocate((device).GetAllocationCallbacks().userArg, (elementNum) * sizeof(T), alignof(T)) \
+                : (T*)Align((T*)alloca((elementNum) * sizeof(T) + alignof(T)), alignof(T)) \
+        ), \
+        (elementNum) \
+    }
+// clang-format on

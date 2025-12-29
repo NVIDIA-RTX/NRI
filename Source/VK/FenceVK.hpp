@@ -17,7 +17,7 @@ Result FenceVK::Create(uint64_t initialValue) {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateSemaphore((VkDevice)m_Device, &semaphoreCreateInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateSemaphore");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateSemaphore");
 
     return Result::SUCCESS;
 }

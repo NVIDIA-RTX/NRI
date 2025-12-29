@@ -76,7 +76,7 @@ NRI_INLINE Result CommandBufferVK::Begin(const DescriptorPool*) {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.BeginCommandBuffer(m_Handle, &info);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkBeginCommandBuffer");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkBeginCommandBuffer");
 
     m_PipelineLayout = nullptr;
     m_PipelineBindPoint = BindPoint::INHERIT;
@@ -87,13 +87,13 @@ NRI_INLINE Result CommandBufferVK::Begin(const DescriptorPool*) {
 NRI_INLINE Result CommandBufferVK::End() {
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.EndCommandBuffer(m_Handle);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkEndCommandBuffer");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkEndCommandBuffer");
 
     return Result::SUCCESS;
 }
 
 NRI_INLINE void CommandBufferVK::SetViewports(const Viewport* viewports, uint32_t viewportNum) {
-    Scratch<VkViewport> vkViewports = AllocateScratch(m_Device, VkViewport, viewportNum);
+    Scratch<VkViewport> vkViewports = NRI_ALLOCATE_SCRATCH(m_Device, VkViewport, viewportNum);
     for (uint32_t i = 0; i < viewportNum; i++) {
         const Viewport& in = viewports[i];
         VkViewport& out = vkViewports[i];
@@ -116,7 +116,7 @@ NRI_INLINE void CommandBufferVK::SetViewports(const Viewport* viewports, uint32_
 }
 
 NRI_INLINE void CommandBufferVK::SetScissors(const Rect* rects, uint32_t rectNum) {
-    Scratch<VkRect2D> vkRects = AllocateScratch(m_Device, VkRect2D, rectNum);
+    Scratch<VkRect2D> vkRects = NRI_ALLOCATE_SCRATCH(m_Device, VkRect2D, rectNum);
     for (uint32_t i = 0; i < rectNum; i++) {
         const Rect& in = rects[i];
         VkRect2D& out = vkRects[i];
@@ -147,7 +147,7 @@ NRI_INLINE void CommandBufferVK::SetStencilReference(uint8_t frontRef, uint8_t b
 }
 
 NRI_INLINE void CommandBufferVK::SetSampleLocations(const SampleLocation* locations, Sample_t locationNum, Sample_t sampleNum) {
-    Scratch<VkSampleLocationEXT> sampleLocations = AllocateScratch(m_Device, VkSampleLocationEXT, locationNum);
+    Scratch<VkSampleLocationEXT> sampleLocations = NRI_ALLOCATE_SCRATCH(m_Device, VkSampleLocationEXT, locationNum);
     for (uint32_t i = 0; i < locationNum; i++)
         sampleLocations[i] = {(float)(locations[i].x + 8) / 16.0f, (float)(locations[i].y + 8) / 16.0f};
 
@@ -189,7 +189,7 @@ NRI_INLINE void CommandBufferVK::ClearAttachments(const ClearAttachmentDesc* cle
 
     // Attachments
     uint32_t clearAttachmentNum = 0;
-    Scratch<VkClearAttachment> clearAttachments = AllocateScratch(m_Device, VkClearAttachment, clearAttachmentDescNum);
+    Scratch<VkClearAttachment> clearAttachments = NRI_ALLOCATE_SCRATCH(m_Device, VkClearAttachment, clearAttachmentDescNum);
 
     for (uint32_t i = 0; i < clearAttachmentDescNum; i++) {
         const ClearAttachmentDesc& clearAttachmentDesc = clearAttachmentDescs[i];
@@ -220,7 +220,7 @@ NRI_INLINE void CommandBufferVK::ClearAttachments(const ClearAttachmentDesc* cle
     if (!hasRects)
         rectNum = 1;
 
-    Scratch<VkClearRect> clearRects = AllocateScratch(m_Device, VkClearRect, rectNum);
+    Scratch<VkClearRect> clearRects = NRI_ALLOCATE_SCRATCH(m_Device, VkClearRect, rectNum);
     for (uint32_t i = 0; i < rectNum; i++) {
         VkClearRect& clearRect = clearRects[i];
 
@@ -270,7 +270,7 @@ NRI_INLINE void CommandBufferVK::ClearStorage(const ClearStorageDesc& clearStora
             vk.CmdFillBuffer(m_Handle, descriptorBufferInfo.buffer, descriptorBufferInfo.offset, descriptorBufferInfo.range, clearStorageDesc.value.ui.x);
         } break;
         default:
-            CHECK(false, "Unexpected");
+            NRI_CHECK(false, "Unexpected");
             break;
     }
 }
@@ -281,7 +281,7 @@ NRI_INLINE void CommandBufferVK::BeginRendering(const RenderingDesc& renderingDe
     Dim_t renderHeight = deviceDesc.dimensions.attachmentMaxDim;
     Dim_t renderLayerNum = deviceDesc.dimensions.attachmentLayerMaxNum;
 
-    Scratch<VkRenderingAttachmentInfo> colors = AllocateScratch(m_Device, VkRenderingAttachmentInfo, renderingDesc.colorNum);
+    Scratch<VkRenderingAttachmentInfo> colors = NRI_ALLOCATE_SCRATCH(m_Device, VkRenderingAttachmentInfo, renderingDesc.colorNum);
 
     VkRenderingInfo renderingInfo = {VK_STRUCTURE_TYPE_RENDERING_INFO};
     renderingInfo.viewMask = renderingDesc.viewMask;
@@ -352,7 +352,7 @@ NRI_INLINE void CommandBufferVK::EndRendering() {
 }
 
 NRI_INLINE void CommandBufferVK::SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum) {
-    Scratch<uint8_t> scratch = AllocateScratch(m_Device, uint8_t, vertexBufferNum * (sizeof(VkBuffer) + sizeof(VkDeviceSize) * 3));
+    Scratch<uint8_t> scratch = NRI_ALLOCATE_SCRATCH(m_Device, uint8_t, vertexBufferNum * (sizeof(VkBuffer) + sizeof(VkDeviceSize) * 3));
     uint8_t* ptr = scratch;
 
     VkBuffer* handles = (VkBuffer*)ptr;
@@ -533,7 +533,7 @@ NRI_INLINE void CommandBufferVK::SetRootDescriptor(const SetRootDescriptorDesc& 
             descriptorWrite.pNext = &accelerationStructureWrite;
             break;
         default:
-            CHECK(false, "Unexpected");
+            NRI_CHECK(false, "Unexpected");
             break;
     }
 
@@ -603,7 +603,7 @@ NRI_INLINE void CommandBufferVK::CopyTexture(Texture& dstTexture, const TextureR
 
     bool isWholeResource = !dstRegion && !srcRegion;
     uint32_t regionNum = isWholeResource ? dstDesc.mipNum : 1;
-    Scratch<VkImageCopy2> regions = AllocateScratch(m_Device, VkImageCopy2, regionNum);
+    Scratch<VkImageCopy2> regions = NRI_ALLOCATE_SCRATCH(m_Device, VkImageCopy2, regionNum);
 
     if (isWholeResource) {
         for (Dim_t i = 0; i < dstDesc.mipNum; i++) {
@@ -679,7 +679,7 @@ NRI_INLINE void CommandBufferVK::ResolveTexture(Texture& dstTexture, const Textu
 
     bool isWholeResource = !dstRegion && !srcRegion;
     uint32_t regionNum = isWholeResource ? dstDesc.mipNum : 1;
-    Scratch<VkImageResolve2> regions = AllocateScratch(m_Device, VkImageResolve2, dstDesc.mipNum);
+    Scratch<VkImageResolve2> regions = NRI_ALLOCATE_SCRATCH(m_Device, VkImageResolve2, dstDesc.mipNum);
 
     if (isWholeResource) {
         for (Dim_t i = 0; i < dstDesc.mipNum; i++) {
@@ -941,7 +941,7 @@ static inline VkAccessFlags2 GetAccessFlags(AccessBits accessBits) {
 
 NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
     // Global
-    Scratch<VkMemoryBarrier2> memoryBarriers = AllocateScratch(m_Device, VkMemoryBarrier2, barrierDesc.globalNum);
+    Scratch<VkMemoryBarrier2> memoryBarriers = NRI_ALLOCATE_SCRATCH(m_Device, VkMemoryBarrier2, barrierDesc.globalNum);
     for (uint32_t i = 0; i < barrierDesc.globalNum; i++) {
         const GlobalBarrierDesc& in = barrierDesc.globals[i];
 
@@ -954,7 +954,7 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
     }
 
     // Buffer
-    Scratch<VkBufferMemoryBarrier2> bufferBarriers = AllocateScratch(m_Device, VkBufferMemoryBarrier2, barrierDesc.bufferNum);
+    Scratch<VkBufferMemoryBarrier2> bufferBarriers = NRI_ALLOCATE_SCRATCH(m_Device, VkBufferMemoryBarrier2, barrierDesc.bufferNum);
     for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
         const BufferBarrierDesc& in = barrierDesc.buffers[i];
         const BufferVK& bufferVK = *(const BufferVK*)in.buffer;
@@ -974,7 +974,7 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
 
     // Texture
     bool isRegionLocal = false;
-    Scratch<VkImageMemoryBarrier2> textureBarriers = AllocateScratch(m_Device, VkImageMemoryBarrier2, barrierDesc.textureNum);
+    Scratch<VkImageMemoryBarrier2> textureBarriers = NRI_ALLOCATE_SCRATCH(m_Device, VkImageMemoryBarrier2, barrierDesc.textureNum);
     for (uint32_t i = 0; i < barrierDesc.textureNum; i++) {
         const TextureBarrierDesc& in = barrierDesc.textures[i];
         const TextureVK& textureVK = *(TextureVK*)in.texture;
@@ -1095,10 +1095,10 @@ NRI_INLINE void CommandBufferVK::Annotation(const char* name, uint32_t bgra) {
 NRI_INLINE void CommandBufferVK::BuildTopLevelAccelerationStructures(const BuildTopLevelAccelerationStructureDesc* buildTopLevelAccelerationStructureDescs, uint32_t buildTopLevelAccelerationStructureDescNum) {
     static_assert(sizeof(VkAccelerationStructureInstanceKHR) == sizeof(TopLevelInstance), "Mismatched sizeof");
 
-    Scratch<VkAccelerationStructureBuildGeometryInfoKHR> infos = AllocateScratch(m_Device, VkAccelerationStructureBuildGeometryInfoKHR, buildTopLevelAccelerationStructureDescNum);
-    Scratch<const VkAccelerationStructureBuildRangeInfoKHR*> pRanges = AllocateScratch(m_Device, const VkAccelerationStructureBuildRangeInfoKHR*, buildTopLevelAccelerationStructureDescNum);
-    Scratch<VkAccelerationStructureGeometryKHR> geometries = AllocateScratch(m_Device, VkAccelerationStructureGeometryKHR, buildTopLevelAccelerationStructureDescNum);
-    Scratch<VkAccelerationStructureBuildRangeInfoKHR> ranges = AllocateScratch(m_Device, VkAccelerationStructureBuildRangeInfoKHR, buildTopLevelAccelerationStructureDescNum);
+    Scratch<VkAccelerationStructureBuildGeometryInfoKHR> infos = NRI_ALLOCATE_SCRATCH(m_Device, VkAccelerationStructureBuildGeometryInfoKHR, buildTopLevelAccelerationStructureDescNum);
+    Scratch<const VkAccelerationStructureBuildRangeInfoKHR*> pRanges = NRI_ALLOCATE_SCRATCH(m_Device, const VkAccelerationStructureBuildRangeInfoKHR*, buildTopLevelAccelerationStructureDescNum);
+    Scratch<VkAccelerationStructureGeometryKHR> geometries = NRI_ALLOCATE_SCRATCH(m_Device, VkAccelerationStructureGeometryKHR, buildTopLevelAccelerationStructureDescNum);
+    Scratch<VkAccelerationStructureBuildRangeInfoKHR> ranges = NRI_ALLOCATE_SCRATCH(m_Device, VkAccelerationStructureBuildRangeInfoKHR, buildTopLevelAccelerationStructureDescNum);
 
     for (uint32_t i = 0; i < buildTopLevelAccelerationStructureDescNum; i++) {
         const BuildTopLevelAccelerationStructureDesc& in = buildTopLevelAccelerationStructureDescs[i];
@@ -1162,11 +1162,11 @@ NRI_INLINE void CommandBufferVK::BuildBottomLevelAccelerationStructures(const Bu
     }
 
     // Convert
-    Scratch<VkAccelerationStructureBuildGeometryInfoKHR> infos = AllocateScratch(m_Device, VkAccelerationStructureBuildGeometryInfoKHR, buildBottomLevelAccelerationStructureDescNum);
-    Scratch<const VkAccelerationStructureBuildRangeInfoKHR*> pRanges = AllocateScratch(m_Device, const VkAccelerationStructureBuildRangeInfoKHR*, buildBottomLevelAccelerationStructureDescNum);
-    Scratch<VkAccelerationStructureGeometryKHR> geometriesScratch = AllocateScratch(m_Device, VkAccelerationStructureGeometryKHR, geometryTotalNum);
-    Scratch<VkAccelerationStructureBuildRangeInfoKHR> rangesScratch = AllocateScratch(m_Device, VkAccelerationStructureBuildRangeInfoKHR, geometryTotalNum);
-    Scratch<VkAccelerationStructureTrianglesOpacityMicromapEXT> trianglesMicromapsScratch = AllocateScratch(m_Device, VkAccelerationStructureTrianglesOpacityMicromapEXT, micromapTotalNum);
+    Scratch<VkAccelerationStructureBuildGeometryInfoKHR> infos = NRI_ALLOCATE_SCRATCH(m_Device, VkAccelerationStructureBuildGeometryInfoKHR, buildBottomLevelAccelerationStructureDescNum);
+    Scratch<const VkAccelerationStructureBuildRangeInfoKHR*> pRanges = NRI_ALLOCATE_SCRATCH(m_Device, const VkAccelerationStructureBuildRangeInfoKHR*, buildBottomLevelAccelerationStructureDescNum);
+    Scratch<VkAccelerationStructureGeometryKHR> geometriesScratch = NRI_ALLOCATE_SCRATCH(m_Device, VkAccelerationStructureGeometryKHR, geometryTotalNum);
+    Scratch<VkAccelerationStructureBuildRangeInfoKHR> rangesScratch = NRI_ALLOCATE_SCRATCH(m_Device, VkAccelerationStructureBuildRangeInfoKHR, geometryTotalNum);
+    Scratch<VkAccelerationStructureTrianglesOpacityMicromapEXT> trianglesMicromapsScratch = NRI_ALLOCATE_SCRATCH(m_Device, VkAccelerationStructureTrianglesOpacityMicromapEXT, micromapTotalNum);
 
     VkAccelerationStructureBuildRangeInfoKHR* ranges = rangesScratch;
     VkAccelerationStructureGeometryKHR* geometries = geometriesScratch;
@@ -1215,7 +1215,7 @@ NRI_INLINE void CommandBufferVK::BuildBottomLevelAccelerationStructures(const Bu
 NRI_INLINE void CommandBufferVK::BuildMicromaps(const BuildMicromapDesc* buildMicromapDescs, uint32_t buildMicromapDescNum) {
     static_assert(sizeof(MicromapTriangle) == sizeof(VkMicromapTriangleEXT), "Mismatched sizeof");
 
-    Scratch<VkMicromapBuildInfoEXT> infos = AllocateScratch(m_Device, VkMicromapBuildInfoEXT, buildMicromapDescNum);
+    Scratch<VkMicromapBuildInfoEXT> infos = NRI_ALLOCATE_SCRATCH(m_Device, VkMicromapBuildInfoEXT, buildMicromapDescNum);
     for (uint32_t i = 0; i < buildMicromapDescNum; i++) {
         const BuildMicromapDesc& in = buildMicromapDescs[i];
 
@@ -1269,7 +1269,7 @@ NRI_INLINE void CommandBufferVK::CopyMicromap(Micromap& dst, const Micromap& src
 }
 
 NRI_INLINE void CommandBufferVK::WriteAccelerationStructuresSizes(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
-    Scratch<VkAccelerationStructureKHR> handles = AllocateScratch(m_Device, VkAccelerationStructureKHR, accelerationStructureNum);
+    Scratch<VkAccelerationStructureKHR> handles = NRI_ALLOCATE_SCRATCH(m_Device, VkAccelerationStructureKHR, accelerationStructureNum);
     for (uint32_t i = 0; i < accelerationStructureNum; i++)
         handles[i] = ((AccelerationStructureVK*)accelerationStructures[i])->GetHandle();
 
@@ -1280,7 +1280,7 @@ NRI_INLINE void CommandBufferVK::WriteAccelerationStructuresSizes(const Accelera
 }
 
 NRI_INLINE void CommandBufferVK::WriteMicromapsSizes(const Micromap* const* micromaps, uint32_t micromapNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
-    Scratch<VkMicromapEXT> handles = AllocateScratch(m_Device, VkMicromapEXT, micromapNum);
+    Scratch<VkMicromapEXT> handles = NRI_ALLOCATE_SCRATCH(m_Device, VkMicromapEXT, micromapNum);
     for (uint32_t i = 0; i < micromapNum; i++)
         handles[i] = ((MicromapVK*)micromaps[i])->GetHandle();
 

@@ -52,7 +52,7 @@ Result AccelerationStructureVK::Create(const AccelerationStructureVKDesc& accele
 }
 
 Result AccelerationStructureVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float priority, bool committed) {
-    CHECK(m_Buffer, "Unexpected");
+    NRI_CHECK(m_Buffer, "Unexpected");
 
     Result result = m_Buffer->AllocateAndBindMemory(memoryLocation, priority, committed);
     if (result == Result::SUCCESS)
@@ -62,7 +62,7 @@ Result AccelerationStructureVK::AllocateAndBindMemory(MemoryLocation memoryLocat
 }
 
 Result AccelerationStructureVK::BindMemory(const MemoryVK* memory, uint64_t offset) {
-    CHECK(m_Buffer, "Unexpected");
+    NRI_CHECK(m_Buffer, "Unexpected");
 
     // Bind memory
     if (memory) {
@@ -84,7 +84,7 @@ Result AccelerationStructureVK::BindMemory(const MemoryVK* memory, uint64_t offs
 
         const auto& vk = m_Device.GetDispatchTable();
         VkResult vkResult = vk.CreateAccelerationStructureKHR(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateAccelerationStructureKHR");
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateAccelerationStructureKHR");
     }
 
     { // Get device address

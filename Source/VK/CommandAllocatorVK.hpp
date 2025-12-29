@@ -16,7 +16,7 @@ Result CommandAllocatorVK::Create(const Queue& queue) {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateCommandPool(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateCommandPool");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateCommandPool");
 
     return Result::SUCCESS;
 }
@@ -42,7 +42,7 @@ NRI_INLINE Result CommandAllocatorVK::CreateCommandBuffer(CommandBuffer*& comman
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.AllocateCommandBuffers(m_Device, &info, &commandBufferHandle);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkAllocateCommandBuffers");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkAllocateCommandBuffers");
 
     CommandBufferVK* commandBufferVK = Allocate<CommandBufferVK>(m_Device.GetAllocationCallbacks(), m_Device);
     commandBufferVK->Create(m_Handle, commandBufferHandle, m_Type);
@@ -57,5 +57,5 @@ NRI_INLINE void CommandAllocatorVK::Reset() {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.ResetCommandPool(m_Device, m_Handle, (VkCommandPoolResetFlags)0);
-    RETURN_VOID_ON_BAD_VKRESULT(&m_Device, vkResult, "vkResetCommandPool");
+    NRI_RETURN_VOID_ON_BAD_VKRESULT(&m_Device, vkResult, "vkResetCommandPool");
 }

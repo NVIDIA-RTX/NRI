@@ -18,7 +18,7 @@ Result BufferD3D12::Create(const BufferD3D12Desc& bufferD3D12Desc) {
 }
 
 Result BufferD3D12::Allocate(MemoryLocation memoryLocation, float priority, bool committed) {
-    CHECK(!m_Buffer, "Unexpected");
+    NRI_CHECK(!m_Buffer, "Unexpected");
 
     uint32_t flags = D3D12MA::ALLOCATION_FLAG_STRATEGY_MIN_MEMORY;
     flags |= committed ? D3D12MA::ALLOCATION_FLAG_COMMITTED : D3D12MA::ALLOCATION_FLAG_CAN_ALIAS;
@@ -40,7 +40,7 @@ Result BufferD3D12::Allocate(MemoryLocation memoryLocation, float priority, bool
     const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_UNDEFINED;
 
     HRESULT hr = m_Device.GetVma()->CreateResource3(&allocationDesc, &desc1, initialLayout, nullptr, NO_CASTABLE_FORMATS, &m_VmaAllocation, IID_PPV_ARGS(&m_Buffer));
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3");
 #else
     D3D12_RESOURCE_DESC desc = {};
     m_Device.GetResourceDesc(m_Desc, desc);
@@ -55,7 +55,7 @@ Result BufferD3D12::Allocate(MemoryLocation memoryLocation, float priority, bool
         initialState |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
 
     HRESULT hr = m_Device.GetVma()->CreateResource(&allocationDesc, &desc, initialState, nullptr, &m_VmaAllocation, IID_PPV_ARGS(&m_Buffer));
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource");
 #endif
 
     D3D12_HEAP_PROPERTIES heapProps = {};
@@ -65,7 +65,7 @@ Result BufferD3D12::Allocate(MemoryLocation memoryLocation, float priority, bool
 }
 
 Result BufferD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
-    CHECK(!m_Buffer, "Unexpected");
+    NRI_CHECK(!m_Buffer, "Unexpected");
 
     const D3D12_HEAP_DESC& heapDesc = memory.GetHeapDesc();
 
@@ -84,10 +84,10 @@ Result BufferD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
 
     if (memory.IsDummy()) {
         HRESULT hr = m_Device->CreateCommittedResource3(&heapDesc.Properties, heapFlagsFixed, &desc1, initialLayout, nullptr, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Buffer));
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreateCommittedResource3");
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreateCommittedResource3");
     } else {
         HRESULT hr = m_Device->CreatePlacedResource2(memory, offset, &desc1, initialLayout, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Buffer));
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreatePlacedResource2");
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreatePlacedResource2");
     }
 #else
     bool isUpload = heapDesc.Properties.Type == D3D12_HEAP_TYPE_UPLOAD
@@ -113,10 +113,10 @@ Result BufferD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
 
     if (memory.IsDummy()) {
         HRESULT hr = m_Device->CreateCommittedResource(&heapDesc.Properties, heapFlagsFixed, &desc, initialState, nullptr, IID_PPV_ARGS(&m_Buffer));
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommittedResource");
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommittedResource");
     } else {
         HRESULT hr = m_Device->CreatePlacedResource(memory, offset, &desc, initialState, nullptr, IID_PPV_ARGS(&m_Buffer));
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreatePlacedResource");
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreatePlacedResource");
     }
 #endif
     return SetPriorityAndPersistentlyMap(memory.GetPriority(), heapDesc.Properties);
@@ -128,7 +128,7 @@ NRI_INLINE Result BufferD3D12::SetPriorityAndPersistentlyMap(float priority, con
     if (residencyPriority != 0) {
         ID3D12Pageable* obj = m_Buffer.GetInterface();
         HRESULT hr = m_Device->SetResidencyPriority(1, &obj, &residencyPriority);
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority");
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority");
     }
 
     // Mapping
@@ -147,14 +147,14 @@ NRI_INLINE Result BufferD3D12::SetPriorityAndPersistentlyMap(float priority, con
             readRange.End = m_Desc.size;
 
         HRESULT hr = m_Buffer->Map(0, &readRange, (void**)&m_MappedMemory);
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Resource::Map");
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Resource::Map");
     }
 
     return Result::SUCCESS;
 }
 
 NRI_INLINE void* BufferD3D12::Map(uint64_t offset) {
-    CHECK(m_MappedMemory, "No CPU access");
+    NRI_CHECK(m_MappedMemory, "No CPU access");
 
     return m_MappedMemory + offset;
 }

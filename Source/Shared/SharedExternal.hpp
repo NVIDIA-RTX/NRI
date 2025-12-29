@@ -78,7 +78,7 @@ constexpr std::array<DxgiFormat, (size_t)Format::MAX_NUM> g_dxgiFormats = {{
     {DXGI_FORMAT_R32G8X24_TYPELESS, DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS}, // R32_SFLOAT_X8_X24
     {DXGI_FORMAT_R32G8X24_TYPELESS, DXGI_FORMAT_X32_TYPELESS_G8X24_UINT},  // X32_G8_UINT_X24
 }};
-VALIDATE_ARRAY_BY_FILED(g_dxgiFormats, typeless);
+NRI_VALIDATE_ARRAY_BY_FIELD(g_dxgiFormats, typeless);
 
 const DxgiFormat& nri::GetDxgiFormat(Format format) {
     return g_dxgiFormats[(size_t)format];
@@ -531,7 +531,7 @@ constexpr std::array<FormatProps, (size_t)Format::MAX_NUM> g_formatProps = {{
     {"R32_SFLOAT_X8_X24",       Format::R32_SFLOAT_X8_X24,         32, 8,  0,  0,  8,  1, 1, _, _, X, _, X, _, _, _, X, _, _}, // R32_SFLOAT_X8_X24
     {"X32_G8_UINT_X24",         Format::X32_G8_UINT_X24,           32, 8,  0,  0,  8,  1, 1, _, _, _, _, _, _, X, _, _, _, X}, // X32_G8_UINT_X24
 }};
-VALIDATE_ARRAY_BY_FILED(g_formatProps, name);
+NRI_VALIDATE_ARRAY_BY_FIELD(g_formatProps, name);
 
 #undef _
 #undef X
@@ -825,7 +825,13 @@ void DeviceBase::ReportMessage(Message messageType, Result result, const char* f
         const DeviceDesc& desc = GetDesc();
         const char* graphicsAPIName = nriGetGraphicsAPIString(desc.graphicsAPI);
 
-        const char* temp = strrchr(file, FILE_SEPARATOR);
+#ifdef _WIN32
+#    define NRI_FILE_SEPARATOR '\\'
+#else
+#    define NRI_FILE_SEPARATOR '/'
+#endif
+
+        const char* temp = strrchr(file, NRI_FILE_SEPARATOR);
         file = temp ? temp + 1 : file;
 
         char buf[MAX_MESSAGE_LENGTH];
@@ -842,6 +848,8 @@ void DeviceBase::ReportMessage(Message messageType, Result result, const char* f
     // Abort execution
     if (m_CallbackInterface.AbortExecution && (int8_t)result > 0)
         m_CallbackInterface.AbortExecution(m_CallbackInterface.userArg);
+
+#undef NRI_FILE_SEPARATOR
 }
 
 void nri::ConvertCharToWchar(const char* in, wchar_t* out, size_t outLength) {

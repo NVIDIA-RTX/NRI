@@ -46,7 +46,7 @@ constexpr std::array<D3D11_LOGIC_OP, (size_t)LogicOp::MAX_NUM> g_LogicOps = {
     D3D11_LOGIC_OP_NAND,          // NAND,
     D3D11_LOGIC_OP_SET            // SET
 };
-VALIDATE_ARRAY(g_LogicOps);
+NRI_VALIDATE_ARRAY(g_LogicOps);
 
 D3D11_LOGIC_OP nri::GetD3D11LogicOp(LogicOp logicOp) {
     return g_LogicOps[(size_t)logicOp];
@@ -59,7 +59,7 @@ constexpr std::array<D3D11_BLEND_OP, (size_t)BlendOp::MAX_NUM> g_BlendOps = {
     D3D11_BLEND_OP_MIN,          // MIN,
     D3D11_BLEND_OP_MAX           // MAX
 };
-VALIDATE_ARRAY(g_BlendOps);
+NRI_VALIDATE_ARRAY(g_BlendOps);
 
 D3D11_BLEND_OP nri::GetD3D11BlendOp(BlendOp blendFunc) {
     return g_BlendOps[(size_t)blendFunc];
@@ -86,7 +86,7 @@ constexpr std::array<D3D11_BLEND, (size_t)BlendFactor::MAX_NUM> g_BlendFactors =
     D3D11_BLEND_SRC1_ALPHA,       // SRC1_ALPHA,
     D3D11_BLEND_INV_SRC1_ALPHA    // ONE_MINUS_SRC1_ALPHA,
 };
-VALIDATE_ARRAY(g_BlendFactors);
+NRI_VALIDATE_ARRAY(g_BlendFactors);
 
 D3D11_BLEND nri::GetD3D11BlendFromBlendFactor(BlendFactor blendFactor) {
     return g_BlendFactors[(size_t)blendFactor];
@@ -102,7 +102,7 @@ constexpr std::array<D3D11_STENCIL_OP, (size_t)StencilOp::MAX_NUM> g_StencilOps 
     D3D11_STENCIL_OP_INCR,     // INCREMENT_AND_WRAP,
     D3D11_STENCIL_OP_DECR      // DECREMENT_AND_WRAP
 };
-VALIDATE_ARRAY(g_StencilOps);
+NRI_VALIDATE_ARRAY(g_StencilOps);
 
 D3D11_STENCIL_OP nri::GetD3D11StencilOpFromStencilOp(StencilOp stencilFunc) {
     return g_StencilOps[(size_t)stencilFunc];
@@ -119,7 +119,7 @@ constexpr std::array<D3D11_COMPARISON_FUNC, (size_t)CompareOp::MAX_NUM> g_Compar
     D3D11_COMPARISON_GREATER,       // GREATER,
     D3D11_COMPARISON_GREATER_EQUAL, // GREATER_EQUAL,
 };
-VALIDATE_ARRAY(g_ComparisonFuncs);
+NRI_VALIDATE_ARRAY(g_ComparisonFuncs);
 
 D3D11_COMPARISON_FUNC nri::GetD3D11ComparisonFuncFromCompareOp(CompareOp compareOp) {
     return g_ComparisonFuncs[(size_t)compareOp];
@@ -130,7 +130,7 @@ constexpr std::array<D3D11_CULL_MODE, (size_t)CullMode::MAX_NUM> g_CullModes = {
     D3D11_CULL_FRONT, // FRONT,
     D3D11_CULL_BACK   // BACK
 };
-VALIDATE_ARRAY(g_CullModes);
+NRI_VALIDATE_ARRAY(g_CullModes);
 
 D3D11_CULL_MODE nri::GetD3D11CullModeFromCullMode(CullMode cullMode) {
     return g_CullModes[(size_t)cullMode];
@@ -148,7 +148,7 @@ constexpr std::array<D3D_PRIMITIVE_TOPOLOGY, (size_t)Topology::MAX_NUM> g_Topolo
     D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ,        // TRIANGLE_STRIP_WITH_ADJACENCY,
     D3D11_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST // PATCH_LIST
 };
-VALIDATE_ARRAY(g_Topologies);
+NRI_VALIDATE_ARRAY(g_Topologies);
 
 D3D11_PRIMITIVE_TOPOLOGY nri::GetD3D11TopologyFromTopology(Topology topology, uint32_t patchPoints) {
     uint32_t res = g_Topologies[(size_t)topology];

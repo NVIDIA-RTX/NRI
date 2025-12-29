@@ -474,7 +474,7 @@ void CommandBufferEmuD3D11::Submit() {
                 commandBuffer.Annotation(name, bgra);
             } break;
             default:
-                CHECK(false, "Unexpected");
+                NRI_CHECK(false, "Unexpected");
                 break;
         }
     }

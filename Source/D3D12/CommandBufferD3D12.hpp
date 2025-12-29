@@ -164,7 +164,7 @@ constexpr std::array<D3D12_BARRIER_LAYOUT, (size_t)Layout::MAX_NUM> g_BarrierLay
     D3D12_BARRIER_LAYOUT_RESOLVE_SOURCE,      // RESOLVE_SOURCE
     D3D12_BARRIER_LAYOUT_RESOLVE_DEST,        // RESOLVE_DESTINATION
 };
-VALIDATE_ARRAY(g_BarrierLayouts);
+NRI_VALIDATE_ARRAY(g_BarrierLayouts);
 
 constexpr D3D12_BARRIER_LAYOUT GetBarrierLayout(Layout layout, AccessBits accessBits) {
     // Special case
@@ -290,7 +290,7 @@ constexpr std::array<D3D12_RESOLVE_MODE, (size_t)ResolveOp::MAX_NUM> g_ResolveOp
     D3D12_RESOLVE_MODE_MIN,     // MIN
     D3D12_RESOLVE_MODE_MAX,     // MAX
 };
-VALIDATE_ARRAY(g_ResolveOps);
+NRI_VALIDATE_ARRAY(g_ResolveOps);
 
 constexpr D3D12_RESOLVE_MODE GetResolveOp(ResolveOp resolveOp) {
     return g_ResolveOps[(size_t)resolveOp];
@@ -299,13 +299,13 @@ constexpr D3D12_RESOLVE_MODE GetResolveOp(ResolveOp resolveOp) {
 Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D12CommandAllocator* commandAllocator) {
     ComPtr<ID3D12GraphicsCommandListBest> graphicsCommandList;
     HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&graphicsCommandList);
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommandList");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommandList");
 
     hr = QueryLatestInterface(graphicsCommandList, m_GraphicsCommandList, m_Version);
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::QueryLatestInterface");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::QueryLatestInterface");
 
     hr = m_GraphicsCommandList->Close();
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::Close");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::Close");
 
     m_CommandAllocator = commandAllocator;
 
@@ -317,7 +317,7 @@ Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferD3D
 
     HRESULT hr = QueryLatestInterface(graphicsCommandList, m_GraphicsCommandList, m_Version);
     if (hr == D3D12_ERROR_INVALID_REDIST)
-        REPORT_WARNING(&m_Device, "ID3D12GraphicsCommandList version is lower than expected, some functionality may be not available...");
+        NRI_REPORT_WARNING(&m_Device, "ID3D12GraphicsCommandList version is lower than expected, some functionality may be not available...");
 
     // TODO: what if opened?
 
@@ -328,7 +328,7 @@ Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferD3D
 
 NRI_INLINE Result CommandBufferD3D12::Begin(const DescriptorPool* descriptorPool) {
     HRESULT hr = m_GraphicsCommandList->Reset(m_CommandAllocator, nullptr);
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::Reset");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::Reset");
 
     if (descriptorPool)
         SetDescriptorPool(*descriptorPool);
@@ -349,7 +349,7 @@ NRI_INLINE Result CommandBufferD3D12::End() {
 }
 
 NRI_INLINE void CommandBufferD3D12::SetViewports(const Viewport* viewports, uint32_t viewportNum) {
-    Scratch<D3D12_VIEWPORT> d3dViewports = AllocateScratch(m_Device, D3D12_VIEWPORT, viewportNum);
+    Scratch<D3D12_VIEWPORT> d3dViewports = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_VIEWPORT, viewportNum);
     for (uint32_t i = 0; i < viewportNum; i++) {
         const Viewport& in = viewports[i];
         D3D12_VIEWPORT& out = d3dViewports[i];
@@ -371,7 +371,7 @@ NRI_INLINE void CommandBufferD3D12::SetViewports(const Viewport* viewports, uint
 }
 
 NRI_INLINE void CommandBufferD3D12::SetScissors(const Rect* rects, uint32_t rectNum) {
-    Scratch<D3D12_RECT> d3dRects = AllocateScratch(m_Device, D3D12_RECT, rectNum);
+    Scratch<D3D12_RECT> d3dRects = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_RECT, rectNum);
     ConvertRects(rects, rectNum, d3dRects);
 
     m_GraphicsCommandList->RSSetScissorRects(rectNum, d3dRects);
@@ -420,7 +420,7 @@ NRI_INLINE void CommandBufferD3D12::SetDepthBias(const DepthBiasDesc& depthBiasD
 }
 
 NRI_INLINE void CommandBufferD3D12::ClearAttachments(const ClearAttachmentDesc* clearAttachmentDescs, uint32_t clearAttachmentDescNum, const Rect* rects, uint32_t rectNum) {
-    Scratch<D3D12_RECT> d3dRects = AllocateScratch(m_Device, D3D12_RECT, rectNum);
+    Scratch<D3D12_RECT> d3dRects = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_RECT, rectNum);
     ConvertRects(rects, rectNum, d3dRects);
 
     for (uint32_t i = 0; i < clearAttachmentDescNum; i++) {
@@ -550,7 +550,7 @@ NRI_INLINE void CommandBufferD3D12::EndRendering() {
             resourceBarrierNum += srcDesc.layerNum;
         }
     }
-    Scratch<D3D12_RESOURCE_BARRIER> resourceBarriers = AllocateScratch(m_Device, D3D12_RESOURCE_BARRIER, resourceBarrierNum);
+    Scratch<D3D12_RESOURCE_BARRIER> resourceBarriers = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_RESOURCE_BARRIER, resourceBarrierNum);
     uint32_t barrierNum = 0;
 
     constexpr uint32_t attachmentNum = D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT + 2;
@@ -665,7 +665,7 @@ NRI_INLINE void CommandBufferD3D12::EndRendering() {
 }
 
 NRI_INLINE void CommandBufferD3D12::SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum) {
-    Scratch<D3D12_VERTEX_BUFFER_VIEW> vertexBufferViews = AllocateScratch(m_Device, D3D12_VERTEX_BUFFER_VIEW, vertexBufferNum);
+    Scratch<D3D12_VERTEX_BUFFER_VIEW> vertexBufferViews = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_VERTEX_BUFFER_VIEW, vertexBufferNum);
     for (uint32_t i = 0; i < vertexBufferNum; i++) {
         const VertexBufferDesc& vertexBufferDesc = vertexBufferDescs[i];
 
@@ -961,7 +961,7 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
         uint32_t barriersGroupsNum = 0;
 
         // Global
-        Scratch<D3D12_GLOBAL_BARRIER> globalBarriers = AllocateScratch(m_Device, D3D12_GLOBAL_BARRIER, barrierDesc.globalNum);
+        Scratch<D3D12_GLOBAL_BARRIER> globalBarriers = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_GLOBAL_BARRIER, barrierDesc.globalNum);
         if (barrierDesc.globalNum) {
             D3D12_BARRIER_GROUP* barrierGroup = &barrierGroups[barriersGroupsNum++];
             barrierGroup->Type = D3D12_BARRIER_TYPE_GLOBAL;
@@ -981,7 +981,7 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
         }
 
         // Buffer
-        Scratch<D3D12_BUFFER_BARRIER> bufferBarriers = AllocateScratch(m_Device, D3D12_BUFFER_BARRIER, barrierDesc.bufferNum);
+        Scratch<D3D12_BUFFER_BARRIER> bufferBarriers = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_BUFFER_BARRIER, barrierDesc.bufferNum);
         if (barrierDesc.bufferNum) {
             D3D12_BARRIER_GROUP* barrierGroup = &barrierGroups[barriersGroupsNum++];
             barrierGroup->Type = D3D12_BARRIER_TYPE_BUFFER;
@@ -1005,7 +1005,7 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
         }
 
         // Texture
-        Scratch<D3D12_TEXTURE_BARRIER> textureBarriers = AllocateScratch(m_Device, D3D12_TEXTURE_BARRIER, barrierDesc.textureNum);
+        Scratch<D3D12_TEXTURE_BARRIER> textureBarriers = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_TEXTURE_BARRIER, barrierDesc.textureNum);
         if (barrierDesc.textureNum) {
             D3D12_BARRIER_GROUP* barrierGroup = &barrierGroups[barriersGroupsNum++];
             barrierGroup->Type = D3D12_BARRIER_TYPE_TEXTURE;
@@ -1085,7 +1085,7 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
             return;
 
         // Gather
-        Scratch<D3D12_RESOURCE_BARRIER> barriers = AllocateScratch(m_Device, D3D12_RESOURCE_BARRIER, barrierNum);
+        Scratch<D3D12_RESOURCE_BARRIER> barriers = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_RESOURCE_BARRIER, barrierNum);
         memset(barriers, 0, sizeof(D3D12_RESOURCE_BARRIER) * barrierNum);
 
         D3D12_RESOURCE_BARRIER* ptr = barriers;
@@ -1283,9 +1283,9 @@ NRI_INLINE void CommandBufferD3D12::BuildBottomLevelAccelerationStructures(const
         micromapMaxNum = std::max(micromapMaxNum, micromapNum);
     }
 
-    Scratch<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescs = AllocateScratch(m_Device, D3D12_RAYTRACING_GEOMETRY_DESC, geometryMaxNum);
-    Scratch<D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC> trianglesDescs = AllocateScratch(m_Device, D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC, micromapMaxNum);
-    Scratch<D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC> ommDescs = AllocateScratch(m_Device, D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC, micromapMaxNum);
+    Scratch<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescs = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_RAYTRACING_GEOMETRY_DESC, geometryMaxNum);
+    Scratch<D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC> trianglesDescs = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC, micromapMaxNum);
+    Scratch<D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC> ommDescs = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC, micromapMaxNum);
 
     // 1 by 1
     for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++) {
@@ -1322,7 +1322,7 @@ NRI_INLINE void CommandBufferD3D12::BuildMicromaps(const BuildMicromapDesc* buil
     for (uint32_t i = 0; i < buildMicromapDescNum; i++)
         usageMaxNum = std::max(usageMaxNum, ((MicromapD3D12*)buildMicromapDescs[i].dst)->GetUsageNum());
 
-    Scratch<D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY> usages = AllocateScratch(m_Device, D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY, usageMaxNum);
+    Scratch<D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY> usages = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY, usageMaxNum);
 
     for (uint32_t i = 0; i < buildMicromapDescNum; i++) {
         const BuildMicromapDesc& in = buildMicromapDescs[i];
@@ -1364,7 +1364,7 @@ NRI_INLINE void CommandBufferD3D12::CopyMicromap(Micromap& dst, const Micromap& 
 }
 
 NRI_INLINE void CommandBufferD3D12::WriteAccelerationStructuresSizes(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
-    Scratch<D3D12_GPU_VIRTUAL_ADDRESS> virtualAddresses = AllocateScratch(m_Device, D3D12_GPU_VIRTUAL_ADDRESS, accelerationStructureNum);
+    Scratch<D3D12_GPU_VIRTUAL_ADDRESS> virtualAddresses = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_GPU_VIRTUAL_ADDRESS, accelerationStructureNum);
     for (uint32_t i = 0; i < accelerationStructureNum; i++)
         virtualAddresses[i] = ((AccelerationStructureD3D12*)accelerationStructures[i])->GetHandle();
 
@@ -1383,7 +1383,7 @@ NRI_INLINE void CommandBufferD3D12::WriteAccelerationStructuresSizes(const Accel
 }
 
 NRI_INLINE void CommandBufferD3D12::WriteMicromapsSizes(const Micromap* const* micromaps, uint32_t micromapNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
-    Scratch<D3D12_GPU_VIRTUAL_ADDRESS> virtualAddresses = AllocateScratch(m_Device, D3D12_GPU_VIRTUAL_ADDRESS, micromapNum);
+    Scratch<D3D12_GPU_VIRTUAL_ADDRESS> virtualAddresses = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_GPU_VIRTUAL_ADDRESS, micromapNum);
     for (uint32_t i = 0; i < micromapNum; i++)
         virtualAddresses[i] = ((AccelerationStructureD3D12&)micromaps[i]).GetHandle();
 

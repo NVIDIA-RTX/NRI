@@ -44,7 +44,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         win32SurfaceInfo.hwnd = (HWND)swapChainDesc.window.windows.hwnd;
 
         VkResult vkResult = vk.CreateWin32SurfaceKHR(m_Device, &win32SurfaceInfo, m_Device.GetVkAllocationCallbacks(), &m_Surface);
-        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateWin32SurfaceKHR");
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateWin32SurfaceKHR");
     }
 #endif
 #ifdef VK_USE_PLATFORM_XLIB_KHR
@@ -54,7 +54,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         xlibSurfaceInfo.window = (::Window)swapChainDesc.window.x11.window;
 
         VkResult vkResult = vk.CreateXlibSurfaceKHR(m_Device, &xlibSurfaceInfo, m_Device.GetVkAllocationCallbacks(), &m_Surface);
-        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateXlibSurfaceKHR");
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateXlibSurfaceKHR");
     }
 #endif
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
@@ -64,7 +64,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         waylandSurfaceInfo.surface = (wl_surface*)swapChainDesc.window.wayland.surface;
 
         VkResult vkResult = vk.CreateWaylandSurfaceKHR(m_Device, &waylandSurfaceInfo, m_Device.GetVkAllocationCallbacks(), &m_Surface);
-        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateWaylandSurfaceKHR");
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateWaylandSurfaceKHR");
     }
 #endif
 #ifdef VK_USE_PLATFORM_METAL_EXT
@@ -73,7 +73,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         metalSurfaceCreateInfo.pLayer = (CAMetalLayer*)swapChainDesc.window.metal.caMetalLayer;
 
         VkResult vkResult = vk.CreateMetalSurfaceEXT(m_Device, &metalSurfaceCreateInfo, m_Device.GetVkAllocationCallbacks(), &m_Surface);
-        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateMetalSurfaceEXT");
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateMetalSurfaceEXT");
     }
 #endif
 
@@ -90,9 +90,9 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
     {
         VkBool32 supported = VK_FALSE;
         VkResult vkResult = vk.GetPhysicalDeviceSurfaceSupportKHR(m_Device, familyIndex, m_Surface, &supported);
-        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "GetPhysicalDeviceSurfaceSupportKHR");
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "GetPhysicalDeviceSurfaceSupportKHR");
 
-        RETURN_ON_FAILURE(&m_Device, supported, Result::FAILURE, "Surface is not supported");
+        NRI_RETURN_ON_FAILURE(&m_Device, supported, Result::FAILURE, "Surface is not supported");
 
         VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR};
         surfaceInfo.surface = m_Surface;
@@ -104,14 +104,14 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
             caps2.pNext = &latencySurfaceCapabilities;
 
         vkResult = vk.GetPhysicalDeviceSurfaceCapabilities2KHR(m_Device, &surfaceInfo, &caps2);
-        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceSurfaceCapabilities2KHR");
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceSurfaceCapabilities2KHR");
 
         bool isWidthValid = swapChainDesc.width >= surfaceCaps.minImageExtent.width && swapChainDesc.width <= surfaceCaps.maxImageExtent.width;
-        RETURN_ON_FAILURE(&m_Device, isWidthValid, Result::INVALID_ARGUMENT, "swapChainDesc.width is out of [%u, %u] range", surfaceCaps.minImageExtent.width,
+        NRI_RETURN_ON_FAILURE(&m_Device, isWidthValid, Result::INVALID_ARGUMENT, "swapChainDesc.width is out of [%u, %u] range", surfaceCaps.minImageExtent.width,
             surfaceCaps.maxImageExtent.width);
 
         bool isHeightValid = swapChainDesc.height >= surfaceCaps.minImageExtent.height && swapChainDesc.height <= surfaceCaps.maxImageExtent.height;
-        RETURN_ON_FAILURE(&m_Device, isHeightValid, Result::INVALID_ARGUMENT, "swapChainDesc.height is out of [%u, %u] range", surfaceCaps.minImageExtent.height,
+        NRI_RETURN_ON_FAILURE(&m_Device, isHeightValid, Result::INVALID_ARGUMENT, "swapChainDesc.height is out of [%u, %u] range", surfaceCaps.minImageExtent.height,
             surfaceCaps.maxImageExtent.height);
 
         // Silently clamp "textureNum" to the supported range
@@ -121,7 +121,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
             textureNum = surfaceCaps.maxImageCount;
 
         if (textureNum != swapChainDesc.textureNum)
-            REPORT_WARNING(&m_Device, "'swapChainDesc.textureNum=%u' clamped to %u", swapChainDesc.textureNum, textureNum);
+            NRI_REPORT_WARNING(&m_Device, "'swapChainDesc.textureNum=%u' clamped to %u", swapChainDesc.textureNum, textureNum);
     }
 
     // Surface format
@@ -132,14 +132,14 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
 
         uint32_t formatNum = 0;
         VkResult vkResult = vk.GetPhysicalDeviceSurfaceFormats2KHR(m_Device, &surfaceInfo, &formatNum, nullptr);
-        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceSurfaceFormats2KHR");
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceSurfaceFormats2KHR");
 
-        Scratch<VkSurfaceFormat2KHR> surfaceFormats = AllocateScratch(m_Device, VkSurfaceFormat2KHR, formatNum);
+        Scratch<VkSurfaceFormat2KHR> surfaceFormats = NRI_ALLOCATE_SCRATCH(m_Device, VkSurfaceFormat2KHR, formatNum);
         for (uint32_t i = 0; i < formatNum; i++)
             surfaceFormats[i] = {VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR};
 
         vkResult = vk.GetPhysicalDeviceSurfaceFormats2KHR(m_Device, &surfaceInfo, &formatNum, surfaceFormats);
-        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceSurfaceFormats2KHR");
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceSurfaceFormats2KHR");
 
         auto priority_BT709_G22_16BIT = [](const VkSurfaceFormat2KHR& s) -> uint32_t {
             if (s.surfaceFormat.format != VK_FORMAT_R16G16B16A16_SFLOAT)
@@ -216,7 +216,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
                 });
                 break;
             default:
-                CHECK(false, "Unexpected");
+                NRI_CHECK(false, "Unexpected");
                 break;
         }
 
@@ -240,7 +240,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         std::array<VkPresentModeKHR, PRESENT_MODE_MAX_NUM> surfacePresentModes = {};
 
         VkResult vkResult = vk.GetPhysicalDeviceSurfacePresentModesKHR(m_Device, m_Surface, &surfacePresentModeNum, surfacePresentModes.data());
-        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceSurfacePresentModesKHR");
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceSurfacePresentModesKHR");
 
         const VkPresentModeKHR cappedModes[] = {
             (swapChainDesc.flags & SwapChainBits::ALLOW_TEARING) ? VK_PRESENT_MODE_FIFO_RELAXED_KHR : VK_PRESENT_MODE_FIFO_KHR,
@@ -350,14 +350,14 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
 
         // Create
         VkResult vkResult = vk.CreateSwapchainKHR(m_Device, &swapchainInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateSwapchainKHR");
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateSwapchainKHR");
     }
 
     { // Textures
         uint32_t imageNum = 0;
         vk.GetSwapchainImagesKHR(m_Device, m_Handle, &imageNum, nullptr);
 
-        Scratch<VkImage> imageHandles = AllocateScratch(m_Device, VkImage, imageNum);
+        Scratch<VkImage> imageHandles = NRI_ALLOCATE_SCRATCH(m_Device, VkImage, imageNum);
         vk.GetSwapchainImagesKHR(m_Device, m_Handle, &imageNum, imageHandles);
 
         m_Textures.resize(imageNum);
@@ -423,7 +423,7 @@ NRI_INLINE Result SwapChainVK::AcquireNextTexture(FenceVK& acquireSemaphore, uin
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.AcquireNextImage2KHR(m_Device, &acquireInfo, &m_TextureIndex);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "AcquireNextImage2KHR");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "AcquireNextImage2KHR");
 
     textureIndex = m_TextureIndex;
 
@@ -436,7 +436,7 @@ NRI_INLINE Result SwapChainVK::WaitForPresent() {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.WaitForPresentKHR(m_Device, m_Handle, m_PresentId - 1, MsToUs(TIMEOUT_PRESENT));
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "WaitForPresentKHR");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "WaitForPresentKHR");
 
     return Result::SUCCESS;
 }
@@ -472,7 +472,7 @@ NRI_INLINE Result SwapChainVK::Present(FenceVK& releaseSemaphore) {
     if (m_Flags & SwapChainBits::ALLOW_LOW_LATENCY)
         SetLatencyMarker((LatencyMarker)VK_LATENCY_MARKER_PRESENT_END_NV);
 
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "QueuePresentKHR");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "QueuePresentKHR");
 
     return Result::SUCCESS;
 }
@@ -485,7 +485,7 @@ NRI_INLINE Result SwapChainVK::SetLatencySleepMode(const LatencySleepMode& laten
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.SetLatencySleepModeNV(m_Device, m_Handle, &sleepModeInfo);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "SetLatencySleepModeNV");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "SetLatencySleepModeNV");
 
     return Result::SUCCESS;
 }
@@ -508,9 +508,9 @@ NRI_INLINE Result SwapChainVK::LatencySleep() {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.LatencySleepNV(m_Device, m_Handle, &sleepInfo);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "LatencySleepNV");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "LatencySleepNV");
 
-    m_LatencyFence->Wait(m_PresentId); // VK_SUCCESS is guaranteed by "RETURN_ON_BAD_VKRESULT"
+    m_LatencyFence->Wait(m_PresentId); // VK_SUCCESS is guaranteed by "NRI_RETURN_ON_BAD_VKRESULT"
 
     return Result::SUCCESS;
 }

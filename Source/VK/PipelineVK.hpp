@@ -44,8 +44,8 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     m_BindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
     // Shaders
-    Scratch<VkPipelineShaderStageCreateInfo> stages = AllocateScratch(m_Device, VkPipelineShaderStageCreateInfo, graphicsPipelineDesc.shaderNum);
-    Scratch<VkShaderModule> modules = AllocateScratch(m_Device, VkShaderModule, graphicsPipelineDesc.shaderNum);
+    Scratch<VkPipelineShaderStageCreateInfo> stages = NRI_ALLOCATE_SCRATCH(m_Device, VkPipelineShaderStageCreateInfo, graphicsPipelineDesc.shaderNum);
+    Scratch<VkShaderModule> modules = NRI_ALLOCATE_SCRATCH(m_Device, VkShaderModule, graphicsPipelineDesc.shaderNum);
 
     for (uint32_t i = 0; i < graphicsPipelineDesc.shaderNum; i++) {
         const ShaderDesc& shaderDesc = graphicsPipelineDesc.shaders[i];
@@ -61,8 +61,8 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     uint32_t attributeNum = vi ? vi->attributeNum : 0u;
     uint32_t streamNum = vi ? vi->streamNum : 0u;
 
-    Scratch<VkVertexInputAttributeDescription> vertexAttributeDescs = AllocateScratch(m_Device, VkVertexInputAttributeDescription, attributeNum);
-    Scratch<VkVertexInputBindingDescription> vertexBindingDescs = AllocateScratch(m_Device, VkVertexInputBindingDescription, streamNum);
+    Scratch<VkVertexInputAttributeDescription> vertexAttributeDescs = NRI_ALLOCATE_SCRATCH(m_Device, VkVertexInputAttributeDescription, attributeNum);
+    Scratch<VkVertexInputBindingDescription> vertexBindingDescs = NRI_ALLOCATE_SCRATCH(m_Device, VkVertexInputBindingDescription, streamNum);
 
     VkPipelineVertexInputStateCreateInfo vertexInputState = {VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
     vertexInputState.pVertexAttributeDescriptions = vertexAttributeDescs;
@@ -190,7 +190,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
 
     // Blending
     const OutputMergerDesc& om = graphicsPipelineDesc.outputMerger;
-    Scratch<VkPipelineColorBlendAttachmentState> scratch = AllocateScratch(m_Device, VkPipelineColorBlendAttachmentState, om.colorNum);
+    Scratch<VkPipelineColorBlendAttachmentState> scratch = NRI_ALLOCATE_SCRATCH(m_Device, VkPipelineColorBlendAttachmentState, om.colorNum);
 
     VkPipelineColorBlendStateCreateInfo colorBlendState = {VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
     colorBlendState.logicOpEnable = om.logicOp != LogicOp::NONE ? VK_TRUE : VK_FALSE;
@@ -221,7 +221,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     // Formats
     const FormatProps& depthStencilFormatProps = GetFormatProps(om.depthStencilFormat);
 
-    Scratch<VkFormat> colorFormats = AllocateScratch(m_Device, VkFormat, om.colorNum);
+    Scratch<VkFormat> colorFormats = NRI_ALLOCATE_SCRATCH(m_Device, VkFormat, om.colorNum);
     for (uint32_t i = 0; i < om.colorNum; i++)
         colorFormats[i] = GetVkFormat(om.colors[i].format);
 
@@ -291,7 +291,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateGraphicsPipelines");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateGraphicsPipelines");
 
     for (size_t i = 0; i < graphicsPipelineDesc.shaderNum; i++)
         vk.DestroyShaderModule(m_Device, modules[i], m_Device.GetVkAllocationCallbacks());
@@ -315,7 +315,7 @@ Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc) {
     VkShaderModule module = VK_NULL_HANDLE;
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateShaderModule(m_Device, &moduleInfo, m_Device.GetVkAllocationCallbacks(), &module);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateShaderModule");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateShaderModule");
 
     VkPipelineShaderStageCreateInfo stage = {
         VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -342,7 +342,7 @@ Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc) {
         info.pNext = &robustnessInfo;
 
     vkResult = vk.CreateComputePipelines(m_Device, VK_NULL_HANDLE, 1, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateComputePipelines");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateComputePipelines");
 
     vk.DestroyShaderModule(m_Device, module, m_Device.GetVkAllocationCallbacks());
 
@@ -355,8 +355,8 @@ Result PipelineVK::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc) 
     const PipelineLayoutVK& pipelineLayoutVK = *(const PipelineLayoutVK*)rayTracingPipelineDesc.pipelineLayout;
 
     const uint32_t stageNum = rayTracingPipelineDesc.shaderLibrary->shaderNum;
-    Scratch<VkPipelineShaderStageCreateInfo> stages = AllocateScratch(m_Device, VkPipelineShaderStageCreateInfo, stageNum);
-    Scratch<VkShaderModule> modules = AllocateScratch(m_Device, VkShaderModule, stageNum);
+    Scratch<VkPipelineShaderStageCreateInfo> stages = NRI_ALLOCATE_SCRATCH(m_Device, VkPipelineShaderStageCreateInfo, stageNum);
+    Scratch<VkShaderModule> modules = NRI_ALLOCATE_SCRATCH(m_Device, VkShaderModule, stageNum);
 
     for (uint32_t i = 0; i < stageNum; i++) {
         const ShaderDesc& shaderDesc = rayTracingPipelineDesc.shaderLibrary->shaders[i];
@@ -367,7 +367,7 @@ Result PipelineVK::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc) 
         stages[i].pName = shaderDesc.entryPointName ? shaderDesc.entryPointName : "main";
     }
 
-    Scratch<VkRayTracingShaderGroupCreateInfoKHR> groupArray = AllocateScratch(m_Device, VkRayTracingShaderGroupCreateInfoKHR, rayTracingPipelineDesc.shaderGroupNum);
+    Scratch<VkRayTracingShaderGroupCreateInfoKHR> groupArray = NRI_ALLOCATE_SCRATCH(m_Device, VkRayTracingShaderGroupCreateInfoKHR, rayTracingPipelineDesc.shaderGroupNum);
     for (uint32_t i = 0; i < rayTracingPipelineDesc.shaderGroupNum; i++) {
         const ShaderGroupDesc& srcGroup = rayTracingPipelineDesc.shaderGroups[i];
 
@@ -444,7 +444,7 @@ Result PipelineVK::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc) 
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateRayTracingPipelinesKHR(m_Device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateRayTracingPipelinesKHR");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateRayTracingPipelinesKHR");
 
     for (size_t i = 0; i < stageNum; i++)
         vk.DestroyShaderModule(m_Device, modules[i], m_Device.GetVkAllocationCallbacks());
@@ -471,7 +471,7 @@ Result PipelineVK::SetupShaderStage(VkPipelineShaderStageCreateInfo& stage, cons
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateShaderModule(m_Device, &moduleInfo, m_Device.GetVkAllocationCallbacks(), &module);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateShaderModule");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateShaderModule");
 
     stage = {
         VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -495,7 +495,7 @@ NRI_INLINE Result PipelineVK::WriteShaderGroupIdentifiers(uint32_t baseShaderGro
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.GetRayTracingShaderGroupHandlesKHR(m_Device, m_Handle, baseShaderGroupIndex, shaderGroupNum, dataSize, dst);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetRayTracingShaderGroupHandlesKHR");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetRayTracingShaderGroupHandlesKHR");
 
     return Result::SUCCESS;
 }

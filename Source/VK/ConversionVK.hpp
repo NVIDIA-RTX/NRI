@@ -182,7 +182,7 @@ constexpr std::array<VkFormat, (size_t)Format::MAX_NUM> g_Formats = {
     VK_FORMAT_D32_SFLOAT_S8_UINT,       // R32_SFLOAT_X8_X24
     VK_FORMAT_D32_SFLOAT_S8_UINT,       // X32_G8_UINT_X24
 };
-VALIDATE_ARRAY(g_Formats);
+NRI_VALIDATE_ARRAY(g_Formats);
 
 uint32_t nri::NRIFormatToVKFormat(Format format) {
     return (uint32_t)g_Formats[(uint32_t)format];

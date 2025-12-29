@@ -18,7 +18,7 @@ BufferD3D11::~BufferD3D11() {
 }
 
 Result BufferD3D11::Allocate(MemoryLocation memoryLocation, float priority) {
-    CHECK(!m_Buffer, "Unexpected");
+    NRI_CHECK(!m_Buffer, "Unexpected");
 
     D3D11_BUFFER_DESC desc = {};
     desc.ByteWidth = (uint32_t)m_Desc.size;
@@ -68,7 +68,7 @@ Result BufferD3D11::Allocate(MemoryLocation memoryLocation, float priority) {
         desc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
 
     HRESULT hr = m_Device->CreateBuffer(&desc, nullptr, &m_Buffer);
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateBuffer");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateBuffer");
 
     // Priority
     uint32_t evictionPriority = ConvertPriority(priority);
@@ -150,12 +150,12 @@ NRI_INLINE void* BufferD3D11::Map(uint64_t offset) {
     else if (desc.CPUAccessFlags == (D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE))
         map = D3D11_MAP_READ_WRITE;
     else
-        CHECK(false, "No CPU access");
+        NRI_CHECK(false, "No CPU access");
 
     D3D11_MAPPED_SUBRESOURCE mappedData = {};
     HRESULT hr = m_Device.GetImmediateContext()->Map(m_Buffer, 0, map, 0, &mappedData);
     if (FAILED(hr)) {
-        REPORT_ERROR(&m_Device, "ID3D11DeviceContext::Map() failed!");
+        NRI_REPORT_ERROR(&m_Device, "ID3D11DeviceContext::Map() failed!");
         return nullptr;
     }
 
@@ -173,7 +173,7 @@ NRI_INLINE void* BufferD3D11::Map(uint64_t offset) {
         hr = m_Device.GetImmediateContext()->Map(*m_ReadbackTexture, 0, D3D11_MAP_READ, 0, &srcData);
         if (FAILED(hr)) {
             m_Device.GetImmediateContext()->Unmap(m_Buffer, 0);
-            REPORT_ERROR(&m_Device, "ID3D11DeviceContext::Map() failed!");
+            NRI_REPORT_ERROR(&m_Device, "ID3D11DeviceContext::Map() failed!");
             return nullptr;
         }
 

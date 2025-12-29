@@ -5,7 +5,7 @@ constexpr std::array<D3D12_COMMAND_LIST_TYPE, (size_t)QueueType::MAX_NUM> g_Comm
     D3D12_COMMAND_LIST_TYPE_COMPUTE, // COMPUTE,
     D3D12_COMMAND_LIST_TYPE_COPY,    // COPY,
 };
-VALIDATE_ARRAY(g_CommandListTypes);
+NRI_VALIDATE_ARRAY(g_CommandListTypes);
 
 D3D12_COMMAND_LIST_TYPE nri::GetCommandListType(QueueType queueType) {
     return g_CommandListTypes[(size_t)queueType];
@@ -16,7 +16,7 @@ constexpr std::array<D3D12_RESOURCE_DIMENSION, (size_t)TextureType::MAX_NUM> g_R
     D3D12_RESOURCE_DIMENSION_TEXTURE2D, // TEXTURE_2D,
     D3D12_RESOURCE_DIMENSION_TEXTURE3D, // TEXTURE_3D,
 };
-VALIDATE_ARRAY(g_ResourceDimensions);
+NRI_VALIDATE_ARRAY(g_ResourceDimensions);
 
 D3D12_RESOURCE_DIMENSION nri::GetResourceDimension(TextureType textureType) {
     return g_ResourceDimensions[(size_t)textureType];
@@ -35,7 +35,7 @@ constexpr std::array<D3D12_DESCRIPTOR_RANGE_TYPE, (size_t)DescriptorType::MAX_NU
     D3D12_DESCRIPTOR_RANGE_TYPE_UAV,     // STORAGE_STRUCTURED_BUFFER
     D3D12_DESCRIPTOR_RANGE_TYPE_SRV,     // ACCELERATION_STRUCTURE
 };
-//VALIDATE_ARRAY(g_DescriptorRangeTypes); // TODO: 0 is expected for ACCELERATION_STRUCTURE
+//NRI_VALIDATE_ARRAY(g_DescriptorRangeTypes); // TODO: 0 is expected for ACCELERATION_STRUCTURE
 
 D3D12_DESCRIPTOR_RANGE_TYPE nri::GetDescriptorRangesType(DescriptorType descriptorType) {
     return g_DescriptorRangeTypes[(size_t)descriptorType];
@@ -53,7 +53,7 @@ constexpr std::array<D3D12_PRIMITIVE_TOPOLOGY_TYPE, (size_t)Topology::MAX_NUM> g
     D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, // TRIANGLE_STRIP_WITH_ADJACENCY
     D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH     // PATCH_LIST
 };
-VALIDATE_ARRAY(g_PrimitiveTopologyTypes);
+NRI_VALIDATE_ARRAY(g_PrimitiveTopologyTypes);
 
 D3D12_PRIMITIVE_TOPOLOGY_TYPE nri::GetPrimitiveTopologyType(Topology topology) {
     return g_PrimitiveTopologyTypes[(size_t)topology];
@@ -70,7 +70,7 @@ constexpr std::array<D3D_PRIMITIVE_TOPOLOGY, (size_t)Topology::MAX_NUM - 1> g_Pr
     D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ, // TRIANGLE_LIST_WITH_ADJACENCY
     D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ // TRIANGLE_STRIP_WITH_ADJACENCY
 };
-VALIDATE_ARRAY(g_PrimitiveTopologyTypes);
+NRI_VALIDATE_ARRAY(g_PrimitiveTopologyTypes);
 
 D3D_PRIMITIVE_TOPOLOGY nri::GetPrimitiveTopology(Topology topology, uint8_t tessControlPointNum) {
     if (topology == Topology::PATCH_LIST)
@@ -83,7 +83,7 @@ constexpr std::array<D3D12_FILL_MODE, (size_t)FillMode::MAX_NUM> g_FillModes = {
     D3D12_FILL_MODE_SOLID,    // SOLID
     D3D12_FILL_MODE_WIREFRAME // WIREFRAME
 };
-VALIDATE_ARRAY(g_FillModes);
+NRI_VALIDATE_ARRAY(g_FillModes);
 
 D3D12_FILL_MODE nri::GetFillMode(FillMode fillMode) {
     return g_FillModes[(size_t)fillMode];
@@ -94,7 +94,7 @@ constexpr std::array<D3D12_CULL_MODE, (size_t)CullMode::MAX_NUM> g_CullModes = {
     D3D12_CULL_MODE_FRONT, // FRONT
     D3D12_CULL_MODE_BACK   // BACK
 };
-VALIDATE_ARRAY(g_CullModes);
+NRI_VALIDATE_ARRAY(g_CullModes);
 
 D3D12_CULL_MODE nri::GetCullMode(CullMode cullMode) {
     return g_CullModes[(size_t)cullMode];
@@ -115,7 +115,7 @@ constexpr std::array<D3D12_COMPARISON_FUNC, (size_t)CompareOp::MAX_NUM> g_Compar
     D3D12_COMPARISON_FUNC_GREATER,       // GREATER
     D3D12_COMPARISON_FUNC_GREATER_EQUAL, // GREATER_EQUAL
 };
-VALIDATE_ARRAY(g_ComparisonFuncs);
+NRI_VALIDATE_ARRAY(g_ComparisonFuncs);
 
 D3D12_COMPARISON_FUNC nri::GetCompareOp(CompareOp compareOp) {
     return g_ComparisonFuncs[(size_t)compareOp];
@@ -131,7 +131,7 @@ constexpr std::array<D3D12_STENCIL_OP, (size_t)StencilOp::MAX_NUM> g_StencilOps 
     D3D12_STENCIL_OP_INCR,     // INCREMENT_AND_WRAP
     D3D12_STENCIL_OP_DECR      // DECREMENT_AND_WRAP
 };
-VALIDATE_ARRAY(g_StencilOps);
+NRI_VALIDATE_ARRAY(g_StencilOps);
 
 D3D12_STENCIL_OP nri::GetStencilOp(StencilOp stencilFunc) {
     return g_StencilOps[(size_t)stencilFunc];
@@ -155,7 +155,7 @@ constexpr std::array<D3D12_LOGIC_OP, (size_t)LogicOp::MAX_NUM> g_LogicOps = {
     D3D12_LOGIC_OP_NAND,          // NAND
     D3D12_LOGIC_OP_SET            // SET
 };
-VALIDATE_ARRAY(g_LogicOps);
+NRI_VALIDATE_ARRAY(g_LogicOps);
 
 D3D12_LOGIC_OP nri::GetLogicOp(LogicOp logicOp) {
     return g_LogicOps[(size_t)logicOp];
@@ -188,7 +188,7 @@ constexpr std::array<D3D12_BLEND, (size_t)BlendFactor::MAX_NUM> g_BlendFactors =
     D3D12_BLEND_SRC1_ALPHA,     // SRC1_ALPHA
     D3D12_BLEND_INV_SRC1_ALPHA  // ONE_MINUS_SRC1_ALPHA
 };
-VALIDATE_ARRAY(g_BlendFactors);
+NRI_VALIDATE_ARRAY(g_BlendFactors);
 
 D3D12_BLEND nri::GetBlend(BlendFactor blendFactor) {
     return g_BlendFactors[(size_t)blendFactor];
@@ -201,7 +201,7 @@ constexpr std::array<D3D12_BLEND_OP, (size_t)BlendOp::MAX_NUM> g_BlendOps = {
     D3D12_BLEND_OP_MIN,          // MIN
     D3D12_BLEND_OP_MAX           // MAX
 };
-VALIDATE_ARRAY(g_BlendOps);
+NRI_VALIDATE_ARRAY(g_BlendOps);
 
 D3D12_BLEND_OP nri::GetBlendOp(BlendOp blendFunc) {
     return g_BlendOps[(size_t)blendFunc];
@@ -220,7 +220,7 @@ constexpr std::array<D3D12_SHADING_RATE, (size_t)ShadingRate::MAX_NUM> g_Shading
     D3D12_SHADING_RATE_4X2, // FRAGMENT_SIZE_4X2,
     D3D12_SHADING_RATE_4X4, // FRAGMENT_SIZE_4X4
 };
-VALIDATE_ARRAY(g_ShadingRates);
+NRI_VALIDATE_ARRAY(g_ShadingRates);
 
 D3D12_SHADING_RATE nri::GetShadingRate(ShadingRate shadingRate) {
     return g_ShadingRates[(size_t)shadingRate];
@@ -233,7 +233,7 @@ constexpr std::array<D3D12_SHADING_RATE_COMBINER, (size_t)ShadingRateCombiner::M
     D3D12_SHADING_RATE_COMBINER_MAX,         // MAX,
     D3D12_SHADING_RATE_COMBINER_SUM,         // SUM,
 };
-VALIDATE_ARRAY(g_ShadingRateCombiners);
+NRI_VALIDATE_ARRAY(g_ShadingRateCombiners);
 
 D3D12_SHADING_RATE_COMBINER nri::GetShadingRateCombiner(ShadingRateCombiner shadingRateCombiner) {
     return g_ShadingRateCombiners[(size_t)shadingRateCombiner];

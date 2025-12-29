@@ -89,11 +89,11 @@ Result DescriptorD3D11::Create(const Texture1DViewDesc& textureViewDesc) {
             hr = m_Device->CreateDepthStencilView(textureD3D11, &desc, (ID3D11DepthStencilView**)&m_Descriptor);
         } break;
         default:
-            CHECK(false, "Unexpected");
+            NRI_CHECK(false, "Unexpected");
             return Result::INVALID_ARGUMENT;
     }
 
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView");
 
     m_Format = textureViewDesc.format;
     m_SubresourceInfo.Initialize(&textureD3D11, textureViewDesc.mipOffset, mipNum, textureViewDesc.layerOffset, layerNum);
@@ -233,11 +233,11 @@ Result DescriptorD3D11::Create(const Texture2DViewDesc& textureViewDesc) {
 
         } break;
         default:
-            CHECK(false, "Unexpected");
+            NRI_CHECK(false, "Unexpected");
             return Result::INVALID_ARGUMENT;
     }
 
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView");
 
     m_Format = textureViewDesc.format;
     m_SubresourceInfo.Initialize(&textureD3D11, textureViewDesc.mipOffset, mipNum, textureViewDesc.layerOffset, layerNum);
@@ -285,11 +285,11 @@ Result DescriptorD3D11::Create(const Texture3DViewDesc& textureViewDesc) {
             hr = m_Device->CreateRenderTargetView(textureD3D11, &desc, (ID3D11RenderTargetView**)&m_Descriptor);
         } break;
         default:
-            CHECK(false, "Unexpected");
+            NRI_CHECK(false, "Unexpected");
             return Result::INVALID_ARGUMENT;
     }
 
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView");
 
     m_Format = textureViewDesc.format;
     m_SubresourceInfo.Initialize(&textureD3D11, textureViewDesc.mipOffset, mipNum, 0, 1);
@@ -313,7 +313,7 @@ Result DescriptorD3D11::Create(const BufferViewDesc& bufferViewDesc) {
         patchedFormat = Format::RGBA32_SFLOAT;
 
         if (bufferViewDesc.offset != 0 && m_Device.GetVersion() == 0)
-            REPORT_ERROR(&m_Device, "Constant buffers with non-zero offsets require 11.1+ feature level!");
+            NRI_REPORT_ERROR(&m_Device, "Constant buffers with non-zero offsets require 11.1+ feature level!");
     } else if (structureStride)
         patchedFormat = isRaw ? Format::R32_UINT : Format::UNKNOWN;
 
@@ -350,11 +350,11 @@ Result DescriptorD3D11::Create(const BufferViewDesc& bufferViewDesc) {
             hr = m_Device->CreateUnorderedAccessView(bufferD3D11, &desc, (ID3D11UnorderedAccessView**)&m_Descriptor);
         } break;
         default:
-            CHECK(false, "Unexpected");
+            NRI_CHECK(false, "Unexpected");
             return Result::INVALID_ARGUMENT;
     };
 
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateXxxView");
 
     m_Format = patchedFormat;
     m_SubresourceInfo.Initialize(&bufferD3D11, elementOffset, elementNum);
@@ -367,7 +367,7 @@ Result DescriptorD3D11::Create(const SamplerDesc& samplerDesc) {
     FillSamplerDesc(samplerDesc, desc);
 
     HRESULT hr = m_Device->CreateSamplerState(&desc, (ID3D11SamplerState**)&m_Descriptor);
-    RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateSamplerState");
+    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateSamplerState");
 
     return Result::SUCCESS;
 }

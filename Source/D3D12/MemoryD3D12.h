@@ -45,7 +45,7 @@ struct MemoryD3D12 final : public DebugNameBase {
     //================================================================================================================
 
     void SetDebugName(const char* name) DEBUG_NAME_OVERRIDE {
-        SET_D3D_DEBUG_OBJECT_NAME(m_Heap, name);
+        NRI_SET_D3D_DEBUG_OBJECT_NAME(m_Heap, name);
         // TODO: m_VmaAllocation->SetName()?
     }
 

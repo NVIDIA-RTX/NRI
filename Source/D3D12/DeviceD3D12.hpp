@@ -35,7 +35,7 @@ static HRESULT QueryLatestInterface(ComPtr<ID3D12DeviceBest>& in, ComPtr<ID3D12D
 }
 
 static inline uint64_t HashRootSignatureAndStride(ID3D12RootSignature* rootSignature, uint32_t stride) {
-    CHECK(stride < 4096, "Only stride < 4096 supported by encoding");
+    NRI_CHECK(stride < 4096, "Only stride < 4096 supported by encoding");
     return ((uint64_t)stride << 52ull) | ((uint64_t)rootSignature & ((1ull << 52) - 1));
 }
 
@@ -186,11 +186,11 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     { // Get adapter
         ComPtr<IDXGIFactory4> dxgiFactory;
         HRESULT hr = CreateDXGIFactory2(desc.enableGraphicsAPIValidation ? DXGI_CREATE_FACTORY_DEBUG : 0, IID_PPV_ARGS(&dxgiFactory));
-        RETURN_ON_BAD_HRESULT(this, hr, "CreateDXGIFactory2");
+        NRI_RETURN_ON_BAD_HRESULT(this, hr, "CreateDXGIFactory2");
 
         LUID luid = *(LUID*)&desc.adapterDesc->uid.low;
         hr = dxgiFactory->EnumAdapterByLuid(luid, IID_PPV_ARGS(&m_Adapter));
-        RETURN_ON_BAD_HRESULT(this, hr, "IDXGIFactory4::EnumAdapterByLuid");
+        NRI_RETURN_ON_BAD_HRESULT(this, hr, "IDXGIFactory4::EnumAdapterByLuid");
     }
 
     // Extensions
@@ -221,7 +221,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
             AGSDX12ReturnedParams agsParams = {};
             AGSReturnCode result = m_AmdExt.CreateDeviceD3D12(m_AmdExt.context, &deviceCreationParams, &extensionsParams, &agsParams);
-            RETURN_ON_FAILURE(this, result == AGS_SUCCESS, Result::FAILURE, "agsDriverExtensionsDX12_CreateDevice() failed: %d", (int32_t)result);
+            NRI_RETURN_ON_FAILURE(this, result == AGS_SUCCESS, Result::FAILURE, "agsDriverExtensionsDX12_CreateDevice() failed: %d", (int32_t)result);
 
             deviceTemp = (ID3D12DeviceBest*)agsParams.pDevice;
             isShaderAtomicsI64Supported = agsParams.extensionsSupported.intrinsics19;
@@ -229,13 +229,13 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 #endif
         } else {
             HRESULT hr = D3D12CreateDevice(m_Adapter, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), (void**)&deviceTemp);
-            RETURN_ON_BAD_HRESULT(this, hr, "D3D12CreateDevice");
+            NRI_RETURN_ON_BAD_HRESULT(this, hr, "D3D12CreateDevice");
 
             if (HasNvExt()) {
 #if NRI_ENABLE_NVAPI
-                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_SetNvShaderExtnSlotSpace(deviceTemp, d3dShaderExtRegister, 0));
-                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_UINT64_ATOMIC, &isShaderAtomicsI64Supported));
-                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_GET_SPECIAL, &isShaderClockSupported));
+                NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_SetNvShaderExtnSlotSpace(deviceTemp, d3dShaderExtRegister, 0));
+                NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_UINT64_ATOMIC, &isShaderAtomicsI64Supported));
+                NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_GET_SPECIAL, &isShaderClockSupported));
 #endif
             }
         }
@@ -247,13 +247,13 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
     { // Query latest interface
         HRESULT hr = QueryLatestInterface(deviceTemp, m_Device, m_Version);
-        REPORT_INFO(this, "Using ID3D12Device%u", m_Version);
+        NRI_REPORT_INFO(this, "Using ID3D12Device%u", m_Version);
 
         if (m_IsWrapped) {
             if (hr == D3D12_ERROR_INVALID_REDIST)
-                REPORT_WARNING(this, "ID3D12Device version is lower than expected, some functionality may be not available...");
+                NRI_REPORT_WARNING(this, "ID3D12Device version is lower than expected, some functionality may be not available...");
         } else
-            RETURN_ON_BAD_HRESULT(this, hr, "ID3D12Device::QueryLatestInterface");
+            NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D12Device::QueryLatestInterface");
     }
 
     if (desc.enableGraphicsAPIValidation) {
@@ -262,10 +262,10 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
         if (SUCCEEDED(hr)) {
             hr = pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
-            RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue::SetBreakOnSeverity");
+            NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue::SetBreakOnSeverity");
 
             hr = pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
-            RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue::SetBreakOnSeverity");
+            NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue::SetBreakOnSeverity");
 
             // TODO: this code is currently needed to disable known false-positive errors reported by the debug layer
             D3D12_MESSAGE_ID disableMessageIDs[] = {
@@ -284,11 +284,11 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
             filter.DenyList.pIDList = disableMessageIDs;
             filter.DenyList.NumIDs = GetCountOf(disableMessageIDs);
             hr = pInfoQueue->AddStorageFilterEntries(&filter);
-            RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue::AddStorageFilterEntries");
+            NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue::AddStorageFilterEntries");
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
             hr = pInfoQueue->RegisterMessageCallback(MessageCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, this, &m_CallbackCookie);
-            RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue1::RegisterMessageCallback");
+            NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D12InfoQueue1::RegisterMessageCallback");
 #endif
         }
     }
@@ -338,7 +338,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     if (HasNvExt()) {
         { // Check position fetch support
             bool isSupported = false;
-            REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_RT_TRIANGLE_OBJECT_POSITIONS, &isSupported));
+            NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_RT_TRIANGLE_OBJECT_POSITIONS, &isSupported));
             m_Desc.shaderFeatures.rayTracingPositionFetch = isSupported;
         }
 
@@ -346,7 +346,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         if (desc.enableD3D12RayTracingValidation) {
             NvAPI_Status status = NvAPI_D3D12_EnableRaytracingValidation(m_Device, NVAPI_D3D12_RAYTRACING_VALIDATION_FLAG_NONE);
             if (status == NVAPI_OK)
-                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_RegisterRaytracingValidationMessageCallback(m_Device, NvapiMessageCallback, this, &m_CallbackHandle));
+                NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_RegisterRaytracingValidationMessageCallback(m_Device, NvapiMessageCallback, this, &m_CallbackHandle));
 
             // TODO: if enabled, call "NvAPI_D3D12_FlushRaytracingValidationMessages()" after each submit? present? DEVICE_LOST?
         }
@@ -372,7 +372,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         heapProps.VisibleNodeMask = NODE_MASK;
 
         HRESULT hr = m_Device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &zeroBufferDesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&m_ZeroBuffer)); // yes, create zero-ed
-        RETURN_ON_BAD_HRESULT(this, hr, "ID3D12Device::CreateCommittedResource");
+        NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D12Device::CreateCommittedResource");
     }
 
     // Fill desc
@@ -387,11 +387,11 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
     // Create VMA
     HRESULT hr = CreateVma();
-    RETURN_ON_BAD_HRESULT(this, hr, "D3D12MA::CreateAllocator");
+    NRI_RETURN_ON_BAD_HRESULT(this, hr, "D3D12MA::CreateAllocator");
 
     // Is device lost?
     hr = m_Device->GetDeviceRemovedReason() == S_OK ? S_OK : DXGI_ERROR_DEVICE_REMOVED;
-    RETURN_ON_BAD_HRESULT(this, hr, "Create");
+    NRI_RETURN_ON_BAD_HRESULT(this, hr, "Create");
 
     return FillFunctionTable(m_iCore);
 }
@@ -432,42 +432,42 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
     HRESULT hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options) failed, result = 0x%08X!", hr);
     m_Desc.tiers.memory = options.ResourceHeapTier == D3D12_RESOURCE_HEAP_TIER_2 ? 1 : 0;
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options1) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options1) failed, result = 0x%08X!", hr);
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS2 options2 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS2, &options2, sizeof(options2));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options2) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options2) failed, result = 0x%08X!", hr);
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS3 options3 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, &options3, sizeof(options3));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options3) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options3) failed, result = 0x%08X!", hr);
     m_Desc.features.copyQueueTimestamp = options3.CopyQueueTimestampQueriesSupported;
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS4 options4 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS4, &options4, sizeof(options4));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options4) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options4) failed, result = 0x%08X!", hr);
 
     // Windows 10 1809 (build 17763)
     D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options5) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options5) failed, result = 0x%08X!", hr);
     m_Desc.tiers.rayTracing = (uint8_t)std::max(options5.RaytracingTier - D3D12_RAYTRACING_TIER_1_0 + 1, 0);
 
     // Windows 10 1903 (build 18362)
     D3D12_FEATURE_DATA_D3D12_OPTIONS6 options6 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &options6, sizeof(options6));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options6) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options6) failed, result = 0x%08X!", hr);
     m_Desc.tiers.shadingRate = (uint8_t)options6.VariableShadingRateTier;
     m_Desc.other.shadingRateAttachmentTileSize = (uint8_t)options6.ShadingRateImageTileSize;
     m_Desc.features.additionalShadingRates = options6.AdditionalShadingRatesSupported;
@@ -476,7 +476,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     D3D12_FEATURE_DATA_D3D12_OPTIONS7 options7 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &options7, sizeof(options7));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options7) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options7) failed, result = 0x%08X!", hr);
     m_Desc.features.meshShader = options7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1;
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
@@ -484,35 +484,35 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     D3D12_FEATURE_DATA_D3D12_OPTIONS8 options8 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS8, &options8, sizeof(options8));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options8) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options8) failed, result = 0x%08X!", hr);
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS9 options9 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS9, &options9, sizeof(options9));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options9) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options9) failed, result = 0x%08X!", hr);
     m_Desc.features.meshShaderPipelineStats = options9.MeshShaderPipelineStatsSupported;
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS10 options10 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS10, &options10, sizeof(options10));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options10) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options10) failed, result = 0x%08X!", hr);
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS11 options11 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS11, &options11, sizeof(options11));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options11) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options11) failed, result = 0x%08X!", hr);
 
     // Windows 11 22H2 (build 22621)
     D3D12_FEATURE_DATA_D3D12_OPTIONS12 options12 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS12, &options12, sizeof(options12));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options12) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options12) failed, result = 0x%08X!", hr);
     m_Desc.features.enhancedBarriers = options12.EnhancedBarriersSupported && !disableD3D12EnhancedBarrier;
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS13 options13 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS13, &options13, sizeof(options13));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options13) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options13) failed, result = 0x%08X!", hr);
     m_Desc.memoryAlignment.uploadBufferTextureRow = options13.UnrestrictedBufferTextureCopyPitchSupported ? 1 : D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
     m_Desc.memoryAlignment.uploadBufferTextureSlice = options13.UnrestrictedBufferTextureCopyPitchSupported ? 1 : D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
     m_Desc.features.viewportOriginBottomLeft = options13.InvertedViewportHeightFlipsYSupported ? 1 : 0;
@@ -521,45 +521,45 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     D3D12_FEATURE_DATA_D3D12_OPTIONS14 options14 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS14, &options14, sizeof(options14));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options14) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options14) failed, result = 0x%08X!", hr);
     m_Desc.features.independentFrontAndBackStencilReferenceAndMasks = options14.IndependentFrontAndBackStencilRefMaskSupported ? true : false;
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS15 options15 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS15, &options15, sizeof(options15));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options15) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options15) failed, result = 0x%08X!", hr);
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS16 options16 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS16, &options16, sizeof(options16));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options16) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options16) failed, result = 0x%08X!", hr);
     m_Desc.memory.deviceUploadHeapSize = options16.GPUUploadHeapSupported ? m_Desc.adapterDesc.videoMemorySize : 0;
     m_Desc.features.dynamicDepthBias = options16.DynamicDepthBiasSupported;
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS17 options17 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS17, &options17, sizeof(options17));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options17) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options17) failed, result = 0x%08X!", hr);
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS18 options18 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS18, &options18, sizeof(options18));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options18) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options18) failed, result = 0x%08X!", hr);
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS19 options19 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS19, &options19, sizeof(options19));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options19) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options19) failed, result = 0x%08X!", hr);
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS20 options20 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS20, &options20, sizeof(options20));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options20) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options20) failed, result = 0x%08X!", hr);
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS21 options21 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS21, &options21, sizeof(options21));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options21) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options21) failed, result = 0x%08X!", hr);
 #else
     m_Desc.memoryAlignment.uploadBufferTextureRow = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
     m_Desc.memoryAlignment.uploadBufferTextureSlice = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
@@ -569,7 +569,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     D3D12_FEATURE_DATA_TIGHT_ALIGNMENT tightAlignment = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_TIGHT_ALIGNMENT, &tightAlignment, sizeof(tightAlignment));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(tightAlignment) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(tightAlignment) failed, result = 0x%08X!", hr);
     m_TightAlignmentTier = (uint8_t)tightAlignment.SupportTier;
 #endif
 
@@ -587,7 +587,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     levels.pFeatureLevelsRequested = levelsList.data();
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS, &levels, sizeof(levels));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS) failed, result = 0x%08X!", hr);
 
     // Timestamp frequency
     uint64_t timestampFrequency = 0;
@@ -815,8 +815,8 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     bool isShaderAtomicsF32Supported = false;
 #if NRI_ENABLE_NVAPI
     if (HasNvExt()) {
-        REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_FP16_ATOMIC, &isShaderAtomicsF16Supported));
-        REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_FP32_ATOMIC, &isShaderAtomicsF32Supported));
+        NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_FP16_ATOMIC, &isShaderAtomicsF16Supported));
+        NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_FP32_ATOMIC, &isShaderAtomicsF32Supported));
     }
 #endif
 
@@ -858,16 +858,16 @@ void DeviceD3D12::InitializeNvExt(bool disableNVAPIInitialization, bool isImport
     MaybeUnused(disableNVAPIInitialization, isImported);
 #if NRI_ENABLE_NVAPI
     if (GetModuleHandleA("renderdoc.dll") != nullptr) {
-        REPORT_WARNING(this, "NVAPI is disabled, because RenderDoc library has been loaded");
+        NRI_REPORT_WARNING(this, "NVAPI is disabled, because RenderDoc library has been loaded");
         return;
     }
 
     if (isImported && !disableNVAPIInitialization)
-        REPORT_WARNING(this, "NVAPI is disabled, because it's not loaded on the application side");
+        NRI_REPORT_WARNING(this, "NVAPI is disabled, because it's not loaded on the application side");
     else {
         NvAPI_Status status = NvAPI_Initialize();
         if (status != NVAPI_OK)
-            REPORT_ERROR(this, "NvAPI_Initialize(): failed, result=%d!", (int32_t)status);
+            NRI_REPORT_ERROR(this, "NvAPI_Initialize(): failed, result=%d!", (int32_t)status);
         m_NvExt.available = (status == NVAPI_OK);
     }
 #endif
@@ -877,14 +877,14 @@ void DeviceD3D12::InitializeAmdExt(AGSContext* agsContext, bool isImported) {
     MaybeUnused(agsContext, isImported);
 #if NRI_ENABLE_AMDAGS
     if (isImported && !agsContext) {
-        REPORT_WARNING(this, "AMDAGS is disabled, because 'agsContext' is not provided");
+        NRI_REPORT_WARNING(this, "AMDAGS is disabled, because 'agsContext' is not provided");
         return;
     }
 
     // Load library
     Library* agsLibrary = LoadSharedLibrary("amd_ags_x64.dll");
     if (!agsLibrary) {
-        REPORT_WARNING(this, "AMDAGS is disabled, because 'amd_ags_x64' is not found");
+        NRI_REPORT_WARNING(this, "AMDAGS is disabled, because 'amd_ags_x64' is not found");
         return;
     }
 
@@ -902,7 +902,7 @@ void DeviceD3D12::InitializeAmdExt(AGSContext* agsContext, bool isImported) {
         ;
 
     if (i != functionArraySize) {
-        REPORT_WARNING(this, "AMDAGS is disabled, because not all functions are found in the DLL");
+        NRI_REPORT_WARNING(this, "AMDAGS is disabled, because not all functions are found in the DLL");
         UnloadSharedLibrary(*agsLibrary);
 
         return;
@@ -914,7 +914,7 @@ void DeviceD3D12::InitializeAmdExt(AGSContext* agsContext, bool isImported) {
     if (!agsContext) {
         const AGSReturnCode result = m_AmdExt.Initialize(AGS_CURRENT_VERSION, &config, &agsContext, &gpuInfo);
         if (result != AGS_SUCCESS || !agsContext) {
-            REPORT_ERROR(this, "Failed to initialize AMDAGS: %d", (int32_t)result);
+            NRI_REPORT_ERROR(this, "Failed to initialize AMDAGS: %d", (int32_t)result);
             UnloadSharedLibrary(*agsLibrary);
 
             return;
@@ -948,7 +948,7 @@ void DeviceD3D12::InitializePixExt() {
         ;
 
     if (i != functionArraySize) {
-        REPORT_WARNING(this, "PIX is disabled, because not all functions are found in the DLL");
+        NRI_REPORT_WARNING(this, "PIX is disabled, because not all functions are found in the DLL");
         UnloadSharedLibrary(*pixLibrary);
 
         return;
@@ -981,7 +981,7 @@ Result DeviceD3D12::GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, Descrip
 
         ComPtr<ID3D12DescriptorHeap> descriptorHeap;
         HRESULT hr = m_Device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&descriptorHeap));
-        RETURN_ON_BAD_HRESULT(this, hr, "ID3D12Device::CreateDescriptorHeap");
+        NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D12Device::CreateDescriptorHeap");
 
         DescriptorHeapDesc descriptorHeapDesc = {};
         descriptorHeapDesc.heap = descriptorHeap;
@@ -1035,7 +1035,7 @@ constexpr std::array<D3D12_HEAP_TYPE, (size_t)MemoryLocation::MAX_NUM> g_HeapTyp
     D3D12_HEAP_TYPE_UPLOAD,   // HOST_UPLOAD
     D3D12_HEAP_TYPE_READBACK, // HOST_READBACK
 };
-VALIDATE_ARRAY(g_HeapTypes);
+NRI_VALIDATE_ARRAY(g_HeapTypes);
 
 D3D12_HEAP_TYPE DeviceD3D12::GetHeapType(MemoryLocation memoryLocation) const {
     if (memoryLocation == MemoryLocation::DEVICE_UPLOAD && m_Desc.memory.deviceUploadHeapSize == 0)
@@ -1122,7 +1122,7 @@ void DeviceD3D12::GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOU
     // Not "2" - "D3D12_RESOURCE_DESC1" is not in use
     // Not "3" - no castable formats
     D3D12_RESOURCE_ALLOCATION_INFO resourceAllocationInfo = m_Device->GetResourceAllocationInfo(NODE_MASK, 1, &resourceDesc);
-    CHECK(resourceAllocationInfo.SizeInBytes != UINT64_MAX, "Invalid arg?");
+    NRI_CHECK(resourceAllocationInfo.SizeInBytes != UINT64_MAX, "Invalid arg?");
 
     MemoryTypeInfo memoryTypeInfo = {};
     memoryTypeInfo.heapFlags = (uint16_t)heapFlags;
@@ -1151,9 +1151,9 @@ void DeviceD3D12::GetAccelerationStructurePrebuildInfo(const AccelerationStructu
         }
     }
 
-    Scratch<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescs = AllocateScratch(*this, D3D12_RAYTRACING_GEOMETRY_DESC, geometryNum);
-    Scratch<D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC> trianglesDescs = AllocateScratch(*this, D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC, micromapNum);
-    Scratch<D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC> ommDescs = AllocateScratch(*this, D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC, micromapNum);
+    Scratch<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescs = NRI_ALLOCATE_SCRATCH(*this, D3D12_RAYTRACING_GEOMETRY_DESC, geometryNum);
+    Scratch<D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC> trianglesDescs = NRI_ALLOCATE_SCRATCH(*this, D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC, micromapNum);
+    Scratch<D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC> ommDescs = NRI_ALLOCATE_SCRATCH(*this, D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC, micromapNum);
 
     // Get prebuild info
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS accelerationStructureInputs = {};
@@ -1172,7 +1172,7 @@ void DeviceD3D12::GetAccelerationStructurePrebuildInfo(const AccelerationStructu
 
 void DeviceD3D12::GetMicromapPrebuildInfo(const MicromapDesc& micromapDesc, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO& prebuildInfo) const {
 #ifdef NRI_D3D12_HAS_OPACITY_MICROMAP
-    Scratch<D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY> usages = AllocateScratch(*this, D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY, micromapDesc.usageNum);
+    Scratch<D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY> usages = NRI_ALLOCATE_SCRATCH(*this, D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY, micromapDesc.usageNum);
     for (uint32_t i = 0; i < micromapDesc.usageNum; i++) {
         const MicromapUsageDesc& in = micromapDesc.usages[i];
 
@@ -1225,7 +1225,7 @@ ComPtr<ID3D12CommandSignature> DeviceD3D12::CreateCommandSignature(D3D12_INDIREC
     ComPtr<ID3D12CommandSignature> commandSignature = nullptr;
     HRESULT hr = m_Device->CreateCommandSignature(&commandSignatureDesc, isDrawArgument ? rootSignature : nullptr, IID_PPV_ARGS(&commandSignature));
     if (FAILED(hr))
-        REPORT_ERROR(this, "ID3D12Device::CreateCommandSignature() failed, result = 0x%08X!", hr);
+        NRI_REPORT_ERROR(this, "ID3D12Device::CreateCommandSignature() failed, result = 0x%08X!", hr);
 
     return commandSignature;
 }

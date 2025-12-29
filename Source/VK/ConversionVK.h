@@ -16,7 +16,7 @@ constexpr std::array<VkIndexType, (size_t)IndexType::MAX_NUM> g_IndexTypes = {
     VK_INDEX_TYPE_UINT16, // UINT16
     VK_INDEX_TYPE_UINT32, // UINT32
 };
-VALIDATE_ARRAY(g_IndexTypes);
+NRI_VALIDATE_ARRAY(g_IndexTypes);
 
 constexpr VkIndexType GetIndexType(IndexType indexType) {
     return g_IndexTypes[(size_t)indexType];
@@ -26,7 +26,7 @@ constexpr std::array<VkAttachmentLoadOp, (size_t)LoadOp::MAX_NUM> g_LoadOps = {
     VK_ATTACHMENT_LOAD_OP_LOAD,  // LOAD
     VK_ATTACHMENT_LOAD_OP_CLEAR, // CLEAR
 };
-VALIDATE_ARRAY(g_LoadOps);
+NRI_VALIDATE_ARRAY(g_LoadOps);
 
 constexpr VkAttachmentLoadOp GetLoadOp(LoadOp loadOp) {
     return g_LoadOps[(size_t)loadOp];
@@ -36,7 +36,7 @@ constexpr std::array<VkAttachmentStoreOp, (size_t)StoreOp::MAX_NUM> g_StoreOps =
     VK_ATTACHMENT_STORE_OP_STORE,     // STORE
     VK_ATTACHMENT_STORE_OP_DONT_CARE, // DISCARD
 };
-VALIDATE_ARRAY(g_StoreOps);
+NRI_VALIDATE_ARRAY(g_StoreOps);
 
 constexpr VkAttachmentStoreOp GetStoreOp(StoreOp storeOp) {
     return g_StoreOps[(size_t)storeOp];
@@ -47,7 +47,7 @@ constexpr std::array<VkResolveModeFlagBits, (size_t)ResolveOp::MAX_NUM> g_Resolv
     VK_RESOLVE_MODE_MIN_BIT,     // MIN
     VK_RESOLVE_MODE_MAX_BIT,     // MAX
 };
-VALIDATE_ARRAY(g_ResolveOps);
+NRI_VALIDATE_ARRAY(g_ResolveOps);
 
 constexpr VkResolveModeFlagBits GetResolveOp(ResolveOp resolveOp) {
     return g_ResolveOps[(size_t)resolveOp];
@@ -73,7 +73,7 @@ constexpr std::array<VkImageLayout, (size_t)Layout::MAX_NUM> g_ImageLayouts = {
     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,                         // RESOLVE_SOURCE
     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,                         // RESOLVE_DESTINATION
 };
-VALIDATE_ARRAY(g_ImageLayouts);
+NRI_VALIDATE_ARRAY(g_ImageLayouts);
 
 constexpr VkImageLayout GetImageLayout(Layout layout) {
     return g_ImageLayouts[(size_t)layout];
@@ -92,7 +92,7 @@ constexpr std::array<VkDescriptorType, (size_t)DescriptorType::MAX_NUM> g_Descri
     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,             // STORAGE_STRUCTURED_BUFFER
     VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, // ACCELERATION_STRUCTURE
 };
-VALIDATE_ARRAY(g_DescriptorTypes);
+NRI_VALIDATE_ARRAY(g_DescriptorTypes);
 
 constexpr VkDescriptorType GetDescriptorType(DescriptorType type) {
     return g_DescriptorTypes[(size_t)type];
@@ -110,7 +110,7 @@ constexpr std::array<VkPrimitiveTopology, (size_t)Topology::MAX_NUM> g_Topologie
     VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY, // TRIANGLE_STRIP_WITH_ADJACENCY
     VK_PRIMITIVE_TOPOLOGY_PATCH_LIST                     // PATCH_LIST
 };
-VALIDATE_ARRAY(g_Topologies);
+NRI_VALIDATE_ARRAY(g_Topologies);
 
 constexpr VkPrimitiveTopology GetTopology(Topology topology) {
     return g_Topologies[(size_t)topology];
@@ -121,7 +121,7 @@ constexpr std::array<VkCullModeFlags, (size_t)CullMode::MAX_NUM> g_CullModes = {
     VK_CULL_MODE_FRONT_BIT, // FRONT
     VK_CULL_MODE_BACK_BIT   // BACK
 };
-VALIDATE_ARRAY(g_CullModes);
+NRI_VALIDATE_ARRAY(g_CullModes);
 
 constexpr VkCullModeFlags GetCullMode(CullMode cullMode) {
     return g_CullModes[(size_t)cullMode];
@@ -131,7 +131,7 @@ constexpr std::array<VkPolygonMode, (size_t)FillMode::MAX_NUM> g_FillModes = {
     VK_POLYGON_MODE_FILL, // SOLID
     VK_POLYGON_MODE_LINE, // WIREFRAME
 };
-VALIDATE_ARRAY(g_FillModes);
+NRI_VALIDATE_ARRAY(g_FillModes);
 
 constexpr VkPolygonMode GetPolygonMode(FillMode fillMode) {
     return g_FillModes[(size_t)fillMode];
@@ -148,7 +148,7 @@ constexpr std::array<VkCompareOp, (size_t)CompareOp::MAX_NUM> g_CompareOps = {
     VK_COMPARE_OP_GREATER,          // GREATER
     VK_COMPARE_OP_GREATER_OR_EQUAL, // GREATER_EQUAL
 };
-VALIDATE_ARRAY(g_CompareOps);
+NRI_VALIDATE_ARRAY(g_CompareOps);
 
 constexpr VkCompareOp GetCompareOp(CompareOp compareOp) {
     return g_CompareOps[(size_t)compareOp];
@@ -164,7 +164,7 @@ constexpr std::array<VkStencilOp, (size_t)StencilOp::MAX_NUM> g_StencilOps = {
     VK_STENCIL_OP_INCREMENT_AND_WRAP,  // INCREMENT_AND_WRAP
     VK_STENCIL_OP_DECREMENT_AND_WRAP   // DECREMENT_AND_WRAP
 };
-VALIDATE_ARRAY(g_StencilOps);
+NRI_VALIDATE_ARRAY(g_StencilOps);
 
 constexpr VkStencilOp GetStencilOp(StencilOp stencilFunc) {
     return g_StencilOps[(size_t)stencilFunc];
@@ -188,7 +188,7 @@ constexpr std::array<VkLogicOp, (size_t)LogicOp::MAX_NUM> g_LogicOps = {
     VK_LOGIC_OP_NAND,          // NAND
     VK_LOGIC_OP_SET            // SET
 };
-VALIDATE_ARRAY(g_LogicOps);
+NRI_VALIDATE_ARRAY(g_LogicOps);
 
 constexpr VkLogicOp GetLogicOp(LogicOp logicOp) {
     return g_LogicOps[(size_t)logicOp];
@@ -215,7 +215,7 @@ constexpr std::array<VkBlendFactor, (size_t)BlendFactor::MAX_NUM> g_BlendFactors
     VK_BLEND_FACTOR_SRC1_ALPHA,               // SRC1_ALPHA
     VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA,     // ONE_MINUS_SRC1_ALPHA
 };
-VALIDATE_ARRAY(g_BlendFactors);
+NRI_VALIDATE_ARRAY(g_BlendFactors);
 
 constexpr VkBlendFactor GetBlendFactor(BlendFactor blendFactor) {
     return g_BlendFactors[(size_t)blendFactor];
@@ -228,7 +228,7 @@ constexpr std::array<VkBlendOp, (size_t)BlendOp::MAX_NUM> g_BlendOps = {
     VK_BLEND_OP_MIN,              // MIN
     VK_BLEND_OP_MAX               // MAX
 };
-VALIDATE_ARRAY(g_BlendOps);
+NRI_VALIDATE_ARRAY(g_BlendOps);
 
 constexpr VkBlendOp GetBlendOp(BlendOp blendFunc) {
     return g_BlendOps[(size_t)blendFunc];
@@ -239,7 +239,7 @@ constexpr std::array<VkImageType, (size_t)TextureType::MAX_NUM> g_ImageTypes = {
     VK_IMAGE_TYPE_2D, // TEXTURE_2D
     VK_IMAGE_TYPE_3D, // TEXTURE_3D
 };
-VALIDATE_ARRAY(g_ImageTypes);
+NRI_VALIDATE_ARRAY(g_ImageTypes);
 
 constexpr VkImageType GetImageType(TextureType type) {
     return g_ImageTypes[(size_t)type];
@@ -249,7 +249,7 @@ constexpr std::array<VkFilter, (size_t)Filter::MAX_NUM> g_Filters = {
     VK_FILTER_NEAREST, // NEAREST
     VK_FILTER_LINEAR,  // LINEAR
 };
-VALIDATE_ARRAY(g_Filters);
+NRI_VALIDATE_ARRAY(g_Filters);
 
 constexpr VkFilter GetFilter(Filter filter) {
     return g_Filters[(size_t)filter];
@@ -260,7 +260,7 @@ constexpr std::array<VkSamplerReductionMode, (size_t)FilterOp::MAX_NUM> g_ExtFil
     VK_SAMPLER_REDUCTION_MODE_MIN,              // MIN
     VK_SAMPLER_REDUCTION_MODE_MAX,              // MAX
 };
-VALIDATE_ARRAY(g_ExtFilters);
+NRI_VALIDATE_ARRAY(g_ExtFilters);
 
 constexpr VkSamplerReductionMode GetFilterExt(FilterOp filterExt) {
     return g_ExtFilters[(size_t)filterExt];
@@ -270,7 +270,7 @@ constexpr std::array<VkSamplerMipmapMode, (size_t)Filter::MAX_NUM> g_SamplerMipm
     VK_SAMPLER_MIPMAP_MODE_NEAREST, // NEAREST
     VK_SAMPLER_MIPMAP_MODE_LINEAR,  // LINEAR
 };
-VALIDATE_ARRAY(g_SamplerMipmapModes);
+NRI_VALIDATE_ARRAY(g_SamplerMipmapModes);
 
 constexpr VkSamplerMipmapMode GetSamplerMipmapMode(Filter filter) {
     return g_SamplerMipmapModes[(size_t)filter];
@@ -288,7 +288,7 @@ constexpr std::array<VkImageUsageFlags, (size_t)Texture1DViewType::MAX_NUM> g_Im
     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,         // COLOR_ATTACHMENT
     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, // DEPTH_STENCIL_ATTACHMENT
 };
-VALIDATE_ARRAY(g_ImageViewUsage1D);
+NRI_VALIDATE_ARRAY(g_ImageViewUsage1D);
 
 constexpr VkImageUsageFlags GetImageViewUsage(Texture1DViewType type) {
     return g_ImageViewUsage1D[(size_t)type];
@@ -306,7 +306,7 @@ constexpr std::array<VkImageUsageFlags, (size_t)Texture2DViewType::MAX_NUM> g_Im
     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,             // DEPTH_STENCIL_ATTACHMENT
     VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR, // SHADING_RATE_ATTACHMENT
 };
-VALIDATE_ARRAY(g_ImageViewUsage2D);
+NRI_VALIDATE_ARRAY(g_ImageViewUsage2D);
 
 constexpr VkImageUsageFlags GetImageViewUsage(Texture2DViewType type) {
     return g_ImageViewUsage2D[(size_t)type];
@@ -317,7 +317,7 @@ constexpr std::array<VkImageUsageFlags, (size_t)Texture3DViewType::MAX_NUM> g_Im
     VK_IMAGE_USAGE_STORAGE_BIT,          // SHADER_RESOURCE_STORAGE
     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, // COLOR_ATTACHMENT
 };
-VALIDATE_ARRAY(g_ImageViewUsage3D);
+NRI_VALIDATE_ARRAY(g_ImageViewUsage3D);
 
 constexpr VkImageUsageFlags GetImageViewUsage(Texture3DViewType type) {
     return g_ImageViewUsage3D[(size_t)type];
@@ -331,7 +331,7 @@ constexpr std::array<VkImageLayout, (size_t)Texture1DViewType::MAX_NUM> g_ImageL
     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,         // COLOR_ATTACHMENT
     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // DEPTH_STENCIL_ATTACHMENT
 };
-VALIDATE_ARRAY(g_ImageLayout1D);
+NRI_VALIDATE_ARRAY(g_ImageLayout1D);
 
 constexpr VkImageLayout GetImageLayoutForView(Texture1DViewType type) {
     return g_ImageLayout1D[(size_t)type];
@@ -349,7 +349,7 @@ constexpr std::array<VkImageLayout, (size_t)Texture2DViewType::MAX_NUM> g_ImageL
     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,             // DEPTH_STENCIL_ATTACHMENT
     VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR, // SHADING_RATE_ATTACHMENT
 };
-VALIDATE_ARRAY(g_ImageLayout2D);
+NRI_VALIDATE_ARRAY(g_ImageLayout2D);
 
 constexpr VkImageLayout GetImageLayoutForView(Texture2DViewType type) {
     return g_ImageLayout2D[(size_t)type];
@@ -360,7 +360,7 @@ constexpr std::array<VkImageLayout, (size_t)Texture3DViewType::MAX_NUM> g_ImageL
     VK_IMAGE_LAYOUT_GENERAL,                  // SHADER_RESOURCE_STORAGE
     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, // COLOR_ATTACHMENT
 };
-VALIDATE_ARRAY(g_ImageLayout3D);
+NRI_VALIDATE_ARRAY(g_ImageLayout3D);
 
 constexpr VkImageLayout GetImageLayoutForView(Texture3DViewType type) {
     return g_ImageLayout3D[(size_t)type];
@@ -374,7 +374,7 @@ constexpr std::array<DescriptorType, (size_t)Texture1DViewType::MAX_NUM> g_Descr
     DescriptorType::MAX_NUM,         // COLOR_ATTACHMENT
     DescriptorType::MAX_NUM,         // DEPTH_STENCIL_ATTACHMENT
 };
-VALIDATE_ARRAY(g_DescriptorType1D);
+NRI_VALIDATE_ARRAY(g_DescriptorType1D);
 
 constexpr DescriptorType GetDescriptorTypeForView(Texture1DViewType type) {
     return g_DescriptorType1D[(size_t)type];
@@ -392,7 +392,7 @@ constexpr std::array<DescriptorType, (size_t)Texture2DViewType::MAX_NUM> g_Descr
     DescriptorType::MAX_NUM,          // DEPTH_STENCIL_ATTACHMENT
     DescriptorType::MAX_NUM,          // SHADING_RATE_ATTACHMENT
 };
-VALIDATE_ARRAY(g_DescriptorType2D);
+NRI_VALIDATE_ARRAY(g_DescriptorType2D);
 
 constexpr DescriptorType GetDescriptorTypeForView(Texture2DViewType type) {
     return g_DescriptorType2D[(size_t)type];
@@ -403,7 +403,7 @@ constexpr std::array<DescriptorType, (size_t)Texture3DViewType::MAX_NUM> g_Descr
     DescriptorType::STORAGE_TEXTURE, // SHADER_RESOURCE_STORAGE
     DescriptorType::MAX_NUM,         // COLOR_ATTACHMENT
 };
-VALIDATE_ARRAY(g_DescriptorType3D);
+NRI_VALIDATE_ARRAY(g_DescriptorType3D);
 
 constexpr DescriptorType GetDescriptorTypeForView(Texture3DViewType type) {
     return g_DescriptorType3D[(size_t)type];
@@ -416,7 +416,7 @@ constexpr std::array<VkFragmentShadingRateCombinerOpKHR, (size_t)ShadingRateComb
     VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MAX_KHR,     // MAX
     VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MUL_KHR,     // SUM // TODO: SUM vs MUL?
 };
-VALIDATE_ARRAY(g_ShadingRateCombiner);
+NRI_VALIDATE_ARRAY(g_ShadingRateCombiner);
 
 constexpr VkFragmentShadingRateCombinerOpKHR GetShadingRateCombiner(ShadingRateCombiner combiner) {
     return g_ShadingRateCombiner[(size_t)combiner];
@@ -427,7 +427,7 @@ constexpr std::array<TextureType, (size_t)TextureType::MAX_NUM> g_TextureTypes =
     TextureType::TEXTURE_2D, // VK_IMAGE_TYPE_2D
     TextureType::TEXTURE_3D, // VK_IMAGE_TYPE_3D
 };
-VALIDATE_ARRAY(g_TextureTypes);
+NRI_VALIDATE_ARRAY(g_TextureTypes);
 
 constexpr TextureType GetTextureType(VkImageType type) {
     if ((size_t)type < g_TextureTypes.size())

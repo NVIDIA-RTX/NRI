@@ -47,7 +47,7 @@ NRI_INLINE void QueueVK::Annotation(const char* name, uint32_t bgra) {
 NRI_INLINE Result QueueVK::Submit(const QueueSubmitDesc& queueSubmitDesc) {
     ExclusiveScope lock(m_Lock);
 
-    Scratch<VkSemaphoreSubmitInfo> waitSemaphores = AllocateScratch(m_Device, VkSemaphoreSubmitInfo, queueSubmitDesc.waitFenceNum);
+    Scratch<VkSemaphoreSubmitInfo> waitSemaphores = NRI_ALLOCATE_SCRATCH(m_Device, VkSemaphoreSubmitInfo, queueSubmitDesc.waitFenceNum);
     for (uint32_t i = 0; i < queueSubmitDesc.waitFenceNum; i++) {
         waitSemaphores[i] = {VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
         waitSemaphores[i].semaphore = *(FenceVK*)queueSubmitDesc.waitFences[i].fence;
@@ -55,13 +55,13 @@ NRI_INLINE Result QueueVK::Submit(const QueueSubmitDesc& queueSubmitDesc) {
         waitSemaphores[i].stageMask = GetPipelineStageFlags(queueSubmitDesc.waitFences[i].stages);
     }
 
-    Scratch<VkCommandBufferSubmitInfo> commandBuffers = AllocateScratch(m_Device, VkCommandBufferSubmitInfo, queueSubmitDesc.commandBufferNum);
+    Scratch<VkCommandBufferSubmitInfo> commandBuffers = NRI_ALLOCATE_SCRATCH(m_Device, VkCommandBufferSubmitInfo, queueSubmitDesc.commandBufferNum);
     for (uint32_t i = 0; i < queueSubmitDesc.commandBufferNum; i++) {
         commandBuffers[i] = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
         commandBuffers[i].commandBuffer = *(CommandBufferVK*)queueSubmitDesc.commandBuffers[i];
     }
 
-    Scratch<VkSemaphoreSubmitInfo> signalSemaphores = AllocateScratch(m_Device, VkSemaphoreSubmitInfo, queueSubmitDesc.signalFenceNum);
+    Scratch<VkSemaphoreSubmitInfo> signalSemaphores = NRI_ALLOCATE_SCRATCH(m_Device, VkSemaphoreSubmitInfo, queueSubmitDesc.signalFenceNum);
     for (uint32_t i = 0; i < queueSubmitDesc.signalFenceNum; i++) {
         signalSemaphores[i] = {VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
         signalSemaphores[i].semaphore = *(FenceVK*)queueSubmitDesc.signalFences[i].fence;
@@ -85,7 +85,7 @@ NRI_INLINE Result QueueVK::Submit(const QueueSubmitDesc& queueSubmitDesc) {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.QueueSubmit2(m_Handle, 1, &submitInfo, VK_NULL_HANDLE);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "QueueSubmit2");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "QueueSubmit2");
 
     return Result::SUCCESS;
 }
@@ -95,7 +95,7 @@ NRI_INLINE Result QueueVK::WaitIdle() {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.QueueWaitIdle(m_Handle);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "QueueWaitIdle");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "QueueWaitIdle");
 
     return Result::SUCCESS;
 }

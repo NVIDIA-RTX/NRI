@@ -104,7 +104,7 @@ static inline void FfxRegisterDevice(VkDevice device, PFN_vkGetDeviceProcAddr ge
     for (; i < g_ffx.vkPairs.size(); i++) {
         if (g_ffx.vkPairs[i].device == device) {
             // Already registered
-            CHECK(g_ffx.vkPairs[i].getDeviceProcAddress == getDeviceProcAddress, "Unexpected");
+            NRI_CHECK(g_ffx.vkPairs[i].getDeviceProcAddress == getDeviceProcAddress, "Unexpected");
             return;
         }
 
@@ -113,7 +113,7 @@ static inline void FfxRegisterDevice(VkDevice device, PFN_vkGetDeviceProcAddr ge
             break;
     }
 
-    CHECK(i < g_ffx.vkPairs.size(), "Too many devices?");
+    NRI_CHECK(i < g_ffx.vkPairs.size(), "Too many devices?");
 
     // Add new entry
     g_ffx.vkPairs[i] = {device, getDeviceProcAddress};
@@ -131,11 +131,11 @@ static PFN_vkVoidFunction VKAPI_PTR FfxVkGetDeviceProcAddr(VkDevice device, cons
             break;
     }
 
-    CHECK(i < g_ffx.vkPairs.size(), "Unexpected");
+    NRI_CHECK(i < g_ffx.vkPairs.size(), "Unexpected");
 
     // Use corresponding "vkGetDeviceProcAddr"
     PFN_vkVoidFunction func = g_ffx.vkPairs[i].getDeviceProcAddress(device, pName);
-    CHECK(func || strstr(pName, "AMD"), "Another non-CORE function name?");
+    NRI_CHECK(func || strstr(pName, "AMD"), "Another non-CORE function name?");
 
     return func;
 }
@@ -263,7 +263,7 @@ static inline FfxApiResource FfxGetResource(const CoreInterface& NRI, const Upsc
                 res.description.type = FFX_API_RESOURCE_TYPE_TEXTURE3D;
                 break;
             default:
-                CHECK(false, "Unexpected");
+                NRI_CHECK(false, "Unexpected");
                 break;
         }
     }
@@ -389,7 +389,7 @@ static inline int32_t NgxIncrRef(void* deviceNative) {
 
     if (i == g_ngx.refCounterNum) {
         g_ngx.refCounterNum++;
-        CHECK(g_ngx.refCounterNum < g_ngx.refCounters.size(), "Too many devices?");
+        NRI_CHECK(g_ngx.refCounterNum < g_ngx.refCounters.size(), "Too many devices?");
     }
 
     g_ngx.refCounters[i].deviceNative = deviceNative;
@@ -403,8 +403,8 @@ static inline int32_t NgxDecrRef(void* deviceNative) {
     for (; i < g_ngx.refCounterNum && g_ngx.refCounters[i].deviceNative != deviceNative; i++)
         ;
 
-    CHECK(i < g_ngx.refCounterNum, "Destroy before create?");
-    CHECK(g_ngx.refCounters[i].refCounter > 0, "Unexpected");
+    NRI_CHECK(i < g_ngx.refCounterNum, "Destroy before create?");
+    NRI_CHECK(g_ngx.refCounters[i].refCounter > 0, "Unexpected");
 
     g_ngx.refCounters[i].deviceNative = deviceNative;
     g_ngx.refCounters[i].refCounter--;
@@ -491,7 +491,7 @@ UpscalerImpl::~UpscalerImpl() {
         ExclusiveScope lock(g_xess.lock);
 
         xess_result_t result = xessDestroyContext(m.xess->context);
-        CHECK(result == XESS_RESULT_SUCCESS, "xessDestroyContext() failed!");
+        NRI_CHECK(result == XESS_RESULT_SUCCESS, "xessDestroyContext() failed!");
 
         const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
         Destroy<Xess>(allocationCallbacks, m.xess);
@@ -501,7 +501,7 @@ UpscalerImpl::~UpscalerImpl() {
 #if NRI_ENABLE_FFX_SDK
     if (m_Desc.type == UpscalerType::FSR && m.ffx) {
         ffxReturnCode_t result = m.ffx->DestroyContext(&m.ffx->context, m.ffx->allocationCallbacksPtr);
-        CHECK(result == FFX_API_RETURN_OK, "ffxDestroyContext() failed!");
+        NRI_CHECK(result == FFX_API_RETURN_OK, "ffxDestroyContext() failed!");
 
         UnloadSharedLibrary(*m.ffx->library);
 
@@ -521,14 +521,14 @@ UpscalerImpl::~UpscalerImpl() {
 #    if NRI_ENABLE_D3D11_SUPPORT
         if (deviceDesc.graphicsAPI == GraphicsAPI::D3D11) {
             NVSDK_NGX_Result result = NVSDK_NGX_D3D11_DestroyParameters(m.ngx->params);
-            CHECK(!m.ngx->params || result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D11_DestroyParameters() failed!");
+            NRI_CHECK(!m.ngx->params || result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D11_DestroyParameters() failed!");
 
             result = NVSDK_NGX_D3D11_ReleaseFeature(m.ngx->handle);
-            CHECK(!m.ngx->handle || result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D11_ReleaseFeature() failed!");
+            NRI_CHECK(!m.ngx->handle || result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D11_ReleaseFeature() failed!");
 
             if (refCount == 0) {
                 result = NVSDK_NGX_D3D11_Shutdown1((ID3D11Device*)deviceNative);
-                CHECK(result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D11_Shutdown1() failed!");
+                NRI_CHECK(result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D11_Shutdown1() failed!");
             }
         }
 #    endif
@@ -536,14 +536,14 @@ UpscalerImpl::~UpscalerImpl() {
 #    if NRI_ENABLE_D3D12_SUPPORT
         if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
             NVSDK_NGX_Result result = NVSDK_NGX_D3D12_DestroyParameters(m.ngx->params);
-            CHECK(!m.ngx->params || result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D12_DestroyParameters() failed!");
+            NRI_CHECK(!m.ngx->params || result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D12_DestroyParameters() failed!");
 
             result = NVSDK_NGX_D3D12_ReleaseFeature(m.ngx->handle);
-            CHECK(!m.ngx->handle || result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D12_ReleaseFeature() failed!");
+            NRI_CHECK(!m.ngx->handle || result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D12_ReleaseFeature() failed!");
 
             if (refCount == 0) {
                 result = NVSDK_NGX_D3D12_Shutdown1((ID3D12Device*)deviceNative);
-                CHECK(result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D12_Shutdown1() failed!");
+                NRI_CHECK(result == NVSDK_NGX_Result_Success, "NVSDK_NGX_D3D12_Shutdown1() failed!");
             }
         }
 #    endif
@@ -551,14 +551,14 @@ UpscalerImpl::~UpscalerImpl() {
 #    if NRI_ENABLE_VK_SUPPORT
         if (deviceDesc.graphicsAPI == GraphicsAPI::VK) {
             NVSDK_NGX_Result result = NVSDK_NGX_VULKAN_DestroyParameters(m.ngx->params);
-            CHECK(!m.ngx->params || result == NVSDK_NGX_Result_Success, "NVSDK_NGX_VULKAN_DestroyParameters() failed!");
+            NRI_CHECK(!m.ngx->params || result == NVSDK_NGX_Result_Success, "NVSDK_NGX_VULKAN_DestroyParameters() failed!");
 
             result = NVSDK_NGX_VULKAN_ReleaseFeature(m.ngx->handle);
-            CHECK(!m.ngx->handle || result == NVSDK_NGX_Result_Success, "NVSDK_NGX_VULKAN_ReleaseFeature() failed!");
+            NRI_CHECK(!m.ngx->handle || result == NVSDK_NGX_Result_Success, "NVSDK_NGX_VULKAN_ReleaseFeature() failed!");
 
             if (refCount == 0) {
                 result = NVSDK_NGX_VULKAN_Shutdown1((VkDevice)deviceNative);
-                CHECK(result == NVSDK_NGX_Result_Success, "NVSDK_NGX_VULKAN_Shutdown1() failed!");
+                NRI_CHECK(result == NVSDK_NGX_Result_Success, "NVSDK_NGX_VULKAN_Shutdown1() failed!");
             }
         }
 #    endif
@@ -1278,7 +1278,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         dispatchDesc.flags = (m_Desc.flags & UpscalerBits::SRGB) ? FFX_UPSCALE_FLAG_NON_LINEAR_COLOR_SRGB : 0;
 
         ffxReturnCode_t result = m.ffx->Dispatch(&m.ffx->context, &dispatchDesc.header);
-        CHECK(result == FFX_API_RETURN_OK, "ffxDispatch() failed!");
+        NRI_CHECK(result == FFX_API_RETURN_OK, "ffxDispatch() failed!");
     }
 #endif
 
@@ -1303,7 +1303,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         ID3D12GraphicsCommandList* commandList = (ID3D12GraphicsCommandList*)m_iCore.GetCommandBufferNativeObject(&commandBuffer);
 
         xess_result_t result = xessD3D12Execute(m.xess->context, commandList, &executeParams);
-        CHECK(result == XESS_RESULT_SUCCESS, "xessD3D12Execute() failed!");
+        NRI_CHECK(result == XESS_RESULT_SUCCESS, "xessD3D12Execute() failed!");
     }
 #endif
 
@@ -1392,7 +1392,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         }
 #    endif
 
-        CHECK(result == NVSDK_NGX_Result_Success, "DLSR evaluation failed!");
+        NRI_CHECK(result == NVSDK_NGX_Result_Success, "DLSR evaluation failed!");
     }
 
     if (m_Desc.type == UpscalerType::DLRR) {
@@ -1525,7 +1525,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         }
 #    endif
 
-        CHECK(result == NVSDK_NGX_Result_Success, "DLRR evaluation failed!");
+        NRI_CHECK(result == NVSDK_NGX_Result_Success, "DLRR evaluation failed!");
     }
 #endif
 }

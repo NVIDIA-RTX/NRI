@@ -148,7 +148,7 @@ struct AmdExtD3D12 {
     AGS_DEINITIALIZE Deinitialize;
     AGS_DRIVEREXTENSIONSDX12_CREATEDEVICE CreateDeviceD3D12;
     AGS_DRIVEREXTENSIONSDX12_DESTROYDEVICE DestroyDeviceD3D12;
-    Library* library;
+    nri::Library* library;
     AGSContext* context;
     bool isWrapped;
 
@@ -193,7 +193,7 @@ struct PixExt {
     PIX_BEGINEVENTONCOMMANDQUEUE BeginEventOnQueue;
     PIX_ENDEVENTONCOMMANDQUEUE EndEventOnQueue;
     PIX_SETMARKERONCOMMANDQUEUE SetMarkerOnQueue;
-    Library* library;
+    nri::Library* library;
 
     ~PixExt() {
         if (library)

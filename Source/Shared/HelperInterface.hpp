@@ -116,7 +116,7 @@ Result HelperDataUpload::Create(const TextureUploadDesc* textureUploadDescs, uin
                 uint64_t alignedSlicePitch = Align(sliceRowNum * alignedRowPitch, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
                 uint64_t alignedSize = alignedSlicePitch * subresource0.sliceNum;
 
-                CHECK(alignedSize != 0, "Unexpected");
+                NRI_CHECK(alignedSize != 0, "Unexpected");
 
                 maxSubresourceSize = std::max(maxSubresourceSize, alignedSize);
 
@@ -309,7 +309,7 @@ bool HelperDataUpload::CopyTextureContent(const TextureUploadDesc& textureUpload
             uint64_t freeSpace = m_UploadBufferSize - m_UploadBufferOffset;
 
             if (alignedSize > freeSpace) {
-                CHECK(alignedSize <= m_UploadBufferSize, "Unexpected");
+                NRI_CHECK(alignedSize <= m_UploadBufferSize, "Unexpected");
                 return false;
             }
 
@@ -533,7 +533,7 @@ void HelperDeviceMemoryAllocator::GroupByMemoryType(MemoryLocation memoryLocatio
     };
 
     // Copy to temp memory
-    Scratch<BufferAndMemoryDesc> buffers = AllocateScratch((DeviceBase&)m_Device, BufferAndMemoryDesc, resourceGroupDesc.bufferNum);
+    Scratch<BufferAndMemoryDesc> buffers = NRI_ALLOCATE_SCRATCH((DeviceBase&)m_Device, BufferAndMemoryDesc, resourceGroupDesc.bufferNum);
     for (uint32_t i = 0; i < resourceGroupDesc.bufferNum; i++) {
         Buffer* buffer = resourceGroupDesc.buffers[i];
 
@@ -541,7 +541,7 @@ void HelperDeviceMemoryAllocator::GroupByMemoryType(MemoryLocation memoryLocatio
         m_iCore.GetBufferMemoryDesc(*buffer, memoryLocation, buffers[i].memoryDesc);
     }
 
-    Scratch<TextureAndMemoryDesc> textures = AllocateScratch((DeviceBase&)m_Device, TextureAndMemoryDesc, resourceGroupDesc.textureNum);
+    Scratch<TextureAndMemoryDesc> textures = NRI_ALLOCATE_SCRATCH((DeviceBase&)m_Device, TextureAndMemoryDesc, resourceGroupDesc.textureNum);
     for (uint32_t i = 0; i < resourceGroupDesc.textureNum; i++) {
         Texture* texture = resourceGroupDesc.textures[i];
 

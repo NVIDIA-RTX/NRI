@@ -114,7 +114,7 @@ constexpr std::array<const char*, (size_t)DescriptorType::MAX_NUM> g_descriptorT
     "STORAGE_STRUCTURED_BUFFER",    // STORAGE_STRUCTURED_BUFFER
     "ACCELERATION_STRUCTURE",       // ACCELERATION_STRUCTURE
 };
-VALIDATE_ARRAY_BY_PTR(g_descriptorTypeNames);
+NRI_VALIDATE_ARRAY_BY_PTR(g_descriptorTypeNames);
 
 constexpr const char* GetDescriptorTypeName(DescriptorType descriptorType) {
     return g_descriptorTypeNames[(uint32_t)descriptorType];

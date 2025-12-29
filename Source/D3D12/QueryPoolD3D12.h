@@ -39,7 +39,7 @@ struct QueryPoolD3D12 final : public DebugNameBase {
     //================================================================================================================
 
     void SetDebugName(const char* name) DEBUG_NAME_OVERRIDE {
-        SET_D3D_DEBUG_OBJECT_NAME(m_QueryHeap, name);
+        NRI_SET_D3D_DEBUG_OBJECT_NAME(m_QueryHeap, name);
     }
 
     //================================================================================================================

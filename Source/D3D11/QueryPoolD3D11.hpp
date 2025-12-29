@@ -17,7 +17,7 @@ Result QueryPoolD3D11::Create(const QueryPoolDesc& queryPoolDesc) {
     for (uint32_t i = 0; i < queryPoolDesc.capacity; i++) {
         ComPtr<ID3D11Query> query = nullptr;
         HRESULT hr = m_Device->CreateQuery(&queryDesc, &query);
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateQuery");
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateQuery");
 
         m_QueryPool.push_back(query);
     }
@@ -50,5 +50,5 @@ void QueryPoolD3D11::GetData(uint8_t* dstMemory, uint32_t offset, uint32_t num) 
 
 NRI_INLINE void QueryPoolD3D11::SetDebugName(const char* name) {
     for (ComPtr<ID3D11Query>& query : m_QueryPool)
-        SET_D3D_DEBUG_OBJECT_NAME(query, name);
+        NRI_SET_D3D_DEBUG_OBJECT_NAME(query, name);
 }

@@ -27,7 +27,7 @@ struct SwapChainD3D11 final : public DisplayDescHelper, DebugNameBase {
     //================================================================================================================
 
     void SetDebugName(const char* name) DEBUG_NAME_OVERRIDE {
-        SET_D3D_DEBUG_OBJECT_NAME(m_SwapChain, name);
+        NRI_SET_D3D_DEBUG_OBJECT_NAME(m_SwapChain, name);
     }
 
     //================================================================================================================

@@ -40,13 +40,13 @@ DeviceD3D11::~DeviceD3D11() {
 #if NRI_ENABLE_NVAPI
             NvAPI_Status status = NvAPI_D3D11_EndUAVOverlap(m_ImmediateContext);
             if (status != NVAPI_OK)
-                REPORT_WARNING(this, "NvAPI_D3D11_EndUAVOverlap() failed!");
+                NRI_REPORT_WARNING(this, "NvAPI_D3D11_EndUAVOverlap() failed!");
 #endif
         } else if (HasAmdExt()) {
 #if NRI_ENABLE_AMDAGS
             AGSReturnCode res = m_AmdExt.EndUAVOverlap(m_AmdExt.context, m_ImmediateContext);
             if (res != AGS_SUCCESS)
-                REPORT_WARNING(this, "agsDriverExtensionsDX11_EndUAVOverlap() failed!");
+                NRI_REPORT_WARNING(this, "agsDriverExtensionsDX11_EndUAVOverlap() failed!");
 #endif
         }
     }
@@ -74,18 +74,18 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     if (m_IsWrapped) {
         ComPtr<IDXGIDevice> dxgiDevice;
         HRESULT hr = descD3D11.d3d11Device->QueryInterface(IID_PPV_ARGS(&dxgiDevice));
-        RETURN_ON_BAD_HRESULT(this, hr, "QueryInterface(IDXGIDevice)");
+        NRI_RETURN_ON_BAD_HRESULT(this, hr, "QueryInterface(IDXGIDevice)");
 
         hr = dxgiDevice->GetAdapter(&m_Adapter);
-        RETURN_ON_BAD_HRESULT(this, hr, "IDXGIDevice::GetAdapter");
+        NRI_RETURN_ON_BAD_HRESULT(this, hr, "IDXGIDevice::GetAdapter");
     } else {
         ComPtr<IDXGIFactory4> dxgiFactory;
         HRESULT hr = CreateDXGIFactory2(desc.enableGraphicsAPIValidation ? DXGI_CREATE_FACTORY_DEBUG : 0, IID_PPV_ARGS(&dxgiFactory));
-        RETURN_ON_BAD_HRESULT(this, hr, "CreateDXGIFactory2");
+        NRI_RETURN_ON_BAD_HRESULT(this, hr, "CreateDXGIFactory2");
 
         LUID luid = *(LUID*)&m_Desc.adapterDesc.uid.low;
         hr = dxgiFactory->EnumAdapterByLuid(luid, IID_PPV_ARGS(&m_Adapter));
-        RETURN_ON_BAD_HRESULT(this, hr, "IDXGIFactory4::EnumAdapterByLuid");
+        NRI_RETURN_ON_BAD_HRESULT(this, hr, "IDXGIFactory4::EnumAdapterByLuid");
     }
 
     // Extensions
@@ -130,7 +130,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
                 result = m_AmdExt.CreateDeviceD3D11(m_AmdExt.context, &deviceCreationParams, &extensionsParams, &agsParams);
             }
 
-            RETURN_ON_FAILURE(this, result == AGS_SUCCESS, Result::FAILURE, "agsDriverExtensionsDX11_CreateDevice() returned %d", (int32_t)result);
+            NRI_RETURN_ON_FAILURE(this, result == AGS_SUCCESS, Result::FAILURE, "agsDriverExtensionsDX11_CreateDevice() returned %d", (int32_t)result);
 
             deviceTemp = (ID3D11DeviceBest*)agsParams.pDevice;
             isDepthBoundsTestSupported = agsParams.extensionsSupported.depthBoundsDeferredContexts;
@@ -153,41 +153,41 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
             if (flags && hr == DXGI_ERROR_SDK_COMPONENT_MISSING)
                 hr = D3D11CreateDevice(m_Adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, levels, levelNum, D3D11_SDK_VERSION, (ID3D11Device**)&deviceTemp, nullptr, nullptr);
 
-            RETURN_ON_BAD_HRESULT(this, hr, "D3D11CreateDevice");
+            NRI_RETURN_ON_BAD_HRESULT(this, hr, "D3D11CreateDevice");
 
             if (HasNvExt()) {
 #if NRI_ENABLE_NVAPI
-                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D_RegisterDevice(deviceTemp));
-                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_SetNvShaderExtnSlot(deviceTemp, d3dShaderExtRegister));
-                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_UINT64_ATOMIC, &isShaderAtomicsI64Supported));
-                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_GET_SPECIAL, &isShaderClockSupported));
+                NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D_RegisterDevice(deviceTemp));
+                NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_SetNvShaderExtnSlot(deviceTemp, d3dShaderExtRegister));
+                NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_UINT64_ATOMIC, &isShaderAtomicsI64Supported));
+                NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_GET_SPECIAL, &isShaderClockSupported));
 
                 bool isSupported = false;
-                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_SHFL, &isSupported));
+                NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_SHFL, &isSupported));
                 areWaveIntrinsicsSupported = isSupported;
 
-                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_SHFL_UP, &isSupported));
+                NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_SHFL_UP, &isSupported));
                 areWaveIntrinsicsSupported = areWaveIntrinsicsSupported && isSupported;
 
-                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_SHFL_DOWN, &isSupported));
+                NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_SHFL_DOWN, &isSupported));
                 areWaveIntrinsicsSupported = areWaveIntrinsicsSupported && isSupported;
 
-                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_SHFL_XOR, &isSupported));
+                NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_SHFL_XOR, &isSupported));
                 areWaveIntrinsicsSupported = areWaveIntrinsicsSupported && isSupported;
 
-                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_VOTE_ALL, &isSupported));
+                NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_VOTE_ALL, &isSupported));
                 areWaveIntrinsicsSupported = areWaveIntrinsicsSupported && isSupported;
 
-                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_VOTE_ANY, &isSupported));
+                NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_VOTE_ANY, &isSupported));
                 areWaveIntrinsicsSupported = areWaveIntrinsicsSupported && isSupported;
 
-                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_VOTE_BALLOT, &isSupported));
+                NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_VOTE_BALLOT, &isSupported));
                 areWaveIntrinsicsSupported = areWaveIntrinsicsSupported && isSupported;
 
-                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_GET_LANE_ID, &isSupported));
+                NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_GET_LANE_ID, &isSupported));
                 areWaveIntrinsicsSupported = areWaveIntrinsicsSupported && isSupported;
 
-                REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_MATCH_ANY, &isSupported));
+                NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(deviceTemp, NV_EXTN_OP_MATCH_ANY, &isSupported));
                 areWaveIntrinsicsSupported = areWaveIntrinsicsSupported && isSupported;
 
                 isDepthBoundsTestSupported = true;
@@ -218,10 +218,10 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
         if (SUCCEEDED(hr)) {
             hr = pInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
-            RETURN_ON_BAD_HRESULT(this, hr, "ID3D11InfoQueue::SetBreakOnSeverity");
+            NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D11InfoQueue::SetBreakOnSeverity");
 
             hr = pInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
-            RETURN_ON_BAD_HRESULT(this, hr, "ID3D11InfoQueue::SetBreakOnSeverity");
+            NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D11InfoQueue::SetBreakOnSeverity");
 
             // TODO: this code is currently needed to disable known false-positive errors reported by the debug layer
             D3D11_MESSAGE_ID disableMessageIDs[] = {
@@ -233,7 +233,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
             filter.DenyList.pIDList = disableMessageIDs;
             filter.DenyList.NumIDs = GetCountOf(disableMessageIDs);
             hr = pInfoQueue->AddStorageFilterEntries(&filter);
-            RETURN_ON_BAD_HRESULT(this, hr, "ID3D11InfoQueue::AddStorageFilterEntries");
+            NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D11InfoQueue::AddStorageFilterEntries");
         }
     }
 
@@ -243,20 +243,20 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
     m_ImmediateContextVersion = QueryLatestDeviceContext(immediateContext, m_ImmediateContext);
 
-    REPORT_INFO(this, "Using ID3D11Device%u and ID3D11DeviceContext%u", m_Version, m_ImmediateContextVersion);
+    NRI_REPORT_INFO(this, "Using ID3D11Device%u and ID3D11DeviceContext%u", m_Version, m_ImmediateContextVersion);
 
     // Skip UAV barriers by default on the immediate context
     if (HasNvExt()) {
 #if NRI_ENABLE_NVAPI
         NvAPI_Status status = NvAPI_D3D11_BeginUAVOverlap(m_ImmediateContext);
         if (status != NVAPI_OK)
-            REPORT_WARNING(this, "NvAPI_D3D11_BeginUAVOverlap() failed!");
+            NRI_REPORT_WARNING(this, "NvAPI_D3D11_BeginUAVOverlap() failed!");
 #endif
     } else if (HasAmdExt()) {
 #if NRI_ENABLE_AMDAGS
         AGSReturnCode res = m_AmdExt.BeginUAVOverlap(m_AmdExt.context, m_ImmediateContext);
         if (res != AGS_SUCCESS)
-            REPORT_WARNING(this, "agsDriverExtensionsDX11_BeginUAVOverlap() failed!");
+            NRI_REPORT_WARNING(this, "agsDriverExtensionsDX11_BeginUAVOverlap() failed!");
 #endif
     }
 
@@ -264,17 +264,17 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     D3D11_FEATURE_DATA_THREADING threadingCaps = {};
     HRESULT hr = m_Device->CheckFeatureSupport(D3D11_FEATURE_THREADING, &threadingCaps, sizeof(threadingCaps));
     if (FAILED(hr) || !threadingCaps.DriverConcurrentCreates)
-        REPORT_WARNING(this, "Concurrent resource creation is not supported by the driver!");
+        NRI_REPORT_WARNING(this, "Concurrent resource creation is not supported by the driver!");
 
     m_IsDeferredContextEmulated = !HasNvExt() || desc.enableD3D11CommandBufferEmulation;
     if (!threadingCaps.DriverCommandLists && !desc.enableD3D11CommandBufferEmulation) {
-        REPORT_WARNING(this, "Deferred Contexts are not supported by the driver and will be emulated!");
+        NRI_REPORT_WARNING(this, "Deferred Contexts are not supported by the driver and will be emulated!");
         m_IsDeferredContextEmulated = true;
     }
 
     hr = m_ImmediateContext->QueryInterface(IID_PPV_ARGS(&m_Multithread));
     if (FAILED(hr)) {
-        REPORT_WARNING(this, "ID3D11Multithread is not supported: a critical section will be used instead!");
+        NRI_REPORT_WARNING(this, "ID3D11Multithread is not supported: a critical section will be used instead!");
         InitializeCriticalSection(&m_CriticalSection);
     } else
         m_Multithread->SetMultithreadProtected(true);
@@ -306,7 +306,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         data.pSysMem = zeros;
 
         hr = m_Device->CreateBuffer(&zeroBufferDesc, &data, &m_ZeroBuffer);
-        RETURN_ON_BAD_HRESULT(this, hr, "ID3D11Device::CreateBuffer");
+        NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D11Device::CreateBuffer");
 
         allocator.Free(allocator.userArg, zeros);
     }
@@ -321,32 +321,32 @@ void DeviceD3D11::FillDesc() {
     D3D11_FEATURE_DATA_D3D11_OPTIONS options = {};
     HRESULT hr = m_Device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS, &options, sizeof(options));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D11Device::CheckFeatureSupport(options) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D11Device::CheckFeatureSupport(options) failed, result = 0x%08X!", hr);
 
     D3D11_FEATURE_DATA_D3D11_OPTIONS1 options1 = {};
     hr = m_Device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS1, &options1, sizeof(options1));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D11Device::CheckFeatureSupport(options1) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D11Device::CheckFeatureSupport(options1) failed, result = 0x%08X!", hr);
 
     D3D11_FEATURE_DATA_D3D11_OPTIONS2 options2 = {};
     hr = m_Device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS2, &options2, sizeof(options2));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D11Device::CheckFeatureSupport(options2) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D11Device::CheckFeatureSupport(options2) failed, result = 0x%08X!", hr);
 
     D3D11_FEATURE_DATA_D3D11_OPTIONS3 options3 = {};
     hr = m_Device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS3, &options3, sizeof(options3));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D11Device::CheckFeatureSupport(options3) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D11Device::CheckFeatureSupport(options3) failed, result = 0x%08X!", hr);
 
     D3D11_FEATURE_DATA_D3D11_OPTIONS4 options4 = {};
     hr = m_Device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS4, &options4, sizeof(options4));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D11Device::CheckFeatureSupport(options4) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D11Device::CheckFeatureSupport(options4) failed, result = 0x%08X!", hr);
 
     D3D11_FEATURE_DATA_D3D11_OPTIONS5 options5 = {};
     hr = m_Device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS5, &options5, sizeof(options5));
     if (FAILED(hr))
-        REPORT_WARNING(this, "ID3D11Device::CheckFeatureSupport(options5) failed, result = 0x%08X!", hr);
+        NRI_REPORT_WARNING(this, "ID3D11Device::CheckFeatureSupport(options5) failed, result = 0x%08X!", hr);
 
     uint64_t timestampFrequency = 0;
     {
@@ -493,11 +493,11 @@ void DeviceD3D11::FillDesc() {
     NV_D3D1x_GRAPHICS_CAPS caps = {};
 
     if (HasNvExt()) {
-        REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_FP16_ATOMIC, &isShaderAtomicsF16Supported));
-        REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_FP32_ATOMIC, &isShaderAtomicsF32Supported));
-        REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_GET_SPECIAL, &isGetSpecialSupported));
-        REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_CheckFeatureSupport(m_Device, NV_D3D11_FEATURE_RASTERIZER, &rasterizerFeatures, sizeof(rasterizerFeatures)));
-        REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D1x_GetGraphicsCapabilities(m_Device, NV_D3D1x_GRAPHICS_CAPS_VER, &caps));
+        NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_FP16_ATOMIC, &isShaderAtomicsF16Supported));
+        NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_FP32_ATOMIC, &isShaderAtomicsF32Supported));
+        NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_IsNvShaderExtnOpCodeSupported(m_Device, NV_EXTN_OP_GET_SPECIAL, &isGetSpecialSupported));
+        NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D11_CheckFeatureSupport(m_Device, NV_D3D11_FEATURE_RASTERIZER, &rasterizerFeatures, sizeof(rasterizerFeatures)));
+        NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(this, NvAPI_D3D1x_GetGraphicsCapabilities(m_Device, NV_D3D1x_GRAPHICS_CAPS_VER, &caps));
     }
 
     m_Desc.tiers.sampleLocations = rasterizerFeatures.ProgrammableSamplePositions ? 2 : 0;
@@ -540,16 +540,16 @@ void DeviceD3D11::InitializeNvExt(bool disableNVAPIInitialization, bool isImport
     MaybeUnused(disableNVAPIInitialization, isImported);
 #if NRI_ENABLE_NVAPI
     if (GetModuleHandleA("renderdoc.dll") != nullptr) {
-        REPORT_WARNING(this, "NVAPI is disabled, because RenderDoc library has been loaded");
+        NRI_REPORT_WARNING(this, "NVAPI is disabled, because RenderDoc library has been loaded");
         return;
     }
 
     if (isImported && !disableNVAPIInitialization)
-        REPORT_WARNING(this, "NVAPI is disabled, because it's not loaded on the application side");
+        NRI_REPORT_WARNING(this, "NVAPI is disabled, because it's not loaded on the application side");
     else {
         NvAPI_Status status = NvAPI_Initialize();
         if (status != NVAPI_OK)
-            REPORT_ERROR(this, "NvAPI_Initialize(): failed, result=%d!", (int32_t)status);
+            NRI_REPORT_ERROR(this, "NvAPI_Initialize(): failed, result=%d!", (int32_t)status);
         m_NvExt.available = (status == NVAPI_OK);
     }
 #endif
@@ -559,14 +559,14 @@ void DeviceD3D11::InitializeAmdExt(AGSContext* agsContext, bool isImported) {
     MaybeUnused(agsContext, isImported);
 #if NRI_ENABLE_AMDAGS
     if (isImported && !agsContext) {
-        REPORT_WARNING(this, "AMDAGS is disabled, because 'agsContext' is not provided");
+        NRI_REPORT_WARNING(this, "AMDAGS is disabled, because 'agsContext' is not provided");
         return;
     }
 
     // Load library
     Library* agsLibrary = LoadSharedLibrary("amd_ags_x64.dll");
     if (!agsLibrary) {
-        REPORT_WARNING(this, "AMDAGS is disabled, because 'amd_ags_x64' is not found");
+        NRI_REPORT_WARNING(this, "AMDAGS is disabled, because 'amd_ags_x64' is not found");
         return;
     }
 
@@ -592,7 +592,7 @@ void DeviceD3D11::InitializeAmdExt(AGSContext* agsContext, bool isImported) {
         ;
 
     if (i != functionArraySize) {
-        REPORT_WARNING(this, "AMDAGS is disabled, because not all functions are found in the DLL");
+        NRI_REPORT_WARNING(this, "AMDAGS is disabled, because not all functions are found in the DLL");
         UnloadSharedLibrary(*agsLibrary);
 
         return;
@@ -604,7 +604,7 @@ void DeviceD3D11::InitializeAmdExt(AGSContext* agsContext, bool isImported) {
     if (!agsContext) {
         AGSReturnCode result = m_AmdExt.Initialize(AGS_CURRENT_VERSION, &config, &agsContext, &gpuInfo);
         if (result != AGS_SUCCESS || !agsContext) {
-            REPORT_ERROR(this, "Failed to initialize AMDAGS: %d", (int32_t)result);
+            NRI_REPORT_ERROR(this, "Failed to initialize AMDAGS: %d", (int32_t)result);
             UnloadSharedLibrary(*agsLibrary);
 
             return;

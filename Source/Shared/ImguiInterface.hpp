@@ -450,7 +450,7 @@ void ImguiImpl::CmdCopyData(CommandBuffer& commandBuffer, Streamer& streamer, co
     if (!copyImguiDataDesc.drawListNum)
         return;
 
-    Scratch<TextureBarrierDesc> textureBarriers = AllocateScratch((DeviceBase&)m_Device, TextureBarrierDesc, copyImguiDataDesc.textureNum);
+    Scratch<TextureBarrierDesc> textureBarriers = NRI_ALLOCATE_SCRATCH((DeviceBase&)m_Device, TextureBarrierDesc, copyImguiDataDesc.textureNum);
     uint32_t textureBarrierNum = 0;
 
     const AccessLayoutStage copyState = {AccessBits::COPY_DESTINATION, Layout::COPY_DESTINATION, StageBits::COPY};
@@ -490,7 +490,7 @@ void ImguiImpl::CmdCopyData(CommandBuffer& commandBuffer, Streamer& streamer, co
 
             // Destroy
             if (updateTick == 0) {
-                CHECK(imTextureData->Status == ImTextureStatus_Destroyed, "Unexpected");
+                NRI_CHECK(imTextureData->Status == ImTextureStatus_Destroyed, "Unexpected");
 
                 // TODO: this is valid only in the current frame. Otherwise an "ImguiImpl" instance can get a zombie texture in "m_Textures" because
                 // starting from the next frame "copyImguiDataDesc.textures" won't contain textures with "ImTextureStatus_Destroyed" status
@@ -513,7 +513,7 @@ void ImguiImpl::CmdCopyData(CommandBuffer& commandBuffer, Streamer& streamer, co
                 textureDesc.height = (Dim_t)imTextureData->Height;
 
                 Result result = m_iCore.CreateCommittedTexture(m_Device, MemoryLocation::DEVICE, 0.0f, textureDesc, imguiTexture.texture);
-                CHECK(result == Result::SUCCESS, "Unexpected");
+                NRI_CHECK(result == Result::SUCCESS, "Unexpected");
 
                 // Create descriptor
                 Texture2DViewDesc viewDesc = {};
@@ -522,11 +522,11 @@ void ImguiImpl::CmdCopyData(CommandBuffer& commandBuffer, Streamer& streamer, co
                 viewDesc.format = format;
 
                 result = m_iCore.CreateTexture2DView(viewDesc, imguiTexture.descriptor);
-                CHECK(result == Result::SUCCESS, "Unexpected");
+                NRI_CHECK(result == Result::SUCCESS, "Unexpected");
             }
 
             // Update if needed
-            CHECK(imguiTexture.texture && imguiTexture.descriptor, "Unexpected");
+            NRI_CHECK(imguiTexture.texture && imguiTexture.descriptor, "Unexpected");
 
             if (imguiTexture.updateTick < updateTick) {
                 const FormatProps& formatProps = GetFormatProps(format);
@@ -594,7 +594,7 @@ void ImguiImpl::CmdCopyData(CommandBuffer& commandBuffer, Streamer& streamer, co
 
     { // Stream buffer data
         uint32_t dataChunkNum = copyImguiDataDesc.drawListNum * 2;
-        Scratch<DataSize> dataChunks = AllocateScratch((DeviceBase&)m_Device, DataSize, dataChunkNum);
+        Scratch<DataSize> dataChunks = NRI_ALLOCATE_SCRATCH((DeviceBase&)m_Device, DataSize, dataChunkNum);
 
         StreamBufferDataDesc streamBufferDataDesc = {};
         streamBufferDataDesc.dataChunkNum = dataChunkNum;
@@ -733,7 +733,7 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
         graphicsPipelineDesc.shaderNum = GetCountOf(shaders);
 
         Result result = m_iCore.CreateGraphicsPipeline(m_Device, graphicsPipelineDesc, pipeline);
-        CHECK(result == Result::SUCCESS, "Unexpected");
+        NRI_CHECK(result == Result::SUCCESS, "Unexpected");
 
         m_Pipelines.push_back({pipeline, drawImguiDesc.attachmentFormat});
     }

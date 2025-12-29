@@ -38,7 +38,7 @@ constexpr std::array<DescriptorTypeDX11, (size_t)DescriptorType::MAX_NUM> g_Rema
     DescriptorTypeDX11::STORAGE,  // STORAGE_STRUCTURED_BUFFER
     DescriptorTypeDX11::RESOURCE, // ACCELERATION_STRUCTURE
 };
-VALIDATE_ARRAY(g_RemapDescriptorTypeToIndex);
+NRI_VALIDATE_ARRAY(g_RemapDescriptorTypeToIndex);
 
 static inline DescriptorTypeDX11 GetDescriptorTypeIndex(DescriptorType type) {
     return g_RemapDescriptorTypeToIndex[(uint32_t)type];
@@ -102,7 +102,7 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         desc.ByteWidth = Align(rootConstantDesc.size, 16);
 
         HRESULT hr = m_Device->CreateBuffer(&desc, nullptr, &cb.buffer);
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateBuffer");
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateBuffer");
 
         m_ConstantBuffers.push_back(cb);
     }
@@ -143,7 +143,7 @@ Result PipelineLayoutD3D11::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         FillSamplerDesc(rootSamplerDesc.desc, desc);
 
         HRESULT hr = m_Device->CreateSamplerState(&desc, &ss.sampler);
-        RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateSamplerState");
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device::CreateSamplerState");
 
         m_RootSamplers.push_back(ss);
     }
@@ -186,7 +186,7 @@ void PipelineLayoutD3D11::SetDescriptorSet(BindPoint bindPoint, BindingState& cu
     const BindingSet& bindingSet = m_BindingSets[setIndex];
     bool isStorageRebindNeededInGraphics = false;
 
-    Scratch<uint8_t> scratch = AllocateScratch(m_Device, uint8_t, bindingSet.descriptorNum * (sizeof(void*) + sizeof(uint32_t) * 2));
+    Scratch<uint8_t> scratch = NRI_ALLOCATE_SCRATCH(m_Device, uint8_t, bindingSet.descriptorNum * (sizeof(void*) + sizeof(uint32_t) * 2));
     uint8_t* ptr = scratch;
 
     void** descriptors = (void**)ptr;
@@ -232,7 +232,7 @@ void PipelineLayoutD3D11::SetDescriptorSet(BindPoint bindPoint, BindingState& cu
         if (bindingRange.descriptorType == DescriptorTypeDX11::CONSTANT) {
             if (hasNonZeroOffset) {
                 if (m_Device.GetVersion() < 1)
-                    REPORT_ERROR(&m_Device, "Constant buffers with non-zero offsets require 11.1+ feature level");
+                    NRI_REPORT_ERROR(&m_Device, "Constant buffers with non-zero offsets require 11.1+ feature level");
 
                 if (isGraphics) {
                     SET_CONSTANT_BUFFERS1(VS, StageBits::VERTEX_SHADER);

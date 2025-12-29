@@ -46,7 +46,7 @@ constexpr std::array<const char*, (size_t)Message::MAX_NUM> g_messageTypes = {
     "WARNING", // WARNING,
     "ERROR",   // ERROR
 };
-VALIDATE_ARRAY_BY_PTR(g_messageTypes);
+NRI_VALIDATE_ARRAY_BY_PTR(g_messageTypes);
 
 static void NRI_CALL MessageCallback(Message messageType, const char* file, uint32_t line, const char* message, void*) {
     const char* messageTypeName = g_messageTypes[(size_t)messageType];
@@ -266,7 +266,7 @@ static Result EnumerateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterD
 #if NRI_ENABLE_VK_SUPPORT
 
 static Result EnumerateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum, VkPhysicalDevice precreatedPhysicalDevice, DeviceCreationDesc* deviceCreationDesc) {
-    Library* loader = LoadSharedLibrary(VULKAN_LOADER_NAME);
+    Library* loader = LoadSharedLibrary(NRI_VULKAN_LOADER_NAME);
     if (!loader)
         return Result::UNSUPPORTED;
 
@@ -554,18 +554,18 @@ NRI_API Result NRI_CALL nriGetInterface(const Device& device, const char* interf
     }
 
     if (result == Result::INVALID_ARGUMENT)
-        REPORT_ERROR(&deviceBase, "Unknown interface '%s'!", interfaceName);
+        NRI_REPORT_ERROR(&deviceBase, "Unknown interface '%s'!", interfaceName);
     else if (interfaceSize != realInterfaceSize)
-        REPORT_ERROR(&deviceBase, "Interface '%s' has invalid size=%u bytes, while %u bytes expected by the implementation", interfaceName, interfaceSize, realInterfaceSize);
+        NRI_REPORT_ERROR(&deviceBase, "Interface '%s' has invalid size=%u bytes, while %u bytes expected by the implementation", interfaceName, interfaceSize, realInterfaceSize);
     else if (result == Result::UNSUPPORTED)
-        REPORT_WARNING(&deviceBase, "Interface '%s' is not supported by the device!", interfaceName);
+        NRI_REPORT_WARNING(&deviceBase, "Interface '%s' is not supported by the device!", interfaceName);
     else {
         const void* const* const begin = (void**)interfacePtr;
         const void* const* const end = begin + realInterfaceSize / sizeof(void*);
 
         for (const void* const* current = begin; current != end; current++) {
             if (!(*current)) {
-                REPORT_ERROR(&deviceBase, "Invalid function table: function #%u is NULL!", uint32_t(current - begin));
+                NRI_REPORT_ERROR(&deviceBase, "Invalid function table: function #%u is NULL!", uint32_t(current - begin));
                 return Result::FAILURE;
             }
         }

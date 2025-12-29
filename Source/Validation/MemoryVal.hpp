@@ -13,22 +13,22 @@ void MemoryVal::ReportBoundResources() {
 
     for (size_t i = 0; i < m_Buffers.size(); i++) {
         BufferVal& buffer = *m_Buffers[i];
-        REPORT_ERROR(&m_Device, "Buffer (%p '%s') is still bound to the memory", &buffer, buffer.GetDebugName());
+        NRI_REPORT_ERROR(&m_Device, "Buffer (%p '%s') is still bound to the memory", &buffer, buffer.GetDebugName());
     }
 
     for (size_t i = 0; i < m_Textures.size(); i++) {
         TextureVal& texture = *m_Textures[i];
-        REPORT_ERROR(&m_Device, "Texture (%p '%s') is still bound to the memory", &texture, texture.GetDebugName());
+        NRI_REPORT_ERROR(&m_Device, "Texture (%p '%s') is still bound to the memory", &texture, texture.GetDebugName());
     }
 
     for (size_t i = 0; i < m_AccelerationStructures.size(); i++) {
         AccelerationStructureVal& accelerationStructure = *m_AccelerationStructures[i];
-        REPORT_ERROR(&m_Device, "AccelerationStructure (%p '%s') is still bound to the memory", &accelerationStructure, accelerationStructure.GetDebugName());
+        NRI_REPORT_ERROR(&m_Device, "AccelerationStructure (%p '%s') is still bound to the memory", &accelerationStructure, accelerationStructure.GetDebugName());
     }
 
     for (size_t i = 0; i < m_Micromaps.size(); i++) {
         MicromapVal& micromap = *m_Micromaps[i];
-        REPORT_ERROR(&m_Device, "Micromap (%p '%s') is still bound to the memory", &micromap, micromap.GetDebugName());
+        NRI_REPORT_ERROR(&m_Device, "Micromap (%p '%s') is still bound to the memory", &micromap, micromap.GetDebugName());
     }
 }
 
@@ -65,7 +65,7 @@ void MemoryVal::Unbind(BufferVal& buffer) {
 
     const auto it = std::find(m_Buffers.begin(), m_Buffers.end(), &buffer);
     if (it == m_Buffers.end()) {
-        REPORT_ERROR(&m_Device, "Unexpected error: Can't find the buffer in the list of bound resources");
+        NRI_REPORT_ERROR(&m_Device, "Unexpected error: Can't find the buffer in the list of bound resources");
         return;
     }
 
@@ -77,7 +77,7 @@ void MemoryVal::Unbind(TextureVal& texture) {
 
     const auto it = std::find(m_Textures.begin(), m_Textures.end(), &texture);
     if (it == m_Textures.end()) {
-        REPORT_ERROR(&m_Device, "Unexpected error: Can't find the texture in the list of bound resources");
+        NRI_REPORT_ERROR(&m_Device, "Unexpected error: Can't find the texture in the list of bound resources");
         return;
     }
 
@@ -89,7 +89,7 @@ void MemoryVal::Unbind(AccelerationStructureVal& accelerationStructure) {
 
     const auto it = std::find(m_AccelerationStructures.begin(), m_AccelerationStructures.end(), &accelerationStructure);
     if (it == m_AccelerationStructures.end()) {
-        REPORT_ERROR(&m_Device, "Unexpected error: Can't find the acceleration structure in the list of bound resources");
+        NRI_REPORT_ERROR(&m_Device, "Unexpected error: Can't find the acceleration structure in the list of bound resources");
         return;
     }
 
@@ -101,7 +101,7 @@ void MemoryVal::Unbind(MicromapVal& micromap) {
 
     const auto it = std::find(m_Micromaps.begin(), m_Micromaps.end(), &micromap);
     if (it == m_Micromaps.end()) {
-        REPORT_ERROR(&m_Device, "Unexpected error: Can't find the micromap in the list of bound resources");
+        NRI_REPORT_ERROR(&m_Device, "Unexpected error: Can't find the micromap in the list of bound resources");
         return;
     }
 

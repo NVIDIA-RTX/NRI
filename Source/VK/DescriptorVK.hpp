@@ -92,7 +92,7 @@ Result DescriptorVK::CreateTextureView(const Texture1DViewDesc& textureViewDesc)
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateImageView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_View.image);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImageView");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImageView");
 
     VkImageLayout expectedLayout = GetImageLayoutForView(textureViewDesc.viewType);
     if (textureViewDesc.viewType == Texture1DViewType::DEPTH_STENCIL_ATTACHMENT) {
@@ -144,7 +144,7 @@ Result DescriptorVK::CreateTextureView(const Texture2DViewDesc& textureViewDesc)
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateImageView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_View.image);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImageView");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImageView");
 
     VkImageLayout expectedLayout = GetImageLayoutForView(textureViewDesc.viewType);
     if (textureViewDesc.viewType == Texture2DViewType::DEPTH_STENCIL_ATTACHMENT) {
@@ -203,7 +203,7 @@ Result DescriptorVK::CreateTextureView(const Texture3DViewDesc& textureViewDesc)
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateImageView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_View.image);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImageView");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImageView");
 
     m_Type = GetDescriptorTypeForView(textureViewDesc.viewType);
     m_Format = textureViewDesc.format;
@@ -247,7 +247,7 @@ Result DescriptorVK::Create(const BufferViewDesc& bufferViewDesc) {
 
         const auto& vk = m_Device.GetDispatchTable();
         VkResult vkResult = vk.CreateBufferView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_View.buffer);
-        RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateBufferView");
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateBufferView");
     }
 
     return Result::SUCCESS;
@@ -261,7 +261,7 @@ Result DescriptorVK::Create(const SamplerDesc& samplerDesc) {
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateSampler(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_View.sampler);
-    RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateSampler");
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateSampler");
 
     m_Type = DescriptorType::SAMPLER;
 
