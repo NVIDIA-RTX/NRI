@@ -242,16 +242,6 @@ inline void Destroy(const AllocationCallbacks& allocationCallbacks, T* object) {
     }
 }
 
-template <typename T>
-inline void Destroy(T* object) {
-    if (object) {
-        object->~T();
-
-        const auto& allocationCallbacks = ((DeviceBase&)(object->GetDevice())).GetAllocationCallbacks();
-        allocationCallbacks.Free(allocationCallbacks.userArg, object);
-    }
-}
-
 constexpr uint64_t MsToUs(uint32_t x) {
     return x * 1000000ull;
 }

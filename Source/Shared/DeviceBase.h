@@ -126,4 +126,14 @@ protected:
     StdAllocator<uint8_t> m_StdAllocator;
 };
 
+template <typename T>
+inline void Destroy(T* object) {
+    if (object) {
+        object->~T();
+
+        const auto& allocationCallbacks = ((DeviceBase&)(object->GetDevice())).GetAllocationCallbacks();
+        allocationCallbacks.Free(allocationCallbacks.userArg, object);
+    }
+}
+
 } // namespace nri
