@@ -40,7 +40,7 @@ struct ImguiImpl final : public DebugNameBase {
     // DebugNameBase
     //================================================================================================================
 
-    void SetDebugName(const char* name) DEBUG_NAME_OVERRIDE {
+    void SetDebugName(const char* name) NRI_DEBUG_NAME_OVERRIDE {
         m_iCore.SetDebugName(m_Sampler, name);
         m_iCore.SetDebugName(m_DescriptorPool, name);
         m_iCore.SetDebugName(m_PipelineLayout, name);

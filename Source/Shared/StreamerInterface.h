@@ -54,7 +54,7 @@ struct StreamerImpl final : public DebugNameBase {
     // DebugNameBase
     //================================================================================================================
 
-    void SetDebugName(const char* name) DEBUG_NAME_OVERRIDE {
+    void SetDebugName(const char* name) NRI_DEBUG_NAME_OVERRIDE {
         m_iCore.SetDebugName(m_ConstantBuffer, name);
         m_iCore.SetDebugName(m_DynamicBuffer, name);
     }

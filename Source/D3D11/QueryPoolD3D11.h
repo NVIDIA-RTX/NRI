@@ -26,7 +26,7 @@ struct QueryPoolD3D11 final : public DebugNameBase {
     // DebugNameBase
     //================================================================================================================
 
-    void SetDebugName(const char* name) DEBUG_NAME_OVERRIDE;
+    void SetDebugName(const char* name) NRI_DEBUG_NAME_OVERRIDE;
 
     //================================================================================================================
     // NRI

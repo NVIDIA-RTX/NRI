@@ -32,7 +32,7 @@ struct CommandBufferD3D11 final : public CommandBufferBase {
     // DebugNameBase
     //================================================================================================================
 
-    void SetDebugName(const char* name) DEBUG_NAME_OVERRIDE {
+    void SetDebugName(const char* name) NRI_DEBUG_NAME_OVERRIDE {
         NRI_SET_D3D_DEBUG_OBJECT_NAME(m_DeferredContext, name);
         NRI_SET_D3D_DEBUG_OBJECT_NAME(m_CommandList, name);
     }

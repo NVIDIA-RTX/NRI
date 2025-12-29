@@ -19,7 +19,7 @@ Notes:
 - "DebugNameBaseVal" can be cast to "DebugNameBase" if "NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS = 1" (it happens for device in implementations)
 */
 #if NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS
-#    define DEBUG_NAME_OVERRIDE override
+#    define NRI_DEBUG_NAME_OVERRIDE override
 
 struct DebugNameBase {
     virtual void SetDebugName(const char*) {
@@ -27,7 +27,7 @@ struct DebugNameBase {
 };
 
 #else
-#    define DEBUG_NAME_OVERRIDE
+#    define NRI_DEBUG_NAME_OVERRIDE
 
 struct DebugNameBase {
 };
