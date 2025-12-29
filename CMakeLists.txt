@@ -150,7 +150,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.336.zip
+        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.337.zip
     )
     list(APPEND DEPS vulkan_headers)
 
@@ -237,7 +237,7 @@ if(NRI_ENABLE_NVAPI)
             DOWNLOAD_EXTRACT_TIMESTAMP 1
             DOWNLOAD_NO_PROGRESS 1
             SOURCE_SUBDIR "ignore CMakeLists.txt"
-            URL https://github.com/NVIDIA/nvapi/archive/3d34a4faf095996663321646ebe003539a908f89.zip
+            URL https://github.com/NVIDIA/nvapi/archive/832a3673d66a0fdf6d6e522468821d5cbd925f23.zip
         )
         list(APPEND DEPS nvapi)
     endif()
