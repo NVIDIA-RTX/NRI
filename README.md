@@ -56,9 +56,63 @@ Repository organization:
 - there is only `main` branch used for development
 - stable versions are in `Releases` section
 
-<details>
-<summary>Required Vulkan extensions:</summary>
+## BUILD INSTRUCTIONS
 
+- Install [*Cmake*](https://cmake.org/download/) 3.30+
+- Build (variant 1) - using *Git* and *CMake* explicitly
+    - Clone project and init submodules
+    - Generate and build the project using *CMake*
+    - To build the binary with static MSVC runtime, add `-DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>"` parameter when deploying the project
+- Build (variant 2) - by running scripts:
+    - Run `1-Deploy`
+    - Run `2-Build`
+
+Notes:
+- *Xlib* and *Wayland* can be both enabled
+- Minimal supported client is Windows 8.1+. Windows 7 support requires minimal effort and can be added by request
+
+## CMAKE OPTIONS
+
+- `NRI_AGILITY_SDK_DIR` - Directory where Agility SDK will be copied relative to the directory with binaries
+- `NRI_AGILITY_SDK_VERSION_MAJOR`- Agility SDK major version
+- `NRI_AGILITY_SDK_VERSION_MINOR` - Agility SDK minor version
+- `NRI_SHADERS_PATH` - Shader output path override
+- `NRI_NVAPI_CUSTOM_PATH` - Path to a custom NVAPI library directory
+- `NRI_STATIC_LIBRARY` - Build static library
+- `NRI_ENABLE_NVTX_SUPPORT` - Annotations for NVIDIA Nsight Systems
+- `NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS` - Enable debug names, host and device annotations
+- `NRI_ENABLE_NONE_SUPPORT` - Enable NONE backend
+- `NRI_ENABLE_VK_SUPPORT` - Enable Vulkan backend
+- `NRI_ENABLE_VALIDATION_SUPPORT` - Enable Validation backend (otherwise `enableNRIValidation` is ignored)
+- `NRI_ENABLE_NIS_SDK` - Enable NVIDIA Image Sharpening SDK
+- `NRI_ENABLE_IMGUI_EXTENSION` - Enable `NRIImgui` extension
+- `NRI_STREAMER_THREAD_SAFE` - 'NRIStreamer' thread safety (`OFF` is faster)
+- `NRI_ENABLE_D3D11_SUPPORT` - Enable D3D11 backend
+- `NRI_ENABLE_D3D12_SUPPORT` - Enable D3D12 backend
+- `NRI_ENABLE_AMDAGS`- Enable AMD AGS library for D3D
+- `NRI_ENABLE_NVAPI` - Enable NVAPI library for D3D
+- `NRI_ENABLE_AGILITY_SDK_SUPPORT` - Enable Agility SDK support to unlock access to latest D3D12 features
+- `NRI_ENABLE_XLIB_SUPPORT` - Enable X11 support
+- `NRI_ENABLE_WAYLAND_SUPPORT` - Enable Wayland support
+- `NRI_ENABLE_NGX_SDK` - Enable NVIDIA NGX (DLSS) SDK
+- `NRI_ENABLE_FFX_SDK` - Enable AMD FidelityFX SDK
+- `NRI_ENABLE_XESS_SDK` - Enable INTEL XeSS SDK
+
+## AGILITY SDK
+
+*Overview* and *Download* sections can be found [*here*](https://devblogs.microsoft.com/directx/directx12agility/).
+
+D3D12 backend uses Agility SDK to get access to most recent D3D12 features and improved validation. It's highly recommended to use the latest Agility SDK.
+
+Steps (already enabled by default):
+- modify `NRI_AGILITY_SDK_VERSION_MAJOR` and `NRI_AGILITY_SDK_VERSION_MINOR` to the desired value
+- enable or disable `NRI_ENABLE_AGILITY_SDK_SUPPORT`
+- re-deploy project
+- include auto-generated `NRIAgilitySDK.h` header in the code of your executable using *NRI*
+
+## KNOWN VULKAN EXTENSIONS
+
+Required:
  - _VK_KHR_synchronization2_
  - _VK_KHR_dynamic_rendering_
  - _VK_KHR_copy_commands2_
@@ -67,11 +121,7 @@ Repository organization:
  - _VK_KHR_get_physical_device_properties2_ (for APPLE)
  - _VK_KHR_portability_subset_ (for for APPLE)
 
-</details>
-
-<details>
-<summary>Supported Vulkan extensions:</summary>
-
+Supported:
  - (Instance) _VK_KHR_get_surface_capabilities2_
  - (Instance) _VK_KHR_surface_
  - (Instance) _VK_KHR_win32_surface_ (_VK_KHR_xlib_surface_, _VK_KHR_wayland_surface_,  _VK_EXT_metal_surface_)
@@ -127,82 +177,13 @@ Repository organization:
  - _VK_NVX_binary_import_
  - _VK_NVX_image_view_handle_
 
-</details>
-
-## BUILD INSTRUCTIONS
-
-- Install [*Cmake*](https://cmake.org/download/) 3.30+
-- Build (variant 1) - using *Git* and *CMake* explicitly
-    - Clone project and init submodules
-    - Generate and build the project using *CMake*
-    - To build the binary with static MSVC runtime, add `-DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>"` parameter when deploying the project
-- Build (variant 2) - by running scripts:
-    - Run `1-Deploy`
-    - Run `2-Build`
-
-Notes:
-- *Xlib* and *Wayland* can be both enabled
-- Minimal supported client is Windows 8.1+. Windows 7 support requires minimal effort and can be added by request
-
-## CMAKE OPTIONS
-
-- `NRI_AGILITY_SDK_DIR` - Directory where Agility SDK will be copied relative to the directory with binaries
-- `NRI_AGILITY_SDK_VERSION_MAJOR`- Agility SDK major version
-- `NRI_AGILITY_SDK_VERSION_MINOR` - Agility SDK minor version
-- `NRI_SHADERS_PATH` - Shader output path override
-- `NRI_NVAPI_CUSTOM_PATH` - Path to a custom NVAPI library directory
-- `NRI_STATIC_LIBRARY` - Build static library
-- `NRI_ENABLE_NVTX_SUPPORT` - Annotations for NVIDIA Nsight Systems
-- `NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS` - Enable debug names, host and device annotations
-- `NRI_ENABLE_NONE_SUPPORT` - Enable NONE backend
-- `NRI_ENABLE_VK_SUPPORT` - Enable Vulkan backend
-- `NRI_ENABLE_VALIDATION_SUPPORT` - Enable Validation backend (otherwise `enableNRIValidation` is ignored)
-- `NRI_ENABLE_NIS_SDK` - Enable NVIDIA Image Sharpening SDK
-- `NRI_ENABLE_IMGUI_EXTENSION` - Enable `NRIImgui` extension
-- `NRI_ENABLE_D3D11_SUPPORT` - Enable D3D11 backend
-- `NRI_ENABLE_D3D12_SUPPORT` - Enable D3D12 backend
-- `NRI_ENABLE_AMDAGS`- Enable AMD AGS library for D3D
-- `NRI_ENABLE_NVAPI` - Enable NVAPI library for D3D
-- `NRI_ENABLE_AGILITY_SDK_SUPPORT` - Enable Agility SDK support to unlock access to latest D3D12 features
-- `NRI_ENABLE_XLIB_SUPPORT` - Enable X11 support
-- `NRI_ENABLE_WAYLAND_SUPPORT` - Enable Wayland support
-- `NRI_ENABLE_NGX_SDK` - Enable NVIDIA NGX (DLSS) SDK
-- `NRI_ENABLE_FFX_SDK` - Enable AMD FidelityFX SDK
-- `NRI_ENABLE_XESS_SDK` - Enable INTEL XeSS SDK
-
-## AGILITY SDK
-
-*Overview* and *Download* sections can be found [*here*](https://devblogs.microsoft.com/directx/directx12agility/).
-
-D3D12 backend uses Agility SDK to get access to most recent D3D12 features and improved validation. It's highly recommended to use the latest Agility SDK.
-
-Steps (already enabled by default):
-- modify `NRI_AGILITY_SDK_VERSION_MAJOR` and `NRI_AGILITY_SDK_VERSION_MINOR` to the desired value
-- enable or disable `NRI_ENABLE_AGILITY_SDK_SUPPORT`
-- re-deploy project
-- include auto-generated `NRIAgilitySDK.h` header in the code of your executable using *NRI*
-
 ## SAMPLES OVERVIEW
 
 [*NRD sample*](https://github.com/NVIDIA-RTX/NRD-Sample):
 - main sample demonstrating path tracing best practices
 
 [*NRI samples*](https://github.com/NVIDIA-RTX/NRISamples):
-- DeviceInfo - queries and prints out information about device groups in the system
-- Clear - minimal example of rendering using framebuffer clears only
-- CTest - very simple example of C interface usage
-- Triangle - simple textured triangle rendering (also multiview demonstration in _FLEXIBLE_ mode)
-- SceneViewer - loading & rendering of meshes with materials (also tests programmable sample locations, shading rate and pipeline statistics)
-- BindlessSceneViewer - bindless GPU-driven rendering test
-- Readback - getting data from the GPU back to the CPU
-- AsyncCompute - demonstrates parallel execution of graphic and compute workloads
-- MultiThreading - shows advantages of multi-threaded command buffer recording
-- Multiview - multiview demonstration in _LAYER_BASED_ mode (VK and D3D12 compatible)
-- MultiGPU - multi GPU example
-- RayTracingTriangle - simple triangle rendering through ray tracing
-- RayTracingBoxes - a more advanced ray tracing example with many BLASes in TLAS
-- Wrapper - shows how to wrap native D3D11/D3D12/VK objects into *NRI* entities
-- Resize - demonstrates window resize
+- many samples demonstrating NRI usage
 
 ## C/C++ INTERFACE DIFFERENCES
 
