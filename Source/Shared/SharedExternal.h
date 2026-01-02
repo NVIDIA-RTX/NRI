@@ -448,9 +448,11 @@ struct DisplayDescHelper {
 #if defined(_WIN32)
 #    define NRI_VULKAN_LOADER_NAME "vulkan-1.dll"
 #elif defined(__APPLE__)
-#    define NRI_VULKAN_LOADER_NAME "libvulkan.1.dylib" // TODO: libvulkan.dylib?
+#    define NRI_VULKAN_LOADER_NAME "libvulkan.1.dylib"
+#elif defined(__ANDROID__)
+#    define NRI_VULKAN_LOADER_NAME "libvulkan.so"
 #else
-#    define NRI_VULKAN_LOADER_NAME "libvulkan.1.so" // TODO: libvulkan.so?
+#    define NRI_VULKAN_LOADER_NAME "libvulkan.so.1"
 #endif
 
 #ifdef NDEBUG
