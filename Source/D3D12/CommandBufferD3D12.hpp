@@ -671,7 +671,7 @@ NRI_INLINE void CommandBufferD3D12::SetVertexBuffers(uint32_t baseSlot, const Ve
 
         const BufferD3D12* bufferD3D12 = (BufferD3D12*)vertexBufferDesc.buffer;
         if (bufferD3D12) {
-            vertexBufferViews[i].BufferLocation = bufferD3D12->GetGPUVA() + vertexBufferDesc.offset;
+            vertexBufferViews[i].BufferLocation = bufferD3D12->GetDeviceAddress() + vertexBufferDesc.offset;
             vertexBufferViews[i].SizeInBytes = (uint32_t)(bufferD3D12->GetDesc().size - vertexBufferDesc.offset);
             vertexBufferViews[i].StrideInBytes = vertexBufferDesc.stride;
         } else {
@@ -688,7 +688,7 @@ NRI_INLINE void CommandBufferD3D12::SetIndexBuffer(const Buffer& buffer, uint64_
     const BufferD3D12& bufferD3D12 = (BufferD3D12&)buffer;
 
     D3D12_INDEX_BUFFER_VIEW indexBufferView;
-    indexBufferView.BufferLocation = bufferD3D12.GetGPUVA() + offset;
+    indexBufferView.BufferLocation = bufferD3D12.GetDeviceAddress() + offset;
     indexBufferView.SizeInBytes = (uint32_t)(bufferD3D12.GetDesc().size - offset);
     indexBufferView.Format = indexType == IndexType::UINT16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
 
@@ -1404,23 +1404,23 @@ NRI_INLINE void CommandBufferD3D12::WriteMicromapsSizes(const Micromap* const* m
 NRI_INLINE void CommandBufferD3D12::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc) {
     D3D12_DISPATCH_RAYS_DESC desc = {};
 
-    desc.RayGenerationShaderRecord.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.raygenShader.buffer).GetGPUVA() + dispatchRaysDesc.raygenShader.offset;
+    desc.RayGenerationShaderRecord.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.raygenShader.buffer).GetDeviceAddress() + dispatchRaysDesc.raygenShader.offset;
     desc.RayGenerationShaderRecord.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
 
     if (dispatchRaysDesc.missShaders.buffer) {
-        desc.MissShaderTable.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.missShaders.buffer).GetGPUVA() + dispatchRaysDesc.missShaders.offset;
+        desc.MissShaderTable.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.missShaders.buffer).GetDeviceAddress() + dispatchRaysDesc.missShaders.offset;
         desc.MissShaderTable.SizeInBytes = dispatchRaysDesc.missShaders.size;
         desc.MissShaderTable.StrideInBytes = dispatchRaysDesc.missShaders.stride;
     }
 
     if (dispatchRaysDesc.hitShaderGroups.buffer) {
-        desc.HitGroupTable.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.hitShaderGroups.buffer).GetGPUVA() + dispatchRaysDesc.hitShaderGroups.offset;
+        desc.HitGroupTable.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.hitShaderGroups.buffer).GetDeviceAddress() + dispatchRaysDesc.hitShaderGroups.offset;
         desc.HitGroupTable.SizeInBytes = dispatchRaysDesc.hitShaderGroups.size;
         desc.HitGroupTable.StrideInBytes = dispatchRaysDesc.hitShaderGroups.stride;
     }
 
     if (dispatchRaysDesc.callableShaders.buffer) {
-        desc.CallableShaderTable.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.callableShaders.buffer).GetGPUVA() + dispatchRaysDesc.callableShaders.offset;
+        desc.CallableShaderTable.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.callableShaders.buffer).GetDeviceAddress() + dispatchRaysDesc.callableShaders.offset;
         desc.CallableShaderTable.SizeInBytes = dispatchRaysDesc.callableShaders.size;
         desc.CallableShaderTable.StrideInBytes = dispatchRaysDesc.callableShaders.stride;
     }

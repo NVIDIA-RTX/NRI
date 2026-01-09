@@ -328,7 +328,7 @@ Result DescriptorD3D12::Create(const BufferViewDesc& bufferViewDesc) {
     uint64_t elementOffset = (uint32_t)(bufferViewDesc.offset / elementSize);
     uint32_t elementNum = (uint32_t)(size / elementSize);
 
-    m_ViewDesc.bufferGPUVA = bufferD3D12.GetGPUVA() + bufferViewDesc.offset;
+    m_ViewDesc.bufferGPUVA = bufferD3D12.GetDeviceAddress() + bufferViewDesc.offset;
 
     m_Format = patchedFormat;
     m_Resource = bufferD3D12;

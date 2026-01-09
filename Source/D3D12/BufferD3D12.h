@@ -30,7 +30,7 @@ struct BufferD3D12 final : public DebugNameBase {
         return m_Desc;
     }
 
-    inline D3D12_GPU_VIRTUAL_ADDRESS GetGPUVA() const {
+    inline D3D12_GPU_VIRTUAL_ADDRESS GetDeviceAddress() const {
         return m_Buffer->GetGPUVirtualAddress();
     }
 
@@ -75,7 +75,7 @@ inline D3D12_GPU_VIRTUAL_ADDRESS GetBufferAddress(const Buffer* buffer, uint64_t
     if (buffer == HAS_BUFFER)
         return 1;
 
-    return ((BufferD3D12*)buffer)->GetGPUVA() + offset;
+    return ((BufferD3D12*)buffer)->GetDeviceAddress() + offset;
 }
 
 } // namespace nri

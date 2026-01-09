@@ -551,6 +551,10 @@ static void NRI_CALL UnmapBuffer(Buffer& buffer) {
     ((BufferVK&)buffer).Unmap();
 }
 
+static uint64_t NRI_CALL GetBufferDeviceAddress(const Buffer& buffer) {
+    return ((BufferVK&)buffer).GetDeviceAddress();
+}
+
 static void NRI_CALL SetDebugName(Object* object, const char* name) {
     MaybeUnused(object, name);
 #if NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS
@@ -727,6 +731,7 @@ Result DeviceVK::FillFunctionTable(CoreInterface& table) const {
     table.ResetCommandAllocator = ::ResetCommandAllocator;
     table.MapBuffer = ::MapBuffer;
     table.UnmapBuffer = ::UnmapBuffer;
+    table.GetBufferDeviceAddress = ::GetBufferDeviceAddress;
     table.SetDebugName = ::SetDebugName;
     table.GetDeviceNativeObject = ::GetDeviceNativeObject;
     table.GetQueueNativeObject = ::GetQueueNativeObject;

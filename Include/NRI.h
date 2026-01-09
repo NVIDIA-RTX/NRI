@@ -247,12 +247,16 @@ NriStruct(CoreInterface) {
     // Command allocator
     void                (NRI_CALL *ResetCommandAllocator)           (NriRef(CommandAllocator) commandAllocator);
 
-    // Map / Unmap
+    // Host address
     // D3D11: no persistent mapping
     // D3D12: persistent mapping, "Map/Unmap" do nothing
     // VK: persistent mapping, but "Unmap" can do a flush if underlying memory is not "HOST_COHERENT" (unlikely)
     void*               (NRI_CALL *MapBuffer)                       (NriRef(Buffer) buffer, uint64_t offset, uint64_t size);
     void                (NRI_CALL *UnmapBuffer)                     (NriRef(Buffer) buffer);
+
+    // Device address (aka GPU virtual address)
+    // D3D11: returns "0"
+    uint64_t            (NRI_CALL *GetBufferDeviceAddress)          (const NriRef(Buffer) buffer);
 
     // Debug name for any object declared as "NriForwardStruct" (skipped for buffers & textures in D3D if they are not bound to a memory)
     void                (NRI_CALL *SetDebugName)                    (NriPtr(Object) object, const char* name);

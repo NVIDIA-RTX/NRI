@@ -64,7 +64,7 @@ NRI_INLINE void MicromapD3D12::SetDebugName(const char* name) {
 }
 
 NRI_INLINE uint64_t MicromapD3D12::GetHandle() const {
-    return m_Buffer->GetGPUVA();
+    return m_Buffer->GetDeviceAddress();
 }
 
 NRI_INLINE MicromapD3D12::operator ID3D12Resource*() const {

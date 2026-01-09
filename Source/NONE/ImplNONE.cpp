@@ -603,6 +603,10 @@ static void* NRI_CALL MapBuffer(Buffer&, uint64_t, uint64_t) {
 static void NRI_CALL UnmapBuffer(Buffer&) {
 }
 
+static uint64_t NRI_CALL GetBufferDeviceAddress(const Buffer&) {
+    return 0;
+}
+
 static void NRI_CALL SetDebugName(Object*, const char*) {
 }
 
@@ -733,6 +737,7 @@ Result DeviceNONE::FillFunctionTable(CoreInterface& table) const {
     table.ResetCommandAllocator = ::ResetCommandAllocator;
     table.MapBuffer = ::MapBuffer;
     table.UnmapBuffer = ::UnmapBuffer;
+    table.GetBufferDeviceAddress = ::GetBufferDeviceAddress;
     table.SetDebugName = ::SetDebugName;
     table.GetDeviceNativeObject = ::GetDeviceNativeObject;
     table.GetQueueNativeObject = ::GetQueueNativeObject;

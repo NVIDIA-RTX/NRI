@@ -321,7 +321,7 @@ void PipelineLayoutD3D12::SetRootConstants(ID3D12GraphicsCommandList* graphicsCo
 void PipelineLayoutD3D12::SetRootDescriptor(ID3D12GraphicsCommandList* graphicsCommandList, BindPoint bindPoint, const SetRootDescriptorDesc& setRootDescriptorDesc) const {
     uint32_t rootParameterIndex = m_BaseRootDescriptor + setRootDescriptorDesc.rootDescriptorIndex;
     const DescriptorD3D12& descriptorD3D12 = *(DescriptorD3D12*)setRootDescriptorDesc.descriptor;
-    D3D12_GPU_VIRTUAL_ADDRESS bufferLocation = descriptorD3D12.GetGPUVA() + setRootDescriptorDesc.offset;
+    D3D12_GPU_VIRTUAL_ADDRESS bufferLocation = descriptorD3D12.GetDeviceAddress() + setRootDescriptorDesc.offset;
 
     DescriptorType descriptorType = descriptorD3D12.GetType();
     if (descriptorType == DescriptorType::CONSTANT_BUFFER) {

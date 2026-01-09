@@ -40,7 +40,7 @@ struct DescriptorD3D12 final : public DebugNameBase {
         return m_DescriptorHandleCPU;
     }
 
-    inline D3D12_GPU_VIRTUAL_ADDRESS GetGPUVA() const {
+    inline D3D12_GPU_VIRTUAL_ADDRESS GetDeviceAddress() const {
         return m_ViewDesc.bufferGPUVA;
     }
 

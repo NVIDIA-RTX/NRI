@@ -531,6 +531,10 @@ static void NRI_CALL UnmapBuffer(Buffer& buffer) {
     ((BufferVal&)buffer).Unmap();
 }
 
+static uint64_t NRI_CALL GetBufferDeviceAddress(const Buffer& buffer) {
+    return ((BufferVal&)buffer).GetDeviceAddress();
+}
+
 static void NRI_CALL SetDebugName(Object* object, const char* name) {
     if (object) {
         NRI_CHECK(((uint64_t*)object)[1] == NRI_OBJECT_SIGNATURE, "Invalid NRI object!");
@@ -683,6 +687,7 @@ Result DeviceVal::FillFunctionTable(CoreInterface& table) const {
     table.ResetCommandAllocator = ::ResetCommandAllocator;
     table.MapBuffer = ::MapBuffer;
     table.UnmapBuffer = ::UnmapBuffer;
+    table.GetBufferDeviceAddress = ::GetBufferDeviceAddress;
     table.SetDebugName = ::SetDebugName;
     table.GetDeviceNativeObject = ::GetDeviceNativeObject;
     table.GetQueueNativeObject = ::GetQueueNativeObject;

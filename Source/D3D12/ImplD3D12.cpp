@@ -562,6 +562,10 @@ static void* NRI_CALL MapBuffer(Buffer& buffer, uint64_t offset, uint64_t) {
 static void NRI_CALL UnmapBuffer(Buffer&) {
 }
 
+static uint64_t NRI_CALL GetBufferDeviceAddress(const Buffer& buffer) {
+    return ((BufferD3D12&)buffer).GetDeviceAddress();
+}
+
 static void NRI_CALL SetDebugName(Object* object, const char* name) {
     MaybeUnused(object, name);
 #if NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS
@@ -715,6 +719,7 @@ Result DeviceD3D12::FillFunctionTable(CoreInterface& table) const {
     table.ResetCommandAllocator = ::ResetCommandAllocator;
     table.MapBuffer = ::MapBuffer;
     table.UnmapBuffer = ::UnmapBuffer;
+    table.GetBufferDeviceAddress = ::GetBufferDeviceAddress;
     table.SetDebugName = ::SetDebugName;
     table.GetDeviceNativeObject = ::GetDeviceNativeObject;
     table.GetQueueNativeObject = ::GetQueueNativeObject;

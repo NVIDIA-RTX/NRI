@@ -42,6 +42,7 @@ struct BufferVal final : public ObjectVal {
 
     void* Map(uint64_t offset, uint64_t size);
     void Unmap();
+    uint64_t GetDeviceAddress() const;
 
 private:
     BufferDesc m_Desc = {}; // .natvis

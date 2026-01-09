@@ -25,3 +25,7 @@ NRI_INLINE void BufferVal::Unmap() {
 
     GetCoreInterfaceImpl().UnmapBuffer(*GetImpl());
 }
+
+NRI_INLINE uint64_t BufferVal::GetDeviceAddress() const {
+    return GetCoreInterfaceImpl().GetBufferDeviceAddress(*GetImpl());
+}
