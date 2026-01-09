@@ -165,7 +165,7 @@ if(NRI_ENABLE_VK_SUPPORT)
     list(APPEND DEPS vma)
 endif()
 
-set(NGX_VERSION "310.4.0")
+set(NGX_VERSION "310.5.0")
 if(NRI_ENABLE_NGX_SDK)
     # NVIDIA NGX SDK
     FetchContent_Declare(
