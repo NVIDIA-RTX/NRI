@@ -106,13 +106,24 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         vkResult = vk.GetPhysicalDeviceSurfaceCapabilities2KHR(m_Device, &surfaceInfo, &caps2);
         NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceSurfaceCapabilities2KHR");
 
-        bool isWidthValid = swapChainDesc.width >= surfaceCaps.minImageExtent.width && swapChainDesc.width <= surfaceCaps.maxImageExtent.width;
-        NRI_RETURN_ON_FAILURE(&m_Device, isWidthValid, Result::INVALID_ARGUMENT, "swapChainDesc.width is out of [%u, %u] range", surfaceCaps.minImageExtent.width,
-            surfaceCaps.maxImageExtent.width);
+        uint32_t width = swapChainDesc.width;
+        uint32_t height = swapChainDesc.height;
 
-        bool isHeightValid = swapChainDesc.height >= surfaceCaps.minImageExtent.height && swapChainDesc.height <= surfaceCaps.maxImageExtent.height;
-        NRI_RETURN_ON_FAILURE(&m_Device, isHeightValid, Result::INVALID_ARGUMENT, "swapChainDesc.height is out of [%u, %u] range", surfaceCaps.minImageExtent.height,
-            surfaceCaps.maxImageExtent.height);
+        if (width < surfaceCaps.minImageExtent.width)
+            width = surfaceCaps.minImageExtent.width;
+        if (width > surfaceCaps.maxImageExtent.width)
+            width = surfaceCaps.maxImageExtent.width;
+
+        if (height < surfaceCaps.minImageExtent.height)
+            height = surfaceCaps.minImageExtent.height;
+        if (height > surfaceCaps.maxImageExtent.height)
+            height = surfaceCaps.maxImageExtent.height;
+
+        if (width != swapChainDesc.width || height != swapChainDesc.height)
+            NRI_REPORT_WARNING(&m_Device, "swapChainDesc dimensions clamped to [%u, %u]", width, height);
+
+        m_Width = (uint16_t)width;
+        m_Height = (uint16_t)height;
 
         // Silently clamp "textureNum" to the supported range
         if (textureNum < surfaceCaps.minImageCount)
@@ -290,7 +301,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         swapchainInfo.minImageCount = textureNum;
         swapchainInfo.imageFormat = surfaceFormat.surfaceFormat.format;
         swapchainInfo.imageColorSpace = surfaceFormat.surfaceFormat.colorSpace;
-        swapchainInfo.imageExtent = {swapChainDesc.width, swapChainDesc.height};
+        swapchainInfo.imageExtent = {m_Width, m_Height};
         swapchainInfo.imageArrayLayers = 1;
         swapchainInfo.imageUsage = swapchainImageUsageFlags;
         swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -367,8 +378,8 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
             desc.vkFormat = surfaceFormat.surfaceFormat.format;
             desc.vkImageType = VK_IMAGE_TYPE_2D;
             desc.vkImageUsageFlags = swapchainImageUsageFlags;
-            desc.width = swapChainDesc.width;
-            desc.height = swapChainDesc.height;
+            desc.width = m_Width;
+            desc.height = m_Height;
             desc.depth = 1;
             desc.mipNum = 1;
             desc.layerNum = 1;

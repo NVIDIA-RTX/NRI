@@ -61,6 +61,8 @@ private:
     uint64_t m_PresentId = 0;
     uint32_t m_TextureIndex = 0;
     SwapChainBits m_Flags = SwapChainBits::NONE;
+    uint32_t m_Width = 0;
+    uint32_t m_Height = 0;
 };
 
 } // namespace nri
