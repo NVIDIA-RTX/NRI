@@ -234,7 +234,7 @@ Draw parameters:
 
     // Input attachment
     #define NRI_INPUT_ATTACHMENT(name, attachmentIndex, bindingIndex, setIndex) \
-        NRI_RESOURCE(Texture2D, g_Normals, t, bindingIndex, setIndex)
+        NRI_RESOURCE(Texture2D, name, t, bindingIndex, setIndex)
 
     #define NRI_INPUT_ATTACHMENT_LOAD(inputAttachment, pixelPos) inputAttachment[int2(pixelPos.xy)]
 
