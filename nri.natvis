@@ -3,164 +3,164 @@
 <!-- search for .natvis in the code -->
 <!-- C -->
     <Type Name="NriAccelerationStructure">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="NriBuffer">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(NriBufferDesc*)((uint8_t*)this + 40)</Item>
         </Expand>
     </Type>
     <Type Name="NriCommandAllocator">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="NriCommandBuffer">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="NriQueue">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="NriDescriptorPool">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(NriDescriptorPoolDesc*)((uint8_t*)this + 40)</Item>
         </Expand>
     </Type>
     <Type Name="NriDescriptorSet">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">**(NriDescriptorSetDesc**)((uint8_t*)this + 40)</Item>
         </Expand>
     </Type>
     <Type Name="NriDescriptor">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="NriDevice">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 80)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 80),s} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(NriDeviceDesc*)((uint8_t*)this + 88)</Item>
         </Expand>
     </Type>
     <Type Name="NriFence">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="NriMemory">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="NriPipelineLayout">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(NriPipelineLayoutDesc*)((uint8_t*)this + 40)</Item>
         </Expand>
     </Type>
     <Type Name="NriPipeline">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="NriQueryPool">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="NriStreamer">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(NriStreamerDesc*)((uint8_t*)this + 40)</Item>
         </Expand>
     </Type>
     <Type Name="NriSwapChain">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(NriSwapChainDesc*)((uint8_t*)this + 40)</Item>
         </Expand>
     </Type>
     <Type Name="NriTexture">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(NriTextureDesc*)((uint8_t*)this + 40)</Item>
         </Expand>
     </Type>
     <Type Name="NriUpscaler">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(NriUpscalerDesc*)((uint8_t*)this + 40)</Item>
         </Expand>
     </Type>
 <!-- C++ -->
     <Type Name="nri::AccelerationStructure">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="nri::Buffer">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(nri::BufferDesc*)((uint8_t*)this + 40)</Item>
         </Expand>
     </Type>
     <Type Name="nri::CommandAllocator">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="nri::CommandBuffer">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="nri::Queue">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="nri::DescriptorPool">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(nri::DescriptorPoolDesc*)((uint8_t*)this + 40)</Item>
         </Expand>
     </Type>
     <Type Name="nri::DescriptorSet">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">**(nri::DescriptorSetDesc**)((uint8_t*)this + 40)</Item>
         </Expand>
     </Type>
     <Type Name="nri::Descriptor">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="nri::Device">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 80)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 80),s} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(nri::DeviceDesc*)((uint8_t*)this + 88)</Item>
         </Expand>
     </Type>
     <Type Name="nri::Fence">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="nri::Memory">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="nri::PipelineLayout">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(nri::PipelineLayoutDesc*)((uint8_t*)this + 40)</Item>
         </Expand>
     </Type>
     <Type Name="nri::Pipeline">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="nri::QueryPool">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="nri::Streamer">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(nri::StreamerDesc*)((uint8_t*)this + 40)</Item>
         </Expand>
     </Type>
     <Type Name="nri::SwapChain">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(nri::SwapChainDesc*)((uint8_t*)this + 40)</Item>
         </Expand>
     </Type>
     <Type Name="nri::Texture">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(nri::TextureDesc*)((uint8_t*)this + 40)</Item>
         </Expand>
     </Type>
     <Type Name="nri::Upscaler">
-        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name = {*(char**)((uint8_t*)this + 16)} }}</DisplayString>
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(nri::UpscalerDesc*)((uint8_t*)this + 40)</Item>
         </Expand>
