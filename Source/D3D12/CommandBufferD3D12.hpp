@@ -230,20 +230,24 @@ static inline D3D12_RESOURCE_STATES GetResourceStates(AccessBits accessBits, D3D
     return resourceStates;
 }
 
-static void AddResourceBarrier(D3D12_COMMAND_LIST_TYPE commandListType, ID3D12Resource* resource, AccessBits before, AccessBits after, D3D12_RESOURCE_BARRIER& resourceBarrier, uint32_t subresource) {
+static uint32_t AddResourceBarrier(D3D12_COMMAND_LIST_TYPE commandListType, ID3D12Resource* resource, AccessBits before, AccessBits after, D3D12_RESOURCE_BARRIER& resourceBarrier, uint32_t subresource) {
     D3D12_RESOURCE_STATES resourceStateBefore = GetResourceStates(before, commandListType);
     D3D12_RESOURCE_STATES resourceStateAfter = GetResourceStates(after, commandListType);
 
-    if (resourceStateBefore == resourceStateAfter && resourceStateBefore == D3D12_RESOURCE_STATE_UNORDERED_ACCESS) {
+    if (resourceStateBefore == resourceStateAfter) {
+        if (resourceStateBefore != D3D12_RESOURCE_STATE_UNORDERED_ACCESS) {
+            return 0;
+        }
         resourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
         resourceBarrier.UAV.pResource = resource;
-    } else {
-        resourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        resourceBarrier.Transition.pResource = resource;
-        resourceBarrier.Transition.StateBefore = resourceStateBefore;
-        resourceBarrier.Transition.StateAfter = resourceStateAfter;
-        resourceBarrier.Transition.Subresource = subresource;
     }
+
+    resourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    resourceBarrier.Transition.pResource = resource;
+    resourceBarrier.Transition.StateBefore = resourceStateBefore;
+    resourceBarrier.Transition.StateAfter = resourceStateAfter;
+    resourceBarrier.Transition.Subresource = subresource;
+    return 1;
 }
 
 static inline void ConvertRects(const Rect* in, uint32_t rectNum, D3D12_RECT* out) {
@@ -1093,7 +1097,7 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
 
         for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
             const BufferBarrierDesc& barrier = barrierDesc.buffers[i];
-            AddResourceBarrier(commandListType, *((BufferD3D12*)barrier.buffer), barrier.before.access, barrier.after.access, *ptr++, 0);
+            ptr += AddResourceBarrier(commandListType, *((BufferD3D12*)barrier.buffer), barrier.before.access, barrier.after.access, *ptr, 0); 
         }
 
         for (uint32_t i = 0; i < barrierDesc.textureNum; i++) {
@@ -1104,12 +1108,12 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
             const Dim_t mipNum = barrier.mipNum == REMAINING ? textureDesc.mipNum : barrier.mipNum;
 
             if (barrier.layerOffset == 0 && layerNum == textureDesc.layerNum && barrier.mipOffset == 0 && mipNum == textureDesc.mipNum && barrier.planes == PlaneBits::ALL)
-                AddResourceBarrier(commandListType, texture, barrier.before.access, barrier.after.access, *ptr++, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
+                ptr += AddResourceBarrier(commandListType, texture, barrier.before.access, barrier.after.access, *ptr, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
             else {
                 for (Dim_t layerOffset = barrier.layerOffset; layerOffset < barrier.layerOffset + layerNum; layerOffset++) {
                     for (Dim_t mipOffset = barrier.mipOffset; mipOffset < barrier.mipOffset + mipNum; mipOffset++) {
                         uint32_t subresource = GetSubresourceIndex(layerOffset, textureDesc.layerNum, mipOffset, textureDesc.mipNum, barrier.planes);
-                        AddResourceBarrier(commandListType, texture, barrier.before.access, barrier.after.access, *ptr++, subresource);
+                        ptr += AddResourceBarrier(commandListType, texture, barrier.before.access, barrier.after.access, *ptr, subresource);
                     }
                 }
             }
@@ -1118,7 +1122,12 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
         if (isGlobalUavBarrierNeeded) {
             ptr->Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
             ptr->UAV.pResource = nullptr;
+            ptr++;
         }
+
+        barrierNum = (uint32_t)(ptr - (D3D12_RESOURCE_BARRIER*)barriers);
+        if (!barrierNum)
+            return;
 
         // Submit
         m_GraphicsCommandList->ResourceBarrier(barrierNum, barriers);
