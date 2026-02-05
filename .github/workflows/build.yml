@@ -43,13 +43,10 @@ jobs:
         with:
           cmake-version: 'latest'
 
-      - name: Setup Ninja
-        uses: seanmiddleditch/gha-setup-ninja@master
-
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libx11-dev libwayland-dev
+          sudo apt-get install -y libx11-dev libwayland-dev ninja-build
 
       - name: Deploy
         run: bash 1-Deploy.sh
