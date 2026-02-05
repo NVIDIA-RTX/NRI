@@ -2,16 +2,16 @@
 
 constexpr uint32_t PRESENT_MODE_MAX_NUM = 16;
 
-constexpr VkPresentGravityFlagBitsEXT GetGravity(Gravity gravity) {
+constexpr VkPresentGravityFlagBitsKHR GetGravity(Gravity gravity) {
     switch (gravity) {
         case Gravity::CENTERED:
-            return VK_PRESENT_GRAVITY_CENTERED_BIT_EXT;
+            return VK_PRESENT_GRAVITY_CENTERED_BIT_KHR;
 
         case Gravity::MAX:
-            return VK_PRESENT_GRAVITY_MAX_BIT_EXT;
+            return VK_PRESENT_GRAVITY_MAX_BIT_KHR;
 
         default:
-            return VK_PRESENT_GRAVITY_MIN_BIT_EXT;
+            return VK_PRESENT_GRAVITY_MIN_BIT_KHR;
     }
 }
 
@@ -98,14 +98,16 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         surfaceInfo.surface = m_Surface;
 
         VkSurfaceCapabilities2KHR caps2 = {VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR};
-        const VkSurfaceCapabilitiesKHR& surfaceCaps = caps2.surfaceCapabilities;
+        PNEXTCHAIN_DECLARE(caps2.pNext);
 
-        if (allowLowLatency)
-            caps2.pNext = &latencySurfaceCapabilities;
+        if (allowLowLatency) {
+            PNEXTCHAIN_APPEND_STRUCT(latencySurfaceCapabilities);
+        }
 
         vkResult = vk.GetPhysicalDeviceSurfaceCapabilities2KHR(m_Device, &surfaceInfo, &caps2);
         NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceSurfaceCapabilities2KHR");
 
+        const VkSurfaceCapabilitiesKHR& surfaceCaps = caps2.surfaceCapabilities;
         bool isWidthValid = swapChainDesc.width >= surfaceCaps.minImageExtent.width && swapChainDesc.width <= surfaceCaps.maxImageExtent.width;
         NRI_RETURN_ON_FAILURE(&m_Device, isWidthValid, Result::INVALID_ARGUMENT, "swapChainDesc.width is out of [%u, %u] range", surfaceCaps.minImageExtent.width,
             surfaceCaps.maxImageExtent.width);
@@ -279,6 +281,30 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         }
     }
 
+    // Scaling mode
+    bool isScalingSupported = false;
+    if (m_Device.m_IsSupported.swapChainMaintenance1) {
+        VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR};
+        surfaceInfo.surface = m_Surface;
+
+        VkSurfaceCapabilities2KHR surfaceCapabilities2 = {VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR};
+        PNEXTCHAIN_DECLARE(surfaceCapabilities2.pNext);
+
+        VkSurfacePresentScalingCapabilitiesKHR surfacePresentScalingCapabilities = {VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_KHR};
+        PNEXTCHAIN_APPEND_STRUCT(surfacePresentScalingCapabilities);
+
+        VkSurfacePresentModeKHR surfacePresentMode = {VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_KHR};
+        surfacePresentMode.presentMode = presentMode;
+        surfaceInfo.pNext = &surfacePresentMode;
+
+        VkResult vkResult = vk.GetPhysicalDeviceSurfaceCapabilities2KHR(m_Device, &surfaceInfo, &surfaceCapabilities2);
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceSurfaceCapabilities2KHR");
+
+        // TODO: that's the minimal check
+        if (surfacePresentScalingCapabilities.supportedPresentScaling != 0 && surfacePresentScalingCapabilities.supportedPresentGravityX != 0 && surfacePresentScalingCapabilities.supportedPresentGravityY != 0)
+            isScalingSupported = true;
+    }
+
     constexpr VkImageUsageFlags swapchainImageUsageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
         | VK_IMAGE_USAGE_TRANSFER_DST_BIT
         | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -299,15 +325,14 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         swapchainInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
         swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         swapchainInfo.presentMode = presentMode;
-        const void** tail = &swapchainInfo.pNext;
+        PNEXTCHAIN_DECLARE(swapchainInfo.pNext);
 
-        // Scaling mode
-        VkSwapchainPresentScalingCreateInfoEXT scalingInfo = {VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_EXT};
-        if (m_Device.m_IsSupported.swapChainMaintenance1) {
-            scalingInfo.scalingBehavior = swapChainDesc.scaling == Scaling::STRETCH ? VK_PRESENT_SCALING_STRETCH_BIT_EXT : VK_PRESENT_SCALING_ONE_TO_ONE_BIT_EXT;
+        VkSwapchainPresentScalingCreateInfoKHR scalingInfo = {VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_KHR};
+        if (isScalingSupported) {
+            scalingInfo.scalingBehavior = swapChainDesc.scaling == Scaling::STRETCH ? VK_PRESENT_SCALING_STRETCH_BIT_KHR : VK_PRESENT_SCALING_ONE_TO_ONE_BIT_KHR;
             scalingInfo.presentGravityX = GetGravity(swapChainDesc.gravityX);
             scalingInfo.presentGravityY = GetGravity(swapChainDesc.gravityY);
-            APPEND_STRUCT(scalingInfo);
+            PNEXTCHAIN_APPEND_STRUCT(scalingInfo);
         }
 
         // Mutable formats
@@ -337,7 +362,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
 
         if (m_Device.m_IsSupported.swapChainMutableFormat) {
             swapchainInfo.flags |= VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR;
-            APPEND_STRUCT(imageFormatListCreateInfo);
+            PNEXTCHAIN_APPEND_STRUCT(imageFormatListCreateInfo);
         }
 
         // Low latency mode
@@ -345,7 +370,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         latencyCreateInfo.latencyModeEnable = allowLowLatency;
 
         if (allowLowLatency) {
-            APPEND_STRUCT(latencyCreateInfo);
+            PNEXTCHAIN_APPEND_STRUCT(latencyCreateInfo);
         }
 
         // Create

@@ -561,70 +561,70 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
     // Device features
     VkPhysicalDeviceFeatures2 features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
-    void** tail = &features.pNext;
+    PNEXTCHAIN_DECLARE(features.pNext);
 
     VkPhysicalDeviceVulkan11Features features11 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
-    APPEND_STRUCT(features11);
+    PNEXTCHAIN_APPEND_STRUCT(features11);
 
     VkPhysicalDeviceVulkan12Features features12 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
-    APPEND_STRUCT(features12);
+    PNEXTCHAIN_APPEND_STRUCT(features12);
 
     VkPhysicalDeviceVulkan13Features features13 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
     if (m_MinorVersion >= 3) {
-        APPEND_STRUCT(features13);
+        PNEXTCHAIN_APPEND_STRUCT(features13);
     }
 
     VkPhysicalDeviceVulkan14Features features14 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES};
     if (m_MinorVersion >= 4) {
-        APPEND_STRUCT(features14);
+        PNEXTCHAIN_APPEND_STRUCT(features14);
     }
 
-    APPEND_FEATURES(m_MinorVersion < 3, KHR, DynamicRendering, DYNAMIC_RENDERING);
-    APPEND_FEATURES(m_MinorVersion < 3, KHR, Maintenance4, MAINTENANCE_4);
-    APPEND_FEATURES(m_MinorVersion < 3, KHR, Synchronization2, SYNCHRONIZATION_2);
-    APPEND_FEATURES(m_MinorVersion < 3, KHR, ShaderIntegerDotProduct, SHADER_INTEGER_DOT_PRODUCT);
-    APPEND_FEATURES(m_MinorVersion < 3, EXT, ExtendedDynamicState, EXTENDED_DYNAMIC_STATE);
-    APPEND_FEATURES(m_MinorVersion < 3, EXT, ImageRobustness, IMAGE_ROBUSTNESS);
-    APPEND_FEATURES(m_MinorVersion < 3, EXT, SubgroupSizeControl, SUBGROUP_SIZE_CONTROL);
+    PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 3, KHR, DynamicRendering, DYNAMIC_RENDERING);
+    PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 3, KHR, Maintenance4, MAINTENANCE_4);
+    PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 3, KHR, Synchronization2, SYNCHRONIZATION_2);
+    PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 3, KHR, ShaderIntegerDotProduct, SHADER_INTEGER_DOT_PRODUCT);
+    PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 3, EXT, ExtendedDynamicState, EXTENDED_DYNAMIC_STATE);
+    PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 3, EXT, ImageRobustness, IMAGE_ROBUSTNESS);
+    PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 3, EXT, SubgroupSizeControl, SUBGROUP_SIZE_CONTROL);
 
-    APPEND_FEATURES(m_MinorVersion < 4, KHR, LineRasterization, LINE_RASTERIZATION);
-    APPEND_FEATURES(m_MinorVersion < 4, KHR, Maintenance5, MAINTENANCE_5);
-    APPEND_FEATURES(m_MinorVersion < 4, KHR, Maintenance6, MAINTENANCE_6);
-    APPEND_FEATURES(m_MinorVersion < 4, EXT, PipelineRobustness, PIPELINE_ROBUSTNESS);
+    PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, KHR, LineRasterization, LINE_RASTERIZATION);
+    PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, KHR, Maintenance5, MAINTENANCE_5);
+    PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, KHR, Maintenance6, MAINTENANCE_6);
+    PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, EXT, PipelineRobustness, PIPELINE_ROBUSTNESS);
 
-    APPEND_FEATURES(true, KHR, AccelerationStructure, ACCELERATION_STRUCTURE);
-    APPEND_FEATURES(true, KHR, ComputeShaderDerivatives, COMPUTE_SHADER_DERIVATIVES);
-    APPEND_FEATURES(true, KHR, FragmentShaderBarycentric, FRAGMENT_SHADER_BARYCENTRIC);
-    APPEND_FEATURES(true, KHR, FragmentShadingRate, FRAGMENT_SHADING_RATE);
-    APPEND_FEATURES(true, KHR, Maintenance7, MAINTENANCE_7);
-    APPEND_FEATURES(true, KHR, Maintenance8, MAINTENANCE_8);
-    APPEND_FEATURES(true, KHR, Maintenance9, MAINTENANCE_9);
-    APPEND_FEATURES(true, KHR, Maintenance10, MAINTENANCE_10);
-    APPEND_FEATURES(true, KHR, PresentId, PRESENT_ID);
-    APPEND_FEATURES(true, KHR, PresentWait, PRESENT_WAIT);
-    APPEND_FEATURES(true, KHR, RayQuery, RAY_QUERY);
-    APPEND_FEATURES(true, KHR, RayTracingMaintenance1, RAY_TRACING_MAINTENANCE_1);
-    APPEND_FEATURES(true, KHR, RayTracingPipeline, RAY_TRACING_PIPELINE);
-    APPEND_FEATURES(true, KHR, RayTracingPositionFetch, RAY_TRACING_POSITION_FETCH);
-    APPEND_FEATURES(true, KHR, ShaderClock, SHADER_CLOCK);
-    APPEND_FEATURES(true, KHR, DynamicRenderingLocalRead, DYNAMIC_RENDERING_LOCAL_READ);
-    APPEND_FEATURES(true, KHR, UnifiedImageLayouts, UNIFIED_IMAGE_LAYOUTS);
-    APPEND_FEATURES(true, EXT, CustomBorderColor, CUSTOM_BORDER_COLOR);
-    APPEND_FEATURES(true, EXT, FragmentShaderInterlock, FRAGMENT_SHADER_INTERLOCK);
-    APPEND_FEATURES(true, EXT, ImageSlicedViewOf3D, IMAGE_SLICED_VIEW_OF_3D);
-    APPEND_FEATURES(true, EXT, MemoryPriority, MEMORY_PRIORITY);
-    APPEND_FEATURES(true, EXT, MeshShader, MESH_SHADER);
-    APPEND_FEATURES(true, EXT, OpacityMicromap, OPACITY_MICROMAP);
-    APPEND_FEATURES(true, EXT, PresentModeFifoLatestReady, PRESENT_MODE_FIFO_LATEST_READY);
-    APPEND_FEATURES(true, EXT, Robustness2, ROBUSTNESS_2);
-    APPEND_FEATURES(true, EXT, ShaderAtomicFloat, SHADER_ATOMIC_FLOAT);
-    APPEND_FEATURES(true, EXT, ShaderAtomicFloat2, SHADER_ATOMIC_FLOAT_2);
-    APPEND_FEATURES(true, EXT, SwapchainMaintenance1, SWAPCHAIN_MAINTENANCE_1);
-    APPEND_FEATURES(true, EXT, ZeroInitializeDeviceMemory, ZERO_INITIALIZE_DEVICE_MEMORY);
-    APPEND_FEATURES(true, EXT, MutableDescriptorType, MUTABLE_DESCRIPTOR_TYPE);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, AccelerationStructure, ACCELERATION_STRUCTURE);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, ComputeShaderDerivatives, COMPUTE_SHADER_DERIVATIVES);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, FragmentShaderBarycentric, FRAGMENT_SHADER_BARYCENTRIC);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, FragmentShadingRate, FRAGMENT_SHADING_RATE);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, Maintenance7, MAINTENANCE_7);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, Maintenance8, MAINTENANCE_8);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, Maintenance9, MAINTENANCE_9);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, Maintenance10, MAINTENANCE_10);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, PresentId, PRESENT_ID);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, PresentWait, PRESENT_WAIT);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, RayQuery, RAY_QUERY);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, RayTracingMaintenance1, RAY_TRACING_MAINTENANCE_1);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, RayTracingPipeline, RAY_TRACING_PIPELINE);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, RayTracingPositionFetch, RAY_TRACING_POSITION_FETCH);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, ShaderClock, SHADER_CLOCK);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, DynamicRenderingLocalRead, DYNAMIC_RENDERING_LOCAL_READ);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, UnifiedImageLayouts, UNIFIED_IMAGE_LAYOUTS);
+    PNEXTCHAIN_APPEND_FEATURES(true, EXT, CustomBorderColor, CUSTOM_BORDER_COLOR);
+    PNEXTCHAIN_APPEND_FEATURES(true, EXT, FragmentShaderInterlock, FRAGMENT_SHADER_INTERLOCK);
+    PNEXTCHAIN_APPEND_FEATURES(true, EXT, ImageSlicedViewOf3D, IMAGE_SLICED_VIEW_OF_3D);
+    PNEXTCHAIN_APPEND_FEATURES(true, EXT, MemoryPriority, MEMORY_PRIORITY);
+    PNEXTCHAIN_APPEND_FEATURES(true, EXT, MeshShader, MESH_SHADER);
+    PNEXTCHAIN_APPEND_FEATURES(true, EXT, OpacityMicromap, OPACITY_MICROMAP);
+    PNEXTCHAIN_APPEND_FEATURES(true, EXT, PresentModeFifoLatestReady, PRESENT_MODE_FIFO_LATEST_READY);
+    PNEXTCHAIN_APPEND_FEATURES(true, EXT, Robustness2, ROBUSTNESS_2);
+    PNEXTCHAIN_APPEND_FEATURES(true, EXT, ShaderAtomicFloat, SHADER_ATOMIC_FLOAT);
+    PNEXTCHAIN_APPEND_FEATURES(true, EXT, ShaderAtomicFloat2, SHADER_ATOMIC_FLOAT_2);
+    PNEXTCHAIN_APPEND_FEATURES(true, EXT, SwapchainMaintenance1, SWAPCHAIN_MAINTENANCE_1);
+    PNEXTCHAIN_APPEND_FEATURES(true, EXT, ZeroInitializeDeviceMemory, ZERO_INITIALIZE_DEVICE_MEMORY);
+    PNEXTCHAIN_APPEND_FEATURES(true, EXT, MutableDescriptorType, MUTABLE_DESCRIPTOR_TYPE);
 
 #ifdef __APPLE__
-    APPEND_FEATURES(true, KHR, PortabilitySubset, PORTABILITY_SUBSET);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, PortabilitySubset, PORTABILITY_SUBSET);
 #endif
 
     m_VK.GetPhysicalDeviceFeatures2(m_PhysicalDevice, &features);
@@ -787,51 +787,51 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     { // Desc
         // Device properties
         VkPhysicalDeviceProperties2 props = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
-        tail = &props.pNext;
+        PNEXTCHAIN_SET(props.pNext);
 
         VkPhysicalDeviceMaintenance3Properties propsExtra = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES};
-        APPEND_STRUCT(propsExtra);
+        PNEXTCHAIN_APPEND_STRUCT(propsExtra);
 
         VkPhysicalDeviceVulkan11Properties props11 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES};
-        APPEND_STRUCT(props11);
+        PNEXTCHAIN_APPEND_STRUCT(props11);
 
         VkPhysicalDeviceVulkan12Properties props12 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES};
-        APPEND_STRUCT(props12);
+        PNEXTCHAIN_APPEND_STRUCT(props12);
 
         VkPhysicalDeviceVulkan13Properties props13 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES};
         if (m_MinorVersion >= 3) {
-            APPEND_STRUCT(props13);
+            PNEXTCHAIN_APPEND_STRUCT(props13);
         }
 
         VkPhysicalDeviceVulkan14Properties props14 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_PROPERTIES};
         if (m_MinorVersion >= 4) {
-            APPEND_STRUCT(props14);
+            PNEXTCHAIN_APPEND_STRUCT(props14);
         }
 
         VkPhysicalDevicePipelineRobustnessProperties propsRobustness = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_PROPERTIES};
         if (m_MinorVersion >= 4) {
-            APPEND_STRUCT(propsRobustness);
+            PNEXTCHAIN_APPEND_STRUCT(propsRobustness);
         }
 
-        APPEND_PROPS(m_MinorVersion < 3, KHR, Maintenance4, MAINTENANCE_4);
-        APPEND_PROPS(m_MinorVersion < 3, EXT, SubgroupSizeControl, SUBGROUP_SIZE_CONTROL);
+        PNEXTCHAIN_APPEND_PROPS(m_MinorVersion < 3, KHR, Maintenance4, MAINTENANCE_4);
+        PNEXTCHAIN_APPEND_PROPS(m_MinorVersion < 3, EXT, SubgroupSizeControl, SUBGROUP_SIZE_CONTROL);
 
-        APPEND_PROPS(m_MinorVersion < 4, KHR, PushDescriptor, PUSH_DESCRIPTOR);
-        APPEND_PROPS(m_MinorVersion < 4, KHR, Maintenance5, MAINTENANCE_5);
-        APPEND_PROPS(m_MinorVersion < 4, KHR, Maintenance6, MAINTENANCE_6);
+        PNEXTCHAIN_APPEND_PROPS(m_MinorVersion < 4, KHR, PushDescriptor, PUSH_DESCRIPTOR);
+        PNEXTCHAIN_APPEND_PROPS(m_MinorVersion < 4, KHR, Maintenance5, MAINTENANCE_5);
+        PNEXTCHAIN_APPEND_PROPS(m_MinorVersion < 4, KHR, Maintenance6, MAINTENANCE_6);
 
-        APPEND_PROPS(true, KHR, AccelerationStructure, ACCELERATION_STRUCTURE);
-        APPEND_PROPS(true, KHR, ComputeShaderDerivatives, COMPUTE_SHADER_DERIVATIVES);
-        APPEND_PROPS(true, KHR, FragmentShadingRate, FRAGMENT_SHADING_RATE);
-        APPEND_PROPS(true, KHR, LineRasterization, LINE_RASTERIZATION);
-        APPEND_PROPS(true, KHR, Maintenance7, MAINTENANCE_7);
-        APPEND_PROPS(true, KHR, Maintenance9, MAINTENANCE_9);
-        APPEND_PROPS(true, KHR, Maintenance10, MAINTENANCE_10);
-        APPEND_PROPS(true, KHR, RayTracingPipeline, RAY_TRACING_PIPELINE);
-        APPEND_PROPS(true, EXT, ConservativeRasterization, CONSERVATIVE_RASTERIZATION);
-        APPEND_PROPS(true, EXT, MeshShader, MESH_SHADER);
-        APPEND_PROPS(true, EXT, OpacityMicromap, OPACITY_MICROMAP);
-        APPEND_PROPS(true, EXT, SampleLocations, SAMPLE_LOCATIONS);
+        PNEXTCHAIN_APPEND_PROPS(true, KHR, AccelerationStructure, ACCELERATION_STRUCTURE);
+        PNEXTCHAIN_APPEND_PROPS(true, KHR, ComputeShaderDerivatives, COMPUTE_SHADER_DERIVATIVES);
+        PNEXTCHAIN_APPEND_PROPS(true, KHR, FragmentShadingRate, FRAGMENT_SHADING_RATE);
+        PNEXTCHAIN_APPEND_PROPS(true, KHR, LineRasterization, LINE_RASTERIZATION);
+        PNEXTCHAIN_APPEND_PROPS(true, KHR, Maintenance7, MAINTENANCE_7);
+        PNEXTCHAIN_APPEND_PROPS(true, KHR, Maintenance9, MAINTENANCE_9);
+        PNEXTCHAIN_APPEND_PROPS(true, KHR, Maintenance10, MAINTENANCE_10);
+        PNEXTCHAIN_APPEND_PROPS(true, KHR, RayTracingPipeline, RAY_TRACING_PIPELINE);
+        PNEXTCHAIN_APPEND_PROPS(true, EXT, ConservativeRasterization, CONSERVATIVE_RASTERIZATION);
+        PNEXTCHAIN_APPEND_PROPS(true, EXT, MeshShader, MESH_SHADER);
+        PNEXTCHAIN_APPEND_PROPS(true, EXT, OpacityMicromap, OPACITY_MICROMAP);
+        PNEXTCHAIN_APPEND_PROPS(true, EXT, SampleLocations, SAMPLE_LOCATIONS);
 
         m_VK.GetPhysicalDeviceProperties2(m_PhysicalDevice, &props);
 
@@ -1272,14 +1272,13 @@ void DeviceVK::FillCreateInfo(const SamplerDesc& samplerDesc, VkSamplerCreateInf
     info.minLod = samplerDesc.mipMin;
     info.maxLod = samplerDesc.mipMax;
     info.unnormalizedCoordinates = samplerDesc.unnormalizedCoordinates ? VK_TRUE : VK_FALSE;
-
-    const void** tail = &info.pNext;
+    PNEXTCHAIN_DECLARE(info.pNext);
 
     reductionModeInfo = {VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO}; // should be already set
     if (m_Desc.features.filterOpMinMax) {
         reductionModeInfo.reductionMode = GetFilterExt(samplerDesc.filters.op);
 
-        APPEND_STRUCT(reductionModeInfo);
+        PNEXTCHAIN_APPEND_STRUCT(reductionModeInfo);
     }
 
     borderColorInfo = {VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT}; // should be already set
@@ -1300,7 +1299,7 @@ void DeviceVK::FillCreateInfo(const SamplerDesc& samplerDesc, VkSamplerCreateInf
         static_assert(sizeof(VkClearColorValue) == sizeof(samplerDesc.borderColor), "Unexpected sizeof");
         memcpy(&borderColorInfo.customBorderColor, &samplerDesc.borderColor, sizeof(borderColorInfo.customBorderColor));
 
-        APPEND_STRUCT(borderColorInfo);
+        PNEXTCHAIN_APPEND_STRUCT(borderColorInfo);
     }
 }
 
@@ -1539,8 +1538,7 @@ Result DeviceVK::CreateInstance(bool enableGraphicsAPIValidation, const Vector<c
     instanceCreateInfo.ppEnabledLayerNames = layers.data();
     instanceCreateInfo.enabledExtensionCount = (uint32_t)desiredInstanceExts.size();
     instanceCreateInfo.ppEnabledExtensionNames = desiredInstanceExts.data();
-
-    const void** tail = &instanceCreateInfo.pNext;
+    PNEXTCHAIN_DECLARE(instanceCreateInfo.pNext);
 
     VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo = {VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
     messengerCreateInfo.pUserData = this;
@@ -1553,14 +1551,14 @@ Result DeviceVK::CreateInstance(bool enableGraphicsAPIValidation, const Vector<c
         | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
         | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
-    APPEND_STRUCT(messengerCreateInfo);
+    PNEXTCHAIN_APPEND_STRUCT(messengerCreateInfo);
 
     VkValidationFeaturesEXT validationFeatures = {VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT};
     validationFeatures.enabledValidationFeatureCount = GetCountOf(enabledValidationFeatures);
     validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures;
 
     if (enableGraphicsAPIValidation) {
-        APPEND_STRUCT(validationFeatures);
+        PNEXTCHAIN_APPEND_STRUCT(validationFeatures);
     }
 
     VkResult vkResult = m_VK.CreateInstance(&instanceCreateInfo, m_AllocationCallbackPtr, &m_Instance);

@@ -118,12 +118,12 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
         multisampleState.pSampleMask = ms->sampleMask != ALL ? &ms->sampleMask : nullptr;
         multisampleState.alphaToCoverageEnable = ms->alphaToCoverage;
         multisampleState.alphaToOneEnable = false;
+        PNEXTCHAIN_DECLARE(multisampleState.pNext);
 
-        const void** tail = &multisampleState.pNext;
         if (ms->sampleLocations) {
             sampleLocationsState.sampleLocationsEnable = VK_TRUE;
 
-            APPEND_STRUCT(sampleLocationsState);
+            PNEXTCHAIN_APPEND_STRUCT(sampleLocationsState);
         }
     }
 
@@ -141,20 +141,20 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     rasterizationState.depthBiasClamp = r.depthBias.clamp;
     rasterizationState.depthBiasSlopeFactor = r.depthBias.slope;
     rasterizationState.lineWidth = 1.0f;
+    PNEXTCHAIN_DECLARE(rasterizationState.pNext);
 
-    const void** tail = &rasterizationState.pNext;
     VkPipelineRasterizationConservativeStateCreateInfoEXT consetvativeRasterizationState = {VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT};
     if (r.conservativeRaster) {
         consetvativeRasterizationState.conservativeRasterizationMode = VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
         consetvativeRasterizationState.extraPrimitiveOverestimationSize = 0.0f;
 
-        APPEND_STRUCT(consetvativeRasterizationState);
+        PNEXTCHAIN_APPEND_STRUCT(consetvativeRasterizationState);
     }
 
     VkPipelineRasterizationLineStateCreateInfoKHR lineState = {VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_KHR};
     if (r.lineSmoothing) {
         lineState.lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_KHR;
-        APPEND_STRUCT(lineState);
+        PNEXTCHAIN_APPEND_STRUCT(lineState);
     }
 
     m_DepthBias = r.depthBias;
