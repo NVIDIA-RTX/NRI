@@ -150,7 +150,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.337.zip
+        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.342.zip
     )
     list(APPEND DEPS vulkan_headers)
 
@@ -165,7 +165,7 @@ if(NRI_ENABLE_VK_SUPPORT)
     list(APPEND DEPS vma)
 endif()
 
-set(NGX_VERSION "310.5.0")
+set(NGX_VERSION "310.5.3")
 if(NRI_ENABLE_NGX_SDK)
     # NVIDIA NGX SDK
     FetchContent_Declare(
