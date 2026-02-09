@@ -1184,9 +1184,13 @@ void UpscalerImpl::GetUpscalerProps(UpscalerProps& upscalerProps) const {
     upscalerProps.upscaleResolution = m_Desc.upscaleResolution;
     upscalerProps.renderResolution.w = (Dim_t)(m_Desc.upscaleResolution.w / scalingFactor + 0.5f);
     upscalerProps.renderResolution.h = (Dim_t)(m_Desc.upscaleResolution.h / scalingFactor + 0.5f);
-    upscalerProps.renderResolutionMin.w = (uint32_t)m_Desc.mode >= (uint32_t)UpscalerMode::PERFORMANCE ? upscalerProps.renderResolution.w : m_Desc.upscaleResolution.w / 2;
-    upscalerProps.renderResolutionMin.h = (uint32_t)m_Desc.mode >= (uint32_t)UpscalerMode::PERFORMANCE ? upscalerProps.renderResolution.h : m_Desc.upscaleResolution.h / 2;
     upscalerProps.jitterPhaseNum = (uint8_t)std::ceil(8.0f * scalingFactor * scalingFactor);
+
+    if (m_Desc.mode == UpscalerMode::ULTRA_QUALITY || m_Desc.mode == UpscalerMode::QUALITY || m_Desc.mode == UpscalerMode::BALANCED) {
+        upscalerProps.renderResolutionMin.w = m_Desc.upscaleResolution.w / 2;
+        upscalerProps.renderResolutionMin.h = m_Desc.upscaleResolution.h / 2;
+    } else
+        upscalerProps.renderResolutionMin = upscalerProps.renderResolution; // no DRS support because of DLSS
 }
 
 void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const DispatchUpscaleDesc& dispatchUpscaleDesc) {
