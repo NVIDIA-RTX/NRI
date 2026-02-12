@@ -11,6 +11,7 @@ Overview:
     - D3D11 spec: https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm
 
 Goals:
+ - a Graphics API, not RHI!
  - generalization and unification of D3D12 and VK
  - explicitness (providing access to low-level features of modern GAPIs)
  - quality-of-life and high-level extensions (e.g., streaming and upscaling)
@@ -37,8 +38,8 @@ Implicit:
 
 #pragma once
 
-#define NRI_VERSION 177
-#define NRI_VERSION_DATE "22 December 2025"
+#define NRI_VERSION 178
+#define NRI_VERSION_DATE "12 February 2026"
 
 // C/C++ compatible interface (auto-selection or via "NRI_FORCE_C" macro)
 #include "NRIDescs.h"

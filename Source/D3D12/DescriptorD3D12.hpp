@@ -27,6 +27,34 @@ static inline uint32_t GetPlaneIndex(Format format) { // TODO: still unclear, is
     }
 }
 
+static inline uint32_t GetComponentSwizzle(ComponentSwizzle componentSwizzle, uint32_t channelIndex) {
+    switch (componentSwizzle) {
+        case ComponentSwizzle::ZERO:
+            return D3D12_SHADER_COMPONENT_MAPPING_FORCE_VALUE_0;
+        case ComponentSwizzle::ONE:
+            return D3D12_SHADER_COMPONENT_MAPPING_FORCE_VALUE_1;
+        case ComponentSwizzle::R:
+            return D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_0;
+        case ComponentSwizzle::G:
+            return D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_1;
+        case ComponentSwizzle::B:
+            return D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_2;
+        case ComponentSwizzle::A:
+            return D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_3;
+        default:
+            return channelIndex;
+    }
+}
+
+static inline uint32_t GetComponentMapping(const ComponentMapping& componentMapping) {
+    uint32_t r = GetComponentSwizzle(componentMapping.r, 0);
+    uint32_t g = GetComponentSwizzle(componentMapping.g, 1);
+    uint32_t b = GetComponentSwizzle(componentMapping.b, 2);
+    uint32_t a = GetComponentSwizzle(componentMapping.a, 3);
+
+    return D3D12_ENCODE_SHADER_4_COMPONENT_MAPPING(r, g, b, a);
+}
+
 Result DescriptorD3D12::Create(const Texture1DViewDesc& textureViewDesc) {
     const TextureD3D12& textureD3D12 = *(TextureD3D12*)textureViewDesc.texture;
     const TextureDesc& textureDesc = textureD3D12.GetDesc();
@@ -49,7 +77,7 @@ Result DescriptorD3D12::Create(const Texture1DViewDesc& textureViewDesc) {
             D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
             desc.Format = format;
             desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
-            desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            desc.Shader4ComponentMapping = GetComponentMapping(textureViewDesc.components);
             desc.Texture1D.MostDetailedMip = textureViewDesc.mipOffset;
             desc.Texture1D.MipLevels = mipNum;
 
@@ -59,7 +87,7 @@ Result DescriptorD3D12::Create(const Texture1DViewDesc& textureViewDesc) {
             D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
             desc.Format = format;
             desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1DARRAY;
-            desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            desc.Shader4ComponentMapping = GetComponentMapping(textureViewDesc.components);
             desc.Texture1DArray.MostDetailedMip = textureViewDesc.mipOffset;
             desc.Texture1DArray.MipLevels = mipNum;
             desc.Texture1DArray.FirstArraySlice = textureViewDesc.layerOffset;
@@ -138,7 +166,7 @@ Result DescriptorD3D12::Create(const Texture2DViewDesc& textureViewDesc) {
         case Texture2DViewType::SHADER_RESOURCE: {
             D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
             desc.Format = GetShaderFormatForDepth(format);
-            desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            desc.Shader4ComponentMapping = GetComponentMapping(textureViewDesc.components);
             if (textureDesc.sampleNum > 1) {
                 desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
             } else {
@@ -153,7 +181,7 @@ Result DescriptorD3D12::Create(const Texture2DViewDesc& textureViewDesc) {
         case Texture2DViewType::SHADER_RESOURCE_ARRAY: {
             D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
             desc.Format = GetShaderFormatForDepth(format);
-            desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            desc.Shader4ComponentMapping = GetComponentMapping(textureViewDesc.components);
             if (textureDesc.sampleNum > 1) {
                 desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
                 desc.Texture2DMSArray.FirstArraySlice = textureViewDesc.layerOffset;
@@ -172,7 +200,7 @@ Result DescriptorD3D12::Create(const Texture2DViewDesc& textureViewDesc) {
         case Texture2DViewType::SHADER_RESOURCE_CUBE: {
             D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
             desc.Format = GetShaderFormatForDepth(format);
-            desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            desc.Shader4ComponentMapping = GetComponentMapping(textureViewDesc.components);
             desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
             desc.TextureCube.MostDetailedMip = textureViewDesc.mipOffset;
             desc.TextureCube.MipLevels = mipNum;
@@ -182,7 +210,7 @@ Result DescriptorD3D12::Create(const Texture2DViewDesc& textureViewDesc) {
         case Texture2DViewType::SHADER_RESOURCE_CUBE_ARRAY: {
             D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
             desc.Format = GetShaderFormatForDepth(format);
-            desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            desc.Shader4ComponentMapping = GetComponentMapping(textureViewDesc.components);
             desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
             desc.TextureCubeArray.MostDetailedMip = textureViewDesc.mipOffset;
             desc.TextureCubeArray.MipLevels = mipNum;
@@ -279,7 +307,7 @@ Result DescriptorD3D12::Create(const Texture3DViewDesc& textureViewDesc) {
             D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
             desc.Format = format;
             desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
-            desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            desc.Shader4ComponentMapping = GetComponentMapping(textureViewDesc.components);
             desc.Texture3D.MostDetailedMip = textureViewDesc.mipOffset;
             desc.Texture3D.MipLevels = mipNum;
 

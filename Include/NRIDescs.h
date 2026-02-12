@@ -117,7 +117,7 @@ NriEnum(Result, int8_t,
 );
 
 // The viewport origin is top-left (D3D native) by default, but can be changed to bottom-left (VK native)
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkViewport.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkViewport.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_viewport
 NriStruct(Viewport) {
     float x;
@@ -129,7 +129,7 @@ NriStruct(Viewport) {
     bool originBottomLeft;          // expects "features.viewportOriginBottomLeft"
 };
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkRect2D.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkRect2D.html
 NriStruct(Rect) {
     int16_t x;
     int16_t y;
@@ -175,7 +175,7 @@ NriStruct(SampleLocation) {
 #pragma region [ Formats ]
 //============================================================================================================================================================================================
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkFormat.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkFormat.html
 // https://learn.microsoft.com/en-us/windows/win32/api/dxgiformat/ne-dxgiformat-dxgi_format
 // left -> right : low -> high bits
 // Expected (but not guaranteed) "FormatSupportBits" are provided, but "GetFormatSupport" should be used for querying real HW support
@@ -297,7 +297,7 @@ NriEnum(Format, uint8_t,                // |      FormatSupportBits      |
 );
 
 // https://learn.microsoft.com/en-us/windows/win32/direct3d12/subresources#plane-slice
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkImageAspectFlagBits.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkImageAspectFlagBits.html
 NriBits(PlaneBits, uint8_t,
     ALL                             = 0,
     COLOR                           = NriBit(0),    // indicates "color" plane (same as "ALL" for color formats)
@@ -358,7 +358,7 @@ NriBits(FormatSupportBits, uint16_t,
 //   - https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#compatibility-with-legacy-d3d12_resource_states
 //   - "AccessBits::NONE" gets mapped to "COMMON" (aka "GENERAL" access), leading to potential discrepancies with VK
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPipelineStageFlagBits2.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkPipelineStageFlagBits2.html
 // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_sync
 NriBits(StageBits, uint32_t,
     // Special
@@ -428,7 +428,7 @@ NriBits(StageBits, uint32_t,
                                     | NriMember(StageBits, COLOR_ATTACHMENT)
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkAccessFlagBits2.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkAccessFlagBits2.html
 // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_access
 NriBits(AccessBits, uint32_t,
     NONE                            = 0,        // Mapped to "COMMON" (aka "GENERAL" access), if AgilitySDK is not available, leading to potential discrepancies with VK
@@ -487,7 +487,7 @@ NriBits(AccessBits, uint32_t,
 );
 
 // "Layout" is ignored if "features.enhancedBarriers" is not supported
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkImageLayout.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkImageLayout.html
 // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_layout
 NriEnum(Layout, uint8_t,            // Compatible "AccessBits":
     // Special
@@ -571,7 +571,7 @@ NriStruct(BarrierDesc) {
 #pragma region [ Resources: creation ]
 //============================================================================================================================================================================================
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkImageType.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkImageType.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_resource_dimension
 NriEnum(TextureType, uint8_t,
     TEXTURE_1D,
@@ -583,7 +583,7 @@ NriEnum(TextureType, uint8_t,
 // In most of cases "SharingMode" can be ignored. Where is it needed?
 // - VK: use "EXCLUSIVE" for attachments participating into multi-queue activities to preserve DCC (Delta Color Compression) on some HW
 // - D3D12: use "SIMULTANEOUS" to concurrently use a texture as a "SHADER_RESOURCE" (or "SHADER_RESOURCE_STORAGE") and as a "COPY_DESTINATION" for non overlapping texture regions
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkSharingMode.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkSharingMode.html
 NriEnum(SharingMode, uint8_t,
     CONCURRENT,     // VK: lazy default to avoid dealing with "queue ownership transfers", auto-optimized to "EXCLUSIVE" if all queues have the same type
     EXCLUSIVE,      // VK: may be used for attachments to preserve DCC on some HW in the cost of making a "queue ownership transfer"
@@ -593,7 +593,7 @@ NriEnum(SharingMode, uint8_t,
     SIMULTANEOUS    // D3D12: strengthened variant of "CONCURRENT", allowing simultaneous multiple readers and one writer for a texture (requires "Layout::GENERAL")
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkImageUsageFlagBits.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkImageUsageFlagBits.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_resource_flags
 NriBits(TextureUsageBits, uint8_t,                  // Min compatible access:                   Usage:
     NONE                                = 0,
@@ -605,7 +605,7 @@ NriBits(TextureUsageBits, uint8_t,                  // Min compatible access:   
     INPUT_ATTACHMENT                    = NriBit(5)     // INPUT_ATTACHMENT                         Subpass input (read on-chip tile cache)
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkBufferUsageFlagBits.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkBufferUsageFlagBits.html
 NriBits(BufferUsageBits, uint16_t,                  // Min compatible access:                   Usage:
     NONE                                = 0,
     SHADER_RESOURCE                     = NriBit(0),    // SHADER_RESOURCE                          Read-only shader resource (SRV)
@@ -681,7 +681,7 @@ NriStruct(AllocateMemoryDesc) {
 
     // https://learn.microsoft.com/en-us/windows/win32/direct3d12/residency
     // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_residency_priority
-    // https://registry.khronos.org/vulkan/specs/latest/man/html/VkMemoryPriorityAllocateInfoEXT.html
+    // https://docs.vulkan.org/refpages/latest/refpages/source/VkMemoryPriorityAllocateInfoEXT.html
     float priority; // [-1; 1]: low < 0, normal = 0, high > 0
 
     // Memory allocation goes through "AMD Virtual Memory Allocator"
@@ -758,8 +758,8 @@ NriEnum(BufferViewType, uint8_t,        // HLSL type                            
     CONSTANT                                // ConstantBuffer                           CONSTANT_BUFFER
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkFilter.html
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerMipmapMode.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkFilter.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkSamplerMipmapMode.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_filter
 NriEnum(Filter, uint8_t,
     NEAREST,
@@ -767,14 +767,14 @@ NriEnum(Filter, uint8_t,
 );
 
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_filter_reduction_type
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerReductionMode.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkSamplerReductionMode.html
 NriEnum(FilterOp, uint8_t,
     AVERAGE,    // a weighted average (sum) of values in the footprint (default)
     MIN,        // a component-wise minimum of values in the footprint with non-zero weights, requires "features.filterOpMinMax"
     MAX         // a component-wise maximum of values in the footprint with non-zero weights, requires "features.filterOpMinMax"
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerAddressMode.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkSamplerAddressMode.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_texture_address_mode
 NriEnum(AddressMode, uint8_t,
     REPEAT,
@@ -784,7 +784,7 @@ NriEnum(AddressMode, uint8_t,
     MIRROR_CLAMP_TO_EDGE
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkCompareOp.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkCompareOp.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_comparison_func
 // R - fragment depth, stencil reference or "SampleCmp" reference
 // D - depth or stencil buffer
@@ -800,6 +800,27 @@ NriEnum(CompareOp, uint8_t,
     GREATER_EQUAL               // R >= D
 );
 
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkComponentSwizzle.html
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_shader_component_mapping
+NriEnum(ComponentSwizzle, uint8_t,
+    IDENTITY,                   // format-specific default
+
+    // Requires "features.componentSwizzle"
+    ZERO,                       // 0
+    ONE,                        // 1 or 1.0
+    R,                          // .x component (red)
+    G,                          // .y component (green)
+    B,                          // .z component (blue)
+    A                           // .w component (alpha)
+);
+
+NriStruct(ComponentMapping) {
+    Nri(ComponentSwizzle) r;
+    Nri(ComponentSwizzle) g;
+    Nri(ComponentSwizzle) b;
+    Nri(ComponentSwizzle) a;
+};
+
 NriStruct(Texture1DViewDesc) {
     const NriPtr(Texture) texture;
     Nri(Texture1DViewType) viewType;
@@ -809,6 +830,7 @@ NriStruct(Texture1DViewDesc) {
     Nri(Dim_t) layerOffset;
     Nri(Dim_t) layerNum;            // can be "REMAINING"
     Nri(PlaneBits) readonlyPlanes;  // "DEPTH" and/or "STENCIL"
+    Nri(ComponentMapping) components;
 };
 
 NriStruct(Texture2DViewDesc) {
@@ -820,6 +842,7 @@ NriStruct(Texture2DViewDesc) {
     Nri(Dim_t) layerOffset;
     Nri(Dim_t) layerNum;            // can be "REMAINING"
     Nri(PlaneBits) readonlyPlanes;  // "DEPTH" and/or "STENCIL"
+    Nri(ComponentMapping) components;
 };
 
 NriStruct(Texture3DViewDesc) {
@@ -830,6 +853,7 @@ NriStruct(Texture3DViewDesc) {
     Nri(Dim_t) mipNum;              // can be "REMAINING"
     Nri(Dim_t) sliceOffset;
     Nri(Dim_t) sliceNum;            // can be "REMAINING"
+    Nri(ComponentMapping) components;
 };
 
 NriStruct(BufferViewDesc) {
@@ -850,7 +874,7 @@ NriStruct(Filters) {
     Nri(FilterOp) op;
 };
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkSamplerCreateInfo.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkSamplerCreateInfo.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_sampler_desc
 NriStruct(SamplerDesc) {
     Nri(Filters) filters;
@@ -871,7 +895,7 @@ NriStruct(SamplerDesc) {
 #pragma region [ Pipeline layout and descriptors management ]
 //============================================================================================================================================================================================
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPipelineBindPoint.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkPipelineBindPoint.html
 NriEnum(BindPoint, uint8_t,
     INHERIT, // inherit from the last "CmdSetPipelineLayout" call
     GRAPHICS,
@@ -900,7 +924,7 @@ NriBits(DescriptorSetBits, uint8_t,
     ALLOW_UPDATE_AFTER_SET                  = NriBit(0)     // allows "DescriptorRangeBits::ALLOW_UPDATE_AFTER_SET"
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkDescriptorBindingFlagBits.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkDescriptorBindingFlagBits.html
 NriBits(DescriptorRangeBits, uint8_t,
     NONE                                    = 0,
     PARTIALLY_BOUND                         = NriBit(0),    // descriptors in range may not contain valid descriptors at the time the descriptors are consumed (but referenced descriptors must be valid)
@@ -911,7 +935,7 @@ NriBits(DescriptorRangeBits, uint8_t,
     ALLOW_UPDATE_AFTER_SET                  = NriBit(3)     // descriptors in range can be updated after "CmdSetDescriptorSet" but before "QueueSubmit", also works as "DATA_VOLATILE"
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkDescriptorType.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkDescriptorType.html
 NriEnum(DescriptorType, uint8_t,
                             // Typed   HLSL reg    Compatible views
     // Sampler heap
@@ -975,7 +999,7 @@ NriStruct(RootSamplerDesc) {            // aka static (immutable) sampler
     Nri(StageBits) shaderStages;
 };
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPipelineLayoutCreateInfo.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkPipelineLayoutCreateInfo.html
 // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#root-signature
 // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#root-signature-version-11
 /*
@@ -1012,7 +1036,7 @@ NriStruct(PipelineLayoutDesc) {
 // Descriptor pool
 // https://learn.microsoft.com/en-us/windows/win32/direct3d12/descriptor-heaps
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_descriptor_heap_desc
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkDescriptorPoolCreateInfo.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkDescriptorPoolCreateInfo.html
 NriStruct(DescriptorPoolDesc) {
     // Maximum number of descriptor sets that can be allocated from this pool
     uint32_t descriptorSetMaxNum;
@@ -1104,13 +1128,13 @@ NriEnum(PrimitiveRestart, uint8_t,
     INDICES_UINT32  // index "0xFFFFFFFF" enforces primitive restart
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkVertexInputRate.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkVertexInputRate.html
 NriEnum(VertexStreamStepRate, uint8_t,
     PER_VERTEX,
     PER_INSTANCE
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPrimitiveTopology.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkPrimitiveTopology.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3dcommon/ne-d3dcommon-d3d_primitive_topology
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_primitive_topology_type
 NriEnum(Topology, uint8_t,
@@ -1173,14 +1197,14 @@ NriStruct(VertexBufferDesc) {
 #pragma region [ Graphics pipeline: rasterization ]
 //============================================================================================================================================================================================
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPolygonMode.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkPolygonMode.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_fill_mode
 NriEnum(FillMode, uint8_t,
     SOLID,
     WIREFRAME
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkCullModeFlagBits.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkCullModeFlagBits.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_cull_mode
 NriEnum(CullMode, uint8_t,
     NONE,
@@ -1202,7 +1226,7 @@ NriEnum(ShadingRate, uint8_t,
     FRAGMENT_SIZE_4X4
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkFragmentShadingRateCombinerOpKHR.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkFragmentShadingRateCombinerOpKHR.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_shading_rate_combiner
 //    "primitiveCombiner"      "attachmentCombiner"
 // A   Pipeline shading rate    Result of Op1
@@ -1276,7 +1300,7 @@ NriEnum(Multiview, uint8_t,
     VIEWPORT_BASED  // requires "features.viewportBasedMultiview"
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkLogicOp.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkLogicOp.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_logic_op
 // S - source color 0
 // D - destination color
@@ -1299,7 +1323,7 @@ NriEnum(LogicOp, uint8_t,
     SET                         // 1
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkStencilOp.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkStencilOp.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_stencil_op
 // R - reference, set by "CmdSetStencilReference"
 // D - stencil buffer
@@ -1314,7 +1338,7 @@ NriEnum(StencilOp, uint8_t,
     DECREMENT_AND_WRAP          // D--
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkBlendFactor.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkBlendFactor.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_blend
 // S0 - source color 0
 // S1 - source color 1
@@ -1342,7 +1366,7 @@ NriEnum(BlendFactor, uint8_t,   // RGB                               ALPHA
     ONE_MINUS_SRC1_ALPHA        // 1 - S1.a                          1 - S1.a
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkBlendOp.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkBlendOp.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_blend_op
 // S - source color
 // D - destination color
@@ -1356,7 +1380,7 @@ NriEnum(BlendOp, uint8_t,
     MAX                         // max(S, D)
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkColorComponentFlagBits.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkColorComponentFlagBits.html
 NriBits(ColorWriteBits, uint8_t,
     NONE    = 0,
     R       = NriBit(0),
@@ -1372,7 +1396,7 @@ NriBits(ColorWriteBits, uint8_t,
             | NriMember(ColorWriteBits, A)
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkStencilOpState.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkStencilOpState.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_depth_stencil_desc
 NriStruct(StencilDesc) {
     Nri(CompareOp) compareOp; // "compareOp != NONE", expects "CmdSetStencilReference"
@@ -1383,7 +1407,7 @@ NriStruct(StencilDesc) {
     uint8_t compareMask;
 };
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPipelineDepthStencilStateCreateInfo.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkPipelineDepthStencilStateCreateInfo.html
 NriStruct(DepthAttachmentDesc) {
     Nri(CompareOp) compareOp;
     bool write;
@@ -1395,7 +1419,7 @@ NriStruct(StencilAttachmentDesc) {
     Nri(StencilDesc) back; // requires "features.independentFrontAndBackStencilReferenceAndMasks" for "back.writeMask"
 };
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPipelineColorBlendAttachmentState.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkPipelineColorBlendAttachmentState.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_render_target_blend_desc
 NriStruct(BlendDesc) {
     Nri(BlendFactor) srcFactor;
@@ -1518,7 +1542,7 @@ NriStruct(RenderingDesc) {
 //============================================================================================================================================================================================
 
 // https://microsoft.github.io/DirectX-Specs/d3d/CountersAndQueries.html
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkQueryType.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkQueryType.html
 NriEnum(QueryType, uint8_t,
     TIMESTAMP,                              // uint64_t
     TIMESTAMP_COPY_QUEUE,                   // uint64_t (requires "features.copyQueueTimestamp"), same as "TIMESTAMP" but for a "COPY" queue
@@ -1535,7 +1559,7 @@ NriStruct(QueryPoolDesc) {
 };
 
 // Data layout for QueryType::PIPELINE_STATISTICS
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkQueryPipelineStatisticFlagBits.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkQueryPipelineStatisticFlagBits.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_query_data_pipeline_statistics
 NriStruct(PipelineStatisticsDesc) {
     // Common part
@@ -1692,14 +1716,14 @@ NriEnum(Vendor, uint8_t,
     INTEL
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkPhysicalDeviceType.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkPhysicalDeviceType.html
 NriEnum(Architecture, uint8_t,
     UNKNOWN,    // CPU device, virtual GPU or other
     INTEGRATED, // UMA
     DESCRETE    // yes, please!
 );
 
-// https://registry.khronos.org/vulkan/specs/latest/man/html/VkQueueFlagBits.html
+// https://docs.vulkan.org/refpages/latest/refpages/source/VkQueueFlagBits.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_command_list_type
 NriEnum(QueueType, uint8_t,
     GRAPHICS,
@@ -1981,6 +2005,7 @@ NriStruct(DeviceDesc) {
         uint32_t lowLatency                                      : 1; // NRILowLatency
 
         // Smaller
+        uint32_t componentSwizzle                                : 1; // see "ComponentSwizzle" (unsupported only in D3D11)
         uint32_t independentFrontAndBackStencilReferenceAndMasks : 1; // see "StencilAttachmentDesc::back"
         uint32_t filterOpMinMax                                  : 1; // see "FilterOp"
         uint32_t logicOp                                         : 1; // see "LogicOp"

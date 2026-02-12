@@ -66,6 +66,10 @@ DescriptorVK::~DescriptorVK() {
     }
 }
 
+static inline VkComponentSwizzle GetComponentSwizzle(ComponentSwizzle componentSwizzle) {
+    return (VkComponentSwizzle)componentSwizzle;
+}
+
 Result DescriptorVK::CreateTextureView(const Texture1DViewDesc& textureViewDesc) {
     const TextureVK& textureVK = *(const TextureVK*)textureViewDesc.texture;
     const TextureDesc& textureDesc = textureVK.GetDesc();
@@ -85,10 +89,14 @@ Result DescriptorVK::CreateTextureView(const Texture1DViewDesc& textureViewDesc)
 
     VkImageViewCreateInfo createInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
     createInfo.pNext = &usageInfo;
+    createInfo.image = textureVK.GetHandle();
     createInfo.viewType = GetImageViewType(textureViewDesc.viewType, subresourceRange.layerCount);
     createInfo.format = GetVkFormat(textureViewDesc.format);
     createInfo.subresourceRange = subresourceRange;
-    createInfo.image = textureVK.GetHandle();
+    createInfo.components.r = GetComponentSwizzle(textureViewDesc.components.r);
+    createInfo.components.g = GetComponentSwizzle(textureViewDesc.components.g);
+    createInfo.components.b = GetComponentSwizzle(textureViewDesc.components.b);
+    createInfo.components.a = GetComponentSwizzle(textureViewDesc.components.a);
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateImageView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_View.image);
@@ -137,10 +145,14 @@ Result DescriptorVK::CreateTextureView(const Texture2DViewDesc& textureViewDesc)
 
     VkImageViewCreateInfo createInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
     createInfo.pNext = &usageInfo;
+    createInfo.image = textureVK.GetHandle();
     createInfo.viewType = GetImageViewType(textureViewDesc.viewType, subresourceRange.layerCount);
     createInfo.format = GetVkFormat(textureViewDesc.format);
     createInfo.subresourceRange = subresourceRange;
-    createInfo.image = textureVK.GetHandle();
+    createInfo.components.r = GetComponentSwizzle(textureViewDesc.components.r);
+    createInfo.components.g = GetComponentSwizzle(textureViewDesc.components.g);
+    createInfo.components.b = GetComponentSwizzle(textureViewDesc.components.b);
+    createInfo.components.a = GetComponentSwizzle(textureViewDesc.components.a);
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateImageView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_View.image);
@@ -196,10 +208,14 @@ Result DescriptorVK::CreateTextureView(const Texture3DViewDesc& textureViewDesc)
 
     VkImageViewCreateInfo createInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
     createInfo.pNext = &usageInfo;
+    createInfo.image = textureVK.GetHandle();
     createInfo.viewType = GetImageViewType(textureViewDesc.viewType, subresourceRange.layerCount);
     createInfo.format = GetVkFormat(textureViewDesc.format);
     createInfo.subresourceRange = subresourceRange;
-    createInfo.image = textureVK.GetHandle();
+    createInfo.components.r = GetComponentSwizzle(textureViewDesc.components.r);
+    createInfo.components.g = GetComponentSwizzle(textureViewDesc.components.g);
+    createInfo.components.b = GetComponentSwizzle(textureViewDesc.components.b);
+    createInfo.components.a = GetComponentSwizzle(textureViewDesc.components.a);
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateImageView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_View.image);
