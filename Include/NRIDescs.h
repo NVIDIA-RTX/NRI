@@ -815,6 +815,7 @@ NriEnum(ComponentSwizzle, uint8_t,
 );
 
 NriStruct(ComponentMapping) {
+    // Only for "SHADER_RESOURCE" (not "STORAGE")
     Nri(ComponentSwizzle) r;
     Nri(ComponentSwizzle) g;
     Nri(ComponentSwizzle) b;
