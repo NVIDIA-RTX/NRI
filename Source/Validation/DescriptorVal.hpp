@@ -12,10 +12,18 @@ DescriptorVal::DescriptorVal(DeviceVal& device, Descriptor* descriptor, const Bu
             m_Type = DescriptorTypeExt::CONSTANT_BUFFER;
             break;
         case BufferViewType::SHADER_RESOURCE:
-            m_Type = bufferViewDesc.format == Format::UNKNOWN ? DescriptorTypeExt::STRUCTURED_BUFFER : DescriptorTypeExt::BUFFER;
+        case BufferViewType::SHADER_RESOURCE_RAW:
+            m_Type = DescriptorTypeExt::BUFFER;
+            break;
+        case BufferViewType::SHADER_RESOURCE_STRUCTURED:
+            m_Type = DescriptorTypeExt::STRUCTURED_BUFFER;
             break;
         case BufferViewType::SHADER_RESOURCE_STORAGE:
-            m_Type = bufferViewDesc.format == Format::UNKNOWN ? DescriptorTypeExt::STORAGE_STRUCTURED_BUFFER : DescriptorTypeExt::STORAGE_BUFFER;
+        case BufferViewType::SHADER_RESOURCE_STORAGE_RAW:
+            m_Type = DescriptorTypeExt::STORAGE_BUFFER;
+            break;
+        case BufferViewType::SHADER_RESOURCE_STORAGE_STRUCTURED:
+            m_Type = DescriptorTypeExt::STORAGE_STRUCTURED_BUFFER;
             break;
         default:
             NRI_CHECK(false, "unexpected 'bufferViewDesc.viewType'");

@@ -636,13 +636,13 @@ NriStruct(TextureDesc) {
     NriOptional Nri(ClearValue) optimizedClearValue;    // D3D12: not needed on desktop, since any HW can track many clear values
 };
 
-// "structureStride" values:
-// 0  - allows only "typed" views
-// 4  - allows "typed", "byte address (raw)" and "structured" views
-//      D3D11: allows to create multiple "structured" views for a single resource, disobeying the spec)
-// >4 - allows only "structured" views
-//      D3D11: locks this buffer to a single "structured" layout
-// VK: buffers always created with sharing mode "CONCURRENT" to match D3D12 spec
+// - VK: buffers are always created with sharing mode "CONCURRENT" to match D3D12 spec
+// - "structureStride" values:
+//   - 0  - allows only "typed" views
+//   - 4  - allows "typed", "byte address (raw)" and "structured" views
+//          D3D11: allows to create multiple "structured" views for a single resource, disobeying the spec
+//   - >4 - allows only "structured" views
+//          D3D11: locks this buffer to a single "structured" layout
 NriStruct(BufferDesc) {
     uint64_t size;
     uint32_t structureStride;
@@ -753,8 +753,12 @@ NriEnum(Texture3DViewType, uint8_t,     // HLSL type                            
 );
 
 NriEnum(BufferViewType, uint8_t,        // HLSL type                                Compatible "DescriptorType"
-    SHADER_RESOURCE,                        // (Structured/ByteAddress)Buffer           BUFFER, STRUCTURED_BUFFER
-    SHADER_RESOURCE_STORAGE,                // RW(Structured/ByteAddress)Buffer         STORAGE_BUFFER, STORAGE_STRUCTURED_BUFFER
+    SHADER_RESOURCE,                        // Buffer                                   BUFFER
+    SHADER_RESOURCE_RAW,                    // ByteAddressBuffer                        BUFFER
+    SHADER_RESOURCE_STRUCTURED,             // StructuredBuffer                         STRUCTURED_BUFFER
+    SHADER_RESOURCE_STORAGE,                // RWBuffer                                 STORAGE_BUFFER
+    SHADER_RESOURCE_STORAGE_RAW,            // RWByteAddressBuffer                      STORAGE_BUFFER
+    SHADER_RESOURCE_STORAGE_STRUCTURED,     // RWStructuredBuffer                       STORAGE_STRUCTURED_BUFFER
     CONSTANT                                // ConstantBuffer                           CONSTANT_BUFFER
 );
 
@@ -860,10 +864,10 @@ NriStruct(Texture3DViewDesc) {
 NriStruct(BufferViewDesc) {
     const NriPtr(Buffer) buffer;
     Nri(BufferViewType) viewType;
-    Nri(Format) format;
     uint64_t offset;                        // expects "memoryAlignment.bufferShaderResourceOffset" for shader resources
     uint64_t size;                          // can be "WHOLE_SIZE"
-    NriOptional uint32_t structureStride;   // = "BufferDesc::structureStride", if not provided and "format" is "UNKNOWN"
+    NriOptional Nri(Format) format;         // for typed views, i.e. "SHADER_RESOURCE" and "SHADER_RESOURCE_STORAGE"
+    NriOptional uint32_t structureStride;   // for structured views, i.e. "SHADER_RESOURCE_STRUCTURED" and "SHADER_RESOURCE_STORAGE_STRUCTURED" (= "BufferDesc::structureStride", if not provided)
 };
 
 NriStruct(AddressModes) {
@@ -954,11 +958,11 @@ NriEnum(DescriptorType, uint8_t,
     STORAGE_TEXTURE,            // +        u           Texture(1D/2D/3D)ViewType: SHADER_RESOURCE_STORAGE, SHADER_RESOURCE_STORAGE_ARRAY
     INPUT_ATTACHMENT,           // +        -           Texture2DViewType: INPUT_ATTACHMENT
 
-    BUFFER,                     // +        t           BufferViewType: SHADER_RESOURCE
-    STORAGE_BUFFER,             // +        u           BufferViewType: SHADER_RESOURCE_STORAGE
+    BUFFER,                     // +        t           BufferViewType: SHADER_RESOURCE, SHADER_RESOURCE_RAW
+    STORAGE_BUFFER,             // +        u           BufferViewType: SHADER_RESOURCE_STORAGE, SHADER_RESOURCE_STORAGE_RAW
     CONSTANT_BUFFER,            // -        b           BufferViewType: CONSTANT_BUFFER
-    STRUCTURED_BUFFER,          // -        t           BufferViewType: SHADER_RESOURCE (structureStride != 0)
-    STORAGE_STRUCTURED_BUFFER,  // -        u           BufferViewType: SHADER_RESOURCE_STORAGE (structureStride != 0)
+    STRUCTURED_BUFFER,          // -        t           BufferViewType: SHADER_RESOURCE_STRUCTURED
+    STORAGE_STRUCTURED_BUFFER,  // -        u           BufferViewType: SHADER_RESOURCE_STORAGE_STRUCTURED
 
     ACCELERATION_STRUCTURE      // -        t           acceleration structure, requires "features.rayTracing"
 );

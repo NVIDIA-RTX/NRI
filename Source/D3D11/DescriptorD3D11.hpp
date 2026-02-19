@@ -302,20 +302,27 @@ Result DescriptorD3D11::Create(const BufferViewDesc& bufferViewDesc) {
     const BufferDesc& bufferDesc = bufferD3D11.GetDesc();
     uint64_t size = bufferViewDesc.size == WHOLE_SIZE ? bufferDesc.size : bufferViewDesc.size;
 
-    // D3D11 requires "structureStride" passed during creation, but we violate the spec and treat "structured" buffers as "raw" to allow multiple views creation for a single buffer
+    Format patchedFormat = Format::UNKNOWN;
     uint32_t structureStride = 0;
-    if (bufferViewDesc.format == Format::UNKNOWN)
-        structureStride = bufferDesc.structureStride == 4 ? 4 : bufferViewDesc.structureStride;
-    bool isRaw = structureStride == 4;
+    bool isRaw = false;
 
-    Format patchedFormat = bufferViewDesc.format;
     if (bufferViewDesc.viewType == BufferViewType::CONSTANT) {
         patchedFormat = Format::RGBA32_SFLOAT;
 
         if (bufferViewDesc.offset != 0 && m_Device.GetVersion() == 0)
             NRI_REPORT_ERROR(&m_Device, "Constant buffers with non-zero offsets require 11.1+ feature level!");
-    } else if (structureStride)
-        patchedFormat = isRaw ? Format::R32_UINT : Format::UNKNOWN;
+    } else if (bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_STRUCTURED || bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_STORAGE_STRUCTURED) {
+        if (bufferViewDesc.structureStride != bufferDesc.structureStride) {
+            // D3D11 requires "structureStride" passed during creation, but we violate the spec and treat "structured" buffers as "raw" to allow multiple views creation for a single buffer // TODO: this may not work on some HW!
+            patchedFormat = Format::R32_UINT;
+            isRaw = true;
+        } else
+            structureStride = bufferDesc.structureStride;
+    } else if (bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_RAW || bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_STORAGE_RAW) {
+        patchedFormat = Format::R32_UINT;
+        isRaw = true;
+    } else
+        patchedFormat = bufferViewDesc.format;
 
     const DxgiFormat& format = GetDxgiFormat(patchedFormat);
     const FormatProps& formatProps = GetFormatProps(patchedFormat);
@@ -329,7 +336,9 @@ Result DescriptorD3D11::Create(const BufferViewDesc& bufferViewDesc) {
             m_Descriptor = bufferD3D11;
             hr = S_OK;
         } break;
-        case BufferViewType::SHADER_RESOURCE: {
+        case BufferViewType::SHADER_RESOURCE:
+        case BufferViewType::SHADER_RESOURCE_RAW:
+        case BufferViewType::SHADER_RESOURCE_STRUCTURED: {
             D3D11_SHADER_RESOURCE_VIEW_DESC desc = {};
             desc.Format = isRaw ? format.typeless : format.typed;
             desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
@@ -339,7 +348,9 @@ Result DescriptorD3D11::Create(const BufferViewDesc& bufferViewDesc) {
 
             hr = m_Device->CreateShaderResourceView(bufferD3D11, &desc, (ID3D11ShaderResourceView**)&m_Descriptor);
         } break;
-        case BufferViewType::SHADER_RESOURCE_STORAGE: {
+        case BufferViewType::SHADER_RESOURCE_STORAGE:
+        case BufferViewType::SHADER_RESOURCE_STORAGE_RAW:
+        case BufferViewType::SHADER_RESOURCE_STORAGE_STRUCTURED: {
             D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
             desc.Format = isRaw ? format.typeless : format.typed;
             desc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;

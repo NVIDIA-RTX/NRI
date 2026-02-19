@@ -344,12 +344,20 @@ Result DescriptorD3D12::Create(const BufferViewDesc& bufferViewDesc) {
     const BufferDesc& bufferDesc = bufferD3D12.GetDesc();
     uint64_t size = bufferViewDesc.size == WHOLE_SIZE ? bufferDesc.size : bufferViewDesc.size;
 
+    Format patchedFormat = Format::UNKNOWN;
     uint32_t structureStride = 0;
-    if (bufferViewDesc.format == Format::UNKNOWN)
-        structureStride = bufferViewDesc.structureStride ? bufferViewDesc.structureStride : bufferDesc.structureStride;
-    bool isRaw = structureStride == 4;
+    bool isRaw = false;
 
-    Format patchedFormat = isRaw ? Format::R32_UINT : bufferViewDesc.format;
+    if (bufferViewDesc.viewType == BufferViewType::CONSTANT)
+        patchedFormat = Format::RGBA32_SFLOAT;
+    else if (bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_STRUCTURED || bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_STORAGE_STRUCTURED)
+        structureStride = bufferViewDesc.structureStride ? bufferViewDesc.structureStride : bufferDesc.structureStride;
+    else if (bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_RAW || bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_STORAGE_RAW) {
+        patchedFormat = Format::R32_UINT;
+        isRaw = true;
+    } else
+        patchedFormat = bufferViewDesc.format;
+
     const DxgiFormat& format = GetDxgiFormat(patchedFormat);
     const FormatProps& formatProps = GetFormatProps(patchedFormat);
     uint32_t elementSize = structureStride ? structureStride : formatProps.stride;
@@ -369,7 +377,9 @@ Result DescriptorD3D12::Create(const BufferViewDesc& bufferViewDesc) {
 
             return CreateConstantBufferView(desc);
         }
-        case BufferViewType::SHADER_RESOURCE: {
+        case BufferViewType::SHADER_RESOURCE:
+        case BufferViewType::SHADER_RESOURCE_RAW:
+        case BufferViewType::SHADER_RESOURCE_STRUCTURED: {
             D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
             desc.Format = isRaw ? format.typeless : format.typed;
             desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
@@ -381,7 +391,9 @@ Result DescriptorD3D12::Create(const BufferViewDesc& bufferViewDesc) {
 
             return CreateShaderResourceView(bufferD3D12, desc);
         }
-        case BufferViewType::SHADER_RESOURCE_STORAGE: {
+        case BufferViewType::SHADER_RESOURCE_STORAGE:
+        case BufferViewType::SHADER_RESOURCE_STORAGE_RAW:
+        case BufferViewType::SHADER_RESOURCE_STORAGE_STRUCTURED: {
             D3D12_UNORDERED_ACCESS_VIEW_DESC desc = {};
             desc.Format = isRaw ? format.typeless : format.typed;
             desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
@@ -499,10 +511,9 @@ Result DescriptorD3D12::CreateShaderResourceView(ID3D12Resource* resource, const
 
     if (desc.ViewDimension == D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE)
         m_Type = DescriptorType::ACCELERATION_STRUCTURE;
-    else if (desc.ViewDimension == D3D12_SRV_DIMENSION_BUFFER) {
-        bool isStructured = desc.Buffer.StructureByteStride != 0 || (desc.Buffer.Flags & D3D12_BUFFER_SRV_FLAG_RAW) != 0;
-        m_Type = isStructured ? DescriptorType::STRUCTURED_BUFFER : DescriptorType::BUFFER;
-    } else
+    else if (desc.ViewDimension == D3D12_SRV_DIMENSION_BUFFER)
+        m_Type = (desc.Buffer.StructureByteStride != 0) ? DescriptorType::STRUCTURED_BUFFER : DescriptorType::BUFFER;
+    else
         m_Type = DescriptorType::TEXTURE;
 
     return result;
@@ -516,10 +527,9 @@ Result DescriptorD3D12::CreateUnorderedAccessView(ID3D12Resource* resource, cons
     m_DescriptorHandleCPU = m_Device.GetDescriptorHandleCPU(m_Handle);
     m_Device->CreateUnorderedAccessView(resource, nullptr, &desc, {m_DescriptorHandleCPU});
 
-    if (desc.ViewDimension == D3D12_UAV_DIMENSION_BUFFER) {
-        bool isStructured = desc.Buffer.StructureByteStride != 0 || (desc.Buffer.Flags & D3D12_BUFFER_UAV_FLAG_RAW) != 0;
-        m_Type = isStructured ? DescriptorType::STORAGE_STRUCTURED_BUFFER : DescriptorType::STORAGE_BUFFER;
-    } else
+    if (desc.ViewDimension == D3D12_UAV_DIMENSION_BUFFER)
+        m_Type = (desc.Buffer.StructureByteStride != 0) ? DescriptorType::STORAGE_STRUCTURED_BUFFER : DescriptorType::STORAGE_BUFFER;
+    else
         m_Type = DescriptorType::STORAGE_TEXTURE;
 
     return result;

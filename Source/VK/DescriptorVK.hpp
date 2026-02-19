@@ -239,21 +239,37 @@ Result DescriptorVK::Create(const BufferViewDesc& bufferViewDesc) {
     const BufferVK& bufferVK = *(const BufferVK*)bufferViewDesc.buffer;
     const BufferDesc& bufferDesc = bufferVK.GetDesc();
 
-    if (bufferViewDesc.viewType == BufferViewType::CONSTANT)
-        m_Type = DescriptorType::CONSTANT_BUFFER;
-    else if (bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE)
-        m_Type = bufferViewDesc.format == Format::UNKNOWN ? DescriptorType::STRUCTURED_BUFFER : DescriptorType::BUFFER;
-    else if (bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_STORAGE)
-        m_Type = bufferViewDesc.format == Format::UNKNOWN ? DescriptorType::STORAGE_STRUCTURED_BUFFER : DescriptorType::STORAGE_BUFFER;
+    switch (bufferViewDesc.viewType) {
+        case BufferViewType::SHADER_RESOURCE:
+        case BufferViewType::SHADER_RESOURCE_RAW:
+            m_Type = DescriptorType::BUFFER;
+            break;
+        case BufferViewType::SHADER_RESOURCE_STRUCTURED:
+            m_Type = DescriptorType::STRUCTURED_BUFFER;
+            break;
+        case BufferViewType::SHADER_RESOURCE_STORAGE:
+        case BufferViewType::SHADER_RESOURCE_STORAGE_RAW:
+            m_Type = DescriptorType::STORAGE_BUFFER;
+            break;
+        case BufferViewType::SHADER_RESOURCE_STORAGE_STRUCTURED:
+            m_Type = DescriptorType::STORAGE_STRUCTURED_BUFFER;
+            break;
+        case BufferViewType::CONSTANT:
+            m_Type = DescriptorType::CONSTANT_BUFFER;
+            break;
+    }
 
-    m_Format = bufferViewDesc.format;
+    if (bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE || bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_STORAGE)
+        m_Format = bufferViewDesc.format;
+    else
+        m_Format = Format::UNKNOWN;
 
     m_ViewDesc.buffer = {};
     m_ViewDesc.buffer.buffer = bufferVK.GetHandle();
     m_ViewDesc.buffer.offset = bufferViewDesc.offset;
     m_ViewDesc.buffer.range = (bufferViewDesc.size == WHOLE_SIZE) ? bufferDesc.size : bufferViewDesc.size;
 
-    if (bufferViewDesc.format != Format::UNKNOWN) {
+    if (m_Format != Format::UNKNOWN) {
         VkBufferViewCreateInfo createInfo = {VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO};
         createInfo.flags = (VkBufferViewCreateFlags)0;
         createInfo.buffer = m_ViewDesc.buffer.buffer;
