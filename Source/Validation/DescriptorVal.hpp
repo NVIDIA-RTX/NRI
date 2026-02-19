@@ -12,16 +12,16 @@ DescriptorVal::DescriptorVal(DeviceVal& device, Descriptor* descriptor, const Bu
             m_Type = DescriptorTypeExt::CONSTANT_BUFFER;
             break;
         case BufferViewType::SHADER_RESOURCE:
-        case BufferViewType::SHADER_RESOURCE_RAW:
             m_Type = DescriptorTypeExt::BUFFER;
             break;
+        case BufferViewType::SHADER_RESOURCE_RAW:
         case BufferViewType::SHADER_RESOURCE_STRUCTURED:
             m_Type = DescriptorTypeExt::STRUCTURED_BUFFER;
             break;
         case BufferViewType::SHADER_RESOURCE_STORAGE:
-        case BufferViewType::SHADER_RESOURCE_STORAGE_RAW:
             m_Type = DescriptorTypeExt::STORAGE_BUFFER;
             break;
+        case BufferViewType::SHADER_RESOURCE_STORAGE_RAW:
         case BufferViewType::SHADER_RESOURCE_STORAGE_STRUCTURED:
             m_Type = DescriptorTypeExt::STORAGE_STRUCTURED_BUFFER;
             break;

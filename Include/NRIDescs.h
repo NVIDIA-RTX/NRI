@@ -754,10 +754,10 @@ NriEnum(Texture3DViewType, uint8_t,     // HLSL type                            
 
 NriEnum(BufferViewType, uint8_t,        // HLSL type                                Compatible "DescriptorType"
     SHADER_RESOURCE,                        // Buffer                                   BUFFER
-    SHADER_RESOURCE_RAW,                    // ByteAddressBuffer                        BUFFER
+    SHADER_RESOURCE_RAW,                    // ByteAddressBuffer                        STRUCTURED_BUFFER
     SHADER_RESOURCE_STRUCTURED,             // StructuredBuffer                         STRUCTURED_BUFFER
     SHADER_RESOURCE_STORAGE,                // RWBuffer                                 STORAGE_BUFFER
-    SHADER_RESOURCE_STORAGE_RAW,            // RWByteAddressBuffer                      STORAGE_BUFFER
+    SHADER_RESOURCE_STORAGE_RAW,            // RWByteAddressBuffer                      STORAGE_STRUCTURED_BUFFER
     SHADER_RESOURCE_STORAGE_STRUCTURED,     // RWStructuredBuffer                       STORAGE_STRUCTURED_BUFFER
     CONSTANT                                // ConstantBuffer                           CONSTANT_BUFFER
 );
@@ -958,11 +958,11 @@ NriEnum(DescriptorType, uint8_t,
     STORAGE_TEXTURE,            // +        u           Texture(1D/2D/3D)ViewType: SHADER_RESOURCE_STORAGE, SHADER_RESOURCE_STORAGE_ARRAY
     INPUT_ATTACHMENT,           // +        -           Texture2DViewType: INPUT_ATTACHMENT
 
-    BUFFER,                     // +        t           BufferViewType: SHADER_RESOURCE, SHADER_RESOURCE_RAW
-    STORAGE_BUFFER,             // +        u           BufferViewType: SHADER_RESOURCE_STORAGE, SHADER_RESOURCE_STORAGE_RAW
+    BUFFER,                     // +        t           BufferViewType: SHADER_RESOURCE
+    STORAGE_BUFFER,             // +        u           BufferViewType: SHADER_RESOURCE_STORAGE
     CONSTANT_BUFFER,            // -        b           BufferViewType: CONSTANT_BUFFER
-    STRUCTURED_BUFFER,          // -        t           BufferViewType: SHADER_RESOURCE_STRUCTURED
-    STORAGE_STRUCTURED_BUFFER,  // -        u           BufferViewType: SHADER_RESOURCE_STORAGE_STRUCTURED
+    STRUCTURED_BUFFER,          // -        t           BufferViewType: SHADER_RESOURCE_STRUCTURED, SHADER_RESOURCE_RAW
+    STORAGE_STRUCTURED_BUFFER,  // -        u           BufferViewType: SHADER_RESOURCE_STORAGE_STRUCTURED, SHADER_RESOURCE_STORAGE_RAW
 
     ACCELERATION_STRUCTURE      // -        t           acceleration structure, requires "features.rayTracing"
 );

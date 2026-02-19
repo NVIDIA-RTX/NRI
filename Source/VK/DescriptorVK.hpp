@@ -241,16 +241,16 @@ Result DescriptorVK::Create(const BufferViewDesc& bufferViewDesc) {
 
     switch (bufferViewDesc.viewType) {
         case BufferViewType::SHADER_RESOURCE:
-        case BufferViewType::SHADER_RESOURCE_RAW:
             m_Type = DescriptorType::BUFFER;
             break;
+        case BufferViewType::SHADER_RESOURCE_RAW:
         case BufferViewType::SHADER_RESOURCE_STRUCTURED:
             m_Type = DescriptorType::STRUCTURED_BUFFER;
             break;
         case BufferViewType::SHADER_RESOURCE_STORAGE:
-        case BufferViewType::SHADER_RESOURCE_STORAGE_RAW:
             m_Type = DescriptorType::STORAGE_BUFFER;
             break;
+        case BufferViewType::SHADER_RESOURCE_STORAGE_RAW:
         case BufferViewType::SHADER_RESOURCE_STORAGE_STRUCTURED:
             m_Type = DescriptorType::STORAGE_STRUCTURED_BUFFER;
             break;
