@@ -511,9 +511,12 @@ Result DescriptorD3D12::CreateShaderResourceView(ID3D12Resource* resource, const
 
     if (desc.ViewDimension == D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE)
         m_Type = DescriptorType::ACCELERATION_STRUCTURE;
-    else if (desc.ViewDimension == D3D12_SRV_DIMENSION_BUFFER)
-        m_Type = (desc.Buffer.StructureByteStride != 0) ? DescriptorType::STRUCTURED_BUFFER : DescriptorType::BUFFER;
-    else
+    else if (desc.ViewDimension == D3D12_SRV_DIMENSION_BUFFER) {
+        bool isStructured = desc.Buffer.StructureByteStride != 0;
+        bool isByteAddress = (desc.Buffer.Flags & D3D12_BUFFER_SRV_FLAG_RAW) != 0;
+
+        m_Type = (isStructured || isByteAddress) ? DescriptorType::STRUCTURED_BUFFER : DescriptorType::BUFFER;
+    } else
         m_Type = DescriptorType::TEXTURE;
 
     return result;
@@ -527,9 +530,12 @@ Result DescriptorD3D12::CreateUnorderedAccessView(ID3D12Resource* resource, cons
     m_DescriptorHandleCPU = m_Device.GetDescriptorHandleCPU(m_Handle);
     m_Device->CreateUnorderedAccessView(resource, nullptr, &desc, {m_DescriptorHandleCPU});
 
-    if (desc.ViewDimension == D3D12_UAV_DIMENSION_BUFFER)
-        m_Type = (desc.Buffer.StructureByteStride != 0) ? DescriptorType::STORAGE_STRUCTURED_BUFFER : DescriptorType::STORAGE_BUFFER;
-    else
+    if (desc.ViewDimension == D3D12_UAV_DIMENSION_BUFFER) {
+        bool isStructured = desc.Buffer.StructureByteStride != 0;
+        bool isByteAddress = (desc.Buffer.Flags & D3D12_BUFFER_UAV_FLAG_RAW) != 0;
+
+        m_Type = (isStructured || isByteAddress) ? DescriptorType::STORAGE_STRUCTURED_BUFFER : DescriptorType::STORAGE_BUFFER;
+    } else
         m_Type = DescriptorType::STORAGE_TEXTURE;
 
     return result;
