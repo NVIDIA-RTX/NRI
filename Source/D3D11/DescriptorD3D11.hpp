@@ -318,7 +318,7 @@ Result DescriptorD3D11::Create(const BufferViewDesc& bufferViewDesc) {
             isRaw = true;
         } else
             structureStride = bufferDesc.structureStride;
-    } else if (bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_RAW || bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_STORAGE_RAW) {
+    } else if (bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_BYTE_ADDRESS || bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_STORAGE_BYTE_ADDRESS) {
         patchedFormat = Format::R32_UINT;
         isRaw = true;
     } else
@@ -337,8 +337,8 @@ Result DescriptorD3D11::Create(const BufferViewDesc& bufferViewDesc) {
             hr = S_OK;
         } break;
         case BufferViewType::SHADER_RESOURCE:
-        case BufferViewType::SHADER_RESOURCE_RAW:
-        case BufferViewType::SHADER_RESOURCE_STRUCTURED: {
+        case BufferViewType::SHADER_RESOURCE_STRUCTURED:
+        case BufferViewType::SHADER_RESOURCE_BYTE_ADDRESS: {
             D3D11_SHADER_RESOURCE_VIEW_DESC desc = {};
             desc.Format = isRaw ? format.typeless : format.typed;
             desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
@@ -349,8 +349,8 @@ Result DescriptorD3D11::Create(const BufferViewDesc& bufferViewDesc) {
             hr = m_Device->CreateShaderResourceView(bufferD3D11, &desc, (ID3D11ShaderResourceView**)&m_Descriptor);
         } break;
         case BufferViewType::SHADER_RESOURCE_STORAGE:
-        case BufferViewType::SHADER_RESOURCE_STORAGE_RAW:
-        case BufferViewType::SHADER_RESOURCE_STORAGE_STRUCTURED: {
+        case BufferViewType::SHADER_RESOURCE_STORAGE_STRUCTURED:
+        case BufferViewType::SHADER_RESOURCE_STORAGE_BYTE_ADDRESS: {
             D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
             desc.Format = isRaw ? format.typeless : format.typed;
             desc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;

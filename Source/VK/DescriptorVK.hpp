@@ -243,15 +243,15 @@ Result DescriptorVK::Create(const BufferViewDesc& bufferViewDesc) {
         case BufferViewType::SHADER_RESOURCE:
             m_Type = DescriptorType::BUFFER;
             break;
-        case BufferViewType::SHADER_RESOURCE_RAW:
         case BufferViewType::SHADER_RESOURCE_STRUCTURED:
+        case BufferViewType::SHADER_RESOURCE_BYTE_ADDRESS:
             m_Type = DescriptorType::STRUCTURED_BUFFER;
             break;
         case BufferViewType::SHADER_RESOURCE_STORAGE:
             m_Type = DescriptorType::STORAGE_BUFFER;
             break;
-        case BufferViewType::SHADER_RESOURCE_STORAGE_RAW:
         case BufferViewType::SHADER_RESOURCE_STORAGE_STRUCTURED:
+        case BufferViewType::SHADER_RESOURCE_STORAGE_BYTE_ADDRESS:
             m_Type = DescriptorType::STORAGE_STRUCTURED_BUFFER;
             break;
         case BufferViewType::CONSTANT:

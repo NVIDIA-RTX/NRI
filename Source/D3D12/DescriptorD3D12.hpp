@@ -352,7 +352,7 @@ Result DescriptorD3D12::Create(const BufferViewDesc& bufferViewDesc) {
         patchedFormat = Format::RGBA32_SFLOAT;
     else if (bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_STRUCTURED || bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_STORAGE_STRUCTURED)
         structureStride = bufferViewDesc.structureStride ? bufferViewDesc.structureStride : bufferDesc.structureStride;
-    else if (bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_RAW || bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_STORAGE_RAW) {
+    else if (bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_BYTE_ADDRESS || bufferViewDesc.viewType == BufferViewType::SHADER_RESOURCE_STORAGE_BYTE_ADDRESS) {
         patchedFormat = Format::R32_UINT;
         isRaw = true;
     } else
@@ -378,8 +378,8 @@ Result DescriptorD3D12::Create(const BufferViewDesc& bufferViewDesc) {
             return CreateConstantBufferView(desc);
         }
         case BufferViewType::SHADER_RESOURCE:
-        case BufferViewType::SHADER_RESOURCE_RAW:
-        case BufferViewType::SHADER_RESOURCE_STRUCTURED: {
+        case BufferViewType::SHADER_RESOURCE_STRUCTURED:
+        case BufferViewType::SHADER_RESOURCE_BYTE_ADDRESS: {
             D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
             desc.Format = isRaw ? format.typeless : format.typed;
             desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
@@ -392,8 +392,8 @@ Result DescriptorD3D12::Create(const BufferViewDesc& bufferViewDesc) {
             return CreateShaderResourceView(bufferD3D12, desc);
         }
         case BufferViewType::SHADER_RESOURCE_STORAGE:
-        case BufferViewType::SHADER_RESOURCE_STORAGE_RAW:
-        case BufferViewType::SHADER_RESOURCE_STORAGE_STRUCTURED: {
+        case BufferViewType::SHADER_RESOURCE_STORAGE_STRUCTURED:
+        case BufferViewType::SHADER_RESOURCE_STORAGE_BYTE_ADDRESS: {
             D3D12_UNORDERED_ACCESS_VIEW_DESC desc = {};
             desc.Format = isRaw ? format.typeless : format.typed;
             desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
