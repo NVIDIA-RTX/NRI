@@ -266,10 +266,13 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const BufferViewDesc& bufferViewDe
     NRI_RETURN_ON_FAILURE(this, bufferViewDesc.offset + bufferViewDesc.size <= bufferDesc.size, Result::INVALID_ARGUMENT, "'offset=%" PRIu64 "' + 'size=%" PRIu64 "' must be <= buffer 'size=%" PRIu64 "'", bufferViewDesc.offset, bufferViewDesc.size, bufferDesc.size);
 
     if (bufferViewDesc.viewType != BufferViewType::SHADER_RESOURCE_STRUCTURED && bufferViewDesc.viewType != BufferViewType::SHADER_RESOURCE_STORAGE_STRUCTURED)
-        NRI_RETURN_ON_FAILURE(this, bufferViewDesc.structureStride == 0, Result::INVALID_ARGUMENT, "'structureStride' must be 0 for this view type");
+        NRI_RETURN_ON_FAILURE(this, bufferViewDesc.structureStride == 0, Result::INVALID_ARGUMENT, "'structureStride' must be 0 for non-structured views");
 
-    if (bufferViewDesc.viewType != BufferViewType::SHADER_RESOURCE && bufferViewDesc.viewType != BufferViewType::SHADER_RESOURCE_STORAGE)
-        NRI_RETURN_ON_FAILURE(this, bufferViewDesc.format == Format::UNKNOWN, Result::INVALID_ARGUMENT, "'format' must be 'UNKNOWN' for this view type");
+    if (bufferViewDesc.viewType != BufferViewType::SHADER_RESOURCE && bufferViewDesc.viewType != BufferViewType::SHADER_RESOURCE_STORAGE) {
+        NRI_RETURN_ON_FAILURE(this, bufferViewDesc.format == Format::UNKNOWN, Result::INVALID_ARGUMENT, "'format' must be 'UNKNOWN' for non-typed views");
+    } else {
+        NRI_RETURN_ON_FAILURE(this, bufferViewDesc.format != Format::UNKNOWN, Result::INVALID_ARGUMENT, "'format' must not be 'UNKNOWN' for typed views");
+    }
 
     auto bufferViewDescImpl = bufferViewDesc;
     bufferViewDescImpl.buffer = NRI_GET_IMPL(Buffer, bufferViewDesc.buffer);
