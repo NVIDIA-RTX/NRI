@@ -257,7 +257,7 @@ Result DescriptorVK::Create(const BufferViewDesc& bufferViewDesc) {
         case BufferViewType::CONSTANT:
             m_Type = DescriptorType::CONSTANT_BUFFER;
             break;
-        default:
+        case BufferViewType::MAX_NUM:
             NRI_CHECK(false, "unexpected 'bufferViewDesc.viewType'");
     }
 
