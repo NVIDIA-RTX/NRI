@@ -35,7 +35,7 @@ endif()
 # Options
 set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK will be copied relative to the directory with binaries")
 set(NRI_AGILITY_SDK_VERSION_MAJOR "619" CACHE STRING "Agility SDK major version") # 719 ("D3D12_ERROR_INVALID_REDIST" if Windows developer mode is not enabled)
-set(NRI_AGILITY_SDK_VERSION_MINOR "0" CACHE STRING "Agility SDK minor version") # 0-preview
+set(NRI_AGILITY_SDK_VERSION_MINOR "1" CACHE STRING "Agility SDK minor version") # 1-preview
 set(NRI_SHADERS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_Shaders" CACHE STRING "Shader output path override")
 set(NRI_NVAPI_CUSTOM_PATH "" CACHE STRING "Path to a custom NVAPI library directory")
 
@@ -121,7 +121,7 @@ set(DEPS)
 # - GIT_SHALLOW = 0 - worse ^ 2 (needed to workaround Cmake's inability to shalow-clone a commit hash, which is a non-ToT PR, so even more fat useless ".git" folder)
 if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
     # Agility SDK
-    FetchContent_Declare(
+    fetchcontent_declare(
         agilitysdk
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
@@ -133,7 +133,7 @@ endif()
 
 if(NRI_ENABLE_NVTX_SUPPORT)
     # NVTX
-    FetchContent_Declare(
+    fetchcontent_declare(
         nvtx
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
@@ -145,22 +145,22 @@ endif()
 
 if(NRI_ENABLE_VK_SUPPORT)
     # Vulkan headers
-    FetchContent_Declare(
+    fetchcontent_declare(
         vulkan_headers
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.344.zip
+        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.345.zip
     )
     list(APPEND DEPS vulkan_headers)
 
     # Vulkan MA
-    FetchContent_Declare(
+    fetchcontent_declare(
         vma
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/e722e57c891a8fbe3cc73ca56c19dd76be242759.zip
+        URL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/b3cbbb43ea3a506dffe10759e205a41c27c35ae2.zip
     )
     list(APPEND DEPS vma)
 endif()
@@ -168,7 +168,7 @@ endif()
 set(NGX_VERSION "310.5.3")
 if(NRI_ENABLE_NGX_SDK)
     # NVIDIA NGX SDK
-    FetchContent_Declare(
+    fetchcontent_declare(
         ngx
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
@@ -180,7 +180,7 @@ endif()
 
 if(NRI_ENABLE_FFX_SDK)
     # AMD FidelityFX SDK
-    FetchContent_Declare(
+    fetchcontent_declare(
         ffx
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
@@ -192,31 +192,31 @@ endif()
 
 if(NRI_ENABLE_XESS_SDK)
     # INTEL XeSS SDK
-    FetchContent_Declare(
+    fetchcontent_declare(
         xess
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/intel/xess/archive/refs/tags/v2.1.1.zip
+        URL https://github.com/intel/xess/archive/refs/tags/v3.0.0.zip
     )
     list(APPEND DEPS xess)
 endif()
 
 if(NRI_ENABLE_D3D12_SUPPORT)
     # D3D12 MA
-    FetchContent_Declare(
+    fetchcontent_declare(
         d3d12ma
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/c06cd9a6ec4578016aadf650af104c4055ec609a.zip
+        URL https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/0fa62ed3a0a69b73230a8ec1faa752d4061c8dc8.zip
     )
     list(APPEND DEPS d3d12ma)
 endif()
 
 if(NRI_ENABLE_AMDAGS)
     # AMD AGS
-    FetchContent_Declare(
+    fetchcontent_declare(
         amdags
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
@@ -232,12 +232,12 @@ if(NRI_ENABLE_NVAPI)
         get_filename_component(nvapi_SOURCE_DIR "${NRI_NVAPI_CUSTOM_PATH}" ABSOLUTE)
         message("NRI: using custom NVAPI from '${nvapi_SOURCE_DIR}'")
     else()
-        FetchContent_Declare(
+        fetchcontent_declare(
             nvapi
             DOWNLOAD_EXTRACT_TIMESTAMP 1
             DOWNLOAD_NO_PROGRESS 1
             SOURCE_SUBDIR "ignore CMakeLists.txt"
-            URL https://github.com/NVIDIA/nvapi/archive/832a3673d66a0fdf6d6e522468821d5cbd925f23.zip
+            URL https://github.com/NVIDIA/nvapi/archive/9296d671e71608d6d6b7749ed93989af4ada8858.zip
         )
         list(APPEND DEPS nvapi)
     endif()
@@ -247,7 +247,7 @@ if(NRI_ENABLE_SHADERMAKE AND NOT TARGET ShaderMake)
     # ShaderMake
     option(SHADERMAKE_TOOL "" ON)
 
-    FetchContent_Declare(
+    fetchcontent_declare(
         shadermake
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
@@ -261,7 +261,7 @@ if(DEPS)
     message("NRI: downloading dependencies:")
     message(STATUS "${DEPS} ...")
 
-    FetchContent_MakeAvailable(${DEPS})
+    fetchcontent_makeavailable(${DEPS})
 
     # Delete original archives
     foreach(DEP IN LISTS DEPS)

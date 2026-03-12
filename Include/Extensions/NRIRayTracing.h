@@ -2,6 +2,7 @@
 
 // Goal: ray tracing
 // https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html
+// https://microsoft.github.io/DirectX-Specs/d3d/Raytracing2.html
 
 #pragma once
 
