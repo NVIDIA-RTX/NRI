@@ -350,6 +350,10 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const SamplerDesc& samplerDesc, De
 NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipelineLayoutDesc, PipelineLayout*& pipelineLayout) {
     NRI_RETURN_ON_FAILURE(this, pipelineLayoutDesc.shaderStages != StageBits::NONE, Result::INVALID_ARGUMENT, "'shaderStages' can't be 'NONE'");
 
+    const DeviceDesc& deviceDesc = GetDesc();
+    if (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_DRAW_PARAMETERS_EMULATION)
+        NRI_RETURN_ON_FAILURE(this, deviceDesc.shaderFeatures.drawParametersEmulation, Result::INVALID_ARGUMENT, "'ENABLE_DRAW_PARAMETERS_EMULATION' requires 'shaderFeatures.drawParametersEmulation'");
+
     Scratch<uint32_t> spaces = NRI_ALLOCATE_SCRATCH(*this, uint32_t, pipelineLayoutDesc.descriptorSetNum);
 
     uint32_t rangeNum = 0;
@@ -407,9 +411,9 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
     origSettings.descriptorRangeNum = rangeNum;
     origSettings.rootConstantSize = rootConstantSize;
     origSettings.rootDescriptorNum = pipelineLayoutDesc.rootDescriptorNum;
-    origSettings.enableD3D12DrawParametersEmulation = (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_D3D12_DRAW_PARAMETERS_EMULATION) != 0 && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
+    origSettings.enableD3D12DrawParametersEmulation = (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_DRAW_PARAMETERS_EMULATION) != 0 && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
 
-    PipelineLayoutSettingsDesc fittedSettings = FitPipelineLayoutSettingsIntoDeviceLimits(GetDesc(), origSettings);
+    PipelineLayoutSettingsDesc fittedSettings = FitPipelineLayoutSettingsIntoDeviceLimits(deviceDesc, origSettings);
     NRI_RETURN_ON_FAILURE(this, origSettings.descriptorSetNum == fittedSettings.descriptorSetNum, Result::INVALID_ARGUMENT, "total number of descriptor sets (=%u) exceeds device limits", origSettings.descriptorSetNum);
     NRI_RETURN_ON_FAILURE(this, origSettings.descriptorRangeNum == fittedSettings.descriptorRangeNum, Result::INVALID_ARGUMENT, "total number of descriptor ranges (=%u) exceeds device limits", origSettings.descriptorRangeNum);
     NRI_RETURN_ON_FAILURE(this, origSettings.rootConstantSize == fittedSettings.rootConstantSize, Result::INVALID_ARGUMENT, "total size of root constants (=%u) exceeds device limits", origSettings.rootConstantSize);

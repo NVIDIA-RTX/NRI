@@ -880,6 +880,8 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.shaderFeatures.barycentric = options3.BarycentricsSupported;
     m_Desc.shaderFeatures.integerDotProduct = m_Desc.shaderModel >= 64;
     m_Desc.shaderFeatures.inputAttachments = true;
+    m_Desc.shaderFeatures.drawParameters = m_Desc.shaderModel >= 68;
+    m_Desc.shaderFeatures.drawParametersEmulation = 1;
 }
 
 void DeviceD3D12::InitializeNvExt(bool disableNVAPIInitialization, bool isImported) {

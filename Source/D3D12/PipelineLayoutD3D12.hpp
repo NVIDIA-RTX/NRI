@@ -78,7 +78,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     Vector<D3D12_ROOT_PARAMETER1> rootParameters(allocator);
 
     // Draw parameters emulation
-    bool enableDrawParametersEmulation = (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_D3D12_DRAW_PARAMETERS_EMULATION) != 0 && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
+    bool enableDrawParametersEmulation = (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_DRAW_PARAMETERS_EMULATION) != 0 && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
     if (enableDrawParametersEmulation) {
         D3D12_ROOT_PARAMETER1 rootParam = {};
         rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;

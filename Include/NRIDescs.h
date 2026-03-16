@@ -874,7 +874,7 @@ NriEnum(BindPoint, uint8_t,
 NriBits(PipelineLayoutBits, uint8_t,
     NONE                                    = 0,
     IGNORE_GLOBAL_SPIRV_OFFSETS             = NriBit(0),    // VK: ignore "DeviceCreationDesc::vkBindingOffsets"
-    ENABLE_D3D12_DRAW_PARAMETERS_EMULATION  = NriBit(1),    // D3D12: enable draw parameters emulation, not needed if all vertex shaders for this layout compiled with SM 6.8 (native support)
+    ENABLE_DRAW_PARAMETERS_EMULATION        = NriBit(1),    // enable draw parameters emulation, requires "shaderFeatures.drawParametersEmulation"
 
     // https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#resourcedescriptorheaps--samplerdescriptorheaps
     // Default VK bindings can be changed via "-fvk-bind-sampler-heap" and "-fvk-bind-resource-heap" DXC options
@@ -1580,9 +1580,7 @@ NriStruct(DispatchDesc) {
     uint32_t x, y, z;
 };
 
-// D3D12: modified draw command signatures, if the bound pipeline layout has "PipelineLayoutBits::ENABLE_D3D12_DRAW_PARAMETERS_EMULATION"
-//  - the following structs must be used instead
-// - "NRI_ENABLE_DRAW_PARAMETERS_EMULATION" must be defined prior inclusion of "NRI.hlsl"
+// Modified draw command signatures, if the bound pipeline layout has "PipelineLayoutBits::ENABLE_DRAW_PARAMETERS_EMULATION"
 
 NriStruct(DrawBaseDesc) {               // see NRI_FILL_DRAW_DESC
     uint32_t shaderEmulatedBaseVertex;      // root constant
@@ -2058,6 +2056,12 @@ NriStruct(DeviceDesc) {
         uint32_t rayTracingPositionFetch                         : 1; // https://docs.vulkan.org/features/latest/features/proposals/VK_KHR_ray_tracing_position_fetch.html
         uint32_t integerDotProduct                               : 1; // https://github.com/microsoft/DirectXShaderCompiler/wiki/Shader-Model-6.4
         uint32_t inputAttachments                                : 1; // https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#subpass-inputs
+        uint32_t drawParameters                                  : 1; // SV_StartVertexLocation, SV_StartInstanceLocation (native support)
+
+        // For shaders using "draw parameters":
+        //   - "ENABLE_DRAW_PARAMETERS_EMULATION" must be set for a corresponding "PipelineLayout"
+        //   - "NRI_ENABLE_DRAW_PARAMETERS_EMULATION" must be defined prior inclusion of "NRI.hlsl" for such shaders
+        uint32_t drawParametersEmulation                         : 1; // emulation of "drawParameters"
     } shaderFeatures;
 };
 
