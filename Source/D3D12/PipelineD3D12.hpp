@@ -81,7 +81,7 @@ static inline void FillRasterizerState(D3D12_RASTERIZER_DESC& rasterizerDesc, co
     rasterizerDesc.FrontCounterClockwise = (BOOL)r.frontCounterClockwise;
     rasterizerDesc.DepthBiasClamp = r.depthBias.clamp;
     rasterizerDesc.SlopeScaledDepthBias = r.depthBias.slope;
-    rasterizerDesc.DepthClipEnable = (BOOL)r.depthClamp;
+    rasterizerDesc.DepthClipEnable = (BOOL)!r.depthClamp;
     rasterizerDesc.AntialiasedLineEnable = (BOOL)r.lineSmoothing;
     rasterizerDesc.ConservativeRaster = r.conservativeRaster ? D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON : D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
 

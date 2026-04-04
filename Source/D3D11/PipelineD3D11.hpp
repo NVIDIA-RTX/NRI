@@ -82,7 +82,7 @@ Result PipelineD3D11::Create(const GraphicsPipelineDesc& pipelineDesc) {
         rasterizerDesc.DepthBias = (INT)r.depthBias.constant;
         rasterizerDesc.DepthBiasClamp = r.depthBias.clamp;
         rasterizerDesc.SlopeScaledDepthBias = r.depthBias.slope;
-        rasterizerDesc.DepthClipEnable = r.depthClamp;
+        rasterizerDesc.DepthClipEnable = !r.depthClamp;
         rasterizerDesc.ScissorEnable = TRUE;
         rasterizerDesc.AntialiasedLineEnable = r.lineSmoothing;
         rasterizerDesc.MultisampleEnable = sampleNum > 1 ? TRUE : FALSE;
