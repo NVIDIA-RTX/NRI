@@ -1171,6 +1171,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.textureCompressionBC = features.features.textureCompressionBC;
         m_Desc.features.textureCompressionETC2 = features.features.textureCompressionETC2;
         m_Desc.features.textureCompressionASTC = features.features.textureCompressionASTC_LDR;
+        m_Desc.features.shaderBytecodeSPIRV = true;
 
         m_Desc.shaderFeatures.nativeI8 = features12.shaderInt8;
         m_Desc.shaderFeatures.nativeI16 = features.features.shaderInt16;

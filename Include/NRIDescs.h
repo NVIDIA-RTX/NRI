@@ -1479,7 +1479,7 @@ NriEnum(Robustness, uint8_t,
 // It's recommended to use "NRI.hlsl" in the shader code
 NriStruct(ShaderDesc) {
     Nri(StageBits) stage;
-    const void* bytecode;
+    const void* bytecode; // see "features.shaderBytecodeXXX"
     uint64_t size;
     NriOptional const char* entryPointName;
 };
@@ -2061,6 +2061,9 @@ NriStruct(DeviceDesc) {
         uint32_t textureCompressionBC                            : 1; // all "BC" texture formats are supported
         uint32_t textureCompressionETC2                          : 1; // all "ETC2" texture formats are supported
         uint32_t textureCompressionASTC                          : 1; // all "ASTC" texture formats are supported
+        uint32_t shaderBytecodeDXBC                              : 1; // DXBC can be passed to "ShaderDesc::bytecode"
+        uint32_t shaderBytecodeDXIL                              : 1; // DXIL can be passed to "ShaderDesc::bytecode"
+        uint32_t shaderBytecodeSPIRV                             : 1; // SPIRV can be passed to "ShaderDesc::bytecode"
     } features;
 
     // Shader features

@@ -839,6 +839,8 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.features.nonConstantBufferRootDescriptorOffset = true;
     m_Desc.features.mutableDescriptorType = true;
     m_Desc.features.textureCompressionBC = true;
+    m_Desc.features.shaderBytecodeDXBC = true;
+    m_Desc.features.shaderBytecodeDXIL = true;
 
     bool isShaderAtomicsF16Supported = false;
     bool isShaderAtomicsF32Supported = false;
