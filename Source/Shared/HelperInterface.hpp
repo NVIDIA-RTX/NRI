@@ -437,6 +437,7 @@ Result HelperDeviceMemoryAllocator::TryToAllocateAndBindMemory(const ResourceGro
         allocateMemoryDesc.type = heap.type;
         allocateMemoryDesc.size = heap.size;
         allocateMemoryDesc.allowMultisampleTextures = hasMultisampleTextures;
+        allocateMemoryDesc.priority = resourceGroupDesc.residencyPriority;
 
         Result result = m_iCore.AllocateMemory(m_Device, allocateMemoryDesc, memory);
         if (result != Result::SUCCESS)
@@ -448,7 +449,7 @@ Result HelperDeviceMemoryAllocator::TryToAllocateAndBindMemory(const ResourceGro
         allocationNum++;
     }
 
-    Result result = ProcessDedicatedResources(resourceGroupDesc.memoryLocation, allocations, allocationNum);
+    Result result = ProcessDedicatedResources(resourceGroupDesc, allocations, allocationNum);
     if (result != Result::SUCCESS)
         return result;
 
@@ -461,18 +462,19 @@ Result HelperDeviceMemoryAllocator::TryToAllocateAndBindMemory(const ResourceGro
     return result;
 }
 
-Result HelperDeviceMemoryAllocator::ProcessDedicatedResources(MemoryLocation memoryLocation, Memory** allocations, size_t& allocationNum) {
+Result HelperDeviceMemoryAllocator::ProcessDedicatedResources(const ResourceGroupDesc& resourceGroupDesc, Memory** allocations, size_t& allocationNum) {
     constexpr uint64_t zeroOffset = 0;
     MemoryDesc memoryDesc = {};
 
     for (size_t i = 0; i < m_DedicatedBuffers.size(); i++) {
-        m_iCore.GetBufferMemoryDesc(*m_DedicatedBuffers[i], memoryLocation, memoryDesc);
+        m_iCore.GetBufferMemoryDesc(*m_DedicatedBuffers[i], resourceGroupDesc.memoryLocation, memoryDesc);
 
         Memory*& memory = allocations[allocationNum];
 
         AllocateMemoryDesc allocateMemoryDesc = {};
         allocateMemoryDesc.type = memoryDesc.type;
         allocateMemoryDesc.size = memoryDesc.size;
+        allocateMemoryDesc.priority = resourceGroupDesc.residencyPriority;
 
         Result result = m_iCore.AllocateMemory(m_Device, allocateMemoryDesc, memory);
         if (result != Result::SUCCESS)
@@ -484,13 +486,14 @@ Result HelperDeviceMemoryAllocator::ProcessDedicatedResources(MemoryLocation mem
     }
 
     for (size_t i = 0; i < m_DedicatedTextures.size(); i++) {
-        m_iCore.GetTextureMemoryDesc(*m_DedicatedTextures[i], memoryLocation, memoryDesc);
+        m_iCore.GetTextureMemoryDesc(*m_DedicatedTextures[i], resourceGroupDesc.memoryLocation, memoryDesc);
 
         Memory*& memory = allocations[allocationNum];
 
         AllocateMemoryDesc allocateMemoryDesc = {};
         allocateMemoryDesc.type = memoryDesc.type;
         allocateMemoryDesc.size = memoryDesc.size;
+        allocateMemoryDesc.priority = resourceGroupDesc.residencyPriority;
 
         Result result = m_iCore.AllocateMemory(m_Device, allocateMemoryDesc, memory);
         if (result != Result::SUCCESS)

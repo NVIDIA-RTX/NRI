@@ -39,7 +39,8 @@ NriStruct(ResourceGroupDesc) {
     uint32_t textureNum;
     NriPtr(Buffer) const* buffers;
     uint32_t bufferNum;
-    uint64_t preferredMemorySize; // desired chunk size (but can be greater if a resource doesn't fit), 256 Mb if 0
+    NriOptional uint64_t preferredMemorySize; // desired chunk size (but can be greater if a resource doesn't fit), 256 Mb if 0
+    NriOptional float residencyPriority; // [-1; 1]: low < 0, normal = 0, high > 0
 };
 
 NriStruct(FormatProps) {
