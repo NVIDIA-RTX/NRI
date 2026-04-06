@@ -838,6 +838,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.features.rootConstantsOffset = true;
     m_Desc.features.nonConstantBufferRootDescriptorOffset = true;
     m_Desc.features.mutableDescriptorType = true;
+    m_Desc.features.textureCompressionBC = true;
 
     bool isShaderAtomicsF16Supported = false;
     bool isShaderAtomicsF32Supported = false;
@@ -1526,6 +1527,9 @@ NRI_INLINE Result DeviceD3D12::BindMicromapMemory(const BindMicromapMemoryDesc* 
 
 NRI_INLINE FormatSupportBits DeviceD3D12::GetFormatSupport(Format format) const {
     DXGI_FORMAT dxgiFormat = GetDxgiFormat(format).typed;
+    if (dxgiFormat == DXGI_FORMAT_UNKNOWN)
+        return FormatSupportBits::UNSUPPORTED;
+
     D3D12_FEATURE_DATA_FORMAT_SUPPORT formatSupport = {dxgiFormat};
     HRESULT hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &formatSupport, sizeof(formatSupport));
 

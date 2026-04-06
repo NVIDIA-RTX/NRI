@@ -267,7 +267,11 @@ NriEnum(Format, uint8_t,                // |      FormatSupportBits      |
     R11_G11_B10_UFLOAT,                 // + + . + . + + + + + + + . + + +
     R9_G9_B9_E5_UFLOAT,                 // + . . . . . . . . . . . . . . .
 
-    // Block-compressed
+    // Block-compressed (requires "features.textureCompressionBC")
+    // https://learn.microsoft.com/en-us/windows/win32/direct3d11/texture-block-compression-in-direct3d-11?source=recommendations
+    // https://registry.khronos.org/DataFormat/specs/1.4/dataformat.1.4.html#S3TC
+    // https://registry.khronos.org/DataFormat/specs/1.4/dataformat.1.4.html#RGTC
+    // https://registry.khronos.org/DataFormat/specs/1.4/dataformat.1.4.html#BPTC
     BC1_RGBA_UNORM,                     // + . . . . . . . . . . . . . . .
     BC1_RGBA_SRGB,                      // + . . . . . . . . . . . . . . .
     BC2_RGBA_UNORM,                     // + . . . . . . . . . . . . . . .
@@ -282,6 +286,50 @@ NriEnum(Format, uint8_t,                // |      FormatSupportBits      |
     BC6H_RGB_SFLOAT,                    // + . . . . . . . . . . . . . . .
     BC7_RGBA_UNORM,                     // + . . . . . . . . . . . . . . .
     BC7_RGBA_SRGB,                      // + . . . . . . . . . . . . . . .
+
+    // Block-compressed: Ericsson Texture Compression (requires "features.textureCompressionETC2")
+    // https://registry.khronos.org/DataFormat/specs/1.4/dataformat.1.4.html#ETC2
+    ETC2_RGB8_UNORM,                    // + . . . . . . . . . . . . . . .
+    ETC2_RGB8_SRGB,                     // + . . . . . . . . . . . . . . .
+    ETC2_RGB8_A1_UNORM,                 // + . . . . . . . . . . . . . . .
+    ETC2_RGB8_A1_SRGB,                  // + . . . . . . . . . . . . . . .
+    ETC2_RGB8_A8_UNORM,                 // + . . . . . . . . . . . . . . .
+    ETC2_RGB8_A8_SRGB,                  // + . . . . . . . . . . . . . . .
+    ETC2_R11_UNORM,                     // + . . . . . . . . . . . . . . .
+    ETC2_R11_SNORM,                     // + . . . . . . . . . . . . . . .
+    ETC2_R11_G11_UNORM,                 // + . . . . . . . . . . . . . . .
+    ETC2_R11_G11_SNORM,                 // + . . . . . . . . . . . . . . .
+
+    // Block-compressed: Adaptive Scalable Texture Compression (requires "features.textureCompressionASTC")
+    // https://registry.khronos.org/DataFormat/specs/1.4/dataformat.1.4.html#ASTC
+    ASTC_4X4_UNORM,                     // + . . . . . . . . . . . . . . .
+    ASTC_4X4_SRGB,                      // + . . . . . . . . . . . . . . .
+    ASTC_5X4_UNORM,                     // + . . . . . . . . . . . . . . .
+    ASTC_5X4_SRGB,                      // + . . . . . . . . . . . . . . .
+    ASTC_5X5_UNORM,                     // + . . . . . . . . . . . . . . .
+    ASTC_5X5_SRGB,                      // + . . . . . . . . . . . . . . .
+    ASTC_6X5_UNORM,                     // + . . . . . . . . . . . . . . .
+    ASTC_6X5_SRGB,                      // + . . . . . . . . . . . . . . .
+    ASTC_6X6_UNORM,                     // + . . . . . . . . . . . . . . .
+    ASTC_6X6_SRGB,                      // + . . . . . . . . . . . . . . .
+    ASTC_8X5_UNORM,                     // + . . . . . . . . . . . . . . .
+    ASTC_8X5_SRGB,                      // + . . . . . . . . . . . . . . .
+    ASTC_8X6_UNORM,                     // + . . . . . . . . . . . . . . .
+    ASTC_8X6_SRGB,                      // + . . . . . . . . . . . . . . .
+    ASTC_8X8_UNORM,                     // + . . . . . . . . . . . . . . .
+    ASTC_8X8_SRGB,                      // + . . . . . . . . . . . . . . .
+    ASTC_10X5_UNORM,                    // + . . . . . . . . . . . . . . .
+    ASTC_10X5_SRGB,                     // + . . . . . . . . . . . . . . .
+    ASTC_10X6_UNORM,                    // + . . . . . . . . . . . . . . .
+    ASTC_10X6_SRGB,                     // + . . . . . . . . . . . . . . .
+    ASTC_10X8_UNORM,                    // + . . . . . . . . . . . . . . .
+    ASTC_10X8_SRGB,                     // + . . . . . . . . . . . . . . .
+    ASTC_10X10_UNORM,                   // + . . . . . . . . . . . . . . .
+    ASTC_10X10_SRGB,                    // + . . . . . . . . . . . . . . .
+    ASTC_12X10_UNORM,                   // + . . . . . . . . . . . . . . .
+    ASTC_12X10_SRGB,                    // + . . . . . . . . . . . . . . .
+    ASTC_12X12_UNORM,                   // + . . . . . . . . . . . . . . .
+    ASTC_12X12_SRGB,                    // + . . . . . . . . . . . . . . .
 
     // Depth-stencil
     D16_UNORM,                          // . . . . + . + + + . . . . . . .
@@ -2010,6 +2058,9 @@ NriStruct(DeviceDesc) {
         uint32_t nonConstantBufferRootDescriptorOffset           : 1; // see "SetRootDescriptorDesc" (unsupported only in D3D11)
         uint32_t mutableDescriptorType                           : 1; // see "DescriptorType::MUTABLE"
         uint32_t unifiedTextureLayouts                           : 1; // allows to use "GENERAL" everywhere: https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_unified_image_layouts.html
+        uint32_t textureCompressionBC                            : 1; // all "BC" texture formats are supported
+        uint32_t textureCompressionETC2                          : 1; // all "ETC2" texture formats are supported
+        uint32_t textureCompressionASTC                          : 1; // all "ASTC" texture formats are supported
     } features;
 
     // Shader features

@@ -519,6 +519,7 @@ void DeviceD3D11::FillDesc() {
     m_Desc.features.resizableSwapChain = m_Desc.features.swapChain;
     m_Desc.features.pipelineStatistics = true;
     m_Desc.features.mutableDescriptorType = true;
+    m_Desc.features.textureCompressionBC = true;
 
     m_Desc.shaderFeatures.nativeF64 = options.ExtendedDoublesShaderInstructions;
     m_Desc.shaderFeatures.atomicsF16 = isShaderAtomicsF16Supported;
@@ -716,6 +717,9 @@ NRI_INLINE Result DeviceD3D11::BindTextureMemory(const BindTextureMemoryDesc* bi
 
 NRI_INLINE FormatSupportBits DeviceD3D11::GetFormatSupport(Format format) const {
     DXGI_FORMAT dxgiFormat = GetDxgiFormat(format).typed;
+    if (dxgiFormat == DXGI_FORMAT_UNKNOWN)
+        return FormatSupportBits::UNSUPPORTED;
+
     D3D11_FEATURE_DATA_FORMAT_SUPPORT formatSupport = {dxgiFormat};
     HRESULT hr = m_Device->CheckFeatureSupport(D3D11_FEATURE_FORMAT_SUPPORT, &formatSupport, sizeof(formatSupport));
 

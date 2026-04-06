@@ -1168,6 +1168,9 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.nonConstantBufferRootDescriptorOffset = true;
         m_Desc.features.mutableDescriptorType = MutableDescriptorTypeFeatures.mutableDescriptorType;
         m_Desc.features.unifiedTextureLayouts = UnifiedImageLayoutsFeatures.unifiedImageLayouts;
+        m_Desc.features.textureCompressionBC = features.features.textureCompressionBC;
+        m_Desc.features.textureCompressionETC2 = features.features.textureCompressionETC2;
+        m_Desc.features.textureCompressionASTC = features.features.textureCompressionASTC_LDR;
 
         m_Desc.shaderFeatures.nativeI8 = features12.shaderInt8;
         m_Desc.shaderFeatures.nativeI16 = features.features.shaderInt16;
@@ -2295,6 +2298,8 @@ NRI_INLINE Result DeviceVK::BindMicromapMemory(const BindMicromapMemoryDesc* bin
 NRI_INLINE FormatSupportBits DeviceVK::GetFormatSupport(Format format) const {
     FormatSupportBits supportBits = FormatSupportBits::UNSUPPORTED;
     VkFormat vkFormat = GetVkFormat(format);
+    if (vkFormat == VK_FORMAT_UNDEFINED)
+        return FormatSupportBits::UNSUPPORTED;
 
     VkFormatProperties3 props3 = {VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3};
     VkFormatProperties2 props2 = {VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2, &props3};
