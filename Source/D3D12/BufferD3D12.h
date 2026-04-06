@@ -58,7 +58,7 @@ struct BufferD3D12 final : public DebugNameBase {
     void* Map(uint64_t offset);
 
 private:
-    Result SetPriorityAndPersistentlyMap(float priority, const D3D12_HEAP_PROPERTIES& heapProps);
+    Result SetPriorityAndPersistentlyMap(float priority, bool committed, const D3D12_HEAP_PROPERTIES& heapProps);
 
 private:
     DeviceD3D12& m_Device;

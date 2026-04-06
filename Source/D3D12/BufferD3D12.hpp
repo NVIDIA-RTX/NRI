@@ -61,7 +61,7 @@ Result BufferD3D12::Allocate(MemoryLocation memoryLocation, float priority, bool
     D3D12_HEAP_PROPERTIES heapProps = {};
     heapProps.Type = allocationDesc.HeapType;
 
-    return SetPriorityAndPersistentlyMap(priority, heapProps);
+    return SetPriorityAndPersistentlyMap(priority, committed, heapProps);
 }
 
 Result BufferD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
@@ -82,7 +82,8 @@ Result BufferD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
 
     const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_UNDEFINED;
 
-    if (memory.IsDummy()) {
+    bool isCommitted = memory.IsDummy();
+    if (isCommitted) {
         HRESULT hr = m_Device->CreateCommittedResource3(&heapDesc.Properties, heapFlagsFixed, &desc1, initialLayout, nullptr, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Buffer));
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreateCommittedResource3");
     } else {
@@ -111,7 +112,7 @@ Result BufferD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
     if (m_Desc.usage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE)
         initialState |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
 
-    if (memory.IsDummy()) {
+    if (isCommitted) {
         HRESULT hr = m_Device->CreateCommittedResource(&heapDesc.Properties, heapFlagsFixed, &desc, initialState, nullptr, IID_PPV_ARGS(&m_Buffer));
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommittedResource");
     } else {
@@ -119,13 +120,13 @@ Result BufferD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreatePlacedResource");
     }
 #endif
-    return SetPriorityAndPersistentlyMap(memory.GetPriority(), heapDesc.Properties);
+    return SetPriorityAndPersistentlyMap(memory.GetPriority(), isCommitted, heapDesc.Properties);
 }
 
-NRI_INLINE Result BufferD3D12::SetPriorityAndPersistentlyMap(float priority, const D3D12_HEAP_PROPERTIES& heapProps) {
+NRI_INLINE Result BufferD3D12::SetPriorityAndPersistentlyMap(float priority, bool committed, const D3D12_HEAP_PROPERTIES& heapProps) {
     // Priority
     D3D12_RESIDENCY_PRIORITY residencyPriority = (D3D12_RESIDENCY_PRIORITY)ConvertPriority(priority);
-    if (residencyPriority != 0) {
+    if (residencyPriority != 0 && committed) {
         ID3D12Pageable* obj = m_Buffer.GetInterface();
         HRESULT hr = m_Device->SetResidencyPriority(1, &obj, &residencyPriority);
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority");

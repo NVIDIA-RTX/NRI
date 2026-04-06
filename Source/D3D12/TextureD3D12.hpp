@@ -69,7 +69,7 @@ Result TextureD3D12::Allocate(MemoryLocation memoryLocation, float priority, boo
 
     // Priority
     D3D12_RESIDENCY_PRIORITY residencyPriority = (D3D12_RESIDENCY_PRIORITY)ConvertPriority(priority);
-    if (residencyPriority != 0) {
+    if (residencyPriority != 0 && committed) {
         ID3D12Pageable* obj = m_Texture.GetInterface();
         hr = m_Device->SetResidencyPriority(1, &obj, &residencyPriority);
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority");
@@ -102,6 +102,7 @@ Result TextureD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
 
     offset += memory.GetOffset();
 
+    bool isCommitted = memory.IsDummy();
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_RESOURCE_DESC1 desc1 = {};
     m_Device.GetResourceDesc(m_Desc, (D3D12_RESOURCE_DESC&)desc1);
@@ -109,7 +110,7 @@ Result TextureD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
     const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_COMMON;
     bool isRenderableSurface = desc1.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
-    if (memory.IsDummy()) {
+    if (isCommitted) {
         HRESULT hr = m_Device->CreateCommittedResource3(&heapDesc.Properties, heapFlagsFixed, &desc1, initialLayout, isRenderableSurface ? &clearValue : nullptr, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Texture));
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreateCommittedResource3");
     } else {
@@ -124,7 +125,7 @@ Result TextureD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
     const D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
     bool isRenderableSurface = desc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
-    if (memory.IsDummy()) {
+    if (isCommitted) {
         HRESULT hr = m_Device->CreateCommittedResource(&heapDesc.Properties, heapFlagsFixed, &desc, initialState, isRenderableSurface ? &clearValue : nullptr, IID_PPV_ARGS(&m_Texture));
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommittedResource");
     } else {
@@ -133,9 +134,9 @@ Result TextureD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
     }
 #endif
 
-    // Priority
+    // Priority (for committed resources only)
     D3D12_RESIDENCY_PRIORITY residencyPriority = (D3D12_RESIDENCY_PRIORITY)ConvertPriority(memory.GetPriority());
-    if (residencyPriority != 0) {
+    if (residencyPriority != 0 && isCommitted) {
         ID3D12Pageable* obj = m_Texture.GetInterface();
         HRESULT hr = m_Device->SetResidencyPriority(1, &obj, &residencyPriority);
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority");
