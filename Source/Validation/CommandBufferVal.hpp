@@ -83,7 +83,7 @@ static inline bool IsTextureLayoutSupported(const TextureDesc& textureDesc, Layo
 static bool ValidateBufferBarrierDesc(const DeviceVal& device, uint32_t i, const BufferBarrierDesc& bufferBarrier) {
     const BufferVal& bufferVal = *(const BufferVal*)bufferBarrier.buffer;
 
-    NRI_RETURN_ON_FAILURE(&device, bufferBarrier.buffer, false, "'barrierDesc.buffers[%u].buffer' is NULL", i);
+    NRI_RETURN_ON_FAILURE(&device, bufferBarrier.buffer, false, "'buffers[%u].buffer' is NULL", i);
     NRI_RETURN_ON_FAILURE(&device, IsAccessMaskSupported(bufferVal.GetDesc(), bufferBarrier.before.access), false,
         "'barrierDesc.buffers[%u].before.access' is not supported by the usage mask of the buffer ('%s')", i, bufferVal.GetDebugName());
     NRI_RETURN_ON_FAILURE(&device, IsAccessMaskSupported(bufferVal.GetDesc(), bufferBarrier.after.access), false,
@@ -95,7 +95,7 @@ static bool ValidateBufferBarrierDesc(const DeviceVal& device, uint32_t i, const
 static bool ValidateTextureBarrierDesc(const DeviceVal& device, uint32_t i, const TextureBarrierDesc& textureBarrier) {
     const TextureVal& textureVal = *(const TextureVal*)textureBarrier.texture;
 
-    NRI_RETURN_ON_FAILURE(&device, textureBarrier.texture, false, "'barrierDesc.textures[%u].texture' is NULL", i);
+    NRI_RETURN_ON_FAILURE(&device, textureBarrier.texture, false, "'textures[%u].texture' is NULL", i);
     NRI_RETURN_ON_FAILURE(&device, IsAccessMaskSupported(textureVal.GetDesc(), textureBarrier.before.access), false,
         "'barrierDesc.textures[%u].before.access' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
     NRI_RETURN_ON_FAILURE(&device, IsAccessMaskSupported(textureVal.GetDesc(), textureBarrier.after.access), false,
@@ -240,7 +240,7 @@ NRI_INLINE void CommandBufferVal::ClearAttachments(const ClearAttachmentDesc* cl
 NRI_INLINE void CommandBufferVal::ClearStorage(const ClearStorageDesc& clearStorageDesc) {
     NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     NRI_RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
-    NRI_RETURN_ON_FAILURE(&m_Device, clearStorageDesc.descriptor, ReturnVoid(), "'.storage' is NULL");
+    NRI_RETURN_ON_FAILURE(&m_Device, clearStorageDesc.descriptor, ReturnVoid(), "'storage' is NULL");
 
     const DescriptorVal& descriptorVal = *(DescriptorVal*)clearStorageDesc.descriptor;
     NRI_RETURN_ON_FAILURE(&m_Device, descriptorVal.IsShaderResourceStorage(), ReturnVoid(), "'.storage' is not a 'SHADER_RESOURCE_STORAGE' descriptor");
@@ -356,6 +356,7 @@ NRI_INLINE void CommandBufferVal::SetDescriptorPool(const DescriptorPool& descri
 NRI_INLINE void CommandBufferVal::SetDescriptorSet(const SetDescriptorSetDesc& setDescriptorSetDesc) {
     NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     NRI_RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
+    NRI_RETURN_ON_FAILURE(&m_Device, setDescriptorSetDesc.descriptorSet, ReturnVoid(), "'descriptorSet' is NULL");
 
     auto descriptorSetBindingDescImpl = setDescriptorSetDesc;
     descriptorSetBindingDescImpl.descriptorSet = NRI_GET_IMPL(DescriptorSet, setDescriptorSetDesc.descriptorSet);
@@ -374,11 +375,13 @@ NRI_INLINE void CommandBufferVal::SetRootConstants(const SetRootConstantsDesc& s
 }
 
 NRI_INLINE void CommandBufferVal::SetRootDescriptor(const SetRootDescriptorDesc& setRootDescriptorDesc) {
+    NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
+    NRI_RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
+    NRI_RETURN_ON_FAILURE(&m_Device, setRootDescriptorDesc.descriptor, ReturnVoid(), "'descriptor' is NULL");
+
     const DescriptorVal& descriptorVal = *(DescriptorVal*)setRootDescriptorDesc.descriptor;
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
 
-    NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
-    NRI_RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
     NRI_RETURN_ON_FAILURE(&m_Device, descriptorVal.CanBeRoot(), ReturnVoid(), "'descriptor' must be a non-typed buffer or an acceleration structure");
 
     if (!descriptorVal.IsConstantBuffer())
@@ -646,11 +649,11 @@ NRI_INLINE void CommandBufferVal::BuildTopLevelAccelerationStructure(const Build
         const BufferVal* instanceBufferVal = (BufferVal*)in.instanceBuffer;
         const BufferVal* scratchBufferVal = (BufferVal*)in.scratchBuffer;
 
-        NRI_RETURN_ON_FAILURE(&m_Device, in.dst, ReturnVoid(), "'dst' is NULL");
-        NRI_RETURN_ON_FAILURE(&m_Device, in.instanceBuffer, ReturnVoid(), "'instanceBuffer' is NULL");
-        NRI_RETURN_ON_FAILURE(&m_Device, in.scratchBuffer, ReturnVoid(), "'scratchBuffer' is NULL");
-        NRI_RETURN_ON_FAILURE(&m_Device, in.instanceOffset <= instanceBufferVal->GetDesc().size, ReturnVoid(), "'instanceOffset=%" PRIu64 "' is out of bounds", in.instanceOffset);
-        NRI_RETURN_ON_FAILURE(&m_Device, in.scratchOffset <= scratchBufferVal->GetDesc().size, ReturnVoid(), "'scratchOffset=%" PRIu64 "' is out of bounds", in.scratchOffset);
+        NRI_RETURN_ON_FAILURE(&m_Device, in.dst, ReturnVoid(), "'[%u].dst' is NULL", i);
+        NRI_RETURN_ON_FAILURE(&m_Device, in.instanceBuffer, ReturnVoid(), "'[%u].instanceBuffer' is NULL", i);
+        NRI_RETURN_ON_FAILURE(&m_Device, in.scratchBuffer, ReturnVoid(), "'[%u].scratchBuffer' is NULL", i);
+        NRI_RETURN_ON_FAILURE(&m_Device, in.instanceOffset <= instanceBufferVal->GetDesc().size, ReturnVoid(), "'[%u].instanceOffset=%" PRIu64 "' is out of bounds", i, in.instanceOffset);
+        NRI_RETURN_ON_FAILURE(&m_Device, in.scratchOffset <= scratchBufferVal->GetDesc().size, ReturnVoid(), "'[%u].scratchOffset=%" PRIu64 "' is out of bounds", i, in.scratchOffset);
 
         auto& out = buildTopLevelAccelerationStructureDescsImpl[i];
         out = in;
@@ -694,10 +697,10 @@ NRI_INLINE void CommandBufferVal::BuildBottomLevelAccelerationStructure(const Bu
         const BuildBottomLevelAccelerationStructureDesc& in = buildBottomLevelAccelerationStructureDescs[i];
         const BufferVal* scratchBufferVal = (BufferVal*)in.scratchBuffer;
 
-        NRI_RETURN_ON_FAILURE(&m_Device, in.dst, ReturnVoid(), "'dst' is NULL");
-        NRI_RETURN_ON_FAILURE(&m_Device, in.scratchBuffer, ReturnVoid(), "'scratchBuffer' is NULL");
-        NRI_RETURN_ON_FAILURE(&m_Device, in.geometries, ReturnVoid(), "'geometries' is NULL");
-        NRI_RETURN_ON_FAILURE(&m_Device, in.scratchOffset <= scratchBufferVal->GetDesc().size, ReturnVoid(), "'scratchOffset=%" PRIu64 "' is out of bounds", in.scratchOffset);
+        NRI_RETURN_ON_FAILURE(&m_Device, in.dst, ReturnVoid(), "'[%u].dst' is NULL", i);
+        NRI_RETURN_ON_FAILURE(&m_Device, in.scratchBuffer, ReturnVoid(), "'[%u].scratchBuffer' is NULL", i);
+        NRI_RETURN_ON_FAILURE(&m_Device, in.geometries, ReturnVoid(), "'[%u].geometries' is NULL", i);
+        NRI_RETURN_ON_FAILURE(&m_Device, in.scratchOffset <= scratchBufferVal->GetDesc().size, ReturnVoid(), "'[%u].scratchOffset=%" PRIu64 "' is out of bounds", i, in.scratchOffset);
 
         auto& out = buildBottomLevelAccelerationStructureDescsImpl[i];
         out = in;
@@ -724,13 +727,13 @@ NRI_INLINE void CommandBufferVal::BuildMicromaps(const BuildMicromapDesc* buildM
         const BufferVal* triangleBufferVal = (BufferVal*)in.triangleBuffer;
         const BufferVal* scratchBufferVal = (BufferVal*)in.scratchBuffer;
 
-        NRI_RETURN_ON_FAILURE(&m_Device, in.dst, ReturnVoid(), "'dst' is NULL");
-        NRI_RETURN_ON_FAILURE(&m_Device, in.dataBuffer, ReturnVoid(), "'dataBuffer' is NULL");
-        NRI_RETURN_ON_FAILURE(&m_Device, in.triangleBuffer, ReturnVoid(), "'triangleBuffer' is NULL");
-        NRI_RETURN_ON_FAILURE(&m_Device, in.scratchBuffer, ReturnVoid(), "'scratchBuffer' is NULL");
-        NRI_RETURN_ON_FAILURE(&m_Device, in.dataOffset <= dataBufferVal->GetDesc().size, ReturnVoid(), "'dataOffset=%" PRIu64 "' is out of bounds", in.dataOffset);
-        NRI_RETURN_ON_FAILURE(&m_Device, in.triangleOffset <= triangleBufferVal->GetDesc().size, ReturnVoid(), "'triangleOffset=%" PRIu64 "' is out of bounds", in.triangleOffset);
-        NRI_RETURN_ON_FAILURE(&m_Device, in.scratchOffset <= scratchBufferVal->GetDesc().size, ReturnVoid(), "'scratchOffset=%" PRIu64 "' is out of bounds", in.scratchOffset);
+        NRI_RETURN_ON_FAILURE(&m_Device, in.dst, ReturnVoid(), "'[%u].dst' is NULL", i);
+        NRI_RETURN_ON_FAILURE(&m_Device, in.dataBuffer, ReturnVoid(), "'[%u].dataBuffer' is NULL", i);
+        NRI_RETURN_ON_FAILURE(&m_Device, in.triangleBuffer, ReturnVoid(), "'[%u].triangleBuffer' is NULL", i);
+        NRI_RETURN_ON_FAILURE(&m_Device, in.scratchBuffer, ReturnVoid(), "'[%u].scratchBuffer' is NULL", i);
+        NRI_RETURN_ON_FAILURE(&m_Device, in.dataOffset <= dataBufferVal->GetDesc().size, ReturnVoid(), "'[%u].dataOffset=%" PRIu64 "' is out of bounds", i, in.dataOffset);
+        NRI_RETURN_ON_FAILURE(&m_Device, in.triangleOffset <= triangleBufferVal->GetDesc().size, ReturnVoid(), "'[%u].triangleOffset=%" PRIu64 "' is out of bounds", i, in.triangleOffset);
+        NRI_RETURN_ON_FAILURE(&m_Device, in.scratchOffset <= scratchBufferVal->GetDesc().size, ReturnVoid(), "'[%u].scratchOffset=%" PRIu64 "' is out of bounds", i, in.scratchOffset);
 
         auto& out = buildMicromapDescsImpl[i];
         out = in;
