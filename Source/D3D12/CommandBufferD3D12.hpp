@@ -27,7 +27,11 @@ static HRESULT QueryLatestInterface(ComPtr<ID3D12GraphicsCommandListBest>& in, C
 
     version = n - i - 1;
 
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    return i < n && version >= 6 ? S_OK : D3D12_ERROR_INVALID_REDIST;
+#else
     return i == 0 ? S_OK : D3D12_ERROR_INVALID_REDIST;
+#endif
 }
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT

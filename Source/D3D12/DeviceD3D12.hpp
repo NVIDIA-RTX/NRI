@@ -32,7 +32,11 @@ static HRESULT QueryLatestInterface(ComPtr<ID3D12DeviceBest>& in, ComPtr<ID3D12D
 
     version = n - i - 1;
 
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    return i < n && version >= 10 ? S_OK : D3D12_ERROR_INVALID_REDIST;
+#else
     return i == 0 ? S_OK : D3D12_ERROR_INVALID_REDIST;
+#endif
 }
 
 static inline uint64_t HashRootSignatureAndStride(ID3D12RootSignature* rootSignature, uint32_t stride) {
