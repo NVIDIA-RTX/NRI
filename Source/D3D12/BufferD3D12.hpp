@@ -35,7 +35,7 @@ Result BufferD3D12::Allocate(MemoryLocation memoryLocation, float priority, bool
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_RESOURCE_DESC1 desc1 = {};
-    m_Device.GetResourceDesc(m_Desc, (D3D12_RESOURCE_DESC&)desc1);
+    m_Device.GetResourceDesc(m_Desc, desc1);
 
     const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_UNDEFINED;
 
@@ -77,7 +77,7 @@ Result BufferD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
     offset += memory.GetOffset();
 
     D3D12_RESOURCE_DESC1 desc1 = {};
-    m_Device.GetResourceDesc(m_Desc, (D3D12_RESOURCE_DESC&)desc1);
+    m_Device.GetResourceDesc(m_Desc, desc1);
 
     bool isCommitted = memory.IsDummy();
 

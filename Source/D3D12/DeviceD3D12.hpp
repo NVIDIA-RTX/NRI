@@ -1081,7 +1081,7 @@ D3D12_HEAP_TYPE DeviceD3D12::GetHeapType(MemoryLocation memoryLocation) const {
     return g_HeapTypes[(size_t)memoryLocation];
 }
 
-void DeviceD3D12::GetResourceDesc(const BufferDesc& bufferDesc, D3D12_RESOURCE_DESC& desc) const {
+void DeviceD3D12::GetResourceDesc(const BufferDesc& bufferDesc, D3D12_RESOURCE_DESC1& desc) const {
     desc = {};
     desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
     desc.Width = bufferDesc.size;
@@ -1098,7 +1098,7 @@ void DeviceD3D12::GetResourceDesc(const BufferDesc& bufferDesc, D3D12_RESOURCE_D
 #endif
 }
 
-static inline bool CanUseSmallAlignment(const D3D12_RESOURCE_DESC& desc, const FormatProps& formatProps) {
+static inline bool CanUseSmallAlignment(const D3D12_RESOURCE_DESC1& desc, const FormatProps& formatProps) {
     // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_resource_desc#alignment
     // WTF, MS? You never explained the hidden logic behind "small alignment" assuming "GetResourceAllocationInfo" usage, which just
     // throws a debug error, if a user wants to check the support. And the error is what we want to avoid! Thanks for the "chicken-egg" problem!
@@ -1220,7 +1220,7 @@ static inline bool CanUseSmallAlignment(const D3D12_RESOURCE_DESC& desc, const F
     return totalTiles <= 16;
 }
 
-void DeviceD3D12::GetResourceDesc(const TextureDesc& textureDesc, D3D12_RESOURCE_DESC& desc) const {
+void DeviceD3D12::GetResourceDesc(const TextureDesc& textureDesc, D3D12_RESOURCE_DESC1& desc) const {
     const FormatProps& formatProps = GetFormatProps(textureDesc.format);
     const DxgiFormat& dxgiFormat = GetDxgiFormat(textureDesc.format);
 
@@ -1250,7 +1250,7 @@ void DeviceD3D12::GetResourceDesc(const TextureDesc& textureDesc, D3D12_RESOURCE
     }
 }
 
-void DeviceD3D12::GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOURCE_DESC& resourceDesc, MemoryDesc& memoryDesc) const {
+void DeviceD3D12::GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOURCE_DESC1& resourceDesc, MemoryDesc& memoryDesc) const {
     D3D12_HEAP_TYPE heapType = GetHeapType(memoryLocation);
     D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
     bool isRTorDS = resourceDesc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
@@ -1269,7 +1269,7 @@ void DeviceD3D12::GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOU
     // Not "1" - "offset" is not needed (we always pass 1 resource, not an array)
     // Not "2" - "D3D12_RESOURCE_DESC1" is not in use
     // Not "3" - no castable formats
-    D3D12_RESOURCE_ALLOCATION_INFO resourceAllocationInfo = m_Device->GetResourceAllocationInfo(NODE_MASK, 1, &resourceDesc);
+    D3D12_RESOURCE_ALLOCATION_INFO resourceAllocationInfo = m_Device->GetResourceAllocationInfo(NODE_MASK, 1, (D3D12_RESOURCE_DESC*)&resourceDesc);
     NRI_CHECK(resourceAllocationInfo.SizeInBytes != UINT64_MAX, "Invalid arg?");
 
     MemoryTypeInfo memoryTypeInfo = {};

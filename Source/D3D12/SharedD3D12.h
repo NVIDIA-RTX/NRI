@@ -6,7 +6,7 @@
 #include <pix.h>
 
 // Validate Windows SDK version
-static_assert(D3D12_SDK_VERSION >= 4, "Outdated Windows SDK. D3D12 Ultimate needed (released 2021.04.20, Windows SDK 10.19041). Always prefer using latest Agility SDK!");
+static_assert(D3D12_SDK_VERSION >= 4, "Outdated Windows SDK. D3D12 Ultimate needed (Windows SDK 10.0.20348). Always prefer using latest Agility SDK!");
 
 // TODO: "D3D12_SDK_VERSION" and "D3D12_PREVIEW_SDK_VERSION" are inconsistent and can't be used to check features support
 

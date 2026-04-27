@@ -190,7 +190,7 @@ static void NRI_CALL GetBufferMemoryDesc(const Buffer& buffer, MemoryLocation me
     const BufferD3D12& bufferD3D12 = (BufferD3D12&)buffer;
     const DeviceD3D12& deviceD3D12 = bufferD3D12.GetDevice();
 
-    D3D12_RESOURCE_DESC desc = {};
+    D3D12_RESOURCE_DESC1 desc = {};
     deviceD3D12.GetResourceDesc(bufferD3D12.GetDesc(), desc);
 
     deviceD3D12.GetMemoryDesc(memoryLocation, desc, memoryDesc);
@@ -200,7 +200,7 @@ static void NRI_CALL GetTextureMemoryDesc(const Texture& texture, MemoryLocation
     const TextureD3D12& textureD3D12 = (TextureD3D12&)texture;
     const DeviceD3D12& deviceD3D12 = textureD3D12.GetDevice();
 
-    D3D12_RESOURCE_DESC desc = {};
+    D3D12_RESOURCE_DESC1 desc = {};
     deviceD3D12.GetResourceDesc(textureD3D12.GetDesc(), desc);
 
     deviceD3D12.GetMemoryDesc(memoryLocation, desc, memoryDesc);
@@ -225,7 +225,7 @@ static Result NRI_CALL BindTextureMemory(const BindTextureMemoryDesc* bindTextur
 static void NRI_CALL GetBufferMemoryDesc2(const Device& device, const BufferDesc& bufferDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
     const DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
 
-    D3D12_RESOURCE_DESC desc = {};
+    D3D12_RESOURCE_DESC1 desc = {};
     deviceD3D12.GetResourceDesc(bufferDesc, desc);
 
     deviceD3D12.GetMemoryDesc(memoryLocation, desc, memoryDesc);
@@ -234,7 +234,7 @@ static void NRI_CALL GetBufferMemoryDesc2(const Device& device, const BufferDesc
 static void NRI_CALL GetTextureMemoryDesc2(const Device& device, const TextureDesc& textureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
     const DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
 
-    D3D12_RESOURCE_DESC desc = {};
+    D3D12_RESOURCE_DESC1 desc = {};
     deviceD3D12.GetResourceDesc(textureDesc, desc);
 
     deviceD3D12.GetMemoryDesc(memoryLocation, desc, memoryDesc);
@@ -952,7 +952,7 @@ static void NRI_CALL GetAccelerationStructureMemoryDesc2(const Device& device, c
     bufferDesc.size = prebuildInfo.ResultDataMaxSizeInBytes;
     bufferDesc.usage = BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE;
 
-    D3D12_RESOURCE_DESC resourceDesc = {};
+    D3D12_RESOURCE_DESC1 resourceDesc = {};
     deviceD3D12.GetResourceDesc(bufferDesc, resourceDesc);
     deviceD3D12.GetMemoryDesc(memoryLocation, resourceDesc, memoryDesc);
 }
@@ -967,7 +967,7 @@ static void NRI_CALL GetMicromapMemoryDesc2(const Device& device, const Micromap
     bufferDesc.size = prebuildInfo.ResultDataMaxSizeInBytes;
     bufferDesc.usage = BufferUsageBits::MICROMAP_STORAGE;
 
-    D3D12_RESOURCE_DESC resourceDesc = {};
+    D3D12_RESOURCE_DESC1 resourceDesc = {};
     deviceD3D12.GetResourceDesc(bufferDesc, resourceDesc);
     deviceD3D12.GetMemoryDesc(memoryLocation, resourceDesc, memoryDesc);
 }

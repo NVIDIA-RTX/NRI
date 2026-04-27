@@ -47,7 +47,7 @@ void AccelerationStructureD3D12::GetMemoryDesc(MemoryLocation memoryLocation, Me
     bufferDesc.size = m_PrebuildInfo.ResultDataMaxSizeInBytes;
     bufferDesc.usage = BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE;
 
-    D3D12_RESOURCE_DESC resourceDesc = {};
+    D3D12_RESOURCE_DESC1 resourceDesc = {};
     m_Device.GetResourceDesc(bufferDesc, resourceDesc);
     m_Device.GetMemoryDesc(memoryLocation, resourceDesc, memoryDesc);
 }
