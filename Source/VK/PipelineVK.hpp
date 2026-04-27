@@ -260,10 +260,10 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     VkPipelineCreateFlags flags = 0;
     if (r.shadingRate)
         flags |= VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
-    if ((graphicsPipelineDesc.creationFlags & PipelineCreationBits::FAIL_ON_CACHE_MISS) && m_Device.m_IsSupported.pipelineCreationCacheControl)
+    if ((graphicsPipelineDesc.flags & PipelineBits::FAIL_ON_CACHE_MISS) && m_Device.m_IsSupported.pipelineCacheControl)
         flags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT;
 
-    const PipelineLayoutVK& pipelineLayoutVK = *(const PipelineLayoutVK*)graphicsPipelineDesc.pipelineLayout;
+    const PipelineLayoutVK& pipelineLayoutVK = *(PipelineLayoutVK*)graphicsPipelineDesc.pipelineLayout;
 
     VkGraphicsPipelineCreateInfo info = {
         VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -294,7 +294,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     const auto& vk = m_Device.GetDispatchTable();
     VkPipelineCache pipelineCache = VK_NULL_HANDLE;
     if (graphicsPipelineDesc.cache)
-        pipelineCache = *(const PipelineCacheVK*)graphicsPipelineDesc.cache;
+        pipelineCache = *(PipelineCacheVK*)graphicsPipelineDesc.cache;
     VkResult vkResult = vk.CreateGraphicsPipelines(m_Device, pipelineCache, 1, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
 
     for (size_t i = 0; i < graphicsPipelineDesc.shaderNum; i++)
@@ -310,7 +310,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
 Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc) {
     m_BindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
 
-    const PipelineLayoutVK& pipelineLayoutVK = *(const PipelineLayoutVK*)computePipelineDesc.pipelineLayout;
+    const PipelineLayoutVK& pipelineLayoutVK = *(PipelineLayoutVK*)computePipelineDesc.pipelineLayout;
 
     const VkShaderModuleCreateInfo moduleInfo = {
         VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -336,7 +336,7 @@ Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc) {
     };
 
     VkPipelineCreateFlags computeFlags = 0;
-    if ((computePipelineDesc.creationFlags & PipelineCreationBits::FAIL_ON_CACHE_MISS) && m_Device.m_IsSupported.pipelineCreationCacheControl)
+    if ((computePipelineDesc.flags & PipelineBits::FAIL_ON_CACHE_MISS) && m_Device.m_IsSupported.pipelineCacheControl)
         computeFlags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT;
 
     VkComputePipelineCreateInfo info = {
@@ -355,7 +355,7 @@ Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc) {
 
     VkPipelineCache pipelineCache = VK_NULL_HANDLE;
     if (computePipelineDesc.cache)
-        pipelineCache = *(const PipelineCacheVK*)computePipelineDesc.cache;
+        pipelineCache = *(PipelineCacheVK*)computePipelineDesc.cache;
     vkResult = vk.CreateComputePipelines(m_Device, pipelineCache, 1, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
 
     vk.DestroyShaderModule(m_Device, module, m_Device.GetVkAllocationCallbacks());
@@ -370,7 +370,7 @@ Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc) {
 Result PipelineVK::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc) {
     m_BindPoint = VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
 
-    const PipelineLayoutVK& pipelineLayoutVK = *(const PipelineLayoutVK*)rayTracingPipelineDesc.pipelineLayout;
+    const PipelineLayoutVK& pipelineLayoutVK = *(PipelineLayoutVK*)rayTracingPipelineDesc.pipelineLayout;
 
     const uint32_t stageNum = rayTracingPipelineDesc.shaderLibrary->shaderNum;
     Scratch<VkPipelineShaderStageCreateInfo> stages = NRI_ALLOCATE_SCRATCH(m_Device, VkPipelineShaderStageCreateInfo, stageNum);
@@ -455,7 +455,7 @@ Result PipelineVK::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc) 
         createInfo.flags |= VK_PIPELINE_CREATE_RAY_TRACING_SKIP_AABBS_BIT_KHR;
     if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::ALLOW_MICROMAPS)
         createInfo.flags |= VK_PIPELINE_CREATE_RAY_TRACING_OPACITY_MICROMAP_BIT_EXT;
-    if ((rayTracingPipelineDesc.creationFlags & PipelineCreationBits::FAIL_ON_CACHE_MISS) && m_Device.m_IsSupported.pipelineCreationCacheControl)
+    if ((rayTracingPipelineDesc.flags & RayTracingPipelineBits::FAIL_ON_CACHE_MISS) && m_Device.m_IsSupported.pipelineCacheControl)
         createInfo.flags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT;
 
     VkPipelineRobustnessCreateInfoEXT robustnessInfo = {VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO_EXT};
@@ -465,7 +465,7 @@ Result PipelineVK::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc) 
     const auto& vk = m_Device.GetDispatchTable();
     VkPipelineCache pipelineCache = VK_NULL_HANDLE;
     if (rayTracingPipelineDesc.cache)
-        pipelineCache = *(const PipelineCacheVK*)rayTracingPipelineDesc.cache;
+        pipelineCache = *(PipelineCacheVK*)rayTracingPipelineDesc.cache;
     VkResult vkResult = vk.CreateRayTracingPipelinesKHR(m_Device, VK_NULL_HANDLE, pipelineCache, 1, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
 
     // Destroy modules unconditionally - they're owned by this scope and must not leak on any failure path,

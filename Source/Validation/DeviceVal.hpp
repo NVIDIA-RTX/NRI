@@ -478,10 +478,11 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
 
     if (graphicsPipelineDesc.cache != nullptr && !GetDesc().features.pipelineCache)
         NRI_REPORT_WARNING(this, "'cache' is provided but 'features.pipelineCache' is false - the cache will be silently ignored");
-    if (graphicsPipelineDesc.creationFlags & PipelineCreationBits::FAIL_ON_CACHE_MISS) {
-        NRI_RETURN_ON_FAILURE(this, GetDesc().features.pipelineCacheControl, Result::UNSUPPORTED, "'features.pipelineCacheControl' is false - 'FAIL_ON_CACHE_MISS' cannot be enforced on this device");
-        if (graphicsPipelineDesc.cache == nullptr)
-            NRI_REPORT_WARNING(this, "'creationFlags' has FAIL_ON_CACHE_MISS set but 'cache' is NULL - the create will always fail");
+    if (graphicsPipelineDesc.flags & PipelineBits::FAIL_ON_CACHE_MISS) {
+        if (!GetDesc().features.pipelineCacheControl)
+            NRI_REPORT_WARNING(this, "'features.pipelineCacheControl' is false - 'FAIL_ON_CACHE_MISS' will be silently ignored");
+        else if (graphicsPipelineDesc.cache == nullptr)
+            NRI_REPORT_WARNING(this, "'flags' has FAIL_ON_CACHE_MISS set but 'cache' is NULL - the create will always fail");
     }
 
     auto graphicsPipelineDescImpl = graphicsPipelineDesc;
@@ -506,10 +507,11 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const ComputePipelineDesc& computePi
 
     if (computePipelineDesc.cache != nullptr && !GetDesc().features.pipelineCache)
         NRI_REPORT_WARNING(this, "'cache' is provided but 'features.pipelineCache' is false - the cache will be silently ignored");
-    if (computePipelineDesc.creationFlags & PipelineCreationBits::FAIL_ON_CACHE_MISS) {
-        NRI_RETURN_ON_FAILURE(this, GetDesc().features.pipelineCacheControl, Result::UNSUPPORTED, "'features.pipelineCacheControl' is false - 'FAIL_ON_CACHE_MISS' cannot be enforced on this device");
-        if (computePipelineDesc.cache == nullptr)
-            NRI_REPORT_WARNING(this, "'creationFlags' has FAIL_ON_CACHE_MISS set but 'cache' is NULL - the create will always fail");
+    if (computePipelineDesc.flags & PipelineBits::FAIL_ON_CACHE_MISS) {
+        if (!GetDesc().features.pipelineCacheControl)
+            NRI_REPORT_WARNING(this, "'features.pipelineCacheControl' is false - 'FAIL_ON_CACHE_MISS' will be silently ignored");
+        else if (computePipelineDesc.cache == nullptr)
+            NRI_REPORT_WARNING(this, "'flags' has FAIL_ON_CACHE_MISS set but 'cache' is NULL - the create will always fail");
     }
 
     auto computePipelineDescImpl = computePipelineDesc;
@@ -527,8 +529,9 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const ComputePipelineDesc& computePi
 }
 
 NRI_INLINE Result DeviceVal::CreatePipelineCache(const PipelineCacheDesc& pipelineCacheDesc, PipelineCache*& pipelineCache) {
-    NRI_RETURN_ON_FAILURE(this, GetDesc().features.pipelineCache, Result::UNSUPPORTED, "'features.pipelineCache' is false - this device cannot store/reuse PSOs");
     NRI_RETURN_ON_FAILURE(this, (pipelineCacheDesc.data == nullptr) == (pipelineCacheDesc.size == 0), Result::INVALID_ARGUMENT, "'data' and 'size' must be both NULL/0 (empty cache) or both non-NULL/non-0 (load from blob)");
+    if (!GetDesc().features.pipelineCache)
+        NRI_REPORT_WARNING(this, "'features.pipelineCache' is false - PipelineCache will be created as a NOP (no PSOs will actually be stored or reused on this device)");
 
     PipelineCache* pipelineCacheImpl = nullptr;
     Result result = m_iCoreImpl.CreatePipelineCache(m_Impl, pipelineCacheDesc, pipelineCacheImpl);
@@ -1349,10 +1352,11 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const RayTracingPipelineDesc& rayTra
 
     if (rayTracingPipelineDesc.cache != nullptr && !GetDesc().features.pipelineCache)
         NRI_REPORT_WARNING(this, "'cache' is provided but 'features.pipelineCache' is false - the cache will be silently ignored");
-    if (rayTracingPipelineDesc.creationFlags & PipelineCreationBits::FAIL_ON_CACHE_MISS) {
-        NRI_RETURN_ON_FAILURE(this, GetDesc().features.pipelineCacheControl, Result::UNSUPPORTED, "'features.pipelineCacheControl' is false - 'FAIL_ON_CACHE_MISS' cannot be enforced on this device");
-        if (rayTracingPipelineDesc.cache == nullptr)
-            NRI_REPORT_WARNING(this, "'creationFlags' has FAIL_ON_CACHE_MISS set but 'cache' is NULL - the create will always fail");
+    if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::FAIL_ON_CACHE_MISS) {
+        if (!GetDesc().features.pipelineCacheControl)
+            NRI_REPORT_WARNING(this, "'features.pipelineCacheControl' is false - 'FAIL_ON_CACHE_MISS' will be silently ignored");
+        else if (rayTracingPipelineDesc.cache == nullptr)
+            NRI_REPORT_WARNING(this, "'flags' has FAIL_ON_CACHE_MISS set but 'cache' is NULL - the create will always fail");
     }
 
     auto pipelineDescImpl = rayTracingPipelineDesc;

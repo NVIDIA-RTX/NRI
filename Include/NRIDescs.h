@@ -1478,7 +1478,7 @@ NriEnum(Robustness, uint8_t,
 );
 
 // Used by every "Create*Pipeline" call to opt into PSO cache behavior
-NriBits(PipelineCreationBits, uint8_t,
+NriBits(PipelineBits, uint8_t,
     NONE                = 0,
     FAIL_ON_CACHE_MISS  = NriBit(0)     // pipeline creation returns "FAILURE" if a matching blob is not found in the supplied cache
                                         // useful for platforms that prohibit runtime PSO compilation (e.g., Xbox GDK)
@@ -1490,7 +1490,7 @@ NriBits(PipelineCreationBits, uint8_t,
 
 // "data" can be NULL to start with an empty cache, or a previously serialized blob from "GetPipelineCacheData"
 // "CreatePipelineCache" returns:
-//  - "UNSUPPORTED" if the device cannot do PSO caching (check "features.pipelineCache" up-front to avoid this)
+//  - "SUCCESS" with a NOP cache if the device cannot do PSO caching (check "features.pipelineCache" if you need to know whether the cache is real)
 //  - "FAILURE" if the supplied blob is stale (e.g., driver was upgraded) - the caller can retry with "data = NULL" to get a fresh empty cache
 NriStruct(PipelineCacheDesc) {
     const void* data;
@@ -1516,7 +1516,7 @@ NriStruct(GraphicsPipelineDesc) {
     uint32_t shaderNum;
     NriOptional Nri(Robustness) robustness;
     NriOptional const NriPtr(PipelineCache) cache;     // if non-NULL, pipeline creation can be served from a cached blob and the result will be added to the cache on a miss
-    NriOptional Nri(PipelineCreationBits) creationFlags;
+    Nri(PipelineBits) flags;
 };
 
 NriStruct(ComputePipelineDesc) {
@@ -1524,7 +1524,7 @@ NriStruct(ComputePipelineDesc) {
     Nri(ShaderDesc) shader;
     NriOptional Nri(Robustness) robustness;
     NriOptional const NriPtr(PipelineCache) cache;
-    NriOptional Nri(PipelineCreationBits) creationFlags;
+    Nri(PipelineBits) flags;
 };
 
 #pragma endregion
@@ -2091,7 +2091,7 @@ NriStruct(DeviceDesc) {
         uint32_t shaderBytecodeDXIL                              : 1; // DXIL can be passed to "ShaderDesc::bytecode"
         uint32_t shaderBytecodeSPIRV                             : 1; // SPIRV can be passed to "ShaderDesc::bytecode"
         uint32_t pipelineCache                                   : 1; // PipelineCache can actually store/reuse PSOs (D3D11: false - PipelineCache is a NOP)
-        uint32_t pipelineCacheControl                            : 1; // "PipelineCreationBits::FAIL_ON_CACHE_MISS" is enforceable (D3D12: true; VK: requires "VK_EXT_pipeline_creation_cache_control" / VK 1.3 feature)
+        uint32_t pipelineCacheControl                            : 1; // "PipelineBits::FAIL_ON_CACHE_MISS" is enforceable (D3D12: true; VK: requires "VK_EXT_pipeline_creation_cache_control" / VK 1.3 feature)
     } features;
 
     // Shader features

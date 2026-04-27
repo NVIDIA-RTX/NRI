@@ -1,6 +1,9 @@
 // © 2026 NVIDIA Corporation
 
 Result PipelineCacheD3D12::Create(const PipelineCacheDesc& pipelineCacheDesc) {
+    if (!m_Device.GetDesc().features.pipelineCache)
+        return Result::SUCCESS;
+
     // "ID3D12Device1::CreatePipelineLibrary" requires the source blob to remain valid for the library's lifetime,
     // so we own a copy here instead of trusting the caller to keep their buffer alive across all subsequent
     // pipeline creates. (Vulkan's "vkCreatePipelineCache" copies internally - this matches that behavior.)

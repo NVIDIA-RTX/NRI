@@ -24,7 +24,7 @@ struct IsSupported {
     uint32_t robustness                   : 1;
     uint32_t robustness2                  : 1;
     uint32_t pipelineRobustness           : 1;
-    uint32_t pipelineCreationCacheControl : 1;
+    uint32_t pipelineCacheControl         : 1;
     uint32_t swapChainMaintenance1        : 1;
     uint32_t fifoLatestReady              : 1;
     uint32_t unifiedImageLayoutsVideo     : 1;
