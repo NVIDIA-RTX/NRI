@@ -48,30 +48,29 @@ Result TextureD3D12::Allocate(MemoryLocation memoryLocation, float priority, boo
     allocationDesc.Flags = (D3D12MA::ALLOCATION_FLAGS)flags;
     allocationDesc.ExtraHeapFlags = heapFlags;
 
-#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_RESOURCE_DESC1 desc1 = {};
     m_Device.GetResourceDesc(m_Desc, desc1);
+
     desc1.Alignment = 0; // TODO: D3D12MA naively adds "D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT" even if "Alignment" is already set (it's an error)
 
     bool isRenderableSurface = desc1.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
-    HRESULT hr = m_Device.GetVma()->CreateResource3(&allocationDesc, &desc1, D3D12_BARRIER_LAYOUT_COMMON, isRenderableSurface ? &clearValue : nullptr, NO_CASTABLE_FORMATS, &m_VmaAllocation, IID_PPV_ARGS(&m_Texture));
-    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3");
-#else
-    D3D12_RESOURCE_DESC desc = {};
-    m_Device.GetResourceDesc(m_Desc, desc);
-
-    bool isRenderableSurface = desc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
-
-    HRESULT hr = m_Device.GetVma()->CreateResource(&allocationDesc, &desc, D3D12_RESOURCE_STATE_COMMON, isRenderableSurface ? &clearValue : nullptr, &m_VmaAllocation, IID_PPV_ARGS(&m_Texture));
-    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource");
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    if (m_Device.GetVersion() >= 10 && m_Device.GetDesc().features.enhancedBarriers) {
+        HRESULT hr = m_Device.GetVma()->CreateResource3(&allocationDesc, &desc1, D3D12_BARRIER_LAYOUT_COMMON, isRenderableSurface ? &clearValue : nullptr, NO_CASTABLE_FORMATS, &m_VmaAllocation, IID_PPV_ARGS(&m_Texture));
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3");
+    } else
 #endif
+    {
+        HRESULT hr = m_Device.GetVma()->CreateResource2(&allocationDesc, &desc1, D3D12_RESOURCE_STATE_COMMON, isRenderableSurface ? &clearValue : nullptr, &m_VmaAllocation, IID_PPV_ARGS(&m_Texture));
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource");
+    }
 
     // Priority
     D3D12_RESIDENCY_PRIORITY residencyPriority = (D3D12_RESIDENCY_PRIORITY)ConvertPriority(priority);
     if (residencyPriority != 0 && committed) {
         ID3D12Pageable* obj = m_Texture.GetInterface();
-        hr = m_Device->SetResidencyPriority(1, &obj, &residencyPriority);
+        HRESULT hr = m_Device->SetResidencyPriority(1, &obj, &residencyPriority);
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device1::SetResidencyPriority");
     }
 
@@ -105,32 +104,30 @@ Result TextureD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
     D3D12_RESOURCE_DESC1 desc1 = {};
     m_Device.GetResourceDesc(m_Desc, desc1);
 
-    bool isRenderableSurface = desc1.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
     bool isCommitted = memory.IsDummy();
+    bool isRenderableSurface = desc1.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
-    // TODO: by design textures should not be created in UPLOAD/READBACK heaps, since they can't be mapped. But what about a wrapped texture?
-    const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_COMMON;
-    const D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
-
-    if (isCommitted) {
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-        if (m_Device.GetVersion() >= 10 && m_Device.GetDesc().features.enhancedBarriers) {
+    const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_COMMON;
+
+    if (m_Device.GetVersion() >= 10 && m_Device.GetDesc().features.enhancedBarriers) {
+        if (isCommitted) {
             HRESULT hr = m_Device->CreateCommittedResource3(&heapDesc.Properties, heapFlagsFixed, &desc1, initialLayout, isRenderableSurface ? &clearValue : nullptr, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Texture));
             NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreateCommittedResource3");
-        } else
-#endif
-        {
-            HRESULT hr = m_Device->CreateCommittedResource2(&heapDesc.Properties, heapFlagsFixed, &desc1, initialState, isRenderableSurface ? &clearValue : nullptr, nullptr, IID_PPV_ARGS(&m_Texture));
-            NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device8::CreateCommittedResource2");
-        }
-    } else {
-#if NRI_ENABLE_AGILITY_SDK_SUPPORT
-        if (m_Device.GetVersion() >= 10 && m_Device.GetDesc().features.enhancedBarriers) {
+        } else {
             HRESULT hr = m_Device->CreatePlacedResource2(memory, offset, &desc1, initialLayout, isRenderableSurface ? &clearValue : nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Texture));
             NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreatePlacedResource2");
-        } else
+        }
+    } else
 #endif
-        {
+    {
+        // TODO: by design textures should not be created in UPLOAD/READBACK heaps, since they can't be mapped. But what about a wrapped texture?
+        const D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
+
+        if (isCommitted) {
+            HRESULT hr = m_Device->CreateCommittedResource2(&heapDesc.Properties, heapFlagsFixed, &desc1, initialState, isRenderableSurface ? &clearValue : nullptr, nullptr, IID_PPV_ARGS(&m_Texture));
+            NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device8::CreateCommittedResource2");
+        } else {
             HRESULT hr = m_Device->CreatePlacedResource1(memory, offset, &desc1, initialState, isRenderableSurface ? &clearValue : nullptr, IID_PPV_ARGS(&m_Texture));
             NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device8::CreatePlacedResource1");
         }

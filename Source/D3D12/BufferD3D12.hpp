@@ -33,30 +33,30 @@ Result BufferD3D12::Allocate(MemoryLocation memoryLocation, float priority, bool
     allocationDesc.Flags = (D3D12MA::ALLOCATION_FLAGS)flags;
     allocationDesc.ExtraHeapFlags = heapFlags;
 
-#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_RESOURCE_DESC1 desc1 = {};
     m_Device.GetResourceDesc(m_Desc, desc1);
 
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_UNDEFINED;
 
-    HRESULT hr = m_Device.GetVma()->CreateResource3(&allocationDesc, &desc1, initialLayout, nullptr, NO_CASTABLE_FORMATS, &m_VmaAllocation, IID_PPV_ARGS(&m_Buffer));
-    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3");
-#else
-    D3D12_RESOURCE_DESC desc = {};
-    m_Device.GetResourceDesc(m_Desc, desc);
-
-    D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
-    if (memoryLocation == MemoryLocation::HOST_UPLOAD || memoryLocation == MemoryLocation::DEVICE_UPLOAD)
-        initialState |= D3D12_RESOURCE_STATE_GENERIC_READ;
-    else if (memoryLocation == MemoryLocation::HOST_READBACK)
-        initialState |= D3D12_RESOURCE_STATE_COPY_DEST;
-
-    if (m_Desc.usage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE)
-        initialState |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
-
-    HRESULT hr = m_Device.GetVma()->CreateResource(&allocationDesc, &desc, initialState, nullptr, &m_VmaAllocation, IID_PPV_ARGS(&m_Buffer));
-    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource");
+    if (m_Device.GetVersion() >= 10 && m_Device.GetDesc().features.enhancedBarriers) {
+        HRESULT hr = m_Device.GetVma()->CreateResource3(&allocationDesc, &desc1, initialLayout, nullptr, NO_CASTABLE_FORMATS, &m_VmaAllocation, IID_PPV_ARGS(&m_Buffer));
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3");
+    } else
 #endif
+    {
+        D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
+        if (memoryLocation == MemoryLocation::HOST_UPLOAD || memoryLocation == MemoryLocation::DEVICE_UPLOAD)
+            initialState |= D3D12_RESOURCE_STATE_GENERIC_READ;
+        else if (memoryLocation == MemoryLocation::HOST_READBACK)
+            initialState |= D3D12_RESOURCE_STATE_COPY_DEST;
+
+        if (m_Desc.usage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE)
+            initialState |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+
+        HRESULT hr = m_Device.GetVma()->CreateResource2(&allocationDesc, &desc1, initialState, nullptr, &m_VmaAllocation, IID_PPV_ARGS(&m_Buffer));
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource");
+    }
 
     D3D12_HEAP_PROPERTIES heapProps = {};
     heapProps.Type = allocationDesc.HeapType;
@@ -81,9 +81,22 @@ Result BufferD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
 
     bool isCommitted = memory.IsDummy();
 
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_UNDEFINED;
-    D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
+
+    if (m_Device.GetVersion() >= 10 && m_Device.GetDesc().features.enhancedBarriers) {
+        if (isCommitted) {
+            HRESULT hr = m_Device->CreateCommittedResource3(&heapDesc.Properties, heapFlagsFixed, &desc1, initialLayout, nullptr, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Buffer));
+            NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreateCommittedResource3");
+        } else {
+            HRESULT hr = m_Device->CreatePlacedResource2(memory, offset, &desc1, initialLayout, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Buffer));
+            NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreatePlacedResource2");
+        }
+    } else
+#endif
     {
+        D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
+
         bool isUpload = heapDesc.Properties.Type == D3D12_HEAP_TYPE_UPLOAD
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
             || heapDesc.Properties.Type == D3D12_HEAP_TYPE_GPU_UPLOAD
@@ -100,27 +113,11 @@ Result BufferD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
 
         if (m_Desc.usage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE)
             initialState |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
-    }
 
-    if (isCommitted) {
-#if NRI_ENABLE_AGILITY_SDK_SUPPORT
-        if (m_Device.GetVersion() >= 10 && m_Device.GetDesc().features.enhancedBarriers) {
-            HRESULT hr = m_Device->CreateCommittedResource3(&heapDesc.Properties, heapFlagsFixed, &desc1, initialLayout, nullptr, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Buffer));
-            NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreateCommittedResource3");
-        } else
-#endif
-        {
+        if (isCommitted) {
             HRESULT hr = m_Device->CreateCommittedResource2(&heapDesc.Properties, heapFlagsFixed, &desc1, initialState, nullptr, nullptr, IID_PPV_ARGS(&m_Buffer));
             NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device8::CreateCommittedResource2");
-        }
-    } else {
-#if NRI_ENABLE_AGILITY_SDK_SUPPORT
-        if (m_Device.GetVersion() >= 10 && m_Device.GetDesc().features.enhancedBarriers) {
-            HRESULT hr = m_Device->CreatePlacedResource2(memory, offset, &desc1, initialLayout, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Buffer));
-            NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreatePlacedResource2");
-        } else
-#endif
-        {
+        } else {
             HRESULT hr = m_Device->CreatePlacedResource1(memory, offset, &desc1, initialState, nullptr, IID_PPV_ARGS(&m_Buffer));
             NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device8::CreatePlacedResource1");
         }
