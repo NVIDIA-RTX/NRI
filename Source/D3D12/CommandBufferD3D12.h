@@ -2,8 +2,13 @@
 
 #pragma once
 
+#include <variant>
+
 struct ID3D12CommandAllocator;
+struct ID3D12CommandList;
 struct ID3D12Resource;
+struct ID3D12VideoDecodeCommandList;
+struct ID3D12VideoEncodeCommandList;
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
 struct ID3D12GraphicsCommandList10;
@@ -35,7 +40,11 @@ struct CommandBufferD3D12 final : public DebugNameBase {
     }
 
     inline operator ID3D12GraphicsCommandList*() const {
-        return m_GraphicsCommandList.GetInterface();
+        return GetGraphicsCommandList();
+    }
+
+    inline operator ID3D12CommandList*() const {
+        return GetCommandList();
     }
 
     inline DeviceD3D12& GetDevice() const {
@@ -61,9 +70,7 @@ struct CommandBufferD3D12 final : public DebugNameBase {
     // DebugNameBase
     //================================================================================================================
 
-    void SetDebugName(const char* name) NRI_DEBUG_NAME_OVERRIDE {
-        NRI_SET_D3D_DEBUG_OBJECT_NAME(m_GraphicsCommandList, name);
-    }
+    void SetDebugName(const char* name) NRI_DEBUG_NAME_OVERRIDE;
 
     //================================================================================================================
     // NRI
@@ -124,9 +131,14 @@ struct CommandBufferD3D12 final : public DebugNameBase {
     void DrawMeshTasksIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset);
 
 private:
+    using CommandList = std::variant<ComPtr<ID3D12GraphicsCommandListBest>, ComPtr<ID3D12VideoDecodeCommandList>, ComPtr<ID3D12VideoEncodeCommandList>>;
+
+    ID3D12CommandList* GetCommandList() const;
+    ID3D12GraphicsCommandListBest* GetGraphicsCommandList() const;
+
     DeviceD3D12& m_Device;
     ComPtr<ID3D12CommandAllocator> m_CommandAllocator;
-    ComPtr<ID3D12GraphicsCommandListBest> m_GraphicsCommandList;
+    CommandList m_CommandList;
     std::array<DescriptorSetD3D12*, ROOT_SIGNATURE_DWORD_NUM> m_DescriptorSets = {}; // TODO: needed only for "ClearStorage"
     std::array<AttachmentDescD3D12, D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT> m_RenderTargets = {};
     AttachmentDescD3D12 m_Depth = {};

@@ -514,6 +514,12 @@ constexpr VkImageAspectFlags GetImageAspectFlags(PlaneBits planes) {
         aspectFlags |= VK_IMAGE_ASPECT_DEPTH_BIT;
     if (planes & PlaneBits::STENCIL)
         aspectFlags |= VK_IMAGE_ASPECT_STENCIL_BIT;
+    if (planes & PlaneBits::PLANE_0)
+        aspectFlags |= VK_IMAGE_ASPECT_PLANE_0_BIT;
+    if (planes & PlaneBits::PLANE_1)
+        aspectFlags |= VK_IMAGE_ASPECT_PLANE_1_BIT;
+    if (planes & PlaneBits::PLANE_2)
+        aspectFlags |= VK_IMAGE_ASPECT_PLANE_2_BIT;
 
     return aspectFlags;
 }

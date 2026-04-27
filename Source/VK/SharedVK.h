@@ -7,6 +7,7 @@
 
 #include "DispatchTable.h"
 #include "SharedExternal.h"
+#include "QueueSelectionVK.h"
 
 typedef uint16_t MemoryTypeIndex;
 

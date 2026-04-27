@@ -1,9 +1,11 @@
 // © 2021 NVIDIA Corporation
 
 constexpr std::array<D3D12_COMMAND_LIST_TYPE, (size_t)QueueType::MAX_NUM> g_CommandListTypes = {
-    D3D12_COMMAND_LIST_TYPE_DIRECT,  // GRAPHICS,
-    D3D12_COMMAND_LIST_TYPE_COMPUTE, // COMPUTE,
-    D3D12_COMMAND_LIST_TYPE_COPY,    // COPY,
+    D3D12_COMMAND_LIST_TYPE_DIRECT,       // GRAPHICS,
+    D3D12_COMMAND_LIST_TYPE_COMPUTE,      // COMPUTE,
+    D3D12_COMMAND_LIST_TYPE_COPY,         // COPY,
+    D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE, // VIDEO_DECODE,
+    D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE, // VIDEO_ENCODE,
 };
 NRI_VALIDATE_ARRAY(g_CommandListTypes);
 
@@ -35,7 +37,8 @@ constexpr std::array<D3D12_DESCRIPTOR_RANGE_TYPE, (size_t)DescriptorType::MAX_NU
     D3D12_DESCRIPTOR_RANGE_TYPE_UAV,     // STORAGE_STRUCTURED_BUFFER
     D3D12_DESCRIPTOR_RANGE_TYPE_SRV,     // ACCELERATION_STRUCTURE
 };
-//NRI_VALIDATE_ARRAY(g_DescriptorRangeTypes); // TODO: 0 is expected for ACCELERATION_STRUCTURE
+
+// NRI_VALIDATE_ARRAY(g_DescriptorRangeTypes); // TODO: 0 is expected for ACCELERATION_STRUCTURE
 
 D3D12_DESCRIPTOR_RANGE_TYPE nri::GetDescriptorRangesType(DescriptorType descriptorType) {
     return g_DescriptorRangeTypes[(size_t)descriptorType];

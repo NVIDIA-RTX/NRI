@@ -267,6 +267,11 @@ NriEnum(Format, uint8_t,                // |      FormatSupportBits      |
     R11_G11_B10_UFLOAT,                 // + + . + . + + + + + + + . + + +
     R9_G9_B9_E5_UFLOAT,                 // + . . . . . . . . . . . . . . .
 
+    // Multi-planar: 4:2:0
+    G8_B8R8_2PLANE_420_UNORM,           // + . . . . . . . . . . . . . . .
+    G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16, // + . . . . . . . . . . . . . . .
+    G16_B16R16_2PLANE_420_UNORM,        // + . . . . . . . . . . . . . . .
+
     // Block-compressed (requires "features.textureCompressionBC")
     // https://learn.microsoft.com/en-us/windows/win32/direct3d11/texture-block-compression-in-direct3d-11?source=recommendations
     // https://registry.khronos.org/DataFormat/specs/1.4/dataformat.1.4.html#S3TC
@@ -352,7 +357,12 @@ NriBits(PlaneBits, uint8_t,
 
     // D3D11: can't be addressed individually in "copy" and "resolve" operations
     DEPTH                           = NriBit(1),    // indicates "depth" plane (same as "ALL" for depth-only formats)
-    STENCIL                         = NriBit(2)     // indicates "stencil" plane in depth-stencil formats
+    STENCIL                         = NriBit(2),    // indicates "stencil" plane in depth-stencil formats
+
+    // Vulkan: multi-planar YUV images
+    PLANE_0                         = NriBit(3),
+    PLANE_1                         = NriBit(4),
+    PLANE_2                         = NriBit(5)
 );
 
 // A bit represents a feature, supported by a format
@@ -1742,7 +1752,9 @@ NriEnum(Architecture, uint8_t,
 NriEnum(QueueType, uint8_t,
     GRAPHICS,
     COMPUTE,
-    COPY
+    COPY,
+    VIDEO_DECODE,
+    VIDEO_ENCODE
 );
 
 NriStruct(AdapterDesc) {

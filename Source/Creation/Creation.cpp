@@ -18,6 +18,7 @@
 
 #if NRI_ENABLE_D3D12_SUPPORT
 #    include <d3d12.h>
+#    include <d3d12video.h>
 #    include <dxgidebug.h>
 #endif
 
@@ -26,6 +27,9 @@
 #endif
 
 #include "SharedExternal.h"
+#if NRI_ENABLE_VK_SUPPORT
+#    include "../VK/QueueSelectionVK.h"
+#endif
 
 #define ADAPTER_MAX_NUM 32
 
@@ -236,6 +240,19 @@ static Result EnumerateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterD
             adapterDesc.queueNum[(uint32_t)QueueType::GRAPHICS] = 4;
             adapterDesc.queueNum[(uint32_t)QueueType::COMPUTE] = 4;
             adapterDesc.queueNum[(uint32_t)QueueType::COPY] = 4;
+
+#    if NRI_ENABLE_D3D12_SUPPORT
+            ComPtr<ID3D12Device> deviceD3D12;
+            HRESULT hrD3D12 = D3D12CreateDevice(adapters[i], D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), (void**)&deviceD3D12);
+            if (SUCCEEDED(hrD3D12)) {
+                ComPtr<ID3D12VideoDevice> videoDevice;
+                hrD3D12 = deviceD3D12->QueryInterface(IID_PPV_ARGS(&videoDevice));
+                if (SUCCEEDED(hrD3D12)) {
+                    adapterDesc.queueNum[(uint32_t)QueueType::VIDEO_DECODE] = 4;
+                    adapterDesc.queueNum[(uint32_t)QueueType::VIDEO_ENCODE] = 4;
+                }
+            }
+#    endif
         }
 
         // Sort by video memory size
@@ -381,58 +398,27 @@ static Result EnumerateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDe
                             vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &familyNum, nullptr);
 
                             VkQueueFamilyProperties2* familyProps2 = (VkQueueFamilyProperties2*)alloca(sizeof(VkQueueFamilyProperties2) * familyNum);
-                            for (uint32_t j = 0; j < familyNum; j++)
+                            VkQueueFamilyVideoPropertiesKHR* familyVideoProps = (VkQueueFamilyVideoPropertiesKHR*)alloca(sizeof(VkQueueFamilyVideoPropertiesKHR) * familyNum);
+                            for (uint32_t j = 0; j < familyNum; j++) {
                                 familyProps2[j] = {VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2};
+                                familyVideoProps[j] = {VK_STRUCTURE_TYPE_QUEUE_FAMILY_VIDEO_PROPERTIES_KHR};
+                                familyProps2[j].pNext = &familyVideoProps[j];
+                            }
 
                             vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &familyNum, familyProps2);
 
-                            std::array<uint32_t, (size_t)QueueType::MAX_NUM> scores = {};
+                            QueueFamilyPropsVK* queueFamilyProps = (QueueFamilyPropsVK*)alloca(sizeof(QueueFamilyPropsVK) * familyNum);
                             for (uint32_t j = 0; j < familyNum; j++) {
                                 const VkQueueFamilyProperties& familyProps = familyProps2[j].queueFamilyProperties;
-
-                                bool graphics = familyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT;
-                                bool compute = familyProps.queueFlags & VK_QUEUE_COMPUTE_BIT;
-                                bool copy = familyProps.queueFlags & VK_QUEUE_TRANSFER_BIT;
-                                bool sparse = familyProps.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT;
-                                bool videoDecode = familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR;
-                                bool videoEncode = familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR;
-                                bool protect = familyProps.queueFlags & VK_QUEUE_PROTECTED_BIT;
-                                bool opticalFlow = familyProps.queueFlags & VK_QUEUE_OPTICAL_FLOW_BIT_NV;
-                                bool taken = false;
-
-                                { // Prefer as much features as possible
-                                    size_t index = (size_t)QueueType::GRAPHICS;
-                                    uint32_t score = GRAPHICS_QUEUE_SCORE;
-
-                                    if (!taken && graphics && score > scores[index]) {
-                                        adapterDesc.queueNum[index] = familyProps.queueCount;
-                                        scores[index] = score;
-                                        taken = true;
-                                    }
-                                }
-
-                                { // Prefer compute-only
-                                    size_t index = (size_t)QueueType::COMPUTE;
-                                    uint32_t score = COMPUTE_QUEUE_SCORE;
-
-                                    if (!taken && compute && score > scores[index]) {
-                                        adapterDesc.queueNum[index] = familyProps.queueCount;
-                                        scores[index] = score;
-                                        taken = true;
-                                    }
-                                }
-
-                                { // Prefer copy-only
-                                    size_t index = (size_t)QueueType::COPY;
-                                    uint32_t score = COPY_QUEUE_SCORE;
-
-                                    if (!taken && copy && score > scores[index]) {
-                                        adapterDesc.queueNum[index] = familyProps.queueCount;
-                                        scores[index] = score;
-                                        taken = true;
-                                    }
-                                }
+                                queueFamilyProps[j] = {familyProps.queueFlags, familyProps.queueCount, familyVideoProps[j].videoCodecOperations};
                             }
+
+                            std::array<uint32_t, (size_t)QueueType::MAX_NUM> queueFamilyIndices = {};
+                            std::array<uint32_t, (size_t)QueueType::MAX_NUM> queueNums = {};
+                            SelectQueueFamiliesVK(queueFamilyProps, familyNum, queueFamilyIndices, &queueNums);
+
+                            for (uint32_t j = 0; j < (uint32_t)QueueType::MAX_NUM; j++)
+                                adapterDesc.queueNum[j] = queueNums[j];
                         }
                     }
 

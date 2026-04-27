@@ -318,6 +318,14 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(true, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_QUEUE_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_DECODE_H264_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_DECODE_H265_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_DECODE_AV1_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_MAINTENANCE_1_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_MAINTENANCE_2_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME);
@@ -341,6 +349,8 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
 DeviceVK::DeviceVK(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks)
     : DeviceBase(callbacks, allocationCallbacks)
     , m_QueueFamilies{
+          Vector<QueueVK*>(GetStdAllocator()),
+          Vector<QueueVK*>(GetStdAllocator()),
           Vector<QueueVK*>(GetStdAllocator()),
           Vector<QueueVK*>(GetStdAllocator()),
           Vector<QueueVK*>(GetStdAllocator()),
@@ -488,58 +498,22 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_VK.GetPhysicalDeviceQueueFamilyProperties2(m_PhysicalDevice, &familyNum, nullptr);
 
         Scratch<VkQueueFamilyProperties2> familyProps2 = NRI_ALLOCATE_SCRATCH(*this, VkQueueFamilyProperties2, familyNum);
-        for (uint32_t i = 0; i < familyNum; i++)
+        Scratch<VkQueueFamilyVideoPropertiesKHR> familyVideoProps = NRI_ALLOCATE_SCRATCH(*this, VkQueueFamilyVideoPropertiesKHR, familyNum);
+        for (uint32_t i = 0; i < familyNum; i++) {
             familyProps2[i] = {VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2};
+            familyVideoProps[i] = {VK_STRUCTURE_TYPE_QUEUE_FAMILY_VIDEO_PROPERTIES_KHR};
+            familyProps2[i].pNext = &familyVideoProps[i];
+        }
 
         m_VK.GetPhysicalDeviceQueueFamilyProperties2(m_PhysicalDevice, &familyNum, familyProps2);
 
-        std::array<uint32_t, (size_t)QueueType::MAX_NUM> scores = {};
-        for (uint32_t i = 0; i < familyNum; i++) { // TODO: same code is used in "Creation.cpp"
+        Scratch<QueueFamilyPropsVK> queueFamilyProps = NRI_ALLOCATE_SCRATCH(*this, QueueFamilyPropsVK, familyNum);
+        for (uint32_t i = 0; i < familyNum; i++) {
             const VkQueueFamilyProperties& familyProps = familyProps2[i].queueFamilyProperties;
-
-            bool graphics = familyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT;
-            bool compute = familyProps.queueFlags & VK_QUEUE_COMPUTE_BIT;
-            bool copy = familyProps.queueFlags & VK_QUEUE_TRANSFER_BIT;
-            bool sparse = familyProps.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT;
-            bool videoDecode = familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR;
-            bool videoEncode = familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR;
-            bool protect = familyProps.queueFlags & VK_QUEUE_PROTECTED_BIT;
-            bool opticalFlow = familyProps.queueFlags & VK_QUEUE_OPTICAL_FLOW_BIT_NV;
-            bool taken = false;
-
-            { // Prefer as much features as possible
-                size_t index = (size_t)QueueType::GRAPHICS;
-                uint32_t score = GRAPHICS_QUEUE_SCORE;
-
-                if (!taken && graphics && score > scores[index]) {
-                    queueFamilyIndices[index] = i;
-                    scores[index] = score;
-                    taken = true;
-                }
-            }
-
-            { // Prefer compute-only
-                size_t index = (size_t)QueueType::COMPUTE;
-                uint32_t score = COMPUTE_QUEUE_SCORE;
-
-                if (!taken && compute && score > scores[index]) {
-                    queueFamilyIndices[index] = i;
-                    scores[index] = score;
-                    taken = true;
-                }
-            }
-
-            { // Prefer copy-only
-                size_t index = (size_t)QueueType::COPY;
-                uint32_t score = COPY_QUEUE_SCORE;
-
-                if (!taken && copy && score > scores[index]) {
-                    queueFamilyIndices[index] = i;
-                    scores[index] = score;
-                    taken = true;
-                }
-            }
+            queueFamilyProps[i] = {familyProps.queueFlags, familyProps.queueCount, familyVideoProps[i].videoCodecOperations};
         }
+
+        SelectQueueFamiliesVK(queueFamilyProps, familyNum, queueFamilyIndices);
     }
 
     { // Memory props
@@ -609,6 +583,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, ShaderClock, SHADER_CLOCK);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, DynamicRenderingLocalRead, DYNAMIC_RENDERING_LOCAL_READ);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, UnifiedImageLayouts, UNIFIED_IMAGE_LAYOUTS);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, VideoMaintenance1, VIDEO_MAINTENANCE_1);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, VideoMaintenance2, VIDEO_MAINTENANCE_2);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, CustomBorderColor, CUSTOM_BORDER_COLOR);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, FragmentShaderInterlock, FRAGMENT_SHADER_INTERLOCK);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, ImageSlicedViewOf3D, IMAGE_SLICED_VIEW_OF_3D);
@@ -712,12 +688,31 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
                 uint32_t queueFamilyIndex = queueFamilyIndices[(size_t)queueFamily.queueType];
 
                 if (queueFamily.queueNum && queueFamilyIndex != INVALID_FAMILY_INDEX) {
-                    VkDeviceQueueCreateInfo& queueCreateInfo = queueCreateInfos[deviceCreateInfo.queueCreateInfoCount++];
+                    uint32_t queueCreateInfoIndex = INVALID_FAMILY_INDEX;
+                    for (uint32_t j = 0; j < deviceCreateInfo.queueCreateInfoCount; j++) {
+                        if (queueCreateInfos[j].queueFamilyIndex == queueFamilyIndex) {
+                            queueCreateInfoIndex = j;
+                            break;
+                        }
+                    }
 
-                    queueCreateInfo = {VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
-                    queueCreateInfo.queueCount = queueFamily.queueNum;
-                    queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
-                    queueCreateInfo.pQueuePriorities = queueFamily.queuePriorities ? queueFamily.queuePriorities : zeroPriorities.data();
+                    if (queueCreateInfoIndex == INVALID_FAMILY_INDEX) {
+                        queueCreateInfoIndex = deviceCreateInfo.queueCreateInfoCount++;
+                        VkDeviceQueueCreateInfo& queueCreateInfo = queueCreateInfos[queueCreateInfoIndex];
+
+                        queueCreateInfo = {VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
+                        queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
+                        queueCreateInfo.pQueuePriorities = zeroPriorities.data();
+                    }
+
+                    VkDeviceQueueCreateInfo& queueCreateInfo = queueCreateInfos[queueCreateInfoIndex];
+                    if (queueFamily.queueNum > queueCreateInfo.queueCount) {
+                        queueCreateInfo.queueCount = queueFamily.queueNum;
+                        queueCreateInfo.pQueuePriorities = zeroPriorities.data();
+                    }
+
+                    if (queueFamily.queuePriorities && queueFamily.queueNum >= queueCreateInfo.queueCount)
+                        queueCreateInfo.pQueuePriorities = queueFamily.queuePriorities;
                 }
             }
 

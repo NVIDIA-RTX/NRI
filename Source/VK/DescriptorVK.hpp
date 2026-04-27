@@ -84,8 +84,9 @@ Result DescriptorVK::Create(const TextureViewDesc& textureViewDesc) {
     if (textureDesc.type == TextureType::TEXTURE_3D && m_Device.m_IsSupported.imageSlicedView)
         usageInfo.pNext = &slicesInfo;
 
+    const bool explicitTexturePlanes = (textureViewDesc.readonlyPlanes & (PlaneBits::PLANE_0 | PlaneBits::PLANE_1 | PlaneBits::PLANE_2)) != 0;
     VkImageSubresourceRange subresourceRange = {
-        GetImageAspectFlags(textureViewDesc.format),
+        explicitTexturePlanes ? GetImageAspectFlags(textureViewDesc.readonlyPlanes) : GetImageAspectFlags(textureViewDesc.format),
         textureViewDesc.mipOffset,
         mipNum,
         textureViewDesc.layerOffset,
