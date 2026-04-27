@@ -1,12 +1,10 @@
-@echo off
-
 set ROOT=%cd%
 set SELF=%~dp0
 set SDK=_NRI_SDK
 
 echo %SDK%: ROOT=%ROOT%, SELF=%SELF%
 
-rd /q /s "%SDK%"
+if exist "%SDK%" rd /q /s "%SDK%"
 
 mkdir "%SDK%\Include\Extensions"
 mkdir "%SDK%\Lib\Debug"
