@@ -324,6 +324,7 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(true, VK_KHR_VIDEO_DECODE_H264_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_VIDEO_DECODE_H265_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_VIDEO_DECODE_AV1_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_ENCODE_QUEUE_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_VIDEO_MAINTENANCE_1_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_VIDEO_MAINTENANCE_2_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
@@ -1908,6 +1909,12 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
         GET_DEVICE_FUNC(CmdDrawMeshTasksIndirectEXT);
         GET_DEVICE_FUNC(CmdDrawMeshTasksIndirectCountEXT);
     }
+
+    if (IsExtensionSupported(VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME, desiredDeviceExts))
+        GET_DEVICE_FUNC(CmdDecodeVideoKHR);
+
+    if (IsExtensionSupported(VK_KHR_VIDEO_ENCODE_QUEUE_EXTENSION_NAME, desiredDeviceExts))
+        GET_DEVICE_FUNC(CmdEncodeVideoKHR);
 
     if (IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, desiredDeviceExts)) {
         GET_DEVICE_FUNC(GetLatencyTimingsNV);

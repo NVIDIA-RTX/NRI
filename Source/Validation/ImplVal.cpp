@@ -1181,6 +1181,31 @@ Result DeviceVal::FillFunctionTable(RayTracingInterface& table) const {
 #pragma endregion
 
 //============================================================================================================================================================================================
+#pragma region[  Video  ]
+
+static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDecodeDesc& videoDecodeDesc) {
+    CommandBufferVal& commandBufferVal = (CommandBufferVal&)commandBuffer;
+    commandBufferVal.GetVideoInterfaceImpl().CmdDecodeVideo(*commandBufferVal.GetImpl(), videoDecodeDesc);
+}
+
+static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEncodeDesc& videoEncodeDesc) {
+    CommandBufferVal& commandBufferVal = (CommandBufferVal&)commandBuffer;
+    commandBufferVal.GetVideoInterfaceImpl().CmdEncodeVideo(*commandBufferVal.GetImpl(), videoEncodeDesc);
+}
+
+Result DeviceVal::FillFunctionTable(VideoInterface& table) const {
+    if (!m_IsExtSupported.video)
+        return Result::UNSUPPORTED;
+
+    table.CmdDecodeVideo = ::CmdDecodeVideo;
+    table.CmdEncodeVideo = ::CmdEncodeVideo;
+
+    return Result::SUCCESS;
+}
+
+#pragma endregion
+
+//============================================================================================================================================================================================
 #pragma region[  Streamer  ]
 
 struct StreamerVal final : public ObjectVal {

@@ -582,7 +582,7 @@ static void* NRI_CALL GetCommandBufferNativeObject(const CommandBuffer* commandB
     if (!commandBuffer)
         return nullptr;
 
-    return (ID3D12GraphicsCommandList*)(*(CommandBufferD3D12*)commandBuffer);
+    return (ID3D12CommandList*)(*(CommandBufferD3D12*)commandBuffer);
 }
 
 static uint64_t NRI_CALL GetBufferNativeObject(const Buffer* buffer) {
@@ -1114,6 +1114,29 @@ Result DeviceD3D12::FillFunctionTable(RayTracingInterface& table) const {
     table.CmdCopyMicromap = ::CmdCopyMicromap;
     table.GetAccelerationStructureNativeObject = ::GetAccelerationStructureNativeObject;
     table.GetMicromapNativeObject = ::GetMicromapNativeObject;
+
+    return Result::SUCCESS;
+}
+
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region[  Video  ]
+
+static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDecodeDesc& videoDecodeDesc) {
+    ((CommandBufferD3D12&)commandBuffer).DecodeVideo(videoDecodeDesc);
+}
+
+static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEncodeDesc& videoEncodeDesc) {
+    ((CommandBufferD3D12&)commandBuffer).EncodeVideo(videoEncodeDesc);
+}
+
+Result DeviceD3D12::FillFunctionTable(VideoInterface& table) const {
+    if (m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_DECODE] == 0 && m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_ENCODE] == 0)
+        return Result::UNSUPPORTED;
+
+    table.CmdDecodeVideo = ::CmdDecodeVideo;
+    table.CmdEncodeVideo = ::CmdEncodeVideo;
 
     return Result::SUCCESS;
 }

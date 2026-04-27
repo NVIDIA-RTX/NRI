@@ -8,7 +8,10 @@ struct ID3D12CommandAllocator;
 struct ID3D12CommandList;
 struct ID3D12Resource;
 struct ID3D12VideoDecodeCommandList;
+struct ID3D12VideoDecoder;
 struct ID3D12VideoEncodeCommandList;
+struct ID3D12VideoEncoder;
+struct ID3D12VideoEncoderHeap;
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
 struct ID3D12GraphicsCommandList10;
@@ -129,6 +132,8 @@ struct CommandBufferD3D12 final : public DebugNameBase {
     void DispatchRaysIndirect(const Buffer& buffer, uint64_t offset);
     void DrawMeshTasks(const DrawMeshTasksDesc& drawMeshTasksDesc);
     void DrawMeshTasksIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset);
+    void DecodeVideo(const VideoDecodeDesc& videoDecodeDesc);
+    void EncodeVideo(const VideoEncodeDesc& videoEncodeDesc);
 
 private:
     using CommandList = std::variant<ComPtr<ID3D12GraphicsCommandListBest>, ComPtr<ID3D12VideoDecodeCommandList>, ComPtr<ID3D12VideoEncodeCommandList>>;
