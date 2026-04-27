@@ -10,8 +10,8 @@ struct ID3D12CommandSignature;
 struct ID3D12Device15;
 typedef ID3D12Device15 ID3D12DeviceBest;
 #else
-struct ID3D12Device5;
-typedef ID3D12Device5 ID3D12DeviceBest;
+struct ID3D12Device8;
+typedef ID3D12Device8 ID3D12DeviceBest;
 #endif
 
 namespace nri {

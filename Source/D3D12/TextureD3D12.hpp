@@ -102,37 +102,39 @@ Result TextureD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
 
     offset += memory.GetOffset();
 
-    bool isCommitted = memory.IsDummy();
-#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_RESOURCE_DESC1 desc1 = {};
     m_Device.GetResourceDesc(m_Desc, (D3D12_RESOURCE_DESC&)desc1);
 
-    const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_COMMON;
     bool isRenderableSurface = desc1.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+    bool isCommitted = memory.IsDummy();
 
-    if (isCommitted) {
-        HRESULT hr = m_Device->CreateCommittedResource3(&heapDesc.Properties, heapFlagsFixed, &desc1, initialLayout, isRenderableSurface ? &clearValue : nullptr, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Texture));
-        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreateCommittedResource3");
-    } else {
-        HRESULT hr = m_Device->CreatePlacedResource2(memory, offset, &desc1, initialLayout, isRenderableSurface ? &clearValue : nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Texture));
-        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreatePlacedResource2");
-    }
-#else
     // TODO: by design textures should not be created in UPLOAD/READBACK heaps, since they can't be mapped. But what about a wrapped texture?
-    D3D12_RESOURCE_DESC desc = {};
-    m_Device.GetResourceDesc(m_Desc, desc);
-
+    const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_COMMON;
     const D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
-    bool isRenderableSurface = desc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
     if (isCommitted) {
-        HRESULT hr = m_Device->CreateCommittedResource(&heapDesc.Properties, heapFlagsFixed, &desc, initialState, isRenderableSurface ? &clearValue : nullptr, IID_PPV_ARGS(&m_Texture));
-        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommittedResource");
-    } else {
-        HRESULT hr = m_Device->CreatePlacedResource(memory, offset, &desc, initialState, isRenderableSurface ? &clearValue : nullptr, IID_PPV_ARGS(&m_Texture));
-        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreatePlacedResource");
-    }
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+        if (m_Device.GetVersion() >= 10 && m_Device.GetDesc().features.enhancedBarriers) {
+            HRESULT hr = m_Device->CreateCommittedResource3(&heapDesc.Properties, heapFlagsFixed, &desc1, initialLayout, isRenderableSurface ? &clearValue : nullptr, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Texture));
+            NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreateCommittedResource3");
+        } else
 #endif
+        {
+            HRESULT hr = m_Device->CreateCommittedResource2(&heapDesc.Properties, heapFlagsFixed, &desc1, initialState, isRenderableSurface ? &clearValue : nullptr, nullptr, IID_PPV_ARGS(&m_Texture));
+            NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device8::CreateCommittedResource2");
+        }
+    } else {
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+        if (m_Device.GetVersion() >= 10 && m_Device.GetDesc().features.enhancedBarriers) {
+            HRESULT hr = m_Device->CreatePlacedResource2(memory, offset, &desc1, initialLayout, isRenderableSurface ? &clearValue : nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Texture));
+            NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreatePlacedResource2");
+        } else
+#endif
+        {
+            HRESULT hr = m_Device->CreatePlacedResource1(memory, offset, &desc1, initialState, isRenderableSurface ? &clearValue : nullptr, IID_PPV_ARGS(&m_Texture));
+            NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device8::CreatePlacedResource1");
+        }
+    }
 
     // Priority (for committed resources only)
     D3D12_RESIDENCY_PRIORITY residencyPriority = (D3D12_RESIDENCY_PRIORITY)ConvertPriority(memory.GetPriority());

@@ -8,6 +8,7 @@ static HRESULT QueryLatestInterface(ComPtr<ID3D12GraphicsCommandListBest>& in, C
         __uuidof(ID3D12GraphicsCommandList8),
         __uuidof(ID3D12GraphicsCommandList7),
 #endif
+        // D3D12 Ultimate initial release
         __uuidof(ID3D12GraphicsCommandList6),
         __uuidof(ID3D12GraphicsCommandList5),
         __uuidof(ID3D12GraphicsCommandList4),
@@ -27,7 +28,7 @@ static HRESULT QueryLatestInterface(ComPtr<ID3D12GraphicsCommandListBest>& in, C
 
     version = n - i - 1;
 
-    return i == 0 ? S_OK : D3D12_ERROR_INVALID_REDIST;
+    return i != n ? S_OK : D3D12_ERROR_INVALID_REDIST;
 }
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
@@ -389,7 +390,7 @@ NRI_INLINE void CommandBufferD3D12::SetDepthBounds(float boundsMin, float bounds
 NRI_INLINE void CommandBufferD3D12::SetStencilReference(uint8_t frontRef, uint8_t backRef) {
     MaybeUnused(backRef);
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-    if (m_Device.GetDesc().features.independentFrontAndBackStencilReferenceAndMasks)
+    if (m_Device.GetDesc().features.independentFrontAndBackStencilReferenceAndMasks && m_Device.GetVersion() >= 8)
         m_GraphicsCommandList->OMSetFrontAndBackStencilRef(frontRef, backRef);
     else
 #endif
@@ -420,7 +421,8 @@ NRI_INLINE void CommandBufferD3D12::SetShadingRate(const ShadingRateDesc& shadin
 NRI_INLINE void CommandBufferD3D12::SetDepthBias(const DepthBiasDesc& depthBiasDesc) {
     MaybeUnused(depthBiasDesc);
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-    m_GraphicsCommandList->RSSetDepthBias(depthBiasDesc.constant, depthBiasDesc.clamp, depthBiasDesc.slope);
+    if (GetDevice().GetVersion() >= 9)
+        m_GraphicsCommandList->RSSetDepthBias(depthBiasDesc.constant, depthBiasDesc.clamp, depthBiasDesc.slope);
 #endif
 }
 

@@ -10,10 +10,11 @@ static HRESULT QueryLatestInterface(ComPtr<ID3D12DeviceBest>& in, ComPtr<ID3D12D
         __uuidof(ID3D12Device11),
         __uuidof(ID3D12Device10),
         __uuidof(ID3D12Device9),
+#endif
+        // D3D12 Ultimate initial release
         __uuidof(ID3D12Device8),
         __uuidof(ID3D12Device7),
         __uuidof(ID3D12Device6),
-#endif
         __uuidof(ID3D12Device5),
         __uuidof(ID3D12Device4),
         __uuidof(ID3D12Device3),
@@ -32,7 +33,7 @@ static HRESULT QueryLatestInterface(ComPtr<ID3D12DeviceBest>& in, ComPtr<ID3D12D
 
     version = n - i - 1;
 
-    return i == 0 ? S_OK : D3D12_ERROR_INVALID_REDIST;
+    return i != n ? S_OK : D3D12_ERROR_INVALID_REDIST;
 }
 
 static inline uint64_t HashRootSignatureAndStride(ID3D12RootSignature* rootSignature, uint32_t stride) {
@@ -148,6 +149,9 @@ DeviceD3D12::DeviceD3D12(const CallbackInterface& callbacks, const AllocationCal
 }
 
 DeviceD3D12::~DeviceD3D12() {
+    if (!m_Device)
+        return;
+
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
     ComPtr<ID3D12InfoQueueBest> pInfoQueue;
     HRESULT hr = m_Device->QueryInterface(&pInfoQueue);
