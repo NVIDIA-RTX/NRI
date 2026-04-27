@@ -1,3 +1,5 @@
+@echo off
+
 set ROOT=%cd%
 set SELF=%~dp0
 set SDK=_NRI_SDK
