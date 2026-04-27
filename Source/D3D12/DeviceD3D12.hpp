@@ -566,6 +566,12 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options21) failed, result = 0x%08X!", hr);
 
+    D3D12_FEATURE_DATA_SHADER_CACHE shaderCache = {};
+    hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_SHADER_CACHE, &shaderCache, sizeof(shaderCache));
+    if (FAILED(hr))
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(shaderCache) failed, result = 0x%08X!", hr);
+    const bool isPipelineLibrarySupported = (shaderCache.SupportFlags & D3D12_SHADER_CACHE_SUPPORT_LIBRARY) != 0;
+
     D3D12_FEATURE_DATA_D3D12_OPTIONS22 options22 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS22, &options22, sizeof(options22));
     if (FAILED(hr))
@@ -824,6 +830,8 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.features.getMemoryDesc2 = true;
     m_Desc.features.swapChain = HasOutput();
     m_Desc.features.lowLatency = HasNvExt();
+    m_Desc.features.pipelineCache = isPipelineLibrarySupported;
+    m_Desc.features.pipelineCacheControl = isPipelineLibrarySupported; // emulated via "ID3D12PipelineLibrary::Load*Pipeline" miss-detection
 
     m_Desc.features.componentSwizzle = true;
     m_Desc.features.filterOpMinMax = levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_11_1 ? true : false;

@@ -260,6 +260,8 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     VkPipelineCreateFlags flags = 0;
     if (r.shadingRate)
         flags |= VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+    if ((graphicsPipelineDesc.creationFlags & PipelineCreationBits::FAIL_ON_CACHE_MISS) && m_Device.m_IsSupported.pipelineCreationCacheControl)
+        flags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT;
 
     const PipelineLayoutVK& pipelineLayoutVK = *(const PipelineLayoutVK*)graphicsPipelineDesc.pipelineLayout;
 
@@ -290,11 +292,17 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
         pipelineRenderingCreateInfo.pNext = &robustnessInfo;
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult vkResult = vk.CreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateGraphicsPipelines");
+    VkPipelineCache pipelineCache = VK_NULL_HANDLE;
+    if (graphicsPipelineDesc.cache)
+        pipelineCache = *(const PipelineCacheVK*)graphicsPipelineDesc.cache;
+    VkResult vkResult = vk.CreateGraphicsPipelines(m_Device, pipelineCache, 1, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
 
     for (size_t i = 0; i < graphicsPipelineDesc.shaderNum; i++)
         vk.DestroyShaderModule(m_Device, modules[i], m_Device.GetVkAllocationCallbacks());
+
+    if (vkResult == VK_PIPELINE_COMPILE_REQUIRED)
+        return Result::FAILURE;
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateGraphicsPipelines");
 
     return Result::SUCCESS;
 }
@@ -327,10 +335,14 @@ Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc) {
         nullptr,
     };
 
+    VkPipelineCreateFlags computeFlags = 0;
+    if ((computePipelineDesc.creationFlags & PipelineCreationBits::FAIL_ON_CACHE_MISS) && m_Device.m_IsSupported.pipelineCreationCacheControl)
+        computeFlags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT;
+
     VkComputePipelineCreateInfo info = {
         VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
         nullptr,
-        (VkPipelineCreateFlags)0,
+        computeFlags,
         stage,
         pipelineLayoutVK,
         VK_NULL_HANDLE,
@@ -341,10 +353,16 @@ Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc) {
     if (FillPipelineRobustness(m_Device, computePipelineDesc.robustness, robustnessInfo))
         info.pNext = &robustnessInfo;
 
-    vkResult = vk.CreateComputePipelines(m_Device, VK_NULL_HANDLE, 1, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateComputePipelines");
+    VkPipelineCache pipelineCache = VK_NULL_HANDLE;
+    if (computePipelineDesc.cache)
+        pipelineCache = *(const PipelineCacheVK*)computePipelineDesc.cache;
+    vkResult = vk.CreateComputePipelines(m_Device, pipelineCache, 1, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
 
     vk.DestroyShaderModule(m_Device, module, m_Device.GetVkAllocationCallbacks());
+
+    if (vkResult == VK_PIPELINE_COMPILE_REQUIRED)
+        return Result::FAILURE;
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateComputePipelines");
 
     return Result::SUCCESS;
 }
@@ -437,17 +455,27 @@ Result PipelineVK::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc) 
         createInfo.flags |= VK_PIPELINE_CREATE_RAY_TRACING_SKIP_AABBS_BIT_KHR;
     if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::ALLOW_MICROMAPS)
         createInfo.flags |= VK_PIPELINE_CREATE_RAY_TRACING_OPACITY_MICROMAP_BIT_EXT;
+    if ((rayTracingPipelineDesc.creationFlags & PipelineCreationBits::FAIL_ON_CACHE_MISS) && m_Device.m_IsSupported.pipelineCreationCacheControl)
+        createInfo.flags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT;
 
     VkPipelineRobustnessCreateInfoEXT robustnessInfo = {VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO_EXT};
     if (FillPipelineRobustness(m_Device, rayTracingPipelineDesc.robustness, robustnessInfo))
         createInfo.pNext = &robustnessInfo;
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult vkResult = vk.CreateRayTracingPipelinesKHR(m_Device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
-    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateRayTracingPipelinesKHR");
+    VkPipelineCache pipelineCache = VK_NULL_HANDLE;
+    if (rayTracingPipelineDesc.cache)
+        pipelineCache = *(const PipelineCacheVK*)rayTracingPipelineDesc.cache;
+    VkResult vkResult = vk.CreateRayTracingPipelinesKHR(m_Device, VK_NULL_HANDLE, pipelineCache, 1, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
 
+    // Destroy modules unconditionally - they're owned by this scope and must not leak on any failure path,
+    // matching the graphics/compute create paths above.
     for (size_t i = 0; i < stageNum; i++)
         vk.DestroyShaderModule(m_Device, modules[i], m_Device.GetVkAllocationCallbacks());
+
+    if (vkResult == VK_PIPELINE_COMPILE_REQUIRED)
+        return Result::FAILURE;
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateRayTracingPipelinesKHR");
 
     return Result::SUCCESS;
 }

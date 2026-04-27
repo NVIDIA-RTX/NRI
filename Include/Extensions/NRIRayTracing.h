@@ -49,6 +49,8 @@ NriStruct(RayTracingPipelineDesc) {
     uint32_t rayHitAttributeMaxSize;
     Nri(RayTracingPipelineBits) flags;
     NriOptional Nri(Robustness) robustness;
+    NriOptional const NriPtr(PipelineCache) cache;     // VK: passed to "vkCreateRayTracingPipelinesKHR"; D3D12: NOP (state objects are not stored in "ID3D12PipelineLibrary")
+    NriOptional Nri(PipelineCreationBits) creationFlags;
 };
 
 #pragma endregion

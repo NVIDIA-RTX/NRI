@@ -15,6 +15,7 @@
 #include "FenceVK.h"
 #include "MemoryVK.h"
 #include "MicromapVK.h"
+#include "PipelineCacheVK.h"
 #include "PipelineLayoutVK.h"
 #include "PipelineVK.h"
 #include "QueryPoolVK.h"
@@ -41,6 +42,7 @@ using namespace nri;
 #include "FenceVK.hpp"
 #include "MemoryVK.hpp"
 #include "MicromapVK.hpp"
+#include "PipelineCacheVK.hpp"
 #include "PipelineLayoutVK.hpp"
 #include "PipelineVK.hpp"
 #include "QueryPoolVK.hpp"
@@ -113,6 +115,10 @@ static Result NRI_CALL CreateComputePipeline(Device& device, const ComputePipeli
     return ((DeviceVK&)device).CreateImplementation<PipelineVK>(pipeline, computePipelineDesc);
 }
 
+static Result NRI_CALL CreatePipelineCache(Device& device, const PipelineCacheDesc& pipelineCacheDesc, PipelineCache*& pipelineCache) {
+    return ((DeviceVK&)device).CreateImplementation<PipelineCacheVK>(pipelineCache, pipelineCacheDesc);
+}
+
 static Result NRI_CALL CreateQueryPool(Device& device, const QueryPoolDesc& queryPoolDesc, QueryPool*& queryPool) {
     return ((DeviceVK&)device).CreateImplementation<QueryPoolVK>(queryPool, queryPoolDesc);
 }
@@ -161,6 +167,14 @@ static void NRI_CALL DestroyPipelineLayout(PipelineLayout* pipelineLayout) {
 
 static void NRI_CALL DestroyPipeline(Pipeline* pipeline) {
     Destroy((PipelineVK*)pipeline);
+}
+
+static void NRI_CALL DestroyPipelineCache(PipelineCache* pipelineCache) {
+    Destroy((PipelineCacheVK*)pipelineCache);
+}
+
+static Result NRI_CALL GetPipelineCacheData(PipelineCache& pipelineCache, void* dst, uint64_t& size) {
+    return ((PipelineCacheVK&)pipelineCache).GetData(dst, size);
 }
 
 static void NRI_CALL DestroyQueryPool(QueryPool* queryPool) {
@@ -636,6 +650,7 @@ Result DeviceVK::FillFunctionTable(CoreInterface& table) const {
     table.CreatePipelineLayout = ::CreatePipelineLayout;
     table.CreateGraphicsPipeline = ::CreateGraphicsPipeline;
     table.CreateComputePipeline = ::CreateComputePipeline;
+    table.CreatePipelineCache = ::CreatePipelineCache;
     table.CreateQueryPool = ::CreateQueryPool;
     table.CreateFence = ::CreateFence;
     table.DestroyCommandAllocator = ::DestroyCommandAllocator;
@@ -646,6 +661,8 @@ Result DeviceVK::FillFunctionTable(CoreInterface& table) const {
     table.DestroyDescriptor = ::DestroyDescriptor;
     table.DestroyPipelineLayout = ::DestroyPipelineLayout;
     table.DestroyPipeline = ::DestroyPipeline;
+    table.DestroyPipelineCache = ::DestroyPipelineCache;
+    table.GetPipelineCacheData = ::GetPipelineCacheData;
     table.DestroyQueryPool = ::DestroyQueryPool;
     table.DestroyFence = ::DestroyFence;
     table.AllocateMemory = ::AllocateMemory;

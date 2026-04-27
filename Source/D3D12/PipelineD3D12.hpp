@@ -1,5 +1,151 @@
 ﻿// © 2021 NVIDIA Corporation
 
+// Hash helpers
+static constexpr uint64_t FNV_INIT = 0xCBF29CE484222325ULL;
+static constexpr uint64_t FNV_PRIME = 0x100000001B3ULL;
+
+static inline uint64_t Fnv1a64(uint64_t hash, const void* data, size_t size) {
+    const uint8_t* bytes = (const uint8_t*)data;
+    for (size_t i = 0; i < size; i++) {
+        hash ^= bytes[i];
+        hash *= FNV_PRIME;
+    }
+    return hash;
+}
+
+// Per-field absorb - "T" must be a primitive/enum (no padding); structs are decomposed below.
+template <typename T>
+static inline uint64_t HashField(uint64_t h, const T& field) {
+    return Fnv1a64(h, &field, sizeof(T));
+}
+
+static inline uint64_t HashStruct(uint64_t h, const InputAssemblyDesc& s) {
+    h = HashField(h, s.topology);
+    h = HashField(h, s.tessControlPointNum);
+    h = HashField(h, s.primitiveRestart);
+    return h;
+}
+
+static inline uint64_t HashStruct(uint64_t h, const DepthBiasDesc& s) {
+    h = HashField(h, s.constant);
+    h = HashField(h, s.clamp);
+    h = HashField(h, s.slope);
+    return h;
+}
+
+static inline uint64_t HashStruct(uint64_t h, const RasterizationDesc& s) {
+    h = HashStruct(h, s.depthBias);
+    h = HashField(h, s.fillMode);
+    h = HashField(h, s.cullMode);
+    h = HashField(h, s.frontCounterClockwise);
+    h = HashField(h, s.depthClamp);
+    h = HashField(h, s.lineSmoothing);
+    h = HashField(h, s.conservativeRaster);
+    h = HashField(h, s.shadingRate);
+    return h;
+}
+
+static inline uint64_t HashStruct(uint64_t h, const MultisampleDesc& s) {
+    h = HashField(h, s.sampleMask);
+    h = HashField(h, s.sampleNum);
+    h = HashField(h, s.alphaToCoverage);
+    h = HashField(h, s.sampleLocations);
+    return h;
+}
+
+static inline uint64_t HashStruct(uint64_t h, const DepthAttachmentDesc& s) {
+    h = HashField(h, s.compareOp);
+    h = HashField(h, s.write);
+    h = HashField(h, s.boundsTest);
+    return h;
+}
+
+static inline uint64_t HashStruct(uint64_t h, const StencilDesc& s) {
+    h = HashField(h, s.compareOp);
+    h = HashField(h, s.failOp);
+    h = HashField(h, s.passOp);
+    h = HashField(h, s.depthFailOp);
+    h = HashField(h, s.writeMask);
+    h = HashField(h, s.compareMask);
+    return h;
+}
+
+static inline uint64_t HashStruct(uint64_t h, const StencilAttachmentDesc& s) {
+    h = HashStruct(h, s.front);
+    h = HashStruct(h, s.back);
+    return h;
+}
+
+static inline uint64_t HashStruct(uint64_t h, const BlendDesc& s) {
+    h = HashField(h, s.srcFactor);
+    h = HashField(h, s.dstFactor);
+    h = HashField(h, s.op);
+    return h;
+}
+
+static inline uint64_t HashStruct(uint64_t h, const ColorAttachmentDesc& s) {
+    h = HashField(h, s.format);
+    h = HashStruct(h, s.colorBlend);
+    h = HashStruct(h, s.alphaBlend);
+    h = HashField(h, s.colorWriteMask);
+    h = HashField(h, s.blendEnabled);
+    return h;
+}
+
+static uint64_t HashGraphicsPipelineDesc(const GraphicsPipelineDesc& d) {
+    uint64_t h = FNV_INIT;
+    for (uint32_t i = 0; i < d.shaderNum; i++) {
+        h = Fnv1a64(h, d.shaders[i].bytecode, (size_t)d.shaders[i].size);
+        h = HashField(h, d.shaders[i].stage);
+    }
+    h = HashStruct(h, d.inputAssembly);
+    h = HashStruct(h, d.rasterization);
+    if (d.multisample)
+        h = HashStruct(h, *d.multisample);
+    if (d.vertexInput) {
+        h = HashField(h, d.vertexInput->attributeNum);
+        h = HashField(h, d.vertexInput->streamNum);
+        for (uint32_t i = 0; i < d.vertexInput->attributeNum; i++) {
+            const VertexAttributeDesc& a = d.vertexInput->attributes[i];
+            h = HashField(h, a.d3d.semanticIndex);
+            if (a.d3d.semanticName)
+                h = Fnv1a64(h, a.d3d.semanticName, strlen(a.d3d.semanticName));
+            h = HashField(h, a.vk.location);
+            h = HashField(h, a.offset);
+            h = HashField(h, a.format);
+            h = HashField(h, a.streamIndex);
+        }
+        for (uint32_t i = 0; i < d.vertexInput->streamNum; i++) {
+            const VertexStreamDesc& s = d.vertexInput->streams[i];
+            h = HashField(h, s.bindingSlot);
+            h = HashField(h, s.stepRate);
+        }
+    }
+    h = HashField(h, d.outputMerger.colorNum);
+    h = HashStruct(h, d.outputMerger.depth);
+    h = HashStruct(h, d.outputMerger.stencil);
+    h = HashField(h, d.outputMerger.depthStencilFormat);
+    h = HashField(h, d.outputMerger.logicOp);
+    h = HashField(h, d.outputMerger.viewMask);
+    h = HashField(h, d.outputMerger.multiview);
+    for (uint32_t i = 0; i < d.outputMerger.colorNum; i++)
+        h = HashStruct(h, d.outputMerger.colors[i]);
+    h = HashField(h, d.robustness);
+    return h;
+}
+
+static uint64_t HashComputePipelineDesc(const ComputePipelineDesc& d) {
+    uint64_t h = FNV_INIT;
+    h = Fnv1a64(h, d.shader.bytecode, (size_t)d.shader.size);
+    h = HashField(h, d.shader.stage);
+    h = HashField(h, d.robustness);
+    return h;
+}
+
+static void FormatPipelineCacheName(uint64_t hash, wchar_t (&buf)[24]) {
+    swprintf_s(buf, L"PSO_%016llX", (unsigned long long)hash);
+}
+
 template <typename DescComponent, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE subobjectType>
 struct alignas(void*) PipelineDescComponent {
     PipelineDescComponent() = default;
@@ -303,8 +449,27 @@ Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipel
     pipelineStateStreamDesc.pPipelineStateSubobjectStream = &stateStream;
     pipelineStateStreamDesc.SizeInBytes = sizeof(stateStream);
 
+    PipelineCacheD3D12* cache = (PipelineCacheD3D12*)graphicsPipelineDesc.cache;
+    ID3D12PipelineLibrary1* lib = cache ? cache->GetLibrary() : nullptr;
+    wchar_t cacheName[24];
+    if (lib) {
+        FormatPipelineCacheName(HashGraphicsPipelineDesc(graphicsPipelineDesc), cacheName);
+        HRESULT loadHr = lib->LoadPipeline(cacheName, &pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState));
+        if (SUCCEEDED(loadHr))
+            return Result::SUCCESS;
+        if (graphicsPipelineDesc.creationFlags & PipelineCreationBits::FAIL_ON_CACHE_MISS)
+            return Result::FAILURE;
+    } else if (graphicsPipelineDesc.creationFlags & PipelineCreationBits::FAIL_ON_CACHE_MISS) {
+        return Result::FAILURE;
+    }
+
     HRESULT hr = m_Device->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState));
     NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device2::CreatePipelineState");
+
+    if (lib) {
+        ExclusiveScope lock(cache->GetStoreLock());
+        lib->StorePipeline(cacheName, m_PipelineState); // ignore failures (e.g., name already present); fallback PSO is still valid
+    }
 
     return Result::SUCCESS;
 }
@@ -324,8 +489,27 @@ Result PipelineD3D12::Create(const ComputePipelineDesc& computePipelineDesc) {
 
     FillShaderBytecode(computePipleineStateDesc.CS, computePipelineDesc.shader);
 
+    PipelineCacheD3D12* cache = (PipelineCacheD3D12*)computePipelineDesc.cache;
+    ID3D12PipelineLibrary1* lib = cache ? cache->GetLibrary() : nullptr;
+    wchar_t cacheName[24];
+    if (lib) {
+        FormatPipelineCacheName(HashComputePipelineDesc(computePipelineDesc), cacheName);
+        HRESULT loadHr = lib->LoadComputePipeline(cacheName, &computePipleineStateDesc, IID_PPV_ARGS(&m_PipelineState));
+        if (SUCCEEDED(loadHr))
+            return Result::SUCCESS;
+        if (computePipelineDesc.creationFlags & PipelineCreationBits::FAIL_ON_CACHE_MISS)
+            return Result::FAILURE;
+    } else if (computePipelineDesc.creationFlags & PipelineCreationBits::FAIL_ON_CACHE_MISS) {
+        return Result::FAILURE;
+    }
+
     HRESULT hr = m_Device->CreateComputePipelineState(&computePipleineStateDesc, IID_PPV_ARGS(&m_PipelineState));
     NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateComputePipelineState");
+
+    if (lib) {
+        ExclusiveScope lock(cache->GetStoreLock());
+        lib->StorePipeline(cacheName, m_PipelineState);
+    }
 
     return Result::SUCCESS;
 }

@@ -53,6 +53,7 @@ NriForwardStruct(CommandBuffer);    // used to record commands which can be subs
 NriForwardStruct(DescriptorSet);    // a continuous set of descriptors
 NriForwardStruct(DescriptorPool);   // maintains a pool of descriptors, descriptor sets are allocated from (aka descriptor heap)
 NriForwardStruct(PipelineLayout);   // determines the interface between shader stages and shader resources (aka root signature)
+NriForwardStruct(PipelineCache);    // a persistent cache of compiled pipeline state objects (PSOs) - allows pipeline creation to skip compilation if a matching blob is present
 NriForwardStruct(CommandAllocator); // an object that command buffer memory is allocated from
 
 // Basic types
@@ -1476,6 +1477,26 @@ NriEnum(Robustness, uint8_t,
     D3D12           // moderate overhead, D3D12-level robust access (requires "VK_EXT_robustness2", soft fallback to VK mode)
 );
 
+// Used by every "Create*Pipeline" call to opt into PSO cache behavior
+NriBits(PipelineCreationBits, uint8_t,
+    NONE                = 0,
+    FAIL_ON_CACHE_MISS  = NriBit(0)     // pipeline creation returns "FAILURE" if a matching blob is not found in the supplied cache
+                                        // useful for platforms that prohibit runtime PSO compilation (e.g., Xbox GDK)
+                                        // requires "features.pipelineCacheControl"
+                                        // VK: maps to "VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT" (requires "VK_EXT_pipeline_creation_cache_control" or VK 1.3)
+                                        // D3D12: emulated via "ID3D12PipelineLibrary::Load*Pipeline"
+                                        // D3D11: unsupported (no PSO cache exists)
+);
+
+// "data" can be NULL to start with an empty cache, or a previously serialized blob from "GetPipelineCacheData"
+// "CreatePipelineCache" returns:
+//  - "UNSUPPORTED" if the device cannot do PSO caching (check "features.pipelineCache" up-front to avoid this)
+//  - "FAILURE" if the supplied blob is stale (e.g., driver was upgraded) - the caller can retry with "data = NULL" to get a fresh empty cache
+NriStruct(PipelineCacheDesc) {
+    const void* data;
+    uint64_t size;
+};
+
 // It's recommended to use "NRI.hlsl" in the shader code
 NriStruct(ShaderDesc) {
     Nri(StageBits) stage;
@@ -1494,12 +1515,16 @@ NriStruct(GraphicsPipelineDesc) {
     const NriPtr(ShaderDesc) shaders;
     uint32_t shaderNum;
     NriOptional Nri(Robustness) robustness;
+    NriOptional const NriPtr(PipelineCache) cache;     // if non-NULL, pipeline creation can be served from a cached blob and the result will be added to the cache on a miss
+    NriOptional Nri(PipelineCreationBits) creationFlags;
 };
 
 NriStruct(ComputePipelineDesc) {
     const NriPtr(PipelineLayout) pipelineLayout;
     Nri(ShaderDesc) shader;
     NriOptional Nri(Robustness) robustness;
+    NriOptional const NriPtr(PipelineCache) cache;
+    NriOptional Nri(PipelineCreationBits) creationFlags;
 };
 
 #pragma endregion
@@ -2065,6 +2090,8 @@ NriStruct(DeviceDesc) {
         uint32_t shaderBytecodeDXBC                              : 1; // DXBC can be passed to "ShaderDesc::bytecode"
         uint32_t shaderBytecodeDXIL                              : 1; // DXIL can be passed to "ShaderDesc::bytecode"
         uint32_t shaderBytecodeSPIRV                             : 1; // SPIRV can be passed to "ShaderDesc::bytecode"
+        uint32_t pipelineCache                                   : 1; // PipelineCache can actually store/reuse PSOs (D3D11: false - PipelineCache is a NOP)
+        uint32_t pipelineCacheControl                            : 1; // "PipelineCreationBits::FAIL_ON_CACHE_MISS" is enforceable (D3D12: true; VK: requires "VK_EXT_pipeline_creation_cache_control" / VK 1.3 feature)
     } features;
 
     // Shader features

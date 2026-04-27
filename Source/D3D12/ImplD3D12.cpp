@@ -14,6 +14,7 @@
 #include "FenceD3D12.h"
 #include "MemoryD3D12.h"
 #include "MicromapD3D12.h"
+#include "PipelineCacheD3D12.h"
 #include "PipelineD3D12.h"
 #include "PipelineLayoutD3D12.h"
 #include "QueryPoolD3D12.h"
@@ -39,6 +40,7 @@ using namespace nri;
 #include "FenceD3D12.hpp"
 #include "MemoryD3D12.hpp"
 #include "MicromapD3D12.hpp"
+#include "PipelineCacheD3D12.hpp"
 #include "PipelineD3D12.hpp"
 #include "PipelineLayoutD3D12.hpp"
 #include "QueryPoolD3D12.hpp"
@@ -112,6 +114,10 @@ static Result NRI_CALL CreateComputePipeline(Device& device, const ComputePipeli
     return ((DeviceD3D12&)device).CreateImplementation<PipelineD3D12>(pipeline, computePipelineDesc);
 }
 
+static Result NRI_CALL CreatePipelineCache(Device& device, const PipelineCacheDesc& pipelineCacheDesc, PipelineCache*& pipelineCache) {
+    return ((DeviceD3D12&)device).CreateImplementation<PipelineCacheD3D12>(pipelineCache, pipelineCacheDesc);
+}
+
 static Result NRI_CALL CreateQueryPool(Device& device, const QueryPoolDesc& queryPoolDesc, QueryPool*& queryPool) {
     return ((DeviceD3D12&)device).CreateImplementation<QueryPoolD3D12>(queryPool, queryPoolDesc);
 }
@@ -160,6 +166,14 @@ static void NRI_CALL DestroyPipelineLayout(PipelineLayout* pipelineLayout) {
 
 static void NRI_CALL DestroyPipeline(Pipeline* pipeline) {
     Destroy((PipelineD3D12*)pipeline);
+}
+
+static void NRI_CALL DestroyPipelineCache(PipelineCache* pipelineCache) {
+    Destroy((PipelineCacheD3D12*)pipelineCache);
+}
+
+static Result NRI_CALL GetPipelineCacheData(PipelineCache& pipelineCache, void* dst, uint64_t& size) {
+    return ((PipelineCacheD3D12&)pipelineCache).GetData(dst, size);
 }
 
 static void NRI_CALL DestroyQueryPool(QueryPool* queryPool) {
@@ -624,6 +638,7 @@ Result DeviceD3D12::FillFunctionTable(CoreInterface& table) const {
     table.CreatePipelineLayout = ::CreatePipelineLayout;
     table.CreateGraphicsPipeline = ::CreateGraphicsPipeline;
     table.CreateComputePipeline = ::CreateComputePipeline;
+    table.CreatePipelineCache = ::CreatePipelineCache;
     table.CreateQueryPool = ::CreateQueryPool;
     table.CreateFence = ::CreateFence;
     table.DestroyCommandAllocator = ::DestroyCommandAllocator;
@@ -634,6 +649,8 @@ Result DeviceD3D12::FillFunctionTable(CoreInterface& table) const {
     table.DestroyDescriptor = ::DestroyDescriptor;
     table.DestroyPipelineLayout = ::DestroyPipelineLayout;
     table.DestroyPipeline = ::DestroyPipeline;
+    table.DestroyPipelineCache = ::DestroyPipelineCache;
+    table.GetPipelineCacheData = ::GetPipelineCacheData;
     table.DestroyQueryPool = ::DestroyQueryPool;
     table.DestroyFence = ::DestroyFence;
     table.AllocateMemory = ::AllocateMemory;

@@ -288,6 +288,7 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(m_MinorVersion < 3, VK_EXT_IMAGE_ROBUSTNESS_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 3, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME); // TODO: there are 2 and 3 versions...
     APPEND_EXT(m_MinorVersion < 3, VK_EXT_SUBGROUP_SIZE_CONTROL_EXTENSION_NAME);
+    APPEND_EXT(m_MinorVersion < 3, VK_EXT_PIPELINE_CREATION_CACHE_CONTROL_EXTENSION_NAME);
 
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_LINE_RASTERIZATION_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_MAINTENANCE_5_EXTENSION_NAME);
@@ -586,6 +587,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 3, EXT, ExtendedDynamicState, EXTENDED_DYNAMIC_STATE);
     PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 3, EXT, ImageRobustness, IMAGE_ROBUSTNESS);
     PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 3, EXT, SubgroupSizeControl, SUBGROUP_SIZE_CONTROL);
+    PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 3, EXT, PipelineCreationCacheControl, PIPELINE_CREATION_CACHE_CONTROL);
 
     PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, KHR, LineRasterization, LINE_RASTERIZATION);
     PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, KHR, Maintenance5, MAINTENANCE_5);
@@ -635,6 +637,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         features13.maintenance4 = Maintenance4Features.maintenance4;
         features13.robustImageAccess = ImageRobustnessFeatures.robustImageAccess;
         features13.shaderIntegerDotProduct = ShaderIntegerDotProductFeatures.shaderIntegerDotProduct;
+        features13.pipelineCreationCacheControl = PipelineCreationCacheControlFeatures.pipelineCreationCacheControl;
     }
 
     if (m_MinorVersion < 4) {
@@ -670,6 +673,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.robustness = features.features.robustBufferAccess != 0 && features13.robustImageAccess != 0;
     m_IsSupported.robustness2 = Robustness2Features.robustBufferAccess2 != 0 && Robustness2Features.robustImageAccess2 != 0;
     m_IsSupported.pipelineRobustness = features14.pipelineRobustness;
+    m_IsSupported.pipelineCreationCacheControl = features13.pipelineCreationCacheControl;
     m_IsSupported.swapChainMaintenance1 = SwapchainMaintenance1Features.swapchainMaintenance1;
     m_IsSupported.fifoLatestReady = PresentModeFifoLatestReadyFeatures.presentModeFifoLatestReady;
     m_IsSupported.unifiedImageLayoutsVideo = UnifiedImageLayoutsFeatures.unifiedImageLayoutsVideo;
@@ -1145,6 +1149,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.swapChain = IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME, desiredDeviceExts);
         m_Desc.features.meshShader = MeshShaderFeatures.meshShader != 0 && MeshShaderFeatures.taskShader != 0;
         m_Desc.features.lowLatency = m_IsSupported.presentId != 0 && IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, desiredDeviceExts);
+        m_Desc.features.pipelineCache = true;
+        m_Desc.features.pipelineCacheControl = m_IsSupported.pipelineCreationCacheControl;
 
         m_Desc.features.componentSwizzle = true;
         m_Desc.features.independentFrontAndBackStencilReferenceAndMasks = true;
@@ -1785,6 +1791,9 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(CreateShaderModule);
     GET_DEVICE_CORE_FUNC(CreateGraphicsPipelines);
     GET_DEVICE_CORE_FUNC(CreateComputePipelines);
+    GET_DEVICE_CORE_FUNC(CreatePipelineCache);
+    GET_DEVICE_CORE_FUNC(DestroyPipelineCache);
+    GET_DEVICE_CORE_FUNC(GetPipelineCacheData);
     GET_DEVICE_CORE_FUNC(AllocateMemory);
     GET_DEVICE_CORE_FUNC(DestroyBuffer);
     GET_DEVICE_CORE_FUNC(DestroyImage);
