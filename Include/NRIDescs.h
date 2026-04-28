@@ -1751,6 +1751,7 @@ NriStruct(AdapterDesc) {
     uint64_t videoMemorySize;
     uint64_t sharedSystemMemorySize;
     uint32_t deviceId;
+    uint32_t driverVersion; // GAPI and OS dependent
     uint32_t queueNum[(uint32_t)NriScopedMember(QueueType, MAX_NUM)];
     Nri(Vendor) vendor;
     Nri(Architecture) architecture;
