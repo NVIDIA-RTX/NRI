@@ -457,9 +457,9 @@ Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipel
         HRESULT loadHr = lib->LoadPipeline(cacheName, &pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState));
         if (SUCCEEDED(loadHr))
             return Result::SUCCESS;
-        if (graphicsPipelineDesc.flags & PipelineBits::FAIL_ON_CACHE_MISS)
+        if (graphicsPipelineDesc.flags & GraphicsPipelineBits::FAIL_ON_CACHE_MISS)
             return Result::FAILURE;
-    } else if (graphicsPipelineDesc.flags & PipelineBits::FAIL_ON_CACHE_MISS) {
+    } else if (graphicsPipelineDesc.flags & GraphicsPipelineBits::FAIL_ON_CACHE_MISS) {
         return Result::FAILURE;
     }
 
@@ -497,9 +497,9 @@ Result PipelineD3D12::Create(const ComputePipelineDesc& computePipelineDesc) {
         HRESULT loadHr = lib->LoadComputePipeline(cacheName, &computePipleineStateDesc, IID_PPV_ARGS(&m_PipelineState));
         if (SUCCEEDED(loadHr))
             return Result::SUCCESS;
-        if (computePipelineDesc.flags & PipelineBits::FAIL_ON_CACHE_MISS)
+        if (computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS)
             return Result::FAILURE;
-    } else if (computePipelineDesc.flags & PipelineBits::FAIL_ON_CACHE_MISS) {
+    } else if (computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS) {
         return Result::FAILURE;
     }
 

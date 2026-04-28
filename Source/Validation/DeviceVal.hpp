@@ -478,7 +478,7 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
 
     if (graphicsPipelineDesc.cache != nullptr && !GetDesc().features.pipelineCache)
         NRI_REPORT_WARNING(this, "'cache' is provided but 'features.pipelineCache' is false - the cache will be silently ignored");
-    if (graphicsPipelineDesc.flags & PipelineBits::FAIL_ON_CACHE_MISS) {
+    if (graphicsPipelineDesc.flags & GraphicsPipelineBits::FAIL_ON_CACHE_MISS) {
         if (!GetDesc().features.pipelineCacheControl)
             NRI_REPORT_WARNING(this, "'features.pipelineCacheControl' is false - 'FAIL_ON_CACHE_MISS' will be silently ignored");
         else if (graphicsPipelineDesc.cache == nullptr)
@@ -507,7 +507,7 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const ComputePipelineDesc& computePi
 
     if (computePipelineDesc.cache != nullptr && !GetDesc().features.pipelineCache)
         NRI_REPORT_WARNING(this, "'cache' is provided but 'features.pipelineCache' is false - the cache will be silently ignored");
-    if (computePipelineDesc.flags & PipelineBits::FAIL_ON_CACHE_MISS) {
+    if (computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS) {
         if (!GetDesc().features.pipelineCacheControl)
             NRI_REPORT_WARNING(this, "'features.pipelineCacheControl' is false - 'FAIL_ON_CACHE_MISS' will be silently ignored");
         else if (computePipelineDesc.cache == nullptr)

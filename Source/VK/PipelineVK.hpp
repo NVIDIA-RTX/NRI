@@ -260,7 +260,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     VkPipelineCreateFlags flags = 0;
     if (r.shadingRate)
         flags |= VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
-    if ((graphicsPipelineDesc.flags & PipelineBits::FAIL_ON_CACHE_MISS) && m_Device.m_IsSupported.pipelineCacheControl)
+    if ((graphicsPipelineDesc.flags & GraphicsPipelineBits::FAIL_ON_CACHE_MISS) && m_Device.m_IsSupported.pipelineCacheControl)
         flags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT;
 
     const PipelineLayoutVK& pipelineLayoutVK = *(PipelineLayoutVK*)graphicsPipelineDesc.pipelineLayout;
@@ -336,7 +336,7 @@ Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc) {
     };
 
     VkPipelineCreateFlags computeFlags = 0;
-    if ((computePipelineDesc.flags & PipelineBits::FAIL_ON_CACHE_MISS) && m_Device.m_IsSupported.pipelineCacheControl)
+    if ((computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS) && m_Device.m_IsSupported.pipelineCacheControl)
         computeFlags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT;
 
     VkComputePipelineCreateInfo info = {
