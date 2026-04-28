@@ -55,9 +55,9 @@ constexpr std::array<DxgiFormat, (size_t)Format::MAX_NUM> g_dxgiFormats = {{
     {DXGI_FORMAT_R10G10B10A2_TYPELESS, DXGI_FORMAT_R10G10B10A2_UINT},      // R10_G10_B10_A2_UINT
     {DXGI_FORMAT_R11G11B10_FLOAT, DXGI_FORMAT_R11G11B10_FLOAT},            // R11_G11_B10_UFLOAT
     {DXGI_FORMAT_R9G9B9E5_SHAREDEXP, DXGI_FORMAT_R9G9B9E5_SHAREDEXP},      // R9_G9_B9_E5_UFLOAT
-    {DXGI_FORMAT_NV12, DXGI_FORMAT_NV12},                                  // G8_B8R8_2PLANE_420_UNORM
-    {DXGI_FORMAT_P010, DXGI_FORMAT_P010},                                  // G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16
-    {DXGI_FORMAT_P016, DXGI_FORMAT_P016},                                  // G16_B16R16_2PLANE_420_UNORM
+    {DXGI_FORMAT_NV12, DXGI_FORMAT_NV12},                                  // NV12_UNORM
+    {DXGI_FORMAT_P010, DXGI_FORMAT_P010},                                  // P010_UNORM
+    {DXGI_FORMAT_P016, DXGI_FORMAT_P016},                                  // P016_UNORM
     {DXGI_FORMAT_BC1_TYPELESS, DXGI_FORMAT_BC1_UNORM},                     // BC1_RGBA_UNORM
     {DXGI_FORMAT_BC1_TYPELESS, DXGI_FORMAT_BC1_UNORM_SRGB},                // BC1_RGBA_SRGB
     {DXGI_FORMAT_BC2_TYPELESS, DXGI_FORMAT_BC2_UNORM},                     // BC2_RGBA_UNORM
@@ -547,9 +547,9 @@ constexpr std::array<FormatProps, (size_t)Format::MAX_NUM> g_formatProps = {{
     {"R10_G10_B10_A2_UINT",     Format::R10_G10_B10_A2_UINT,       10, 10, 10, 2,  4,  1,  1,  _, _, _, _, _, X, X, _, _, _, _}, // R10_G10_B10_A2_UINT
     {"R11_G11_B10_UFLOAT",      Format::R11_G11_B10_UFLOAT,        11, 11, 10, 0,  4,  1,  1,  _, _, _, _, X, X, _, _, _, _, _}, // R11_G11_B10_UFLOAT
     {"R9_G9_B9_E5_UFLOAT",      Format::R9_G9_B9_E5_UFLOAT,        9,  9,  9,  5,  4,  1,  1,  _, _, _, X, X, X, _, _, _, _, _}, // R9_G9_B9_E5_UFLOAT
-    {"G8_B8R8_2PLANE_420_UNORM", Format::G8_B8R8_2PLANE_420_UNORM, 8,  8,  8,  0,  6,  2,  2,  _, _, _, _, _, _, _, X, _, _, _}, // G8_B8R8_2PLANE_420_UNORM
-    {"G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16", Format::G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16, 10, 10, 10, 0,  12, 2,  2,  _, _, _, _, _, _, _, X, _, _, _}, // G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16
-    {"G16_B16R16_2PLANE_420_UNORM", Format::G16_B16R16_2PLANE_420_UNORM, 16, 16, 16, 0,  12, 2,  2,  _, _, _, _, _, _, _, X, _, _, _}, // G16_B16R16_2PLANE_420_UNORM
+    {"NV12_UNORM",              Format::NV12_UNORM,                8,  8,  8,  0,  6,  2,  2,  _, _, _, _, _, _, _, X, _, _, _}, // NV12_UNORM
+    {"P010_UNORM",              Format::P010_UNORM,                10, 10, 10, 0,  12, 2,  2,  _, _, _, _, _, _, _, X, _, _, _}, // P010_UNORM
+    {"P016_UNORM",              Format::P016_UNORM,                16, 16, 16, 0,  12, 2,  2,  _, _, _, _, _, _, _, X, _, _, _}, // P016_UNORM
     //                                                             r   g   b   a   s   w   h   b   c  d  e  f  p  i  n  s  s  s
     {"BC1_RGBA_UNORM",          Format::BC1_RGBA_UNORM,            5,  6,  5,  1,  8,  4,  4,  _, X, _, _, _, _, _, X, _, _, _}, // BC1_RGBA_UNORM
     {"BC1_RGBA_SRGB",           Format::BC1_RGBA_SRGB,             5,  6,  5,  1,  8,  4,  4,  _, X, _, _, _, _, _, _, _, X, _}, // BC1_RGBA_SRGB
@@ -730,9 +730,9 @@ constexpr std::array<Format, 116> NRI_FORMAT_TABLE = {
     Format::UNKNOWN,                // DXGI_FORMAT_AYUV = 100
     Format::UNKNOWN,                // DXGI_FORMAT_Y410 = 101
     Format::UNKNOWN,                // DXGI_FORMAT_Y416 = 102
-    Format::G8_B8R8_2PLANE_420_UNORM, // DXGI_FORMAT_NV12 = 103
-    Format::G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16, // DXGI_FORMAT_P010 = 104
-    Format::G16_B16R16_2PLANE_420_UNORM, // DXGI_FORMAT_P016 = 105
+    Format::NV12_UNORM,               // DXGI_FORMAT_NV12 = 103
+    Format::P010_UNORM,               // DXGI_FORMAT_P010 = 104
+    Format::P016_UNORM,               // DXGI_FORMAT_P016 = 105
     Format::UNKNOWN,                // DXGI_FORMAT_420_OPAQUE = 106
     Format::UNKNOWN,                // DXGI_FORMAT_YUY2 = 107
     Format::UNKNOWN,                // DXGI_FORMAT_Y210 = 108
@@ -897,11 +897,11 @@ Format nri::VKFormatToNRIFormat(uint32_t format) {
     if (format < VK_FORMAT_TABLE.size())
         return VK_FORMAT_TABLE[format];
     else if (format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM)
-        return Format::G8_B8R8_2PLANE_420_UNORM;
+        return Format::NV12_UNORM;
     else if (format == VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16)
-        return Format::G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16;
+        return Format::P010_UNORM;
     else if (format == VK_FORMAT_G16_B16R16_2PLANE_420_UNORM)
-        return Format::G16_B16R16_2PLANE_420_UNORM;
+        return Format::P016_UNORM;
     else if (format == VK_FORMAT_A4R4G4B4_UNORM_PACK16)
         return Format::B4_G4_R4_A4_UNORM;
 #endif

@@ -268,9 +268,9 @@ NriEnum(Format, uint8_t,                // |      FormatSupportBits      |
     R9_G9_B9_E5_UFLOAT,                 // + . . . . . . . . . . . . . . .
 
     // Multi-planar: 4:2:0
-    G8_B8R8_2PLANE_420_UNORM,           // + . . . . . . . . . . . . . . .
-    G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16, // + . . . . . . . . . . . . . . .
-    G16_B16R16_2PLANE_420_UNORM,        // + . . . . . . . . . . . . . . .
+    NV12_UNORM,                         // + . . . . . . . . . . . . . . .
+    P010_UNORM,                         // + . . . . . . . . . . . . . . .
+    P016_UNORM,                         // + . . . . . . . . . . . . . . .
 
     // Block-compressed (requires "features.textureCompressionBC")
     // https://learn.microsoft.com/en-us/windows/win32/direct3d11/texture-block-compression-in-direct3d-11?source=recommendations

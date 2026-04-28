@@ -3,6 +3,7 @@
 // Goal: hardware video encode/decode command submission
 // D3D12: wraps ID3D12Video*CommandList encode/decode calls
 // Vulkan: wraps vkCmdDecodeVideoKHR / vkCmdEncodeVideoKHR
+// Video formats: https://learn.microsoft.com/en-us/windows/win32/medfound/recommended-8-bit-yuv-formats-for-video-rendering
 
 #pragma once
 
