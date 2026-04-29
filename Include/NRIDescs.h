@@ -1757,13 +1757,15 @@ NriStruct(AdapterDesc) {
     Nri(Architecture) architecture;
 };
 
+#define NriShaderModel(major, minor) (major * 100 + minor)
+
 // Feature support coverage: https://vulkan.gpuinfo.org/ and https://d3d12infodb.boolka.dev/
 NriStruct(DeviceDesc) {
     // Common
     Nri(AdapterDesc) adapterDesc; // "queueNum" reflects available number of queues per "QueueType"
     Nri(GraphicsAPI) graphicsAPI;
     uint16_t nriVersion;
-    uint8_t shaderModel; // major * 10 + minor
+    uint16_t shaderModel; // see "NriShaderModel"
 
     // Viewport
     struct {

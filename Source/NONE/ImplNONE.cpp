@@ -20,7 +20,7 @@ struct DeviceNONE final : public DeviceBase {
 
         m_Desc.graphicsAPI = GraphicsAPI::NONE;
         m_Desc.nriVersion = NRI_VERSION;
-        m_Desc.shaderModel = 69;
+        m_Desc.shaderModel = NriShaderModel(6, 10);
 
         m_Desc.viewport.maxNum = 16;
         m_Desc.viewport.boundsMin = -32768;
