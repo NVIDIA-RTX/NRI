@@ -22,6 +22,12 @@ NriEnum(VideoCodec, uint8_t,
     AV1
 );
 
+NriEnum(VideoDecodeArgumentType, uint8_t,
+    PICTURE_PARAMETERS,
+    INVERSE_QUANTIZATION_MATRIX,
+    SLICE_CONTROL
+);
+
 NriStruct(VideoSessionDesc) {
     Nri(VideoUsage) usage;
     Nri(VideoCodec) codec;
@@ -37,6 +43,12 @@ NriStruct(VideoReference) {
     uint32_t slot;
 };
 
+NriStruct(VideoDecodeArgument) {
+    Nri(VideoDecodeArgumentType) type;
+    uint32_t size;
+    const void* data;
+};
+
 NriStruct(VideoDecodeDesc) {
     NriPtr(VideoSession) session;
     NriPtr(Buffer) bitstream;
@@ -46,6 +58,8 @@ NriStruct(VideoDecodeDesc) {
     uint32_t dstSubresource;
     NriOptional const NriPtr(VideoReference) references; // if provided, must include "referenceNum" entries
     uint32_t referenceNum;
+    NriOptional const NriPtr(VideoDecodeArgument) arguments; // if provided, must include "argumentNum" entries
+    uint32_t argumentNum;
     NriOptional const void* codecDesc;
 };
 
@@ -55,6 +69,10 @@ NriStruct(VideoEncodeDesc) {
     uint32_t srcSubresource;
     NriPtr(Buffer) dstBitstream;
     uint64_t dstBitstreamOffset;
+    NriOptional NriPtr(Texture) reconstructedPicture;
+    uint32_t reconstructedSubresource;
+    NriOptional NriPtr(Buffer) metadata;
+    uint64_t metadataOffset;
     NriOptional const NriPtr(VideoReference) references; // if provided, must include "referenceNum" entries
     uint32_t referenceNum;
     NriOptional const void* codecDesc;

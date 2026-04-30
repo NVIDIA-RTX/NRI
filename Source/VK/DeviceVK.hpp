@@ -325,6 +325,9 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(true, VK_KHR_VIDEO_DECODE_H265_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_VIDEO_DECODE_AV1_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_VIDEO_ENCODE_QUEUE_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_ENCODE_H264_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_ENCODE_H265_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_ENCODE_AV1_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_VIDEO_MAINTENANCE_1_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_VIDEO_MAINTENANCE_2_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
@@ -1908,6 +1911,15 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
         GET_DEVICE_FUNC(CmdDrawMeshTasksEXT);
         GET_DEVICE_FUNC(CmdDrawMeshTasksIndirectEXT);
         GET_DEVICE_FUNC(CmdDrawMeshTasksIndirectCountEXT);
+    }
+
+    if (IsExtensionSupported(VK_KHR_VIDEO_QUEUE_EXTENSION_NAME, desiredDeviceExts)) {
+        GET_INSTANCE_FUNC(GetPhysicalDeviceVideoCapabilitiesKHR);
+        GET_INSTANCE_FUNC(GetPhysicalDeviceVideoFormatPropertiesKHR);
+        GET_DEVICE_FUNC(CreateVideoSessionKHR);
+        GET_DEVICE_FUNC(DestroyVideoSessionKHR);
+        GET_DEVICE_FUNC(GetVideoSessionMemoryRequirementsKHR);
+        GET_DEVICE_FUNC(BindVideoSessionMemoryKHR);
     }
 
     if (IsExtensionSupported(VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME, desiredDeviceExts))

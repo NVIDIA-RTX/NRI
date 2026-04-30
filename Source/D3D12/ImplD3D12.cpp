@@ -1123,24 +1123,365 @@ Result DeviceD3D12::FillFunctionTable(RayTracingInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  Video  ]
 
+struct VideoSessionD3D12 final : public DebugNameBase {
+    inline VideoSessionD3D12(DeviceD3D12& device)
+        : m_Device(device) {
+    }
+
+    inline DeviceD3D12& GetDevice() const {
+        return m_Device;
+    }
+
+    Result Create(const VideoSessionDesc& videoSessionDesc);
+
+    void SetDebugName(const char* name) NRI_DEBUG_NAME_OVERRIDE {
+        NRI_SET_D3D_DEBUG_OBJECT_NAME(m_Decoder, name);
+        NRI_SET_D3D_DEBUG_OBJECT_NAME(m_DecoderHeap, name);
+        NRI_SET_D3D_DEBUG_OBJECT_NAME(m_Encoder, name);
+        NRI_SET_D3D_DEBUG_OBJECT_NAME(m_EncoderHeap, name);
+    }
+
+    DeviceD3D12& m_Device;
+    ComPtr<ID3D12VideoDecoder> m_Decoder;
+    ComPtr<ID3D12VideoDecoderHeap> m_DecoderHeap;
+    ComPtr<ID3D12VideoEncoder> m_Encoder;
+    ComPtr<ID3D12VideoEncoderHeap> m_EncoderHeap;
+    VideoSessionDesc m_Desc = {};
+};
+
+static GUID GetVideoDecodeProfileD3D12(const VideoSessionDesc& videoSessionDesc) {
+    switch (videoSessionDesc.codec) {
+    case VideoCodec::H264:
+        return D3D12_VIDEO_DECODE_PROFILE_H264;
+    case VideoCodec::H265:
+        return videoSessionDesc.format == Format::P010_UNORM || videoSessionDesc.format == Format::P016_UNORM ? D3D12_VIDEO_DECODE_PROFILE_HEVC_MAIN10 : D3D12_VIDEO_DECODE_PROFILE_HEVC_MAIN;
+    case VideoCodec::AV1:
+        return D3D12_VIDEO_DECODE_PROFILE_AV1_PROFILE0;
+    case VideoCodec::MAX_NUM:
+        return {};
+    }
+
+    return {};
+}
+
+static D3D12_VIDEO_ENCODER_CODEC GetVideoEncodeCodecD3D12(VideoCodec codec) {
+    switch (codec) {
+    case VideoCodec::H264:
+        return D3D12_VIDEO_ENCODER_CODEC_H264;
+    case VideoCodec::H265:
+        return D3D12_VIDEO_ENCODER_CODEC_HEVC;
+    case VideoCodec::AV1:
+    case VideoCodec::MAX_NUM:
+        return (D3D12_VIDEO_ENCODER_CODEC)-1;
+    }
+
+    return (D3D12_VIDEO_ENCODER_CODEC)-1;
+}
+
+Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
+    if (videoSessionDesc.width == 0 || videoSessionDesc.height == 0 || videoSessionDesc.format == Format::UNKNOWN)
+        return Result::INVALID_ARGUMENT;
+
+    if (videoSessionDesc.usage == VideoUsage::DECODE) {
+        ComPtr<ID3D12VideoDevice> videoDevice;
+        HRESULT hr = m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice));
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::QueryInterface(ID3D12VideoDevice)");
+
+        D3D12_VIDEO_DECODE_CONFIGURATION configuration = {};
+        configuration.DecodeProfile = GetVideoDecodeProfileD3D12(videoSessionDesc);
+        configuration.BitstreamEncryption = D3D12_BITSTREAM_ENCRYPTION_TYPE_NONE;
+        configuration.InterlaceType = D3D12_VIDEO_FRAME_CODED_INTERLACE_TYPE_NONE;
+        if (configuration.DecodeProfile == GUID {})
+            return Result::UNSUPPORTED;
+
+        D3D12_VIDEO_DECODER_DESC decoderDesc = {};
+        decoderDesc.Configuration = configuration;
+
+        hr = videoDevice->CreateVideoDecoder(&decoderDesc, IID_PPV_ARGS(&m_Decoder));
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDevice::CreateVideoDecoder");
+
+        D3D12_VIDEO_DECODER_HEAP_DESC heapDesc = {};
+        heapDesc.Configuration = configuration;
+        heapDesc.DecodeWidth = videoSessionDesc.width;
+        heapDesc.DecodeHeight = videoSessionDesc.height;
+        heapDesc.Format = GetDxgiFormat(videoSessionDesc.format).typed;
+        heapDesc.MaxDecodePictureBufferCount = videoSessionDesc.maxReferenceNum ? videoSessionDesc.maxReferenceNum : 1;
+
+        hr = videoDevice->CreateVideoDecoderHeap(&heapDesc, IID_PPV_ARGS(&m_DecoderHeap));
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDevice::CreateVideoDecoderHeap");
+    } else if (videoSessionDesc.usage == VideoUsage::ENCODE) {
+        ComPtr<ID3D12VideoDevice3> videoDevice;
+        HRESULT hr = m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice));
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::QueryInterface(ID3D12VideoDevice3)");
+
+        D3D12_VIDEO_ENCODER_CODEC codec = GetVideoEncodeCodecD3D12(videoSessionDesc.codec);
+        if (codec == (D3D12_VIDEO_ENCODER_CODEC)-1)
+            return Result::UNSUPPORTED;
+
+        D3D12_VIDEO_ENCODER_PROFILE_H264 h264Profile = D3D12_VIDEO_ENCODER_PROFILE_H264_HIGH;
+        D3D12_VIDEO_ENCODER_PROFILE_HEVC hevcProfile = videoSessionDesc.format == Format::P010_UNORM || videoSessionDesc.format == Format::P016_UNORM ? D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN10 : D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN;
+        D3D12_VIDEO_ENCODER_PROFILE_DESC profile = {};
+        if (videoSessionDesc.codec == VideoCodec::H264) {
+            profile.DataSize = sizeof(h264Profile);
+            profile.pH264Profile = &h264Profile;
+        } else {
+            profile.DataSize = sizeof(hevcProfile);
+            profile.pHEVCProfile = &hevcProfile;
+        }
+
+        D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264 h264Config = {};
+        h264Config.DirectModeConfig = D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264_DIRECT_MODES_DISABLED;
+        h264Config.DisableDeblockingFilterConfig = D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264_SLICES_DEBLOCKING_MODE_0_ALL_LUMA_CHROMA_SLICE_BLOCK_EDGES_ALWAYS_FILTERED;
+
+        D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC hevcConfig = {};
+        hevcConfig.MinLumaCodingUnitSize = D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_CUSIZE_8x8;
+        hevcConfig.MaxLumaCodingUnitSize = D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_CUSIZE_64x64;
+        hevcConfig.MinLumaTransformUnitSize = D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_TUSIZE_4x4;
+        hevcConfig.MaxLumaTransformUnitSize = D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_TUSIZE_32x32;
+
+        D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION codecConfig = {};
+        if (videoSessionDesc.codec == VideoCodec::H264) {
+            codecConfig.DataSize = sizeof(h264Config);
+            codecConfig.pH264Config = &h264Config;
+        } else {
+            codecConfig.DataSize = sizeof(hevcConfig);
+            codecConfig.pHEVCConfig = &hevcConfig;
+        }
+
+        D3D12_VIDEO_ENCODER_DESC encoderDesc = {};
+        encoderDesc.EncodeCodec = codec;
+        encoderDesc.EncodeProfile = profile;
+        encoderDesc.InputFormat = GetDxgiFormat(videoSessionDesc.format).typed;
+        encoderDesc.CodecConfiguration = codecConfig;
+        encoderDesc.MaxMotionEstimationPrecision = D3D12_VIDEO_ENCODER_MOTION_ESTIMATION_PRECISION_MODE_MAXIMUM;
+
+        hr = videoDevice->CreateVideoEncoder(&encoderDesc, IID_PPV_ARGS(&m_Encoder));
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDevice3::CreateVideoEncoder");
+
+        D3D12_VIDEO_ENCODER_LEVELS_H264 h264Level = D3D12_VIDEO_ENCODER_LEVELS_H264_41;
+        D3D12_VIDEO_ENCODER_LEVEL_TIER_CONSTRAINTS_HEVC hevcLevel = {D3D12_VIDEO_ENCODER_LEVELS_HEVC_41, D3D12_VIDEO_ENCODER_TIER_HEVC_MAIN};
+        D3D12_VIDEO_ENCODER_LEVEL_SETTING level = {};
+        if (videoSessionDesc.codec == VideoCodec::H264) {
+            level.DataSize = sizeof(h264Level);
+            level.pH264LevelSetting = &h264Level;
+        } else {
+            level.DataSize = sizeof(hevcLevel);
+            level.pHEVCLevelSetting = &hevcLevel;
+        }
+
+        D3D12_VIDEO_ENCODER_PICTURE_RESOLUTION_DESC resolution = {videoSessionDesc.width, videoSessionDesc.height};
+        D3D12_VIDEO_ENCODER_HEAP_DESC heapDesc = {};
+        heapDesc.EncodeCodec = codec;
+        heapDesc.EncodeProfile = profile;
+        heapDesc.EncodeLevel = level;
+        heapDesc.ResolutionsListCount = 1;
+        heapDesc.pResolutionList = &resolution;
+
+        hr = videoDevice->CreateVideoEncoderHeap(&heapDesc, IID_PPV_ARGS(&m_EncoderHeap));
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDevice3::CreateVideoEncoderHeap");
+    } else
+        return Result::UNSUPPORTED;
+
+    m_Desc = videoSessionDesc;
+
+    return Result::SUCCESS;
+}
+
 static Result NRI_CALL CreateVideoSession(Device& device, const VideoSessionDesc& videoSessionDesc, VideoSession*& videoSession) {
-    MaybeUnused(device, videoSessionDesc);
-    videoSession = nullptr;
-    return Result::UNSUPPORTED;
+    DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
+    VideoSessionD3D12* impl = Allocate<VideoSessionD3D12>(deviceD3D12.GetAllocationCallbacks(), deviceD3D12);
+    Result result = impl->Create(videoSessionDesc);
+
+    if (result != Result::SUCCESS) {
+        Destroy(deviceD3D12.GetAllocationCallbacks(), impl);
+        videoSession = nullptr;
+    } else
+        videoSession = (VideoSession*)impl;
+
+    return result;
 }
 
 static void NRI_CALL DestroyVideoSession(VideoSession& videoSession) {
-    MaybeUnused(videoSession);
+    Destroy((VideoSessionD3D12*)&videoSession);
 }
 
 static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDecodeDesc& videoDecodeDesc) {
-    MaybeUnused(videoDecodeDesc);
-    NRI_REPORT_ERROR(&((CommandBufferD3D12&)commandBuffer).GetDevice(), "Backend-neutral video decode is not implemented for D3D12 yet. Use WrapperD3D12Interface::CmdDecodeVideoD3D12.");
+    CommandBufferD3D12& commandBufferD3D12 = (CommandBufferD3D12&)commandBuffer;
+    DeviceD3D12& device = commandBufferD3D12.GetDevice();
+
+    if (!videoDecodeDesc.session || !videoDecodeDesc.bitstream || !videoDecodeDesc.dstPicture) {
+        NRI_REPORT_ERROR(&device, "'session', 'bitstream' and 'dstPicture' must be valid");
+        return;
+    }
+
+    if (videoDecodeDesc.argumentNum > 10) {
+        NRI_REPORT_ERROR(&device, "'argumentNum' must be <= 10");
+        return;
+    }
+
+    if (videoDecodeDesc.referenceNum != 0 && !videoDecodeDesc.references) {
+        NRI_REPORT_ERROR(&device, "'references' is NULL");
+        return;
+    }
+
+    if (videoDecodeDesc.argumentNum != 0 && !videoDecodeDesc.arguments) {
+        NRI_REPORT_ERROR(&device, "'arguments' is NULL");
+        return;
+    }
+
+    VideoSessionD3D12& session = *(VideoSessionD3D12*)videoDecodeDesc.session;
+
+    D3D12_VIDEO_DECODE_INPUT_STREAM_ARGUMENTS input = {};
+    input.NumFrameArguments = videoDecodeDesc.argumentNum;
+    for (uint32_t i = 0; i < videoDecodeDesc.argumentNum; i++) {
+        if (!videoDecodeDesc.arguments[i].data || videoDecodeDesc.arguments[i].size == 0) {
+            NRI_REPORT_ERROR(&device, "'arguments[%u]' has invalid data or size", i);
+            return;
+        }
+
+        input.FrameArguments[i].Type = (D3D12_VIDEO_DECODE_ARGUMENT_TYPE)videoDecodeDesc.arguments[i].type;
+        input.FrameArguments[i].Size = videoDecodeDesc.arguments[i].size;
+        input.FrameArguments[i].pData = (void*)videoDecodeDesc.arguments[i].data;
+    }
+
+    Scratch<ID3D12Resource*> referenceResources = NRI_ALLOCATE_SCRATCH(device, ID3D12Resource*, videoDecodeDesc.referenceNum);
+    Scratch<uint32_t> referenceSubresources = NRI_ALLOCATE_SCRATCH(device, uint32_t, videoDecodeDesc.referenceNum);
+    for (uint32_t i = 0; i < videoDecodeDesc.referenceNum; i++) {
+        if (!videoDecodeDesc.references[i].picture) {
+            NRI_REPORT_ERROR(&device, "'references[%u].picture' is NULL", i);
+            return;
+        }
+
+        referenceResources[i] = (ID3D12Resource*)(*(TextureD3D12*)videoDecodeDesc.references[i].picture);
+        referenceSubresources[i] = videoDecodeDesc.references[i].subresource;
+    }
+
+    input.ReferenceFrames.NumTexture2Ds = videoDecodeDesc.referenceNum;
+    input.ReferenceFrames.ppTexture2Ds = referenceResources;
+    input.ReferenceFrames.pSubresources = referenceSubresources;
+    input.CompressedBitstream.pBuffer = (ID3D12Resource*)(*(BufferD3D12*)videoDecodeDesc.bitstream);
+    input.CompressedBitstream.Offset = videoDecodeDesc.bitstreamOffset;
+    input.CompressedBitstream.Size = videoDecodeDesc.bitstreamSize;
+    input.pHeap = session.m_DecoderHeap;
+
+    D3D12_VIDEO_DECODE_OUTPUT_STREAM_ARGUMENTS output = {};
+    output.pOutputTexture2D = (ID3D12Resource*)(*(TextureD3D12*)videoDecodeDesc.dstPicture);
+    output.OutputSubresource = videoDecodeDesc.dstSubresource;
+
+    VideoDecodeD3D12Desc desc = {};
+    desc.d3d12Decoder = session.m_Decoder;
+    desc.d3d12OutputArguments = &output;
+    desc.d3d12InputArguments = &input;
+    commandBufferD3D12.DecodeVideo(desc);
 }
 
 static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEncodeDesc& videoEncodeDesc) {
-    MaybeUnused(videoEncodeDesc);
-    NRI_REPORT_ERROR(&((CommandBufferD3D12&)commandBuffer).GetDevice(), "Backend-neutral video encode is not implemented for D3D12 yet. Use WrapperD3D12Interface::CmdEncodeVideoD3D12.");
+    CommandBufferD3D12& commandBufferD3D12 = (CommandBufferD3D12&)commandBuffer;
+    DeviceD3D12& device = commandBufferD3D12.GetDevice();
+
+    if (!videoEncodeDesc.session || !videoEncodeDesc.srcPicture || !videoEncodeDesc.dstBitstream || !videoEncodeDesc.reconstructedPicture || !videoEncodeDesc.metadata) {
+        NRI_REPORT_ERROR(&device, "'session', 'srcPicture', 'dstBitstream', 'reconstructedPicture' and 'metadata' must be valid");
+        return;
+    }
+
+    if (videoEncodeDesc.referenceNum != 0 && !videoEncodeDesc.references) {
+        NRI_REPORT_ERROR(&device, "'references' is NULL");
+        return;
+    }
+
+    VideoSessionD3D12& session = *(VideoSessionD3D12*)videoEncodeDesc.session;
+    if (!session.m_Encoder || !session.m_EncoderHeap) {
+        NRI_REPORT_ERROR(&device, "'session' is not an encode session");
+        return;
+    }
+
+    Scratch<ID3D12Resource*> referenceResources = NRI_ALLOCATE_SCRATCH(device, ID3D12Resource*, videoEncodeDesc.referenceNum);
+    Scratch<uint32_t> referenceSubresources = NRI_ALLOCATE_SCRATCH(device, uint32_t, videoEncodeDesc.referenceNum);
+    for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {
+        if (!videoEncodeDesc.references[i].picture) {
+            NRI_REPORT_ERROR(&device, "'references[%u].picture' is NULL", i);
+            return;
+        }
+
+        referenceResources[i] = (ID3D12Resource*)(*(TextureD3D12*)videoEncodeDesc.references[i].picture);
+        referenceSubresources[i] = videoEncodeDesc.references[i].subresource;
+    }
+
+    D3D12_VIDEO_ENCODER_RATE_CONTROL_CQP cqp = {26, 28, 30};
+    D3D12_VIDEO_ENCODER_RATE_CONTROL rateControl = {};
+    rateControl.Mode = D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_CQP;
+    rateControl.ConfigParams.DataSize = sizeof(cqp);
+    rateControl.ConfigParams.pConfiguration_CQP = &cqp;
+    rateControl.TargetFrameRate = {30, 1};
+
+    D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_H264 h264Gop = {};
+    h264Gop.GOPLength = 1;
+    h264Gop.PPicturePeriod = 0;
+
+    D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_HEVC hevcGop = {};
+    hevcGop.GOPLength = 1;
+    hevcGop.PPicturePeriod = 0;
+
+    D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE gop = {};
+    if (session.m_Desc.codec == VideoCodec::H264) {
+        gop.DataSize = sizeof(h264Gop);
+        gop.pH264GroupOfPictures = &h264Gop;
+    } else if (session.m_Desc.codec == VideoCodec::H265) {
+        gop.DataSize = sizeof(hevcGop);
+        gop.pHEVCGroupOfPictures = &hevcGop;
+    } else {
+        NRI_REPORT_ERROR(&device, "D3D12 backend-neutral encode supports H264/H265 sessions only");
+        return;
+    }
+
+    D3D12_VIDEO_ENCODER_SEQUENCE_CONTROL_DESC sequenceControl = {};
+    sequenceControl.Flags = D3D12_VIDEO_ENCODER_SEQUENCE_CONTROL_FLAG_RATE_CONTROL_CHANGE | D3D12_VIDEO_ENCODER_SEQUENCE_CONTROL_FLAG_GOP_SEQUENCE_CHANGE;
+    sequenceControl.RateControl = rateControl;
+    sequenceControl.PictureTargetResolution = {session.m_Desc.width, session.m_Desc.height};
+    sequenceControl.SelectedLayoutMode = D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_FULL_FRAME;
+    sequenceControl.CodecGopSequence = gop;
+
+    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA_H264 h264Picture = {};
+    h264Picture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_IDR_FRAME;
+
+    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA_HEVC hevcPicture = {};
+    hevcPicture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_IDR_FRAME;
+
+    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA pictureCodecData = {};
+    if (session.m_Desc.codec == VideoCodec::H264) {
+        pictureCodecData.DataSize = sizeof(h264Picture);
+        pictureCodecData.pH264PicData = &h264Picture;
+    } else {
+        pictureCodecData.DataSize = sizeof(hevcPicture);
+        pictureCodecData.pHEVCPicData = &hevcPicture;
+    }
+
+    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_DESC pictureControl = {};
+    pictureControl.PictureControlCodecData = pictureCodecData;
+    pictureControl.ReferenceFrames.NumTexture2Ds = videoEncodeDesc.referenceNum;
+    pictureControl.ReferenceFrames.ppTexture2Ds = referenceResources;
+    pictureControl.ReferenceFrames.pSubresources = referenceSubresources;
+
+    D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS input = {};
+    input.SequenceControlDesc = sequenceControl;
+    input.PictureControlDesc = pictureControl;
+    input.pInputFrame = (ID3D12Resource*)(*(TextureD3D12*)videoEncodeDesc.srcPicture);
+    input.InputFrameSubresource = videoEncodeDesc.srcSubresource;
+
+    D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS output = {};
+    output.Bitstream.pBuffer = (ID3D12Resource*)(*(BufferD3D12*)videoEncodeDesc.dstBitstream);
+    output.Bitstream.FrameStartOffset = videoEncodeDesc.dstBitstreamOffset;
+    output.ReconstructedPicture.pReconstructedPicture = (ID3D12Resource*)(*(TextureD3D12*)videoEncodeDesc.reconstructedPicture);
+    output.ReconstructedPicture.ReconstructedPictureSubresource = videoEncodeDesc.reconstructedSubresource;
+    output.EncoderOutputMetadata.pBuffer = (ID3D12Resource*)(*(BufferD3D12*)videoEncodeDesc.metadata);
+    output.EncoderOutputMetadata.Offset = videoEncodeDesc.metadataOffset;
+
+    VideoEncodeD3D12Desc desc = {};
+    desc.d3d12Encoder = session.m_Encoder;
+    desc.d3d12Heap = session.m_EncoderHeap;
+    desc.d3d12InputArguments = &input;
+    desc.d3d12OutputArguments = &output;
+    commandBufferD3D12.EncodeVideo(desc);
 }
 
 Result DeviceD3D12::FillFunctionTable(VideoInterface& table) const {

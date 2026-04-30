@@ -1112,24 +1112,262 @@ Result DeviceVK::FillFunctionTable(RayTracingInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  Video  ]
 
+struct VideoSessionVK final : public DebugNameBase {
+    inline VideoSessionVK(DeviceVK& device)
+        : m_Device(device)
+        , m_Memory(device.GetStdAllocator()) {
+    }
+
+    inline DeviceVK& GetDevice() const {
+        return m_Device;
+    }
+
+    ~VideoSessionVK();
+
+    Result Create(const VideoSessionDesc& videoSessionDesc);
+
+    void SetDebugName(const char* name) NRI_DEBUG_NAME_OVERRIDE {
+        m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_VIDEO_SESSION_KHR, (uint64_t)m_Handle, name);
+    }
+
+    DeviceVK& m_Device;
+    VkVideoSessionKHR m_Handle = VK_NULL_HANDLE;
+    Vector<VkDeviceMemory> m_Memory;
+    VideoSessionDesc m_Desc = {};
+};
+
+static VkVideoComponentBitDepthFlagsKHR GetVideoBitDepthVK(Format format) {
+    return format == Format::P010_UNORM || format == Format::P016_UNORM ? VK_VIDEO_COMPONENT_BIT_DEPTH_10_BIT_KHR : VK_VIDEO_COMPONENT_BIT_DEPTH_8_BIT_KHR;
+}
+
+static VkVideoCodecOperationFlagBitsKHR GetVideoCodecOperationVK(const VideoSessionDesc& videoSessionDesc) {
+    if (videoSessionDesc.usage == VideoUsage::DECODE) {
+        switch (videoSessionDesc.codec) {
+        case VideoCodec::H264:
+            return VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR;
+        case VideoCodec::H265:
+            return VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR;
+        case VideoCodec::AV1:
+            return VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR;
+        case VideoCodec::MAX_NUM:
+            return (VkVideoCodecOperationFlagBitsKHR)0;
+        }
+    } else if (videoSessionDesc.usage == VideoUsage::ENCODE) {
+        switch (videoSessionDesc.codec) {
+        case VideoCodec::H264:
+            return VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_KHR;
+        case VideoCodec::H265:
+            return VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_KHR;
+        case VideoCodec::AV1:
+            return VK_VIDEO_CODEC_OPERATION_ENCODE_AV1_BIT_KHR;
+        case VideoCodec::MAX_NUM:
+            return (VkVideoCodecOperationFlagBitsKHR)0;
+        }
+    }
+
+    return (VkVideoCodecOperationFlagBitsKHR)0;
+}
+
+static void* FillVideoProfileCodecInfoVK(const VideoSessionDesc& videoSessionDesc, void* storage) {
+    if (videoSessionDesc.usage == VideoUsage::DECODE) {
+        switch (videoSessionDesc.codec) {
+        case VideoCodec::H264: {
+            VkVideoDecodeH264ProfileInfoKHR& info = *(VkVideoDecodeH264ProfileInfoKHR*)storage;
+            info = {VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_PROFILE_INFO_KHR};
+            info.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_HIGH;
+            info.pictureLayout = VK_VIDEO_DECODE_H264_PICTURE_LAYOUT_PROGRESSIVE_KHR;
+            return &info;
+        }
+        case VideoCodec::H265: {
+            VkVideoDecodeH265ProfileInfoKHR& info = *(VkVideoDecodeH265ProfileInfoKHR*)storage;
+            info = {VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_PROFILE_INFO_KHR};
+            info.stdProfileIdc = videoSessionDesc.format == Format::P010_UNORM || videoSessionDesc.format == Format::P016_UNORM ? STD_VIDEO_H265_PROFILE_IDC_MAIN_10 : STD_VIDEO_H265_PROFILE_IDC_MAIN;
+            return &info;
+        }
+        case VideoCodec::AV1: {
+            VkVideoDecodeAV1ProfileInfoKHR& info = *(VkVideoDecodeAV1ProfileInfoKHR*)storage;
+            info = {VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_KHR};
+            info.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN;
+            return &info;
+        }
+        case VideoCodec::MAX_NUM:
+            return nullptr;
+        }
+    } else if (videoSessionDesc.usage == VideoUsage::ENCODE) {
+        switch (videoSessionDesc.codec) {
+        case VideoCodec::H264: {
+            VkVideoEncodeH264ProfileInfoKHR& info = *(VkVideoEncodeH264ProfileInfoKHR*)storage;
+            info = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PROFILE_INFO_KHR};
+            info.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_HIGH;
+            return &info;
+        }
+        case VideoCodec::H265: {
+            VkVideoEncodeH265ProfileInfoKHR& info = *(VkVideoEncodeH265ProfileInfoKHR*)storage;
+            info = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_PROFILE_INFO_KHR};
+            info.stdProfileIdc = videoSessionDesc.format == Format::P010_UNORM || videoSessionDesc.format == Format::P016_UNORM ? STD_VIDEO_H265_PROFILE_IDC_MAIN_10 : STD_VIDEO_H265_PROFILE_IDC_MAIN;
+            return &info;
+        }
+        case VideoCodec::AV1: {
+            VkVideoEncodeAV1ProfileInfoKHR& info = *(VkVideoEncodeAV1ProfileInfoKHR*)storage;
+            info = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_PROFILE_INFO_KHR};
+            info.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN;
+            return &info;
+        }
+        case VideoCodec::MAX_NUM:
+            return nullptr;
+        }
+    }
+
+    return nullptr;
+}
+
+static bool FindVideoSessionMemoryTypeVK(const DeviceVK& device, uint32_t memoryTypeBits, uint32_t& memoryTypeIndex) {
+    uint32_t fallbackIndex = uint32_t(-1);
+    for (uint32_t i = 0; i < 32; i++) {
+        if ((memoryTypeBits & (1u << i)) == 0)
+            continue;
+
+        MemoryTypeInfo memoryTypeInfo = {};
+        if (!device.GetMemoryTypeByIndex(i, memoryTypeInfo))
+            continue;
+
+        if (memoryTypeInfo.location == MemoryLocation::DEVICE) {
+            memoryTypeIndex = i;
+            return true;
+        }
+
+        if (fallbackIndex == uint32_t(-1))
+            fallbackIndex = i;
+    }
+
+    if (fallbackIndex == uint32_t(-1))
+        return false;
+
+    memoryTypeIndex = fallbackIndex;
+    return true;
+}
+
+VideoSessionVK::~VideoSessionVK() {
+    const auto& vk = m_Device.GetDispatchTable();
+    if (m_Handle)
+        vk.DestroyVideoSessionKHR(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
+
+    for (VkDeviceMemory memory : m_Memory)
+        vk.FreeMemory(m_Device, memory, m_Device.GetVkAllocationCallbacks());
+}
+
+Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
+    const auto& vk = m_Device.GetDispatchTable();
+    if (!vk.CreateVideoSessionKHR || !vk.GetVideoSessionMemoryRequirementsKHR || !vk.BindVideoSessionMemoryKHR)
+        return Result::UNSUPPORTED;
+
+    if (videoSessionDesc.width == 0 || videoSessionDesc.height == 0 || videoSessionDesc.format == Format::UNKNOWN)
+        return Result::INVALID_ARGUMENT;
+
+    Queue* queue = nullptr;
+    Result result = m_Device.GetQueue(videoSessionDesc.usage == VideoUsage::ENCODE ? QueueType::VIDEO_ENCODE : QueueType::VIDEO_DECODE, 0, queue);
+    if (result != Result::SUCCESS)
+        return result;
+
+    VkVideoCodecOperationFlagBitsKHR operation = GetVideoCodecOperationVK(videoSessionDesc);
+    if (!operation)
+        return Result::UNSUPPORTED;
+
+    std::aligned_storage_t<64, 8> codecProfileStorage = {};
+    VkVideoProfileInfoKHR profile = {VK_STRUCTURE_TYPE_VIDEO_PROFILE_INFO_KHR};
+    profile.pNext = FillVideoProfileCodecInfoVK(videoSessionDesc, &codecProfileStorage);
+    profile.videoCodecOperation = operation;
+    profile.chromaSubsampling = VK_VIDEO_CHROMA_SUBSAMPLING_420_BIT_KHR;
+    profile.lumaBitDepth = GetVideoBitDepthVK(videoSessionDesc.format);
+    profile.chromaBitDepth = GetVideoBitDepthVK(videoSessionDesc.format);
+    if (!profile.pNext)
+        return Result::UNSUPPORTED;
+
+    VkVideoCapabilitiesKHR capabilities = {VK_STRUCTURE_TYPE_VIDEO_CAPABILITIES_KHR};
+    VkResult vkResult = vk.GetPhysicalDeviceVideoCapabilitiesKHR(m_Device, &profile, &capabilities);
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceVideoCapabilitiesKHR");
+
+    if (videoSessionDesc.width < capabilities.minCodedExtent.width || videoSessionDesc.height < capabilities.minCodedExtent.height || videoSessionDesc.width > capabilities.maxCodedExtent.width
+        || videoSessionDesc.height > capabilities.maxCodedExtent.height)
+        return Result::UNSUPPORTED;
+
+    VkVideoSessionCreateInfoKHR createInfo = {VK_STRUCTURE_TYPE_VIDEO_SESSION_CREATE_INFO_KHR};
+    createInfo.queueFamilyIndex = ((QueueVK*)queue)->GetFamilyIndex();
+    createInfo.pVideoProfile = &profile;
+    createInfo.pictureFormat = GetVkFormat(videoSessionDesc.format);
+    createInfo.maxCodedExtent = {videoSessionDesc.width, videoSessionDesc.height};
+    createInfo.referencePictureFormat = videoSessionDesc.maxReferenceNum ? createInfo.pictureFormat : VK_FORMAT_UNDEFINED;
+    createInfo.maxDpbSlots = videoSessionDesc.maxReferenceNum;
+    createInfo.maxActiveReferencePictures = videoSessionDesc.maxReferenceNum;
+    createInfo.pStdHeaderVersion = &capabilities.stdHeaderVersion;
+
+    vkResult = vk.CreateVideoSessionKHR(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateVideoSessionKHR");
+
+    uint32_t memoryRequirementNum = 0;
+    vkResult = vk.GetVideoSessionMemoryRequirementsKHR(m_Device, m_Handle, &memoryRequirementNum, nullptr);
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetVideoSessionMemoryRequirementsKHR");
+
+    Scratch<VkVideoSessionMemoryRequirementsKHR> memoryRequirements = NRI_ALLOCATE_SCRATCH(m_Device, VkVideoSessionMemoryRequirementsKHR, memoryRequirementNum);
+    for (uint32_t i = 0; i < memoryRequirementNum; i++)
+        memoryRequirements[i] = {VK_STRUCTURE_TYPE_VIDEO_SESSION_MEMORY_REQUIREMENTS_KHR};
+
+    vkResult = vk.GetVideoSessionMemoryRequirementsKHR(m_Device, m_Handle, &memoryRequirementNum, memoryRequirements);
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetVideoSessionMemoryRequirementsKHR");
+
+    m_Memory.resize(memoryRequirementNum);
+    Scratch<VkBindVideoSessionMemoryInfoKHR> bindInfos = NRI_ALLOCATE_SCRATCH(m_Device, VkBindVideoSessionMemoryInfoKHR, memoryRequirementNum);
+    for (uint32_t i = 0; i < memoryRequirementNum; i++) {
+        uint32_t memoryTypeIndex = 0;
+        if (!FindVideoSessionMemoryTypeVK(m_Device, memoryRequirements[i].memoryRequirements.memoryTypeBits, memoryTypeIndex))
+            return Result::UNSUPPORTED;
+
+        VkMemoryAllocateInfo allocateInfo = {VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+        allocateInfo.allocationSize = memoryRequirements[i].memoryRequirements.size;
+        allocateInfo.memoryTypeIndex = memoryTypeIndex;
+
+        vkResult = vk.AllocateMemory(m_Device, &allocateInfo, m_Device.GetVkAllocationCallbacks(), &m_Memory[i]);
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkAllocateMemory");
+
+        bindInfos[i] = {VK_STRUCTURE_TYPE_BIND_VIDEO_SESSION_MEMORY_INFO_KHR};
+        bindInfos[i].memoryBindIndex = memoryRequirements[i].memoryBindIndex;
+        bindInfos[i].memory = m_Memory[i];
+        bindInfos[i].memorySize = memoryRequirements[i].memoryRequirements.size;
+    }
+
+    vkResult = vk.BindVideoSessionMemoryKHR(m_Device, m_Handle, memoryRequirementNum, bindInfos);
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkBindVideoSessionMemoryKHR");
+
+    m_Desc = videoSessionDesc;
+    return Result::SUCCESS;
+}
+
 static Result NRI_CALL CreateVideoSession(Device& device, const VideoSessionDesc& videoSessionDesc, VideoSession*& videoSession) {
-    MaybeUnused(device, videoSessionDesc);
-    videoSession = nullptr;
-    return Result::UNSUPPORTED;
+    DeviceVK& deviceVK = (DeviceVK&)device;
+    VideoSessionVK* impl = Allocate<VideoSessionVK>(deviceVK.GetAllocationCallbacks(), deviceVK);
+    Result result = impl->Create(videoSessionDesc);
+
+    if (result != Result::SUCCESS) {
+        Destroy(impl);
+        videoSession = nullptr;
+    } else
+        videoSession = (VideoSession*)impl;
+
+    return result;
 }
 
 static void NRI_CALL DestroyVideoSession(VideoSession& videoSession) {
-    MaybeUnused(videoSession);
+    Destroy((VideoSessionVK*)&videoSession);
 }
 
 static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDecodeDesc& videoDecodeDesc) {
     MaybeUnused(videoDecodeDesc);
-    NRI_REPORT_ERROR(&((CommandBufferVK&)commandBuffer).GetDevice(), "Backend-neutral video decode is not implemented for Vulkan yet. Use WrapperVKInterface::CmdDecodeVideoVK.");
+    NRI_REPORT_ERROR(&((CommandBufferVK&)commandBuffer).GetDevice(), "Backend-neutral video decode for Vulkan requires VkVideoSessionParametersKHR and VkImageView-backed picture resources; use WrapperVKInterface::CmdDecodeVideoVK.");
 }
 
 static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEncodeDesc& videoEncodeDesc) {
     MaybeUnused(videoEncodeDesc);
-    NRI_REPORT_ERROR(&((CommandBufferVK&)commandBuffer).GetDevice(), "Backend-neutral video encode is not implemented for Vulkan yet. Use WrapperVKInterface::CmdEncodeVideoVK.");
+    NRI_REPORT_ERROR(&((CommandBufferVK&)commandBuffer).GetDevice(), "Backend-neutral video encode for Vulkan requires codec-specific rate control and picture parameter abstraction; use WrapperVKInterface::CmdEncodeVideoVK.");
 }
 
 Result DeviceVK::FillFunctionTable(VideoInterface& table) const {

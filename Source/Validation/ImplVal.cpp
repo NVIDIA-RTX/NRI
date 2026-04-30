@@ -1183,23 +1183,75 @@ Result DeviceVal::FillFunctionTable(RayTracingInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  Video  ]
 
+struct VideoSessionVal final : public ObjectVal {
+    inline VideoSessionVal(DeviceVal& device, VideoSession* impl)
+        : ObjectVal(device, (Object*)impl) {
+    }
+
+    inline VideoSession* GetImpl() const {
+        return (VideoSession*)m_Impl;
+    }
+};
+
 static Result NRI_CALL CreateVideoSession(Device& device, const VideoSessionDesc& videoSessionDesc, VideoSession*& videoSession) {
     DeviceVal& deviceVal = (DeviceVal&)device;
-    return deviceVal.GetVideoInterfaceImpl().CreateVideoSession(deviceVal.GetImpl(), videoSessionDesc, videoSession);
+    VideoSession* videoSessionImpl = nullptr;
+    Result result = deviceVal.GetVideoInterfaceImpl().CreateVideoSession(deviceVal.GetImpl(), videoSessionDesc, videoSessionImpl);
+    if (result != Result::SUCCESS)
+        return result;
+
+    videoSession = (VideoSession*)Allocate<VideoSessionVal>(deviceVal.GetAllocationCallbacks(), deviceVal, videoSessionImpl);
+    return Result::SUCCESS;
 }
 
 static void NRI_CALL DestroyVideoSession(VideoSession& videoSession) {
-    MaybeUnused(videoSession);
+    VideoSessionVal& videoSessionVal = (VideoSessionVal&)videoSession;
+    videoSessionVal.GetVideoInterfaceImpl().DestroyVideoSession(*videoSessionVal.GetImpl());
+    Destroy(&videoSessionVal);
 }
 
 static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDecodeDesc& videoDecodeDesc) {
     CommandBufferVal& commandBufferVal = (CommandBufferVal&)commandBuffer;
-    commandBufferVal.GetVideoInterfaceImpl().CmdDecodeVideo(*commandBufferVal.GetImpl(), videoDecodeDesc);
+
+    VideoDecodeDesc videoDecodeDescImpl = videoDecodeDesc;
+    videoDecodeDescImpl.session = videoDecodeDesc.session ? ((VideoSessionVal*)videoDecodeDesc.session)->GetImpl() : nullptr;
+    videoDecodeDescImpl.bitstream = NRI_GET_IMPL(Buffer, videoDecodeDesc.bitstream);
+    videoDecodeDescImpl.dstPicture = NRI_GET_IMPL(Texture, videoDecodeDesc.dstPicture);
+
+    Scratch<VideoReference> references = NRI_ALLOCATE_SCRATCH(commandBufferVal.GetDevice(), VideoReference, videoDecodeDesc.references ? videoDecodeDesc.referenceNum : 0);
+    if (videoDecodeDesc.references) {
+        for (uint32_t i = 0; i < videoDecodeDesc.referenceNum; i++) {
+            references[i] = videoDecodeDesc.references[i];
+            references[i].picture = NRI_GET_IMPL(Texture, references[i].picture);
+        }
+
+        videoDecodeDescImpl.references = references;
+    }
+
+    commandBufferVal.GetVideoInterfaceImpl().CmdDecodeVideo(*commandBufferVal.GetImpl(), videoDecodeDescImpl);
 }
 
 static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEncodeDesc& videoEncodeDesc) {
     CommandBufferVal& commandBufferVal = (CommandBufferVal&)commandBuffer;
-    commandBufferVal.GetVideoInterfaceImpl().CmdEncodeVideo(*commandBufferVal.GetImpl(), videoEncodeDesc);
+
+    VideoEncodeDesc videoEncodeDescImpl = videoEncodeDesc;
+    videoEncodeDescImpl.session = videoEncodeDesc.session ? ((VideoSessionVal*)videoEncodeDesc.session)->GetImpl() : nullptr;
+    videoEncodeDescImpl.srcPicture = NRI_GET_IMPL(Texture, videoEncodeDesc.srcPicture);
+    videoEncodeDescImpl.dstBitstream = NRI_GET_IMPL(Buffer, videoEncodeDesc.dstBitstream);
+    videoEncodeDescImpl.reconstructedPicture = NRI_GET_IMPL(Texture, videoEncodeDesc.reconstructedPicture);
+    videoEncodeDescImpl.metadata = NRI_GET_IMPL(Buffer, videoEncodeDesc.metadata);
+
+    Scratch<VideoReference> references = NRI_ALLOCATE_SCRATCH(commandBufferVal.GetDevice(), VideoReference, videoEncodeDesc.references ? videoEncodeDesc.referenceNum : 0);
+    if (videoEncodeDesc.references) {
+        for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {
+            references[i] = videoEncodeDesc.references[i];
+            references[i].picture = NRI_GET_IMPL(Texture, references[i].picture);
+        }
+
+        videoEncodeDescImpl.references = references;
+    }
+
+    commandBufferVal.GetVideoInterfaceImpl().CmdEncodeVideo(*commandBufferVal.GetImpl(), videoEncodeDescImpl);
 }
 
 Result DeviceVal::FillFunctionTable(VideoInterface& table) const {

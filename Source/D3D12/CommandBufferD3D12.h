@@ -9,6 +9,7 @@ struct ID3D12CommandList;
 struct ID3D12Resource;
 struct ID3D12VideoDecodeCommandList;
 struct ID3D12VideoDecoder;
+struct ID3D12VideoDecoderHeap;
 struct ID3D12VideoEncodeCommandList;
 struct ID3D12VideoEncoder;
 struct ID3D12VideoEncoderHeap;
