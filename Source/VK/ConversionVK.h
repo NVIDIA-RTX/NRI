@@ -72,6 +72,10 @@ constexpr std::array<VkImageLayout, (size_t)Layout::MAX_NUM> g_ImageLayouts = {
     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,                         // COPY_DESTINATION
     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,                         // RESOLVE_SOURCE
     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,                         // RESOLVE_DESTINATION
+    VK_IMAGE_LAYOUT_VIDEO_DECODE_DST_KHR,                         // VIDEO_DECODE_DST
+    VK_IMAGE_LAYOUT_VIDEO_DECODE_DPB_KHR,                         // VIDEO_DECODE_DPB
+    VK_IMAGE_LAYOUT_VIDEO_ENCODE_SRC_KHR,                         // VIDEO_ENCODE_SRC
+    VK_IMAGE_LAYOUT_VIDEO_ENCODE_DPB_KHR,                         // VIDEO_ENCODE_DPB
 };
 NRI_VALIDATE_ARRAY(g_ImageLayouts);
 
@@ -419,6 +423,12 @@ constexpr VkPipelineStageFlags2 GetPipelineStageFlags(StageBits stageBits) {
 
     if (stageBits & StageBits::CLEAR_STORAGE)
         flags |= VK_PIPELINE_STAGE_2_CLEAR_BIT;
+
+    if (stageBits & StageBits::VIDEO_DECODE)
+        flags |= VK_PIPELINE_STAGE_2_VIDEO_DECODE_BIT_KHR;
+
+    if (stageBits & StageBits::VIDEO_ENCODE)
+        flags |= VK_PIPELINE_STAGE_2_VIDEO_ENCODE_BIT_KHR;
 
     if (stageBits & StageBits::ACCELERATION_STRUCTURE)
         flags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR; // already includes "VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR" (more strict according to the spec)

@@ -944,6 +944,18 @@ static inline VkAccessFlags2 GetAccessFlags(AccessBits accessBits) {
     if (accessBits & (AccessBits::COPY_DESTINATION | AccessBits::RESOLVE_DESTINATION | AccessBits::CLEAR_STORAGE))
         flags |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
 
+    if (accessBits & AccessBits::VIDEO_DECODE_READ)
+        flags |= VK_ACCESS_2_VIDEO_DECODE_READ_BIT_KHR;
+
+    if (accessBits & AccessBits::VIDEO_DECODE_WRITE)
+        flags |= VK_ACCESS_2_VIDEO_DECODE_WRITE_BIT_KHR;
+
+    if (accessBits & AccessBits::VIDEO_ENCODE_READ)
+        flags |= VK_ACCESS_2_VIDEO_ENCODE_READ_BIT_KHR;
+
+    if (accessBits & AccessBits::VIDEO_ENCODE_WRITE)
+        flags |= VK_ACCESS_2_VIDEO_ENCODE_WRITE_BIT_KHR;
+
     return flags;
 }
 

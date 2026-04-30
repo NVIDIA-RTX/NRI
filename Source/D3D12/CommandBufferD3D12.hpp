@@ -76,6 +76,12 @@ static inline D3D12_BARRIER_SYNC GetBarrierSyncFlags(StageBits stageBits, Access
     if (stageBits & StageBits::CLEAR_STORAGE)
         flags |= D3D12_BARRIER_SYNC_CLEAR_UNORDERED_ACCESS_VIEW;
 
+    if (stageBits & StageBits::VIDEO_DECODE)
+        flags |= D3D12_BARRIER_SYNC_VIDEO_DECODE;
+
+    if (stageBits & StageBits::VIDEO_ENCODE)
+        flags |= D3D12_BARRIER_SYNC_VIDEO_ENCODE;
+
     if (stageBits & (StageBits::ACCELERATION_STRUCTURE | StageBits::MICROMAP)) {
         flags |= D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE | D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE;
 
@@ -144,6 +150,18 @@ static inline D3D12_BARRIER_ACCESS GetBarrierAccessFlags(AccessBits accessBits) 
     if (accessBits & AccessBits::RESOLVE_DESTINATION)
         flags |= D3D12_BARRIER_ACCESS_RESOLVE_DEST;
 
+    if (accessBits & AccessBits::VIDEO_DECODE_READ)
+        flags |= D3D12_BARRIER_ACCESS_VIDEO_DECODE_READ;
+
+    if (accessBits & AccessBits::VIDEO_DECODE_WRITE)
+        flags |= D3D12_BARRIER_ACCESS_VIDEO_DECODE_WRITE;
+
+    if (accessBits & AccessBits::VIDEO_ENCODE_READ)
+        flags |= D3D12_BARRIER_ACCESS_VIDEO_ENCODE_READ;
+
+    if (accessBits & AccessBits::VIDEO_ENCODE_WRITE)
+        flags |= D3D12_BARRIER_ACCESS_VIDEO_ENCODE_WRITE;
+
     return flags;
 }
 
@@ -164,6 +182,10 @@ constexpr std::array<D3D12_BARRIER_LAYOUT, (size_t)Layout::MAX_NUM> g_BarrierLay
     D3D12_BARRIER_LAYOUT_COPY_DEST,           // COPY_DESTINATION
     D3D12_BARRIER_LAYOUT_RESOLVE_SOURCE,      // RESOLVE_SOURCE
     D3D12_BARRIER_LAYOUT_RESOLVE_DEST,        // RESOLVE_DESTINATION
+    D3D12_BARRIER_LAYOUT_VIDEO_DECODE_WRITE,  // VIDEO_DECODE_DST
+    D3D12_BARRIER_LAYOUT_VIDEO_DECODE_READ,   // VIDEO_DECODE_DPB
+    D3D12_BARRIER_LAYOUT_VIDEO_ENCODE_READ,   // VIDEO_ENCODE_SRC
+    D3D12_BARRIER_LAYOUT_VIDEO_ENCODE_WRITE,  // VIDEO_ENCODE_DPB
 };
 NRI_VALIDATE_ARRAY(g_BarrierLayouts);
 
@@ -227,6 +249,18 @@ static inline D3D12_RESOURCE_STATES GetResourceStates(AccessBits accessBits, D3D
 
     if (accessBits & AccessBits::RESOLVE_DESTINATION)
         resourceStates |= D3D12_RESOURCE_STATE_RESOLVE_DEST;
+
+    if (accessBits & AccessBits::VIDEO_DECODE_READ)
+        resourceStates |= D3D12_RESOURCE_STATE_VIDEO_DECODE_READ;
+
+    if (accessBits & AccessBits::VIDEO_DECODE_WRITE)
+        resourceStates |= D3D12_RESOURCE_STATE_VIDEO_DECODE_WRITE;
+
+    if (accessBits & AccessBits::VIDEO_ENCODE_READ)
+        resourceStates |= D3D12_RESOURCE_STATE_VIDEO_ENCODE_READ;
+
+    if (accessBits & AccessBits::VIDEO_ENCODE_WRITE)
+        resourceStates |= D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE;
 
     return resourceStates;
 }

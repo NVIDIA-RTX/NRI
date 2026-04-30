@@ -1158,7 +1158,18 @@ struct VideoSessionParametersD3D12 final {
         return m_Device;
     }
 
+    Result Create(const VideoSessionParametersDesc& videoSessionParametersDesc) {
+        if (!videoSessionParametersDesc.session)
+            return Result::INVALID_ARGUMENT;
+
+        m_Session = (VideoSessionD3D12*)videoSessionParametersDesc.session;
+        m_H264Parameters = videoSessionParametersDesc.h264Parameters;
+        return Result::SUCCESS;
+    }
+
     DeviceD3D12& m_Device;
+    VideoSessionD3D12* m_Session = nullptr;
+    const VideoH264SessionParametersDesc* m_H264Parameters = nullptr;
 };
 
 struct VideoPictureD3D12 final : public DebugNameBase {
@@ -1345,11 +1356,16 @@ static void NRI_CALL DestroyVideoSession(VideoSession& videoSession) {
 
 static Result NRI_CALL CreateVideoSessionParameters(Device& device, const VideoSessionParametersDesc& videoSessionParametersDesc, VideoSessionParameters*& videoSessionParameters) {
     DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
-    if (!videoSessionParametersDesc.session)
-        return Result::INVALID_ARGUMENT;
+    VideoSessionParametersD3D12* impl = Allocate<VideoSessionParametersD3D12>(deviceD3D12.GetAllocationCallbacks(), deviceD3D12);
+    Result result = impl->Create(videoSessionParametersDesc);
 
-    videoSessionParameters = (VideoSessionParameters*)Allocate<VideoSessionParametersD3D12>(deviceD3D12.GetAllocationCallbacks(), deviceD3D12);
-    return Result::SUCCESS;
+    if (result != Result::SUCCESS) {
+        Destroy(impl);
+        videoSessionParameters = nullptr;
+    } else
+        videoSessionParameters = (VideoSessionParameters*)impl;
+
+    return result;
 }
 
 static void NRI_CALL DestroyVideoSessionParameters(VideoSessionParameters& videoSessionParameters) {
@@ -1378,8 +1394,8 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
     CommandBufferD3D12& commandBufferD3D12 = (CommandBufferD3D12&)commandBuffer;
     DeviceD3D12& device = commandBufferD3D12.GetDevice();
 
-    if (!videoDecodeDesc.session || !videoDecodeDesc.bitstream || !videoDecodeDesc.dstPicture) {
-        NRI_REPORT_ERROR(&device, "'session', 'bitstream' and 'dstPicture' must be valid");
+    if (!videoDecodeDesc.session || !videoDecodeDesc.parameters || !videoDecodeDesc.bitstream || !videoDecodeDesc.dstPicture) {
+        NRI_REPORT_ERROR(&device, "'session', 'parameters', 'bitstream' and 'dstPicture' must be valid");
         return;
     }
 
@@ -1399,6 +1415,11 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
     }
 
     VideoSessionD3D12& session = *(VideoSessionD3D12*)videoDecodeDesc.session;
+    VideoSessionParametersD3D12& parameters = *(VideoSessionParametersD3D12*)videoDecodeDesc.parameters;
+    if (parameters.m_Session != &session) {
+        NRI_REPORT_ERROR(&device, "'parameters' must belong to 'session'");
+        return;
+    }
 
     D3D12_VIDEO_DECODE_INPUT_STREAM_ARGUMENTS input = {};
     input.NumFrameArguments = videoDecodeDesc.argumentNum;
@@ -1450,8 +1471,8 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     CommandBufferD3D12& commandBufferD3D12 = (CommandBufferD3D12&)commandBuffer;
     DeviceD3D12& device = commandBufferD3D12.GetDevice();
 
-    if (!videoEncodeDesc.session || !videoEncodeDesc.srcPicture || !videoEncodeDesc.dstBitstream || !videoEncodeDesc.reconstructedPicture || !videoEncodeDesc.metadata) {
-        NRI_REPORT_ERROR(&device, "'session', 'srcPicture', 'dstBitstream', 'reconstructedPicture' and 'metadata' must be valid");
+    if (!videoEncodeDesc.session || !videoEncodeDesc.parameters || !videoEncodeDesc.srcPicture || !videoEncodeDesc.dstBitstream || !videoEncodeDesc.reconstructedPicture || !videoEncodeDesc.metadata) {
+        NRI_REPORT_ERROR(&device, "'session', 'parameters', 'srcPicture', 'dstBitstream', 'reconstructedPicture' and 'metadata' must be valid");
         return;
     }
 
@@ -1461,6 +1482,12 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     }
 
     VideoSessionD3D12& session = *(VideoSessionD3D12*)videoEncodeDesc.session;
+    VideoSessionParametersD3D12& parameters = *(VideoSessionParametersD3D12*)videoEncodeDesc.parameters;
+    if (parameters.m_Session != &session) {
+        NRI_REPORT_ERROR(&device, "'parameters' must belong to 'session'");
+        return;
+    }
+
     if (!session.m_Encoder || !session.m_EncoderHeap) {
         NRI_REPORT_ERROR(&device, "'session' is not an encode session");
         return;
@@ -1479,12 +1506,19 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
         referenceSubresources[i] = reference.m_Subresource;
     }
 
-    D3D12_VIDEO_ENCODER_RATE_CONTROL_CQP cqp = {26, 28, 30};
+    const VideoEncodeRateControlDesc defaultRateControl = {VideoEncodeRateControlMode::CQP, 26, 28, 30, 30, 1};
+    const VideoEncodeRateControlDesc& rateControlDesc = videoEncodeDesc.rateControlDesc ? *videoEncodeDesc.rateControlDesc : defaultRateControl;
+    if (rateControlDesc.mode != VideoEncodeRateControlMode::CQP) {
+        NRI_REPORT_ERROR(&device, "Unsupported video encode rate control mode");
+        return;
+    }
+
+    D3D12_VIDEO_ENCODER_RATE_CONTROL_CQP cqp = {rateControlDesc.qpI, rateControlDesc.qpP, rateControlDesc.qpB};
     D3D12_VIDEO_ENCODER_RATE_CONTROL rateControl = {};
     rateControl.Mode = D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_CQP;
     rateControl.ConfigParams.DataSize = sizeof(cqp);
     rateControl.ConfigParams.pConfiguration_CQP = &cqp;
-    rateControl.TargetFrameRate = {30, 1};
+    rateControl.TargetFrameRate = {rateControlDesc.frameRateNumerator ? rateControlDesc.frameRateNumerator : 30, rateControlDesc.frameRateDenominator ? rateControlDesc.frameRateDenominator : 1};
 
     D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_H264 h264Gop = {};
     h264Gop.GOPLength = 1;
@@ -1513,11 +1547,46 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     sequenceControl.SelectedLayoutMode = D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_FULL_FRAME;
     sequenceControl.CodecGopSequence = gop;
 
+    const VideoEncodePictureDesc defaultPicture = {VideoEncodeFrameType::IDR, 0, 0, 0, 0};
+    const VideoEncodePictureDesc& pictureDesc = videoEncodeDesc.pictureDesc ? *videoEncodeDesc.pictureDesc : defaultPicture;
+
     D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA_H264 h264Picture = {};
-    h264Picture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_IDR_FRAME;
+    switch (pictureDesc.frameType) {
+    case VideoEncodeFrameType::IDR:
+        h264Picture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_IDR_FRAME;
+        break;
+    case VideoEncodeFrameType::I:
+        h264Picture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_I_FRAME;
+        break;
+    case VideoEncodeFrameType::P:
+        h264Picture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_P_FRAME;
+        break;
+    case VideoEncodeFrameType::B:
+        h264Picture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_B_FRAME;
+        break;
+    case VideoEncodeFrameType::MAX_NUM:
+        NRI_REPORT_ERROR(&device, "Unsupported video encode frame type");
+        return;
+    }
 
     D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA_HEVC hevcPicture = {};
-    hevcPicture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_IDR_FRAME;
+    switch (pictureDesc.frameType) {
+    case VideoEncodeFrameType::IDR:
+        hevcPicture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_IDR_FRAME;
+        break;
+    case VideoEncodeFrameType::I:
+        hevcPicture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_I_FRAME;
+        break;
+    case VideoEncodeFrameType::P:
+        hevcPicture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_P_FRAME;
+        break;
+    case VideoEncodeFrameType::B:
+        hevcPicture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_B_FRAME;
+        break;
+    case VideoEncodeFrameType::MAX_NUM:
+        NRI_REPORT_ERROR(&device, "Unsupported video encode frame type");
+        return;
+    }
 
     D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA pictureCodecData = {};
     if (session.m_Desc.codec == VideoCodec::H264) {

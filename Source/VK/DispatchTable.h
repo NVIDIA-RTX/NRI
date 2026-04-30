@@ -203,6 +203,7 @@ struct DispatchTable {
     VK_FUNC(CreateVideoSessionParametersKHR);             // + | +
     VK_FUNC(DestroyVideoSessionParametersKHR);            // - | +
     VK_FUNC(CmdBeginVideoCodingKHR);                      // - | +
+    VK_FUNC(CmdControlVideoCodingKHR);                    // - | +
     VK_FUNC(CmdEndVideoCodingKHR);                        // - | +
     VK_FUNC(CmdDecodeVideoKHR);                           // - | +
     VK_FUNC(CmdEncodeVideoKHR);                           // - | +

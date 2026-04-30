@@ -19,11 +19,11 @@ struct QueueFamilyPropsVK {
 };
 
 inline bool HasVideoDecodeCodec(const QueueFamilyPropsVK& familyProps) {
-    return (familyProps.videoCodecOperations & VIDEO_DECODE_CODEC_OPERATION_MASK) != 0;
+    return (familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR) != 0 && ((familyProps.videoCodecOperations & VIDEO_DECODE_CODEC_OPERATION_MASK) != 0 || familyProps.videoCodecOperations == 0);
 }
 
 inline bool HasVideoEncodeCodec(const QueueFamilyPropsVK& familyProps) {
-    return (familyProps.videoCodecOperations & VIDEO_ENCODE_CODEC_OPERATION_MASK) != 0;
+    return (familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR) != 0 && ((familyProps.videoCodecOperations & VIDEO_ENCODE_CODEC_OPERATION_MASK) != 0 || familyProps.videoCodecOperations == 0);
 }
 
 inline uint32_t GetQueueFamilyScoreVK(const QueueFamilyPropsVK& familyProps, QueueType queueType) {
@@ -31,8 +31,8 @@ inline uint32_t GetQueueFamilyScoreVK(const QueueFamilyPropsVK& familyProps, Que
     bool compute = (familyProps.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
     bool copy = (familyProps.queueFlags & VK_QUEUE_TRANSFER_BIT) != 0;
     bool sparse = (familyProps.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT) != 0;
-    bool videoDecode = (familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR) != 0 && HasVideoDecodeCodec(familyProps);
-    bool videoEncode = (familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR) != 0 && HasVideoEncodeCodec(familyProps);
+    bool videoDecode = HasVideoDecodeCodec(familyProps);
+    bool videoEncode = HasVideoEncodeCodec(familyProps);
     bool protect = (familyProps.queueFlags & VK_QUEUE_PROTECTED_BIT) != 0;
     bool opticalFlow = (familyProps.queueFlags & VK_QUEUE_OPTICAL_FLOW_BIT_NV) != 0;
 

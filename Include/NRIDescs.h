@@ -450,9 +450,11 @@ NriBits(StageBits, uint32_t,
     COPY                            = NriBit(19),   // Invoked by "CmdCopy*", "CmdUpload*" and "CmdReadback*"
     RESOLVE                         = NriBit(20),   // Invoked by "CmdResolveTexture"
     CLEAR_STORAGE                   = NriBit(21),   // Invoked by "CmdClearStorage"
+    VIDEO_DECODE                    = NriBit(22),   // Invoked by "CmdDecodeVideo"
+    VIDEO_ENCODE                    = NriBit(23),   // Invoked by "CmdEncodeVideo"
 
     // Modifiers
-    INDIRECT                        = NriBit(22),   // Invoked by "Indirect" commands (used in addition to other bits)
+    INDIRECT                        = NriBit(24),   // Invoked by "Indirect" commands (used in addition to other bits)
 
     // Umbrella stages
     TESSELLATION_SHADERS            = NriMember(StageBits, TESS_CONTROL_SHADER)
@@ -528,6 +530,12 @@ NriBits(AccessBits, uint32_t,
     // Clear storage
     CLEAR_STORAGE                   = NriBit(22),   //  W       CLEAR_STORAGE
 
+    // Video
+    VIDEO_DECODE_READ               = NriBit(23),   // R        VIDEO_DECODE
+    VIDEO_DECODE_WRITE              = NriBit(24),   //  W       VIDEO_DECODE
+    VIDEO_ENCODE_READ               = NriBit(25),   // R        VIDEO_ENCODE
+    VIDEO_ENCODE_WRITE              = NriBit(26),   //  W       VIDEO_ENCODE
+
     // Umbrella access
     COLOR_ATTACHMENT                = NriMember(AccessBits, COLOR_ATTACHMENT_READ)
                                     | NriMember(AccessBits, COLOR_ATTACHMENT_WRITE),
@@ -539,7 +547,13 @@ NriBits(AccessBits, uint32_t,
                                     | NriMember(AccessBits, ACCELERATION_STRUCTURE_WRITE),
 
     MICROMAP                        = NriMember(AccessBits, MICROMAP_READ)
-                                    | NriMember(AccessBits, MICROMAP_WRITE)
+                                    | NriMember(AccessBits, MICROMAP_WRITE),
+
+    VIDEO_DECODE                    = NriMember(AccessBits, VIDEO_DECODE_READ)
+                                    | NriMember(AccessBits, VIDEO_DECODE_WRITE),
+
+    VIDEO_ENCODE                    = NriMember(AccessBits, VIDEO_ENCODE_READ)
+                                    | NriMember(AccessBits, VIDEO_ENCODE_WRITE)
 );
 
 // "Layout" is ignored if "features.enhancedBarriers" is not supported
@@ -570,7 +584,13 @@ NriEnum(Layout, uint8_t,            // Compatible "AccessBits":
 
     // Resolve
     RESOLVE_SOURCE,                     // RESOLVE_SOURCE
-    RESOLVE_DESTINATION                 // RESOLVE_DESTINATION
+    RESOLVE_DESTINATION,                // RESOLVE_DESTINATION
+
+    // Video
+    VIDEO_DECODE_DST,                   // VIDEO_DECODE_WRITE
+    VIDEO_DECODE_DPB,                   // VIDEO_DECODE_READ/WRITE
+    VIDEO_ENCODE_SRC,                   // VIDEO_ENCODE_READ
+    VIDEO_ENCODE_DPB                    // VIDEO_ENCODE_READ/WRITE
 );
 
 NriStruct(AccessStage) {
@@ -658,7 +678,9 @@ NriBits(TextureUsageBits, uint8_t,                  // Min compatible access:   
     COLOR_ATTACHMENT                    = NriBit(2),    // COLOR_ATTACHMENT                         Color attachment (render target)
     DEPTH_STENCIL_ATTACHMENT            = NriBit(3),    // DEPTH_STENCIL_ATTACHMENT_READ/WRITE      Depth-stencil attachment (depth-stencil target)
     SHADING_RATE_ATTACHMENT             = NriBit(4),    // SHADING_RATE_ATTACHMENT                  Shading rate attachment (source)
-    INPUT_ATTACHMENT                    = NriBit(5)     // INPUT_ATTACHMENT                         Subpass input (read on-chip tile cache)
+    INPUT_ATTACHMENT                    = NriBit(5),    // INPUT_ATTACHMENT                         Subpass input (read on-chip tile cache)
+    VIDEO_DECODE                        = NriBit(6),    // VIDEO_DECODE                             Video decode output / DPB picture
+    VIDEO_ENCODE                        = NriBit(7)     // VIDEO_ENCODE                             Video encode input / DPB picture
 );
 
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkBufferUsageFlagBits.html
@@ -675,7 +697,9 @@ NriBits(BufferUsageBits, uint16_t,                  // Min compatible access:   
     ACCELERATION_STRUCTURE_BUILD_INPUT  = NriBit(8),    // SHADER_RESOURCE                          Read-only input in "CmdBuildAccelerationStructures" command
     ACCELERATION_STRUCTURE_STORAGE      = NriBit(9),    // ACCELERATION_STRUCTURE_READ/WRITE        (INTERNAL) acceleration structure storage
     MICROMAP_BUILD_INPUT                = NriBit(10),   // SHADER_RESOURCE                          Read-only input in "CmdBuildMicromaps" command
-    MICROMAP_STORAGE                    = NriBit(11)    // MICROMAP_READ/WRITE                      (INTERNAL) micromap storage
+    MICROMAP_STORAGE                    = NriBit(11),   // MICROMAP_READ/WRITE                      (INTERNAL) micromap storage
+    VIDEO_DECODE                        = NriBit(12),   // VIDEO_DECODE                             Video decode bitstream input
+    VIDEO_ENCODE                        = NriBit(13)    // VIDEO_ENCODE                             Video encode bitstream output
 );
 
 NriStruct(TextureDesc) {
