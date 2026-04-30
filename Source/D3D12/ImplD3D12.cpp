@@ -1123,18 +1123,32 @@ Result DeviceD3D12::FillFunctionTable(RayTracingInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  Video  ]
 
+static Result NRI_CALL CreateVideoSession(Device& device, const VideoSessionDesc& videoSessionDesc, VideoSession*& videoSession) {
+    MaybeUnused(device, videoSessionDesc);
+    videoSession = nullptr;
+    return Result::UNSUPPORTED;
+}
+
+static void NRI_CALL DestroyVideoSession(VideoSession& videoSession) {
+    MaybeUnused(videoSession);
+}
+
 static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDecodeDesc& videoDecodeDesc) {
-    ((CommandBufferD3D12&)commandBuffer).DecodeVideo(videoDecodeDesc);
+    MaybeUnused(videoDecodeDesc);
+    NRI_REPORT_ERROR(&((CommandBufferD3D12&)commandBuffer).GetDevice(), "Backend-neutral video decode is not implemented for D3D12 yet. Use WrapperD3D12Interface::CmdDecodeVideoD3D12.");
 }
 
 static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEncodeDesc& videoEncodeDesc) {
-    ((CommandBufferD3D12&)commandBuffer).EncodeVideo(videoEncodeDesc);
+    MaybeUnused(videoEncodeDesc);
+    NRI_REPORT_ERROR(&((CommandBufferD3D12&)commandBuffer).GetDevice(), "Backend-neutral video encode is not implemented for D3D12 yet. Use WrapperD3D12Interface::CmdEncodeVideoD3D12.");
 }
 
 Result DeviceD3D12::FillFunctionTable(VideoInterface& table) const {
     if (m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_DECODE] == 0 && m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_ENCODE] == 0)
         return Result::UNSUPPORTED;
 
+    table.CreateVideoSession = ::CreateVideoSession;
+    table.DestroyVideoSession = ::DestroyVideoSession;
     table.CmdDecodeVideo = ::CmdDecodeVideo;
     table.CmdEncodeVideo = ::CmdEncodeVideo;
 
@@ -1333,6 +1347,14 @@ static Result NRI_CALL CreateAccelerationStructureD3D12(Device& device, const Ac
     return ((DeviceD3D12&)device).CreateImplementation<AccelerationStructureD3D12>(accelerationStructure, accelerationStructureD3D12Desc);
 }
 
+static void NRI_CALL CmdDecodeVideoD3D12(CommandBuffer& commandBuffer, const VideoDecodeD3D12Desc& videoDecodeD3D12Desc) {
+    ((CommandBufferD3D12&)commandBuffer).DecodeVideo(videoDecodeD3D12Desc);
+}
+
+static void NRI_CALL CmdEncodeVideoD3D12(CommandBuffer& commandBuffer, const VideoEncodeD3D12Desc& videoEncodeD3D12Desc) {
+    ((CommandBufferD3D12&)commandBuffer).EncodeVideo(videoEncodeD3D12Desc);
+}
+
 Result DeviceD3D12::FillFunctionTable(WrapperD3D12Interface& table) const {
     table.CreateCommandBufferD3D12 = ::CreateCommandBufferD3D12;
     table.CreateDescriptorPoolD3D12 = ::CreateDescriptorPoolD3D12;
@@ -1341,6 +1363,8 @@ Result DeviceD3D12::FillFunctionTable(WrapperD3D12Interface& table) const {
     table.CreateMemoryD3D12 = ::CreateMemoryD3D12;
     table.CreateFenceD3D12 = ::CreateFenceD3D12;
     table.CreateAccelerationStructureD3D12 = ::CreateAccelerationStructureD3D12;
+    table.CmdDecodeVideoD3D12 = ::CmdDecodeVideoD3D12;
+    table.CmdEncodeVideoD3D12 = ::CmdEncodeVideoD3D12;
 
     return Result::SUCCESS;
 }

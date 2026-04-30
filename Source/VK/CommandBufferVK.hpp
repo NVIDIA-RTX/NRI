@@ -92,34 +92,24 @@ NRI_INLINE Result CommandBufferVK::End() {
     return Result::SUCCESS;
 }
 
-NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeDesc) {
-    if (!videoDecodeDesc.vk) {
-        NRI_REPORT_ERROR(&m_Device, "'vk' is NULL");
-        return;
-    }
-
+NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeVKDesc& videoDecodeVKDesc) {
     const auto& vk = m_Device.GetDispatchTable();
     if (!vk.CmdDecodeVideoKHR) {
         NRI_REPORT_ERROR(&m_Device, "vkCmdDecodeVideoKHR is not available");
         return;
     }
 
-    vk.CmdDecodeVideoKHR(m_Handle, (const VkVideoDecodeInfoKHR*)videoDecodeDesc.vk->vkDecodeInfo);
+    vk.CmdDecodeVideoKHR(m_Handle, (const VkVideoDecodeInfoKHR*)videoDecodeVKDesc.vkDecodeInfo);
 }
 
-NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeDesc) {
-    if (!videoEncodeDesc.vk) {
-        NRI_REPORT_ERROR(&m_Device, "'vk' is NULL");
-        return;
-    }
-
+NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeVKDesc& videoEncodeVKDesc) {
     const auto& vk = m_Device.GetDispatchTable();
     if (!vk.CmdEncodeVideoKHR) {
         NRI_REPORT_ERROR(&m_Device, "vkCmdEncodeVideoKHR is not available");
         return;
     }
 
-    vk.CmdEncodeVideoKHR(m_Handle, (const VkVideoEncodeInfoKHR*)videoEncodeDesc.vk->vkEncodeInfo);
+    vk.CmdEncodeVideoKHR(m_Handle, (const VkVideoEncodeInfoKHR*)videoEncodeVKDesc.vkEncodeInfo);
 }
 
 NRI_INLINE void CommandBufferVK::SetViewports(const Viewport* viewports, uint32_t viewportNum) {

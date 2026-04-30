@@ -1,8 +1,6 @@
 // © 2021 NVIDIA Corporation
 
-// Goal: hardware video encode/decode command submission
-// D3D12: wraps ID3D12Video*CommandList encode/decode calls
-// Vulkan: wraps vkCmdDecodeVideoKHR / vkCmdEncodeVideoKHR
+// Goal: backend-neutral hardware video encode/decode command submission
 // Video formats: https://learn.microsoft.com/en-us/windows/win32/medfound/recommended-8-bit-yuv-formats-for-video-rendering
 
 #pragma once
@@ -11,39 +9,65 @@
 
 NriNamespaceBegin
 
-NriStruct(VideoDecodeD3D12Desc) {
-    void* d3d12Decoder;                 // ID3D12VideoDecoder*
-    const void* d3d12OutputArguments;   // D3D12_VIDEO_DECODE_OUTPUT_STREAM_ARGUMENTS*
-    const void* d3d12InputArguments;    // D3D12_VIDEO_DECODE_INPUT_STREAM_ARGUMENTS*
+NriForwardStruct(VideoSession);
+
+NriEnum(VideoUsage, uint8_t,
+    DECODE,
+    ENCODE
+);
+
+NriEnum(VideoCodec, uint8_t,
+    H264,
+    H265,
+    AV1
+);
+
+NriStruct(VideoSessionDesc) {
+    Nri(VideoUsage) usage;
+    Nri(VideoCodec) codec;
+    Nri(Format) format;
+    uint32_t width;
+    uint32_t height;
+    uint32_t maxReferenceNum;
 };
 
-NriStruct(VideoEncodeD3D12Desc) {
-    void* d3d12Encoder;                 // ID3D12VideoEncoder*
-    void* d3d12Heap;                    // ID3D12VideoEncoderHeap*
-    const void* d3d12InputArguments;    // D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS*
-    const void* d3d12OutputArguments;   // D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS*
-};
-
-NriStruct(VideoDecodeVKDesc) {
-    const void* vkDecodeInfo;           // VkVideoDecodeInfoKHR*
-};
-
-NriStruct(VideoEncodeVKDesc) {
-    const void* vkEncodeInfo;           // VkVideoEncodeInfoKHR*
+NriStruct(VideoReference) {
+    Nri(Texture)* picture;
+    uint32_t subresource;
+    uint32_t slot;
 };
 
 NriStruct(VideoDecodeDesc) {
-    NriOptional const NriPtr(VideoDecodeD3D12Desc) d3d12;
-    NriOptional const NriPtr(VideoDecodeVKDesc) vk;
+    Nri(VideoSession)* session;
+    Nri(Buffer)* bitstream;
+    uint64_t bitstreamOffset;
+    uint64_t bitstreamSize;
+    Nri(Texture)* dstPicture;
+    uint32_t dstSubresource;
+    const NriPtr(VideoReference) references;
+    uint32_t referenceNum;
+    NriOptional const void* codecDesc;
 };
 
 NriStruct(VideoEncodeDesc) {
-    NriOptional const NriPtr(VideoEncodeD3D12Desc) d3d12;
-    NriOptional const NriPtr(VideoEncodeVKDesc) vk;
+    Nri(VideoSession)* session;
+    Nri(Texture)* srcPicture;
+    uint32_t srcSubresource;
+    Nri(Buffer)* dstBitstream;
+    uint64_t dstBitstreamOffset;
+    const NriPtr(VideoReference) references;
+    uint32_t referenceNum;
+    NriOptional const void* codecDesc;
 };
 
 // Threadsafe: no
 NriStruct(VideoInterface) {
+    // Session
+    // {
+        Nri(Result) (NRI_CALL *CreateVideoSession)  (NriRef(Device) device, const NriRef(VideoSessionDesc) videoSessionDesc, NriOut NriRef(VideoSession*) videoSession);
+        void        (NRI_CALL *DestroyVideoSession) (NriRef(VideoSession) videoSession);
+    // }
+
     // Command buffer
     // {
         // Video decode/encode command buffers must be created from "QueueType::VIDEO_DECODE" or "QueueType::VIDEO_ENCODE" queues.

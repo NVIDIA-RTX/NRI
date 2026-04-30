@@ -110,6 +110,14 @@ NriStruct(AccelerationStructureVKDesc) {
     Nri(AccelerationStructureBits) flags;
 };
 
+NriStruct(VideoDecodeVKDesc) {
+    const void* vkDecodeInfo;           // VkVideoDecodeInfoKHR*
+};
+
+NriStruct(VideoEncodeVKDesc) {
+    const void* vkEncodeInfo;           // VkVideoEncodeInfoKHR*
+};
+
 // Threadsafe: yes
 NriStruct(WrapperVKInterface) {
     Nri(Result) (NRI_CALL *CreateCommandAllocatorVK)        (NriRef(Device) device, const NriRef(CommandAllocatorVKDesc) commandAllocatorVKDesc, NriOut NriRef(CommandAllocator*) commandAllocator);
@@ -122,6 +130,9 @@ NriStruct(WrapperVKInterface) {
     Nri(Result) (NRI_CALL *CreateQueryPoolVK)               (NriRef(Device) device, const NriRef(QueryPoolVKDesc) queryPoolVKDesc, NriOut NriRef(QueryPool*) queryPool);
     Nri(Result) (NRI_CALL *CreateFenceVK)                   (NriRef(Device) device, const NriRef(FenceVKDesc) fenceVKDesc, NriOut NriRef(Fence*) fence);
     Nri(Result) (NRI_CALL *CreateAccelerationStructureVK)   (NriRef(Device) device, const NriRef(AccelerationStructureVKDesc) accelerationStructureVKDesc, NriOut NriRef(AccelerationStructure*) accelerationStructure);
+
+    void        (NRI_CALL *CmdDecodeVideoVK)                (NriRef(CommandBuffer) commandBuffer, const NriRef(VideoDecodeVKDesc) videoDecodeVKDesc);
+    void        (NRI_CALL *CmdEncodeVideoVK)                (NriRef(CommandBuffer) commandBuffer, const NriRef(VideoEncodeVKDesc) videoEncodeVKDesc);
 
     uint32_t    (NRI_CALL *GetQueueFamilyIndexVK)           (const NriRef(Queue) queue);
     VKHandle    (NRI_CALL *GetPhysicalDeviceVK)             (const NriRef(Device) device);

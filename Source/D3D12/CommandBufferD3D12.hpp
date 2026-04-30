@@ -423,18 +423,12 @@ NRI_INLINE Result CommandBufferD3D12::End() {
     return Result::SUCCESS;
 }
 
-NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeDesc& videoDecodeDesc) {
-    if (!videoDecodeDesc.d3d12) {
-        NRI_REPORT_ERROR(&m_Device, "'d3d12' is NULL");
-        return;
-    }
-
+NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeD3D12Desc& desc) {
     if (!std::holds_alternative<ComPtr<ID3D12VideoDecodeCommandList>>(m_CommandList)) {
         NRI_REPORT_ERROR(&m_Device, "The command buffer is not a D3D12 video decode command list");
         return;
     }
 
-    const VideoDecodeD3D12Desc& desc = *videoDecodeDesc.d3d12;
     ID3D12VideoDecodeCommandList* commandList = std::get<ComPtr<ID3D12VideoDecodeCommandList>>(m_CommandList).GetInterface();
     commandList->DecodeFrame(
         (ID3D12VideoDecoder*)desc.d3d12Decoder,
@@ -442,18 +436,12 @@ NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeDesc& videoDeco
         (D3D12_VIDEO_DECODE_INPUT_STREAM_ARGUMENTS*)desc.d3d12InputArguments);
 }
 
-NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEncodeDesc) {
-    if (!videoEncodeDesc.d3d12) {
-        NRI_REPORT_ERROR(&m_Device, "'d3d12' is NULL");
-        return;
-    }
-
+NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeD3D12Desc& desc) {
     if (!std::holds_alternative<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList)) {
         NRI_REPORT_ERROR(&m_Device, "The command buffer is not a D3D12 video encode command list");
         return;
     }
 
-    const VideoEncodeD3D12Desc& desc = *videoEncodeDesc.d3d12;
     ComPtr<ID3D12VideoEncodeCommandList2> commandList;
     HRESULT hr = std::get<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList)->QueryInterface(IID_PPV_ARGS(&commandList));
     if (FAILED(hr)) {

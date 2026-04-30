@@ -1112,18 +1112,32 @@ Result DeviceVK::FillFunctionTable(RayTracingInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  Video  ]
 
+static Result NRI_CALL CreateVideoSession(Device& device, const VideoSessionDesc& videoSessionDesc, VideoSession*& videoSession) {
+    MaybeUnused(device, videoSessionDesc);
+    videoSession = nullptr;
+    return Result::UNSUPPORTED;
+}
+
+static void NRI_CALL DestroyVideoSession(VideoSession& videoSession) {
+    MaybeUnused(videoSession);
+}
+
 static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDecodeDesc& videoDecodeDesc) {
-    ((CommandBufferVK&)commandBuffer).DecodeVideo(videoDecodeDesc);
+    MaybeUnused(videoDecodeDesc);
+    NRI_REPORT_ERROR(&((CommandBufferVK&)commandBuffer).GetDevice(), "Backend-neutral video decode is not implemented for Vulkan yet. Use WrapperVKInterface::CmdDecodeVideoVK.");
 }
 
 static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEncodeDesc& videoEncodeDesc) {
-    ((CommandBufferVK&)commandBuffer).EncodeVideo(videoEncodeDesc);
+    MaybeUnused(videoEncodeDesc);
+    NRI_REPORT_ERROR(&((CommandBufferVK&)commandBuffer).GetDevice(), "Backend-neutral video encode is not implemented for Vulkan yet. Use WrapperVKInterface::CmdEncodeVideoVK.");
 }
 
 Result DeviceVK::FillFunctionTable(VideoInterface& table) const {
     if (m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_DECODE] == 0 && m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_ENCODE] == 0)
         return Result::UNSUPPORTED;
 
+    table.CreateVideoSession = ::CreateVideoSession;
+    table.DestroyVideoSession = ::DestroyVideoSession;
     table.CmdDecodeVideo = ::CmdDecodeVideo;
     table.CmdEncodeVideo = ::CmdEncodeVideo;
 
@@ -1334,6 +1348,14 @@ static Result NRI_CALL CreateAccelerationStructureVK(Device& device, const Accel
     return ((DeviceVK&)device).CreateImplementation<AccelerationStructureVK>(accelerationStructure, accelerationStructureVKDesc);
 }
 
+static void NRI_CALL CmdDecodeVideoVK(CommandBuffer& commandBuffer, const VideoDecodeVKDesc& videoDecodeVKDesc) {
+    ((CommandBufferVK&)commandBuffer).DecodeVideo(videoDecodeVKDesc);
+}
+
+static void NRI_CALL CmdEncodeVideoVK(CommandBuffer& commandBuffer, const VideoEncodeVKDesc& videoEncodeVKDesc) {
+    ((CommandBufferVK&)commandBuffer).EncodeVideo(videoEncodeVKDesc);
+}
+
 static uint32_t NRI_CALL GetQueueFamilyIndexVK(const Queue& queue) {
     return ((QueueVK&)queue).GetFamilyIndex();
 }
@@ -1365,6 +1387,8 @@ Result DeviceVK::FillFunctionTable(WrapperVKInterface& table) const {
     table.CreateQueryPoolVK = ::CreateQueryPoolVK;
     table.CreateFenceVK = ::CreateFenceVK;
     table.CreateAccelerationStructureVK = ::CreateAccelerationStructureVK;
+    table.CmdDecodeVideoVK = ::CmdDecodeVideoVK;
+    table.CmdEncodeVideoVK = ::CmdEncodeVideoVK;
     table.GetQueueFamilyIndexVK = ::GetQueueFamilyIndexVK;
     table.GetPhysicalDeviceVK = ::GetPhysicalDeviceVK;
     table.GetInstanceVK = ::GetInstanceVK;
