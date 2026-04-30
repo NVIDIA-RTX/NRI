@@ -200,6 +200,10 @@ struct DispatchTable {
     VK_FUNC(DestroyVideoSessionKHR);                      // - | +
     VK_FUNC(GetVideoSessionMemoryRequirementsKHR);        // + | +
     VK_FUNC(BindVideoSessionMemoryKHR);                   // + | +
+    VK_FUNC(CreateVideoSessionParametersKHR);             // + | +
+    VK_FUNC(DestroyVideoSessionParametersKHR);            // - | +
+    VK_FUNC(CmdBeginVideoCodingKHR);                      // - | +
+    VK_FUNC(CmdEndVideoCodingKHR);                        // - | +
     VK_FUNC(CmdDecodeVideoKHR);                           // - | +
     VK_FUNC(CmdEncodeVideoKHR);                           // - | +
                                                           // VK_NV_low_latency2

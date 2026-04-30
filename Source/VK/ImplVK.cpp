@@ -1136,6 +1136,99 @@ struct VideoSessionVK final : public DebugNameBase {
     VideoSessionDesc m_Desc = {};
 };
 
+struct VideoSessionParametersVK final {
+    inline VideoSessionParametersVK(DeviceVK& device)
+        : m_Device(device) {
+    }
+
+    inline DeviceVK& GetDevice() const {
+        return m_Device;
+    }
+
+    ~VideoSessionParametersVK() {
+        const auto& vk = m_Device.GetDispatchTable();
+        if (m_Handle)
+            vk.DestroyVideoSessionParametersKHR(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
+    }
+
+    Result Create(const VideoSessionParametersDesc& videoSessionParametersDesc) {
+        if (!videoSessionParametersDesc.session)
+            return Result::INVALID_ARGUMENT;
+
+        const auto& vk = m_Device.GetDispatchTable();
+        if (!vk.CreateVideoSessionParametersKHR)
+            return Result::UNSUPPORTED;
+
+        VideoSessionVK& session = *(VideoSessionVK*)videoSessionParametersDesc.session;
+
+        VkVideoSessionParametersCreateInfoKHR createInfo = {VK_STRUCTURE_TYPE_VIDEO_SESSION_PARAMETERS_CREATE_INFO_KHR};
+        createInfo.pNext = videoSessionParametersDesc.codecDesc;
+        createInfo.videoSession = session.m_Handle;
+
+        VkResult vkResult = vk.CreateVideoSessionParametersKHR(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateVideoSessionParametersKHR");
+
+        return Result::SUCCESS;
+    }
+
+    DeviceVK& m_Device;
+    VkVideoSessionParametersKHR m_Handle = VK_NULL_HANDLE;
+};
+
+struct VideoPictureVK final : public DebugNameBase {
+    inline VideoPictureVK(DeviceVK& device)
+        : m_Device(device) {
+    }
+
+    inline DeviceVK& GetDevice() const {
+        return m_Device;
+    }
+
+    ~VideoPictureVK() {
+        const auto& vk = m_Device.GetDispatchTable();
+        if (m_ImageView)
+            vk.DestroyImageView(m_Device, m_ImageView, m_Device.GetVkAllocationCallbacks());
+    }
+
+    Result Create(const VideoPictureDesc& videoPictureDesc) {
+        if (!videoPictureDesc.texture)
+            return Result::INVALID_ARGUMENT;
+
+        TextureVK& texture = *(TextureVK*)videoPictureDesc.texture;
+        const TextureDesc& textureDesc = texture.GetDesc();
+
+        VkImageViewCreateInfo createInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        createInfo.image = texture.GetHandle();
+        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        createInfo.format = GetVkFormat(videoPictureDesc.format == Format::UNKNOWN ? textureDesc.format : videoPictureDesc.format);
+        createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        createInfo.subresourceRange.baseMipLevel = 0;
+        createInfo.subresourceRange.levelCount = 1;
+        createInfo.subresourceRange.baseArrayLayer = videoPictureDesc.layer;
+        createInfo.subresourceRange.layerCount = 1;
+
+        const auto& vk = m_Device.GetDispatchTable();
+        VkResult vkResult = vk.CreateImageView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_ImageView);
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImageView");
+
+        m_Resource = {VK_STRUCTURE_TYPE_VIDEO_PICTURE_RESOURCE_INFO_KHR};
+        m_Resource.codedOffset = {};
+        m_Resource.codedExtent = {videoPictureDesc.width ? videoPictureDesc.width : textureDesc.width, videoPictureDesc.height ? videoPictureDesc.height : textureDesc.height};
+        m_Resource.baseArrayLayer = videoPictureDesc.layer;
+        m_Resource.imageViewBinding = m_ImageView;
+
+        return Result::SUCCESS;
+    }
+
+    void SetDebugName(const char* name) NRI_DEBUG_NAME_OVERRIDE {
+        m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)m_ImageView, name);
+    }
+
+    DeviceVK& m_Device;
+    VkImageView m_ImageView = VK_NULL_HANDLE;
+    VkVideoPictureResourceInfoKHR m_Resource = {};
+};
+
 static VkVideoComponentBitDepthFlagsKHR GetVideoBitDepthVK(Format format) {
     return format == Format::P010_UNORM || format == Format::P016_UNORM ? VK_VIDEO_COMPONENT_BIT_DEPTH_10_BIT_KHR : VK_VIDEO_COMPONENT_BIT_DEPTH_8_BIT_KHR;
 }
@@ -1360,14 +1453,162 @@ static void NRI_CALL DestroyVideoSession(VideoSession& videoSession) {
     Destroy((VideoSessionVK*)&videoSession);
 }
 
+static Result NRI_CALL CreateVideoSessionParameters(Device& device, const VideoSessionParametersDesc& videoSessionParametersDesc, VideoSessionParameters*& videoSessionParameters) {
+    DeviceVK& deviceVK = (DeviceVK&)device;
+    VideoSessionParametersVK* impl = Allocate<VideoSessionParametersVK>(deviceVK.GetAllocationCallbacks(), deviceVK);
+    Result result = impl->Create(videoSessionParametersDesc);
+
+    if (result != Result::SUCCESS) {
+        Destroy(impl);
+        videoSessionParameters = nullptr;
+    } else
+        videoSessionParameters = (VideoSessionParameters*)impl;
+
+    return result;
+}
+
+static void NRI_CALL DestroyVideoSessionParameters(VideoSessionParameters& videoSessionParameters) {
+    Destroy((VideoSessionParametersVK*)&videoSessionParameters);
+}
+
+static Result NRI_CALL CreateVideoPicture(Device& device, const VideoPictureDesc& videoPictureDesc, VideoPicture*& videoPicture) {
+    DeviceVK& deviceVK = (DeviceVK&)device;
+    VideoPictureVK* impl = Allocate<VideoPictureVK>(deviceVK.GetAllocationCallbacks(), deviceVK);
+    Result result = impl->Create(videoPictureDesc);
+
+    if (result != Result::SUCCESS) {
+        Destroy(impl);
+        videoPicture = nullptr;
+    } else
+        videoPicture = (VideoPicture*)impl;
+
+    return result;
+}
+
+static void NRI_CALL DestroyVideoPicture(VideoPicture& videoPicture) {
+    Destroy((VideoPictureVK*)&videoPicture);
+}
+
 static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDecodeDesc& videoDecodeDesc) {
-    MaybeUnused(videoDecodeDesc);
-    NRI_REPORT_ERROR(&((CommandBufferVK&)commandBuffer).GetDevice(), "Backend-neutral video decode for Vulkan requires VkVideoSessionParametersKHR and VkImageView-backed picture resources; use WrapperVKInterface::CmdDecodeVideoVK.");
+    CommandBufferVK& commandBufferVK = (CommandBufferVK&)commandBuffer;
+    DeviceVK& device = commandBufferVK.GetDevice();
+    const auto& vk = device.GetDispatchTable();
+
+    if (!videoDecodeDesc.session || !videoDecodeDesc.parameters || !videoDecodeDesc.bitstream || !videoDecodeDesc.dstPicture) {
+        NRI_REPORT_ERROR(&device, "'session', 'parameters', 'bitstream' and 'dstPicture' must be valid");
+        return;
+    }
+
+    if (!vk.CmdBeginVideoCodingKHR || !vk.CmdDecodeVideoKHR || !vk.CmdEndVideoCodingKHR) {
+        NRI_REPORT_ERROR(&device, "Vulkan video decode commands are not available");
+        return;
+    }
+
+    if (videoDecodeDesc.referenceNum != 0 && !videoDecodeDesc.references) {
+        NRI_REPORT_ERROR(&device, "'references' is NULL");
+        return;
+    }
+
+    VideoSessionVK& session = *(VideoSessionVK*)videoDecodeDesc.session;
+    VideoSessionParametersVK& parameters = *(VideoSessionParametersVK*)videoDecodeDesc.parameters;
+    VideoPictureVK& dstPicture = *(VideoPictureVK*)videoDecodeDesc.dstPicture;
+
+    Scratch<VkVideoReferenceSlotInfoKHR> referenceSlots = NRI_ALLOCATE_SCRATCH(device, VkVideoReferenceSlotInfoKHR, videoDecodeDesc.referenceNum);
+    for (uint32_t i = 0; i < videoDecodeDesc.referenceNum; i++) {
+        if (!videoDecodeDesc.references[i].picture) {
+            NRI_REPORT_ERROR(&device, "'references[%u].picture' is NULL", i);
+            return;
+        }
+
+        VideoPictureVK& picture = *(VideoPictureVK*)videoDecodeDesc.references[i].picture;
+        referenceSlots[i] = {VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR};
+        referenceSlots[i].slotIndex = videoDecodeDesc.references[i].slot;
+        referenceSlots[i].pPictureResource = &picture.m_Resource;
+    }
+
+    VkVideoBeginCodingInfoKHR beginInfo = {VK_STRUCTURE_TYPE_VIDEO_BEGIN_CODING_INFO_KHR};
+    beginInfo.videoSession = session.m_Handle;
+    beginInfo.videoSessionParameters = parameters.m_Handle;
+    beginInfo.referenceSlotCount = videoDecodeDesc.referenceNum;
+    beginInfo.pReferenceSlots = referenceSlots;
+
+    VkVideoDecodeInfoKHR decodeInfo = {VK_STRUCTURE_TYPE_VIDEO_DECODE_INFO_KHR};
+    decodeInfo.pNext = videoDecodeDesc.codecDesc;
+    decodeInfo.srcBuffer = ((BufferVK*)videoDecodeDesc.bitstream)->GetHandle();
+    decodeInfo.srcBufferOffset = videoDecodeDesc.bitstreamOffset;
+    decodeInfo.srcBufferRange = videoDecodeDesc.bitstreamSize;
+    decodeInfo.dstPictureResource = dstPicture.m_Resource;
+    decodeInfo.referenceSlotCount = videoDecodeDesc.referenceNum;
+    decodeInfo.pReferenceSlots = referenceSlots;
+
+    VkVideoEndCodingInfoKHR endInfo = {VK_STRUCTURE_TYPE_VIDEO_END_CODING_INFO_KHR};
+    vk.CmdBeginVideoCodingKHR(commandBufferVK, &beginInfo);
+    vk.CmdDecodeVideoKHR(commandBufferVK, &decodeInfo);
+    vk.CmdEndVideoCodingKHR(commandBufferVK, &endInfo);
 }
 
 static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEncodeDesc& videoEncodeDesc) {
-    MaybeUnused(videoEncodeDesc);
-    NRI_REPORT_ERROR(&((CommandBufferVK&)commandBuffer).GetDevice(), "Backend-neutral video encode for Vulkan requires codec-specific rate control and picture parameter abstraction; use WrapperVKInterface::CmdEncodeVideoVK.");
+    CommandBufferVK& commandBufferVK = (CommandBufferVK&)commandBuffer;
+    DeviceVK& device = commandBufferVK.GetDevice();
+    const auto& vk = device.GetDispatchTable();
+
+    if (!videoEncodeDesc.session || !videoEncodeDesc.parameters || !videoEncodeDesc.srcPicture || !videoEncodeDesc.dstBitstream || !videoEncodeDesc.reconstructedPicture) {
+        NRI_REPORT_ERROR(&device, "'session', 'parameters', 'srcPicture', 'dstBitstream' and 'reconstructedPicture' must be valid");
+        return;
+    }
+
+    if (!vk.CmdBeginVideoCodingKHR || !vk.CmdEncodeVideoKHR || !vk.CmdEndVideoCodingKHR) {
+        NRI_REPORT_ERROR(&device, "Vulkan video encode commands are not available");
+        return;
+    }
+
+    if (videoEncodeDesc.referenceNum != 0 && !videoEncodeDesc.references) {
+        NRI_REPORT_ERROR(&device, "'references' is NULL");
+        return;
+    }
+
+    VideoSessionVK& session = *(VideoSessionVK*)videoEncodeDesc.session;
+    VideoSessionParametersVK& parameters = *(VideoSessionParametersVK*)videoEncodeDesc.parameters;
+    VideoPictureVK& srcPicture = *(VideoPictureVK*)videoEncodeDesc.srcPicture;
+    VideoPictureVK& reconstructedPicture = *(VideoPictureVK*)videoEncodeDesc.reconstructedPicture;
+
+    Scratch<VkVideoReferenceSlotInfoKHR> referenceSlots = NRI_ALLOCATE_SCRATCH(device, VkVideoReferenceSlotInfoKHR, videoEncodeDesc.referenceNum);
+    for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {
+        if (!videoEncodeDesc.references[i].picture) {
+            NRI_REPORT_ERROR(&device, "'references[%u].picture' is NULL", i);
+            return;
+        }
+
+        VideoPictureVK& picture = *(VideoPictureVK*)videoEncodeDesc.references[i].picture;
+        referenceSlots[i] = {VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR};
+        referenceSlots[i].slotIndex = videoEncodeDesc.references[i].slot;
+        referenceSlots[i].pPictureResource = &picture.m_Resource;
+    }
+
+    VkVideoReferenceSlotInfoKHR setupReferenceSlot = {VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR};
+    setupReferenceSlot.slotIndex = session.m_Desc.maxReferenceNum ? 0 : -1;
+    setupReferenceSlot.pPictureResource = &reconstructedPicture.m_Resource;
+
+    VkVideoBeginCodingInfoKHR beginInfo = {VK_STRUCTURE_TYPE_VIDEO_BEGIN_CODING_INFO_KHR};
+    beginInfo.videoSession = session.m_Handle;
+    beginInfo.videoSessionParameters = parameters.m_Handle;
+    beginInfo.referenceSlotCount = videoEncodeDesc.referenceNum;
+    beginInfo.pReferenceSlots = referenceSlots;
+
+    VkVideoEncodeInfoKHR encodeInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_INFO_KHR};
+    encodeInfo.pNext = videoEncodeDesc.codecDesc;
+    encodeInfo.dstBuffer = ((BufferVK*)videoEncodeDesc.dstBitstream)->GetHandle();
+    encodeInfo.dstBufferOffset = videoEncodeDesc.dstBitstreamOffset;
+    encodeInfo.dstBufferRange = VK_WHOLE_SIZE;
+    encodeInfo.srcPictureResource = srcPicture.m_Resource;
+    encodeInfo.pSetupReferenceSlot = &setupReferenceSlot;
+    encodeInfo.referenceSlotCount = videoEncodeDesc.referenceNum;
+    encodeInfo.pReferenceSlots = referenceSlots;
+
+    VkVideoEndCodingInfoKHR endInfo = {VK_STRUCTURE_TYPE_VIDEO_END_CODING_INFO_KHR};
+    vk.CmdBeginVideoCodingKHR(commandBufferVK, &beginInfo);
+    vk.CmdEncodeVideoKHR(commandBufferVK, &encodeInfo);
+    vk.CmdEndVideoCodingKHR(commandBufferVK, &endInfo);
 }
 
 Result DeviceVK::FillFunctionTable(VideoInterface& table) const {
@@ -1376,6 +1617,10 @@ Result DeviceVK::FillFunctionTable(VideoInterface& table) const {
 
     table.CreateVideoSession = ::CreateVideoSession;
     table.DestroyVideoSession = ::DestroyVideoSession;
+    table.CreateVideoSessionParameters = ::CreateVideoSessionParameters;
+    table.DestroyVideoSessionParameters = ::DestroyVideoSessionParameters;
+    table.CreateVideoPicture = ::CreateVideoPicture;
+    table.DestroyVideoPicture = ::DestroyVideoPicture;
     table.CmdDecodeVideo = ::CmdDecodeVideo;
     table.CmdEncodeVideo = ::CmdEncodeVideo;
 

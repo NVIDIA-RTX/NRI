@@ -1920,6 +1920,10 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
         GET_DEVICE_FUNC(DestroyVideoSessionKHR);
         GET_DEVICE_FUNC(GetVideoSessionMemoryRequirementsKHR);
         GET_DEVICE_FUNC(BindVideoSessionMemoryKHR);
+        GET_DEVICE_FUNC(CreateVideoSessionParametersKHR);
+        GET_DEVICE_FUNC(DestroyVideoSessionParametersKHR);
+        GET_DEVICE_FUNC(CmdBeginVideoCodingKHR);
+        GET_DEVICE_FUNC(CmdEndVideoCodingKHR);
     }
 
     if (IsExtensionSupported(VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME, desiredDeviceExts))

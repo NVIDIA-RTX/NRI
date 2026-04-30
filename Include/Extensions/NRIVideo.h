@@ -10,6 +10,8 @@
 NriNamespaceBegin
 
 NriForwardStruct(VideoSession);
+NriForwardStruct(VideoSessionParameters);
+NriForwardStruct(VideoPicture);
 
 NriEnum(VideoUsage, uint8_t,
     DECODE,
@@ -38,9 +40,22 @@ NriStruct(VideoSessionDesc) {
 };
 
 NriStruct(VideoReference) {
-    NriPtr(Texture) picture;
-    uint32_t subresource;
+    NriPtr(VideoPicture) picture;
     uint32_t slot;
+};
+
+NriStruct(VideoPictureDesc) {
+    NriPtr(Texture) texture;
+    Nri(Format) format;
+    uint32_t subresource;
+    uint32_t layer;
+    uint32_t width;
+    uint32_t height;
+};
+
+NriStruct(VideoSessionParametersDesc) {
+    NriPtr(VideoSession) session;
+    NriOptional const void* codecDesc;
 };
 
 NriStruct(VideoDecodeArgument) {
@@ -51,11 +66,11 @@ NriStruct(VideoDecodeArgument) {
 
 NriStruct(VideoDecodeDesc) {
     NriPtr(VideoSession) session;
+    NriOptional NriPtr(VideoSessionParameters) parameters;
     NriPtr(Buffer) bitstream;
     uint64_t bitstreamOffset;
     uint64_t bitstreamSize;
-    NriPtr(Texture) dstPicture;
-    uint32_t dstSubresource;
+    NriPtr(VideoPicture) dstPicture;
     NriOptional const NriPtr(VideoReference) references; // if provided, must include "referenceNum" entries
     uint32_t referenceNum;
     NriOptional const NriPtr(VideoDecodeArgument) arguments; // if provided, must include "argumentNum" entries
@@ -65,12 +80,11 @@ NriStruct(VideoDecodeDesc) {
 
 NriStruct(VideoEncodeDesc) {
     NriPtr(VideoSession) session;
-    NriPtr(Texture) srcPicture;
-    uint32_t srcSubresource;
+    NriOptional NriPtr(VideoSessionParameters) parameters;
+    NriPtr(VideoPicture) srcPicture;
     NriPtr(Buffer) dstBitstream;
     uint64_t dstBitstreamOffset;
-    NriOptional NriPtr(Texture) reconstructedPicture;
-    uint32_t reconstructedSubresource;
+    NriOptional NriPtr(VideoPicture) reconstructedPicture;
     NriOptional NriPtr(Buffer) metadata;
     uint64_t metadataOffset;
     NriOptional const NriPtr(VideoReference) references; // if provided, must include "referenceNum" entries
@@ -84,6 +98,10 @@ NriStruct(VideoInterface) {
     // {
         Nri(Result) (NRI_CALL *CreateVideoSession)  (NriRef(Device) device, const NriRef(VideoSessionDesc) videoSessionDesc, NriOut NriRef(VideoSession*) videoSession);
         void        (NRI_CALL *DestroyVideoSession) (NriRef(VideoSession) videoSession);
+        Nri(Result) (NRI_CALL *CreateVideoSessionParameters)  (NriRef(Device) device, const NriRef(VideoSessionParametersDesc) videoSessionParametersDesc, NriOut NriRef(VideoSessionParameters*) videoSessionParameters);
+        void        (NRI_CALL *DestroyVideoSessionParameters) (NriRef(VideoSessionParameters) videoSessionParameters);
+        Nri(Result) (NRI_CALL *CreateVideoPicture)  (NriRef(Device) device, const NriRef(VideoPictureDesc) videoPictureDesc, NriOut NriRef(VideoPicture*) videoPicture);
+        void        (NRI_CALL *DestroyVideoPicture) (NriRef(VideoPicture) videoPicture);
     // }
 
     // Command buffer

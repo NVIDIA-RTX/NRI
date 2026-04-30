@@ -1149,6 +1149,44 @@ struct VideoSessionD3D12 final : public DebugNameBase {
     VideoSessionDesc m_Desc = {};
 };
 
+struct VideoSessionParametersD3D12 final {
+    inline VideoSessionParametersD3D12(DeviceD3D12& device)
+        : m_Device(device) {
+    }
+
+    inline DeviceD3D12& GetDevice() const {
+        return m_Device;
+    }
+
+    DeviceD3D12& m_Device;
+};
+
+struct VideoPictureD3D12 final : public DebugNameBase {
+    inline VideoPictureD3D12(DeviceD3D12& device)
+        : m_Device(device) {
+    }
+
+    inline DeviceD3D12& GetDevice() const {
+        return m_Device;
+    }
+
+    Result Create(const VideoPictureDesc& videoPictureDesc) {
+        if (!videoPictureDesc.texture)
+            return Result::INVALID_ARGUMENT;
+
+        m_Texture = (TextureD3D12*)videoPictureDesc.texture;
+        m_Subresource = videoPictureDesc.subresource;
+        return Result::SUCCESS;
+    }
+
+    void SetDebugName(const char*) NRI_DEBUG_NAME_OVERRIDE {
+    }
+
+    DeviceD3D12& m_Device;
+    TextureD3D12* m_Texture = nullptr;
+    uint32_t m_Subresource = 0;
+};
+
 static GUID GetVideoDecodeProfileD3D12(const VideoSessionDesc& videoSessionDesc) {
     switch (videoSessionDesc.codec) {
     case VideoCodec::H264:
@@ -1305,6 +1343,37 @@ static void NRI_CALL DestroyVideoSession(VideoSession& videoSession) {
     Destroy((VideoSessionD3D12*)&videoSession);
 }
 
+static Result NRI_CALL CreateVideoSessionParameters(Device& device, const VideoSessionParametersDesc& videoSessionParametersDesc, VideoSessionParameters*& videoSessionParameters) {
+    DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
+    if (!videoSessionParametersDesc.session)
+        return Result::INVALID_ARGUMENT;
+
+    videoSessionParameters = (VideoSessionParameters*)Allocate<VideoSessionParametersD3D12>(deviceD3D12.GetAllocationCallbacks(), deviceD3D12);
+    return Result::SUCCESS;
+}
+
+static void NRI_CALL DestroyVideoSessionParameters(VideoSessionParameters& videoSessionParameters) {
+    Destroy((VideoSessionParametersD3D12*)&videoSessionParameters);
+}
+
+static Result NRI_CALL CreateVideoPicture(Device& device, const VideoPictureDesc& videoPictureDesc, VideoPicture*& videoPicture) {
+    DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
+    VideoPictureD3D12* impl = Allocate<VideoPictureD3D12>(deviceD3D12.GetAllocationCallbacks(), deviceD3D12);
+    Result result = impl->Create(videoPictureDesc);
+
+    if (result != Result::SUCCESS) {
+        Destroy(impl);
+        videoPicture = nullptr;
+    } else
+        videoPicture = (VideoPicture*)impl;
+
+    return result;
+}
+
+static void NRI_CALL DestroyVideoPicture(VideoPicture& videoPicture) {
+    Destroy((VideoPictureD3D12*)&videoPicture);
+}
+
 static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDecodeDesc& videoDecodeDesc) {
     CommandBufferD3D12& commandBufferD3D12 = (CommandBufferD3D12&)commandBuffer;
     DeviceD3D12& device = commandBufferD3D12.GetDevice();
@@ -1352,8 +1421,9 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
             return;
         }
 
-        referenceResources[i] = (ID3D12Resource*)(*(TextureD3D12*)videoDecodeDesc.references[i].picture);
-        referenceSubresources[i] = videoDecodeDesc.references[i].subresource;
+        VideoPictureD3D12& reference = *(VideoPictureD3D12*)videoDecodeDesc.references[i].picture;
+        referenceResources[i] = (ID3D12Resource*)(*reference.m_Texture);
+        referenceSubresources[i] = reference.m_Subresource;
     }
 
     input.ReferenceFrames.NumTexture2Ds = videoDecodeDesc.referenceNum;
@@ -1365,8 +1435,9 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
     input.pHeap = session.m_DecoderHeap;
 
     D3D12_VIDEO_DECODE_OUTPUT_STREAM_ARGUMENTS output = {};
-    output.pOutputTexture2D = (ID3D12Resource*)(*(TextureD3D12*)videoDecodeDesc.dstPicture);
-    output.OutputSubresource = videoDecodeDesc.dstSubresource;
+    VideoPictureD3D12& dstPicture = *(VideoPictureD3D12*)videoDecodeDesc.dstPicture;
+    output.pOutputTexture2D = (ID3D12Resource*)(*dstPicture.m_Texture);
+    output.OutputSubresource = dstPicture.m_Subresource;
 
     VideoDecodeD3D12Desc desc = {};
     desc.d3d12Decoder = session.m_Decoder;
@@ -1403,8 +1474,9 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
             return;
         }
 
-        referenceResources[i] = (ID3D12Resource*)(*(TextureD3D12*)videoEncodeDesc.references[i].picture);
-        referenceSubresources[i] = videoEncodeDesc.references[i].subresource;
+        VideoPictureD3D12& reference = *(VideoPictureD3D12*)videoEncodeDesc.references[i].picture;
+        referenceResources[i] = (ID3D12Resource*)(*reference.m_Texture);
+        referenceSubresources[i] = reference.m_Subresource;
     }
 
     D3D12_VIDEO_ENCODER_RATE_CONTROL_CQP cqp = {26, 28, 30};
@@ -1465,14 +1537,16 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS input = {};
     input.SequenceControlDesc = sequenceControl;
     input.PictureControlDesc = pictureControl;
-    input.pInputFrame = (ID3D12Resource*)(*(TextureD3D12*)videoEncodeDesc.srcPicture);
-    input.InputFrameSubresource = videoEncodeDesc.srcSubresource;
+    VideoPictureD3D12& srcPicture = *(VideoPictureD3D12*)videoEncodeDesc.srcPicture;
+    input.pInputFrame = (ID3D12Resource*)(*srcPicture.m_Texture);
+    input.InputFrameSubresource = srcPicture.m_Subresource;
 
     D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS output = {};
     output.Bitstream.pBuffer = (ID3D12Resource*)(*(BufferD3D12*)videoEncodeDesc.dstBitstream);
     output.Bitstream.FrameStartOffset = videoEncodeDesc.dstBitstreamOffset;
-    output.ReconstructedPicture.pReconstructedPicture = (ID3D12Resource*)(*(TextureD3D12*)videoEncodeDesc.reconstructedPicture);
-    output.ReconstructedPicture.ReconstructedPictureSubresource = videoEncodeDesc.reconstructedSubresource;
+    VideoPictureD3D12& reconstructedPicture = *(VideoPictureD3D12*)videoEncodeDesc.reconstructedPicture;
+    output.ReconstructedPicture.pReconstructedPicture = (ID3D12Resource*)(*reconstructedPicture.m_Texture);
+    output.ReconstructedPicture.ReconstructedPictureSubresource = reconstructedPicture.m_Subresource;
     output.EncoderOutputMetadata.pBuffer = (ID3D12Resource*)(*(BufferD3D12*)videoEncodeDesc.metadata);
     output.EncoderOutputMetadata.Offset = videoEncodeDesc.metadataOffset;
 
@@ -1490,6 +1564,10 @@ Result DeviceD3D12::FillFunctionTable(VideoInterface& table) const {
 
     table.CreateVideoSession = ::CreateVideoSession;
     table.DestroyVideoSession = ::DestroyVideoSession;
+    table.CreateVideoSessionParameters = ::CreateVideoSessionParameters;
+    table.DestroyVideoSessionParameters = ::DestroyVideoSessionParameters;
+    table.CreateVideoPicture = ::CreateVideoPicture;
+    table.DestroyVideoPicture = ::DestroyVideoPicture;
     table.CmdDecodeVideo = ::CmdDecodeVideo;
     table.CmdEncodeVideo = ::CmdEncodeVideo;
 
