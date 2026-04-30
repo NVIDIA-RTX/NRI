@@ -108,13 +108,9 @@ constexpr std::array<DxgiFormat, (size_t)Format::MAX_NUM> g_dxgiFormats = {{
     {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN},                            // ASTC_12X12_UNORM
     {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN},                            // ASTC_12X12_SRGB
     {DXGI_FORMAT_R16_TYPELESS, DXGI_FORMAT_D16_UNORM},                     // D16_UNORM
-    {DXGI_FORMAT_R24G8_TYPELESS, DXGI_FORMAT_D24_UNORM_S8_UINT},           // D24_UNORM_S8_UINT
     {DXGI_FORMAT_R32_TYPELESS, DXGI_FORMAT_D32_FLOAT},                     // D32_SFLOAT
-    {DXGI_FORMAT_R32G8X24_TYPELESS, DXGI_FORMAT_D32_FLOAT_S8X24_UINT},     // D32_SFLOAT_S8_UINT_X24
-    {DXGI_FORMAT_R24G8_TYPELESS, DXGI_FORMAT_R24_UNORM_X8_TYPELESS},       // R24_UNORM_X8
-    {DXGI_FORMAT_R24G8_TYPELESS, DXGI_FORMAT_X24_TYPELESS_G8_UINT},        // X24_G8_UINT
-    {DXGI_FORMAT_R32G8X24_TYPELESS, DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS}, // R32_SFLOAT_X8_X24
-    {DXGI_FORMAT_R32G8X24_TYPELESS, DXGI_FORMAT_X32_TYPELESS_G8X24_UINT},  // X32_G8_UINT_X24
+    {DXGI_FORMAT_R24G8_TYPELESS, DXGI_FORMAT_D24_UNORM_S8_UINT},           // D24_UNORM_S8_UINT
+    {DXGI_FORMAT_R32G8X24_TYPELESS, DXGI_FORMAT_D32_FLOAT_S8X24_UINT},     // D32_SFLOAT_S8_UINT
 }};
 NRI_VALIDATE_ARRAY_BY_FIELD(g_dxgiFormats, typeless);
 
@@ -601,13 +597,9 @@ constexpr std::array<FormatProps, (size_t)Format::MAX_NUM> g_formatProps = {{
     {"ASTC_12X12_SRGB",         Format::ASTC_12X12_SRGB,           8,  8,  8,  8,  16, 12, 12, _, X, _, _, _, _, _, _, _, X, _}, // ASTC_12X12_SRGB
     //                                                             r   g   b   a   s   w   h   b  c  d  e  f  p  i  n  s  s  s
     {"D16_UNORM",               Format::D16_UNORM,                 16, 0,  0,  0,  2,  1,  1,  _, _, X, _, _, _, _, X, _, _, _}, // D16_UNORM
-    {"D24_UNORM_S8_UINT",       Format::D24_UNORM_S8_UINT,         24, 8,  0,  0,  4,  1,  1,  _, _, X, _, _, _, X, X, _, _, X}, // D24_UNORM_S8_UINT
     {"D32_SFLOAT",              Format::D32_SFLOAT,                32, 0,  0,  0,  4,  1,  1,  _, _, X, _, X, _, _, _, X, _, _}, // D32_SFLOAT
-    {"D32_SFLOAT_S8_UINT_X24",  Format::D32_SFLOAT_S8_UINT_X24,    32, 8,  0,  0,  8,  1,  1,  _, _, X, _, X, _, X, _, X, _, X}, // D32_SFLOAT_S8_UINT_X24
-    {"R24_UNORM_X8",            Format::R24_UNORM_X8,              24, 8,  0,  0,  4,  1,  1,  _, _, X, _, _, _, _, X, _, _, _}, // R24_UNORM_X8
-    {"X24_G8_UINT",             Format::X24_G8_UINT,               24, 8,  0,  0,  4,  1,  1,  _, _, _, _, _, _, X, _, _, _, X}, // X24_G8_UINT
-    {"R32_SFLOAT_X8_X24",       Format::R32_SFLOAT_X8_X24,         32, 8,  0,  0,  8,  1,  1,  _, _, X, _, X, _, _, _, X, _, _}, // R32_SFLOAT_X8_X24
-    {"X32_G8_UINT_X24",         Format::X32_G8_UINT_X24,           32, 8,  0,  0,  8,  1,  1,  _, _, _, _, _, _, X, _, _, _, X}, // X32_G8_UINT_X24
+    {"D24_UNORM_S8_UINT",       Format::D24_UNORM_S8_UINT,         24, 8,  0,  0,  4,  1,  1,  _, _, X, _, _, _, X, X, _, _, X}, // D24_UNORM_S8_UINT
+    {"D32_SFLOAT_S8_UINT",      Format::D32_SFLOAT_S8_UINT,        32, 8,  0,  0,  8,  1,  1,  _, _, X, _, X, _, X, _, X, _, X}, // D32_SFLOAT_S8_UINT
 }};
 NRI_VALIDATE_ARRAY_BY_FIELD(g_formatProps, name);
 
@@ -640,10 +632,10 @@ constexpr std::array<Format, 116> NRI_FORMAT_TABLE = {
     Format::RG32_SFLOAT,            // DXGI_FORMAT_R32G32_FLOAT = 16
     Format::RG32_UINT,              // DXGI_FORMAT_R32G32_UINT = 17
     Format::RGB32_SINT,             // DXGI_FORMAT_R32G32_SINT = 18
-    Format::D32_SFLOAT_S8_UINT_X24, // DXGI_FORMAT_R32G8X24_TYPELESS = 19
-    Format::D32_SFLOAT_S8_UINT_X24, // DXGI_FORMAT_D32_FLOAT_S8X24_UINT = 20
-    Format::R32_SFLOAT_X8_X24,      // DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS = 21
-    Format::X32_G8_UINT_X24,        // DXGI_FORMAT_X32_TYPELESS_G8X24_UINT = 22
+    Format::D32_SFLOAT_S8_UINT,     // DXGI_FORMAT_R32G8X24_TYPELESS = 19
+    Format::D32_SFLOAT_S8_UINT,     // DXGI_FORMAT_D32_FLOAT_S8X24_UINT = 20
+    Format::D32_SFLOAT_S8_UINT,     // DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS = 21
+    Format::D32_SFLOAT_S8_UINT,     // DXGI_FORMAT_X32_TYPELESS_G8X24_UINT = 22
     Format::R10_G10_B10_A2_UNORM,   // DXGI_FORMAT_R10G10B10A2_TYPELESS = 23
     Format::R10_G10_B10_A2_UNORM,   // DXGI_FORMAT_R10G10B10A2_UNORM = 24
     Format::R10_G10_B10_A2_UINT,    // DXGI_FORMAT_R10G10B10A2_UINT = 25
@@ -667,8 +659,8 @@ constexpr std::array<Format, 116> NRI_FORMAT_TABLE = {
     Format::R32_SINT,               // DXGI_FORMAT_R32_SINT = 43
     Format::D24_UNORM_S8_UINT,      // DXGI_FORMAT_R24G8_TYPELESS = 44
     Format::D24_UNORM_S8_UINT,      // DXGI_FORMAT_D24_UNORM_S8_UINT = 45
-    Format::R24_UNORM_X8,           // DXGI_FORMAT_R24_UNORM_X8_TYPELESS = 46
-    Format::X24_G8_UINT,            // DXGI_FORMAT_X24_TYPELESS_G8_UINT = 47
+    Format::D24_UNORM_S8_UINT,      // DXGI_FORMAT_R24_UNORM_X8_TYPELESS = 46
+    Format::D24_UNORM_S8_UINT,      // DXGI_FORMAT_X24_TYPELESS_G8_UINT = 47
     Format::RG8_UNORM,              // DXGI_FORMAT_R8G8_TYPELESS = 48
     Format::RG8_UNORM,              // DXGI_FORMAT_R8G8_UNORM = 49
     Format::RG8_UINT,               // DXGI_FORMAT_R8G8_UINT = 50
@@ -881,7 +873,7 @@ constexpr std::array<Format, 131> VK_FORMAT_TABLE = {
     Format::UNKNOWN,                // VK_FORMAT_S8_UINT = 127
     Format::UNKNOWN,                // VK_FORMAT_D16_UNORM_S8_UINT = 128
     Format::D24_UNORM_S8_UINT,      // VK_FORMAT_D24_UNORM_S8_UINT = 129
-    Format::D32_SFLOAT_S8_UINT_X24, // VK_FORMAT_D32_SFLOAT_S8_UINT = 130
+    Format::D32_SFLOAT_S8_UINT,     // VK_FORMAT_D32_SFLOAT_S8_UINT = 130
 };
 
 Format nri::VKFormatToNRIFormat(uint32_t format) {

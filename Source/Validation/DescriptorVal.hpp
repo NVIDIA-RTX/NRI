@@ -52,8 +52,8 @@ DescriptorVal::DescriptorVal(DeviceVal& device, Descriptor* descriptor, const Te
             break;
         case TextureView::DEPTH_STENCIL_ATTACHMENT:
             m_Type = DescriptorTypeExt::DEPTH_STENCIL_ATTACHMENT;
-            m_IsDepthReadonly = (textureViewDesc.readonlyPlanes & PlaneBits::DEPTH) != 0;
-            m_IsStencilReadonly = (textureViewDesc.readonlyPlanes & PlaneBits::STENCIL) != 0;
+            m_IsDepthReadonly = textureViewDesc.planes != PlaneBits::ALL && (textureViewDesc.planes & PlaneBits::DEPTH) == 0;
+            m_IsStencilReadonly = textureViewDesc.planes != PlaneBits::ALL && (textureViewDesc.planes & PlaneBits::STENCIL) == 0;
             break;
         case TextureView::SHADING_RATE_ATTACHMENT:
             m_Type = DescriptorTypeExt::SHADING_RATE_ATTACHMENT;

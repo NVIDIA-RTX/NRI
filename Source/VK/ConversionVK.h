@@ -485,28 +485,23 @@ constexpr VkShaderStageFlags GetShaderStageFlags(StageBits stage) {
     return stageFlags;
 }
 
-constexpr VkImageAspectFlags GetImageAspectFlags(Format format) {
-    switch (format) {
-        case Format::D16_UNORM:
-        case Format::D32_SFLOAT:
-        case Format::R24_UNORM_X8:
-        case Format::R32_SFLOAT_X8_X24:
-            return VK_IMAGE_ASPECT_DEPTH_BIT;
+constexpr VkImageAspectFlags GetImageAspectFlags(PlaneBits planes, Format format) {
+    if (planes == PlaneBits::ALL) {
+        switch (format) {
+            case Format::D16_UNORM:
+            case Format::D32_SFLOAT:
+                return VK_IMAGE_ASPECT_DEPTH_BIT;
 
-        case Format::D24_UNORM_S8_UINT:
-        case Format::D32_SFLOAT_S8_UINT_X24:
-            return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+            case Format::D24_UNORM_S8_UINT:
+            case Format::D32_SFLOAT_S8_UINT:
+                return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
 
-        case Format::X32_G8_UINT_X24:
-        case Format::X24_G8_UINT:
-            return VK_IMAGE_ASPECT_STENCIL_BIT;
-
-        default:
-            return VK_IMAGE_ASPECT_COLOR_BIT;
+            default:
+                return VK_IMAGE_ASPECT_COLOR_BIT;
+        }
     }
-}
 
-constexpr VkImageAspectFlags GetImageAspectFlags(PlaneBits planes) {
+    // I don't think we should filter out format-incompatible aspects...
     VkImageAspectFlags aspectFlags = 0;
     if (planes & PlaneBits::COLOR)
         aspectFlags |= VK_IMAGE_ASPECT_COLOR_BIT;

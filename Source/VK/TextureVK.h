@@ -36,7 +36,6 @@ struct TextureVK final : public DebugNameBase {
     Result AllocateAndBindMemory(MemoryLocation memoryLocation, float priority, bool committed);
     Result BindMemory(const MemoryVK& memory, uint64_t offset);
     void GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
-    VkImageAspectFlags GetImageAspectFlags() const;
 
     //================================================================================================================
     // DebugNameBase

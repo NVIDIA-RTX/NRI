@@ -124,10 +124,6 @@ void TextureVK::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryD
     m_Device.GetMemoryDesc(memoryLocation, requirements.memoryRequirements, dedicatedRequirements, memoryDesc);
 }
 
-VkImageAspectFlags TextureVK::GetImageAspectFlags() const {
-    return ::GetImageAspectFlags(m_Desc.format);
-}
-
 NRI_INLINE void TextureVK::SetDebugName(const char* name) {
     m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_IMAGE, (uint64_t)m_Handle, name);
 }

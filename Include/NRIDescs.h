@@ -331,23 +331,21 @@ NriEnum(Format, uint8_t,                // |      FormatSupportBits      |
     ASTC_12X12_UNORM,                   // + . . . . . . . . . . . . . . .
     ASTC_12X12_SRGB,                    // + . . . . . . . . . . . . . . .
 
-    // Depth-stencil
-    D16_UNORM,                          // . . . . + . + + + . . . . . . .
-    D24_UNORM_S8_UINT,                  // . . . . + . + + + . . . . . . .
-    D32_SFLOAT,                         // . . . . + . + + + . . . . . . .
-    D32_SFLOAT_S8_UINT_X24,             // . . . . + . + + + . . . . . . .
+    // Depth
+    D16_UNORM,                          // + . . . + . + + + . . . . . . .
+    D32_SFLOAT,                         // + . . . + . + + + . . . . . . .
 
-    // Depth-stencil (as a shader resource view)
-    R24_UNORM_X8,       // .x - depth   // + . . . . . . . . . . . . . . .
-    X24_G8_UINT,        // .y - stencil // + . . . . . . . . . . . . . . .
-    R32_SFLOAT_X8_X24,  // .x - depth   // + . . . . . . . . . . . . . . .
-    X32_G8_UINT_X24     // .y - stencil // + . . . . . . . . . . . . . . .
+    // Depth-stencil
+    D24_UNORM_S8_UINT,                  // + . . . + . + + + . . . . . . .
+    D32_SFLOAT_S8_UINT                  // + . . . + . + + + . . . . . . .
 );
 
 // https://learn.microsoft.com/en-us/windows/win32/direct3d12/subresources#plane-slice
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkImageAspectFlagBits.html
 NriBits(PlaneBits, uint8_t,
-    ALL                             = 0,
+    ALL                             = 0,            // lazy default
+    NONE                            = NriBit(7),    // no accessible planes (needed for a read-only depth-stencil attachment)
+
     COLOR                           = NriBit(0),    // indicates "color" plane (same as "ALL" for color formats)
 
     // D3D11: can't be addressed individually in "copy" and "resolve" operations
@@ -546,9 +544,9 @@ NriEnum(Layout, uint8_t,            // Compatible "AccessBits":
     // Attachment
     COLOR_ATTACHMENT,                   // COLOR_ATTACHMENT_READ/WRITE
     DEPTH_STENCIL_ATTACHMENT,           // DEPTH_STENCIL_ATTACHMENT_READ/WRITE
-    DEPTH_READONLY_STENCIL_ATTACHMENT,  // DEPTH_STENCIL_ATTACHMENT_READ/WRITE, SHADER_RESOURCE (readonlyPlanes = "DEPTH")
-    DEPTH_ATTACHMENT_STENCIL_READONLY,  // DEPTH_STENCIL_ATTACHMENT_READ/WRITE, SHADER_RESOURCE (readonlyPlanes = "STENCIL")
-    DEPTH_STENCIL_READONLY,             // DEPTH_STENCIL_ATTACHMENT_READ, SHADER_RESOURCE (readonlyPlanes = "DEPTH|STENCIL")
+    DEPTH_READONLY_STENCIL_ATTACHMENT,  // DEPTH_STENCIL_ATTACHMENT_READ/WRITE (accessible "planes" = "STENCIL"), SHADER_RESOURCE (accessible "planes" = "DEPTH")
+    DEPTH_ATTACHMENT_STENCIL_READONLY,  // DEPTH_STENCIL_ATTACHMENT_READ/WRITE (accessible "planes" = "DEPTH"), SHADER_RESOURCE (accessible "planes" = "STENCIL")
+    DEPTH_STENCIL_READONLY,             // DEPTH_STENCIL_ATTACHMENT_READ  (accessible "planes" = "NONE")
     SHADING_RATE_ATTACHMENT,            // SHADING_RATE_ATTACHMENT
     INPUT_ATTACHMENT,                   // COLOR_ATTACHMENT, INPUT_ATTACHMENT
 
@@ -868,7 +866,7 @@ NriStruct(TextureViewDesc) {
     Nri(Dim_t) layerNum;                    // can be "REMAINING"
     Nri(Dim_t) sliceOffset;
     Nri(Dim_t) sliceNum;                    // can be "REMAINING"
-    Nri(PlaneBits) readonlyPlanes;          // "DEPTH" and/or "STENCIL"
+    Nri(PlaneBits) planes;                  // accessible planes (missing planes for a "DEPTH_STENCIL_ATTACHMENT" are considered read-only)
     Nri(ComponentMapping) components;
 };
 
