@@ -32,30 +32,30 @@ NriStruct(VideoSessionDesc) {
 };
 
 NriStruct(VideoReference) {
-    Nri(Texture)* picture;
+    NriPtr(Texture) picture;
     uint32_t subresource;
     uint32_t slot;
 };
 
 NriStruct(VideoDecodeDesc) {
-    Nri(VideoSession)* session;
-    Nri(Buffer)* bitstream;
+    NriPtr(VideoSession) session;
+    NriPtr(Buffer) bitstream;
     uint64_t bitstreamOffset;
     uint64_t bitstreamSize;
-    Nri(Texture)* dstPicture;
+    NriPtr(Texture) dstPicture;
     uint32_t dstSubresource;
-    const NriPtr(VideoReference) references;
+    NriOptional const NriPtr(VideoReference) references; // if provided, must include "referenceNum" entries
     uint32_t referenceNum;
     NriOptional const void* codecDesc;
 };
 
 NriStruct(VideoEncodeDesc) {
-    Nri(VideoSession)* session;
-    Nri(Texture)* srcPicture;
+    NriPtr(VideoSession) session;
+    NriPtr(Texture) srcPicture;
     uint32_t srcSubresource;
-    Nri(Buffer)* dstBitstream;
+    NriPtr(Buffer) dstBitstream;
     uint64_t dstBitstreamOffset;
-    const NriPtr(VideoReference) references;
+    NriOptional const NriPtr(VideoReference) references; // if provided, must include "referenceNum" entries
     uint32_t referenceNum;
     NriOptional const void* codecDesc;
 };
