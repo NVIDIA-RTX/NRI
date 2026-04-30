@@ -70,6 +70,7 @@ static inline VkComponentSwizzle GetComponentSwizzle(ComponentSwizzle componentS
 Result DescriptorVK::Create(const TextureViewDesc& textureViewDesc) {
     const TextureVK& textureVK = *(TextureVK*)textureViewDesc.texture;
     const TextureDesc& textureDesc = textureVK.GetDesc();
+    const FormatProps& formatProps = GetFormatProps(textureViewDesc.format);
     Dim_t mipNum = textureViewDesc.mipNum == REMAINING ? (textureDesc.mipNum - textureViewDesc.mipOffset) : textureViewDesc.mipNum;
     Dim_t layerNum = textureViewDesc.layerNum == REMAINING ? (textureDesc.layerNum - textureViewDesc.layerOffset) : textureViewDesc.layerNum;
     Dim_t sliceNum = textureViewDesc.sliceNum == REMAINING ? (textureDesc.depth - textureViewDesc.sliceOffset) : textureViewDesc.sliceNum;
@@ -84,9 +85,13 @@ Result DescriptorVK::Create(const TextureViewDesc& textureViewDesc) {
     if (textureDesc.type == TextureType::TEXTURE_3D && m_Device.m_IsSupported.imageSlicedView)
         usageInfo.pNext = &slicesInfo;
 
-    const bool explicitTexturePlanes = (textureViewDesc.readonlyPlanes & (PlaneBits::PLANE_0 | PlaneBits::PLANE_1 | PlaneBits::PLANE_2)) != 0;
+    // For attachments all format-enabled aspects are needed to support mixed R/RW layouts.
+    // For shader resources a specific set of planes is needed (like depth-only or stencil-only views)
+    const bool isAspectSensitiveAttachment = textureViewDesc.type == TextureView::DEPTH_STENCIL_ATTACHMENT || textureViewDesc.type == TextureView::SUBPASS_INPUT;
+    const VkImageAspectFlags aspectMask = GetImageAspectFlags(isAspectSensitiveAttachment ? PlaneBits::ALL : textureViewDesc.planes, textureViewDesc.format);
+
     VkImageSubresourceRange subresourceRange = {
-        explicitTexturePlanes ? GetImageAspectFlags(textureViewDesc.readonlyPlanes) : GetImageAspectFlags(textureViewDesc.format),
+        aspectMask,
         textureViewDesc.mipOffset,
         mipNum,
         textureViewDesc.layerOffset,
@@ -108,13 +113,17 @@ Result DescriptorVK::Create(const TextureViewDesc& textureViewDesc) {
     VkResult vkResult = vk.CreateImageView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_View.image);
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImageView");
 
+    // Handle mixed R/RW depth-stencil specific layouts
     VkImageLayout expectedLayout = GetImageViewLayout(textureViewDesc.type);
-    if (textureViewDesc.type == TextureView::DEPTH_STENCIL_ATTACHMENT) {
-        if (textureViewDesc.readonlyPlanes == (PlaneBits::DEPTH | PlaneBits::STENCIL))
+    if (isAspectSensitiveAttachment && (formatProps.isDepth || formatProps.isStencil)) {
+        bool isDepthReadonly = textureViewDesc.planes != PlaneBits::ALL && (textureViewDesc.planes & PlaneBits::DEPTH) == 0;
+        bool isStencilReadonly = textureViewDesc.planes != PlaneBits::ALL && (textureViewDesc.planes & PlaneBits::STENCIL) == 0;
+
+        if (isDepthReadonly && isStencilReadonly)
             expectedLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-        else if (textureViewDesc.readonlyPlanes == PlaneBits::DEPTH)
+        else if (isDepthReadonly)
             expectedLayout = VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
-        else if (textureViewDesc.readonlyPlanes == PlaneBits::STENCIL)
+        else if (isStencilReadonly)
             expectedLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
     }
 

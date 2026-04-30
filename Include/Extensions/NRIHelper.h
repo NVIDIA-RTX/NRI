@@ -107,8 +107,8 @@ static inline Nri(Format) NriFunc(GetSupportedDepthFormat)(const NriRef(CoreInte
             return NriScopedMember(Format, D32_SFLOAT);
     }
 
-    if (NriDeref(coreInterface)->GetFormatSupport(device, NriScopedMember(Format, D32_SFLOAT_S8_UINT_X24)) & NriScopedMember(FormatSupportBits, DEPTH_STENCIL_ATTACHMENT))
-        return NriScopedMember(Format, D32_SFLOAT_S8_UINT_X24);
+    if (NriDeref(coreInterface)->GetFormatSupport(device, NriScopedMember(Format, D32_SFLOAT_S8_UINT)) & NriScopedMember(FormatSupportBits, DEPTH_STENCIL_ATTACHMENT))
+        return NriScopedMember(Format, D32_SFLOAT_S8_UINT);
 
     // Should be unreachable
     return NriScopedMember(Format, UNKNOWN);

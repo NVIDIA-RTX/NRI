@@ -628,7 +628,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     if (shaderModel.HighestShaderModel < D3D_SHADER_MODEL_6_0)
         shaderModel.HighestShaderModel = D3D_SHADER_MODEL_5_1;
 
-    m_Desc.shaderModel = (uint8_t)((shaderModel.HighestShaderModel / 0xF) * 10 + (shaderModel.HighestShaderModel & 0xF));
+    m_Desc.shaderModel = (uint16_t)((shaderModel.HighestShaderModel >> 4) * 100 + (shaderModel.HighestShaderModel & 0xF));
 
     m_Desc.viewport.maxNum = D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
     m_Desc.viewport.boundsMin = D3D12_VIEWPORT_BOUNDS_MIN;
@@ -784,7 +784,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.wave.laneMaxNum = options1.WaveLaneCountMax;
 
     m_Desc.wave.derivativeOpsStages = StageBits::FRAGMENT_SHADER;
-    if (m_Desc.shaderModel >= 66) {
+    if (m_Desc.shaderModel >= NriShaderModel(6, 6)) {
         m_Desc.wave.derivativeOpsStages |= StageBits::COMPUTE_SHADER;
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
         if (options9.DerivativesInMeshAndAmplificationShadersSupported)
@@ -792,7 +792,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
 #endif
     }
 
-    if (m_Desc.shaderModel >= 60 && options1.WaveOps) {
+    if (m_Desc.shaderModel >= NriShaderModel(6, 0) && options1.WaveOps) {
         m_Desc.wave.waveOpsStages = StageBits::ALL_SHADERS;
         m_Desc.wave.quadOpsStages = StageBits::FRAGMENT_SHADER | StageBits::COMPUTE_SHADER;
     }
@@ -857,7 +857,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     }
 #endif
 
-    m_Desc.shaderFeatures.nativeI8 = m_Desc.shaderModel >= 62; // TODO: ?
+    m_Desc.shaderFeatures.nativeI8 = m_Desc.shaderModel >= NriShaderModel(6, 2); // TODO: ?
     m_Desc.shaderFeatures.nativeI16 = options4.Native16BitShaderOpsSupported;
     m_Desc.shaderFeatures.nativeF16 = options4.Native16BitShaderOpsSupported;
     m_Desc.shaderFeatures.nativeI64 = options1.Int64ShaderOps;
@@ -887,9 +887,9 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
 #endif
     m_Desc.shaderFeatures.rasterizedOrderedView = options.ROVsSupported;
     m_Desc.shaderFeatures.barycentric = options3.BarycentricsSupported;
-    m_Desc.shaderFeatures.integerDotProduct = m_Desc.shaderModel >= 64;
+    m_Desc.shaderFeatures.integerDotProduct = m_Desc.shaderModel >= NriShaderModel(6, 4);
     m_Desc.shaderFeatures.inputAttachments = true;
-    m_Desc.shaderFeatures.drawParameters = m_Desc.shaderModel >= 68;
+    m_Desc.shaderFeatures.drawParameters = m_Desc.shaderModel >= NriShaderModel(6, 8);
     m_Desc.shaderFeatures.drawParametersEmulation = 1;
 }
 

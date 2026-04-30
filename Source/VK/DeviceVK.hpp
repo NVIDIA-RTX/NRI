@@ -1202,25 +1202,25 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
         // Estimate shader model last since it depends on many "m_Desc" fields
         // Based on https://docs.vulkan.org/guide/latest/hlsl.html#_shader_model_coverage // TODO: code below needs to be improved
-        m_Desc.shaderModel = 51;
+        m_Desc.shaderModel = NriShaderModel(5, 1);
         if (m_Desc.shaderFeatures.nativeI64)
-            m_Desc.shaderModel = 60;
+            m_Desc.shaderModel = NriShaderModel(6, 0);
         if (m_Desc.other.viewMaxNum > 1 || m_Desc.shaderFeatures.barycentric)
-            m_Desc.shaderModel = 61;
+            m_Desc.shaderModel = NriShaderModel(6, 1);
         if (m_Desc.shaderFeatures.nativeF16 || m_Desc.shaderFeatures.nativeI16)
-            m_Desc.shaderModel = 62;
+            m_Desc.shaderModel = NriShaderModel(6, 2);
         if (m_Desc.tiers.rayTracing)
-            m_Desc.shaderModel = 63;
+            m_Desc.shaderModel = NriShaderModel(6, 3);
         if (m_Desc.tiers.shadingRate >= 2)
-            m_Desc.shaderModel = 64;
+            m_Desc.shaderModel = NriShaderModel(6, 4);
         if (m_Desc.features.meshShader || m_Desc.tiers.rayTracing >= 2)
-            m_Desc.shaderModel = 65;
+            m_Desc.shaderModel = NriShaderModel(6, 5);
         // TODO: "m_Desc.features.mutableDescriptorType" is an optional feature, despite that it's needed to emulate SM 6.6 "ultimate" bindless
         if (m_Desc.shaderFeatures.atomicsI64)
-            m_Desc.shaderModel = 66;
+            m_Desc.shaderModel = NriShaderModel(6, 6);
         if (features.features.shaderStorageImageMultisample)
-            m_Desc.shaderModel = 67;
-        // TODO: add SM 6.8 and 6.9 detection
+            m_Desc.shaderModel = NriShaderModel(6, 7);
+        // TODO: add SM 6.8+ detection
     }
 
     // Create VMA

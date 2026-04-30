@@ -212,6 +212,12 @@ static Result EnumerateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterD
             adapterDesc.sharedSystemMemorySize = desc.SharedSystemMemory;
             wcstombs(adapterDesc.name, desc.Description, GetCountOf(adapterDesc.name) - 1);
 
+            { // Driver version
+                LARGE_INTEGER driverVersion;
+                if (SUCCEEDED(adapters[i]->CheckInterfaceSupport(__uuidof(IDXGIDevice), &driverVersion)))
+                    adapterDesc.driverVersion = driverVersion.LowPart;
+            }
+
             { // Architecture (a device is needed)
 #    if (NRI_ENABLE_D3D11_SUPPORT)
                 D3D_FEATURE_LEVEL levels[2] = {D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0};
@@ -369,6 +375,7 @@ static Result EnumerateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDe
                         adapterDesc = {};
                         adapterDesc.uid = ConstructUid(deviceIDProperties.deviceLUID, deviceIDProperties.deviceUUID, deviceIDProperties.deviceLUIDValid);
                         adapterDesc.deviceId = deviceProps.deviceID;
+                        adapterDesc.driverVersion = deviceProps.driverVersion;
                         adapterDesc.vendor = GetVendorFromID(deviceProps.vendorID);
                         strncpy(adapterDesc.name, deviceProps.deviceName, sizeof(adapterDesc.name));
 

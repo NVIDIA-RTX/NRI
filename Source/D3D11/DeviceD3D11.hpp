@@ -369,7 +369,7 @@ void DeviceD3D11::FillDesc() {
         }
     }
 
-    m_Desc.shaderModel = 51;
+    m_Desc.shaderModel = NriShaderModel(5, 1);
 
     m_Desc.viewport.maxNum = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
     m_Desc.viewport.boundsMin = D3D11_VIEWPORT_BOUNDS_MIN;

@@ -627,10 +627,10 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
         { // Pipeline
             m.nis->blockSize.w = 32;
-            m.nis->blockSize.h = deviceDesc.shaderModel >= 62 ? 32 : 24;
+            m.nis->blockSize.h = deviceDesc.shaderModel >= NriShaderModel(6, 2) ? 32 : 24;
 
             std::array<ShaderMake::ShaderConstant, 3> defines = {{
-                {"NIS_FP16", (deviceDesc.shaderModel >= 62) ? "1" : "0"},
+                {"NIS_FP16", (deviceDesc.shaderModel >= NriShaderModel(6, 2)) ? "1" : "0"},
                 {"NIS_HDR_MODE", (upscalerDesc.flags & UpscalerBits::HDR) ? "1" : "0"},
                 {"NIS_THREAD_GROUP_SIZE", (deviceDesc.adapterDesc.vendor == Vendor::NVIDIA) ? "128" : "256"}, // TODO: verify performance
             }};
