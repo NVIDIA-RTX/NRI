@@ -13,6 +13,7 @@ struct ID3D12VideoDecoderHeap;
 struct ID3D12VideoEncodeCommandList;
 struct ID3D12VideoEncoder;
 struct ID3D12VideoEncoderHeap;
+struct D3D12_RESOURCE_BARRIER;
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
 struct ID3D12GraphicsCommandList10;
@@ -141,10 +142,12 @@ private:
 
     ID3D12CommandList* GetCommandList() const;
     ID3D12GraphicsCommandListBest* GetGraphicsCommandList() const;
+    void ResourceBarrier(uint32_t barrierNum, const D3D12_RESOURCE_BARRIER* barriers) const;
 
     DeviceD3D12& m_Device;
     ComPtr<ID3D12CommandAllocator> m_CommandAllocator;
     CommandList m_CommandList;
+    D3D12_COMMAND_LIST_TYPE m_CommandListType = D3D12_COMMAND_LIST_TYPE_DIRECT;
     std::array<DescriptorSetD3D12*, ROOT_SIGNATURE_DWORD_NUM> m_DescriptorSets = {}; // TODO: needed only for "ClearStorage"
     std::array<AttachmentDescD3D12, D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT> m_RenderTargets = {};
     AttachmentDescD3D12 m_Depth = {};

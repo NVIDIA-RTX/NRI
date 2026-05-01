@@ -699,8 +699,7 @@ NRI_API Result NRI_CALL nriCreateDevice(const DeviceCreationDesc& deviceCreation
             return Result::INVALID_ARGUMENT;
 
         uint32_t supportedQueueNum = modifiedDeviceCreationDesc.adapterDesc->queueNum[queueType];
-        bool isVulkanVideoQueue = modifiedDeviceCreationDesc.graphicsAPI == GraphicsAPI::VK && (queueFamily.queueType == QueueType::VIDEO_DECODE || queueFamily.queueType == QueueType::VIDEO_ENCODE);
-        if (!isVulkanVideoQueue && queueFamily.queueNum > supportedQueueNum)
+        if (queueFamily.queueNum > supportedQueueNum)
             queueFamily.queueNum = supportedQueueNum;
     }
 

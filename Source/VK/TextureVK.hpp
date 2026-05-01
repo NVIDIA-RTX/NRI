@@ -21,9 +21,11 @@ Result TextureVK::Create(const TextureDesc& textureDesc) {
     const bool isVideoDecode = (m_Desc.usage & TextureUsageBits::VIDEO_DECODE) != 0;
     const bool isVideoEncode = (m_Desc.usage & TextureUsageBits::VIDEO_ENCODE) != 0;
     if (isVideoDecode || isVideoEncode) {
-        videoProfiles.Fill(isVideoDecode, isVideoEncode, m_Desc.format);
-        videoProfiles.list.pNext = info.pNext;
-        info.pNext = &videoProfiles.list;
+        videoProfiles.Fill(isVideoDecode, isVideoEncode, m_Desc.format, m_Device.GetVideoCodecOperations(isVideoDecode, isVideoEncode));
+        if (videoProfiles.list.profileCount) {
+            videoProfiles.list.pNext = info.pNext;
+            info.pNext = &videoProfiles.list;
+        }
     }
 
     const auto& vk = m_Device.GetDispatchTable();

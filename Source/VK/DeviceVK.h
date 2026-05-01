@@ -141,6 +141,8 @@ struct DeviceVK final : public DeviceBase {
     void CopyDescriptorRanges(const CopyDescriptorRangeDesc* copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum);
     void UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum);
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
+    Result GetVideoQueue(VkVideoCodecOperationFlagBitsKHR operation, Queue*& queue);
+    VkVideoCodecOperationFlagsKHR GetVideoCodecOperations(bool decode, bool encode) const;
     Result WaitIdle();
     Result BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum);
     Result BindTextureMemory(const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum);
@@ -167,8 +169,11 @@ public:
     };
 
 private:
+    void AddActiveQueueFamilyIndex(uint32_t familyIndex);
+
     VkPhysicalDevice m_PhysicalDevice = nullptr;
-    std::array<uint32_t, (size_t)QueueType::MAX_NUM> m_ActiveQueueFamilyIndices = {};
+    Vector<uint32_t> m_ActiveQueueFamilyIndices;
+    Vector<QueueFamilyPropsVK> m_QueueFamilyProps;
     std::array<Vector<QueueVK*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies;
     DispatchTable m_VK = {};
     VkPhysicalDeviceMemoryProperties m_MemoryProps = {};

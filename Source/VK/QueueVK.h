@@ -25,11 +25,23 @@ struct QueueVK final : public DebugNameBase {
         return m_Type;
     }
 
+    inline VkVideoCodecOperationFlagsKHR GetVideoCodecOperations() const {
+        return m_VideoCodecOperations;
+    }
+
+    inline bool SupportsVideoCodecOperation(VkVideoCodecOperationFlagBitsKHR operation) const {
+        if (operation == 0)
+            return false;
+
+        const QueueType requiredQueueType = (operation & VIDEO_DECODE_CODEC_OPERATION_MASK) != 0 ? QueueType::VIDEO_DECODE : QueueType::VIDEO_ENCODE;
+        return m_Type == requiredQueueType && ((m_VideoCodecOperations & operation) != 0 || m_VideoCodecOperations == 0);
+    }
+
     inline Lock& GetLock() {
         return m_Lock;
     }
 
-    Result Create(QueueType type, uint32_t familyIndex, VkQueue handle);
+    Result Create(QueueType type, uint32_t familyIndex, VkQueue handle, VkVideoCodecOperationFlagsKHR videoCodecOperations = 0);
 
     //================================================================================================================
     // DebugNameBase
@@ -52,6 +64,7 @@ private:
     VkQueue m_Handle = VK_NULL_HANDLE;
     uint32_t m_FamilyIndex = INVALID_FAMILY_INDEX;
     QueueType m_Type = QueueType(-1);
+    VkVideoCodecOperationFlagsKHR m_VideoCodecOperations = 0;
     Lock m_Lock;
 };
 

@@ -1531,17 +1531,17 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
     if (videoSessionDesc.width == 0 || videoSessionDesc.height == 0 || videoSessionDesc.format == Format::UNKNOWN)
         return Result::INVALID_ARGUMENT;
 
-    Queue* queue = nullptr;
-    Result result = m_Device.GetQueue(videoSessionDesc.usage == VideoUsage::ENCODE ? QueueType::VIDEO_ENCODE : QueueType::VIDEO_DECODE, 0, queue);
-    if (result != Result::SUCCESS) {
-        NRI_REPORT_ERROR(&m_Device, "Failed to get Vulkan video %s queue", videoSessionDesc.usage == VideoUsage::ENCODE ? "encode" : "decode");
-        return result;
-    }
-
     VkVideoCodecOperationFlagBitsKHR operation = GetVideoCodecOperationVK(videoSessionDesc);
     if (!operation) {
         NRI_REPORT_ERROR(&m_Device, "Unsupported Vulkan video codec operation");
         return Result::UNSUPPORTED;
+    }
+
+    Queue* queue = nullptr;
+    Result result = m_Device.GetVideoQueue(operation, queue);
+    if (result != Result::SUCCESS) {
+        NRI_REPORT_ERROR(&m_Device, "Failed to get Vulkan video queue for codec operation 0x%X", operation);
+        return result;
     }
 
     std::aligned_storage_t<64, 8> codecProfileStorage = {};
@@ -2050,6 +2050,11 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     VkVideoEncodeInfoKHR encodeInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_INFO_KHR};
     encodeInfo.pNext = codecPictureInfo;
     BufferVK& dstBitstream = *(BufferVK*)videoEncodeDesc.dstBitstream;
+    if (videoEncodeDesc.dstBitstreamOffset >= dstBitstream.GetDesc().size) {
+        NRI_REPORT_ERROR(&device, "'dstBitstreamOffset' is outside of 'dstBitstream'");
+        return;
+    }
+
     encodeInfo.dstBuffer = dstBitstream.GetHandle();
     encodeInfo.dstBufferOffset = videoEncodeDesc.dstBitstreamOffset;
     encodeInfo.dstBufferRange = dstBitstream.GetDesc().size - videoEncodeDesc.dstBitstreamOffset;

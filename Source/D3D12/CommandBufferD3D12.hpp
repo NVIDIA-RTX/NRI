@@ -350,11 +350,27 @@ ID3D12GraphicsCommandListBest* CommandBufferD3D12::GetGraphicsCommandList() cons
     return std::get<ComPtr<ID3D12GraphicsCommandListBest>>(m_CommandList).GetInterface();
 }
 
+void CommandBufferD3D12::ResourceBarrier(uint32_t barrierNum, const D3D12_RESOURCE_BARRIER* barriers) const {
+    if (std::holds_alternative<ComPtr<ID3D12VideoDecodeCommandList>>(m_CommandList)) {
+        std::get<ComPtr<ID3D12VideoDecodeCommandList>>(m_CommandList)->ResourceBarrier(barrierNum, barriers);
+        return;
+    }
+
+    if (std::holds_alternative<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList)) {
+        std::get<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList)->ResourceBarrier(barrierNum, barriers);
+        return;
+    }
+
+    GetGraphicsCommandList()->ResourceBarrier(barrierNum, barriers);
+}
+
 void CommandBufferD3D12::SetDebugName(const char* name) {
     NRI_SET_D3D_DEBUG_OBJECT_NAME(GetCommandList(), name);
 }
 
 Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D12CommandAllocator* commandAllocator) {
+    m_CommandListType = commandListType;
+
     if (commandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE) {
         ComPtr<ID3D12VideoDecodeCommandList> videoDecodeCommandList;
         HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, IID_PPV_ARGS(&videoDecodeCommandList));
@@ -405,6 +421,7 @@ Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferD3D
 
     m_CommandAllocator = commandBufferD3D12Desc.d3d12CommandAllocator;
     m_CommandList.emplace<ComPtr<ID3D12GraphicsCommandListBest>>(graphicsCommandListBest);
+    m_CommandListType = graphicsCommandListBest->GetType();
 
     return Result::SUCCESS;
 }
@@ -1094,7 +1111,7 @@ NRI_INLINE void CommandBufferD3D12::DispatchIndirect(const Buffer& buffer, uint6
 
 NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-    if (m_Device.GetDesc().features.enhancedBarriers) {
+    if (m_Device.GetDesc().features.enhancedBarriers && std::holds_alternative<ComPtr<ID3D12GraphicsCommandListBest>>(m_CommandList)) {
         // Count
         uint32_t barrierNum = barrierDesc.globalNum + barrierDesc.bufferNum + barrierDesc.textureNum;
         if (!barrierNum)
@@ -1236,7 +1253,7 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
         memset(barriers, 0, sizeof(D3D12_RESOURCE_BARRIER) * barrierNum);
 
         D3D12_RESOURCE_BARRIER* ptr = barriers;
-        D3D12_COMMAND_LIST_TYPE commandListType = GetGraphicsCommandList()->GetType();
+        D3D12_COMMAND_LIST_TYPE commandListType = m_CommandListType;
 
         for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
             const BufferBarrierDesc& barrier = barrierDesc.buffers[i];
@@ -1274,7 +1291,7 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
             return;
 
         // Submit
-        GetGraphicsCommandList()->ResourceBarrier(barrierNum, barriers);
+        ResourceBarrier(barrierNum, barriers);
     }
 }
 

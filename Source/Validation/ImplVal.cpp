@@ -1749,6 +1749,32 @@ static void NRI_CALL CmdEncodeVideoVK(CommandBuffer& commandBuffer, const VideoE
     commandBufferVal.GetWrapperVKInterfaceImpl().CmdEncodeVideoVK(*commandBufferVal.GetImpl(), videoEncodeVKDesc);
 }
 
+static Result NRI_CALL CreateVideoSessionParametersVK(Device& device, const VideoSessionParametersVKDesc& videoSessionParametersVKDesc, VideoSessionParameters*& videoSessionParameters) {
+    DeviceVal& deviceVal = (DeviceVal&)device;
+
+    VideoSessionParametersVKDesc descImpl = videoSessionParametersVKDesc;
+    descImpl.session = videoSessionParametersVKDesc.session ? ((VideoSessionVal*)videoSessionParametersVKDesc.session)->GetImpl() : nullptr;
+
+    VideoSessionParameters* impl = nullptr;
+    Result result = deviceVal.GetWrapperVKInterfaceImpl().CreateVideoSessionParametersVK(deviceVal.GetImpl(), descImpl, impl);
+
+    videoSessionParameters = nullptr;
+    if (result == Result::SUCCESS)
+        videoSessionParameters = (VideoSessionParameters*)Allocate<VideoSessionParametersVal>(deviceVal.GetAllocationCallbacks(), deviceVal, impl);
+
+    return result;
+}
+
+static VKNonDispatchableHandle NRI_CALL GetVideoSessionVK(const VideoSession& videoSession) {
+    const VideoSessionVal& videoSessionVal = (const VideoSessionVal&)videoSession;
+    return videoSessionVal.GetWrapperVKInterfaceImpl().GetVideoSessionVK(*videoSessionVal.GetImpl());
+}
+
+static VKNonDispatchableHandle NRI_CALL GetVideoSessionParametersVK(const VideoSessionParameters& videoSessionParameters) {
+    const VideoSessionParametersVal& videoSessionParametersVal = (const VideoSessionParametersVal&)videoSessionParameters;
+    return videoSessionParametersVal.GetWrapperVKInterfaceImpl().GetVideoSessionParametersVK(*videoSessionParametersVal.GetImpl());
+}
+
 static VKHandle NRI_CALL GetPhysicalDeviceVK(const Device& device) {
     return ((DeviceVal&)device).GetWrapperVKInterfaceImpl().GetPhysicalDeviceVK(((DeviceVal&)device).GetImpl());
 }
@@ -1789,8 +1815,11 @@ Result DeviceVal::FillFunctionTable(WrapperVKInterface& table) const {
     table.CreateAccelerationStructureVK = ::CreateAccelerationStructureVK;
     table.CmdDecodeVideoVK = ::CmdDecodeVideoVK;
     table.CmdEncodeVideoVK = ::CmdEncodeVideoVK;
+    table.CreateVideoSessionParametersVK = ::CreateVideoSessionParametersVK;
     table.GetPhysicalDeviceVK = ::GetPhysicalDeviceVK;
     table.GetQueueFamilyIndexVK = ::GetQueueFamilyIndexVK;
+    table.GetVideoSessionVK = ::GetVideoSessionVK;
+    table.GetVideoSessionParametersVK = ::GetVideoSessionParametersVK;
     table.GetInstanceVK = ::GetInstanceVK;
     table.GetDeviceProcAddrVK = ::GetDeviceProcAddrVK;
     table.GetInstanceProcAddrVK = ::GetInstanceProcAddrVK;
