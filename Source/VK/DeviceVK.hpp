@@ -365,31 +365,6 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(true, VK_NV_LOW_LATENCY_2_EXTENSION_NAME);
 }
 
-static void GetSelectedVideoQueueFamilyIndicesVK(const Vector<QueueFamilyPropsVK>& queueFamilyProps, QueueType queueType, Vector<uint32_t>& familyIndices) {
-    familyIndices.clear();
-
-    const std::array<VkVideoCodecOperationFlagBitsKHR, 3> operations = queueType == QueueType::VIDEO_DECODE
-        ? std::array<VkVideoCodecOperationFlagBitsKHR, 3>{
-              VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR,
-              VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR,
-              VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR,
-          }
-        : std::array<VkVideoCodecOperationFlagBitsKHR, 3>{
-              VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_KHR,
-              VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_KHR,
-              VK_VIDEO_CODEC_OPERATION_ENCODE_AV1_BIT_KHR,
-          };
-
-    for (VkVideoCodecOperationFlagBitsKHR operation : operations) {
-        const uint32_t familyIndex = SelectVideoQueueFamilyVK(queueFamilyProps.data(), (uint32_t)queueFamilyProps.size(), operation);
-        if (familyIndex == INVALID_QUEUE_FAMILY_INDEX_VK)
-            continue;
-
-        if (std::find(familyIndices.begin(), familyIndices.end(), familyIndex) == familyIndices.end())
-            familyIndices.push_back(familyIndex);
-    }
-}
-
 static void AppendQueueCreateInfoVK(Vector<VkDeviceQueueCreateInfo>& queueCreateInfos, uint32_t queueFamilyIndex, uint32_t queueNum, const float* queuePriorities, const float* zeroPriorities) {
     if (queueFamilyIndex == INVALID_FAMILY_INDEX || queueNum == 0)
         return;
@@ -758,15 +733,16 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
             std::array<float, 256> zeroPriorities = {};
             Vector<VkDeviceQueueCreateInfo> queueCreateInfos(GetStdAllocator());
-            Vector<uint32_t> selectedVideoQueueFamilyIndices(GetStdAllocator());
+            std::array<uint32_t, 3> selectedVideoQueueFamilyIndices = {};
 
             for (uint32_t i = 0; i < desc.queueFamilyNum; i++) {
                 const QueueFamilyDesc& queueFamily = desc.queueFamilies[i];
                 uint32_t queueFamilyIndex = queueFamilyIndices[(size_t)queueFamily.queueType];
 
                 if ((queueFamily.queueType == QueueType::VIDEO_DECODE || queueFamily.queueType == QueueType::VIDEO_ENCODE) && !queueFamilyPropsStorage.empty()) {
-                    GetSelectedVideoQueueFamilyIndicesVK(queueFamilyPropsStorage, queueFamily.queueType, selectedVideoQueueFamilyIndices);
-                    for (uint32_t familyIndex : selectedVideoQueueFamilyIndices) {
+                    const uint32_t selectedVideoQueueFamilyNum = SelectVideoQueueFamiliesVK(queueFamilyPropsStorage.data(), (uint32_t)queueFamilyPropsStorage.size(), queueFamily.queueType, selectedVideoQueueFamilyIndices);
+                    for (uint32_t selectedFamilyIndex = 0; selectedFamilyIndex < selectedVideoQueueFamilyNum; selectedFamilyIndex++) {
+                        const uint32_t familyIndex = selectedVideoQueueFamilyIndices[selectedFamilyIndex];
                         const uint32_t queueNum = std::min(queueFamily.queueNum, queueFamilyPropsStorage[familyIndex].queueCount);
                         AppendQueueCreateInfoVK(queueCreateInfos, familyIndex, queueNum, queueFamily.queuePriorities, zeroPriorities.data());
                     }
@@ -815,7 +791,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
                 m_Desc.adapterDesc.queueNum[(size_t)queueFamilyVKDesc.queueType] = 0;
         }
     } else {
-        Vector<uint32_t> selectedVideoQueueFamilyIndices(GetStdAllocator());
+        std::array<uint32_t, 3> selectedVideoQueueFamilyIndices = {};
 
         for (uint32_t i = 0; i < desc.queueFamilyNum; i++) {
             const QueueFamilyDesc& queueFamilyDesc = desc.queueFamilies[i];
@@ -824,8 +800,9 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
             if ((queueFamilyDesc.queueType == QueueType::VIDEO_DECODE || queueFamilyDesc.queueType == QueueType::VIDEO_ENCODE) && !queueFamilyPropsStorage.empty()) {
                 uint32_t totalQueueNum = 0;
-                GetSelectedVideoQueueFamilyIndicesVK(queueFamilyPropsStorage, queueFamilyDesc.queueType, selectedVideoQueueFamilyIndices);
-                for (uint32_t familyIndex : selectedVideoQueueFamilyIndices) {
+                const uint32_t selectedVideoQueueFamilyNum = SelectVideoQueueFamiliesVK(queueFamilyPropsStorage.data(), (uint32_t)queueFamilyPropsStorage.size(), queueFamilyDesc.queueType, selectedVideoQueueFamilyIndices);
+                for (uint32_t selectedFamilyIndex = 0; selectedFamilyIndex < selectedVideoQueueFamilyNum; selectedFamilyIndex++) {
+                    const uint32_t familyIndex = selectedVideoQueueFamilyIndices[selectedFamilyIndex];
                     const uint32_t queueNum = std::min(queueFamilyDesc.queueNum, queueFamilyPropsStorage[familyIndex].queueCount);
                     for (uint32_t j = 0; j < queueNum; j++) {
                         VkDeviceQueueInfo2 queueInfo = {VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2};

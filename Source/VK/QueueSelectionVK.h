@@ -13,6 +13,16 @@ namespace nri {
 constexpr uint32_t INVALID_QUEUE_FAMILY_INDEX_VK = uint32_t(-1);
 constexpr VkVideoCodecOperationFlagsKHR VIDEO_DECODE_CODEC_OPERATION_MASK = 0x0000FFFF;
 constexpr VkVideoCodecOperationFlagsKHR VIDEO_ENCODE_CODEC_OPERATION_MASK = 0xFFFF0000;
+constexpr std::array<VkVideoCodecOperationFlagBitsKHR, 3> g_VideoDecodeCodecOperations = {
+    VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR,
+    VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR,
+    VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR,
+};
+constexpr std::array<VkVideoCodecOperationFlagBitsKHR, 3> g_VideoEncodeCodecOperations = {
+    VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_KHR,
+    VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_KHR,
+    VK_VIDEO_CODEC_OPERATION_ENCODE_AV1_BIT_KHR,
+};
 
 struct QueueFamilyPropsVK {
     VkQueueFlags queueFlags;
@@ -75,19 +85,30 @@ inline uint32_t SelectVideoQueueFamilyVK(const QueueFamilyPropsVK* familyProps, 
     return bestFamilyIndex;
 }
 
-inline VkVideoCodecOperationFlagBitsKHR GetRepresentativeVideoCodecOperationVK(const QueueFamilyPropsVK& familyProps, QueueType queueType) {
-    const std::array<VkVideoCodecOperationFlagBitsKHR, 3> decodeOperations = {
-        VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR,
-        VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR,
-        VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR,
-    };
-    const std::array<VkVideoCodecOperationFlagBitsKHR, 3> encodeOperations = {
-        VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_KHR,
-        VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_KHR,
-        VK_VIDEO_CODEC_OPERATION_ENCODE_AV1_BIT_KHR,
-    };
+inline const std::array<VkVideoCodecOperationFlagBitsKHR, 3>& GetVideoCodecOperationsVK(QueueType queueType) {
+    return queueType == QueueType::VIDEO_DECODE ? g_VideoDecodeCodecOperations : g_VideoEncodeCodecOperations;
+}
 
-    const auto& operations = queueType == QueueType::VIDEO_DECODE ? decodeOperations : encodeOperations;
+inline uint32_t SelectVideoQueueFamiliesVK(const QueueFamilyPropsVK* familyProps, uint32_t familyNum, QueueType queueType, std::array<uint32_t, 3>& familyIndices) {
+    familyIndices.fill(INVALID_QUEUE_FAMILY_INDEX_VK);
+
+    uint32_t selectedFamilyNum = 0;
+    for (VkVideoCodecOperationFlagBitsKHR operation : GetVideoCodecOperationsVK(queueType)) {
+        const uint32_t familyIndex = SelectVideoQueueFamilyVK(familyProps, familyNum, operation);
+        if (familyIndex == INVALID_QUEUE_FAMILY_INDEX_VK)
+            continue;
+
+        if (std::find(familyIndices.begin(), familyIndices.begin() + selectedFamilyNum, familyIndex) != familyIndices.begin() + selectedFamilyNum)
+            continue;
+
+        familyIndices[selectedFamilyNum++] = familyIndex;
+    }
+
+    return selectedFamilyNum;
+}
+
+inline VkVideoCodecOperationFlagBitsKHR GetRepresentativeVideoCodecOperationVK(const QueueFamilyPropsVK& familyProps, QueueType queueType) {
+    const auto& operations = GetVideoCodecOperationsVK(queueType);
     for (VkVideoCodecOperationFlagBitsKHR operation : operations) {
         if (HasVideoCodecOperation(familyProps, operation))
             return operation;
