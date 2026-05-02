@@ -687,7 +687,7 @@ NRI_API Result NRI_CALL nriCreateDevice(const DeviceCreationDesc& deviceCreation
     uint32_t adapterDescNum = 1;
     AdapterDesc adapterDesc = {};
     if (!modifiedDeviceCreationDesc.adapterDesc) {
-        nriEnumerateAdapters(&adapterDesc, adapterDescNum);
+        nriEnumerateAdapters(modifiedDeviceCreationDesc.graphicsAPI, &adapterDesc, adapterDescNum);
         modifiedDeviceCreationDesc.adapterDesc = &adapterDesc;
     }
 
@@ -947,15 +947,21 @@ NRI_API const char* NRI_CALL nriGetGraphicsAPIString(GraphicsAPI graphicsAPI) {
     }
 }
 
-NRI_API Result NRI_CALL nriEnumerateAdapters(AdapterDesc* adapterDescs, uint32_t& adapterDescNum) {
+NRI_API Result NRI_CALL nriEnumerateAdapters(GraphicsAPI graphicsAPI, AdapterDesc* adapterDescs, uint32_t& adapterDescNum) {
     Result result = Result::UNSUPPORTED;
+    if (graphicsAPI == GraphicsAPI::NONE) {
+        return result;
+    }
 
     if (adapterDescs && adapterDescNum)
         memset(adapterDescs, 0, sizeof(AdapterDesc) * adapterDescNum);
 
 #if NRI_ENABLE_VK_SUPPORT
-    // Try VK first as capable to return real support for queues
-    result = EnumerateAdaptersVK(adapterDescs, adapterDescNum, 0, nullptr);
+    // Avoid using vulkan if D3D was explicitly requested to avoid unexpected behaviour
+    if (graphicsAPI == GraphicsAPI::VK) {
+        // Try VK first as capable to return real support for queues
+        result = EnumerateAdaptersVK(adapterDescs, adapterDescNum, 0, nullptr);
+    }
 #endif
 
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
