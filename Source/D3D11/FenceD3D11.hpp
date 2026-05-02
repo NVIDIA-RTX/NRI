@@ -6,12 +6,10 @@ Result FenceD3D11::Create(uint64_t initialValue) {
 
     if (m_Device.GetVersion() >= 5) {
         HRESULT hr = m_Device->CreateFence(initialValue, D3D11_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_Fence));
-        if (hr < 0) {
-            NRI_REPORT_WARNING(&m_Device, "ID3D11Device5::CreateFence() failed: result = 0x%08X (%d)!", hr, hr);
-        }
-    }
-
-    if (!m_Fence) {
+        if (hr < 0)
+            hr = m_Device->CreateFence(initialValue, D3D11_FENCE_FLAG_NON_MONITORED, IID_PPV_ARGS(&m_Fence));
+		NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device5::CreateFence");
+    } else {
         D3D11_QUERY_DESC queryDesc = {};
         queryDesc.Query = D3D11_QUERY_EVENT;
 
@@ -62,16 +60,9 @@ NRI_INLINE void FenceD3D11::Wait(uint64_t value) {
             NRI_RETURN_ON_FAILURE(&m_Device, result == WAIT_OBJECT_0, ReturnVoid(), "WaitForSingleObjectEx() failed!");
         }
     } else if (m_Query) {
-        bool end = false;
         HRESULT hr = S_FALSE;
-        while (hr == S_FALSE) {
+        while (hr == S_FALSE)
             hr = m_Device.GetImmediateContext()->GetData(m_Query, nullptr, 0, 0);
-            if (!end && (hr == E_INVALIDARG || hr == DXGI_ERROR_INVALID_CALL)) {
-                m_Device.GetImmediateContext()->End(m_Query);
-                end = true;
-                hr = S_FALSE;
-            }
-        }
 
         NRI_RETURN_VOID_ON_BAD_HRESULT(&m_Device, hr, "D3D11DeviceContext::GetData");
     }
