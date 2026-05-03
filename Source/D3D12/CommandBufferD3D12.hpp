@@ -381,14 +381,14 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
 
         m_CommandList.emplace<ComPtr<ID3D12VideoDecodeCommandList>>(videoDecodeCommandList);
     } else if (commandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE) {
-        ComPtr<ID3D12VideoEncodeCommandList> videoEncodeCommandList;
+        ComPtr<ID3D12VideoEncodeCommandList2> videoEncodeCommandList;
         HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, IID_PPV_ARGS(&videoEncodeCommandList));
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommandList");
 
         hr = videoEncodeCommandList->Close();
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoEncodeCommandList::Close");
 
-        m_CommandList.emplace<ComPtr<ID3D12VideoEncodeCommandList>>(videoEncodeCommandList);
+        m_CommandList.emplace<ComPtr<ID3D12VideoEncodeCommandList>>(videoEncodeCommandList.GetInterface());
     } else {
         ComPtr<ID3D12GraphicsCommandListBest> graphicsCommandList;
         HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&graphicsCommandList);
@@ -462,14 +462,15 @@ NRI_INLINE Result CommandBufferD3D12::End() {
     if (std::holds_alternative<ComPtr<ID3D12VideoDecodeCommandList>>(m_CommandList)) {
         ID3D12VideoDecodeCommandList* videoDecodeCommandList = std::get<ComPtr<ID3D12VideoDecodeCommandList>>(m_CommandList).GetInterface();
         hr = videoDecodeCommandList->Close();
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDecodeCommandList::Close");
     } else if (std::holds_alternative<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList)) {
         ID3D12VideoEncodeCommandList* videoEncodeCommandList = std::get<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList).GetInterface();
         hr = videoEncodeCommandList->Close();
-    } else
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoEncodeCommandList::Close");
+    } else {
         hr = GetGraphicsCommandList()->Close();
-
-    if (FAILED(hr))
-        return Result::FAILURE;
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::Close");
+    }
 
     return Result::SUCCESS;
 }
@@ -493,6 +494,40 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeD3D12Desc& desc
         return;
     }
 
+    if (desc.d3d12InputArguments1 && desc.d3d12OutputArguments1) {
+        ComPtr<ID3D12VideoEncodeCommandList4> commandList;
+        HRESULT hr = std::get<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList)->QueryInterface(IID_PPV_ARGS(&commandList));
+        if (FAILED(hr)) {
+            NRI_REPORT_ERROR(&m_Device, "ID3D12VideoEncodeCommandList4 is not supported");
+            return;
+        }
+
+        commandList->EncodeFrame1(
+            (ID3D12VideoEncoder*)desc.d3d12Encoder,
+            (ID3D12VideoEncoderHeap1*)desc.d3d12Heap1,
+            (D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS1*)desc.d3d12InputArguments1,
+            (D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS1*)desc.d3d12OutputArguments1);
+
+        if (desc.d3d12ResolveMetadataInputArguments1 && desc.d3d12ResolveMetadataOutputArguments1) {
+            const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS1& input =
+                *(const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS1*)desc.d3d12ResolveMetadataInputArguments1;
+
+            D3D12_RESOURCE_BARRIER metadataReady = {};
+            metadataReady.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            metadataReady.Transition.pResource = input.HWLayoutMetadata.pBuffer;
+            metadataReady.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            metadataReady.Transition.StateBefore = D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE;
+            metadataReady.Transition.StateAfter = D3D12_RESOURCE_STATE_VIDEO_ENCODE_READ;
+            commandList->ResourceBarrier(1, &metadataReady);
+
+            commandList->ResolveEncoderOutputMetadata1(
+                (const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS1*)desc.d3d12ResolveMetadataInputArguments1,
+                (const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS1*)desc.d3d12ResolveMetadataOutputArguments1);
+        }
+
+        return;
+    }
+
     ComPtr<ID3D12VideoEncodeCommandList2> commandList;
     HRESULT hr = std::get<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList)->QueryInterface(IID_PPV_ARGS(&commandList));
     if (FAILED(hr)) {
@@ -505,6 +540,23 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeD3D12Desc& desc
         (ID3D12VideoEncoderHeap*)desc.d3d12Heap,
         (D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS*)desc.d3d12InputArguments,
         (D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS*)desc.d3d12OutputArguments);
+
+    if (desc.d3d12ResolveMetadataInputArguments && desc.d3d12ResolveMetadataOutputArguments) {
+        const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS& input =
+            *(const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS*)desc.d3d12ResolveMetadataInputArguments;
+
+        D3D12_RESOURCE_BARRIER metadataReady = {};
+        metadataReady.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        metadataReady.Transition.pResource = input.HWLayoutMetadata.pBuffer;
+        metadataReady.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        metadataReady.Transition.StateBefore = D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE;
+        metadataReady.Transition.StateAfter = D3D12_RESOURCE_STATE_VIDEO_ENCODE_READ;
+        commandList->ResourceBarrier(1, &metadataReady);
+
+        commandList->ResolveEncoderOutputMetadata(
+            (const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS*)desc.d3d12ResolveMetadataInputArguments,
+            (const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS*)desc.d3d12ResolveMetadataOutputArguments);
+    }
 }
 
 NRI_INLINE void CommandBufferD3D12::SetViewports(const Viewport* viewports, uint32_t viewportNum) {

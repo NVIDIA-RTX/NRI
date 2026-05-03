@@ -100,9 +100,13 @@ static constexpr VkImageUsageFlags GetImageUsageFlags(TextureUsageBits textureUs
 
     if (textureUsageBits & TextureUsageBits::VIDEO_DECODE)
         flags |= VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR | VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR;
+    if ((textureUsageBits & TextureUsageBits::VIDEO_REFERENCE_ONLY) && (textureUsageBits & TextureUsageBits::VIDEO_DECODE))
+        flags |= VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR;
 
     if (textureUsageBits & TextureUsageBits::VIDEO_ENCODE)
         flags |= VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR | VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR;
+    if ((textureUsageBits & TextureUsageBits::VIDEO_REFERENCE_ONLY) && (textureUsageBits & TextureUsageBits::VIDEO_ENCODE))
+        flags |= VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR;
 
     return flags;
 }
@@ -1321,7 +1325,7 @@ void DeviceVK::FillCreateInfo(const TextureDesc& textureDesc, VkImageCreateInfo&
         flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT; // allow 3D demotion to a set of layers // TODO: hook up "VK_EXT_image_2d_view_of_3d"?
     if (m_Desc.tiers.sampleLocations && formatProps.isDepth)
         flags |= VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT;
-    if (textureDesc.usage & (TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_ENCODE))
+    if (textureDesc.usage & (TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_ENCODE | TextureUsageBits::VIDEO_REFERENCE_ONLY))
         flags |= VK_IMAGE_CREATE_VIDEO_PROFILE_INDEPENDENT_BIT_KHR;
 
     info = {VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO}; // should be already set

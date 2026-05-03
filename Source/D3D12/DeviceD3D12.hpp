@@ -115,6 +115,14 @@ static D3D12_RESOURCE_FLAGS GetTextureFlags(TextureUsageBits textureUsage) {
             flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
     }
 
+    if (textureUsage & TextureUsageBits::VIDEO_REFERENCE_ONLY) {
+        if (textureUsage & TextureUsageBits::VIDEO_DECODE)
+            flags |= D3D12_RESOURCE_FLAG_VIDEO_DECODE_REFERENCE_ONLY;
+        if (textureUsage & TextureUsageBits::VIDEO_ENCODE)
+            flags |= D3D12_RESOURCE_FLAG_VIDEO_ENCODE_REFERENCE_ONLY;
+        flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+    }
+
     return flags;
 }
 

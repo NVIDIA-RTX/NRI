@@ -103,6 +103,13 @@ NriStruct(VideoEncodeD3D12Desc) {
     void* d3d12Heap;                    // ID3D12VideoEncoderHeap*
     const void* d3d12InputArguments;    // D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS*
     const void* d3d12OutputArguments;   // D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS*
+    const void* d3d12ResolveMetadataInputArguments;  // optional D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS*
+    const void* d3d12ResolveMetadataOutputArguments; // optional D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS*
+    void* d3d12Heap1;                   // optional ID3D12VideoEncoderHeap1*
+    const void* d3d12InputArguments1;   // optional D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS1*
+    const void* d3d12OutputArguments1;  // optional D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS1*
+    const void* d3d12ResolveMetadataInputArguments1;  // optional D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS1*
+    const void* d3d12ResolveMetadataOutputArguments1; // optional D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS1*
 };
 
 // Threadsafe: yes
