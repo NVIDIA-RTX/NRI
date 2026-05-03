@@ -98,15 +98,19 @@ static constexpr VkImageUsageFlags GetImageUsageFlags(TextureUsageBits textureUs
     if (textureUsageBits & TextureUsageBits::INPUT_ATTACHMENT)
         flags |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
 
-    if (textureUsageBits & TextureUsageBits::VIDEO_DECODE)
-        flags |= VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR | VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR;
-    if ((textureUsageBits & TextureUsageBits::VIDEO_REFERENCE_ONLY) && (textureUsageBits & TextureUsageBits::VIDEO_DECODE))
-        flags |= VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR;
+    if (textureUsageBits & TextureUsageBits::VIDEO_DECODE) {
+        if (textureUsageBits & TextureUsageBits::VIDEO_REFERENCE_ONLY)
+            flags |= VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR;
+        else
+            flags |= VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR | VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR;
+    }
 
-    if (textureUsageBits & TextureUsageBits::VIDEO_ENCODE)
-        flags |= VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR | VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR;
-    if ((textureUsageBits & TextureUsageBits::VIDEO_REFERENCE_ONLY) && (textureUsageBits & TextureUsageBits::VIDEO_ENCODE))
-        flags |= VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR;
+    if (textureUsageBits & TextureUsageBits::VIDEO_ENCODE) {
+        if (textureUsageBits & TextureUsageBits::VIDEO_REFERENCE_ONLY)
+            flags |= VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR;
+        else
+            flags |= VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR | VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR;
+    }
 
     return flags;
 }

@@ -1613,11 +1613,30 @@ struct VideoPictureVK final : public DebugNameBase {
         createInfo.subresourceRange.baseArrayLayer = videoPictureDesc.layer;
         createInfo.subresourceRange.layerCount = 1;
 
-        if (textureDesc.usage & TextureUsageBits::VIDEO_DECODE)
-            usageInfo.usage |= VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR | VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR;
+        TextureUsageBits requiredTextureUsage = TextureUsageBits::NONE;
+        switch (videoPictureDesc.usage) {
+        case VideoPictureUsage::DECODE_OUTPUT:
+            requiredTextureUsage = TextureUsageBits::VIDEO_DECODE;
+            usageInfo.usage |= VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR;
+            break;
+        case VideoPictureUsage::DECODE_REFERENCE:
+            requiredTextureUsage = TextureUsageBits::VIDEO_DECODE;
+            usageInfo.usage |= VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR;
+            break;
+        case VideoPictureUsage::ENCODE_INPUT:
+            requiredTextureUsage = TextureUsageBits::VIDEO_ENCODE;
+            usageInfo.usage |= VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR;
+            break;
+        case VideoPictureUsage::ENCODE_REFERENCE:
+            requiredTextureUsage = TextureUsageBits::VIDEO_ENCODE;
+            usageInfo.usage |= VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR;
+            break;
+        case VideoPictureUsage::MAX_NUM:
+            return Result::INVALID_ARGUMENT;
+        }
 
-        if (textureDesc.usage & TextureUsageBits::VIDEO_ENCODE)
-            usageInfo.usage |= VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR | VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR;
+        if ((textureDesc.usage & requiredTextureUsage) == 0)
+            return Result::INVALID_ARGUMENT;
 
         if (usageInfo.usage)
             createInfo.pNext = &usageInfo;
@@ -2008,8 +2027,8 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
     DeviceVK& device = commandBufferVK.GetDevice();
     const auto& vk = device.GetDispatchTable();
 
-    if (!videoDecodeDesc.session || !videoDecodeDesc.parameters || !videoDecodeDesc.bitstream || !videoDecodeDesc.dstPicture) {
-        NRI_REPORT_ERROR(&device, "'session', 'parameters', 'bitstream' and 'dstPicture' must be valid");
+    if (!videoDecodeDesc.session || !videoDecodeDesc.parameters || !videoDecodeDesc.bitstream.buffer || !videoDecodeDesc.bitstream.size || !videoDecodeDesc.dstPicture) {
+        NRI_REPORT_ERROR(&device, "'session', 'parameters', 'bitstream.buffer', 'bitstream.size' and 'dstPicture' must be valid");
         return;
     }
 
@@ -2029,6 +2048,12 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
     VideoPictureVK& setupPicture = videoDecodeDesc.setupPicture ? *(VideoPictureVK*)videoDecodeDesc.setupPicture : dstPicture;
     if (parameters.m_Session != &session) {
         NRI_REPORT_ERROR(&device, "'parameters' must belong to 'session'");
+        return;
+    }
+
+    BufferVK& bitstream = *(BufferVK*)videoDecodeDesc.bitstream.buffer;
+    if (videoDecodeDesc.bitstream.offset >= bitstream.GetDesc().size || videoDecodeDesc.bitstream.size > bitstream.GetDesc().size - videoDecodeDesc.bitstream.offset) {
+        NRI_REPORT_ERROR(&device, "'bitstream' range is outside of 'bitstream.buffer'");
         return;
     }
 
@@ -2323,9 +2348,9 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
 
     VkVideoDecodeInfoKHR decodeInfo = {VK_STRUCTURE_TYPE_VIDEO_DECODE_INFO_KHR};
     decodeInfo.pNext = codecPictureInfo;
-    decodeInfo.srcBuffer = ((BufferVK*)videoDecodeDesc.bitstream)->GetHandle();
-    decodeInfo.srcBufferOffset = videoDecodeDesc.bitstreamOffset;
-    decodeInfo.srcBufferRange = videoDecodeDesc.bitstreamSize;
+    decodeInfo.srcBuffer = bitstream.GetHandle();
+    decodeInfo.srcBufferOffset = videoDecodeDesc.bitstream.offset;
+    decodeInfo.srcBufferRange = videoDecodeDesc.bitstream.size;
     decodeInfo.dstPictureResource = dstPicture.m_Resource;
     decodeInfo.pSetupReferenceSlot = setupReferenceInfo ? &setupReferenceSlot : nullptr;
     decodeInfo.referenceSlotCount = videoDecodeDesc.referenceNum;
@@ -2435,8 +2460,8 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     DeviceVK& device = commandBufferVK.GetDevice();
     const auto& vk = device.GetDispatchTable();
 
-    if (!videoEncodeDesc.session || !videoEncodeDesc.parameters || !videoEncodeDesc.srcPicture || !videoEncodeDesc.dstBitstream) {
-        NRI_REPORT_ERROR(&device, "'session', 'parameters', 'srcPicture' and 'dstBitstream' must be valid");
+    if (!videoEncodeDesc.session || !videoEncodeDesc.parameters || !videoEncodeDesc.srcPicture || !videoEncodeDesc.dstBitstream.buffer || !videoEncodeDesc.dstBitstream.size) {
+        NRI_REPORT_ERROR(&device, "'session', 'parameters', 'srcPicture', 'dstBitstream.buffer' and 'dstBitstream.size' must be valid");
         return;
     }
 
@@ -2927,15 +2952,15 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
 
     VkVideoEncodeInfoKHR encodeInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_INFO_KHR};
     encodeInfo.pNext = codecPictureInfo;
-    BufferVK& dstBitstream = *(BufferVK*)videoEncodeDesc.dstBitstream;
-    if (videoEncodeDesc.dstBitstreamOffset >= dstBitstream.GetDesc().size) {
-        NRI_REPORT_ERROR(&device, "'dstBitstreamOffset' is outside of 'dstBitstream'");
+    BufferVK& dstBitstream = *(BufferVK*)videoEncodeDesc.dstBitstream.buffer;
+    if (videoEncodeDesc.dstBitstream.offset >= dstBitstream.GetDesc().size || videoEncodeDesc.dstBitstream.size > dstBitstream.GetDesc().size - videoEncodeDesc.dstBitstream.offset) {
+        NRI_REPORT_ERROR(&device, "'dstBitstream' range is outside of 'dstBitstream.buffer'");
         return;
     }
 
     encodeInfo.dstBuffer = dstBitstream.GetHandle();
-    encodeInfo.dstBufferOffset = videoEncodeDesc.dstBitstreamOffset;
-    encodeInfo.dstBufferRange = dstBitstream.GetDesc().size - videoEncodeDesc.dstBitstreamOffset;
+    encodeInfo.dstBufferOffset = videoEncodeDesc.dstBitstream.offset;
+    encodeInfo.dstBufferRange = videoEncodeDesc.dstBitstream.size;
     encodeInfo.srcPictureResource = srcPicture.m_Resource;
     encodeInfo.pSetupReferenceSlot = isUsedAsReferencePicture ? &setupReferenceSlot : nullptr;
     encodeInfo.referenceSlotCount = videoEncodeDesc.referenceNum;

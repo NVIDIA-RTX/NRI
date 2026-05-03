@@ -249,8 +249,22 @@ NriStruct(VideoReference) {
     uint32_t slot;
 };
 
+NriEnum(VideoPictureUsage, uint8_t,
+    DECODE_OUTPUT,
+    DECODE_REFERENCE,
+    ENCODE_INPUT,
+    ENCODE_REFERENCE
+);
+
+NriStruct(VideoBitstreamRange) {
+    NriPtr(Buffer) buffer;
+    uint64_t offset;
+    uint64_t size;
+};
+
 NriStruct(VideoPictureDesc) {
     NriPtr(Texture) texture;
+    Nri(VideoPictureUsage) usage;
     Nri(Format) format;
     uint32_t subresource;
     uint32_t layer;
@@ -727,10 +741,8 @@ NriStruct(VideoAV1DecodePictureDesc) {
 
 NriStruct(VideoDecodeDesc) {
     NriPtr(VideoSession) session;
-    NriOptional NriPtr(VideoSessionParameters) parameters;
-    NriPtr(Buffer) bitstream;
-    uint64_t bitstreamOffset;
-    uint64_t bitstreamSize;
+    NriPtr(VideoSessionParameters) parameters;
+    Nri(VideoBitstreamRange) bitstream;
     NriPtr(VideoPicture) dstPicture;
     NriOptional NriPtr(VideoPicture) setupPicture; // if provided, used as the reconstructed/DPB setup reference instead of "dstPicture"
     NriOptional const NriPtr(VideoReference) references; // if provided, must include "referenceNum" entries
@@ -745,10 +757,9 @@ NriStruct(VideoDecodeDesc) {
 
 NriStruct(VideoEncodeDesc) {
     NriPtr(VideoSession) session;
-    NriOptional NriPtr(VideoSessionParameters) parameters;
+    NriPtr(VideoSessionParameters) parameters;
     NriPtr(VideoPicture) srcPicture;
-    NriPtr(Buffer) dstBitstream;
-    uint64_t dstBitstreamOffset;
+    Nri(VideoBitstreamRange) dstBitstream;
     uint64_t bitstreamMetadataSize; // D3D12: bytes of codec metadata already written before the current frame payload
     NriOptional const NriPtr(VideoEncodePictureDesc) pictureDesc;
     NriOptional const NriPtr(VideoEncodeRateControlDesc) rateControlDesc;

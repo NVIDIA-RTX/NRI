@@ -1691,8 +1691,8 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
     CommandBufferD3D12& commandBufferD3D12 = (CommandBufferD3D12&)commandBuffer;
     DeviceD3D12& device = commandBufferD3D12.GetDevice();
 
-    if (!videoDecodeDesc.session || !videoDecodeDesc.bitstream || !videoDecodeDesc.dstPicture) {
-        NRI_REPORT_ERROR(&device, "'session', 'bitstream' and 'dstPicture' must be valid");
+    if (!videoDecodeDesc.session || !videoDecodeDesc.parameters || !videoDecodeDesc.bitstream.buffer || !videoDecodeDesc.bitstream.size || !videoDecodeDesc.dstPicture) {
+        NRI_REPORT_ERROR(&device, "'session', 'parameters', 'bitstream.buffer', 'bitstream.size' and 'dstPicture' must be valid");
         return;
     }
 
@@ -1712,13 +1712,16 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
     }
 
     VideoSessionD3D12& session = *(VideoSessionD3D12*)videoDecodeDesc.session;
-    VideoSessionParametersD3D12* parameters = nullptr;
-    if (videoDecodeDesc.parameters) {
-        parameters = (VideoSessionParametersD3D12*)videoDecodeDesc.parameters;
-        if (parameters->m_Session != &session) {
-            NRI_REPORT_ERROR(&device, "'parameters' must belong to 'session'");
-            return;
-        }
+    VideoSessionParametersD3D12* parameters = (VideoSessionParametersD3D12*)videoDecodeDesc.parameters;
+    if (parameters->m_Session != &session) {
+        NRI_REPORT_ERROR(&device, "'parameters' must belong to 'session'");
+        return;
+    }
+
+    BufferD3D12& bitstream = *(BufferD3D12*)videoDecodeDesc.bitstream.buffer;
+    if (videoDecodeDesc.bitstream.offset >= bitstream.GetDesc().size || videoDecodeDesc.bitstream.size > bitstream.GetDesc().size - videoDecodeDesc.bitstream.offset) {
+        NRI_REPORT_ERROR(&device, "'bitstream' range is outside of 'bitstream.buffer'");
+        return;
     }
 
     D3D12_VIDEO_DECODE_INPUT_STREAM_ARGUMENTS input = {};
@@ -1756,7 +1759,7 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
         }
 
         const uint32_t h264DstSlot = videoDecodeDesc.h264PictureDesc->referenceSlot ? videoDecodeDesc.h264PictureDesc->referenceSlot : videoDecodeDesc.dstSlot;
-        if (!BuildVideoDecodeH264ArgumentsD3D12(*parameters->m_H264Parameters, *videoDecodeDesc.h264PictureDesc, videoDecodeDesc.bitstreamSize, h264DstSlot,
+        if (!BuildVideoDecodeH264ArgumentsD3D12(*parameters->m_H264Parameters, *videoDecodeDesc.h264PictureDesc, videoDecodeDesc.bitstream.size, h264DstSlot,
                 h264PictureParameters, h264InverseQuantizationMatrix, h264Slices, videoDecodeDesc.h264PictureDesc->sliceOffsetNum)) {
             NRI_REPORT_ERROR(&device, "Failed to build D3D12 H.264 decode arguments from neutral descriptors");
             return;
@@ -1796,7 +1799,7 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
             }
         }
 
-        if (!BuildVideoDecodeH265ArgumentsD3D12(*parameters->m_H265Parameters, desc, videoDecodeDesc.bitstreamSize, videoDecodeDesc.dstSlot,
+        if (!BuildVideoDecodeH265ArgumentsD3D12(*parameters->m_H265Parameters, desc, videoDecodeDesc.bitstream.size, videoDecodeDesc.dstSlot,
                 h265PictureParameters, h265InverseQuantizationMatrix, h265Slices, desc.sliceSegmentOffsetNum)) {
             NRI_REPORT_ERROR(&device, "Failed to build D3D12 H.265 decode arguments from neutral descriptors");
             return;
@@ -2109,9 +2112,9 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
     input.ReferenceFrames.NumTexture2Ds = referenceLayout.slotCount;
     input.ReferenceFrames.ppTexture2Ds = referenceLayout.slotCount ? (ID3D12Resource**)referenceResources : nullptr;
     input.ReferenceFrames.pSubresources = referenceLayout.slotCount ? (uint32_t*)referenceSubresources : nullptr;
-    input.CompressedBitstream.pBuffer = (ID3D12Resource*)(*(BufferD3D12*)videoDecodeDesc.bitstream);
-    input.CompressedBitstream.Offset = videoDecodeDesc.bitstreamOffset;
-    input.CompressedBitstream.Size = videoDecodeDesc.bitstreamSize;
+    input.CompressedBitstream.pBuffer = (ID3D12Resource*)bitstream;
+    input.CompressedBitstream.Offset = videoDecodeDesc.bitstream.offset;
+    input.CompressedBitstream.Size = videoDecodeDesc.bitstream.size;
     input.pHeap = session.m_DecoderHeap;
 
     D3D12_VIDEO_DECODE_OUTPUT_STREAM_ARGUMENTS output = {};
@@ -2190,8 +2193,8 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     CommandBufferD3D12& commandBufferD3D12 = (CommandBufferD3D12&)commandBuffer;
     DeviceD3D12& device = commandBufferD3D12.GetDevice();
 
-    if (!videoEncodeDesc.session || !videoEncodeDesc.srcPicture || !videoEncodeDesc.dstBitstream || !videoEncodeDesc.metadata) {
-        NRI_REPORT_ERROR(&device, "'session', 'srcPicture', 'dstBitstream' and 'metadata' must be valid");
+    if (!videoEncodeDesc.session || !videoEncodeDesc.parameters || !videoEncodeDesc.srcPicture || !videoEncodeDesc.dstBitstream.buffer || !videoEncodeDesc.dstBitstream.size || !videoEncodeDesc.metadata) {
+        NRI_REPORT_ERROR(&device, "'session', 'parameters', 'srcPicture', 'dstBitstream.buffer', 'dstBitstream.size' and 'metadata' must be valid");
         return;
     }
 
@@ -2222,12 +2225,16 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
         return;
     }
 
-    if (videoEncodeDesc.parameters) {
-        VideoSessionParametersD3D12& parameters = *(VideoSessionParametersD3D12*)videoEncodeDesc.parameters;
-        if (parameters.m_Session != &session) {
-            NRI_REPORT_ERROR(&device, "'parameters' must belong to 'session'");
-            return;
-        }
+    VideoSessionParametersD3D12& parameters = *(VideoSessionParametersD3D12*)videoEncodeDesc.parameters;
+    if (parameters.m_Session != &session) {
+        NRI_REPORT_ERROR(&device, "'parameters' must belong to 'session'");
+        return;
+    }
+
+    BufferD3D12& dstBitstream = *(BufferD3D12*)videoEncodeDesc.dstBitstream.buffer;
+    if (videoEncodeDesc.dstBitstream.offset >= dstBitstream.GetDesc().size || videoEncodeDesc.dstBitstream.size > dstBitstream.GetDesc().size - videoEncodeDesc.dstBitstream.offset) {
+        NRI_REPORT_ERROR(&device, "'dstBitstream' range is outside of 'dstBitstream.buffer'");
+        return;
     }
 
     if (videoEncodeDesc.h265ReferenceDescs && session.m_Desc.codec != VideoCodec::H265) {
@@ -2657,8 +2664,8 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     input.InputFrameSubresource = srcPicture.m_Subresource;
 
     D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS output = {};
-    output.Bitstream.pBuffer = (ID3D12Resource*)(*(BufferD3D12*)videoEncodeDesc.dstBitstream);
-    output.Bitstream.FrameStartOffset = videoEncodeDesc.dstBitstreamOffset;
+    output.Bitstream.pBuffer = (ID3D12Resource*)dstBitstream;
+    output.Bitstream.FrameStartOffset = videoEncodeDesc.dstBitstream.offset;
     if (videoEncodeDesc.reconstructedPicture) {
         VideoPictureD3D12& reconstructedPicture = *(VideoPictureD3D12*)videoEncodeDesc.reconstructedPicture;
         output.ReconstructedPicture.pReconstructedPicture = (ID3D12Resource*)(*reconstructedPicture.m_Texture);

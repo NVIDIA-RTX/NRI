@@ -15,8 +15,7 @@ Result BufferVK::Create(const BufferDesc& bufferDesc) {
     m_Desc = bufferDesc;
 
     VkBufferCreateInfo info = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-    VideoResourceProfileListVK videoProfiles = {};
-    FillCreateInfo(info, videoProfiles);
+    FillCreateInfo(info);
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateBuffer(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
@@ -56,8 +55,7 @@ Result BufferVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float prio
     const bool isVideoOnly = IsVideoOnly();
     if (isVideoOnly) {
         VkBufferCreateInfo info = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-        VideoResourceProfileListVK videoProfiles = {};
-        FillCreateInfo(info, videoProfiles);
+        FillCreateInfo(info);
 
         const auto& vk = m_Device.GetDispatchTable();
         vk.DestroyBuffer(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
@@ -177,18 +175,8 @@ bool BufferVK::IsVideoOnly() const {
     return (usageMask & videoUsageMask) != 0 && (usageMask & ~videoUsageMask) == 0;
 }
 
-void BufferVK::FillCreateInfo(VkBufferCreateInfo& info, VideoResourceProfileListVK& videoProfiles) const {
+void BufferVK::FillCreateInfo(VkBufferCreateInfo& info) const {
     m_Device.FillCreateInfo(m_Desc, info);
-
-    const bool isVideoDecode = (m_Desc.usage & BufferUsageBits::VIDEO_DECODE) != 0;
-    const bool isVideoEncode = (m_Desc.usage & BufferUsageBits::VIDEO_ENCODE) != 0;
-    if (isVideoDecode || isVideoEncode) {
-        videoProfiles.Fill(isVideoDecode, isVideoEncode, Format::NV12_UNORM, m_Device.GetVideoCodecOperations(isVideoDecode, isVideoEncode));
-        if (videoProfiles.list.profileCount) {
-            videoProfiles.list.pNext = info.pNext;
-            info.pNext = &videoProfiles.list;
-        }
-    }
 }
 
 void BufferVK::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {
