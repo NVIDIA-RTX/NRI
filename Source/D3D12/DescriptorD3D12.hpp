@@ -17,7 +17,13 @@ static inline DXGI_FORMAT GetPatchedShaderResourceViewFormat(DXGI_FORMAT format,
 
 static inline uint32_t GetPlaneIndex(PlaneBits planes) { // TODO: still unclear, is it needed for a stencil-only SRV?
     // https://microsoft.github.io/DirectX-Specs/d3d/PlanarDepthStencilDDISpec.html
-    return (planes & PlaneBits::STENCIL) ? 1 : 0;
+    if (planes & PlaneBits::STENCIL)
+        return 1;
+    if (planes & PlaneBits::PLANE_2)
+        return 2;
+    if (planes & PlaneBits::PLANE_1)
+        return 1;
+    return 0;
 }
 
 static inline DXGI_FORMAT GetResourceFormat(const TextureD3D12& texture) {
