@@ -104,6 +104,7 @@ struct VideoResourceProfileListVK {
             decodeH264.pictureLayout = VK_VIDEO_DECODE_H264_PICTURE_LAYOUT_PROGRESSIVE_KHR;
             decodeH265.stdProfileIdc = bitDepth == VK_VIDEO_COMPONENT_BIT_DEPTH_10_BIT_KHR ? STD_VIDEO_H265_PROFILE_IDC_MAIN_10 : STD_VIDEO_H265_PROFILE_IDC_MAIN;
             decodeAV1.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN;
+            decodeAV1.filmGrainSupport = VK_TRUE;
 
             decodeUsage[0] = {VK_STRUCTURE_TYPE_VIDEO_DECODE_USAGE_INFO_KHR};
             decodeUsage[0].videoUsageHints = VK_VIDEO_DECODE_USAGE_DEFAULT_KHR;
@@ -117,9 +118,9 @@ struct VideoResourceProfileListVK {
             decodeUsage[2].videoUsageHints = VK_VIDEO_DECODE_USAGE_DEFAULT_KHR;
             decodeUsage[2].pNext = &decodeAV1;
 
-            AppendProfile(codecOperations, VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR, &decodeUsage[0], bitDepth)
-                || AppendProfile(codecOperations, VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR, &decodeUsage[1], bitDepth)
-                || AppendProfile(codecOperations, VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR, &decodeUsage[2], bitDepth);
+            AppendProfile(codecOperations, VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR, &decodeUsage[0], bitDepth);
+            AppendProfile(codecOperations, VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR, &decodeUsage[1], bitDepth);
+            AppendProfile(codecOperations, VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR, &decodeUsage[2], bitDepth);
         }
 
         if (encode) {
@@ -139,9 +140,9 @@ struct VideoResourceProfileListVK {
             encodeUsage[2].videoUsageHints = VK_VIDEO_ENCODE_USAGE_DEFAULT_KHR;
             encodeUsage[2].pNext = &encodeAV1;
 
-            AppendProfile(codecOperations, VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_KHR, &encodeUsage[0], bitDepth)
-                || AppendProfile(codecOperations, VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_KHR, &encodeUsage[1], bitDepth)
-                || AppendProfile(codecOperations, VK_VIDEO_CODEC_OPERATION_ENCODE_AV1_BIT_KHR, &encodeUsage[2], bitDepth);
+            AppendProfile(codecOperations, VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_KHR, &encodeUsage[0], bitDepth);
+            AppendProfile(codecOperations, VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_KHR, &encodeUsage[1], bitDepth);
+            AppendProfile(codecOperations, VK_VIDEO_CODEC_OPERATION_ENCODE_AV1_BIT_KHR, &encodeUsage[2], bitDepth);
         }
     }
 };

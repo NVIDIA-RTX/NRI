@@ -5,8 +5,6 @@
 namespace nri {
 
 struct MemoryVK;
-struct VideoResourceProfileListVK;
-
 struct BufferVK final : public DebugNameBase {
     inline BufferVK(DeviceVK& device)
         : m_Device(device) {
@@ -51,7 +49,7 @@ struct BufferVK final : public DebugNameBase {
 
 private:
     bool IsVideoOnly() const;
-    void FillCreateInfo(VkBufferCreateInfo& info, VideoResourceProfileListVK& videoProfiles) const;
+    void FillCreateInfo(VkBufferCreateInfo& info) const;
 
     DeviceVK& m_Device;
     VkBuffer m_Handle = VK_NULL_HANDLE;

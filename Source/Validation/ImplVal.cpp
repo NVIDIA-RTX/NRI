@@ -1278,8 +1278,9 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
     VideoDecodeDesc videoDecodeDescImpl = videoDecodeDesc;
     videoDecodeDescImpl.session = videoDecodeDesc.session ? ((VideoSessionVal*)videoDecodeDesc.session)->GetImpl() : nullptr;
     videoDecodeDescImpl.parameters = videoDecodeDesc.parameters ? ((VideoSessionParametersVal*)videoDecodeDesc.parameters)->GetImpl() : nullptr;
-    videoDecodeDescImpl.bitstream = NRI_GET_IMPL(Buffer, videoDecodeDesc.bitstream);
+    videoDecodeDescImpl.bitstream.buffer = NRI_GET_IMPL(Buffer, videoDecodeDesc.bitstream.buffer);
     videoDecodeDescImpl.dstPicture = videoDecodeDesc.dstPicture ? ((VideoPictureVal*)videoDecodeDesc.dstPicture)->GetImpl() : nullptr;
+    videoDecodeDescImpl.setupPicture = videoDecodeDesc.setupPicture ? ((VideoPictureVal*)videoDecodeDesc.setupPicture)->GetImpl() : nullptr;
 
     Scratch<VideoReference> references = NRI_ALLOCATE_SCRATCH(commandBufferVal.GetDevice(), VideoReference, videoDecodeDesc.references ? videoDecodeDesc.referenceNum : 0);
     if (videoDecodeDesc.references) {
@@ -1301,9 +1302,10 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     videoEncodeDescImpl.session = videoEncodeDesc.session ? ((VideoSessionVal*)videoEncodeDesc.session)->GetImpl() : nullptr;
     videoEncodeDescImpl.parameters = videoEncodeDesc.parameters ? ((VideoSessionParametersVal*)videoEncodeDesc.parameters)->GetImpl() : nullptr;
     videoEncodeDescImpl.srcPicture = videoEncodeDesc.srcPicture ? ((VideoPictureVal*)videoEncodeDesc.srcPicture)->GetImpl() : nullptr;
-    videoEncodeDescImpl.dstBitstream = NRI_GET_IMPL(Buffer, videoEncodeDesc.dstBitstream);
+    videoEncodeDescImpl.dstBitstream.buffer = NRI_GET_IMPL(Buffer, videoEncodeDesc.dstBitstream.buffer);
     videoEncodeDescImpl.reconstructedPicture = videoEncodeDesc.reconstructedPicture ? ((VideoPictureVal*)videoEncodeDesc.reconstructedPicture)->GetImpl() : nullptr;
     videoEncodeDescImpl.metadata = NRI_GET_IMPL(Buffer, videoEncodeDesc.metadata);
+    videoEncodeDescImpl.resolvedMetadata = NRI_GET_IMPL(Buffer, videoEncodeDesc.resolvedMetadata);
 
     Scratch<VideoReference> references = NRI_ALLOCATE_SCRATCH(commandBufferVal.GetDevice(), VideoReference, videoEncodeDesc.references ? videoEncodeDesc.referenceNum : 0);
     if (videoEncodeDesc.references) {
