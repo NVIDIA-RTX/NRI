@@ -1,6 +1,9 @@
 # VS Code
 .vscode/
 
+# Jetbrains
+.idea/
+
 # ninja
 .ninja_deps
 .ninja_log

@@ -84,6 +84,7 @@ NriStruct(CoreInterface) {
     Nri(Result)         (NRI_CALL *CreatePipelineLayout)            (NriRef(Device) device, const NriRef(PipelineLayoutDesc) pipelineLayoutDesc, NriOut NriRef(PipelineLayout*) pipelineLayout);
     Nri(Result)         (NRI_CALL *CreateGraphicsPipeline)          (NriRef(Device) device, const NriRef(GraphicsPipelineDesc) graphicsPipelineDesc, NriOut NriRef(Pipeline*) pipeline);
     Nri(Result)         (NRI_CALL *CreateComputePipeline)           (NriRef(Device) device, const NriRef(ComputePipelineDesc) computePipelineDesc, NriOut NriRef(Pipeline*) pipeline);
+    Nri(Result)         (NRI_CALL *CreatePipelineCache)             (NriRef(Device) device, const NriRef(PipelineCacheDesc) pipelineCacheDesc, NriOut NriRef(PipelineCache*) pipelineCache);
     Nri(Result)         (NRI_CALL *CreateQueryPool)                 (NriRef(Device) device, const NriRef(QueryPoolDesc) queryPoolDesc, NriOut NriRef(QueryPool*) queryPool);
     Nri(Result)         (NRI_CALL *CreateSampler)                   (NriRef(Device) device, const NriRef(SamplerDesc) samplerDesc, NriOut NriRef(Descriptor*) sampler);
     Nri(Result)         (NRI_CALL *CreateBufferView)                (const NriRef(BufferViewDesc) bufferViewDesc, NriOut NriRef(Descriptor*) bufferView);
@@ -98,6 +99,7 @@ NriStruct(CoreInterface) {
     void                (NRI_CALL *DestroyDescriptor)               (NriPtr(Descriptor) descriptor);
     void                (NRI_CALL *DestroyPipelineLayout)           (NriPtr(PipelineLayout) pipelineLayout);
     void                (NRI_CALL *DestroyPipeline)                 (NriPtr(Pipeline) pipeline);
+    void                (NRI_CALL *DestroyPipelineCache)            (NriPtr(PipelineCache) pipelineCache);
     void                (NRI_CALL *DestroyQueryPool)                (NriPtr(QueryPool) queryPool);
     void                (NRI_CALL *DestroyFence)                    (NriPtr(Fence) fence);
 
@@ -256,6 +258,12 @@ NriStruct(CoreInterface) {
     // Device address (aka GPU virtual address)
     // D3D11: returns "0"
     uint64_t            (NRI_CALL *GetBufferDeviceAddress)          (const NriRef(Buffer) buffer);
+
+    // Pipeline cache (PSO blob storage, persisted across runs)
+    //  - Threadsafe: no - external synchronization required, call after all pipeline creations using this cache have completed
+    //  - Two-call pattern: pass "dst = NULL" to query required "*size", then call again with allocated buffer
+    //  - D3D11: NOP (only an implicit shader cache exists), "*size" is set to 0
+    Nri(Result)         (NRI_CALL *GetPipelineCacheData)            (NriRef(PipelineCache) pipelineCache, NriOut void* dst, NonNriRef(uint64_t) size);
 
     // Debug name for any object declared as "NriForwardStruct" (skipped for buffers & textures in D3D if they are not bound to a memory)
     void                (NRI_CALL *SetDebugName)                    (NriPtr(Object) object, const char* name);

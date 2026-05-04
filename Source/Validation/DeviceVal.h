@@ -137,6 +137,7 @@ struct DeviceVal final : public DeviceBase {
     Result CreatePipeline(const ComputePipelineDesc& computePipelineDesc, Pipeline*& pipeline);
     Result CreatePipeline(const RayTracingPipelineDesc& rayTracingPipelineDesc, Pipeline*& pipeline);
     Result CreatePipeline(const PipelineVKDesc& pipelineVKDesc, Pipeline*& pipeline);
+    Result CreatePipelineCache(const PipelineCacheDesc& pipelineCacheDesc, PipelineCache*& pipelineCache);
     Result CreateMicromap(const MicromapDesc& micromapDesc, Micromap*& micromap);
     Result CreateQueryPool(const QueryPoolDesc& queryPoolDesc, QueryPool*& queryPool);
     Result CreateQueryPool(const QueryPoolVKDesc& queryPoolVKDesc, QueryPool*& queryPool);
@@ -177,6 +178,7 @@ struct DeviceVal final : public DeviceBase {
     void DestroyBuffer(Buffer* buffer);
     void DestroyTexture(Texture* texture);
     void DestroyPipeline(Pipeline* pipeline);
+    void DestroyPipelineCache(PipelineCache* pipelineCache);
     void DestroyMicromap(Micromap* micromap);
     void DestroyQueryPool(QueryPool* queryPool);
     void DestroySwapChain(SwapChain* swapChain);
