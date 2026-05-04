@@ -1,9 +1,10 @@
 // © 2026 NVIDIA Corporation
 
 PipelineCacheVK::~PipelineCacheVK() {
-    const auto& vk = m_Device.GetDispatchTable();
-    if (m_Handle != VK_NULL_HANDLE)
+    if (m_Handle) {
+        const auto& vk = m_Device.GetDispatchTable();
         vk.DestroyPipelineCache(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
+    }
 }
 
 Result PipelineCacheVK::Create(const PipelineCacheDesc& pipelineCacheDesc) {
@@ -22,6 +23,7 @@ Result PipelineCacheVK::Create(const PipelineCacheDesc& pipelineCacheDesc) {
     vkResult = vk.GetPipelineCacheData(m_Device, m_Handle, &size, nullptr);
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPipelineCacheData");
 
+    // VK returns "SUCCESS" for any variant of stale/incompatible data, try to guess...
     return size < info.initialDataSize ? Result::OUT_OF_DATE : Result::SUCCESS;
 }
 
@@ -31,16 +33,16 @@ Result PipelineCacheVK::GetData(void* dst, uint64_t& size) const {
         return Result::SUCCESS;
     }
 
+    // Theoretically may be smaller than needed to fit the entire cache...
     size_t vkSize = (size_t)size;
+
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.GetPipelineCacheData(m_Device, m_Handle, &vkSize, dst);
-    size = vkSize;
 
-    // "dst" was smaller than the cache content (e.g., the cache grew between the size-query call and this call).
-    // Vulkan still wrote a partial-but-valid blob and "size" reflects the bytes written. Pass it through as success. The partial blob
-    // can still be fed back into "CreatePipelineCache". The caller can re-query if it needs the full content
-    // https://registry.khronos.org/vulkan/specs/latest/man/html/vkGetPipelineCacheData.html
+    // ...and even if "VK_INCOMPLETE" is returned, we consider it a "SUCCESS"
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPipelineCacheData");
+
+    size = vkSize;
 
     return Result::SUCCESS;
 }
