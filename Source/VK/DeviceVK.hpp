@@ -864,8 +864,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         const VkPhysicalDeviceLimits& limits = props.properties.limits;
 
         m_Desc.viewport.maxNum = limits.maxViewports;
-        m_Desc.viewport.boundsMin = (int16_t)limits.viewportBoundsRange[0];
-        m_Desc.viewport.boundsMax = (int16_t)limits.viewportBoundsRange[1];
+        m_Desc.viewport.boundsMin = (int16_t)(uint16_t)(int32_t)limits.viewportBoundsRange[0];
+        m_Desc.viewport.boundsMax = (int16_t)(uint16_t)(int32_t)limits.viewportBoundsRange[1];
 
         m_Desc.dimensions.attachmentMaxDim = (Dim_t)std::min(limits.maxFramebufferWidth, limits.maxFramebufferHeight);
         m_Desc.dimensions.attachmentLayerMaxNum = (Dim_t)limits.maxFramebufferLayers;
