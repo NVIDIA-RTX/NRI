@@ -53,7 +53,7 @@ NriForwardStruct(CommandBuffer);    // used to record commands which can be subs
 NriForwardStruct(DescriptorSet);    // a continuous set of descriptors
 NriForwardStruct(DescriptorPool);   // maintains a pool of descriptors, descriptor sets are allocated from (aka descriptor heap)
 NriForwardStruct(PipelineLayout);   // determines the interface between shader stages and shader resources (aka root signature)
-NriForwardStruct(PipelineCache);    // a persistent cache of compiled pipeline state objects (PSOs) - allows pipeline creation to skip compilation if a matching blob is present
+NriForwardStruct(PipelineCache);    // a persistent cache of compiled pipeline state objects (PSOs) to accelerate subsequent PSO creations
 NriForwardStruct(CommandAllocator); // an object that command buffer memory is allocated from
 
 // Basic types
@@ -104,8 +104,8 @@ NriEnum(GraphicsAPI, uint8_t,
 NriEnum(Result, int8_t,
     // All bad, but optionally require an action ("callbackInterface.AbortExecution" is not triggered)
     DEVICE_LOST             = -3,   // may be returned by "QueueSubmit*", "*WaitIdle", "AcquireNextTexture", "QueuePresent", "WaitForPresent"
-    OUT_OF_DATE             = -2,   // VK: swap chain is out of date, can be triggered if "features.resizableSwapChain" is not supported
-    INVALID_SDK             = -1,   // D3D: some interfaces are missing (potential reasons: unable to load "D3D12Core.dll", version or SDK mismatch)
+    OUT_OF_DATE             = -2,   // VK: swap chain is out of date, can be triggered if "features.resizableSwapChain" is not supported; D3D12: shader cache is stale
+    INVALID_SDK             = -1,   // D3D12: some interfaces are missing (potential reasons: unable to load "D3D12Core.dll", version or SDK mismatch, developer mode is not enabled)
 
     // All good
     SUCCESS                 = 0,
@@ -1475,30 +1475,19 @@ NriEnum(Robustness, uint8_t,
     D3D12           // moderate overhead, D3D12-level robust access (requires "VK_EXT_robustness2", soft fallback to VK mode)
 );
 
-// Used by "Create*Pipeline" calls to opt into PSO cache behavior
-// "FAIL_ON_CACHE_MISS": pipeline creation returns "FAILURE" if a matching blob is not found in the supplied cache
-//                      useful for platforms that prohibit runtime PSO compilation (e.g., Xbox GDK)
-//                      requires "features.pipelineCacheControl"
-//                      VK: maps to "VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT" (requires "VK_EXT_pipeline_creation_cache_control" or VK 1.3)
-//                      D3D12: emulated via "ID3D12PipelineLibrary::Load*Pipeline"
-//                      D3D11: unsupported (no PSO cache exists)
 NriBits(GraphicsPipelineBits, uint8_t,
     NONE                = 0,
-    FAIL_ON_CACHE_MISS  = NriBit(0)
+    FAIL_ON_CACHE_MISS  = NriBit(0) // "CreateGraphicsPipeline" returns "FAILURE" if the pipeline is not found in the supplied cache (requires "features.pipelineCacheControl")
 );
 
 NriBits(ComputePipelineBits, uint8_t,
     NONE                = 0,
-    FAIL_ON_CACHE_MISS  = NriBit(0)
+    FAIL_ON_CACHE_MISS  = NriBit(0) // "CreateComputePipeline" returns "FAILURE" if the pipeline is not found in the supplied cache (requires "features.pipelineCacheControl")
 );
 
-// "data" can be NULL to start with an empty cache, or a previously serialized blob from "GetPipelineCacheData"
-// "CreatePipelineCache" returns:
-//  - "SUCCESS" with a NOP cache if the device cannot do PSO caching (check "features.pipelineCache" if you need to know whether the cache is real)
-//  - "FAILURE" if the supplied blob is stale (e.g., driver was upgraded) - the caller can retry with "data = NULL" to get a fresh empty cache
 NriStruct(PipelineCacheDesc) {
-    const void* data;
-    uint64_t size;
+    NriOptional const void* data; // "data = NULL" means empty cache
+    NriOptional uint64_t size;
 };
 
 // It's recommended to use "NRI.hlsl" in the shader code
@@ -1518,17 +1507,17 @@ NriStruct(GraphicsPipelineDesc) {
     Nri(OutputMergerDesc) outputMerger;
     const NriPtr(ShaderDesc) shaders;
     uint32_t shaderNum;
-    NriOptional Nri(Robustness) robustness;
-    NriOptional const NriPtr(PipelineCache) cache;     // if non-NULL, pipeline creation can be served from a cached blob and the result will be added to the cache on a miss
     Nri(GraphicsPipelineBits) flags;
+    Nri(Robustness) robustness;
+    NriOptional const NriPtr(PipelineCache) cache; // if non-NULL, pipeline creation can be served from a cached blob and the result will be added to the cache on a miss
 };
 
 NriStruct(ComputePipelineDesc) {
     const NriPtr(PipelineLayout) pipelineLayout;
     Nri(ShaderDesc) shader;
-    NriOptional Nri(Robustness) robustness;
-    NriOptional const NriPtr(PipelineCache) cache;
     Nri(ComputePipelineBits) flags;
+    Nri(Robustness) robustness;
+    NriOptional const NriPtr(PipelineCache) cache; // if non-NULL, pipeline creation can be served from a cached blob and the result will be added to the cache on a miss
 };
 
 #pragma endregion
@@ -2096,8 +2085,8 @@ NriStruct(DeviceDesc) {
         uint32_t shaderBytecodeDXBC                              : 1; // DXBC can be passed to "ShaderDesc::bytecode"
         uint32_t shaderBytecodeDXIL                              : 1; // DXIL can be passed to "ShaderDesc::bytecode"
         uint32_t shaderBytecodeSPIRV                             : 1; // SPIRV can be passed to "ShaderDesc::bytecode"
-        uint32_t pipelineCache                                   : 1; // PipelineCache can actually store/reuse PSOs (D3D11: false - PipelineCache is a NOP)
-        uint32_t pipelineCacheControl                            : 1; // "FAIL_ON_CACHE_MISS" is enforceable (D3D12: true; VK: requires "VK_EXT_pipeline_creation_cache_control" / VK 1.3 feature)
+        uint32_t pipelineCache                                   : 1; // "PipelineCache" support (NOP fallback if unsupported, except on error)
+        uint32_t pipelineCacheControl                            : 1; // "FAIL_ON_CACHE_MISS" enforces "FAILURE", useful for platforms that prohibit runtime PSO compilation (e.g., Xbox GDK)
     } features;
 
     // Shader features

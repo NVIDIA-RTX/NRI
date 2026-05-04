@@ -4,7 +4,7 @@
 
 namespace nri {
 
-// D3D11 has only an implicit driver shader cache - PipelineCache is a NOP stub here so portable code stays portable
+// Offer a fake cache to honor support and minimize supported/unsupported branching
 struct PipelineCacheD3D11 final : public DebugNameBase {
     inline PipelineCacheD3D11(DeviceD3D11& device)
         : m_Device(device) {
@@ -17,6 +17,17 @@ struct PipelineCacheD3D11 final : public DebugNameBase {
         return m_Device;
     }
 
+    //================================================================================================================
+    // DebugNameBase
+    //================================================================================================================
+
+    inline void SetDebugName(const char*) NRI_DEBUG_NAME_OVERRIDE {
+    }
+
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+
     inline Result Create(const PipelineCacheDesc&) {
         return Result::SUCCESS;
     }
@@ -24,13 +35,6 @@ struct PipelineCacheD3D11 final : public DebugNameBase {
     inline Result GetData(void*, uint64_t& size) const {
         size = 0;
         return Result::SUCCESS;
-    }
-
-    //================================================================================================================
-    // DebugNameBase
-    //================================================================================================================
-
-    inline void SetDebugName(const char*) NRI_DEBUG_NAME_OVERRIDE {
     }
 
 private:

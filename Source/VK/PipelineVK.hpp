@@ -260,7 +260,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     VkPipelineCreateFlags flags = 0;
     if (r.shadingRate)
         flags |= VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
-    if ((graphicsPipelineDesc.flags & GraphicsPipelineBits::FAIL_ON_CACHE_MISS) && m_Device.m_IsSupported.pipelineCacheControl)
+    if ((graphicsPipelineDesc.flags & GraphicsPipelineBits::FAIL_ON_CACHE_MISS) && m_Device.GetDesc().features.pipelineCacheControl)
         flags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT;
 
     const PipelineLayoutVK& pipelineLayoutVK = *(PipelineLayoutVK*)graphicsPipelineDesc.pipelineLayout;
@@ -336,7 +336,7 @@ Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc) {
     };
 
     VkPipelineCreateFlags computeFlags = 0;
-    if ((computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS) && m_Device.m_IsSupported.pipelineCacheControl)
+    if ((computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS) && m_Device.GetDesc().features.pipelineCacheControl)
         computeFlags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT;
 
     VkComputePipelineCreateInfo info = {
@@ -455,7 +455,7 @@ Result PipelineVK::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc) 
         createInfo.flags |= VK_PIPELINE_CREATE_RAY_TRACING_SKIP_AABBS_BIT_KHR;
     if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::ALLOW_MICROMAPS)
         createInfo.flags |= VK_PIPELINE_CREATE_RAY_TRACING_OPACITY_MICROMAP_BIT_EXT;
-    if ((rayTracingPipelineDesc.flags & RayTracingPipelineBits::FAIL_ON_CACHE_MISS) && m_Device.m_IsSupported.pipelineCacheControl)
+    if ((rayTracingPipelineDesc.flags & RayTracingPipelineBits::FAIL_ON_CACHE_MISS) && m_Device.GetDesc().features.pipelineCacheControl)
         createInfo.flags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT;
 
     VkPipelineRobustnessCreateInfoEXT robustnessInfo = {VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO_EXT};

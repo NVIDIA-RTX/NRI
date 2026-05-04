@@ -147,6 +147,10 @@ Result nri::GetResultFromHRESULT(long result) {
         case DXGI_ERROR_HW_PROTECTION_OUTOFMEMORY:
             return Result::OUT_OF_MEMORY;
 
+        case D3D12_ERROR_DRIVER_VERSION_MISMATCH:
+        case D3D12_ERROR_ADAPTER_NOT_FOUND:
+            return Result::OUT_OF_DATE;
+
         default:
             return Result::FAILURE;
     }

@@ -477,6 +477,12 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.other.shadingRateAttachmentTileSize = (uint8_t)options6.ShadingRateImageTileSize;
     m_Desc.features.additionalShadingRates = options6.AdditionalShadingRatesSupported;
 
+    D3D12_FEATURE_DATA_SHADER_CACHE shaderCache = {};
+    hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_SHADER_CACHE, &shaderCache, sizeof(shaderCache));
+    if (FAILED(hr))
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(shaderCache) failed, result = 0x%08X!", hr);
+    const bool isPipelineLibrarySupported = (shaderCache.SupportFlags & D3D12_SHADER_CACHE_SUPPORT_LIBRARY) != 0;
+
     // Windows 10 2004 (build 19041)
     D3D12_FEATURE_DATA_D3D12_OPTIONS7 options7 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &options7, sizeof(options7));
@@ -565,12 +571,6 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS21, &options21, sizeof(options21));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options21) failed, result = 0x%08X!", hr);
-
-    D3D12_FEATURE_DATA_SHADER_CACHE shaderCache = {};
-    hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_SHADER_CACHE, &shaderCache, sizeof(shaderCache));
-    if (FAILED(hr))
-        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(shaderCache) failed, result = 0x%08X!", hr);
-    const bool isPipelineLibrarySupported = (shaderCache.SupportFlags & D3D12_SHADER_CACHE_SUPPORT_LIBRARY) != 0;
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS22 options22 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS22, &options22, sizeof(options22));

@@ -84,7 +84,7 @@ NriStruct(CoreInterface) {
     Nri(Result)         (NRI_CALL *CreatePipelineLayout)            (NriRef(Device) device, const NriRef(PipelineLayoutDesc) pipelineLayoutDesc, NriOut NriRef(PipelineLayout*) pipelineLayout);
     Nri(Result)         (NRI_CALL *CreateGraphicsPipeline)          (NriRef(Device) device, const NriRef(GraphicsPipelineDesc) graphicsPipelineDesc, NriOut NriRef(Pipeline*) pipeline);
     Nri(Result)         (NRI_CALL *CreateComputePipeline)           (NriRef(Device) device, const NriRef(ComputePipelineDesc) computePipelineDesc, NriOut NriRef(Pipeline*) pipeline);
-    Nri(Result)         (NRI_CALL *CreatePipelineCache)             (NriRef(Device) device, const NriRef(PipelineCacheDesc) pipelineCacheDesc, NriOut NriRef(PipelineCache*) pipelineCache);
+    Nri(Result)         (NRI_CALL *CreatePipelineCache)             (NriRef(Device) device, const NriRef(PipelineCacheDesc) pipelineCacheDesc, NriOut NriRef(PipelineCache*) pipelineCache); // "OUT_OF_DATE" is returned on stale data, try to start over with an empty cache
     Nri(Result)         (NRI_CALL *CreateQueryPool)                 (NriRef(Device) device, const NriRef(QueryPoolDesc) queryPoolDesc, NriOut NriRef(QueryPool*) queryPool);
     Nri(Result)         (NRI_CALL *CreateSampler)                   (NriRef(Device) device, const NriRef(SamplerDesc) samplerDesc, NriOut NriRef(Descriptor*) sampler);
     Nri(Result)         (NRI_CALL *CreateBufferView)                (const NriRef(BufferViewDesc) bufferViewDesc, NriOut NriRef(Descriptor*) bufferView);
@@ -108,13 +108,13 @@ NriStruct(CoreInterface) {
     void                (NRI_CALL *FreeMemory)                      (NriPtr(Memory) memory);
 
     // Resources and memory (VK style)
-    //  - create a resource (buffer or texture)
-    //  - use "Get[Resource]MemoryDesc" to get "MemoryDesc" ("usageBits" and "MemoryLocation" affect returned "MemoryType")
-    //  - (optional) group returned "MemoryDesc"s by "MemoryType", but don't group if "mustBeDedicated = true"
-    //  - (optional) sort returned "MemoryDesc"s by alignment
-    //  - call "AllocateMemory" (even if "mustBeDedicated = true")
-    //  - call "Bind[Resource]Memory" to bind resources to "Memory" objects
-    //  - (optional) "CalculateAllocationNumber" and "AllocateAndBindMemory" from "NRIHelper" interface simplify this process for buffers and textures
+    // - create a resource (buffer or texture)
+    // - use "Get[Resource]MemoryDesc" to get "MemoryDesc" ("usageBits" and "MemoryLocation" affect returned "MemoryType")
+    // - (optional) group returned "MemoryDesc"s by "MemoryType", but don't group if "mustBeDedicated = true"
+    // - (optional) sort returned "MemoryDesc"s by alignment
+    // - call "AllocateMemory" (even if "mustBeDedicated = true")
+    // - call "Bind[Resource]Memory" to bind resources to "Memory" objects
+    // - (optional) "CalculateAllocationNumber" and "AllocateAndBindMemory" from "NRIHelper" interface simplify this process for buffers and textures
     Nri(Result)         (NRI_CALL *CreateBuffer)                    (NriRef(Device) device, const NriRef(BufferDesc) bufferDesc, NriOut NriRef(Buffer*) buffer);
     Nri(Result)         (NRI_CALL *CreateTexture)                   (NriRef(Device) device, const NriRef(TextureDesc) textureDesc, NriOut NriRef(Texture*) texture);
     void                (NRI_CALL *GetBufferMemoryDesc)             (const NriRef(Buffer) buffer, Nri(MemoryLocation) memoryLocation, NriOut NriRef(MemoryDesc) memoryDesc);
@@ -137,10 +137,10 @@ NriStruct(CoreInterface) {
     // - "ResetDescriptorPool" resets the entire pool and wipes out all allocated descriptor sets. "DescriptorSet" is a tiny struct (<= 48 bytes),
     //   so lots of descriptor sets can be created in advance and reused without calling "ResetDescriptorPool"
     // - if there is a directly indexed descriptor heap:
-    //    - D3D12: "GetDescriptorSetOffsets" returns offsets in resource and sampler descriptor heaps
-    //       - these offsets are needed in shaders, if the corresponding descriptor set is not the first allocated from the descriptor pool
-    //    - VK: "GetDescriptorSetOffsets" returns "0"
-    //       - use "-fvk-bind-resource-heap" and "-fvk-bind-sampler-heap" DXC options to define bindings mimicking corresponding heaps
+    //   - D3D12: "GetDescriptorSetOffsets" returns offsets in resource and sampler descriptor heaps
+    //     - these offsets are needed in shaders, if the corresponding descriptor set is not the first allocated from the descriptor pool
+    //   - VK: "GetDescriptorSetOffsets" returns "0"
+    //     - use "-fvk-bind-resource-heap" and "-fvk-bind-sampler-heap" DXC options to define bindings mimicking corresponding heaps
     Nri(Result)         (NRI_CALL *AllocateDescriptorSets)          (NriRef(DescriptorPool) descriptorPool, const NriRef(PipelineLayout) pipelineLayout, uint32_t setIndex, NriOut NriPtr(DescriptorSet)* descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum);
     void                (NRI_CALL *UpdateDescriptorRanges)          (const NriPtr(UpdateDescriptorRangeDesc) updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum);
     void                (NRI_CALL *CopyDescriptorRanges)            (const NriPtr(CopyDescriptorRangeDesc) copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum);
@@ -192,8 +192,8 @@ NriStruct(CoreInterface) {
             void                (NRI_CALL *CmdDrawIndexed)          (NriRef(CommandBuffer) commandBuffer, const NriRef(DrawIndexedDesc) drawIndexedDesc);
 
             // Draw indirect:
-            //  - drawNum = min(drawNum, countBuffer ? countBuffer[countBufferOffset] : INF)
-            //  - see "Modified draw command signatures"
+            // - drawNum = min(drawNum, countBuffer ? countBuffer[countBufferOffset] : INF)
+            // - see "Modified draw command signatures"
             void                (NRI_CALL *CmdDrawIndirect)         (NriRef(CommandBuffer) commandBuffer, const NriRef(Buffer) buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, NriOptional const NriPtr(Buffer) countBuffer, uint64_t countBufferOffset); // "buffer" contains "Draw(Base)Desc" commands
             void                (NRI_CALL *CmdDrawIndexedIndirect)  (NriRef(CommandBuffer) commandBuffer, const NriRef(Buffer) buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, NriOptional const NriPtr(Buffer) countBuffer, uint64_t countBufferOffset); // "buffer" contains "DrawIndexed(Base)Desc" commands
         // }                }
@@ -260,9 +260,8 @@ NriStruct(CoreInterface) {
     uint64_t            (NRI_CALL *GetBufferDeviceAddress)          (const NriRef(Buffer) buffer);
 
     // Pipeline cache (PSO blob storage, persisted across runs)
-    //  - Threadsafe: no - external synchronization required, call after all pipeline creations using this cache have completed
-    //  - Two-call pattern: pass "dst = NULL" to query required "*size", then call again with allocated buffer
-    //  - D3D11: NOP (only an implicit shader cache exists), "*size" is set to 0
+    // - Threadsafe: no, external synchronization required, call after all pipeline creations using this cache have completed
+    // - 2-call pattern: pass "dst = NULL" to query required "size", then call again with allocated "dst"
     Nri(Result)         (NRI_CALL *GetPipelineCacheData)            (NriRef(PipelineCache) pipelineCache, NriOut void* dst, NonNriRef(uint64_t) size);
 
     // Debug name for any object declared as "NriForwardStruct" (skipped for buffers & textures in D3D if they are not bound to a memory)

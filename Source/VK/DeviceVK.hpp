@@ -673,7 +673,6 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.robustness = features.features.robustBufferAccess != 0 && features13.robustImageAccess != 0;
     m_IsSupported.robustness2 = Robustness2Features.robustBufferAccess2 != 0 && Robustness2Features.robustImageAccess2 != 0;
     m_IsSupported.pipelineRobustness = features14.pipelineRobustness;
-    m_IsSupported.pipelineCacheControl = features13.pipelineCreationCacheControl;
     m_IsSupported.swapChainMaintenance1 = SwapchainMaintenance1Features.swapchainMaintenance1;
     m_IsSupported.fifoLatestReady = PresentModeFifoLatestReadyFeatures.presentModeFifoLatestReady;
     m_IsSupported.unifiedImageLayoutsVideo = UnifiedImageLayoutsFeatures.unifiedImageLayoutsVideo;
@@ -1150,7 +1149,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.meshShader = MeshShaderFeatures.meshShader != 0 && MeshShaderFeatures.taskShader != 0;
         m_Desc.features.lowLatency = m_IsSupported.presentId != 0 && IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, desiredDeviceExts);
         m_Desc.features.pipelineCache = true;
-        m_Desc.features.pipelineCacheControl = m_IsSupported.pipelineCacheControl;
+        m_Desc.features.pipelineCacheControl = features13.pipelineCreationCacheControl;
 
         m_Desc.features.componentSwizzle = true;
         m_Desc.features.independentFrontAndBackStencilReferenceAndMasks = true;

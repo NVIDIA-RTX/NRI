@@ -24,7 +24,7 @@ NriBits(RayTracingPipelineBits, uint8_t,
     SKIP_TRIANGLES              = NriBit(0), // provides knowledge that "triangles" doesn't need to be considered
     SKIP_AABBS                  = NriBit(1), // provides knowledge that "aabbs" doesn't need to be considered
     ALLOW_MICROMAPS             = NriBit(2), // specifies that the ray tracing pipeline can be used with acceleration structures which reference micromaps
-    FAIL_ON_CACHE_MISS          = NriBit(3)  // pipeline creation returns "FAILURE" if a matching blob is not found in the supplied cache (requires "features.pipelineCacheControl")
+    FAIL_ON_CACHE_MISS          = NriBit(3)  // "CreateRayTracingPipeline" returns "FAILURE" if the pipeline is not found in the supplied cache (requires "features.pipelineCacheControl")
 );
 
 NriStruct(ShaderLibraryDesc) {
@@ -49,8 +49,8 @@ NriStruct(RayTracingPipelineDesc) {
     uint32_t rayPayloadMaxSize;
     uint32_t rayHitAttributeMaxSize;
     Nri(RayTracingPipelineBits) flags;
-    NriOptional Nri(Robustness) robustness;
-    NriOptional const NriPtr(PipelineCache) cache;     // VK: passed to "vkCreateRayTracingPipelinesKHR"; D3D12: NOP (state objects are not stored in "ID3D12PipelineLibrary")
+    Nri(Robustness) robustness;
+    NriOptional const NriPtr(PipelineCache) cache; // if non-NULL, pipeline creation can be served from a cached blob and the result will be added to the cache on a miss
 };
 
 #pragma endregion

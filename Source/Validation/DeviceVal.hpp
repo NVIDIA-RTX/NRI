@@ -481,8 +481,8 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
     if (graphicsPipelineDesc.flags & GraphicsPipelineBits::FAIL_ON_CACHE_MISS) {
         if (!GetDesc().features.pipelineCacheControl)
             NRI_REPORT_WARNING(this, "'features.pipelineCacheControl' is false - 'FAIL_ON_CACHE_MISS' will be silently ignored");
-        else if (graphicsPipelineDesc.cache == nullptr)
-            NRI_REPORT_WARNING(this, "'flags' has FAIL_ON_CACHE_MISS set but 'cache' is NULL - the create will always fail");
+        else if (!graphicsPipelineDesc.cache)
+            NRI_REPORT_WARNING(this, "'flags' has 'FAIL_ON_CACHE_MISS' set but 'cache' is NULL - the create will always fail");
     }
 
     auto graphicsPipelineDescImpl = graphicsPipelineDesc;
@@ -510,8 +510,8 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const ComputePipelineDesc& computePi
     if (computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS) {
         if (!GetDesc().features.pipelineCacheControl)
             NRI_REPORT_WARNING(this, "'features.pipelineCacheControl' is false - 'FAIL_ON_CACHE_MISS' will be silently ignored");
-        else if (computePipelineDesc.cache == nullptr)
-            NRI_REPORT_WARNING(this, "'flags' has FAIL_ON_CACHE_MISS set but 'cache' is NULL - the create will always fail");
+        else if (!computePipelineDesc.cache)
+            NRI_REPORT_WARNING(this, "'flags' has 'FAIL_ON_CACHE_MISS' set but 'cache' is NULL - the create will always fail");
     }
 
     auto computePipelineDescImpl = computePipelineDesc;
@@ -1355,8 +1355,8 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const RayTracingPipelineDesc& rayTra
     if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::FAIL_ON_CACHE_MISS) {
         if (!GetDesc().features.pipelineCacheControl)
             NRI_REPORT_WARNING(this, "'features.pipelineCacheControl' is false - 'FAIL_ON_CACHE_MISS' will be silently ignored");
-        else if (rayTracingPipelineDesc.cache == nullptr)
-            NRI_REPORT_WARNING(this, "'flags' has FAIL_ON_CACHE_MISS set but 'cache' is NULL - the create will always fail");
+        else if (!rayTracingPipelineDesc.cache)
+            NRI_REPORT_WARNING(this, "'flags' has 'FAIL_ON_CACHE_MISS' set but 'cache' is NULL - the create will always fail");
     }
 
     auto pipelineDescImpl = rayTracingPipelineDesc;

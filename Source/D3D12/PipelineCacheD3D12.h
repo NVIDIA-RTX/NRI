@@ -11,9 +11,6 @@ struct PipelineCacheD3D12 final : public DebugNameBase {
     }
 
     inline ~PipelineCacheD3D12() {
-        // m_Library must be released BEFORE m_Blob is freed - the library's lifetime depends on the blob it was created from.
-        // ComPtr's destruction order follows reverse declaration order, but be explicit to make the dependency obvious.
-        m_Library = nullptr;
     }
 
     inline DeviceD3D12& GetDevice() const {
@@ -41,7 +38,7 @@ struct PipelineCacheD3D12 final : public DebugNameBase {
 
 private:
     DeviceD3D12& m_Device;
-    Vector<uint8_t> m_Blob;                       // owned copy - "ID3D12Device1::CreatePipelineLibrary" requires the source data to outlive the library
+    Vector<uint8_t> m_Blob; // do not sort, becaquse "m_Library" must be released before "m_Blob"
     ComPtr<ID3D12PipelineLibrary1> m_Library;
     Lock m_StoreLock;
 };

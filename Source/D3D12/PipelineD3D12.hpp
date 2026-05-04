@@ -451,24 +451,26 @@ Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipel
 
     PipelineCacheD3D12* cache = (PipelineCacheD3D12*)graphicsPipelineDesc.cache;
     ID3D12PipelineLibrary1* lib = cache ? cache->GetLibrary() : nullptr;
-    wchar_t cacheName[24];
+    wchar_t cacheName[24] = {};
+
+    HRESULT hr = E_FAIL;
     if (lib) {
         FormatPipelineCacheName(HashGraphicsPipelineDesc(graphicsPipelineDesc), cacheName);
-        HRESULT loadHr = lib->LoadPipeline(cacheName, &pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState));
-        if (SUCCEEDED(loadHr))
+        hr = lib->LoadPipeline(cacheName, &pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState));
+        if (SUCCEEDED(hr))
             return Result::SUCCESS;
-        if (graphicsPipelineDesc.flags & GraphicsPipelineBits::FAIL_ON_CACHE_MISS)
-            return Result::FAILURE;
-    } else if (graphicsPipelineDesc.flags & GraphicsPipelineBits::FAIL_ON_CACHE_MISS) {
-        return Result::FAILURE;
     }
 
-    HRESULT hr = m_Device->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState));
+    if (graphicsPipelineDesc.flags & GraphicsPipelineBits::FAIL_ON_CACHE_MISS) {
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12PipelineLibrary::LoadPipeline");
+    }
+
+    hr = m_Device->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState));
     NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device2::CreatePipelineState");
 
     if (lib) {
         ExclusiveScope lock(cache->GetStoreLock());
-        lib->StorePipeline(cacheName, m_PipelineState); // ignore failures (e.g., name already present); fallback PSO is still valid
+        lib->StorePipeline(cacheName, m_PipelineState); // ignore failures (e.g., name already present), fallback PSO is still valid
     }
 
     return Result::SUCCESS;
@@ -491,24 +493,28 @@ Result PipelineD3D12::Create(const ComputePipelineDesc& computePipelineDesc) {
 
     PipelineCacheD3D12* cache = (PipelineCacheD3D12*)computePipelineDesc.cache;
     ID3D12PipelineLibrary1* lib = cache ? cache->GetLibrary() : nullptr;
-    wchar_t cacheName[24];
+    wchar_t cacheName[24] = {};
+
+    HRESULT hr = E_FAIL;
     if (lib) {
         FormatPipelineCacheName(HashComputePipelineDesc(computePipelineDesc), cacheName);
-        HRESULT loadHr = lib->LoadComputePipeline(cacheName, &computePipleineStateDesc, IID_PPV_ARGS(&m_PipelineState));
-        if (SUCCEEDED(loadHr))
+        hr = lib->LoadComputePipeline(cacheName, &computePipleineStateDesc, IID_PPV_ARGS(&m_PipelineState));
+        if (SUCCEEDED(hr))
             return Result::SUCCESS;
-        if (computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS)
-            return Result::FAILURE;
-    } else if (computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS) {
-        return Result::FAILURE;
     }
 
-    HRESULT hr = m_Device->CreateComputePipelineState(&computePipleineStateDesc, IID_PPV_ARGS(&m_PipelineState));
+    if (computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS) {
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12PipelineLibrary::LoadComputePipeline");
+    }
+
+    hr = m_Device->CreateComputePipelineState(&computePipleineStateDesc, IID_PPV_ARGS(&m_PipelineState));
     NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateComputePipelineState");
 
     if (lib) {
         ExclusiveScope lock(cache->GetStoreLock());
-        lib->StorePipeline(cacheName, m_PipelineState);
+
+        hr = lib->StorePipeline(cacheName, m_PipelineState);
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12PipelineLibrary::StorePipeline");
     }
 
     return Result::SUCCESS;
