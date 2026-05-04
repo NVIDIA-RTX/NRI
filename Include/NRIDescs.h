@@ -1768,8 +1768,8 @@ NriStruct(DeviceDesc) {
     // Viewport
     struct {
         uint32_t maxNum;
-        int16_t boundsMin;
-        int16_t boundsMax;
+        int32_t boundsMin;
+        int32_t boundsMax;
     } viewport;
 
     // Dimensions
