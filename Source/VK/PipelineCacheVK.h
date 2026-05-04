@@ -19,14 +19,18 @@ struct PipelineCacheVK final : public DebugNameBase {
 
     ~PipelineCacheVK();
 
-    Result Create(const PipelineCacheDesc& pipelineCacheDesc);
-    Result GetData(void* dst, uint64_t& size) const;
-
     //================================================================================================================
     // DebugNameBase
     //================================================================================================================
 
     void SetDebugName(const char* name) NRI_DEBUG_NAME_OVERRIDE;
+
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+
+    Result Create(const PipelineCacheDesc& pipelineCacheDesc);
+    Result GetData(void* dst, uint64_t& size) const;
 
 private:
     DeviceVK& m_Device;

@@ -25,9 +25,6 @@ struct PipelineCacheD3D12 final : public DebugNameBase {
         return m_StoreLock;
     }
 
-    Result Create(const PipelineCacheDesc& pipelineCacheDesc);
-    Result GetData(void* dst, uint64_t& size) const;
-
     //================================================================================================================
     // DebugNameBase
     //================================================================================================================
@@ -35,6 +32,13 @@ struct PipelineCacheD3D12 final : public DebugNameBase {
     void SetDebugName(const char* name) NRI_DEBUG_NAME_OVERRIDE {
         NRI_SET_D3D_DEBUG_OBJECT_NAME(m_Library, name);
     }
+
+    //================================================================================================================
+    // NRI
+    //================================================================================================================
+
+    Result Create(const PipelineCacheDesc& pipelineCacheDesc);
+    Result GetData(void* dst, uint64_t& size) const;
 
 private:
     DeviceD3D12& m_Device;
