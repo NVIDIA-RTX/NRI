@@ -295,6 +295,12 @@ static Result NRI_CALL CreateComputePipeline(Device&, const ComputePipelineDesc&
     return Result::SUCCESS;
 }
 
+static Result NRI_CALL CreatePipelineCache(Device&, const PipelineCacheDesc&, PipelineCache*& pipelineCache) {
+    pipelineCache = DummyObject<PipelineCache>();
+
+    return Result::SUCCESS;
+}
+
 static Result NRI_CALL CreateQueryPool(Device&, const QueryPoolDesc&, QueryPool*& queryPool) {
     queryPool = DummyObject<QueryPool>();
 
@@ -341,6 +347,14 @@ static void NRI_CALL DestroyPipelineLayout(PipelineLayout*) {
 }
 
 static void NRI_CALL DestroyPipeline(Pipeline*) {
+}
+
+static void NRI_CALL DestroyPipelineCache(PipelineCache*) {
+}
+
+static Result NRI_CALL GetPipelineCacheData(PipelineCache&, void*, uint64_t& size) {
+    size = 0;
+    return Result::SUCCESS;
 }
 
 static void NRI_CALL DestroyQueryPool(QueryPool*) {
@@ -658,6 +672,7 @@ Result DeviceNONE::FillFunctionTable(CoreInterface& table) const {
     table.CreatePipelineLayout = ::CreatePipelineLayout;
     table.CreateGraphicsPipeline = ::CreateGraphicsPipeline;
     table.CreateComputePipeline = ::CreateComputePipeline;
+    table.CreatePipelineCache = ::CreatePipelineCache;
     table.CreateQueryPool = ::CreateQueryPool;
     table.CreateFence = ::CreateFence;
     table.DestroyCommandAllocator = ::DestroyCommandAllocator;
@@ -668,6 +683,8 @@ Result DeviceNONE::FillFunctionTable(CoreInterface& table) const {
     table.DestroyDescriptor = ::DestroyDescriptor;
     table.DestroyPipelineLayout = ::DestroyPipelineLayout;
     table.DestroyPipeline = ::DestroyPipeline;
+    table.DestroyPipelineCache = ::DestroyPipelineCache;
+    table.GetPipelineCacheData = ::GetPipelineCacheData;
     table.DestroyQueryPool = ::DestroyQueryPool;
     table.DestroyFence = ::DestroyFence;
     table.AllocateMemory = ::AllocateMemory;

@@ -77,6 +77,9 @@ struct DispatchTable {
     VK_FUNC(CreateShaderModule);                          // + | +
     VK_FUNC(CreateGraphicsPipelines);                     // + | +
     VK_FUNC(CreateComputePipelines);                      // + | +
+    VK_FUNC(CreatePipelineCache);                         // + | +
+    VK_FUNC(DestroyPipelineCache);                        // - | +
+    VK_FUNC(GetPipelineCacheData);                        // - | +
     VK_FUNC(AllocateMemory);                              // + | +
     VK_FUNC(DestroyBuffer);                               // - | +
     VK_FUNC(DestroyImage);                                // - | +

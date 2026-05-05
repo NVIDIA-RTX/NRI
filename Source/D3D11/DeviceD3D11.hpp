@@ -512,6 +512,8 @@ void DeviceD3D11::FillDesc() {
     m_Desc.features.getMemoryDesc2 = true;
     m_Desc.features.swapChain = HasOutput();
     m_Desc.features.lowLatency = HasNvExt();
+    m_Desc.features.pipelineCache = false; // D3D11 only has an implicit driver shader cache, "PipelineCache" is a NOP
+    m_Desc.features.pipelineCacheControl = false;
 
     m_Desc.features.filterOpMinMax = options1.MinMaxFiltering != 0;
     m_Desc.features.logicOp = options.OutputMergerLogicOp != 0;

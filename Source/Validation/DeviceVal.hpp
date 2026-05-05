@@ -496,8 +496,16 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
     if (graphicsPipelineDesc.outputMerger.viewMask != 0)
         NRI_RETURN_ON_FAILURE(this, GetDesc().features.flexibleMultiview || GetDesc().features.layerBasedMultiview || GetDesc().features.viewportBasedMultiview, Result::INVALID_ARGUMENT, "multiview is not supported");
 
+    if (graphicsPipelineDesc.flags & GraphicsPipelineBits::FAIL_ON_CACHE_MISS) {
+        if (!GetDesc().features.pipelineCacheControl)
+            NRI_REPORT_WARNING(this, "'features.pipelineCacheControl' is false - 'FAIL_ON_CACHE_MISS' will be silently ignored");
+        else if (!graphicsPipelineDesc.cache)
+            NRI_REPORT_WARNING(this, "'flags' has 'FAIL_ON_CACHE_MISS' set but 'cache' is NULL - the create will always fail");
+    }
+
     auto graphicsPipelineDescImpl = graphicsPipelineDesc;
     graphicsPipelineDescImpl.pipelineLayout = NRI_GET_IMPL(PipelineLayout, graphicsPipelineDesc.pipelineLayout);
+    graphicsPipelineDescImpl.cache = NRI_GET_IMPL(PipelineCache, graphicsPipelineDesc.cache);
 
     Pipeline* pipelineImpl = nullptr;
     Result result = m_iCoreImpl.CreateGraphicsPipeline(m_Impl, graphicsPipelineDescImpl, pipelineImpl);
@@ -515,8 +523,16 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const ComputePipelineDesc& computePi
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.shader.bytecode != nullptr, Result::INVALID_ARGUMENT, "'shader.bytecode' is NULL");
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.shader.stage == StageBits::COMPUTE_SHADER, Result::INVALID_ARGUMENT, "'shader.stage' must be 'StageBits::COMPUTE_SHADER'");
 
+    if (computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS) {
+        if (!GetDesc().features.pipelineCacheControl)
+            NRI_REPORT_WARNING(this, "'features.pipelineCacheControl' is false - 'FAIL_ON_CACHE_MISS' will be silently ignored");
+        else if (!computePipelineDesc.cache)
+            NRI_REPORT_WARNING(this, "'flags' has 'FAIL_ON_CACHE_MISS' set but 'cache' is NULL - the create will always fail");
+    }
+
     auto computePipelineDescImpl = computePipelineDesc;
     computePipelineDescImpl.pipelineLayout = NRI_GET_IMPL(PipelineLayout, computePipelineDesc.pipelineLayout);
+    computePipelineDescImpl.cache = NRI_GET_IMPL(PipelineCache, computePipelineDesc.cache);
 
     Pipeline* pipelineImpl = nullptr;
     Result result = m_iCoreImpl.CreateComputePipeline(m_Impl, computePipelineDescImpl, pipelineImpl);
@@ -526,6 +542,24 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const ComputePipelineDesc& computePi
         pipeline = (Pipeline*)Allocate<PipelineVal>(GetAllocationCallbacks(), *this, pipelineImpl, computePipelineDesc);
 
     return result;
+}
+
+NRI_INLINE Result DeviceVal::CreatePipelineCache(const PipelineCacheDesc& pipelineCacheDesc, PipelineCache*& pipelineCache) {
+    NRI_RETURN_ON_FAILURE(this, (pipelineCacheDesc.data == nullptr) == (pipelineCacheDesc.size == 0), Result::INVALID_ARGUMENT, "'data' and 'size' must be both NULL/0 (empty cache) or both non-NULL/non-0 (load from blob)");
+
+    PipelineCache* pipelineCacheImpl = nullptr;
+    Result result = m_iCoreImpl.CreatePipelineCache(m_Impl, pipelineCacheDesc, pipelineCacheImpl);
+
+    pipelineCache = nullptr;
+    if (result == Result::SUCCESS)
+        pipelineCache = (PipelineCache*)Allocate<PipelineCacheVal>(GetAllocationCallbacks(), *this, pipelineCacheImpl);
+
+    return result;
+}
+
+NRI_INLINE void DeviceVal::DestroyPipelineCache(PipelineCache* pipelineCache) {
+    m_iCoreImpl.DestroyPipelineCache(NRI_GET_IMPL(PipelineCache, pipelineCache));
+    Destroy((PipelineCacheVal*)pipelineCache);
 }
 
 NRI_INLINE Result DeviceVal::CreateQueryPool(const QueryPoolDesc& queryPoolDesc, QueryPool*& queryPool) {
@@ -1330,8 +1364,16 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const RayTracingPipelineDesc& rayTra
         NRI_RETURN_ON_FAILURE(this, IsRayTracingShaderStageValid(shaderDesc.stage, StageBits::RAY_TRACING_SHADERS), Result::INVALID_ARGUMENT, "'shaderLibrary->shaders[%u].stage' must include only 1 ray tracing shader stage", i);
     }
 
+    if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::FAIL_ON_CACHE_MISS) {
+        if (!GetDesc().features.pipelineCacheControl)
+            NRI_REPORT_WARNING(this, "'features.pipelineCacheControl' is false - 'FAIL_ON_CACHE_MISS' will be silently ignored");
+        else if (!rayTracingPipelineDesc.cache)
+            NRI_REPORT_WARNING(this, "'flags' has 'FAIL_ON_CACHE_MISS' set but 'cache' is NULL - the create will always fail");
+    }
+
     auto pipelineDescImpl = rayTracingPipelineDesc;
     pipelineDescImpl.pipelineLayout = NRI_GET_IMPL(PipelineLayout, rayTracingPipelineDesc.pipelineLayout);
+    pipelineDescImpl.cache = NRI_GET_IMPL(PipelineCache, rayTracingPipelineDesc.cache);
 
     Pipeline* pipelineImpl = nullptr;
     Result result = m_iRayTracingImpl.CreateRayTracingPipeline(m_Impl, pipelineDescImpl, pipelineImpl);

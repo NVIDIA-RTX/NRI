@@ -53,6 +53,7 @@ NriForwardStruct(CommandBuffer);    // used to record commands which can be subs
 NriForwardStruct(DescriptorSet);    // a continuous set of descriptors
 NriForwardStruct(DescriptorPool);   // maintains a pool of descriptors, descriptor sets are allocated from (aka descriptor heap)
 NriForwardStruct(PipelineLayout);   // determines the interface between shader stages and shader resources (aka root signature)
+NriForwardStruct(PipelineCache);    // a persistent cache of compiled pipeline state objects (PSOs) to accelerate subsequent PSO creations
 NriForwardStruct(CommandAllocator); // an object that command buffer memory is allocated from
 
 // Basic types
@@ -93,18 +94,19 @@ static const Nri(Dim_t) NriConstant(REMAINING) = 0;     // only for "mipNum" and
 #pragma region [ Common ]
 //============================================================================================================================================================================================
 
-NriEnum(GraphicsAPI, uint8_t,
-    NONE,   // Supports everything, does nothing, returns dummy non-NULL objects and ~0-filled descs, available if "NRI_ENABLE_NONE_SUPPORT = ON" in CMake
-    D3D11,  // Direct3D 11 (feature set 11.1), available if "NRI_ENABLE_D3D11_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm)
-    D3D12,  // Direct3D 12 (D3D12_SDK_VERSION 4 or 618+), available if "NRI_ENABLE_D3D12_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/)
-    VK      // Vulkan 1.4, 1.3 or 1.2+ (can be used on MacOS via MoltenVK), available if "NRI_ENABLE_VK_SUPPORT = ON" in CMake (https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html)
+// "AdapterDesc::supportedGraphicsAPIs" is a mask of supported graphics APIs
+NriBits(GraphicsAPI, uint8_t,
+    NONE    = NriBit(0), // Supports everything, does nothing, returns dummy non-NULL objects and ~0-filled descs, available if "NRI_ENABLE_NONE_SUPPORT = ON" in CMake
+    D3D11   = NriBit(1), // Direct3D 11 (feature set 11.1), available if "NRI_ENABLE_D3D11_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm)
+    D3D12   = NriBit(2), // Direct3D 12 (D3D12_SDK_VERSION 4 or 618+), available if "NRI_ENABLE_D3D12_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/)
+    VK      = NriBit(3)  // Vulkan 1.4, 1.3 or 1.2+ (can be used on MacOS via MoltenVK), available if "NRI_ENABLE_VK_SUPPORT = ON" in CMake (https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html)
 );
 
 NriEnum(Result, int8_t,
     // All bad, but optionally require an action ("callbackInterface.AbortExecution" is not triggered)
     DEVICE_LOST             = -3,   // may be returned by "QueueSubmit*", "*WaitIdle", "AcquireNextTexture", "QueuePresent", "WaitForPresent"
-    OUT_OF_DATE             = -2,   // VK: swap chain is out of date, can be triggered if "features.resizableSwapChain" is not supported
-    INVALID_SDK             = -1,   // D3D: some interfaces are missing (potential reasons: unable to load "D3D12Core.dll", version or SDK mismatch)
+    OUT_OF_DATE             = -2,   // VK: swap chain is out of date, can be triggered if "features.resizableSwapChain" is not supported; D3D12: shader cache is stale
+    INVALID_SDK             = -1,   // D3D12: some interfaces are missing (potential reasons: unable to load "D3D12Core.dll", version or SDK mismatch, developer mode is not enabled)
 
     // All good
     SUCCESS                 = 0,
@@ -1509,6 +1511,21 @@ NriEnum(Robustness, uint8_t,
     D3D12           // moderate overhead, D3D12-level robust access (requires "VK_EXT_robustness2", soft fallback to VK mode)
 );
 
+NriBits(GraphicsPipelineBits, uint8_t,
+    NONE                = 0,
+    FAIL_ON_CACHE_MISS  = NriBit(0) // "CreateGraphicsPipeline" returns "FAILURE" if the pipeline is not found in the supplied cache (requires "features.pipelineCacheControl")
+);
+
+NriBits(ComputePipelineBits, uint8_t,
+    NONE                = 0,
+    FAIL_ON_CACHE_MISS  = NriBit(0) // "CreateComputePipeline" returns "FAILURE" if the pipeline is not found in the supplied cache (requires "features.pipelineCacheControl")
+);
+
+NriStruct(PipelineCacheDesc) {
+    NriOptional const void* data; // "data = NULL" means empty cache
+    NriOptional uint64_t size;
+};
+
 // It's recommended to use "NRI.hlsl" in the shader code
 NriStruct(ShaderDesc) {
     Nri(StageBits) stage;
@@ -1526,13 +1543,17 @@ NriStruct(GraphicsPipelineDesc) {
     Nri(OutputMergerDesc) outputMerger;
     const NriPtr(ShaderDesc) shaders;
     uint32_t shaderNum;
-    NriOptional Nri(Robustness) robustness;
+    Nri(GraphicsPipelineBits) flags;
+    Nri(Robustness) robustness;
+    NriOptional const NriPtr(PipelineCache) cache; // if non-NULL, pipeline creation can be served from a cached blob and the result will be added to the cache on a miss
 };
 
 NriStruct(ComputePipelineDesc) {
     const NriPtr(PipelineLayout) pipelineLayout;
     Nri(ShaderDesc) shader;
-    NriOptional Nri(Robustness) robustness;
+    Nri(ComputePipelineBits) flags;
+    Nri(Robustness) robustness;
+    NriOptional const NriPtr(PipelineCache) cache; // if non-NULL, pipeline creation can be served from a cached blob and the result will be added to the cache on a miss
 };
 
 #pragma endregion
@@ -1765,9 +1786,11 @@ NriEnum(Vendor, uint8_t,
 
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkPhysicalDeviceType.html
 NriEnum(Architecture, uint8_t,
-    UNKNOWN,    // CPU device, virtual GPU or other
+    UNKNOWN,
+    SOFTWARE,   // CPU
+    VIRTUAL,    // remote desktop?
     INTEGRATED, // UMA
-    DESCRETE    // yes, please!
+    DISCRETE    // yes, please!
 );
 
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkQueueFlagBits.html
@@ -1790,6 +1813,7 @@ NriStruct(AdapterDesc) {
     uint32_t queueNum[(uint32_t)NriScopedMember(QueueType, MAX_NUM)];
     Nri(Vendor) vendor;
     Nri(Architecture) architecture;
+    Nri(GraphicsAPI) supportedGraphicsAPIs;
 };
 
 #define NriShaderModel(major, minor) (major * 100 + minor)
@@ -1805,8 +1829,8 @@ NriStruct(DeviceDesc) {
     // Viewport
     struct {
         uint32_t maxNum;
-        int16_t boundsMin;
-        int16_t boundsMax;
+        int32_t boundsMin;
+        int32_t boundsMax;
     } viewport;
 
     // Dimensions
@@ -2102,6 +2126,8 @@ NriStruct(DeviceDesc) {
         uint32_t shaderBytecodeDXBC                              : 1; // DXBC can be passed to "ShaderDesc::bytecode"
         uint32_t shaderBytecodeDXIL                              : 1; // DXIL can be passed to "ShaderDesc::bytecode"
         uint32_t shaderBytecodeSPIRV                             : 1; // SPIRV can be passed to "ShaderDesc::bytecode"
+        uint32_t pipelineCache                                   : 1; // "PipelineCache" support (NOP fallback if unsupported, except on error)
+        uint32_t pipelineCacheControl                            : 1; // "FAIL_ON_CACHE_MISS" enforces "FAILURE", useful for platforms that prohibit runtime PSO compilation (e.g., Xbox GDK)
     } features;
 
     // Shader features

@@ -471,28 +471,28 @@ struct DisplayDescHelper {
 #define NRI_RETURN_ON_BAD_HRESULT(deviceBase, hr, funcName) \
     if (hr < 0) { \
         Result _result = GetResultFromHRESULT(hr); \
-        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, hr, hr); \
+        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", hr, hr); \
         return _result; \
     }
 
 #define NRI_RETURN_VOID_ON_BAD_HRESULT(deviceBase, hr, funcName) \
     if (hr < 0) { \
         Result _result = GetResultFromHRESULT(hr); \
-        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, hr, hr); \
+        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", hr, hr); \
         return; \
     }
 
 #define NRI_RETURN_ON_BAD_VKRESULT(deviceBase, vkResult, funcName) \
     if (vkResult < 0) { \
         Result _result = GetResultFromVkResult(vkResult); \
-        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, vkResult, vkResult); \
+        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", vkResult, vkResult); \
         return _result; \
     }
 
 #define NRI_RETURN_VOID_ON_BAD_VKRESULT(deviceBase, vkResult, funcName) \
     if (vkResult < 0) { \
         Result _result = GetResultFromVkResult(vkResult); \
-        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", __FUNCTION__, vkResult, vkResult); \
+        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", vkResult, vkResult); \
         return; \
     }
 

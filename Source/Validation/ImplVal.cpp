@@ -13,6 +13,7 @@
 #include "FenceVal.h"
 #include "MemoryVal.h"
 #include "MicromapVal.h"
+#include "PipelineCacheVal.h"
 #include "PipelineLayoutVal.h"
 #include "PipelineVal.h"
 #include "QueryPoolVal.h"
@@ -41,6 +42,7 @@ using namespace nri;
 #include "FenceVal.hpp"
 #include "MemoryVal.hpp"
 #include "MicromapVal.hpp"
+#include "PipelineCacheVal.hpp"
 #include "PipelineLayoutVal.hpp"
 #include "PipelineVal.hpp"
 #include "QueryPoolVal.hpp"
@@ -110,6 +112,14 @@ static Result NRI_CALL CreateComputePipeline(Device& device, const ComputePipeli
     return ((DeviceVal&)device).CreatePipeline(computePipelineDesc, pipeline);
 }
 
+static Result NRI_CALL CreatePipelineCache(Device& device, const PipelineCacheDesc& pipelineCacheDesc, PipelineCache*& pipelineCache) {
+    return ((DeviceVal&)device).CreatePipelineCache(pipelineCacheDesc, pipelineCache);
+}
+
+static Result NRI_CALL GetPipelineCacheData(PipelineCache& pipelineCache, void* dst, uint64_t& size) {
+    return ((PipelineCacheVal&)pipelineCache).GetData(dst, size);
+}
+
 static Result NRI_CALL CreateQueryPool(Device& device, const QueryPoolDesc& queryPoolDesc, QueryPool*& queryPool) {
     return ((DeviceVal&)device).CreateQueryPool(queryPoolDesc, queryPool);
 }
@@ -168,6 +178,11 @@ static void NRI_CALL DestroyPipelineLayout(PipelineLayout* pipelineLayout) {
 static void NRI_CALL DestroyPipeline(Pipeline* pipeline) {
     if (pipeline)
         GetDeviceVal(*pipeline).DestroyPipeline(pipeline);
+}
+
+static void NRI_CALL DestroyPipelineCache(PipelineCache* pipelineCache) {
+    if (pipelineCache)
+        GetDeviceVal(*pipelineCache).DestroyPipelineCache(pipelineCache);
 }
 
 static void NRI_CALL DestroyQueryPool(QueryPool* queryPool) {
@@ -592,6 +607,7 @@ Result DeviceVal::FillFunctionTable(CoreInterface& table) const {
     table.CreatePipelineLayout = ::CreatePipelineLayout;
     table.CreateGraphicsPipeline = ::CreateGraphicsPipeline;
     table.CreateComputePipeline = ::CreateComputePipeline;
+    table.CreatePipelineCache = ::CreatePipelineCache;
     table.CreateQueryPool = ::CreateQueryPool;
     table.CreateFence = ::CreateFence;
     table.DestroyCommandAllocator = ::DestroyCommandAllocator;
@@ -602,6 +618,8 @@ Result DeviceVal::FillFunctionTable(CoreInterface& table) const {
     table.DestroyDescriptor = ::DestroyDescriptor;
     table.DestroyPipelineLayout = ::DestroyPipelineLayout;
     table.DestroyPipeline = ::DestroyPipeline;
+    table.DestroyPipelineCache = ::DestroyPipelineCache;
+    table.GetPipelineCacheData = ::GetPipelineCacheData;
     table.DestroyQueryPool = ::DestroyQueryPool;
     table.DestroyFence = ::DestroyFence;
     table.AllocateMemory = ::AllocateMemory;
