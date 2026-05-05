@@ -290,9 +290,20 @@ static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum
     instanceCreateInfo.pApplicationInfo = &applicationInfo;
 
     VkInstance instance = VK_NULL_HANDLE;
-    PFN_vkDestroyInstance vkDestroyInstance = nullptr;
-
     Uid_t uidNeeded = {};
+    VkResult vkResult = VK_SUCCESS;
+    uint32_t deviceGroupNum = 0;
+    uint32_t maxFamilyNum = 1;
+    VkPhysicalDeviceGroupProperties* deviceGroupProperties = nullptr;
+    VkQueueFamilyProperties2* familyProps2 = nullptr;
+
+    PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = nullptr;
+    PFN_vkCreateInstance vkCreateInstance = nullptr;
+    PFN_vkDestroyInstance vkDestroyInstance = nullptr;
+    PFN_vkEnumeratePhysicalDeviceGroups vkEnumeratePhysicalDeviceGroups = nullptr;
+    PFN_vkGetPhysicalDeviceProperties2 vkGetPhysicalDeviceProperties2 = nullptr;
+    PFN_vkGetPhysicalDeviceMemoryProperties vkGetPhysicalDeviceMemoryProperties = nullptr;
+    PFN_vkGetPhysicalDeviceQueueFamilyProperties2 vkGetPhysicalDeviceQueueFamilyProperties2 = nullptr;
 
 #    ifdef __APPLE__
     std::array<const char*, 2> instanceExtensions = {"VK_KHR_get_physical_device_properties2", VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME};
@@ -308,37 +319,35 @@ static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum
         goto CLEANUP;
 
     // Get the entry point
-    const auto vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)GetSharedLibraryFunction(*loader, "vkGetInstanceProcAddr");
+    vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)GetSharedLibraryFunction(*loader, "vkGetInstanceProcAddr");
     if (!vkGetInstanceProcAddr)
         goto CLEANUP;
 
     // Create instance
-    const auto vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
+    vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
     if (!vkCreateInstance)
         goto CLEANUP;
 
-    VkResult vkResult = vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
+    vkResult = vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
     if (vkResult != VK_SUCCESS)
         goto CLEANUP;
 
     // Get needed functions
     vkDestroyInstance = (PFN_vkDestroyInstance)vkGetInstanceProcAddr(instance, "vkDestroyInstance");
-
-    auto vkEnumeratePhysicalDeviceGroups = (PFN_vkEnumeratePhysicalDeviceGroups)vkGetInstanceProcAddr(instance, "vkEnumeratePhysicalDeviceGroups");
-    auto vkGetPhysicalDeviceProperties2 = (PFN_vkGetPhysicalDeviceProperties2)vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceProperties2");
-    auto vkGetPhysicalDeviceMemoryProperties = (PFN_vkGetPhysicalDeviceMemoryProperties)vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceMemoryProperties");
-    auto vkGetPhysicalDeviceQueueFamilyProperties2 = (PFN_vkGetPhysicalDeviceQueueFamilyProperties2)vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceQueueFamilyProperties2");
+    vkEnumeratePhysicalDeviceGroups = (PFN_vkEnumeratePhysicalDeviceGroups)vkGetInstanceProcAddr(instance, "vkEnumeratePhysicalDeviceGroups");
+    vkGetPhysicalDeviceProperties2 = (PFN_vkGetPhysicalDeviceProperties2)vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceProperties2");
+    vkGetPhysicalDeviceMemoryProperties = (PFN_vkGetPhysicalDeviceMemoryProperties)vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceMemoryProperties");
+    vkGetPhysicalDeviceQueueFamilyProperties2 = (PFN_vkGetPhysicalDeviceQueueFamilyProperties2)vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceQueueFamilyProperties2");
 
     if (!vkDestroyInstance || !vkEnumeratePhysicalDeviceGroups || !vkGetPhysicalDeviceProperties2)
         goto CLEANUP;
 
-    uint32_t deviceGroupNum = 0;
     vkResult = vkEnumeratePhysicalDeviceGroups(instance, &deviceGroupNum, nullptr);
     if (vkResult != VK_SUCCESS)
         goto CLEANUP;
 
     // Query device groups
-    VkPhysicalDeviceGroupProperties* deviceGroupProperties = (VkPhysicalDeviceGroupProperties*)alloca(sizeof(VkPhysicalDeviceGroupProperties) * deviceGroupNum);
+    deviceGroupProperties = (VkPhysicalDeviceGroupProperties*)alloca(sizeof(VkPhysicalDeviceGroupProperties) * deviceGroupNum);
     for (uint32_t i = 0; i < deviceGroupNum; i++) {
         deviceGroupProperties[i].sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES;
         deviceGroupProperties[i].pNext = nullptr;
@@ -346,7 +355,6 @@ static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum
     vkEnumeratePhysicalDeviceGroups(instance, &deviceGroupNum, deviceGroupProperties);
 
     // Max queue families
-    uint32_t maxFamilyNum = 1;
     if (vkGetPhysicalDeviceQueueFamilyProperties2) {
         for (uint32_t i = 0; i < deviceGroupNum; i++) {
             VkPhysicalDevice physicalDevice = deviceGroupProperties[i].physicalDevices[0];
@@ -358,7 +366,7 @@ static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum
         }
     }
 
-    VkQueueFamilyProperties2* familyProps2 = (VkQueueFamilyProperties2*)alloca(sizeof(VkQueueFamilyProperties2) * maxFamilyNum);
+    familyProps2 = (VkQueueFamilyProperties2*)alloca(sizeof(VkQueueFamilyProperties2) * maxFamilyNum);
     for (uint32_t i = 0; i < maxFamilyNum; i++)
         familyProps2[i] = {VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2};
 
