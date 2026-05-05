@@ -559,9 +559,9 @@ NriBits(AccessBits, uint32_t,
 // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_layout
 NriEnum(Layout, uint8_t, // Compatible "AccessBits":
                          // Special
-    UNDEFINED, // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_layout_undefined
-    GENERAL,   // ALL access, required for "SharingMode::SIMULTANEOUS" (but may be suboptimal if "features.unifiedTextureLayouts" is not supported)
-    PRESENT,   // NONE (use "after.stages = StageBits::NONE")
+    UNDEFINED,           // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_layout_undefined
+    GENERAL,             // ALL access, required for "SharingMode::SIMULTANEOUS" (but may be suboptimal if "features.unifiedTextureLayouts" is not supported)
+    PRESENT,             // NONE (use "after.stages = StageBits::NONE")
 
     // Attachment
     COLOR_ATTACHMENT,                  // COLOR_ATTACHMENT_READ/WRITE
