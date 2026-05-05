@@ -94,11 +94,12 @@ static const Nri(Dim_t) NriConstant(REMAINING) = 0;     // only for "mipNum" and
 #pragma region [ Common ]
 //============================================================================================================================================================================================
 
-NriEnum(GraphicsAPI, uint8_t,
-    NONE,   // Supports everything, does nothing, returns dummy non-NULL objects and ~0-filled descs, available if "NRI_ENABLE_NONE_SUPPORT = ON" in CMake
-    D3D11,  // Direct3D 11 (feature set 11.1), available if "NRI_ENABLE_D3D11_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm)
-    D3D12,  // Direct3D 12 (D3D12_SDK_VERSION 4 or 618+), available if "NRI_ENABLE_D3D12_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/)
-    VK      // Vulkan 1.4, 1.3 or 1.2+ (can be used on MacOS via MoltenVK), available if "NRI_ENABLE_VK_SUPPORT = ON" in CMake (https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html)
+// "AdapterDesc::supportedGraphicsAPIs" is a mask of supported graphics APIs
+NriBits(GraphicsAPI, uint8_t,
+    NONE    = NriBit(0), // Supports everything, does nothing, returns dummy non-NULL objects and ~0-filled descs, available if "NRI_ENABLE_NONE_SUPPORT = ON" in CMake
+    D3D11   = NriBit(1), // Direct3D 11 (feature set 11.1), available if "NRI_ENABLE_D3D11_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm)
+    D3D12   = NriBit(2), // Direct3D 12 (D3D12_SDK_VERSION 4 or 618+), available if "NRI_ENABLE_D3D12_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/)
+    VK      = NriBit(3)  // Vulkan 1.4, 1.3 or 1.2+ (can be used on MacOS via MoltenVK), available if "NRI_ENABLE_VK_SUPPORT = ON" in CMake (https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html)
 );
 
 NriEnum(Result, int8_t,
@@ -1750,9 +1751,11 @@ NriEnum(Vendor, uint8_t,
 
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkPhysicalDeviceType.html
 NriEnum(Architecture, uint8_t,
-    UNKNOWN,    // CPU device, virtual GPU or other
+    UNKNOWN,
+    SOFTWARE,   // CPU
+    VIRTUAL,    // remote desktop?
     INTEGRATED, // UMA
-    DESCRETE    // yes, please!
+    DISCRETE    // yes, please!
 );
 
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkQueueFlagBits.html
@@ -1773,6 +1776,7 @@ NriStruct(AdapterDesc) {
     uint32_t queueNum[(uint32_t)NriScopedMember(QueueType, MAX_NUM)];
     Nri(Vendor) vendor;
     Nri(Architecture) architecture;
+    Nri(GraphicsAPI) supportedGraphicsAPIs;
 };
 
 #define NriShaderModel(major, minor) (major * 100 + minor)

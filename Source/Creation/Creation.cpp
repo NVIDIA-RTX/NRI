@@ -27,7 +27,7 @@
 
 #include "SharedExternal.h"
 
-#define ADAPTER_MAX_NUM 32
+#define ADAPTER_MAX_NUM 32u
 
 using namespace nri;
 
@@ -169,129 +169,130 @@ static int SortAdapters(const void* pa, const void* pb) {
 
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
 
-static Result EnumerateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterDescNum, uint64_t precreatedDeviceLuid, DeviceCreationDesc* deviceCreationDesc) {
+static void UpdateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterDescNum, LUID* precreatedLuid) {
     ComPtr<IDXGIFactory4> dxgifactory;
     if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&dxgifactory))))
-        return Result::UNSUPPORTED;
+        return;
 
-    uint32_t adaptersNum = 0;
-    IDXGIAdapter1* adapters[ADAPTER_MAX_NUM];
-
-    for (uint32_t i = 0; i < GetCountOf(adapters); i++) {
-        IDXGIAdapter1* adapter;
+    for (uint32_t i = 0; i < 256 && adapterDescNum < ADAPTER_MAX_NUM; i++) {
+        ComPtr<IDXGIAdapter1> adapter;
         HRESULT hr = dxgifactory->EnumAdapters1(i, &adapter);
         if (hr == DXGI_ERROR_NOT_FOUND)
             break;
 
         DXGI_ADAPTER_DESC1 desc = {};
-        if (adapter->GetDesc1(&desc) == S_OK) {
-            if (desc.Flags == DXGI_ADAPTER_FLAG_NONE) // TODO: DXGI_ADAPTER_FLAG_REMOTE, DXGI_ADAPTER_FLAG_SOFTWARE?
-                adapters[adaptersNum++] = adapter;
-        }
-    }
+        if (FAILED(adapter->GetDesc1(&desc)))
+            continue;
 
-    if (!adaptersNum)
-        return Result::FAILURE;
+        // Logic: append unique or wait for "precreated"
+        Uid_t uid = {};
+        uid.low = *(uint64_t*)&desc.AdapterLuid;
 
-    if (adapterDescs) {
-        AdapterDesc* adapterDescsSorted = (AdapterDesc*)alloca(sizeof(AdapterDesc) * adaptersNum);
-        for (uint32_t i = 0; i < adaptersNum; i++) {
-            DXGI_ADAPTER_DESC desc = {};
-            adapters[i]->GetDesc(&desc);
+        uint32_t n = 0;
+        if (precreatedLuid) {
+            Uid_t uidNeeded = {};
+            uidNeeded.low = *(uint64_t*)precreatedLuid;
 
-            AdapterDesc& adapterDesc = adapterDescsSorted[i];
-            adapterDesc = {};
-            adapterDesc.uid.low = *(uint64_t*)&desc.AdapterLuid;
-            adapterDesc.deviceId = desc.DeviceId;
-            adapterDesc.vendor = GetVendorFromID(desc.VendorId);
-            adapterDesc.videoMemorySize = desc.DedicatedVideoMemory; // TODO: add "desc.DedicatedSystemMemory"?
-            adapterDesc.sharedSystemMemorySize = desc.SharedSystemMemory;
-            wcstombs(adapterDesc.name, desc.Description, GetCountOf(adapterDesc.name) - 1);
-
-            { // Driver version
-                LARGE_INTEGER driverVersion;
-                if (SUCCEEDED(adapters[i]->CheckInterfaceSupport(__uuidof(IDXGIDevice), &driverVersion)))
-                    adapterDesc.driverVersion = driverVersion.LowPart;
+            if (!CompareUid(uid, uidNeeded))
+                continue;
+        } else {
+            for (; n < adapterDescNum; n++) {
+                if (CompareUid(adapterDescs[n].uid, uid))
+                    break;
             }
+        }
 
-            { // Architecture (a device is needed)
+        AdapterDesc& adapterDesc = adapterDescs[n];
+
+        // Update GAPI support
 #    if (NRI_ENABLE_D3D11_SUPPORT)
-                D3D_FEATURE_LEVEL levels[2] = {D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0};
-                uint32_t levelNum = GetCountOf(levels);
-                ComPtr<ID3D11Device> device;
-                HRESULT hr = D3D11CreateDevice(adapters[i], D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, levels, levelNum, D3D11_SDK_VERSION, &device, nullptr, nullptr);
-                if (SUCCEEDED(hr)) {
-                    D3D11_FEATURE_DATA_D3D11_OPTIONS2 options2 = {};
-                    hr = device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS2, &options2, sizeof(options2));
-                    if (SUCCEEDED(hr))
-                        adapterDesc.architecture = options2.UnifiedMemoryArchitecture ? Architecture::INTEGRATED : Architecture::DESCRETE;
-                }
-#    else
-                ComPtr<ID3D12Device> device;
-                HRESULT hr = D3D12CreateDevice(adapters[i], D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), (void**)&device);
-                if (SUCCEEDED(hr)) {
-                    D3D12_FEATURE_DATA_ARCHITECTURE architecture = {};
-                    hr = device->CheckFeatureSupport(D3D12_FEATURE_ARCHITECTURE, &architecture, sizeof(architecture));
-                    if (SUCCEEDED(hr))
-                        adapterDesc.architecture = architecture.UMA ? Architecture::INTEGRATED : Architecture::DESCRETE;
-                }
+        D3D_FEATURE_LEVEL levels[2] = {D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0};
+        uint32_t levelNum = GetCountOf(levels);
+        ComPtr<ID3D11Device> deviceD3D11;
+        hr = D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, levels, levelNum, D3D11_SDK_VERSION, &deviceD3D11, nullptr, nullptr);
+        if (SUCCEEDED(hr))
+            adapterDesc.supportedGraphicsAPIs |= GraphicsAPI::D3D11;
 #    endif
+
+#    if (NRI_ENABLE_D3D12_SUPPORT)
+        hr = D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), nullptr);
+        if (SUCCEEDED(hr))
+            adapterDesc.supportedGraphicsAPIs |= GraphicsAPI::D3D12;
+#    endif
+
+        // Logic: advance or skip
+        if (n != adapterDescNum)
+            continue;
+
+        adapterDescNum++;
+
+        { // Driver version
+            LARGE_INTEGER driverVersion;
+            if (SUCCEEDED(adapter->CheckInterfaceSupport(__uuidof(IDXGIDevice), &driverVersion)))
+                adapterDesc.driverVersion = driverVersion.LowPart;
+        }
+
+        // Architecture
+        if (desc.Flags == DXGI_ADAPTER_FLAG_NONE) {
+#    if (NRI_ENABLE_D3D11_SUPPORT)
+            // Simpler and faster
+            if (deviceD3D11) {
+                D3D11_FEATURE_DATA_D3D11_OPTIONS2 options2 = {};
+                hr = deviceD3D11->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS2, &options2, sizeof(options2));
+                if (SUCCEEDED(hr))
+                    adapterDesc.architecture = options2.UnifiedMemoryArchitecture ? Architecture::INTEGRATED : Architecture::DISCRETE;
             }
+#    else
+            ComPtr<ID3D12Device> deviceD3D12;
+            hr = D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), (void**)&deviceD3D12);
+            if (SUCCEEDED(hr)) {
+                D3D12_FEATURE_DATA_ARCHITECTURE architecture = {};
+                hr = deviceD3D12->CheckFeatureSupport(D3D12_FEATURE_ARCHITECTURE, &architecture, sizeof(architecture));
+                if (SUCCEEDED(hr))
+                    adapterDesc.architecture = architecture.UMA ? Architecture::INTEGRATED : Architecture::DISCRETE;
+            }
+#    endif
+        } else if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
+            adapterDesc.architecture = Architecture::SOFTWARE;
+        else if (desc.Flags & DXGI_ADAPTER_FLAG_REMOTE)
+            adapterDesc.architecture = Architecture::VIRTUAL;
 
-            // Let's advertise reasonable values (can't be queried in D3D)
-            adapterDesc.queueNum[(uint32_t)QueueType::GRAPHICS] = 4;
-            adapterDesc.queueNum[(uint32_t)QueueType::COMPUTE] = 4;
-            adapterDesc.queueNum[(uint32_t)QueueType::COPY] = 4;
-        }
+        // Advertise reasonable values for queue counts (can't be queried in D3D)
+        adapterDesc.queueNum[(uint32_t)QueueType::GRAPHICS] = 4;
+        adapterDesc.queueNum[(uint32_t)QueueType::COMPUTE] = 4;
+        adapterDesc.queueNum[(uint32_t)QueueType::COPY] = 4;
 
-        // Sort by video memory size
-        qsort(adapterDescsSorted, adaptersNum, sizeof(adapterDescsSorted[0]), SortAdapters);
+        // Other fields
+        adapterDesc.uid = uid;
+        adapterDesc.deviceId = desc.DeviceId;
+        adapterDesc.vendor = GetVendorFromID(desc.VendorId);
+        adapterDesc.videoMemorySize = desc.DedicatedVideoMemory + desc.DedicatedSystemMemory;
+        adapterDesc.sharedSystemMemorySize = desc.SharedSystemMemory;
 
-        // Copy to output
-        if (adaptersNum < adapterDescNum)
-            adapterDescNum = adaptersNum;
+        wcstombs(adapterDesc.name, desc.Description, GetCountOf(adapterDesc.name) - 1);
 
-        for (uint32_t i = 0; i < adapterDescNum; i++) {
-            adapterDescs[i] = *adapterDescsSorted++;
-
-            // Update "deviceCreationDesc"
-            if (deviceCreationDesc && precreatedDeviceLuid == adapterDescs[i].uid.low)
-                deviceCreationDesc->adapterDesc = &adapterDescs[i];
-        }
-    } else
-        adapterDescNum = adaptersNum;
-
-    for (uint32_t i = 0; i < adaptersNum; i++)
-        adapters[i]->Release();
-
-    return Result::SUCCESS;
+        // Logic: only one "adapterDesc" is needed for "precreated"
+        if (precreatedLuid)
+            break;
+    }
 }
 
 #endif
 
 #if NRI_ENABLE_VK_SUPPORT
 
-static Result EnumerateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum, VkPhysicalDevice precreatedPhysicalDevice, DeviceCreationDesc* deviceCreationDesc) {
-    Library* loader = LoadSharedLibrary(NRI_VULKAN_LOADER_NAME);
-    if (!loader)
-        return Result::UNSUPPORTED;
-
-    const auto vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)GetSharedLibraryFunction(*loader, "vkGetInstanceProcAddr");
-    if (!vkGetInstanceProcAddr)
-        return Result::UNSUPPORTED;
-
-    const auto vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
-    if (!vkCreateInstance)
-        return Result::UNSUPPORTED;
-
-    Result result = Result::FAILURE;
-
-    // Create instance
+static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum, VkPhysicalDevice precreatedPhysicalDevice) {
+    // Variables first
     VkApplicationInfo applicationInfo = {};
     applicationInfo.apiVersion = VK_API_VERSION_1_2; // 1.3 not needed here
 
     VkInstanceCreateInfo instanceCreateInfo = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     instanceCreateInfo.pApplicationInfo = &applicationInfo;
+
+    VkInstance instance = VK_NULL_HANDLE;
+    PFN_vkDestroyInstance vkDestroyInstance = nullptr;
+
+    Uid_t uidNeeded = {};
 
 #    ifdef __APPLE__
     std::array<const char*, 2> instanceExtensions = {"VK_KHR_get_physical_device_properties2", VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME};
@@ -301,176 +302,214 @@ static Result EnumerateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDe
     instanceCreateInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 #    endif
 
-    VkInstance instance = VK_NULL_HANDLE;
+    // Get loader
+    Library* loader = LoadSharedLibrary(NRI_VULKAN_LOADER_NAME);
+    if (!loader)
+        goto CLEANUP;
+
+    // Get the entry point
+    const auto vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)GetSharedLibraryFunction(*loader, "vkGetInstanceProcAddr");
+    if (!vkGetInstanceProcAddr)
+        goto CLEANUP;
+
+    // Create instance
+    const auto vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
+    if (!vkCreateInstance)
+        goto CLEANUP;
+
     VkResult vkResult = vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
+    if (vkResult != VK_SUCCESS)
+        goto CLEANUP;
 
-    if (vkResult == VK_SUCCESS) {
-        // Get needed functions
-        const auto vkDestroyInstance = (PFN_vkDestroyInstance)vkGetInstanceProcAddr(instance, "vkDestroyInstance");
-        if (!vkDestroyInstance)
-            return Result::UNSUPPORTED;
+    // Get needed functions
+    vkDestroyInstance = (PFN_vkDestroyInstance)vkGetInstanceProcAddr(instance, "vkDestroyInstance");
 
-        const auto vkEnumeratePhysicalDeviceGroups = (PFN_vkEnumeratePhysicalDeviceGroups)vkGetInstanceProcAddr(instance, "vkEnumeratePhysicalDeviceGroups");
-        const auto vkGetPhysicalDeviceProperties2 = (PFN_vkGetPhysicalDeviceProperties2)vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceProperties2");
-        const auto vkGetPhysicalDeviceMemoryProperties = (PFN_vkGetPhysicalDeviceMemoryProperties)vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceMemoryProperties");
-        const auto vkGetPhysicalDeviceQueueFamilyProperties2 = (PFN_vkGetPhysicalDeviceQueueFamilyProperties2)vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceQueueFamilyProperties2");
+    auto vkEnumeratePhysicalDeviceGroups = (PFN_vkEnumeratePhysicalDeviceGroups)vkGetInstanceProcAddr(instance, "vkEnumeratePhysicalDeviceGroups");
+    auto vkGetPhysicalDeviceProperties2 = (PFN_vkGetPhysicalDeviceProperties2)vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceProperties2");
+    auto vkGetPhysicalDeviceMemoryProperties = (PFN_vkGetPhysicalDeviceMemoryProperties)vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceMemoryProperties");
+    auto vkGetPhysicalDeviceQueueFamilyProperties2 = (PFN_vkGetPhysicalDeviceQueueFamilyProperties2)vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceQueueFamilyProperties2");
 
-        if (vkEnumeratePhysicalDeviceGroups && vkGetPhysicalDeviceProperties2) {
-            uint32_t deviceGroupNum = 0;
-            vkResult = vkEnumeratePhysicalDeviceGroups(instance, &deviceGroupNum, nullptr);
+    if (!vkDestroyInstance || !vkEnumeratePhysicalDeviceGroups || !vkGetPhysicalDeviceProperties2)
+        goto CLEANUP;
 
-            if (vkResult == VK_SUCCESS && deviceGroupNum) {
-                if (adapterDescs) {
-                    // Save LUID for precreated physical device
-                    Uid_t precreatedUid = {};
-                    if (precreatedPhysicalDevice) {
-                        VkPhysicalDeviceProperties2 deviceProps2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+    uint32_t deviceGroupNum = 0;
+    vkResult = vkEnumeratePhysicalDeviceGroups(instance, &deviceGroupNum, nullptr);
+    if (vkResult != VK_SUCCESS)
+        goto CLEANUP;
 
-                        VkPhysicalDeviceIDProperties deviceIDProperties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES};
-                        deviceProps2.pNext = &deviceIDProperties;
+    // Query device groups
+    VkPhysicalDeviceGroupProperties* deviceGroupProperties = (VkPhysicalDeviceGroupProperties*)alloca(sizeof(VkPhysicalDeviceGroupProperties) * deviceGroupNum);
+    for (uint32_t i = 0; i < deviceGroupNum; i++) {
+        deviceGroupProperties[i].sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES;
+        deviceGroupProperties[i].pNext = nullptr;
+    }
+    vkEnumeratePhysicalDeviceGroups(instance, &deviceGroupNum, deviceGroupProperties);
 
-                        vkGetPhysicalDeviceProperties2(precreatedPhysicalDevice, &deviceProps2);
+    // Max queue families
+    uint32_t maxFamilyNum = 1;
+    if (vkGetPhysicalDeviceQueueFamilyProperties2) {
+        for (uint32_t i = 0; i < deviceGroupNum; i++) {
+            VkPhysicalDevice physicalDevice = deviceGroupProperties[i].physicalDevices[0];
 
-                        precreatedUid = ConstructUid(deviceIDProperties.deviceLUID, deviceIDProperties.deviceUUID, deviceIDProperties.deviceLUIDValid);
-                    }
+            uint32_t familyNum = 0;
+            vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &familyNum, nullptr);
 
-                    // Query device groups
-                    VkPhysicalDeviceGroupProperties* deviceGroupProperties = (VkPhysicalDeviceGroupProperties*)alloca(sizeof(VkPhysicalDeviceGroupProperties) * deviceGroupNum);
-                    for (uint32_t i = 0; i < deviceGroupNum; i++) {
-                        deviceGroupProperties[i].sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES;
-                        deviceGroupProperties[i].pNext = nullptr;
-                    }
-                    vkEnumeratePhysicalDeviceGroups(instance, &deviceGroupNum, deviceGroupProperties);
+            maxFamilyNum = std::max(maxFamilyNum, familyNum);
+        }
+    }
 
-                    // Query device groups properties
-                    AdapterDesc* adapterDescsSorted = (AdapterDesc*)alloca(sizeof(AdapterDesc) * deviceGroupNum);
-                    for (uint32_t i = 0; i < deviceGroupNum; i++) {
-                        VkPhysicalDevice physicalDevice = deviceGroupProperties[i].physicalDevices[0];
-                        VkPhysicalDeviceProperties2 deviceProps2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
-                        const VkPhysicalDeviceProperties& deviceProps = deviceProps2.properties;
+    VkQueueFamilyProperties2* familyProps2 = (VkQueueFamilyProperties2*)alloca(sizeof(VkQueueFamilyProperties2) * maxFamilyNum);
+    for (uint32_t i = 0; i < maxFamilyNum; i++)
+        familyProps2[i] = {VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2};
 
-                        VkPhysicalDeviceIDProperties deviceIDProperties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES};
-                        deviceProps2.pNext = &deviceIDProperties;
+    // Precreated physical device
+    if (precreatedPhysicalDevice) {
+        VkPhysicalDeviceProperties2 deviceProps2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
 
-                        vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProps2);
+        VkPhysicalDeviceIDProperties deviceIDProperties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES};
+        deviceProps2.pNext = &deviceIDProperties;
 
-                        AdapterDesc& adapterDesc = adapterDescsSorted[i];
-                        adapterDesc = {};
-                        adapterDesc.uid = ConstructUid(deviceIDProperties.deviceLUID, deviceIDProperties.deviceUUID, deviceIDProperties.deviceLUIDValid);
-                        adapterDesc.deviceId = deviceProps.deviceID;
-                        adapterDesc.driverVersion = deviceProps.driverVersion;
-                        adapterDesc.vendor = GetVendorFromID(deviceProps.vendorID);
-                        strncpy(adapterDesc.name, deviceProps.deviceName, sizeof(adapterDesc.name));
+        vkGetPhysicalDeviceProperties2(precreatedPhysicalDevice, &deviceProps2);
 
-                        if (deviceProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
-                            adapterDesc.architecture = Architecture::DESCRETE;
-                        else if (deviceProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
-                            adapterDesc.architecture = Architecture::INTEGRATED;
+        uidNeeded = ConstructUid(deviceIDProperties.deviceLUID, deviceIDProperties.deviceUUID, deviceIDProperties.deviceLUIDValid);
+    }
 
-                        // Memory size
-                        if (vkGetPhysicalDeviceMemoryProperties) {
-                            VkPhysicalDeviceMemoryProperties memoryProperties = {};
-                            vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
+    // Query device groups properties
+    for (uint32_t i = 0; i < deviceGroupNum && adapterDescNum < ADAPTER_MAX_NUM; i++) {
+        VkPhysicalDevice physicalDevice = deviceGroupProperties[i].physicalDevices[0];
 
-                            // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceMemoryProperties.html
-                            for (uint32_t j = 0; j < memoryProperties.memoryHeapCount; j++) {
-                                // From spec: In UMA systems ... implementation must advertise the heap as device-local
-                                if ((memoryProperties.memoryHeaps[j].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) != 0 && deviceProps.deviceType != VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
-                                    adapterDesc.videoMemorySize += memoryProperties.memoryHeaps[j].size;
-                                else
-                                    adapterDesc.sharedSystemMemorySize += memoryProperties.memoryHeaps[j].size;
-                            }
-                        }
+        VkPhysicalDeviceProperties2 deviceProps2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
 
-                        // Queues
-                        if (vkGetPhysicalDeviceQueueFamilyProperties2) {
-                            uint32_t familyNum = 0;
-                            vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &familyNum, nullptr);
+        VkPhysicalDeviceIDProperties deviceIDProperties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES};
+        deviceProps2.pNext = &deviceIDProperties;
 
-                            VkQueueFamilyProperties2* familyProps2 = (VkQueueFamilyProperties2*)alloca(sizeof(VkQueueFamilyProperties2) * familyNum);
-                            for (uint32_t j = 0; j < familyNum; j++)
-                                familyProps2[j] = {VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2};
+        vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProps2);
 
-                            vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &familyNum, familyProps2);
+        // Logic: append unique or wait for "precreated"
+        Uid_t uid = ConstructUid(deviceIDProperties.deviceLUID, deviceIDProperties.deviceUUID, deviceIDProperties.deviceLUIDValid);
 
-                            std::array<uint32_t, (size_t)QueueType::MAX_NUM> scores = {};
-                            for (uint32_t j = 0; j < familyNum; j++) {
-                                const VkQueueFamilyProperties& familyProps = familyProps2[j].queueFamilyProperties;
-
-                                bool graphics = familyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT;
-                                bool compute = familyProps.queueFlags & VK_QUEUE_COMPUTE_BIT;
-                                bool copy = familyProps.queueFlags & VK_QUEUE_TRANSFER_BIT;
-                                bool sparse = familyProps.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT;
-                                bool videoDecode = familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR;
-                                bool videoEncode = familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR;
-                                bool protect = familyProps.queueFlags & VK_QUEUE_PROTECTED_BIT;
-                                bool opticalFlow = familyProps.queueFlags & VK_QUEUE_OPTICAL_FLOW_BIT_NV;
-                                bool taken = false;
-
-                                { // Prefer as much features as possible
-                                    size_t index = (size_t)QueueType::GRAPHICS;
-                                    uint32_t score = GRAPHICS_QUEUE_SCORE;
-
-                                    if (!taken && graphics && score > scores[index]) {
-                                        adapterDesc.queueNum[index] = familyProps.queueCount;
-                                        scores[index] = score;
-                                        taken = true;
-                                    }
-                                }
-
-                                { // Prefer compute-only
-                                    size_t index = (size_t)QueueType::COMPUTE;
-                                    uint32_t score = COMPUTE_QUEUE_SCORE;
-
-                                    if (!taken && compute && score > scores[index]) {
-                                        adapterDesc.queueNum[index] = familyProps.queueCount;
-                                        scores[index] = score;
-                                        taken = true;
-                                    }
-                                }
-
-                                { // Prefer copy-only
-                                    size_t index = (size_t)QueueType::COPY;
-                                    uint32_t score = COPY_QUEUE_SCORE;
-
-                                    if (!taken && copy && score > scores[index]) {
-                                        adapterDesc.queueNum[index] = familyProps.queueCount;
-                                        scores[index] = score;
-                                        taken = true;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Sort by video memory size
-                    qsort(adapterDescsSorted, deviceGroupNum, sizeof(adapterDescsSorted[0]), SortAdapters);
-
-                    // Copy to output
-                    if (deviceGroupNum < adapterDescNum)
-                        adapterDescNum = deviceGroupNum;
-
-                    for (uint32_t i = 0; i < adapterDescNum; i++) {
-                        adapterDescs[i] = *adapterDescsSorted++;
-
-                        // Update "deviceCreationDesc"
-                        if (deviceCreationDesc && CompareUid(precreatedUid, adapterDescs[i].uid))
-                            deviceCreationDesc->adapterDesc = &adapterDescs[i];
-                    }
-                } else
-                    adapterDescNum = deviceGroupNum;
-
-                result = Result::SUCCESS;
+        uint32_t n = 0;
+        if (precreatedPhysicalDevice) {
+            if (!CompareUid(uid, uidNeeded))
+                continue;
+        } else {
+            for (; n < adapterDescNum; n++) {
+                if (CompareUid(adapterDescs[n].uid, uid))
+                    break;
             }
         }
 
-        if (instance)
-            vkDestroyInstance(instance, nullptr);
+        AdapterDesc& adapterDesc = adapterDescs[n];
+
+        // Update GAPI support
+        adapterDesc.supportedGraphicsAPIs |= GraphicsAPI::VK;
+
+        // Logic: advance or skip
+        if (n != adapterDescNum)
+            continue;
+
+        adapterDescNum++;
+
+        // Architecture
+        const VkPhysicalDeviceProperties& deviceProps = deviceProps2.properties;
+
+        if (deviceProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+            adapterDesc.architecture = Architecture::DISCRETE;
+        else if (deviceProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+            adapterDesc.architecture = Architecture::INTEGRATED;
+        else if (deviceProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)
+            adapterDesc.architecture = Architecture::SOFTWARE;
+        else if (deviceProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)
+            adapterDesc.architecture = Architecture::VIRTUAL;
+
+        // Memory size
+        if (vkGetPhysicalDeviceMemoryProperties) {
+            VkPhysicalDeviceMemoryProperties memoryProperties = {};
+            vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
+
+            // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceMemoryProperties.html
+            for (uint32_t j = 0; j < memoryProperties.memoryHeapCount; j++) {
+                // From spec: In UMA systems ... implementation must advertise the heap as device-local
+                if ((memoryProperties.memoryHeaps[j].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) != 0 && deviceProps.deviceType != VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+                    adapterDesc.videoMemorySize += memoryProperties.memoryHeaps[j].size;
+                else
+                    adapterDesc.sharedSystemMemorySize += memoryProperties.memoryHeaps[j].size;
+            }
+        }
+
+        // Queues
+        if (vkGetPhysicalDeviceQueueFamilyProperties2) {
+            uint32_t familyNum = maxFamilyNum;
+            vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &familyNum, familyProps2);
+
+            std::array<uint32_t, (size_t)QueueType::MAX_NUM> scores = {};
+            for (uint32_t j = 0; j < familyNum; j++) { // TODO: same code as in "DeviceVK::Create"
+                const VkQueueFamilyProperties& familyProps = familyProps2[j].queueFamilyProperties;
+
+                bool graphics = familyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT;
+                bool compute = familyProps.queueFlags & VK_QUEUE_COMPUTE_BIT;
+                bool copy = familyProps.queueFlags & VK_QUEUE_TRANSFER_BIT;
+                bool sparse = familyProps.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT;
+                bool videoDecode = familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR;
+                bool videoEncode = familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR;
+                bool protect = familyProps.queueFlags & VK_QUEUE_PROTECTED_BIT;
+                bool opticalFlow = familyProps.queueFlags & VK_QUEUE_OPTICAL_FLOW_BIT_NV;
+                bool taken = false;
+
+                { // Prefer as much features as possible
+                    size_t index = (size_t)QueueType::GRAPHICS;
+                    uint32_t score = GRAPHICS_QUEUE_SCORE;
+
+                    if (!taken && graphics && score > scores[index]) {
+                        adapterDesc.queueNum[index] = familyProps.queueCount;
+                        scores[index] = score;
+                        taken = true;
+                    }
+                }
+
+                { // Prefer compute-only
+                    size_t index = (size_t)QueueType::COMPUTE;
+                    uint32_t score = COMPUTE_QUEUE_SCORE;
+
+                    if (!taken && compute && score > scores[index]) {
+                        adapterDesc.queueNum[index] = familyProps.queueCount;
+                        scores[index] = score;
+                        taken = true;
+                    }
+                }
+
+                { // Prefer copy-only
+                    size_t index = (size_t)QueueType::COPY;
+                    uint32_t score = COPY_QUEUE_SCORE;
+
+                    if (!taken && copy && score > scores[index]) {
+                        adapterDesc.queueNum[index] = familyProps.queueCount;
+                        scores[index] = score;
+                        taken = true;
+                    }
+                }
+            }
+        }
+
+        // Other fields
+        adapterDesc.uid = uid;
+        adapterDesc.deviceId = deviceProps.deviceID;
+        adapterDesc.driverVersion = deviceProps.driverVersion;
+        adapterDesc.vendor = GetVendorFromID(deviceProps.vendorID);
+
+        strncpy(adapterDesc.name, deviceProps.deviceName, sizeof(adapterDesc.name));
+
+        // Logic: only one "adapterDesc" is needed for "precreated"
+        if (precreatedPhysicalDevice)
+            break;
     }
 
-    UnloadSharedLibrary(*loader);
+CLEANUP:
+    if (vkDestroyInstance && instance)
+        vkDestroyInstance(instance, nullptr);
 
-    return result;
+    if (loader)
+        UnloadSharedLibrary(*loader);
 }
 
 #endif
@@ -743,6 +782,9 @@ NRI_API Result NRI_CALL nriCreateDeviceFromD3D11Device(const DeviceCreationD3D11
     DeviceCreationDesc deviceCreationDesc = {};
     deviceCreationDesc.graphicsAPI = GraphicsAPI::D3D11;
 
+    AdapterDesc adapterDesc = {};
+    deviceCreationDesc.adapterDesc = &adapterDesc;
+
     // Copy what is possible to the main "desc"
     deviceCreationDesc.callbackInterface = deviceCreationD3D11Desc.callbackInterface;
     deviceCreationDesc.allocationCallbacks = deviceCreationD3D11Desc.allocationCallbacks;
@@ -757,9 +799,10 @@ NRI_API Result NRI_CALL nriCreateDeviceFromD3D11Device(const DeviceCreationD3D11
     DeviceBase* deviceImpl = nullptr;
 
 #if NRI_ENABLE_D3D11_SUPPORT
-    // Valid adapter expected (find it)
-    AdapterDesc adapterDescs[ADAPTER_MAX_NUM] = {};
-    if (!deviceCreationDesc.adapterDesc) {
+    { // Valid adapter expected
+        if (!deviceCreationD3D11Desc.d3d11Device)
+            return Result::INVALID_ARGUMENT;
+
         ComPtr<IDXGIDevice> dxgiDevice;
         HRESULT hr = deviceCreationD3D11Desc.d3d11Device->QueryInterface(IID_PPV_ARGS(&dxgiDevice));
         if (SUCCEEDED(hr)) {
@@ -769,10 +812,8 @@ NRI_API Result NRI_CALL nriCreateDeviceFromD3D11Device(const DeviceCreationD3D11
                 DXGI_ADAPTER_DESC desc = {};
                 hr = adapter->GetDesc(&desc);
                 if (SUCCEEDED(hr)) {
-                    uint64_t luid = *(uint64_t*)&desc.AdapterLuid;
-
-                    uint32_t adapterDescNum = GetCountOf(adapterDescs);
-                    EnumerateAdaptersD3D(adapterDescs, adapterDescNum, luid, &deviceCreationDesc);
+                    uint32_t unused = 0;
+                    UpdateAdaptersD3D(&adapterDesc, unused, &desc.AdapterLuid);
                 }
             }
         }
@@ -801,6 +842,9 @@ NRI_API Result NRI_CALL nriCreateDeviceFromD3D12Device(const DeviceCreationD3D12
     DeviceCreationDesc deviceCreationDesc = {};
     deviceCreationDesc.graphicsAPI = GraphicsAPI::D3D12;
 
+    AdapterDesc adapterDesc = {};
+    deviceCreationDesc.adapterDesc = &adapterDesc;
+
     // Copy what is possible to the main "desc"
     deviceCreationDesc.callbackInterface = deviceCreationD3D12Desc.callbackInterface;
     deviceCreationDesc.allocationCallbacks = deviceCreationD3D12Desc.allocationCallbacks;
@@ -816,15 +860,13 @@ NRI_API Result NRI_CALL nriCreateDeviceFromD3D12Device(const DeviceCreationD3D12
     DeviceBase* deviceImpl = nullptr;
 
 #if NRI_ENABLE_D3D12_SUPPORT
-    // Valid adapter expected (find it)
-    AdapterDesc adapterDescs[ADAPTER_MAX_NUM] = {};
-    if (!deviceCreationDesc.adapterDesc) {
-        LUID luidTemp = deviceCreationD3D12Desc.d3d12Device->GetAdapterLuid();
-        uint64_t luid = *(uint64_t*)&luidTemp;
+    // Valid adapter expected
+    if (!deviceCreationD3D12Desc.d3d12Device)
+        return Result::INVALID_ARGUMENT;
 
-        uint32_t adapterDescNum = GetCountOf(adapterDescs);
-        EnumerateAdaptersD3D(adapterDescs, adapterDescNum, luid, &deviceCreationDesc);
-    }
+    LUID luid = deviceCreationD3D12Desc.d3d12Device->GetAdapterLuid();
+    uint32_t unused = 0;
+    UpdateAdaptersD3D(&adapterDesc, unused, &luid);
 
     // Valid queue families expected
     for (uint32_t i = 0; i < deviceCreationD3D12Desc.queueFamilyNum; i++) {
@@ -852,6 +894,9 @@ NRI_API Result NRI_CALL nriCreateDeviceFromVKDevice(const DeviceCreationVKDesc& 
     DeviceCreationDesc deviceCreationDesc = {};
     deviceCreationDesc.graphicsAPI = GraphicsAPI::VK;
 
+    AdapterDesc adapterDesc = {};
+    deviceCreationDesc.adapterDesc = &adapterDesc;
+
     // Copy what is possible to the main "desc"
     deviceCreationDesc.callbackInterface = deviceCreationVKDesc.callbackInterface;
     deviceCreationDesc.allocationCallbacks = deviceCreationVKDesc.allocationCallbacks;
@@ -866,12 +911,12 @@ NRI_API Result NRI_CALL nriCreateDeviceFromVKDevice(const DeviceCreationVKDesc& 
     DeviceBase* deviceImpl = nullptr;
 
 #if NRI_ENABLE_VK_SUPPORT
-    // Valid adapter expected (find it)
-    AdapterDesc adapterDescs[ADAPTER_MAX_NUM] = {};
-    if (!deviceCreationDesc.adapterDesc) {
-        uint32_t adapterDescNum = GetCountOf(adapterDescs);
-        EnumerateAdaptersVK(adapterDescs, adapterDescNum, (VkPhysicalDevice)deviceCreationVKDesc.vkPhysicalDevice, &deviceCreationDesc);
-    }
+    // Valid adapter expected
+    if (!deviceCreationVKDesc.vkPhysicalDevice)
+        return Result::INVALID_ARGUMENT;
+
+    uint32_t unused = 0;
+    UpdateAdaptersVK(&adapterDesc, unused, (VkPhysicalDevice)deviceCreationVKDesc.vkPhysicalDevice);
 
     // Valid queue families expected
     for (uint32_t i = 0; i < deviceCreationVKDesc.queueFamilyNum; i++) {
@@ -947,34 +992,48 @@ NRI_API const char* NRI_CALL nriGetGraphicsAPIString(GraphicsAPI graphicsAPI) {
     }
 }
 
-NRI_API Result NRI_CALL nriEnumerateAdapters(AdapterDesc* adapterDescs, uint32_t& adapterDescNum) {
-    Result result = Result::UNSUPPORTED;
-
-    if (adapterDescs && adapterDescNum)
-        memset(adapterDescs, 0, sizeof(AdapterDesc) * adapterDescNum);
+NRI_API Result NRI_CALL nriEnumerateAdapters(AdapterDesc* outAdapterDescs, uint32_t& outAdapterDescNum) {
+    AdapterDesc adapterDescs[ADAPTER_MAX_NUM] = {};
+    uint32_t adapterDescNum = 0;
 
 #if NRI_ENABLE_VK_SUPPORT
-    // Try VK first as capable to return real support for queues
-    result = EnumerateAdaptersVK(adapterDescs, adapterDescNum, 0, nullptr);
+    UpdateAdaptersVK(adapterDescs, adapterDescNum, nullptr);
 #endif
 
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
-    // If VK is not available, use D3D
-    if (result != Result::SUCCESS)
-        result = EnumerateAdaptersD3D(adapterDescs, adapterDescNum, 0, nullptr);
+    UpdateAdaptersD3D(adapterDescs, adapterDescNum, nullptr);
 #endif
 
-#if NRI_ENABLE_NONE_SUPPORT && !(NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT || NRI_ENABLE_VK_SUPPORT)
-    // Patch the results, if NONE is the only avaiable implementation
-    if (result != Result::SUCCESS) {
-        if (adapterDescNum > 1)
-            adapterDescNum = 1;
+#if NRI_ENABLE_NONE_SUPPORT
+    if (!adapterDescNum) {
+        AdapterDesc& adapterDesc = adapterDescs[adapterDescNum++];
 
-        result = Result::SUCCESS;
+        adapterDesc.videoMemorySize = 128ull << 30;
+        adapterDesc.sharedSystemMemorySize = 128ull << 30;
+
+        for (uint32_t i = 0; i < GetCountOf(adapterDesc.queueNum); i++)
+            adapterDesc.queueNum[i] = 32;
+
+        strncpy(adapterDesc.name, "NONE", sizeof(adapterDesc.name));
     }
 #endif
 
-    return result;
+    // Sort by video memory size and arhitecture (DISCRETE first)
+    qsort(adapterDescs, adapterDescNum, sizeof(adapterDescs[0]), SortAdapters);
+
+    // Copy to output
+    if (outAdapterDescs) {
+        outAdapterDescNum = std::min(outAdapterDescNum, adapterDescNum);
+        for (uint32_t i = 0; i < outAdapterDescNum; i++) {
+            outAdapterDescs[i] = adapterDescs[i];
+#if NRI_ENABLE_NONE_SUPPORT
+            outAdapterDescs[i].supportedGraphicsAPIs |= GraphicsAPI::NONE;
+#endif
+        }
+    } else
+        outAdapterDescNum = adapterDescNum;
+
+    return outAdapterDescNum == 0 ? Result::UNSUPPORTED : Result::SUCCESS;
 }
 
 NRI_API void NRI_CALL nriReportLiveObjects() {
