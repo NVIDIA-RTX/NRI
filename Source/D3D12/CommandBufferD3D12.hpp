@@ -509,8 +509,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeD3D12Desc& desc
             (D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS1*)desc.d3d12OutputArguments1);
 
         if (desc.d3d12ResolveMetadataInputArguments1 && desc.d3d12ResolveMetadataOutputArguments1) {
-            const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS1& input =
-                *(const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS1*)desc.d3d12ResolveMetadataInputArguments1;
+            const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS1& input = *(const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS1*)desc.d3d12ResolveMetadataInputArguments1;
 
             D3D12_RESOURCE_BARRIER metadataReady = {};
             metadataReady.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -542,8 +541,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeD3D12Desc& desc
         (D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS*)desc.d3d12OutputArguments);
 
     if (desc.d3d12ResolveMetadataInputArguments && desc.d3d12ResolveMetadataOutputArguments) {
-        const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS& input =
-            *(const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS*)desc.d3d12ResolveMetadataInputArguments;
+        const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS& input = *(const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS*)desc.d3d12ResolveMetadataInputArguments;
 
         D3D12_RESOURCE_BARRIER metadataReady = {};
         metadataReady.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;

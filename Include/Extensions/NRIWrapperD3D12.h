@@ -37,16 +37,16 @@ NriStruct(DeviceCreationD3D12Desc) {
     NriOptional AGSContext* agsContext;
     NriOptional Nri(CallbackInterface) callbackInterface;
     NriOptional Nri(AllocationCallbacks) allocationCallbacks;
-    NriOptional uint32_t d3dShaderExtRegister;  // vendor specific shader extensions (default is "NRI_SHADER_EXT_REGISTER", space is always "0")
-    NriOptional uint32_t d3dZeroBufferSize;     // no "memset" functionality in D3D, "CmdZeroBuffer" implemented via a bunch of copies (4 Mb by default)
+    NriOptional uint32_t d3dShaderExtRegister; // vendor specific shader extensions (default is "NRI_SHADER_EXT_REGISTER", space is always "0")
+    NriOptional uint32_t d3dZeroBufferSize;    // no "memset" functionality in D3D, "CmdZeroBuffer" implemented via a bunch of copies (4 Mb by default)
 
     // Switches (disabled by default)
     bool enableNRIValidation;
-    bool enableMemoryZeroInitialization;        // page-clears are fast, not enabled by default to match VK (the extension needed)
+    bool enableMemoryZeroInitialization; // page-clears are fast, not enabled by default to match VK (the extension needed)
 
     // Switches (enabled by default)
-    bool disableD3D12EnhancedBarriers;          // even if AgilitySDK is in use, some apps still use legacy barriers. It can be important for integrations
-    bool disableNVAPIInitialization;            // at least NVAPI requires calling "NvAPI_Initialize" in DLL/EXE where the device is created
+    bool disableD3D12EnhancedBarriers; // even if AgilitySDK is in use, some apps still use legacy barriers. It can be important for integrations
+    bool disableNVAPIInitialization;   // at least NVAPI requires calling "NvAPI_Initialize" in DLL/EXE where the device is created
 };
 
 NriStruct(CommandBufferD3D12Desc) {
@@ -64,13 +64,13 @@ NriStruct(DescriptorPoolD3D12Desc) {
 
 NriStruct(BufferD3D12Desc) {
     ID3D12Resource* d3d12Resource;
-    NriOptional const NriPtr(BufferDesc) desc;  // not all information can be retrieved from the resource if not provided
-    NriOptional uint32_t structureStride;       // must be provided if used as a structured or raw buffer
+    NriOptional const NriPtr(BufferDesc) desc; // not all information can be retrieved from the resource if not provided
+    NriOptional uint32_t structureStride;      // must be provided if used as a structured or raw buffer
 };
 
 NriStruct(TextureD3D12Desc) {
     ID3D12Resource* d3d12Resource;
-    NriOptional DXGIFormat format;              // must be provided "as a compatible typed format" if the resource is typeless
+    NriOptional DXGIFormat format; // must be provided "as a compatible typed format" if the resource is typeless
 };
 
 NriStruct(MemoryD3D12Desc) {
@@ -93,39 +93,40 @@ NriStruct(AccelerationStructureD3D12Desc) {
 };
 
 NriStruct(VideoDecodeD3D12Desc) {
-    void* d3d12Decoder;                 // ID3D12VideoDecoder*
-    const void* d3d12OutputArguments;   // D3D12_VIDEO_DECODE_OUTPUT_STREAM_ARGUMENTS*
-    const void* d3d12InputArguments;    // D3D12_VIDEO_DECODE_INPUT_STREAM_ARGUMENTS*
+    void* d3d12Decoder;               // ID3D12VideoDecoder*
+    const void* d3d12OutputArguments; // D3D12_VIDEO_DECODE_OUTPUT_STREAM_ARGUMENTS*
+    const void* d3d12InputArguments;  // D3D12_VIDEO_DECODE_INPUT_STREAM_ARGUMENTS*
 };
 
 NriStruct(VideoEncodeD3D12Desc) {
-    void* d3d12Encoder;                 // ID3D12VideoEncoder*
-    void* d3d12Heap;                    // ID3D12VideoEncoderHeap*
-    const void* d3d12InputArguments;    // D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS*
-    const void* d3d12OutputArguments;   // D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS*
-    const void* d3d12ResolveMetadataInputArguments;  // optional D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS*
-    const void* d3d12ResolveMetadataOutputArguments; // optional D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS*
-    void* d3d12Heap1;                   // optional ID3D12VideoEncoderHeap1*
-    const void* d3d12InputArguments1;   // optional D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS1*
-    const void* d3d12OutputArguments1;  // optional D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS1*
+    void* d3d12Encoder;                               // ID3D12VideoEncoder*
+    void* d3d12Heap;                                  // ID3D12VideoEncoderHeap*
+    const void* d3d12InputArguments;                  // D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS*
+    const void* d3d12OutputArguments;                 // D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS*
+    const void* d3d12ResolveMetadataInputArguments;   // optional D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS*
+    const void* d3d12ResolveMetadataOutputArguments;  // optional D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS*
+    void* d3d12Heap1;                                 // optional ID3D12VideoEncoderHeap1*
+    const void* d3d12InputArguments1;                 // optional D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS1*
+    const void* d3d12OutputArguments1;                // optional D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS1*
     const void* d3d12ResolveMetadataInputArguments1;  // optional D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS1*
     const void* d3d12ResolveMetadataOutputArguments1; // optional D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS1*
 };
 
 // Threadsafe: yes
 NriStruct(WrapperD3D12Interface) {
-    Nri(Result) (NRI_CALL *CreateCommandBufferD3D12)            (NriRef(Device) device, const NriRef(CommandBufferD3D12Desc) commandBufferD3D12Desc, NriOut NriRef(CommandBuffer*) commandBuffer);
-    Nri(Result) (NRI_CALL *CreateDescriptorPoolD3D12)           (NriRef(Device) device, const NriRef(DescriptorPoolD3D12Desc) descriptorPoolD3D12Desc, NriOut NriRef(DescriptorPool*) descriptorPool);
-    Nri(Result) (NRI_CALL *CreateBufferD3D12)                   (NriRef(Device) device, const NriRef(BufferD3D12Desc) bufferD3D12Desc, NriOut NriRef(Buffer*) buffer);
-    Nri(Result) (NRI_CALL *CreateTextureD3D12)                  (NriRef(Device) device, const NriRef(TextureD3D12Desc) textureD3D12Desc, NriOut NriRef(Texture*) texture);
-    Nri(Result) (NRI_CALL *CreateMemoryD3D12)                   (NriRef(Device) device, const NriRef(MemoryD3D12Desc) memoryD3D12Desc, NriOut NriRef(Memory*) memory);
-    Nri(Result) (NRI_CALL *CreateFenceD3D12)                    (NriRef(Device) device, const NriRef(FenceD3D12Desc) fenceD3D12Desc, NriOut NriRef(Fence*) fence);
-    Nri(Result) (NRI_CALL *CreateAccelerationStructureD3D12)    (NriRef(Device) device, const NriRef(AccelerationStructureD3D12Desc) accelerationStructureD3D12Desc, NriOut NriRef(AccelerationStructure*) accelerationStructure);
+    Nri(Result)(NRI_CALL * CreateCommandBufferD3D12)(NriRef(Device) device, const NriRef(CommandBufferD3D12Desc) commandBufferD3D12Desc, NriOut NriRef(CommandBuffer*) commandBuffer);
+    Nri(Result)(NRI_CALL * CreateDescriptorPoolD3D12)(NriRef(Device) device, const NriRef(DescriptorPoolD3D12Desc) descriptorPoolD3D12Desc, NriOut NriRef(DescriptorPool*) descriptorPool);
+    Nri(Result)(NRI_CALL * CreateBufferD3D12)(NriRef(Device) device, const NriRef(BufferD3D12Desc) bufferD3D12Desc, NriOut NriRef(Buffer*) buffer);
+    Nri(Result)(NRI_CALL * CreateTextureD3D12)(NriRef(Device) device, const NriRef(TextureD3D12Desc) textureD3D12Desc, NriOut NriRef(Texture*) texture);
+    Nri(Result)(NRI_CALL * CreateMemoryD3D12)(NriRef(Device) device, const NriRef(MemoryD3D12Desc) memoryD3D12Desc, NriOut NriRef(Memory*) memory);
+    Nri(Result)(NRI_CALL * CreateFenceD3D12)(NriRef(Device) device, const NriRef(FenceD3D12Desc) fenceD3D12Desc, NriOut NriRef(Fence*) fence);
+    Nri(Result)(NRI_CALL * CreateAccelerationStructureD3D12)(NriRef(Device) device, const NriRef(AccelerationStructureD3D12Desc) accelerationStructureD3D12Desc, NriOut NriRef(AccelerationStructure*) accelerationStructure);
 
-    void        (NRI_CALL *CmdDecodeVideoD3D12)                 (NriRef(CommandBuffer) commandBuffer, const NriRef(VideoDecodeD3D12Desc) videoDecodeD3D12Desc);
-    void        (NRI_CALL *CmdEncodeVideoD3D12)                 (NriRef(CommandBuffer) commandBuffer, const NriRef(VideoEncodeD3D12Desc) videoEncodeD3D12Desc);
+    void(NRI_CALL * CmdDecodeVideoD3D12)(NriRef(CommandBuffer) commandBuffer, const NriRef(VideoDecodeD3D12Desc) videoDecodeD3D12Desc);
+    void(NRI_CALL * CmdEncodeVideoD3D12)(NriRef(CommandBuffer) commandBuffer, const NriRef(VideoEncodeD3D12Desc) videoEncodeD3D12Desc);
 };
 
-NRI_API Nri(Result) NRI_CALL nriCreateDeviceFromD3D12Device(const NriRef(DeviceCreationD3D12Desc) deviceDesc, NriOut NriRef(Device*) device);
+NRI_API Nri(Result)
+NRI_CALL nriCreateDeviceFromD3D12Device(const NriRef(DeviceCreationD3D12Desc) deviceDesc, NriOut NriRef(Device*) device);
 
 NriNamespaceEnd

@@ -250,7 +250,7 @@ inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t availabl
     constexpr uint32_t MAX_TILE_COLS = 64;
     constexpr uint32_t MAX_TILE_ROWS = 64;
 
-    BitReader reader {payload, availablePayloadSize, 0};
+    BitReader reader{payload, availablePayloadSize, 0};
     VideoAV1PictureBits flags = VideoAV1PictureBits::NONE;
 
     uint8_t showExistingFrame = 0;
@@ -405,8 +405,7 @@ inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t availabl
 
     uint32_t baseQIndex = 0;
     uint8_t usingQmatrix = 0;
-    if (!reader.ReadBits(8, baseQIndex) || !ReadDeltaQ(reader, info.quantization.deltaQYDc) || !ReadDeltaQ(reader, info.quantization.deltaQUDc) ||
-        !ReadDeltaQ(reader, info.quantization.deltaQUAc) || !reader.ReadFlag(usingQmatrix))
+    if (!reader.ReadBits(8, baseQIndex) || !ReadDeltaQ(reader, info.quantization.deltaQYDc) || !ReadDeltaQ(reader, info.quantization.deltaQUDc) || !ReadDeltaQ(reader, info.quantization.deltaQUAc) || !reader.ReadFlag(usingQmatrix))
         return false;
     info.quantization.deltaQVDc = info.quantization.deltaQUDc;
     info.quantization.deltaQVAc = info.quantization.deltaQUAc;
@@ -566,8 +565,7 @@ inline Result GetVideoEncodeAV1DecodeInfoFromHeader(const VideoAV1EncodeDecodeIn
         return Result::FAILURE;
 
     info.bitstreamOffset += frame.payloadOffset;
-    if (info.bitstreamOffset > desc.feedback->encodedBitstreamWrittenBytes ||
-        info.bitstreamSize > desc.feedback->encodedBitstreamWrittenBytes - info.bitstreamOffset)
+    if (info.bitstreamOffset > desc.feedback->encodedBitstreamWrittenBytes || info.bitstreamSize > desc.feedback->encodedBitstreamWrittenBytes - info.bitstreamOffset)
         return Result::FAILURE;
 
     return Result::SUCCESS;

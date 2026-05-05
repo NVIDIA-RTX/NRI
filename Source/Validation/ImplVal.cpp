@@ -1836,7 +1836,6 @@ static Result NRI_CALL CreateMemoryVK(Device& device, const MemoryVKDesc& memory
     return ((DeviceVal&)device).CreateMemory(memoryVKDesc, memory);
 }
 
-
 static Result NRI_CALL CreatePipelineVK(Device& device, const PipelineVKDesc& pipelineVKDesc, Pipeline*& pipeline) {
     return ((DeviceVal&)device).CreatePipeline(pipelineVKDesc, pipeline);
 }

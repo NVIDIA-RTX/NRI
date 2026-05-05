@@ -85,8 +85,8 @@ enum DescriptorHeapType : uint8_t {
 #define NO_CASTABLE_FORMATS 0, nullptr
 
 struct DescriptorHandle {
-    uint32_t heapType : DESCRIPTOR_HANDLE_HEAP_TYPE_BIT_NUM;
-    uint32_t heapIndex : DESCRIPTOR_HANDLE_HEAP_INDEX_BIT_NUM;
+    uint32_t heapType   : DESCRIPTOR_HANDLE_HEAP_TYPE_BIT_NUM;
+    uint32_t heapIndex  : DESCRIPTOR_HANDLE_HEAP_INDEX_BIT_NUM;
     uint32_t heapOffset : DESCRIPTOR_HANDLE_HEAP_OFFSET_BIT_NUM;
 };
 

@@ -34,7 +34,7 @@ static inline void FillRenderingAttachmentInfo(VkRenderingAttachmentInfo& attach
 
     // If "INPUT_ATTACHMENT" usage is set, "VK_IMAGE_LAYOUT_RENDERING_LOCAL_READ" is expected
     const TextureDesc& textureDesc = texViewDesc.texture->GetDesc();
-    if(textureDesc.usage & TextureUsageBits::INPUT_ATTACHMENT)
+    if (textureDesc.usage & TextureUsageBits::INPUT_ATTACHMENT)
         attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_RENDERING_LOCAL_READ;
 
     Dim_t w = texViewDesc.texture->GetSize(0, texViewDesc.mipOffset);

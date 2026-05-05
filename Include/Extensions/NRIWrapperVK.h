@@ -15,7 +15,7 @@ typedef uint64_t VKNonDispatchableHandle;
 
 NriNamespaceBegin
 
-NriForwardStruct(AccelerationStructure);
+    NriForwardStruct(AccelerationStructure);
 NriForwardStruct(VideoSession);
 NriForwardStruct(VideoSessionParameters);
 
@@ -31,17 +31,17 @@ NriStruct(DeviceCreationVKDesc) {
     NriOptional Nri(AllocationCallbacks) allocationCallbacks;
     NriOptional const char* libraryPath;
     Nri(VKBindingOffsets) vkBindingOffsets;
-    Nri(VKExtensions) vkExtensions;                     // enabled
+    Nri(VKExtensions) vkExtensions; // enabled
     VKHandle vkInstance;
     VKHandle vkDevice;
     VKHandle vkPhysicalDevice;
     const NriPtr(QueueFamilyVKDesc) queueFamilies;
     uint32_t queueFamilyNum;
-    uint8_t minorVersion;                               // >= 2
+    uint8_t minorVersion; // >= 2
 
     // Switches (disabled by default)
     bool enableNRIValidation;
-    bool enableMemoryZeroInitialization;                // page-clears are fast, but memory is not cleared by default in VK
+    bool enableMemoryZeroInitialization; // page-clears are fast, but memory is not cleared by default in VK
 };
 
 NriStruct(CommandAllocatorVKDesc) {
@@ -113,11 +113,11 @@ NriStruct(AccelerationStructureVKDesc) {
 };
 
 NriStruct(VideoDecodeVKDesc) {
-    const void* vkDecodeInfo;           // VkVideoDecodeInfoKHR*
+    const void* vkDecodeInfo; // VkVideoDecodeInfoKHR*
 };
 
 NriStruct(VideoEncodeVKDesc) {
-    const void* vkEncodeInfo;           // VkVideoEncodeInfoKHR*
+    const void* vkEncodeInfo; // VkVideoEncodeInfoKHR*
 };
 
 NriStruct(VideoSessionParametersVKDesc) {
@@ -127,31 +127,32 @@ NriStruct(VideoSessionParametersVKDesc) {
 
 // Threadsafe: yes
 NriStruct(WrapperVKInterface) {
-    Nri(Result) (NRI_CALL *CreateCommandAllocatorVK)        (NriRef(Device) device, const NriRef(CommandAllocatorVKDesc) commandAllocatorVKDesc, NriOut NriRef(CommandAllocator*) commandAllocator);
-    Nri(Result) (NRI_CALL *CreateCommandBufferVK)           (NriRef(Device) device, const NriRef(CommandBufferVKDesc) commandBufferVKDesc, NriOut NriRef(CommandBuffer*) commandBuffer);
-    Nri(Result) (NRI_CALL *CreateDescriptorPoolVK)          (NriRef(Device) device, const NriRef(DescriptorPoolVKDesc) descriptorPoolVKDesc, NriOut NriRef(DescriptorPool*) descriptorPool);
-    Nri(Result) (NRI_CALL *CreateBufferVK)                  (NriRef(Device) device, const NriRef(BufferVKDesc) bufferVKDesc, NriOut NriRef(Buffer*) buffer);
-    Nri(Result) (NRI_CALL *CreateTextureVK)                 (NriRef(Device) device, const NriRef(TextureVKDesc) textureVKDesc, NriOut NriRef(Texture*) texture);
-    Nri(Result) (NRI_CALL *CreateMemoryVK)                  (NriRef(Device) device, const NriRef(MemoryVKDesc) memoryVKDesc, NriOut NriRef(Memory*) memory);
-    Nri(Result) (NRI_CALL *CreatePipelineVK)                (NriRef(Device) device, const NriRef(PipelineVKDesc) pipelineVKDesc, NriOut NriRef(Pipeline*) pipeline);
-    Nri(Result) (NRI_CALL *CreateQueryPoolVK)               (NriRef(Device) device, const NriRef(QueryPoolVKDesc) queryPoolVKDesc, NriOut NriRef(QueryPool*) queryPool);
-    Nri(Result) (NRI_CALL *CreateFenceVK)                   (NriRef(Device) device, const NriRef(FenceVKDesc) fenceVKDesc, NriOut NriRef(Fence*) fence);
-    Nri(Result) (NRI_CALL *CreateAccelerationStructureVK)   (NriRef(Device) device, const NriRef(AccelerationStructureVKDesc) accelerationStructureVKDesc, NriOut NriRef(AccelerationStructure*) accelerationStructure);
+    Nri(Result)(NRI_CALL * CreateCommandAllocatorVK)(NriRef(Device) device, const NriRef(CommandAllocatorVKDesc) commandAllocatorVKDesc, NriOut NriRef(CommandAllocator*) commandAllocator);
+    Nri(Result)(NRI_CALL * CreateCommandBufferVK)(NriRef(Device) device, const NriRef(CommandBufferVKDesc) commandBufferVKDesc, NriOut NriRef(CommandBuffer*) commandBuffer);
+    Nri(Result)(NRI_CALL * CreateDescriptorPoolVK)(NriRef(Device) device, const NriRef(DescriptorPoolVKDesc) descriptorPoolVKDesc, NriOut NriRef(DescriptorPool*) descriptorPool);
+    Nri(Result)(NRI_CALL * CreateBufferVK)(NriRef(Device) device, const NriRef(BufferVKDesc) bufferVKDesc, NriOut NriRef(Buffer*) buffer);
+    Nri(Result)(NRI_CALL * CreateTextureVK)(NriRef(Device) device, const NriRef(TextureVKDesc) textureVKDesc, NriOut NriRef(Texture*) texture);
+    Nri(Result)(NRI_CALL * CreateMemoryVK)(NriRef(Device) device, const NriRef(MemoryVKDesc) memoryVKDesc, NriOut NriRef(Memory*) memory);
+    Nri(Result)(NRI_CALL * CreatePipelineVK)(NriRef(Device) device, const NriRef(PipelineVKDesc) pipelineVKDesc, NriOut NriRef(Pipeline*) pipeline);
+    Nri(Result)(NRI_CALL * CreateQueryPoolVK)(NriRef(Device) device, const NriRef(QueryPoolVKDesc) queryPoolVKDesc, NriOut NriRef(QueryPool*) queryPool);
+    Nri(Result)(NRI_CALL * CreateFenceVK)(NriRef(Device) device, const NriRef(FenceVKDesc) fenceVKDesc, NriOut NriRef(Fence*) fence);
+    Nri(Result)(NRI_CALL * CreateAccelerationStructureVK)(NriRef(Device) device, const NriRef(AccelerationStructureVKDesc) accelerationStructureVKDesc, NriOut NriRef(AccelerationStructure*) accelerationStructure);
 
-    void        (NRI_CALL *CmdDecodeVideoVK)                (NriRef(CommandBuffer) commandBuffer, const NriRef(VideoDecodeVKDesc) videoDecodeVKDesc);
-    void        (NRI_CALL *CmdEncodeVideoVK)                (NriRef(CommandBuffer) commandBuffer, const NriRef(VideoEncodeVKDesc) videoEncodeVKDesc);
+    void(NRI_CALL * CmdDecodeVideoVK)(NriRef(CommandBuffer) commandBuffer, const NriRef(VideoDecodeVKDesc) videoDecodeVKDesc);
+    void(NRI_CALL * CmdEncodeVideoVK)(NriRef(CommandBuffer) commandBuffer, const NriRef(VideoEncodeVKDesc) videoEncodeVKDesc);
 
-    uint32_t    (NRI_CALL *GetQueueFamilyIndexVK)           (const NriRef(Queue) queue);
-    VKHandle    (NRI_CALL *GetPhysicalDeviceVK)             (const NriRef(Device) device);
-    VKHandle    (NRI_CALL *GetInstanceVK)                   (const NriRef(Device) device);
-    void*       (NRI_CALL *GetInstanceProcAddrVK)           (const NriRef(Device) device);
-    void*       (NRI_CALL *GetDeviceProcAddrVK)             (const NriRef(Device) device);
+    uint32_t(NRI_CALL * GetQueueFamilyIndexVK)(const NriRef(Queue) queue);
+    VKHandle(NRI_CALL * GetPhysicalDeviceVK)(const NriRef(Device) device);
+    VKHandle(NRI_CALL * GetInstanceVK)(const NriRef(Device) device);
+    void*(NRI_CALL * GetInstanceProcAddrVK)(const NriRef(Device) device);
+    void*(NRI_CALL * GetDeviceProcAddrVK)(const NriRef(Device) device);
 
-    Nri(Result) (NRI_CALL *CreateVideoSessionParametersVK)  (NriRef(Device) device, const NriRef(VideoSessionParametersVKDesc) videoSessionParametersVKDesc, NriOut NriRef(VideoSessionParameters*) videoSessionParameters);
-    VKNonDispatchableHandle (NRI_CALL *GetVideoSessionVK)   (const NriRef(VideoSession) videoSession);
-    VKNonDispatchableHandle (NRI_CALL *GetVideoSessionParametersVK) (const NriRef(VideoSessionParameters) videoSessionParameters);
+    Nri(Result)(NRI_CALL * CreateVideoSessionParametersVK)(NriRef(Device) device, const NriRef(VideoSessionParametersVKDesc) videoSessionParametersVKDesc, NriOut NriRef(VideoSessionParameters*) videoSessionParameters);
+    VKNonDispatchableHandle(NRI_CALL * GetVideoSessionVK)(const NriRef(VideoSession) videoSession);
+    VKNonDispatchableHandle(NRI_CALL * GetVideoSessionParametersVK)(const NriRef(VideoSessionParameters) videoSessionParameters);
 };
 
-NRI_API Nri(Result) NRI_CALL nriCreateDeviceFromVKDevice(const NriRef(DeviceCreationVKDesc) deviceDesc, NriOut NriRef(Device*) device);
+NRI_API Nri(Result)
+NRI_CALL nriCreateDeviceFromVKDevice(const NriRef(DeviceCreationVKDesc) deviceDesc, NriOut NriRef(Device*) device);
 
 NriNamespaceEnd

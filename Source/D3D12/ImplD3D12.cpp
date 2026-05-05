@@ -23,8 +23,8 @@
 #include "TextureD3D12.h"
 #include "VideoHelpersD3D12.h"
 
-#include "../Shared/VideoAnnexB.h"
 #include "../Shared/VideoAV1.h"
+#include "../Shared/VideoAnnexB.h"
 
 #include "HelperInterface.h"
 #include "ImguiInterface.h"
@@ -1216,8 +1216,7 @@ struct VideoSessionParametersD3D12 final {
         m_H265Parameters = videoSessionParametersDesc.h265Parameters;
         m_AV1Parameters = videoSessionParametersDesc.av1Parameters;
         if (m_H264Parameters) {
-            if ((m_H264Parameters->sequenceParameterSetNum && !m_H264Parameters->sequenceParameterSets) ||
-                (m_H264Parameters->pictureParameterSetNum && !m_H264Parameters->pictureParameterSets))
+            if ((m_H264Parameters->sequenceParameterSetNum && !m_H264Parameters->sequenceParameterSets) || (m_H264Parameters->pictureParameterSetNum && !m_H264Parameters->pictureParameterSets))
                 return Result::INVALID_ARGUMENT;
 
             m_H264SequenceParameterSets.clear();
@@ -1232,9 +1231,7 @@ struct VideoSessionParametersD3D12 final {
             m_H264Parameters = &m_H264ParametersStorage;
         }
         if (m_H265Parameters) {
-            if ((m_H265Parameters->videoParameterSetNum && !m_H265Parameters->videoParameterSets) ||
-                (m_H265Parameters->sequenceParameterSetNum && !m_H265Parameters->sequenceParameterSets) ||
-                (m_H265Parameters->pictureParameterSetNum && !m_H265Parameters->pictureParameterSets))
+            if ((m_H265Parameters->videoParameterSetNum && !m_H265Parameters->videoParameterSets) || (m_H265Parameters->sequenceParameterSetNum && !m_H265Parameters->sequenceParameterSets) || (m_H265Parameters->pictureParameterSetNum && !m_H265Parameters->pictureParameterSets))
                 return Result::INVALID_ARGUMENT;
 
             m_H265VideoParameterSets.clear();
@@ -1293,8 +1290,7 @@ struct VideoSessionParametersD3D12 final {
 };
 
 // Older Windows SDK headers used by some builds do not name this newer support bit yet.
-static constexpr D3D12_VIDEO_ENCODER_SUPPORT_FLAGS D3D12_VIDEO_ENCODER_SUPPORT_FLAG_READABLE_RECONSTRUCTED_PICTURE_LAYOUT_AVAILABLE_COMPAT =
-    (D3D12_VIDEO_ENCODER_SUPPORT_FLAGS)0x8000;
+static constexpr D3D12_VIDEO_ENCODER_SUPPORT_FLAGS D3D12_VIDEO_ENCODER_SUPPORT_FLAG_READABLE_RECONSTRUCTED_PICTURE_LAYOUT_AVAILABLE_COMPAT = (D3D12_VIDEO_ENCODER_SUPPORT_FLAGS)0x8000;
 
 struct VideoPictureD3D12 final : public DebugNameBase {
     inline VideoPictureD3D12(DeviceD3D12& device)
@@ -1324,14 +1320,14 @@ struct VideoPictureD3D12 final : public DebugNameBase {
 
 static GUID GetVideoDecodeProfileD3D12(const VideoSessionDesc& videoSessionDesc) {
     switch (videoSessionDesc.codec) {
-    case VideoCodec::H264:
-        return D3D12_VIDEO_DECODE_PROFILE_H264;
-    case VideoCodec::H265:
-        return videoSessionDesc.format == Format::P010_UNORM || videoSessionDesc.format == Format::P016_UNORM ? D3D12_VIDEO_DECODE_PROFILE_HEVC_MAIN10 : D3D12_VIDEO_DECODE_PROFILE_HEVC_MAIN;
-    case VideoCodec::AV1:
-        return D3D12_VIDEO_DECODE_PROFILE_AV1_PROFILE0;
-    case VideoCodec::MAX_NUM:
-        return {};
+        case VideoCodec::H264:
+            return D3D12_VIDEO_DECODE_PROFILE_H264;
+        case VideoCodec::H265:
+            return videoSessionDesc.format == Format::P010_UNORM || videoSessionDesc.format == Format::P016_UNORM ? D3D12_VIDEO_DECODE_PROFILE_HEVC_MAIN10 : D3D12_VIDEO_DECODE_PROFILE_HEVC_MAIN;
+        case VideoCodec::AV1:
+            return D3D12_VIDEO_DECODE_PROFILE_AV1_PROFILE0;
+        case VideoCodec::MAX_NUM:
+            return {};
     }
 
     return {};
@@ -1339,14 +1335,14 @@ static GUID GetVideoDecodeProfileD3D12(const VideoSessionDesc& videoSessionDesc)
 
 static D3D12_VIDEO_ENCODER_CODEC GetVideoEncodeCodecD3D12(VideoCodec codec) {
     switch (codec) {
-    case VideoCodec::H264:
-        return D3D12_VIDEO_ENCODER_CODEC_H264;
-    case VideoCodec::H265:
-        return D3D12_VIDEO_ENCODER_CODEC_HEVC;
-    case VideoCodec::AV1:
-        return D3D12_VIDEO_ENCODER_CODEC_AV1;
-    case VideoCodec::MAX_NUM:
-        return (D3D12_VIDEO_ENCODER_CODEC)-1;
+        case VideoCodec::H264:
+            return D3D12_VIDEO_ENCODER_CODEC_H264;
+        case VideoCodec::H265:
+            return D3D12_VIDEO_ENCODER_CODEC_HEVC;
+        case VideoCodec::AV1:
+            return D3D12_VIDEO_ENCODER_CODEC_AV1;
+        case VideoCodec::MAX_NUM:
+            return (D3D12_VIDEO_ENCODER_CODEC)-1;
     }
 
     return (D3D12_VIDEO_ENCODER_CODEC)-1;
@@ -1365,7 +1361,7 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
         configuration.DecodeProfile = GetVideoDecodeProfileD3D12(videoSessionDesc);
         configuration.BitstreamEncryption = D3D12_BITSTREAM_ENCRYPTION_TYPE_NONE;
         configuration.InterlaceType = D3D12_VIDEO_FRAME_CODED_INTERLACE_TYPE_NONE;
-        if (configuration.DecodeProfile == GUID {})
+        if (configuration.DecodeProfile == GUID{})
             return Result::UNSUPPORTED;
 
         D3D12_FEATURE_DATA_VIDEO_DECODE_SUPPORT decodeSupport = {};
@@ -1455,8 +1451,7 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
             if (!hevcConfigSupport.IsSupported)
                 return Result::UNSUPPORTED;
 
-            if (hevcCaps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_ASYMETRIC_MOTION_PARTITION_SUPPORT ||
-                hevcCaps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_ASYMETRIC_MOTION_PARTITION_REQUIRED)
+            if (hevcCaps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_ASYMETRIC_MOTION_PARTITION_SUPPORT || hevcCaps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_ASYMETRIC_MOTION_PARTITION_REQUIRED)
                 hevcConfig.ConfigurationFlags |= D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_FLAG_USE_ASYMETRIC_MOTION_PARTITION;
             if (hevcCaps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_SAO_FILTER_SUPPORT)
                 hevcConfig.ConfigurationFlags |= D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_FLAG_ENABLE_SAO_FILTER;
@@ -1712,24 +1707,24 @@ static Result NRI_CALL WriteVideoAnnexBParameterSets(VideoAnnexBParameterSetsDes
 
 static uint32_t GetVideoDecodeAV1ReferenceNameIndexD3D12(VideoAV1ReferenceName name) {
     switch (name) {
-    case VideoAV1ReferenceName::NONE:
-        return 7;
-    case VideoAV1ReferenceName::LAST:
-        return 0;
-    case VideoAV1ReferenceName::LAST2:
-        return 1;
-    case VideoAV1ReferenceName::LAST3:
-        return 2;
-    case VideoAV1ReferenceName::GOLDEN:
-        return 3;
-    case VideoAV1ReferenceName::BWDREF:
-        return 4;
-    case VideoAV1ReferenceName::ALTREF2:
-        return 5;
-    case VideoAV1ReferenceName::ALTREF:
-        return 6;
-    case VideoAV1ReferenceName::MAX_NUM:
-        return 7;
+        case VideoAV1ReferenceName::NONE:
+            return 7;
+        case VideoAV1ReferenceName::LAST:
+            return 0;
+        case VideoAV1ReferenceName::LAST2:
+            return 1;
+        case VideoAV1ReferenceName::LAST3:
+            return 2;
+        case VideoAV1ReferenceName::GOLDEN:
+            return 3;
+        case VideoAV1ReferenceName::BWDREF:
+            return 4;
+        case VideoAV1ReferenceName::ALTREF2:
+            return 5;
+        case VideoAV1ReferenceName::ALTREF:
+            return 6;
+        case VideoAV1ReferenceName::MAX_NUM:
+            return 7;
     }
 
     return 7;
@@ -1779,12 +1774,10 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
     D3D12_VIDEO_DECODE_INPUT_STREAM_ARGUMENTS input = {};
     DXVA_PicParams_H264 h264PictureParameters = {};
     DXVA_Qmatrix_H264 h264InverseQuantizationMatrix = {};
-    Scratch<DXVA_Slice_H264_Short> h264Slices =
-        NRI_ALLOCATE_SCRATCH(device, DXVA_Slice_H264_Short, videoDecodeDesc.h264PictureDesc ? std::max(videoDecodeDesc.h264PictureDesc->sliceOffsetNum, 1u) : 1u);
+    Scratch<DXVA_Slice_H264_Short> h264Slices = NRI_ALLOCATE_SCRATCH(device, DXVA_Slice_H264_Short, videoDecodeDesc.h264PictureDesc ? std::max(videoDecodeDesc.h264PictureDesc->sliceOffsetNum, 1u) : 1u);
     DXVA_PicParams_HEVC h265PictureParameters = {};
     DXVA_Qmatrix_HEVC h265InverseQuantizationMatrix = {};
-    Scratch<DXVA_Slice_HEVC_Short> h265Slices =
-        NRI_ALLOCATE_SCRATCH(device, DXVA_Slice_HEVC_Short, videoDecodeDesc.h265PictureDesc ? std::max(videoDecodeDesc.h265PictureDesc->sliceSegmentOffsetNum, 1u) : 1u);
+    Scratch<DXVA_Slice_HEVC_Short> h265Slices = NRI_ALLOCATE_SCRATCH(device, DXVA_Slice_HEVC_Short, videoDecodeDesc.h265PictureDesc ? std::max(videoDecodeDesc.h265PictureDesc->sliceSegmentOffsetNum, 1u) : 1u);
     DXVA_PicParams_AV1 av1PictureParameters = {};
     Scratch<DXVA_Tile_AV1> av1Tiles = NRI_ALLOCATE_SCRATCH(device, DXVA_Tile_AV1, videoDecodeDesc.av1PictureDesc ? std::max(videoDecodeDesc.av1PictureDesc->tileNum, 1u) : 1u);
     if (videoDecodeDesc.h264PictureDesc) {
@@ -1878,8 +1871,7 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
             NRI_REPORT_ERROR(&device, "'av1PictureDesc' contains invalid tile or reference data");
             return;
         }
-        if (desc.tileLayout && (!desc.tileLayout->columnNum || !desc.tileLayout->rowNum || desc.tileLayout->columnNum > 64 || desc.tileLayout->rowNum > 64 ||
-                !desc.tileLayout->miColumnStarts || !desc.tileLayout->miRowStarts || !desc.tileLayout->widthInSuperblocksMinus1 || !desc.tileLayout->heightInSuperblocksMinus1)) {
+        if (desc.tileLayout && (!desc.tileLayout->columnNum || !desc.tileLayout->rowNum || desc.tileLayout->columnNum > 64 || desc.tileLayout->rowNum > 64 || !desc.tileLayout->miColumnStarts || !desc.tileLayout->miRowStarts || !desc.tileLayout->widthInSuperblocksMinus1 || !desc.tileLayout->heightInSuperblocksMinus1)) {
             NRI_REPORT_ERROR(&device, "'av1PictureDesc->tileLayout' is invalid");
             return;
         }
@@ -2194,14 +2186,14 @@ static const VideoH264ReferenceDesc* FindVideoEncodeH264ReferenceDesc(const Vide
 
 static D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE GetVideoEncodeAV1FrameTypeD3D12(VideoEncodeFrameType frameType) {
     switch (frameType) {
-    case VideoEncodeFrameType::IDR:
-    case VideoEncodeFrameType::I:
-        return D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE_KEY_FRAME;
-    case VideoEncodeFrameType::P:
-    case VideoEncodeFrameType::B:
-        return D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE_INTER_FRAME;
-    case VideoEncodeFrameType::MAX_NUM:
-        return (D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE)-1;
+        case VideoEncodeFrameType::IDR:
+        case VideoEncodeFrameType::I:
+            return D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE_KEY_FRAME;
+        case VideoEncodeFrameType::P:
+        case VideoEncodeFrameType::B:
+            return D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE_INTER_FRAME;
+        case VideoEncodeFrameType::MAX_NUM:
+            return (D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE)-1;
     }
 
     return (D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE)-1;
@@ -2209,24 +2201,24 @@ static D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE GetVideoEncodeAV1FrameTypeD3D12(VideoE
 
 static uint32_t GetVideoEncodeAV1ReferenceNameIndexD3D12(VideoAV1ReferenceName name) {
     switch (name) {
-    case VideoAV1ReferenceName::NONE:
-        return 7;
-    case VideoAV1ReferenceName::LAST:
-        return 0;
-    case VideoAV1ReferenceName::LAST2:
-        return 1;
-    case VideoAV1ReferenceName::LAST3:
-        return 2;
-    case VideoAV1ReferenceName::GOLDEN:
-        return 3;
-    case VideoAV1ReferenceName::BWDREF:
-        return 4;
-    case VideoAV1ReferenceName::ALTREF2:
-        return 5;
-    case VideoAV1ReferenceName::ALTREF:
-        return 6;
-    case VideoAV1ReferenceName::MAX_NUM:
-        return 7;
+        case VideoAV1ReferenceName::NONE:
+            return 7;
+        case VideoAV1ReferenceName::LAST:
+            return 0;
+        case VideoAV1ReferenceName::LAST2:
+            return 1;
+        case VideoAV1ReferenceName::LAST3:
+            return 2;
+        case VideoAV1ReferenceName::GOLDEN:
+            return 3;
+        case VideoAV1ReferenceName::BWDREF:
+            return 4;
+        case VideoAV1ReferenceName::ALTREF2:
+            return 5;
+        case VideoAV1ReferenceName::ALTREF:
+            return 6;
+        case VideoAV1ReferenceName::MAX_NUM:
+            return 7;
     }
 
     return 7;
@@ -2317,8 +2309,7 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     Scratch<uint32_t> referenceSubresources = NRI_ALLOCATE_SCRATCH(device, uint32_t, videoEncodeDesc.referenceNum);
     Scratch<UINT> h264List0References = NRI_ALLOCATE_SCRATCH(device, UINT, videoEncodeDesc.referenceNum);
     Scratch<UINT> h264List1References = NRI_ALLOCATE_SCRATCH(device, UINT, videoEncodeDesc.referenceNum);
-    Scratch<D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_H264> h264ReferenceDescriptors =
-        NRI_ALLOCATE_SCRATCH(device, D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_H264, videoEncodeDesc.referenceNum);
+    Scratch<D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_H264> h264ReferenceDescriptors = NRI_ALLOCATE_SCRATCH(device, D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_H264, videoEncodeDesc.referenceNum);
     uint32_t h264List0ReferenceNum = 0;
     uint32_t h264List1ReferenceNum = 0;
     for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {
@@ -2426,21 +2417,21 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
 
     D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA_H264 h264Picture = {};
     switch (pictureDesc.frameType) {
-    case VideoEncodeFrameType::IDR:
-        h264Picture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_IDR_FRAME;
-        break;
-    case VideoEncodeFrameType::I:
-        h264Picture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_I_FRAME;
-        break;
-    case VideoEncodeFrameType::P:
-        h264Picture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_P_FRAME;
-        break;
-    case VideoEncodeFrameType::B:
-        h264Picture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_B_FRAME;
-        break;
-    case VideoEncodeFrameType::MAX_NUM:
-        NRI_REPORT_ERROR(&device, "Unsupported video encode frame type");
-        return;
+        case VideoEncodeFrameType::IDR:
+            h264Picture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_IDR_FRAME;
+            break;
+        case VideoEncodeFrameType::I:
+            h264Picture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_I_FRAME;
+            break;
+        case VideoEncodeFrameType::P:
+            h264Picture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_P_FRAME;
+            break;
+        case VideoEncodeFrameType::B:
+            h264Picture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_B_FRAME;
+            break;
+        case VideoEncodeFrameType::MAX_NUM:
+            NRI_REPORT_ERROR(&device, "Unsupported video encode frame type");
+            return;
     }
     h264Picture.pic_parameter_set_id = videoEncodeDesc.h264PictureDesc ? videoEncodeDesc.h264PictureDesc->pictureParameterSetId : 0;
     h264Picture.idr_pic_id = pictureDesc.idrPictureId;
@@ -2456,21 +2447,21 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
 
     D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA_HEVC hevcPicture = {};
     switch (pictureDesc.frameType) {
-    case VideoEncodeFrameType::IDR:
-        hevcPicture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_IDR_FRAME;
-        break;
-    case VideoEncodeFrameType::I:
-        hevcPicture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_I_FRAME;
-        break;
-    case VideoEncodeFrameType::P:
-        hevcPicture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_P_FRAME;
-        break;
-    case VideoEncodeFrameType::B:
-        hevcPicture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_B_FRAME;
-        break;
-    case VideoEncodeFrameType::MAX_NUM:
-        NRI_REPORT_ERROR(&device, "Unsupported video encode frame type");
-        return;
+        case VideoEncodeFrameType::IDR:
+            hevcPicture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_IDR_FRAME;
+            break;
+        case VideoEncodeFrameType::I:
+            hevcPicture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_I_FRAME;
+            break;
+        case VideoEncodeFrameType::P:
+            hevcPicture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_P_FRAME;
+            break;
+        case VideoEncodeFrameType::B:
+            hevcPicture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_B_FRAME;
+            break;
+        case VideoEncodeFrameType::MAX_NUM:
+            NRI_REPORT_ERROR(&device, "Unsupported video encode frame type");
+            return;
     }
     if (session.m_Desc.codec == VideoCodec::H265 && videoEncodeDesc.referenceNum > 15) {
         NRI_REPORT_ERROR(&device, "'referenceNum' exceeds the H.265 reference list size");
@@ -2479,8 +2470,7 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
 
     Scratch<UINT> hevcList0References = NRI_ALLOCATE_SCRATCH(device, UINT, videoEncodeDesc.referenceNum ? videoEncodeDesc.referenceNum : 1);
     Scratch<UINT> hevcList1References = NRI_ALLOCATE_SCRATCH(device, UINT, videoEncodeDesc.referenceNum ? videoEncodeDesc.referenceNum : 1);
-    Scratch<D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC> hevcReferenceDescriptors =
-        NRI_ALLOCATE_SCRATCH(device, D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC, videoEncodeDesc.referenceNum ? videoEncodeDesc.referenceNum : 1);
+    Scratch<D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC> hevcReferenceDescriptors = NRI_ALLOCATE_SCRATCH(device, D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC, videoEncodeDesc.referenceNum ? videoEncodeDesc.referenceNum : 1);
     if (session.m_Desc.codec == VideoCodec::H265) {
         VideoEncodeHEVCReferenceListsD3D12 hevcReferenceLists = {};
         if (!BuildVideoEncodeHEVCReferenceListsD3D12(videoEncodeDesc.references, videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, pictureDesc.frameType,

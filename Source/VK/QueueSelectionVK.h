@@ -2,9 +2,9 @@
 
 #pragma once
 
+#include <vulkan/vulkan.h>
 #include <algorithm>
 #include <array>
-#include <vulkan/vulkan.h>
 
 #include "../Shared/SharedExternal.h"
 
@@ -128,22 +128,22 @@ inline uint32_t GetQueueFamilyScoreVK(const QueueFamilyPropsVK& familyProps, Que
     bool opticalFlow = (familyProps.queueFlags & VK_QUEUE_OPTICAL_FLOW_BIT_NV) != 0;
 
     switch (queueType) {
-    case QueueType::GRAPHICS:
-        return graphics ? GRAPHICS_QUEUE_SCORE : 0;
-    case QueueType::COMPUTE:
-        return compute ? COMPUTE_QUEUE_SCORE : 0;
-    case QueueType::COPY:
-        return copy ? COPY_QUEUE_SCORE : 0;
-    case QueueType::VIDEO_DECODE: {
-        const VkVideoCodecOperationFlagBitsKHR operation = GetRepresentativeVideoCodecOperationVK(familyProps, QueueType::VIDEO_DECODE);
-        return videoDecode ? GetVideoQueueFamilyScoreVK(familyProps, operation) : 0;
-    }
-    case QueueType::VIDEO_ENCODE: {
-        const VkVideoCodecOperationFlagBitsKHR operation = GetRepresentativeVideoCodecOperationVK(familyProps, QueueType::VIDEO_ENCODE);
-        return videoEncode ? GetVideoQueueFamilyScoreVK(familyProps, operation) : 0;
-    }
-    default:
-        return 0;
+        case QueueType::GRAPHICS:
+            return graphics ? GRAPHICS_QUEUE_SCORE : 0;
+        case QueueType::COMPUTE:
+            return compute ? COMPUTE_QUEUE_SCORE : 0;
+        case QueueType::COPY:
+            return copy ? COPY_QUEUE_SCORE : 0;
+        case QueueType::VIDEO_DECODE: {
+            const VkVideoCodecOperationFlagBitsKHR operation = GetRepresentativeVideoCodecOperationVK(familyProps, QueueType::VIDEO_DECODE);
+            return videoDecode ? GetVideoQueueFamilyScoreVK(familyProps, operation) : 0;
+        }
+        case QueueType::VIDEO_ENCODE: {
+            const VkVideoCodecOperationFlagBitsKHR operation = GetRepresentativeVideoCodecOperationVK(familyProps, QueueType::VIDEO_ENCODE);
+            return videoEncode ? GetVideoQueueFamilyScoreVK(familyProps, operation) : 0;
+        }
+        default:
+            return 0;
     }
 }
 

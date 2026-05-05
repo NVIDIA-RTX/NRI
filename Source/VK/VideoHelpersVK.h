@@ -14,24 +14,24 @@ namespace nri {
 
 inline uint8_t GetVideoAV1ReferenceNameIndexVK(VideoAV1ReferenceName name) {
     switch (name) {
-    case VideoAV1ReferenceName::NONE:
-        return STD_VIDEO_AV1_PRIMARY_REF_NONE;
-    case VideoAV1ReferenceName::LAST:
-        return 0;
-    case VideoAV1ReferenceName::LAST2:
-        return 1;
-    case VideoAV1ReferenceName::LAST3:
-        return 2;
-    case VideoAV1ReferenceName::GOLDEN:
-        return 3;
-    case VideoAV1ReferenceName::BWDREF:
-        return 4;
-    case VideoAV1ReferenceName::ALTREF2:
-        return 5;
-    case VideoAV1ReferenceName::ALTREF:
-        return 6;
-    case VideoAV1ReferenceName::MAX_NUM:
-        return STD_VIDEO_AV1_PRIMARY_REF_NONE;
+        case VideoAV1ReferenceName::NONE:
+            return STD_VIDEO_AV1_PRIMARY_REF_NONE;
+        case VideoAV1ReferenceName::LAST:
+            return 0;
+        case VideoAV1ReferenceName::LAST2:
+            return 1;
+        case VideoAV1ReferenceName::LAST3:
+            return 2;
+        case VideoAV1ReferenceName::GOLDEN:
+            return 3;
+        case VideoAV1ReferenceName::BWDREF:
+            return 4;
+        case VideoAV1ReferenceName::ALTREF2:
+            return 5;
+        case VideoAV1ReferenceName::ALTREF:
+            return 6;
+        case VideoAV1ReferenceName::MAX_NUM:
+            return STD_VIDEO_AV1_PRIMARY_REF_NONE;
     }
 
     return STD_VIDEO_AV1_PRIMARY_REF_NONE;
@@ -79,44 +79,44 @@ inline StdVideoAV1Level GetVideoAV1LevelVK(uint32_t width, uint32_t height) {
 
 inline StdVideoAV1Level GetVideoAV1LevelVK(uint8_t level, uint32_t width, uint32_t height) {
     switch (level) {
-    case 20:
-        return STD_VIDEO_AV1_LEVEL_2_0;
-    case 21:
-        return STD_VIDEO_AV1_LEVEL_2_1;
-    case 30:
-        return STD_VIDEO_AV1_LEVEL_3_0;
-    case 31:
-        return STD_VIDEO_AV1_LEVEL_3_1;
-    case 40:
-        return STD_VIDEO_AV1_LEVEL_4_0;
-    case 41:
-        return STD_VIDEO_AV1_LEVEL_4_1;
-    case 50:
-        return STD_VIDEO_AV1_LEVEL_5_0;
-    case 51:
-        return STD_VIDEO_AV1_LEVEL_5_1;
-    case 52:
-        return STD_VIDEO_AV1_LEVEL_5_2;
-    case 53:
-        return STD_VIDEO_AV1_LEVEL_5_3;
-    case 60:
-        return STD_VIDEO_AV1_LEVEL_6_0;
-    case 61:
-        return STD_VIDEO_AV1_LEVEL_6_1;
-    case 62:
-        return STD_VIDEO_AV1_LEVEL_6_2;
-    case 63:
-        return STD_VIDEO_AV1_LEVEL_6_3;
-    case 70:
-        return STD_VIDEO_AV1_LEVEL_7_0;
-    case 71:
-        return STD_VIDEO_AV1_LEVEL_7_1;
-    case 72:
-        return STD_VIDEO_AV1_LEVEL_7_2;
-    case 73:
-        return STD_VIDEO_AV1_LEVEL_7_3;
-    default:
-        return GetVideoAV1LevelVK(width, height);
+        case 20:
+            return STD_VIDEO_AV1_LEVEL_2_0;
+        case 21:
+            return STD_VIDEO_AV1_LEVEL_2_1;
+        case 30:
+            return STD_VIDEO_AV1_LEVEL_3_0;
+        case 31:
+            return STD_VIDEO_AV1_LEVEL_3_1;
+        case 40:
+            return STD_VIDEO_AV1_LEVEL_4_0;
+        case 41:
+            return STD_VIDEO_AV1_LEVEL_4_1;
+        case 50:
+            return STD_VIDEO_AV1_LEVEL_5_0;
+        case 51:
+            return STD_VIDEO_AV1_LEVEL_5_1;
+        case 52:
+            return STD_VIDEO_AV1_LEVEL_5_2;
+        case 53:
+            return STD_VIDEO_AV1_LEVEL_5_3;
+        case 60:
+            return STD_VIDEO_AV1_LEVEL_6_0;
+        case 61:
+            return STD_VIDEO_AV1_LEVEL_6_1;
+        case 62:
+            return STD_VIDEO_AV1_LEVEL_6_2;
+        case 63:
+            return STD_VIDEO_AV1_LEVEL_6_3;
+        case 70:
+            return STD_VIDEO_AV1_LEVEL_7_0;
+        case 71:
+            return STD_VIDEO_AV1_LEVEL_7_1;
+        case 72:
+            return STD_VIDEO_AV1_LEVEL_7_2;
+        case 73:
+            return STD_VIDEO_AV1_LEVEL_7_3;
+        default:
+            return GetVideoAV1LevelVK(width, height);
     }
 }
 
@@ -133,8 +133,7 @@ inline uint8_t GetVideoAV1SizeBitsMinus1VK(uint32_t value) {
 
 inline VideoAV1SequenceDesc GetDefaultVideoAV1SequenceDescVK(uint32_t width, uint32_t height, Format format) {
     VideoAV1SequenceDesc desc = {};
-    desc.flags = VideoAV1SequenceBits::ENABLE_ORDER_HINT |
-        VideoAV1SequenceBits::COLOR_DESCRIPTION_PRESENT;
+    desc.flags = VideoAV1SequenceBits::ENABLE_ORDER_HINT | VideoAV1SequenceBits::COLOR_DESCRIPTION_PRESENT;
     desc.bitDepth = format == Format::P010_UNORM || format == Format::P016_UNORM ? 10 : 8;
     desc.subsamplingX = 1;
     desc.subsamplingY = 1;
@@ -154,12 +153,7 @@ inline VideoAV1SequenceDesc GetDefaultVideoAV1SequenceDescVK(uint32_t width, uin
 }
 
 inline VideoAV1PictureBits GetDefaultVideoAV1PictureFlagsVK() {
-    return VideoAV1PictureBits::ERROR_RESILIENT_MODE |
-        VideoAV1PictureBits::DISABLE_CDF_UPDATE |
-        VideoAV1PictureBits::ALLOW_SCREEN_CONTENT_TOOLS |
-        VideoAV1PictureBits::FORCE_INTEGER_MV |
-        VideoAV1PictureBits::SHOW_FRAME |
-        VideoAV1PictureBits::SHOWABLE_FRAME;
+    return VideoAV1PictureBits::ERROR_RESILIENT_MODE | VideoAV1PictureBits::DISABLE_CDF_UPDATE | VideoAV1PictureBits::ALLOW_SCREEN_CONTENT_TOOLS | VideoAV1PictureBits::FORCE_INTEGER_MV | VideoAV1PictureBits::SHOW_FRAME | VideoAV1PictureBits::SHOWABLE_FRAME;
 }
 
 inline void FillVideoH265ProfileTierLevelVK(StdVideoH265ProfileTierLevel& profileTierLevel, const VideoH265ProfileTierLevelDesc& desc) {
@@ -468,14 +462,14 @@ inline void FillVideoAV1PictureFlagsVK(StdVideoEncodeAV1PictureInfoFlags& flags,
 
 inline StdVideoAV1FrameType GetVideoAV1FrameTypeVK(VideoEncodeFrameType frameType) {
     switch (frameType) {
-    case VideoEncodeFrameType::IDR:
-    case VideoEncodeFrameType::I:
-        return STD_VIDEO_AV1_FRAME_TYPE_KEY;
-    case VideoEncodeFrameType::P:
-    case VideoEncodeFrameType::B:
-        return STD_VIDEO_AV1_FRAME_TYPE_INTER;
-    case VideoEncodeFrameType::MAX_NUM:
-        return STD_VIDEO_AV1_FRAME_TYPE_INVALID;
+        case VideoEncodeFrameType::IDR:
+        case VideoEncodeFrameType::I:
+            return STD_VIDEO_AV1_FRAME_TYPE_KEY;
+        case VideoEncodeFrameType::P:
+        case VideoEncodeFrameType::B:
+            return STD_VIDEO_AV1_FRAME_TYPE_INTER;
+        case VideoEncodeFrameType::MAX_NUM:
+            return STD_VIDEO_AV1_FRAME_TYPE_INVALID;
     }
 
     return STD_VIDEO_AV1_FRAME_TYPE_INVALID;

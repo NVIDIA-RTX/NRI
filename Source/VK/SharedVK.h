@@ -6,8 +6,8 @@
 #undef CreateSemaphore
 
 #include "DispatchTable.h"
-#include "SharedExternal.h"
 #include "QueueSelectionVK.h"
+#include "SharedExternal.h"
 
 typedef uint16_t MemoryTypeIndex;
 
@@ -36,7 +36,7 @@ typedef uint16_t MemoryTypeIndex;
 
 #define APPEND_EXT(condition, ext) \
     if (IsExtensionSupported(ext, supportedExts) && (condition)) \
-        desiredDeviceExts.push_back(ext)
+    desiredDeviceExts.push_back(ext)
 
 namespace nri {
 
