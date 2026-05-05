@@ -476,8 +476,6 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
     if (graphicsPipelineDesc.outputMerger.viewMask != 0)
         NRI_RETURN_ON_FAILURE(this, GetDesc().features.flexibleMultiview || GetDesc().features.layerBasedMultiview || GetDesc().features.viewportBasedMultiview, Result::INVALID_ARGUMENT, "multiview is not supported");
 
-    if (graphicsPipelineDesc.cache != nullptr && !GetDesc().features.pipelineCache)
-        NRI_REPORT_WARNING(this, "'cache' is provided but 'features.pipelineCache' is false - the cache will be silently ignored");
     if (graphicsPipelineDesc.flags & GraphicsPipelineBits::FAIL_ON_CACHE_MISS) {
         if (!GetDesc().features.pipelineCacheControl)
             NRI_REPORT_WARNING(this, "'features.pipelineCacheControl' is false - 'FAIL_ON_CACHE_MISS' will be silently ignored");
@@ -505,8 +503,6 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const ComputePipelineDesc& computePi
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.shader.bytecode != nullptr, Result::INVALID_ARGUMENT, "'shader.bytecode' is NULL");
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.shader.stage == StageBits::COMPUTE_SHADER, Result::INVALID_ARGUMENT, "'shader.stage' must be 'StageBits::COMPUTE_SHADER'");
 
-    if (computePipelineDesc.cache != nullptr && !GetDesc().features.pipelineCache)
-        NRI_REPORT_WARNING(this, "'cache' is provided but 'features.pipelineCache' is false - the cache will be silently ignored");
     if (computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS) {
         if (!GetDesc().features.pipelineCacheControl)
             NRI_REPORT_WARNING(this, "'features.pipelineCacheControl' is false - 'FAIL_ON_CACHE_MISS' will be silently ignored");
@@ -530,8 +526,6 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const ComputePipelineDesc& computePi
 
 NRI_INLINE Result DeviceVal::CreatePipelineCache(const PipelineCacheDesc& pipelineCacheDesc, PipelineCache*& pipelineCache) {
     NRI_RETURN_ON_FAILURE(this, (pipelineCacheDesc.data == nullptr) == (pipelineCacheDesc.size == 0), Result::INVALID_ARGUMENT, "'data' and 'size' must be both NULL/0 (empty cache) or both non-NULL/non-0 (load from blob)");
-    if (!GetDesc().features.pipelineCache)
-        NRI_REPORT_WARNING(this, "'features.pipelineCache' is false - PipelineCache will be created as a NOP (no PSOs will actually be stored or reused on this device)");
 
     PipelineCache* pipelineCacheImpl = nullptr;
     Result result = m_iCoreImpl.CreatePipelineCache(m_Impl, pipelineCacheDesc, pipelineCacheImpl);
@@ -1350,8 +1344,6 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const RayTracingPipelineDesc& rayTra
         NRI_RETURN_ON_FAILURE(this, IsRayTracingShaderStageValid(shaderDesc.stage, StageBits::RAY_TRACING_SHADERS), Result::INVALID_ARGUMENT, "'shaderLibrary->shaders[%u].stage' must include only 1 ray tracing shader stage", i);
     }
 
-    if (rayTracingPipelineDesc.cache != nullptr && !GetDesc().features.pipelineCache)
-        NRI_REPORT_WARNING(this, "'cache' is provided but 'features.pipelineCache' is false - the cache will be silently ignored");
     if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::FAIL_ON_CACHE_MISS) {
         if (!GetDesc().features.pipelineCacheControl)
             NRI_REPORT_WARNING(this, "'features.pipelineCacheControl' is false - 'FAIL_ON_CACHE_MISS' will be silently ignored");
