@@ -99,12 +99,15 @@ static inline bool IsViewTypeSupported(const TextureDesc& textureDesc, TextureVi
 DeviceVal::DeviceVal(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks, DeviceBase& device)
     : DeviceBase(callbacks, allocationCallbacks, NRI_OBJECT_SIGNATURE)
     , m_Impl(*(Device*)&device)
+    , m_VideoQueues(GetStdAllocator())
     , m_MemoryTypeMap(GetStdAllocator()) {
 }
 
 DeviceVal::~DeviceVal() {
     for (size_t i = 0; i < m_Queues.size(); i++)
         Destroy(m_Queues[i]);
+    for (auto& item : m_VideoQueues)
+        Destroy(item.second);
 
     if (m_Name) {
         const auto& allocationCallbacks = GetAllocationCallbacks();
@@ -185,6 +188,22 @@ NRI_INLINE Result DeviceVal::GetQueue(QueueType queueType, uint32_t queueIndex, 
             m_Queues[index] = Allocate<QueueVal>(GetAllocationCallbacks(), *this, queueImpl);
 
         queue = (Queue*)m_Queues[index];
+    }
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVal::GetVideoQueue(const VideoSessionDesc& videoSessionDesc, Queue*& queue) {
+    Queue* queueImpl = nullptr;
+    Result result = m_iVideoImpl.GetVideoQueue(m_Impl, videoSessionDesc, queueImpl);
+
+    queue = nullptr;
+    if (result == Result::SUCCESS) {
+        QueueVal*& queueVal = m_VideoQueues[queueImpl];
+        if (!queueVal)
+            queueVal = Allocate<QueueVal>(GetAllocationCallbacks(), *this, queueImpl);
+
+        queue = (Queue*)queueVal;
     }
 
     return result;

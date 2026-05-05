@@ -770,13 +770,36 @@ NRI_INLINE void CommandBufferVK::UploadBufferToTexture(Texture& dstTexture, cons
     const BufferVK& src = (BufferVK&)srcBuffer;
     const TextureVK& dst = (TextureVK&)dstTexture;
     const TextureDesc& dstDesc = dst.GetDesc();
-    const FormatProps& formatProps = GetFormatProps(dstDesc.format);
+    auto getPlaneLayout = [](Format format, PlaneBits planes, uint32_t& stride, uint32_t& blockWidth, uint32_t& blockHeight) {
+        stride = GetFormatProps(format).stride;
+        blockWidth = GetFormatProps(format).blockWidth;
+        blockHeight = GetFormatProps(format).blockHeight;
 
-    uint32_t rowBlockNum = srcDataLayout.rowPitch / formatProps.stride;
-    uint32_t bufferRowLength = rowBlockNum * formatProps.blockWidth;
+        if (format == Format::NV12_UNORM) {
+            stride = (planes & PlaneBits::PLANE_1) ? 2 : 1;
+            blockWidth = 1;
+            blockHeight = 1;
+        } else if (format == Format::P010_UNORM || format == Format::P016_UNORM) {
+            stride = (planes & PlaneBits::PLANE_1) ? 4 : 2;
+            blockWidth = 1;
+            blockHeight = 1;
+        }
+    };
+    auto getPlaneDivisor = [](Format format, PlaneBits planes) {
+        return (planes & PlaneBits::PLANE_1) && (format == Format::NV12_UNORM || format == Format::P010_UNORM || format == Format::P016_UNORM) ? 2u : 1u;
+    };
+
+    uint32_t planeStride = 0;
+    uint32_t planeBlockWidth = 0;
+    uint32_t planeBlockHeight = 0;
+    getPlaneLayout(dstDesc.format, dstRegion.planes, planeStride, planeBlockWidth, planeBlockHeight);
+    const uint32_t planeDivisor = getPlaneDivisor(dstDesc.format, dstRegion.planes);
+
+    uint32_t rowBlockNum = srcDataLayout.rowPitch / planeStride;
+    uint32_t bufferRowLength = rowBlockNum * planeBlockWidth;
 
     uint32_t sliceRowNum = srcDataLayout.slicePitch / srcDataLayout.rowPitch;
-    uint32_t bufferImageHeight = sliceRowNum * formatProps.blockWidth;
+    uint32_t bufferImageHeight = sliceRowNum * planeBlockHeight;
 
     VkImageAspectFlags dstAspectFlags = GetImageAspectFlags(dstRegion.planes, dstDesc.format);
 
@@ -791,13 +814,13 @@ NRI_INLINE void CommandBufferVK::UploadBufferToTexture(Texture& dstTexture, cons
         1,
     };
     region.imageOffset = VkOffset3D{
-        dstRegion.x,
-        dstRegion.y,
+        (int32_t)(dstRegion.x / planeDivisor),
+        (int32_t)(dstRegion.y / planeDivisor),
         dstRegion.z,
     };
     region.imageExtent = VkExtent3D{
-        (dstRegion.width == WHOLE_SIZE) ? dst.GetSize(0, dstRegion.mipOffset) : dstRegion.width,
-        (dstRegion.height == WHOLE_SIZE) ? dst.GetSize(1, dstRegion.mipOffset) : dstRegion.height,
+        ((dstRegion.width == WHOLE_SIZE) ? dst.GetSize(0, dstRegion.mipOffset) : dstRegion.width) / planeDivisor,
+        ((dstRegion.height == WHOLE_SIZE) ? dst.GetSize(1, dstRegion.mipOffset) : dstRegion.height) / planeDivisor,
         (dstRegion.depth == WHOLE_SIZE) ? dst.GetSize(2, dstRegion.mipOffset) : dstRegion.depth,
     };
 
@@ -816,13 +839,36 @@ NRI_INLINE void CommandBufferVK::ReadbackTextureToBuffer(Buffer& dstBuffer, cons
     const TextureVK& src = (TextureVK&)srcTexture;
     const BufferVK& dst = (BufferVK&)dstBuffer;
     const TextureDesc& srcDesc = src.GetDesc();
-    const FormatProps& formatProps = GetFormatProps(srcDesc.format);
+    auto getPlaneLayout = [](Format format, PlaneBits planes, uint32_t& stride, uint32_t& blockWidth, uint32_t& blockHeight) {
+        stride = GetFormatProps(format).stride;
+        blockWidth = GetFormatProps(format).blockWidth;
+        blockHeight = GetFormatProps(format).blockHeight;
 
-    uint32_t rowBlockNum = dstDataLayout.rowPitch / formatProps.stride;
-    uint32_t bufferRowLength = rowBlockNum * formatProps.blockWidth;
+        if (format == Format::NV12_UNORM) {
+            stride = (planes & PlaneBits::PLANE_1) ? 2 : 1;
+            blockWidth = 1;
+            blockHeight = 1;
+        } else if (format == Format::P010_UNORM || format == Format::P016_UNORM) {
+            stride = (planes & PlaneBits::PLANE_1) ? 4 : 2;
+            blockWidth = 1;
+            blockHeight = 1;
+        }
+    };
+    auto getPlaneDivisor = [](Format format, PlaneBits planes) {
+        return (planes & PlaneBits::PLANE_1) && (format == Format::NV12_UNORM || format == Format::P010_UNORM || format == Format::P016_UNORM) ? 2u : 1u;
+    };
+
+    uint32_t planeStride = 0;
+    uint32_t planeBlockWidth = 0;
+    uint32_t planeBlockHeight = 0;
+    getPlaneLayout(srcDesc.format, srcRegion.planes, planeStride, planeBlockWidth, planeBlockHeight);
+    const uint32_t planeDivisor = getPlaneDivisor(srcDesc.format, srcRegion.planes);
+
+    uint32_t rowBlockNum = dstDataLayout.rowPitch / planeStride;
+    uint32_t bufferRowLength = rowBlockNum * planeBlockWidth;
 
     uint32_t sliceRowNum = dstDataLayout.slicePitch / dstDataLayout.rowPitch;
-    uint32_t bufferImageHeight = sliceRowNum * formatProps.blockWidth;
+    uint32_t bufferImageHeight = sliceRowNum * planeBlockHeight;
 
     VkImageAspectFlags srcAspectFlags = GetImageAspectFlags(srcRegion.planes, srcDesc.format);
 
@@ -837,13 +883,13 @@ NRI_INLINE void CommandBufferVK::ReadbackTextureToBuffer(Buffer& dstBuffer, cons
         1,
     };
     region.imageOffset = VkOffset3D{
-        srcRegion.x,
-        srcRegion.y,
+        (int32_t)(srcRegion.x / planeDivisor),
+        (int32_t)(srcRegion.y / planeDivisor),
         srcRegion.z,
     };
     region.imageExtent = VkExtent3D{
-        srcRegion.width == WHOLE_SIZE ? src.GetSize(0, srcRegion.mipOffset) : srcRegion.width,
-        srcRegion.height == WHOLE_SIZE ? src.GetSize(1, srcRegion.mipOffset) : srcRegion.height,
+        (srcRegion.width == WHOLE_SIZE ? src.GetSize(0, srcRegion.mipOffset) : srcRegion.width) / planeDivisor,
+        (srcRegion.height == WHOLE_SIZE ? src.GetSize(1, srcRegion.mipOffset) : srcRegion.height) / planeDivisor,
         srcRegion.depth == WHOLE_SIZE ? src.GetSize(2, srcRegion.mipOffset) : srcRegion.depth,
     };
 

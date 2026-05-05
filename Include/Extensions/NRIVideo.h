@@ -6,6 +6,7 @@
 #pragma once
 
 #define NRI_VIDEO_H 1
+#define NRI_VIDEO_VERSION 1
 
 NriNamespaceBegin
 
@@ -23,6 +24,11 @@ NriEnum(VideoCodec, uint8_t,
     H265,
     AV1
 );
+
+NriStruct(VideoTextureDesc) {
+    Nri(TextureDesc) textureDesc;
+    Nri(VideoCodec) codec;
+};
 
 NriEnum(VideoDecodeArgumentType, uint8_t,
     PICTURE_PARAMETERS,
@@ -258,8 +264,8 @@ NriEnum(VideoPictureUsage, uint8_t,
 
 NriStruct(VideoBitstreamRange) {
     NriPtr(Buffer) buffer;
-    uint64_t offset;
-    uint64_t size;
+    uint64_t offset; // decode slice/tile offsets are relative to this offset
+    uint64_t size; // decode bitstream byte range; H.264/H.265 neutral decode expects Annex-B byte stream data
 };
 
 NriStruct(VideoPictureDesc) {
@@ -270,6 +276,13 @@ NriStruct(VideoPictureDesc) {
     uint32_t layer;
     uint32_t width;
     uint32_t height;
+};
+
+NriStruct(VideoDecodePictureStates) {
+    Nri(AccessLayoutStage) decodeWrite; // state required before CmdDecodeVideo writes the destination picture
+    Nri(AccessLayoutStage) afterDecode; // optional state to transition to on the video decode queue after CmdDecodeVideo
+    Nri(AccessLayoutStage) graphicsBefore; // state to use as "before" when the graphics queue consumes the decoded picture
+    bool releaseAfterDecode; // if true, caller should record decodeWrite -> afterDecode on the video decode queue
 };
 
 NriStruct(VideoH264SequenceParameterSetDesc) {
@@ -433,6 +446,18 @@ NriStruct(VideoH265SessionParametersDesc) {
     NriOptional uint32_t maxVideoParameterSetNum; // defaults to "videoParameterSetNum"
     NriOptional uint32_t maxSequenceParameterSetNum; // defaults to "sequenceParameterSetNum"
     NriOptional uint32_t maxPictureParameterSetNum; // defaults to "pictureParameterSetNum"
+};
+
+NriStruct(VideoAnnexBParameterSetsDesc) {
+    Nri(VideoCodec) codec;
+    NriOptional const NriPtr(VideoH264SequenceParameterSetDesc) h264Sps;
+    NriOptional const NriPtr(VideoH264PictureParameterSetDesc) h264Pps;
+    NriOptional const NriPtr(VideoH265VideoParameterSetDesc) h265Vps;
+    NriOptional const NriPtr(VideoH265SequenceParameterSetDesc) h265Sps;
+    NriOptional const NriPtr(VideoH265PictureParameterSetDesc) h265Pps;
+    NriOptional NriPtr(uint8_t) dst; // if null, only "writtenSize" is returned
+    uint64_t dstSize;
+    uint64_t writtenSize;
 };
 
 NriStruct(VideoAV1SequenceDesc) {
@@ -755,6 +780,45 @@ NriStruct(VideoDecodeDesc) {
     NriOptional const NriPtr(VideoAV1DecodePictureDesc) av1PictureDesc;
 };
 
+NriStruct(VideoEncodeFeedback) {
+    uint64_t errorFlags;
+    uint64_t averageQP;
+    uint64_t intraCodingUnitNum;
+    uint64_t interCodingUnitNum;
+    uint64_t skipCodingUnitNum;
+    uint64_t averageMotionEstimationX;
+    uint64_t averageMotionEstimationY;
+    uint64_t encodedBitstreamWrittenBytes;
+    uint64_t writtenSubregionNum;
+    uint64_t encodedBitstreamOffset;
+};
+
+NriStruct(VideoAV1EncodeDecodeInfoDesc) {
+    const NriPtr(VideoEncodeFeedback) feedback;
+    const NriPtr(VideoAV1SequenceDesc) sequence;
+    NriOptional const NriPtr(uint8_t) encodedPayloadHeader; // first bytes of the encoded payload; returned bitstream ranges are bounded by "feedback"
+    uint64_t encodedPayloadHeaderSize;
+};
+
+NriStruct(VideoAV1EncodeDecodeInfo) {
+    uint64_t bitstreamOffset; // offset relative to VideoEncodeFeedback::encodedBitstreamOffset
+    uint64_t bitstreamSize;
+    Nri(VideoAV1SequenceDesc) sequence;
+    Nri(VideoAV1DecodePictureDesc) picture;
+    Nri(VideoAV1DecodeTileDesc) tiles[64];
+    Nri(VideoAV1TileLayoutDesc) tileLayout;
+    uint16_t miColumnStarts[65];
+    uint16_t miRowStarts[65];
+    uint16_t widthInSuperblocksMinus1[64];
+    uint16_t heightInSuperblocksMinus1[64];
+    Nri(VideoAV1QuantizationDesc) quantization;
+    Nri(VideoAV1LoopFilterDesc) loopFilter;
+    Nri(VideoAV1CdefDesc) cdef;
+    Nri(VideoAV1SegmentationDesc) segmentation;
+    Nri(VideoAV1LoopRestorationDesc) loopRestoration;
+    Nri(VideoAV1GlobalMotionDesc) globalMotion;
+};
+
 NriStruct(VideoEncodeDesc) {
     NriPtr(VideoSession) session;
     NriPtr(VideoSessionParameters) parameters;
@@ -766,7 +830,7 @@ NriStruct(VideoEncodeDesc) {
     NriOptional NriPtr(VideoPicture) reconstructedPicture;
     NriOptional NriPtr(Buffer) metadata;
     uint64_t metadataOffset;
-    NriOptional NriPtr(Buffer) resolvedMetadata;
+    NriOptional NriPtr(Buffer) resolvedMetadata; // If provided, contains "VideoEncodeFeedback" after execution.
     uint64_t resolvedMetadataOffset;
     NriOptional const NriPtr(VideoReference) references; // if provided, must include "referenceNum" entries
     uint32_t referenceNum;
@@ -780,12 +844,22 @@ NriStruct(VideoEncodeDesc) {
 NriStruct(VideoInterface) {
     // Session
     // {
+        Nri(Result) (NRI_CALL *CreateCommittedVideoTexture) (NriRef(Device) device, Nri(MemoryLocation) memoryLocation, float priority, const NriRef(VideoTextureDesc) videoTextureDesc, NriOut NriRef(Texture*) texture);
+        // Creates a caller-owned video bitstream buffer in a backend-compatible memory location.
+        // Intended for explicit encode/decode bitstream preparation; no commands or synchronization are submitted internally.
+        Nri(Result) (NRI_CALL *CreateCommittedVideoBitstreamBuffer) (NriRef(Device) device, float priority, const NriRef(BufferDesc) bufferDesc, NriOut NriRef(Buffer*) buffer);
+        Nri(Result) (NRI_CALL *GetVideoQueue) (NriRef(Device) device, const NriRef(VideoSessionDesc) videoSessionDesc, NriOut NriRef(Queue*) queue);
         Nri(Result) (NRI_CALL *CreateVideoSession)  (NriRef(Device) device, const NriRef(VideoSessionDesc) videoSessionDesc, NriOut NriRef(VideoSession*) videoSession);
         void        (NRI_CALL *DestroyVideoSession) (NriRef(VideoSession) videoSession);
         Nri(Result) (NRI_CALL *CreateVideoSessionParameters)  (NriRef(Device) device, const NriRef(VideoSessionParametersDesc) videoSessionParametersDesc, NriOut NriRef(VideoSessionParameters*) videoSessionParameters);
         void        (NRI_CALL *DestroyVideoSessionParameters) (NriRef(VideoSessionParameters) videoSessionParameters);
         Nri(Result) (NRI_CALL *CreateVideoPicture)  (NriRef(Device) device, const NriRef(VideoPictureDesc) videoPictureDesc, NriOut NriRef(VideoPicture*) videoPicture);
         void        (NRI_CALL *DestroyVideoPicture) (NriRef(VideoPicture) videoPicture);
+        // Returns backend-specific states for explicit caller-recorded decode picture barriers.
+        Nri(Result) (NRI_CALL *GetVideoDecodePictureStates) (const NriRef(VideoPicture) videoPicture, NriOut NriRef(VideoDecodePictureStates) states);
+        // Serializes H.264 SPS/PPS or H.265 VPS/SPS/PPS parameter sets to Annex-B bytes.
+        // Pass "dst = nullptr" to query the required byte size in "writtenSize".
+        Nri(Result) (NRI_CALL *WriteVideoAnnexBParameterSets) (NriRef(VideoAnnexBParameterSetsDesc) annexBParameterSetsDesc);
     // }
 
     // Command buffer
@@ -793,6 +867,11 @@ NriStruct(VideoInterface) {
         // Video decode/encode command buffers must be created from "QueueType::VIDEO_DECODE" or "QueueType::VIDEO_ENCODE" queues.
         void (NRI_CALL *CmdDecodeVideo) (NriRef(CommandBuffer) commandBuffer, const NriRef(VideoDecodeDesc) videoDecodeDesc);
         void (NRI_CALL *CmdEncodeVideo) (NriRef(CommandBuffer) commandBuffer, const NriRef(VideoEncodeDesc) videoEncodeDesc);
+        // Vulkan: consumes encode feedback in encode submission order; the query must be host-available before this command is recorded.
+        // D3D12 resolves feedback during "CmdEncodeVideo".
+        void (NRI_CALL *CmdResolveVideoEncodeFeedback) (NriRef(CommandBuffer) commandBuffer, NriRef(VideoSession) videoSession, NriRef(Buffer) resolvedMetadata, uint64_t resolvedMetadataOffset);
+        Nri(Result) (NRI_CALL *GetVideoEncodeFeedback) (NriRef(VideoSession) videoSession, NriRef(Buffer) resolvedMetadataReadback, uint64_t resolvedMetadataOffset, NriOut NriRef(VideoEncodeFeedback) feedback);
+        Nri(Result) (NRI_CALL *GetVideoEncodeAV1DecodeInfo) (NriRef(VideoSession) videoSession, NriRef(Buffer) resolvedMetadataReadback, uint64_t resolvedMetadataOffset, const NriRef(VideoAV1EncodeDecodeInfoDesc) desc, NriOut NriRef(VideoAV1EncodeDecodeInfo) info);
     // }
 };
 

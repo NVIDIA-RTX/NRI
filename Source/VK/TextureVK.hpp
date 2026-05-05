@@ -12,6 +12,10 @@ TextureVK::~TextureVK() {
 }
 
 Result TextureVK::Create(const TextureDesc& textureDesc) {
+    return Create(textureDesc, VideoCodec::H264);
+}
+
+Result TextureVK::Create(const TextureDesc& textureDesc, VideoCodec videoCodec) {
     m_Desc = FixTextureDesc(textureDesc);
 
     VkImageCreateInfo info = {VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
@@ -21,7 +25,7 @@ Result TextureVK::Create(const TextureDesc& textureDesc) {
     const bool isVideoDecode = (m_Desc.usage & TextureUsageBits::VIDEO_DECODE) != 0;
     const bool isVideoEncode = (m_Desc.usage & TextureUsageBits::VIDEO_ENCODE) != 0;
     if (isVideoDecode || isVideoEncode) {
-        videoProfiles.Fill(isVideoDecode, isVideoEncode, m_Desc.format, m_Device.GetVideoCodecOperations(isVideoDecode, isVideoEncode));
+        videoProfiles.Fill(isVideoDecode, isVideoEncode, m_Desc.format, videoCodec, m_Device.GetVideoCodecOperations(isVideoDecode, isVideoEncode));
         if (videoProfiles.list.profileCount) {
             videoProfiles.list.pNext = info.pNext;
             info.pNext = &videoProfiles.list;

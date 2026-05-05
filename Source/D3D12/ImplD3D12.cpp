@@ -22,10 +22,15 @@
 #include "TextureD3D12.h"
 #include "VideoHelpersD3D12.h"
 
+#include "../Shared/VideoAnnexB.h"
+#include "../Shared/VideoAV1.h"
+
 #include "HelperInterface.h"
 #include "ImguiInterface.h"
 #include "StreamerInterface.h"
 #include "UpscalerInterface.h"
+
+#include <limits>
 
 using namespace nri;
 
@@ -259,6 +264,23 @@ static Result NRI_CALL CreateCommittedTexture(Device& device, MemoryLocation mem
         return result;
 
     return ((TextureD3D12*)texture)->Allocate(memoryLocation, priority, true);
+}
+
+static Result NRI_CALL CreateCommittedVideoTexture(Device& device, MemoryLocation memoryLocation, float priority, const VideoTextureDesc& videoTextureDesc, Texture*& texture) {
+    return CreateCommittedTexture(device, memoryLocation, priority, videoTextureDesc.textureDesc, texture);
+}
+
+static Result NRI_CALL CreateCommittedVideoBitstreamBuffer(Device& device, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {
+    return CreateCommittedBuffer(device, MemoryLocation::DEVICE, priority, bufferDesc, buffer);
+}
+
+static Result NRI_CALL GetVideoQueue(Device& device, const VideoSessionDesc& videoSessionDesc, Queue*& queue) {
+    DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
+    if (videoSessionDesc.usage == VideoUsage::DECODE)
+        return deviceD3D12.GetQueue(QueueType::VIDEO_DECODE, 0, queue);
+    if (videoSessionDesc.usage == VideoUsage::ENCODE)
+        return deviceD3D12.GetQueue(QueueType::VIDEO_ENCODE, 0, queue);
+    return Result::INVALID_ARGUMENT;
 }
 
 static Result NRI_CALL CreatePlacedBuffer(Device& device, Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer) {
@@ -1658,6 +1680,19 @@ static void NRI_CALL DestroyVideoPicture(VideoPicture& videoPicture) {
     Destroy((VideoPictureD3D12*)&videoPicture);
 }
 
+static Result NRI_CALL GetVideoDecodePictureStates(const VideoPicture&, VideoDecodePictureStates& states) {
+    states = {};
+    states.decodeWrite = {AccessBits::VIDEO_DECODE_WRITE, Layout::GENERAL, StageBits::VIDEO_DECODE};
+    states.afterDecode = {AccessBits::NONE, Layout::GENERAL, StageBits::NONE};
+    states.graphicsBefore = states.afterDecode;
+    states.releaseAfterDecode = true;
+    return Result::SUCCESS;
+}
+
+static Result NRI_CALL WriteVideoAnnexBParameterSets(VideoAnnexBParameterSetsDesc& annexBParameterSetsDesc) {
+    return WriteVideoAnnexBParameterSetsShared(annexBParameterSetsDesc);
+}
+
 static uint32_t GetVideoDecodeAV1ReferenceNameIndexD3D12(VideoAV1ReferenceName name) {
     switch (name) {
     case VideoAV1ReferenceName::NONE:
@@ -2189,6 +2224,10 @@ static bool HasVideoEncodeAV1DPBSlotResourceD3D12(const uint32_t* dpbSlotResourc
     return false;
 }
 
+static_assert(offsetof(VideoEncodeFeedback, errorFlags) == offsetof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA, EncodeErrorFlags));
+static_assert(offsetof(VideoEncodeFeedback, encodedBitstreamWrittenBytes) == offsetof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA, EncodedBitstreamWrittenBytesCount));
+static_assert(offsetof(VideoEncodeFeedback, writtenSubregionNum) == offsetof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA, WrittenSubregionsCount));
+
 static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEncodeDesc& videoEncodeDesc) {
     CommandBufferD3D12& commandBufferD3D12 = (CommandBufferD3D12&)commandBuffer;
     DeviceD3D12& device = commandBufferD3D12.GetDevice();
@@ -2713,18 +2752,234 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     commandBufferD3D12.EncodeVideo(desc);
 }
 
+static void NRI_CALL CmdResolveVideoEncodeFeedback(CommandBuffer&, VideoSession&, Buffer&, uint64_t) {
+}
+
+static Result NRI_CALL GetVideoEncodeFeedback(VideoSession&, Buffer& resolvedMetadataReadback, uint64_t resolvedMetadataOffset, VideoEncodeFeedback& feedback) {
+    const void* metadata = ((BufferD3D12&)resolvedMetadataReadback).Map(resolvedMetadataOffset);
+    if (!metadata)
+        return Result::FAILURE;
+
+    const auto& d3d12Feedback = *(const D3D12_VIDEO_ENCODER_OUTPUT_METADATA*)metadata;
+    feedback = {};
+    feedback.errorFlags = d3d12Feedback.EncodeErrorFlags;
+    feedback.averageQP = d3d12Feedback.EncodeStats.AverageQP;
+    feedback.intraCodingUnitNum = d3d12Feedback.EncodeStats.IntraCodingUnitsCount;
+    feedback.interCodingUnitNum = d3d12Feedback.EncodeStats.InterCodingUnitsCount;
+    feedback.skipCodingUnitNum = d3d12Feedback.EncodeStats.SkipCodingUnitsCount;
+    feedback.averageMotionEstimationX = d3d12Feedback.EncodeStats.AverageMotionEstimationXDirection;
+    feedback.averageMotionEstimationY = d3d12Feedback.EncodeStats.AverageMotionEstimationYDirection;
+    feedback.encodedBitstreamWrittenBytes = d3d12Feedback.EncodedBitstreamWrittenBytesCount;
+    feedback.writtenSubregionNum = d3d12Feedback.WrittenSubregionsCount;
+    return Result::SUCCESS;
+}
+
+struct VideoEncodeAV1TilesLayoutD3D12 {
+    uint64_t rowCount;
+    uint64_t colCount;
+    std::array<uint64_t, 64> rowHeights;
+    std::array<uint64_t, 64> colWidths;
+    uint64_t contextUpdateTileId;
+};
+
+struct VideoEncodeAV1LoopFilterConfigD3D12 {
+    std::array<uint64_t, 2> level;
+    uint64_t levelU;
+    uint64_t levelV;
+    uint64_t sharpness;
+    uint64_t deltaEnabled;
+    uint64_t updateRefDelta;
+    std::array<int64_t, 8> refDeltas;
+    uint64_t updateModeDelta;
+    std::array<int64_t, 2> modeDeltas;
+};
+
+struct VideoEncodeAV1LoopFilterDeltaConfigD3D12 {
+    uint64_t deltaLfPresent;
+    uint64_t deltaLfMulti;
+    uint64_t deltaLfRes;
+};
+
+struct VideoEncodeAV1QuantizationConfigD3D12 {
+    uint64_t baseQIndex;
+    int64_t yDcDeltaQ;
+    int64_t uDcDeltaQ;
+    int64_t uAcDeltaQ;
+    int64_t vDcDeltaQ;
+    int64_t vAcDeltaQ;
+    uint64_t usingQMatrix;
+    uint64_t qmY;
+    uint64_t qmU;
+    uint64_t qmV;
+};
+
+struct VideoEncodeAV1QuantizationDeltaConfigD3D12 {
+    uint64_t deltaQPresent;
+    uint64_t deltaQRes;
+};
+
+struct VideoEncodeAV1CdefConfigD3D12 {
+    uint64_t cdefBits;
+    uint64_t cdefDampingMinus3;
+    std::array<uint64_t, 8> yPrimaryStrength;
+    std::array<uint64_t, 8> uvPrimaryStrength;
+    std::array<uint64_t, 8> ySecondaryStrength;
+    std::array<uint64_t, 8> uvSecondaryStrength;
+};
+
+struct VideoEncodeAV1SegmentationConfigD3D12 {
+    uint64_t enabled;
+    uint64_t updateMap;
+    uint64_t updateData;
+    uint64_t temporalUpdate;
+    std::array<uint64_t, 8> enabledFeatures;
+    std::array<std::array<int64_t, 8>, 8> featureValues;
+};
+
+struct VideoEncodeAV1PostEncodeValuesD3D12 {
+    uint64_t compoundPredictionType;
+    VideoEncodeAV1LoopFilterConfigD3D12 loopFilter;
+    VideoEncodeAV1LoopFilterDeltaConfigD3D12 loopFilterDelta;
+    VideoEncodeAV1QuantizationConfigD3D12 quantization;
+    VideoEncodeAV1QuantizationDeltaConfigD3D12 quantizationDelta;
+    VideoEncodeAV1CdefConfigD3D12 cdef;
+    VideoEncodeAV1SegmentationConfigD3D12 segmentation;
+    uint64_t primaryRefFrame;
+    std::array<uint64_t, 7> referenceIndices;
+};
+
+static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolvedMetadataReadback, uint64_t resolvedMetadataOffset,
+    const VideoAV1EncodeDecodeInfoDesc& desc, VideoAV1EncodeDecodeInfo& info) {
+    if (!desc.feedback || !desc.sequence)
+        return Result::INVALID_ARGUMENT;
+    if (desc.feedback->errorFlags || !desc.feedback->encodedBitstreamWrittenBytes || !desc.feedback->writtenSubregionNum)
+        return Result::FAILURE;
+
+    const void* metadata = ((BufferD3D12&)resolvedMetadataReadback).Map(resolvedMetadataOffset);
+    if (!metadata)
+        return Result::FAILURE;
+
+    const auto* bytes = (const uint8_t*)metadata;
+    const auto& output = *(const D3D12_VIDEO_ENCODER_OUTPUT_METADATA*)bytes;
+    const auto& subregion = *(const D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA*)(bytes + sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA));
+    const auto& tilesLayout = *(const VideoEncodeAV1TilesLayoutD3D12*)(bytes + sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA) + sizeof(D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA));
+    const auto& post = *(const VideoEncodeAV1PostEncodeValuesD3D12*)(bytes + sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA) + sizeof(D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA) + sizeof(VideoEncodeAV1TilesLayoutD3D12));
+
+    if (output.EncodeErrorFlags || output.WrittenSubregionsCount != 1 || subregion.bSize <= subregion.bStartOffset)
+        return Result::FAILURE;
+    if (tilesLayout.colCount != 1 || tilesLayout.rowCount != 1)
+        return Result::FAILURE;
+
+    const uint64_t tilePayloadSize = subregion.bSize - subregion.bStartOffset;
+    if (tilePayloadSize > std::numeric_limits<uint32_t>::max())
+        return Result::FAILURE;
+
+    info = {};
+    info.sequence = *desc.sequence;
+    info.sequence.flags |= VideoAV1SequenceBits::ENABLE_CDEF | VideoAV1SequenceBits::ENABLE_RESTORATION;
+    const uint32_t width = info.sequence.maxFrameWidthMinus1 + 1;
+    const uint32_t height = info.sequence.maxFrameHeightMinus1 + 1;
+    video_av1::BindPointers(info);
+    video_av1::FillSingleTileLayout(info, width, height);
+    info.tileLayout.contextUpdateTileId = (uint16_t)tilesLayout.contextUpdateTileId;
+
+    info.bitstreamOffset = subregion.bStartOffset;
+    info.bitstreamSize = tilePayloadSize;
+    info.tiles[0] = {0, (uint32_t)tilePayloadSize, 0, 0, 0xFF, {}};
+
+    info.quantization.deltaQYDc = (int8_t)post.quantization.yDcDeltaQ;
+    info.quantization.deltaQUDc = (int8_t)post.quantization.uDcDeltaQ;
+    info.quantization.deltaQUAc = (int8_t)post.quantization.uAcDeltaQ;
+    info.quantization.deltaQVDc = (int8_t)post.quantization.vDcDeltaQ;
+    info.quantization.deltaQVAc = (int8_t)post.quantization.vAcDeltaQ;
+    info.quantization.usingQmatrix = (uint8_t)post.quantization.usingQMatrix;
+    info.quantization.qmY = (uint8_t)post.quantization.qmY;
+    info.quantization.qmU = (uint8_t)post.quantization.qmU;
+    info.quantization.qmV = (uint8_t)post.quantization.qmV;
+
+    info.loopFilter.level[0] = (uint8_t)post.loopFilter.level[0];
+    info.loopFilter.level[1] = (uint8_t)post.loopFilter.level[1];
+    info.loopFilter.level[2] = (uint8_t)post.loopFilter.levelU;
+    info.loopFilter.level[3] = (uint8_t)post.loopFilter.levelV;
+    info.loopFilter.sharpness = (uint8_t)post.loopFilter.sharpness;
+    info.loopFilter.deltaEnabled = (uint8_t)post.loopFilter.deltaEnabled;
+    info.loopFilter.deltaUpdate = (uint8_t)post.loopFilter.updateRefDelta;
+    info.loopFilter.updateModeDelta = (uint8_t)post.loopFilter.updateModeDelta;
+    for (uint32_t i = 0; i < 8; i++)
+        info.loopFilter.refDeltas[i] = (int8_t)post.loopFilter.refDeltas[i];
+    for (uint32_t i = 0; i < 2; i++)
+        info.loopFilter.modeDeltas[i] = (int8_t)post.loopFilter.modeDeltas[i];
+
+    info.picture.frameType = VideoEncodeFrameType::IDR;
+    info.picture.orderHint = 0;
+    info.picture.refreshFrameFlags = 0xFF;
+    info.picture.primaryReferenceName = VideoAV1ReferenceName::NONE;
+    info.picture.currentFrameId = 0;
+    info.picture.flags = VideoAV1PictureBits::ERROR_RESILIENT_MODE | VideoAV1PictureBits::FORCE_INTEGER_MV | VideoAV1PictureBits::SHOW_FRAME;
+    if (post.quantizationDelta.deltaQPresent) {
+        info.picture.flags |= VideoAV1PictureBits::DELTA_Q_PRESENT;
+        info.picture.deltaQRes = (uint8_t)post.quantizationDelta.deltaQRes;
+    }
+    if (post.loopFilterDelta.deltaLfPresent) {
+        info.picture.flags |= VideoAV1PictureBits::DELTA_LF_PRESENT;
+        info.picture.deltaLfRes = (uint8_t)post.loopFilterDelta.deltaLfRes;
+    }
+    if (post.loopFilterDelta.deltaLfMulti)
+        info.picture.flags |= VideoAV1PictureBits::DELTA_LF_MULTI;
+    if (post.segmentation.enabled) {
+        info.picture.flags |= VideoAV1PictureBits::SEGMENTATION_ENABLED;
+        if (post.segmentation.updateMap)
+            info.picture.flags |= VideoAV1PictureBits::SEGMENTATION_UPDATE_MAP;
+        if (post.segmentation.updateData)
+            info.picture.flags |= VideoAV1PictureBits::SEGMENTATION_UPDATE_DATA;
+        if (post.segmentation.temporalUpdate)
+            info.picture.flags |= VideoAV1PictureBits::SEGMENTATION_TEMPORAL_UPDATE;
+        info.picture.segmentation = &info.segmentation;
+        for (uint32_t i = 0; i < 8; i++) {
+            info.segmentation.featureEnabled[i] = (uint8_t)post.segmentation.enabledFeatures[i];
+            for (uint32_t j = 0; j < 8; j++)
+                info.segmentation.featureData[i][j] = (int16_t)post.segmentation.featureValues[i][j];
+        }
+    }
+    info.picture.renderWidthMinus1 = (uint16_t)(width - 1);
+    info.picture.renderHeightMinus1 = (uint16_t)(height - 1);
+    info.picture.baseQIndex = (uint8_t)post.quantization.baseQIndex;
+    info.picture.interpolationFilter = video_av1::INTERPOLATION_FILTER_EIGHTTAP;
+    info.picture.txMode = video_av1::TX_MODE_SELECT;
+    info.picture.cdefDampingMinus3 = (uint8_t)post.cdef.cdefDampingMinus3;
+    info.picture.cdefBits = (uint8_t)post.cdef.cdefBits;
+    info.picture.tileNum = 1;
+    for (uint32_t i = 0; i < 8; i++) {
+        info.cdef.yPrimaryStrength[i] = (uint8_t)post.cdef.yPrimaryStrength[i];
+        info.cdef.ySecondaryStrength[i] = (uint8_t)post.cdef.ySecondaryStrength[i];
+        info.cdef.uvPrimaryStrength[i] = (uint8_t)post.cdef.uvPrimaryStrength[i];
+        info.cdef.uvSecondaryStrength[i] = (uint8_t)post.cdef.uvSecondaryStrength[i];
+    }
+    video_av1::FillIdentityGlobalMotion(info.globalMotion);
+    video_av1::BindPointers(info);
+    return Result::SUCCESS;
+}
+
 Result DeviceD3D12::FillFunctionTable(VideoInterface& table) const {
     if (m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_DECODE] == 0 && m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_ENCODE] == 0)
         return Result::UNSUPPORTED;
 
+    table.CreateCommittedVideoTexture = ::CreateCommittedVideoTexture;
+    table.CreateCommittedVideoBitstreamBuffer = ::CreateCommittedVideoBitstreamBuffer;
+    table.GetVideoQueue = ::GetVideoQueue;
     table.CreateVideoSession = ::CreateVideoSession;
     table.DestroyVideoSession = ::DestroyVideoSession;
     table.CreateVideoSessionParameters = ::CreateVideoSessionParameters;
     table.DestroyVideoSessionParameters = ::DestroyVideoSessionParameters;
     table.CreateVideoPicture = ::CreateVideoPicture;
     table.DestroyVideoPicture = ::DestroyVideoPicture;
+    table.GetVideoDecodePictureStates = ::GetVideoDecodePictureStates;
+    table.WriteVideoAnnexBParameterSets = ::WriteVideoAnnexBParameterSets;
     table.CmdDecodeVideo = ::CmdDecodeVideo;
     table.CmdEncodeVideo = ::CmdEncodeVideo;
+    table.CmdResolveVideoEncodeFeedback = ::CmdResolveVideoEncodeFeedback;
+    table.GetVideoEncodeFeedback = ::GetVideoEncodeFeedback;
+    table.GetVideoEncodeAV1DecodeInfo = ::GetVideoEncodeAV1DecodeInfo;
 
     return Result::SUCCESS;
 }

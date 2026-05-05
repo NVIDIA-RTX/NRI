@@ -110,6 +110,7 @@ struct DispatchTable {
     VK_FUNC(GetBufferMemoryRequirements2);                // + | +
     VK_FUNC(GetImageMemoryRequirements2);                 // + | +
     VK_FUNC(ResetQueryPool);                              // + | +
+    VK_FUNC(GetQueryPoolResults);                         // + | +
     VK_FUNC(GetBufferDeviceAddress);                      // + | +
     VK_FUNC(BeginCommandBuffer);                          // - | +
     VK_FUNC(CmdSetViewportWithCount);                     // - | +
@@ -145,6 +146,7 @@ struct DispatchTable {
     VK_FUNC(CmdCopyQueryPoolResults);                     // - | +
     VK_FUNC(CmdResetQueryPool);                           // - | +
     VK_FUNC(CmdFillBuffer);                               // - | +
+    VK_FUNC(CmdUpdateBuffer);                             // - | +
     VK_FUNC(CmdBeginRendering);                           // - | +
     VK_FUNC(CmdEndRendering);                             // - | + TODO: use "vkCmdEndRendering2KHR" from "VK_KHR_maintenance10"
     VK_FUNC(CmdPushDescriptorSet);                        // - | +

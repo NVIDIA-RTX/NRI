@@ -506,6 +506,11 @@ constexpr VkImageAspectFlags GetImageAspectFlags(PlaneBits planes, Format format
             case Format::D32_SFLOAT_S8_UINT:
                 return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
 
+            case Format::NV12_UNORM:
+            case Format::P010_UNORM:
+            case Format::P016_UNORM:
+                return VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT;
+
             default:
                 return VK_IMAGE_ASPECT_COLOR_BIT;
         }
