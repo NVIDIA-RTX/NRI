@@ -169,11 +169,9 @@ public:
     };
 
 private:
-    void AddActiveQueueFamilyIndex(uint32_t familyIndex);
-
     VkPhysicalDevice m_PhysicalDevice = nullptr;
-    Vector<uint32_t> m_ActiveQueueFamilyIndices;
-    Vector<QueueFamilyPropsVK> m_QueueFamilyProps;
+    std::array<uint32_t, (size_t)QueueType::MAX_NUM> m_ActiveQueueFamilyIndices = {};
+    std::array<VkVideoCodecOperationFlagsKHR, (size_t)QueueType::MAX_NUM> m_VideoCodecOperations = {};
     std::array<Vector<QueueVK*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies;
     DispatchTable m_VK = {};
     VkPhysicalDeviceMemoryProperties m_MemoryProps = {};

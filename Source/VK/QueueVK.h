@@ -25,15 +25,11 @@ struct QueueVK final : public DebugNameBase {
         return m_Type;
     }
 
-    inline VkVideoCodecOperationFlagsKHR GetVideoCodecOperations() const {
-        return m_VideoCodecOperations;
-    }
-
     inline Lock& GetLock() {
         return m_Lock;
     }
 
-    Result Create(QueueType type, uint32_t familyIndex, VkQueue handle, VkVideoCodecOperationFlagsKHR videoCodecOperations = 0);
+    Result Create(QueueType type, uint32_t familyIndex, VkQueue handle);
 
     //================================================================================================================
     // DebugNameBase
@@ -56,7 +52,6 @@ private:
     VkQueue m_Handle = VK_NULL_HANDLE;
     uint32_t m_FamilyIndex = INVALID_FAMILY_INDEX;
     QueueType m_Type = QueueType(-1);
-    VkVideoCodecOperationFlagsKHR m_VideoCodecOperations = 0;
     Lock m_Lock;
 };
 

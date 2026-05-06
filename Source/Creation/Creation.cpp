@@ -27,13 +27,28 @@
 #endif
 
 #include "SharedExternal.h"
-#if NRI_ENABLE_VK_SUPPORT
-#    include "../VK/QueueSelectionVK.h"
-#endif
 
 #define ADAPTER_MAX_NUM 32u
 
 using namespace nri;
+
+#if NRI_ENABLE_VK_SUPPORT
+constexpr VkVideoCodecOperationFlagsKHR VIDEO_DECODE_CODEC_OPERATION_MASK_CREATION = 0x0000FFFF;
+constexpr VkVideoCodecOperationFlagsKHR VIDEO_ENCODE_CODEC_OPERATION_MASK_CREATION = 0xFFFF0000;
+
+static uint32_t GetVideoCodecNumVK(VkVideoCodecOperationFlagsKHR videoCodecOperations, bool decode) {
+    const VkVideoCodecOperationFlagsKHR mask = decode ? VIDEO_DECODE_CODEC_OPERATION_MASK_CREATION : VIDEO_ENCODE_CODEC_OPERATION_MASK_CREATION;
+    videoCodecOperations &= mask;
+
+    uint32_t num = 0;
+    while (videoCodecOperations) {
+        num += videoCodecOperations & 1;
+        videoCodecOperations >>= 1;
+    }
+
+    return num;
+}
+#endif
 
 Result CreateDeviceNONE(const DeviceCreationDesc& deviceCreationDesc, DeviceBase*& device);
 Result CreateDeviceD3D11(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationD3D11Desc& deviceCreationDescD3D11, DeviceBase*& device);
@@ -472,18 +487,78 @@ static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum
             uint32_t familyNum = maxFamilyNum;
             vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &familyNum, familyProps2);
 
-            QueueFamilyPropsVK* queueFamilyProps = (QueueFamilyPropsVK*)alloca(sizeof(QueueFamilyPropsVK) * familyNum);
-            for (uint32_t j = 0; j < familyNum; j++) {
+            std::array<uint32_t, (size_t)QueueType::MAX_NUM> scores = {};
+            for (uint32_t j = 0; j < familyNum; j++) { // TODO: same code as in "DeviceVK::Create"
                 const VkQueueFamilyProperties& familyProps = familyProps2[j].queueFamilyProperties;
-                queueFamilyProps[j] = {familyProps.queueFlags, familyProps.queueCount, familyVideoProps[j].videoCodecOperations};
+                const VkVideoCodecOperationFlagsKHR videoCodecOperations = familyVideoProps[j].videoCodecOperations;
+                const uint32_t videoDecodeCodecNum = GetVideoCodecNumVK(videoCodecOperations, true);
+                const uint32_t videoEncodeCodecNum = GetVideoCodecNumVK(videoCodecOperations, false);
+
+                bool graphics = familyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT;
+                bool compute = familyProps.queueFlags & VK_QUEUE_COMPUTE_BIT;
+                bool copy = familyProps.queueFlags & VK_QUEUE_TRANSFER_BIT;
+                bool sparse = familyProps.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT;
+                bool videoDecode = (familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR) && videoDecodeCodecNum;
+                bool videoEncode = (familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR) && videoEncodeCodecNum;
+                bool protect = familyProps.queueFlags & VK_QUEUE_PROTECTED_BIT;
+                bool opticalFlow = familyProps.queueFlags & VK_QUEUE_OPTICAL_FLOW_BIT_NV;
+                bool taken = false;
+
+                { // Prefer as much features as possible
+                    size_t index = (size_t)QueueType::GRAPHICS;
+                    uint32_t score = GRAPHICS_QUEUE_SCORE;
+
+                    if (!taken && graphics && score > scores[index]) {
+                        adapterDesc.queueNum[index] = familyProps.queueCount;
+                        scores[index] = score;
+                        taken = true;
+                    }
+                }
+
+                { // Prefer compute-only
+                    size_t index = (size_t)QueueType::COMPUTE;
+                    uint32_t score = COMPUTE_QUEUE_SCORE;
+
+                    if (!taken && compute && score > scores[index]) {
+                        adapterDesc.queueNum[index] = familyProps.queueCount;
+                        scores[index] = score;
+                        taken = true;
+                    }
+                }
+
+                { // Prefer copy-only
+                    size_t index = (size_t)QueueType::COPY;
+                    uint32_t score = COPY_QUEUE_SCORE;
+
+                    if (!taken && copy && score > scores[index]) {
+                        adapterDesc.queueNum[index] = familyProps.queueCount;
+                        scores[index] = score;
+                        taken = true;
+                    }
+                }
+
+                { // Prefer the most video decode codecs, then more queues
+                    size_t index = (size_t)QueueType::VIDEO_DECODE;
+                    uint32_t score = videoDecodeCodecNum * 100000 + familyProps.queueCount * 100 + VIDEO_DECODE_QUEUE_SCORE;
+
+                    if (!taken && videoDecode && score > scores[index]) {
+                        adapterDesc.queueNum[index] = familyProps.queueCount;
+                        scores[index] = score;
+                        taken = true;
+                    }
+                }
+
+                { // Prefer the most video encode codecs, then more queues
+                    size_t index = (size_t)QueueType::VIDEO_ENCODE;
+                    uint32_t score = videoEncodeCodecNum * 100000 + familyProps.queueCount * 100 + VIDEO_ENCODE_QUEUE_SCORE;
+
+                    if (!taken && videoEncode && score > scores[index]) {
+                        adapterDesc.queueNum[index] = familyProps.queueCount;
+                        scores[index] = score;
+                        taken = true;
+                    }
+                }
             }
-
-            std::array<uint32_t, (size_t)QueueType::MAX_NUM> queueFamilyIndices = {};
-            std::array<uint32_t, (size_t)QueueType::MAX_NUM> queueNums = {};
-            SelectQueueFamiliesVK(queueFamilyProps, familyNum, queueFamilyIndices, &queueNums);
-
-            for (uint32_t j = 0; j < (uint32_t)QueueType::MAX_NUM; j++)
-                adapterDesc.queueNum[j] = queueNums[j];
         }
 
         // Other fields

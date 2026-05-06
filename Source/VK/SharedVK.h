@@ -6,7 +6,6 @@
 #undef CreateSemaphore
 
 #include "DispatchTable.h"
-#include "QueueSelectionVK.h"
 #include "SharedExternal.h"
 
 typedef uint16_t MemoryTypeIndex;
@@ -41,6 +40,8 @@ typedef uint16_t MemoryTypeIndex;
 namespace nri {
 
 constexpr uint32_t INVALID_FAMILY_INDEX = uint32_t(-1);
+constexpr VkVideoCodecOperationFlagsKHR VIDEO_DECODE_CODEC_OPERATION_MASK = 0x0000FFFF;
+constexpr VkVideoCodecOperationFlagsKHR VIDEO_ENCODE_CODEC_OPERATION_MASK = 0xFFFF0000;
 
 struct MemoryTypeInfo {
     MemoryTypeIndex index;

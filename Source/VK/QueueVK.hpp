@@ -1,10 +1,9 @@
 // © 2021 NVIDIA Corporation
 
-Result QueueVK::Create(QueueType type, uint32_t familyIndex, VkQueue handle, VkVideoCodecOperationFlagsKHR videoCodecOperations) {
+Result QueueVK::Create(QueueType type, uint32_t familyIndex, VkQueue handle) {
     m_Type = type;
     m_FamilyIndex = familyIndex;
     m_Handle = handle;
-    m_VideoCodecOperations = videoCodecOperations;
 
     return Result::SUCCESS;
 }
