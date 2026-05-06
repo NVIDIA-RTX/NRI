@@ -1244,48 +1244,6 @@ static Result NRI_CALL CreateVideoSession(Device& device, const VideoSessionDesc
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL CreateCommittedVideoTexture(Device& device, MemoryLocation memoryLocation, float priority, const VideoTextureDesc& videoTextureDesc, Texture*& texture) {
-    DeviceVal& deviceVal = (DeviceVal&)device;
-
-    NRI_RETURN_ON_FAILURE(&deviceVal, priority >= -1.0f && priority <= 1.0f, Result::INVALID_ARGUMENT, "'priority' outside of [-1; 1] range");
-    NRI_RETURN_ON_FAILURE(&deviceVal, videoTextureDesc.textureDesc.format > Format::UNKNOWN && videoTextureDesc.textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
-    NRI_RETURN_ON_FAILURE(&deviceVal, videoTextureDesc.textureDesc.width != 0, Result::INVALID_ARGUMENT, "'width' is 0");
-    NRI_RETURN_ON_FAILURE(&deviceVal, videoTextureDesc.codec <= VideoCodec::AV1, Result::INVALID_ARGUMENT, "'codec' is invalid");
-
-    Dim_t maxMipNum = GetMaxMipNum(videoTextureDesc.textureDesc.width, videoTextureDesc.textureDesc.height, videoTextureDesc.textureDesc.depth);
-    NRI_RETURN_ON_FAILURE(&deviceVal, videoTextureDesc.textureDesc.mipNum <= maxMipNum, Result::INVALID_ARGUMENT, "'mipNum=%u' can't be > %u", videoTextureDesc.textureDesc.mipNum, maxMipNum);
-
-    Texture* textureImpl = nullptr;
-    Result result = deviceVal.GetVideoInterfaceImpl().CreateCommittedVideoTexture(deviceVal.GetImpl(), memoryLocation, priority, videoTextureDesc, textureImpl);
-
-    texture = nullptr;
-    if (result == Result::SUCCESS)
-        texture = (Texture*)Allocate<TextureVal>(deviceVal.GetAllocationCallbacks(), deviceVal, textureImpl, true);
-
-    return result;
-}
-
-static Result NRI_CALL CreateCommittedVideoBitstreamBuffer(Device& device, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {
-    DeviceVal& deviceVal = (DeviceVal&)device;
-
-    NRI_RETURN_ON_FAILURE(&deviceVal, priority >= -1.0f && priority <= 1.0f, Result::INVALID_ARGUMENT, "'priority' outside of [-1; 1] range");
-    NRI_RETURN_ON_FAILURE(&deviceVal, bufferDesc.size != 0, Result::INVALID_ARGUMENT, "'size' is 0");
-    NRI_RETURN_ON_FAILURE(&deviceVal, (bufferDesc.usage & (BufferUsageBits::VIDEO_DECODE | BufferUsageBits::VIDEO_ENCODE)) != 0, Result::INVALID_ARGUMENT, "'usage' must include video decode or encode");
-
-    Buffer* bufferImpl = nullptr;
-    Result result = deviceVal.GetVideoInterfaceImpl().CreateCommittedVideoBitstreamBuffer(deviceVal.GetImpl(), priority, bufferDesc, bufferImpl);
-
-    buffer = nullptr;
-    if (result == Result::SUCCESS)
-        buffer = (Buffer*)Allocate<BufferVal>(deviceVal.GetAllocationCallbacks(), deviceVal, bufferImpl, true);
-
-    return result;
-}
-
-static Result NRI_CALL GetVideoQueue(Device& device, const VideoSessionDesc& videoSessionDesc, Queue*& queue) {
-    return ((DeviceVal&)device).GetVideoQueue(videoSessionDesc, queue);
-}
-
 static void NRI_CALL DestroyVideoSession(VideoSession& videoSession) {
     VideoSessionVal& videoSessionVal = (VideoSessionVal&)videoSession;
     videoSessionVal.GetVideoInterfaceImpl().DestroyVideoSession(*videoSessionVal.GetImpl());
@@ -1428,9 +1386,6 @@ Result DeviceVal::FillFunctionTable(VideoInterface& table) const {
     if (!m_IsExtSupported.video)
         return Result::UNSUPPORTED;
 
-    table.CreateCommittedVideoTexture = ::CreateCommittedVideoTexture;
-    table.CreateCommittedVideoBitstreamBuffer = ::CreateCommittedVideoBitstreamBuffer;
-    table.GetVideoQueue = ::GetVideoQueue;
     table.CreateVideoSession = ::CreateVideoSession;
     table.DestroyVideoSession = ::DestroyVideoSession;
     table.CreateVideoSessionParameters = ::CreateVideoSessionParameters;

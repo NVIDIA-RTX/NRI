@@ -19,17 +19,6 @@ NriEnum(VideoUsage, uint8_t,
     ENCODE
 );
 
-NriEnum(VideoCodec, uint8_t,
-    H264,
-    H265,
-    AV1
-);
-
-NriStruct(VideoTextureDesc) {
-    Nri(TextureDesc) textureDesc;
-    Nri(VideoCodec) codec;
-};
-
 NriEnum(VideoDecodeArgumentType, uint8_t,
     PICTURE_PARAMETERS,
     INVERSE_QUANTIZATION_MATRIX,
@@ -844,11 +833,6 @@ NriStruct(VideoEncodeDesc) {
 NriStruct(VideoInterface) {
     // Session
     // {
-        Nri(Result) (NRI_CALL *CreateCommittedVideoTexture) (NriRef(Device) device, Nri(MemoryLocation) memoryLocation, float priority, const NriRef(VideoTextureDesc) videoTextureDesc, NriOut NriRef(Texture*) texture);
-        // Creates a caller-owned video bitstream buffer in a backend-compatible memory location.
-        // Intended for explicit encode/decode bitstream preparation; no commands or synchronization are submitted internally.
-        Nri(Result) (NRI_CALL *CreateCommittedVideoBitstreamBuffer) (NriRef(Device) device, float priority, const NriRef(BufferDesc) bufferDesc, NriOut NriRef(Buffer*) buffer);
-        Nri(Result) (NRI_CALL *GetVideoQueue) (NriRef(Device) device, const NriRef(VideoSessionDesc) videoSessionDesc, NriOut NriRef(Queue*) queue);
         Nri(Result) (NRI_CALL *CreateVideoSession)  (NriRef(Device) device, const NriRef(VideoSessionDesc) videoSessionDesc, NriOut NriRef(VideoSession*) videoSession);
         void        (NRI_CALL *DestroyVideoSession) (NriRef(VideoSession) videoSession);
         Nri(Result) (NRI_CALL *CreateVideoSessionParameters)  (NriRef(Device) device, const NriRef(VideoSessionParametersDesc) videoSessionParametersDesc, NriOut NriRef(VideoSessionParameters*) videoSessionParameters);

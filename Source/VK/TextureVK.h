@@ -32,7 +32,6 @@ struct TextureVK final : public DebugNameBase {
     ~TextureVK();
 
     Result Create(const TextureDesc& textureDesc);
-    Result Create(const TextureDesc& textureDesc, VideoCodec videoCodec);
     Result Create(const TextureVKDesc& textureVKDesc);
     Result AllocateAndBindMemory(MemoryLocation memoryLocation, float priority, bool committed);
     Result BindMemory(const MemoryVK& memory, uint64_t offset);

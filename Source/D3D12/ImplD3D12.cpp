@@ -280,23 +280,6 @@ static Result NRI_CALL CreateCommittedTexture(Device& device, MemoryLocation mem
     return ((TextureD3D12*)texture)->Allocate(memoryLocation, priority, true);
 }
 
-static Result NRI_CALL CreateCommittedVideoTexture(Device& device, MemoryLocation memoryLocation, float priority, const VideoTextureDesc& videoTextureDesc, Texture*& texture) {
-    return CreateCommittedTexture(device, memoryLocation, priority, videoTextureDesc.textureDesc, texture);
-}
-
-static Result NRI_CALL CreateCommittedVideoBitstreamBuffer(Device& device, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {
-    return CreateCommittedBuffer(device, MemoryLocation::DEVICE, priority, bufferDesc, buffer);
-}
-
-static Result NRI_CALL GetVideoQueue(Device& device, const VideoSessionDesc& videoSessionDesc, Queue*& queue) {
-    DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
-    if (videoSessionDesc.usage == VideoUsage::DECODE)
-        return deviceD3D12.GetQueue(QueueType::VIDEO_DECODE, 0, queue);
-    if (videoSessionDesc.usage == VideoUsage::ENCODE)
-        return deviceD3D12.GetQueue(QueueType::VIDEO_ENCODE, 0, queue);
-    return Result::INVALID_ARGUMENT;
-}
-
 static Result NRI_CALL CreatePlacedBuffer(Device& device, Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer) {
     DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
 
@@ -1326,6 +1309,7 @@ static GUID GetVideoDecodeProfileD3D12(const VideoSessionDesc& videoSessionDesc)
             return videoSessionDesc.format == Format::P010_UNORM || videoSessionDesc.format == Format::P016_UNORM ? D3D12_VIDEO_DECODE_PROFILE_HEVC_MAIN10 : D3D12_VIDEO_DECODE_PROFILE_HEVC_MAIN;
         case VideoCodec::AV1:
             return D3D12_VIDEO_DECODE_PROFILE_AV1_PROFILE0;
+        case VideoCodec::NONE:
         case VideoCodec::MAX_NUM:
             return {};
     }
@@ -1341,6 +1325,7 @@ static D3D12_VIDEO_ENCODER_CODEC GetVideoEncodeCodecD3D12(VideoCodec codec) {
             return D3D12_VIDEO_ENCODER_CODEC_HEVC;
         case VideoCodec::AV1:
             return D3D12_VIDEO_ENCODER_CODEC_AV1;
+        case VideoCodec::NONE:
         case VideoCodec::MAX_NUM:
             return (D3D12_VIDEO_ENCODER_CODEC)-1;
     }
@@ -2971,9 +2956,6 @@ Result DeviceD3D12::FillFunctionTable(VideoInterface& table) const {
     if (m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_DECODE] == 0 && m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_ENCODE] == 0)
         return Result::UNSUPPORTED;
 
-    table.CreateCommittedVideoTexture = ::CreateCommittedVideoTexture;
-    table.CreateCommittedVideoBitstreamBuffer = ::CreateCommittedVideoBitstreamBuffer;
-    table.GetVideoQueue = ::GetVideoQueue;
     table.CreateVideoSession = ::CreateVideoSession;
     table.DestroyVideoSession = ::DestroyVideoSession;
     table.CreateVideoSessionParameters = ::CreateVideoSessionParameters;

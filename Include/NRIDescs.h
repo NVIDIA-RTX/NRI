@@ -705,6 +705,13 @@ NriBits(BufferUsageBits, uint16_t,                  // Min compatible access:   
     VIDEO_ENCODE                        = NriBit(13)    // VIDEO_ENCODE                             Video encode bitstream output
 );
 
+NriEnum(VideoCodec, uint8_t,
+    NONE,
+    H264,
+    H265,
+    AV1
+);
+
 NriStruct(TextureDesc) {
     Nri(TextureType) type;
     Nri(TextureUsageBits) usage;
@@ -716,6 +723,7 @@ NriStruct(TextureDesc) {
     NriOptional Nri(Dim_t) layerNum;
     NriOptional Nri(Sample_t) sampleNum;
     NriOptional Nri(SharingMode) sharingMode;
+    NriOptional Nri(VideoCodec) videoCodec;             // required for VK video textures, ignored otherwise
     NriOptional Nri(ClearValue) optimizedClearValue;    // D3D12: not needed on desktop, since any HW can track many clear values
 };
 
@@ -1865,6 +1873,21 @@ NriStruct(DeviceDesc) {
         uint32_t alignmentDefault;          // (INTERNAL) worst-case alignment for a memory allocation respecting all possible placed resources, excluding multisample textures
         uint32_t alignmentMultisample;      // (INTERNAL) worst-case alignment for a memory allocation respecting all possible placed resources, including multisample textures
     } memory;
+
+    // Video
+    struct {
+        struct {
+            uint32_t H264                                      : 1;
+            uint32_t H265                                      : 1;
+            uint32_t AV1                                       : 1;
+        } decode;
+
+        struct {
+            uint32_t H264                                      : 1;
+            uint32_t H265                                      : 1;
+            uint32_t AV1                                       : 1;
+        } encode;
+    } videoFeatures;
 
     // Memory alignment requirements
     struct {

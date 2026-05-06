@@ -46,10 +46,28 @@ inline bool HasVideoCodecOperation(const QueueFamilyPropsVK& familyProps, VkVide
     return (familyProps.queueFlags & requiredQueueFlag) != 0 && ((familyProps.videoCodecOperations & operation) != 0 || familyProps.videoCodecOperations == 0);
 }
 
-// Video queues are selected for the exact codec operation first. Among matching families, prefer
-// families with fewer unrelated capabilities so video work lands on dedicated queues when available.
-inline uint32_t GetVideoQueueFamilyScoreVK(const QueueFamilyPropsVK& familyProps, VkVideoCodecOperationFlagBitsKHR operation) {
-    if (!HasVideoCodecOperation(familyProps, operation))
+inline const std::array<VkVideoCodecOperationFlagBitsKHR, 3>& GetVideoCodecOperationsVK(QueueType queueType) {
+    return queueType == QueueType::VIDEO_DECODE ? g_VideoDecodeCodecOperations : g_VideoEncodeCodecOperations;
+}
+
+inline uint32_t GetSupportedVideoCodecNumVK(const QueueFamilyPropsVK& familyProps, QueueType queueType) {
+    const VkVideoCodecOperationFlagsKHR mask = queueType == QueueType::VIDEO_DECODE ? VIDEO_DECODE_CODEC_OPERATION_MASK : VIDEO_ENCODE_CODEC_OPERATION_MASK;
+    if (familyProps.videoCodecOperations == 0)
+        return 3;
+
+    uint32_t num = 0;
+    for (VkVideoCodecOperationFlagBitsKHR operation : GetVideoCodecOperationsVK(queueType))
+        num += (familyProps.videoCodecOperations & operation) ? 1 : 0;
+
+    return num && (familyProps.videoCodecOperations & mask) ? num : 0;
+}
+
+// Prefer families supporting more codecs. Among ties, prefer more queues and then fewer unrelated capabilities
+// so video work still lands on dedicated queues when available.
+inline uint32_t GetVideoQueueFamilyScoreVK(const QueueFamilyPropsVK& familyProps, QueueType queueType) {
+    const bool videoDecode = queueType == QueueType::VIDEO_DECODE && HasVideoDecodeCodec(familyProps);
+    const bool videoEncode = queueType == QueueType::VIDEO_ENCODE && HasVideoEncodeCodec(familyProps);
+    if (!videoDecode && !videoEncode)
         return 0;
 
     const bool graphics = (familyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
@@ -57,54 +75,17 @@ inline uint32_t GetVideoQueueFamilyScoreVK(const QueueFamilyPropsVK& familyProps
     const bool copy = (familyProps.queueFlags & VK_QUEUE_TRANSFER_BIT) != 0;
     const bool decode = (familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR) != 0;
     const bool encode = (familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR) != 0;
-    const bool sameDirectionDecode = (operation & VIDEO_DECODE_CODEC_OPERATION_MASK) != 0;
-    const bool alsoOppositeVideo = sameDirectionDecode ? encode : decode;
+    const bool alsoOppositeVideo = queueType == QueueType::VIDEO_DECODE ? encode : decode;
 
     uint32_t score = 1000;
+    score += GetSupportedVideoCodecNumVK(familyProps, queueType) * 1000;
+    score += std::min(familyProps.queueCount, 8u) * 10;
     score += graphics ? 0 : 100;
     score += compute ? 0 : 50;
     score += copy ? 0 : 25;
     score += alsoOppositeVideo ? 0 : 10;
-    score += std::min(familyProps.queueCount, 8u);
 
     return score;
-}
-
-inline uint32_t SelectVideoQueueFamilyVK(const QueueFamilyPropsVK* familyProps, uint32_t familyNum, VkVideoCodecOperationFlagBitsKHR operation) {
-    uint32_t bestFamilyIndex = INVALID_QUEUE_FAMILY_INDEX_VK;
-    uint32_t bestScore = 0;
-
-    for (uint32_t familyIndex = 0; familyIndex < familyNum; familyIndex++) {
-        const uint32_t score = GetVideoQueueFamilyScoreVK(familyProps[familyIndex], operation);
-        if (score > bestScore) {
-            bestFamilyIndex = familyIndex;
-            bestScore = score;
-        }
-    }
-
-    return bestFamilyIndex;
-}
-
-inline const std::array<VkVideoCodecOperationFlagBitsKHR, 3>& GetVideoCodecOperationsVK(QueueType queueType) {
-    return queueType == QueueType::VIDEO_DECODE ? g_VideoDecodeCodecOperations : g_VideoEncodeCodecOperations;
-}
-
-inline uint32_t SelectVideoQueueFamiliesVK(const QueueFamilyPropsVK* familyProps, uint32_t familyNum, QueueType queueType, std::array<uint32_t, 3>& familyIndices) {
-    familyIndices.fill(INVALID_QUEUE_FAMILY_INDEX_VK);
-
-    uint32_t selectedFamilyNum = 0;
-    for (VkVideoCodecOperationFlagBitsKHR operation : GetVideoCodecOperationsVK(queueType)) {
-        const uint32_t familyIndex = SelectVideoQueueFamilyVK(familyProps, familyNum, operation);
-        if (familyIndex == INVALID_QUEUE_FAMILY_INDEX_VK)
-            continue;
-
-        if (std::find(familyIndices.begin(), familyIndices.begin() + selectedFamilyNum, familyIndex) != familyIndices.begin() + selectedFamilyNum)
-            continue;
-
-        familyIndices[selectedFamilyNum++] = familyIndex;
-    }
-
-    return selectedFamilyNum;
 }
 
 inline VkVideoCodecOperationFlagBitsKHR GetRepresentativeVideoCodecOperationVK(const QueueFamilyPropsVK& familyProps, QueueType queueType) {
@@ -134,14 +115,10 @@ inline uint32_t GetQueueFamilyScoreVK(const QueueFamilyPropsVK& familyProps, Que
             return compute ? COMPUTE_QUEUE_SCORE : 0;
         case QueueType::COPY:
             return copy ? COPY_QUEUE_SCORE : 0;
-        case QueueType::VIDEO_DECODE: {
-            const VkVideoCodecOperationFlagBitsKHR operation = GetRepresentativeVideoCodecOperationVK(familyProps, QueueType::VIDEO_DECODE);
-            return videoDecode ? GetVideoQueueFamilyScoreVK(familyProps, operation) : 0;
-        }
-        case QueueType::VIDEO_ENCODE: {
-            const VkVideoCodecOperationFlagBitsKHR operation = GetRepresentativeVideoCodecOperationVK(familyProps, QueueType::VIDEO_ENCODE);
-            return videoEncode ? GetVideoQueueFamilyScoreVK(familyProps, operation) : 0;
-        }
+        case QueueType::VIDEO_DECODE:
+            return videoDecode ? GetVideoQueueFamilyScoreVK(familyProps, QueueType::VIDEO_DECODE) : 0;
+        case QueueType::VIDEO_ENCODE:
+            return videoEncode ? GetVideoQueueFamilyScoreVK(familyProps, QueueType::VIDEO_ENCODE) : 0;
         default:
             return 0;
     }

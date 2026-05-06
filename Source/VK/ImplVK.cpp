@@ -257,32 +257,7 @@ static Result NRI_CALL CreateCommittedTexture(Device& device, MemoryLocation mem
     return ((TextureVK*)texture)->AllocateAndBindMemory(memoryLocation, priority, true);
 }
 
-static Result NRI_CALL CreateCommittedVideoTexture(Device& device, MemoryLocation memoryLocation, float priority, const VideoTextureDesc& videoTextureDesc, Texture*& texture) {
-    DeviceVK& deviceVK = (DeviceVK&)device;
-
-    Result result = deviceVK.CreateImplementation<TextureVK>(texture, videoTextureDesc.textureDesc, videoTextureDesc.codec);
-    if (result != Result::SUCCESS)
-        return result;
-
-    return ((TextureVK*)texture)->AllocateAndBindMemory(memoryLocation, priority, true);
-}
-
-static Result NRI_CALL CreateCommittedVideoBitstreamBuffer(Device& device, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {
-    const MemoryLocation memoryLocation = (bufferDesc.usage & BufferUsageBits::VIDEO_ENCODE) ? MemoryLocation::HOST_READBACK
-                                                                                             : ((bufferDesc.usage & BufferUsageBits::VIDEO_DECODE) ? MemoryLocation::HOST_UPLOAD : MemoryLocation::DEVICE);
-    return CreateCommittedBuffer(device, memoryLocation, priority, bufferDesc, buffer);
-}
-
 static VkVideoCodecOperationFlagBitsKHR GetVideoCodecOperationVK(const VideoSessionDesc& videoSessionDesc);
-
-static Result NRI_CALL GetVideoQueue(Device& device, const VideoSessionDesc& videoSessionDesc, Queue*& queue) {
-    DeviceVK& deviceVK = (DeviceVK&)device;
-    const VkVideoCodecOperationFlagBitsKHR operation = GetVideoCodecOperationVK(videoSessionDesc);
-    if (!operation)
-        return Result::UNSUPPORTED;
-
-    return deviceVK.GetVideoQueue(operation, queue);
-}
 
 static Result NRI_CALL CreatePlacedBuffer(Device& device, Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer) {
     DeviceVK& deviceVK = (DeviceVK&)device;
@@ -1726,6 +1701,7 @@ static VkVideoCodecOperationFlagBitsKHR GetVideoCodecOperationVK(const VideoSess
                 return VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR;
             case VideoCodec::AV1:
                 return VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR;
+            case VideoCodec::NONE:
             case VideoCodec::MAX_NUM:
                 return (VkVideoCodecOperationFlagBitsKHR)0;
         }
@@ -1737,6 +1713,7 @@ static VkVideoCodecOperationFlagBitsKHR GetVideoCodecOperationVK(const VideoSess
                 return VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_KHR;
             case VideoCodec::AV1:
                 return VK_VIDEO_CODEC_OPERATION_ENCODE_AV1_BIT_KHR;
+            case VideoCodec::NONE:
             case VideoCodec::MAX_NUM:
                 return (VkVideoCodecOperationFlagBitsKHR)0;
         }
@@ -1768,6 +1745,7 @@ static void* FillVideoProfileCodecInfoVK(const VideoSessionDesc& videoSessionDes
                 info.filmGrainSupport = VK_TRUE;
                 return &info;
             }
+            case VideoCodec::NONE:
             case VideoCodec::MAX_NUM:
                 return nullptr;
         }
@@ -1791,6 +1769,7 @@ static void* FillVideoProfileCodecInfoVK(const VideoSessionDesc& videoSessionDes
                 info.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN;
                 return &info;
             }
+            case VideoCodec::NONE:
             case VideoCodec::MAX_NUM:
                 return nullptr;
         }
@@ -1852,7 +1831,8 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
     }
 
     Queue* queue = nullptr;
-    Result result = m_Device.GetVideoQueue(operation, queue);
+    const QueueType queueType = videoSessionDesc.usage == VideoUsage::DECODE ? QueueType::VIDEO_DECODE : QueueType::VIDEO_ENCODE;
+    Result result = m_Device.GetQueue(queueType, 0, queue);
     if (result != Result::SUCCESS) {
         NRI_REPORT_ERROR(&m_Device, "Failed to get Vulkan video queue for codec operation 0x%X", operation);
         return result;
@@ -1903,6 +1883,7 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
             case VideoCodec::AV1:
                 decodeCapabilities.pNext = &decodeAV1Capabilities;
                 break;
+            case VideoCodec::NONE:
             case VideoCodec::MAX_NUM:
                 break;
         }
@@ -1918,6 +1899,7 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
             case VideoCodec::AV1:
                 encodeCapabilities.pNext = &encodeAV1Capabilities;
                 break;
+            case VideoCodec::NONE:
             case VideoCodec::MAX_NUM:
                 break;
         }
@@ -1961,6 +1943,7 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
                 encodeAV1SessionCreateInfo.maxLevel = GetVideoAV1LevelVK(videoSessionDesc.width, videoSessionDesc.height);
                 createInfo.pNext = &encodeAV1SessionCreateInfo;
                 break;
+            case VideoCodec::NONE:
             case VideoCodec::MAX_NUM:
                 break;
         }
@@ -2953,6 +2936,7 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
             av1SetupReference.pStdReferenceInfo = &av1StdSetupReference;
             break;
         }
+        case VideoCodec::NONE:
         case VideoCodec::MAX_NUM:
             NRI_REPORT_ERROR(&device, "Unsupported video encode codec");
             return;
@@ -3155,9 +3139,6 @@ Result DeviceVK::FillFunctionTable(VideoInterface& table) const {
     if (m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_DECODE] == 0 && m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_ENCODE] == 0)
         return Result::UNSUPPORTED;
 
-    table.CreateCommittedVideoTexture = ::CreateCommittedVideoTexture;
-    table.CreateCommittedVideoBitstreamBuffer = ::CreateCommittedVideoBitstreamBuffer;
-    table.GetVideoQueue = ::GetVideoQueue;
     table.CreateVideoSession = ::CreateVideoSession;
     table.DestroyVideoSession = ::DestroyVideoSession;
     table.CreateVideoSessionParameters = ::CreateVideoSessionParameters;

@@ -868,6 +868,14 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.features.shaderBytecodeDXBC = true;
     m_Desc.features.shaderBytecodeDXIL = true;
 
+    ComPtr<ID3D12VideoDevice> videoDevice;
+    if (SUCCEEDED(m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice))))
+        m_Desc.videoFeatures.decode.H264 = m_Desc.videoFeatures.decode.H265 = m_Desc.videoFeatures.decode.AV1 = true;
+
+    ComPtr<ID3D12VideoDevice3> videoDevice3;
+    if (SUCCEEDED(m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice3))))
+        m_Desc.videoFeatures.encode.H264 = m_Desc.videoFeatures.encode.H265 = m_Desc.videoFeatures.encode.AV1 = true;
+
     bool isShaderAtomicsF16Supported = false;
     bool isShaderAtomicsF32Supported = false;
 #if NRI_ENABLE_NVAPI

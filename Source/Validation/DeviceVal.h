@@ -177,7 +177,6 @@ struct DeviceVal final : public DeviceBase {
     Result BindMicromapMemory(const BindMicromapMemoryDesc* bindMicromapMemoryDescs, uint32_t bindMicromapMemoryDescNum);
     Result BindAccelerationStructureMemory(const BindAccelerationStructureMemoryDesc* bindAccelerationStructureMemoryDescs, uint32_t bindAccelerationStructureMemoryDescNum);
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
-    Result GetVideoQueue(const VideoSessionDesc& videoSessionDesc, Queue*& queue);
     Result WaitIdle();
 
     void FreeMemory(Memory* memory);
@@ -205,7 +204,6 @@ private:
     DeviceDesc m_Desc = {}; // .natvis
     Device& m_Impl;
     std::array<QueueVal*, (size_t)QueueType::MAX_NUM> m_Queues = {};
-    UnorderedMap<Queue*, QueueVal*> m_VideoQueues;
     UnorderedMap<MemoryType, MemoryLocation> m_MemoryTypeMap;
 
     // Validation
