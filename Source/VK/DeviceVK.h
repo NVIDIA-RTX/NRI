@@ -27,6 +27,8 @@ struct IsSupported {
     uint32_t swapChainMaintenance1        : 1;
     uint32_t fifoLatestReady              : 1;
     uint32_t unifiedImageLayoutsVideo     : 1;
+    uint32_t videoMaintenance2            : 1;
+    uint32_t videoEncodeAV1               : 1;
 };
 
 static_assert(sizeof(IsSupported) == sizeof(uint32_t), "4 bytes expected");
@@ -123,6 +125,7 @@ struct DeviceVK final : public DeviceBase {
     Result FillFunctionTable(LowLatencyInterface& table) const override;
     Result FillFunctionTable(MeshShaderInterface& table) const override;
     Result FillFunctionTable(RayTracingInterface& table) const override;
+    Result FillFunctionTable(VideoInterface& table) const override;
     Result FillFunctionTable(StreamerInterface& table) const override;
     Result FillFunctionTable(SwapChainInterface& table) const override;
     Result FillFunctionTable(UpscalerInterface& table) const override;
@@ -139,6 +142,7 @@ struct DeviceVK final : public DeviceBase {
     void CopyDescriptorRanges(const CopyDescriptorRangeDesc* copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum);
     void UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum);
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
+    VkVideoCodecOperationFlagsKHR GetVideoCodecOperations(bool decode, bool encode) const;
     Result WaitIdle();
     Result BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum);
     Result BindTextureMemory(const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum);
@@ -167,6 +171,7 @@ public:
 private:
     VkPhysicalDevice m_PhysicalDevice = nullptr;
     std::array<uint32_t, (size_t)QueueType::MAX_NUM> m_ActiveQueueFamilyIndices = {};
+    std::array<VkVideoCodecOperationFlagsKHR, (size_t)QueueType::MAX_NUM> m_VideoCodecOperations = {};
     std::array<Vector<QueueVK*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies;
     DispatchTable m_VK = {};
     VkPhysicalDeviceMemoryProperties m_MemoryProps = {};

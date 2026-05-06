@@ -49,6 +49,9 @@ struct BufferVK final : public DebugNameBase {
     void Unmap();
 
 private:
+    bool IsVideoOnly() const;
+    void FillCreateInfo(VkBufferCreateInfo& info) const;
+
     DeviceVK& m_Device;
     VkBuffer m_Handle = VK_NULL_HANDLE;
     VkDeviceAddress m_DeviceAddress = 0;

@@ -92,6 +92,26 @@ NriStruct(AccelerationStructureD3D12Desc) {
     uint64_t updateScratchSize;
 };
 
+NriStruct(VideoDecodeD3D12Desc) {
+    void* d3d12Decoder;                 // ID3D12VideoDecoder*
+    const void* d3d12OutputArguments;   // D3D12_VIDEO_DECODE_OUTPUT_STREAM_ARGUMENTS*
+    const void* d3d12InputArguments;    // D3D12_VIDEO_DECODE_INPUT_STREAM_ARGUMENTS*
+};
+
+NriStruct(VideoEncodeD3D12Desc) {
+    void* d3d12Encoder;                 // ID3D12VideoEncoder*
+    void* d3d12Heap;                    // ID3D12VideoEncoderHeap*
+    const void* d3d12InputArguments;    // D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS*
+    const void* d3d12OutputArguments;   // D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS*
+    const void* d3d12ResolveMetadataInputArguments;  // optional D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS*
+    const void* d3d12ResolveMetadataOutputArguments; // optional D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS*
+    void* d3d12Heap1;                   // optional ID3D12VideoEncoderHeap1*
+    const void* d3d12InputArguments1;   // optional D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS1*
+    const void* d3d12OutputArguments1;  // optional D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS1*
+    const void* d3d12ResolveMetadataInputArguments1;  // optional D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS1*
+    const void* d3d12ResolveMetadataOutputArguments1; // optional D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS1*
+};
+
 // Threadsafe: yes
 NriStruct(WrapperD3D12Interface) {
     Nri(Result) (NRI_CALL *CreateCommandBufferD3D12)            (NriRef(Device) device, const NriRef(CommandBufferD3D12Desc) commandBufferD3D12Desc, NriOut NriRef(CommandBuffer*) commandBuffer);
@@ -101,6 +121,9 @@ NriStruct(WrapperD3D12Interface) {
     Nri(Result) (NRI_CALL *CreateMemoryD3D12)                   (NriRef(Device) device, const NriRef(MemoryD3D12Desc) memoryD3D12Desc, NriOut NriRef(Memory*) memory);
     Nri(Result) (NRI_CALL *CreateFenceD3D12)                    (NriRef(Device) device, const NriRef(FenceD3D12Desc) fenceD3D12Desc, NriOut NriRef(Fence*) fence);
     Nri(Result) (NRI_CALL *CreateAccelerationStructureD3D12)    (NriRef(Device) device, const NriRef(AccelerationStructureD3D12Desc) accelerationStructureD3D12Desc, NriOut NriRef(AccelerationStructure*) accelerationStructure);
+
+    void        (NRI_CALL *CmdDecodeVideoD3D12)                 (NriRef(CommandBuffer) commandBuffer, const NriRef(VideoDecodeD3D12Desc) videoDecodeD3D12Desc);
+    void        (NRI_CALL *CmdEncodeVideoD3D12)                 (NriRef(CommandBuffer) commandBuffer, const NriRef(VideoEncodeD3D12Desc) videoEncodeD3D12Desc);
 };
 
 NRI_API Nri(Result) NRI_CALL nriCreateDeviceFromD3D12Device(const NriRef(DeviceCreationD3D12Desc) deviceDesc, NriOut NriRef(Device*) device);

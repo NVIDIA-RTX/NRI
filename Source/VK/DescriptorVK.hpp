@@ -87,8 +87,8 @@ Result DescriptorVK::Create(const TextureViewDesc& textureViewDesc) {
 
     // For attachments all format-enabled aspects are needed to support mixed R/RW layouts.
     // For shader resources a specific set of planes is needed (like depth-only or stencil-only views)
-    bool isAspectSensitiveAttachment = textureViewDesc.type == TextureView::DEPTH_STENCIL_ATTACHMENT || textureViewDesc.type == TextureView::SUBPASS_INPUT;
-    VkImageAspectFlags aspectMask = GetImageAspectFlags(isAspectSensitiveAttachment ? PlaneBits::ALL : textureViewDesc.planes, textureViewDesc.format);
+    const bool isAspectSensitiveAttachment = textureViewDesc.type == TextureView::DEPTH_STENCIL_ATTACHMENT || textureViewDesc.type == TextureView::SUBPASS_INPUT;
+    const VkImageAspectFlags aspectMask = GetImageAspectFlags(isAspectSensitiveAttachment ? PlaneBits::ALL : textureViewDesc.planes, textureViewDesc.format);
 
     VkImageSubresourceRange subresourceRange = {
         aspectMask,

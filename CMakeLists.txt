@@ -812,6 +812,7 @@ set(NRI_EXTENSIONS
     "Include/Extensions/NRIStreamer.h"
     "Include/Extensions/NRISwapChain.h"
     "Include/Extensions/NRIUpscaler.h"
+    "Include/Extensions/NRIVideo.h"
     "Include/Extensions/NRIWrapperD3D11.h"
     "Include/Extensions/NRIWrapperD3D12.h"
     "Include/Extensions/NRIWrapperVK.h"
