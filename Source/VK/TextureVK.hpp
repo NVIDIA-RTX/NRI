@@ -21,9 +21,6 @@ Result TextureVK::Create(const TextureDesc& textureDesc) {
     const bool isVideoDecode = (m_Desc.usage & TextureUsageBits::VIDEO_DECODE) != 0;
     const bool isVideoEncode = (m_Desc.usage & TextureUsageBits::VIDEO_ENCODE) != 0;
     if (isVideoDecode || isVideoEncode) {
-        if (m_Desc.videoCodec == VideoCodec::NONE)
-            return Result::INVALID_ARGUMENT;
-
         videoProfiles.Fill(isVideoDecode, isVideoEncode, m_Desc.format, m_Desc.videoCodec, m_Device.GetVideoCodecOperations(isVideoDecode, isVideoEncode));
         if (videoProfiles.list.profileCount) {
             videoProfiles.list.pNext = info.pNext;

@@ -1244,9 +1244,12 @@ static Result NRI_CALL CreateVideoSession(Device& device, const VideoSessionDesc
     return Result::SUCCESS;
 }
 
-static void NRI_CALL DestroyVideoSession(VideoSession& videoSession) {
-    VideoSessionVal& videoSessionVal = (VideoSessionVal&)videoSession;
-    videoSessionVal.GetVideoInterfaceImpl().DestroyVideoSession(*videoSessionVal.GetImpl());
+static void NRI_CALL DestroyVideoSession(VideoSession* videoSession) {
+    if (!videoSession)
+        return;
+
+    VideoSessionVal& videoSessionVal = *(VideoSessionVal*)videoSession;
+    videoSessionVal.GetVideoInterfaceImpl().DestroyVideoSession(videoSessionVal.GetImpl());
     Destroy(&videoSessionVal);
 }
 
@@ -1265,9 +1268,12 @@ static Result NRI_CALL CreateVideoSessionParameters(Device& device, const VideoS
     return Result::SUCCESS;
 }
 
-static void NRI_CALL DestroyVideoSessionParameters(VideoSessionParameters& videoSessionParameters) {
-    VideoSessionParametersVal& videoSessionParametersVal = (VideoSessionParametersVal&)videoSessionParameters;
-    videoSessionParametersVal.GetVideoInterfaceImpl().DestroyVideoSessionParameters(*videoSessionParametersVal.GetImpl());
+static void NRI_CALL DestroyVideoSessionParameters(VideoSessionParameters* videoSessionParameters) {
+    if (!videoSessionParameters)
+        return;
+
+    VideoSessionParametersVal& videoSessionParametersVal = *(VideoSessionParametersVal*)videoSessionParameters;
+    videoSessionParametersVal.GetVideoInterfaceImpl().DestroyVideoSessionParameters(videoSessionParametersVal.GetImpl());
     Destroy(&videoSessionParametersVal);
 }
 
@@ -1286,9 +1292,12 @@ static Result NRI_CALL CreateVideoPicture(Device& device, const VideoPictureDesc
     return Result::SUCCESS;
 }
 
-static void NRI_CALL DestroyVideoPicture(VideoPicture& videoPicture) {
-    VideoPictureVal& videoPictureVal = (VideoPictureVal&)videoPicture;
-    videoPictureVal.GetVideoInterfaceImpl().DestroyVideoPicture(*videoPictureVal.GetImpl());
+static void NRI_CALL DestroyVideoPicture(VideoPicture* videoPicture) {
+    if (!videoPicture)
+        return;
+
+    VideoPictureVal& videoPictureVal = *(VideoPictureVal*)videoPicture;
+    videoPictureVal.GetVideoInterfaceImpl().DestroyVideoPicture(videoPictureVal.GetImpl());
     Destroy(&videoPictureVal);
 }
 

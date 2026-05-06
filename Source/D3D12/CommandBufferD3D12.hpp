@@ -494,6 +494,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeD3D12Desc& desc
         return;
     }
 
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
     if (desc.d3d12InputArguments1 && desc.d3d12OutputArguments1) {
         ComPtr<ID3D12VideoEncodeCommandList4> commandList;
         HRESULT hr = std::get<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList)->QueryInterface(IID_PPV_ARGS(&commandList));
@@ -526,6 +527,12 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeD3D12Desc& desc
 
         return;
     }
+#else
+    if (desc.d3d12InputArguments1 || desc.d3d12OutputArguments1) {
+        NRI_REPORT_ERROR(&m_Device, "ID3D12VideoEncodeCommandList4 is not available in this build");
+        return;
+    }
+#endif
 
     ComPtr<ID3D12VideoEncodeCommandList2> commandList;
     HRESULT hr = std::get<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList)->QueryInterface(IID_PPV_ARGS(&commandList));

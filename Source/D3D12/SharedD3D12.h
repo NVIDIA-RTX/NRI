@@ -6,6 +6,12 @@
 #include <d3d12video.h>
 #include <pix.h>
 
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT && NRI_AGILITY_SDK_VERSION_MAJOR >= 619
+#    define NRI_D3D12_HAS_VIDEO_ENCODE_AV1 1
+#else
+#    define NRI_D3D12_HAS_VIDEO_ENCODE_AV1 0
+#endif
+
 // Validate Windows SDK version
 static_assert(D3D12_SDK_VERSION >= 4, "Outdated Windows SDK. D3D12 Ultimate needed (Windows SDK 10.0.20348). Always prefer using latest Agility SDK!");
 

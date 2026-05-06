@@ -588,10 +588,10 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS22 options22 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS22, &options22, sizeof(options22));
-    if (FAILED(hr))
-        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options22) failed, result = 0x%08X!", hr);
-    m_Desc.shaderStage.compute.dispatchMaxDim[0] = options22.Max1DDispatchSize;
-    m_Desc.shaderStage.task.dispatchMaxDim[0] = options22.Max1DDispatchMeshSize;
+    if (SUCCEEDED(hr)) {
+        m_Desc.shaderStage.compute.dispatchMaxDim[0] = options22.Max1DDispatchSize;
+        m_Desc.shaderStage.task.dispatchMaxDim[0] = options22.Max1DDispatchMeshSize;
+    }
 #else
     m_Desc.memoryAlignment.uploadBufferTextureRow = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
     m_Desc.memoryAlignment.uploadBufferTextureSlice = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;

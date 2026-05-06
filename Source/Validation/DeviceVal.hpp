@@ -237,6 +237,8 @@ NRI_INLINE Result DeviceVal::CreateTexture(const TextureDesc& textureDesc, Textu
     NRI_RETURN_ON_FAILURE(this, textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.width != 0, Result::INVALID_ARGUMENT, "'width' is 0");
     NRI_RETURN_ON_FAILURE(this, textureDesc.videoCodec < VideoCodec::MAX_NUM, Result::INVALID_ARGUMENT, "'videoCodec' is invalid");
+    NRI_RETURN_ON_FAILURE(this, !(textureDesc.usage & (TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_ENCODE)) || textureDesc.videoCodec != VideoCodec::NONE, Result::INVALID_ARGUMENT,
+        "'videoCodec' must not be 'NONE' for video textures");
 
     Dim_t maxMipNum = GetMaxMipNum(textureDesc.width, textureDesc.height, textureDesc.depth);
     NRI_RETURN_ON_FAILURE(this, textureDesc.mipNum <= maxMipNum, Result::INVALID_ARGUMENT, "'mipNum=%u' can't be > %u", textureDesc.mipNum, maxMipNum);
@@ -648,6 +650,8 @@ NRI_INLINE Result DeviceVal::CreateCommittedTexture(MemoryLocation memoryLocatio
     NRI_RETURN_ON_FAILURE(this, textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.width != 0, Result::INVALID_ARGUMENT, "'width' is 0");
     NRI_RETURN_ON_FAILURE(this, textureDesc.videoCodec < VideoCodec::MAX_NUM, Result::INVALID_ARGUMENT, "'videoCodec' is invalid");
+    NRI_RETURN_ON_FAILURE(this, !(textureDesc.usage & (TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_ENCODE)) || textureDesc.videoCodec != VideoCodec::NONE, Result::INVALID_ARGUMENT,
+        "'videoCodec' must not be 'NONE' for video textures");
 
     Dim_t maxMipNum = GetMaxMipNum(textureDesc.width, textureDesc.height, textureDesc.depth);
     NRI_RETURN_ON_FAILURE(this, textureDesc.mipNum <= maxMipNum, Result::INVALID_ARGUMENT, "'mipNum=%u' can't be > %u", textureDesc.mipNum, maxMipNum);
@@ -764,6 +768,8 @@ NRI_INLINE Result DeviceVal::CreatePlacedTexture(Memory* memory, uint64_t offset
     NRI_RETURN_ON_FAILURE(this, textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.width != 0, Result::INVALID_ARGUMENT, "'width' is 0");
     NRI_RETURN_ON_FAILURE(this, textureDesc.videoCodec < VideoCodec::MAX_NUM, Result::INVALID_ARGUMENT, "'videoCodec' is invalid");
+    NRI_RETURN_ON_FAILURE(this, !(textureDesc.usage & (TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_ENCODE)) || textureDesc.videoCodec != VideoCodec::NONE, Result::INVALID_ARGUMENT,
+        "'videoCodec' must not be 'NONE' for video textures");
 
     Dim_t maxMipNum = GetMaxMipNum(textureDesc.width, textureDesc.height, textureDesc.depth);
     NRI_RETURN_ON_FAILURE(this, textureDesc.mipNum <= maxMipNum, Result::INVALID_ARGUMENT, "'mipNum=%u' can't be > %u", textureDesc.mipNum, maxMipNum);

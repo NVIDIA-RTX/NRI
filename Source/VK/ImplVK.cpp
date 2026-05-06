@@ -2036,8 +2036,8 @@ static Result NRI_CALL CreateVideoSession(Device& device, const VideoSessionDesc
     return result;
 }
 
-static void NRI_CALL DestroyVideoSession(VideoSession& videoSession) {
-    Destroy((VideoSessionVK*)&videoSession);
+static void NRI_CALL DestroyVideoSession(VideoSession* videoSession) {
+    Destroy((VideoSessionVK*)videoSession);
 }
 
 static Result NRI_CALL CreateVideoSessionParameters(Device& device, const VideoSessionParametersDesc& videoSessionParametersDesc, VideoSessionParameters*& videoSessionParameters) {
@@ -2054,8 +2054,8 @@ static Result NRI_CALL CreateVideoSessionParameters(Device& device, const VideoS
     return result;
 }
 
-static void NRI_CALL DestroyVideoSessionParameters(VideoSessionParameters& videoSessionParameters) {
-    Destroy((VideoSessionParametersVK*)&videoSessionParameters);
+static void NRI_CALL DestroyVideoSessionParameters(VideoSessionParameters* videoSessionParameters) {
+    Destroy((VideoSessionParametersVK*)videoSessionParameters);
 }
 
 static Result NRI_CALL CreateVideoPicture(Device& device, const VideoPictureDesc& videoPictureDesc, VideoPicture*& videoPicture) {
@@ -2072,8 +2072,8 @@ static Result NRI_CALL CreateVideoPicture(Device& device, const VideoPictureDesc
     return result;
 }
 
-static void NRI_CALL DestroyVideoPicture(VideoPicture& videoPicture) {
-    Destroy((VideoPictureVK*)&videoPicture);
+static void NRI_CALL DestroyVideoPicture(VideoPicture* videoPicture) {
+    Destroy((VideoPictureVK*)videoPicture);
 }
 
 static Result NRI_CALL GetVideoDecodePictureStates(const VideoPicture&, VideoDecodePictureStates& states) {

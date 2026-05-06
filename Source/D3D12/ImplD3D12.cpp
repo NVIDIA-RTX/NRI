@@ -1169,8 +1169,10 @@ struct VideoSessionD3D12 final : public DebugNameBase {
     ComPtr<ID3D12VideoDecoderHeap> m_DecoderHeap;
     ComPtr<ID3D12VideoEncoder> m_Encoder;
     ComPtr<ID3D12VideoEncoderHeap> m_EncoderHeap;
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
     ComPtr<ID3D12VideoEncoderHeap1> m_EncoderHeap1;
-    D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAGS m_AV1FeatureFlags = D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_NONE;
+#endif
+    uint32_t m_AV1FeatureFlags = 0;
     VideoSessionDesc m_Desc = {};
 };
 
@@ -1358,7 +1360,9 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
 
         D3D12_VIDEO_ENCODER_PROFILE_H264 h264Profile = D3D12_VIDEO_ENCODER_PROFILE_H264_HIGH;
         D3D12_VIDEO_ENCODER_PROFILE_HEVC hevcProfile = videoSessionDesc.format == Format::P010_UNORM || videoSessionDesc.format == Format::P016_UNORM ? D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN10 : D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN;
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
         D3D12_VIDEO_ENCODER_AV1_PROFILE av1Profile = D3D12_VIDEO_ENCODER_AV1_PROFILE_MAIN;
+#endif
         D3D12_VIDEO_ENCODER_PROFILE_DESC profile = {};
         if (videoSessionDesc.codec == VideoCodec::H264) {
             profile.DataSize = sizeof(h264Profile);
@@ -1367,8 +1371,12 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
             profile.DataSize = sizeof(hevcProfile);
             profile.pHEVCProfile = &hevcProfile;
         } else {
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
             profile.DataSize = sizeof(av1Profile);
             profile.pAV1Profile = &av1Profile;
+#else
+            return Result::UNSUPPORTED;
+#endif
         }
 
         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264 h264Config = {};
@@ -1411,10 +1419,13 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
                 hevcConfig.ConfigurationFlags |= D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_FLAG_ENABLE_TRANSFORM_SKIPPING;
         }
 
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
         D3D12_VIDEO_ENCODER_AV1_CODEC_CONFIGURATION av1Config = {};
         av1Config.FeatureFlags = D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_NONE;
         av1Config.OrderHintBitsMinus1 = 7;
+#endif
         if (videoSessionDesc.codec == VideoCodec::AV1) {
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
             D3D12_VIDEO_ENCODER_AV1_CODEC_CONFIGURATION_SUPPORT av1Caps = {};
             D3D12_FEATURE_DATA_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT av1ConfigSupport = {};
             av1ConfigSupport.Codec = codec;
@@ -1433,6 +1444,9 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
 
             av1Config.FeatureFlags = av1Caps.RequiredFeatureFlags;
             m_AV1FeatureFlags = av1Config.FeatureFlags;
+#else
+            return Result::UNSUPPORTED;
+#endif
         }
 
         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION codecConfig = {};
@@ -1443,8 +1457,12 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
             codecConfig.DataSize = sizeof(hevcConfig);
             codecConfig.pHEVCConfig = &hevcConfig;
         } else {
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
             codecConfig.DataSize = sizeof(av1Config);
             codecConfig.pAV1Config = &av1Config;
+#else
+            return Result::UNSUPPORTED;
+#endif
         }
 
         D3D12_FEATURE_DATA_VIDEO_ENCODER_RATE_CONTROL_MODE rateControlMode = {};
@@ -1470,9 +1488,11 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
         hevcGop.GOPLength = videoSessionDesc.maxReferenceNum ? 60 : 1;
         hevcGop.PPicturePeriod = videoSessionDesc.maxReferenceNum > 1 ? 2 : 1;
 
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
         D3D12_VIDEO_ENCODER_AV1_SEQUENCE_STRUCTURE av1Sequence = {};
         av1Sequence.IntraDistance = videoSessionDesc.maxReferenceNum ? 60 : 1;
         av1Sequence.InterFramePeriod = videoSessionDesc.maxReferenceNum ? 1 : 0;
+#endif
 
         D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE gop = {};
         if (videoSessionDesc.codec == VideoCodec::H264) {
@@ -1482,13 +1502,19 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
             gop.DataSize = sizeof(hevcGop);
             gop.pHEVCGroupOfPictures = &hevcGop;
         } else {
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
             gop.DataSize = sizeof(av1Sequence);
             gop.pAV1SequenceStructure = &av1Sequence;
+#else
+            return Result::UNSUPPORTED;
+#endif
         }
 
         D3D12_VIDEO_ENCODER_LEVELS_H264 suggestedH264Level = D3D12_VIDEO_ENCODER_LEVELS_H264_41;
         D3D12_VIDEO_ENCODER_LEVEL_TIER_CONSTRAINTS_HEVC suggestedHevcLevel = {D3D12_VIDEO_ENCODER_LEVELS_HEVC_41, D3D12_VIDEO_ENCODER_TIER_HEVC_MAIN};
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
         D3D12_VIDEO_ENCODER_AV1_LEVEL_TIER_CONSTRAINTS suggestedAv1Level = {D3D12_VIDEO_ENCODER_AV1_LEVELS_4_1, D3D12_VIDEO_ENCODER_AV1_TIER_MAIN};
+#endif
         D3D12_VIDEO_ENCODER_LEVEL_SETTING suggestedLevel = {};
         if (videoSessionDesc.codec == VideoCodec::H264) {
             suggestedLevel.DataSize = sizeof(suggestedH264Level);
@@ -1497,13 +1523,18 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
             suggestedLevel.DataSize = sizeof(suggestedHevcLevel);
             suggestedLevel.pHEVCLevelSetting = &suggestedHevcLevel;
         } else {
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
             suggestedLevel.DataSize = sizeof(suggestedAv1Level);
             suggestedLevel.pAV1LevelSetting = &suggestedAv1Level;
+#else
+            return Result::UNSUPPORTED;
+#endif
         }
 
         D3D12_VIDEO_ENCODER_PICTURE_RESOLUTION_DESC resolution = {videoSessionDesc.width, videoSessionDesc.height};
         D3D12_FEATURE_DATA_VIDEO_ENCODER_RESOLUTION_SUPPORT_LIMITS resolutionLimits = {};
         if (videoSessionDesc.codec == VideoCodec::AV1) {
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
             D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA_TILES tiles = {};
             tiles.RowCount = 1;
             tiles.ColCount = 1;
@@ -1534,6 +1565,9 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
                 NRI_REPORT_WARNING(&m_Device, "D3D12 video encoder support requires reference-only reconstructed pictures, which are not exposed by the current NRIVideo texture usage flags");
                 return Result::UNSUPPORTED;
             }
+#else
+            return Result::UNSUPPORTED;
+#endif
         } else {
             D3D12_FEATURE_DATA_VIDEO_ENCODER_SUPPORT encoderSupport = {};
             encoderSupport.Codec = codec;
@@ -1602,8 +1636,8 @@ static Result NRI_CALL CreateVideoSession(Device& device, const VideoSessionDesc
     return result;
 }
 
-static void NRI_CALL DestroyVideoSession(VideoSession& videoSession) {
-    Destroy((VideoSessionD3D12*)&videoSession);
+static void NRI_CALL DestroyVideoSession(VideoSession* videoSession) {
+    Destroy((VideoSessionD3D12*)videoSession);
 }
 
 static Result NRI_CALL CreateVideoSessionParameters(Device& device, const VideoSessionParametersDesc& videoSessionParametersDesc, VideoSessionParameters*& videoSessionParameters) {
@@ -1620,8 +1654,8 @@ static Result NRI_CALL CreateVideoSessionParameters(Device& device, const VideoS
     return result;
 }
 
-static void NRI_CALL DestroyVideoSessionParameters(VideoSessionParameters& videoSessionParameters) {
-    Destroy((VideoSessionParametersD3D12*)&videoSessionParameters);
+static void NRI_CALL DestroyVideoSessionParameters(VideoSessionParameters* videoSessionParameters) {
+    Destroy((VideoSessionParametersD3D12*)videoSessionParameters);
 }
 
 static Result NRI_CALL CreateVideoPicture(Device& device, const VideoPictureDesc& videoPictureDesc, VideoPicture*& videoPicture) {
@@ -1638,8 +1672,8 @@ static Result NRI_CALL CreateVideoPicture(Device& device, const VideoPictureDesc
     return result;
 }
 
-static void NRI_CALL DestroyVideoPicture(VideoPicture& videoPicture) {
-    Destroy((VideoPictureD3D12*)&videoPicture);
+static void NRI_CALL DestroyVideoPicture(VideoPicture* videoPicture) {
+    Destroy((VideoPictureD3D12*)videoPicture);
 }
 
 static Result NRI_CALL GetVideoDecodePictureStates(const VideoPicture&, VideoDecodePictureStates& states) {
@@ -2134,6 +2168,7 @@ static const VideoH264ReferenceDesc* FindVideoEncodeH264ReferenceDesc(const Vide
     return nullptr;
 }
 
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
 static D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE GetVideoEncodeAV1FrameTypeD3D12(VideoEncodeFrameType frameType) {
     switch (frameType) {
         case VideoEncodeFrameType::IDR:
@@ -2182,6 +2217,7 @@ static bool HasVideoEncodeAV1DPBSlotResourceD3D12(const uint32_t* dpbSlotResourc
 
     return false;
 }
+#endif
 
 static_assert(offsetof(VideoEncodeFeedback, errorFlags) == offsetof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA, EncodeErrorFlags));
 static_assert(offsetof(VideoEncodeFeedback, encodedBitstreamWrittenBytes) == offsetof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA, EncodedBitstreamWrittenBytesCount));
@@ -2320,9 +2356,11 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     hevcGop.GOPLength = session.m_Desc.maxReferenceNum ? 60 : 1;
     hevcGop.PPicturePeriod = session.m_Desc.maxReferenceNum > 1 ? 2 : 1;
 
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
     D3D12_VIDEO_ENCODER_AV1_SEQUENCE_STRUCTURE av1Sequence = {};
     av1Sequence.IntraDistance = session.m_Desc.maxReferenceNum ? 60 : 1;
     av1Sequence.InterFramePeriod = session.m_Desc.maxReferenceNum ? 1 : 0;
+#endif
 
     D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE gop = {};
     if (session.m_Desc.codec == VideoCodec::H264) {
@@ -2332,8 +2370,13 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
         gop.DataSize = sizeof(hevcGop);
         gop.pHEVCGroupOfPictures = &hevcGop;
     } else if (session.m_Desc.codec == VideoCodec::AV1) {
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
         gop.DataSize = sizeof(av1Sequence);
         gop.pAV1SequenceStructure = &av1Sequence;
+#else
+        NRI_REPORT_ERROR(&device, "D3D12 AV1 video encode is not available in this build");
+        return;
+#endif
     } else {
         NRI_REPORT_ERROR(&device, "Unsupported video encode codec");
         return;
@@ -2345,8 +2388,11 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     sequenceControl.PictureTargetResolution = {session.m_Desc.width, session.m_Desc.height};
     sequenceControl.SelectedLayoutMode = D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_FULL_FRAME;
     sequenceControl.CodecGopSequence = gop;
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
     D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA_TILES av1Tiles = {};
+#endif
     if (session.m_Desc.codec == VideoCodec::AV1) {
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
         const VideoAV1TileLayoutDesc* tileLayout = videoEncodeDesc.av1PictureDesc ? videoEncodeDesc.av1PictureDesc->tileLayout : nullptr;
         if (tileLayout && (!tileLayout->columnNum || !tileLayout->rowNum || tileLayout->columnNum > 64 || tileLayout->rowNum > 64)) {
             NRI_REPORT_ERROR(&device, "'av1PictureDesc->tileLayout' is invalid");
@@ -2356,6 +2402,10 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
         av1Tiles.ColCount = tileLayout ? tileLayout->columnNum : 1;
         sequenceControl.FrameSubregionsLayoutData.DataSize = sizeof(av1Tiles);
         sequenceControl.FrameSubregionsLayoutData.pTilesPartition_AV1 = &av1Tiles;
+#else
+        NRI_REPORT_ERROR(&device, "D3D12 AV1 video encode is not available in this build");
+        return;
+#endif
     }
 
     const VideoEncodePictureDesc defaultPicture = {VideoEncodeFrameType::IDR, 0, 0, 0, 0};
@@ -2459,8 +2509,12 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
         hevcPicture.pReferenceFramesReconPictureDescriptors = videoEncodeDesc.referenceNum ? (D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC*)hevcReferenceDescriptors : nullptr;
     }
 
+    uint8_t av1RefreshFrameFlags = 0;
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
     D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_CODEC_DATA av1Picture = {};
+#endif
     if (session.m_Desc.codec == VideoCodec::AV1) {
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
         D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE frameType = GetVideoEncodeAV1FrameTypeD3D12(pictureDesc.frameType);
         if (frameType == (D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE)-1) {
             NRI_REPORT_ERROR(&device, "Unsupported AV1 video encode frame type");
@@ -2620,6 +2674,11 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
             av1Picture.ReferenceIndices[0] = 0;
             av1Picture.PrimaryRefFrame = 0;
         }
+        av1RefreshFrameFlags = (uint8_t)av1Picture.RefreshFrameFlags;
+#else
+        NRI_REPORT_ERROR(&device, "D3D12 AV1 video encode is not available in this build");
+        return;
+#endif
     }
 
     D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA pictureCodecData = {};
@@ -2630,18 +2689,23 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
         pictureCodecData.DataSize = sizeof(hevcPicture);
         pictureCodecData.pHEVCPicData = &hevcPicture;
     } else {
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
         pictureCodecData.DataSize = sizeof(av1Picture);
         pictureCodecData.pAV1PicData = &av1Picture;
+#else
+        NRI_REPORT_ERROR(&device, "D3D12 AV1 video encode is not available in this build");
+        return;
+#endif
     }
 
-    const bool isAV1NonReferencePicture = session.m_Desc.codec == VideoCodec::AV1 && av1Picture.RefreshFrameFlags == 0;
+    const bool isAV1NonReferencePicture = session.m_Desc.codec == VideoCodec::AV1 && av1RefreshFrameFlags == 0;
     if (session.m_Desc.codec == VideoCodec::AV1 && !isAV1NonReferencePicture && !videoEncodeDesc.reconstructedPicture) {
         NRI_REPORT_ERROR(&device, "AV1 frames that refresh DPB slots require 'reconstructedPicture'");
         return;
     }
 
     const bool isUsedAsReferencePicture = IsVideoEncodePictureUsedAsReferenceD3D12(session.m_Desc.codec, session.m_Desc.maxReferenceNum,
-        videoEncodeDesc.reconstructedPicture != nullptr, (uint8_t)av1Picture.RefreshFrameFlags);
+        videoEncodeDesc.reconstructedPicture != nullptr, av1RefreshFrameFlags);
 
     D3D12_VIDEO_ENCODER_PICTURE_CONTROL_DESC pictureControl = {};
     if (isUsedAsReferencePicture)
@@ -2674,7 +2738,9 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     D3D12_VIDEO_ENCODER_PROFILE_HEVC resolveHevcProfile = session.m_Desc.format == Format::P010_UNORM || session.m_Desc.format == Format::P016_UNORM
         ? D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN10
         : D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN;
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
     D3D12_VIDEO_ENCODER_AV1_PROFILE resolveAv1Profile = D3D12_VIDEO_ENCODER_AV1_PROFILE_MAIN;
+#endif
     D3D12_VIDEO_ENCODER_PROFILE_DESC resolveProfile = {};
     if (session.m_Desc.codec == VideoCodec::H264) {
         resolveProfile.DataSize = sizeof(resolveH264Profile);
@@ -2683,8 +2749,13 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
         resolveProfile.DataSize = sizeof(resolveHevcProfile);
         resolveProfile.pHEVCProfile = &resolveHevcProfile;
     } else {
+#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
         resolveProfile.DataSize = sizeof(resolveAv1Profile);
         resolveProfile.pAV1Profile = &resolveAv1Profile;
+#else
+        NRI_REPORT_ERROR(&device, "D3D12 AV1 video encode is not available in this build");
+        return;
+#endif
     }
 
     D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS resolveInput = {};

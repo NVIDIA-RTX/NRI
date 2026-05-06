@@ -834,11 +834,11 @@ NriStruct(VideoInterface) {
     // Session
     // {
         Nri(Result) (NRI_CALL *CreateVideoSession)  (NriRef(Device) device, const NriRef(VideoSessionDesc) videoSessionDesc, NriOut NriRef(VideoSession*) videoSession);
-        void        (NRI_CALL *DestroyVideoSession) (NriRef(VideoSession) videoSession);
+        void        (NRI_CALL *DestroyVideoSession) (NriPtr(VideoSession) videoSession);
         Nri(Result) (NRI_CALL *CreateVideoSessionParameters)  (NriRef(Device) device, const NriRef(VideoSessionParametersDesc) videoSessionParametersDesc, NriOut NriRef(VideoSessionParameters*) videoSessionParameters);
-        void        (NRI_CALL *DestroyVideoSessionParameters) (NriRef(VideoSessionParameters) videoSessionParameters);
+        void        (NRI_CALL *DestroyVideoSessionParameters) (NriPtr(VideoSessionParameters) videoSessionParameters);
         Nri(Result) (NRI_CALL *CreateVideoPicture)  (NriRef(Device) device, const NriRef(VideoPictureDesc) videoPictureDesc, NriOut NriRef(VideoPicture*) videoPicture);
-        void        (NRI_CALL *DestroyVideoPicture) (NriRef(VideoPicture) videoPicture);
+        void        (NRI_CALL *DestroyVideoPicture) (NriPtr(VideoPicture) videoPicture);
         // Returns backend-specific states for explicit caller-recorded decode picture barriers.
         Nri(Result) (NRI_CALL *GetVideoDecodePictureStates) (const NriRef(VideoPicture) videoPicture, NriOut NriRef(VideoDecodePictureStates) states);
         // Serializes H.264 SPS/PPS or H.265 VPS/SPS/PPS parameter sets to Annex-B bytes.

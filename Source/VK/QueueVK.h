@@ -29,14 +29,6 @@ struct QueueVK final : public DebugNameBase {
         return m_VideoCodecOperations;
     }
 
-    inline bool SupportsVideoCodecOperation(VkVideoCodecOperationFlagBitsKHR operation) const {
-        if (operation == 0)
-            return false;
-
-        const QueueType requiredQueueType = (operation & VIDEO_DECODE_CODEC_OPERATION_MASK) != 0 ? QueueType::VIDEO_DECODE : QueueType::VIDEO_ENCODE;
-        return m_Type == requiredQueueType && ((m_VideoCodecOperations & operation) != 0 || m_VideoCodecOperations == 0);
-    }
-
     inline Lock& GetLock() {
         return m_Lock;
     }

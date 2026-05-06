@@ -38,14 +38,6 @@ inline bool HasVideoEncodeCodec(const QueueFamilyPropsVK& familyProps) {
     return (familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR) != 0 && ((familyProps.videoCodecOperations & VIDEO_ENCODE_CODEC_OPERATION_MASK) != 0 || familyProps.videoCodecOperations == 0);
 }
 
-inline bool HasVideoCodecOperation(const QueueFamilyPropsVK& familyProps, VkVideoCodecOperationFlagBitsKHR operation) {
-    if (operation == 0)
-        return false;
-
-    const VkQueueFlags requiredQueueFlag = (operation & VIDEO_DECODE_CODEC_OPERATION_MASK) != 0 ? VK_QUEUE_VIDEO_DECODE_BIT_KHR : VK_QUEUE_VIDEO_ENCODE_BIT_KHR;
-    return (familyProps.queueFlags & requiredQueueFlag) != 0 && ((familyProps.videoCodecOperations & operation) != 0 || familyProps.videoCodecOperations == 0);
-}
-
 inline const std::array<VkVideoCodecOperationFlagBitsKHR, 3>& GetVideoCodecOperationsVK(QueueType queueType) {
     return queueType == QueueType::VIDEO_DECODE ? g_VideoDecodeCodecOperations : g_VideoEncodeCodecOperations;
 }
@@ -86,16 +78,6 @@ inline uint32_t GetVideoQueueFamilyScoreVK(const QueueFamilyPropsVK& familyProps
     score += alsoOppositeVideo ? 0 : 10;
 
     return score;
-}
-
-inline VkVideoCodecOperationFlagBitsKHR GetRepresentativeVideoCodecOperationVK(const QueueFamilyPropsVK& familyProps, QueueType queueType) {
-    const auto& operations = GetVideoCodecOperationsVK(queueType);
-    for (VkVideoCodecOperationFlagBitsKHR operation : operations) {
-        if (HasVideoCodecOperation(familyProps, operation))
-            return operation;
-    }
-
-    return (VkVideoCodecOperationFlagBitsKHR)0;
 }
 
 inline uint32_t GetQueueFamilyScoreVK(const QueueFamilyPropsVK& familyProps, QueueType queueType) {
