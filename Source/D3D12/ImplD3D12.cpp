@@ -1272,9 +1272,6 @@ struct VideoSessionParametersD3D12 final {
     const VideoAV1SessionParametersDesc* m_AV1Parameters = nullptr;
 };
 
-// Older Windows SDK headers used by some builds do not name this newer support bit yet.
-static constexpr D3D12_VIDEO_ENCODER_SUPPORT_FLAGS D3D12_VIDEO_ENCODER_SUPPORT_FLAG_READABLE_RECONSTRUCTED_PICTURE_LAYOUT_AVAILABLE_COMPAT = (D3D12_VIDEO_ENCODER_SUPPORT_FLAGS)0x8000;
-
 struct VideoPictureD3D12 final : public DebugNameBase {
     inline VideoPictureD3D12(DeviceD3D12& device)
         : m_Device(device) {
@@ -1301,38 +1298,6 @@ struct VideoPictureD3D12 final : public DebugNameBase {
     uint32_t m_Subresource = 0;
 };
 
-static GUID GetVideoDecodeProfileD3D12(const VideoSessionDesc& videoSessionDesc) {
-    switch (videoSessionDesc.codec) {
-        case VideoCodec::H264:
-            return D3D12_VIDEO_DECODE_PROFILE_H264;
-        case VideoCodec::H265:
-            return videoSessionDesc.format == Format::P010_UNORM || videoSessionDesc.format == Format::P016_UNORM ? D3D12_VIDEO_DECODE_PROFILE_HEVC_MAIN10 : D3D12_VIDEO_DECODE_PROFILE_HEVC_MAIN;
-        case VideoCodec::AV1:
-            return D3D12_VIDEO_DECODE_PROFILE_AV1_PROFILE0;
-        case VideoCodec::NONE:
-        case VideoCodec::MAX_NUM:
-            return {};
-    }
-
-    return {};
-}
-
-static D3D12_VIDEO_ENCODER_CODEC GetVideoEncodeCodecD3D12(VideoCodec codec) {
-    switch (codec) {
-        case VideoCodec::H264:
-            return D3D12_VIDEO_ENCODER_CODEC_H264;
-        case VideoCodec::H265:
-            return D3D12_VIDEO_ENCODER_CODEC_HEVC;
-        case VideoCodec::AV1:
-            return D3D12_VIDEO_ENCODER_CODEC_AV1;
-        case VideoCodec::NONE:
-        case VideoCodec::MAX_NUM:
-            return (D3D12_VIDEO_ENCODER_CODEC)-1;
-    }
-
-    return (D3D12_VIDEO_ENCODER_CODEC)-1;
-}
-
 Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
     if (videoSessionDesc.width == 0 || videoSessionDesc.height == 0 || videoSessionDesc.format == Format::UNKNOWN)
         return Result::INVALID_ARGUMENT;
@@ -1343,7 +1308,7 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::QueryInterface(ID3D12VideoDevice)");
 
         D3D12_VIDEO_DECODE_CONFIGURATION configuration = {};
-        configuration.DecodeProfile = GetVideoDecodeProfileD3D12(videoSessionDesc);
+        configuration.DecodeProfile = GetVideoDecodeProfileD3D12(videoSessionDesc.codec, videoSessionDesc.format);
         configuration.BitstreamEncryption = D3D12_BITSTREAM_ENCRYPTION_TYPE_NONE;
         configuration.InterlaceType = D3D12_VIDEO_FRAME_CODED_INTERLACE_TYPE_NONE;
         if (configuration.DecodeProfile == GUID{})

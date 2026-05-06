@@ -869,12 +869,18 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.features.shaderBytecodeDXIL = true;
 
     ComPtr<ID3D12VideoDevice> videoDevice;
-    if (SUCCEEDED(m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice))))
-        m_Desc.videoFeatures.decode.H264 = m_Desc.videoFeatures.decode.H265 = m_Desc.videoFeatures.decode.AV1 = true;
+    if (SUCCEEDED(m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice)))) {
+        m_Desc.videoFeatures.decode.H264 = IsVideoDecodeCodecSupportedD3D12(*videoDevice, VideoCodec::H264);
+        m_Desc.videoFeatures.decode.H265 = IsVideoDecodeCodecSupportedD3D12(*videoDevice, VideoCodec::H265);
+        m_Desc.videoFeatures.decode.AV1 = IsVideoDecodeCodecSupportedD3D12(*videoDevice, VideoCodec::AV1);
+    }
 
     ComPtr<ID3D12VideoDevice3> videoDevice3;
-    if (SUCCEEDED(m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice3))))
-        m_Desc.videoFeatures.encode.H264 = m_Desc.videoFeatures.encode.H265 = m_Desc.videoFeatures.encode.AV1 = true;
+    if (SUCCEEDED(m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice3)))) {
+        m_Desc.videoFeatures.encode.H264 = IsVideoEncodeCodecSupportedD3D12(*videoDevice3, VideoCodec::H264);
+        m_Desc.videoFeatures.encode.H265 = IsVideoEncodeCodecSupportedD3D12(*videoDevice3, VideoCodec::H265);
+        m_Desc.videoFeatures.encode.AV1 = IsVideoEncodeCodecSupportedD3D12(*videoDevice3, VideoCodec::AV1);
+    }
 
     bool isShaderAtomicsF16Supported = false;
     bool isShaderAtomicsF32Supported = false;

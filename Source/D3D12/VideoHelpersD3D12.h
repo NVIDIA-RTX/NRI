@@ -26,6 +26,9 @@ constexpr uint32_t VIDEO_D3D12_AV1_FEATURE_FLAG_LOOP_FILTER_DELTAS = 0x40000;
 constexpr uint32_t VIDEO_D3D12_AV1_FEATURE_FLAG_QUANTIZATION_DELTAS = 0x80000;
 constexpr uint32_t VIDEO_D3D12_AV1_FEATURE_FLAG_FORCED_INTEGER_MOTION_VECTORS = 0x100;
 
+// Older Windows SDK headers used by some builds do not name this newer support bit yet.
+constexpr D3D12_VIDEO_ENCODER_SUPPORT_FLAGS D3D12_VIDEO_ENCODER_SUPPORT_FLAG_READABLE_RECONSTRUCTED_PICTURE_LAYOUT_AVAILABLE_COMPAT = (D3D12_VIDEO_ENCODER_SUPPORT_FLAGS)0x8000;
+
 struct VideoDecodeReferenceLayoutD3D12 {
     uint32_t slotCount = 0;
     uint32_t failingReference = 0;
@@ -524,6 +527,261 @@ inline bool IsVideoEncodeAV1RequiredFeatureSetSupportedD3D12(uint32_t featureFla
     constexpr uint32_t supportedFeatureFlags = VIDEO_D3D12_AV1_FEATURE_FLAG_ORDER_HINT_TOOLS | VIDEO_D3D12_AV1_FEATURE_FLAG_LOOP_RESTORATION_FILTER | VIDEO_D3D12_AV1_FEATURE_FLAG_FORCED_INTEGER_MOTION_VECTORS | VIDEO_D3D12_AV1_FEATURE_FLAG_AUTO_SEGMENTATION | VIDEO_D3D12_AV1_FEATURE_FLAG_CDEF_FILTERING | VIDEO_D3D12_AV1_FEATURE_FLAG_QUANTIZATION_DELTAS | VIDEO_D3D12_AV1_FEATURE_FLAG_LOOP_FILTER_DELTAS;
 
     return (featureFlags & ~supportedFeatureFlags) == 0;
+}
+
+inline GUID GetVideoDecodeProfileD3D12(VideoCodec codec, Format format) {
+    switch (codec) {
+        case VideoCodec::H264:
+            return D3D12_VIDEO_DECODE_PROFILE_H264;
+        case VideoCodec::H265:
+            return format == Format::P010_UNORM || format == Format::P016_UNORM ? D3D12_VIDEO_DECODE_PROFILE_HEVC_MAIN10 : D3D12_VIDEO_DECODE_PROFILE_HEVC_MAIN;
+        case VideoCodec::AV1:
+            return D3D12_VIDEO_DECODE_PROFILE_AV1_PROFILE0;
+        case VideoCodec::NONE:
+        case VideoCodec::MAX_NUM:
+            return {};
+    }
+
+    return {};
+}
+
+inline D3D12_VIDEO_ENCODER_CODEC GetVideoEncodeCodecD3D12(VideoCodec codec) {
+    switch (codec) {
+        case VideoCodec::H264:
+            return D3D12_VIDEO_ENCODER_CODEC_H264;
+        case VideoCodec::H265:
+            return D3D12_VIDEO_ENCODER_CODEC_HEVC;
+        case VideoCodec::AV1:
+            return D3D12_VIDEO_ENCODER_CODEC_AV1;
+        case VideoCodec::NONE:
+        case VideoCodec::MAX_NUM:
+            return (D3D12_VIDEO_ENCODER_CODEC)-1;
+    }
+
+    return (D3D12_VIDEO_ENCODER_CODEC)-1;
+}
+
+inline bool IsVideoDecodeCodecSupportedD3D12(ID3D12VideoDevice& videoDevice, VideoCodec codec) {
+    constexpr uint32_t width = 128;
+    constexpr uint32_t height = 128;
+
+    D3D12_VIDEO_DECODE_CONFIGURATION configuration = {};
+    configuration.DecodeProfile = GetVideoDecodeProfileD3D12(codec, Format::NV12_UNORM);
+    configuration.BitstreamEncryption = D3D12_BITSTREAM_ENCRYPTION_TYPE_NONE;
+    configuration.InterlaceType = D3D12_VIDEO_FRAME_CODED_INTERLACE_TYPE_NONE;
+    if (configuration.DecodeProfile == GUID{})
+        return false;
+
+    D3D12_FEATURE_DATA_VIDEO_DECODE_SUPPORT decodeSupport = {};
+    decodeSupport.Configuration = configuration;
+    decodeSupport.Width = width;
+    decodeSupport.Height = height;
+    decodeSupport.DecodeFormat = DXGI_FORMAT_NV12;
+    decodeSupport.FrameRate = {30, 1};
+
+    HRESULT hr = videoDevice.CheckFeatureSupport(D3D12_FEATURE_VIDEO_DECODE_SUPPORT, &decodeSupport, sizeof(decodeSupport));
+    if (FAILED(hr))
+        return false;
+
+    if ((decodeSupport.SupportFlags & D3D12_VIDEO_DECODE_SUPPORT_FLAG_SUPPORTED) == 0)
+        return false;
+
+    return (decodeSupport.ConfigurationFlags & D3D12_VIDEO_DECODE_CONFIGURATION_FLAG_REFERENCE_ONLY_ALLOCATIONS_REQUIRED) == 0;
+}
+
+inline bool IsVideoEncodeCodecSupportedD3D12(ID3D12VideoDevice3& videoDevice, VideoCodec codec) {
+    constexpr uint32_t width = 128;
+    constexpr uint32_t height = 128;
+
+    D3D12_VIDEO_ENCODER_CODEC d3d12Codec = GetVideoEncodeCodecD3D12(codec);
+    if (d3d12Codec == (D3D12_VIDEO_ENCODER_CODEC)-1)
+        return false;
+
+    D3D12_VIDEO_ENCODER_PROFILE_H264 h264Profile = D3D12_VIDEO_ENCODER_PROFILE_H264_HIGH;
+    D3D12_VIDEO_ENCODER_PROFILE_HEVC hevcProfile = D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN;
+    D3D12_VIDEO_ENCODER_AV1_PROFILE av1Profile = D3D12_VIDEO_ENCODER_AV1_PROFILE_MAIN;
+    D3D12_VIDEO_ENCODER_PROFILE_DESC profile = {};
+    if (codec == VideoCodec::H264) {
+        profile.DataSize = sizeof(h264Profile);
+        profile.pH264Profile = &h264Profile;
+    } else if (codec == VideoCodec::H265) {
+        profile.DataSize = sizeof(hevcProfile);
+        profile.pHEVCProfile = &hevcProfile;
+    } else {
+        profile.DataSize = sizeof(av1Profile);
+        profile.pAV1Profile = &av1Profile;
+    }
+
+    D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264 h264Config = {};
+    h264Config.DirectModeConfig = D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264_DIRECT_MODES_DISABLED;
+    h264Config.DisableDeblockingFilterConfig = D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264_SLICES_DEBLOCKING_MODE_0_ALL_LUMA_CHROMA_SLICE_BLOCK_EDGES_ALWAYS_FILTERED;
+
+    D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC hevcConfig = {};
+    hevcConfig.MinLumaCodingUnitSize = D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_CUSIZE_8x8;
+    hevcConfig.MaxLumaCodingUnitSize = D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_CUSIZE_32x32;
+    hevcConfig.MinLumaTransformUnitSize = D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_TUSIZE_4x4;
+    hevcConfig.MaxLumaTransformUnitSize = D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_TUSIZE_32x32;
+    hevcConfig.max_transform_hierarchy_depth_inter = 3;
+    hevcConfig.max_transform_hierarchy_depth_intra = 3;
+    if (codec == VideoCodec::H265) {
+        D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC hevcCaps = {};
+        hevcCaps.MinLumaCodingUnitSize = hevcConfig.MinLumaCodingUnitSize;
+        hevcCaps.MaxLumaCodingUnitSize = hevcConfig.MaxLumaCodingUnitSize;
+        hevcCaps.MinLumaTransformUnitSize = hevcConfig.MinLumaTransformUnitSize;
+        hevcCaps.MaxLumaTransformUnitSize = hevcConfig.MaxLumaTransformUnitSize;
+        hevcCaps.max_transform_hierarchy_depth_inter = hevcConfig.max_transform_hierarchy_depth_inter;
+        hevcCaps.max_transform_hierarchy_depth_intra = hevcConfig.max_transform_hierarchy_depth_intra;
+
+        D3D12_FEATURE_DATA_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT hevcConfigSupport = {};
+        hevcConfigSupport.Codec = d3d12Codec;
+        hevcConfigSupport.Profile = profile;
+        hevcConfigSupport.CodecSupportLimits.DataSize = sizeof(hevcCaps);
+        hevcConfigSupport.CodecSupportLimits.pHEVCSupport = &hevcCaps;
+        HRESULT hr = videoDevice.CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT, &hevcConfigSupport, sizeof(hevcConfigSupport));
+        if (FAILED(hr) || !hevcConfigSupport.IsSupported)
+            return false;
+
+        if (hevcCaps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_ASYMETRIC_MOTION_PARTITION_SUPPORT || hevcCaps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_ASYMETRIC_MOTION_PARTITION_REQUIRED)
+            hevcConfig.ConfigurationFlags |= D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_FLAG_USE_ASYMETRIC_MOTION_PARTITION;
+        if (hevcCaps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_SAO_FILTER_SUPPORT)
+            hevcConfig.ConfigurationFlags |= D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_FLAG_ENABLE_SAO_FILTER;
+        if (hevcCaps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_DISABLING_LOOP_FILTER_ACROSS_SLICES_SUPPORT)
+            hevcConfig.ConfigurationFlags |= D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_FLAG_DISABLE_LOOP_FILTER_ACROSS_SLICES;
+        if (hevcCaps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_TRANSFORM_SKIP_SUPPORT)
+            hevcConfig.ConfigurationFlags |= D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_FLAG_ENABLE_TRANSFORM_SKIPPING;
+    }
+
+    D3D12_VIDEO_ENCODER_AV1_CODEC_CONFIGURATION av1Config = {};
+    av1Config.FeatureFlags = D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_NONE;
+    av1Config.OrderHintBitsMinus1 = 7;
+    if (codec == VideoCodec::AV1) {
+        D3D12_VIDEO_ENCODER_AV1_CODEC_CONFIGURATION_SUPPORT av1Caps = {};
+        D3D12_FEATURE_DATA_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT av1ConfigSupport = {};
+        av1ConfigSupport.Codec = d3d12Codec;
+        av1ConfigSupport.Profile = profile;
+        av1ConfigSupport.CodecSupportLimits.DataSize = sizeof(av1Caps);
+        av1ConfigSupport.CodecSupportLimits.pAV1Support = &av1Caps;
+        HRESULT hr = videoDevice.CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT, &av1ConfigSupport, sizeof(av1ConfigSupport));
+        if (FAILED(hr) || !av1ConfigSupport.IsSupported || !IsVideoEncodeAV1RequiredFeatureSetSupportedD3D12(av1Caps.RequiredFeatureFlags))
+            return false;
+
+        av1Config.FeatureFlags = av1Caps.RequiredFeatureFlags;
+    }
+
+    D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION codecConfig = {};
+    if (codec == VideoCodec::H264) {
+        codecConfig.DataSize = sizeof(h264Config);
+        codecConfig.pH264Config = &h264Config;
+    } else if (codec == VideoCodec::H265) {
+        codecConfig.DataSize = sizeof(hevcConfig);
+        codecConfig.pHEVCConfig = &hevcConfig;
+    } else {
+        codecConfig.DataSize = sizeof(av1Config);
+        codecConfig.pAV1Config = &av1Config;
+    }
+
+    D3D12_FEATURE_DATA_VIDEO_ENCODER_RATE_CONTROL_MODE rateControlMode = {};
+    rateControlMode.Codec = d3d12Codec;
+    rateControlMode.RateControlMode = D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_CQP;
+    HRESULT hr = videoDevice.CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_RATE_CONTROL_MODE, &rateControlMode, sizeof(rateControlMode));
+    if (FAILED(hr) || !rateControlMode.IsSupported)
+        return false;
+
+    D3D12_VIDEO_ENCODER_RATE_CONTROL_CQP cqp = {26, 28, 30};
+    D3D12_VIDEO_ENCODER_RATE_CONTROL rateControl = {};
+    rateControl.Mode = D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_CQP;
+    rateControl.ConfigParams.DataSize = sizeof(cqp);
+    rateControl.ConfigParams.pConfiguration_CQP = &cqp;
+    rateControl.TargetFrameRate = {30, 1};
+
+    D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_H264 h264Gop = {};
+    h264Gop.GOPLength = 1;
+    h264Gop.PPicturePeriod = 1;
+
+    D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_HEVC hevcGop = {};
+    hevcGop.GOPLength = 1;
+    hevcGop.PPicturePeriod = 1;
+
+    D3D12_VIDEO_ENCODER_AV1_SEQUENCE_STRUCTURE av1Sequence = {};
+    av1Sequence.IntraDistance = 1;
+    av1Sequence.InterFramePeriod = 0;
+
+    D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE gop = {};
+    if (codec == VideoCodec::H264) {
+        gop.DataSize = sizeof(h264Gop);
+        gop.pH264GroupOfPictures = &h264Gop;
+    } else if (codec == VideoCodec::H265) {
+        gop.DataSize = sizeof(hevcGop);
+        gop.pHEVCGroupOfPictures = &hevcGop;
+    } else {
+        gop.DataSize = sizeof(av1Sequence);
+        gop.pAV1SequenceStructure = &av1Sequence;
+    }
+
+    D3D12_VIDEO_ENCODER_LEVELS_H264 suggestedH264Level = D3D12_VIDEO_ENCODER_LEVELS_H264_41;
+    D3D12_VIDEO_ENCODER_LEVEL_TIER_CONSTRAINTS_HEVC suggestedHevcLevel = {D3D12_VIDEO_ENCODER_LEVELS_HEVC_41, D3D12_VIDEO_ENCODER_TIER_HEVC_MAIN};
+    D3D12_VIDEO_ENCODER_AV1_LEVEL_TIER_CONSTRAINTS suggestedAv1Level = {D3D12_VIDEO_ENCODER_AV1_LEVELS_4_1, D3D12_VIDEO_ENCODER_AV1_TIER_MAIN};
+    D3D12_VIDEO_ENCODER_LEVEL_SETTING suggestedLevel = {};
+    if (codec == VideoCodec::H264) {
+        suggestedLevel.DataSize = sizeof(suggestedH264Level);
+        suggestedLevel.pH264LevelSetting = &suggestedH264Level;
+    } else if (codec == VideoCodec::H265) {
+        suggestedLevel.DataSize = sizeof(suggestedHevcLevel);
+        suggestedLevel.pHEVCLevelSetting = &suggestedHevcLevel;
+    } else {
+        suggestedLevel.DataSize = sizeof(suggestedAv1Level);
+        suggestedLevel.pAV1LevelSetting = &suggestedAv1Level;
+    }
+
+    D3D12_VIDEO_ENCODER_PICTURE_RESOLUTION_DESC resolution = {width, height};
+    D3D12_FEATURE_DATA_VIDEO_ENCODER_RESOLUTION_SUPPORT_LIMITS resolutionLimits = {};
+    if (codec == VideoCodec::AV1) {
+        D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA_TILES tiles = {};
+        tiles.RowCount = 1;
+        tiles.ColCount = 1;
+
+        D3D12_FEATURE_DATA_VIDEO_ENCODER_SUPPORT1 encoderSupport = {};
+        encoderSupport.Codec = d3d12Codec;
+        encoderSupport.InputFormat = DXGI_FORMAT_NV12;
+        encoderSupport.CodecConfiguration = codecConfig;
+        encoderSupport.CodecGopSequence = gop;
+        encoderSupport.RateControl = rateControl;
+        encoderSupport.IntraRefresh = D3D12_VIDEO_ENCODER_INTRA_REFRESH_MODE_NONE;
+        encoderSupport.SubregionFrameEncoding = D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_FULL_FRAME;
+        encoderSupport.ResolutionsListCount = 1;
+        encoderSupport.pResolutionList = &resolution;
+        encoderSupport.MaxReferenceFramesInDPB = 8;
+        encoderSupport.SuggestedProfile = profile;
+        encoderSupport.SuggestedLevel = suggestedLevel;
+        encoderSupport.pResolutionDependentSupport = &resolutionLimits;
+        encoderSupport.SubregionFrameEncodingData.DataSize = sizeof(tiles);
+        encoderSupport.SubregionFrameEncodingData.pTilesPartition_AV1 = &tiles;
+        hr = videoDevice.CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_SUPPORT1, &encoderSupport, sizeof(encoderSupport));
+        if (FAILED(hr) || (encoderSupport.SupportFlags & D3D12_VIDEO_ENCODER_SUPPORT_FLAG_GENERAL_SUPPORT_OK) == 0)
+            return false;
+
+        return (encoderSupport.SupportFlags & D3D12_VIDEO_ENCODER_SUPPORT_FLAG_READABLE_RECONSTRUCTED_PICTURE_LAYOUT_AVAILABLE_COMPAT) != 0;
+    }
+
+    D3D12_FEATURE_DATA_VIDEO_ENCODER_SUPPORT encoderSupport = {};
+    encoderSupport.Codec = d3d12Codec;
+    encoderSupport.InputFormat = DXGI_FORMAT_NV12;
+    encoderSupport.CodecConfiguration = codecConfig;
+    encoderSupport.CodecGopSequence = gop;
+    encoderSupport.RateControl = rateControl;
+    encoderSupport.IntraRefresh = D3D12_VIDEO_ENCODER_INTRA_REFRESH_MODE_NONE;
+    encoderSupport.SubregionFrameEncoding = D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_FULL_FRAME;
+    encoderSupport.ResolutionsListCount = 1;
+    encoderSupport.pResolutionList = &resolution;
+    encoderSupport.MaxReferenceFramesInDPB = 0;
+    encoderSupport.SuggestedProfile = profile;
+    encoderSupport.SuggestedLevel = suggestedLevel;
+    encoderSupport.pResolutionDependentSupport = &resolutionLimits;
+    hr = videoDevice.CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_SUPPORT, &encoderSupport, sizeof(encoderSupport));
+    if (FAILED(hr) || (encoderSupport.SupportFlags & D3D12_VIDEO_ENCODER_SUPPORT_FLAG_GENERAL_SUPPORT_OK) == 0)
+        return false;
+
+    return (encoderSupport.SupportFlags & D3D12_VIDEO_ENCODER_SUPPORT_FLAG_READABLE_RECONSTRUCTED_PICTURE_LAYOUT_AVAILABLE_COMPAT) != 0;
 }
 
 } // namespace nri
