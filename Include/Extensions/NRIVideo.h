@@ -6,7 +6,6 @@
 #pragma once
 
 #define NRI_VIDEO_H 1
-#define NRI_VIDEO_VERSION 1
 
 NriNamespaceBegin
 
