@@ -2704,8 +2704,14 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
         if (session.m_EncodeFeedbackWriteIndex - session.m_EncodeFeedbackReadIndex >= VideoSessionVK::ENCODE_FEEDBACK_QUERY_NUM) {
             NRI_REPORT_ERROR(&device, "Too many unresolved Vulkan video encode feedback queries are outstanding for this video session");
             useEncodeFeedback = false;
-        } else
+        } else {
             encodeFeedbackQueryIndex = (uint32_t)(session.m_EncodeFeedbackWriteIndex++ % VideoSessionVK::ENCODE_FEEDBACK_QUERY_NUM);
+            VideoSessionVK::EncodeFeedbackPayloadReadback& payloadReadback = session.m_EncodeFeedbackPayloadReadbacks[encodeFeedbackQueryIndex];
+            payloadReadback.bitstream = (BufferVK*)videoEncodeDesc.dstBitstream.buffer;
+            payloadReadback.offset = videoEncodeDesc.dstBitstream.offset;
+            payloadReadback.size = videoEncodeDesc.dstBitstream.size;
+            payloadReadback.copyHeader = videoEncodeDesc.av1PictureDesc != nullptr;
+        }
     }
 
     if (useEncodeFeedback)
@@ -2746,6 +2752,8 @@ static void NRI_CALL CmdResolveVideoEncodeFeedback(CommandBuffer& commandBuffer,
         return;
     }
     const uint32_t encodeFeedbackQueryIndex = (uint32_t)(session.m_EncodeFeedbackReadIndex++ % VideoSessionVK::ENCODE_FEEDBACK_QUERY_NUM);
+    const VideoSessionVK::EncodeFeedbackPayloadReadback payloadReadback = session.m_EncodeFeedbackPayloadReadbacks[encodeFeedbackQueryIndex];
+    session.m_EncodeFeedbackPayloadReadbacks[encodeFeedbackQueryIndex] = {};
 
     const auto& vk = commandBufferVK.GetDevice().GetDispatchTable();
     uint64_t queryResult[2] = {};
@@ -2762,6 +2770,24 @@ static void NRI_CALL CmdResolveVideoEncodeFeedback(CommandBuffer& commandBuffer,
         feedback.errorFlags = (uint64_t)result;
 
     vk.CmdUpdateBuffer(commandBufferVK, feedbackBuffer.GetHandle(), resolvedMetadataOffset, sizeof(feedback), &feedback);
+
+    if (payloadReadback.copyHeader && payloadReadback.bitstream && feedback.encodedBitstreamWrittenBytes) {
+        const uint64_t dstOffset = resolvedMetadataOffset + sizeof(VideoEncodeFeedback);
+        if (dstOffset < feedbackBuffer.GetDesc().size) {
+            VkBufferCopy2 region = {VK_STRUCTURE_TYPE_BUFFER_COPY_2};
+            region.srcOffset = payloadReadback.offset;
+            region.dstOffset = dstOffset;
+            region.size = std::min(feedback.encodedBitstreamWrittenBytes, std::min(payloadReadback.size, feedbackBuffer.GetDesc().size - dstOffset));
+            if (region.size) {
+                VkCopyBufferInfo2 copyInfo = {VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2};
+                copyInfo.srcBuffer = payloadReadback.bitstream->GetHandle();
+                copyInfo.dstBuffer = feedbackBuffer.GetHandle();
+                copyInfo.regionCount = 1;
+                copyInfo.pRegions = &region;
+                vk.CmdCopyBuffer2(commandBufferVK, &copyInfo);
+            }
+        }
+    }
 }
 
 static Result NRI_CALL GetVideoEncodeFeedback(VideoSession& videoSession, Buffer& resolvedMetadataReadback, uint64_t resolvedMetadataOffset, VideoEncodeFeedback& feedback) {
@@ -2777,11 +2803,28 @@ static Result NRI_CALL GetVideoEncodeFeedback(VideoSession& videoSession, Buffer
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer&, uint64_t, const VideoAV1EncodeDecodeInfoDesc& desc, VideoAV1EncodeDecodeInfo& info) {
+static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolvedMetadataReadback, uint64_t resolvedMetadataOffset,
+    const VideoAV1EncodeDecodeInfoDesc& desc, VideoAV1EncodeDecodeInfo& info) {
     if (!desc.feedback || desc.feedback->errorFlags || !desc.feedback->encodedBitstreamWrittenBytes)
         return Result::FAILURE;
 
-    return video_av1::GetVideoEncodeAV1DecodeInfoFromHeader(desc, info);
+    if (desc.encodedPayloadHeader && desc.encodedPayloadHeaderSize)
+        return video_av1::GetVideoEncodeAV1DecodeInfoFromHeader(desc, info);
+
+    BufferVK& metadata = (BufferVK&)resolvedMetadataReadback;
+    const uint64_t headerOffset = resolvedMetadataOffset + sizeof(VideoEncodeFeedback);
+    if (headerOffset >= metadata.GetDesc().size)
+        return Result::INVALID_ARGUMENT;
+
+    const uint64_t headerSize = std::min(desc.feedback->encodedBitstreamWrittenBytes, metadata.GetDesc().size - headerOffset);
+    const uint8_t* header = (const uint8_t*)metadata.Map(headerOffset, headerSize);
+    if (!header)
+        return Result::FAILURE;
+
+    VideoAV1EncodeDecodeInfoDesc headerDesc = desc;
+    headerDesc.encodedPayloadHeader = header;
+    headerDesc.encodedPayloadHeaderSize = headerSize;
+    return video_av1::GetVideoEncodeAV1DecodeInfoFromHeader(headerDesc, info);
 }
 
 Result DeviceVK::FillFunctionTable(VideoInterface& table) const {

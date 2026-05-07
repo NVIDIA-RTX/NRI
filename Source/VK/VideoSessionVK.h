@@ -4,8 +4,17 @@
 
 namespace nri {
 
+struct BufferVK;
+
 struct VideoSessionVK final : public DebugNameBase {
     static constexpr uint32_t ENCODE_FEEDBACK_QUERY_NUM = 64;
+
+    struct EncodeFeedbackPayloadReadback {
+        BufferVK* bitstream = nullptr;
+        uint64_t offset = 0;
+        uint64_t size = 0;
+        bool copyHeader = false;
+    };
 
     inline VideoSessionVK(DeviceVK& device)
         : m_Device(device)
@@ -35,6 +44,7 @@ struct VideoSessionVK final : public DebugNameBase {
     DeviceVK& m_Device;
     VkVideoSessionKHR m_Handle = VK_NULL_HANDLE;
     VkQueryPool m_EncodeFeedbackQueryPool = VK_NULL_HANDLE;
+    std::array<EncodeFeedbackPayloadReadback, ENCODE_FEEDBACK_QUERY_NUM> m_EncodeFeedbackPayloadReadbacks = {};
     uint64_t m_EncodeFeedbackWriteIndex = 0;
     uint64_t m_EncodeFeedbackReadIndex = 0;
     Vector<VkDeviceMemory> m_Memory;
