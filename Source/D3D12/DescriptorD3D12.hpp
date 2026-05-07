@@ -1,4 +1,4 @@
-// © 2021 NVIDIA Corporation
+// © 2026 NVIDIA Corporation
 
 static inline DXGI_FORMAT GetPatchedShaderResourceViewFormat(DXGI_FORMAT format, PlaneBits planes) {
     switch (format) {

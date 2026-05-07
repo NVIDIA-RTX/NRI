@@ -1,4 +1,4 @@
-// © 2021 NVIDIA Corporation
+// © 2026 NVIDIA Corporation
 
 #include "MemoryAllocatorD3D12.h"
 
@@ -1146,159 +1146,75 @@ Result DeviceD3D12::FillFunctionTable(RayTracingInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  Video  ]
 
-struct VideoSessionD3D12 final : public DebugNameBase {
-    inline VideoSessionD3D12(DeviceD3D12& device)
-        : m_Device(device) {
+#include "VideoSessionD3D12.h"
+
+#include "VideoSessionParametersD3D12.h"
+
+#include "VideoPictureD3D12.h"
+
+static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSessionDesc& videoSessionDesc, VideoCapabilities& videoCapabilities) {
+    DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
+    if (videoSessionDesc.width == 0 || videoSessionDesc.height == 0 || videoSessionDesc.format == Format::UNKNOWN)
+        return Result::INVALID_ARGUMENT;
+
+    videoCapabilities = {};
+    videoCapabilities.widthMin = videoSessionDesc.width;
+    videoCapabilities.heightMin = videoSessionDesc.height;
+    videoCapabilities.widthMax = videoSessionDesc.width;
+    videoCapabilities.heightMax = videoSessionDesc.height;
+    videoCapabilities.pictureAccessGranularityWidth = 1;
+    videoCapabilities.pictureAccessGranularityHeight = 1;
+    videoCapabilities.maxReferenceNum = videoSessionDesc.maxReferenceNum;
+    videoCapabilities.bitstreamOffsetAlignment = 1;
+    videoCapabilities.bitstreamSizeAlignment = 1;
+    videoCapabilities.bitstreamSizeMax = uint64_t(-1);
+
+    if (videoSessionDesc.usage == VideoUsage::DECODE) {
+        ComPtr<ID3D12VideoDevice> videoDevice;
+        HRESULT hr = deviceD3D12->QueryInterface(IID_PPV_ARGS(&videoDevice));
+        NRI_RETURN_ON_BAD_HRESULT(&deviceD3D12, hr, "ID3D12Device::QueryInterface(ID3D12VideoDevice)");
+
+        D3D12_VIDEO_DECODE_CONFIGURATION configuration = {};
+        configuration.DecodeProfile = GetVideoDecodeProfileD3D12(videoSessionDesc.codec, videoSessionDesc.format);
+        configuration.BitstreamEncryption = D3D12_BITSTREAM_ENCRYPTION_TYPE_NONE;
+        configuration.InterlaceType = D3D12_VIDEO_FRAME_CODED_INTERLACE_TYPE_NONE;
+        if (configuration.DecodeProfile == GUID{})
+            return Result::UNSUPPORTED;
+
+        D3D12_FEATURE_DATA_VIDEO_DECODE_SUPPORT decodeSupport = {};
+        decodeSupport.Configuration = configuration;
+        decodeSupport.Width = videoSessionDesc.width;
+        decodeSupport.Height = videoSessionDesc.height;
+        decodeSupport.DecodeFormat = GetDxgiFormat(videoSessionDesc.format).typed;
+        decodeSupport.FrameRate = {30, 1};
+        hr = videoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_DECODE_SUPPORT, &decodeSupport, sizeof(decodeSupport));
+        NRI_RETURN_ON_BAD_HRESULT(&deviceD3D12, hr, "ID3D12VideoDevice::CheckFeatureSupport(D3D12_FEATURE_VIDEO_DECODE_SUPPORT)");
+        if ((decodeSupport.SupportFlags & D3D12_VIDEO_DECODE_SUPPORT_FLAG_SUPPORTED) == 0)
+            return Result::UNSUPPORTED;
+
+        return (decodeSupport.ConfigurationFlags & D3D12_VIDEO_DECODE_CONFIGURATION_FLAG_REFERENCE_ONLY_ALLOCATIONS_REQUIRED) ? Result::UNSUPPORTED : Result::SUCCESS;
     }
 
-    inline DeviceD3D12& GetDevice() const {
-        return m_Device;
+    if (videoSessionDesc.usage == VideoUsage::ENCODE) {
+        ComPtr<ID3D12VideoDevice3> videoDevice;
+        HRESULT hr = deviceD3D12->QueryInterface(IID_PPV_ARGS(&videoDevice));
+        NRI_RETURN_ON_BAD_HRESULT(&deviceD3D12, hr, "ID3D12Device::QueryInterface(ID3D12VideoDevice3)");
+
+        D3D12_VIDEO_ENCODER_CODEC codec = GetVideoEncodeCodecD3D12(videoSessionDesc.codec);
+        if (codec == (D3D12_VIDEO_ENCODER_CODEC)-1)
+            return Result::UNSUPPORTED;
+
+        D3D12_FEATURE_DATA_VIDEO_ENCODER_RATE_CONTROL_MODE rateControlMode = {};
+        rateControlMode.Codec = codec;
+        rateControlMode.RateControlMode = D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_CQP;
+        hr = videoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_RATE_CONTROL_MODE, &rateControlMode, sizeof(rateControlMode));
+        NRI_RETURN_ON_BAD_HRESULT(&deviceD3D12, hr, "ID3D12VideoDevice3::CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_RATE_CONTROL_MODE)");
+
+        return rateControlMode.IsSupported ? Result::SUCCESS : Result::UNSUPPORTED;
     }
 
-    Result Create(const VideoSessionDesc& videoSessionDesc);
-
-    void SetDebugName(const char* name) NRI_DEBUG_NAME_OVERRIDE {
-        NRI_SET_D3D_DEBUG_OBJECT_NAME(m_Decoder, name);
-        NRI_SET_D3D_DEBUG_OBJECT_NAME(m_DecoderHeap, name);
-        NRI_SET_D3D_DEBUG_OBJECT_NAME(m_Encoder, name);
-        NRI_SET_D3D_DEBUG_OBJECT_NAME(m_EncoderHeap, name);
-    }
-
-    DeviceD3D12& m_Device;
-    ComPtr<ID3D12VideoDecoder> m_Decoder;
-    ComPtr<ID3D12VideoDecoderHeap> m_DecoderHeap;
-    ComPtr<ID3D12VideoEncoder> m_Encoder;
-    ComPtr<ID3D12VideoEncoderHeap> m_EncoderHeap;
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
-    ComPtr<ID3D12VideoEncoderHeap1> m_EncoderHeap1;
-#endif
-    uint32_t m_AV1FeatureFlags = 0;
-    VideoSessionDesc m_Desc = {};
-};
-
-struct VideoSessionParametersD3D12 final {
-    inline VideoSessionParametersD3D12(DeviceD3D12& device)
-        : m_Device(device)
-        , m_H264SequenceParameterSets(device.GetStdAllocator())
-        , m_H264PictureParameterSets(device.GetStdAllocator())
-        , m_H265VideoParameterSets(device.GetStdAllocator())
-        , m_H265SequenceParameterSets(device.GetStdAllocator())
-        , m_H265PictureParameterSets(device.GetStdAllocator())
-        , m_H265SequenceScalingLists(device.GetStdAllocator())
-        , m_H265PictureScalingLists(device.GetStdAllocator()) {
-    }
-
-    inline DeviceD3D12& GetDevice() const {
-        return m_Device;
-    }
-
-    Result Create(const VideoSessionParametersDesc& videoSessionParametersDesc) {
-        if (!videoSessionParametersDesc.session)
-            return Result::INVALID_ARGUMENT;
-
-        m_Session = (VideoSessionD3D12*)videoSessionParametersDesc.session;
-        m_H264Parameters = videoSessionParametersDesc.h264Parameters;
-        m_H265Parameters = videoSessionParametersDesc.h265Parameters;
-        m_AV1Parameters = videoSessionParametersDesc.av1Parameters;
-        if (m_H264Parameters) {
-            if ((m_H264Parameters->sequenceParameterSetNum && !m_H264Parameters->sequenceParameterSets) || (m_H264Parameters->pictureParameterSetNum && !m_H264Parameters->pictureParameterSets))
-                return Result::INVALID_ARGUMENT;
-
-            m_H264SequenceParameterSets.clear();
-            m_H264PictureParameterSets.clear();
-            if (m_H264Parameters->sequenceParameterSetNum)
-                m_H264SequenceParameterSets.assign(m_H264Parameters->sequenceParameterSets, m_H264Parameters->sequenceParameterSets + m_H264Parameters->sequenceParameterSetNum);
-            if (m_H264Parameters->pictureParameterSetNum)
-                m_H264PictureParameterSets.assign(m_H264Parameters->pictureParameterSets, m_H264Parameters->pictureParameterSets + m_H264Parameters->pictureParameterSetNum);
-            m_H264ParametersStorage = *m_H264Parameters;
-            m_H264ParametersStorage.sequenceParameterSets = m_H264SequenceParameterSets.data();
-            m_H264ParametersStorage.pictureParameterSets = m_H264PictureParameterSets.data();
-            m_H264Parameters = &m_H264ParametersStorage;
-        }
-        if (m_H265Parameters) {
-            if ((m_H265Parameters->videoParameterSetNum && !m_H265Parameters->videoParameterSets) || (m_H265Parameters->sequenceParameterSetNum && !m_H265Parameters->sequenceParameterSets) || (m_H265Parameters->pictureParameterSetNum && !m_H265Parameters->pictureParameterSets))
-                return Result::INVALID_ARGUMENT;
-
-            m_H265VideoParameterSets.clear();
-            m_H265SequenceParameterSets.clear();
-            m_H265PictureParameterSets.clear();
-            m_H265SequenceScalingLists.clear();
-            m_H265PictureScalingLists.clear();
-            if (m_H265Parameters->videoParameterSetNum)
-                m_H265VideoParameterSets.assign(m_H265Parameters->videoParameterSets, m_H265Parameters->videoParameterSets + m_H265Parameters->videoParameterSetNum);
-            if (m_H265Parameters->sequenceParameterSetNum)
-                m_H265SequenceParameterSets.assign(m_H265Parameters->sequenceParameterSets, m_H265Parameters->sequenceParameterSets + m_H265Parameters->sequenceParameterSetNum);
-            if (m_H265Parameters->pictureParameterSetNum)
-                m_H265PictureParameterSets.assign(m_H265Parameters->pictureParameterSets, m_H265Parameters->pictureParameterSets + m_H265Parameters->pictureParameterSetNum);
-            m_H265SequenceScalingLists.resize(m_H265SequenceParameterSets.size());
-            for (size_t i = 0; i < m_H265SequenceParameterSets.size(); i++) {
-                if (m_H265SequenceParameterSets[i].scalingLists) {
-                    m_H265SequenceScalingLists[i] = *m_H265SequenceParameterSets[i].scalingLists;
-                    m_H265SequenceParameterSets[i].scalingLists = &m_H265SequenceScalingLists[i];
-                }
-            }
-            m_H265PictureScalingLists.resize(m_H265PictureParameterSets.size());
-            for (size_t i = 0; i < m_H265PictureParameterSets.size(); i++) {
-                if (m_H265PictureParameterSets[i].scalingLists) {
-                    m_H265PictureScalingLists[i] = *m_H265PictureParameterSets[i].scalingLists;
-                    m_H265PictureParameterSets[i].scalingLists = &m_H265PictureScalingLists[i];
-                }
-            }
-            m_H265ParametersStorage = *m_H265Parameters;
-            m_H265ParametersStorage.videoParameterSets = m_H265VideoParameterSets.data();
-            m_H265ParametersStorage.sequenceParameterSets = m_H265SequenceParameterSets.data();
-            m_H265ParametersStorage.pictureParameterSets = m_H265PictureParameterSets.data();
-            m_H265Parameters = &m_H265ParametersStorage;
-        }
-        if (m_AV1Parameters) {
-            m_AV1ParametersStorage = *m_AV1Parameters;
-            m_AV1Parameters = &m_AV1ParametersStorage;
-        }
-        return Result::SUCCESS;
-    }
-
-    DeviceD3D12& m_Device;
-    VideoSessionD3D12* m_Session = nullptr;
-    VideoH264SessionParametersDesc m_H264ParametersStorage = {};
-    Vector<VideoH264SequenceParameterSetDesc> m_H264SequenceParameterSets;
-    Vector<VideoH264PictureParameterSetDesc> m_H264PictureParameterSets;
-    const VideoH264SessionParametersDesc* m_H264Parameters = nullptr;
-    VideoH265SessionParametersDesc m_H265ParametersStorage = {};
-    Vector<VideoH265VideoParameterSetDesc> m_H265VideoParameterSets;
-    Vector<VideoH265SequenceParameterSetDesc> m_H265SequenceParameterSets;
-    Vector<VideoH265PictureParameterSetDesc> m_H265PictureParameterSets;
-    Vector<VideoH265ScalingListsDesc> m_H265SequenceScalingLists;
-    Vector<VideoH265ScalingListsDesc> m_H265PictureScalingLists;
-    const VideoH265SessionParametersDesc* m_H265Parameters = nullptr;
-    VideoAV1SessionParametersDesc m_AV1ParametersStorage = {};
-    const VideoAV1SessionParametersDesc* m_AV1Parameters = nullptr;
-};
-
-struct VideoPictureD3D12 final : public DebugNameBase {
-    inline VideoPictureD3D12(DeviceD3D12& device)
-        : m_Device(device) {
-    }
-
-    inline DeviceD3D12& GetDevice() const {
-        return m_Device;
-    }
-
-    Result Create(const VideoPictureDesc& videoPictureDesc) {
-        if (!videoPictureDesc.texture)
-            return Result::INVALID_ARGUMENT;
-
-        m_Texture = (TextureD3D12*)videoPictureDesc.texture;
-        m_Subresource = videoPictureDesc.subresource;
-        return Result::SUCCESS;
-    }
-
-    void SetDebugName(const char*) NRI_DEBUG_NAME_OVERRIDE {
-    }
-
-    DeviceD3D12& m_Device;
-    TextureD3D12* m_Texture = nullptr;
-    uint32_t m_Subresource = 0;
-};
+    return Result::UNSUPPORTED;
+}
 
 Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
     if (videoSessionDesc.width == 0 || videoSessionDesc.height == 0 || videoSessionDesc.format == Format::UNKNOWN)
@@ -2997,6 +2913,7 @@ Result DeviceD3D12::FillFunctionTable(VideoInterface& table) const {
     if (m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_DECODE] == 0 && m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_ENCODE] == 0)
         return Result::UNSUPPORTED;
 
+    table.GetVideoCapabilities = ::GetVideoCapabilities;
     table.CreateVideoSession = ::CreateVideoSession;
     table.DestroyVideoSession = ::DestroyVideoSession;
     table.CreateVideoSessionParameters = ::CreateVideoSessionParameters;

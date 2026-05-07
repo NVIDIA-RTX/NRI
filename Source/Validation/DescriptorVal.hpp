@@ -1,4 +1,4 @@
-// © 2021 NVIDIA Corporation
+// © 2026 NVIDIA Corporation
 
 DescriptorVal::DescriptorVal(DeviceVal& device, Descriptor* descriptor, DescriptorType type)
     : ObjectVal(device, descriptor)

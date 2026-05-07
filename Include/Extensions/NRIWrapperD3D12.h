@@ -1,4 +1,4 @@
-// © 2021 NVIDIA Corporation
+// © 2026 NVIDIA Corporation
 
 // Goal: wrapping native D3D12 objects into NRI objects
 

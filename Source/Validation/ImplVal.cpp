@@ -1,4 +1,4 @@
-// © 2021 NVIDIA Corporation
+// © 2026 NVIDIA Corporation
 
 #include "SharedVal.h"
 
@@ -1233,6 +1233,11 @@ struct VideoPictureVal final : public ObjectVal {
     }
 };
 
+static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSessionDesc& videoSessionDesc, VideoCapabilities& videoCapabilities) {
+    const DeviceVal& deviceVal = (const DeviceVal&)device;
+    return deviceVal.GetVideoInterfaceImpl().GetVideoCapabilities(deviceVal.GetImpl(), videoSessionDesc, videoCapabilities);
+}
+
 static Result NRI_CALL CreateVideoSession(Device& device, const VideoSessionDesc& videoSessionDesc, VideoSession*& videoSession) {
     DeviceVal& deviceVal = (DeviceVal&)device;
     VideoSession* videoSessionImpl = nullptr;
@@ -1395,6 +1400,7 @@ Result DeviceVal::FillFunctionTable(VideoInterface& table) const {
     if (!m_IsExtSupported.video)
         return Result::UNSUPPORTED;
 
+    table.GetVideoCapabilities = ::GetVideoCapabilities;
     table.CreateVideoSession = ::CreateVideoSession;
     table.DestroyVideoSession = ::DestroyVideoSession;
     table.CreateVideoSessionParameters = ::CreateVideoSessionParameters;

@@ -1,4 +1,4 @@
-﻿// © 2021 NVIDIA Corporation
+// © 2026 NVIDIA Corporation
 
 #pragma once
 
@@ -1874,21 +1874,6 @@ NriStruct(DeviceDesc) {
         uint32_t alignmentMultisample;      // (INTERNAL) worst-case alignment for a memory allocation respecting all possible placed resources, including multisample textures
     } memory;
 
-    // Video
-    struct {
-        struct {
-            uint32_t H264                                      : 1;
-            uint32_t H265                                      : 1;
-            uint32_t AV1                                       : 1;
-        } decode;
-
-        struct {
-            uint32_t H264                                      : 1;
-            uint32_t H265                                      : 1;
-            uint32_t AV1                                       : 1;
-        } encode;
-    } videoFeatures;
-
     // Memory alignment requirements
     struct {
         uint32_t uploadBufferTextureRow;
@@ -2204,6 +2189,21 @@ NriStruct(DeviceDesc) {
         //   - "NRI_ENABLE_DRAW_PARAMETERS_EMULATION" must be defined prior inclusion of "NRI.hlsl" for such shaders
         uint32_t drawParametersEmulation                         : 1; // emulation of "drawParameters"
     } shaderFeatures;
+
+    // Video
+    struct {
+        struct {
+            uint32_t H264                                      : 1;
+            uint32_t H265                                      : 1;
+            uint32_t AV1                                       : 1;
+        } decode;
+
+        struct {
+            uint32_t H264                                      : 1;
+            uint32_t H265                                      : 1;
+            uint32_t AV1                                       : 1;
+        } encode;
+    } videoFeatures;
 };
 
 #pragma endregion

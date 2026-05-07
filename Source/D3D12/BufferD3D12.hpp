@@ -1,4 +1,4 @@
-// © 2021 NVIDIA Corporation
+// © 2026 NVIDIA Corporation
 
 Result BufferD3D12::Create(const BufferDesc& bufferDesc) {
     m_Desc = bufferDesc;

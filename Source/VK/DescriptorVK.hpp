@@ -1,4 +1,4 @@
-// © 2021 NVIDIA Corporation
+// © 2026 NVIDIA Corporation
 
 static inline VkImageViewType GetImageViewType(TextureType textureType, TextureView textureView, uint32_t layerNum) {
     if (textureType == TextureType::TEXTURE_1D) {

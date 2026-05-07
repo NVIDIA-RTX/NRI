@@ -1,4 +1,4 @@
-﻿// © 2021 NVIDIA Corporation
+// © 2026 NVIDIA Corporation
 
 static HRESULT QueryLatestInterface(ComPtr<ID3D12GraphicsCommandListBest>& in, ComPtr<ID3D12GraphicsCommandListBest>& out, uint8_t& version) {
     static const IID versions[] = {

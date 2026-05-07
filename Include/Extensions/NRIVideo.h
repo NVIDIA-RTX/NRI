@@ -1,4 +1,4 @@
-// © 2021 NVIDIA Corporation
+// © 2026 NVIDIA Corporation
 
 // Goal: backend-neutral hardware video encode/decode command submission
 // Video formats: https://learn.microsoft.com/en-us/windows/win32/medfound/recommended-8-bit-yuv-formats-for-video-rendering
@@ -236,6 +236,19 @@ NriStruct(VideoSessionDesc) {
     uint32_t width;
     uint32_t height;
     uint32_t maxReferenceNum;
+};
+
+NriStruct(VideoCapabilities) {
+    uint32_t widthMin;
+    uint32_t heightMin;
+    uint32_t widthMax;
+    uint32_t heightMax;
+    uint32_t pictureAccessGranularityWidth;
+    uint32_t pictureAccessGranularityHeight;
+    uint32_t maxReferenceNum;
+    uint32_t bitstreamOffsetAlignment;
+    uint32_t bitstreamSizeAlignment;
+    uint64_t bitstreamSizeMax;
 };
 
 NriStruct(VideoReference) {
@@ -835,6 +848,7 @@ NriStruct(VideoEncodeDesc) {
 NriStruct(VideoInterface) {
     // Session
     // {
+        Nri(Result) (NRI_CALL *GetVideoCapabilities) (const NriRef(Device) device, const NriRef(VideoSessionDesc) videoSessionDesc, NriOut NriRef(VideoCapabilities) videoCapabilities);
         Nri(Result) (NRI_CALL *CreateVideoSession)  (NriRef(Device) device, const NriRef(VideoSessionDesc) videoSessionDesc, NriOut NriRef(VideoSession*) videoSession);
         void        (NRI_CALL *DestroyVideoSession) (NriPtr(VideoSession) videoSession);
         Nri(Result) (NRI_CALL *CreateVideoSessionParameters)  (NriRef(Device) device, const NriRef(VideoSessionParametersDesc) videoSessionParametersDesc, NriOut NriRef(VideoSessionParameters*) videoSessionParameters);

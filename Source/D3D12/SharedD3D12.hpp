@@ -1,4 +1,4 @@
-// © 2021 NVIDIA Corporation
+// © 2026 NVIDIA Corporation
 
 constexpr std::array<D3D12_COMMAND_LIST_TYPE, (size_t)QueueType::MAX_NUM> g_CommandListTypes = {
     D3D12_COMMAND_LIST_TYPE_DIRECT,       // GRAPHICS,

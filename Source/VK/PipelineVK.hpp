@@ -1,4 +1,4 @@
-// © 2021 NVIDIA Corporation
+// © 2026 NVIDIA Corporation
 
 static inline bool IsConstantColorReferenced(BlendFactor factor) {
     return factor == BlendFactor::CONSTANT_COLOR || factor == BlendFactor::CONSTANT_ALPHA || factor == BlendFactor::ONE_MINUS_CONSTANT_COLOR || factor == BlendFactor::ONE_MINUS_CONSTANT_ALPHA;

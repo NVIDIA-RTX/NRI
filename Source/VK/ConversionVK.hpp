@@ -1,4 +1,4 @@
-// © 2021 NVIDIA Corporation
+// © 2026 NVIDIA Corporation
 
 uint32_t nri::ConvertBotomLevelGeometries(
     VkAccelerationStructureBuildRangeInfoKHR* vkRanges,

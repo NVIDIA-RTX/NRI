@@ -1,4 +1,4 @@
-// © 2021 NVIDIA Corporation
+// © 2026 NVIDIA Corporation
 
 Result FenceD3D11::Create(uint64_t initialValue) {
     if (initialValue == SWAPCHAIN_SEMAPHORE)

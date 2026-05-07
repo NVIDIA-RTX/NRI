@@ -1,4 +1,4 @@
-// © 2021 NVIDIA Corporation
+// © 2026 NVIDIA Corporation
 
 #ifdef _WIN32
 #    include <windows.h> // OutputDebugStringA

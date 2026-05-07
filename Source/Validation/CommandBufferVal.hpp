@@ -1,4 +1,4 @@
-// © 2021 NVIDIA Corporation
+// © 2026 NVIDIA Corporation
 
 static inline bool IsAccessMaskSupported(const BufferDesc& bufferDesc, AccessBits accessMask) {
     bool isSupported = true;
