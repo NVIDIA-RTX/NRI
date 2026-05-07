@@ -1157,17 +1157,7 @@ static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSes
     if (videoSessionDesc.width == 0 || videoSessionDesc.height == 0 || videoSessionDesc.format == Format::UNKNOWN)
         return Result::INVALID_ARGUMENT;
 
-    videoCapabilities = {};
-    videoCapabilities.widthMin = videoSessionDesc.width;
-    videoCapabilities.heightMin = videoSessionDesc.height;
-    videoCapabilities.widthMax = videoSessionDesc.width;
-    videoCapabilities.heightMax = videoSessionDesc.height;
-    videoCapabilities.pictureAccessGranularityWidth = 1;
-    videoCapabilities.pictureAccessGranularityHeight = 1;
-    videoCapabilities.maxReferenceNum = videoSessionDesc.maxReferenceNum;
-    videoCapabilities.bitstreamOffsetAlignment = 1;
-    videoCapabilities.bitstreamSizeAlignment = 1;
-    videoCapabilities.bitstreamSizeMax = uint64_t(-1);
+    FillVideoCapabilitiesD3D12(videoCapabilities, videoSessionDesc);
 
     if (videoSessionDesc.usage == VideoUsage::DECODE) {
         ComPtr<ID3D12VideoDevice> videoDevice;
@@ -1200,17 +1190,7 @@ static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSes
         HRESULT hr = deviceD3D12->QueryInterface(IID_PPV_ARGS(&videoDevice));
         NRI_RETURN_ON_BAD_HRESULT(&deviceD3D12, hr, "ID3D12Device::QueryInterface(ID3D12VideoDevice3)");
 
-        D3D12_VIDEO_ENCODER_CODEC codec = GetVideoEncodeCodecD3D12(videoSessionDesc.codec);
-        if (codec == (D3D12_VIDEO_ENCODER_CODEC)-1)
-            return Result::UNSUPPORTED;
-
-        D3D12_FEATURE_DATA_VIDEO_ENCODER_RATE_CONTROL_MODE rateControlMode = {};
-        rateControlMode.Codec = codec;
-        rateControlMode.RateControlMode = D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_CQP;
-        hr = videoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_RATE_CONTROL_MODE, &rateControlMode, sizeof(rateControlMode));
-        NRI_RETURN_ON_BAD_HRESULT(&deviceD3D12, hr, "ID3D12VideoDevice3::CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_RATE_CONTROL_MODE)");
-
-        return rateControlMode.IsSupported ? Result::SUCCESS : Result::UNSUPPORTED;
+        return IsVideoEncodeSessionSupportedD3D12(*videoDevice, videoSessionDesc, &videoCapabilities) ? Result::SUCCESS : Result::UNSUPPORTED;
     }
 
     return Result::UNSUPPORTED;

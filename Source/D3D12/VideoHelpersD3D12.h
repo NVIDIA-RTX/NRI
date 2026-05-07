@@ -601,16 +601,32 @@ inline bool IsVideoDecodeCodecSupportedD3D12(ID3D12VideoDevice& videoDevice, Vid
     return (decodeSupport.ConfigurationFlags & D3D12_VIDEO_DECODE_CONFIGURATION_FLAG_REFERENCE_ONLY_ALLOCATIONS_REQUIRED) == 0;
 }
 
-inline bool IsVideoEncodeCodecSupportedD3D12(ID3D12VideoDevice3& videoDevice, VideoCodec codec) {
-    constexpr uint32_t width = 128;
-    constexpr uint32_t height = 128;
+inline void FillVideoCapabilitiesD3D12(VideoCapabilities& videoCapabilities, const VideoSessionDesc& videoSessionDesc) {
+    videoCapabilities = {};
+    videoCapabilities.widthMin = videoSessionDesc.width;
+    videoCapabilities.heightMin = videoSessionDesc.height;
+    videoCapabilities.widthMax = videoSessionDesc.width;
+    videoCapabilities.heightMax = videoSessionDesc.height;
+    videoCapabilities.pictureAccessGranularityWidth = 1;
+    videoCapabilities.pictureAccessGranularityHeight = 1;
+    videoCapabilities.maxReferenceNum = videoSessionDesc.maxReferenceNum;
+    videoCapabilities.bitstreamOffsetAlignment = 1;
+    videoCapabilities.bitstreamSizeAlignment = 1;
+    videoCapabilities.bitstreamSizeMax = uint64_t(-1);
+}
 
+inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice3& videoDevice, const VideoSessionDesc& videoSessionDesc, VideoCapabilities* videoCapabilities = nullptr) {
+    if (videoSessionDesc.usage != VideoUsage::ENCODE || videoSessionDesc.width == 0 || videoSessionDesc.height == 0 || videoSessionDesc.format == Format::UNKNOWN)
+        return false;
+
+    const VideoCodec codec = videoSessionDesc.codec;
     D3D12_VIDEO_ENCODER_CODEC d3d12Codec = GetVideoEncodeCodecD3D12(codec);
     if (d3d12Codec == (D3D12_VIDEO_ENCODER_CODEC)-1)
         return false;
 
     D3D12_VIDEO_ENCODER_PROFILE_H264 h264Profile = D3D12_VIDEO_ENCODER_PROFILE_H264_HIGH;
-    D3D12_VIDEO_ENCODER_PROFILE_HEVC hevcProfile = D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN;
+    const bool is10Bit = videoSessionDesc.format == Format::P010_UNORM || videoSessionDesc.format == Format::P016_UNORM;
+    D3D12_VIDEO_ENCODER_PROFILE_HEVC hevcProfile = is10Bit ? D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN10 : D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN;
 #if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
     D3D12_VIDEO_ENCODER_AV1_PROFILE av1Profile = D3D12_VIDEO_ENCODER_AV1_PROFILE_MAIN;
 #endif
@@ -723,17 +739,17 @@ inline bool IsVideoEncodeCodecSupportedD3D12(ID3D12VideoDevice3& videoDevice, Vi
     rateControl.TargetFrameRate = {30, 1};
 
     D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_H264 h264Gop = {};
-    h264Gop.GOPLength = 1;
+    h264Gop.GOPLength = videoSessionDesc.maxReferenceNum ? 60 : 1;
     h264Gop.PPicturePeriod = 1;
 
     D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_HEVC hevcGop = {};
-    hevcGop.GOPLength = 1;
+    hevcGop.GOPLength = videoSessionDesc.maxReferenceNum ? 60 : 1;
     hevcGop.PPicturePeriod = 1;
 
 #if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
     D3D12_VIDEO_ENCODER_AV1_SEQUENCE_STRUCTURE av1Sequence = {};
-    av1Sequence.IntraDistance = 1;
-    av1Sequence.InterFramePeriod = 0;
+    av1Sequence.IntraDistance = videoSessionDesc.maxReferenceNum ? 60 : 1;
+    av1Sequence.InterFramePeriod = videoSessionDesc.maxReferenceNum ? 1 : 0;
 #endif
     D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE gop = {};
     if (codec == VideoCodec::H264) {
@@ -772,7 +788,7 @@ inline bool IsVideoEncodeCodecSupportedD3D12(ID3D12VideoDevice3& videoDevice, Vi
 #endif
     }
 
-    D3D12_VIDEO_ENCODER_PICTURE_RESOLUTION_DESC resolution = {width, height};
+    D3D12_VIDEO_ENCODER_PICTURE_RESOLUTION_DESC resolution = {videoSessionDesc.width, videoSessionDesc.height};
     D3D12_FEATURE_DATA_VIDEO_ENCODER_RESOLUTION_SUPPORT_LIMITS resolutionLimits = {};
     if (codec == VideoCodec::AV1) {
 #if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
@@ -782,7 +798,7 @@ inline bool IsVideoEncodeCodecSupportedD3D12(ID3D12VideoDevice3& videoDevice, Vi
 
         D3D12_FEATURE_DATA_VIDEO_ENCODER_SUPPORT1 encoderSupport = {};
         encoderSupport.Codec = d3d12Codec;
-        encoderSupport.InputFormat = DXGI_FORMAT_NV12;
+        encoderSupport.InputFormat = GetDxgiFormat(videoSessionDesc.format).typed;
         encoderSupport.CodecConfiguration = codecConfig;
         encoderSupport.CodecGopSequence = gop;
         encoderSupport.RateControl = rateControl;
@@ -800,7 +816,13 @@ inline bool IsVideoEncodeCodecSupportedD3D12(ID3D12VideoDevice3& videoDevice, Vi
         if (FAILED(hr) || (encoderSupport.SupportFlags & D3D12_VIDEO_ENCODER_SUPPORT_FLAG_GENERAL_SUPPORT_OK) == 0)
             return false;
 
-        return (encoderSupport.SupportFlags & VIDEO_D3D12_ENCODER_SUPPORT_FLAG_READABLE_RECONSTRUCTED_PICTURE_LAYOUT_AVAILABLE) != 0;
+        if ((encoderSupport.SupportFlags & VIDEO_D3D12_ENCODER_SUPPORT_FLAG_READABLE_RECONSTRUCTED_PICTURE_LAYOUT_AVAILABLE) == 0)
+            return false;
+
+        if (videoCapabilities)
+            FillVideoCapabilitiesD3D12(*videoCapabilities, videoSessionDesc);
+
+        return true;
 #else
         return false;
 #endif
@@ -808,7 +830,7 @@ inline bool IsVideoEncodeCodecSupportedD3D12(ID3D12VideoDevice3& videoDevice, Vi
 
     D3D12_FEATURE_DATA_VIDEO_ENCODER_SUPPORT encoderSupport = {};
     encoderSupport.Codec = d3d12Codec;
-    encoderSupport.InputFormat = DXGI_FORMAT_NV12;
+    encoderSupport.InputFormat = GetDxgiFormat(videoSessionDesc.format).typed;
     encoderSupport.CodecConfiguration = codecConfig;
     encoderSupport.CodecGopSequence = gop;
     encoderSupport.RateControl = rateControl;
@@ -816,7 +838,7 @@ inline bool IsVideoEncodeCodecSupportedD3D12(ID3D12VideoDevice3& videoDevice, Vi
     encoderSupport.SubregionFrameEncoding = D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_FULL_FRAME;
     encoderSupport.ResolutionsListCount = 1;
     encoderSupport.pResolutionList = &resolution;
-    encoderSupport.MaxReferenceFramesInDPB = 0;
+    encoderSupport.MaxReferenceFramesInDPB = videoSessionDesc.maxReferenceNum;
     encoderSupport.SuggestedProfile = profile;
     encoderSupport.SuggestedLevel = suggestedLevel;
     encoderSupport.pResolutionDependentSupport = &resolutionLimits;
@@ -824,7 +846,24 @@ inline bool IsVideoEncodeCodecSupportedD3D12(ID3D12VideoDevice3& videoDevice, Vi
     if (FAILED(hr) || (encoderSupport.SupportFlags & D3D12_VIDEO_ENCODER_SUPPORT_FLAG_GENERAL_SUPPORT_OK) == 0)
         return false;
 
-    return (encoderSupport.SupportFlags & VIDEO_D3D12_ENCODER_SUPPORT_FLAG_READABLE_RECONSTRUCTED_PICTURE_LAYOUT_AVAILABLE) != 0;
+    if ((encoderSupport.SupportFlags & VIDEO_D3D12_ENCODER_SUPPORT_FLAG_READABLE_RECONSTRUCTED_PICTURE_LAYOUT_AVAILABLE) == 0)
+        return false;
+
+    if (videoCapabilities)
+        FillVideoCapabilitiesD3D12(*videoCapabilities, videoSessionDesc);
+
+    return true;
+}
+
+inline bool IsVideoEncodeCodecSupportedD3D12(ID3D12VideoDevice3& videoDevice, VideoCodec codec) {
+    VideoSessionDesc videoSessionDesc = {};
+    videoSessionDesc.usage = VideoUsage::ENCODE;
+    videoSessionDesc.codec = codec;
+    videoSessionDesc.format = Format::NV12_UNORM;
+    videoSessionDesc.width = 128;
+    videoSessionDesc.height = 128;
+
+    return IsVideoEncodeSessionSupportedD3D12(videoDevice, videoSessionDesc);
 }
 
 } // namespace nri
