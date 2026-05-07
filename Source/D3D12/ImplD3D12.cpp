@@ -1486,7 +1486,7 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
 
         D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_HEVC hevcGop = {};
         hevcGop.GOPLength = videoSessionDesc.maxReferenceNum ? 60 : 1;
-        hevcGop.PPicturePeriod = videoSessionDesc.maxReferenceNum > 1 ? 2 : 1;
+        hevcGop.PPicturePeriod = 1;
 
 #if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
         D3D12_VIDEO_ENCODER_AV1_SEQUENCE_STRUCTURE av1Sequence = {};
@@ -2354,7 +2354,7 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
 
     D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_HEVC hevcGop = {};
     hevcGop.GOPLength = session.m_Desc.maxReferenceNum ? 60 : 1;
-    hevcGop.PPicturePeriod = session.m_Desc.maxReferenceNum > 1 ? 2 : 1;
+    hevcGop.PPicturePeriod = 1;
 
 #if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
     D3D12_VIDEO_ENCODER_AV1_SEQUENCE_STRUCTURE av1Sequence = {};
@@ -2410,8 +2410,8 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
 
     const VideoEncodePictureDesc defaultPicture = {VideoEncodeFrameType::IDR, 0, 0, 0, 0};
     const VideoEncodePictureDesc& pictureDesc = videoEncodeDesc.pictureDesc ? *videoEncodeDesc.pictureDesc : defaultPicture;
-    if (!IsVideoEncodeFrameTypeSupportedByD3D12NoBGop(session.m_Desc.codec, pictureDesc.frameType)) {
-        NRI_REPORT_ERROR(&device, "D3D12 H.264 encode sessions are configured without B-frame GOP support");
+    if (!IsVideoEncodeFrameTypeSupportedByD3D12(session.m_Desc.codec, pictureDesc.frameType)) {
+        NRI_REPORT_ERROR(&device, "D3D12 video encode sessions are configured for the no-B-frame parity target");
         return;
     }
 
@@ -2640,16 +2640,23 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
                     break;
                 }
             }
+            const uint32_t primaryReferenceNameIndex = GetVideoEncodeAV1ReferenceNameIndexD3D12(videoEncodeDesc.av1PictureDesc->primaryReferenceName);
+            if (primaryReferenceNameIndex < 7 && !activeReferenceNames[primaryReferenceNameIndex]) {
+                NRI_REPORT_ERROR(&device, "'av1PictureDesc->primaryReferenceName' does not name an active reference");
+                return;
+            }
+            const uint32_t unusedReferenceIndex = primaryReferenceNameIndex < 7 ? av1Picture.ReferenceIndices[primaryReferenceNameIndex] : invalidReferenceIndex;
+            av1Picture.PrimaryRefFrame = primaryReferenceNameIndex < 7 ? (UCHAR)primaryReferenceNameIndex : 7;
             for (uint32_t i = 0; i < 7; i++) {
                 if (av1ReferenceNameSpecified[i])
                     continue;
 
-                if (invalidReferenceIndex == UINT32_MAX) {
-                    NRI_REPORT_ERROR(&device, "AV1 DPB snapshot has no invalid slot for unused reference names");
+                if (unusedReferenceIndex == UINT32_MAX) {
+                    NRI_REPORT_ERROR(&device, "AV1 DPB snapshot has no DPB slot for unused reference names");
                     return;
                 }
 
-                av1Picture.ReferenceIndices[i] = invalidReferenceIndex;
+                av1Picture.ReferenceIndices[i] = unusedReferenceIndex;
             }
 
             for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {
@@ -2659,12 +2666,6 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
                 }
             }
 
-            const uint32_t primaryReferenceNameIndex = GetVideoEncodeAV1ReferenceNameIndexD3D12(videoEncodeDesc.av1PictureDesc->primaryReferenceName);
-            if (primaryReferenceNameIndex < 7 && !activeReferenceNames[primaryReferenceNameIndex]) {
-                NRI_REPORT_ERROR(&device, "'av1PictureDesc->primaryReferenceName' does not name an active reference");
-                return;
-            }
-            av1Picture.PrimaryRefFrame = primaryReferenceNameIndex;
         } else if (videoEncodeDesc.referenceNum) {
             av1Picture.ReferenceFramesReconPictureDescriptors[0] = {};
             av1Picture.ReferenceFramesReconPictureDescriptors[0].ReconstructedPictureResourceIndex = 0;
@@ -2882,6 +2883,10 @@ static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolv
         return Result::INVALID_ARGUMENT;
     if (desc.feedback->errorFlags || !desc.feedback->encodedBitstreamWrittenBytes || !desc.feedback->writtenSubregionNum)
         return Result::FAILURE;
+    if (desc.encodedPayloadHeader && desc.encodedPayloadHeaderSize)
+        return video_av1::GetVideoEncodeAV1DecodeInfoFromHeader(desc, info);
+    if (desc.references || desc.referenceNum)
+        return Result::INVALID_ARGUMENT;
 
     const void* metadata = ((BufferD3D12&)resolvedMetadataReadback).Map(resolvedMetadataOffset);
     if (!metadata)

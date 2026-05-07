@@ -47,6 +47,7 @@ option(NRI_ENABLE_VK_SUPPORT "Enable Vulkan backend" ON)
 option(NRI_ENABLE_VALIDATION_SUPPORT "Enable Validation backend (otherwise 'enableNRIValidation' is ignored)" ON)
 option(NRI_ENABLE_NIS_SDK "Enable NVIDIA Image Sharpening SDK" OFF)
 option(NRI_ENABLE_IMGUI_EXTENSION "Enable 'NRIImgui' extension" OFF)
+option(NRI_ENABLE_TESTS "Build NRI unit tests" OFF)
 option(NRI_STREAMER_THREAD_SAFE "'NRIStreamer' thread safety (OFF is faster)" ON)
 
 cmake_dependent_option(NRI_ENABLE_D3D11_SUPPORT "Enable D3D11 backend" ON "WIN32" OFF)
@@ -912,6 +913,23 @@ set_target_properties(NRI
         FOLDER "NRI"
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
 )
+
+if(NRI_ENABLE_TESTS)
+    enable_testing()
+
+    add_executable(NRI_VideoAV1Tests
+        "Tests/VideoAV1Tests.cpp"
+    )
+    target_link_libraries(NRI_VideoAV1Tests
+        PRIVATE
+            NRI_Shared
+    )
+    set_target_properties(NRI_VideoAV1Tests
+        PROPERTIES
+            FOLDER "NRI/Tests"
+    )
+    add_test(NAME NRI_VideoAV1Tests COMMAND NRI_VideoAV1Tests)
+endif()
 
 message("NRI: output path '${CMAKE_RUNTIME_OUTPUT_DIRECTORY}'")
 

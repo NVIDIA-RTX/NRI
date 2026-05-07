@@ -2583,6 +2583,14 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     const VideoEncodePictureDesc& pictureDesc = videoEncodeDesc.pictureDesc ? *videoEncodeDesc.pictureDesc : defaultPicture;
     const VideoEncodeRateControlDesc defaultRateControl = {VideoEncodeRateControlMode::CQP, 26, 28, 30, 30, 1};
     const VideoEncodeRateControlDesc& rateControlDesc = videoEncodeDesc.rateControlDesc ? *videoEncodeDesc.rateControlDesc : defaultRateControl;
+    if (rateControlDesc.mode != VideoEncodeRateControlMode::CQP) {
+        NRI_REPORT_ERROR(&device, "Unsupported video encode rate control mode");
+        return;
+    }
+    if (!IsVideoEncodeFrameTypeSupportedByVK(session.m_Desc.codec, pictureDesc.frameType)) {
+        NRI_REPORT_ERROR(&device, "Vulkan video encode sessions are aligned with the no-B-frame parity target");
+        return;
+    }
 
     VkVideoEncodeH264PictureInfoKHR h264Picture = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PICTURE_INFO_KHR};
     StdVideoEncodeH264PictureInfo h264StdPicture = {};

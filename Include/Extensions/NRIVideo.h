@@ -786,6 +786,8 @@ NriStruct(VideoAV1EncodeDecodeInfoDesc) {
     const NriPtr(VideoAV1SequenceDesc) sequence;
     NriOptional const NriPtr(uint8_t) encodedPayloadHeader; // first bytes of the encoded payload; returned bitstream ranges are bounded by "feedback"
     uint64_t encodedPayloadHeaderSize;
+    NriOptional const NriPtr(VideoAV1ReferenceDesc) references; // previous AV1 DPB snapshot; required for inter frames
+    uint32_t referenceNum;
 };
 
 NriStruct(VideoAV1EncodeDecodeInfo) {
@@ -799,6 +801,7 @@ NriStruct(VideoAV1EncodeDecodeInfo) {
     uint16_t miRowStarts[65];
     uint16_t widthInSuperblocksMinus1[64];
     uint16_t heightInSuperblocksMinus1[64];
+    Nri(VideoAV1ReferenceDesc) references[8];
     Nri(VideoAV1QuantizationDesc) quantization;
     Nri(VideoAV1LoopFilterDesc) loopFilter;
     Nri(VideoAV1CdefDesc) cdef;
