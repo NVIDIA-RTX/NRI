@@ -2779,8 +2779,6 @@ static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolv
         return Result::INVALID_ARGUMENT;
     if (desc.feedback->errorFlags || !desc.feedback->encodedBitstreamWrittenBytes || !desc.feedback->writtenSubregionNum)
         return Result::FAILURE;
-    if (desc.encodedPayloadHeader && desc.encodedPayloadHeaderSize)
-        return video_av1::GetVideoEncodeAV1DecodeInfoFromHeader(desc, info);
     if (desc.references || desc.referenceNum)
         return Result::INVALID_ARGUMENT;
 
