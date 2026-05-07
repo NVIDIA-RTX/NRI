@@ -1338,7 +1338,7 @@ static void* FillVideoProfileCodecInfoVK(const VideoSessionDesc& videoSessionDes
 }
 
 static bool FindVideoSessionMemoryTypeVK(const DeviceVK& device, uint32_t memoryTypeBits, uint32_t& memoryTypeIndex) {
-    uint32_t fallbackIndex = uint32_t(-1);
+    uint32_t compatibleIndex = uint32_t(-1);
     for (uint32_t i = 0; i < 32; i++) {
         if ((memoryTypeBits & (1u << i)) == 0)
             continue;
@@ -1352,14 +1352,14 @@ static bool FindVideoSessionMemoryTypeVK(const DeviceVK& device, uint32_t memory
             return true;
         }
 
-        if (fallbackIndex == uint32_t(-1))
-            fallbackIndex = i;
+        if (compatibleIndex == uint32_t(-1))
+            compatibleIndex = i;
     }
 
-    if (fallbackIndex == uint32_t(-1))
+    if (compatibleIndex == uint32_t(-1))
         return false;
 
-    memoryTypeIndex = fallbackIndex;
+    memoryTypeIndex = compatibleIndex;
     return true;
 }
 
