@@ -1,4 +1,4 @@
-// © 2026 NVIDIA Corporation
+// © 2021 NVIDIA Corporation
 
 // Goal: wrapping native VK objects into NRI objects
 
@@ -12,6 +12,9 @@ typedef void* VKHandle;
 typedef int32_t VKEnum;
 typedef uint32_t VKFlags;
 typedef uint64_t VKNonDispatchableHandle;
+NonNriForwardStruct(VkVideoDecodeInfoKHR);
+NonNriForwardStruct(VkVideoEncodeInfoKHR);
+NonNriForwardStruct(VkVideoSessionParametersCreateInfoKHR);
 
 NriNamespaceBegin
 
@@ -113,16 +116,16 @@ NriStruct(AccelerationStructureVKDesc) {
 };
 
 NriStruct(VideoDecodeVKDesc) {
-    const void* vkDecodeInfo;           // VkVideoDecodeInfoKHR*
+    const VkVideoDecodeInfoKHR* vkDecodeInfo;
 };
 
 NriStruct(VideoEncodeVKDesc) {
-    const void* vkEncodeInfo;           // VkVideoEncodeInfoKHR*
+    const VkVideoEncodeInfoKHR* vkEncodeInfo;
 };
 
 NriStruct(VideoSessionParametersVKDesc) {
     NriPtr(VideoSession) session;
-    const void* vkSessionParametersCreateInfo; // VkVideoSessionParametersCreateInfoKHR::pNext
+    const VkVideoSessionParametersCreateInfoKHR* vkSessionParametersCreateInfo;
 };
 
 // Threadsafe: yes

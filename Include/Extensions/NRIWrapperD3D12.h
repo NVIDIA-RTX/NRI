@@ -1,4 +1,4 @@
-// © 2026 NVIDIA Corporation
+// © 2021 NVIDIA Corporation
 
 // Goal: wrapping native D3D12 objects into NRI objects
 
@@ -20,6 +20,20 @@ NonNriForwardStruct(ID3D12CommandQueue);
 NonNriForwardStruct(ID3D12DescriptorHeap);
 NonNriForwardStruct(ID3D12CommandAllocator);
 NonNriForwardStruct(ID3D12GraphicsCommandList);
+NonNriForwardStruct(ID3D12VideoDecoder);
+NonNriForwardStruct(ID3D12VideoEncoder);
+NonNriForwardStruct(ID3D12VideoEncoderHeap);
+NonNriForwardStruct(ID3D12VideoEncoderHeap1);
+NonNriForwardStruct(D3D12_VIDEO_DECODE_OUTPUT_STREAM_ARGUMENTS);
+NonNriForwardStruct(D3D12_VIDEO_DECODE_INPUT_STREAM_ARGUMENTS);
+NonNriForwardStruct(D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS);
+NonNriForwardStruct(D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS);
+NonNriForwardStruct(D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS);
+NonNriForwardStruct(D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS);
+NonNriForwardStruct(D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS1);
+NonNriForwardStruct(D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS1);
+NonNriForwardStruct(D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS1);
+NonNriForwardStruct(D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS1);
 
 NriNamespaceBegin
 
@@ -93,23 +107,23 @@ NriStruct(AccelerationStructureD3D12Desc) {
 };
 
 NriStruct(VideoDecodeD3D12Desc) {
-    void* d3d12Decoder;                 // ID3D12VideoDecoder*
-    const void* d3d12OutputArguments;   // D3D12_VIDEO_DECODE_OUTPUT_STREAM_ARGUMENTS*
-    const void* d3d12InputArguments;    // D3D12_VIDEO_DECODE_INPUT_STREAM_ARGUMENTS*
+    ID3D12VideoDecoder* d3d12Decoder;
+    const D3D12_VIDEO_DECODE_OUTPUT_STREAM_ARGUMENTS* d3d12OutputArguments;
+    const D3D12_VIDEO_DECODE_INPUT_STREAM_ARGUMENTS* d3d12InputArguments;
 };
 
 NriStruct(VideoEncodeD3D12Desc) {
-    void* d3d12Encoder;                 // ID3D12VideoEncoder*
-    void* d3d12Heap;                    // ID3D12VideoEncoderHeap*
-    const void* d3d12InputArguments;    // D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS*
-    const void* d3d12OutputArguments;   // D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS*
-    const void* d3d12ResolveMetadataInputArguments;  // optional D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS*
-    const void* d3d12ResolveMetadataOutputArguments; // optional D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS*
-    void* d3d12Heap1;                   // optional ID3D12VideoEncoderHeap1*
-    const void* d3d12InputArguments1;   // optional D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS1*
-    const void* d3d12OutputArguments1;  // optional D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS1*
-    const void* d3d12ResolveMetadataInputArguments1;  // optional D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS1*
-    const void* d3d12ResolveMetadataOutputArguments1; // optional D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS1*
+    ID3D12VideoEncoder* d3d12Encoder;
+    ID3D12VideoEncoderHeap* d3d12Heap;
+    const D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS* d3d12InputArguments;
+    const D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS* d3d12OutputArguments;
+    NriOptional const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS* d3d12ResolveMetadataInputArguments;
+    NriOptional const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS* d3d12ResolveMetadataOutputArguments;
+    NriOptional ID3D12VideoEncoderHeap1* d3d12Heap1;
+    NriOptional const D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS1* d3d12InputArguments1;
+    NriOptional const D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS1* d3d12OutputArguments1;
+    NriOptional const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS1* d3d12ResolveMetadataInputArguments1;
+    NriOptional const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS1* d3d12ResolveMetadataOutputArguments1;
 };
 
 // Threadsafe: yes

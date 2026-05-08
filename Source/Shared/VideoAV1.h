@@ -954,7 +954,7 @@ inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t availabl
     info.picture.baseQIndex = (uint8_t)baseQIndex;
     info.picture.interpolationFilter = INTERPOLATION_FILTER_EIGHTTAP;
     info.picture.tileNum = 1;
-    info.tiles[0] = {0, (uint32_t)info.bitstreamSize, 0, 0, 0xFF, {}};
+    info.tiles[0] = {0, (uint32_t)info.bitstreamSize, 0, 0, 0xFF};
     FillIdentityGlobalMotion(info.globalMotion);
     BindPointers(info);
     return true;
@@ -993,7 +993,7 @@ inline Result GetVideoEncodeAV1DecodeInfoFromHeader(const VideoAV1EncodeDecodeIn
     if (info.bitstreamSize > std::numeric_limits<uint32_t>::max())
         return Result::FAILURE;
     info.picture.tileNum = 1;
-    info.tiles[0] = {0, (uint32_t)info.bitstreamSize, 0, 0, 0xFF, {}};
+    info.tiles[0] = {0, (uint32_t)info.bitstreamSize, 0, 0, 0xFF};
 
     return Result::SUCCESS;
 }

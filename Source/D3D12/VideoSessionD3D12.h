@@ -39,6 +39,7 @@ struct VideoSessionD3D12 final : public DebugNameBase {
     ComPtr<ID3D12VideoEncoderHeap1> m_EncoderHeap1;
 #endif
     uint32_t m_AV1FeatureFlags = 0;
+    uint32_t m_RateControlModes = 0;
     VideoSessionDesc m_Desc = {};
 };
 

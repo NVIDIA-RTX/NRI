@@ -1,4 +1,4 @@
-// © 2026 NVIDIA Corporation
+// © 2021 NVIDIA Corporation
 
 #include "MemoryAllocatorD3D12.h"
 
@@ -1361,20 +1361,13 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
 #endif
         }
 
-        D3D12_FEATURE_DATA_VIDEO_ENCODER_RATE_CONTROL_MODE rateControlMode = {};
-        rateControlMode.Codec = codec;
-        rateControlMode.RateControlMode = D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_CQP;
-        hr = videoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_RATE_CONTROL_MODE, &rateControlMode, sizeof(rateControlMode));
-        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDevice3::CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_RATE_CONTROL_MODE)");
-        if (!rateControlMode.IsSupported)
+        m_RateControlModes = GetSupportedVideoEncodeRateControlModesD3D12(*videoDevice, codec);
+        if ((m_RateControlModes & VIDEO_ENCODE_RATE_CONTROL_CQP) == 0)
             return Result::UNSUPPORTED;
 
-        D3D12_VIDEO_ENCODER_RATE_CONTROL_CQP cqp = {26, 28, 30};
-        D3D12_VIDEO_ENCODER_RATE_CONTROL rateControl = {};
-        rateControl.Mode = D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_CQP;
-        rateControl.ConfigParams.DataSize = sizeof(cqp);
-        rateControl.ConfigParams.pConfiguration_CQP = &cqp;
-        rateControl.TargetFrameRate = {30, 1};
+        const VideoEncodeRateControlDesc defaultRateControl = {VideoEncodeRateControlMode::CQP, 26, 28, 30, 0, 51, 30, 1, 0, 0, 0, 0, 0};
+        VideoEncodeRateControlStateD3D12 rateControlState;
+        FillVideoEncodeRateControlD3D12(defaultRateControl, rateControlState);
 
         D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_H264 h264Gop = {};
         h264Gop.GOPLength = videoSessionDesc.maxReferenceNum ? 60 : 1;
@@ -1440,7 +1433,7 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
             encoderSupport.InputFormat = GetDxgiFormat(videoSessionDesc.format).typed;
             encoderSupport.CodecConfiguration = codecConfig;
             encoderSupport.CodecGopSequence = gop;
-            encoderSupport.RateControl = rateControl;
+            encoderSupport.RateControl = rateControlState.rateControl;
             encoderSupport.IntraRefresh = D3D12_VIDEO_ENCODER_INTRA_REFRESH_MODE_NONE;
             encoderSupport.SubregionFrameEncoding = D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_FULL_FRAME;
             encoderSupport.ResolutionsListCount = 1;
@@ -1470,7 +1463,7 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
             encoderSupport.InputFormat = GetDxgiFormat(videoSessionDesc.format).typed;
             encoderSupport.CodecConfiguration = codecConfig;
             encoderSupport.CodecGopSequence = gop;
-            encoderSupport.RateControl = rateControl;
+            encoderSupport.RateControl = rateControlState.rateControl;
             encoderSupport.IntraRefresh = D3D12_VIDEO_ENCODER_INTRA_REFRESH_MODE_NONE;
             encoderSupport.SubregionFrameEncoding = D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_FULL_FRAME;
             encoderSupport.ResolutionsListCount = 1;
@@ -1578,6 +1571,16 @@ static Result NRI_CALL GetVideoDecodePictureStates(const VideoPicture&, VideoDec
     states.afterDecode = {AccessBits::NONE, Layout::GENERAL, StageBits::NONE};
     states.graphicsBefore = states.afterDecode;
     states.releaseAfterDecode = true;
+    return Result::SUCCESS;
+}
+
+static Result NRI_CALL GetVideoEncodePictureStates(const VideoPicture&, VideoEncodePictureStates& states) {
+    states = {};
+    states.encodeRead = {AccessBits::VIDEO_ENCODE_READ, Layout::VIDEO_ENCODE_SRC, StageBits::VIDEO_ENCODE};
+    states.encodeWrite = {AccessBits::VIDEO_ENCODE_WRITE, Layout::GENERAL, StageBits::VIDEO_ENCODE};
+    states.afterEncode = {AccessBits::NONE, Layout::GENERAL, StageBits::NONE};
+    states.graphicsBefore = states.afterEncode;
+    states.releaseAfterEncode = true;
     return Result::SUCCESS;
 }
 
@@ -2230,19 +2233,20 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
         }
     }
 
-    const VideoEncodeRateControlDesc defaultRateControl = {VideoEncodeRateControlMode::CQP, 26, 28, 30, 30, 1};
+    const VideoEncodeRateControlDesc defaultRateControl = {VideoEncodeRateControlMode::CQP, 26, 28, 30, 0, 51, 30, 1, 0, 0, 0, 0, 0};
     const VideoEncodeRateControlDesc& rateControlDesc = videoEncodeDesc.rateControlDesc ? *videoEncodeDesc.rateControlDesc : defaultRateControl;
-    if (rateControlDesc.mode != VideoEncodeRateControlMode::CQP) {
-        NRI_REPORT_ERROR(&device, "Unsupported video encode rate control mode");
+    if ((uint32_t)rateControlDesc.mode >= (uint32_t)VideoEncodeRateControlMode::MAX_NUM || (rateControlDesc.mode != VideoEncodeRateControlMode::CQP && !rateControlDesc.targetBitrate)
+        || (rateControlDesc.qpMax && rateControlDesc.qpMin > rateControlDesc.qpMax)) {
+        NRI_REPORT_ERROR(&device, "'rateControlDesc' is invalid");
+        return;
+    }
+    if ((session.m_RateControlModes & GetVideoEncodeRateControlModeMask(rateControlDesc.mode)) == 0) {
+        NRI_REPORT_ERROR(&device, "Unsupported D3D12 video encode rate control mode");
         return;
     }
 
-    D3D12_VIDEO_ENCODER_RATE_CONTROL_CQP cqp = {rateControlDesc.qpI, rateControlDesc.qpP, rateControlDesc.qpB};
-    D3D12_VIDEO_ENCODER_RATE_CONTROL rateControl = {};
-    rateControl.Mode = D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_CQP;
-    rateControl.ConfigParams.DataSize = sizeof(cqp);
-    rateControl.ConfigParams.pConfiguration_CQP = &cqp;
-    rateControl.TargetFrameRate = {rateControlDesc.frameRateNumerator ? rateControlDesc.frameRateNumerator : 30, rateControlDesc.frameRateDenominator ? rateControlDesc.frameRateDenominator : 1};
+    VideoEncodeRateControlStateD3D12 rateControlState;
+    FillVideoEncodeRateControlD3D12(rateControlDesc, rateControlState);
 
     D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_H264 h264Gop = {};
     h264Gop.GOPLength = videoEncodeDesc.referenceNum ? 60 : 1;
@@ -2280,7 +2284,7 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
 
     D3D12_VIDEO_ENCODER_SEQUENCE_CONTROL_DESC sequenceControl = {};
     sequenceControl.Flags = D3D12_VIDEO_ENCODER_SEQUENCE_CONTROL_FLAG_NONE;
-    sequenceControl.RateControl = rateControl;
+    sequenceControl.RateControl = rateControlState.rateControl;
     sequenceControl.PictureTargetResolution = {session.m_Desc.width, session.m_Desc.height};
     sequenceControl.SelectedLayoutMode = D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_FULL_FRAME;
     sequenceControl.CodecGopSequence = gop;
@@ -2812,7 +2816,7 @@ static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolv
 
     info.bitstreamOffset = subregion.bStartOffset;
     info.bitstreamSize = tilePayloadSize;
-    info.tiles[0] = {0, (uint32_t)tilePayloadSize, 0, 0, 0xFF, {}};
+    info.tiles[0] = {0, (uint32_t)tilePayloadSize, 0, 0, 0xFF};
 
     info.quantization.deltaQYDc = (int8_t)post.quantization.yDcDeltaQ;
     info.quantization.deltaQUDc = (int8_t)post.quantization.uDcDeltaQ;
@@ -2899,6 +2903,7 @@ Result DeviceD3D12::FillFunctionTable(VideoInterface& table) const {
     table.CreateVideoPicture = ::CreateVideoPicture;
     table.DestroyVideoPicture = ::DestroyVideoPicture;
     table.GetVideoDecodePictureStates = ::GetVideoDecodePictureStates;
+    table.GetVideoEncodePictureStates = ::GetVideoEncodePictureStates;
     table.WriteVideoAnnexBParameterSets = ::WriteVideoAnnexBParameterSets;
     table.CmdDecodeVideo = ::CmdDecodeVideo;
     table.CmdEncodeVideo = ::CmdEncodeVideo;

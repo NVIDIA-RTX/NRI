@@ -52,6 +52,7 @@ struct VideoSessionVK final : public DebugNameBase {
     VkExtent2D m_PictureAccessGranularity = {};
     uint32_t m_BitstreamOffsetAlignment = 1;
     uint32_t m_BitstreamSizeAlignment = 1;
+    uint32_t m_RateControlModes = 0;
     bool m_Initialized = false;
     bool m_UseInlineSessionParameters = false;
     bool m_CanGenerateH264PrefixNalu = false;

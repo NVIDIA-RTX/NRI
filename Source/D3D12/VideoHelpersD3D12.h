@@ -33,6 +33,9 @@ constexpr uint32_t VIDEO_D3D12_AV1_FEATURE_FLAG_AUTO_SEGMENTATION = 0x10000;
 constexpr uint32_t VIDEO_D3D12_AV1_FEATURE_FLAG_LOOP_FILTER_DELTAS = 0x40000;
 constexpr uint32_t VIDEO_D3D12_AV1_FEATURE_FLAG_QUANTIZATION_DELTAS = 0x80000;
 constexpr uint32_t VIDEO_D3D12_AV1_FEATURE_FLAG_FORCED_INTEGER_MOTION_VECTORS = 0x100;
+constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_CQP = 1u << (uint32_t)VideoEncodeRateControlMode::CQP;
+constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_CBR = 1u << (uint32_t)VideoEncodeRateControlMode::CBR;
+constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_VBR = 1u << (uint32_t)VideoEncodeRateControlMode::VBR;
 
 // Older Windows SDK headers used by some builds do not name this newer support bit yet.
 constexpr D3D12_VIDEO_ENCODER_SUPPORT_FLAGS VIDEO_D3D12_ENCODER_SUPPORT_FLAG_READABLE_RECONSTRUCTED_PICTURE_LAYOUT_AVAILABLE = (D3D12_VIDEO_ENCODER_SUPPORT_FLAGS)0x8000;
@@ -42,6 +45,86 @@ struct VideoDecodeReferenceLayoutD3D12 {
     uint32_t failingReference = 0;
     bool duplicateSlot = false;
 };
+
+struct VideoEncodeRateControlStateD3D12 {
+    D3D12_VIDEO_ENCODER_RATE_CONTROL_CQP cqp = {};
+    D3D12_VIDEO_ENCODER_RATE_CONTROL_CBR cbr = {};
+    D3D12_VIDEO_ENCODER_RATE_CONTROL_VBR vbr = {};
+    D3D12_VIDEO_ENCODER_RATE_CONTROL rateControl = {};
+};
+
+inline uint32_t GetVideoEncodeRateControlModeMask(VideoEncodeRateControlMode mode) {
+    return 1u << (uint32_t)mode;
+}
+
+inline D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE GetVideoEncodeRateControlModeD3D12(VideoEncodeRateControlMode mode) {
+    switch (mode) {
+        case VideoEncodeRateControlMode::CQP:
+            return D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_CQP;
+        case VideoEncodeRateControlMode::CBR:
+            return D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_CBR;
+        case VideoEncodeRateControlMode::VBR:
+            return D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_VBR;
+        case VideoEncodeRateControlMode::MAX_NUM:
+            break;
+    }
+
+    return D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_ABSOLUTE_QP_MAP;
+}
+
+inline uint32_t GetSupportedVideoEncodeRateControlModesD3D12(ID3D12VideoDevice3& videoDevice, D3D12_VIDEO_ENCODER_CODEC codec) {
+    uint32_t modes = 0;
+    constexpr std::array<VideoEncodeRateControlMode, 3> rateControlModes = {VideoEncodeRateControlMode::CQP, VideoEncodeRateControlMode::CBR, VideoEncodeRateControlMode::VBR};
+
+    for (VideoEncodeRateControlMode mode : rateControlModes) {
+        D3D12_FEATURE_DATA_VIDEO_ENCODER_RATE_CONTROL_MODE support = {};
+        support.Codec = codec;
+        support.RateControlMode = GetVideoEncodeRateControlModeD3D12(mode);
+        HRESULT hr = videoDevice.CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_RATE_CONTROL_MODE, &support, sizeof(support));
+        if (SUCCEEDED(hr) && support.IsSupported)
+            modes |= GetVideoEncodeRateControlModeMask(mode);
+    }
+
+    return modes;
+}
+
+inline void FillVideoEncodeRateControlD3D12(const VideoEncodeRateControlDesc& desc, VideoEncodeRateControlStateD3D12& state) {
+    state = {};
+
+    const uint32_t frameRateNumerator = desc.frameRateNumerator ? desc.frameRateNumerator : 30;
+    const uint32_t frameRateDenominator = desc.frameRateDenominator ? desc.frameRateDenominator : 1;
+    const uint32_t qpMin = desc.qpMin;
+    const uint32_t qpMax = desc.qpMax ? desc.qpMax : 51;
+    const uint32_t qpInitial = desc.qpP;
+    const uint64_t maxBitrate = desc.maxBitrate ? desc.maxBitrate : desc.targetBitrate;
+    const uint32_t virtualBufferSizeMs = desc.virtualBufferSizeMs ? desc.virtualBufferSizeMs : 1000;
+    const uint32_t initialVirtualBufferSizeMs = desc.initialVirtualBufferSizeMs ? desc.initialVirtualBufferSizeMs : virtualBufferSizeMs;
+    const uint64_t vbvCapacity = desc.targetBitrate * virtualBufferSizeMs / 1000;
+    const uint64_t initialVbvFullness = desc.targetBitrate * initialVirtualBufferSizeMs / 1000;
+
+    state.rateControl.Mode = GetVideoEncodeRateControlModeD3D12(desc.mode);
+    state.rateControl.TargetFrameRate = {frameRateNumerator, frameRateDenominator};
+
+    switch (desc.mode) {
+        case VideoEncodeRateControlMode::CQP:
+            state.cqp = {desc.qpI, desc.qpP, desc.qpB};
+            state.rateControl.ConfigParams.DataSize = sizeof(state.cqp);
+            state.rateControl.ConfigParams.pConfiguration_CQP = &state.cqp;
+            break;
+        case VideoEncodeRateControlMode::CBR:
+            state.cbr = {qpInitial, qpMin, qpMax, desc.maxFrameBitSize, desc.targetBitrate, vbvCapacity, initialVbvFullness};
+            state.rateControl.ConfigParams.DataSize = sizeof(state.cbr);
+            state.rateControl.ConfigParams.pConfiguration_CBR = &state.cbr;
+            break;
+        case VideoEncodeRateControlMode::VBR:
+            state.vbr = {qpInitial, qpMin, qpMax, desc.maxFrameBitSize, desc.targetBitrate, maxBitrate, vbvCapacity, initialVbvFullness};
+            state.rateControl.ConfigParams.DataSize = sizeof(state.vbr);
+            state.rateControl.ConfigParams.pConfiguration_VBR = &state.vbr;
+            break;
+        case VideoEncodeRateControlMode::MAX_NUM:
+            break;
+    }
+}
 
 inline bool GetVideoDecodeReferenceLayoutD3D12(const VideoReference* references, uint32_t referenceNum, VideoDecodeReferenceLayoutD3D12& layout) {
     layout = {};
@@ -724,19 +807,13 @@ inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice3& videoDevice, 
 #endif
     }
 
-    D3D12_FEATURE_DATA_VIDEO_ENCODER_RATE_CONTROL_MODE rateControlMode = {};
-    rateControlMode.Codec = d3d12Codec;
-    rateControlMode.RateControlMode = D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_CQP;
-    HRESULT hr = videoDevice.CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_RATE_CONTROL_MODE, &rateControlMode, sizeof(rateControlMode));
-    if (FAILED(hr) || !rateControlMode.IsSupported)
+    const uint32_t rateControlModes = GetSupportedVideoEncodeRateControlModesD3D12(videoDevice, d3d12Codec);
+    if ((rateControlModes & VIDEO_ENCODE_RATE_CONTROL_CQP) == 0)
         return false;
 
-    D3D12_VIDEO_ENCODER_RATE_CONTROL_CQP cqp = {26, 28, 30};
-    D3D12_VIDEO_ENCODER_RATE_CONTROL rateControl = {};
-    rateControl.Mode = D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_CQP;
-    rateControl.ConfigParams.DataSize = sizeof(cqp);
-    rateControl.ConfigParams.pConfiguration_CQP = &cqp;
-    rateControl.TargetFrameRate = {30, 1};
+    const VideoEncodeRateControlDesc defaultRateControl = {VideoEncodeRateControlMode::CQP, 26, 28, 30, 0, 51, 30, 1, 0, 0, 0, 0, 0};
+    VideoEncodeRateControlStateD3D12 rateControlState;
+    FillVideoEncodeRateControlD3D12(defaultRateControl, rateControlState);
 
     D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_H264 h264Gop = {};
     h264Gop.GOPLength = videoSessionDesc.maxReferenceNum ? 60 : 1;
@@ -801,7 +878,7 @@ inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice3& videoDevice, 
         encoderSupport.InputFormat = GetDxgiFormat(videoSessionDesc.format).typed;
         encoderSupport.CodecConfiguration = codecConfig;
         encoderSupport.CodecGopSequence = gop;
-        encoderSupport.RateControl = rateControl;
+        encoderSupport.RateControl = rateControlState.rateControl;
         encoderSupport.IntraRefresh = D3D12_VIDEO_ENCODER_INTRA_REFRESH_MODE_NONE;
         encoderSupport.SubregionFrameEncoding = D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_FULL_FRAME;
         encoderSupport.ResolutionsListCount = 1;
@@ -812,7 +889,7 @@ inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice3& videoDevice, 
         encoderSupport.pResolutionDependentSupport = &resolutionLimits;
         encoderSupport.SubregionFrameEncodingData.DataSize = sizeof(tiles);
         encoderSupport.SubregionFrameEncodingData.pTilesPartition_AV1 = &tiles;
-        hr = videoDevice.CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_SUPPORT1, &encoderSupport, sizeof(encoderSupport));
+        HRESULT hr = videoDevice.CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_SUPPORT1, &encoderSupport, sizeof(encoderSupport));
         if (FAILED(hr) || (encoderSupport.SupportFlags & D3D12_VIDEO_ENCODER_SUPPORT_FLAG_GENERAL_SUPPORT_OK) == 0)
             return false;
 
@@ -833,7 +910,7 @@ inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice3& videoDevice, 
     encoderSupport.InputFormat = GetDxgiFormat(videoSessionDesc.format).typed;
     encoderSupport.CodecConfiguration = codecConfig;
     encoderSupport.CodecGopSequence = gop;
-    encoderSupport.RateControl = rateControl;
+    encoderSupport.RateControl = rateControlState.rateControl;
     encoderSupport.IntraRefresh = D3D12_VIDEO_ENCODER_INTRA_REFRESH_MODE_NONE;
     encoderSupport.SubregionFrameEncoding = D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_FULL_FRAME;
     encoderSupport.ResolutionsListCount = 1;
@@ -842,7 +919,7 @@ inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice3& videoDevice, 
     encoderSupport.SuggestedProfile = profile;
     encoderSupport.SuggestedLevel = suggestedLevel;
     encoderSupport.pResolutionDependentSupport = &resolutionLimits;
-    hr = videoDevice.CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_SUPPORT, &encoderSupport, sizeof(encoderSupport));
+    HRESULT hr = videoDevice.CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_SUPPORT, &encoderSupport, sizeof(encoderSupport));
     if (FAILED(hr) || (encoderSupport.SupportFlags & D3D12_VIDEO_ENCODER_SUPPORT_FLAG_GENERAL_SUPPORT_OK) == 0)
         return false;
 

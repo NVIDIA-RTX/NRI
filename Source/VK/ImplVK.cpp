@@ -1,4 +1,4 @@
-// © 2026 NVIDIA Corporation
+// © 2021 NVIDIA Corporation
 
 #include "MemoryAllocatorVK.h"
 
@@ -1473,6 +1473,8 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
         NRI_REPORT_ERROR(&m_Device, "vkGetPhysicalDeviceVideoCapabilitiesKHR failed for operation 0x%X, format %u, result %d", operation, (uint32_t)videoSessionDesc.format, vkResult);
     }
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceVideoCapabilitiesKHR");
+    if (videoSessionDesc.usage == VideoUsage::ENCODE)
+        m_RateControlModes = GetSupportedVideoEncodeRateControlModesVK(encodeCapabilities.rateControlModes);
 
     if (videoSessionDesc.width < capabilities.minCodedExtent.width || videoSessionDesc.height < capabilities.minCodedExtent.height || videoSessionDesc.width > capabilities.maxCodedExtent.width
         || videoSessionDesc.height > capabilities.maxCodedExtent.height) {
@@ -1712,6 +1714,15 @@ static Result NRI_CALL GetVideoDecodePictureStates(const VideoPicture&, VideoDec
     states.decodeWrite = {AccessBits::VIDEO_DECODE_WRITE, Layout::VIDEO_DECODE_DPB, StageBits::VIDEO_DECODE};
     states.graphicsBefore = {AccessBits::NONE, Layout::VIDEO_DECODE_DPB, StageBits::ALL};
     states.releaseAfterDecode = false;
+    return Result::SUCCESS;
+}
+
+static Result NRI_CALL GetVideoEncodePictureStates(const VideoPicture&, VideoEncodePictureStates& states) {
+    states = {};
+    states.encodeRead = {AccessBits::VIDEO_ENCODE_READ, Layout::VIDEO_ENCODE_SRC, StageBits::VIDEO_ENCODE};
+    states.encodeWrite = {AccessBits::VIDEO_ENCODE_WRITE, Layout::VIDEO_ENCODE_DPB, StageBits::VIDEO_ENCODE};
+    states.graphicsBefore = {AccessBits::NONE, Layout::VIDEO_ENCODE_DPB, StageBits::ALL};
+    states.releaseAfterEncode = false;
     return Result::SUCCESS;
 }
 
@@ -2217,10 +2228,15 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
 
     const VideoEncodePictureDesc defaultPicture = {VideoEncodeFrameType::IDR, 0, 0, 0, 0};
     const VideoEncodePictureDesc& pictureDesc = videoEncodeDesc.pictureDesc ? *videoEncodeDesc.pictureDesc : defaultPicture;
-    const VideoEncodeRateControlDesc defaultRateControl = {VideoEncodeRateControlMode::CQP, 26, 28, 30, 30, 1};
+    const VideoEncodeRateControlDesc defaultRateControl = {VideoEncodeRateControlMode::CQP, 26, 28, 30, 0, 51, 30, 1, 0, 0, 0, 0, 0};
     const VideoEncodeRateControlDesc& rateControlDesc = videoEncodeDesc.rateControlDesc ? *videoEncodeDesc.rateControlDesc : defaultRateControl;
-    if (rateControlDesc.mode != VideoEncodeRateControlMode::CQP) {
-        NRI_REPORT_ERROR(&device, "Unsupported video encode rate control mode");
+    if ((uint32_t)rateControlDesc.mode >= (uint32_t)VideoEncodeRateControlMode::MAX_NUM || (rateControlDesc.mode != VideoEncodeRateControlMode::CQP && !rateControlDesc.targetBitrate)
+        || (rateControlDesc.qpMax && rateControlDesc.qpMin > rateControlDesc.qpMax)) {
+        NRI_REPORT_ERROR(&device, "'rateControlDesc' is invalid");
+        return;
+    }
+    if ((session.m_RateControlModes & GetVideoEncodeRateControlModeMask(rateControlDesc.mode)) == 0) {
+        NRI_REPORT_ERROR(&device, "Unsupported Vulkan video encode rate control mode");
         return;
     }
     if (!IsVideoEncodeFrameTypeSupportedByVK(session.m_Desc.codec, pictureDesc.frameType)) {
@@ -2688,7 +2704,8 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     }
 
     VkVideoEncodeRateControlInfoKHR rateControlInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_RATE_CONTROL_INFO_KHR};
-    rateControlInfo.rateControlMode = VK_VIDEO_ENCODE_RATE_CONTROL_MODE_DISABLED_BIT_KHR;
+    VkVideoEncodeRateControlLayerInfoKHR rateControlLayer = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_RATE_CONTROL_LAYER_INFO_KHR};
+    FillVideoEncodeRateControlVK(rateControlDesc, rateControlInfo, rateControlLayer);
 
     VkVideoBeginCodingInfoKHR beginInfo = {VK_STRUCTURE_TYPE_VIDEO_BEGIN_CODING_INFO_KHR};
     beginInfo.pNext = &rateControlInfo;
@@ -2839,6 +2856,7 @@ Result DeviceVK::FillFunctionTable(VideoInterface& table) const {
     table.CreateVideoPicture = ::CreateVideoPicture;
     table.DestroyVideoPicture = ::DestroyVideoPicture;
     table.GetVideoDecodePictureStates = ::GetVideoDecodePictureStates;
+    table.GetVideoEncodePictureStates = ::GetVideoEncodePictureStates;
     table.WriteVideoAnnexBParameterSets = ::WriteVideoAnnexBParameterSets;
     table.CmdDecodeVideo = ::CmdDecodeVideo;
     table.CmdEncodeVideo = ::CmdEncodeVideo;

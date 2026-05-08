@@ -153,7 +153,9 @@ NriEnum(VideoEncodeFrameType, uint8_t,
 );
 
 NriEnum(VideoEncodeRateControlMode, uint8_t,
-    CQP
+    CQP,
+    CBR,
+    VBR
 );
 
 NriEnum(VideoAV1ReferenceName, uint8_t,
@@ -286,6 +288,14 @@ NriStruct(VideoDecodePictureStates) {
     bool releaseAfterDecode; // if true, caller should record decodeWrite -> afterDecode on the video decode queue
 };
 
+NriStruct(VideoEncodePictureStates) {
+    Nri(AccessLayoutStage) encodeRead; // state required before CmdEncodeVideo reads the source picture
+    Nri(AccessLayoutStage) encodeWrite; // state required before CmdEncodeVideo writes the reconstructed picture
+    Nri(AccessLayoutStage) afterEncode; // optional state to transition to on the video encode queue after CmdEncodeVideo
+    Nri(AccessLayoutStage) graphicsBefore; // state to use as "before" when the graphics queue consumes the reconstructed picture
+    bool releaseAfterEncode; // if true, caller should record encodeWrite -> afterEncode on the video encode queue
+};
+
 NriStruct(VideoH264SequenceParameterSetDesc) {
     Nri(VideoH264SequenceParameterSetBits) flags;
     uint8_t profileIdc;
@@ -318,9 +328,9 @@ NriStruct(VideoH264PictureParameterSetDesc) {
 };
 
 NriStruct(VideoH264SessionParametersDesc) {
-    NriOptional const NriPtr(VideoH264SequenceParameterSetDesc) sequenceParameterSets; // if provided, must include "sequenceParameterSetNum" entries
+    const NriPtr(VideoH264SequenceParameterSetDesc) sequenceParameterSets;
     uint32_t sequenceParameterSetNum;
-    NriOptional const NriPtr(VideoH264PictureParameterSetDesc) pictureParameterSets; // if provided, must include "pictureParameterSetNum" entries
+    const NriPtr(VideoH264PictureParameterSetDesc) pictureParameterSets;
     uint32_t pictureParameterSetNum;
     NriOptional uint32_t maxSequenceParameterSetNum; // defaults to "sequenceParameterSetNum"
     NriOptional uint32_t maxPictureParameterSetNum; // defaults to "pictureParameterSetNum"
@@ -330,7 +340,6 @@ NriStruct(VideoH265ProfileTierLevelDesc) {
     Nri(VideoH265ProfileTierLevelBits) flags;
     uint8_t generalProfileIdc;
     uint8_t generalLevelIdc;
-    uint16_t reserved;
 };
 
 NriStruct(VideoH265DecPicBufMgrDesc) {
@@ -352,7 +361,6 @@ NriStruct(VideoH265ShortTermRefPicSetDesc) {
     Nri(VideoH265ShortTermRefPicSetBits) flags;
     uint8_t numNegativePics;
     uint8_t numPositivePics;
-    uint8_t reserved;
     uint32_t deltaIdxMinus1;
     uint16_t useDeltaFlag;
     uint16_t absDeltaRpsMinus1;
@@ -372,7 +380,6 @@ NriStruct(VideoH265VideoParameterSetDesc) {
     Nri(VideoH265VideoParameterSetBits) flags;
     uint8_t videoParameterSetId;
     uint8_t maxSubLayersMinus1;
-    uint16_t reserved;
     uint32_t numUnitsInTick;
     uint32_t timeScale;
     uint32_t numTicksPocDiffOneMinus1;
@@ -397,8 +404,6 @@ NriStruct(VideoH265SequenceParameterSetDesc) {
     uint8_t log2DiffMaxMinLumaTransformBlockSize;
     uint8_t maxTransformHierarchyDepthInter;
     uint8_t maxTransformHierarchyDepthIntra;
-    uint8_t numShortTermRefPicSets;
-    uint8_t numLongTermRefPicsSps;
     uint8_t pcmSampleBitDepthLumaMinus1;
     uint8_t pcmSampleBitDepthChromaMinus1;
     uint8_t log2MinPcmLumaCodingBlockSizeMinus3;
@@ -407,10 +412,12 @@ NriStruct(VideoH265SequenceParameterSetDesc) {
     uint32_t confWinRightOffset;
     uint32_t confWinTopOffset;
     uint32_t confWinBottomOffset;
+    const NriPtr(VideoH265ShortTermRefPicSetDesc) shortTermRefPicSets;
+    uint8_t numShortTermRefPicSets;
+    uint8_t numLongTermRefPicsSps;
     Nri(VideoH265ProfileTierLevelDesc) profileTierLevel;
     Nri(VideoH265DecPicBufMgrDesc) decPicBufMgr;
     NriOptional const NriPtr(VideoH265ScalingListsDesc) scalingLists;
-    NriOptional const NriPtr(VideoH265ShortTermRefPicSetDesc) shortTermRefPicSets; // if provided, must include "numShortTermRefPicSets" entries
     NriOptional const NriPtr(VideoH265LongTermRefPicsSpsDesc) longTermRefPicsSps;
 };
 
@@ -431,18 +438,17 @@ NriStruct(VideoH265PictureParameterSetDesc) {
     uint8_t log2ParallelMergeLevelMinus2;
     uint8_t tileColumnNumMinus1;
     uint8_t tileRowNumMinus1;
-    uint8_t reserved;
     uint16_t columnWidthMinus1[19];
     uint16_t rowHeightMinus1[21];
     NriOptional const NriPtr(VideoH265ScalingListsDesc) scalingLists;
 };
 
 NriStruct(VideoH265SessionParametersDesc) {
-    NriOptional const NriPtr(VideoH265VideoParameterSetDesc) videoParameterSets; // if provided, must include "videoParameterSetNum" entries
+    const NriPtr(VideoH265VideoParameterSetDesc) videoParameterSets;
     uint32_t videoParameterSetNum;
-    NriOptional const NriPtr(VideoH265SequenceParameterSetDesc) sequenceParameterSets; // if provided, must include "sequenceParameterSetNum" entries
+    const NriPtr(VideoH265SequenceParameterSetDesc) sequenceParameterSets;
     uint32_t sequenceParameterSetNum;
-    NriOptional const NriPtr(VideoH265PictureParameterSetDesc) pictureParameterSets; // if provided, must include "pictureParameterSetNum" entries
+    const NriPtr(VideoH265PictureParameterSetDesc) pictureParameterSets;
     uint32_t pictureParameterSetNum;
     NriOptional uint32_t maxVideoParameterSetNum; // defaults to "videoParameterSetNum"
     NriOptional uint32_t maxSequenceParameterSetNum; // defaults to "sequenceParameterSetNum"
@@ -517,7 +523,6 @@ NriStruct(VideoH264ReferenceDesc) {
 
 NriStruct(VideoH264DecodeReferenceDesc) {
     Nri(VideoH264DecodeReferenceBits) flags;
-    uint8_t reserved;
     uint16_t frameNum;
     uint32_t slot;
     int32_t topFieldOrderCount;
@@ -532,10 +537,10 @@ NriStruct(VideoH264DecodePictureDesc) {
     uint16_t idrPictureId;
     int32_t topFieldOrderCount;
     int32_t bottomFieldOrderCount;
-    NriOptional const uint32_t* sliceOffsets; // if provided, must include "sliceOffsetNum" entries
+    const uint32_t* sliceOffsets;
     uint32_t sliceOffsetNum;
     uint32_t referenceSlot; // used when "flags" includes REFERENCE; falls back to VideoDecodeDesc::dstSlot when zero
-    NriOptional const NriPtr(VideoH264DecodeReferenceDesc) references; // if provided, must include "referenceNum" entries
+    const NriPtr(VideoH264DecodeReferenceDesc) references;
     uint32_t referenceNum;
 };
 
@@ -555,11 +560,10 @@ NriStruct(VideoH265DecodePictureDesc) {
     uint8_t pictureParameterSetId;
     int32_t pictureOrderCount;
     uint8_t numDeltaPocsOfRefRpsIdx;
-    uint8_t reserved;
     uint16_t numBitsForShortTermRefPicSetInSlice;
-    NriOptional const uint32_t* sliceSegmentOffsets; // if provided, must include "sliceSegmentOffsetNum" entries
+    const uint32_t* sliceSegmentOffsets;
     uint32_t sliceSegmentOffsetNum;
-    NriOptional const NriPtr(VideoH265ReferenceDesc) references; // if provided, must include "referenceNum" entries
+    const NriPtr(VideoH265ReferenceDesc) references;
     uint32_t referenceNum;
 };
 
@@ -568,8 +572,15 @@ NriStruct(VideoEncodeRateControlDesc) {
     uint8_t qpI;
     uint8_t qpP;
     uint8_t qpB;
+    NriOptional uint8_t qpMin;
+    NriOptional uint8_t qpMax;
     uint32_t frameRateNumerator;
     uint32_t frameRateDenominator;
+    uint64_t targetBitrate; // CBR target bitrate, or VBR average bitrate
+    NriOptional uint64_t maxBitrate; // VBR peak bitrate; defaults to "targetBitrate"
+    NriOptional uint64_t maxFrameBitSize;
+    NriOptional uint32_t virtualBufferSizeMs;
+    NriOptional uint32_t initialVirtualBufferSizeMs;
 };
 
 NriStruct(VideoEncodePictureDesc) {
@@ -583,8 +594,7 @@ NriStruct(VideoEncodePictureDesc) {
 NriStruct(VideoH264PictureDesc) {
     uint8_t sequenceParameterSetId;
     uint8_t pictureParameterSetId;
-    uint16_t reserved;
-    NriOptional const NriPtr(VideoH264ReferenceDesc) references; // if provided, must include "referenceNum" entries
+    const NriPtr(VideoH264ReferenceDesc) references;
     uint32_t referenceNum;
 };
 
@@ -604,7 +614,6 @@ NriStruct(VideoAV1TileLayoutDesc) {
     uint8_t tileSizeBytesMinus1;
     uint8_t uniformSpacing;
     uint16_t contextUpdateTileId;
-    uint16_t reserved;
     NriOptional const uint16_t* miColumnStarts; // if provided, must include "columnNum + 1" entries
     NriOptional const uint16_t* miRowStarts; // if provided, must include "rowNum + 1" entries
     NriOptional const uint16_t* widthInSuperblocksMinus1; // if provided, must include "columnNum" entries
@@ -622,7 +631,6 @@ NriStruct(VideoAV1QuantizationDesc) {
     uint8_t qmV;
     uint8_t usingQmatrix;
     uint8_t diffUvDelta;
-    uint8_t reserved[2];
 };
 
 NriStruct(VideoAV1LoopFilterDesc) {
@@ -633,7 +641,6 @@ NriStruct(VideoAV1LoopFilterDesc) {
     uint8_t updateModeDelta;
     int8_t refDeltas[8];
     int8_t modeDeltas[2];
-    uint8_t reserved[2];
 };
 
 NriStruct(VideoAV1CdefDesc) {
@@ -645,7 +652,6 @@ NriStruct(VideoAV1CdefDesc) {
 
 NriStruct(VideoAV1SegmentationDesc) {
     uint8_t featureEnabled[8];
-    uint8_t reserved[8];
     int16_t featureData[8][8];
 };
 
@@ -653,7 +659,6 @@ NriStruct(VideoAV1LoopRestorationDesc) {
     uint8_t frameRestorationType[3];
     uint8_t lrUnitShift;
     uint8_t lrUvShift;
-    uint8_t reserved[3];
 };
 
 NriStruct(VideoAV1GlobalMotionDesc) {
@@ -718,7 +723,7 @@ NriStruct(VideoAV1PictureDesc) {
     NriOptional const NriPtr(VideoAV1LoopRestorationDesc) loopRestoration;
     NriOptional const NriPtr(VideoAV1GlobalMotionDesc) globalMotion;
     NriOptional const uint8_t* orderHints; // if provided, must include 8 entries
-    NriOptional const NriPtr(VideoAV1ReferenceDesc) references; // if provided, must include "referenceNum" DPB snapshot entries
+    const NriPtr(VideoAV1ReferenceDesc) references;
     uint32_t referenceNum;
 };
 
@@ -728,7 +733,6 @@ NriStruct(VideoAV1DecodeTileDesc) {
     uint16_t row;
     uint16_t column;
     uint8_t anchorFrame;
-    uint8_t reserved[3];
 };
 
 NriStruct(VideoAV1DecodePictureDesc) {
@@ -759,9 +763,9 @@ NriStruct(VideoAV1DecodePictureDesc) {
     NriOptional const NriPtr(VideoAV1GlobalMotionDesc) globalMotion;
     NriOptional const NriPtr(VideoAV1FilmGrainDesc) filmGrain;
     NriOptional const uint8_t* orderHints; // if provided, must include 8 entries
-    NriOptional const NriPtr(VideoAV1DecodeTileDesc) tiles; // if provided, must include "tileNum" entries
+    const NriPtr(VideoAV1DecodeTileDesc) tiles;
     uint32_t tileNum;
-    NriOptional const NriPtr(VideoAV1ReferenceDesc) references; // if provided, must include "referenceNum" DPB snapshot entries
+    const NriPtr(VideoAV1ReferenceDesc) references;
     uint32_t referenceNum;
 };
 
@@ -771,10 +775,10 @@ NriStruct(VideoDecodeDesc) {
     Nri(VideoBitstreamRange) bitstream;
     NriPtr(VideoPicture) dstPicture;
     NriOptional NriPtr(VideoPicture) setupPicture; // if provided, used as the reconstructed/DPB setup reference instead of "dstPicture"
-    NriOptional const NriPtr(VideoReference) references; // if provided, must include "referenceNum" entries
+    const NriPtr(VideoReference) references;
     uint32_t referenceNum;
     uint32_t dstSlot;
-    NriOptional const NriPtr(VideoDecodeArgument) arguments; // if provided, must include "argumentNum" entries
+    const NriPtr(VideoDecodeArgument) arguments;
     uint32_t argumentNum;
     NriOptional const NriPtr(VideoH264DecodePictureDesc) h264PictureDesc;
     NriOptional const NriPtr(VideoH265DecodePictureDesc) h265PictureDesc;
@@ -836,12 +840,12 @@ NriStruct(VideoEncodeDesc) {
     uint64_t metadataOffset;
     NriOptional NriPtr(Buffer) resolvedMetadata; // If provided, contains "VideoEncodeFeedback" after execution.
     uint64_t resolvedMetadataOffset;
-    NriOptional const NriPtr(VideoReference) references; // if provided, must include "referenceNum" entries
+    const NriPtr(VideoReference) references;
     uint32_t referenceNum;
     uint32_t reconstructedSlot;
     NriOptional const NriPtr(VideoH264PictureDesc) h264PictureDesc;
     NriOptional const NriPtr(VideoAV1PictureDesc) av1PictureDesc;
-    NriOptional const NriPtr(VideoH265ReferenceDesc) h265ReferenceDescs; // if provided, must include "referenceNum" entries
+    const NriPtr(VideoH265ReferenceDesc) h265ReferenceDescs;
 };
 
 // Threadsafe: no
@@ -857,6 +861,8 @@ NriStruct(VideoInterface) {
         void        (NRI_CALL *DestroyVideoPicture) (NriPtr(VideoPicture) videoPicture);
         // Returns backend-specific states for explicit caller-recorded decode picture barriers.
         Nri(Result) (NRI_CALL *GetVideoDecodePictureStates) (const NriRef(VideoPicture) videoPicture, NriOut NriRef(VideoDecodePictureStates) states);
+        // Returns backend-specific states for explicit caller-recorded encode picture barriers.
+        Nri(Result) (NRI_CALL *GetVideoEncodePictureStates) (const NriRef(VideoPicture) videoPicture, NriOut NriRef(VideoEncodePictureStates) states);
         // Serializes H.264 SPS/PPS or H.265 VPS/SPS/PPS parameter sets to Annex-B bytes.
         // Pass "dst = nullptr" to query the required byte size in "writtenSize".
         Nri(Result) (NRI_CALL *WriteVideoAnnexBParameterSets) (NriRef(VideoAnnexBParameterSetsDesc) annexBParameterSetsDesc);

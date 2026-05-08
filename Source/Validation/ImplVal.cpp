@@ -1,4 +1,4 @@
-// © 2026 NVIDIA Corporation
+// © 2021 NVIDIA Corporation
 
 #include "SharedVal.h"
 
@@ -1311,6 +1311,11 @@ static Result NRI_CALL GetVideoDecodePictureStates(const VideoPicture& videoPict
     return videoPictureVal.GetDevice().GetVideoInterfaceImpl().GetVideoDecodePictureStates(*videoPictureVal.GetImpl(), states);
 }
 
+static Result NRI_CALL GetVideoEncodePictureStates(const VideoPicture& videoPicture, VideoEncodePictureStates& states) {
+    const VideoPictureVal& videoPictureVal = (const VideoPictureVal&)videoPicture;
+    return videoPictureVal.GetDevice().GetVideoInterfaceImpl().GetVideoEncodePictureStates(*videoPictureVal.GetImpl(), states);
+}
+
 static Result NRI_CALL WriteVideoAnnexBParameterSets(VideoAnnexBParameterSetsDesc& annexBParameterSetsDesc) {
     if (annexBParameterSetsDesc.codec == VideoCodec::H264) {
         if (!annexBParameterSetsDesc.h264Sps || !annexBParameterSetsDesc.h264Pps)
@@ -1347,8 +1352,23 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
     commandBufferVal.GetVideoInterfaceImpl().CmdDecodeVideo(*commandBufferVal.GetImpl(), videoDecodeDescImpl);
 }
 
+static bool IsVideoEncodeRateControlDescValid(const VideoEncodeRateControlDesc& rateControlDesc) {
+    if ((uint32_t)rateControlDesc.mode >= (uint32_t)VideoEncodeRateControlMode::MAX_NUM)
+        return false;
+    if (rateControlDesc.mode != VideoEncodeRateControlMode::CQP && rateControlDesc.targetBitrate == 0)
+        return false;
+    if (rateControlDesc.qpMax && rateControlDesc.qpMin > rateControlDesc.qpMax)
+        return false;
+    return true;
+}
+
 static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEncodeDesc& videoEncodeDesc) {
     CommandBufferVal& commandBufferVal = (CommandBufferVal&)commandBuffer;
+
+    if (videoEncodeDesc.rateControlDesc && !IsVideoEncodeRateControlDescValid(*videoEncodeDesc.rateControlDesc)) {
+        NRI_REPORT_ERROR(&commandBufferVal.GetDevice(), "'rateControlDesc' is invalid");
+        return;
+    }
 
     VideoEncodeDesc videoEncodeDescImpl = videoEncodeDesc;
     videoEncodeDescImpl.session = videoEncodeDesc.session ? ((VideoSessionVal*)videoEncodeDesc.session)->GetImpl() : nullptr;
@@ -1408,6 +1428,7 @@ Result DeviceVal::FillFunctionTable(VideoInterface& table) const {
     table.CreateVideoPicture = ::CreateVideoPicture;
     table.DestroyVideoPicture = ::DestroyVideoPicture;
     table.GetVideoDecodePictureStates = ::GetVideoDecodePictureStates;
+    table.GetVideoEncodePictureStates = ::GetVideoEncodePictureStates;
     table.WriteVideoAnnexBParameterSets = ::WriteVideoAnnexBParameterSets;
     table.CmdDecodeVideo = ::CmdDecodeVideo;
     table.CmdEncodeVideo = ::CmdEncodeVideo;

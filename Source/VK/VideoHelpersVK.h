@@ -12,6 +12,58 @@
 
 namespace nri {
 
+constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_CQP = 1u << (uint32_t)VideoEncodeRateControlMode::CQP;
+constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_CBR = 1u << (uint32_t)VideoEncodeRateControlMode::CBR;
+constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_VBR = 1u << (uint32_t)VideoEncodeRateControlMode::VBR;
+
+inline uint32_t GetVideoEncodeRateControlModeMask(VideoEncodeRateControlMode mode) {
+    return 1u << (uint32_t)mode;
+}
+
+inline VkVideoEncodeRateControlModeFlagBitsKHR GetVideoEncodeRateControlModeVK(VideoEncodeRateControlMode mode) {
+    switch (mode) {
+        case VideoEncodeRateControlMode::CQP:
+            return VK_VIDEO_ENCODE_RATE_CONTROL_MODE_DISABLED_BIT_KHR;
+        case VideoEncodeRateControlMode::CBR:
+            return VK_VIDEO_ENCODE_RATE_CONTROL_MODE_CBR_BIT_KHR;
+        case VideoEncodeRateControlMode::VBR:
+            return VK_VIDEO_ENCODE_RATE_CONTROL_MODE_VBR_BIT_KHR;
+        case VideoEncodeRateControlMode::MAX_NUM:
+            break;
+    }
+
+    return VK_VIDEO_ENCODE_RATE_CONTROL_MODE_DISABLED_BIT_KHR;
+}
+
+inline uint32_t GetSupportedVideoEncodeRateControlModesVK(VkVideoEncodeRateControlModeFlagsKHR modes) {
+    uint32_t result = VIDEO_ENCODE_RATE_CONTROL_CQP;
+    if (modes & VK_VIDEO_ENCODE_RATE_CONTROL_MODE_CBR_BIT_KHR)
+        result |= VIDEO_ENCODE_RATE_CONTROL_CBR;
+    if (modes & VK_VIDEO_ENCODE_RATE_CONTROL_MODE_VBR_BIT_KHR)
+        result |= VIDEO_ENCODE_RATE_CONTROL_VBR;
+
+    return result;
+}
+
+inline void FillVideoEncodeRateControlVK(const VideoEncodeRateControlDesc& desc, VkVideoEncodeRateControlInfoKHR& info, VkVideoEncodeRateControlLayerInfoKHR& layer) {
+    info = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_RATE_CONTROL_INFO_KHR};
+    info.rateControlMode = GetVideoEncodeRateControlModeVK(desc.mode);
+
+    if (desc.mode == VideoEncodeRateControlMode::CQP)
+        return;
+
+    layer = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_RATE_CONTROL_LAYER_INFO_KHR};
+    layer.averageBitrate = desc.targetBitrate;
+    layer.maxBitrate = desc.mode == VideoEncodeRateControlMode::VBR && desc.maxBitrate ? desc.maxBitrate : desc.targetBitrate;
+    layer.frameRateNumerator = desc.frameRateNumerator ? desc.frameRateNumerator : 30;
+    layer.frameRateDenominator = desc.frameRateDenominator ? desc.frameRateDenominator : 1;
+
+    info.layerCount = 1;
+    info.pLayers = &layer;
+    info.virtualBufferSizeInMs = desc.virtualBufferSizeMs ? desc.virtualBufferSizeMs : 1000;
+    info.initialVirtualBufferSizeInMs = desc.initialVirtualBufferSizeMs ? desc.initialVirtualBufferSizeMs : info.virtualBufferSizeInMs;
+}
+
 inline uint8_t GetVideoAV1ReferenceNameIndexVK(VideoAV1ReferenceName name) {
     switch (name) {
         case VideoAV1ReferenceName::NONE:
