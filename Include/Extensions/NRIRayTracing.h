@@ -1,4 +1,4 @@
-// © 2026 NVIDIA Corporation
+// © 2021 NVIDIA Corporation
 
 // Goal: ray tracing
 // https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html

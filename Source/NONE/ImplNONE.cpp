@@ -1,4 +1,4 @@
-// © 2026 NVIDIA Corporation
+// © 2021 NVIDIA Corporation
 
 #include "SharedExternal.h"
 

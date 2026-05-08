@@ -1,4 +1,4 @@
-// © 2026 NVIDIA Corporation
+// © 2021 NVIDIA Corporation
 
 Result QueueD3D12::Create(QueueType queueType, float priority) {
     D3D12_COMMAND_QUEUE_DESC queueDesc = {};

@@ -1,4 +1,4 @@
-// © 2026 NVIDIA Corporation
+// © 2021 NVIDIA Corporation
 
 static inline bool IsShaderStageValid(StageBits shaderStages, uint32_t& uniqueShaderStages, StageBits allowedStages) {
     uint32_t x = (uint32_t)(shaderStages & allowedStages);
