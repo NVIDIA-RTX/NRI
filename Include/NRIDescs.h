@@ -1,4 +1,4 @@
-// © 2021 NVIDIA Corporation
+﻿// © 2021 NVIDIA Corporation
 
 #pragma once
 
