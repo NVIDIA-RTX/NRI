@@ -3,6 +3,9 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+#ifdef __APPLE__
+#include <vulkan/vulkan_beta.h>
+#endif
 #undef CreateSemaphore
 
 #include "DispatchTable.h"
