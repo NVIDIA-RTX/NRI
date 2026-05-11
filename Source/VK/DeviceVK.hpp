@@ -625,10 +625,6 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, ZeroInitializeDeviceMemory, ZERO_INITIALIZE_DEVICE_MEMORY);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, MutableDescriptorType, MUTABLE_DESCRIPTOR_TYPE);
 
-#ifdef __APPLE__
-    PNEXTCHAIN_APPEND_FEATURES(true, KHR, PortabilitySubset, PORTABILITY_SUBSET);
-#endif
-
     m_VK.GetPhysicalDeviceFeatures2(m_PhysicalDevice, &features);
 
     if (m_MinorVersion < 3) {

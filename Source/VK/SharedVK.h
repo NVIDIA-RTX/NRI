@@ -3,6 +3,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+#include <vulkan/vulkan_beta.h>
 #undef CreateSemaphore
 
 #include "DispatchTable.h"
