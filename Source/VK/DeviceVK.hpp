@@ -319,6 +319,7 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(true, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME);
+    APPEND_EXT(true, VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME); // TODO: use KHR (currently coverage is lower)
     APPEND_EXT(true, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME);
@@ -327,7 +328,7 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(true, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_MESH_SHADER_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_PRESENT_MODE_FIFO_LATEST_READY_EXTENSION_NAME);
-    APPEND_EXT(true, VK_EXT_ROBUSTNESS_2_EXTENSION_NAME); // TODO: use KHR
+    APPEND_EXT(true, VK_EXT_ROBUSTNESS_2_EXTENSION_NAME); // TODO: use KHR (currently coverage is lower)
     APPEND_EXT(true, VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_SHADER_ATOMIC_FLOAT_2_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME);
@@ -1146,6 +1147,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.lowLatency = m_IsSupported.presentId != 0 && IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, desiredDeviceExts);
         m_Desc.features.pipelineCache = true;
         m_Desc.features.pipelineCacheControl = features13.pipelineCreationCacheControl;
+        m_Desc.features.calibratedTimestamps = IsExtensionSupported(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, desiredDeviceExts);
 
         m_Desc.features.componentSwizzle = true;
         m_Desc.features.independentFrontAndBackStencilReferenceAndMasks = true;
@@ -1897,6 +1899,10 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
         GET_DEVICE_FUNC(GetRayTracingShaderGroupHandlesKHR);
         GET_DEVICE_FUNC(CmdTraceRaysKHR);
         GET_DEVICE_FUNC(CmdTraceRaysIndirect2KHR);
+    }
+
+    if (IsExtensionSupported(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, desiredDeviceExts)) {
+        GET_DEVICE_FUNC(GetCalibratedTimestampsEXT);
     }
 
     if (IsExtensionSupported(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME, desiredDeviceExts)) {

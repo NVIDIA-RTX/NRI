@@ -2092,6 +2092,7 @@ NriStruct(DeviceDesc) {
         uint32_t shaderBytecodeSPIRV                             : 1; // SPIRV can be passed to "ShaderDesc::bytecode"
         uint32_t pipelineCache                                   : 1; // "PipelineCache" support (NOP fallback if unsupported, except on error)
         uint32_t pipelineCacheControl                            : 1; // "FAIL_ON_CACHE_MISS" enforces "FAILURE", useful for platforms that prohibit runtime PSO compilation (e.g., Xbox GDK)
+        uint32_t calibratedTimestamps                            : 1; // see "GetCalibratedTimestamps" (unsupported only in D3D11)
     } features;
 
     // Shader features

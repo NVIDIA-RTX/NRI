@@ -483,6 +483,11 @@ static uint32_t NRI_CALL GetQuerySize(const QueryPool& queryPool) {
     return ((QueryPoolD3D11&)queryPool).GetQuerySize();
 }
 
+static void NRI_CALL GetCalibratedTimestamps(Queue&, uint64_t& timestampGPU, uint64_t& timestampCPU) {
+    timestampGPU = 0;
+    timestampCPU = 0;
+}
+
 static Result NRI_CALL QueueSubmit(Queue& queue, const QueueSubmitDesc& queueSubmitDesc) {
     return ((QueueD3D11&)queue).Submit(queueSubmitDesc);
 }
@@ -759,7 +764,6 @@ Result DeviceD3D11::FillFunctionTable(CoreInterface& table) const {
     table.GetBufferDesc = ::GetBufferDesc;
     table.GetTextureDesc = ::GetTextureDesc;
     table.GetFormatSupport = ::GetFormatSupport;
-    table.GetQuerySize = ::GetQuerySize;
     table.GetFenceValue = ::GetFenceValue;
     table.GetDescriptorSetOffsets = ::GetDescriptorSetOffsets;
     table.GetQueue = ::GetQueue;
@@ -809,6 +813,8 @@ Result DeviceD3D11::FillFunctionTable(CoreInterface& table) const {
     table.QueueEndAnnotation = ::QueueEndAnnotation;
     table.QueueAnnotation = ::QueueAnnotation;
     table.ResetQueries = ::ResetQueries;
+    table.GetQuerySize = ::GetQuerySize;
+    table.GetCalibratedTimestamps = ::GetCalibratedTimestamps;
     table.QueueSubmit = ::QueueSubmit;
     table.QueueWaitIdle = ::QueueWaitIdle;
     table.DeviceWaitIdle = ::DeviceWaitIdle;

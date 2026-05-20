@@ -24,6 +24,7 @@ struct QueueVal final : public ObjectVal {
     void BeginAnnotation(const char* name, uint32_t bgra);
     void EndAnnotation();
     void Annotation(const char* name, uint32_t bgra);
+    void GetCalibratedTimestamps(uint64_t& timestampGPU, uint64_t& timestampCPU);
     Result Submit(const QueueSubmitDesc& queueSubmitDesc);
     Result WaitIdle();
 };

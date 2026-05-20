@@ -44,6 +44,36 @@ NRI_INLINE void QueueVK::Annotation(const char* name, uint32_t bgra) {
         vk.QueueInsertDebugUtilsLabelEXT(m_Handle, &info);
 }
 
+NRI_INLINE void QueueVK::GetCalibratedTimestamps(uint64_t& timestampGPU, uint64_t& timestampCPU) {
+    timestampGPU = 0;
+    timestampCPU = 0;
+
+    VkCalibratedTimestampInfoKHR timestampInfos[2] = {};
+    {
+        // GPU
+        timestampInfos[0].sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR;
+        timestampInfos[0].timeDomain = VK_TIME_DOMAIN_DEVICE_KHR;
+
+        // CPU
+        timestampInfos[1].sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR;
+#if defined(_WIN32)
+        timestampInfos[1].timeDomain = VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR; // matches D3D12
+#else
+        timestampInfos[1].timeDomain = VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR; // no support query needed
+#endif
+    }
+
+    uint64_t timestamps[2] = {};
+    uint64_t maxDeviation = 0;
+
+    const auto& vk = m_Device.GetDispatchTable();
+    VkResult vkResult = vk.GetCalibratedTimestampsEXT(m_Device, 2, timestampInfos, timestamps, &maxDeviation);
+    NRI_RETURN_VOID_ON_BAD_VKRESULT(&m_Device, vkResult, "GetCalibratedTimestampsKHR");
+
+    timestampGPU = timestamps[0];
+    timestampCPU = timestamps[1];
+}
+
 NRI_INLINE Result QueueVK::Submit(const QueueSubmitDesc& queueSubmitDesc) {
     ExclusiveScope lock(m_Lock);
 
