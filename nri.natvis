@@ -80,6 +80,15 @@
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(NriTextureDesc*)((uint8_t*)this + 40)</Item>
         </Expand>
     </Type>
+    <Type Name="NriVideoSession">
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
+    </Type>
+    <Type Name="NriVideoSessionParameters">
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
+    </Type>
+    <Type Name="NriVideoPicture">
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
+    </Type>
     <Type Name="NriUpscaler">
         <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
         <Expand>
@@ -164,6 +173,15 @@
         <Expand>
             <Item Name="desc" Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">*(nri::TextureDesc*)((uint8_t*)this + 40)</Item>
         </Expand>
+    </Type>
+    <Type Name="nri::VideoSession">
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
+    </Type>
+    <Type Name="nri::VideoSessionParameters">
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
+    </Type>
+    <Type Name="nri::VideoPicture">
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="nri::Upscaler">
         <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>

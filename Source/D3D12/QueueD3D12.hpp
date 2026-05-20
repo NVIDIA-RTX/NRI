@@ -58,7 +58,7 @@ NRI_INLINE Result QueueD3D12::Submit(const QueueSubmitDesc& queueSubmitDesc) {
     if (queueSubmitDesc.commandBufferNum) {
         Scratch<ID3D12CommandList*> commandLists = NRI_ALLOCATE_SCRATCH(m_Device, ID3D12CommandList*, queueSubmitDesc.commandBufferNum);
         for (uint32_t j = 0; j < queueSubmitDesc.commandBufferNum; j++)
-            commandLists[j] = *(CommandBufferD3D12*)queueSubmitDesc.commandBuffers[j];
+            commandLists[j] = (ID3D12CommandList*)*(CommandBufferD3D12*)queueSubmitDesc.commandBuffers[j];
 
         m_Queue->ExecuteCommandLists(queueSubmitDesc.commandBufferNum, commandLists);
     }

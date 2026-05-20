@@ -113,6 +113,7 @@ struct DispatchTable {
     VK_FUNC(GetBufferMemoryRequirements2);                // + | +
     VK_FUNC(GetImageMemoryRequirements2);                 // + | +
     VK_FUNC(ResetQueryPool);                              // + | +
+    VK_FUNC(GetQueryPoolResults);                         // + | +
     VK_FUNC(GetBufferDeviceAddress);                      // + | +
     VK_FUNC(BeginCommandBuffer);                          // - | +
     VK_FUNC(CmdSetViewportWithCount);                     // - | +
@@ -148,6 +149,7 @@ struct DispatchTable {
     VK_FUNC(CmdCopyQueryPoolResults);                     // - | +
     VK_FUNC(CmdResetQueryPool);                           // - | +
     VK_FUNC(CmdFillBuffer);                               // - | +
+    VK_FUNC(CmdUpdateBuffer);                             // - | +
     VK_FUNC(CmdBeginRendering);                           // - | +
     VK_FUNC(CmdEndRendering);                             // - | + TODO: use "vkCmdEndRendering2KHR" from "VK_KHR_maintenance10"
     VK_FUNC(CmdPushDescriptorSet);                        // - | +
@@ -196,6 +198,20 @@ struct DispatchTable {
     VK_FUNC(CmdDrawMeshTasksEXT);                         // - | +
     VK_FUNC(CmdDrawMeshTasksIndirectEXT);                 // - | +
     VK_FUNC(CmdDrawMeshTasksIndirectCountEXT);            // - | +
+                                                          // VK_KHR_video_decode_queue / VK_KHR_video_encode_queue
+    VK_FUNC(GetPhysicalDeviceVideoCapabilitiesKHR);       // + | +
+    VK_FUNC(GetPhysicalDeviceVideoFormatPropertiesKHR);   // + | +
+    VK_FUNC(CreateVideoSessionKHR);                       // + | +
+    VK_FUNC(DestroyVideoSessionKHR);                      // - | +
+    VK_FUNC(GetVideoSessionMemoryRequirementsKHR);        // + | +
+    VK_FUNC(BindVideoSessionMemoryKHR);                   // + | +
+    VK_FUNC(CreateVideoSessionParametersKHR);             // + | +
+    VK_FUNC(DestroyVideoSessionParametersKHR);            // - | +
+    VK_FUNC(CmdBeginVideoCodingKHR);                      // - | +
+    VK_FUNC(CmdControlVideoCodingKHR);                    // - | +
+    VK_FUNC(CmdEndVideoCodingKHR);                        // - | +
+    VK_FUNC(CmdDecodeVideoKHR);                           // - | +
+    VK_FUNC(CmdEncodeVideoKHR);                           // - | +
                                                           // VK_NV_low_latency2
     VK_FUNC(GetLatencyTimingsNV);                         // + | +
     VK_FUNC(LatencySleepNV);                              // + | +

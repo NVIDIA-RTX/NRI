@@ -115,6 +115,14 @@ static D3D12_RESOURCE_FLAGS GetTextureFlags(TextureUsageBits textureUsage) {
             flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
     }
 
+    if (textureUsage & TextureUsageBits::VIDEO_REFERENCE_ONLY) {
+        if (textureUsage & TextureUsageBits::VIDEO_DECODE)
+            flags |= D3D12_RESOURCE_FLAG_VIDEO_DECODE_REFERENCE_ONLY;
+        if (textureUsage & TextureUsageBits::VIDEO_ENCODE)
+            flags |= D3D12_RESOURCE_FLAG_VIDEO_ENCODE_REFERENCE_ONLY;
+        flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+    }
+
     return flags;
 }
 
@@ -138,6 +146,8 @@ DeviceD3D12::DeviceD3D12(const CallbackInterface& callbacks, const AllocationCal
     , m_DrawIndexedCommandSignatures(GetStdAllocator())
     , m_DrawMeshCommandSignatures(GetStdAllocator())
     , m_QueueFamilies{
+          Vector<QueueD3D12*>(GetStdAllocator()),
+          Vector<QueueD3D12*>(GetStdAllocator()),
           Vector<QueueD3D12*>(GetStdAllocator()),
           Vector<QueueD3D12*>(GetStdAllocator()),
           Vector<QueueD3D12*>(GetStdAllocator()),
@@ -278,7 +288,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
                 D3D12_MESSAGE_ID_CLEARDEPTHSTENCILVIEW_MISMATCHINGCLEARVALUE,
                 D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-                // All good
+            // All good
 #else
                 // Descriptor validation doesn't understand acceleration structures used outside of RAYGEN shaders
                 D3D12_MESSAGE_ID_COMMAND_LIST_STATIC_DESCRIPTOR_RESOURCE_DIMENSION_MISMATCH,
@@ -578,10 +588,10 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS22 options22 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS22, &options22, sizeof(options22));
-    if (FAILED(hr))
-        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options22) failed, result = 0x%08X!", hr);
-    m_Desc.shaderStage.compute.dispatchMaxDim[0] = options22.Max1DDispatchSize;
-    m_Desc.shaderStage.task.dispatchMaxDim[0] = options22.Max1DDispatchMeshSize;
+    if (SUCCEEDED(hr)) {
+        m_Desc.shaderStage.compute.dispatchMaxDim[0] = options22.Max1DDispatchSize;
+        m_Desc.shaderStage.task.dispatchMaxDim[0] = options22.Max1DDispatchMeshSize;
+    }
 #else
     m_Desc.memoryAlignment.uploadBufferTextureRow = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
     m_Desc.memoryAlignment.uploadBufferTextureSlice = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
@@ -857,6 +867,20 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.features.textureCompressionBC = true;
     m_Desc.features.shaderBytecodeDXBC = true;
     m_Desc.features.shaderBytecodeDXIL = true;
+
+    ComPtr<ID3D12VideoDevice> videoDevice;
+    if (SUCCEEDED(m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice)))) {
+        m_Desc.videoFeatures.decode.H264 = IsVideoDecodeCodecSupportedD3D12(*videoDevice, VideoCodec::H264);
+        m_Desc.videoFeatures.decode.H265 = IsVideoDecodeCodecSupportedD3D12(*videoDevice, VideoCodec::H265);
+        m_Desc.videoFeatures.decode.AV1 = IsVideoDecodeCodecSupportedD3D12(*videoDevice, VideoCodec::AV1);
+    }
+
+    ComPtr<ID3D12VideoDevice3> videoDevice3;
+    if (SUCCEEDED(m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice3)))) {
+        m_Desc.videoFeatures.encode.H264 = IsVideoEncodeCodecSupportedD3D12(*videoDevice3, VideoCodec::H264);
+        m_Desc.videoFeatures.encode.H265 = IsVideoEncodeCodecSupportedD3D12(*videoDevice3, VideoCodec::H265);
+        m_Desc.videoFeatures.encode.AV1 = IsVideoEncodeCodecSupportedD3D12(*videoDevice3, VideoCodec::AV1);
+    }
 
     bool isShaderAtomicsF16Supported = false;
     bool isShaderAtomicsF32Supported = false;

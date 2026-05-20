@@ -234,9 +234,17 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         if (isZeroColor && isZeroAlpha)
             staticSamplerDesc.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
         else if (isZeroColor)
+#if defined(D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK_UINT)
             staticSamplerDesc.BorderColor = samplerDesc.isInteger ? D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK_UINT : D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+#else
+            staticSamplerDesc.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+#endif
         else
+#if defined(D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE_UINT)
             staticSamplerDesc.BorderColor = samplerDesc.isInteger ? D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE_UINT : D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+#else
+            staticSamplerDesc.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+#endif
     }
 
     // Root signature

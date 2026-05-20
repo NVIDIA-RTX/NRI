@@ -1,9 +1,11 @@
 // © 2021 NVIDIA Corporation
 
 constexpr std::array<D3D12_COMMAND_LIST_TYPE, (size_t)QueueType::MAX_NUM> g_CommandListTypes = {
-    D3D12_COMMAND_LIST_TYPE_DIRECT,  // GRAPHICS,
-    D3D12_COMMAND_LIST_TYPE_COMPUTE, // COMPUTE,
-    D3D12_COMMAND_LIST_TYPE_COPY,    // COPY,
+    D3D12_COMMAND_LIST_TYPE_DIRECT,       // GRAPHICS,
+    D3D12_COMMAND_LIST_TYPE_COMPUTE,      // COMPUTE,
+    D3D12_COMMAND_LIST_TYPE_COPY,         // COPY,
+    D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE, // VIDEO_DECODE,
+    D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE, // VIDEO_ENCODE,
 };
 NRI_VALIDATE_ARRAY(g_CommandListTypes);
 
@@ -35,7 +37,8 @@ constexpr std::array<D3D12_DESCRIPTOR_RANGE_TYPE, (size_t)DescriptorType::MAX_NU
     D3D12_DESCRIPTOR_RANGE_TYPE_UAV,     // STORAGE_STRUCTURED_BUFFER
     D3D12_DESCRIPTOR_RANGE_TYPE_SRV,     // ACCELERATION_STRUCTURE
 };
-//NRI_VALIDATE_ARRAY(g_DescriptorRangeTypes); // TODO: 0 is expected for ACCELERATION_STRUCTURE
+
+// NRI_VALIDATE_ARRAY(g_DescriptorRangeTypes); // TODO: 0 is expected for ACCELERATION_STRUCTURE
 
 D3D12_DESCRIPTOR_RANGE_TYPE nri::GetDescriptorRangesType(DescriptorType descriptorType) {
     return g_DescriptorRangeTypes[(size_t)descriptorType];
@@ -414,6 +417,10 @@ bool nri::GetTextureDesc(const TextureD3D12Desc& textureD3D12Desc, TextureDesc& 
         textureDesc.usage |= TextureUsageBits::SHADER_RESOURCE | TextureUsageBits::INPUT_ATTACHMENT;
     if (desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)
         textureDesc.usage |= TextureUsageBits::SHADER_RESOURCE_STORAGE;
+    if (desc.Flags & D3D12_RESOURCE_FLAG_VIDEO_DECODE_REFERENCE_ONLY)
+        textureDesc.usage |= TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_REFERENCE_ONLY;
+    if (desc.Flags & D3D12_RESOURCE_FLAG_VIDEO_ENCODE_REFERENCE_ONLY)
+        textureDesc.usage |= TextureUsageBits::VIDEO_ENCODE | TextureUsageBits::VIDEO_REFERENCE_ONLY;
 
     if (textureD3D12Desc.format)
         textureDesc.format = DXGIFormatToNRIFormat(textureD3D12Desc.format);

@@ -3,7 +3,14 @@
 #pragma once
 
 #include <d3d12.h>
+#include <d3d12video.h>
 #include <pix.h>
+
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT && NRI_AGILITY_SDK_VERSION_MAJOR >= 619
+#    define NRI_D3D12_HAS_VIDEO_ENCODE_AV1 1
+#else
+#    define NRI_D3D12_HAS_VIDEO_ENCODE_AV1 0
+#endif
 
 // Validate Windows SDK version
 static_assert(D3D12_SDK_VERSION >= 4, "Outdated Windows SDK. D3D12 Ultimate needed (Windows SDK 10.0.20348). Always prefer using latest Agility SDK!");
@@ -84,8 +91,8 @@ enum DescriptorHeapType : uint8_t {
 #define NO_CASTABLE_FORMATS 0, nullptr
 
 struct DescriptorHandle {
-    uint32_t heapType : DESCRIPTOR_HANDLE_HEAP_TYPE_BIT_NUM;
-    uint32_t heapIndex : DESCRIPTOR_HANDLE_HEAP_INDEX_BIT_NUM;
+    uint32_t heapType   : DESCRIPTOR_HANDLE_HEAP_TYPE_BIT_NUM;
+    uint32_t heapIndex  : DESCRIPTOR_HANDLE_HEAP_INDEX_BIT_NUM;
     uint32_t heapOffset : DESCRIPTOR_HANDLE_HEAP_OFFSET_BIT_NUM;
 };
 
@@ -105,6 +112,10 @@ struct DescriptorHeapDesc {
 inline uint32_t GetSubresourceIndex(uint32_t layerOffset, uint32_t resourceLayerNum, uint32_t mipOffset, uint32_t resourceMipNum, PlaneBits planes) {
     // https://learn.microsoft.com/en-us/windows/win32/direct3d12/subresources#plane-slice
     uint32_t planeIndex = 0;
+    if ((planes & PlaneBits::PLANE_1) != 0)
+        planeIndex = 1;
+    if ((planes & PlaneBits::PLANE_2) != 0)
+        planeIndex = 2;
     if (planes == PlaneBits::ALL || (planes & PlaneBits::STENCIL) != 0)
         planeIndex = 1;
     if (planes == PlaneBits::ALL || (planes & PlaneBits::DEPTH) != 0) // fallthrough
