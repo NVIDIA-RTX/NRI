@@ -604,6 +604,7 @@ NriStruct(TextureBarrierDesc) {
 };
 
 // Using "CmdBarrier" inside a rendering pass is allowed, but only for "Layout::INPUT_ATTACHMENT" access transitions
+// D3D12 filters out "transitioning to the same state" barriers if "features.enhancedBarriers" is not supported
 NriStruct(BarrierDesc) {
     const NriPtr(GlobalBarrierDesc) globals;
     uint32_t globalNum;
@@ -1558,7 +1559,7 @@ NriStruct(AttachmentDesc) {
     Nri(LoadOp) loadOp;
     Nri(StoreOp) storeOp;
     Nri(ResolveOp) resolveOp;
-    NriOptional NriPtr(Descriptor) resolveDst;          // must be valid during "CmdEndRendering"
+    NriOptional NriPtr(Descriptor) resolveDst;          // must be in "COLOR_ATTACHMENT" state and valid during "CmdEndRendering"
 };
 
 NriStruct(RenderingDesc) {
