@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include <variant>
-
 struct ID3D12CommandAllocator;
 struct ID3D12CommandList;
 struct ID3D12Resource;
@@ -49,7 +47,7 @@ struct CommandBufferD3D12 final : public DebugNameBase {
     }
 
     inline operator ID3D12CommandList*() const {
-        return GetCommandList();
+        return m_CommandList.GetInterface();
     }
 
     inline DeviceD3D12& GetDevice() const {
@@ -138,15 +136,14 @@ struct CommandBufferD3D12 final : public DebugNameBase {
     void EncodeVideo(const VideoEncodeD3D12Desc& videoEncodeD3D12Desc);
 
 private:
-    using CommandList = std::variant<ComPtr<ID3D12GraphicsCommandListBest>, ComPtr<ID3D12VideoDecodeCommandList>, ComPtr<ID3D12VideoEncodeCommandList>>;
-
-    ID3D12CommandList* GetCommandList() const;
     ID3D12GraphicsCommandListBest* GetGraphicsCommandList() const;
+    ID3D12VideoDecodeCommandList* GetVideoDecodeCommandList() const;
+    ID3D12VideoEncodeCommandList* GetVideoEncodeCommandList() const;
     void ResourceBarrier(uint32_t barrierNum, const D3D12_RESOURCE_BARRIER* barriers) const;
 
     DeviceD3D12& m_Device;
     ComPtr<ID3D12CommandAllocator> m_CommandAllocator;
-    CommandList m_CommandList;
+    ComPtr<ID3D12CommandList> m_CommandList;
     D3D12_COMMAND_LIST_TYPE m_CommandListType = D3D12_COMMAND_LIST_TYPE_DIRECT;
     std::array<DescriptorSetD3D12*, ROOT_SIGNATURE_DWORD_NUM> m_DescriptorSets = {}; // TODO: needed only for "ClearStorage"
     std::array<AttachmentDescD3D12, D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT> m_RenderTargets = {};

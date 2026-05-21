@@ -12,6 +12,8 @@
 
 namespace nri {
 
+#ifndef NRI_VIDEO_SHARED_RATE_CONTROL_HELPERS_DEFINED
+#    define NRI_VIDEO_SHARED_RATE_CONTROL_HELPERS_DEFINED
 constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_CQP = 1u << (uint32_t)VideoEncodeRateControlMode::CQP;
 constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_CBR = 1u << (uint32_t)VideoEncodeRateControlMode::CBR;
 constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_VBR = 1u << (uint32_t)VideoEncodeRateControlMode::VBR;
@@ -19,6 +21,7 @@ constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_VBR = 1u << (uint32_t)VideoEncodeRa
 inline uint32_t GetVideoEncodeRateControlModeMask(VideoEncodeRateControlMode mode) {
     return 1u << (uint32_t)mode;
 }
+#endif
 
 inline VkVideoEncodeRateControlModeFlagBitsKHR GetVideoEncodeRateControlModeVK(VideoEncodeRateControlMode mode) {
     switch (mode) {
@@ -62,6 +65,33 @@ inline void FillVideoEncodeRateControlVK(const VideoEncodeRateControlDesc& desc,
     info.pLayers = &layer;
     info.virtualBufferSizeInMs = desc.virtualBufferSizeMs ? desc.virtualBufferSizeMs : 1000;
     info.initialVirtualBufferSizeInMs = desc.initialVirtualBufferSizeMs ? desc.initialVirtualBufferSizeMs : info.virtualBufferSizeInMs;
+}
+
+inline VkVideoReferenceSlotInfoKHR GetVideoEncodeSetupReferenceSlotForBeginVK(const VkVideoReferenceSlotInfoKHR& setupReferenceSlot) {
+    VkVideoReferenceSlotInfoKHR beginReferenceSlot = setupReferenceSlot;
+    beginReferenceSlot.slotIndex = -1;
+    return beginReferenceSlot;
+}
+
+inline VkVideoSessionParametersCreateInfoKHR GetVideoSessionParametersCreateInfoVK(VkVideoSessionKHR session, const VkVideoSessionParametersCreateInfoKHR* nativeCreateInfo) {
+    VkVideoSessionParametersCreateInfoKHR createInfo = nativeCreateInfo ? *nativeCreateInfo : VkVideoSessionParametersCreateInfoKHR{VK_STRUCTURE_TYPE_VIDEO_SESSION_PARAMETERS_CREATE_INFO_KHR};
+    createInfo.sType = VK_STRUCTURE_TYPE_VIDEO_SESSION_PARAMETERS_CREATE_INFO_KHR;
+    createInfo.videoSession = session;
+    return createInfo;
+}
+
+inline void FillVideoCapabilitiesVK(VideoCapabilities& videoCapabilities, const VkVideoCapabilitiesKHR& capabilities) {
+    videoCapabilities = {};
+    videoCapabilities.widthMin = capabilities.minCodedExtent.width;
+    videoCapabilities.heightMin = capabilities.minCodedExtent.height;
+    videoCapabilities.widthMax = capabilities.maxCodedExtent.width;
+    videoCapabilities.heightMax = capabilities.maxCodedExtent.height;
+    videoCapabilities.pictureAccessGranularityWidth = capabilities.pictureAccessGranularity.width;
+    videoCapabilities.pictureAccessGranularityHeight = capabilities.pictureAccessGranularity.height;
+    videoCapabilities.maxReferenceNum = capabilities.maxActiveReferencePictures;
+    videoCapabilities.bitstreamOffsetAlignment = (uint32_t)capabilities.minBitstreamBufferOffsetAlignment;
+    videoCapabilities.bitstreamSizeAlignment = (uint32_t)capabilities.minBitstreamBufferSizeAlignment;
+    videoCapabilities.bitstreamSizeMax = uint64_t(-1);
 }
 
 inline uint8_t GetVideoAV1ReferenceNameIndexVK(VideoAV1ReferenceName name) {

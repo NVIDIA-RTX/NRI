@@ -158,6 +158,12 @@ NriEnum(VideoEncodeRateControlMode, uint8_t,
     VBR
 );
 
+NriBits(VideoEncodeBits, uint8_t,
+    NONE                                = 0,
+    FORCE_KEY_FRAME                     = NriBit(0),
+    END_OF_STREAM                       = NriBit(1)
+);
+
 NriEnum(VideoAV1ReferenceName, uint8_t,
     NONE,
     LAST,
@@ -462,6 +468,13 @@ NriStruct(VideoAnnexBParameterSetsDesc) {
     NriOptional const NriPtr(VideoH265VideoParameterSetDesc) h265Vps;
     NriOptional const NriPtr(VideoH265SequenceParameterSetDesc) h265Sps;
     NriOptional const NriPtr(VideoH265PictureParameterSetDesc) h265Pps;
+    NriOptional NriPtr(uint8_t) dst; // if null, only "writtenSize" is returned
+    uint64_t dstSize;
+    uint64_t writtenSize;
+};
+
+NriStruct(VideoAnnexBEndOfStreamDesc) {
+    Nri(VideoCodec) codec;
     NriOptional NriPtr(uint8_t) dst; // if null, only "writtenSize" is returned
     uint64_t dstSize;
     uint64_t writtenSize;
@@ -835,6 +848,7 @@ NriStruct(VideoEncodeDesc) {
     uint64_t bitstreamMetadataSize; // D3D12: bytes of codec metadata already written before the current frame payload
     NriOptional const NriPtr(VideoEncodePictureDesc) pictureDesc;
     NriOptional const NriPtr(VideoEncodeRateControlDesc) rateControlDesc;
+    Nri(VideoEncodeBits) flags;
     NriOptional NriPtr(VideoPicture) reconstructedPicture;
     NriOptional NriPtr(Buffer) metadata;
     uint64_t metadataOffset;
@@ -845,7 +859,7 @@ NriStruct(VideoEncodeDesc) {
     uint32_t reconstructedSlot;
     NriOptional const NriPtr(VideoH264PictureDesc) h264PictureDesc;
     NriOptional const NriPtr(VideoAV1PictureDesc) av1PictureDesc;
-    const NriPtr(VideoH265ReferenceDesc) h265ReferenceDescs;
+    NriOptional const NriPtr(VideoH265ReferenceDesc) h265ReferenceDescs;
 };
 
 // Threadsafe: no
@@ -866,6 +880,9 @@ NriStruct(VideoInterface) {
         // Serializes H.264 SPS/PPS or H.265 VPS/SPS/PPS parameter sets to Annex-B bytes.
         // Pass "dst = nullptr" to query the required byte size in "writtenSize".
         Nri(Result) (NRI_CALL *WriteVideoAnnexBParameterSets) (NriRef(VideoAnnexBParameterSetsDesc) annexBParameterSetsDesc);
+        // Serializes H.264 end-of-sequence/end-of-stream or H.265 EOS/EOB Annex-B NAL units.
+        // Pass "dst = nullptr" to query the required byte size in "writtenSize".
+        Nri(Result) (NRI_CALL *WriteVideoAnnexBEndOfStream) (NriRef(VideoAnnexBEndOfStreamDesc) annexBEndOfStreamDesc);
     // }
 
     // Command buffer

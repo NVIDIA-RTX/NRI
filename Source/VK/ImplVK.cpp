@@ -1638,16 +1638,7 @@ static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSes
     VkResult vkResult = vk.GetPhysicalDeviceVideoCapabilitiesKHR(deviceVK, &profile, &capabilities);
     NRI_RETURN_ON_BAD_VKRESULT(&deviceVK, vkResult, "vkGetPhysicalDeviceVideoCapabilitiesKHR");
 
-    videoCapabilities = {};
-    videoCapabilities.widthMin = capabilities.minCodedExtent.width;
-    videoCapabilities.heightMin = capabilities.minCodedExtent.height;
-    videoCapabilities.widthMax = capabilities.maxCodedExtent.width;
-    videoCapabilities.heightMax = capabilities.maxCodedExtent.height;
-    videoCapabilities.pictureAccessGranularityWidth = capabilities.pictureAccessGranularity.width;
-    videoCapabilities.pictureAccessGranularityHeight = capabilities.pictureAccessGranularity.height;
-    videoCapabilities.maxReferenceNum = capabilities.maxActiveReferencePictures;
-    videoCapabilities.bitstreamOffsetAlignment = (uint32_t)capabilities.minBitstreamBufferOffsetAlignment;
-    videoCapabilities.bitstreamSizeAlignment = (uint32_t)capabilities.minBitstreamBufferSizeAlignment;
+    FillVideoCapabilitiesVK(videoCapabilities, capabilities);
 
     const bool isExtentSupported = videoSessionDesc.width >= videoCapabilities.widthMin && videoSessionDesc.height >= videoCapabilities.heightMin && videoSessionDesc.width <= videoCapabilities.widthMax
         && videoSessionDesc.height <= videoCapabilities.heightMax;
@@ -1728,6 +1719,10 @@ static Result NRI_CALL GetVideoEncodePictureStates(const VideoPicture&, VideoEnc
 
 static Result NRI_CALL WriteVideoAnnexBParameterSets(VideoAnnexBParameterSetsDesc& annexBParameterSetsDesc) {
     return WriteVideoAnnexBParameterSetsShared(annexBParameterSetsDesc);
+}
+
+static Result NRI_CALL WriteVideoAnnexBEndOfStream(VideoAnnexBEndOfStreamDesc& annexBEndOfStreamDesc) {
+    return WriteVideoAnnexBEndOfStreamShared(annexBEndOfStreamDesc);
 }
 
 static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDecodeDesc& videoDecodeDesc) {
@@ -2193,6 +2188,14 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
         NRI_REPORT_ERROR(&device, "'references' is NULL");
         return;
     }
+    if ((videoEncodeDesc.flags & VideoEncodeBits::FORCE_KEY_FRAME) && videoEncodeDesc.referenceNum) {
+        NRI_REPORT_ERROR(&device, "'FORCE_KEY_FRAME' requires 'referenceNum' to be 0");
+        return;
+    }
+    if (videoEncodeDesc.flags & VideoEncodeBits::END_OF_STREAM) {
+        NRI_REPORT_ERROR(&device, "'END_OF_STREAM' must be serialized with 'WriteVideoAnnexBEndOfStream' after encode feedback is available");
+        return;
+    }
 
     VideoSessionVK& session = *(VideoSessionVK*)videoEncodeDesc.session;
     VideoSessionParametersVK& parameters = *(VideoSessionParametersVK*)videoEncodeDesc.parameters;
@@ -2227,7 +2230,9 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     }
 
     const VideoEncodePictureDesc defaultPicture = {VideoEncodeFrameType::IDR, 0, 0, 0, 0};
-    const VideoEncodePictureDesc& pictureDesc = videoEncodeDesc.pictureDesc ? *videoEncodeDesc.pictureDesc : defaultPicture;
+    VideoEncodePictureDesc pictureDesc = videoEncodeDesc.pictureDesc ? *videoEncodeDesc.pictureDesc : defaultPicture;
+    if (videoEncodeDesc.flags & VideoEncodeBits::FORCE_KEY_FRAME)
+        pictureDesc.frameType = VideoEncodeFrameType::IDR;
     const VideoEncodeRateControlDesc defaultRateControl = {VideoEncodeRateControlMode::CQP, 26, 28, 30, 0, 51, 30, 1, 0, 0, 0, 0, 0};
     const VideoEncodeRateControlDesc& rateControlDesc = videoEncodeDesc.rateControlDesc ? *videoEncodeDesc.rateControlDesc : defaultRateControl;
     if ((uint32_t)rateControlDesc.mode >= (uint32_t)VideoEncodeRateControlMode::MAX_NUM || (rateControlDesc.mode != VideoEncodeRateControlMode::CQP && !rateControlDesc.targetBitrate)
@@ -2698,9 +2703,7 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     encodeInfo.pReferenceSlots = referenceSlots;
 
     if (isUsedAsReferencePicture) {
-        referenceSlots[videoEncodeDesc.referenceNum] = setupReferenceSlot;
-        referenceSlots[videoEncodeDesc.referenceNum].slotIndex = -1;
-        referenceSlots[videoEncodeDesc.referenceNum].pNext = nullptr;
+        referenceSlots[videoEncodeDesc.referenceNum] = GetVideoEncodeSetupReferenceSlotForBeginVK(setupReferenceSlot);
     }
 
     VkVideoEncodeRateControlInfoKHR rateControlInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_RATE_CONTROL_INFO_KHR};
@@ -2858,6 +2861,7 @@ Result DeviceVK::FillFunctionTable(VideoInterface& table) const {
     table.GetVideoDecodePictureStates = ::GetVideoDecodePictureStates;
     table.GetVideoEncodePictureStates = ::GetVideoEncodePictureStates;
     table.WriteVideoAnnexBParameterSets = ::WriteVideoAnnexBParameterSets;
+    table.WriteVideoAnnexBEndOfStream = ::WriteVideoAnnexBEndOfStream;
     table.CmdDecodeVideo = ::CmdDecodeVideo;
     table.CmdEncodeVideo = ::CmdEncodeVideo;
     table.CmdResolveVideoEncodeFeedback = ::CmdResolveVideoEncodeFeedback;

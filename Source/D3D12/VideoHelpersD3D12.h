@@ -33,9 +33,16 @@ constexpr uint32_t VIDEO_D3D12_AV1_FEATURE_FLAG_AUTO_SEGMENTATION = 0x10000;
 constexpr uint32_t VIDEO_D3D12_AV1_FEATURE_FLAG_LOOP_FILTER_DELTAS = 0x40000;
 constexpr uint32_t VIDEO_D3D12_AV1_FEATURE_FLAG_QUANTIZATION_DELTAS = 0x80000;
 constexpr uint32_t VIDEO_D3D12_AV1_FEATURE_FLAG_FORCED_INTEGER_MOTION_VECTORS = 0x100;
+#ifndef NRI_VIDEO_SHARED_RATE_CONTROL_HELPERS_DEFINED
+#    define NRI_VIDEO_SHARED_RATE_CONTROL_HELPERS_DEFINED
 constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_CQP = 1u << (uint32_t)VideoEncodeRateControlMode::CQP;
 constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_CBR = 1u << (uint32_t)VideoEncodeRateControlMode::CBR;
 constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_VBR = 1u << (uint32_t)VideoEncodeRateControlMode::VBR;
+
+inline uint32_t GetVideoEncodeRateControlModeMask(VideoEncodeRateControlMode mode) {
+    return 1u << (uint32_t)mode;
+}
+#endif
 
 // Older Windows SDK headers used by some builds do not name this newer support bit yet.
 constexpr D3D12_VIDEO_ENCODER_SUPPORT_FLAGS VIDEO_D3D12_ENCODER_SUPPORT_FLAG_READABLE_RECONSTRUCTED_PICTURE_LAYOUT_AVAILABLE = (D3D12_VIDEO_ENCODER_SUPPORT_FLAGS)0x8000;
@@ -53,10 +60,6 @@ struct VideoEncodeRateControlStateD3D12 {
     D3D12_VIDEO_ENCODER_RATE_CONTROL rateControl = {};
 };
 
-inline uint32_t GetVideoEncodeRateControlModeMask(VideoEncodeRateControlMode mode) {
-    return 1u << (uint32_t)mode;
-}
-
 inline D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE GetVideoEncodeRateControlModeD3D12(VideoEncodeRateControlMode mode) {
     switch (mode) {
         case VideoEncodeRateControlMode::CQP:
@@ -70,6 +73,31 @@ inline D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE GetVideoEncodeRateControlModeD3D12(
     }
 
     return D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_ABSOLUTE_QP_MAP;
+}
+
+inline void FillVideoDecodePictureStatesD3D12(VideoDecodePictureStates& states) {
+    states = {};
+    states.decodeWrite = {AccessBits::VIDEO_DECODE_WRITE, Layout::VIDEO_DECODE_DST, StageBits::VIDEO_DECODE};
+    states.afterDecode = {AccessBits::NONE, Layout::GENERAL, StageBits::NONE};
+    states.graphicsBefore = states.afterDecode;
+    states.releaseAfterDecode = true;
+}
+
+inline void FillVideoEncodePictureStatesD3D12(VideoEncodePictureStates& states) {
+    states = {};
+    states.encodeRead = {AccessBits::VIDEO_ENCODE_READ, Layout::VIDEO_ENCODE_SRC, StageBits::VIDEO_ENCODE};
+    states.encodeWrite = {AccessBits::VIDEO_ENCODE_WRITE, Layout::VIDEO_ENCODE_DPB, StageBits::VIDEO_ENCODE};
+    states.afterEncode = {AccessBits::NONE, Layout::GENERAL, StageBits::NONE};
+    states.graphicsBefore = states.afterEncode;
+    states.releaseAfterEncode = true;
+}
+
+inline bool IsVideoEncodeResolvedMetadataRangeValidD3D12(uint64_t bufferSize, uint64_t offset, uint64_t requiredSize) {
+    return offset <= bufferSize && requiredSize <= bufferSize - offset;
+}
+
+inline uint64_t GetVideoEncodeFeedbackBitstreamOffsetD3D12(const D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA* subregions, uint64_t subregionNum) {
+    return subregions && subregionNum ? subregions[0].bStartOffset : 0;
 }
 
 inline uint32_t GetSupportedVideoEncodeRateControlModesD3D12(ID3D12VideoDevice3& videoDevice, D3D12_VIDEO_ENCODER_CODEC codec) {
@@ -261,9 +289,14 @@ inline bool BuildVideoDecodeH264ArgumentsD3D12(const VideoH264SessionParametersD
     if (bitstreamSize > UINT32_MAX)
         return false;
 
+    const bool frameMbsOnly = !!(sps->flags & VideoH264SequenceParameterSetBits::FRAME_MBS_ONLY);
+    const uint32_t frameHeightInMbs = (uint32_t)(sps->pictureHeightInMapUnitsMinus1 + 1u) * (frameMbsOnly ? 1u : 2u);
+    if (frameHeightInMbs == 0 || frameHeightInMbs > UINT16_MAX)
+        return false;
+
     pictureParameters = {};
     pictureParameters.wFrameWidthInMbsMinus1 = sps->pictureWidthInMbsMinus1;
-    pictureParameters.wFrameHeightInMbsMinus1 = sps->pictureHeightInMapUnitsMinus1;
+    pictureParameters.wFrameHeightInMbsMinus1 = (uint16_t)(frameHeightInMbs - 1u);
     if (dstSlot > 0x7F)
         return false;
 
@@ -278,7 +311,7 @@ inline bool BuildVideoDecodeH264ArgumentsD3D12(const VideoH264SessionParametersD
     pictureParameters.weighted_pred_flag = !!(pps->flags & VideoH264PictureParameterSetBits::WEIGHTED_PRED);
     pictureParameters.weighted_bipred_idc = pps->weightedBipredIdc;
     pictureParameters.MbsConsecutiveFlag = 1;
-    pictureParameters.frame_mbs_only_flag = !!(sps->flags & VideoH264SequenceParameterSetBits::FRAME_MBS_ONLY);
+    pictureParameters.frame_mbs_only_flag = frameMbsOnly;
     pictureParameters.transform_8x8_mode_flag = !!(pps->flags & VideoH264PictureParameterSetBits::TRANSFORM_8X8_MODE);
     pictureParameters.MinLumaBipredSize8x8Flag = sps->levelIdc >= 31;
     pictureParameters.IntraPicFlag = !!(pictureDesc.flags & VideoH264DecodePictureBits::INTRA);

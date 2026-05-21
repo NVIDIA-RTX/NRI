@@ -1566,26 +1566,21 @@ static void NRI_CALL DestroyVideoPicture(VideoPicture* videoPicture) {
 }
 
 static Result NRI_CALL GetVideoDecodePictureStates(const VideoPicture&, VideoDecodePictureStates& states) {
-    states = {};
-    states.decodeWrite = {AccessBits::VIDEO_DECODE_WRITE, Layout::GENERAL, StageBits::VIDEO_DECODE};
-    states.afterDecode = {AccessBits::NONE, Layout::GENERAL, StageBits::NONE};
-    states.graphicsBefore = states.afterDecode;
-    states.releaseAfterDecode = true;
+    FillVideoDecodePictureStatesD3D12(states);
     return Result::SUCCESS;
 }
 
 static Result NRI_CALL GetVideoEncodePictureStates(const VideoPicture&, VideoEncodePictureStates& states) {
-    states = {};
-    states.encodeRead = {AccessBits::VIDEO_ENCODE_READ, Layout::VIDEO_ENCODE_SRC, StageBits::VIDEO_ENCODE};
-    states.encodeWrite = {AccessBits::VIDEO_ENCODE_WRITE, Layout::GENERAL, StageBits::VIDEO_ENCODE};
-    states.afterEncode = {AccessBits::NONE, Layout::GENERAL, StageBits::NONE};
-    states.graphicsBefore = states.afterEncode;
-    states.releaseAfterEncode = true;
+    FillVideoEncodePictureStatesD3D12(states);
     return Result::SUCCESS;
 }
 
 static Result NRI_CALL WriteVideoAnnexBParameterSets(VideoAnnexBParameterSetsDesc& annexBParameterSetsDesc) {
     return WriteVideoAnnexBParameterSetsShared(annexBParameterSetsDesc);
+}
+
+static Result NRI_CALL WriteVideoAnnexBEndOfStream(VideoAnnexBEndOfStreamDesc& annexBEndOfStreamDesc) {
+    return WriteVideoAnnexBEndOfStreamShared(annexBEndOfStreamDesc);
 }
 
 static uint32_t GetVideoDecodeAV1ReferenceNameIndexD3D12(VideoAV1ReferenceName name) {
@@ -2135,6 +2130,14 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
         NRI_REPORT_ERROR(&device, "'references' is NULL");
         return;
     }
+    if ((videoEncodeDesc.flags & VideoEncodeBits::FORCE_KEY_FRAME) && videoEncodeDesc.referenceNum) {
+        NRI_REPORT_ERROR(&device, "'FORCE_KEY_FRAME' requires 'referenceNum' to be 0");
+        return;
+    }
+    if (videoEncodeDesc.flags & VideoEncodeBits::END_OF_STREAM) {
+        NRI_REPORT_ERROR(&device, "'END_OF_STREAM' must be serialized with 'WriteVideoAnnexBEndOfStream' after encode feedback is available");
+        return;
+    }
 
     VideoSessionD3D12& session = *(VideoSessionD3D12*)videoEncodeDesc.session;
     if (videoEncodeDesc.h264PictureDesc && session.m_Desc.codec != VideoCodec::H264) {
@@ -2309,7 +2312,9 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     }
 
     const VideoEncodePictureDesc defaultPicture = {VideoEncodeFrameType::IDR, 0, 0, 0, 0};
-    const VideoEncodePictureDesc& pictureDesc = videoEncodeDesc.pictureDesc ? *videoEncodeDesc.pictureDesc : defaultPicture;
+    VideoEncodePictureDesc pictureDesc = videoEncodeDesc.pictureDesc ? *videoEncodeDesc.pictureDesc : defaultPicture;
+    if (videoEncodeDesc.flags & VideoEncodeBits::FORCE_KEY_FRAME)
+        pictureDesc.frameType = VideoEncodeFrameType::IDR;
     if (!IsVideoEncodeFrameTypeSupportedByD3D12(session.m_Desc.codec, pictureDesc.frameType)) {
         NRI_REPORT_ERROR(&device, "D3D12 video encode sessions are configured for the no-B-frame parity target");
         return;
@@ -2685,11 +2690,17 @@ static void NRI_CALL CmdResolveVideoEncodeFeedback(CommandBuffer&, VideoSession&
 }
 
 static Result NRI_CALL GetVideoEncodeFeedback(VideoSession&, Buffer& resolvedMetadataReadback, uint64_t resolvedMetadataOffset, VideoEncodeFeedback& feedback) {
-    const void* metadata = ((BufferD3D12&)resolvedMetadataReadback).Map(resolvedMetadataOffset);
+    BufferD3D12& resolvedMetadataReadbackD3D12 = (BufferD3D12&)resolvedMetadataReadback;
+    constexpr uint64_t requiredMetadataSize = sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA) + sizeof(D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA);
+    if (!IsVideoEncodeResolvedMetadataRangeValidD3D12(resolvedMetadataReadbackD3D12.GetDesc().size, resolvedMetadataOffset, requiredMetadataSize))
+        return Result::INVALID_ARGUMENT;
+
+    const void* metadata = resolvedMetadataReadbackD3D12.Map(resolvedMetadataOffset);
     if (!metadata)
         return Result::FAILURE;
 
     const auto& d3d12Feedback = *(const D3D12_VIDEO_ENCODER_OUTPUT_METADATA*)metadata;
+    const auto* subregions = (const D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA*)((const uint8_t*)metadata + sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA));
     feedback = {};
     feedback.errorFlags = d3d12Feedback.EncodeErrorFlags;
     feedback.averageQP = d3d12Feedback.EncodeStats.AverageQP;
@@ -2700,6 +2711,7 @@ static Result NRI_CALL GetVideoEncodeFeedback(VideoSession&, Buffer& resolvedMet
     feedback.averageMotionEstimationY = d3d12Feedback.EncodeStats.AverageMotionEstimationYDirection;
     feedback.encodedBitstreamWrittenBytes = d3d12Feedback.EncodedBitstreamWrittenBytesCount;
     feedback.writtenSubregionNum = d3d12Feedback.WrittenSubregionsCount;
+    feedback.encodedBitstreamOffset = GetVideoEncodeFeedbackBitstreamOffsetD3D12(subregions, feedback.writtenSubregionNum);
     return Result::SUCCESS;
 }
 
@@ -2783,10 +2795,16 @@ static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolv
         return Result::INVALID_ARGUMENT;
     if (desc.feedback->errorFlags || !desc.feedback->encodedBitstreamWrittenBytes || !desc.feedback->writtenSubregionNum)
         return Result::FAILURE;
-    if (desc.references || desc.referenceNum)
+    if ((desc.references == nullptr) != (desc.referenceNum == 0))
         return Result::INVALID_ARGUMENT;
 
-    const void* metadata = ((BufferD3D12&)resolvedMetadataReadback).Map(resolvedMetadataOffset);
+    constexpr uint64_t requiredMetadataSize = sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA) + sizeof(D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA) + sizeof(VideoEncodeAV1TilesLayoutD3D12)
+        + sizeof(VideoEncodeAV1PostEncodeValuesD3D12);
+    BufferD3D12& resolvedMetadataReadbackD3D12 = (BufferD3D12&)resolvedMetadataReadback;
+    if (!IsVideoEncodeResolvedMetadataRangeValidD3D12(resolvedMetadataReadbackD3D12.GetDesc().size, resolvedMetadataOffset, requiredMetadataSize))
+        return Result::INVALID_ARGUMENT;
+
+    const void* metadata = resolvedMetadataReadbackD3D12.Map(resolvedMetadataOffset);
     if (!metadata)
         return Result::FAILURE;
 
@@ -2847,6 +2865,21 @@ static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolv
     info.picture.primaryReferenceName = VideoAV1ReferenceName::NONE;
     info.picture.currentFrameId = 0;
     info.picture.flags = VideoAV1PictureBits::ERROR_RESILIENT_MODE | VideoAV1PictureBits::FORCE_INTEGER_MV | VideoAV1PictureBits::SHOW_FRAME;
+    if (desc.referenceNum) {
+        std::array<uint8_t, 7> refFrameIndices = {};
+        for (uint32_t i = 0; i < refFrameIndices.size(); i++) {
+            if (post.referenceIndices[i] > std::numeric_limits<uint8_t>::max())
+                return Result::FAILURE;
+            refFrameIndices[i] = (uint8_t)post.referenceIndices[i];
+        }
+        if (post.primaryRefFrame > 7 || !video_av1::BuildInterFrameReferences(desc, refFrameIndices, info))
+            return Result::FAILURE;
+
+        info.picture.frameType = VideoEncodeFrameType::P;
+        info.picture.refreshFrameFlags = 0;
+        info.picture.primaryReferenceName = video_av1::GetReferenceNameFromReferenceIndex((uint32_t)post.primaryRefFrame);
+        info.picture.flags = VideoAV1PictureBits::SHOW_FRAME;
+    }
     if (post.quantizationDelta.deltaQPresent) {
         info.picture.flags |= VideoAV1PictureBits::DELTA_Q_PRESENT;
         info.picture.deltaQRes = (uint8_t)post.quantizationDelta.deltaQRes;
@@ -2905,6 +2938,7 @@ Result DeviceD3D12::FillFunctionTable(VideoInterface& table) const {
     table.GetVideoDecodePictureStates = ::GetVideoDecodePictureStates;
     table.GetVideoEncodePictureStates = ::GetVideoEncodePictureStates;
     table.WriteVideoAnnexBParameterSets = ::WriteVideoAnnexBParameterSets;
+    table.WriteVideoAnnexBEndOfStream = ::WriteVideoAnnexBEndOfStream;
     table.CmdDecodeVideo = ::CmdDecodeVideo;
     table.CmdEncodeVideo = ::CmdEncodeVideo;
     table.CmdResolveVideoEncodeFeedback = ::CmdResolveVideoEncodeFeedback;

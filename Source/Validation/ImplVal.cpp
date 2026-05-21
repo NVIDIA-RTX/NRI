@@ -1329,6 +1329,13 @@ static Result NRI_CALL WriteVideoAnnexBParameterSets(VideoAnnexBParameterSetsDes
     return WriteVideoAnnexBParameterSetsShared(annexBParameterSetsDesc);
 }
 
+static Result NRI_CALL WriteVideoAnnexBEndOfStream(VideoAnnexBEndOfStreamDesc& annexBEndOfStreamDesc) {
+    if (annexBEndOfStreamDesc.codec != VideoCodec::H264 && annexBEndOfStreamDesc.codec != VideoCodec::H265)
+        return Result::UNSUPPORTED;
+
+    return WriteVideoAnnexBEndOfStreamShared(annexBEndOfStreamDesc);
+}
+
 static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDecodeDesc& videoDecodeDesc) {
     CommandBufferVal& commandBufferVal = (CommandBufferVal&)commandBuffer;
 
@@ -1367,6 +1374,14 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
 
     if (videoEncodeDesc.rateControlDesc && !IsVideoEncodeRateControlDescValid(*videoEncodeDesc.rateControlDesc)) {
         NRI_REPORT_ERROR(&commandBufferVal.GetDevice(), "'rateControlDesc' is invalid");
+        return;
+    }
+    if ((videoEncodeDesc.flags & VideoEncodeBits::FORCE_KEY_FRAME) && videoEncodeDesc.referenceNum) {
+        NRI_REPORT_ERROR(&commandBufferVal.GetDevice(), "'FORCE_KEY_FRAME' requires 'referenceNum' to be 0");
+        return;
+    }
+    if (videoEncodeDesc.flags & VideoEncodeBits::END_OF_STREAM) {
+        NRI_REPORT_ERROR(&commandBufferVal.GetDevice(), "'END_OF_STREAM' must be serialized with 'WriteVideoAnnexBEndOfStream' after encode feedback is available");
         return;
     }
 
@@ -1430,6 +1445,7 @@ Result DeviceVal::FillFunctionTable(VideoInterface& table) const {
     table.GetVideoDecodePictureStates = ::GetVideoDecodePictureStates;
     table.GetVideoEncodePictureStates = ::GetVideoEncodePictureStates;
     table.WriteVideoAnnexBParameterSets = ::WriteVideoAnnexBParameterSets;
+    table.WriteVideoAnnexBEndOfStream = ::WriteVideoAnnexBEndOfStream;
     table.CmdDecodeVideo = ::CmdDecodeVideo;
     table.CmdEncodeVideo = ::CmdEncodeVideo;
     table.CmdResolveVideoEncodeFeedback = ::CmdResolveVideoEncodeFeedback;

@@ -70,6 +70,20 @@ struct VideoSessionParametersVK final : public DebugNameBase {
         return Result::SUCCESS;
     }
 
+    Result CreateNative(VideoSessionVK& session, const VkVideoSessionParametersCreateInfoKHR* nativeCreateInfo) {
+        const auto& vk = m_Device.GetDispatchTable();
+        if (!vk.CreateVideoSessionParametersKHR)
+            return Result::UNSUPPORTED;
+
+        m_Session = &session;
+
+        VkVideoSessionParametersCreateInfoKHR createInfo = GetVideoSessionParametersCreateInfoVK(session.m_Handle, nativeCreateInfo);
+        VkResult vkResult = vk.CreateVideoSessionParametersKHR(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateVideoSessionParametersKHR");
+
+        return Result::SUCCESS;
+    }
+
     Result Create(const VideoSessionParametersDesc& videoSessionParametersDesc) {
         if (!videoSessionParametersDesc.session)
             return Result::INVALID_ARGUMENT;

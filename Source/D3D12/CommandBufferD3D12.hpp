@@ -336,36 +336,32 @@ constexpr D3D12_RESOLVE_MODE GetResolveOp(ResolveOp resolveOp) {
     return g_ResolveOps[(size_t)resolveOp];
 }
 
-ID3D12CommandList* CommandBufferD3D12::GetCommandList() const {
-    if (std::holds_alternative<ComPtr<ID3D12GraphicsCommandListBest>>(m_CommandList))
-        return std::get<ComPtr<ID3D12GraphicsCommandListBest>>(m_CommandList).GetInterface();
-
-    if (std::holds_alternative<ComPtr<ID3D12VideoDecodeCommandList>>(m_CommandList))
-        return std::get<ComPtr<ID3D12VideoDecodeCommandList>>(m_CommandList).GetInterface();
-
-    return std::get<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList).GetInterface();
+ID3D12GraphicsCommandListBest* CommandBufferD3D12::GetGraphicsCommandList() const {
+    NRI_CHECK(m_CommandListType == D3D12_COMMAND_LIST_TYPE_DIRECT || m_CommandListType == D3D12_COMMAND_LIST_TYPE_COMPUTE || m_CommandListType == D3D12_COMMAND_LIST_TYPE_COPY, "Unexpected command list type");
+    return static_cast<ID3D12GraphicsCommandListBest*>(m_CommandList.GetInterface());
 }
 
-ID3D12GraphicsCommandListBest* CommandBufferD3D12::GetGraphicsCommandList() const {
-    return std::get<ComPtr<ID3D12GraphicsCommandListBest>>(m_CommandList).GetInterface();
+ID3D12VideoDecodeCommandList* CommandBufferD3D12::GetVideoDecodeCommandList() const {
+    NRI_CHECK(m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE, "Unexpected command list type");
+    return static_cast<ID3D12VideoDecodeCommandList*>(m_CommandList.GetInterface());
+}
+
+ID3D12VideoEncodeCommandList* CommandBufferD3D12::GetVideoEncodeCommandList() const {
+    NRI_CHECK(m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE, "Unexpected command list type");
+    return static_cast<ID3D12VideoEncodeCommandList*>(m_CommandList.GetInterface());
 }
 
 void CommandBufferD3D12::ResourceBarrier(uint32_t barrierNum, const D3D12_RESOURCE_BARRIER* barriers) const {
-    if (std::holds_alternative<ComPtr<ID3D12VideoDecodeCommandList>>(m_CommandList)) {
-        std::get<ComPtr<ID3D12VideoDecodeCommandList>>(m_CommandList)->ResourceBarrier(barrierNum, barriers);
-        return;
-    }
-
-    if (std::holds_alternative<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList)) {
-        std::get<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList)->ResourceBarrier(barrierNum, barriers);
-        return;
-    }
-
-    GetGraphicsCommandList()->ResourceBarrier(barrierNum, barriers);
+    if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE)
+        GetVideoDecodeCommandList()->ResourceBarrier(barrierNum, barriers);
+    else if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE)
+        GetVideoEncodeCommandList()->ResourceBarrier(barrierNum, barriers);
+    else
+        GetGraphicsCommandList()->ResourceBarrier(barrierNum, barriers);
 }
 
 void CommandBufferD3D12::SetDebugName(const char* name) {
-    NRI_SET_D3D_DEBUG_OBJECT_NAME(GetCommandList(), name);
+    NRI_SET_D3D_DEBUG_OBJECT_NAME(m_CommandList.GetInterface(), name);
 }
 
 Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D12CommandAllocator* commandAllocator) {
@@ -379,7 +375,7 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
         hr = videoDecodeCommandList->Close();
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDecodeCommandList::Close");
 
-        m_CommandList.emplace<ComPtr<ID3D12VideoDecodeCommandList>>(videoDecodeCommandList);
+        m_CommandList = videoDecodeCommandList.GetInterface();
     } else if (commandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE) {
         ComPtr<ID3D12VideoEncodeCommandList2> videoEncodeCommandList;
         HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, IID_PPV_ARGS(&videoEncodeCommandList));
@@ -388,7 +384,7 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
         hr = videoEncodeCommandList->Close();
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoEncodeCommandList::Close");
 
-        m_CommandList.emplace<ComPtr<ID3D12VideoEncodeCommandList>>(videoEncodeCommandList.GetInterface());
+        m_CommandList = videoEncodeCommandList.GetInterface();
     } else {
         ComPtr<ID3D12GraphicsCommandListBest> graphicsCommandList;
         HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&graphicsCommandList);
@@ -401,7 +397,7 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
         hr = graphicsCommandListBest->Close();
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::Close");
 
-        m_CommandList.emplace<ComPtr<ID3D12GraphicsCommandListBest>>(graphicsCommandListBest);
+        m_CommandList = graphicsCommandListBest.GetInterface();
     }
 
     m_CommandAllocator = commandAllocator;
@@ -420,23 +416,23 @@ Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferD3D
     // TODO: what if opened?
 
     m_CommandAllocator = commandBufferD3D12Desc.d3d12CommandAllocator;
-    m_CommandList.emplace<ComPtr<ID3D12GraphicsCommandListBest>>(graphicsCommandListBest);
+    m_CommandList = graphicsCommandListBest.GetInterface();
     m_CommandListType = graphicsCommandListBest->GetType();
 
     return Result::SUCCESS;
 }
 
 NRI_INLINE Result CommandBufferD3D12::Begin(const DescriptorPool* descriptorPool) {
-    if (std::holds_alternative<ComPtr<ID3D12VideoDecodeCommandList>>(m_CommandList)) {
-        ID3D12VideoDecodeCommandList* videoDecodeCommandList = std::get<ComPtr<ID3D12VideoDecodeCommandList>>(m_CommandList).GetInterface();
+    if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE) {
+        ID3D12VideoDecodeCommandList* videoDecodeCommandList = GetVideoDecodeCommandList();
         HRESULT hr = videoDecodeCommandList->Reset(m_CommandAllocator);
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDecodeCommandList::Reset");
 
         return Result::SUCCESS;
     }
 
-    if (std::holds_alternative<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList)) {
-        ID3D12VideoEncodeCommandList* videoEncodeCommandList = std::get<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList).GetInterface();
+    if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE) {
+        ID3D12VideoEncodeCommandList* videoEncodeCommandList = GetVideoEncodeCommandList();
         HRESULT hr = videoEncodeCommandList->Reset(m_CommandAllocator);
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoEncodeCommandList::Reset");
 
@@ -459,12 +455,12 @@ NRI_INLINE Result CommandBufferD3D12::Begin(const DescriptorPool* descriptorPool
 
 NRI_INLINE Result CommandBufferD3D12::End() {
     HRESULT hr = S_OK;
-    if (std::holds_alternative<ComPtr<ID3D12VideoDecodeCommandList>>(m_CommandList)) {
-        ID3D12VideoDecodeCommandList* videoDecodeCommandList = std::get<ComPtr<ID3D12VideoDecodeCommandList>>(m_CommandList).GetInterface();
+    if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE) {
+        ID3D12VideoDecodeCommandList* videoDecodeCommandList = GetVideoDecodeCommandList();
         hr = videoDecodeCommandList->Close();
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDecodeCommandList::Close");
-    } else if (std::holds_alternative<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList)) {
-        ID3D12VideoEncodeCommandList* videoEncodeCommandList = std::get<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList).GetInterface();
+    } else if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE) {
+        ID3D12VideoEncodeCommandList* videoEncodeCommandList = GetVideoEncodeCommandList();
         hr = videoEncodeCommandList->Close();
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoEncodeCommandList::Close");
     } else {
@@ -476,12 +472,12 @@ NRI_INLINE Result CommandBufferD3D12::End() {
 }
 
 NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeD3D12Desc& desc) {
-    if (!std::holds_alternative<ComPtr<ID3D12VideoDecodeCommandList>>(m_CommandList)) {
+    if (m_CommandListType != D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE) {
         NRI_REPORT_ERROR(&m_Device, "The command buffer is not a D3D12 video decode command list");
         return;
     }
 
-    ID3D12VideoDecodeCommandList* commandList = std::get<ComPtr<ID3D12VideoDecodeCommandList>>(m_CommandList).GetInterface();
+    ID3D12VideoDecodeCommandList* commandList = GetVideoDecodeCommandList();
     commandList->DecodeFrame(
         (ID3D12VideoDecoder*)desc.d3d12Decoder,
         (D3D12_VIDEO_DECODE_OUTPUT_STREAM_ARGUMENTS*)desc.d3d12OutputArguments,
@@ -489,7 +485,7 @@ NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeD3D12Desc& desc
 }
 
 NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeD3D12Desc& desc) {
-    if (!std::holds_alternative<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList)) {
+    if (m_CommandListType != D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE) {
         NRI_REPORT_ERROR(&m_Device, "The command buffer is not a D3D12 video encode command list");
         return;
     }
@@ -497,7 +493,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeD3D12Desc& desc
 #if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
     if (desc.d3d12InputArguments1 && desc.d3d12OutputArguments1) {
         ComPtr<ID3D12VideoEncodeCommandList4> commandList;
-        HRESULT hr = std::get<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList)->QueryInterface(IID_PPV_ARGS(&commandList));
+        HRESULT hr = GetVideoEncodeCommandList()->QueryInterface(IID_PPV_ARGS(&commandList));
         if (FAILED(hr)) {
             NRI_REPORT_ERROR(&m_Device, "ID3D12VideoEncodeCommandList4 is not supported");
             return;
@@ -535,7 +531,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeD3D12Desc& desc
 #endif
 
     ComPtr<ID3D12VideoEncodeCommandList2> commandList;
-    HRESULT hr = std::get<ComPtr<ID3D12VideoEncodeCommandList>>(m_CommandList)->QueryInterface(IID_PPV_ARGS(&commandList));
+    HRESULT hr = GetVideoEncodeCommandList()->QueryInterface(IID_PPV_ARGS(&commandList));
     if (FAILED(hr)) {
         NRI_REPORT_ERROR(&m_Device, "ID3D12VideoEncodeCommandList2 is not supported");
         return;
@@ -1210,7 +1206,7 @@ NRI_INLINE void CommandBufferD3D12::DispatchIndirect(const Buffer& buffer, uint6
 
 NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-    if (m_Device.GetDesc().features.enhancedBarriers && std::holds_alternative<ComPtr<ID3D12GraphicsCommandListBest>>(m_CommandList)) {
+    if (m_Device.GetDesc().features.enhancedBarriers && m_CommandListType != D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE && m_CommandListType != D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE) {
         // Count
         uint32_t barrierNum = barrierDesc.globalNum + barrierDesc.bufferNum + barrierDesc.textureNum;
         if (!barrierNum)

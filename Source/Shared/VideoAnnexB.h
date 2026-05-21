@@ -5,23 +5,59 @@
 #include "Extensions/NRIVideo.h"
 
 #include <algorithm>
-#include <cstring>
-#include <vector>
 
 namespace nri {
 
 namespace video_annex_b {
 
-struct BitWriter {
-    std::vector<uint8_t> bytes;
+struct ByteWriter {
+    uint8_t* dst;
+    uint64_t dstSize;
+    uint64_t writtenSize = 0;
+    bool overflow = false;
+
+    void WriteByte(uint8_t byte) {
+        if (dst) {
+            if (writtenSize < dstSize)
+                dst[writtenSize] = byte;
+            else
+                overflow = true;
+        }
+        writtenSize++;
+    }
+
+    Result Finish(uint64_t& size) const {
+        size = writtenSize;
+        return overflow ? Result::INVALID_ARGUMENT : Result::SUCCESS;
+    }
+};
+
+struct RbspBitWriter {
+    ByteWriter& bytes;
+    uint32_t zeroRun = 0;
+    uint8_t byte = 0;
     uint8_t bitCount = 0;
+
+    void WriteRbspByte(uint8_t value) {
+        if (zeroRun >= 2 && value <= 3) {
+            bytes.WriteByte(3);
+            zeroRun = 0;
+        }
+
+        bytes.WriteByte(value);
+        zeroRun = value == 0 ? zeroRun + 1 : 0;
+    }
 
     void WriteBit(uint32_t bit) {
         if (bitCount == 0)
-            bytes.push_back(0);
+            byte = 0;
         if (bit & 1)
-            bytes.back() |= uint8_t(1u << (7u - bitCount));
-        bitCount = (bitCount + 1) & 7u;
+            byte |= uint8_t(1u << (7u - bitCount));
+        bitCount++;
+        if (bitCount == 8) {
+            WriteRbspByte(byte);
+            bitCount = 0;
+        }
     }
 
     void WriteBits(uint64_t value, uint32_t count) {
@@ -51,28 +87,24 @@ struct BitWriter {
     }
 };
 
-inline void AppendNalRbsp(std::vector<uint8_t>& bytes, const std::vector<uint8_t>& rbsp) {
-    uint32_t zeroRun = 0;
-    for (uint8_t byte : rbsp) {
-        if (zeroRun >= 2 && byte <= 3) {
-            bytes.push_back(3);
-            zeroRun = 0;
-        }
-
-        bytes.push_back(byte);
-        zeroRun = byte == 0 ? zeroRun + 1 : 0;
-    }
+inline void AppendH264NalHeader(ByteWriter& bytes, uint8_t nalHeader) {
+    bytes.WriteByte(0);
+    bytes.WriteByte(0);
+    bytes.WriteByte(0);
+    bytes.WriteByte(1);
+    bytes.WriteByte(nalHeader);
 }
 
-inline void AppendH264NalHeader(std::vector<uint8_t>& bytes, uint8_t nalHeader) {
-    bytes.insert(bytes.end(), {0, 0, 0, 1, nalHeader});
+inline void AppendH265NalHeader(ByteWriter& bytes, uint8_t nalUnitType) {
+    bytes.WriteByte(0);
+    bytes.WriteByte(0);
+    bytes.WriteByte(0);
+    bytes.WriteByte(1);
+    bytes.WriteByte(uint8_t(nalUnitType << 1));
+    bytes.WriteByte(1);
 }
 
-inline void AppendH265NalHeader(std::vector<uint8_t>& bytes, uint8_t nalUnitType) {
-    bytes.insert(bytes.end(), {0, 0, 0, 1, uint8_t(nalUnitType << 1), 1});
-}
-
-inline void WriteH265ProfileTierLevel(BitWriter& writer, const VideoH265ProfileTierLevelDesc& desc, uint8_t maxSubLayersMinus1) {
+inline void WriteH265ProfileTierLevel(RbspBitWriter& writer, const VideoH265ProfileTierLevelDesc& desc, uint8_t maxSubLayersMinus1) {
     writer.WriteBits(0, 2); // general_profile_space
     writer.WriteBit(!!(desc.flags & VideoH265ProfileTierLevelBits::TIER));
     writer.WriteBits(desc.generalProfileIdc, 5);
@@ -99,7 +131,7 @@ inline void WriteH265ProfileTierLevel(BitWriter& writer, const VideoH265ProfileT
     }
 }
 
-inline void WriteH265SubLayerOrdering(BitWriter& writer, const VideoH265DecPicBufMgrDesc& desc, uint8_t maxSubLayersMinus1, bool allSubLayers) {
+inline void WriteH265SubLayerOrdering(RbspBitWriter& writer, const VideoH265DecPicBufMgrDesc& desc, uint8_t maxSubLayersMinus1, bool allSubLayers) {
     const uint32_t firstLayer = allSubLayers ? 0 : maxSubLayersMinus1;
     for (uint32_t i = firstLayer; i <= maxSubLayersMinus1; i++) {
         writer.WriteUe(desc.maxDecPicBufferingMinus1[i]);
@@ -108,7 +140,7 @@ inline void WriteH265SubLayerOrdering(BitWriter& writer, const VideoH265DecPicBu
     }
 }
 
-inline Result WriteH264AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& desc, std::vector<uint8_t>& headers) {
+inline Result WriteH264AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& desc, ByteWriter& bytes) {
     if (!desc.h264Sps || !desc.h264Pps)
         return Result::INVALID_ARGUMENT;
 
@@ -118,8 +150,8 @@ inline Result WriteH264AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& d
     if (!highProfileSps || (pps.flags & VideoH264PictureParameterSetBits::TRANSFORM_8X8_MODE) != 0)
         return Result::UNSUPPORTED;
 
-    AppendH264NalHeader(headers, 0x67);
-    BitWriter spsWriter;
+    AppendH264NalHeader(bytes, 0x67);
+    RbspBitWriter spsWriter {bytes};
     spsWriter.WriteBits(sps.profileIdc, 8);
     spsWriter.WriteBit(!!(sps.flags & VideoH264SequenceParameterSetBits::CONSTRAINT_SET0));
     spsWriter.WriteBit(!!(sps.flags & VideoH264SequenceParameterSetBits::CONSTRAINT_SET1));
@@ -148,10 +180,9 @@ inline Result WriteH264AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& d
     spsWriter.WriteBit(0);
     spsWriter.WriteBit(0);
     spsWriter.FinishRbsp();
-    AppendNalRbsp(headers, spsWriter.bytes);
 
-    AppendH264NalHeader(headers, 0x68);
-    BitWriter ppsWriter;
+    AppendH264NalHeader(bytes, 0x68);
+    RbspBitWriter ppsWriter {bytes};
     ppsWriter.WriteUe(pps.pictureParameterSetId);
     ppsWriter.WriteUe(pps.sequenceParameterSetId);
     ppsWriter.WriteBit(!!(pps.flags & VideoH264PictureParameterSetBits::ENTROPY_CODING_MODE));
@@ -168,12 +199,11 @@ inline Result WriteH264AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& d
     ppsWriter.WriteBit(!!(pps.flags & VideoH264PictureParameterSetBits::CONSTRAINED_INTRA_PRED));
     ppsWriter.WriteBit(!!(pps.flags & VideoH264PictureParameterSetBits::REDUNDANT_PIC_CNT_PRESENT));
     ppsWriter.FinishRbsp();
-    AppendNalRbsp(headers, ppsWriter.bytes);
 
     return Result::SUCCESS;
 }
 
-inline Result WriteH265AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& desc, std::vector<uint8_t>& headers) {
+inline Result WriteH265AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& desc, ByteWriter& bytes) {
     if (!desc.h265Vps || !desc.h265Sps || !desc.h265Pps)
         return Result::INVALID_ARGUMENT;
 
@@ -183,8 +213,8 @@ inline Result WriteH265AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& d
     const uint8_t vpsMaxSubLayersMinus1 = std::min<uint8_t>(vps.maxSubLayersMinus1, 7);
     const uint8_t spsMaxSubLayersMinus1 = std::min<uint8_t>(sps.maxSubLayersMinus1, 7);
 
-    AppendH265NalHeader(headers, 32);
-    BitWriter vpsWriter;
+    AppendH265NalHeader(bytes, 32);
+    RbspBitWriter vpsWriter {bytes};
     vpsWriter.WriteBits(vps.videoParameterSetId, 4);
     vpsWriter.WriteBit(1);
     vpsWriter.WriteBit(1);
@@ -211,10 +241,9 @@ inline Result WriteH265AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& d
     }
     vpsWriter.WriteBit(0);
     vpsWriter.FinishRbsp();
-    AppendNalRbsp(headers, vpsWriter.bytes);
 
-    AppendH265NalHeader(headers, 33);
-    BitWriter spsWriter;
+    AppendH265NalHeader(bytes, 33);
+    RbspBitWriter spsWriter {bytes};
     spsWriter.WriteBits(sps.videoParameterSetId, 4);
     spsWriter.WriteBits(spsMaxSubLayersMinus1, 3);
     spsWriter.WriteBit(!!(sps.flags & VideoH265SequenceParameterSetBits::TEMPORAL_ID_NESTING));
@@ -271,10 +300,9 @@ inline Result WriteH265AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& d
         return Result::UNSUPPORTED;
     spsWriter.WriteBit(0);
     spsWriter.FinishRbsp();
-    AppendNalRbsp(headers, spsWriter.bytes);
 
-    AppendH265NalHeader(headers, 34);
-    BitWriter ppsWriter;
+    AppendH265NalHeader(bytes, 34);
+    RbspBitWriter ppsWriter {bytes};
     ppsWriter.WriteUe(pps.pictureParameterSetId);
     ppsWriter.WriteUe(pps.sequenceParameterSetId);
     ppsWriter.WriteBit(!!(pps.flags & VideoH265PictureParameterSetBits::DEPENDENT_SLICE_SEGMENTS_ENABLED));
@@ -321,34 +349,88 @@ inline Result WriteH265AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& d
     ppsWriter.WriteBit(!!(pps.flags & VideoH265PictureParameterSetBits::SLICE_SEGMENT_HEADER_EXTENSION_PRESENT));
     ppsWriter.WriteBit(0);
     ppsWriter.FinishRbsp();
-    AppendNalRbsp(headers, ppsWriter.bytes);
 
+    return Result::SUCCESS;
+}
+
+inline Result WriteH264AnnexBEndOfStream(ByteWriter& bytes) {
+    AppendH264NalHeader(bytes, 10);
+    bytes.WriteByte(0x80);
+    AppendH264NalHeader(bytes, 11);
+    bytes.WriteByte(0x80);
+    return Result::SUCCESS;
+}
+
+inline Result WriteH265AnnexBEndOfStream(ByteWriter& bytes) {
+    AppendH265NalHeader(bytes, 36);
+    bytes.WriteByte(0x80);
+    AppendH265NalHeader(bytes, 37);
+    bytes.WriteByte(0x80);
     return Result::SUCCESS;
 }
 
 } // namespace video_annex_b
 
 inline Result WriteVideoAnnexBParameterSetsShared(VideoAnnexBParameterSetsDesc& desc) {
-    std::vector<uint8_t> headers;
+    video_annex_b::ByteWriter byteCounter = {};
     Result result = Result::UNSUPPORTED;
 
     if (desc.codec == VideoCodec::H264)
-        result = video_annex_b::WriteH264AnnexBParameterSets(desc, headers);
+        result = video_annex_b::WriteH264AnnexBParameterSets(desc, byteCounter);
     else if (desc.codec == VideoCodec::H265)
-        result = video_annex_b::WriteH265AnnexBParameterSets(desc, headers);
+        result = video_annex_b::WriteH265AnnexBParameterSets(desc, byteCounter);
 
     if (result != Result::SUCCESS)
         return result;
 
-    desc.writtenSize = headers.size();
+    desc.writtenSize = byteCounter.writtenSize;
     if (!desc.dst)
         return Result::SUCCESS;
 
-    if (desc.dstSize < headers.size())
+    if (desc.dstSize < byteCounter.writtenSize)
         return Result::INVALID_ARGUMENT;
 
-    std::memcpy(desc.dst, headers.data(), headers.size());
-    return Result::SUCCESS;
+    video_annex_b::ByteWriter byteWriter = {desc.dst, desc.dstSize};
+    if (desc.codec == VideoCodec::H264)
+        result = video_annex_b::WriteH264AnnexBParameterSets(desc, byteWriter);
+    else
+        result = video_annex_b::WriteH265AnnexBParameterSets(desc, byteWriter);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    return byteWriter.Finish(desc.writtenSize);
+}
+
+inline Result WriteVideoAnnexBEndOfStreamShared(VideoAnnexBEndOfStreamDesc& desc) {
+    video_annex_b::ByteWriter byteCounter = {};
+    Result result = Result::UNSUPPORTED;
+
+    if (desc.codec == VideoCodec::H264)
+        result = video_annex_b::WriteH264AnnexBEndOfStream(byteCounter);
+    else if (desc.codec == VideoCodec::H265)
+        result = video_annex_b::WriteH265AnnexBEndOfStream(byteCounter);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    desc.writtenSize = byteCounter.writtenSize;
+    if (!desc.dst)
+        return Result::SUCCESS;
+
+    if (desc.dstSize < byteCounter.writtenSize)
+        return Result::INVALID_ARGUMENT;
+
+    video_annex_b::ByteWriter byteWriter = {desc.dst, desc.dstSize};
+    if (desc.codec == VideoCodec::H264)
+        result = video_annex_b::WriteH264AnnexBEndOfStream(byteWriter);
+    else
+        result = video_annex_b::WriteH265AnnexBEndOfStream(byteWriter);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    return byteWriter.Finish(desc.writtenSize);
 }
 
 } // namespace nri
