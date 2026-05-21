@@ -24,14 +24,7 @@ struct VideoPictureD3D12 final : public DebugNameBase {
     // NRI
     //================================================================================================================
 
-    Result Create(const VideoPictureDesc& videoPictureDesc) {
-        if (!videoPictureDesc.texture)
-            return Result::INVALID_ARGUMENT;
-
-        m_Texture = (TextureD3D12*)videoPictureDesc.texture;
-        m_Subresource = videoPictureDesc.subresource;
-        return Result::SUCCESS;
-    }
+    Result Create(const VideoPictureDesc& videoPictureDesc);
 
     DeviceD3D12& m_Device;
     TextureD3D12* m_Texture = nullptr;

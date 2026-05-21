@@ -20,6 +20,9 @@
 #include "QueueVal.h"
 #include "SwapChainVal.h"
 #include "TextureVal.h"
+#include "VideoSessionVal.h"
+#include "VideoSessionParametersVal.h"
+#include "VideoPictureVal.h"
 
 #include "../Shared/VideoAnnexB.h"
 
@@ -49,6 +52,9 @@ using namespace nri;
 #include "QueueVal.hpp"
 #include "SwapChainVal.hpp"
 #include "TextureVal.hpp"
+#include "VideoSessionVal.hpp"
+#include "VideoSessionParametersVal.hpp"
+#include "VideoPictureVal.hpp"
 
 DeviceBase* CreateDeviceValidation(const DeviceCreationDesc& desc, DeviceBase& device) {
     DeviceVal* deviceVal = Allocate<DeviceVal>(desc.allocationCallbacks, desc.callbackInterface, desc.allocationCallbacks, device);
@@ -1202,36 +1208,6 @@ Result DeviceVal::FillFunctionTable(RayTracingInterface& table) const {
 
 //============================================================================================================================================================================================
 #pragma region[  Video  ]
-
-struct VideoSessionVal final : public ObjectVal {
-    inline VideoSessionVal(DeviceVal& device, VideoSession* impl)
-        : ObjectVal(device, (Object*)impl) {
-    }
-
-    inline VideoSession* GetImpl() const {
-        return (VideoSession*)m_Impl;
-    }
-};
-
-struct VideoSessionParametersVal final : public ObjectVal {
-    inline VideoSessionParametersVal(DeviceVal& device, VideoSessionParameters* impl)
-        : ObjectVal(device, (Object*)impl) {
-    }
-
-    inline VideoSessionParameters* GetImpl() const {
-        return (VideoSessionParameters*)m_Impl;
-    }
-};
-
-struct VideoPictureVal final : public ObjectVal {
-    inline VideoPictureVal(DeviceVal& device, VideoPicture* impl)
-        : ObjectVal(device, (Object*)impl) {
-    }
-
-    inline VideoPicture* GetImpl() const {
-        return (VideoPicture*)m_Impl;
-    }
-};
 
 static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSessionDesc& videoSessionDesc, VideoCapabilities& videoCapabilities) {
     const DeviceVal& deviceVal = (const DeviceVal&)device;
