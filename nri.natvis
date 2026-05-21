@@ -56,6 +56,9 @@
     <Type Name="NriPipeline">
         <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
+    <Type Name="NriPipelineCache">
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
+    </Type>
     <Type Name="NriQueryPool">
         <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
@@ -145,6 +148,9 @@
         </Expand>
     </Type>
     <Type Name="nri::Pipeline">
+        <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
+    </Type>
+    <Type Name="nri::PipelineCache">
         <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
     <Type Name="nri::QueryPool">

@@ -185,6 +185,8 @@ struct DispatchTable {
     VK_FUNC(GetRayTracingShaderGroupHandlesKHR);          // + | +
     VK_FUNC(CmdTraceRaysKHR);                             // - | +
     VK_FUNC(CmdTraceRaysIndirect2KHR);                    // - | +
+                                                          // VK_EXT_calibrated_timestamps
+    VK_FUNC(GetCalibratedTimestampsEXT);                  // + | +
                                                           // VK_EXT_opacity_micromap
     VK_FUNC(CreateMicromapEXT);                           // + | +
     VK_FUNC(DestroyMicromapEXT);                          // - | +

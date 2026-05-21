@@ -48,6 +48,11 @@ NRI_INLINE void QueueD3D12::Annotation(const char* name, uint32_t bgra) {
         PIXSetMarker(m_Queue, bgra, name);
 }
 
+NRI_INLINE void QueueD3D12::GetCalibratedTimestamps(uint64_t& timestampGPU, uint64_t& timestampCPU) {
+    HRESULT hr = m_Queue->GetClockCalibration(&timestampGPU, &timestampCPU);
+    NRI_RETURN_VOID_ON_BAD_HRESULT(&m_Device, hr, "GetClockCalibration");
+}
+
 NRI_INLINE Result QueueD3D12::Submit(const QueueSubmitDesc& queueSubmitDesc) {
     for (uint32_t i = 0; i < queueSubmitDesc.waitFenceNum; i++) {
         const FenceSubmitDesc& fenceSubmitDesc = queueSubmitDesc.waitFences[i];

@@ -587,6 +587,11 @@ static void NRI_CALL QueueEndAnnotation(Queue&) {
 static void NRI_CALL QueueAnnotation(Queue&, const char*, uint32_t) {
 }
 
+static void NRI_CALL GetCalibratedTimestamps(Queue&, uint64_t& timestampGPU, uint64_t& timestampCPU) {
+    timestampGPU = 0;
+    timestampCPU = 0;
+}
+
 static void NRI_CALL ResetQueries(QueryPool&, uint32_t, uint32_t) {
 }
 
@@ -750,6 +755,7 @@ Result DeviceNONE::FillFunctionTable(CoreInterface& table) const {
     table.QueueBeginAnnotation = ::QueueBeginAnnotation;
     table.QueueEndAnnotation = ::QueueEndAnnotation;
     table.QueueAnnotation = ::QueueAnnotation;
+    table.GetCalibratedTimestamps = ::GetCalibratedTimestamps;
     table.ResetQueries = ::ResetQueries;
     table.QueueSubmit = ::QueueSubmit;
     table.QueueWaitIdle = ::QueueWaitIdle;

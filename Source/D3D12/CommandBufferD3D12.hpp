@@ -296,16 +296,16 @@ static inline void ConvertRects(const Rect* in, uint32_t rectNum, D3D12_RECT* ou
 }
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-static inline void FillResolveBarrier(DescriptorD3D12& descriptor, PlaneBits planeBits, D3D12_TEXTURE_BARRIER& textureBarrier) {
+static inline void FillResolveBarrier(bool isSource, DescriptorD3D12& descriptor, PlaneBits planeBits, D3D12_TEXTURE_BARRIER& textureBarrier) {
     const TexViewDesc& srcDesc = descriptor.GetTexViewDesc();
 
     textureBarrier = {};
     textureBarrier.SyncBefore = D3D12_BARRIER_SYNC_RENDER_TARGET;
     textureBarrier.SyncAfter = D3D12_BARRIER_SYNC_RESOLVE;
     textureBarrier.AccessBefore = D3D12_BARRIER_ACCESS_RENDER_TARGET;
-    textureBarrier.AccessAfter = D3D12_BARRIER_ACCESS_RESOLVE_SOURCE;
+    textureBarrier.AccessAfter = isSource ? D3D12_BARRIER_ACCESS_RESOLVE_SOURCE : D3D12_BARRIER_ACCESS_RESOLVE_DEST;
     textureBarrier.LayoutBefore = D3D12_BARRIER_LAYOUT_RENDER_TARGET;
-    textureBarrier.LayoutAfter = D3D12_BARRIER_LAYOUT_RESOLVE_SOURCE;
+    textureBarrier.LayoutAfter = isSource ? D3D12_BARRIER_LAYOUT_RESOLVE_SOURCE : D3D12_BARRIER_LAYOUT_RESOLVE_DEST;
     textureBarrier.pResource = descriptor.GetResource();
     textureBarrier.Subresources.IndexOrFirstMipLevel = srcDesc.mipOffset;
     textureBarrier.Subresources.NumMipLevels = 1;
@@ -316,12 +316,12 @@ static inline void FillResolveBarrier(DescriptorD3D12& descriptor, PlaneBits pla
 }
 #endif
 
-static inline void FillLegacyResolveBarrier(DescriptorD3D12& descriptor, uint32_t subresource, D3D12_RESOURCE_BARRIER& resourceBarrier) {
+static inline void FillLegacyResolveBarrier(bool isSource, DescriptorD3D12& descriptor, uint32_t subresource, D3D12_RESOURCE_BARRIER& resourceBarrier) {
     resourceBarrier = {};
     resourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     resourceBarrier.Transition.pResource = descriptor.GetResource();
     resourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-    resourceBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+    resourceBarrier.Transition.StateAfter = isSource ? D3D12_RESOURCE_STATE_RESOLVE_SOURCE : D3D12_RESOURCE_STATE_RESOLVE_DEST;
     resourceBarrier.Transition.Subresource = subresource;
 }
 
@@ -763,10 +763,10 @@ NRI_INLINE void CommandBufferD3D12::EndRendering() {
             resourceBarrierNum += srcDesc.layerNum;
         }
     }
-    Scratch<D3D12_RESOURCE_BARRIER> resourceBarriers = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_RESOURCE_BARRIER, resourceBarrierNum);
+    Scratch<D3D12_RESOURCE_BARRIER> resourceBarriers = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_RESOURCE_BARRIER, resourceBarrierNum * 2);
     uint32_t barrierNum = 0;
 
-    constexpr uint32_t attachmentNum = D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT + 2;
+    constexpr uint32_t attachmentNum = (D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT + 2) * 2; // (colors, depth and stencil) x (src and dst)
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
     std::array<D3D12_TEXTURE_BARRIER, attachmentNum> textureBarriers = {};
 
@@ -790,24 +790,33 @@ NRI_INLINE void CommandBufferD3D12::EndRendering() {
             continue;
 
         DescriptorD3D12* resolveSrc = attachmentDesc->attachment;
+        DescriptorD3D12* resolveDst = attachmentDesc->resolveDst;
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-        if (m_Device.GetDesc().features.enhancedBarriers)
-            FillResolveBarrier(*resolveSrc, planeBits, textureBarriers[barrierNum++]);
+        if (m_Device.GetDesc().features.enhancedBarriers) {
+            FillResolveBarrier(true, *resolveSrc, planeBits, textureBarriers[barrierNum++]);
+            FillResolveBarrier(false, *resolveDst, planeBits, textureBarriers[barrierNum++]);
+        }
         else
 #endif
         {
             const TexViewDesc& srcDesc = resolveSrc->GetTexViewDesc();
-            D3D12_RESOURCE_DESC resourceDesc = resolveSrc->GetResource()->GetDesc();
+            D3D12_RESOURCE_DESC srcResourceDesc = resolveSrc->GetResource()->GetDesc();
+
+            const TexViewDesc& dstDesc = resolveDst->GetTexViewDesc();
+            D3D12_RESOURCE_DESC dstResourceDesc = resolveDst->GetResource()->GetDesc();
 
             for (uint32_t layer = 0; layer < srcDesc.layerNum; layer++) {
-                uint32_t srcSubresource = GetSubresourceIndex(srcDesc.layerOffset + layer, resourceDesc.DepthOrArraySize, srcDesc.mipOffset, resourceDesc.MipLevels, planeBits);
-                FillLegacyResolveBarrier(*resolveSrc, srcSubresource, resourceBarriers[barrierNum++]);
+                uint32_t srcSubresource = GetSubresourceIndex(srcDesc.layerOffset + layer, srcResourceDesc.DepthOrArraySize, srcDesc.mipOffset, srcResourceDesc.MipLevels, planeBits);
+                FillLegacyResolveBarrier(true, *resolveSrc, srcSubresource, resourceBarriers[barrierNum++]);
+
+                uint32_t dstSubresource = GetSubresourceIndex(dstDesc.layerOffset + layer, dstResourceDesc.DepthOrArraySize, dstDesc.mipOffset, dstResourceDesc.MipLevels, planeBits);
+                FillLegacyResolveBarrier(false, *resolveDst, dstSubresource, resourceBarriers[barrierNum++]);
             }
         }
     }
 
     if (barrierNum) {
-        // Barriers to "RESOLVE_SOURCE"
+        // Barriers to "RESOLVE" state
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
         barrierGroup.NumBarriers = barrierNum;
         if (m_Device.GetDesc().features.enhancedBarriers)

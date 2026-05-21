@@ -523,6 +523,10 @@ static uint32_t NRI_CALL GetQuerySize(const QueryPool& queryPool) {
     return ((QueryPoolVK&)queryPool).GetQuerySize();
 }
 
+static void NRI_CALL GetCalibratedTimestamps(Queue& queue, uint64_t& timestampGPU, uint64_t& timestampCPU) {
+    ((QueueVK&)queue).GetCalibratedTimestamps(timestampGPU, timestampCPU);
+}
+
 static Result NRI_CALL QueueSubmit(Queue& queue, const QueueSubmitDesc& workSubmissionDesc) {
     return ((QueueVK&)queue).Submit(workSubmissionDesc);
 }
@@ -643,7 +647,6 @@ Result DeviceVK::FillFunctionTable(CoreInterface& table) const {
     table.GetBufferDesc = ::GetBufferDesc;
     table.GetTextureDesc = ::GetTextureDesc;
     table.GetFormatSupport = ::GetFormatSupport;
-    table.GetQuerySize = ::GetQuerySize;
     table.GetFenceValue = ::GetFenceValue;
     table.GetDescriptorSetOffsets = ::GetDescriptorSetOffsets;
     table.GetQueue = ::GetQueue;
@@ -735,6 +738,8 @@ Result DeviceVK::FillFunctionTable(CoreInterface& table) const {
     table.QueueEndAnnotation = ::QueueEndAnnotation;
     table.QueueAnnotation = ::QueueAnnotation;
     table.ResetQueries = ::ResetQueries;
+    table.GetQuerySize = ::GetQuerySize;
+    table.GetCalibratedTimestamps = ::GetCalibratedTimestamps;
     table.QueueSubmit = ::QueueSubmit;
     table.QueueWaitIdle = ::QueueWaitIdle;
     table.DeviceWaitIdle = ::DeviceWaitIdle;

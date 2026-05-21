@@ -634,6 +634,7 @@ NriStruct(TextureBarrierDesc) {
 };
 
 // Using "CmdBarrier" inside a rendering pass is allowed, but only for "Layout::INPUT_ATTACHMENT" access transitions
+// D3D12 filters out "transitioning to the same state" barriers if "features.enhancedBarriers" is not supported
 NriStruct(BarrierDesc) {
     const NriPtr(GlobalBarrierDesc) globals;
     uint32_t globalNum;
@@ -1601,7 +1602,7 @@ NriStruct(AttachmentDesc) {
     Nri(LoadOp) loadOp;
     Nri(StoreOp) storeOp;
     Nri(ResolveOp) resolveOp;
-    NriOptional NriPtr(Descriptor) resolveDst;          // must be valid during "CmdEndRendering"
+    NriOptional NriPtr(Descriptor) resolveDst;          // must be in "COLOR_ATTACHMENT" state and valid during "CmdEndRendering"
 };
 
 NriStruct(RenderingDesc) {
@@ -2136,6 +2137,7 @@ NriStruct(DeviceDesc) {
         uint32_t shaderBytecodeSPIRV                             : 1; // SPIRV can be passed to "ShaderDesc::bytecode"
         uint32_t pipelineCache                                   : 1; // "PipelineCache" support (NOP fallback if unsupported, except on error)
         uint32_t pipelineCacheControl                            : 1; // "FAIL_ON_CACHE_MISS" enforces "FAILURE", useful for platforms that prohibit runtime PSO compilation (e.g., Xbox GDK)
+        uint32_t calibratedTimestamps                            : 1; // see "GetCalibratedTimestamps" (unsupported only in D3D11)
     } features;
 
     // Shader features

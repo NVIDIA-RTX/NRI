@@ -234,9 +234,10 @@ NriStruct(CoreInterface) {
     void                (NRI_CALL *QueueEndAnnotation)              (NriRef(Queue) queue);
     void                (NRI_CALL *QueueAnnotation)                 (NriRef(Queue) queue, const char* name, uint32_t bgra);
 
-    // Query
+    // Queries and timestamps
     void                (NRI_CALL *ResetQueries)                    (NriRef(QueryPool) queryPool, uint32_t offset, uint32_t num); // on host
     uint32_t            (NRI_CALL *GetQuerySize)                    (const NriRef(QueryPool) queryPool);
+    void                (NRI_CALL *GetCalibratedTimestamps)         (NriRef(Queue) queue, NonNriRef(uint64_t) timestampGPU, NonNriRef(uint64_t) timestampCPU);
 
     // Work submission and synchronization
     Nri(Result)         (NRI_CALL *QueueSubmit)                     (NriRef(Queue) queue, const NriRef(QueueSubmitDesc) queueSubmitDesc); // to device
