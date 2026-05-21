@@ -2797,6 +2797,8 @@ static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolv
         return Result::FAILURE;
     if ((desc.references == nullptr) != (desc.referenceNum == 0))
         return Result::INVALID_ARGUMENT;
+    if (desc.encodedPayloadHeader && desc.encodedPayloadHeaderSize)
+        return video_av1::GetVideoEncodeAV1DecodeInfoFromHeader(desc, info);
 
     constexpr uint64_t requiredMetadataSize = sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA) + sizeof(D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA) + sizeof(VideoEncodeAV1TilesLayoutD3D12)
         + sizeof(VideoEncodeAV1PostEncodeValuesD3D12);

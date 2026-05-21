@@ -808,7 +808,7 @@ NriStruct(VideoEncodeFeedback) {
     uint64_t averageMotionEstimationY;
     uint64_t encodedBitstreamWrittenBytes;
     uint64_t writtenSubregionNum;
-    uint64_t encodedBitstreamOffset;
+    uint64_t encodedBitstreamOffset; // offset of valid encoded data relative to VideoEncodeDesc::dstBitstream.offset
 };
 
 NriStruct(VideoAV1EncodeDecodeInfoDesc) {
@@ -888,9 +888,10 @@ NriStruct(VideoInterface) {
     // Command buffer
     // {
         // Video decode/encode command buffers must be created from "QueueType::VIDEO_DECODE" or "QueueType::VIDEO_ENCODE" queues.
+        // Vulkan video session initialization is implicit on first recorded use, so commands for the same session must be recorded in submit order.
         void (NRI_CALL *CmdDecodeVideo) (NriRef(CommandBuffer) commandBuffer, const NriRef(VideoDecodeDesc) videoDecodeDesc);
         void (NRI_CALL *CmdEncodeVideo) (NriRef(CommandBuffer) commandBuffer, const NriRef(VideoEncodeDesc) videoEncodeDesc);
-        // Vulkan: consumes encode feedback in encode submission order; the query must be host-available before this command is recorded.
+        // Vulkan: resolves feedback for the encode that used the same "resolvedMetadata" buffer and offset; the query must be host-available before this command is recorded.
         // D3D12 resolves feedback during "CmdEncodeVideo".
         void (NRI_CALL *CmdResolveVideoEncodeFeedback) (NriRef(CommandBuffer) commandBuffer, NriRef(VideoSession) videoSession, NriRef(Buffer) resolvedMetadata, uint64_t resolvedMetadataOffset);
         Nri(Result) (NRI_CALL *GetVideoEncodeFeedback) (NriRef(VideoSession) videoSession, NriRef(Buffer) resolvedMetadataReadback, uint64_t resolvedMetadataOffset, NriOut NriRef(VideoEncodeFeedback) feedback);

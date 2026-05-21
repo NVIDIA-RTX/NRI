@@ -1500,6 +1500,7 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
     VkVideoEncodeAV1SessionCreateInfoKHR encodeAV1SessionCreateInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_SESSION_CREATE_INFO_KHR};
     const uint32_t maxActiveReferencePictures = std::min(videoSessionDesc.maxReferenceNum, capabilities.maxActiveReferencePictures);
     const uint32_t maxDpbSlots = videoSessionDesc.maxReferenceNum ? std::min(videoSessionDesc.maxReferenceNum + 1u, capabilities.maxDpbSlots) : 0;
+
     if (videoSessionDesc.usage == VideoUsage::ENCODE) {
         switch (videoSessionDesc.codec) {
             case VideoCodec::H264:
@@ -1593,6 +1594,7 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkBindVideoSessionMemoryKHR");
 
     m_Desc = videoSessionDesc;
+    m_Desc.maxReferenceNum = maxDpbSlots ? maxDpbSlots - 1 : 0;
     return Result::SUCCESS;
 }
 
@@ -1801,6 +1803,16 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
         NRI_REPORT_ERROR(&device, "'bitstream.offset' and 'bitstream.size' must satisfy Vulkan video alignment requirements: offset=%u, size=%u", session.m_BitstreamOffsetAlignment,
             session.m_BitstreamSizeAlignment);
         return;
+    }
+    if (videoDecodeDesc.referenceNum > session.m_Desc.maxReferenceNum) {
+        NRI_REPORT_ERROR(&device, "'referenceNum' exceeds the session DPB slot count");
+        return;
+    }
+    for (uint32_t i = 0; i < videoDecodeDesc.referenceNum; i++) {
+        if (videoDecodeDesc.references[i].slot > session.m_Desc.maxReferenceNum) {
+            NRI_REPORT_ERROR(&device, "'references[%u].slot' exceeds the session DPB slot count", i);
+            return;
+        }
     }
 
     const uint32_t referenceScratchNum = videoDecodeDesc.referenceNum ? videoDecodeDesc.referenceNum : 1;
@@ -2083,6 +2095,10 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
     uint32_t setupReferenceSlotIndex = videoDecodeDesc.dstSlot;
     if (session.m_Desc.codec == VideoCodec::H264 && videoDecodeDesc.h264PictureDesc && videoDecodeDesc.h264PictureDesc->referenceSlot)
         setupReferenceSlotIndex = videoDecodeDesc.h264PictureDesc->referenceSlot;
+    if (setupReferenceInfo && setupReferenceSlotIndex > session.m_Desc.maxReferenceNum) {
+        NRI_REPORT_ERROR(&device, "The setup reference slot exceeds the session DPB slot count");
+        return;
+    }
     setupReferenceSlot.slotIndex = setupReferenceInfo ? (int32_t)setupReferenceSlotIndex : -1;
     setupReferenceSlot.pPictureResource = &setupPicture.m_Resource;
 
@@ -2109,7 +2125,7 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
     decodeInfo.pReferenceSlots = referenceSlots;
 
     VkVideoEndCodingInfoKHR endInfo = {VK_STRUCTURE_TYPE_VIDEO_END_CODING_INFO_KHR};
-    if (!session.m_Initialized) {
+    if (!session.m_ResetRecorded) {
         VkVideoBeginCodingInfoKHR resetBeginInfo = {VK_STRUCTURE_TYPE_VIDEO_BEGIN_CODING_INFO_KHR};
         resetBeginInfo.videoSession = session.m_Handle;
         resetBeginInfo.videoSessionParameters = sessionParameters;
@@ -2118,7 +2134,7 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
         vk.CmdBeginVideoCodingKHR(commandBufferVK, &resetBeginInfo);
         vk.CmdControlVideoCodingKHR(commandBufferVK, &controlInfo);
         vk.CmdEndVideoCodingKHR(commandBufferVK, &endInfo);
-        session.m_Initialized = true;
+        session.m_ResetRecorded = true;
     }
     vk.CmdBeginVideoCodingKHR(commandBufferVK, &beginInfo);
     vk.CmdDecodeVideoKHR(commandBufferVK, &decodeInfo);
@@ -2261,6 +2277,16 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     if (videoEncodeDesc.h265ReferenceDescs && session.m_Desc.codec != VideoCodec::H265) {
         NRI_REPORT_ERROR(&device, "'h265ReferenceDescs' can only be used with H.265 sessions");
         return;
+    }
+    if (videoEncodeDesc.referenceNum > session.m_Desc.maxReferenceNum) {
+        NRI_REPORT_ERROR(&device, "'referenceNum' exceeds the session DPB slot count");
+        return;
+    }
+    for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {
+        if (videoEncodeDesc.references[i].slot > session.m_Desc.maxReferenceNum) {
+            NRI_REPORT_ERROR(&device, "'references[%u].slot' exceeds the session DPB slot count", i);
+            return;
+        }
     }
     if (session.m_Desc.maxReferenceNum != 0 && videoEncodeDesc.reconstructedSlot > session.m_Desc.maxReferenceNum) {
         NRI_REPORT_ERROR(&device, "'reconstructedSlot' exceeds the session DPB slot count");
@@ -2756,17 +2782,36 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     beginInfo.pReferenceSlots = referenceSlots;
 
     VkVideoEndCodingInfoKHR endInfo = {VK_STRUCTURE_TYPE_VIDEO_END_CODING_INFO_KHR};
-    bool useEncodeFeedback = videoEncodeDesc.resolvedMetadata != nullptr && session.m_EncodeFeedbackQueryPool != VK_NULL_HANDLE;
-    uint32_t encodeFeedbackQueryIndex = 0;
+    BufferVK* resolvedMetadata = (BufferVK*)videoEncodeDesc.resolvedMetadata;
+    bool useEncodeFeedback = resolvedMetadata != nullptr && session.m_EncodeFeedbackQueryPool != VK_NULL_HANDLE;
+    uint32_t encodeFeedbackQueryIndex = UINT32_MAX;
     if (useEncodeFeedback) {
-        if (session.m_EncodeFeedbackWriteIndex - session.m_EncodeFeedbackReadIndex >= VideoSessionVK::ENCODE_FEEDBACK_QUERY_NUM) {
+        for (uint32_t i = 0; i < VideoSessionVK::ENCODE_FEEDBACK_QUERY_NUM; i++) {
+            const VideoSessionVK::EncodeFeedbackPayloadReadback& payloadReadback = session.m_EncodeFeedbackPayloadReadbacks[i];
+            if (payloadReadback.active && payloadReadback.resolvedMetadata == resolvedMetadata && payloadReadback.resolvedMetadataOffset == videoEncodeDesc.resolvedMetadataOffset) {
+                NRI_REPORT_ERROR(&device, "A Vulkan video encode feedback query is already pending for this resolved metadata range");
+                useEncodeFeedback = false;
+                break;
+            }
+        }
+
+        for (uint32_t i = 0; useEncodeFeedback && i < VideoSessionVK::ENCODE_FEEDBACK_QUERY_NUM; i++) {
+            if (!session.m_EncodeFeedbackPayloadReadbacks[i].active) {
+                encodeFeedbackQueryIndex = i;
+                break;
+            }
+        }
+
+        if (useEncodeFeedback && encodeFeedbackQueryIndex == UINT32_MAX) {
             NRI_REPORT_ERROR(&device, "Too many unresolved Vulkan video encode feedback queries are outstanding for this video session");
             useEncodeFeedback = false;
-        } else {
-            encodeFeedbackQueryIndex = (uint32_t)(session.m_EncodeFeedbackWriteIndex++ % VideoSessionVK::ENCODE_FEEDBACK_QUERY_NUM);
+        } else if (useEncodeFeedback) {
             VideoSessionVK::EncodeFeedbackPayloadReadback& payloadReadback = session.m_EncodeFeedbackPayloadReadbacks[encodeFeedbackQueryIndex];
+            payloadReadback.active = true;
+            payloadReadback.resolvedMetadata = resolvedMetadata;
+            payloadReadback.resolvedMetadataOffset = videoEncodeDesc.resolvedMetadataOffset;
             payloadReadback.bitstream = (BufferVK*)videoEncodeDesc.dstBitstream.buffer;
-            payloadReadback.offset = videoEncodeDesc.dstBitstream.offset;
+            payloadReadback.dstBitstreamOffset = videoEncodeDesc.dstBitstream.offset;
             payloadReadback.size = videoEncodeDesc.dstBitstream.size;
             payloadReadback.copyHeader = videoEncodeDesc.av1PictureDesc != nullptr;
         }
@@ -2775,7 +2820,7 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
     if (useEncodeFeedback)
         vk.CmdResetQueryPool(commandBufferVK, session.m_EncodeFeedbackQueryPool, encodeFeedbackQueryIndex, 1);
 
-    if (!session.m_Initialized) {
+    if (!session.m_ResetRecorded) {
         VkVideoBeginCodingInfoKHR initBeginInfo = beginInfo;
         initBeginInfo.pNext = nullptr;
 
@@ -2786,7 +2831,7 @@ static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEnc
         controlInfo.pNext = &rateControlInfo;
         vk.CmdControlVideoCodingKHR(commandBufferVK, &controlInfo);
         vk.CmdEndVideoCodingKHR(commandBufferVK, &endInfo);
-        session.m_Initialized = true;
+        session.m_ResetRecorded = true;
     }
     vk.CmdBeginVideoCodingKHR(commandBufferVK, &beginInfo);
     if (useEncodeFeedback)
@@ -2805,11 +2850,19 @@ static void NRI_CALL CmdResolveVideoEncodeFeedback(CommandBuffer& commandBuffer,
         return;
 
     BufferVK& feedbackBuffer = (BufferVK&)resolvedMetadata;
-    if (session.m_EncodeFeedbackReadIndex == session.m_EncodeFeedbackWriteIndex) {
-        NRI_REPORT_ERROR(&commandBufferVK.GetDevice(), "No unresolved Vulkan video encode feedback query is available for this video session");
+    uint32_t encodeFeedbackQueryIndex = UINT32_MAX;
+    for (uint32_t i = 0; i < VideoSessionVK::ENCODE_FEEDBACK_QUERY_NUM; i++) {
+        const VideoSessionVK::EncodeFeedbackPayloadReadback& payloadReadback = session.m_EncodeFeedbackPayloadReadbacks[i];
+        if (payloadReadback.active && payloadReadback.resolvedMetadata == &feedbackBuffer && payloadReadback.resolvedMetadataOffset == resolvedMetadataOffset) {
+            encodeFeedbackQueryIndex = i;
+            break;
+        }
+    }
+
+    if (encodeFeedbackQueryIndex == UINT32_MAX) {
+        NRI_REPORT_ERROR(&commandBufferVK.GetDevice(), "No unresolved Vulkan video encode feedback query is available for this resolved metadata range");
         return;
     }
-    const uint32_t encodeFeedbackQueryIndex = (uint32_t)(session.m_EncodeFeedbackReadIndex++ % VideoSessionVK::ENCODE_FEEDBACK_QUERY_NUM);
     const VideoSessionVK::EncodeFeedbackPayloadReadback payloadReadback = session.m_EncodeFeedbackPayloadReadbacks[encodeFeedbackQueryIndex];
     session.m_EncodeFeedbackPayloadReadbacks[encodeFeedbackQueryIndex] = {};
 
@@ -2819,6 +2872,7 @@ static void NRI_CALL CmdResolveVideoEncodeFeedback(CommandBuffer& commandBuffer,
         VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_STATUS_BIT_KHR);
 
     VideoEncodeFeedback feedback = {};
+    feedback.encodedBitstreamOffset = 0;
     if (result == VK_SUCCESS) {
         feedback.encodedBitstreamWrittenBytes = queryResult[0];
         feedback.writtenSubregionNum = 1;
@@ -2833,7 +2887,7 @@ static void NRI_CALL CmdResolveVideoEncodeFeedback(CommandBuffer& commandBuffer,
         const uint64_t dstOffset = resolvedMetadataOffset + sizeof(VideoEncodeFeedback);
         if (dstOffset < feedbackBuffer.GetDesc().size) {
             VkBufferCopy2 region = {VK_STRUCTURE_TYPE_BUFFER_COPY_2};
-            region.srcOffset = payloadReadback.offset;
+            region.srcOffset = payloadReadback.dstBitstreamOffset;
             region.dstOffset = dstOffset;
             region.size = std::min(feedback.encodedBitstreamWrittenBytes, std::min(payloadReadback.size, feedbackBuffer.GetDesc().size - dstOffset));
             if (region.size) {

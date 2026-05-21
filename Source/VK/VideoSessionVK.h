@@ -10,10 +10,13 @@ struct VideoSessionVK final : public DebugNameBase {
     static constexpr uint32_t ENCODE_FEEDBACK_QUERY_NUM = 64;
 
     struct EncodeFeedbackPayloadReadback {
+        BufferVK* resolvedMetadata = nullptr;
+        uint64_t resolvedMetadataOffset = 0;
         BufferVK* bitstream = nullptr;
-        uint64_t offset = 0;
+        uint64_t dstBitstreamOffset = 0;
         uint64_t size = 0;
         bool copyHeader = false;
+        bool active = false;
     };
 
     inline VideoSessionVK(DeviceVK& device)
@@ -45,15 +48,13 @@ struct VideoSessionVK final : public DebugNameBase {
     VkVideoSessionKHR m_Handle = VK_NULL_HANDLE;
     VkQueryPool m_EncodeFeedbackQueryPool = VK_NULL_HANDLE;
     std::array<EncodeFeedbackPayloadReadback, ENCODE_FEEDBACK_QUERY_NUM> m_EncodeFeedbackPayloadReadbacks = {};
-    uint64_t m_EncodeFeedbackWriteIndex = 0;
-    uint64_t m_EncodeFeedbackReadIndex = 0;
     Vector<VkDeviceMemory> m_Memory;
     VideoSessionDesc m_Desc = {};
     VkExtent2D m_PictureAccessGranularity = {};
     uint32_t m_BitstreamOffsetAlignment = 1;
     uint32_t m_BitstreamSizeAlignment = 1;
     uint32_t m_RateControlModes = 0;
-    bool m_Initialized = false;
+    bool m_ResetRecorded = false;
     bool m_UseInlineSessionParameters = false;
     bool m_CanGenerateH264PrefixNalu = false;
 };
