@@ -1632,8 +1632,46 @@ static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSes
 
     VkVideoCapabilitiesKHR capabilities = {VK_STRUCTURE_TYPE_VIDEO_CAPABILITIES_KHR};
     VkVideoDecodeCapabilitiesKHR decodeCapabilities = {VK_STRUCTURE_TYPE_VIDEO_DECODE_CAPABILITIES_KHR};
+    VkVideoDecodeH264CapabilitiesKHR decodeH264Capabilities = {VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_CAPABILITIES_KHR};
+    VkVideoDecodeH265CapabilitiesKHR decodeH265Capabilities = {VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_CAPABILITIES_KHR};
+    VkVideoDecodeAV1CapabilitiesKHR decodeAV1Capabilities = {VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_CAPABILITIES_KHR};
     VkVideoEncodeCapabilitiesKHR encodeCapabilities = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_CAPABILITIES_KHR};
-    capabilities.pNext = videoSessionDesc.usage == VideoUsage::DECODE ? (void*)&decodeCapabilities : (void*)&encodeCapabilities;
+    VkVideoEncodeH264CapabilitiesKHR encodeH264Capabilities = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_CAPABILITIES_KHR};
+    VkVideoEncodeH265CapabilitiesKHR encodeH265Capabilities = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_CAPABILITIES_KHR};
+    VkVideoEncodeAV1CapabilitiesKHR encodeAV1Capabilities = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_CAPABILITIES_KHR};
+    if (videoSessionDesc.usage == VideoUsage::DECODE) {
+        capabilities.pNext = &decodeCapabilities;
+        switch (videoSessionDesc.codec) {
+            case VideoCodec::H264:
+                decodeCapabilities.pNext = &decodeH264Capabilities;
+                break;
+            case VideoCodec::H265:
+                decodeCapabilities.pNext = &decodeH265Capabilities;
+                break;
+            case VideoCodec::AV1:
+                decodeCapabilities.pNext = &decodeAV1Capabilities;
+                break;
+            case VideoCodec::NONE:
+            case VideoCodec::MAX_NUM:
+                break;
+        }
+    } else {
+        capabilities.pNext = &encodeCapabilities;
+        switch (videoSessionDesc.codec) {
+            case VideoCodec::H264:
+                encodeCapabilities.pNext = &encodeH264Capabilities;
+                break;
+            case VideoCodec::H265:
+                encodeCapabilities.pNext = &encodeH265Capabilities;
+                break;
+            case VideoCodec::AV1:
+                encodeCapabilities.pNext = &encodeAV1Capabilities;
+                break;
+            case VideoCodec::NONE:
+            case VideoCodec::MAX_NUM:
+                break;
+        }
+    }
 
     VkResult vkResult = vk.GetPhysicalDeviceVideoCapabilitiesKHR(deviceVK, &profile, &capabilities);
     NRI_RETURN_ON_BAD_VKRESULT(&deviceVK, vkResult, "vkGetPhysicalDeviceVideoCapabilitiesKHR");
