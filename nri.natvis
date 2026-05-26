@@ -183,6 +183,34 @@
     <Type Name="nri::VideoPicture">
         <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
     </Type>
+    <Type Name="nri::VideoSessionD3D12">
+        <DisplayString>{{ codec={m_Desc.codec} size={m_Desc.width}x{m_Desc.height} format={m_Desc.format} }}</DisplayString>
+        <Expand>
+            <Item Name="desc">m_Desc</Item>
+        </Expand>
+    </Type>
+    <Type Name="nri::VideoSessionParametersD3D12">
+        <DisplayString>{{ session={m_Session} }}</DisplayString>
+    </Type>
+    <Type Name="nri::VideoPictureD3D12">
+        <DisplayString>{{ texture={m_Texture} subresource={m_Subresource} }}</DisplayString>
+    </Type>
+    <Type Name="nri::VideoSessionVK">
+        <DisplayString>{{ codec={m_Desc.codec} size={m_Desc.width}x{m_Desc.height} format={m_Desc.format} }}</DisplayString>
+        <Expand>
+            <Item Name="desc">m_Desc</Item>
+            <Item Name="pictureAccessGranularity">m_PictureAccessGranularity</Item>
+        </Expand>
+    </Type>
+    <Type Name="nri::VideoSessionParametersVK">
+        <DisplayString>{{ session={m_Session} handle={m_Handle} }}</DisplayString>
+    </Type>
+    <Type Name="nri::VideoPictureVK">
+        <DisplayString>{{ imageView={m_ImageView} }}</DisplayString>
+        <Expand>
+            <Item Name="resource">m_Resource</Item>
+        </Expand>
+    </Type>
     <Type Name="nri::Upscaler">
         <DisplayString Condition = "((uint64_t*)this)[1] == 0x1234567887654321ull">{{ name={*(char**)((uint8_t*)this + 16),s} }}</DisplayString>
         <Expand>

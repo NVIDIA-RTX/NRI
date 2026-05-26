@@ -553,8 +553,8 @@ NriStruct(VideoH264DecodePictureDesc) {
     const uint32_t* sliceOffsets;
     uint32_t sliceOffsetNum;
     uint32_t referenceSlot; // used when "flags" includes REFERENCE; falls back to VideoDecodeDesc::dstSlot when zero
-    const NriPtr(VideoH264DecodeReferenceDesc) references;
-    uint32_t referenceNum;
+    NriOptional const NriPtr(VideoH264DecodeReferenceDesc) references;
+    NriOptional uint32_t referenceNum;
 };
 
 NriStruct(VideoH265ReferenceDesc) {
@@ -576,8 +576,8 @@ NriStruct(VideoH265DecodePictureDesc) {
     uint16_t numBitsForShortTermRefPicSetInSlice;
     const uint32_t* sliceSegmentOffsets;
     uint32_t sliceSegmentOffsetNum;
-    const NriPtr(VideoH265ReferenceDesc) references;
-    uint32_t referenceNum;
+    NriOptional const NriPtr(VideoH265ReferenceDesc) references;
+    NriOptional uint32_t referenceNum;
 };
 
 NriStruct(VideoEncodeRateControlDesc) {
@@ -607,8 +607,8 @@ NriStruct(VideoEncodePictureDesc) {
 NriStruct(VideoH264PictureDesc) {
     uint8_t sequenceParameterSetId;
     uint8_t pictureParameterSetId;
-    const NriPtr(VideoH264ReferenceDesc) references;
-    uint32_t referenceNum;
+    NriOptional const NriPtr(VideoH264ReferenceDesc) references;
+    NriOptional uint32_t referenceNum;
 };
 
 NriStruct(VideoAV1ReferenceDesc) {
@@ -736,8 +736,8 @@ NriStruct(VideoAV1PictureDesc) {
     NriOptional const NriPtr(VideoAV1LoopRestorationDesc) loopRestoration;
     NriOptional const NriPtr(VideoAV1GlobalMotionDesc) globalMotion;
     NriOptional const uint8_t* orderHints; // if provided, must include 8 entries
-    const NriPtr(VideoAV1ReferenceDesc) references;
-    uint32_t referenceNum;
+    NriOptional const NriPtr(VideoAV1ReferenceDesc) references;
+    NriOptional uint32_t referenceNum;
 };
 
 NriStruct(VideoAV1DecodeTileDesc) {
@@ -778,8 +778,8 @@ NriStruct(VideoAV1DecodePictureDesc) {
     NriOptional const uint8_t* orderHints; // if provided, must include 8 entries
     const NriPtr(VideoAV1DecodeTileDesc) tiles;
     uint32_t tileNum;
-    const NriPtr(VideoAV1ReferenceDesc) references;
-    uint32_t referenceNum;
+    NriOptional const NriPtr(VideoAV1ReferenceDesc) references;
+    NriOptional uint32_t referenceNum;
 };
 
 NriStruct(VideoDecodeDesc) {
@@ -788,8 +788,8 @@ NriStruct(VideoDecodeDesc) {
     Nri(VideoBitstreamRange) bitstream;
     NriPtr(VideoPicture) dstPicture;
     NriOptional NriPtr(VideoPicture) setupPicture; // if provided, used as the reconstructed/DPB setup reference instead of "dstPicture"
-    const NriPtr(VideoReference) references;
-    uint32_t referenceNum;
+    NriOptional const NriPtr(VideoReference) references;
+    NriOptional uint32_t referenceNum;
     uint32_t dstSlot;
     const NriPtr(VideoDecodeArgument) arguments;
     uint32_t argumentNum;
@@ -817,7 +817,7 @@ NriStruct(VideoAV1EncodeDecodeInfoDesc) {
     NriOptional const NriPtr(uint8_t) encodedPayloadHeader; // first bytes of the encoded payload; returned bitstream ranges are bounded by "feedback"
     uint64_t encodedPayloadHeaderSize;
     NriOptional const NriPtr(VideoAV1ReferenceDesc) references; // previous AV1 DPB snapshot; required for inter frames
-    uint32_t referenceNum;
+    NriOptional uint32_t referenceNum;
 };
 
 NriStruct(VideoAV1EncodeDecodeInfo) {
@@ -854,8 +854,8 @@ NriStruct(VideoEncodeDesc) {
     uint64_t metadataOffset;
     NriOptional NriPtr(Buffer) resolvedMetadata; // If provided, contains "VideoEncodeFeedback" after execution.
     uint64_t resolvedMetadataOffset;
-    const NriPtr(VideoReference) references;
-    uint32_t referenceNum;
+    NriOptional const NriPtr(VideoReference) references;
+    NriOptional uint32_t referenceNum;
     uint32_t reconstructedSlot;
     NriOptional const NriPtr(VideoH264PictureDesc) h264PictureDesc;
     NriOptional const NriPtr(VideoAV1PictureDesc) av1PictureDesc;

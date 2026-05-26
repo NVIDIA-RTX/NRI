@@ -24,9 +24,6 @@
 #include "TextureVK.h"
 #include "VideoHelpersVK.h"
 
-#include "../Shared/VideoAV1.h"
-#include "../Shared/VideoAnnexB.h"
-
 #include "HelperInterface.h"
 #include "ImguiInterface.h"
 #include "StreamerInterface.h"

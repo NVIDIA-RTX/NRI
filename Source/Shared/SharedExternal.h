@@ -42,6 +42,8 @@ typedef uint32_t DXGI_FORMAT;
 #include "Extensions/NRIWrapperVK.h"
 
 #include "Lock.h"
+#include "VideoAV1.h"
+#include "VideoAnnexB.h"
 
 // ComPtr
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)

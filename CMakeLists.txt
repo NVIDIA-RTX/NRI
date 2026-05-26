@@ -348,6 +348,8 @@ set(SHARED_SOURCE
     "Source/Shared/StreamerInterface.hpp"
     "Source/Shared/UpscalerInterface.h"
     "Source/Shared/UpscalerInterface.hpp"
+    "Source/Shared/VideoAV1.h"
+    "Source/Shared/VideoAnnexB.h"
 )
 
 add_library(NRI_Shared STATIC)
@@ -569,8 +571,11 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         "Source/D3D12/TextureD3D12.hpp"
         "Source/D3D12/VideoHelpersD3D12.h"
         "Source/D3D12/VideoPictureD3D12.h"
+        "Source/D3D12/VideoPictureD3D12.hpp"
         "Source/D3D12/VideoSessionD3D12.h"
+        "Source/D3D12/VideoSessionD3D12.hpp"
         "Source/D3D12/VideoSessionParametersD3D12.h"
+        "Source/D3D12/VideoSessionParametersD3D12.hpp"
     )
 
     add_library(NRI_D3D12 STATIC)
@@ -691,8 +696,11 @@ if(NRI_ENABLE_VK_SUPPORT)
         "Source/VK/TextureVK.hpp"
         "Source/VK/VideoHelpersVK.h"
         "Source/VK/VideoPictureVK.h"
+        "Source/VK/VideoPictureVK.hpp"
         "Source/VK/VideoSessionVK.h"
+        "Source/VK/VideoSessionVK.hpp"
         "Source/VK/VideoSessionParametersVK.h"
+        "Source/VK/VideoSessionParametersVK.hpp"
     )
 
     add_library(NRI_VK STATIC)

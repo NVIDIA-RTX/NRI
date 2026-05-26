@@ -5,13 +5,12 @@
 struct ID3D12CommandAllocator;
 struct ID3D12CommandList;
 struct ID3D12Resource;
-struct ID3D12VideoDecodeCommandList;
 struct ID3D12VideoDecoder;
 struct ID3D12VideoDecoderHeap;
-struct ID3D12VideoEncodeCommandList;
 struct ID3D12VideoEncoder;
 struct ID3D12VideoEncoderHeap;
 struct D3D12_RESOURCE_BARRIER;
+struct D3D12_BARRIER_GROUP;
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
 struct ID3D12GraphicsCommandList10;
@@ -132,14 +131,17 @@ struct CommandBufferD3D12 final : public DebugNameBase {
     void DispatchRaysIndirect(const Buffer& buffer, uint64_t offset);
     void DrawMeshTasks(const DrawMeshTasksDesc& drawMeshTasksDesc);
     void DrawMeshTasksIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset);
+    void DecodeVideo(const VideoDecodeDesc& videoDecodeDesc);
+    void EncodeVideo(const VideoEncodeDesc& videoEncodeDesc);
     void DecodeVideo(const VideoDecodeD3D12Desc& videoDecodeD3D12Desc);
     void EncodeVideo(const VideoEncodeD3D12Desc& videoEncodeD3D12Desc);
 
 private:
     ID3D12GraphicsCommandListBest* GetGraphicsCommandList() const;
-    ID3D12VideoDecodeCommandList* GetVideoDecodeCommandList() const;
-    ID3D12VideoEncodeCommandList* GetVideoEncodeCommandList() const;
+    ID3D12VideoDecodeCommandListBest* GetVideoDecodeCommandList() const;
+    ID3D12VideoEncodeCommandListBest* GetVideoEncodeCommandList() const;
     void ResourceBarrier(uint32_t barrierNum, const D3D12_RESOURCE_BARRIER* barriers) const;
+    void Barrier(uint32_t barrierGroupNum, const D3D12_BARRIER_GROUP* barrierGroups) const;
 
     DeviceD3D12& m_Device;
     ComPtr<ID3D12CommandAllocator> m_CommandAllocator;

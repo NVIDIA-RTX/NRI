@@ -24,8 +24,6 @@
 #include "VideoSessionParametersVal.h"
 #include "VideoPictureVal.h"
 
-#include "../Shared/VideoAnnexB.h"
-
 #include "HelperInterface.h"
 #include "ImguiInterface.h"
 #include "StreamerInterface.h"
