@@ -46,6 +46,14 @@ constexpr uint32_t INVALID_FAMILY_INDEX = uint32_t(-1);
 constexpr VkVideoCodecOperationFlagsKHR VIDEO_DECODE_CODEC_OPERATION_MASK = 0x0000FFFF;
 constexpr VkVideoCodecOperationFlagsKHR VIDEO_ENCODE_CODEC_OPERATION_MASK = 0xFFFF0000;
 
+constexpr VkTimeDomainKHR GetCalibratedTimestampCPUTimeDomainVK() {
+#if defined(_WIN32)
+    return VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR; // matches D3D12
+#else
+    return VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR;
+#endif
+}
+
 struct MemoryTypeInfo {
     MemoryTypeIndex index;
     MemoryLocation location;
