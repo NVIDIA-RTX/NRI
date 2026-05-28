@@ -435,7 +435,7 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDecodeCommandList::QueryLatestInterface");
 
         hr = videoDecodeCommandList->Close();
-        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDecodeCommandListBest::Close");
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDecodeCommandList::Close");
 
         m_CommandList = videoDecodeCommandList.GetInterface();
     } else if (commandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE) {
@@ -448,7 +448,7 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoEncodeCommandList::QueryLatestInterface");
 
         hr = videoEncodeCommandList->Close();
-        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoEncodeCommandListBest::Close");
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoEncodeCommandList::Close");
 
         m_CommandList = videoEncodeCommandList.GetInterface();
     } else {
@@ -490,17 +490,15 @@ Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferD3D
 
 NRI_INLINE Result CommandBufferD3D12::Begin(const DescriptorPool* descriptorPool) {
     if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE) {
-        ID3D12VideoDecodeCommandListBest* videoDecodeCommandList = GetVideoDecodeCommandList();
-        HRESULT hr = videoDecodeCommandList->Reset(m_CommandAllocator);
-        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDecodeCommandListBest::Reset");
+        HRESULT hr = GetVideoDecodeCommandList()->Reset(m_CommandAllocator);
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDecodeCommandList::Reset");
 
         return Result::SUCCESS;
     }
 
     if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE) {
-        ID3D12VideoEncodeCommandListBest* videoEncodeCommandList = GetVideoEncodeCommandList();
-        HRESULT hr = videoEncodeCommandList->Reset(m_CommandAllocator);
-        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoEncodeCommandListBest::Reset");
+        HRESULT hr = GetVideoEncodeCommandList()->Reset(m_CommandAllocator);
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoEncodeCommandList::Reset");
 
         return Result::SUCCESS;
     }
@@ -522,13 +520,11 @@ NRI_INLINE Result CommandBufferD3D12::Begin(const DescriptorPool* descriptorPool
 NRI_INLINE Result CommandBufferD3D12::End() {
     HRESULT hr = S_OK;
     if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE) {
-        ID3D12VideoDecodeCommandListBest* videoDecodeCommandList = GetVideoDecodeCommandList();
-        hr = videoDecodeCommandList->Close();
-        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDecodeCommandListBest::Close");
+        hr = GetVideoDecodeCommandList()->Close();
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDecodeCommandList::Close");
     } else if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE) {
-        ID3D12VideoEncodeCommandListBest* videoEncodeCommandList = GetVideoEncodeCommandList();
-        hr = videoEncodeCommandList->Close();
-        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoEncodeCommandListBest::Close");
+        hr = GetVideoEncodeCommandList()->Close();
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoEncodeCommandList::Close");
     } else {
         hr = GetGraphicsCommandList()->Close();
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::Close");
@@ -543,8 +539,7 @@ NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeD3D12Desc& desc
         return;
     }
 
-    ID3D12VideoDecodeCommandListBest* commandList = GetVideoDecodeCommandList();
-    commandList->DecodeFrame(
+     GetVideoDecodeCommandList()->DecodeFrame(
         (ID3D12VideoDecoder*)desc.d3d12Decoder,
         (D3D12_VIDEO_DECODE_OUTPUT_STREAM_ARGUMENTS*)desc.d3d12OutputArguments,
         (D3D12_VIDEO_DECODE_INPUT_STREAM_ARGUMENTS*)desc.d3d12InputArguments);
