@@ -1145,9 +1145,6 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.swapChain = IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME, desiredDeviceExts);
         m_Desc.features.meshShader = MeshShaderFeatures.meshShader != 0 && MeshShaderFeatures.taskShader != 0;
         m_Desc.features.lowLatency = m_IsSupported.presentId != 0 && IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, desiredDeviceExts);
-        m_Desc.features.pipelineCache = true;
-        m_Desc.features.pipelineCacheControl = features13.pipelineCreationCacheControl;
-        m_Desc.features.calibratedTimestamps = IsExtensionSupported(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, desiredDeviceExts);
 
         m_Desc.features.componentSwizzle = true;
         m_Desc.features.independentFrontAndBackStencilReferenceAndMasks = true;
@@ -1175,6 +1172,10 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.textureCompressionETC2 = features.features.textureCompressionETC2;
         m_Desc.features.textureCompressionASTC = features.features.textureCompressionASTC_LDR;
         m_Desc.features.shaderBytecodeSPIRV = true;
+        m_Desc.features.pipelineCache = true;
+        m_Desc.features.pipelineCacheControl = features13.pipelineCreationCacheControl;
+        m_Desc.features.calibratedTimestamps = IsExtensionSupported(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, desiredDeviceExts);
+        m_Desc.features.sumShadingRateCombiner = true;
 
         m_Desc.shaderFeatures.nativeI8 = features12.shaderInt8;
         m_Desc.shaderFeatures.nativeI16 = features.features.shaderInt16;

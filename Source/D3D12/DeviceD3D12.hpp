@@ -436,7 +436,6 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     HRESULT hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options) failed, result = 0x%08X!", hr);
-    m_Desc.tiers.memory = options.ResourceHeapTier == D3D12_RESOURCE_HEAP_TIER_2 ? 1 : 0;
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1));
@@ -452,7 +451,6 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, &options3, sizeof(options3));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options3) failed, result = 0x%08X!", hr);
-    m_Desc.features.copyQueueTimestamp = options3.CopyQueueTimestampQueriesSupported;
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS4 options4 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS4, &options4, sizeof(options4));
@@ -464,16 +462,12 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options5) failed, result = 0x%08X!", hr);
-    m_Desc.tiers.rayTracing = (uint8_t)std::max(options5.RaytracingTier - D3D12_RAYTRACING_TIER_1_0 + 1, 0);
 
     // Windows 10 1903 (build 18362)
     D3D12_FEATURE_DATA_D3D12_OPTIONS6 options6 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &options6, sizeof(options6));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options6) failed, result = 0x%08X!", hr);
-    m_Desc.tiers.shadingRate = (uint8_t)options6.VariableShadingRateTier;
-    m_Desc.other.shadingRateAttachmentTileSize = (uint8_t)options6.ShadingRateImageTileSize;
-    m_Desc.features.additionalShadingRates = options6.AdditionalShadingRatesSupported;
 
     D3D12_FEATURE_DATA_SHADER_CACHE shaderCache = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_SHADER_CACHE, &shaderCache, sizeof(shaderCache));
@@ -486,7 +480,6 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &options7, sizeof(options7));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options7) failed, result = 0x%08X!", hr);
-    m_Desc.features.meshShader = options7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1;
 
     // Windows Server 2022 / Windows 10 LTSC (build 20348)
     D3D12_FEATURE_DATA_D3D12_OPTIONS8 options8 = {};
@@ -507,6 +500,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS10, &options10, sizeof(options10));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options10) failed, result = 0x%08X!", hr);
+    m_Desc.features.sumShadingRateCombiner = options10.VariableRateShadingSumCombinerSupported;
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS11 options11 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS11, &options11, sizeof(options11));
@@ -527,7 +521,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options13) failed, result = 0x%08X!", hr);
     m_Desc.memoryAlignment.uploadBufferTextureRow = options13.UnrestrictedBufferTextureCopyPitchSupported ? 1 : D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
     m_Desc.memoryAlignment.uploadBufferTextureSlice = options13.UnrestrictedBufferTextureCopyPitchSupported ? 1 : D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
-    m_Desc.features.viewportOriginBottomLeft = options13.InvertedViewportHeightFlipsYSupported ? 1 : 0;
+    m_Desc.features.viewportOriginBottomLeft = options13.InvertedViewportHeightFlipsYSupported;
 
     // Agility 1.608
     D3D12_FEATURE_DATA_D3D12_OPTIONS14 options14 = {};
@@ -554,7 +548,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS17, &options17, sizeof(options17));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options17) failed, result = 0x%08X!", hr);
-    m_Desc.shaderFeatures.unnormalizedCoordinates = options17.NonNormalizedCoordinateSamplersSupported ? 1 : 0;
+    m_Desc.shaderFeatures.unnormalizedCoordinates = options17.NonNormalizedCoordinateSamplersSupported;
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS18 options18 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS18, &options18, sizeof(options18));
@@ -819,9 +813,13 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.other.cullDistanceMaxNum = D3D12_CLIP_OR_CULL_DISTANCE_COUNT;
     m_Desc.other.combinedClipAndCullDistanceMaxNum = D3D12_CLIP_OR_CULL_DISTANCE_COUNT;
     m_Desc.other.viewMaxNum = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED ? D3D12_MAX_VIEW_INSTANCE_COUNT : 1;
+    m_Desc.other.shadingRateAttachmentTileSize = (uint8_t)options6.ShadingRateImageTileSize;
 
     m_Desc.tiers.conservativeRaster = (uint8_t)options.ConservativeRasterizationTier;
     m_Desc.tiers.sampleLocations = (uint8_t)options2.ProgrammableSamplePositionsTier;
+    m_Desc.tiers.rayTracing = (uint8_t)std::max(options5.RaytracingTier - D3D12_RAYTRACING_TIER_1_0 + 1, 0);
+    m_Desc.tiers.shadingRate = (uint8_t)options6.VariableShadingRateTier;
+    m_Desc.tiers.memory = options.ResourceHeapTier == D3D12_RESOURCE_HEAP_TIER_2 ? 1 : 0;
 
     if (options.ResourceBindingTier == D3D12_RESOURCE_BINDING_TIER_3 && currentShaderModel >= D3D_SHADER_MODEL_6_6)
         m_Desc.tiers.bindless = 2;
@@ -835,10 +833,8 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
 
     m_Desc.features.getMemoryDesc2 = true;
     m_Desc.features.swapChain = HasOutput();
+    m_Desc.features.meshShader = options7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1;
     m_Desc.features.lowLatency = HasNvExt();
-    m_Desc.features.pipelineCache = isPipelineLibrarySupported;
-    m_Desc.features.pipelineCacheControl = isPipelineLibrarySupported; // emulated via "ID3D12PipelineLibrary::Load*Pipeline" miss-detection
-    m_Desc.features.calibratedTimestamps = true;
 
     m_Desc.features.componentSwizzle = true;
     m_Desc.features.filterOpMinMax = levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_11_1 ? true : false;
@@ -846,6 +842,8 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.features.depthBoundsTest = options2.DepthBoundsTestSupported != 0;
     m_Desc.features.drawIndirectCount = true;
     m_Desc.features.lineSmoothing = true;
+    m_Desc.features.copyQueueTimestamp = options3.CopyQueueTimestampQueriesSupported;
+    m_Desc.features.additionalShadingRates = options6.AdditionalShadingRatesSupported;
     m_Desc.features.regionResolve = true;
     m_Desc.features.resolveOpMinMax = true;
     m_Desc.features.flexibleMultiview = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED;
@@ -860,6 +858,9 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.features.textureCompressionBC = true;
     m_Desc.features.shaderBytecodeDXBC = true;
     m_Desc.features.shaderBytecodeDXIL = true;
+    m_Desc.features.pipelineCache = isPipelineLibrarySupported;
+    m_Desc.features.pipelineCacheControl = isPipelineLibrarySupported; // emulated via "ID3D12PipelineLibrary::Load*Pipeline" miss-detection
+    m_Desc.features.calibratedTimestamps = true;
 
     bool isShaderAtomicsF16Supported = false;
     bool isShaderAtomicsF32Supported = false;

@@ -1253,7 +1253,7 @@ NriEnum(ShadingRateCombiner, uint8_t,
     REPLACE,    // B
     MIN,        // min(A, B)
     MAX,        // max(A, B)
-    SUM         // (A + B) or (A * B)
+    SUM         // (A + B) or (A * B), requires "features.sumShadingRateCombiner"
 );
 
 /*
@@ -2093,6 +2093,7 @@ NriStruct(DeviceDesc) {
         uint32_t pipelineCache                                   : 1; // "PipelineCache" support (NOP fallback if unsupported, except on error)
         uint32_t pipelineCacheControl                            : 1; // "FAIL_ON_CACHE_MISS" enforces "FAILURE", useful for platforms that prohibit runtime PSO compilation (e.g., Xbox GDK)
         uint32_t calibratedTimestamps                            : 1; // see "GetCalibratedTimestamps" (unsupported only in D3D11)
+        uint32_t sumShadingRateCombiner                          : 1; // see "ShadingRateCombiner::SUM"
     } features;
 
     // Shader features
