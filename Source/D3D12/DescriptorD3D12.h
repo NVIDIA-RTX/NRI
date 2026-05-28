@@ -2,8 +2,6 @@
 
 #pragma once
 
-struct ID3D12Resource;
-
 namespace nri {
 
 struct AccelerationStructureD3D12;

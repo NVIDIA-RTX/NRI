@@ -2,9 +2,6 @@
 
 #pragma once
 
-struct ID3D12CommandAllocator;
-enum D3D12_COMMAND_LIST_TYPE;
-
 namespace nri {
 
 struct CommandAllocatorD3D12 final : public DebugNameBase {
