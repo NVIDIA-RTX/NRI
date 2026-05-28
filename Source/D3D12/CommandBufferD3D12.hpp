@@ -427,7 +427,7 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
 
     if (commandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE) {
         ComPtr<ID3D12VideoDecodeCommandListBest> videoDecodeCommandList;
-        HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, IID_PPV_ARGS(&videoDecodeCommandList));
+        HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, __uuidof(ID3D12VideoDecodeCommandList), (void**)&videoDecodeCommandList);
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommandList");
 
         ComPtr<ID3D12VideoDecodeCommandListBest> videoDecodeCommandListBest;
@@ -440,7 +440,7 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
         m_CommandList = videoDecodeCommandList.GetInterface();
     } else if (commandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE) {
         ComPtr<ID3D12VideoEncodeCommandListBest> videoEncodeCommandList;
-        HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, IID_PPV_ARGS(&videoEncodeCommandList));
+        HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, __uuidof(ID3D12VideoEncodeCommandList), (void**)&videoEncodeCommandList);
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommandList");
 
         ComPtr<ID3D12VideoEncodeCommandListBest> videoEncodeCommandListBest;
