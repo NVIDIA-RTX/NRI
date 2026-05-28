@@ -31,8 +31,6 @@
 #include "StreamerInterface.h"
 #include "UpscalerInterface.h"
 
-#include <limits>
-
 using namespace nri;
 
 #include "AccelerationStructureD3D12.hpp"
