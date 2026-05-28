@@ -1127,25 +1127,36 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         if (m_Desc.tiers.rayTracing == 2 && OpacityMicromapFeatures.micromap)
             m_Desc.tiers.rayTracing = 3;
 
-        m_Desc.tiers.shadingRate = FragmentShadingRateFeatures.pipelineFragmentShadingRate != 0;
-        if (m_Desc.tiers.shadingRate) {
-            if (FragmentShadingRateFeatures.primitiveFragmentShadingRate && FragmentShadingRateFeatures.attachmentFragmentShadingRate)
-                m_Desc.tiers.shadingRate = 2;
-
-            m_Desc.features.additionalShadingRates = FragmentShadingRateProps.maxFragmentSize.height > 2 || FragmentShadingRateProps.maxFragmentSize.width > 2;
-        }
+        m_Desc.tiers.shadingRate = FragmentShadingRateFeatures.pipelineFragmentShadingRate != 0 ? 1 : 0;
+        if (m_Desc.tiers.shadingRate && FragmentShadingRateFeatures.primitiveFragmentShadingRate && FragmentShadingRateFeatures.attachmentFragmentShadingRate)
+            m_Desc.tiers.shadingRate = 2;
 
         // TODO: seems to be the best match
         m_Desc.tiers.bindless = features12.descriptorIndexing ? 1 : 0;
         m_Desc.tiers.resourceBinding = 2;
         m_Desc.tiers.memory = 1;
 
+        m_Desc.features.swapChain = IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME, desiredDeviceExts);
+        m_Desc.features.presentFromCompute = true;
+        m_Desc.features.waitableSwapChain = m_Desc.features.swapChain != 0 && PresentIdFeatures.presentId != 0 && PresentWaitFeatures.presentWait != 0;
+        m_Desc.features.resizableSwapChain = m_Desc.features.swapChain != 0 && m_IsSupported.swapChainMaintenance1 != 0;
+        m_Desc.features.layerBasedMultiview = features11.multiview;
+        m_Desc.features.textureCompressionBC = features.features.textureCompressionBC;
+        m_Desc.features.textureCompressionETC2 = features.features.textureCompressionETC2;
+        m_Desc.features.textureCompressionASTC = features.features.textureCompressionASTC_LDR;
+        m_Desc.features.shaderBytecodeSPIRV = true;
+        m_Desc.features.copyQueueTimestamp = limits.timestampComputeAndGraphics;
+        m_Desc.features.calibratedTimestamps = IsExtensionSupported(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, desiredDeviceExts);
+        m_Desc.features.additionalShadingRates = FragmentShadingRateProps.maxFragmentSize.height > 2 || FragmentShadingRateProps.maxFragmentSize.width > 2;
+        m_Desc.features.sumShadingRateCombiner = m_Desc.tiers.shadingRate != 0;
+        m_Desc.features.regionResolve = true;
+        m_Desc.features.resolveOpMinMax = m_IsSupported.maintenance10 ? true : false; // TODO: it's "all or nothing", without it "min/max" resolve is supported only in a render pass
+        m_Desc.features.pipelineCache = true;
+        m_Desc.features.pipelineCacheControl = features13.pipelineCreationCacheControl;
         m_Desc.features.getMemoryDesc2 = m_IsSupported.maintenance4;
         m_Desc.features.enhancedBarriers = true;
-        m_Desc.features.swapChain = IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME, desiredDeviceExts);
         m_Desc.features.meshShader = MeshShaderFeatures.meshShader != 0 && MeshShaderFeatures.taskShader != 0;
         m_Desc.features.lowLatency = m_IsSupported.presentId != 0 && IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, desiredDeviceExts);
-
         m_Desc.features.componentSwizzle = true;
         m_Desc.features.independentFrontAndBackStencilReferenceAndMasks = true;
         m_Desc.features.filterOpMinMax = features12.samplerFilterMinmax;
@@ -1153,29 +1164,14 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.depthBoundsTest = features.features.depthBounds;
         m_Desc.features.drawIndirectCount = features12.drawIndirectCount;
         m_Desc.features.lineSmoothing = features14.smoothLines;
-        m_Desc.features.copyQueueTimestamp = limits.timestampComputeAndGraphics;
         m_Desc.features.meshShaderPipelineStats = MeshShaderFeatures.meshShaderQueries == VK_TRUE;
         m_Desc.features.dynamicDepthBias = true;
         m_Desc.features.viewportOriginBottomLeft = true;
-        m_Desc.features.regionResolve = true;
-        m_Desc.features.resolveOpMinMax = m_IsSupported.maintenance10 ? true : false; // TODO: it's "all or nothing", without it "min/max" resolve is supported only in a render pass
-        m_Desc.features.layerBasedMultiview = features11.multiview;
-        m_Desc.features.presentFromCompute = true;
-        m_Desc.features.waitableSwapChain = m_Desc.features.swapChain != 0 && PresentIdFeatures.presentId != 0 && PresentWaitFeatures.presentWait != 0;
-        m_Desc.features.resizableSwapChain = m_Desc.features.swapChain != 0 && m_IsSupported.swapChainMaintenance1 != 0;
         m_Desc.features.pipelineStatistics = features.features.pipelineStatisticsQuery;
         m_Desc.features.rootConstantsOffset = true;
         m_Desc.features.nonConstantBufferRootDescriptorOffset = true;
         m_Desc.features.mutableDescriptorType = MutableDescriptorTypeFeatures.mutableDescriptorType;
         m_Desc.features.unifiedTextureLayouts = UnifiedImageLayoutsFeatures.unifiedImageLayouts;
-        m_Desc.features.textureCompressionBC = features.features.textureCompressionBC;
-        m_Desc.features.textureCompressionETC2 = features.features.textureCompressionETC2;
-        m_Desc.features.textureCompressionASTC = features.features.textureCompressionASTC_LDR;
-        m_Desc.features.shaderBytecodeSPIRV = true;
-        m_Desc.features.pipelineCache = true;
-        m_Desc.features.pipelineCacheControl = features13.pipelineCreationCacheControl;
-        m_Desc.features.calibratedTimestamps = IsExtensionSupported(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, desiredDeviceExts);
-        m_Desc.features.sumShadingRateCombiner = true;
 
         m_Desc.shaderFeatures.nativeI8 = features12.shaderInt8;
         m_Desc.shaderFeatures.nativeI16 = features.features.shaderInt16;

@@ -831,36 +831,35 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     else if (options.ResourceBindingTier == D3D12_RESOURCE_BINDING_TIER_2)
         m_Desc.tiers.resourceBinding = 1;
 
-    m_Desc.features.getMemoryDesc2 = true;
     m_Desc.features.swapChain = HasOutput();
+    m_Desc.features.waitableSwapChain = m_Desc.features.swapChain; // TODO: swap chain version >= 2?
+    m_Desc.features.resizableSwapChain = m_Desc.features.swapChain;
+    m_Desc.features.flexibleMultiview = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED;
+    m_Desc.features.layerBasedMultiview = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED;
+    m_Desc.features.viewportBasedMultiview = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED;
+    m_Desc.features.textureCompressionBC = true;
+    m_Desc.features.shaderBytecodeDXBC = true;
+    m_Desc.features.shaderBytecodeDXIL = true;
+    m_Desc.features.copyQueueTimestamp = options3.CopyQueueTimestampQueriesSupported;
+    m_Desc.features.calibratedTimestamps = true;
+    m_Desc.features.additionalShadingRates = options6.AdditionalShadingRatesSupported;
+    m_Desc.features.regionResolve = true;
+    m_Desc.features.resolveOpMinMax = true;
+    m_Desc.features.pipelineCache = isPipelineLibrarySupported;
+    m_Desc.features.pipelineCacheControl = isPipelineLibrarySupported; // emulated via "ID3D12PipelineLibrary::Load*Pipeline" miss-detection
+    m_Desc.features.getMemoryDesc2 = true;
     m_Desc.features.meshShader = options7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1;
     m_Desc.features.lowLatency = HasNvExt();
-
     m_Desc.features.componentSwizzle = true;
     m_Desc.features.filterOpMinMax = levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_11_1 ? true : false;
     m_Desc.features.logicOp = options.OutputMergerLogicOp != 0;
     m_Desc.features.depthBoundsTest = options2.DepthBoundsTestSupported != 0;
     m_Desc.features.drawIndirectCount = true;
     m_Desc.features.lineSmoothing = true;
-    m_Desc.features.copyQueueTimestamp = options3.CopyQueueTimestampQueriesSupported;
-    m_Desc.features.additionalShadingRates = options6.AdditionalShadingRatesSupported;
-    m_Desc.features.regionResolve = true;
-    m_Desc.features.resolveOpMinMax = true;
-    m_Desc.features.flexibleMultiview = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED;
-    m_Desc.features.layerBasedMultiview = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED;
-    m_Desc.features.viewportBasedMultiview = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED;
-    m_Desc.features.waitableSwapChain = m_Desc.features.swapChain; // TODO: swap chain version >= 2?
-    m_Desc.features.resizableSwapChain = m_Desc.features.swapChain;
     m_Desc.features.pipelineStatistics = true;
     m_Desc.features.rootConstantsOffset = true;
     m_Desc.features.nonConstantBufferRootDescriptorOffset = true;
     m_Desc.features.mutableDescriptorType = true;
-    m_Desc.features.textureCompressionBC = true;
-    m_Desc.features.shaderBytecodeDXBC = true;
-    m_Desc.features.shaderBytecodeDXIL = true;
-    m_Desc.features.pipelineCache = isPipelineLibrarySupported;
-    m_Desc.features.pipelineCacheControl = isPipelineLibrarySupported; // emulated via "ID3D12PipelineLibrary::Load*Pipeline" miss-detection
-    m_Desc.features.calibratedTimestamps = true;
 
     bool isShaderAtomicsF16Supported = false;
     bool isShaderAtomicsF32Supported = false;
