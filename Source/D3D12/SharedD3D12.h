@@ -12,13 +12,6 @@
 #    define NRI_D3D12_HAS_VIDEO_ENCODE_AV1 0
 #endif
 
-typedef ID3D12VideoDecodeCommandList3 ID3D12VideoDecodeCommandListBest;
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
-typedef ID3D12VideoEncodeCommandList4 ID3D12VideoEncodeCommandListBest;
-#else
-typedef ID3D12VideoEncodeCommandList3 ID3D12VideoEncodeCommandListBest;
-#endif
-
 // Validate Windows SDK version
 static_assert(D3D12_SDK_VERSION >= 4, "Outdated Windows SDK. D3D12 Ultimate needed (Windows SDK 10.0.20348). Always prefer using latest Agility SDK!");
 

@@ -31,6 +31,55 @@ static HRESULT QueryLatestInterface(ComPtr<ID3D12GraphicsCommandListBest>& in, C
     return i != n ? S_OK : D3D12_ERROR_INVALID_REDIST;
 }
 
+static HRESULT QueryLatestInterface(ComPtr<ID3D12VideoDecodeCommandListBest>& in, ComPtr<ID3D12VideoDecodeCommandListBest>& out, uint8_t& version) {
+    static const IID versions[] = {
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+        __uuidof(ID3D12VideoDecodeCommandList3),
+#endif
+        // D3D12 Ultimate initial release
+        __uuidof(ID3D12VideoDecodeCommandList2),
+        __uuidof(ID3D12VideoDecodeCommandList1),
+        __uuidof(ID3D12VideoDecodeCommandList),
+    };
+    const uint8_t n = (uint8_t)GetCountOf(versions);
+
+    uint8_t i = 0;
+    for (; i < n; i++) {
+        HRESULT hr = in->QueryInterface(versions[i], (void**)&out);
+        if (SUCCEEDED(hr))
+            break;
+    }
+
+    version = n - i - 1;
+
+    return i != n ? S_OK : D3D12_ERROR_INVALID_REDIST;
+}
+
+static HRESULT QueryLatestInterface(ComPtr<ID3D12VideoEncodeCommandListBest>& in, ComPtr<ID3D12VideoEncodeCommandListBest>& out, uint8_t& version) {
+    static const IID versions[] = {
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+        __uuidof(ID3D12VideoEncodeCommandList4),
+        __uuidof(ID3D12VideoEncodeCommandList3),
+        __uuidof(ID3D12VideoEncodeCommandList2),
+#endif
+        // D3D12 Ultimate initial release
+        __uuidof(ID3D12VideoEncodeCommandList1),
+        __uuidof(ID3D12VideoEncodeCommandList),
+    };
+    const uint8_t n = (uint8_t)GetCountOf(versions);
+
+    uint8_t i = 0;
+    for (; i < n; i++) {
+        HRESULT hr = in->QueryInterface(versions[i], (void**)&out);
+        if (SUCCEEDED(hr))
+            break;
+    }
+
+    version = n - i - 1;
+
+    return i != n ? S_OK : D3D12_ERROR_INVALID_REDIST;
+}
+
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
 static inline D3D12_BARRIER_SYNC GetBarrierSyncFlags(StageBits stageBits, AccessBits accessBits) {
     // Check non-mask values first
@@ -381,6 +430,10 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
         HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, IID_PPV_ARGS(&videoDecodeCommandList));
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommandList");
 
+        ComPtr<ID3D12VideoDecodeCommandListBest> videoDecodeCommandListBest;
+        hr = QueryLatestInterface(videoDecodeCommandList, videoDecodeCommandListBest, m_Version);
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDecodeCommandList::QueryLatestInterface");
+
         hr = videoDecodeCommandList->Close();
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDecodeCommandListBest::Close");
 
@@ -389,6 +442,10 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
         ComPtr<ID3D12VideoEncodeCommandListBest> videoEncodeCommandList;
         HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, IID_PPV_ARGS(&videoEncodeCommandList));
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommandList");
+
+        ComPtr<ID3D12VideoEncodeCommandListBest> videoEncodeCommandListBest;
+        hr = QueryLatestInterface(videoEncodeCommandList, videoEncodeCommandListBest, m_Version);
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoEncodeCommandList::QueryLatestInterface");
 
         hr = videoEncodeCommandList->Close();
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoEncodeCommandListBest::Close");
@@ -414,7 +471,7 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
     return Result::SUCCESS;
 }
 
-Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferD3D12Desc) {
+Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferD3D12Desc) { // TODO: allow wrapping of video command buffers
     ComPtr<ID3D12GraphicsCommandListBest> graphicsCommandList = (ID3D12GraphicsCommandListBest*)commandBufferD3D12Desc.d3d12CommandList;
 
     ComPtr<ID3D12GraphicsCommandListBest> graphicsCommandListBest;
