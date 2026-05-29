@@ -2752,7 +2752,7 @@ NRI_INLINE void CommandBufferD3D12::BuildBottomLevelAccelerationStructures(const
 }
 
 NRI_INLINE void CommandBufferD3D12::BuildMicromaps(const BuildMicromapDesc* buildMicromapDescs, uint32_t buildMicromapDescNum) {
-#ifdef NRI_D3D12_HAS_OPACITY_MICROMAP
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     static_assert(sizeof(MicromapTriangle) == sizeof(D3D12_RAYTRACING_OPACITY_MICROMAP_DESC), "Type mismatch");
 
     uint32_t usageMaxNum = 0;

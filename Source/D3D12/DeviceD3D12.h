@@ -2,10 +2,6 @@
 
 #pragma once
 
-struct IDXGIAdapter;
-struct ID3D12DescriptorHeap;
-struct ID3D12CommandSignature;
-
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
 struct ID3D12Device15;
 typedef ID3D12Device15 ID3D12DeviceBest;

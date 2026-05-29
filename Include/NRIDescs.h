@@ -98,7 +98,7 @@ static const Nri(Dim_t) NriConstant(REMAINING) = 0;     // only for "mipNum" and
 NriBits(GraphicsAPI, uint8_t,
     NONE    = NriBit(0), // Supports everything, does nothing, returns dummy non-NULL objects and ~0-filled descs, available if "NRI_ENABLE_NONE_SUPPORT = ON" in CMake
     D3D11   = NriBit(1), // Direct3D 11 (feature set 11.1), available if "NRI_ENABLE_D3D11_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm)
-    D3D12   = NriBit(2), // Direct3D 12 (D3D12_SDK_VERSION 4 or 618+), available if "NRI_ENABLE_D3D12_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/)
+    D3D12   = NriBit(2), // Direct3D 12 (D3D12_SDK_VERSION 4 or 619+), available if "NRI_ENABLE_D3D12_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/)
     VK      = NriBit(3)  // Vulkan 1.4, 1.3 or 1.2+ (can be used on MacOS via MoltenVK), available if "NRI_ENABLE_VK_SUPPORT = ON" in CMake (https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html)
 );
 
@@ -1296,7 +1296,7 @@ NriEnum(ShadingRateCombiner, uint8_t,
     REPLACE,    // B
     MIN,        // min(A, B)
     MAX,        // max(A, B)
-    SUM         // (A + B) or (A * B)
+    SUM         // (A + B) or (A * B), requires "features.sumShadingRateCombiner"
 );
 
 /*
@@ -2096,14 +2096,48 @@ NriStruct(DeviceDesc) {
 
     // Features
     struct {
-        // Bigger
+        // Swap chain
+        uint32_t swapChain                                       : 1; // NRISwapChain
+        uint32_t presentFromCompute                              : 1; // see "SwapChainDesc::queue"
+        uint32_t waitableSwapChain                               : 1; // see "SwapChainDesc::waitable"
+        uint32_t resizableSwapChain                              : 1; // swap chain can be resized without triggering an "OUT_OF_DATE" error
+
+        // Multi view
+        uint32_t flexibleMultiview                               : 1; // see "Multiview::FLEXIBLE"
+        uint32_t layerBasedMultiview                             : 1; // see "Multiview::LAYRED_BASED"
+        uint32_t viewportBasedMultiview                          : 1; // see "Multiview::VIEWPORT_BASED"
+
+        // Texture compression
+        uint32_t textureCompressionBC                            : 1; // all "BC" texture formats are supported
+        uint32_t textureCompressionETC2                          : 1; // all "ETC2" texture formats are supported
+        uint32_t textureCompressionASTC                          : 1; // all "ASTC" texture formats are supported
+
+        // Shader bytecode
+        uint32_t shaderBytecodeDXBC                              : 1; // DXBC can be passed to "ShaderDesc::bytecode"
+        uint32_t shaderBytecodeDXIL                              : 1; // DXIL can be passed to "ShaderDesc::bytecode"
+        uint32_t shaderBytecodeSPIRV                             : 1; // SPIRV can be passed to "ShaderDesc::bytecode"
+
+        // Time stamps
+        uint32_t copyQueueTimestamp                              : 1; // see "QueryType::TIMESTAMP_COPY_QUEUE"
+        uint32_t calibratedTimestamps                            : 1; // see "GetCalibratedTimestamps" (unsupported only in D3D11)
+
+        // Shading rate
+        uint32_t additionalShadingRates                          : 1; // see "ShadingRate"
+        uint32_t sumShadingRateCombiner                          : 1; // see "ShadingRateCombiner::SUM"
+
+        // Resolve
+        uint32_t regionResolve                                   : 1; // see "CmdResolveTexture"
+        uint32_t resolveOpMinMax                                 : 1; // see "ResolveOp"
+
+        // Pipeline cache
+        uint32_t pipelineCache                                   : 1; // "PipelineCache" support (NOP fallback if unsupported, except on error)
+        uint32_t pipelineCacheControl                            : 1; // "FAIL_ON_CACHE_MISS" enforces "FAILURE", useful for platforms that prohibit runtime PSO compilation (e.g., Xbox GDK)
+
+        // Other
         uint32_t getMemoryDesc2                                  : 1; // "GetXxxMemoryDesc2" support (VK: requires "maintenance4", D3D: supported)
         uint32_t enhancedBarriers                                : 1; // VK: supported, D3D12: requires "AgilitySDK", D3D11: unsupported
-        uint32_t swapChain                                       : 1; // NRISwapChain
         uint32_t meshShader                                      : 1; // NRIMeshShader
         uint32_t lowLatency                                      : 1; // NRILowLatency
-
-        // Smaller
         uint32_t componentSwizzle                                : 1; // see "ComponentSwizzle" (unsupported only in D3D11)
         uint32_t independentFrontAndBackStencilReferenceAndMasks : 1; // see "StencilAttachmentDesc::back"
         uint32_t filterOpMinMax                                  : 1; // see "FilterOp"
@@ -2111,33 +2145,14 @@ NriStruct(DeviceDesc) {
         uint32_t depthBoundsTest                                 : 1; // see "DepthAttachmentDesc::boundsTest"
         uint32_t drawIndirectCount                               : 1; // see "countBuffer" and "countBufferOffset"
         uint32_t lineSmoothing                                   : 1; // see "RasterizationDesc::lineSmoothing"
-        uint32_t copyQueueTimestamp                              : 1; // see "QueryType::TIMESTAMP_COPY_QUEUE"
         uint32_t meshShaderPipelineStats                         : 1; // see "PipelineStatisticsDesc"
         uint32_t dynamicDepthBias                                : 1; // see "CmdSetDepthBias"
-        uint32_t additionalShadingRates                          : 1; // see "ShadingRate"
         uint32_t viewportOriginBottomLeft                        : 1; // see "Viewport"
-        uint32_t regionResolve                                   : 1; // see "CmdResolveTexture"
-        uint32_t resolveOpMinMax                                 : 1; // see "ResolveOp"
-        uint32_t flexibleMultiview                               : 1; // see "Multiview::FLEXIBLE"
-        uint32_t layerBasedMultiview                             : 1; // see "Multiview::LAYRED_BASED"
-        uint32_t viewportBasedMultiview                          : 1; // see "Multiview::VIEWPORT_BASED"
-        uint32_t presentFromCompute                              : 1; // see "SwapChainDesc::queue"
-        uint32_t waitableSwapChain                               : 1; // see "SwapChainDesc::waitable"
-        uint32_t resizableSwapChain                              : 1; // swap chain can be resized without triggering an "OUT_OF_DATE" error
         uint32_t pipelineStatistics                              : 1; // see "QueryType::PIPELINE_STATISTICS"
         uint32_t rootConstantsOffset                             : 1; // see "SetRootConstantsDesc" (unsupported only in D3D11)
         uint32_t nonConstantBufferRootDescriptorOffset           : 1; // see "SetRootDescriptorDesc" (unsupported only in D3D11)
         uint32_t mutableDescriptorType                           : 1; // see "DescriptorType::MUTABLE"
         uint32_t unifiedTextureLayouts                           : 1; // allows to use "GENERAL" everywhere: https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_unified_image_layouts.html
-        uint32_t textureCompressionBC                            : 1; // all "BC" texture formats are supported
-        uint32_t textureCompressionETC2                          : 1; // all "ETC2" texture formats are supported
-        uint32_t textureCompressionASTC                          : 1; // all "ASTC" texture formats are supported
-        uint32_t shaderBytecodeDXBC                              : 1; // DXBC can be passed to "ShaderDesc::bytecode"
-        uint32_t shaderBytecodeDXIL                              : 1; // DXIL can be passed to "ShaderDesc::bytecode"
-        uint32_t shaderBytecodeSPIRV                             : 1; // SPIRV can be passed to "ShaderDesc::bytecode"
-        uint32_t pipelineCache                                   : 1; // "PipelineCache" support (NOP fallback if unsupported, except on error)
-        uint32_t pipelineCacheControl                            : 1; // "FAIL_ON_CACHE_MISS" enforces "FAILURE", useful for platforms that prohibit runtime PSO compilation (e.g., Xbox GDK)
-        uint32_t calibratedTimestamps                            : 1; // see "GetCalibratedTimestamps" (unsupported only in D3D11)
     } features;
 
     // Shader features

@@ -413,10 +413,8 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
 HRESULT DeviceD3D12::CreateVma() {
     uint32_t flags = (IsMemoryZeroInitializationEnabled() ? 0 : D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED)
-#ifdef NRI_D3D12_HAS_TIGHT_ALIGNMENT
         // NRI uses "tight alignment" under the hood
-        | D3D12MA::ALLOCATOR_FLAG_DONT_PREFER_SMALL_BUFFERS_COMMITTED
-#endif
+        | (m_TightAlignmentTier != 0 ? D3D12MA::ALLOCATOR_FLAG_DONT_PREFER_SMALL_BUFFERS_COMMITTED : 0)
         // TODO: the doc says "you should always use this flag", but D3D12MA could do better and respect "heap alignment" in "D3D12MA::AllocateMemory"
         // The presence of this flag can trigger a "wrong alignment" issue if a "Memory" is created via "AllocateMemory(useVMA = true)" and a big MSAA texture gets placed into it.
         // "D3D12MA::ALLOCATION_FLAG_COMMITTED" could be applied on an allocation inside "AllocateMemory", but it ruins the idea of using VMA for "AllocateMemory"
@@ -448,7 +446,6 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     HRESULT hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options) failed, result = 0x%08X!", hr);
-    m_Desc.tiers.memory = options.ResourceHeapTier == D3D12_RESOURCE_HEAP_TIER_2 ? 1 : 0;
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1));
@@ -464,7 +461,6 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, &options3, sizeof(options3));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options3) failed, result = 0x%08X!", hr);
-    m_Desc.features.copyQueueTimestamp = options3.CopyQueueTimestampQueriesSupported;
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS4 options4 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS4, &options4, sizeof(options4));
@@ -476,16 +472,12 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options5) failed, result = 0x%08X!", hr);
-    m_Desc.tiers.rayTracing = (uint8_t)std::max(options5.RaytracingTier - D3D12_RAYTRACING_TIER_1_0 + 1, 0);
 
     // Windows 10 1903 (build 18362)
     D3D12_FEATURE_DATA_D3D12_OPTIONS6 options6 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &options6, sizeof(options6));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options6) failed, result = 0x%08X!", hr);
-    m_Desc.tiers.shadingRate = (uint8_t)options6.VariableShadingRateTier;
-    m_Desc.other.shadingRateAttachmentTileSize = (uint8_t)options6.ShadingRateImageTileSize;
-    m_Desc.features.additionalShadingRates = options6.AdditionalShadingRatesSupported;
 
     D3D12_FEATURE_DATA_SHADER_CACHE shaderCache = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_SHADER_CACHE, &shaderCache, sizeof(shaderCache));
@@ -498,47 +490,48 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &options7, sizeof(options7));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options7) failed, result = 0x%08X!", hr);
-    m_Desc.features.meshShader = options7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1;
 
-#if NRI_ENABLE_AGILITY_SDK_SUPPORT
-    // Windows 11 21H2 (build 22000)
+    // Windows Server 2022 / Windows 10 LTSC (build 20348)
     D3D12_FEATURE_DATA_D3D12_OPTIONS8 options8 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS8, &options8, sizeof(options8));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options8) failed, result = 0x%08X!", hr);
 
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    // Agility 1.4
     D3D12_FEATURE_DATA_D3D12_OPTIONS9 options9 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS9, &options9, sizeof(options9));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options9) failed, result = 0x%08X!", hr);
     m_Desc.features.meshShaderPipelineStats = options9.MeshShaderPipelineStatsSupported;
+    m_Desc.shaderFeatures.atomicsI64 = options9.AtomicInt64OnGroupSharedSupported || options9.AtomicInt64OnTypedResourceSupported; // overwriting is safe
 
-    // Agility 1.4
     D3D12_FEATURE_DATA_D3D12_OPTIONS10 options10 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS10, &options10, sizeof(options10));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options10) failed, result = 0x%08X!", hr);
+    m_Desc.features.sumShadingRateCombiner = options10.VariableRateShadingSumCombinerSupported;
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS11 options11 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS11, &options11, sizeof(options11));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options11) failed, result = 0x%08X!", hr);
 
-    // Windows 11 22H2 (build 22621)
+    // Agility 1.602
     D3D12_FEATURE_DATA_D3D12_OPTIONS12 options12 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS12, &options12, sizeof(options12));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options12) failed, result = 0x%08X!", hr);
     m_Desc.features.enhancedBarriers = options12.EnhancedBarriersSupported && !disableD3D12EnhancedBarrier;
 
-    // Windows 11 22H2 / Agility 1.606
+    //Agility 1.606
     D3D12_FEATURE_DATA_D3D12_OPTIONS13 options13 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS13, &options13, sizeof(options13));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options13) failed, result = 0x%08X!", hr);
     m_Desc.memoryAlignment.uploadBufferTextureRow = options13.UnrestrictedBufferTextureCopyPitchSupported ? 1 : D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
     m_Desc.memoryAlignment.uploadBufferTextureSlice = options13.UnrestrictedBufferTextureCopyPitchSupported ? 1 : D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
-    m_Desc.features.viewportOriginBottomLeft = options13.InvertedViewportHeightFlipsYSupported ? 1 : 0;
+    m_Desc.features.viewportOriginBottomLeft = options13.InvertedViewportHeightFlipsYSupported;
 
     // Agility SDK
     D3D12_FEATURE_DATA_D3D12_OPTIONS14 options14 = {};
@@ -565,6 +558,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS17, &options17, sizeof(options17));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options17) failed, result = 0x%08X!", hr);
+    m_Desc.shaderFeatures.unnormalizedCoordinates = options17.NonNormalizedCoordinateSamplersSupported;
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS18 options18 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS18, &options18, sizeof(options18));
@@ -586,23 +580,24 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options21) failed, result = 0x%08X!", hr);
 
+    // Agility 1.618
+    D3D12_FEATURE_DATA_TIGHT_ALIGNMENT tightAlignment = {};
+    hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_TIGHT_ALIGNMENT, &tightAlignment, sizeof(tightAlignment));
+    if (FAILED(hr))
+        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(tightAlignment) failed, result = 0x%08X!", hr);
+    m_TightAlignmentTier = (uint8_t)tightAlignment.SupportTier;
+
+    // Agility 1.619
     D3D12_FEATURE_DATA_D3D12_OPTIONS22 options22 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS22, &options22, sizeof(options22));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options22) failed, result = 0x%08X!", hr);
     m_Desc.shaderStage.compute.dispatchMaxDim[0] = options22.Max1DDispatchSize;
     m_Desc.shaderStage.task.dispatchMaxDim[0] = options22.Max1DDispatchMeshSize;
+
 #else
     m_Desc.memoryAlignment.uploadBufferTextureRow = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
     m_Desc.memoryAlignment.uploadBufferTextureSlice = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
-#endif
-
-#ifdef NRI_D3D12_HAS_TIGHT_ALIGNMENT
-    D3D12_FEATURE_DATA_TIGHT_ALIGNMENT tightAlignment = {};
-    hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_TIGHT_ALIGNMENT, &tightAlignment, sizeof(tightAlignment));
-    if (FAILED(hr))
-        NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(tightAlignment) failed, result = 0x%08X!", hr);
-    m_TightAlignmentTier = (uint8_t)tightAlignment.SupportTier;
 #endif
 
     // Feature level
@@ -634,19 +629,20 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
 
     // Shader model
 #if (D3D12_SDK_VERSION >= 6)
-    D3D12_FEATURE_DATA_SHADER_MODEL shaderModel = {(D3D_SHADER_MODEL)D3D_HIGHEST_SHADER_MODEL};
+    uint32_t currentShaderModel = (uint32_t)D3D_HIGHEST_SHADER_MODEL;
 #else
-    D3D12_FEATURE_DATA_SHADER_MODEL shaderModel = {(D3D_SHADER_MODEL)0x69};
+    uint32_t currentShaderModel = 0x69;
 #endif
-    for (; shaderModel.HighestShaderModel >= D3D_SHADER_MODEL_6_0; (*(uint32_t*)&shaderModel.HighestShaderModel)--) {
+    for (; currentShaderModel >= (uint32_t)D3D_SHADER_MODEL_6_0; currentShaderModel--) {
+        D3D12_FEATURE_DATA_SHADER_MODEL shaderModel = {(D3D_SHADER_MODEL)currentShaderModel};
         hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &shaderModel, sizeof(shaderModel));
         if (SUCCEEDED(hr))
             break;
     }
-    if (shaderModel.HighestShaderModel < D3D_SHADER_MODEL_6_0)
-        shaderModel.HighestShaderModel = D3D_SHADER_MODEL_5_1;
+    if (currentShaderModel < D3D_SHADER_MODEL_6_0)
+        currentShaderModel = D3D_SHADER_MODEL_5_1;
 
-    m_Desc.shaderModel = (uint16_t)((shaderModel.HighestShaderModel >> 4) * 100 + (shaderModel.HighestShaderModel & 0xF));
+    m_Desc.shaderModel = (uint16_t)((currentShaderModel >> 4) * 100 + (currentShaderModel & 0xF));
 
     m_Desc.viewport.maxNum = D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
     m_Desc.viewport.boundsMin = D3D12_VIEWPORT_BOUNDS_MIN;
@@ -680,7 +676,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.memoryAlignment.constantBufferOffset = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
     m_Desc.memoryAlignment.scratchBufferOffset = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
     m_Desc.memoryAlignment.accelerationStructureOffset = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
-#ifdef NRI_D3D12_HAS_OPACITY_MICROMAP
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     m_Desc.memoryAlignment.micromapOffset = D3D12_RAYTRACING_OPACITY_MICROMAP_ARRAY_BYTE_ALIGNMENT;
 #endif
 
@@ -794,7 +790,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.accelerationStructure.primitiveMaxNum = D3D12_RAYTRACING_MAX_PRIMITIVES_PER_BOTTOM_LEVEL_ACCELERATION_STRUCTURE;
     m_Desc.accelerationStructure.geometryMaxNum = D3D12_RAYTRACING_MAX_GEOMETRIES_PER_BOTTOM_LEVEL_ACCELERATION_STRUCTURE;
     m_Desc.accelerationStructure.instanceMaxNum = D3D12_RAYTRACING_MAX_INSTANCES_PER_TOP_LEVEL_ACCELERATION_STRUCTURE;
-#ifdef NRI_D3D12_HAS_OPACITY_MICROMAP
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     m_Desc.accelerationStructure.micromapSubdivisionMaxLevel = D3D12_RAYTRACING_OPACITY_MICROMAP_OC1_MAX_SUBDIVISION_LEVEL;
 #endif
 
@@ -827,11 +823,15 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.other.cullDistanceMaxNum = D3D12_CLIP_OR_CULL_DISTANCE_COUNT;
     m_Desc.other.combinedClipAndCullDistanceMaxNum = D3D12_CLIP_OR_CULL_DISTANCE_COUNT;
     m_Desc.other.viewMaxNum = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED ? D3D12_MAX_VIEW_INSTANCE_COUNT : 1;
+    m_Desc.other.shadingRateAttachmentTileSize = (uint8_t)options6.ShadingRateImageTileSize;
 
     m_Desc.tiers.conservativeRaster = (uint8_t)options.ConservativeRasterizationTier;
     m_Desc.tiers.sampleLocations = (uint8_t)options2.ProgrammableSamplePositionsTier;
+    m_Desc.tiers.rayTracing = (uint8_t)std::max(options5.RaytracingTier - D3D12_RAYTRACING_TIER_1_0 + 1, 0);
+    m_Desc.tiers.shadingRate = (uint8_t)options6.VariableShadingRateTier;
+    m_Desc.tiers.memory = options.ResourceHeapTier == D3D12_RESOURCE_HEAP_TIER_2 ? 1 : 0;
 
-    if (options.ResourceBindingTier == D3D12_RESOURCE_BINDING_TIER_3 && shaderModel.HighestShaderModel >= D3D_SHADER_MODEL_6_6)
+    if (options.ResourceBindingTier == D3D12_RESOURCE_BINDING_TIER_3 && currentShaderModel >= D3D_SHADER_MODEL_6_6)
         m_Desc.tiers.bindless = 2;
     else if (levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_12_0)
         m_Desc.tiers.bindless = 1;
@@ -841,33 +841,35 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     else if (options.ResourceBindingTier == D3D12_RESOURCE_BINDING_TIER_2)
         m_Desc.tiers.resourceBinding = 1;
 
-    m_Desc.features.getMemoryDesc2 = true;
     m_Desc.features.swapChain = HasOutput();
-    m_Desc.features.lowLatency = HasNvExt();
+    m_Desc.features.waitableSwapChain = m_Desc.features.swapChain; // TODO: swap chain version >= 2?
+    m_Desc.features.resizableSwapChain = m_Desc.features.swapChain;
+    m_Desc.features.flexibleMultiview = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED;
+    m_Desc.features.layerBasedMultiview = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED;
+    m_Desc.features.viewportBasedMultiview = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED;
+    m_Desc.features.textureCompressionBC = true;
+    m_Desc.features.shaderBytecodeDXBC = true;
+    m_Desc.features.shaderBytecodeDXIL = true;
+    m_Desc.features.copyQueueTimestamp = options3.CopyQueueTimestampQueriesSupported;
+    m_Desc.features.calibratedTimestamps = true;
+    m_Desc.features.additionalShadingRates = options6.AdditionalShadingRatesSupported;
+    m_Desc.features.regionResolve = true;
+    m_Desc.features.resolveOpMinMax = true;
     m_Desc.features.pipelineCache = isPipelineLibrarySupported;
     m_Desc.features.pipelineCacheControl = isPipelineLibrarySupported; // emulated via "ID3D12PipelineLibrary::Load*Pipeline" miss-detection
-    m_Desc.features.calibratedTimestamps = true;
-
+    m_Desc.features.getMemoryDesc2 = true;
+    m_Desc.features.meshShader = options7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1;
+    m_Desc.features.lowLatency = HasNvExt();
     m_Desc.features.componentSwizzle = true;
     m_Desc.features.filterOpMinMax = levels.MaxSupportedFeatureLevel >= D3D_FEATURE_LEVEL_11_1 ? true : false;
     m_Desc.features.logicOp = options.OutputMergerLogicOp != 0;
     m_Desc.features.depthBoundsTest = options2.DepthBoundsTestSupported != 0;
     m_Desc.features.drawIndirectCount = true;
     m_Desc.features.lineSmoothing = true;
-    m_Desc.features.regionResolve = true;
-    m_Desc.features.resolveOpMinMax = true;
-    m_Desc.features.flexibleMultiview = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED;
-    m_Desc.features.layerBasedMultiview = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED;
-    m_Desc.features.viewportBasedMultiview = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED;
-    m_Desc.features.waitableSwapChain = m_Desc.features.swapChain; // TODO: swap chain version >= 2?
-    m_Desc.features.resizableSwapChain = m_Desc.features.swapChain;
     m_Desc.features.pipelineStatistics = true;
     m_Desc.features.rootConstantsOffset = true;
     m_Desc.features.nonConstantBufferRootDescriptorOffset = true;
     m_Desc.features.mutableDescriptorType = true;
-    m_Desc.features.textureCompressionBC = true;
-    m_Desc.features.shaderBytecodeDXBC = true;
-    m_Desc.features.shaderBytecodeDXIL = true;
 
     ComPtr<ID3D12VideoDevice> videoDevice;
     if (SUCCEEDED(m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice)))) {
@@ -917,9 +919,6 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
 
     m_Desc.shaderFeatures.viewportIndex = options.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation;
     m_Desc.shaderFeatures.layerIndex = options.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation;
-#if NRI_ENABLE_AGILITY_SDK_SUPPORT
-    m_Desc.shaderFeatures.unnormalizedCoordinates = true;
-#endif
     m_Desc.shaderFeatures.rasterizedOrderedView = options.ROVsSupported;
     m_Desc.shaderFeatures.barycentric = options3.BarycentricsSupported;
     m_Desc.shaderFeatures.integerDotProduct = m_Desc.shaderModel >= NriShaderModel(6, 4);
@@ -1129,7 +1128,7 @@ void DeviceD3D12::GetResourceDesc(const BufferDesc& bufferDesc, D3D12_RESOURCE_D
     desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
     desc.Flags = GetBufferFlags(bufferDesc.usage);
 
-#ifdef NRI_D3D12_HAS_TIGHT_ALIGNMENT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     if (m_TightAlignmentTier != 0)
         desc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
 #endif
@@ -1276,7 +1275,7 @@ void DeviceD3D12::GetResourceDesc(const TextureDesc& textureDesc, D3D12_RESOURCE
         desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS;
 
     // https://github.com/microsoft/DirectX-Specs/blob/master/d3d/D3D12TightPlacedResourceAlignment.md
-#ifdef NRI_D3D12_HAS_TIGHT_ALIGNMENT
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     if (m_TightAlignmentTier > 1)
         desc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
     else
@@ -1356,7 +1355,7 @@ void DeviceD3D12::GetAccelerationStructurePrebuildInfo(const AccelerationStructu
 }
 
 void DeviceD3D12::GetMicromapPrebuildInfo(const MicromapDesc& micromapDesc, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO& prebuildInfo) const {
-#ifdef NRI_D3D12_HAS_OPACITY_MICROMAP
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     Scratch<D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY> usages = NRI_ALLOCATE_SCRATCH(*this, D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY, micromapDesc.usageNum);
     for (uint32_t i = 0; i < micromapDesc.usageNum; i++) {
         const MicromapUsageDesc& in = micromapDesc.usages[i];

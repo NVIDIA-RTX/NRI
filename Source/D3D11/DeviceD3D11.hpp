@@ -509,20 +509,19 @@ void DeviceD3D11::FillDesc() {
     m_Desc.features.additionalShadingRates = caps.bVariablePixelRateShadingSupported ? 1 : 0;
 #endif
 
-    m_Desc.features.getMemoryDesc2 = true;
     m_Desc.features.swapChain = HasOutput();
+    m_Desc.features.waitableSwapChain = m_Desc.features.swapChain; // TODO: swap chain version >= 2?
+    m_Desc.features.resizableSwapChain = m_Desc.features.swapChain;
+    m_Desc.features.textureCompressionBC = true;
+    m_Desc.features.shaderBytecodeDXBC = true;
+    m_Desc.features.getMemoryDesc2 = true;
+    m_Desc.features.enhancedBarriers = true;                       // don't care, but advertise support
     m_Desc.features.lowLatency = HasNvExt();
-
     m_Desc.features.filterOpMinMax = options1.MinMaxFiltering != 0;
     m_Desc.features.logicOp = options.OutputMergerLogicOp != 0;
     m_Desc.features.lineSmoothing = true;
-    m_Desc.features.enhancedBarriers = true;                       // don't care, but advertise support
-    m_Desc.features.waitableSwapChain = m_Desc.features.swapChain; // TODO: swap chain version >= 2?
-    m_Desc.features.resizableSwapChain = m_Desc.features.swapChain;
     m_Desc.features.pipelineStatistics = true;
     m_Desc.features.mutableDescriptorType = true;
-    m_Desc.features.textureCompressionBC = true;
-    m_Desc.features.shaderBytecodeDXBC = true;
 
     m_Desc.shaderFeatures.nativeF64 = options.ExtendedDoublesShaderInstructions;
     m_Desc.shaderFeatures.atomicsF16 = isShaderAtomicsF16Supported;

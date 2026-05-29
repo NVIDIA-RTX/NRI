@@ -544,7 +544,7 @@ Result PipelineD3D12::Create(const RayTracingPipelineDesc& rayTracingPipelineDes
             rayTracingPipelineConfig.Flags |= D3D12_RAYTRACING_PIPELINE_FLAG_SKIP_TRIANGLES;
         if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::SKIP_AABBS)
             rayTracingPipelineConfig.Flags |= D3D12_RAYTRACING_PIPELINE_FLAG_SKIP_PROCEDURAL_PRIMITIVES;
-#ifdef NRI_D3D12_HAS_OPACITY_MICROMAP
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         if (rayTracingPipelineDesc.flags & RayTracingPipelineBits::ALLOW_MICROMAPS)
             rayTracingPipelineConfig.Flags |= D3D12_RAYTRACING_PIPELINE_FLAG_ALLOW_OPACITY_MICROMAPS;
 #endif

@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include <limits>
-
 namespace nri {
 
 struct BufferVK;

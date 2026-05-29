@@ -2,10 +2,6 @@
 
 #pragma once
 
-struct ID3D12Device;
-struct ID3D12CommandQueue;
-enum D3D12_COMMAND_LIST_TYPE;
-
 namespace nri {
 
 struct QueueD3D12 final : public DebugNameBase {

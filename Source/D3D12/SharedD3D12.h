@@ -15,24 +15,6 @@
 // Validate Windows SDK version
 static_assert(D3D12_SDK_VERSION >= 4, "Outdated Windows SDK. D3D12 Ultimate needed (Windows SDK 10.0.20348). Always prefer using latest Agility SDK!");
 
-// TODO: "D3D12_SDK_VERSION" and "D3D12_PREVIEW_SDK_VERSION" are inconsistent and can't be used to check features support
-
-#if (NRI_AGILITY_SDK_VERSION_MAJOR >= 618)
-#    define NRI_D3D12_HAS_TIGHT_ALIGNMENT
-#endif
-
-#if (NRI_AGILITY_SDK_VERSION_MAJOR >= 616)
-#    define NRI_D3D12_HAS_OPACITY_MICROMAP
-#else
-struct D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC {
-    uint32_t unused;
-};
-
-struct D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY {
-    uint32_t unused;
-};
-#endif
-
 // "Must-have" constants
 #ifndef D3D12_RAYTRACING_OPACITY_MICROMAP_ARRAY_BYTE_ALIGNMENT
 #    define D3D12_RAYTRACING_OPACITY_MICROMAP_ARRAY_BYTE_ALIGNMENT 128

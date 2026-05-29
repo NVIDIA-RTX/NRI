@@ -2,16 +2,6 @@
 
 #pragma once
 
-struct ID3D12CommandAllocator;
-struct ID3D12CommandList;
-struct ID3D12Resource;
-struct ID3D12VideoDecoder;
-struct ID3D12VideoDecoderHeap;
-struct ID3D12VideoEncoder;
-struct ID3D12VideoEncoderHeap;
-struct D3D12_RESOURCE_BARRIER;
-struct D3D12_BARRIER_GROUP;
-
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
 struct ID3D12GraphicsCommandList10;
 typedef ID3D12GraphicsCommandList10 ID3D12GraphicsCommandListBest;

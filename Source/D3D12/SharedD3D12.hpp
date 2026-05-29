@@ -471,7 +471,7 @@ void nri::ConvertBotomLevelGeometries(const BottomLevelGeometryDesc* geometries,
             const BottomLevelTrianglesDesc& triangles = in.triangles;
             D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC* outTriangles = &out.Triangles;
 
-#ifdef NRI_D3D12_HAS_OPACITY_MICROMAP
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
             if (in.triangles.micromap) {
                 const BottomLevelMicromapDesc& micromapDesc = *in.triangles.micromap;
 
