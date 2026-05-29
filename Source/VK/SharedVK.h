@@ -10,6 +10,7 @@
 
 #include "DispatchTable.h"
 #include "SharedExternal.h"
+#include "VideoHelpersVK.h"
 
 typedef uint16_t MemoryTypeIndex;
 

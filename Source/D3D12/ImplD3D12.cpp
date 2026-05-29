@@ -21,7 +21,6 @@
 #include "QueueD3D12.h"
 #include "SwapChainD3D12.h"
 #include "TextureD3D12.h"
-#include "VideoHelpersD3D12.h"
 #include "VideoSessionD3D12.h"
 #include "VideoSessionParametersD3D12.h"
 #include "VideoPictureD3D12.h"

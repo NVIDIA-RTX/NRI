@@ -1,5 +1,122 @@
 // © 2026 NVIDIA Corporation
 
+static VkVideoCodecOperationFlagBitsKHR GetVideoCodecOperationVK(const VideoSessionDesc& videoSessionDesc) {
+    if (videoSessionDesc.usage == VideoUsage::DECODE) {
+        switch (videoSessionDesc.codec) {
+            case VideoCodec::H264:
+                return VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR;
+            case VideoCodec::H265:
+                return VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR;
+            case VideoCodec::AV1:
+                return VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR;
+            case VideoCodec::NONE:
+            case VideoCodec::MAX_NUM:
+                return (VkVideoCodecOperationFlagBitsKHR)0;
+        }
+    } else if (videoSessionDesc.usage == VideoUsage::ENCODE) {
+        switch (videoSessionDesc.codec) {
+            case VideoCodec::H264:
+                return VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_KHR;
+            case VideoCodec::H265:
+                return VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_KHR;
+            case VideoCodec::AV1:
+                return VK_VIDEO_CODEC_OPERATION_ENCODE_AV1_BIT_KHR;
+            case VideoCodec::NONE:
+            case VideoCodec::MAX_NUM:
+                return (VkVideoCodecOperationFlagBitsKHR)0;
+        }
+    }
+
+    return (VkVideoCodecOperationFlagBitsKHR)0;
+}
+
+static void* FillVideoProfileCodecInfoVK(const VideoSessionDesc& videoSessionDesc, void* storage) {
+    if (videoSessionDesc.usage == VideoUsage::DECODE) {
+        switch (videoSessionDesc.codec) {
+            case VideoCodec::H264: {
+                VkVideoDecodeH264ProfileInfoKHR& info = *(VkVideoDecodeH264ProfileInfoKHR*)storage;
+                info = {VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_PROFILE_INFO_KHR};
+                info.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_HIGH;
+                info.pictureLayout = VK_VIDEO_DECODE_H264_PICTURE_LAYOUT_PROGRESSIVE_KHR;
+                return &info;
+            }
+            case VideoCodec::H265: {
+                VkVideoDecodeH265ProfileInfoKHR& info = *(VkVideoDecodeH265ProfileInfoKHR*)storage;
+                info = {VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_PROFILE_INFO_KHR};
+                info.stdProfileIdc = videoSessionDesc.format == Format::P010_UNORM || videoSessionDesc.format == Format::P016_UNORM ? STD_VIDEO_H265_PROFILE_IDC_MAIN_10 : STD_VIDEO_H265_PROFILE_IDC_MAIN;
+                return &info;
+            }
+            case VideoCodec::AV1: {
+                VkVideoDecodeAV1ProfileInfoKHR& info = *(VkVideoDecodeAV1ProfileInfoKHR*)storage;
+                info = {VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_KHR};
+                info.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN;
+                info.filmGrainSupport = VK_TRUE;
+                return &info;
+            }
+            case VideoCodec::NONE:
+            case VideoCodec::MAX_NUM:
+                return nullptr;
+        }
+    } else if (videoSessionDesc.usage == VideoUsage::ENCODE) {
+        switch (videoSessionDesc.codec) {
+            case VideoCodec::H264: {
+                VkVideoEncodeH264ProfileInfoKHR& info = *(VkVideoEncodeH264ProfileInfoKHR*)storage;
+                info = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PROFILE_INFO_KHR};
+                info.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_HIGH;
+                return &info;
+            }
+            case VideoCodec::H265: {
+                VkVideoEncodeH265ProfileInfoKHR& info = *(VkVideoEncodeH265ProfileInfoKHR*)storage;
+                info = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_PROFILE_INFO_KHR};
+                info.stdProfileIdc = videoSessionDesc.format == Format::P010_UNORM || videoSessionDesc.format == Format::P016_UNORM ? STD_VIDEO_H265_PROFILE_IDC_MAIN_10 : STD_VIDEO_H265_PROFILE_IDC_MAIN;
+                return &info;
+            }
+            case VideoCodec::AV1: {
+                VkVideoEncodeAV1ProfileInfoKHR& info = *(VkVideoEncodeAV1ProfileInfoKHR*)storage;
+                info = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_PROFILE_INFO_KHR};
+                info.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN;
+                return &info;
+            }
+            case VideoCodec::NONE:
+            case VideoCodec::MAX_NUM:
+                return nullptr;
+        }
+    }
+
+    return nullptr;
+}
+
+static bool FindVideoSessionMemoryTypeVK(const DeviceVK& device, uint32_t memoryTypeBits, uint32_t& memoryTypeIndex) {
+    uint32_t compatibleIndex = uint32_t(-1);
+    for (uint32_t i = 0; i < 32; i++) {
+        if ((memoryTypeBits & (1u << i)) == 0)
+            continue;
+
+        MemoryTypeInfo memoryTypeInfo = {};
+        if (!device.GetMemoryTypeByIndex(i, memoryTypeInfo))
+            continue;
+
+        if (memoryTypeInfo.location == MemoryLocation::DEVICE) {
+            memoryTypeIndex = i;
+            return true;
+        }
+
+        if (compatibleIndex == uint32_t(-1))
+            compatibleIndex = i;
+    }
+
+    if (compatibleIndex == uint32_t(-1))
+        return false;
+
+    memoryTypeIndex = compatibleIndex;
+
+    return true;
+}
+
+static inline VkVideoComponentBitDepthFlagsKHR GetVideoBitDepthVK(Format format) {
+    return format == Format::P010_UNORM || format == Format::P016_UNORM ? VK_VIDEO_COMPONENT_BIT_DEPTH_10_BIT_KHR : VK_VIDEO_COMPONENT_BIT_DEPTH_8_BIT_KHR;
+}
+
 VideoSessionVK::~VideoSessionVK() {
     const auto& vk = m_Device.GetDispatchTable();
     if (m_EncodeFeedbackQueryPool)

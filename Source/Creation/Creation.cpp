@@ -32,24 +32,6 @@
 
 using namespace nri;
 
-#if NRI_ENABLE_VK_SUPPORT
-constexpr VkVideoCodecOperationFlagsKHR VIDEO_DECODE_CODEC_OPERATION_MASK_CREATION = 0x0000FFFF;
-constexpr VkVideoCodecOperationFlagsKHR VIDEO_ENCODE_CODEC_OPERATION_MASK_CREATION = 0xFFFF0000;
-
-static uint32_t GetVideoCodecNumVK(VkVideoCodecOperationFlagsKHR videoCodecOperations, bool decode) {
-    const VkVideoCodecOperationFlagsKHR mask = decode ? VIDEO_DECODE_CODEC_OPERATION_MASK_CREATION : VIDEO_ENCODE_CODEC_OPERATION_MASK_CREATION;
-    videoCodecOperations &= mask;
-
-    uint32_t num = 0;
-    while (videoCodecOperations) {
-        num += videoCodecOperations & 1;
-        videoCodecOperations >>= 1;
-    }
-
-    return num;
-}
-#endif
-
 Result CreateDeviceNONE(const DeviceCreationDesc& deviceCreationDesc, DeviceBase*& device);
 Result CreateDeviceD3D11(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationD3D11Desc& deviceCreationDescD3D11, DeviceBase*& device);
 Result CreateDeviceD3D12(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationD3D12Desc& deviceCreationDescD3D12, DeviceBase*& device);
@@ -312,6 +294,22 @@ static void UpdateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterDescNu
 #endif
 
 #if NRI_ENABLE_VK_SUPPORT
+
+static uint32_t GetVideoCodecNumVK(VkVideoCodecOperationFlagsKHR videoCodecOperations, bool decode) {
+    constexpr VkVideoCodecOperationFlagsKHR VIDEO_DECODE_CODEC_OPERATION_MASK_CREATION = 0x0000FFFF;
+    constexpr VkVideoCodecOperationFlagsKHR VIDEO_ENCODE_CODEC_OPERATION_MASK_CREATION = 0xFFFF0000;
+
+    const VkVideoCodecOperationFlagsKHR mask = decode ? VIDEO_DECODE_CODEC_OPERATION_MASK_CREATION : VIDEO_ENCODE_CODEC_OPERATION_MASK_CREATION;
+    videoCodecOperations &= mask;
+
+    uint32_t num = 0;
+    while (videoCodecOperations) {
+        num += videoCodecOperations & 1;
+        videoCodecOperations >>= 1;
+    }
+
+    return num;
+}
 
 static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum, VkPhysicalDevice precreatedPhysicalDevice) {
     // Variables first

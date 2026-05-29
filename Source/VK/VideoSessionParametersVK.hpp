@@ -1,5 +1,103 @@
 // © 2026 NVIDIA Corporation
 
+static StdVideoH264LevelIdc GetVideoH264LevelIdcVK(uint8_t levelIdc) {
+    switch (levelIdc) {
+        case 10:
+            return STD_VIDEO_H264_LEVEL_IDC_1_0;
+        case 11:
+            return STD_VIDEO_H264_LEVEL_IDC_1_1;
+        case 12:
+            return STD_VIDEO_H264_LEVEL_IDC_1_2;
+        case 13:
+            return STD_VIDEO_H264_LEVEL_IDC_1_3;
+        case 20:
+            return STD_VIDEO_H264_LEVEL_IDC_2_0;
+        case 21:
+            return STD_VIDEO_H264_LEVEL_IDC_2_1;
+        case 22:
+            return STD_VIDEO_H264_LEVEL_IDC_2_2;
+        case 30:
+            return STD_VIDEO_H264_LEVEL_IDC_3_0;
+        case 31:
+            return STD_VIDEO_H264_LEVEL_IDC_3_1;
+        case 32:
+            return STD_VIDEO_H264_LEVEL_IDC_3_2;
+        case 40:
+            return STD_VIDEO_H264_LEVEL_IDC_4_0;
+        case 41:
+            return STD_VIDEO_H264_LEVEL_IDC_4_1;
+        case 42:
+            return STD_VIDEO_H264_LEVEL_IDC_4_2;
+        case 50:
+            return STD_VIDEO_H264_LEVEL_IDC_5_0;
+        case 51:
+            return STD_VIDEO_H264_LEVEL_IDC_5_1;
+        case 52:
+            return STD_VIDEO_H264_LEVEL_IDC_5_2;
+        case 60:
+            return STD_VIDEO_H264_LEVEL_IDC_6_0;
+        case 61:
+            return STD_VIDEO_H264_LEVEL_IDC_6_1;
+        case 62:
+            return STD_VIDEO_H264_LEVEL_IDC_6_2;
+    }
+
+    return STD_VIDEO_H264_LEVEL_IDC_INVALID;
+}
+
+static StdVideoH264SequenceParameterSet GetVideoH264SequenceParameterSetVK(const VideoH264SequenceParameterSetDesc& desc) {
+    StdVideoH264SequenceParameterSet sps = {};
+    sps.flags.constraint_set0_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::CONSTRAINT_SET0);
+    sps.flags.constraint_set1_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::CONSTRAINT_SET1);
+    sps.flags.constraint_set2_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::CONSTRAINT_SET2);
+    sps.flags.constraint_set3_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::CONSTRAINT_SET3);
+    sps.flags.constraint_set4_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::CONSTRAINT_SET4);
+    sps.flags.constraint_set5_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::CONSTRAINT_SET5);
+    sps.flags.direct_8x8_inference_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::DIRECT_8X8_INFERENCE);
+    sps.flags.mb_adaptive_frame_field_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::MB_ADAPTIVE_FRAME_FIELD);
+    sps.flags.frame_mbs_only_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::FRAME_MBS_ONLY);
+    sps.flags.delta_pic_order_always_zero_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::DELTA_PIC_ORDER_ALWAYS_ZERO);
+    sps.flags.separate_colour_plane_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::SEPARATE_COLOUR_PLANE);
+    sps.flags.gaps_in_frame_num_value_allowed_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::GAPS_IN_FRAME_NUM_ALLOWED);
+    sps.flags.qpprime_y_zero_transform_bypass_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::QPPRIME_Y_ZERO_TRANSFORM_BYPASS);
+    sps.profile_idc = (StdVideoH264ProfileIdc)desc.profileIdc;
+    sps.level_idc = GetVideoH264LevelIdcVK(desc.levelIdc);
+    sps.chroma_format_idc = (StdVideoH264ChromaFormatIdc)desc.chromaFormatIdc;
+    sps.seq_parameter_set_id = desc.sequenceParameterSetId;
+    sps.bit_depth_luma_minus8 = desc.bitDepthLumaMinus8;
+    sps.bit_depth_chroma_minus8 = desc.bitDepthChromaMinus8;
+    sps.log2_max_frame_num_minus4 = desc.log2MaxFrameNumMinus4;
+    sps.pic_order_cnt_type = (StdVideoH264PocType)desc.pictureOrderCountType;
+    sps.offset_for_non_ref_pic = desc.offsetForNonReferencePicture;
+    sps.offset_for_top_to_bottom_field = desc.offsetForTopToBottomField;
+    sps.log2_max_pic_order_cnt_lsb_minus4 = desc.log2MaxPictureOrderCountLsbMinus4;
+    sps.max_num_ref_frames = desc.referenceFrameNum;
+    sps.pic_width_in_mbs_minus1 = desc.pictureWidthInMbsMinus1;
+    sps.pic_height_in_map_units_minus1 = desc.pictureHeightInMapUnitsMinus1;
+    return sps;
+}
+
+static StdVideoH264PictureParameterSet GetVideoH264PictureParameterSetVK(const VideoH264PictureParameterSetDesc& desc) {
+    StdVideoH264PictureParameterSet pps = {};
+    pps.flags.transform_8x8_mode_flag = !!(desc.flags & VideoH264PictureParameterSetBits::TRANSFORM_8X8_MODE);
+    pps.flags.redundant_pic_cnt_present_flag = !!(desc.flags & VideoH264PictureParameterSetBits::REDUNDANT_PIC_CNT_PRESENT);
+    pps.flags.constrained_intra_pred_flag = !!(desc.flags & VideoH264PictureParameterSetBits::CONSTRAINED_INTRA_PRED);
+    pps.flags.deblocking_filter_control_present_flag = !!(desc.flags & VideoH264PictureParameterSetBits::DEBLOCKING_FILTER_CONTROL_PRESENT);
+    pps.flags.weighted_pred_flag = !!(desc.flags & VideoH264PictureParameterSetBits::WEIGHTED_PRED);
+    pps.flags.bottom_field_pic_order_in_frame_present_flag = !!(desc.flags & VideoH264PictureParameterSetBits::BOTTOM_FIELD_PIC_ORDER_IN_FRAME);
+    pps.flags.entropy_coding_mode_flag = !!(desc.flags & VideoH264PictureParameterSetBits::ENTROPY_CODING_MODE);
+    pps.seq_parameter_set_id = desc.sequenceParameterSetId;
+    pps.pic_parameter_set_id = desc.pictureParameterSetId;
+    pps.num_ref_idx_l0_default_active_minus1 = desc.refIndexL0DefaultActiveMinus1;
+    pps.num_ref_idx_l1_default_active_minus1 = desc.refIndexL1DefaultActiveMinus1;
+    pps.weighted_bipred_idc = (StdVideoH264WeightedBipredIdc)desc.weightedBipredIdc;
+    pps.pic_init_qp_minus26 = desc.pictureInitQpMinus26;
+    pps.pic_init_qs_minus26 = desc.pictureInitQsMinus26;
+    pps.chroma_qp_index_offset = desc.chromaQpIndexOffset;
+    pps.second_chroma_qp_index_offset = desc.secondChromaQpIndexOffset;
+    return pps;
+}
+
 VideoSessionParametersVK::~VideoSessionParametersVK() {
         const auto& vk = m_Device.GetDispatchTable();
         if (m_Handle)

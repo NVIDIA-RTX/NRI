@@ -4,6 +4,8 @@
 
 namespace nri {
 
+struct VideoSessionVK;
+
 struct VideoSessionParametersVK final : public DebugNameBase {
     inline VideoSessionParametersVK(DeviceVK& device)
         : m_Device(device)

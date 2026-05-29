@@ -37,6 +37,7 @@ static_assert(D3D12_SDK_VERSION >= 4, "Outdated Windows SDK. D3D12 Ultimate need
 #endif
 
 #include "SharedExternal.h"
+#include "VideoHelpersD3D12.h"
 
 namespace nri {
 

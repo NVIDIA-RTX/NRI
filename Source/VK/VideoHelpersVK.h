@@ -2,14 +2,6 @@
 
 #pragma once
 
-#include "Extensions/NRIVideo.h"
-
-#include <vulkan/vulkan.h>
-
-#include <array>
-#include <cstdint>
-#include <cstring>
-
 namespace nri {
 
 #ifndef NRI_VIDEO_SHARED_RATE_CONTROL_HELPERS_DEFINED
@@ -982,6 +974,14 @@ inline void FillVideoDecodeAV1FilmGrainVK(StdVideoAV1FilmGrain& info, const Vide
 
 inline bool IsVideoEncodeAV1KeyFrameReferenceStateValidVK(VideoEncodeFrameType frameType, uint32_t referenceNum) {
     return (frameType != VideoEncodeFrameType::IDR && frameType != VideoEncodeFrameType::I) || referenceNum == 0;
+}
+
+inline StdVideoH265LevelIdc GetVideoH265LevelIdcVK(uint32_t width, uint32_t height) {
+    const uint64_t samples = uint64_t(width) * height;
+    if (samples <= 512ull * 512ull)
+        return STD_VIDEO_H265_LEVEL_IDC_3_1;
+
+    return STD_VIDEO_H265_LEVEL_IDC_4_1;
 }
 
 } // namespace nri

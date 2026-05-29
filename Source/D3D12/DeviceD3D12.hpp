@@ -533,7 +533,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.memoryAlignment.uploadBufferTextureSlice = options13.UnrestrictedBufferTextureCopyPitchSupported ? 1 : D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
     m_Desc.features.viewportOriginBottomLeft = options13.InvertedViewportHeightFlipsYSupported;
 
-    // Agility SDK
+    // Agility 1.608
     D3D12_FEATURE_DATA_D3D12_OPTIONS14 options14 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS14, &options14, sizeof(options14));
     if (FAILED(hr))

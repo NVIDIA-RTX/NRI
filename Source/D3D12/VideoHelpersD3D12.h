@@ -2,15 +2,8 @@
 
 #pragma once
 
-#include "Extensions/NRIVideo.h"
-
 #include <d3d12video.h>
 #include <dxva.h>
-
-#include <algorithm>
-#include <array>
-#include <cstdint>
-#include <cstring>
 
 #if !defined(NRI_D3D12_HAS_VIDEO_ENCODE_AV1)
 #    if NRI_ENABLE_AGILITY_SDK_SUPPORT && NRI_AGILITY_SDK_VERSION_MAJOR >= 619

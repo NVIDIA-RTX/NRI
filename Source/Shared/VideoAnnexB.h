@@ -2,10 +2,6 @@
 
 #pragma once
 
-#include "Extensions/NRIVideo.h"
-
-#include <algorithm>
-
 namespace nri {
 
 namespace video_annex_b {

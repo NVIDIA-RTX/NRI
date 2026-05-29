@@ -22,7 +22,9 @@
 #include "QueueVK.h"
 #include "SwapChainVK.h"
 #include "TextureVK.h"
-#include "VideoHelpersVK.h"
+#include "VideoPictureVK.h"
+#include "VideoSessionParametersVK.h"
+#include "VideoSessionVK.h"
 
 #include "HelperInterface.h"
 #include "ImguiInterface.h"
@@ -50,6 +52,9 @@ using namespace nri;
 #include "QueueVK.hpp"
 #include "SwapChainVK.hpp"
 #include "TextureVK.hpp"
+#include "VideoPictureVK.hpp"
+#include "VideoSessionParametersVK.hpp"
+#include "VideoSessionVK.hpp"
 
 Result CreateDeviceVK(const DeviceCreationDesc& desc, const DeviceCreationVKDesc& descVK, DeviceBase*& device) {
     DeviceVK* impl = Allocate<DeviceVK>(desc.allocationCallbacks, desc.callbackInterface, desc.allocationCallbacks);
@@ -253,8 +258,6 @@ static Result NRI_CALL CreateCommittedTexture(Device& device, MemoryLocation mem
 
     return ((TextureVK*)texture)->AllocateAndBindMemory(memoryLocation, priority, true);
 }
-
-static VkVideoCodecOperationFlagBitsKHR GetVideoCodecOperationVK(const VideoSessionDesc& videoSessionDesc);
 
 static Result NRI_CALL CreatePlacedBuffer(Device& device, Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer) {
     DeviceVK& deviceVK = (DeviceVK&)device;
@@ -1137,243 +1140,87 @@ Result DeviceVK::FillFunctionTable(RayTracingInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  Video  ]
 
-#include "VideoSessionVK.h"
-
-static StdVideoH264LevelIdc GetVideoH264LevelIdcVK(uint8_t levelIdc) {
-    switch (levelIdc) {
-        case 10:
-            return STD_VIDEO_H264_LEVEL_IDC_1_0;
-        case 11:
-            return STD_VIDEO_H264_LEVEL_IDC_1_1;
-        case 12:
-            return STD_VIDEO_H264_LEVEL_IDC_1_2;
-        case 13:
-            return STD_VIDEO_H264_LEVEL_IDC_1_3;
-        case 20:
-            return STD_VIDEO_H264_LEVEL_IDC_2_0;
-        case 21:
-            return STD_VIDEO_H264_LEVEL_IDC_2_1;
-        case 22:
-            return STD_VIDEO_H264_LEVEL_IDC_2_2;
-        case 30:
-            return STD_VIDEO_H264_LEVEL_IDC_3_0;
-        case 31:
-            return STD_VIDEO_H264_LEVEL_IDC_3_1;
-        case 32:
-            return STD_VIDEO_H264_LEVEL_IDC_3_2;
-        case 40:
-            return STD_VIDEO_H264_LEVEL_IDC_4_0;
-        case 41:
-            return STD_VIDEO_H264_LEVEL_IDC_4_1;
-        case 42:
-            return STD_VIDEO_H264_LEVEL_IDC_4_2;
-        case 50:
-            return STD_VIDEO_H264_LEVEL_IDC_5_0;
-        case 51:
-            return STD_VIDEO_H264_LEVEL_IDC_5_1;
-        case 52:
-            return STD_VIDEO_H264_LEVEL_IDC_5_2;
-        case 60:
-            return STD_VIDEO_H264_LEVEL_IDC_6_0;
-        case 61:
-            return STD_VIDEO_H264_LEVEL_IDC_6_1;
-        case 62:
-            return STD_VIDEO_H264_LEVEL_IDC_6_2;
+static StdVideoH264PictureType GetVideoEncodeH264PictureTypeVK(VideoEncodeFrameType frameType) {
+    switch (frameType) {
+        case VideoEncodeFrameType::IDR:
+            return STD_VIDEO_H264_PICTURE_TYPE_IDR;
+        case VideoEncodeFrameType::I:
+            return STD_VIDEO_H264_PICTURE_TYPE_I;
+        case VideoEncodeFrameType::P:
+            return STD_VIDEO_H264_PICTURE_TYPE_P;
+        case VideoEncodeFrameType::B:
+            return STD_VIDEO_H264_PICTURE_TYPE_B;
+        case VideoEncodeFrameType::MAX_NUM:
+            return STD_VIDEO_H264_PICTURE_TYPE_INVALID;
     }
 
-    return STD_VIDEO_H264_LEVEL_IDC_INVALID;
+    return STD_VIDEO_H264_PICTURE_TYPE_INVALID;
 }
 
-static StdVideoH264SequenceParameterSet GetVideoH264SequenceParameterSetVK(const VideoH264SequenceParameterSetDesc& desc) {
-    StdVideoH264SequenceParameterSet sps = {};
-    sps.flags.constraint_set0_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::CONSTRAINT_SET0);
-    sps.flags.constraint_set1_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::CONSTRAINT_SET1);
-    sps.flags.constraint_set2_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::CONSTRAINT_SET2);
-    sps.flags.constraint_set3_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::CONSTRAINT_SET3);
-    sps.flags.constraint_set4_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::CONSTRAINT_SET4);
-    sps.flags.constraint_set5_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::CONSTRAINT_SET5);
-    sps.flags.direct_8x8_inference_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::DIRECT_8X8_INFERENCE);
-    sps.flags.mb_adaptive_frame_field_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::MB_ADAPTIVE_FRAME_FIELD);
-    sps.flags.frame_mbs_only_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::FRAME_MBS_ONLY);
-    sps.flags.delta_pic_order_always_zero_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::DELTA_PIC_ORDER_ALWAYS_ZERO);
-    sps.flags.separate_colour_plane_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::SEPARATE_COLOUR_PLANE);
-    sps.flags.gaps_in_frame_num_value_allowed_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::GAPS_IN_FRAME_NUM_ALLOWED);
-    sps.flags.qpprime_y_zero_transform_bypass_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::QPPRIME_Y_ZERO_TRANSFORM_BYPASS);
-    sps.profile_idc = (StdVideoH264ProfileIdc)desc.profileIdc;
-    sps.level_idc = GetVideoH264LevelIdcVK(desc.levelIdc);
-    sps.chroma_format_idc = (StdVideoH264ChromaFormatIdc)desc.chromaFormatIdc;
-    sps.seq_parameter_set_id = desc.sequenceParameterSetId;
-    sps.bit_depth_luma_minus8 = desc.bitDepthLumaMinus8;
-    sps.bit_depth_chroma_minus8 = desc.bitDepthChromaMinus8;
-    sps.log2_max_frame_num_minus4 = desc.log2MaxFrameNumMinus4;
-    sps.pic_order_cnt_type = (StdVideoH264PocType)desc.pictureOrderCountType;
-    sps.offset_for_non_ref_pic = desc.offsetForNonReferencePicture;
-    sps.offset_for_top_to_bottom_field = desc.offsetForTopToBottomField;
-    sps.log2_max_pic_order_cnt_lsb_minus4 = desc.log2MaxPictureOrderCountLsbMinus4;
-    sps.max_num_ref_frames = desc.referenceFrameNum;
-    sps.pic_width_in_mbs_minus1 = desc.pictureWidthInMbsMinus1;
-    sps.pic_height_in_map_units_minus1 = desc.pictureHeightInMapUnitsMinus1;
-    return sps;
-}
-
-static StdVideoH264PictureParameterSet GetVideoH264PictureParameterSetVK(const VideoH264PictureParameterSetDesc& desc) {
-    StdVideoH264PictureParameterSet pps = {};
-    pps.flags.transform_8x8_mode_flag = !!(desc.flags & VideoH264PictureParameterSetBits::TRANSFORM_8X8_MODE);
-    pps.flags.redundant_pic_cnt_present_flag = !!(desc.flags & VideoH264PictureParameterSetBits::REDUNDANT_PIC_CNT_PRESENT);
-    pps.flags.constrained_intra_pred_flag = !!(desc.flags & VideoH264PictureParameterSetBits::CONSTRAINED_INTRA_PRED);
-    pps.flags.deblocking_filter_control_present_flag = !!(desc.flags & VideoH264PictureParameterSetBits::DEBLOCKING_FILTER_CONTROL_PRESENT);
-    pps.flags.weighted_pred_flag = !!(desc.flags & VideoH264PictureParameterSetBits::WEIGHTED_PRED);
-    pps.flags.bottom_field_pic_order_in_frame_present_flag = !!(desc.flags & VideoH264PictureParameterSetBits::BOTTOM_FIELD_PIC_ORDER_IN_FRAME);
-    pps.flags.entropy_coding_mode_flag = !!(desc.flags & VideoH264PictureParameterSetBits::ENTROPY_CODING_MODE);
-    pps.seq_parameter_set_id = desc.sequenceParameterSetId;
-    pps.pic_parameter_set_id = desc.pictureParameterSetId;
-    pps.num_ref_idx_l0_default_active_minus1 = desc.refIndexL0DefaultActiveMinus1;
-    pps.num_ref_idx_l1_default_active_minus1 = desc.refIndexL1DefaultActiveMinus1;
-    pps.weighted_bipred_idc = (StdVideoH264WeightedBipredIdc)desc.weightedBipredIdc;
-    pps.pic_init_qp_minus26 = desc.pictureInitQpMinus26;
-    pps.pic_init_qs_minus26 = desc.pictureInitQsMinus26;
-    pps.chroma_qp_index_offset = desc.chromaQpIndexOffset;
-    pps.second_chroma_qp_index_offset = desc.secondChromaQpIndexOffset;
-    return pps;
-}
-
-static StdVideoH265LevelIdc GetVideoH265LevelIdcVK(uint32_t width, uint32_t height) {
-    const uint64_t samples = uint64_t(width) * height;
-    if (samples <= 512ull * 512ull)
-        return STD_VIDEO_H265_LEVEL_IDC_3_1;
-
-    return STD_VIDEO_H265_LEVEL_IDC_4_1;
-}
-
-#include "VideoSessionParametersVK.h"
-
-#include "VideoPictureVK.h"
-
-static VkVideoComponentBitDepthFlagsKHR GetVideoBitDepthVK(Format format) {
-    return format == Format::P010_UNORM || format == Format::P016_UNORM ? VK_VIDEO_COMPONENT_BIT_DEPTH_10_BIT_KHR : VK_VIDEO_COMPONENT_BIT_DEPTH_8_BIT_KHR;
-}
-
-static VkVideoCodecOperationFlagBitsKHR GetVideoCodecOperationVK(const VideoSessionDesc& videoSessionDesc) {
-    if (videoSessionDesc.usage == VideoUsage::DECODE) {
-        switch (videoSessionDesc.codec) {
-            case VideoCodec::H264:
-                return VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR;
-            case VideoCodec::H265:
-                return VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR;
-            case VideoCodec::AV1:
-                return VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR;
-            case VideoCodec::NONE:
-            case VideoCodec::MAX_NUM:
-                return (VkVideoCodecOperationFlagBitsKHR)0;
-        }
-    } else if (videoSessionDesc.usage == VideoUsage::ENCODE) {
-        switch (videoSessionDesc.codec) {
-            case VideoCodec::H264:
-                return VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_KHR;
-            case VideoCodec::H265:
-                return VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_KHR;
-            case VideoCodec::AV1:
-                return VK_VIDEO_CODEC_OPERATION_ENCODE_AV1_BIT_KHR;
-            case VideoCodec::NONE:
-            case VideoCodec::MAX_NUM:
-                return (VkVideoCodecOperationFlagBitsKHR)0;
-        }
+static StdVideoH265PictureType GetVideoEncodeH265PictureTypeVK(VideoEncodeFrameType frameType) {
+    switch (frameType) {
+        case VideoEncodeFrameType::IDR:
+            return STD_VIDEO_H265_PICTURE_TYPE_IDR;
+        case VideoEncodeFrameType::I:
+            return STD_VIDEO_H265_PICTURE_TYPE_I;
+        case VideoEncodeFrameType::P:
+            return STD_VIDEO_H265_PICTURE_TYPE_P;
+        case VideoEncodeFrameType::B:
+            return STD_VIDEO_H265_PICTURE_TYPE_B;
+        case VideoEncodeFrameType::MAX_NUM:
+            return STD_VIDEO_H265_PICTURE_TYPE_INVALID;
     }
 
-    return (VkVideoCodecOperationFlagBitsKHR)0;
+    return STD_VIDEO_H265_PICTURE_TYPE_INVALID;
 }
 
-static void* FillVideoProfileCodecInfoVK(const VideoSessionDesc& videoSessionDesc, void* storage) {
-    if (videoSessionDesc.usage == VideoUsage::DECODE) {
-        switch (videoSessionDesc.codec) {
-            case VideoCodec::H264: {
-                VkVideoDecodeH264ProfileInfoKHR& info = *(VkVideoDecodeH264ProfileInfoKHR*)storage;
-                info = {VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_PROFILE_INFO_KHR};
-                info.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_HIGH;
-                info.pictureLayout = VK_VIDEO_DECODE_H264_PICTURE_LAYOUT_PROGRESSIVE_KHR;
-                return &info;
-            }
-            case VideoCodec::H265: {
-                VkVideoDecodeH265ProfileInfoKHR& info = *(VkVideoDecodeH265ProfileInfoKHR*)storage;
-                info = {VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_PROFILE_INFO_KHR};
-                info.stdProfileIdc = videoSessionDesc.format == Format::P010_UNORM || videoSessionDesc.format == Format::P016_UNORM ? STD_VIDEO_H265_PROFILE_IDC_MAIN_10 : STD_VIDEO_H265_PROFILE_IDC_MAIN;
-                return &info;
-            }
-            case VideoCodec::AV1: {
-                VkVideoDecodeAV1ProfileInfoKHR& info = *(VkVideoDecodeAV1ProfileInfoKHR*)storage;
-                info = {VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_KHR};
-                info.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN;
-                info.filmGrainSupport = VK_TRUE;
-                return &info;
-            }
-            case VideoCodec::NONE:
-            case VideoCodec::MAX_NUM:
-                return nullptr;
-        }
-    } else if (videoSessionDesc.usage == VideoUsage::ENCODE) {
-        switch (videoSessionDesc.codec) {
-            case VideoCodec::H264: {
-                VkVideoEncodeH264ProfileInfoKHR& info = *(VkVideoEncodeH264ProfileInfoKHR*)storage;
-                info = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PROFILE_INFO_KHR};
-                info.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_HIGH;
-                return &info;
-            }
-            case VideoCodec::H265: {
-                VkVideoEncodeH265ProfileInfoKHR& info = *(VkVideoEncodeH265ProfileInfoKHR*)storage;
-                info = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_PROFILE_INFO_KHR};
-                info.stdProfileIdc = videoSessionDesc.format == Format::P010_UNORM || videoSessionDesc.format == Format::P016_UNORM ? STD_VIDEO_H265_PROFILE_IDC_MAIN_10 : STD_VIDEO_H265_PROFILE_IDC_MAIN;
-                return &info;
-            }
-            case VideoCodec::AV1: {
-                VkVideoEncodeAV1ProfileInfoKHR& info = *(VkVideoEncodeAV1ProfileInfoKHR*)storage;
-                info = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_PROFILE_INFO_KHR};
-                info.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN;
-                return &info;
-            }
-            case VideoCodec::NONE:
-            case VideoCodec::MAX_NUM:
-                return nullptr;
-        }
+static StdVideoAV1FrameType GetVideoEncodeAV1FrameTypeVK(VideoEncodeFrameType frameType) {
+    switch (frameType) {
+        case VideoEncodeFrameType::IDR:
+        case VideoEncodeFrameType::I:
+            return STD_VIDEO_AV1_FRAME_TYPE_KEY;
+        case VideoEncodeFrameType::P:
+        case VideoEncodeFrameType::B:
+            return STD_VIDEO_AV1_FRAME_TYPE_INTER;
+        case VideoEncodeFrameType::MAX_NUM:
+            return STD_VIDEO_AV1_FRAME_TYPE_INVALID;
+    }
+
+    return STD_VIDEO_AV1_FRAME_TYPE_INVALID;
+}
+
+static bool HasVideoEncodeReferenceSlot(const VideoEncodeDesc& videoEncodeDesc, uint32_t slot) {
+    for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {
+        if (videoEncodeDesc.references[i].slot == slot)
+            return true;
+    }
+
+    return false;
+}
+
+static const VideoH264ReferenceDesc* FindVideoEncodeH264ReferenceDesc(const VideoH264PictureDesc* h264PictureDesc, uint32_t slot) {
+    if (!h264PictureDesc)
+        return nullptr;
+
+    for (uint32_t i = 0; i < h264PictureDesc->referenceNum; i++) {
+        if (h264PictureDesc->references[i].slot == slot)
+            return &h264PictureDesc->references[i];
     }
 
     return nullptr;
 }
 
-static bool FindVideoSessionMemoryTypeVK(const DeviceVK& device, uint32_t memoryTypeBits, uint32_t& memoryTypeIndex) {
-    uint32_t compatibleIndex = uint32_t(-1);
-    for (uint32_t i = 0; i < 32; i++) {
-        if ((memoryTypeBits & (1u << i)) == 0)
-            continue;
+static const VideoAV1ReferenceDesc* FindVideoEncodeAV1ReferenceDesc(const VideoAV1PictureDesc* av1PictureDesc, uint32_t slot) {
+    if (!av1PictureDesc)
+        return nullptr;
 
-        MemoryTypeInfo memoryTypeInfo = {};
-        if (!device.GetMemoryTypeByIndex(i, memoryTypeInfo))
-            continue;
-
-        if (memoryTypeInfo.location == MemoryLocation::DEVICE) {
-            memoryTypeIndex = i;
-            return true;
-        }
-
-        if (compatibleIndex == uint32_t(-1))
-            compatibleIndex = i;
+    for (uint32_t i = 0; i < av1PictureDesc->referenceNum; i++) {
+        if (av1PictureDesc->references[i].slot == slot)
+            return &av1PictureDesc->references[i];
     }
 
-    if (compatibleIndex == uint32_t(-1))
-        return false;
-
-    memoryTypeIndex = compatibleIndex;
-    return true;
+    return nullptr;
 }
-
-static bool IsAligned(uint64_t value, uint64_t alignment) {
-    return alignment <= 1 || value % alignment == 0;
-}
-
-#include "VideoSessionVK.hpp"
-
-#include "VideoSessionParametersVK.hpp"
-
-#include "VideoPictureVK.hpp"
 
 static Result NRI_CALL CreateVideoSession(Device& device, const VideoSessionDesc& videoSessionDesc, VideoSession*& videoSession) {
     DeviceVK& deviceVK = (DeviceVK&)device;
@@ -1828,88 +1675,6 @@ static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDec
     vk.CmdBeginVideoCodingKHR(commandBufferVK, &beginInfo);
     vk.CmdDecodeVideoKHR(commandBufferVK, &decodeInfo);
     vk.CmdEndVideoCodingKHR(commandBufferVK, &endInfo);
-}
-
-static StdVideoH264PictureType GetVideoEncodeH264PictureTypeVK(VideoEncodeFrameType frameType) {
-    switch (frameType) {
-        case VideoEncodeFrameType::IDR:
-            return STD_VIDEO_H264_PICTURE_TYPE_IDR;
-        case VideoEncodeFrameType::I:
-            return STD_VIDEO_H264_PICTURE_TYPE_I;
-        case VideoEncodeFrameType::P:
-            return STD_VIDEO_H264_PICTURE_TYPE_P;
-        case VideoEncodeFrameType::B:
-            return STD_VIDEO_H264_PICTURE_TYPE_B;
-        case VideoEncodeFrameType::MAX_NUM:
-            return STD_VIDEO_H264_PICTURE_TYPE_INVALID;
-    }
-
-    return STD_VIDEO_H264_PICTURE_TYPE_INVALID;
-}
-
-static StdVideoH265PictureType GetVideoEncodeH265PictureTypeVK(VideoEncodeFrameType frameType) {
-    switch (frameType) {
-        case VideoEncodeFrameType::IDR:
-            return STD_VIDEO_H265_PICTURE_TYPE_IDR;
-        case VideoEncodeFrameType::I:
-            return STD_VIDEO_H265_PICTURE_TYPE_I;
-        case VideoEncodeFrameType::P:
-            return STD_VIDEO_H265_PICTURE_TYPE_P;
-        case VideoEncodeFrameType::B:
-            return STD_VIDEO_H265_PICTURE_TYPE_B;
-        case VideoEncodeFrameType::MAX_NUM:
-            return STD_VIDEO_H265_PICTURE_TYPE_INVALID;
-    }
-
-    return STD_VIDEO_H265_PICTURE_TYPE_INVALID;
-}
-
-static StdVideoAV1FrameType GetVideoEncodeAV1FrameTypeVK(VideoEncodeFrameType frameType) {
-    switch (frameType) {
-        case VideoEncodeFrameType::IDR:
-        case VideoEncodeFrameType::I:
-            return STD_VIDEO_AV1_FRAME_TYPE_KEY;
-        case VideoEncodeFrameType::P:
-        case VideoEncodeFrameType::B:
-            return STD_VIDEO_AV1_FRAME_TYPE_INTER;
-        case VideoEncodeFrameType::MAX_NUM:
-            return STD_VIDEO_AV1_FRAME_TYPE_INVALID;
-    }
-
-    return STD_VIDEO_AV1_FRAME_TYPE_INVALID;
-}
-
-static bool HasVideoEncodeReferenceSlot(const VideoEncodeDesc& videoEncodeDesc, uint32_t slot) {
-    for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {
-        if (videoEncodeDesc.references[i].slot == slot)
-            return true;
-    }
-
-    return false;
-}
-
-static const VideoH264ReferenceDesc* FindVideoEncodeH264ReferenceDesc(const VideoH264PictureDesc* h264PictureDesc, uint32_t slot) {
-    if (!h264PictureDesc)
-        return nullptr;
-
-    for (uint32_t i = 0; i < h264PictureDesc->referenceNum; i++) {
-        if (h264PictureDesc->references[i].slot == slot)
-            return &h264PictureDesc->references[i];
-    }
-
-    return nullptr;
-}
-
-static const VideoAV1ReferenceDesc* FindVideoEncodeAV1ReferenceDesc(const VideoAV1PictureDesc* av1PictureDesc, uint32_t slot) {
-    if (!av1PictureDesc)
-        return nullptr;
-
-    for (uint32_t i = 0; i < av1PictureDesc->referenceNum; i++) {
-        if (av1PictureDesc->references[i].slot == slot)
-            return &av1PictureDesc->references[i];
-    }
-
-    return nullptr;
 }
 
 static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEncodeDesc& videoEncodeDesc) {
