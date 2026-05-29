@@ -231,12 +231,18 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         const Color& borderColor = samplerDesc.borderColor;
         bool isZeroColor = borderColor.ui.x == 0 && borderColor.ui.y == 0 && borderColor.ui.z == 0;
         bool isZeroAlpha = borderColor.ui.w == 0;
-        if (isZeroColor && isZeroAlpha)
-            staticSamplerDesc.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-        else if (isZeroColor)
-            staticSamplerDesc.BorderColor = samplerDesc.isInteger ? D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK_UINT : D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+        if (samplerDesc.isInteger)
+            staticSamplerDesc.BorderColor = isZeroColor ? D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK_UINT : D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE_UINT;
         else
-            staticSamplerDesc.BorderColor = samplerDesc.isInteger ? D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE_UINT : D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+#endif
+        {
+            if (isZeroColor && isZeroAlpha)
+                staticSamplerDesc.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+            else
+                staticSamplerDesc.BorderColor = isZeroColor ? D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK : D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+        }
     }
 
     // Root signature
