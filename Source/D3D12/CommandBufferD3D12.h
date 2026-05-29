@@ -43,10 +43,6 @@ struct CommandBufferD3D12 final : public DebugNameBase {
     inline ~CommandBufferD3D12() {
     }
 
-    inline operator ID3D12GraphicsCommandList*() const {
-        return GetGraphicsCommandList();
-    }
-
     inline operator ID3D12CommandList*() const {
         return m_CommandList.GetInterface();
     }
@@ -65,6 +61,24 @@ struct CommandBufferD3D12 final : public DebugNameBase {
         m_Depth = {};
         m_Stencil = {};
         m_RenderTargetNum = 0;
+    }
+
+    inline ID3D12GraphicsCommandListBest* GetGraphicsCommandList() const {
+        NRI_CHECK(m_CommandListType == D3D12_COMMAND_LIST_TYPE_DIRECT
+                || m_CommandListType == D3D12_COMMAND_LIST_TYPE_COMPUTE
+                || m_CommandListType == D3D12_COMMAND_LIST_TYPE_COPY,
+            "Unexpected command list type");
+        return static_cast<ID3D12GraphicsCommandListBest*>(m_CommandList.GetInterface());
+    }
+
+    inline ID3D12VideoDecodeCommandListBest* GetVideoDecodeCommandList() const {
+        NRI_CHECK(m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE, "Unexpected command list type");
+        return static_cast<ID3D12VideoDecodeCommandListBest*>(m_CommandList.GetInterface());
+    }
+
+    inline ID3D12VideoEncodeCommandListBest* GetVideoEncodeCommandList() const {
+        NRI_CHECK(m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE, "Unexpected command list type");
+        return static_cast<ID3D12VideoEncodeCommandListBest*>(m_CommandList.GetInterface());
     }
 
     Result Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D12CommandAllocator* commandAllocator);
@@ -139,10 +153,6 @@ struct CommandBufferD3D12 final : public DebugNameBase {
     void EncodeVideo(const VideoEncodeD3D12Desc& videoEncodeD3D12Desc);
 
 private:
-    ID3D12GraphicsCommandListBest* GetGraphicsCommandList() const;
-    ID3D12VideoDecodeCommandListBest* GetVideoDecodeCommandList() const;
-    ID3D12VideoEncodeCommandListBest* GetVideoEncodeCommandList() const;
-
     DeviceD3D12& m_Device;
     ComPtr<ID3D12CommandAllocator> m_CommandAllocator;
     ComPtr<ID3D12CommandList> m_CommandList;

@@ -385,21 +385,6 @@ constexpr D3D12_RESOLVE_MODE GetResolveOp(ResolveOp resolveOp) {
     return g_ResolveOps[(size_t)resolveOp];
 }
 
-ID3D12GraphicsCommandListBest* CommandBufferD3D12::GetGraphicsCommandList() const {
-    NRI_CHECK(m_CommandListType == D3D12_COMMAND_LIST_TYPE_DIRECT || m_CommandListType == D3D12_COMMAND_LIST_TYPE_COMPUTE || m_CommandListType == D3D12_COMMAND_LIST_TYPE_COPY, "Unexpected command list type");
-    return static_cast<ID3D12GraphicsCommandListBest*>(m_CommandList.GetInterface());
-}
-
-ID3D12VideoDecodeCommandListBest* CommandBufferD3D12::GetVideoDecodeCommandList() const {
-    NRI_CHECK(m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE, "Unexpected command list type");
-    return static_cast<ID3D12VideoDecodeCommandListBest*>(m_CommandList.GetInterface());
-}
-
-ID3D12VideoEncodeCommandListBest* CommandBufferD3D12::GetVideoEncodeCommandList() const {
-    NRI_CHECK(m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE, "Unexpected command list type");
-    return static_cast<ID3D12VideoEncodeCommandListBest*>(m_CommandList.GetInterface());
-}
-
 void CommandBufferD3D12::SetDebugName(const char* name) {
     NRI_SET_D3D_DEBUG_OBJECT_NAME(m_CommandList.GetInterface(), name);
 }
