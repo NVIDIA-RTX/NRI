@@ -68,16 +68,19 @@ struct CommandBufferD3D12 final : public DebugNameBase {
                 || m_CommandListType == D3D12_COMMAND_LIST_TYPE_COMPUTE
                 || m_CommandListType == D3D12_COMMAND_LIST_TYPE_COPY,
             "Unexpected command list type");
+
         return static_cast<ID3D12GraphicsCommandListBest*>(m_CommandList.GetInterface());
     }
 
     inline ID3D12VideoDecodeCommandListBest* GetVideoDecodeCommandList() const {
         NRI_CHECK(m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE, "Unexpected command list type");
+
         return static_cast<ID3D12VideoDecodeCommandListBest*>(m_CommandList.GetInterface());
     }
 
     inline ID3D12VideoEncodeCommandListBest* GetVideoEncodeCommandList() const {
         NRI_CHECK(m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE, "Unexpected command list type");
+
         return static_cast<ID3D12VideoEncodeCommandListBest*>(m_CommandList.GetInterface());
     }
 
