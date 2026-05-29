@@ -269,7 +269,7 @@ NriEnum(Format, uint8_t,                // |      FormatSupportBits      |
     R11_G11_B10_UFLOAT,                 // + + . + . + + + + + + + . + + +
     R9_G9_B9_E5_UFLOAT,                 // + . . . . . . . . . . . . . . .
 
-    // Multi-planar: 4:2:0
+    // YUV 4:2:0 video formats
     NV12_UNORM,                         // + . . . . . . . . . . . . . . .
     P010_UNORM,                         // + . . . . . . . . . . . . . . .
     P016_UNORM,                         // + . . . . . . . . . . . . . . .
@@ -359,10 +359,14 @@ NriBits(PlaneBits, uint8_t,
     DEPTH                           = NriBit(1),    // indicates "depth" plane (same as "ALL" for depth-only formats)
     STENCIL                         = NriBit(2),    // indicates "stencil" plane in depth-stencil formats
 
-    // Vulkan: multi-planar YUV images
+    // For multi-planar YUV formats
     PLANE_0                         = NriBit(3),
     PLANE_1                         = NriBit(4),
-    PLANE_2                         = NriBit(5)
+    PLANE_2                         = NriBit(5),
+
+    // Aliases
+    PLANE_Y                         = NriMember(PlaneBits, PLANE_0),
+    PLANE_UV                        = NriMember(PlaneBits, PLANE_1)
 );
 
 // A bit represents a feature, supported by a format
@@ -452,6 +456,8 @@ NriBits(StageBits, uint32_t,
     COPY                            = NriBit(19),   // Invoked by "CmdCopy*", "CmdUpload*" and "CmdReadback*"
     RESOLVE                         = NriBit(20),   // Invoked by "CmdResolveTexture"
     CLEAR_STORAGE                   = NriBit(21),   // Invoked by "CmdClearStorage"
+
+    // Video
     VIDEO_DECODE                    = NriBit(22),   // Invoked by "CmdDecodeVideo"
     VIDEO_ENCODE                    = NriBit(23),   // Invoked by "CmdEncodeVideo"
 
@@ -724,7 +730,7 @@ NriStruct(TextureDesc) {
     NriOptional Nri(Dim_t) layerNum;
     NriOptional Nri(Sample_t) sampleNum;
     NriOptional Nri(SharingMode) sharingMode;
-    NriOptional Nri(VideoCodec) videoCodec;             // required for VK video textures, ignored otherwise
+    NriOptional Nri(VideoCodec) videoCodec;             // VK: required for video textures
     NriOptional Nri(ClearValue) optimizedClearValue;    // D3D12: not needed on desktop, since any HW can track many clear values
 };
 
