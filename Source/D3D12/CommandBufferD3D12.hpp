@@ -400,24 +400,6 @@ ID3D12VideoEncodeCommandListBest* CommandBufferD3D12::GetVideoEncodeCommandList(
     return static_cast<ID3D12VideoEncodeCommandListBest*>(m_CommandList.GetInterface());
 }
 
-void CommandBufferD3D12::ResourceBarrier(uint32_t barrierNum, const D3D12_RESOURCE_BARRIER* barriers) const {
-    if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE)
-        GetVideoDecodeCommandList()->ResourceBarrier(barrierNum, barriers);
-    else if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE)
-        GetVideoEncodeCommandList()->ResourceBarrier(barrierNum, barriers);
-    else
-        GetGraphicsCommandList()->ResourceBarrier(barrierNum, barriers);
-}
-
-void CommandBufferD3D12::Barrier(uint32_t barrierGroupNum, const D3D12_BARRIER_GROUP* barrierGroups) const {
-    if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE)
-        GetVideoDecodeCommandList()->Barrier(barrierGroupNum, barrierGroups);
-    else if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE)
-        GetVideoEncodeCommandList()->Barrier(barrierGroupNum, barrierGroups);
-    else
-        GetGraphicsCommandList()->Barrier(barrierGroupNum, barrierGroups);
-}
-
 void CommandBufferD3D12::SetDebugName(const char* name) {
     NRI_SET_D3D_DEBUG_OBJECT_NAME(m_CommandList.GetInterface(), name);
 }
@@ -539,7 +521,7 @@ NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeD3D12Desc& desc
         return;
     }
 
-     GetVideoDecodeCommandList()->DecodeFrame(
+    GetVideoDecodeCommandList()->DecodeFrame(
         (ID3D12VideoDecoder*)desc.d3d12Decoder,
         (D3D12_VIDEO_DECODE_OUTPUT_STREAM_ARGUMENTS*)desc.d3d12OutputArguments,
         (D3D12_VIDEO_DECODE_INPUT_STREAM_ARGUMENTS*)desc.d3d12InputArguments);
@@ -641,7 +623,6 @@ static uint8_t GetVideoDecodeAV1FrameTypeD3D12(VideoEncodeFrameType frameType) {
 }
 
 NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeDesc& videoDecodeDesc) {
-
     DeviceD3D12& device = GetDevice();
 
     if (!videoDecodeDesc.session || !videoDecodeDesc.parameters || !videoDecodeDesc.bitstream.buffer || !videoDecodeDesc.bitstream.size || !videoDecodeDesc.dstPicture) {
@@ -1146,7 +1127,6 @@ static_assert(offsetof(VideoEncodeFeedback, encodedBitstreamWrittenBytes) == off
 static_assert(offsetof(VideoEncodeFeedback, writtenSubregionNum) == offsetof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA, WrittenSubregionsCount));
 
 NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEncodeDesc) {
-
     DeviceD3D12& device = GetDevice();
 
     if (!videoEncodeDesc.session || !videoEncodeDesc.parameters || !videoEncodeDesc.srcPicture || !videoEncodeDesc.dstBitstream.buffer || !videoEncodeDesc.dstBitstream.size || !videoEncodeDesc.metadata) {
@@ -1714,7 +1694,6 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     EncodeVideo(desc);
 }
 
-
 NRI_INLINE void CommandBufferD3D12::SetViewports(const Viewport* viewports, uint32_t viewportNum) {
     Scratch<D3D12_VIEWPORT> d3dViewports = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_VIEWPORT, viewportNum);
     for (uint32_t i = 0; i < viewportNum; i++) {
@@ -1922,7 +1901,7 @@ NRI_INLINE void CommandBufferD3D12::EndRendering() {
     uint32_t barrierNum = 0;
 
     constexpr uint32_t attachmentNum = D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT + 2; // colors, depth and stencil
-    constexpr uint32_t attachmentBarrierMaxNum = attachmentNum * 2; // src and dst
+    constexpr uint32_t attachmentBarrierMaxNum = attachmentNum * 2;                // src and dst
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
     std::array<D3D12_TEXTURE_BARRIER, attachmentBarrierMaxNum> textureBarriers = {};
 
@@ -1951,8 +1930,7 @@ NRI_INLINE void CommandBufferD3D12::EndRendering() {
         if (m_Device.GetDesc().features.enhancedBarriers) {
             FillResolveBarrier(true, *resolveSrc, planeBits, textureBarriers[barrierNum++]);
             FillResolveBarrier(false, *resolveDst, planeBits, textureBarriers[barrierNum++]);
-        }
-        else
+        } else
 #endif
         {
             const TexViewDesc& srcDesc = resolveSrc->GetTexViewDesc();
@@ -2481,7 +2459,12 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
         }
 
         // Submit
-        Barrier(barriersGroupsNum, barrierGroups);
+        if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE)
+            GetVideoDecodeCommandList()->Barrier(barriersGroupsNum, barrierGroups);
+        else if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE)
+            GetVideoEncodeCommandList()->Barrier(barriersGroupsNum, barrierGroups);
+        else
+            GetGraphicsCommandList()->Barrier(barriersGroupsNum, barrierGroups);
     } else
 #endif
     { // Legacy barriers
@@ -2558,7 +2541,12 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
             return;
 
         // Submit
-        ResourceBarrier(barrierNum, barriers);
+        if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE)
+            GetVideoDecodeCommandList()->ResourceBarrier(barrierNum, barriers);
+        else if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE)
+            GetVideoEncodeCommandList()->ResourceBarrier(barrierNum, barriers);
+        else
+            GetGraphicsCommandList()->ResourceBarrier(barrierNum, barriers);
     }
 }
 

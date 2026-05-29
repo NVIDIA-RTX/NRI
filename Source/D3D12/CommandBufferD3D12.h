@@ -142,8 +142,6 @@ private:
     ID3D12GraphicsCommandListBest* GetGraphicsCommandList() const;
     ID3D12VideoDecodeCommandListBest* GetVideoDecodeCommandList() const;
     ID3D12VideoEncodeCommandListBest* GetVideoEncodeCommandList() const;
-    void ResourceBarrier(uint32_t barrierNum, const D3D12_RESOURCE_BARRIER* barriers) const;
-    void Barrier(uint32_t barrierGroupNum, const D3D12_BARRIER_GROUP* barrierGroups) const;
 
     DeviceD3D12& m_Device;
     ComPtr<ID3D12CommandAllocator> m_CommandAllocator;
