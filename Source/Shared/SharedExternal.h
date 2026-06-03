@@ -67,7 +67,7 @@ typedef uint32_t DXGI_FORMAT;
 
 #ifndef NRI_CHECK
 #    ifdef NDEBUG
-#        define NRI_CHECK(condition, message) MaybeUnused(condition)
+#        define NRI_CHECK(condition, message)
 #    else
 #        define NRI_CHECK(condition, message) assert((condition) && message)
 #    endif
