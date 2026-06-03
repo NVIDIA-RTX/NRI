@@ -446,7 +446,7 @@ NRI_INLINE Result SwapChainVK::AcquireNextTexture(FenceVK& acquireSemaphore, uin
     // Acquire next image (signal)
     VkAcquireNextImageInfoKHR acquireInfo = {VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR};
     acquireInfo.swapchain = m_Handle;
-    acquireInfo.timeout = MsToUs(TIMEOUT_PRESENT);
+    acquireInfo.timeout = MsToUs(NRI_TIMEOUT_PRESENT);
     acquireInfo.semaphore = acquireSemaphore;
     acquireInfo.deviceMask = NODE_MASK;
 
@@ -464,7 +464,7 @@ NRI_INLINE Result SwapChainVK::WaitForPresent() {
         return Result::UNSUPPORTED;
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult vkResult = vk.WaitForPresentKHR(m_Device, m_Handle, m_PresentId - 1, MsToUs(TIMEOUT_PRESENT));
+    VkResult vkResult = vk.WaitForPresentKHR(m_Device, m_Handle, m_PresentId - 1, MsToUs(NRI_TIMEOUT_PRESENT));
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "WaitForPresentKHR");
 
     return Result::SUCCESS;

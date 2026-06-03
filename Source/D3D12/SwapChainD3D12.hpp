@@ -197,7 +197,7 @@ NRI_INLINE Result SwapChainD3D12::WaitForPresent() {
         HRESULT hr = m_Device->GetDeviceRemovedReason() == S_OK ? S_OK : DXGI_ERROR_DEVICE_REMOVED;
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "WaitForPresent");
 
-        uint32_t result = WaitForSingleObjectEx(m_FrameLatencyWaitableObject, TIMEOUT_PRESENT, TRUE);
+        uint32_t result = WaitForSingleObjectEx(m_FrameLatencyWaitableObject, NRI_TIMEOUT_PRESENT, TRUE);
 
         return result == WAIT_OBJECT_0 ? Result::SUCCESS : Result::FAILURE;
     }

@@ -333,6 +333,7 @@ if(NRI_ENABLE_NGX_SDK)
 endif()
 
 set(SHARED_SOURCE
+    "Source/NRIConfig.h"
     "Source/Shared/DeviceBase.h"
     "Source/Shared/HelperInterface.h"
     "Source/Shared/HelperInterface.hpp"

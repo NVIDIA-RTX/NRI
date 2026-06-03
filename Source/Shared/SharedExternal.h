@@ -42,6 +42,95 @@ typedef uint32_t DXGI_FORMAT;
 
 #include "Lock.h"
 
+// NRI default settings (if not provided in "NRIConfig.h")
+#include "../NRIConfig.h"
+
+#ifndef NRI_TIMEOUT_PRESENT
+#    define NRI_TIMEOUT_PRESENT 1000u // 1 sec
+#endif
+
+#ifndef NRI_TIMEOUT_FENCE
+#    define NRI_TIMEOUT_FENCE 5000u // 5 sec
+#endif
+
+#ifndef NRI_MAX_MESSAGE_LENGTH
+#    define NRI_MAX_MESSAGE_LENGTH 2048u // 2 Kb
+#endif
+
+#ifndef NRI_ZERO_BUFFER_SIZE
+#    define NRI_ZERO_BUFFER_SIZE 4194304u // 4 Mb
+#endif
+
+#ifndef NRI_MAX_STACK_ALLOC_SIZE
+#    define NRI_MAX_STACK_ALLOC_SIZE 32768u // 32 Kb
+#endif
+
+#ifndef NRI_CHECK
+#    ifdef NDEBUG
+#        define NRI_CHECK(condition, message) MaybeUnused(condition)
+#    else
+#        define NRI_CHECK(condition, message) assert((condition) && message)
+#    endif
+#endif
+
+#ifndef NRI_INLINE
+#    define NRI_INLINE inline
+#endif
+
+// D3D12MA default settings (if not provided in "NRIConfig.h")
+#ifndef D3D12MA_DEBUG_LOG
+#    define D3D12MA_DEBUG_LOG(format, ...) \
+        do { \
+            wprintf(format, __VA_ARGS__); \
+            wprintf(L"\n"); \
+        } while (false)
+#endif
+
+#ifndef D3D12MA_DEFAULT_BLOCK_SIZE
+#    define D3D12MA_DEFAULT_BLOCK_SIZE 67108864u // 64 Mb
+#endif
+
+#ifndef D3D12MA_ASSERT
+#    define D3D12MA_ASSERT(cond) NRI_CHECK(cond, "D3D12MA assert failed!")
+#endif
+
+#ifndef D3D12MA_HEAVY_ASSERT
+#    define D3D12MA_HEAVY_ASSERT(expr)
+#endif
+
+// VMA default settings (if not provided in "NRIConfig.h")
+#ifndef VMA_DEBUG_LOG_FORMAT
+#    define VMA_DEBUG_LOG_FORMAT(format, ...) \
+        do { \
+            printf((format), __VA_ARGS__); \
+            printf("\n"); \
+        } while (false)
+#endif
+
+#ifndef VMA_DEFAULT_LARGE_HEAP_BLOCK_SIZE
+#    define VMA_DEFAULT_LARGE_HEAP_BLOCK_SIZE 67108864u // 64 Mb
+#endif
+
+#ifndef VMA_ASSERT
+#    define VMA_ASSERT(expr) NRI_CHECK(expr, "VMA assert failed!")
+#endif
+
+#ifndef VMA_ASSERT_LEAK
+#    define VMA_ASSERT_LEAK(expr) VMA_ASSERT(expr)
+#endif
+
+#ifndef VMA_DEBUG_LOG
+#    define VMA_DEBUG_LOG(str) VMA_DEBUG_LOG_FORMAT("%s", (str))
+#endif
+
+#ifndef VMA_LEAK_LOG_FORMAT
+#    define VMA_LEAK_LOG_FORMAT(format, ...) VMA_DEBUG_LOG_FORMAT(format, __VA_ARGS__)
+#endif
+
+#ifndef VMA_HEAVY_ASSERT
+#    define VMA_HEAVY_ASSERT(expr)
+#endif
+
 // ComPtr
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
 
@@ -147,18 +236,100 @@ protected:
 
 #endif
 
+// Macro stuff
+#define NRI_STRINGIFY_(token) #token
+#define NRI_STRINGIFY(token)  NRI_STRINGIFY_(token)
+
+#if defined(_WIN32)
+#    define NRI_VULKAN_LOADER_NAME "vulkan-1.dll"
+#elif defined(__APPLE__)
+#    define NRI_VULKAN_LOADER_NAME "libvulkan.1.dylib"
+#elif defined(__ANDROID__)
+#    define NRI_VULKAN_LOADER_NAME "libvulkan.so"
+#else
+#    define NRI_VULKAN_LOADER_NAME "libvulkan.so.1"
+#endif
+
+// Message reporting
+#define NRI_RETURN_ON_BAD_HRESULT(deviceBase, hr, funcName) \
+    if (hr < 0) { \
+        Result _result = GetResultFromHRESULT(hr); \
+        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", hr, hr); \
+        return _result; \
+    }
+
+#define NRI_RETURN_VOID_ON_BAD_HRESULT(deviceBase, hr, funcName) \
+    if (hr < 0) { \
+        Result _result = GetResultFromHRESULT(hr); \
+        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", hr, hr); \
+        return; \
+    }
+
+#define NRI_RETURN_ON_BAD_VKRESULT(deviceBase, vkResult, funcName) \
+    if (vkResult < 0) { \
+        Result _result = GetResultFromVkResult(vkResult); \
+        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", vkResult, vkResult); \
+        return _result; \
+    }
+
+#define NRI_RETURN_VOID_ON_BAD_VKRESULT(deviceBase, vkResult, funcName) \
+    if (vkResult < 0) { \
+        Result _result = GetResultFromVkResult(vkResult); \
+        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", vkResult, vkResult); \
+        return; \
+    }
+
+#define NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(deviceBase, expression) \
+    if ((expression) != 0) { \
+        (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s: " NRI_STRINGIFY(expression) " failed!", __FUNCTION__); \
+    }
+
+#define NRI_RETURN_ON_FAILURE(deviceBase, condition, returnCode, format, ...) \
+    if (!(condition)) { \
+        (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s: " format, __FUNCTION__, ##__VA_ARGS__); \
+        return returnCode; \
+    }
+
+#define NRI_REPORT_INFO(deviceBase, format, ...)    (deviceBase)->ReportMessage(Message::INFO, Result::SUCCESS, __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define NRI_REPORT_WARNING(deviceBase, format, ...) (deviceBase)->ReportMessage(Message::WARNING, Result::SUCCESS, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
+#define NRI_REPORT_ERROR(deviceBase, format, ...)   (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
+
+// Queue scores // TODO: improve?
+#define GRAPHICS_QUEUE_SCORE \
+    ((graphics ? 100 : 0) + (compute ? 10 : 0) + (copy ? 10 : 0) + (sparse ? 5 : 0) + (videoDecode ? 2 : 0) + (videoEncode ? 2 : 0) + (protect ? 1 : 0) + (opticalFlow ? 1 : 0))
+#define COMPUTE_QUEUE_SCORE \
+    ((!graphics ? 10 : 0) + (compute ? 100 : 0) + (!copy ? 10 : 0) + (sparse ? 5 : 0) + (!videoDecode ? 2 : 0) + (!videoEncode ? 2 : 0) + (protect ? 1 : 0) + (!opticalFlow ? 1 : 0))
+#define COPY_QUEUE_SCORE \
+    ((!graphics ? 10 : 0) + (!compute ? 10 : 0) + (copy ? 100 * familyProps.queueCount : 0) + (sparse ? 5 : 0) + (!videoDecode ? 2 : 0) + (!videoEncode ? 2 : 0) + (protect ? 1 : 0) + (!opticalFlow ? 1 : 0))
+
+// Array validation
+#define NRI_VALIDATE_ARRAY(x)                 static_assert((size_t)x[x.size() - 1] != 0, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
+#define NRI_VALIDATE_ARRAY_BY_PTR(x)          static_assert(x[x.size() - 1] != nullptr, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
+#define NRI_VALIDATE_ARRAY_BY_FIELD(x, field) static_assert(x[x.size() - 1].field != 0, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
+
+// D3D
+#define NRI_SET_D3D_DEBUG_OBJECT_NAME(obj, name) \
+    if (obj) \
+    obj->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)std::strlen(name), name)
+
+// clang-format off
+#define NRI_ALLOCATE_SCRATCH(device, T, elementNum) { \
+        (device).GetAllocationCallbacks(), \
+        !(elementNum) ? nullptr : ( \
+            ((elementNum) * sizeof(T) + alignof(T)) > NRI_MAX_STACK_ALLOC_SIZE \
+                ? (T*)(device).GetAllocationCallbacks().Allocate((device).GetAllocationCallbacks().userArg, (elementNum) * sizeof(T), alignof(T)) \
+                : (T*)Align((T*)alloca((elementNum) * sizeof(T) + alignof(T)), alignof(T)) \
+        ), \
+        (elementNum) \
+    }
+// clang-format on
+
 namespace nri {
 
-// Consts
-constexpr uint32_t NODE_MASK = 0x1;        // mGPU is not planned
-constexpr uint32_t TIMEOUT_PRESENT = 1000; // 1 sec
-constexpr uint32_t TIMEOUT_FENCE = 5000;   // 5 sec
-constexpr uint64_t PRESENT_INDEX_BIT_NUM = 56ull;
-constexpr uint32_t MAX_MESSAGE_LENGTH = 2048;
-constexpr uint64_t VMA_PREFERRED_BLOCK_SIZE = 64 * 1024 * 1024;
+// Internal consts
+constexpr uint32_t NODE_MASK = 0x1;               // mGPU is not planned
 constexpr uint32_t ROOT_SIGNATURE_DWORD_NUM = 64; // https://learn.microsoft.com/en-us/windows/win32/direct3d12/root-signature-limits
-constexpr uint32_t ZERO_BUFFER_DEFAULT_SIZE = 4 * 1024 * 1024;
-constexpr size_t MAX_STACK_ALLOC_SIZE = 32 * 1024;
+constexpr uint64_t PRESENT_INDEX_BIT_NUM = 56ull;
 
 // Scratch
 template <typename T>
@@ -168,7 +339,7 @@ public:
         : m_Allocator(allocator)
         , m_Mem(mem)
         , m_Num(num) {
-        m_IsHeap = (num * sizeof(T) + alignof(T)) > MAX_STACK_ALLOC_SIZE;
+        m_IsHeap = (num * sizeof(T) + alignof(T)) > NRI_MAX_STACK_ALLOC_SIZE;
     }
 
     ~Scratch() {
@@ -439,103 +610,4 @@ struct DisplayDescHelper {
 
 } // namespace nri
 
-#include "DeviceBase.h" // TODO: a weird place, but needs to be here...
-
-//==============================================================================================================================================================
-// Macro stuff
-//==============================================================================================================================================================
-
-#if defined(_WIN32)
-#    define NRI_VULKAN_LOADER_NAME "vulkan-1.dll"
-#elif defined(__APPLE__)
-#    define NRI_VULKAN_LOADER_NAME "libvulkan.1.dylib"
-#elif defined(__ANDROID__)
-#    define NRI_VULKAN_LOADER_NAME "libvulkan.so"
-#else
-#    define NRI_VULKAN_LOADER_NAME "libvulkan.so.1"
-#endif
-
-#ifdef NDEBUG
-#    define NRI_CHECK(condition, message) MaybeUnused(condition)
-#else
-#    define NRI_CHECK(condition, message) assert((condition) && message)
-#endif
-
-#define NRI_INLINE inline // we want to inline all functions, which are actually wrappers for the interface functions
-
-#define NRI_STRINGIFY_(token) #token
-#define NRI_STRINGIFY(token)  NRI_STRINGIFY_(token)
-
-// Message reporting
-#define NRI_RETURN_ON_BAD_HRESULT(deviceBase, hr, funcName) \
-    if (hr < 0) { \
-        Result _result = GetResultFromHRESULT(hr); \
-        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", hr, hr); \
-        return _result; \
-    }
-
-#define NRI_RETURN_VOID_ON_BAD_HRESULT(deviceBase, hr, funcName) \
-    if (hr < 0) { \
-        Result _result = GetResultFromHRESULT(hr); \
-        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", hr, hr); \
-        return; \
-    }
-
-#define NRI_RETURN_ON_BAD_VKRESULT(deviceBase, vkResult, funcName) \
-    if (vkResult < 0) { \
-        Result _result = GetResultFromVkResult(vkResult); \
-        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", vkResult, vkResult); \
-        return _result; \
-    }
-
-#define NRI_RETURN_VOID_ON_BAD_VKRESULT(deviceBase, vkResult, funcName) \
-    if (vkResult < 0) { \
-        Result _result = GetResultFromVkResult(vkResult); \
-        (deviceBase)->ReportMessage(Message::ERROR, _result, __FILE__, __LINE__, funcName "(): failed, result = 0x%08X (%d)!", vkResult, vkResult); \
-        return; \
-    }
-
-#define NRI_REPORT_ERROR_ON_BAD_NVAPI_STATUS(deviceBase, expression) \
-    if ((expression) != 0) { \
-        (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s: " NRI_STRINGIFY(expression) " failed!", __FUNCTION__); \
-    }
-
-#define NRI_RETURN_ON_FAILURE(deviceBase, condition, returnCode, format, ...) \
-    if (!(condition)) { \
-        (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s: " format, __FUNCTION__, ##__VA_ARGS__); \
-        return returnCode; \
-    }
-
-#define NRI_REPORT_INFO(deviceBase, format, ...)    (deviceBase)->ReportMessage(Message::INFO, Result::SUCCESS, __FILE__, __LINE__, format, ##__VA_ARGS__)
-#define NRI_REPORT_WARNING(deviceBase, format, ...) (deviceBase)->ReportMessage(Message::WARNING, Result::SUCCESS, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
-#define NRI_REPORT_ERROR(deviceBase, format, ...)   (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
-
-// Queue scores // TODO: improve?
-#define GRAPHICS_QUEUE_SCORE \
-    ((graphics ? 100 : 0) + (compute ? 10 : 0) + (copy ? 10 : 0) + (sparse ? 5 : 0) + (videoDecode ? 2 : 0) + (videoEncode ? 2 : 0) + (protect ? 1 : 0) + (opticalFlow ? 1 : 0))
-#define COMPUTE_QUEUE_SCORE \
-    ((!graphics ? 10 : 0) + (compute ? 100 : 0) + (!copy ? 10 : 0) + (sparse ? 5 : 0) + (!videoDecode ? 2 : 0) + (!videoEncode ? 2 : 0) + (protect ? 1 : 0) + (!opticalFlow ? 1 : 0))
-#define COPY_QUEUE_SCORE \
-    ((!graphics ? 10 : 0) + (!compute ? 10 : 0) + (copy ? 100 * familyProps.queueCount : 0) + (sparse ? 5 : 0) + (!videoDecode ? 2 : 0) + (!videoEncode ? 2 : 0) + (protect ? 1 : 0) + (!opticalFlow ? 1 : 0))
-
-// Array validation
-#define NRI_VALIDATE_ARRAY(x)                 static_assert((size_t)x[x.size() - 1] != 0, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
-#define NRI_VALIDATE_ARRAY_BY_PTR(x)          static_assert(x[x.size() - 1] != nullptr, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
-#define NRI_VALIDATE_ARRAY_BY_FIELD(x, field) static_assert(x[x.size() - 1].field != 0, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
-
-// D3D
-#define NRI_SET_D3D_DEBUG_OBJECT_NAME(obj, name) \
-    if (obj) \
-    obj->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)std::strlen(name), name)
-
-// clang-format off
-#define NRI_ALLOCATE_SCRATCH(device, T, elementNum) { \
-        (device).GetAllocationCallbacks(), \
-        !(elementNum) ? nullptr : ( \
-            ((elementNum) * sizeof(T) + alignof(T)) > MAX_STACK_ALLOC_SIZE \
-                ? (T*)(device).GetAllocationCallbacks().Allocate((device).GetAllocationCallbacks().userArg, (elementNum) * sizeof(T), alignof(T)) \
-                : (T*)Align((T*)alloca((elementNum) * sizeof(T) + alignof(T)), alignof(T)) \
-        ), \
-        (elementNum) \
-    }
-// clang-format on
+#include "DeviceBase.h" // requires "StdAllocator"

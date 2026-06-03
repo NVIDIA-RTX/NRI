@@ -49,5 +49,5 @@ NRI_INLINE void FenceVK::Wait(uint64_t value) {
     semaphoreWaitInfo.pValues = &value;
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.WaitSemaphores((VkDevice)m_Device, &semaphoreWaitInfo, MsToUs(TIMEOUT_FENCE));
+    vk.WaitSemaphores((VkDevice)m_Device, &semaphoreWaitInfo, MsToUs(NRI_TIMEOUT_FENCE));
 }
