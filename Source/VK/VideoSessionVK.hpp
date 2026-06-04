@@ -130,10 +130,6 @@ VideoSessionVK::~VideoSessionVK() {
 }
 
 Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
-    const auto& vk = m_Device.GetDispatchTable();
-    if (!vk.CreateVideoSessionKHR || !vk.GetVideoSessionMemoryRequirementsKHR || !vk.BindVideoSessionMemoryKHR)
-        return Result::UNSUPPORTED;
-
     if (videoSessionDesc.width == 0 || videoSessionDesc.height == 0 || videoSessionDesc.format == Format::UNKNOWN)
         return Result::INVALID_ARGUMENT;
 
@@ -218,6 +214,7 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
         }
     }
 
+    const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.GetPhysicalDeviceVideoCapabilitiesKHR(m_Device, &profile, &capabilities);
     if (vkResult != VK_SUCCESS) {
         NRI_REPORT_ERROR(&m_Device, "vkGetPhysicalDeviceVideoCapabilitiesKHR failed for operation 0x%X, format %u, result %d", operation, (uint32_t)videoSessionDesc.format, vkResult);
@@ -349,11 +346,6 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
 }
 
 static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSessionDesc& videoSessionDesc, VideoCapabilities& videoCapabilities) {
-    DeviceVK& deviceVK = (DeviceVK&)device;
-    const auto& vk = deviceVK.GetDispatchTable();
-    if (!vk.GetPhysicalDeviceVideoCapabilitiesKHR)
-        return Result::UNSUPPORTED;
-
     if (videoSessionDesc.width == 0 || videoSessionDesc.height == 0 || videoSessionDesc.format == Format::UNKNOWN)
         return Result::INVALID_ARGUMENT;
 
@@ -425,13 +417,19 @@ static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSes
         }
     }
 
+    DeviceVK& deviceVK = (DeviceVK&)device;
+    const auto& vk = deviceVK.GetDispatchTable();
+
     VkResult vkResult = vk.GetPhysicalDeviceVideoCapabilitiesKHR(deviceVK, &profile, &capabilities);
     NRI_RETURN_ON_BAD_VKRESULT(&deviceVK, vkResult, "vkGetPhysicalDeviceVideoCapabilitiesKHR");
 
     FillVideoCapabilitiesVK(videoCapabilities, capabilities);
 
-    const bool isExtentSupported = videoSessionDesc.width >= videoCapabilities.widthMin && videoSessionDesc.height >= videoCapabilities.heightMin && videoSessionDesc.width <= videoCapabilities.widthMax
+    const bool isExtentSupported = videoSessionDesc.width >= videoCapabilities.widthMin
+        && videoSessionDesc.height >= videoCapabilities.heightMin
+        && videoSessionDesc.width <= videoCapabilities.widthMax
         && videoSessionDesc.height <= videoCapabilities.heightMax;
     const bool isGranularitySupported = IsAligned(videoSessionDesc.width, videoCapabilities.pictureAccessGranularityWidth) && IsAligned(videoSessionDesc.height, videoCapabilities.pictureAccessGranularityHeight);
+
     return isExtentSupported && isGranularitySupported ? Result::SUCCESS : Result::UNSUPPORTED;
 }

@@ -105,16 +105,13 @@ VideoSessionParametersVK::~VideoSessionParametersVK() {
 }
 
 NRI_INLINE Result VideoSessionParametersVK::CreateNative(VideoSessionVK& session, const void* pNext) {
-    const auto& vk = m_Device.GetDispatchTable();
-    if (!vk.CreateVideoSessionParametersKHR)
-        return Result::UNSUPPORTED;
-
     m_Session = &session;
 
     VkVideoSessionParametersCreateInfoKHR createInfo = {VK_STRUCTURE_TYPE_VIDEO_SESSION_PARAMETERS_CREATE_INFO_KHR};
     createInfo.pNext = pNext;
     createInfo.videoSession = session.m_Handle;
 
+    const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateVideoSessionParametersKHR(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateVideoSessionParametersKHR");
 
@@ -122,13 +119,11 @@ NRI_INLINE Result VideoSessionParametersVK::CreateNative(VideoSessionVK& session
 }
 
 NRI_INLINE Result VideoSessionParametersVK::CreateNative(VideoSessionVK& session, const VkVideoSessionParametersCreateInfoKHR* nativeCreateInfo) {
-    const auto& vk = m_Device.GetDispatchTable();
-    if (!vk.CreateVideoSessionParametersKHR)
-        return Result::UNSUPPORTED;
-
     m_Session = &session;
 
     VkVideoSessionParametersCreateInfoKHR createInfo = GetVideoSessionParametersCreateInfoVK(session.m_Handle, nativeCreateInfo);
+
+    const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateVideoSessionParametersKHR(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateVideoSessionParametersKHR");
 
@@ -138,10 +133,6 @@ NRI_INLINE Result VideoSessionParametersVK::CreateNative(VideoSessionVK& session
 NRI_INLINE Result VideoSessionParametersVK::Create(const VideoSessionParametersDesc& videoSessionParametersDesc) {
     if (!videoSessionParametersDesc.session)
         return Result::INVALID_ARGUMENT;
-
-    const auto& vk = m_Device.GetDispatchTable();
-    if (!vk.CreateVideoSessionParametersKHR)
-        return Result::UNSUPPORTED;
 
     VideoSessionVK& session = *(VideoSessionVK*)videoSessionParametersDesc.session;
     m_Session = &session;

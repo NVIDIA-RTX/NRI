@@ -176,19 +176,12 @@ NRI_INLINE Result CommandBufferVK::End() {
 
 NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeVKDesc& videoDecodeVKDesc) {
     const auto& vk = m_Device.GetDispatchTable();
-    if (!vk.CmdDecodeVideoKHR) {
-        NRI_REPORT_ERROR(&m_Device, "vkCmdDecodeVideoKHR is not available");
-        return;
-    }
-
     vk.CmdDecodeVideoKHR(m_Handle, (const VkVideoDecodeInfoKHR*)videoDecodeVKDesc.vkDecodeInfo);
 }
 
 NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeDesc) {
     VideoSessionVK& session = *(VideoSessionVK*)videoDecodeDesc.session;
     VideoSessionParametersVK& parameters = *(VideoSessionParametersVK*)videoDecodeDesc.parameters;
-    VideoPictureVK& dstPicture = *(VideoPictureVK*)videoDecodeDesc.dstPicture;
-    VideoPictureVK& setupPicture = videoDecodeDesc.setupPicture ? *(VideoPictureVK*)videoDecodeDesc.setupPicture : dstPicture;
     if (parameters.m_Session != &session) {
         NRI_REPORT_ERROR(&m_Device, "'parameters' must belong to 'session'");
         return;
@@ -490,6 +483,9 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
         }
     }
 
+    VideoPictureVK& dstPicture = *(VideoPictureVK*)videoDecodeDesc.dstPicture;
+    VideoPictureVK& setupPicture = videoDecodeDesc.setupPicture ? *(VideoPictureVK*)videoDecodeDesc.setupPicture : dstPicture;
+
     VkVideoReferenceSlotInfoKHR setupReferenceSlot = {VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR};
     setupReferenceSlot.pNext = setupReferenceInfo;
     uint32_t setupReferenceSlotIndex = videoDecodeDesc.dstSlot;
@@ -545,11 +541,6 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
 
 NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeVKDesc& videoEncodeVKDesc) {
     const auto& vk = m_Device.GetDispatchTable();
-    if (!vk.CmdEncodeVideoKHR) {
-        NRI_REPORT_ERROR(&m_Device, "vkCmdEncodeVideoKHR is not available");
-        return;
-    }
-
     vk.CmdEncodeVideoKHR(m_Handle, (const VkVideoEncodeInfoKHR*)videoEncodeVKDesc.vkEncodeInfo);
 }
 
