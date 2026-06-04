@@ -17,7 +17,7 @@ NRI_INLINE Result VideoPictureVK::Create(const VideoPictureDesc& videoPictureDes
     VkImageViewUsageCreateInfo usageInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO};
     createInfo.image = texture.GetHandle();
     createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    createInfo.format = GetVkFormat(videoPictureDesc.format == Format::UNKNOWN ? textureDesc.format : videoPictureDesc.format);
+    createInfo.format = GetVkFormat(textureDesc.format);
     createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     createInfo.subresourceRange.baseMipLevel = 0;
     createInfo.subresourceRange.levelCount = 1;
@@ -57,8 +57,8 @@ NRI_INLINE Result VideoPictureVK::Create(const VideoPictureDesc& videoPictureDes
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImageView");
 
     m_Resource = {VK_STRUCTURE_TYPE_VIDEO_PICTURE_RESOURCE_INFO_KHR};
-    m_Resource.codedOffset = {};
-    m_Resource.codedExtent = {videoPictureDesc.width ? videoPictureDesc.width : textureDesc.width, videoPictureDesc.height ? videoPictureDesc.height : textureDesc.height};
+    m_Resource.codedExtent.width = videoPictureDesc.width ? videoPictureDesc.width : textureDesc.width;
+    m_Resource.codedExtent.height = videoPictureDesc.height ? videoPictureDesc.height : textureDesc.height;
     m_Resource.baseArrayLayer = videoPictureDesc.layer;
     m_Resource.imageViewBinding = m_ImageView;
 

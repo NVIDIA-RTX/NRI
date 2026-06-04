@@ -280,9 +280,8 @@ NriStruct(VideoBitstreamRange) {
 NriStruct(VideoPictureDesc) {
     NriPtr(Texture) texture;
     Nri(VideoPictureUsage) usage;
-    Nri(Format) format;
-    Nri(Dim_t) width;
-    Nri(Dim_t) height;
+    NriOptional Nri(Dim_t) width;
+    NriOptional Nri(Dim_t) height;
     NriOptional Nri(Dim_t) layer;
 };
 
