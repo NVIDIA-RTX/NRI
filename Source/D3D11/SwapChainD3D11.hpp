@@ -182,7 +182,7 @@ NRI_INLINE Result SwapChainD3D11::AcquireNextTexture(uint32_t& textureIndex) {
 
 NRI_INLINE Result SwapChainD3D11::WaitForPresent() {
     if (m_FrameLatencyWaitableObject) {
-        uint32_t result = WaitForSingleObjectEx(m_FrameLatencyWaitableObject, TIMEOUT_PRESENT, TRUE);
+        uint32_t result = WaitForSingleObjectEx(m_FrameLatencyWaitableObject, NRI_TIMEOUT_PRESENT, TRUE);
 
         return result == WAIT_OBJECT_0 ? Result::SUCCESS : Result::FAILURE;
     }

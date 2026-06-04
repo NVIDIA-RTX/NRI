@@ -23,14 +23,6 @@
 #    pragma warning(disable : 4701) // potentially uninitialized local variable
 #endif
 
-#ifndef NDEBUG
-#    define D3D12MA_DEBUG_LOG(format, ...) \
-        do { \
-            wprintf(format, __VA_ARGS__); \
-            wprintf(L"\n"); \
-        } while (false)
-#endif
-
 #include "D3D12MemAlloc.cpp"
 
 #if defined(__GNUC__)

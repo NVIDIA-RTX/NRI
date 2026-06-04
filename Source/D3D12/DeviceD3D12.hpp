@@ -371,7 +371,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     { // Create zero buffer
         D3D12_RESOURCE_DESC zeroBufferDesc = {};
         zeroBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        zeroBufferDesc.Width = desc.d3dZeroBufferSize ? desc.d3dZeroBufferSize : ZERO_BUFFER_DEFAULT_SIZE;
+        zeroBufferDesc.Width = desc.d3dZeroBufferSize ? desc.d3dZeroBufferSize : NRI_ZERO_BUFFER_SIZE;
         zeroBufferDesc.Height = 1;
         zeroBufferDesc.DepthOrArraySize = 1;
         zeroBufferDesc.MipLevels = 1;
@@ -431,7 +431,7 @@ HRESULT DeviceD3D12::CreateVma() {
     allocatorDesc.pDevice = m_Device;
     allocatorDesc.pAdapter = m_Adapter;
     allocatorDesc.Flags = (D3D12MA::ALLOCATOR_FLAGS)flags;
-    allocatorDesc.PreferredBlockSize = VMA_PREFERRED_BLOCK_SIZE;
+    allocatorDesc.PreferredBlockSize = 0; // = D3D12MA_DEFAULT_BLOCK_SIZE
 
     if (!GetAllocationCallbacks().disable3rdPartyAllocationCallbacks)
         allocatorDesc.pAllocationCallbacks = &allocationCallbacks;

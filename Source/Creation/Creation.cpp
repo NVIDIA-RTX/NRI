@@ -52,7 +52,7 @@ NRI_VALIDATE_ARRAY_BY_PTR(g_messageTypes);
 static void NRI_CALL MessageCallback(Message messageType, const char* file, uint32_t line, const char* message, void*) {
     const char* messageTypeName = g_messageTypes[(size_t)messageType];
 
-    char buf[MAX_MESSAGE_LENGTH];
+    char buf[NRI_MAX_MESSAGE_LENGTH];
     snprintf(buf, sizeof(buf), "%s (%s:%u) - %s\n", messageTypeName, file, line, message);
 
     fprintf(stderr, "%s", buf);

@@ -198,7 +198,7 @@ VkResult DeviceVK::CreateVma() {
     allocatorCreateInfo.instance = m_Instance;
     allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
     allocatorCreateInfo.pAllocationCallbacks = m_AllocationCallbackPtr;
-    allocatorCreateInfo.preferredLargeHeapBlockSize = VMA_PREFERRED_BLOCK_SIZE;
+    allocatorCreateInfo.preferredLargeHeapBlockSize = 0; // = VMA_DEFAULT_LARGE_HEAP_BLOCK_SIZE
 
     allocatorCreateInfo.flags = 0;
     if (m_IsSupported.memoryBudget)

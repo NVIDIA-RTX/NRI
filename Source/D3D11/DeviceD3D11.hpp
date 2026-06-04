@@ -297,7 +297,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
 
     { // Create zero buffer
         D3D11_BUFFER_DESC zeroBufferDesc = {};
-        zeroBufferDesc.ByteWidth = desc.d3dZeroBufferSize ? desc.d3dZeroBufferSize : ZERO_BUFFER_DEFAULT_SIZE;
+        zeroBufferDesc.ByteWidth = desc.d3dZeroBufferSize ? desc.d3dZeroBufferSize : NRI_ZERO_BUFFER_SIZE;
         zeroBufferDesc.Usage = D3D11_USAGE_DEFAULT;
 
         auto& allocator = GetAllocationCallbacks();

@@ -920,7 +920,7 @@ void DeviceBase::ReportMessage(Message messageType, Result result, const char* f
         const char* temp = strrchr(file, NRI_FILE_SEPARATOR);
         file = temp ? temp + 1 : file;
 
-        char buf[MAX_MESSAGE_LENGTH];
+        char buf[NRI_MAX_MESSAGE_LENGTH];
         int32_t written = snprintf(buf, sizeof(buf), "%s::%s - ", graphicsAPIName, *desc.adapterDesc.name == '\0' ? "Unknown" : desc.adapterDesc.name);
 
         va_list argptr;

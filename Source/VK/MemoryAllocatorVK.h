@@ -19,14 +19,6 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #define VMA_IMPLEMENTATION
 
-#ifndef NDEBUG
-#    define VMA_LEAK_LOG_FORMAT(format, ...) \
-        do { \
-            printf(format, __VA_ARGS__); \
-            printf("\n"); \
-        } while (false)
-#endif
-
 #include "vk_mem_alloc.h"
 
 #if defined(__GNUC__)

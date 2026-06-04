@@ -160,7 +160,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/b3cbbb43ea3a506dffe10759e205a41c27c35ae2.zip
+        URL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/e386068d174c9807479b4d13ff2db8e23bd91bc0.zip
     )
     list(APPEND DEPS vma)
 endif()
@@ -209,7 +209,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/96e58ad6f45f2e9ade7c631adba8a27db1635cb7.zip
+        URL https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/146c0ab44efeaef140aba2d659722cf1318e6127.zip
     )
     list(APPEND DEPS d3d12ma)
 endif()
@@ -251,7 +251,7 @@ if(NRI_ENABLE_SHADERMAKE AND NOT TARGET ShaderMake)
         shadermake
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
-        URL https://github.com/NVIDIA-RTX/ShaderMake/archive/58f394dbec120e0a05f9df0a5854c7e7ab297f4a.zip
+        URL https://github.com/NVIDIA-RTX/ShaderMake/archive/5daebdbef45088fc2369d441391ecab0eba25e54.zip
     )
     list(APPEND DEPS shadermake)
 endif()
@@ -333,6 +333,7 @@ if(NRI_ENABLE_NGX_SDK)
 endif()
 
 set(SHARED_SOURCE
+    "Source/NRIConfig.h"
     "Source/Shared/DeviceBase.h"
     "Source/Shared/HelperInterface.h"
     "Source/Shared/HelperInterface.hpp"

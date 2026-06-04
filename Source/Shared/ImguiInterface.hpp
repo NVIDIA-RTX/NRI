@@ -734,6 +734,7 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
 
         Result result = m_iCore.CreateGraphicsPipeline(m_Device, graphicsPipelineDesc, pipeline);
         NRI_CHECK(result == Result::SUCCESS, "Unexpected");
+        MaybeUnused(result);
 
         m_Pipelines.push_back({pipeline, drawImguiDesc.attachmentFormat});
     }
