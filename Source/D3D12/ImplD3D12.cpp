@@ -1290,6 +1290,7 @@ static Result NRI_CALL GetVideoEncodeFeedback(VideoSession&, Buffer& resolvedMet
 
     const auto& d3d12Feedback = *(const D3D12_VIDEO_ENCODER_OUTPUT_METADATA*)metadata;
     const auto* subregions = (const D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA*)((const uint8_t*)metadata + sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA));
+
     feedback = {};
     feedback.errorFlags = d3d12Feedback.EncodeErrorFlags;
     feedback.averageQP = d3d12Feedback.EncodeStats.AverageQP;
@@ -1301,6 +1302,7 @@ static Result NRI_CALL GetVideoEncodeFeedback(VideoSession&, Buffer& resolvedMet
     feedback.encodedBitstreamWrittenBytes = d3d12Feedback.EncodedBitstreamWrittenBytesCount;
     feedback.writtenSubregionNum = d3d12Feedback.WrittenSubregionsCount;
     feedback.encodedBitstreamOffset = GetVideoEncodeFeedbackBitstreamOffsetD3D12(subregions, feedback.writtenSubregionNum);
+
     return Result::SUCCESS;
 }
 
@@ -1461,6 +1463,7 @@ static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolv
         for (uint32_t i = 0; i < refFrameIndices.size(); i++) {
             if (post.referenceIndices[i] > std::numeric_limits<uint8_t>::max())
                 return Result::FAILURE;
+
             refFrameIndices[i] = (uint8_t)post.referenceIndices[i];
         }
         if (post.primaryRefFrame > 7 || !video_av1::BuildInterFrameReferences(desc, refFrameIndices, info))
@@ -1512,6 +1515,7 @@ static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolv
     }
     video_av1::FillIdentityGlobalMotion(info.globalMotion);
     video_av1::BindPointers(info);
+
     return Result::SUCCESS;
 }
 

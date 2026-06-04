@@ -112,6 +112,17 @@ static bool ValidateTextureBarrierDesc(const DeviceVal& device, uint32_t i, cons
     return true;
 }
 
+static bool IsVideoEncodeRateControlDescValid(const VideoEncodeRateControlDesc& rateControlDesc) {
+    if ((uint32_t)rateControlDesc.mode >= (uint32_t)VideoEncodeRateControlMode::MAX_NUM)
+        return false;
+    if (rateControlDesc.mode != VideoEncodeRateControlMode::CQP && rateControlDesc.targetBitrate == 0)
+        return false;
+    if (rateControlDesc.qpMax && rateControlDesc.qpMin > rateControlDesc.qpMax)
+        return false;
+
+    return true;
+}
+
 NRI_INLINE Result CommandBufferVal::Begin(const DescriptorPool* descriptorPool) {
     NRI_RETURN_ON_FAILURE(&m_Device, !m_IsRecordingStarted, Result::FAILURE, "already in the recording state");
 
@@ -872,6 +883,110 @@ NRI_INLINE void CommandBufferVal::DrawMeshTasksIndirect(const Buffer& buffer, ui
     Buffer* countBufferImpl = NRI_GET_IMPL(Buffer, countBuffer);
 
     GetMeshShaderInterfaceImpl().CmdDrawMeshTasksIndirect(*GetImpl(), *bufferImpl, offset, drawNum, stride, countBufferImpl, countBufferOffset);
+}
+
+NRI_INLINE void CommandBufferVal::DecodeVideo(const VideoDecodeDesc& videoDecodeDesc) {
+    if (!videoDecodeDesc.session || !videoDecodeDesc.parameters || !videoDecodeDesc.bitstream.buffer || !videoDecodeDesc.bitstream.size || !videoDecodeDesc.dstPicture) {
+        NRI_REPORT_ERROR(&m_Device, "'session', 'parameters', 'bitstream.buffer', 'bitstream.size' and 'dstPicture' must be valid");
+        return;
+    }
+
+    if (videoDecodeDesc.argumentNum > 10) {
+        NRI_REPORT_ERROR(&m_Device, "'argumentNum' must be <= 10");
+        return;
+    }
+
+    if (videoDecodeDesc.referenceNum != 0 && !videoDecodeDesc.references) {
+        NRI_REPORT_ERROR(&m_Device, "'references' is NULL");
+        return;
+    }
+
+    if (videoDecodeDesc.argumentNum != 0 && !videoDecodeDesc.arguments) {
+        NRI_REPORT_ERROR(&m_Device, "'arguments' is NULL");
+        return;
+    }
+
+    VideoDecodeDesc videoDecodeDescImpl = videoDecodeDesc;
+    videoDecodeDescImpl.session = videoDecodeDesc.session ? ((VideoSessionVal*)videoDecodeDesc.session)->GetImpl() : nullptr;
+    videoDecodeDescImpl.parameters = videoDecodeDesc.parameters ? ((VideoSessionParametersVal*)videoDecodeDesc.parameters)->GetImpl() : nullptr;
+    videoDecodeDescImpl.bitstream.buffer = NRI_GET_IMPL(Buffer, videoDecodeDesc.bitstream.buffer);
+    videoDecodeDescImpl.dstPicture = videoDecodeDesc.dstPicture ? ((VideoPictureVal*)videoDecodeDesc.dstPicture)->GetImpl() : nullptr;
+    videoDecodeDescImpl.setupPicture = videoDecodeDesc.setupPicture ? ((VideoPictureVal*)videoDecodeDesc.setupPicture)->GetImpl() : nullptr;
+
+    Scratch<VideoReference> references = NRI_ALLOCATE_SCRATCH(m_Device, VideoReference, videoDecodeDesc.references ? videoDecodeDesc.referenceNum : 0);
+    if (videoDecodeDesc.references) {
+        for (uint32_t i = 0; i < videoDecodeDesc.referenceNum; i++) {
+            references[i] = videoDecodeDesc.references[i];
+            references[i].picture = references[i].picture ? ((VideoPictureVal*)references[i].picture)->GetImpl() : nullptr;
+        }
+
+        videoDecodeDescImpl.references = references;
+    }
+
+    GetVideoInterfaceImpl().CmdDecodeVideo(*GetImpl(), videoDecodeDescImpl);
+}
+
+NRI_INLINE void CommandBufferVal::EncodeVideo(const VideoEncodeDesc& videoEncodeDesc) {
+    if (videoEncodeDesc.rateControlDesc && !IsVideoEncodeRateControlDescValid(*videoEncodeDesc.rateControlDesc)) {
+        NRI_REPORT_ERROR(&m_Device, "'rateControlDesc' is invalid");
+        return;
+    }
+
+    if ((videoEncodeDesc.flags & VideoEncodeBits::FORCE_KEY_FRAME) && videoEncodeDesc.referenceNum) {
+        NRI_REPORT_ERROR(&m_Device, "'FORCE_KEY_FRAME' requires 'referenceNum' to be 0");
+        return;
+    }
+
+    if (videoEncodeDesc.flags & VideoEncodeBits::END_OF_STREAM) {
+        NRI_REPORT_ERROR(&m_Device, "'END_OF_STREAM' must be serialized with 'WriteVideoAnnexBEndOfStream' after encode feedback is available");
+        return;
+    }
+
+    if (!videoEncodeDesc.session || !videoEncodeDesc.parameters || !videoEncodeDesc.srcPicture || !videoEncodeDesc.dstBitstream.buffer || !videoEncodeDesc.dstBitstream.size) {
+        NRI_REPORT_ERROR(&m_Device, "'session', 'parameters', 'srcPicture', 'dstBitstream.buffer' and 'dstBitstream.size' must be valid");
+        return;
+    }
+
+    if (videoEncodeDesc.referenceNum != 0 && !videoEncodeDesc.references) {
+        NRI_REPORT_ERROR(&m_Device, "'references' is NULL");
+        return;
+    }
+
+    if (videoEncodeDesc.h264PictureDesc && videoEncodeDesc.h264PictureDesc->referenceNum != 0 && !videoEncodeDesc.h264PictureDesc->references) {
+        NRI_REPORT_ERROR(&m_Device, "'h264PictureDesc->references' is NULL");
+        return;
+    }
+
+    if (videoEncodeDesc.av1PictureDesc && videoEncodeDesc.av1PictureDesc->referenceNum != 0 && !videoEncodeDesc.av1PictureDesc->references) {
+        NRI_REPORT_ERROR(&m_Device, "'av1PictureDesc->references' is NULL");
+        return;
+    }
+
+    if (videoEncodeDesc.av1PictureDesc && (videoEncodeDesc.av1PictureDesc->referenceNum != 0) != (videoEncodeDesc.referenceNum != 0)) {
+        NRI_REPORT_ERROR(&m_Device, "'av1PictureDesc->referenceNum' must match whether 'references' are provided");
+        return;
+    }
+
+    VideoEncodeDesc videoEncodeDescImpl = videoEncodeDesc;
+    videoEncodeDescImpl.session = videoEncodeDesc.session ? ((VideoSessionVal*)videoEncodeDesc.session)->GetImpl() : nullptr;
+    videoEncodeDescImpl.parameters = videoEncodeDesc.parameters ? ((VideoSessionParametersVal*)videoEncodeDesc.parameters)->GetImpl() : nullptr;
+    videoEncodeDescImpl.srcPicture = videoEncodeDesc.srcPicture ? ((VideoPictureVal*)videoEncodeDesc.srcPicture)->GetImpl() : nullptr;
+    videoEncodeDescImpl.dstBitstream.buffer = NRI_GET_IMPL(Buffer, videoEncodeDesc.dstBitstream.buffer);
+    videoEncodeDescImpl.reconstructedPicture = videoEncodeDesc.reconstructedPicture ? ((VideoPictureVal*)videoEncodeDesc.reconstructedPicture)->GetImpl() : nullptr;
+    videoEncodeDescImpl.metadata = NRI_GET_IMPL(Buffer, videoEncodeDesc.metadata);
+    videoEncodeDescImpl.resolvedMetadata = NRI_GET_IMPL(Buffer, videoEncodeDesc.resolvedMetadata);
+
+    Scratch<VideoReference> references = NRI_ALLOCATE_SCRATCH(m_Device, VideoReference, videoEncodeDesc.references ? videoEncodeDesc.referenceNum : 0);
+    if (videoEncodeDesc.references) {
+        for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {
+            references[i] = videoEncodeDesc.references[i];
+            references[i].picture = references[i].picture ? ((VideoPictureVal*)references[i].picture)->GetImpl() : nullptr;
+        }
+
+        videoEncodeDescImpl.references = references;
+    }
+
+    GetVideoInterfaceImpl().CmdEncodeVideo(*GetImpl(), videoEncodeDescImpl);
 }
 
 NRI_INLINE void CommandBufferVal::ValidateReadonlyDepthStencil() {

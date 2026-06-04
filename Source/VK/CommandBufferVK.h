@@ -90,6 +90,9 @@ struct CommandBufferVK final : public DebugNameBase {
     void DrawMeshTasksIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset);
     void DecodeVideo(const VideoDecodeVKDesc& videoDecodeVKDesc);
     void EncodeVideo(const VideoEncodeVKDesc& videoEncodeVKDesc);
+    void DecodeVideo(const VideoDecodeDesc& videoDecodeDesc);
+    void EncodeVideo(const VideoEncodeDesc& videoEncodeDesc);
+    void ResolveVideoEncodeFeedback(VideoSession& videoSession, Buffer& resolvedMetadata, uint64_t resolvedMetadataOffset);
 
 private:
     DeviceVK& m_Device;
