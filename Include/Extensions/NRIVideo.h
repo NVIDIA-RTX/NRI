@@ -281,10 +281,9 @@ NriStruct(VideoPictureDesc) {
     NriPtr(Texture) texture;
     Nri(VideoPictureUsage) usage;
     Nri(Format) format;
-    uint32_t subresource;
-    uint32_t layer;
-    uint32_t width;
-    uint32_t height;
+    Nri(Dim_t) width;
+    Nri(Dim_t) height;
+    NriOptional Nri(Dim_t) layer;
 };
 
 NriStruct(VideoDecodePictureStates) {
