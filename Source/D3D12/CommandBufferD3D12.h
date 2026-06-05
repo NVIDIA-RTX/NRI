@@ -3,10 +3,8 @@
 #pragma once
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-struct ID3D12GraphicsCommandList10;
 typedef ID3D12GraphicsCommandList10 ID3D12GraphicsCommandListBest;
 #else
-struct ID3D12GraphicsCommandList6;
 typedef ID3D12GraphicsCommandList6 ID3D12GraphicsCommandListBest;
 #endif
 
