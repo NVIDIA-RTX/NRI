@@ -6,7 +6,7 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
 
     if (videoSessionDesc.usage == VideoUsage::DECODE) {
         ComPtr<ID3D12VideoDevice> videoDevice;
-        HRESULT hr = m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice));
+        HRESULT hr = m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice));  // TODO: use "QueryLatestInterface"
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::QueryInterface(ID3D12VideoDevice)");
 
         D3D12_VIDEO_DECODE_CONFIGURATION configuration = {};
@@ -37,7 +37,7 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
         D3D12_VIDEO_DECODER_DESC decoderDesc = {};
         decoderDesc.Configuration = configuration;
 
-        hr = videoDevice->CreateVideoDecoder(&decoderDesc, IID_PPV_ARGS(&m_Decoder));
+        hr = videoDevice->CreateVideoDecoder(&decoderDesc, __uuidof(ID3D12VideoDecoderBest), (void**)&m_Session); // TODO-VIDEO: use "QueryLatestInterface"
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDevice::CreateVideoDecoder");
 
         D3D12_VIDEO_DECODER_HEAP_DESC heapDesc = {};
@@ -47,11 +47,11 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
         heapDesc.Format = GetDxgiFormat(videoSessionDesc.format).typed;
         heapDesc.MaxDecodePictureBufferCount = videoSessionDesc.maxReferenceNum ? videoSessionDesc.maxReferenceNum : 1;
 
-        hr = videoDevice->CreateVideoDecoderHeap(&heapDesc, IID_PPV_ARGS(&m_DecoderHeap));
+        hr = videoDevice->CreateVideoDecoderHeap(&heapDesc, __uuidof(ID3D12VideoDecoderHeapBest), (void**)&m_Heap); // TODO-VIDEO: use "QueryLatestInterface"
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDevice::CreateVideoDecoderHeap");
     } else if (videoSessionDesc.usage == VideoUsage::ENCODE) {
         ComPtr<ID3D12VideoDevice3> videoDevice;
-        HRESULT hr = m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice));
+        HRESULT hr = m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice));  // TODO-VIDEO: use "QueryLatestInterface", merge with "decoder" code path
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::QueryInterface(ID3D12VideoDevice3)");
 
         D3D12_VIDEO_ENCODER_CODEC codec = GetVideoEncodeCodecD3D12(videoSessionDesc.codec);
@@ -295,7 +295,7 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
         encoderDesc.CodecConfiguration = codecConfig;
         encoderDesc.MaxMotionEstimationPrecision = D3D12_VIDEO_ENCODER_MOTION_ESTIMATION_PRECISION_MODE_MAXIMUM;
 
-        hr = videoDevice->CreateVideoEncoder(&encoderDesc, IID_PPV_ARGS(&m_Encoder));
+        hr = videoDevice->CreateVideoEncoder(&encoderDesc, __uuidof(ID3D12VideoEncoderBest), (void**)&m_Session); // TODO-VIDEO: use "QueryLatestInterface"
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDevice3::CreateVideoEncoder");
 
         D3D12_VIDEO_ENCODER_HEAP_DESC heapDesc = {};
@@ -305,7 +305,7 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
         heapDesc.ResolutionsListCount = 1;
         heapDesc.pResolutionList = &resolution;
 
-        hr = videoDevice->CreateVideoEncoderHeap(&heapDesc, IID_PPV_ARGS(&m_EncoderHeap));
+        hr = videoDevice->CreateVideoEncoderHeap(&heapDesc, __uuidof(ID3D12VideoEncoderHeapBest), (void**)&m_Heap); // TODO-VIDEO: use "QueryLatestInterface"
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDevice3::CreateVideoEncoderHeap");
     } else
         return Result::UNSUPPORTED;
