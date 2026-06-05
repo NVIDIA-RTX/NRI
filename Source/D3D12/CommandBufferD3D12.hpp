@@ -1,6 +1,6 @@
 ﻿// © 2021 NVIDIA Corporation
 
-static HRESULT QueryLatestInterface(ComPtr<ID3D12GraphicsCommandListBest>& in, ComPtr<ID3D12GraphicsCommandListBest>& out, uint8_t& version) {
+static HRESULT QueryLatestInterface(ComPtr<ID3D12GraphicsCommandList>& in, ComPtr<ID3D12GraphicsCommandListBest>& out, uint8_t& version) {
     static const IID versions[] = {
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
         __uuidof(ID3D12GraphicsCommandList10),
@@ -303,8 +303,8 @@ constexpr D3D12_RESOLVE_MODE GetResolveOp(ResolveOp resolveOp) {
 }
 
 Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D12CommandAllocator* commandAllocator) {
-    ComPtr<ID3D12GraphicsCommandListBest> graphicsCommandList;
-    HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&graphicsCommandList);
+    ComPtr<ID3D12GraphicsCommandList> graphicsCommandList;
+    HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, IID_PPV_ARGS(&graphicsCommandList));
     NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommandList");
 
     hr = QueryLatestInterface(graphicsCommandList, m_GraphicsCommandList, m_Version);
@@ -319,7 +319,7 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
 }
 
 Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferD3D12Desc) {
-    ComPtr<ID3D12GraphicsCommandListBest> graphicsCommandList = (ID3D12GraphicsCommandListBest*)commandBufferD3D12Desc.d3d12CommandList;
+    ComPtr<ID3D12GraphicsCommandList> graphicsCommandList = commandBufferD3D12Desc.d3d12CommandList;
 
     HRESULT hr = QueryLatestInterface(graphicsCommandList, m_GraphicsCommandList, m_Version);
     if (hr == D3D12_ERROR_INVALID_REDIST)
