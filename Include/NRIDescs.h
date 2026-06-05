@@ -2052,62 +2052,62 @@ NriStruct(DeviceDesc) {
     // Features
     struct {
         // Swap chain
-        uint32_t swapChain                                       : 1; // NRISwapChain
-        uint32_t presentFromCompute                              : 1; // see "SwapChainDesc::queue"
-        uint32_t waitableSwapChain                               : 1; // see "SwapChainDesc::waitable"
-        uint32_t resizableSwapChain                              : 1; // swap chain can be resized without triggering an "OUT_OF_DATE" error
+        bool swapChain;                                           // NRISwapChain
+        bool presentFromCompute;                                  // see "SwapChainDesc::queue"
+        bool waitableSwapChain;                                   // see "SwapChainDesc::waitable"
+        bool resizableSwapChain;                                  // swap chain can be resized without triggering an "OUT_OF_DATE" error
 
         // Multi view
-        uint32_t flexibleMultiview                               : 1; // see "Multiview::FLEXIBLE"
-        uint32_t layerBasedMultiview                             : 1; // see "Multiview::LAYRED_BASED"
-        uint32_t viewportBasedMultiview                          : 1; // see "Multiview::VIEWPORT_BASED"
+        bool flexibleMultiview;                                   // see "Multiview::FLEXIBLE"
+        bool layerBasedMultiview;                                 // see "Multiview::LAYRED_BASED"
+        bool viewportBasedMultiview;                              // see "Multiview::VIEWPORT_BASED"
 
         // Texture compression
-        uint32_t textureCompressionBC                            : 1; // all "BC" texture formats are supported
-        uint32_t textureCompressionETC2                          : 1; // all "ETC2" texture formats are supported
-        uint32_t textureCompressionASTC                          : 1; // all "ASTC" texture formats are supported
+        bool textureCompressionBC;                                // all "BC" texture formats are supported
+        bool textureCompressionETC2;                              // all "ETC2" texture formats are supported
+        bool textureCompressionASTC;                              // all "ASTC" texture formats are supported
 
         // Shader bytecode
-        uint32_t shaderBytecodeDXBC                              : 1; // DXBC can be passed to "ShaderDesc::bytecode"
-        uint32_t shaderBytecodeDXIL                              : 1; // DXIL can be passed to "ShaderDesc::bytecode"
-        uint32_t shaderBytecodeSPIRV                             : 1; // SPIRV can be passed to "ShaderDesc::bytecode"
+        bool shaderBytecodeDXBC;                                  // DXBC can be passed to "ShaderDesc::bytecode"
+        bool shaderBytecodeDXIL;                                  // DXIL can be passed to "ShaderDesc::bytecode"
+        bool shaderBytecodeSPIRV;                                 // SPIRV can be passed to "ShaderDesc::bytecode"
 
         // Time stamps
-        uint32_t copyQueueTimestamp                              : 1; // see "QueryType::TIMESTAMP_COPY_QUEUE"
-        uint32_t calibratedTimestamps                            : 1; // see "GetCalibratedTimestamps" (unsupported only in D3D11)
+        bool copyQueueTimestamp;                                  // see "QueryType::TIMESTAMP_COPY_QUEUE"
+        bool calibratedTimestamps;                                // see "GetCalibratedTimestamps" (unsupported only in D3D11)
 
         // Shading rate
-        uint32_t additionalShadingRates                          : 1; // see "ShadingRate"
-        uint32_t sumShadingRateCombiner                          : 1; // see "ShadingRateCombiner::SUM"
+        bool additionalShadingRates;                              // see "ShadingRate"
+        bool sumShadingRateCombiner;                              // see "ShadingRateCombiner::SUM"
 
         // Resolve
-        uint32_t regionResolve                                   : 1; // see "CmdResolveTexture"
-        uint32_t resolveOpMinMax                                 : 1; // see "ResolveOp"
+        bool regionResolve;                                       // see "CmdResolveTexture"
+        bool resolveOpMinMax;                                     // see "ResolveOp"
 
         // Pipeline cache
-        uint32_t pipelineCache                                   : 1; // "PipelineCache" support (NOP fallback if unsupported, except on error)
-        uint32_t pipelineCacheControl                            : 1; // "FAIL_ON_CACHE_MISS" enforces "FAILURE", useful for platforms that prohibit runtime PSO compilation (e.g., Xbox GDK)
+        bool pipelineCache;                                       // "PipelineCache" support (NOP fallback if unsupported, except on error)
+        bool pipelineCacheControl;                                // "FAIL_ON_CACHE_MISS" enforces "FAILURE", useful for platforms that prohibit runtime PSO compilation (e.g., Xbox GDK)
 
         // Other
-        uint32_t getMemoryDesc2                                  : 1; // "GetXxxMemoryDesc2" support (VK: requires "maintenance4", D3D: supported)
-        uint32_t enhancedBarriers                                : 1; // VK: supported, D3D12: requires "AgilitySDK", D3D11: unsupported
-        uint32_t meshShader                                      : 1; // NRIMeshShader
-        uint32_t lowLatency                                      : 1; // NRILowLatency
-        uint32_t componentSwizzle                                : 1; // see "ComponentSwizzle" (unsupported only in D3D11)
-        uint32_t independentFrontAndBackStencilReferenceAndMasks : 1; // see "StencilAttachmentDesc::back"
-        uint32_t filterOpMinMax                                  : 1; // see "FilterOp"
-        uint32_t logicOp                                         : 1; // see "LogicOp"
-        uint32_t depthBoundsTest                                 : 1; // see "DepthAttachmentDesc::boundsTest"
-        uint32_t drawIndirectCount                               : 1; // see "countBuffer" and "countBufferOffset"
-        uint32_t lineSmoothing                                   : 1; // see "RasterizationDesc::lineSmoothing"
-        uint32_t meshShaderPipelineStats                         : 1; // see "PipelineStatisticsDesc"
-        uint32_t dynamicDepthBias                                : 1; // see "CmdSetDepthBias"
-        uint32_t viewportOriginBottomLeft                        : 1; // see "Viewport"
-        uint32_t pipelineStatistics                              : 1; // see "QueryType::PIPELINE_STATISTICS"
-        uint32_t rootConstantsOffset                             : 1; // see "SetRootConstantsDesc" (unsupported only in D3D11)
-        uint32_t nonConstantBufferRootDescriptorOffset           : 1; // see "SetRootDescriptorDesc" (unsupported only in D3D11)
-        uint32_t mutableDescriptorType                           : 1; // see "DescriptorType::MUTABLE"
-        uint32_t unifiedTextureLayouts                           : 1; // allows to use "GENERAL" everywhere: https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_unified_image_layouts.html
+        bool getMemoryDesc2;                                      // "GetXxxMemoryDesc2" support (VK: requires "maintenance4", D3D: supported)
+        bool enhancedBarriers;                                    // VK: supported, D3D12: requires "AgilitySDK", D3D11: unsupported
+        bool meshShader;                                          // NRIMeshShader
+        bool lowLatency;                                          // NRILowLatency
+        bool componentSwizzle;                                    // see "ComponentSwizzle" (unsupported only in D3D11)
+        bool independentFrontAndBackStencilReferenceAndMasks;     // see "StencilAttachmentDesc::back"
+        bool filterOpMinMax;                                      // see "FilterOp"
+        bool logicOp;                                             // see "LogicOp"
+        bool depthBoundsTest;                                     // see "DepthAttachmentDesc::boundsTest"
+        bool drawIndirectCount;                                   // see "countBuffer" and "countBufferOffset"
+        bool lineSmoothing;                                       // see "RasterizationDesc::lineSmoothing"
+        bool meshShaderPipelineStats;                             // see "PipelineStatisticsDesc"
+        bool dynamicDepthBias;                                    // see "CmdSetDepthBias"
+        bool viewportOriginBottomLeft;                            // see "Viewport"
+        bool pipelineStatistics;                                  // see "QueryType::PIPELINE_STATISTICS"
+        bool rootConstantsOffset;                                 // see "SetRootConstantsDesc" (unsupported only in D3D11)
+        bool nonConstantBufferRootDescriptorOffset;               // see "SetRootDescriptorDesc" (unsupported only in D3D11)
+        bool mutableDescriptorType;                               // see "DescriptorType::MUTABLE"
+        bool unifiedTextureLayouts;                               // allows to use "GENERAL" everywhere: https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_unified_image_layouts.html
     } features;
 
     // Shader features
@@ -2115,51 +2115,51 @@ NriStruct(DeviceDesc) {
     struct {
         // Native types (I32 and F32 are always supported)
         // https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-scalar
-        uint32_t nativeI8                                        : 1; // "(u)int8_t"
-        uint32_t nativeI16                                       : 1; // "(u)int16_t"
-        uint32_t nativeF16                                       : 1; // "float16_t"
-        uint32_t nativeI64                                       : 1; // "(u)int64_t"
-        uint32_t nativeF64                                       : 1; // "double"
+        bool nativeI8;                                             // "(u)int8_t"
+        bool nativeI16;                                            // "(u)int16_t"
+        bool nativeF16;                                            // "float16_t"
+        bool nativeI64;                                            // "(u)int64_t"
+        bool nativeF64;                                            // "double"
 
         // Atomics on native types (I32 atomics are always supported, for others it can be partial support of SMEM, texture or buffer atomics)
         // https://learn.microsoft.com/en-us/windows/win32/direct3d11/direct3d-11-advanced-stages-cs-atomic-functions
         // https://microsoft.github.io/DirectX-Specs/d3d/HLSL_SM_6_6_Int64_and_Float_Atomics.html
-        uint32_t atomicsI16                                      : 1; // "(u)int16_t" atomics
-        uint32_t atomicsF16                                      : 1; // "float16_t" atomics
-        uint32_t atomicsF32                                      : 1; // "float" atomics
-        uint32_t atomicsI64                                      : 1; // "(u)int64_t" atomics
-        uint32_t atomicsF64                                      : 1; // "double" atomics
+        bool atomicsI16;                                           // "(u)int16_t" atomics
+        bool atomicsF16;                                           // "float16_t" atomics
+        bool atomicsF32;                                           // "float" atomics
+        bool atomicsI64;                                           // "(u)int64_t" atomics
+        bool atomicsF64;                                           // "double" atomics
 
         // Storage without format
         // https://learn.microsoft.com/en-us/windows/win32/direct3d12/typed-unordered-access-view-loads#using-unorm-and-snorm-typed-uav-loads-from-hlsl
-        uint32_t storageReadWithoutFormat                        : 1; // NRI_FORMAT("unknown") is allowed for storage reads
-        uint32_t storageWriteWithoutFormat                       : 1; // NRI_FORMAT("unknown") is allowed for storage writes
+        bool storageReadWithoutFormat;                             // NRI_FORMAT("unknown") is allowed for storage reads
+        bool storageWriteWithoutFormat;                            // NRI_FORMAT("unknown") is allowed for storage writes
 
         // Wave intrinsics
         // https://github.com/microsoft/directxshadercompiler/wiki/wave-intrinsics
-        uint32_t waveQuery                                       : 1; // WaveIsFirstLane, WaveGetLaneCount, WaveGetLaneIndex
-        uint32_t waveVote                                        : 1; // WaveActiveAllTrue, WaveActiveAnyTrue, WaveActiveAllEqual
-        uint32_t waveShuffle                                     : 1; // WaveReadLaneFirst, WaveReadLaneAt
-        uint32_t waveArithmetic                                  : 1; // WaveActiveSum, WaveActiveProduct, WaveActiveMin, WaveActiveMax, WavePrefixProduct, WavePrefixSum
-        uint32_t waveReduction                                   : 1; // WaveActiveCountBits, WaveActiveBitAnd, WaveActiveBitOr, WaveActiveBitXor, WavePrefixCountBits
-        uint32_t waveQuad                                        : 1; // QuadReadLaneAt, QuadReadAcrossX, QuadReadAcrossY, QuadReadAcrossDiagonal
+        bool waveQuery;                                            // WaveIsFirstLane, WaveGetLaneCount, WaveGetLaneIndex
+        bool waveVote;                                             // WaveActiveAllTrue, WaveActiveAnyTrue, WaveActiveAllEqual
+        bool waveShuffle;                                          // WaveReadLaneFirst, WaveReadLaneAt
+        bool waveArithmetic;                                       // WaveActiveSum, WaveActiveProduct, WaveActiveMin, WaveActiveMax, WavePrefixProduct, WavePrefixSum
+        bool waveReduction;                                        // WaveActiveCountBits, WaveActiveBitAnd, WaveActiveBitOr, WaveActiveBitXor, WavePrefixCountBits
+        bool waveQuad;                                             // QuadReadLaneAt, QuadReadAcrossX, QuadReadAcrossY, QuadReadAcrossDiagonal
 
         // Other
-        uint32_t viewportIndex                                   : 1; // SV_ViewportArrayIndex, always can be used in geometry shaders
-        uint32_t layerIndex                                      : 1; // SV_RenderTargetArrayIndex, always can be used in geometry shaders
-        uint32_t unnormalizedCoordinates                         : 1; // https://microsoft.github.io/DirectX-Specs/d3d/VulkanOn12.html#non-normalized-texture-sampling-coordinates
-        uint32_t clock                                           : 1; // https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#readclock
-        uint32_t rasterizedOrderedView                           : 1; // https://microsoft.github.io/DirectX-Specs/d3d/RasterOrderViews.html (aka fragment shader interlock)
-        uint32_t barycentric                                     : 1; // https://github.com/microsoft/DirectXShaderCompiler/wiki/SV_Barycentrics
-        uint32_t rayTracingPositionFetch                         : 1; // https://docs.vulkan.org/features/latest/features/proposals/VK_KHR_ray_tracing_position_fetch.html
-        uint32_t integerDotProduct                               : 1; // https://github.com/microsoft/DirectXShaderCompiler/wiki/Shader-Model-6.4
-        uint32_t inputAttachments                                : 1; // https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#subpass-inputs
-        uint32_t drawParameters                                  : 1; // SV_StartVertexLocation, SV_StartInstanceLocation (native support)
+        bool viewportIndex;                                        // SV_ViewportArrayIndex, always can be used in geometry shaders
+        bool layerIndex;                                           // SV_RenderTargetArrayIndex, always can be used in geometry shaders
+        bool unnormalizedCoordinates;                              // https://microsoft.github.io/DirectX-Specs/d3d/VulkanOn12.html#non-normalized-texture-sampling-coordinates
+        bool clock;                                                // https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#readclock
+        bool rasterizedOrderedView;                                // https://microsoft.github.io/DirectX-Specs/d3d/RasterOrderViews.html (aka fragment shader interlock)
+        bool barycentric;                                          // https://github.com/microsoft/DirectXShaderCompiler/wiki/SV_Barycentrics
+        bool rayTracingPositionFetch;                              // https://docs.vulkan.org/features/latest/features/proposals/VK_KHR_ray_tracing_position_fetch.html
+        bool integerDotProduct;                                    // https://github.com/microsoft/DirectXShaderCompiler/wiki/Shader-Model-6.4
+        bool inputAttachments;                                     // https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#subpass-inputs
+        bool drawParameters;                                       // SV_StartVertexLocation, SV_StartInstanceLocation (native support)
 
         // For shaders using "draw parameters":
         //   - "ENABLE_DRAW_PARAMETERS_EMULATION" must be set for a corresponding "PipelineLayout"
         //   - "NRI_ENABLE_DRAW_PARAMETERS_EMULATION" must be defined prior inclusion of "NRI.hlsl" for such shaders
-        uint32_t drawParametersEmulation                         : 1; // emulation of "drawParameters"
+        bool drawParametersEmulation                              // emulation of "drawParameters"
     } shaderFeatures;
 };
 
