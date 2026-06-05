@@ -1,6 +1,6 @@
 ﻿// © 2021 NVIDIA Corporation
 
-static HRESULT QueryLatestInterface(ComPtr<ID3D12GraphicsCommandList>& in, ComPtr<ID3D12GraphicsCommandListBest>& out, uint8_t& version) {
+static void QueryLatestInterface(const DeviceD3D12& device, ComPtr<ID3D12GraphicsCommandList>& in, ComPtr<ID3D12GraphicsCommandListBest>& out, uint8_t& version) {
     static const IID versions[] = {
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
         __uuidof(ID3D12GraphicsCommandList10),
@@ -26,9 +26,12 @@ static HRESULT QueryLatestInterface(ComPtr<ID3D12GraphicsCommandList>& in, ComPt
             break;
     }
 
+    NRI_CHECK(n > i, "Unexpected");
+
     version = n - i - 1;
 
-    return i != n ? S_OK : D3D12_ERROR_INVALID_REDIST;
+    if (i != 0)
+        NRI_REPORT_WARNING(&device, "'ID3D12GraphicsCommandList' version is lower than expected, some functionality may not be available...");
 }
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
@@ -303,27 +306,29 @@ constexpr D3D12_RESOLVE_MODE GetResolveOp(ResolveOp resolveOp) {
 }
 
 Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D12CommandAllocator* commandAllocator) {
-    ComPtr<ID3D12GraphicsCommandList> graphicsCommandList;
-    HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, IID_PPV_ARGS(&graphicsCommandList));
+    ComPtr<ID3D12GraphicsCommandList> commandList;
+    HRESULT hr = m_Device->CreateCommandList(NODE_MASK, commandListType, commandAllocator, nullptr, IID_PPV_ARGS(&commandList));
     NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommandList");
 
-    hr = QueryLatestInterface(graphicsCommandList, m_GraphicsCommandList, m_Version);
-    NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::QueryLatestInterface");
+    ComPtr<ID3D12GraphicsCommandListBest> commandListBest;
+    QueryLatestInterface(m_Device, commandList, commandListBest, m_Version);
 
-    hr = m_GraphicsCommandList->Close();
+    hr = commandListBest->Close();
     NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::Close");
 
+    m_GraphicsCommandList = commandListBest;
     m_CommandAllocator = commandAllocator;
 
     return Result::SUCCESS;
 }
 
 Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferD3D12Desc) {
-    ComPtr<ID3D12GraphicsCommandList> graphicsCommandList = commandBufferD3D12Desc.d3d12CommandList;
+    ComPtr<ID3D12GraphicsCommandList> commandList = (ID3D12GraphicsCommandList*)commandBufferD3D12Desc.d3d12CommandList;
 
-    HRESULT hr = QueryLatestInterface(graphicsCommandList, m_GraphicsCommandList, m_Version);
-    if (hr == D3D12_ERROR_INVALID_REDIST)
-        NRI_REPORT_WARNING(&m_Device, "ID3D12GraphicsCommandList version is lower than expected, some functionality may be not available...");
+    ComPtr<ID3D12GraphicsCommandListBest> commandListBest;
+    QueryLatestInterface(m_Device, commandList, commandListBest, m_Version);
+
+    m_GraphicsCommandList = commandListBest;
 
     // TODO: what if opened?
 
@@ -589,8 +594,7 @@ NRI_INLINE void CommandBufferD3D12::EndRendering() {
         if (m_Device.GetDesc().features.enhancedBarriers) {
             FillResolveBarrier(true, *resolveSrc, planeBits, textureBarriers[barrierNum++]);
             FillResolveBarrier(false, *resolveDst, planeBits, textureBarriers[barrierNum++]);
-        }
-        else
+        } else
 #endif
         {
             const TexViewDesc& srcDesc = resolveSrc->GetTexViewDesc();

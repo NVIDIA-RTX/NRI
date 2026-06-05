@@ -33,6 +33,8 @@ static uint8_t QueryLatestInterface(ComPtr<IDXGISwapChainBest>& in, ComPtr<IDXGI
             break;
     }
 
+    NRI_CHECK(n > i, "Unexpected");
+
     return n - i - 1;
 }
 

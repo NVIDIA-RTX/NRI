@@ -20,6 +20,8 @@ static uint8_t QueryLatestInterface(ComPtr<ID3D11DeviceBest>& in, ComPtr<ID3D11D
             break;
     }
 
+    NRI_CHECK(n > i, "Unexpected");
+
     return n - i - 1;
 }
 
