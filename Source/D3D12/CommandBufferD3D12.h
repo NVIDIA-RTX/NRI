@@ -3,22 +3,12 @@
 #pragma once
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-struct ID3D12GraphicsCommandList10;
 typedef ID3D12GraphicsCommandList10 ID3D12GraphicsCommandListBest;
-
-struct ID3D12VideoDecodeCommandList3;
 typedef ID3D12VideoDecodeCommandList3 ID3D12VideoDecodeCommandListBest;
-
-struct ID3D12VideoEncodeCommandList4;
 typedef ID3D12VideoEncodeCommandList4 ID3D12VideoEncodeCommandListBest;
 #else
-struct ID3D12GraphicsCommandList6;
 typedef ID3D12GraphicsCommandList6 ID3D12GraphicsCommandListBest;
-
-struct ID3D12VideoDecodeCommandList2;
 typedef ID3D12VideoDecodeCommandList2 ID3D12VideoDecodeCommandListBest;
-
-struct ID3D12VideoEncodeCommandList;
 typedef ID3D12VideoEncodeCommandList ID3D12VideoEncodeCommandListBest;
 #endif
 
