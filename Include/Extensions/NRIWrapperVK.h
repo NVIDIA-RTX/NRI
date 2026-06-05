@@ -12,15 +12,10 @@ typedef void* VKHandle;
 typedef int32_t VKEnum;
 typedef uint32_t VKFlags;
 typedef uint64_t VKNonDispatchableHandle;
-NonNriForwardStruct(VkVideoDecodeInfoKHR);
-NonNriForwardStruct(VkVideoEncodeInfoKHR);
-NonNriForwardStruct(VkVideoSessionParametersCreateInfoKHR);
 
 NriNamespaceBegin
 
 NriForwardStruct(AccelerationStructure);
-NriForwardStruct(VideoSession);
-NriForwardStruct(VideoSessionParameters);
 
 // A collection of queues of the same type
 NriStruct(QueueFamilyVKDesc) {
@@ -115,19 +110,6 @@ NriStruct(AccelerationStructureVKDesc) {
     Nri(AccelerationStructureBits) flags;
 };
 
-NriStruct(VideoDecodeVKDesc) {
-    const VkVideoDecodeInfoKHR* vkDecodeInfo;
-};
-
-NriStruct(VideoEncodeVKDesc) {
-    const VkVideoEncodeInfoKHR* vkEncodeInfo;
-};
-
-NriStruct(VideoSessionParametersVKDesc) {
-    NriPtr(VideoSession) session;
-    const VkVideoSessionParametersCreateInfoKHR* vkSessionParametersCreateInfo;
-};
-
 // Threadsafe: yes
 NriStruct(WrapperVKInterface) {
     Nri(Result) (NRI_CALL *CreateCommandAllocatorVK)        (NriRef(Device) device, const NriRef(CommandAllocatorVKDesc) commandAllocatorVKDesc, NriOut NriRef(CommandAllocator*) commandAllocator);
@@ -141,18 +123,11 @@ NriStruct(WrapperVKInterface) {
     Nri(Result) (NRI_CALL *CreateFenceVK)                   (NriRef(Device) device, const NriRef(FenceVKDesc) fenceVKDesc, NriOut NriRef(Fence*) fence);
     Nri(Result) (NRI_CALL *CreateAccelerationStructureVK)   (NriRef(Device) device, const NriRef(AccelerationStructureVKDesc) accelerationStructureVKDesc, NriOut NriRef(AccelerationStructure*) accelerationStructure);
 
-    void        (NRI_CALL *CmdDecodeVideoVK)                (NriRef(CommandBuffer) commandBuffer, const NriRef(VideoDecodeVKDesc) videoDecodeVKDesc);
-    void        (NRI_CALL *CmdEncodeVideoVK)                (NriRef(CommandBuffer) commandBuffer, const NriRef(VideoEncodeVKDesc) videoEncodeVKDesc);
-
     uint32_t    (NRI_CALL *GetQueueFamilyIndexVK)           (const NriRef(Queue) queue);
     VKHandle    (NRI_CALL *GetPhysicalDeviceVK)             (const NriRef(Device) device);
     VKHandle    (NRI_CALL *GetInstanceVK)                   (const NriRef(Device) device);
     void*       (NRI_CALL *GetInstanceProcAddrVK)           (const NriRef(Device) device);
     void*       (NRI_CALL *GetDeviceProcAddrVK)             (const NriRef(Device) device);
-
-    Nri(Result) (NRI_CALL *CreateVideoSessionParametersVK)  (NriRef(Device) device, const NriRef(VideoSessionParametersVKDesc) videoSessionParametersVKDesc, NriOut NriRef(VideoSessionParameters*) videoSessionParameters);
-    VKNonDispatchableHandle (NRI_CALL *GetVideoSessionVK)   (const NriRef(VideoSession) videoSession);
-    VKNonDispatchableHandle (NRI_CALL *GetVideoSessionParametersVK) (const NriRef(VideoSessionParameters) videoSessionParameters);
 };
 
 NRI_API Nri(Result) NRI_CALL nriCreateDeviceFromVKDevice(const NriRef(DeviceCreationVKDesc) deviceDesc, NriOut NriRef(Device*) device);

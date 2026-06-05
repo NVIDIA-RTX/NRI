@@ -174,11 +174,6 @@ NRI_INLINE Result CommandBufferVK::End() {
     return Result::SUCCESS;
 }
 
-NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeVKDesc& videoDecodeVKDesc) {
-    const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdDecodeVideoKHR(m_Handle, (const VkVideoDecodeInfoKHR*)videoDecodeVKDesc.vkDecodeInfo);
-}
-
 NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeDesc) {
     VideoSessionVK& session = *(VideoSessionVK*)videoDecodeDesc.session;
     VideoSessionParametersVK& parameters = *(VideoSessionParametersVK*)videoDecodeDesc.parameters;
@@ -537,11 +532,6 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
     vk.CmdBeginVideoCodingKHR(m_Handle, &beginInfo);
     vk.CmdDecodeVideoKHR(m_Handle, &decodeInfo);
     vk.CmdEndVideoCodingKHR(m_Handle, &endInfo);
-}
-
-NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeVKDesc& videoEncodeVKDesc) {
-    const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdEncodeVideoKHR(m_Handle, (const VkVideoEncodeInfoKHR*)videoEncodeVKDesc.vkEncodeInfo);
 }
 
 NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeDesc) {

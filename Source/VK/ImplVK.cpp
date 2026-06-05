@@ -1499,41 +1499,8 @@ static Result NRI_CALL CreateAccelerationStructureVK(Device& device, const Accel
     return ((DeviceVK&)device).CreateImplementation<AccelerationStructureVK>(accelerationStructure, accelerationStructureVKDesc);
 }
 
-static void NRI_CALL CmdDecodeVideoVK(CommandBuffer& commandBuffer, const VideoDecodeVKDesc& videoDecodeVKDesc) {
-    ((CommandBufferVK&)commandBuffer).DecodeVideo(videoDecodeVKDesc);
-}
-
-static void NRI_CALL CmdEncodeVideoVK(CommandBuffer& commandBuffer, const VideoEncodeVKDesc& videoEncodeVKDesc) {
-    ((CommandBufferVK&)commandBuffer).EncodeVideo(videoEncodeVKDesc);
-}
-
-static Result NRI_CALL CreateVideoSessionParametersVK(Device& device, const VideoSessionParametersVKDesc& videoSessionParametersVKDesc, VideoSessionParameters*& videoSessionParameters) {
-    if (!videoSessionParametersVKDesc.session)
-        return Result::INVALID_ARGUMENT;
-
-    DeviceVK& deviceVK = (DeviceVK&)device;
-    VideoSessionParametersVK* impl = Allocate<VideoSessionParametersVK>(deviceVK.GetAllocationCallbacks(), deviceVK);
-    Result result = impl->CreateNative(*(VideoSessionVK*)videoSessionParametersVKDesc.session, videoSessionParametersVKDesc.vkSessionParametersCreateInfo);
-
-    if (result != Result::SUCCESS) {
-        Destroy(impl);
-        videoSessionParameters = nullptr;
-    } else
-        videoSessionParameters = (VideoSessionParameters*)impl;
-
-    return result;
-}
-
 static uint32_t NRI_CALL GetQueueFamilyIndexVK(const Queue& queue) {
     return ((QueueVK&)queue).GetFamilyIndex();
-}
-
-static VKNonDispatchableHandle NRI_CALL GetVideoSessionVK(const VideoSession& videoSession) {
-    return (VKNonDispatchableHandle)((const VideoSessionVK&)videoSession).m_Handle;
-}
-
-static VKNonDispatchableHandle NRI_CALL GetVideoSessionParametersVK(const VideoSessionParameters& videoSessionParameters) {
-    return (VKNonDispatchableHandle)((const VideoSessionParametersVK&)videoSessionParameters).m_Handle;
 }
 
 static VKHandle NRI_CALL GetPhysicalDeviceVK(const Device& device) {
@@ -1563,12 +1530,7 @@ Result DeviceVK::FillFunctionTable(WrapperVKInterface& table) const {
     table.CreateQueryPoolVK = ::CreateQueryPoolVK;
     table.CreateFenceVK = ::CreateFenceVK;
     table.CreateAccelerationStructureVK = ::CreateAccelerationStructureVK;
-    table.CmdDecodeVideoVK = ::CmdDecodeVideoVK;
-    table.CmdEncodeVideoVK = ::CmdEncodeVideoVK;
-    table.CreateVideoSessionParametersVK = ::CreateVideoSessionParametersVK;
     table.GetQueueFamilyIndexVK = ::GetQueueFamilyIndexVK;
-    table.GetVideoSessionVK = ::GetVideoSessionVK;
-    table.GetVideoSessionParametersVK = ::GetVideoSessionParametersVK;
     table.GetPhysicalDeviceVK = ::GetPhysicalDeviceVK;
     table.GetInstanceVK = ::GetInstanceVK;
     table.GetDeviceProcAddrVK = ::GetDeviceProcAddrVK;

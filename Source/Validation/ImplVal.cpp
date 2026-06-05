@@ -1693,16 +1693,6 @@ static Result NRI_CALL CreateAccelerationStructureD3D12(Device& device, const Ac
     return ((DeviceVal&)device).CreateAccelerationStructure(accelerationStructureD3D12Desc, accelerationStructure);
 }
 
-static void NRI_CALL CmdDecodeVideoD3D12(CommandBuffer& commandBuffer, const VideoDecodeD3D12Desc& videoDecodeD3D12Desc) {
-    CommandBufferVal& commandBufferVal = (CommandBufferVal&)commandBuffer;
-    commandBufferVal.GetWrapperD3D12InterfaceImpl().CmdDecodeVideoD3D12(*commandBufferVal.GetImpl(), videoDecodeD3D12Desc);
-}
-
-static void NRI_CALL CmdEncodeVideoD3D12(CommandBuffer& commandBuffer, const VideoEncodeD3D12Desc& videoEncodeD3D12Desc) {
-    CommandBufferVal& commandBufferVal = (CommandBufferVal&)commandBuffer;
-    commandBufferVal.GetWrapperD3D12InterfaceImpl().CmdEncodeVideoD3D12(*commandBufferVal.GetImpl(), videoEncodeD3D12Desc);
-}
-
 #endif
 
 Result DeviceVal::FillFunctionTable(WrapperD3D12Interface& table) const {
@@ -1717,8 +1707,6 @@ Result DeviceVal::FillFunctionTable(WrapperD3D12Interface& table) const {
     table.CreateMemoryD3D12 = ::CreateMemoryD3D12;
     table.CreateFenceD3D12 = ::CreateFenceD3D12;
     table.CreateAccelerationStructureD3D12 = ::CreateAccelerationStructureD3D12;
-    table.CmdDecodeVideoD3D12 = ::CmdDecodeVideoD3D12;
-    table.CmdEncodeVideoD3D12 = ::CmdEncodeVideoD3D12;
 
     return Result::SUCCESS;
 #else
@@ -1775,42 +1763,6 @@ static Result NRI_CALL CreateAccelerationStructureVK(Device& device, const Accel
     return ((DeviceVal&)device).CreateAccelerationStructure(accelerationStructureVKDesc, accelerationStructure);
 }
 
-static void NRI_CALL CmdDecodeVideoVK(CommandBuffer& commandBuffer, const VideoDecodeVKDesc& videoDecodeVKDesc) {
-    CommandBufferVal& commandBufferVal = (CommandBufferVal&)commandBuffer;
-    commandBufferVal.GetWrapperVKInterfaceImpl().CmdDecodeVideoVK(*commandBufferVal.GetImpl(), videoDecodeVKDesc);
-}
-
-static void NRI_CALL CmdEncodeVideoVK(CommandBuffer& commandBuffer, const VideoEncodeVKDesc& videoEncodeVKDesc) {
-    CommandBufferVal& commandBufferVal = (CommandBufferVal&)commandBuffer;
-    commandBufferVal.GetWrapperVKInterfaceImpl().CmdEncodeVideoVK(*commandBufferVal.GetImpl(), videoEncodeVKDesc);
-}
-
-static Result NRI_CALL CreateVideoSessionParametersVK(Device& device, const VideoSessionParametersVKDesc& videoSessionParametersVKDesc, VideoSessionParameters*& videoSessionParameters) {
-    DeviceVal& deviceVal = (DeviceVal&)device;
-
-    VideoSessionParametersVKDesc descImpl = videoSessionParametersVKDesc;
-    descImpl.session = videoSessionParametersVKDesc.session ? ((VideoSessionVal*)videoSessionParametersVKDesc.session)->GetImpl() : nullptr;
-
-    VideoSessionParameters* impl = nullptr;
-    Result result = deviceVal.GetWrapperVKInterfaceImpl().CreateVideoSessionParametersVK(deviceVal.GetImpl(), descImpl, impl);
-
-    videoSessionParameters = nullptr;
-    if (result == Result::SUCCESS)
-        videoSessionParameters = (VideoSessionParameters*)Allocate<VideoSessionParametersVal>(deviceVal.GetAllocationCallbacks(), deviceVal, impl);
-
-    return result;
-}
-
-static VKNonDispatchableHandle NRI_CALL GetVideoSessionVK(const VideoSession& videoSession) {
-    const VideoSessionVal& videoSessionVal = (const VideoSessionVal&)videoSession;
-    return videoSessionVal.GetWrapperVKInterfaceImpl().GetVideoSessionVK(*videoSessionVal.GetImpl());
-}
-
-static VKNonDispatchableHandle NRI_CALL GetVideoSessionParametersVK(const VideoSessionParameters& videoSessionParameters) {
-    const VideoSessionParametersVal& videoSessionParametersVal = (const VideoSessionParametersVal&)videoSessionParameters;
-    return videoSessionParametersVal.GetWrapperVKInterfaceImpl().GetVideoSessionParametersVK(*videoSessionParametersVal.GetImpl());
-}
-
 static VKHandle NRI_CALL GetPhysicalDeviceVK(const Device& device) {
     return ((DeviceVal&)device).GetWrapperVKInterfaceImpl().GetPhysicalDeviceVK(((DeviceVal&)device).GetImpl());
 }
@@ -1849,13 +1801,8 @@ Result DeviceVal::FillFunctionTable(WrapperVKInterface& table) const {
     table.CreateQueryPoolVK = ::CreateQueryPoolVK;
     table.CreateFenceVK = ::CreateFenceVK;
     table.CreateAccelerationStructureVK = ::CreateAccelerationStructureVK;
-    table.CmdDecodeVideoVK = ::CmdDecodeVideoVK;
-    table.CmdEncodeVideoVK = ::CmdEncodeVideoVK;
-    table.CreateVideoSessionParametersVK = ::CreateVideoSessionParametersVK;
     table.GetPhysicalDeviceVK = ::GetPhysicalDeviceVK;
     table.GetQueueFamilyIndexVK = ::GetQueueFamilyIndexVK;
-    table.GetVideoSessionVK = ::GetVideoSessionVK;
-    table.GetVideoSessionParametersVK = ::GetVideoSessionParametersVK;
     table.GetInstanceVK = ::GetInstanceVK;
     table.GetDeviceProcAddrVK = ::GetDeviceProcAddrVK;
     table.GetInstanceProcAddrVK = ::GetInstanceProcAddrVK;

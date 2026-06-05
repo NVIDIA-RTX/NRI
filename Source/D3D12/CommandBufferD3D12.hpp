@@ -500,84 +500,6 @@ NRI_INLINE Result CommandBufferD3D12::End() {
     return Result::SUCCESS;
 }
 
-NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeD3D12Desc& desc) {
-    if (m_CommandListType != D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE) {
-        NRI_REPORT_ERROR(&m_Device, "The command buffer is not a D3D12 video decode command list");
-        return;
-    }
-
-    GetVideoDecodeCommandList()->DecodeFrame(
-        (ID3D12VideoDecoder*)desc.d3d12Decoder,
-        (D3D12_VIDEO_DECODE_OUTPUT_STREAM_ARGUMENTS*)desc.d3d12OutputArguments,
-        (D3D12_VIDEO_DECODE_INPUT_STREAM_ARGUMENTS*)desc.d3d12InputArguments);
-}
-
-NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeD3D12Desc& desc) {
-    if (m_CommandListType != D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE) {
-        NRI_REPORT_ERROR(&m_Device, "The command buffer is not a D3D12 video encode command list");
-        return;
-    }
-
-#if NRI_ENABLE_AGILITY_SDK_SUPPORT
-    if (desc.d3d12InputArguments1 && desc.d3d12OutputArguments1) {
-        ID3D12VideoEncodeCommandListBest* commandList = GetVideoEncodeCommandList();
-
-        commandList->EncodeFrame1(
-            (ID3D12VideoEncoder*)desc.d3d12Encoder,
-            (ID3D12VideoEncoderHeap1*)desc.d3d12Heap1,
-            (D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS1*)desc.d3d12InputArguments1,
-            (D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS1*)desc.d3d12OutputArguments1);
-
-        if (desc.d3d12ResolveMetadataInputArguments1 && desc.d3d12ResolveMetadataOutputArguments1) {
-            const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS1& input = *(const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS1*)desc.d3d12ResolveMetadataInputArguments1;
-
-            D3D12_RESOURCE_BARRIER metadataReady = {};
-            metadataReady.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            metadataReady.Transition.pResource = input.HWLayoutMetadata.pBuffer;
-            metadataReady.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-            metadataReady.Transition.StateBefore = D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE;
-            metadataReady.Transition.StateAfter = D3D12_RESOURCE_STATE_VIDEO_ENCODE_READ;
-            commandList->ResourceBarrier(1, &metadataReady);
-
-            commandList->ResolveEncoderOutputMetadata1(
-                (const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS1*)desc.d3d12ResolveMetadataInputArguments1,
-                (const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS1*)desc.d3d12ResolveMetadataOutputArguments1);
-        }
-
-        return;
-    }
-#else
-    if (desc.d3d12InputArguments1 || desc.d3d12OutputArguments1) {
-        NRI_REPORT_ERROR(&m_Device, "D3D12 AV1 video encode command list support is not available in this build");
-        return;
-    }
-#endif
-
-    ID3D12VideoEncodeCommandListBest* commandList = GetVideoEncodeCommandList();
-
-    commandList->EncodeFrame(
-        (ID3D12VideoEncoder*)desc.d3d12Encoder,
-        (ID3D12VideoEncoderHeap*)desc.d3d12Heap,
-        (D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS*)desc.d3d12InputArguments,
-        (D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS*)desc.d3d12OutputArguments);
-
-    if (desc.d3d12ResolveMetadataInputArguments && desc.d3d12ResolveMetadataOutputArguments) {
-        const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS& input = *(const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS*)desc.d3d12ResolveMetadataInputArguments;
-
-        D3D12_RESOURCE_BARRIER metadataReady = {};
-        metadataReady.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        metadataReady.Transition.pResource = input.HWLayoutMetadata.pBuffer;
-        metadataReady.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        metadataReady.Transition.StateBefore = D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE;
-        metadataReady.Transition.StateAfter = D3D12_RESOURCE_STATE_VIDEO_ENCODE_READ;
-        commandList->ResourceBarrier(1, &metadataReady);
-
-        commandList->ResolveEncoderOutputMetadata(
-            (const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS*)desc.d3d12ResolveMetadataInputArguments,
-            (const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS*)desc.d3d12ResolveMetadataOutputArguments);
-    }
-}
-
 static uint32_t GetVideoDecodeAV1ReferenceNameIndexD3D12(VideoAV1ReferenceName name) {
     switch (name) {
         case VideoAV1ReferenceName::NONE:
@@ -1015,11 +937,7 @@ NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeDesc& videoDeco
     output.pOutputTexture2D = (ID3D12Resource*)(*dstPicture.m_Texture);
     output.OutputSubresource = dstPicture.m_Subresource;
 
-    VideoDecodeD3D12Desc desc = {};
-    desc.d3d12Decoder = session.m_Decoder;
-    desc.d3d12OutputArguments = &output;
-    desc.d3d12InputArguments = &input;
-    DecodeVideo(desc);
+    GetVideoDecodeCommandList()->DecodeFrame(session.m_Decoder, &output, &input);
 }
 
 static const VideoH264ReferenceDesc* FindVideoEncodeH264ReferenceDesc(const VideoH264PictureDesc* h264PictureDesc, uint32_t slot) {
@@ -1199,9 +1117,35 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     hevcGop.PPicturePeriod = 1;
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS1 input = {};
+    D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS1 output = {};
+    D3D12_VIDEO_ENCODER_COMPRESSED_BITSTREAM& bitstream = output.Bitstream.FrameOutputBuffer;
+
+    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_DESC1 pictureControl = {};
+    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA1 pictureCodecData = {};
+    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA_HEVC2 hevcPicture = {};
+
+    D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS1 resolveInput = {};
+    D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS1 resolveOutput = {};
+
+    D3D12_VIDEO_ENCODER_AV1_PROFILE resolveAv1Profile = D3D12_VIDEO_ENCODER_AV1_PROFILE_MAIN;
+    D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA_TILES av1Tiles = {};
+    D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_CODEC_DATA av1Picture = {};
+
     D3D12_VIDEO_ENCODER_AV1_SEQUENCE_STRUCTURE av1Sequence = {};
     av1Sequence.IntraDistance = session.m_Desc.maxReferenceNum ? 60 : 1;
     av1Sequence.InterFramePeriod = session.m_Desc.maxReferenceNum ? 1 : 0;
+#else
+    D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS input = {};
+    D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS output = {};
+    D3D12_VIDEO_ENCODER_COMPRESSED_BITSTREAM& bitstream = output.Bitstream;
+
+    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_DESC pictureControl = {};
+    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA pictureCodecData = {};
+    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA_HEVC hevcPicture = {};
+
+    D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS resolveInput = {};
+    D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS resolveOutput = {};
 #endif
 
     D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE gop = {};
@@ -1230,9 +1174,6 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     sequenceControl.PictureTargetResolution = {session.m_Desc.width, session.m_Desc.height};
     sequenceControl.SelectedLayoutMode = D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_FULL_FRAME;
     sequenceControl.CodecGopSequence = gop;
-#if NRI_ENABLE_AGILITY_SDK_SUPPORT
-    D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA_TILES av1Tiles = {};
-#endif
     if (session.m_Desc.codec == VideoCodec::AV1) {
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
         const VideoAV1TileLayoutDesc* tileLayout = videoEncodeDesc.av1PictureDesc ? videoEncodeDesc.av1PictureDesc->tileLayout : nullptr;
@@ -1289,7 +1230,6 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     h264Picture.ReferenceFramesReconPictureDescriptorsCount = videoEncodeDesc.referenceNum;
     h264Picture.pReferenceFramesReconPictureDescriptors = videoEncodeDesc.referenceNum ? (D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_H264*)h264ReferenceDescriptors : nullptr;
 
-    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA_HEVC hevcPicture = {};
     switch (pictureDesc.frameType) {
         case VideoEncodeFrameType::IDR:
             hevcPicture.FrameType = D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_IDR_FRAME;
@@ -1354,9 +1294,6 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     }
 
     uint8_t av1RefreshFrameFlags = 0;
-#if NRI_ENABLE_AGILITY_SDK_SUPPORT
-    D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_CODEC_DATA av1Picture = {};
-#endif
     if (session.m_Desc.codec == VideoCodec::AV1) {
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
         D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE frameType = GetVideoEncodeAV1FrameTypeD3D12(pictureDesc.frameType);
@@ -1526,7 +1463,6 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
 #endif
     }
 
-    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA pictureCodecData = {};
     if (session.m_Desc.codec == VideoCodec::H264) {
         pictureCodecData.DataSize = sizeof(h264Picture);
         pictureCodecData.pH264PicData = &h264Picture;
@@ -1552,7 +1488,6 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     const bool isUsedAsReferencePicture = IsVideoEncodePictureUsedAsReferenceD3D12(session.m_Desc.codec, session.m_Desc.maxReferenceNum,
         videoEncodeDesc.reconstructedPicture != nullptr, av1RefreshFrameFlags);
 
-    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_DESC pictureControl = {};
     if (isUsedAsReferencePicture)
         pictureControl.Flags |= D3D12_VIDEO_ENCODER_PICTURE_CONTROL_FLAG_USED_AS_REFERENCE_PICTURE;
     pictureControl.PictureControlCodecData = pictureCodecData;
@@ -1560,17 +1495,16 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     pictureControl.ReferenceFrames.ppTexture2Ds = referenceResources;
     pictureControl.ReferenceFrames.pSubresources = referenceSubresources;
 
-    D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS input = {};
+    VideoPictureD3D12& srcPicture = *(VideoPictureD3D12*)videoEncodeDesc.srcPicture;
+
     input.SequenceControlDesc = sequenceControl;
     input.PictureControlDesc = pictureControl;
     input.CurrentFrameBitstreamMetadataSize = (UINT)videoEncodeDesc.bitstreamMetadataSize;
-    VideoPictureD3D12& srcPicture = *(VideoPictureD3D12*)videoEncodeDesc.srcPicture;
     input.pInputFrame = (ID3D12Resource*)(*srcPicture.m_Texture);
     input.InputFrameSubresource = srcPicture.m_Subresource;
 
-    D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS output = {};
-    output.Bitstream.pBuffer = (ID3D12Resource*)dstBitstream;
-    output.Bitstream.FrameStartOffset = videoEncodeDesc.dstBitstream.offset;
+    bitstream.pBuffer = (ID3D12Resource*)dstBitstream;
+    bitstream.FrameStartOffset = videoEncodeDesc.dstBitstream.offset;
     if (videoEncodeDesc.reconstructedPicture) {
         VideoPictureD3D12& reconstructedPicture = *(VideoPictureD3D12*)videoEncodeDesc.reconstructedPicture;
         output.ReconstructedPicture.pReconstructedPicture = (ID3D12Resource*)(*reconstructedPicture.m_Texture);
@@ -1580,12 +1514,10 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     output.EncoderOutputMetadata.Offset = videoEncodeDesc.metadataOffset;
 
     D3D12_VIDEO_ENCODER_PROFILE_H264 resolveH264Profile = D3D12_VIDEO_ENCODER_PROFILE_H264_HIGH;
-    D3D12_VIDEO_ENCODER_PROFILE_HEVC resolveHevcProfile = session.m_Desc.format == Format::P010_UNORM || session.m_Desc.format == Format::P016_UNORM
+    D3D12_VIDEO_ENCODER_PROFILE_HEVC resolveHevcProfile = (session.m_Desc.format == Format::P010_UNORM || session.m_Desc.format == Format::P016_UNORM)
         ? D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN10
         : D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN;
-#if NRI_ENABLE_AGILITY_SDK_SUPPORT
-    D3D12_VIDEO_ENCODER_AV1_PROFILE resolveAv1Profile = D3D12_VIDEO_ENCODER_AV1_PROFILE_MAIN;
-#endif
+
     D3D12_VIDEO_ENCODER_PROFILE_DESC resolveProfile = {};
     if (session.m_Desc.codec == VideoCodec::H264) {
         resolveProfile.DataSize = sizeof(resolveH264Profile);
@@ -1603,8 +1535,6 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
 #endif
     }
 
-    D3D12_VIDEO_ENCODER_RESOLVE_METADATA_INPUT_ARGUMENTS resolveInput = {};
-    D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS resolveOutput = {};
     if (videoEncodeDesc.resolvedMetadata) {
         resolveInput.EncoderCodec = GetVideoEncodeCodecD3D12(session.m_Desc.codec);
         resolveInput.EncoderProfile = resolveProfile;
@@ -1615,14 +1545,29 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
         resolveOutput.ResolvedLayoutMetadata.Offset = videoEncodeDesc.resolvedMetadataOffset;
     }
 
-    VideoEncodeD3D12Desc desc = {};
-    desc.d3d12Encoder = session.m_Encoder;
-    desc.d3d12Heap = session.m_EncoderHeap;
-    desc.d3d12InputArguments = &input;
-    desc.d3d12OutputArguments = &output;
-    desc.d3d12ResolveMetadataInputArguments = videoEncodeDesc.resolvedMetadata ? &resolveInput : nullptr;
-    desc.d3d12ResolveMetadataOutputArguments = videoEncodeDesc.resolvedMetadata ? &resolveOutput : nullptr;
-    EncodeVideo(desc);
+    ID3D12VideoEncodeCommandListBest* commandList = GetVideoEncodeCommandList();
+
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    commandList->EncodeFrame1(session.m_Encoder, session.m_EncoderHeap, &input, &output);
+#else
+    commandList->EncodeFrame(session.m_Encoder, session.m_EncoderHeap, &input, &output);
+#endif
+
+    if (videoEncodeDesc.resolvedMetadata) {
+        D3D12_RESOURCE_BARRIER metadataReady = {};
+        metadataReady.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        metadataReady.Transition.pResource = resolveInput.HWLayoutMetadata.pBuffer;
+        metadataReady.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        metadataReady.Transition.StateBefore = D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE;
+        metadataReady.Transition.StateAfter = D3D12_RESOURCE_STATE_VIDEO_ENCODE_READ;
+        commandList->ResourceBarrier(1, &metadataReady);
+
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+        commandList->ResolveEncoderOutputMetadata1(&resolveInput, &resolveOutput);
+#else
+        commandList->ResolveEncoderOutputMetadata(&resolveInput, &resolveOutput);
+#endif
+    }
 }
 
 NRI_INLINE void CommandBufferD3D12::SetViewports(const Viewport* viewports, uint32_t viewportNum) {

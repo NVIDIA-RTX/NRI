@@ -1735,14 +1735,6 @@ static Result NRI_CALL CreateAccelerationStructureD3D12(Device& device, const Ac
     return ((DeviceD3D12&)device).CreateImplementation<AccelerationStructureD3D12>(accelerationStructure, accelerationStructureD3D12Desc);
 }
 
-static void NRI_CALL CmdDecodeVideoD3D12(CommandBuffer& commandBuffer, const VideoDecodeD3D12Desc& videoDecodeD3D12Desc) {
-    ((CommandBufferD3D12&)commandBuffer).DecodeVideo(videoDecodeD3D12Desc);
-}
-
-static void NRI_CALL CmdEncodeVideoD3D12(CommandBuffer& commandBuffer, const VideoEncodeD3D12Desc& videoEncodeD3D12Desc) {
-    ((CommandBufferD3D12&)commandBuffer).EncodeVideo(videoEncodeD3D12Desc);
-}
-
 Result DeviceD3D12::FillFunctionTable(WrapperD3D12Interface& table) const {
     table.CreateCommandBufferD3D12 = ::CreateCommandBufferD3D12;
     table.CreateDescriptorPoolD3D12 = ::CreateDescriptorPoolD3D12;
@@ -1751,8 +1743,6 @@ Result DeviceD3D12::FillFunctionTable(WrapperD3D12Interface& table) const {
     table.CreateMemoryD3D12 = ::CreateMemoryD3D12;
     table.CreateFenceD3D12 = ::CreateFenceD3D12;
     table.CreateAccelerationStructureD3D12 = ::CreateAccelerationStructureD3D12;
-    table.CmdDecodeVideoD3D12 = ::CmdDecodeVideoD3D12;
-    table.CmdEncodeVideoD3D12 = ::CmdEncodeVideoD3D12;
 
     return Result::SUCCESS;
 }
