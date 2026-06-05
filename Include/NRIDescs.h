@@ -2159,7 +2159,7 @@ NriStruct(DeviceDesc) {
         // For shaders using "draw parameters":
         //   - "ENABLE_DRAW_PARAMETERS_EMULATION" must be set for a corresponding "PipelineLayout"
         //   - "NRI_ENABLE_DRAW_PARAMETERS_EMULATION" must be defined prior inclusion of "NRI.hlsl" for such shaders
-        bool drawParametersEmulation                              // emulation of "drawParameters"
+        bool drawParametersEmulation;                              // emulation of "drawParameters"
     } shaderFeatures;
 };
 
