@@ -147,9 +147,9 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
         return result;
     }
 
-    std::aligned_storage_t<64, 8> codecProfileStorage = {};
+    alignas(8) char codecProfileStorage[64] = {};
     VkVideoProfileInfoKHR profile = {VK_STRUCTURE_TYPE_VIDEO_PROFILE_INFO_KHR};
-    void* codecProfileInfo = FillVideoProfileCodecInfoVK(videoSessionDesc, &codecProfileStorage);
+    void* codecProfileInfo = FillVideoProfileCodecInfoVK(videoSessionDesc, codecProfileStorage);
     VkVideoDecodeUsageInfoKHR decodeUsage = {VK_STRUCTURE_TYPE_VIDEO_DECODE_USAGE_INFO_KHR};
     VkVideoEncodeUsageInfoKHR encodeUsage = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_USAGE_INFO_KHR};
     if (videoSessionDesc.type == VideoSessionType::DECODE) {
@@ -353,9 +353,9 @@ static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSes
     if (!operation)
         return Result::UNSUPPORTED;
 
-    std::aligned_storage_t<64, 8> codecProfileStorage = {};
+    alignas(8) char codecProfileStorage[64] = {};
     VkVideoProfileInfoKHR profile = {VK_STRUCTURE_TYPE_VIDEO_PROFILE_INFO_KHR};
-    void* codecProfileInfo = FillVideoProfileCodecInfoVK(videoSessionDesc, &codecProfileStorage);
+    void* codecProfileInfo = FillVideoProfileCodecInfoVK(videoSessionDesc, codecProfileStorage);
     VkVideoDecodeUsageInfoKHR decodeUsage = {VK_STRUCTURE_TYPE_VIDEO_DECODE_USAGE_INFO_KHR};
     VkVideoEncodeUsageInfoKHR encodeUsage = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_USAGE_INFO_KHR};
     if (videoSessionDesc.type == VideoSessionType::DECODE) {
