@@ -35,7 +35,7 @@ struct VideoSessionD3D12 final : public DebugNameBase {
     ComPtr<ID3D12VideoDecoderHeap> m_DecoderHeap;
     ComPtr<ID3D12VideoEncoder> m_Encoder;
     ComPtr<ID3D12VideoEncoderHeap> m_EncoderHeap;
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     ComPtr<ID3D12VideoEncoderHeap1> m_EncoderHeap1;
 #endif
     uint32_t m_AV1FeatureFlags = 0;

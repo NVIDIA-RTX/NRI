@@ -5,14 +5,6 @@
 #include <d3d12video.h>
 #include <dxva.h>
 
-#if !defined(NRI_D3D12_HAS_VIDEO_ENCODE_AV1)
-#    if NRI_ENABLE_AGILITY_SDK_SUPPORT && NRI_AGILITY_SDK_VERSION_MAJOR >= 619
-#        define NRI_D3D12_HAS_VIDEO_ENCODE_AV1 1
-#    else
-#        define NRI_D3D12_HAS_VIDEO_ENCODE_AV1 0
-#    endif
-#endif
-
 namespace nri {
 
 constexpr uint32_t VIDEO_D3D12_DECODE_MAX_PIC_ENTRY_SLOT = 127;
@@ -669,7 +661,7 @@ inline D3D12_VIDEO_ENCODER_CODEC GetVideoEncodeCodecD3D12(VideoCodec codec) {
         case VideoCodec::H265:
             return D3D12_VIDEO_ENCODER_CODEC_HEVC;
         case VideoCodec::AV1:
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
             return D3D12_VIDEO_ENCODER_CODEC_AV1;
 #else
             return (D3D12_VIDEO_ENCODER_CODEC)-1;
@@ -736,7 +728,7 @@ inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice3& videoDevice, 
     D3D12_VIDEO_ENCODER_PROFILE_H264 h264Profile = D3D12_VIDEO_ENCODER_PROFILE_H264_HIGH;
     const bool is10Bit = videoSessionDesc.format == Format::P010_UNORM || videoSessionDesc.format == Format::P016_UNORM;
     D3D12_VIDEO_ENCODER_PROFILE_HEVC hevcProfile = is10Bit ? D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN10 : D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN;
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_VIDEO_ENCODER_AV1_PROFILE av1Profile = D3D12_VIDEO_ENCODER_AV1_PROFILE_MAIN;
 #endif
     D3D12_VIDEO_ENCODER_PROFILE_DESC profile = {};
@@ -747,7 +739,7 @@ inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice3& videoDevice, 
         profile.DataSize = sizeof(hevcProfile);
         profile.pHEVCProfile = &hevcProfile;
     } else {
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         profile.DataSize = sizeof(av1Profile);
         profile.pAV1Profile = &av1Profile;
 #else
@@ -794,13 +786,13 @@ inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice3& videoDevice, 
             hevcConfig.ConfigurationFlags |= D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_FLAG_ENABLE_TRANSFORM_SKIPPING;
     }
 
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_VIDEO_ENCODER_AV1_CODEC_CONFIGURATION av1Config = {};
     av1Config.FeatureFlags = D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_NONE;
     av1Config.OrderHintBitsMinus1 = 7;
 #endif
     if (codec == VideoCodec::AV1) {
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         D3D12_VIDEO_ENCODER_AV1_CODEC_CONFIGURATION_SUPPORT av1Caps = {};
         D3D12_FEATURE_DATA_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT av1ConfigSupport = {};
         av1ConfigSupport.Codec = d3d12Codec;
@@ -825,7 +817,7 @@ inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice3& videoDevice, 
         codecConfig.DataSize = sizeof(hevcConfig);
         codecConfig.pHEVCConfig = &hevcConfig;
     } else {
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         codecConfig.DataSize = sizeof(av1Config);
         codecConfig.pAV1Config = &av1Config;
 #else
@@ -849,7 +841,7 @@ inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice3& videoDevice, 
     hevcGop.GOPLength = videoSessionDesc.maxReferenceNum ? 60 : 1;
     hevcGop.PPicturePeriod = 1;
 
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_VIDEO_ENCODER_AV1_SEQUENCE_STRUCTURE av1Sequence = {};
     av1Sequence.IntraDistance = videoSessionDesc.maxReferenceNum ? 60 : 1;
     av1Sequence.InterFramePeriod = videoSessionDesc.maxReferenceNum ? 1 : 0;
@@ -862,7 +854,7 @@ inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice3& videoDevice, 
         gop.DataSize = sizeof(hevcGop);
         gop.pHEVCGroupOfPictures = &hevcGop;
     } else {
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         gop.DataSize = sizeof(av1Sequence);
         gop.pAV1SequenceStructure = &av1Sequence;
 #else
@@ -872,7 +864,7 @@ inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice3& videoDevice, 
 
     D3D12_VIDEO_ENCODER_LEVELS_H264 suggestedH264Level = D3D12_VIDEO_ENCODER_LEVELS_H264_41;
     D3D12_VIDEO_ENCODER_LEVEL_TIER_CONSTRAINTS_HEVC suggestedHevcLevel = {D3D12_VIDEO_ENCODER_LEVELS_HEVC_41, D3D12_VIDEO_ENCODER_TIER_HEVC_MAIN};
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_VIDEO_ENCODER_AV1_LEVEL_TIER_CONSTRAINTS suggestedAv1Level = {D3D12_VIDEO_ENCODER_AV1_LEVELS_4_1, D3D12_VIDEO_ENCODER_AV1_TIER_MAIN};
 #endif
     D3D12_VIDEO_ENCODER_LEVEL_SETTING suggestedLevel = {};
@@ -883,7 +875,7 @@ inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice3& videoDevice, 
         suggestedLevel.DataSize = sizeof(suggestedHevcLevel);
         suggestedLevel.pHEVCLevelSetting = &suggestedHevcLevel;
     } else {
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         suggestedLevel.DataSize = sizeof(suggestedAv1Level);
         suggestedLevel.pAV1LevelSetting = &suggestedAv1Level;
 #else
@@ -894,7 +886,7 @@ inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice3& videoDevice, 
     D3D12_VIDEO_ENCODER_PICTURE_RESOLUTION_DESC resolution = {videoSessionDesc.width, videoSessionDesc.height};
     D3D12_FEATURE_DATA_VIDEO_ENCODER_RESOLUTION_SUPPORT_LIMITS resolutionLimits = {};
     if (codec == VideoCodec::AV1) {
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA_TILES tiles = {};
         tiles.RowCount = 1;
         tiles.ColCount = 1;

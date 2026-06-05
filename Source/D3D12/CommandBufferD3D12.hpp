@@ -518,7 +518,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeD3D12Desc& desc
         return;
     }
 
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     if (desc.d3d12InputArguments1 && desc.d3d12OutputArguments1) {
         ID3D12VideoEncodeCommandListBest* commandList = GetVideoEncodeCommandList();
 
@@ -1034,7 +1034,7 @@ static const VideoH264ReferenceDesc* FindVideoEncodeH264ReferenceDesc(const Vide
     return nullptr;
 }
 
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
 static D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE GetVideoEncodeAV1FrameTypeD3D12(VideoEncodeFrameType frameType) {
     switch (frameType) {
         case VideoEncodeFrameType::IDR:
@@ -1198,7 +1198,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     hevcGop.GOPLength = session.m_Desc.maxReferenceNum ? 60 : 1;
     hevcGop.PPicturePeriod = 1;
 
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_VIDEO_ENCODER_AV1_SEQUENCE_STRUCTURE av1Sequence = {};
     av1Sequence.IntraDistance = session.m_Desc.maxReferenceNum ? 60 : 1;
     av1Sequence.InterFramePeriod = session.m_Desc.maxReferenceNum ? 1 : 0;
@@ -1212,7 +1212,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
         gop.DataSize = sizeof(hevcGop);
         gop.pHEVCGroupOfPictures = &hevcGop;
     } else if (session.m_Desc.codec == VideoCodec::AV1) {
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         gop.DataSize = sizeof(av1Sequence);
         gop.pAV1SequenceStructure = &av1Sequence;
 #else
@@ -1230,11 +1230,11 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     sequenceControl.PictureTargetResolution = {session.m_Desc.width, session.m_Desc.height};
     sequenceControl.SelectedLayoutMode = D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_FULL_FRAME;
     sequenceControl.CodecGopSequence = gop;
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA_TILES av1Tiles = {};
 #endif
     if (session.m_Desc.codec == VideoCodec::AV1) {
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         const VideoAV1TileLayoutDesc* tileLayout = videoEncodeDesc.av1PictureDesc ? videoEncodeDesc.av1PictureDesc->tileLayout : nullptr;
         if (tileLayout && (!tileLayout->columnNum || !tileLayout->rowNum || tileLayout->columnNum > 64 || tileLayout->rowNum > 64)) {
             NRI_REPORT_ERROR(&m_Device, "'av1PictureDesc->tileLayout' is invalid");
@@ -1354,11 +1354,11 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     }
 
     uint8_t av1RefreshFrameFlags = 0;
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_CODEC_DATA av1Picture = {};
 #endif
     if (session.m_Desc.codec == VideoCodec::AV1) {
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE frameType = GetVideoEncodeAV1FrameTypeD3D12(pictureDesc.frameType);
         if (frameType == (D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE)-1) {
             NRI_REPORT_ERROR(&m_Device, "Unsupported AV1 video encode frame type");
@@ -1534,7 +1534,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
         pictureCodecData.DataSize = sizeof(hevcPicture);
         pictureCodecData.pHEVCPicData = &hevcPicture;
     } else {
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         pictureCodecData.DataSize = sizeof(av1Picture);
         pictureCodecData.pAV1PicData = &av1Picture;
 #else
@@ -1583,7 +1583,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     D3D12_VIDEO_ENCODER_PROFILE_HEVC resolveHevcProfile = session.m_Desc.format == Format::P010_UNORM || session.m_Desc.format == Format::P016_UNORM
         ? D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN10
         : D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN;
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     D3D12_VIDEO_ENCODER_AV1_PROFILE resolveAv1Profile = D3D12_VIDEO_ENCODER_AV1_PROFILE_MAIN;
 #endif
     D3D12_VIDEO_ENCODER_PROFILE_DESC resolveProfile = {};
@@ -1594,7 +1594,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
         resolveProfile.DataSize = sizeof(resolveHevcProfile);
         resolveProfile.pHEVCProfile = &resolveHevcProfile;
     } else {
-#if NRI_D3D12_HAS_VIDEO_ENCODE_AV1
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         resolveProfile.DataSize = sizeof(resolveAv1Profile);
         resolveProfile.pAV1Profile = &resolveAv1Profile;
 #else
