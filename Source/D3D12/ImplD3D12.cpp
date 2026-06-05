@@ -1158,7 +1158,7 @@ static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSes
 
     FillVideoCapabilitiesD3D12(videoCapabilities, videoSessionDesc);
 
-    if (videoSessionDesc.usage == VideoUsage::DECODE) {
+    if (videoSessionDesc.type == VideoSessionType::DECODE) {
         ComPtr<ID3D12VideoDevice> videoDevice;
         HRESULT hr = deviceD3D12->QueryInterface(IID_PPV_ARGS(&videoDevice));
         NRI_RETURN_ON_BAD_HRESULT(&deviceD3D12, hr, "ID3D12Device::QueryInterface(ID3D12VideoDevice)");
@@ -1184,7 +1184,7 @@ static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSes
         return (decodeSupport.ConfigurationFlags & D3D12_VIDEO_DECODE_CONFIGURATION_FLAG_REFERENCE_ONLY_ALLOCATIONS_REQUIRED) ? Result::UNSUPPORTED : Result::SUCCESS;
     }
 
-    if (videoSessionDesc.usage == VideoUsage::ENCODE) {
+    if (videoSessionDesc.type == VideoSessionType::ENCODE) {
         ComPtr<ID3D12VideoDevice3> videoDevice;
         HRESULT hr = deviceD3D12->QueryInterface(IID_PPV_ARGS(&videoDevice));
         NRI_RETURN_ON_BAD_HRESULT(&deviceD3D12, hr, "ID3D12Device::QueryInterface(ID3D12VideoDevice3)");

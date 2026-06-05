@@ -1,7 +1,7 @@
 // © 2026 NVIDIA Corporation
 
 static VkVideoCodecOperationFlagBitsKHR GetVideoCodecOperationVK(const VideoSessionDesc& videoSessionDesc) {
-    if (videoSessionDesc.usage == VideoUsage::DECODE) {
+    if (videoSessionDesc.type == VideoSessionType::DECODE) {
         switch (videoSessionDesc.codec) {
             case VideoCodec::H264:
                 return VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR;
@@ -13,7 +13,7 @@ static VkVideoCodecOperationFlagBitsKHR GetVideoCodecOperationVK(const VideoSess
             case VideoCodec::MAX_NUM:
                 return (VkVideoCodecOperationFlagBitsKHR)0;
         }
-    } else if (videoSessionDesc.usage == VideoUsage::ENCODE) {
+    } else if (videoSessionDesc.type == VideoSessionType::ENCODE) {
         switch (videoSessionDesc.codec) {
             case VideoCodec::H264:
                 return VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_KHR;
@@ -31,7 +31,7 @@ static VkVideoCodecOperationFlagBitsKHR GetVideoCodecOperationVK(const VideoSess
 }
 
 static void* FillVideoProfileCodecInfoVK(const VideoSessionDesc& videoSessionDesc, void* storage) {
-    if (videoSessionDesc.usage == VideoUsage::DECODE) {
+    if (videoSessionDesc.type == VideoSessionType::DECODE) {
         switch (videoSessionDesc.codec) {
             case VideoCodec::H264: {
                 VkVideoDecodeH264ProfileInfoKHR& info = *(VkVideoDecodeH264ProfileInfoKHR*)storage;
@@ -57,7 +57,7 @@ static void* FillVideoProfileCodecInfoVK(const VideoSessionDesc& videoSessionDes
             case VideoCodec::MAX_NUM:
                 return nullptr;
         }
-    } else if (videoSessionDesc.usage == VideoUsage::ENCODE) {
+    } else if (videoSessionDesc.type == VideoSessionType::ENCODE) {
         switch (videoSessionDesc.codec) {
             case VideoCodec::H264: {
                 VkVideoEncodeH264ProfileInfoKHR& info = *(VkVideoEncodeH264ProfileInfoKHR*)storage;
@@ -140,7 +140,7 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
     }
 
     Queue* queue = nullptr;
-    const QueueType queueType = videoSessionDesc.usage == VideoUsage::DECODE ? QueueType::VIDEO_DECODE : QueueType::VIDEO_ENCODE;
+    const QueueType queueType = videoSessionDesc.type == VideoSessionType::DECODE ? QueueType::VIDEO_DECODE : QueueType::VIDEO_ENCODE;
     Result result = m_Device.GetQueue(queueType, 0, queue);
     if (result != Result::SUCCESS) {
         NRI_REPORT_ERROR(&m_Device, "Failed to get Vulkan video queue for codec operation 0x%X", operation);
@@ -152,7 +152,7 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
     void* codecProfileInfo = FillVideoProfileCodecInfoVK(videoSessionDesc, &codecProfileStorage);
     VkVideoDecodeUsageInfoKHR decodeUsage = {VK_STRUCTURE_TYPE_VIDEO_DECODE_USAGE_INFO_KHR};
     VkVideoEncodeUsageInfoKHR encodeUsage = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_USAGE_INFO_KHR};
-    if (videoSessionDesc.usage == VideoUsage::DECODE) {
+    if (videoSessionDesc.type == VideoSessionType::DECODE) {
         decodeUsage.videoUsageHints = VK_VIDEO_DECODE_USAGE_DEFAULT_KHR;
         decodeUsage.pNext = codecProfileInfo;
         profile.pNext = &decodeUsage;
@@ -180,7 +180,7 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
     VkVideoEncodeH265CapabilitiesKHR encodeH265Capabilities = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_CAPABILITIES_KHR};
     VkVideoEncodeAV1CapabilitiesKHR encodeAV1Capabilities = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_CAPABILITIES_KHR};
 
-    if (videoSessionDesc.usage == VideoUsage::DECODE) {
+    if (videoSessionDesc.type == VideoSessionType::DECODE) {
         capabilities.pNext = &decodeCapabilities;
         switch (videoSessionDesc.codec) {
             case VideoCodec::H264:
@@ -220,7 +220,7 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
         NRI_REPORT_ERROR(&m_Device, "vkGetPhysicalDeviceVideoCapabilitiesKHR failed for operation 0x%X, format %u, result %d", operation, (uint32_t)videoSessionDesc.format, vkResult);
     }
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceVideoCapabilitiesKHR");
-    if (videoSessionDesc.usage == VideoUsage::ENCODE)
+    if (videoSessionDesc.type == VideoSessionType::ENCODE)
         m_RateControlModes = GetSupportedVideoEncodeRateControlModesVK(encodeCapabilities.rateControlModes);
 
     if (videoSessionDesc.width < capabilities.minCodedExtent.width || videoSessionDesc.height < capabilities.minCodedExtent.height || videoSessionDesc.width > capabilities.maxCodedExtent.width
@@ -238,7 +238,7 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
     m_PictureAccessGranularity = capabilities.pictureAccessGranularity;
     m_BitstreamOffsetAlignment = (uint32_t)std::max<VkDeviceSize>(capabilities.minBitstreamBufferOffsetAlignment, 1);
     m_BitstreamSizeAlignment = (uint32_t)std::max<VkDeviceSize>(capabilities.minBitstreamBufferSizeAlignment, 1);
-    m_CanGenerateH264PrefixNalu = videoSessionDesc.usage == VideoUsage::ENCODE && videoSessionDesc.codec == VideoCodec::H264
+    m_CanGenerateH264PrefixNalu = videoSessionDesc.type == VideoSessionType::ENCODE && videoSessionDesc.codec == VideoCodec::H264
         && (encodeH264Capabilities.flags & VK_VIDEO_ENCODE_H264_CAPABILITY_GENERATE_PREFIX_NALU_BIT_KHR) != 0;
 
     VkVideoSessionCreateInfoKHR createInfo = {VK_STRUCTURE_TYPE_VIDEO_SESSION_CREATE_INFO_KHR};
@@ -248,7 +248,7 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
     const uint32_t maxActiveReferencePictures = std::min(videoSessionDesc.maxReferenceNum, capabilities.maxActiveReferencePictures);
     const uint32_t maxDpbSlots = videoSessionDesc.maxReferenceNum ? std::min(videoSessionDesc.maxReferenceNum + 1u, capabilities.maxDpbSlots) : 0;
 
-    if (videoSessionDesc.usage == VideoUsage::ENCODE) {
+    if (videoSessionDesc.type == VideoSessionType::ENCODE) {
         switch (videoSessionDesc.codec) {
             case VideoCodec::H264:
                 encodeH264SessionCreateInfo.useMaxLevelIdc = true;
@@ -273,13 +273,13 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
     createInfo.queueFamilyIndex = ((QueueVK*)queue)->GetFamilyIndex();
     createInfo.pVideoProfile = &profile;
     createInfo.pictureFormat = GetVkFormat(videoSessionDesc.format);
-    createInfo.maxCodedExtent = videoSessionDesc.usage == VideoUsage::DECODE ? capabilities.maxCodedExtent : VkExtent2D{videoSessionDesc.width, videoSessionDesc.height};
+    createInfo.maxCodedExtent = videoSessionDesc.type == VideoSessionType::DECODE ? capabilities.maxCodedExtent : VkExtent2D{videoSessionDesc.width, videoSessionDesc.height};
     createInfo.referencePictureFormat = maxDpbSlots ? createInfo.pictureFormat : VK_FORMAT_UNDEFINED;
     createInfo.maxDpbSlots = maxDpbSlots;
     createInfo.maxActiveReferencePictures = maxActiveReferencePictures;
     createInfo.pStdHeaderVersion = &capabilities.stdHeaderVersion;
 #if defined(VK_VIDEO_SESSION_CREATE_INLINE_SESSION_PARAMETERS_BIT_KHR)
-    if (videoSessionDesc.usage == VideoUsage::DECODE && videoSessionDesc.codec == VideoCodec::AV1 && m_Device.m_IsSupported.videoMaintenance2) {
+    if (videoSessionDesc.type == VideoSessionType::DECODE && videoSessionDesc.codec == VideoCodec::AV1 && m_Device.m_IsSupported.videoMaintenance2) {
         createInfo.flags |= VK_VIDEO_SESSION_CREATE_INLINE_SESSION_PARAMETERS_BIT_KHR;
         m_UseInlineSessionParameters = true;
     }
@@ -291,7 +291,7 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateVideoSessionKHR");
 
     const VkVideoEncodeFeedbackFlagsKHR requiredFeedbackFlags = VK_VIDEO_ENCODE_FEEDBACK_BITSTREAM_BYTES_WRITTEN_BIT_KHR;
-    if (videoSessionDesc.usage == VideoUsage::ENCODE && (encodeCapabilities.supportedEncodeFeedbackFlags & requiredFeedbackFlags) == requiredFeedbackFlags) {
+    if (videoSessionDesc.type == VideoSessionType::ENCODE && (encodeCapabilities.supportedEncodeFeedbackFlags & requiredFeedbackFlags) == requiredFeedbackFlags) {
         VkQueryPoolVideoEncodeFeedbackCreateInfoKHR feedbackInfo = {VK_STRUCTURE_TYPE_QUERY_POOL_VIDEO_ENCODE_FEEDBACK_CREATE_INFO_KHR};
         feedbackInfo.pNext = &profile;
         feedbackInfo.encodeFeedbackFlags = requiredFeedbackFlags;
@@ -358,7 +358,7 @@ static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSes
     void* codecProfileInfo = FillVideoProfileCodecInfoVK(videoSessionDesc, &codecProfileStorage);
     VkVideoDecodeUsageInfoKHR decodeUsage = {VK_STRUCTURE_TYPE_VIDEO_DECODE_USAGE_INFO_KHR};
     VkVideoEncodeUsageInfoKHR encodeUsage = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_USAGE_INFO_KHR};
-    if (videoSessionDesc.usage == VideoUsage::DECODE) {
+    if (videoSessionDesc.type == VideoSessionType::DECODE) {
         decodeUsage.videoUsageHints = VK_VIDEO_DECODE_USAGE_DEFAULT_KHR;
         decodeUsage.pNext = codecProfileInfo;
         profile.pNext = &decodeUsage;
@@ -383,7 +383,7 @@ static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSes
     VkVideoEncodeH264CapabilitiesKHR encodeH264Capabilities = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_CAPABILITIES_KHR};
     VkVideoEncodeH265CapabilitiesKHR encodeH265Capabilities = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_CAPABILITIES_KHR};
     VkVideoEncodeAV1CapabilitiesKHR encodeAV1Capabilities = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_CAPABILITIES_KHR};
-    if (videoSessionDesc.usage == VideoUsage::DECODE) {
+    if (videoSessionDesc.type == VideoSessionType::DECODE) {
         capabilities.pNext = &decodeCapabilities;
         switch (videoSessionDesc.codec) {
             case VideoCodec::H264:

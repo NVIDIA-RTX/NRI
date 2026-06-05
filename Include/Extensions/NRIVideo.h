@@ -13,7 +13,7 @@ NriForwardStruct(VideoSession);
 NriForwardStruct(VideoSessionParameters);
 NriForwardStruct(VideoPicture);
 
-NriEnum(VideoUsage, uint8_t,
+NriEnum(VideoSessionType, uint8_t,
     DECODE,
     ENCODE
 );
@@ -245,7 +245,7 @@ NriBits(VideoAV1PictureBits, uint32_t,
 );
 
 NriStruct(VideoSessionDesc) {
-    Nri(VideoUsage) usage;
+    Nri(VideoSessionType) type;
     Nri(VideoCodec) codec;
     Nri(Format) format;
     uint32_t width;

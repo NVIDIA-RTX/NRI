@@ -184,7 +184,7 @@ NRI_INLINE Result VideoSessionParametersVK::Create(const VideoSessionParametersD
     encodeInfo.maxStdPPSCount = h264Parameters.maxPictureParameterSetNum ? h264Parameters.maxPictureParameterSetNum : h264Parameters.pictureParameterSetNum;
     encodeInfo.pParametersAddInfo = h264Parameters.sequenceParameterSetNum || h264Parameters.pictureParameterSetNum ? &encodeAddInfo : nullptr;
 
-    return CreateNative(session, session.m_Desc.usage == VideoUsage::DECODE ? (const void*)&decodeInfo : (const void*)&encodeInfo);
+    return CreateNative(session, session.m_Desc.type == VideoSessionType::DECODE ? (const void*)&decodeInfo : (const void*)&encodeInfo);
 }
 
 NRI_INLINE Result VideoSessionParametersVK::CreateH265(VideoSessionVK& session) {
@@ -324,7 +324,7 @@ NRI_INLINE Result VideoSessionParametersVK::CreateH265(VideoSessionVK& session) 
         ? &encodeAddInfo
         : nullptr;
 
-    return CreateNative(session, session.m_Desc.usage == VideoUsage::DECODE ? (const void*)&decodeInfo : (const void*)&encodeInfo);
+    return CreateNative(session, session.m_Desc.type == VideoSessionType::DECODE ? (const void*)&decodeInfo : (const void*)&encodeInfo);
 }
 
 NRI_INLINE Result VideoSessionParametersVK::CreateAV1(VideoSessionVK& session) {
@@ -338,7 +338,7 @@ NRI_INLINE Result VideoSessionParametersVK::CreateAV1(VideoSessionVK& session) {
             m_AV1TimingInfo.num_ticks_per_picture_minus_1 = m_AV1Parameters->sequence.numTicksPerPictureMinus1;
             timingInfo = &m_AV1TimingInfo;
         }
-        if (session.m_Desc.usage == VideoUsage::DECODE) {
+        if (session.m_Desc.type == VideoSessionType::DECODE) {
             m_AV1ColorConfig.flags.color_description_present_flag = false;
             m_AV1ColorConfig.chroma_sample_position = {};
             timingInfo = &m_AV1TimingInfo;
@@ -373,8 +373,8 @@ NRI_INLINE Result VideoSessionParametersVK::CreateAV1(VideoSessionVK& session) {
     VkVideoEncodeAV1SessionParametersCreateInfoKHR encodeInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_SESSION_PARAMETERS_CREATE_INFO_KHR};
     encodeInfo.pStdSequenceHeader = &m_AV1SequenceHeader;
 
-    if (session.m_UseInlineSessionParameters && session.m_Desc.usage == VideoUsage::DECODE)
+    if (session.m_UseInlineSessionParameters && session.m_Desc.type == VideoSessionType::DECODE)
         return Result::SUCCESS;
 
-    return CreateNative(session, session.m_Desc.usage == VideoUsage::DECODE ? (const void*)&decodeInfo : (const void*)&encodeInfo);
+    return CreateNative(session, session.m_Desc.type == VideoSessionType::DECODE ? (const void*)&decodeInfo : (const void*)&encodeInfo);
 }

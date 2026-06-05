@@ -4,7 +4,7 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
     if (videoSessionDesc.width == 0 || videoSessionDesc.height == 0 || videoSessionDesc.format == Format::UNKNOWN)
         return Result::INVALID_ARGUMENT;
 
-    if (videoSessionDesc.usage == VideoUsage::DECODE) {
+    if (videoSessionDesc.type == VideoSessionType::DECODE) {
         ComPtr<ID3D12VideoDevice> videoDevice;
         HRESULT hr = m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice));  // TODO: use "QueryLatestInterface"
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::QueryInterface(ID3D12VideoDevice)");
@@ -49,7 +49,7 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
 
         hr = videoDevice->CreateVideoDecoderHeap(&heapDesc, __uuidof(ID3D12VideoDecoderHeapBest), (void**)&m_Heap); // TODO-VIDEO: use "QueryLatestInterface"
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDevice::CreateVideoDecoderHeap");
-    } else if (videoSessionDesc.usage == VideoUsage::ENCODE) {
+    } else if (videoSessionDesc.type == VideoSessionType::ENCODE) {
         ComPtr<ID3D12VideoDevice3> videoDevice;
         HRESULT hr = m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice));  // TODO-VIDEO: use "QueryLatestInterface", merge with "decoder" code path
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::QueryInterface(ID3D12VideoDevice3)");

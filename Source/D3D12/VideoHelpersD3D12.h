@@ -717,7 +717,7 @@ inline void FillVideoCapabilitiesD3D12(VideoCapabilities& videoCapabilities, con
 }
 
 inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice3& videoDevice, const VideoSessionDesc& videoSessionDesc, VideoCapabilities* videoCapabilities = nullptr) {
-    if (videoSessionDesc.usage != VideoUsage::ENCODE || videoSessionDesc.width == 0 || videoSessionDesc.height == 0 || videoSessionDesc.format == Format::UNKNOWN)
+    if (videoSessionDesc.type != VideoSessionType::ENCODE || videoSessionDesc.width == 0 || videoSessionDesc.height == 0 || videoSessionDesc.format == Format::UNKNOWN)
         return false;
 
     const VideoCodec codec = videoSessionDesc.codec;
@@ -952,7 +952,7 @@ inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice3& videoDevice, 
 
 inline bool IsVideoEncodeCodecSupportedD3D12(ID3D12VideoDevice3& videoDevice, VideoCodec codec) {
     VideoSessionDesc videoSessionDesc = {};
-    videoSessionDesc.usage = VideoUsage::ENCODE;
+    videoSessionDesc.type = VideoSessionType::ENCODE;
     videoSessionDesc.codec = codec;
     videoSessionDesc.format = Format::NV12_UNORM;
     videoSessionDesc.width = 128;
