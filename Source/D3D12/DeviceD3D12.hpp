@@ -1,6 +1,6 @@
 ﻿// © 2021 NVIDIA Corporation
 
-static void QueryLatestInterface(const DeviceD3D12& device, ComPtr<ID3D12Device>& in, ComPtr<ID3D12DeviceBest>& out, uint8_t& version) {
+static uint8_t QueryLatestInterface(ComPtr<ID3D12Device>& in, ComPtr<ID3D12DeviceBest>& out) {
     static const IID versions[] = {
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
         __uuidof(ID3D12Device15),
@@ -33,10 +33,7 @@ static void QueryLatestInterface(const DeviceD3D12& device, ComPtr<ID3D12Device>
 
     NRI_CHECK(n > i, "Unexpected");
 
-    version = n - i - 1;
-
-    if (i != 0)
-        NRI_REPORT_WARNING(&device, "'ID3D12Device' version is lower than expected, some functionality may not be available...");
+    return n - i - 1;
 }
 
 static inline uint64_t HashRootSignatureAndStride(ID3D12RootSignature* rootSignature, uint32_t stride) {
@@ -254,7 +251,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     }
 
     // Query latest interface
-    QueryLatestInterface(*this, deviceTemp, m_Device, m_Version);
+    m_Version = QueryLatestInterface(deviceTemp, m_Device);
     NRI_REPORT_INFO(this, "Using ID3D12Device%u", m_Version);
 
     if (desc.enableGraphicsAPIValidation) {

@@ -44,26 +44,26 @@ NriStruct(ResourceGroupDesc) {
 };
 
 NriStruct(FormatProps) {
-    const char* name;            // format name
-    Nri(Format) format;          // self
-    uint8_t redBits;             // R (or depth) bits
-    uint8_t greenBits;           // G (or stencil) bits (0 if channels < 2)
-    uint8_t blueBits;            // B bits (0 if channels < 3)
-    uint8_t alphaBits;           // A (or shared exponent) bits (0 if channels < 4)
-    uint8_t stride;              // block size in bytes
-    uint8_t blockWidth;          // 1 for plain formats, >1 for compressed
-    uint8_t blockHeight;         // 1 for plain formats, >1 for compressed
-    bool isBgr;                  // reversed channels (RGBA => BGRA)
-    bool isCompressed;           // block-compressed format
-    bool isDepth;                // has depth component
-    bool isExpShared;            // shared exponent in alpha channel
-    bool isFloat;                // floating point
-    bool isPacked;               // 16- or 32- bit packed
-    bool isInteger;              // integer
-    bool isNorm;                 // [0; 1] normalized
-    bool isSigned;               // signed
-    bool isSrgb;                 // sRGB
-    bool isStencil;              // has stencil component
+    const char* name;       // format name
+    Nri(Format) format;     // self
+    uint8_t redBits;        // R (or depth) bits
+    uint8_t greenBits;      // G (or stencil) bits (0 if channels < 2)
+    uint8_t blueBits;       // B bits (0 if channels < 3)
+    uint8_t alphaBits;      // A (or shared exponent) bits (0 if channels < 4)
+    uint8_t stride;         // block size in bytes
+    uint8_t blockWidth;     // 1 for plain formats, >1 for compressed
+    uint8_t blockHeight;    // 1 for plain formats, >1 for compressed
+    bool isBgr;             // reversed channels (RGBA => BGRA)
+    bool isCompressed;      // block-compressed format
+    bool isDepth;           // has depth component
+    bool isExpShared;       // shared exponent in alpha channel
+    bool isFloat;           // floating point
+    bool isPacked;          // 16- or 32- bit packed
+    bool isInteger;         // integer
+    bool isNorm;            // [0; 1] normalized
+    bool isSigned;          // signed
+    bool isSrgb;            // sRGB
+    bool isStencil;         // has stencil component
 };
 
 // Threadsafe: yes

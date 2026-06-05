@@ -1,6 +1,6 @@
 ﻿// © 2021 NVIDIA Corporation
 
-static void QueryLatestInterface(const DeviceD3D12& device, ComPtr<ID3D12GraphicsCommandList>& in, ComPtr<ID3D12GraphicsCommandListBest>& out, uint8_t& version) {
+static uint8_t QueryLatestInterface(ComPtr<ID3D12GraphicsCommandList>& in, ComPtr<ID3D12GraphicsCommandListBest>& out) {
     static const IID versions[] = {
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
         __uuidof(ID3D12GraphicsCommandList10),
@@ -28,10 +28,7 @@ static void QueryLatestInterface(const DeviceD3D12& device, ComPtr<ID3D12Graphic
 
     NRI_CHECK(n > i, "Unexpected");
 
-    version = n - i - 1;
-
-    if (i != 0)
-        NRI_REPORT_WARNING(&device, "'ID3D12GraphicsCommandList' version is lower than expected, some functionality may not be available...");
+    return n - i - 1;
 }
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
@@ -311,7 +308,7 @@ Result CommandBufferD3D12::Create(D3D12_COMMAND_LIST_TYPE commandListType, ID3D1
     NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateCommandList");
 
     ComPtr<ID3D12GraphicsCommandListBest> commandListBest;
-    QueryLatestInterface(m_Device, commandList, commandListBest, m_Version);
+    m_Version = QueryLatestInterface(commandList, commandListBest);
 
     hr = commandListBest->Close();
     NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12GraphicsCommandList::Close");
@@ -326,7 +323,7 @@ Result CommandBufferD3D12::Create(const CommandBufferD3D12Desc& commandBufferD3D
     ComPtr<ID3D12GraphicsCommandList> commandList = (ID3D12GraphicsCommandList*)commandBufferD3D12Desc.d3d12CommandList;
 
     ComPtr<ID3D12GraphicsCommandListBest> commandListBest;
-    QueryLatestInterface(m_Device, commandList, commandListBest, m_Version);
+    m_Version = QueryLatestInterface(commandList, commandListBest);
 
     m_GraphicsCommandList = commandListBest;
 
