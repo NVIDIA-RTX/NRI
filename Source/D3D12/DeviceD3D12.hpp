@@ -1,6 +1,6 @@
 ﻿// © 2021 NVIDIA Corporation
 
-static HRESULT QueryLatestInterface(ComPtr<ID3D12DeviceBest>& in, ComPtr<ID3D12DeviceBest>& out, uint8_t& version) {
+static void QueryLatestInterface(const DeviceD3D12& device, ComPtr<ID3D12Device>& in, ComPtr<ID3D12DeviceBest>& out, uint8_t& version) {
     static const IID versions[] = {
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
         __uuidof(ID3D12Device15),
@@ -31,9 +31,12 @@ static HRESULT QueryLatestInterface(ComPtr<ID3D12DeviceBest>& in, ComPtr<ID3D12D
             break;
     }
 
+    NRI_CHECK(n > i, "Unexpected");
+
     version = n - i - 1;
 
-    return i != n ? S_OK : D3D12_ERROR_INVALID_REDIST;
+    if (i != 0)
+        NRI_REPORT_WARNING(&device, "'ID3D12Device' version is lower than expected, some functionality may not be available...");
 }
 
 static inline uint64_t HashRootSignatureAndStride(ID3D12RootSignature* rootSignature, uint32_t stride) {
@@ -216,7 +219,7 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         InitializeAmdExt(descD3D12.agsContext, descD3D12.d3d12Device != nullptr);
 
     // Device
-    ComPtr<ID3D12DeviceBest> deviceTemp = (ID3D12DeviceBest*)descD3D12.d3d12Device;
+    ComPtr<ID3D12Device> deviceTemp = (ID3D12Device*)descD3D12.d3d12Device;
     if (!m_IsWrapped) {
         bool isShaderAtomicsI64Supported = false;
         bool isShaderClockSupported = false;
@@ -238,12 +241,12 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
             AGSReturnCode result = m_AmdExt.CreateDeviceD3D12(m_AmdExt.context, &deviceCreationParams, &extensionsParams, &agsParams);
             NRI_RETURN_ON_FAILURE(this, result == AGS_SUCCESS, Result::FAILURE, "agsDriverExtensionsDX12_CreateDevice() failed: %d", (int32_t)result);
 
-            deviceTemp = (ID3D12DeviceBest*)agsParams.pDevice;
+            deviceTemp = agsParams.pDevice;
             isShaderAtomicsI64Supported = agsParams.extensionsSupported.intrinsics19;
             isShaderClockSupported = agsParams.extensionsSupported.shaderClock;
 #endif
         } else {
-            HRESULT hr = D3D12CreateDevice(m_Adapter, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), (void**)&deviceTemp);
+            HRESULT hr = D3D12CreateDevice(m_Adapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&deviceTemp));
             NRI_RETURN_ON_BAD_HRESULT(this, hr, "D3D12CreateDevice");
 
             if (HasNvExt()) {
@@ -260,16 +263,9 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         m_Desc.shaderFeatures.clock = isShaderClockSupported;
     }
 
-    { // Query latest interface
-        HRESULT hr = QueryLatestInterface(deviceTemp, m_Device, m_Version);
-        NRI_REPORT_INFO(this, "Using ID3D12Device%u", m_Version);
-
-        if (m_IsWrapped) {
-            if (hr == D3D12_ERROR_INVALID_REDIST)
-                NRI_REPORT_WARNING(this, "ID3D12Device version is lower than expected, some functionality may be not available...");
-        } else
-            NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D12Device::QueryLatestInterface");
-    }
+    // Query latest interface
+    QueryLatestInterface(*this, deviceTemp, m_Device, m_Version);
+    NRI_REPORT_INFO(this, "Using ID3D12Device%u", m_Version);
 
     if (desc.enableGraphicsAPIValidation) {
         ComPtr<ID3D12InfoQueueBest> pInfoQueue;
