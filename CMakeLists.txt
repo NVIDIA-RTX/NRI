@@ -127,7 +127,6 @@ if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
         URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.${NRI_AGILITY_SDK_VERSION_MAJOR}.${NRI_AGILITY_SDK_VERSION_MINOR}
-        URL_HASH SHA256=43a7d5a3973812eb4b42623fae5275c790a005b8e48b8d7f5bb43cef39e073c5
     )
     list(APPEND DEPS agilitysdk)
 endif()
@@ -140,7 +139,6 @@ if(NRI_ENABLE_NVTX_SUPPORT)
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
         URL https://github.com/NVIDIA/NVTX/archive/refs/tags/v3.5.0.zip
-        URL_HASH SHA256=92fabfa47df4231ef13b3b3721175adcab2a7fbb6bfd9ae3171ff7745afaa983
     )
     list(APPEND DEPS nvtx)
 endif()
@@ -153,7 +151,6 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
         URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.352.zip
-        URL_HASH SHA256=ea33ea99dca80edf0264b011b65286c0d9239918290c5c3e845ab8c161454015
     )
     list(APPEND DEPS vulkan_headers)
 
@@ -164,7 +161,6 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
         URL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/e386068d174c9807479b4d13ff2db8e23bd91bc0.zip
-        URL_HASH SHA256=a2725da14c80af6adedaabb0ba4e4c265bcb354cdb6c2ca16b61c9913598a590
     )
     list(APPEND DEPS vma)
 endif()
@@ -178,7 +174,6 @@ if(NRI_ENABLE_NGX_SDK)
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
         URL https://github.com/NVIDIA/DLSS/archive/refs/tags/v${NGX_VERSION}.zip
-        URL_HASH SHA256=443803fcd8079e4e392943f073a424f5bc50b996931f92e21ac9f0e93f43a024
     )
     list(APPEND DEPS ngx)
 endif()
@@ -191,7 +186,6 @@ if(NRI_ENABLE_FFX_SDK)
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
         URL https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/releases/download/v1.1.4/FidelityFX-SDK-v1.1.4.zip
-        URL_HASH SHA256=0216556bfb0e243cec30004a2a98d38f4e3f7406cb7938e3c1b85c758e95d952
     )
     list(APPEND DEPS ffx)
 endif()
@@ -204,7 +198,6 @@ if(NRI_ENABLE_XESS_SDK)
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
         URL https://github.com/intel/xess/archive/refs/tags/v3.0.1.zip
-        URL_HASH SHA256=ac49aaedc4194d0e8451d50d9e744dabbadefaead18f09076ed555bb8d9bc4b5
     )
     list(APPEND DEPS xess)
 endif()
@@ -217,7 +210,6 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
         URL https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/146c0ab44efeaef140aba2d659722cf1318e6127.zip
-        URL_HASH SHA256=cc3a668d3ec5a14874f2e2bfd1b31579a5d3640913c41f20698007285a8ac7e4
     )
     list(APPEND DEPS d3d12ma)
 endif()
@@ -230,7 +222,6 @@ if(NRI_ENABLE_AMDAGS)
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
         URL https://github.com/GPUOpen-LibrariesAndSDKs/AGS_SDK/archive/refs/tags/v6.3.0.zip
-        URL_HASH SHA256=292c5ce0c7f51d44a1e56f2a73d82f1e7304bb14d2b8e39a05708877210de884
     )
     list(APPEND DEPS amdags)
 endif()
@@ -247,7 +238,6 @@ if(NRI_ENABLE_NVAPI)
             DOWNLOAD_NO_PROGRESS 1
             SOURCE_SUBDIR "ignore CMakeLists.txt"
             URL https://github.com/NVIDIA/nvapi/archive/9b181ea572f680327fe01a14a0f1f41c78034104.zip
-            URL_HASH SHA256=9a950354e9ce46dc50b3b16c2ab858280e19acc158faa324905e743486fc0739
         )
         list(APPEND DEPS nvapi)
     endif()
@@ -262,7 +252,6 @@ if(NRI_ENABLE_SHADERMAKE AND NOT TARGET ShaderMake)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         URL https://github.com/NVIDIA-RTX/ShaderMake/archive/5daebdbef45088fc2369d441391ecab0eba25e54.zip
-        URL_HASH SHA256=d0257352174055397bb79d14069aebd1793af5c2882cc98cf7977a89ba4b26c1
     )
     list(APPEND DEPS shadermake)
 endif()
