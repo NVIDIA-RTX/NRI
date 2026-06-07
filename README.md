@@ -19,7 +19,7 @@ Non-goals:
 - Automatic barriers (better handled in a higher-level abstraction)
 
 Supported GAPIs:
-- *Vulkan*
+- *Vulkan 1.4, 1.3 or 1.2+*
 - *D3D12*
 - *D3D11*
 - *Metal* (through [MoltenVK](https://github.com/KhronosGroup/MoltenVK))
@@ -119,7 +119,7 @@ Required:
  - _VK_EXT_extended_dynamic_state_
  - _VK_KHR_portability_enumeration_ (for APPLE)
  - _VK_KHR_get_physical_device_properties2_ (for APPLE)
- - _VK_KHR_portability_subset_ (for for APPLE)
+ - _VK_KHR_portability_subset_ (for APPLE)
 
 Supported:
  - (Instance) _VK_KHR_get_surface_capabilities2_
@@ -127,6 +127,7 @@ Supported:
  - (Instance) _VK_KHR_win32_surface_ (_VK_KHR_xlib_surface_, _VK_KHR_wayland_surface_,  _VK_EXT_metal_surface_)
  - (Instance) _VK_EXT_swapchain_colorspace_
  - (Instance) _VK_EXT_debug_utils_
+ - (Instance) _VK_EXT_surface_maintenance1_
  - _VK_KHR_swapchain_
  - _VK_KHR_present_id_
  - _VK_KHR_present_wait_
@@ -151,7 +152,9 @@ Supported:
  - _VK_KHR_compute_shader_derivatives_
  - _VK_KHR_unified_image_layouts_
  - _VK_KHR_shader_integer_dot_product_
- - _VK_KHR_dynamic_redering_local_read_
+ - _VK_KHR_dynamic_rendering_local_read_
+ - _VK_EXT_calibrated_timestamps_
+ - _VK_EXT_pipeline_creation_cache_control_
  - _VK_EXT_pipeline_robustness_
  - _VK_EXT_image_robustness_
  - _VK_EXT_subgroup_size_control_
@@ -170,9 +173,7 @@ Supported:
  - _VK_EXT_custom_border_color_
  - _VK_EXT_robustness2_
  - _VK_EXT_fragment_shader_interlock_
- - _VK_EXT_present_mode_fifo_latest_ready_
- - _VK_EXT_zero_initialize_memory_
- - _VK_EXT_mutable_descriptor_type_
+ - _VK_EXT_zero_initialize_device_memory_
  - _VK_NV_low_latency2_
  - _VK_NVX_binary_import_
  - _VK_NVX_image_view_handle_
