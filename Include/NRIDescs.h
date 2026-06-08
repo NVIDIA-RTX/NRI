@@ -2216,15 +2216,15 @@ NriStruct(DeviceDesc) {
     // Video
     struct {
         struct {
-            uint32_t H264                                        : 1;
-            uint32_t H265                                        : 1;
-            uint32_t AV1                                         : 1;
+            bool H264;
+            bool H265;
+            bool AV1;
         } decode;
 
         struct {
-            uint32_t H264                                        : 1;
-            uint32_t H265                                        : 1;
-            uint32_t AV1                                         : 1;
+            bool H264;
+            bool H265;
+            bool AV1;
         } encode;
     } videoFeatures;
 };
