@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <limits>
+
 namespace nri {
 
 namespace video_av1 {

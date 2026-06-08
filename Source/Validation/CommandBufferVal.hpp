@@ -937,11 +937,6 @@ NRI_INLINE void CommandBufferVal::EncodeVideo(const VideoEncodeDesc& videoEncode
         return;
     }
 
-    if (videoEncodeDesc.flags & VideoEncodeBits::END_OF_STREAM) {
-        NRI_REPORT_ERROR(&m_Device, "'END_OF_STREAM' must be serialized with 'WriteVideoAnnexBEndOfStream' after encode feedback is available");
-        return;
-    }
-
     if (!videoEncodeDesc.session || !videoEncodeDesc.parameters || !videoEncodeDesc.srcPicture || !videoEncodeDesc.dstBitstream.buffer || !videoEncodeDesc.dstBitstream.size) {
         NRI_REPORT_ERROR(&m_Device, "'session', 'parameters', 'srcPicture', 'dstBitstream.buffer' and 'dstBitstream.size' must be valid");
         return;

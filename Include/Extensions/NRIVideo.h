@@ -178,8 +178,7 @@ NriBits(VideoH265ShortTermRefPicSetBits, uint8_t,
 
 NriBits(VideoEncodeBits, uint8_t,
     NONE                                    = 0,
-    FORCE_KEY_FRAME                         = NriBit(0),
-    END_OF_STREAM                           = NriBit(1) // Use WriteVideoAnnexBEndOfStream after encode feedback is available.
+    FORCE_KEY_FRAME                         = NriBit(0)
 );
 
 NriBits(VideoAV1SequenceBits, uint32_t,
