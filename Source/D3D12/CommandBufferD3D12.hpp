@@ -1926,6 +1926,8 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
 
         commandList->ResolveEncoderOutputMetadata1(&resolveInput, &resolveOutput);
     }
+#else
+    MaybeUnused(videoEncodeDesc);
 #endif
 }
 
@@ -2135,10 +2137,9 @@ NRI_INLINE void CommandBufferD3D12::EndRendering() {
     Scratch<D3D12_RESOURCE_BARRIER> resourceBarriers = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_RESOURCE_BARRIER, resourceBarrierNum * 2);
     uint32_t barrierNum = 0;
 
-    constexpr uint32_t attachmentNum = D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT + 2; // colors, depth and stencil
-    constexpr uint32_t attachmentBarrierMaxNum = attachmentNum * 2;                // src and dst
+    constexpr uint32_t attachmentNum = (D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT + 2) * 2; // (colors, depth and stencil) x (src and dst)
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-    std::array<D3D12_TEXTURE_BARRIER, attachmentBarrierMaxNum> textureBarriers = {};
+    std::array<D3D12_TEXTURE_BARRIER, attachmentNum> textureBarriers = {};
 
     D3D12_BARRIER_GROUP barrierGroup = {};
     barrierGroup.Type = D3D12_BARRIER_TYPE_TEXTURE;
