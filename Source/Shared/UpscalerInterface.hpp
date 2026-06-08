@@ -491,6 +491,7 @@ UpscalerImpl::~UpscalerImpl() {
         ExclusiveScope lock(g_xess.lock);
 
         xess_result_t result = xessDestroyContext(m.xess->context);
+        MaybeUnused(result);
         NRI_CHECK(result == XESS_RESULT_SUCCESS, "xessDestroyContext() failed!");
 
         const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
@@ -501,6 +502,7 @@ UpscalerImpl::~UpscalerImpl() {
 #if NRI_ENABLE_FFX_SDK
     if (m_Desc.type == UpscalerType::FSR && m.ffx) {
         ffxReturnCode_t result = m.ffx->DestroyContext(&m.ffx->context, m.ffx->allocationCallbacksPtr);
+        MaybeUnused(result);
         NRI_CHECK(result == FFX_API_RETURN_OK, "ffxDestroyContext() failed!");
 
         UnloadSharedLibrary(*m.ffx->library);
@@ -1282,6 +1284,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         dispatchDesc.flags = (m_Desc.flags & UpscalerBits::SRGB) ? FFX_UPSCALE_FLAG_NON_LINEAR_COLOR_SRGB : 0;
 
         ffxReturnCode_t result = m.ffx->Dispatch(&m.ffx->context, &dispatchDesc.header);
+        MaybeUnused(result);
         NRI_CHECK(result == FFX_API_RETURN_OK, "ffxDispatch() failed!");
     }
 #endif
@@ -1307,6 +1310,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         ID3D12GraphicsCommandList* commandList = (ID3D12GraphicsCommandList*)m_iCore.GetCommandBufferNativeObject(&commandBuffer);
 
         xess_result_t result = xessD3D12Execute(m.xess->context, commandList, &executeParams);
+        MaybeUnused(result);
         NRI_CHECK(result == XESS_RESULT_SUCCESS, "xessD3D12Execute() failed!");
     }
 #endif
