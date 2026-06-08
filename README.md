@@ -100,7 +100,7 @@ Notes:
 
 ## AGILITY SDK
 
-The bare minimum requirement for *D3D12* backend is *D3D12 Ultimate* (*Windows SDK 10.0.20348*, last pre-*Agility SDK* release). Using latest *Agility SDK* is highly recommended to get access to most recent *D3D12* features and improved validation. See *Overview* and *Download* sections [*here*](https://devblogs.microsoft.com/directx/directx12agility/) for more details about *Agility SDK*.
+The bare minimum requirement for *D3D12* backend is *D3D12 Ultimate* (*Windows SDK 10.0.20348*, last pre-*Agility SDK* release). *NRI* can be compiled for this *Windows SDK* using `1-Deploy.bat -DNRI_ENABLE_AGILITY_SDK_SUPPORT=OFF -A "x64,version=10.0.20348.0"` command line. But using the latest *Agility SDK* is highly recommended to get access to most recent *D3D12* features and improved validation. See *Overview* and *Download* sections [*here*](https://devblogs.microsoft.com/directx/directx12agility/) for more details about *Agility SDK*.
 
 Steps (already enabled by default):
 - modify `NRI_AGILITY_SDK_VERSION_MAJOR` and `NRI_AGILITY_SDK_VERSION_MINOR` to the desired value
