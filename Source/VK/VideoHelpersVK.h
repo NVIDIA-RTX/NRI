@@ -4,8 +4,6 @@
 
 namespace nri {
 
-#ifndef NRI_VIDEO_SHARED_RATE_CONTROL_HELPERS_DEFINED
-#    define NRI_VIDEO_SHARED_RATE_CONTROL_HELPERS_DEFINED
 constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_CQP = 1u << (uint32_t)VideoEncodeRateControlMode::CQP;
 constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_CBR = 1u << (uint32_t)VideoEncodeRateControlMode::CBR;
 constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_VBR = 1u << (uint32_t)VideoEncodeRateControlMode::VBR;
@@ -13,7 +11,6 @@ constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_VBR = 1u << (uint32_t)VideoEncodeRa
 inline uint32_t GetVideoEncodeRateControlModeMask(VideoEncodeRateControlMode mode) {
     return 1u << (uint32_t)mode;
 }
-#endif
 
 inline VkVideoEncodeRateControlModeFlagBitsKHR GetVideoEncodeRateControlModeVK(VideoEncodeRateControlMode mode) {
     switch (mode) {
@@ -23,11 +20,9 @@ inline VkVideoEncodeRateControlModeFlagBitsKHR GetVideoEncodeRateControlModeVK(V
             return VK_VIDEO_ENCODE_RATE_CONTROL_MODE_CBR_BIT_KHR;
         case VideoEncodeRateControlMode::VBR:
             return VK_VIDEO_ENCODE_RATE_CONTROL_MODE_VBR_BIT_KHR;
-        case VideoEncodeRateControlMode::MAX_NUM:
-            break;
+        default:
+            return VK_VIDEO_ENCODE_RATE_CONTROL_MODE_DISABLED_BIT_KHR;
     }
-
-    return VK_VIDEO_ENCODE_RATE_CONTROL_MODE_DISABLED_BIT_KHR;
 }
 
 inline uint32_t GetSupportedVideoEncodeRateControlModesVK(VkVideoEncodeRateControlModeFlagsKHR modes) {
@@ -104,11 +99,9 @@ inline uint8_t GetVideoAV1ReferenceNameIndexVK(VideoAV1ReferenceName name) {
             return 5;
         case VideoAV1ReferenceName::ALTREF:
             return 6;
-        case VideoAV1ReferenceName::MAX_NUM:
+        default:
             return STD_VIDEO_AV1_PRIMARY_REF_NONE;
     }
-
-    return STD_VIDEO_AV1_PRIMARY_REF_NONE;
 }
 
 inline uint8_t GetVideoAV1NamedReferenceIndexVK(VideoAV1ReferenceName name) {
@@ -546,11 +539,9 @@ inline StdVideoAV1FrameType GetVideoAV1FrameTypeVK(VideoEncodeFrameType frameTyp
         case VideoEncodeFrameType::P:
         case VideoEncodeFrameType::B:
             return STD_VIDEO_AV1_FRAME_TYPE_INTER;
-        case VideoEncodeFrameType::MAX_NUM:
+        default:
             return STD_VIDEO_AV1_FRAME_TYPE_INVALID;
     }
-
-    return STD_VIDEO_AV1_FRAME_TYPE_INVALID;
 }
 
 struct VideoEncodeHEVCReferenceListsVK {

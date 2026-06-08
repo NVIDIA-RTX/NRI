@@ -4,6 +4,7 @@
 
 #include <d3d12.h>
 #include <d3d12video.h>
+#include <dxva.h>
 #include <pix.h>
 
 // Validate Windows SDK version
@@ -68,8 +69,8 @@ enum DescriptorHeapType : uint8_t {
 #define NO_CASTABLE_FORMATS 0, nullptr
 
 struct DescriptorHandle {
-    uint32_t heapType   : DESCRIPTOR_HANDLE_HEAP_TYPE_BIT_NUM;
-    uint32_t heapIndex  : DESCRIPTOR_HANDLE_HEAP_INDEX_BIT_NUM;
+    uint32_t heapType : DESCRIPTOR_HANDLE_HEAP_TYPE_BIT_NUM;
+    uint32_t heapIndex : DESCRIPTOR_HANDLE_HEAP_INDEX_BIT_NUM;
     uint32_t heapOffset : DESCRIPTOR_HANDLE_HEAP_OFFSET_BIT_NUM;
 };
 

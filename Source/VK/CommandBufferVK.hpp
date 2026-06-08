@@ -55,11 +55,9 @@ static inline StdVideoH264PictureType GetVideoEncodeH264PictureTypeVK(VideoEncod
             return STD_VIDEO_H264_PICTURE_TYPE_P;
         case VideoEncodeFrameType::B:
             return STD_VIDEO_H264_PICTURE_TYPE_B;
-        case VideoEncodeFrameType::MAX_NUM:
+        default:
             return STD_VIDEO_H264_PICTURE_TYPE_INVALID;
     }
-
-    return STD_VIDEO_H264_PICTURE_TYPE_INVALID;
 }
 
 static inline StdVideoH265PictureType GetVideoEncodeH265PictureTypeVK(VideoEncodeFrameType frameType) {
@@ -72,11 +70,9 @@ static inline StdVideoH265PictureType GetVideoEncodeH265PictureTypeVK(VideoEncod
             return STD_VIDEO_H265_PICTURE_TYPE_P;
         case VideoEncodeFrameType::B:
             return STD_VIDEO_H265_PICTURE_TYPE_B;
-        case VideoEncodeFrameType::MAX_NUM:
+        default:
             return STD_VIDEO_H265_PICTURE_TYPE_INVALID;
     }
-
-    return STD_VIDEO_H265_PICTURE_TYPE_INVALID;
 }
 
 static inline StdVideoAV1FrameType GetVideoEncodeAV1FrameTypeVK(VideoEncodeFrameType frameType) {
@@ -87,11 +83,9 @@ static inline StdVideoAV1FrameType GetVideoEncodeAV1FrameTypeVK(VideoEncodeFrame
         case VideoEncodeFrameType::P:
         case VideoEncodeFrameType::B:
             return STD_VIDEO_AV1_FRAME_TYPE_INTER;
-        case VideoEncodeFrameType::MAX_NUM:
+        default:
             return STD_VIDEO_AV1_FRAME_TYPE_INVALID;
     }
-
-    return STD_VIDEO_AV1_FRAME_TYPE_INVALID;
 }
 
 static inline bool HasVideoEncodeReferenceSlot(const VideoEncodeDesc& videoEncodeDesc, uint32_t slot) {
@@ -940,8 +934,7 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
             av1SetupReference.pStdReferenceInfo = &av1StdSetupReference;
             break;
         }
-        case VideoCodec::NONE:
-        case VideoCodec::MAX_NUM:
+        default:
             NRI_REPORT_ERROR(&m_Device, "Unsupported video encode codec");
             return;
     }

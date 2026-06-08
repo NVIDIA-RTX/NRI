@@ -432,6 +432,34 @@ HRESULT DeviceD3D12::CreateVma() {
     return D3D12MA::CreateAllocator(&allocatorDesc, &m_Vma);
 }
 
+inline bool IsVideoDecodeCodecSupportedD3D12(ID3D12VideoDevice* videoDevice, VideoCodec codec) {
+    constexpr uint32_t width = 128;
+    constexpr uint32_t height = 128;
+
+    D3D12_VIDEO_DECODE_CONFIGURATION configuration = {};
+    configuration.DecodeProfile = GetVideoDecodeProfileD3D12(codec, Format::NV12_UNORM);
+    configuration.BitstreamEncryption = D3D12_BITSTREAM_ENCRYPTION_TYPE_NONE;
+    configuration.InterlaceType = D3D12_VIDEO_FRAME_CODED_INTERLACE_TYPE_NONE;
+    if (configuration.DecodeProfile == GUID{})
+        return false;
+
+    D3D12_FEATURE_DATA_VIDEO_DECODE_SUPPORT decodeSupport = {};
+    decodeSupport.Configuration = configuration;
+    decodeSupport.Width = width;
+    decodeSupport.Height = height;
+    decodeSupport.DecodeFormat = DXGI_FORMAT_NV12;
+    decodeSupport.FrameRate = {30, 1};
+
+    HRESULT hr = videoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_DECODE_SUPPORT, &decodeSupport, sizeof(decodeSupport));
+    if (FAILED(hr))
+        return false;
+
+    if ((decodeSupport.SupportFlags & D3D12_VIDEO_DECODE_SUPPORT_FLAG_SUPPORTED) == 0)
+        return false;
+
+    return (decodeSupport.ConfigurationFlags & D3D12_VIDEO_DECODE_CONFIGURATION_FLAG_REFERENCE_ONLY_ALLOCATIONS_REQUIRED) == 0;
+}
+
 void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     MaybeUnused(disableD3D12EnhancedBarrier);
 
@@ -517,7 +545,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options12) failed, result = 0x%08X!", hr);
     m_Desc.features.enhancedBarriers = options12.EnhancedBarriersSupported && !disableD3D12EnhancedBarrier;
 
-    //Agility 1.606
+    // Agility 1.606
     D3D12_FEATURE_DATA_D3D12_OPTIONS13 options13 = {};
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS13, &options13, sizeof(options13));
     if (FAILED(hr))
@@ -866,16 +894,13 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
 
     ComPtr<ID3D12VideoDevice> videoDevice;
     if (SUCCEEDED(m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice)))) {
-        m_Desc.videoFeatures.decode.H264 = IsVideoDecodeCodecSupportedD3D12(*videoDevice, VideoCodec::H264);
-        m_Desc.videoFeatures.decode.H265 = IsVideoDecodeCodecSupportedD3D12(*videoDevice, VideoCodec::H265);
-        m_Desc.videoFeatures.decode.AV1 = IsVideoDecodeCodecSupportedD3D12(*videoDevice, VideoCodec::AV1);
-    }
+        m_Desc.videoFeatures.decode.H264 = IsVideoDecodeCodecSupportedD3D12(videoDevice, VideoCodec::H264);
+        m_Desc.videoFeatures.decode.H265 = IsVideoDecodeCodecSupportedD3D12(videoDevice, VideoCodec::H265);
+        m_Desc.videoFeatures.decode.AV1 = IsVideoDecodeCodecSupportedD3D12(videoDevice, VideoCodec::AV1);
 
-    ComPtr<ID3D12VideoDevice3> videoDevice3;
-    if (SUCCEEDED(m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice3)))) {
-        m_Desc.videoFeatures.encode.H264 = IsVideoEncodeCodecSupportedD3D12(*videoDevice3, VideoCodec::H264);
-        m_Desc.videoFeatures.encode.H265 = IsVideoEncodeCodecSupportedD3D12(*videoDevice3, VideoCodec::H265);
-        m_Desc.videoFeatures.encode.AV1 = IsVideoEncodeCodecSupportedD3D12(*videoDevice3, VideoCodec::AV1);
+        m_Desc.videoFeatures.encode.H264 = IsVideoEncodeCodecSupportedD3D12(videoDevice, VideoCodec::H264);
+        m_Desc.videoFeatures.encode.H265 = IsVideoEncodeCodecSupportedD3D12(videoDevice, VideoCodec::H265);
+        m_Desc.videoFeatures.encode.AV1 = IsVideoEncodeCodecSupportedD3D12(videoDevice, VideoCodec::AV1);
     }
 
     bool isShaderAtomicsF16Supported = false;

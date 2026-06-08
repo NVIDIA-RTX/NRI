@@ -21,9 +21,9 @@
 #include "QueueD3D12.h"
 #include "SwapChainD3D12.h"
 #include "TextureD3D12.h"
+#include "VideoPictureD3D12.h"
 #include "VideoSessionD3D12.h"
 #include "VideoSessionParametersD3D12.h"
-#include "VideoPictureD3D12.h"
 
 #include "HelperInterface.h"
 #include "ImguiInterface.h"
@@ -51,9 +51,9 @@ using namespace nri;
 #include "SharedD3D12.hpp"
 #include "SwapChainD3D12.hpp"
 #include "TextureD3D12.hpp"
+#include "VideoPictureD3D12.hpp"
 #include "VideoSessionD3D12.hpp"
 #include "VideoSessionParametersD3D12.hpp"
-#include "VideoPictureD3D12.hpp"
 
 Result CreateDeviceD3D12(const DeviceCreationDesc& desc, const DeviceCreationD3D12Desc& descD3D12, DeviceBase*& device) {
     DeviceD3D12* impl = Allocate<DeviceD3D12>(desc.allocationCallbacks, desc.callbackInterface, desc.allocationCallbacks);
@@ -1151,6 +1151,14 @@ Result DeviceD3D12::FillFunctionTable(RayTracingInterface& table) const {
 //============================================================================================================================================================================================
 #pragma region[  Video  ]
 
+inline bool IsVideoEncodeResolvedMetadataRangeValidD3D12(uint64_t bufferSize, uint64_t offset, uint64_t requiredSize) {
+    return offset <= bufferSize && requiredSize <= bufferSize - offset;
+}
+
+inline uint64_t GetVideoEncodeFeedbackBitstreamOffsetD3D12(const D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA* subregions, uint64_t subregionNum) {
+    return subregions && subregionNum ? subregions[0].bStartOffset : 0;
+}
+
 static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSessionDesc& videoSessionDesc, VideoCapabilities& videoCapabilities) {
     DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
     if (videoSessionDesc.width == 0 || videoSessionDesc.height == 0 || videoSessionDesc.format == Format::UNKNOWN)
@@ -1158,11 +1166,11 @@ static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSes
 
     FillVideoCapabilitiesD3D12(videoCapabilities, videoSessionDesc);
 
-    if (videoSessionDesc.type == VideoSessionType::DECODE) {
-        ComPtr<ID3D12VideoDevice> videoDevice;
-        HRESULT hr = deviceD3D12->QueryInterface(IID_PPV_ARGS(&videoDevice));
-        NRI_RETURN_ON_BAD_HRESULT(&deviceD3D12, hr, "ID3D12Device::QueryInterface(ID3D12VideoDevice)");
+    ComPtr<ID3D12VideoDevice> videoDevice;
+    HRESULT hr = deviceD3D12->QueryInterface(IID_PPV_ARGS(&videoDevice));
+    NRI_RETURN_ON_BAD_HRESULT(&deviceD3D12, hr, "ID3D12Device::QueryInterface(ID3D12VideoDevice)");
 
+    if (videoSessionDesc.type == VideoSessionType::DECODE) {
         D3D12_VIDEO_DECODE_CONFIGURATION configuration = {};
         configuration.DecodeProfile = GetVideoDecodeProfileD3D12(videoSessionDesc.codec, videoSessionDesc.format);
         configuration.BitstreamEncryption = D3D12_BITSTREAM_ENCRYPTION_TYPE_NONE;
@@ -1184,13 +1192,8 @@ static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSes
         return (decodeSupport.ConfigurationFlags & D3D12_VIDEO_DECODE_CONFIGURATION_FLAG_REFERENCE_ONLY_ALLOCATIONS_REQUIRED) ? Result::UNSUPPORTED : Result::SUCCESS;
     }
 
-    if (videoSessionDesc.type == VideoSessionType::ENCODE) {
-        ComPtr<ID3D12VideoDevice3> videoDevice;
-        HRESULT hr = deviceD3D12->QueryInterface(IID_PPV_ARGS(&videoDevice));
-        NRI_RETURN_ON_BAD_HRESULT(&deviceD3D12, hr, "ID3D12Device::QueryInterface(ID3D12VideoDevice3)");
-
-        return IsVideoEncodeSessionSupportedD3D12(*videoDevice, videoSessionDesc, &videoCapabilities) ? Result::SUCCESS : Result::UNSUPPORTED;
-    }
+    if (videoSessionDesc.type == VideoSessionType::ENCODE)
+        return IsVideoEncodeSessionSupportedD3D12(videoDevice, videoSessionDesc, &videoCapabilities) ? Result::SUCCESS : Result::UNSUPPORTED;
 
     return Result::UNSUPPORTED;
 }
@@ -1250,12 +1253,23 @@ static void NRI_CALL DestroyVideoPicture(VideoPicture* videoPicture) {
 }
 
 static Result NRI_CALL GetVideoDecodePictureStates(const VideoPicture&, VideoDecodePictureStates& states) {
-    FillVideoDecodePictureStatesD3D12(states);
+    states = {};
+    states.decodeWrite = {AccessBits::VIDEO_DECODE_WRITE, Layout::VIDEO_DECODE_DST, StageBits::VIDEO_DECODE};
+    states.afterDecode = {AccessBits::NONE, Layout::GENERAL, StageBits::NONE};
+    states.graphicsBefore = states.afterDecode;
+    states.releaseAfterDecode = true;
+
     return Result::SUCCESS;
 }
 
 static Result NRI_CALL GetVideoEncodePictureStates(const VideoPicture&, VideoEncodePictureStates& states) {
-    FillVideoEncodePictureStatesD3D12(states);
+    states = {};
+    states.encodeRead = {AccessBits::VIDEO_ENCODE_READ, Layout::VIDEO_ENCODE_SRC, StageBits::VIDEO_ENCODE};
+    states.encodeWrite = {AccessBits::VIDEO_ENCODE_WRITE, Layout::VIDEO_ENCODE_DPB, StageBits::VIDEO_ENCODE};
+    states.afterEncode = {AccessBits::NONE, Layout::GENERAL, StageBits::NONE};
+    states.graphicsBefore = states.afterEncode;
+    states.releaseAfterEncode = true;
+
     return Result::SUCCESS;
 }
 

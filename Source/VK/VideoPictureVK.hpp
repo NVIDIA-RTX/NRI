@@ -42,7 +42,7 @@ NRI_INLINE Result VideoPictureVK::Create(const VideoPictureDesc& videoPictureDes
             requiredTextureUsage = TextureUsageBits::VIDEO_ENCODE;
             usageInfo.usage |= VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR;
             break;
-        case VideoPictureUsage::MAX_NUM:
+        default:
             return Result::INVALID_ARGUMENT;
     }
 
