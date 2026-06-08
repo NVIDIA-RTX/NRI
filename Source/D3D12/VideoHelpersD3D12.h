@@ -53,8 +53,6 @@ inline void FillVideoCapabilitiesD3D12(VideoCapabilities& videoCapabilities, con
     videoCapabilities.bitstreamSizeMax = uint64_t(-1);
 }
 
-#if NRI_ENABLE_AGILITY_SDK_SUPPORT
-
 inline VideoAV1SequenceDesc GetDefaultVideoAV1SequenceDescD3D12(uint32_t width, uint32_t height, Format format) {
     VideoAV1SequenceDesc desc = {};
     desc.flags = VideoAV1SequenceBits::ENABLE_ORDER_HINT | VideoAV1SequenceBits::ENABLE_CDEF | VideoAV1SequenceBits::ENABLE_RESTORATION | VideoAV1SequenceBits::COLOR_DESCRIPTION_PRESENT;
@@ -79,6 +77,8 @@ inline VideoAV1SequenceDesc GetDefaultVideoAV1SequenceDescD3D12(uint32_t width, 
 inline constexpr VideoAV1PictureBits GetDefaultVideoAV1PictureFlags() {
     return VideoAV1PictureBits::ERROR_RESILIENT_MODE | VideoAV1PictureBits::DISABLE_CDF_UPDATE | VideoAV1PictureBits::ALLOW_SCREEN_CONTENT_TOOLS | VideoAV1PictureBits::FORCE_INTEGER_MV;
 }
+
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
 
 inline bool IsVideoEncodeAV1RequiredFeatureSetSupportedD3D12(uint32_t featureFlags) {
     constexpr uint32_t supportedFeatureFlags = D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_ORDER_HINT_TOOLS | D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_LOOP_RESTORATION_FILTER | D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_FORCED_INTEGER_MOTION_VECTORS | D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_AUTO_SEGMENTATION | D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_CDEF_FILTERING | D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_QUANTIZATION_DELTAS | D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_LOOP_FILTER_DELTAS;

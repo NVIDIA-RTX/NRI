@@ -1155,10 +1155,6 @@ inline bool IsVideoEncodeResolvedMetadataRangeValidD3D12(uint64_t bufferSize, ui
     return offset <= bufferSize && requiredSize <= bufferSize - offset;
 }
 
-inline uint64_t GetVideoEncodeFeedbackBitstreamOffsetD3D12(const D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA* subregions, uint64_t subregionNum) {
-    return subregions && subregionNum ? subregions[0].bStartOffset : 0;
-}
-
 static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSessionDesc& videoSessionDesc, VideoCapabilities& videoCapabilities) {
     DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
     if (videoSessionDesc.width == 0 || videoSessionDesc.height == 0 || videoSessionDesc.format == Format::UNKNOWN)
@@ -1173,10 +1169,11 @@ static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSes
     if (videoSessionDesc.type == VideoSessionType::DECODE) {
         D3D12_VIDEO_DECODE_CONFIGURATION configuration = {};
         configuration.DecodeProfile = GetVideoDecodeProfileD3D12(videoSessionDesc.codec, videoSessionDesc.format);
-        configuration.BitstreamEncryption = D3D12_BITSTREAM_ENCRYPTION_TYPE_NONE;
-        configuration.InterlaceType = D3D12_VIDEO_FRAME_CODED_INTERLACE_TYPE_NONE;
         if (configuration.DecodeProfile == GUID{})
             return Result::UNSUPPORTED;
+
+        configuration.BitstreamEncryption = D3D12_BITSTREAM_ENCRYPTION_TYPE_NONE;
+        configuration.InterlaceType = D3D12_VIDEO_FRAME_CODED_INTERLACE_TYPE_NONE;
 
         D3D12_FEATURE_DATA_VIDEO_DECODE_SUPPORT decodeSupport = {};
         decodeSupport.Configuration = configuration;
@@ -1184,16 +1181,20 @@ static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSes
         decodeSupport.Height = videoSessionDesc.height;
         decodeSupport.DecodeFormat = GetDxgiFormat(videoSessionDesc.format).typed;
         decodeSupport.FrameRate = {30, 1};
+
         hr = videoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_DECODE_SUPPORT, &decodeSupport, sizeof(decodeSupport));
         NRI_RETURN_ON_BAD_HRESULT(&deviceD3D12, hr, "ID3D12VideoDevice::CheckFeatureSupport(D3D12_FEATURE_VIDEO_DECODE_SUPPORT)");
+
         if ((decodeSupport.SupportFlags & D3D12_VIDEO_DECODE_SUPPORT_FLAG_SUPPORTED) == 0)
             return Result::UNSUPPORTED;
 
         return (decodeSupport.ConfigurationFlags & D3D12_VIDEO_DECODE_CONFIGURATION_FLAG_REFERENCE_ONLY_ALLOCATIONS_REQUIRED) ? Result::UNSUPPORTED : Result::SUCCESS;
     }
 
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     if (videoSessionDesc.type == VideoSessionType::ENCODE)
         return IsVideoEncodeSessionSupportedD3D12(videoDevice, videoSessionDesc, &videoCapabilities) ? Result::SUCCESS : Result::UNSUPPORTED;
+#endif
 
     return Result::UNSUPPORTED;
 }
@@ -1293,6 +1294,7 @@ static void NRI_CALL CmdResolveVideoEncodeFeedback(CommandBuffer&, VideoSession&
 }
 
 static Result NRI_CALL GetVideoEncodeFeedback(VideoSession&, Buffer& resolvedMetadataReadback, uint64_t resolvedMetadataOffset, VideoEncodeFeedback& feedback) {
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     BufferD3D12& resolvedMetadataReadbackD3D12 = (BufferD3D12&)resolvedMetadataReadback;
     constexpr uint64_t requiredMetadataSize = sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA) + sizeof(D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA);
     if (!IsVideoEncodeResolvedMetadataRangeValidD3D12(resolvedMetadataReadbackD3D12.GetDesc().size, resolvedMetadataOffset, requiredMetadataSize))
@@ -1315,9 +1317,14 @@ static Result NRI_CALL GetVideoEncodeFeedback(VideoSession&, Buffer& resolvedMet
     feedback.averageMotionEstimationY = d3d12Feedback.EncodeStats.AverageMotionEstimationYDirection;
     feedback.encodedBitstreamWrittenBytes = d3d12Feedback.EncodedBitstreamWrittenBytesCount;
     feedback.writtenSubregionNum = d3d12Feedback.WrittenSubregionsCount;
-    feedback.encodedBitstreamOffset = GetVideoEncodeFeedbackBitstreamOffsetD3D12(subregions, feedback.writtenSubregionNum);
+    feedback.encodedBitstreamOffset = (subregions && feedback.writtenSubregionNum) ? subregions[0].bStartOffset : 0;
 
     return Result::SUCCESS;
+#else
+    MaybeUnused(resolvedMetadataReadback, resolvedMetadataOffset, feedback);
+
+    return Result::UNSUPPORTED;
+#endif
 }
 
 struct VideoEncodeAV1TilesLayoutD3D12 {
@@ -1394,8 +1401,9 @@ struct VideoEncodeAV1PostEncodeValuesD3D12 {
     std::array<uint64_t, 7> referenceIndices;
 };
 
-static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolvedMetadataReadback, uint64_t resolvedMetadataOffset,
-    const VideoAV1EncodeDecodeInfoDesc& desc, VideoAV1EncodeDecodeInfo& info) {
+static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolvedMetadataReadback, uint64_t resolvedMetadataOffset, const VideoAV1EncodeDecodeInfoDesc& desc, VideoAV1EncodeDecodeInfo& info) {
+    info = {};
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     if (!desc.feedback || !desc.sequence)
         return Result::INVALID_ARGUMENT;
     if (desc.feedback->errorFlags || !desc.feedback->encodedBitstreamWrittenBytes || !desc.feedback->writtenSubregionNum)
@@ -1405,8 +1413,7 @@ static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolv
     if (desc.encodedPayloadHeader && desc.encodedPayloadHeaderSize)
         return video_av1::GetVideoEncodeAV1DecodeInfoFromHeader(desc, info);
 
-    constexpr uint64_t requiredMetadataSize = sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA) + sizeof(D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA) + sizeof(VideoEncodeAV1TilesLayoutD3D12)
-        + sizeof(VideoEncodeAV1PostEncodeValuesD3D12);
+    constexpr uint64_t requiredMetadataSize = sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA) + sizeof(D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA) + sizeof(VideoEncodeAV1TilesLayoutD3D12) + sizeof(VideoEncodeAV1PostEncodeValuesD3D12);
     BufferD3D12& resolvedMetadataReadbackD3D12 = (BufferD3D12&)resolvedMetadataReadback;
     if (!IsVideoEncodeResolvedMetadataRangeValidD3D12(resolvedMetadataReadbackD3D12.GetDesc().size, resolvedMetadataOffset, requiredMetadataSize))
         return Result::INVALID_ARGUMENT;
@@ -1430,7 +1437,6 @@ static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolv
     if (tilePayloadSize > std::numeric_limits<uint32_t>::max())
         return Result::FAILURE;
 
-    info = {};
     info.sequence = *desc.sequence;
     info.sequence.flags |= VideoAV1SequenceBits::ENABLE_CDEF | VideoAV1SequenceBits::ENABLE_RESTORATION;
     const uint32_t width = info.sequence.maxFrameWidthMinus1 + 1;
@@ -1531,6 +1537,11 @@ static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolv
     video_av1::BindPointers(info);
 
     return Result::SUCCESS;
+#else
+    MaybeUnused(resolvedMetadataReadback, resolvedMetadataOffset, desc);
+
+    return Result::UNSUPPORTED;
+#endif
 }
 
 Result DeviceD3D12::FillFunctionTable(VideoInterface& table) const {

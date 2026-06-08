@@ -898,9 +898,11 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
         m_Desc.videoFeatures.decode.H265 = IsVideoDecodeCodecSupportedD3D12(videoDevice, VideoCodec::H265);
         m_Desc.videoFeatures.decode.AV1 = IsVideoDecodeCodecSupportedD3D12(videoDevice, VideoCodec::AV1);
 
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
         m_Desc.videoFeatures.encode.H264 = IsVideoEncodeCodecSupportedD3D12(videoDevice, VideoCodec::H264);
         m_Desc.videoFeatures.encode.H265 = IsVideoEncodeCodecSupportedD3D12(videoDevice, VideoCodec::H265);
         m_Desc.videoFeatures.encode.AV1 = IsVideoEncodeCodecSupportedD3D12(videoDevice, VideoCodec::AV1);
+#endif
     }
 
     bool isShaderAtomicsF16Supported = false;

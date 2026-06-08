@@ -2,15 +2,14 @@
 
 #pragma once
 
-typedef ID3D12VideoEncoder ID3D12VideoEncoderBest;
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
 typedef ID3D12VideoDecoder1 ID3D12VideoDecoderBest;
 typedef ID3D12VideoDecoderHeap1 ID3D12VideoDecoderHeapBest;
+typedef ID3D12VideoEncoder ID3D12VideoEncoderBest;
 typedef ID3D12VideoEncoderHeap1 ID3D12VideoEncoderHeapBest;
 #else
 typedef ID3D12VideoDecoder ID3D12VideoDecoderBest;
 typedef ID3D12VideoDecoderHeap ID3D12VideoDecoderHeapBest;
-typedef ID3D12VideoEncoderHeap ID3D12VideoEncoderHeapBest;
 #endif
 
 namespace nri {
@@ -40,6 +39,7 @@ struct VideoSessionD3D12 final : public DebugNameBase {
         return static_cast<ID3D12VideoDecoderHeapBest*>(m_Heap.GetInterface());
     }
 
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
     inline ID3D12VideoEncoderBest* GetEncoder() const {
         NRI_CHECK(m_Desc.type == VideoSessionType::ENCODE, "Unexpected");
 
@@ -51,6 +51,7 @@ struct VideoSessionD3D12 final : public DebugNameBase {
 
         return static_cast<ID3D12VideoEncoderHeapBest*>(m_Heap.GetInterface());
     }
+#endif
 
     //================================================================================================================
     // DebugNameBase
