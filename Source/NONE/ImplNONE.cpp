@@ -173,8 +173,8 @@ struct DeviceNONE final : public DeviceBase {
         m_Desc.other.shadingRateAttachmentTileSize = 16;
 
         memset(&m_Desc.tiers, 0xFF, sizeof(m_Desc.tiers));
-        memset(&m_Desc.features, 0xFF, sizeof(m_Desc.features));
-        memset(&m_Desc.shaderFeatures, 0xFF, sizeof(m_Desc.shaderFeatures));
+        memset(&m_Desc.features, 1, sizeof(m_Desc.features));
+        memset(&m_Desc.shaderFeatures, 1, sizeof(m_Desc.shaderFeatures));
     }
 
     inline ~DeviceNONE() {

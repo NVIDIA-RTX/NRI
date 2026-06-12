@@ -679,6 +679,9 @@ NRI_INLINE Result DeviceVal::CreateCommittedMicromap(MemoryLocation memoryLocati
 NRI_INLINE Result DeviceVal::CreateCommittedAccelerationStructure(MemoryLocation memoryLocation, float priority, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
     NRI_RETURN_ON_FAILURE(this, priority >= -1.0f && priority <= 1.0f, Result::INVALID_ARGUMENT, "'priority' outside of [-1; 1] range");
     NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.geometryOrInstanceNum != 0, Result::INVALID_ARGUMENT, "'geometryOrInstanceNum' is 0");
+    NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.type < AccelerationStructureType::MAX_NUM, Result::INVALID_ARGUMENT, "'type' is invalid");
+    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL && accelerationStructureDesc.geometryOrInstanceNum != 0)
+        NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.geometries != nullptr, Result::INVALID_ARGUMENT, "'geometries' is NULL");
 
     // Convert desc
     uint32_t geometryNum = 0;
@@ -844,6 +847,9 @@ NRI_INLINE Result DeviceVal::CreatePlacedMicromap(Memory* memory, uint64_t offse
 
 NRI_INLINE Result DeviceVal::CreatePlacedAccelerationStructure(Memory* memory, uint64_t offset, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
     NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.geometryOrInstanceNum != 0, Result::INVALID_ARGUMENT, "'geometryOrInstanceNum' is 0");
+    NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.type < AccelerationStructureType::MAX_NUM, Result::INVALID_ARGUMENT, "'type' is invalid");
+    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL && accelerationStructureDesc.geometryOrInstanceNum != 0)
+        NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.geometries != nullptr, Result::INVALID_ARGUMENT, "'geometries' is NULL");
 
     if (memory) {
         MemoryVal& memoryVal = *(MemoryVal*)memory;
@@ -1383,6 +1389,9 @@ NRI_INLINE Result DeviceVal::CreateMicromap(const MicromapDesc& micromapDesc, Mi
 
 NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
     NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.geometryOrInstanceNum != 0, Result::INVALID_ARGUMENT, "'geometryOrInstanceNum' is 0");
+    NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.type < AccelerationStructureType::MAX_NUM, Result::INVALID_ARGUMENT, "'type' is invalid");
+    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL && accelerationStructureDesc.geometryOrInstanceNum != 0)
+        NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.geometries != nullptr, Result::INVALID_ARGUMENT, "'geometries' is NULL");
 
     // Convert desc
     uint32_t geometryNum = 0;

@@ -50,14 +50,14 @@ Result BufferVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float prio
     VkMemoryRequirements memoryRequirements = {};
     memoryRequirements.size = memoryDesc.size;
     memoryRequirements.alignment = memoryDesc.alignment; // can't use "vmaAllocateMemoryForBuffer" because of alignment (see "GetMemoryDesc")
-    memoryRequirements.memoryTypeBits = 1 << memoryTypeInfo.index;
+    memoryRequirements.memoryTypeBits = 1u << memoryTypeInfo.index;
 
     VmaAllocationCreateInfo allocationCreateInfo = {};
     allocationCreateInfo.flags = VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
     allocationCreateInfo.flags |= committed ? VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT : VMA_ALLOCATION_CREATE_CAN_ALIAS_BIT;
     allocationCreateInfo.flags |= IsHostVisibleMemory(memoryTypeInfo.location) ? VMA_ALLOCATION_CREATE_MAPPED_BIT : 0;
     allocationCreateInfo.priority = priority * 0.5f + 0.5f;
-    allocationCreateInfo.memoryTypeBits = 1 << memoryTypeInfo.index; // "usage, requiredFlags and preferredFlags" not needed because of this
+    allocationCreateInfo.memoryTypeBits = 1u << memoryTypeInfo.index; // "usage, requiredFlags and preferredFlags" not needed because of this
 
     VmaAllocationInfo allocationInfo = {};
 

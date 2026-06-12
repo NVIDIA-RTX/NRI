@@ -1408,7 +1408,7 @@ bool DeviceVK::GetMemoryDesc(MemoryLocation memoryLocation, const VkMemoryRequir
 
     for (uint32_t phase = 0; phase < 4; phase++) {
         for (uint32_t i = 0; i < m_MemoryProps.memoryTypeCount; i++) {
-            bool isSupported = memoryRequirements.memoryTypeBits & (1 << i);
+            bool isSupported = memoryRequirements.memoryTypeBits & (1u << i);
             bool hasNeededFlags = (m_MemoryProps.memoryTypes[i].propertyFlags & neededFlags) == neededFlags;
             bool hasUndesiredFlags = undesiredFlags == 0 ? false : (m_MemoryProps.memoryTypes[i].propertyFlags & undesiredFlags) == undesiredFlags;
             bool hasDesiredFlags = (m_MemoryProps.memoryTypes[i].propertyFlags & desiredFlags) == desiredFlags;

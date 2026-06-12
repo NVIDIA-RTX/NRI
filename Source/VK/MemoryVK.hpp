@@ -58,12 +58,12 @@ Result MemoryVK::Create(const AllocateMemoryDesc& allocateMemoryDesc) {
         VkMemoryRequirements memoryRequirements = {};
         memoryRequirements.size = allocateMemoryDesc.size;
         memoryRequirements.alignment = alignment;
-        memoryRequirements.memoryTypeBits = 1 << memoryTypeInfo.index;
+        memoryRequirements.memoryTypeBits = 1u << memoryTypeInfo.index;
 
         VmaAllocationCreateInfo allocationCreateInfo = {};
         allocationCreateInfo.flags = VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT | VMA_ALLOCATION_CREATE_CAN_ALIAS_BIT;
         allocationCreateInfo.flags |= IsHostVisibleMemory(memoryTypeInfo.location) ? VMA_ALLOCATION_CREATE_MAPPED_BIT : 0;
-        allocationCreateInfo.memoryTypeBits = 1 << memoryTypeInfo.index; // "usage, requiredFlags and preferredFlags" not needed because of this
+        allocationCreateInfo.memoryTypeBits = 1u << memoryTypeInfo.index; // "usage, requiredFlags and preferredFlags" not needed because of this
         allocationCreateInfo.priority = m_Priority;
 
         VkResult vkResult = vmaAllocateMemory(m_Device.GetVma(), &memoryRequirements, &allocationCreateInfo, &m_VmaAllocation, nullptr);

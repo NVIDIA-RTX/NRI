@@ -1057,6 +1057,8 @@ static void NRI_CALL GetAccelerationStructureMemoryDesc2(const Device& device, c
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
         geometryNum = accelerationStructureDesc.geometryOrInstanceNum;
 
+        NRI_RETURN_ON_FAILURE(&deviceVal, geometryNum == 0 || accelerationStructureDesc.geometries, ReturnVoid(), "'geometries' is NULL");
+
         for (uint32_t i = 0; i < geometryNum; i++) {
             const BottomLevelGeometryDesc& geometryDesc = accelerationStructureDesc.geometries[i];
 
