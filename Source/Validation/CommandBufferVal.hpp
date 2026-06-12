@@ -95,6 +95,8 @@ static bool ValidateBufferBarrierDesc(const DeviceVal& device, uint32_t i, const
 
 static bool ValidateTextureBarrierDesc(const DeviceVal& device, uint32_t i, const TextureBarrierDesc& textureBarrier) {
     NRI_RETURN_ON_FAILURE(&device, textureBarrier.texture, false, "'barrierDesc.textures[%u].texture' is NULL", i);
+    NRI_RETURN_ON_FAILURE(&device, textureBarrier.before.layout < Layout::MAX_NUM, false, "'barrierDesc.textures[%u].before.layout' is invalid", i);
+    NRI_RETURN_ON_FAILURE(&device, textureBarrier.after.layout < Layout::MAX_NUM, false, "'barrierDesc.textures[%u].after.layout' is invalid", i);
 
     const TextureVal& textureVal = *(const TextureVal*)textureBarrier.texture;
 
@@ -200,6 +202,9 @@ NRI_INLINE void CommandBufferVal::SetShadingRate(const ShadingRateDesc& shadingR
 
     NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     NRI_RETURN_ON_FAILURE(&m_Device, deviceDesc.tiers.shadingRate, ReturnVoid(), "'tiers.shadingRate > 0' required");
+    NRI_RETURN_ON_FAILURE(&m_Device, shadingRateDesc.shadingRate < ShadingRate::MAX_NUM, ReturnVoid(), "'shadingRate' is invalid");
+    NRI_RETURN_ON_FAILURE(&m_Device, shadingRateDesc.primitiveCombiner < ShadingRateCombiner::MAX_NUM, ReturnVoid(), "'primitiveCombiner' is invalid");
+    NRI_RETURN_ON_FAILURE(&m_Device, shadingRateDesc.attachmentCombiner < ShadingRateCombiner::MAX_NUM, ReturnVoid(), "'attachmentCombiner' is invalid");
 
     GetCoreInterfaceImpl().CmdSetShadingRate(*GetImpl(), shadingRateDesc);
 }
@@ -264,8 +269,20 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
 
     ResetAttachments();
 
+    NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.colorNum == 0 || renderingDesc.colors != nullptr, ReturnVoid(), "'colors' is NULL");
+    NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.depth.loadOp < LoadOp::MAX_NUM, ReturnVoid(), "'depth.loadOp' is invalid");
+    NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.depth.storeOp < StoreOp::MAX_NUM, ReturnVoid(), "'depth.storeOp' is invalid");
+    NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.depth.resolveOp < ResolveOp::MAX_NUM, ReturnVoid(), "'depth.resolveOp' is invalid");
+    NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.stencil.loadOp < LoadOp::MAX_NUM, ReturnVoid(), "'stencil.loadOp' is invalid");
+    NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.stencil.storeOp < StoreOp::MAX_NUM, ReturnVoid(), "'stencil.storeOp' is invalid");
+    NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.stencil.resolveOp < ResolveOp::MAX_NUM, ReturnVoid(), "'stencil.resolveOp' is invalid");
+
     Scratch<AttachmentDesc> colors = NRI_ALLOCATE_SCRATCH(m_Device, AttachmentDesc, renderingDesc.colorNum);
     for (uint32_t i = 0; i < renderingDesc.colorNum; i++) {
+        NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.colors[i].loadOp < LoadOp::MAX_NUM, ReturnVoid(), "'colors[%u].loadOp' is invalid", i);
+        NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.colors[i].storeOp < StoreOp::MAX_NUM, ReturnVoid(), "'colors[%u].storeOp' is invalid", i);
+        NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.colors[i].resolveOp < ResolveOp::MAX_NUM, ReturnVoid(), "'colors[%u].resolveOp' is invalid", i);
+
         colors[i] = renderingDesc.colors[i];
         colors[i].descriptor = NRI_GET_IMPL(Descriptor, renderingDesc.colors[i].descriptor);
         colors[i].resolveDst = NRI_GET_IMPL(Descriptor, renderingDesc.colors[i].resolveDst);
@@ -318,6 +335,7 @@ NRI_INLINE void CommandBufferVal::SetVertexBuffers(uint32_t baseSlot, const Vert
 
 NRI_INLINE void CommandBufferVal::SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType) {
     NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
+    NRI_RETURN_ON_FAILURE(&m_Device, indexType < IndexType::MAX_NUM, ReturnVoid(), "'indexType' is invalid");
 
     Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);
 
@@ -326,6 +344,7 @@ NRI_INLINE void CommandBufferVal::SetIndexBuffer(const Buffer& buffer, uint64_t 
 
 NRI_INLINE void CommandBufferVal::SetPipelineLayout(BindPoint bindPoint, const PipelineLayout& pipelineLayout) {
     NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
+    NRI_RETURN_ON_FAILURE(&m_Device, bindPoint < BindPoint::MAX_NUM, ReturnVoid(), "'bindPoint' is invalid");
     NRI_RETURN_ON_FAILURE(&m_Device, bindPoint != BindPoint::INHERIT, ReturnVoid(), "'INHERIT' is not allowed");
 
     PipelineLayout* pipelineLayoutImpl = NRI_GET_IMPL(PipelineLayout, &pipelineLayout);
@@ -359,6 +378,7 @@ NRI_INLINE void CommandBufferVal::SetDescriptorSet(const SetDescriptorSetDesc& s
     NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     NRI_RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
     NRI_RETURN_ON_FAILURE(&m_Device, setDescriptorSetDesc.descriptorSet, ReturnVoid(), "'descriptorSet' is NULL");
+    NRI_RETURN_ON_FAILURE(&m_Device, setDescriptorSetDesc.bindPoint < BindPoint::MAX_NUM, ReturnVoid(), "'bindPoint' is invalid");
 
     auto descriptorSetBindingDescImpl = setDescriptorSetDesc;
     descriptorSetBindingDescImpl.descriptorSet = NRI_GET_IMPL(DescriptorSet, setDescriptorSetDesc.descriptorSet);
@@ -372,6 +392,7 @@ NRI_INLINE void CommandBufferVal::SetRootConstants(const SetRootConstantsDesc& s
     NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     NRI_RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
     NRI_RETURN_ON_FAILURE(&m_Device, setRootConstantsDesc.offset == 0 || deviceDesc.features.rootConstantsOffset, ReturnVoid(), "Non-zero 'setRootConstantsDesc.offset' is not supported");
+    NRI_RETURN_ON_FAILURE(&m_Device, setRootConstantsDesc.bindPoint < BindPoint::MAX_NUM, ReturnVoid(), "'bindPoint' is invalid");
 
     GetCoreInterfaceImpl().CmdSetRootConstants(*GetImpl(), setRootConstantsDesc);
 }
@@ -380,6 +401,7 @@ NRI_INLINE void CommandBufferVal::SetRootDescriptor(const SetRootDescriptorDesc&
     NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     NRI_RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
     NRI_RETURN_ON_FAILURE(&m_Device, setRootDescriptorDesc.descriptor, ReturnVoid(), "'descriptor' is NULL");
+    NRI_RETURN_ON_FAILURE(&m_Device, setRootDescriptorDesc.bindPoint < BindPoint::MAX_NUM, ReturnVoid(), "'bindPoint' is invalid");
 
     const DescriptorVal& descriptorVal = *(DescriptorVal*)setRootDescriptorDesc.descriptor;
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
@@ -469,6 +491,7 @@ NRI_INLINE void CommandBufferVal::CopyTexture(Texture& dstTexture, const Texture
 NRI_INLINE void CommandBufferVal::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion, ResolveOp resolveOp) {
     NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     NRI_RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
+    NRI_RETURN_ON_FAILURE(&m_Device, resolveOp < ResolveOp::MAX_NUM, ReturnVoid(), "'resolveOp' is invalid");
 
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
     if (!deviceDesc.features.regionResolve)
@@ -686,6 +709,13 @@ NRI_INLINE void CommandBufferVal::BuildBottomLevelAccelerationStructure(const Bu
 
         for (uint32_t j = 0; j < desc.geometryNum; j++) {
             const BottomLevelGeometryDesc& geometry = desc.geometries[j];
+            NRI_RETURN_ON_FAILURE(&m_Device, geometry.type < BottomLevelGeometryType::MAX_NUM, ReturnVoid(), "'[%u].geometries[%u].type' is invalid", i, j);
+            if (geometry.type == BottomLevelGeometryType::TRIANGLES) {
+                NRI_RETURN_ON_FAILURE(&m_Device, geometry.triangles.vertexFormat < Format::MAX_NUM, ReturnVoid(), "'[%u].geometries[%u].triangles.vertexFormat' is invalid", i, j);
+                NRI_RETURN_ON_FAILURE(&m_Device, geometry.triangles.indexType < IndexType::MAX_NUM, ReturnVoid(), "'[%u].geometries[%u].triangles.indexType' is invalid", i, j);
+                if (geometry.triangles.micromap)
+                    NRI_RETURN_ON_FAILURE(&m_Device, geometry.triangles.micromap->indexType < IndexType::MAX_NUM, ReturnVoid(), "'[%u].geometries[%u].triangles.micromap->indexType' is invalid", i, j);
+            }
 
             if (geometry.type == BottomLevelGeometryType::TRIANGLES && geometry.triangles.micromap)
                 micromapTotalNum++;

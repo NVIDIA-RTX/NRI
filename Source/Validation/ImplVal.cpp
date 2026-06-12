@@ -1061,6 +1061,13 @@ static void NRI_CALL GetAccelerationStructureMemoryDesc2(const Device& device, c
 
         for (uint32_t i = 0; i < geometryNum; i++) {
             const BottomLevelGeometryDesc& geometryDesc = accelerationStructureDesc.geometries[i];
+            NRI_RETURN_ON_FAILURE(&deviceVal, geometryDesc.type < BottomLevelGeometryType::MAX_NUM, ReturnVoid(), "'geometries[%u].type' is invalid", i);
+            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES) {
+                NRI_RETURN_ON_FAILURE(&deviceVal, geometryDesc.triangles.vertexFormat < Format::MAX_NUM, ReturnVoid(), "'geometries[%u].triangles.vertexFormat' is invalid", i);
+                NRI_RETURN_ON_FAILURE(&deviceVal, geometryDesc.triangles.indexType < IndexType::MAX_NUM, ReturnVoid(), "'geometries[%u].triangles.indexType' is invalid", i);
+                if (geometryDesc.triangles.micromap)
+                    NRI_RETURN_ON_FAILURE(&deviceVal, geometryDesc.triangles.micromap->indexType < IndexType::MAX_NUM, ReturnVoid(), "'geometries[%u].triangles.micromap->indexType' is invalid", i);
+            }
 
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
                 micromapNum++;
@@ -1225,6 +1232,9 @@ struct StreamerVal final : public ObjectVal {
 
 static Result NRI_CALL CreateStreamer(Device& device, const StreamerDesc& streamerDesc, Streamer*& streamer) {
     DeviceVal& deviceVal = (DeviceVal&)device;
+
+    NRI_RETURN_ON_FAILURE(&deviceVal, streamerDesc.constantBufferMemoryLocation < MemoryLocation::MAX_NUM, Result::INVALID_ARGUMENT, "'constantBufferMemoryLocation' is invalid");
+    NRI_RETURN_ON_FAILURE(&deviceVal, streamerDesc.dynamicBufferMemoryLocation < MemoryLocation::MAX_NUM, Result::INVALID_ARGUMENT, "'dynamicBufferMemoryLocation' is invalid");
 
     bool isUpload = streamerDesc.constantBufferMemoryLocation == MemoryLocation::HOST_UPLOAD || streamerDesc.constantBufferMemoryLocation == MemoryLocation::DEVICE_UPLOAD;
     NRI_RETURN_ON_FAILURE(&deviceVal, isUpload, Result::INVALID_ARGUMENT, "'constantBufferMemoryLocation' must be an UPLOAD heap");
@@ -1401,6 +1411,9 @@ struct UpscalerVal final : public ObjectVal {
 static Result NRI_CALL CreateUpscaler(Device& device, const UpscalerDesc& upscalerDesc, Upscaler*& upscaler) {
     DeviceVal& deviceVal = (DeviceVal&)device;
 
+    NRI_RETURN_ON_FAILURE(&deviceVal, upscalerDesc.type < UpscalerType::MAX_NUM, Result::INVALID_ARGUMENT, "'type' is invalid");
+    NRI_RETURN_ON_FAILURE(&deviceVal, upscalerDesc.mode < UpscalerMode::MAX_NUM, Result::INVALID_ARGUMENT, "'mode' is invalid");
+
     UpscalerImpl* impl = Allocate<UpscalerImpl>(deviceVal.GetAllocationCallbacks(), device, deviceVal.GetCoreInterface());
     Result result = impl->Create(upscalerDesc);
 
@@ -1426,6 +1439,7 @@ static void NRI_CALL DestroyUpscaler(Upscaler* upscaler) {
 
 static bool NRI_CALL IsUpscalerSupported(const Device& device, UpscalerType upscalerType) {
     DeviceVal& deviceVal = (DeviceVal&)device;
+    NRI_RETURN_ON_FAILURE(&deviceVal, upscalerType < UpscalerType::MAX_NUM, false, "'upscalerType' is invalid");
 
     return IsUpscalerSupported(deviceVal.GetDesc(), upscalerType);
 }
