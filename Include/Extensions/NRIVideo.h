@@ -537,6 +537,13 @@ NriStruct(VideoAV1SequenceDesc) {
     uint32_t numTicksPerPictureMinus1;
 };
 
+NriStruct(VideoAV1ObuHeadersDesc) {
+    Nri(VideoAV1SequenceDesc) sequence;
+    NriOptional NriPtr(uint8_t) dst;    // if null, only "writtenSize" is returned
+    uint64_t dstSize;
+    uint64_t writtenSize;
+};
+
 NriStruct(VideoAV1SessionParametersDesc) {
     Nri(VideoAV1SequenceDesc) sequence;
 };
@@ -916,6 +923,9 @@ NriStruct(VideoInterface) {
 
         // Serializes H.264 end-of-sequence/end-of-stream or H.265 EOS/EOB Annex-B NAL units. Pass "dst = nullptr" to query the required byte size in "writtenSize"
         Nri(Result)     (NRI_CALL *WriteVideoAnnexBEndOfStream)     (NriRef(VideoAnnexBEndOfStreamDesc) annexBEndOfStreamDesc);
+
+        // Serializes AV1 temporal delimiter and sequence header OBUs. Pass "dst = nullptr" to query the required byte size in "writtenSize"
+        Nri(Result)     (NRI_CALL *WriteVideoAV1ObuHeaders)         (NriRef(VideoAV1ObuHeadersDesc) av1ObuHeadersDesc);
     // }
 
     // Command buffer

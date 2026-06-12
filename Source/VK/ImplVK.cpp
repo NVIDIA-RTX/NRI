@@ -1221,6 +1221,10 @@ static Result NRI_CALL WriteVideoAnnexBEndOfStream(VideoAnnexBEndOfStreamDesc& a
     return WriteVideoAnnexBEndOfStreamShared(annexBEndOfStreamDesc);
 }
 
+static Result NRI_CALL WriteVideoAV1ObuHeaders(VideoAV1ObuHeadersDesc& av1ObuHeadersDesc) {
+    return WriteVideoAV1ObuHeadersShared(av1ObuHeadersDesc);
+}
+
 static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDecodeDesc& videoDecodeDesc) {
     ((CommandBufferVK&)commandBuffer).DecodeVideo(videoDecodeDesc);
 }
@@ -1332,6 +1336,7 @@ Result DeviceVK::FillFunctionTable(VideoInterface& table) const {
     table.GetVideoEncodePictureStates = ::GetVideoEncodePictureStates;
     table.WriteVideoAnnexBParameterSets = ::WriteVideoAnnexBParameterSets;
     table.WriteVideoAnnexBEndOfStream = ::WriteVideoAnnexBEndOfStream;
+    table.WriteVideoAV1ObuHeaders = ::WriteVideoAV1ObuHeaders;
     table.CmdDecodeVideo = ::CmdDecodeVideo;
     table.CmdEncodeVideo = ::CmdEncodeVideo;
     table.CmdResolveVideoEncodeFeedback = ::CmdResolveVideoEncodeFeedback;

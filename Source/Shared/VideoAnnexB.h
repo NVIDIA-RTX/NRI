@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "VideoAV1.h"
+
 namespace nri {
 
 namespace video_annex_b {
@@ -365,6 +367,268 @@ inline Result WriteH265AnnexBEndOfStream(ByteWriter& bytes) {
     return Result::SUCCESS;
 }
 
+struct ObuBitWriter {
+    ByteWriter& bytes;
+    uint8_t byte = 0;
+    uint8_t bitCount = 0;
+
+    void WriteBit(uint32_t bit) {
+        if (bitCount == 0)
+            byte = 0;
+        if (bit & 1)
+            byte |= uint8_t(1u << (7u - bitCount));
+        bitCount++;
+        if (bitCount == 8) {
+            bytes.WriteByte(byte);
+            bitCount = 0;
+        }
+    }
+
+    void WriteBits(uint64_t value, uint32_t count) {
+        for (uint32_t i = 0; i < count; i++)
+            WriteBit((uint32_t)((value >> (count - i - 1u)) & 1u));
+    }
+
+    void WriteUvlc(uint32_t value) {
+        const uint32_t codeNum = value + 1u;
+        uint32_t bitNum = 0;
+        for (uint32_t temp = codeNum; temp; temp >>= 1)
+            bitNum++;
+        for (uint32_t i = 1; i < bitNum; i++)
+            WriteBit(0);
+        WriteBits(codeNum, bitNum);
+    }
+
+    void FinishBits() {
+        WriteBit(1);
+        while (bitCount != 0)
+            WriteBit(0);
+    }
+};
+
+inline void WriteLeb128(ByteWriter& bytes, uint64_t value) {
+    do {
+        uint8_t byte = uint8_t(value & 0x7F);
+        value >>= 7;
+        if (value)
+            byte |= 0x80;
+        bytes.WriteByte(byte);
+    } while (value);
+}
+
+inline void AppendAv1ObuHeader(ByteWriter& bytes, video_av1::ObuType type, uint64_t payloadSize) {
+    bytes.WriteByte((uint8_t(type) << 3) | 0x2);
+    WriteLeb128(bytes, payloadSize);
+}
+
+inline uint8_t GetAv1LevelIndex(uint8_t level, uint32_t width, uint32_t height) {
+    switch (level) {
+        case 20:
+            return 0;
+        case 21:
+            return 1;
+        case 30:
+            return 4;
+        case 31:
+            return 5;
+        case 40:
+            return 8;
+        case 41:
+            return 9;
+        case 50:
+            return 12;
+        case 51:
+            return 13;
+        case 52:
+            return 14;
+        case 53:
+            return 15;
+        case 60:
+            return 16;
+        case 61:
+            return 17;
+        case 62:
+            return 18;
+        case 63:
+            return 19;
+        case 70:
+            return 20;
+        case 71:
+            return 21;
+        case 72:
+            return 22;
+        case 73:
+            return 23;
+        default:
+            break;
+    }
+
+    const uint64_t samples = uint64_t(width) * height;
+    if (samples <= 512ull * 288ull)
+        return 0;
+    if (samples <= 704ull * 396ull)
+        return 1;
+    if (samples <= 1088ull * 612ull)
+        return 4;
+    if (samples <= 1376ull * 774ull)
+        return 5;
+    if (samples <= 2048ull * 1152ull)
+        return 8;
+    if (samples <= 4096ull * 2176ull)
+        return 12;
+
+    return 13;
+}
+
+inline void WriteAv1ColorConfig(ObuBitWriter& writer, const VideoAV1SequenceDesc& desc) {
+    const bool highBitdepth = desc.bitDepth > 8;
+    const bool twelveBit = desc.bitDepth > 10;
+    const bool monochrome = !!(desc.flags & VideoAV1SequenceBits::MONO_CHROME);
+    const bool colorDescriptionPresent = !!(desc.flags & VideoAV1SequenceBits::COLOR_DESCRIPTION_PRESENT);
+
+    writer.WriteBit(highBitdepth);
+    if (desc.seqProfile == 2 && highBitdepth)
+        writer.WriteBit(twelveBit);
+    if (desc.seqProfile != video_av1::PROFILE_HIGH)
+        writer.WriteBit(monochrome);
+
+    writer.WriteBit(colorDescriptionPresent);
+    if (colorDescriptionPresent) {
+        writer.WriteBits(desc.colorPrimaries, 8);
+        writer.WriteBits(desc.transferCharacteristics, 8);
+        writer.WriteBits(desc.matrixCoefficients, 8);
+    }
+
+    writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::COLOR_RANGE));
+    if (monochrome) {
+        writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::SEPARATE_UV_DELTA_Q));
+        return;
+    }
+
+    if (desc.seqProfile == 2) {
+        if (twelveBit) {
+            writer.WriteBit(desc.subsamplingX);
+            if (desc.subsamplingX)
+                writer.WriteBit(desc.subsamplingY);
+        }
+    }
+
+    if (desc.subsamplingX && desc.subsamplingY)
+        writer.WriteBits(desc.chromaSamplePosition, 2);
+
+    writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::SEPARATE_UV_DELTA_Q));
+}
+
+inline Result WriteAv1SequenceHeaderPayload(const VideoAV1SequenceDesc& desc, ByteWriter& bytes) {
+    if (desc.seqProfile > 2 || (desc.bitDepth != 8 && desc.bitDepth != 10 && desc.bitDepth != 12) || desc.frameWidthBitsMinus1 > 15 || desc.frameHeightBitsMinus1 > 15)
+        return Result::INVALID_ARGUMENT;
+    if ((uint32_t)desc.maxFrameWidthMinus1 >= (1u << (desc.frameWidthBitsMinus1 + 1u)) || (uint32_t)desc.maxFrameHeightMinus1 >= (1u << (desc.frameHeightBitsMinus1 + 1u)))
+        return Result::INVALID_ARGUMENT;
+
+    const bool reducedStillPictureHeader = !!(desc.flags & VideoAV1SequenceBits::REDUCED_STILL_PICTURE_HEADER);
+    const bool timingInfoPresent = !!(desc.flags & VideoAV1SequenceBits::TIMING_INFO_PRESENT);
+    const bool initialDisplayDelayPresent = !!(desc.flags & VideoAV1SequenceBits::INITIAL_DISPLAY_DELAY_PRESENT);
+    const bool enableOrderHint = !!(desc.flags & VideoAV1SequenceBits::ENABLE_ORDER_HINT);
+    const bool frameIdNumbersPresent = !!(desc.flags & VideoAV1SequenceBits::FRAME_ID_NUMBERS_PRESENT);
+    if (desc.seqForceScreenContentTools > video_av1::SELECT_SCREEN_CONTENT_TOOLS || desc.seqForceIntegerMv > video_av1::SELECT_SCREEN_CONTENT_TOOLS)
+        return Result::INVALID_ARGUMENT;
+
+    const bool selectScreenContentTools = desc.seqForceScreenContentTools == video_av1::SELECT_SCREEN_CONTENT_TOOLS;
+    const bool selectIntegerMv = desc.seqForceIntegerMv == video_av1::SELECT_SCREEN_CONTENT_TOOLS;
+    const uint8_t levelIndex = GetAv1LevelIndex(desc.level, uint32_t(desc.maxFrameWidthMinus1) + 1u, uint32_t(desc.maxFrameHeightMinus1) + 1u);
+
+    ObuBitWriter writer = {bytes};
+    writer.WriteBits(desc.seqProfile, 3);
+    writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::STILL_PICTURE));
+    writer.WriteBit(reducedStillPictureHeader);
+    if (reducedStillPictureHeader) {
+        writer.WriteBits(levelIndex, 5);
+    } else {
+        writer.WriteBit(timingInfoPresent);
+        if (timingInfoPresent) {
+            writer.WriteBits(desc.numUnitsInDisplayTick, 32);
+            writer.WriteBits(desc.timeScale, 32);
+            writer.WriteBit(desc.numTicksPerPictureMinus1 != 0);
+            if (desc.numTicksPerPictureMinus1 != 0)
+                writer.WriteUvlc(desc.numTicksPerPictureMinus1);
+            writer.WriteBit(0); // decoder_model_info_present_flag
+        }
+
+        writer.WriteBit(initialDisplayDelayPresent);
+        writer.WriteBits(0, 5);  // operating_points_cnt_minus_1
+        writer.WriteBits(0, 12); // operating_point_idc[0]
+        writer.WriteBits(levelIndex, 5);
+        if (levelIndex > 7)
+            writer.WriteBit(0); // seq_tier[0]
+        if (initialDisplayDelayPresent)
+            writer.WriteBit(0); // initial_display_delay_present_for_this_op[0]
+    }
+
+    writer.WriteBits(desc.frameWidthBitsMinus1, 4);
+    writer.WriteBits(desc.frameHeightBitsMinus1, 4);
+    writer.WriteBits(desc.maxFrameWidthMinus1, desc.frameWidthBitsMinus1 + 1u);
+    writer.WriteBits(desc.maxFrameHeightMinus1, desc.frameHeightBitsMinus1 + 1u);
+
+    if (!reducedStillPictureHeader) {
+        writer.WriteBit(frameIdNumbersPresent);
+        if (frameIdNumbersPresent) {
+            writer.WriteBits(desc.deltaFrameIdLengthMinus2, 4);
+            writer.WriteBits(desc.additionalFrameIdLengthMinus1, 3);
+        }
+    }
+
+    writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::USE_128X128_SUPERBLOCK));
+    writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::ENABLE_FILTER_INTRA));
+    writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::ENABLE_INTRA_EDGE_FILTER));
+    if (!reducedStillPictureHeader) {
+        writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::ENABLE_INTERINTRA_COMPOUND));
+        writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::ENABLE_MASKED_COMPOUND));
+        writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::ENABLE_WARPED_MOTION));
+        writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::ENABLE_DUAL_FILTER));
+        writer.WriteBit(enableOrderHint);
+        if (enableOrderHint) {
+            writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::ENABLE_JNT_COMP));
+            writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::ENABLE_REF_FRAME_MVS));
+        }
+
+        writer.WriteBit(selectScreenContentTools);
+        if (!selectScreenContentTools)
+            writer.WriteBit(desc.seqForceScreenContentTools);
+        if (desc.seqForceScreenContentTools != 0) {
+            writer.WriteBit(selectIntegerMv);
+            if (!selectIntegerMv)
+                writer.WriteBit(desc.seqForceIntegerMv);
+        }
+        if (enableOrderHint)
+            writer.WriteBits(desc.orderHintBitsMinus1, 3);
+    }
+
+    writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::ENABLE_SUPERRES));
+    writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::ENABLE_CDEF));
+    writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::ENABLE_RESTORATION));
+    WriteAv1ColorConfig(writer, desc);
+    writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::FILM_GRAIN_PARAMS_PRESENT));
+    writer.FinishBits();
+
+    return Result::SUCCESS;
+}
+
+inline Result WriteAv1SequenceHeaderObu(const VideoAV1SequenceDesc& desc, ByteWriter& bytes) {
+    ByteWriter payloadCounter = {};
+    Result result = WriteAv1SequenceHeaderPayload(desc, payloadCounter);
+    if (result != Result::SUCCESS)
+        return result;
+
+    AppendAv1ObuHeader(bytes, video_av1::ObuType::SequenceHeader, payloadCounter.writtenSize);
+
+    return WriteAv1SequenceHeaderPayload(desc, bytes);
+}
+
+inline Result WriteAv1ObuHeaders(const VideoAV1SequenceDesc& desc, ByteWriter& bytes) {
+    AppendAv1ObuHeader(bytes, video_av1::ObuType::TemporalDelimiter, 0);
+    return WriteAv1SequenceHeaderObu(desc, bytes);
+}
+
 } // namespace video_annex_b
 
 inline Result WriteVideoAnnexBParameterSetsShared(VideoAnnexBParameterSetsDesc& desc) {
@@ -392,6 +656,27 @@ inline Result WriteVideoAnnexBParameterSetsShared(VideoAnnexBParameterSetsDesc& 
     else
         result = video_annex_b::WriteH265AnnexBParameterSets(desc, byteWriter);
 
+    if (result != Result::SUCCESS)
+        return result;
+
+    return byteWriter.Finish(desc.writtenSize);
+}
+
+inline Result WriteVideoAV1ObuHeadersShared(VideoAV1ObuHeadersDesc& desc) {
+    video_annex_b::ByteWriter byteCounter = {};
+    Result result = video_annex_b::WriteAv1ObuHeaders(desc.sequence, byteCounter);
+    if (result != Result::SUCCESS)
+        return result;
+
+    desc.writtenSize = byteCounter.writtenSize;
+    if (!desc.dst)
+        return Result::SUCCESS;
+
+    if (desc.dstSize < byteCounter.writtenSize)
+        return Result::INVALID_ARGUMENT;
+
+    video_annex_b::ByteWriter byteWriter = {desc.dst, desc.dstSize};
+    result = video_annex_b::WriteAv1ObuHeaders(desc.sequence, byteWriter);
     if (result != Result::SUCCESS)
         return result;
 
