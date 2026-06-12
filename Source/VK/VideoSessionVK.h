@@ -12,10 +12,8 @@ struct VideoSessionVK final : public DebugNameBase {
     struct EncodeFeedbackPayloadReadback {
         BufferVK* resolvedMetadata = nullptr;
         uint64_t resolvedMetadataOffset = 0;
-        BufferVK* bitstream = nullptr;
         uint64_t dstBitstreamOffset = 0;
-        uint64_t size = 0;
-        bool copyHeader = false;
+        bool resolvedByCommand = false;
         bool active = false;
     };
 
@@ -54,6 +52,20 @@ struct VideoSessionVK final : public DebugNameBase {
     uint32_t m_BitstreamOffsetAlignment = 1;
     uint32_t m_BitstreamSizeAlignment = 1;
     uint32_t m_RateControlModes = 0;
+    VkVideoEncodeAV1CapabilityFlagsKHR m_AV1CapabilityFlags = 0;
+    uint32_t m_AV1MaxSingleReferenceCount = 0;
+    uint32_t m_AV1SingleReferenceNameMask = 0;
+    uint32_t m_AV1MaxUnidirectionalCompoundReferenceCount = 0;
+    uint32_t m_AV1UnidirectionalCompoundReferenceNameMask = 0;
+    uint32_t m_AV1MaxBidirectionalCompoundReferenceCount = 0;
+    uint32_t m_AV1BidirectionalCompoundReferenceNameMask = 0;
+    VkExtent2D m_AV1MaxTiles = {};
+    VkExtent2D m_AV1MinTileSize = {};
+    VkExtent2D m_AV1MaxTileSize = {};
+    uint32_t m_AV1MinQIndex = 0;
+    uint32_t m_AV1MaxQIndex = 255;
+    VkVideoEncodeAV1StdFlagsKHR m_AV1StdSyntaxFlags = 0;
+    bool m_AV1RequiresGopRemainingFrames = false;
     bool m_ResetRecorded = false;
     bool m_UseInlineSessionParameters = false;
     bool m_CanGenerateH264PrefixNalu = false;

@@ -539,15 +539,6 @@ static uint32_t BuildQueueCreateInfosVK(const QueueFamilyDesc* queueFamilies, ui
     return queueCreateInfoNum;
 }
 
-static bool IsTimeDomainSupportedVK(const VkTimeDomainKHR* domains, uint32_t domainNum, VkTimeDomainKHR domain) {
-    for (uint32_t i = 0; i < domainNum; i++) {
-        if (domains[i] == domain)
-            return true;
-    }
-
-    return false;
-}
-
 DeviceVK::DeviceVK(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks)
     : DeviceBase(callbacks, allocationCallbacks)
     , m_QueueFamilies{
@@ -737,22 +728,6 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
     if (!isWrapper)
         ProcessDeviceExtensions(desiredDeviceExts, desc.disableVKRayTracing);
-
-    bool calibratedTimestampsSupported = false;
-    if (IsExtensionSupported(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, desiredDeviceExts)) {
-        const auto getPhysicalDeviceCalibrateableTimeDomains = (PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT)m_VK.GetInstanceProcAddr(m_Instance, "vkGetPhysicalDeviceCalibrateableTimeDomainsEXT");
-        if (getPhysicalDeviceCalibrateableTimeDomains) {
-            uint32_t timeDomainNum = 0;
-            VkResult vkResult = getPhysicalDeviceCalibrateableTimeDomains(m_PhysicalDevice, &timeDomainNum, nullptr);
-            if (vkResult == VK_SUCCESS && timeDomainNum) {
-                Scratch<VkTimeDomainKHR> timeDomains = NRI_ALLOCATE_SCRATCH(*this, VkTimeDomainKHR, timeDomainNum);
-                vkResult = getPhysicalDeviceCalibrateableTimeDomains(m_PhysicalDevice, &timeDomainNum, timeDomains);
-                calibratedTimestampsSupported = vkResult == VK_SUCCESS
-                    && IsTimeDomainSupportedVK(timeDomains, timeDomainNum, VK_TIME_DOMAIN_DEVICE_KHR)
-                    && IsTimeDomainSupportedVK(timeDomains, timeDomainNum, GetCalibratedTimestampCPUTimeDomainVK());
-            }
-        }
-    }
 
     NRI_REPORT_INFO(this, "Using Vulkan v1.%u (%u device extensions initialized)", m_MinorVersion, (uint32_t)desiredDeviceExts.size());
 
@@ -2012,6 +1987,7 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(FreeCommandBuffers);
     GET_DEVICE_CORE_FUNC(MapMemory);
     GET_DEVICE_CORE_FUNC(FlushMappedMemoryRanges);
+    GET_DEVICE_CORE_FUNC(InvalidateMappedMemoryRanges);
     GET_DEVICE_CORE_FUNC(QueueWaitIdle);
     GET_DEVICE_CORE_FUNC(QueueSubmit2);
     GET_DEVICE_CORE_FUNC(GetSemaphoreCounterValue);
@@ -2145,8 +2121,10 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     if (IsExtensionSupported(VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME, desiredDeviceExts))
         GET_DEVICE_FUNC(CmdDecodeVideoKHR);
 
-    if (IsExtensionSupported(VK_KHR_VIDEO_ENCODE_QUEUE_EXTENSION_NAME, desiredDeviceExts))
+    if (IsExtensionSupported(VK_KHR_VIDEO_ENCODE_QUEUE_EXTENSION_NAME, desiredDeviceExts)) {
+        GET_DEVICE_FUNC(GetEncodedVideoSessionParametersKHR);
         GET_DEVICE_FUNC(CmdEncodeVideoKHR);
+    }
 
     if (IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, desiredDeviceExts)) {
         GET_DEVICE_FUNC(GetLatencyTimingsNV);

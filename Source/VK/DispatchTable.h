@@ -99,6 +99,7 @@ struct DispatchTable {
     VK_FUNC(FreeCommandBuffers);                          // - | +
     VK_FUNC(MapMemory);                                   // - | +
     VK_FUNC(FlushMappedMemoryRanges);                     // + | +
+    VK_FUNC(InvalidateMappedMemoryRanges);                // + | +
     VK_FUNC(QueueWaitIdle);                               // - | + may return "VK_ERROR_DEVICE_LOST"
     VK_FUNC(QueueSubmit2);                                // - | + may return "VK_ERROR_DEVICE_LOST"
     VK_FUNC(GetSemaphoreCounterValue);                    // + | + TODO: may return "VK_ERROR_DEVICE_LOST"
@@ -209,6 +210,7 @@ struct DispatchTable {
     VK_FUNC(BindVideoSessionMemoryKHR);                   // + | +
     VK_FUNC(CreateVideoSessionParametersKHR);             // + | +
     VK_FUNC(DestroyVideoSessionParametersKHR);            // - | +
+    VK_FUNC(GetEncodedVideoSessionParametersKHR);         // + | +
     VK_FUNC(CmdBeginVideoCodingKHR);                      // - | +
     VK_FUNC(CmdControlVideoCodingKHR);                    // - | +
     VK_FUNC(CmdEndVideoCodingKHR);                        // - | +

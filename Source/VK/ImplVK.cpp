@@ -1238,13 +1238,58 @@ static Result NRI_CALL GetVideoEncodeFeedback(VideoSession& videoSession, Buffer
     if (session.m_EncodeFeedbackQueryPool == VK_NULL_HANDLE)
         return Result::UNSUPPORTED;
 
-    const void* metadata = ((BufferVK&)resolvedMetadataReadback).Map(resolvedMetadataOffset, sizeof(VideoEncodeFeedback));
-    if (!metadata)
-        return Result::FAILURE;
+    BufferVK& feedbackBuffer = (BufferVK&)resolvedMetadataReadback;
+    for (uint32_t i = 0; i < VideoSessionVK::ENCODE_FEEDBACK_QUERY_NUM; i++) {
+        const VideoSessionVK::EncodeFeedbackPayloadReadback& payloadReadback = session.m_EncodeFeedbackPayloadReadbacks[i];
+        if (!payloadReadback.active || payloadReadback.resolvedMetadata != &feedbackBuffer || payloadReadback.resolvedMetadataOffset != resolvedMetadataOffset)
+            continue;
 
-    feedback = *(const VideoEncodeFeedback*)metadata;
+        if (payloadReadback.resolvedByCommand) {
+            uint32_t queryResult[3] = {};
+            const auto& vk = session.m_Device.GetDispatchTable();
+            VkResult result = vk.GetQueryPoolResults(session.m_Device, session.m_EncodeFeedbackQueryPool, i, 1, sizeof(queryResult), queryResult, sizeof(queryResult),
+                VK_QUERY_RESULT_WITH_STATUS_BIT_KHR);
+            if (result == VK_SUCCESS) {
+                FillVideoEncodeFeedbackVK(feedback, queryResult, payloadReadback.dstBitstreamOffset);
+                session.m_EncodeFeedbackPayloadReadbacks[i] = {};
+                return Result::SUCCESS;
+            }
 
-    return Result::SUCCESS;
+            constexpr uint64_t queryResultSize = sizeof(uint32_t) * 3;
+            const uint64_t queryResultOffset = resolvedMetadataOffset + sizeof(VideoEncodeFeedback);
+            const void* metadata = feedbackBuffer.Map(queryResultOffset, queryResultSize);
+            if (!metadata)
+                return Result::FAILURE;
+
+            const uint32_t* mappedQueryResult = (const uint32_t*)metadata;
+            if (!mappedQueryResult[0] && !mappedQueryResult[1] && !mappedQueryResult[2]) {
+                feedback = {};
+                feedback.errorFlags = (uint64_t)result;
+
+                return Result::SUCCESS;
+            }
+
+            FillVideoEncodeFeedbackVK(feedback, mappedQueryResult, payloadReadback.dstBitstreamOffset);
+            session.m_EncodeFeedbackPayloadReadbacks[i] = {};
+            return Result::SUCCESS;
+        }
+
+        uint32_t queryResult[3] = {};
+        const auto& vk = session.m_Device.GetDispatchTable();
+        VkResult result = vk.GetQueryPoolResults(session.m_Device, session.m_EncodeFeedbackQueryPool, i, 1, sizeof(queryResult), queryResult, sizeof(queryResult),
+            VK_QUERY_RESULT_WITH_STATUS_BIT_KHR);
+
+        feedback = {};
+        if (result == VK_SUCCESS) {
+            FillVideoEncodeFeedbackVK(feedback, queryResult, payloadReadback.dstBitstreamOffset);
+            session.m_EncodeFeedbackPayloadReadbacks[i] = {};
+        } else
+            feedback.errorFlags = (uint64_t)result;
+
+        return Result::SUCCESS;
+    }
+
+    return Result::FAILURE;
 }
 
 static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolvedMetadataReadback, uint64_t resolvedMetadataOffset, const VideoAV1EncodeDecodeInfoDesc& desc, VideoAV1EncodeDecodeInfo& info) {
@@ -1276,6 +1321,7 @@ Result DeviceVK::FillFunctionTable(VideoInterface& table) const {
         return Result::UNSUPPORTED;
 
     table.GetVideoCapabilities = ::GetVideoCapabilities;
+    table.GetVideoAV1Capabilities = ::GetVideoAV1Capabilities;
     table.CreateVideoSession = ::CreateVideoSession;
     table.DestroyVideoSession = ::DestroyVideoSession;
     table.CreateVideoSessionParameters = ::CreateVideoSessionParameters;

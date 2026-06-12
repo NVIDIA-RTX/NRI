@@ -20,9 +20,9 @@
 #include "QueueVal.h"
 #include "SwapChainVal.h"
 #include "TextureVal.h"
-#include "VideoSessionVal.h"
-#include "VideoSessionParametersVal.h"
 #include "VideoPictureVal.h"
+#include "VideoSessionParametersVal.h"
+#include "VideoSessionVal.h"
 
 #include "HelperInterface.h"
 #include "ImguiInterface.h"
@@ -50,9 +50,9 @@ using namespace nri;
 #include "QueueVal.hpp"
 #include "SwapChainVal.hpp"
 #include "TextureVal.hpp"
-#include "VideoSessionVal.hpp"
-#include "VideoSessionParametersVal.hpp"
 #include "VideoPictureVal.hpp"
+#include "VideoSessionParametersVal.hpp"
+#include "VideoSessionVal.hpp"
 
 DeviceBase* CreateDeviceValidation(const DeviceCreationDesc& desc, DeviceBase& device) {
     DeviceVal* deviceVal = Allocate<DeviceVal>(desc.allocationCallbacks, desc.callbackInterface, desc.allocationCallbacks, device);
@@ -1217,6 +1217,11 @@ static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSes
     return deviceVal.GetVideoInterfaceImpl().GetVideoCapabilities(deviceVal.GetImpl(), videoSessionDesc, videoCapabilities);
 }
 
+static Result NRI_CALL GetVideoAV1Capabilities(const Device& device, const VideoSessionDesc& videoSessionDesc, VideoAV1Capabilities& videoAV1Capabilities) {
+    const DeviceVal& deviceVal = (const DeviceVal&)device;
+    return deviceVal.GetVideoInterfaceImpl().GetVideoAV1Capabilities(deviceVal.GetImpl(), videoSessionDesc, videoAV1Capabilities);
+}
+
 static Result NRI_CALL CreateVideoSession(Device& device, const VideoSessionDesc& videoSessionDesc, VideoSession*& videoSession) {
     DeviceVal& deviceVal = (DeviceVal&)device;
     VideoSession* videoSessionImpl = nullptr;
@@ -1224,7 +1229,7 @@ static Result NRI_CALL CreateVideoSession(Device& device, const VideoSessionDesc
     if (result != Result::SUCCESS)
         return result;
 
-    videoSession = (VideoSession*)Allocate<VideoSessionVal>(deviceVal.GetAllocationCallbacks(), deviceVal, videoSessionImpl);
+    videoSession = (VideoSession*)Allocate<VideoSessionVal>(deviceVal.GetAllocationCallbacks(), deviceVal, videoSessionImpl, videoSessionDesc);
     return Result::SUCCESS;
 }
 
@@ -1328,6 +1333,11 @@ static void NRI_CALL CmdResolveVideoEncodeFeedback(CommandBuffer& commandBuffer,
     VideoSessionVal& videoSessionVal = (VideoSessionVal&)videoSession;
     BufferVal& resolvedMetadataVal = (BufferVal&)resolvedMetadata;
 
+    if (videoSessionVal.GetDesc().type != VideoSessionType::ENCODE) {
+        NRI_REPORT_ERROR(&commandBufferVal.GetDevice(), "'videoSession' must be an encode session");
+        return;
+    }
+
     commandBufferVal.GetVideoInterfaceImpl().CmdResolveVideoEncodeFeedback(*commandBufferVal.GetImpl(), *videoSessionVal.GetImpl(), *resolvedMetadataVal.GetImpl(), resolvedMetadataOffset);
 }
 
@@ -1341,6 +1351,27 @@ static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession& videoSession, B
     const VideoAV1EncodeDecodeInfoDesc& desc, VideoAV1EncodeDecodeInfo& info) {
     if (!desc.feedback || !desc.sequence)
         return Result::INVALID_ARGUMENT;
+    if ((desc.references == nullptr) != (desc.referenceNum == 0) || desc.referenceNum > 8)
+        return Result::INVALID_ARGUMENT;
+    uint32_t referenceNameMask = 0;
+    uint32_t refFrameIndexMask = 0;
+    for (uint32_t i = 0; i < desc.referenceNum; i++) {
+        if (desc.references[i].refFrameIndex >= 8 || (uint8_t)desc.references[i].name >= (uint8_t)VideoAV1ReferenceName::MAX_NUM)
+            return Result::INVALID_ARGUMENT;
+        const uint32_t refFrameIndexBit = 1u << desc.references[i].refFrameIndex;
+        if (refFrameIndexMask & refFrameIndexBit)
+            return Result::INVALID_ARGUMENT;
+
+        refFrameIndexMask |= refFrameIndexBit;
+        if (desc.references[i].name == VideoAV1ReferenceName::NONE)
+            continue;
+
+        const uint32_t referenceNameBit = 1u << (uint8_t)desc.references[i].name;
+        if (referenceNameMask & referenceNameBit)
+            return Result::INVALID_ARGUMENT;
+
+        referenceNameMask |= referenceNameBit;
+    }
 
     VideoSessionVal& videoSessionVal = (VideoSessionVal&)videoSession;
     BufferVal& resolvedMetadataReadbackVal = (BufferVal&)resolvedMetadataReadback;
@@ -1352,6 +1383,7 @@ Result DeviceVal::FillFunctionTable(VideoInterface& table) const {
         return Result::UNSUPPORTED;
 
     table.GetVideoCapabilities = ::GetVideoCapabilities;
+    table.GetVideoAV1Capabilities = ::GetVideoAV1Capabilities;
     table.CreateVideoSession = ::CreateVideoSession;
     table.DestroyVideoSession = ::DestroyVideoSession;
     table.CreateVideoSessionParameters = ::CreateVideoSessionParameters;

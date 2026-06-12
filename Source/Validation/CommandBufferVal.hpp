@@ -885,6 +885,181 @@ NRI_INLINE void CommandBufferVal::DrawMeshTasksIndirect(const Buffer& buffer, ui
     GetMeshShaderInterfaceImpl().CmdDrawMeshTasksIndirect(*GetImpl(), *bufferImpl, offset, drawNum, stride, countBufferImpl, countBufferOffset);
 }
 
+static inline bool IsVideoAV1ReferenceNameValid(VideoAV1ReferenceName name) {
+    return (uint8_t)name < (uint8_t)VideoAV1ReferenceName::MAX_NUM;
+}
+
+static inline bool IsVideoEncodeFrameTypeValid(VideoEncodeFrameType frameType) {
+    return (uint8_t)frameType < (uint8_t)VideoEncodeFrameType::MAX_NUM;
+}
+
+static inline bool HasVideoReferenceSlot(const VideoReference* references, uint32_t referenceNum, uint32_t slot) {
+    for (uint32_t i = 0; i < referenceNum; i++) {
+        if (references[i].slot == slot)
+            return true;
+    }
+
+    return false;
+}
+
+static inline bool HasVideoAV1ReferenceName(const VideoAV1ReferenceDesc* references, uint32_t referenceNum, VideoAV1ReferenceName name) {
+    for (uint32_t i = 0; i < referenceNum; i++) {
+        if (references[i].name == name)
+            return true;
+    }
+
+    return false;
+}
+
+static inline bool HasUniqueVideoAV1ReferenceKeys(const VideoAV1ReferenceDesc* references, uint32_t referenceNum) {
+    uint32_t referenceNameMask = 0;
+    uint32_t refFrameIndexMask = 0;
+    for (uint32_t i = 0; i < referenceNum; i++) {
+        const VideoAV1ReferenceDesc& reference = references[i];
+        if (reference.refFrameIndex < 8) {
+            const uint32_t refFrameIndexBit = 1u << reference.refFrameIndex;
+            if (refFrameIndexMask & refFrameIndexBit)
+                return false;
+
+            refFrameIndexMask |= refFrameIndexBit;
+        }
+
+        if (reference.name == VideoAV1ReferenceName::NONE)
+            continue;
+
+        if (!IsVideoAV1ReferenceNameValid(reference.name))
+            return false;
+
+        const uint32_t referenceNameBit = 1u << (uint8_t)reference.name;
+        if (referenceNameMask & referenceNameBit)
+            return false;
+
+        referenceNameMask |= referenceNameBit;
+    }
+
+    return true;
+}
+
+static inline const VideoAV1ReferenceDesc* FindVideoAV1ReferenceDesc(const VideoAV1ReferenceDesc* references, uint32_t referenceNum, uint32_t slot) {
+    for (uint32_t i = 0; i < referenceNum; i++) {
+        if (references[i].slot == slot)
+            return references + i;
+    }
+
+    return nullptr;
+}
+
+static inline bool IsVideoAV1TileLayoutValid(const VideoAV1TileLayoutDesc& desc) {
+    const uint32_t tileNum = uint32_t(desc.columnNum) * desc.rowNum;
+    if (desc.columnNum == 0 || desc.rowNum == 0 || tileNum > 64 || desc.contextUpdateTileId >= tileNum || desc.tileSizeBytesMinus1 > 3)
+        return false;
+
+    return desc.uniformSpacing || (desc.miColumnStarts && desc.miRowStarts && desc.widthInSuperblocksMinus1 && desc.heightInSuperblocksMinus1);
+}
+
+static inline bool IsVideoAV1LoopRestorationDescValid(const VideoAV1LoopRestorationDesc& desc) {
+    return desc.lrUvShift <= desc.lrUnitShift;
+}
+
+static inline bool IsVideoAV1InterFrameWithoutReferences(VideoEncodeFrameType frameType, uint32_t referenceNum) {
+    return (frameType == VideoEncodeFrameType::P || frameType == VideoEncodeFrameType::B) && referenceNum == 0;
+}
+
+static inline bool IsVideoAV1DecodePictureDescValid(const VideoDecodeDesc& videoDecodeDesc) {
+    const VideoAV1DecodePictureDesc& desc = *videoDecodeDesc.av1PictureDesc;
+    if (desc.tileNum == 0 || desc.tileNum > 64 || !desc.tiles)
+        return false;
+
+    if (desc.referenceNum > 8 || (desc.referenceNum != 0 && !desc.references))
+        return false;
+
+    if (desc.references && !HasUniqueVideoAV1ReferenceKeys(desc.references, desc.referenceNum))
+        return false;
+
+    if (desc.frameHeaderOffset >= videoDecodeDesc.bitstream.size)
+        return false;
+
+    if (!IsVideoEncodeFrameTypeValid(desc.frameType))
+        return false;
+
+    if (IsVideoAV1InterFrameWithoutReferences(desc.frameType, videoDecodeDesc.referenceNum))
+        return false;
+
+    for (uint32_t i = 0; i < desc.tileNum; i++) {
+        const VideoAV1DecodeTileDesc& tile = desc.tiles[i];
+        if (tile.offset >= videoDecodeDesc.bitstream.size || tile.size > videoDecodeDesc.bitstream.size - tile.offset)
+            return false;
+    }
+
+    if (!IsVideoAV1ReferenceNameValid(desc.primaryReferenceName))
+        return false;
+
+    if (desc.tileLayout && !IsVideoAV1TileLayoutValid(*desc.tileLayout))
+        return false;
+
+    if (desc.loopRestoration && !IsVideoAV1LoopRestorationDescValid(*desc.loopRestoration))
+        return false;
+
+    for (uint32_t i = 0; i < desc.referenceNum; i++) {
+        const VideoAV1ReferenceDesc& reference = desc.references[i];
+        if (!IsVideoAV1ReferenceNameValid(reference.name) || !IsVideoEncodeFrameTypeValid(reference.frameType) || reference.refFrameIndex >= 8)
+            return false;
+
+        if (reference.name != VideoAV1ReferenceName::NONE && !HasVideoReferenceSlot(videoDecodeDesc.references, videoDecodeDesc.referenceNum, reference.slot))
+            return false;
+    }
+
+    for (uint32_t i = 0; i < videoDecodeDesc.referenceNum; i++) {
+        const VideoAV1ReferenceDesc* reference = FindVideoAV1ReferenceDesc(desc.references, desc.referenceNum, videoDecodeDesc.references[i].slot);
+        if (!reference || reference->name == VideoAV1ReferenceName::NONE)
+            return false;
+    }
+
+    return desc.primaryReferenceName == VideoAV1ReferenceName::NONE || HasVideoAV1ReferenceName(desc.references, desc.referenceNum, desc.primaryReferenceName);
+}
+
+static inline bool IsVideoAV1EncodePictureDescValid(const VideoEncodeDesc& videoEncodeDesc) {
+    const VideoAV1PictureDesc& desc = *videoEncodeDesc.av1PictureDesc;
+    if (desc.referenceNum > 8 || (desc.referenceNum != 0 && !desc.references))
+        return false;
+
+    if (desc.references && !HasUniqueVideoAV1ReferenceKeys(desc.references, desc.referenceNum))
+        return false;
+
+    if (!IsVideoAV1ReferenceNameValid(desc.primaryReferenceName))
+        return false;
+
+    if (desc.tileLayout && !IsVideoAV1TileLayoutValid(*desc.tileLayout))
+        return false;
+
+    if (desc.loopRestoration && !IsVideoAV1LoopRestorationDescValid(*desc.loopRestoration))
+        return false;
+
+    if (desc.refreshFrameFlags && !videoEncodeDesc.reconstructedPicture)
+        return false;
+
+    const VideoEncodeFrameType frameType = videoEncodeDesc.pictureDesc ? videoEncodeDesc.pictureDesc->frameType : VideoEncodeFrameType::IDR;
+    if (!IsVideoEncodeFrameTypeValid(frameType))
+        return false;
+
+    if ((frameType == VideoEncodeFrameType::IDR || frameType == VideoEncodeFrameType::I) && videoEncodeDesc.referenceNum)
+        return false;
+
+    for (uint32_t i = 0; i < desc.referenceNum; i++) {
+        const VideoAV1ReferenceDesc& reference = desc.references[i];
+        if (!IsVideoAV1ReferenceNameValid(reference.name) || !IsVideoEncodeFrameTypeValid(reference.frameType) || reference.refFrameIndex >= 8 || !HasVideoReferenceSlot(videoEncodeDesc.references, videoEncodeDesc.referenceNum, reference.slot))
+            return false;
+    }
+
+    for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {
+        const VideoAV1ReferenceDesc* reference = FindVideoAV1ReferenceDesc(desc.references, desc.referenceNum, videoEncodeDesc.references[i].slot);
+        if (!reference)
+            return false;
+    }
+
+    return desc.primaryReferenceName == VideoAV1ReferenceName::NONE || HasVideoAV1ReferenceName(desc.references, desc.referenceNum, desc.primaryReferenceName);
+}
+
 NRI_INLINE void CommandBufferVal::DecodeVideo(const VideoDecodeDesc& videoDecodeDesc) {
     if (!videoDecodeDesc.session || !videoDecodeDesc.parameters || !videoDecodeDesc.bitstream.buffer || !videoDecodeDesc.bitstream.size || !videoDecodeDesc.dstPicture) {
         NRI_REPORT_ERROR(&m_Device, "'session', 'parameters', 'bitstream.buffer', 'bitstream.size' and 'dstPicture' must be valid");
@@ -903,6 +1078,11 @@ NRI_INLINE void CommandBufferVal::DecodeVideo(const VideoDecodeDesc& videoDecode
 
     if (videoDecodeDesc.argumentNum != 0 && !videoDecodeDesc.arguments) {
         NRI_REPORT_ERROR(&m_Device, "'arguments' is NULL");
+        return;
+    }
+
+    if (videoDecodeDesc.av1PictureDesc && !IsVideoAV1DecodePictureDescValid(videoDecodeDesc)) {
+        NRI_REPORT_ERROR(&m_Device, "'av1PictureDesc' is invalid");
         return;
     }
 
@@ -942,6 +1122,11 @@ NRI_INLINE void CommandBufferVal::EncodeVideo(const VideoEncodeDesc& videoEncode
         return;
     }
 
+    if (videoEncodeDesc.bitstreamMetadataSize > UINT32_MAX) {
+        NRI_REPORT_ERROR(&m_Device, "'bitstreamMetadataSize' exceeds the video encode metadata range");
+        return;
+    }
+
     if (videoEncodeDesc.referenceNum != 0 && !videoEncodeDesc.references) {
         NRI_REPORT_ERROR(&m_Device, "'references' is NULL");
         return;
@@ -959,6 +1144,27 @@ NRI_INLINE void CommandBufferVal::EncodeVideo(const VideoEncodeDesc& videoEncode
 
     if (videoEncodeDesc.av1PictureDesc && (videoEncodeDesc.av1PictureDesc->referenceNum != 0) != (videoEncodeDesc.referenceNum != 0)) {
         NRI_REPORT_ERROR(&m_Device, "'av1PictureDesc->referenceNum' must match whether 'references' are provided");
+        return;
+    }
+
+    const VideoSessionVal& sessionVal = *(VideoSessionVal*)videoEncodeDesc.session;
+    VideoEncodeFrameType frameType = videoEncodeDesc.pictureDesc ? videoEncodeDesc.pictureDesc->frameType : VideoEncodeFrameType::IDR;
+
+    if (videoEncodeDesc.flags & VideoEncodeBits::FORCE_KEY_FRAME)
+        frameType = VideoEncodeFrameType::IDR;
+
+    if (!IsVideoEncodeFrameTypeValid(frameType)) {
+        NRI_REPORT_ERROR(&m_Device, "'pictureDesc->frameType' is invalid");
+        return;
+    }
+
+    if (sessionVal.GetDesc().codec == VideoCodec::AV1 && IsVideoAV1InterFrameWithoutReferences(frameType, videoEncodeDesc.referenceNum)) {
+        NRI_REPORT_ERROR(&m_Device, "AV1 P and B frames require at least one reference");
+        return;
+    }
+
+    if (videoEncodeDesc.av1PictureDesc && !IsVideoAV1EncodePictureDescValid(videoEncodeDesc)) {
+        NRI_REPORT_ERROR(&m_Device, "'av1PictureDesc' is invalid");
         return;
     }
 

@@ -77,6 +77,7 @@ struct VideoSessionParametersVK final : public DebugNameBase {
     StdVideoAV1ColorConfig m_AV1ColorConfig = {};
     StdVideoAV1TimingInfo m_AV1TimingInfo = {};
     StdVideoAV1SequenceHeader m_AV1SequenceHeader = {};
+    StdVideoEncodeAV1DecoderModelInfo m_AV1DecoderModelInfo = {};
     StdVideoEncodeAV1OperatingPointInfo m_AV1OperatingPoint = {};
     const VideoH265SessionParametersDesc* m_H265Parameters = nullptr;
     const VideoAV1SessionParametersDesc* m_AV1Parameters = nullptr;

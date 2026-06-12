@@ -1155,6 +1155,28 @@ inline bool IsVideoEncodeResolvedMetadataRangeValidD3D12(uint64_t bufferSize, ui
     return offset <= bufferSize && requiredSize <= bufferSize - offset;
 }
 
+static bool CanCreateVideoDecodeSessionD3D12(ID3D12VideoDevice* videoDevice, const VideoSessionDesc& videoSessionDesc, const D3D12_VIDEO_DECODE_CONFIGURATION& configuration) {
+    D3D12_VIDEO_DECODER_DESC decoderDesc = {};
+    decoderDesc.Configuration = configuration;
+
+    ComPtr<ID3D12VideoDecoderBest> decoder;
+    HRESULT hr = videoDevice->CreateVideoDecoder(&decoderDesc, __uuidof(ID3D12VideoDecoderBest), (void**)&decoder);
+    if (FAILED(hr))
+        return false;
+
+    D3D12_VIDEO_DECODER_HEAP_DESC heapDesc = {};
+    heapDesc.Configuration = configuration;
+    heapDesc.DecodeWidth = videoSessionDesc.width;
+    heapDesc.DecodeHeight = videoSessionDesc.height;
+    heapDesc.Format = GetDxgiFormat(videoSessionDesc.format).typed;
+    heapDesc.MaxDecodePictureBufferCount = videoSessionDesc.maxReferenceNum ? videoSessionDesc.maxReferenceNum : 1;
+
+    ComPtr<ID3D12VideoDecoderHeapBest> heap;
+    hr = videoDevice->CreateVideoDecoderHeap(&heapDesc, __uuidof(ID3D12VideoDecoderHeapBest), (void**)&heap);
+
+    return SUCCEEDED(hr);
+}
+
 static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSessionDesc& videoSessionDesc, VideoCapabilities& videoCapabilities) {
     DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
     if (videoSessionDesc.width == 0 || videoSessionDesc.height == 0 || videoSessionDesc.format == Format::UNKNOWN)
@@ -1188,12 +1210,44 @@ static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSes
         if ((decodeSupport.SupportFlags & D3D12_VIDEO_DECODE_SUPPORT_FLAG_SUPPORTED) == 0)
             return Result::UNSUPPORTED;
 
-        return (decodeSupport.ConfigurationFlags & D3D12_VIDEO_DECODE_CONFIGURATION_FLAG_REFERENCE_ONLY_ALLOCATIONS_REQUIRED) ? Result::UNSUPPORTED : Result::SUCCESS;
+        if (decodeSupport.ConfigurationFlags & D3D12_VIDEO_DECODE_CONFIGURATION_FLAG_REFERENCE_ONLY_ALLOCATIONS_REQUIRED)
+            return Result::UNSUPPORTED;
+
+        return CanCreateVideoDecodeSessionD3D12(videoDevice.GetInterface(), videoSessionDesc, configuration) ? Result::SUCCESS : Result::UNSUPPORTED;
     }
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
     if (videoSessionDesc.type == VideoSessionType::ENCODE)
         return IsVideoEncodeSessionSupportedD3D12(videoDevice, videoSessionDesc, &videoCapabilities) ? Result::SUCCESS : Result::UNSUPPORTED;
+#endif
+
+    return Result::UNSUPPORTED;
+}
+
+static Result NRI_CALL GetVideoAV1Capabilities(const Device& device, const VideoSessionDesc& videoSessionDesc, VideoAV1Capabilities& videoAV1Capabilities) {
+    videoAV1Capabilities = {};
+    if (videoSessionDesc.codec != VideoCodec::AV1)
+        return Result::UNSUPPORTED;
+    if (videoSessionDesc.width == 0 || videoSessionDesc.height == 0 || videoSessionDesc.format == Format::UNKNOWN)
+        return Result::INVALID_ARGUMENT;
+
+    DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
+    ComPtr<ID3D12VideoDevice> videoDevice;
+    HRESULT hr = deviceD3D12->QueryInterface(IID_PPV_ARGS(&videoDevice));
+    NRI_RETURN_ON_BAD_HRESULT(&deviceD3D12, hr, "ID3D12Device::QueryInterface(ID3D12VideoDevice)");
+
+    if (videoSessionDesc.type == VideoSessionType::DECODE) {
+        VideoCapabilities videoCapabilities = {};
+        Result result = GetVideoCapabilities(device, videoSessionDesc, videoCapabilities);
+        if (result == Result::SUCCESS)
+            FillVideoDecodeAV1CapabilitiesD3D12(videoAV1Capabilities);
+
+        return result;
+    }
+
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    if (videoSessionDesc.type == VideoSessionType::ENCODE)
+        return IsVideoEncodeSessionSupportedD3D12(videoDevice, videoSessionDesc, nullptr, &videoAV1Capabilities) ? Result::SUCCESS : Result::UNSUPPORTED;
 #endif
 
     return Result::UNSUPPORTED;
@@ -1549,6 +1603,7 @@ Result DeviceD3D12::FillFunctionTable(VideoInterface& table) const {
         return Result::UNSUPPORTED;
 
     table.GetVideoCapabilities = ::GetVideoCapabilities;
+    table.GetVideoAV1Capabilities = ::GetVideoAV1Capabilities;
     table.CreateVideoSession = ::CreateVideoSession;
     table.DestroyVideoSession = ::DestroyVideoSession;
     table.CreateVideoSessionParameters = ::CreateVideoSessionParameters;

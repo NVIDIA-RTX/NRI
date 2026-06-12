@@ -181,6 +181,17 @@ NriBits(VideoEncodeBits, uint8_t,
     FORCE_KEY_FRAME                         = NriBit(0)
 );
 
+NriBits(VideoAV1EncodeFeatureBits, uint32_t,
+    NONE                                    = 0,
+    ORDER_HINT_TOOLS                        = NriBit(0),
+    LOOP_RESTORATION_FILTER                 = NriBit(1),
+    FORCED_INTEGER_MOTION_VECTORS           = NriBit(2),
+    AUTO_SEGMENTATION                       = NriBit(3),
+    CDEF_FILTERING                          = NriBit(4),
+    QUANTIZATION_DELTAS                     = NriBit(5),
+    LOOP_FILTER_DELTAS                      = NriBit(6)
+);
+
 NriBits(VideoAV1SequenceBits, uint32_t,
     NONE                                    = 0,
     STILL_PICTURE                           = NriBit(0),
@@ -263,6 +274,30 @@ NriStruct(VideoCapabilities) {
     uint32_t bitstreamOffsetAlignment;
     uint32_t bitstreamSizeAlignment;
     uint64_t bitstreamSizeMax;
+};
+
+NriStruct(VideoAV1Capabilities) {
+    uint32_t av1MaxLevel;
+    uint32_t av1MaxTileColumnNum;
+    uint32_t av1MaxTileRowNum;
+    uint32_t av1MinTileWidth;
+    uint32_t av1MinTileHeight;
+    uint32_t av1MaxTileWidth;
+    uint32_t av1MaxTileHeight;
+    uint32_t av1SuperblockSizeMask;
+    uint32_t av1MaxSingleReferenceNum;
+    uint32_t av1SingleReferenceNameMask;
+    uint32_t av1MaxUnidirectionalCompoundReferenceNum;
+    uint32_t av1UnidirectionalCompoundReferenceNameMask;
+    uint32_t av1MaxBidirectionalCompoundReferenceNum;
+    uint32_t av1BidirectionalCompoundReferenceNameMask;
+    uint32_t av1MaxTemporalLayerNum;
+    uint32_t av1MaxSpatialLayerNum;
+    uint32_t av1MaxOperatingPointNum;
+    uint32_t av1MinQIndex;
+    uint32_t av1MaxQIndex;
+    Nri(VideoAV1EncodeFeatureBits) av1EncodeRequiredFeatureFlags;
+    Nri(VideoAV1EncodeFeatureBits) av1EncodeSupportedFeatureFlags;
 };
 
 NriStruct(VideoReference) {
@@ -842,7 +877,7 @@ NriStruct(VideoEncodeDesc) {
     NriPtr(VideoSessionParameters) parameters;
     NriPtr(VideoPicture) srcPicture;
     Nri(VideoBitstreamRange) dstBitstream;
-    uint64_t bitstreamMetadataSize; // D3D12: bytes of codec metadata already written before the current frame payload
+    uint64_t bitstreamMetadataSize; // bytes of codec metadata already written before the current frame payload
     NriOptional const NriPtr(VideoEncodePictureDesc) pictureDesc;
     NriOptional const NriPtr(VideoEncodeRateControlDesc) rateControlDesc;
     Nri(VideoEncodeBits) flags;
@@ -864,6 +899,7 @@ NriStruct(VideoInterface) {
     // Session
     // {
         Nri(Result)     (NRI_CALL *GetVideoCapabilities)            (const NriRef(Device) device, const NriRef(VideoSessionDesc) videoSessionDesc, NriOut NriRef(VideoCapabilities) videoCapabilities);
+        Nri(Result)     (NRI_CALL *GetVideoAV1Capabilities)         (const NriRef(Device) device, const NriRef(VideoSessionDesc) videoSessionDesc, NriOut NriRef(VideoAV1Capabilities) videoAV1Capabilities);
         Nri(Result)     (NRI_CALL *CreateVideoSession)              (NriRef(Device) device, const NriRef(VideoSessionDesc) videoSessionDesc, NriOut NriRef(VideoSession*) videoSession);
         Nri(Result)     (NRI_CALL *CreateVideoSessionParameters)    (NriRef(Device) device, const NriRef(VideoSessionParametersDesc) videoSessionParametersDesc, NriOut NriRef(VideoSessionParameters*) videoSessionParameters);
         Nri(Result)     (NRI_CALL *CreateVideoPicture)              (NriRef(Device) device, const NriRef(VideoPictureDesc) videoPictureDesc, NriOut NriRef(VideoPicture*) videoPicture);
@@ -889,7 +925,7 @@ NriStruct(VideoInterface) {
         void            (NRI_CALL *CmdDecodeVideo)                  (NriRef(CommandBuffer) commandBuffer, const NriRef(VideoDecodeDesc) videoDecodeDesc);
         void            (NRI_CALL *CmdEncodeVideo)                  (NriRef(CommandBuffer) commandBuffer, const NriRef(VideoEncodeDesc) videoEncodeDesc);
 
-        // VK: resolves feedback for the encode that used the same "resolvedMetadata" buffer and offset; the query must be host-available before this command is recorded.
+        // VK: resolves feedback for the encode that used the same "resolvedMetadata" buffer and offset.
         // D3D12: resolves feedback during "CmdEncodeVideo".
         void            (NRI_CALL *CmdResolveVideoEncodeFeedback)   (NriRef(CommandBuffer) commandBuffer, NriRef(VideoSession) videoSession, NriRef(Buffer) resolvedMetadata, uint64_t resolvedMetadataOffset);
         Nri(Result)     (NRI_CALL *GetVideoEncodeFeedback)          (NriRef(VideoSession) videoSession, NriRef(Buffer) resolvedMetadataReadback, uint64_t resolvedMetadataOffset, NriOut NriRef(VideoEncodeFeedback) feedback);

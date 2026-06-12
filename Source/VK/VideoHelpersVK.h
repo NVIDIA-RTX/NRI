@@ -81,6 +81,48 @@ inline void FillVideoCapabilitiesVK(VideoCapabilities& videoCapabilities, const 
     videoCapabilities.bitstreamSizeMax = uint64_t(-1);
 }
 
+inline VideoAV1EncodeFeatureBits GetSupportedVideoEncodeAV1FeatureFlagsVK(VkVideoEncodeAV1StdFlagsKHR stdSyntaxFlags) {
+    VideoAV1EncodeFeatureBits flags = VideoAV1EncodeFeatureBits::NONE;
+
+    if (stdSyntaxFlags & VK_VIDEO_ENCODE_AV1_STD_DELTA_Q_BIT_KHR)
+        flags |= VideoAV1EncodeFeatureBits::QUANTIZATION_DELTAS;
+
+    return flags;
+}
+
+inline uint32_t GetVideoAV1LevelFromSeqIndexVK(uint32_t seqLevelIdx) {
+    return (2 + seqLevelIdx / 4) * 10 + seqLevelIdx % 4;
+}
+
+inline void FillVideoDecodeAV1CapabilitiesVK(VideoAV1Capabilities& videoAV1Capabilities, const VkVideoDecodeAV1CapabilitiesKHR& capabilities) {
+    videoAV1Capabilities = {};
+    videoAV1Capabilities.av1MaxLevel = GetVideoAV1LevelFromSeqIndexVK(capabilities.maxLevel);
+}
+
+inline void FillVideoEncodeAV1CapabilitiesVK(VideoAV1Capabilities& videoAV1Capabilities, const VkVideoEncodeAV1CapabilitiesKHR& capabilities) {
+    videoAV1Capabilities = {};
+    videoAV1Capabilities.av1MaxLevel = GetVideoAV1LevelFromSeqIndexVK(capabilities.maxLevel);
+    videoAV1Capabilities.av1MaxTileColumnNum = capabilities.maxTiles.width;
+    videoAV1Capabilities.av1MaxTileRowNum = capabilities.maxTiles.height;
+    videoAV1Capabilities.av1MinTileWidth = capabilities.minTileSize.width;
+    videoAV1Capabilities.av1MinTileHeight = capabilities.minTileSize.height;
+    videoAV1Capabilities.av1MaxTileWidth = capabilities.maxTileSize.width;
+    videoAV1Capabilities.av1MaxTileHeight = capabilities.maxTileSize.height;
+    videoAV1Capabilities.av1SuperblockSizeMask = capabilities.superblockSizes;
+    videoAV1Capabilities.av1MaxSingleReferenceNum = capabilities.maxSingleReferenceCount;
+    videoAV1Capabilities.av1SingleReferenceNameMask = capabilities.singleReferenceNameMask;
+    videoAV1Capabilities.av1MaxUnidirectionalCompoundReferenceNum = capabilities.maxUnidirectionalCompoundReferenceCount;
+    videoAV1Capabilities.av1UnidirectionalCompoundReferenceNameMask = capabilities.unidirectionalCompoundReferenceNameMask;
+    videoAV1Capabilities.av1MaxBidirectionalCompoundReferenceNum = capabilities.maxBidirectionalCompoundReferenceCount;
+    videoAV1Capabilities.av1BidirectionalCompoundReferenceNameMask = capabilities.bidirectionalCompoundReferenceNameMask;
+    videoAV1Capabilities.av1MaxTemporalLayerNum = capabilities.maxTemporalLayerCount;
+    videoAV1Capabilities.av1MaxSpatialLayerNum = capabilities.maxSpatialLayerCount;
+    videoAV1Capabilities.av1MaxOperatingPointNum = capabilities.maxOperatingPoints;
+    videoAV1Capabilities.av1MinQIndex = capabilities.minQIndex;
+    videoAV1Capabilities.av1MaxQIndex = capabilities.maxQIndex;
+    videoAV1Capabilities.av1EncodeSupportedFeatureFlags = GetSupportedVideoEncodeAV1FeatureFlagsVK(capabilities.stdSyntaxFlags);
+}
+
 inline uint8_t GetVideoAV1ReferenceNameIndexVK(VideoAV1ReferenceName name) {
     switch (name) {
         case VideoAV1ReferenceName::NONE:
@@ -763,6 +805,36 @@ inline bool BuildVideoEncodeAV1ReferenceMappingVK(const VideoReference* referenc
     return true;
 }
 
+inline uint32_t GetVideoEncodeAV1ReferenceNameNumVK(const int32_t* referenceNameSlotIndices, uint32_t mask) {
+    uint32_t num = 0;
+    for (uint32_t i = 0; i < VK_MAX_VIDEO_AV1_REFERENCES_PER_FRAME_KHR; i++) {
+        if (referenceNameSlotIndices[i] >= 0 && (mask & (1u << i)))
+            num++;
+    }
+
+    return num;
+}
+
+inline bool HasVideoEncodeAV1ReferenceNameVK(const int32_t* referenceNameSlotIndices, uint32_t mask) {
+    return GetVideoEncodeAV1ReferenceNameNumVK(referenceNameSlotIndices, mask) != 0;
+}
+
+inline bool HasVideoEncodeAV1ReferenceNamePairVK(const int32_t* referenceNameSlotIndices, uint32_t mask, uint32_t a, uint32_t b) {
+    return referenceNameSlotIndices[a] >= 0 && referenceNameSlotIndices[b] >= 0 && (mask & (1u << a)) && (mask & (1u << b));
+}
+
+inline bool IsVideoEncodeAV1TileWidthSupportedVK(uint32_t tileWidth, const VkExtent2D& minTileSize, const VkExtent2D& maxTileSize) {
+    return tileWidth >= minTileSize.width && tileWidth <= maxTileSize.width;
+}
+
+inline bool IsVideoEncodeAV1TileHeightSupportedVK(uint32_t tileHeight, const VkExtent2D& minTileSize, const VkExtent2D& maxTileSize) {
+    return tileHeight >= minTileSize.height && tileHeight <= maxTileSize.height;
+}
+
+inline bool IsVideoEncodeAV1TileSizeSupportedVK(uint32_t tileWidth, uint32_t tileHeight, const VkExtent2D& minTileSize, const VkExtent2D& maxTileSize) {
+    return IsVideoEncodeAV1TileWidthSupportedVK(tileWidth, minTileSize, maxTileSize) && IsVideoEncodeAV1TileHeightSupportedVK(tileHeight, minTileSize, maxTileSize);
+}
+
 inline bool BuildVideoDecodeAV1ReferenceMappingVK(const VideoAV1DecodePictureDesc& pictureDesc, VideoDecodeAV1ReferenceMappingVK& mapping) {
     for (int32_t& slotIndex : mapping.referenceNameSlotIndices)
         slotIndex = -1;
@@ -929,6 +1001,90 @@ inline void FillVideoDecodeAV1GlobalMotionVK(StdVideoAV1GlobalMotion& info, cons
 
     std::memcpy(info.GmType, desc.globalMotion->type, sizeof(info.GmType));
     std::memcpy(info.gm_params, desc.globalMotion->params, sizeof(info.gm_params));
+}
+
+inline void FillVideoEncodeAV1QuantizationVK(StdVideoAV1Quantization& info, const VideoAV1PictureDesc* desc, uint32_t baseQIndex) {
+    info = {};
+    info.base_q_idx = (uint8_t)baseQIndex;
+    if (!desc || !desc->quantization)
+        return;
+
+    info.flags.using_qmatrix = desc->quantization->usingQmatrix != 0;
+    info.flags.diff_uv_delta = desc->quantization->diffUvDelta != 0;
+    info.DeltaQYDc = desc->quantization->deltaQYDc;
+    info.DeltaQUDc = desc->quantization->deltaQUDc;
+    info.DeltaQUAc = desc->quantization->deltaQUAc;
+    info.DeltaQVDc = desc->quantization->deltaQVDc;
+    info.DeltaQVAc = desc->quantization->deltaQVAc;
+    info.qm_y = desc->quantization->qmY;
+    info.qm_u = desc->quantization->qmU;
+    info.qm_v = desc->quantization->qmV;
+}
+
+inline void FillVideoEncodeAV1LoopFilterVK(StdVideoAV1LoopFilter& info, const VideoAV1PictureDesc* desc) {
+    info = {};
+    if (desc && desc->loopFilter) {
+        info.flags.loop_filter_delta_enabled = desc->loopFilter->deltaEnabled != 0;
+        info.flags.loop_filter_delta_update = desc->loopFilter->deltaUpdate != 0;
+        std::memcpy(info.loop_filter_level, desc->loopFilter->level, sizeof(info.loop_filter_level));
+        info.loop_filter_sharpness = desc->loopFilter->sharpness;
+        info.update_mode_delta = desc->loopFilter->updateModeDelta;
+        std::memcpy(info.loop_filter_ref_deltas, desc->loopFilter->refDeltas, sizeof(info.loop_filter_ref_deltas));
+        std::memcpy(info.loop_filter_mode_deltas, desc->loopFilter->modeDeltas, sizeof(info.loop_filter_mode_deltas));
+        return;
+    }
+
+    info.loop_filter_ref_deltas[0] = 1;
+    info.loop_filter_ref_deltas[4] = -1;
+    info.loop_filter_ref_deltas[6] = -1;
+    info.loop_filter_ref_deltas[7] = -1;
+}
+
+inline void FillVideoEncodeAV1CdefVK(StdVideoAV1CDEF& info, const VideoAV1PictureDesc* desc) {
+    info = {};
+    if (!desc)
+        return;
+
+    info.cdef_damping_minus_3 = desc->cdefDampingMinus3;
+    info.cdef_bits = desc->cdefBits;
+    if (!desc->cdef)
+        return;
+
+    std::memcpy(info.cdef_y_pri_strength, desc->cdef->yPrimaryStrength, sizeof(info.cdef_y_pri_strength));
+    std::memcpy(info.cdef_y_sec_strength, desc->cdef->ySecondaryStrength, sizeof(info.cdef_y_sec_strength));
+    std::memcpy(info.cdef_uv_pri_strength, desc->cdef->uvPrimaryStrength, sizeof(info.cdef_uv_pri_strength));
+    std::memcpy(info.cdef_uv_sec_strength, desc->cdef->uvSecondaryStrength, sizeof(info.cdef_uv_sec_strength));
+}
+
+inline void FillVideoEncodeAV1LoopRestorationVK(StdVideoAV1LoopRestoration& info, const VideoAV1PictureDesc* desc) {
+    info = {};
+    if (!desc || !desc->loopRestoration) {
+        info.LoopRestorationSize[0] = 1;
+        info.LoopRestorationSize[1] = 1;
+        info.LoopRestorationSize[2] = 1;
+        return;
+    }
+
+    info.FrameRestorationType[0] = (StdVideoAV1FrameRestorationType)desc->loopRestoration->frameRestorationType[0];
+    info.FrameRestorationType[1] = (StdVideoAV1FrameRestorationType)desc->loopRestoration->frameRestorationType[1];
+    info.FrameRestorationType[2] = (StdVideoAV1FrameRestorationType)desc->loopRestoration->frameRestorationType[2];
+    info.LoopRestorationSize[0] = 1 + desc->loopRestoration->lrUnitShift;
+    info.LoopRestorationSize[1] = 1 + desc->loopRestoration->lrUnitShift - desc->loopRestoration->lrUvShift;
+    info.LoopRestorationSize[2] = 1 + desc->loopRestoration->lrUnitShift - desc->loopRestoration->lrUvShift;
+}
+
+inline void FillVideoEncodeAV1GlobalMotionVK(StdVideoAV1GlobalMotion& info, const VideoAV1PictureDesc* desc) {
+    info = {};
+    for (uint32_t i = 0; i < 8; i++) {
+        info.gm_params[i][2] = 1 << 16;
+        info.gm_params[i][5] = 1 << 16;
+    }
+
+    if (!desc || !desc->globalMotion)
+        return;
+
+    std::memcpy(info.GmType, desc->globalMotion->type, sizeof(info.GmType));
+    std::memcpy(info.gm_params, desc->globalMotion->params, sizeof(info.gm_params));
 }
 
 inline void FillVideoDecodeAV1FilmGrainVK(StdVideoAV1FilmGrain& info, const VideoAV1FilmGrainDesc& desc) {

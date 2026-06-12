@@ -1566,6 +1566,12 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
             NRI_REPORT_ERROR(&m_Device, "'av1PictureDesc->tileLayout' is invalid");
             return;
         }
+
+        if (tileLayout && (tileLayout->columnNum != 1 || tileLayout->rowNum != 1)) {
+            NRI_REPORT_ERROR(&m_Device, "D3D12 AV1 encode supports only a single tile");
+            return;
+        }
+
         av1Tiles.RowCount = tileLayout ? tileLayout->rowNum : 1;
         av1Tiles.ColCount = tileLayout ? tileLayout->columnNum : 1;
         sequenceControl.FrameSubregionsLayoutData.DataSize = sizeof(av1Tiles);
@@ -1706,7 +1712,11 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
         }
         if ((session.m_AV1FeatureFlags & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_FORCED_INTEGER_MOTION_VECTORS) && (pictureFlags & VideoAV1PictureBits::FORCE_INTEGER_MV))
             av1Picture.Flags |= D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_FLAG_FORCE_INTEGER_MOTION_VECTORS;
-        if (session.m_AV1FeatureFlags & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_AUTO_SEGMENTATION)
+        if (videoEncodeDesc.av1PictureDesc && videoEncodeDesc.av1PictureDesc->segmentation) {
+            NRI_REPORT_ERROR(&m_Device, "D3D12 AV1 encode does not support explicit segmentation");
+            return;
+        }
+        if ((session.m_AV1FeatureFlags & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_AUTO_SEGMENTATION) && (pictureFlags & VideoAV1PictureBits::SEGMENTATION_ENABLED))
             av1Picture.Flags |= D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_FLAG_ENABLE_FRAME_SEGMENTATION_AUTO;
         av1Picture.FrameType = frameType;
         av1Picture.CompoundPredictionType = D3D12_VIDEO_ENCODER_AV1_COMP_PREDICTION_TYPE_SINGLE_REFERENCE;
@@ -1733,8 +1743,22 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
         av1Picture.Quantization.BaseQIndex = videoEncodeDesc.av1PictureDesc && videoEncodeDesc.av1PictureDesc->baseQIndex
             ? videoEncodeDesc.av1PictureDesc->baseQIndex
             : GetVideoEncodeQPByFrameTypeD3D12(rateControlDesc, pictureDesc.frameType);
-        if (session.m_AV1FeatureFlags & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_QUANTIZATION_DELTAS)
+        if (videoEncodeDesc.av1PictureDesc && videoEncodeDesc.av1PictureDesc->quantization) {
+            const VideoAV1QuantizationDesc& quantization = *videoEncodeDesc.av1PictureDesc->quantization;
+            av1Picture.Quantization.YDCDeltaQ = quantization.deltaQYDc;
+            av1Picture.Quantization.UDCDeltaQ = quantization.deltaQUDc;
+            av1Picture.Quantization.UACDeltaQ = quantization.deltaQUAc;
+            av1Picture.Quantization.VDCDeltaQ = quantization.deltaQVDc;
+            av1Picture.Quantization.VACDeltaQ = quantization.deltaQVAc;
+            av1Picture.Quantization.UsingQMatrix = quantization.usingQmatrix;
+            av1Picture.Quantization.QMY = quantization.qmY;
+            av1Picture.Quantization.QMU = quantization.qmU;
+            av1Picture.Quantization.QMV = quantization.qmV;
+        }
+        if (session.m_AV1FeatureFlags & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_QUANTIZATION_DELTAS) {
             av1Picture.QuantizationDelta.DeltaQPresent = !!(pictureFlags & VideoAV1PictureBits::DELTA_Q_PRESENT);
+            av1Picture.QuantizationDelta.DeltaQRes = videoEncodeDesc.av1PictureDesc ? videoEncodeDesc.av1PictureDesc->deltaQRes : 0;
+        }
         if (session.m_AV1FeatureFlags & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_LOOP_FILTER_DELTAS) {
             av1Picture.LoopFilter.LoopFilterDeltaEnabled = 1;
             av1Picture.LoopFilter.UpdateRefDelta = 1;
@@ -1742,9 +1766,38 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
             av1Picture.LoopFilter.RefDeltas[4] = -1;
             av1Picture.LoopFilter.RefDeltas[6] = -1;
             av1Picture.LoopFilter.RefDeltas[7] = -1;
+            av1Picture.LoopFilterDelta.DeltaLFPresent = !!(pictureFlags & VideoAV1PictureBits::DELTA_LF_PRESENT);
+            av1Picture.LoopFilterDelta.DeltaLFMulti = !!(pictureFlags & VideoAV1PictureBits::DELTA_LF_MULTI);
+            av1Picture.LoopFilterDelta.DeltaLFRes = videoEncodeDesc.av1PictureDesc ? videoEncodeDesc.av1PictureDesc->deltaLfRes : 0;
         }
-        if (session.m_AV1FeatureFlags & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_CDEF_FILTERING)
+        if (videoEncodeDesc.av1PictureDesc && videoEncodeDesc.av1PictureDesc->loopFilter) {
+            const VideoAV1LoopFilterDesc& loopFilter = *videoEncodeDesc.av1PictureDesc->loopFilter;
+            av1Picture.LoopFilter.LoopFilterLevel[0] = loopFilter.level[0];
+            av1Picture.LoopFilter.LoopFilterLevel[1] = loopFilter.level[1];
+            av1Picture.LoopFilter.LoopFilterLevelU = loopFilter.level[2];
+            av1Picture.LoopFilter.LoopFilterLevelV = loopFilter.level[3];
+            av1Picture.LoopFilter.LoopFilterSharpnessLevel = loopFilter.sharpness;
+            av1Picture.LoopFilter.LoopFilterDeltaEnabled = loopFilter.deltaEnabled;
+            av1Picture.LoopFilter.UpdateRefDelta = loopFilter.deltaUpdate;
+            av1Picture.LoopFilter.UpdateModeDelta = loopFilter.updateModeDelta;
+            for (uint32_t i = 0; i < 8; i++)
+                av1Picture.LoopFilter.RefDeltas[i] = loopFilter.refDeltas[i];
+            for (uint32_t i = 0; i < 2; i++)
+                av1Picture.LoopFilter.ModeDeltas[i] = loopFilter.modeDeltas[i];
+        }
+        if (session.m_AV1FeatureFlags & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_CDEF_FILTERING) {
             av1Picture.CDEF.CdefDampingMinus3 = videoEncodeDesc.av1PictureDesc && videoEncodeDesc.av1PictureDesc->cdefDampingMinus3 ? videoEncodeDesc.av1PictureDesc->cdefDampingMinus3 : 3;
+            av1Picture.CDEF.CdefBits = videoEncodeDesc.av1PictureDesc ? videoEncodeDesc.av1PictureDesc->cdefBits : 0;
+            if (videoEncodeDesc.av1PictureDesc && videoEncodeDesc.av1PictureDesc->cdef) {
+                const VideoAV1CdefDesc& cdef = *videoEncodeDesc.av1PictureDesc->cdef;
+                for (uint32_t i = 0; i < 8; i++) {
+                    av1Picture.CDEF.CdefYPriStrength[i] = cdef.yPrimaryStrength[i];
+                    av1Picture.CDEF.CdefYSecStrength[i] = cdef.ySecondaryStrength[i];
+                    av1Picture.CDEF.CdefUVPriStrength[i] = cdef.uvPrimaryStrength[i];
+                    av1Picture.CDEF.CdefUVSecStrength[i] = cdef.uvSecondaryStrength[i];
+                }
+            }
+        }
 
         if (videoEncodeDesc.av1PictureDesc) {
             if (videoEncodeDesc.av1PictureDesc->referenceNum > 8) {

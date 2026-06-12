@@ -51,6 +51,9 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
     }
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
     else if (videoSessionDesc.type == VideoSessionType::ENCODE) {
+        if (videoSessionDesc.codec == VideoCodec::H264 && videoSessionDesc.format != Format::NV12_UNORM)
+            return Result::UNSUPPORTED;
+
         ComPtr<ID3D12VideoDevice3> videoDevice;
         HRESULT hr = m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice)); // TODO-VIDEO: use "QueryLatestInterface", merge with "decoder" code path
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::QueryInterface(ID3D12VideoDevice3)");
@@ -130,12 +133,13 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
             if (!av1ConfigSupport.IsSupported)
                 return Result::UNSUPPORTED;
 
-            if (!IsVideoEncodeAV1RequiredFeatureSetSupportedD3D12(av1Caps.RequiredFeatureFlags)) {
+            if (!IsVideoEncodeAV1FeatureSetSupportedD3D12(av1Caps.RequiredFeatureFlags)) {
                 NRI_REPORT_WARNING(&m_Device, "D3D12 AV1 encoder requires unsupported feature flags: required=0x%X", av1Caps.RequiredFeatureFlags);
                 return Result::UNSUPPORTED;
             }
 
-            av1Config.FeatureFlags = av1Caps.RequiredFeatureFlags;
+            const uint32_t supportedFeatureFlags = (av1Caps.RequiredFeatureFlags | av1Caps.SupportedFeatureFlags) & (uint32_t)GetSupportedVideoEncodeAV1FeatureFlagsD3D12();
+            av1Config.FeatureFlags = (D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAGS)(av1Caps.RequiredFeatureFlags | supportedFeatureFlags);
             m_AV1FeatureFlags = av1Config.FeatureFlags;
         }
 
