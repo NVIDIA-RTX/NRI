@@ -81,7 +81,7 @@ NRI_INLINE Result DescriptorPoolVal::AllocateDescriptorSets(const PipelineLayout
                         enoughDescriptors = m_AccelerationStructureNum <= m_Desc.accelerationStructureMaxNum;
                         break;
                     default:
-                        NRI_CHECK(false, "Unexpected 'rangeDesc.descriptorType");
+                        NRI_CHECK(false, "Unexpected 'rangeDesc.descriptorType'");
                         break;
                 }
 

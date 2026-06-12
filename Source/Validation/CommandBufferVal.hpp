@@ -81,9 +81,10 @@ static inline bool IsTextureLayoutSupported(const TextureDesc& textureDesc, Layo
 }
 
 static bool ValidateBufferBarrierDesc(const DeviceVal& device, uint32_t i, const BufferBarrierDesc& bufferBarrier) {
+    NRI_RETURN_ON_FAILURE(&device, bufferBarrier.buffer, false, "'barrierDesc.buffers[%u].buffer' is NULL", i);
+
     const BufferVal& bufferVal = *(const BufferVal*)bufferBarrier.buffer;
 
-    NRI_RETURN_ON_FAILURE(&device, bufferBarrier.buffer, false, "'buffers[%u].buffer' is NULL", i);
     NRI_RETURN_ON_FAILURE(&device, IsAccessMaskSupported(bufferVal.GetDesc(), bufferBarrier.before.access), false,
         "'barrierDesc.buffers[%u].before.access' is not supported by the usage mask of the buffer ('%s')", i, bufferVal.GetDebugName());
     NRI_RETURN_ON_FAILURE(&device, IsAccessMaskSupported(bufferVal.GetDesc(), bufferBarrier.after.access), false,
@@ -93,9 +94,10 @@ static bool ValidateBufferBarrierDesc(const DeviceVal& device, uint32_t i, const
 }
 
 static bool ValidateTextureBarrierDesc(const DeviceVal& device, uint32_t i, const TextureBarrierDesc& textureBarrier) {
+    NRI_RETURN_ON_FAILURE(&device, textureBarrier.texture, false, "'barrierDesc.textures[%u].texture' is NULL", i);
+
     const TextureVal& textureVal = *(const TextureVal*)textureBarrier.texture;
 
-    NRI_RETURN_ON_FAILURE(&device, textureBarrier.texture, false, "'textures[%u].texture' is NULL", i);
     NRI_RETURN_ON_FAILURE(&device, IsAccessMaskSupported(textureVal.GetDesc(), textureBarrier.before.access), false,
         "'barrierDesc.textures[%u].before.access' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
     NRI_RETURN_ON_FAILURE(&device, IsAccessMaskSupported(textureVal.GetDesc(), textureBarrier.after.access), false,
@@ -385,7 +387,7 @@ NRI_INLINE void CommandBufferVal::SetRootDescriptor(const SetRootDescriptorDesc&
     NRI_RETURN_ON_FAILURE(&m_Device, descriptorVal.CanBeRoot(), ReturnVoid(), "'descriptor' must be a non-typed buffer or an acceleration structure");
 
     if (!descriptorVal.IsConstantBuffer())
-        NRI_RETURN_ON_FAILURE(&m_Device, setRootDescriptorDesc.offset == 0 || deviceDesc.features.nonConstantBufferRootDescriptorOffset, ReturnVoid(), "Non-zero 'setRootDescriptorDesc.offset' is supported only for 'CONSTANT_BUFFER'");
+        NRI_RETURN_ON_FAILURE(&m_Device, setRootDescriptorDesc.offset == 0 || deviceDesc.features.nonConstantBufferRootDescriptorOffset, ReturnVoid(), "Non-zero 'setRootDescriptorDesc.offset' for non-'CONSTANT_BUFFER' descriptors requires 'features.nonConstantBufferRootDescriptorOffset'");
 
     auto rootDescriptorBindingDescImpl = setRootDescriptorDesc;
     rootDescriptorBindingDescImpl.descriptor = NRI_GET_IMPL(Descriptor, setRootDescriptorDesc.descriptor);
@@ -679,6 +681,8 @@ NRI_INLINE void CommandBufferVal::BuildBottomLevelAccelerationStructure(const Bu
 
     for (uint32_t i = 0; i < buildBottomLevelAccelerationStructureDescNum; i++) {
         const BuildBottomLevelAccelerationStructureDesc& desc = buildBottomLevelAccelerationStructureDescs[i];
+
+        NRI_RETURN_ON_FAILURE(&m_Device, desc.geometries, ReturnVoid(), "'[%u].geometries' is NULL", i);
 
         for (uint32_t j = 0; j < desc.geometryNum; j++) {
             const BottomLevelGeometryDesc& geometry = desc.geometries[j];

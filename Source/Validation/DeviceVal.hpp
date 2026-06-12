@@ -399,7 +399,7 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
             || rootDescriptorDesc.descriptorType == DescriptorType::STORAGE_STRUCTURED_BUFFER
             || rootDescriptorDesc.descriptorType == DescriptorType::ACCELERATION_STRUCTURE;
 
-        NRI_RETURN_ON_FAILURE(this, isDescriptorTypeValid, Result::INVALID_ARGUMENT, "'rootDescriptors[%u].descriptorType' must be one of 'CONSTANT_BUFFER', 'STRUCTURED_BUFFER' or 'STORAGE_STRUCTURED_BUFFER'", i);
+        NRI_RETURN_ON_FAILURE(this, isDescriptorTypeValid, Result::INVALID_ARGUMENT, "'rootDescriptors[%u].descriptorType' must be one of 'CONSTANT_BUFFER', 'STRUCTURED_BUFFER', 'STORAGE_STRUCTURED_BUFFER' or 'ACCELERATION_STRUCTURE'", i);
     }
 
     uint32_t rootConstantSize = 0;
@@ -962,8 +962,8 @@ NRI_INLINE void DeviceVal::CopyDescriptorRanges(const CopyDescriptorRangeDesc* c
         const DescriptorSetDesc& dstSetDesc = dstSetVal.GetDesc();
         const DescriptorSetDesc& srcSetDesc = srcSetVal.GetDesc();
 
-        NRI_RETURN_ON_FAILURE(this, copyDescriptorSetDesc.dstRangeIndex < dstSetDesc.rangeNum, ReturnVoid(), "'[%u].dstRangeIndex = %u' is out of bounds", copyDescriptorSetDesc.dstRangeIndex, i);
-        NRI_RETURN_ON_FAILURE(this, copyDescriptorSetDesc.srcRangeIndex < srcSetDesc.rangeNum, ReturnVoid(), "'[%u].srcRangeIndex = %u' is out of bounds", copyDescriptorSetDesc.srcRangeIndex, i);
+        NRI_RETURN_ON_FAILURE(this, copyDescriptorSetDesc.dstRangeIndex < dstSetDesc.rangeNum, ReturnVoid(), "'[%u].dstRangeIndex = %u' is out of bounds", i, copyDescriptorSetDesc.dstRangeIndex);
+        NRI_RETURN_ON_FAILURE(this, copyDescriptorSetDesc.srcRangeIndex < srcSetDesc.rangeNum, ReturnVoid(), "'[%u].srcRangeIndex = %u' is out of bounds", i, copyDescriptorSetDesc.srcRangeIndex);
 
         const DescriptorRangeDesc& dstRangeDesc = dstSetDesc.ranges[copyDescriptorSetDesc.dstRangeIndex];
         const DescriptorRangeDesc& srcRangeDesc = srcSetDesc.ranges[copyDescriptorSetDesc.srcRangeIndex];
@@ -1000,6 +1000,9 @@ NRI_INLINE void DeviceVal::UpdateDescriptorRanges(const UpdateDescriptorRangeDes
     uint32_t descriptorOffset = 0;
     for (uint32_t i = 0; i < updateDescriptorRangeDescNum; i++) {
         const UpdateDescriptorRangeDesc& updateDescriptorRangeDesc = updateDescriptorRangeDescs[i];
+
+        NRI_RETURN_ON_FAILURE(this, updateDescriptorRangeDesc.descriptorSet != nullptr, ReturnVoid(), "'[%u].descriptorSet' is NULL", i);
+
         const DescriptorSetVal& setVal = *(DescriptorSetVal*)updateDescriptorRangeDesc.descriptorSet;
         const DescriptorSetDesc& setDesc = setVal.GetDesc();
 
@@ -1090,7 +1093,7 @@ NRI_INLINE Result DeviceVal::CreateDescriptorPool(const DescriptorPoolVKDesc& de
 
 NRI_INLINE Result DeviceVal::CreateBuffer(const BufferVKDesc& bufferVKDesc, Buffer*& buffer) {
     NRI_RETURN_ON_FAILURE(this, bufferVKDesc.vkBuffer != 0, Result::INVALID_ARGUMENT, "'vkBuffer' is NULL");
-    NRI_RETURN_ON_FAILURE(this, bufferVKDesc.size > 0, Result::INVALID_ARGUMENT, "'bufferSize' is 0");
+    NRI_RETURN_ON_FAILURE(this, bufferVKDesc.size > 0, Result::INVALID_ARGUMENT, "'size' is 0");
 
     Buffer* bufferImpl = nullptr;
     Result result = m_iWrapperVKImpl.CreateBufferVK(m_Impl, bufferVKDesc, bufferImpl);
@@ -1104,7 +1107,7 @@ NRI_INLINE Result DeviceVal::CreateBuffer(const BufferVKDesc& bufferVKDesc, Buff
 
 NRI_INLINE Result DeviceVal::CreateTexture(const TextureVKDesc& textureVKDesc, Texture*& texture) {
     NRI_RETURN_ON_FAILURE(this, textureVKDesc.vkImage != 0, Result::INVALID_ARGUMENT, "'vkImage' is NULL");
-    NRI_RETURN_ON_FAILURE(this, nriConvertVKFormatToNRI(textureVKDesc.vkFormat) != Format::UNKNOWN, Result::INVALID_ARGUMENT, "'sampleNum' is 0");
+    NRI_RETURN_ON_FAILURE(this, nriConvertVKFormatToNRI(textureVKDesc.vkFormat) != Format::UNKNOWN, Result::INVALID_ARGUMENT, "'vkFormat' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureVKDesc.sampleNum > 0, Result::INVALID_ARGUMENT, "'sampleNum' is 0");
     NRI_RETURN_ON_FAILURE(this, textureVKDesc.layerNum > 0, Result::INVALID_ARGUMENT, "'layerNum' is 0");
     NRI_RETURN_ON_FAILURE(this, textureVKDesc.mipNum > 0, Result::INVALID_ARGUMENT, "'mipNum' is 0");
@@ -1248,7 +1251,7 @@ NRI_INLINE Result DeviceVal::CreateCommandBuffer(const CommandBufferD3D12Desc& c
 }
 
 NRI_INLINE Result DeviceVal::CreateDescriptorPool(const DescriptorPoolD3D12Desc& descriptorPoolD3D12Desc, DescriptorPool*& descriptorPool) {
-    NRI_RETURN_ON_FAILURE(this, descriptorPoolD3D12Desc.d3d12ResourceDescriptorHeap || descriptorPoolD3D12Desc.d3d12SamplerDescriptorHeap, Result::INVALID_ARGUMENT, "'d3d12ResourceDescriptorHeap' and 'd3d12ResourceDescriptorHeap' are both NULL");
+    NRI_RETURN_ON_FAILURE(this, descriptorPoolD3D12Desc.d3d12ResourceDescriptorHeap || descriptorPoolD3D12Desc.d3d12SamplerDescriptorHeap, Result::INVALID_ARGUMENT, "'d3d12ResourceDescriptorHeap' and 'd3d12SamplerDescriptorHeap' are both NULL");
 
     DescriptorPool* descriptorPoolImpl = nullptr;
     Result result = m_iWrapperD3D12Impl.CreateDescriptorPoolD3D12(m_Impl, descriptorPoolD3D12Desc, descriptorPoolImpl);
@@ -1334,7 +1337,7 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const RayTracingPipelineDesc& rayTra
     NRI_RETURN_ON_FAILURE(this, rayTracingPipelineDesc.shaderLibrary != nullptr, Result::INVALID_ARGUMENT, "'shaderLibrary' is NULL");
     NRI_RETURN_ON_FAILURE(this, rayTracingPipelineDesc.shaderGroups != nullptr, Result::INVALID_ARGUMENT, "'shaderGroups' is NULL");
     NRI_RETURN_ON_FAILURE(this, rayTracingPipelineDesc.shaderGroupNum != 0, Result::INVALID_ARGUMENT, "'shaderGroupNum' is 0");
-    NRI_RETURN_ON_FAILURE(this, rayTracingPipelineDesc.recursionMaxDepth != 0, Result::INVALID_ARGUMENT, "'recursionDepthMax' is 0");
+    NRI_RETURN_ON_FAILURE(this, rayTracingPipelineDesc.recursionMaxDepth != 0, Result::INVALID_ARGUMENT, "'recursionMaxDepth' is 0");
 
     for (uint32_t i = 0; i < rayTracingPipelineDesc.shaderLibrary->shaderNum; i++) {
         const ShaderDesc& shaderDesc = rayTracingPipelineDesc.shaderLibrary->shaders[i];
@@ -1423,11 +1426,13 @@ NRI_INLINE Result DeviceVal::BindBufferMemory(const BindBufferMemoryDesc* bindBu
     Scratch<BindBufferMemoryDesc> bindBufferMemoryDescsImpl = NRI_ALLOCATE_SCRATCH(*this, BindBufferMemoryDesc, bindBufferMemoryDescNum);
     for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
         const BindBufferMemoryDesc& bindBufferMemoryDesc = bindBufferMemoryDescs[i];
-        MemoryVal& memoryVal = *(MemoryVal*)bindBufferMemoryDesc.memory;
-        BufferVal& bufferVal = *(BufferVal*)bindBufferMemoryDesc.buffer;
 
         NRI_RETURN_ON_FAILURE(this, bindBufferMemoryDesc.buffer != nullptr, Result::INVALID_ARGUMENT, "'[%u].buffer' is NULL", i);
         NRI_RETURN_ON_FAILURE(this, bindBufferMemoryDesc.memory != nullptr, Result::INVALID_ARGUMENT, "'[%u].memory' is NULL", i);
+
+        MemoryVal& memoryVal = *(MemoryVal*)bindBufferMemoryDesc.memory;
+        BufferVal& bufferVal = *(BufferVal*)bindBufferMemoryDesc.buffer;
+
         NRI_RETURN_ON_FAILURE(this, !bufferVal.IsBoundToMemory(), Result::INVALID_ARGUMENT, "'[%u].buffer' is already bound to memory", i);
 
         BindBufferMemoryDesc& bindBufferMemoryDescImpl = bindBufferMemoryDescsImpl[i];
@@ -1465,11 +1470,13 @@ NRI_INLINE Result DeviceVal::BindTextureMemory(const BindTextureMemoryDesc* bind
     Scratch<BindTextureMemoryDesc> bindTextureMemoryDescsImpl = NRI_ALLOCATE_SCRATCH(*this, BindTextureMemoryDesc, bindTextureMemoryDescNum);
     for (uint32_t i = 0; i < bindTextureMemoryDescNum; i++) {
         const BindTextureMemoryDesc& bindTextureMemoryDesc = bindTextureMemoryDescs[i];
-        MemoryVal& memoryVal = *(MemoryVal*)bindTextureMemoryDesc.memory;
-        TextureVal& textureVal = *(TextureVal*)bindTextureMemoryDesc.texture;
 
         NRI_RETURN_ON_FAILURE(this, bindTextureMemoryDesc.texture != nullptr, Result::INVALID_ARGUMENT, "'[%u].texture' is NULL", i);
         NRI_RETURN_ON_FAILURE(this, bindTextureMemoryDesc.memory != nullptr, Result::INVALID_ARGUMENT, "'[%u].memory' is NULL", i);
+
+        MemoryVal& memoryVal = *(MemoryVal*)bindTextureMemoryDesc.memory;
+        TextureVal& textureVal = *(TextureVal*)bindTextureMemoryDesc.texture;
+
         NRI_RETURN_ON_FAILURE(this, !textureVal.IsBoundToMemory(), Result::INVALID_ARGUMENT, "'[%u].texture' is already bound to memory", i);
 
         BindTextureMemoryDesc& bindTextureMemoryDescImpl = bindTextureMemoryDescsImpl[i];
@@ -1507,6 +1514,10 @@ NRI_INLINE Result DeviceVal::BindMicromapMemory(const BindMicromapMemoryDesc* bi
     Scratch<BindMicromapMemoryDesc> bindMicromapMemoryDescsImpl = NRI_ALLOCATE_SCRATCH(*this, BindMicromapMemoryDesc, bindMicromapMemoryDescNum);
     for (uint32_t i = 0; i < bindMicromapMemoryDescNum; i++) {
         const BindMicromapMemoryDesc& bindMicromapMemoryDesc = bindMicromapMemoryDescs[i];
+
+        NRI_RETURN_ON_FAILURE(this, bindMicromapMemoryDesc.micromap != nullptr, Result::INVALID_ARGUMENT, "'[%u].micromap' is NULL", i);
+        NRI_RETURN_ON_FAILURE(this, bindMicromapMemoryDesc.memory != nullptr, Result::INVALID_ARGUMENT, "'[%u].memory' is NULL", i);
+
         MemoryVal& memoryVal = *(MemoryVal*)bindMicromapMemoryDesc.memory;
         MicromapVal& micromapVal = *(MicromapVal*)bindMicromapMemoryDesc.micromap;
 
@@ -1547,6 +1558,10 @@ NRI_INLINE Result DeviceVal::BindAccelerationStructureMemory(const BindAccelerat
     Scratch<BindAccelerationStructureMemoryDesc> memoryBindingDescsImpl = NRI_ALLOCATE_SCRATCH(*this, BindAccelerationStructureMemoryDesc, bindAccelerationStructureMemoryDescNum);
     for (uint32_t i = 0; i < bindAccelerationStructureMemoryDescNum; i++) {
         const BindAccelerationStructureMemoryDesc& srcDesc = bindAccelerationStructureMemoryDescs[i];
+
+        NRI_RETURN_ON_FAILURE(this, srcDesc.accelerationStructure != nullptr, Result::INVALID_ARGUMENT, "'[%u].accelerationStructure' is NULL", i);
+        NRI_RETURN_ON_FAILURE(this, srcDesc.memory != nullptr, Result::INVALID_ARGUMENT, "'[%u].memory' is NULL", i);
+
         MemoryVal& memoryVal = (MemoryVal&)*srcDesc.memory;
         AccelerationStructureVal& accelerationStructureVal = (AccelerationStructureVal&)*srcDesc.accelerationStructure;
 

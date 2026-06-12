@@ -717,10 +717,11 @@ static bool ValidateTextureUploadDesc(DeviceVal& device, uint32_t i, const Textu
     if (!textureUploadDesc.subresources)
         return true;
 
+    NRI_RETURN_ON_FAILURE(&device, textureUploadDesc.texture != nullptr, false, "'textureUploadDescs[%u].texture' is NULL", i);
+
     const TextureVal& textureVal = *(TextureVal*)textureUploadDesc.texture;
     const TextureDesc& textureDesc = textureVal.GetDesc();
 
-    NRI_RETURN_ON_FAILURE(&device, textureUploadDesc.texture != nullptr, false, "'textureUploadDescs[%u].texture' is NULL", i);
     NRI_RETURN_ON_FAILURE(&device, textureVal.IsBoundToMemory(), false, "'textureUploadDescs[%u].texture' is not bound to memory", i);
     NRI_RETURN_ON_FAILURE(&device, textureUploadDesc.after.layout < Layout::MAX_NUM, false, "'textureUploadDescs[%u].after.layout' is invalid", i);
 
@@ -730,7 +731,7 @@ static bool ValidateTextureUploadDesc(DeviceVal& device, uint32_t i, const Textu
 
         NRI_RETURN_ON_FAILURE(&device, subresource.slices != nullptr, false, "'textureUploadDescs[%u].subresources[%u].slices' is NULL", i, j);
         NRI_RETURN_ON_FAILURE(&device, subresource.sliceNum != 0, false, "'textureUploadDescs[%u].subresources[%u].sliceNum' is 0", i, j);
-        NRI_RETURN_ON_FAILURE(&device, subresource.slicePitch != 0, false, "'textureUploadDescs[%u].subresources[%u].slicePitch' is 0", i, j);
+        NRI_RETURN_ON_FAILURE(&device, subresource.rowPitch != 0, false, "'textureUploadDescs[%u].subresources[%u].rowPitch' is 0", i, j);
         NRI_RETURN_ON_FAILURE(&device, subresource.slicePitch != 0, false, "'textureUploadDescs[%u].subresources[%u].slicePitch' is 0", i, j);
     }
 
@@ -741,9 +742,10 @@ static bool ValidateBufferUploadDesc(DeviceVal& device, uint32_t i, const Buffer
     if (!bufferUploadDesc.data)
         return true;
 
+    NRI_RETURN_ON_FAILURE(&device, bufferUploadDesc.buffer != nullptr, false, "'bufferUploadDescs[%u].buffer' is NULL", i);
+
     const BufferVal& bufferVal = *(BufferVal*)bufferUploadDesc.buffer;
 
-    NRI_RETURN_ON_FAILURE(&device, bufferUploadDesc.buffer != nullptr, false, "'bufferUploadDescs[%u].buffer' is NULL", i);
     NRI_RETURN_ON_FAILURE(&device, bufferVal.IsBoundToMemory(), false, "'bufferUploadDescs[%u].buffer' is not bound to memory", i);
 
     return true;
