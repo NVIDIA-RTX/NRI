@@ -10,6 +10,7 @@ struct IsExtSupported {
     uint32_t lowLatency   : 1;
     uint32_t meshShader   : 1;
     uint32_t rayTracing   : 1;
+    uint32_t video        : 1;
     uint32_t swapChain    : 1;
     uint32_t wrapperD3D11 : 1;
     uint32_t wrapperD3D12 : 1;
@@ -46,6 +47,10 @@ struct DeviceVal final : public DeviceBase {
 
     inline const RayTracingInterface& GetRayTracingInterfaceImpl() const {
         return m_iRayTracingImpl;
+    }
+
+    inline const VideoInterface& GetVideoInterfaceImpl() const {
+        return m_iVideoImpl;
     }
 
     inline const SwapChainInterface& GetSwapChainInterfaceImpl() const {
@@ -105,6 +110,7 @@ struct DeviceVal final : public DeviceBase {
     Result FillFunctionTable(LowLatencyInterface& table) const override;
     Result FillFunctionTable(MeshShaderInterface& table) const override;
     Result FillFunctionTable(RayTracingInterface& table) const override;
+    Result FillFunctionTable(VideoInterface& table) const override;
     Result FillFunctionTable(StreamerInterface& table) const override;
     Result FillFunctionTable(SwapChainInterface& table) const override;
     Result FillFunctionTable(UpscalerInterface& table) const override;
@@ -209,6 +215,7 @@ private:
     LowLatencyInterface m_iLowLatencyImpl = {};
     MeshShaderInterface m_iMeshShaderImpl = {};
     RayTracingInterface m_iRayTracingImpl = {};
+    VideoInterface m_iVideoImpl = {};
     SwapChainInterface m_iSwapChainImpl = {};
     WrapperD3D11Interface m_iWrapperD3D11Impl = {};
     WrapperD3D12Interface m_iWrapperD3D12Impl = {};

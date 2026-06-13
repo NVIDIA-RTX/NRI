@@ -36,11 +36,14 @@ typedef uint32_t DXGI_FORMAT;
 #include "Extensions/NRIStreamer.h"
 #include "Extensions/NRISwapChain.h"
 #include "Extensions/NRIUpscaler.h"
+#include "Extensions/NRIVideo.h"
 #include "Extensions/NRIWrapperD3D11.h"
 #include "Extensions/NRIWrapperD3D12.h"
 #include "Extensions/NRIWrapperVK.h"
 
 #include "Lock.h"
+#include "VideoAV1.h"
+#include "VideoAnnexB.h"
 
 // NRI default settings (if not provided in "NRIConfig.h")
 #include "../NRIConfig.h"
@@ -301,6 +304,10 @@ protected:
     ((!graphics ? 10 : 0) + (compute ? 100 : 0) + (!copy ? 10 : 0) + (sparse ? 5 : 0) + (!videoDecode ? 2 : 0) + (!videoEncode ? 2 : 0) + (protect ? 1 : 0) + (!opticalFlow ? 1 : 0))
 #define COPY_QUEUE_SCORE \
     ((!graphics ? 10 : 0) + (!compute ? 10 : 0) + (copy ? 100 * familyProps.queueCount : 0) + (sparse ? 5 : 0) + (!videoDecode ? 2 : 0) + (!videoEncode ? 2 : 0) + (protect ? 1 : 0) + (!opticalFlow ? 1 : 0))
+#define VIDEO_DECODE_QUEUE_SCORE \
+    ((!graphics ? 10 : 0) + (!compute ? 10 : 0) + (!copy ? 10 : 0) + (sparse ? 5 : 0) + (videoDecode ? 100 * familyProps.queueCount : 0) + (!videoEncode ? 2 : 0) + (protect ? 1 : 0) + (!opticalFlow ? 1 : 0))
+#define VIDEO_ENCODE_QUEUE_SCORE \
+    ((!graphics ? 10 : 0) + (!compute ? 10 : 0) + (!copy ? 10 : 0) + (sparse ? 5 : 0) + (!videoDecode ? 2 : 0) + (videoEncode ? 100 * familyProps.queueCount : 0) + (protect ? 1 : 0) + (!opticalFlow ? 1 : 0))
 
 // Array validation
 #define NRI_VALIDATE_ARRAY(x)                 static_assert((size_t)x[x.size() - 1] != 0, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
@@ -418,6 +425,10 @@ constexpr uint64_t MsToUs(uint32_t x) {
 }
 
 constexpr void ReturnVoid() {
+}
+
+inline bool IsAligned(uint64_t value, uint64_t alignment) {
+    return alignment <= 1 || value % alignment == 0;
 }
 
 // Allocator

@@ -269,6 +269,11 @@ NriEnum(Format, uint8_t,                // |      FormatSupportBits      |
     R11_G11_B10_UFLOAT,                 // + + . + . + + + + + + + . + + +
     R9_G9_B9_E5_UFLOAT,                 // + . . . . . . . . . . . . . . .
 
+    // YUV 4:2:0 video formats
+    NV12_UNORM,                         // + . . . . . . . . . . . . . . .
+    P010_UNORM,                         // + . . . . . . . . . . . . . . .
+    P016_UNORM,                         // + . . . . . . . . . . . . . . .
+
     // Block-compressed (requires "features.textureCompressionBC")
     // https://learn.microsoft.com/en-us/windows/win32/direct3d11/texture-block-compression-in-direct3d-11?source=recommendations
     // https://registry.khronos.org/DataFormat/specs/1.4/dataformat.1.4.html#S3TC
@@ -352,7 +357,16 @@ NriBits(PlaneBits, uint8_t,
 
     // D3D11: can't be addressed individually in "copy" and "resolve" operations
     DEPTH                           = NriBit(1),    // indicates "depth" plane (same as "ALL" for depth-only formats)
-    STENCIL                         = NriBit(2)     // indicates "stencil" plane in depth-stencil formats
+    STENCIL                         = NriBit(2),    // indicates "stencil" plane in depth-stencil formats
+
+    // For multi-planar YUV formats
+    PLANE_0                         = NriBit(3),
+    PLANE_1                         = NriBit(4),
+    PLANE_2                         = NriBit(5),
+
+    // Aliases
+    PLANE_Y                         = NriMember(PlaneBits, PLANE_0),
+    PLANE_UV                        = NriMember(PlaneBits, PLANE_1)
 );
 
 // A bit represents a feature, supported by a format
@@ -443,8 +457,12 @@ NriBits(StageBits, uint32_t,
     RESOLVE                         = NriBit(20),   // Invoked by "CmdResolveTexture"
     CLEAR_STORAGE                   = NriBit(21),   // Invoked by "CmdClearStorage"
 
+    // Video
+    VIDEO_DECODE                    = NriBit(22),   // Invoked by "CmdDecodeVideo"
+    VIDEO_ENCODE                    = NriBit(23),   // Invoked by "CmdEncodeVideo"
+
     // Modifiers
-    INDIRECT                        = NriBit(22),   // Invoked by "Indirect" commands (used in addition to other bits)
+    INDIRECT                        = NriBit(24),   // Invoked by "Indirect" commands (used in addition to other bits)
 
     // Umbrella stages
     TESSELLATION_SHADERS            = NriMember(StageBits, TESS_CONTROL_SHADER)
@@ -520,6 +538,12 @@ NriBits(AccessBits, uint32_t,
     // Clear storage
     CLEAR_STORAGE                   = NriBit(22),   //  W       CLEAR_STORAGE
 
+    // Video
+    VIDEO_DECODE_READ               = NriBit(23),   // R        VIDEO_DECODE
+    VIDEO_DECODE_WRITE              = NriBit(24),   //  W       VIDEO_DECODE
+    VIDEO_ENCODE_READ               = NriBit(25),   // R        VIDEO_ENCODE
+    VIDEO_ENCODE_WRITE              = NriBit(26),   //  W       VIDEO_ENCODE
+
     // Umbrella access
     COLOR_ATTACHMENT                = NriMember(AccessBits, COLOR_ATTACHMENT_READ)
                                     | NriMember(AccessBits, COLOR_ATTACHMENT_WRITE),
@@ -531,7 +555,13 @@ NriBits(AccessBits, uint32_t,
                                     | NriMember(AccessBits, ACCELERATION_STRUCTURE_WRITE),
 
     MICROMAP                        = NriMember(AccessBits, MICROMAP_READ)
-                                    | NriMember(AccessBits, MICROMAP_WRITE)
+                                    | NriMember(AccessBits, MICROMAP_WRITE),
+
+    VIDEO_DECODE                    = NriMember(AccessBits, VIDEO_DECODE_READ)
+                                    | NriMember(AccessBits, VIDEO_DECODE_WRITE),
+
+    VIDEO_ENCODE                    = NriMember(AccessBits, VIDEO_ENCODE_READ)
+                                    | NriMember(AccessBits, VIDEO_ENCODE_WRITE)
 );
 
 // "Layout" is ignored if "features.enhancedBarriers" is not supported
@@ -562,7 +592,13 @@ NriEnum(Layout, uint8_t,            // Compatible "AccessBits":
 
     // Resolve
     RESOLVE_SOURCE,                     // RESOLVE_SOURCE
-    RESOLVE_DESTINATION                 // RESOLVE_DESTINATION
+    RESOLVE_DESTINATION,                // RESOLVE_DESTINATION
+
+    // Video
+    VIDEO_DECODE_DST,                   // VIDEO_DECODE_WRITE
+    VIDEO_DECODE_DPB,                   // VIDEO_DECODE_READ/WRITE
+    VIDEO_ENCODE_SRC,                   // VIDEO_ENCODE_READ
+    VIDEO_ENCODE_DPB                    // VIDEO_ENCODE_READ/WRITE
 );
 
 NriStruct(AccessStage) {
@@ -644,14 +680,17 @@ NriEnum(SharingMode, uint8_t,
 
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkImageUsageFlagBits.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_resource_flags
-NriBits(TextureUsageBits, uint8_t,                  // Min compatible access:                   Usage:
+NriBits(TextureUsageBits, uint16_t,                 // Min compatible access:                   Usage:
     NONE                                = 0,
     SHADER_RESOURCE                     = NriBit(0),    // SHADER_RESOURCE                          Read-only shader resource view (SRV)
     SHADER_RESOURCE_STORAGE             = NriBit(1),    // SHADER_RESOURCE_STORAGE                  Read/write shader resource view (UAV)
     COLOR_ATTACHMENT                    = NriBit(2),    // COLOR_ATTACHMENT                         Color attachment (render target)
     DEPTH_STENCIL_ATTACHMENT            = NriBit(3),    // DEPTH_STENCIL_ATTACHMENT_READ/WRITE      Depth-stencil attachment (depth-stencil target)
     SHADING_RATE_ATTACHMENT             = NriBit(4),    // SHADING_RATE_ATTACHMENT                  Shading rate attachment (source)
-    INPUT_ATTACHMENT                    = NriBit(5)     // INPUT_ATTACHMENT                         Subpass input (read on-chip tile cache)
+    INPUT_ATTACHMENT                    = NriBit(5),    // INPUT_ATTACHMENT                         Subpass input (read on-chip tile cache)
+    VIDEO_DECODE                        = NriBit(6),    // VIDEO_DECODE                             Video decode output / DPB picture
+    VIDEO_ENCODE                        = NriBit(7),    // VIDEO_ENCODE                             Video encode input / DPB picture
+    VIDEO_REFERENCE_ONLY                = NriBit(8)     // VIDEO_*                                  Video DPB/reference-only allocation
 );
 
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkBufferUsageFlagBits.html
@@ -668,7 +707,16 @@ NriBits(BufferUsageBits, uint16_t,                  // Min compatible access:   
     ACCELERATION_STRUCTURE_BUILD_INPUT  = NriBit(8),    // SHADER_RESOURCE                          Read-only input in "CmdBuildAccelerationStructures" command
     ACCELERATION_STRUCTURE_STORAGE      = NriBit(9),    // ACCELERATION_STRUCTURE_READ/WRITE        (INTERNAL) acceleration structure storage
     MICROMAP_BUILD_INPUT                = NriBit(10),   // SHADER_RESOURCE                          Read-only input in "CmdBuildMicromaps" command
-    MICROMAP_STORAGE                    = NriBit(11)    // MICROMAP_READ/WRITE                      (INTERNAL) micromap storage
+    MICROMAP_STORAGE                    = NriBit(11),   // MICROMAP_READ/WRITE                      (INTERNAL) micromap storage
+    VIDEO_DECODE                        = NriBit(12),   // VIDEO_DECODE                             Video decode bitstream input
+    VIDEO_ENCODE                        = NriBit(13)    // VIDEO_ENCODE                             Video encode bitstream output
+);
+
+NriEnum(VideoCodec, uint8_t,
+    NONE,
+    H264,
+    H265,
+    AV1
 );
 
 NriStruct(TextureDesc) {
@@ -682,6 +730,7 @@ NriStruct(TextureDesc) {
     NriOptional Nri(Dim_t) layerNum;
     NriOptional Nri(Sample_t) sampleNum;
     NriOptional Nri(SharingMode) sharingMode;
+    NriOptional Nri(VideoCodec) videoCodec;             // VK: required for video textures
     NriOptional Nri(ClearValue) optimizedClearValue;    // D3D12: not needed on desktop, since any HW can track many clear values
 };
 
@@ -1764,7 +1813,9 @@ NriEnum(Architecture, uint8_t,
 NriEnum(QueueType, uint8_t,
     GRAPHICS,
     COMPUTE,
-    COPY
+    COPY,
+    VIDEO_DECODE,
+    VIDEO_ENCODE
 );
 
 NriStruct(AdapterDesc) {
@@ -2161,6 +2212,21 @@ NriStruct(DeviceDesc) {
         //   - "NRI_ENABLE_DRAW_PARAMETERS_EMULATION" must be defined prior inclusion of "NRI.hlsl" for such shaders
         bool drawParametersEmulation;                              // emulation of "drawParameters"
     } shaderFeatures;
+
+    // Video
+    struct {
+        struct {
+            bool H264;
+            bool H265;
+            bool AV1;
+        } decode;
+
+        struct {
+            bool H264;
+            bool H265;
+            bool AV1;
+        } encode;
+    } videoFeatures;
 };
 
 #pragma endregion

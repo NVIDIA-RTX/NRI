@@ -20,6 +20,9 @@
 #include "QueueVal.h"
 #include "SwapChainVal.h"
 #include "TextureVal.h"
+#include "VideoPictureVal.h"
+#include "VideoSessionParametersVal.h"
+#include "VideoSessionVal.h"
 
 #include "HelperInterface.h"
 #include "ImguiInterface.h"
@@ -47,6 +50,9 @@ using namespace nri;
 #include "QueueVal.hpp"
 #include "SwapChainVal.hpp"
 #include "TextureVal.hpp"
+#include "VideoPictureVal.hpp"
+#include "VideoSessionParametersVal.hpp"
+#include "VideoSessionVal.hpp"
 
 DeviceBase* CreateDeviceValidation(const DeviceCreationDesc& desc, DeviceBase& device) {
     DeviceVal* deviceVal = Allocate<DeviceVal>(desc.allocationCallbacks, desc.callbackInterface, desc.allocationCallbacks, device);
@@ -1208,6 +1214,207 @@ Result DeviceVal::FillFunctionTable(RayTracingInterface& table) const {
     table.CmdCopyMicromap = ::CmdCopyMicromap;
     table.GetAccelerationStructureNativeObject = ::GetAccelerationStructureNativeObject;
     table.GetMicromapNativeObject = ::GetMicromapNativeObject;
+
+    return Result::SUCCESS;
+}
+
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region[  Video  ]
+
+static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSessionDesc& videoSessionDesc, VideoCapabilities& videoCapabilities) {
+    const DeviceVal& deviceVal = (const DeviceVal&)device;
+    return deviceVal.GetVideoInterfaceImpl().GetVideoCapabilities(deviceVal.GetImpl(), videoSessionDesc, videoCapabilities);
+}
+
+static Result NRI_CALL GetVideoAV1Capabilities(const Device& device, const VideoSessionDesc& videoSessionDesc, VideoAV1Capabilities& videoAV1Capabilities) {
+    const DeviceVal& deviceVal = (const DeviceVal&)device;
+    return deviceVal.GetVideoInterfaceImpl().GetVideoAV1Capabilities(deviceVal.GetImpl(), videoSessionDesc, videoAV1Capabilities);
+}
+
+static Result NRI_CALL CreateVideoSession(Device& device, const VideoSessionDesc& videoSessionDesc, VideoSession*& videoSession) {
+    DeviceVal& deviceVal = (DeviceVal&)device;
+    VideoSession* videoSessionImpl = nullptr;
+    Result result = deviceVal.GetVideoInterfaceImpl().CreateVideoSession(deviceVal.GetImpl(), videoSessionDesc, videoSessionImpl);
+    if (result != Result::SUCCESS)
+        return result;
+
+    videoSession = (VideoSession*)Allocate<VideoSessionVal>(deviceVal.GetAllocationCallbacks(), deviceVal, videoSessionImpl, videoSessionDesc);
+    return Result::SUCCESS;
+}
+
+static void NRI_CALL DestroyVideoSession(VideoSession* videoSession) {
+    if (!videoSession)
+        return;
+
+    VideoSessionVal& videoSessionVal = *(VideoSessionVal*)videoSession;
+    videoSessionVal.GetVideoInterfaceImpl().DestroyVideoSession(videoSessionVal.GetImpl());
+    Destroy(&videoSessionVal);
+}
+
+static Result NRI_CALL CreateVideoSessionParameters(Device& device, const VideoSessionParametersDesc& videoSessionParametersDesc, VideoSessionParameters*& videoSessionParameters) {
+    DeviceVal& deviceVal = (DeviceVal&)device;
+
+    VideoSessionParametersDesc descImpl = videoSessionParametersDesc;
+    descImpl.session = videoSessionParametersDesc.session ? ((VideoSessionVal*)videoSessionParametersDesc.session)->GetImpl() : nullptr;
+
+    VideoSessionParameters* impl = nullptr;
+    Result result = deviceVal.GetVideoInterfaceImpl().CreateVideoSessionParameters(deviceVal.GetImpl(), descImpl, impl);
+    if (result != Result::SUCCESS)
+        return result;
+
+    videoSessionParameters = (VideoSessionParameters*)Allocate<VideoSessionParametersVal>(deviceVal.GetAllocationCallbacks(), deviceVal, impl);
+    return Result::SUCCESS;
+}
+
+static void NRI_CALL DestroyVideoSessionParameters(VideoSessionParameters* videoSessionParameters) {
+    if (!videoSessionParameters)
+        return;
+
+    VideoSessionParametersVal& videoSessionParametersVal = *(VideoSessionParametersVal*)videoSessionParameters;
+    videoSessionParametersVal.GetVideoInterfaceImpl().DestroyVideoSessionParameters(videoSessionParametersVal.GetImpl());
+    Destroy(&videoSessionParametersVal);
+}
+
+static Result NRI_CALL CreateVideoPicture(Device& device, const VideoPictureDesc& videoPictureDesc, VideoPicture*& videoPicture) {
+    DeviceVal& deviceVal = (DeviceVal&)device;
+
+    VideoPictureDesc descImpl = videoPictureDesc;
+    descImpl.texture = NRI_GET_IMPL(Texture, videoPictureDesc.texture);
+
+    VideoPicture* impl = nullptr;
+    Result result = deviceVal.GetVideoInterfaceImpl().CreateVideoPicture(deviceVal.GetImpl(), descImpl, impl);
+    if (result != Result::SUCCESS)
+        return result;
+
+    videoPicture = (VideoPicture*)Allocate<VideoPictureVal>(deviceVal.GetAllocationCallbacks(), deviceVal, impl);
+    return Result::SUCCESS;
+}
+
+static void NRI_CALL DestroyVideoPicture(VideoPicture* videoPicture) {
+    if (!videoPicture)
+        return;
+
+    VideoPictureVal& videoPictureVal = *(VideoPictureVal*)videoPicture;
+    videoPictureVal.GetVideoInterfaceImpl().DestroyVideoPicture(videoPictureVal.GetImpl());
+    Destroy(&videoPictureVal);
+}
+
+static Result NRI_CALL GetVideoDecodePictureStates(const VideoPicture& videoPicture, VideoDecodePictureStates& states) {
+    const VideoPictureVal& videoPictureVal = (const VideoPictureVal&)videoPicture;
+    return videoPictureVal.GetDevice().GetVideoInterfaceImpl().GetVideoDecodePictureStates(*videoPictureVal.GetImpl(), states);
+}
+
+static Result NRI_CALL GetVideoEncodePictureStates(const VideoPicture& videoPicture, VideoEncodePictureStates& states) {
+    const VideoPictureVal& videoPictureVal = (const VideoPictureVal&)videoPicture;
+    return videoPictureVal.GetDevice().GetVideoInterfaceImpl().GetVideoEncodePictureStates(*videoPictureVal.GetImpl(), states);
+}
+
+static Result NRI_CALL WriteVideoAnnexBParameterSets(VideoAnnexBParameterSetsDesc& annexBParameterSetsDesc) {
+    if (annexBParameterSetsDesc.codec == VideoCodec::H264) {
+        if (!annexBParameterSetsDesc.h264Sps || !annexBParameterSetsDesc.h264Pps)
+            return Result::INVALID_ARGUMENT;
+    } else if (annexBParameterSetsDesc.codec == VideoCodec::H265) {
+        if (!annexBParameterSetsDesc.h265Vps || !annexBParameterSetsDesc.h265Sps || !annexBParameterSetsDesc.h265Pps)
+            return Result::INVALID_ARGUMENT;
+    } else
+        return Result::UNSUPPORTED;
+
+    return WriteVideoAnnexBParameterSetsShared(annexBParameterSetsDesc);
+}
+
+static Result NRI_CALL WriteVideoAnnexBEndOfStream(VideoAnnexBEndOfStreamDesc& annexBEndOfStreamDesc) {
+    if (annexBEndOfStreamDesc.codec != VideoCodec::H264 && annexBEndOfStreamDesc.codec != VideoCodec::H265)
+        return Result::UNSUPPORTED;
+
+    return WriteVideoAnnexBEndOfStreamShared(annexBEndOfStreamDesc);
+}
+
+static Result NRI_CALL WriteVideoAV1ObuHeaders(VideoAV1ObuHeadersDesc& av1ObuHeadersDesc) {
+    return WriteVideoAV1ObuHeadersShared(av1ObuHeadersDesc);
+}
+
+static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDecodeDesc& videoDecodeDesc) {
+    ((CommandBufferVal&)commandBuffer).DecodeVideo(videoDecodeDesc);
+}
+
+static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEncodeDesc& videoEncodeDesc) {
+    ((CommandBufferVal&)commandBuffer).EncodeVideo(videoEncodeDesc);
+}
+
+static void NRI_CALL CmdResolveVideoEncodeFeedback(CommandBuffer& commandBuffer, VideoSession& videoSession, Buffer& resolvedMetadata, uint64_t resolvedMetadataOffset) {
+    CommandBufferVal& commandBufferVal = (CommandBufferVal&)commandBuffer;
+    VideoSessionVal& videoSessionVal = (VideoSessionVal&)videoSession;
+    BufferVal& resolvedMetadataVal = (BufferVal&)resolvedMetadata;
+
+    if (videoSessionVal.GetDesc().type != VideoSessionType::ENCODE) {
+        NRI_REPORT_ERROR(&commandBufferVal.GetDevice(), "'videoSession' must be an encode session");
+        return;
+    }
+
+    commandBufferVal.GetVideoInterfaceImpl().CmdResolveVideoEncodeFeedback(*commandBufferVal.GetImpl(), *videoSessionVal.GetImpl(), *resolvedMetadataVal.GetImpl(), resolvedMetadataOffset);
+}
+
+static Result NRI_CALL GetVideoEncodeFeedback(VideoSession& videoSession, Buffer& resolvedMetadataReadback, uint64_t resolvedMetadataOffset, VideoEncodeFeedback& feedback) {
+    VideoSessionVal& videoSessionVal = (VideoSessionVal&)videoSession;
+    BufferVal& resolvedMetadataReadbackVal = (BufferVal&)resolvedMetadataReadback;
+    return videoSessionVal.GetDevice().GetVideoInterfaceImpl().GetVideoEncodeFeedback(*videoSessionVal.GetImpl(), *resolvedMetadataReadbackVal.GetImpl(), resolvedMetadataOffset, feedback);
+}
+
+static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession& videoSession, Buffer& resolvedMetadataReadback, uint64_t resolvedMetadataOffset,
+    const VideoAV1EncodeDecodeInfoDesc& desc, VideoAV1EncodeDecodeInfo& info) {
+    if (!desc.feedback || !desc.sequence)
+        return Result::INVALID_ARGUMENT;
+    if ((desc.references == nullptr) != (desc.referenceNum == 0) || desc.referenceNum > 8)
+        return Result::INVALID_ARGUMENT;
+    uint32_t referenceNameMask = 0;
+    uint32_t refFrameIndexMask = 0;
+    for (uint32_t i = 0; i < desc.referenceNum; i++) {
+        if (desc.references[i].refFrameIndex >= 8 || (uint8_t)desc.references[i].name >= (uint8_t)VideoAV1ReferenceName::MAX_NUM)
+            return Result::INVALID_ARGUMENT;
+        const uint32_t refFrameIndexBit = 1u << desc.references[i].refFrameIndex;
+        if (refFrameIndexMask & refFrameIndexBit)
+            return Result::INVALID_ARGUMENT;
+
+        refFrameIndexMask |= refFrameIndexBit;
+        if (desc.references[i].name == VideoAV1ReferenceName::NONE)
+            continue;
+
+        const uint32_t referenceNameBit = 1u << (uint8_t)desc.references[i].name;
+        if (referenceNameMask & referenceNameBit)
+            return Result::INVALID_ARGUMENT;
+
+        referenceNameMask |= referenceNameBit;
+    }
+
+    VideoSessionVal& videoSessionVal = (VideoSessionVal&)videoSession;
+    BufferVal& resolvedMetadataReadbackVal = (BufferVal&)resolvedMetadataReadback;
+    return videoSessionVal.GetDevice().GetVideoInterfaceImpl().GetVideoEncodeAV1DecodeInfo(*videoSessionVal.GetImpl(), *resolvedMetadataReadbackVal.GetImpl(), resolvedMetadataOffset, desc, info);
+}
+
+Result DeviceVal::FillFunctionTable(VideoInterface& table) const {
+    if (!m_IsExtSupported.video)
+        return Result::UNSUPPORTED;
+
+    table.GetVideoCapabilities = ::GetVideoCapabilities;
+    table.GetVideoAV1Capabilities = ::GetVideoAV1Capabilities;
+    table.CreateVideoSession = ::CreateVideoSession;
+    table.DestroyVideoSession = ::DestroyVideoSession;
+    table.CreateVideoSessionParameters = ::CreateVideoSessionParameters;
+    table.DestroyVideoSessionParameters = ::DestroyVideoSessionParameters;
+    table.CreateVideoPicture = ::CreateVideoPicture;
+    table.DestroyVideoPicture = ::DestroyVideoPicture;
+    table.GetVideoDecodePictureStates = ::GetVideoDecodePictureStates;
+    table.GetVideoEncodePictureStates = ::GetVideoEncodePictureStates;
+    table.WriteVideoAnnexBParameterSets = ::WriteVideoAnnexBParameterSets;
+    table.WriteVideoAnnexBEndOfStream = ::WriteVideoAnnexBEndOfStream;
+    table.WriteVideoAV1ObuHeaders = ::WriteVideoAV1ObuHeaders;
+    table.CmdDecodeVideo = ::CmdDecodeVideo;
+    table.CmdEncodeVideo = ::CmdEncodeVideo;
+    table.CmdResolveVideoEncodeFeedback = ::CmdResolveVideoEncodeFeedback;
+    table.GetVideoEncodeFeedback = ::GetVideoEncodeFeedback;
+    table.GetVideoEncodeAV1DecodeInfo = ::GetVideoEncodeAV1DecodeInfo;
 
     return Result::SUCCESS;
 }
