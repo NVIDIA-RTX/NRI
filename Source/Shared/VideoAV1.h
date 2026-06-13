@@ -312,8 +312,21 @@ inline bool ParseGeneratedInterFrameHeader(const uint8_t* payload, size_t availa
         if (forceIntegerMv)
             flags |= VideoAV1PictureBits::FORCE_INTEGER_MV;
     }
+
+    if (sequence.flags & VideoAV1SequenceBits::FRAME_ID_NUMBERS_PRESENT) {
+        uint32_t currentFrameId = 0;
+        const uint32_t frameIdBits = sequence.additionalFrameIdLengthMinus1 + sequence.deltaFrameIdLengthMinus2 + 3;
+
+        if (!reader.ReadBits(frameIdBits, currentFrameId))
+
+            return false;
+
+        info.picture.currentFrameId = currentFrameId;
+    }
+
     if (!reader.ReadFlag(frameSizeOverride))
         return false;
+
     if (sequence.flags & VideoAV1SequenceBits::ENABLE_ORDER_HINT) {
         if (!reader.ReadBits(sequence.orderHintBitsMinus1 + 1, orderHint))
             return false;
@@ -423,9 +436,32 @@ inline bool ParseGeneratedInterFrameHeader(const uint8_t* payload, size_t availa
     int8_t deltaQYDc = 0;
     int8_t deltaQUDc = 0;
     int8_t deltaQUAc = 0;
-    if (!reader.ReadBits(8, baseQIndex) || !ReadDeltaQ(reader, deltaQYDc) || !ReadDeltaQ(reader, deltaQUDc) || !ReadDeltaQ(reader, deltaQUAc) || !reader.ReadFlag(usingQmatrix) || usingQmatrix)
+
+    if (!reader.ReadBits(8, baseQIndex) || !ReadDeltaQ(reader, deltaQYDc) || !ReadDeltaQ(reader, deltaQUDc) || !ReadDeltaQ(reader, deltaQUAc) || !reader.ReadFlag(usingQmatrix))
         return false;
+
+    uint32_t qmY = 0;
+    uint32_t qmU = 0;
+    uint32_t qmV = 0;
+
+    if (usingQmatrix) {
+
+        if (!reader.ReadBits(4, qmY) || !reader.ReadBits(4, qmU))
+
+            return false;
+
+        if (sequence.flags & VideoAV1SequenceBits::SEPARATE_UV_DELTA_Q) {
+
+            if (!reader.ReadBits(4, qmV))
+
+                return false;
+        } else {
+            qmV = qmU;
+        }
+    }
+
     uint8_t segmentationEnabled = 0;
+
     if (!reader.ReadFlag(segmentationEnabled) || segmentationEnabled)
         return false;
     uint32_t deltaQRes = 0;
@@ -515,15 +551,27 @@ inline bool ParseGeneratedInterFrameHeader(const uint8_t* payload, size_t availa
         flags |= VideoAV1PictureBits::REDUCED_TX_SET;
 
     const size_t tileDataOffset = reader.ByteOffset();
+
     if (requireTilePayload && tileDataOffset >= fullPayloadSize)
         return false;
+
     if (requireTilePayload) {
+
+        if (fullPayloadSize - tileDataOffset > std::numeric_limits<uint32_t>::max())
+
+            return false;
+
         info.bitstreamOffset = tileDataOffset;
         info.bitstreamSize = fullPayloadSize - tileDataOffset;
     }
 
     info.sequence = sequence;
     FillSingleTileLayout(info, width, height);
+    info.picture.tileNum = 1;
+
+    if (requireTilePayload)
+        info.tiles[0] = {(uint32_t)tileDataOffset, (uint32_t)(fullPayloadSize - tileDataOffset), 0, 0, 0xFF};
+
     info.picture.frameType = VideoEncodeFrameType::P;
     info.picture.orderHint = (uint8_t)orderHint;
     info.picture.refreshFrameFlags = (uint8_t)refreshFrameFlags;
@@ -544,6 +592,9 @@ inline bool ParseGeneratedInterFrameHeader(const uint8_t* payload, size_t availa
     info.quantization.deltaQVDc = deltaQUDc;
     info.quantization.deltaQVAc = deltaQUAc;
     info.quantization.usingQmatrix = usingQmatrix;
+    info.quantization.qmY = (uint8_t)qmY;
+    info.quantization.qmU = (uint8_t)qmU;
+    info.quantization.qmV = (uint8_t)qmV;
     info.loopFilter.level[0] = (uint8_t)loopFilterLevel0;
     info.loopFilter.level[1] = (uint8_t)loopFilterLevel1;
     info.loopFilter.level[2] = (uint8_t)loopFilterLevelU;
@@ -649,8 +700,8 @@ inline void FillSingleTileLayout(VideoAV1EncodeDecodeInfo& info, uint32_t width,
     info.heightInSuperblocksMinus1[0] = (uint16_t)(sbRows - 1);
 }
 
-inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t availablePayloadSize, size_t fullPayloadSize, const VideoAV1SequenceDesc& sequence,
-    VideoAV1EncodeDecodeInfo& info) {
+inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t availablePayloadSize, const uint8_t* tilePayload, size_t availableTilePayloadSize,
+    size_t fullTilePayloadSize, bool combinedFrameObu, const VideoAV1SequenceDesc& sequence, VideoAV1EncodeDecodeInfo& info) {
     constexpr uint32_t MAX_TILE_WIDTH = 4096;
     constexpr uint32_t MAX_TILE_AREA = 4096 * 2304;
     constexpr uint32_t MAX_TILE_COLS = 64;
@@ -662,12 +713,14 @@ inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t availabl
     uint8_t showExistingFrame = 0;
     uint32_t frameType = 0;
     uint8_t showFrame = 0;
+
     if (!reader.ReadFlag(showExistingFrame) || showExistingFrame || !reader.ReadBits(2, frameType) || !reader.ReadFlag(showFrame))
         return false;
+
     if (frameType != 0 || !showFrame)
         return false;
 
-    flags |= VideoAV1PictureBits::ERROR_RESILIENT_MODE | VideoAV1PictureBits::FORCE_INTEGER_MV | VideoAV1PictureBits::SHOW_FRAME;
+    flags |= VideoAV1PictureBits::ERROR_RESILIENT_MODE | VideoAV1PictureBits::SHOW_FRAME;
 
     uint8_t disableCdfUpdate = 0;
     uint8_t allowScreenContentTools = 0;
@@ -690,6 +743,17 @@ inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t availabl
             forceIntegerMv = sequence.seqForceIntegerMv;
         if (forceIntegerMv)
             flags |= VideoAV1PictureBits::FORCE_INTEGER_MV;
+    }
+
+    if (sequence.flags & VideoAV1SequenceBits::FRAME_ID_NUMBERS_PRESENT) {
+        uint32_t currentFrameId = 0;
+        const uint32_t frameIdBits = sequence.additionalFrameIdLengthMinus1 + sequence.deltaFrameIdLengthMinus2 + 3;
+
+        if (!reader.ReadBits(frameIdBits, currentFrameId))
+
+            return false;
+
+        info.picture.currentFrameId = currentFrameId;
     }
 
     uint8_t frameSizeOverride = 0;
@@ -769,32 +833,93 @@ inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t availabl
     uint32_t tileRows = 1;
     std::array<uint32_t, 65> tileStartColSb = {};
     std::array<uint32_t, 65> tileStartRowSb = {};
+
     if (uniformTileSpacing) {
         if (!reader.ReadIncrement(minLog2TileCols, maxLog2TileCols, tileColsLog2))
             return false;
+
         const uint32_t tileWidthSb = (sbCols + (1u << tileColsLog2) - 1) >> tileColsLog2;
+
         for (uint32_t off = 0, i = 0; off < sbCols; off += tileWidthSb)
             tileStartColSb[i++] = off;
         tileCols = (sbCols + tileWidthSb - 1) / tileWidthSb;
 
         const uint32_t minLog2TileRows = std::max<int32_t>((int32_t)minLog2Tiles - (int32_t)tileColsLog2, 0);
+
         if (!reader.ReadIncrement(minLog2TileRows, maxLog2TileRows, tileRowsLog2))
             return false;
+
         const uint32_t tileHeightSb = (sbRows + (1u << tileRowsLog2) - 1) >> tileRowsLog2;
+
         for (uint32_t off = 0, i = 0; off < sbRows; off += tileHeightSb)
             tileStartRowSb[i++] = off;
         tileRows = (sbRows + tileHeightSb - 1) / tileHeightSb;
 
         uint32_t i = 0;
+
         for (; i + 1 < tileCols; i++)
             info.widthInSuperblocksMinus1[i] = (uint16_t)(tileWidthSb - 1);
         info.widthInSuperblocksMinus1[i] = (uint16_t)(sbCols - (tileCols - 1) * tileWidthSb - 1);
         i = 0;
+
         for (; i + 1 < tileRows; i++)
             info.heightInSuperblocksMinus1[i] = (uint16_t)(tileHeightSb - 1);
         info.heightInSuperblocksMinus1[i] = (uint16_t)(sbRows - (tileRows - 1) * tileHeightSb - 1);
-    } else
-        return false;
+    } else {
+        uint32_t startSb = 0;
+        uint32_t widestTileSb = 0;
+
+        for (uint32_t i = 0; startSb < sbCols && i < MAX_TILE_COLS; i++) {
+            tileStartColSb[i] = startSb;
+            const uint32_t maxWidth = std::min(sbCols - startSb, MAX_TILE_WIDTH >> sbSize);
+            uint32_t tileWidthMinus1 = 0;
+
+            if (!ReadNs(reader, maxWidth, tileWidthMinus1))
+
+                return false;
+
+            const uint32_t tileWidthSb = tileWidthMinus1 + 1;
+            info.widthInSuperblocksMinus1[i] = (uint16_t)tileWidthMinus1;
+            widestTileSb = std::max(widestTileSb, tileWidthSb);
+            startSb += tileWidthSb;
+            tileCols = i + 1;
+        }
+        tileColsLog2 = TileLog2(1, tileCols);
+
+        if (startSb != sbCols || !tileCols)
+
+            return false;
+
+        startSb = 0;
+        uint32_t maxTileAreaSb = MAX_TILE_AREA >> (2 * sbSize);
+
+        if (minLog2Tiles > 0)
+            maxTileAreaSb = (sbRows * sbCols) >> (minLog2Tiles + 1);
+        else
+            maxTileAreaSb = sbRows * sbCols;
+
+        const uint32_t maxTileHeightSb = std::max(maxTileAreaSb / std::max(widestTileSb, 1u), 1u);
+
+        for (uint32_t i = 0; startSb < sbRows && i < MAX_TILE_ROWS; i++) {
+            tileStartRowSb[i] = startSb;
+            const uint32_t maxHeight = std::min(sbRows - startSb, maxTileHeightSb);
+            uint32_t tileHeightMinus1 = 0;
+
+            if (!ReadNs(reader, maxHeight, tileHeightMinus1))
+
+                return false;
+
+            info.heightInSuperblocksMinus1[i] = (uint16_t)tileHeightMinus1;
+            const uint32_t tileHeightSb = tileHeightMinus1 + 1;
+            startSb += tileHeightSb;
+            tileRows = i + 1;
+        }
+        tileRowsLog2 = TileLog2(1, tileRows);
+
+        if (startSb != sbRows || !tileRows)
+
+            return false;
+    }
 
     uint32_t contextUpdateTileId = 0;
     uint32_t tileSizeBytesMinus1 = 0;
@@ -811,36 +936,68 @@ inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t availabl
 
     uint32_t baseQIndex = 0;
     uint8_t usingQmatrix = 0;
+
     if (!reader.ReadBits(8, baseQIndex) || !ReadDeltaQ(reader, info.quantization.deltaQYDc) || !ReadDeltaQ(reader, info.quantization.deltaQUDc) || !ReadDeltaQ(reader, info.quantization.deltaQUAc) || !reader.ReadFlag(usingQmatrix))
         return false;
+
     info.quantization.deltaQVDc = info.quantization.deltaQUDc;
     info.quantization.deltaQVAc = info.quantization.deltaQUAc;
     info.quantization.usingQmatrix = usingQmatrix;
-    if (usingQmatrix)
-        return false;
+
+    if (usingQmatrix) {
+        uint32_t qmY = 0;
+        uint32_t qmU = 0;
+        uint32_t qmV = 0;
+
+        if (!reader.ReadBits(4, qmY) || !reader.ReadBits(4, qmU))
+
+            return false;
+
+        if (sequence.flags & VideoAV1SequenceBits::SEPARATE_UV_DELTA_Q) {
+
+            if (!reader.ReadBits(4, qmV))
+
+                return false;
+        } else {
+            qmV = qmU;
+        }
+
+        info.quantization.qmY = (uint8_t)qmY;
+        info.quantization.qmU = (uint8_t)qmU;
+        info.quantization.qmV = (uint8_t)qmV;
+    }
 
     uint8_t segmentationEnabled = 0;
+
     if (!reader.ReadFlag(segmentationEnabled))
         return false;
+
     if (segmentationEnabled)
         return false;
 
     if (baseQIndex > 0) {
         uint8_t deltaQPresent = 0;
+
         if (!reader.ReadFlag(deltaQPresent))
             return false;
+
         if (deltaQPresent) {
             uint32_t deltaQRes = 0;
+
             if (!reader.ReadBits(2, deltaQRes))
                 return false;
+
             info.picture.deltaQRes = (uint8_t)deltaQRes;
             flags |= VideoAV1PictureBits::DELTA_Q_PRESENT;
         }
     }
+
     if (flags & VideoAV1PictureBits::DELTA_Q_PRESENT) {
         uint8_t deltaLfPresent = 0;
+
         if (!allowIntrabc && !reader.ReadFlag(deltaLfPresent))
             return false;
+
         if (deltaLfPresent)
             return false;
     }
@@ -850,29 +1007,71 @@ inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t availabl
     info.loopFilter.refDeltas[4] = -1;
     info.loopFilter.refDeltas[6] = -1;
     info.loopFilter.refDeltas[7] = -1;
+
     if (!codedLossless && !allowIntrabc) {
         uint32_t value = 0;
+
         if (!reader.ReadBits(6, value))
             return false;
         info.loopFilter.level[0] = (uint8_t)value;
+
         if (!reader.ReadBits(6, value))
             return false;
         info.loopFilter.level[1] = (uint8_t)value;
+
         if (info.loopFilter.level[0] || info.loopFilter.level[1]) {
             if (!reader.ReadBits(6, value))
                 return false;
             info.loopFilter.level[2] = (uint8_t)value;
+
             if (!reader.ReadBits(6, value))
                 return false;
             info.loopFilter.level[3] = (uint8_t)value;
         }
+
         if (!reader.ReadBits(3, value))
             return false;
         info.loopFilter.sharpness = (uint8_t)value;
+
         if (!reader.ReadFlag(info.loopFilter.deltaEnabled))
             return false;
-        if (info.loopFilter.deltaEnabled)
-            return false;
+
+        if (info.loopFilter.deltaEnabled) {
+
+            if (!reader.ReadFlag(info.loopFilter.deltaUpdate))
+
+                return false;
+
+            for (uint32_t i = 0; i < 8; i++) {
+                uint8_t updateRefDelta = 0;
+
+                if (info.loopFilter.deltaUpdate && !reader.ReadFlag(updateRefDelta))
+
+                    return false;
+
+                if (updateRefDelta && !reader.ReadSigned(7, info.loopFilter.refDeltas[i]))
+
+                    return false;
+            }
+
+            for (uint32_t i = 0; i < 2; i++) {
+                uint8_t updateModeDelta = 0;
+
+                if (info.loopFilter.deltaUpdate && !reader.ReadFlag(updateModeDelta))
+
+                    return false;
+
+                if (updateModeDelta) {
+                    int8_t modeDelta = 0;
+
+                    if (!reader.ReadSigned(7, modeDelta))
+
+                        return false;
+
+                    info.loopFilter.modeDeltas[i] = modeDelta;
+                }
+            }
+        }
     }
 
     if ((sequence.flags & VideoAV1SequenceBits::ENABLE_CDEF) && !codedLossless && !allowIntrabc) {
@@ -902,6 +1101,7 @@ inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t availabl
 
     if ((sequence.flags & VideoAV1SequenceBits::ENABLE_RESTORATION) && !codedLossless && !allowIntrabc) {
         uint32_t restorationType = 0;
+
         for (uint32_t plane = 0; plane < 3; plane++) {
             if (!reader.ReadBits(2, restorationType))
                 return false;
@@ -910,31 +1110,119 @@ inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t availabl
     }
 
     if (!codedLossless) {
-        uint8_t txModeSelect = 0;
-        if (!reader.ReadFlag(txModeSelect))
+        uint32_t txMode = TX_MODE_ONLY_4X4;
+
+        if (!reader.ReadIncrement(TX_MODE_LARGEST, TX_MODE_SELECT, txMode))
             return false;
-        info.picture.txMode = txModeSelect ? TX_MODE_SELECT : TX_MODE_LARGEST;
+
+        info.picture.txMode = (uint8_t)txMode;
     }
     uint8_t reducedTxSet = 0;
+
     if (!reader.ReadFlag(reducedTxSet))
         return false;
+
     if (reducedTxSet)
         flags |= VideoAV1PictureBits::REDUCED_TX_SET;
-    if (!reader.ByteAlign())
+
+    const uint32_t tileNum = tileCols * tileRows;
+    BitReader tileReader{tilePayload, availableTilePayloadSize, 0};
+    BitReader& tileGroupReader = combinedFrameObu ? reader : tileReader;
+
+    uint32_t tileGroupStart = 0;
+    uint32_t tileGroupEnd = tileNum ? tileNum - 1 : 0;
+
+    if (tileNum > 1) {
+        uint8_t tileStartAndEndPresent = 0;
+
+        if (!tileGroupReader.ReadFlag(tileStartAndEndPresent))
+
+            return false;
+
+        if (tileStartAndEndPresent) {
+            const uint32_t tileBits = tileColsLog2 + tileRowsLog2;
+
+            if (!tileGroupReader.ReadBits(tileBits, tileGroupStart) || !tileGroupReader.ReadBits(tileBits, tileGroupEnd))
+
+                return false;
+
+            if (tileGroupStart > tileGroupEnd || tileGroupEnd >= tileNum)
+
+                return false;
+        }
+    }
+
+    if (!tileGroupReader.ByteAlign())
         return false;
 
-    if (tileCols != 1 || tileRows != 1)
+    const size_t tileDataOffset = tileGroupReader.ByteOffset();
+
+    if (tileDataOffset >= fullTilePayloadSize)
         return false;
 
-    const size_t tileDataOffset = reader.ByteOffset();
-    if (tileDataOffset >= fullPayloadSize)
+    uint32_t tileGroupTileNum = tileGroupEnd - tileGroupStart + 1;
+
+    if (!tileGroupTileNum || tileGroupTileNum > std::size(info.tiles))
+
+        return false;
+
+    if (tileGroupStart != 0 || tileGroupEnd != tileNum - 1)
+
+        return false;
+
+    const uint32_t tileSizeByteNum = tileSizeBytesMinus1 + 1;
+    auto parseTilePayload = [&]() {
+        size_t tilePayloadCursor = tileDataOffset;
+
+        for (uint32_t groupTileIndex = 0; groupTileIndex < tileGroupTileNum; groupTileIndex++) {
+            const uint32_t tileIndex = tileGroupStart + groupTileIndex;
+            uint32_t tileSize = 0;
+
+            if (groupTileIndex + 1 < tileGroupTileNum) {
+
+                if (tilePayloadCursor + tileSizeByteNum > availableTilePayloadSize)
+
+                    return false;
+
+                uint32_t tileSizeMinus1 = 0;
+
+                for (uint32_t byteIndex = 0; byteIndex < tileSizeByteNum; byteIndex++)
+                    tileSizeMinus1 |= uint32_t(tilePayload[tilePayloadCursor++]) << (8 * byteIndex);
+
+                tileSize = tileSizeMinus1 + 1;
+            } else {
+
+                if (tilePayloadCursor > fullTilePayloadSize || fullTilePayloadSize - tilePayloadCursor > std::numeric_limits<uint32_t>::max())
+
+                    return false;
+
+                tileSize = (uint32_t)(fullTilePayloadSize - tilePayloadCursor);
+            }
+
+            if (tilePayloadCursor + tileSize > fullTilePayloadSize)
+
+                return false;
+
+            VideoAV1DecodeTileDesc& tile = info.tiles[groupTileIndex];
+            tile.offset = (uint32_t)tilePayloadCursor;
+            tile.size = tileSize;
+            tile.row = (uint16_t)(tileIndex / tileCols);
+            tile.column = (uint16_t)(tileIndex % tileCols);
+            tile.anchorFrame = 0xFF;
+            tilePayloadCursor += tileSize;
+        }
+
+        return tilePayloadCursor == fullTilePayloadSize;
+    };
+
+    if (!parseTilePayload())
         return false;
 
     info.sequence = sequence;
-    info.bitstreamOffset = tileDataOffset;
-    info.bitstreamSize = fullPayloadSize - tileDataOffset;
-    if (info.bitstreamSize > std::numeric_limits<uint32_t>::max())
+
+    if (fullTilePayloadSize > std::numeric_limits<uint32_t>::max())
         return false;
+
     info.tileLayout.columnNum = (uint8_t)tileCols;
     info.tileLayout.rowNum = (uint8_t)tileRows;
     info.tileLayout.tileSizeBytesMinus1 = (uint8_t)tileSizeBytesMinus1;
@@ -949,10 +1237,10 @@ inline bool ParseGeneratedKeyFrameHeader(const uint8_t* payload, size_t availabl
     info.picture.renderHeightMinus1 = (uint16_t)renderHeightMinus1;
     info.picture.baseQIndex = (uint8_t)baseQIndex;
     info.picture.interpolationFilter = INTERPOLATION_FILTER_EIGHTTAP;
-    info.picture.tileNum = 1;
-    info.tiles[0] = {0, (uint32_t)info.bitstreamSize, 0, 0, 0xFF};
+    info.picture.tileNum = tileGroupTileNum;
     FillIdentityGlobalMotion(info.globalMotion);
     BindPointers(info);
+
     return true;
 }
 
@@ -961,35 +1249,62 @@ inline Result GetVideoEncodeAV1DecodeInfoFromHeader(const VideoAV1EncodeDecodeIn
         return Result::INVALID_ARGUMENT;
 
     FramePayloadSpan frame = {};
+
     if (!FindFramePayload(desc.encodedPayloadHeader, (size_t)desc.encodedPayloadHeaderSize, frame))
         return Result::FAILURE;
-    if (frame.headerPayloadOffset >= desc.encodedPayloadHeaderSize || frame.tilePayloadOffset >= desc.feedback->encodedBitstreamWrittenBytes || !frame.tilePayloadSize)
+
+    if (frame.headerPayloadOffset >= desc.encodedPayloadHeaderSize || frame.tilePayloadOffset >= desc.encodedPayloadHeaderSize || frame.tilePayloadOffset >= desc.feedback->encodedBitstreamWrittenBytes || !frame.tilePayloadSize)
         return Result::FAILURE;
 
     const size_t availablePayload = (size_t)desc.encodedPayloadHeaderSize - frame.headerPayloadOffset;
-    const size_t fullPayloadSize = frame.combinedFrameObu ? frame.headerPayloadSize : frame.headerPayloadSize + frame.tilePayloadSize;
-    if (!ParseGeneratedKeyFrameHeader(desc.encodedPayloadHeader + frame.headerPayloadOffset, availablePayload, fullPayloadSize, *desc.sequence, info)) {
+    const uint8_t* tilePayload = desc.encodedPayloadHeader + (frame.combinedFrameObu ? frame.headerPayloadOffset : frame.tilePayloadOffset);
+    const size_t availableTilePayload = frame.combinedFrameObu ? availablePayload : (size_t)desc.encodedPayloadHeaderSize - frame.tilePayloadOffset;
+    const size_t fullTilePayloadSize = frame.combinedFrameObu ? frame.headerPayloadSize : frame.tilePayloadSize;
+    const size_t fullHeaderPayloadSize = frame.headerPayloadSize;
+
+    if (!ParseGeneratedKeyFrameHeader(desc.encodedPayloadHeader + frame.headerPayloadOffset, availablePayload, tilePayload, availableTilePayload, fullTilePayloadSize, frame.combinedFrameObu, *desc.sequence, info)) {
         uint32_t frameType = 0;
         uint8_t showFrame = 0;
+
         if (!PeekGeneratedFrameType(desc.encodedPayloadHeader + frame.headerPayloadOffset, availablePayload, frameType, showFrame) || frameType != 1 || !showFrame)
             return Result::FAILURE;
 
         info = {};
         std::array<uint8_t, 7> refFrameIndices = {};
-        if (!ParseGeneratedInterFrameHeader(desc.encodedPayloadHeader + frame.headerPayloadOffset, availablePayload, fullPayloadSize, frame.combinedFrameObu, *desc.sequence, refFrameIndices, info))
+
+        if (!ParseGeneratedInterFrameHeader(desc.encodedPayloadHeader + frame.headerPayloadOffset, availablePayload, fullHeaderPayloadSize, frame.combinedFrameObu, *desc.sequence, refFrameIndices, info))
             return Result::FAILURE;
+
         if (!BuildInterFrameReferences(desc, refFrameIndices, info))
             return Result::FAILURE;
+
+        if (!frame.combinedFrameObu) {
+
+            if (frame.tilePayloadSize > std::numeric_limits<uint32_t>::max())
+
+                return Result::FAILURE;
+
+            info.picture.tileNum = 1;
+            info.tiles[0] = {0, (uint32_t)frame.tilePayloadSize, 0, 0, 0xFF};
+        }
     }
 
-    info.bitstreamOffset = frame.combinedFrameObu ? frame.headerPayloadOffset + info.bitstreamOffset : frame.tilePayloadOffset;
-    info.bitstreamSize = frame.combinedFrameObu ? info.bitstreamSize : frame.tilePayloadSize;
+    if (frame.combinedFrameObu) {
+        info.bitstreamOffset = frame.headerPayloadOffset;
+        info.bitstreamSize = frame.headerPayloadSize;
+        info.picture.frameHeaderOffset = 0;
+    } else {
+        info.bitstreamOffset = frame.tilePayloadOffset;
+        info.bitstreamSize = frame.tilePayloadSize;
+        info.picture.frameHeaderOffset = 0;
+    }
+
     if (info.bitstreamOffset > desc.feedback->encodedBitstreamWrittenBytes || info.bitstreamSize > desc.feedback->encodedBitstreamWrittenBytes - info.bitstreamOffset)
         return Result::FAILURE;
+
     if (info.bitstreamSize > std::numeric_limits<uint32_t>::max())
+
         return Result::FAILURE;
-    info.picture.tileNum = 1;
-    info.tiles[0] = {0, (uint32_t)info.bitstreamSize, 0, 0, 0xFF};
 
     return Result::SUCCESS;
 }

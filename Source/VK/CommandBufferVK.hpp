@@ -332,6 +332,8 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
         codecPictureInfo = &h264Picture;
 
         if (desc.flags & VideoH264DecodePictureBits::REFERENCE) {
+            h264StdReference.flags.top_field_flag = !!(desc.flags & VideoH264DecodePictureBits::FIELD_PICTURE) && !(desc.flags & VideoH264DecodePictureBits::BOTTOM_FIELD);
+            h264StdReference.flags.bottom_field_flag = !!(desc.flags & VideoH264DecodePictureBits::FIELD_PICTURE) && !!(desc.flags & VideoH264DecodePictureBits::BOTTOM_FIELD);
             h264StdReference.FrameNum = desc.frameNum;
             h264StdReference.PicOrderCnt[0] = desc.topFieldOrderCount;
             h264StdReference.PicOrderCnt[1] = desc.bottomFieldOrderCount;
