@@ -153,6 +153,9 @@ NRI_INLINE Result DeviceVal::CreateSwapChain(const SwapChainDesc& swapChainDesc,
     NRI_RETURN_ON_FAILURE(this, swapChainDesc.height != 0, Result::INVALID_ARGUMENT, "'height' is 0");
     NRI_RETURN_ON_FAILURE(this, swapChainDesc.textureNum != 0, Result::INVALID_ARGUMENT, "'textureNum' is invalid");
     NRI_RETURN_ON_FAILURE(this, swapChainDesc.format < SwapChainFormat::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
+    NRI_RETURN_ON_FAILURE(this, swapChainDesc.scaling < Scaling::MAX_NUM, Result::INVALID_ARGUMENT, "'scaling' is invalid");
+    NRI_RETURN_ON_FAILURE(this, swapChainDesc.gravityX < Gravity::MAX_NUM, Result::INVALID_ARGUMENT, "'gravityX' is invalid");
+    NRI_RETURN_ON_FAILURE(this, swapChainDesc.gravityY < Gravity::MAX_NUM, Result::INVALID_ARGUMENT, "'gravityY' is invalid");
 
     auto swapChainDescImpl = swapChainDesc;
     swapChainDescImpl.queue = NRI_GET_IMPL(Queue, swapChainDesc.queue);
@@ -234,7 +237,9 @@ NRI_INLINE Result DeviceVal::CreateBuffer(const BufferDesc& bufferDesc, Buffer*&
 }
 
 NRI_INLINE Result DeviceVal::CreateTexture(const TextureDesc& textureDesc, Texture*& texture) {
+    NRI_RETURN_ON_FAILURE(this, textureDesc.type < TextureType::MAX_NUM, Result::INVALID_ARGUMENT, "'type' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
+    NRI_RETURN_ON_FAILURE(this, textureDesc.sharingMode < SharingMode::MAX_NUM, Result::INVALID_ARGUMENT, "'sharingMode' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.width != 0, Result::INVALID_ARGUMENT, "'width' is 0");
     NRI_RETURN_ON_FAILURE(this, textureDesc.videoCodec < VideoCodec::MAX_NUM, Result::INVALID_ARGUMENT, "'videoCodec' is invalid");
     NRI_RETURN_ON_FAILURE(this, !(textureDesc.usage & (TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_ENCODE)) || textureDesc.videoCodec != VideoCodec::NONE, Result::INVALID_ARGUMENT,
@@ -291,7 +296,12 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const BufferViewDesc& bufferViewDe
 
 NRI_INLINE Result DeviceVal::CreateDescriptor(const TextureViewDesc& textureViewDesc, Descriptor*& textureView) {
     NRI_RETURN_ON_FAILURE(this, textureViewDesc.texture != nullptr, Result::INVALID_ARGUMENT, "'texture' is NULL");
+    NRI_RETURN_ON_FAILURE(this, textureViewDesc.type < TextureView::MAX_NUM, Result::INVALID_ARGUMENT, "'viewType' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureViewDesc.format > Format::UNKNOWN && textureViewDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
+    NRI_RETURN_ON_FAILURE(this, textureViewDesc.components.r < ComponentSwizzle::MAX_NUM, Result::INVALID_ARGUMENT, "'components.r' is invalid");
+    NRI_RETURN_ON_FAILURE(this, textureViewDesc.components.g < ComponentSwizzle::MAX_NUM, Result::INVALID_ARGUMENT, "'components.g' is invalid");
+    NRI_RETURN_ON_FAILURE(this, textureViewDesc.components.b < ComponentSwizzle::MAX_NUM, Result::INVALID_ARGUMENT, "'components.b' is invalid");
+    NRI_RETURN_ON_FAILURE(this, textureViewDesc.components.a < ComponentSwizzle::MAX_NUM, Result::INVALID_ARGUMENT, "'components.a' is invalid");
 
     const TextureVal& textureVal = *(TextureVal*)textureViewDesc.texture;
     const TextureDesc& textureDesc = textureVal.GetDesc();
@@ -395,6 +405,7 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
         NRI_RETURN_ON_FAILURE(this, n == pipelineLayoutDesc.descriptorSetNum, Result::INVALID_ARGUMENT, "'registerSpace=%u' is already in use", pipelineLayoutDesc.rootRegisterSpace);
     }
 
+    NRI_RETURN_ON_FAILURE(this, pipelineLayoutDesc.rootDescriptorNum == 0 || pipelineLayoutDesc.rootDescriptors != nullptr, Result::INVALID_ARGUMENT, "'rootDescriptors' is NULL");
     for (uint32_t i = 0; i < pipelineLayoutDesc.rootDescriptorNum; i++) {
         const RootDescriptorDesc& rootDescriptorDesc = pipelineLayoutDesc.rootDescriptors[i];
 
@@ -403,7 +414,20 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
             || rootDescriptorDesc.descriptorType == DescriptorType::STORAGE_STRUCTURED_BUFFER
             || rootDescriptorDesc.descriptorType == DescriptorType::ACCELERATION_STRUCTURE;
 
-        NRI_RETURN_ON_FAILURE(this, isDescriptorTypeValid, Result::INVALID_ARGUMENT, "'rootDescriptors[%u].descriptorType' must be one of 'CONSTANT_BUFFER', 'STRUCTURED_BUFFER' or 'STORAGE_STRUCTURED_BUFFER'", i);
+        NRI_RETURN_ON_FAILURE(this, isDescriptorTypeValid, Result::INVALID_ARGUMENT, "'rootDescriptors[%u].descriptorType' must be one of 'CONSTANT_BUFFER', 'STRUCTURED_BUFFER', 'STORAGE_STRUCTURED_BUFFER' or 'ACCELERATION_STRUCTURE'", i);
+    }
+
+    NRI_RETURN_ON_FAILURE(this, pipelineLayoutDesc.rootSamplerNum == 0 || pipelineLayoutDesc.rootSamplers != nullptr, Result::INVALID_ARGUMENT, "'rootSamplers' is NULL");
+    for (uint32_t i = 0; i < pipelineLayoutDesc.rootSamplerNum; i++) {
+        const SamplerDesc& samplerDesc = pipelineLayoutDesc.rootSamplers[i].desc;
+        NRI_RETURN_ON_FAILURE(this, samplerDesc.filters.mag < Filter::MAX_NUM, Result::INVALID_ARGUMENT, "'rootSamplers[%u].desc.filters.mag' is invalid", i);
+        NRI_RETURN_ON_FAILURE(this, samplerDesc.filters.min < Filter::MAX_NUM, Result::INVALID_ARGUMENT, "'rootSamplers[%u].desc.filters.min' is invalid", i);
+        NRI_RETURN_ON_FAILURE(this, samplerDesc.filters.mip < Filter::MAX_NUM, Result::INVALID_ARGUMENT, "'rootSamplers[%u].desc.filters.mip' is invalid", i);
+        NRI_RETURN_ON_FAILURE(this, samplerDesc.filters.op < FilterOp::MAX_NUM, Result::INVALID_ARGUMENT, "'rootSamplers[%u].desc.filters.op' is invalid", i);
+        NRI_RETURN_ON_FAILURE(this, samplerDesc.addressModes.u < AddressMode::MAX_NUM, Result::INVALID_ARGUMENT, "'rootSamplers[%u].desc.addressModes.u' is invalid", i);
+        NRI_RETURN_ON_FAILURE(this, samplerDesc.addressModes.v < AddressMode::MAX_NUM, Result::INVALID_ARGUMENT, "'rootSamplers[%u].desc.addressModes.v' is invalid", i);
+        NRI_RETURN_ON_FAILURE(this, samplerDesc.addressModes.w < AddressMode::MAX_NUM, Result::INVALID_ARGUMENT, "'rootSamplers[%u].desc.addressModes.w' is invalid", i);
+        NRI_RETURN_ON_FAILURE(this, samplerDesc.compareOp < CompareOp::MAX_NUM, Result::INVALID_ARGUMENT, "'rootSamplers[%u].desc.compareOp' is invalid", i);
     }
 
     uint32_t rootConstantSize = 0;
@@ -437,6 +461,26 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
     NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.pipelineLayout != nullptr, Result::INVALID_ARGUMENT, "'pipelineLayout' is NULL");
     NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.shaders != nullptr, Result::INVALID_ARGUMENT, "'shaders' is NULL");
     NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.shaderNum > 0, Result::INVALID_ARGUMENT, "'shaderNum' is 0");
+    NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.inputAssembly.topology < Topology::MAX_NUM, Result::INVALID_ARGUMENT, "'inputAssembly.topology' is invalid");
+    NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.inputAssembly.primitiveRestart < PrimitiveRestart::MAX_NUM, Result::INVALID_ARGUMENT, "'inputAssembly.primitiveRestart' is invalid");
+    NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.rasterization.fillMode < FillMode::MAX_NUM, Result::INVALID_ARGUMENT, "'rasterization.fillMode' is invalid");
+    NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.rasterization.cullMode < CullMode::MAX_NUM, Result::INVALID_ARGUMENT, "'rasterization.cullMode' is invalid");
+    NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.outputMerger.depthStencilFormat < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'outputMerger.depthStencilFormat' is invalid");
+    NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.outputMerger.logicOp < LogicOp::MAX_NUM, Result::INVALID_ARGUMENT, "'outputMerger.logicOp' is invalid");
+    NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.outputMerger.multiview < Multiview::MAX_NUM, Result::INVALID_ARGUMENT, "'outputMerger.multiview' is invalid");
+    NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.robustness < Robustness::MAX_NUM, Result::INVALID_ARGUMENT, "'robustness' is invalid");
+    NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.outputMerger.colorNum == 0 || graphicsPipelineDesc.outputMerger.colors != nullptr, Result::INVALID_ARGUMENT, "'outputMerger.colors' is NULL");
+
+    if (graphicsPipelineDesc.vertexInput) {
+        NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.vertexInput->attributeNum == 0 || graphicsPipelineDesc.vertexInput->attributes != nullptr, Result::INVALID_ARGUMENT, "'vertexInput->attributes' is NULL");
+        NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.vertexInput->streamNum == 0 || graphicsPipelineDesc.vertexInput->streams != nullptr, Result::INVALID_ARGUMENT, "'vertexInput->streams' is NULL");
+
+        for (uint32_t i = 0; i < graphicsPipelineDesc.vertexInput->attributeNum; i++)
+            NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.vertexInput->attributes[i].format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'vertexInput->attributes[%u].format' is invalid", i);
+
+        for (uint32_t i = 0; i < graphicsPipelineDesc.vertexInput->streamNum; i++)
+            NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.vertexInput->streams[i].stepRate < VertexStreamStepRate::MAX_NUM, Result::INVALID_ARGUMENT, "'vertexInput->streams[%u].stepRate' is invalid", i);
+    }
 
     const PipelineLayoutVal& pipelineLayout = *(PipelineLayoutVal*)graphicsPipelineDesc.pipelineLayout;
     const StageBits shaderStages = pipelineLayout.GetPipelineLayoutDesc().shaderStages;
@@ -457,7 +501,23 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
     for (uint32_t i = 0; i < graphicsPipelineDesc.outputMerger.colorNum; i++) {
         const ColorAttachmentDesc* color = graphicsPipelineDesc.outputMerger.colors + i;
         NRI_RETURN_ON_FAILURE(this, color->format > Format::UNKNOWN && color->format < Format::BC1_RGBA_UNORM, Result::INVALID_ARGUMENT, "'outputMerger->color[%u].format=%u' is invalid", i, color->format);
+        NRI_RETURN_ON_FAILURE(this, color->colorBlend.srcFactor < BlendFactor::MAX_NUM, Result::INVALID_ARGUMENT, "'outputMerger->color[%u].colorBlend.srcFactor' is invalid", i);
+        NRI_RETURN_ON_FAILURE(this, color->colorBlend.dstFactor < BlendFactor::MAX_NUM, Result::INVALID_ARGUMENT, "'outputMerger->color[%u].colorBlend.dstFactor' is invalid", i);
+        NRI_RETURN_ON_FAILURE(this, color->colorBlend.op < BlendOp::MAX_NUM, Result::INVALID_ARGUMENT, "'outputMerger->color[%u].colorBlend.op' is invalid", i);
+        NRI_RETURN_ON_FAILURE(this, color->alphaBlend.srcFactor < BlendFactor::MAX_NUM, Result::INVALID_ARGUMENT, "'outputMerger->color[%u].alphaBlend.srcFactor' is invalid", i);
+        NRI_RETURN_ON_FAILURE(this, color->alphaBlend.dstFactor < BlendFactor::MAX_NUM, Result::INVALID_ARGUMENT, "'outputMerger->color[%u].alphaBlend.dstFactor' is invalid", i);
+        NRI_RETURN_ON_FAILURE(this, color->alphaBlend.op < BlendOp::MAX_NUM, Result::INVALID_ARGUMENT, "'outputMerger->color[%u].alphaBlend.op' is invalid", i);
     }
+
+    NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.outputMerger.depth.compareOp < CompareOp::MAX_NUM, Result::INVALID_ARGUMENT, "'outputMerger.depth.compareOp' is invalid");
+    NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.outputMerger.stencil.front.compareOp < CompareOp::MAX_NUM, Result::INVALID_ARGUMENT, "'outputMerger.stencil.front.compareOp' is invalid");
+    NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.outputMerger.stencil.front.failOp < StencilOp::MAX_NUM, Result::INVALID_ARGUMENT, "'outputMerger.stencil.front.failOp' is invalid");
+    NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.outputMerger.stencil.front.passOp < StencilOp::MAX_NUM, Result::INVALID_ARGUMENT, "'outputMerger.stencil.front.passOp' is invalid");
+    NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.outputMerger.stencil.front.depthFailOp < StencilOp::MAX_NUM, Result::INVALID_ARGUMENT, "'outputMerger.stencil.front.depthFailOp' is invalid");
+    NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.outputMerger.stencil.back.compareOp < CompareOp::MAX_NUM, Result::INVALID_ARGUMENT, "'outputMerger.stencil.back.compareOp' is invalid");
+    NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.outputMerger.stencil.back.failOp < StencilOp::MAX_NUM, Result::INVALID_ARGUMENT, "'outputMerger.stencil.back.failOp' is invalid");
+    NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.outputMerger.stencil.back.passOp < StencilOp::MAX_NUM, Result::INVALID_ARGUMENT, "'outputMerger.stencil.back.passOp' is invalid");
+    NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.outputMerger.stencil.back.depthFailOp < StencilOp::MAX_NUM, Result::INVALID_ARGUMENT, "'outputMerger.stencil.back.depthFailOp' is invalid");
 
     if (graphicsPipelineDesc.rasterization.conservativeRaster)
         NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.conservativeRaster, Result::INVALID_ARGUMENT, "'tiers.conservativeRaster' must be > 0");
@@ -506,6 +566,7 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const ComputePipelineDesc& computePi
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.shader.size != 0, Result::INVALID_ARGUMENT, "'shader.size' is 0");
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.shader.bytecode != nullptr, Result::INVALID_ARGUMENT, "'shader.bytecode' is NULL");
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.shader.stage == StageBits::COMPUTE_SHADER, Result::INVALID_ARGUMENT, "'shader.stage' must be 'StageBits::COMPUTE_SHADER'");
+    NRI_RETURN_ON_FAILURE(this, computePipelineDesc.robustness < Robustness::MAX_NUM, Result::INVALID_ARGUMENT, "'robustness' is invalid");
 
     if (computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS) {
         if (!GetDesc().features.pipelineCacheControl)
@@ -647,7 +708,9 @@ NRI_INLINE Result DeviceVal::CreateCommittedBuffer(MemoryLocation memoryLocation
 
 NRI_INLINE Result DeviceVal::CreateCommittedTexture(MemoryLocation memoryLocation, float priority, const TextureDesc& textureDesc, Texture*& texture) {
     NRI_RETURN_ON_FAILURE(this, priority >= -1.0f && priority <= 1.0f, Result::INVALID_ARGUMENT, "'priority' outside of [-1; 1] range");
+    NRI_RETURN_ON_FAILURE(this, textureDesc.type < TextureType::MAX_NUM, Result::INVALID_ARGUMENT, "'type' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
+    NRI_RETURN_ON_FAILURE(this, textureDesc.sharingMode < SharingMode::MAX_NUM, Result::INVALID_ARGUMENT, "'sharingMode' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.width != 0, Result::INVALID_ARGUMENT, "'width' is 0");
     NRI_RETURN_ON_FAILURE(this, textureDesc.videoCodec < VideoCodec::MAX_NUM, Result::INVALID_ARGUMENT, "'videoCodec' is invalid");
     NRI_RETURN_ON_FAILURE(this, !(textureDesc.usage & (TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_ENCODE)) || textureDesc.videoCodec != VideoCodec::NONE, Result::INVALID_ARGUMENT,
@@ -672,6 +735,10 @@ NRI_INLINE Result DeviceVal::CreateCommittedTexture(MemoryLocation memoryLocatio
 NRI_INLINE Result DeviceVal::CreateCommittedMicromap(MemoryLocation memoryLocation, float priority, const MicromapDesc& micromapDesc, Micromap*& micromap) {
     NRI_RETURN_ON_FAILURE(this, priority >= -1.0f && priority <= 1.0f, Result::INVALID_ARGUMENT, "'priority' outside of [-1; 1] range");
     NRI_RETURN_ON_FAILURE(this, micromapDesc.usageNum != 0, Result::INVALID_ARGUMENT, "'usageNum' is 0");
+    NRI_RETURN_ON_FAILURE(this, micromapDesc.usages != nullptr, Result::INVALID_ARGUMENT, "'usages' is NULL");
+
+    for (uint32_t i = 0; i < micromapDesc.usageNum; i++)
+        NRI_RETURN_ON_FAILURE(this, micromapDesc.usages[i].format < MicromapFormat::MAX_NUM, Result::INVALID_ARGUMENT, "'usages[%u].format' is invalid", i);
 
     Micromap* micromapImpl = nullptr;
     Result result = m_iRayTracingImpl.CreateCommittedMicromap(m_Impl, memoryLocation, priority, micromapDesc, micromapImpl);
@@ -686,6 +753,9 @@ NRI_INLINE Result DeviceVal::CreateCommittedMicromap(MemoryLocation memoryLocati
 NRI_INLINE Result DeviceVal::CreateCommittedAccelerationStructure(MemoryLocation memoryLocation, float priority, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
     NRI_RETURN_ON_FAILURE(this, priority >= -1.0f && priority <= 1.0f, Result::INVALID_ARGUMENT, "'priority' outside of [-1; 1] range");
     NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.geometryOrInstanceNum != 0, Result::INVALID_ARGUMENT, "'geometryOrInstanceNum' is 0");
+    NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.type < AccelerationStructureType::MAX_NUM, Result::INVALID_ARGUMENT, "'type' is invalid");
+    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL && accelerationStructureDesc.geometryOrInstanceNum != 0)
+        NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.geometries != nullptr, Result::INVALID_ARGUMENT, "'geometries' is NULL");
 
     // Convert desc
     uint32_t geometryNum = 0;
@@ -696,6 +766,13 @@ NRI_INLINE Result DeviceVal::CreateCommittedAccelerationStructure(MemoryLocation
 
         for (uint32_t i = 0; i < geometryNum; i++) {
             const BottomLevelGeometryDesc& geometryDesc = accelerationStructureDesc.geometries[i];
+            NRI_RETURN_ON_FAILURE(this, geometryDesc.type < BottomLevelGeometryType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].type' is invalid", i);
+            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES) {
+                NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.vertexFormat < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.vertexFormat' is invalid", i);
+                NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.indexType < IndexType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.indexType' is invalid", i);
+                if (geometryDesc.triangles.micromap)
+                    NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.micromap->indexType < IndexType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.micromap->indexType' is invalid", i);
+            }
 
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
                 micromapNum++;
@@ -765,7 +842,9 @@ NRI_INLINE Result DeviceVal::CreatePlacedBuffer(Memory* memory, uint64_t offset,
 }
 
 NRI_INLINE Result DeviceVal::CreatePlacedTexture(Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture) {
+    NRI_RETURN_ON_FAILURE(this, textureDesc.type < TextureType::MAX_NUM, Result::INVALID_ARGUMENT, "'type' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
+    NRI_RETURN_ON_FAILURE(this, textureDesc.sharingMode < SharingMode::MAX_NUM, Result::INVALID_ARGUMENT, "'sharingMode' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.width != 0, Result::INVALID_ARGUMENT, "'width' is 0");
     NRI_RETURN_ON_FAILURE(this, textureDesc.videoCodec < VideoCodec::MAX_NUM, Result::INVALID_ARGUMENT, "'videoCodec' is invalid");
     NRI_RETURN_ON_FAILURE(this, !(textureDesc.usage & (TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_ENCODE)) || textureDesc.videoCodec != VideoCodec::NONE, Result::INVALID_ARGUMENT,
@@ -815,6 +894,10 @@ NRI_INLINE Result DeviceVal::CreatePlacedTexture(Memory* memory, uint64_t offset
 
 NRI_INLINE Result DeviceVal::CreatePlacedMicromap(Memory* memory, uint64_t offset, const MicromapDesc& micromapDesc, Micromap*& micromap) {
     NRI_RETURN_ON_FAILURE(this, micromapDesc.usageNum != 0, Result::INVALID_ARGUMENT, "'usageNum' is 0");
+    NRI_RETURN_ON_FAILURE(this, micromapDesc.usages != nullptr, Result::INVALID_ARGUMENT, "'usages' is NULL");
+
+    for (uint32_t i = 0; i < micromapDesc.usageNum; i++)
+        NRI_RETURN_ON_FAILURE(this, micromapDesc.usages[i].format < MicromapFormat::MAX_NUM, Result::INVALID_ARGUMENT, "'usages[%u].format' is invalid", i);
 
     if (memory) {
         MemoryVal& memoryVal = *(MemoryVal*)memory;
@@ -854,6 +937,9 @@ NRI_INLINE Result DeviceVal::CreatePlacedMicromap(Memory* memory, uint64_t offse
 
 NRI_INLINE Result DeviceVal::CreatePlacedAccelerationStructure(Memory* memory, uint64_t offset, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
     NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.geometryOrInstanceNum != 0, Result::INVALID_ARGUMENT, "'geometryOrInstanceNum' is 0");
+    NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.type < AccelerationStructureType::MAX_NUM, Result::INVALID_ARGUMENT, "'type' is invalid");
+    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL && accelerationStructureDesc.geometryOrInstanceNum != 0)
+        NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.geometries != nullptr, Result::INVALID_ARGUMENT, "'geometries' is NULL");
 
     if (memory) {
         MemoryVal& memoryVal = *(MemoryVal*)memory;
@@ -881,6 +967,13 @@ NRI_INLINE Result DeviceVal::CreatePlacedAccelerationStructure(Memory* memory, u
 
         for (uint32_t i = 0; i < geometryNum; i++) {
             const BottomLevelGeometryDesc& geometryDesc = accelerationStructureDesc.geometries[i];
+            NRI_RETURN_ON_FAILURE(this, geometryDesc.type < BottomLevelGeometryType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].type' is invalid", i);
+            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES) {
+                NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.vertexFormat < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.vertexFormat' is invalid", i);
+                NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.indexType < IndexType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.indexType' is invalid", i);
+                if (geometryDesc.triangles.micromap)
+                    NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.micromap->indexType < IndexType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.micromap->indexType' is invalid", i);
+            }
 
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
                 micromapNum++;
@@ -972,8 +1065,8 @@ NRI_INLINE void DeviceVal::CopyDescriptorRanges(const CopyDescriptorRangeDesc* c
         const DescriptorSetDesc& dstSetDesc = dstSetVal.GetDesc();
         const DescriptorSetDesc& srcSetDesc = srcSetVal.GetDesc();
 
-        NRI_RETURN_ON_FAILURE(this, copyDescriptorSetDesc.dstRangeIndex < dstSetDesc.rangeNum, ReturnVoid(), "'[%u].dstRangeIndex = %u' is out of bounds", copyDescriptorSetDesc.dstRangeIndex, i);
-        NRI_RETURN_ON_FAILURE(this, copyDescriptorSetDesc.srcRangeIndex < srcSetDesc.rangeNum, ReturnVoid(), "'[%u].srcRangeIndex = %u' is out of bounds", copyDescriptorSetDesc.srcRangeIndex, i);
+        NRI_RETURN_ON_FAILURE(this, copyDescriptorSetDesc.dstRangeIndex < dstSetDesc.rangeNum, ReturnVoid(), "'[%u].dstRangeIndex = %u' is out of bounds", i, copyDescriptorSetDesc.dstRangeIndex);
+        NRI_RETURN_ON_FAILURE(this, copyDescriptorSetDesc.srcRangeIndex < srcSetDesc.rangeNum, ReturnVoid(), "'[%u].srcRangeIndex = %u' is out of bounds", i, copyDescriptorSetDesc.srcRangeIndex);
 
         const DescriptorRangeDesc& dstRangeDesc = dstSetDesc.ranges[copyDescriptorSetDesc.dstRangeIndex];
         const DescriptorRangeDesc& srcRangeDesc = srcSetDesc.ranges[copyDescriptorSetDesc.srcRangeIndex];
@@ -1010,6 +1103,9 @@ NRI_INLINE void DeviceVal::UpdateDescriptorRanges(const UpdateDescriptorRangeDes
     uint32_t descriptorOffset = 0;
     for (uint32_t i = 0; i < updateDescriptorRangeDescNum; i++) {
         const UpdateDescriptorRangeDesc& updateDescriptorRangeDesc = updateDescriptorRangeDescs[i];
+
+        NRI_RETURN_ON_FAILURE(this, updateDescriptorRangeDesc.descriptorSet != nullptr, ReturnVoid(), "'[%u].descriptorSet' is NULL", i);
+
         const DescriptorSetVal& setVal = *(DescriptorSetVal*)updateDescriptorRangeDesc.descriptorSet;
         const DescriptorSetDesc& setDesc = setVal.GetDesc();
 
@@ -1100,7 +1196,7 @@ NRI_INLINE Result DeviceVal::CreateDescriptorPool(const DescriptorPoolVKDesc& de
 
 NRI_INLINE Result DeviceVal::CreateBuffer(const BufferVKDesc& bufferVKDesc, Buffer*& buffer) {
     NRI_RETURN_ON_FAILURE(this, bufferVKDesc.vkBuffer != 0, Result::INVALID_ARGUMENT, "'vkBuffer' is NULL");
-    NRI_RETURN_ON_FAILURE(this, bufferVKDesc.size > 0, Result::INVALID_ARGUMENT, "'bufferSize' is 0");
+    NRI_RETURN_ON_FAILURE(this, bufferVKDesc.size > 0, Result::INVALID_ARGUMENT, "'size' is 0");
 
     Buffer* bufferImpl = nullptr;
     Result result = m_iWrapperVKImpl.CreateBufferVK(m_Impl, bufferVKDesc, bufferImpl);
@@ -1258,7 +1354,7 @@ NRI_INLINE Result DeviceVal::CreateCommandBuffer(const CommandBufferD3D12Desc& c
 }
 
 NRI_INLINE Result DeviceVal::CreateDescriptorPool(const DescriptorPoolD3D12Desc& descriptorPoolD3D12Desc, DescriptorPool*& descriptorPool) {
-    NRI_RETURN_ON_FAILURE(this, descriptorPoolD3D12Desc.d3d12ResourceDescriptorHeap || descriptorPoolD3D12Desc.d3d12SamplerDescriptorHeap, Result::INVALID_ARGUMENT, "'d3d12ResourceDescriptorHeap' and 'd3d12ResourceDescriptorHeap' are both NULL");
+    NRI_RETURN_ON_FAILURE(this, descriptorPoolD3D12Desc.d3d12ResourceDescriptorHeap || descriptorPoolD3D12Desc.d3d12SamplerDescriptorHeap, Result::INVALID_ARGUMENT, "'d3d12ResourceDescriptorHeap' and 'd3d12SamplerDescriptorHeap' are both NULL");
 
     DescriptorPool* descriptorPoolImpl = nullptr;
     Result result = m_iWrapperD3D12Impl.CreateDescriptorPoolD3D12(m_Impl, descriptorPoolD3D12Desc, descriptorPoolImpl);
@@ -1344,7 +1440,8 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const RayTracingPipelineDesc& rayTra
     NRI_RETURN_ON_FAILURE(this, rayTracingPipelineDesc.shaderLibrary != nullptr, Result::INVALID_ARGUMENT, "'shaderLibrary' is NULL");
     NRI_RETURN_ON_FAILURE(this, rayTracingPipelineDesc.shaderGroups != nullptr, Result::INVALID_ARGUMENT, "'shaderGroups' is NULL");
     NRI_RETURN_ON_FAILURE(this, rayTracingPipelineDesc.shaderGroupNum != 0, Result::INVALID_ARGUMENT, "'shaderGroupNum' is 0");
-    NRI_RETURN_ON_FAILURE(this, rayTracingPipelineDesc.recursionMaxDepth != 0, Result::INVALID_ARGUMENT, "'recursionDepthMax' is 0");
+    NRI_RETURN_ON_FAILURE(this, rayTracingPipelineDesc.recursionMaxDepth != 0, Result::INVALID_ARGUMENT, "'recursionMaxDepth' is 0");
+    NRI_RETURN_ON_FAILURE(this, rayTracingPipelineDesc.robustness < Robustness::MAX_NUM, Result::INVALID_ARGUMENT, "'robustness' is invalid");
 
     for (uint32_t i = 0; i < rayTracingPipelineDesc.shaderLibrary->shaderNum; i++) {
         const ShaderDesc& shaderDesc = rayTracingPipelineDesc.shaderLibrary->shaders[i];
@@ -1377,6 +1474,10 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const RayTracingPipelineDesc& rayTra
 
 NRI_INLINE Result DeviceVal::CreateMicromap(const MicromapDesc& micromapDesc, Micromap*& micromap) {
     NRI_RETURN_ON_FAILURE(this, micromapDesc.usageNum != 0, Result::INVALID_ARGUMENT, "'usageNum' is 0");
+    NRI_RETURN_ON_FAILURE(this, micromapDesc.usages != nullptr, Result::INVALID_ARGUMENT, "'usages' is NULL");
+
+    for (uint32_t i = 0; i < micromapDesc.usageNum; i++)
+        NRI_RETURN_ON_FAILURE(this, micromapDesc.usages[i].format < MicromapFormat::MAX_NUM, Result::INVALID_ARGUMENT, "'usages[%u].format' is invalid", i);
 
     Micromap* micromapImpl = nullptr;
     Result result = m_iRayTracingImpl.CreateMicromap(m_Impl, micromapDesc, micromapImpl);
@@ -1390,6 +1491,9 @@ NRI_INLINE Result DeviceVal::CreateMicromap(const MicromapDesc& micromapDesc, Mi
 
 NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
     NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.geometryOrInstanceNum != 0, Result::INVALID_ARGUMENT, "'geometryOrInstanceNum' is 0");
+    NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.type < AccelerationStructureType::MAX_NUM, Result::INVALID_ARGUMENT, "'type' is invalid");
+    if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL && accelerationStructureDesc.geometryOrInstanceNum != 0)
+        NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.geometries != nullptr, Result::INVALID_ARGUMENT, "'geometries' is NULL");
 
     // Convert desc
     uint32_t geometryNum = 0;
@@ -1400,6 +1504,13 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
 
         for (uint32_t i = 0; i < geometryNum; i++) {
             const BottomLevelGeometryDesc& geometryDesc = accelerationStructureDesc.geometries[i];
+            NRI_RETURN_ON_FAILURE(this, geometryDesc.type < BottomLevelGeometryType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].type' is invalid", i);
+            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES) {
+                NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.vertexFormat < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.vertexFormat' is invalid", i);
+                NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.indexType < IndexType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.indexType' is invalid", i);
+                if (geometryDesc.triangles.micromap)
+                    NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.micromap->indexType < IndexType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.micromap->indexType' is invalid", i);
+            }
 
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
                 micromapNum++;
@@ -1433,11 +1544,13 @@ NRI_INLINE Result DeviceVal::BindBufferMemory(const BindBufferMemoryDesc* bindBu
     Scratch<BindBufferMemoryDesc> bindBufferMemoryDescsImpl = NRI_ALLOCATE_SCRATCH(*this, BindBufferMemoryDesc, bindBufferMemoryDescNum);
     for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
         const BindBufferMemoryDesc& bindBufferMemoryDesc = bindBufferMemoryDescs[i];
-        MemoryVal& memoryVal = *(MemoryVal*)bindBufferMemoryDesc.memory;
-        BufferVal& bufferVal = *(BufferVal*)bindBufferMemoryDesc.buffer;
 
         NRI_RETURN_ON_FAILURE(this, bindBufferMemoryDesc.buffer != nullptr, Result::INVALID_ARGUMENT, "'[%u].buffer' is NULL", i);
         NRI_RETURN_ON_FAILURE(this, bindBufferMemoryDesc.memory != nullptr, Result::INVALID_ARGUMENT, "'[%u].memory' is NULL", i);
+
+        MemoryVal& memoryVal = *(MemoryVal*)bindBufferMemoryDesc.memory;
+        BufferVal& bufferVal = *(BufferVal*)bindBufferMemoryDesc.buffer;
+
         NRI_RETURN_ON_FAILURE(this, !bufferVal.IsBoundToMemory(), Result::INVALID_ARGUMENT, "'[%u].buffer' is already bound to memory", i);
 
         BindBufferMemoryDesc& bindBufferMemoryDescImpl = bindBufferMemoryDescsImpl[i];
@@ -1475,11 +1588,13 @@ NRI_INLINE Result DeviceVal::BindTextureMemory(const BindTextureMemoryDesc* bind
     Scratch<BindTextureMemoryDesc> bindTextureMemoryDescsImpl = NRI_ALLOCATE_SCRATCH(*this, BindTextureMemoryDesc, bindTextureMemoryDescNum);
     for (uint32_t i = 0; i < bindTextureMemoryDescNum; i++) {
         const BindTextureMemoryDesc& bindTextureMemoryDesc = bindTextureMemoryDescs[i];
-        MemoryVal& memoryVal = *(MemoryVal*)bindTextureMemoryDesc.memory;
-        TextureVal& textureVal = *(TextureVal*)bindTextureMemoryDesc.texture;
 
         NRI_RETURN_ON_FAILURE(this, bindTextureMemoryDesc.texture != nullptr, Result::INVALID_ARGUMENT, "'[%u].texture' is NULL", i);
         NRI_RETURN_ON_FAILURE(this, bindTextureMemoryDesc.memory != nullptr, Result::INVALID_ARGUMENT, "'[%u].memory' is NULL", i);
+
+        MemoryVal& memoryVal = *(MemoryVal*)bindTextureMemoryDesc.memory;
+        TextureVal& textureVal = *(TextureVal*)bindTextureMemoryDesc.texture;
+
         NRI_RETURN_ON_FAILURE(this, !textureVal.IsBoundToMemory(), Result::INVALID_ARGUMENT, "'[%u].texture' is already bound to memory", i);
 
         BindTextureMemoryDesc& bindTextureMemoryDescImpl = bindTextureMemoryDescsImpl[i];
@@ -1517,6 +1632,10 @@ NRI_INLINE Result DeviceVal::BindMicromapMemory(const BindMicromapMemoryDesc* bi
     Scratch<BindMicromapMemoryDesc> bindMicromapMemoryDescsImpl = NRI_ALLOCATE_SCRATCH(*this, BindMicromapMemoryDesc, bindMicromapMemoryDescNum);
     for (uint32_t i = 0; i < bindMicromapMemoryDescNum; i++) {
         const BindMicromapMemoryDesc& bindMicromapMemoryDesc = bindMicromapMemoryDescs[i];
+
+        NRI_RETURN_ON_FAILURE(this, bindMicromapMemoryDesc.micromap != nullptr, Result::INVALID_ARGUMENT, "'[%u].micromap' is NULL", i);
+        NRI_RETURN_ON_FAILURE(this, bindMicromapMemoryDesc.memory != nullptr, Result::INVALID_ARGUMENT, "'[%u].memory' is NULL", i);
+
         MemoryVal& memoryVal = *(MemoryVal*)bindMicromapMemoryDesc.memory;
         MicromapVal& micromapVal = *(MicromapVal*)bindMicromapMemoryDesc.micromap;
 
@@ -1557,6 +1676,10 @@ NRI_INLINE Result DeviceVal::BindAccelerationStructureMemory(const BindAccelerat
     Scratch<BindAccelerationStructureMemoryDesc> memoryBindingDescsImpl = NRI_ALLOCATE_SCRATCH(*this, BindAccelerationStructureMemoryDesc, bindAccelerationStructureMemoryDescNum);
     for (uint32_t i = 0; i < bindAccelerationStructureMemoryDescNum; i++) {
         const BindAccelerationStructureMemoryDesc& srcDesc = bindAccelerationStructureMemoryDescs[i];
+
+        NRI_RETURN_ON_FAILURE(this, srcDesc.accelerationStructure != nullptr, Result::INVALID_ARGUMENT, "'[%u].accelerationStructure' is NULL", i);
+        NRI_RETURN_ON_FAILURE(this, srcDesc.memory != nullptr, Result::INVALID_ARGUMENT, "'[%u].memory' is NULL", i);
+
         MemoryVal& memoryVal = (MemoryVal&)*srcDesc.memory;
         AccelerationStructureVal& accelerationStructureVal = (AccelerationStructureVal&)*srcDesc.accelerationStructure;
 

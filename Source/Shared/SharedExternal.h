@@ -1,4 +1,4 @@
-﻿// © 2021 NVIDIA Corporation
+// © 2021 NVIDIA Corporation
 
 #pragma once
 
@@ -567,10 +567,10 @@ inline Uid_t ConstructUid(uint8_t luid[8], uint8_t uuid[16], bool isLuidValid) {
     Uid_t out = {};
 
     if (isLuidValid)
-        out.low = *(uint64_t*)luid;
+        memcpy(&out.low, luid, sizeof(out.low));
     else {
-        out.low = *(uint64_t*)uuid;
-        out.high = *(uint64_t*)(uuid + 8);
+        memcpy(&out.low, uuid, sizeof(out.low));
+        memcpy(&out.high, uuid + 8, sizeof(out.high));
     }
 
     return out;

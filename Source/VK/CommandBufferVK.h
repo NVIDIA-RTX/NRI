@@ -8,9 +8,19 @@ struct PipelineVK;
 struct PipelineLayoutVK;
 struct DescriptorVK;
 
+struct InputAttachmentRange {
+    VkImage image;
+    VkImageAspectFlags aspects;
+    Dim_t mipOffset;
+    Dim_t mipNum;
+    Dim_t layerOffset;
+    Dim_t layerNum;
+};
+
 struct CommandBufferVK final : public DebugNameBase {
     inline CommandBufferVK(DeviceVK& device)
-        : m_Device(device) {
+        : m_Device(device)
+        , m_InputAttachmentRanges(device.GetStdAllocator()) {
     }
 
     inline operator VkCommandBuffer() const {
@@ -96,6 +106,7 @@ private:
     DeviceVK& m_Device;
     const PipelineLayoutVK* m_PipelineLayout = nullptr;
     const DescriptorVK* m_DepthStencil = nullptr;
+    Vector<InputAttachmentRange> m_InputAttachmentRanges;
     VkCommandBuffer m_Handle = VK_NULL_HANDLE;
     VkCommandPool m_CommandPool = VK_NULL_HANDLE;
     QueueType m_Type = (QueueType)0;

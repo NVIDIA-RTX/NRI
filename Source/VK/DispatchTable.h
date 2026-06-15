@@ -75,6 +75,8 @@ struct DispatchTable {
     VK_FUNC(CreatePipelineLayout);                        // + | +
     VK_FUNC(CreateDescriptorSetLayout);                   // + | +
     VK_FUNC(CreateShaderModule);                          // + | +
+    VK_FUNC(CreateRenderPass2);                           // + | +
+    VK_FUNC(CreateFramebuffer);                           // + | +
     VK_FUNC(CreateGraphicsPipelines);                     // + | +
     VK_FUNC(CreateComputePipelines);                      // + | +
     VK_FUNC(CreatePipelineCache);                         // + | +
@@ -94,6 +96,7 @@ struct DispatchTable {
     VK_FUNC(DestroyPipelineLayout);                       // - | +
     VK_FUNC(DestroyDescriptorSetLayout);                  // - | +
     VK_FUNC(DestroyShaderModule);                         // - | +
+    VK_FUNC(DestroyRenderPass);                           // - | +
     VK_FUNC(DestroyPipeline);                             // - | +
     VK_FUNC(FreeMemory);                                  // - | +
     VK_FUNC(FreeCommandBuffers);                          // - | +
@@ -117,15 +120,12 @@ struct DispatchTable {
     VK_FUNC(GetQueryPoolResults);                         // + | +
     VK_FUNC(GetBufferDeviceAddress);                      // + | +
     VK_FUNC(BeginCommandBuffer);                          // - | +
-    VK_FUNC(CmdSetViewportWithCount);                     // - | +
-    VK_FUNC(CmdSetScissorWithCount);                      // - | +
     VK_FUNC(CmdSetDepthBounds);                           // - | +
     VK_FUNC(CmdSetStencilReference);                      // - | +
     VK_FUNC(CmdSetBlendConstants);                        // - | +
     VK_FUNC(CmdSetDepthBias);                             // - | + TODO: "VK_EXT_depth_bias_control" offers "2" but MoltenVK doesn't support it yet
     VK_FUNC(CmdClearAttachments);                         // - | +
     VK_FUNC(CmdClearColorImage);                          // - | +
-    VK_FUNC(CmdBindVertexBuffers2);                       // - | +
     VK_FUNC(CmdBindIndexBuffer);                          // - | +
     VK_FUNC(CmdBindPipeline);                             // - | +
     VK_FUNC(CmdBindDescriptorSets);                       // - | +
@@ -153,8 +153,14 @@ struct DispatchTable {
     VK_FUNC(CmdUpdateBuffer);                             // - | +
     VK_FUNC(CmdBeginRendering);                           // - | +
     VK_FUNC(CmdEndRendering);                             // - | + TODO: use "vkCmdEndRendering2KHR" from "VK_KHR_maintenance10"
+    VK_FUNC(CmdBeginRenderPass);                          // - | +
+    VK_FUNC(CmdEndRenderPass);                            // - | +
     VK_FUNC(CmdPushDescriptorSet);                        // - | +
     VK_FUNC(EndCommandBuffer);                            // - | +
+                                                          // v1.3 or VK_EXT_extended_dynamic_state
+    VK_FUNC(CmdBindVertexBuffers2);                       // - | +
+    VK_FUNC(CmdSetViewportWithCount);                     // - | +
+    VK_FUNC(CmdSetScissorWithCount);                      // - | +
                                                           // VK_KHR_maintenance4
     VK_FUNC(GetDeviceBufferMemoryRequirements);           // + | +
     VK_FUNC(GetDeviceImageMemoryRequirements);            // + | +

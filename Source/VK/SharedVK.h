@@ -4,7 +4,7 @@
 
 #include <vulkan/vulkan.h>
 #ifdef __APPLE__
-#include <vulkan/vulkan_beta.h>
+#    include <vulkan/vulkan_beta.h>
 #endif
 #undef CreateSemaphore
 
@@ -20,22 +20,21 @@ typedef uint16_t MemoryTypeIndex;
 #define PNEXTCHAIN_SET(next) \
     _tail = (const void**)&next
 
-// Requires {}
 #define PNEXTCHAIN_APPEND_STRUCT(desc) \
-    *_tail = &desc; \
-    _tail = (const void**)&desc.pNext
+    do { \
+        *_tail = &(desc); \
+        _tail = (const void**)&(desc).pNext; \
+    } while (0)
 
 #define PNEXTCHAIN_APPEND_FEATURES(condition, ext, nameLower, nameUpper) \
     VkPhysicalDevice##nameLower##Features##ext nameLower##Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_##nameUpper##_FEATURES_##ext}; \
-    if (IsExtensionSupported(VK_##ext##_##nameUpper##_EXTENSION_NAME, desiredDeviceExts) && (condition)) { \
-        PNEXTCHAIN_APPEND_STRUCT(nameLower##Features); \
-    }
+    if (IsExtensionSupported(VK_##ext##_##nameUpper##_EXTENSION_NAME, desiredDeviceExts) && (condition)) \
+        PNEXTCHAIN_APPEND_STRUCT(nameLower##Features)
 
 #define PNEXTCHAIN_APPEND_PROPS(condition, ext, nameLower, nameUpper) \
     VkPhysicalDevice##nameLower##Properties##ext nameLower##Props = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_##nameUpper##_PROPERTIES_##ext}; \
-    if (IsExtensionSupported(VK_##ext##_##nameUpper##_EXTENSION_NAME, desiredDeviceExts) && (condition)) { \
-        PNEXTCHAIN_APPEND_STRUCT(nameLower##Props); \
-    }
+    if (IsExtensionSupported(VK_##ext##_##nameUpper##_EXTENSION_NAME, desiredDeviceExts) && (condition)) \
+        PNEXTCHAIN_APPEND_STRUCT(nameLower##Props)
 
 #define APPEND_EXT(condition, ext) \
     if (IsExtensionSupported(ext, supportedExts) && (condition)) \
@@ -44,6 +43,7 @@ typedef uint16_t MemoryTypeIndex;
 namespace nri {
 
 constexpr uint32_t INVALID_FAMILY_INDEX = uint32_t(-1);
+constexpr uint32_t RENDER_PASS_UNUSED_ATTACHMENT = uint32_t(-1);
 constexpr VkVideoCodecOperationFlagsKHR VIDEO_DECODE_CODEC_OPERATION_MASK = 0x0000FFFF;
 constexpr VkVideoCodecOperationFlagsKHR VIDEO_ENCODE_CODEC_OPERATION_MASK = 0xFFFF0000;
 
@@ -77,6 +77,17 @@ inline bool IsHostVisibleMemory(MemoryLocation location) {
 
 inline bool IsHostMemory(MemoryLocation location) {
     return location > MemoryLocation::DEVICE_UPLOAD;
+}
+
+inline void SetRenderPassInputAttachmentIndex(Vector<uint32_t>& inputAttachmentIndices, uint32_t index) {
+    while (inputAttachmentIndices.size() <= index)
+        inputAttachmentIndices.push_back(RENDER_PASS_UNUSED_ATTACHMENT);
+
+    inputAttachmentIndices[index] = index;
+}
+
+inline bool HasRenderPassInputAttachmentIndex(const Vector<uint32_t>& inputAttachmentIndices, uint32_t index) {
+    return index < inputAttachmentIndices.size() && inputAttachmentIndices[index] != RENDER_PASS_UNUSED_ATTACHMENT;
 }
 
 struct VideoResourceProfileListVK {

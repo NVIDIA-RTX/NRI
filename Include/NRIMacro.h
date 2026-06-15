@@ -4,8 +4,8 @@
 #undef RGB
 #undef ERROR
 
-#define NriBit(bit) (1 << (bit))
-#define NriBgra(r, g, b) (0xFF000000 | ((r) << 16) | ((g) << 8) | (b))
+#define NriBit(bit) (1u << (bit))
+#define NriBgra(r, g, b) (0xFF000000u | (((r) & 0xFFu) << 16) | (((g) & 0xFFu) << 8) | ((b) & 0xFFu))
 
 #define NRI_NAME_C(name) Nri##name
 #define NRI_FUNC_NAME_C(name) nri##name

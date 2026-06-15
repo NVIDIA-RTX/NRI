@@ -19,7 +19,7 @@ Non-goals:
 - Automatic barriers (better handled in a higher-level abstraction)
 
 Supported GAPIs:
-- *Vulkan 1.4, 1.3 or 1.2+*
+- *Vulkan 1.4+, 1.3++ or 1.2+++*
 - *D3D12*
 - *D3D11*
 - *Metal* (through [MoltenVK](https://github.com/KhronosGroup/MoltenVK))
@@ -114,7 +114,6 @@ It's safe to compile *NRI* using the default (most likely latest) *Agility SDK* 
 
 Required:
  - _VK_KHR_synchronization2_
- - _VK_KHR_dynamic_rendering_
  - _VK_KHR_copy_commands2_
  - _VK_EXT_extended_dynamic_state_
  - _VK_KHR_portability_enumeration_ (for APPLE)
@@ -128,6 +127,7 @@ Supported:
  - (Instance) _VK_EXT_swapchain_colorspace_
  - (Instance) _VK_EXT_debug_utils_
  - (Instance) _VK_EXT_surface_maintenance1_
+ - _VK_KHR_dynamic_rendering_
  - _VK_KHR_swapchain_
  - _VK_KHR_present_id_
  - _VK_KHR_present_wait_

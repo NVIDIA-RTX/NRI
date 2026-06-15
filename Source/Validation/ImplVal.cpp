@@ -723,10 +723,11 @@ static bool ValidateTextureUploadDesc(DeviceVal& device, uint32_t i, const Textu
     if (!textureUploadDesc.subresources)
         return true;
 
+    NRI_RETURN_ON_FAILURE(&device, textureUploadDesc.texture != nullptr, false, "'textureUploadDescs[%u].texture' is NULL", i);
+
     const TextureVal& textureVal = *(TextureVal*)textureUploadDesc.texture;
     const TextureDesc& textureDesc = textureVal.GetDesc();
 
-    NRI_RETURN_ON_FAILURE(&device, textureUploadDesc.texture != nullptr, false, "'textureUploadDescs[%u].texture' is NULL", i);
     NRI_RETURN_ON_FAILURE(&device, textureVal.IsBoundToMemory(), false, "'textureUploadDescs[%u].texture' is not bound to memory", i);
     NRI_RETURN_ON_FAILURE(&device, textureUploadDesc.after.layout < Layout::MAX_NUM, false, "'textureUploadDescs[%u].after.layout' is invalid", i);
 
@@ -736,7 +737,7 @@ static bool ValidateTextureUploadDesc(DeviceVal& device, uint32_t i, const Textu
 
         NRI_RETURN_ON_FAILURE(&device, subresource.slices != nullptr, false, "'textureUploadDescs[%u].subresources[%u].slices' is NULL", i, j);
         NRI_RETURN_ON_FAILURE(&device, subresource.sliceNum != 0, false, "'textureUploadDescs[%u].subresources[%u].sliceNum' is 0", i, j);
-        NRI_RETURN_ON_FAILURE(&device, subresource.slicePitch != 0, false, "'textureUploadDescs[%u].subresources[%u].slicePitch' is 0", i, j);
+        NRI_RETURN_ON_FAILURE(&device, subresource.rowPitch != 0, false, "'textureUploadDescs[%u].subresources[%u].rowPitch' is 0", i, j);
         NRI_RETURN_ON_FAILURE(&device, subresource.slicePitch != 0, false, "'textureUploadDescs[%u].subresources[%u].slicePitch' is 0", i, j);
     }
 
@@ -747,9 +748,10 @@ static bool ValidateBufferUploadDesc(DeviceVal& device, uint32_t i, const Buffer
     if (!bufferUploadDesc.data)
         return true;
 
+    NRI_RETURN_ON_FAILURE(&device, bufferUploadDesc.buffer != nullptr, false, "'bufferUploadDescs[%u].buffer' is NULL", i);
+
     const BufferVal& bufferVal = *(BufferVal*)bufferUploadDesc.buffer;
 
-    NRI_RETURN_ON_FAILURE(&device, bufferUploadDesc.buffer != nullptr, false, "'bufferUploadDescs[%u].buffer' is NULL", i);
     NRI_RETURN_ON_FAILURE(&device, bufferVal.IsBoundToMemory(), false, "'bufferUploadDescs[%u].buffer' is not bound to memory", i);
 
     return true;
@@ -1061,8 +1063,17 @@ static void NRI_CALL GetAccelerationStructureMemoryDesc2(const Device& device, c
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
         geometryNum = accelerationStructureDesc.geometryOrInstanceNum;
 
+        NRI_RETURN_ON_FAILURE(&deviceVal, geometryNum == 0 || accelerationStructureDesc.geometries, ReturnVoid(), "'geometries' is NULL");
+
         for (uint32_t i = 0; i < geometryNum; i++) {
             const BottomLevelGeometryDesc& geometryDesc = accelerationStructureDesc.geometries[i];
+            NRI_RETURN_ON_FAILURE(&deviceVal, geometryDesc.type < BottomLevelGeometryType::MAX_NUM, ReturnVoid(), "'geometries[%u].type' is invalid", i);
+            if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES) {
+                NRI_RETURN_ON_FAILURE(&deviceVal, geometryDesc.triangles.vertexFormat < Format::MAX_NUM, ReturnVoid(), "'geometries[%u].triangles.vertexFormat' is invalid", i);
+                NRI_RETURN_ON_FAILURE(&deviceVal, geometryDesc.triangles.indexType < IndexType::MAX_NUM, ReturnVoid(), "'geometries[%u].triangles.indexType' is invalid", i);
+                if (geometryDesc.triangles.micromap)
+                    NRI_RETURN_ON_FAILURE(&deviceVal, geometryDesc.triangles.micromap->indexType < IndexType::MAX_NUM, ReturnVoid(), "'geometries[%u].triangles.micromap->indexType' is invalid", i);
+            }
 
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
                 micromapNum++;
@@ -1429,6 +1440,9 @@ struct StreamerVal final : public ObjectVal {
 static Result NRI_CALL CreateStreamer(Device& device, const StreamerDesc& streamerDesc, Streamer*& streamer) {
     DeviceVal& deviceVal = (DeviceVal&)device;
 
+    NRI_RETURN_ON_FAILURE(&deviceVal, streamerDesc.constantBufferMemoryLocation < MemoryLocation::MAX_NUM, Result::INVALID_ARGUMENT, "'constantBufferMemoryLocation' is invalid");
+    NRI_RETURN_ON_FAILURE(&deviceVal, streamerDesc.dynamicBufferMemoryLocation < MemoryLocation::MAX_NUM, Result::INVALID_ARGUMENT, "'dynamicBufferMemoryLocation' is invalid");
+
     bool isUpload = streamerDesc.constantBufferMemoryLocation == MemoryLocation::HOST_UPLOAD || streamerDesc.constantBufferMemoryLocation == MemoryLocation::DEVICE_UPLOAD;
     NRI_RETURN_ON_FAILURE(&deviceVal, isUpload, Result::INVALID_ARGUMENT, "'constantBufferMemoryLocation' must be an UPLOAD heap");
 
@@ -1604,6 +1618,9 @@ struct UpscalerVal final : public ObjectVal {
 static Result NRI_CALL CreateUpscaler(Device& device, const UpscalerDesc& upscalerDesc, Upscaler*& upscaler) {
     DeviceVal& deviceVal = (DeviceVal&)device;
 
+    NRI_RETURN_ON_FAILURE(&deviceVal, upscalerDesc.type < UpscalerType::MAX_NUM, Result::INVALID_ARGUMENT, "'type' is invalid");
+    NRI_RETURN_ON_FAILURE(&deviceVal, upscalerDesc.mode < UpscalerMode::MAX_NUM, Result::INVALID_ARGUMENT, "'mode' is invalid");
+
     UpscalerImpl* impl = Allocate<UpscalerImpl>(deviceVal.GetAllocationCallbacks(), device, deviceVal.GetCoreInterface());
     Result result = impl->Create(upscalerDesc);
 
@@ -1629,6 +1646,7 @@ static void NRI_CALL DestroyUpscaler(Upscaler* upscaler) {
 
 static bool NRI_CALL IsUpscalerSupported(const Device& device, UpscalerType upscalerType) {
     DeviceVal& deviceVal = (DeviceVal&)device;
+    NRI_RETURN_ON_FAILURE(&deviceVal, upscalerType < UpscalerType::MAX_NUM, false, "'upscalerType' is invalid");
 
     return IsUpscalerSupported(deviceVal.GetDesc(), upscalerType);
 }

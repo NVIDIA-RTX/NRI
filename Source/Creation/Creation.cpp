@@ -187,12 +187,12 @@ static void UpdateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterDescNu
 
         // Logic: append unique or wait for "precreated"
         Uid_t uid = {};
-        uid.low = *(uint64_t*)&desc.AdapterLuid;
+        memcpy(&uid.low, &desc.AdapterLuid, sizeof(uid.low));
 
         uint32_t n = 0;
         if (precreatedLuid) {
             Uid_t uidNeeded = {};
-            uidNeeded.low = *(uint64_t*)precreatedLuid;
+            memcpy(&uidNeeded.low, precreatedLuid, sizeof(uidNeeded.low));
 
             if (!CompareUid(uid, uidNeeded))
                 continue;

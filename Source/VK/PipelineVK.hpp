@@ -4,6 +4,60 @@ static inline bool IsConstantColorReferenced(BlendFactor factor) {
     return factor == BlendFactor::CONSTANT_COLOR || factor == BlendFactor::CONSTANT_ALPHA || factor == BlendFactor::ONE_MINUS_CONSTANT_COLOR || factor == BlendFactor::ONE_MINUS_CONSTANT_ALPHA;
 }
 
+static void AddInputAttachmentIndicesFromSpirv(Vector<uint32_t>& inputAttachmentIndices, const ShaderDesc& shaderDesc) {
+    constexpr uint32_t SPIRV_MAGIC = 0x07230203;
+    constexpr uint16_t SPIRV_OP_DECORATE = 71;
+    constexpr uint32_t SPIRV_DECORATION_INPUT_ATTACHMENT_INDEX = 43;
+
+    // Remove this parser only if "GraphicsPipelineDesc" provides input attachment indices or NRI requires "attachmentIndex == bindingIndex"
+    if (!(shaderDesc.stage & StageBits::FRAGMENT_SHADER) || !shaderDesc.bytecode || shaderDesc.size < 5 * sizeof(uint32_t) || (shaderDesc.size & 3))
+        return;
+
+    const uint32_t* code = (const uint32_t*)shaderDesc.bytecode;
+    uint32_t wordNum = (uint32_t)(shaderDesc.size / sizeof(uint32_t));
+    if (code[0] != SPIRV_MAGIC)
+        return;
+
+    for (uint32_t offset = 5; offset < wordNum;) {
+        uint32_t instruction = code[offset];
+        uint16_t wordCount = (uint16_t)(instruction >> 16);
+        uint16_t opCode = (uint16_t)instruction;
+
+        if (!wordCount || offset + wordCount > wordNum)
+            break;
+
+        if (opCode == SPIRV_OP_DECORATE && wordCount >= 4 && code[offset + 2] == SPIRV_DECORATION_INPUT_ATTACHMENT_INDEX)
+            SetRenderPassInputAttachmentIndex(inputAttachmentIndices, code[offset + 3]);
+
+        offset += wordCount;
+    }
+}
+
+static void FillRenderPassInputAttachmentIndices(Vector<uint32_t>& inputAttachmentIndices, const GraphicsPipelineDesc& graphicsPipelineDesc) {
+    for (uint32_t i = 0; i < graphicsPipelineDesc.shaderNum; i++)
+        AddInputAttachmentIndicesFromSpirv(inputAttachmentIndices, graphicsPipelineDesc.shaders[i]);
+}
+
+static void FillRenderPassInputAttachmentCompatibilityIndices(Vector<uint32_t>& inputAttachmentIndices, const GraphicsPipelineDesc& graphicsPipelineDesc) {
+    FillRenderPassInputAttachmentIndices(inputAttachmentIndices, graphicsPipelineDesc);
+    if (!inputAttachmentIndices.empty())
+        return;
+
+    const PipelineLayoutVK& pipelineLayoutVK = *(PipelineLayoutVK*)graphicsPipelineDesc.pipelineLayout;
+    const BindingInfo& bindingInfo = pipelineLayoutVK.GetBindingInfo();
+
+    for (const DescriptorRangeDesc& range : bindingInfo.ranges) {
+        if (range.descriptorType != DescriptorType::INPUT_ATTACHMENT)
+            continue;
+
+        for (uint32_t i = 0; i < range.descriptorNum; i++) {
+            uint32_t index = range.baseRegisterIndex + i;
+            if (index < graphicsPipelineDesc.outputMerger.colorNum)
+                SetRenderPassInputAttachmentIndex(inputAttachmentIndices, index);
+        }
+    }
+}
+
 static bool FillPipelineRobustness(const DeviceVK& device, Robustness robustness, VkPipelineRobustnessCreateInfoEXT& robustnessInfo) {
     if (!device.m_IsSupported.pipelineRobustness || robustness == Robustness::DEFAULT)
         return false;
@@ -232,6 +286,46 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     pipelineRenderingCreateInfo.depthAttachmentFormat = GetVkFormat(om.depthStencilFormat);
     pipelineRenderingCreateInfo.stencilAttachmentFormat = depthStencilFormatProps.isStencil ? GetVkFormat(om.depthStencilFormat) : VK_FORMAT_UNDEFINED;
 
+    VkRenderPass renderPass = VK_NULL_HANDLE;
+    if (!m_Device.m_IsSupported.dynamicRendering) {
+        RenderPassDesc renderPassDesc(m_Device.GetStdAllocator());
+        renderPassDesc.viewMask = om.viewMask;
+        FillRenderPassInputAttachmentCompatibilityIndices(renderPassDesc.inputAttachmentIndices, graphicsPipelineDesc);
+
+        VkSampleCountFlagBits sampleNum = ms ? (VkSampleCountFlagBits)ms->sampleNum : VK_SAMPLE_COUNT_1_BIT;
+        for (uint32_t i = 0; i < om.colorNum; i++) {
+            RenderPassAttachmentDesc& color = renderPassDesc.colors.emplace_back();
+            color.format = colorFormats[i];
+            color.sampleNum = sampleNum;
+            color.layout = HasRenderPassInputAttachmentIndex(renderPassDesc.inputAttachmentIndices, i) ? VK_IMAGE_LAYOUT_RENDERING_LOCAL_READ : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        }
+
+        VkFormat depthStencilFormat = GetVkFormat(om.depthStencilFormat);
+        if (depthStencilFormat != VK_FORMAT_UNDEFINED) {
+            renderPassDesc.hasDepth = true;
+            renderPassDesc.depth.format = depthStencilFormat;
+            renderPassDesc.depth.sampleNum = sampleNum;
+            renderPassDesc.depth.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+            if (depthStencilFormatProps.isStencil) {
+                renderPassDesc.hasStencil = true;
+                renderPassDesc.stencil = renderPassDesc.depth;
+            }
+        }
+
+        if (r.shadingRate) {
+            renderPassDesc.hasShadingRate = true;
+            renderPassDesc.shadingRate.format = VK_FORMAT_R8_UINT;
+            renderPassDesc.shadingRate.sampleNum = VK_SAMPLE_COUNT_1_BIT;
+            renderPassDesc.shadingRate.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+            renderPassDesc.shadingRate.layout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+        }
+
+        renderPass = m_Device.GetOrCreateRenderPass(renderPassDesc);
+        if (!renderPass)
+            return Result::FAILURE;
+    }
+
     // Dynamic state
     uint32_t dynamicStateNum = 0;
     std::array<VkDynamicState, 16> dynamicStates;
@@ -258,7 +352,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
 
     // Create
     VkPipelineCreateFlags flags = 0;
-    if (r.shadingRate)
+    if (r.shadingRate && m_Device.m_IsSupported.dynamicRendering)
         flags |= VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
     if ((graphicsPipelineDesc.flags & GraphicsPipelineBits::FAIL_ON_CACHE_MISS) && m_Device.GetDesc().features.pipelineCacheControl)
         flags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT;
@@ -267,7 +361,7 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
 
     VkGraphicsPipelineCreateInfo info = {
         VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-        &pipelineRenderingCreateInfo,
+        nullptr,
         flags,
         graphicsPipelineDesc.shaderNum,
         stages,
@@ -281,15 +375,19 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
         &colorBlendState,
         &dynamicState,
         pipelineLayoutVK,
-        VK_NULL_HANDLE,
+        renderPass,
         0,
         VK_NULL_HANDLE,
         -1,
     };
 
+    PNEXTCHAIN_SET(info.pNext);
+    if (m_Device.m_IsSupported.dynamicRendering)
+        PNEXTCHAIN_APPEND_STRUCT(pipelineRenderingCreateInfo);
+
     VkPipelineRobustnessCreateInfoEXT robustnessInfo = {VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO_EXT};
     if (FillPipelineRobustness(m_Device, graphicsPipelineDesc.robustness, robustnessInfo))
-        pipelineRenderingCreateInfo.pNext = &robustnessInfo;
+        PNEXTCHAIN_APPEND_STRUCT(robustnessInfo);
 
     const auto& vk = m_Device.GetDispatchTable();
     VkPipelineCache pipelineCache = VK_NULL_HANDLE;
