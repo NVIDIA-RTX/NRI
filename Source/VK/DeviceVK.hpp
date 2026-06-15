@@ -110,6 +110,42 @@ static inline bool IsExtensionSupported(const char* ext, const Vector<const char
     return false;
 }
 
+template <typename T>
+static inline void CopyVector(Vector<T>& dst, const Vector<T>& src) {
+    dst.clear();
+    dst.reserve(src.size());
+    dst.insert(dst.end(), src.begin(), src.end());
+}
+
+static inline void CopyRenderPassDesc(RenderPassDesc& dst, const RenderPassDesc& src) {
+    CopyVector(dst.colors, src.colors);
+    CopyVector(dst.colorResolves, src.colorResolves);
+    CopyVector(dst.inputAttachmentIndices, src.inputAttachmentIndices);
+
+    dst.depth = src.depth;
+    dst.stencil = src.stencil;
+    dst.depthResolve = src.depthResolve;
+    dst.stencilResolve = src.stencilResolve;
+    dst.shadingRate = src.shadingRate;
+    dst.depthResolveMode = src.depthResolveMode;
+    dst.stencilResolveMode = src.stencilResolveMode;
+    dst.viewMask = src.viewMask;
+    dst.hasDepth = src.hasDepth;
+    dst.hasStencil = src.hasStencil;
+    dst.hasDepthResolve = src.hasDepthResolve;
+    dst.hasStencilResolve = src.hasStencilResolve;
+    dst.hasShadingRate = src.hasShadingRate;
+}
+
+static inline void CopyFramebufferDesc(FramebufferDesc& dst, const FramebufferDesc& src) {
+    CopyVector(dst.attachments, src.attachments);
+
+    dst.renderPass = src.renderPass;
+    dst.width = src.width;
+    dst.height = src.height;
+    dst.layerNum = src.layerNum;
+}
+
 static void* VKAPI_PTR vkAllocateHostMemory(void* pUserData, size_t size, size_t alignment, VkSystemAllocationScope) {
     const auto& allocationCallbacks = *(AllocationCallbacks*)pUserData;
 
@@ -2149,7 +2185,7 @@ NRI_INLINE VkRenderPass DeviceVK::GetOrCreateRenderPass(const RenderPassDesc& de
     }
 
     RenderPassCacheEntry& entry = m_RenderPasses.emplace_back(GetStdAllocator());
-    entry.desc = desc;
+    CopyRenderPassDesc(entry.desc, desc);
     entry.handle = renderPass;
 
     return renderPass;
@@ -2190,7 +2226,7 @@ NRI_INLINE VkFramebuffer DeviceVK::GetOrCreateFramebuffer(const FramebufferDesc&
     if (!cacheEntry)
         cacheEntry = &m_Framebuffers.emplace_back(GetStdAllocator());
 
-    cacheEntry->desc = desc;
+    CopyFramebufferDesc(cacheEntry->desc, desc);
     cacheEntry->handle = framebuffer;
 
     return framebuffer;
