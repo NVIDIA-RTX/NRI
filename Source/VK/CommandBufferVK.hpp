@@ -13,6 +13,236 @@ static inline VkPipelineBindPoint GetPipelineBindPoint(BindPoint bindPoint) {
     }
 }
 
+static inline bool RangesOverlap(const InputAttachmentRange& a, const VkImageSubresourceRange& b) {
+    uint32_t mipOffset = a.mipOffset;
+    uint32_t mipNum = a.mipNum;
+    uint32_t layerOffset = a.layerOffset;
+    uint32_t layerNum = a.layerNum;
+
+    return (a.aspects & b.aspectMask)
+        && mipOffset < b.baseMipLevel + b.levelCount
+        && b.baseMipLevel < mipOffset + mipNum
+        && layerOffset < b.baseArrayLayer + b.layerCount
+        && b.baseArrayLayer < layerOffset + layerNum;
+}
+
+static inline VkImageAspectFlags GetLowestBit(VkImageAspectFlags x) {
+    return x & (~x + 1);
+}
+
+static inline bool ContainsRange(const InputAttachmentRange& a, VkImage image, VkImageAspectFlags aspects, uint32_t mipOffset, uint32_t mipNum, uint32_t layerOffset, uint32_t layerNum) {
+    uint32_t aMipOffset = a.mipOffset;
+    uint32_t aMipNum = a.mipNum;
+    uint32_t aLayerOffset = a.layerOffset;
+    uint32_t aLayerNum = a.layerNum;
+
+    return a.image == image
+        && (a.aspects & aspects) == aspects
+        && aMipOffset <= mipOffset
+        && mipOffset + mipNum <= aMipOffset + aMipNum
+        && aLayerOffset <= layerOffset
+        && layerOffset + layerNum <= aLayerOffset + aLayerNum;
+}
+
+static inline bool TryMergeInputAttachmentRanges(InputAttachmentRange& a, const InputAttachmentRange& b) {
+    if (a.image != b.image)
+        return false;
+
+    if (a.mipOffset == b.mipOffset && a.mipNum == b.mipNum && a.layerOffset == b.layerOffset && a.layerNum == b.layerNum) {
+        a.aspects |= b.aspects;
+        return true;
+    }
+
+    if (a.aspects != b.aspects)
+        return false;
+
+    if (ContainsRange(a, b.image, b.aspects, b.mipOffset, b.mipNum, b.layerOffset, b.layerNum))
+        return true;
+
+    if (ContainsRange(b, a.image, a.aspects, a.mipOffset, a.mipNum, a.layerOffset, a.layerNum)) {
+        a = b;
+        return true;
+    }
+
+    uint32_t aMipOffset = a.mipOffset;
+    uint32_t aMipEnd = aMipOffset + a.mipNum;
+    uint32_t bMipOffset = b.mipOffset;
+    uint32_t bMipEnd = bMipOffset + b.mipNum;
+    uint32_t aLayerOffset = a.layerOffset;
+    uint32_t aLayerEnd = aLayerOffset + a.layerNum;
+    uint32_t bLayerOffset = b.layerOffset;
+    uint32_t bLayerEnd = bLayerOffset + b.layerNum;
+
+    if (aLayerOffset == bLayerOffset && aLayerEnd == bLayerEnd && aMipOffset <= bMipEnd && bMipOffset <= aMipEnd) {
+        uint32_t mipOffset = std::min(aMipOffset, bMipOffset);
+        a.mipOffset = (Dim_t)mipOffset;
+        a.mipNum = (Dim_t)(std::max(aMipEnd, bMipEnd) - mipOffset);
+        return true;
+    }
+
+    if (aMipOffset == bMipOffset && aMipEnd == bMipEnd && aLayerOffset <= bLayerEnd && bLayerOffset <= aLayerEnd) {
+        uint32_t layerOffset = std::min(aLayerOffset, bLayerOffset);
+        a.layerOffset = (Dim_t)layerOffset;
+        a.layerNum = (Dim_t)(std::max(aLayerEnd, bLayerEnd) - layerOffset);
+        return true;
+    }
+
+    return false;
+}
+
+static inline void NormalizeInputAttachmentRanges(Vector<InputAttachmentRange>& ranges) {
+    if (ranges.size() < 2)
+        return;
+
+    // This is O(n^2) and can repeat until stable, but it's a win on average
+    bool hasMerged = false;
+    do {
+        hasMerged = false;
+
+        for (size_t i = 0; i < ranges.size(); i++) {
+            for (size_t j = i + 1; j < ranges.size();) {
+                if (TryMergeInputAttachmentRanges(ranges[i], ranges[j])) {
+                    ranges[j] = ranges.back();
+                    ranges.pop_back();
+                    hasMerged = true;
+                } else
+                    j++;
+            }
+        }
+    } while (hasMerged);
+}
+
+static inline VkImageSubresourceRange GetSubresourceRange(const TextureVK& textureVK, const VkImageSubresourceRange& range) {
+    const TextureDesc& textureDesc = textureVK.GetDesc();
+
+    VkImageSubresourceRange out = range;
+    if (out.levelCount == VK_REMAINING_MIP_LEVELS)
+        out.levelCount = textureDesc.mipNum - out.baseMipLevel;
+    if (out.layerCount == VK_REMAINING_ARRAY_LAYERS)
+        out.layerCount = textureDesc.layerNum - out.baseArrayLayer;
+
+    return out;
+}
+
+static inline VkImageSubresourceRange GetSubresourceRange(const DescriptorVK& descriptorVK) {
+    const TexViewDesc& texViewDesc = descriptorVK.GetTexViewDesc();
+    const TextureDesc& textureDesc = texViewDesc.texture->GetDesc();
+
+    VkImageSubresourceRange out = {};
+    out.aspectMask = texViewDesc.aspectMask;
+    out.baseMipLevel = texViewDesc.mipOffset;
+    out.levelCount = texViewDesc.mipNum;
+    out.baseArrayLayer = textureDesc.type == TextureType::TEXTURE_3D ? 0 : texViewDesc.layerOrSliceOffset;
+    out.layerCount = textureDesc.type == TextureType::TEXTURE_3D ? 1 : texViewDesc.layerOrSliceNum;
+
+    return out;
+}
+
+static inline void AppendInputAttachmentRange(Vector<InputAttachmentRange>& ranges, VkImage image, VkImageAspectFlags aspectMask, uint32_t mipOffset, uint32_t mipNum, uint32_t layerOffset, uint32_t layerNum) {
+    if (!aspectMask || !mipNum || !layerNum)
+        return;
+
+    ranges.push_back({image, aspectMask, (Dim_t)mipOffset, (Dim_t)mipNum, (Dim_t)layerOffset, (Dim_t)layerNum});
+}
+
+static inline void AppendSubtractedInputAttachmentRanges(Vector<InputAttachmentRange>& ranges, VkImage image, const InputAttachmentRange& oldRange, const VkImageSubresourceRange& range) {
+    VkImageAspectFlags removedAspects = oldRange.aspects & range.aspectMask;
+    VkImageAspectFlags remainingAspects = oldRange.aspects & ~range.aspectMask;
+
+    if (remainingAspects)
+        AppendInputAttachmentRange(ranges, image, remainingAspects, oldRange.mipOffset, oldRange.mipNum, oldRange.layerOffset, oldRange.layerNum);
+
+    uint32_t mipBegin = std::max((uint32_t)oldRange.mipOffset, range.baseMipLevel);
+    uint32_t mipEnd = std::min((uint32_t)(oldRange.mipOffset + oldRange.mipNum), range.baseMipLevel + range.levelCount);
+    uint32_t layerBegin = std::max((uint32_t)oldRange.layerOffset, range.baseArrayLayer);
+    uint32_t layerEnd = std::min((uint32_t)(oldRange.layerOffset + oldRange.layerNum), range.baseArrayLayer + range.layerCount);
+
+    AppendInputAttachmentRange(ranges, image, removedAspects, oldRange.mipOffset, mipBegin - oldRange.mipOffset, oldRange.layerOffset, oldRange.layerNum);
+    AppendInputAttachmentRange(ranges, image, removedAspects, mipEnd, oldRange.mipOffset + oldRange.mipNum - mipEnd, oldRange.layerOffset, oldRange.layerNum);
+    AppendInputAttachmentRange(ranges, image, removedAspects, mipBegin, mipEnd - mipBegin, oldRange.layerOffset, layerBegin - oldRange.layerOffset);
+    AppendInputAttachmentRange(ranges, image, removedAspects, mipBegin, mipEnd - mipBegin, layerEnd, oldRange.layerOffset + oldRange.layerNum - layerEnd);
+}
+
+static inline bool HasInputAttachmentRange(const Vector<InputAttachmentRange>& ranges, VkImage image, const VkImageSubresourceRange& range) {
+    bool isFullyContained = true;
+    for (VkImageAspectFlags aspects = range.aspectMask; aspects; aspects &= aspects - 1) {
+        VkImageAspectFlags aspectMask = GetLowestBit(aspects);
+        bool isAspectContained = false;
+
+        for (const InputAttachmentRange& inputAttachmentRange : ranges) {
+            if (ContainsRange(inputAttachmentRange, image, aspectMask, range.baseMipLevel, range.levelCount, range.baseArrayLayer, range.layerCount)) {
+                isAspectContained = true;
+                break;
+            }
+        }
+
+        if (!isAspectContained) {
+            isFullyContained = false;
+            break;
+        }
+    }
+
+    if (isFullyContained)
+        return true;
+
+    for (VkImageAspectFlags aspects = range.aspectMask; aspects; aspects &= aspects - 1) {
+        VkImageAspectFlags aspectMask = GetLowestBit(aspects);
+        for (uint32_t mip = range.baseMipLevel; mip < range.baseMipLevel + range.levelCount; mip++) {
+            for (uint32_t layer = range.baseArrayLayer; layer < range.baseArrayLayer + range.layerCount; layer++) {
+                VkImageSubresourceRange subresource = {aspectMask, mip, 1, layer, 1};
+                bool isCovered = false;
+
+                for (const InputAttachmentRange& inputAttachmentRange : ranges) {
+                    if (inputAttachmentRange.image == image && RangesOverlap(inputAttachmentRange, subresource)) {
+                        isCovered = true;
+                        break;
+                    }
+                }
+
+                if (!isCovered)
+                    return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+static inline void AddInputAttachmentRange(Vector<InputAttachmentRange>& ranges, VkImage image, const VkImageSubresourceRange& range) {
+    if (ranges.empty()) {
+        AppendInputAttachmentRange(ranges, image, range.aspectMask, range.baseMipLevel, range.levelCount, range.baseArrayLayer, range.layerCount);
+        return;
+    }
+
+    if (HasInputAttachmentRange(ranges, image, range))
+        return;
+
+    AppendInputAttachmentRange(ranges, image, range.aspectMask, range.baseMipLevel, range.levelCount, range.baseArrayLayer, range.layerCount);
+    NormalizeInputAttachmentRanges(ranges);
+}
+
+static inline void RemoveInputAttachmentRange(Vector<InputAttachmentRange>& ranges, VkImage image, const VkImageSubresourceRange& range) {
+    if (ranges.empty())
+        return;
+
+    bool hasChanged = false;
+    for (size_t i = 0; i < ranges.size();) {
+        InputAttachmentRange inputAttachmentRange = ranges[i];
+        if (inputAttachmentRange.image != image || !RangesOverlap(inputAttachmentRange, range)) {
+            i++;
+            continue;
+        }
+
+        ranges[i] = ranges.back();
+        ranges.pop_back();
+        AppendSubtractedInputAttachmentRanges(ranges, image, inputAttachmentRange, range);
+        hasChanged = true;
+    }
+
+    if (hasChanged)
+        NormalizeInputAttachmentRanges(ranges);
+}
+
 static inline void FillRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, const AttachmentDesc& attachmentDesc, Dim_t& renderWidth, Dim_t& renderHeight, Dim_t& layerNum) {
     const DescriptorVK& descriptorVK = *(DescriptorVK*)attachmentDesc.descriptor;
     const TexViewDesc& texViewDesc = descriptorVK.GetTexViewDesc();
@@ -36,6 +266,48 @@ static inline void FillRenderingAttachmentInfo(VkRenderingAttachmentInfo& attach
     const TextureDesc& textureDesc = texViewDesc.texture->GetDesc();
     if(textureDesc.usage & TextureUsageBits::INPUT_ATTACHMENT)
         attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_RENDERING_LOCAL_READ;
+
+    Dim_t w = texViewDesc.texture->GetSize(0, texViewDesc.mipOffset);
+    Dim_t h = texViewDesc.texture->GetSize(1, texViewDesc.mipOffset);
+
+    renderWidth = std::min(renderWidth, w);
+    renderHeight = std::min(renderHeight, h);
+    layerNum = std::min(layerNum, texViewDesc.layerOrSliceNum);
+}
+
+static inline RenderPassAttachmentDesc GetRenderPassAttachmentDesc(const AttachmentDesc& attachmentDesc, bool isInputAttachment = false) {
+    const DescriptorVK& descriptorVK = *(DescriptorVK*)attachmentDesc.descriptor;
+    const TexViewDesc& texViewDesc = descriptorVK.GetTexViewDesc();
+
+    RenderPassAttachmentDesc out = {};
+    out.format = GetVkFormat(descriptorVK.GetFormat());
+    out.sampleNum = (VkSampleCountFlagBits)texViewDesc.texture->GetDesc().sampleNum;
+    out.loadOp = GetLoadOp(attachmentDesc.loadOp);
+    out.storeOp = GetStoreOp(attachmentDesc.storeOp);
+    out.stencilLoadOp = out.loadOp;
+    out.stencilStoreOp = out.storeOp;
+    out.layout = isInputAttachment ? VK_IMAGE_LAYOUT_RENDERING_LOCAL_READ : texViewDesc.expectedLayout;
+
+    return out;
+}
+
+static inline RenderPassAttachmentDesc GetRenderPassResolveAttachmentDesc(const DescriptorVK& descriptorVK) {
+    const TexViewDesc& texViewDesc = descriptorVK.GetTexViewDesc();
+
+    RenderPassAttachmentDesc out = {};
+    out.format = GetVkFormat(descriptorVK.GetFormat());
+    out.sampleNum = VK_SAMPLE_COUNT_1_BIT;
+    out.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    out.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    out.stencilLoadOp = out.loadOp;
+    out.stencilStoreOp = out.storeOp;
+    out.layout = texViewDesc.expectedLayout;
+
+    return out;
+}
+
+static inline void UpdateRenderingExtent(const DescriptorVK& descriptorVK, Dim_t& renderWidth, Dim_t& renderHeight, Dim_t& layerNum) {
+    const TexViewDesc& texViewDesc = descriptorVK.GetTexViewDesc();
 
     Dim_t w = texViewDesc.texture->GetSize(0, texViewDesc.mipOffset);
     Dim_t h = texViewDesc.texture->GetSize(1, texViewDesc.mipOffset);
@@ -80,6 +352,7 @@ NRI_INLINE Result CommandBufferVK::Begin(const DescriptorPool*) {
 
     m_PipelineLayout = nullptr;
     m_PipelineBindPoint = BindPoint::INHERIT;
+    m_InputAttachmentRanges.clear();
 
     return Result::SUCCESS;
 }
@@ -281,60 +554,243 @@ NRI_INLINE void CommandBufferVK::BeginRendering(const RenderingDesc& renderingDe
     Dim_t renderHeight = deviceDesc.dimensions.attachmentMaxDim;
     Dim_t renderLayerNum = deviceDesc.dimensions.attachmentLayerMaxNum;
 
-    Scratch<VkRenderingAttachmentInfo> colors = NRI_ALLOCATE_SCRATCH(m_Device, VkRenderingAttachmentInfo, renderingDesc.colorNum);
+    if (m_Device.m_IsSupported.dynamicRendering) {
+        Scratch<VkRenderingAttachmentInfo> colors = NRI_ALLOCATE_SCRATCH(m_Device, VkRenderingAttachmentInfo, renderingDesc.colorNum);
 
-    VkRenderingInfo renderingInfo = {VK_STRUCTURE_TYPE_RENDERING_INFO};
-    renderingInfo.viewMask = renderingDesc.viewMask;
-    renderingInfo.colorAttachmentCount = renderingDesc.colorNum;
-    renderingInfo.pColorAttachments = colors;
+        VkRenderingInfo renderingInfo = {VK_STRUCTURE_TYPE_RENDERING_INFO};
+        renderingInfo.viewMask = renderingDesc.viewMask;
+        renderingInfo.colorAttachmentCount = renderingDesc.colorNum;
+        renderingInfo.pColorAttachments = colors;
 
-    for (uint32_t i = 0; i < renderingDesc.colorNum; i++)
-        FillRenderingAttachmentInfo(colors[i], renderingDesc.colors[i], renderWidth, renderHeight, renderLayerNum);
+        for (uint32_t i = 0; i < renderingDesc.colorNum; i++)
+            FillRenderingAttachmentInfo(colors[i], renderingDesc.colors[i], renderWidth, renderHeight, renderLayerNum);
 
-    VkRenderingAttachmentInfo depth = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    if (renderingDesc.depth.descriptor) {
-        m_DepthStencil = (DescriptorVK*)renderingDesc.depth.descriptor;
+        VkRenderingAttachmentInfo depth = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
+        if (renderingDesc.depth.descriptor) {
+            m_DepthStencil = (DescriptorVK*)renderingDesc.depth.descriptor;
 
-        FillRenderingAttachmentInfo(depth, renderingDesc.depth, renderWidth, renderHeight, renderLayerNum);
-        renderingInfo.pDepthAttachment = &depth;
+            FillRenderingAttachmentInfo(depth, renderingDesc.depth, renderWidth, renderHeight, renderLayerNum);
+            renderingInfo.pDepthAttachment = &depth;
 
-        const FormatProps& formatProps = GetFormatProps(m_DepthStencil->GetFormat());
-        if (formatProps.isStencil)
-            renderingInfo.pStencilAttachment = &depth;
-    } else
-        m_DepthStencil = nullptr;
+            const FormatProps& formatProps = GetFormatProps(m_DepthStencil->GetFormat());
+            if (formatProps.isStencil)
+                renderingInfo.pStencilAttachment = &depth;
+        } else
+            m_DepthStencil = nullptr;
 
-    VkRenderingAttachmentInfo stencil = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    if (renderingDesc.stencil.descriptor) { // it's safe to do it this way, since there are no "stencil-only" formats
-        m_DepthStencil = (DescriptorVK*)renderingDesc.stencil.descriptor;
+        VkRenderingAttachmentInfo stencil = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
+        if (renderingDesc.stencil.descriptor) { // it's safe to do it this way, since there are no "stencil-only" formats
+            m_DepthStencil = (DescriptorVK*)renderingDesc.stencil.descriptor;
 
-        FillRenderingAttachmentInfo(stencil, renderingDesc.stencil, renderWidth, renderHeight, renderLayerNum);
-        renderingInfo.pStencilAttachment = &stencil;
+            FillRenderingAttachmentInfo(stencil, renderingDesc.stencil, renderWidth, renderHeight, renderLayerNum);
+            renderingInfo.pStencilAttachment = &stencil;
+        }
+
+        // TODO: if there are no attachments, the render area is set to max dims. It may be suboptimal...
+        bool hasAttachment = renderingDesc.colors || renderingDesc.depth.descriptor || renderingDesc.stencil.descriptor;
+        if (!hasAttachment)
+            renderLayerNum = 1;
+
+        renderingInfo.renderArea = {{0, 0}, {renderWidth, renderHeight}};
+        renderingInfo.layerCount = renderLayerNum;
+
+        // Shading rate
+        VkRenderingFragmentShadingRateAttachmentInfoKHR shadingRate = {VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR};
+        if (renderingDesc.shadingRate) {
+            uint32_t tileSize = m_Device.GetDesc().other.shadingRateAttachmentTileSize;
+            const DescriptorVK& descriptorVK = *(DescriptorVK*)renderingDesc.shadingRate;
+
+            shadingRate.imageView = descriptorVK.GetImageView();
+            shadingRate.imageLayout = descriptorVK.GetTexViewDesc().expectedLayout;
+            shadingRate.shadingRateAttachmentTexelSize = {tileSize, tileSize};
+
+            renderingInfo.pNext = &shadingRate;
+        }
+
+        const auto& vk = m_Device.GetDispatchTable();
+        vk.CmdBeginRendering(m_Handle, &renderingInfo);
+    } else {
+        RenderPassDesc renderPassDesc(m_Device.GetStdAllocator());
+        FramebufferDesc framebufferDesc(m_Device.GetStdAllocator());
+        Scratch<VkImageView> colorResolves = NRI_ALLOCATE_SCRATCH(m_Device, VkImageView, renderingDesc.colorNum);
+        bool hasColorResolve = false;
+        uint32_t colorResolveNum = 0;
+
+        renderPassDesc.viewMask = renderingDesc.viewMask;
+
+        for (uint32_t i = 0; i < renderingDesc.colorNum; i++) {
+            const AttachmentDesc& color = renderingDesc.colors[i];
+            const DescriptorVK& descriptorVK = *(DescriptorVK*)color.descriptor;
+            VkImage image = descriptorVK.GetTexViewDesc().texture->GetHandle();
+            bool isInputAttachment = HasInputAttachmentRange(m_InputAttachmentRanges, image, GetSubresourceRange(descriptorVK));
+
+            renderPassDesc.colors.push_back(GetRenderPassAttachmentDesc(color, isInputAttachment));
+            framebufferDesc.attachments.push_back(descriptorVK.GetImageView());
+            UpdateRenderingExtent(descriptorVK, renderWidth, renderHeight, renderLayerNum);
+
+            if (isInputAttachment)
+                SetRenderPassInputAttachmentIndex(renderPassDesc.inputAttachmentIndices, i);
+
+            if (color.resolveDst) {
+                if (color.resolveOp != ResolveOp::AVERAGE) {
+                    m_Device.ReportMessage(Message::ERROR, Result::UNSUPPORTED, __FILE__, __LINE__, "CmdBeginRendering(): legacy render passes support only AVERAGE color resolve");
+                    return;
+                }
+
+                const DescriptorVK& resolveDst = *(DescriptorVK*)color.resolveDst;
+                renderPassDesc.colorResolves.push_back(GetRenderPassResolveAttachmentDesc(resolveDst));
+                colorResolves[i] = resolveDst.GetImageView();
+                hasColorResolve = true;
+                colorResolveNum++;
+            } else {
+                renderPassDesc.colorResolves.push_back({});
+                colorResolves[i] = VK_NULL_HANDLE;
+            }
+        }
+
+        if (!hasColorResolve)
+            renderPassDesc.colorResolves.clear();
+        else {
+            for (uint32_t i = 0; i < renderingDesc.colorNum; i++) {
+                VkImageView view = colorResolves[i];
+                if (view != VK_NULL_HANDLE)
+                    framebufferDesc.attachments.push_back(view);
+            }
+        }
+
+        if (renderingDesc.depth.descriptor) {
+            m_DepthStencil = (DescriptorVK*)renderingDesc.depth.descriptor;
+            const FormatProps& formatProps = GetFormatProps(m_DepthStencil->GetFormat());
+
+            renderPassDesc.hasDepth = true;
+            renderPassDesc.depth = GetRenderPassAttachmentDesc(renderingDesc.depth);
+            framebufferDesc.attachments.push_back(m_DepthStencil->GetImageView());
+            UpdateRenderingExtent(*m_DepthStencil, renderWidth, renderHeight, renderLayerNum);
+
+            if (renderingDesc.depth.resolveDst) {
+                const DescriptorVK& resolveDst = *(DescriptorVK*)renderingDesc.depth.resolveDst;
+
+                renderPassDesc.hasDepthResolve = true;
+                renderPassDesc.depthResolve = GetRenderPassResolveAttachmentDesc(resolveDst);
+                renderPassDesc.depthResolveMode = GetResolveOp(renderingDesc.depth.resolveOp);
+            }
+
+            if (formatProps.isStencil) {
+                renderPassDesc.hasStencil = true;
+                renderPassDesc.stencil = renderPassDesc.depth;
+
+                if (renderingDesc.depth.resolveDst) {
+                    renderPassDesc.hasStencilResolve = true;
+                    renderPassDesc.stencilResolve = renderPassDesc.depthResolve;
+                    renderPassDesc.stencilResolveMode = renderPassDesc.depthResolveMode;
+                }
+            }
+        } else
+            m_DepthStencil = nullptr;
+
+        if (renderingDesc.stencil.descriptor) {
+            DescriptorVK& stencil = *(DescriptorVK*)renderingDesc.stencil.descriptor;
+            m_DepthStencil = &stencil;
+
+            if (renderingDesc.depth.descriptor && stencil.GetImageView() != ((DescriptorVK*)renderingDesc.depth.descriptor)->GetImageView()) {
+                m_Device.ReportMessage(Message::ERROR, Result::UNSUPPORTED, __FILE__, __LINE__, "CmdBeginRendering(): legacy render passes require matching depth and stencil descriptors");
+                return;
+            }
+
+            renderPassDesc.hasStencil = true;
+            renderPassDesc.stencil = GetRenderPassAttachmentDesc(renderingDesc.stencil);
+            if (renderingDesc.depth.descriptor) {
+                renderPassDesc.depth.stencilLoadOp = renderPassDesc.stencil.loadOp;
+                renderPassDesc.depth.stencilStoreOp = renderPassDesc.stencil.storeOp;
+            }
+
+            if (!renderingDesc.depth.descriptor || stencil.GetImageView() != ((DescriptorVK*)renderingDesc.depth.descriptor)->GetImageView())
+                framebufferDesc.attachments.push_back(stencil.GetImageView());
+
+            UpdateRenderingExtent(stencil, renderWidth, renderHeight, renderLayerNum);
+
+            if (renderingDesc.stencil.resolveDst) {
+                const DescriptorVK& resolveDst = *(DescriptorVK*)renderingDesc.stencil.resolveDst;
+
+                renderPassDesc.hasStencilResolve = true;
+                renderPassDesc.stencilResolve = GetRenderPassResolveAttachmentDesc(resolveDst);
+                renderPassDesc.stencilResolveMode = GetResolveOp(renderingDesc.stencil.resolveOp);
+            }
+        }
+
+        if (renderPassDesc.hasDepthResolve || renderPassDesc.hasStencilResolve) {
+            const bool hasSeparateDepthStencilResolve = renderPassDesc.hasDepthResolve && renderPassDesc.hasStencilResolve
+                && renderingDesc.depth.resolveDst
+                && renderingDesc.stencil.resolveDst
+                && ((DescriptorVK*)renderingDesc.depth.resolveDst)->GetImageView() != ((DescriptorVK*)renderingDesc.stencil.resolveDst)->GetImageView();
+
+            if (hasSeparateDepthStencilResolve) {
+                m_Device.ReportMessage(Message::ERROR, Result::UNSUPPORTED, __FILE__, __LINE__, "CmdBeginRendering(): legacy render passes require matching depth and stencil resolve descriptors");
+                return;
+            }
+
+            const DescriptorVK* resolveDst = renderPassDesc.hasDepthResolve ? (DescriptorVK*)renderingDesc.depth.resolveDst : (DescriptorVK*)renderingDesc.stencil.resolveDst;
+            framebufferDesc.attachments.push_back(resolveDst->GetImageView());
+        }
+
+        if (renderingDesc.shadingRate) {
+            const DescriptorVK& descriptorVK = *(DescriptorVK*)renderingDesc.shadingRate;
+
+            renderPassDesc.hasShadingRate = true;
+            renderPassDesc.shadingRate.format = GetVkFormat(descriptorVK.GetFormat());
+            renderPassDesc.shadingRate.sampleNum = VK_SAMPLE_COUNT_1_BIT;
+            renderPassDesc.shadingRate.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+            renderPassDesc.shadingRate.layout = descriptorVK.GetTexViewDesc().expectedLayout;
+            framebufferDesc.attachments.push_back(descriptorVK.GetImageView());
+        }
+
+        bool hasAttachment = renderingDesc.colorNum || renderingDesc.depth.descriptor || renderingDesc.stencil.descriptor;
+        if (!hasAttachment)
+            renderLayerNum = 1;
+
+        VkRenderPass renderPass = m_Device.GetOrCreateRenderPass(renderPassDesc);
+        if (!renderPass)
+            return;
+
+        framebufferDesc.renderPass = renderPass;
+        framebufferDesc.width = renderWidth;
+        framebufferDesc.height = renderHeight;
+        framebufferDesc.layerNum = renderingDesc.viewMask ? 1 : renderLayerNum;
+
+        VkFramebuffer framebuffer = m_Device.GetOrCreateFramebuffer(framebufferDesc);
+        if (!framebuffer)
+            return;
+
+        Scratch<VkClearValue> clearValues = NRI_ALLOCATE_SCRATCH(m_Device, VkClearValue, framebufferDesc.attachments.size());
+        for (uint32_t i = 0; i < (uint32_t)framebufferDesc.attachments.size(); i++)
+            clearValues[i] = {};
+
+        for (uint32_t i = 0; i < renderingDesc.colorNum; i++)
+            clearValues[i] = *(VkClearValue*)&renderingDesc.colors[i].clearValue;
+
+        uint32_t depthStencilClearIndex = renderingDesc.colorNum + colorResolveNum;
+        if (renderingDesc.depth.descriptor || renderingDesc.stencil.descriptor) {
+            if (renderingDesc.depth.descriptor) {
+                const VkClearValue& depthClear = *(VkClearValue*)&renderingDesc.depth.clearValue;
+                clearValues[depthStencilClearIndex].depthStencil.depth = depthClear.depthStencil.depth;
+            }
+
+            if (renderingDesc.stencil.descriptor) {
+                const VkClearValue& stencilClear = *(VkClearValue*)&renderingDesc.stencil.clearValue;
+                clearValues[depthStencilClearIndex].depthStencil.stencil = stencilClear.depthStencil.stencil;
+            }
+        }
+
+        VkRenderPassBeginInfo beginInfo = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+        beginInfo.renderPass = renderPass;
+        beginInfo.framebuffer = framebuffer;
+        beginInfo.renderArea = {{0, 0}, {renderWidth, renderHeight}};
+        beginInfo.clearValueCount = (uint32_t)framebufferDesc.attachments.size();
+        beginInfo.pClearValues = clearValues;
+
+        const auto& vk = m_Device.GetDispatchTable();
+        vk.CmdBeginRenderPass(m_Handle, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
     }
-
-    // TODO: if there are no attachments, the render area is set to max dims. It may be suboptimal...
-    bool hasAttachment = renderingDesc.colors || renderingDesc.depth.descriptor || renderingDesc.stencil.descriptor;
-    if (!hasAttachment)
-        renderLayerNum = 1;
-
-    renderingInfo.renderArea = {{0, 0}, {renderWidth, renderHeight}};
-    renderingInfo.layerCount = renderLayerNum;
-
-    // Shading rate
-    VkRenderingFragmentShadingRateAttachmentInfoKHR shadingRate = {VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR};
-    if (renderingDesc.shadingRate) {
-        uint32_t tileSize = m_Device.GetDesc().other.shadingRateAttachmentTileSize;
-        const DescriptorVK& descriptorVK = *(DescriptorVK*)renderingDesc.shadingRate;
-
-        shadingRate.imageView = descriptorVK.GetImageView();
-        shadingRate.imageLayout = descriptorVK.GetTexViewDesc().expectedLayout;
-        shadingRate.shadingRateAttachmentTexelSize = {tileSize, tileSize};
-
-        renderingInfo.pNext = &shadingRate;
-    }
-
-    const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdBeginRendering(m_Handle, &renderingInfo);
 
     m_RenderWidth = renderWidth;
     m_RenderHeight = renderHeight;
@@ -345,7 +801,10 @@ NRI_INLINE void CommandBufferVK::BeginRendering(const RenderingDesc& renderingDe
 
 NRI_INLINE void CommandBufferVK::EndRendering() {
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdEndRendering(m_Handle);
+    if (m_Device.m_IsSupported.dynamicRendering)
+        vk.CmdEndRendering(m_Handle);
+    else
+        vk.CmdEndRenderPass(m_Handle);
 
     m_DepthStencil = nullptr;
     m_RenderPass = false;
@@ -989,6 +1448,15 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
             in.layerOffset,
             (in.layerNum == REMAINING) ? VK_REMAINING_ARRAY_LAYERS : in.layerNum,
         };
+
+        // Legacy render passes need input attachment references before vkCmdBeginRenderPass.
+        if (!m_Device.m_IsSupported.dynamicRendering) {
+            VkImageSubresourceRange range = GetSubresourceRange(textureVK, out.subresourceRange);
+            if (in.after.layout == Layout::INPUT_ATTACHMENT)
+                AddInputAttachmentRange(m_InputAttachmentRanges, textureVK.GetHandle(), range);
+            else
+                RemoveInputAttachmentRange(m_InputAttachmentRanges, textureVK.GetHandle(), range);
+        }
 
         if (m_RenderPass && in.after.layout == Layout::INPUT_ATTACHMENT)
             isRegionLocal = true;

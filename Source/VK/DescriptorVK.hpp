@@ -57,8 +57,10 @@ DescriptorVK::~DescriptorVK() {
             // skip
             break;
         default: // all textures (including HOST only)
-            if (m_View.image)
+            if (m_View.image) {
+                m_Device.DestroyFramebuffers(m_View.image);
                 vk.DestroyImageView(m_Device, m_View.image, m_Device.GetVkAllocationCallbacks());
+            }
             break;
     }
 }
@@ -81,6 +83,8 @@ Result DescriptorVK::Create(const TextureViewDesc& textureViewDesc) {
 
     VkImageViewUsageCreateInfo usageInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO};
     usageInfo.usage = GetImageViewUsage(textureViewDesc.type);
+    if (textureViewDesc.type == TextureView::COLOR_ATTACHMENT && (textureDesc.usage & TextureUsageBits::INPUT_ATTACHMENT))
+        usageInfo.usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
 
     if (textureDesc.type == TextureType::TEXTURE_3D && m_Device.m_IsSupported.imageSlicedView)
         usageInfo.pNext = &slicesInfo;
@@ -133,6 +137,7 @@ Result DescriptorVK::Create(const TextureViewDesc& textureViewDesc) {
     m_ViewDesc.texture = {};
     m_ViewDesc.texture.texture = &textureVK;
     m_ViewDesc.texture.expectedLayout = expectedLayout;
+    m_ViewDesc.texture.aspectMask = subresourceRange.aspectMask;
     m_ViewDesc.texture.layerOrSliceOffset = textureDesc.type == TextureType::TEXTURE_3D ? textureViewDesc.sliceOffset : textureViewDesc.layerOffset;
     m_ViewDesc.texture.layerOrSliceNum = textureDesc.type == TextureType::TEXTURE_3D ? sliceNum : layerNum;
     m_ViewDesc.texture.mipOffset = textureViewDesc.mipOffset;

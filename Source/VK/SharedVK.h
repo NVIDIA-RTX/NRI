@@ -4,7 +4,7 @@
 
 #include <vulkan/vulkan.h>
 #ifdef __APPLE__
-#include <vulkan/vulkan_beta.h>
+#    include <vulkan/vulkan_beta.h>
 #endif
 #undef CreateSemaphore
 
@@ -38,11 +38,12 @@ typedef uint16_t MemoryTypeIndex;
 
 #define APPEND_EXT(condition, ext) \
     if (IsExtensionSupported(ext, supportedExts) && (condition)) \
-        desiredDeviceExts.push_back(ext)
+    desiredDeviceExts.push_back(ext)
 
 namespace nri {
 
 constexpr uint32_t INVALID_FAMILY_INDEX = uint32_t(-1);
+constexpr uint32_t RENDER_PASS_UNUSED_ATTACHMENT = uint32_t(-1);
 
 struct MemoryTypeInfo {
     MemoryTypeIndex index;
@@ -66,6 +67,17 @@ inline bool IsHostVisibleMemory(MemoryLocation location) {
 
 inline bool IsHostMemory(MemoryLocation location) {
     return location > MemoryLocation::DEVICE_UPLOAD;
+}
+
+inline void SetRenderPassInputAttachmentIndex(Vector<uint32_t>& inputAttachmentIndices, uint32_t index) {
+    while (inputAttachmentIndices.size() <= index)
+        inputAttachmentIndices.push_back(RENDER_PASS_UNUSED_ATTACHMENT);
+
+    inputAttachmentIndices[index] = index;
+}
+
+inline bool HasRenderPassInputAttachmentIndex(const Vector<uint32_t>& inputAttachmentIndices, uint32_t index) {
+    return index < inputAttachmentIndices.size() && inputAttachmentIndices[index] != RENDER_PASS_UNUSED_ATTACHMENT;
 }
 
 } // namespace nri

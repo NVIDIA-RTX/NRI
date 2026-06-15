@@ -6,8 +6,110 @@ namespace nri {
 
 struct QueueVK;
 
+struct RenderPassAttachmentDesc {
+    bool operator==(const RenderPassAttachmentDesc& other) const {
+        return format == other.format
+            && sampleNum == other.sampleNum
+            && loadOp == other.loadOp
+            && storeOp == other.storeOp
+            && stencilLoadOp == other.stencilLoadOp
+            && stencilStoreOp == other.stencilStoreOp
+            && layout == other.layout;
+    }
+
+    VkFormat format = VK_FORMAT_UNDEFINED;
+    VkSampleCountFlagBits sampleNum = VK_SAMPLE_COUNT_1_BIT;
+    VkAttachmentLoadOp loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    VkAttachmentStoreOp storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    VkAttachmentLoadOp stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    VkAttachmentStoreOp stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
+};
+
+struct RenderPassDesc {
+    RenderPassDesc(const StdAllocator<uint8_t>& allocator)
+        : colors(allocator)
+        , colorResolves(allocator)
+        , inputAttachmentIndices(allocator) {
+    }
+
+    bool operator==(const RenderPassDesc& other) const {
+        return viewMask == other.viewMask
+            && hasDepth == other.hasDepth
+            && hasStencil == other.hasStencil
+            && hasDepthResolve == other.hasDepthResolve
+            && hasStencilResolve == other.hasStencilResolve
+            && hasShadingRate == other.hasShadingRate
+            && depthResolveMode == other.depthResolveMode
+            && stencilResolveMode == other.stencilResolveMode
+            && colors == other.colors
+            && colorResolves == other.colorResolves
+            && inputAttachmentIndices == other.inputAttachmentIndices
+            && depth == other.depth
+            && stencil == other.stencil
+            && depthResolve == other.depthResolve
+            && stencilResolve == other.stencilResolve
+            && shadingRate == other.shadingRate;
+    }
+
+    Vector<RenderPassAttachmentDesc> colors;
+    Vector<RenderPassAttachmentDesc> colorResolves;
+    Vector<uint32_t> inputAttachmentIndices;
+    RenderPassAttachmentDesc depth = {};
+    RenderPassAttachmentDesc stencil = {};
+    RenderPassAttachmentDesc depthResolve = {};
+    RenderPassAttachmentDesc stencilResolve = {};
+    RenderPassAttachmentDesc shadingRate = {};
+    VkResolveModeFlagBits depthResolveMode = VK_RESOLVE_MODE_NONE;
+    VkResolveModeFlagBits stencilResolveMode = VK_RESOLVE_MODE_NONE;
+    uint32_t viewMask = 0;
+    bool hasDepth = false;
+    bool hasStencil = false;
+    bool hasDepthResolve = false;
+    bool hasStencilResolve = false;
+    bool hasShadingRate = false;
+};
+
+inline void SetRenderPassInputAttachmentIndex(Vector<uint32_t>& inputAttachmentIndices, uint32_t index);
+inline bool HasRenderPassInputAttachmentIndex(const Vector<uint32_t>& inputAttachmentIndices, uint32_t index);
+
+struct FramebufferDesc {
+    FramebufferDesc(const StdAllocator<uint8_t>& allocator)
+        : attachments(allocator) {
+    }
+
+    bool operator==(const FramebufferDesc& other) const {
+        return renderPass == other.renderPass && width == other.width && height == other.height && layerNum == other.layerNum && attachments == other.attachments;
+    }
+
+    Vector<VkImageView> attachments;
+    VkRenderPass renderPass = VK_NULL_HANDLE;
+    uint32_t width = 0;
+    uint32_t height = 0;
+    uint32_t layerNum = 0;
+};
+
+struct RenderPassCacheEntry {
+    RenderPassCacheEntry(const StdAllocator<uint8_t>& allocator)
+        : desc(allocator) {
+    }
+
+    RenderPassDesc desc;
+    VkRenderPass handle = VK_NULL_HANDLE;
+};
+
+struct FramebufferCacheEntry {
+    FramebufferCacheEntry(const StdAllocator<uint8_t>& allocator)
+        : desc(allocator) {
+    }
+
+    FramebufferDesc desc;
+    VkFramebuffer handle = VK_NULL_HANDLE;
+};
+
 struct IsSupported {
     uint32_t deviceAddress                : 1;
+    uint32_t dynamicRendering             : 1;
     uint32_t swapChainMutableFormat       : 1;
     uint32_t presentId                    : 1;
     uint32_t memoryPriority               : 1;
@@ -90,6 +192,8 @@ struct DeviceVK final : public DeviceBase {
     ~DeviceVK();
 
     Result Create(const DeviceCreationDesc& desc, const DeviceCreationVKDesc& descVK);
+    VkRenderPass GetOrCreateRenderPass(const RenderPassDesc& desc);
+    VkFramebuffer GetOrCreateFramebuffer(const FramebufferDesc& desc);
     void FillCreateInfo(const BufferDesc& bufferDesc, VkBufferCreateInfo& info) const;
     void FillCreateInfo(const TextureDesc& bufferDesc, VkImageCreateInfo& info) const;
     void FillCreateInfo(const SamplerDesc& samplerDesc, VkSamplerCreateInfo& info, VkSamplerReductionModeCreateInfo& reductionModeInfo, VkSamplerCustomBorderColorCreateInfoEXT& borderColorInfo) const;
@@ -102,6 +206,7 @@ struct DeviceVK final : public DeviceBase {
     void GetAccelerationStructureBuildSizesInfo(const AccelerationStructureDesc& accelerationStructureDesc, VkAccelerationStructureBuildSizesInfoKHR& sizesInfo);
     void GetMicromapBuildSizesInfo(const MicromapDesc& micromapDesc, VkMicromapBuildSizesInfoEXT& sizesInfo);
     void SetDebugNameToTrivialObject(VkObjectType objectType, uint64_t handle, const char* name);
+    void DestroyFramebuffers(VkImageView imageView);
 
     //================================================================================================================
     // DebugNameBase
@@ -168,6 +273,8 @@ private:
     VkPhysicalDevice m_PhysicalDevice = nullptr;
     std::array<uint32_t, (size_t)QueueType::MAX_NUM> m_ActiveQueueFamilyIndices = {};
     std::array<Vector<QueueVK*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies;
+    Vector<RenderPassCacheEntry> m_RenderPasses;
+    Vector<FramebufferCacheEntry> m_Framebuffers;
     DispatchTable m_VK = {};
     VkPhysicalDeviceMemoryProperties m_MemoryProps = {};
     VkAllocationCallbacks m_AllocationCallbacks = {};

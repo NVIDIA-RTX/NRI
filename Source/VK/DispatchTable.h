@@ -75,6 +75,8 @@ struct DispatchTable {
     VK_FUNC(CreatePipelineLayout);                        // + | +
     VK_FUNC(CreateDescriptorSetLayout);                   // + | +
     VK_FUNC(CreateShaderModule);                          // + | +
+    VK_FUNC(CreateRenderPass2);                           // + | +
+    VK_FUNC(CreateFramebuffer);                           // + | +
     VK_FUNC(CreateGraphicsPipelines);                     // + | +
     VK_FUNC(CreateComputePipelines);                      // + | +
     VK_FUNC(CreatePipelineCache);                         // + | +
@@ -94,6 +96,7 @@ struct DispatchTable {
     VK_FUNC(DestroyPipelineLayout);                       // - | +
     VK_FUNC(DestroyDescriptorSetLayout);                  // - | +
     VK_FUNC(DestroyShaderModule);                         // - | +
+    VK_FUNC(DestroyRenderPass);                           // - | +
     VK_FUNC(DestroyPipeline);                             // - | +
     VK_FUNC(FreeMemory);                                  // - | +
     VK_FUNC(FreeCommandBuffers);                          // - | +
@@ -150,6 +153,8 @@ struct DispatchTable {
     VK_FUNC(CmdFillBuffer);                               // - | +
     VK_FUNC(CmdBeginRendering);                           // - | +
     VK_FUNC(CmdEndRendering);                             // - | + TODO: use "vkCmdEndRendering2KHR" from "VK_KHR_maintenance10"
+    VK_FUNC(CmdBeginRenderPass);                          // - | +
+    VK_FUNC(CmdEndRenderPass);                            // - | +
     VK_FUNC(CmdPushDescriptorSet);                        // - | +
     VK_FUNC(EndCommandBuffer);                            // - | +
                                                           // VK_KHR_maintenance4

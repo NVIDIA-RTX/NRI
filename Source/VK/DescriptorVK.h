@@ -9,6 +9,7 @@ struct TextureVK;
 struct TexViewDesc {
     const TextureVK* texture;
     VkImageLayout expectedLayout;
+    VkImageAspectFlags aspectMask;
     Dim_t layerOrSliceOffset; // this is valid, because it's used only for https://docs.vulkan.org/refpages/latest/refpages/source/VkImageSubresourceRange.html
     Dim_t layerOrSliceNum;
     Dim_t mipOffset;

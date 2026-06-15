@@ -424,27 +424,28 @@ NriBits(StageBits, uint32_t,
     FRAGMENT_SHADER                 = NriBit(7),    //    Fragment (pixel) shader                         X
     DEPTH_STENCIL_ATTACHMENT        = NriBit(8),    //    Depth-stencil R/W operations
     COLOR_ATTACHMENT                = NriBit(9),    //    Color R/W operations
+    SHADING_RATE_ATTACHMENT         = NriBit(10),   //    Shading rate attachment R
 
     // Compute                                      // Invoked by "CmdDispatch*" (not Rays)
-    COMPUTE_SHADER                  = NriBit(10),   //    Compute shader                                  X (required within COMPUTE bind point)
+    COMPUTE_SHADER                  = NriBit(11),   //    Compute shader                                  X (required within COMPUTE bind point)
 
     // Ray tracing                                  // Invoked by "CmdDispatchRays*"
-    RAYGEN_SHADER                   = NriBit(11),   //    Ray generation shader                           X (required within RAY_TRACING bind point)
-    MISS_SHADER                     = NriBit(12),   //    Miss shader                                     X
-    INTERSECTION_SHADER             = NriBit(13),   //    Intersection shader                             X
-    CLOSEST_HIT_SHADER              = NriBit(14),   //    Closest hit shader                              X
-    ANY_HIT_SHADER                  = NriBit(15),   //    Any hit shader                                  X
-    CALLABLE_SHADER                 = NriBit(16),   //    Callable shader                                 X
-    ACCELERATION_STRUCTURE          = NriBit(17),   // Invoked by "Cmd*AccelerationStructure*" commands
-    MICROMAP                        = NriBit(18),   // Invoked by "Cmd*Micromap*" commands
+    RAYGEN_SHADER                   = NriBit(12),   //    Ray generation shader                           X (required within RAY_TRACING bind point)
+    MISS_SHADER                     = NriBit(13),   //    Miss shader                                     X
+    INTERSECTION_SHADER             = NriBit(14),   //    Intersection shader                             X
+    CLOSEST_HIT_SHADER              = NriBit(15),   //    Closest hit shader                              X
+    ANY_HIT_SHADER                  = NriBit(16),   //    Any hit shader                                  X
+    CALLABLE_SHADER                 = NriBit(17),   //    Callable shader                                 X
+    ACCELERATION_STRUCTURE          = NriBit(18),   // Invoked by "Cmd*AccelerationStructure*" commands
+    MICROMAP                        = NriBit(19),   // Invoked by "Cmd*Micromap*" commands
 
     // Other
-    COPY                            = NriBit(19),   // Invoked by "CmdCopy*", "CmdUpload*" and "CmdReadback*"
-    RESOLVE                         = NriBit(20),   // Invoked by "CmdResolveTexture"
-    CLEAR_STORAGE                   = NriBit(21),   // Invoked by "CmdClearStorage"
+    COPY                            = NriBit(20),   // Invoked by "CmdCopy*", "CmdUpload*" and "CmdReadback*"
+    RESOLVE                         = NriBit(21),   // Invoked by "CmdResolveTexture"
+    CLEAR_STORAGE                   = NriBit(22),   // Invoked by "CmdClearStorage"
 
     // Modifiers
-    INDIRECT                        = NriBit(22),   // Invoked by "Indirect" commands (used in addition to other bits)
+    INDIRECT                        = NriBit(23),   // Invoked by "Indirect" commands (used in addition to other bits)
 
     // Umbrella stages
     TESSELLATION_SHADERS            = NriMember(StageBits, TESS_CONTROL_SHADER)
@@ -474,6 +475,7 @@ NriBits(StageBits, uint32_t,
                                     | NriMember(StageBits, GRAPHICS_SHADERS)
                                     | NriMember(StageBits, DEPTH_STENCIL_ATTACHMENT)
                                     | NriMember(StageBits, COLOR_ATTACHMENT)
+                                    | NriMember(StageBits, SHADING_RATE_ATTACHMENT)
 );
 
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkAccessFlagBits2.html
@@ -493,7 +495,7 @@ NriBits(AccessBits, uint32_t,
     COLOR_ATTACHMENT_WRITE          = NriBit(6),    //  W       COLOR_ATTACHMENT
     DEPTH_STENCIL_ATTACHMENT_READ   = NriBit(7),    // R        DEPTH_STENCIL_ATTACHMENT
     DEPTH_STENCIL_ATTACHMENT_WRITE  = NriBit(8),    //  W       DEPTH_STENCIL_ATTACHMENT
-    SHADING_RATE_ATTACHMENT         = NriBit(9),    // R        FRAGMENT_SHADER
+    SHADING_RATE_ATTACHMENT         = NriBit(9),    // R        SHADING_RATE_ATTACHMENT
     INPUT_ATTACHMENT                = NriBit(10),   // R        FRAGMENT_SHADER
 
     // Acceleration structure
@@ -1562,6 +1564,10 @@ NriStruct(AttachmentDesc) {
     NriOptional NriPtr(Descriptor) resolveDst;          // must be in "COLOR_ATTACHMENT" state and valid during "CmdEndRendering"
 };
 
+// If "VK_KHR_dynamic_rendering" is not supported:
+// - "VkRenderPass" is used under the hood
+// - input attachments must be transitioned to "Layout::INPUT_ATTACHMENT" in the same command buffer before "CmdBeginRendering", because NRI does not list them explicitly
+// - pipelines used in this rendering scope must be compatible with the input attachment indices detected from these transitions
 NriStruct(RenderingDesc) {
     const NriPtr(AttachmentDesc) colors;
     uint32_t colorNum;

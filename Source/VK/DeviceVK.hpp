@@ -346,7 +346,9 @@ DeviceVK::DeviceVK(const CallbackInterface& callbacks, const AllocationCallbacks
           Vector<QueueVK*>(GetStdAllocator()),
           Vector<QueueVK*>(GetStdAllocator()),
           Vector<QueueVK*>(GetStdAllocator()),
-      } {
+      }
+    , m_RenderPasses(GetStdAllocator())
+    , m_Framebuffers(GetStdAllocator()) {
     m_AllocationCallbacks.pUserData = (void*)&GetAllocationCallbacks();
     m_AllocationCallbacks.pfnAllocation = vkAllocateHostMemory;
     m_AllocationCallbacks.pfnReallocation = vkReallocateHostMemory;
@@ -357,6 +359,14 @@ DeviceVK::DeviceVK(const CallbackInterface& callbacks, const AllocationCallbacks
 }
 
 DeviceVK::~DeviceVK() {
+    for (FramebufferCacheEntry& framebuffer : m_Framebuffers) {
+        if (framebuffer.handle)
+            m_VK.DestroyFramebuffer(m_Device, framebuffer.handle, m_AllocationCallbackPtr);
+    }
+
+    for (RenderPassCacheEntry& renderPass : m_RenderPasses)
+        m_VK.DestroyRenderPass(m_Device, renderPass.handle, m_AllocationCallbackPtr);
+
     if (m_Vma)
         vmaDestroyAllocator(m_Vma);
 
@@ -661,6 +671,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.maintenance9 = Maintenance9Features.maintenance9;
     m_IsSupported.maintenance10 = Maintenance10Features.maintenance10;
     m_IsSupported.deviceAddress = features12.bufferDeviceAddress;
+    m_IsSupported.dynamicRendering = features13.dynamicRendering;
     m_IsSupported.swapChainMutableFormat = IsExtensionSupported(VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME, desiredDeviceExts);
     m_IsSupported.presentId = PresentIdFeatures.presentId;
     m_IsSupported.memoryPriority = MemoryPriorityFeatures.memoryPriority;
@@ -677,9 +688,11 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsMemoryZeroInitializationEnabled = desc.enableMemoryZeroInitialization && ZeroInitializeDeviceMemoryFeatures.zeroInitializeDeviceMemory;
 
     // Check hard requirements
-    NRI_RETURN_ON_FAILURE(this, ExtendedDynamicStateFeatures.extendedDynamicState != 0, Result::UNSUPPORTED, "'extendedDynamicState' is not supported by the device");
-    NRI_RETURN_ON_FAILURE(this, features13.dynamicRendering, Result::UNSUPPORTED, "'dynamicRendering' is not supported by the device");
-    NRI_RETURN_ON_FAILURE(this, features13.synchronization2, Result::UNSUPPORTED, "'synchronization2' is not supported by the device");
+    NRI_RETURN_ON_FAILURE(this, ExtendedDynamicStateFeatures.extendedDynamicState != 0, Result::UNSUPPORTED, "'extendedDynamicState' is not supported");
+    NRI_RETURN_ON_FAILURE(this, features13.synchronization2, Result::UNSUPPORTED, "'synchronization2' is not supported");
+
+    if (!features13.dynamicRendering)
+        NRI_REPORT_INFO(this, "'dynamicRendering' is not supported, using 'render passes'");
 
     { // Create device
         if (isWrapper)
@@ -1201,7 +1214,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.shaderFeatures.barycentric = FragmentShaderBarycentricFeatures.fragmentShaderBarycentric;
         m_Desc.shaderFeatures.rayTracingPositionFetch = RayTracingPositionFetchFeatures.rayTracingPositionFetch;
         m_Desc.shaderFeatures.integerDotProduct = features13.shaderIntegerDotProduct;
-        m_Desc.shaderFeatures.inputAttachments = features14.dynamicRenderingLocalRead;
+        m_Desc.shaderFeatures.inputAttachments = features14.dynamicRenderingLocalRead || !features13.dynamicRendering; // legacy render passes support "input attachments"
         m_Desc.shaderFeatures.drawParameters = features11.shaderDrawParameters ? true : false; // TODO: emulation is not implemented, because >99% devices support it!
 
         // Estimate shader model last since it depends on many "m_Desc" fields
@@ -1783,6 +1796,8 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(CreatePipelineLayout);
     GET_DEVICE_CORE_FUNC(CreateDescriptorSetLayout);
     GET_DEVICE_CORE_FUNC(CreateShaderModule);
+    GET_DEVICE_CORE_FUNC(CreateRenderPass2);
+    GET_DEVICE_CORE_FUNC(CreateFramebuffer);
     GET_DEVICE_CORE_FUNC(CreateGraphicsPipelines);
     GET_DEVICE_CORE_FUNC(CreateComputePipelines);
     GET_DEVICE_CORE_FUNC(CreatePipelineCache);
@@ -1802,6 +1817,7 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(DestroyPipelineLayout);
     GET_DEVICE_CORE_FUNC(DestroyDescriptorSetLayout);
     GET_DEVICE_CORE_FUNC(DestroyShaderModule);
+    GET_DEVICE_CORE_FUNC(DestroyRenderPass);
     GET_DEVICE_CORE_FUNC(DestroyPipeline);
     GET_DEVICE_CORE_FUNC(FreeMemory);
     GET_DEVICE_CORE_FUNC(FreeCommandBuffers);
@@ -1856,13 +1872,15 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(CmdCopyQueryPoolResults);
     GET_DEVICE_CORE_FUNC(CmdResetQueryPool);
     GET_DEVICE_CORE_FUNC(CmdFillBuffer);
-    GET_DEVICE_CORE_FUNC(CmdBeginRendering);
-    GET_DEVICE_CORE_FUNC(CmdEndRendering);
+    GET_DEVICE_CORE_FUNC(CmdBeginRenderPass);
+    GET_DEVICE_CORE_FUNC(CmdEndRenderPass);
     GET_DEVICE_CORE_FUNC(CmdPushDescriptorSet);
     GET_DEVICE_CORE_FUNC(EndCommandBuffer);
 
     GET_DEVICE_OPTIONAL_CORE_FUNC(GetDeviceBufferMemoryRequirements);
     GET_DEVICE_OPTIONAL_CORE_FUNC(GetDeviceImageMemoryRequirements);
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdBeginRendering);
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdEndRendering);
     GET_DEVICE_OPTIONAL_CORE_FUNC(CmdBindIndexBuffer2);
     GET_DEVICE_OPTIONAL_CORE_FUNC(CmdBindDescriptorSets2);
     GET_DEVICE_OPTIONAL_CORE_FUNC(CmdPushConstants2);
@@ -1944,6 +1962,271 @@ void DeviceVK::Destruct() {
 
 NRI_INLINE void DeviceVK::SetDebugName(const char* name) {
     SetDebugNameToTrivialObject(VK_OBJECT_TYPE_DEVICE, (uint64_t)m_Device, name);
+}
+
+NRI_INLINE VkRenderPass DeviceVK::GetOrCreateRenderPass(const RenderPassDesc& desc) {
+    ExclusiveScope lock(m_Lock);
+
+    for (const RenderPassCacheEntry& entry : m_RenderPasses) {
+        if (entry.desc == desc)
+            return entry.handle;
+    }
+
+    Vector<VkAttachmentDescription2> attachments(GetStdAllocator());
+    Vector<VkAttachmentReference2> colors(GetStdAllocator());
+    Vector<VkAttachmentReference2> colorResolves(GetStdAllocator());
+    Vector<VkAttachmentReference2> inputs(GetStdAllocator());
+    Vector<uint32_t> colorAttachmentIndices(GetStdAllocator());
+    attachments.reserve(desc.colors.size() + desc.colorResolves.size() + 4);
+    colors.reserve(desc.colors.size());
+    colorResolves.reserve(desc.colorResolves.size());
+    inputs.reserve(desc.inputAttachmentIndices.size());
+    colorAttachmentIndices.reserve(desc.colors.size());
+
+    auto addAttachment = [&](const RenderPassAttachmentDesc& attachmentDesc) {
+        VkAttachmentDescription2& attachment = attachments.emplace_back();
+        attachment = {VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2};
+        attachment.format = attachmentDesc.format;
+        attachment.samples = attachmentDesc.sampleNum;
+        attachment.loadOp = attachmentDesc.loadOp;
+        attachment.storeOp = attachmentDesc.storeOp;
+        attachment.stencilLoadOp = attachmentDesc.stencilLoadOp;
+        attachment.stencilStoreOp = attachmentDesc.stencilStoreOp;
+        attachment.initialLayout = attachmentDesc.layout;
+        attachment.finalLayout = attachmentDesc.layout;
+
+        return (uint32_t)attachments.size() - 1;
+    };
+
+    for (uint32_t i = 0; i < (uint32_t)desc.colors.size(); i++) {
+        uint32_t attachmentIndex = addAttachment(desc.colors[i]);
+
+        VkAttachmentReference2& color = colors.emplace_back();
+        color = {VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+        color.attachment = attachmentIndex;
+        color.layout = desc.colors[i].layout;
+        color.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+        colorAttachmentIndices.push_back(attachmentIndex);
+    }
+
+    for (uint32_t i = 0; i < (uint32_t)desc.inputAttachmentIndices.size(); i++) {
+        uint32_t index = desc.inputAttachmentIndices[i];
+        bool isUsed = index != RENDER_PASS_UNUSED_ATTACHMENT && index < colorAttachmentIndices.size();
+
+        VkAttachmentReference2& input = inputs.emplace_back();
+        input = {VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+        input.attachment = isUsed ? colorAttachmentIndices[index] : VK_ATTACHMENT_UNUSED;
+        input.layout = isUsed ? desc.colors[index].layout : VK_IMAGE_LAYOUT_UNDEFINED;
+        input.aspectMask = isUsed ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
+    }
+
+    for (uint32_t i = 0; i < (uint32_t)desc.colorResolves.size(); i++) {
+        VkAttachmentReference2& colorResolve = colorResolves.emplace_back();
+        colorResolve = {VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+
+        if (desc.colorResolves[i].format == VK_FORMAT_UNDEFINED) {
+            colorResolve.attachment = VK_ATTACHMENT_UNUSED;
+            colorResolve.layout = VK_IMAGE_LAYOUT_UNDEFINED;
+        } else {
+            colorResolve.attachment = addAttachment(desc.colorResolves[i]);
+            colorResolve.layout = desc.colorResolves[i].layout;
+            colorResolve.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        }
+    }
+
+    VkAttachmentReference2 depthStencil = {VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+    if (desc.hasDepth)
+        depthStencil.attachment = addAttachment(desc.depth);
+    else if (desc.hasStencil)
+        depthStencil.attachment = addAttachment(desc.stencil);
+    else
+        depthStencil.attachment = VK_ATTACHMENT_UNUSED;
+
+    if (desc.hasDepth)
+        depthStencil.layout = desc.depth.layout;
+    else if (desc.hasStencil)
+        depthStencil.layout = desc.stencil.layout;
+    else
+        depthStencil.layout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    if (desc.hasDepth)
+        depthStencil.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+    if (desc.hasStencil)
+        depthStencil.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+
+    VkAttachmentReference2 depthStencilResolve = {VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+    if (desc.hasDepthResolve) {
+        depthStencilResolve.attachment = addAttachment(desc.depthResolve);
+        depthStencilResolve.layout = desc.depthResolve.layout;
+    } else if (desc.hasStencilResolve) {
+        depthStencilResolve.attachment = addAttachment(desc.stencilResolve);
+        depthStencilResolve.layout = desc.stencilResolve.layout;
+    } else
+        depthStencilResolve.attachment = VK_ATTACHMENT_UNUSED;
+
+    if (desc.hasDepthResolve)
+        depthStencilResolve.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+    if (desc.hasStencilResolve)
+        depthStencilResolve.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+
+    VkAttachmentReference2 shadingRate = {VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+    if (desc.hasShadingRate) {
+        shadingRate.attachment = addAttachment(desc.shadingRate);
+        shadingRate.layout = desc.shadingRate.layout;
+    }
+
+    VkSubpassDescriptionDepthStencilResolve depthStencilResolveInfo = {VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE};
+    if (desc.hasDepthResolve || desc.hasStencilResolve) {
+        depthStencilResolveInfo.depthResolveMode = desc.hasDepthResolve ? desc.depthResolveMode : VK_RESOLVE_MODE_NONE;
+        depthStencilResolveInfo.stencilResolveMode = desc.hasStencilResolve ? desc.stencilResolveMode : VK_RESOLVE_MODE_NONE;
+        depthStencilResolveInfo.pDepthStencilResolveAttachment = &depthStencilResolve;
+    }
+
+    VkFragmentShadingRateAttachmentInfoKHR shadingRateInfo = {VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR};
+    if (desc.hasShadingRate) {
+        uint32_t tileSize = m_Desc.other.shadingRateAttachmentTileSize;
+        shadingRateInfo.pFragmentShadingRateAttachment = &shadingRate;
+        shadingRateInfo.shadingRateAttachmentTexelSize = {tileSize, tileSize};
+    }
+
+    VkSubpassDescription2 subpass = {VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.viewMask = desc.viewMask;
+    subpass.colorAttachmentCount = (uint32_t)colors.size();
+    subpass.pColorAttachments = colors.data();
+    subpass.inputAttachmentCount = (uint32_t)inputs.size();
+    subpass.pInputAttachments = inputs.empty() ? nullptr : inputs.data();
+    subpass.pResolveAttachments = colorResolves.empty() ? nullptr : colorResolves.data();
+    subpass.pDepthStencilAttachment = depthStencil.attachment == VK_ATTACHMENT_UNUSED ? nullptr : &depthStencil;
+
+    PNEXTCHAIN_DECLARE(subpass.pNext);
+    if (desc.hasDepthResolve || desc.hasStencilResolve) {
+        PNEXTCHAIN_APPEND_STRUCT(depthStencilResolveInfo);
+    }
+    if (desc.hasShadingRate) {
+        PNEXTCHAIN_APPEND_STRUCT(shadingRateInfo);
+    }
+
+    VkSubpassDependency2 dependencies[2] = {};
+    uint32_t dependencyNum = 0;
+
+    if (!inputs.empty()) {
+        VkSubpassDependency2& selfDependency = dependencies[dependencyNum++];
+        selfDependency = {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2};
+        selfDependency.srcSubpass = 0;
+        selfDependency.dstSubpass = 0;
+        selfDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        selfDependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        selfDependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        selfDependency.dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+        selfDependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+    }
+
+    if (desc.hasShadingRate) {
+        VkSubpassDependency2& dependency = dependencies[dependencyNum++];
+        dependency = {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2};
+        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+        dependency.dstSubpass = 0;
+        dependency.srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+        dependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+        dependency.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+        dependency.dstAccessMask = VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
+    }
+
+    VkRenderPassCreateInfo2 renderPassInfo = {VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2};
+    renderPassInfo.attachmentCount = (uint32_t)attachments.size();
+    renderPassInfo.pAttachments = attachments.data();
+    renderPassInfo.subpassCount = 1;
+    renderPassInfo.pSubpasses = &subpass;
+    renderPassInfo.dependencyCount = dependencyNum;
+    renderPassInfo.pDependencies = dependencyNum ? dependencies : nullptr;
+
+    if (desc.viewMask) {
+        renderPassInfo.correlatedViewMaskCount = 1;
+        renderPassInfo.pCorrelatedViewMasks = &desc.viewMask;
+    }
+
+    VkRenderPass renderPass = VK_NULL_HANDLE;
+    VkResult vkResult = m_VK.CreateRenderPass2(m_Device, &renderPassInfo, m_AllocationCallbackPtr, &renderPass);
+    if (vkResult < 0) {
+        Result result = GetResultFromVkResult(vkResult);
+        ReportMessage(Message::ERROR, result, __FILE__, __LINE__, "vkCreateRenderPass2(): failed, result = 0x%08X (%d)!", vkResult, vkResult);
+        return VK_NULL_HANDLE;
+    }
+
+    RenderPassCacheEntry& entry = m_RenderPasses.emplace_back(GetStdAllocator());
+    entry.desc = desc;
+    entry.handle = renderPass;
+
+    return renderPass;
+}
+
+NRI_INLINE VkFramebuffer DeviceVK::GetOrCreateFramebuffer(const FramebufferDesc& desc) {
+    ExclusiveScope lock(m_Lock);
+
+    for (const FramebufferCacheEntry& entry : m_Framebuffers) {
+        if (entry.handle && entry.desc == desc)
+            return entry.handle;
+    }
+
+    VkFramebufferCreateInfo framebufferInfo = {VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+    framebufferInfo.renderPass = desc.renderPass;
+    framebufferInfo.attachmentCount = (uint32_t)desc.attachments.size();
+    framebufferInfo.pAttachments = desc.attachments.data();
+    framebufferInfo.width = desc.width;
+    framebufferInfo.height = desc.height;
+    framebufferInfo.layers = desc.layerNum;
+
+    VkFramebuffer framebuffer = VK_NULL_HANDLE;
+    VkResult vkResult = m_VK.CreateFramebuffer(m_Device, &framebufferInfo, m_AllocationCallbackPtr, &framebuffer);
+    if (vkResult < 0) {
+        Result result = GetResultFromVkResult(vkResult);
+        ReportMessage(Message::ERROR, result, __FILE__, __LINE__, "vkCreateFramebuffer(): failed, result = 0x%08X (%d)!", vkResult, vkResult);
+        return VK_NULL_HANDLE;
+    }
+
+    FramebufferCacheEntry* cacheEntry = nullptr;
+    for (FramebufferCacheEntry& entry : m_Framebuffers) {
+        if (!entry.handle) {
+            cacheEntry = &entry;
+            break;
+        }
+    }
+
+    if (!cacheEntry)
+        cacheEntry = &m_Framebuffers.emplace_back(GetStdAllocator());
+
+    cacheEntry->desc = desc;
+    cacheEntry->handle = framebuffer;
+
+    return framebuffer;
+}
+
+NRI_INLINE void DeviceVK::DestroyFramebuffers(VkImageView imageView) {
+    ExclusiveScope lock(m_Lock);
+
+    const auto& vk = GetDispatchTable();
+    for (size_t i = 0; i < m_Framebuffers.size(); i++) {
+        FramebufferCacheEntry& entry = m_Framebuffers[i];
+        if (!entry.handle)
+            continue;
+
+        bool found = false;
+
+        for (VkImageView attachment : entry.desc.attachments) {
+            if (attachment == imageView) {
+                found = true;
+                break;
+            }
+        }
+
+        if (found) {
+            vk.DestroyFramebuffer(m_Device, entry.handle, m_AllocationCallbackPtr);
+            entry.handle = VK_NULL_HANDLE;
+            entry.desc.attachments.clear();
+        }
+    }
 }
 
 NRI_INLINE Result DeviceVK::GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue) {

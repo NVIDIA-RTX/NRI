@@ -49,7 +49,7 @@ static inline D3D12_BARRIER_SYNC GetBarrierSyncFlags(StageBits stageBits, Access
     if (stageBits & (StageBits::VERTEX_SHADER | StageBits::TESSELLATION_SHADERS | StageBits::GEOMETRY_SHADER | StageBits::MESH_SHADERS))
         flags |= D3D12_BARRIER_SYNC_VERTEX_SHADING;
 
-    if (stageBits & StageBits::FRAGMENT_SHADER)
+    if (stageBits & (StageBits::FRAGMENT_SHADER | StageBits::SHADING_RATE_ATTACHMENT))
         flags |= D3D12_BARRIER_SYNC_PIXEL_SHADING;
 
     if (stageBits & StageBits::DEPTH_STENCIL_ATTACHMENT)

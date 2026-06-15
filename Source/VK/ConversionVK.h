@@ -402,6 +402,9 @@ constexpr VkPipelineStageFlags2 GetPipelineStageFlags(StageBits stageBits) {
     if (stageBits & StageBits::COLOR_ATTACHMENT)
         flags |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 
+    if (stageBits & StageBits::SHADING_RATE_ATTACHMENT)
+        flags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+
     if (stageBits & StageBits::COMPUTE_SHADER)
         flags |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
 
