@@ -582,14 +582,12 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     PNEXTCHAIN_APPEND_STRUCT(features12);
 
     VkPhysicalDeviceVulkan13Features features13 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
-    if (m_MinorVersion >= 3) {
+    if (m_MinorVersion >= 3)
         PNEXTCHAIN_APPEND_STRUCT(features13);
-    }
 
     VkPhysicalDeviceVulkan14Features features14 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES};
-    if (m_MinorVersion >= 4) {
+    if (m_MinorVersion >= 4)
         PNEXTCHAIN_APPEND_STRUCT(features14);
-    }
 
     PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 3, KHR, DynamicRendering, DYNAMIC_RENDERING);
     PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 3, KHR, Maintenance4, MAINTENANCE_4);
@@ -812,19 +810,16 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         PNEXTCHAIN_APPEND_STRUCT(props12);
 
         VkPhysicalDeviceVulkan13Properties props13 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES};
-        if (m_MinorVersion >= 3) {
+        if (m_MinorVersion >= 3)
             PNEXTCHAIN_APPEND_STRUCT(props13);
-        }
 
         VkPhysicalDeviceVulkan14Properties props14 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_PROPERTIES};
-        if (m_MinorVersion >= 4) {
+        if (m_MinorVersion >= 4)
             PNEXTCHAIN_APPEND_STRUCT(props14);
-        }
 
         VkPhysicalDevicePipelineRobustnessProperties propsRobustness = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_PROPERTIES};
-        if (m_MinorVersion >= 4) {
+        if (m_MinorVersion >= 4)
             PNEXTCHAIN_APPEND_STRUCT(propsRobustness);
-        }
 
         PNEXTCHAIN_APPEND_PROPS(m_MinorVersion < 3, KHR, Maintenance4, MAINTENANCE_4);
         PNEXTCHAIN_APPEND_PROPS(m_MinorVersion < 3, EXT, SubgroupSizeControl, SUBGROUP_SIZE_CONTROL);
@@ -1594,9 +1589,8 @@ Result DeviceVK::CreateInstance(bool enableGraphicsAPIValidation, const Vector<c
     validationFeatures.enabledValidationFeatureCount = GetCountOf(enabledValidationFeatures);
     validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures;
 
-    if (enableGraphicsAPIValidation) {
+    if (enableGraphicsAPIValidation)
         PNEXTCHAIN_APPEND_STRUCT(validationFeatures);
-    }
 
     VkResult vkResult = m_VK.CreateInstance(&instanceCreateInfo, m_AllocationCallbackPtr, &m_Instance);
     NRI_RETURN_ON_BAD_VKRESULT(this, vkResult, "vkCreateInstance");
@@ -2101,12 +2095,11 @@ NRI_INLINE VkRenderPass DeviceVK::GetOrCreateRenderPass(const RenderPassDesc& de
     subpass.pDepthStencilAttachment = depthStencil.attachment == VK_ATTACHMENT_UNUSED ? nullptr : &depthStencil;
 
     PNEXTCHAIN_DECLARE(subpass.pNext);
-    if (desc.hasDepthResolve || desc.hasStencilResolve) {
+    if (desc.hasDepthResolve || desc.hasStencilResolve)
         PNEXTCHAIN_APPEND_STRUCT(depthStencilResolveInfo);
-    }
-    if (desc.hasShadingRate) {
+
+    if (desc.hasShadingRate)
         PNEXTCHAIN_APPEND_STRUCT(shadingRateInfo);
-    }
 
     VkSubpassDependency2 dependencies[2] = {};
     uint32_t dependencyNum = 0;

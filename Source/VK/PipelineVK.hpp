@@ -382,14 +382,12 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     };
 
     PNEXTCHAIN_SET(info.pNext);
-    if (m_Device.m_IsSupported.dynamicRendering) {
+    if (m_Device.m_IsSupported.dynamicRendering)
         PNEXTCHAIN_APPEND_STRUCT(pipelineRenderingCreateInfo);
-    }
 
     VkPipelineRobustnessCreateInfoEXT robustnessInfo = {VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO_EXT};
-    if (FillPipelineRobustness(m_Device, graphicsPipelineDesc.robustness, robustnessInfo)) {
+    if (FillPipelineRobustness(m_Device, graphicsPipelineDesc.robustness, robustnessInfo))
         PNEXTCHAIN_APPEND_STRUCT(robustnessInfo);
-    }
 
     const auto& vk = m_Device.GetDispatchTable();
     VkPipelineCache pipelineCache = VK_NULL_HANDLE;

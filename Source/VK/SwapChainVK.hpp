@@ -273,14 +273,12 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         VkSurfacePresentScalingCapabilitiesKHR surfacePresentScalingCaps = {VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_KHR};
 
         PNEXTCHAIN_DECLARE(surfaceCaps2.pNext);
-        if (m_Device.m_IsSupported.swapChainMaintenance1) {
+        if (m_Device.m_IsSupported.swapChainMaintenance1)
             PNEXTCHAIN_APPEND_STRUCT(surfacePresentScalingCaps);
-        }
 
         PNEXTCHAIN_SET(surfaceInfo.pNext);
-        if (m_Device.m_IsSupported.swapChainMaintenance1) {
+        if (m_Device.m_IsSupported.swapChainMaintenance1)
             PNEXTCHAIN_APPEND_STRUCT(surfacePresentMode);
-        }
 
         VkResult vkResult = vk.GetPhysicalDeviceSurfaceCapabilities2KHR(m_Device, &surfaceInfo, &surfaceCaps2);
         NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceSurfaceCapabilities2KHR");
@@ -373,9 +371,8 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         VkSwapchainLatencyCreateInfoNV latencyCreateInfo = {VK_STRUCTURE_TYPE_SWAPCHAIN_LATENCY_CREATE_INFO_NV};
         latencyCreateInfo.latencyModeEnable = allowLowLatency;
 
-        if (allowLowLatency) {
+        if (allowLowLatency)
             PNEXTCHAIN_APPEND_STRUCT(latencyCreateInfo);
-        }
 
         // Create
         VkResult vkResult = vk.CreateSwapchainKHR(m_Device, &swapchainInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);

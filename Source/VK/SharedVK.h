@@ -19,22 +19,21 @@ typedef uint16_t MemoryTypeIndex;
 #define PNEXTCHAIN_SET(next) \
     _tail = (const void**)&next
 
-// Requires {}
 #define PNEXTCHAIN_APPEND_STRUCT(desc) \
-    *_tail = &desc; \
-    _tail = (const void**)&desc.pNext
+    do { \
+        *_tail = &(desc); \
+        _tail = (const void**)&(desc).pNext; \
+    } while (0)
 
 #define PNEXTCHAIN_APPEND_FEATURES(condition, ext, nameLower, nameUpper) \
     VkPhysicalDevice##nameLower##Features##ext nameLower##Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_##nameUpper##_FEATURES_##ext}; \
-    if (IsExtensionSupported(VK_##ext##_##nameUpper##_EXTENSION_NAME, desiredDeviceExts) && (condition)) { \
-        PNEXTCHAIN_APPEND_STRUCT(nameLower##Features); \
-    }
+    if (IsExtensionSupported(VK_##ext##_##nameUpper##_EXTENSION_NAME, desiredDeviceExts) && (condition)) \
+        PNEXTCHAIN_APPEND_STRUCT(nameLower##Features)
 
 #define PNEXTCHAIN_APPEND_PROPS(condition, ext, nameLower, nameUpper) \
     VkPhysicalDevice##nameLower##Properties##ext nameLower##Props = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_##nameUpper##_PROPERTIES_##ext}; \
-    if (IsExtensionSupported(VK_##ext##_##nameUpper##_EXTENSION_NAME, desiredDeviceExts) && (condition)) { \
-        PNEXTCHAIN_APPEND_STRUCT(nameLower##Props); \
-    }
+    if (IsExtensionSupported(VK_##ext##_##nameUpper##_EXTENSION_NAME, desiredDeviceExts) && (condition)) \
+        PNEXTCHAIN_APPEND_STRUCT(nameLower##Props)
 
 #define APPEND_EXT(condition, ext) \
     if (IsExtensionSupported(ext, supportedExts) && (condition)) \
