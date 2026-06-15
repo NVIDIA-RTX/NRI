@@ -1252,10 +1252,14 @@ NriEnum(ShadingRate, uint8_t,
 // B   Primitive shading rate   Attachment shading rate
 NriEnum(ShadingRateCombiner, uint8_t,
     KEEP,       // A
+
+    // Requires "tiers.shadingRate >= 2"
     REPLACE,    // B
     MIN,        // min(A, B)
     MAX,        // max(A, B)
-    SUM         // (A + B) or (A * B), requires "features.sumShadingRateCombiner"
+
+    // Requires "features.sumShadingRateCombiner"
+    SUM         // (A + B) or (A * B)
 );
 
 /*
@@ -1298,8 +1302,8 @@ NriStruct(MultisampleDesc) {
 
 NriStruct(ShadingRateDesc) {
     Nri(ShadingRate) shadingRate;
-    Nri(ShadingRateCombiner) primitiveCombiner;     // requires "tiers.sampleLocations >= 2"
-    Nri(ShadingRateCombiner) attachmentCombiner;    // requires "tiers.sampleLocations >= 2"
+    Nri(ShadingRateCombiner) primitiveCombiner;
+    Nri(ShadingRateCombiner) attachmentCombiner;
 };
 
 #pragma endregion
