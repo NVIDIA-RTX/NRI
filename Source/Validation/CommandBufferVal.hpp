@@ -208,6 +208,12 @@ NRI_INLINE void CommandBufferVal::SetShadingRate(const ShadingRateDesc& shadingR
     NRI_RETURN_ON_FAILURE(&m_Device, shadingRateDesc.shadingRate < ShadingRate::MAX_NUM, ReturnVoid(), "'shadingRate' is invalid");
     NRI_RETURN_ON_FAILURE(&m_Device, shadingRateDesc.primitiveCombiner < ShadingRateCombiner::MAX_NUM, ReturnVoid(), "'primitiveCombiner' is invalid");
     NRI_RETURN_ON_FAILURE(&m_Device, shadingRateDesc.attachmentCombiner < ShadingRateCombiner::MAX_NUM, ReturnVoid(), "'attachmentCombiner' is invalid");
+    if (shadingRateDesc.shadingRate > ShadingRate::FRAGMENT_SIZE_2X2)
+        NRI_RETURN_ON_FAILURE(&m_Device, deviceDesc.features.additionalShadingRates, ReturnVoid(), "'features.additionalShadingRates' is false");
+    if (shadingRateDesc.primitiveCombiner != ShadingRateCombiner::KEEP || shadingRateDesc.attachmentCombiner != ShadingRateCombiner::KEEP)
+        NRI_RETURN_ON_FAILURE(&m_Device, deviceDesc.tiers.shadingRate >= 2, ReturnVoid(), "'tiers.shadingRate >= 2' required");
+    if (shadingRateDesc.primitiveCombiner == ShadingRateCombiner::SUM || shadingRateDesc.attachmentCombiner == ShadingRateCombiner::SUM)
+        NRI_RETURN_ON_FAILURE(&m_Device, deviceDesc.features.sumShadingRateCombiner, ReturnVoid(), "'features.sumShadingRateCombiner' is false");
 
     GetCoreInterfaceImpl().CmdSetShadingRate(*GetImpl(), shadingRateDesc);
 }
@@ -267,8 +273,14 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
     NRI_RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "'CmdBeginRendering' has already been called");
 
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
-    if (renderingDesc.shadingRate)
-        NRI_RETURN_ON_FAILURE(&m_Device, deviceDesc.tiers.shadingRate, ReturnVoid(), "'tiers.shadingRate >= 2' required");
+    if (renderingDesc.shadingRate) {
+        const DescriptorVal& shadingRateVal = *(DescriptorVal*)renderingDesc.shadingRate;
+
+        NRI_RETURN_ON_FAILURE(&m_Device, deviceDesc.tiers.shadingRate >= 2, ReturnVoid(), "'tiers.shadingRate >= 2' required");
+        NRI_RETURN_ON_FAILURE(&m_Device, shadingRateVal.IsShadingRateAttachment(), ReturnVoid(), "'shadingRate' is not a 'SHADING_RATE_ATTACHMENT' descriptor");
+    }
+    if (renderingDesc.viewMask)
+        NRI_RETURN_ON_FAILURE(&m_Device, deviceDesc.other.viewMaxNum > 1, ReturnVoid(), "'viewMask' is non-zero, but 'DeviceDesc::other.viewMaxNum <= 1'");
 
     ResetAttachments();
 
@@ -285,6 +297,17 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
         NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.colors[i].loadOp < LoadOp::MAX_NUM, ReturnVoid(), "'colors[%u].loadOp' is invalid", i);
         NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.colors[i].storeOp < StoreOp::MAX_NUM, ReturnVoid(), "'colors[%u].storeOp' is invalid", i);
         NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.colors[i].resolveOp < ResolveOp::MAX_NUM, ReturnVoid(), "'colors[%u].resolveOp' is invalid", i);
+        NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.colors[i].descriptor, ReturnVoid(), "'colors[%u].descriptor' is NULL", i);
+
+        const DescriptorVal& colorVal = *(DescriptorVal*)renderingDesc.colors[i].descriptor;
+        NRI_RETURN_ON_FAILURE(&m_Device, colorVal.IsColorAttachment(), ReturnVoid(), "'colors[%u].descriptor' is not a 'COLOR_ATTACHMENT' descriptor", i);
+        if (renderingDesc.colors[i].resolveDst) {
+            const DescriptorVal& resolveDstVal = *(DescriptorVal*)renderingDesc.colors[i].resolveDst;
+
+            NRI_RETURN_ON_FAILURE(&m_Device, resolveDstVal.IsColorAttachment(), ReturnVoid(), "'colors[%u].resolveDst' is not a 'COLOR_ATTACHMENT' descriptor", i);
+            if (!deviceDesc.features.resolveOpMinMax)
+                NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.colors[i].resolveOp == ResolveOp::AVERAGE, ReturnVoid(), "'features.resolveOpMinMax' is false");
+        }
 
         colors[i] = renderingDesc.colors[i];
         colors[i].descriptor = NRI_GET_IMPL(Descriptor, renderingDesc.colors[i].descriptor);
@@ -301,6 +324,29 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
     attachmentsDescImpl.stencil.descriptor = NRI_GET_IMPL(Descriptor, renderingDesc.stencil.descriptor);
     attachmentsDescImpl.stencil.resolveDst = NRI_GET_IMPL(Descriptor, renderingDesc.stencil.resolveDst);
     attachmentsDescImpl.shadingRate = NRI_GET_IMPL(Descriptor, renderingDesc.shadingRate);
+
+    if (renderingDesc.depth.descriptor) {
+        const DescriptorVal& depthVal = *(DescriptorVal*)renderingDesc.depth.descriptor;
+        NRI_RETURN_ON_FAILURE(&m_Device, depthVal.IsDepthStencilAttachment(), ReturnVoid(), "'depth.descriptor' is not a 'DEPTH_STENCIL_ATTACHMENT' descriptor");
+    }
+    if (renderingDesc.depth.resolveDst) {
+        const DescriptorVal& resolveDstVal = *(DescriptorVal*)renderingDesc.depth.resolveDst;
+        NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.depth.descriptor, ReturnVoid(), "'depth.resolveDst' is not NULL, but 'depth.descriptor' is NULL");
+        NRI_RETURN_ON_FAILURE(&m_Device, resolveDstVal.IsDepthStencilAttachment(), ReturnVoid(), "'depth.resolveDst' is not a 'DEPTH_STENCIL_ATTACHMENT' descriptor");
+        if (!deviceDesc.features.resolveOpMinMax)
+            NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.depth.resolveOp == ResolveOp::AVERAGE, ReturnVoid(), "'features.resolveOpMinMax' is false");
+    }
+    if (renderingDesc.stencil.descriptor) {
+        const DescriptorVal& stencilVal = *(DescriptorVal*)renderingDesc.stencil.descriptor;
+        NRI_RETURN_ON_FAILURE(&m_Device, stencilVal.IsDepthStencilAttachment(), ReturnVoid(), "'stencil.descriptor' is not a 'DEPTH_STENCIL_ATTACHMENT' descriptor");
+    }
+    if (renderingDesc.stencil.resolveDst) {
+        const DescriptorVal& resolveDstVal = *(DescriptorVal*)renderingDesc.stencil.resolveDst;
+        NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.stencil.descriptor, ReturnVoid(), "'stencil.resolveDst' is not NULL, but 'stencil.descriptor' is NULL");
+        NRI_RETURN_ON_FAILURE(&m_Device, resolveDstVal.IsDepthStencilAttachment(), ReturnVoid(), "'stencil.resolveDst' is not a 'DEPTH_STENCIL_ATTACHMENT' descriptor");
+        if (!deviceDesc.features.resolveOpMinMax)
+            NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.stencil.resolveOp == ResolveOp::AVERAGE, ReturnVoid(), "'features.resolveOpMinMax' is false");
+    }
 
     Descriptor* depthStencil = renderingDesc.depth.descriptor ? renderingDesc.depth.descriptor : renderingDesc.stencil.descriptor;
     m_DepthStencil = depthStencil ? (DescriptorVal*)depthStencil : nullptr;

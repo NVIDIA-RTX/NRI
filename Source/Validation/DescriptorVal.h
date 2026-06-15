@@ -64,6 +64,18 @@ struct DescriptorVal final : public ObjectVal {
             || m_Type == DescriptorTypeExt::STORAGE_STRUCTURED_BUFFER;
     }
 
+    inline bool IsColorAttachment() const {
+        return m_Type == DescriptorTypeExt::COLOR_ATTACHMENT;
+    }
+
+    inline bool IsDepthStencilAttachment() const {
+        return m_Type == DescriptorTypeExt::DEPTH_STENCIL_ATTACHMENT;
+    }
+
+    inline bool IsShadingRateAttachment() const {
+        return m_Type == DescriptorTypeExt::SHADING_RATE_ATTACHMENT;
+    }
+
     inline bool IsAttachment() const {
         return m_Type == DescriptorTypeExt::COLOR_ATTACHMENT
             || m_Type == DescriptorTypeExt::DEPTH_STENCIL_ATTACHMENT;
