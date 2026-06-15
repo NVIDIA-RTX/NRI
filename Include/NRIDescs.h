@@ -1566,8 +1566,8 @@ NriStruct(AttachmentDesc) {
 
 // If "VK_KHR_dynamic_rendering" is not supported:
 // - "VkRenderPass" is used under the hood
-// - input attachments must be transitioned to "Layout::INPUT_ATTACHMENT" in the same command buffer before "CmdBeginRendering", because NRI does not list them explicitly
-// - pipelines used in this rendering scope must be compatible with the input attachment indices detected from these transitions
+// - input attachments must be transitioned to "Layout::INPUT_ATTACHMENT" in the same command buffer before "CmdBeginRendering"
+// - matching pipeline input attachment indices are inferred from these transitions
 NriStruct(RenderingDesc) {
     const NriPtr(AttachmentDesc) colors;
     uint32_t colorNum;
