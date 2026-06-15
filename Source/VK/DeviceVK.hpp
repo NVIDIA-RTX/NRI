@@ -725,6 +725,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     NRI_RETURN_ON_FAILURE(this, ExtendedDynamicStateFeatures.extendedDynamicState != 0, Result::UNSUPPORTED, "'extendedDynamicState' is not supported");
     NRI_RETURN_ON_FAILURE(this, features13.synchronization2, Result::UNSUPPORTED, "'synchronization2' is not supported");
 
+    // Check soft requirement
     if (!features13.dynamicRendering)
         NRI_REPORT_INFO(this, "'dynamicRendering' is not supported, using 'render passes'");
 
@@ -1869,15 +1870,12 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(ResetQueryPool);
     GET_DEVICE_CORE_FUNC(GetBufferDeviceAddress);
     GET_DEVICE_CORE_FUNC(BeginCommandBuffer);
-    GET_DEVICE_CORE_FUNC(CmdSetViewportWithCount);
-    GET_DEVICE_CORE_FUNC(CmdSetScissorWithCount);
     GET_DEVICE_CORE_FUNC(CmdSetDepthBounds);
     GET_DEVICE_CORE_FUNC(CmdSetStencilReference);
     GET_DEVICE_CORE_FUNC(CmdSetBlendConstants);
     GET_DEVICE_CORE_FUNC(CmdSetDepthBias);
     GET_DEVICE_CORE_FUNC(CmdClearAttachments);
     GET_DEVICE_CORE_FUNC(CmdClearColorImage);
-    GET_DEVICE_CORE_FUNC(CmdBindVertexBuffers2);
     GET_DEVICE_CORE_FUNC(CmdBindIndexBuffer);
     GET_DEVICE_CORE_FUNC(CmdBindPipeline);
     GET_DEVICE_CORE_FUNC(CmdBindDescriptorSets);
@@ -1914,6 +1912,11 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_OPTIONAL_CORE_FUNC(CmdBindIndexBuffer2);
     GET_DEVICE_OPTIONAL_CORE_FUNC(CmdBindDescriptorSets2);
     GET_DEVICE_OPTIONAL_CORE_FUNC(CmdPushConstants2);
+
+    // VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME or m_MinorVersion > 2
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdBindVertexBuffers2);
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdSetViewportWithCount);
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdSetScissorWithCount);
 
     if (IsExtensionSupported(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME, desiredDeviceExts))
         GET_DEVICE_FUNC(CmdSetFragmentShadingRateKHR);

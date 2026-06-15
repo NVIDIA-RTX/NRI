@@ -118,15 +118,12 @@ struct DispatchTable {
     VK_FUNC(ResetQueryPool);                              // + | +
     VK_FUNC(GetBufferDeviceAddress);                      // + | +
     VK_FUNC(BeginCommandBuffer);                          // - | +
-    VK_FUNC(CmdSetViewportWithCount);                     // - | +
-    VK_FUNC(CmdSetScissorWithCount);                      // - | +
     VK_FUNC(CmdSetDepthBounds);                           // - | +
     VK_FUNC(CmdSetStencilReference);                      // - | +
     VK_FUNC(CmdSetBlendConstants);                        // - | +
     VK_FUNC(CmdSetDepthBias);                             // - | + TODO: "VK_EXT_depth_bias_control" offers "2" but MoltenVK doesn't support it yet
     VK_FUNC(CmdClearAttachments);                         // - | +
     VK_FUNC(CmdClearColorImage);                          // - | +
-    VK_FUNC(CmdBindVertexBuffers2);                       // - | +
     VK_FUNC(CmdBindIndexBuffer);                          // - | +
     VK_FUNC(CmdBindPipeline);                             // - | +
     VK_FUNC(CmdBindDescriptorSets);                       // - | +
@@ -157,6 +154,10 @@ struct DispatchTable {
     VK_FUNC(CmdEndRenderPass);                            // - | +
     VK_FUNC(CmdPushDescriptorSet);                        // - | +
     VK_FUNC(EndCommandBuffer);                            // - | +
+                                                          // v1.3 or VK_EXT_extended_dynamic_state
+    VK_FUNC(CmdBindVertexBuffers2);                       // - | +
+    VK_FUNC(CmdSetViewportWithCount);                     // - | +
+    VK_FUNC(CmdSetScissorWithCount);                      // - | +
                                                           // VK_KHR_maintenance4
     VK_FUNC(GetDeviceBufferMemoryRequirements);           // + | +
     VK_FUNC(GetDeviceImageMemoryRequirements);            // + | +
