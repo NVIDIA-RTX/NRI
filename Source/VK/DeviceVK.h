@@ -70,9 +70,6 @@ struct RenderPassDesc {
     bool hasShadingRate = false;
 };
 
-inline void SetRenderPassInputAttachmentIndex(Vector<uint32_t>& inputAttachmentIndices, uint32_t index);
-inline bool HasRenderPassInputAttachmentIndex(const Vector<uint32_t>& inputAttachmentIndices, uint32_t index);
-
 struct FramebufferDesc {
     FramebufferDesc(const StdAllocator<uint8_t>& allocator)
         : attachments(allocator) {
