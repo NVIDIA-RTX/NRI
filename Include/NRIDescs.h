@@ -1,4 +1,4 @@
-﻿// © 2021 NVIDIA Corporation
+// © 2021 NVIDIA Corporation
 
 #pragma once
 
@@ -1244,6 +1244,7 @@ NriStruct(VertexAttributeDesc) {
 NriStruct(VertexStreamDesc) {
     uint16_t bindingSlot;
     Nri(VertexStreamStepRate) stepRate;
+    NriOptional uint16_t stride; // fallback if "features.extendedDynamicState" is not supported
 };
 
 NriStruct(VertexInputDesc) {
@@ -1256,7 +1257,7 @@ NriStruct(VertexInputDesc) {
 NriStruct(VertexBufferDesc) {
     const NriPtr(Buffer) buffer;
     uint64_t offset;
-    uint32_t stride;
+    uint32_t stride; // requires "features.extendedDynamicState", ignored otherwise, use "VertexStreamDesc::stride" instead
 };
 
 #pragma endregion
@@ -2168,7 +2169,8 @@ NriStruct(DeviceDesc) {
         bool rootConstantsOffset;                                 // see "SetRootConstantsDesc" (unsupported only in D3D11)
         bool nonConstantBufferRootDescriptorOffset;               // see "SetRootDescriptorDesc" (unsupported only in D3D11)
         bool mutableDescriptorType;                               // see "DescriptorType::MUTABLE"
-        bool unifiedTextureLayouts;                               // allows to use "GENERAL" everywhere: https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_unified_image_layouts.html
+        bool extendedDynamicState;                                // VK: allows to use "VertexBufferDesc::stride" (dynamic) instead of "VertexStreamDesc::stride" (static). Widely supported
+        bool unifiedTextureLayouts;                               // VK: allows to use "GENERAL" everywhere: https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_unified_image_layouts.html
     } features;
 
     // Shader features

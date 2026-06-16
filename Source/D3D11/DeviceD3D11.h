@@ -164,13 +164,14 @@ private:
     ComPtr<ID3D11Multithread> m_Multithread;
     ComPtr<ID3D11Buffer> m_ZeroBuffer;
     std::array<Vector<QueueD3D11*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies;
-    CRITICAL_SECTION m_CriticalSection = {}; // TODO: Lock?
+    CRITICAL_SECTION m_CriticalSection = {};
     CoreInterface m_iCore = {};
     DeviceDesc m_Desc = {};
     uint8_t m_Version = 0;
     uint8_t m_ImmediateContextVersion = 0;
     bool m_IsWrapped = false;
     bool m_IsDeferredContextEmulated = false;
+    bool m_IsCriticalSectionInitialized = false;
 };
 
 } // namespace nri

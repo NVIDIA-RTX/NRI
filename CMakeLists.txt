@@ -150,7 +150,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.352.zip
+        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.354.zip
     )
     list(APPEND DEPS vulkan_headers)
 
@@ -160,7 +160,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/e386068d174c9807479b4d13ff2db8e23bd91bc0.zip
+        URL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/3aa921224c154a0d2c43912bc88e1c42ce1f7607.zip
     )
     list(APPEND DEPS vma)
 endif()
@@ -209,7 +209,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/146c0ab44efeaef140aba2d659722cf1318e6127.zip
+        URL https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/1d86c1130f61453634b1df85782e1fecfd59a525.zip
     )
     list(APPEND DEPS d3d12ma)
 endif()

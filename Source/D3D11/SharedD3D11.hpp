@@ -176,7 +176,7 @@ void nri::FillSamplerDesc(const SamplerDesc& samplerDesc, D3D11_SAMPLER_DESC& de
         ? GetFilterAnisotropic(samplerDesc.filters.op, isComparison)
         : GetFilterIsotropic(samplerDesc.filters.mip, samplerDesc.filters.mag, samplerDesc.filters.min, samplerDesc.filters.op, isComparison);
 
-    if (!samplerDesc.isInteger) { // TODO: the spec is not clear about the behavior, keep black
+    if (!samplerDesc.isInteger) {
         desc.BorderColor[0] = samplerDesc.borderColor.f.x;
         desc.BorderColor[1] = samplerDesc.borderColor.f.y;
         desc.BorderColor[2] = samplerDesc.borderColor.f.z;

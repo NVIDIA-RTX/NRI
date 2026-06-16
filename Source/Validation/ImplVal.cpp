@@ -1615,11 +1615,30 @@ struct UpscalerVal final : public ObjectVal {
     UpscalerDesc m_Desc = {}; // only for .natvis
 };
 
+static bool ValidateUpscalerResource(DeviceVal& deviceVal, const UpscalerResource& resource, const char* name, DescriptorType descriptorType) {
+    NRI_RETURN_ON_FAILURE(&deviceVal, resource.texture != nullptr, false, "'%s.texture' is NULL", name);
+    NRI_RETURN_ON_FAILURE(&deviceVal, resource.descriptor != nullptr, false, "'%s.descriptor' is NULL", name);
+
+    const DescriptorVal& descriptorVal = *(DescriptorVal*)resource.descriptor;
+    NRI_RETURN_ON_FAILURE(&deviceVal, descriptorVal.GetType() == descriptorType, false, "'%s.descriptor' has invalid type", name);
+
+    return true;
+}
+
+static bool ValidateOptionalUpscalerResource(DeviceVal& deviceVal, const UpscalerResource& resource, const char* name, bool isRequired) {
+    if (!isRequired && !resource.texture && !resource.descriptor)
+        return true;
+
+    return ValidateUpscalerResource(deviceVal, resource, name, DescriptorType::TEXTURE);
+}
+
 static Result NRI_CALL CreateUpscaler(Device& device, const UpscalerDesc& upscalerDesc, Upscaler*& upscaler) {
     DeviceVal& deviceVal = (DeviceVal&)device;
 
     NRI_RETURN_ON_FAILURE(&deviceVal, upscalerDesc.type < UpscalerType::MAX_NUM, Result::INVALID_ARGUMENT, "'type' is invalid");
     NRI_RETURN_ON_FAILURE(&deviceVal, upscalerDesc.mode < UpscalerMode::MAX_NUM, Result::INVALID_ARGUMENT, "'mode' is invalid");
+    NRI_RETURN_ON_FAILURE(&deviceVal, upscalerDesc.upscaleResolution.w != 0 && upscalerDesc.upscaleResolution.h != 0, Result::INVALID_ARGUMENT, "'upscaleResolution' is invalid");
+    NRI_RETURN_ON_FAILURE(&deviceVal, IsUpscalerSupported(deviceVal.GetDesc(), upscalerDesc.type), Result::UNSUPPORTED, "'type' is not supported");
 
     UpscalerImpl* impl = Allocate<UpscalerImpl>(deviceVal.GetAllocationCallbacks(), device, deviceVal.GetCoreInterface());
     Result result = impl->Create(upscalerDesc);
@@ -1661,6 +1680,64 @@ static void NRI_CALL GetUpscalerProps(const Upscaler& upscaler, UpscalerProps& u
 static void NRI_CALL CmdDispatchUpscale(CommandBuffer& commandBuffer, Upscaler& upscaler, const DispatchUpscaleDesc& dispatchUpscaleDesc) {
     UpscalerVal& upscalerVal = (UpscalerVal&)upscaler;
     UpscalerImpl* upscalerImpl = upscalerVal.GetImpl();
+    DeviceVal& deviceVal = upscalerVal.GetDevice();
+
+    UpscalerProps upscalerProps = {};
+    upscalerImpl->GetUpscalerProps(upscalerProps);
+
+    NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.currentResolution.w >= upscalerProps.renderResolutionMin.w && dispatchUpscaleDesc.currentResolution.h >= upscalerProps.renderResolutionMin.h, ReturnVoid(), "'currentResolution' is below the minimum render resolution");
+    NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.currentResolution.w <= upscalerProps.renderResolution.w && dispatchUpscaleDesc.currentResolution.h <= upscalerProps.renderResolution.h, ReturnVoid(), "'currentResolution' is above the maximum render resolution");
+    NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.cameraJitter.x >= -0.5f && dispatchUpscaleDesc.cameraJitter.x <= 0.5f, ReturnVoid(), "'cameraJitter.x' is out of range");
+    NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.cameraJitter.y >= -0.5f && dispatchUpscaleDesc.cameraJitter.y <= 0.5f, ReturnVoid(), "'cameraJitter.y' is out of range");
+    if (!ValidateUpscalerResource(deviceVal, dispatchUpscaleDesc.output, "output", DescriptorType::STORAGE_TEXTURE))
+        return;
+    if (!ValidateUpscalerResource(deviceVal, dispatchUpscaleDesc.input, "input", DescriptorType::TEXTURE))
+        return;
+
+    if (upscalerVal.m_Desc.type == UpscalerType::NIS) {
+        NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.settings.nis.sharpness >= 0.0f && dispatchUpscaleDesc.settings.nis.sharpness <= 1.0f, ReturnVoid(), "'settings.nis.sharpness' is out of range");
+    } else if (upscalerVal.m_Desc.type == UpscalerType::DLRR) {
+        const DenoiserGuides& guides = dispatchUpscaleDesc.guides.denoiser;
+
+        if (!ValidateUpscalerResource(deviceVal, guides.mv, "guides.denoiser.mv", DescriptorType::TEXTURE))
+            return;
+        if (!ValidateUpscalerResource(deviceVal, guides.depth, "guides.denoiser.depth", DescriptorType::TEXTURE))
+            return;
+        if (!ValidateUpscalerResource(deviceVal, guides.normalRoughness, "guides.denoiser.normalRoughness", DescriptorType::TEXTURE))
+            return;
+        if (!ValidateUpscalerResource(deviceVal, guides.diffuseAlbedo, "guides.denoiser.diffuseAlbedo", DescriptorType::TEXTURE))
+            return;
+        if (!ValidateUpscalerResource(deviceVal, guides.specularAlbedo, "guides.denoiser.specularAlbedo", DescriptorType::TEXTURE))
+            return;
+        if (!ValidateUpscalerResource(deviceVal, guides.specularMvOrHitT, "guides.denoiser.specularMvOrHitT", DescriptorType::TEXTURE))
+            return;
+        if (!ValidateOptionalUpscalerResource(deviceVal, guides.exposure, "guides.denoiser.exposure", (upscalerVal.m_Desc.flags & UpscalerBits::USE_EXPOSURE) != 0))
+            return;
+        if (!ValidateOptionalUpscalerResource(deviceVal, guides.reactive, "guides.denoiser.reactive", (upscalerVal.m_Desc.flags & UpscalerBits::USE_REACTIVE) != 0))
+            return;
+        if (!ValidateOptionalUpscalerResource(deviceVal, guides.sss, "guides.denoiser.sss", false))
+            return;
+    } else {
+        const UpscalerGuides& guides = dispatchUpscaleDesc.guides.upscaler;
+
+        if (!ValidateUpscalerResource(deviceVal, guides.mv, "guides.upscaler.mv", DescriptorType::TEXTURE))
+            return;
+        if (!ValidateUpscalerResource(deviceVal, guides.depth, "guides.upscaler.depth", DescriptorType::TEXTURE))
+            return;
+        if (!ValidateOptionalUpscalerResource(deviceVal, guides.exposure, "guides.upscaler.exposure", (upscalerVal.m_Desc.flags & UpscalerBits::USE_EXPOSURE) != 0))
+            return;
+        if (!ValidateOptionalUpscalerResource(deviceVal, guides.reactive, "guides.upscaler.reactive", (upscalerVal.m_Desc.flags & UpscalerBits::USE_REACTIVE) != 0))
+            return;
+
+        if (upscalerVal.m_Desc.type == UpscalerType::FSR) {
+            NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.settings.fsr.zNear > 0.0f, ReturnVoid(), "'settings.fsr.zNear' must be > 0");
+            NRI_RETURN_ON_FAILURE(&deviceVal, (upscalerVal.m_Desc.flags & UpscalerBits::DEPTH_INFINITE) || dispatchUpscaleDesc.settings.fsr.zFar > dispatchUpscaleDesc.settings.fsr.zNear, ReturnVoid(), "'settings.fsr.zFar' must be greater than 'settings.fsr.zNear'");
+            NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.settings.fsr.verticalFov > 0.0f && dispatchUpscaleDesc.settings.fsr.verticalFov < 3.14159265f, ReturnVoid(), "'settings.fsr.verticalFov' is out of range");
+            NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.settings.fsr.frameTime >= 0.0f, ReturnVoid(), "'settings.fsr.frameTime' must be >= 0");
+            NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.settings.fsr.viewSpaceToMetersFactor > 0.0f, ReturnVoid(), "'settings.fsr.viewSpaceToMetersFactor' must be > 0");
+            NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.settings.fsr.sharpness >= 0.0f && dispatchUpscaleDesc.settings.fsr.sharpness <= 1.0f, ReturnVoid(), "'settings.fsr.sharpness' is out of range");
+        }
+    }
 
     upscalerImpl->CmdDispatchUpscale(commandBuffer, dispatchUpscaleDesc);
 }

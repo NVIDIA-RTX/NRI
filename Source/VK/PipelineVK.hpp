@@ -144,6 +144,8 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
             vertexBindingDesc = {};
             vertexBindingDesc.binding = stream.bindingSlot;
             vertexBindingDesc.inputRate = stream.stepRate == VertexStreamStepRate::PER_VERTEX ? VK_VERTEX_INPUT_RATE_VERTEX : VK_VERTEX_INPUT_RATE_INSTANCE;
+            if (!m_Device.GetDesc().features.extendedDynamicState)
+                vertexBindingDesc.stride = stream.stride;
         }
     }
 
@@ -214,6 +216,10 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     m_DepthBias = r.depthBias;
 
     VkPipelineViewportStateCreateInfo viewportState = {VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
+    if (!m_Device.GetDesc().features.extendedDynamicState) {
+        viewportState.viewportCount = m_Device.GetDesc().viewport.maxNum;
+        viewportState.scissorCount = m_Device.GetDesc().viewport.maxNum;
+    }
 
     // Depth-stencil
     const DepthAttachmentDesc& da = graphicsPipelineDesc.outputMerger.depth;
@@ -329,9 +335,15 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     // Dynamic state
     uint32_t dynamicStateNum = 0;
     std::array<VkDynamicState, 16> dynamicStates;
-    dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT;
-    dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT;
-    if (vi)
+    if (m_Device.GetDesc().features.extendedDynamicState) {
+        dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT;
+        dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT;
+    } else {
+        dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_VIEWPORT;
+        dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_SCISSOR;
+    }
+
+    if (vi && m_Device.GetDesc().features.extendedDynamicState)
         dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE;
     if (rasterizationState.depthBiasEnable)
         dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_DEPTH_BIAS;

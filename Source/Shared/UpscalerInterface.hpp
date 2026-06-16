@@ -1026,28 +1026,21 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         CommandAllocator* commandAllocator = nullptr;
         CommandBuffer* commandBuffer = upscalerDesc.commandBuffer;
         Fence* fence = nullptr;
+        Result result = Result::SUCCESS;
 
         if (!upscalerDesc.commandBuffer) {
-            Result result = m_iCore.GetQueue(m_Device, QueueType::GRAPHICS, 0, graphicsQueue);
-            if (result != Result::SUCCESS)
-                return result;
-
-            result = m_iCore.CreateCommandAllocator(*graphicsQueue, commandAllocator);
-            if (result != Result::SUCCESS)
-                return result;
-
-            result = m_iCore.CreateCommandBuffer(*commandAllocator, commandBuffer);
-            if (result != Result::SUCCESS)
-                return result;
-
-            result = m_iCore.CreateFence(m_Device, 0, fence);
-            if (result != Result::SUCCESS)
-                return result;
-
-            m_iCore.BeginCommandBuffer(*commandBuffer, nullptr);
+            result = m_iCore.GetQueue(m_Device, QueueType::GRAPHICS, 0, graphicsQueue);
+            if (result == Result::SUCCESS)
+                result = m_iCore.CreateCommandAllocator(*graphicsQueue, commandAllocator);
+            if (result == Result::SUCCESS)
+                result = m_iCore.CreateCommandBuffer(*commandAllocator, commandBuffer);
+            if (result == Result::SUCCESS)
+                result = m_iCore.CreateFence(m_Device, 0, fence);
+            if (result == Result::SUCCESS)
+                result = m_iCore.BeginCommandBuffer(*commandBuffer, nullptr);
         }
 
-        { // Record creation commands
+        if (result == Result::SUCCESS) { // Record creation commands
             ExclusiveScope lock(g_ngx.lock);
 
             void* commandBufferNative = m_iCore.GetCommandBufferNativeObject(commandBuffer);
@@ -1137,27 +1130,39 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         }
 
         if (!upscalerDesc.commandBuffer) {
-            m_iCore.EndCommandBuffer(*commandBuffer);
+            if (result == Result::SUCCESS) {
+                result = m_iCore.EndCommandBuffer(*commandBuffer);
 
-            // Submit & wait for completion
-            FenceSubmitDesc signalFence = {};
-            signalFence.fence = fence;
-            signalFence.value = 1;
+                if (result == Result::SUCCESS) {
+                    // Submit & wait for completion
+                    FenceSubmitDesc signalFence = {};
+                    signalFence.fence = fence;
+                    signalFence.value = 1;
 
-            QueueSubmitDesc queueSubmitDesc = {};
-            queueSubmitDesc.commandBuffers = &commandBuffer;
-            queueSubmitDesc.commandBufferNum = 1;
-            queueSubmitDesc.signalFences = &signalFence;
-            queueSubmitDesc.signalFenceNum = 1;
+                    QueueSubmitDesc queueSubmitDesc = {};
+                    queueSubmitDesc.commandBuffers = &commandBuffer;
+                    queueSubmitDesc.commandBufferNum = 1;
+                    queueSubmitDesc.signalFences = &signalFence;
+                    queueSubmitDesc.signalFenceNum = 1;
 
-            m_iCore.QueueSubmit(*graphicsQueue, queueSubmitDesc); // TODO: DEVICE_LOST?
-            m_iCore.Wait(*fence, 1);
+                    result = m_iCore.QueueSubmit(*graphicsQueue, queueSubmitDesc);
+                }
+
+                if (result == Result::SUCCESS)
+                    m_iCore.Wait(*fence, 1);
+            }
 
             // Cleanup
-            m_iCore.DestroyFence(fence);
-            m_iCore.DestroyCommandBuffer(commandBuffer);
-            m_iCore.DestroyCommandAllocator(commandAllocator);
+            if (fence)
+                m_iCore.DestroyFence(fence);
+            if (commandBuffer)
+                m_iCore.DestroyCommandBuffer(commandBuffer);
+            if (commandAllocator)
+                m_iCore.DestroyCommandAllocator(commandAllocator);
         }
+
+        if (result != Result::SUCCESS)
+            return result;
 
         if (ngxResult != NVSDK_NGX_Result_Success)
             return Result::FAILURE;

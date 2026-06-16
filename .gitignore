@@ -17,4 +17,5 @@ _Bin/
 _Build/
 _Shaders/
 _NRI_SDK/
+_Tmp/
 NRIAgilitySDK.h

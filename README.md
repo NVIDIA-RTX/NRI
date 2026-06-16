@@ -19,7 +19,7 @@ Non-goals:
 - Automatic barriers (better handled in a higher-level abstraction)
 
 Supported GAPIs:
-- *Vulkan 1.4+, 1.3++ or 1.2+++*
+- *Vulkan 1.4+, 1.3++ or 1.2+++* - advertises modern Vulkan compatibility, with a *Vulkan 1.2* core + _VK_KHR_synchronization2_ baseline
 - *D3D12*
 - *D3D11*
 - *Metal* (through [MoltenVK](https://github.com/KhronosGroup/MoltenVK))
@@ -34,8 +34,9 @@ There is [NVRHI](https://github.com/NVIDIA-RTX/NVRHI), which offers a *D3D11*-li
  - *C/C++ compatible* - native interface, compatible with both languages (can be used as a *shared* or *static* library)
  - *High performance* - low overhead with zero memory allocations at runtime, honored user-provided memory allocator
  - *Modern hardware tech* - support for Ray Tracing, Mesh Shaders, descriptor indexing (including directly indexed descriptor heaps) and more
- - *Mobile-ready* - optimized for Tile-Based Rendering (TBR/TBDR) architectures
- - **D3D12* Ultimate* - full support, including Enhanced Barriers
+ - *Mobile-ready* - optimized for Tile-Based Rendering (TBR/TBDR) architectures and friendly to mobile-oriented API designs
+ - *Portable API shape* - suitable for WebGPU-style backends
+ - *D3D12 Ultimate* - full support, including Enhanced Barriers
  - *Platform Flexibility* - Windows, Linux, MacOS, and Android support
  - *Developer Experience* - integrated GAPI- and NRI- validation, VK [printf](https://github.com/KhronosGroup/*Vulkan*-ValidationLayers/blob/main/docs/debug_printf.md), and timeline annotations (GAPI, [NVTX](https://github.com/NVIDIA/NVTX) and [PIX](https://devblogs.microsoft.com/pix/winpixeventruntime/), if "WinPixEventRuntime.dll" is nearby)
  - *Memory Management* - deep integration with *AMD Virtual Memory Allocator* to ease memory management and memory reuse
@@ -69,7 +70,7 @@ Repository organization:
 
 Notes:
 - *Xlib* and *Wayland* can be both enabled
-- Minimal supported client is Windows 8.1+. Windows 7 support requires minimal effort and can be added by request
+- Minimal supported client is Windows 8.1+
 
 ## CMAKE OPTIONS
 
@@ -114,11 +115,9 @@ It's safe to compile *NRI* using the default (most likely latest) *Agility SDK* 
 
 Required:
  - _VK_KHR_synchronization2_
- - _VK_KHR_copy_commands2_
- - _VK_EXT_extended_dynamic_state_
- - _VK_KHR_portability_enumeration_ (for APPLE)
- - _VK_KHR_get_physical_device_properties2_ (for APPLE)
- - _VK_KHR_portability_subset_ (for APPLE)
+ - (APPLE) _VK_KHR_portability_enumeration_
+ - (APPLE) _VK_KHR_get_physical_device_properties2_
+ - (APPLE) _VK_KHR_portability_subset_
 
 Supported:
  - (Instance) _VK_KHR_get_surface_capabilities2_
@@ -127,15 +126,16 @@ Supported:
  - (Instance) _VK_EXT_swapchain_colorspace_
  - (Instance) _VK_EXT_debug_utils_
  - (Instance) _VK_EXT_surface_maintenance1_
+ - _VK_KHR_copy_commands2_
  - _VK_KHR_dynamic_rendering_
  - _VK_KHR_swapchain_
  - _VK_KHR_present_id_
  - _VK_KHR_present_wait_
  - _VK_KHR_swapchain_mutable_format_
  - _VK_KHR_push_descriptor_
- - _VK_KHR_maintenance4_ (optional, but recommended)
- - _VK_KHR_maintenance5_ (optional, but recommended)
- - _VK_KHR_maintenance6_ (optional, but recommended)
+ - _VK_KHR_maintenance4_
+ - _VK_KHR_maintenance5_
+ - _VK_KHR_maintenance6_
  - _VK_KHR_maintenance7_
  - _VK_KHR_maintenance8_
  - _VK_KHR_maintenance9_
@@ -153,6 +153,7 @@ Supported:
  - _VK_KHR_unified_image_layouts_
  - _VK_KHR_shader_integer_dot_product_
  - _VK_KHR_dynamic_rendering_local_read_
+ - _VK_EXT_extended_dynamic_state_
  - _VK_EXT_calibrated_timestamps_
  - _VK_EXT_pipeline_creation_cache_control_
  - _VK_EXT_pipeline_robustness_

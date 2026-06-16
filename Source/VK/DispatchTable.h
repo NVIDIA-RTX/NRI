@@ -28,6 +28,15 @@ struct DispatchTable {
     VK_FUNC(GetPhysicalDeviceQueueFamilyProperties2);
     VK_FUNC(EnumerateDeviceExtensionProperties);
 
+    // VK_EXT_debug_utils
+    VK_FUNC(SetDebugUtilsObjectNameEXT);
+    VK_FUNC(CmdBeginDebugUtilsLabelEXT);
+    VK_FUNC(CmdEndDebugUtilsLabelEXT);
+    VK_FUNC(CmdInsertDebugUtilsLabelEXT);
+    VK_FUNC(QueueBeginDebugUtilsLabelEXT);
+    VK_FUNC(QueueEndDebugUtilsLabelEXT);
+    VK_FUNC(QueueInsertDebugUtilsLabelEXT);
+
     // VK_KHR_get_surface_capabilities2
     VK_FUNC(GetPhysicalDeviceSurfaceFormats2KHR);
     VK_FUNC(GetPhysicalDeviceSurfaceCapabilities2KHR);
@@ -39,7 +48,6 @@ struct DispatchTable {
 
 #ifdef VK_USE_PLATFORM_WIN32_KHR
     VK_FUNC(CreateWin32SurfaceKHR);
-    VK_FUNC(GetMemoryWin32HandlePropertiesKHR);
 #endif
 #ifdef VK_USE_PLATFORM_XLIB_KHR
     VK_FUNC(CreateXlibSurfaceKHR);
@@ -50,15 +58,6 @@ struct DispatchTable {
 #ifdef VK_USE_PLATFORM_METAL_EXT
     VK_FUNC(CreateMetalSurfaceEXT);
 #endif
-
-    // VK_EXT_debug_utils
-    VK_FUNC(SetDebugUtilsObjectNameEXT);
-    VK_FUNC(CmdBeginDebugUtilsLabelEXT);
-    VK_FUNC(CmdEndDebugUtilsLabelEXT);
-    VK_FUNC(CmdInsertDebugUtilsLabelEXT);
-    VK_FUNC(QueueBeginDebugUtilsLabelEXT);
-    VK_FUNC(QueueEndDebugUtilsLabelEXT);
-    VK_FUNC(QueueInsertDebugUtilsLabelEXT);
 
     //==========================================================================
     // Device                                    Thread safety | Accounted
@@ -75,7 +74,6 @@ struct DispatchTable {
     VK_FUNC(CreatePipelineLayout);                        // + | +
     VK_FUNC(CreateDescriptorSetLayout);                   // + | +
     VK_FUNC(CreateShaderModule);                          // + | +
-    VK_FUNC(CreateRenderPass2);                           // + | +
     VK_FUNC(CreateFramebuffer);                           // + | +
     VK_FUNC(CreateGraphicsPipelines);                     // + | +
     VK_FUNC(CreateComputePipelines);                      // + | +
@@ -104,21 +102,12 @@ struct DispatchTable {
     VK_FUNC(FlushMappedMemoryRanges);                     // + | +
     VK_FUNC(InvalidateMappedMemoryRanges);                // + | +
     VK_FUNC(QueueWaitIdle);                               // - | + may return "VK_ERROR_DEVICE_LOST"
-    VK_FUNC(QueueSubmit2);                                // - | + may return "VK_ERROR_DEVICE_LOST"
-    VK_FUNC(GetSemaphoreCounterValue);                    // + | + TODO: may return "VK_ERROR_DEVICE_LOST"
-    VK_FUNC(WaitSemaphores);                              // + | + TODO: may return "VK_ERROR_DEVICE_LOST"
     VK_FUNC(ResetCommandPool);                            // - | +
     VK_FUNC(ResetDescriptorPool);                         // - | +
     VK_FUNC(AllocateCommandBuffers);                      // - | +
     VK_FUNC(AllocateDescriptorSets);                      // - | +
     VK_FUNC(UpdateDescriptorSets);                        // + | +
-    VK_FUNC(BindBufferMemory2);                           // + | +
-    VK_FUNC(BindImageMemory2);                            // + | +
-    VK_FUNC(GetBufferMemoryRequirements2);                // + | +
-    VK_FUNC(GetImageMemoryRequirements2);                 // + | +
-    VK_FUNC(ResetQueryPool);                              // + | +
     VK_FUNC(GetQueryPoolResults);                         // + | +
-    VK_FUNC(GetBufferDeviceAddress);                      // + | +
     VK_FUNC(BeginCommandBuffer);                          // - | +
     VK_FUNC(CmdSetDepthBounds);                           // - | +
     VK_FUNC(CmdSetStencilReference);                      // - | +
@@ -126,7 +115,10 @@ struct DispatchTable {
     VK_FUNC(CmdSetDepthBias);                             // - | + TODO: "VK_EXT_depth_bias_control" offers "2" but MoltenVK doesn't support it yet
     VK_FUNC(CmdClearAttachments);                         // - | +
     VK_FUNC(CmdClearColorImage);                          // - | +
+    VK_FUNC(CmdSetViewport);                              // - | +
+    VK_FUNC(CmdSetScissor);                               // - | +
     VK_FUNC(CmdBindIndexBuffer);                          // - | +
+    VK_FUNC(CmdBindVertexBuffers);                        // - | +
     VK_FUNC(CmdBindPipeline);                             // - | +
     VK_FUNC(CmdBindDescriptorSets);                       // - | +
     VK_FUNC(CmdPushConstants);                            // - | +
@@ -136,37 +128,57 @@ struct DispatchTable {
     VK_FUNC(CmdDrawIndexed);                              // - | +
     VK_FUNC(CmdDrawIndirect);                             // - | +
     VK_FUNC(CmdDrawIndexedIndirect);                      // - | +
+    VK_FUNC(CmdBeginQuery);                               // - | +
+    VK_FUNC(CmdEndQuery);                                 // - | +
+    VK_FUNC(CmdCopyQueryPoolResults);                     // - | +
+    VK_FUNC(CmdCopyBuffer);                               // - | +
+    VK_FUNC(CmdCopyImage);                                // - | +
+    VK_FUNC(CmdResolveImage);                             // - | +
+    VK_FUNC(CmdCopyBufferToImage);                        // - | +
+    VK_FUNC(CmdCopyImageToBuffer);                        // - | +
+    VK_FUNC(CmdResetQueryPool);                           // - | +
+    VK_FUNC(CmdFillBuffer);                               // - | +
+    VK_FUNC(CmdBeginRenderPass);                          // - | +
+    VK_FUNC(CmdEndRenderPass);                            // - | +
+    VK_FUNC(EndCommandBuffer);                            // - | +
+                                                          // v1.1
+    VK_FUNC(BindBufferMemory2);                           // + | +
+    VK_FUNC(BindImageMemory2);                            // + | +
+    VK_FUNC(GetBufferMemoryRequirements2);                // + | +
+    VK_FUNC(GetImageMemoryRequirements2);                 // + | +
+                                                          // v1.2
+    VK_FUNC(CreateRenderPass2);                           // + | +
+    VK_FUNC(GetSemaphoreCounterValue);                    // + | + TODO: may return "VK_ERROR_DEVICE_LOST"
+    VK_FUNC(WaitSemaphores);                              // + | + TODO: may return "VK_ERROR_DEVICE_LOST"
+    VK_FUNC(ResetQueryPool);                              // + | +
+    VK_FUNC(GetBufferDeviceAddress);                      // + | +
     VK_FUNC(CmdDrawIndirectCount);                        // - | +
     VK_FUNC(CmdDrawIndexedIndirectCount);                 // - | +
+                                                          // v1.3 or VK_KHR_synchronization2
+    VK_FUNC(QueueSubmit2);                                // - | + may return "VK_ERROR_DEVICE_LOST"
+    VK_FUNC(CmdPipelineBarrier2);                         // - | +
+    VK_FUNC(CmdWriteTimestamp2);                          // - | +
+                                                          // v1.3 or VK_KHR_copy_commands2
     VK_FUNC(CmdCopyBuffer2);                              // - | +
     VK_FUNC(CmdCopyImage2);                               // - | +
     VK_FUNC(CmdResolveImage2);                            // - | +
     VK_FUNC(CmdCopyBufferToImage2);                       // - | +
     VK_FUNC(CmdCopyImageToBuffer2);                       // - | +
-    VK_FUNC(CmdPipelineBarrier2);                         // - | +
-    VK_FUNC(CmdBeginQuery);                               // - | +
-    VK_FUNC(CmdEndQuery);                                 // - | +
-    VK_FUNC(CmdWriteTimestamp2);                          // - | +
-    VK_FUNC(CmdCopyQueryPoolResults);                     // - | +
-    VK_FUNC(CmdResetQueryPool);                           // - | +
-    VK_FUNC(CmdFillBuffer);                               // - | +
-    VK_FUNC(CmdUpdateBuffer);                             // - | +
+                                                          // v1.3 or VK_KHR_dynamic_rendering
     VK_FUNC(CmdBeginRendering);                           // - | +
     VK_FUNC(CmdEndRendering);                             // - | + TODO: use "vkCmdEndRendering2KHR" from "VK_KHR_maintenance10"
-    VK_FUNC(CmdBeginRenderPass);                          // - | +
-    VK_FUNC(CmdEndRenderPass);                            // - | +
-    VK_FUNC(CmdPushDescriptorSet);                        // - | +
-    VK_FUNC(EndCommandBuffer);                            // - | +
                                                           // v1.3 or VK_EXT_extended_dynamic_state
     VK_FUNC(CmdBindVertexBuffers2);                       // - | +
     VK_FUNC(CmdSetViewportWithCount);                     // - | +
     VK_FUNC(CmdSetScissorWithCount);                      // - | +
-                                                          // VK_KHR_maintenance4
+                                                          // v1.3 or VK_KHR_maintenance4
     VK_FUNC(GetDeviceBufferMemoryRequirements);           // + | +
     VK_FUNC(GetDeviceImageMemoryRequirements);            // + | +
-                                                          // VK_KHR_maintenance5
+                                                          // v1.4 or VK_KHR_push_descriptor
+    VK_FUNC(CmdPushDescriptorSet);                        // - | +
+                                                          // v1.4 or VK_KHR_maintenance5
     VK_FUNC(CmdBindIndexBuffer2);                         // - | +
-                                                          // VK_KHR_maintenance6
+                                                          // v1.4 or VK_KHR_maintenance6
     VK_FUNC(CmdBindDescriptorSets2);                      // - | +
     VK_FUNC(CmdPushConstants2);                           // - | +
                                                           // VK_KHR_fragment_shading_rate
@@ -179,6 +191,10 @@ struct DispatchTable {
     VK_FUNC(GetSwapchainImagesKHR);                       // + | +
                                                           // VK_KHR_present_wait
     VK_FUNC(WaitForPresentKHR);                           // - | ? may return "VK_ERROR_DEVICE_LOST"
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+                                                          // VK_KHR_external_memory_win32
+    VK_FUNC(GetMemoryWin32HandlePropertiesKHR);           // + | +
+#endif
                                                           // VK_KHR_acceleration_structure
     VK_FUNC(CreateAccelerationStructureKHR);              // + | +
     VK_FUNC(DestroyAccelerationStructureKHR);             // - | +
