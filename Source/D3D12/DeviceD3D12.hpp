@@ -825,8 +825,11 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     else if (options.ResourceBindingTier == D3D12_RESOURCE_BINDING_TIER_2)
         m_Desc.tiers.resourceBinding = 1;
 
+    ComPtr<IDXGIFactory3> dxgiFactory3;
+    hr = m_Adapter->GetParent(IID_PPV_ARGS(&dxgiFactory3));
+
     m_Desc.features.swapChain = HasOutput();
-    m_Desc.features.waitableSwapChain = m_Desc.features.swapChain; // TODO: swap chain version >= 2?
+    m_Desc.features.waitableSwapChain = m_Desc.features.swapChain && SUCCEEDED(hr);
     m_Desc.features.resizableSwapChain = m_Desc.features.swapChain;
     m_Desc.features.flexibleMultiview = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED;
     m_Desc.features.layerBasedMultiview = options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED;
