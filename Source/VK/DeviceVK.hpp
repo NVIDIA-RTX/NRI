@@ -1798,7 +1798,6 @@ Result DeviceVK::ResolveInstanceDispatchTable(const Vector<const char*>& desired
 
 #ifdef VK_USE_PLATFORM_WIN32_KHR
         GET_INSTANCE_FUNC(CreateWin32SurfaceKHR);
-        GET_INSTANCE_FUNC(GetMemoryWin32HandlePropertiesKHR);
 #endif
 #ifdef VK_USE_PLATFORM_XLIB_KHR
         GET_INSTANCE_FUNC(CreateXlibSurfaceKHR);
@@ -1827,7 +1826,6 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(CreatePipelineLayout);
     GET_DEVICE_CORE_FUNC(CreateDescriptorSetLayout);
     GET_DEVICE_CORE_FUNC(CreateShaderModule);
-    GET_DEVICE_CORE_FUNC(CreateRenderPass2);
     GET_DEVICE_CORE_FUNC(CreateFramebuffer);
     GET_DEVICE_CORE_FUNC(CreateGraphicsPipelines);
     GET_DEVICE_CORE_FUNC(CreateComputePipelines);
@@ -1855,20 +1853,11 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(MapMemory);
     GET_DEVICE_CORE_FUNC(FlushMappedMemoryRanges);
     GET_DEVICE_CORE_FUNC(QueueWaitIdle);
-    GET_DEVICE_CORE_FUNC(QueueSubmit2);
-    GET_DEVICE_CORE_FUNC(GetSemaphoreCounterValue);
-    GET_DEVICE_CORE_FUNC(WaitSemaphores);
     GET_DEVICE_CORE_FUNC(ResetCommandPool);
     GET_DEVICE_CORE_FUNC(ResetDescriptorPool);
     GET_DEVICE_CORE_FUNC(AllocateCommandBuffers);
     GET_DEVICE_CORE_FUNC(AllocateDescriptorSets);
     GET_DEVICE_CORE_FUNC(UpdateDescriptorSets);
-    GET_DEVICE_CORE_FUNC(BindBufferMemory2);
-    GET_DEVICE_CORE_FUNC(BindImageMemory2);
-    GET_DEVICE_CORE_FUNC(GetBufferMemoryRequirements2);
-    GET_DEVICE_CORE_FUNC(GetImageMemoryRequirements2);
-    GET_DEVICE_CORE_FUNC(ResetQueryPool);
-    GET_DEVICE_CORE_FUNC(GetBufferDeviceAddress);
     GET_DEVICE_CORE_FUNC(BeginCommandBuffer);
     GET_DEVICE_CORE_FUNC(CmdSetDepthBounds);
     GET_DEVICE_CORE_FUNC(CmdSetStencilReference);
@@ -1885,38 +1874,65 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(CmdDraw);
     GET_DEVICE_CORE_FUNC(CmdDrawIndexed);
     GET_DEVICE_CORE_FUNC(CmdDrawIndirect);
-    GET_DEVICE_CORE_FUNC(CmdDrawIndirectCount);
     GET_DEVICE_CORE_FUNC(CmdDrawIndexedIndirect);
-    GET_DEVICE_CORE_FUNC(CmdDrawIndexedIndirectCount);
-    GET_DEVICE_CORE_FUNC(CmdCopyBuffer2);
-    GET_DEVICE_CORE_FUNC(CmdCopyImage2);
-    GET_DEVICE_CORE_FUNC(CmdResolveImage2);
-    GET_DEVICE_CORE_FUNC(CmdCopyBufferToImage2);
-    GET_DEVICE_CORE_FUNC(CmdCopyImageToBuffer2);
-    GET_DEVICE_CORE_FUNC(CmdPipelineBarrier2);
     GET_DEVICE_CORE_FUNC(CmdBeginQuery);
     GET_DEVICE_CORE_FUNC(CmdEndQuery);
-    GET_DEVICE_CORE_FUNC(CmdWriteTimestamp2);
     GET_DEVICE_CORE_FUNC(CmdCopyQueryPoolResults);
     GET_DEVICE_CORE_FUNC(CmdResetQueryPool);
     GET_DEVICE_CORE_FUNC(CmdFillBuffer);
     GET_DEVICE_CORE_FUNC(CmdBeginRenderPass);
     GET_DEVICE_CORE_FUNC(CmdEndRenderPass);
-    GET_DEVICE_CORE_FUNC(CmdPushDescriptorSet);
     GET_DEVICE_CORE_FUNC(EndCommandBuffer);
 
-    GET_DEVICE_OPTIONAL_CORE_FUNC(GetDeviceBufferMemoryRequirements);
-    GET_DEVICE_OPTIONAL_CORE_FUNC(GetDeviceImageMemoryRequirements);
+    // v1.1
+    GET_DEVICE_CORE_FUNC(BindBufferMemory2);
+    GET_DEVICE_CORE_FUNC(BindImageMemory2);
+    GET_DEVICE_CORE_FUNC(GetBufferMemoryRequirements2);
+    GET_DEVICE_CORE_FUNC(GetImageMemoryRequirements2);
+
+    // v1.2
+    GET_DEVICE_CORE_FUNC(CreateRenderPass2);
+    GET_DEVICE_CORE_FUNC(GetSemaphoreCounterValue);
+    GET_DEVICE_CORE_FUNC(WaitSemaphores);
+    GET_DEVICE_CORE_FUNC(ResetQueryPool);
+    GET_DEVICE_CORE_FUNC(GetBufferDeviceAddress);
+    GET_DEVICE_CORE_FUNC(CmdDrawIndirectCount);
+    GET_DEVICE_CORE_FUNC(CmdDrawIndexedIndirectCount);
+
+    // v1.3 or VK_KHR_synchronization2
+    GET_DEVICE_OPTIONAL_CORE_FUNC(QueueSubmit2);
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdPipelineBarrier2);
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdWriteTimestamp2);
+
+    // v1.3 or VK_KHR_copy_commands2
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdCopyBuffer2);
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdCopyImage2);
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdResolveImage2);
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdCopyBufferToImage2);
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdCopyImageToBuffer2);
+
+    // v1.3 or VK_KHR_dynamic_rendering
     GET_DEVICE_OPTIONAL_CORE_FUNC(CmdBeginRendering);
     GET_DEVICE_OPTIONAL_CORE_FUNC(CmdEndRendering);
-    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdBindIndexBuffer2);
-    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdBindDescriptorSets2);
-    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdPushConstants2);
 
-    // VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME or m_MinorVersion > 2
+    // v1.3 or VK_EXT_extended_dynamic_state
     GET_DEVICE_OPTIONAL_CORE_FUNC(CmdBindVertexBuffers2);
     GET_DEVICE_OPTIONAL_CORE_FUNC(CmdSetViewportWithCount);
     GET_DEVICE_OPTIONAL_CORE_FUNC(CmdSetScissorWithCount);
+
+    // v1.3 or VK_KHR_maintenance4
+    GET_DEVICE_OPTIONAL_CORE_FUNC(GetDeviceBufferMemoryRequirements);
+    GET_DEVICE_OPTIONAL_CORE_FUNC(GetDeviceImageMemoryRequirements);
+
+    // v1.4 or VK_KHR_push_descriptor
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdPushDescriptorSet);
+
+    // v1.4 or VK_KHR_maintenance5
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdBindIndexBuffer2);
+
+    // v1.4 or VK_KHR_maintenance6
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdBindDescriptorSets2);
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CmdPushConstants2);
 
     if (IsExtensionSupported(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME, desiredDeviceExts))
         GET_DEVICE_FUNC(CmdSetFragmentShadingRateKHR);
@@ -1931,6 +1947,11 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
 
     if (IsExtensionSupported(VK_KHR_PRESENT_WAIT_EXTENSION_NAME, desiredDeviceExts))
         GET_DEVICE_FUNC(WaitForPresentKHR);
+
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+    if (IsExtensionSupported(VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME, desiredDeviceExts))
+        GET_DEVICE_FUNC(GetMemoryWin32HandlePropertiesKHR);
+#endif
 
     if (IsExtensionSupported(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, desiredDeviceExts)) {
         GET_DEVICE_FUNC(CreateAccelerationStructureKHR);
