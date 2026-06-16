@@ -128,6 +128,7 @@ NRI_INLINE Result CommandBufferVal::Begin(const DescriptorPool* descriptorPool) 
     m_Pipeline = nullptr;
     m_PipelineLayout = nullptr;
 
+    ResetDescriptorSets();
     ResetAttachments();
 
     return result;
@@ -262,7 +263,8 @@ NRI_INLINE void CommandBufferVal::ClearStorage(const ClearStorageDesc& clearStor
 
     const DescriptorVal& descriptorVal = *(DescriptorVal*)clearStorageDesc.descriptor;
     NRI_RETURN_ON_FAILURE(&m_Device, descriptorVal.IsShaderResourceStorage(), ReturnVoid(), "'.storage' is not a 'SHADER_RESOURCE_STORAGE' descriptor");
-    // TODO: check that a descriptor set is bound, minimal tracking of sets is needed
+    NRI_RETURN_ON_FAILURE(&m_Device, clearStorageDesc.setIndex < m_DescriptorSets.size(), ReturnVoid(), "'setIndex=%u' is out of bounds", clearStorageDesc.setIndex);
+    NRI_RETURN_ON_FAILURE(&m_Device, m_DescriptorSets[clearStorageDesc.setIndex], ReturnVoid(), "descriptor set %u is not bound", clearStorageDesc.setIndex);
 
     auto clearStorageDescImpl = clearStorageDesc;
     clearStorageDescImpl.descriptor = NRI_GET_IMPL(Descriptor, clearStorageDesc.descriptor);
@@ -401,6 +403,8 @@ NRI_INLINE void CommandBufferVal::SetPipelineLayout(BindPoint bindPoint, const P
     PipelineLayout* pipelineLayoutImpl = NRI_GET_IMPL(PipelineLayout, &pipelineLayout);
 
     m_PipelineLayout = (PipelineLayoutVal*)&pipelineLayout;
+    ResetDescriptorSets();
+    m_DescriptorSets.resize(m_PipelineLayout->GetPipelineLayoutDesc().descriptorSetNum, nullptr);
 
     GetCoreInterfaceImpl().CmdSetPipelineLayout(*GetImpl(), bindPoint, *pipelineLayoutImpl);
 }
@@ -430,11 +434,14 @@ NRI_INLINE void CommandBufferVal::SetDescriptorSet(const SetDescriptorSetDesc& s
     NRI_RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");
     NRI_RETURN_ON_FAILURE(&m_Device, setDescriptorSetDesc.descriptorSet, ReturnVoid(), "'descriptorSet' is NULL");
     NRI_RETURN_ON_FAILURE(&m_Device, setDescriptorSetDesc.bindPoint < BindPoint::MAX_NUM, ReturnVoid(), "'bindPoint' is invalid");
+    NRI_RETURN_ON_FAILURE(&m_Device, setDescriptorSetDesc.setIndex < m_DescriptorSets.size(), ReturnVoid(), "'setIndex=%u' is out of bounds", setDescriptorSetDesc.setIndex);
 
     auto descriptorSetBindingDescImpl = setDescriptorSetDesc;
     descriptorSetBindingDescImpl.descriptorSet = NRI_GET_IMPL(DescriptorSet, setDescriptorSetDesc.descriptorSet);
 
     GetCoreInterfaceImpl().CmdSetDescriptorSet(*GetImpl(), descriptorSetBindingDescImpl);
+
+    m_DescriptorSets[setDescriptorSetDesc.setIndex] = (DescriptorSetVal*)setDescriptorSetDesc.descriptorSet;
 }
 
 NRI_INLINE void CommandBufferVal::SetRootConstants(const SetRootConstantsDesc& setRootConstantsDesc) {

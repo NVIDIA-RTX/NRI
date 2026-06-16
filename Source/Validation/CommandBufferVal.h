@@ -5,12 +5,14 @@
 namespace nri {
 
 struct DescriptorVal;
+struct DescriptorSetVal;
 struct PipelineVal;
 struct PipelineLayoutVal;
 
 struct CommandBufferVal final : public ObjectVal {
     CommandBufferVal(DeviceVal& device, CommandBuffer* commandBuffer, bool isWrapped)
         : ObjectVal(device, commandBuffer)
+        , m_DescriptorSets(device.GetStdAllocator())
         , m_IsRecordingStarted(isWrapped)
         , m_IsWrapped(isWrapped) {
     }
@@ -29,6 +31,11 @@ struct CommandBufferVal final : public ObjectVal {
             renderTarget = nullptr;
 
         m_DepthStencil = nullptr;
+    }
+
+    inline void ResetDescriptorSets() {
+        for (auto& descriptorSet : m_DescriptorSets)
+            descriptorSet = nullptr;
     }
 
     //================================================================================================================
@@ -93,6 +100,7 @@ private:
     void ValidateReadonlyDepthStencil();
 
     std::array<DescriptorVal*, 16> m_RenderTargets = {};
+    Vector<DescriptorSetVal*> m_DescriptorSets;
     DescriptorVal* m_DepthStencil = nullptr;
     PipelineLayoutVal* m_PipelineLayout = nullptr;
     PipelineVal* m_Pipeline = nullptr;
