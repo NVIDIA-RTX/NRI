@@ -703,6 +703,7 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
 
         VertexStreamDesc stream = {};
         stream.bindingSlot = 0;
+        stream.stride = sizeof(ImDrawVert);
 
         VertexInputDesc vertexInput = {};
         vertexInput.attributes = vertexAttributeDesc;

@@ -113,7 +113,10 @@ struct DispatchTable {
     VK_FUNC(CmdSetDepthBias);                             // - | + TODO: "VK_EXT_depth_bias_control" offers "2" but MoltenVK doesn't support it yet
     VK_FUNC(CmdClearAttachments);                         // - | +
     VK_FUNC(CmdClearColorImage);                          // - | +
+    VK_FUNC(CmdSetViewport);                              // - | +
+    VK_FUNC(CmdSetScissor);                               // - | +
     VK_FUNC(CmdBindIndexBuffer);                          // - | +
+    VK_FUNC(CmdBindVertexBuffers);                        // - | +
     VK_FUNC(CmdBindPipeline);                             // - | +
     VK_FUNC(CmdBindDescriptorSets);                       // - | +
     VK_FUNC(CmdPushConstants);                            // - | +

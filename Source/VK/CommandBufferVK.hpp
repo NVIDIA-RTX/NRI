@@ -366,7 +366,9 @@ NRI_INLINE Result CommandBufferVK::End() {
 }
 
 NRI_INLINE void CommandBufferVK::SetViewports(const Viewport* viewports, uint32_t viewportNum) {
-    Scratch<VkViewport> vkViewports = NRI_ALLOCATE_SCRATCH(m_Device, VkViewport, viewportNum);
+    const DeviceDesc& deviceDesc = m_Device.GetDesc();
+    uint32_t vkViewportNum = (deviceDesc.features.extendedDynamicState || viewportNum == 0) ? viewportNum : deviceDesc.viewport.maxNum;
+    Scratch<VkViewport> vkViewports = NRI_ALLOCATE_SCRATCH(m_Device, VkViewport, vkViewportNum);
     for (uint32_t i = 0; i < viewportNum; i++) {
         const Viewport& in = viewports[i];
         VkViewport& out = vkViewports[i];
@@ -384,12 +386,20 @@ NRI_INLINE void CommandBufferVK::SetViewports(const Viewport* viewports, uint32_
         }
     }
 
+    for (uint32_t i = viewportNum; i < vkViewportNum; i++)
+        vkViewports[i] = vkViewports[viewportNum - 1];
+
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdSetViewportWithCount(m_Handle, viewportNum, vkViewports);
+    if (deviceDesc.features.extendedDynamicState)
+        vk.CmdSetViewportWithCount(m_Handle, viewportNum, vkViewports);
+    else
+        vk.CmdSetViewport(m_Handle, 0, vkViewportNum, vkViewports);
 }
 
 NRI_INLINE void CommandBufferVK::SetScissors(const Rect* rects, uint32_t rectNum) {
-    Scratch<VkRect2D> vkRects = NRI_ALLOCATE_SCRATCH(m_Device, VkRect2D, rectNum);
+    const DeviceDesc& deviceDesc = m_Device.GetDesc();
+    uint32_t vkRectNum = (deviceDesc.features.extendedDynamicState || rectNum == 0) ? rectNum : deviceDesc.viewport.maxNum;
+    Scratch<VkRect2D> vkRects = NRI_ALLOCATE_SCRATCH(m_Device, VkRect2D, vkRectNum);
     for (uint32_t i = 0; i < rectNum; i++) {
         const Rect& in = rects[i];
         VkRect2D& out = vkRects[i];
@@ -399,8 +409,14 @@ NRI_INLINE void CommandBufferVK::SetScissors(const Rect* rects, uint32_t rectNum
         out.extent.height = in.height;
     }
 
+    for (uint32_t i = rectNum; i < vkRectNum; i++)
+        vkRects[i] = vkRects[rectNum - 1];
+
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdSetScissorWithCount(m_Handle, rectNum, vkRects);
+    if (deviceDesc.features.extendedDynamicState)
+        vk.CmdSetScissorWithCount(m_Handle, rectNum, vkRects);
+    else
+        vk.CmdSetScissor(m_Handle, 0, vkRectNum, vkRects);
 }
 
 NRI_INLINE void CommandBufferVK::SetDepthBounds(float boundsMin, float boundsMax) {
@@ -843,7 +859,10 @@ NRI_INLINE void CommandBufferVK::SetVertexBuffers(uint32_t baseSlot, const Verte
     }
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdBindVertexBuffers2(m_Handle, baseSlot, vertexBufferNum, handles, offsets, sizes, strides);
+    if (m_Device.GetDesc().features.extendedDynamicState)
+        vk.CmdBindVertexBuffers2(m_Handle, baseSlot, vertexBufferNum, handles, offsets, sizes, strides);
+    else
+        vk.CmdBindVertexBuffers(m_Handle, baseSlot, vertexBufferNum, handles, offsets);
 }
 
 NRI_INLINE void CommandBufferVK::SetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType indexType) {

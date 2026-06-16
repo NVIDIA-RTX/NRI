@@ -722,10 +722,12 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsMemoryZeroInitializationEnabled = desc.enableMemoryZeroInitialization && ZeroInitializeDeviceMemoryFeatures.zeroInitializeDeviceMemory;
 
     // Check hard requirements
-    NRI_RETURN_ON_FAILURE(this, ExtendedDynamicStateFeatures.extendedDynamicState != 0, Result::UNSUPPORTED, "'extendedDynamicState' is not supported");
     NRI_RETURN_ON_FAILURE(this, features13.synchronization2, Result::UNSUPPORTED, "'synchronization2' is not supported");
 
     // Check soft requirement
+    if (!ExtendedDynamicStateFeatures.extendedDynamicState)
+        NRI_REPORT_INFO(this, "'extendedDynamicState' is not supported, using static vertex input stride and fixed viewport/scissor counts");
+
     if (!features13.dynamicRendering)
         NRI_REPORT_INFO(this, "'dynamicRendering' is not supported, using 'render passes'");
 
@@ -1216,6 +1218,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.rootConstantsOffset = true;
         m_Desc.features.nonConstantBufferRootDescriptorOffset = true;
         m_Desc.features.mutableDescriptorType = MutableDescriptorTypeFeatures.mutableDescriptorType;
+        m_Desc.features.extendedDynamicState = ExtendedDynamicStateFeatures.extendedDynamicState;
         m_Desc.features.unifiedTextureLayouts = UnifiedImageLayoutsFeatures.unifiedImageLayouts;
 
         m_Desc.shaderFeatures.nativeI8 = features12.shaderInt8;
@@ -1865,7 +1868,10 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(CmdSetDepthBias);
     GET_DEVICE_CORE_FUNC(CmdClearAttachments);
     GET_DEVICE_CORE_FUNC(CmdClearColorImage);
+    GET_DEVICE_CORE_FUNC(CmdSetViewport);
+    GET_DEVICE_CORE_FUNC(CmdSetScissor);
     GET_DEVICE_CORE_FUNC(CmdBindIndexBuffer);
+    GET_DEVICE_CORE_FUNC(CmdBindVertexBuffers);
     GET_DEVICE_CORE_FUNC(CmdBindPipeline);
     GET_DEVICE_CORE_FUNC(CmdBindDescriptorSets);
     GET_DEVICE_CORE_FUNC(CmdPushConstants);

@@ -152,6 +152,7 @@ NRI_INLINE void CommandBufferVal::SetViewports(const Viewport* viewports, uint32
     NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
 
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
+    NRI_RETURN_ON_FAILURE(&m_Device, viewportNum != 0, ReturnVoid(), "'viewportNum' is 0");
     NRI_RETURN_ON_FAILURE(&m_Device, viewportNum <= deviceDesc.viewport.maxNum, ReturnVoid(), "'viewportNum' is greater than 'DeviceDesc::viewport.maxNum'");
 
     if (!deviceDesc.features.viewportOriginBottomLeft) {
@@ -165,6 +166,7 @@ NRI_INLINE void CommandBufferVal::SetViewports(const Viewport* viewports, uint32
 
 NRI_INLINE void CommandBufferVal::SetScissors(const Rect* rects, uint32_t rectNum) {
     NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
+    NRI_RETURN_ON_FAILURE(&m_Device, rectNum != 0, ReturnVoid(), "'rectNum' is 0");
     NRI_RETURN_ON_FAILURE(&m_Device, rectNum <= m_Device.GetDesc().viewport.maxNum, ReturnVoid(), "'rectNum' is greater than 'DeviceDesc::viewport.maxNum'");
 
     GetCoreInterfaceImpl().CmdSetScissors(*GetImpl(), rects, rectNum);

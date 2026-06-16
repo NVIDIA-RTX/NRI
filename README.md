@@ -69,7 +69,7 @@ Repository organization:
 
 Notes:
 - *Xlib* and *Wayland* can be both enabled
-- Minimal supported client is Windows 8.1+. Windows 7 support requires minimal effort and can be added by request
+- Minimal supported client is Windows 8.1+
 
 ## CMAKE OPTIONS
 
@@ -115,10 +115,9 @@ It's safe to compile *NRI* using the default (most likely latest) *Agility SDK* 
 Required:
  - _VK_KHR_synchronization2_
  - _VK_KHR_copy_commands2_
- - _VK_EXT_extended_dynamic_state_
- - _VK_KHR_portability_enumeration_ (for APPLE)
- - _VK_KHR_get_physical_device_properties2_ (for APPLE)
- - _VK_KHR_portability_subset_ (for APPLE)
+ - (APPLE) _VK_KHR_portability_enumeration_
+ - (APPLE) _VK_KHR_get_physical_device_properties2_
+ - (APPLE) _VK_KHR_portability_subset_
 
 Supported:
  - (Instance) _VK_KHR_get_surface_capabilities2_
@@ -133,9 +132,9 @@ Supported:
  - _VK_KHR_present_wait_
  - _VK_KHR_swapchain_mutable_format_
  - _VK_KHR_push_descriptor_
- - _VK_KHR_maintenance4_ (optional, but recommended)
- - _VK_KHR_maintenance5_ (optional, but recommended)
- - _VK_KHR_maintenance6_ (optional, but recommended)
+ - _VK_KHR_maintenance4_
+ - _VK_KHR_maintenance5_
+ - _VK_KHR_maintenance6_
  - _VK_KHR_maintenance7_
  - _VK_KHR_maintenance8_
  - _VK_KHR_maintenance9_
@@ -153,6 +152,7 @@ Supported:
  - _VK_KHR_unified_image_layouts_
  - _VK_KHR_shader_integer_dot_product_
  - _VK_KHR_dynamic_rendering_local_read_
+ - _VK_EXT_extended_dynamic_state_
  - _VK_EXT_calibrated_timestamps_
  - _VK_EXT_pipeline_creation_cache_control_
  - _VK_EXT_pipeline_robustness_
