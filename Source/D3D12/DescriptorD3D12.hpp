@@ -15,7 +15,7 @@ static inline DXGI_FORMAT GetPatchedShaderResourceViewFormat(DXGI_FORMAT format,
     }
 }
 
-static inline uint32_t GetPlaneIndex(PlaneBits planes) { // TODO: still unclear, is it needed for a stencil-only SRV?
+static inline uint32_t GetPlaneIndex(PlaneBits planes) {
     // https://microsoft.github.io/DirectX-Specs/d3d/PlanarDepthStencilDDISpec.html
     return (planes & PlaneBits::STENCIL) ? 1 : 0;
 }
@@ -369,7 +369,7 @@ Result DescriptorD3D12::Create(const BufferViewDesc& bufferViewDesc) {
             desc.Buffer.FirstElement = elementOffset;
             desc.Buffer.NumElements = elementNum;
             desc.Buffer.StructureByteStride = isRaw ? 0 : structureStride;
-            desc.Buffer.CounterOffsetInBytes = 0; // TODO: needed?
+            desc.Buffer.CounterOffsetInBytes = 0;
             desc.Buffer.Flags = isRaw ? D3D12_BUFFER_UAV_FLAG_RAW : D3D12_BUFFER_UAV_FLAG_NONE;
 
             return CreateUnorderedAccessView(bufferD3D12, desc);
@@ -448,7 +448,7 @@ Result DescriptorD3D12::Create(const SamplerDesc& samplerDesc) {
     desc.MinLOD = samplerDesc.mipMin;
     desc.MaxLOD = samplerDesc.mipMax;
 
-    if (!samplerDesc.isInteger) { // TODO: the spec is not clear about the behavior, keep black
+    if (!samplerDesc.isInteger) {
         desc.BorderColor[0] = samplerDesc.borderColor.f.x;
         desc.BorderColor[1] = samplerDesc.borderColor.f.y;
         desc.BorderColor[2] = samplerDesc.borderColor.f.z;
