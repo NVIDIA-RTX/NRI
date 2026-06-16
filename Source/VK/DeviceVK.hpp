@@ -542,51 +542,23 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_VK.GetPhysicalDeviceQueueFamilyProperties2(m_PhysicalDevice, &familyNum, familyProps2);
 
         std::array<uint32_t, (size_t)QueueType::MAX_NUM> scores = {};
-        for (uint32_t i = 0; i < familyNum; i++) { // TODO: same code is used in "Creation.cpp"
+        for (uint32_t i = 0; i < familyNum; i++) {
             const VkQueueFamilyProperties& familyProps = familyProps2[i].queueFamilyProperties;
 
-            bool graphics = familyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT;
-            bool compute = familyProps.queueFlags & VK_QUEUE_COMPUTE_BIT;
-            bool copy = familyProps.queueFlags & VK_QUEUE_TRANSFER_BIT;
-            bool sparse = familyProps.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT;
-            bool videoDecode = familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR;
-            bool videoEncode = familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR;
-            bool protect = familyProps.queueFlags & VK_QUEUE_PROTECTED_BIT;
-            bool opticalFlow = familyProps.queueFlags & VK_QUEUE_OPTICAL_FLOW_BIT_NV;
-            bool taken = false;
+            QueueFamilyProps props = {};
+            props.queueCount = familyProps.queueCount;
+            props.graphics = familyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT;
+            props.compute = familyProps.queueFlags & VK_QUEUE_COMPUTE_BIT;
+            props.copy = familyProps.queueFlags & VK_QUEUE_TRANSFER_BIT;
+            props.sparse = familyProps.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT;
+            props.videoDecode = familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR;
+            props.videoEncode = familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR;
+            props.protect = familyProps.queueFlags & VK_QUEUE_PROTECTED_BIT;
+            props.opticalFlow = familyProps.queueFlags & VK_QUEUE_OPTICAL_FLOW_BIT_NV;
 
-            { // Prefer as much features as possible
-                size_t index = (size_t)QueueType::GRAPHICS;
-                uint32_t score = GRAPHICS_QUEUE_SCORE;
-
-                if (!taken && graphics && score > scores[index]) {
-                    queueFamilyIndices[index] = i;
-                    scores[index] = score;
-                    taken = true;
-                }
-            }
-
-            { // Prefer compute-only
-                size_t index = (size_t)QueueType::COMPUTE;
-                uint32_t score = COMPUTE_QUEUE_SCORE;
-
-                if (!taken && compute && score > scores[index]) {
-                    queueFamilyIndices[index] = i;
-                    scores[index] = score;
-                    taken = true;
-                }
-            }
-
-            { // Prefer copy-only
-                size_t index = (size_t)QueueType::COPY;
-                uint32_t score = COPY_QUEUE_SCORE;
-
-                if (!taken && copy && score > scores[index]) {
-                    queueFamilyIndices[index] = i;
-                    scores[index] = score;
-                    taken = true;
-                }
-            }
+            QueueType queueType = TrySelectPreferredQueueType(props, scores);
+            if (queueType != QueueType::MAX_NUM)
+                queueFamilyIndices[(size_t)queueType] = i;
         }
     }
 

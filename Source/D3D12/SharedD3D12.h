@@ -8,9 +8,17 @@
 // Validate Windows SDK version
 static_assert(D3D12_SDK_VERSION >= 3, "Outdated Windows SDK. D3D12 Ultimate needed (Windows SDK 10.0.20348). Always prefer using latest Agility SDK!");
 
-// "Must-have" constants
+// "Must-have" constants and structs
 #ifndef D3D12_RAYTRACING_OPACITY_MICROMAP_ARRAY_BYTE_ALIGNMENT
 #    define D3D12_RAYTRACING_OPACITY_MICROMAP_ARRAY_BYTE_ALIGNMENT 128
+
+struct D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC {
+    bool unused;
+};
+
+struct D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY {
+    bool unused;
+};
 #endif
 
 #ifndef D3D12_RAYTRACING_OPACITY_MICROMAP_OC1_MAX_SUBDIVISION_LEVEL
@@ -27,17 +35,6 @@ static_assert(D3D12_SDK_VERSION >= 3, "Outdated Windows SDK. D3D12 Ultimate need
 
 #ifndef D3D12_MS_TGSM_BYTES_MINIMUM_SUPPORT
 #    define D3D12_MS_TGSM_BYTES_MINIMUM_SUPPORT 28672
-#endif
-
-#if !NRI_ENABLE_AGILITY_SDK_SUPPORT
-// Needed
-struct D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC {
-    bool unused;
-};
-
-struct D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY {
-    bool unused;
-};
 #endif
 
 #include "SharedExternal.h"

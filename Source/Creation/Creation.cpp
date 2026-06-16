@@ -142,8 +142,6 @@ static void CheckAndSetDefaultCallbacks(DeviceCreationDesc& deviceCreationDesc) 
     }
 }
 
-#if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT || NRI_ENABLE_VK_SUPPORT)
-
 static int SortAdapters(const void* pa, const void* pb) {
     constexpr uint64_t SHIFT = 60ull;
     static_assert((uint64_t)Architecture::MAX_NUM <= 1ull << (64ull - SHIFT), "Adjust SHIFT");
@@ -164,8 +162,6 @@ static int SortAdapters(const void* pa, const void* pb) {
 
     return 0;
 }
-
-#endif
 
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
 
@@ -451,51 +447,23 @@ static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum
             vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &familyNum, familyProps2);
 
             std::array<uint32_t, (size_t)QueueType::MAX_NUM> scores = {};
-            for (uint32_t j = 0; j < familyNum; j++) { // TODO: same code as in "DeviceVK::Create"
+            for (uint32_t j = 0; j < familyNum; j++) {
                 const VkQueueFamilyProperties& familyProps = familyProps2[j].queueFamilyProperties;
 
-                bool graphics = familyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT;
-                bool compute = familyProps.queueFlags & VK_QUEUE_COMPUTE_BIT;
-                bool copy = familyProps.queueFlags & VK_QUEUE_TRANSFER_BIT;
-                bool sparse = familyProps.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT;
-                bool videoDecode = familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR;
-                bool videoEncode = familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR;
-                bool protect = familyProps.queueFlags & VK_QUEUE_PROTECTED_BIT;
-                bool opticalFlow = familyProps.queueFlags & VK_QUEUE_OPTICAL_FLOW_BIT_NV;
-                bool taken = false;
+                QueueFamilyProps props = {};
+                props.queueCount = familyProps.queueCount;
+                props.graphics = familyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT;
+                props.compute = familyProps.queueFlags & VK_QUEUE_COMPUTE_BIT;
+                props.copy = familyProps.queueFlags & VK_QUEUE_TRANSFER_BIT;
+                props.sparse = familyProps.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT;
+                props.videoDecode = familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR;
+                props.videoEncode = familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR;
+                props.protect = familyProps.queueFlags & VK_QUEUE_PROTECTED_BIT;
+                props.opticalFlow = familyProps.queueFlags & VK_QUEUE_OPTICAL_FLOW_BIT_NV;
 
-                { // Prefer as much features as possible
-                    size_t index = (size_t)QueueType::GRAPHICS;
-                    uint32_t score = GRAPHICS_QUEUE_SCORE;
-
-                    if (!taken && graphics && score > scores[index]) {
-                        adapterDesc.queueNum[index] = familyProps.queueCount;
-                        scores[index] = score;
-                        taken = true;
-                    }
-                }
-
-                { // Prefer compute-only
-                    size_t index = (size_t)QueueType::COMPUTE;
-                    uint32_t score = COMPUTE_QUEUE_SCORE;
-
-                    if (!taken && compute && score > scores[index]) {
-                        adapterDesc.queueNum[index] = familyProps.queueCount;
-                        scores[index] = score;
-                        taken = true;
-                    }
-                }
-
-                { // Prefer copy-only
-                    size_t index = (size_t)QueueType::COPY;
-                    uint32_t score = COPY_QUEUE_SCORE;
-
-                    if (!taken && copy && score > scores[index]) {
-                        adapterDesc.queueNum[index] = familyProps.queueCount;
-                        scores[index] = score;
-                        taken = true;
-                    }
-                }
+                QueueType queueType = TrySelectPreferredQueueType(props, scores);
+                if (queueType != QueueType::MAX_NUM)
+                    adapterDesc.queueNum[(size_t)queueType] = familyProps.queueCount;
             }
         }
 

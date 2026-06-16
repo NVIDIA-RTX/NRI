@@ -65,6 +65,14 @@ typedef uint32_t DXGI_FORMAT;
 #    define NRI_MAX_STACK_ALLOC_SIZE 32768u // 32 Kb
 #endif
 
+#ifndef NRI_FILE_SEPARATOR
+#    ifdef _WIN32
+#        define NRI_FILE_SEPARATOR '\\'
+#    else
+#        define NRI_FILE_SEPARATOR '/'
+#    endif
+#endif
+
 #ifndef NRI_CHECK
 #    ifdef NDEBUG
 #        define NRI_CHECK(condition, message)
@@ -293,14 +301,6 @@ protected:
 #define NRI_REPORT_INFO(deviceBase, format, ...)    (deviceBase)->ReportMessage(Message::INFO, Result::SUCCESS, __FILE__, __LINE__, format, ##__VA_ARGS__)
 #define NRI_REPORT_WARNING(deviceBase, format, ...) (deviceBase)->ReportMessage(Message::WARNING, Result::SUCCESS, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
 #define NRI_REPORT_ERROR(deviceBase, format, ...)   (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
-
-// Queue scores // TODO: improve?
-#define GRAPHICS_QUEUE_SCORE \
-    ((graphics ? 100 : 0) + (compute ? 10 : 0) + (copy ? 10 : 0) + (sparse ? 5 : 0) + (videoDecode ? 2 : 0) + (videoEncode ? 2 : 0) + (protect ? 1 : 0) + (opticalFlow ? 1 : 0))
-#define COMPUTE_QUEUE_SCORE \
-    ((!graphics ? 10 : 0) + (compute ? 100 : 0) + (!copy ? 10 : 0) + (sparse ? 5 : 0) + (!videoDecode ? 2 : 0) + (!videoEncode ? 2 : 0) + (protect ? 1 : 0) + (!opticalFlow ? 1 : 0))
-#define COPY_QUEUE_SCORE \
-    ((!graphics ? 10 : 0) + (!compute ? 10 : 0) + (copy ? 100 * familyProps.queueCount : 0) + (sparse ? 5 : 0) + (!videoDecode ? 2 : 0) + (!videoEncode ? 2 : 0) + (protect ? 1 : 0) + (!opticalFlow ? 1 : 0))
 
 // Array validation
 #define NRI_VALIDATE_ARRAY(x)                 static_assert((size_t)x[x.size() - 1] != 0, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
@@ -552,19 +552,6 @@ inline TextureDesc FixTextureDesc(const TextureDesc& textureDesc) {
     return desc;
 }
 
-inline Uid_t ConstructUid(uint8_t luid[8], uint8_t uuid[16], bool isLuidValid) {
-    Uid_t out = {};
-
-    if (isLuidValid)
-        memcpy(&out.low, luid, sizeof(out.low));
-    else {
-        memcpy(&out.low, uuid, sizeof(out.low));
-        memcpy(&out.high, uuid + 8, sizeof(out.high));
-    }
-
-    return out;
-}
-
 inline bool CompareUid(const Uid_t& a, const Uid_t& b) {
     return a.low == b.low && a.high == b.high;
 }
@@ -605,6 +592,70 @@ struct DisplayDescHelper {
         return Result::UNSUPPORTED;
     }
 };
+
+#endif
+
+// VK related
+#if NRI_ENABLE_VK_SUPPORT
+
+struct QueueFamilyProps {
+    uint32_t queueCount;
+    bool graphics;
+    bool compute;
+    bool copy;
+    bool sparse;
+    bool videoDecode;
+    bool videoEncode;
+    bool protect;
+    bool opticalFlow;
+};
+
+inline QueueType TrySelectPreferredQueueType(const QueueFamilyProps& props, std::array<uint32_t, (size_t)QueueType::MAX_NUM>& scores) {
+    { // Prefer as much features as possible
+        size_t index = (size_t)QueueType::GRAPHICS;
+        uint32_t score = ((props.graphics ? 100 : 0) + (props.compute ? 10 : 0) + (props.copy ? 10 : 0) + (props.sparse ? 5 : 0) + (props.videoDecode ? 2 : 0) + (props.videoEncode ? 2 : 0) + (props.protect ? 1 : 0) + (props.opticalFlow ? 1 : 0));
+
+        if (props.graphics && score > scores[index]) {
+            scores[index] = score;
+            return QueueType::GRAPHICS;
+        }
+    }
+
+    { // Prefer compute-only
+        size_t index = (size_t)QueueType::COMPUTE;
+        uint32_t score = ((!props.graphics ? 10 : 0) + (props.compute ? 100 : 0) + (!props.copy ? 10 : 0) + (props.sparse ? 5 : 0) + (!props.videoDecode ? 2 : 0) + (!props.videoEncode ? 2 : 0) + (props.protect ? 1 : 0) + (!props.opticalFlow ? 1 : 0));
+
+        if (props.compute && score > scores[index]) {
+            scores[index] = score;
+            return QueueType::COMPUTE;
+        }
+    }
+
+    { // Prefer copy-only
+        size_t index = (size_t)QueueType::COPY;
+        uint32_t score = ((!props.graphics ? 10 : 0) + (!props.compute ? 10 : 0) + (props.copy ? 100 * props.queueCount : 0) + (props.sparse ? 5 : 0) + (!props.videoDecode ? 2 : 0) + (!props.videoEncode ? 2 : 0) + (props.protect ? 1 : 0) + (!props.opticalFlow ? 1 : 0));
+
+        if (props.copy && score > scores[index]) {
+            scores[index] = score;
+            return QueueType::COPY;
+        }
+    }
+
+    return QueueType::MAX_NUM;
+}
+
+inline Uid_t ConstructUid(uint8_t luid[8], uint8_t uuid[16], bool isLuidValid) {
+    Uid_t out = {};
+
+    if (isLuidValid)
+        memcpy(&out.low, luid, sizeof(out.low));
+    else {
+        memcpy(&out.low, uuid, sizeof(out.low));
+        memcpy(&out.high, uuid + 8, sizeof(out.high));
+    }
+
+    return out;
+}
 
 #endif
 

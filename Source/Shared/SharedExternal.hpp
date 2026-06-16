@@ -895,35 +895,25 @@ Format nri::VKFormatToNRIFormat(uint32_t format) {
 
 void DeviceBase::ReportMessage(Message messageType, Result result, const char* file, uint32_t line, const char* format, ...) const {
     // Report message
-    if (m_CallbackInterface.MessageCallback) { // TODO: "MessageCallback" actually can't be "NULL"
-        const DeviceDesc& desc = GetDesc();
-        const char* graphicsAPIName = nriGetGraphicsAPIString(desc.graphicsAPI);
+    const DeviceDesc& desc = GetDesc();
+    const char* graphicsAPIName = nriGetGraphicsAPIString(desc.graphicsAPI);
 
-#ifdef _WIN32
-#    define NRI_FILE_SEPARATOR '\\'
-#else
-#    define NRI_FILE_SEPARATOR '/'
-#endif
+    const char* temp = strrchr(file, NRI_FILE_SEPARATOR);
+    file = temp ? temp + 1 : file;
 
-        const char* temp = strrchr(file, NRI_FILE_SEPARATOR);
-        file = temp ? temp + 1 : file;
+    char buf[NRI_MAX_MESSAGE_LENGTH];
+    int32_t written = snprintf(buf, sizeof(buf), "%s::%s - ", graphicsAPIName, *desc.adapterDesc.name == '\0' ? "Unknown" : desc.adapterDesc.name);
 
-        char buf[NRI_MAX_MESSAGE_LENGTH];
-        int32_t written = snprintf(buf, sizeof(buf), "%s::%s - ", graphicsAPIName, *desc.adapterDesc.name == '\0' ? "Unknown" : desc.adapterDesc.name);
+    va_list argptr;
+    va_start(argptr, format);
+    written += vsnprintf(buf + written, sizeof(buf) - written, format, argptr);
+    va_end(argptr);
 
-        va_list argptr;
-        va_start(argptr, format);
-        written += vsnprintf(buf + written, sizeof(buf) - written, format, argptr);
-        va_end(argptr);
-
-        m_CallbackInterface.MessageCallback(messageType, file, line, buf, m_CallbackInterface.userArg);
-    }
+    m_CallbackInterface.MessageCallback(messageType, file, line, buf, m_CallbackInterface.userArg);
 
     // Abort execution
     if (m_CallbackInterface.AbortExecution && (int8_t)result > 0)
         m_CallbackInterface.AbortExecution(m_CallbackInterface.userArg);
-
-#undef NRI_FILE_SEPARATOR
 }
 
 void nri::ConvertCharToWchar(const char* in, wchar_t* out, size_t outLength) {
