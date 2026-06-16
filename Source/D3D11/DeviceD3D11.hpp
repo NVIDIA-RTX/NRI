@@ -58,7 +58,8 @@ DeviceD3D11::~DeviceD3D11() {
             Destroy<QueueD3D11>(queue);
     }
 
-    DeleteCriticalSection(&m_CriticalSection);
+    if (m_IsCriticalSectionInitialized)
+        DeleteCriticalSection(&m_CriticalSection);
 
 #if NRI_ENABLE_AMDAGS
     if (HasAmdExt() && !m_IsWrapped)
@@ -278,6 +279,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     if (FAILED(hr)) {
         NRI_REPORT_WARNING(this, "ID3D11Multithread is not supported: a critical section will be used instead!");
         InitializeCriticalSection(&m_CriticalSection);
+        m_IsCriticalSectionInitialized = true;
     } else
         m_Multithread->SetMultithreadProtected(true);
 
@@ -509,8 +511,11 @@ void DeviceD3D11::FillDesc() {
     m_Desc.features.additionalShadingRates = caps.bVariablePixelRateShadingSupported ? 1 : 0;
 #endif
 
+    ComPtr<IDXGIFactory3> dxgiFactory3;
+    hr = m_Adapter->GetParent(IID_PPV_ARGS(&dxgiFactory3));
+
     m_Desc.features.swapChain = HasOutput();
-    m_Desc.features.waitableSwapChain = m_Desc.features.swapChain; // TODO: swap chain version >= 2?
+    m_Desc.features.waitableSwapChain = m_Desc.features.swapChain && SUCCEEDED(hr);
     m_Desc.features.resizableSwapChain = m_Desc.features.swapChain;
     m_Desc.features.textureCompressionBC = true;
     m_Desc.features.shaderBytecodeDXBC = true;
