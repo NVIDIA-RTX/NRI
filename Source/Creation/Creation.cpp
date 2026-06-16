@@ -494,8 +494,8 @@ static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum
                 props.compute = familyProps.queueFlags & VK_QUEUE_COMPUTE_BIT;
                 props.copy = familyProps.queueFlags & VK_QUEUE_TRANSFER_BIT;
                 props.sparse = familyProps.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT;
-                props.videoDecode = familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR;
-                props.videoEncode = familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR;
+                props.videoDecode = (familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR) && props.videoDecodeCodecNum;
+                props.videoEncode = (familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR) && props.videoEncodeCodecNum;
                 props.protect = familyProps.queueFlags & VK_QUEUE_PROTECTED_BIT;
                 props.opticalFlow = familyProps.queueFlags & VK_QUEUE_OPTICAL_FLOW_BIT_NV;
 
