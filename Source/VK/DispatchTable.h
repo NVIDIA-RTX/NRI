@@ -129,6 +129,11 @@ struct DispatchTable {
     VK_FUNC(CmdBeginQuery);                               // - | +
     VK_FUNC(CmdEndQuery);                                 // - | +
     VK_FUNC(CmdCopyQueryPoolResults);                     // - | +
+    VK_FUNC(CmdCopyBuffer);                               // - | +
+    VK_FUNC(CmdCopyImage);                                // - | +
+    VK_FUNC(CmdResolveImage);                             // - | +
+    VK_FUNC(CmdCopyBufferToImage);                        // - | +
+    VK_FUNC(CmdCopyImageToBuffer);                        // - | +
     VK_FUNC(CmdResetQueryPool);                           // - | +
     VK_FUNC(CmdFillBuffer);                               // - | +
     VK_FUNC(CmdBeginRenderPass);                          // - | +

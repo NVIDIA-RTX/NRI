@@ -706,6 +706,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.maintenance10 = Maintenance10Features.maintenance10;
     m_IsSupported.deviceAddress = features12.bufferDeviceAddress;
     m_IsSupported.dynamicRendering = features13.dynamicRendering;
+    m_IsSupported.copyCommands2 = m_MinorVersion > 2 || IsExtensionSupported(VK_KHR_COPY_COMMANDS_2_EXTENSION_NAME, desiredDeviceExts);
     m_IsSupported.swapChainMutableFormat = IsExtensionSupported(VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME, desiredDeviceExts);
     m_IsSupported.presentId = PresentIdFeatures.presentId;
     m_IsSupported.memoryPriority = MemoryPriorityFeatures.memoryPriority;
@@ -1197,7 +1198,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.additionalShadingRates = FragmentShadingRateProps.maxFragmentSize.height > 2 || FragmentShadingRateProps.maxFragmentSize.width > 2;
         m_Desc.features.sumShadingRateCombiner = m_Desc.tiers.shadingRate != 0;
         m_Desc.features.regionResolve = true;
-        m_Desc.features.resolveOpMinMax = m_IsSupported.maintenance10 ? true : false; // TODO: it's "all or nothing", without it "min/max" resolve is supported only in a render pass
+        m_Desc.features.resolveOpMinMax = m_IsSupported.maintenance10 && m_IsSupported.copyCommands2; // TODO: it's "all or nothing", without it "min/max" resolve is supported only in a render pass
         m_Desc.features.pipelineCache = true;
         m_Desc.features.pipelineCacheControl = features13.pipelineCreationCacheControl;
         m_Desc.features.getMemoryDesc2 = m_IsSupported.maintenance4;
@@ -1884,6 +1885,11 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(CmdBeginQuery);
     GET_DEVICE_CORE_FUNC(CmdEndQuery);
     GET_DEVICE_CORE_FUNC(CmdCopyQueryPoolResults);
+    GET_DEVICE_CORE_FUNC(CmdCopyBuffer);
+    GET_DEVICE_CORE_FUNC(CmdCopyImage);
+    GET_DEVICE_CORE_FUNC(CmdResolveImage);
+    GET_DEVICE_CORE_FUNC(CmdCopyBufferToImage);
+    GET_DEVICE_CORE_FUNC(CmdCopyImageToBuffer);
     GET_DEVICE_CORE_FUNC(CmdResetQueryPool);
     GET_DEVICE_CORE_FUNC(CmdFillBuffer);
     GET_DEVICE_CORE_FUNC(CmdBeginRenderPass);
