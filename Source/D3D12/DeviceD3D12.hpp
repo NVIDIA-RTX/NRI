@@ -1411,29 +1411,33 @@ Result DeviceD3D12::CreateDefaultDrawSignatures(ID3D12RootSignature* rootSignatu
     return Result::SUCCESS;
 }
 
-ID3D12CommandSignature* DeviceD3D12::GetDrawCommandSignature(uint32_t stride, ID3D12RootSignature* rootSignature) {
+ID3D12CommandSignature* DeviceD3D12::GetDrawCommandSignature(const PipelineLayoutD3D12* pipelineLayout, uint32_t stride) {
     ExclusiveScope lock(m_CommandSignatureLock);
 
+    ID3D12RootSignature* rootSignature = *pipelineLayout;
     auto key = HashRootSignatureAndStride(rootSignature, stride);
     auto commandSignatureIt = m_DrawCommandSignatures.find(key);
     if (commandSignatureIt != m_DrawCommandSignatures.end())
         return commandSignatureIt->second;
 
-    ComPtr<ID3D12CommandSignature> commandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DRAW, stride, rootSignature);
+    bool enableDrawParametersEmulation = pipelineLayout->IsDrawParametersEmulationEnabled();
+    ComPtr<ID3D12CommandSignature> commandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DRAW, stride, rootSignature, enableDrawParametersEmulation);
     m_DrawCommandSignatures[key] = commandSignature;
 
     return commandSignature;
 }
 
-ID3D12CommandSignature* DeviceD3D12::GetDrawIndexedCommandSignature(uint32_t stride, ID3D12RootSignature* rootSignature) {
+ID3D12CommandSignature* DeviceD3D12::GetDrawIndexedCommandSignature(const PipelineLayoutD3D12* pipelineLayout, uint32_t stride) {
     ExclusiveScope lock(m_CommandSignatureLock);
 
+    ID3D12RootSignature* rootSignature = *pipelineLayout;
     auto key = HashRootSignatureAndStride(rootSignature, stride);
     auto commandSignatureIt = m_DrawIndexedCommandSignatures.find(key);
     if (commandSignatureIt != m_DrawIndexedCommandSignatures.end())
         return commandSignatureIt->second;
 
-    ComPtr<ID3D12CommandSignature> commandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED, stride, rootSignature);
+    bool enableDrawParametersEmulation = pipelineLayout->IsDrawParametersEmulationEnabled();
+    ComPtr<ID3D12CommandSignature> commandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED, stride, rootSignature, enableDrawParametersEmulation);
     m_DrawIndexedCommandSignatures[key] = commandSignature;
 
     return commandSignature;

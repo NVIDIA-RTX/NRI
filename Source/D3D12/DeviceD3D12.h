@@ -11,6 +11,7 @@ typedef ID3D12Device8 ID3D12DeviceBest;
 namespace nri {
 
 struct QueueD3D12;
+struct PipelineLayoutD3D12;
 
 struct DeviceD3D12 final : public DeviceBase {
     DeviceD3D12(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks);
@@ -101,8 +102,8 @@ struct DeviceD3D12 final : public DeviceBase {
     void GetMicromapPrebuildInfo(const MicromapDesc& micromapDesc, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO& prebuildInfo) const;
     D3D12_HEAP_TYPE GetHeapType(MemoryLocation memoryLocation) const;
     DescriptorHandleCPU GetDescriptorHandleCPU(const DescriptorHandle& descriptorHandle);
-    ID3D12CommandSignature* GetDrawCommandSignature(uint32_t stride, ID3D12RootSignature* rootSignature);
-    ID3D12CommandSignature* GetDrawIndexedCommandSignature(uint32_t stride, ID3D12RootSignature* rootSignature);
+    ID3D12CommandSignature* GetDrawCommandSignature(const PipelineLayoutD3D12* pipelineLayout, uint32_t stride);
+    ID3D12CommandSignature* GetDrawIndexedCommandSignature(const PipelineLayoutD3D12* pipelineLayout, uint32_t stride);
     ID3D12CommandSignature* GetDrawMeshCommandSignature(uint32_t stride);
     ID3D12CommandSignature* GetDispatchRaysCommandSignature() const;
     ID3D12CommandSignature* GetDispatchCommandSignature() const;
