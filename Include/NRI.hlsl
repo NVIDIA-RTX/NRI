@@ -208,7 +208,7 @@ Draw parameters:
     #define NRI_INPUT_ATTACHMENT_LOAD(inputAttachment, pixelPos) inputAttachment.SubpassLoad()
 
     // Draw parameters
-    // Full support, requires "deviceDesc.shaderFeatures.drawParameters" (99% of devices support it)
+    // Full support, requires "shaderFeatures.drawParameters" (99% of devices support it)
     #define NRI_ENABLE_DRAW_PARAMETERS
 
     #define NRI_DECLARE_DRAW_PARAMETERS \
@@ -242,7 +242,7 @@ Draw parameters:
     // Draw parameters
     #if (NRI_SHADER_MODEL < 68)
         #ifdef NRI_ENABLE_DRAW_PARAMETERS_EMULATION
-            // Emulation, requires "deviceDesc.shaderFeatures.drawParametersEmulation"
+            // Emulation, requires "shaderFeatures.drawParametersEmulation"
             #define NRI_ENABLE_DRAW_PARAMETERS \
                 struct _BaseAttributeConstants { \
                     int baseVertex; \
@@ -278,7 +278,7 @@ Draw parameters:
             #define NRI_INSTANCE_ID_OFFSET NRI_INSTANCE_ID_OFFSET_is_unsupported
         #endif
     #else
-        // Full support, requires "devcieDesc.shaderFeatures.drawParameters"
+        // Full support, requires "shaderFeatures.drawParameters"
         #define NRI_ENABLE_DRAW_PARAMETERS
 
         #define NRI_DECLARE_DRAW_PARAMETERS \
@@ -286,6 +286,9 @@ Draw parameters:
             uint NRI_INSTANCE_ID : SV_InstanceID, \
             int NRI_BASE_VERTEX : SV_StartVertexLocation, \
             uint NRI_BASE_INSTANCE : SV_StartInstanceLocation
+
+        #define NRI_VERTEX_ID_OFFSET (NRI_BASE_VERTEX + NRI_VERTEX_ID)
+        #define NRI_INSTANCE_ID_OFFSET (NRI_BASE_INSTANCE + NRI_INSTANCE_ID)
     #endif
 #endif
 
