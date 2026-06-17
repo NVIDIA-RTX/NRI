@@ -120,7 +120,10 @@ NriStruct(PipelineLayoutSettingsDesc) {
     uint32_t rootConstantSize;
     uint32_t rootDescriptorNum;
     bool preferRootDescriptorsOverConstants;
-    bool enableD3D12DrawParametersEmulation; // not needed for VK, unsupported in D3D11
+
+    // D3D12 only (see "NRI.hlsl" for more details)
+    bool enableD3D12DrawParametersEmulation;
+    bool enableD3D12DrawIndexEmulation;
 };
 
 static inline Nri(PipelineLayoutSettingsDesc) NriFunc(FitPipelineLayoutSettingsIntoDeviceLimits)(const NriRef(DeviceDesc) deviceDesc, const NriRef(PipelineLayoutSettingsDesc) pipelineLayoutSettingsDesc) {
@@ -148,6 +151,10 @@ static inline Nri(PipelineLayoutSettingsDesc) NriFunc(FitPipelineLayoutSettingsI
         // Reserved 1 root descriptor for "draw parameters" emulation
         if (NriDeref(pipelineLayoutSettingsDesc)->enableD3D12DrawParametersEmulation)
             freeBytesInRootSignature -= 8;
+
+        // Reserved 1 root constant for "draw index" emulation
+        if (NriDeref(pipelineLayoutSettingsDesc)->enableD3D12DrawIndexEmulation)
+            freeBytesInRootSignature -= 4;
 
         // Must fit
         uint32_t availableDescriptorRangeNum = freeBytesInRootSignature / descriptorTableCost;

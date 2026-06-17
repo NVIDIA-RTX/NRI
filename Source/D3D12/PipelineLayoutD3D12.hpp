@@ -1,4 +1,4 @@
-// © 2021 NVIDIA Corporation
+﻿// © 2021 NVIDIA Corporation
 
 static inline D3D12_DESCRIPTOR_RANGE_FLAGS GetDescriptorRangeFlags(const DescriptorRangeDesc& descriptorRangeDesc) {
     // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#flags-added-in-root-signature-version-11
@@ -78,8 +78,8 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     Vector<D3D12_ROOT_PARAMETER1> rootParameters(allocator);
 
     // Draw parameters emulation
-    bool enableDrawParametersEmulation = (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_DRAW_PARAMETERS_EMULATION) != 0 && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
-    if (enableDrawParametersEmulation) {
+    m_DrawParametersEmulation = (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_DRAW_PARAMETERS_EMULATION) != 0 && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
+    if (m_DrawParametersEmulation) {
         D3D12_ROOT_PARAMETER1 rootParam = {};
         rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
         rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
@@ -87,8 +87,25 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
         rootParam.Constants.RegisterSpace = NRI_BASE_ATTRIBUTES_EMULATION_SPACE;
         rootParam.Constants.Num32BitValues = 2;
 
+        m_DrawParametersRootConstantIndex = (RootParameterIndexType)rootParameters.size();
         rootParameters.push_back(rootParam);
     }
+
+    // Draw index emulation
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    m_DrawIndexEmulation = (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_DRAW_INDEX_EMULATION) != 0 && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
+    if (m_DrawIndexEmulation) {
+        D3D12_ROOT_PARAMETER1 rootParam = {};
+        rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+        rootParam.Constants.ShaderRegister = 1;
+        rootParam.Constants.RegisterSpace = NRI_BASE_ATTRIBUTES_EMULATION_SPACE;
+        rootParam.Constants.Num32BitValues = 1;
+
+        m_DrawIndexRootConstantIndex = (RootParameterIndexType)rootParameters.size();
+        rootParameters.push_back(rootParam);
+    }
+#endif
 
     // Descriptor sets
     for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++) {
@@ -282,9 +299,9 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     hr = m_Device->CreateRootSignature(NODE_MASK, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&m_RootSignature));
     NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateRootSignature");
 
-    m_DrawParametersEmulation = enableDrawParametersEmulation;
+    // Draw signature (uses emulation state)
     if (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) {
-        Result result = m_Device.CreateDefaultDrawSignatures(m_RootSignature.GetInterface(), enableDrawParametersEmulation);
+        Result result = m_Device.CreateDefaultDrawSignatures(*this);
         NRI_RETURN_ON_FAILURE(&m_Device, result == Result::SUCCESS, result, "Failed to create draw signature for pipeline layout");
     }
 

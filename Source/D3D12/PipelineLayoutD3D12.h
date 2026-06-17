@@ -43,6 +43,18 @@ struct PipelineLayoutD3D12 final : public DebugNameBase {
         return m_DrawParametersEmulation;
     }
 
+    inline bool IsDrawIndexEmulationEnabled() const {
+        return m_DrawIndexEmulation;
+    }
+
+    inline RootParameterIndexType GetDrawParametersRootConstantIndex() const {
+        return m_DrawParametersRootConstantIndex;
+    }
+
+    inline RootParameterIndexType GetDrawIndexRootConstantIndex() const {
+        return m_DrawIndexRootConstantIndex;
+    }
+
     inline const DescriptorSetMapping& GetDescriptorSetMapping(uint32_t setIndex) const {
         return m_DescriptorSetMappings[setIndex];
     }
@@ -66,7 +78,10 @@ private:
     Vector<DescriptorSetMapping> m_DescriptorSetMappings;
     uint32_t m_BaseRootConstant = 0;
     uint32_t m_BaseRootDescriptor = 0;
+    RootParameterIndexType m_DrawParametersRootConstantIndex = ROOT_PARAMETER_UNUSED;
+    RootParameterIndexType m_DrawIndexRootConstantIndex = ROOT_PARAMETER_UNUSED;
     bool m_DrawParametersEmulation = false;
+    bool m_DrawIndexEmulation = false;
 };
 
 } // namespace nri

@@ -2384,7 +2384,12 @@ NRI_INLINE void CommandBufferD3D12::Draw(const DrawDesc& drawDesc) {
             uint32_t baseInstance;
         } baseVertexInstance = {drawDesc.baseVertex, drawDesc.baseInstance};
 
-        GetGraphicsCommandList()->SetGraphicsRoot32BitConstants(0, 2, &baseVertexInstance, 0);
+        GetGraphicsCommandList()->SetGraphicsRoot32BitConstants(m_PipelineLayout->GetDrawParametersRootConstantIndex(), 2, &baseVertexInstance, 0);
+    }
+
+    if (m_PipelineLayout && m_PipelineLayout->IsDrawIndexEmulationEnabled()) {
+        uint32_t drawIndex = 0;
+        GetGraphicsCommandList()->SetGraphicsRoot32BitConstants(m_PipelineLayout->GetDrawIndexRootConstantIndex(), 1, &drawIndex, 0);
     }
 
     GetGraphicsCommandList()->DrawInstanced(drawDesc.vertexNum, drawDesc.instanceNum, drawDesc.baseVertex, drawDesc.baseInstance);
@@ -2397,7 +2402,12 @@ NRI_INLINE void CommandBufferD3D12::DrawIndexed(const DrawIndexedDesc& drawIndex
             uint32_t baseInstance;
         } baseVertexInstance = {drawIndexedDesc.baseVertex, drawIndexedDesc.baseInstance};
 
-        GetGraphicsCommandList()->SetGraphicsRoot32BitConstants(0, 2, &baseVertexInstance, 0);
+        GetGraphicsCommandList()->SetGraphicsRoot32BitConstants(m_PipelineLayout->GetDrawParametersRootConstantIndex(), 2, &baseVertexInstance, 0);
+    }
+
+    if (m_PipelineLayout && m_PipelineLayout->IsDrawIndexEmulationEnabled()) {
+        uint32_t drawIndex = 0;
+        GetGraphicsCommandList()->SetGraphicsRoot32BitConstants(m_PipelineLayout->GetDrawIndexRootConstantIndex(), 1, &drawIndex, 0);
     }
 
     GetGraphicsCommandList()->DrawIndexedInstanced(drawIndexedDesc.indexNum, drawIndexedDesc.instanceNum, drawIndexedDesc.baseIndex, drawIndexedDesc.baseVertex, drawIndexedDesc.baseInstance);
@@ -2408,7 +2418,7 @@ NRI_INLINE void CommandBufferD3D12::DrawIndirect(const Buffer& buffer, uint64_t 
     if (countBuffer)
         pCountBuffer = *(BufferD3D12*)countBuffer;
 
-    GetGraphicsCommandList()->ExecuteIndirect(m_Device.GetDrawCommandSignature(stride, *m_PipelineLayout), drawNum, (BufferD3D12&)buffer, offset, pCountBuffer, countBufferOffset);
+    GetGraphicsCommandList()->ExecuteIndirect(m_Device.GetDrawCommandSignature(m_PipelineLayout, stride), drawNum, (BufferD3D12&)buffer, offset, pCountBuffer, countBufferOffset);
 }
 
 NRI_INLINE void CommandBufferD3D12::DrawIndexedIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset) {
@@ -2416,7 +2426,7 @@ NRI_INLINE void CommandBufferD3D12::DrawIndexedIndirect(const Buffer& buffer, ui
     if (countBuffer)
         pCountBuffer = *(BufferD3D12*)countBuffer;
 
-    GetGraphicsCommandList()->ExecuteIndirect(m_Device.GetDrawIndexedCommandSignature(stride, *m_PipelineLayout), drawNum, (BufferD3D12&)buffer, offset, pCountBuffer, countBufferOffset);
+    GetGraphicsCommandList()->ExecuteIndirect(m_Device.GetDrawIndexedCommandSignature(m_PipelineLayout, stride), drawNum, (BufferD3D12&)buffer, offset, pCountBuffer, countBufferOffset);
 }
 
 NRI_INLINE void CommandBufferD3D12::CopyBuffer(Buffer& dstBuffer, uint64_t dstOffset, const Buffer& srcBuffer, uint64_t srcOffset, uint64_t size) {
