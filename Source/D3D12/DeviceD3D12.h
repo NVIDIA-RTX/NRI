@@ -92,7 +92,7 @@ struct DeviceD3D12 final : public DeviceBase {
     }
 
     Result Create(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationD3D12Desc& deviceCreationD3D12Desc);
-    Result CreateDefaultDrawSignatures(ID3D12RootSignature* rootSignature, bool enableDrawParametersEmulation);
+    Result CreateDefaultDrawSignatures(const PipelineLayoutD3D12& pipelineLayout);
     Result GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, DescriptorHandle& descriptorHandle);
     void FreeDescriptorHandle(const DescriptorHandle& descriptorHandle);
     void GetResourceDesc(const BufferDesc& bufferDesc, D3D12_RESOURCE_DESC1& desc) const;
@@ -157,7 +157,7 @@ private:
     void InitializeNvExt(bool disableNVAPIInitialization, bool isImported);
     void InitializeAmdExt(AGSContext* agsContext, bool isImported);
     void InitializePixExt();
-    ComPtr<ID3D12CommandSignature> CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE type, uint32_t stride, ID3D12RootSignature* rootSignature, bool enableDrawParametersEmulation = false);
+    ComPtr<ID3D12CommandSignature> CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE type, uint32_t stride, ID3D12RootSignature* rootSignature, uint32_t drawParametersRootConstantIndex, uint32_t drawIndexRootConstantIndex);
 
 private:
     // Order of destructors is important

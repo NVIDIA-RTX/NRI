@@ -51,19 +51,22 @@ Input attachments (reading on-chip memory):
     NRI_INPUT_ATTACHMENT(gGbuffer, 1, 1, 0); // use "NRI_INPUT_ATTACHMENT_LOAD" for loading data
 
 Draw parameters:
-    - Add to the global scope:
-        NRI_ENABLE_DRAW_PARAMETERS;
-    - Add to a function input parameters list:
-        void main(..., NRI_DECLARE_DRAW_PARAMETERS) {
-            ...
-        }
-    - Use the following macros:
-        NRI_VERTEX_ID and NRI_INSTANCE_ID - start from 0
-        NRI_BASE_VERTEX and NRI_BASE_INSTANCE - base vertex / instance from a "Draw" call
-        NRI_VERTEX_ID_OFFSET and NRI_INSTANCE_ID_OFFSET - start from "base" vertex / instance
-    - To fill commands for indirect drawing in a shader use one of "NRI_FILL_X_DESC" macros
-    - "NRI_ENABLE_DRAW_PARAMETERS_EMULATION" must be defined prior inclusion of "NRI.hlsl"
-      for pipelines expecting emulation
+  - macros:
+    - NRI_VERTEX_ID / NRI_INSTANCE_ID - start from 0
+    - NRI_BASE_VERTEX / NRI_BASE_INSTANCE - base vertex / instance from a "Draw" call (requires "shaderFeatures.drawParameters")
+    - NRI_VERTEX_ID_OFFSET / NRI_INSTANCE_ID_OFFSET - start from "base" vertex / instance (requires "shaderFeatures.drawParameters")
+    - NRI_DRAW_ID - draw index from an indirect "Draw" call, 0 for direct "Draw" calls (requires "shaderFeatures.drawIndex")
+  - usage:
+    - add "NRI_ENABLE_DRAW_PARAMETERS" to the global scope
+    - add "NRI_DECLARE_DRAW_PARAMETERS" to a function input parameters list
+    - use one of "NRI_FILL_X_DESC" macros for filling indirect draw commands in a shader
+  - D3D12 emulation:
+    - required for:
+      - SM < 6.8 shaders using "NRI_BASE_VERTEX", "NRI_BASE_INSTANCE", "NRI_VERTEX_ID_OFFSET" and "NRI_INSTANCE_ID_OFFSET"
+      - all shaders using "NRI_DRAW_ID"
+    - to enable emulation:
+      - set "ENABLE_DRAW_PARAMETERS_EMULATION" and/or "ENABLE_DRAW_INDEX_EMULATION" for a corresponding "PipelineLayout"
+      - define "NRI_ENABLE_DRAW_PARAMETERS_EMULATION" and/or "NRI_ENABLE_DRAW_INDEX_EMULATION" prior inclusion of "NRI.hlsl"
 */
 
 // Compiler detection
@@ -207,15 +210,15 @@ Draw parameters:
 
     #define NRI_INPUT_ATTACHMENT_LOAD(inputAttachment, pixelPos) inputAttachment.SubpassLoad()
 
-    // Draw parameters
-    // Full support, requires "shaderFeatures.drawParameters" (99% of devices support it)
+    // Draw parameters and draw index (native)
     #define NRI_ENABLE_DRAW_PARAMETERS
 
     #define NRI_DECLARE_DRAW_PARAMETERS \
         int NRI_VERTEX_ID_OFFSET : SV_VertexID, \
         uint NRI_INSTANCE_ID_OFFSET : SV_InstanceID, \
         [[vk::builtin("BaseVertex")]] int NRI_BASE_VERTEX : _SV_Nothing1, \
-        [[vk::builtin("BaseInstance")]] uint NRI_BASE_INSTANCE : _SV_Nothing2
+        [[vk::builtin("BaseInstance")]] uint NRI_BASE_INSTANCE : _SV_Nothing2, \
+        [[vk::builtin("DrawIndex")]] uint NRI_DRAW_ID : _SV_Nothing3
 
     #define NRI_VERTEX_ID (NRI_VERTEX_ID_OFFSET - NRI_BASE_VERTEX)
     #define NRI_INSTANCE_ID (NRI_INSTANCE_ID_OFFSET - NRI_BASE_INSTANCE)
@@ -239,16 +242,31 @@ Draw parameters:
 
     #define NRI_INPUT_ATTACHMENT_LOAD(inputAttachment, pixelPos) inputAttachment[int2(pixelPos.xy)]
 
+    // Draw index (emulation)
+    #ifdef NRI_ENABLE_DRAW_INDEX_EMULATION
+        #define _NRI_DECLARE_DRAW_INDEX \
+            struct _DrawIndexConstants { \
+                uint drawIndex; \
+            }; \
+            ConstantBuffer<_DrawIndexConstants> _DrawIndex : register(b1, NRI_MERGE_TOKENS(space, NRI_BASE_ATTRIBUTES_EMULATION_SPACE))
+
+        #define NRI_DRAW_ID _DrawIndex.drawIndex
+    #else
+        #define _NRI_DECLARE_DRAW_INDEX
+        #define NRI_DRAW_ID NRI_DRAW_ID_is_unsupported
+    #endif
+
     // Draw parameters
     #if (NRI_SHADER_MODEL < 68)
         #ifdef NRI_ENABLE_DRAW_PARAMETERS_EMULATION
-            // Emulation, requires "shaderFeatures.drawParametersEmulation"
+            // Draw parameters (emulation)
             #define NRI_ENABLE_DRAW_PARAMETERS \
                 struct _BaseAttributeConstants { \
                     int baseVertex; \
                     uint baseInstance; \
                 }; \
-                ConstantBuffer<_BaseAttributeConstants> _BaseAttributes : register(b0, NRI_MERGE_TOKENS(space, NRI_BASE_ATTRIBUTES_EMULATION_SPACE))
+                ConstantBuffer<_BaseAttributeConstants> _BaseAttributes : register(b0, NRI_MERGE_TOKENS(space, NRI_BASE_ATTRIBUTES_EMULATION_SPACE)); \
+                _NRI_DECLARE_DRAW_INDEX
 
             #define NRI_DECLARE_DRAW_PARAMETERS \
                 uint NRI_VERTEX_ID : SV_VertexID, \
@@ -265,8 +283,9 @@ Draw parameters:
             #undef NRI_FILL_DRAW_INDEXED_DESC
             #define NRI_FILL_DRAW_INDEXED_DESC NRI_FILL_DRAW_INDEXED_BASE_DESC
         #else
-            // Partial support
-            #define NRI_ENABLE_DRAW_PARAMETERS
+            // Draw parameters (partial support)
+            #define NRI_ENABLE_DRAW_PARAMETERS \
+                _NRI_DECLARE_DRAW_INDEX
 
             #define NRI_DECLARE_DRAW_PARAMETERS \
                 uint NRI_VERTEX_ID : SV_VertexID, \
@@ -278,8 +297,9 @@ Draw parameters:
             #define NRI_INSTANCE_ID_OFFSET NRI_INSTANCE_ID_OFFSET_is_unsupported
         #endif
     #else
-        // Full support, requires "shaderFeatures.drawParameters"
-        #define NRI_ENABLE_DRAW_PARAMETERS
+        // Draw parameters (native)
+        #define NRI_ENABLE_DRAW_PARAMETERS \
+            _NRI_DECLARE_DRAW_INDEX
 
         #define NRI_DECLARE_DRAW_PARAMETERS \
             uint NRI_VERTEX_ID : SV_VertexID, \
@@ -320,6 +340,7 @@ Draw parameters:
 
     #define NRI_BASE_VERTEX NRI_BASE_VERTEX_is_unsupported
     #define NRI_BASE_INSTANCE NRI_BASE_INSTANCE_is_unsupported
+    #define NRI_DRAW_ID NRI_DRAW_ID_is_unsupported
     #define NRI_VERTEX_ID_OFFSET NRI_VERTEX_ID_OFFSET_is_unsupported
     #define NRI_INSTANCE_ID_OFFSET NRI_INSTANCE_ID_OFFSET_is_unsupported
 

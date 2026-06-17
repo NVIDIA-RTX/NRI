@@ -362,7 +362,9 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
 
     const DeviceDesc& deviceDesc = GetDesc();
     if (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_DRAW_PARAMETERS_EMULATION)
-        NRI_RETURN_ON_FAILURE(this, deviceDesc.shaderFeatures.drawParametersEmulation, Result::INVALID_ARGUMENT, "'ENABLE_DRAW_PARAMETERS_EMULATION' requires 'shaderFeatures.drawParametersEmulation'");
+        NRI_RETURN_ON_FAILURE(this, deviceDesc.shaderFeatures.drawParameters, Result::INVALID_ARGUMENT, "'ENABLE_DRAW_PARAMETERS_EMULATION' requires 'shaderFeatures.drawParameters'");
+    if (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_DRAW_INDEX_EMULATION)
+        NRI_RETURN_ON_FAILURE(this, deviceDesc.shaderFeatures.drawIndex, Result::INVALID_ARGUMENT, "'ENABLE_DRAW_INDEX_EMULATION' requires 'shaderFeatures.drawIndex'");
 
     Scratch<uint32_t> spaces = NRI_ALLOCATE_SCRATCH(*this, uint32_t, pipelineLayoutDesc.descriptorSetNum);
 
@@ -436,6 +438,7 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
     origSettings.rootConstantSize = rootConstantSize;
     origSettings.rootDescriptorNum = pipelineLayoutDesc.rootDescriptorNum;
     origSettings.enableD3D12DrawParametersEmulation = (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_DRAW_PARAMETERS_EMULATION) != 0 && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
+    origSettings.enableD3D12DrawIndexEmulation = (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_DRAW_INDEX_EMULATION) != 0 && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
 
     PipelineLayoutSettingsDesc fittedSettings = FitPipelineLayoutSettingsIntoDeviceLimits(deviceDesc, origSettings);
     NRI_RETURN_ON_FAILURE(this, origSettings.descriptorSetNum == fittedSettings.descriptorSetNum, Result::INVALID_ARGUMENT, "total number of descriptor sets (=%u) exceeds device limits", origSettings.descriptorSetNum);

@@ -80,6 +80,7 @@ struct DescriptorHandle {
 };
 
 constexpr uint32_t DESCRIPTORS_BATCH_SIZE = 1024;
+constexpr uint32_t ROOT_CONSTANT_UNUSED = uint32_t(-1);
 
 static_assert(D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES <= (1 << DESCRIPTOR_HANDLE_HEAP_TYPE_BIT_NUM), "Out of bounds");
 static_assert(DESCRIPTORS_BATCH_SIZE <= (1 << DESCRIPTOR_HANDLE_HEAP_OFFSET_BIT_NUM), "Out of bounds");

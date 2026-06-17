@@ -380,9 +380,9 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
     FillDesc(desc.disableD3D12EnhancedBarriers);
 
     // Create indirect command signatures
-    m_DispatchCommandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH, sizeof(DispatchDesc), nullptr);
+    m_DispatchCommandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH, sizeof(DispatchDesc), nullptr, ROOT_CONSTANT_UNUSED, ROOT_CONSTANT_UNUSED);
     if (m_Desc.tiers.rayTracing >= 2)
-        m_DispatchRaysCommandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_RAYS, sizeof(DispatchRaysIndirectDesc), nullptr);
+        m_DispatchRaysCommandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_RAYS, sizeof(DispatchRaysIndirectDesc), nullptr, ROOT_CONSTANT_UNUSED, ROOT_CONSTANT_UNUSED);
 
     // Create VMA
     HRESULT hr = CreateVma();
@@ -563,6 +563,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS21, &options21, sizeof(options21));
     if (FAILED(hr))
         NRI_REPORT_WARNING(this, "ID3D12Device::CheckFeatureSupport(options21) failed, result = 0x%08X!", hr);
+    m_Desc.shaderFeatures.drawIndex = options21.ExecuteIndirectTier >= D3D12_EXECUTE_INDIRECT_TIER_1_1;
 
     // Agility 1.618
     D3D12_FEATURE_DATA_TIGHT_ALIGNMENT tightAlignment = {};
@@ -897,8 +898,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.shaderFeatures.barycentric = options3.BarycentricsSupported;
     m_Desc.shaderFeatures.integerDotProduct = m_Desc.shaderModel >= NriShaderModel(6, 4);
     m_Desc.shaderFeatures.inputAttachments = true;
-    m_Desc.shaderFeatures.drawParameters = m_Desc.shaderModel >= NriShaderModel(6, 8);
-    m_Desc.shaderFeatures.drawParametersEmulation = 1;
+    m_Desc.shaderFeatures.drawParameters = true;
 }
 
 void DeviceD3D12::InitializeNvExt(bool disableNVAPIInitialization, bool isImported) {
@@ -1358,50 +1358,79 @@ void DeviceD3D12::GetMicromapPrebuildInfo(const MicromapDesc& micromapDesc, D3D1
 #endif
 }
 
-ComPtr<ID3D12CommandSignature> DeviceD3D12::CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE type, uint32_t stride, ID3D12RootSignature* rootSignature, bool enableDrawParametersEmulation) {
-    const bool isDrawArgument = enableDrawParametersEmulation && (type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW || type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED);
+ComPtr<ID3D12CommandSignature> DeviceD3D12::CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE type, uint32_t stride, ID3D12RootSignature* rootSignature, uint32_t drawParametersRootConstantIndex, uint32_t drawIndexRootConstantIndex) {
+    bool isDrawArgument = type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW || type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+    bool enableDrawParametersEmulation = isDrawArgument && drawParametersRootConstantIndex != ROOT_CONSTANT_UNUSED;
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    bool enableDrawIndexEmulation = isDrawArgument && drawIndexRootConstantIndex != ROOT_CONSTANT_UNUSED;
+#else
+    bool enableDrawIndexEmulation = false;
+    MaybeUnused(drawIndexRootConstantIndex);
+#endif
 
-    D3D12_INDIRECT_ARGUMENT_DESC indirectArgumentDescs[2] = {};
-    if (isDrawArgument) {
+    D3D12_INDIRECT_ARGUMENT_DESC indirectArgumentDescs[3] = {};
+    uint32_t indirectArgumentNum = 0;
+    if (enableDrawParametersEmulation) {
         // Draw base parameters emulation
         // Based on: https://github.com/google/dawn/blob/e72fa969ad72e42064cd33bd99572ea12b0bcdaf/src/dawn/native/d3d12/PipelineLayoutD3D12.cpp#L504
-        indirectArgumentDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
-        indirectArgumentDescs[0].Constant.RootParameterIndex = 0;
-        indirectArgumentDescs[0].Constant.DestOffsetIn32BitValues = 0;
-        indirectArgumentDescs[0].Constant.Num32BitValuesToSet = 2;
+        indirectArgumentDescs[indirectArgumentNum].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+        indirectArgumentDescs[indirectArgumentNum].Constant.RootParameterIndex = drawParametersRootConstantIndex;
+        indirectArgumentDescs[indirectArgumentNum].Constant.DestOffsetIn32BitValues = 0;
+        indirectArgumentDescs[indirectArgumentNum].Constant.Num32BitValuesToSet = 2;
+        indirectArgumentNum++;
+    }
 
-        indirectArgumentDescs[1].Type = type;
-    } else
-        indirectArgumentDescs[0].Type = type;
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    if (enableDrawIndexEmulation) {
+        indirectArgumentDescs[indirectArgumentNum].Type = D3D12_INDIRECT_ARGUMENT_TYPE_INCREMENTING_CONSTANT;
+        indirectArgumentDescs[indirectArgumentNum].Constant.RootParameterIndex = drawIndexRootConstantIndex;
+        indirectArgumentDescs[indirectArgumentNum].Constant.DestOffsetIn32BitValues = 0;
+        indirectArgumentDescs[indirectArgumentNum].Constant.Num32BitValuesToSet = 1;
+        indirectArgumentNum++;
+    }
+#endif
+
+    indirectArgumentDescs[indirectArgumentNum].Type = type;
+    indirectArgumentNum++;
 
     D3D12_COMMAND_SIGNATURE_DESC commandSignatureDesc = {};
-    commandSignatureDesc.NumArgumentDescs = isDrawArgument ? 2 : 1;
+    commandSignatureDesc.NumArgumentDescs = indirectArgumentNum;
     commandSignatureDesc.pArgumentDescs = indirectArgumentDescs;
     commandSignatureDesc.NodeMask = NODE_MASK;
     commandSignatureDesc.ByteStride = stride;
 
     ComPtr<ID3D12CommandSignature> commandSignature = nullptr;
-    HRESULT hr = m_Device->CreateCommandSignature(&commandSignatureDesc, isDrawArgument ? rootSignature : nullptr, IID_PPV_ARGS(&commandSignature));
+    HRESULT hr = m_Device->CreateCommandSignature(&commandSignatureDesc, enableDrawParametersEmulation || enableDrawIndexEmulation ? rootSignature : nullptr, IID_PPV_ARGS(&commandSignature));
     if (FAILED(hr))
         NRI_REPORT_ERROR(this, "ID3D12Device::CreateCommandSignature() failed, result = 0x%08X!", hr);
 
     return commandSignature;
 }
 
-Result DeviceD3D12::CreateDefaultDrawSignatures(ID3D12RootSignature* rootSignature, bool enableDrawParametersEmulation) {
+Result DeviceD3D12::CreateDefaultDrawSignatures(const PipelineLayoutD3D12& pipelineLayout) {
     ExclusiveScope lock(m_CommandSignatureLock);
 
-    const uint32_t drawStride = enableDrawParametersEmulation ? sizeof(DrawBaseDesc) : sizeof(DrawDesc);
-    const uint32_t drawIndexedStride = enableDrawParametersEmulation ? sizeof(DrawIndexedBaseDesc) : sizeof(DrawIndexedDesc);
+    ID3D12RootSignature* rootSignature = pipelineLayout;
 
-    ComPtr<ID3D12CommandSignature> drawCommandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DRAW, drawStride, rootSignature, enableDrawParametersEmulation);
+    // Draw parameters
+    bool enableDrawParametersEmulation = pipelineLayout.IsDrawParametersEmulationEnabled();
+    uint32_t drawParametersRootConstantIndex = enableDrawParametersEmulation ? pipelineLayout.GetDrawParametersRootConstantIndex() : ROOT_CONSTANT_UNUSED;
+    uint32_t drawStride = enableDrawParametersEmulation ? sizeof(DrawBaseDesc) : sizeof(DrawDesc);
+    uint32_t drawIndexedStride = enableDrawParametersEmulation ? sizeof(DrawIndexedBaseDesc) : sizeof(DrawIndexedDesc);
+
+    // Draw index
+    bool enableDrawIndexEmulation = pipelineLayout.IsDrawIndexEmulationEnabled();
+    uint32_t drawIndexRootConstantIndex = enableDrawIndexEmulation ? pipelineLayout.GetDrawIndexRootConstantIndex() : ROOT_CONSTANT_UNUSED;
+
+    // Draw signature
+    ComPtr<ID3D12CommandSignature> drawCommandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DRAW, drawStride, rootSignature, drawParametersRootConstantIndex, drawIndexRootConstantIndex);
     if (!drawCommandSignature)
         return Result::FAILURE;
 
     auto key = HashRootSignatureAndStride(rootSignature, drawStride);
     m_DrawCommandSignatures.emplace(key, drawCommandSignature);
 
-    ComPtr<ID3D12CommandSignature> drawIndexedCommandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED, drawIndexedStride, rootSignature, enableDrawParametersEmulation);
+    ComPtr<ID3D12CommandSignature> drawIndexedCommandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED, drawIndexedStride, rootSignature, drawParametersRootConstantIndex, drawIndexRootConstantIndex);
     if (!drawIndexedCommandSignature)
         return Result::FAILURE;
 
@@ -1421,7 +1450,10 @@ ID3D12CommandSignature* DeviceD3D12::GetDrawCommandSignature(const PipelineLayou
         return commandSignatureIt->second;
 
     bool enableDrawParametersEmulation = pipelineLayout->IsDrawParametersEmulationEnabled();
-    ComPtr<ID3D12CommandSignature> commandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DRAW, stride, rootSignature, enableDrawParametersEmulation);
+    bool enableDrawIndexEmulation = pipelineLayout->IsDrawIndexEmulationEnabled();
+    uint32_t drawParametersRootConstantIndex = enableDrawParametersEmulation ? pipelineLayout->GetDrawParametersRootConstantIndex() : ROOT_CONSTANT_UNUSED;
+    uint32_t drawIndexRootConstantIndex = enableDrawIndexEmulation ? pipelineLayout->GetDrawIndexRootConstantIndex() : ROOT_CONSTANT_UNUSED;
+    ComPtr<ID3D12CommandSignature> commandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DRAW, stride, rootSignature, drawParametersRootConstantIndex, drawIndexRootConstantIndex);
     m_DrawCommandSignatures[key] = commandSignature;
 
     return commandSignature;
@@ -1437,7 +1469,10 @@ ID3D12CommandSignature* DeviceD3D12::GetDrawIndexedCommandSignature(const Pipeli
         return commandSignatureIt->second;
 
     bool enableDrawParametersEmulation = pipelineLayout->IsDrawParametersEmulationEnabled();
-    ComPtr<ID3D12CommandSignature> commandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED, stride, rootSignature, enableDrawParametersEmulation);
+    bool enableDrawIndexEmulation = pipelineLayout->IsDrawIndexEmulationEnabled();
+    uint32_t drawParametersRootConstantIndex = enableDrawParametersEmulation ? pipelineLayout->GetDrawParametersRootConstantIndex() : ROOT_CONSTANT_UNUSED;
+    uint32_t drawIndexRootConstantIndex = enableDrawIndexEmulation ? pipelineLayout->GetDrawIndexRootConstantIndex() : ROOT_CONSTANT_UNUSED;
+    ComPtr<ID3D12CommandSignature> commandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED, stride, rootSignature, drawParametersRootConstantIndex, drawIndexRootConstantIndex);
     m_DrawIndexedCommandSignatures[key] = commandSignature;
 
     return commandSignature;
@@ -1450,7 +1485,7 @@ ID3D12CommandSignature* DeviceD3D12::GetDrawMeshCommandSignature(uint32_t stride
     if (commandSignatureIt != m_DrawMeshCommandSignatures.end())
         return commandSignatureIt->second;
 
-    ComPtr<ID3D12CommandSignature> commandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH, stride, nullptr);
+    ComPtr<ID3D12CommandSignature> commandSignature = CreateCommandSignature(D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH, stride, nullptr, ROOT_CONSTANT_UNUSED, ROOT_CONSTANT_UNUSED);
     m_DrawMeshCommandSignatures[stride] = commandSignature;
 
     return commandSignature;

@@ -925,12 +925,13 @@ NriEnum(BindPoint, uint8_t,
 NriBits(PipelineLayoutBits, uint8_t,
     NONE                                    = 0,
     IGNORE_GLOBAL_SPIRV_OFFSETS             = NriBit(0),    // VK: ignore "DeviceCreationDesc::vkBindingOffsets"
-    ENABLE_DRAW_PARAMETERS_EMULATION        = NriBit(1),    // enable draw parameters emulation, requires "shaderFeatures.drawParametersEmulation"
+    ENABLE_DRAW_PARAMETERS_EMULATION        = NriBit(1),    // D3D12: enable draw parameters emulation, requires "shaderFeatures.drawParameters"
+    ENABLE_DRAW_INDEX_EMULATION             = NriBit(2),    // D3D12: enable draw index emulation, requires "shaderFeatures.drawIndex"
 
     // https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#resourcedescriptorheaps--samplerdescriptorheaps
     // Default VK bindings can be changed via "-fvk-bind-sampler-heap" and "-fvk-bind-resource-heap" DXC options
-    SAMPLER_HEAP_DIRECTLY_INDEXED           = NriBit(2),    // requires "shaderModel >= 66"
-    RESOURCE_HEAP_DIRECTLY_INDEXED          = NriBit(3)     // requires "shaderModel >= 66"
+    SAMPLER_HEAP_DIRECTLY_INDEXED           = NriBit(3),    // requires "shaderModel >= 66"
+    RESOURCE_HEAP_DIRECTLY_INDEXED          = NriBit(4)     // requires "shaderModel >= 66"
 );
 
 NriBits(DescriptorPoolBits, uint8_t,
@@ -1660,6 +1661,7 @@ NriStruct(DispatchDesc) {
 };
 
 // Modified draw command signatures, if the bound pipeline layout has "PipelineLayoutBits::ENABLE_DRAW_PARAMETERS_EMULATION"
+// "PipelineLayoutBits::ENABLE_DRAW_INDEX_EMULATION" does not change the command layout
 
 NriStruct(DrawBaseDesc) {               // see NRI_FILL_DRAW_DESC
     uint32_t shaderEmulatedBaseVertex;      // root constant
@@ -1853,8 +1855,9 @@ NriStruct(DeviceDesc) {
         uint32_t micromapOffset;
     } memoryAlignment;
 
-    // Pipeline layout
-    // D3D12 only: rootConstantSize + descriptorSetNum * 4 + rootDescriptorNum * 8 <= 256 (see "FitPipelineLayoutSettingsIntoDeviceLimits")
+    // Pipeline layout (see "FitPipelineLayoutSettingsIntoDeviceLimits")
+    // D3D12 only: "rootConstantSize" + "descriptorSetNum" * 4 + "rootDescriptorNum" * 8 + "reservedSize" <= 256, where
+    // "reservedSize" is 8 bytes for "ENABLE_DRAW_PARAMETERS_EMULATION" and 4 bytes for "ENABLE_DRAW_INDEX_EMULATION"
     struct {
         uint32_t descriptorSetMaxNum;
         uint32_t rootConstantMaxSize;
@@ -2166,12 +2169,9 @@ NriStruct(DeviceDesc) {
         bool rayTracingPositionFetch;                              // https://docs.vulkan.org/features/latest/features/proposals/VK_KHR_ray_tracing_position_fetch.html
         bool integerDotProduct;                                    // https://github.com/microsoft/DirectXShaderCompiler/wiki/Shader-Model-6.4
         bool inputAttachments;                                     // https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#subpass-inputs
-        bool drawParameters;                                       // SV_StartVertexLocation, SV_StartInstanceLocation (native support)
 
-        // For shaders using "draw parameters":
-        //   - "ENABLE_DRAW_PARAMETERS_EMULATION" must be set for a corresponding "PipelineLayout"
-        //   - "NRI_ENABLE_DRAW_PARAMETERS_EMULATION" must be defined prior inclusion of "NRI.hlsl" for such shaders
-        bool drawParametersEmulation;                              // emulation of "drawParameters"
+        bool drawParameters;                                       // GAPI-independent "NRI_BASE_VERTEX", "NRI_BASE_INSTANCE", "NRI_VERTEX_ID_OFFSET" and "NRI_INSTANCE_ID_OFFSET" (see "NRI.hlsl" for expected usage)
+        bool drawIndex;                                            // GAPI-independent "NRI_DRAW_ID" (see "NRI.hlsl" for expected usage)
     } shaderFeatures;
 };
 

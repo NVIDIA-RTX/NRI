@@ -1224,6 +1224,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.shaderFeatures.integerDotProduct = features13.shaderIntegerDotProduct;
         m_Desc.shaderFeatures.inputAttachments = features14.dynamicRenderingLocalRead || !features13.dynamicRendering; // legacy render passes support "input attachments"
         m_Desc.shaderFeatures.drawParameters = features11.shaderDrawParameters ? true : false; // TODO: emulation is not implemented, because >99% devices support it!
+        m_Desc.shaderFeatures.drawIndex = m_Desc.shaderFeatures.drawParameters;
 
         // Estimate shader model last since it depends on many "m_Desc" fields
         // Based on https://docs.vulkan.org/guide/latest/hlsl.html#_shader_model_coverage // TODO: code below needs to be improved

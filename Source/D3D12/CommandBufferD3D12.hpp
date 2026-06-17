@@ -756,7 +756,12 @@ NRI_INLINE void CommandBufferD3D12::Draw(const DrawDesc& drawDesc) {
             uint32_t baseInstance;
         } baseVertexInstance = {drawDesc.baseVertex, drawDesc.baseInstance};
 
-        m_GraphicsCommandList->SetGraphicsRoot32BitConstants(0, 2, &baseVertexInstance, 0);
+        m_GraphicsCommandList->SetGraphicsRoot32BitConstants(m_PipelineLayout->GetDrawParametersRootConstantIndex(), 2, &baseVertexInstance, 0);
+    }
+
+    if (m_PipelineLayout && m_PipelineLayout->IsDrawIndexEmulationEnabled()) {
+        uint32_t drawIndex = 0;
+        m_GraphicsCommandList->SetGraphicsRoot32BitConstants(m_PipelineLayout->GetDrawIndexRootConstantIndex(), 1, &drawIndex, 0);
     }
 
     m_GraphicsCommandList->DrawInstanced(drawDesc.vertexNum, drawDesc.instanceNum, drawDesc.baseVertex, drawDesc.baseInstance);
@@ -769,7 +774,12 @@ NRI_INLINE void CommandBufferD3D12::DrawIndexed(const DrawIndexedDesc& drawIndex
             uint32_t baseInstance;
         } baseVertexInstance = {drawIndexedDesc.baseVertex, drawIndexedDesc.baseInstance};
 
-        m_GraphicsCommandList->SetGraphicsRoot32BitConstants(0, 2, &baseVertexInstance, 0);
+        m_GraphicsCommandList->SetGraphicsRoot32BitConstants(m_PipelineLayout->GetDrawParametersRootConstantIndex(), 2, &baseVertexInstance, 0);
+    }
+
+    if (m_PipelineLayout && m_PipelineLayout->IsDrawIndexEmulationEnabled()) {
+        uint32_t drawIndex = 0;
+        m_GraphicsCommandList->SetGraphicsRoot32BitConstants(m_PipelineLayout->GetDrawIndexRootConstantIndex(), 1, &drawIndex, 0);
     }
 
     m_GraphicsCommandList->DrawIndexedInstanced(drawIndexedDesc.indexNum, drawIndexedDesc.instanceNum, drawIndexedDesc.baseIndex, drawIndexedDesc.baseVertex, drawIndexedDesc.baseInstance);
