@@ -521,6 +521,8 @@ void DeviceD3D11::FillDesc() {
     m_Desc.features.shaderBytecodeDXBC = true;
     m_Desc.features.getMemoryDesc2 = true;
     m_Desc.features.enhancedBarriers = true;                       // don't care, but advertise support
+    m_Desc.features.tesselationShader = true;
+    m_Desc.features.geometryShader = true;
     m_Desc.features.lowLatency = HasNvExt();
     m_Desc.features.filterOpMinMax = options1.MinMaxFiltering != 0;
     m_Desc.features.logicOp = options.OutputMergerLogicOp != 0;

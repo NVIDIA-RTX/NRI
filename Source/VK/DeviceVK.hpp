@@ -1175,6 +1175,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.pipelineCacheControl = features13.pipelineCreationCacheControl;
         m_Desc.features.getMemoryDesc2 = m_IsSupported.maintenance4;
         m_Desc.features.enhancedBarriers = true;
+        m_Desc.features.tesselationShader = features.features.tessellationShader != 0;
+        m_Desc.features.geometryShader = features.features.geometryShader != 0;
         m_Desc.features.meshShader = MeshShaderFeatures.meshShader != 0 && MeshShaderFeatures.taskShader != 0;
         m_Desc.features.lowLatency = m_IsSupported.presentId != 0 && IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, desiredDeviceExts);
         m_Desc.features.componentSwizzle = true;

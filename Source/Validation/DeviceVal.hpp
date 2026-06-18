@@ -26,6 +26,17 @@ static inline bool IsRayTracingShaderStageValid(StageBits shaderStages, StageBit
     return n == 1;
 }
 
+static inline bool IsShaderStageSupported(const DeviceDesc& deviceDesc, StageBits shaderStages) {
+    if ((shaderStages & StageBits::TESSELLATION_SHADERS) != 0 && !deviceDesc.features.tesselationShader)
+        return false;
+    if ((shaderStages & StageBits::GEOMETRY_SHADER) != 0 && !deviceDesc.features.geometryShader)
+        return false;
+    if ((shaderStages & StageBits::MESH_SHADERS) != 0 && !deviceDesc.features.meshShader)
+        return false;
+
+    return true;
+}
+
 static inline Dim_t GetMaxMipNum(uint16_t w, uint16_t h, uint16_t d) {
     Dim_t mipNum = 1;
 
@@ -496,6 +507,7 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
         NRI_RETURN_ON_FAILURE(this, shaderDesc->bytecode != nullptr, Result::INVALID_ARGUMENT, "'shaders[%u].bytecode' is invalid", i);
         NRI_RETURN_ON_FAILURE(this, shaderDesc->size != 0, Result::INVALID_ARGUMENT, "'shaders[%u].size' is 0", i);
         NRI_RETURN_ON_FAILURE(this, IsShaderStageValid(shaderDesc->stage, uniqueShaderStages, StageBits::GRAPHICS_SHADERS), Result::INVALID_ARGUMENT, "'shaders[%u].stage' must include only 1 graphics shader stage, unique for the entire pipeline", i);
+        NRI_RETURN_ON_FAILURE(this, IsShaderStageSupported(GetDesc(), shaderDesc->stage), Result::INVALID_ARGUMENT, "'shaders[%u].stage' is not supported", i);
     }
     NRI_RETURN_ON_FAILURE(this, hasEntryPoint, Result::INVALID_ARGUMENT, "a VERTEX or MESH shader is not provided");
 
