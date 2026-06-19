@@ -624,8 +624,12 @@ NRI_INLINE Result DeviceVal::CreateQueryPool(const QueryPoolDesc& queryPoolDesc,
     NRI_RETURN_ON_FAILURE(this, queryPoolDesc.queryType < QueryType::MAX_NUM, Result::INVALID_ARGUMENT, "'queryType' is invalid");
     NRI_RETURN_ON_FAILURE(this, queryPoolDesc.capacity > 0, Result::INVALID_ARGUMENT, "'capacity' is 0");
 
-    if (queryPoolDesc.queryType == QueryType::TIMESTAMP_COPY_QUEUE) {
-        NRI_RETURN_ON_FAILURE(this, GetDesc().features.copyQueueTimestamp, Result::INVALID_ARGUMENT, "'features.copyQueueTimestamp' is false");
+    if (queryPoolDesc.queryType == QueryType::TIMESTAMP) {
+        NRI_RETURN_ON_FAILURE(this, GetDesc().features.timestamp, Result::INVALID_ARGUMENT, "'features.timestamp' is false");
+    } else if (queryPoolDesc.queryType == QueryType::TIMESTAMP_COPY_QUEUE) {
+        NRI_RETURN_ON_FAILURE(this, GetDesc().features.timestampCopyQueue, Result::INVALID_ARGUMENT, "'features.timestampCopyQueue' is false");
+    } else if (queryPoolDesc.queryType == QueryType::OCCLUSION) {
+        NRI_RETURN_ON_FAILURE(this, GetDesc().features.occlusion, Result::INVALID_ARGUMENT, "'features.occlusion' is false");
     } else if (queryPoolDesc.queryType == QueryType::PIPELINE_STATISTICS) {
         NRI_RETURN_ON_FAILURE(this, GetDesc().features.pipelineStatistics, Result::INVALID_ARGUMENT, "'features.pipelineStatistics' is false");
     } else if (queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_SIZE || queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_COMPACTED_SIZE) {

@@ -519,8 +519,10 @@ void DeviceD3D11::FillDesc() {
     m_Desc.features.resizableSwapChain = m_Desc.features.swapChain;
     m_Desc.features.textureCompressionBC = true;
     m_Desc.features.shaderBytecodeDXBC = true;
+    m_Desc.features.occlusion = true;
+    m_Desc.features.timestamp = true;
     m_Desc.features.getMemoryDesc2 = true;
-    m_Desc.features.enhancedBarriers = true;                       // don't care, but advertise support
+    m_Desc.features.enhancedBarriers = true; // don't care, but advertise support
     m_Desc.features.tesselationShader = true;
     m_Desc.features.geometryShader = true;
     m_Desc.features.lowLatency = HasNvExt();
@@ -535,7 +537,7 @@ void DeviceD3D11::FillDesc() {
     m_Desc.shaderFeatures.atomicsF16 = isShaderAtomicsF16Supported;
     m_Desc.shaderFeatures.atomicsF32 = isShaderAtomicsF32Supported;
 
-    m_Desc.shaderFeatures.storageReadWithoutFormat = true; // All desktop GPUs support it since 2014
+    m_Desc.shaderFeatures.storageReadWithoutFormat = true; // all desktop GPUs support it since 2014
     m_Desc.shaderFeatures.storageWriteWithoutFormat = true;
 
     m_Desc.shaderFeatures.viewportIndex = options3.VPAndRTArrayIndexFromAnyShaderFeedingRasterizer;

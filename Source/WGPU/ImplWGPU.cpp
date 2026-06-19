@@ -426,16 +426,20 @@ static void NRI_CALL CmdClearStorage(CommandBuffer& commandBuffer, const ClearSt
     ((CommandBufferWGPU&)commandBuffer).ClearStorage(clearStorageDesc);
 }
 
-static void NRI_CALL CmdResetQueries(CommandBuffer&, QueryPool&, uint32_t, uint32_t) {
+static void NRI_CALL CmdResetQueries(CommandBuffer& commandBuffer, QueryPool& queryPool, uint32_t offset, uint32_t num) {
+    ((CommandBufferWGPU&)commandBuffer).ResetQueries(queryPool, offset, num);
 }
 
-static void NRI_CALL CmdBeginQuery(CommandBuffer&, QueryPool&, uint32_t) {
+static void NRI_CALL CmdBeginQuery(CommandBuffer& commandBuffer, QueryPool& queryPool, uint32_t offset) {
+    ((CommandBufferWGPU&)commandBuffer).BeginQuery(queryPool, offset);
 }
 
-static void NRI_CALL CmdEndQuery(CommandBuffer&, QueryPool&, uint32_t) {
+static void NRI_CALL CmdEndQuery(CommandBuffer& commandBuffer, QueryPool& queryPool, uint32_t offset) {
+    ((CommandBufferWGPU&)commandBuffer).EndQuery(queryPool, offset);
 }
 
-static void NRI_CALL CmdCopyQueries(CommandBuffer&, const QueryPool&, uint32_t, uint32_t, Buffer&, uint64_t) {
+static void NRI_CALL CmdCopyQueries(CommandBuffer& commandBuffer, const QueryPool& queryPool, uint32_t offset, uint32_t num, Buffer& dstBuffer, uint64_t dstOffset) {
+    ((CommandBufferWGPU&)commandBuffer).CopyQueries(queryPool, offset, num, dstBuffer, dstOffset);
 }
 
 static void NRI_CALL CmdBeginAnnotation(CommandBuffer& commandBuffer, const char* name, uint32_t bgra) {
@@ -470,7 +474,8 @@ static void NRI_CALL GetCalibratedTimestamps(Queue& queue, uint64_t& timestampGP
     ((QueueWGPU&)queue).GetCalibratedTimestamps(timestampGPU, timestampCPU);
 }
 
-static void NRI_CALL ResetQueries(QueryPool&, uint32_t, uint32_t) {
+static void NRI_CALL ResetQueries(QueryPool& queryPool, uint32_t offset, uint32_t num) {
+    ((QueryPoolWGPU&)queryPool).Reset(offset, num);
 }
 
 static uint32_t NRI_CALL GetQuerySize(const QueryPool& queryPool) {

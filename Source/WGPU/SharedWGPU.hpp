@@ -148,7 +148,7 @@ WGPUTextureUsage nri::GetTextureUsage(TextureUsageBits usage) {
 }
 
 WGPUBufferUsage nri::GetBufferUsage(BufferUsageBits usage) {
-    WGPUBufferUsage result = WGPUBufferUsage_CopySrc | WGPUBufferUsage_CopyDst;
+    WGPUBufferUsage result = WGPUBufferUsage_CopySrc | WGPUBufferUsage_CopyDst | WGPUBufferUsage_QueryResolve;
 
     if (usage & BufferUsageBits::VERTEX_BUFFER)
         result |= WGPUBufferUsage_Vertex;

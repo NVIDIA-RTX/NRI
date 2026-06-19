@@ -1043,6 +1043,62 @@ void CommandBufferWGPU::Barrier(const BarrierDesc& barrierDesc) {
     MaybeUnused(barrierDesc);
 }
 
+void CommandBufferWGPU::ResetQueries(QueryPool& queryPool, uint32_t offset, uint32_t num) {
+    QueryPoolWGPU& queryPoolWGPU = (QueryPoolWGPU&)queryPool;
+    queryPoolWGPU.Reset(offset, num);
+}
+
+void CommandBufferWGPU::BeginQuery(QueryPool& queryPool, uint32_t offset) {
+    QueryPoolWGPU& queryPoolWGPU = (QueryPoolWGPU&)queryPool;
+
+    if (queryPoolWGPU.GetType() == QueryType::OCCLUSION && m_RenderPass)
+        wgpuRenderPassEncoderBeginOcclusionQuery(m_RenderPass, offset);
+}
+
+void CommandBufferWGPU::EndQuery(QueryPool& queryPool, uint32_t offset) {
+    QueryPoolWGPU& queryPoolWGPU = (QueryPoolWGPU&)queryPool;
+
+    if (queryPoolWGPU.GetType() == QueryType::TIMESTAMP) {
+        if (m_RenderPass)
+            wgpuRenderPassEncoderWriteTimestamp(m_RenderPass, queryPoolWGPU, offset);
+        else if (m_ComputePass)
+            wgpuComputePassEncoderWriteTimestamp(m_ComputePass, queryPoolWGPU, offset);
+        else
+            wgpuCommandEncoderWriteTimestamp(m_CommandEncoder, queryPoolWGPU, offset);
+        return;
+    }
+
+    if (queryPoolWGPU.GetType() == QueryType::OCCLUSION && m_RenderPass)
+        wgpuRenderPassEncoderEndOcclusionQuery(m_RenderPass);
+}
+
+void CommandBufferWGPU::CopyQueries(const QueryPool& queryPool, uint32_t offset, uint32_t num, Buffer& dstBuffer, uint64_t dstOffset) {
+    EndPass();
+
+    const QueryPoolWGPU& queryPoolWGPU = (const QueryPoolWGPU&)queryPool;
+    BufferWGPU& dstBufferWGPU = (BufferWGPU&)dstBuffer;
+    uint64_t queryDataSize = (uint64_t)num * queryPoolWGPU.GetQuerySize();
+    if (!queryDataSize)
+        return;
+
+    if (dstBufferWGPU.IsHostReadback()) {
+        WGPUBufferDescriptor desc = WGPU_BUFFER_DESCRIPTOR_INIT;
+        desc.size = Align(std::max(queryDataSize, 4ull), 4);
+        desc.usage = WGPUBufferUsage_QueryResolve | WGPUBufferUsage_CopySrc;
+
+        WGPUBuffer resolveBuffer = wgpuDeviceCreateBuffer(m_Device, &desc);
+        if (!resolveBuffer)
+            return;
+
+        m_TemporaryBuffers.push_back(resolveBuffer);
+        wgpuCommandEncoderResolveQuerySet(m_CommandEncoder, queryPoolWGPU, offset, num, resolveBuffer, 0);
+        wgpuCommandEncoderCopyBufferToBuffer(m_CommandEncoder, resolveBuffer, 0, dstBufferWGPU, dstOffset, queryDataSize);
+        return;
+    }
+
+    wgpuCommandEncoderResolveQuerySet(m_CommandEncoder, queryPoolWGPU, offset, num, dstBufferWGPU, dstOffset);
+}
+
 void CommandBufferWGPU::BeginAnnotation(const char* name, uint32_t bgra) {
     MaybeUnused(name);
     MaybeUnused(bgra);

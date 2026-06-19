@@ -883,6 +883,21 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         // Fill desc
         const VkPhysicalDeviceLimits& limits = props.properties.limits;
 
+        uint32_t queueFamilyNum = 0;
+        m_VK.GetPhysicalDeviceQueueFamilyProperties2(m_PhysicalDevice, &queueFamilyNum, nullptr);
+
+        Scratch<VkQueueFamilyProperties2> queueFamilyProps2 = NRI_ALLOCATE_SCRATCH(*this, VkQueueFamilyProperties2, queueFamilyNum);
+        for (uint32_t i = 0; i < queueFamilyNum; i++)
+            queueFamilyProps2[i] = {VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2};
+
+        m_VK.GetPhysicalDeviceQueueFamilyProperties2(m_PhysicalDevice, &queueFamilyNum, queueFamilyProps2);
+
+        std::array<bool, (size_t)QueueType::MAX_NUM> isTimestampSupported = {};
+        for (size_t i = 0; i < isTimestampSupported.size(); i++) {
+            uint32_t familyIndex = queueFamilyIndices[i];
+            isTimestampSupported[i] = m_Desc.adapterDesc.queueNum[i] != 0 && familyIndex != INVALID_FAMILY_INDEX && familyIndex < queueFamilyNum && queueFamilyProps2[familyIndex].queueFamilyProperties.timestampValidBits != 0;
+        }
+
         m_Desc.viewport.maxNum = limits.maxViewports;
         m_Desc.viewport.boundsMin = (int32_t)limits.viewportBoundsRange[0];
         m_Desc.viewport.boundsMax = (int32_t)limits.viewportBoundsRange[1];
@@ -1165,7 +1180,9 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.textureCompressionETC2 = features.features.textureCompressionETC2;
         m_Desc.features.textureCompressionASTC = features.features.textureCompressionASTC_LDR;
         m_Desc.features.shaderBytecodeSPIRV = true;
-        m_Desc.features.copyQueueTimestamp = limits.timestampComputeAndGraphics;
+        m_Desc.features.occlusion = true;
+        m_Desc.features.timestamp = isTimestampSupported[(size_t)QueueType::GRAPHICS] || isTimestampSupported[(size_t)QueueType::COMPUTE];
+        m_Desc.features.timestampCopyQueue = isTimestampSupported[(size_t)QueueType::COPY];
         m_Desc.features.calibratedTimestamps = IsExtensionSupported(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, desiredDeviceExts);
         m_Desc.features.additionalShadingRates = FragmentShadingRateProps.maxFragmentSize.height > 2 || FragmentShadingRateProps.maxFragmentSize.width > 2;
         m_Desc.features.sumShadingRateCombiner = m_Desc.tiers.shadingRate != 0;

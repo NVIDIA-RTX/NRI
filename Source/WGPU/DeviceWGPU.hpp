@@ -148,6 +148,15 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
     if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_BGRA8UnormStorage))
         requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_BGRA8UnormStorage;
 
+    bool isTimestampQuerySupported = wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_TimestampQuery) == WGPU_TRUE;
+    bool isTimestampQueryInsideEncodersSupported = wgpuAdapterHasFeature(m_Adapter, (WGPUFeatureName)WGPUNativeFeature_TimestampQueryInsideEncoders) == WGPU_TRUE;
+    bool isTimestampQueryInsidePassesSupported = wgpuAdapterHasFeature(m_Adapter, (WGPUFeatureName)WGPUNativeFeature_TimestampQueryInsidePasses) == WGPU_TRUE;
+    if (isTimestampQuerySupported && isTimestampQueryInsideEncodersSupported && isTimestampQueryInsidePassesSupported) {
+        requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_TimestampQuery;
+        requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_TimestampQueryInsideEncoders;
+        requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_TimestampQueryInsidePasses;
+    }
+
     WGPUNativeLimits nativeLimits = {};
     nativeLimits.chain.sType = (WGPUSType)WGPUSType_NativeLimits;
     nativeLimits.maxImmediateSize = 256;
@@ -180,6 +189,9 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
     m_Device = deviceContext.device;
     m_Queue = wgpuDeviceGetQueue(m_Device);
     wgpuDeviceGetLimits(m_Device, &m_Limits);
+    m_IsTimestampQueryInsidePassesSupported = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TimestampQuery) == WGPU_TRUE
+        && wgpuDeviceHasFeature(m_Device, (WGPUFeatureName)WGPUNativeFeature_TimestampQueryInsideEncoders) == WGPU_TRUE
+        && wgpuDeviceHasFeature(m_Device, (WGPUFeatureName)WGPUNativeFeature_TimestampQueryInsidePasses) == WGPU_TRUE;
 
     return m_Queue ? Result::SUCCESS : Result::FAILURE;
 }
@@ -275,7 +287,11 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.wave.waveOpsStages = StageBits::COMPUTE_SHADER;
     m_Desc.wave.derivativeOpsStages = StageBits::FRAGMENT_SHADER;
 
-    m_Desc.other.timestampFrequencyHz = 1;
+    if (m_IsTimestampQueryInsidePassesSupported) {
+        float timestampPeriod = wgpuQueueGetTimestampPeriod(m_Queue);
+        m_Desc.other.timestampFrequencyHz = timestampPeriod > 0.0f ? uint64_t(1e9 / double(timestampPeriod) + 0.5) : 1;
+    } else
+        m_Desc.other.timestampFrequencyHz = 1;
     m_Desc.other.drawIndirectMaxNum = 1;
     m_Desc.other.samplerLodBiasMax = 16.0f;
     m_Desc.other.samplerAnisotropyMax = 16;
@@ -298,8 +314,13 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.features.textureCompressionETC2 = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TextureCompressionETC2) == WGPU_TRUE;
     m_Desc.features.textureCompressionASTC = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TextureCompressionASTC) == WGPU_TRUE;
     m_Desc.features.shaderBytecodeSPIRV = true;
+    m_Desc.features.occlusion = false;
+    m_Desc.features.timestamp = m_IsTimestampQueryInsidePassesSupported;
+    m_Desc.features.timestampCopyQueue = false;
+    m_Desc.features.calibratedTimestamps = false;
     m_Desc.features.getMemoryDesc2 = true;
     m_Desc.features.rootConstantsOffset = true;
+    m_Desc.features.pipelineStatistics = false;
     m_Desc.shaderFeatures.drawParameters = true;
     m_Desc.shaderFeatures.drawIndex = true;
     m_Desc.shaderFeatures.inputAttachments = false;

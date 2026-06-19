@@ -72,6 +72,10 @@ struct CommandBufferWGPU final : public DebugNameBase {
     void ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion, ResolveOp resolveOp);
     void ClearStorage(const ClearStorageDesc& clearStorageDesc);
     void Barrier(const BarrierDesc& barrierDesc);
+    void ResetQueries(QueryPool& queryPool, uint32_t offset, uint32_t num);
+    void BeginQuery(QueryPool& queryPool, uint32_t offset);
+    void EndQuery(QueryPool& queryPool, uint32_t offset);
+    void CopyQueries(const QueryPool& queryPool, uint32_t offset, uint32_t num, Buffer& dstBuffer, uint64_t dstOffset);
     void BeginAnnotation(const char* name, uint32_t bgra);
     void EndAnnotation();
     void Annotation(const char* name, uint32_t bgra);

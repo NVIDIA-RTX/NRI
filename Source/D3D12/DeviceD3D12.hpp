@@ -838,7 +838,9 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.features.textureCompressionBC = true;
     m_Desc.features.shaderBytecodeDXBC = true;
     m_Desc.features.shaderBytecodeDXIL = true;
-    m_Desc.features.copyQueueTimestamp = options3.CopyQueueTimestampQueriesSupported;
+    m_Desc.features.occlusion = true;
+    m_Desc.features.timestamp = true;
+    m_Desc.features.timestampCopyQueue = options3.CopyQueueTimestampQueriesSupported;
     m_Desc.features.calibratedTimestamps = true;
     m_Desc.features.additionalShadingRates = options6.AdditionalShadingRatesSupported;
     m_Desc.features.regionResolve = true;

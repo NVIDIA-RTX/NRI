@@ -36,6 +36,10 @@ struct DeviceWGPU final : public DeviceBase {
         return m_BindingOffsets;
     }
 
+    inline bool IsTimestampQueryInsidePassesSupported() const {
+        return m_IsTimestampQueryInsidePassesSupported;
+    }
+
     void Destruct() override;
     Result Create(const DeviceCreationDesc& deviceCreationDesc);
     FormatSupportBits GetFormatSupport(Format format) const;
@@ -89,6 +93,7 @@ private:
     WGPULimits m_Limits = WGPU_LIMITS_INIT;
     WGPUAdapterInfo m_AdapterInfo = WGPU_ADAPTER_INFO_INIT;
     VKBindingOffsets m_BindingOffsets = {};
+    bool m_IsTimestampQueryInsidePassesSupported = false;
 };
 
 } // namespace nri

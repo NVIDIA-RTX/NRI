@@ -1593,10 +1593,10 @@ NriStruct(RenderingDesc) {
 // https://microsoft.github.io/DirectX-Specs/d3d/CountersAndQueries.html
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkQueryType.html
 NriEnum(QueryType, uint8_t,
-    TIMESTAMP,                              // uint64_t
-    TIMESTAMP_COPY_QUEUE,                   // uint64_t (requires "features.copyQueueTimestamp"), same as "TIMESTAMP" but for a "COPY" queue
-    OCCLUSION,                              // uint64_t
-    PIPELINE_STATISTICS,                    // see "PipelineStatisticsDesc" (requires "features.pipelineStatistics")
+    TIMESTAMP,                              // uint64_t, requires "features.timestamp" (for "GRAPHICS" and "COMPUTE" queues)
+    TIMESTAMP_COPY_QUEUE,                   // uint64_t, requires "features.timestampCopyQueue" (for a "COPY" queue)
+    OCCLUSION,                              // uint64_t, requires "features.occlusion"
+    PIPELINE_STATISTICS,                    // see "PipelineStatisticsDesc", requires "features.pipelineStatistics"
     ACCELERATION_STRUCTURE_SIZE,            // uint64_t, requires "features.rayTracing"
     ACCELERATION_STRUCTURE_COMPACTED_SIZE,  // uint64_t, requires "features.rayTracing"
     MICROMAP_COMPACTED_SIZE                 // uint64_t, requires "features.micromap"
@@ -2087,9 +2087,11 @@ NriStruct(DeviceDesc) {
         bool shaderBytecodeDXIL;                                  // DXIL can be passed to "ShaderDesc::bytecode"
         bool shaderBytecodeSPIRV;                                 // SPIRV can be passed to "ShaderDesc::bytecode"
 
-        // Time stamps
-        bool copyQueueTimestamp;                                  // see "QueryType::TIMESTAMP_COPY_QUEUE"
-        bool calibratedTimestamps;                                // see "GetCalibratedTimestamps" (unsupported only in D3D11)
+        // Queries
+        bool occlusion;                                           // see "QueryType::OCCLUSION"
+        bool timestamp;                                           // see "QueryType::TIMESTAMP"
+        bool timestampCopyQueue;                                  // see "QueryType::TIMESTAMP_COPY_QUEUE"
+        bool calibratedTimestamps;                                // see "GetCalibratedTimestamps"
 
         // Shading rate
         bool additionalShadingRates;                              // see "ShadingRate"
