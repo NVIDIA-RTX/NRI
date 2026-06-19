@@ -56,7 +56,6 @@ DeviceWGPU::~DeviceWGPU() {
         wgpuQueueRelease(m_Queue);
     if (m_Device)
         wgpuDeviceRelease(m_Device);
-    wgpuAdapterInfoFreeMembers(m_AdapterInfo);
     if (m_Adapter)
         wgpuAdapterRelease(m_Adapter);
     if (m_Instance)
@@ -128,9 +127,6 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
 
     m_Adapter = adapterContext.adapter;
 
-    wgpuAdapterGetLimits(m_Adapter, &m_Limits);
-    wgpuAdapterGetInfo(m_Adapter, &m_AdapterInfo);
-
     WGPUFeatureName requiredFeatures[16] = {};
     size_t requiredFeatureNum = 0;
     requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_Immediates;
@@ -188,7 +184,6 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
 
     m_Device = deviceContext.device;
     m_Queue = wgpuDeviceGetQueue(m_Device);
-    wgpuDeviceGetLimits(m_Device, &m_Limits);
     m_IsTimestampQueryInsidePassesSupported = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TimestampQuery) == WGPU_TRUE
         && wgpuDeviceHasFeature(m_Device, (WGPUFeatureName)WGPUNativeFeature_TimestampQueryInsideEncoders) == WGPU_TRUE
         && wgpuDeviceHasFeature(m_Device, (WGPUFeatureName)WGPUNativeFeature_TimestampQueryInsidePasses) == WGPU_TRUE;
@@ -198,19 +193,12 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
 
 void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.adapterDesc = adapterDesc;
-    m_Desc.adapterDesc.supportedGraphicsAPIs = GraphicsAPI::WGPU;
-    m_Desc.adapterDesc.vendor = GetVendorFromPCIID(m_AdapterInfo.vendorID);
-    m_Desc.adapterDesc.architecture = GetArchitecture(m_AdapterInfo.adapterType);
-    m_Desc.adapterDesc.deviceId = m_AdapterInfo.deviceID;
     m_Desc.adapterDesc.queueNum[(uint32_t)QueueType::GRAPHICS] = 1;
     m_Desc.adapterDesc.queueNum[(uint32_t)QueueType::COMPUTE] = 0;
     m_Desc.adapterDesc.queueNum[(uint32_t)QueueType::COPY] = 0;
 
-    if (m_AdapterInfo.device.data) {
-        size_t n = std::min(m_AdapterInfo.device.length, sizeof(m_Desc.adapterDesc.name) - 1);
-        memcpy(m_Desc.adapterDesc.name, m_AdapterInfo.device.data, n);
-        m_Desc.adapterDesc.name[n] = 0;
-    }
+    WGPULimits limits = WGPU_LIMITS_INIT;
+    wgpuDeviceGetLimits(m_Device, &limits);
 
     m_Desc.shaderModel = NriShaderModel(6, 0);
 
@@ -218,12 +206,12 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.viewport.boundsMin = -32768;
     m_Desc.viewport.boundsMax = 32767;
 
-    m_Desc.dimensions.attachmentMaxDim = (Dim_t)std::min<uint32_t>(m_Limits.maxTextureDimension2D, UINT16_MAX);
-    m_Desc.dimensions.attachmentLayerMaxNum = (Dim_t)std::min<uint32_t>(m_Limits.maxTextureArrayLayers, UINT16_MAX);
-    m_Desc.dimensions.texture1DMaxDim = (Dim_t)std::min<uint32_t>(m_Limits.maxTextureDimension1D, UINT16_MAX);
-    m_Desc.dimensions.texture2DMaxDim = (Dim_t)std::min<uint32_t>(m_Limits.maxTextureDimension2D, UINT16_MAX);
-    m_Desc.dimensions.texture3DMaxDim = (Dim_t)std::min<uint32_t>(m_Limits.maxTextureDimension3D, UINT16_MAX);
-    m_Desc.dimensions.textureLayerMaxNum = (Dim_t)std::min<uint32_t>(m_Limits.maxTextureArrayLayers, UINT16_MAX);
+    m_Desc.dimensions.attachmentMaxDim = (Dim_t)std::min<uint32_t>(limits.maxTextureDimension2D, UINT16_MAX);
+    m_Desc.dimensions.attachmentLayerMaxNum = (Dim_t)std::min<uint32_t>(limits.maxTextureArrayLayers, UINT16_MAX);
+    m_Desc.dimensions.texture1DMaxDim = (Dim_t)std::min<uint32_t>(limits.maxTextureDimension1D, UINT16_MAX);
+    m_Desc.dimensions.texture2DMaxDim = (Dim_t)std::min<uint32_t>(limits.maxTextureDimension2D, UINT16_MAX);
+    m_Desc.dimensions.texture3DMaxDim = (Dim_t)std::min<uint32_t>(limits.maxTextureDimension3D, UINT16_MAX);
+    m_Desc.dimensions.textureLayerMaxNum = (Dim_t)std::min<uint32_t>(limits.maxTextureArrayLayers, UINT16_MAX);
     m_Desc.dimensions.typedBufferMaxDim = 128 * 1024 * 1024;
 
     m_Desc.precision.viewportBits = 8;
@@ -232,58 +220,62 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.precision.mipmapBits = 8;
 
     m_Desc.memory.deviceUploadHeapSize = 0;
-    m_Desc.memory.bufferMaxSize = m_Limits.maxBufferSize;
-    m_Desc.memory.allocationMaxSize = m_Limits.maxBufferSize;
+    m_Desc.memory.bufferMaxSize = limits.maxBufferSize;
+    m_Desc.memory.allocationMaxSize = limits.maxBufferSize;
     m_Desc.memory.allocationMaxNum = uint32_t(-1);
     m_Desc.memory.samplerAllocationMaxNum = 4096;
-    m_Desc.memory.constantBufferMaxRange = (uint32_t)m_Limits.maxUniformBufferBindingSize;
-    m_Desc.memory.storageBufferMaxRange = (uint32_t)std::min<uint64_t>(m_Limits.maxStorageBufferBindingSize, UINT32_MAX);
+    m_Desc.memory.constantBufferMaxRange = (uint32_t)limits.maxUniformBufferBindingSize;
+    m_Desc.memory.storageBufferMaxRange = (uint32_t)std::min<uint64_t>(limits.maxStorageBufferBindingSize, UINT32_MAX);
     m_Desc.memory.bufferTextureGranularity = 1;
 
     m_Desc.memoryAlignment.uploadBufferTextureRow = 256;
     m_Desc.memoryAlignment.uploadBufferTextureSlice = 1;
-    m_Desc.memoryAlignment.bufferShaderResourceOffset = (uint32_t)m_Limits.minStorageBufferOffsetAlignment;
-    m_Desc.memoryAlignment.constantBufferOffset = (uint32_t)m_Limits.minUniformBufferOffsetAlignment;
+    m_Desc.memoryAlignment.bufferShaderResourceOffset = (uint32_t)limits.minStorageBufferOffsetAlignment;
+    m_Desc.memoryAlignment.constantBufferOffset = (uint32_t)limits.minUniformBufferOffsetAlignment;
     m_Desc.memoryAlignment.scratchBufferOffset = 1;
     m_Desc.memoryAlignment.shaderBindingTable = 1;
     m_Desc.memoryAlignment.accelerationStructureOffset = 1;
     m_Desc.memoryAlignment.micromapOffset = 1;
 
-    m_Desc.pipelineLayout.descriptorSetMaxNum = m_Limits.maxBindGroups;
+    m_Desc.pipelineLayout.descriptorSetMaxNum = limits.maxBindGroups;
     m_Desc.pipelineLayout.rootConstantMaxSize = 256;
     m_Desc.pipelineLayout.rootDescriptorMaxNum = 8;
 
-    m_Desc.descriptorSet.samplerMaxNum = m_Limits.maxSamplersPerShaderStage;
-    m_Desc.descriptorSet.constantBufferMaxNum = m_Limits.maxUniformBuffersPerShaderStage;
-    m_Desc.descriptorSet.storageBufferMaxNum = m_Limits.maxStorageBuffersPerShaderStage;
-    m_Desc.descriptorSet.textureMaxNum = m_Limits.maxSampledTexturesPerShaderStage;
-    m_Desc.descriptorSet.storageTextureMaxNum = m_Limits.maxStorageTexturesPerShaderStage;
+    m_Desc.descriptorSet.samplerMaxNum = limits.maxSamplersPerShaderStage;
+    m_Desc.descriptorSet.constantBufferMaxNum = limits.maxUniformBuffersPerShaderStage;
+    m_Desc.descriptorSet.storageBufferMaxNum = limits.maxStorageBuffersPerShaderStage;
+    m_Desc.descriptorSet.textureMaxNum = limits.maxSampledTexturesPerShaderStage;
+    m_Desc.descriptorSet.storageTextureMaxNum = limits.maxStorageTexturesPerShaderStage;
 
-    m_Desc.shaderStage.descriptorSamplerMaxNum = m_Limits.maxSamplersPerShaderStage;
-    m_Desc.shaderStage.descriptorConstantBufferMaxNum = m_Limits.maxUniformBuffersPerShaderStage;
-    m_Desc.shaderStage.descriptorStorageBufferMaxNum = m_Limits.maxStorageBuffersPerShaderStage;
-    m_Desc.shaderStage.descriptorTextureMaxNum = m_Limits.maxSampledTexturesPerShaderStage;
-    m_Desc.shaderStage.descriptorStorageTextureMaxNum = m_Limits.maxStorageTexturesPerShaderStage;
-    m_Desc.shaderStage.resourceMaxNum = m_Limits.maxBindingsPerBindGroup;
+    m_Desc.shaderStage.descriptorSamplerMaxNum = limits.maxSamplersPerShaderStage;
+    m_Desc.shaderStage.descriptorConstantBufferMaxNum = limits.maxUniformBuffersPerShaderStage;
+    m_Desc.shaderStage.descriptorStorageBufferMaxNum = limits.maxStorageBuffersPerShaderStage;
+    m_Desc.shaderStage.descriptorTextureMaxNum = limits.maxSampledTexturesPerShaderStage;
+    m_Desc.shaderStage.descriptorStorageTextureMaxNum = limits.maxStorageTexturesPerShaderStage;
+    m_Desc.shaderStage.resourceMaxNum = limits.maxBindingsPerBindGroup;
 
-    m_Desc.shaderStage.vertex.attributeMaxNum = m_Limits.maxVertexAttributes;
-    m_Desc.shaderStage.vertex.streamMaxNum = m_Limits.maxVertexBuffers;
+    m_Desc.shaderStage.vertex.attributeMaxNum = limits.maxVertexAttributes;
+    m_Desc.shaderStage.vertex.streamMaxNum = limits.maxVertexBuffers;
     m_Desc.shaderStage.vertex.outputComponentMaxNum = 60;
 
     m_Desc.shaderStage.fragment.inputComponentMaxNum = 60;
-    m_Desc.shaderStage.fragment.attachmentMaxNum = m_Limits.maxColorAttachments;
+    m_Desc.shaderStage.fragment.attachmentMaxNum = limits.maxColorAttachments;
 
-    m_Desc.shaderStage.compute.dispatchMaxDim[0] = m_Limits.maxComputeWorkgroupsPerDimension;
-    m_Desc.shaderStage.compute.dispatchMaxDim[1] = m_Limits.maxComputeWorkgroupsPerDimension;
-    m_Desc.shaderStage.compute.dispatchMaxDim[2] = m_Limits.maxComputeWorkgroupsPerDimension;
-    m_Desc.shaderStage.compute.workGroupInvocationMaxNum = m_Limits.maxComputeInvocationsPerWorkgroup;
-    m_Desc.shaderStage.compute.workGroupMaxDim[0] = m_Limits.maxComputeWorkgroupSizeX;
-    m_Desc.shaderStage.compute.workGroupMaxDim[1] = m_Limits.maxComputeWorkgroupSizeY;
-    m_Desc.shaderStage.compute.workGroupMaxDim[2] = m_Limits.maxComputeWorkgroupSizeZ;
-    m_Desc.shaderStage.compute.sharedMemoryMaxSize = m_Limits.maxComputeWorkgroupStorageSize;
+    m_Desc.shaderStage.compute.dispatchMaxDim[0] = limits.maxComputeWorkgroupsPerDimension;
+    m_Desc.shaderStage.compute.dispatchMaxDim[1] = limits.maxComputeWorkgroupsPerDimension;
+    m_Desc.shaderStage.compute.dispatchMaxDim[2] = limits.maxComputeWorkgroupsPerDimension;
+    m_Desc.shaderStage.compute.workGroupInvocationMaxNum = limits.maxComputeInvocationsPerWorkgroup;
+    m_Desc.shaderStage.compute.workGroupMaxDim[0] = limits.maxComputeWorkgroupSizeX;
+    m_Desc.shaderStage.compute.workGroupMaxDim[1] = limits.maxComputeWorkgroupSizeY;
+    m_Desc.shaderStage.compute.workGroupMaxDim[2] = limits.maxComputeWorkgroupSizeZ;
+    m_Desc.shaderStage.compute.sharedMemoryMaxSize = limits.maxComputeWorkgroupStorageSize;
 
-    m_Desc.wave.laneMinNum = m_AdapterInfo.subgroupMinSize;
-    m_Desc.wave.laneMaxNum = m_AdapterInfo.subgroupMaxSize;
+    WGPUAdapterInfo adapterInfo = WGPU_ADAPTER_INFO_INIT;
+    wgpuAdapterGetInfo(m_Adapter, &adapterInfo);
+    m_Desc.wave.laneMinNum = adapterInfo.subgroupMinSize;
+    m_Desc.wave.laneMaxNum = adapterInfo.subgroupMaxSize;
+    wgpuAdapterInfoFreeMembers(adapterInfo);
+
     m_Desc.wave.waveOpsStages = StageBits::COMPUTE_SHADER;
     m_Desc.wave.derivativeOpsStages = StageBits::FRAGMENT_SHADER;
 

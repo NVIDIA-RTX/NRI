@@ -90,8 +90,6 @@ private:
     WGPUAdapter m_Adapter = nullptr;
     WGPUDevice m_Device = nullptr;
     WGPUQueue m_Queue = nullptr;
-    WGPULimits m_Limits = WGPU_LIMITS_INIT;
-    WGPUAdapterInfo m_AdapterInfo = WGPU_ADAPTER_INFO_INIT;
     VKBindingOffsets m_BindingOffsets = {};
     bool m_IsTimestampQueryInsidePassesSupported = false;
 };
