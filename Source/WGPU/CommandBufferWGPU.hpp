@@ -170,7 +170,9 @@ Result CommandBufferWGPU::Begin(const DescriptorPool* descriptorPool) {
     WGPUCommandEncoderDescriptor desc = WGPU_COMMAND_ENCODER_DESCRIPTOR_INIT;
     m_CommandEncoder = wgpuDeviceCreateCommandEncoder(m_Device, &desc);
     m_PipelineLayout = nullptr;
+    m_RenderPipeline = nullptr;
     m_ComputePipeline = nullptr;
+    m_BoundComputePipeline = nullptr;
     m_BindPoint = BindPoint::GRAPHICS;
     m_RenderFormat = Format::UNKNOWN;
     m_RenderDepthStencilFormat = Format::UNKNOWN;
@@ -178,7 +180,12 @@ Result CommandBufferWGPU::Begin(const DescriptorPool* descriptorPool) {
     m_RenderHeight = 0;
     m_GraphicsDescriptorSets.clear();
     m_ComputeDescriptorSets.clear();
+    m_GraphicsDescriptorSetDirty.clear();
+    m_ComputeDescriptorSetDirty.clear();
     m_RootDescriptorBindings.clear();
+    m_RootDynamicOffsets.clear();
+    m_GraphicsRootGroupDirty = true;
+    m_ComputeRootGroupDirty = true;
 
     return m_CommandEncoder ? Result::SUCCESS : Result::FAILURE;
 }
@@ -199,12 +206,14 @@ void CommandBufferWGPU::EndPass() {
         wgpuRenderPassEncoderEnd(m_RenderPass);
         wgpuRenderPassEncoderRelease(m_RenderPass);
         m_RenderPass = nullptr;
+        m_RenderPipeline = nullptr;
     }
 
     if (m_ComputePass) {
         wgpuComputePassEncoderEnd(m_ComputePass);
         wgpuComputePassEncoderRelease(m_ComputePass);
         m_ComputePass = nullptr;
+        m_BoundComputePipeline = nullptr;
     }
 }
 
@@ -233,19 +242,28 @@ void CommandBufferWGPU::SetPipelineLayout(BindPoint bindPoint, const PipelineLay
     m_BindPoint = bindPoint == BindPoint::INHERIT ? m_BindPoint : bindPoint;
     ReleaseRootBindGroups();
     m_RootDescriptorBindings.resize(m_PipelineLayout->GetRootDescriptors().size());
+    m_RootDynamicOffsets.resize(m_PipelineLayout->GetRootDynamicOffsetNum());
+    m_GraphicsRootGroupDirty = true;
+    m_ComputeRootGroupDirty = true;
+    MarkDescriptorSetsDirty(m_BindPoint);
 
     BindRootGroup(m_BindPoint);
 }
 
 void CommandBufferWGPU::SetPipeline(const Pipeline& pipeline) {
     const PipelineWGPU& pipelineWGPU = (PipelineWGPU&)pipeline;
+    WGPURenderPipeline renderPipeline = pipelineWGPU.GetRenderPipeline();
 
-    if (m_RenderPass && pipelineWGPU.GetRenderPipeline())
-        wgpuRenderPassEncoderSetPipeline(m_RenderPass, pipelineWGPU.GetRenderPipeline());
+    if (m_RenderPass && renderPipeline && renderPipeline != m_RenderPipeline) {
+        wgpuRenderPassEncoderSetPipeline(m_RenderPass, renderPipeline);
+        m_RenderPipeline = renderPipeline;
+    }
     if (pipelineWGPU.GetComputePipeline()) {
         m_ComputePipeline = pipelineWGPU.GetComputePipeline();
-        if (m_ComputePass)
+        if (m_ComputePass && m_ComputePipeline != m_BoundComputePipeline) {
             wgpuComputePassEncoderSetPipeline(m_ComputePass, m_ComputePipeline);
+            m_BoundComputePipeline = m_ComputePipeline;
+        }
     }
 
     if (m_RenderPass && pipelineWGPU.GetPipelineLayout() && pipelineWGPU.GetPipelineLayout()->GetRootSamplerBindGroup())
@@ -261,9 +279,22 @@ void CommandBufferWGPU::SetDescriptorSet(const SetDescriptorSetDesc& setDescript
     if (bindGroupIndex >= descriptorSets.size())
         descriptorSets.resize(bindGroupIndex + 1);
 
-    descriptorSets[bindGroupIndex] = &descriptorSet;
+    Vector<uint8_t>& dirtySets = bindPoint == BindPoint::COMPUTE ? m_ComputeDescriptorSetDirty : m_GraphicsDescriptorSetDirty;
+    if (bindGroupIndex >= dirtySets.size())
+        dirtySets.resize(bindGroupIndex + 1, 0);
 
-    BindDescriptorSets(bindPoint);
+    if (descriptorSets[bindGroupIndex] != &descriptorSet) {
+        descriptorSets[bindGroupIndex] = &descriptorSet;
+        dirtySets[bindGroupIndex] = 1;
+    }
+
+    BindDescriptorSet(bindPoint, bindGroupIndex);
+}
+
+void CommandBufferWGPU::MarkDescriptorSetsDirty(BindPoint bindPoint) {
+    Vector<uint8_t>& dirtySets = bindPoint == BindPoint::COMPUTE ? m_ComputeDescriptorSetDirty : m_GraphicsDescriptorSetDirty;
+    for (uint8_t& dirty : dirtySets)
+        dirty = 1;
 }
 
 void CommandBufferWGPU::BindDescriptorSets(BindPoint bindPoint) {
@@ -273,8 +304,10 @@ void CommandBufferWGPU::BindDescriptorSets(BindPoint bindPoint) {
 
         for (uint32_t i = 0; i < (uint32_t)m_ComputeDescriptorSets.size(); i++) {
             const DescriptorSetWGPU* descriptorSet = m_ComputeDescriptorSets[i];
-            if (descriptorSet && descriptorSet->GetBindGroup())
+            if (descriptorSet && descriptorSet->GetBindGroup() && i < m_ComputeDescriptorSetDirty.size() && m_ComputeDescriptorSetDirty[i]) {
                 wgpuComputePassEncoderSetBindGroup(m_ComputePass, i, descriptorSet->GetBindGroup(), 0, nullptr);
+                m_ComputeDescriptorSetDirty[i] = 0;
+            }
         }
 
         return;
@@ -285,8 +318,34 @@ void CommandBufferWGPU::BindDescriptorSets(BindPoint bindPoint) {
 
     for (uint32_t i = 0; i < (uint32_t)m_GraphicsDescriptorSets.size(); i++) {
         const DescriptorSetWGPU* descriptorSet = m_GraphicsDescriptorSets[i];
-        if (descriptorSet && descriptorSet->GetBindGroup())
+        if (descriptorSet && descriptorSet->GetBindGroup() && i < m_GraphicsDescriptorSetDirty.size() && m_GraphicsDescriptorSetDirty[i]) {
             wgpuRenderPassEncoderSetBindGroup(m_RenderPass, i, descriptorSet->GetBindGroup(), 0, nullptr);
+            m_GraphicsDescriptorSetDirty[i] = 0;
+        }
+    }
+}
+
+void CommandBufferWGPU::BindDescriptorSet(BindPoint bindPoint, uint32_t bindGroupIndex) {
+    if (bindPoint == BindPoint::COMPUTE) {
+        if (!m_ComputePass || bindGroupIndex >= m_ComputeDescriptorSets.size() || bindGroupIndex >= m_ComputeDescriptorSetDirty.size() || !m_ComputeDescriptorSetDirty[bindGroupIndex])
+            return;
+
+        const DescriptorSetWGPU* descriptorSet = m_ComputeDescriptorSets[bindGroupIndex];
+        if (descriptorSet && descriptorSet->GetBindGroup()) {
+            wgpuComputePassEncoderSetBindGroup(m_ComputePass, bindGroupIndex, descriptorSet->GetBindGroup(), 0, nullptr);
+            m_ComputeDescriptorSetDirty[bindGroupIndex] = 0;
+        }
+
+        return;
+    }
+
+    if (!m_RenderPass || bindGroupIndex >= m_GraphicsDescriptorSets.size() || bindGroupIndex >= m_GraphicsDescriptorSetDirty.size() || !m_GraphicsDescriptorSetDirty[bindGroupIndex])
+        return;
+
+    const DescriptorSetWGPU* descriptorSet = m_GraphicsDescriptorSets[bindGroupIndex];
+    if (descriptorSet && descriptorSet->GetBindGroup()) {
+        wgpuRenderPassEncoderSetBindGroup(m_RenderPass, bindGroupIndex, descriptorSet->GetBindGroup(), 0, nullptr);
+        m_GraphicsDescriptorSetDirty[bindGroupIndex] = 0;
     }
 }
 
@@ -322,7 +381,9 @@ WGPUBindGroup CommandBufferWGPU::CreateRootBindGroup(BindPoint bindPoint) {
         entry = WGPU_BIND_GROUP_ENTRY_INIT;
         entry.binding = rootDescriptor.binding;
         entry.buffer = descriptor.GetBuffer();
-        entry.offset = descriptor.GetOffset() + rootBinding.offset;
+        entry.offset = descriptor.GetOffset();
+        if (rootDescriptor.dynamicOffsetIndex == uint32_t(-1))
+            entry.offset += rootBinding.offset;
         entry.size = descriptor.GetSize();
     }
 
@@ -350,17 +411,26 @@ void CommandBufferWGPU::BindRootGroup(BindPoint bindPoint) {
         return;
 
     BindPoint resolvedBindPoint = bindPoint == BindPoint::INHERIT ? m_BindPoint : bindPoint;
+    bool& dirty = resolvedBindPoint == BindPoint::COMPUTE ? m_ComputeRootGroupDirty : m_GraphicsRootGroupDirty;
+    if (!dirty)
+        return;
+
     WGPUBindGroup bindGroup = resolvedBindPoint == BindPoint::COMPUTE ? m_ComputeRootBindGroup : m_GraphicsRootBindGroup;
     if (!bindGroup)
         bindGroup = CreateRootBindGroup(resolvedBindPoint);
     if (!bindGroup)
         return;
 
+    uint32_t dynamicOffsetNum = m_PipelineLayout->GetRootDynamicOffsetNum();
+    const uint32_t* dynamicOffsets = dynamicOffsetNum ? m_RootDynamicOffsets.data() : nullptr;
+
     if (resolvedBindPoint == BindPoint::COMPUTE) {
         if (m_ComputePass)
-            wgpuComputePassEncoderSetBindGroup(m_ComputePass, m_PipelineLayout->GetRootSamplerGroupIndex(), bindGroup, 0, nullptr);
+            wgpuComputePassEncoderSetBindGroup(m_ComputePass, m_PipelineLayout->GetRootSamplerGroupIndex(), bindGroup, dynamicOffsetNum, dynamicOffsets);
     } else if (m_RenderPass)
-        wgpuRenderPassEncoderSetBindGroup(m_RenderPass, m_PipelineLayout->GetRootSamplerGroupIndex(), bindGroup, 0, nullptr);
+        wgpuRenderPassEncoderSetBindGroup(m_RenderPass, m_PipelineLayout->GetRootSamplerGroupIndex(), bindGroup, dynamicOffsetNum, dynamicOffsets);
+
+    dirty = false;
 }
 
 void CommandBufferWGPU::SetRootConstants(const SetRootConstantsDesc& setRootConstantsDesc) {
@@ -378,17 +448,23 @@ void CommandBufferWGPU::SetRootDescriptor(const SetRootDescriptorDesc& setRootDe
         return;
 
     BindPoint bindPoint = setRootDescriptorDesc.bindPoint == BindPoint::INHERIT ? m_BindPoint : setRootDescriptorDesc.bindPoint;
-    m_RootDescriptorBindings[setRootDescriptorDesc.rootDescriptorIndex] = {(DescriptorWGPU*)setRootDescriptorDesc.descriptor, setRootDescriptorDesc.offset};
+    RootDescriptorBindingWGPU& rootBinding = m_RootDescriptorBindings[setRootDescriptorDesc.rootDescriptorIndex];
+    const RootDescriptorMappingWGPU& rootDescriptor = m_PipelineLayout->GetRootDescriptorMapping(setRootDescriptorDesc.rootDescriptorIndex);
+    DescriptorWGPU* descriptor = (DescriptorWGPU*)setRootDescriptorDesc.descriptor;
+    bool recreateBindGroup = rootBinding.descriptor != descriptor || (rootDescriptor.dynamicOffsetIndex == uint32_t(-1) && rootBinding.offset != setRootDescriptorDesc.offset);
 
-    if (bindPoint == BindPoint::COMPUTE) {
-        if (m_ComputeRootBindGroup) {
-            wgpuBindGroupRelease(m_ComputeRootBindGroup);
-            m_ComputeRootBindGroup = nullptr;
-        }
-    } else if (m_GraphicsRootBindGroup) {
-        wgpuBindGroupRelease(m_GraphicsRootBindGroup);
-        m_GraphicsRootBindGroup = nullptr;
-    }
+    rootBinding = {descriptor, setRootDescriptorDesc.offset};
+
+    if (rootDescriptor.dynamicOffsetIndex != uint32_t(-1))
+        m_RootDynamicOffsets[rootDescriptor.dynamicOffsetIndex] = (uint32_t)setRootDescriptorDesc.offset;
+
+    if (recreateBindGroup)
+        ReleaseRootBindGroups();
+
+    if (bindPoint == BindPoint::COMPUTE)
+        m_ComputeRootGroupDirty = true;
+    else
+        m_GraphicsRootGroupDirty = true;
 
     BindRootGroup(bindPoint);
 }
@@ -489,6 +565,8 @@ void CommandBufferWGPU::BeginRendering(const RenderingDesc& renderingDesc) {
 
     m_RenderPass = wgpuCommandEncoderBeginRenderPass(m_CommandEncoder, &desc);
 
+    MarkDescriptorSetsDirty(BindPoint::GRAPHICS);
+    m_GraphicsRootGroupDirty = true;
     BindRootGroup(BindPoint::GRAPHICS);
 }
 
@@ -544,6 +622,8 @@ void CommandBufferWGPU::ClearAttachments(const ClearAttachmentDesc* clearAttachm
             }
         }
     }
+
+    m_RenderPipeline = nullptr;
 }
 
 static TextureRegionDesc GetWholeTextureRegion(const TextureDesc& textureDesc) {
@@ -626,10 +706,14 @@ void CommandBufferWGPU::Dispatch(const DispatchDesc& dispatchDesc) {
     if (!m_ComputePass) {
         WGPUComputePassDescriptor desc = WGPU_COMPUTE_PASS_DESCRIPTOR_INIT;
         m_ComputePass = wgpuCommandEncoderBeginComputePass(m_CommandEncoder, &desc);
+        MarkDescriptorSetsDirty(BindPoint::COMPUTE);
+        m_ComputeRootGroupDirty = true;
     }
 
-    if (m_ComputePipeline)
+    if (m_ComputePipeline && m_ComputePipeline != m_BoundComputePipeline) {
         wgpuComputePassEncoderSetPipeline(m_ComputePass, m_ComputePipeline);
+        m_BoundComputePipeline = m_ComputePipeline;
+    }
     BindRootGroup(BindPoint::COMPUTE);
     BindDescriptorSets(BindPoint::COMPUTE);
     wgpuComputePassEncoderDispatchWorkgroups(m_ComputePass, dispatchDesc.x, dispatchDesc.y, dispatchDesc.z);
@@ -639,10 +723,14 @@ void CommandBufferWGPU::DispatchIndirect(const Buffer& buffer, uint64_t offset) 
     if (!m_ComputePass) {
         WGPUComputePassDescriptor desc = WGPU_COMPUTE_PASS_DESCRIPTOR_INIT;
         m_ComputePass = wgpuCommandEncoderBeginComputePass(m_CommandEncoder, &desc);
+        MarkDescriptorSetsDirty(BindPoint::COMPUTE);
+        m_ComputeRootGroupDirty = true;
     }
 
-    if (m_ComputePipeline)
+    if (m_ComputePipeline && m_ComputePipeline != m_BoundComputePipeline) {
         wgpuComputePassEncoderSetPipeline(m_ComputePass, m_ComputePipeline);
+        m_BoundComputePipeline = m_ComputePipeline;
+    }
     BindRootGroup(BindPoint::COMPUTE);
     BindDescriptorSets(BindPoint::COMPUTE);
     wgpuComputePassEncoderDispatchWorkgroupsIndirect(m_ComputePass, (BufferWGPU&)buffer, offset);

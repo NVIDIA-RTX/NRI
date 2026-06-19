@@ -38,6 +38,10 @@ static void FillLayoutEntry(WGPUBindGroupLayoutEntry& entry, const DescriptorRan
     FillLayoutEntry(entry, range.descriptorType, GetShaderStageFlags(range.shaderStages), WGPUTextureFormat_Undefined, binding, bindingArraySize);
 }
 
+static bool IsDynamicOffsetRootDescriptor(DescriptorType descriptorType) {
+    return descriptorType == DescriptorType::CONSTANT_BUFFER || descriptorType == DescriptorType::BUFFER || descriptorType == DescriptorType::STORAGE_BUFFER || descriptorType == DescriptorType::STRUCTURED_BUFFER || descriptorType == DescriptorType::STORAGE_STRUCTURED_BUFFER;
+}
+
 static std::array<uint32_t, (size_t)DescriptorType::MAX_NUM> GetBindingOffsets(const DeviceWGPU& device, const PipelineLayoutDesc& pipelineLayoutDesc) {
     bool ignoreGlobalSPIRVOffsets = (pipelineLayoutDesc.flags & PipelineLayoutBits::IGNORE_GLOBAL_SPIRV_OFFSETS) != 0;
 
@@ -190,15 +194,35 @@ Result PipelineLayoutWGPU::Create(const PipelineLayoutDesc& pipelineLayoutDesc) 
         for (uint32_t i = 0; i < pipelineLayoutDesc.rootDescriptorNum; i++) {
             const RootDescriptorDesc& rootDescriptor = pipelineLayoutDesc.rootDescriptors[i];
             uint32_t binding = rootDescriptor.registerIndex + bindingOffsets[(size_t)rootDescriptor.descriptorType];
+            bool hasDynamicOffset = IsDynamicOffsetRootDescriptor(rootDescriptor.descriptorType);
 
             DescriptorRangeDesc range = {};
             range.baseRegisterIndex = binding;
             range.descriptorNum = 1;
             range.descriptorType = rootDescriptor.descriptorType;
             range.shaderStages = rootDescriptor.shaderStages;
-            FillLayoutEntry(entries[pipelineLayoutDesc.rootSamplerNum + i], range, binding);
+            WGPUBindGroupLayoutEntry& entry = entries[pipelineLayoutDesc.rootSamplerNum + i];
+            FillLayoutEntry(entry, range, binding);
+            entry.buffer.hasDynamicOffset = hasDynamicOffset ? WGPU_TRUE : WGPU_FALSE;
 
             m_RootDescriptors.push_back({rootDescriptor.descriptorType, binding});
+        }
+
+        for (;;) {
+            uint32_t selected = uint32_t(-1);
+            uint32_t selectedBinding = uint32_t(-1);
+            for (uint32_t i = 0; i < (uint32_t)m_RootDescriptors.size(); i++) {
+                RootDescriptorMappingWGPU& rootDescriptor = m_RootDescriptors[i];
+                if (rootDescriptor.dynamicOffsetIndex == uint32_t(-1) && IsDynamicOffsetRootDescriptor(rootDescriptor.type) && rootDescriptor.binding < selectedBinding) {
+                    selected = i;
+                    selectedBinding = rootDescriptor.binding;
+                }
+            }
+
+            if (selected == uint32_t(-1))
+                break;
+
+            m_RootDescriptors[selected].dynamicOffsetIndex = m_RootDynamicOffsetNum++;
         }
 
         WGPUBindGroupLayoutDescriptor layoutDesc = WGPU_BIND_GROUP_LAYOUT_DESCRIPTOR_INIT;

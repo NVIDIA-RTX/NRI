@@ -22,8 +22,11 @@ struct CommandBufferWGPU final : public DebugNameBase {
         : m_Device(device)
         , m_GraphicsDescriptorSets(device.GetStdAllocator())
         , m_ComputeDescriptorSets(device.GetStdAllocator())
+        , m_GraphicsDescriptorSetDirty(device.GetStdAllocator())
+        , m_ComputeDescriptorSetDirty(device.GetStdAllocator())
         , m_ClearPipelines(device.GetStdAllocator())
         , m_RootDescriptorBindings(device.GetStdAllocator())
+        , m_RootDynamicOffsets(device.GetStdAllocator())
         , m_TemporaryBuffers(device.GetStdAllocator()) {
     }
 
@@ -83,9 +86,11 @@ struct CommandBufferWGPU final : public DebugNameBase {
 
 private:
     void EndPass();
+    void BindDescriptorSet(BindPoint bindPoint, uint32_t bindGroupIndex);
     void BindDescriptorSets(BindPoint bindPoint);
     void ReleaseTransientObjects();
     void ReleaseRootBindGroups();
+    void MarkDescriptorSetsDirty(BindPoint bindPoint);
     void BindRootGroup(BindPoint bindPoint);
     WGPUBindGroup CreateRootBindGroup(BindPoint bindPoint);
     WGPURenderPipeline GetClearPipeline(Format format, Format depthStencilFormat, PlaneBits planes, WGPUPipelineLayout& pipelineLayout);
@@ -94,8 +99,11 @@ private:
     DeviceWGPU& m_Device;
     Vector<const DescriptorSetWGPU*> m_GraphicsDescriptorSets;
     Vector<const DescriptorSetWGPU*> m_ComputeDescriptorSets;
+    Vector<uint8_t> m_GraphicsDescriptorSetDirty;
+    Vector<uint8_t> m_ComputeDescriptorSetDirty;
     Vector<ClearPipelineWGPU> m_ClearPipelines;
     Vector<RootDescriptorBindingWGPU> m_RootDescriptorBindings;
+    Vector<uint32_t> m_RootDynamicOffsets;
     Vector<WGPUBuffer> m_TemporaryBuffers;
     WGPUCommandEncoder m_CommandEncoder = nullptr;
     WGPUCommandBuffer m_CommandBuffer = nullptr;
@@ -104,12 +112,16 @@ private:
     WGPUBindGroup m_GraphicsRootBindGroup = nullptr;
     WGPUBindGroup m_ComputeRootBindGroup = nullptr;
     const PipelineLayoutWGPU* m_PipelineLayout = nullptr;
+    WGPURenderPipeline m_RenderPipeline = nullptr;
     WGPUComputePipeline m_ComputePipeline = nullptr;
+    WGPUComputePipeline m_BoundComputePipeline = nullptr;
     BindPoint m_BindPoint = BindPoint::GRAPHICS;
     Format m_RenderFormat = Format::UNKNOWN;
     Format m_RenderDepthStencilFormat = Format::UNKNOWN;
     Dim_t m_RenderWidth = 0;
     Dim_t m_RenderHeight = 0;
+    bool m_GraphicsRootGroupDirty = true;
+    bool m_ComputeRootGroupDirty = true;
 };
 
 } // namespace nri

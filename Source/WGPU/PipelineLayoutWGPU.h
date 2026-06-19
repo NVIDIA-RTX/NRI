@@ -12,6 +12,7 @@ struct RootSamplerMappingWGPU {
 struct RootDescriptorMappingWGPU {
     DescriptorType type = DescriptorType::CONSTANT_BUFFER;
     uint32_t binding = 0;
+    uint32_t dynamicOffsetIndex = uint32_t(-1);
 };
 
 struct PipelineLayoutWGPU final : public DebugNameBase {
@@ -56,6 +57,9 @@ struct PipelineLayoutWGPU final : public DebugNameBase {
     const RootDescriptorMappingWGPU& GetRootDescriptorMapping(uint32_t rootDescriptorIndex) const {
         return m_RootDescriptors[rootDescriptorIndex];
     }
+    uint32_t GetRootDynamicOffsetNum() const {
+        return m_RootDynamicOffsetNum;
+    }
 
     Result Create(const PipelineLayoutDesc& pipelineLayoutDesc);
     Result UpdateStorageTextureFormats(const ShaderDesc* shaderDescs, uint32_t shaderDescNum);
@@ -78,6 +82,7 @@ private:
     WGPUBindGroupLayout m_RootSamplerLayout = nullptr;
     WGPUBindGroup m_RootSamplerBindGroup = nullptr;
     uint32_t m_RootSamplerGroupIndex = uint32_t(-1);
+    uint32_t m_RootDynamicOffsetNum = 0;
     uint32_t m_ImmediateDataSize = 0;
 };
 
