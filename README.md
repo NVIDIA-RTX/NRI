@@ -22,7 +22,7 @@ Supported GAPIs:
 - *Vulkan 1.4+, 1.3++ or 1.2+++* - advertises modern Vulkan compatibility, with a *Vulkan 1.2* core + _VK_KHR_synchronization2_ baseline
 - *D3D12*
 - *D3D11*
-- *WebGPU* (experimental, through [wgpu-native](https://github.com/gfx-rs/wgpu-native))
+- *WebGPU* (through [wgpu-native](https://github.com/gfx-rs/wgpu-native))
 - *Metal* (through [MoltenVK](https://github.com/KhronosGroup/MoltenVK))
 - None / dummy (everything is supported but does nothing)
 
@@ -36,7 +36,7 @@ There is [NVRHI](https://github.com/NVIDIA-RTX/NVRHI), which offers a *D3D11*-li
  - *High performance* - low overhead with zero memory allocations at runtime, honored user-provided memory allocator
  - *Modern hardware tech* - support for Ray Tracing, Mesh Shaders, descriptor indexing (including directly indexed descriptor heaps) and more
  - *Mobile-ready* - optimized for Tile-Based Rendering (TBR/TBDR) architectures and friendly to mobile-oriented API designs
- - *Portable API shape* - suitable for WebGPU-style backends
+ - *Portable API shape* - maps cleanly to constrained GAPIs, including WebGPU and consoles
  - *D3D12 Ultimate* - full support, including Enhanced Barriers
  - *Platform Flexibility* - Windows, Linux, MacOS, and Android support
  - *Developer Experience* - integrated GAPI- and NRI- validation, VK [printf](https://github.com/KhronosGroup/*Vulkan*-ValidationLayers/blob/main/docs/debug_printf.md), and timeline annotations (GAPI, [NVTX](https://github.com/NVIDIA/NVTX) and [PIX](https://devblogs.microsoft.com/pix/winpixeventruntime/), if "WinPixEventRuntime.dll" is nearby)
