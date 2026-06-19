@@ -38,8 +38,11 @@ Result BufferD3D12::Allocate(MemoryLocation memoryLocation, float priority, bool
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
     const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_UNDEFINED;
+    // D3D12 validation rejects video buffers created with "CreateResource3" when they are passed to video encode/decode APIs.
+    // Keep video buffers on the legacy resource-state creation path; ordinary buffers still use enhanced barriers.
+    const bool useEnhancedBarriers = m_Device.GetVersion() >= 10 && m_Device.GetDesc().features.enhancedBarriers && !(m_Desc.usage & (BufferUsageBits::VIDEO_DECODE | BufferUsageBits::VIDEO_ENCODE));
 
-    if (m_Device.GetVersion() >= 10 && m_Device.GetDesc().features.enhancedBarriers) {
+    if (useEnhancedBarriers) {
         HRESULT hr = m_Device.GetVma()->CreateResource3(&allocationDesc, &desc1, initialLayout, nullptr, NO_CASTABLE_FORMATS, &m_VmaAllocation, IID_PPV_ARGS(&m_Buffer));
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "D3D12MA::CreateResource3");
     } else
@@ -83,8 +86,12 @@ Result BufferD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
     const D3D12_BARRIER_LAYOUT initialLayout = D3D12_BARRIER_LAYOUT_UNDEFINED;
+    // D3D12 validation rejects video buffers created with "CreateResource3" when they are passed to video encode/decode APIs.
+    // Keep video buffers on the legacy resource-state creation path; ordinary buffers still use enhanced barriers.
+    const bool useEnhancedBarriers = m_Device.GetVersion() >= 10 && m_Device.GetDesc().features.enhancedBarriers && !(m_Desc.usage & (BufferUsageBits::VIDEO_DECODE | BufferUsageBits::VIDEO_ENCODE));
 
-    if (m_Device.GetVersion() >= 10 && m_Device.GetDesc().features.enhancedBarriers) {
+    if (useEnhancedBarriers) {
+
         if (isCommitted) {
             HRESULT hr = m_Device->CreateCommittedResource3(&heapDesc.Properties, heapFlagsFixed, &desc1, initialLayout, nullptr, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Buffer));
             NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreateCommittedResource3");

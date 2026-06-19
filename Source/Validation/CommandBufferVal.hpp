@@ -27,6 +27,12 @@ static inline bool IsAccessMaskSupported(const BufferDesc& bufferDesc, AccessBit
     if (accessMask & (AccessBits::RESOLVE_SOURCE | AccessBits::RESOLVE_DESTINATION))
         isSupported = false;
 
+    if (accessMask & AccessBits::VIDEO_DECODE)
+        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::VIDEO_DECODE) != 0;
+
+    if (accessMask & AccessBits::VIDEO_ENCODE)
+        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::VIDEO_ENCODE) != 0;
+
     return isSupported;
 }
 
@@ -53,6 +59,12 @@ static inline bool IsAccessMaskSupported(const TextureDesc& textureDesc, AccessB
     if (accessMask & (AccessBits::SHADER_RESOURCE_STORAGE | AccessBits::CLEAR_STORAGE))
         isSupported = isSupported && (textureDesc.usage & TextureUsageBits::SHADER_RESOURCE_STORAGE) != 0;
 
+    if (accessMask & AccessBits::VIDEO_DECODE)
+        isSupported = isSupported && (textureDesc.usage & TextureUsageBits::VIDEO_DECODE) != 0;
+
+    if (accessMask & AccessBits::VIDEO_ENCODE)
+        isSupported = isSupported && (textureDesc.usage & TextureUsageBits::VIDEO_ENCODE) != 0;
+
     return isSupported;
 }
 
@@ -76,6 +88,12 @@ static inline bool IsTextureLayoutSupported(const TextureDesc& textureDesc, Layo
         return textureDesc.sampleNum > 1;
     else if (layout == Layout::INPUT_ATTACHMENT)
         return (textureDesc.usage & TextureUsageBits::INPUT_ATTACHMENT) != 0;
+
+    else if (layout == Layout::VIDEO_DECODE_DST || layout == Layout::VIDEO_DECODE_DPB)
+        return (textureDesc.usage & TextureUsageBits::VIDEO_DECODE) != 0;
+
+    else if (layout == Layout::VIDEO_ENCODE_SRC || layout == Layout::VIDEO_ENCODE_DPB)
+        return (textureDesc.usage & TextureUsageBits::VIDEO_ENCODE) != 0;
 
     return true;
 }

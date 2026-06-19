@@ -314,25 +314,56 @@ static inline D3D12_RESOURCE_STATES GetResourceStates(AccessBits accessBits, D3D
     return resourceStates;
 }
 
+static inline bool HasVideoResourceState(D3D12_RESOURCE_STATES resourceStates) {
+
+    return (resourceStates & (D3D12_RESOURCE_STATE_VIDEO_DECODE_READ | D3D12_RESOURCE_STATE_VIDEO_DECODE_WRITE | D3D12_RESOURCE_STATE_VIDEO_ENCODE_READ | D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE)) != 0;
+}
+
+static inline void SetTransitionResourceBarrier(ID3D12Resource* resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after, D3D12_RESOURCE_BARRIER& resourceBarrier, uint32_t subresource) {
+
+    resourceBarrier = {};
+    resourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    resourceBarrier.Transition.pResource = resource;
+    resourceBarrier.Transition.StateBefore = before;
+    resourceBarrier.Transition.StateAfter = after;
+    resourceBarrier.Transition.Subresource = subresource;
+}
+
 static uint32_t AddResourceBarrier(D3D12_COMMAND_LIST_TYPE commandListType, ID3D12Resource* resource, AccessBits before, AccessBits after, D3D12_RESOURCE_BARRIER& resourceBarrier, uint32_t subresource) {
-    D3D12_RESOURCE_STATES resourceStateBefore = GetResourceStates(before, commandListType);
-    D3D12_RESOURCE_STATES resourceStateAfter = GetResourceStates(after, commandListType);
+    const D3D12_RESOURCE_STATES resourceStateBefore = GetResourceStates(before, commandListType);
+    const D3D12_RESOURCE_STATES resourceStateAfter = GetResourceStates(after, commandListType);
 
     if (resourceStateBefore == resourceStateAfter) {
+
         if (resourceStateBefore != D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
             return 0;
 
         resourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
         resourceBarrier.UAV.pResource = resource;
     } else {
-        resourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        resourceBarrier.Transition.pResource = resource;
-        resourceBarrier.Transition.StateBefore = resourceStateBefore;
-        resourceBarrier.Transition.StateAfter = resourceStateAfter;
-        resourceBarrier.Transition.Subresource = subresource;
+        SetTransitionResourceBarrier(resource, resourceStateBefore, resourceStateAfter, resourceBarrier, subresource);
     }
 
     return 1;
+}
+
+static uint32_t AddVideoBufferResourceBarriers(D3D12_COMMAND_LIST_TYPE commandListType, ID3D12Resource* resource, AccessBits before, AccessBits after, D3D12_RESOURCE_BARRIER* resourceBarriers, uint32_t subresource) {
+    const D3D12_RESOURCE_STATES resourceStateBefore = GetResourceStates(before, commandListType);
+    const D3D12_RESOURCE_STATES resourceStateAfter = GetResourceStates(after, commandListType);
+
+    if (resourceStateBefore == resourceStateAfter && HasVideoResourceState(resourceStateBefore)) {
+        SetTransitionResourceBarrier(resource, resourceStateBefore, D3D12_RESOURCE_STATE_COMMON, resourceBarriers[0], subresource);
+        SetTransitionResourceBarrier(resource, D3D12_RESOURCE_STATE_COMMON, resourceStateAfter, resourceBarriers[1], subresource);
+
+        return 2;
+    }
+
+    return AddResourceBarrier(commandListType, resource, before, after, resourceBarriers[0], subresource);
+}
+
+static inline bool HasVideoBufferUsage(BufferUsageBits usage) {
+
+    return usage & (BufferUsageBits::VIDEO_DECODE | BufferUsageBits::VIDEO_ENCODE);
 }
 
 static inline void ConvertRects(const Rect* in, uint32_t rectNum, D3D12_RECT* out) {
@@ -2657,8 +2688,12 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
         D3D12_BARRIER_GROUP barrierGroups[3] = {};
         uint32_t barriersGroupsNum = 0;
 
+        Scratch<D3D12_RESOURCE_BARRIER> videoBufferResourceBarriers = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_RESOURCE_BARRIER, barrierDesc.bufferNum * 2);
+        uint32_t videoBufferResourceBarrierNum = 0;
+
         // Global
         Scratch<D3D12_GLOBAL_BARRIER> globalBarriers = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_GLOBAL_BARRIER, barrierDesc.globalNum);
+
         if (barrierDesc.globalNum) {
             D3D12_BARRIER_GROUP* barrierGroup = &barrierGroups[barriersGroupsNum++];
             barrierGroup->Type = D3D12_BARRIER_TYPE_GLOBAL;
@@ -2678,18 +2713,35 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
         }
 
         // Buffer
+        uint32_t bufferBarrierNum = 0;
+
+        for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
+            const BufferBarrierDesc& in = barrierDesc.buffers[i];
+            const BufferD3D12& buffer = *(BufferD3D12*)in.buffer;
+
+            if (HasVideoBufferUsage(buffer.GetDesc().usage))
+                continue;
+
+            bufferBarrierNum++;
+        }
+
         Scratch<D3D12_BUFFER_BARRIER> bufferBarriers = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_BUFFER_BARRIER, barrierDesc.bufferNum);
-        if (barrierDesc.bufferNum) {
+        if (bufferBarrierNum) {
             D3D12_BARRIER_GROUP* barrierGroup = &barrierGroups[barriersGroupsNum++];
             barrierGroup->Type = D3D12_BARRIER_TYPE_BUFFER;
-            barrierGroup->NumBarriers = barrierDesc.bufferNum;
+            barrierGroup->NumBarriers = bufferBarrierNum;
             barrierGroup->pBufferBarriers = bufferBarriers;
+
+            uint32_t bufferBarrierIndex = 0;
 
             for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
                 const BufferBarrierDesc& in = barrierDesc.buffers[i];
                 const BufferD3D12& buffer = *(BufferD3D12*)in.buffer;
 
-                D3D12_BUFFER_BARRIER& out = bufferBarriers[i];
+                if (HasVideoBufferUsage(buffer.GetDesc().usage))
+                    continue;
+
+                D3D12_BUFFER_BARRIER& out = bufferBarriers[bufferBarrierIndex++];
                 out = {};
                 out.SyncBefore = GetBarrierSyncFlags(in.before.stages, in.before.access);
                 out.SyncAfter = GetBarrierSyncFlags(in.after.stages, in.after.access);
@@ -2699,6 +2751,25 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
                 out.Offset = 0;
                 out.Size = UINT64_MAX;
             }
+        }
+
+        // D3D12 validation rejects VIDEO_* access flags in D3D12_BUFFER_BARRIER.
+        // Video buffers are created on the legacy state path, so route their barriers through ResourceBarrier as well.
+        for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
+            const BufferBarrierDesc& in = barrierDesc.buffers[i];
+            const BufferD3D12& buffer = *(BufferD3D12*)in.buffer;
+
+            if (!HasVideoBufferUsage(buffer.GetDesc().usage))
+                continue;
+
+            videoBufferResourceBarriers[videoBufferResourceBarrierNum] = {};
+            videoBufferResourceBarrierNum += AddVideoBufferResourceBarriers(
+                m_CommandListType,
+                (ID3D12Resource*)buffer,
+                in.before.access,
+                in.after.access,
+                &videoBufferResourceBarriers[videoBufferResourceBarrierNum],
+                0);
         }
 
         // Texture
@@ -2758,6 +2829,21 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
         }
 
         // Submit
+        if (videoBufferResourceBarrierNum) {
+
+            if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE)
+                GetVideoDecodeCommandList()->ResourceBarrier(videoBufferResourceBarrierNum, videoBufferResourceBarriers);
+            else if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE)
+                GetVideoEncodeCommandList()->ResourceBarrier(videoBufferResourceBarrierNum, videoBufferResourceBarriers);
+            else
+                GetGraphicsCommandList()->ResourceBarrier(videoBufferResourceBarrierNum, videoBufferResourceBarriers);
+        }
+
+        if (!barriersGroupsNum) {
+
+            return;
+        }
+
         if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE)
             GetVideoDecodeCommandList()->Barrier(barriersGroupsNum, barrierGroups);
         else if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE)
