@@ -2086,6 +2086,7 @@ NriStruct(DeviceDesc) {
         bool shaderBytecodeDXBC;                                  // DXBC can be passed to "ShaderDesc::bytecode"
         bool shaderBytecodeDXIL;                                  // DXIL can be passed to "ShaderDesc::bytecode"
         bool shaderBytecodeSPIRV;                                 // SPIRV can be passed to "ShaderDesc::bytecode"
+        bool shaderBytecodeWGSL;                                  // WGSL can be passed to "ShaderDesc::bytecode"
 
         // Queries
         bool occlusion;                                           // see "QueryType::OCCLUSION"

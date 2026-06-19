@@ -7,8 +7,14 @@ PipelineWGPU::~PipelineWGPU() {
         wgpuComputePipelineRelease(m_ComputePipeline);
 }
 
-static bool AddNonReadableDecorationsForWriteOnlyStorageImagesWGPU(DeviceWGPU& device, const ShaderDesc& shaderDesc, Vector<uint32_t>& patchedSpirv) {
+static bool IsSpirvBytecodeWGPU(const ShaderDesc& shaderDesc) {
     constexpr uint32_t SPIRV_MAGIC = 0x07230203;
+
+    const uint32_t* spirv = (const uint32_t*)shaderDesc.bytecode;
+    return spirv && shaderDesc.size >= sizeof(uint32_t) && spirv[0] == SPIRV_MAGIC;
+}
+
+static bool AddNonReadableDecorationsForWriteOnlyStorageImagesWGPU(DeviceWGPU& device, const ShaderDesc& shaderDesc, Vector<uint32_t>& patchedSpirv) {
     constexpr uint16_t OP_TYPE_IMAGE = 25;
     constexpr uint16_t OP_TYPE_POINTER = 32;
     constexpr uint16_t OP_VARIABLE = 59;
@@ -22,7 +28,7 @@ static bool AddNonReadableDecorationsForWriteOnlyStorageImagesWGPU(DeviceWGPU& d
 
     uint32_t wordNum = (uint32_t)(shaderDesc.size / sizeof(uint32_t));
     const uint32_t* spirv = (const uint32_t*)shaderDesc.bytecode;
-    if (!spirv || wordNum < 5 || spirv[0] != SPIRV_MAGIC)
+    if (!IsSpirvBytecodeWGPU(shaderDesc) || wordNum < 5)
         return false;
 
     uint32_t idBound = spirv[3];
@@ -107,6 +113,16 @@ static bool AddNonReadableDecorationsForWriteOnlyStorageImagesWGPU(DeviceWGPU& d
 }
 
 WGPUShaderModule PipelineWGPU::CreateShaderModule(const ShaderDesc& shaderDesc) {
+    WGPUShaderModuleDescriptor desc = WGPU_SHADER_MODULE_DESCRIPTOR_INIT;
+
+    if (!IsSpirvBytecodeWGPU(shaderDesc)) {
+        WGPUShaderSourceWGSL wgsl = WGPU_SHADER_SOURCE_WGSL_INIT;
+        wgsl.code = {(const char*)shaderDesc.bytecode, (size_t)shaderDesc.size};
+        desc.nextInChain = &wgsl.chain;
+
+        return wgpuDeviceCreateShaderModule(m_Device, &desc);
+    }
+
     Vector<uint32_t> patchedSpirv(m_Device.GetStdAllocator());
     bool hasPatchedSpirv = AddNonReadableDecorationsForWriteOnlyStorageImagesWGPU(m_Device, shaderDesc, patchedSpirv);
 
@@ -114,7 +130,6 @@ WGPUShaderModule PipelineWGPU::CreateShaderModule(const ShaderDesc& shaderDesc) 
     spirv.codeSize = hasPatchedSpirv ? (uint32_t)patchedSpirv.size() : (uint32_t)(shaderDesc.size / sizeof(uint32_t));
     spirv.code = hasPatchedSpirv ? patchedSpirv.data() : (const uint32_t*)shaderDesc.bytecode;
 
-    WGPUShaderModuleDescriptor desc = WGPU_SHADER_MODULE_DESCRIPTOR_INIT;
     desc.nextInChain = &spirv.chain;
 
     return wgpuDeviceCreateShaderModule(m_Device, &desc);

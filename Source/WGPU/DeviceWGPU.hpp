@@ -314,6 +314,7 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.features.textureCompressionETC2 = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TextureCompressionETC2) == WGPU_TRUE;
     m_Desc.features.textureCompressionASTC = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TextureCompressionASTC) == WGPU_TRUE;
     m_Desc.features.shaderBytecodeSPIRV = true;
+    m_Desc.features.shaderBytecodeWGSL = true;
     m_Desc.features.occlusion = false;
     m_Desc.features.timestamp = m_IsTimestampQueryInsidePassesSupported;
     m_Desc.features.timestampCopyQueue = false;

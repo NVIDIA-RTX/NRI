@@ -302,7 +302,7 @@ static WGPUTextureFormat GetStorageTextureFormatFromSpirv(uint32_t imageFormat) 
     }
 }
 
-struct SpirvStorageTextureWGPU {
+struct StorageTextureBindingWGPU {
     uint32_t set = 0;
     uint32_t binding = 0;
     WGPUTextureFormat format = WGPUTextureFormat_Undefined;
@@ -318,11 +318,193 @@ static WGPUTextureViewDimension GetStorageTextureViewDimensionFromSpirv(uint32_t
     return arrayed ? WGPUTextureViewDimension_2DArray : WGPUTextureViewDimension_2D;
 }
 
-static void ReflectStorageTextures(const ShaderDesc& shaderDesc, Vector<SpirvStorageTextureWGPU>& storageTextures) {
+static const char* FindTokenWGPU(const char* begin, const char* end, const char* token) {
+    size_t tokenLength = strlen(token);
+    if (!tokenLength || end - begin < (ptrdiff_t)tokenLength)
+        return nullptr;
+
+    for (const char* it = begin; it <= end - tokenLength; it++) {
+        if (strncmp(it, token, tokenLength) == 0)
+            return it;
+    }
+
+    return nullptr;
+}
+
+static const char* FindTokenReverseWGPU(const char* begin, const char* end, const char* token) {
+    size_t tokenLength = strlen(token);
+    if (!tokenLength || end - begin < (ptrdiff_t)tokenLength)
+        return nullptr;
+
+    for (const char* it = end - tokenLength; it >= begin; it--) {
+        if (strncmp(it, token, tokenLength) == 0)
+            return it;
+        if (it == begin)
+            break;
+    }
+
+    return nullptr;
+}
+
+static const char* SkipSpacesWGPU(const char* it, const char* end) {
+    while (it < end && (*it == ' ' || *it == '\t' || *it == '\r' || *it == '\n'))
+        it++;
+
+    return it;
+}
+
+static bool ParseUintAttributeWGPU(const char* searchBegin, const char* searchEnd, const char* attribute, uint32_t& value) {
+    const char* it = FindTokenReverseWGPU(searchBegin, searchEnd, attribute);
+    if (!it)
+        return false;
+
+    it += strlen(attribute);
+    it = SkipSpacesWGPU(it, searchEnd);
+    if (it == searchEnd || *it != '(')
+        return false;
+
+    it = SkipSpacesWGPU(it + 1, searchEnd);
+    if (it == searchEnd || *it < '0' || *it > '9')
+        return false;
+
+    value = 0;
+    while (it < searchEnd && *it >= '0' && *it <= '9')
+        value = value * 10 + uint32_t(*it++ - '0');
+
+    return true;
+}
+
+static bool IsWgslIdentifierCharWGPU(char c) {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
+}
+
+static bool IsWgslTokenWGPU(const char* begin, const char* end, const char* token) {
+    size_t tokenLength = strlen(token);
+    return end - begin == (ptrdiff_t)tokenLength && strncmp(begin, token, tokenLength) == 0;
+}
+
+static WGPUTextureFormat GetStorageTextureFormatFromWgsl(const char* begin, const char* end) {
+    if (IsWgslTokenWGPU(begin, end, "rgba32float"))
+        return WGPUTextureFormat_RGBA32Float;
+    if (IsWgslTokenWGPU(begin, end, "rgba16float"))
+        return WGPUTextureFormat_RGBA16Float;
+    if (IsWgslTokenWGPU(begin, end, "r32float"))
+        return WGPUTextureFormat_R32Float;
+    if (IsWgslTokenWGPU(begin, end, "rgba8unorm"))
+        return WGPUTextureFormat_RGBA8Unorm;
+    if (IsWgslTokenWGPU(begin, end, "bgra8unorm"))
+        return WGPUTextureFormat_BGRA8Unorm;
+    if (IsWgslTokenWGPU(begin, end, "rgba8snorm"))
+        return WGPUTextureFormat_RGBA8Snorm;
+    if (IsWgslTokenWGPU(begin, end, "rg32float"))
+        return WGPUTextureFormat_RG32Float;
+    if (IsWgslTokenWGPU(begin, end, "rg16float"))
+        return WGPUTextureFormat_RG16Float;
+    if (IsWgslTokenWGPU(begin, end, "r16float"))
+        return WGPUTextureFormat_R16Float;
+    if (IsWgslTokenWGPU(begin, end, "rgba32sint"))
+        return WGPUTextureFormat_RGBA32Sint;
+    if (IsWgslTokenWGPU(begin, end, "rgba16sint"))
+        return WGPUTextureFormat_RGBA16Sint;
+    if (IsWgslTokenWGPU(begin, end, "rgba8sint"))
+        return WGPUTextureFormat_RGBA8Sint;
+    if (IsWgslTokenWGPU(begin, end, "r32sint"))
+        return WGPUTextureFormat_R32Sint;
+    if (IsWgslTokenWGPU(begin, end, "rg32sint"))
+        return WGPUTextureFormat_RG32Sint;
+    if (IsWgslTokenWGPU(begin, end, "rg16sint"))
+        return WGPUTextureFormat_RG16Sint;
+    if (IsWgslTokenWGPU(begin, end, "rg8sint"))
+        return WGPUTextureFormat_RG8Sint;
+    if (IsWgslTokenWGPU(begin, end, "r16sint"))
+        return WGPUTextureFormat_R16Sint;
+    if (IsWgslTokenWGPU(begin, end, "r8sint"))
+        return WGPUTextureFormat_R8Sint;
+    if (IsWgslTokenWGPU(begin, end, "rgba32uint"))
+        return WGPUTextureFormat_RGBA32Uint;
+    if (IsWgslTokenWGPU(begin, end, "rgba16uint"))
+        return WGPUTextureFormat_RGBA16Uint;
+    if (IsWgslTokenWGPU(begin, end, "rgba8uint"))
+        return WGPUTextureFormat_RGBA8Uint;
+    if (IsWgslTokenWGPU(begin, end, "r32uint"))
+        return WGPUTextureFormat_R32Uint;
+    if (IsWgslTokenWGPU(begin, end, "rg32uint"))
+        return WGPUTextureFormat_RG32Uint;
+    if (IsWgslTokenWGPU(begin, end, "rg16uint"))
+        return WGPUTextureFormat_RG16Uint;
+    if (IsWgslTokenWGPU(begin, end, "rg8uint"))
+        return WGPUTextureFormat_RG8Uint;
+    if (IsWgslTokenWGPU(begin, end, "r16uint"))
+        return WGPUTextureFormat_R16Uint;
+    if (IsWgslTokenWGPU(begin, end, "r8uint"))
+        return WGPUTextureFormat_R8Uint;
+
+    return WGPUTextureFormat_Undefined;
+}
+
+static WGPUTextureViewDimension GetStorageTextureViewDimensionFromWgsl(const char* begin, const char* end) {
+    if (IsWgslTokenWGPU(begin, end, "1d"))
+        return WGPUTextureViewDimension_1D;
+    if (IsWgslTokenWGPU(begin, end, "3d"))
+        return WGPUTextureViewDimension_3D;
+    if (IsWgslTokenWGPU(begin, end, "2d_array"))
+        return WGPUTextureViewDimension_2DArray;
+
+    return WGPUTextureViewDimension_2D;
+}
+
+static void ReflectStorageTexturesFromWgsl(const ShaderDesc& shaderDesc, Vector<StorageTextureBindingWGPU>& storageTextures) {
+    const char* source = (const char*)shaderDesc.bytecode;
+    if (!source || shaderDesc.size == 0)
+        return;
+
+    const char* sourceEnd = source + shaderDesc.size;
+    const char* token = "texture_storage_";
+    const char* it = source;
+    while ((it = FindTokenWGPU(it, sourceEnd, token)) != nullptr) {
+        const char* declarationBegin = it - source > 512 ? it - 512 : source;
+        uint32_t set = 0;
+        uint32_t binding = 0;
+        if (!ParseUintAttributeWGPU(declarationBegin, it, "@group", set) || !ParseUintAttributeWGPU(declarationBegin, it, "@binding", binding)) {
+            it += strlen(token);
+            continue;
+        }
+
+        const char* dimensionBegin = it + strlen(token);
+        const char* dimensionEnd = dimensionBegin;
+        while (dimensionEnd < sourceEnd && IsWgslIdentifierCharWGPU(*dimensionEnd))
+            dimensionEnd++;
+
+        const char* declarationEnd = FindTokenWGPU(dimensionEnd, sourceEnd, ";");
+        if (!declarationEnd)
+            declarationEnd = sourceEnd;
+
+        const char* formatBegin = FindTokenWGPU(dimensionEnd, declarationEnd, "<");
+        if (!formatBegin) {
+            it = dimensionEnd;
+            continue;
+        }
+
+        formatBegin = SkipSpacesWGPU(formatBegin + 1, declarationEnd);
+        const char* formatEnd = formatBegin;
+        while (formatEnd < declarationEnd && IsWgslIdentifierCharWGPU(*formatEnd))
+            formatEnd++;
+
+        WGPUTextureFormat format = GetStorageTextureFormatFromWgsl(formatBegin, formatEnd);
+        if (format != WGPUTextureFormat_Undefined)
+            storageTextures.push_back({set, binding, format, GetStorageTextureViewDimensionFromWgsl(dimensionBegin, dimensionEnd)});
+
+        it = formatEnd;
+    }
+}
+
+static void ReflectStorageTextures(const ShaderDesc& shaderDesc, Vector<StorageTextureBindingWGPU>& storageTextures) {
     const uint32_t* code = (const uint32_t*)shaderDesc.bytecode;
     uint32_t wordNum = (uint32_t)(shaderDesc.size / sizeof(uint32_t));
-    if (!code || wordNum < 5 || code[0] != 0x07230203)
+    if (!code || wordNum < 5 || code[0] != 0x07230203) {
+        ReflectStorageTexturesFromWgsl(shaderDesc, storageTextures);
         return;
+    }
 
     struct TypeInfo {
         uint32_t imageFormat = 0;
@@ -390,12 +572,12 @@ static void ReflectStorageTextures(const ShaderDesc& shaderDesc, Vector<SpirvSto
 }
 
 Result PipelineLayoutWGPU::UpdateStorageTextureFormats(const ShaderDesc* shaderDescs, uint32_t shaderDescNum) {
-    Vector<SpirvStorageTextureWGPU> storageTextures(m_Device.GetStdAllocator());
+    Vector<StorageTextureBindingWGPU> storageTextures(m_Device.GetStdAllocator());
     for (uint32_t i = 0; i < shaderDescNum; i++)
         ReflectStorageTextures(shaderDescs[i], storageTextures);
 
     bool changed = false;
-    for (const SpirvStorageTextureWGPU& storageTexture : storageTextures) {
+    for (const StorageTextureBindingWGPU& storageTexture : storageTextures) {
         for (DescriptorSetMappingWGPU& mapping : m_SetMappings) {
             if (mapping.bindGroupIndex != storageTexture.set)
                 continue;
