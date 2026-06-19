@@ -227,13 +227,28 @@ void CommandBufferWGPU::SetViewports(const Viewport* viewports, uint32_t viewpor
     }
 }
 
+bool CommandBufferWGPU::SetScissorRect(const Rect& rect) {
+    int32_t x0 = std::max<int32_t>(rect.x, 0);
+    int32_t y0 = std::max<int32_t>(rect.y, 0);
+    int32_t x1 = std::min<int32_t>((int32_t)m_RenderWidth, (int32_t)rect.x + (int32_t)rect.width);
+    int32_t y1 = std::min<int32_t>((int32_t)m_RenderHeight, (int32_t)rect.y + (int32_t)rect.height);
+
+    if (x1 <= x0 || y1 <= y0) {
+        wgpuRenderPassEncoderSetScissorRect(m_RenderPass, 0, 0, 0, 0);
+        return false;
+    }
+
+    wgpuRenderPassEncoderSetScissorRect(m_RenderPass, (uint32_t)x0, (uint32_t)y0, (uint32_t)(x1 - x0), (uint32_t)(y1 - y0));
+    return true;
+}
+
 void CommandBufferWGPU::SetScissors(const Rect* rects, uint32_t rectNum) {
     if (!m_RenderPass)
         return;
 
     for (uint32_t i = 0; i < rectNum; i++) {
         const Rect& rect = rects[i];
-        wgpuRenderPassEncoderSetScissorRect(m_RenderPass, rect.x, rect.y, rect.width, rect.height);
+        SetScissorRect(rect);
     }
 }
 
@@ -581,9 +596,8 @@ void CommandBufferWGPU::ClearAttachments(const ClearAttachmentDesc* clearAttachm
     auto drawClear = [&](const Rect* clearRects, uint32_t clearRectNum) {
         if (clearRectNum) {
             for (uint32_t j = 0; j < clearRectNum; j++) {
-                const Rect& rect = clearRects[j];
-                wgpuRenderPassEncoderSetScissorRect(m_RenderPass, rect.x, rect.y, rect.width, rect.height);
-                wgpuRenderPassEncoderDraw(m_RenderPass, 3, 1, 0, 0);
+                if (SetScissorRect(clearRects[j]))
+                    wgpuRenderPassEncoderDraw(m_RenderPass, 3, 1, 0, 0);
             }
         } else {
             wgpuRenderPassEncoderSetScissorRect(m_RenderPass, 0, 0, m_RenderWidth, m_RenderHeight);

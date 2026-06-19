@@ -90,6 +90,7 @@ struct CommandBufferWGPU final : public DebugNameBase {
 
 private:
     void EndPass();
+    bool SetScissorRect(const Rect& rect);
     void BindDescriptorSet(BindPoint bindPoint, uint32_t bindGroupIndex);
     void BindDescriptorSets(BindPoint bindPoint);
     void ReleaseTransientObjects();

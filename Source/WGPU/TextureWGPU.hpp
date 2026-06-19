@@ -48,6 +48,10 @@ void TextureWGPU::SetSurfaceTexture(WGPUTexture texture, Format format, Dim_t wi
     m_Texture = texture;
     m_OwnsTexture = true;
     m_IsSurfaceTexture = texture != nullptr;
+    if (texture) {
+        width = (Dim_t)wgpuTextureGetWidth(texture);
+        height = (Dim_t)wgpuTextureGetHeight(texture);
+    }
     m_Desc = {};
     m_Desc.type = TextureType::TEXTURE_2D;
     m_Desc.usage = TextureUsageBits::COLOR_ATTACHMENT;
