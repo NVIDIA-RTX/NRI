@@ -11,6 +11,7 @@ struct DescriptorRangeMappingWGPU {
     uint32_t descriptorNum = 0;
     WGPUShaderStage visibility = WGPUShaderStage_None;
     WGPUTextureFormat storageTextureFormat = WGPUTextureFormat_Undefined;
+    WGPUTextureViewDimension storageTextureViewDimension = WGPUTextureViewDimension_2D;
     bool isArray = false;
 };
 
@@ -29,6 +30,9 @@ struct DescriptorSetWGPU final : public DebugNameBase {
     ~DescriptorSetWGPU();
 
     inline WGPUBindGroup GetBindGroup() const {
+        if (m_IsDirty)
+            RecreateBindGroup();
+
         return m_BindGroup;
     }
 

@@ -16,6 +16,17 @@ DescriptorSetWGPU::~DescriptorSetWGPU() {
         wgpuBindGroupRelease(m_BindGroup);
 }
 
+static bool IsDescriptorCompatibleWithRange(const DescriptorRangeMappingWGPU& range, const DescriptorWGPU& descriptor) {
+    if (range.type != DescriptorType::STORAGE_TEXTURE)
+        return true;
+
+    const TextureDesc* textureDesc = descriptor.GetTextureDesc();
+    if (!textureDesc)
+        return false;
+
+    return GetTextureViewDimension(descriptor.GetTextureViewDesc().type, *textureDesc) == range.storageTextureViewDimension;
+}
+
 void DescriptorSetWGPU::UpdateRange(uint32_t rangeIndex, uint32_t baseDescriptor, const Descriptor* const* descriptors, uint32_t descriptorNum) {
     const DescriptorRangeMappingWGPU& range = m_Mapping.ranges[rangeIndex];
 
@@ -39,9 +50,21 @@ void DescriptorSetWGPU::CopyRangeFrom(uint32_t dstRangeIndex, uint32_t dstBaseDe
 }
 
 void DescriptorSetWGPU::RecreateBindGroup() const {
-    for (DescriptorWGPU* descriptor : m_Descriptors) {
-        if (!descriptor)
-            return;
+    auto resetBindGroup = [&]() {
+        if (m_BindGroup) {
+            wgpuBindGroupRelease(m_BindGroup);
+            m_BindGroup = nullptr;
+        }
+    };
+
+    for (const DescriptorRangeMappingWGPU& range : m_Mapping.ranges) {
+        for (uint32_t i = 0; i < range.descriptorNum; i++) {
+            DescriptorWGPU* descriptor = m_Descriptors[range.descriptorOffset + i];
+            if (!descriptor || !IsDescriptorCompatibleWithRange(range, *descriptor)) {
+                resetBindGroup();
+                return;
+            }
+        }
     }
 
     uint32_t entryMaxNum = 0;

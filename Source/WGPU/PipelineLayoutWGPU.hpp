@@ -1,6 +1,6 @@
 // © 2026 NVIDIA Corporation
 
-static void FillLayoutEntry(WGPUBindGroupLayoutEntry& entry, DescriptorType descriptorType, WGPUShaderStage visibility, WGPUTextureFormat storageTextureFormat, uint32_t binding, uint32_t bindingArraySize = 0) {
+static void FillLayoutEntry(WGPUBindGroupLayoutEntry& entry, DescriptorType descriptorType, WGPUShaderStage visibility, WGPUTextureFormat storageTextureFormat, WGPUTextureViewDimension storageTextureViewDimension, uint32_t binding, uint32_t bindingArraySize = 0) {
     entry = WGPU_BIND_GROUP_LAYOUT_ENTRY_INIT;
     entry.binding = binding;
     entry.visibility = visibility;
@@ -19,7 +19,7 @@ static void FillLayoutEntry(WGPUBindGroupLayoutEntry& entry, DescriptorType desc
         case DescriptorType::STORAGE_TEXTURE:
             entry.storageTexture.access = WGPUStorageTextureAccess_WriteOnly;
             entry.storageTexture.format = storageTextureFormat == WGPUTextureFormat_Undefined ? WGPUTextureFormat_R32Float : storageTextureFormat;
-            entry.storageTexture.viewDimension = WGPUTextureViewDimension_2D;
+            entry.storageTexture.viewDimension = storageTextureViewDimension;
             break;
         case DescriptorType::CONSTANT_BUFFER:
             entry.buffer.type = WGPUBufferBindingType_Uniform;
@@ -35,7 +35,7 @@ static void FillLayoutEntry(WGPUBindGroupLayoutEntry& entry, DescriptorType desc
 }
 
 static void FillLayoutEntry(WGPUBindGroupLayoutEntry& entry, const DescriptorRangeDesc& range, uint32_t binding, uint32_t bindingArraySize = 0) {
-    FillLayoutEntry(entry, range.descriptorType, GetShaderStageFlags(range.shaderStages), WGPUTextureFormat_Undefined, binding, bindingArraySize);
+    FillLayoutEntry(entry, range.descriptorType, GetShaderStageFlags(range.shaderStages), WGPUTextureFormat_Undefined, WGPUTextureViewDimension_2D, binding, bindingArraySize);
 }
 
 static bool IsDynamicOffsetRootDescriptor(DescriptorType descriptorType) {
@@ -306,7 +306,17 @@ struct SpirvStorageTextureWGPU {
     uint32_t set = 0;
     uint32_t binding = 0;
     WGPUTextureFormat format = WGPUTextureFormat_Undefined;
+    WGPUTextureViewDimension viewDimension = WGPUTextureViewDimension_2D;
 };
+
+static WGPUTextureViewDimension GetStorageTextureViewDimensionFromSpirv(uint32_t dim, uint32_t arrayed) {
+    if (dim == 0)
+        return WGPUTextureViewDimension_1D;
+    if (dim == 2)
+        return WGPUTextureViewDimension_3D;
+
+    return arrayed ? WGPUTextureViewDimension_2DArray : WGPUTextureViewDimension_2D;
+}
 
 static void ReflectStorageTextures(const ShaderDesc& shaderDesc, Vector<SpirvStorageTextureWGPU>& storageTextures) {
     const uint32_t* code = (const uint32_t*)shaderDesc.bytecode;
@@ -316,6 +326,7 @@ static void ReflectStorageTextures(const ShaderDesc& shaderDesc, Vector<SpirvSto
 
     struct TypeInfo {
         uint32_t imageFormat = 0;
+        WGPUTextureViewDimension viewDimension = WGPUTextureViewDimension_2D;
         bool isStorageTexture = false;
     };
 
@@ -348,10 +359,12 @@ static void ReflectStorageTextures(const ShaderDesc& shaderDesc, Vector<SpirvSto
         } else if (op == 25 && count >= 9) {
             uint32_t resultId = operands[0];
             uint32_t dim = operands[2];
+            uint32_t arrayed = operands[4];
             uint32_t sampled = operands[6];
             uint32_t imageFormat = operands[7];
             if (resultId < idBound && sampled == 2 && dim != 5 && imageFormat != 0) {
                 types[resultId].imageFormat = imageFormat;
+                types[resultId].viewDimension = GetStorageTextureViewDimensionFromSpirv(dim, arrayed);
                 types[resultId].isStorageTexture = true;
             }
         } else if (op == 32 && count >= 4) {
@@ -367,7 +380,7 @@ static void ReflectStorageTextures(const ShaderDesc& shaderDesc, Vector<SpirvSto
                 if (type.isStorageTexture && descriptorSets[resultId] != uint32_t(-1) && bindings[resultId] != uint32_t(-1)) {
                     WGPUTextureFormat format = GetStorageTextureFormatFromSpirv(type.imageFormat);
                     if (format != WGPUTextureFormat_Undefined)
-                        storageTextures.push_back({descriptorSets[resultId], bindings[resultId], format});
+                        storageTextures.push_back({descriptorSets[resultId], bindings[resultId], format, type.viewDimension});
                 }
             }
         }
@@ -388,8 +401,9 @@ Result PipelineLayoutWGPU::UpdateStorageTextureFormats(const ShaderDesc* shaderD
                 continue;
 
             for (DescriptorRangeMappingWGPU& range : mapping.ranges) {
-                if (range.type == DescriptorType::STORAGE_TEXTURE && storageTexture.binding >= range.bindingBase && storageTexture.binding < range.bindingBase + range.descriptorNum && range.storageTextureFormat != storageTexture.format) {
+                if (range.type == DescriptorType::STORAGE_TEXTURE && storageTexture.binding >= range.bindingBase && storageTexture.binding < range.bindingBase + range.descriptorNum && (range.storageTextureFormat != storageTexture.format || range.storageTextureViewDimension != storageTexture.viewDimension)) {
                     range.storageTextureFormat = storageTexture.format;
+                    range.storageTextureViewDimension = storageTexture.viewDimension;
                     changed = true;
                 }
             }
@@ -414,10 +428,10 @@ Result PipelineLayoutWGPU::UpdateStorageTextureFormats(const ShaderDesc* shaderD
         uint32_t entryOffset = 0;
         for (const DescriptorRangeMappingWGPU& range : mapping.ranges) {
             if (range.isArray)
-                FillLayoutEntry(entries[entryOffset++], range.type, range.visibility, range.storageTextureFormat, range.bindingBase, range.descriptorNum);
+                FillLayoutEntry(entries[entryOffset++], range.type, range.visibility, range.storageTextureFormat, range.storageTextureViewDimension, range.bindingBase, range.descriptorNum);
             else {
                 for (uint32_t i = 0; i < range.descriptorNum; i++)
-                    FillLayoutEntry(entries[entryOffset++], range.type, range.visibility, range.storageTextureFormat, range.bindingBase + i);
+                    FillLayoutEntry(entries[entryOffset++], range.type, range.visibility, range.storageTextureFormat, range.storageTextureViewDimension, range.bindingBase + i);
             }
         }
 
