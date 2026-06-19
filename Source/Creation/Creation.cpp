@@ -35,6 +35,7 @@ Result CreateDeviceNONE(const DeviceCreationDesc& deviceCreationDesc, DeviceBase
 Result CreateDeviceD3D11(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationD3D11Desc& deviceCreationDescD3D11, DeviceBase*& device);
 Result CreateDeviceD3D12(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationD3D12Desc& deviceCreationDescD3D12, DeviceBase*& device);
 Result CreateDeviceVK(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationVKDesc& deviceCreationDescVK, DeviceBase*& device);
+Result CreateDeviceWGPU(const DeviceCreationDesc& deviceCreationDesc, DeviceBase*& device);
 DeviceBase* CreateDeviceValidation(const DeviceCreationDesc& deviceCreationDesc, DeviceBase& device);
 
 constexpr uint64_t Hash(const char* name) {
@@ -748,6 +749,11 @@ NRI_API Result NRI_CALL nriCreateDevice(const DeviceCreationDesc& deviceCreation
         result = CreateDeviceVK(modifiedDeviceCreationDesc, {}, deviceImpl);
 #endif
 
+#if NRI_ENABLE_WGPU_SUPPORT
+    if (modifiedDeviceCreationDesc.graphicsAPI == GraphicsAPI::WGPU)
+        result = CreateDeviceWGPU(modifiedDeviceCreationDesc, deviceImpl);
+#endif
+
     if (result != Result::SUCCESS)
         return result;
 
@@ -963,6 +969,8 @@ NRI_API const char* NRI_CALL nriGetGraphicsAPIString(GraphicsAPI graphicsAPI) {
             return "D3D12";
         case GraphicsAPI::VK:
             return "VK";
+        case GraphicsAPI::WGPU:
+            return "WGPU";
         default:
             return "UNKNOWN";
     }
@@ -978,6 +986,21 @@ NRI_API Result NRI_CALL nriEnumerateAdapters(AdapterDesc* outAdapterDescs, uint3
 
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
     UpdateAdaptersD3D(adapterDescs, adapterDescNum, nullptr);
+#endif
+
+#if NRI_ENABLE_WGPU_SUPPORT
+    if (adapterDescNum < ADAPTER_MAX_NUM) {
+        AdapterDesc& adapterDesc = adapterDescs[adapterDescNum++];
+
+        adapterDesc.sharedSystemMemorySize = 128ull << 30;
+        adapterDesc.queueNum[(uint32_t)QueueType::GRAPHICS] = 1;
+        adapterDesc.queueNum[(uint32_t)QueueType::COMPUTE] = 0;
+        adapterDesc.queueNum[(uint32_t)QueueType::COPY] = 0;
+        adapterDesc.supportedGraphicsAPIs = GraphicsAPI::WGPU;
+        adapterDesc.architecture = Architecture::VIRTUAL;
+
+        strncpy(adapterDesc.name, "WGPU", sizeof(adapterDesc.name));
+    }
 #endif
 
 #if NRI_ENABLE_NONE_SUPPORT

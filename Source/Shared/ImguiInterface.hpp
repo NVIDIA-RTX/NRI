@@ -694,6 +694,15 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
             shaders[1].size = sizeof(g_Imgui_fs_spirv);
         }
 #    endif
+#    if NRI_ENABLE_WGPU_SUPPORT && NRI_ENABLE_VK_SUPPORT
+        if (deviceDesc.graphicsAPI == GraphicsAPI::WGPU) {
+            shaders[0].bytecode = g_Imgui_vs_spirv;
+            shaders[0].size = sizeof(g_Imgui_vs_spirv);
+
+            shaders[1].bytecode = g_Imgui_fs_spirv;
+            shaders[1].size = sizeof(g_Imgui_fs_spirv);
+        }
+#    endif
 
         const VertexAttributeDesc vertexAttributeDesc[] = {
             {{"POSITION", 0}, {0}, offsetof(ImDrawVert, pos), Format::RG32_SFLOAT},

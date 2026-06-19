@@ -49,6 +49,7 @@ option(NRI_ENABLE_NIS_SDK "Enable NVIDIA Image Sharpening SDK" OFF)
 option(NRI_ENABLE_IMGUI_EXTENSION "Enable 'NRIImgui' extension" OFF)
 option(NRI_STREAMER_THREAD_SAFE "'NRIStreamer' thread safety (OFF is faster)" ON)
 
+cmake_dependent_option(NRI_ENABLE_WGPU_SUPPORT "Enable WebGPU backend" ON "WIN32; NOT IS_ARM64" OFF)
 cmake_dependent_option(NRI_ENABLE_D3D11_SUPPORT "Enable D3D11 backend" ON "WIN32" OFF)
 cmake_dependent_option(NRI_ENABLE_D3D12_SUPPORT "Enable D3D12 backend" ON "WIN32" OFF)
 cmake_dependent_option(NRI_ENABLE_AMDAGS "Enable AMD AGS library for D3D" ON "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT); NOT IS_ARM64" OFF)
@@ -90,6 +91,7 @@ foreach(opt IN ITEMS
     NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS
     NRI_ENABLE_NONE_SUPPORT
     NRI_ENABLE_VK_SUPPORT
+    NRI_ENABLE_WGPU_SUPPORT
     NRI_ENABLE_VALIDATION_SUPPORT
     NRI_ENABLE_NIS_SDK
     NRI_ENABLE_IMGUI_EXTENSION
@@ -212,6 +214,23 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         URL https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/1d86c1130f61453634b1df85782e1fecfd59a525.zip
     )
     list(APPEND DEPS d3d12ma)
+endif()
+
+if(NRI_ENABLE_WGPU_SUPPORT)
+    if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT IS_ARM64)
+        set(WGPU_NATIVE_URL "https://github.com/gfx-rs/wgpu-native/releases/download/v29.0.0.0/wgpu-windows-x86_64-msvc-release.zip")
+    else()
+        message(FATAL_ERROR "NRI WGPU: add a wgpu-native binary URL for this platform")
+    endif()
+
+    fetchcontent_declare(
+        wgpu_native
+        DOWNLOAD_EXTRACT_TIMESTAMP 1
+        DOWNLOAD_NO_PROGRESS 1
+        SOURCE_SUBDIR "ignore CMakeLists.txt"
+        URL ${WGPU_NATIVE_URL}
+    )
+    list(APPEND DEPS wgpu_native)
 endif()
 
 if(NRI_ENABLE_AMDAGS)
@@ -727,6 +746,66 @@ if(NRI_ENABLE_VK_SUPPORT)
     )
 endif()
 
+# WGPU
+if(NRI_ENABLE_WGPU_SUPPORT)
+    set(WGPU_SOURCE
+        "Source/WGPU/BufferWGPU.h"
+        "Source/WGPU/BufferWGPU.hpp"
+        "Source/WGPU/CommandAllocatorWGPU.h"
+        "Source/WGPU/CommandAllocatorWGPU.hpp"
+        "Source/WGPU/CommandBufferWGPU.h"
+        "Source/WGPU/CommandBufferWGPU.hpp"
+        "Source/WGPU/DescriptorPoolWGPU.h"
+        "Source/WGPU/DescriptorPoolWGPU.hpp"
+        "Source/WGPU/DescriptorSetWGPU.h"
+        "Source/WGPU/DescriptorSetWGPU.hpp"
+        "Source/WGPU/DescriptorWGPU.h"
+        "Source/WGPU/DescriptorWGPU.hpp"
+        "Source/WGPU/DeviceWGPU.h"
+        "Source/WGPU/DeviceWGPU.hpp"
+        "Source/WGPU/FenceWGPU.h"
+        "Source/WGPU/FenceWGPU.hpp"
+        "Source/WGPU/ImplWGPU.cpp"
+        "Source/WGPU/MemoryWGPU.h"
+        "Source/WGPU/MemoryWGPU.hpp"
+        "Source/WGPU/PipelineCacheWGPU.h"
+        "Source/WGPU/PipelineCacheWGPU.hpp"
+        "Source/WGPU/PipelineLayoutWGPU.h"
+        "Source/WGPU/PipelineLayoutWGPU.hpp"
+        "Source/WGPU/PipelineWGPU.h"
+        "Source/WGPU/PipelineWGPU.hpp"
+        "Source/WGPU/QueryPoolWGPU.h"
+        "Source/WGPU/QueryPoolWGPU.hpp"
+        "Source/WGPU/QueueWGPU.h"
+        "Source/WGPU/QueueWGPU.hpp"
+        "Source/WGPU/SharedWGPU.h"
+        "Source/WGPU/SharedWGPU.hpp"
+        "Source/WGPU/SwapChainWGPU.h"
+        "Source/WGPU/SwapChainWGPU.hpp"
+        "Source/WGPU/TextureWGPU.h"
+        "Source/WGPU/TextureWGPU.hpp"
+    )
+
+    add_library(NRI_WGPU STATIC)
+    target_sources(NRI_WGPU
+        PRIVATE
+            ${WGPU_SOURCE}
+    )
+    target_include_directories(NRI_WGPU
+        PRIVATE
+            "${wgpu_native_SOURCE_DIR}/include"
+    )
+    target_link_libraries(NRI_WGPU
+        PRIVATE
+            NRI_Shared
+            "${wgpu_native_SOURCE_DIR}/lib/wgpu_native.dll.lib"
+    )
+    set_target_properties(NRI_WGPU
+        PROPERTIES
+            FOLDER "NRI"
+    )
+endif()
+
 # Validation
 if(NRI_ENABLE_VALIDATION_SUPPORT)
     set(NRI_VALIDATION_SOURCE
@@ -903,6 +982,9 @@ target_link_libraries(NRI
         $<$<BOOL:${NRI_ENABLE_VK_SUPPORT}>:
             NRI_VK
         >
+        $<$<BOOL:${NRI_ENABLE_WGPU_SUPPORT}>:
+            NRI_WGPU
+        >
         $<$<BOOL:${NRI_ENABLE_VALIDATION_SUPPORT}>:
             NRI_Validation
         >
@@ -933,6 +1015,14 @@ if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
     add_custom_command(TARGET NRI
         POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${agilitysdk_SOURCE_DIR}/build/native/bin/${BIN_ARCHITECTURE}" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${NRI_AGILITY_SDK_DIR}"
+        VERBATIM
+    )
+endif()
+
+if(NRI_ENABLE_WGPU_SUPPORT)
+    add_custom_command(TARGET NRI
+        POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${wgpu_native_SOURCE_DIR}/lib/wgpu_native.dll" "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
         VERBATIM
     )
 endif()
