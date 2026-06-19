@@ -268,13 +268,13 @@ NriStruct(CoreInterface) {
     // Debug name for any object declared as "NriForwardStruct" (skipped for buffers & textures in D3D if they are not bound to a memory)
     void                (NRI_CALL *SetDebugName)                    (NriPtr(Object) object, const char* name);
 
-    // Native objects                                                                                            ___D3D11 (latest interface)________|_D3D12 (latest interface)____|_VK_________________________________
-    void*               (NRI_CALL *GetDeviceNativeObject)           (const NriPtr(Device) device);               // ID3D11Device*                   | ID3D12Device*               | VkDevice
-    void*               (NRI_CALL *GetQueueNativeObject)            (const NriPtr(Queue) queue);                 // -                               | ID3D12CommandQueue*         | VkQueue
-    void*               (NRI_CALL *GetCommandBufferNativeObject)    (const NriPtr(CommandBuffer) commandBuffer); // ID3D11DeviceContext*            | ID3D12GraphicsCommandList*  | VkCommandBuffer
-    uint64_t            (NRI_CALL *GetBufferNativeObject)           (const NriPtr(Buffer) buffer);               // ID3D11Buffer*                   | ID3D12Resource*             | VkBuffer
-    uint64_t            (NRI_CALL *GetTextureNativeObject)          (const NriPtr(Texture) texture);             // ID3D11Resource*                 | ID3D12Resource*             | VkImage
-    uint64_t            (NRI_CALL *GetDescriptorNativeObject)       (const NriPtr(Descriptor) descriptor);       // ID3D11View/ID3D11SamplerState*  | D3D12_CPU_DESCRIPTOR_HANDLE | VkImageView/VkBufferView/VkSampler
+    // Native objects                                                                                            ___D3D11 (latest interface)________|_D3D12 (latest interface)____|_VK_________________________________|_WGPU__________________________________
+    void*               (NRI_CALL *GetDeviceNativeObject)           (const NriPtr(Device) device);               // ID3D11Device*                   | ID3D12Device*               | VkDevice                           | WGPUDevice
+    void*               (NRI_CALL *GetQueueNativeObject)            (const NriPtr(Queue) queue);                 // -                               | ID3D12CommandQueue*         | VkQueue                            | WGPUQueue
+    void*               (NRI_CALL *GetCommandBufferNativeObject)    (const NriPtr(CommandBuffer) commandBuffer); // ID3D11DeviceContext*            | ID3D12GraphicsCommandList*  | VkCommandBuffer                    | WGPUCommandBuffer
+    uint64_t            (NRI_CALL *GetBufferNativeObject)           (const NriPtr(Buffer) buffer);               // ID3D11Buffer*                   | ID3D12Resource*             | VkBuffer                           | WGPUBuffer
+    uint64_t            (NRI_CALL *GetTextureNativeObject)          (const NriPtr(Texture) texture);             // ID3D11Resource*                 | ID3D12Resource*             | VkImage                            | WGPUTexture
+    uint64_t            (NRI_CALL *GetDescriptorNativeObject)       (const NriPtr(Descriptor) descriptor);       // ID3D11View/ID3D11SamplerState*  | D3D12_CPU_DESCRIPTOR_HANDLE | VkImageView/VkBufferView/VkSampler | WGPUTextureView/WGPUBuffer/WGPUSampler
 };
 
 NriNamespaceEnd

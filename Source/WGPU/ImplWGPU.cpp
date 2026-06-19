@@ -522,27 +522,56 @@ static void NRI_CALL SetDebugName(Object* object, const char* name) {
 }
 
 static void* NRI_CALL GetDeviceNativeObject(const Device* device) {
-    return device ? (void*)(WGPUDevice)(*(DeviceWGPU*)device) : nullptr;
+    if (!device)
+        return nullptr;
+
+    return (WGPUDevice)(*(DeviceWGPU*)device);
 }
 
-static void* NRI_CALL GetQueueNativeObject(const Queue*) {
-    return nullptr;
+static void* NRI_CALL GetQueueNativeObject(const Queue* queue) {
+    if (!queue)
+        return nullptr;
+
+    return ((QueueWGPU*)queue)->GetDevice().GetQueue();
 }
 
-static void* NRI_CALL GetCommandBufferNativeObject(const CommandBuffer*) {
-    return nullptr;
+static void* NRI_CALL GetCommandBufferNativeObject(const CommandBuffer* commandBuffer) {
+    if (!commandBuffer)
+        return nullptr;
+
+    return ((CommandBufferWGPU*)commandBuffer)->GetCommandBuffer();
 }
 
-static uint64_t NRI_CALL GetBufferNativeObject(const Buffer*) {
-    return 0;
+static uint64_t NRI_CALL GetBufferNativeObject(const Buffer* buffer) {
+    if (!buffer)
+        return 0;
+
+    return uint64_t((WGPUBuffer)(*(BufferWGPU*)buffer));
 }
 
-static uint64_t NRI_CALL GetTextureNativeObject(const Texture*) {
-    return 0;
+static uint64_t NRI_CALL GetTextureNativeObject(const Texture* texture) {
+    if (!texture)
+        return 0;
+
+    return uint64_t((WGPUTexture)(*(TextureWGPU*)texture));
 }
 
-static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor*) {
-    return 0;
+static uint64_t NRI_CALL GetDescriptorNativeObject(const Descriptor* descriptor) {
+    if (!descriptor)
+        return 0;
+
+    DescriptorWGPU& descriptorWGPU = *(DescriptorWGPU*)descriptor;
+    switch (descriptorWGPU.GetDescriptorType()) {
+        case DescriptorType::SAMPLER:
+            return uint64_t(descriptorWGPU.GetSampler());
+        case DescriptorType::TEXTURE:
+        case DescriptorType::STORAGE_TEXTURE:
+        case DescriptorType::MUTABLE:
+        case DescriptorType::INPUT_ATTACHMENT:
+            return uint64_t(descriptorWGPU.GetTextureView());
+        default:
+            return uint64_t(descriptorWGPU.GetBuffer());
+    }
 }
 
 Result DeviceWGPU::FillFunctionTable(CoreInterface& table) const {
