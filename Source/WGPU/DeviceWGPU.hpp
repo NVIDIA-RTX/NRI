@@ -129,7 +129,7 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
 
     m_Adapter = adapterContext.adapter;
 
-    WGPUFeatureName requiredFeatures[32] = {};
+    std::array<WGPUFeatureName, 32> requiredFeatures = {};
     size_t requiredFeatureNum = 0;
     // TODO: Root constants rely on the wgpu-native "immediates" extension, not core WebGPU.
     requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_Immediates;
@@ -196,7 +196,7 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
     WGPUDeviceDescriptor deviceDesc = WGPU_DEVICE_DESCRIPTOR_INIT;
     deviceDesc.nextInChain = &deviceExtras.chain;
     deviceDesc.requiredFeatureCount = requiredFeatureNum;
-    deviceDesc.requiredFeatures = requiredFeatures;
+    deviceDesc.requiredFeatures = requiredFeatures.data();
     deviceDesc.requiredLimits = &requiredLimits;
 
     RequestDeviceContext deviceContext = {};

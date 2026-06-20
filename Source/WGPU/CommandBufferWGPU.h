@@ -7,7 +7,7 @@ namespace nri {
 constexpr uint32_t COLOR_ATTACHMENT_MAX_NUM_WGPU = 8;
 
 struct ClearPipelineWGPU {
-    Format colorFormats[COLOR_ATTACHMENT_MAX_NUM_WGPU] = {};
+    std::array<Format, COLOR_ATTACHMENT_MAX_NUM_WGPU> colorFormats = {};
     Format depthStencilFormat = Format::UNKNOWN;
     uint32_t colorNum = 0;
     uint32_t colorAttachmentIndex = 0;
@@ -173,7 +173,7 @@ private:
     WGPUComputePipeline m_ComputePipeline = nullptr;
     WGPUComputePipeline m_BoundComputePipeline = nullptr;
     BindPoint m_BindPoint = BindPoint::GRAPHICS;
-    Format m_RenderColorFormats[COLOR_ATTACHMENT_MAX_NUM_WGPU] = {};
+    std::array<Format, COLOR_ATTACHMENT_MAX_NUM_WGPU> m_RenderColorFormats = {};
     Format m_RenderDepthStencilFormat = Format::UNKNOWN;
     uint32_t m_RenderColorNum = 0;
     Sample_t m_RenderSampleNum = 1;

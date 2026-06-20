@@ -811,10 +811,10 @@ NRI_API Result NRI_CALL nriCreateDevice(const DeviceCreationDesc& deviceCreation
 
     // Valid adapter expected (take 1st compatible)
     uint32_t adapterDescNum = ADAPTER_MAX_NUM;
-    AdapterDesc adapterDescs[ADAPTER_MAX_NUM] = {};
+    std::array<AdapterDesc, ADAPTER_MAX_NUM> adapterDescs = {};
     AdapterDesc adapterDesc = {};
     if (!modifiedDeviceCreationDesc.adapterDesc) {
-        nriEnumerateAdapters(adapterDescs, adapterDescNum);
+        nriEnumerateAdapters(adapterDescs.data(), adapterDescNum);
         for (uint32_t i = 0; i < adapterDescNum; i++) {
             if (adapterDescs[i].supportedGraphicsAPIs & modifiedDeviceCreationDesc.graphicsAPI) {
                 adapterDesc = adapterDescs[i];
@@ -1097,19 +1097,19 @@ NRI_API const char* NRI_CALL nriGetGraphicsAPIString(GraphicsAPI graphicsAPI) {
 }
 
 NRI_API Result NRI_CALL nriEnumerateAdapters(AdapterDesc* outAdapterDescs, uint32_t& outAdapterDescNum) {
-    AdapterDesc adapterDescs[ADAPTER_MAX_NUM] = {};
+    std::array<AdapterDesc, ADAPTER_MAX_NUM> adapterDescs = {};
     uint32_t adapterDescNum = 0;
 
 #if NRI_ENABLE_VK_SUPPORT
-    UpdateAdaptersVK(adapterDescs, adapterDescNum, nullptr);
+    UpdateAdaptersVK(adapterDescs.data(), adapterDescNum, nullptr);
 #endif
 
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
-    UpdateAdaptersD3D(adapterDescs, adapterDescNum, nullptr);
+    UpdateAdaptersD3D(adapterDescs.data(), adapterDescNum, nullptr);
 #endif
 
 #if NRI_ENABLE_WGPU_SUPPORT
-    UpdateAdaptersWGPU(adapterDescs, adapterDescNum);
+    UpdateAdaptersWGPU(adapterDescs.data(), adapterDescNum);
 #endif
 
 #if NRI_ENABLE_NONE_SUPPORT
@@ -1127,7 +1127,7 @@ NRI_API Result NRI_CALL nriEnumerateAdapters(AdapterDesc* outAdapterDescs, uint3
 #endif
 
     // Sort by video memory size and arhitecture (DISCRETE first)
-    qsort(adapterDescs, adapterDescNum, sizeof(adapterDescs[0]), SortAdapters);
+    qsort(adapterDescs.data(), adapterDescNum, sizeof(adapterDescs[0]), SortAdapters);
 
     // Copy to output
     if (outAdapterDescs) {

@@ -318,7 +318,7 @@ WGPURenderPipeline CommandBufferWGPU::GetClearPipeline(uint32_t colorAttachmentI
     }
 
     ClearPipelineWGPU clearPipeline = {};
-    memcpy(clearPipeline.colorFormats, m_RenderColorFormats, sizeof(clearPipeline.colorFormats));
+    clearPipeline.colorFormats = m_RenderColorFormats;
     clearPipeline.depthStencilFormat = m_RenderDepthStencilFormat;
     clearPipeline.colorNum = m_RenderColorNum;
     clearPipeline.colorAttachmentIndex = colorAttachmentIndex;
@@ -332,10 +332,11 @@ WGPURenderPipeline CommandBufferWGPU::GetClearPipeline(uint32_t colorAttachmentI
 }
 
 struct ClearStorageBufferConstantsWGPU {
-    uint32_t words[4];
+    std::array<uint32_t, 4> words;
     uint32_t wordNum;
     uint32_t period;
-    uint32_t pad[2];
+    uint32_t pad0;
+    uint32_t pad1;
 };
 
 struct ClearStorageTextureConstantsWGPU {
@@ -1613,7 +1614,7 @@ static uint32_t GetPatternWordPeriod(uint32_t stride) {
     return std::max(stride / gcd, 1u);
 }
 
-static bool FillClearPatternWords(uint32_t* words, uint32_t& period, Format format, const Color& value) {
+static bool FillClearPatternWords(std::array<uint32_t, 4>& words, uint32_t& period, Format format, const Color& value) {
     const FormatProps& props = GetFormatProps(format);
     if (!props.stride || props.isPacked || props.isCompressed)
         return false;
@@ -1622,15 +1623,15 @@ static bool FillClearPatternWords(uint32_t* words, uint32_t& period, Format form
     if (period > 4)
         return false;
 
-    uint8_t pattern[16] = {};
-    FillClearPattern(pattern, format, value);
+    std::array<uint8_t, 16> pattern = {};
+    FillClearPattern(pattern.data(), format, value);
 
     for (uint32_t i = 0; i < period; i++) {
-        uint8_t word[4] = {};
+        std::array<uint8_t, 4> word = {};
         for (uint32_t j = 0; j < 4; j++)
             word[j] = pattern[(i * 4 + j) % props.stride];
 
-        memcpy(words + i, word, sizeof(word));
+        memcpy(&words[i], word.data(), word.size());
     }
 
     return true;
