@@ -39,6 +39,30 @@ void CommandBufferWGPU::ReleaseTransientObjects() {
     m_TemporaryBuffers.clear();
 }
 
+void CommandBufferWGPU::PopPassAnnotations(AnnotationScopeWGPU scope) {
+    if (scope == AnnotationScopeWGPU::RENDER_PASS) {
+        while (!m_AnnotationScopes.empty() && m_AnnotationScopes.back() == AnnotationScopeWGPU::RENDER_PASS) {
+            wgpuRenderPassEncoderPopDebugGroup(m_RenderPass);
+            m_AnnotationScopes.pop_back();
+        }
+
+        return;
+    }
+
+    while (!m_AnnotationScopes.empty() && m_AnnotationScopes.back() == AnnotationScopeWGPU::COMPUTE_PASS) {
+        wgpuComputePassEncoderPopDebugGroup(m_ComputePass);
+        m_AnnotationScopes.pop_back();
+    }
+}
+
+void CommandBufferWGPU::FlushDeferredEncoderAnnotationPops() {
+    if (!m_CommandEncoder || m_RenderPass || m_ComputePass)
+        return;
+
+    for (; m_DeferredEncoderAnnotationPopNum; m_DeferredEncoderAnnotationPopNum--)
+        wgpuCommandEncoderPopDebugGroup(m_CommandEncoder);
+}
+
 WGPURenderPipeline CommandBufferWGPU::GetClearPipeline(Format format, Format depthStencilFormat, PlaneBits planes, WGPUPipelineLayout& pipelineLayout) {
     for (ClearPipelineWGPU& clearPipeline : m_ClearPipelines) {
         if (clearPipeline.format == format && clearPipeline.depthStencilFormat == depthStencilFormat && clearPipeline.planes == planes) {
@@ -188,6 +212,8 @@ Result CommandBufferWGPU::Begin(const DescriptorPool* descriptorPool) {
     m_RootDynamicOffsets.clear();
     m_RootConstantData.clear();
     m_RootConstantMask.clear();
+    m_AnnotationScopes.clear();
+    m_DeferredEncoderAnnotationPopNum = 0;
     m_GraphicsRootGroupDirty = true;
     m_ComputeRootGroupDirty = true;
     m_HasViewport = false;
@@ -210,6 +236,8 @@ Result CommandBufferWGPU::End() {
 
 void CommandBufferWGPU::EndPass() {
     if (m_RenderPass) {
+        PopPassAnnotations(AnnotationScopeWGPU::RENDER_PASS);
+
         wgpuRenderPassEncoderEnd(m_RenderPass);
         wgpuRenderPassEncoderRelease(m_RenderPass);
         m_RenderPass = nullptr;
@@ -217,11 +245,15 @@ void CommandBufferWGPU::EndPass() {
     }
 
     if (m_ComputePass) {
+        PopPassAnnotations(AnnotationScopeWGPU::COMPUTE_PASS);
+
         wgpuComputePassEncoderEnd(m_ComputePass);
         wgpuComputePassEncoderRelease(m_ComputePass);
         m_ComputePass = nullptr;
         m_BoundComputePipeline = nullptr;
     }
+
+    FlushDeferredEncoderAnnotationPops();
 }
 
 void CommandBufferWGPU::SetViewports(const Viewport* viewports, uint32_t viewportNum) {
@@ -1227,14 +1259,69 @@ void CommandBufferWGPU::CopyQueries(const QueryPool& queryPool, uint32_t offset,
 }
 
 void CommandBufferWGPU::BeginAnnotation(const char* name, uint32_t bgra) {
-    MaybeUnused(name);
     MaybeUnused(bgra);
+
+    if (m_RenderPass) {
+        wgpuRenderPassEncoderPushDebugGroup(m_RenderPass, WGPUString(name));
+        m_AnnotationScopes.push_back(AnnotationScopeWGPU::RENDER_PASS);
+        return;
+    }
+
+    if (m_ComputePass) {
+        wgpuComputePassEncoderPushDebugGroup(m_ComputePass, WGPUString(name));
+        m_AnnotationScopes.push_back(AnnotationScopeWGPU::COMPUTE_PASS);
+        return;
+    }
+
+    if (m_CommandEncoder) {
+        wgpuCommandEncoderPushDebugGroup(m_CommandEncoder, WGPUString(name));
+        m_AnnotationScopes.push_back(AnnotationScopeWGPU::COMMAND_ENCODER);
+    }
 }
 
 void CommandBufferWGPU::EndAnnotation() {
+    if (m_AnnotationScopes.empty())
+        return;
+
+    AnnotationScopeWGPU scope = m_AnnotationScopes.back();
+    m_AnnotationScopes.pop_back();
+
+    if (scope == AnnotationScopeWGPU::RENDER_PASS) {
+        if (m_RenderPass)
+            wgpuRenderPassEncoderPopDebugGroup(m_RenderPass);
+
+        return;
+    }
+
+    if (scope == AnnotationScopeWGPU::COMPUTE_PASS) {
+        if (m_ComputePass)
+            wgpuComputePassEncoderPopDebugGroup(m_ComputePass);
+
+        return;
+    }
+
+    if (m_RenderPass || m_ComputePass) {
+        m_DeferredEncoderAnnotationPopNum++;
+        return;
+    }
+
+    if (m_CommandEncoder)
+        wgpuCommandEncoderPopDebugGroup(m_CommandEncoder);
 }
 
 void CommandBufferWGPU::Annotation(const char* name, uint32_t bgra) {
-    MaybeUnused(name);
     MaybeUnused(bgra);
+
+    if (m_RenderPass) {
+        wgpuRenderPassEncoderInsertDebugMarker(m_RenderPass, WGPUString(name));
+        return;
+    }
+
+    if (m_ComputePass) {
+        wgpuComputePassEncoderInsertDebugMarker(m_ComputePass, WGPUString(name));
+        return;
+    }
+
+    if (m_CommandEncoder)
+        wgpuCommandEncoderInsertDebugMarker(m_CommandEncoder, WGPUString(name));
 }

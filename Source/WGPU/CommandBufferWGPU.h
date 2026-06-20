@@ -17,6 +17,12 @@ struct RootDescriptorBindingWGPU {
     uint64_t offset = 0;
 };
 
+enum class AnnotationScopeWGPU : uint8_t {
+    COMMAND_ENCODER,
+    RENDER_PASS,
+    COMPUTE_PASS
+};
+
 struct CommandBufferWGPU final : public DebugNameBase {
     inline CommandBufferWGPU(DeviceWGPU& device)
         : m_Device(device)
@@ -29,6 +35,7 @@ struct CommandBufferWGPU final : public DebugNameBase {
         , m_RootDynamicOffsets(device.GetStdAllocator())
         , m_RootConstantData(device.GetStdAllocator())
         , m_RootConstantMask(device.GetStdAllocator())
+        , m_AnnotationScopes(device.GetStdAllocator())
         , m_TemporaryBuffers(device.GetStdAllocator()) {
     }
 
@@ -100,6 +107,8 @@ private:
     void MarkDescriptorSetsDirty(BindPoint bindPoint);
     void BindRootGroup(BindPoint bindPoint);
     void RestoreRootConstants(BindPoint bindPoint);
+    void PopPassAnnotations(AnnotationScopeWGPU scope);
+    void FlushDeferredEncoderAnnotationPops();
     WGPUBindGroup CreateRootBindGroup(BindPoint bindPoint);
     WGPURenderPipeline GetClearPipeline(Format format, Format depthStencilFormat, PlaneBits planes, WGPUPipelineLayout& pipelineLayout);
 
@@ -114,6 +123,7 @@ private:
     Vector<uint32_t> m_RootDynamicOffsets;
     Vector<uint8_t> m_RootConstantData;
     Vector<uint8_t> m_RootConstantMask;
+    Vector<AnnotationScopeWGPU> m_AnnotationScopes;
     Vector<WGPUBuffer> m_TemporaryBuffers;
     WGPUCommandEncoder m_CommandEncoder = nullptr;
     WGPUCommandBuffer m_CommandBuffer = nullptr;
@@ -133,6 +143,7 @@ private:
     Viewport m_Viewport = {};
     Rect m_Scissor = {};
     uint8_t m_StencilReference = 0;
+    uint32_t m_DeferredEncoderAnnotationPopNum = 0;
     bool m_GraphicsRootGroupDirty = true;
     bool m_ComputeRootGroupDirty = true;
     bool m_HasViewport = false;
