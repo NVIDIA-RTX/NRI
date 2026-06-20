@@ -21,6 +21,22 @@ CommandBufferWGPU::~CommandBufferWGPU() {
         if (clearPipeline.layout)
             wgpuPipelineLayoutRelease(clearPipeline.layout);
     }
+
+    if (m_ClearStorageBufferPipeline.pipeline)
+        wgpuComputePipelineRelease(m_ClearStorageBufferPipeline.pipeline);
+    if (m_ClearStorageBufferPipeline.pipelineLayout)
+        wgpuPipelineLayoutRelease(m_ClearStorageBufferPipeline.pipelineLayout);
+    if (m_ClearStorageBufferPipeline.bindGroupLayout)
+        wgpuBindGroupLayoutRelease(m_ClearStorageBufferPipeline.bindGroupLayout);
+
+    for (ClearStorageTexturePipelineWGPU& clearPipeline : m_ClearStorageTexturePipelines) {
+        if (clearPipeline.pipeline)
+            wgpuComputePipelineRelease(clearPipeline.pipeline);
+        if (clearPipeline.pipelineLayout)
+            wgpuPipelineLayoutRelease(clearPipeline.pipelineLayout);
+        if (clearPipeline.bindGroupLayout)
+            wgpuBindGroupLayoutRelease(clearPipeline.bindGroupLayout);
+    }
 }
 
 void CommandBufferWGPU::ReleaseRootBindGroups() {
@@ -311,6 +327,302 @@ WGPURenderPipeline CommandBufferWGPU::GetClearPipeline(uint32_t colorAttachmentI
     clearPipeline.layout = pipelineLayout;
     clearPipeline.pipeline = pipeline;
     m_ClearPipelines.push_back(clearPipeline);
+
+    return pipeline;
+}
+
+struct ClearStorageBufferConstantsWGPU {
+    uint32_t words[4];
+    uint32_t wordNum;
+    uint32_t period;
+    uint32_t pad[2];
+};
+
+struct ClearStorageTextureConstantsWGPU {
+    Color32f f;
+    Color32ui u;
+    Color32i i;
+    uint32_t width;
+    uint32_t height;
+    uint32_t depth;
+    uint32_t pad;
+};
+
+static WGPUShaderModule CreateShaderModuleWGPU(DeviceWGPU& device, const std::string& source) {
+    WGPUShaderSourceWGSL wgsl = WGPU_SHADER_SOURCE_WGSL_INIT;
+    wgsl.code = {source.data(), source.size()};
+
+    WGPUShaderModuleDescriptor desc = WGPU_SHADER_MODULE_DESCRIPTOR_INIT;
+    desc.nextInChain = &wgsl.chain;
+
+    return wgpuDeviceCreateShaderModule(device, &desc);
+}
+
+static uint32_t DivideUpWGPU(uint32_t x, uint32_t y) {
+    return (x + y - 1) / y;
+}
+
+WGPUComputePipeline CommandBufferWGPU::GetClearStorageBufferPipeline(WGPUBindGroupLayout& bindGroupLayout) {
+    bindGroupLayout = m_ClearStorageBufferPipeline.bindGroupLayout;
+    if (m_ClearStorageBufferPipeline.pipeline)
+        return m_ClearStorageBufferPipeline.pipeline;
+
+    static const std::string shaderSource =
+        "struct ClearConstants {\n"
+        "    words: vec4<u32>,\n"
+        "    wordNum: u32,\n"
+        "    period: u32,\n"
+        "    pad0: u32,\n"
+        "    pad1: u32,\n"
+        "}\n"
+        "var<immediate> c: ClearConstants;\n"
+        "@group(0) @binding(0) var<storage, read_write> dst: array<u32>;\n"
+        "@compute @workgroup_size(64)\n"
+        "fn main(@builtin(global_invocation_id) id: vec3<u32>) {\n"
+        "    let i = id.x;\n"
+        "    if (i >= c.wordNum) {\n"
+        "        return;\n"
+        "    }\n"
+        "    let p = i % c.period;\n"
+        "    var value = c.words.x;\n"
+        "    if (p == 1u) {\n"
+        "        value = c.words.y;\n"
+        "    } else if (p == 2u) {\n"
+        "        value = c.words.z;\n"
+        "    } else if (p == 3u) {\n"
+        "        value = c.words.w;\n"
+        "    }\n"
+        "    dst[i] = value;\n"
+        "}\n";
+
+    WGPUShaderModule shader = CreateShaderModuleWGPU(m_Device, shaderSource);
+    if (!shader)
+        return nullptr;
+
+    WGPUBindGroupLayoutEntry entry = WGPU_BIND_GROUP_LAYOUT_ENTRY_INIT;
+    entry.binding = 0;
+    entry.visibility = WGPUShaderStage_Compute;
+    entry.buffer.type = WGPUBufferBindingType_Storage;
+
+    WGPUBindGroupLayoutDescriptor bindGroupLayoutDesc = WGPU_BIND_GROUP_LAYOUT_DESCRIPTOR_INIT;
+    bindGroupLayoutDesc.entryCount = 1;
+    bindGroupLayoutDesc.entries = &entry;
+
+    WGPUBindGroupLayout layout = wgpuDeviceCreateBindGroupLayout(m_Device, &bindGroupLayoutDesc);
+    if (!layout) {
+        wgpuShaderModuleRelease(shader);
+        return nullptr;
+    }
+
+    WGPUPipelineLayoutExtras layoutExtras = {};
+    layoutExtras.chain.sType = (WGPUSType)WGPUSType_PipelineLayoutExtras;
+    layoutExtras.immediateDataSize = sizeof(ClearStorageBufferConstantsWGPU);
+
+    WGPUPipelineLayoutDescriptor pipelineLayoutDesc = WGPU_PIPELINE_LAYOUT_DESCRIPTOR_INIT;
+    pipelineLayoutDesc.nextInChain = &layoutExtras.chain;
+    pipelineLayoutDesc.bindGroupLayoutCount = 1;
+    pipelineLayoutDesc.bindGroupLayouts = &layout;
+
+    WGPUPipelineLayout pipelineLayout = wgpuDeviceCreatePipelineLayout(m_Device, &pipelineLayoutDesc);
+    if (!pipelineLayout) {
+        wgpuBindGroupLayoutRelease(layout);
+        wgpuShaderModuleRelease(shader);
+        return nullptr;
+    }
+
+    WGPUComputePipelineDescriptor pipelineDesc = WGPU_COMPUTE_PIPELINE_DESCRIPTOR_INIT;
+    pipelineDesc.layout = pipelineLayout;
+    pipelineDesc.compute.module = shader;
+    pipelineDesc.compute.entryPoint = WGPUString("main");
+
+    WGPUComputePipeline pipeline = wgpuDeviceCreateComputePipeline(m_Device, &pipelineDesc);
+    wgpuShaderModuleRelease(shader);
+
+    if (!pipeline) {
+        wgpuPipelineLayoutRelease(pipelineLayout);
+        wgpuBindGroupLayoutRelease(layout);
+        return nullptr;
+    }
+
+    m_ClearStorageBufferPipeline.bindGroupLayout = layout;
+    m_ClearStorageBufferPipeline.pipelineLayout = pipelineLayout;
+    m_ClearStorageBufferPipeline.pipeline = pipeline;
+    bindGroupLayout = layout;
+
+    return pipeline;
+}
+
+static const char* GetStorageTextureFormatNameWGPU(Format format) {
+    switch (format) {
+        case Format::RGBA8_UNORM: return "rgba8unorm";
+        case Format::RGBA8_SNORM: return "rgba8snorm";
+        case Format::RGBA8_UINT: return "rgba8uint";
+        case Format::RGBA8_SINT: return "rgba8sint";
+        case Format::RGBA16_UINT: return "rgba16uint";
+        case Format::RGBA16_SINT: return "rgba16sint";
+        case Format::RGBA16_SFLOAT: return "rgba16float";
+        case Format::R32_UINT: return "r32uint";
+        case Format::R32_SINT: return "r32sint";
+        case Format::R32_SFLOAT: return "r32float";
+        default: return nullptr;
+    }
+}
+
+static const char* GetStorageTextureDimensionNameWGPU(WGPUTextureViewDimension dimension) {
+    switch (dimension) {
+        case WGPUTextureViewDimension_1D: return "1d";
+        case WGPUTextureViewDimension_2D: return "2d";
+        case WGPUTextureViewDimension_2DArray: return "2d_array";
+        case WGPUTextureViewDimension_3D: return "3d";
+        default: return nullptr;
+    }
+}
+
+static const char* GetStorageTextureValueWGPU(Format format) {
+    const FormatProps& props = GetFormatProps(format);
+    if (props.isInteger)
+        return props.isSigned ? "c.i" : "c.u";
+
+    return "c.f";
+}
+
+static void AppendStorageTextureStoreWGPU(std::string& shaderSource, WGPUTextureViewDimension dimension, const char* value) {
+    switch (dimension) {
+        case WGPUTextureViewDimension_1D:
+            shaderSource +=
+                "    if (id.x >= c.width) {\n"
+                "        return;\n"
+                "    }\n"
+                "    textureStore(dst, i32(id.x), ";
+            shaderSource += value;
+            shaderSource += ");\n";
+            break;
+        case WGPUTextureViewDimension_2D:
+            shaderSource +=
+                "    if (id.x >= c.width || id.y >= c.height) {\n"
+                "        return;\n"
+                "    }\n"
+                "    textureStore(dst, vec2<i32>(id.xy), ";
+            shaderSource += value;
+            shaderSource += ");\n";
+            break;
+        case WGPUTextureViewDimension_2DArray:
+            shaderSource +=
+                "    if (id.x >= c.width || id.y >= c.height || id.z >= c.depth) {\n"
+                "        return;\n"
+                "    }\n"
+                "    textureStore(dst, vec2<i32>(id.xy), i32(id.z), ";
+            shaderSource += value;
+            shaderSource += ");\n";
+            break;
+        case WGPUTextureViewDimension_3D:
+            shaderSource +=
+                "    if (id.x >= c.width || id.y >= c.height || id.z >= c.depth) {\n"
+                "        return;\n"
+                "    }\n"
+                "    textureStore(dst, vec3<i32>(id.xyz), ";
+            shaderSource += value;
+            shaderSource += ");\n";
+            break;
+        default:
+            break;
+    }
+}
+
+WGPUComputePipeline CommandBufferWGPU::GetClearStorageTexturePipeline(Format format, WGPUTextureViewDimension dimension, WGPUBindGroupLayout& bindGroupLayout) {
+    for (ClearStorageTexturePipelineWGPU& clearPipeline : m_ClearStorageTexturePipelines) {
+        if (clearPipeline.format == format && clearPipeline.dimension == dimension) {
+            bindGroupLayout = clearPipeline.bindGroupLayout;
+            return clearPipeline.pipeline;
+        }
+    }
+
+    const char* formatName = GetStorageTextureFormatNameWGPU(format);
+    const char* dimensionName = GetStorageTextureDimensionNameWGPU(dimension);
+    if (!formatName || !dimensionName)
+        return nullptr;
+
+    std::string shaderSource =
+        "struct ClearConstants {\n"
+        "    f: vec4<f32>,\n"
+        "    u: vec4<u32>,\n"
+        "    i: vec4<i32>,\n"
+        "    width: u32,\n"
+        "    height: u32,\n"
+        "    depth: u32,\n"
+        "    pad: u32,\n"
+        "}\n"
+        "var<immediate> c: ClearConstants;\n"
+        "@group(0) @binding(0) var dst: texture_storage_";
+    shaderSource += dimensionName;
+    shaderSource += "<";
+    shaderSource += formatName;
+    shaderSource +=
+        ", write>;\n"
+        "@compute @workgroup_size(8, 8, 1)\n"
+        "fn main(@builtin(global_invocation_id) id: vec3<u32>) {\n";
+    AppendStorageTextureStoreWGPU(shaderSource, dimension, GetStorageTextureValueWGPU(format));
+    shaderSource += "}\n";
+
+    WGPUShaderModule shader = CreateShaderModuleWGPU(m_Device, shaderSource);
+    if (!shader)
+        return nullptr;
+
+    WGPUBindGroupLayoutEntry entry = WGPU_BIND_GROUP_LAYOUT_ENTRY_INIT;
+    entry.binding = 0;
+    entry.visibility = WGPUShaderStage_Compute;
+    entry.storageTexture.access = WGPUStorageTextureAccess_WriteOnly;
+    entry.storageTexture.format = GetTextureFormat(format);
+    entry.storageTexture.viewDimension = dimension;
+
+    WGPUBindGroupLayoutDescriptor bindGroupLayoutDesc = WGPU_BIND_GROUP_LAYOUT_DESCRIPTOR_INIT;
+    bindGroupLayoutDesc.entryCount = 1;
+    bindGroupLayoutDesc.entries = &entry;
+
+    WGPUBindGroupLayout layout = wgpuDeviceCreateBindGroupLayout(m_Device, &bindGroupLayoutDesc);
+    if (!layout) {
+        wgpuShaderModuleRelease(shader);
+        return nullptr;
+    }
+
+    WGPUPipelineLayoutExtras layoutExtras = {};
+    layoutExtras.chain.sType = (WGPUSType)WGPUSType_PipelineLayoutExtras;
+    layoutExtras.immediateDataSize = sizeof(ClearStorageTextureConstantsWGPU);
+
+    WGPUPipelineLayoutDescriptor pipelineLayoutDesc = WGPU_PIPELINE_LAYOUT_DESCRIPTOR_INIT;
+    pipelineLayoutDesc.nextInChain = &layoutExtras.chain;
+    pipelineLayoutDesc.bindGroupLayoutCount = 1;
+    pipelineLayoutDesc.bindGroupLayouts = &layout;
+
+    WGPUPipelineLayout pipelineLayout = wgpuDeviceCreatePipelineLayout(m_Device, &pipelineLayoutDesc);
+    if (!pipelineLayout) {
+        wgpuBindGroupLayoutRelease(layout);
+        wgpuShaderModuleRelease(shader);
+        return nullptr;
+    }
+
+    WGPUComputePipelineDescriptor pipelineDesc = WGPU_COMPUTE_PIPELINE_DESCRIPTOR_INIT;
+    pipelineDesc.layout = pipelineLayout;
+    pipelineDesc.compute.module = shader;
+    pipelineDesc.compute.entryPoint = WGPUString("main");
+
+    WGPUComputePipeline pipeline = wgpuDeviceCreateComputePipeline(m_Device, &pipelineDesc);
+    wgpuShaderModuleRelease(shader);
+
+    if (!pipeline) {
+        wgpuPipelineLayoutRelease(pipelineLayout);
+        wgpuBindGroupLayoutRelease(layout);
+        return nullptr;
+    }
+
+    ClearStorageTexturePipelineWGPU clearPipeline = {};
+    clearPipeline.format = format;
+    clearPipeline.dimension = dimension;
+    clearPipeline.bindGroupLayout = layout;
+    clearPipeline.pipelineLayout = pipelineLayout;
+    clearPipeline.pipeline = pipeline;
+    m_ClearStorageTexturePipelines.push_back(clearPipeline);
+    bindGroupLayout = layout;
 
     return pipeline;
 }
@@ -1214,6 +1526,32 @@ static int32_t FloatToSnorm(float value, uint32_t bits) {
     return std::min(std::max((int32_t)(value * (float)maxValue + (value >= 0.0f ? 0.5f : -0.5f)), minValue), maxValue);
 }
 
+static uint16_t FloatToFloat16(float value) {
+    uint32_t f = 0;
+    memcpy(&f, &value, sizeof(f));
+
+    uint32_t sign = (f >> 16) & 0x8000;
+    uint32_t mantissa = f & 0x007FFFFF;
+    int32_t exponent = (int32_t)((f >> 23) & 0xFF) - 127 + 15;
+
+    if (exponent <= 0) {
+        if (exponent < -10)
+            return (uint16_t)sign;
+
+        mantissa = (mantissa | 0x00800000) >> (1 - exponent);
+        return (uint16_t)(sign | ((mantissa + 0x00001000) >> 13));
+    }
+
+    if (exponent >= 31) {
+        if (mantissa)
+            return (uint16_t)(sign | 0x7E00);
+
+        return (uint16_t)(sign | 0x7C00);
+    }
+
+    return (uint16_t)(sign | ((uint32_t)exponent << 10) | ((mantissa + 0x00001000) >> 13));
+}
+
 static void StoreClearChannel(uint8_t*& dst, const Color& value, const FormatProps& props, uint32_t channelIndex) {
     uint32_t bits = GetClearChannelBits(props, channelIndex);
     if (!bits)
@@ -1225,6 +1563,8 @@ static void StoreClearChannel(uint8_t*& dst, const Color& value, const FormatPro
     if (props.isFloat) {
         if (bits == 32)
             memcpy(&bitsValue, &((&value.f.x)[channelIndex]), sizeof(float));
+        else if (bits == 16)
+            bitsValue = FloatToFloat16((&value.f.x)[channelIndex]);
     } else if (props.isNorm) {
         if (props.isSigned)
             bitsValue = (uint32_t)FloatToSnorm((&value.f.x)[channelIndex], bits);
@@ -1251,6 +1591,42 @@ static void FillClearPattern(uint8_t* dst, Format format, const Color& value) {
     StoreClearChannel(at, value, props, 1);
     StoreClearChannel(at, value, props, 2);
     StoreClearChannel(at, value, props, 3);
+}
+
+static uint32_t GetPatternWordPeriod(uint32_t stride) {
+    uint32_t a = stride;
+    uint32_t b = 4;
+    while (b) {
+        uint32_t t = a % b;
+        a = b;
+        b = t;
+    }
+
+    uint32_t gcd = a;
+    return std::max(stride / gcd, 1u);
+}
+
+static bool FillClearPatternWords(uint32_t* words, uint32_t& period, Format format, const Color& value) {
+    const FormatProps& props = GetFormatProps(format);
+    if (!props.stride || props.isPacked || props.isCompressed)
+        return false;
+
+    period = GetPatternWordPeriod(props.stride);
+    if (period > 4)
+        return false;
+
+    uint8_t pattern[16] = {};
+    FillClearPattern(pattern, format, value);
+
+    for (uint32_t i = 0; i < period; i++) {
+        uint8_t word[4] = {};
+        for (uint32_t j = 0; j < 4; j++)
+            word[j] = pattern[(i * 4 + j) % props.stride];
+
+        memcpy(words + i, word, sizeof(word));
+    }
+
+    return true;
 }
 
 static bool IsClearValueZero(const Color& value) {
@@ -1331,31 +1707,54 @@ void CommandBufferWGPU::ClearStorage(const ClearStorageDesc& clearStorageDesc) {
         uint64_t size = descriptor.GetSize();
         uint64_t offset = descriptor.GetOffset();
         WGPUBuffer buffer = descriptor.GetBuffer();
+        uint64_t clearSize = size & ~3ull;
+        if (!clearSize)
+            return;
 
         if (IsClearValueZero(clearStorageDesc.value)) {
-            uint64_t clearSize = size & ~3ull;
-            if (clearSize)
-                wgpuCommandEncoderClearBuffer(m_CommandEncoder, buffer, offset, clearSize);
+            wgpuCommandEncoderClearBuffer(m_CommandEncoder, buffer, offset, clearSize);
             return;
         }
 
-        // TODO: Non-zero storage-buffer clears are upload-buffer emulated and can be expensive for large ranges.
         Format format = descriptor.GetBufferFormat() == Format::UNKNOWN ? Format::R32_UINT : descriptor.GetBufferFormat();
-        const FormatProps& props = GetFormatProps(format);
-        Scratch<uint8_t> data = NRI_ALLOCATE_SCRATCH(m_Device, uint8_t, (size_t)size);
+        ClearStorageBufferConstantsWGPU constants = {};
+        if (!FillClearPatternWords(constants.words, constants.period, format, clearStorageDesc.value))
+            return;
 
-        uint8_t pattern[16] = {};
-        FillClearPattern(pattern, format, clearStorageDesc.value);
+        constants.wordNum = (uint32_t)(clearSize / 4);
 
-        for (uint64_t i = 0; i < size; i += props.stride)
-            memcpy(data + i, pattern, std::min<uint64_t>(props.stride, size - i));
+        WGPUBindGroupLayout bindGroupLayout = nullptr;
+        WGPUComputePipeline pipeline = GetClearStorageBufferPipeline(bindGroupLayout);
+        if (!pipeline)
+            return;
 
-        WGPUBuffer uploadBuffer = CreateTemporaryUploadBuffer(m_Device, size, data);
-        if (uploadBuffer) {
-            m_TemporaryBuffers.push_back(uploadBuffer);
-            wgpuCommandEncoderCopyBufferToBuffer(m_CommandEncoder, uploadBuffer, 0, buffer, offset, size);
+        WGPUBindGroupEntry entry = WGPU_BIND_GROUP_ENTRY_INIT;
+        entry.binding = 0;
+        entry.buffer = buffer;
+        entry.offset = offset;
+        entry.size = clearSize;
+
+        WGPUBindGroupDescriptor bindGroupDesc = WGPU_BIND_GROUP_DESCRIPTOR_INIT;
+        bindGroupDesc.layout = bindGroupLayout;
+        bindGroupDesc.entryCount = 1;
+        bindGroupDesc.entries = &entry;
+
+        WGPUBindGroup bindGroup = wgpuDeviceCreateBindGroup(m_Device, &bindGroupDesc);
+        if (!bindGroup)
+            return;
+
+        WGPUComputePassDescriptor passDesc = WGPU_COMPUTE_PASS_DESCRIPTOR_INIT;
+        WGPUComputePassEncoder pass = wgpuCommandEncoderBeginComputePass(m_CommandEncoder, &passDesc);
+        if (pass) {
+            wgpuComputePassEncoderSetPipeline(pass, pipeline);
+            wgpuComputePassEncoderSetBindGroup(pass, 0, bindGroup, 0, nullptr);
+            wgpuComputePassEncoderSetImmediates(pass, 0, sizeof(constants), &constants);
+            wgpuComputePassEncoderDispatchWorkgroups(pass, DivideUpWGPU(constants.wordNum, 64u), 1, 1);
+            wgpuComputePassEncoderEnd(pass);
+            wgpuComputePassEncoderRelease(pass);
         }
 
+        wgpuBindGroupRelease(bindGroup);
         return;
     }
 
@@ -1366,57 +1765,57 @@ void CommandBufferWGPU::ClearStorage(const ClearStorageDesc& clearStorageDesc) {
     if (!texture)
         return;
 
-    // TODO: Storage-texture clears are upload-and-copy emulated. A compute clear path would avoid CPU-side pattern expansion.
     const TextureDesc& textureDesc = texture->GetDesc();
     const TextureViewDesc& viewDesc = descriptor.GetTextureViewDesc();
     Format format = descriptor.GetFormat();
-    const FormatProps& props = GetFormatProps(format);
     uint32_t width = GetDimension(GraphicsAPI::WGPU, textureDesc, 0, viewDesc.mipOffset);
     uint32_t height = GetDimension(GraphicsAPI::WGPU, textureDesc, 1, viewDesc.mipOffset);
     uint32_t layerNum = viewDesc.layerNum == REMAINING ? textureDesc.layerNum - viewDesc.layerOffset : viewDesc.layerNum;
     uint32_t depth = textureDesc.type == TextureType::TEXTURE_3D ? GetDimension(GraphicsAPI::WGPU, textureDesc, 2, viewDesc.mipOffset) : std::max(layerNum, 1u);
-    uint32_t rowSize = width * props.stride;
-    uint32_t rowPitch = Align(rowSize, m_Device.GetDesc().memoryAlignment.uploadBufferTextureRow);
-    uint32_t rowsPerImage = std::max(height, 1u);
-    uint64_t uploadSize = (uint64_t)rowPitch * rowsPerImage * depth;
+    WGPUTextureViewDimension dimension = GetTextureViewDimension(viewDesc.type, textureDesc);
 
-    Scratch<uint8_t> data = NRI_ALLOCATE_SCRATCH(m_Device, uint8_t, (size_t)uploadSize);
-
-    uint8_t pattern[16] = {};
-    FillClearPattern(pattern, format, clearStorageDesc.value);
-
-    for (uint32_t z = 0; z < depth; z++) {
-        for (uint32_t y = 0; y < height; y++) {
-            uint8_t* row = data + (uint64_t)z * rowPitch * rowsPerImage + (uint64_t)y * rowPitch;
-            for (uint32_t x = 0; x < width; x++)
-                memcpy(row + x * props.stride, pattern, props.stride);
-        }
-    }
-
-    WGPUBuffer uploadBuffer = CreateTemporaryUploadBuffer(m_Device, uploadSize, data);
-    if (!uploadBuffer)
+    WGPUBindGroupLayout bindGroupLayout = nullptr;
+    WGPUComputePipeline pipeline = GetClearStorageTexturePipeline(format, dimension, bindGroupLayout);
+    if (!pipeline)
         return;
 
-    m_TemporaryBuffers.push_back(uploadBuffer);
+    WGPUTextureView textureView = ((DescriptorWGPU&)descriptor).GetTextureView();
+    if (!textureView)
+        return;
 
-    WGPUTexelCopyBufferInfo src = WGPU_TEXEL_COPY_BUFFER_INFO_INIT;
-    src.buffer = uploadBuffer;
-    src.layout.bytesPerRow = rowPitch;
-    src.layout.rowsPerImage = rowsPerImage;
+    WGPUBindGroupEntry entry = WGPU_BIND_GROUP_ENTRY_INIT;
+    entry.binding = 0;
+    entry.textureView = textureView;
 
-    TextureRegionDesc dstRegion = {};
-    dstRegion.mipOffset = viewDesc.mipOffset;
-    dstRegion.layerOffset = viewDesc.layerOffset;
-    dstRegion.width = (Dim_t)width;
-    dstRegion.height = (Dim_t)height;
-    dstRegion.depth = (Dim_t)depth;
-    dstRegion.planes = viewDesc.planes;
+    WGPUBindGroupDescriptor bindGroupDesc = WGPU_BIND_GROUP_DESCRIPTOR_INIT;
+    bindGroupDesc.layout = bindGroupLayout;
+    bindGroupDesc.entryCount = 1;
+    bindGroupDesc.entries = &entry;
 
-    WGPUTexelCopyTextureInfo dst = {};
-    FillTexelCopyTexture(dst, *texture, dstRegion);
+    WGPUBindGroup bindGroup = wgpuDeviceCreateBindGroup(m_Device, &bindGroupDesc);
+    if (!bindGroup)
+        return;
 
-    WGPUExtent3D size = {width, height, depth};
-    wgpuCommandEncoderCopyBufferToTexture(m_CommandEncoder, &src, &dst, &size);
+    ClearStorageTextureConstantsWGPU constants = {};
+    constants.f = clearStorageDesc.value.f;
+    constants.u = clearStorageDesc.value.ui;
+    constants.i = clearStorageDesc.value.i;
+    constants.width = width;
+    constants.height = std::max(height, 1u);
+    constants.depth = depth;
+
+    WGPUComputePassDescriptor passDesc = WGPU_COMPUTE_PASS_DESCRIPTOR_INIT;
+    WGPUComputePassEncoder pass = wgpuCommandEncoderBeginComputePass(m_CommandEncoder, &passDesc);
+    if (pass) {
+        wgpuComputePassEncoderSetPipeline(pass, pipeline);
+        wgpuComputePassEncoderSetBindGroup(pass, 0, bindGroup, 0, nullptr);
+        wgpuComputePassEncoderSetImmediates(pass, 0, sizeof(constants), &constants);
+        wgpuComputePassEncoderDispatchWorkgroups(pass, DivideUpWGPU(width, 8u), DivideUpWGPU(constants.height, 8u), depth);
+        wgpuComputePassEncoderEnd(pass);
+        wgpuComputePassEncoderRelease(pass);
+    }
+
+    wgpuBindGroupRelease(bindGroup);
 }
 
 void CommandBufferWGPU::Barrier(const BarrierDesc& barrierDesc) {

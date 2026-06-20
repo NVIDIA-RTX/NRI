@@ -17,6 +17,20 @@ struct ClearPipelineWGPU {
     WGPURenderPipeline pipeline = nullptr;
 };
 
+struct ClearStorageBufferPipelineWGPU {
+    WGPUBindGroupLayout bindGroupLayout = nullptr;
+    WGPUPipelineLayout pipelineLayout = nullptr;
+    WGPUComputePipeline pipeline = nullptr;
+};
+
+struct ClearStorageTexturePipelineWGPU {
+    Format format = Format::UNKNOWN;
+    WGPUTextureViewDimension dimension = WGPUTextureViewDimension_Undefined;
+    WGPUBindGroupLayout bindGroupLayout = nullptr;
+    WGPUPipelineLayout pipelineLayout = nullptr;
+    WGPUComputePipeline pipeline = nullptr;
+};
+
 struct RootConstantStateWGPU {
     inline RootConstantStateWGPU(const StdAllocator<uint8_t>& allocator)
         : data(allocator)
@@ -46,6 +60,7 @@ struct CommandBufferWGPU final : public DebugNameBase {
         , m_GraphicsDescriptorSetDirty(device.GetStdAllocator())
         , m_ComputeDescriptorSetDirty(device.GetStdAllocator())
         , m_ClearPipelines(device.GetStdAllocator())
+        , m_ClearStorageTexturePipelines(device.GetStdAllocator())
         , m_RootDescriptorBindings(device.GetStdAllocator())
         , m_RootDynamicOffsets(device.GetStdAllocator())
         , m_GraphicsRootConstants(device.GetStdAllocator())
@@ -128,6 +143,8 @@ private:
     WGPUBindGroup CreateRootBindGroup(BindPoint bindPoint);
     RootConstantStateWGPU& GetRootConstantState(BindPoint bindPoint);
     WGPURenderPipeline GetClearPipeline(uint32_t colorAttachmentIndex, PlaneBits planes, WGPUPipelineLayout& pipelineLayout);
+    WGPUComputePipeline GetClearStorageBufferPipeline(WGPUBindGroupLayout& bindGroupLayout);
+    WGPUComputePipeline GetClearStorageTexturePipeline(Format format, WGPUTextureViewDimension dimension, WGPUBindGroupLayout& bindGroupLayout);
 
 private:
     DeviceWGPU& m_Device;
@@ -136,6 +153,7 @@ private:
     Vector<uint8_t> m_GraphicsDescriptorSetDirty;
     Vector<uint8_t> m_ComputeDescriptorSetDirty;
     Vector<ClearPipelineWGPU> m_ClearPipelines;
+    Vector<ClearStorageTexturePipelineWGPU> m_ClearStorageTexturePipelines;
     Vector<RootDescriptorBindingWGPU> m_RootDescriptorBindings;
     Vector<uint32_t> m_RootDynamicOffsets;
     RootConstantStateWGPU m_GraphicsRootConstants;
@@ -147,6 +165,7 @@ private:
     WGPURenderPassEncoder m_RenderPass = nullptr;
     WGPUComputePassEncoder m_ComputePass = nullptr;
     WGPUTextureView m_RenderDepthStencilView = nullptr;
+    ClearStorageBufferPipelineWGPU m_ClearStorageBufferPipeline = {};
     WGPUBindGroup m_GraphicsRootBindGroup = nullptr;
     WGPUBindGroup m_ComputeRootBindGroup = nullptr;
     const PipelineLayoutWGPU* m_PipelineLayout = nullptr;
