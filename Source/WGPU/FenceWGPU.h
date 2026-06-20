@@ -10,6 +10,7 @@ struct FenceWGPU final : public DebugNameBase {
     }
 
     Result Create(uint64_t initialValue);
+
     inline DeviceWGPU& GetDevice() const {
         return m_Device;
     }

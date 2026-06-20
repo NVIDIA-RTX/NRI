@@ -39,24 +39,31 @@ struct PipelineLayoutWGPU final : public DebugNameBase {
     }
 
     const DescriptorSetMappingWGPU& GetDescriptorSetMapping(uint32_t setIndex) const;
+
     WGPUBindGroup GetRootSamplerBindGroup() const {
         return m_RootSamplerBindGroup;
     }
+
     uint32_t GetRootSamplerGroupIndex() const {
         return m_RootSamplerGroupIndex;
     }
+
     WGPUBindGroupLayout GetRootBindGroupLayout() const {
         return m_RootSamplerLayout;
     }
+
     const Vector<RootSamplerMappingWGPU>& GetRootSamplers() const {
         return m_RootSamplers;
     }
+
     const Vector<RootDescriptorMappingWGPU>& GetRootDescriptors() const {
         return m_RootDescriptors;
     }
+
     const RootDescriptorMappingWGPU& GetRootDescriptorMapping(uint32_t rootDescriptorIndex) const {
         return m_RootDescriptors[rootDescriptorIndex];
     }
+
     uint32_t GetRootDynamicOffsetNum() const {
         return m_RootDynamicOffsetNum;
     }

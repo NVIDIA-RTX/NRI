@@ -3,11 +3,8 @@
 #include <algorithm>
 #include <thread>
 
-#include "SharedExternal.h"
-
 #include "SharedWGPU.h"
 
-#include "DeviceWGPU.h"
 #include "BufferWGPU.h"
 #include "CommandAllocatorWGPU.h"
 #include "CommandBufferWGPU.h"
@@ -31,24 +28,23 @@
 
 using namespace nri;
 
-#include "SharedWGPU.hpp"
-
-#include "MemoryWGPU.hpp"
 #include "BufferWGPU.hpp"
-#include "TextureWGPU.hpp"
-#include "DescriptorWGPU.hpp"
-#include "DescriptorSetWGPU.hpp"
+#include "CommandAllocatorWGPU.hpp"
+#include "CommandBufferWGPU.hpp"
 #include "DescriptorPoolWGPU.hpp"
+#include "DescriptorSetWGPU.hpp"
+#include "DescriptorWGPU.hpp"
+#include "DeviceWGPU.hpp"
+#include "FenceWGPU.hpp"
+#include "MemoryWGPU.hpp"
+#include "PipelineCacheWGPU.hpp"
 #include "PipelineLayoutWGPU.hpp"
 #include "PipelineWGPU.hpp"
-#include "PipelineCacheWGPU.hpp"
 #include "QueryPoolWGPU.hpp"
-#include "FenceWGPU.hpp"
-#include "CommandBufferWGPU.hpp"
-#include "CommandAllocatorWGPU.hpp"
 #include "QueueWGPU.hpp"
+#include "SharedWGPU.hpp"
 #include "SwapChainWGPU.hpp"
-#include "DeviceWGPU.hpp"
+#include "TextureWGPU.hpp"
 
 Result CreateDeviceWGPU(const DeviceCreationDesc& desc, DeviceBase*& device) {
     DeviceWGPU* impl = Allocate<DeviceWGPU>(desc.allocationCallbacks, desc.callbackInterface, desc.allocationCallbacks);

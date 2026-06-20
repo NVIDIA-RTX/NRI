@@ -5,8 +5,10 @@
 #include <webgpu/wgpu.h>
 
 #if defined(_WIN32)
-    #include <windows.h>
+#    include <windows.h>
 #endif
+
+#include "SharedExternal.h"
 
 namespace nri {
 
@@ -68,3 +70,6 @@ Vendor GetVendorFromPCIID(uint32_t vendorId);
 Architecture GetArchitecture(WGPUAdapterType adapterType);
 
 } // namespace nri
+
+#include "DeviceWGPU.h"
+

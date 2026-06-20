@@ -26,6 +26,7 @@ void CommandBufferWGPU::ReleaseRootBindGroups() {
         wgpuBindGroupRelease(m_GraphicsRootBindGroup);
         m_GraphicsRootBindGroup = nullptr;
     }
+
     if (m_ComputeRootBindGroup) {
         wgpuBindGroupRelease(m_ComputeRootBindGroup);
         m_ComputeRootBindGroup = nullptr;
@@ -162,6 +163,7 @@ Result CommandBufferWGPU::Begin(const DescriptorPool* descriptorPool) {
         wgpuCommandBufferRelease(m_CommandBuffer);
         m_CommandBuffer = nullptr;
     }
+
     if (m_CommandEncoder) {
         wgpuCommandEncoderRelease(m_CommandEncoder);
         m_CommandEncoder = nullptr;
@@ -273,6 +275,7 @@ void CommandBufferWGPU::SetPipeline(const Pipeline& pipeline) {
         wgpuRenderPassEncoderSetPipeline(m_RenderPass, renderPipeline);
         m_RenderPipeline = renderPipeline;
     }
+
     if (pipelineWGPU.GetComputePipeline()) {
         m_ComputePipeline = pipelineWGPU.GetComputePipeline();
         if (m_ComputePass && m_ComputePipeline != m_BoundComputePipeline) {
@@ -728,6 +731,7 @@ void CommandBufferWGPU::Dispatch(const DispatchDesc& dispatchDesc) {
         wgpuComputePassEncoderSetPipeline(m_ComputePass, m_ComputePipeline);
         m_BoundComputePipeline = m_ComputePipeline;
     }
+
     BindRootGroup(BindPoint::COMPUTE);
     BindDescriptorSets(BindPoint::COMPUTE);
     wgpuComputePassEncoderDispatchWorkgroups(m_ComputePass, dispatchDesc.x, dispatchDesc.y, dispatchDesc.z);
@@ -745,6 +749,7 @@ void CommandBufferWGPU::DispatchIndirect(const Buffer& buffer, uint64_t offset) 
         wgpuComputePassEncoderSetPipeline(m_ComputePass, m_ComputePipeline);
         m_BoundComputePipeline = m_ComputePipeline;
     }
+
     BindRootGroup(BindPoint::COMPUTE);
     BindDescriptorSets(BindPoint::COMPUTE);
     wgpuComputePassEncoderDispatchWorkgroupsIndirect(m_ComputePass, (BufferWGPU&)buffer, offset);
@@ -829,11 +834,16 @@ void CommandBufferWGPU::ZeroBuffer(Buffer& buffer, uint64_t offset, uint64_t siz
 
 static uint32_t GetClearChannelBits(const FormatProps& props, uint32_t channelIndex) {
     switch (channelIndex) {
-        case 0: return props.redBits;
-        case 1: return props.greenBits;
-        case 2: return props.blueBits;
-        case 3: return props.alphaBits;
-        default: return 0;
+        case 0:
+            return props.redBits;
+        case 1:
+            return props.greenBits;
+        case 2:
+            return props.blueBits;
+        case 3:
+            return props.alphaBits;
+        default:
+            return 0;
     }
 }
 
@@ -990,6 +1000,7 @@ void CommandBufferWGPU::ClearStorage(const ClearStorageDesc& clearStorageDesc) {
             m_TemporaryBuffers.push_back(uploadBuffer);
             wgpuCommandEncoderCopyBufferToBuffer(m_CommandEncoder, uploadBuffer, 0, buffer, offset, size);
         }
+
         return;
     }
 

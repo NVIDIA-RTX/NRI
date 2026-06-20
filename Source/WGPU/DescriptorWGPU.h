@@ -42,9 +42,11 @@ struct DescriptorWGPU final : public DebugNameBase {
     WGPUTextureView GetTextureView();
     Format GetFormat() const;
     const TextureDesc* GetTextureDesc() const;
+
     const TextureWGPU* GetTexture() const {
         return m_Texture;
     }
+
     const TextureViewDesc& GetTextureViewDesc() const {
         return m_TextureViewDesc;
     }

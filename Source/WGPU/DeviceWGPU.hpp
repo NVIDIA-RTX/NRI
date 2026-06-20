@@ -284,6 +284,7 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
         m_Desc.other.timestampFrequencyHz = timestampPeriod > 0.0f ? uint64_t(1e9 / double(timestampPeriod) + 0.5) : 1;
     } else
         m_Desc.other.timestampFrequencyHz = 1;
+
     m_Desc.other.drawIndirectMaxNum = 1;
     m_Desc.other.samplerLodBiasMax = 16.0f;
     m_Desc.other.samplerAnisotropyMax = 16;
@@ -301,22 +302,16 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.tiers.memory = 1;
 
     m_Desc.features.swapChain = true;
-    m_Desc.features.pipelineCache = false;
     m_Desc.features.textureCompressionBC = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TextureCompressionBC) == WGPU_TRUE;
     m_Desc.features.textureCompressionETC2 = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TextureCompressionETC2) == WGPU_TRUE;
     m_Desc.features.textureCompressionASTC = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TextureCompressionASTC) == WGPU_TRUE;
     m_Desc.features.shaderBytecodeSPIRV = true;
     m_Desc.features.shaderBytecodeWGSL = true;
-    m_Desc.features.occlusion = false;
     m_Desc.features.timestamp = m_IsTimestampQueryInsidePassesSupported;
-    m_Desc.features.timestampCopyQueue = false;
-    m_Desc.features.calibratedTimestamps = false;
     m_Desc.features.getMemoryDesc2 = true;
     m_Desc.features.rootConstantsOffset = true;
-    m_Desc.features.pipelineStatistics = false;
     m_Desc.shaderFeatures.drawParameters = true;
     m_Desc.shaderFeatures.drawIndex = true;
-    m_Desc.shaderFeatures.inputAttachments = false;
 }
 
 void DeviceWGPU::Destruct() {

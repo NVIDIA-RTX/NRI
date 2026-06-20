@@ -272,33 +272,60 @@ Result PipelineLayoutWGPU::Create(const PipelineLayoutDesc& pipelineLayoutDesc) 
 
 static WGPUTextureFormat GetStorageTextureFormatFromSpirv(uint32_t imageFormat) {
     switch (imageFormat) {
-        case 1: return WGPUTextureFormat_RGBA32Float;
-        case 2: return WGPUTextureFormat_RGBA16Float;
-        case 3: return WGPUTextureFormat_R32Float;
-        case 4: return WGPUTextureFormat_RGBA8Unorm;
-        case 5: return WGPUTextureFormat_RGBA8Snorm;
-        case 6: return WGPUTextureFormat_RG32Float;
-        case 7: return WGPUTextureFormat_RG16Float;
-        case 9: return WGPUTextureFormat_R16Float;
-        case 21: return WGPUTextureFormat_RGBA32Sint;
-        case 22: return WGPUTextureFormat_RGBA16Sint;
-        case 23: return WGPUTextureFormat_RGBA8Sint;
-        case 24: return WGPUTextureFormat_R32Sint;
-        case 25: return WGPUTextureFormat_RG32Sint;
-        case 26: return WGPUTextureFormat_RG16Sint;
-        case 27: return WGPUTextureFormat_RG8Sint;
-        case 28: return WGPUTextureFormat_R16Sint;
-        case 29: return WGPUTextureFormat_R8Sint;
-        case 30: return WGPUTextureFormat_RGBA32Uint;
-        case 31: return WGPUTextureFormat_RGBA16Uint;
-        case 32: return WGPUTextureFormat_RGBA8Uint;
-        case 33: return WGPUTextureFormat_R32Uint;
-        case 35: return WGPUTextureFormat_RG32Uint;
-        case 36: return WGPUTextureFormat_RG16Uint;
-        case 37: return WGPUTextureFormat_RG8Uint;
-        case 38: return WGPUTextureFormat_R16Uint;
-        case 39: return WGPUTextureFormat_R8Uint;
-        default: return WGPUTextureFormat_Undefined;
+        case 1:
+            return WGPUTextureFormat_RGBA32Float;
+        case 2:
+            return WGPUTextureFormat_RGBA16Float;
+        case 3:
+            return WGPUTextureFormat_R32Float;
+        case 4:
+            return WGPUTextureFormat_RGBA8Unorm;
+        case 5:
+            return WGPUTextureFormat_RGBA8Snorm;
+        case 6:
+            return WGPUTextureFormat_RG32Float;
+        case 7:
+            return WGPUTextureFormat_RG16Float;
+        case 9:
+            return WGPUTextureFormat_R16Float;
+        case 21:
+            return WGPUTextureFormat_RGBA32Sint;
+        case 22:
+            return WGPUTextureFormat_RGBA16Sint;
+        case 23:
+            return WGPUTextureFormat_RGBA8Sint;
+        case 24:
+            return WGPUTextureFormat_R32Sint;
+        case 25:
+            return WGPUTextureFormat_RG32Sint;
+        case 26:
+            return WGPUTextureFormat_RG16Sint;
+        case 27:
+            return WGPUTextureFormat_RG8Sint;
+        case 28:
+            return WGPUTextureFormat_R16Sint;
+        case 29:
+            return WGPUTextureFormat_R8Sint;
+        case 30:
+            return WGPUTextureFormat_RGBA32Uint;
+        case 31:
+            return WGPUTextureFormat_RGBA16Uint;
+        case 32:
+            return WGPUTextureFormat_RGBA8Uint;
+        case 33:
+            return WGPUTextureFormat_R32Uint;
+        case 35:
+            return WGPUTextureFormat_RG32Uint;
+        case 36:
+            return WGPUTextureFormat_RG16Uint;
+        case 37:
+            return WGPUTextureFormat_RG8Uint;
+        case 38:
+            return WGPUTextureFormat_R16Uint;
+        case 39:
+            return WGPUTextureFormat_R8Uint;
+        default:
+            return WGPUTextureFormat_Undefined;
     }
 }
 

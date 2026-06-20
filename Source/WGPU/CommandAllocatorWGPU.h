@@ -10,6 +10,7 @@ struct CommandAllocatorWGPU final : public DebugNameBase {
     }
 
     Result Create(const Queue& queue);
+
     inline DeviceWGPU& GetDevice() const {
         return m_Device;
     }
