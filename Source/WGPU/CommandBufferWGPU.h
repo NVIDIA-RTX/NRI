@@ -118,9 +118,11 @@ private:
     void BindDescriptorSets(BindPoint bindPoint);
     void ReleaseTransientObjects();
     void ReleaseRootBindGroups();
+    void MarkDescriptorSetDirty(BindPoint bindPoint, uint32_t bindGroupIndex);
     void MarkDescriptorSetsDirty(BindPoint bindPoint);
     void BindRootGroup(BindPoint bindPoint);
     void RestoreRootConstants(BindPoint bindPoint);
+    void ReleaseRenderPassTransientObjects();
     void PopPassAnnotations(AnnotationScopeWGPU scope);
     void FlushDeferredEncoderAnnotationPops();
     WGPUBindGroup CreateRootBindGroup(BindPoint bindPoint);
@@ -144,6 +146,7 @@ private:
     WGPUCommandBuffer m_CommandBuffer = nullptr;
     WGPURenderPassEncoder m_RenderPass = nullptr;
     WGPUComputePassEncoder m_ComputePass = nullptr;
+    WGPUTextureView m_RenderDepthStencilView = nullptr;
     WGPUBindGroup m_GraphicsRootBindGroup = nullptr;
     WGPUBindGroup m_ComputeRootBindGroup = nullptr;
     const PipelineLayoutWGPU* m_PipelineLayout = nullptr;
@@ -161,6 +164,10 @@ private:
     Rect m_Scissor = {};
     uint8_t m_StencilReference = 0;
     uint32_t m_DeferredEncoderAnnotationPopNum = 0;
+    uint32_t m_GraphicsDirtyDescriptorSetMin = uint32_t(-1);
+    uint32_t m_GraphicsDirtyDescriptorSetMax = 0;
+    uint32_t m_ComputeDirtyDescriptorSetMin = uint32_t(-1);
+    uint32_t m_ComputeDirtyDescriptorSetMax = 0;
     bool m_GraphicsRootGroupDirty = true;
     bool m_ComputeRootGroupDirty = true;
     bool m_HasViewport = false;

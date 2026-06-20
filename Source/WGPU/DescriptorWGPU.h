@@ -78,7 +78,6 @@ private:
     uint64_t m_Size = WGPU_WHOLE_SIZE;
     Format m_BufferFormat = Format::UNKNOWN;
     DescriptorType m_DescriptorType = DescriptorType::TEXTURE;
-    bool m_TextureViewIsSurface = false;
 };
 
 } // namespace nri

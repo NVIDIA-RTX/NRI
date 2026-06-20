@@ -146,15 +146,19 @@ void DescriptorSetWGPU::RecreateBindGroup() const {
         }
     }
 
-    if (m_BindGroup)
-        wgpuBindGroupRelease(m_BindGroup);
-
     WGPUBindGroupDescriptor desc = WGPU_BIND_GROUP_DESCRIPTOR_INIT;
     desc.layout = m_Mapping.layout;
     desc.entryCount = entryNum;
     desc.entries = entries;
 
-    m_BindGroup = wgpuDeviceCreateBindGroup(m_Device, &desc);
+    WGPUBindGroup bindGroup = wgpuDeviceCreateBindGroup(m_Device, &desc);
+    if (!bindGroup)
+        return;
+
+    if (m_BindGroup)
+        wgpuBindGroupRelease(m_BindGroup);
+
+    m_BindGroup = bindGroup;
     m_LayoutVersion = m_Mapping.layoutVersion;
     m_IsDirty = false;
 }

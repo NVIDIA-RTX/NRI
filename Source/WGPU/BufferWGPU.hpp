@@ -17,18 +17,20 @@ Result BufferWGPU::Create(const BufferDesc& bufferDesc, MemoryLocation memoryLoc
 }
 
 Result BufferWGPU::CreateNativeBuffer() {
-    if (m_Buffer)
-        wgpuBufferRelease(m_Buffer);
-
     uint64_t nativeSize = Align(std::max(m_Desc.size, 4ull), 4);
 
     WGPUBufferDescriptor desc = WGPU_BUFFER_DESCRIPTOR_INIT;
     desc.size = nativeSize;
     desc.usage = m_MemoryLocation == MemoryLocation::HOST_READBACK ? WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst : GetBufferUsage(m_Desc.usage);
 
-    m_Buffer = wgpuDeviceCreateBuffer(m_Device, &desc);
-    if (!m_Buffer)
+    WGPUBuffer buffer = wgpuDeviceCreateBuffer(m_Device, &desc);
+    if (!buffer)
         return Result::FAILURE;
+
+    if (m_Buffer)
+        wgpuBufferRelease(m_Buffer);
+
+    m_Buffer = buffer;
 
     if (m_MemoryLocation != MemoryLocation::DEVICE && m_MemoryLocation != MemoryLocation::HOST_READBACK)
         m_CpuMemory.resize((size_t)nativeSize);
@@ -38,17 +40,22 @@ Result BufferWGPU::CreateNativeBuffer() {
     return Result::SUCCESS;
 }
 
-void BufferWGPU::SetHostVisible(MemoryLocation memoryLocation) {
+Result BufferWGPU::SetHostVisible(MemoryLocation memoryLocation) {
     if (m_MemoryLocation == memoryLocation)
-        return;
+        return Result::SUCCESS;
 
+    MemoryLocation oldMemoryLocation = m_MemoryLocation;
     m_MemoryLocation = memoryLocation;
 
-    if (m_Buffer)
-        CreateNativeBuffer();
+    if (m_Buffer && CreateNativeBuffer() != Result::SUCCESS) {
+        m_MemoryLocation = oldMemoryLocation;
+        return Result::FAILURE;
+    }
 
     if (m_MemoryLocation != MemoryLocation::DEVICE && m_MemoryLocation != MemoryLocation::HOST_READBACK && m_CpuMemory.empty())
         m_CpuMemory.resize((size_t)Align(std::max(m_Desc.size, 4ull), 4));
+
+    return Result::SUCCESS;
 }
 
 void* BufferWGPU::Map(uint64_t offset, uint64_t size) {

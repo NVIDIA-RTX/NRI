@@ -221,7 +221,9 @@ static Result NRI_CALL BindBufferMemory(const BindBufferMemoryDesc* bindBufferMe
     for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
         BufferWGPU& buffer = *(BufferWGPU*)bindBufferMemoryDescs[i].buffer;
         const MemoryWGPU& memory = *(MemoryWGPU*)bindBufferMemoryDescs[i].memory;
-        buffer.SetHostVisible(memory.GetMemoryLocation());
+        Result result = buffer.SetHostVisible(memory.GetMemoryLocation());
+        if (result != Result::SUCCESS)
+            return result;
     }
 
     return Result::SUCCESS;
@@ -786,6 +788,9 @@ Result DeviceWGPU::FillFunctionTable(HelperInterface& table) const {
 static Result NRI_CALL CreateImgui(Device& device, const ImguiDesc& imguiDesc, Imgui*& imgui) {
     DeviceWGPU& deviceWGPU = (DeviceWGPU&)device;
     ImguiImpl* impl = Allocate<ImguiImpl>(deviceWGPU.GetAllocationCallbacks(), device, deviceWGPU.GetCoreInterface());
+    if (!impl)
+        return Result::OUT_OF_MEMORY;
+
     Result result = impl->Create(imguiDesc);
 
     if (result != Result::SUCCESS) {
@@ -862,6 +867,9 @@ Result DeviceWGPU::FillFunctionTable(RayTracingInterface&) const {
 static Result NRI_CALL CreateStreamer(Device& device, const StreamerDesc& streamerDesc, Streamer*& streamer) {
     DeviceWGPU& deviceWGPU = (DeviceWGPU&)device;
     StreamerImpl* impl = Allocate<StreamerImpl>(deviceWGPU.GetAllocationCallbacks(), device, deviceWGPU.GetCoreInterface());
+    if (!impl)
+        return Result::OUT_OF_MEMORY;
+
     Result result = impl->Create(streamerDesc);
 
     if (result != Result::SUCCESS) {

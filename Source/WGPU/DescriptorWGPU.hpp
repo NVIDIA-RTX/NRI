@@ -8,11 +8,10 @@ DescriptorWGPU::~DescriptorWGPU() {
 }
 
 void DescriptorWGPU::ReleaseTextureView() {
-    if (m_TextureView && !m_TextureViewIsSurface)
+    if (m_TextureView)
         wgpuTextureViewRelease(m_TextureView);
 
     m_TextureView = nullptr;
-    m_TextureViewIsSurface = false;
 }
 
 Result DescriptorWGPU::Create(const SamplerDesc& samplerDesc) {
@@ -106,7 +105,6 @@ WGPUTextureView DescriptorWGPU::GetTextureView() {
 
     m_TextureView = wgpuTextureCreateView(*m_Texture, &desc);
     m_TextureVersion = m_Texture->GetVersion();
-    m_TextureViewIsSurface = m_Texture->IsSurfaceTexture();
 
     return m_TextureView;
 }

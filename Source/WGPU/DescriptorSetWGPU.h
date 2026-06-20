@@ -33,6 +33,8 @@ struct DescriptorSetWGPU final : public DebugNameBase {
     inline WGPUBindGroup GetBindGroup() const {
         if (m_IsDirty || m_LayoutVersion != m_Mapping.layoutVersion)
             RecreateBindGroup();
+        if (m_IsDirty || m_LayoutVersion != m_Mapping.layoutVersion)
+            return nullptr;
 
         return m_BindGroup;
     }

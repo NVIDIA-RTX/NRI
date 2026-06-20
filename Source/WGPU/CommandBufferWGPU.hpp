@@ -6,6 +6,8 @@ CommandBufferWGPU::~CommandBufferWGPU() {
 
     if (m_RenderPass)
         wgpuRenderPassEncoderRelease(m_RenderPass);
+    ReleaseRenderPassTransientObjects();
+
     if (m_ComputePass)
         wgpuComputePassEncoderRelease(m_ComputePass);
     if (m_CommandBuffer)
@@ -37,6 +39,13 @@ void CommandBufferWGPU::ReleaseTransientObjects() {
     for (WGPUBuffer buffer : m_TemporaryBuffers)
         wgpuBufferRelease(buffer);
     m_TemporaryBuffers.clear();
+}
+
+void CommandBufferWGPU::ReleaseRenderPassTransientObjects() {
+    if (m_RenderDepthStencilView) {
+        wgpuTextureViewRelease(m_RenderDepthStencilView);
+        m_RenderDepthStencilView = nullptr;
+    }
 }
 
 void CommandBufferWGPU::PopPassAnnotations(AnnotationScopeWGPU scope) {
@@ -125,6 +134,26 @@ static PlaneBits GetFormatPlanesWGPU(Format format) {
 
 static PlaneBits NormalizeClearPlanesWGPU(PlaneBits planes, Format format) {
     return planes == PlaneBits::ALL ? GetFormatPlanesWGPU(format) : planes;
+}
+
+static WGPUTextureView CreateDepthStencilViewWGPU(const DescriptorWGPU& descriptor) {
+    const TextureWGPU* texture = descriptor.GetTexture();
+    if (!texture)
+        return nullptr;
+
+    const TextureDesc& textureDesc = texture->GetDesc();
+    const TextureViewDesc& viewDesc = descriptor.GetTextureViewDesc();
+
+    WGPUTextureViewDescriptor desc = WGPU_TEXTURE_VIEW_DESCRIPTOR_INIT;
+    desc.format = GetTextureFormat(viewDesc.format == Format::UNKNOWN ? textureDesc.format : viewDesc.format);
+    desc.dimension = GetTextureViewDimension(viewDesc.type, textureDesc);
+    desc.baseMipLevel = viewDesc.mipOffset;
+    desc.mipLevelCount = viewDesc.mipNum == REMAINING ? WGPU_MIP_LEVEL_COUNT_UNDEFINED : viewDesc.mipNum;
+    desc.baseArrayLayer = viewDesc.layerOffset;
+    desc.arrayLayerCount = viewDesc.layerNum == REMAINING ? WGPU_ARRAY_LAYER_COUNT_UNDEFINED : viewDesc.layerNum;
+    desc.aspect = WGPUTextureAspect_All;
+
+    return wgpuTextureCreateView(*texture, &desc);
 }
 
 WGPURenderPipeline CommandBufferWGPU::GetClearPipeline(uint32_t colorAttachmentIndex, PlaneBits planes, WGPUPipelineLayout& pipelineLayout) {
@@ -334,6 +363,10 @@ Result CommandBufferWGPU::Begin(const DescriptorPool* descriptorPool) {
     m_ComputeRootConstants.mask.clear();
     m_AnnotationScopes.clear();
     m_DeferredEncoderAnnotationPopNum = 0;
+    m_GraphicsDirtyDescriptorSetMin = uint32_t(-1);
+    m_GraphicsDirtyDescriptorSetMax = 0;
+    m_ComputeDirtyDescriptorSetMin = uint32_t(-1);
+    m_ComputeDirtyDescriptorSetMax = 0;
     m_GraphicsRootGroupDirty = true;
     m_ComputeRootGroupDirty = true;
     m_HasViewport = false;
@@ -362,6 +395,7 @@ void CommandBufferWGPU::EndPass() {
         wgpuRenderPassEncoderRelease(m_RenderPass);
         m_RenderPass = nullptr;
         m_RenderPipeline = nullptr;
+        ReleaseRenderPassTransientObjects();
     }
 
     if (m_ComputePass) {
@@ -462,8 +496,6 @@ void CommandBufferWGPU::SetPipeline(const Pipeline& pipeline) {
             RestoreRootConstants(BindPoint::COMPUTE);
     }
 
-    if (m_RenderPass && pipelineWGPU.GetPipelineLayout() && pipelineWGPU.GetPipelineLayout()->GetRootSamplerBindGroup())
-        wgpuRenderPassEncoderSetBindGroup(m_RenderPass, pipelineWGPU.GetPipelineLayout()->GetRootSamplerGroupIndex(), pipelineWGPU.GetPipelineLayout()->GetRootSamplerBindGroup(), 0, nullptr);
 }
 
 void CommandBufferWGPU::SetDescriptorSet(const SetDescriptorSetDesc& setDescriptorSetDesc) {
@@ -481,14 +513,33 @@ void CommandBufferWGPU::SetDescriptorSet(const SetDescriptorSetDesc& setDescript
 
     if (descriptorSets[bindGroupIndex] != &descriptorSet) {
         descriptorSets[bindGroupIndex] = &descriptorSet;
-        dirtySets[bindGroupIndex] = 1;
+        MarkDescriptorSetDirty(bindPoint, bindGroupIndex);
     }
 }
 
+void CommandBufferWGPU::MarkDescriptorSetDirty(BindPoint bindPoint, uint32_t bindGroupIndex) {
+    Vector<uint8_t>& dirtySets = bindPoint == BindPoint::COMPUTE ? m_ComputeDescriptorSetDirty : m_GraphicsDescriptorSetDirty;
+    if (bindGroupIndex >= dirtySets.size())
+        dirtySets.resize(bindGroupIndex + 1, 0);
+
+    dirtySets[bindGroupIndex] = 1;
+
+    uint32_t& dirtyMin = bindPoint == BindPoint::COMPUTE ? m_ComputeDirtyDescriptorSetMin : m_GraphicsDirtyDescriptorSetMin;
+    uint32_t& dirtyMax = bindPoint == BindPoint::COMPUTE ? m_ComputeDirtyDescriptorSetMax : m_GraphicsDirtyDescriptorSetMax;
+    dirtyMin = std::min(dirtyMin, bindGroupIndex);
+    dirtyMax = std::max(dirtyMax, bindGroupIndex + 1);
+}
+
 void CommandBufferWGPU::MarkDescriptorSetsDirty(BindPoint bindPoint) {
+    Vector<const DescriptorSetWGPU*>& descriptorSets = bindPoint == BindPoint::COMPUTE ? m_ComputeDescriptorSets : m_GraphicsDescriptorSets;
     Vector<uint8_t>& dirtySets = bindPoint == BindPoint::COMPUTE ? m_ComputeDescriptorSetDirty : m_GraphicsDescriptorSetDirty;
     for (uint8_t& dirty : dirtySets)
         dirty = 1;
+
+    uint32_t& dirtyMin = bindPoint == BindPoint::COMPUTE ? m_ComputeDirtyDescriptorSetMin : m_GraphicsDirtyDescriptorSetMin;
+    uint32_t& dirtyMax = bindPoint == BindPoint::COMPUTE ? m_ComputeDirtyDescriptorSetMax : m_GraphicsDirtyDescriptorSetMax;
+    dirtyMin = descriptorSets.empty() ? uint32_t(-1) : 0;
+    dirtyMax = (uint32_t)descriptorSets.size();
 }
 
 void CommandBufferWGPU::BindDescriptorSets(BindPoint bindPoint) {
@@ -496,7 +547,9 @@ void CommandBufferWGPU::BindDescriptorSets(BindPoint bindPoint) {
         if (!m_ComputePass)
             return;
 
-        for (uint32_t i = 0; i < (uint32_t)m_ComputeDescriptorSets.size(); i++) {
+        uint32_t dirtyMin = uint32_t(-1);
+        uint32_t dirtyMax = 0;
+        for (uint32_t i = m_ComputeDirtyDescriptorSetMin; i < std::min(m_ComputeDirtyDescriptorSetMax, (uint32_t)m_ComputeDescriptorSets.size()); i++) {
             if (i >= m_ComputeDescriptorSetDirty.size() || !m_ComputeDescriptorSetDirty[i])
                 continue;
 
@@ -505,8 +558,14 @@ void CommandBufferWGPU::BindDescriptorSets(BindPoint bindPoint) {
             if (bindGroup) {
                 wgpuComputePassEncoderSetBindGroup(m_ComputePass, i, bindGroup, 0, nullptr);
                 m_ComputeDescriptorSetDirty[i] = 0;
+            } else {
+                dirtyMin = std::min(dirtyMin, i);
+                dirtyMax = std::max(dirtyMax, i + 1);
             }
         }
+
+        m_ComputeDirtyDescriptorSetMin = dirtyMin;
+        m_ComputeDirtyDescriptorSetMax = dirtyMax;
 
         return;
     }
@@ -514,7 +573,9 @@ void CommandBufferWGPU::BindDescriptorSets(BindPoint bindPoint) {
     if (!m_RenderPass)
         return;
 
-    for (uint32_t i = 0; i < (uint32_t)m_GraphicsDescriptorSets.size(); i++) {
+    uint32_t dirtyMin = uint32_t(-1);
+    uint32_t dirtyMax = 0;
+    for (uint32_t i = m_GraphicsDirtyDescriptorSetMin; i < std::min(m_GraphicsDirtyDescriptorSetMax, (uint32_t)m_GraphicsDescriptorSets.size()); i++) {
         if (i >= m_GraphicsDescriptorSetDirty.size() || !m_GraphicsDescriptorSetDirty[i])
             continue;
 
@@ -523,8 +584,14 @@ void CommandBufferWGPU::BindDescriptorSets(BindPoint bindPoint) {
         if (bindGroup) {
             wgpuRenderPassEncoderSetBindGroup(m_RenderPass, i, bindGroup, 0, nullptr);
             m_GraphicsDescriptorSetDirty[i] = 0;
+        } else {
+            dirtyMin = std::min(dirtyMin, i);
+            dirtyMax = std::max(dirtyMax, i + 1);
         }
     }
+
+    m_GraphicsDirtyDescriptorSetMin = dirtyMin;
+    m_GraphicsDirtyDescriptorSetMax = dirtyMax;
 }
 
 WGPUBindGroup CommandBufferWGPU::CreateRootBindGroup(BindPoint bindPoint) {
@@ -681,6 +748,9 @@ void CommandBufferWGPU::SetRootDescriptor(const SetRootDescriptorDesc& setRootDe
     const RootDescriptorMappingWGPU& rootDescriptor = m_PipelineLayout->GetRootDescriptorMapping(setRootDescriptorDesc.rootDescriptorIndex);
     DescriptorWGPU* descriptor = (DescriptorWGPU*)setRootDescriptorDesc.descriptor;
     bool recreateBindGroup = rootBinding.descriptor != descriptor || (rootDescriptor.dynamicOffsetIndex == uint32_t(-1) && rootBinding.offset != setRootDescriptorDesc.offset);
+    bool dynamicOffsetChanged = rootDescriptor.dynamicOffsetIndex != uint32_t(-1) && m_RootDynamicOffsets[rootDescriptor.dynamicOffsetIndex] != (uint32_t)setRootDescriptorDesc.offset;
+    if (!recreateBindGroup && !dynamicOffsetChanged)
+        return;
 
     rootBinding = {descriptor, setRootDescriptorDesc.offset};
 
@@ -780,7 +850,13 @@ void CommandBufferWGPU::BeginRendering(const RenderingDesc& renderingDesc) {
         const TextureDesc* textureDesc = descriptor.GetTextureDesc();
         m_RenderDepthStencilFormat = descriptor.GetFormat();
 
-        depthStencilAttachment.view = descriptor.GetTextureView();
+        if (renderingDesc.depth.descriptor && renderingDesc.stencil.descriptor) {
+            // TODO: WGPU needs a single depth-stencil view for the render pass. NRI can provide separate plane descriptors.
+            m_RenderDepthStencilView = CreateDepthStencilViewWGPU(descriptor);
+            depthStencilAttachment.view = m_RenderDepthStencilView;
+        } else
+            depthStencilAttachment.view = descriptor.GetTextureView();
+
         if (!m_RenderWidth && textureDesc) {
             m_RenderWidth = GetDimension(GraphicsAPI::WGPU, *textureDesc, 0, descriptor.GetTextureViewDesc().mipOffset);
             m_RenderHeight = GetDimension(GraphicsAPI::WGPU, *textureDesc, 1, descriptor.GetTextureViewDesc().mipOffset);
@@ -812,6 +888,8 @@ void CommandBufferWGPU::BeginRendering(const RenderingDesc& renderingDesc) {
     desc.depthStencilAttachment = depthStencilAttachmentPtr;
 
     m_RenderPass = wgpuCommandEncoderBeginRenderPass(m_CommandEncoder, &desc);
+    if (!m_RenderPass)
+        ReleaseRenderPassTransientObjects();
 
     m_HasViewport = false;
     m_HasScissor = false;

@@ -303,7 +303,8 @@ Result PipelineWGPU::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     m_RenderPipeline = wgpuDeviceCreateRenderPipeline(m_Device, &desc);
 
     wgpuShaderModuleRelease(vertexShader);
-    wgpuShaderModuleRelease(fragmentShader);
+    if (fragmentShader)
+        wgpuShaderModuleRelease(fragmentShader);
 
     return m_RenderPipeline ? Result::SUCCESS : Result::FAILURE;
 }

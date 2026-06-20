@@ -37,7 +37,7 @@ struct BufferWGPU final : public DebugNameBase {
     void* Map(uint64_t offset, uint64_t size);
     void Unmap();
 
-    void SetHostVisible(MemoryLocation memoryLocation);
+    Result SetHostVisible(MemoryLocation memoryLocation);
 
     //================================================================================================================
     // DebugNameBase

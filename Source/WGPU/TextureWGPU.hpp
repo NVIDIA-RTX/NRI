@@ -5,7 +5,7 @@ TextureWGPU::~TextureWGPU() {
 }
 
 void TextureWGPU::Release() {
-    if (m_Texture && m_OwnsTexture && !m_IsSurfaceTexture)
+    if (m_Texture && m_OwnsTexture)
         wgpuTextureRelease(m_Texture);
 
     m_Texture = nullptr;
@@ -69,6 +69,9 @@ void TextureWGPU::SetSurfaceTexture(WGPUTexture texture, Format format, Dim_t wi
 void TextureWGPU::DetachSurfaceTexture() {
     if (!m_IsSurfaceTexture)
         return;
+
+    if (m_Texture && m_OwnsTexture)
+        wgpuTextureRelease(m_Texture);
 
     m_Texture = nullptr;
     m_IsSurfaceTexture = false;

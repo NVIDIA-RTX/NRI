@@ -313,6 +313,7 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
             const DescriptorVal& resolveDstVal = *(DescriptorVal*)renderingDesc.colors[i].resolveDst;
 
             NRI_RETURN_ON_FAILURE(&m_Device, resolveDstVal.IsColorAttachment(), ReturnVoid(), "'colors[%u].resolveDst' is not a 'COLOR_ATTACHMENT' descriptor", i);
+            NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetFormatSupport(resolveDstVal.GetFormat()) & FormatSupportBits::MULTISAMPLE_RESOLVE, ReturnVoid(), "'colors[%u].resolveDst' format does not support 'FormatSupportBits::MULTISAMPLE_RESOLVE'", i);
             if (!deviceDesc.features.resolveOpMinMax)
                 NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.colors[i].resolveOp == ResolveOp::AVERAGE, ReturnVoid(), "'features.resolveOpMinMax' is false");
         }
@@ -341,6 +342,7 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
         const DescriptorVal& resolveDstVal = *(DescriptorVal*)renderingDesc.depth.resolveDst;
         NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.depth.descriptor, ReturnVoid(), "'depth.resolveDst' is not NULL, but 'depth.descriptor' is NULL");
         NRI_RETURN_ON_FAILURE(&m_Device, resolveDstVal.IsDepthStencilAttachment(), ReturnVoid(), "'depth.resolveDst' is not a 'DEPTH_STENCIL_ATTACHMENT' descriptor");
+        NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetFormatSupport(resolveDstVal.GetFormat()) & FormatSupportBits::MULTISAMPLE_RESOLVE, ReturnVoid(), "'depth.resolveDst' format does not support 'FormatSupportBits::MULTISAMPLE_RESOLVE'");
         if (!deviceDesc.features.resolveOpMinMax)
             NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.depth.resolveOp == ResolveOp::AVERAGE, ReturnVoid(), "'features.resolveOpMinMax' is false");
     }
@@ -352,6 +354,7 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
         const DescriptorVal& resolveDstVal = *(DescriptorVal*)renderingDesc.stencil.resolveDst;
         NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.stencil.descriptor, ReturnVoid(), "'stencil.resolveDst' is not NULL, but 'stencil.descriptor' is NULL");
         NRI_RETURN_ON_FAILURE(&m_Device, resolveDstVal.IsDepthStencilAttachment(), ReturnVoid(), "'stencil.resolveDst' is not a 'DEPTH_STENCIL_ATTACHMENT' descriptor");
+        NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetFormatSupport(resolveDstVal.GetFormat()) & FormatSupportBits::MULTISAMPLE_RESOLVE, ReturnVoid(), "'stencil.resolveDst' format does not support 'FormatSupportBits::MULTISAMPLE_RESOLVE'");
         if (!deviceDesc.features.resolveOpMinMax)
             NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.stencil.resolveOp == ResolveOp::AVERAGE, ReturnVoid(), "'features.resolveOpMinMax' is false");
     }
