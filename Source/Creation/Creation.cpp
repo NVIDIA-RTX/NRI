@@ -543,6 +543,23 @@ static void UpdateAdaptersWGPU(AdapterDesc* adapterDescs, uint32_t& adapterDescN
             continue;
         }
 
+        if (wgpuAdapterHasFeature(wgpuAdapters[i], (WGPUFeatureName)WGPUNativeFeature_Immediates) != WGPU_TRUE) {
+            wgpuAdapterInfoFreeMembers(adapterInfo);
+            wgpuAdapterRelease(wgpuAdapters[i]);
+            continue;
+        }
+
+        WGPUNativeLimits nativeLimits = {};
+        nativeLimits.chain.sType = (WGPUSType)WGPUSType_NativeLimits;
+
+        WGPULimits limits = WGPU_LIMITS_INIT;
+        limits.nextInChain = &nativeLimits.chain;
+        if (wgpuAdapterGetLimits(wgpuAdapters[i], &limits) != WGPUStatus_Success || nativeLimits.maxImmediateSize < 256) {
+            wgpuAdapterInfoFreeMembers(adapterInfo);
+            wgpuAdapterRelease(wgpuAdapters[i]);
+            continue;
+        }
+
         Vendor vendor = GetVendorFromID(adapterInfo.vendorID);
 
         uint32_t n = 0;
