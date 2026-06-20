@@ -72,4 +72,3 @@ Architecture GetArchitecture(WGPUAdapterType adapterType);
 } // namespace nri
 
 #include "DeviceWGPU.h"
-

@@ -27,6 +27,8 @@ struct CommandBufferWGPU final : public DebugNameBase {
         , m_ClearPipelines(device.GetStdAllocator())
         , m_RootDescriptorBindings(device.GetStdAllocator())
         , m_RootDynamicOffsets(device.GetStdAllocator())
+        , m_RootConstantData(device.GetStdAllocator())
+        , m_RootConstantMask(device.GetStdAllocator())
         , m_TemporaryBuffers(device.GetStdAllocator()) {
     }
 
@@ -97,6 +99,7 @@ private:
     void ReleaseRootBindGroups();
     void MarkDescriptorSetsDirty(BindPoint bindPoint);
     void BindRootGroup(BindPoint bindPoint);
+    void RestoreRootConstants(BindPoint bindPoint);
     WGPUBindGroup CreateRootBindGroup(BindPoint bindPoint);
     WGPURenderPipeline GetClearPipeline(Format format, Format depthStencilFormat, PlaneBits planes, WGPUPipelineLayout& pipelineLayout);
 
@@ -109,6 +112,8 @@ private:
     Vector<ClearPipelineWGPU> m_ClearPipelines;
     Vector<RootDescriptorBindingWGPU> m_RootDescriptorBindings;
     Vector<uint32_t> m_RootDynamicOffsets;
+    Vector<uint8_t> m_RootConstantData;
+    Vector<uint8_t> m_RootConstantMask;
     Vector<WGPUBuffer> m_TemporaryBuffers;
     WGPUCommandEncoder m_CommandEncoder = nullptr;
     WGPUCommandBuffer m_CommandBuffer = nullptr;
@@ -125,8 +130,13 @@ private:
     Format m_RenderDepthStencilFormat = Format::UNKNOWN;
     Dim_t m_RenderWidth = 0;
     Dim_t m_RenderHeight = 0;
+    Viewport m_Viewport = {};
+    Rect m_Scissor = {};
+    uint8_t m_StencilReference = 0;
     bool m_GraphicsRootGroupDirty = true;
     bool m_ComputeRootGroupDirty = true;
+    bool m_HasViewport = false;
+    bool m_HasScissor = false;
 };
 
 } // namespace nri
