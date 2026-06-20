@@ -230,6 +230,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
             D3D11_MESSAGE_ID disableMessageIDs[] = {
                 // Disobey the spec, but allow multiple structured views for a single buffer
                 D3D11_MESSAGE_ID_DEVICE_SHADERRESOURCEVIEW_BUFFER_TYPE_MISMATCH,
+                D3D11_MESSAGE_ID_DEVICE_UNORDEREDACCESSVIEW_BUFFER_TYPE_MISMATCH,
             };
 
             D3D11_INFO_QUEUE_FILTER filter = {};
