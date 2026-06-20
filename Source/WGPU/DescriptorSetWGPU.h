@@ -23,6 +23,7 @@ struct DescriptorSetMappingWGPU {
     Vector<DescriptorRangeMappingWGPU> ranges;
     WGPUBindGroupLayout layout = nullptr;
     uint32_t bindGroupIndex = 0;
+    uint32_t layoutVersion = 1;
 };
 
 struct DescriptorSetWGPU final : public DebugNameBase {
@@ -30,14 +31,19 @@ struct DescriptorSetWGPU final : public DebugNameBase {
     ~DescriptorSetWGPU();
 
     inline WGPUBindGroup GetBindGroup() const {
-        if (m_IsDirty)
+        if (m_IsDirty || m_LayoutVersion != m_Mapping.layoutVersion)
             RecreateBindGroup();
 
         return m_BindGroup;
     }
 
+    inline DeviceWGPU& GetDevice() const {
+        return m_Device;
+    }
+
     void UpdateRange(uint32_t rangeIndex, uint32_t baseDescriptor, const Descriptor* const* descriptors, uint32_t descriptorNum);
     void CopyRangeFrom(uint32_t dstRangeIndex, uint32_t dstBaseDescriptor, const DescriptorSetWGPU& srcDescriptorSet, uint32_t srcRangeIndex, uint32_t srcBaseDescriptor, uint32_t descriptorNum);
+    void FinalizeUpdate() const;
     void GetOffsets(uint32_t& resourceHeapOffset, uint32_t& samplerHeapOffset) const;
 
 private:
@@ -48,6 +54,7 @@ private:
     const DescriptorSetMappingWGPU& m_Mapping;
     Vector<DescriptorWGPU*> m_Descriptors;
     mutable WGPUBindGroup m_BindGroup = nullptr;
+    mutable uint32_t m_LayoutVersion = 0;
     mutable bool m_IsDirty = false;
 };
 

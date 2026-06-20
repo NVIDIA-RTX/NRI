@@ -24,7 +24,7 @@ static bool IsDescriptorCompatibleWithRange(const DescriptorRangeMappingWGPU& ra
     if (!textureDesc)
         return false;
 
-    return GetTextureViewDimension(descriptor.GetTextureViewDesc().type, *textureDesc) == range.storageTextureViewDimension;
+    return GetTextureFormat(descriptor.GetFormat()) == range.storageTextureFormat && GetTextureViewDimension(descriptor.GetTextureViewDesc().type, *textureDesc) == range.storageTextureViewDimension;
 }
 
 void DescriptorSetWGPU::UpdateRange(uint32_t rangeIndex, uint32_t baseDescriptor, const Descriptor* const* descriptors, uint32_t descriptorNum) {
@@ -34,7 +34,6 @@ void DescriptorSetWGPU::UpdateRange(uint32_t rangeIndex, uint32_t baseDescriptor
         m_Descriptors[range.descriptorOffset + baseDescriptor + i] = (DescriptorWGPU*)descriptors[i];
 
     m_IsDirty = true;
-    RecreateBindGroup();
 }
 
 void DescriptorSetWGPU::CopyRangeFrom(uint32_t dstRangeIndex, uint32_t dstBaseDescriptor, const DescriptorSetWGPU& srcDescriptorSet, uint32_t srcRangeIndex, uint32_t srcBaseDescriptor, uint32_t descriptorNum) {
@@ -46,7 +45,11 @@ void DescriptorSetWGPU::CopyRangeFrom(uint32_t dstRangeIndex, uint32_t dstBaseDe
         m_Descriptors[dstRange.descriptorOffset + dstBaseDescriptor + i] = srcDescriptorSet.m_Descriptors[srcRange.descriptorOffset + srcBaseDescriptor + i];
 
     m_IsDirty = true;
-    RecreateBindGroup();
+}
+
+void DescriptorSetWGPU::FinalizeUpdate() const {
+    if (m_IsDirty || m_LayoutVersion != m_Mapping.layoutVersion)
+        RecreateBindGroup();
 }
 
 void DescriptorSetWGPU::RecreateBindGroup() const {
@@ -152,6 +155,7 @@ void DescriptorSetWGPU::RecreateBindGroup() const {
     desc.entries = entries;
 
     m_BindGroup = wgpuDeviceCreateBindGroup(m_Device, &desc);
+    m_LayoutVersion = m_Mapping.layoutVersion;
     m_IsDirty = false;
 }
 

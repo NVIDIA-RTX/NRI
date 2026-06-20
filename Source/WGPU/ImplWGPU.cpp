@@ -1,6 +1,8 @@
 // © 2026 NVIDIA Corporation
 
 #include <algorithm>
+#include <cstdio>
+#include <string>
 #include <thread>
 
 #include "SharedWGPU.h"
@@ -269,18 +271,53 @@ static Result NRI_CALL AllocateDescriptorSets(DescriptorPool& descriptorPool, co
     return ((DescriptorPoolWGPU&)descriptorPool).AllocateDescriptorSets(pipelineLayout, setIndex, descriptorSets, instanceNum, variableDescriptorNum);
 }
 
+static void AddTouchedDescriptorSet(DescriptorSetWGPU** touchedSets, uint32_t& touchedSetNum, DescriptorSetWGPU* descriptorSet) {
+    for (uint32_t i = 0; i < touchedSetNum; i++) {
+        if (touchedSets[i] == descriptorSet)
+            return;
+    }
+
+    touchedSets[touchedSetNum++] = descriptorSet;
+}
+
 static void NRI_CALL UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum) {
+    if (!updateDescriptorRangeDescNum)
+        return;
+
+    DeviceWGPU& device = ((DescriptorSetWGPU*)updateDescriptorRangeDescs[0].descriptorSet)->GetDevice();
+    Scratch<DescriptorSetWGPU*> touchedSets = NRI_ALLOCATE_SCRATCH(device, DescriptorSetWGPU*, updateDescriptorRangeDescNum);
+    uint32_t touchedSetNum = 0;
+
     for (uint32_t i = 0; i < updateDescriptorRangeDescNum; i++) {
         const UpdateDescriptorRangeDesc& desc = updateDescriptorRangeDescs[i];
-        ((DescriptorSetWGPU*)desc.descriptorSet)->UpdateRange(desc.rangeIndex, desc.baseDescriptor, desc.descriptors, desc.descriptorNum);
+        DescriptorSetWGPU* descriptorSet = (DescriptorSetWGPU*)desc.descriptorSet;
+        descriptorSet->UpdateRange(desc.rangeIndex, desc.baseDescriptor, desc.descriptors, desc.descriptorNum);
+
+        AddTouchedDescriptorSet(touchedSets, touchedSetNum, descriptorSet);
     }
+
+    for (uint32_t i = 0; i < touchedSetNum; i++)
+        touchedSets[i]->FinalizeUpdate();
 }
 
 static void NRI_CALL CopyDescriptorRanges(const CopyDescriptorRangeDesc* copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum) {
+    if (!copyDescriptorRangeDescNum)
+        return;
+
+    DeviceWGPU& device = ((DescriptorSetWGPU*)copyDescriptorRangeDescs[0].dstDescriptorSet)->GetDevice();
+    Scratch<DescriptorSetWGPU*> touchedSets = NRI_ALLOCATE_SCRATCH(device, DescriptorSetWGPU*, copyDescriptorRangeDescNum);
+    uint32_t touchedSetNum = 0;
+
     for (uint32_t i = 0; i < copyDescriptorRangeDescNum; i++) {
         const CopyDescriptorRangeDesc& desc = copyDescriptorRangeDescs[i];
-        ((DescriptorSetWGPU*)desc.dstDescriptorSet)->CopyRangeFrom(desc.dstRangeIndex, desc.dstBaseDescriptor, *(DescriptorSetWGPU*)desc.srcDescriptorSet, desc.srcRangeIndex, desc.srcBaseDescriptor, desc.descriptorNum);
+        DescriptorSetWGPU* descriptorSet = (DescriptorSetWGPU*)desc.dstDescriptorSet;
+        descriptorSet->CopyRangeFrom(desc.dstRangeIndex, desc.dstBaseDescriptor, *(DescriptorSetWGPU*)desc.srcDescriptorSet, desc.srcRangeIndex, desc.srcBaseDescriptor, desc.descriptorNum);
+
+        AddTouchedDescriptorSet(touchedSets, touchedSetNum, descriptorSet);
     }
+
+    for (uint32_t i = 0; i < touchedSetNum; i++)
+        touchedSets[i]->FinalizeUpdate();
 }
 
 static void NRI_CALL ResetDescriptorPool(DescriptorPool& descriptorPool) {

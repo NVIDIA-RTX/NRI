@@ -21,7 +21,8 @@ struct PipelineLayoutWGPU final : public DebugNameBase {
         , m_SetMappings(device.GetStdAllocator())
         , m_BindGroupLayouts(device.GetStdAllocator())
         , m_RootSamplers(device.GetStdAllocator())
-        , m_RootDescriptors(device.GetStdAllocator()) {
+        , m_RootDescriptors(device.GetStdAllocator())
+        , m_RootConstantOffsets(device.GetStdAllocator()) {
     }
 
     ~PipelineLayoutWGPU();
@@ -68,6 +69,10 @@ struct PipelineLayoutWGPU final : public DebugNameBase {
         return m_RootDynamicOffsetNum;
     }
 
+    uint32_t GetRootConstantOffset(uint32_t rootConstantIndex) const {
+        return rootConstantIndex < m_RootConstantOffsets.size() ? m_RootConstantOffsets[rootConstantIndex] : 0;
+    }
+
     Result Create(const PipelineLayoutDesc& pipelineLayoutDesc);
     Result UpdateStorageTextureFormats(const ShaderDesc* shaderDescs, uint32_t shaderDescNum);
 
@@ -85,12 +90,14 @@ private:
     Vector<WGPUBindGroupLayout> m_BindGroupLayouts;
     Vector<RootSamplerMappingWGPU> m_RootSamplers;
     Vector<RootDescriptorMappingWGPU> m_RootDescriptors;
+    Vector<uint32_t> m_RootConstantOffsets;
     WGPUPipelineLayout m_PipelineLayout = nullptr;
     WGPUBindGroupLayout m_RootSamplerLayout = nullptr;
     WGPUBindGroup m_RootSamplerBindGroup = nullptr;
     uint32_t m_RootSamplerGroupIndex = uint32_t(-1);
     uint32_t m_RootDynamicOffsetNum = 0;
     uint32_t m_ImmediateDataSize = 0;
+    bool m_IsFinalized = false;
 };
 
 } // namespace nri

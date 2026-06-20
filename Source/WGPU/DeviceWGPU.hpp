@@ -301,7 +301,7 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.other.combinedClipAndCullDistanceMaxNum = 8;
     m_Desc.other.viewMaxNum = 1;
 
-    m_Desc.tiers.resourceBinding = 2;
+    m_Desc.tiers.resourceBinding = 0;
     m_Desc.tiers.bindless = 0;
     m_Desc.tiers.memory = 1;
 
@@ -316,7 +316,6 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.features.getMemoryDesc2 = true;
     m_Desc.features.rootConstantsOffset = true;
     m_Desc.shaderFeatures.drawParameters = true;
-    m_Desc.shaderFeatures.drawIndex = true;
 }
 
 void DeviceWGPU::Destruct() {

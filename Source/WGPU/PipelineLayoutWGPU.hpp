@@ -89,8 +89,11 @@ Result PipelineLayoutWGPU::Create(const PipelineLayoutDesc& pipelineLayoutDesc) 
     const auto bindingOffsets = GetBindingOffsets(m_Device, pipelineLayoutDesc);
 
     m_ImmediateDataSize = 0;
-    for (uint32_t i = 0; i < pipelineLayoutDesc.rootConstantNum; i++)
-        m_ImmediateDataSize = std::max(m_ImmediateDataSize, pipelineLayoutDesc.rootConstants[i].size);
+    m_RootConstantOffsets.resize(pipelineLayoutDesc.rootConstantNum);
+    for (uint32_t i = 0; i < pipelineLayoutDesc.rootConstantNum; i++) {
+        m_RootConstantOffsets[i] = m_ImmediateDataSize;
+        m_ImmediateDataSize += pipelineLayoutDesc.rootConstants[i].size;
+    }
 
     uint32_t bindGroupNum = 0;
     for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++)
@@ -170,6 +173,8 @@ Result PipelineLayoutWGPU::Create(const PipelineLayoutDesc& pipelineLayoutDesc) 
             range.descriptorType = DescriptorType::SAMPLER;
             range.shaderStages = rootSampler.shaderStages;
             FillLayoutEntry(entries[i], range, binding);
+            if (rootSampler.desc.compareOp != CompareOp::NONE)
+                entries[i].sampler.type = WGPUSamplerBindingType_Comparison;
 
             WGPUSamplerDescriptor samplerDesc = WGPU_SAMPLER_DESCRIPTOR_INIT;
             samplerDesc.addressModeU = GetAddressMode(rootSampler.desc.addressModes.u);
@@ -482,7 +487,12 @@ static WGPUTextureViewDimension GetStorageTextureViewDimensionFromWgsl(const cha
     return WGPUTextureViewDimension_2D;
 }
 
-static void ReflectStorageTexturesFromWgsl(const ShaderDesc& shaderDesc, Vector<StorageTextureBindingWGPU>& storageTextures) {
+static void AddStorageTextureBindingWGPU(StorageTextureBindingWGPU* storageTextures, uint32_t& storageTextureNum, uint32_t storageTextureMaxNum, const StorageTextureBindingWGPU& storageTexture) {
+    if (storageTextureNum < storageTextureMaxNum)
+        storageTextures[storageTextureNum++] = storageTexture;
+}
+
+static void ReflectStorageTexturesFromWgsl(const ShaderDesc& shaderDesc, StorageTextureBindingWGPU* storageTextures, uint32_t& storageTextureNum, uint32_t storageTextureMaxNum) {
     // TODO: This is a small source parser, not full WGSL reflection. It intentionally recognizes only direct storage-texture declarations.
     const char* source = (const char*)shaderDesc.bytecode;
     if (!source || shaderDesc.size == 0)
@@ -522,17 +532,17 @@ static void ReflectStorageTexturesFromWgsl(const ShaderDesc& shaderDesc, Vector<
 
         WGPUTextureFormat format = GetStorageTextureFormatFromWgsl(formatBegin, formatEnd);
         if (format != WGPUTextureFormat_Undefined)
-            storageTextures.push_back({set, binding, format, GetStorageTextureViewDimensionFromWgsl(dimensionBegin, dimensionEnd)});
+            AddStorageTextureBindingWGPU(storageTextures, storageTextureNum, storageTextureMaxNum, {set, binding, format, GetStorageTextureViewDimensionFromWgsl(dimensionBegin, dimensionEnd)});
 
         it = formatEnd;
     }
 }
 
-static void ReflectStorageTextures(const ShaderDesc& shaderDesc, Vector<StorageTextureBindingWGPU>& storageTextures) {
+static void ReflectStorageTextures(DeviceWGPU& device, const ShaderDesc& shaderDesc, StorageTextureBindingWGPU* storageTextures, uint32_t& storageTextureNum, uint32_t storageTextureMaxNum) {
     const uint32_t* code = (const uint32_t*)shaderDesc.bytecode;
     uint32_t wordNum = (uint32_t)(shaderDesc.size / sizeof(uint32_t));
     if (!code || wordNum < 5 || code[0] != 0x07230203) {
-        ReflectStorageTexturesFromWgsl(shaderDesc, storageTextures);
+        ReflectStorageTexturesFromWgsl(shaderDesc, storageTextures, storageTextureNum, storageTextureMaxNum);
         return;
     }
 
@@ -544,14 +554,16 @@ static void ReflectStorageTextures(const ShaderDesc& shaderDesc, Vector<StorageT
     };
 
     uint32_t idBound = code[3];
-    Vector<uint32_t> descriptorSets(storageTextures.get_allocator());
-    Vector<uint32_t> bindings(storageTextures.get_allocator());
-    Vector<uint32_t> pointerTypes(storageTextures.get_allocator());
-    Vector<TypeInfo> types(storageTextures.get_allocator());
-    descriptorSets.resize(idBound, uint32_t(-1));
-    bindings.resize(idBound, uint32_t(-1));
-    pointerTypes.resize(idBound, uint32_t(-1));
-    types.resize(idBound);
+    Scratch<uint32_t> descriptorSets = NRI_ALLOCATE_SCRATCH(device, uint32_t, idBound);
+    Scratch<uint32_t> bindings = NRI_ALLOCATE_SCRATCH(device, uint32_t, idBound);
+    Scratch<uint32_t> pointerTypes = NRI_ALLOCATE_SCRATCH(device, uint32_t, idBound);
+    Scratch<TypeInfo> types = NRI_ALLOCATE_SCRATCH(device, TypeInfo, idBound);
+    for (uint32_t i = 0; i < idBound; i++) {
+        descriptorSets[i] = uint32_t(-1);
+        bindings[i] = uint32_t(-1);
+        pointerTypes[i] = uint32_t(-1);
+        types[i] = {};
+    }
 
     for (uint32_t word = 5; word < wordNum;) {
         uint32_t instruction = code[word];
@@ -593,7 +605,7 @@ static void ReflectStorageTextures(const ShaderDesc& shaderDesc, Vector<StorageT
                 if (type.isStorageTexture && descriptorSets[resultId] != uint32_t(-1) && bindings[resultId] != uint32_t(-1)) {
                     WGPUTextureFormat format = GetStorageTextureFormatFromSpirv(type.imageFormat);
                     if (format != WGPUTextureFormat_Undefined)
-                        storageTextures.push_back({descriptorSets[resultId], bindings[resultId], format, type.viewDimension});
+                        AddStorageTextureBindingWGPU(storageTextures, storageTextureNum, storageTextureMaxNum, {descriptorSets[resultId], bindings[resultId], format, type.viewDimension});
                 }
             }
         }
@@ -603,12 +615,18 @@ static void ReflectStorageTextures(const ShaderDesc& shaderDesc, Vector<StorageT
 }
 
 Result PipelineLayoutWGPU::UpdateStorageTextureFormats(const ShaderDesc* shaderDescs, uint32_t shaderDescNum) {
-    Vector<StorageTextureBindingWGPU> storageTextures(m_Device.GetStdAllocator());
+    uint32_t storageTextureMaxNum = 0;
     for (uint32_t i = 0; i < shaderDescNum; i++)
-        ReflectStorageTextures(shaderDescs[i], storageTextures);
+        storageTextureMaxNum += (uint32_t)std::max<size_t>(shaderDescs[i].size, 1);
+
+    Scratch<StorageTextureBindingWGPU> storageTextures = NRI_ALLOCATE_SCRATCH(m_Device, StorageTextureBindingWGPU, storageTextureMaxNum);
+    uint32_t storageTextureNum = 0;
+    for (uint32_t i = 0; i < shaderDescNum; i++)
+        ReflectStorageTextures(m_Device, shaderDescs[i], storageTextures, storageTextureNum, storageTextureMaxNum);
 
     bool changed = false;
-    for (const StorageTextureBindingWGPU& storageTexture : storageTextures) {
+    for (uint32_t i = 0; i < storageTextureNum; i++) {
+        const StorageTextureBindingWGPU& storageTexture = storageTextures[i];
         for (DescriptorSetMappingWGPU& mapping : m_SetMappings) {
             if (mapping.bindGroupIndex != storageTexture.set)
                 continue;
@@ -623,8 +641,14 @@ Result PipelineLayoutWGPU::UpdateStorageTextureFormats(const ShaderDesc* shaderD
         }
     }
 
-    if (!changed)
+    if (!changed) {
+        m_IsFinalized = true;
         return Result::SUCCESS;
+    }
+
+    // TODO: Storage texture metadata is reflected while creating the first pipeline that uses a layout. A later conflicting pipeline needs a pipeline-local WGPU layout model.
+    if (m_IsFinalized)
+        return Result::FAILURE;
 
     for (DescriptorSetMappingWGPU& mapping : m_SetMappings) {
         bool hasStorageTexture = false;
@@ -658,6 +682,7 @@ Result PipelineLayoutWGPU::UpdateStorageTextureFormats(const ShaderDesc* shaderD
 
         wgpuBindGroupLayoutRelease(mapping.layout);
         mapping.layout = layout;
+        mapping.layoutVersion++;
         m_BindGroupLayouts[mapping.bindGroupIndex] = layout;
     }
 
@@ -675,5 +700,10 @@ Result PipelineLayoutWGPU::UpdateStorageTextureFormats(const ShaderDesc* shaderD
 
     m_PipelineLayout = wgpuDeviceCreatePipelineLayout(m_Device, &desc);
 
-    return m_PipelineLayout ? Result::SUCCESS : Result::FAILURE;
+    if (!m_PipelineLayout)
+        return Result::FAILURE;
+
+    m_IsFinalized = true;
+
+    return Result::SUCCESS;
 }

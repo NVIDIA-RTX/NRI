@@ -63,29 +63,131 @@ void CommandBufferWGPU::FlushDeferredEncoderAnnotationPops() {
         wgpuCommandEncoderPopDebugGroup(m_CommandEncoder);
 }
 
-WGPURenderPipeline CommandBufferWGPU::GetClearPipeline(Format format, Format depthStencilFormat, PlaneBits planes, WGPUPipelineLayout& pipelineLayout) {
+static uint32_t GetFormatComponentNumWGPU(Format format) {
+    const FormatProps& props = GetFormatProps(format);
+    uint32_t componentNum = 0;
+    componentNum += props.redBits ? 1 : 0;
+    componentNum += props.greenBits ? 1 : 0;
+    componentNum += props.blueBits ? 1 : 0;
+    componentNum += props.alphaBits ? 1 : 0;
+
+    return std::max(componentNum, 1u);
+}
+
+static const char* GetFormatScalarTypeWGPU(Format format) {
+    const FormatProps& props = GetFormatProps(format);
+    if (props.isInteger)
+        return props.isSigned ? "i32" : "u32";
+
+    return "f32";
+}
+
+static std::string GetFormatShaderTypeWGPU(Format format) {
+    const char* scalarType = GetFormatScalarTypeWGPU(format);
+    uint32_t componentNum = GetFormatComponentNumWGPU(format);
+    if (componentNum == 1)
+        return scalarType;
+
+    char type[32] = {};
+    snprintf(type, sizeof(type), "vec%u<%s>", componentNum, scalarType);
+
+    return type;
+}
+
+static std::string GetClearShaderValueWGPU(Format format) {
+    uint32_t componentNum = GetFormatComponentNumWGPU(format);
+    if (componentNum == 1)
+        return "c.color.x";
+    if (componentNum == 2)
+        return "c.color.xy";
+    if (componentNum == 3)
+        return "c.color.xyz";
+
+    return "c.color";
+}
+
+static std::string GetZeroShaderValueWGPU(Format format) {
+    std::string type = GetFormatShaderTypeWGPU(format);
+    return type + "(0)";
+}
+
+static PlaneBits GetFormatPlanesWGPU(Format format) {
+    const FormatProps& props = GetFormatProps(format);
+    if (props.isDepth && props.isStencil)
+        return PlaneBits::DEPTH | PlaneBits::STENCIL;
+    if (props.isDepth)
+        return PlaneBits::DEPTH;
+    if (props.isStencil)
+        return PlaneBits::STENCIL;
+
+    return PlaneBits::COLOR;
+}
+
+static PlaneBits NormalizeClearPlanesWGPU(PlaneBits planes, Format format) {
+    return planes == PlaneBits::ALL ? GetFormatPlanesWGPU(format) : planes;
+}
+
+WGPURenderPipeline CommandBufferWGPU::GetClearPipeline(uint32_t colorAttachmentIndex, PlaneBits planes, WGPUPipelineLayout& pipelineLayout) {
     for (ClearPipelineWGPU& clearPipeline : m_ClearPipelines) {
-        if (clearPipeline.format == format && clearPipeline.depthStencilFormat == depthStencilFormat && clearPipeline.planes == planes) {
+        bool isSame = clearPipeline.depthStencilFormat == m_RenderDepthStencilFormat
+            && clearPipeline.colorNum == m_RenderColorNum
+            && clearPipeline.colorAttachmentIndex == colorAttachmentIndex
+            && clearPipeline.planes == planes
+            && clearPipeline.sampleNum == m_RenderSampleNum;
+        for (uint32_t i = 0; isSame && i < m_RenderColorNum; i++)
+            isSame = clearPipeline.colorFormats[i] == m_RenderColorFormats[i];
+
+        if (isSame) {
             pipelineLayout = clearPipeline.layout;
             return clearPipeline.pipeline;
         }
     }
 
-    static const char clearShaderSource[] =
-        "struct ClearConstants { color: vec4<f32>, }\n"
+    Format immediateFormat = (planes & PlaneBits::COLOR) && colorAttachmentIndex < m_RenderColorNum ? m_RenderColorFormats[colorAttachmentIndex] : Format::RGBA32_SFLOAT;
+    std::string clearShaderSource = "struct ClearConstants { color: vec4<";
+    clearShaderSource += GetFormatScalarTypeWGPU(immediateFormat);
+    clearShaderSource += ">, }\n";
+    clearShaderSource +=
         "var<immediate> c: ClearConstants;\n"
         "@vertex\n"
         "fn vs_main(@builtin(vertex_index) vertexIndex: u32) -> @builtin(position) vec4<f32> {\n"
-        "    var positions = array<vec2<f32>, 3>(vec2<f32>(-1.0, -1.0), vec2<f32>(3.0, -1.0), vec2<f32>(-1.0, 3.0));\n"
-        "    return vec4<f32>(positions[vertexIndex], c.color.x, 1.0);\n"
-        "}\n"
-        "@fragment\n"
-        "fn fs_main() -> @location(0) vec4<f32> {\n"
-        "    return c.color;\n"
-        "}\n";
+        "    var positions = array<vec2<f32>, 3>(vec2<f32>(-1.0, -1.0), vec2<f32>(3.0, -1.0), vec2<f32>(-1.0, 3.0));\n";
+    clearShaderSource += (planes & (PlaneBits::DEPTH | PlaneBits::STENCIL)) ? "    return vec4<f32>(positions[vertexIndex], c.color.x, 1.0);\n" : "    return vec4<f32>(positions[vertexIndex], 0.0, 1.0);\n";
+    clearShaderSource += "}\n";
+
+    if (m_RenderColorNum) {
+        clearShaderSource += "struct FragmentOutput {\n";
+        for (uint32_t i = 0; i < m_RenderColorNum; i++) {
+            char location[128] = {};
+            snprintf(location, sizeof(location), "    @location(%u) color%u: ", i, i);
+            clearShaderSource += location;
+            clearShaderSource += GetFormatShaderTypeWGPU(m_RenderColorFormats[i]);
+            clearShaderSource += ",\n";
+        }
+
+        clearShaderSource +=
+            "}\n"
+            "@fragment\n"
+            "fn fs_main() -> FragmentOutput {\n"
+            "    var output: FragmentOutput;\n";
+        for (uint32_t i = 0; i < m_RenderColorNum; i++) {
+            char output[64] = {};
+            snprintf(output, sizeof(output), "    output.color%u = ", i);
+            clearShaderSource += output;
+            if ((planes & PlaneBits::COLOR) && i == colorAttachmentIndex)
+                clearShaderSource += GetClearShaderValueWGPU(m_RenderColorFormats[i]);
+            else
+                clearShaderSource += GetZeroShaderValueWGPU(m_RenderColorFormats[i]);
+            clearShaderSource += ";\n";
+        }
+
+        clearShaderSource +=
+            "    return output;\n"
+            "}\n";
+    }
 
     WGPUShaderSourceWGSL wgsl = WGPU_SHADER_SOURCE_WGSL_INIT;
-    wgsl.code = WGPUString(clearShaderSource);
+    wgsl.code = {clearShaderSource.data(), clearShaderSource.size()};
 
     WGPUShaderModuleDescriptor shaderDesc = WGPU_SHADER_MODULE_DESCRIPTOR_INIT;
     shaderDesc.nextInChain = &wgsl.chain;
@@ -108,15 +210,19 @@ WGPURenderPipeline CommandBufferWGPU::GetClearPipeline(Format format, Format dep
     }
 
     WGPUFragmentState fragment = WGPU_FRAGMENT_STATE_INIT;
-    WGPUColorTargetState colorTarget = WGPU_COLOR_TARGET_STATE_INIT;
-    if (format != Format::UNKNOWN) {
-        colorTarget.format = GetTextureFormat(format);
-        colorTarget.writeMask = (planes & PlaneBits::COLOR) ? WGPUColorWriteMask_All : WGPUColorWriteMask_None;
+    Scratch<WGPUColorTargetState> colorTargets = NRI_ALLOCATE_SCRATCH(m_Device, WGPUColorTargetState, m_RenderColorNum);
+    if (m_RenderColorNum) {
+        for (uint32_t i = 0; i < m_RenderColorNum; i++) {
+            WGPUColorTargetState& colorTarget = colorTargets[i];
+            colorTarget = WGPU_COLOR_TARGET_STATE_INIT;
+            colorTarget.format = GetTextureFormat(m_RenderColorFormats[i]);
+            colorTarget.writeMask = ((planes & PlaneBits::COLOR) && i == colorAttachmentIndex) ? WGPUColorWriteMask_All : WGPUColorWriteMask_None;
+        }
 
         fragment.module = shader;
         fragment.entryPoint = WGPUString("fs_main");
-        fragment.targetCount = 1;
-        fragment.targets = &colorTarget;
+        fragment.targetCount = m_RenderColorNum;
+        fragment.targets = colorTargets;
     }
 
     WGPUPrimitiveState primitive = WGPU_PRIMITIVE_STATE_INIT;
@@ -125,12 +231,12 @@ WGPURenderPipeline CommandBufferWGPU::GetClearPipeline(Format format, Format dep
     primitive.cullMode = WGPUCullMode_None;
 
     WGPUMultisampleState multisample = WGPU_MULTISAMPLE_STATE_INIT;
-    multisample.count = 1;
+    multisample.count = GetCountOrOne((uint32_t)m_RenderSampleNum);
     multisample.mask = 0xFFFFFFFF;
 
     WGPUDepthStencilState depthStencil = WGPU_DEPTH_STENCIL_STATE_INIT;
-    if (depthStencilFormat != Format::UNKNOWN) {
-        depthStencil.format = GetTextureFormat(depthStencilFormat);
+    if (m_RenderDepthStencilFormat != Format::UNKNOWN) {
+        depthStencil.format = GetTextureFormat(m_RenderDepthStencilFormat);
         depthStencil.depthWriteEnabled = (planes & PlaneBits::DEPTH) ? WGPUOptionalBool_True : WGPUOptionalBool_False;
         depthStencil.depthCompare = WGPUCompareFunction_Always;
 
@@ -154,8 +260,8 @@ WGPURenderPipeline CommandBufferWGPU::GetClearPipeline(Format format, Format dep
     pipelineDesc.vertex = vertex;
     pipelineDesc.primitive = primitive;
     pipelineDesc.multisample = multisample;
-    pipelineDesc.fragment = format == Format::UNKNOWN ? nullptr : &fragment;
-    pipelineDesc.depthStencil = depthStencilFormat == Format::UNKNOWN ? nullptr : &depthStencil;
+    pipelineDesc.fragment = m_RenderColorNum ? &fragment : nullptr;
+    pipelineDesc.depthStencil = m_RenderDepthStencilFormat == Format::UNKNOWN ? nullptr : &depthStencil;
 
     WGPURenderPipeline pipeline = wgpuDeviceCreateRenderPipeline(m_Device, &pipelineDesc);
     wgpuShaderModuleRelease(shader);
@@ -166,7 +272,16 @@ WGPURenderPipeline CommandBufferWGPU::GetClearPipeline(Format format, Format dep
         return nullptr;
     }
 
-    m_ClearPipelines.push_back({format, depthStencilFormat, planes, pipelineLayout, pipeline});
+    ClearPipelineWGPU clearPipeline = {};
+    memcpy(clearPipeline.colorFormats, m_RenderColorFormats, sizeof(clearPipeline.colorFormats));
+    clearPipeline.depthStencilFormat = m_RenderDepthStencilFormat;
+    clearPipeline.colorNum = m_RenderColorNum;
+    clearPipeline.colorAttachmentIndex = colorAttachmentIndex;
+    clearPipeline.planes = planes;
+    clearPipeline.sampleNum = m_RenderSampleNum;
+    clearPipeline.layout = pipelineLayout;
+    clearPipeline.pipeline = pipeline;
+    m_ClearPipelines.push_back(clearPipeline);
 
     return pipeline;
 }
@@ -200,8 +315,11 @@ Result CommandBufferWGPU::Begin(const DescriptorPool* descriptorPool) {
     m_ComputePipeline = nullptr;
     m_BoundComputePipeline = nullptr;
     m_BindPoint = BindPoint::GRAPHICS;
-    m_RenderFormat = Format::UNKNOWN;
+    for (Format& format : m_RenderColorFormats)
+        format = Format::UNKNOWN;
     m_RenderDepthStencilFormat = Format::UNKNOWN;
+    m_RenderColorNum = 0;
+    m_RenderSampleNum = 1;
     m_RenderWidth = 0;
     m_RenderHeight = 0;
     m_GraphicsDescriptorSets.clear();
@@ -210,8 +328,10 @@ Result CommandBufferWGPU::Begin(const DescriptorPool* descriptorPool) {
     m_ComputeDescriptorSetDirty.clear();
     m_RootDescriptorBindings.clear();
     m_RootDynamicOffsets.clear();
-    m_RootConstantData.clear();
-    m_RootConstantMask.clear();
+    m_GraphicsRootConstants.data.clear();
+    m_GraphicsRootConstants.mask.clear();
+    m_ComputeRootConstants.data.clear();
+    m_ComputeRootConstants.mask.clear();
     m_AnnotationScopes.clear();
     m_DeferredEncoderAnnotationPopNum = 0;
     m_GraphicsRootGroupDirty = true;
@@ -303,18 +423,20 @@ void CommandBufferWGPU::SetPipelineLayout(BindPoint bindPoint, const PipelineLay
     ReleaseRootBindGroups();
     m_RootDescriptorBindings.resize(m_PipelineLayout->GetRootDescriptors().size());
     m_RootDynamicOffsets.resize(m_PipelineLayout->GetRootDynamicOffsetNum());
-    m_RootConstantData.resize(m_PipelineLayout->GetImmediateDataSize());
-    m_RootConstantMask.resize(m_PipelineLayout->GetImmediateDataSize());
-    if (!m_RootConstantData.empty()) {
-        memset(m_RootConstantData.data(), 0, m_RootConstantData.size());
-        memset(m_RootConstantMask.data(), 0, m_RootConstantMask.size());
+    m_GraphicsRootConstants.data.resize(m_PipelineLayout->GetImmediateDataSize());
+    m_GraphicsRootConstants.mask.resize(m_PipelineLayout->GetImmediateDataSize());
+    m_ComputeRootConstants.data.resize(m_PipelineLayout->GetImmediateDataSize());
+    m_ComputeRootConstants.mask.resize(m_PipelineLayout->GetImmediateDataSize());
+    if (!m_GraphicsRootConstants.data.empty()) {
+        memset(m_GraphicsRootConstants.data.data(), 0, m_GraphicsRootConstants.data.size());
+        memset(m_GraphicsRootConstants.mask.data(), 0, m_GraphicsRootConstants.mask.size());
+        memset(m_ComputeRootConstants.data.data(), 0, m_ComputeRootConstants.data.size());
+        memset(m_ComputeRootConstants.mask.data(), 0, m_ComputeRootConstants.mask.size());
     }
 
     m_GraphicsRootGroupDirty = true;
     m_ComputeRootGroupDirty = true;
     MarkDescriptorSetsDirty(m_BindPoint);
-
-    BindRootGroup(m_BindPoint);
 }
 
 void CommandBufferWGPU::SetPipeline(const Pipeline& pipeline) {
@@ -326,12 +448,18 @@ void CommandBufferWGPU::SetPipeline(const Pipeline& pipeline) {
         m_RenderPipeline = renderPipeline;
     }
 
+    if (m_RenderPass && renderPipeline)
+        RestoreRootConstants(BindPoint::GRAPHICS);
+
     if (pipelineWGPU.GetComputePipeline()) {
         m_ComputePipeline = pipelineWGPU.GetComputePipeline();
         if (m_ComputePass && m_ComputePipeline != m_BoundComputePipeline) {
             wgpuComputePassEncoderSetPipeline(m_ComputePass, m_ComputePipeline);
             m_BoundComputePipeline = m_ComputePipeline;
         }
+
+        if (m_ComputePass)
+            RestoreRootConstants(BindPoint::COMPUTE);
     }
 
     if (m_RenderPass && pipelineWGPU.GetPipelineLayout() && pipelineWGPU.GetPipelineLayout()->GetRootSamplerBindGroup())
@@ -355,8 +483,6 @@ void CommandBufferWGPU::SetDescriptorSet(const SetDescriptorSetDesc& setDescript
         descriptorSets[bindGroupIndex] = &descriptorSet;
         dirtySets[bindGroupIndex] = 1;
     }
-
-    BindDescriptorSet(bindPoint, bindGroupIndex);
 }
 
 void CommandBufferWGPU::MarkDescriptorSetsDirty(BindPoint bindPoint) {
@@ -371,9 +497,13 @@ void CommandBufferWGPU::BindDescriptorSets(BindPoint bindPoint) {
             return;
 
         for (uint32_t i = 0; i < (uint32_t)m_ComputeDescriptorSets.size(); i++) {
+            if (i >= m_ComputeDescriptorSetDirty.size() || !m_ComputeDescriptorSetDirty[i])
+                continue;
+
             const DescriptorSetWGPU* descriptorSet = m_ComputeDescriptorSets[i];
-            if (descriptorSet && descriptorSet->GetBindGroup() && i < m_ComputeDescriptorSetDirty.size() && m_ComputeDescriptorSetDirty[i]) {
-                wgpuComputePassEncoderSetBindGroup(m_ComputePass, i, descriptorSet->GetBindGroup(), 0, nullptr);
+            WGPUBindGroup bindGroup = descriptorSet ? descriptorSet->GetBindGroup() : nullptr;
+            if (bindGroup) {
+                wgpuComputePassEncoderSetBindGroup(m_ComputePass, i, bindGroup, 0, nullptr);
                 m_ComputeDescriptorSetDirty[i] = 0;
             }
         }
@@ -385,35 +515,15 @@ void CommandBufferWGPU::BindDescriptorSets(BindPoint bindPoint) {
         return;
 
     for (uint32_t i = 0; i < (uint32_t)m_GraphicsDescriptorSets.size(); i++) {
+        if (i >= m_GraphicsDescriptorSetDirty.size() || !m_GraphicsDescriptorSetDirty[i])
+            continue;
+
         const DescriptorSetWGPU* descriptorSet = m_GraphicsDescriptorSets[i];
-        if (descriptorSet && descriptorSet->GetBindGroup() && i < m_GraphicsDescriptorSetDirty.size() && m_GraphicsDescriptorSetDirty[i]) {
-            wgpuRenderPassEncoderSetBindGroup(m_RenderPass, i, descriptorSet->GetBindGroup(), 0, nullptr);
+        WGPUBindGroup bindGroup = descriptorSet ? descriptorSet->GetBindGroup() : nullptr;
+        if (bindGroup) {
+            wgpuRenderPassEncoderSetBindGroup(m_RenderPass, i, bindGroup, 0, nullptr);
             m_GraphicsDescriptorSetDirty[i] = 0;
         }
-    }
-}
-
-void CommandBufferWGPU::BindDescriptorSet(BindPoint bindPoint, uint32_t bindGroupIndex) {
-    if (bindPoint == BindPoint::COMPUTE) {
-        if (!m_ComputePass || bindGroupIndex >= m_ComputeDescriptorSets.size() || bindGroupIndex >= m_ComputeDescriptorSetDirty.size() || !m_ComputeDescriptorSetDirty[bindGroupIndex])
-            return;
-
-        const DescriptorSetWGPU* descriptorSet = m_ComputeDescriptorSets[bindGroupIndex];
-        if (descriptorSet && descriptorSet->GetBindGroup()) {
-            wgpuComputePassEncoderSetBindGroup(m_ComputePass, bindGroupIndex, descriptorSet->GetBindGroup(), 0, nullptr);
-            m_ComputeDescriptorSetDirty[bindGroupIndex] = 0;
-        }
-
-        return;
-    }
-
-    if (!m_RenderPass || bindGroupIndex >= m_GraphicsDescriptorSets.size() || bindGroupIndex >= m_GraphicsDescriptorSetDirty.size() || !m_GraphicsDescriptorSetDirty[bindGroupIndex])
-        return;
-
-    const DescriptorSetWGPU* descriptorSet = m_GraphicsDescriptorSets[bindGroupIndex];
-    if (descriptorSet && descriptorSet->GetBindGroup()) {
-        wgpuRenderPassEncoderSetBindGroup(m_RenderPass, bindGroupIndex, descriptorSet->GetBindGroup(), 0, nullptr);
-        m_GraphicsDescriptorSetDirty[bindGroupIndex] = 0;
     }
 }
 
@@ -501,27 +611,37 @@ void CommandBufferWGPU::BindRootGroup(BindPoint bindPoint) {
     dirty = false;
 }
 
+RootConstantStateWGPU& CommandBufferWGPU::GetRootConstantState(BindPoint bindPoint) {
+    return bindPoint == BindPoint::COMPUTE ? m_ComputeRootConstants : m_GraphicsRootConstants;
+}
+
 void CommandBufferWGPU::RestoreRootConstants(BindPoint bindPoint) {
-    if (m_RootConstantMask.empty())
+    RootConstantStateWGPU& state = GetRootConstantState(bindPoint);
+    if (state.mask.empty())
         return;
 
-    uint32_t rootConstantSize = (uint32_t)m_RootConstantMask.size();
+    if (bindPoint == BindPoint::COMPUTE) {
+        if (!m_ComputePass || !m_BoundComputePipeline)
+            return;
+    } else if (!m_RenderPass || !m_RenderPipeline)
+        return;
+
+    uint32_t rootConstantSize = (uint32_t)state.mask.size();
     for (uint32_t begin = 0; begin < rootConstantSize;) {
-        while (begin < rootConstantSize && !m_RootConstantMask[begin])
+        while (begin < rootConstantSize && !state.mask[begin])
             begin++;
 
         uint32_t end = begin;
-        while (end < rootConstantSize && m_RootConstantMask[end])
+        while (end < rootConstantSize && state.mask[end])
             end++;
 
         if (end == begin)
             continue;
 
-        if (bindPoint == BindPoint::COMPUTE) {
-            if (m_ComputePass)
-                wgpuComputePassEncoderSetImmediates(m_ComputePass, begin, end - begin, m_RootConstantData.data() + begin);
-        } else if (m_RenderPass)
-            wgpuRenderPassEncoderSetImmediates(m_RenderPass, begin, end - begin, m_RootConstantData.data() + begin);
+        if (bindPoint == BindPoint::COMPUTE)
+            wgpuComputePassEncoderSetImmediates(m_ComputePass, begin, end - begin, state.data.data() + begin);
+        else
+            wgpuRenderPassEncoderSetImmediates(m_RenderPass, begin, end - begin, state.data.data() + begin);
 
         begin = end;
     }
@@ -529,22 +649,24 @@ void CommandBufferWGPU::RestoreRootConstants(BindPoint bindPoint) {
 
 void CommandBufferWGPU::SetRootConstants(const SetRootConstantsDesc& setRootConstantsDesc) {
     BindPoint bindPoint = setRootConstantsDesc.bindPoint == BindPoint::INHERIT ? m_BindPoint : setRootConstantsDesc.bindPoint;
-    if (bindPoint == BindPoint::GRAPHICS && setRootConstantsDesc.size) {
-        uint32_t end = setRootConstantsDesc.offset + setRootConstantsDesc.size;
-        if (end > m_RootConstantData.size()) {
-            m_RootConstantData.resize(end);
-            m_RootConstantMask.resize(end);
+    RootConstantStateWGPU& state = GetRootConstantState(bindPoint);
+    uint32_t offset = (m_PipelineLayout ? m_PipelineLayout->GetRootConstantOffset(setRootConstantsDesc.rootConstantIndex) : 0) + setRootConstantsDesc.offset;
+    if (setRootConstantsDesc.size) {
+        uint32_t end = offset + setRootConstantsDesc.size;
+        if (end > state.data.size()) {
+            state.data.resize(end);
+            state.mask.resize(end);
         }
 
-        memcpy(m_RootConstantData.data() + setRootConstantsDesc.offset, setRootConstantsDesc.data, setRootConstantsDesc.size);
-        memset(m_RootConstantMask.data() + setRootConstantsDesc.offset, 1, setRootConstantsDesc.size);
+        memcpy(state.data.data() + offset, setRootConstantsDesc.data, setRootConstantsDesc.size);
+        memset(state.mask.data() + offset, 1, setRootConstantsDesc.size);
     }
 
-    if (m_RenderPass && bindPoint == BindPoint::GRAPHICS)
-        wgpuRenderPassEncoderSetImmediates(m_RenderPass, setRootConstantsDesc.offset, setRootConstantsDesc.size, setRootConstantsDesc.data);
+    if (m_RenderPass && m_RenderPipeline && bindPoint == BindPoint::GRAPHICS)
+        wgpuRenderPassEncoderSetImmediates(m_RenderPass, offset, setRootConstantsDesc.size, setRootConstantsDesc.data);
 
-    if (m_ComputePass && bindPoint == BindPoint::COMPUTE)
-        wgpuComputePassEncoderSetImmediates(m_ComputePass, setRootConstantsDesc.offset, setRootConstantsDesc.size, setRootConstantsDesc.data);
+    if (m_ComputePass && m_BoundComputePipeline && bindPoint == BindPoint::COMPUTE)
+        wgpuComputePassEncoderSetImmediates(m_ComputePass, offset, setRootConstantsDesc.size, setRootConstantsDesc.data);
 }
 
 void CommandBufferWGPU::SetRootDescriptor(const SetRootDescriptorDesc& setRootDescriptorDesc) {
@@ -565,15 +687,14 @@ void CommandBufferWGPU::SetRootDescriptor(const SetRootDescriptorDesc& setRootDe
     if (rootDescriptor.dynamicOffsetIndex != uint32_t(-1))
         m_RootDynamicOffsets[rootDescriptor.dynamicOffsetIndex] = (uint32_t)setRootDescriptorDesc.offset;
 
-    if (recreateBindGroup)
+    if (recreateBindGroup) {
         ReleaseRootBindGroups();
-
-    if (bindPoint == BindPoint::COMPUTE)
+        m_GraphicsRootGroupDirty = true;
+        m_ComputeRootGroupDirty = true;
+    } else if (bindPoint == BindPoint::COMPUTE)
         m_ComputeRootGroupDirty = true;
     else
         m_GraphicsRootGroupDirty = true;
-
-    BindRootGroup(bindPoint);
 }
 
 void CommandBufferWGPU::SetVertexBuffers(uint32_t baseSlot, const VertexBufferDesc* vertexBufferDescs, uint32_t vertexBufferNum) {
@@ -618,8 +739,11 @@ void CommandBufferWGPU::BeginRendering(const RenderingDesc& renderingDesc) {
     Scratch<WGPURenderPassColorAttachment> colorAttachments = NRI_ALLOCATE_SCRATCH(m_Device, WGPURenderPassColorAttachment, renderingDesc.colorNum);
     WGPURenderPassDepthStencilAttachment depthStencilAttachment = WGPU_RENDER_PASS_DEPTH_STENCIL_ATTACHMENT_INIT;
     const WGPURenderPassDepthStencilAttachment* depthStencilAttachmentPtr = nullptr;
-    m_RenderFormat = Format::UNKNOWN;
+    for (Format& format : m_RenderColorFormats)
+        format = Format::UNKNOWN;
     m_RenderDepthStencilFormat = Format::UNKNOWN;
+    m_RenderColorNum = std::min<uint32_t>(renderingDesc.colorNum, COLOR_ATTACHMENT_MAX_NUM_WGPU);
+    m_RenderSampleNum = 1;
     m_RenderWidth = 0;
     m_RenderHeight = 0;
 
@@ -636,12 +760,16 @@ void CommandBufferWGPU::BeginRendering(const RenderingDesc& renderingDesc) {
         if (in.resolveDst)
             out.resolveTarget = ((DescriptorWGPU*)in.resolveDst)->GetTextureView();
 
-        if (i == 0) {
-            m_RenderFormat = descriptor.GetFormat();
-            if (textureDesc) {
-                m_RenderWidth = textureDesc->width;
-                m_RenderHeight = textureDesc->height;
+        if (i < COLOR_ATTACHMENT_MAX_NUM_WGPU)
+            m_RenderColorFormats[i] = descriptor.GetFormat();
+
+        if (textureDesc) {
+            if (!m_RenderWidth) {
+                m_RenderWidth = GetDimension(GraphicsAPI::WGPU, *textureDesc, 0, descriptor.GetTextureViewDesc().mipOffset);
+                m_RenderHeight = GetDimension(GraphicsAPI::WGPU, *textureDesc, 1, descriptor.GetTextureViewDesc().mipOffset);
             }
+
+            m_RenderSampleNum = textureDesc->sampleNum;
         }
     }
 
@@ -654,9 +782,12 @@ void CommandBufferWGPU::BeginRendering(const RenderingDesc& renderingDesc) {
 
         depthStencilAttachment.view = descriptor.GetTextureView();
         if (!m_RenderWidth && textureDesc) {
-            m_RenderWidth = textureDesc->width;
-            m_RenderHeight = textureDesc->height;
+            m_RenderWidth = GetDimension(GraphicsAPI::WGPU, *textureDesc, 0, descriptor.GetTextureViewDesc().mipOffset);
+            m_RenderHeight = GetDimension(GraphicsAPI::WGPU, *textureDesc, 1, descriptor.GetTextureViewDesc().mipOffset);
         }
+
+        if (textureDesc)
+            m_RenderSampleNum = textureDesc->sampleNum;
 
         if (formatProps.isDepth) {
             const AttachmentDesc& depth = renderingDesc.depth.descriptor ? renderingDesc.depth : *depthOrStencil;
@@ -687,7 +818,6 @@ void CommandBufferWGPU::BeginRendering(const RenderingDesc& renderingDesc) {
     m_StencilReference = 0;
     MarkDescriptorSetsDirty(BindPoint::GRAPHICS);
     m_GraphicsRootGroupDirty = true;
-    BindRootGroup(BindPoint::GRAPHICS);
 }
 
 void CommandBufferWGPU::EndRendering() {
@@ -723,21 +853,25 @@ void CommandBufferWGPU::ClearAttachments(const ClearAttachmentDesc* clearAttachm
     for (uint32_t i = 0; i < clearAttachmentDescNum; i++) {
         const ClearAttachmentDesc& clearAttachmentDesc = clearAttachmentDescs[i];
 
-        if ((clearAttachmentDesc.planes & PlaneBits::COLOR) && m_RenderFormat != Format::UNKNOWN) {
+        uint32_t colorAttachmentIndex = clearAttachmentDesc.colorAttachmentIndex;
+        if (colorAttachmentIndex < m_RenderColorNum && (NormalizeClearPlanesWGPU(clearAttachmentDesc.planes, m_RenderColorFormats[colorAttachmentIndex]) & PlaneBits::COLOR) && m_RenderColorFormats[colorAttachmentIndex] != Format::UNKNOWN) {
             WGPUPipelineLayout clearPipelineLayout = nullptr;
-            WGPURenderPipeline clearPipeline = GetClearPipeline(m_RenderFormat, m_RenderDepthStencilFormat, PlaneBits::COLOR, clearPipelineLayout);
+            WGPURenderPipeline clearPipeline = GetClearPipeline(colorAttachmentIndex, PlaneBits::COLOR, clearPipelineLayout);
             MaybeUnused(clearPipelineLayout);
             if (clearPipeline) {
+                const FormatProps& props = GetFormatProps(m_RenderColorFormats[colorAttachmentIndex]);
+                const void* clearData = props.isInteger ? (props.isSigned ? (const void*)&clearAttachmentDesc.value.color.i : (const void*)&clearAttachmentDesc.value.color.ui) : (const void*)&clearAttachmentDesc.value.color.f;
+
                 wgpuRenderPassEncoderSetPipeline(m_RenderPass, clearPipeline);
-                wgpuRenderPassEncoderSetImmediates(m_RenderPass, 0, sizeof(clearAttachmentDesc.value.color.f), &clearAttachmentDesc.value.color.f);
+                wgpuRenderPassEncoderSetImmediates(m_RenderPass, 0, sizeof(clearAttachmentDesc.value.color), clearData);
                 drawClear(rects, rectNum);
             }
         }
 
-        PlaneBits depthStencilPlanes = (PlaneBits)(clearAttachmentDesc.planes & (PlaneBits::DEPTH | PlaneBits::STENCIL));
-        if (depthStencilPlanes != PlaneBits::ALL && m_RenderDepthStencilFormat != Format::UNKNOWN) {
+        PlaneBits depthStencilPlanes = (PlaneBits)(NormalizeClearPlanesWGPU(clearAttachmentDesc.planes, m_RenderDepthStencilFormat) & (PlaneBits::DEPTH | PlaneBits::STENCIL));
+        if (depthStencilPlanes != PlaneBits::NONE && depthStencilPlanes != PlaneBits::ALL && m_RenderDepthStencilFormat != Format::UNKNOWN) {
             WGPUPipelineLayout clearPipelineLayout = nullptr;
-            WGPURenderPipeline clearPipeline = GetClearPipeline(m_RenderFormat, m_RenderDepthStencilFormat, depthStencilPlanes, clearPipelineLayout);
+            WGPURenderPipeline clearPipeline = GetClearPipeline(0, depthStencilPlanes, clearPipelineLayout);
             MaybeUnused(clearPipelineLayout);
             if (clearPipeline) {
                 Color32f clearValue = {clearAttachmentDesc.value.depthStencil.depth, 0.0f, 0.0f, 0.0f};
@@ -766,6 +900,9 @@ void CommandBufferWGPU::ClearAttachments(const ClearAttachmentDesc* clearAttachm
         SetScissorRect(scissor);
         m_Scissor = scissor;
         m_HasScissor = true;
+    } else {
+        wgpuRenderPassEncoderSetScissorRect(m_RenderPass, 0, 0, m_RenderWidth, m_RenderHeight);
+        m_HasScissor = false;
     }
 
     wgpuRenderPassEncoderSetStencilReference(m_RenderPass, stencilReference);
@@ -867,6 +1004,7 @@ void CommandBufferWGPU::Dispatch(const DispatchDesc& dispatchDesc) {
     if (m_ComputePipeline && m_ComputePipeline != m_BoundComputePipeline) {
         wgpuComputePassEncoderSetPipeline(m_ComputePass, m_ComputePipeline);
         m_BoundComputePipeline = m_ComputePipeline;
+        RestoreRootConstants(BindPoint::COMPUTE);
     }
 
     BindRootGroup(BindPoint::COMPUTE);
@@ -885,6 +1023,7 @@ void CommandBufferWGPU::DispatchIndirect(const Buffer& buffer, uint64_t offset) 
     if (m_ComputePipeline && m_ComputePipeline != m_BoundComputePipeline) {
         wgpuComputePassEncoderSetPipeline(m_ComputePass, m_ComputePipeline);
         m_BoundComputePipeline = m_ComputePipeline;
+        RestoreRootConstants(BindPoint::COMPUTE);
     }
 
     BindRootGroup(BindPoint::COMPUTE);
@@ -1125,16 +1264,15 @@ void CommandBufferWGPU::ClearStorage(const ClearStorageDesc& clearStorageDesc) {
         // TODO: Non-zero storage-buffer clears are upload-buffer emulated and can be expensive for large ranges.
         Format format = descriptor.GetBufferFormat() == Format::UNKNOWN ? Format::R32_UINT : descriptor.GetBufferFormat();
         const FormatProps& props = GetFormatProps(format);
-        Vector<uint8_t> data(m_Device.GetStdAllocator());
-        data.resize((size_t)size);
+        Scratch<uint8_t> data = NRI_ALLOCATE_SCRATCH(m_Device, uint8_t, (size_t)size);
 
         uint8_t pattern[16] = {};
         FillClearPattern(pattern, format, clearStorageDesc.value);
 
         for (uint64_t i = 0; i < size; i += props.stride)
-            memcpy(data.data() + i, pattern, std::min<uint64_t>(props.stride, size - i));
+            memcpy(data + i, pattern, std::min<uint64_t>(props.stride, size - i));
 
-        WGPUBuffer uploadBuffer = CreateTemporaryUploadBuffer(m_Device, size, data.data());
+        WGPUBuffer uploadBuffer = CreateTemporaryUploadBuffer(m_Device, size, data);
         if (uploadBuffer) {
             m_TemporaryBuffers.push_back(uploadBuffer);
             wgpuCommandEncoderCopyBufferToBuffer(m_CommandEncoder, uploadBuffer, 0, buffer, offset, size);
@@ -1164,21 +1302,20 @@ void CommandBufferWGPU::ClearStorage(const ClearStorageDesc& clearStorageDesc) {
     uint32_t rowsPerImage = std::max(height, 1u);
     uint64_t uploadSize = (uint64_t)rowPitch * rowsPerImage * depth;
 
-    Vector<uint8_t> data(m_Device.GetStdAllocator());
-    data.resize((size_t)uploadSize);
+    Scratch<uint8_t> data = NRI_ALLOCATE_SCRATCH(m_Device, uint8_t, (size_t)uploadSize);
 
     uint8_t pattern[16] = {};
     FillClearPattern(pattern, format, clearStorageDesc.value);
 
     for (uint32_t z = 0; z < depth; z++) {
         for (uint32_t y = 0; y < height; y++) {
-            uint8_t* row = data.data() + (uint64_t)z * rowPitch * rowsPerImage + (uint64_t)y * rowPitch;
+            uint8_t* row = data + (uint64_t)z * rowPitch * rowsPerImage + (uint64_t)y * rowPitch;
             for (uint32_t x = 0; x < width; x++)
                 memcpy(row + x * props.stride, pattern, props.stride);
         }
     }
 
-    WGPUBuffer uploadBuffer = CreateTemporaryUploadBuffer(m_Device, uploadSize, data.data());
+    WGPUBuffer uploadBuffer = CreateTemporaryUploadBuffer(m_Device, uploadSize, data);
     if (!uploadBuffer)
         return;
 

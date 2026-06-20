@@ -14,7 +14,7 @@ static bool IsSpirvBytecodeWGPU(const ShaderDesc& shaderDesc) {
     return spirv && shaderDesc.size >= sizeof(uint32_t) && spirv[0] == SPIRV_MAGIC;
 }
 
-static bool AddNonReadableDecorationsForWriteOnlyStorageImagesWGPU(DeviceWGPU& device, const ShaderDesc& shaderDesc, Vector<uint32_t>& patchedSpirv) {
+static uint32_t AddNonReadableDecorationsForWriteOnlyStorageImagesWGPU(DeviceWGPU& device, const ShaderDesc& shaderDesc, uint32_t* patchedSpirv, uint32_t patchedSpirvMaxWordNum) {
     // TODO: This patches SPIR-V to satisfy WGPU write-only storage texture rules. Prefer generating correct decorations in shaders.
     constexpr uint16_t OP_TYPE_IMAGE = 25;
     constexpr uint16_t OP_TYPE_POINTER = 32;
@@ -30,26 +30,29 @@ static bool AddNonReadableDecorationsForWriteOnlyStorageImagesWGPU(DeviceWGPU& d
     uint32_t wordNum = (uint32_t)(shaderDesc.size / sizeof(uint32_t));
     const uint32_t* spirv = (const uint32_t*)shaderDesc.bytecode;
     if (!IsSpirvBytecodeWGPU(shaderDesc) || wordNum < 5)
-        return false;
+        return 0;
 
     uint32_t idBound = spirv[3];
-    Vector<uint8_t> storageImageTypes(device.GetStdAllocator());
-    Vector<uint8_t> nonReadableVariables(device.GetStdAllocator());
-    Vector<uint32_t> pointerPointeeTypes(device.GetStdAllocator());
-    Vector<uint32_t> storageImageVariables(device.GetStdAllocator());
-    storageImageTypes.resize(idBound);
-    nonReadableVariables.resize(idBound);
-    pointerPointeeTypes.resize(idBound);
+    Scratch<uint8_t> storageImageTypes = NRI_ALLOCATE_SCRATCH(device, uint8_t, idBound);
+    Scratch<uint8_t> nonReadableVariables = NRI_ALLOCATE_SCRATCH(device, uint8_t, idBound);
+    Scratch<uint32_t> pointerPointeeTypes = NRI_ALLOCATE_SCRATCH(device, uint32_t, idBound);
+    Scratch<uint32_t> storageImageVariables = NRI_ALLOCATE_SCRATCH(device, uint32_t, idBound);
+    if (idBound) {
+        memset(storageImageTypes, 0, idBound * sizeof(uint8_t));
+        memset(nonReadableVariables, 0, idBound * sizeof(uint8_t));
+        memset(pointerPointeeTypes, 0, idBound * sizeof(uint32_t));
+    }
 
     bool hasImageRead = false;
     uint32_t insertionWord = 5;
+    uint32_t storageImageVariableNum = 0;
 
     for (uint32_t word = 5; word < wordNum;) {
         uint32_t instruction = spirv[word];
         uint16_t op = (uint16_t)(instruction & 0xFFFF);
         uint16_t wordCount = (uint16_t)(instruction >> 16);
         if (!wordCount || word + wordCount > wordNum)
-            return false;
+            return 0;
 
         if (op == OP_DECORATE || op == OP_MEMBER_DECORATE || op == OP_DECORATE_ID)
             insertionWord = word + wordCount;
@@ -71,7 +74,7 @@ static bool AddNonReadableDecorationsForWriteOnlyStorageImagesWGPU(DeviceWGPU& d
             if (resultTypeId < idBound && resultId < idBound && storageClass == STORAGE_CLASS_UNIFORM_CONSTANT) {
                 uint32_t pointeeTypeId = pointerPointeeTypes[resultTypeId];
                 if (pointeeTypeId < idBound && storageImageTypes[pointeeTypeId])
-                    storageImageVariables.push_back(resultId);
+                    storageImageVariables[storageImageVariableNum++] = resultId;
             }
         } else if (op == OP_DECORATE && wordCount >= 3) {
             uint32_t targetId = spirv[word + 1];
@@ -85,32 +88,37 @@ static bool AddNonReadableDecorationsForWriteOnlyStorageImagesWGPU(DeviceWGPU& d
     }
 
     if (hasImageRead)
-        return false;
+        return 0;
 
     uint32_t decorationNum = 0;
-    for (uint32_t variable : storageImageVariables) {
+    for (uint32_t i = 0; i < storageImageVariableNum; i++) {
+        uint32_t variable = storageImageVariables[i];
         if (variable < idBound && !nonReadableVariables[variable])
             decorationNum++;
     }
 
     if (!decorationNum)
-        return false;
+        return 0;
 
-    patchedSpirv.clear();
-    patchedSpirv.reserve(wordNum + decorationNum * 3);
-    patchedSpirv.insert(patchedSpirv.end(), spirv, spirv + insertionWord);
+    uint32_t patchedWordNum = wordNum + decorationNum * 3;
+    if (patchedWordNum > patchedSpirvMaxWordNum)
+        return 0;
 
-    for (uint32_t variable : storageImageVariables) {
+    memcpy(patchedSpirv, spirv, insertionWord * sizeof(uint32_t));
+    uint32_t dstWord = insertionWord;
+
+    for (uint32_t i = 0; i < storageImageVariableNum; i++) {
+        uint32_t variable = storageImageVariables[i];
         if (variable < idBound && !nonReadableVariables[variable]) {
-            patchedSpirv.push_back((3u << 16) | OP_DECORATE);
-            patchedSpirv.push_back(variable);
-            patchedSpirv.push_back(DECORATION_NON_READABLE);
+            patchedSpirv[dstWord++] = (3u << 16) | OP_DECORATE;
+            patchedSpirv[dstWord++] = variable;
+            patchedSpirv[dstWord++] = DECORATION_NON_READABLE;
         }
     }
 
-    patchedSpirv.insert(patchedSpirv.end(), spirv + insertionWord, spirv + wordNum);
+    memcpy(patchedSpirv + dstWord, spirv + insertionWord, (wordNum - insertionWord) * sizeof(uint32_t));
 
-    return true;
+    return patchedWordNum;
 }
 
 WGPUShaderModule PipelineWGPU::CreateShaderModule(const ShaderDesc& shaderDesc) {
@@ -125,12 +133,15 @@ WGPUShaderModule PipelineWGPU::CreateShaderModule(const ShaderDesc& shaderDesc) 
         return wgpuDeviceCreateShaderModule(m_Device, &desc);
     }
 
-    Vector<uint32_t> patchedSpirv(m_Device.GetStdAllocator());
-    bool hasPatchedSpirv = AddNonReadableDecorationsForWriteOnlyStorageImagesWGPU(m_Device, shaderDesc, patchedSpirv);
+    const uint32_t* code = (const uint32_t*)shaderDesc.bytecode;
+    uint32_t wordNum = (uint32_t)(shaderDesc.size / sizeof(uint32_t));
+    uint32_t idBound = code[3];
+    Scratch<uint32_t> patchedSpirv = NRI_ALLOCATE_SCRATCH(m_Device, uint32_t, wordNum + idBound * 3);
+    uint32_t patchedWordNum = AddNonReadableDecorationsForWriteOnlyStorageImagesWGPU(m_Device, shaderDesc, patchedSpirv, wordNum + idBound * 3);
 
     WGPUShaderSourceSPIRV spirv = WGPU_SHADER_SOURCE_SPIRV_INIT;
-    spirv.codeSize = hasPatchedSpirv ? (uint32_t)patchedSpirv.size() : (uint32_t)(shaderDesc.size / sizeof(uint32_t));
-    spirv.code = hasPatchedSpirv ? patchedSpirv.data() : (const uint32_t*)shaderDesc.bytecode;
+    spirv.codeSize = patchedWordNum ? patchedWordNum : wordNum;
+    spirv.code = patchedWordNum ? patchedSpirv : code;
 
     desc.nextInChain = &spirv.chain;
 
@@ -167,18 +178,28 @@ Result PipelineWGPU::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
 
     WGPUShaderModule vertexShader = nullptr;
     WGPUShaderModule fragmentShader = nullptr;
+    const char* vertexEntryPoint = "main";
+    const char* fragmentEntryPoint = "main";
 
     for (uint32_t i = 0; i < graphicsPipelineDesc.shaderNum; i++) {
         const ShaderDesc& shaderDesc = graphicsPipelineDesc.shaders[i];
-        if (shaderDesc.stage == StageBits::VERTEX_SHADER)
+        if (shaderDesc.stage == StageBits::VERTEX_SHADER) {
             vertexShader = CreateShaderModule(shaderDesc);
-        else if (shaderDesc.stage == StageBits::FRAGMENT_SHADER)
+            vertexEntryPoint = shaderDesc.entryPointName ? shaderDesc.entryPointName : "main";
+        } else if (shaderDesc.stage == StageBits::FRAGMENT_SHADER) {
             fragmentShader = CreateShaderModule(shaderDesc);
+            fragmentEntryPoint = shaderDesc.entryPointName ? shaderDesc.entryPointName : "main";
+        }
     }
 
-    // TODO: Depth-only graphics pipelines are not handled yet because a fragment shader is currently required.
-    if (!vertexShader || !fragmentShader)
+    if (!vertexShader || (!fragmentShader && graphicsPipelineDesc.outputMerger.colorNum)) {
+        if (vertexShader)
+            wgpuShaderModuleRelease(vertexShader);
+        if (fragmentShader)
+            wgpuShaderModuleRelease(fragmentShader);
+
         return Result::FAILURE;
+    }
 
     const VertexInputDesc* vertexInput = graphicsPipelineDesc.vertexInput;
     Scratch<WGPUVertexAttribute> attributes = NRI_ALLOCATE_SCRATCH(m_Device, WGPUVertexAttribute, vertexInput ? (size_t)vertexInput->attributeNum : 0ull);
@@ -235,8 +256,7 @@ Result PipelineWGPU::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
 
     WGPUFragmentState fragment = WGPU_FRAGMENT_STATE_INIT;
     fragment.module = fragmentShader;
-    // TODO: ShaderDesc::entryPointName is ignored for now. WGPU pipelines currently expect "main".
-    fragment.entryPoint = WGPUString("main");
+    fragment.entryPoint = WGPUString(fragmentEntryPoint);
     fragment.targets = colorTargets;
     fragment.targetCount = graphicsPipelineDesc.outputMerger.colorNum;
 
@@ -268,8 +288,7 @@ Result PipelineWGPU::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
 
     WGPUVertexState vertex = WGPU_VERTEX_STATE_INIT;
     vertex.module = vertexShader;
-    // TODO: ShaderDesc::entryPointName is ignored for now. WGPU pipelines currently expect "main".
-    vertex.entryPoint = WGPUString("main");
+    vertex.entryPoint = WGPUString(vertexEntryPoint);
     vertex.buffers = streams;
     vertex.bufferCount = vertexInput ? vertexInput->streamNum : 0;
 
@@ -278,7 +297,7 @@ Result PipelineWGPU::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     desc.vertex = vertex;
     desc.primitive = primitive;
     desc.multisample = multisample;
-    desc.fragment = &fragment;
+    desc.fragment = fragmentShader ? &fragment : nullptr;
     desc.depthStencil = graphicsPipelineDesc.outputMerger.depthStencilFormat != Format::UNKNOWN ? &depthStencil : nullptr;
 
     m_RenderPipeline = wgpuDeviceCreateRenderPipeline(m_Device, &desc);
@@ -299,11 +318,12 @@ Result PipelineWGPU::Create(const ComputePipelineDesc& computePipelineDesc) {
     if (!shader)
         return Result::FAILURE;
 
+    const char* entryPoint = computePipelineDesc.shader.entryPointName ? computePipelineDesc.shader.entryPointName : "main";
+
     WGPUComputePipelineDescriptor desc = WGPU_COMPUTE_PIPELINE_DESCRIPTOR_INIT;
     desc.layout = *m_PipelineLayout;
     desc.compute.module = shader;
-    // TODO: ShaderDesc::entryPointName is ignored for now. WGPU pipelines currently expect "main".
-    desc.compute.entryPoint = WGPUString("main");
+    desc.compute.entryPoint = WGPUString(entryPoint);
 
     m_ComputePipeline = wgpuDeviceCreateComputePipeline(m_Device, &desc);
     wgpuShaderModuleRelease(shader);

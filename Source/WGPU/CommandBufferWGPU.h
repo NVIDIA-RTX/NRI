@@ -4,12 +4,27 @@
 
 namespace nri {
 
+constexpr uint32_t COLOR_ATTACHMENT_MAX_NUM_WGPU = 8;
+
 struct ClearPipelineWGPU {
-    Format format = Format::UNKNOWN;
+    Format colorFormats[COLOR_ATTACHMENT_MAX_NUM_WGPU] = {};
     Format depthStencilFormat = Format::UNKNOWN;
+    uint32_t colorNum = 0;
+    uint32_t colorAttachmentIndex = 0;
     PlaneBits planes = PlaneBits::NONE;
+    Sample_t sampleNum = 1;
     WGPUPipelineLayout layout = nullptr;
     WGPURenderPipeline pipeline = nullptr;
+};
+
+struct RootConstantStateWGPU {
+    inline RootConstantStateWGPU(const StdAllocator<uint8_t>& allocator)
+        : data(allocator)
+        , mask(allocator) {
+    }
+
+    Vector<uint8_t> data;
+    Vector<uint8_t> mask;
 };
 
 struct RootDescriptorBindingWGPU {
@@ -33,8 +48,8 @@ struct CommandBufferWGPU final : public DebugNameBase {
         , m_ClearPipelines(device.GetStdAllocator())
         , m_RootDescriptorBindings(device.GetStdAllocator())
         , m_RootDynamicOffsets(device.GetStdAllocator())
-        , m_RootConstantData(device.GetStdAllocator())
-        , m_RootConstantMask(device.GetStdAllocator())
+        , m_GraphicsRootConstants(device.GetStdAllocator())
+        , m_ComputeRootConstants(device.GetStdAllocator())
         , m_AnnotationScopes(device.GetStdAllocator())
         , m_TemporaryBuffers(device.GetStdAllocator()) {
     }
@@ -100,7 +115,6 @@ struct CommandBufferWGPU final : public DebugNameBase {
 private:
     void EndPass();
     bool SetScissorRect(const Rect& rect);
-    void BindDescriptorSet(BindPoint bindPoint, uint32_t bindGroupIndex);
     void BindDescriptorSets(BindPoint bindPoint);
     void ReleaseTransientObjects();
     void ReleaseRootBindGroups();
@@ -110,7 +124,8 @@ private:
     void PopPassAnnotations(AnnotationScopeWGPU scope);
     void FlushDeferredEncoderAnnotationPops();
     WGPUBindGroup CreateRootBindGroup(BindPoint bindPoint);
-    WGPURenderPipeline GetClearPipeline(Format format, Format depthStencilFormat, PlaneBits planes, WGPUPipelineLayout& pipelineLayout);
+    RootConstantStateWGPU& GetRootConstantState(BindPoint bindPoint);
+    WGPURenderPipeline GetClearPipeline(uint32_t colorAttachmentIndex, PlaneBits planes, WGPUPipelineLayout& pipelineLayout);
 
 private:
     DeviceWGPU& m_Device;
@@ -121,8 +136,8 @@ private:
     Vector<ClearPipelineWGPU> m_ClearPipelines;
     Vector<RootDescriptorBindingWGPU> m_RootDescriptorBindings;
     Vector<uint32_t> m_RootDynamicOffsets;
-    Vector<uint8_t> m_RootConstantData;
-    Vector<uint8_t> m_RootConstantMask;
+    RootConstantStateWGPU m_GraphicsRootConstants;
+    RootConstantStateWGPU m_ComputeRootConstants;
     Vector<AnnotationScopeWGPU> m_AnnotationScopes;
     Vector<WGPUBuffer> m_TemporaryBuffers;
     WGPUCommandEncoder m_CommandEncoder = nullptr;
@@ -136,8 +151,10 @@ private:
     WGPUComputePipeline m_ComputePipeline = nullptr;
     WGPUComputePipeline m_BoundComputePipeline = nullptr;
     BindPoint m_BindPoint = BindPoint::GRAPHICS;
-    Format m_RenderFormat = Format::UNKNOWN;
+    Format m_RenderColorFormats[COLOR_ATTACHMENT_MAX_NUM_WGPU] = {};
     Format m_RenderDepthStencilFormat = Format::UNKNOWN;
+    uint32_t m_RenderColorNum = 0;
+    Sample_t m_RenderSampleNum = 1;
     Dim_t m_RenderWidth = 0;
     Dim_t m_RenderHeight = 0;
     Viewport m_Viewport = {};

@@ -364,6 +364,9 @@ WGPUTextureViewDimension nri::GetTextureViewDimension(TextureView type, const Te
 }
 
 WGPUTextureAspect nri::GetTextureAspect(PlaneBits planes) {
+    if ((planes & PlaneBits::DEPTH) && (planes & PlaneBits::STENCIL))
+        return WGPUTextureAspect_All;
+
     if (planes & PlaneBits::DEPTH)
         return WGPUTextureAspect_DepthOnly;
     if (planes & PlaneBits::STENCIL)

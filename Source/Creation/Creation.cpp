@@ -533,8 +533,8 @@ static void UpdateAdaptersWGPU(AdapterDesc* adapterDescs, uint32_t& adapterDescN
     options.backends = WGPUInstanceBackend_Primary;
 
     size_t wgpuAdapterNum = wgpuInstanceEnumerateAdapters(instance, &options, nullptr);
-    std::vector<WGPUAdapter> wgpuAdapters(wgpuAdapterNum);
-    wgpuAdapterNum = wgpuInstanceEnumerateAdapters(instance, &options, wgpuAdapters.data());
+    WGPUAdapter* wgpuAdapters = (WGPUAdapter*)alloca(sizeof(WGPUAdapter) * wgpuAdapterNum);
+    wgpuAdapterNum = wgpuInstanceEnumerateAdapters(instance, &options, wgpuAdapters);
 
     for (size_t i = 0; i < wgpuAdapterNum; i++) {
         WGPUAdapterInfo adapterInfo = WGPU_ADAPTER_INFO_INIT;
