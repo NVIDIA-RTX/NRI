@@ -49,13 +49,45 @@ WGPUCompositeAlphaMode SwapChainWGPU::GetAlphaMode(const WGPUSurfaceCapabilities
 }
 
 Result SwapChainWGPU::Create(const SwapChainDesc& swapChainDesc) {
+    WGPUChainedStruct* surfaceSource = nullptr;
+
 #if defined(_WIN32)
-    WGPUSurfaceSourceWindowsHWND surfaceSource = WGPU_SURFACE_SOURCE_WINDOWS_HWND_INIT;
-    surfaceSource.hinstance = GetModuleHandleW(nullptr);
-    surfaceSource.hwnd = swapChainDesc.window.windows.hwnd;
+    WGPUSurfaceSourceWindowsHWND surfaceSourceWindows = WGPU_SURFACE_SOURCE_WINDOWS_HWND_INIT;
+    if (swapChainDesc.window.windows.hwnd) {
+        surfaceSourceWindows.hinstance = GetModuleHandleW(nullptr);
+        surfaceSourceWindows.hwnd = swapChainDesc.window.windows.hwnd;
+        surfaceSource = &surfaceSourceWindows.chain;
+    }
+#endif
+#if defined(NRI_ENABLE_XLIB_SUPPORT)
+    WGPUSurfaceSourceXlibWindow surfaceSourceXlib = WGPU_SURFACE_SOURCE_XLIB_WINDOW_INIT;
+    if (swapChainDesc.window.x11.dpy && swapChainDesc.window.x11.window) {
+        surfaceSourceXlib.display = swapChainDesc.window.x11.dpy;
+        surfaceSourceXlib.window = swapChainDesc.window.x11.window;
+        surfaceSource = &surfaceSourceXlib.chain;
+    }
+#endif
+#if defined(NRI_ENABLE_WAYLAND_SUPPORT)
+    WGPUSurfaceSourceWaylandSurface surfaceSourceWayland = WGPU_SURFACE_SOURCE_WAYLAND_SURFACE_INIT;
+    if (swapChainDesc.window.wayland.display && swapChainDesc.window.wayland.surface) {
+        surfaceSourceWayland.display = swapChainDesc.window.wayland.display;
+        surfaceSourceWayland.surface = swapChainDesc.window.wayland.surface;
+        surfaceSource = &surfaceSourceWayland.chain;
+    }
+#endif
+#if defined(__APPLE__)
+    WGPUSurfaceSourceMetalLayer surfaceSourceMetal = WGPU_SURFACE_SOURCE_METAL_LAYER_INIT;
+    if (swapChainDesc.window.metal.caMetalLayer) {
+        surfaceSourceMetal.layer = swapChainDesc.window.metal.caMetalLayer;
+        surfaceSource = &surfaceSourceMetal.chain;
+    }
+#endif
+
+    if (!surfaceSource)
+        return Result::UNSUPPORTED;
 
     WGPUSurfaceDescriptor surfaceDesc = WGPU_SURFACE_DESCRIPTOR_INIT;
-    surfaceDesc.nextInChain = &surfaceSource.chain;
+    surfaceDesc.nextInChain = surfaceSource;
 
     m_Surface = wgpuInstanceCreateSurface(m_Device.GetInstance(), &surfaceDesc);
     if (!m_Surface)
@@ -101,11 +133,6 @@ Result SwapChainWGPU::Create(const SwapChainDesc& swapChainDesc) {
     }
 
     return Result::SUCCESS;
-#else
-    MaybeUnused(swapChainDesc);
-
-    return Result::UNSUPPORTED;
-#endif
 }
 
 Texture* const* SwapChainWGPU::GetTextures(uint32_t& textureNum) const {
