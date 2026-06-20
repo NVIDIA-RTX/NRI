@@ -698,6 +698,7 @@ void CommandBufferWGPU::ClearAttachments(const ClearAttachmentDesc* clearAttachm
     if (!m_RenderPass)
         return;
 
+    // TODO: WebGPU has no mid-pass attachment clear command. This is draw-emulated and must keep restoring caller-visible graphics state.
     WGPURenderPipeline renderPipeline = m_RenderPipeline;
     Viewport viewport = m_Viewport;
     Rect scissor = m_Scissor;
@@ -826,6 +827,7 @@ void CommandBufferWGPU::DrawIndexed(const DrawIndexedDesc& drawIndexedDesc) {
 }
 
 void CommandBufferWGPU::DrawIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset) {
+    // TODO: WebGPU has no count-buffer indirect draw variant, so "countBuffer" is ignored and "drawNum" commands are emitted.
     MaybeUnused(countBuffer, countBufferOffset);
 
     if (!m_RenderPass)
@@ -840,6 +842,7 @@ void CommandBufferWGPU::DrawIndirect(const Buffer& buffer, uint64_t offset, uint
 }
 
 void CommandBufferWGPU::DrawIndexedIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset) {
+    // TODO: WebGPU has no count-buffer indirect draw variant, so "countBuffer" is ignored and "drawNum" commands are emitted.
     MaybeUnused(countBuffer, countBufferOffset);
 
     if (!m_RenderPass)
@@ -1050,6 +1053,7 @@ WGPUBuffer CreateTemporaryUploadBuffer(DeviceWGPU& device, uint64_t size, const 
 }
 
 void CommandBufferWGPU::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion, ResolveOp resolveOp) {
+    // TODO: WebGPU exposes only the default render-pass resolve behavior. "resolveOp" is ignored; keep "features.resolveOpMinMax = false".
     MaybeUnused(resolveOp);
     EndPass();
 
@@ -1118,6 +1122,7 @@ void CommandBufferWGPU::ClearStorage(const ClearStorageDesc& clearStorageDesc) {
             return;
         }
 
+        // TODO: Non-zero storage-buffer clears are upload-buffer emulated and can be expensive for large ranges.
         Format format = descriptor.GetBufferFormat() == Format::UNKNOWN ? Format::R32_UINT : descriptor.GetBufferFormat();
         const FormatProps& props = GetFormatProps(format);
         Vector<uint8_t> data(m_Device.GetStdAllocator());
@@ -1145,6 +1150,7 @@ void CommandBufferWGPU::ClearStorage(const ClearStorageDesc& clearStorageDesc) {
     if (!texture)
         return;
 
+    // TODO: Storage-texture clears are upload-and-copy emulated. A compute clear path would avoid CPU-side pattern expansion.
     const TextureDesc& textureDesc = texture->GetDesc();
     const TextureViewDesc& viewDesc = descriptor.GetTextureViewDesc();
     Format format = descriptor.GetFormat();
@@ -1199,6 +1205,7 @@ void CommandBufferWGPU::ClearStorage(const ClearStorageDesc& clearStorageDesc) {
 }
 
 void CommandBufferWGPU::Barrier(const BarrierDesc& barrierDesc) {
+    // TODO: WebGPU owns resource-state tracking. This no-op is usually correct, but pass boundaries/copy ordering still matter.
     MaybeUnused(barrierDesc);
 }
 
@@ -1210,6 +1217,7 @@ void CommandBufferWGPU::ResetQueries(QueryPool& queryPool, uint32_t offset, uint
 void CommandBufferWGPU::BeginQuery(QueryPool& queryPool, uint32_t offset) {
     QueryPoolWGPU& queryPoolWGPU = (QueryPoolWGPU&)queryPool;
 
+    // TODO: Occlusion queries also require wiring the query set into WGPURenderPassDescriptor::occlusionQuerySet.
     if (queryPoolWGPU.GetType() == QueryType::OCCLUSION && m_RenderPass)
         wgpuRenderPassEncoderBeginOcclusionQuery(m_RenderPass, offset);
 }

@@ -27,6 +27,7 @@ static void OnDeviceRequested(WGPURequestDeviceStatus status, WGPUDevice device,
 }
 
 static void WaitForAsyncRequest(WGPUInstance instance, const bool& done) {
+    // TODO: This is a busy wait around async WGPU requests. Prefer a blocking/event-based path if wgpu-native exposes one.
     while (!done) {
         wgpuInstanceProcessEvents(instance);
         std::this_thread::yield();
@@ -96,6 +97,7 @@ Result DeviceWGPU::Create(const DeviceCreationDesc& desc) {
 Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
     WGPUInstanceExtras instanceExtras = {};
     instanceExtras.chain.sType = (WGPUSType)WGPUSType_InstanceExtras;
+    // TODO: Backend selection is left to wgpu-native. Forcing DX12 was observed to crash during early WGPU backend profiling.
     instanceExtras.backends = WGPUInstanceBackend_Primary;
     instanceExtras.flags = desc.enableGraphicsAPIValidation ? WGPUInstanceFlag_Debugging : WGPUInstanceFlag_Empty;
 
@@ -129,6 +131,7 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
 
     WGPUFeatureName requiredFeatures[16] = {};
     size_t requiredFeatureNum = 0;
+    // TODO: Root constants rely on the wgpu-native "immediates" extension, not core WebGPU.
     requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_Immediates;
 
     if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_TextureCompressionBC))
@@ -200,6 +203,7 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     WGPULimits limits = WGPU_LIMITS_INIT;
     wgpuDeviceGetLimits(m_Device, &limits);
 
+    // TODO: Compatibility placeholder. WebGPU/WGSL does not expose a D3D-style shader model.
     m_Desc.shaderModel = NriShaderModel(6, 0);
 
     m_Desc.viewport.maxNum = 1;
@@ -301,6 +305,7 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.tiers.bindless = 0;
     m_Desc.tiers.memory = 1;
 
+    // TODO: Unsupported WebGPU features are intentionally left false/zero in "DeviceDesc"; add explicit caps only when WGPU can back the NRI behavior.
     m_Desc.features.swapChain = true;
     m_Desc.features.textureCompressionBC = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TextureCompressionBC) == WGPU_TRUE;
     m_Desc.features.textureCompressionETC2 = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TextureCompressionETC2) == WGPU_TRUE;

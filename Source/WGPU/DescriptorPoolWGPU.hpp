@@ -11,6 +11,7 @@ Result DescriptorPoolWGPU::Create(const DescriptorPoolDesc& descriptorPoolDesc) 
 }
 
 Result DescriptorPoolWGPU::AllocateDescriptorSets(const PipelineLayout& pipelineLayout, uint32_t setIndex, DescriptorSet** descriptorSets, uint32_t instanceNum, uint32_t variableDescriptorNum) {
+    // TODO: Variable descriptor count is ignored because descriptor heap indexing/bindless is not exposed by this backend.
     MaybeUnused(variableDescriptorNum);
 
     const DescriptorSetMappingWGPU& mapping = ((PipelineLayoutWGPU&)pipelineLayout).GetDescriptorSetMapping(setIndex);

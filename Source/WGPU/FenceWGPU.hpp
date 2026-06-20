@@ -9,6 +9,7 @@ Result FenceWGPU::Create(uint64_t initialValue) {
 }
 
 uint64_t FenceWGPU::GetValue() const {
+    // TODO: Fences are emulated with WGPUSubmissionIndex polling, not native timeline fence objects.
     if (m_SubmissionIndex && wgpuDevicePoll(m_Device, WGPU_FALSE, &m_SubmissionIndex) == WGPU_TRUE) {
         m_CompletedValue = m_SubmittedValue;
         m_SubmissionIndex = 0;

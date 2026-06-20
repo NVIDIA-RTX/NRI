@@ -104,6 +104,7 @@ Result SwapChainWGPU::Create(const SwapChainDesc& swapChainDesc) {
 
     wgpuSurfaceCapabilitiesFreeMembers(capabilities);
 
+    // TODO: WGPU surface configuration does not implement NRI present scaling/gravity, queued frame count, waitable swapchain, or low-latency flags.
     WGPUSurfaceConfiguration desc = WGPU_SURFACE_CONFIGURATION_INIT;
     desc.device = m_Device;
     desc.format = format;
@@ -142,6 +143,7 @@ Texture* const* SwapChainWGPU::GetTextures(uint32_t& textureNum) const {
 }
 
 Result SwapChainWGPU::GetDisplayDesc(DisplayDesc& displayDesc) {
+    // TODO: DisplayDescHelper is HWND-based. Add X11/Wayland/macOS display queries for non-Windows swapchains.
     return DisplayDescHelper::GetDisplayDesc(m_Hwnd, displayDesc);
 }
 
@@ -164,6 +166,7 @@ Result SwapChainWGPU::AcquireNextTexture(uint32_t& textureIndex) {
 }
 
 Result SwapChainWGPU::WaitForPresent() {
+    // TODO: WGPU has no waitable-swapchain equivalent. Keep "features.waitableSwapChain = false".
     return Result::UNSUPPORTED;
 }
 

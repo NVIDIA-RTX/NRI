@@ -343,6 +343,7 @@ static void NRI_CALL CmdSetStencilReference(CommandBuffer& commandBuffer, uint8_
 }
 
 static void NRI_CALL CmdSetDepthBounds(CommandBuffer&, float, float) {
+    // TODO: WebGPU does not support dynamic depth bounds. Keep "features.depthBoundsTest = false".
 }
 
 static void NRI_CALL CmdSetBlendConstants(CommandBuffer& commandBuffer, const Color32f& color) {
@@ -350,12 +351,15 @@ static void NRI_CALL CmdSetBlendConstants(CommandBuffer& commandBuffer, const Co
 }
 
 static void NRI_CALL CmdSetSampleLocations(CommandBuffer&, const SampleLocation*, Sample_t, Sample_t) {
+    // TODO: WebGPU does not support programmable sample locations. Keep "tiers.sampleLocations = 0".
 }
 
 static void NRI_CALL CmdSetShadingRate(CommandBuffer&, const ShadingRateDesc&) {
+    // TODO: WebGPU does not support variable rate shading. Keep "tiers.shadingRate = 0".
 }
 
 static void NRI_CALL CmdSetDepthBias(CommandBuffer&, const DepthBiasDesc&) {
+    // TODO: WebGPU supports pipeline depth bias only, not dynamic depth bias. Keep "features.dynamicDepthBias = false".
 }
 
 static void NRI_CALL CmdBeginRendering(CommandBuffer& commandBuffer, const RenderingDesc& renderingDesc) {
@@ -511,6 +515,7 @@ static void NRI_CALL UnmapBuffer(Buffer& buffer) {
 }
 
 static uint64_t NRI_CALL GetBufferDeviceAddress(const Buffer&) {
+    // TODO: WebGPU does not expose buffer device addresses. Keep device-address/ray-tracing features disabled.
     return 0;
 }
 
@@ -788,6 +793,7 @@ Result DeviceWGPU::FillFunctionTable(ImguiInterface& table) const {
 #pragma region[  LowLatency  ]
 
 Result DeviceWGPU::FillFunctionTable(LowLatencyInterface&) const {
+    // TODO: WebGPU has no NRI low-latency extension mapping yet. Keep "features.lowLatency = false".
     return Result::UNSUPPORTED;
 }
 
@@ -797,6 +803,7 @@ Result DeviceWGPU::FillFunctionTable(LowLatencyInterface&) const {
 #pragma region[  MeshShader  ]
 
 Result DeviceWGPU::FillFunctionTable(MeshShaderInterface&) const {
+    // TODO: WebGPU does not expose mesh shaders. Keep "features.meshShader = false".
     return Result::UNSUPPORTED;
 }
 
@@ -806,6 +813,7 @@ Result DeviceWGPU::FillFunctionTable(MeshShaderInterface&) const {
 #pragma region[  RayTracing  ]
 
 Result DeviceWGPU::FillFunctionTable(RayTracingInterface&) const {
+    // TODO: WebGPU does not expose ray tracing or acceleration structures.
     return Result::UNSUPPORTED;
 }
 
@@ -923,6 +931,7 @@ Result DeviceWGPU::FillFunctionTable(SwapChainInterface& table) const {
 #pragma region[  Upscaler  ]
 
 Result DeviceWGPU::FillFunctionTable(UpscalerInterface&) const {
+    // TODO: No WGPU mapping exists for the upscaler extension yet.
     return Result::UNSUPPORTED;
 }
 

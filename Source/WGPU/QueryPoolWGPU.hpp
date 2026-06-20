@@ -19,6 +19,7 @@ Result QueryPoolWGPU::Create(const QueryPoolDesc& queryPoolDesc) {
             m_QuerySize = sizeof(uint64_t);
             break;
         case QueryType::OCCLUSION:
+            // TODO: WebGPU supports occlusion query sets, but WGPU render-pass creation does not pass "occlusionQuerySet" yet.
             if (!m_Device.GetDesc().features.occlusion)
                 return Result::UNSUPPORTED;
             desc.type = WGPUQueryType_Occlusion;
@@ -33,5 +34,6 @@ Result QueryPoolWGPU::Create(const QueryPoolDesc& queryPoolDesc) {
 }
 
 void QueryPoolWGPU::Reset(uint32_t offset, uint32_t num) {
+    // TODO: WebGPU has no direct query reset command. Keep this a no-op unless a backend-side query lifetime workaround is added.
     MaybeUnused(offset, num);
 }

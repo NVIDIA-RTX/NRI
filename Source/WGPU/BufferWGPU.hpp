@@ -74,6 +74,7 @@ void* BufferWGPU::Map(uint64_t offset, uint64_t size) {
         size_t mapSize = (size_t)Align(m_MapOffset + m_MapSize - mapOffset, 4);
         wgpuBufferMapAsync(m_Buffer, WGPUMapMode_Read, mapOffset, mapSize, callbackInfo);
 
+        // TODO: Readback map is blocking and pumps the device until completion.
         while (!context.completed) {
             wgpuDevicePoll(m_Device, WGPU_TRUE, nullptr);
             wgpuInstanceProcessEvents(m_Device.GetInstance());
@@ -92,6 +93,7 @@ void* BufferWGPU::Map(uint64_t offset, uint64_t size) {
     if (m_CpuMemory.empty())
         m_CpuMemory.resize((size_t)Align(std::max(m_Desc.size, 4ull), 4));
 
+    // TODO: Host-visible upload buffers are CPU-shadowed and flushed through "wgpuQueueWriteBuffer" on unmap.
     return m_CpuMemory.data() + offset;
 }
 

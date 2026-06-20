@@ -12,6 +12,7 @@ static void FillLayoutEntry(WGPUBindGroupLayoutEntry& entry, DescriptorType desc
             break;
         case DescriptorType::TEXTURE:
         case DescriptorType::INPUT_ATTACHMENT:
+            // TODO: NRI input attachments are not native WebGPU subpass inputs; keep "shaderFeatures.inputAttachments = false".
             entry.texture.sampleType = WGPUTextureSampleType_Float;
             entry.texture.viewDimension = WGPUTextureViewDimension_2D;
             entry.texture.multisampled = WGPU_FALSE;
@@ -258,6 +259,7 @@ Result PipelineLayoutWGPU::Create(const PipelineLayoutDesc& pipelineLayoutDesc) 
 
     WGPUPipelineLayoutExtras extras = {};
     extras.chain.sType = (WGPUSType)WGPUSType_PipelineLayoutExtras;
+    // TODO: Immediate data is a wgpu-native extension used to emulate NRI root constants.
     extras.immediateDataSize = m_ImmediateDataSize;
 
     WGPUPipelineLayoutDescriptor desc = WGPU_PIPELINE_LAYOUT_DESCRIPTOR_INIT;
@@ -481,6 +483,7 @@ static WGPUTextureViewDimension GetStorageTextureViewDimensionFromWgsl(const cha
 }
 
 static void ReflectStorageTexturesFromWgsl(const ShaderDesc& shaderDesc, Vector<StorageTextureBindingWGPU>& storageTextures) {
+    // TODO: This is a small source parser, not full WGSL reflection. It intentionally recognizes only direct storage-texture declarations.
     const char* source = (const char*)shaderDesc.bytecode;
     if (!source || shaderDesc.size == 0)
         return;
@@ -533,6 +536,7 @@ static void ReflectStorageTextures(const ShaderDesc& shaderDesc, Vector<StorageT
         return;
     }
 
+    // TODO: SPIR-V reflection is intentionally minimal and only extracts storage texture format/dimension metadata needed by WGPU bind-group layouts.
     struct TypeInfo {
         uint32_t imageFormat = 0;
         WGPUTextureViewDimension viewDimension = WGPUTextureViewDimension_2D;

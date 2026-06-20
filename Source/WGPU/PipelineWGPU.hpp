@@ -15,6 +15,7 @@ static bool IsSpirvBytecodeWGPU(const ShaderDesc& shaderDesc) {
 }
 
 static bool AddNonReadableDecorationsForWriteOnlyStorageImagesWGPU(DeviceWGPU& device, const ShaderDesc& shaderDesc, Vector<uint32_t>& patchedSpirv) {
+    // TODO: This patches SPIR-V to satisfy WGPU write-only storage texture rules. Prefer generating correct decorations in shaders.
     constexpr uint16_t OP_TYPE_IMAGE = 25;
     constexpr uint16_t OP_TYPE_POINTER = 32;
     constexpr uint16_t OP_VARIABLE = 59;
@@ -115,6 +116,7 @@ static bool AddNonReadableDecorationsForWriteOnlyStorageImagesWGPU(DeviceWGPU& d
 WGPUShaderModule PipelineWGPU::CreateShaderModule(const ShaderDesc& shaderDesc) {
     WGPUShaderModuleDescriptor desc = WGPU_SHADER_MODULE_DESCRIPTOR_INIT;
 
+    // TODO: Shader bytecode type is inferred from the SPIR-V magic header; everything else is treated as WGSL text.
     if (!IsSpirvBytecodeWGPU(shaderDesc)) {
         WGPUShaderSourceWGSL wgsl = WGPU_SHADER_SOURCE_WGSL_INIT;
         wgsl.code = {(const char*)shaderDesc.bytecode, (size_t)shaderDesc.size};
@@ -136,6 +138,7 @@ WGPUShaderModule PipelineWGPU::CreateShaderModule(const ShaderDesc& shaderDesc) 
 }
 
 static uint64_t GetVertexStreamStride(const VertexInputDesc& vertexInput, uint32_t streamIndex) {
+    // TODO: Compatibility fallback for older samples. Prefer explicit "VertexStreamDesc::stride" in sample code.
     uint64_t stride = 0;
 
     for (uint32_t i = 0; i < vertexInput.attributeNum; i++) {
@@ -173,6 +176,7 @@ Result PipelineWGPU::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
             fragmentShader = CreateShaderModule(shaderDesc);
     }
 
+    // TODO: Depth-only graphics pipelines are not handled yet because a fragment shader is currently required.
     if (!vertexShader || !fragmentShader)
         return Result::FAILURE;
 
@@ -231,6 +235,7 @@ Result PipelineWGPU::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
 
     WGPUFragmentState fragment = WGPU_FRAGMENT_STATE_INIT;
     fragment.module = fragmentShader;
+    // TODO: ShaderDesc::entryPointName is ignored for now. WGPU pipelines currently expect "main".
     fragment.entryPoint = WGPUString("main");
     fragment.targets = colorTargets;
     fragment.targetCount = graphicsPipelineDesc.outputMerger.colorNum;
@@ -263,6 +268,7 @@ Result PipelineWGPU::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
 
     WGPUVertexState vertex = WGPU_VERTEX_STATE_INIT;
     vertex.module = vertexShader;
+    // TODO: ShaderDesc::entryPointName is ignored for now. WGPU pipelines currently expect "main".
     vertex.entryPoint = WGPUString("main");
     vertex.buffers = streams;
     vertex.bufferCount = vertexInput ? vertexInput->streamNum : 0;
@@ -296,6 +302,7 @@ Result PipelineWGPU::Create(const ComputePipelineDesc& computePipelineDesc) {
     WGPUComputePipelineDescriptor desc = WGPU_COMPUTE_PIPELINE_DESCRIPTOR_INIT;
     desc.layout = *m_PipelineLayout;
     desc.compute.module = shader;
+    // TODO: ShaderDesc::entryPointName is ignored for now. WGPU pipelines currently expect "main".
     desc.compute.entryPoint = WGPUString("main");
 
     m_ComputePipeline = wgpuDeviceCreateComputePipeline(m_Device, &desc);

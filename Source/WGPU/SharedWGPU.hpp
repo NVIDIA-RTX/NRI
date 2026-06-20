@@ -626,6 +626,7 @@ static bool IsStorageTextureSupportedWGPU(Format format) {
 }
 
 FormatSupportBits nri::GetFormatSupportWGPU(Format format) {
+    // TODO: Format support is a static WebGPU approximation; refine if per-adapter format caps become available.
     if (GetTextureFormat(format) == WGPUTextureFormat_Undefined)
         return FormatSupportBits::UNSUPPORTED;
 

@@ -50,6 +50,7 @@ void DescriptorSetWGPU::CopyRangeFrom(uint32_t dstRangeIndex, uint32_t dstBaseDe
 }
 
 void DescriptorSetWGPU::RecreateBindGroup() const {
+    // TODO: Bind groups are recreated on descriptor updates/copies. This is correct but can be expensive for update-heavy workloads.
     auto resetBindGroup = [&]() {
         if (m_BindGroup) {
             wgpuBindGroupRelease(m_BindGroup);
@@ -155,6 +156,7 @@ void DescriptorSetWGPU::RecreateBindGroup() const {
 }
 
 void DescriptorSetWGPU::GetOffsets(uint32_t& resourceHeapOffset, uint32_t& samplerHeapOffset) const {
+    // TODO: Descriptor heap indexing/bindless is unsupported, so heap offsets are always zero.
     resourceHeapOffset = 0;
     samplerHeapOffset = 0;
 }
