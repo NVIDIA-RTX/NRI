@@ -129,11 +129,15 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
 
     m_Adapter = adapterContext.adapter;
 
-    WGPUFeatureName requiredFeatures[16] = {};
+    WGPUFeatureName requiredFeatures[32] = {};
     size_t requiredFeatureNum = 0;
     // TODO: Root constants rely on the wgpu-native "immediates" extension, not core WebGPU.
     requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_Immediates;
 
+    if (wgpuAdapterHasFeature(m_Adapter, (WGPUFeatureName)WGPUNativeFeature_TextureAdapterSpecificFormatFeatures))
+        requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_TextureAdapterSpecificFormatFeatures;
+    if (wgpuAdapterHasFeature(m_Adapter, (WGPUFeatureName)WGPUNativeFeature_TextureFormat16bitNorm))
+        requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_TextureFormat16bitNorm;
     if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_TextureCompressionBC))
         requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_TextureCompressionBC;
     if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_TextureCompressionETC2))
@@ -144,8 +148,30 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
         requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_IndirectFirstInstance;
     if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_Depth32FloatStencil8))
         requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_Depth32FloatStencil8;
+    if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_ClipDistances))
+        requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_ClipDistances;
     if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_BGRA8UnormStorage))
         requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_BGRA8UnormStorage;
+    if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_ShaderF16))
+        requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_ShaderF16;
+    if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_RG11B10UfloatRenderable))
+        requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_RG11B10UfloatRenderable;
+    if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_Float32Filterable))
+        requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_Float32Filterable;
+    if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_Float32Blendable))
+        requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_Float32Blendable;
+    if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_DualSourceBlending))
+        requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_DualSourceBlending;
+    if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_Subgroups))
+        requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_Subgroups;
+    if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_TextureFormatsTier1))
+        requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_TextureFormatsTier1;
+    if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_TextureFormatsTier2))
+        requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_TextureFormatsTier2;
+    if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_PrimitiveIndex))
+        requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_PrimitiveIndex;
+    if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_TextureComponentSwizzle))
+        requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_TextureComponentSwizzle;
 
     bool isTimestampQuerySupported = wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_TimestampQuery) == WGPU_TRUE;
     bool isTimestampQueryInsideEncodersSupported = wgpuAdapterHasFeature(m_Adapter, (WGPUFeatureName)WGPUNativeFeature_TimestampQueryInsideEncoders) == WGPU_TRUE;
@@ -264,6 +290,7 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
 
     m_Desc.shaderStage.fragment.inputComponentMaxNum = 60;
     m_Desc.shaderStage.fragment.attachmentMaxNum = limits.maxColorAttachments;
+    m_Desc.shaderStage.fragment.dualSourceAttachmentMaxNum = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_DualSourceBlending) == WGPU_TRUE ? 1 : 0;
 
     m_Desc.shaderStage.compute.dispatchMaxDim[0] = limits.maxComputeWorkgroupsPerDimension;
     m_Desc.shaderStage.compute.dispatchMaxDim[1] = limits.maxComputeWorkgroupsPerDimension;
@@ -296,9 +323,9 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.other.texelOffsetMax = 7;
     m_Desc.other.texelGatherOffsetMin = -8;
     m_Desc.other.texelGatherOffsetMax = 7;
-    m_Desc.other.clipDistanceMaxNum = 8;
-    m_Desc.other.cullDistanceMaxNum = 8;
-    m_Desc.other.combinedClipAndCullDistanceMaxNum = 8;
+    m_Desc.other.clipDistanceMaxNum = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_ClipDistances) == WGPU_TRUE ? 8 : 0;
+    m_Desc.other.cullDistanceMaxNum = 0;
+    m_Desc.other.combinedClipAndCullDistanceMaxNum = m_Desc.other.clipDistanceMaxNum;
     m_Desc.other.viewMaxNum = 1;
 
     m_Desc.tiers.resourceBinding = 0;
@@ -314,7 +341,9 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.features.shaderBytecodeWGSL = true;
     m_Desc.features.timestamp = m_IsTimestampQueryInsidePassesSupported;
     m_Desc.features.getMemoryDesc2 = true;
+    m_Desc.features.componentSwizzle = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TextureComponentSwizzle) == WGPU_TRUE;
     m_Desc.features.rootConstantsOffset = true;
+    m_Desc.shaderFeatures.nativeF16 = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_ShaderF16) == WGPU_TRUE;
     m_Desc.shaderFeatures.drawParameters = true;
 }
 
@@ -398,6 +427,20 @@ static bool IsASTCFormat(Format format) {
     }
 }
 
+static bool Is16BitNormFormat(Format format) {
+    switch (format) {
+        case Format::R16_UNORM:
+        case Format::R16_SNORM:
+        case Format::RG16_UNORM:
+        case Format::RG16_SNORM:
+        case Format::RGBA16_UNORM:
+        case Format::RGBA16_SNORM:
+            return true;
+        default:
+            return false;
+    }
+}
+
 FormatSupportBits DeviceWGPU::GetFormatSupport(Format format) const {
     if (IsBCFormat(format) && !m_Desc.features.textureCompressionBC)
         return FormatSupportBits::UNSUPPORTED;
@@ -405,10 +448,20 @@ FormatSupportBits DeviceWGPU::GetFormatSupport(Format format) const {
         return FormatSupportBits::UNSUPPORTED;
     if (IsASTCFormat(format) && !m_Desc.features.textureCompressionASTC)
         return FormatSupportBits::UNSUPPORTED;
+    if (Is16BitNormFormat(format) && wgpuDeviceHasFeature(m_Device, (WGPUFeatureName)WGPUNativeFeature_TextureFormat16bitNorm) != WGPU_TRUE)
+        return FormatSupportBits::UNSUPPORTED;
     if (format == Format::D32_SFLOAT_S8_UINT && wgpuDeviceHasFeature(m_Device, WGPUFeatureName_Depth32FloatStencil8) != WGPU_TRUE)
         return FormatSupportBits::UNSUPPORTED;
 
     FormatSupportBits support = GetFormatSupportWGPU(format);
+    if (format == Format::R11_G11_B10_UFLOAT && wgpuDeviceHasFeature(m_Device, WGPUFeatureName_RG11B10UfloatRenderable) != WGPU_TRUE)
+        support &= ~(FormatSupportBits::COLOR_ATTACHMENT | FormatSupportBits::MULTISAMPLE_4X | FormatSupportBits::MULTISAMPLE_RESOLVE | FormatSupportBits::BLEND);
+
+    if (wgpuDeviceHasFeature(m_Device, WGPUFeatureName_Float32Blendable) == WGPU_TRUE) {
+        if (format == Format::R32_SFLOAT || format == Format::RG32_SFLOAT || format == Format::RGBA32_SFLOAT)
+            support |= FormatSupportBits::BLEND;
+    }
+
     if (format == Format::BGRA8_UNORM && wgpuDeviceHasFeature(m_Device, WGPUFeatureName_BGRA8UnormStorage) == WGPU_TRUE)
         support |= FormatSupportBits::STORAGE_TEXTURE;
 

@@ -48,18 +48,30 @@ WGPUTextureFormat nri::GetTextureFormat(Format format) {
             return WGPUTextureFormat_RGBA8Uint;
         case Format::RGBA8_SINT:
             return WGPUTextureFormat_RGBA8Sint;
+        case Format::R16_UNORM:
+            return WGPUTextureFormat_R16Unorm;
+        case Format::R16_SNORM:
+            return WGPUTextureFormat_R16Snorm;
         case Format::R16_UINT:
             return WGPUTextureFormat_R16Uint;
         case Format::R16_SINT:
             return WGPUTextureFormat_R16Sint;
         case Format::R16_SFLOAT:
             return WGPUTextureFormat_R16Float;
+        case Format::RG16_UNORM:
+            return WGPUTextureFormat_RG16Unorm;
+        case Format::RG16_SNORM:
+            return WGPUTextureFormat_RG16Snorm;
         case Format::RG16_UINT:
             return WGPUTextureFormat_RG16Uint;
         case Format::RG16_SINT:
             return WGPUTextureFormat_RG16Sint;
         case Format::RG16_SFLOAT:
             return WGPUTextureFormat_RG16Float;
+        case Format::RGBA16_UNORM:
+            return WGPUTextureFormat_RGBA16Unorm;
+        case Format::RGBA16_SNORM:
+            return WGPUTextureFormat_RGBA16Snorm;
         case Format::RGBA16_UINT:
             return WGPUTextureFormat_RGBA16Uint;
         case Format::RGBA16_SINT:
@@ -269,14 +281,24 @@ WGPUBufferUsage nri::GetBufferUsage(BufferUsageBits usage) {
 
 WGPUVertexFormat nri::GetVertexFormat(Format format) {
     switch (format) {
+        case Format::R8_UNORM:
+            return WGPUVertexFormat_Unorm8;
+        case Format::R8_SNORM:
+            return WGPUVertexFormat_Snorm8;
         case Format::R8_UINT:
             return WGPUVertexFormat_Uint8;
         case Format::R8_SINT:
             return WGPUVertexFormat_Sint8;
+        case Format::RG8_UNORM:
+            return WGPUVertexFormat_Unorm8x2;
+        case Format::RG8_SNORM:
+            return WGPUVertexFormat_Snorm8x2;
         case Format::RG8_UINT:
             return WGPUVertexFormat_Uint8x2;
         case Format::RG8_SINT:
             return WGPUVertexFormat_Sint8x2;
+        case Format::BGRA8_UNORM:
+            return WGPUVertexFormat_Unorm8x4BGRA;
         case Format::RGBA8_UNORM:
             return WGPUVertexFormat_Unorm8x4;
         case Format::RGBA8_SNORM:
@@ -287,18 +309,30 @@ WGPUVertexFormat nri::GetVertexFormat(Format format) {
             return WGPUVertexFormat_Sint8x4;
         case Format::R10_G10_B10_A2_UNORM:
             return WGPUVertexFormat_Unorm10_10_10_2;
+        case Format::R16_UNORM:
+            return WGPUVertexFormat_Unorm16;
+        case Format::R16_SNORM:
+            return WGPUVertexFormat_Snorm16;
         case Format::R16_UINT:
             return WGPUVertexFormat_Uint16;
         case Format::R16_SINT:
             return WGPUVertexFormat_Sint16;
         case Format::R16_SFLOAT:
             return WGPUVertexFormat_Float16;
+        case Format::RG16_UNORM:
+            return WGPUVertexFormat_Unorm16x2;
+        case Format::RG16_SNORM:
+            return WGPUVertexFormat_Snorm16x2;
         case Format::RG16_UINT:
             return WGPUVertexFormat_Uint16x2;
         case Format::RG16_SINT:
             return WGPUVertexFormat_Sint16x2;
         case Format::RG16_SFLOAT:
             return WGPUVertexFormat_Float16x2;
+        case Format::RGBA16_UNORM:
+            return WGPUVertexFormat_Unorm16x4;
+        case Format::RGBA16_SNORM:
+            return WGPUVertexFormat_Snorm16x4;
         case Format::RGBA16_UINT:
             return WGPUVertexFormat_Uint16x4;
         case Format::RGBA16_SINT:
@@ -555,6 +589,25 @@ WGPUStoreOp nri::GetStoreOp(StoreOp storeOp) {
     return storeOp == StoreOp::DISCARD ? WGPUStoreOp_Discard : WGPUStoreOp_Store;
 }
 
+WGPUComponentSwizzle nri::GetComponentSwizzle(ComponentSwizzle componentSwizzle) {
+    switch (componentSwizzle) {
+        case ComponentSwizzle::ZERO:
+            return WGPUComponentSwizzle_Zero;
+        case ComponentSwizzle::ONE:
+            return WGPUComponentSwizzle_One;
+        case ComponentSwizzle::R:
+            return WGPUComponentSwizzle_R;
+        case ComponentSwizzle::G:
+            return WGPUComponentSwizzle_G;
+        case ComponentSwizzle::B:
+            return WGPUComponentSwizzle_B;
+        case ComponentSwizzle::A:
+            return WGPUComponentSwizzle_A;
+        default:
+            return WGPUComponentSwizzle_Undefined;
+    }
+}
+
 static bool IsColorRenderableWGPU(Format format) {
     switch (format) {
         case Format::R8_UNORM:
@@ -565,12 +618,15 @@ static bool IsColorRenderableWGPU(Format format) {
         case Format::RGBA8_SRGB:
         case Format::RGBA8_UINT:
         case Format::RGBA8_SINT:
+        case Format::R16_UNORM:
         case Format::R16_UINT:
         case Format::R16_SINT:
         case Format::R16_SFLOAT:
+        case Format::RG16_UNORM:
         case Format::RG16_UINT:
         case Format::RG16_SINT:
         case Format::RG16_SFLOAT:
+        case Format::RGBA16_UNORM:
         case Format::RGBA16_UINT:
         case Format::RGBA16_SINT:
         case Format::RGBA16_SFLOAT:
@@ -600,8 +656,11 @@ static bool IsBlendSupportedWGPU(Format format) {
         case Format::BGRA8_SRGB:
         case Format::RGBA8_UNORM:
         case Format::RGBA8_SRGB:
+        case Format::R16_UNORM:
         case Format::R16_SFLOAT:
+        case Format::RG16_UNORM:
         case Format::RG16_SFLOAT:
+        case Format::RGBA16_UNORM:
         case Format::RGBA16_SFLOAT:
         case Format::R11_G11_B10_UFLOAT:
             return true;
@@ -622,6 +681,12 @@ static bool IsStorageTextureSupportedWGPU(Format format) {
         case Format::R32_UINT:
         case Format::R32_SINT:
         case Format::R32_SFLOAT:
+        case Format::RG32_UINT:
+        case Format::RG32_SINT:
+        case Format::RG32_SFLOAT:
+        case Format::RGBA32_UINT:
+        case Format::RGBA32_SINT:
+        case Format::RGBA32_SFLOAT:
             return true;
         default:
             return false;
@@ -629,7 +694,6 @@ static bool IsStorageTextureSupportedWGPU(Format format) {
 }
 
 FormatSupportBits nri::GetFormatSupportWGPU(Format format) {
-    // TODO: Format support is a static WebGPU approximation; refine if per-adapter format caps become available.
     if (GetTextureFormat(format) == WGPUTextureFormat_Undefined)
         return FormatSupportBits::UNSUPPORTED;
 

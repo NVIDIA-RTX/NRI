@@ -65,6 +65,7 @@ WGPUBlendOperation GetBlendOperation(BlendOp blendOp);
 WGPUColorWriteMask GetColorWriteMask(ColorWriteBits colorWriteMask);
 WGPULoadOp GetLoadOp(LoadOp loadOp);
 WGPUStoreOp GetStoreOp(StoreOp storeOp);
+WGPUComponentSwizzle GetComponentSwizzle(ComponentSwizzle componentSwizzle);
 FormatSupportBits GetFormatSupportWGPU(Format format);
 Vendor GetVendorFromPCIID(uint32_t vendorId);
 Architecture GetArchitecture(WGPUAdapterType adapterType);

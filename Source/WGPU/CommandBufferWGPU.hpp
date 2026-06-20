@@ -454,6 +454,7 @@ WGPUComputePipeline CommandBufferWGPU::GetClearStorageBufferPipeline(WGPUBindGro
 
 static const char* GetStorageTextureFormatNameWGPU(Format format) {
     switch (format) {
+        case Format::BGRA8_UNORM: return "bgra8unorm";
         case Format::RGBA8_UNORM: return "rgba8unorm";
         case Format::RGBA8_SNORM: return "rgba8snorm";
         case Format::RGBA8_UINT: return "rgba8uint";
@@ -464,6 +465,12 @@ static const char* GetStorageTextureFormatNameWGPU(Format format) {
         case Format::R32_UINT: return "r32uint";
         case Format::R32_SINT: return "r32sint";
         case Format::R32_SFLOAT: return "r32float";
+        case Format::RG32_UINT: return "rg32uint";
+        case Format::RG32_SINT: return "rg32sint";
+        case Format::RG32_SFLOAT: return "rg32float";
+        case Format::RGBA32_UINT: return "rgba32uint";
+        case Format::RGBA32_SINT: return "rgba32sint";
+        case Format::RGBA32_SFLOAT: return "rgba32float";
         default: return nullptr;
     }
 }

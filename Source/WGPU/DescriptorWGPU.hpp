@@ -103,6 +103,16 @@ WGPUTextureView DescriptorWGPU::GetTextureView() {
     desc.arrayLayerCount = m_TextureViewDesc.layerNum == REMAINING ? WGPU_ARRAY_LAYER_COUNT_UNDEFINED : m_TextureViewDesc.layerNum;
     desc.aspect = GetTextureAspect(m_TextureViewDesc.planes);
 
+    WGPUTextureComponentSwizzleDescriptor swizzleDesc = WGPU_TEXTURE_COMPONENT_SWIZZLE_DESCRIPTOR_INIT;
+    if (m_DescriptorType != DescriptorType::STORAGE_TEXTURE) {
+        swizzleDesc.swizzle.r = GetComponentSwizzle(m_TextureViewDesc.components.r);
+        swizzleDesc.swizzle.g = GetComponentSwizzle(m_TextureViewDesc.components.g);
+        swizzleDesc.swizzle.b = GetComponentSwizzle(m_TextureViewDesc.components.b);
+        swizzleDesc.swizzle.a = GetComponentSwizzle(m_TextureViewDesc.components.a);
+        if (swizzleDesc.swizzle.r || swizzleDesc.swizzle.g || swizzleDesc.swizzle.b || swizzleDesc.swizzle.a)
+            desc.nextInChain = &swizzleDesc.chain;
+    }
+
     m_TextureView = wgpuTextureCreateView(*m_Texture, &desc);
     m_TextureVersion = m_Texture->GetVersion();
 

@@ -310,6 +310,11 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const TextureViewDesc& textureView
     NRI_RETURN_ON_FAILURE(this, textureViewDesc.components.b < ComponentSwizzle::MAX_NUM, Result::INVALID_ARGUMENT, "'components.b' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureViewDesc.components.a < ComponentSwizzle::MAX_NUM, Result::INVALID_ARGUMENT, "'components.a' is invalid");
 
+    bool hasComponentSwizzle = textureViewDesc.components.r != ComponentSwizzle::IDENTITY || textureViewDesc.components.g != ComponentSwizzle::IDENTITY
+        || textureViewDesc.components.b != ComponentSwizzle::IDENTITY || textureViewDesc.components.a != ComponentSwizzle::IDENTITY;
+    if (hasComponentSwizzle)
+        NRI_RETURN_ON_FAILURE(this, GetDesc().features.componentSwizzle, Result::INVALID_ARGUMENT, "'features.componentSwizzle' is false");
+
     const TextureVal& textureVal = *(TextureVal*)textureViewDesc.texture;
     const TextureDesc& textureDesc = textureVal.GetDesc();
 
