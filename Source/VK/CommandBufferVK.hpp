@@ -863,11 +863,11 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
         return;
     }
     if (pictureDesc.frameType == VideoEncodeFrameType::B) {
-        if (session.m_Desc.codec == VideoCodec::H264 && (!session.m_H264MaxBPictureL0ReferenceCount || !session.m_H264MaxL1ReferenceCount)) {
+        if (session.m_Desc.codec == VideoCodec::H264 && (!session.GetH264MaxBPictureL0ReferenceCount() || !session.GetH264MaxL1ReferenceCount())) {
             NRI_REPORT_ERROR(&m_Device, "Vulkan H.264 encode session does not support B-frame references");
             return;
         }
-        if (session.m_Desc.codec == VideoCodec::H265 && (!session.m_H265MaxBPictureL0ReferenceCount || !session.m_H265MaxL1ReferenceCount)) {
+        if (session.m_Desc.codec == VideoCodec::H265 && (!session.GetH265MaxBPictureL0ReferenceCount() || !session.GetH265MaxL1ReferenceCount())) {
             NRI_REPORT_ERROR(&m_Device, "Vulkan H.265 encode session does not support B-frame references");
             return;
         }
@@ -963,11 +963,11 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
                     }
                 }
                 if (pictureDesc.frameType == VideoEncodeFrameType::B) {
-                    if (list0Num > session.m_H264MaxBPictureL0ReferenceCount) {
+                    if (list0Num > session.GetH264MaxBPictureL0ReferenceCount()) {
                         NRI_REPORT_ERROR(&m_Device, "H.264 B-frame List0 reference count exceeds Vulkan device limit");
                         return;
                     }
-                    if (list1Num > session.m_H264MaxL1ReferenceCount) {
+                    if (list1Num > session.GetH264MaxL1ReferenceCount()) {
                         NRI_REPORT_ERROR(&m_Device, "H.264 B-frame List1 reference count exceeds Vulkan device limit");
                         return;
                     }
@@ -1050,11 +1050,11 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
                 const uint32_t list0ReferenceNum = hevcLists.list0Num;
                 const uint32_t list1ReferenceNum = hevcLists.list1Num;
                 if (pictureDesc.frameType == VideoEncodeFrameType::B) {
-                    if (list0ReferenceNum > session.m_H265MaxBPictureL0ReferenceCount) {
+                    if (list0ReferenceNum > session.GetH265MaxBPictureL0ReferenceCount()) {
                         NRI_REPORT_ERROR(&m_Device, "H.265 B-frame List0 reference count exceeds Vulkan device limit");
                         return;
                     }
-                    if (list1ReferenceNum > session.m_H265MaxL1ReferenceCount) {
+                    if (list1ReferenceNum > session.GetH265MaxL1ReferenceCount()) {
                         NRI_REPORT_ERROR(&m_Device, "H.265 B-frame List1 reference count exceeds Vulkan device limit");
                         return;
                     }

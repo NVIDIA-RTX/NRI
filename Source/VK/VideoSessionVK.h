@@ -26,6 +26,22 @@ struct VideoSessionVK final : public DebugNameBase {
         return m_Device;
     }
 
+    inline uint32_t GetH264MaxBPictureL0ReferenceCount() const {
+        return m_H264MaxBPictureL0ReferenceCount;
+    }
+
+    inline uint32_t GetH264MaxL1ReferenceCount() const {
+        return m_H264MaxL1ReferenceCount;
+    }
+
+    inline uint32_t GetH265MaxBPictureL0ReferenceCount() const {
+        return m_H265MaxBPictureL0ReferenceCount;
+    }
+
+    inline uint32_t GetH265MaxL1ReferenceCount() const {
+        return m_H265MaxL1ReferenceCount;
+    }
+
     ~VideoSessionVK();
 
     //================================================================================================================
@@ -52,10 +68,14 @@ struct VideoSessionVK final : public DebugNameBase {
     uint32_t m_BitstreamOffsetAlignment = 1;
     uint32_t m_BitstreamSizeAlignment = 1;
     uint32_t m_RateControlModes = 0;
+
+private:
     uint32_t m_H264MaxBPictureL0ReferenceCount = 0;
     uint32_t m_H264MaxL1ReferenceCount = 0;
     uint32_t m_H265MaxBPictureL0ReferenceCount = 0;
     uint32_t m_H265MaxL1ReferenceCount = 0;
+
+public:
     VkVideoEncodeAV1CapabilityFlagsKHR m_AV1CapabilityFlags = 0;
     uint32_t m_AV1MaxSingleReferenceCount = 0;
     uint32_t m_AV1SingleReferenceNameMask = 0;

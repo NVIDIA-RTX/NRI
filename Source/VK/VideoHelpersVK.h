@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <algorithm>
+
 namespace nri {
 
 constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_CQP = 1u << (uint32_t)VideoEncodeRateControlMode::CQP;
