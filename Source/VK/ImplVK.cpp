@@ -1239,23 +1239,24 @@ static void NRI_CALL CmdResolveVideoEncodeFeedback(CommandBuffer& commandBuffer,
 
 static Result NRI_CALL GetVideoEncodeFeedback(VideoSession& videoSession, Buffer& resolvedMetadataReadback, uint64_t resolvedMetadataOffset, VideoEncodeFeedback& feedback) {
     VideoSessionVK& session = (VideoSessionVK&)videoSession;
-    if (session.m_EncodeFeedbackQueryPool == VK_NULL_HANDLE)
+    if (session.GetEncodeFeedbackQueryPool() == VK_NULL_HANDLE)
         return Result::UNSUPPORTED;
 
     BufferVK& feedbackBuffer = (BufferVK&)resolvedMetadataReadback;
     for (uint32_t i = 0; i < VideoSessionVK::ENCODE_FEEDBACK_QUERY_NUM; i++) {
-        const VideoSessionVK::EncodeFeedbackPayloadReadback& payloadReadback = session.m_EncodeFeedbackPayloadReadbacks[i];
+        const VideoSessionVK::EncodeFeedbackPayloadReadback& payloadReadback = session.GetEncodeFeedbackPayloadReadback(i);
         if (!payloadReadback.active || payloadReadback.resolvedMetadata != &feedbackBuffer || payloadReadback.resolvedMetadataOffset != resolvedMetadataOffset)
             continue;
 
         if (payloadReadback.resolvedByCommand) {
             uint32_t queryResult[3] = {};
-            const auto& vk = session.m_Device.GetDispatchTable();
-            VkResult result = vk.GetQueryPoolResults(session.m_Device, session.m_EncodeFeedbackQueryPool, i, 1, sizeof(queryResult), queryResult, sizeof(queryResult),
+            DeviceVK& device = session.GetDevice();
+            const auto& vk = device.GetDispatchTable();
+            VkResult result = vk.GetQueryPoolResults(device, session.GetEncodeFeedbackQueryPool(), i, 1, sizeof(queryResult), queryResult, sizeof(queryResult),
                 VK_QUERY_RESULT_WITH_STATUS_BIT_KHR);
             if (result == VK_SUCCESS) {
                 FillVideoEncodeFeedbackVK(feedback, queryResult, payloadReadback.dstBitstreamOffset);
-                session.m_EncodeFeedbackPayloadReadbacks[i] = {};
+                session.ClearEncodeFeedbackQuery(i);
                 return Result::SUCCESS;
             }
 
@@ -1274,19 +1275,20 @@ static Result NRI_CALL GetVideoEncodeFeedback(VideoSession& videoSession, Buffer
             }
 
             FillVideoEncodeFeedbackVK(feedback, mappedQueryResult, payloadReadback.dstBitstreamOffset);
-            session.m_EncodeFeedbackPayloadReadbacks[i] = {};
+            session.ClearEncodeFeedbackQuery(i);
             return Result::SUCCESS;
         }
 
         uint32_t queryResult[3] = {};
-        const auto& vk = session.m_Device.GetDispatchTable();
-        VkResult result = vk.GetQueryPoolResults(session.m_Device, session.m_EncodeFeedbackQueryPool, i, 1, sizeof(queryResult), queryResult, sizeof(queryResult),
+        DeviceVK& device = session.GetDevice();
+        const auto& vk = device.GetDispatchTable();
+        VkResult result = vk.GetQueryPoolResults(device, session.GetEncodeFeedbackQueryPool(), i, 1, sizeof(queryResult), queryResult, sizeof(queryResult),
             VK_QUERY_RESULT_WITH_STATUS_BIT_KHR);
 
         feedback = {};
         if (result == VK_SUCCESS) {
             FillVideoEncodeFeedbackVK(feedback, queryResult, payloadReadback.dstBitstreamOffset);
-            session.m_EncodeFeedbackPayloadReadbacks[i] = {};
+            session.ClearEncodeFeedbackQuery(i);
         } else
             feedback.errorFlags = (uint64_t)result;
 

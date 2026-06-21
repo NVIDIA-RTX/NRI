@@ -244,7 +244,7 @@ NRI_INLINE Result VideoSessionParametersVK::CreateNative(VideoSessionVK& session
 
     VkVideoSessionParametersCreateInfoKHR createInfo = {VK_STRUCTURE_TYPE_VIDEO_SESSION_PARAMETERS_CREATE_INFO_KHR};
     createInfo.pNext = pNext;
-    createInfo.videoSession = session.m_Handle;
+    createInfo.videoSession = session.GetHandle();
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateVideoSessionParametersKHR(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
@@ -256,7 +256,7 @@ NRI_INLINE Result VideoSessionParametersVK::CreateNative(VideoSessionVK& session
 NRI_INLINE Result VideoSessionParametersVK::CreateNative(VideoSessionVK& session, const VkVideoSessionParametersCreateInfoKHR* nativeCreateInfo) {
     m_Session = &session;
 
-    VkVideoSessionParametersCreateInfoKHR createInfo = GetVideoSessionParametersCreateInfoVK(session.m_Handle, nativeCreateInfo);
+    VkVideoSessionParametersCreateInfoKHR createInfo = GetVideoSessionParametersCreateInfoVK(session.GetHandle(), nativeCreateInfo);
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateVideoSessionParametersKHR(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_Handle);
@@ -271,15 +271,15 @@ NRI_INLINE Result VideoSessionParametersVK::Create(const VideoSessionParametersD
 
     VideoSessionVK& session = *(VideoSessionVK*)videoSessionParametersDesc.session;
     m_Session = &session;
-    if (session.m_Desc.codec == VideoCodec::H265) {
+    if (session.GetDesc().codec == VideoCodec::H265) {
         m_H265Parameters = videoSessionParametersDesc.h265Parameters;
         return CreateH265(session);
     }
-    if (session.m_Desc.codec == VideoCodec::AV1) {
+    if (session.GetDesc().codec == VideoCodec::AV1) {
         m_AV1Parameters = videoSessionParametersDesc.av1Parameters;
         return CreateAV1(session);
     }
-    if (session.m_Desc.codec != VideoCodec::H264)
+    if (session.GetDesc().codec != VideoCodec::H264)
         return Result::UNSUPPORTED;
 
     const VideoH264SessionParametersDesc emptyH264Parameters = {};
@@ -319,7 +319,7 @@ NRI_INLINE Result VideoSessionParametersVK::Create(const VideoSessionParametersD
     encodeInfo.maxStdPPSCount = h264Parameters.maxPictureParameterSetNum ? h264Parameters.maxPictureParameterSetNum : h264Parameters.pictureParameterSetNum;
     encodeInfo.pParametersAddInfo = h264Parameters.sequenceParameterSetNum || h264Parameters.pictureParameterSetNum ? &encodeAddInfo : nullptr;
 
-    return CreateNative(session, session.m_Desc.type == VideoSessionType::DECODE ? (const void*)&decodeInfo : (const void*)&encodeInfo);
+    return CreateNative(session, session.GetDesc().type == VideoSessionType::DECODE ? (const void*)&decodeInfo : (const void*)&encodeInfo);
 }
 
 NRI_INLINE Result VideoSessionParametersVK::CreateH265(VideoSessionVK& session) {
@@ -328,19 +328,19 @@ NRI_INLINE Result VideoSessionParametersVK::CreateH265(VideoSessionVK& session) 
     VideoH265PictureParameterSetDesc defaultPps = {};
     VideoH265SessionParametersDesc defaultParameters = {};
     if (!m_H265Parameters) {
-        const uint8_t bitDepthMinus8 = session.m_Desc.format == Format::P010_UNORM || session.m_Desc.format == Format::P016_UNORM ? 2 : 0;
+        const uint8_t bitDepthMinus8 = session.GetDesc().format == Format::P010_UNORM || session.GetDesc().format == Format::P016_UNORM ? 2 : 0;
         defaultVps.flags = VideoH265VideoParameterSetBits::TEMPORAL_ID_NESTING;
-        defaultVps.profileTierLevel.generalProfileIdc = (uint8_t)(session.m_Desc.format == Format::P010_UNORM || session.m_Desc.format == Format::P016_UNORM
+        defaultVps.profileTierLevel.generalProfileIdc = (uint8_t)(session.GetDesc().format == Format::P010_UNORM || session.GetDesc().format == Format::P016_UNORM
                 ? STD_VIDEO_H265_PROFILE_IDC_MAIN_10
                 : STD_VIDEO_H265_PROFILE_IDC_MAIN);
-        defaultVps.profileTierLevel.generalLevelIdc = (uint8_t)GetVideoH265LevelIdcVK(session.m_Desc.width, session.m_Desc.height);
-        defaultVps.decPicBufMgr.maxDecPicBufferingMinus1[0] = (uint8_t)std::min(session.m_Desc.maxReferenceNum ? session.m_Desc.maxReferenceNum : 1u, 15u);
-        defaultVps.decPicBufMgr.maxNumReorderPics[0] = session.m_Desc.maxReferenceNum > 1 ? 1 : 0;
+        defaultVps.profileTierLevel.generalLevelIdc = (uint8_t)GetVideoH265LevelIdcVK(session.GetDesc().width, session.GetDesc().height);
+        defaultVps.decPicBufMgr.maxDecPicBufferingMinus1[0] = (uint8_t)std::min(session.GetDesc().maxReferenceNum ? session.GetDesc().maxReferenceNum : 1u, 15u);
+        defaultVps.decPicBufMgr.maxNumReorderPics[0] = session.GetDesc().maxReferenceNum > 1 ? 1 : 0;
 
         defaultSps.flags = VideoH265SequenceParameterSetBits::TEMPORAL_ID_NESTING | VideoH265SequenceParameterSetBits::SAMPLE_ADAPTIVE_OFFSET_ENABLED | VideoH265SequenceParameterSetBits::STRONG_INTRA_SMOOTHING_ENABLED;
         defaultSps.chromaFormatIdc = STD_VIDEO_H265_CHROMA_FORMAT_IDC_420;
-        defaultSps.pictureWidthInLumaSamples = session.m_Desc.width;
-        defaultSps.pictureHeightInLumaSamples = session.m_Desc.height;
+        defaultSps.pictureWidthInLumaSamples = session.GetDesc().width;
+        defaultSps.pictureHeightInLumaSamples = session.GetDesc().height;
         defaultSps.bitDepthLumaMinus8 = bitDepthMinus8;
         defaultSps.bitDepthChromaMinus8 = bitDepthMinus8;
         defaultSps.log2MaxPictureOrderCountLsbMinus4 = 4;
@@ -460,7 +460,7 @@ NRI_INLINE Result VideoSessionParametersVK::CreateH265(VideoSessionVK& session) 
         ? &encodeAddInfo
         : nullptr;
 
-    return CreateNative(session, session.m_Desc.type == VideoSessionType::DECODE ? (const void*)&decodeInfo : (const void*)&encodeInfo);
+    return CreateNative(session, session.GetDesc().type == VideoSessionType::DECODE ? (const void*)&decodeInfo : (const void*)&encodeInfo);
 }
 
 NRI_INLINE Result VideoSessionParametersVK::CreateAV1(VideoSessionVK& session) {
@@ -474,15 +474,15 @@ NRI_INLINE Result VideoSessionParametersVK::CreateAV1(VideoSessionVK& session) {
             m_AV1TimingInfo.num_ticks_per_picture_minus_1 = m_AV1Parameters->sequence.numTicksPerPictureMinus1;
             timingInfo = &m_AV1TimingInfo;
         }
-        if (session.m_Desc.type == VideoSessionType::DECODE) {
+        if (session.GetDesc().type == VideoSessionType::DECODE) {
             m_AV1ColorConfig.flags.color_description_present_flag = false;
             m_AV1ColorConfig.chroma_sample_position = {};
             timingInfo = &m_AV1TimingInfo;
         }
         FillVideoAV1SequenceHeaderVK(m_AV1SequenceHeader, m_AV1Parameters->sequence, m_AV1ColorConfig, timingInfo);
-        m_AV1OperatingPoint.seq_level_idx = (uint8_t)GetVideoAV1LevelVK(m_AV1Parameters->sequence.level, session.m_Desc.width, session.m_Desc.height);
+        m_AV1OperatingPoint.seq_level_idx = (uint8_t)GetVideoAV1LevelVK(m_AV1Parameters->sequence.level, session.GetDesc().width, session.GetDesc().height);
     } else {
-        m_AV1ColorConfig.BitDepth = session.m_Desc.format == Format::P010_UNORM || session.m_Desc.format == Format::P016_UNORM ? 10 : 8;
+        m_AV1ColorConfig.BitDepth = session.GetDesc().format == Format::P010_UNORM || session.GetDesc().format == Format::P016_UNORM ? 10 : 8;
         m_AV1ColorConfig.subsampling_x = 1;
         m_AV1ColorConfig.subsampling_y = 1;
         m_AV1ColorConfig.flags.color_description_present_flag = true;
@@ -492,18 +492,18 @@ NRI_INLINE Result VideoSessionParametersVK::CreateAV1(VideoSessionVK& session) {
         m_AV1ColorConfig.chroma_sample_position = STD_VIDEO_AV1_CHROMA_SAMPLE_POSITION_VERTICAL;
         m_AV1SequenceHeader.seq_profile = STD_VIDEO_AV1_PROFILE_MAIN;
         m_AV1SequenceHeader.flags.enable_order_hint = true;
-        m_AV1SequenceHeader.frame_width_bits_minus_1 = GetVideoAV1SizeBitsMinus1VK(session.m_Desc.width);
-        m_AV1SequenceHeader.frame_height_bits_minus_1 = GetVideoAV1SizeBitsMinus1VK(session.m_Desc.height);
-        m_AV1SequenceHeader.max_frame_width_minus_1 = (uint16_t)(session.m_Desc.width - 1);
-        m_AV1SequenceHeader.max_frame_height_minus_1 = (uint16_t)(session.m_Desc.height - 1);
+        m_AV1SequenceHeader.frame_width_bits_minus_1 = GetVideoAV1SizeBitsMinus1VK(session.GetDesc().width);
+        m_AV1SequenceHeader.frame_height_bits_minus_1 = GetVideoAV1SizeBitsMinus1VK(session.GetDesc().height);
+        m_AV1SequenceHeader.max_frame_width_minus_1 = (uint16_t)(session.GetDesc().width - 1);
+        m_AV1SequenceHeader.max_frame_height_minus_1 = (uint16_t)(session.GetDesc().height - 1);
         m_AV1SequenceHeader.order_hint_bits_minus_1 = 7;
         m_AV1SequenceHeader.seq_force_integer_mv = STD_VIDEO_AV1_SELECT_INTEGER_MV;
         m_AV1SequenceHeader.seq_force_screen_content_tools = STD_VIDEO_AV1_SELECT_SCREEN_CONTENT_TOOLS;
         m_AV1SequenceHeader.pColorConfig = &m_AV1ColorConfig;
-        m_AV1OperatingPoint.seq_level_idx = (uint8_t)GetVideoAV1LevelVK(session.m_Desc.width, session.m_Desc.height);
+        m_AV1OperatingPoint.seq_level_idx = (uint8_t)GetVideoAV1LevelVK(session.GetDesc().width, session.GetDesc().height);
     }
 
-    if (session.m_Desc.type == VideoSessionType::ENCODE) {
+    if (session.GetDesc().type == VideoSessionType::ENCODE) {
         m_AV1SequenceHeader.seq_force_screen_content_tools = 0;
         m_AV1OperatingPoint.decoder_buffer_delay = 1;
         m_AV1OperatingPoint.encoder_buffer_delay = 2;
@@ -519,10 +519,10 @@ NRI_INLINE Result VideoSessionParametersVK::CreateAV1(VideoSessionVK& session) {
     encodeInfo.pStdOperatingPoints = &m_AV1OperatingPoint;
     VkVideoEncodeQualityLevelInfoKHR encodeQualityInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUALITY_LEVEL_INFO_KHR};
     encodeQualityInfo.pNext = &encodeInfo;
-    if (session.m_UseInlineSessionParameters && session.m_Desc.type == VideoSessionType::DECODE)
+    if (session.UseInlineSessionParameters() && session.GetDesc().type == VideoSessionType::DECODE)
         return Result::SUCCESS;
 
-    if (session.m_Desc.type == VideoSessionType::DECODE)
+    if (session.GetDesc().type == VideoSessionType::DECODE)
         return CreateNative(session, &decodeInfo);
 
     Result result = CreateNative(session, &encodeQualityInfo);

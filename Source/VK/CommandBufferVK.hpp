@@ -467,17 +467,17 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
         NRI_REPORT_ERROR(&m_Device, "'bitstream' range is outside of 'bitstream.buffer'");
         return;
     }
-    if (!IsAligned(videoDecodeDesc.bitstream.offset, session.m_BitstreamOffsetAlignment) || !IsAligned(videoDecodeDesc.bitstream.size, session.m_BitstreamSizeAlignment)) {
-        NRI_REPORT_ERROR(&m_Device, "'bitstream.offset' and 'bitstream.size' must satisfy Vulkan video alignment requirements: offset=%u, size=%u", session.m_BitstreamOffsetAlignment,
-            session.m_BitstreamSizeAlignment);
+    if (!IsAligned(videoDecodeDesc.bitstream.offset, session.GetBitstreamOffsetAlignment()) || !IsAligned(videoDecodeDesc.bitstream.size, session.GetBitstreamSizeAlignment())) {
+        NRI_REPORT_ERROR(&m_Device, "'bitstream.offset' and 'bitstream.size' must satisfy Vulkan video alignment requirements: offset=%u, size=%u", session.GetBitstreamOffsetAlignment(),
+            session.GetBitstreamSizeAlignment());
         return;
     }
-    if (videoDecodeDesc.referenceNum > session.m_Desc.maxReferenceNum) {
+    if (videoDecodeDesc.referenceNum > session.GetDesc().maxReferenceNum) {
         NRI_REPORT_ERROR(&m_Device, "'referenceNum' exceeds the session DPB slot count");
         return;
     }
     for (uint32_t i = 0; i < videoDecodeDesc.referenceNum; i++) {
-        if (videoDecodeDesc.references[i].slot > session.m_Desc.maxReferenceNum) {
+        if (videoDecodeDesc.references[i].slot > session.GetDesc().maxReferenceNum) {
             NRI_REPORT_ERROR(&m_Device, "'references[%u].slot' exceeds the session DPB slot count", i);
             return;
         }
@@ -501,7 +501,7 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
         referenceSlots[i] = {VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR};
         referenceSlots[i].slotIndex = videoDecodeDesc.references[i].slot;
         referenceSlots[i].pPictureResource = &picture.m_Resource;
-        if (session.m_Desc.codec == VideoCodec::H264) {
+        if (session.GetDesc().codec == VideoCodec::H264) {
             const VideoH264DecodePictureDesc* h264PictureDesc = videoDecodeDesc.h264PictureDesc;
             const VideoH264DecodeReferenceDesc* referenceDesc = h264PictureDesc ? FindVideoH264DecodeReferenceDescVK(h264PictureDesc->references, h264PictureDesc->referenceNum, videoDecodeDesc.references[i].slot) : nullptr;
             if (!referenceDesc) {
@@ -520,7 +520,7 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
             h264References[i] = {VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_DPB_SLOT_INFO_KHR};
             h264References[i].pStdReferenceInfo = &h264StdReferences[i];
             referenceSlots[i].pNext = &h264References[i];
-        } else if (session.m_Desc.codec == VideoCodec::H265) {
+        } else if (session.GetDesc().codec == VideoCodec::H265) {
             const VideoH265DecodePictureDesc* h265PictureDesc = videoDecodeDesc.h265PictureDesc;
             const VideoH265ReferenceDesc* referenceDesc = h265PictureDesc ? FindVideoH265ReferenceDescVK(h265PictureDesc->references, h265PictureDesc->referenceNum, videoDecodeDesc.references[i].slot) : nullptr;
             h265StdReferences[i] = {};
@@ -529,7 +529,7 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
             h265References[i] = {VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_DPB_SLOT_INFO_KHR};
             h265References[i].pStdReferenceInfo = &h265StdReferences[i];
             referenceSlots[i].pNext = &h265References[i];
-        } else if (session.m_Desc.codec == VideoCodec::AV1) {
+        } else if (session.GetDesc().codec == VideoCodec::AV1) {
             const VideoAV1DecodePictureDesc* av1PictureDesc = videoDecodeDesc.av1PictureDesc;
             const VideoAV1ReferenceDesc* referenceDesc = av1PictureDesc ? FindVideoAV1ReferenceDescVK(av1PictureDesc->references, av1PictureDesc->referenceNum, videoDecodeDesc.references[i].slot) : nullptr;
             if (!referenceDesc) {
@@ -577,7 +577,7 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
     Scratch<uint16_t> av1HeightInSbsMinus1 = NRI_ALLOCATE_SCRATCH(m_Device, uint16_t, videoDecodeDesc.av1PictureDesc ? std::max(videoDecodeDesc.av1PictureDesc->tileNum, 1u) : 1u);
     void* codecPictureInfo = nullptr;
     const void* setupReferenceInfo = nullptr;
-    if (session.m_Desc.codec == VideoCodec::H264) {
+    if (session.GetDesc().codec == VideoCodec::H264) {
         if (!videoDecodeDesc.h264PictureDesc) {
             NRI_REPORT_ERROR(&m_Device, "'h264PictureDesc' must be valid for H.264 decode sessions");
             return;
@@ -613,7 +613,7 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
             h264DpbSlot.pStdReferenceInfo = &h264StdReference;
             setupReferenceInfo = &h264DpbSlot;
         }
-    } else if (session.m_Desc.codec == VideoCodec::H265) {
+    } else if (session.GetDesc().codec == VideoCodec::H265) {
         if (!videoDecodeDesc.h265PictureDesc) {
             NRI_REPORT_ERROR(&m_Device, "'h265PictureDesc' must be valid for H.265 decode sessions");
             return;
@@ -671,7 +671,7 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
         h265StdReference.PicOrderCntVal = desc.pictureOrderCount;
         h265DpbSlot.pStdReferenceInfo = &h265StdReference;
         setupReferenceInfo = &h265DpbSlot;
-    } else if (session.m_Desc.codec == VideoCodec::AV1) {
+    } else if (session.GetDesc().codec == VideoCodec::AV1) {
         if (!videoDecodeDesc.av1PictureDesc) {
             NRI_REPORT_ERROR(&m_Device, "'av1PictureDesc' must be valid for AV1 decode sessions");
             return;
@@ -709,7 +709,7 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
             av1Picture.referenceNameSlotIndices[i] = referenceMapping.referenceNameSlotIndices[i];
 
         FillVideoAV1DefaultTileInfoVK(av1TileInfo, av1MiColStarts, av1MiRowStarts, av1WidthInSbsMinus1, av1HeightInSbsMinus1,
-            session.m_Desc.width, session.m_Desc.height);
+            session.GetDesc().width, session.GetDesc().height);
         if (desc.tileLayout) {
             av1TileInfo.flags.uniform_tile_spacing_flag = desc.tileLayout->uniformSpacing != 0;
             av1TileInfo.TileCols = desc.tileLayout->columnNum;
@@ -743,7 +743,7 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
 
         av1Picture.pStdPictureInfo = &av1StdPicture;
 #if defined(VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_INLINE_SESSION_PARAMETERS_INFO_KHR)
-        if (session.m_UseInlineSessionParameters) {
+        if (session.UseInlineSessionParameters()) {
             av1InlineSessionParameters.pStdSequenceHeader = &parameters.m_AV1SequenceHeader;
             av1Picture.pNext = &av1InlineSessionParameters;
         }
@@ -764,9 +764,9 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
     VkVideoReferenceSlotInfoKHR setupReferenceSlot = {VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR};
     setupReferenceSlot.pNext = setupReferenceInfo;
     uint32_t setupReferenceSlotIndex = videoDecodeDesc.dstSlot;
-    if (session.m_Desc.codec == VideoCodec::H264 && videoDecodeDesc.h264PictureDesc && videoDecodeDesc.h264PictureDesc->referenceSlot)
+    if (session.GetDesc().codec == VideoCodec::H264 && videoDecodeDesc.h264PictureDesc && videoDecodeDesc.h264PictureDesc->referenceSlot)
         setupReferenceSlotIndex = videoDecodeDesc.h264PictureDesc->referenceSlot;
-    if (setupReferenceInfo && setupReferenceSlotIndex > session.m_Desc.maxReferenceNum) {
+    if (setupReferenceInfo && setupReferenceSlotIndex > session.GetDesc().maxReferenceNum) {
         NRI_REPORT_ERROR(&m_Device, "The setup reference slot exceeds the session DPB slot count");
         return;
     }
@@ -774,8 +774,8 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
     setupReferenceSlot.pPictureResource = &setupPicture.m_Resource;
 
     VkVideoBeginCodingInfoKHR beginInfo = {VK_STRUCTURE_TYPE_VIDEO_BEGIN_CODING_INFO_KHR};
-    const VkVideoSessionParametersKHR sessionParameters = session.m_UseInlineSessionParameters ? VK_NULL_HANDLE : parameters.m_Handle;
-    beginInfo.videoSession = session.m_Handle;
+    const VkVideoSessionParametersKHR sessionParameters = session.UseInlineSessionParameters() ? VK_NULL_HANDLE : parameters.m_Handle;
+    beginInfo.videoSession = session.GetHandle();
     beginInfo.videoSessionParameters = sessionParameters;
     beginInfo.referenceSlotCount = videoDecodeDesc.referenceNum;
     beginInfo.pReferenceSlots = referenceSlots;
@@ -797,13 +797,13 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
 
     const auto& vk = m_Device.GetDispatchTable();
     VkVideoEndCodingInfoKHR endInfo = {VK_STRUCTURE_TYPE_VIDEO_END_CODING_INFO_KHR};
-    const bool needsSessionReset = !session.m_ResetRecorded;
+    const bool needsSessionReset = !session.IsResetRecorded();
     vk.CmdBeginVideoCodingKHR(m_Handle, &beginInfo);
     if (needsSessionReset) {
         VkVideoCodingControlInfoKHR controlInfo = {VK_STRUCTURE_TYPE_VIDEO_CODING_CONTROL_INFO_KHR};
         controlInfo.flags = VK_VIDEO_CODING_CONTROL_RESET_BIT_KHR;
         vk.CmdControlVideoCodingKHR(m_Handle, &controlInfo);
-        session.m_ResetRecorded = true;
+        session.SetResetRecorded();
     }
     vk.CmdDecodeVideoKHR(m_Handle, &decodeInfo);
     vk.CmdEndVideoCodingKHR(m_Handle, &endInfo);
@@ -816,29 +816,29 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
         NRI_REPORT_ERROR(&m_Device, "'parameters' must belong to 'session'");
         return;
     }
-    if (videoEncodeDesc.av1PictureDesc && session.m_Desc.codec != VideoCodec::AV1) {
+    if (videoEncodeDesc.av1PictureDesc && session.GetDesc().codec != VideoCodec::AV1) {
         NRI_REPORT_ERROR(&m_Device, "'av1PictureDesc' can only be used with AV1 sessions");
         return;
     }
-    if (videoEncodeDesc.h264PictureDesc && session.m_Desc.codec != VideoCodec::H264) {
+    if (videoEncodeDesc.h264PictureDesc && session.GetDesc().codec != VideoCodec::H264) {
         NRI_REPORT_ERROR(&m_Device, "'h264PictureDesc' can only be used with H.264 sessions");
         return;
     }
-    if (videoEncodeDesc.h265ReferenceDescs && session.m_Desc.codec != VideoCodec::H265) {
+    if (videoEncodeDesc.h265ReferenceDescs && session.GetDesc().codec != VideoCodec::H265) {
         NRI_REPORT_ERROR(&m_Device, "'h265ReferenceDescs' can only be used with H.265 sessions");
         return;
     }
-    if (videoEncodeDesc.referenceNum > session.m_Desc.maxReferenceNum) {
+    if (videoEncodeDesc.referenceNum > session.GetDesc().maxReferenceNum) {
         NRI_REPORT_ERROR(&m_Device, "'referenceNum' exceeds the session DPB slot count");
         return;
     }
     for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {
-        if (videoEncodeDesc.references[i].slot > session.m_Desc.maxReferenceNum) {
+        if (videoEncodeDesc.references[i].slot > session.GetDesc().maxReferenceNum) {
             NRI_REPORT_ERROR(&m_Device, "'references[%u].slot' exceeds the session DPB slot count", i);
             return;
         }
     }
-    if (session.m_Desc.maxReferenceNum != 0 && videoEncodeDesc.reconstructedSlot > session.m_Desc.maxReferenceNum) {
+    if (session.GetDesc().maxReferenceNum != 0 && videoEncodeDesc.reconstructedSlot > session.GetDesc().maxReferenceNum) {
         NRI_REPORT_ERROR(&m_Device, "'reconstructedSlot' exceeds the session DPB slot count");
         return;
     }
@@ -854,20 +854,20 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
         NRI_REPORT_ERROR(&m_Device, "'rateControlDesc' is invalid");
         return;
     }
-    if ((session.m_RateControlModes & GetVideoEncodeRateControlModeMask(rateControlDesc.mode)) == 0) {
+    if ((session.GetRateControlModes() & GetVideoEncodeRateControlModeMask(rateControlDesc.mode)) == 0) {
         NRI_REPORT_ERROR(&m_Device, "Unsupported Vulkan video encode rate control mode");
         return;
     }
-    if (!IsVideoEncodeFrameTypeSupportedByVK(session.m_Desc.codec, pictureDesc.frameType)) {
+    if (!IsVideoEncodeFrameTypeSupportedByVK(session.GetDesc().codec, pictureDesc.frameType)) {
         NRI_REPORT_ERROR(&m_Device, "Vulkan video encode sessions are aligned with the no-B-frame parity target");
         return;
     }
     if (pictureDesc.frameType == VideoEncodeFrameType::B) {
-        if (session.m_Desc.codec == VideoCodec::H264 && (!session.GetH264MaxBPictureL0ReferenceCount() || !session.GetH264MaxL1ReferenceCount())) {
+        if (session.GetDesc().codec == VideoCodec::H264 && (!session.GetH264MaxBPictureL0ReferenceCount() || !session.GetH264MaxL1ReferenceCount())) {
             NRI_REPORT_ERROR(&m_Device, "Vulkan H.264 encode session does not support B-frame references");
             return;
         }
-        if (session.m_Desc.codec == VideoCodec::H265 && (!session.GetH265MaxBPictureL0ReferenceCount() || !session.GetH265MaxL1ReferenceCount())) {
+        if (session.GetDesc().codec == VideoCodec::H265 && (!session.GetH265MaxBPictureL0ReferenceCount() || !session.GetH265MaxL1ReferenceCount())) {
             NRI_REPORT_ERROR(&m_Device, "Vulkan H.265 encode session does not support B-frame references");
             return;
         }
@@ -914,7 +914,7 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
     std::array<uint16_t, 1> av1HeightInSbsMinus1 = {};
     const void* codecPictureInfo = nullptr;
     bool isUsedAsReferencePicture = false;
-    switch (session.m_Desc.codec) {
+    switch (session.GetDesc().codec) {
         case VideoCodec::H264: {
             for (uint8_t& ref : h264ReferenceLists.RefPicList0)
                 ref = STD_VIDEO_H264_NO_REFERENCE_PICTURE;
@@ -978,8 +978,8 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
             }
 
             h264StdPicture.flags.IdrPicFlag = pictureDesc.frameType == VideoEncodeFrameType::IDR;
-            isUsedAsReferencePicture = IsVideoEncodePictureUsedAsReferenceVK(session.m_Desc.codec, pictureDesc.frameType,
-                session.m_Desc.maxReferenceNum, videoEncodeDesc.reconstructedPicture != nullptr, 0);
+            isUsedAsReferencePicture = IsVideoEncodePictureUsedAsReferenceVK(session.GetDesc().codec, pictureDesc.frameType,
+                session.GetDesc().maxReferenceNum, videoEncodeDesc.reconstructedPicture != nullptr, 0);
             h264StdPicture.flags.is_reference = isUsedAsReferencePicture;
             h264StdPicture.flags.no_output_of_prior_pics_flag = pictureDesc.frameType == VideoEncodeFrameType::IDR;
             h264StdPicture.seq_parameter_set_id = videoEncodeDesc.h264PictureDesc ? videoEncodeDesc.h264PictureDesc->sequenceParameterSetId : 0;
@@ -1019,8 +1019,8 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
             h265StdPicture.PicOrderCntVal = pictureDesc.pictureOrderCount;
             h265StdPicture.TemporalId = pictureDesc.temporalLayer;
             h265StdPicture.flags.IrapPicFlag = pictureDesc.frameType == VideoEncodeFrameType::IDR || pictureDesc.frameType == VideoEncodeFrameType::I;
-            isUsedAsReferencePicture = IsVideoEncodePictureUsedAsReferenceVK(session.m_Desc.codec, pictureDesc.frameType,
-                session.m_Desc.maxReferenceNum, videoEncodeDesc.reconstructedPicture != nullptr, 0);
+            isUsedAsReferencePicture = IsVideoEncodePictureUsedAsReferenceVK(session.GetDesc().codec, pictureDesc.frameType,
+                session.GetDesc().maxReferenceNum, videoEncodeDesc.reconstructedPicture != nullptr, 0);
             h265StdPicture.flags.is_reference = isUsedAsReferencePicture;
             h265StdPicture.flags.pic_output_flag = true;
             h265StdPicture.flags.no_output_of_prior_pics_flag = pictureDesc.frameType == VideoEncodeFrameType::IDR;
@@ -1061,38 +1061,16 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
                 }
                 h265ReferenceLists.num_ref_idx_l0_active_minus1 = (uint8_t)(list0ReferenceNum - 1);
                 h265ReferenceLists.num_ref_idx_l1_active_minus1 = list1ReferenceNum ? (uint8_t)(list1ReferenceNum - 1) : 0;
-                auto findRpsIndex = [](const std::array<uint32_t, STD_VIDEO_H265_MAX_NUM_LIST_REF>& references, uint32_t referenceNum, uint32_t referenceIndex) {
-                    for (uint32_t i = 0; i < referenceNum; i++) {
-                        if (references[i] == referenceIndex)
-                            return i;
-                    }
-
-                    return STD_VIDEO_H265_MAX_NUM_LIST_REF;
-                };
-                auto getList0Entry = [&](uint32_t referenceIndex) {
-                    const uint32_t negativeIndex = findRpsIndex(hevcLists.negative, hevcLists.negativeNum, referenceIndex);
-                    if (negativeIndex != STD_VIDEO_H265_MAX_NUM_LIST_REF)
-                        return negativeIndex;
-
-                    return hevcLists.negativeNum + findRpsIndex(hevcLists.positive, hevcLists.positiveNum, referenceIndex);
-                };
-                auto getList1Entry = [&](uint32_t referenceIndex) {
-                    const uint32_t positiveIndex = findRpsIndex(hevcLists.positive, hevcLists.positiveNum, referenceIndex);
-                    if (positiveIndex != STD_VIDEO_H265_MAX_NUM_LIST_REF)
-                        return positiveIndex;
-
-                    return hevcLists.positiveNum + findRpsIndex(hevcLists.negative, hevcLists.negativeNum, referenceIndex);
-                };
                 for (uint32_t i = 0; i < list0ReferenceNum; i++) {
                     const uint32_t referenceIndex = hevcLists.list0[i];
                     h265ReferenceLists.RefPicList0[i] = (uint8_t)videoEncodeDesc.references[referenceIndex].slot;
-                    h265ReferenceLists.list_entry_l0[i] = (uint8_t)getList0Entry(referenceIndex);
+                    h265ReferenceLists.list_entry_l0[i] = (uint8_t)GetVideoEncodeHEVCList0EntryVK(hevcLists, referenceIndex);
                     h265ReferenceLists.flags.ref_pic_list_modification_flag_l0 |= h265ReferenceLists.list_entry_l0[i] != i;
                 }
                 for (uint32_t i = 0; i < list1ReferenceNum; i++) {
                     const uint32_t referenceIndex = hevcLists.list1[i];
                     h265ReferenceLists.RefPicList1[i] = (uint8_t)videoEncodeDesc.references[referenceIndex].slot;
-                    h265ReferenceLists.list_entry_l1[i] = (uint8_t)getList1Entry(referenceIndex);
+                    h265ReferenceLists.list_entry_l1[i] = (uint8_t)GetVideoEncodeHEVCList1EntryVK(hevcLists, referenceIndex);
                     h265ReferenceLists.flags.ref_pic_list_modification_flag_l1 |= h265ReferenceLists.list_entry_l1[i] != i;
                 }
                 h265StdPicture.pRefLists = &h265ReferenceLists;
@@ -1152,8 +1130,8 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
             av1StdPicture.order_hint = av1PictureDesc ? av1PictureDesc->orderHint : (uint8_t)pictureDesc.pictureOrderCount;
             av1StdPicture.primary_ref_frame = STD_VIDEO_AV1_PRIMARY_REF_NONE;
             av1StdPicture.refresh_frame_flags = av1PictureDesc ? av1PictureDesc->refreshFrameFlags : (pictureDesc.frameType == VideoEncodeFrameType::IDR ? 0xFF : 0);
-            av1StdPicture.render_width_minus_1 = (uint16_t)(session.m_Desc.width - 1);
-            av1StdPicture.render_height_minus_1 = (uint16_t)(session.m_Desc.height - 1);
+            av1StdPicture.render_width_minus_1 = (uint16_t)(session.GetDesc().width - 1);
+            av1StdPicture.render_height_minus_1 = (uint16_t)(session.GetDesc().height - 1);
             av1StdPicture.interpolation_filter = STD_VIDEO_AV1_INTERPOLATION_FILTER_EIGHTTAP;
             av1StdPicture.TxMode = STD_VIDEO_AV1_TX_MODE_SELECT;
             av1StdPicture.flags.error_resilient_mode = true;
@@ -1180,7 +1158,7 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
                 av1StdPicture.delta_q_res = av1PictureDesc->deltaQRes;
                 av1StdPicture.delta_lf_res = av1PictureDesc->deltaLfRes;
             }
-            if (av1StdPicture.flags.frame_size_override_flag && (session.m_AV1CapabilityFlags & VK_VIDEO_ENCODE_AV1_CAPABILITY_FRAME_SIZE_OVERRIDE_BIT_KHR) == 0) {
+            if (av1StdPicture.flags.frame_size_override_flag && (session.GetAV1CapabilityFlags() & VK_VIDEO_ENCODE_AV1_CAPABILITY_FRAME_SIZE_OVERRIDE_BIT_KHR) == 0) {
                 NRI_REPORT_ERROR(&m_Device, "Vulkan AV1 encode does not support frame size override");
                 return;
             }
@@ -1197,12 +1175,12 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
             }
             av1StdPicture.flags.showable_frame = av1StdPicture.frame_type != STD_VIDEO_AV1_FRAME_TYPE_KEY;
 
-            if (session.m_Desc.maxReferenceNum && !videoEncodeDesc.reconstructedPicture) {
+            if (session.GetDesc().maxReferenceNum && !videoEncodeDesc.reconstructedPicture) {
                 NRI_REPORT_ERROR(&m_Device, "Vulkan AV1 encode sessions with DPB slots require 'reconstructedPicture'");
                 return;
             }
-            isUsedAsReferencePicture = IsVideoEncodePictureUsedAsReferenceVK(session.m_Desc.codec, pictureDesc.frameType,
-                session.m_Desc.maxReferenceNum, videoEncodeDesc.reconstructedPicture != nullptr, av1StdPicture.refresh_frame_flags);
+            isUsedAsReferencePicture = IsVideoEncodePictureUsedAsReferenceVK(session.GetDesc().codec, pictureDesc.frameType,
+                session.GetDesc().maxReferenceNum, videoEncodeDesc.reconstructedPicture != nullptr, av1StdPicture.refresh_frame_flags);
 
             if (av1PictureDesc && av1PictureDesc->referenceNum) {
                 VideoEncodeAV1ReferenceMappingVK referenceMapping = {};
@@ -1254,17 +1232,17 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
             av1TileInfo.TileRows = 1;
             av1TileInfo.tile_size_bytes_minus_1 = 3;
             av1MiColStarts[0] = 0;
-            av1MiColStarts[1] = (uint16_t)((session.m_Desc.width + 3) / 4);
+            av1MiColStarts[1] = (uint16_t)((session.GetDesc().width + 3) / 4);
             av1MiRowStarts[0] = 0;
-            av1MiRowStarts[1] = (uint16_t)((session.m_Desc.height + 3) / 4);
-            av1WidthInSbsMinus1[0] = (uint16_t)((session.m_Desc.width + 63) / 64 - 1);
-            av1HeightInSbsMinus1[0] = (uint16_t)((session.m_Desc.height + 63) / 64 - 1);
+            av1MiRowStarts[1] = (uint16_t)((session.GetDesc().height + 3) / 4);
+            av1WidthInSbsMinus1[0] = (uint16_t)((session.GetDesc().width + 63) / 64 - 1);
+            av1HeightInSbsMinus1[0] = (uint16_t)((session.GetDesc().height + 63) / 64 - 1);
             av1TileInfo.pMiColStarts = av1MiColStarts.data();
             av1TileInfo.pMiRowStarts = av1MiRowStarts.data();
             av1TileInfo.pWidthInSbsMinus1 = av1WidthInSbsMinus1.data();
             av1TileInfo.pHeightInSbsMinus1 = av1HeightInSbsMinus1.data();
             if (encodeAv1TileLayout) {
-                if (encodeAv1TileLayout->columnNum > session.m_AV1MaxTiles.width || encodeAv1TileLayout->rowNum > session.m_AV1MaxTiles.height) {
+                if (encodeAv1TileLayout->columnNum > session.GetAV1MaxTiles().width || encodeAv1TileLayout->rowNum > session.GetAV1MaxTiles().height) {
                     NRI_REPORT_ERROR(&m_Device, "'av1PictureDesc->tileLayout' exceeds Vulkan AV1 encode tile count limits");
                     return;
                 }
@@ -1283,20 +1261,20 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
                     const uint32_t superblockSize = parameters.m_AV1SequenceHeader.flags.use_128x128_superblock ? 128 : 64;
                     for (uint32_t i = 0; i < encodeAv1TileLayout->columnNum; i++) {
                         const uint32_t tileWidth = uint32_t(encodeAv1TileLayout->widthInSuperblocksMinus1[i] + 1) * superblockSize;
-                        if (!IsVideoEncodeAV1TileWidthSupportedVK(tileWidth, session.m_AV1MinTileSize, session.m_AV1MaxTileSize)) {
+                        if (!IsVideoEncodeAV1TileWidthSupportedVK(tileWidth, session.GetAV1MinTileSize(), session.GetAV1MaxTileSize())) {
                             NRI_REPORT_ERROR(&m_Device, "'av1PictureDesc->tileLayout->widthInSuperblocksMinus1[%u]' is outside Vulkan AV1 encode tile size limits", i);
                             return;
                         }
                     }
                     for (uint32_t i = 0; i < encodeAv1TileLayout->rowNum; i++) {
                         const uint32_t tileHeight = uint32_t(encodeAv1TileLayout->heightInSuperblocksMinus1[i] + 1) * superblockSize;
-                        if (!IsVideoEncodeAV1TileHeightSupportedVK(tileHeight, session.m_AV1MinTileSize, session.m_AV1MaxTileSize)) {
+                        if (!IsVideoEncodeAV1TileHeightSupportedVK(tileHeight, session.GetAV1MinTileSize(), session.GetAV1MaxTileSize())) {
                             NRI_REPORT_ERROR(&m_Device, "'av1PictureDesc->tileLayout->heightInSuperblocksMinus1[%u]' is outside Vulkan AV1 encode tile size limits", i);
                             return;
                         }
                     }
                 }
-            } else if (!IsVideoEncodeAV1TileSizeSupportedVK(session.m_Desc.width, session.m_Desc.height, session.m_AV1MinTileSize, session.m_AV1MaxTileSize)) {
+            } else if (!IsVideoEncodeAV1TileSizeSupportedVK(session.GetDesc().width, session.GetDesc().height, session.GetAV1MinTileSize(), session.GetAV1MaxTileSize())) {
                 NRI_REPORT_ERROR(&m_Device, "Vulkan AV1 encode does not support the default single-tile size");
                 return;
             }
@@ -1321,16 +1299,16 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
                 ? (pictureDesc.frameType == VideoEncodeFrameType::B ? VK_VIDEO_ENCODE_AV1_RATE_CONTROL_GROUP_BIPREDICTIVE_KHR : VK_VIDEO_ENCODE_AV1_RATE_CONTROL_GROUP_PREDICTIVE_KHR)
                 : VK_VIDEO_ENCODE_AV1_RATE_CONTROL_GROUP_INTRA_KHR;
             if (av1Picture.predictionMode == VK_VIDEO_ENCODE_AV1_PREDICTION_MODE_SINGLE_REFERENCE_KHR) {
-                if (session.m_AV1MaxSingleReferenceCount == 0 || !HasVideoEncodeAV1ReferenceNameVK(av1Picture.referenceNameSlotIndices, session.m_AV1SingleReferenceNameMask)) {
+                if (session.GetAV1MaxSingleReferenceCount() == 0 || !HasVideoEncodeAV1ReferenceNameVK(av1Picture.referenceNameSlotIndices, session.GetAV1SingleReferenceNameMask())) {
                     NRI_REPORT_ERROR(&m_Device, "Vulkan AV1 encode does not support the selected single-reference prediction names");
                     return;
                 }
             } else if (av1Picture.predictionMode == VK_VIDEO_ENCODE_AV1_PREDICTION_MODE_UNIDIRECTIONAL_COMPOUND_KHR) {
-                const bool hasSupportedPair = HasVideoEncodeAV1ReferenceNamePairVK(av1Picture.referenceNameSlotIndices, session.m_AV1UnidirectionalCompoundReferenceNameMask, 0, 1)
-                    || HasVideoEncodeAV1ReferenceNamePairVK(av1Picture.referenceNameSlotIndices, session.m_AV1UnidirectionalCompoundReferenceNameMask, 0, 2)
-                    || HasVideoEncodeAV1ReferenceNamePairVK(av1Picture.referenceNameSlotIndices, session.m_AV1UnidirectionalCompoundReferenceNameMask, 0, 3)
-                    || HasVideoEncodeAV1ReferenceNamePairVK(av1Picture.referenceNameSlotIndices, session.m_AV1UnidirectionalCompoundReferenceNameMask, 4, 6);
-                if (session.m_AV1MaxUnidirectionalCompoundReferenceCount == 0 || !hasSupportedPair) {
+                const bool hasSupportedPair = HasVideoEncodeAV1ReferenceNamePairVK(av1Picture.referenceNameSlotIndices, session.GetAV1UnidirectionalCompoundReferenceNameMask(), 0, 1)
+                    || HasVideoEncodeAV1ReferenceNamePairVK(av1Picture.referenceNameSlotIndices, session.GetAV1UnidirectionalCompoundReferenceNameMask(), 0, 2)
+                    || HasVideoEncodeAV1ReferenceNamePairVK(av1Picture.referenceNameSlotIndices, session.GetAV1UnidirectionalCompoundReferenceNameMask(), 0, 3)
+                    || HasVideoEncodeAV1ReferenceNamePairVK(av1Picture.referenceNameSlotIndices, session.GetAV1UnidirectionalCompoundReferenceNameMask(), 4, 6);
+                if (session.GetAV1MaxUnidirectionalCompoundReferenceCount() == 0 || !hasSupportedPair) {
                     NRI_REPORT_ERROR(&m_Device, "Vulkan AV1 encode does not support the selected unidirectional compound reference prediction names");
                     return;
                 }
@@ -1338,15 +1316,15 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
                 bool hasSupportedPair = false;
                 for (uint32_t i = 0; i < 4 && !hasSupportedPair; i++) {
                     for (uint32_t j = 4; j < VK_MAX_VIDEO_AV1_REFERENCES_PER_FRAME_KHR && !hasSupportedPair; j++)
-                        hasSupportedPair = HasVideoEncodeAV1ReferenceNamePairVK(av1Picture.referenceNameSlotIndices, session.m_AV1BidirectionalCompoundReferenceNameMask, i, j);
+                        hasSupportedPair = HasVideoEncodeAV1ReferenceNamePairVK(av1Picture.referenceNameSlotIndices, session.GetAV1BidirectionalCompoundReferenceNameMask(), i, j);
                 }
-                if (session.m_AV1MaxBidirectionalCompoundReferenceCount == 0 || !hasSupportedPair) {
+                if (session.GetAV1MaxBidirectionalCompoundReferenceCount() == 0 || !hasSupportedPair) {
                     NRI_REPORT_ERROR(&m_Device, "Vulkan AV1 encode does not support the selected bidirectional compound reference prediction names");
                     return;
                 }
             }
-            if (rateControlDesc.mode == VideoEncodeRateControlMode::CQP && (av1Quantization.base_q_idx < session.m_AV1MinQIndex || av1Quantization.base_q_idx > session.m_AV1MaxQIndex)) {
-                NRI_REPORT_ERROR(&m_Device, "Vulkan AV1 encode Q index %u is outside supported range %u..%u", av1Quantization.base_q_idx, session.m_AV1MinQIndex, session.m_AV1MaxQIndex);
+            if (rateControlDesc.mode == VideoEncodeRateControlMode::CQP && (av1Quantization.base_q_idx < session.GetAV1MinQIndex() || av1Quantization.base_q_idx > session.GetAV1MaxQIndex())) {
+                NRI_REPORT_ERROR(&m_Device, "Vulkan AV1 encode Q index %u is outside supported range %u..%u", av1Quantization.base_q_idx, session.GetAV1MinQIndex(), session.GetAV1MaxQIndex());
                 return;
             }
             av1Picture.constantQIndex = rateControlDesc.mode == VideoEncodeRateControlMode::CQP ? av1Quantization.base_q_idx : 0;
@@ -1384,7 +1362,7 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
         referenceSlots[i].slotIndex = videoEncodeDesc.references[i].slot;
         referenceSlots[i].pPictureResource = &picture.m_Resource;
 
-        if (session.m_Desc.codec == VideoCodec::H264) {
+        if (session.GetDesc().codec == VideoCodec::H264) {
             const VideoH264ReferenceDesc* referenceDesc = FindVideoEncodeH264ReferenceDesc(videoEncodeDesc.h264PictureDesc, videoEncodeDesc.references[i].slot);
             if (!referenceDesc) {
                 NRI_REPORT_ERROR(&m_Device, "'references[%u].slot' is not described by 'h264PictureDesc'", i);
@@ -1402,7 +1380,7 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
             h264References[i] = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_DPB_SLOT_INFO_KHR};
             h264References[i].pStdReferenceInfo = &h264StdReferences[i];
             referenceSlots[i].pNext = &h264References[i];
-        } else if (session.m_Desc.codec == VideoCodec::H265) {
+        } else if (session.GetDesc().codec == VideoCodec::H265) {
             const VideoH265ReferenceDesc* referenceDesc = GetVideoH265ReferenceDescVK(videoEncodeDesc.references, videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, i);
             h265StdReferences[i] = {};
             h265StdReferences[i].flags.used_for_long_term_reference = referenceDesc && referenceDesc->longTerm;
@@ -1412,7 +1390,7 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
             h265References[i] = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_DPB_SLOT_INFO_KHR};
             h265References[i].pStdReferenceInfo = &h265StdReferences[i];
             referenceSlots[i].pNext = &h265References[i];
-        } else if (session.m_Desc.codec == VideoCodec::AV1) {
+        } else if (session.GetDesc().codec == VideoCodec::AV1) {
             const VideoAV1ReferenceDesc* referenceDesc = FindVideoEncodeAV1ReferenceDesc(videoEncodeDesc.av1PictureDesc, videoEncodeDesc.references[i].slot);
             av1StdReferences[i] = {};
             av1StdReferences[i].frame_type = referenceDesc ? GetVideoEncodeAV1FrameTypeVK(referenceDesc->frameType) : STD_VIDEO_AV1_FRAME_TYPE_KEY;
@@ -1429,11 +1407,11 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
     VkVideoReferenceSlotInfoKHR setupReferenceSlot = {VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR};
 
     if (hasSetupReferenceSlot) {
-        if (session.m_Desc.codec == VideoCodec::H264)
+        if (session.GetDesc().codec == VideoCodec::H264)
             setupReferenceSlot.pNext = &h264SetupReference;
-        else if (session.m_Desc.codec == VideoCodec::H265)
+        else if (session.GetDesc().codec == VideoCodec::H265)
             setupReferenceSlot.pNext = &h265SetupReference;
-        else if (session.m_Desc.codec == VideoCodec::AV1)
+        else if (session.GetDesc().codec == VideoCodec::AV1)
             setupReferenceSlot.pNext = &av1SetupReference;
     }
     setupReferenceSlot.slotIndex = hasSetupReferenceSlot ? (int32_t)videoEncodeDesc.reconstructedSlot : -1;
@@ -1458,9 +1436,9 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
         NRI_REPORT_ERROR(&m_Device, "'bitstreamMetadataSize' exceeds Vulkan 'precedingExternallyEncodedBytes' range");
         return;
     }
-    if (!IsAligned(videoEncodeDesc.dstBitstream.offset, session.m_BitstreamOffsetAlignment) || !IsAligned(videoEncodeDesc.dstBitstream.size, session.m_BitstreamSizeAlignment)) {
-        NRI_REPORT_ERROR(&m_Device, "'dstBitstream.offset' and 'dstBitstream.size' must satisfy Vulkan video alignment requirements: offset=%u, size=%u", session.m_BitstreamOffsetAlignment,
-            session.m_BitstreamSizeAlignment);
+    if (!IsAligned(videoEncodeDesc.dstBitstream.offset, session.GetBitstreamOffsetAlignment()) || !IsAligned(videoEncodeDesc.dstBitstream.size, session.GetBitstreamSizeAlignment())) {
+        NRI_REPORT_ERROR(&m_Device, "'dstBitstream.offset' and 'dstBitstream.size' must satisfy Vulkan video alignment requirements: offset=%u, size=%u", session.GetBitstreamOffsetAlignment(),
+            session.GetBitstreamSizeAlignment());
         return;
     }
 
@@ -1487,26 +1465,26 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
     VkVideoEncodeQualityLevelInfoKHR qualityLevelInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUALITY_LEVEL_INFO_KHR};
     const void* beginPNext = &rateControlInfo;
     FillVideoEncodeRateControlVK(rateControlDesc, rateControlInfo, rateControlLayer);
-    if (session.m_Desc.codec == VideoCodec::H264) {
-        h264RateControlInfo.gopFrameCount = session.m_Desc.maxReferenceNum ? 60 : 1;
+    if (session.GetDesc().codec == VideoCodec::H264) {
+        h264RateControlInfo.gopFrameCount = session.GetDesc().maxReferenceNum ? 60 : 1;
         h264RateControlInfo.idrPeriod = h264RateControlInfo.gopFrameCount;
-        h264RateControlInfo.consecutiveBFrameCount = session.m_Desc.maxReferenceNum > 1 ? 1 : 0;
+        h264RateControlInfo.consecutiveBFrameCount = session.GetDesc().maxReferenceNum > 1 ? 1 : 0;
         h264RateControlInfo.temporalLayerCount = 1;
         rateControlInfo.pNext = &h264RateControlInfo;
-    } else if (session.m_Desc.codec == VideoCodec::H265) {
-        h265RateControlInfo.gopFrameCount = session.m_Desc.maxReferenceNum ? 60 : 1;
+    } else if (session.GetDesc().codec == VideoCodec::H265) {
+        h265RateControlInfo.gopFrameCount = session.GetDesc().maxReferenceNum ? 60 : 1;
         h265RateControlInfo.idrPeriod = h265RateControlInfo.gopFrameCount;
-        h265RateControlInfo.consecutiveBFrameCount = session.m_Desc.maxReferenceNum > 1 ? 1 : 0;
+        h265RateControlInfo.consecutiveBFrameCount = session.GetDesc().maxReferenceNum > 1 ? 1 : 0;
         h265RateControlInfo.subLayerCount = 1;
         rateControlInfo.pNext = &h265RateControlInfo;
-    } else if (session.m_Desc.codec == VideoCodec::AV1) {
+    } else if (session.GetDesc().codec == VideoCodec::AV1) {
         av1RateControlInfo.flags = VK_VIDEO_ENCODE_AV1_RATE_CONTROL_REGULAR_GOP_BIT_KHR | VK_VIDEO_ENCODE_AV1_RATE_CONTROL_REFERENCE_PATTERN_FLAT_BIT_KHR;
         av1RateControlInfo.gopFrameCount = 300;
         av1RateControlInfo.keyFramePeriod = 300;
         av1RateControlInfo.consecutiveBipredictiveFrameCount = 1;
         rateControlInfo.pNext = &av1RateControlInfo;
         qualityLevelInfo.pNext = &rateControlInfo;
-        if (session.m_AV1RequiresGopRemainingFrames && rateControlDesc.mode != VideoEncodeRateControlMode::CQP) {
+        if (session.DoesAV1RequireGopRemainingFrames() && rateControlDesc.mode != VideoEncodeRateControlMode::CQP) {
             av1GopRemainingFrameInfo.useGopRemainingFrames = VK_TRUE;
             av1GopRemainingFrameInfo.gopRemainingIntra = pictureDesc.frameType == VideoEncodeFrameType::IDR || pictureDesc.frameType == VideoEncodeFrameType::I ? 1 : 0;
             av1GopRemainingFrameInfo.gopRemainingPredictive = av1RateControlInfo.gopFrameCount ? av1RateControlInfo.gopFrameCount - 1 : 0;
@@ -1518,49 +1496,35 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
 
     VkVideoBeginCodingInfoKHR beginInfo = {VK_STRUCTURE_TYPE_VIDEO_BEGIN_CODING_INFO_KHR};
     beginInfo.pNext = beginPNext;
-    beginInfo.videoSession = session.m_Handle;
+    beginInfo.videoSession = session.GetHandle();
     beginInfo.videoSessionParameters = parameters.m_Handle;
     beginInfo.referenceSlotCount = videoEncodeDesc.referenceNum + (hasSetupReferenceSlot ? 1 : 0);
     beginInfo.pReferenceSlots = referenceSlots;
 
     VkVideoEndCodingInfoKHR endInfo = {VK_STRUCTURE_TYPE_VIDEO_END_CODING_INFO_KHR};
     BufferVK* resolvedMetadata = (BufferVK*)videoEncodeDesc.resolvedMetadata;
-    bool useEncodeFeedback = resolvedMetadata != nullptr && session.m_EncodeFeedbackQueryPool != VK_NULL_HANDLE;
+    bool useEncodeFeedback = resolvedMetadata != nullptr && session.GetEncodeFeedbackQueryPool() != VK_NULL_HANDLE;
     uint32_t encodeFeedbackQueryIndex = UINT32_MAX;
     if (useEncodeFeedback) {
-        for (uint32_t i = 0; i < VideoSessionVK::ENCODE_FEEDBACK_QUERY_NUM; i++) {
-            const VideoSessionVK::EncodeFeedbackPayloadReadback& payloadReadback = session.m_EncodeFeedbackPayloadReadbacks[i];
-            if (payloadReadback.active && payloadReadback.resolvedMetadata == resolvedMetadata && payloadReadback.resolvedMetadataOffset == videoEncodeDesc.resolvedMetadataOffset) {
-                NRI_REPORT_ERROR(&m_Device, "A Vulkan video encode feedback query is already pending for this resolved metadata range");
-                useEncodeFeedback = false;
-                break;
-            }
+        if (session.HasPendingEncodeFeedbackQuery(resolvedMetadata, videoEncodeDesc.resolvedMetadataOffset)) {
+            NRI_REPORT_ERROR(&m_Device, "A Vulkan video encode feedback query is already pending for this resolved metadata range");
+            useEncodeFeedback = false;
         }
 
-        for (uint32_t i = 0; useEncodeFeedback && i < VideoSessionVK::ENCODE_FEEDBACK_QUERY_NUM; i++) {
-            if (!session.m_EncodeFeedbackPayloadReadbacks[i].active) {
-                encodeFeedbackQueryIndex = i;
-                break;
-            }
-        }
+        if (useEncodeFeedback)
+            encodeFeedbackQueryIndex = session.AllocateEncodeFeedbackQuery(resolvedMetadata, videoEncodeDesc.resolvedMetadataOffset, videoEncodeDesc.dstBitstream.offset);
 
         if (useEncodeFeedback && encodeFeedbackQueryIndex == UINT32_MAX) {
             NRI_REPORT_ERROR(&m_Device, "Too many unresolved Vulkan video encode feedback queries are outstanding for this video session");
             useEncodeFeedback = false;
-        } else if (useEncodeFeedback) {
-            VideoSessionVK::EncodeFeedbackPayloadReadback& payloadReadback = session.m_EncodeFeedbackPayloadReadbacks[encodeFeedbackQueryIndex];
-            payloadReadback.active = true;
-            payloadReadback.resolvedMetadata = resolvedMetadata;
-            payloadReadback.resolvedMetadataOffset = videoEncodeDesc.resolvedMetadataOffset;
-            payloadReadback.dstBitstreamOffset = videoEncodeDesc.dstBitstream.offset;
         }
     }
 
     const auto& vk = m_Device.GetDispatchTable();
     if (useEncodeFeedback)
-        vk.CmdResetQueryPool(m_Handle, session.m_EncodeFeedbackQueryPool, encodeFeedbackQueryIndex, 1);
+        vk.CmdResetQueryPool(m_Handle, session.GetEncodeFeedbackQueryPool(), encodeFeedbackQueryIndex, 1);
 
-    const bool needsSessionReset = !session.m_ResetRecorded;
+    const bool needsSessionReset = !session.IsResetRecorded();
     if (needsSessionReset) {
         VkVideoBeginCodingInfoKHR initBeginInfo = beginInfo;
         initBeginInfo.pNext = nullptr;
@@ -1569,41 +1533,33 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
 
         vk.CmdBeginVideoCodingKHR(m_Handle, &initBeginInfo);
         controlInfo.flags = VK_VIDEO_CODING_CONTROL_RESET_BIT_KHR | VK_VIDEO_CODING_CONTROL_ENCODE_RATE_CONTROL_BIT_KHR;
-        if (session.m_Desc.codec == VideoCodec::AV1)
+        if (session.GetDesc().codec == VideoCodec::AV1)
             controlInfo.flags |= VK_VIDEO_CODING_CONTROL_ENCODE_QUALITY_LEVEL_BIT_KHR;
-        controlInfo.pNext = session.m_Desc.codec == VideoCodec::AV1 ? (const void*)&qualityLevelInfo : (const void*)&rateControlInfo;
+        controlInfo.pNext = session.GetDesc().codec == VideoCodec::AV1 ? (const void*)&qualityLevelInfo : (const void*)&rateControlInfo;
         vk.CmdControlVideoCodingKHR(m_Handle, &controlInfo);
         vk.CmdEndVideoCodingKHR(m_Handle, &endInfo);
-        session.m_ResetRecorded = true;
+        session.SetResetRecorded();
     }
     vk.CmdBeginVideoCodingKHR(m_Handle, &beginInfo);
 
     if (useEncodeFeedback)
-        vk.CmdBeginQuery(m_Handle, session.m_EncodeFeedbackQueryPool, encodeFeedbackQueryIndex, (VkQueryControlFlags)0);
+        vk.CmdBeginQuery(m_Handle, session.GetEncodeFeedbackQueryPool(), encodeFeedbackQueryIndex, (VkQueryControlFlags)0);
 
     vk.CmdEncodeVideoKHR(m_Handle, &encodeInfo);
 
     if (useEncodeFeedback)
-        vk.CmdEndQuery(m_Handle, session.m_EncodeFeedbackQueryPool, encodeFeedbackQueryIndex);
+        vk.CmdEndQuery(m_Handle, session.GetEncodeFeedbackQueryPool(), encodeFeedbackQueryIndex);
 
     vk.CmdEndVideoCodingKHR(m_Handle, &endInfo);
 }
 
 NRI_INLINE void CommandBufferVK::ResolveVideoEncodeFeedback(VideoSession& videoSession, Buffer& resolvedMetadata, uint64_t resolvedMetadataOffset) {
     VideoSessionVK& session = (VideoSessionVK&)videoSession;
-    if (!session.m_EncodeFeedbackQueryPool)
+    if (!session.GetEncodeFeedbackQueryPool())
         return;
 
     BufferVK& feedbackBuffer = (BufferVK&)resolvedMetadata;
-    uint32_t encodeFeedbackQueryIndex = UINT32_MAX;
-    for (uint32_t i = 0; i < VideoSessionVK::ENCODE_FEEDBACK_QUERY_NUM; i++) {
-        const VideoSessionVK::EncodeFeedbackPayloadReadback& payloadReadback = session.m_EncodeFeedbackPayloadReadbacks[i];
-        if (payloadReadback.active && payloadReadback.resolvedMetadata == &feedbackBuffer && payloadReadback.resolvedMetadataOffset == resolvedMetadataOffset) {
-            encodeFeedbackQueryIndex = i;
-            break;
-        }
-    }
-
+    const uint32_t encodeFeedbackQueryIndex = session.FindEncodeFeedbackQuery(&feedbackBuffer, resolvedMetadataOffset);
     if (encodeFeedbackQueryIndex == UINT32_MAX) {
         NRI_REPORT_ERROR(&m_Device, "No unresolved Vulkan video encode feedback query is available for this resolved metadata range");
         return;
@@ -1622,9 +1578,9 @@ NRI_INLINE void CommandBufferVK::ResolveVideoEncodeFeedback(VideoSession& videoS
         return;
     }
 
-    vk.CmdCopyQueryPoolResults(m_Handle, session.m_EncodeFeedbackQueryPool, encodeFeedbackQueryIndex, 1, feedbackBuffer.GetHandle(), queryResultOffset, queryResultSize,
+    vk.CmdCopyQueryPoolResults(m_Handle, session.GetEncodeFeedbackQueryPool(), encodeFeedbackQueryIndex, 1, feedbackBuffer.GetHandle(), queryResultOffset, queryResultSize,
         VK_QUERY_RESULT_WAIT_BIT | VK_QUERY_RESULT_WITH_STATUS_BIT_KHR);
-    session.m_EncodeFeedbackPayloadReadbacks[encodeFeedbackQueryIndex].resolvedByCommand = true;
+    session.SetEncodeFeedbackQueryResolved(encodeFeedbackQueryIndex);
 }
 
 NRI_INLINE void CommandBufferVK::SetViewports(const Viewport* viewports, uint32_t viewportNum) {
