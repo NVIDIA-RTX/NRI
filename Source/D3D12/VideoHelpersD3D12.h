@@ -11,6 +11,8 @@ constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_CBR = 1u << (uint32_t)VideoEncodeRa
 constexpr uint32_t VIDEO_ENCODE_RATE_CONTROL_VBR = 1u << (uint32_t)VideoEncodeRateControlMode::VBR;
 constexpr uint32_t VIDEO_D3D12_ENCODE_SUPPORT_PROBE_SIZE = 512;
 constexpr uint32_t VIDEO_AV1_LEVEL_4_1 = 41;
+constexpr uint32_t VIDEO_D3D12_ENCODE_AV1_MIN_Q_INDEX = 1;
+constexpr uint32_t VIDEO_D3D12_ENCODE_AV1_MAX_Q_INDEX = 255;
 
 inline uint32_t GetVideoEncodeRateControlModeMask(VideoEncodeRateControlMode mode) {
     return 1u << (uint32_t)mode;
@@ -136,8 +138,8 @@ inline void FillVideoEncodeAV1CapabilitiesD3D12(VideoAV1Capabilities& videoAV1Ca
     videoAV1Capabilities.av1MaxTemporalLayerNum = 1;
     videoAV1Capabilities.av1MaxSpatialLayerNum = 1;
     videoAV1Capabilities.av1MaxOperatingPointNum = 1;
-    videoAV1Capabilities.av1MinQIndex = 0;
-    videoAV1Capabilities.av1MaxQIndex = 255;
+    videoAV1Capabilities.av1MinQIndex = VIDEO_D3D12_ENCODE_AV1_MIN_Q_INDEX;
+    videoAV1Capabilities.av1MaxQIndex = VIDEO_D3D12_ENCODE_AV1_MAX_Q_INDEX;
     videoAV1Capabilities.av1EncodeRequiredFeatureFlags = GetVideoEncodeAV1FeatureFlagsD3D12(requiredFeatureFlags);
     videoAV1Capabilities.av1EncodeSupportedFeatureFlags = GetVideoEncodeAV1FeatureFlagsD3D12(supportedFeatureFlags);
 }

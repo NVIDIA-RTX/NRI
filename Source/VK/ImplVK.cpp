@@ -1207,8 +1207,9 @@ static Result NRI_CALL GetVideoEncodePictureStates(const VideoPicture&, VideoEnc
     states = {};
     states.encodeRead = {AccessBits::VIDEO_ENCODE_READ, Layout::VIDEO_ENCODE_SRC, StageBits::VIDEO_ENCODE};
     states.encodeWrite = {AccessBits::VIDEO_ENCODE_WRITE, Layout::VIDEO_ENCODE_DPB, StageBits::VIDEO_ENCODE};
-    states.graphicsBefore = {AccessBits::NONE, Layout::VIDEO_ENCODE_DPB, StageBits::ALL};
-    states.releaseAfterEncode = false;
+    states.afterEncode = {AccessBits::NONE, Layout::GENERAL, StageBits::NONE};
+    states.graphicsBefore = states.afterEncode;
+    states.releaseAfterEncode = true;
 
     return Result::SUCCESS;
 }

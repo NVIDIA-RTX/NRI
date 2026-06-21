@@ -1773,6 +1773,12 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
         av1Picture.Quantization.BaseQIndex = videoEncodeDesc.av1PictureDesc && videoEncodeDesc.av1PictureDesc->baseQIndex
             ? videoEncodeDesc.av1PictureDesc->baseQIndex
             : GetVideoEncodeQPByFrameTypeD3D12(rateControlDesc, pictureDesc.frameType);
+
+        if (av1Picture.Quantization.BaseQIndex < VIDEO_D3D12_ENCODE_AV1_MIN_Q_INDEX || av1Picture.Quantization.BaseQIndex > VIDEO_D3D12_ENCODE_AV1_MAX_Q_INDEX) {
+            NRI_REPORT_ERROR(&m_Device, "AV1 base Q index must be in [%u, %u]", VIDEO_D3D12_ENCODE_AV1_MIN_Q_INDEX, VIDEO_D3D12_ENCODE_AV1_MAX_Q_INDEX);
+            return;
+        }
+
         if (videoEncodeDesc.av1PictureDesc && videoEncodeDesc.av1PictureDesc->quantization) {
             const VideoAV1QuantizationDesc& quantization = *videoEncodeDesc.av1PictureDesc->quantization;
             av1Picture.Quantization.YDCDeltaQ = quantization.deltaQYDc;
