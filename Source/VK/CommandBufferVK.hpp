@@ -864,6 +864,16 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
         NRI_REPORT_ERROR(&m_Device, "Vulkan video encode sessions are aligned with the no-B-frame parity target");
         return;
     }
+    if (pictureDesc.frameType == VideoEncodeFrameType::B) {
+        if (session.m_Desc.codec == VideoCodec::H264 && (!session.m_H264MaxBPictureL0ReferenceCount || !session.m_H264MaxL1ReferenceCount)) {
+            NRI_REPORT_ERROR(&m_Device, "Vulkan H.264 encode session does not support B-frame references");
+            return;
+        }
+        if (session.m_Desc.codec == VideoCodec::H265 && (!session.m_H265MaxBPictureL0ReferenceCount || !session.m_H265MaxL1ReferenceCount)) {
+            NRI_REPORT_ERROR(&m_Device, "Vulkan H.265 encode session does not support B-frame references");
+            return;
+        }
+    }
 
     VkVideoEncodeH264PictureInfoKHR h264Picture = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PICTURE_INFO_KHR};
     StdVideoEncodeH264PictureInfo h264StdPicture = {};
@@ -960,8 +970,8 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
             }
 
             h264StdPicture.flags.IdrPicFlag = pictureDesc.frameType == VideoEncodeFrameType::IDR;
-            isUsedAsReferencePicture = IsVideoEncodePictureUsedAsReferenceVK(session.m_Desc.codec, session.m_Desc.maxReferenceNum,
-                videoEncodeDesc.reconstructedPicture != nullptr, 0);
+            isUsedAsReferencePicture = IsVideoEncodePictureUsedAsReferenceVK(session.m_Desc.codec, pictureDesc.frameType,
+                session.m_Desc.maxReferenceNum, videoEncodeDesc.reconstructedPicture != nullptr, 0);
             h264StdPicture.flags.is_reference = isUsedAsReferencePicture;
             h264StdPicture.flags.no_output_of_prior_pics_flag = pictureDesc.frameType == VideoEncodeFrameType::IDR;
             h264StdPicture.seq_parameter_set_id = videoEncodeDesc.h264PictureDesc ? videoEncodeDesc.h264PictureDesc->sequenceParameterSetId : 0;
@@ -1001,12 +1011,13 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
             h265StdPicture.PicOrderCntVal = pictureDesc.pictureOrderCount;
             h265StdPicture.TemporalId = pictureDesc.temporalLayer;
             h265StdPicture.flags.IrapPicFlag = pictureDesc.frameType == VideoEncodeFrameType::IDR || pictureDesc.frameType == VideoEncodeFrameType::I;
-            isUsedAsReferencePicture = IsVideoEncodePictureUsedAsReferenceVK(session.m_Desc.codec, session.m_Desc.maxReferenceNum,
-                videoEncodeDesc.reconstructedPicture != nullptr, 0);
+            isUsedAsReferencePicture = IsVideoEncodePictureUsedAsReferenceVK(session.m_Desc.codec, pictureDesc.frameType,
+                session.m_Desc.maxReferenceNum, videoEncodeDesc.reconstructedPicture != nullptr, 0);
             h265StdPicture.flags.is_reference = isUsedAsReferencePicture;
             h265StdPicture.flags.pic_output_flag = true;
             h265StdPicture.flags.no_output_of_prior_pics_flag = pictureDesc.frameType == VideoEncodeFrameType::IDR;
             h265StdPicture.flags.short_term_ref_pic_set_sps_flag = false;
+            h265StdPicture.flags.slice_temporal_mvp_enabled_flag = pictureDesc.frameType != VideoEncodeFrameType::IDR;
             for (uint8_t& entry : h265ReferenceLists.RefPicList0)
                 entry = STD_VIDEO_H265_NO_REFERENCE_PICTURE;
             for (uint8_t& entry : h265ReferenceLists.RefPicList1)
@@ -1066,7 +1077,9 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
             h265SliceHeader.flags.first_slice_segment_in_pic_flag = true;
             h265SliceHeader.flags.slice_sao_luma_flag = true;
             h265SliceHeader.flags.slice_sao_chroma_flag = true;
-            h265SliceHeader.flags.num_ref_idx_active_override_flag = videoEncodeDesc.referenceNum != 0;
+            h265SliceHeader.flags.num_ref_idx_active_override_flag = h265ReferenceLists.num_ref_idx_l0_active_minus1 != 0 || h265ReferenceLists.num_ref_idx_l1_active_minus1 != 0;
+            h265SliceHeader.flags.mvd_l1_zero_flag = false;
+            h265SliceHeader.flags.collocated_from_l0_flag = false;
             h265SliceHeader.slice_type = pictureDesc.frameType == VideoEncodeFrameType::B ? STD_VIDEO_H265_SLICE_TYPE_B : (pictureDesc.frameType == VideoEncodeFrameType::P ? STD_VIDEO_H265_SLICE_TYPE_P : STD_VIDEO_H265_SLICE_TYPE_I);
             h265SliceHeader.MaxNumMergeCand = 5;
             h265SliceInfo.constantQp = GetVideoEncodeQPByFrameTypeVK(rateControlDesc, pictureDesc.frameType);
@@ -1144,8 +1157,8 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
                 NRI_REPORT_ERROR(&m_Device, "Vulkan AV1 encode sessions with DPB slots require 'reconstructedPicture'");
                 return;
             }
-            isUsedAsReferencePicture = IsVideoEncodePictureUsedAsReferenceVK(session.m_Desc.codec, session.m_Desc.maxReferenceNum,
-                videoEncodeDesc.reconstructedPicture != nullptr, av1StdPicture.refresh_frame_flags);
+            isUsedAsReferencePicture = IsVideoEncodePictureUsedAsReferenceVK(session.m_Desc.codec, pictureDesc.frameType,
+                session.m_Desc.maxReferenceNum, videoEncodeDesc.reconstructedPicture != nullptr, av1StdPicture.refresh_frame_flags);
 
             if (av1PictureDesc && av1PictureDesc->referenceNum) {
                 VideoEncodeAV1ReferenceMappingVK referenceMapping = {};
@@ -1368,7 +1381,7 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
         }
     }
 
-    const bool hasSetupReferenceSlot = isUsedAsReferencePicture || (session.m_Desc.codec == VideoCodec::AV1 && session.m_Desc.maxReferenceNum != 0);
+    const bool hasSetupReferenceSlot = session.m_Desc.maxReferenceNum != 0 && videoEncodeDesc.reconstructedPicture != nullptr;
     VkVideoReferenceSlotInfoKHR setupReferenceSlot = {VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR};
 
     if (hasSetupReferenceSlot) {
@@ -1423,12 +1436,26 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
 
     VkVideoEncodeRateControlInfoKHR rateControlInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_RATE_CONTROL_INFO_KHR};
     VkVideoEncodeRateControlLayerInfoKHR rateControlLayer = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_RATE_CONTROL_LAYER_INFO_KHR};
+    VkVideoEncodeH264RateControlInfoKHR h264RateControlInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_INFO_KHR};
+    VkVideoEncodeH265RateControlInfoKHR h265RateControlInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_INFO_KHR};
     VkVideoEncodeAV1RateControlInfoKHR av1RateControlInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_RATE_CONTROL_INFO_KHR};
     VkVideoEncodeAV1GopRemainingFrameInfoKHR av1GopRemainingFrameInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_GOP_REMAINING_FRAME_INFO_KHR};
     VkVideoEncodeQualityLevelInfoKHR qualityLevelInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUALITY_LEVEL_INFO_KHR};
     const void* beginPNext = &rateControlInfo;
     FillVideoEncodeRateControlVK(rateControlDesc, rateControlInfo, rateControlLayer);
-    if (session.m_Desc.codec == VideoCodec::AV1) {
+    if (session.m_Desc.codec == VideoCodec::H264) {
+        h264RateControlInfo.gopFrameCount = session.m_Desc.maxReferenceNum ? 60 : 1;
+        h264RateControlInfo.idrPeriod = h264RateControlInfo.gopFrameCount;
+        h264RateControlInfo.consecutiveBFrameCount = session.m_Desc.maxReferenceNum > 1 ? 1 : 0;
+        h264RateControlInfo.temporalLayerCount = 1;
+        rateControlInfo.pNext = &h264RateControlInfo;
+    } else if (session.m_Desc.codec == VideoCodec::H265) {
+        h265RateControlInfo.gopFrameCount = session.m_Desc.maxReferenceNum ? 60 : 1;
+        h265RateControlInfo.idrPeriod = h265RateControlInfo.gopFrameCount;
+        h265RateControlInfo.consecutiveBFrameCount = session.m_Desc.maxReferenceNum > 1 ? 1 : 0;
+        h265RateControlInfo.subLayerCount = 1;
+        rateControlInfo.pNext = &h265RateControlInfo;
+    } else if (session.m_Desc.codec == VideoCodec::AV1) {
         av1RateControlInfo.flags = VK_VIDEO_ENCODE_AV1_RATE_CONTROL_REGULAR_GOP_BIT_KHR | VK_VIDEO_ENCODE_AV1_RATE_CONTROL_REFERENCE_PATTERN_FLAT_BIT_KHR;
         av1RateControlInfo.gopFrameCount = 300;
         av1RateControlInfo.keyFramePeriod = 300;

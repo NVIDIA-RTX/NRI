@@ -162,11 +162,14 @@ inline uint8_t GetVideoEncodeQPByFrameTypeVK(const VideoEncodeRateControlDesc& r
 }
 
 inline bool IsVideoEncodeFrameTypeSupportedByVK(VideoCodec codec, VideoEncodeFrameType frameType) {
-    return frameType != VideoEncodeFrameType::B || (codec != VideoCodec::H264 && codec != VideoCodec::H265 && codec != VideoCodec::AV1);
+    return frameType != VideoEncodeFrameType::B || codec == VideoCodec::H264 || codec == VideoCodec::H265;
 }
 
-inline bool IsVideoEncodePictureUsedAsReferenceVK(VideoCodec codec, uint32_t maxReferenceNum, bool hasReconstructedPicture, uint8_t av1RefreshFrameFlags) {
+inline bool IsVideoEncodePictureUsedAsReferenceVK(VideoCodec codec, VideoEncodeFrameType frameType, uint32_t maxReferenceNum, bool hasReconstructedPicture, uint8_t av1RefreshFrameFlags) {
     if (!maxReferenceNum || !hasReconstructedPicture)
+        return false;
+
+    if ((codec == VideoCodec::H264 || codec == VideoCodec::H265) && frameType == VideoEncodeFrameType::B)
         return false;
 
     return codec != VideoCodec::AV1 || av1RefreshFrameFlags != 0;

@@ -52,6 +52,10 @@ struct VideoSessionVK final : public DebugNameBase {
     uint32_t m_BitstreamOffsetAlignment = 1;
     uint32_t m_BitstreamSizeAlignment = 1;
     uint32_t m_RateControlModes = 0;
+    uint32_t m_H264MaxBPictureL0ReferenceCount = 0;
+    uint32_t m_H264MaxL1ReferenceCount = 0;
+    uint32_t m_H265MaxBPictureL0ReferenceCount = 0;
+    uint32_t m_H265MaxL1ReferenceCount = 0;
     VkVideoEncodeAV1CapabilityFlagsKHR m_AV1CapabilityFlags = 0;
     uint32_t m_AV1MaxSingleReferenceCount = 0;
     uint32_t m_AV1SingleReferenceNameMask = 0;

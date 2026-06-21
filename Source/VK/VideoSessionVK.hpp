@@ -232,6 +232,14 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceVideoCapabilitiesKHR");
     if (videoSessionDesc.type == VideoSessionType::ENCODE) {
         m_RateControlModes = GetSupportedVideoEncodeRateControlModesVK(encodeCapabilities.rateControlModes);
+        if (videoSessionDesc.codec == VideoCodec::H264) {
+            m_H264MaxBPictureL0ReferenceCount = encodeH264Capabilities.maxBPictureL0ReferenceCount;
+            m_H264MaxL1ReferenceCount = encodeH264Capabilities.maxL1ReferenceCount;
+        }
+        if (videoSessionDesc.codec == VideoCodec::H265) {
+            m_H265MaxBPictureL0ReferenceCount = encodeH265Capabilities.maxBPictureL0ReferenceCount;
+            m_H265MaxL1ReferenceCount = encodeH265Capabilities.maxL1ReferenceCount;
+        }
         if (videoSessionDesc.codec == VideoCodec::AV1) {
             m_AV1CapabilityFlags = encodeAV1Capabilities.flags;
             m_AV1MaxSingleReferenceCount = encodeAV1Capabilities.maxSingleReferenceCount;

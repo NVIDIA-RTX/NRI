@@ -1366,7 +1366,7 @@ NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeDesc& videoDeco
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
 inline bool IsVideoEncodeFrameTypeSupportedByD3D12(VideoCodec codec, VideoEncodeFrameType frameType) {
-    return frameType != VideoEncodeFrameType::B || (codec != VideoCodec::H264 && codec != VideoCodec::H265 && codec != VideoCodec::AV1);
+    return frameType != VideoEncodeFrameType::B || codec == VideoCodec::H264 || codec == VideoCodec::H265;
 }
 
 inline bool IsVideoEncodePictureUsedAsReferenceD3D12(VideoCodec codec, uint32_t maxReferenceNum, bool hasReconstructedPicture, uint8_t av1RefreshFrameFlags) {
@@ -1545,11 +1545,11 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
 
     D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_H264 h264Gop = {};
     h264Gop.GOPLength = videoEncodeDesc.referenceNum ? 60 : 1;
-    h264Gop.PPicturePeriod = 1;
+    h264Gop.PPicturePeriod = sessionDesc.maxReferenceNum > 1 ? 2 : 1;
 
     D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_HEVC hevcGop = {};
     hevcGop.GOPLength = sessionDesc.maxReferenceNum ? 60 : 1;
-    hevcGop.PPicturePeriod = 1;
+    hevcGop.PPicturePeriod = sessionDesc.maxReferenceNum > 1 ? 2 : 1;
 
     D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS1 input = {};
     D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS1 output = {};

@@ -165,11 +165,11 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
 
         D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_H264 h264Gop = {};
         h264Gop.GOPLength = videoSessionDesc.maxReferenceNum ? 60 : 1;
-        h264Gop.PPicturePeriod = 1;
+        h264Gop.PPicturePeriod = videoSessionDesc.maxReferenceNum > 1 ? 2 : 1;
 
         D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_HEVC hevcGop = {};
         hevcGop.GOPLength = videoSessionDesc.maxReferenceNum ? 60 : 1;
-        hevcGop.PPicturePeriod = 1;
+        hevcGop.PPicturePeriod = videoSessionDesc.maxReferenceNum > 1 ? 2 : 1;
 
         D3D12_VIDEO_ENCODER_AV1_SEQUENCE_STRUCTURE av1Sequence = {};
         av1Sequence.IntraDistance = videoSessionDesc.maxReferenceNum ? 60 : 1;
