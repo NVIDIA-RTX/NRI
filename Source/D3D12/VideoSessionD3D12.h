@@ -27,6 +27,18 @@ struct VideoSessionD3D12 final : public DebugNameBase {
         return m_Desc;
     }
 
+    inline uint32_t GetAV1FeatureFlags() const {
+        return m_AV1FeatureFlags;
+    }
+
+    inline uint32_t GetRateControlModes() const {
+        return m_RateControlModes;
+    }
+
+    inline bool IsBFrameSupported() const {
+        return m_BFrameSupported;
+    }
+
     inline ID3D12VideoDecoderBest* GetDecoder() const {
         NRI_CHECK(m_Desc.type == VideoSessionType::DECODE, "Unexpected");
 
@@ -73,8 +85,6 @@ private:
     ComPtr<ID3D12Pageable> m_Session; // decoder or encoder
     ComPtr<ID3D12Pageable> m_Heap;
     VideoSessionDesc m_Desc = {};
-
-public: // TODO-VIDEO: FIXME
     uint32_t m_AV1FeatureFlags = 0;
     uint32_t m_RateControlModes = 0;
     bool m_BFrameSupported = false;

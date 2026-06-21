@@ -1534,7 +1534,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
         NRI_REPORT_ERROR(&m_Device, "'rateControlDesc' is invalid");
         return;
     }
-    if ((session.m_RateControlModes & GetVideoEncodeRateControlModeMask(rateControlDesc.mode)) == 0) {
+    if ((session.GetRateControlModes() & GetVideoEncodeRateControlModeMask(rateControlDesc.mode)) == 0) {
         NRI_REPORT_ERROR(&m_Device, "Unsupported D3D12 video encode rate control mode");
         return;
     }
@@ -1612,7 +1612,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     VideoEncodePictureDesc pictureDesc = videoEncodeDesc.pictureDesc ? *videoEncodeDesc.pictureDesc : defaultPicture;
     if (videoEncodeDesc.flags & VideoEncodeBits::FORCE_KEY_FRAME)
         pictureDesc.frameType = VideoEncodeFrameType::IDR;
-    if (!IsVideoEncodeFrameTypeSupportedByD3D12(sessionDesc.codec, pictureDesc.frameType, session.m_BFrameSupported)) {
+    if (!IsVideoEncodeFrameTypeSupportedByD3D12(sessionDesc.codec, pictureDesc.frameType, session.IsBFrameSupported())) {
         NRI_REPORT_ERROR(&m_Device, "D3D12 video encode session does not support the requested frame type");
         return;
     }
@@ -1734,19 +1734,19 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
             : GetDefaultVideoAV1PictureFlags();
         if (pictureFlags & VideoAV1PictureBits::ERROR_RESILIENT_MODE)
             av1Picture.Flags |= D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_FLAG_ENABLE_ERROR_RESILIENT_MODE;
-        if (session.m_AV1FeatureFlags & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_LOOP_RESTORATION_FILTER) {
+        if (session.GetAV1FeatureFlags() & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_LOOP_RESTORATION_FILTER) {
             for (auto& type : av1Picture.FrameRestorationConfig.FrameRestorationType)
                 type = D3D12_VIDEO_ENCODER_AV1_RESTORATION_TYPE_DISABLED;
             for (auto& tileSize : av1Picture.FrameRestorationConfig.LoopRestorationPixelSize)
                 tileSize = D3D12_VIDEO_ENCODER_AV1_RESTORATION_TILESIZE_DISABLED;
         }
-        if ((session.m_AV1FeatureFlags & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_FORCED_INTEGER_MOTION_VECTORS) && (pictureFlags & VideoAV1PictureBits::FORCE_INTEGER_MV))
+        if ((session.GetAV1FeatureFlags() & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_FORCED_INTEGER_MOTION_VECTORS) && (pictureFlags & VideoAV1PictureBits::FORCE_INTEGER_MV))
             av1Picture.Flags |= D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_FLAG_FORCE_INTEGER_MOTION_VECTORS;
         if (videoEncodeDesc.av1PictureDesc && videoEncodeDesc.av1PictureDesc->segmentation) {
             NRI_REPORT_ERROR(&m_Device, "D3D12 AV1 encode does not support explicit segmentation");
             return;
         }
-        if ((session.m_AV1FeatureFlags & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_AUTO_SEGMENTATION) && (pictureFlags & VideoAV1PictureBits::SEGMENTATION_ENABLED))
+        if ((session.GetAV1FeatureFlags() & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_AUTO_SEGMENTATION) && (pictureFlags & VideoAV1PictureBits::SEGMENTATION_ENABLED))
             av1Picture.Flags |= D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_FLAG_ENABLE_FRAME_SEGMENTATION_AUTO;
         av1Picture.FrameType = frameType;
         av1Picture.CompoundPredictionType = D3D12_VIDEO_ENCODER_AV1_COMP_PREDICTION_TYPE_SINGLE_REFERENCE;
@@ -1785,11 +1785,11 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
             av1Picture.Quantization.QMU = quantization.qmU;
             av1Picture.Quantization.QMV = quantization.qmV;
         }
-        if (session.m_AV1FeatureFlags & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_QUANTIZATION_DELTAS) {
+        if (session.GetAV1FeatureFlags() & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_QUANTIZATION_DELTAS) {
             av1Picture.QuantizationDelta.DeltaQPresent = !!(pictureFlags & VideoAV1PictureBits::DELTA_Q_PRESENT);
             av1Picture.QuantizationDelta.DeltaQRes = videoEncodeDesc.av1PictureDesc ? videoEncodeDesc.av1PictureDesc->deltaQRes : 0;
         }
-        if (session.m_AV1FeatureFlags & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_LOOP_FILTER_DELTAS) {
+        if (session.GetAV1FeatureFlags() & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_LOOP_FILTER_DELTAS) {
             av1Picture.LoopFilter.LoopFilterDeltaEnabled = 1;
             av1Picture.LoopFilter.UpdateRefDelta = 1;
             av1Picture.LoopFilter.RefDeltas[0] = 1;
@@ -1815,7 +1815,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
             for (uint32_t i = 0; i < 2; i++)
                 av1Picture.LoopFilter.ModeDeltas[i] = loopFilter.modeDeltas[i];
         }
-        if (session.m_AV1FeatureFlags & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_CDEF_FILTERING) {
+        if (session.GetAV1FeatureFlags() & D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_CDEF_FILTERING) {
             av1Picture.CDEF.CdefDampingMinus3 = videoEncodeDesc.av1PictureDesc && videoEncodeDesc.av1PictureDesc->cdefDampingMinus3 ? videoEncodeDesc.av1PictureDesc->cdefDampingMinus3 : 3;
             av1Picture.CDEF.CdefBits = videoEncodeDesc.av1PictureDesc ? videoEncodeDesc.av1PictureDesc->cdefBits : 0;
             if (videoEncodeDesc.av1PictureDesc && videoEncodeDesc.av1PictureDesc->cdef) {

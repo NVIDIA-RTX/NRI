@@ -962,6 +962,16 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
                         return;
                     }
                 }
+                if (pictureDesc.frameType == VideoEncodeFrameType::B) {
+                    if (list0Num > session.m_H264MaxBPictureL0ReferenceCount) {
+                        NRI_REPORT_ERROR(&m_Device, "H.264 B-frame List0 reference count exceeds Vulkan device limit");
+                        return;
+                    }
+                    if (list1Num > session.m_H264MaxL1ReferenceCount) {
+                        NRI_REPORT_ERROR(&m_Device, "H.264 B-frame List1 reference count exceeds Vulkan device limit");
+                        return;
+                    }
+                }
                 h264ReferenceLists.num_ref_idx_l0_active_minus1 = list0Num ? list0Num - 1 : 0;
                 h264ReferenceLists.num_ref_idx_l1_active_minus1 = list1Num ? list1Num - 1 : 0;
                 h264StdPicture.pRefLists = &h264ReferenceLists;
@@ -1039,6 +1049,16 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
 
                 const uint32_t list0ReferenceNum = hevcLists.list0Num;
                 const uint32_t list1ReferenceNum = hevcLists.list1Num;
+                if (pictureDesc.frameType == VideoEncodeFrameType::B) {
+                    if (list0ReferenceNum > session.m_H265MaxBPictureL0ReferenceCount) {
+                        NRI_REPORT_ERROR(&m_Device, "H.265 B-frame List0 reference count exceeds Vulkan device limit");
+                        return;
+                    }
+                    if (list1ReferenceNum > session.m_H265MaxL1ReferenceCount) {
+                        NRI_REPORT_ERROR(&m_Device, "H.265 B-frame List1 reference count exceeds Vulkan device limit");
+                        return;
+                    }
+                }
                 h265ReferenceLists.num_ref_idx_l0_active_minus1 = (uint8_t)(list0ReferenceNum - 1);
                 h265ReferenceLists.num_ref_idx_l1_active_minus1 = list1ReferenceNum ? (uint8_t)(list1ReferenceNum - 1) : 0;
                 auto findRpsIndex = [](const std::array<uint32_t, STD_VIDEO_H265_MAX_NUM_LIST_REF>& references, uint32_t referenceNum, uint32_t referenceIndex) {
@@ -1405,7 +1425,7 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
         }
     }
 
-    const bool hasSetupReferenceSlot = session.m_Desc.maxReferenceNum != 0 && videoEncodeDesc.reconstructedPicture != nullptr;
+    const bool hasSetupReferenceSlot = isUsedAsReferencePicture;
     VkVideoReferenceSlotInfoKHR setupReferenceSlot = {VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR};
 
     if (hasSetupReferenceSlot) {
