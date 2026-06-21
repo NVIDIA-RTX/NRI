@@ -2,8 +2,8 @@
 
 ## Vulkan AV1 Encode
 
-- Add a proper AV1 OBU header writer or public helper equivalent to the H.264/H.265 Annex-B helpers. Consumers still need a temporal delimiter and sequence header before raw AV1 frame payloads can be decoded standalone.
 - Decide whether Vulkan AV1 segmentation should remain explicitly unsupported or be implemented when driver capabilities make it viable.
+- Validate and expose the supported AV1 encode Q index range. NVIDIA Vulkan reports `baseQIndex` / Q index 0 outside the supported 1..255 range, and the same zero-Q AV1 encode request can device-remove on D3D12 instead of failing cleanly.
 
 ## Vulkan AV1 Feedback
 
