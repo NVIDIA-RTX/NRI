@@ -1543,7 +1543,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     FillVideoEncodeRateControlD3D12(rateControlDesc, rateControlState);
 
     D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_H264 h264Gop = {};
-    h264Gop.GOPLength = videoEncodeDesc.referenceNum ? 60 : 1;
+    h264Gop.GOPLength = sessionDesc.maxReferenceNum ? 60 : 1;
     h264Gop.PPicturePeriod = sessionDesc.maxReferenceNum > 1 ? 2 : 1;
 
     D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_HEVC hevcGop = {};

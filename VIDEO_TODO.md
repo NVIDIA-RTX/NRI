@@ -10,12 +10,6 @@
 - Keep query feedback handling aligned with `VideoEncodeFeedback::encodedBitstreamOffset` being relative to `VideoEncodeDesc::dstBitstream.offset`.
 - Preserve the current split between host query reads and explicit command-buffer resolves; Vulkan query-copy resolves must stay on graphics or compute queues.
 
-## H.265 Encode Roundtrip Coverage
-
-- Add a dedicated H.265 encode/decode roundtrip test.
-- Generate valid VPS/SPS/PPS descriptors and serialize Annex-B headers with `WriteVideoAnnexBParameterSetsShared`.
-- Do not treat H.265 as covered by the H.264 FFmpeg smoke path; it needs codec-specific session parameters, picture syntax, and decode input assembly.
-
 ## Vulkan H.265 Encode Follow-Ups
 
 - Investigate non-fatal NVIDIA parser warnings from NRISamples `VideoEncodeDecode` Vulkan H.265 inter-frame smoke runs. `Invalid slice segment address` is still printed for some P/B CQP and lossless cases even though encode/decode completes and the smoke script passes.
@@ -30,8 +24,3 @@
 - H.264/H.265 Vulkan decode currently needs explicit DPB-style picture states for some decoded/reference pictures, while D3D12 follows the generic states returned by the current helper path. The sample branches because these layout/state requirements are observable at command recording time.
 - Decode bitstream buffer barriers differ: Vulkan records the bitstream buffer transition before decode, while D3D12 skips it in the current sample path. This reflects backend command-list/resource-state handling differences.
 - Decoded-picture readback queue selection differs: Vulkan readback currently uses the decode queue, while D3D12 uses the graphics queue. The sample branches because copy/readback support from video-used pictures is not currently handled identically across backends.
-
-## Vulkan Video Test Isolation
-
-- Re-check whether repeated video device/session creation and teardown leaves process-global Vulkan driver state behind.
-- If device initialization becomes order-dependent, isolate Vulkan video tests by process or tighten cleanup between video contexts.

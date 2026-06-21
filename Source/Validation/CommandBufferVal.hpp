@@ -1077,6 +1077,60 @@ static inline const VideoAV1ReferenceDesc* FindVideoAV1ReferenceDesc(const Video
     return nullptr;
 }
 
+static inline const VideoH265ReferenceDesc* FindVideoH265ReferenceDesc(const VideoH265ReferenceDesc* references, uint32_t referenceNum, uint32_t slot) {
+    for (uint32_t i = 0; i < referenceNum; i++) {
+        if (references[i].slot == slot)
+            return references + i;
+    }
+
+    return nullptr;
+}
+
+static inline bool IsVideoEncodeH264ReferenceListValid(const VideoEncodeDesc& videoEncodeDesc, VideoEncodeFrameType frameType) {
+    const VideoH264PictureDesc* h264PictureDesc = videoEncodeDesc.h264PictureDesc;
+    if (!h264PictureDesc || h264PictureDesc->referenceNum != videoEncodeDesc.referenceNum)
+        return false;
+
+    uint32_t list0ReferenceNum = 0;
+    uint32_t list1ReferenceNum = 0;
+    for (uint32_t i = 0; i < h264PictureDesc->referenceNum; i++) {
+        const VideoH264ReferenceDesc& reference = h264PictureDesc->references[i];
+        if (!IsVideoEncodeFrameTypeValid(reference.frameType) || !HasVideoReferenceSlot(videoEncodeDesc.references, videoEncodeDesc.referenceNum, reference.slot))
+            return false;
+
+        if (reference.listIndex == 0)
+            list0ReferenceNum++;
+        else if (reference.listIndex == 1)
+            list1ReferenceNum++;
+        else
+            return false;
+    }
+
+    return frameType != VideoEncodeFrameType::B || (list0ReferenceNum != 0 && list1ReferenceNum != 0);
+}
+
+static inline bool IsVideoEncodeH265ReferenceListValid(const VideoEncodeDesc& videoEncodeDesc, VideoEncodeFrameType frameType) {
+    if (!videoEncodeDesc.h265ReferenceDescs)
+        return false;
+
+    uint32_t list0ReferenceNum = 0;
+    uint32_t list1ReferenceNum = 0;
+    for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {
+        const VideoH265ReferenceDesc* reference = FindVideoH265ReferenceDesc(videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, videoEncodeDesc.references[i].slot);
+        if (!reference || !IsVideoEncodeFrameTypeValid(reference->frameType))
+            return false;
+
+        if (reference->listIndex == 0)
+            list0ReferenceNum++;
+        else if (reference->listIndex == 1)
+            list1ReferenceNum++;
+        else
+            return false;
+    }
+
+    return frameType != VideoEncodeFrameType::B || (list0ReferenceNum != 0 && list1ReferenceNum != 0);
+}
+
 static inline bool IsVideoAV1TileLayoutValid(const VideoAV1TileLayoutDesc& desc) {
     const uint32_t tileNum = uint32_t(desc.columnNum) * desc.rowNum;
     if (desc.columnNum == 0 || desc.rowNum == 0 || tileNum > 64 || desc.contextUpdateTileId >= tileNum || desc.tileSizeBytesMinus1 > 3)
@@ -1288,6 +1342,21 @@ NRI_INLINE void CommandBufferVal::EncodeVideo(const VideoEncodeDesc& videoEncode
 
     if (sessionVal.GetDesc().codec == VideoCodec::AV1 && IsVideoAV1InterFrameWithoutReferences(frameType, videoEncodeDesc.referenceNum)) {
         NRI_REPORT_ERROR(&m_Device, "AV1 P and B frames require at least one reference");
+        return;
+    }
+
+    if ((sessionVal.GetDesc().codec == VideoCodec::H264 || sessionVal.GetDesc().codec == VideoCodec::H265) && frameType == VideoEncodeFrameType::B && videoEncodeDesc.referenceNum == 0) {
+        NRI_REPORT_ERROR(&m_Device, "H.264 and H.265 B frames require at least one List0 and one List1 reference");
+        return;
+    }
+
+    if (sessionVal.GetDesc().codec == VideoCodec::H264 && videoEncodeDesc.referenceNum && !IsVideoEncodeH264ReferenceListValid(videoEncodeDesc, frameType)) {
+        NRI_REPORT_ERROR(&m_Device, "'h264PictureDesc->references' must describe every H.264 reference and B frames require List0 and List1 references");
+        return;
+    }
+
+    if (sessionVal.GetDesc().codec == VideoCodec::H265 && videoEncodeDesc.referenceNum && !IsVideoEncodeH265ReferenceListValid(videoEncodeDesc, frameType)) {
+        NRI_REPORT_ERROR(&m_Device, "'h265ReferenceDescs' must describe every H.265 reference and B frames require List0 and List1 references");
         return;
     }
 
