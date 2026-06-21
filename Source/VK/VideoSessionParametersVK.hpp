@@ -335,9 +335,9 @@ NRI_INLINE Result VideoSessionParametersVK::CreateH265(VideoSessionVK& session) 
                 : STD_VIDEO_H265_PROFILE_IDC_MAIN);
         defaultVps.profileTierLevel.generalLevelIdc = (uint8_t)GetVideoH265LevelIdcVK(session.m_Desc.width, session.m_Desc.height);
         defaultVps.decPicBufMgr.maxDecPicBufferingMinus1[0] = (uint8_t)std::min(session.m_Desc.maxReferenceNum ? session.m_Desc.maxReferenceNum : 1u, 15u);
+        defaultVps.decPicBufMgr.maxNumReorderPics[0] = session.m_Desc.maxReferenceNum > 1 ? 1 : 0;
 
-        defaultSps.flags = VideoH265SequenceParameterSetBits::TEMPORAL_ID_NESTING | VideoH265SequenceParameterSetBits::SAMPLE_ADAPTIVE_OFFSET_ENABLED |
-            VideoH265SequenceParameterSetBits::TEMPORAL_MVP_ENABLED | VideoH265SequenceParameterSetBits::STRONG_INTRA_SMOOTHING_ENABLED;
+        defaultSps.flags = VideoH265SequenceParameterSetBits::TEMPORAL_ID_NESTING | VideoH265SequenceParameterSetBits::SAMPLE_ADAPTIVE_OFFSET_ENABLED | VideoH265SequenceParameterSetBits::STRONG_INTRA_SMOOTHING_ENABLED;
         defaultSps.chromaFormatIdc = STD_VIDEO_H265_CHROMA_FORMAT_IDC_420;
         defaultSps.pictureWidthInLumaSamples = session.m_Desc.width;
         defaultSps.pictureHeightInLumaSamples = session.m_Desc.height;
@@ -353,7 +353,7 @@ NRI_INLINE Result VideoSessionParametersVK::CreateH265(VideoSessionVK& session) 
         defaultSps.profileTierLevel = defaultVps.profileTierLevel;
         defaultSps.decPicBufMgr = defaultVps.decPicBufMgr;
 
-        defaultPps.flags = VideoH265PictureParameterSetBits::LOOP_FILTER_ACROSS_SLICES_ENABLED;
+        defaultPps.flags = VideoH265PictureParameterSetBits::LOOP_FILTER_ACROSS_SLICES_ENABLED | VideoH265PictureParameterSetBits::LISTS_MODIFICATION_PRESENT;
         defaultPps.log2ParallelMergeLevelMinus2 = 2;
 
         defaultParameters.videoParameterSets = &defaultVps;

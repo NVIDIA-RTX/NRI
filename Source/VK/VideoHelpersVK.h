@@ -592,8 +592,12 @@ inline StdVideoAV1FrameType GetVideoAV1FrameTypeVK(VideoEncodeFrameType frameTyp
 struct VideoEncodeHEVCReferenceListsVK {
     std::array<uint32_t, STD_VIDEO_H265_MAX_NUM_LIST_REF> list0 = {};
     std::array<uint32_t, STD_VIDEO_H265_MAX_NUM_LIST_REF> list1 = {};
+    std::array<uint32_t, STD_VIDEO_H265_MAX_NUM_LIST_REF> negative = {};
+    std::array<uint32_t, STD_VIDEO_H265_MAX_NUM_LIST_REF> positive = {};
     uint32_t list0Num = 0;
     uint32_t list1Num = 0;
+    uint32_t negativeNum = 0;
+    uint32_t positiveNum = 0;
     uint32_t failingReference = 0;
     bool missingDescriptor = false;
     bool invalidPictureOrderCount = false;
@@ -609,6 +613,17 @@ inline const VideoH265ReferenceDesc* FindVideoH265ReferenceDescVK(const VideoH26
     }
 
     return nullptr;
+}
+
+inline const VideoH265ReferenceDesc* GetVideoH265ReferenceDescVK(const VideoReference* references, const VideoH265ReferenceDesc* referenceDescs,
+    uint32_t referenceNum, uint32_t referenceIndex) {
+    if (!references || !referenceDescs || referenceIndex >= referenceNum)
+        return nullptr;
+
+    if (referenceDescs[referenceIndex].slot == references[referenceIndex].slot)
+        return &referenceDescs[referenceIndex];
+
+    return FindVideoH265ReferenceDescVK(referenceDescs, referenceNum, references[referenceIndex].slot);
 }
 
 inline const VideoH264DecodeReferenceDesc* FindVideoH264DecodeReferenceDescVK(const VideoH264DecodeReferenceDesc* references, uint32_t referenceNum, uint32_t slot) {
@@ -686,8 +701,20 @@ inline bool BuildVideoEncodeHEVCReferenceListsVK(const VideoReference* reference
         return false;
     }
 
+    auto appendRpsReference = [&](uint32_t referenceIndex, bool negative) {
+        auto& rps = negative ? lists.negative : lists.positive;
+        uint32_t& rpsNum = negative ? lists.negativeNum : lists.positiveNum;
+
+        for (uint32_t i = 0; i < rpsNum; i++) {
+            if (rps[i] == referenceIndex)
+                return;
+        }
+
+        rps[rpsNum++] = referenceIndex;
+    };
+
     for (uint32_t i = 0; i < referenceNum; i++) {
-        const VideoH265ReferenceDesc* referenceDesc = FindVideoH265ReferenceDescVK(referenceDescs, referenceNum, references[i].slot);
+        const VideoH265ReferenceDesc* referenceDesc = GetVideoH265ReferenceDescVK(references, referenceDescs, referenceNum, i);
         if (!referenceDesc) {
             lists.failingReference = i;
             lists.missingDescriptor = true;
@@ -702,19 +729,21 @@ inline bool BuildVideoEncodeHEVCReferenceListsVK(const VideoReference* reference
             }
 
             lists.list0[lists.list0Num++] = i;
+            appendRpsReference(i, true);
         } else if (referenceDesc->listIndex == 1) {
             if (frameType != VideoEncodeFrameType::B) {
                 lists.failingReference = i;
                 lists.invalidPictureOrderCount = true;
                 return false;
             }
-            if (referenceDesc->pictureOrderCount <= currentPictureOrderCount) {
+            if (referenceDesc->pictureOrderCount == currentPictureOrderCount) {
                 lists.failingReference = i;
                 lists.invalidPictureOrderCount = true;
                 return false;
             }
 
             lists.list1[lists.list1Num++] = i;
+            appendRpsReference(i, referenceDesc->pictureOrderCount < currentPictureOrderCount);
         } else {
             lists.failingReference = i;
             lists.invalidPictureOrderCount = true;
@@ -726,6 +755,16 @@ inline bool BuildVideoEncodeHEVCReferenceListsVK(const VideoReference* reference
         lists.invalidPictureOrderCount = true;
         return false;
     }
+
+    auto getPictureOrderCount = [&](uint32_t referenceIndex) {
+        const VideoH265ReferenceDesc* referenceDesc = GetVideoH265ReferenceDescVK(references, referenceDescs, referenceNum, referenceIndex);
+        return referenceDesc->pictureOrderCount;
+    };
+
+    std::sort(lists.negative.begin(), lists.negative.begin() + lists.negativeNum,
+        [&](uint32_t a, uint32_t b) { return getPictureOrderCount(a) > getPictureOrderCount(b); });
+    std::sort(lists.positive.begin(), lists.positive.begin() + lists.positiveNum,
+        [&](uint32_t a, uint32_t b) { return getPictureOrderCount(a) < getPictureOrderCount(b); });
 
     return true;
 }

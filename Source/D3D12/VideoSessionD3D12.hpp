@@ -4,6 +4,8 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
     if (videoSessionDesc.width == 0 || videoSessionDesc.height == 0 || videoSessionDesc.format == Format::UNKNOWN)
         return Result::INVALID_ARGUMENT;
 
+    m_BFrameSupported = false;
+
     if (videoSessionDesc.type == VideoSessionType::DECODE) {
         ComPtr<ID3D12VideoDevice> videoDevice;
         HRESULT hr = m_Device->QueryInterface(IID_PPV_ARGS(&videoDevice)); // TODO: use "QueryLatestInterface"
@@ -235,6 +237,8 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
                 NRI_REPORT_WARNING(&m_Device, "D3D12 video encoder support requires reference-only reconstructed pictures, which are not exposed by the current NRIVideo texture usage flags");
                 return Result::UNSUPPORTED;
             }
+
+            m_BFrameSupported = videoSessionDesc.maxReferenceNum > 1;
         } else {
             D3D12_FEATURE_DATA_VIDEO_ENCODER_SUPPORT encoderSupport = {};
             encoderSupport.Codec = codec;
@@ -260,6 +264,8 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
                 NRI_REPORT_WARNING(&m_Device, "D3D12 video encoder support requires reference-only reconstructed pictures, which are not exposed by the current NRIVideo texture usage flags");
                 return Result::UNSUPPORTED;
             }
+
+            m_BFrameSupported = videoSessionDesc.maxReferenceNum > 1;
         }
 
         D3D12_VIDEO_ENCODER_DESC encoderDesc = {};

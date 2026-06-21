@@ -16,6 +16,11 @@
 - Generate valid VPS/SPS/PPS descriptors and serialize Annex-B headers with `WriteVideoAnnexBParameterSetsShared`.
 - Do not treat H.265 as covered by the H.264 FFmpeg smoke path; it needs codec-specific session parameters, picture syntax, and decode input assembly.
 
+## Vulkan H.265 Encode Follow-Ups
+
+- Investigate non-fatal NVIDIA parser warnings from NRISamples `VideoEncodeDecode` Vulkan H.265 inter-frame smoke runs. `Invalid slice segment address` is still printed for some P/B CQP and lossless cases even though encode/decode completes and the smoke script passes.
+- Clean up the debug-validation preview layout warning where `VideoReconstructedTexture` can remain in `VK_IMAGE_LAYOUT_VIDEO_ENCODE_DPB_KHR` while a graphics descriptor expects `VK_IMAGE_LAYOUT_GENERAL`.
+
 ## Vulkan Video Test Isolation
 
 - Re-check whether repeated video device/session creation and teardown leaves process-global Vulkan driver state behind.

@@ -315,12 +315,10 @@ static inline D3D12_RESOURCE_STATES GetResourceStates(AccessBits accessBits, D3D
 }
 
 static inline bool HasVideoResourceState(D3D12_RESOURCE_STATES resourceStates) {
-
     return (resourceStates & (D3D12_RESOURCE_STATE_VIDEO_DECODE_READ | D3D12_RESOURCE_STATE_VIDEO_DECODE_WRITE | D3D12_RESOURCE_STATE_VIDEO_ENCODE_READ | D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE)) != 0;
 }
 
 static inline void SetTransitionResourceBarrier(ID3D12Resource* resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after, D3D12_RESOURCE_BARRIER& resourceBarrier, uint32_t subresource) {
-
     resourceBarrier = {};
     resourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     resourceBarrier.Transition.pResource = resource;
@@ -334,7 +332,6 @@ static uint32_t AddResourceBarrier(D3D12_COMMAND_LIST_TYPE commandListType, ID3D
     const D3D12_RESOURCE_STATES resourceStateAfter = GetResourceStates(after, commandListType);
 
     if (resourceStateBefore == resourceStateAfter) {
-
         if (resourceStateBefore != D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
             return 0;
 
@@ -362,7 +359,6 @@ static uint32_t AddVideoBufferResourceBarriers(D3D12_COMMAND_LIST_TYPE commandLi
 }
 
 static inline bool HasVideoBufferUsage(BufferUsageBits usage) {
-
     return usage & (BufferUsageBits::VIDEO_DECODE | BufferUsageBits::VIDEO_ENCODE);
 }
 
@@ -1365,12 +1361,15 @@ NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeDesc& videoDeco
 }
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-inline bool IsVideoEncodeFrameTypeSupportedByD3D12(VideoCodec codec, VideoEncodeFrameType frameType) {
-    return frameType != VideoEncodeFrameType::B || codec == VideoCodec::H264 || codec == VideoCodec::H265;
+inline bool IsVideoEncodeFrameTypeSupportedByD3D12(VideoCodec codec, VideoEncodeFrameType frameType, bool isBFrameSupported) {
+    return frameType != VideoEncodeFrameType::B || ((codec == VideoCodec::H264 || codec == VideoCodec::H265) && isBFrameSupported);
 }
 
-inline bool IsVideoEncodePictureUsedAsReferenceD3D12(VideoCodec codec, uint32_t maxReferenceNum, bool hasReconstructedPicture, uint8_t av1RefreshFrameFlags) {
+inline bool IsVideoEncodePictureUsedAsReferenceD3D12(VideoCodec codec, VideoEncodeFrameType frameType, uint32_t maxReferenceNum, bool hasReconstructedPicture, uint8_t av1RefreshFrameFlags) {
     if (!maxReferenceNum || !hasReconstructedPicture)
+        return false;
+
+    if ((codec == VideoCodec::H264 || codec == VideoCodec::H265) && frameType == VideoEncodeFrameType::B)
         return false;
 
     return codec != VideoCodec::AV1 || av1RefreshFrameFlags != 0;
@@ -1613,8 +1612,8 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     VideoEncodePictureDesc pictureDesc = videoEncodeDesc.pictureDesc ? *videoEncodeDesc.pictureDesc : defaultPicture;
     if (videoEncodeDesc.flags & VideoEncodeBits::FORCE_KEY_FRAME)
         pictureDesc.frameType = VideoEncodeFrameType::IDR;
-    if (!IsVideoEncodeFrameTypeSupportedByD3D12(sessionDesc.codec, pictureDesc.frameType)) {
-        NRI_REPORT_ERROR(&m_Device, "D3D12 video encode sessions are configured for the no-B-frame parity target");
+    if (!IsVideoEncodeFrameTypeSupportedByD3D12(sessionDesc.codec, pictureDesc.frameType, session.m_BFrameSupported)) {
+        NRI_REPORT_ERROR(&m_Device, "D3D12 video encode session does not support the requested frame type");
         return;
     }
 
@@ -1940,7 +1939,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
         return;
     }
 
-    const bool isUsedAsReferencePicture = IsVideoEncodePictureUsedAsReferenceD3D12(sessionDesc.codec, sessionDesc.maxReferenceNum,
+    const bool isUsedAsReferencePicture = IsVideoEncodePictureUsedAsReferenceD3D12(sessionDesc.codec, pictureDesc.frameType, sessionDesc.maxReferenceNum,
         videoEncodeDesc.reconstructedPicture != nullptr, av1RefreshFrameFlags);
 
     if (isUsedAsReferencePicture)
@@ -1960,7 +1959,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
 
     bitstream.pBuffer = (ID3D12Resource*)dstBitstream;
     bitstream.FrameStartOffset = videoEncodeDesc.dstBitstream.offset;
-    if (videoEncodeDesc.reconstructedPicture) {
+    if (isUsedAsReferencePicture) {
         VideoPictureD3D12& reconstructedPicture = *(VideoPictureD3D12*)videoEncodeDesc.reconstructedPicture;
         output.ReconstructedPicture.pReconstructedPicture = (ID3D12Resource*)(*reconstructedPicture.m_Texture);
         output.ReconstructedPicture.ReconstructedPictureSubresource = reconstructedPicture.m_Subresource;
@@ -2830,7 +2829,6 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
 
         // Submit
         if (videoBufferResourceBarrierNum) {
-
             if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE)
                 GetVideoDecodeCommandList()->ResourceBarrier(videoBufferResourceBarrierNum, videoBufferResourceBarriers);
             else if (m_CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE)
@@ -2840,7 +2838,6 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
         }
 
         if (!barriersGroupsNum) {
-
             return;
         }
 

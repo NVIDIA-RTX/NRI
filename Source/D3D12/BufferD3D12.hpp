@@ -91,7 +91,6 @@ Result BufferD3D12::BindMemory(const MemoryD3D12& memory, uint64_t offset) {
     const bool useEnhancedBarriers = m_Device.GetVersion() >= 10 && m_Device.GetDesc().features.enhancedBarriers && !(m_Desc.usage & (BufferUsageBits::VIDEO_DECODE | BufferUsageBits::VIDEO_ENCODE));
 
     if (useEnhancedBarriers) {
-
         if (isCommitted) {
             HRESULT hr = m_Device->CreateCommittedResource3(&heapDesc.Properties, heapFlagsFixed, &desc1, initialLayout, nullptr, nullptr, NO_CASTABLE_FORMATS, IID_PPV_ARGS(&m_Buffer));
             NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device10::CreateCommittedResource3");

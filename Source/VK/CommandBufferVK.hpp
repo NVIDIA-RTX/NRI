@@ -668,11 +668,9 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
         h265Picture.pSliceSegmentOffsets = h265SliceSegmentOffsets;
         codecPictureInfo = &h265Picture;
 
-        if (desc.flags & VideoH265DecodePictureBits::REFERENCE) {
-            h265StdReference.PicOrderCntVal = desc.pictureOrderCount;
-            h265DpbSlot.pStdReferenceInfo = &h265StdReference;
-            setupReferenceInfo = &h265DpbSlot;
-        }
+        h265StdReference.PicOrderCntVal = desc.pictureOrderCount;
+        h265DpbSlot.pStdReferenceInfo = &h265StdReference;
+        setupReferenceInfo = &h265DpbSlot;
     } else if (session.m_Desc.codec == VideoCodec::AV1) {
         if (!videoDecodeDesc.av1PictureDesc) {
             NRI_REPORT_ERROR(&m_Device, "'av1PictureDesc' must be valid for AV1 decode sessions");
@@ -1017,7 +1015,7 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
             h265StdPicture.flags.pic_output_flag = true;
             h265StdPicture.flags.no_output_of_prior_pics_flag = pictureDesc.frameType == VideoEncodeFrameType::IDR;
             h265StdPicture.flags.short_term_ref_pic_set_sps_flag = false;
-            h265StdPicture.flags.slice_temporal_mvp_enabled_flag = pictureDesc.frameType != VideoEncodeFrameType::IDR;
+            h265StdPicture.flags.slice_temporal_mvp_enabled_flag = false;
             for (uint8_t& entry : h265ReferenceLists.RefPicList0)
                 entry = STD_VIDEO_H265_NO_REFERENCE_PICTURE;
             for (uint8_t& entry : h265ReferenceLists.RefPicList1)
@@ -1043,33 +1041,59 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
                 const uint32_t list1ReferenceNum = hevcLists.list1Num;
                 h265ReferenceLists.num_ref_idx_l0_active_minus1 = (uint8_t)(list0ReferenceNum - 1);
                 h265ReferenceLists.num_ref_idx_l1_active_minus1 = list1ReferenceNum ? (uint8_t)(list1ReferenceNum - 1) : 0;
+                auto findRpsIndex = [](const std::array<uint32_t, STD_VIDEO_H265_MAX_NUM_LIST_REF>& references, uint32_t referenceNum, uint32_t referenceIndex) {
+                    for (uint32_t i = 0; i < referenceNum; i++) {
+                        if (references[i] == referenceIndex)
+                            return i;
+                    }
+
+                    return STD_VIDEO_H265_MAX_NUM_LIST_REF;
+                };
+                auto getList0Entry = [&](uint32_t referenceIndex) {
+                    const uint32_t negativeIndex = findRpsIndex(hevcLists.negative, hevcLists.negativeNum, referenceIndex);
+                    if (negativeIndex != STD_VIDEO_H265_MAX_NUM_LIST_REF)
+                        return negativeIndex;
+
+                    return hevcLists.negativeNum + findRpsIndex(hevcLists.positive, hevcLists.positiveNum, referenceIndex);
+                };
+                auto getList1Entry = [&](uint32_t referenceIndex) {
+                    const uint32_t positiveIndex = findRpsIndex(hevcLists.positive, hevcLists.positiveNum, referenceIndex);
+                    if (positiveIndex != STD_VIDEO_H265_MAX_NUM_LIST_REF)
+                        return positiveIndex;
+
+                    return hevcLists.positiveNum + findRpsIndex(hevcLists.negative, hevcLists.negativeNum, referenceIndex);
+                };
                 for (uint32_t i = 0; i < list0ReferenceNum; i++) {
                     const uint32_t referenceIndex = hevcLists.list0[i];
                     h265ReferenceLists.RefPicList0[i] = (uint8_t)videoEncodeDesc.references[referenceIndex].slot;
-                    h265ReferenceLists.list_entry_l0[i] = (uint8_t)referenceIndex;
+                    h265ReferenceLists.list_entry_l0[i] = (uint8_t)getList0Entry(referenceIndex);
+                    h265ReferenceLists.flags.ref_pic_list_modification_flag_l0 |= h265ReferenceLists.list_entry_l0[i] != i;
                 }
                 for (uint32_t i = 0; i < list1ReferenceNum; i++) {
                     const uint32_t referenceIndex = hevcLists.list1[i];
                     h265ReferenceLists.RefPicList1[i] = (uint8_t)videoEncodeDesc.references[referenceIndex].slot;
-                    h265ReferenceLists.list_entry_l1[i] = (uint8_t)referenceIndex;
+                    h265ReferenceLists.list_entry_l1[i] = (uint8_t)getList1Entry(referenceIndex);
+                    h265ReferenceLists.flags.ref_pic_list_modification_flag_l1 |= h265ReferenceLists.list_entry_l1[i] != i;
                 }
                 h265StdPicture.pRefLists = &h265ReferenceLists;
-                h265ShortTermRefPicSet.num_negative_pics = (uint8_t)list0ReferenceNum;
-                h265ShortTermRefPicSet.used_by_curr_pic_s0_flag = (uint16_t)((1u << list0ReferenceNum) - 1u);
-                for (uint32_t i = 0; i < list0ReferenceNum; i++) {
-                    const uint32_t referenceIndex = hevcLists.list0[i];
-                    const VideoH265ReferenceDesc* referenceDesc = FindVideoH265ReferenceDescVK(videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, videoEncodeDesc.references[referenceIndex].slot);
+                h265ShortTermRefPicSet.num_negative_pics = (uint8_t)hevcLists.negativeNum;
+                h265ShortTermRefPicSet.used_by_curr_pic_s0_flag = (uint16_t)((1u << hevcLists.negativeNum) - 1u);
+                for (uint32_t i = 0; i < hevcLists.negativeNum; i++) {
+                    const uint32_t referenceIndex = hevcLists.negative[i];
+                    const VideoH265ReferenceDesc* referenceDesc = GetVideoH265ReferenceDescVK(videoEncodeDesc.references, videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, referenceIndex);
                     const int32_t referencePoc = referenceDesc->pictureOrderCount;
-                    const int32_t deltaPoc = std::max(1, pictureDesc.pictureOrderCount - referencePoc);
+                    const int32_t previousPoc = i ? GetVideoH265ReferenceDescVK(videoEncodeDesc.references, videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, hevcLists.negative[i - 1])->pictureOrderCount : pictureDesc.pictureOrderCount;
+                    const int32_t deltaPoc = std::max(1, previousPoc - referencePoc);
                     h265ShortTermRefPicSet.delta_poc_s0_minus1[i] = (uint16_t)(deltaPoc - 1);
                 }
-                h265ShortTermRefPicSet.num_positive_pics = (uint8_t)list1ReferenceNum;
-                h265ShortTermRefPicSet.used_by_curr_pic_s1_flag = (uint16_t)((1u << list1ReferenceNum) - 1u);
-                for (uint32_t i = 0; i < list1ReferenceNum; i++) {
-                    const uint32_t referenceIndex = hevcLists.list1[i];
-                    const VideoH265ReferenceDesc* referenceDesc = FindVideoH265ReferenceDescVK(videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, videoEncodeDesc.references[referenceIndex].slot);
+                h265ShortTermRefPicSet.num_positive_pics = (uint8_t)hevcLists.positiveNum;
+                h265ShortTermRefPicSet.used_by_curr_pic_s1_flag = (uint16_t)((1u << hevcLists.positiveNum) - 1u);
+                for (uint32_t i = 0; i < hevcLists.positiveNum; i++) {
+                    const uint32_t referenceIndex = hevcLists.positive[i];
+                    const VideoH265ReferenceDesc* referenceDesc = GetVideoH265ReferenceDescVK(videoEncodeDesc.references, videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, referenceIndex);
                     const int32_t referencePoc = referenceDesc->pictureOrderCount;
-                    const int32_t deltaPoc = std::max(1, referencePoc - pictureDesc.pictureOrderCount);
+                    const int32_t previousPoc = i ? GetVideoH265ReferenceDescVK(videoEncodeDesc.references, videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, hevcLists.positive[i - 1])->pictureOrderCount : pictureDesc.pictureOrderCount;
+                    const int32_t deltaPoc = std::max(1, referencePoc - previousPoc);
                     h265ShortTermRefPicSet.delta_poc_s1_minus1[i] = (uint16_t)(deltaPoc - 1);
                 }
                 h265StdPicture.pShortTermRefPicSet = &h265ShortTermRefPicSet;
@@ -1359,7 +1383,7 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
             h264References[i].pStdReferenceInfo = &h264StdReferences[i];
             referenceSlots[i].pNext = &h264References[i];
         } else if (session.m_Desc.codec == VideoCodec::H265) {
-            const VideoH265ReferenceDesc* referenceDesc = FindVideoH265ReferenceDescVK(videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, videoEncodeDesc.references[i].slot);
+            const VideoH265ReferenceDesc* referenceDesc = GetVideoH265ReferenceDescVK(videoEncodeDesc.references, videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, i);
             h265StdReferences[i] = {};
             h265StdReferences[i].flags.used_for_long_term_reference = referenceDesc && referenceDesc->longTerm;
             h265StdReferences[i].pic_type = referenceDesc ? GetVideoEncodeH265PictureTypeVK(referenceDesc->frameType) : STD_VIDEO_H265_PICTURE_TYPE_P;

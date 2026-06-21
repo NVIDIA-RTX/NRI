@@ -77,6 +77,7 @@ private:
 public: // TODO-VIDEO: FIXME
     uint32_t m_AV1FeatureFlags = 0;
     uint32_t m_RateControlModes = 0;
+    bool m_BFrameSupported = false;
 };
 
 } // namespace nri
