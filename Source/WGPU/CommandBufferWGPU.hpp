@@ -673,6 +673,8 @@ Result CommandBufferWGPU::Begin(const DescriptorPool* descriptorPool) {
     m_RenderHeight = 0;
     m_GraphicsDescriptorSets.clear();
     m_ComputeDescriptorSets.clear();
+    m_GraphicsDescriptorSetVersions.clear();
+    m_ComputeDescriptorSetVersions.clear();
     m_GraphicsDescriptorSetDirty.clear();
     m_ComputeDescriptorSetDirty.clear();
     m_RootDescriptorBindings.clear();
@@ -833,16 +835,22 @@ void CommandBufferWGPU::SetDescriptorSet(const SetDescriptorSetDesc& setDescript
     BindPoint bindPoint = setDescriptorSetDesc.bindPoint == BindPoint::INHERIT ? m_BindPoint : setDescriptorSetDesc.bindPoint;
     uint32_t bindGroupIndex = m_PipelineLayout ? m_PipelineLayout->GetDescriptorSetMapping(setDescriptorSetDesc.setIndex).bindGroupIndex : setDescriptorSetDesc.setIndex;
     Vector<const DescriptorSetWGPU*>& descriptorSets = bindPoint == BindPoint::COMPUTE ? m_ComputeDescriptorSets : m_GraphicsDescriptorSets;
+    Vector<uint64_t>& descriptorSetVersions = bindPoint == BindPoint::COMPUTE ? m_ComputeDescriptorSetVersions : m_GraphicsDescriptorSetVersions;
 
     if (bindGroupIndex >= descriptorSets.size())
         descriptorSets.resize(bindGroupIndex + 1);
+
+    if (bindGroupIndex >= descriptorSetVersions.size())
+        descriptorSetVersions.resize(bindGroupIndex + 1);
 
     Vector<uint8_t>& dirtySets = bindPoint == BindPoint::COMPUTE ? m_ComputeDescriptorSetDirty : m_GraphicsDescriptorSetDirty;
     if (bindGroupIndex >= dirtySets.size())
         dirtySets.resize(bindGroupIndex + 1, 0);
 
-    if (descriptorSets[bindGroupIndex] != &descriptorSet) {
+    uint64_t updateVersion = descriptorSet.GetUpdateVersion();
+    if (descriptorSets[bindGroupIndex] != &descriptorSet || descriptorSetVersions[bindGroupIndex] != updateVersion) {
         descriptorSets[bindGroupIndex] = &descriptorSet;
+        descriptorSetVersions[bindGroupIndex] = updateVersion;
         MarkDescriptorSetDirty(bindPoint, bindGroupIndex);
     }
 }
@@ -1689,13 +1697,14 @@ void CommandBufferWGPU::ResolveTexture(Texture& dstTexture, const TextureRegionD
     TextureRegionDesc dstWholeRegion = GetWholeTextureRegion(dstTextureDesc);
     const TextureRegionDesc& src = srcRegion ? *srcRegion : srcWholeRegion;
     const TextureRegionDesc& dst = dstRegion ? *dstRegion : dstWholeRegion;
+    WGPUExtent3D resolveSize = GetCopySize(srcTextureDesc, src);
+    uint32_t layerNum = srcTextureDesc.type == TextureType::TEXTURE_3D ? 1 : resolveSize.depthOrArrayLayers;
 
     WGPUTextureViewDescriptor srcViewDesc = WGPU_TEXTURE_VIEW_DESCRIPTOR_INIT;
     srcViewDesc.format = GetTextureFormat(srcTextureDesc.format);
     srcViewDesc.dimension = WGPUTextureViewDimension_2D;
     srcViewDesc.baseMipLevel = src.mipOffset;
     srcViewDesc.mipLevelCount = 1;
-    srcViewDesc.baseArrayLayer = src.layerOffset;
     srcViewDesc.arrayLayerCount = 1;
     srcViewDesc.aspect = GetTextureAspect(src.planes);
 
@@ -1704,28 +1713,32 @@ void CommandBufferWGPU::ResolveTexture(Texture& dstTexture, const TextureRegionD
     dstViewDesc.dimension = WGPUTextureViewDimension_2D;
     dstViewDesc.baseMipLevel = dst.mipOffset;
     dstViewDesc.mipLevelCount = 1;
-    dstViewDesc.baseArrayLayer = dst.layerOffset;
     dstViewDesc.arrayLayerCount = 1;
     dstViewDesc.aspect = GetTextureAspect(dst.planes);
 
-    WGPUTextureView srcView = wgpuTextureCreateView(srcTextureWGPU, &srcViewDesc);
-    WGPUTextureView dstView = wgpuTextureCreateView(dstTextureWGPU, &dstViewDesc);
+    for (uint32_t i = 0; i < layerNum; i++) {
+        srcViewDesc.baseArrayLayer = src.layerOffset + i;
+        dstViewDesc.baseArrayLayer = dst.layerOffset + i;
 
-    WGPURenderPassColorAttachment colorAttachment = WGPU_RENDER_PASS_COLOR_ATTACHMENT_INIT;
-    colorAttachment.view = srcView;
-    colorAttachment.resolveTarget = dstView;
-    colorAttachment.loadOp = WGPULoadOp_Load;
-    colorAttachment.storeOp = WGPUStoreOp_Discard;
+        WGPUTextureView srcView = wgpuTextureCreateView(srcTextureWGPU, &srcViewDesc);
+        WGPUTextureView dstView = wgpuTextureCreateView(dstTextureWGPU, &dstViewDesc);
 
-    WGPURenderPassDescriptor desc = WGPU_RENDER_PASS_DESCRIPTOR_INIT;
-    desc.colorAttachmentCount = 1;
-    desc.colorAttachments = &colorAttachment;
+        WGPURenderPassColorAttachment colorAttachment = WGPU_RENDER_PASS_COLOR_ATTACHMENT_INIT;
+        colorAttachment.view = srcView;
+        colorAttachment.resolveTarget = dstView;
+        colorAttachment.loadOp = WGPULoadOp_Load;
+        colorAttachment.storeOp = WGPUStoreOp_Discard;
 
-    WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(m_CommandEncoder, &desc);
-    wgpuRenderPassEncoderEnd(pass);
-    wgpuRenderPassEncoderRelease(pass);
-    wgpuTextureViewRelease(srcView);
-    wgpuTextureViewRelease(dstView);
+        WGPURenderPassDescriptor desc = WGPU_RENDER_PASS_DESCRIPTOR_INIT;
+        desc.colorAttachmentCount = 1;
+        desc.colorAttachments = &colorAttachment;
+
+        WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(m_CommandEncoder, &desc);
+        wgpuRenderPassEncoderEnd(pass);
+        wgpuRenderPassEncoderRelease(pass);
+        wgpuTextureViewRelease(srcView);
+        wgpuTextureViewRelease(dstView);
+    }
 }
 
 void CommandBufferWGPU::ClearStorage(const ClearStorageDesc& clearStorageDesc) {

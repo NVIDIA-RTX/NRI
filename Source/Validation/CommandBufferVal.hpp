@@ -573,6 +573,11 @@ NRI_INLINE void CommandBufferVal::ResolveTexture(Texture& dstTexture, const Text
     NRI_RETURN_ON_FAILURE(&m_Device, resolveOp < ResolveOp::MAX_NUM, ReturnVoid(), "'resolveOp' is invalid");
 
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
+    const TextureDesc& dstDesc = ((TextureVal&)dstTexture).GetDesc();
+    const TextureDesc& srcDesc = ((TextureVal&)srcTexture).GetDesc();
+    NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetFormatSupport(dstDesc.format) & FormatSupportBits::MULTISAMPLE_RESOLVE, ReturnVoid(), "'dstTexture' format does not support 'FormatSupportBits::MULTISAMPLE_RESOLVE'");
+    NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetFormatSupport(srcDesc.format) & FormatSupportBits::MULTISAMPLE_RESOLVE, ReturnVoid(), "'srcTexture' format does not support 'FormatSupportBits::MULTISAMPLE_RESOLVE'");
+
     if (!deviceDesc.features.regionResolve)
         NRI_RETURN_ON_FAILURE(&m_Device, !dstRegion && !srcRegion, ReturnVoid(), "region(s) are specified, but 'features.regionResolve' is false");
     if (!deviceDesc.features.resolveOpMinMax)

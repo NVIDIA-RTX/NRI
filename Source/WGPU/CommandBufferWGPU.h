@@ -57,6 +57,8 @@ struct CommandBufferWGPU final : public DebugNameBase {
         : m_Device(device)
         , m_GraphicsDescriptorSets(device.GetStdAllocator())
         , m_ComputeDescriptorSets(device.GetStdAllocator())
+        , m_GraphicsDescriptorSetVersions(device.GetStdAllocator())
+        , m_ComputeDescriptorSetVersions(device.GetStdAllocator())
         , m_GraphicsDescriptorSetDirty(device.GetStdAllocator())
         , m_ComputeDescriptorSetDirty(device.GetStdAllocator())
         , m_ClearPipelines(device.GetStdAllocator())
@@ -150,6 +152,8 @@ private:
     DeviceWGPU& m_Device;
     Vector<const DescriptorSetWGPU*> m_GraphicsDescriptorSets;
     Vector<const DescriptorSetWGPU*> m_ComputeDescriptorSets;
+    Vector<uint64_t> m_GraphicsDescriptorSetVersions;
+    Vector<uint64_t> m_ComputeDescriptorSetVersions;
     Vector<uint8_t> m_GraphicsDescriptorSetDirty;
     Vector<uint8_t> m_ComputeDescriptorSetDirty;
     Vector<ClearPipelineWGPU> m_ClearPipelines;

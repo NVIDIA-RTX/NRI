@@ -80,10 +80,11 @@ Triangle.exe -a WGPU --timeLimit=8 --debugNRI --debugAPI
 - Finish descriptor array support:
   - fixed-size `DescriptorRangeBits::ARRAY` maps to one native binding with an array size, matching the Vulkan backend's `descriptorCount = range.descriptorNum`;
   - WGPU requests native binding-array features opportunistically;
-  - `PARTIALLY_BOUND` and `VARIABLE_SIZED_ARRAY` are rejected by Validation through existing `DeviceDesc` tiers;
-  - fixed arrays still need a clear capability story because WGPU support depends on optional native binding-array features and NRI currently has no dedicated cap for this.
+  - fixed arrays are not gated by `DeviceDesc` / Validation today, so adapters without WGPU binding-array features can fail during backend layout creation;
+  - `VARIABLE_SIZED_ARRAY` is rejected by Validation through existing `DeviceDesc` tiers;
+  - `PARTIALLY_BOUND` still needs complete descriptor-set allocation/update behavior or a clearer capability story.
 - Decide how to represent true update-after-set descriptors:
-  - WGPU bind groups are immutable after command encoding;
+  - WGPU bind groups are immutable after command recording;
   - same-set rebind after a descriptor update is handled by tracking descriptor-set update versions during command recording;
   - descriptor updates after `CmdSetDescriptorSet` without rebinding still need a `DeviceDesc` cap or API convention before `ALLOW_UPDATE_AFTER_SET` can be advertised accurately.
 - Decide how to represent indirect-count draws:

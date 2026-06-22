@@ -957,6 +957,7 @@ NriBits(DescriptorRangeBits, uint8_t,
     VARIABLE_SIZED_ARRAY                    = NriBit(2),    // descriptors in range are organized into a variable-sized array, which size is specified via "variableDescriptorNum" argument of "AllocateDescriptorSets" function
 
     // https://docs.vulkan.org/samples/latest/samples/extensions/descriptor_indexing/README.html#_update_after_bind_streaming_descriptors_concurrently
+    // WGPU: true "update after set" is unsupported because bind groups are immutable; "update + rebind" can work, but previously recorded commands can't be patched
     ALLOW_UPDATE_AFTER_SET                  = NriBit(3)     // descriptors in range can be updated after "CmdSetDescriptorSet" but before "QueueSubmit", also works as "DATA_VOLATILE"
 );
 

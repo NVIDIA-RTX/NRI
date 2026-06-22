@@ -6,6 +6,7 @@ NRI_INLINE void DescriptorPoolVal::Reset() {
     m_ConstantBufferNum = 0;
     m_TextureNum = 0;
     m_StorageTextureNum = 0;
+    m_InputAttachmentNum = 0;
     m_BufferNum = 0;
     m_StorageBufferNum = 0;
     m_StructuredBufferNum = 0;

@@ -393,6 +393,7 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
 
             NRI_RETURN_ON_FAILURE(this, range.descriptorNum > 0, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].descriptorNum' is 0", i, j);
             NRI_RETURN_ON_FAILURE(this, range.descriptorType < DescriptorType::MAX_NUM, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].descriptorType' is invalid", i, j);
+            NRI_RETURN_ON_FAILURE(this, !(range.flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY) || deviceDesc.tiers.bindless != 0, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].flags' has 'VARIABLE_SIZED_ARRAY', but 'tiers.bindless' is 0", i, j);
 
             if (range.shaderStages != StageBits::ALL) {
                 const uint32_t filteredVisibilityMask = range.shaderStages & pipelineLayoutDesc.shaderStages;

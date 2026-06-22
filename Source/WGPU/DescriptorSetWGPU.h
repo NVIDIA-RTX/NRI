@@ -48,6 +48,10 @@ struct DescriptorSetWGPU final : public DebugNameBase {
         return m_Device;
     }
 
+    inline uint64_t GetUpdateVersion() const {
+        return m_UpdateVersion;
+    }
+
     void UpdateRange(uint32_t rangeIndex, uint32_t baseDescriptor, const Descriptor* const* descriptors, uint32_t descriptorNum);
     void CopyRangeFrom(uint32_t dstRangeIndex, uint32_t dstBaseDescriptor, const DescriptorSetWGPU& srcDescriptorSet, uint32_t srcRangeIndex, uint32_t srcBaseDescriptor, uint32_t descriptorNum);
     void FinalizeUpdate() const;
