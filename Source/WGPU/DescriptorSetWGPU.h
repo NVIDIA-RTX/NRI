@@ -5,17 +5,17 @@
 namespace nri {
 
 struct DescriptorRangeMappingWGPU {
-    DescriptorType type = DescriptorType::TEXTURE;
+    WGPUShaderStage visibility = WGPUShaderStage_None;
     uint32_t descriptorOffset = 0;
     uint32_t bindingBase = 0;
     uint32_t descriptorNum = 0;
-    WGPUShaderStage visibility = WGPUShaderStage_None;
     WGPUTextureSampleType textureSampleType = WGPUTextureSampleType_Float;
     WGPUTextureViewDimension textureViewDimension = WGPUTextureViewDimension_2D;
     WGPUBool textureMultisampled = WGPU_FALSE;
     WGPUTextureFormat storageTextureFormat = WGPUTextureFormat_Undefined;
     WGPUTextureViewDimension storageTextureViewDimension = WGPUTextureViewDimension_2D;
     WGPUStorageTextureAccess storageTextureAccess = WGPUStorageTextureAccess_WriteOnly;
+    DescriptorType type = DescriptorType::TEXTURE;
     bool isArray = false;
 };
 

@@ -199,7 +199,7 @@ Result PipelineLayoutWGPU::Create(const PipelineLayoutDesc& pipelineLayoutDesc) 
             if (!sampler)
                 return Result::FAILURE;
 
-            m_RootSamplers.push_back({sampler, binding, GetShaderStageFlags(rootSampler.shaderStages)});
+            m_RootSamplers.push_back({sampler, GetShaderStageFlags(rootSampler.shaderStages), binding});
 
             bindGroupEntries[i] = WGPU_BIND_GROUP_ENTRY_INIT;
             bindGroupEntries[i].binding = binding;
@@ -220,7 +220,7 @@ Result PipelineLayoutWGPU::Create(const PipelineLayoutDesc& pipelineLayoutDesc) 
             FillLayoutEntry(entry, range, binding);
             entry.buffer.hasDynamicOffset = hasDynamicOffset ? WGPU_TRUE : WGPU_FALSE;
 
-            m_RootDescriptors.push_back({rootDescriptor.descriptorType, binding, uint32_t(-1), GetShaderStageFlags(rootDescriptor.shaderStages)});
+            m_RootDescriptors.push_back({GetShaderStageFlags(rootDescriptor.shaderStages), binding, uint32_t(-1), rootDescriptor.descriptorType});
         }
 
         for (;;) {

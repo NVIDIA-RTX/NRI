@@ -47,10 +47,10 @@ private:
 
 private:
     DeviceWGPU& m_Device;
+    Vector<DescriptorSetMappingWGPU> m_SetMappings;
     WGPURenderPipeline m_RenderPipeline = nullptr;
     WGPUComputePipeline m_ComputePipeline = nullptr;
     WGPUPipelineLayout m_PipelineLayout = nullptr;
-    Vector<DescriptorSetMappingWGPU> m_SetMappings;
     PipelineLayoutWGPU* m_PipelineLayoutWGPU = nullptr;
 };
 

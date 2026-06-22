@@ -45,8 +45,8 @@ struct QueryPoolWGPU final : public DebugNameBase {
 
 private:
     DeviceWGPU& m_Device;
-    QueryPoolDesc m_Desc = {};
     WGPUQuerySet m_QuerySet = nullptr;
+    QueryPoolDesc m_Desc = {};
     uint32_t m_QuerySize = 0;
 };
 

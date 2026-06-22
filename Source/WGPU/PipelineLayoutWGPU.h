@@ -6,15 +6,15 @@ namespace nri {
 
 struct RootSamplerMappingWGPU {
     WGPUSampler sampler = nullptr;
-    uint32_t binding = 0;
     WGPUShaderStage visibility = WGPUShaderStage_None;
+    uint32_t binding = 0;
 };
 
 struct RootDescriptorMappingWGPU {
-    DescriptorType type = DescriptorType::CONSTANT_BUFFER;
+    WGPUShaderStage visibility = WGPUShaderStage_None;
     uint32_t binding = 0;
     uint32_t dynamicOffsetIndex = uint32_t(-1);
-    WGPUShaderStage visibility = WGPUShaderStage_None;
+    DescriptorType type = DescriptorType::CONSTANT_BUFFER;
 };
 
 struct PipelineLayoutWGPU final : public DebugNameBase {

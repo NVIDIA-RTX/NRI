@@ -40,12 +40,12 @@ private:
     DeviceWGPU& m_Device;
     Vector<TextureWGPU*> m_Textures;
     WGPUSurface m_Surface = nullptr;
-    Format m_Format = Format::UNKNOWN;
-    Dim_t m_Width = 0;
-    Dim_t m_Height = 0;
     void* m_Hwnd = nullptr;
     uint32_t m_TextureIndex = 0;
     uint32_t m_CurrentTextureIndex = uint32_t(-1);
+    Dim_t m_Width = 0;
+    Dim_t m_Height = 0;
+    Format m_Format = Format::UNKNOWN;
 };
 
 } // namespace nri

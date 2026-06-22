@@ -49,8 +49,8 @@ private:
 private:
     DeviceWGPU& m_Device;
     WGPUTexture m_Texture = nullptr;
-    TextureDesc m_Desc = {};
     uint64_t m_Version = 1;
+    TextureDesc m_Desc = {};
     bool m_OwnsTexture = true;
     bool m_IsSurfaceTexture = false;
 };

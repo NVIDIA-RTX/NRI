@@ -7,14 +7,14 @@ namespace nri {
 constexpr uint32_t COLOR_ATTACHMENT_MAX_NUM_WGPU = 8;
 
 struct ClearPipelineWGPU {
-    std::array<Format, COLOR_ATTACHMENT_MAX_NUM_WGPU> colorFormats = {};
-    Format depthStencilFormat = Format::UNKNOWN;
-    uint32_t colorNum = 0;
-    uint32_t colorAttachmentIndex = 0;
-    PlaneBits planes = PlaneBits::NONE;
-    Sample_t sampleNum = 1;
     WGPUPipelineLayout layout = nullptr;
     WGPURenderPipeline pipeline = nullptr;
+    uint32_t colorNum = 0;
+    uint32_t colorAttachmentIndex = 0;
+    std::array<Format, COLOR_ATTACHMENT_MAX_NUM_WGPU> colorFormats = {};
+    Format depthStencilFormat = Format::UNKNOWN;
+    PlaneBits planes = PlaneBits::NONE;
+    Sample_t sampleNum = 1;
 };
 
 struct ClearStorageBufferPipelineWGPU {
@@ -24,11 +24,11 @@ struct ClearStorageBufferPipelineWGPU {
 };
 
 struct ClearStorageTexturePipelineWGPU {
-    Format format = Format::UNKNOWN;
-    WGPUTextureViewDimension dimension = WGPUTextureViewDimension_Undefined;
     WGPUBindGroupLayout bindGroupLayout = nullptr;
     WGPUPipelineLayout pipelineLayout = nullptr;
     WGPUComputePipeline pipeline = nullptr;
+    WGPUTextureViewDimension dimension = WGPUTextureViewDimension_Undefined;
+    Format format = Format::UNKNOWN;
 };
 
 struct RootConstantStateWGPU {
@@ -164,12 +164,12 @@ private:
     RootConstantStateWGPU m_ComputeRootConstants;
     Vector<AnnotationScopeWGPU> m_AnnotationScopes;
     Vector<WGPUBuffer> m_TemporaryBuffers;
+    ClearStorageBufferPipelineWGPU m_ClearStorageBufferPipeline = {};
     WGPUCommandEncoder m_CommandEncoder = nullptr;
     WGPUCommandBuffer m_CommandBuffer = nullptr;
     WGPURenderPassEncoder m_RenderPass = nullptr;
     WGPUComputePassEncoder m_ComputePass = nullptr;
     WGPUTextureView m_RenderDepthStencilView = nullptr;
-    ClearStorageBufferPipelineWGPU m_ClearStorageBufferPipeline = {};
     WGPUBindGroup m_GraphicsRootBindGroup = nullptr;
     WGPUBindGroup m_ComputeRootBindGroup = nullptr;
     const PipelineLayoutWGPU* m_PipelineLayout = nullptr;
@@ -178,21 +178,21 @@ private:
     WGPURenderPipeline m_RenderPipeline = nullptr;
     WGPUComputePipeline m_ComputePipeline = nullptr;
     WGPUComputePipeline m_BoundComputePipeline = nullptr;
-    BindPoint m_BindPoint = BindPoint::GRAPHICS;
-    std::array<Format, COLOR_ATTACHMENT_MAX_NUM_WGPU> m_RenderColorFormats = {};
-    Format m_RenderDepthStencilFormat = Format::UNKNOWN;
-    uint32_t m_RenderColorNum = 0;
-    Sample_t m_RenderSampleNum = 1;
-    Dim_t m_RenderWidth = 0;
-    Dim_t m_RenderHeight = 0;
     Viewport m_Viewport = {};
     Rect m_Scissor = {};
-    uint8_t m_StencilReference = 0;
+    uint32_t m_RenderColorNum = 0;
     uint32_t m_DeferredEncoderAnnotationPopNum = 0;
     uint32_t m_GraphicsDirtyDescriptorSetMin = uint32_t(-1);
     uint32_t m_GraphicsDirtyDescriptorSetMax = 0;
     uint32_t m_ComputeDirtyDescriptorSetMin = uint32_t(-1);
     uint32_t m_ComputeDirtyDescriptorSetMax = 0;
+    std::array<Format, COLOR_ATTACHMENT_MAX_NUM_WGPU> m_RenderColorFormats = {};
+    Format m_RenderDepthStencilFormat = Format::UNKNOWN;
+    Dim_t m_RenderWidth = 0;
+    Dim_t m_RenderHeight = 0;
+    Sample_t m_RenderSampleNum = 1;
+    uint8_t m_StencilReference = 0;
+    BindPoint m_BindPoint = BindPoint::GRAPHICS;
     bool m_GraphicsRootGroupDirty = true;
     bool m_ComputeRootGroupDirty = true;
     bool m_HasViewport = false;
