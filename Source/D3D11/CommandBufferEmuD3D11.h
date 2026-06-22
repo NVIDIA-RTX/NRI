@@ -4,7 +4,6 @@
 
 namespace nri {
 
-struct PipelineD3D11;
 typedef Vector<uint32_t> PushBuffer;
 
 struct CommandBufferEmuD3D11 final : public CommandBufferBase {

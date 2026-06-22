@@ -99,7 +99,8 @@ NriBits(GraphicsAPI, uint8_t,
     NONE    = NriBit(0), // Supports everything, does nothing, returns dummy non-NULL objects and ~0-filled descs, available if "NRI_ENABLE_NONE_SUPPORT = ON" in CMake
     D3D11   = NriBit(1), // Direct3D 11 (feature set 11.1), available if "NRI_ENABLE_D3D11_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm)
     D3D12   = NriBit(2), // Direct3D 12 (D3D12_SDK_VERSION 4 or 619+), available if "NRI_ENABLE_D3D12_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/)
-    VK      = NriBit(3)  // Vulkan 1.4, 1.3 or 1.2+ (can be used on MacOS via MoltenVK), available if "NRI_ENABLE_VK_SUPPORT = ON" in CMake (https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html)
+    VK      = NriBit(3), // Vulkan 1.4+, 1.3++ or 1.2+++ (can be used on MacOS via MoltenVK), available if "NRI_ENABLE_VK_SUPPORT = ON" in CMake (https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html)
+    WGPU    = NriBit(4)  // WebGPU via wgpu-native, available if "NRI_ENABLE_WGPU_SUPPORT = ON" in CMake (https://github.com/gfx-rs/wgpu-native)
 );
 
 NriEnum(Result, int8_t,
@@ -358,30 +359,31 @@ NriBits(PlaneBits, uint8_t,
 // A bit represents a feature, supported by a format
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_feature_data_format_support
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkFormatFeatureFlagBits2.html
+// WGPU: typed buffer views are unsupported; storage textures cannot be multisampled
 NriBits(FormatSupportBits, uint16_t,
-    UNSUPPORTED                     = 0,
+    UNSUPPORTED                     = 0,            // format is unsupported
 
     // Texture
-    TEXTURE                         = NriBit(0),
-    STORAGE_TEXTURE                 = NriBit(1),
-    STORAGE_TEXTURE_ATOMICS         = NriBit(2),    // other than Load / Store
-    COLOR_ATTACHMENT                = NriBit(3),
-    DEPTH_STENCIL_ATTACHMENT        = NriBit(4),
-    BLEND                           = NriBit(5),
-    MULTISAMPLE_2X                  = NriBit(6),
-    MULTISAMPLE_4X                  = NriBit(7),
-    MULTISAMPLE_8X                  = NriBit(8),
-    MULTISAMPLE_RESOLVE             = NriBit(9),
+    TEXTURE                         = NriBit(0),    // sampled texture view
+    STORAGE_TEXTURE                 = NriBit(1),    // storage texture view
+    STORAGE_TEXTURE_ATOMICS         = NriBit(2),    // storage texture atomics other than Load / Store
+    COLOR_ATTACHMENT                = NriBit(3),    // color attachment view
+    DEPTH_STENCIL_ATTACHMENT        = NriBit(4),    // depth-stencil attachment view
+    BLEND                           = NriBit(5),    // color attachment blending
+    MULTISAMPLE_2X                  = NriBit(6),    // 2x multisampled texture
+    MULTISAMPLE_4X                  = NriBit(7),    // 4x multisampled texture
+    MULTISAMPLE_8X                  = NriBit(8),    // 8x multisampled texture
+    MULTISAMPLE_RESOLVE             = NriBit(9),    // resolve source/destination
 
     // Buffer
-    BUFFER                          = NriBit(10),
-    STORAGE_BUFFER                  = NriBit(11),
-    STORAGE_BUFFER_ATOMICS          = NriBit(12),   // other than Load / Store
-    VERTEX_BUFFER                   = NriBit(13),
+    BUFFER                          = NriBit(10),   // typed buffer view
+    STORAGE_BUFFER                  = NriBit(11),   // typed storage buffer view
+    STORAGE_BUFFER_ATOMICS          = NriBit(12),   // typed storage buffer atomics other than Load / Store
+    VERTEX_BUFFER                   = NriBit(13),   // vertex buffer attribute
 
     // Texture / buffer
-    STORAGE_READ_WITHOUT_FORMAT     = NriBit(14),
-    STORAGE_WRITE_WITHOUT_FORMAT    = NriBit(15)
+    STORAGE_READ_WITHOUT_FORMAT     = NriBit(14),   // storage read with unknown format
+    STORAGE_WRITE_WITHOUT_FORMAT    = NriBit(15)    // storage write with unknown format
 );
 
 #pragma endregion
@@ -690,6 +692,7 @@ NriStruct(TextureDesc) {
 // - VK: buffers are always created with sharing mode "CONCURRENT" to match D3D12 spec
 // - "structureStride" values:
 //   - 0  - allows only "typed" views
+//          WGPU: typed buffer views are unsupported
 //   - 4  - allows "typed", "byte address" and "structured" views
 //          D3D11: allows to create multiple "structured" views for a single resource, disobeying the spec
 //   - >4 - allows only "structured" views
@@ -819,6 +822,8 @@ NriEnum(AddressMode, uint8_t,
     REPEAT,
     MIRRORED_REPEAT,
     CLAMP_TO_EDGE,
+
+    // WGPU: unsupported
     CLAMP_TO_BORDER,
     MIRROR_CLAMP_TO_EDGE
 );
@@ -880,8 +885,8 @@ NriStruct(BufferViewDesc) {
     Nri(BufferView) type;
     uint64_t offset;                        // expects "memoryAlignment.bufferShaderResourceOffset" for shader resources
     uint64_t size;                          // can be "WHOLE_SIZE"
-    NriOptional Nri(Format) format;         // needed for typed views, i.e. "BUFFER" and "BUFFER_STORAGE"
-    NriOptional uint32_t structureStride;   // needed for structured views, i.e. "STRUCTURED_BUFFER" and "STRUCTURED_BUFFER_STORAGE" (= "BufferDesc::structureStride", if not provided)
+    NriOptional Nri(Format) format;         // needed for typed views, i.e. "BUFFER" and "STORAGE_BUFFER"
+    NriOptional uint32_t structureStride;   // needed for structured views, i.e. "STRUCTURED_BUFFER" and "STORAGE_STRUCTURED_BUFFER" (= "BufferDesc::structureStride", if not provided)
 };
 
 NriStruct(AddressModes) {
@@ -903,7 +908,7 @@ NriStruct(SamplerDesc) {
     float mipMax;
     Nri(AddressModes) addressModes;
     Nri(CompareOp) compareOp;
-    Nri(Color) borderColor;
+    Nri(Color) borderColor; // used only with "AddressMode::CLAMP_TO_BORDER"
     bool isInteger;
     bool unnormalizedCoordinates; // requires "shaderFeatures.unnormalizedCoordinates"
 };
@@ -952,6 +957,7 @@ NriBits(DescriptorRangeBits, uint8_t,
     VARIABLE_SIZED_ARRAY                    = NriBit(2),    // descriptors in range are organized into a variable-sized array, which size is specified via "variableDescriptorNum" argument of "AllocateDescriptorSets" function
 
     // https://docs.vulkan.org/samples/latest/samples/extensions/descriptor_indexing/README.html#_update_after_bind_streaming_descriptors_concurrently
+    // WGPU: true "update after set" is unsupported because bind groups are immutable; "update + rebind" can work, but previously recorded commands can't be patched
     ALLOW_UPDATE_AFTER_SET                  = NriBit(3)     // descriptors in range can be updated after "CmdSetDescriptorSet" but before "QueueSubmit", also works as "DATA_VOLATILE"
 );
 
@@ -1163,6 +1169,8 @@ NriEnum(Topology, uint8_t,
     LINE_STRIP,
     TRIANGLE_LIST,
     TRIANGLE_STRIP,
+
+    // WGPU: unsupported
     LINE_LIST_WITH_ADJACENCY,
     LINE_STRIP_WITH_ADJACENCY,
     TRIANGLE_LIST_WITH_ADJACENCY,
@@ -1592,10 +1600,10 @@ NriStruct(RenderingDesc) {
 // https://microsoft.github.io/DirectX-Specs/d3d/CountersAndQueries.html
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkQueryType.html
 NriEnum(QueryType, uint8_t,
-    TIMESTAMP,                              // uint64_t
-    TIMESTAMP_COPY_QUEUE,                   // uint64_t (requires "features.copyQueueTimestamp"), same as "TIMESTAMP" but for a "COPY" queue
-    OCCLUSION,                              // uint64_t
-    PIPELINE_STATISTICS,                    // see "PipelineStatisticsDesc" (requires "features.pipelineStatistics")
+    TIMESTAMP,                              // uint64_t, requires "features.timestamp" (for "GRAPHICS" and "COMPUTE" queues)
+    TIMESTAMP_COPY_QUEUE,                   // uint64_t, requires "features.timestampCopyQueue" (for a "COPY" queue)
+    OCCLUSION,                              // uint64_t, requires "features.occlusion"
+    PIPELINE_STATISTICS,                    // see "PipelineStatisticsDesc", requires "features.pipelineStatistics"
     ACCELERATION_STRUCTURE_SIZE,            // uint64_t, requires "features.rayTracing"
     ACCELERATION_STRUCTURE_COMPACTED_SIZE,  // uint64_t, requires "features.rayTracing"
     MICROMAP_COMPACTED_SIZE                 // uint64_t, requires "features.micromap"
@@ -2084,11 +2092,14 @@ NriStruct(DeviceDesc) {
         // Shader bytecode
         bool shaderBytecodeDXBC;                                  // DXBC can be passed to "ShaderDesc::bytecode"
         bool shaderBytecodeDXIL;                                  // DXIL can be passed to "ShaderDesc::bytecode"
-        bool shaderBytecodeSPIRV;                                 // SPIRV can be passed to "ShaderDesc::bytecode"
+        bool shaderBytecodeSPIRV;                                 // SPIRV can be passed to "ShaderDesc::bytecode", WGPU expects Vulkan 1.2 environment
+        bool shaderBytecodeWGSL;                                  // WGSL can be passed to "ShaderDesc::bytecode"
 
-        // Time stamps
-        bool copyQueueTimestamp;                                  // see "QueryType::TIMESTAMP_COPY_QUEUE"
-        bool calibratedTimestamps;                                // see "GetCalibratedTimestamps" (unsupported only in D3D11)
+        // Queries
+        bool occlusion;                                           // see "QueryType::OCCLUSION"
+        bool timestamp;                                           // see "QueryType::TIMESTAMP"
+        bool timestampCopyQueue;                                  // see "QueryType::TIMESTAMP_COPY_QUEUE"
+        bool calibratedTimestamps;                                // see "GetCalibratedTimestamps"
 
         // Shading rate
         bool additionalShadingRates;                              // see "ShadingRate"
@@ -2105,6 +2116,8 @@ NriStruct(DeviceDesc) {
         // Other
         bool getMemoryDesc2;                                      // "GetXxxMemoryDesc2" support (VK: requires "maintenance4", D3D: supported)
         bool enhancedBarriers;                                    // VK: supported, D3D12: requires "AgilitySDK", D3D11: unsupported
+        bool tesselationShader;                                   // Tessellation control and evaluation shader stages
+        bool geometryShader;                                      // Geometry shader stage
         bool meshShader;                                          // NRIMeshShader
         bool lowLatency;                                          // NRILowLatency
         bool componentSwizzle;                                    // see "ComponentSwizzle" (unsupported only in D3D11)

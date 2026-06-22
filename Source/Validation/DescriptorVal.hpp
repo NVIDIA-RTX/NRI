@@ -33,6 +33,8 @@ DescriptorVal::DescriptorVal(DeviceVal& device, Descriptor* descriptor, const Bu
 
 DescriptorVal::DescriptorVal(DeviceVal& device, Descriptor* descriptor, const TextureViewDesc& textureViewDesc)
     : ObjectVal(device, descriptor) {
+    m_Format = textureViewDesc.format;
+
     switch (textureViewDesc.type) {
         case TextureView::TEXTURE:
         case TextureView::TEXTURE_ARRAY:

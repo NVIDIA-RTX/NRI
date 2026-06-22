@@ -4,8 +4,6 @@
 
 namespace nri {
 
-struct PipelineLayoutD3D11;
-
 struct RasterizerState {
     ComPtr<ID3D11RasterizerState2> ptr;
     uint64_t samplePositionHash = 0;

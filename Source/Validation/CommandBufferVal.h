@@ -4,11 +4,6 @@
 
 namespace nri {
 
-struct DescriptorVal;
-struct DescriptorSetVal;
-struct PipelineVal;
-struct PipelineLayoutVal;
-
 struct CommandBufferVal final : public ObjectVal {
     CommandBufferVal(DeviceVal& device, CommandBuffer* commandBuffer, bool isWrapped)
         : ObjectVal(device, commandBuffer)

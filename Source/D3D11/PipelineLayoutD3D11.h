@@ -4,9 +4,6 @@
 
 namespace nri {
 
-struct DescriptorD3D11;
-struct DescriptorSetD3D11;
-
 struct BindingSet {
     uint32_t descriptorNum;
     uint32_t startRange;

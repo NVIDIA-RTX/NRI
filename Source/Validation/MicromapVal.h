@@ -4,9 +4,6 @@
 
 namespace nri {
 
-struct BufferVal;
-struct MemoryVal;
-
 struct MicromapVal final : public ObjectVal {
     MicromapVal(DeviceVal& device, Micromap* micromap, bool isBoundToMemory)
         : ObjectVal(device, micromap)

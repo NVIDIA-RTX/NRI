@@ -4,8 +4,6 @@
 
 namespace nri {
 
-struct AccelerationStructureD3D12;
-
 struct TexViewDesc {
     Dim_t layerOffset;
     Dim_t layerNum;

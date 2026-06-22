@@ -10,11 +10,6 @@ typedef ID3D12GraphicsCommandList6 ID3D12GraphicsCommandListBest;
 
 namespace nri {
 
-struct PipelineD3D12;
-struct PipelineLayoutD3D12;
-struct DescriptorSetD3D12;
-struct DescriptorD3D12;
-
 struct AttachmentDescD3D12 {
     DescriptorD3D12* attachment;
     DescriptorD3D12* resolveDst;

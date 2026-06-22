@@ -26,6 +26,17 @@ static inline bool IsRayTracingShaderStageValid(StageBits shaderStages, StageBit
     return n == 1;
 }
 
+static inline bool IsShaderStageSupported(const DeviceDesc& deviceDesc, StageBits shaderStages) {
+    if ((shaderStages & StageBits::TESSELLATION_SHADERS) != 0 && !deviceDesc.features.tesselationShader)
+        return false;
+    if ((shaderStages & StageBits::GEOMETRY_SHADER) != 0 && !deviceDesc.features.geometryShader)
+        return false;
+    if ((shaderStages & StageBits::MESH_SHADERS) != 0 && !deviceDesc.features.meshShader)
+        return false;
+
+    return true;
+}
+
 static inline Dim_t GetMaxMipNum(uint16_t w, uint16_t h, uint16_t d) {
     Dim_t mipNum = 1;
 
@@ -299,6 +310,11 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const TextureViewDesc& textureView
     NRI_RETURN_ON_FAILURE(this, textureViewDesc.components.b < ComponentSwizzle::MAX_NUM, Result::INVALID_ARGUMENT, "'components.b' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureViewDesc.components.a < ComponentSwizzle::MAX_NUM, Result::INVALID_ARGUMENT, "'components.a' is invalid");
 
+    bool hasComponentSwizzle = textureViewDesc.components.r != ComponentSwizzle::IDENTITY || textureViewDesc.components.g != ComponentSwizzle::IDENTITY
+        || textureViewDesc.components.b != ComponentSwizzle::IDENTITY || textureViewDesc.components.a != ComponentSwizzle::IDENTITY;
+    if (hasComponentSwizzle)
+        NRI_RETURN_ON_FAILURE(this, GetDesc().features.componentSwizzle, Result::INVALID_ARGUMENT, "'features.componentSwizzle' is false");
+
     const TextureVal& textureVal = *(TextureVal*)textureViewDesc.texture;
     const TextureDesc& textureDesc = textureVal.GetDesc();
 
@@ -377,6 +393,7 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
 
             NRI_RETURN_ON_FAILURE(this, range.descriptorNum > 0, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].descriptorNum' is 0", i, j);
             NRI_RETURN_ON_FAILURE(this, range.descriptorType < DescriptorType::MAX_NUM, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].descriptorType' is invalid", i, j);
+            NRI_RETURN_ON_FAILURE(this, !(range.flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY) || deviceDesc.tiers.bindless != 0, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].flags' has 'VARIABLE_SIZED_ARRAY', but 'tiers.bindless' is 0", i, j);
 
             if (range.shaderStages != StageBits::ALL) {
                 const uint32_t filteredVisibilityMask = range.shaderStages & pipelineLayoutDesc.shaderStages;
@@ -496,6 +513,7 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
         NRI_RETURN_ON_FAILURE(this, shaderDesc->bytecode != nullptr, Result::INVALID_ARGUMENT, "'shaders[%u].bytecode' is invalid", i);
         NRI_RETURN_ON_FAILURE(this, shaderDesc->size != 0, Result::INVALID_ARGUMENT, "'shaders[%u].size' is 0", i);
         NRI_RETURN_ON_FAILURE(this, IsShaderStageValid(shaderDesc->stage, uniqueShaderStages, StageBits::GRAPHICS_SHADERS), Result::INVALID_ARGUMENT, "'shaders[%u].stage' must include only 1 graphics shader stage, unique for the entire pipeline", i);
+        NRI_RETURN_ON_FAILURE(this, IsShaderStageSupported(GetDesc(), shaderDesc->stage), Result::INVALID_ARGUMENT, "'shaders[%u].stage' is not supported", i);
     }
     NRI_RETURN_ON_FAILURE(this, hasEntryPoint, Result::INVALID_ARGUMENT, "a VERTEX or MESH shader is not provided");
 
@@ -612,8 +630,12 @@ NRI_INLINE Result DeviceVal::CreateQueryPool(const QueryPoolDesc& queryPoolDesc,
     NRI_RETURN_ON_FAILURE(this, queryPoolDesc.queryType < QueryType::MAX_NUM, Result::INVALID_ARGUMENT, "'queryType' is invalid");
     NRI_RETURN_ON_FAILURE(this, queryPoolDesc.capacity > 0, Result::INVALID_ARGUMENT, "'capacity' is 0");
 
-    if (queryPoolDesc.queryType == QueryType::TIMESTAMP_COPY_QUEUE) {
-        NRI_RETURN_ON_FAILURE(this, GetDesc().features.copyQueueTimestamp, Result::INVALID_ARGUMENT, "'features.copyQueueTimestamp' is false");
+    if (queryPoolDesc.queryType == QueryType::TIMESTAMP) {
+        NRI_RETURN_ON_FAILURE(this, GetDesc().features.timestamp, Result::INVALID_ARGUMENT, "'features.timestamp' is false");
+    } else if (queryPoolDesc.queryType == QueryType::TIMESTAMP_COPY_QUEUE) {
+        NRI_RETURN_ON_FAILURE(this, GetDesc().features.timestampCopyQueue, Result::INVALID_ARGUMENT, "'features.timestampCopyQueue' is false");
+    } else if (queryPoolDesc.queryType == QueryType::OCCLUSION) {
+        NRI_RETURN_ON_FAILURE(this, GetDesc().features.occlusion, Result::INVALID_ARGUMENT, "'features.occlusion' is false");
     } else if (queryPoolDesc.queryType == QueryType::PIPELINE_STATISTICS) {
         NRI_RETURN_ON_FAILURE(this, GetDesc().features.pipelineStatistics, Result::INVALID_ARGUMENT, "'features.pipelineStatistics' is false");
     } else if (queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_SIZE || queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_COMPACTED_SIZE) {

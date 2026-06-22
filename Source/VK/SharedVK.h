@@ -41,6 +41,26 @@ typedef uint16_t MemoryTypeIndex;
 
 namespace nri {
 
+struct AccelerationStructureVK;
+struct BufferVK;
+struct CommandAllocatorVK;
+struct CommandBufferVK;
+struct DescriptorPoolVK;
+struct DescriptorSetVK;
+struct DescriptorVK;
+struct DeviceVK;
+struct FenceVK;
+struct MemoryAllocatorVK;
+struct MemoryVK;
+struct MicromapVK;
+struct PipelineCacheVK;
+struct PipelineLayoutVK;
+struct PipelineVK;
+struct QueryPoolVK;
+struct QueueVK;
+struct SwapChainVK;
+struct TextureVK;
+
 constexpr uint32_t INVALID_FAMILY_INDEX = uint32_t(-1);
 constexpr uint32_t RENDER_PASS_UNUSED_ATTACHMENT = uint32_t(-1);
 

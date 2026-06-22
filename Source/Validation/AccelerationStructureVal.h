@@ -4,9 +4,6 @@
 
 namespace nri {
 
-struct BufferVal;
-struct MemoryVal;
-
 struct AccelerationStructureVal final : public ObjectVal {
     AccelerationStructureVal(DeviceVal& device, AccelerationStructure* accelerationStructure, bool isBoundToMemory)
         : ObjectVal(device, accelerationStructure)

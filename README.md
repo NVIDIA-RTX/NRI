@@ -22,6 +22,7 @@ Supported GAPIs:
 - *Vulkan 1.4+, 1.3++ or 1.2+++* - advertises modern Vulkan compatibility, with a *Vulkan 1.2* core + _VK_KHR_synchronization2_ baseline
 - *D3D12*
 - *D3D11*
+- *WebGPU* (through [wgpu-native](https://github.com/gfx-rs/wgpu-native))
 - *Metal* (through [MoltenVK](https://github.com/KhronosGroup/MoltenVK))
 - None / dummy (everything is supported but does nothing)
 
@@ -35,7 +36,7 @@ There is [NVRHI](https://github.com/NVIDIA-RTX/NVRHI), which offers a *D3D11*-li
  - *High performance* - low overhead with zero memory allocations at runtime, honored user-provided memory allocator
  - *Modern hardware tech* - support for Ray Tracing, Mesh Shaders, descriptor indexing (including directly indexed descriptor heaps) and more
  - *Mobile-ready* - optimized for Tile-Based Rendering (TBR/TBDR) architectures and friendly to mobile-oriented API designs
- - *Portable API shape* - suitable for WebGPU-style backends
+ - *Portable API shape* - maps cleanly to constrained GAPIs, including WebGPU and consoles
  - *D3D12 Ultimate* - full support, including Enhanced Barriers
  - *Platform Flexibility* - Windows, Linux, MacOS, and Android support
  - *Developer Experience* - integrated GAPI- and NRI- validation, VK [printf](https://github.com/KhronosGroup/*Vulkan*-ValidationLayers/blob/main/docs/debug_printf.md), and timeline annotations (GAPI, [NVTX](https://github.com/NVIDIA/NVTX) and [PIX](https://devblogs.microsoft.com/pix/winpixeventruntime/), if "WinPixEventRuntime.dll" is nearby)
@@ -84,6 +85,7 @@ Notes:
 - `NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS` - Enable debug names, host and device annotations
 - `NRI_ENABLE_NONE_SUPPORT` - Enable NONE backend
 - `NRI_ENABLE_VK_SUPPORT` - Enable *Vulkan* backend
+- `NRI_ENABLE_WGPU_SUPPORT` - Enable *WebGPU* backend through *wgpu-native*
 - `NRI_ENABLE_VALIDATION_SUPPORT` - Enable Validation backend (otherwise `enableNRIValidation` is ignored)
 - `NRI_ENABLE_NIS_SDK` - Enable NVIDIA Image Sharpening SDK
 - `NRI_ENABLE_IMGUI_EXTENSION` - Enable `NRIImgui` extension
@@ -200,22 +202,22 @@ Supported:
 
 ## ENTITIES
 
-| NRI                     | *D3D11*                                 | *D3D12*                         | VK                           |
-|-------------------------|---------------------------------------|-------------------------------|------------------------------|
-| `Device`                | `ID3D11Device`                        | `ID3D12Device`                | `VkDevice`                   |
-| `CommandBuffer`         | `ID3D11DeviceContext` (deferred)      | `ID3D12CommandList`           | `VkCommandBuffer`            |
-| `CommandQueue`          | `ID3D11DeviceContext` (immediate)     | `ID3D12CommandQueue`          | `VkQueue`                    |
-| `Fence`                 | `ID3D11Fence`                         | `ID3D12Fence`                 | `VkSemaphore` (timeline)     |
-| `CommandAllocator`      | N/A                                   | `ID3D12CommandAllocator`      | `VkCommandPool`              |
-| `Buffer`                | `ID3D11Buffer`                        | `ID3D12Resource`              | `VkBuffer`                   |
-| `Texture`               | `ID3D11Texture`                       | `ID3D12Resource`              | `VkImage`                    |
-| `Memory`                | N/A                                   | `ID3D12Heap`                  | `VkDeviceMemory`             |
-| `Descriptor`            | `ID3D11*View` or `ID3D11SamplerState` | `D3D12_CPU_DESCRIPTOR_HANDLE` | `Vk*View` or `VkSampler`     |
-| `DescriptorSet`         | N/A                                   | N/A                           | `VkDescriptorSet`            |
-| `DescriptorPool`        | N/A                                   | `ID3D12DescriptorHeap`        | `VkDescriptorPool`           |
-| `PipelineLayout`        | N/A                                   | `ID3D12RootSignature`         | `VkPipelineLayout`           |
-| `Pipeline`              | `ID3D11*Shader` and `ID3D11*State`    | `ID3D12StateObject`           | `VkPipeline`                 |
-| `AccelerationStructure` | N/A                                   | `ID3D12Resource`              | `VkAccelerationStructure`    |
+| NRI                     | *D3D11*                                 | *D3D12*                         | VK                           | WGPU                                      |
+|-------------------------|-----------------------------------------|---------------------------------|------------------------------|-------------------------------------------|
+| `Device`                | `ID3D11Device`                          | `ID3D12Device`                  | `VkDevice`                   | `WGPUDevice`                              |
+| `CommandBuffer`         | `ID3D11DeviceContext` (deferred)        | `ID3D12CommandList`             | `VkCommandBuffer`            | `WGPUCommandBuffer`                       |
+| `CommandQueue`          | `ID3D11DeviceContext` (immediate)       | `ID3D12CommandQueue`            | `VkQueue`                    | `WGPUQueue`                               |
+| `Fence`                 | `ID3D11Fence`                           | `ID3D12Fence`                   | `VkSemaphore` (timeline)     | N/A                                       |
+| `CommandAllocator`      | N/A                                     | `ID3D12CommandAllocator`        | `VkCommandPool`              | N/A                                       |
+| `Buffer`                | `ID3D11Buffer`                          | `ID3D12Resource`                | `VkBuffer`                   | `WGPUBuffer`                              |
+| `Texture`               | `ID3D11Texture`                         | `ID3D12Resource`                | `VkImage`                    | `WGPUTexture`                             |
+| `Memory`                | N/A                                     | `ID3D12Heap`                    | `VkDeviceMemory`             | N/A                                       |
+| `Descriptor`            | `ID3D11*View` or `ID3D11SamplerState`   | `D3D12_CPU_DESCRIPTOR_HANDLE`   | `Vk*View` or `VkSampler`     | `WGPUTextureView`, `WGPUBuffer`, `WGPUSampler` |
+| `DescriptorSet`         | N/A                                     | N/A                             | `VkDescriptorSet`            | N/A                                       |
+| `DescriptorPool`        | N/A                                     | `ID3D12DescriptorHeap`          | `VkDescriptorPool`           | N/A                                       |
+| `PipelineLayout`        | N/A                                     | `ID3D12RootSignature`           | `VkPipelineLayout`           | N/A                                       |
+| `Pipeline`              | `ID3D11*Shader` and `ID3D11*State`      | `ID3D12StateObject`             | `VkPipeline`                 | N/A                                       |
+| `AccelerationStructure` | N/A                                     | `ID3D12Resource`                | `VkAccelerationStructure`    | N/A                                       |
 
 ## LICENSE
 

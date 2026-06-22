@@ -230,6 +230,7 @@ Result DeviceD3D11::Create(const DeviceCreationDesc& desc, const DeviceCreationD
             D3D11_MESSAGE_ID disableMessageIDs[] = {
                 // Disobey the spec, but allow multiple structured views for a single buffer
                 D3D11_MESSAGE_ID_DEVICE_SHADERRESOURCEVIEW_BUFFER_TYPE_MISMATCH,
+                D3D11_MESSAGE_ID_DEVICE_UNORDEREDACCESSVIEW_BUFFER_TYPE_MISMATCH,
             };
 
             D3D11_INFO_QUEUE_FILTER filter = {};
@@ -519,8 +520,12 @@ void DeviceD3D11::FillDesc() {
     m_Desc.features.resizableSwapChain = m_Desc.features.swapChain;
     m_Desc.features.textureCompressionBC = true;
     m_Desc.features.shaderBytecodeDXBC = true;
+    m_Desc.features.occlusion = true;
+    m_Desc.features.timestamp = true;
     m_Desc.features.getMemoryDesc2 = true;
-    m_Desc.features.enhancedBarriers = true;                       // don't care, but advertise support
+    m_Desc.features.enhancedBarriers = true; // don't care, but advertise support
+    m_Desc.features.tesselationShader = true;
+    m_Desc.features.geometryShader = true;
     m_Desc.features.lowLatency = HasNvExt();
     m_Desc.features.filterOpMinMax = options1.MinMaxFiltering != 0;
     m_Desc.features.logicOp = options.OutputMergerLogicOp != 0;
@@ -533,7 +538,7 @@ void DeviceD3D11::FillDesc() {
     m_Desc.shaderFeatures.atomicsF16 = isShaderAtomicsF16Supported;
     m_Desc.shaderFeatures.atomicsF32 = isShaderAtomicsF32Supported;
 
-    m_Desc.shaderFeatures.storageReadWithoutFormat = true; // All desktop GPUs support it since 2014
+    m_Desc.shaderFeatures.storageReadWithoutFormat = true; // all desktop GPUs support it since 2014
     m_Desc.shaderFeatures.storageWriteWithoutFormat = true;
 
     m_Desc.shaderFeatures.viewportIndex = options3.VPAndRTArrayIndexFromAnyShaderFeedingRasterizer;

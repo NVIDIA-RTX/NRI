@@ -7,8 +7,6 @@ typedef IDXGISwapChain4 IDXGISwapChainBest;
 
 namespace nri {
 
-struct TextureD3D12;
-
 struct SwapChainD3D12 final : public DisplayDescHelper, DebugNameBase {
     inline SwapChainD3D12(DeviceD3D12& device)
         : m_Device(device)

@@ -4,8 +4,6 @@
 
 namespace nri {
 
-struct TextureVal;
-
 struct SwapChainVal final : public ObjectVal {
     SwapChainVal(DeviceVal& device, SwapChain* swapChain, const SwapChainDesc& swapChainDesc)
         : ObjectVal(device, swapChain)

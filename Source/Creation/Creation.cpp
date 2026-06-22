@@ -25,6 +25,10 @@
 #    include <vulkan/vulkan.h>
 #endif
 
+#if NRI_ENABLE_WGPU_SUPPORT
+#    include <webgpu/wgpu.h>
+#endif
+
 #include "SharedExternal.h"
 
 #define ADAPTER_MAX_NUM 32u
@@ -35,6 +39,7 @@ Result CreateDeviceNONE(const DeviceCreationDesc& deviceCreationDesc, DeviceBase
 Result CreateDeviceD3D11(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationD3D11Desc& deviceCreationDescD3D11, DeviceBase*& device);
 Result CreateDeviceD3D12(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationD3D12Desc& deviceCreationDescD3D12, DeviceBase*& device);
 Result CreateDeviceVK(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationVKDesc& deviceCreationDescVK, DeviceBase*& device);
+Result CreateDeviceWGPU(const DeviceCreationDesc& deviceCreationDesc, DeviceBase*& device);
 DeviceBase* CreateDeviceValidation(const DeviceCreationDesc& deviceCreationDesc, DeviceBase& device);
 
 constexpr uint64_t Hash(const char* name) {
@@ -490,6 +495,112 @@ CLEANUP:
 
 #endif
 
+#if NRI_ENABLE_WGPU_SUPPORT
+
+static Architecture GetArchitecture(WGPUAdapterType adapterType) {
+    switch (adapterType) {
+        case WGPUAdapterType_DiscreteGPU: return Architecture::DISCRETE;
+        case WGPUAdapterType_IntegratedGPU: return Architecture::INTEGRATED;
+        case WGPUAdapterType_CPU: return Architecture::SOFTWARE;
+        default: return Architecture::UNKNOWN;
+    }
+}
+
+static void CopyString(char* dst, size_t dstSize, WGPUStringView src) {
+    if (!dstSize)
+        return;
+
+    size_t n = src.data ? std::min(src.length, dstSize - 1) : 0;
+    if (n)
+        memcpy(dst, src.data, n);
+
+    dst[n] = 0;
+}
+
+static void UpdateAdaptersWGPU(AdapterDesc* adapterDescs, uint32_t& adapterDescNum) {
+    WGPUInstanceExtras instanceExtras = {};
+    instanceExtras.chain.sType = (WGPUSType)WGPUSType_InstanceExtras;
+    instanceExtras.backends = WGPUInstanceBackend_Primary;
+
+    WGPUInstanceDescriptor instanceDesc = WGPU_INSTANCE_DESCRIPTOR_INIT;
+    instanceDesc.nextInChain = &instanceExtras.chain;
+
+    WGPUInstance instance = wgpuCreateInstance(&instanceDesc);
+    if (!instance)
+        return;
+
+    WGPUInstanceEnumerateAdapterOptions options = {};
+    options.backends = WGPUInstanceBackend_Primary;
+
+    size_t wgpuAdapterNum = wgpuInstanceEnumerateAdapters(instance, &options, nullptr);
+    WGPUAdapter* wgpuAdapters = (WGPUAdapter*)alloca(sizeof(WGPUAdapter) * wgpuAdapterNum);
+    wgpuAdapterNum = wgpuInstanceEnumerateAdapters(instance, &options, wgpuAdapters);
+
+    for (size_t i = 0; i < wgpuAdapterNum; i++) {
+        WGPUAdapterInfo adapterInfo = WGPU_ADAPTER_INFO_INIT;
+        if (wgpuAdapterGetInfo(wgpuAdapters[i], &adapterInfo) != WGPUStatus_Success) {
+            wgpuAdapterRelease(wgpuAdapters[i]);
+            continue;
+        }
+
+        if (wgpuAdapterHasFeature(wgpuAdapters[i], (WGPUFeatureName)WGPUNativeFeature_Immediates) != WGPU_TRUE) {
+            wgpuAdapterInfoFreeMembers(adapterInfo);
+            wgpuAdapterRelease(wgpuAdapters[i]);
+            continue;
+        }
+
+        WGPUNativeLimits nativeLimits = {};
+        nativeLimits.chain.sType = (WGPUSType)WGPUSType_NativeLimits;
+
+        WGPULimits limits = WGPU_LIMITS_INIT;
+        limits.nextInChain = &nativeLimits.chain;
+        if (wgpuAdapterGetLimits(wgpuAdapters[i], &limits) != WGPUStatus_Success || nativeLimits.maxImmediateSize < 256) {
+            wgpuAdapterInfoFreeMembers(adapterInfo);
+            wgpuAdapterRelease(wgpuAdapters[i]);
+            continue;
+        }
+
+        Vendor vendor = GetVendorFromID(adapterInfo.vendorID);
+
+        uint32_t n = 0;
+        for (; n < adapterDescNum; n++) {
+            bool isSameDevice = adapterInfo.vendorID != 0 && adapterInfo.deviceID != 0 && adapterDescs[n].vendor == vendor && adapterDescs[n].deviceId == adapterInfo.deviceID;
+            if (isSameDevice)
+                break;
+        }
+
+        if (n == adapterDescNum) {
+            if (adapterDescNum == ADAPTER_MAX_NUM) {
+                wgpuAdapterInfoFreeMembers(adapterInfo);
+                wgpuAdapterRelease(wgpuAdapters[i]);
+                continue;
+            }
+
+            AdapterDesc& adapterDesc = adapterDescs[adapterDescNum++];
+            adapterDesc.sharedSystemMemorySize = 128ull << 30;
+            adapterDesc.queueNum[(uint32_t)QueueType::GRAPHICS] = 1;
+            adapterDesc.queueNum[(uint32_t)QueueType::COMPUTE] = 0;
+            adapterDesc.queueNum[(uint32_t)QueueType::COPY] = 0;
+            adapterDesc.vendor = vendor;
+            adapterDesc.architecture = GetArchitecture(adapterInfo.adapterType);
+            adapterDesc.deviceId = adapterInfo.deviceID;
+
+            CopyString(adapterDesc.name, sizeof(adapterDesc.name), adapterInfo.device);
+            if (!adapterDesc.name[0])
+                strncpy(adapterDesc.name, "WGPU", sizeof(adapterDesc.name));
+        }
+
+        adapterDescs[n].supportedGraphicsAPIs |= GraphicsAPI::WGPU;
+
+        wgpuAdapterInfoFreeMembers(adapterInfo);
+        wgpuAdapterRelease(wgpuAdapters[i]);
+    }
+
+    wgpuInstanceRelease(instance);
+}
+
+#endif
+
 static Result FinalizeDeviceCreation(const DeviceCreationDesc& deviceCreationDesc, DeviceBase& deviceImpl, Device*& device) {
     MaybeUnused(deviceCreationDesc);
 #if NRI_ENABLE_VALIDATION_SUPPORT
@@ -698,13 +809,23 @@ NRI_API Result NRI_CALL nriCreateDevice(const DeviceCreationDesc& deviceCreation
     DeviceCreationDesc modifiedDeviceCreationDesc = deviceCreationDesc;
     CheckAndSetDefaultCallbacks(modifiedDeviceCreationDesc);
 
-    // Valid adapter expected (take 1st)
-    uint32_t adapterDescNum = 1;
+    // Valid adapter expected (take 1st compatible)
+    uint32_t adapterDescNum = ADAPTER_MAX_NUM;
+    std::array<AdapterDesc, ADAPTER_MAX_NUM> adapterDescs = {};
     AdapterDesc adapterDesc = {};
     if (!modifiedDeviceCreationDesc.adapterDesc) {
-        nriEnumerateAdapters(&adapterDesc, adapterDescNum);
+        nriEnumerateAdapters(adapterDescs.data(), adapterDescNum);
+        for (uint32_t i = 0; i < adapterDescNum; i++) {
+            if (adapterDescs[i].supportedGraphicsAPIs & modifiedDeviceCreationDesc.graphicsAPI) {
+                adapterDesc = adapterDescs[i];
+                break;
+            }
+        }
         modifiedDeviceCreationDesc.adapterDesc = &adapterDesc;
     }
+
+    if ((modifiedDeviceCreationDesc.adapterDesc->supportedGraphicsAPIs & modifiedDeviceCreationDesc.graphicsAPI) == 0)
+        return Result::UNSUPPORTED;
 
     // Valid queue families expected
     QueueFamilyDesc qraphicsQueue = {};
@@ -746,6 +867,11 @@ NRI_API Result NRI_CALL nriCreateDevice(const DeviceCreationDesc& deviceCreation
 #if NRI_ENABLE_VK_SUPPORT
     if (modifiedDeviceCreationDesc.graphicsAPI == GraphicsAPI::VK)
         result = CreateDeviceVK(modifiedDeviceCreationDesc, {}, deviceImpl);
+#endif
+
+#if NRI_ENABLE_WGPU_SUPPORT
+    if (modifiedDeviceCreationDesc.graphicsAPI == GraphicsAPI::WGPU)
+        result = CreateDeviceWGPU(modifiedDeviceCreationDesc, deviceImpl);
 #endif
 
     if (result != Result::SUCCESS)
@@ -963,21 +1089,27 @@ NRI_API const char* NRI_CALL nriGetGraphicsAPIString(GraphicsAPI graphicsAPI) {
             return "D3D12";
         case GraphicsAPI::VK:
             return "VK";
+        case GraphicsAPI::WGPU:
+            return "WGPU";
         default:
             return "UNKNOWN";
     }
 }
 
 NRI_API Result NRI_CALL nriEnumerateAdapters(AdapterDesc* outAdapterDescs, uint32_t& outAdapterDescNum) {
-    AdapterDesc adapterDescs[ADAPTER_MAX_NUM] = {};
+    std::array<AdapterDesc, ADAPTER_MAX_NUM> adapterDescs = {};
     uint32_t adapterDescNum = 0;
 
 #if NRI_ENABLE_VK_SUPPORT
-    UpdateAdaptersVK(adapterDescs, adapterDescNum, nullptr);
+    UpdateAdaptersVK(adapterDescs.data(), adapterDescNum, nullptr);
 #endif
 
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
-    UpdateAdaptersD3D(adapterDescs, adapterDescNum, nullptr);
+    UpdateAdaptersD3D(adapterDescs.data(), adapterDescNum, nullptr);
+#endif
+
+#if NRI_ENABLE_WGPU_SUPPORT
+    UpdateAdaptersWGPU(adapterDescs.data(), adapterDescNum);
 #endif
 
 #if NRI_ENABLE_NONE_SUPPORT
@@ -995,7 +1127,7 @@ NRI_API Result NRI_CALL nriEnumerateAdapters(AdapterDesc* outAdapterDescs, uint3
 #endif
 
     // Sort by video memory size and arhitecture (DISCRETE first)
-    qsort(adapterDescs, adapterDescNum, sizeof(adapterDescs[0]), SortAdapters);
+    qsort(adapterDescs.data(), adapterDescNum, sizeof(adapterDescs[0]), SortAdapters);
 
     // Copy to output
     if (outAdapterDescs) {
