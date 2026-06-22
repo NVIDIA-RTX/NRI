@@ -848,7 +848,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.features.pipelineCache = isPipelineLibrarySupported;
     m_Desc.features.pipelineCacheControl = isPipelineLibrarySupported; // emulated via "ID3D12PipelineLibrary::Load*Pipeline" miss-detection
     m_Desc.features.getMemoryDesc2 = true;
-    m_Desc.features.tesselationShader = true;
+    m_Desc.features.tessellationShader = true;
     m_Desc.features.geometryShader = true;
     m_Desc.features.meshShader = options7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1;
     m_Desc.features.lowLatency = HasNvExt();

@@ -27,7 +27,7 @@ static inline bool IsRayTracingShaderStageValid(StageBits shaderStages, StageBit
 }
 
 static inline bool IsShaderStageSupported(const DeviceDesc& deviceDesc, StageBits shaderStages) {
-    if ((shaderStages & StageBits::TESSELLATION_SHADERS) != 0 && !deviceDesc.features.tesselationShader)
+    if ((shaderStages & StageBits::TESSELLATION_SHADERS) != 0 && !deviceDesc.features.tessellationShader)
         return false;
     if ((shaderStages & StageBits::GEOMETRY_SHADER) != 0 && !deviceDesc.features.geometryShader)
         return false;

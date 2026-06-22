@@ -2116,7 +2116,7 @@ NriStruct(DeviceDesc) {
         // Other
         bool getMemoryDesc2;                                      // "GetXxxMemoryDesc2" support (VK: requires "maintenance4", D3D: supported)
         bool enhancedBarriers;                                    // VK: supported, D3D12: requires "AgilitySDK", D3D11: unsupported
-        bool tesselationShader;                                   // Tessellation control and evaluation shader stages
+        bool tessellationShader;                                  // Tessellation control and evaluation shader stages
         bool geometryShader;                                      // Geometry shader stage
         bool meshShader;                                          // NRIMeshShader
         bool lowLatency;                                          // NRILowLatency
