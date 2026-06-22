@@ -4,9 +4,6 @@
 
 namespace nri {
 
-struct BufferVK;
-struct TextureVK;
-
 struct MemoryVK final : public DebugNameBase {
     inline MemoryVK(DeviceVK& device)
         : m_Device(device) {

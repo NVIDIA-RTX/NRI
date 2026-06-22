@@ -4,10 +4,6 @@
 
 namespace nri {
 
-struct QueueVK;
-struct FenceVK;
-struct TextureVK;
-
 struct SwapChainVK final : public DisplayDescHelper, DebugNameBase {
     SwapChainVK(DeviceVK& device)
         : m_Device(device)

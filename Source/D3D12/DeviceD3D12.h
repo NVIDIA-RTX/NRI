@@ -10,9 +10,6 @@ typedef ID3D12Device8 ID3D12DeviceBest;
 
 namespace nri {
 
-struct QueueD3D12;
-struct PipelineLayoutD3D12;
-
 struct DeviceD3D12 final : public DeviceBase {
     DeviceD3D12(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks);
     ~DeviceD3D12();

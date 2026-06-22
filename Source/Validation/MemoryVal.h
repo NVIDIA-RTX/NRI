@@ -4,11 +4,6 @@
 
 namespace nri {
 
-struct BufferVal;
-struct TextureVal;
-struct AccelerationStructureVal;
-struct MicromapVal;
-
 struct MemoryVal final : public ObjectVal {
     inline MemoryVal(DeviceVal& device, Memory* memory, uint64_t size, MemoryLocation memoryLocation)
         : ObjectVal(device, memory)

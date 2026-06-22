@@ -4,8 +4,6 @@
 
 namespace nri {
 
-struct MemoryVal;
-
 struct TextureVal final : public ObjectVal {
     TextureVal(DeviceVal& device, Texture* texture, bool isBoundToMemory)
         : ObjectVal(device, texture)

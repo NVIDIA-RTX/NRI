@@ -16,6 +16,25 @@ typedef ID3D11DeviceContext4 ID3D11DeviceContextBest;
 
 namespace nri {
 
+struct BufferD3D11;
+struct BindingSet;
+struct CommandAllocatorD3D11;
+struct CommandBufferD3D11;
+struct CommandBufferEmuD3D11;
+struct DescriptorD3D11;
+struct DescriptorPoolD3D11;
+struct DescriptorSetD3D11;
+struct DeviceD3D11;
+struct FenceD3D11;
+struct MemoryD3D11;
+struct PipelineCacheD3D11;
+struct PipelineD3D11;
+struct PipelineLayoutD3D11;
+struct QueryPoolD3D11;
+struct QueueD3D11;
+struct SwapChainD3D11;
+struct TextureD3D11;
+
 constexpr Dim_t NULL_TEXTURE_REGION_DESC = Dim_t(-1);
 
 enum class DescriptorTypeDX11 : uint8_t {
@@ -39,9 +58,6 @@ void FillSamplerDesc(const SamplerDesc& samplerDesc, D3D11_SAMPLER_DESC& desc);
 bool GetTextureDesc(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& textureDesc);
 bool GetBufferDesc(const BufferD3D11Desc& bufferD3D11Desc, BufferDesc& bufferDesc);
 uint32_t ConvertPriority(float priority);
-
-struct TextureD3D11;
-struct BufferD3D11;
 
 union SubresourceInfo {
     struct RawViewDesc {
