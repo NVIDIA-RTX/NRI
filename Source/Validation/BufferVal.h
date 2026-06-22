@@ -4,8 +4,6 @@
 
 namespace nri {
 
-struct MemoryVal;
-
 struct BufferVal final : public ObjectVal {
     BufferVal(DeviceVal& device, Buffer* buffer, bool isBoundToMemory)
         : ObjectVal(device, buffer)

@@ -4,9 +4,6 @@
 
 namespace nri {
 
-struct QueryPoolD3D11;
-struct TextureD3D11;
-
 struct QueryRange {
     const QueryPoolD3D11* pool;
     uint64_t bufferOffset;

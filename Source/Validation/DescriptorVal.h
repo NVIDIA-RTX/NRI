@@ -81,6 +81,10 @@ struct DescriptorVal final : public ObjectVal {
             || m_Type == DescriptorTypeExt::DEPTH_STENCIL_ATTACHMENT;
     }
 
+    inline Format GetFormat() const {
+        return m_Format;
+    }
+
     inline bool IsDepthReadonly() const {
         return m_IsDepthReadonly;
     }
@@ -91,6 +95,7 @@ struct DescriptorVal final : public ObjectVal {
 
 private:
     DescriptorTypeExt m_Type = DescriptorTypeExt::MAX_NUM;
+    Format m_Format = Format::UNKNOWN;
     bool m_IsDepthReadonly = false;
     bool m_IsStencilReadonly = false;
 };

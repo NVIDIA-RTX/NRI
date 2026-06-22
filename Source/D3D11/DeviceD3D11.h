@@ -7,8 +7,6 @@ typedef ID3D11Device5 ID3D11DeviceBest;
 
 namespace nri {
 
-struct QueueD3D11;
-
 struct DeviceD3D11 final : public DeviceBase {
     DeviceD3D11(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks);
     ~DeviceD3D11();

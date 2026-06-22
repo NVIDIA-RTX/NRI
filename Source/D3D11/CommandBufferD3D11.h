@@ -4,10 +4,6 @@
 
 namespace nri {
 
-struct PipelineLayoutD3D11;
-struct PipelineD3D11;
-struct DescriptorD3D11;
-
 struct AttachmentDescD3D11 {
     DescriptorD3D11* attachment;
     DescriptorD3D11* resolveDst;

@@ -18,24 +18,34 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 # Architecture
-if((CMAKE_GENERATOR_PLATFORM MATCHES "ARM64") OR (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64"))
+if(NOT (WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux" OR APPLE))
+    message(FATAL_ERROR "NRI: unsupported architecture or platform '${CMAKE_SYSTEM_NAME}', '${CMAKE_SYSTEM_PROCESSOR}'")
+elseif((CMAKE_GENERATOR_PLATFORM MATCHES "ARM64") OR (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64"))
     set(IS_ARM64 TRUE)
     set(BIN_ARCHITECTURE "arm64")
     set(NVAPI_BIN_ARCHITECTURE "arm64")
+    set(WGPU_BIN_ARCHITECTURE "aarch64")
 elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(IS_ARM64 FALSE)
     set(BIN_ARCHITECTURE "x64")
     set(NVAPI_BIN_ARCHITECTURE "amd64")
-else()
+    set(WGPU_BIN_ARCHITECTURE "x86_64")
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
     set(IS_ARM64 FALSE)
     set(BIN_ARCHITECTURE "x86")
     set(NVAPI_BIN_ARCHITECTURE "x86")
+    if(WIN32)
+        set(WGPU_BIN_ARCHITECTURE "i686")
+    endif()
+else()
+    message(FATAL_ERROR "NRI: unsupported architecture or platform '${CMAKE_SYSTEM_NAME}', '${CMAKE_SYSTEM_PROCESSOR}'")
 endif()
 
 # Options
 set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK will be copied relative to the directory with binaries")
 set(NRI_AGILITY_SDK_VERSION_MAJOR "619" CACHE STRING "Agility SDK major version") # 719 ("D3D12_ERROR_INVALID_REDIST" if Windows developer mode is not enabled)
 set(NRI_AGILITY_SDK_VERSION_MINOR "3" CACHE STRING "Agility SDK minor version") # 1-preview
+set(NRI_WGPU_VERSION "v29.0.0.0")
 set(NRI_SHADERS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_Shaders" CACHE STRING "Shader output path override")
 set(NRI_NVAPI_CUSTOM_PATH "" CACHE STRING "Path to a custom NVAPI library directory")
 
@@ -51,6 +61,7 @@ option(NRI_STREAMER_THREAD_SAFE "'NRIStreamer' thread safety (OFF is faster)" ON
 
 cmake_dependent_option(NRI_ENABLE_D3D11_SUPPORT "Enable D3D11 backend" ON "WIN32" OFF)
 cmake_dependent_option(NRI_ENABLE_D3D12_SUPPORT "Enable D3D12 backend" ON "WIN32" OFF)
+cmake_dependent_option(NRI_ENABLE_WGPU_SUPPORT "Enable WebGPU backend" OFF "WGPU_BIN_ARCHITECTURE" OFF)
 cmake_dependent_option(NRI_ENABLE_AMDAGS "Enable AMD AGS library for D3D" ON "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT); NOT IS_ARM64" OFF)
 cmake_dependent_option(NRI_ENABLE_NVAPI "Enable NVAPI library for D3D" ON "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT); NOT IS_ARM64" OFF)
 cmake_dependent_option(NRI_ENABLE_AGILITY_SDK_SUPPORT "Enable Agility SDK support to unlock access to latest D3D12 features" ON "NRI_ENABLE_D3D12_SUPPORT" OFF)
@@ -90,6 +101,7 @@ foreach(opt IN ITEMS
     NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS
     NRI_ENABLE_NONE_SUPPORT
     NRI_ENABLE_VK_SUPPORT
+    NRI_ENABLE_WGPU_SUPPORT
     NRI_ENABLE_VALIDATION_SUPPORT
     NRI_ENABLE_NIS_SDK
     NRI_ENABLE_IMGUI_EXTENSION
@@ -212,6 +224,31 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         URL https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/1d86c1130f61453634b1df85782e1fecfd59a525.zip
     )
     list(APPEND DEPS d3d12ma)
+endif()
+
+if(NRI_ENABLE_WGPU_SUPPORT)
+    if(WIN32)
+        set(WGPU_NATIVE_PACKAGE "wgpu-windows-${WGPU_BIN_ARCHITECTURE}-msvc-release.zip")
+        set(WGPU_NATIVE_LIB_NAME "wgpu_native.dll.lib")
+        set(WGPU_NATIVE_RUNTIME_NAME "wgpu_native.dll")
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        set(WGPU_NATIVE_PACKAGE "wgpu-linux-${WGPU_BIN_ARCHITECTURE}-release.zip")
+        set(WGPU_NATIVE_LIB_NAME "libwgpu_native.so")
+        set(WGPU_NATIVE_RUNTIME_NAME "${WGPU_NATIVE_LIB_NAME}")
+    elseif(APPLE)
+        set(WGPU_NATIVE_PACKAGE "wgpu-macos-${WGPU_BIN_ARCHITECTURE}-release.zip")
+        set(WGPU_NATIVE_LIB_NAME "libwgpu_native.dylib")
+        set(WGPU_NATIVE_RUNTIME_NAME "${WGPU_NATIVE_LIB_NAME}")
+    endif()
+
+    fetchcontent_declare(
+        wgpu_native
+        DOWNLOAD_EXTRACT_TIMESTAMP 1
+        DOWNLOAD_NO_PROGRESS 1
+        SOURCE_SUBDIR "ignore CMakeLists.txt"
+        URL "https://github.com/gfx-rs/wgpu-native/releases/download/${NRI_WGPU_VERSION}/${WGPU_NATIVE_PACKAGE}"
+    )
+    list(APPEND DEPS wgpu_native)
 endif()
 
 if(NRI_ENABLE_AMDAGS)
@@ -500,8 +537,12 @@ if(NRI_ENABLE_D3D11_SUPPORT)
     )
     target_include_directories(NRI_D3D11
         PRIVATE
-            "${nvapi_SOURCE_DIR}"
-            "${amdags_SOURCE_DIR}/ags_lib/inc"
+            $<$<BOOL:${NRI_ENABLE_NVAPI}>:
+                "${nvapi_SOURCE_DIR}"
+            >
+            $<$<BOOL:${NRI_ENABLE_AMDAGS}>:
+                "${amdags_SOURCE_DIR}/ags_lib/inc"
+            >
     )
     target_link_libraries(NRI_D3D11
         PRIVATE
@@ -595,8 +636,12 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         PRIVATE
             "${d3d12ma_SOURCE_DIR}/include"
             "${d3d12ma_SOURCE_DIR}/src"
-            "${nvapi_SOURCE_DIR}"
-            "${amdags_SOURCE_DIR}/ags_lib/inc"
+            $<$<BOOL:${NRI_ENABLE_NVAPI}>:
+                "${nvapi_SOURCE_DIR}"
+            >
+            $<$<BOOL:${NRI_ENABLE_AMDAGS}>:
+                "${amdags_SOURCE_DIR}/ags_lib/inc"
+            >
             $<$<BOOL:${NRI_ENABLE_AGILITY_SDK_SUPPORT}>:
                 ${agilitysdk_SOURCE_DIR}/build/native/include
             >
@@ -743,6 +788,66 @@ if(NRI_ENABLE_VK_SUPPORT)
     )
 endif()
 
+# WGPU
+if(NRI_ENABLE_WGPU_SUPPORT)
+    set(WGPU_SOURCE
+        "Source/WGPU/BufferWGPU.h"
+        "Source/WGPU/BufferWGPU.hpp"
+        "Source/WGPU/CommandAllocatorWGPU.h"
+        "Source/WGPU/CommandAllocatorWGPU.hpp"
+        "Source/WGPU/CommandBufferWGPU.h"
+        "Source/WGPU/CommandBufferWGPU.hpp"
+        "Source/WGPU/DescriptorPoolWGPU.h"
+        "Source/WGPU/DescriptorPoolWGPU.hpp"
+        "Source/WGPU/DescriptorSetWGPU.h"
+        "Source/WGPU/DescriptorSetWGPU.hpp"
+        "Source/WGPU/DescriptorWGPU.h"
+        "Source/WGPU/DescriptorWGPU.hpp"
+        "Source/WGPU/DeviceWGPU.h"
+        "Source/WGPU/DeviceWGPU.hpp"
+        "Source/WGPU/FenceWGPU.h"
+        "Source/WGPU/FenceWGPU.hpp"
+        "Source/WGPU/ImplWGPU.cpp"
+        "Source/WGPU/MemoryWGPU.h"
+        "Source/WGPU/MemoryWGPU.hpp"
+        "Source/WGPU/PipelineCacheWGPU.h"
+        "Source/WGPU/PipelineCacheWGPU.hpp"
+        "Source/WGPU/PipelineLayoutWGPU.h"
+        "Source/WGPU/PipelineLayoutWGPU.hpp"
+        "Source/WGPU/PipelineWGPU.h"
+        "Source/WGPU/PipelineWGPU.hpp"
+        "Source/WGPU/QueryPoolWGPU.h"
+        "Source/WGPU/QueryPoolWGPU.hpp"
+        "Source/WGPU/QueueWGPU.h"
+        "Source/WGPU/QueueWGPU.hpp"
+        "Source/WGPU/SharedWGPU.h"
+        "Source/WGPU/SharedWGPU.hpp"
+        "Source/WGPU/SwapChainWGPU.h"
+        "Source/WGPU/SwapChainWGPU.hpp"
+        "Source/WGPU/TextureWGPU.h"
+        "Source/WGPU/TextureWGPU.hpp"
+    )
+
+    add_library(NRI_WGPU STATIC)
+    target_sources(NRI_WGPU
+        PRIVATE
+            ${WGPU_SOURCE}
+    )
+    target_include_directories(NRI_WGPU
+        PRIVATE
+            "${wgpu_native_SOURCE_DIR}/include"
+    )
+    target_link_libraries(NRI_WGPU
+        PRIVATE
+            NRI_Shared
+            "${wgpu_native_SOURCE_DIR}/lib/${WGPU_NATIVE_LIB_NAME}"
+    )
+    set_target_properties(NRI_WGPU
+        PROPERTIES
+            FOLDER "NRI"
+    )
+endif()
+
 # Validation
 if(NRI_ENABLE_VALIDATION_SUPPORT)
     set(NRI_VALIDATION_SOURCE
@@ -882,8 +987,15 @@ target_sources(NRI
 )
 target_include_directories(NRI
     PRIVATE
-        "${nvtx_SOURCE_DIR}/c/include/"
-        "${vulkan_headers_SOURCE_DIR}/include"
+        $<$<BOOL:${NRI_ENABLE_NVTX_SUPPORT}>:
+            "${nvtx_SOURCE_DIR}/c/include/"
+        >
+        $<$<BOOL:${NRI_ENABLE_VK_SUPPORT}>:
+            "${vulkan_headers_SOURCE_DIR}/include"
+        >
+        $<$<BOOL:${NRI_ENABLE_WGPU_SUPPORT}>:
+            "${wgpu_native_SOURCE_DIR}/include"
+        >
     PUBLIC
         "Include"
 )
@@ -920,6 +1032,9 @@ target_link_libraries(NRI
         $<$<BOOL:${NRI_ENABLE_VK_SUPPORT}>:
             NRI_VK
         >
+        $<$<BOOL:${NRI_ENABLE_WGPU_SUPPORT}>:
+            NRI_WGPU
+        >
         $<$<BOOL:${NRI_ENABLE_VALIDATION_SUPPORT}>:
             NRI_Validation
         >
@@ -950,6 +1065,14 @@ if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
     add_custom_command(TARGET NRI
         POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${agilitysdk_SOURCE_DIR}/build/native/bin/${BIN_ARCHITECTURE}" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${NRI_AGILITY_SDK_DIR}"
+        VERBATIM
+    )
+endif()
+
+if(NRI_ENABLE_WGPU_SUPPORT)
+    add_custom_command(TARGET NRI
+        POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${wgpu_native_SOURCE_DIR}/lib/${WGPU_NATIVE_RUNTIME_NAME}" "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
         VERBATIM
     )
 endif()

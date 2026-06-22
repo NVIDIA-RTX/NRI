@@ -10,8 +10,6 @@ typedef ID3D12Resource ID3D12ResourceBest;
 
 namespace nri {
 
-struct MemoryD3D12;
-
 struct BufferD3D12 final : public DebugNameBase {
     inline BufferD3D12(DeviceD3D12& device)
         : m_Device(device) {

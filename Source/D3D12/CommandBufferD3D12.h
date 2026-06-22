@@ -14,11 +14,6 @@ typedef ID3D12VideoEncodeCommandList ID3D12VideoEncodeCommandListBest;
 
 namespace nri {
 
-struct PipelineD3D12;
-struct PipelineLayoutD3D12;
-struct DescriptorSetD3D12;
-struct DescriptorD3D12;
-
 struct AttachmentDescD3D12 {
     DescriptorD3D12* attachment;
     DescriptorD3D12* resolveDst;

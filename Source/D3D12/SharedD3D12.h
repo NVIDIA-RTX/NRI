@@ -44,6 +44,27 @@ struct D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY {
 
 namespace nri {
 
+struct AccelerationStructureD3D12;
+struct BufferD3D12;
+struct CommandAllocatorD3D12;
+struct CommandBufferD3D12;
+struct DescriptorD3D12;
+struct DescriptorPoolD3D12;
+struct DescriptorSetD3D12;
+struct DescriptorSetMapping;
+struct DeviceD3D12;
+struct FenceD3D12;
+struct MemoryD3D12;
+struct MemoryAllocatorD3D12;
+struct MicromapD3D12;
+struct PipelineCacheD3D12;
+struct PipelineD3D12;
+struct PipelineLayoutD3D12;
+struct QueryPoolD3D12;
+struct QueueD3D12;
+struct SwapChainD3D12;
+struct TextureD3D12;
+
 typedef size_t DescriptorHandleCPU;   // D3D12_CPU_DESCRIPTOR_HANDLE
 typedef uint64_t DescriptorHandleGPU; // D3D12_GPU_DESCRIPTOR_HANDLE
 

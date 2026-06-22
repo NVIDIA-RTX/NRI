@@ -4,8 +4,6 @@
 
 namespace nri {
 
-struct QueueVK;
-
 struct RenderPassAttachmentDesc {
     bool operator==(const RenderPassAttachmentDesc& other) const {
         return format == other.format

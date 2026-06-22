@@ -4,9 +4,6 @@
 
 namespace nri {
 
-struct DescriptorPoolD3D12;
-struct DescriptorSetMapping;
-
 struct DescriptorSetD3D12 final : public DebugNameBase {
     inline DescriptorSetD3D12() {
     }

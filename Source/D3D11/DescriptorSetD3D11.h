@@ -4,10 +4,6 @@
 
 namespace nri {
 
-struct PipelineLayoutD3D11;
-struct DescriptorD3D11;
-struct BindingSet;
-
 struct DescriptorSetD3D11 final : public DebugNameBase {
     inline const DescriptorD3D11* GetDescriptor(uint32_t i) const {
         return m_Descriptors[i];

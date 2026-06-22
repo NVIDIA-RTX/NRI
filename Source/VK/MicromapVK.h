@@ -4,9 +4,6 @@
 
 namespace nri {
 
-struct BufferVK;
-struct MemoryVK;
-
 struct MicromapVK final : public DebugNameBase {
     inline MicromapVK(DeviceVK& device)
         : m_Device(device)

@@ -4,8 +4,6 @@
 
 namespace nri {
 
-struct TextureVK;
-
 struct TexViewDesc {
     const TextureVK* texture;
     VkImageLayout expectedLayout;

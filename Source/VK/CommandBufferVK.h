@@ -4,10 +4,6 @@
 
 namespace nri {
 
-struct PipelineVK;
-struct PipelineLayoutVK;
-struct DescriptorVK;
-
 struct InputAttachmentRange {
     VkImage image;
     VkImageAspectFlags aspects;

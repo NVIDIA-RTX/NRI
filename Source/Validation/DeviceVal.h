@@ -4,8 +4,6 @@
 
 namespace nri {
 
-struct QueueVal;
-
 struct IsExtSupported {
     uint32_t lowLatency   : 1;
     uint32_t meshShader   : 1;
