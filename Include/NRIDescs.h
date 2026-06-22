@@ -359,7 +359,7 @@ NriBits(PlaneBits, uint8_t,
 // A bit represents a feature, supported by a format
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_feature_data_format_support
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkFormatFeatureFlagBits2.html
-// WGPU: typed buffer views are unsupported, multisampled storage texture views are unsupported
+// WGPU: typed buffer views are unsupported; storage textures cannot be multisampled
 NriBits(FormatSupportBits, uint16_t,
     UNSUPPORTED                     = 0,            // format is unsupported
 
