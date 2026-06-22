@@ -359,30 +359,31 @@ NriBits(PlaneBits, uint8_t,
 // A bit represents a feature, supported by a format
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_feature_data_format_support
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkFormatFeatureFlagBits2.html
+// WGPU: typed buffer views are unsupported, multisampled storage texture views are unsupported
 NriBits(FormatSupportBits, uint16_t,
-    UNSUPPORTED                     = 0,
+    UNSUPPORTED                     = 0,            // format is unsupported
 
     // Texture
-    TEXTURE                         = NriBit(0),
-    STORAGE_TEXTURE                 = NriBit(1),
-    STORAGE_TEXTURE_ATOMICS         = NriBit(2),    // other than Load / Store
-    COLOR_ATTACHMENT                = NriBit(3),
-    DEPTH_STENCIL_ATTACHMENT        = NriBit(4),
-    BLEND                           = NriBit(5),
-    MULTISAMPLE_2X                  = NriBit(6),
-    MULTISAMPLE_4X                  = NriBit(7),
-    MULTISAMPLE_8X                  = NriBit(8),
-    MULTISAMPLE_RESOLVE             = NriBit(9),
+    TEXTURE                         = NriBit(0),    // sampled texture view
+    STORAGE_TEXTURE                 = NriBit(1),    // storage texture view
+    STORAGE_TEXTURE_ATOMICS         = NriBit(2),    // storage texture atomics other than Load / Store
+    COLOR_ATTACHMENT                = NriBit(3),    // color attachment view
+    DEPTH_STENCIL_ATTACHMENT        = NriBit(4),    // depth-stencil attachment view
+    BLEND                           = NriBit(5),    // color attachment blending
+    MULTISAMPLE_2X                  = NriBit(6),    // 2x multisampled texture
+    MULTISAMPLE_4X                  = NriBit(7),    // 4x multisampled texture
+    MULTISAMPLE_8X                  = NriBit(8),    // 8x multisampled texture
+    MULTISAMPLE_RESOLVE             = NriBit(9),    // resolve source/destination
 
     // Buffer
-    BUFFER                          = NriBit(10),
-    STORAGE_BUFFER                  = NriBit(11),
-    STORAGE_BUFFER_ATOMICS          = NriBit(12),   // other than Load / Store
-    VERTEX_BUFFER                   = NriBit(13),
+    BUFFER                          = NriBit(10),   // typed buffer view
+    STORAGE_BUFFER                  = NriBit(11),   // typed storage buffer view
+    STORAGE_BUFFER_ATOMICS          = NriBit(12),   // typed storage buffer atomics other than Load / Store
+    VERTEX_BUFFER                   = NriBit(13),   // vertex buffer attribute
 
     // Texture / buffer
-    STORAGE_READ_WITHOUT_FORMAT     = NriBit(14),
-    STORAGE_WRITE_WITHOUT_FORMAT    = NriBit(15)
+    STORAGE_READ_WITHOUT_FORMAT     = NriBit(14),   // storage read with unknown format
+    STORAGE_WRITE_WITHOUT_FORMAT    = NriBit(15)    // storage write with unknown format
 );
 
 #pragma endregion
@@ -691,6 +692,7 @@ NriStruct(TextureDesc) {
 // - VK: buffers are always created with sharing mode "CONCURRENT" to match D3D12 spec
 // - "structureStride" values:
 //   - 0  - allows only "typed" views
+//          WGPU: typed buffer views are unsupported
 //   - 4  - allows "typed", "byte address" and "structured" views
 //          D3D11: allows to create multiple "structured" views for a single resource, disobeying the spec
 //   - >4 - allows only "structured" views
@@ -820,6 +822,8 @@ NriEnum(AddressMode, uint8_t,
     REPEAT,
     MIRRORED_REPEAT,
     CLAMP_TO_EDGE,
+
+    // WGPU: unsupported
     CLAMP_TO_BORDER,
     MIRROR_CLAMP_TO_EDGE
 );
@@ -881,8 +885,8 @@ NriStruct(BufferViewDesc) {
     Nri(BufferView) type;
     uint64_t offset;                        // expects "memoryAlignment.bufferShaderResourceOffset" for shader resources
     uint64_t size;                          // can be "WHOLE_SIZE"
-    NriOptional Nri(Format) format;         // needed for typed views, i.e. "BUFFER" and "BUFFER_STORAGE"
-    NriOptional uint32_t structureStride;   // needed for structured views, i.e. "STRUCTURED_BUFFER" and "STRUCTURED_BUFFER_STORAGE" (= "BufferDesc::structureStride", if not provided)
+    NriOptional Nri(Format) format;         // needed for typed views, i.e. "BUFFER" and "STORAGE_BUFFER"
+    NriOptional uint32_t structureStride;   // needed for structured views, i.e. "STRUCTURED_BUFFER" and "STORAGE_STRUCTURED_BUFFER" (= "BufferDesc::structureStride", if not provided)
 };
 
 NriStruct(AddressModes) {
@@ -904,7 +908,7 @@ NriStruct(SamplerDesc) {
     float mipMax;
     Nri(AddressModes) addressModes;
     Nri(CompareOp) compareOp;
-    Nri(Color) borderColor;
+    Nri(Color) borderColor; // used only with "AddressMode::CLAMP_TO_BORDER"
     bool isInteger;
     bool unnormalizedCoordinates; // requires "shaderFeatures.unnormalizedCoordinates"
 };
@@ -1164,6 +1168,8 @@ NriEnum(Topology, uint8_t,
     LINE_STRIP,
     TRIANGLE_LIST,
     TRIANGLE_STRIP,
+
+    // WGPU: unsupported
     LINE_LIST_WITH_ADJACENCY,
     LINE_STRIP_WITH_ADJACENCY,
     TRIANGLE_LIST_WITH_ADJACENCY,
@@ -2085,7 +2091,7 @@ NriStruct(DeviceDesc) {
         // Shader bytecode
         bool shaderBytecodeDXBC;                                  // DXBC can be passed to "ShaderDesc::bytecode"
         bool shaderBytecodeDXIL;                                  // DXIL can be passed to "ShaderDesc::bytecode"
-        bool shaderBytecodeSPIRV;                                 // SPIRV can be passed to "ShaderDesc::bytecode"
+        bool shaderBytecodeSPIRV;                                 // SPIRV can be passed to "ShaderDesc::bytecode", WGPU expects Vulkan 1.2 environment
         bool shaderBytecodeWGSL;                                  // WGSL can be passed to "ShaderDesc::bytecode"
 
         // Queries
