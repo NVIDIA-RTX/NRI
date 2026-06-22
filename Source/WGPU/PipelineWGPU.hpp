@@ -7,9 +7,27 @@ PipelineWGPU::~PipelineWGPU() {
         wgpuComputePipelineRelease(m_ComputePipeline);
     if (m_PipelineLayout)
         wgpuPipelineLayoutRelease(m_PipelineLayout);
+
+    for (DescriptorSetMappingWGPU& mapping : m_SetMappings) {
+        if (mapping.layout)
+            wgpuBindGroupLayoutRelease(mapping.layout);
+    }
 }
 
 static constexpr WGPUShaderStage GRAPHICS_SHADER_STAGE_MASK_WGPU = (WGPUShaderStage)(WGPUShaderStage_Vertex | WGPUShaderStage_Fragment);
+
+bool PipelineWGPU::HasBindGroup(uint32_t bindGroupIndex) const {
+    return GetDescriptorSetMapping(bindGroupIndex) != nullptr;
+}
+
+const DescriptorSetMappingWGPU* PipelineWGPU::GetDescriptorSetMapping(uint32_t bindGroupIndex) const {
+    for (const DescriptorSetMappingWGPU& mapping : m_SetMappings) {
+        if (mapping.bindGroupIndex == bindGroupIndex && mapping.layout)
+            return &mapping;
+    }
+
+    return nullptr;
+}
 
 static bool IsSpirvBytecodeWGPU(const ShaderDesc& shaderDesc) {
     constexpr uint32_t SPIRV_MAGIC = 0x07230203;
@@ -176,11 +194,10 @@ static void FillStencilFace(WGPUStencilFaceState& out, const StencilDesc& in) {
 
 Result PipelineWGPU::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     m_PipelineLayoutWGPU = (PipelineLayoutWGPU*)graphicsPipelineDesc.pipelineLayout;
-    Result result = m_PipelineLayoutWGPU->UpdateStorageTextureFormats(graphicsPipelineDesc.shaders, graphicsPipelineDesc.shaderNum);
+    Result result = m_PipelineLayoutWGPU->CreatePipelineLayout(graphicsPipelineDesc.shaders, graphicsPipelineDesc.shaderNum, GRAPHICS_SHADER_STAGE_MASK_WGPU, m_SetMappings, m_PipelineLayout);
     if (result != Result::SUCCESS)
         return result;
 
-    m_PipelineLayout = m_PipelineLayoutWGPU->CreatePipelineLayout(GRAPHICS_SHADER_STAGE_MASK_WGPU);
     if (!m_PipelineLayout)
         return Result::FAILURE;
 
@@ -319,11 +336,10 @@ Result PipelineWGPU::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
 
 Result PipelineWGPU::Create(const ComputePipelineDesc& computePipelineDesc) {
     m_PipelineLayoutWGPU = (PipelineLayoutWGPU*)computePipelineDesc.pipelineLayout;
-    Result result = m_PipelineLayoutWGPU->UpdateStorageTextureFormats(&computePipelineDesc.shader, 1);
+    Result result = m_PipelineLayoutWGPU->CreatePipelineLayout(&computePipelineDesc.shader, 1, WGPUShaderStage_Compute, m_SetMappings, m_PipelineLayout);
     if (result != Result::SUCCESS)
         return result;
 
-    m_PipelineLayout = m_PipelineLayoutWGPU->CreatePipelineLayout(WGPUShaderStage_Compute);
     if (!m_PipelineLayout)
         return Result::FAILURE;
 

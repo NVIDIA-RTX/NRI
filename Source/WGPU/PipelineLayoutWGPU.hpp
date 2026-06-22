@@ -1,6 +1,6 @@
 // © 2026 NVIDIA Corporation
 
-static void FillLayoutEntry(WGPUBindGroupLayoutEntry& entry, DescriptorType descriptorType, WGPUShaderStage visibility, WGPUTextureFormat storageTextureFormat, WGPUTextureViewDimension storageTextureViewDimension, uint32_t binding, uint32_t bindingArraySize = 0) {
+static void FillLayoutEntry(WGPUBindGroupLayoutEntry& entry, DescriptorType descriptorType, WGPUShaderStage visibility, WGPUTextureSampleType textureSampleType, WGPUTextureViewDimension textureViewDimension, WGPUBool textureMultisampled, WGPUTextureFormat storageTextureFormat, WGPUTextureViewDimension storageTextureViewDimension, WGPUStorageTextureAccess storageTextureAccess, uint32_t binding, uint32_t bindingArraySize = 0) {
     entry = WGPU_BIND_GROUP_LAYOUT_ENTRY_INIT;
     entry.binding = binding;
     entry.visibility = visibility;
@@ -13,12 +13,12 @@ static void FillLayoutEntry(WGPUBindGroupLayoutEntry& entry, DescriptorType desc
         case DescriptorType::TEXTURE:
         case DescriptorType::INPUT_ATTACHMENT:
             // TODO: NRI input attachments are not native WebGPU subpass inputs; keep "shaderFeatures.inputAttachments = false".
-            entry.texture.sampleType = WGPUTextureSampleType_Float;
-            entry.texture.viewDimension = WGPUTextureViewDimension_2D;
-            entry.texture.multisampled = WGPU_FALSE;
+            entry.texture.sampleType = textureSampleType;
+            entry.texture.viewDimension = textureViewDimension;
+            entry.texture.multisampled = textureMultisampled;
             break;
         case DescriptorType::STORAGE_TEXTURE:
-            entry.storageTexture.access = WGPUStorageTextureAccess_WriteOnly;
+            entry.storageTexture.access = storageTextureAccess;
             entry.storageTexture.format = storageTextureFormat == WGPUTextureFormat_Undefined ? WGPUTextureFormat_R32Float : storageTextureFormat;
             entry.storageTexture.viewDimension = storageTextureViewDimension;
             break;
@@ -35,8 +35,12 @@ static void FillLayoutEntry(WGPUBindGroupLayoutEntry& entry, DescriptorType desc
     }
 }
 
+static void FillLayoutEntry(WGPUBindGroupLayoutEntry& entry, const DescriptorRangeMappingWGPU& range, uint32_t binding, uint32_t bindingArraySize = 0) {
+    FillLayoutEntry(entry, range.type, range.visibility, range.textureSampleType, range.textureViewDimension, range.textureMultisampled, range.storageTextureFormat, range.storageTextureViewDimension, range.storageTextureAccess, binding, bindingArraySize);
+}
+
 static void FillLayoutEntry(WGPUBindGroupLayoutEntry& entry, const DescriptorRangeDesc& range, uint32_t binding, uint32_t bindingArraySize = 0) {
-    FillLayoutEntry(entry, range.descriptorType, GetShaderStageFlags(range.shaderStages), WGPUTextureFormat_Undefined, WGPUTextureViewDimension_2D, binding, bindingArraySize);
+    FillLayoutEntry(entry, range.descriptorType, GetShaderStageFlags(range.shaderStages), WGPUTextureSampleType_Float, WGPUTextureViewDimension_2D, WGPU_FALSE, WGPUTextureFormat_Undefined, WGPUTextureViewDimension_2D, WGPUStorageTextureAccess_WriteOnly, binding, bindingArraySize);
 }
 
 static bool IsDynamicOffsetRootDescriptor(DescriptorType descriptorType) {
@@ -140,10 +144,10 @@ Result PipelineLayoutWGPU::Create(const PipelineLayoutDesc& pipelineLayoutDesc) 
             rangeMapping.isArray = isArray;
 
             if (isArray)
-                FillLayoutEntry(entries[entryOffset++], range, bindingBase, range.descriptorNum);
+                FillLayoutEntry(entries[entryOffset++], rangeMapping, bindingBase, range.descriptorNum);
             else {
                 for (uint32_t k = 0; k < range.descriptorNum; k++)
-                    FillLayoutEntry(entries[entryOffset++], range, bindingBase + k);
+                    FillLayoutEntry(entries[entryOffset++], rangeMapping, bindingBase + k);
             }
 
             descriptorOffset += range.descriptorNum;
@@ -329,12 +333,27 @@ static WGPUTextureFormat GetStorageTextureFormatFromSpirv(uint32_t imageFormat) 
     }
 }
 
-struct StorageTextureBindingWGPU {
+struct TextureBindingWGPU {
     uint32_t set = 0;
     uint32_t binding = 0;
-    WGPUTextureFormat format = WGPUTextureFormat_Undefined;
+    DescriptorType type = DescriptorType::TEXTURE;
+    WGPUTextureSampleType sampleType = WGPUTextureSampleType_Float;
     WGPUTextureViewDimension viewDimension = WGPUTextureViewDimension_2D;
+    WGPUBool multisampled = WGPU_FALSE;
+    WGPUTextureFormat format = WGPUTextureFormat_Undefined;
+    WGPUStorageTextureAccess access = WGPUStorageTextureAccess_WriteOnly;
 };
+
+static WGPUTextureViewDimension GetTextureViewDimensionFromSpirv(uint32_t dim, uint32_t arrayed) {
+    if (dim == 0)
+        return WGPUTextureViewDimension_1D;
+    if (dim == 2)
+        return WGPUTextureViewDimension_3D;
+    if (dim == 3)
+        return arrayed ? WGPUTextureViewDimension_CubeArray : WGPUTextureViewDimension_Cube;
+
+    return arrayed ? WGPUTextureViewDimension_2DArray : WGPUTextureViewDimension_2D;
+}
 
 static WGPUTextureViewDimension GetStorageTextureViewDimensionFromSpirv(uint32_t dim, uint32_t arrayed) {
     if (dim == 0)
@@ -480,30 +499,71 @@ static WGPUTextureViewDimension GetStorageTextureViewDimensionFromWgsl(const cha
     return WGPUTextureViewDimension_2D;
 }
 
-static void AddStorageTextureBindingWGPU(StorageTextureBindingWGPU* storageTextures, uint32_t& storageTextureNum, uint32_t storageTextureMaxNum, const StorageTextureBindingWGPU& storageTexture) {
-    if (storageTextureNum < storageTextureMaxNum)
-        storageTextures[storageTextureNum++] = storageTexture;
+static WGPUStorageTextureAccess GetStorageTextureAccessFromWgsl(const char* begin, const char* end) {
+    if (IsWgslTokenWGPU(begin, end, "read"))
+        return WGPUStorageTextureAccess_ReadOnly;
+    if (IsWgslTokenWGPU(begin, end, "read_write"))
+        return WGPUStorageTextureAccess_ReadWrite;
+
+    return WGPUStorageTextureAccess_WriteOnly;
 }
 
-static void ReflectStorageTexturesFromWgsl(const ShaderDesc& shaderDesc, StorageTextureBindingWGPU* storageTextures, uint32_t& storageTextureNum, uint32_t storageTextureMaxNum) {
-    // TODO: This is a small source parser, not full WGSL reflection. It intentionally recognizes only direct storage-texture declarations.
+static WGPUTextureSampleType GetTextureSampleTypeFromWgsl(const char* begin, const char* end) {
+    if (IsWgslTokenWGPU(begin, end, "i32"))
+        return WGPUTextureSampleType_Sint;
+    if (IsWgslTokenWGPU(begin, end, "u32"))
+        return WGPUTextureSampleType_Uint;
+
+    return WGPUTextureSampleType_Float;
+}
+
+static WGPUTextureViewDimension GetTextureViewDimensionFromWgsl(const char* begin, const char* end) {
+    if (IsWgslTokenWGPU(begin, end, "1d"))
+        return WGPUTextureViewDimension_1D;
+    if (IsWgslTokenWGPU(begin, end, "2d_array") || IsWgslTokenWGPU(begin, end, "depth_2d_array"))
+        return WGPUTextureViewDimension_2DArray;
+    if (IsWgslTokenWGPU(begin, end, "3d"))
+        return WGPUTextureViewDimension_3D;
+    if (IsWgslTokenWGPU(begin, end, "cube"))
+        return WGPUTextureViewDimension_Cube;
+    if (IsWgslTokenWGPU(begin, end, "cube_array"))
+        return WGPUTextureViewDimension_CubeArray;
+
+    return WGPUTextureViewDimension_2D;
+}
+
+static bool IsDepthTextureTypeWgsl(const char* begin, const char* end) {
+    return end - begin > 6 && strncmp(begin, "depth_", 6) == 0;
+}
+
+static bool IsMultisampledTextureTypeWgsl(const char* begin, const char* end) {
+    return IsWgslTokenWGPU(begin, end, "multisampled_2d") || IsWgslTokenWGPU(begin, end, "depth_multisampled_2d");
+}
+
+static void AddTextureBindingWGPU(TextureBindingWGPU* textureBindings, uint32_t& textureBindingNum, uint32_t textureBindingMaxNum, const TextureBindingWGPU& textureBinding) {
+    if (textureBindingNum < textureBindingMaxNum)
+        textureBindings[textureBindingNum++] = textureBinding;
+}
+
+static void ReflectTexturesFromWgsl(const ShaderDesc& shaderDesc, TextureBindingWGPU* textureBindings, uint32_t& textureBindingNum, uint32_t textureBindingMaxNum) {
+    // TODO: This is a small source parser, not full WGSL reflection. It intentionally recognizes only direct texture declarations.
     const char* source = (const char*)shaderDesc.bytecode;
     if (!source || shaderDesc.size == 0)
         return;
 
     const char* sourceEnd = source + shaderDesc.size;
-    const char* token = "texture_storage_";
+    const char* storageToken = "texture_storage_";
     const char* it = source;
-    while ((it = FindTokenWGPU(it, sourceEnd, token)) != nullptr) {
+    while ((it = FindTokenWGPU(it, sourceEnd, storageToken)) != nullptr) {
         const char* declarationBegin = it - source > 512 ? it - 512 : source;
         uint32_t set = 0;
         uint32_t binding = 0;
         if (!ParseUintAttributeWGPU(declarationBegin, it, "@group", set) || !ParseUintAttributeWGPU(declarationBegin, it, "@binding", binding)) {
-            it += strlen(token);
+            it += strlen(storageToken);
             continue;
         }
 
-        const char* dimensionBegin = it + strlen(token);
+        const char* dimensionBegin = it + strlen(storageToken);
         const char* dimensionEnd = dimensionBegin;
         while (dimensionEnd < sourceEnd && IsWgslIdentifierCharWGPU(*dimensionEnd))
             dimensionEnd++;
@@ -524,37 +584,154 @@ static void ReflectStorageTexturesFromWgsl(const ShaderDesc& shaderDesc, Storage
             formatEnd++;
 
         WGPUTextureFormat format = GetStorageTextureFormatFromWgsl(formatBegin, formatEnd);
-        if (format != WGPUTextureFormat_Undefined)
-            AddStorageTextureBindingWGPU(storageTextures, storageTextureNum, storageTextureMaxNum, {set, binding, format, GetStorageTextureViewDimensionFromWgsl(dimensionBegin, dimensionEnd)});
+        if (format != WGPUTextureFormat_Undefined) {
+            WGPUStorageTextureAccess access = WGPUStorageTextureAccess_WriteOnly;
+            const char* accessBegin = FindTokenWGPU(formatEnd, declarationEnd, ",");
+            if (accessBegin) {
+                accessBegin = SkipSpacesWGPU(accessBegin + 1, declarationEnd);
+                const char* accessEnd = accessBegin;
+                while (accessEnd < declarationEnd && IsWgslIdentifierCharWGPU(*accessEnd))
+                    accessEnd++;
+
+                access = GetStorageTextureAccessFromWgsl(accessBegin, accessEnd);
+            }
+
+            TextureBindingWGPU textureBinding = {};
+            textureBinding.set = set;
+            textureBinding.binding = binding;
+            textureBinding.type = DescriptorType::STORAGE_TEXTURE;
+            textureBinding.format = format;
+            textureBinding.viewDimension = GetStorageTextureViewDimensionFromWgsl(dimensionBegin, dimensionEnd);
+            textureBinding.access = access;
+            AddTextureBindingWGPU(textureBindings, textureBindingNum, textureBindingMaxNum, textureBinding);
+        }
 
         it = formatEnd;
     }
+
+    const char* textureToken = "texture_";
+    it = source;
+    while ((it = FindTokenWGPU(it, sourceEnd, textureToken)) != nullptr) {
+        if (FindTokenWGPU(it, std::min(it + strlen(storageToken), sourceEnd), storageToken) == it) {
+            it += strlen(storageToken);
+            continue;
+        }
+
+        const char* typeBegin = it + strlen(textureToken);
+        const char* typeEnd = typeBegin;
+        while (typeEnd < sourceEnd && IsWgslIdentifierCharWGPU(*typeEnd))
+            typeEnd++;
+
+        const char* declarationBegin = it - source > 512 ? it - 512 : source;
+        uint32_t set = 0;
+        uint32_t binding = 0;
+        if (!ParseUintAttributeWGPU(declarationBegin, it, "@group", set) || !ParseUintAttributeWGPU(declarationBegin, it, "@binding", binding)) {
+            it = typeEnd;
+            continue;
+        }
+
+        WGPUTextureSampleType sampleType = IsDepthTextureTypeWgsl(typeBegin, typeEnd) ? WGPUTextureSampleType_Depth : WGPUTextureSampleType_Float;
+        const char* declarationEnd = FindTokenWGPU(typeEnd, sourceEnd, ";");
+        if (!declarationEnd)
+            declarationEnd = sourceEnd;
+
+        const char* sampleTypeBegin = FindTokenWGPU(typeEnd, declarationEnd, "<");
+        if (sampleTypeBegin && sampleType != WGPUTextureSampleType_Depth) {
+            sampleTypeBegin = SkipSpacesWGPU(sampleTypeBegin + 1, declarationEnd);
+            const char* sampleTypeEnd = sampleTypeBegin;
+            while (sampleTypeEnd < declarationEnd && IsWgslIdentifierCharWGPU(*sampleTypeEnd))
+                sampleTypeEnd++;
+
+            sampleType = GetTextureSampleTypeFromWgsl(sampleTypeBegin, sampleTypeEnd);
+        }
+
+        TextureBindingWGPU textureBinding = {};
+        textureBinding.set = set;
+        textureBinding.binding = binding;
+        textureBinding.type = DescriptorType::TEXTURE;
+        textureBinding.sampleType = sampleType;
+        textureBinding.viewDimension = GetTextureViewDimensionFromWgsl(typeBegin, typeEnd);
+        textureBinding.multisampled = IsMultisampledTextureTypeWgsl(typeBegin, typeEnd) ? WGPU_TRUE : WGPU_FALSE;
+        AddTextureBindingWGPU(textureBindings, textureBindingNum, textureBindingMaxNum, textureBinding);
+
+        it = typeEnd;
+    }
 }
 
-static void ReflectStorageTextures(DeviceWGPU& device, const ShaderDesc& shaderDesc, StorageTextureBindingWGPU* storageTextures, uint32_t& storageTextureNum, uint32_t storageTextureMaxNum) {
+static WGPUTextureSampleType GetTextureSampleTypeFromSpirv(const uint32_t* scalarTypes, uint32_t sampledType, uint32_t depth, uint32_t idBound) {
+    if (depth == 1)
+        return WGPUTextureSampleType_Depth;
+
+    if (sampledType < idBound) {
+        uint32_t scalarType = scalarTypes[sampledType];
+        if (scalarType == 1)
+            return WGPUTextureSampleType_Sint;
+        if (scalarType == 2)
+            return WGPUTextureSampleType_Uint;
+    }
+
+    return WGPUTextureSampleType_Float;
+}
+
+static WGPUStorageTextureAccess GetStorageTextureAccessFromSpirv(uint32_t accessQualifier) {
+    if (accessQualifier == 0)
+        return WGPUStorageTextureAccess_ReadOnly;
+    if (accessQualifier == 2)
+        return WGPUStorageTextureAccess_ReadWrite;
+
+    return WGPUStorageTextureAccess_WriteOnly;
+}
+
+static uint32_t GetSourceVariable(const uint32_t* ids, uint32_t id, uint32_t idBound) {
+    if (id >= idBound)
+        return uint32_t(-1);
+
+    return ids[id] == uint32_t(-1) ? id : ids[id];
+}
+
+static void ReflectTextures(DeviceWGPU& device, const ShaderDesc& shaderDesc, TextureBindingWGPU* textureBindings, uint32_t& textureBindingNum, uint32_t textureBindingMaxNum) {
     const uint32_t* code = (const uint32_t*)shaderDesc.bytecode;
     uint32_t wordNum = (uint32_t)(shaderDesc.size / sizeof(uint32_t));
     if (!code || wordNum < 5 || code[0] != 0x07230203) {
-        ReflectStorageTexturesFromWgsl(shaderDesc, storageTextures, storageTextureNum, storageTextureMaxNum);
+        ReflectTexturesFromWgsl(shaderDesc, textureBindings, textureBindingNum, textureBindingMaxNum);
         return;
     }
 
-    // TODO: SPIR-V reflection is intentionally minimal and only extracts storage texture format/dimension metadata needed by WGPU bind-group layouts.
+    // TODO: SPIR-V reflection is intentionally minimal and extracts only texture binding metadata needed by WGPU bind-group layouts.
     struct TypeInfo {
+        DescriptorType type = DescriptorType::MAX_NUM;
         uint32_t imageFormat = 0;
+        WGPUTextureSampleType sampleType = WGPUTextureSampleType_Float;
         WGPUTextureViewDimension viewDimension = WGPUTextureViewDimension_2D;
-        bool isStorageTexture = false;
+        WGPUBool multisampled = WGPU_FALSE;
+        WGPUStorageTextureAccess access = WGPUStorageTextureAccess_Undefined;
     };
 
     uint32_t idBound = code[3];
+    Scratch<uint32_t> scalarTypes = NRI_ALLOCATE_SCRATCH(device, uint32_t, idBound);
     Scratch<uint32_t> descriptorSets = NRI_ALLOCATE_SCRATCH(device, uint32_t, idBound);
     Scratch<uint32_t> bindings = NRI_ALLOCATE_SCRATCH(device, uint32_t, idBound);
     Scratch<uint32_t> pointerTypes = NRI_ALLOCATE_SCRATCH(device, uint32_t, idBound);
+    Scratch<uint32_t> resourceTypes = NRI_ALLOCATE_SCRATCH(device, uint32_t, idBound);
+    Scratch<uint32_t> pointerSourceVariables = NRI_ALLOCATE_SCRATCH(device, uint32_t, idBound);
+    Scratch<uint32_t> imageSourceVariables = NRI_ALLOCATE_SCRATCH(device, uint32_t, idBound);
+    Scratch<uint8_t> nonWritableVariables = NRI_ALLOCATE_SCRATCH(device, uint8_t, idBound);
+    Scratch<uint8_t> nonReadableVariables = NRI_ALLOCATE_SCRATCH(device, uint8_t, idBound);
+    Scratch<uint8_t> readVariables = NRI_ALLOCATE_SCRATCH(device, uint8_t, idBound);
+    Scratch<uint8_t> writeVariables = NRI_ALLOCATE_SCRATCH(device, uint8_t, idBound);
     Scratch<TypeInfo> types = NRI_ALLOCATE_SCRATCH(device, TypeInfo, idBound);
     for (uint32_t i = 0; i < idBound; i++) {
+        scalarTypes[i] = 0;
         descriptorSets[i] = uint32_t(-1);
         bindings[i] = uint32_t(-1);
         pointerTypes[i] = uint32_t(-1);
+        resourceTypes[i] = uint32_t(-1);
+        pointerSourceVariables[i] = uint32_t(-1);
+        imageSourceVariables[i] = uint32_t(-1);
+        nonWritableVariables[i] = 0;
+        nonReadableVariables[i] = 0;
+        readVariables[i] = 0;
+        writeVariables[i] = 0;
         types[i] = {};
     }
 
@@ -567,23 +744,48 @@ static void ReflectStorageTextures(DeviceWGPU& device, const ShaderDesc& shaderD
         if (count == 0 || word + count > wordNum)
             break;
 
-        if (op == 71 && count >= 4) {
+        if (op == 21 && count >= 4) {
+            uint32_t resultId = operands[0];
+            uint32_t signedness = operands[2];
+            if (resultId < idBound)
+                scalarTypes[resultId] = signedness ? 1 : 2;
+        } else if (op == 22 && count >= 3) {
+            uint32_t resultId = operands[0];
+            if (resultId < idBound)
+                scalarTypes[resultId] = 3;
+        } else if (op == 71 && count >= 4) {
             uint32_t target = operands[0];
             uint32_t decoration = operands[1];
             if (target < idBound && decoration == 33)
                 bindings[target] = operands[2];
             else if (target < idBound && decoration == 34)
                 descriptorSets[target] = operands[2];
+            else if (target < idBound && decoration == 24)
+                nonWritableVariables[target] = 1;
+            else if (target < idBound && decoration == 25)
+                nonReadableVariables[target] = 1;
         } else if (op == 25 && count >= 9) {
             uint32_t resultId = operands[0];
+            uint32_t sampledType = operands[1];
             uint32_t dim = operands[2];
+            uint32_t depth = operands[3];
             uint32_t arrayed = operands[4];
+            uint32_t ms = operands[5];
             uint32_t sampled = operands[6];
             uint32_t imageFormat = operands[7];
-            if (resultId < idBound && sampled == 2 && dim != 5 && imageFormat != 0) {
-                types[resultId].imageFormat = imageFormat;
-                types[resultId].viewDimension = GetStorageTextureViewDimensionFromSpirv(dim, arrayed);
-                types[resultId].isStorageTexture = true;
+            if (resultId < idBound && dim != 5 && dim != 6) {
+                TypeInfo& type = types[resultId];
+                if (sampled == 2 && imageFormat != 0) {
+                    type.type = DescriptorType::STORAGE_TEXTURE;
+                    type.imageFormat = imageFormat;
+                    type.viewDimension = GetStorageTextureViewDimensionFromSpirv(dim, arrayed);
+                    type.access = count >= 10 ? GetStorageTextureAccessFromSpirv(operands[8]) : WGPUStorageTextureAccess_Undefined;
+                } else {
+                    type.type = DescriptorType::TEXTURE;
+                    type.sampleType = GetTextureSampleTypeFromSpirv(scalarTypes, sampledType, depth, idBound);
+                    type.viewDimension = GetTextureViewDimensionFromSpirv(dim, arrayed);
+                    type.multisampled = ms ? WGPU_TRUE : WGPU_FALSE;
+                }
             }
         } else if (op == 32 && count >= 4) {
             uint32_t resultId = operands[0];
@@ -593,84 +795,108 @@ static void ReflectStorageTextures(DeviceWGPU& device, const ShaderDesc& shaderD
         } else if (op == 59 && count >= 4) {
             uint32_t resultTypeId = operands[0];
             uint32_t resultId = operands[1];
-            if (resultId < idBound && resultTypeId < idBound && pointerTypes[resultTypeId] < idBound) {
-                const TypeInfo& type = types[pointerTypes[resultTypeId]];
-                if (type.isStorageTexture && descriptorSets[resultId] != uint32_t(-1) && bindings[resultId] != uint32_t(-1)) {
-                    WGPUTextureFormat format = GetStorageTextureFormatFromSpirv(type.imageFormat);
-                    if (format != WGPUTextureFormat_Undefined)
-                        AddStorageTextureBindingWGPU(storageTextures, storageTextureNum, storageTextureMaxNum, {descriptorSets[resultId], bindings[resultId], format, type.viewDimension});
-                }
+            if (resultId < idBound && resultTypeId < idBound && pointerTypes[resultTypeId] < idBound && types[pointerTypes[resultTypeId]].type != DescriptorType::MAX_NUM) {
+                resourceTypes[resultId] = pointerTypes[resultTypeId];
+                pointerSourceVariables[resultId] = resultId;
             }
+        } else if ((op == 65 || op == 66) && count >= 4) {
+            uint32_t resultId = operands[1];
+            uint32_t baseId = operands[2];
+            if (resultId < idBound)
+                pointerSourceVariables[resultId] = GetSourceVariable(pointerSourceVariables, baseId, idBound);
+        } else if (op == 61 && count >= 4) {
+            uint32_t resultId = operands[1];
+            uint32_t pointerId = operands[2];
+            if (resultId < idBound)
+                imageSourceVariables[resultId] = GetSourceVariable(pointerSourceVariables, pointerId, idBound);
+        } else if (op == 98 && count >= 4) {
+            uint32_t imageId = operands[2];
+            uint32_t variableId = GetSourceVariable(imageSourceVariables, imageId, idBound);
+            if (variableId < idBound)
+                readVariables[variableId] = 1;
+        } else if (op == 99 && count >= 3) {
+            uint32_t imageId = operands[0];
+            uint32_t variableId = GetSourceVariable(imageSourceVariables, imageId, idBound);
+            if (variableId < idBound)
+                writeVariables[variableId] = 1;
         }
 
         word += count;
     }
+
+    for (uint32_t i = 0; i < idBound; i++) {
+        uint32_t typeId = resourceTypes[i];
+        if (typeId >= idBound || descriptorSets[i] == uint32_t(-1) || bindings[i] == uint32_t(-1))
+            continue;
+
+        const TypeInfo& type = types[typeId];
+        TextureBindingWGPU textureBinding = {};
+        textureBinding.set = descriptorSets[i];
+        textureBinding.binding = bindings[i];
+        textureBinding.type = type.type;
+        textureBinding.sampleType = type.sampleType;
+        textureBinding.viewDimension = type.viewDimension;
+        textureBinding.multisampled = type.multisampled;
+
+        if (type.type == DescriptorType::STORAGE_TEXTURE) {
+            textureBinding.format = GetStorageTextureFormatFromSpirv(type.imageFormat);
+            if (textureBinding.format == WGPUTextureFormat_Undefined)
+                continue;
+
+            textureBinding.access = type.access;
+            if (textureBinding.access == WGPUStorageTextureAccess_Undefined) {
+                if (nonReadableVariables[i])
+                    textureBinding.access = WGPUStorageTextureAccess_WriteOnly;
+                else if (nonWritableVariables[i])
+                    textureBinding.access = WGPUStorageTextureAccess_ReadOnly;
+                else if (readVariables[i] && writeVariables[i])
+                    textureBinding.access = WGPUStorageTextureAccess_ReadWrite;
+                else if (readVariables[i])
+                    textureBinding.access = WGPUStorageTextureAccess_ReadOnly;
+                else
+                    textureBinding.access = WGPUStorageTextureAccess_WriteOnly;
+            }
+        }
+
+        AddTextureBindingWGPU(textureBindings, textureBindingNum, textureBindingMaxNum, textureBinding);
+    }
 }
 
-Result PipelineLayoutWGPU::UpdateStorageTextureFormats(const ShaderDesc* shaderDescs, uint32_t shaderDescNum) {
-    uint32_t storageTextureMaxNum = 0;
+Result PipelineLayoutWGPU::UpdateTextureBindings(Vector<DescriptorSetMappingWGPU>& setMappings, const ShaderDesc* shaderDescs, uint32_t shaderDescNum) const {
+    uint32_t textureBindingMaxNum = 0;
     for (uint32_t i = 0; i < shaderDescNum; i++)
-        storageTextureMaxNum += (uint32_t)std::max<size_t>(shaderDescs[i].size, 1);
+        textureBindingMaxNum += (uint32_t)std::max<size_t>(shaderDescs[i].size, 1);
 
-    Scratch<StorageTextureBindingWGPU> storageTextures = NRI_ALLOCATE_SCRATCH(m_Device, StorageTextureBindingWGPU, storageTextureMaxNum);
-    uint32_t storageTextureNum = 0;
+    Scratch<TextureBindingWGPU> textureBindings = NRI_ALLOCATE_SCRATCH(m_Device, TextureBindingWGPU, textureBindingMaxNum);
+    uint32_t textureBindingNum = 0;
     for (uint32_t i = 0; i < shaderDescNum; i++)
-        ReflectStorageTextures(m_Device, shaderDescs[i], storageTextures, storageTextureNum, storageTextureMaxNum);
+        ReflectTextures(m_Device, shaderDescs[i], textureBindings, textureBindingNum, textureBindingMaxNum);
 
-    bool changed = false;
-    for (uint32_t i = 0; i < storageTextureNum; i++) {
-        const StorageTextureBindingWGPU& storageTexture = storageTextures[i];
-        for (DescriptorSetMappingWGPU& mapping : m_SetMappings) {
-            if (mapping.bindGroupIndex != storageTexture.set)
+    for (uint32_t i = 0; i < textureBindingNum; i++) {
+        const TextureBindingWGPU& textureBinding = textureBindings[i];
+        for (DescriptorSetMappingWGPU& mapping : setMappings) {
+            if (mapping.bindGroupIndex != textureBinding.set)
                 continue;
 
             for (DescriptorRangeMappingWGPU& range : mapping.ranges) {
-                if (range.type == DescriptorType::STORAGE_TEXTURE && storageTexture.binding >= range.bindingBase && storageTexture.binding < range.bindingBase + range.descriptorNum && (range.storageTextureFormat != storageTexture.format || range.storageTextureViewDimension != storageTexture.viewDimension)) {
-                    range.storageTextureFormat = storageTexture.format;
-                    range.storageTextureViewDimension = storageTexture.viewDimension;
-                    changed = true;
+                if (textureBinding.binding < range.bindingBase || textureBinding.binding >= range.bindingBase + range.descriptorNum)
+                    continue;
+
+                if ((range.type == DescriptorType::TEXTURE || range.type == DescriptorType::INPUT_ATTACHMENT) && textureBinding.type == DescriptorType::TEXTURE) {
+                    if (range.textureSampleType != textureBinding.sampleType || range.textureViewDimension != textureBinding.viewDimension || range.textureMultisampled != textureBinding.multisampled) {
+                        range.textureSampleType = textureBinding.sampleType;
+                        range.textureViewDimension = textureBinding.viewDimension;
+                        range.textureMultisampled = textureBinding.multisampled;
+                    }
+                } else if (range.type == DescriptorType::STORAGE_TEXTURE && textureBinding.type == DescriptorType::STORAGE_TEXTURE) {
+                    if (range.storageTextureFormat != textureBinding.format || range.storageTextureViewDimension != textureBinding.viewDimension || range.storageTextureAccess != textureBinding.access) {
+                        range.storageTextureFormat = textureBinding.format;
+                        range.storageTextureViewDimension = textureBinding.viewDimension;
+                        range.storageTextureAccess = textureBinding.access;
+                    }
                 }
             }
         }
-    }
-
-    if (!changed)
-        return Result::SUCCESS;
-
-    for (DescriptorSetMappingWGPU& mapping : m_SetMappings) {
-        bool hasStorageTexture = false;
-        uint32_t entryNum = 0;
-        for (const DescriptorRangeMappingWGPU& range : mapping.ranges) {
-            hasStorageTexture |= range.type == DescriptorType::STORAGE_TEXTURE;
-            entryNum += range.isArray ? 1 : range.descriptorNum;
-        }
-
-        if (!hasStorageTexture)
-            continue;
-
-        Scratch<WGPUBindGroupLayoutEntry> entries = NRI_ALLOCATE_SCRATCH(m_Device, WGPUBindGroupLayoutEntry, entryNum);
-        uint32_t entryOffset = 0;
-        for (const DescriptorRangeMappingWGPU& range : mapping.ranges) {
-            if (range.isArray)
-                FillLayoutEntry(entries[entryOffset++], range.type, range.visibility, range.storageTextureFormat, range.storageTextureViewDimension, range.bindingBase, range.descriptorNum);
-            else {
-                for (uint32_t i = 0; i < range.descriptorNum; i++)
-                    FillLayoutEntry(entries[entryOffset++], range.type, range.visibility, range.storageTextureFormat, range.storageTextureViewDimension, range.bindingBase + i);
-            }
-        }
-
-        WGPUBindGroupLayoutDescriptor layoutDesc = WGPU_BIND_GROUP_LAYOUT_DESCRIPTOR_INIT;
-        layoutDesc.entryCount = entryNum;
-        layoutDesc.entries = entries;
-
-        WGPUBindGroupLayout layout = wgpuDeviceCreateBindGroupLayout(m_Device, &layoutDesc);
-        if (!layout)
-            return Result::FAILURE;
-
-        wgpuBindGroupLayoutRelease(mapping.layout);
-        mapping.layout = layout;
-        mapping.layoutVersion++;
-        m_BindGroupLayouts[mapping.bindGroupIndex] = layout;
     }
 
     return Result::SUCCESS;
@@ -693,16 +919,108 @@ bool PipelineLayoutWGPU::HasBindGroup(uint32_t bindGroupIndex, WGPUShaderStage v
     return false;
 }
 
-WGPUPipelineLayout PipelineLayoutWGPU::CreatePipelineLayout(WGPUShaderStage visibility) const {
+static bool HasPipelineBindGroupWGPU(const Vector<DescriptorSetMappingWGPU>& setMappings, uint32_t bindGroupIndex, WGPUShaderStage visibility) {
+    for (const DescriptorSetMappingWGPU& mapping : setMappings) {
+        if (mapping.bindGroupIndex != bindGroupIndex)
+            continue;
+
+        for (const DescriptorRangeMappingWGPU& range : mapping.ranges) {
+            if (range.visibility & visibility)
+                return true;
+        }
+    }
+
+    return false;
+}
+
+static void CopyPipelineSetMappings(const Vector<DescriptorSetMappingWGPU>& srcMappings, Vector<DescriptorSetMappingWGPU>& dstMappings, const StdAllocator<uint8_t>& allocator) {
+    dstMappings.clear();
+    dstMappings.reserve(srcMappings.size());
+
+    for (const DescriptorSetMappingWGPU& srcMapping : srcMappings) {
+        dstMappings.emplace_back(allocator);
+        DescriptorSetMappingWGPU& dstMapping = dstMappings.back();
+        dstMapping.bindGroupIndex = srcMapping.bindGroupIndex;
+        dstMapping.layoutVersion = srcMapping.layoutVersion;
+
+        uint32_t rangeNum = 0;
+        for (const DescriptorRangeMappingWGPU& srcRange : srcMapping.ranges)
+            rangeNum += srcRange.isArray ? 1 : srcRange.descriptorNum;
+
+        dstMapping.ranges.reserve(rangeNum);
+        for (const DescriptorRangeMappingWGPU& srcRange : srcMapping.ranges) {
+            if (srcRange.isArray) {
+                dstMapping.ranges.push_back(srcRange);
+                continue;
+            }
+
+            for (uint32_t i = 0; i < srcRange.descriptorNum; i++) {
+                DescriptorRangeMappingWGPU dstRange = srcRange;
+                dstRange.descriptorOffset += i;
+                dstRange.bindingBase += i;
+                dstRange.descriptorNum = 1;
+                dstMapping.ranges.push_back(dstRange);
+            }
+        }
+    }
+}
+
+Result PipelineLayoutWGPU::CreatePipelineLayout(const ShaderDesc* shaderDescs, uint32_t shaderDescNum, WGPUShaderStage visibility, Vector<DescriptorSetMappingWGPU>& setMappings, WGPUPipelineLayout& pipelineLayout) const {
+    CopyPipelineSetMappings(m_SetMappings, setMappings, m_Device.GetStdAllocator());
+
+    Result result = UpdateTextureBindings(setMappings, shaderDescs, shaderDescNum);
+    if (result != Result::SUCCESS)
+        return result;
+
+    for (DescriptorSetMappingWGPU& mapping : setMappings) {
+        if (!HasPipelineBindGroupWGPU(setMappings, mapping.bindGroupIndex, visibility))
+            continue;
+
+        uint32_t entryNum = 0;
+        for (const DescriptorRangeMappingWGPU& range : mapping.ranges)
+            entryNum += range.isArray ? 1 : range.descriptorNum;
+
+        Scratch<WGPUBindGroupLayoutEntry> entries = NRI_ALLOCATE_SCRATCH(m_Device, WGPUBindGroupLayoutEntry, entryNum);
+        uint32_t entryOffset = 0;
+        for (const DescriptorRangeMappingWGPU& range : mapping.ranges) {
+            if (range.isArray)
+                FillLayoutEntry(entries[entryOffset++], range, range.bindingBase, range.descriptorNum);
+            else {
+                for (uint32_t i = 0; i < range.descriptorNum; i++)
+                    FillLayoutEntry(entries[entryOffset++], range, range.bindingBase + i);
+            }
+        }
+
+        WGPUBindGroupLayoutDescriptor layoutDesc = WGPU_BIND_GROUP_LAYOUT_DESCRIPTOR_INIT;
+        layoutDesc.entryCount = entryNum;
+        layoutDesc.entries = entries;
+
+        mapping.layout = wgpuDeviceCreateBindGroupLayout(m_Device, &layoutDesc);
+        if (!mapping.layout)
+            return Result::FAILURE;
+    }
+
     uint32_t bindGroupLayoutNum = 0;
     for (uint32_t i = 0; i < (uint32_t)m_BindGroupLayouts.size(); i++) {
-        if (HasBindGroup(i, visibility))
+        if (HasPipelineBindGroupWGPU(setMappings, i, visibility) || i == m_RootSamplerGroupIndex)
             bindGroupLayoutNum = i + 1;
     }
 
     Scratch<WGPUBindGroupLayout> bindGroupLayouts = NRI_ALLOCATE_SCRATCH(m_Device, WGPUBindGroupLayout, bindGroupLayoutNum);
-    for (uint32_t i = 0; i < bindGroupLayoutNum; i++)
-        bindGroupLayouts[i] = HasBindGroup(i, visibility) ? m_BindGroupLayouts[i] : m_EmptyBindGroupLayout;
+    for (uint32_t i = 0; i < bindGroupLayoutNum; i++) {
+        bindGroupLayouts[i] = m_EmptyBindGroupLayout;
+        if (i == m_RootSamplerGroupIndex) {
+            bindGroupLayouts[i] = m_RootSamplerLayout;
+            continue;
+        }
+
+        for (const DescriptorSetMappingWGPU& mapping : setMappings) {
+            if (mapping.bindGroupIndex == i && mapping.layout) {
+                bindGroupLayouts[i] = mapping.layout;
+                break;
+            }
+        }
+    }
 
     WGPUPipelineLayoutExtras extras = {};
     extras.chain.sType = (WGPUSType)WGPUSType_PipelineLayoutExtras;
@@ -714,5 +1032,7 @@ WGPUPipelineLayout PipelineLayoutWGPU::CreatePipelineLayout(WGPUShaderStage visi
     desc.bindGroupLayoutCount = bindGroupLayoutNum;
     desc.bindGroupLayouts = bindGroupLayoutNum ? (WGPUBindGroupLayout*)bindGroupLayouts : nullptr;
 
-    return wgpuDeviceCreatePipelineLayout(m_Device, &desc);
+    pipelineLayout = wgpuDeviceCreatePipelineLayout(m_Device, &desc);
+
+    return pipelineLayout ? Result::SUCCESS : Result::FAILURE;
 }

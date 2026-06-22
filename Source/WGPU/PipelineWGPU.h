@@ -6,7 +6,8 @@ namespace nri {
 
 struct PipelineWGPU final : public DebugNameBase {
     inline PipelineWGPU(DeviceWGPU& device)
-        : m_Device(device) {
+        : m_Device(device)
+        , m_SetMappings(device.GetStdAllocator()) {
     }
 
     ~PipelineWGPU();
@@ -27,6 +28,9 @@ struct PipelineWGPU final : public DebugNameBase {
         return m_PipelineLayoutWGPU;
     }
 
+    bool HasBindGroup(uint32_t bindGroupIndex) const;
+    const DescriptorSetMappingWGPU* GetDescriptorSetMapping(uint32_t bindGroupIndex) const;
+
     Result Create(const GraphicsPipelineDesc& graphicsPipelineDesc);
     Result Create(const ComputePipelineDesc& computePipelineDesc);
 
@@ -46,6 +50,7 @@ private:
     WGPURenderPipeline m_RenderPipeline = nullptr;
     WGPUComputePipeline m_ComputePipeline = nullptr;
     WGPUPipelineLayout m_PipelineLayout = nullptr;
+    Vector<DescriptorSetMappingWGPU> m_SetMappings;
     PipelineLayoutWGPU* m_PipelineLayoutWGPU = nullptr;
 };
 

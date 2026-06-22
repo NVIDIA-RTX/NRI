@@ -4,9 +4,15 @@
 
 namespace nri {
 
+struct FenceSubmissionWGPU {
+    uint64_t value = 0;
+    WGPUSubmissionIndex index = 0;
+};
+
 struct FenceWGPU final : public DebugNameBase {
     inline FenceWGPU(DeviceWGPU& device)
-        : m_Device(device) {
+        : m_Device(device)
+        , m_Submissions(device.GetStdAllocator()) {
     }
 
     Result Create(uint64_t initialValue);
@@ -21,7 +27,7 @@ struct FenceWGPU final : public DebugNameBase {
 
 private:
     DeviceWGPU& m_Device;
-    mutable WGPUSubmissionIndex m_SubmissionIndex = 0;
+    mutable Vector<FenceSubmissionWGPU> m_Submissions;
     uint64_t m_SubmittedValue = 0;
     mutable uint64_t m_CompletedValue = 0;
     bool m_IsSwapChainSemaphore = false;

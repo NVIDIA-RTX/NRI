@@ -92,6 +92,7 @@ private:
     WGPUQueue m_Queue = nullptr;
     VKBindingOffsets m_BindingOffsets = {};
     bool m_IsTimestampQueryInsidePassesSupported = false;
+    bool m_IsSubgroupsSupported = false;
 };
 
 } // namespace nri

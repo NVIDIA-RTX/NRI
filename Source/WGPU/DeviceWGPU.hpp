@@ -129,7 +129,7 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
 
     m_Adapter = adapterContext.adapter;
 
-    std::array<WGPUFeatureName, 32> requiredFeatures = {};
+    std::array<WGPUFeatureName, 48> requiredFeatures = {};
     size_t requiredFeatureNum = 0;
     // TODO: Root constants rely on the wgpu-native "immediates" extension, not core WebGPU.
     requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_Immediates;
@@ -172,6 +172,16 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
         requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_PrimitiveIndex;
     if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_TextureComponentSwizzle))
         requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_TextureComponentSwizzle;
+    if (wgpuAdapterHasFeature(m_Adapter, (WGPUFeatureName)WGPUNativeFeature_TextureBindingArray))
+        requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_TextureBindingArray;
+    if (wgpuAdapterHasFeature(m_Adapter, (WGPUFeatureName)WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing))
+        requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing;
+    if (wgpuAdapterHasFeature(m_Adapter, (WGPUFeatureName)WGPUNativeFeature_StorageResourceBindingArray))
+        requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_StorageResourceBindingArray;
+    if (wgpuAdapterHasFeature(m_Adapter, (WGPUFeatureName)WGPUNativeFeature_BufferBindingArray))
+        requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_BufferBindingArray;
+    if (wgpuAdapterHasFeature(m_Adapter, (WGPUFeatureName)WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing))
+        requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing;
 
     bool isTimestampQuerySupported = wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_TimestampQuery) == WGPU_TRUE;
     bool isTimestampQueryInsideEncodersSupported = wgpuAdapterHasFeature(m_Adapter, (WGPUFeatureName)WGPUNativeFeature_TimestampQueryInsideEncoders) == WGPU_TRUE;
@@ -213,6 +223,7 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
 
     m_Device = deviceContext.device;
     m_Queue = wgpuDeviceGetQueue(m_Device);
+    m_IsSubgroupsSupported = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_Subgroups) == WGPU_TRUE;
     m_IsTimestampQueryInsidePassesSupported = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TimestampQuery) == WGPU_TRUE
         && wgpuDeviceHasFeature(m_Device, (WGPUFeatureName)WGPUNativeFeature_TimestampQueryInsideEncoders) == WGPU_TRUE
         && wgpuDeviceHasFeature(m_Device, (WGPUFeatureName)WGPUNativeFeature_TimestampQueryInsidePasses) == WGPU_TRUE;
@@ -301,13 +312,16 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.shaderStage.compute.workGroupMaxDim[2] = limits.maxComputeWorkgroupSizeZ;
     m_Desc.shaderStage.compute.sharedMemoryMaxSize = limits.maxComputeWorkgroupStorageSize;
 
-    WGPUAdapterInfo adapterInfo = WGPU_ADAPTER_INFO_INIT;
-    wgpuAdapterGetInfo(m_Adapter, &adapterInfo);
-    m_Desc.wave.laneMinNum = adapterInfo.subgroupMinSize;
-    m_Desc.wave.laneMaxNum = adapterInfo.subgroupMaxSize;
-    wgpuAdapterInfoFreeMembers(adapterInfo);
+    if (m_IsSubgroupsSupported) {
+        WGPUAdapterInfo adapterInfo = WGPU_ADAPTER_INFO_INIT;
+        wgpuAdapterGetInfo(m_Adapter, &adapterInfo);
+        m_Desc.wave.laneMinNum = adapterInfo.subgroupMinSize;
+        m_Desc.wave.laneMaxNum = adapterInfo.subgroupMaxSize;
+        wgpuAdapterInfoFreeMembers(adapterInfo);
 
-    m_Desc.wave.waveOpsStages = StageBits::COMPUTE_SHADER;
+        m_Desc.wave.waveOpsStages = StageBits::COMPUTE_SHADER;
+    }
+
     m_Desc.wave.derivativeOpsStages = StageBits::FRAGMENT_SHADER;
 
     if (m_IsTimestampQueryInsidePassesSupported) {
@@ -344,7 +358,7 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.features.componentSwizzle = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TextureComponentSwizzle) == WGPU_TRUE;
     m_Desc.features.rootConstantsOffset = true;
     m_Desc.shaderFeatures.nativeF16 = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_ShaderF16) == WGPU_TRUE;
-    m_Desc.shaderFeatures.drawParameters = true;
+    m_Desc.shaderFeatures.drawParameters = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_IndirectFirstInstance) == WGPU_TRUE;
 }
 
 void DeviceWGPU::Destruct() {

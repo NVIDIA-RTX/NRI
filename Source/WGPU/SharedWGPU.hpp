@@ -221,6 +221,16 @@ WGPUTextureFormat nri::GetTextureFormat(Format format) {
     }
 }
 
+WGPUTextureSampleType nri::GetTextureSampleType(Format format) {
+    const FormatProps& props = GetFormatProps(format);
+    if (props.isDepth)
+        return WGPUTextureSampleType_Depth;
+    if (props.isInteger)
+        return props.isSigned ? WGPUTextureSampleType_Sint : WGPUTextureSampleType_Uint;
+
+    return WGPUTextureSampleType_Float;
+}
+
 WGPUTextureFormat nri::GetSwapChainTextureFormat(SwapChainFormat format) {
     switch (format) {
         case SwapChainFormat::BT709_G22_8BIT:

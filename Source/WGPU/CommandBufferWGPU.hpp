@@ -797,6 +797,11 @@ void CommandBufferWGPU::SetPipeline(const Pipeline& pipeline) {
     const PipelineWGPU& pipelineWGPU = (PipelineWGPU&)pipeline;
     WGPURenderPipeline renderPipeline = pipelineWGPU.GetRenderPipeline();
 
+    if (renderPipeline && m_GraphicsPipelineWGPU != &pipelineWGPU) {
+        m_GraphicsPipelineWGPU = &pipelineWGPU;
+        MarkDescriptorSetsDirty(BindPoint::GRAPHICS);
+    }
+
     if (m_RenderPass && renderPipeline && renderPipeline != m_RenderPipeline) {
         wgpuRenderPassEncoderSetPipeline(m_RenderPass, renderPipeline);
         m_RenderPipeline = renderPipeline;
@@ -806,6 +811,11 @@ void CommandBufferWGPU::SetPipeline(const Pipeline& pipeline) {
         RestoreRootConstants(BindPoint::GRAPHICS);
 
     if (pipelineWGPU.GetComputePipeline()) {
+        if (m_ComputePipelineWGPU != &pipelineWGPU) {
+            m_ComputePipelineWGPU = &pipelineWGPU;
+            MarkDescriptorSetsDirty(BindPoint::COMPUTE);
+        }
+
         m_ComputePipeline = pipelineWGPU.GetComputePipeline();
         if (m_ComputePass && m_ComputePipeline != m_BoundComputePipeline) {
             wgpuComputePassEncoderSetPipeline(m_ComputePass, m_ComputePipeline);
@@ -862,10 +872,6 @@ void CommandBufferWGPU::MarkDescriptorSetsDirty(BindPoint bindPoint) {
     dirtyMax = (uint32_t)descriptorSets.size();
 }
 
-static WGPUShaderStage GetBindPointShaderStageMaskWGPU(BindPoint bindPoint) {
-    return bindPoint == BindPoint::COMPUTE ? WGPUShaderStage_Compute : (WGPUShaderStage)(WGPUShaderStage_Vertex | WGPUShaderStage_Fragment);
-}
-
 void CommandBufferWGPU::BindDescriptorSets(BindPoint bindPoint) {
     if (bindPoint == BindPoint::COMPUTE) {
         if (!m_ComputePass)
@@ -877,13 +883,14 @@ void CommandBufferWGPU::BindDescriptorSets(BindPoint bindPoint) {
             if (i >= m_ComputeDescriptorSetDirty.size() || !m_ComputeDescriptorSetDirty[i])
                 continue;
 
-            if (m_PipelineLayout && !m_PipelineLayout->HasBindGroup(i, WGPUShaderStage_Compute)) {
+            const DescriptorSetMappingWGPU* mapping = m_ComputePipelineWGPU ? m_ComputePipelineWGPU->GetDescriptorSetMapping(i) : nullptr;
+            if (m_ComputePipelineWGPU && !mapping) {
                 m_ComputeDescriptorSetDirty[i] = 0;
                 continue;
             }
 
             const DescriptorSetWGPU* descriptorSet = m_ComputeDescriptorSets[i];
-            WGPUBindGroup bindGroup = descriptorSet ? descriptorSet->GetBindGroup() : nullptr;
+            WGPUBindGroup bindGroup = descriptorSet ? (mapping ? descriptorSet->GetBindGroup(*mapping) : descriptorSet->GetBindGroup()) : nullptr;
             if (bindGroup) {
                 wgpuComputePassEncoderSetBindGroup(m_ComputePass, i, bindGroup, 0, nullptr);
                 m_ComputeDescriptorSetDirty[i] = 0;
@@ -908,13 +915,14 @@ void CommandBufferWGPU::BindDescriptorSets(BindPoint bindPoint) {
         if (i >= m_GraphicsDescriptorSetDirty.size() || !m_GraphicsDescriptorSetDirty[i])
             continue;
 
-        if (m_PipelineLayout && !m_PipelineLayout->HasBindGroup(i, GetBindPointShaderStageMaskWGPU(BindPoint::GRAPHICS))) {
+        const DescriptorSetMappingWGPU* mapping = m_GraphicsPipelineWGPU ? m_GraphicsPipelineWGPU->GetDescriptorSetMapping(i) : nullptr;
+        if (m_GraphicsPipelineWGPU && !mapping) {
             m_GraphicsDescriptorSetDirty[i] = 0;
             continue;
         }
 
         const DescriptorSetWGPU* descriptorSet = m_GraphicsDescriptorSets[i];
-        WGPUBindGroup bindGroup = descriptorSet ? descriptorSet->GetBindGroup() : nullptr;
+        WGPUBindGroup bindGroup = descriptorSet ? (mapping ? descriptorSet->GetBindGroup(*mapping) : descriptorSet->GetBindGroup()) : nullptr;
         if (bindGroup) {
             wgpuRenderPassEncoderSetBindGroup(m_RenderPass, i, bindGroup, 0, nullptr);
             m_GraphicsDescriptorSetDirty[i] = 0;
@@ -1376,7 +1384,7 @@ void CommandBufferWGPU::DrawIndexed(const DrawIndexedDesc& drawIndexedDesc) {
 }
 
 void CommandBufferWGPU::DrawIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset) {
-    // TODO: WebGPU has no count-buffer indirect draw variant, so "countBuffer" is ignored and "drawNum" commands are emitted.
+    // TODO: WGPU indirect-count draws are not advertised because native count APIs do not support NRI's stride.
     MaybeUnused(countBuffer, countBufferOffset);
 
     if (!m_RenderPass)
@@ -1391,7 +1399,7 @@ void CommandBufferWGPU::DrawIndirect(const Buffer& buffer, uint64_t offset, uint
 }
 
 void CommandBufferWGPU::DrawIndexedIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countBufferOffset) {
-    // TODO: WebGPU has no count-buffer indirect draw variant, so "countBuffer" is ignored and "drawNum" commands are emitted.
+    // TODO: WGPU indirect-count draws are not advertised because native count APIs do not support NRI's stride.
     MaybeUnused(countBuffer, countBufferOffset);
 
     if (!m_RenderPass)

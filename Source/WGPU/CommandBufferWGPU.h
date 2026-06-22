@@ -169,6 +169,8 @@ private:
     WGPUBindGroup m_GraphicsRootBindGroup = nullptr;
     WGPUBindGroup m_ComputeRootBindGroup = nullptr;
     const PipelineLayoutWGPU* m_PipelineLayout = nullptr;
+    const PipelineWGPU* m_GraphicsPipelineWGPU = nullptr;
+    const PipelineWGPU* m_ComputePipelineWGPU = nullptr;
     WGPURenderPipeline m_RenderPipeline = nullptr;
     WGPUComputePipeline m_ComputePipeline = nullptr;
     WGPUComputePipeline m_BoundComputePipeline = nullptr;

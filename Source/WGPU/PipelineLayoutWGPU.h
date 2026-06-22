@@ -72,8 +72,7 @@ struct PipelineLayoutWGPU final : public DebugNameBase {
     }
 
     Result Create(const PipelineLayoutDesc& pipelineLayoutDesc);
-    Result UpdateStorageTextureFormats(const ShaderDesc* shaderDescs, uint32_t shaderDescNum);
-    WGPUPipelineLayout CreatePipelineLayout(WGPUShaderStage visibility) const;
+    Result CreatePipelineLayout(const ShaderDesc* shaderDescs, uint32_t shaderDescNum, WGPUShaderStage visibility, Vector<DescriptorSetMappingWGPU>& setMappings, WGPUPipelineLayout& pipelineLayout) const;
     bool HasBindGroup(uint32_t bindGroupIndex, WGPUShaderStage visibility) const;
 
     //================================================================================================================
@@ -83,6 +82,9 @@ struct PipelineLayoutWGPU final : public DebugNameBase {
     void SetDebugName(const char* name) NRI_DEBUG_NAME_OVERRIDE {
         MaybeUnused(name);
     }
+
+private:
+    Result UpdateTextureBindings(Vector<DescriptorSetMappingWGPU>& setMappings, const ShaderDesc* shaderDescs, uint32_t shaderDescNum) const;
 
 private:
     DeviceWGPU& m_Device;

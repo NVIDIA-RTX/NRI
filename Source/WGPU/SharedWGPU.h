@@ -43,6 +43,7 @@ inline Dim_t GetCountOrOne(Dim_t value) {
 
 WGPUShaderStage GetShaderStageFlags(StageBits stageBits);
 WGPUTextureFormat GetTextureFormat(Format format);
+WGPUTextureSampleType GetTextureSampleType(Format format);
 WGPUTextureFormat GetSwapChainTextureFormat(SwapChainFormat format);
 Format GetNRIFormat(WGPUTextureFormat format);
 WGPUTextureUsage GetTextureUsage(TextureUsageBits usage);
