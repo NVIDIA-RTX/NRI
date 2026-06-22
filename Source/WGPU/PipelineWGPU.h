@@ -24,7 +24,7 @@ struct PipelineWGPU final : public DebugNameBase {
     }
 
     inline const PipelineLayoutWGPU* GetPipelineLayout() const {
-        return m_PipelineLayout;
+        return m_PipelineLayoutWGPU;
     }
 
     Result Create(const GraphicsPipelineDesc& graphicsPipelineDesc);
@@ -45,7 +45,8 @@ private:
     DeviceWGPU& m_Device;
     WGPURenderPipeline m_RenderPipeline = nullptr;
     WGPUComputePipeline m_ComputePipeline = nullptr;
-    PipelineLayoutWGPU* m_PipelineLayout = nullptr;
+    WGPUPipelineLayout m_PipelineLayout = nullptr;
+    PipelineLayoutWGPU* m_PipelineLayoutWGPU = nullptr;
 };
 
 } // namespace nri

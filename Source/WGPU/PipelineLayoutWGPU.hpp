@@ -67,8 +67,8 @@ static std::array<uint32_t, (size_t)DescriptorType::MAX_NUM> GetBindingOffsets(c
 PipelineLayoutWGPU::~PipelineLayoutWGPU() {
     if (m_RootSamplerBindGroup)
         wgpuBindGroupRelease(m_RootSamplerBindGroup);
-    if (m_PipelineLayout)
-        wgpuPipelineLayoutRelease(m_PipelineLayout);
+    if (m_EmptyBindGroupLayout)
+        wgpuBindGroupLayoutRelease(m_EmptyBindGroupLayout);
 
     for (RootSamplerMappingWGPU& rootSampler : m_RootSamplers) {
         if (rootSampler.sampler)
@@ -87,6 +87,11 @@ const DescriptorSetMappingWGPU& PipelineLayoutWGPU::GetDescriptorSetMapping(uint
 
 Result PipelineLayoutWGPU::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
     const auto bindingOffsets = GetBindingOffsets(m_Device, pipelineLayoutDesc);
+
+    WGPUBindGroupLayoutDescriptor emptyLayoutDesc = WGPU_BIND_GROUP_LAYOUT_DESCRIPTOR_INIT;
+    m_EmptyBindGroupLayout = wgpuDeviceCreateBindGroupLayout(m_Device, &emptyLayoutDesc);
+    if (!m_EmptyBindGroupLayout)
+        return Result::FAILURE;
 
     m_ImmediateDataSize = 0;
     m_RootConstantOffsets.resize(pipelineLayoutDesc.rootConstantNum);
@@ -190,7 +195,7 @@ Result PipelineLayoutWGPU::Create(const PipelineLayoutDesc& pipelineLayoutDesc) 
             if (!sampler)
                 return Result::FAILURE;
 
-            m_RootSamplers.push_back({sampler, binding});
+            m_RootSamplers.push_back({sampler, binding, GetShaderStageFlags(rootSampler.shaderStages)});
 
             bindGroupEntries[i] = WGPU_BIND_GROUP_ENTRY_INIT;
             bindGroupEntries[i].binding = binding;
@@ -211,7 +216,7 @@ Result PipelineLayoutWGPU::Create(const PipelineLayoutDesc& pipelineLayoutDesc) 
             FillLayoutEntry(entry, range, binding);
             entry.buffer.hasDynamicOffset = hasDynamicOffset ? WGPU_TRUE : WGPU_FALSE;
 
-            m_RootDescriptors.push_back({rootDescriptor.descriptorType, binding});
+            m_RootDescriptors.push_back({rootDescriptor.descriptorType, binding, uint32_t(-1), GetShaderStageFlags(rootDescriptor.shaderStages)});
         }
 
         for (;;) {
@@ -262,19 +267,7 @@ Result PipelineLayoutWGPU::Create(const PipelineLayoutDesc& pipelineLayoutDesc) 
         }
     }
 
-    WGPUPipelineLayoutExtras extras = {};
-    extras.chain.sType = (WGPUSType)WGPUSType_PipelineLayoutExtras;
-    // TODO: Immediate data is a wgpu-native extension used to emulate NRI root constants.
-    extras.immediateDataSize = m_ImmediateDataSize;
-
-    WGPUPipelineLayoutDescriptor desc = WGPU_PIPELINE_LAYOUT_DESCRIPTOR_INIT;
-    desc.nextInChain = m_ImmediateDataSize ? &extras.chain : nullptr;
-    desc.bindGroupLayoutCount = m_BindGroupLayouts.size();
-    desc.bindGroupLayouts = m_BindGroupLayouts.data();
-
-    m_PipelineLayout = wgpuDeviceCreatePipelineLayout(m_Device, &desc);
-
-    return m_PipelineLayout ? Result::SUCCESS : Result::FAILURE;
+    return Result::SUCCESS;
 }
 
 static WGPUTextureFormat GetStorageTextureFormatFromSpirv(uint32_t imageFormat) {
@@ -641,14 +634,8 @@ Result PipelineLayoutWGPU::UpdateStorageTextureFormats(const ShaderDesc* shaderD
         }
     }
 
-    if (!changed) {
-        m_IsFinalized = true;
+    if (!changed)
         return Result::SUCCESS;
-    }
-
-    // TODO: Storage texture metadata is reflected while creating the first pipeline that uses a layout. A later conflicting pipeline needs a pipeline-local WGPU layout model.
-    if (m_IsFinalized)
-        return Result::FAILURE;
 
     for (DescriptorSetMappingWGPU& mapping : m_SetMappings) {
         bool hasStorageTexture = false;
@@ -686,24 +673,46 @@ Result PipelineLayoutWGPU::UpdateStorageTextureFormats(const ShaderDesc* shaderD
         m_BindGroupLayouts[mapping.bindGroupIndex] = layout;
     }
 
-    if (m_PipelineLayout)
-        wgpuPipelineLayoutRelease(m_PipelineLayout);
+    return Result::SUCCESS;
+}
+
+bool PipelineLayoutWGPU::HasBindGroup(uint32_t bindGroupIndex, WGPUShaderStage visibility) const {
+    for (const DescriptorSetMappingWGPU& mapping : m_SetMappings) {
+        if (mapping.bindGroupIndex != bindGroupIndex)
+            continue;
+
+        for (const DescriptorRangeMappingWGPU& range : mapping.ranges) {
+            if (range.visibility & visibility)
+                return true;
+        }
+    }
+
+    if (bindGroupIndex == m_RootSamplerGroupIndex)
+        return m_RootSamplerLayout != nullptr;
+
+    return false;
+}
+
+WGPUPipelineLayout PipelineLayoutWGPU::CreatePipelineLayout(WGPUShaderStage visibility) const {
+    uint32_t bindGroupLayoutNum = 0;
+    for (uint32_t i = 0; i < (uint32_t)m_BindGroupLayouts.size(); i++) {
+        if (HasBindGroup(i, visibility))
+            bindGroupLayoutNum = i + 1;
+    }
+
+    Scratch<WGPUBindGroupLayout> bindGroupLayouts = NRI_ALLOCATE_SCRATCH(m_Device, WGPUBindGroupLayout, bindGroupLayoutNum);
+    for (uint32_t i = 0; i < bindGroupLayoutNum; i++)
+        bindGroupLayouts[i] = HasBindGroup(i, visibility) ? m_BindGroupLayouts[i] : m_EmptyBindGroupLayout;
 
     WGPUPipelineLayoutExtras extras = {};
     extras.chain.sType = (WGPUSType)WGPUSType_PipelineLayoutExtras;
+    // TODO: Immediate data is a wgpu-native extension used to emulate NRI root constants.
     extras.immediateDataSize = m_ImmediateDataSize;
 
     WGPUPipelineLayoutDescriptor desc = WGPU_PIPELINE_LAYOUT_DESCRIPTOR_INIT;
     desc.nextInChain = m_ImmediateDataSize ? &extras.chain : nullptr;
-    desc.bindGroupLayoutCount = m_BindGroupLayouts.size();
-    desc.bindGroupLayouts = m_BindGroupLayouts.data();
+    desc.bindGroupLayoutCount = bindGroupLayoutNum;
+    desc.bindGroupLayouts = bindGroupLayoutNum ? (WGPUBindGroupLayout*)bindGroupLayouts : nullptr;
 
-    m_PipelineLayout = wgpuDeviceCreatePipelineLayout(m_Device, &desc);
-
-    if (!m_PipelineLayout)
-        return Result::FAILURE;
-
-    m_IsFinalized = true;
-
-    return Result::SUCCESS;
+    return wgpuDeviceCreatePipelineLayout(m_Device, &desc);
 }

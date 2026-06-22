@@ -862,6 +862,10 @@ void CommandBufferWGPU::MarkDescriptorSetsDirty(BindPoint bindPoint) {
     dirtyMax = (uint32_t)descriptorSets.size();
 }
 
+static WGPUShaderStage GetBindPointShaderStageMaskWGPU(BindPoint bindPoint) {
+    return bindPoint == BindPoint::COMPUTE ? WGPUShaderStage_Compute : (WGPUShaderStage)(WGPUShaderStage_Vertex | WGPUShaderStage_Fragment);
+}
+
 void CommandBufferWGPU::BindDescriptorSets(BindPoint bindPoint) {
     if (bindPoint == BindPoint::COMPUTE) {
         if (!m_ComputePass)
@@ -872,6 +876,11 @@ void CommandBufferWGPU::BindDescriptorSets(BindPoint bindPoint) {
         for (uint32_t i = m_ComputeDirtyDescriptorSetMin; i < std::min(m_ComputeDirtyDescriptorSetMax, (uint32_t)m_ComputeDescriptorSets.size()); i++) {
             if (i >= m_ComputeDescriptorSetDirty.size() || !m_ComputeDescriptorSetDirty[i])
                 continue;
+
+            if (m_PipelineLayout && !m_PipelineLayout->HasBindGroup(i, WGPUShaderStage_Compute)) {
+                m_ComputeDescriptorSetDirty[i] = 0;
+                continue;
+            }
 
             const DescriptorSetWGPU* descriptorSet = m_ComputeDescriptorSets[i];
             WGPUBindGroup bindGroup = descriptorSet ? descriptorSet->GetBindGroup() : nullptr;
@@ -898,6 +907,11 @@ void CommandBufferWGPU::BindDescriptorSets(BindPoint bindPoint) {
     for (uint32_t i = m_GraphicsDirtyDescriptorSetMin; i < std::min(m_GraphicsDirtyDescriptorSetMax, (uint32_t)m_GraphicsDescriptorSets.size()); i++) {
         if (i >= m_GraphicsDescriptorSetDirty.size() || !m_GraphicsDescriptorSetDirty[i])
             continue;
+
+        if (m_PipelineLayout && !m_PipelineLayout->HasBindGroup(i, GetBindPointShaderStageMaskWGPU(BindPoint::GRAPHICS))) {
+            m_GraphicsDescriptorSetDirty[i] = 0;
+            continue;
+        }
 
         const DescriptorSetWGPU* descriptorSet = m_GraphicsDescriptorSets[i];
         WGPUBindGroup bindGroup = descriptorSet ? descriptorSet->GetBindGroup() : nullptr;

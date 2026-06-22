@@ -5,7 +5,11 @@ PipelineWGPU::~PipelineWGPU() {
         wgpuRenderPipelineRelease(m_RenderPipeline);
     if (m_ComputePipeline)
         wgpuComputePipelineRelease(m_ComputePipeline);
+    if (m_PipelineLayout)
+        wgpuPipelineLayoutRelease(m_PipelineLayout);
 }
+
+static constexpr WGPUShaderStage GRAPHICS_SHADER_STAGE_MASK_WGPU = (WGPUShaderStage)(WGPUShaderStage_Vertex | WGPUShaderStage_Fragment);
 
 static bool IsSpirvBytecodeWGPU(const ShaderDesc& shaderDesc) {
     constexpr uint32_t SPIRV_MAGIC = 0x07230203;
@@ -171,10 +175,14 @@ static void FillStencilFace(WGPUStencilFaceState& out, const StencilDesc& in) {
 }
 
 Result PipelineWGPU::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
-    m_PipelineLayout = (PipelineLayoutWGPU*)graphicsPipelineDesc.pipelineLayout;
-    Result result = m_PipelineLayout->UpdateStorageTextureFormats(graphicsPipelineDesc.shaders, graphicsPipelineDesc.shaderNum);
+    m_PipelineLayoutWGPU = (PipelineLayoutWGPU*)graphicsPipelineDesc.pipelineLayout;
+    Result result = m_PipelineLayoutWGPU->UpdateStorageTextureFormats(graphicsPipelineDesc.shaders, graphicsPipelineDesc.shaderNum);
     if (result != Result::SUCCESS)
         return result;
+
+    m_PipelineLayout = m_PipelineLayoutWGPU->CreatePipelineLayout(GRAPHICS_SHADER_STAGE_MASK_WGPU);
+    if (!m_PipelineLayout)
+        return Result::FAILURE;
 
     WGPUShaderModule vertexShader = nullptr;
     WGPUShaderModule fragmentShader = nullptr;
@@ -293,7 +301,7 @@ Result PipelineWGPU::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     vertex.bufferCount = vertexInput ? vertexInput->streamNum : 0;
 
     WGPURenderPipelineDescriptor desc = WGPU_RENDER_PIPELINE_DESCRIPTOR_INIT;
-    desc.layout = *m_PipelineLayout;
+    desc.layout = m_PipelineLayout;
     desc.vertex = vertex;
     desc.primitive = primitive;
     desc.multisample = multisample;
@@ -310,10 +318,14 @@ Result PipelineWGPU::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
 }
 
 Result PipelineWGPU::Create(const ComputePipelineDesc& computePipelineDesc) {
-    m_PipelineLayout = (PipelineLayoutWGPU*)computePipelineDesc.pipelineLayout;
-    Result result = m_PipelineLayout->UpdateStorageTextureFormats(&computePipelineDesc.shader, 1);
+    m_PipelineLayoutWGPU = (PipelineLayoutWGPU*)computePipelineDesc.pipelineLayout;
+    Result result = m_PipelineLayoutWGPU->UpdateStorageTextureFormats(&computePipelineDesc.shader, 1);
     if (result != Result::SUCCESS)
         return result;
+
+    m_PipelineLayout = m_PipelineLayoutWGPU->CreatePipelineLayout(WGPUShaderStage_Compute);
+    if (!m_PipelineLayout)
+        return Result::FAILURE;
 
     WGPUShaderModule shader = CreateShaderModule(computePipelineDesc.shader);
     if (!shader)
@@ -322,7 +334,7 @@ Result PipelineWGPU::Create(const ComputePipelineDesc& computePipelineDesc) {
     const char* entryPoint = computePipelineDesc.shader.entryPointName ? computePipelineDesc.shader.entryPointName : "main";
 
     WGPUComputePipelineDescriptor desc = WGPU_COMPUTE_PIPELINE_DESCRIPTOR_INIT;
-    desc.layout = *m_PipelineLayout;
+    desc.layout = m_PipelineLayout;
     desc.compute.module = shader;
     desc.compute.entryPoint = WGPUString(entryPoint);
 
