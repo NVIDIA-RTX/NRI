@@ -1153,7 +1153,7 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
                 av1StdPicture.render_width_minus_1 = av1PictureDesc->renderWidthMinus1 ? av1PictureDesc->renderWidthMinus1 : av1StdPicture.render_width_minus_1;
                 av1StdPicture.render_height_minus_1 = av1PictureDesc->renderHeightMinus1 ? av1PictureDesc->renderHeightMinus1 : av1StdPicture.render_height_minus_1;
                 av1StdPicture.interpolation_filter = (StdVideoAV1InterpolationFilter)av1PictureDesc->interpolationFilter;
-                av1StdPicture.TxMode = (StdVideoAV1TxMode)(av1PictureDesc->txMode ? av1PictureDesc->txMode : STD_VIDEO_AV1_TX_MODE_SELECT);
+                av1StdPicture.TxMode = av1PictureDesc->txMode ? (StdVideoAV1TxMode)av1PictureDesc->txMode : STD_VIDEO_AV1_TX_MODE_SELECT;
                 av1StdPicture.coded_denom = av1StdPicture.flags.use_superres ? av1PictureDesc->codedDenom : 0;
                 av1StdPicture.delta_q_res = av1PictureDesc->deltaQRes;
                 av1StdPicture.delta_lf_res = av1PictureDesc->deltaLfRes;

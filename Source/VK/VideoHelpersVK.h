@@ -960,8 +960,8 @@ inline void FillVideoDecodeAV1PictureInfoVK(StdVideoDecodeAV1PictureInfo& info, 
     info.OrderHint = desc.orderHint;
     info.primary_ref_frame = GetVideoAV1ReferenceNameIndexVK(desc.primaryReferenceName);
     info.refresh_frame_flags = desc.refreshFrameFlags;
-    info.interpolation_filter = (StdVideoAV1InterpolationFilter)(desc.interpolationFilter ? desc.interpolationFilter : STD_VIDEO_AV1_INTERPOLATION_FILTER_SWITCHABLE);
-    info.TxMode = (StdVideoAV1TxMode)(desc.txMode ? desc.txMode : STD_VIDEO_AV1_TX_MODE_SELECT);
+    info.interpolation_filter = desc.interpolationFilter ? (StdVideoAV1InterpolationFilter)desc.interpolationFilter : STD_VIDEO_AV1_INTERPOLATION_FILTER_SWITCHABLE;
+    info.TxMode = desc.txMode ? (StdVideoAV1TxMode)desc.txMode : STD_VIDEO_AV1_TX_MODE_SELECT;
     info.delta_q_res = desc.deltaQRes;
     info.delta_lf_res = desc.deltaLfRes;
     info.coded_denom = desc.codedDenom;
