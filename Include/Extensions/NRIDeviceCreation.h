@@ -92,4 +92,10 @@ NRI_API void NRI_CALL nriDestroyDevice(NriPtr(Device) device);
 // It's global state for D3D, not needed for VK because validation is tied to the logical device
 NRI_API void NRI_CALL nriReportLiveObjects();
 
+// Must be called before D3D12 device creation. Returns "UNSUPPORTED" if D3D12 support is not compiled in.
+NRI_API Nri(Result) NRI_CALL nriEnableD3D12DeviceRemovedDiagnostics();
+
+// Reports backend-specific device-removed diagnostics through "CallbackInterface". Returns "UNSUPPORTED" for non-D3D12 backends.
+NRI_API Nri(Result) NRI_CALL nriReportDeviceRemovedInfo(const NriRef(Device) device);
+
 NriNamespaceEnd
