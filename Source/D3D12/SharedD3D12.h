@@ -3,6 +3,8 @@
 #pragma once
 
 #include <d3d12.h>
+#include <d3d12video.h>
+#include <dxva.h>
 #include <pix.h>
 
 // Validate Windows SDK version
@@ -38,6 +40,7 @@ struct D3D12_RAYTRACING_OPACITY_MICROMAP_HISTOGRAM_ENTRY {
 #endif
 
 #include "SharedExternal.h"
+#include "VideoHelpersD3D12.h"
 
 namespace nri {
 
@@ -117,6 +120,10 @@ struct DescriptorHeapDesc {
 inline uint32_t GetSubresourceIndex(uint32_t layerOffset, uint32_t resourceLayerNum, uint32_t mipOffset, uint32_t resourceMipNum, PlaneBits planes) {
     // https://learn.microsoft.com/en-us/windows/win32/direct3d12/subresources#plane-slice
     uint32_t planeIndex = 0;
+    if ((planes & PlaneBits::PLANE_1) != 0)
+        planeIndex = 1;
+    if ((planes & PlaneBits::PLANE_2) != 0)
+        planeIndex = 2;
     if (planes == PlaneBits::ALL || (planes & PlaneBits::STENCIL) != 0)
         planeIndex = 1;
     if (planes == PlaneBits::ALL || (planes & PlaneBits::DEPTH) != 0) // fallthrough

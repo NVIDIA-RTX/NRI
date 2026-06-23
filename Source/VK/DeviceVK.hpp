@@ -20,7 +20,10 @@ static inline uint32_t NextPow2(uint32_t n) {
 static constexpr VkBufferUsageFlags GetBufferUsageFlags(BufferUsageBits bufferUsageBits, uint32_t structureStride, bool isDeviceAddressSupported) {
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT; // TODO: ban "the opposite" for UPLOAD/READBACK?
 
-    if (isDeviceAddressSupported)
+    constexpr uint32_t videoUsageMask = (uint32_t)BufferUsageBits::VIDEO_DECODE | (uint32_t)BufferUsageBits::VIDEO_ENCODE;
+    const uint32_t usageMask = (uint32_t)bufferUsageBits;
+    const bool isVideoOnly = (usageMask & videoUsageMask) != 0 && (usageMask & ~videoUsageMask) == 0;
+    if (isDeviceAddressSupported && !isVideoOnly)
         flags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
     if (bufferUsageBits & BufferUsageBits::VERTEX_BUFFER)
@@ -52,6 +55,12 @@ static constexpr VkBufferUsageFlags GetBufferUsageFlags(BufferUsageBits bufferUs
 
     if (bufferUsageBits & BufferUsageBits::MICROMAP_BUILD_INPUT)
         flags |= VK_BUFFER_USAGE_MICROMAP_BUILD_INPUT_READ_ONLY_BIT_EXT;
+
+    if (bufferUsageBits & BufferUsageBits::VIDEO_DECODE)
+        flags |= VK_BUFFER_USAGE_VIDEO_DECODE_SRC_BIT_KHR;
+
+    if (bufferUsageBits & BufferUsageBits::VIDEO_ENCODE)
+        flags |= VK_BUFFER_USAGE_VIDEO_ENCODE_DST_BIT_KHR;
 
     // Based on comments for "BufferDesc::structureStride"
     if (structureStride == 0 || structureStride == 4) {
@@ -88,6 +97,20 @@ static constexpr VkImageUsageFlags GetImageUsageFlags(TextureUsageBits textureUs
 
     if (textureUsageBits & TextureUsageBits::INPUT_ATTACHMENT)
         flags |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+
+    if (textureUsageBits & TextureUsageBits::VIDEO_DECODE) {
+        if (textureUsageBits & TextureUsageBits::VIDEO_REFERENCE_ONLY)
+            flags |= VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR;
+        else
+            flags |= VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR | VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR;
+    }
+
+    if (textureUsageBits & TextureUsageBits::VIDEO_ENCODE) {
+        if (textureUsageBits & TextureUsageBits::VIDEO_REFERENCE_ONLY)
+            flags |= VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR;
+        else
+            flags |= VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR | VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR;
+    }
 
     return flags;
 }
@@ -355,6 +378,18 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(true, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_QUEUE_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_DECODE_H264_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_DECODE_H265_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_DECODE_AV1_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_ENCODE_QUEUE_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_ENCODE_H264_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_ENCODE_H265_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_ENCODE_AV1_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_MAINTENANCE_1_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_VIDEO_MAINTENANCE_2_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME); // TODO: use KHR (currently coverage is lower)
     APPEND_EXT(true, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
@@ -376,9 +411,60 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(true, VK_NV_LOW_LATENCY_2_EXTENSION_NAME);
 }
 
+static uint32_t GetVideoCodecNumVK(VkVideoCodecOperationFlagsKHR videoCodecOperations, bool decode) {
+    const VkVideoCodecOperationFlagsKHR mask = decode ? VIDEO_DECODE_CODEC_OPERATION_MASK : VIDEO_ENCODE_CODEC_OPERATION_MASK;
+    videoCodecOperations &= mask;
+
+    uint32_t num = 0;
+    while (videoCodecOperations) {
+        num += videoCodecOperations & 1;
+        videoCodecOperations >>= 1;
+    }
+
+    return num;
+}
+
+static uint32_t BuildQueueCreateInfosVK(const QueueFamilyDesc* queueFamilies, uint32_t queueFamilyNum, const std::array<uint32_t, (size_t)QueueType::MAX_NUM>& familyIndices,
+    std::array<VkDeviceQueueCreateInfo, (size_t)QueueType::MAX_NUM>& queueCreateInfos, std::array<std::array<float, 256>, (size_t)QueueType::MAX_NUM>& queuePriorities) {
+    uint32_t queueCreateInfoNum = 0;
+
+    for (uint32_t i = 0; i < queueFamilyNum; i++) {
+        const QueueFamilyDesc& queueFamily = queueFamilies[i];
+        uint32_t queueFamilyIndex = familyIndices[(size_t)queueFamily.queueType];
+        if (!queueFamily.queueNum || queueFamilyIndex == INVALID_FAMILY_INDEX)
+            continue;
+
+        uint32_t queueCreateInfoIndex = queueCreateInfoNum;
+        for (uint32_t j = 0; j < queueCreateInfoNum; j++) {
+            if (queueCreateInfos[j].queueFamilyIndex == queueFamilyIndex && queueCreateInfos[j].flags == 0) {
+                queueCreateInfoIndex = j;
+                break;
+            }
+        }
+
+        if (queueCreateInfoIndex == queueCreateInfoNum) {
+            VkDeviceQueueCreateInfo& queueCreateInfo = queueCreateInfos[queueCreateInfoNum++];
+            queueCreateInfo = {VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
+            queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
+            queueCreateInfo.pQueuePriorities = queuePriorities[queueCreateInfoIndex].data();
+        }
+
+        VkDeviceQueueCreateInfo& queueCreateInfo = queueCreateInfos[queueCreateInfoIndex];
+        queueCreateInfo.queueCount = std::max(queueCreateInfo.queueCount, queueFamily.queueNum);
+        for (uint32_t j = 0; j < queueFamily.queueNum; j++) {
+            float priority = queueFamily.queuePriorities ? queueFamily.queuePriorities[j] : 0.0f;
+            queuePriorities[queueCreateInfoIndex][j] = std::max(queuePriorities[queueCreateInfoIndex][j], priority);
+        }
+    }
+
+    return queueCreateInfoNum;
+}
+
 DeviceVK::DeviceVK(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks)
     : DeviceBase(callbacks, allocationCallbacks)
     , m_QueueFamilies{
+          Vector<QueueVK*>(GetStdAllocator()),
+          Vector<QueueVK*>(GetStdAllocator()),
           Vector<QueueVK*>(GetStdAllocator()),
           Vector<QueueVK*>(GetStdAllocator()),
           Vector<QueueVK*>(GetStdAllocator()),
@@ -530,35 +616,53 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         for (uint32_t i = 0; i < descVK.queueFamilyNum; i++) {
             const QueueFamilyVKDesc& queueFamilyVKDesc = descVK.queueFamilies[i];
             queueFamilyIndices[(size_t)queueFamilyVKDesc.queueType] = queueFamilyVKDesc.familyIndex;
+
+            if (queueFamilyVKDesc.queueType == QueueType::VIDEO_DECODE && queueFamilyVKDesc.queueNum)
+                m_VideoCodecOperations[(size_t)QueueType::VIDEO_DECODE] = VIDEO_DECODE_CODEC_OPERATION_MASK;
+            else if (queueFamilyVKDesc.queueType == QueueType::VIDEO_ENCODE && queueFamilyVKDesc.queueNum)
+                m_VideoCodecOperations[(size_t)QueueType::VIDEO_ENCODE] = VIDEO_ENCODE_CODEC_OPERATION_MASK;
         }
     } else {
         uint32_t familyNum = 0;
         m_VK.GetPhysicalDeviceQueueFamilyProperties2(m_PhysicalDevice, &familyNum, nullptr);
 
         Scratch<VkQueueFamilyProperties2> familyProps2 = NRI_ALLOCATE_SCRATCH(*this, VkQueueFamilyProperties2, familyNum);
-        for (uint32_t i = 0; i < familyNum; i++)
+        Scratch<VkQueueFamilyVideoPropertiesKHR> familyVideoProps = NRI_ALLOCATE_SCRATCH(*this, VkQueueFamilyVideoPropertiesKHR, familyNum);
+        for (uint32_t i = 0; i < familyNum; i++) {
             familyProps2[i] = {VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2};
+            familyVideoProps[i] = {VK_STRUCTURE_TYPE_QUEUE_FAMILY_VIDEO_PROPERTIES_KHR};
+            familyProps2[i].pNext = &familyVideoProps[i];
+        }
 
         m_VK.GetPhysicalDeviceQueueFamilyProperties2(m_PhysicalDevice, &familyNum, familyProps2);
 
         std::array<uint32_t, (size_t)QueueType::MAX_NUM> scores = {};
         for (uint32_t i = 0; i < familyNum; i++) {
             const VkQueueFamilyProperties& familyProps = familyProps2[i].queueFamilyProperties;
+            const VkVideoCodecOperationFlagsKHR videoCodecOperations = familyVideoProps[i].videoCodecOperations;
 
             QueueFamilyProps props = {};
             props.queueCount = familyProps.queueCount;
+            props.videoDecodeCodecNum = GetVideoCodecNumVK(videoCodecOperations, true);
+            props.videoEncodeCodecNum = GetVideoCodecNumVK(videoCodecOperations, false);
             props.graphics = familyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT;
             props.compute = familyProps.queueFlags & VK_QUEUE_COMPUTE_BIT;
             props.copy = familyProps.queueFlags & VK_QUEUE_TRANSFER_BIT;
             props.sparse = familyProps.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT;
-            props.videoDecode = familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR;
-            props.videoEncode = familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR;
+            props.videoDecode = (familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR) && props.videoDecodeCodecNum;
+            props.videoEncode = (familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR) && props.videoEncodeCodecNum;
             props.protect = familyProps.queueFlags & VK_QUEUE_PROTECTED_BIT;
             props.opticalFlow = familyProps.queueFlags & VK_QUEUE_OPTICAL_FLOW_BIT_NV;
 
             QueueType queueType = TrySelectPreferredQueueType(props, scores);
-            if (queueType != QueueType::MAX_NUM)
+            if (queueType != QueueType::MAX_NUM) {
                 queueFamilyIndices[(size_t)queueType] = i;
+
+                if (queueType == QueueType::VIDEO_DECODE)
+                    m_VideoCodecOperations[(size_t)QueueType::VIDEO_DECODE] = videoCodecOperations & VIDEO_DECODE_CODEC_OPERATION_MASK;
+                else if (queueType == QueueType::VIDEO_ENCODE)
+                    m_VideoCodecOperations[(size_t)QueueType::VIDEO_ENCODE] = videoCodecOperations & VIDEO_ENCODE_CODEC_OPERATION_MASK;
+            }
         }
     }
 
@@ -628,6 +732,9 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, ShaderClock, SHADER_CLOCK);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, DynamicRenderingLocalRead, DYNAMIC_RENDERING_LOCAL_READ);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, UnifiedImageLayouts, UNIFIED_IMAGE_LAYOUTS);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, VideoEncodeAV1, VIDEO_ENCODE_AV1);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, VideoMaintenance1, VIDEO_MAINTENANCE_1);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, VideoMaintenance2, VIDEO_MAINTENANCE_2);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, CustomBorderColor, CUSTOM_BORDER_COLOR);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, FragmentShaderInterlock, FRAGMENT_SHADER_INTERLOCK);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, ImageSlicedViewOf3D, IMAGE_SLICED_VIEW_OF_3D);
@@ -691,6 +798,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.swapChainMaintenance1 = SwapchainMaintenance1Features.swapchainMaintenance1;
     m_IsSupported.fifoLatestReady = PresentModeFifoLatestReadyFeatures.presentModeFifoLatestReady;
     m_IsSupported.unifiedImageLayoutsVideo = UnifiedImageLayoutsFeatures.unifiedImageLayoutsVideo;
+    m_IsSupported.videoMaintenance2 = VideoMaintenance2Features.videoMaintenance2;
+    m_IsSupported.videoEncodeAV1 = VideoEncodeAV1Features.videoEncodeAV1;
 
     m_IsMemoryZeroInitializationEnabled = desc.enableMemoryZeroInitialization && ZeroInitializeDeviceMemoryFeatures.zeroInitializeDeviceMemory;
 
@@ -721,6 +830,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
             // Create device
             std::array<VkDeviceQueueCreateInfo, (size_t)QueueType::MAX_NUM> queueCreateInfos = {};
+            std::array<std::array<float, 256>, (size_t)QueueType::MAX_NUM> queuePriorities = {};
 
             VkDeviceCreateInfo deviceCreateInfo = {VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
             deviceCreateInfo.pNext = &features;
@@ -728,21 +838,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
             deviceCreateInfo.enabledExtensionCount = (uint32_t)desiredDeviceExts.size();
             deviceCreateInfo.ppEnabledExtensionNames = desiredDeviceExts.data();
 
-            std::array<float, 256> zeroPriorities = {};
-
-            for (uint32_t i = 0; i < desc.queueFamilyNum; i++) {
-                const QueueFamilyDesc& queueFamily = desc.queueFamilies[i];
-                uint32_t queueFamilyIndex = queueFamilyIndices[(size_t)queueFamily.queueType];
-
-                if (queueFamily.queueNum && queueFamilyIndex != INVALID_FAMILY_INDEX) {
-                    VkDeviceQueueCreateInfo& queueCreateInfo = queueCreateInfos[deviceCreateInfo.queueCreateInfoCount++];
-
-                    queueCreateInfo = {VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
-                    queueCreateInfo.queueCount = queueFamily.queueNum;
-                    queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
-                    queueCreateInfo.pQueuePriorities = queueFamily.queuePriorities ? queueFamily.queuePriorities : zeroPriorities.data();
-                }
-            }
+            deviceCreateInfo.queueCreateInfoCount = BuildQueueCreateInfosVK(desc.queueFamilies, desc.queueFamilyNum, queueFamilyIndices, queueCreateInfos, queuePriorities);
 
             VkResult vkResult = m_VK.CreateDevice(m_PhysicalDevice, &deviceCreateInfo, m_AllocationCallbackPtr, &m_Device);
             NRI_RETURN_ON_BAD_VKRESULT(this, vkResult, "vkCreateDevice");
@@ -1213,6 +1309,16 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.extendedDynamicState = ExtendedDynamicStateFeatures.extendedDynamicState;
         m_Desc.features.unifiedTextureLayouts = UnifiedImageLayoutsFeatures.unifiedImageLayouts;
 
+        const VkVideoCodecOperationFlagsKHR decodeCodecOperations = GetVideoCodecOperations(true, false);
+        m_Desc.videoFeatures.decode.H264 = (decodeCodecOperations & VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR) != 0;
+        m_Desc.videoFeatures.decode.H265 = (decodeCodecOperations & VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR) != 0;
+        m_Desc.videoFeatures.decode.AV1 = (decodeCodecOperations & VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR) != 0;
+
+        const VkVideoCodecOperationFlagsKHR encodeCodecOperations = GetVideoCodecOperations(false, true);
+        m_Desc.videoFeatures.encode.H264 = (encodeCodecOperations & VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_KHR) != 0;
+        m_Desc.videoFeatures.encode.H265 = (encodeCodecOperations & VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_KHR) != 0;
+        m_Desc.videoFeatures.encode.AV1 = (encodeCodecOperations & VK_VIDEO_CODEC_OPERATION_ENCODE_AV1_BIT_KHR) != 0;
+
         m_Desc.shaderFeatures.nativeI8 = features12.shaderInt8;
         m_Desc.shaderFeatures.nativeI16 = features.features.shaderInt16;
         m_Desc.shaderFeatures.nativeF16 = features12.shaderFloat16;
@@ -1282,6 +1388,8 @@ void DeviceVK::FillCreateInfo(const BufferDesc& bufferDesc, VkBufferCreateInfo& 
     info = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO}; // should be already set
     info.size = bufferDesc.size;
     info.usage = GetBufferUsageFlags(bufferDesc.usage, bufferDesc.structureStride, m_IsSupported.deviceAddress);
+    if (bufferDesc.usage & (BufferUsageBits::VIDEO_DECODE | BufferUsageBits::VIDEO_ENCODE))
+        info.flags |= VK_BUFFER_CREATE_VIDEO_PROFILE_INDEPENDENT_BIT_KHR;
     info.sharingMode = m_NumActiveFamilyIndices <= 1 ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
     info.queueFamilyIndexCount = m_NumActiveFamilyIndices;
     info.pQueueFamilyIndices = m_ActiveQueueFamilyIndices.data();
@@ -1289,12 +1397,13 @@ void DeviceVK::FillCreateInfo(const BufferDesc& bufferDesc, VkBufferCreateInfo& 
 
 void DeviceVK::FillCreateInfo(const TextureDesc& textureDesc, VkImageCreateInfo& info) const {
     const FormatProps& formatProps = GetFormatProps(textureDesc.format);
+    const bool hasVideoUsage = (textureDesc.usage & (TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_ENCODE | TextureUsageBits::VIDEO_REFERENCE_ONLY)) != 0;
 
-    VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT // typeless (basic)
-        | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT                      // typeless (advanced)
-        | VK_IMAGE_CREATE_ALIAS_BIT;                              // matches https://learn.microsoft.com/en-us/windows/win32/direct3d12/memory-aliasing-and-data-inheritance#data-inheritance
+    VkImageCreateFlags flags = hasVideoUsage ? 0 : VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT // typeless (basic)
+            | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT                                      // typeless (advanced)
+            | VK_IMAGE_CREATE_ALIAS_BIT;                                              // matches https://learn.microsoft.com/en-us/windows/win32/direct3d12/memory-aliasing-and-data-inheritance#data-inheritance
 
-    if (formatProps.blockWidth > 1 && (textureDesc.usage & TextureUsageBits::SHADER_RESOURCE_STORAGE))
+    if (!hasVideoUsage && formatProps.blockWidth > 1 && (textureDesc.usage & TextureUsageBits::SHADER_RESOURCE_STORAGE))
         flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
     if (textureDesc.layerNum >= 6 && textureDesc.width == textureDesc.height)
         flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
@@ -1302,6 +1411,11 @@ void DeviceVK::FillCreateInfo(const TextureDesc& textureDesc, VkImageCreateInfo&
         flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT; // allow 3D demotion to a set of layers // TODO: hook up "VK_EXT_image_2d_view_of_3d"?
     if (m_Desc.tiers.sampleLocations && formatProps.isDepth)
         flags |= VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT;
+
+    const VkImageUsageFlags usage = GetImageUsageFlags(textureDesc.usage);
+    const bool hasVideoDpbUsage = (usage & (VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR | VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR)) != 0;
+    if (hasVideoUsage && !hasVideoDpbUsage)
+        flags |= VK_IMAGE_CREATE_VIDEO_PROFILE_INDEPENDENT_BIT_KHR;
 
     info = {VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO}; // should be already set
     info.flags = flags;
@@ -1314,7 +1428,7 @@ void DeviceVK::FillCreateInfo(const TextureDesc& textureDesc, VkImageCreateInfo&
     info.arrayLayers = std::max(textureDesc.layerNum, (Dim_t)1);
     info.samples = (VkSampleCountFlagBits)std::max(textureDesc.sampleNum, (Sample_t)1);
     info.tiling = VK_IMAGE_TILING_OPTIMAL;
-    info.usage = GetImageUsageFlags(textureDesc.usage);
+    info.usage = usage;
     info.sharingMode = (m_NumActiveFamilyIndices <= 1 || textureDesc.sharingMode == SharingMode::EXCLUSIVE) ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
     info.queueFamilyIndexCount = m_NumActiveFamilyIndices;
     info.pQueueFamilyIndices = m_ActiveQueueFamilyIndices.data();
@@ -1848,12 +1962,14 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(FreeCommandBuffers);
     GET_DEVICE_CORE_FUNC(MapMemory);
     GET_DEVICE_CORE_FUNC(FlushMappedMemoryRanges);
+    GET_DEVICE_CORE_FUNC(InvalidateMappedMemoryRanges);
     GET_DEVICE_CORE_FUNC(QueueWaitIdle);
     GET_DEVICE_CORE_FUNC(ResetCommandPool);
     GET_DEVICE_CORE_FUNC(ResetDescriptorPool);
     GET_DEVICE_CORE_FUNC(AllocateCommandBuffers);
     GET_DEVICE_CORE_FUNC(AllocateDescriptorSets);
     GET_DEVICE_CORE_FUNC(UpdateDescriptorSets);
+    GET_DEVICE_CORE_FUNC(GetQueryPoolResults);
     GET_DEVICE_CORE_FUNC(BeginCommandBuffer);
     GET_DEVICE_CORE_FUNC(CmdSetDepthBounds);
     GET_DEVICE_CORE_FUNC(CmdSetStencilReference);
@@ -1995,6 +2111,28 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
         GET_DEVICE_FUNC(CmdDrawMeshTasksEXT);
         GET_DEVICE_FUNC(CmdDrawMeshTasksIndirectEXT);
         GET_DEVICE_FUNC(CmdDrawMeshTasksIndirectCountEXT);
+    }
+
+    if (IsExtensionSupported(VK_KHR_VIDEO_QUEUE_EXTENSION_NAME, desiredDeviceExts)) {
+        GET_INSTANCE_FUNC(GetPhysicalDeviceVideoCapabilitiesKHR);
+        GET_INSTANCE_FUNC(GetPhysicalDeviceVideoFormatPropertiesKHR);
+        GET_DEVICE_FUNC(CreateVideoSessionKHR);
+        GET_DEVICE_FUNC(DestroyVideoSessionKHR);
+        GET_DEVICE_FUNC(GetVideoSessionMemoryRequirementsKHR);
+        GET_DEVICE_FUNC(BindVideoSessionMemoryKHR);
+        GET_DEVICE_FUNC(CreateVideoSessionParametersKHR);
+        GET_DEVICE_FUNC(DestroyVideoSessionParametersKHR);
+        GET_DEVICE_FUNC(CmdBeginVideoCodingKHR);
+        GET_DEVICE_FUNC(CmdControlVideoCodingKHR);
+        GET_DEVICE_FUNC(CmdEndVideoCodingKHR);
+    }
+
+    if (IsExtensionSupported(VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME, desiredDeviceExts))
+        GET_DEVICE_FUNC(CmdDecodeVideoKHR);
+
+    if (IsExtensionSupported(VK_KHR_VIDEO_ENCODE_QUEUE_EXTENSION_NAME, desiredDeviceExts)) {
+        GET_DEVICE_FUNC(GetEncodedVideoSessionParametersKHR);
+        GET_DEVICE_FUNC(CmdEncodeVideoKHR);
     }
 
     if (IsExtensionSupported(VK_NV_LOW_LATENCY_2_EXTENSION_NAME, desiredDeviceExts)) {
@@ -2312,6 +2450,17 @@ NRI_INLINE Result DeviceVK::GetQueue(QueueType queueType, uint32_t queueIndex, Q
     }
 
     return Result::FAILURE;
+}
+
+NRI_INLINE VkVideoCodecOperationFlagsKHR DeviceVK::GetVideoCodecOperations(bool decode, bool encode) const {
+    VkVideoCodecOperationFlagsKHR operations = 0;
+    operations |= decode ? m_VideoCodecOperations[(size_t)QueueType::VIDEO_DECODE] : 0;
+    operations |= encode ? m_VideoCodecOperations[(size_t)QueueType::VIDEO_ENCODE] : 0;
+
+    if (!m_IsSupported.videoEncodeAV1)
+        operations &= ~VK_VIDEO_CODEC_OPERATION_ENCODE_AV1_BIT_KHR;
+
+    return operations;
 }
 
 NRI_INLINE Result DeviceVK::WaitIdle() {

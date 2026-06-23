@@ -10,6 +10,7 @@
 
 #include "DispatchTable.h"
 #include "SharedExternal.h"
+#include "VideoHelpersVK.h"
 
 typedef uint16_t MemoryTypeIndex;
 
@@ -63,6 +64,16 @@ struct TextureVK;
 
 constexpr uint32_t INVALID_FAMILY_INDEX = uint32_t(-1);
 constexpr uint32_t RENDER_PASS_UNUSED_ATTACHMENT = uint32_t(-1);
+constexpr VkVideoCodecOperationFlagsKHR VIDEO_DECODE_CODEC_OPERATION_MASK = 0x0000FFFF;
+constexpr VkVideoCodecOperationFlagsKHR VIDEO_ENCODE_CODEC_OPERATION_MASK = 0xFFFF0000;
+
+constexpr VkTimeDomainKHR GetCalibratedTimestampCPUTimeDomainVK() {
+#if defined(_WIN32)
+    return VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR; // matches D3D12
+#else
+    return VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR;
+#endif
+}
 
 struct MemoryTypeInfo {
     MemoryTypeIndex index;
@@ -98,6 +109,95 @@ inline void SetRenderPassInputAttachmentIndex(Vector<uint32_t>& inputAttachmentI
 inline bool HasRenderPassInputAttachmentIndex(const Vector<uint32_t>& inputAttachmentIndices, uint32_t index) {
     return index < inputAttachmentIndices.size() && inputAttachmentIndices[index] != RENDER_PASS_UNUSED_ATTACHMENT;
 }
+
+struct VideoResourceProfileListVK {
+    VkVideoDecodeH264ProfileInfoKHR decodeH264 = {VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_PROFILE_INFO_KHR};
+    VkVideoDecodeH265ProfileInfoKHR decodeH265 = {VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_PROFILE_INFO_KHR};
+    VkVideoDecodeAV1ProfileInfoKHR decodeAV1 = {VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_KHR};
+    std::array<VkVideoDecodeUsageInfoKHR, 3> decodeUsage = {};
+    VkVideoEncodeH264ProfileInfoKHR encodeH264 = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PROFILE_INFO_KHR};
+    VkVideoEncodeH265ProfileInfoKHR encodeH265 = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_PROFILE_INFO_KHR};
+    VkVideoEncodeAV1ProfileInfoKHR encodeAV1 = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_PROFILE_INFO_KHR};
+    std::array<VkVideoEncodeUsageInfoKHR, 3> encodeUsage = {};
+    std::array<VkVideoProfileInfoKHR, 6> profiles = {};
+    VkVideoProfileListInfoKHR list = {VK_STRUCTURE_TYPE_VIDEO_PROFILE_LIST_INFO_KHR};
+
+    bool AppendProfile(VkVideoCodecOperationFlagsKHR codecOperations, VkVideoCodecOperationFlagBitsKHR operation, void* codecInfo, VkVideoComponentBitDepthFlagsKHR bitDepth) {
+        if ((codecOperations & operation) == 0)
+            return false;
+
+        VkVideoProfileInfoKHR& profile = profiles[list.profileCount++];
+        profile = {VK_STRUCTURE_TYPE_VIDEO_PROFILE_INFO_KHR};
+        profile.pNext = codecInfo;
+        profile.videoCodecOperation = operation;
+        profile.chromaSubsampling = VK_VIDEO_CHROMA_SUBSAMPLING_420_BIT_KHR;
+        profile.lumaBitDepth = bitDepth;
+        profile.chromaBitDepth = bitDepth;
+
+        return true;
+    }
+
+    void Fill(bool decode, bool encode, Format format, VideoCodec codec, VkVideoCodecOperationFlagsKHR codecOperations) {
+        list.profileCount = 0;
+        list.pProfiles = profiles.data();
+
+        const VkVideoComponentBitDepthFlagsKHR bitDepth = format == Format::P010_UNORM || format == Format::P016_UNORM ? VK_VIDEO_COMPONENT_BIT_DEPTH_10_BIT_KHR : VK_VIDEO_COMPONENT_BIT_DEPTH_8_BIT_KHR;
+
+        if (decode) {
+            decodeH264.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_HIGH;
+            decodeH264.pictureLayout = VK_VIDEO_DECODE_H264_PICTURE_LAYOUT_PROGRESSIVE_KHR;
+            decodeH265.stdProfileIdc = bitDepth == VK_VIDEO_COMPONENT_BIT_DEPTH_10_BIT_KHR ? STD_VIDEO_H265_PROFILE_IDC_MAIN_10 : STD_VIDEO_H265_PROFILE_IDC_MAIN;
+            decodeAV1.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN;
+            decodeAV1.filmGrainSupport = VK_TRUE;
+
+            decodeUsage[0] = {VK_STRUCTURE_TYPE_VIDEO_DECODE_USAGE_INFO_KHR};
+            decodeUsage[0].videoUsageHints = VK_VIDEO_DECODE_USAGE_DEFAULT_KHR;
+            decodeUsage[0].pNext = &decodeH264;
+
+            decodeUsage[1] = {VK_STRUCTURE_TYPE_VIDEO_DECODE_USAGE_INFO_KHR};
+            decodeUsage[1].videoUsageHints = VK_VIDEO_DECODE_USAGE_DEFAULT_KHR;
+            decodeUsage[1].pNext = &decodeH265;
+
+            decodeUsage[2] = {VK_STRUCTURE_TYPE_VIDEO_DECODE_USAGE_INFO_KHR};
+            decodeUsage[2].videoUsageHints = VK_VIDEO_DECODE_USAGE_DEFAULT_KHR;
+            decodeUsage[2].pNext = &decodeAV1;
+
+            if (codec == VideoCodec::H264)
+                AppendProfile(codecOperations, VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR, &decodeUsage[0], bitDepth);
+            else if (codec == VideoCodec::H265)
+                AppendProfile(codecOperations, VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR, &decodeUsage[1], bitDepth);
+            else if (codec == VideoCodec::AV1) {
+                AppendProfile(codecOperations, VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR, &decodeUsage[2], bitDepth);
+            }
+        }
+
+        if (encode) {
+            encodeH264.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_HIGH;
+            encodeH265.stdProfileIdc = bitDepth == VK_VIDEO_COMPONENT_BIT_DEPTH_10_BIT_KHR ? STD_VIDEO_H265_PROFILE_IDC_MAIN_10 : STD_VIDEO_H265_PROFILE_IDC_MAIN;
+            encodeAV1.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN;
+
+            encodeUsage[0] = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_USAGE_INFO_KHR};
+            encodeUsage[0].videoUsageHints = VK_VIDEO_ENCODE_USAGE_DEFAULT_KHR;
+            encodeH264.pNext = &encodeUsage[0];
+
+            encodeUsage[1] = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_USAGE_INFO_KHR};
+            encodeUsage[1].videoUsageHints = VK_VIDEO_ENCODE_USAGE_DEFAULT_KHR;
+            encodeH265.pNext = &encodeUsage[1];
+
+            encodeUsage[2] = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_USAGE_INFO_KHR};
+            encodeUsage[2].videoUsageHints = VK_VIDEO_ENCODE_USAGE_DEFAULT_KHR;
+            encodeAV1.pNext = &encodeUsage[2];
+
+            if (codec == VideoCodec::H264)
+                AppendProfile(codecOperations, VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_KHR, &encodeH264, bitDepth);
+            else if (codec == VideoCodec::H265)
+                AppendProfile(codecOperations, VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_KHR, &encodeH265, bitDepth);
+            else if (codec == VideoCodec::AV1) {
+                AppendProfile(codecOperations, VK_VIDEO_CODEC_OPERATION_ENCODE_AV1_BIT_KHR, &encodeAV1, bitDepth);
+            }
+        }
+    }
+};
 
 } // namespace nri
 

@@ -18,6 +18,7 @@
 
 #if NRI_ENABLE_D3D12_SUPPORT
 #    include <d3d12.h>
+#    include <d3d12video.h>
 #    include <dxgidebug.h>
 #endif
 
@@ -263,6 +264,19 @@ static void UpdateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterDescNu
         adapterDesc.queueNum[(uint32_t)QueueType::COMPUTE] = 4;
         adapterDesc.queueNum[(uint32_t)QueueType::COPY] = 4;
 
+#    if NRI_ENABLE_D3D12_SUPPORT
+        ComPtr<ID3D12Device> deviceD3D12;
+        HRESULT hrD3D12 = D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), (void**)&deviceD3D12);
+        if (SUCCEEDED(hrD3D12)) {
+            ComPtr<ID3D12VideoDevice> videoDevice;
+            hrD3D12 = deviceD3D12->QueryInterface(IID_PPV_ARGS(&videoDevice));
+            if (SUCCEEDED(hrD3D12)) {
+                adapterDesc.queueNum[(uint32_t)QueueType::VIDEO_DECODE] = 4;
+                adapterDesc.queueNum[(uint32_t)QueueType::VIDEO_ENCODE] = 4;
+            }
+        }
+#    endif
+
         // Other fields
         adapterDesc.uid = uid;
         adapterDesc.deviceId = desc.DeviceId;
@@ -282,6 +296,22 @@ static void UpdateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterDescNu
 
 #if NRI_ENABLE_VK_SUPPORT
 
+static uint32_t GetVideoCodecNumVK(VkVideoCodecOperationFlagsKHR videoCodecOperations, bool decode) {
+    constexpr VkVideoCodecOperationFlagsKHR VIDEO_DECODE_CODEC_OPERATION_MASK_CREATION = 0x0000FFFF;
+    constexpr VkVideoCodecOperationFlagsKHR VIDEO_ENCODE_CODEC_OPERATION_MASK_CREATION = 0xFFFF0000;
+
+    const VkVideoCodecOperationFlagsKHR mask = decode ? VIDEO_DECODE_CODEC_OPERATION_MASK_CREATION : VIDEO_ENCODE_CODEC_OPERATION_MASK_CREATION;
+    videoCodecOperations &= mask;
+
+    uint32_t num = 0;
+    while (videoCodecOperations) {
+        num += videoCodecOperations & 1;
+        videoCodecOperations >>= 1;
+    }
+
+    return num;
+}
+
 static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum, VkPhysicalDevice precreatedPhysicalDevice) {
     // Variables first
     VkApplicationInfo applicationInfo = {};
@@ -297,6 +327,7 @@ static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum
     uint32_t maxFamilyNum = 1;
     VkPhysicalDeviceGroupProperties* deviceGroupProperties = nullptr;
     VkQueueFamilyProperties2* familyProps2 = nullptr;
+    VkQueueFamilyVideoPropertiesKHR* familyVideoProps = nullptr;
 
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = nullptr;
     PFN_vkCreateInstance vkCreateInstance = nullptr;
@@ -368,8 +399,12 @@ static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum
     }
 
     familyProps2 = (VkQueueFamilyProperties2*)alloca(sizeof(VkQueueFamilyProperties2) * maxFamilyNum);
-    for (uint32_t i = 0; i < maxFamilyNum; i++)
+    familyVideoProps = (VkQueueFamilyVideoPropertiesKHR*)alloca(sizeof(VkQueueFamilyVideoPropertiesKHR) * maxFamilyNum);
+    for (uint32_t i = 0; i < maxFamilyNum; i++) {
         familyProps2[i] = {VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2};
+        familyVideoProps[i] = {VK_STRUCTURE_TYPE_QUEUE_FAMILY_VIDEO_PROPERTIES_KHR};
+        familyProps2[i].pNext = &familyVideoProps[i];
+    }
 
     // Precreated physical device
     if (precreatedPhysicalDevice) {
@@ -454,15 +489,18 @@ static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum
             std::array<uint32_t, (size_t)QueueType::MAX_NUM> scores = {};
             for (uint32_t j = 0; j < familyNum; j++) {
                 const VkQueueFamilyProperties& familyProps = familyProps2[j].queueFamilyProperties;
+                const VkVideoCodecOperationFlagsKHR videoCodecOperations = familyVideoProps[j].videoCodecOperations;
 
                 QueueFamilyProps props = {};
                 props.queueCount = familyProps.queueCount;
+                props.videoDecodeCodecNum = GetVideoCodecNumVK(videoCodecOperations, true);
+                props.videoEncodeCodecNum = GetVideoCodecNumVK(videoCodecOperations, false);
                 props.graphics = familyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT;
                 props.compute = familyProps.queueFlags & VK_QUEUE_COMPUTE_BIT;
                 props.copy = familyProps.queueFlags & VK_QUEUE_TRANSFER_BIT;
                 props.sparse = familyProps.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT;
-                props.videoDecode = familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR;
-                props.videoEncode = familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR;
+                props.videoDecode = (familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR) && props.videoDecodeCodecNum;
+                props.videoEncode = (familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR) && props.videoEncodeCodecNum;
                 props.protect = familyProps.queueFlags & VK_QUEUE_PROTECTED_BIT;
                 props.opticalFlow = familyProps.queueFlags & VK_QUEUE_OPTICAL_FLOW_BIT_NV;
 
@@ -660,6 +698,10 @@ NRI_API Result NRI_CALL nriGetInterface(const Device& device, const char* interf
         realInterfaceSize = sizeof(RayTracingInterface);
         if (realInterfaceSize == interfaceSize)
             result = deviceBase.FillFunctionTable(*(RayTracingInterface*)interfacePtr);
+    } else if (hash == Hash(NRI_STRINGIFY(VideoInterface))) {
+        realInterfaceSize = sizeof(VideoInterface);
+        if (realInterfaceSize == interfaceSize)
+            result = deviceBase.FillFunctionTable(*(VideoInterface*)interfacePtr);
     } else if (hash == Hash(NRI_STRINGIFY(StreamerInterface))) {
         realInterfaceSize = sizeof(StreamerInterface);
         if (realInterfaceSize == interfaceSize)

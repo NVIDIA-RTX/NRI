@@ -81,6 +81,10 @@ struct ObjectVal : public DebugNameBaseVal {
         return m_Device.GetRayTracingInterfaceImpl();
     }
 
+    inline const VideoInterface& GetVideoInterfaceImpl() const {
+        return m_Device.GetVideoInterfaceImpl();
+    }
+
     inline const SwapChainInterface& GetSwapChainInterfaceImpl() const {
         return m_Device.GetSwapChainInterfaceImpl();
     }

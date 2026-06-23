@@ -36,11 +36,14 @@ typedef uint32_t DXGI_FORMAT;
 #include "Extensions/NRIStreamer.h"
 #include "Extensions/NRISwapChain.h"
 #include "Extensions/NRIUpscaler.h"
+#include "Extensions/NRIVideo.h"
 #include "Extensions/NRIWrapperD3D11.h"
 #include "Extensions/NRIWrapperD3D12.h"
 #include "Extensions/NRIWrapperVK.h"
 
 #include "Lock.h"
+#include "VideoAV1.h"
+#include "VideoAnnexB.h"
 
 // NRI default settings (if not provided in "NRIConfig.h")
 #include "../NRIConfig.h"
@@ -420,6 +423,10 @@ constexpr uint64_t MsToUs(uint32_t x) {
 constexpr void ReturnVoid() {
 }
 
+inline bool IsAligned(uint64_t value, uint64_t alignment) {
+    return alignment <= 1 || value % alignment == 0;
+}
+
 // Allocator
 template <typename T>
 struct StdAllocator {
@@ -600,6 +607,8 @@ struct DisplayDescHelper {
 
 struct QueueFamilyProps {
     uint32_t queueCount;
+    uint32_t videoDecodeCodecNum;
+    uint32_t videoEncodeCodecNum;
     bool graphics;
     bool compute;
     bool copy;
@@ -638,6 +647,26 @@ inline QueueType TrySelectPreferredQueueType(const QueueFamilyProps& props, std:
         if (props.copy && score > scores[index]) {
             scores[index] = score;
             return QueueType::COPY;
+        }
+    }
+
+    { // Prefer the most video decode codecs, then more queues
+        size_t index = (size_t)QueueType::VIDEO_DECODE;
+        uint32_t score = props.videoDecodeCodecNum * 100000 + props.queueCount * 100 + (!props.graphics ? 10 : 0) + (!props.compute ? 10 : 0) + (!props.copy ? 10 : 0) + (props.sparse ? 5 : 0) + (props.videoDecode ? 100 * props.queueCount : 0) + (!props.videoEncode ? 2 : 0) + (props.protect ? 1 : 0) + (!props.opticalFlow ? 1 : 0);
+
+        if (props.videoDecode && score > scores[index]) {
+            scores[index] = score;
+            return QueueType::VIDEO_DECODE;
+        }
+    }
+
+    { // Prefer the most video encode codecs, then more queues
+        size_t index = (size_t)QueueType::VIDEO_ENCODE;
+        uint32_t score = props.videoEncodeCodecNum * 100000 + props.queueCount * 100 + (!props.graphics ? 10 : 0) + (!props.compute ? 10 : 0) + (!props.copy ? 10 : 0) + (props.sparse ? 5 : 0) + (!props.videoDecode ? 2 : 0) + (props.videoEncode ? 100 * props.queueCount : 0) + (props.protect ? 1 : 0) + (!props.opticalFlow ? 1 : 0);
+
+        if (props.videoEncode && score > scores[index]) {
+            scores[index] = score;
+            return QueueType::VIDEO_ENCODE;
         }
     }
 
