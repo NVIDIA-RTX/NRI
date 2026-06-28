@@ -41,6 +41,9 @@ Result CreateDeviceD3D12(const DeviceCreationDesc& deviceCreationDesc, const Dev
 Result CreateDeviceVK(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationVKDesc& deviceCreationDescVK, DeviceBase*& device);
 Result CreateDeviceWGPU(const DeviceCreationDesc& deviceCreationDesc, DeviceBase*& device);
 DeviceBase* CreateDeviceValidation(const DeviceCreationDesc& deviceCreationDesc, DeviceBase& device);
+Result EnableD3D12DeviceFaultInfo(DeviceFaultInfoLevel level);
+Result ReportDeviceFaultInfoD3D12(const Device& device, const DeviceBase& deviceBase);
+Result ReportDeviceFaultInfoVK(const Device& device, const DeviceBase& deviceBase);
 
 constexpr uint64_t Hash(const char* name) {
     return *name != 0 ? *name ^ (33 * Hash(name + 1)) : 5381;
@@ -145,6 +148,32 @@ static void CheckAndSetDefaultCallbacks(DeviceCreationDesc& deviceCreationDesc) 
         deviceCreationDesc.allocationCallbacks.Reallocate = AlignedRealloc;
         deviceCreationDesc.allocationCallbacks.Free = AlignedFree;
     }
+}
+
+static Result EnableDeviceFaultInfo(const DeviceCreationDesc& deviceCreationDesc) {
+    if (deviceCreationDesc.deviceFaultInfoLevel == DeviceFaultInfoLevel::NONE)
+        return Result::SUCCESS;
+
+#if NRI_ENABLE_D3D12_SUPPORT
+    if (deviceCreationDesc.graphicsAPI == GraphicsAPI::D3D12)
+        return EnableD3D12DeviceFaultInfo(deviceCreationDesc.deviceFaultInfoLevel);
+#endif
+
+#if NRI_ENABLE_VK_SUPPORT
+    if (deviceCreationDesc.graphicsAPI == GraphicsAPI::VK)
+        return Result::SUCCESS;
+#endif
+
+    return Result::UNSUPPORTED;
+}
+
+static void ReportDeviceFaultInfoEnableWarning(const DeviceCreationDesc& deviceCreationDesc, Result result) {
+    if (!deviceCreationDesc.callbackInterface.MessageCallback)
+        return;
+
+    char message[NRI_MAX_MESSAGE_LENGTH];
+    snprintf(message, sizeof(message), "Device fault info level %u is not available for the selected backend, result=%u.", (uint32_t)deviceCreationDesc.deviceFaultInfoLevel, (uint32_t)result);
+    deviceCreationDesc.callbackInterface.MessageCallback(Message::WARNING, __FILE__, __LINE__, message, deviceCreationDesc.callbackInterface.userArg);
 }
 
 static int SortAdapters(const void* pa, const void* pb) {
@@ -809,6 +838,10 @@ NRI_API Result NRI_CALL nriCreateDevice(const DeviceCreationDesc& deviceCreation
     DeviceCreationDesc modifiedDeviceCreationDesc = deviceCreationDesc;
     CheckAndSetDefaultCallbacks(modifiedDeviceCreationDesc);
 
+    Result deviceFaultInfoResult = EnableDeviceFaultInfo(modifiedDeviceCreationDesc);
+    if (deviceFaultInfoResult != Result::SUCCESS)
+        ReportDeviceFaultInfoEnableWarning(modifiedDeviceCreationDesc, deviceFaultInfoResult);
+
     // Valid adapter expected (take 1st compatible)
     uint32_t adapterDescNum = ADAPTER_MAX_NUM;
     std::array<AdapterDesc, ADAPTER_MAX_NUM> adapterDescs = {};
@@ -1151,4 +1184,21 @@ NRI_API void NRI_CALL nriReportLiveObjects() {
     if (SUCCEEDED(hr))
         pDebug->ReportLiveObjects(DXGI_DEBUG_ALL, (DXGI_DEBUG_RLO_FLAGS)((uint32_t)DXGI_DEBUG_RLO_DETAIL | (uint32_t)DXGI_DEBUG_RLO_IGNORE_INTERNAL));
 #endif
+}
+
+NRI_API Result NRI_CALL nriReportDeviceFaultInfo(const Device& device) {
+    const DeviceBase& deviceBase = (DeviceBase&)device;
+    GraphicsAPI graphicsAPI = deviceBase.GetDesc().graphicsAPI;
+
+#if NRI_ENABLE_D3D12_SUPPORT
+    if (graphicsAPI == GraphicsAPI::D3D12)
+        return ReportDeviceFaultInfoD3D12(device, deviceBase);
+#endif
+
+#if NRI_ENABLE_VK_SUPPORT
+    if (graphicsAPI == GraphicsAPI::VK)
+        return ReportDeviceFaultInfoVK(device, deviceBase);
+#endif
+
+    return Result::UNSUPPORTED;
 }

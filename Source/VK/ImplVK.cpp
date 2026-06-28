@@ -63,6 +63,88 @@ Result CreateDeviceVK(const DeviceCreationDesc& desc, const DeviceCreationVKDesc
     return result;
 }
 
+static const char* GetVkDeviceFaultAddressTypeName(VkDeviceFaultAddressTypeKHR type) {
+    switch (type) {
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_NONE_KHR:
+            return "None";
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_READ_INVALID_KHR:
+            return "ReadInvalid";
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_WRITE_INVALID_KHR:
+            return "WriteInvalid";
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_EXECUTE_INVALID_KHR:
+            return "ExecuteInvalid";
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_UNKNOWN_KHR:
+            return "InstructionPointerUnknown";
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_INVALID_KHR:
+            return "InstructionPointerInvalid";
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_FAULT_KHR:
+            return "InstructionPointerFault";
+        default:
+            return "Unknown";
+    }
+}
+
+static void ReportVKDeviceFaultAddressInfo(const DeviceBase& deviceBase, const char* name, const VkDeviceFaultAddressInfoKHR& addressInfo) {
+    NRI_REPORT_DEVICE_FAULT_INFO(deviceBase,
+        "[VK][DeviceFault]   %s: type=%s address=0x%016" PRIX64 " precision=0x%016" PRIX64,
+        name,
+        GetVkDeviceFaultAddressTypeName(addressInfo.addressType),
+        addressInfo.reportedAddress,
+        addressInfo.addressPrecision);
+}
+Result ReportDeviceFaultInfoVK(const Device& device, const DeviceBase& deviceBase) {
+    DeviceVK& deviceVK = (DeviceVK&)device;
+    VkDevice nativeDevice = (VkDevice)deviceVK;
+    PFN_vkGetDeviceProcAddr getDeviceProcAddr = deviceVK.GetDispatchTable().GetDeviceProcAddr;
+    if (!nativeDevice || !getDeviceProcAddr)
+        return Result::UNSUPPORTED;
+
+    PFN_vkGetDeviceFaultReportsKHR getDeviceFaultReports = (PFN_vkGetDeviceFaultReportsKHR)getDeviceProcAddr(nativeDevice, "vkGetDeviceFaultReportsKHR");
+    if (!getDeviceFaultReports)
+        return Result::UNSUPPORTED;
+
+    uint32_t faultReportNum = 0;
+    VkResult vkResult = getDeviceFaultReports(nativeDevice, 0, &faultReportNum, nullptr);
+    if (vkResult < 0)
+        return GetResultFromVkResult(vkResult);
+
+    StdAllocator<uint8_t>& allocator = ((DeviceBase&)deviceBase).GetStdAllocator();
+    Vector<VkDeviceFaultInfoKHR> faultReports(faultReportNum, {VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_KHR}, allocator);
+
+    vkResult = getDeviceFaultReports(nativeDevice, 0, &faultReportNum, faultReports.data());
+    if (vkResult < 0)
+        return GetResultFromVkResult(vkResult);
+
+    NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[VK][DeviceFault] reportCount=%u", faultReportNum);
+    for (uint32_t i = 0; i < faultReportNum; i++) {
+        const VkDeviceFaultInfoKHR& faultReport = faultReports[i];
+        NRI_REPORT_DEVICE_FAULT_INFO(deviceBase,
+            "[VK][DeviceFault] Report[%u]: flags=0x%08X groupId=0x%016" PRIX64 " description=%s",
+            i,
+            faultReport.flags,
+            faultReport.groupId,
+            faultReport.description);
+        ReportVKDeviceFaultAddressInfo(deviceBase, "FaultAddress", faultReport.faultAddressInfo);
+        ReportVKDeviceFaultAddressInfo(deviceBase, "InstructionAddress", faultReport.instructionAddressInfo);
+
+        NRI_REPORT_DEVICE_FAULT_INFO(deviceBase,
+            "[VK][DeviceFault]   VendorInfo: code=0x%016" PRIX64 " data=0x%016" PRIX64 " description=%s",
+            faultReport.vendorInfo.vendorFaultCode,
+            faultReport.vendorInfo.vendorFaultData,
+            faultReport.vendorInfo.description);
+    }
+
+    PFN_vkGetDeviceFaultDebugInfoKHR getDeviceFaultDebugInfo = (PFN_vkGetDeviceFaultDebugInfoKHR)getDeviceProcAddr(nativeDevice, "vkGetDeviceFaultDebugInfoKHR");
+    if (getDeviceFaultDebugInfo) {
+        VkDeviceFaultDebugInfoKHR debugInfo = {VK_STRUCTURE_TYPE_DEVICE_FAULT_DEBUG_INFO_KHR};
+        VkResult debugResult = getDeviceFaultDebugInfo(nativeDevice, &debugInfo);
+        if (debugResult >= 0)
+            NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[VK][DeviceFault] vendorBinarySize=%u", debugInfo.vendorBinarySize);
+    }
+
+    return Result::SUCCESS;
+}
+
 //============================================================================================================================================================================================
 #pragma region[  Core  ]
 
