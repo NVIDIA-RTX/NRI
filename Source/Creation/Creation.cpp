@@ -76,7 +76,7 @@ static void NRI_CALL AbortExecution(void*) {
 
 #if NRI_ENABLE_D3D12_SUPPORT
 
-#define NRI_REPORT_DEVICE_REMOVED_INFO(deviceBase, format, ...) \
+#define NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, format, ...) \
     (deviceBase).ReportMessage(Message::INFO, Result::DEVICE_LOST, __FILE__, __LINE__, format, ##__VA_ARGS__)
 
 constexpr uint32_t DRED_NODE_MAX_NUM = 16;
@@ -172,7 +172,7 @@ static void ReportDredAllocationList(const char* listName, const D3D12_DRED_ALLO
     uint32_t index = 0;
     for (const D3D12_DRED_ALLOCATION_NODE1* node = head; node && index < DRED_NODE_MAX_NUM; node = node->pNext, index++) {
         char allocationName[NRI_MAX_MESSAGE_LENGTH];
-        NRI_REPORT_DEVICE_REMOVED_INFO(deviceBase, "[D3D12][DRED] %s[%u]: type=%u name=%s", listName, index, (uint32_t)node->AllocationType, GetDredObjectName(node->ObjectNameA, node->ObjectNameW, allocationName, sizeof(allocationName)));
+        NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[D3D12][DRED] %s[%u]: type=%u name=%s", listName, index, (uint32_t)node->AllocationType, GetDredObjectName(node->ObjectNameA, node->ObjectNameW, allocationName, sizeof(allocationName)));
     }
 }
 
@@ -182,7 +182,7 @@ static void ReportDredBreadcrumbs(const D3D12_AUTO_BREADCRUMB_NODE1* head, const
         uint32_t completedBreadcrumb = node->pLastBreadcrumbValue ? *node->pLastBreadcrumbValue : 0;
         char queueName[NRI_MAX_MESSAGE_LENGTH];
         char commandListName[NRI_MAX_MESSAGE_LENGTH];
-        NRI_REPORT_DEVICE_REMOVED_INFO(deviceBase,
+        NRI_REPORT_DEVICE_FAULT_INFO(deviceBase,
             "[D3D12][DRED] BreadcrumbNode[%u]: queue=%s commandList=%s completed=%u/%u",
             nodeIndex,
             GetDredObjectName(node->pCommandQueueDebugNameA, node->pCommandQueueDebugNameW, queueName, sizeof(queueName)),
@@ -196,7 +196,7 @@ static void ReportDredBreadcrumbs(const D3D12_AUTO_BREADCRUMB_NODE1* head, const
         uint32_t start = completedBreadcrumb > DRED_BREADCRUMB_RADIUS ? completedBreadcrumb - DRED_BREADCRUMB_RADIUS : 0;
         uint32_t end = node->BreadcrumbCount < completedBreadcrumb + DRED_BREADCRUMB_RADIUS + 1 ? node->BreadcrumbCount : completedBreadcrumb + DRED_BREADCRUMB_RADIUS + 1;
         for (uint32_t breadcrumbIndex = start; breadcrumbIndex < end; breadcrumbIndex++)
-            NRI_REPORT_DEVICE_REMOVED_INFO(deviceBase,
+            NRI_REPORT_DEVICE_FAULT_INFO(deviceBase,
                 "[D3D12][DRED]   op[%u]%s %s",
                 breadcrumbIndex,
                 breadcrumbIndex == completedBreadcrumb ? " <- last completed" : "",
@@ -212,7 +212,7 @@ static void ReportDredBreadcrumbs(const D3D12_AUTO_BREADCRUMB_NODE1* head, const
                     contextName = contextString;
                 }
 
-                NRI_REPORT_DEVICE_REMOVED_INFO(deviceBase, "[D3D12][DRED]   context[%u]: %s", context.BreadcrumbIndex, contextName);
+                NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[D3D12][DRED]   context[%u]: %s", context.BreadcrumbIndex, contextName);
             }
         }
     }
@@ -222,7 +222,7 @@ static void ReportD3D12DeviceRemovedExtendedData(ID3D12Device* nativeDevice, con
     ComPtr<ID3D12DeviceRemovedExtendedData2> dred2;
     if (SUCCEEDED(nativeDevice->QueryInterface(IID_PPV_ARGS(&dred2))) && dred2) {
         D3D12_DRED_DEVICE_STATE deviceState = dred2->GetDeviceState();
-        NRI_REPORT_DEVICE_REMOVED_INFO(deviceBase, "[D3D12][DRED] Device state: %s", GetDredDeviceStateName(deviceState));
+        NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[D3D12][DRED] Device state: %s", GetDredDeviceStateName(deviceState));
 
         D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 breadcrumbs = {};
         if (SUCCEEDED(dred2->GetAutoBreadcrumbsOutput1(&breadcrumbs)))
@@ -230,7 +230,7 @@ static void ReportD3D12DeviceRemovedExtendedData(ID3D12Device* nativeDevice, con
 
         D3D12_DRED_PAGE_FAULT_OUTPUT2 pageFault = {};
         if (SUCCEEDED(dred2->GetPageFaultAllocationOutput2(&pageFault))) {
-            NRI_REPORT_DEVICE_REMOVED_INFO(deviceBase, "[D3D12][DRED] PageFaultVA=0x%016llX flags=%u", (unsigned long long)pageFault.PageFaultVA, (uint32_t)pageFault.PageFaultFlags);
+            NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[D3D12][DRED] PageFaultVA=0x%016llX flags=%u", (unsigned long long)pageFault.PageFaultVA, (uint32_t)pageFault.PageFaultFlags);
             ReportDredAllocationList("ExistingAllocation", pageFault.pHeadExistingAllocationNode, deviceBase);
             ReportDredAllocationList("RecentFreedAllocation", pageFault.pHeadRecentFreedAllocationNode, deviceBase);
         }
@@ -246,11 +246,27 @@ static void ReportD3D12DeviceRemovedExtendedData(ID3D12Device* nativeDevice, con
 
         D3D12_DRED_PAGE_FAULT_OUTPUT1 pageFault = {};
         if (SUCCEEDED(dred1->GetPageFaultAllocationOutput1(&pageFault))) {
-            NRI_REPORT_DEVICE_REMOVED_INFO(deviceBase, "[D3D12][DRED] PageFaultVA=0x%016llX", (unsigned long long)pageFault.PageFaultVA);
+            NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[D3D12][DRED] PageFaultVA=0x%016llX", (unsigned long long)pageFault.PageFaultVA);
             ReportDredAllocationList("ExistingAllocation", pageFault.pHeadExistingAllocationNode, deviceBase);
             ReportDredAllocationList("RecentFreedAllocation", pageFault.pHeadRecentFreedAllocationNode, deviceBase);
         }
     }
+}
+
+static Result EnableD3D12DeviceFaultInfo(DeviceFaultInfoLevel level) {
+    if (level == DeviceFaultInfoLevel::NONE || level == DeviceFaultInfoLevel::BASIC)
+        return Result::SUCCESS;
+
+    ComPtr<ID3D12DeviceRemovedExtendedDataSettings1> dredSettings;
+    HRESULT hr = D3D12GetDebugInterface(IID_PPV_ARGS(&dredSettings));
+    if (FAILED(hr) || !dredSettings)
+        return Result::UNSUPPORTED;
+
+    dredSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+    dredSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+    dredSettings->SetBreadcrumbContextEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+
+    return Result::SUCCESS;
 }
 
 #endif
@@ -327,6 +343,27 @@ static void CheckAndSetDefaultCallbacks(DeviceCreationDesc& deviceCreationDesc) 
         deviceCreationDesc.allocationCallbacks.Reallocate = AlignedRealloc;
         deviceCreationDesc.allocationCallbacks.Free = AlignedFree;
     }
+}
+
+static Result EnableDeviceFaultInfo(const DeviceCreationDesc& deviceCreationDesc) {
+    if (deviceCreationDesc.deviceFaultInfoLevel == DeviceFaultInfoLevel::NONE)
+        return Result::SUCCESS;
+
+#if NRI_ENABLE_D3D12_SUPPORT
+    if (deviceCreationDesc.graphicsAPI == GraphicsAPI::D3D12)
+        return EnableD3D12DeviceFaultInfo(deviceCreationDesc.deviceFaultInfoLevel);
+#endif
+
+    return Result::UNSUPPORTED;
+}
+
+static void ReportDeviceFaultInfoEnableWarning(const DeviceCreationDesc& deviceCreationDesc, Result result) {
+    if (!deviceCreationDesc.callbackInterface.MessageCallback)
+        return;
+
+    char message[NRI_MAX_MESSAGE_LENGTH];
+    snprintf(message, sizeof(message), "Device fault info level %u is not available for the selected backend, result=%u.", (uint32_t)deviceCreationDesc.deviceFaultInfoLevel, (uint32_t)result);
+    deviceCreationDesc.callbackInterface.MessageCallback(Message::WARNING, __FILE__, __LINE__, message, deviceCreationDesc.callbackInterface.userArg);
 }
 
 static int SortAdapters(const void* pa, const void* pb) {
@@ -991,6 +1028,10 @@ NRI_API Result NRI_CALL nriCreateDevice(const DeviceCreationDesc& deviceCreation
     DeviceCreationDesc modifiedDeviceCreationDesc = deviceCreationDesc;
     CheckAndSetDefaultCallbacks(modifiedDeviceCreationDesc);
 
+    Result deviceFaultInfoResult = EnableDeviceFaultInfo(modifiedDeviceCreationDesc);
+    if (deviceFaultInfoResult != Result::SUCCESS)
+        ReportDeviceFaultInfoEnableWarning(modifiedDeviceCreationDesc, deviceFaultInfoResult);
+
     // Valid adapter expected (take 1st compatible)
     uint32_t adapterDescNum = ADAPTER_MAX_NUM;
     std::array<AdapterDesc, ADAPTER_MAX_NUM> adapterDescs = {};
@@ -1335,24 +1376,7 @@ NRI_API void NRI_CALL nriReportLiveObjects() {
 #endif
 }
 
-NRI_API Result NRI_CALL nriEnableD3D12DeviceRemovedDiagnostics() {
-#if NRI_ENABLE_D3D12_SUPPORT
-    ComPtr<ID3D12DeviceRemovedExtendedDataSettings1> dredSettings;
-    HRESULT hr = D3D12GetDebugInterface(IID_PPV_ARGS(&dredSettings));
-    if (FAILED(hr) || !dredSettings)
-        return Result::UNSUPPORTED;
-
-    dredSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
-    dredSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
-    dredSettings->SetBreadcrumbContextEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
-
-    return Result::SUCCESS;
-#else
-    return Result::UNSUPPORTED;
-#endif
-}
-
-NRI_API Result NRI_CALL nriReportDeviceRemovedInfo(const Device& device) {
+NRI_API Result NRI_CALL nriReportDeviceFaultInfo(const Device& device) {
 #if NRI_ENABLE_D3D12_SUPPORT
     const DeviceBase& deviceBase = (DeviceBase&)device;
     if (deviceBase.GetDesc().graphicsAPI != GraphicsAPI::D3D12)
@@ -1368,7 +1392,7 @@ NRI_API Result NRI_CALL nriReportDeviceRemovedInfo(const Device& device) {
         return Result::INVALID_ARGUMENT;
 
     HRESULT deviceRemovedReason = nativeDevice->GetDeviceRemovedReason();
-    NRI_REPORT_DEVICE_REMOVED_INFO(deviceBase, "[D3D12] GetDeviceRemovedReason: 0x%08X, result=%u", (uint32_t)deviceRemovedReason, (uint32_t)GetResultFromHRESULT(deviceRemovedReason));
+    NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[D3D12] GetDeviceRemovedReason: 0x%08X, result=%u", (uint32_t)deviceRemovedReason, (uint32_t)GetResultFromHRESULT(deviceRemovedReason));
     ReportD3D12DeviceRemovedExtendedData(nativeDevice, deviceBase);
 
     return Result::SUCCESS;
@@ -1379,5 +1403,5 @@ NRI_API Result NRI_CALL nriReportDeviceRemovedInfo(const Device& device) {
 }
 
 #if NRI_ENABLE_D3D12_SUPPORT
-#    undef NRI_REPORT_DEVICE_REMOVED_INFO
+#    undef NRI_REPORT_DEVICE_FAULT_INFO
 #endif

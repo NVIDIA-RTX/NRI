@@ -14,6 +14,12 @@ NriEnum(Message, uint8_t,
     ERROR // "wingdi.h" must not be included after
 );
 
+NriEnum(DeviceFaultInfoLevel, uint8_t,
+    NONE,
+    BASIC,   // Enables backend-supported basic device fault reporting
+    VERBOSE  // Enables backend-supported extended device fault reporting
+);
+
 // Callbacks must be thread safe
 NriStruct(AllocationCallbacks) {
     void* (NRI_CALL *Allocate)(void* userArg, size_t size, size_t alignment);
@@ -54,6 +60,7 @@ NriStruct(QueueFamilyDesc) {
 NriStruct(DeviceCreationDesc) {
     Nri(GraphicsAPI) graphicsAPI;
     NriOptional Nri(Robustness) robustness;
+    NriOptional Nri(DeviceFaultInfoLevel) deviceFaultInfoLevel; // enables backend-supported device fault diagnostics
     NriOptional const NriPtr(AdapterDesc) adapterDesc;
     NriOptional Nri(CallbackInterface) callbackInterface;
     NriOptional Nri(AllocationCallbacks) allocationCallbacks;
@@ -92,10 +99,7 @@ NRI_API void NRI_CALL nriDestroyDevice(NriPtr(Device) device);
 // It's global state for D3D, not needed for VK because validation is tied to the logical device
 NRI_API void NRI_CALL nriReportLiveObjects();
 
-// Must be called before D3D12 device creation. Returns "UNSUPPORTED" if D3D12 support is not compiled in.
-NRI_API Nri(Result) NRI_CALL nriEnableD3D12DeviceRemovedDiagnostics();
-
-// Reports backend-specific device-removed diagnostics through "CallbackInterface". Returns "UNSUPPORTED" for non-D3D12 backends.
-NRI_API Nri(Result) NRI_CALL nriReportDeviceRemovedInfo(const NriRef(Device) device);
+// Reports backend-specific device fault diagnostics through "CallbackInterface".
+NRI_API Nri(Result) NRI_CALL nriReportDeviceFaultInfo(const NriRef(Device) device);
 
 NriNamespaceEnd
