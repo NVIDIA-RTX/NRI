@@ -298,7 +298,7 @@ void DeviceVK::ProcessInstanceExtensions(Vector<const char*>& desiredInstanceExt
         desiredInstanceExts.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 }
 
-void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, bool disableRayTracing) {
+void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, bool disableRayTracing, DeviceFaultInfoLevel deviceFaultInfoLevel) {
     // Query extensions
     uint32_t extensionNum = 0;
     m_VK.EnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &extensionNum, nullptr);
@@ -355,6 +355,7 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(true, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME);
+    APPEND_EXT(deviceFaultInfoLevel != DeviceFaultInfoLevel::NONE, VK_KHR_DEVICE_FAULT_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME); // TODO: use KHR (currently coverage is lower)
     APPEND_EXT(true, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
@@ -575,7 +576,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         desiredDeviceExts.push_back(desc.vkExtensions.deviceExtensions[i]);
 
     if (!isWrapper)
-        ProcessDeviceExtensions(desiredDeviceExts, desc.disableVKRayTracing);
+        ProcessDeviceExtensions(desiredDeviceExts, desc.disableVKRayTracing, desc.deviceFaultInfoLevel);
 
     NRI_REPORT_INFO(this, "Using Vulkan v1.%u (%u device extensions initialized)", m_MinorVersion, (uint32_t)desiredDeviceExts.size());
 
@@ -628,6 +629,9 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, ShaderClock, SHADER_CLOCK);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, DynamicRenderingLocalRead, DYNAMIC_RENDERING_LOCAL_READ);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, UnifiedImageLayouts, UNIFIED_IMAGE_LAYOUTS);
+    VkPhysicalDeviceFaultFeaturesKHR FaultFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_KHR};
+    if (IsExtensionSupported(VK_KHR_DEVICE_FAULT_EXTENSION_NAME, desiredDeviceExts) && desc.deviceFaultInfoLevel != DeviceFaultInfoLevel::NONE)
+        PNEXTCHAIN_APPEND_STRUCT(FaultFeatures);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, CustomBorderColor, CUSTOM_BORDER_COLOR);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, FragmentShaderInterlock, FRAGMENT_SHADER_INTERLOCK);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, ImageSlicedViewOf3D, IMAGE_SLICED_VIEW_OF_3D);
@@ -703,6 +707,15 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
     if (!features13.dynamicRendering)
         NRI_REPORT_INFO(this, "'dynamicRendering' is not supported, using 'render passes'");
+
+    if (desc.deviceFaultInfoLevel != DeviceFaultInfoLevel::NONE && !FaultFeatures.deviceFault)
+        NRI_REPORT_WARNING(this, "'VK_KHR_device_fault' is not supported, device fault info disabled");
+
+    if (desc.deviceFaultInfoLevel != DeviceFaultInfoLevel::NONE) {
+        FaultFeatures.deviceFaultVendorBinary = desc.deviceFaultInfoLevel == DeviceFaultInfoLevel::VERBOSE ? FaultFeatures.deviceFaultVendorBinary : VK_FALSE;
+        FaultFeatures.deviceFaultReportMasked = VK_FALSE;
+        FaultFeatures.deviceFaultDeviceLostOnMasked = VK_FALSE;
+    }
 
     { // Create device
         if (isWrapper)

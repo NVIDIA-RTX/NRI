@@ -74,10 +74,10 @@ static void NRI_CALL AbortExecution(void*) {
 #endif
 }
 
-#if NRI_ENABLE_D3D12_SUPPORT
-
 #define NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, format, ...) \
     (deviceBase).ReportMessage(Message::INFO, Result::DEVICE_LOST, __FILE__, __LINE__, format, ##__VA_ARGS__)
+
+#if NRI_ENABLE_D3D12_SUPPORT
 
 constexpr uint32_t DRED_NODE_MAX_NUM = 16;
 constexpr uint32_t DRED_BREADCRUMB_RADIUS = 4;
@@ -271,6 +271,128 @@ static Result EnableD3D12DeviceFaultInfo(DeviceFaultInfoLevel level) {
 
 #endif
 
+#if NRI_ENABLE_VK_SUPPORT
+
+static Result GetResultFromDeviceFaultVkResult(VkResult vkResult) {
+    if (vkResult >= 0)
+        return Result::SUCCESS;
+
+    switch (vkResult) {
+        case VK_ERROR_DEVICE_LOST:
+            return Result::DEVICE_LOST;
+
+        case VK_ERROR_FEATURE_NOT_PRESENT:
+        case VK_ERROR_EXTENSION_NOT_PRESENT:
+            return Result::UNSUPPORTED;
+
+        case VK_ERROR_OUT_OF_HOST_MEMORY:
+        case VK_ERROR_OUT_OF_DEVICE_MEMORY:
+            return Result::OUT_OF_MEMORY;
+
+        default:
+            return Result::FAILURE;
+    }
+}
+
+#    ifdef VK_KHR_device_fault
+static const char* GetVkDeviceFaultAddressTypeName(VkDeviceFaultAddressTypeKHR type) {
+    switch (type) {
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_NONE_KHR:
+            return "None";
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_READ_INVALID_KHR:
+            return "ReadInvalid";
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_WRITE_INVALID_KHR:
+            return "WriteInvalid";
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_EXECUTE_INVALID_KHR:
+            return "ExecuteInvalid";
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_UNKNOWN_KHR:
+            return "InstructionPointerUnknown";
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_INVALID_KHR:
+            return "InstructionPointerInvalid";
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_FAULT_KHR:
+            return "InstructionPointerFault";
+        default:
+            return "Unknown";
+    }
+}
+
+static void ReportVKDeviceFaultAddressInfo(const DeviceBase& deviceBase, const char* name, const VkDeviceFaultAddressInfoKHR& addressInfo) {
+    NRI_REPORT_DEVICE_FAULT_INFO(deviceBase,
+        "[VK][DeviceFault]   %s: type=%s address=0x%016" PRIX64 " precision=0x%016" PRIX64,
+        name,
+        GetVkDeviceFaultAddressTypeName(addressInfo.addressType),
+        addressInfo.reportedAddress,
+        addressInfo.addressPrecision);
+}
+
+static Result ReportVKDeviceFaultInfo(const Device& device, const DeviceBase& deviceBase) {
+    CoreInterface core = {};
+    Result result = deviceBase.FillFunctionTable(core);
+    if (result != Result::SUCCESS || !core.GetDeviceNativeObject)
+        return Result::UNSUPPORTED;
+
+    WrapperVKInterface wrapperVK = {};
+    result = deviceBase.FillFunctionTable(wrapperVK);
+    if (result != Result::SUCCESS || !wrapperVK.GetDeviceProcAddrVK)
+        return Result::UNSUPPORTED;
+
+    VkDevice nativeDevice = (VkDevice)core.GetDeviceNativeObject(&device);
+    if (!nativeDevice)
+        return Result::INVALID_ARGUMENT;
+
+    PFN_vkGetDeviceProcAddr getDeviceProcAddr = (PFN_vkGetDeviceProcAddr)wrapperVK.GetDeviceProcAddrVK(device);
+    if (!getDeviceProcAddr)
+        return Result::UNSUPPORTED;
+
+    PFN_vkGetDeviceFaultReportsKHR getDeviceFaultReports = (PFN_vkGetDeviceFaultReportsKHR)getDeviceProcAddr(nativeDevice, "vkGetDeviceFaultReportsKHR");
+    if (!getDeviceFaultReports)
+        return Result::UNSUPPORTED;
+
+    uint32_t faultReportNum = 0;
+    VkResult vkResult = getDeviceFaultReports(nativeDevice, 0, &faultReportNum, nullptr);
+    if (vkResult < 0)
+        return GetResultFromDeviceFaultVkResult(vkResult);
+
+    StdAllocator<uint8_t>& allocator = ((DeviceBase&)deviceBase).GetStdAllocator();
+    Vector<VkDeviceFaultInfoKHR> faultReports(faultReportNum, {VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_KHR}, allocator);
+
+    vkResult = getDeviceFaultReports(nativeDevice, 0, &faultReportNum, faultReports.data());
+    if (vkResult < 0)
+        return GetResultFromDeviceFaultVkResult(vkResult);
+
+    NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[VK][DeviceFault] reportCount=%u", faultReportNum);
+    for (uint32_t i = 0; i < faultReportNum; i++) {
+        const VkDeviceFaultInfoKHR& faultReport = faultReports[i];
+        NRI_REPORT_DEVICE_FAULT_INFO(deviceBase,
+            "[VK][DeviceFault] Report[%u]: flags=0x%08X groupId=0x%016" PRIX64 " description=%s",
+            i,
+            faultReport.flags,
+            faultReport.groupId,
+            faultReport.description);
+        ReportVKDeviceFaultAddressInfo(deviceBase, "FaultAddress", faultReport.faultAddressInfo);
+        ReportVKDeviceFaultAddressInfo(deviceBase, "InstructionAddress", faultReport.instructionAddressInfo);
+
+        NRI_REPORT_DEVICE_FAULT_INFO(deviceBase,
+            "[VK][DeviceFault]   VendorInfo: code=0x%016" PRIX64 " data=0x%016" PRIX64 " description=%s",
+            faultReport.vendorInfo.vendorFaultCode,
+            faultReport.vendorInfo.vendorFaultData,
+            faultReport.vendorInfo.description);
+    }
+
+    PFN_vkGetDeviceFaultDebugInfoKHR getDeviceFaultDebugInfo = (PFN_vkGetDeviceFaultDebugInfoKHR)getDeviceProcAddr(nativeDevice, "vkGetDeviceFaultDebugInfoKHR");
+    if (getDeviceFaultDebugInfo) {
+        VkDeviceFaultDebugInfoKHR debugInfo = {VK_STRUCTURE_TYPE_DEVICE_FAULT_DEBUG_INFO_KHR};
+        VkResult debugResult = getDeviceFaultDebugInfo(nativeDevice, &debugInfo);
+        if (debugResult >= 0)
+            NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[VK][DeviceFault] vendorBinarySize=%u", debugInfo.vendorBinarySize);
+    }
+
+    return Result::SUCCESS;
+}
+#    endif
+
+#endif
+
 #ifdef _WIN32
 
 static void* NRI_CALL AlignedMalloc(void*, size_t size, size_t alignment) {
@@ -352,6 +474,11 @@ static Result EnableDeviceFaultInfo(const DeviceCreationDesc& deviceCreationDesc
 #if NRI_ENABLE_D3D12_SUPPORT
     if (deviceCreationDesc.graphicsAPI == GraphicsAPI::D3D12)
         return EnableD3D12DeviceFaultInfo(deviceCreationDesc.deviceFaultInfoLevel);
+#endif
+
+#if NRI_ENABLE_VK_SUPPORT
+    if (deviceCreationDesc.graphicsAPI == GraphicsAPI::VK)
+        return Result::SUCCESS;
 #endif
 
     return Result::UNSUPPORTED;
@@ -1377,31 +1504,34 @@ NRI_API void NRI_CALL nriReportLiveObjects() {
 }
 
 NRI_API Result NRI_CALL nriReportDeviceFaultInfo(const Device& device) {
-#if NRI_ENABLE_D3D12_SUPPORT
     const DeviceBase& deviceBase = (DeviceBase&)device;
-    if (deviceBase.GetDesc().graphicsAPI != GraphicsAPI::D3D12)
-        return Result::UNSUPPORTED;
+    GraphicsAPI graphicsAPI = deviceBase.GetDesc().graphicsAPI;
 
-    CoreInterface core = {};
-    Result result = deviceBase.FillFunctionTable(core);
-    if (result != Result::SUCCESS || !core.GetDeviceNativeObject)
-        return Result::UNSUPPORTED;
+#if NRI_ENABLE_D3D12_SUPPORT
+    if (graphicsAPI == GraphicsAPI::D3D12) {
+        CoreInterface core = {};
+        Result result = deviceBase.FillFunctionTable(core);
+        if (result != Result::SUCCESS || !core.GetDeviceNativeObject)
+            return Result::UNSUPPORTED;
 
-    ID3D12Device* nativeDevice = (ID3D12Device*)core.GetDeviceNativeObject(&device);
-    if (!nativeDevice)
-        return Result::INVALID_ARGUMENT;
+        ID3D12Device* nativeDevice = (ID3D12Device*)core.GetDeviceNativeObject(&device);
+        if (!nativeDevice)
+            return Result::INVALID_ARGUMENT;
 
-    HRESULT deviceRemovedReason = nativeDevice->GetDeviceRemovedReason();
-    NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[D3D12] GetDeviceRemovedReason: 0x%08X, result=%u", (uint32_t)deviceRemovedReason, (uint32_t)GetResultFromHRESULT(deviceRemovedReason));
-    ReportD3D12DeviceRemovedExtendedData(nativeDevice, deviceBase);
+        HRESULT deviceRemovedReason = nativeDevice->GetDeviceRemovedReason();
+        NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[D3D12] GetDeviceRemovedReason: 0x%08X, result=%u", (uint32_t)deviceRemovedReason, (uint32_t)GetResultFromHRESULT(deviceRemovedReason));
+        ReportD3D12DeviceRemovedExtendedData(nativeDevice, deviceBase);
 
-    return Result::SUCCESS;
-#else
-    MaybeUnused(device);
-    return Result::UNSUPPORTED;
+        return Result::SUCCESS;
+    }
 #endif
+
+#if NRI_ENABLE_VK_SUPPORT && defined(VK_KHR_device_fault)
+    if (graphicsAPI == GraphicsAPI::VK)
+        return ReportVKDeviceFaultInfo(device, deviceBase);
+#endif
+
+    return Result::UNSUPPORTED;
 }
 
-#if NRI_ENABLE_D3D12_SUPPORT
-#    undef NRI_REPORT_DEVICE_FAULT_INFO
-#endif
+#undef NRI_REPORT_DEVICE_FAULT_INFO
