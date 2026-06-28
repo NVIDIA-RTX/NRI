@@ -19,7 +19,6 @@
 #if NRI_ENABLE_D3D12_SUPPORT
 #    include <d3d12.h>
 #    include <dxgidebug.h>
-#    include <d3d12sdklayers.h>
 #endif
 
 #if NRI_ENABLE_VK_SUPPORT
@@ -42,6 +41,9 @@ Result CreateDeviceD3D12(const DeviceCreationDesc& deviceCreationDesc, const Dev
 Result CreateDeviceVK(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationVKDesc& deviceCreationDescVK, DeviceBase*& device);
 Result CreateDeviceWGPU(const DeviceCreationDesc& deviceCreationDesc, DeviceBase*& device);
 DeviceBase* CreateDeviceValidation(const DeviceCreationDesc& deviceCreationDesc, DeviceBase& device);
+Result EnableD3D12DeviceFaultInfo(DeviceFaultInfoLevel level);
+Result ReportDeviceFaultInfoD3D12(const Device& device, const DeviceBase& deviceBase);
+Result ReportDeviceFaultInfoVK(const Device& device, const DeviceBase& deviceBase);
 
 constexpr uint64_t Hash(const char* name) {
     return *name != 0 ? *name ^ (33 * Hash(name + 1)) : 5381;
@@ -73,325 +75,6 @@ static void NRI_CALL AbortExecution(void*) {
     raise(SIGTRAP);
 #endif
 }
-
-#define NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, format, ...) \
-    (deviceBase).ReportMessage(Message::INFO, Result::DEVICE_LOST, __FILE__, __LINE__, format, ##__VA_ARGS__)
-
-#if NRI_ENABLE_D3D12_SUPPORT
-
-constexpr uint32_t DRED_NODE_MAX_NUM = 16;
-constexpr uint32_t DRED_BREADCRUMB_RADIUS = 4;
-
-static const char* GetDredDeviceStateName(D3D12_DRED_DEVICE_STATE state) {
-    switch (state) {
-        case D3D12_DRED_DEVICE_STATE_UNKNOWN:
-            return "Unknown";
-        case D3D12_DRED_DEVICE_STATE_HUNG:
-            return "Hung";
-        case D3D12_DRED_DEVICE_STATE_FAULT:
-            return "Fault";
-        case D3D12_DRED_DEVICE_STATE_PAGEFAULT:
-            return "PageFault";
-    }
-
-    return "Invalid";
-}
-
-static const char* GetDredBreadcrumbOpName(D3D12_AUTO_BREADCRUMB_OP op) {
-    switch (op) {
-        case D3D12_AUTO_BREADCRUMB_OP_SETMARKER:
-            return "SetMarker";
-        case D3D12_AUTO_BREADCRUMB_OP_BEGINEVENT:
-            return "BeginEvent";
-        case D3D12_AUTO_BREADCRUMB_OP_ENDEVENT:
-            return "EndEvent";
-        case D3D12_AUTO_BREADCRUMB_OP_DRAWINSTANCED:
-            return "DrawInstanced";
-        case D3D12_AUTO_BREADCRUMB_OP_DRAWINDEXEDINSTANCED:
-            return "DrawIndexedInstanced";
-        case D3D12_AUTO_BREADCRUMB_OP_EXECUTEINDIRECT:
-            return "ExecuteIndirect";
-        case D3D12_AUTO_BREADCRUMB_OP_DISPATCH:
-            return "Dispatch";
-        case D3D12_AUTO_BREADCRUMB_OP_COPYBUFFERREGION:
-            return "CopyBufferRegion";
-        case D3D12_AUTO_BREADCRUMB_OP_COPYTEXTUREREGION:
-            return "CopyTextureRegion";
-        case D3D12_AUTO_BREADCRUMB_OP_COPYRESOURCE:
-            return "CopyResource";
-        case D3D12_AUTO_BREADCRUMB_OP_COPYTILES:
-            return "CopyTiles";
-        case D3D12_AUTO_BREADCRUMB_OP_RESOLVESUBRESOURCE:
-            return "ResolveSubresource";
-        case D3D12_AUTO_BREADCRUMB_OP_CLEARRENDERTARGETVIEW:
-            return "ClearRenderTargetView";
-        case D3D12_AUTO_BREADCRUMB_OP_CLEARUNORDEREDACCESSVIEW:
-            return "ClearUnorderedAccessView";
-        case D3D12_AUTO_BREADCRUMB_OP_CLEARDEPTHSTENCILVIEW:
-            return "ClearDepthStencilView";
-        case D3D12_AUTO_BREADCRUMB_OP_RESOURCEBARRIER:
-            return "ResourceBarrier";
-        case D3D12_AUTO_BREADCRUMB_OP_EXECUTEBUNDLE:
-            return "ExecuteBundle";
-        case D3D12_AUTO_BREADCRUMB_OP_PRESENT:
-            return "Present";
-        case D3D12_AUTO_BREADCRUMB_OP_RESOLVEQUERYDATA:
-            return "ResolveQueryData";
-        case D3D12_AUTO_BREADCRUMB_OP_BEGINSUBMISSION:
-            return "BeginSubmission";
-        case D3D12_AUTO_BREADCRUMB_OP_ENDSUBMISSION:
-            return "EndSubmission";
-        case D3D12_AUTO_BREADCRUMB_OP_BUILDRAYTRACINGACCELERATIONSTRUCTURE:
-            return "BuildRayTracingAccelerationStructure";
-        case D3D12_AUTO_BREADCRUMB_OP_DISPATCHRAYS:
-            return "DispatchRays";
-        case D3D12_AUTO_BREADCRUMB_OP_DISPATCHMESH:
-            return "DispatchMesh";
-        case D3D12_AUTO_BREADCRUMB_OP_BARRIER:
-            return "Barrier";
-        case D3D12_AUTO_BREADCRUMB_OP_BEGIN_COMMAND_LIST:
-            return "BeginCommandList";
-        default:
-            return "Unknown";
-    }
-}
-
-static const char* GetDredObjectName(const char* ansiName, const wchar_t* wideName, char* storage, size_t storageSize) {
-    if (ansiName && ansiName[0] != '\0')
-        return ansiName;
-
-    if (wideName && wideName[0] != L'\0') {
-        ConvertWcharToChar(wideName, storage, storageSize);
-        return storage;
-    }
-
-    return "<unnamed>";
-}
-
-static void ReportDredAllocationList(const char* listName, const D3D12_DRED_ALLOCATION_NODE1* head, const DeviceBase& deviceBase) {
-    uint32_t index = 0;
-    for (const D3D12_DRED_ALLOCATION_NODE1* node = head; node && index < DRED_NODE_MAX_NUM; node = node->pNext, index++) {
-        char allocationName[NRI_MAX_MESSAGE_LENGTH];
-        NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[D3D12][DRED] %s[%u]: type=%u name=%s", listName, index, (uint32_t)node->AllocationType, GetDredObjectName(node->ObjectNameA, node->ObjectNameW, allocationName, sizeof(allocationName)));
-    }
-}
-
-static void ReportDredBreadcrumbs(const D3D12_AUTO_BREADCRUMB_NODE1* head, const DeviceBase& deviceBase) {
-    uint32_t nodeIndex = 0;
-    for (const D3D12_AUTO_BREADCRUMB_NODE1* node = head; node && nodeIndex < DRED_NODE_MAX_NUM; node = node->pNext, nodeIndex++) {
-        uint32_t completedBreadcrumb = node->pLastBreadcrumbValue ? *node->pLastBreadcrumbValue : 0;
-        char queueName[NRI_MAX_MESSAGE_LENGTH];
-        char commandListName[NRI_MAX_MESSAGE_LENGTH];
-        NRI_REPORT_DEVICE_FAULT_INFO(deviceBase,
-            "[D3D12][DRED] BreadcrumbNode[%u]: queue=%s commandList=%s completed=%u/%u",
-            nodeIndex,
-            GetDredObjectName(node->pCommandQueueDebugNameA, node->pCommandQueueDebugNameW, queueName, sizeof(queueName)),
-            GetDredObjectName(node->pCommandListDebugNameA, node->pCommandListDebugNameW, commandListName, sizeof(commandListName)),
-            completedBreadcrumb,
-            node->BreadcrumbCount);
-
-        if (!node->pCommandHistory || node->BreadcrumbCount == 0)
-            continue;
-
-        uint32_t start = completedBreadcrumb > DRED_BREADCRUMB_RADIUS ? completedBreadcrumb - DRED_BREADCRUMB_RADIUS : 0;
-        uint32_t end = node->BreadcrumbCount < completedBreadcrumb + DRED_BREADCRUMB_RADIUS + 1 ? node->BreadcrumbCount : completedBreadcrumb + DRED_BREADCRUMB_RADIUS + 1;
-        for (uint32_t breadcrumbIndex = start; breadcrumbIndex < end; breadcrumbIndex++)
-            NRI_REPORT_DEVICE_FAULT_INFO(deviceBase,
-                "[D3D12][DRED]   op[%u]%s %s",
-                breadcrumbIndex,
-                breadcrumbIndex == completedBreadcrumb ? " <- last completed" : "",
-                GetDredBreadcrumbOpName(node->pCommandHistory[breadcrumbIndex]));
-
-        for (uint32_t contextIndex = 0; contextIndex < node->BreadcrumbContextsCount; contextIndex++) {
-            const D3D12_DRED_BREADCRUMB_CONTEXT& context = node->pBreadcrumbContexts[contextIndex];
-            if (context.BreadcrumbIndex >= start && context.BreadcrumbIndex < end) {
-                char contextString[NRI_MAX_MESSAGE_LENGTH];
-                const char* contextName = "<unnamed>";
-                if (context.pContextString) {
-                    ConvertWcharToChar(context.pContextString, contextString, sizeof(contextString));
-                    contextName = contextString;
-                }
-
-                NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[D3D12][DRED]   context[%u]: %s", context.BreadcrumbIndex, contextName);
-            }
-        }
-    }
-}
-
-static void ReportD3D12DeviceRemovedExtendedData(ID3D12Device* nativeDevice, const DeviceBase& deviceBase) {
-    ComPtr<ID3D12DeviceRemovedExtendedData2> dred2;
-    if (SUCCEEDED(nativeDevice->QueryInterface(IID_PPV_ARGS(&dred2))) && dred2) {
-        D3D12_DRED_DEVICE_STATE deviceState = dred2->GetDeviceState();
-        NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[D3D12][DRED] Device state: %s", GetDredDeviceStateName(deviceState));
-
-        D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 breadcrumbs = {};
-        if (SUCCEEDED(dred2->GetAutoBreadcrumbsOutput1(&breadcrumbs)))
-            ReportDredBreadcrumbs(breadcrumbs.pHeadAutoBreadcrumbNode, deviceBase);
-
-        D3D12_DRED_PAGE_FAULT_OUTPUT2 pageFault = {};
-        if (SUCCEEDED(dred2->GetPageFaultAllocationOutput2(&pageFault))) {
-            NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[D3D12][DRED] PageFaultVA=0x%016llX flags=%u", (unsigned long long)pageFault.PageFaultVA, (uint32_t)pageFault.PageFaultFlags);
-            ReportDredAllocationList("ExistingAllocation", pageFault.pHeadExistingAllocationNode, deviceBase);
-            ReportDredAllocationList("RecentFreedAllocation", pageFault.pHeadRecentFreedAllocationNode, deviceBase);
-        }
-
-        return;
-    }
-
-    ComPtr<ID3D12DeviceRemovedExtendedData1> dred1;
-    if (SUCCEEDED(nativeDevice->QueryInterface(IID_PPV_ARGS(&dred1))) && dred1) {
-        D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 breadcrumbs = {};
-        if (SUCCEEDED(dred1->GetAutoBreadcrumbsOutput1(&breadcrumbs)))
-            ReportDredBreadcrumbs(breadcrumbs.pHeadAutoBreadcrumbNode, deviceBase);
-
-        D3D12_DRED_PAGE_FAULT_OUTPUT1 pageFault = {};
-        if (SUCCEEDED(dred1->GetPageFaultAllocationOutput1(&pageFault))) {
-            NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[D3D12][DRED] PageFaultVA=0x%016llX", (unsigned long long)pageFault.PageFaultVA);
-            ReportDredAllocationList("ExistingAllocation", pageFault.pHeadExistingAllocationNode, deviceBase);
-            ReportDredAllocationList("RecentFreedAllocation", pageFault.pHeadRecentFreedAllocationNode, deviceBase);
-        }
-    }
-}
-
-static Result EnableD3D12DeviceFaultInfo(DeviceFaultInfoLevel level) {
-    if (level == DeviceFaultInfoLevel::NONE || level == DeviceFaultInfoLevel::BASIC)
-        return Result::SUCCESS;
-
-    ComPtr<ID3D12DeviceRemovedExtendedDataSettings1> dredSettings;
-    HRESULT hr = D3D12GetDebugInterface(IID_PPV_ARGS(&dredSettings));
-    if (FAILED(hr) || !dredSettings)
-        return Result::UNSUPPORTED;
-
-    dredSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
-    dredSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
-    dredSettings->SetBreadcrumbContextEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
-
-    return Result::SUCCESS;
-}
-
-#endif
-
-#if NRI_ENABLE_VK_SUPPORT
-
-static Result GetResultFromDeviceFaultVkResult(VkResult vkResult) {
-    if (vkResult >= 0)
-        return Result::SUCCESS;
-
-    switch (vkResult) {
-        case VK_ERROR_DEVICE_LOST:
-            return Result::DEVICE_LOST;
-
-        case VK_ERROR_FEATURE_NOT_PRESENT:
-        case VK_ERROR_EXTENSION_NOT_PRESENT:
-            return Result::UNSUPPORTED;
-
-        case VK_ERROR_OUT_OF_HOST_MEMORY:
-        case VK_ERROR_OUT_OF_DEVICE_MEMORY:
-            return Result::OUT_OF_MEMORY;
-
-        default:
-            return Result::FAILURE;
-    }
-}
-
-#    ifdef VK_KHR_device_fault
-static const char* GetVkDeviceFaultAddressTypeName(VkDeviceFaultAddressTypeKHR type) {
-    switch (type) {
-        case VK_DEVICE_FAULT_ADDRESS_TYPE_NONE_KHR:
-            return "None";
-        case VK_DEVICE_FAULT_ADDRESS_TYPE_READ_INVALID_KHR:
-            return "ReadInvalid";
-        case VK_DEVICE_FAULT_ADDRESS_TYPE_WRITE_INVALID_KHR:
-            return "WriteInvalid";
-        case VK_DEVICE_FAULT_ADDRESS_TYPE_EXECUTE_INVALID_KHR:
-            return "ExecuteInvalid";
-        case VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_UNKNOWN_KHR:
-            return "InstructionPointerUnknown";
-        case VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_INVALID_KHR:
-            return "InstructionPointerInvalid";
-        case VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_FAULT_KHR:
-            return "InstructionPointerFault";
-        default:
-            return "Unknown";
-    }
-}
-
-static void ReportVKDeviceFaultAddressInfo(const DeviceBase& deviceBase, const char* name, const VkDeviceFaultAddressInfoKHR& addressInfo) {
-    NRI_REPORT_DEVICE_FAULT_INFO(deviceBase,
-        "[VK][DeviceFault]   %s: type=%s address=0x%016" PRIX64 " precision=0x%016" PRIX64,
-        name,
-        GetVkDeviceFaultAddressTypeName(addressInfo.addressType),
-        addressInfo.reportedAddress,
-        addressInfo.addressPrecision);
-}
-
-static Result ReportVKDeviceFaultInfo(const Device& device, const DeviceBase& deviceBase) {
-    CoreInterface core = {};
-    Result result = deviceBase.FillFunctionTable(core);
-    if (result != Result::SUCCESS || !core.GetDeviceNativeObject)
-        return Result::UNSUPPORTED;
-
-    WrapperVKInterface wrapperVK = {};
-    result = deviceBase.FillFunctionTable(wrapperVK);
-    if (result != Result::SUCCESS || !wrapperVK.GetDeviceProcAddrVK)
-        return Result::UNSUPPORTED;
-
-    VkDevice nativeDevice = (VkDevice)core.GetDeviceNativeObject(&device);
-    if (!nativeDevice)
-        return Result::INVALID_ARGUMENT;
-
-    PFN_vkGetDeviceProcAddr getDeviceProcAddr = (PFN_vkGetDeviceProcAddr)wrapperVK.GetDeviceProcAddrVK(device);
-    if (!getDeviceProcAddr)
-        return Result::UNSUPPORTED;
-
-    PFN_vkGetDeviceFaultReportsKHR getDeviceFaultReports = (PFN_vkGetDeviceFaultReportsKHR)getDeviceProcAddr(nativeDevice, "vkGetDeviceFaultReportsKHR");
-    if (!getDeviceFaultReports)
-        return Result::UNSUPPORTED;
-
-    uint32_t faultReportNum = 0;
-    VkResult vkResult = getDeviceFaultReports(nativeDevice, 0, &faultReportNum, nullptr);
-    if (vkResult < 0)
-        return GetResultFromDeviceFaultVkResult(vkResult);
-
-    StdAllocator<uint8_t>& allocator = ((DeviceBase&)deviceBase).GetStdAllocator();
-    Vector<VkDeviceFaultInfoKHR> faultReports(faultReportNum, {VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_KHR}, allocator);
-
-    vkResult = getDeviceFaultReports(nativeDevice, 0, &faultReportNum, faultReports.data());
-    if (vkResult < 0)
-        return GetResultFromDeviceFaultVkResult(vkResult);
-
-    NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[VK][DeviceFault] reportCount=%u", faultReportNum);
-    for (uint32_t i = 0; i < faultReportNum; i++) {
-        const VkDeviceFaultInfoKHR& faultReport = faultReports[i];
-        NRI_REPORT_DEVICE_FAULT_INFO(deviceBase,
-            "[VK][DeviceFault] Report[%u]: flags=0x%08X groupId=0x%016" PRIX64 " description=%s",
-            i,
-            faultReport.flags,
-            faultReport.groupId,
-            faultReport.description);
-        ReportVKDeviceFaultAddressInfo(deviceBase, "FaultAddress", faultReport.faultAddressInfo);
-        ReportVKDeviceFaultAddressInfo(deviceBase, "InstructionAddress", faultReport.instructionAddressInfo);
-
-        NRI_REPORT_DEVICE_FAULT_INFO(deviceBase,
-            "[VK][DeviceFault]   VendorInfo: code=0x%016" PRIX64 " data=0x%016" PRIX64 " description=%s",
-            faultReport.vendorInfo.vendorFaultCode,
-            faultReport.vendorInfo.vendorFaultData,
-            faultReport.vendorInfo.description);
-    }
-
-    PFN_vkGetDeviceFaultDebugInfoKHR getDeviceFaultDebugInfo = (PFN_vkGetDeviceFaultDebugInfoKHR)getDeviceProcAddr(nativeDevice, "vkGetDeviceFaultDebugInfoKHR");
-    if (getDeviceFaultDebugInfo) {
-        VkDeviceFaultDebugInfoKHR debugInfo = {VK_STRUCTURE_TYPE_DEVICE_FAULT_DEBUG_INFO_KHR};
-        VkResult debugResult = getDeviceFaultDebugInfo(nativeDevice, &debugInfo);
-        if (debugResult >= 0)
-            NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[VK][DeviceFault] vendorBinarySize=%u", debugInfo.vendorBinarySize);
-    }
-
-    return Result::SUCCESS;
-}
-#    endif
-
-#endif
 
 #ifdef _WIN32
 
@@ -1508,30 +1191,14 @@ NRI_API Result NRI_CALL nriReportDeviceFaultInfo(const Device& device) {
     GraphicsAPI graphicsAPI = deviceBase.GetDesc().graphicsAPI;
 
 #if NRI_ENABLE_D3D12_SUPPORT
-    if (graphicsAPI == GraphicsAPI::D3D12) {
-        CoreInterface core = {};
-        Result result = deviceBase.FillFunctionTable(core);
-        if (result != Result::SUCCESS || !core.GetDeviceNativeObject)
-            return Result::UNSUPPORTED;
-
-        ID3D12Device* nativeDevice = (ID3D12Device*)core.GetDeviceNativeObject(&device);
-        if (!nativeDevice)
-            return Result::INVALID_ARGUMENT;
-
-        HRESULT deviceRemovedReason = nativeDevice->GetDeviceRemovedReason();
-        NRI_REPORT_DEVICE_FAULT_INFO(deviceBase, "[D3D12] GetDeviceRemovedReason: 0x%08X, result=%u", (uint32_t)deviceRemovedReason, (uint32_t)GetResultFromHRESULT(deviceRemovedReason));
-        ReportD3D12DeviceRemovedExtendedData(nativeDevice, deviceBase);
-
-        return Result::SUCCESS;
-    }
+    if (graphicsAPI == GraphicsAPI::D3D12)
+        return ReportDeviceFaultInfoD3D12(device, deviceBase);
 #endif
 
-#if NRI_ENABLE_VK_SUPPORT && defined(VK_KHR_device_fault)
+#if NRI_ENABLE_VK_SUPPORT
     if (graphicsAPI == GraphicsAPI::VK)
-        return ReportVKDeviceFaultInfo(device, deviceBase);
+        return ReportDeviceFaultInfoVK(device, deviceBase);
 #endif
 
     return Result::UNSUPPORTED;
 }
-
-#undef NRI_REPORT_DEVICE_FAULT_INFO
