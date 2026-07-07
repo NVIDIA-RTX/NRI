@@ -100,7 +100,7 @@ NriBits(GraphicsAPI, uint8_t,
     D3D11   = NriBit(1), // Direct3D 11 (feature set 11.1), available if "NRI_ENABLE_D3D11_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm)
     D3D12   = NriBit(2), // Direct3D 12 (D3D12_SDK_VERSION 4 or 619+), available if "NRI_ENABLE_D3D12_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/)
     VK      = NriBit(3), // Vulkan 1.4+, 1.3++ or 1.2+++ (can be used on MacOS via MoltenVK), available if "NRI_ENABLE_VK_SUPPORT = ON" in CMake (https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html)
-    WGPU    = NriBit(4)  // WebGPU via wgpu-native, available if "NRI_ENABLE_WGPU_SUPPORT = ON" in CMake (https://github.com/gfx-rs/wgpu-native)
+    WGPU    = NriBit(4)  // WebGPU via "wgpu-native", available if "NRI_ENABLE_WGPU_SUPPORT = ON" in CMake (https://github.com/gfx-rs/wgpu-native). Has limitations similar to D3D11
 );
 
 NriEnum(Result, int8_t,
@@ -2136,6 +2136,7 @@ NriStruct(DeviceDesc) {
         bool mutableDescriptorType;                               // see "DescriptorType::MUTABLE"
         bool extendedDynamicState;                                // VK: allows to use "VertexBufferDesc::stride" (dynamic) instead of "VertexStreamDesc::stride" (static). Widely supported
         bool unifiedTextureLayouts;                               // VK: allows to use "GENERAL" everywhere: https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_unified_image_layouts.html
+        bool resourceAliasing;                                    // binding multiple distinct texture or buffer objects to overlap the same underlying memory allocation (unsupported only in D3D11)
     } features;
 
     // Shader features

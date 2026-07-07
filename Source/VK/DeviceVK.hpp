@@ -1212,6 +1212,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.mutableDescriptorType = MutableDescriptorTypeFeatures.mutableDescriptorType;
         m_Desc.features.extendedDynamicState = ExtendedDynamicStateFeatures.extendedDynamicState;
         m_Desc.features.unifiedTextureLayouts = UnifiedImageLayoutsFeatures.unifiedImageLayouts;
+        m_Desc.features.resourceAliasing = true;
 
         m_Desc.shaderFeatures.nativeI8 = features12.shaderInt8;
         m_Desc.shaderFeatures.nativeI16 = features.features.shaderInt16;
