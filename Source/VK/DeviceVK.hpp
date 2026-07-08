@@ -17,53 +17,48 @@ static inline uint32_t NextPow2(uint32_t n) {
     return n;
 }
 
-static constexpr VkBufferUsageFlags GetBufferUsageFlags(BufferUsageBits bufferUsageBits, uint32_t structureStride, bool isDeviceAddressSupported) {
+static constexpr VkBufferUsageFlags GetBufferUsageFlags(const BufferDesc& bufferDesc, bool isDeviceAddressSupported) {
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT; // TODO: ban "the opposite" for UPLOAD/READBACK?
 
     if (isDeviceAddressSupported)
         flags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
-    if (bufferUsageBits & BufferUsageBits::VERTEX_BUFFER)
+    if (bufferDesc.usage & BufferUsageBits::VERTEX_BUFFER)
         flags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
-    if (bufferUsageBits & BufferUsageBits::INDEX_BUFFER)
+    if (bufferDesc.usage & BufferUsageBits::INDEX_BUFFER)
         flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
-    if (bufferUsageBits & BufferUsageBits::CONSTANT_BUFFER)
+    if (bufferDesc.usage & BufferUsageBits::CONSTANT_BUFFER)
         flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
-    if (bufferUsageBits & BufferUsageBits::ARGUMENT_BUFFER)
+    if (bufferDesc.usage & BufferUsageBits::ARGUMENT_BUFFER)
         flags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
 
-    if (bufferUsageBits & BufferUsageBits::SCRATCH_BUFFER)
+    bool isSSBO = bufferDesc.structureStride != 0 || bufferDesc.byteAddress; // so called SSBO, can be R/W in shaders
+    if ((bufferDesc.usage & BufferUsageBits::SCRATCH_BUFFER) || isSSBO)
         flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
-    if (bufferUsageBits & BufferUsageBits::SHADER_BINDING_TABLE)
+    if (bufferDesc.usage & BufferUsageBits::SHADER_BINDING_TABLE)
         flags |= VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR;
 
-    if (bufferUsageBits & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE)
+    if (bufferDesc.usage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE)
         flags |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
 
-    if (bufferUsageBits & BufferUsageBits::ACCELERATION_STRUCTURE_BUILD_INPUT)
+    if (bufferDesc.usage & BufferUsageBits::ACCELERATION_STRUCTURE_BUILD_INPUT)
         flags |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
 
-    if (bufferUsageBits & BufferUsageBits::MICROMAP_STORAGE)
+    if (bufferDesc.usage & BufferUsageBits::MICROMAP_STORAGE)
         flags |= VK_BUFFER_USAGE_MICROMAP_STORAGE_BIT_EXT;
 
-    if (bufferUsageBits & BufferUsageBits::MICROMAP_BUILD_INPUT)
+    if (bufferDesc.usage & BufferUsageBits::MICROMAP_BUILD_INPUT)
         flags |= VK_BUFFER_USAGE_MICROMAP_BUILD_INPUT_READ_ONLY_BIT_EXT;
 
-    // Based on comments for "BufferDesc::structureStride"
-    if (structureStride == 0 || structureStride == 4) {
-        if (bufferUsageBits & BufferUsageBits::SHADER_RESOURCE)
-            flags |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+    if (bufferDesc.usage & BufferUsageBits::SHADER_RESOURCE)
+        flags |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
-        if (bufferUsageBits & BufferUsageBits::SHADER_RESOURCE_STORAGE)
-            flags |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-    }
-
-    if (structureStride)
-        flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT; // so called SSBO, can be R/W in shaders
+    if (bufferDesc.usage & BufferUsageBits::SHADER_RESOURCE_STORAGE)
+        flags |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
 
     return flags;
 }
@@ -939,7 +934,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
         m_Desc.memoryAlignment.uploadBufferTextureRow = (uint32_t)limits.optimalBufferCopyRowPitchAlignment;
         m_Desc.memoryAlignment.uploadBufferTextureSlice = std::lcm((uint32_t)limits.optimalBufferCopyOffsetAlignment, leastCommonMultipleStrideAccrossAllFormats);
-        m_Desc.memoryAlignment.bufferShaderResourceOffset = std::lcm((uint32_t)limits.minTexelBufferOffsetAlignment, (uint32_t)limits.minStorageBufferOffsetAlignment);
+        m_Desc.memoryAlignment.bufferShaderResourceOffset = std::lcm((uint32_t)limits.minTexelBufferOffsetAlignment, (uint32_t)limits.minStorageBufferOffsetAlignment); // see "GetBufferUsageFlags"
         m_Desc.memoryAlignment.constantBufferOffset = (uint32_t)limits.minUniformBufferOffsetAlignment;
         m_Desc.memoryAlignment.scratchBufferOffset = AccelerationStructureProps.minAccelerationStructureScratchOffsetAlignment;
         m_Desc.memoryAlignment.shaderBindingTable = RayTracingPipelineProps.shaderGroupBaseAlignment;
@@ -1242,7 +1237,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.shaderFeatures.rayTracingPositionFetch = RayTracingPositionFetchFeatures.rayTracingPositionFetch;
         m_Desc.shaderFeatures.integerDotProduct = features13.shaderIntegerDotProduct;
         m_Desc.shaderFeatures.inputAttachments = features14.dynamicRenderingLocalRead || !features13.dynamicRendering; // legacy render passes support "input attachments"
-        m_Desc.shaderFeatures.drawParameters = features11.shaderDrawParameters ? true : false; // TODO: emulation is not implemented, because >99% devices support it!
+        m_Desc.shaderFeatures.drawParameters = features11.shaderDrawParameters ? true : false;                         // TODO: emulation is not implemented, because >99% devices support it!
         m_Desc.shaderFeatures.drawIndex = m_Desc.shaderFeatures.drawParameters;
 
         // Estimate shader model last since it depends on many "m_Desc" fields
@@ -1281,7 +1276,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 void DeviceVK::FillCreateInfo(const BufferDesc& bufferDesc, VkBufferCreateInfo& info) const {
     info = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO}; // should be already set
     info.size = bufferDesc.size;
-    info.usage = GetBufferUsageFlags(bufferDesc.usage, bufferDesc.structureStride, m_IsSupported.deviceAddress);
+    info.usage = GetBufferUsageFlags(bufferDesc, m_IsSupported.deviceAddress);
     info.sharingMode = m_NumActiveFamilyIndices <= 1 ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
     info.queueFamilyIndexCount = m_NumActiveFamilyIndices;
     info.pQueueFamilyIndices = m_ActiveQueueFamilyIndices.data();

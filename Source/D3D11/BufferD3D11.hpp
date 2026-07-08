@@ -23,14 +23,11 @@ Result BufferD3D11::Allocate(MemoryLocation memoryLocation, float priority) {
     D3D11_BUFFER_DESC desc = {};
     desc.ByteWidth = (uint32_t)m_Desc.size;
 
-    if (m_Desc.structureStride) {
-        if (m_Desc.structureStride == 4)
-            // It's a hack and spec violation, but allows to create multiple views with different "structured" layouts for a single buffer
-            desc.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
-        else {
-            desc.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-            desc.StructureByteStride = m_Desc.structureStride;
-        }
+    if (m_Desc.byteAddress) // higher priority to allow "STRUCTURED" hacks
+        desc.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
+    else if (m_Desc.structureStride) {
+        desc.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+        desc.StructureByteStride = m_Desc.structureStride;
     }
 
     if (m_Desc.usage & BufferUsageBits::ARGUMENT_BUFFER)
