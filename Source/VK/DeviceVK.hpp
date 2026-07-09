@@ -23,19 +23,19 @@ static constexpr VkBufferUsageFlags GetBufferUsageFlags(BufferUsageBits bufferUs
     if (isDeviceAddressSupported)
         flags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
-    if (bufferUsageBits & BufferUsageBits::VERTEX_BUFFER)
+    if (bufferUsageBits & BufferUsageBits::VERTEX)
         flags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
-    if (bufferUsageBits & BufferUsageBits::INDEX_BUFFER)
+    if (bufferUsageBits & BufferUsageBits::INDEX)
         flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
-    if (bufferUsageBits & BufferUsageBits::CONSTANT_BUFFER)
+    if (bufferUsageBits & BufferUsageBits::CONSTANT)
         flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
-    if (bufferUsageBits & BufferUsageBits::ARGUMENT_BUFFER)
+    if (bufferUsageBits & BufferUsageBits::ARGUMENT)
         flags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
 
-    if (bufferUsageBits & BufferUsageBits::SCRATCH_BUFFER)
+    if (bufferUsageBits & BufferUsageBits::SCRATCH)
         flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
     if (bufferUsageBits & BufferUsageBits::SHADER_BINDING_TABLE)

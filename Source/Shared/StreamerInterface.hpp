@@ -35,7 +35,7 @@ Result StreamerImpl::Create(const StreamerDesc& desc) {
         // Create the constant buffer
         BufferDesc bufferDesc = {};
         bufferDesc.size = desc.constantBufferSize;
-        bufferDesc.usage = BufferUsageBits::CONSTANT_BUFFER;
+        bufferDesc.usage = BufferUsageBits::CONSTANT;
 
         Result result = m_iCore.CreateCommittedBuffer(m_Device, desc.constantBufferMemoryLocation, 0.0f, bufferDesc, m_ConstantBuffer);
         if (result != Result::SUCCESS)

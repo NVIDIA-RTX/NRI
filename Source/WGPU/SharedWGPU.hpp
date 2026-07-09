@@ -275,15 +275,15 @@ WGPUTextureUsage nri::GetTextureUsage(TextureUsageBits usage) {
 WGPUBufferUsage nri::GetBufferUsage(BufferUsageBits usage) {
     WGPUBufferUsage result = WGPUBufferUsage_CopySrc | WGPUBufferUsage_CopyDst | WGPUBufferUsage_QueryResolve;
 
-    if (usage & BufferUsageBits::VERTEX_BUFFER)
+    if (usage & BufferUsageBits::VERTEX)
         result |= WGPUBufferUsage_Vertex;
-    if (usage & BufferUsageBits::INDEX_BUFFER)
+    if (usage & BufferUsageBits::INDEX)
         result |= WGPUBufferUsage_Index;
-    if (usage & BufferUsageBits::CONSTANT_BUFFER)
+    if (usage & BufferUsageBits::CONSTANT)
         result |= WGPUBufferUsage_Uniform;
     if (usage & (BufferUsageBits::SHADER_RESOURCE | BufferUsageBits::SHADER_RESOURCE_STORAGE))
         result |= WGPUBufferUsage_Storage;
-    if (usage & BufferUsageBits::ARGUMENT_BUFFER)
+    if (usage & BufferUsageBits::ARGUMENT)
         result |= WGPUBufferUsage_Indirect;
 
     return result;

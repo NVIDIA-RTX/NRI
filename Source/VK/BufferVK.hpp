@@ -145,7 +145,7 @@ void BufferVK::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDe
     vk.GetBufferMemoryRequirements2(m_Device, &bufferMemoryRequirements, &requirements);
 
     // There is no "VK_BUFFER_USAGE" flag for "SCRATCH_BUFFER", thus "vkGetBufferMemoryRequirements" can't return proper alignment. It affects memory "sub-allocation"
-    if (m_Desc.usage & BufferUsageBits::SCRATCH_BUFFER) {
+    if (m_Desc.usage & BufferUsageBits::SCRATCH) {
         VkDeviceSize scratchBufferOffset = m_Device.GetDesc().memoryAlignment.scratchBufferOffset;
         requirements.memoryRequirements.alignment = std::max(requirements.memoryRequirements.alignment, scratchBufferOffset);
     }

@@ -33,7 +33,7 @@ Result BufferD3D11::Allocate(MemoryLocation memoryLocation, float priority) {
         }
     }
 
-    if (m_Desc.usage & BufferUsageBits::ARGUMENT_BUFFER)
+    if (m_Desc.usage & BufferUsageBits::ARGUMENT)
         desc.MiscFlags |= D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS;
 
     if (memoryLocation == MemoryLocation::HOST_UPLOAD || memoryLocation == MemoryLocation::DEVICE_UPLOAD) {
@@ -52,13 +52,13 @@ Result BufferD3D11::Allocate(MemoryLocation memoryLocation, float priority) {
         desc.CPUAccessFlags = 0;
     }
 
-    if (m_Desc.usage & BufferUsageBits::VERTEX_BUFFER)
+    if (m_Desc.usage & BufferUsageBits::VERTEX)
         desc.BindFlags |= D3D11_BIND_VERTEX_BUFFER;
 
-    if (m_Desc.usage & BufferUsageBits::INDEX_BUFFER)
+    if (m_Desc.usage & BufferUsageBits::INDEX)
         desc.BindFlags |= D3D11_BIND_INDEX_BUFFER;
 
-    if (m_Desc.usage & BufferUsageBits::CONSTANT_BUFFER)
+    if (m_Desc.usage & BufferUsageBits::CONSTANT)
         desc.BindFlags |= D3D11_BIND_CONSTANT_BUFFER;
 
     if (m_Desc.usage & BufferUsageBits::SHADER_RESOURCE)
