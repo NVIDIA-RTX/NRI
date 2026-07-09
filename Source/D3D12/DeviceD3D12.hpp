@@ -1280,10 +1280,8 @@ void DeviceD3D12::GetMemoryDesc(MemoryLocation memoryLocation, const D3D12_RESOU
             heapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
     }
 
-    // Not "1" - "offset" is not needed (we always pass 1 resource, not an array)
-    // Not "2" - "D3D12_RESOURCE_DESC1" is not in use
-    // Not "3" - no castable formats
-    D3D12_RESOURCE_ALLOCATION_INFO resourceAllocationInfo = m_Device->GetResourceAllocationInfo(NODE_MASK, 1, (D3D12_RESOURCE_DESC*)&resourceDesc);
+    D3D12_RESOURCE_ALLOCATION_INFO1 resourceAllocationInfo1 = {};
+    D3D12_RESOURCE_ALLOCATION_INFO resourceAllocationInfo = m_Device->GetResourceAllocationInfo2(NODE_MASK, 1, &resourceDesc, &resourceAllocationInfo1);
     NRI_CHECK(resourceAllocationInfo.SizeInBytes != UINT64_MAX, "Invalid arg?");
 
     MemoryTypeInfo memoryTypeInfo = {};
