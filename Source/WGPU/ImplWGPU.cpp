@@ -947,11 +947,11 @@ static Result NRI_CALL AcquireNextTexture(SwapChain& swapChain, Fence&, uint32_t
     return ((SwapChainWGPU&)swapChain).AcquireNextTexture(textureIndex);
 }
 
-static Result NRI_CALL WaitForPresent(SwapChain& swapChain) {
+static Result NRI_CALL WaitForPresent(SwapChain& swapChain, uint64_t) {
     return ((SwapChainWGPU&)swapChain).WaitForPresent();
 }
 
-static Result NRI_CALL QueuePresent(SwapChain& swapChain, Fence&) {
+static Result NRI_CALL QueuePresent(SwapChain& swapChain, Fence&, uint64_t) {
     return ((SwapChainWGPU&)swapChain).Present();
 }
 

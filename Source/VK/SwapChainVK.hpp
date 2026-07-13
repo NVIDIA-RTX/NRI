@@ -415,8 +415,6 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
 
     // Finalize
     m_Hwnd = swapChainDesc.window.windows.hwnd;
-    m_PresentId = GetSwapChainId();
-
     m_Flags = swapChainDesc.flags;
     if (!allowLowLatency)
         m_Flags &= ~SwapChainBits::ALLOW_LOW_LATENCY;
@@ -456,18 +454,18 @@ NRI_INLINE Result SwapChainVK::AcquireNextTexture(FenceVK& acquireSemaphore, uin
     return Result::SUCCESS;
 }
 
-NRI_INLINE Result SwapChainVK::WaitForPresent() {
-    if (!(m_Flags & SwapChainBits::WAITABLE) || GetPresentIndex(m_PresentId) == 0)
+NRI_INLINE Result SwapChainVK::WaitForPresent(uint64_t presentId) {
+    if (!(m_Flags & SwapChainBits::WAITABLE) || presentId == 0)
         return Result::UNSUPPORTED;
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult vkResult = vk.WaitForPresentKHR(m_Device, m_Handle, m_PresentId - 1, MsToUs(NRI_TIMEOUT_PRESENT));
+    VkResult vkResult = vk.WaitForPresentKHR(m_Device, m_Handle, presentId, MsToUs(NRI_TIMEOUT_PRESENT));
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "WaitForPresentKHR");
 
     return Result::SUCCESS;
 }
 
-NRI_INLINE Result SwapChainVK::Present(FenceVK& releaseSemaphore) {
+NRI_INLINE Result SwapChainVK::Present(FenceVK& releaseSemaphore, uint64_t presentIdValue) {
     ExclusiveScope lock(m_Queue->GetLock());
 
     // Present (wait)
@@ -482,21 +480,19 @@ NRI_INLINE Result SwapChainVK::Present(FenceVK& releaseSemaphore) {
 
     VkPresentIdKHR presentId = {VK_STRUCTURE_TYPE_PRESENT_ID_KHR};
     presentId.swapchainCount = 1;
-    presentId.pPresentIds = &m_PresentId;
-
-    m_PresentId++;
+    presentId.pPresentIds = &presentIdValue;
 
     if (m_Device.m_IsSupported.presentId)
         presentInfo.pNext = &presentId;
 
-    if (m_Flags & SwapChainBits::ALLOW_LOW_LATENCY)
-        SetLatencyMarker((LatencyMarker)VK_LATENCY_MARKER_PRESENT_START_NV);
+    if ((m_Flags & SwapChainBits::ALLOW_LOW_LATENCY) && presentIdValue != 0)
+        SetLatencyMarker(presentIdValue, (LatencyMarker)VK_LATENCY_MARKER_PRESENT_START_NV);
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.QueuePresentKHR(*m_Queue, &presentInfo);
 
-    if (m_Flags & SwapChainBits::ALLOW_LOW_LATENCY)
-        SetLatencyMarker((LatencyMarker)VK_LATENCY_MARKER_PRESENT_END_NV);
+    if ((m_Flags & SwapChainBits::ALLOW_LOW_LATENCY) && presentIdValue != 0)
+        SetLatencyMarker(presentIdValue, (LatencyMarker)VK_LATENCY_MARKER_PRESENT_END_NV);
 
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "QueuePresentKHR");
 
@@ -516,9 +512,9 @@ NRI_INLINE Result SwapChainVK::SetLatencySleepMode(const LatencySleepMode& laten
     return Result::SUCCESS;
 }
 
-NRI_INLINE Result SwapChainVK::SetLatencyMarker(LatencyMarker latencyMarker) {
+NRI_INLINE Result SwapChainVK::SetLatencyMarker(uint64_t presentId, LatencyMarker latencyMarker) {
     VkSetLatencyMarkerInfoNV markerInfo = {VK_STRUCTURE_TYPE_SET_LATENCY_MARKER_INFO_NV};
-    markerInfo.presentID = m_PresentId;
+    markerInfo.presentID = presentId;
     markerInfo.marker = (VkLatencyMarkerNV)latencyMarker;
 
     const auto& vk = m_Device.GetDispatchTable();
@@ -527,16 +523,16 @@ NRI_INLINE Result SwapChainVK::SetLatencyMarker(LatencyMarker latencyMarker) {
     return Result::SUCCESS;
 }
 
-NRI_INLINE Result SwapChainVK::LatencySleep() {
+NRI_INLINE Result SwapChainVK::LatencySleep(uint64_t presentId) {
     VkLatencySleepInfoNV sleepInfo = {VK_STRUCTURE_TYPE_LATENCY_SLEEP_INFO_NV};
     sleepInfo.signalSemaphore = *m_LatencyFence;
-    sleepInfo.value = m_PresentId;
+    sleepInfo.value = presentId;
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.LatencySleepNV(m_Device, m_Handle, &sleepInfo);
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "LatencySleepNV");
 
-    m_LatencyFence->Wait(m_PresentId); // VK_SUCCESS is guaranteed by "NRI_RETURN_ON_BAD_VKRESULT"
+    m_LatencyFence->Wait(presentId); // VK_SUCCESS is guaranteed by "NRI_RETURN_ON_BAD_VKRESULT"
 
     return Result::SUCCESS;
 }

@@ -850,11 +850,11 @@ static Result NRI_CALL SetLatencySleepMode(SwapChain&, const LatencySleepMode&) 
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL SetLatencyMarker(SwapChain&, LatencyMarker) {
+static Result NRI_CALL SetLatencyMarker(SwapChain&, uint64_t, LatencyMarker) {
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL LatencySleep(SwapChain&) {
+static Result NRI_CALL LatencySleep(SwapChain&, uint64_t) {
     return Result::SUCCESS;
 }
 
@@ -1156,11 +1156,11 @@ static Result NRI_CALL AcquireNextTexture(SwapChain&, Fence&, uint32_t& textureI
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL WaitForPresent(SwapChain&) {
+static Result NRI_CALL WaitForPresent(SwapChain&, uint64_t) {
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL QueuePresent(SwapChain&, Fence&) {
+static Result NRI_CALL QueuePresent(SwapChain&, Fence&, uint64_t) {
     return Result::SUCCESS;
 }
 

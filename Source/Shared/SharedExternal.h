@@ -329,7 +329,6 @@ namespace nri {
 // Internal consts
 constexpr uint32_t NODE_MASK = 0x1;               // mGPU is not planned
 constexpr uint32_t ROOT_SIGNATURE_DWORD_NUM = 64; // https://learn.microsoft.com/en-us/windows/win32/direct3d12/root-signature-limits
-constexpr uint64_t PRESENT_INDEX_BIT_NUM = 56ull;
 
 // Scratch
 template <typename T>
@@ -559,13 +558,6 @@ inline bool CompareUid(const Uid_t& a, const Uid_t& b) {
 // Strings
 void ConvertCharToWchar(const char* in, wchar_t* out, size_t outLen);
 void ConvertWcharToChar(const wchar_t* in, char* out, size_t outLen);
-
-// Swap chain ID
-uint64_t GetSwapChainId();
-
-inline uint64_t GetPresentIndex(uint64_t presentId) {
-    return presentId & ((1ull << PRESENT_INDEX_BIT_NUM) - 1ull);
-}
 
 // Windows/D3D specific
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)

@@ -1730,6 +1730,7 @@ NriStruct(QueueSubmitDesc) {
     const NriPtr(FenceSubmitDesc) signalFences;
     uint32_t signalFenceNum;
     NriOptional const NriPtr(SwapChain) swapChain; // required if "NRILowLatency" is enabled in the swap chain
+    uint64_t presentId;                            // must match the value passed to "QueuePresent" if "swapChain" is not NULL
 };
 
 // Clear
