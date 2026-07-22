@@ -227,8 +227,8 @@ Result PipelineWGPU::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     }
 
     const VertexInputDesc* vertexInput = graphicsPipelineDesc.vertexInput;
-    Scratch<WGPUVertexAttribute> attributes = NRI_ALLOCATE_SCRATCH(m_Device, WGPUVertexAttribute, vertexInput ? (size_t)vertexInput->attributeNum : 0ull);
-    Scratch<WGPUVertexBufferLayout> streams = NRI_ALLOCATE_SCRATCH(m_Device, WGPUVertexBufferLayout, vertexInput ? (size_t)vertexInput->streamNum : 0ull);
+    Scratch<WGPUVertexAttribute> attributes = NRI_ALLOCATE_SCRATCH(m_Device, WGPUVertexAttribute, vertexInput ? (size_t)vertexInput->attributeNum : size_t(0));
+    Scratch<WGPUVertexBufferLayout> streams = NRI_ALLOCATE_SCRATCH(m_Device, WGPUVertexBufferLayout, vertexInput ? (size_t)vertexInput->streamNum : size_t(0));
 
     if (vertexInput) {
         uint32_t attributeOffset = 0;

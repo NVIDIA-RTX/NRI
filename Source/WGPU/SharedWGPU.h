@@ -2,7 +2,11 @@
 
 #pragma once
 
-#include <webgpu/wgpu.h>
+#if defined(__EMSCRIPTEN__)
+#    include <webgpu/webgpu.h>
+#else
+#    include <webgpu/wgpu.h>
+#endif
 
 #if defined(_WIN32)
 #    include <windows.h>
@@ -32,6 +36,15 @@ struct TextureWGPU;
 inline WGPUStringView WGPUString(const char* string) {
     return {string, WGPU_STRLEN};
 }
+
+#if defined(__EMSCRIPTEN__)
+inline bool WaitForFuture(WGPUInstance instance, WGPUFuture future, uint64_t timeoutNs = UINT64_MAX) {
+    WGPUFutureWaitInfo waitInfo = WGPU_FUTURE_WAIT_INFO_INIT;
+    waitInfo.future = future;
+
+    return wgpuInstanceWaitAny(instance, 1, &waitInfo, timeoutNs) == WGPUWaitStatus_Success && waitInfo.completed == WGPU_TRUE;
+}
+#endif
 
 inline uint32_t GetCountOrOne(uint32_t value) {
     return value ? value : 1;

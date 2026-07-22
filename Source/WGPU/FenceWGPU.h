@@ -6,7 +6,11 @@ namespace nri {
 
 struct FenceSubmissionWGPU {
     uint64_t value = 0;
+#if defined(__EMSCRIPTEN__)
+    WGPUFuture future = WGPU_FUTURE_INIT;
+#else
     WGPUSubmissionIndex index = 0;
+#endif
 };
 
 struct FenceWGPU final : public DebugNameBase {
@@ -23,7 +27,11 @@ struct FenceWGPU final : public DebugNameBase {
 
     uint64_t GetValue() const;
     void Wait(uint64_t value);
+#if defined(__EMSCRIPTEN__)
+    void Signal(uint64_t value);
+#else
     void Signal(uint64_t value, WGPUSubmissionIndex submissionIndex);
+#endif
 
 private:
     DeviceWGPU& m_Device;

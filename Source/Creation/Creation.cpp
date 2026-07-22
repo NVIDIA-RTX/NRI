@@ -27,7 +27,11 @@
 #endif
 
 #if NRI_ENABLE_WGPU_SUPPORT
-#    include <webgpu/wgpu.h>
+#    if defined(__EMSCRIPTEN__)
+#        include <webgpu/webgpu.h>
+#    else
+#        include <webgpu/wgpu.h>
+#    endif
 #endif
 
 #include "SharedExternal.h"
@@ -556,6 +560,59 @@ static void CopyString(char* dst, size_t dstSize, WGPUStringView src) {
 }
 
 static void UpdateAdaptersWGPU(AdapterDesc* adapterDescs, uint32_t& adapterDescNum) {
+#    if defined(__EMSCRIPTEN__)
+    WGPUInstanceFeatureName instanceFeatures[] = {WGPUInstanceFeatureName_TimedWaitAny};
+    WGPUInstanceDescriptor instanceDesc = WGPU_INSTANCE_DESCRIPTOR_INIT;
+    instanceDesc.requiredFeatureCount = GetCountOf(instanceFeatures);
+    instanceDesc.requiredFeatures = instanceFeatures;
+
+    WGPUInstance instance = wgpuCreateInstance(&instanceDesc);
+    if (!instance)
+        return;
+
+    struct RequestContext {
+        WGPUAdapter adapter = nullptr;
+        WGPURequestAdapterStatus status = WGPURequestAdapterStatus_Error;
+    } context;
+
+    WGPURequestAdapterOptions options = WGPU_REQUEST_ADAPTER_OPTIONS_INIT;
+    options.powerPreference = WGPUPowerPreference_HighPerformance;
+
+    WGPURequestAdapterCallbackInfo callbackInfo = WGPU_REQUEST_ADAPTER_CALLBACK_INFO_INIT;
+    callbackInfo.mode = WGPUCallbackMode_WaitAnyOnly;
+    callbackInfo.userdata1 = &context;
+    callbackInfo.callback = [](WGPURequestAdapterStatus status, WGPUAdapter adapter, WGPUStringView, void* userdata1, void*) {
+        RequestContext& request = *(RequestContext*)userdata1;
+        request.status = status;
+        request.adapter = adapter;
+    };
+
+    WGPUFutureWaitInfo waitInfo = WGPU_FUTURE_WAIT_INFO_INIT;
+    waitInfo.future = wgpuInstanceRequestAdapter(instance, &options, callbackInfo);
+    WGPUWaitStatus waitStatus = wgpuInstanceWaitAny(instance, 1, &waitInfo, UINT64_MAX);
+    if (waitStatus == WGPUWaitStatus_Success && waitInfo.completed == WGPU_TRUE && context.status == WGPURequestAdapterStatus_Success && context.adapter) {
+        WGPUAdapterInfo adapterInfo = WGPU_ADAPTER_INFO_INIT;
+        if (adapterDescNum < ADAPTER_MAX_NUM && wgpuAdapterGetInfo(context.adapter, &adapterInfo) == WGPUStatus_Success) {
+            AdapterDesc& adapterDesc = adapterDescs[adapterDescNum++];
+            adapterDesc.sharedSystemMemorySize = 128ull << 30;
+            adapterDesc.queueNum[(uint32_t)QueueType::GRAPHICS] = 1;
+            adapterDesc.vendor = GetVendorFromID(adapterInfo.vendorID);
+            adapterDesc.architecture = GetArchitecture(adapterInfo.adapterType);
+            adapterDesc.deviceId = adapterInfo.deviceID;
+            adapterDesc.supportedGraphicsAPIs = GraphicsAPI::WGPU;
+
+            CopyString(adapterDesc.name, sizeof(adapterDesc.name), adapterInfo.device);
+            if (!adapterDesc.name[0])
+                strncpy(adapterDesc.name, "WebGPU", sizeof(adapterDesc.name));
+
+            wgpuAdapterInfoFreeMembers(adapterInfo);
+        }
+
+        wgpuAdapterRelease(context.adapter);
+    }
+
+    wgpuInstanceRelease(instance);
+#    else
     WGPUInstanceExtras instanceExtras = {};
     instanceExtras.chain.sType = (WGPUSType)WGPUSType_InstanceExtras;
     instanceExtras.backends = WGPUInstanceBackend_Primary;
@@ -635,6 +692,7 @@ static void UpdateAdaptersWGPU(AdapterDesc* adapterDescs, uint32_t& adapterDescN
     }
 
     wgpuInstanceRelease(instance);
+#    endif
 }
 
 #endif

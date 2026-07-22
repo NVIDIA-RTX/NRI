@@ -3,11 +3,18 @@
 #pragma once
 
 #include <atomic>
+#if defined(__EMSCRIPTEN__)
+#    include <thread>
+#endif
 
 constexpr size_t LOCK_CACHELINE_SIZE = 64;
 
 // Found in sse2neon
-#if (defined(__arm__) || defined(__aarch64__) || defined(_M_ARM64) || defined(_M_ARM))
+#if defined(__EMSCRIPTEN__)
+inline void _mm_pause() {
+    std::this_thread::yield();
+}
+#elif (defined(__arm__) || defined(__aarch64__) || defined(_M_ARM64) || defined(_M_ARM))
 inline void _mm_pause() {
 #    if defined(_MSC_VER)
     __isb(_ARM64_BARRIER_SY);

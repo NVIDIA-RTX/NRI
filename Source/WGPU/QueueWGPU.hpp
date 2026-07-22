@@ -36,6 +36,13 @@ Result QueueWGPU::Submit(const QueueSubmitDesc& queueSubmitDesc) {
     for (uint32_t i = 0; i < queueSubmitDesc.commandBufferNum; i++)
         commandBuffers[i] = ((CommandBufferWGPU*)queueSubmitDesc.commandBuffers[i])->GetCommandBuffer();
 
+#if defined(__EMSCRIPTEN__)
+    if (queueSubmitDesc.commandBufferNum)
+        wgpuQueueSubmit(m_Device.GetQueue(), queueSubmitDesc.commandBufferNum, commandBuffers);
+
+    for (uint32_t i = 0; i < queueSubmitDesc.signalFenceNum; i++)
+        ((FenceWGPU*)queueSubmitDesc.signalFences[i].fence)->Signal(queueSubmitDesc.signalFences[i].value);
+#else
     WGPUSubmissionIndex submissionIndex = m_LastSubmissionIndex;
     if (queueSubmitDesc.commandBufferNum) {
         submissionIndex = wgpuQueueSubmitForIndex(m_Device.GetQueue(), queueSubmitDesc.commandBufferNum, commandBuffers);
@@ -44,6 +51,7 @@ Result QueueWGPU::Submit(const QueueSubmitDesc& queueSubmitDesc) {
 
     for (uint32_t i = 0; i < queueSubmitDesc.signalFenceNum; i++)
         ((FenceWGPU*)queueSubmitDesc.signalFences[i].fence)->Signal(queueSubmitDesc.signalFences[i].value, submissionIndex);
+#endif
 
     return Result::SUCCESS;
 }

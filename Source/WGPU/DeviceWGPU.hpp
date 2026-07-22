@@ -26,17 +26,37 @@ static void OnDeviceRequested(WGPURequestDeviceStatus status, WGPUDevice device,
     context.done = true;
 }
 
-static void WaitForAsyncRequest(WGPUInstance instance, const bool& done) {
+static void WaitForAsyncRequest(WGPUInstance instance, const bool& done, WGPUFuture future) {
+#if defined(__EMSCRIPTEN__)
+    MaybeUnused(done);
+    WaitForFuture(instance, future);
+#else
+    MaybeUnused(future);
     // TODO: This is a busy wait around async WGPU requests. Prefer a blocking/event-based path if wgpu-native exposes one.
     while (!done) {
         wgpuInstanceProcessEvents(instance);
         std::this_thread::yield();
     }
+#endif
 }
+
+#if defined(__EMSCRIPTEN__)
+static void OnDeviceLost(WGPUDevice const*, WGPUDeviceLostReason, WGPUStringView message, void* userdata1, void*) {
+    DeviceWGPU* device = (DeviceWGPU*)userdata1;
+    NRI_REPORT_ERROR(device, "WebGPU device lost: %.*s", (int)message.length, message.data ? message.data : "");
+}
+
+static void OnUncapturedError(WGPUDevice const*, WGPUErrorType, WGPUStringView message, void* userdata1, void*) {
+    DeviceWGPU* device = (DeviceWGPU*)userdata1;
+    NRI_REPORT_ERROR(device, "WebGPU uncaptured error: %.*s", (int)message.length, message.data ? message.data : "");
+}
+#endif
 
 DeviceWGPU::DeviceWGPU(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks)
     : DeviceBase(callbacks, allocationCallbacks)
     , m_QueueFamilies{
+          Vector<QueueWGPU*>(GetStdAllocator()),
+          Vector<QueueWGPU*>(GetStdAllocator()),
           Vector<QueueWGPU*>(GetStdAllocator()),
           Vector<QueueWGPU*>(GetStdAllocator()),
           Vector<QueueWGPU*>(GetStdAllocator()),
@@ -95,6 +115,14 @@ Result DeviceWGPU::Create(const DeviceCreationDesc& desc) {
 }
 
 Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
+#if defined(__EMSCRIPTEN__)
+    MaybeUnused(desc);
+    WGPUInstanceFeatureName instanceFeatures[] = {WGPUInstanceFeatureName_TimedWaitAny};
+
+    WGPUInstanceDescriptor instanceDesc = WGPU_INSTANCE_DESCRIPTOR_INIT;
+    instanceDesc.requiredFeatureCount = GetCountOf(instanceFeatures);
+    instanceDesc.requiredFeatures = instanceFeatures;
+#else
     WGPUInstanceExtras instanceExtras = {};
     instanceExtras.chain.sType = (WGPUSType)WGPUSType_InstanceExtras;
     // TODO: Backend selection is left to wgpu-native. Forcing DX12 was observed to crash during early WGPU backend profiling.
@@ -107,6 +135,7 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
     instanceDesc.nextInChain = &instanceExtras.chain;
     instanceDesc.requiredFeatureCount = GetCountOf(instanceFeatures);
     instanceDesc.requiredFeatures = instanceFeatures;
+#endif
 
     m_Instance = wgpuCreateInstance(&instanceDesc);
     if (!m_Instance)
@@ -117,12 +146,16 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
 
     RequestAdapterContext adapterContext = {};
     WGPURequestAdapterCallbackInfo adapterCallbackInfo = WGPU_REQUEST_ADAPTER_CALLBACK_INFO_INIT;
+#if defined(__EMSCRIPTEN__)
+    adapterCallbackInfo.mode = WGPUCallbackMode_WaitAnyOnly;
+#else
     adapterCallbackInfo.mode = WGPUCallbackMode_AllowProcessEvents;
+#endif
     adapterCallbackInfo.callback = OnAdapterRequested;
     adapterCallbackInfo.userdata1 = &adapterContext;
 
-    wgpuInstanceRequestAdapter(m_Instance, &adapterOptions, adapterCallbackInfo);
-    WaitForAsyncRequest(m_Instance, adapterContext.done);
+    WGPUFuture adapterFuture = wgpuInstanceRequestAdapter(m_Instance, &adapterOptions, adapterCallbackInfo);
+    WaitForAsyncRequest(m_Instance, adapterContext.done, adapterFuture);
 
     if (adapterContext.status != WGPURequestAdapterStatus_Success || !adapterContext.adapter)
         return Result::FAILURE;
@@ -131,6 +164,7 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
 
     std::array<WGPUFeatureName, 48> requiredFeatures = {};
     size_t requiredFeatureNum = 0;
+#if !defined(__EMSCRIPTEN__)
     // TODO: Root constants rely on the wgpu-native "immediates" extension, not core WebGPU.
     requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_Immediates;
 
@@ -138,6 +172,7 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
         requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_TextureAdapterSpecificFormatFeatures;
     if (wgpuAdapterHasFeature(m_Adapter, (WGPUFeatureName)WGPUNativeFeature_TextureFormat16bitNorm))
         requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_TextureFormat16bitNorm;
+#endif
     if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_TextureCompressionBC))
         requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_TextureCompressionBC;
     if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_TextureCompressionETC2))
@@ -172,6 +207,7 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
         requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_PrimitiveIndex;
     if (wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_TextureComponentSwizzle))
         requiredFeatures[requiredFeatureNum++] = WGPUFeatureName_TextureComponentSwizzle;
+#if !defined(__EMSCRIPTEN__)
     if (wgpuAdapterHasFeature(m_Adapter, (WGPUFeatureName)WGPUNativeFeature_TextureBindingArray))
         requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_TextureBindingArray;
     if (wgpuAdapterHasFeature(m_Adapter, (WGPUFeatureName)WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing))
@@ -202,21 +238,36 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
 
     WGPUDeviceExtras deviceExtras = {};
     deviceExtras.chain.sType = (WGPUSType)WGPUSType_DeviceExtras;
+#endif
 
     WGPUDeviceDescriptor deviceDesc = WGPU_DEVICE_DESCRIPTOR_INIT;
+#if defined(__EMSCRIPTEN__)
+    deviceDesc.deviceLostCallbackInfo.mode = WGPUCallbackMode_AllowSpontaneous;
+    deviceDesc.deviceLostCallbackInfo.callback = OnDeviceLost;
+    deviceDesc.deviceLostCallbackInfo.userdata1 = this;
+    deviceDesc.uncapturedErrorCallbackInfo.callback = OnUncapturedError;
+    deviceDesc.uncapturedErrorCallbackInfo.userdata1 = this;
+#else
     deviceDesc.nextInChain = &deviceExtras.chain;
+#endif
     deviceDesc.requiredFeatureCount = requiredFeatureNum;
     deviceDesc.requiredFeatures = requiredFeatures.data();
+#if !defined(__EMSCRIPTEN__)
     deviceDesc.requiredLimits = &requiredLimits;
+#endif
 
     RequestDeviceContext deviceContext = {};
     WGPURequestDeviceCallbackInfo deviceCallbackInfo = WGPU_REQUEST_DEVICE_CALLBACK_INFO_INIT;
+#if defined(__EMSCRIPTEN__)
+    deviceCallbackInfo.mode = WGPUCallbackMode_WaitAnyOnly;
+#else
     deviceCallbackInfo.mode = WGPUCallbackMode_AllowProcessEvents;
+#endif
     deviceCallbackInfo.callback = OnDeviceRequested;
     deviceCallbackInfo.userdata1 = &deviceContext;
 
-    wgpuAdapterRequestDevice(m_Adapter, &deviceDesc, deviceCallbackInfo);
-    WaitForAsyncRequest(m_Instance, deviceContext.done);
+    WGPUFuture deviceFuture = wgpuAdapterRequestDevice(m_Adapter, &deviceDesc, deviceCallbackInfo);
+    WaitForAsyncRequest(m_Instance, deviceContext.done, deviceFuture);
 
     if (deviceContext.status != WGPURequestDeviceStatus_Success || !deviceContext.device)
         return Result::FAILURE;
@@ -224,9 +275,13 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
     m_Device = deviceContext.device;
     m_Queue = wgpuDeviceGetQueue(m_Device);
     m_IsSubgroupsSupported = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_Subgroups) == WGPU_TRUE;
+#if defined(__EMSCRIPTEN__)
+    m_IsTimestampQueryInsidePassesSupported = false;
+#else
     m_IsTimestampQueryInsidePassesSupported = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TimestampQuery) == WGPU_TRUE
         && wgpuDeviceHasFeature(m_Device, (WGPUFeatureName)WGPUNativeFeature_TimestampQueryInsideEncoders) == WGPU_TRUE
         && wgpuDeviceHasFeature(m_Device, (WGPUFeatureName)WGPUNativeFeature_TimestampQueryInsidePasses) == WGPU_TRUE;
+#endif
 
     return m_Queue ? Result::SUCCESS : Result::FAILURE;
 }
@@ -279,7 +334,11 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.memoryAlignment.micromapOffset = 1;
 
     m_Desc.pipelineLayout.descriptorSetMaxNum = limits.maxBindGroups;
+#if defined(__EMSCRIPTEN__)
+    m_Desc.pipelineLayout.rootConstantMaxSize = 0;
+#else
     m_Desc.pipelineLayout.rootConstantMaxSize = 256;
+#endif
     m_Desc.pipelineLayout.rootDescriptorMaxNum = 8;
 
     m_Desc.descriptorSet.samplerMaxNum = limits.maxSamplersPerShaderStage;
@@ -325,8 +384,10 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.wave.derivativeOpsStages = StageBits::FRAGMENT_SHADER;
 
     if (m_IsTimestampQueryInsidePassesSupported) {
+#if !defined(__EMSCRIPTEN__)
         float timestampPeriod = wgpuQueueGetTimestampPeriod(m_Queue);
         m_Desc.other.timestampFrequencyHz = timestampPeriod > 0.0f ? uint64_t(1e9 / double(timestampPeriod) + 0.5) : 1;
+#endif
     } else
         m_Desc.other.timestampFrequencyHz = 1;
 
@@ -351,12 +412,21 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.features.textureCompressionBC = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TextureCompressionBC) == WGPU_TRUE;
     m_Desc.features.textureCompressionETC2 = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TextureCompressionETC2) == WGPU_TRUE;
     m_Desc.features.textureCompressionASTC = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TextureCompressionASTC) == WGPU_TRUE;
+#if defined(__EMSCRIPTEN__)
+    m_Desc.features.shaderBytecodeSPIRV = false;
+#else
     m_Desc.features.shaderBytecodeSPIRV = true;
+#endif
     m_Desc.features.shaderBytecodeWGSL = true;
     m_Desc.features.timestamp = m_IsTimestampQueryInsidePassesSupported;
     m_Desc.features.getMemoryDesc2 = true;
     m_Desc.features.componentSwizzle = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_TextureComponentSwizzle) == WGPU_TRUE;
-    m_Desc.features.rootConstantsOffset = true;
+    m_Desc.features.rootConstantsOffset =
+#if defined(__EMSCRIPTEN__)
+        false;
+#else
+        true;
+#endif
     m_Desc.shaderFeatures.nativeF16 = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_ShaderF16) == WGPU_TRUE;
     m_Desc.shaderFeatures.drawParameters = wgpuDeviceHasFeature(m_Device, WGPUFeatureName_IndirectFirstInstance) == WGPU_TRUE;
 }
@@ -462,8 +532,13 @@ FormatSupportBits DeviceWGPU::GetFormatSupport(Format format) const {
         return FormatSupportBits::UNSUPPORTED;
     if (IsASTCFormat(format) && !m_Desc.features.textureCompressionASTC)
         return FormatSupportBits::UNSUPPORTED;
+#if !defined(__EMSCRIPTEN__)
     if (Is16BitNormFormat(format) && wgpuDeviceHasFeature(m_Device, (WGPUFeatureName)WGPUNativeFeature_TextureFormat16bitNorm) != WGPU_TRUE)
         return FormatSupportBits::UNSUPPORTED;
+#else
+    if (Is16BitNormFormat(format))
+        return FormatSupportBits::UNSUPPORTED;
+#endif
     if (format == Format::D32_SFLOAT_S8_UINT && wgpuDeviceHasFeature(m_Device, WGPUFeatureName_Depth32FloatStencil8) != WGPU_TRUE)
         return FormatSupportBits::UNSUPPORTED;
 
@@ -496,8 +571,16 @@ Result DeviceWGPU::GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& qu
 }
 
 Result DeviceWGPU::WaitIdle() {
-    if (m_Device)
+    if (m_Device) {
+#if defined(__EMSCRIPTEN__)
+        WGPUQueueWorkDoneCallbackInfo callbackInfo = WGPU_QUEUE_WORK_DONE_CALLBACK_INFO_INIT;
+        callbackInfo.mode = WGPUCallbackMode_WaitAnyOnly;
+        callbackInfo.callback = [](WGPUQueueWorkDoneStatus, WGPUStringView, void*, void*) {};
+        WaitForFuture(m_Instance, wgpuQueueOnSubmittedWorkDone(m_Queue, callbackInfo));
+#else
         wgpuDevicePoll(m_Device, WGPU_TRUE, nullptr);
+#endif
+    }
 
     return Result::SUCCESS;
 }

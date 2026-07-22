@@ -51,6 +51,11 @@ WGPUCompositeAlphaMode SwapChainWGPU::GetAlphaMode(const WGPUSurfaceCapabilities
 Result SwapChainWGPU::Create(const SwapChainDesc& swapChainDesc) {
     WGPUChainedStruct* surfaceSource = nullptr;
 
+#if defined(__EMSCRIPTEN__)
+    WGPUEmscriptenSurfaceSourceCanvasHTMLSelector surfaceSourceCanvas = WGPU_EMSCRIPTEN_SURFACE_SOURCE_CANVAS_HTML_SELECTOR_INIT;
+    surfaceSourceCanvas.selector = WGPUString(swapChainDesc.window.web.canvasSelector ? swapChainDesc.window.web.canvasSelector : "#canvas");
+    surfaceSource = &surfaceSourceCanvas.chain;
+#endif
 #if defined(_WIN32)
     WGPUSurfaceSourceWindowsHWND surfaceSourceWindows = WGPU_SURFACE_SOURCE_WINDOWS_HWND_INIT;
     if (swapChainDesc.window.windows.hwnd) {
@@ -108,7 +113,11 @@ Result SwapChainWGPU::Create(const SwapChainDesc& swapChainDesc) {
     WGPUSurfaceConfiguration desc = WGPU_SURFACE_CONFIGURATION_INIT;
     desc.device = m_Device;
     desc.format = format;
+#if defined(__EMSCRIPTEN__)
+    desc.usage = WGPUTextureUsage_RenderAttachment;
+#else
     desc.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopySrc | WGPUTextureUsage_CopyDst;
+#endif
     desc.width = swapChainDesc.width;
     desc.height = swapChainDesc.height;
     desc.alphaMode = alphaMode;
@@ -143,8 +152,13 @@ Texture* const* SwapChainWGPU::GetTextures(uint32_t& textureNum) const {
 }
 
 Result SwapChainWGPU::GetDisplayDesc(DisplayDesc& displayDesc) {
+#if defined(__EMSCRIPTEN__)
+    MaybeUnused(displayDesc);
+    return Result::UNSUPPORTED;
+#else
     // TODO: DisplayDescHelper is HWND-based. Add X11/Wayland/macOS display queries for non-Windows swapchains.
     return DisplayDescHelper::GetDisplayDesc(m_Hwnd, displayDesc);
+#endif
 }
 
 Result SwapChainWGPU::AcquireNextTexture(uint32_t& textureIndex) {
@@ -171,7 +185,12 @@ Result SwapChainWGPU::WaitForPresent() {
 }
 
 Result SwapChainWGPU::Present() {
+#if defined(__EMSCRIPTEN__)
+    // Browser canvas textures are presented automatically when the animation-frame callback returns.
+    WGPUStatus status = WGPUStatus_Success;
+#else
     WGPUStatus status = wgpuSurfacePresent(m_Surface);
+#endif
     if (m_CurrentTextureIndex != uint32_t(-1)) {
         m_Textures[m_CurrentTextureIndex]->DetachSurfaceTexture();
         m_CurrentTextureIndex = uint32_t(-1);

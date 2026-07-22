@@ -18,7 +18,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 # Architecture
-if(NOT (WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux" OR APPLE))
+if(EMSCRIPTEN)
+    set(IS_ARM64 FALSE)
+    set(BIN_ARCHITECTURE "wasm32")
+    set(WGPU_BIN_ARCHITECTURE "web")
+elseif(NOT (WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux" OR APPLE))
     message(FATAL_ERROR "NRI: unsupported architecture or platform '${CMAKE_SYSTEM_NAME}', '${CMAKE_SYSTEM_PROCESSOR}'")
 elseif((CMAKE_GENERATOR_PLATFORM MATCHES "ARM64") OR (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64"))
     set(IS_ARM64 TRUE)
@@ -227,7 +231,11 @@ if(NRI_ENABLE_D3D12_SUPPORT)
 endif()
 
 if(NRI_ENABLE_WGPU_SUPPORT)
-    if(WIN32)
+    if(EMSCRIPTEN)
+        add_library(NRI_EmdawnWebGPU INTERFACE)
+        target_compile_options(NRI_EmdawnWebGPU INTERFACE "SHELL:--use-port=emdawnwebgpu:cpp_bindings=false")
+        target_link_options(NRI_EmdawnWebGPU INTERFACE "SHELL:--use-port=emdawnwebgpu:cpp_bindings=false")
+    elseif(WIN32)
         set(WGPU_NATIVE_PACKAGE "wgpu-windows-${WGPU_BIN_ARCHITECTURE}-msvc-release.zip")
         set(WGPU_NATIVE_LIB_NAME "wgpu_native.dll.lib")
         set(WGPU_NATIVE_RUNTIME_NAME "wgpu_native.dll")
@@ -241,14 +249,16 @@ if(NRI_ENABLE_WGPU_SUPPORT)
         set(WGPU_NATIVE_RUNTIME_NAME "${WGPU_NATIVE_LIB_NAME}")
     endif()
 
-    fetchcontent_declare(
-        wgpu_native
-        DOWNLOAD_EXTRACT_TIMESTAMP 1
-        DOWNLOAD_NO_PROGRESS 1
-        SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL "https://github.com/gfx-rs/wgpu-native/releases/download/${NRI_WGPU_VERSION}/${WGPU_NATIVE_PACKAGE}"
-    )
-    list(APPEND DEPS wgpu_native)
+    if(NOT EMSCRIPTEN)
+        fetchcontent_declare(
+            wgpu_native
+            DOWNLOAD_EXTRACT_TIMESTAMP 1
+            DOWNLOAD_NO_PROGRESS 1
+            SOURCE_SUBDIR "ignore CMakeLists.txt"
+            URL "https://github.com/gfx-rs/wgpu-native/releases/download/${NRI_WGPU_VERSION}/${WGPU_NATIVE_PACKAGE}"
+        )
+        list(APPEND DEPS wgpu_native)
+    endif()
 endif()
 
 if(NRI_ENABLE_AMDAGS)
@@ -835,12 +845,19 @@ if(NRI_ENABLE_WGPU_SUPPORT)
     )
     target_include_directories(NRI_WGPU
         PRIVATE
-            "${wgpu_native_SOURCE_DIR}/include"
+            $<$<NOT:$<BOOL:${EMSCRIPTEN}>>:
+                "${wgpu_native_SOURCE_DIR}/include"
+            >
     )
     target_link_libraries(NRI_WGPU
         PRIVATE
             NRI_Shared
-            "${wgpu_native_SOURCE_DIR}/lib/${WGPU_NATIVE_LIB_NAME}"
+            $<$<BOOL:${EMSCRIPTEN}>:
+                NRI_EmdawnWebGPU
+            >
+            $<$<NOT:$<BOOL:${EMSCRIPTEN}>>:
+                "${wgpu_native_SOURCE_DIR}/lib/${WGPU_NATIVE_LIB_NAME}"
+            >
     )
     set_target_properties(NRI_WGPU
         PROPERTIES
@@ -994,7 +1011,9 @@ target_include_directories(NRI
             "${vulkan_headers_SOURCE_DIR}/include"
         >
         $<$<BOOL:${NRI_ENABLE_WGPU_SUPPORT}>:
-            "${wgpu_native_SOURCE_DIR}/include"
+            $<$<NOT:$<BOOL:${EMSCRIPTEN}>>:
+                "${wgpu_native_SOURCE_DIR}/include"
+            >
         >
     PUBLIC
         "Include"
@@ -1035,6 +1054,9 @@ target_link_libraries(NRI
         $<$<BOOL:${NRI_ENABLE_WGPU_SUPPORT}>:
             NRI_WGPU
         >
+        $<$<AND:$<BOOL:${NRI_ENABLE_WGPU_SUPPORT}>,$<BOOL:${EMSCRIPTEN}>>:
+            NRI_EmdawnWebGPU
+        >
         $<$<BOOL:${NRI_ENABLE_VALIDATION_SUPPORT}>:
             NRI_Validation
         >
@@ -1069,7 +1091,7 @@ if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
     )
 endif()
 
-if(NRI_ENABLE_WGPU_SUPPORT)
+if(NRI_ENABLE_WGPU_SUPPORT AND NOT EMSCRIPTEN)
     add_custom_command(TARGET NRI
         POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${wgpu_native_SOURCE_DIR}/lib/${WGPU_NATIVE_RUNTIME_NAME}" "$<TARGET_FILE_DIR:${PROJECT_NAME}>"

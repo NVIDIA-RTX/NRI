@@ -1022,13 +1022,17 @@ Result PipelineLayoutWGPU::CreatePipelineLayout(const ShaderDesc* shaderDescs, u
         }
     }
 
+#if !defined(__EMSCRIPTEN__)
     WGPUPipelineLayoutExtras extras = {};
     extras.chain.sType = (WGPUSType)WGPUSType_PipelineLayoutExtras;
     // TODO: Immediate data is a wgpu-native extension used to emulate NRI root constants.
     extras.immediateDataSize = m_ImmediateDataSize;
+#endif
 
     WGPUPipelineLayoutDescriptor desc = WGPU_PIPELINE_LAYOUT_DESCRIPTOR_INIT;
+#if !defined(__EMSCRIPTEN__)
     desc.nextInChain = m_ImmediateDataSize ? &extras.chain : nullptr;
+#endif
     desc.bindGroupLayoutCount = bindGroupLayoutNum;
     desc.bindGroupLayouts = bindGroupLayoutNum ? (WGPUBindGroupLayout*)bindGroupLayouts : nullptr;
 

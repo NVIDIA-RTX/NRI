@@ -122,16 +122,24 @@ bool DescriptorSetWGPU::RecreateBindGroup(const DescriptorSetMappingWGPU& mappin
         entryMaxNum += range.isArray ? 1 : range.descriptorNum;
 
     Scratch<WGPUBindGroupEntry> entries = NRI_ALLOCATE_SCRATCH(m_Device, WGPUBindGroupEntry, entryMaxNum);
+#if !defined(__EMSCRIPTEN__)
     Scratch<WGPUBindGroupEntryExtras> entryExtras = NRI_ALLOCATE_SCRATCH(m_Device, WGPUBindGroupEntryExtras, entryMaxNum);
     Scratch<WGPUSampler> samplers = NRI_ALLOCATE_SCRATCH(m_Device, WGPUSampler, m_Descriptors.size());
     Scratch<WGPUTextureView> textureViews = NRI_ALLOCATE_SCRATCH(m_Device, WGPUTextureView, m_Descriptors.size());
     Scratch<WGPUBuffer> buffers = NRI_ALLOCATE_SCRATCH(m_Device, WGPUBuffer, m_Descriptors.size());
+#endif
 
     uint32_t entryNum = 0;
     uint32_t resourceOffset = 0;
 
     for (const DescriptorRangeMappingWGPU& range : mapping.ranges) {
         if (range.isArray) {
+#if defined(__EMSCRIPTEN__)
+            NRI_REPORT_ERROR(&m_Device, "Binding arrays are not supported by core WebGPU");
+            resetBindGroup();
+            cache.updateVersion = m_UpdateVersion;
+            return false;
+#else
             WGPUBindGroupEntry& entry = entries[entryNum];
             WGPUBindGroupEntryExtras& extras = entryExtras[entryNum++];
 
@@ -167,6 +175,7 @@ bool DescriptorSetWGPU::RecreateBindGroup(const DescriptorSetMappingWGPU& mappin
 
             resourceOffset += range.descriptorNum;
             continue;
+#endif
         }
 
         for (uint32_t i = 0; i < range.descriptorNum; i++) {
