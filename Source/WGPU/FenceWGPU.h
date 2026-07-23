@@ -27,6 +27,7 @@ struct FenceWGPU final : public DebugNameBase {
 
     uint64_t GetValue() const;
     void Wait(uint64_t value);
+    bool IsSatisfiedBySubmissionOrder(uint64_t value) const;
 #if defined(__EMSCRIPTEN__)
     void Signal(uint64_t value);
 #else
@@ -34,8 +35,12 @@ struct FenceWGPU final : public DebugNameBase {
 #endif
 
 private:
+    uint64_t UpdateCompletedValue() const;
+
+private:
     DeviceWGPU& m_Device;
     mutable Vector<FenceSubmissionWGPU> m_Submissions;
+    mutable Lock m_Lock;
     uint64_t m_SubmittedValue = 0;
     mutable uint64_t m_CompletedValue = 0;
     bool m_IsSwapChainSemaphore = false;

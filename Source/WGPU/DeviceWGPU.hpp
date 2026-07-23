@@ -289,8 +289,10 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
 void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.adapterDesc = adapterDesc;
     m_Desc.adapterDesc.queueNum[(uint32_t)QueueType::GRAPHICS] = 1;
-    m_Desc.adapterDesc.queueNum[(uint32_t)QueueType::COMPUTE] = 0;
-    m_Desc.adapterDesc.queueNum[(uint32_t)QueueType::COPY] = 0;
+    // WebGPU exposes one universal queue. Publish logical views for NRI clients that
+    // model graphics, compute, and transfer independently.
+    m_Desc.adapterDesc.queueNum[(uint32_t)QueueType::COMPUTE] = 1;
+    m_Desc.adapterDesc.queueNum[(uint32_t)QueueType::COPY] = 1;
 
     WGPULimits limits = WGPU_LIMITS_INIT;
     wgpuDeviceGetLimits(m_Device, &limits);
@@ -571,6 +573,8 @@ Result DeviceWGPU::GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& qu
 }
 
 Result DeviceWGPU::WaitIdle() {
+    ExclusiveScope lock(m_QueueLock);
+
     if (m_Device) {
 #if defined(__EMSCRIPTEN__)
         WGPUQueueWorkDoneCallbackInfo callbackInfo = WGPU_QUEUE_WORK_DONE_CALLBACK_INFO_INIT;

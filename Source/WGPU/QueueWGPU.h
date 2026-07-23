@@ -24,9 +24,6 @@ struct QueueWGPU final : public DebugNameBase {
 
 private:
     DeviceWGPU& m_Device;
-#if !defined(__EMSCRIPTEN__)
-    WGPUSubmissionIndex m_LastSubmissionIndex = 0;
-#endif
     uint32_t m_Index = 0;
     QueueType m_Type = QueueType::MAX_NUM;
 };

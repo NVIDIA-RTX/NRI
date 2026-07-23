@@ -27,9 +27,15 @@ void QueueWGPU::GetCalibratedTimestamps(uint64_t& timestampGPU, uint64_t& timest
 }
 
 Result QueueWGPU::Submit(const QueueSubmitDesc& queueSubmitDesc) {
-    // TODO: Wait fences are CPU waits because WebGPU exposes a single queue without native inter-queue semaphore waits.
-    for (uint32_t i = 0; i < queueSubmitDesc.waitFenceNum; i++)
-        ((FenceWGPU*)queueSubmitDesc.waitFences[i].fence)->Wait(queueSubmitDesc.waitFences[i].value);
+    ExclusiveScope lock(m_Device.GetQueueLock());
+
+    // WebGPU exposes one ordered native queue. All logical NRI queue submissions on this
+    // device therefore satisfy their wait fences by submission order without a CPU wait.
+    for (uint32_t i = 0; i < queueSubmitDesc.waitFenceNum; i++) {
+        const FenceSubmitDesc& fence = queueSubmitDesc.waitFences[i];
+        if (!((FenceWGPU*)fence.fence)->IsSatisfiedBySubmissionOrder(fence.value))
+            return Result::INVALID_ARGUMENT;
+    }
 
     Scratch<WGPUCommandBuffer> commandBuffers = NRI_ALLOCATE_SCRATCH(m_Device, WGPUCommandBuffer, queueSubmitDesc.commandBufferNum);
 
@@ -43,11 +49,9 @@ Result QueueWGPU::Submit(const QueueSubmitDesc& queueSubmitDesc) {
     for (uint32_t i = 0; i < queueSubmitDesc.signalFenceNum; i++)
         ((FenceWGPU*)queueSubmitDesc.signalFences[i].fence)->Signal(queueSubmitDesc.signalFences[i].value);
 #else
-    WGPUSubmissionIndex submissionIndex = m_LastSubmissionIndex;
-    if (queueSubmitDesc.commandBufferNum) {
-        submissionIndex = wgpuQueueSubmitForIndex(m_Device.GetQueue(), queueSubmitDesc.commandBufferNum, commandBuffers);
-        m_LastSubmissionIndex = submissionIndex;
-    }
+    WGPUSubmissionIndex submissionIndex = 0;
+    if (queueSubmitDesc.commandBufferNum || queueSubmitDesc.signalFenceNum)
+        submissionIndex = wgpuQueueSubmitForIndex(m_Device.GetQueue(), queueSubmitDesc.commandBufferNum, queueSubmitDesc.commandBufferNum ? commandBuffers : nullptr);
 
     for (uint32_t i = 0; i < queueSubmitDesc.signalFenceNum; i++)
         ((FenceWGPU*)queueSubmitDesc.signalFences[i].fence)->Signal(queueSubmitDesc.signalFences[i].value, submissionIndex);
