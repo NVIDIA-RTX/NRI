@@ -1203,7 +1203,9 @@ void CommandBufferWGPU::BeginRendering(const RenderingDesc& renderingDesc) {
         out.view = descriptor.GetTextureView();
         out.loadOp = GetLoadOp(in.loadOp);
         out.storeOp = GetStoreOp(in.storeOp);
-        out.clearValue = {in.clearValue.color.f.x, in.clearValue.color.f.y, in.clearValue.color.f.z, in.clearValue.color.f.w};
+        out.clearValue = in.loadOp == LoadOp::CLEAR
+            ? WGPUColor{in.clearValue.color.f.x, in.clearValue.color.f.y, in.clearValue.color.f.z, in.clearValue.color.f.w}
+            : WGPUColor{0.0, 0.0, 0.0, 0.0};
         if (in.resolveDst)
             out.resolveTarget = ((DescriptorWGPU*)in.resolveDst)->GetTextureView();
 
@@ -1246,14 +1248,14 @@ void CommandBufferWGPU::BeginRendering(const RenderingDesc& renderingDesc) {
             const AttachmentDesc& depth = renderingDesc.depth.descriptor ? renderingDesc.depth : *depthOrStencil;
             depthStencilAttachment.depthLoadOp = GetLoadOp(depth.loadOp);
             depthStencilAttachment.depthStoreOp = GetStoreOp(depth.storeOp);
-            depthStencilAttachment.depthClearValue = depth.clearValue.depthStencil.depth;
+            depthStencilAttachment.depthClearValue = depth.loadOp == LoadOp::CLEAR ? depth.clearValue.depthStencil.depth : 0.0f;
         }
 
         if (formatProps.isStencil) {
             const AttachmentDesc& stencil = renderingDesc.stencil.descriptor ? renderingDesc.stencil : *depthOrStencil;
             depthStencilAttachment.stencilLoadOp = GetLoadOp(stencil.loadOp);
             depthStencilAttachment.stencilStoreOp = GetStoreOp(stencil.storeOp);
-            depthStencilAttachment.stencilClearValue = stencil.clearValue.depthStencil.stencil;
+            depthStencilAttachment.stencilClearValue = stencil.loadOp == LoadOp::CLEAR ? stencil.clearValue.depthStencil.stencil : 0u;
         }
 
         depthStencilAttachmentPtr = &depthStencilAttachment;
