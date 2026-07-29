@@ -16,10 +16,10 @@ NonNriForwardStruct(ID3D12Heap);
 NonNriForwardStruct(ID3D12Fence);
 NonNriForwardStruct(ID3D12Device);
 NonNriForwardStruct(ID3D12Resource);
+NonNriForwardStruct(ID3D12CommandList);
 NonNriForwardStruct(ID3D12CommandQueue);
 NonNriForwardStruct(ID3D12DescriptorHeap);
 NonNriForwardStruct(ID3D12CommandAllocator);
-NonNriForwardStruct(ID3D12GraphicsCommandList);
 
 NriNamespaceBegin
 
@@ -50,7 +50,7 @@ NriStruct(DeviceCreationD3D12Desc) {
 };
 
 NriStruct(CommandBufferD3D12Desc) {
-    ID3D12GraphicsCommandList* d3d12CommandList;
+    ID3D12CommandList* d3d12CommandList;
     NriOptional ID3D12CommandAllocator* d3d12CommandAllocator; // needed only for "BeginCommandBuffer"
 };
 
@@ -101,6 +101,7 @@ NriStruct(WrapperD3D12Interface) {
     Nri(Result) (NRI_CALL *CreateMemoryD3D12)                   (NriRef(Device) device, const NriRef(MemoryD3D12Desc) memoryD3D12Desc, NriOut NriRef(Memory*) memory);
     Nri(Result) (NRI_CALL *CreateFenceD3D12)                    (NriRef(Device) device, const NriRef(FenceD3D12Desc) fenceD3D12Desc, NriOut NriRef(Fence*) fence);
     Nri(Result) (NRI_CALL *CreateAccelerationStructureD3D12)    (NriRef(Device) device, const NriRef(AccelerationStructureD3D12Desc) accelerationStructureD3D12Desc, NriOut NriRef(AccelerationStructure*) accelerationStructure);
+    // TODO-VIDEO: add CreateVideoSession
 };
 
 NRI_API Nri(Result) NRI_CALL nriCreateDeviceFromD3D12Device(const NriRef(DeviceCreationD3D12Desc) deviceDesc, NriOut NriRef(Device*) device);

@@ -18,6 +18,7 @@
 
 #if NRI_ENABLE_D3D12_SUPPORT
 #    include <d3d12.h>
+#    include <d3d12video.h>
 #    include <dxgidebug.h>
 #endif
 
@@ -89,14 +90,32 @@ static void NRI_CALL AlignedFree(void*, void* memory) {
 
 #else
 
+// FIXED BY AI: Preserve payload contents when reallocation changes the aligned offset within the raw allocation.
+struct AllocationHeader {
+    void* memory;
+    size_t size;
+};
+
 static void* NRI_CALL AlignedMalloc(void*, size_t size, size_t alignment) {
-    uint8_t* memory = (uint8_t*)malloc(size + sizeof(uint8_t*) + alignment - 1);
+    const size_t effectiveAlignment = std::max(alignment, alignof(AllocationHeader));
+
+    if ((effectiveAlignment & (effectiveAlignment - 1)) || effectiveAlignment > std::numeric_limits<size_t>::max() - sizeof(AllocationHeader) + 1)
+        return nullptr;
+
+    const size_t overhead = sizeof(AllocationHeader) + effectiveAlignment - 1;
+
+    if (size > std::numeric_limits<size_t>::max() - overhead)
+        return nullptr;
+
+    uint8_t* memory = (uint8_t*)malloc(size + overhead);
+
     if (!memory)
         return nullptr;
 
-    uint8_t* alignedMemory = Align(memory + sizeof(uint8_t*), alignment);
-    uint8_t** memoryHeader = (uint8_t**)alignedMemory - 1;
-    *memoryHeader = memory;
+    uint8_t* alignedMemory = Align(memory + sizeof(AllocationHeader), effectiveAlignment);
+    AllocationHeader* header = (AllocationHeader*)alignedMemory - 1;
+    header->memory = memory;
+    header->size = size;
 
     return alignedMemory;
 }
@@ -105,30 +124,23 @@ static void* NRI_CALL AlignedRealloc(void* userArg, void* memory, size_t size, s
     if (!memory)
         return AlignedMalloc(userArg, size, alignment);
 
-    uint8_t** memoryHeader = (uint8_t**)memory - 1;
-    uint8_t* oldMemory = *memoryHeader;
+    AllocationHeader* oldHeader = (AllocationHeader*)memory - 1;
+    void* newMemory = AlignedMalloc(userArg, size, alignment);
 
-    uint8_t* newMemory = (uint8_t*)realloc(oldMemory, size + sizeof(uint8_t*) + alignment - 1);
     if (!newMemory)
         return nullptr;
 
-    if (newMemory == oldMemory)
-        return memory;
+    memcpy(newMemory, memory, std::min(size, oldHeader->size));
+    free(oldHeader->memory);
 
-    uint8_t* alignedMemory = Align(newMemory + sizeof(uint8_t*), alignment);
-    memoryHeader = (uint8_t**)alignedMemory - 1;
-    *memoryHeader = newMemory;
-
-    return alignedMemory;
+    return newMemory;
 }
 
 static void NRI_CALL AlignedFree(void*, void* memory) {
     if (!memory)
         return;
 
-    uint8_t** memoryHeader = (uint8_t**)memory - 1;
-    uint8_t* oldMemory = *memoryHeader;
-    free(oldMemory);
+    free(((AllocationHeader*)memory - 1)->memory);
 }
 
 #endif
@@ -263,6 +275,19 @@ static void UpdateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterDescNu
         adapterDesc.queueNum[(uint32_t)QueueType::COMPUTE] = 4;
         adapterDesc.queueNum[(uint32_t)QueueType::COPY] = 4;
 
+#    if NRI_ENABLE_D3D12_SUPPORT
+        ComPtr<ID3D12Device> deviceD3D12;
+        HRESULT hrD3D12 = D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), (void**)&deviceD3D12);
+        if (SUCCEEDED(hrD3D12)) {
+            ComPtr<ID3D12VideoDevice> videoDevice;
+            hrD3D12 = deviceD3D12->QueryInterface(IID_PPV_ARGS(&videoDevice));
+            if (SUCCEEDED(hrD3D12)) {
+                adapterDesc.queueNum[(uint32_t)QueueType::VIDEO_DECODE] = 4;
+                adapterDesc.queueNum[(uint32_t)QueueType::VIDEO_ENCODE] = 4;
+            }
+        }
+#    endif
+
         // Other fields
         adapterDesc.uid = uid;
         adapterDesc.deviceId = desc.DeviceId;
@@ -282,6 +307,22 @@ static void UpdateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterDescNu
 
 #if NRI_ENABLE_VK_SUPPORT
 
+static uint32_t GetVideoCodecNumVK(VkVideoCodecOperationFlagsKHR videoCodecOperations, bool decode) {
+    constexpr VkVideoCodecOperationFlagsKHR VIDEO_DECODE_CODEC_OPERATION_MASK_CREATION = 0x0000FFFF;
+    constexpr VkVideoCodecOperationFlagsKHR VIDEO_ENCODE_CODEC_OPERATION_MASK_CREATION = 0xFFFF0000;
+
+    const VkVideoCodecOperationFlagsKHR mask = decode ? VIDEO_DECODE_CODEC_OPERATION_MASK_CREATION : VIDEO_ENCODE_CODEC_OPERATION_MASK_CREATION;
+    videoCodecOperations &= mask;
+
+    uint32_t num = 0;
+    while (videoCodecOperations) {
+        num += videoCodecOperations & 1;
+        videoCodecOperations >>= 1;
+    }
+
+    return num;
+}
+
 static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum, VkPhysicalDevice precreatedPhysicalDevice) {
     // Variables first
     VkApplicationInfo applicationInfo = {};
@@ -297,6 +338,7 @@ static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum
     uint32_t maxFamilyNum = 1;
     VkPhysicalDeviceGroupProperties* deviceGroupProperties = nullptr;
     VkQueueFamilyProperties2* familyProps2 = nullptr;
+    VkQueueFamilyVideoPropertiesKHR* familyVideoProps = nullptr;
 
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = nullptr;
     PFN_vkCreateInstance vkCreateInstance = nullptr;
@@ -368,8 +410,12 @@ static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum
     }
 
     familyProps2 = (VkQueueFamilyProperties2*)alloca(sizeof(VkQueueFamilyProperties2) * maxFamilyNum);
-    for (uint32_t i = 0; i < maxFamilyNum; i++)
+    familyVideoProps = (VkQueueFamilyVideoPropertiesKHR*)alloca(sizeof(VkQueueFamilyVideoPropertiesKHR) * maxFamilyNum);
+    for (uint32_t i = 0; i < maxFamilyNum; i++) {
         familyProps2[i] = {VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2};
+        familyVideoProps[i] = {VK_STRUCTURE_TYPE_QUEUE_FAMILY_VIDEO_PROPERTIES_KHR};
+        familyProps2[i].pNext = &familyVideoProps[i];
+    }
 
     // Precreated physical device
     if (precreatedPhysicalDevice) {
@@ -454,15 +500,18 @@ static void UpdateAdaptersVK(AdapterDesc* adapterDescs, uint32_t& adapterDescNum
             std::array<uint32_t, (size_t)QueueType::MAX_NUM> scores = {};
             for (uint32_t j = 0; j < familyNum; j++) {
                 const VkQueueFamilyProperties& familyProps = familyProps2[j].queueFamilyProperties;
+                const VkVideoCodecOperationFlagsKHR videoCodecOperations = familyVideoProps[j].videoCodecOperations;
 
                 QueueFamilyProps props = {};
                 props.queueCount = familyProps.queueCount;
+                props.videoDecodeCodecNum = GetVideoCodecNumVK(videoCodecOperations, true);
+                props.videoEncodeCodecNum = GetVideoCodecNumVK(videoCodecOperations, false);
                 props.graphics = familyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT;
                 props.compute = familyProps.queueFlags & VK_QUEUE_COMPUTE_BIT;
                 props.copy = familyProps.queueFlags & VK_QUEUE_TRANSFER_BIT;
                 props.sparse = familyProps.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT;
-                props.videoDecode = familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR;
-                props.videoEncode = familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR;
+                props.videoDecode = (familyProps.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR) && props.videoDecodeCodecNum;
+                props.videoEncode = (familyProps.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR) && props.videoEncodeCodecNum;
                 props.protect = familyProps.queueFlags & VK_QUEUE_PROTECTED_BIT;
                 props.opticalFlow = familyProps.queueFlags & VK_QUEUE_OPTICAL_FLOW_BIT_NV;
 
@@ -499,10 +548,14 @@ CLEANUP:
 
 static Architecture GetArchitecture(WGPUAdapterType adapterType) {
     switch (adapterType) {
-        case WGPUAdapterType_DiscreteGPU: return Architecture::DISCRETE;
-        case WGPUAdapterType_IntegratedGPU: return Architecture::INTEGRATED;
-        case WGPUAdapterType_CPU: return Architecture::SOFTWARE;
-        default: return Architecture::UNKNOWN;
+        case WGPUAdapterType_DiscreteGPU:
+            return Architecture::DISCRETE;
+        case WGPUAdapterType_IntegratedGPU:
+            return Architecture::INTEGRATED;
+        case WGPUAdapterType_CPU:
+            return Architecture::SOFTWARE;
+        default:
+            return Architecture::UNKNOWN;
     }
 }
 
@@ -660,6 +713,10 @@ NRI_API Result NRI_CALL nriGetInterface(const Device& device, const char* interf
         realInterfaceSize = sizeof(RayTracingInterface);
         if (realInterfaceSize == interfaceSize)
             result = deviceBase.FillFunctionTable(*(RayTracingInterface*)interfacePtr);
+    } else if (hash == Hash(NRI_STRINGIFY(VideoInterface))) {
+        realInterfaceSize = sizeof(VideoInterface);
+        if (realInterfaceSize == interfaceSize)
+            result = deviceBase.FillFunctionTable(*(VideoInterface*)interfacePtr);
     } else if (hash == Hash(NRI_STRINGIFY(StreamerInterface))) {
         realInterfaceSize = sizeof(StreamerInterface);
         if (realInterfaceSize == interfaceSize)

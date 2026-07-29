@@ -137,6 +137,7 @@ bool DeviceVal::Create() {
     m_IsExtSupported.lowLatency = deviceBaseImpl.FillFunctionTable(m_iLowLatencyImpl) == Result::SUCCESS;
     m_IsExtSupported.meshShader = deviceBaseImpl.FillFunctionTable(m_iMeshShaderImpl) == Result::SUCCESS;
     m_IsExtSupported.rayTracing = deviceBaseImpl.FillFunctionTable(m_iRayTracingImpl) == Result::SUCCESS;
+    m_IsExtSupported.video = deviceBaseImpl.FillFunctionTable(m_iVideoImpl) == Result::SUCCESS;
     m_IsExtSupported.swapChain = deviceBaseImpl.FillFunctionTable(m_iSwapChainImpl) == Result::SUCCESS;
     m_IsExtSupported.wrapperD3D11 = deviceBaseImpl.FillFunctionTable(m_iWrapperD3D11Impl) == Result::SUCCESS;
     m_IsExtSupported.wrapperD3D12 = deviceBaseImpl.FillFunctionTable(m_iWrapperD3D12Impl) == Result::SUCCESS;
@@ -251,6 +252,9 @@ NRI_INLINE Result DeviceVal::CreateTexture(const TextureDesc& textureDesc, Textu
     NRI_RETURN_ON_FAILURE(this, textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.sharingMode < SharingMode::MAX_NUM, Result::INVALID_ARGUMENT, "'sharingMode' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.width != 0, Result::INVALID_ARGUMENT, "'width' is 0");
+    NRI_RETURN_ON_FAILURE(this, textureDesc.videoCodec < VideoCodec::MAX_NUM, Result::INVALID_ARGUMENT, "'videoCodec' is invalid");
+    NRI_RETURN_ON_FAILURE(this, !(textureDesc.usage & (TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_ENCODE)) || textureDesc.videoCodec != VideoCodec::NONE, Result::INVALID_ARGUMENT,
+        "'videoCodec' must not be 'NONE' for video textures");
 
     Dim_t maxMipNum = GetMaxMipNum(textureDesc.width, textureDesc.height, textureDesc.depth);
     NRI_RETURN_ON_FAILURE(this, textureDesc.mipNum <= maxMipNum, Result::INVALID_ARGUMENT, "'mipNum=%u' can't be > %u", textureDesc.mipNum, maxMipNum);
@@ -735,6 +739,9 @@ NRI_INLINE Result DeviceVal::CreateCommittedTexture(MemoryLocation memoryLocatio
     NRI_RETURN_ON_FAILURE(this, textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.sharingMode < SharingMode::MAX_NUM, Result::INVALID_ARGUMENT, "'sharingMode' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.width != 0, Result::INVALID_ARGUMENT, "'width' is 0");
+    NRI_RETURN_ON_FAILURE(this, textureDesc.videoCodec < VideoCodec::MAX_NUM, Result::INVALID_ARGUMENT, "'videoCodec' is invalid");
+    NRI_RETURN_ON_FAILURE(this, !(textureDesc.usage & (TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_ENCODE)) || textureDesc.videoCodec != VideoCodec::NONE, Result::INVALID_ARGUMENT,
+        "'videoCodec' must not be 'NONE' for video textures");
 
     Dim_t maxMipNum = GetMaxMipNum(textureDesc.width, textureDesc.height, textureDesc.depth);
     NRI_RETURN_ON_FAILURE(this, textureDesc.mipNum <= maxMipNum, Result::INVALID_ARGUMENT, "'mipNum=%u' can't be > %u", textureDesc.mipNum, maxMipNum);
@@ -866,6 +873,9 @@ NRI_INLINE Result DeviceVal::CreatePlacedTexture(Memory* memory, uint64_t offset
     NRI_RETURN_ON_FAILURE(this, textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'format' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.sharingMode < SharingMode::MAX_NUM, Result::INVALID_ARGUMENT, "'sharingMode' is invalid");
     NRI_RETURN_ON_FAILURE(this, textureDesc.width != 0, Result::INVALID_ARGUMENT, "'width' is 0");
+    NRI_RETURN_ON_FAILURE(this, textureDesc.videoCodec < VideoCodec::MAX_NUM, Result::INVALID_ARGUMENT, "'videoCodec' is invalid");
+    NRI_RETURN_ON_FAILURE(this, !(textureDesc.usage & (TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_ENCODE)) || textureDesc.videoCodec != VideoCodec::NONE, Result::INVALID_ARGUMENT,
+        "'videoCodec' must not be 'NONE' for video textures");
 
     Dim_t maxMipNum = GetMaxMipNum(textureDesc.width, textureDesc.height, textureDesc.depth);
     NRI_RETURN_ON_FAILURE(this, textureDesc.mipNum <= maxMipNum, Result::INVALID_ARGUMENT, "'mipNum=%u' can't be > %u", textureDesc.mipNum, maxMipNum);

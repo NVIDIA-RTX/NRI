@@ -20,6 +20,9 @@
 #include "QueueVal.h"
 #include "SwapChainVal.h"
 #include "TextureVal.h"
+#include "VideoPictureVal.h"
+#include "VideoSessionParametersVal.h"
+#include "VideoSessionVal.h"
 
 #include "HelperInterface.h"
 #include "ImguiInterface.h"
@@ -27,6 +30,205 @@
 #include "UpscalerInterface.h"
 
 using namespace nri;
+
+static inline bool IsVideoSessionDescValid(const VideoSessionDesc& desc) {
+    return (uint8_t)desc.type < (uint8_t)VideoSessionType::MAX_NUM && desc.codec > VideoCodec::NONE && desc.codec < VideoCodec::MAX_NUM && desc.format > Format::UNKNOWN && desc.format < Format::MAX_NUM && desc.width && desc.height && desc.maxReferenceNum != UINT32_MAX;
+}
+
+static inline bool IsVideoBufferRangeValid(uint64_t bufferSize, uint64_t offset, uint64_t requiredSize) {
+    return offset <= bufferSize && requiredSize <= bufferSize - offset;
+}
+
+static inline bool IsVideoPictureCompatibleWithSession(Format pictureFormat, uint32_t pictureWidth, uint32_t pictureHeight, const VideoSessionDesc& sessionDesc) {
+    if (pictureFormat != sessionDesc.format)
+        return false;
+
+    if (sessionDesc.type == VideoSessionType::DECODE)
+        return pictureWidth <= sessionDesc.width && pictureHeight <= sessionDesc.height;
+
+    return pictureWidth == sessionDesc.width && pictureHeight == sessionDesc.height;
+}
+
+static inline bool IsVideoSessionParametersDescValid(VideoCodec codec, const VideoSessionParametersDesc& desc) {
+    const bool hasH264 = desc.h264Parameters != nullptr;
+    const bool hasH265 = desc.h265Parameters != nullptr;
+    const bool hasAV1 = desc.av1Parameters != nullptr;
+
+    if ((uint32_t)hasH264 + (uint32_t)hasH265 + (uint32_t)hasAV1 > 1 || (hasH264 && codec != VideoCodec::H264) || (hasH265 && codec != VideoCodec::H265) || (hasAV1 && codec != VideoCodec::AV1))
+        return false;
+
+    if (hasH264) {
+        const VideoH264SessionParametersDesc& parameters = *desc.h264Parameters;
+
+        if ((parameters.sequenceParameterSetNum && !parameters.sequenceParameterSets) || (parameters.pictureParameterSetNum && !parameters.pictureParameterSets))
+            return false;
+        if ((parameters.maxSequenceParameterSetNum && parameters.maxSequenceParameterSetNum < parameters.sequenceParameterSetNum) || (parameters.maxPictureParameterSetNum && parameters.maxPictureParameterSetNum < parameters.pictureParameterSetNum))
+            return false;
+    }
+
+    if (hasH265) {
+        const VideoH265SessionParametersDesc& parameters = *desc.h265Parameters;
+
+        if ((parameters.videoParameterSetNum && !parameters.videoParameterSets) || (parameters.sequenceParameterSetNum && !parameters.sequenceParameterSets) || (parameters.pictureParameterSetNum && !parameters.pictureParameterSets))
+            return false;
+        if ((parameters.maxVideoParameterSetNum && parameters.maxVideoParameterSetNum < parameters.videoParameterSetNum) || (parameters.maxSequenceParameterSetNum && parameters.maxSequenceParameterSetNum < parameters.sequenceParameterSetNum) || (parameters.maxPictureParameterSetNum && parameters.maxPictureParameterSetNum < parameters.pictureParameterSetNum))
+            return false;
+
+        for (uint32_t i = 0; i < parameters.sequenceParameterSetNum; i++) {
+            const VideoH265SequenceParameterSetDesc& sequence = parameters.sequenceParameterSets[i];
+
+            if ((sequence.numShortTermRefPicSets && !sequence.shortTermRefPicSets) || (sequence.numLongTermRefPicsSps && !sequence.longTermRefPicsSps))
+                return false;
+        }
+    }
+
+    return true;
+}
+
+static inline bool IsVideoPictureDescValid(const VideoPictureDesc& desc, const TextureDesc& textureDesc) {
+    if (!desc.texture || (uint8_t)desc.usage >= (uint8_t)VideoPictureUsage::MAX_NUM || textureDesc.type != TextureType::TEXTURE_2D)
+        return false;
+
+    const TextureUsageBits requiredUsage = desc.usage == VideoPictureUsage::DECODE_OUTPUT || desc.usage == VideoPictureUsage::DECODE_REFERENCE ? TextureUsageBits::VIDEO_DECODE : TextureUsageBits::VIDEO_ENCODE;
+    const uint32_t layerNum = textureDesc.layerNum ? textureDesc.layerNum : 1;
+
+    return (textureDesc.usage & requiredUsage) != 0 && desc.layer < layerNum && (!desc.width || desc.width <= textureDesc.width) && (!desc.height || desc.height <= textureDesc.height);
+}
+
+static inline bool HasUniqueVideoReferenceSlots(const VideoReference* references, uint32_t referenceNum) {
+    for (uint32_t i = 0; i < referenceNum; i++) {
+        for (uint32_t j = i + 1; j < referenceNum; j++) {
+            if (references[i].slot == references[j].slot)
+                return false;
+        }
+    }
+
+    return true;
+}
+
+static inline bool IsVideoDecodeDpbLayoutValid(const VideoDecodeDesc& desc, uint32_t maxReferenceNum) {
+    if (desc.referenceNum > maxReferenceNum || (desc.referenceNum && !desc.references) || GetVideoDecodeSetupSlot(desc) > maxReferenceNum || (desc.references && !HasUniqueVideoReferenceSlots(desc.references, desc.referenceNum)))
+        return false;
+
+    for (uint32_t i = 0; i < desc.referenceNum; i++) {
+        if (desc.references[i].slot > maxReferenceNum)
+            return false;
+    }
+
+    if (desc.h264PictureDesc) {
+        const VideoH264DecodePictureDesc& picture = *desc.h264PictureDesc;
+
+        if ((picture.hasReferenceSlot && picture.referenceSlot > maxReferenceNum) || picture.referenceNum > maxReferenceNum || (picture.referenceNum && !picture.references))
+            return false;
+
+        for (uint32_t i = 0; i < picture.referenceNum; i++) {
+            if (picture.references[i].slot > maxReferenceNum)
+                return false;
+        }
+    }
+
+    if (desc.h265PictureDesc) {
+        const VideoH265DecodePictureDesc& picture = *desc.h265PictureDesc;
+
+        if (picture.referenceNum > maxReferenceNum || (picture.referenceNum && !picture.references))
+            return false;
+
+        for (uint32_t i = 0; i < picture.referenceNum; i++) {
+            if (picture.references[i].slot > maxReferenceNum)
+                return false;
+        }
+    }
+
+    if (desc.av1PictureDesc) {
+        const VideoAV1DecodePictureDesc& picture = *desc.av1PictureDesc;
+
+        if (picture.referenceNum > maxReferenceNum || (picture.referenceNum && !picture.references))
+            return false;
+
+        for (uint32_t i = 0; i < picture.referenceNum; i++) {
+            if (picture.references[i].slot > maxReferenceNum)
+                return false;
+        }
+    }
+
+    return true;
+}
+
+static inline bool IsVideoEncodeDpbLayoutValid(const VideoEncodeDesc& desc, uint32_t maxReferenceNum) {
+    if (desc.referenceNum > maxReferenceNum || (desc.referenceNum && !desc.references) || (desc.reconstructedPicture && desc.reconstructedSlot > maxReferenceNum) || (desc.references && !HasUniqueVideoReferenceSlots(desc.references, desc.referenceNum)))
+        return false;
+
+    for (uint32_t i = 0; i < desc.referenceNum; i++) {
+        if (desc.references[i].slot > maxReferenceNum)
+            return false;
+    }
+
+    if (desc.h264PictureDesc) {
+        const VideoH264PictureDesc& picture = *desc.h264PictureDesc;
+
+        if (picture.referenceNum > maxReferenceNum || (picture.referenceNum && !picture.references))
+            return false;
+
+        for (uint32_t i = 0; i < picture.referenceNum; i++) {
+            if (picture.references[i].slot > maxReferenceNum)
+                return false;
+        }
+    }
+
+    if (desc.h265ReferenceDescs) {
+        for (uint32_t i = 0; i < desc.referenceNum; i++) {
+            if (desc.h265ReferenceDescs[i].slot > maxReferenceNum)
+                return false;
+        }
+    }
+
+    if (desc.av1PictureDesc) {
+        const VideoAV1PictureDesc& picture = *desc.av1PictureDesc;
+
+        if (picture.referenceNum > maxReferenceNum || (picture.referenceNum && !picture.references))
+            return false;
+
+        for (uint32_t i = 0; i < picture.referenceNum; i++) {
+            if (picture.references[i].slot > maxReferenceNum)
+                return false;
+        }
+    }
+
+    return true;
+}
+
+static inline bool HasValidVideoAV1ReferenceKeys(const VideoAV1ReferenceDesc* references, uint32_t referenceNum) {
+    uint32_t referenceNameMask = 0;
+    for (uint32_t i = 0; i < referenceNum; i++) {
+        const VideoAV1ReferenceDesc& reference = references[i];
+        if (reference.refFrameIndex >= 8 || (uint8_t)reference.name >= (uint8_t)VideoAV1ReferenceName::MAX_NUM)
+            return false;
+
+        for (uint32_t j = 0; j < i; j++) {
+            const VideoAV1ReferenceDesc& previous = references[j];
+            const bool sameRefFrameIndex = reference.refFrameIndex == previous.refFrameIndex;
+            const bool sameSlot = reference.slot == previous.slot;
+
+            if (!sameRefFrameIndex && !sameSlot)
+                continue;
+
+            const bool savedOrderHintsMatch = (!reference.savedOrderHints && !previous.savedOrderHints) || (reference.savedOrderHints && previous.savedOrderHints && memcmp(reference.savedOrderHints, previous.savedOrderHints, 8) == 0);
+            if ((sameRefFrameIndex && !sameSlot) || reference.frameType != previous.frameType || reference.orderHint != previous.orderHint || reference.frameId != previous.frameId || !savedOrderHintsMatch)
+                return false;
+        }
+
+        if (reference.name == VideoAV1ReferenceName::NONE)
+            continue;
+
+        const uint32_t referenceNameBit = 1u << (uint8_t)reference.name;
+        if (referenceNameMask & referenceNameBit)
+            return false;
+
+        referenceNameMask |= referenceNameBit;
+    }
+
+    return true;
+}
 
 #include "AccelerationStructureVal.hpp"
 #include "BufferVal.hpp"
@@ -47,6 +249,9 @@ using namespace nri;
 #include "QueueVal.hpp"
 #include "SwapChainVal.hpp"
 #include "TextureVal.hpp"
+#include "VideoPictureVal.hpp"
+#include "VideoSessionParametersVal.hpp"
+#include "VideoSessionVal.hpp"
 
 DeviceBase* CreateDeviceValidation(const DeviceCreationDesc& desc, DeviceBase& device) {
     DeviceVal* deviceVal = Allocate<DeviceVal>(desc.allocationCallbacks, desc.callbackInterface, desc.allocationCallbacks, device);
@@ -1208,6 +1413,242 @@ Result DeviceVal::FillFunctionTable(RayTracingInterface& table) const {
     table.CmdCopyMicromap = ::CmdCopyMicromap;
     table.GetAccelerationStructureNativeObject = ::GetAccelerationStructureNativeObject;
     table.GetMicromapNativeObject = ::GetMicromapNativeObject;
+
+    return Result::SUCCESS;
+}
+
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region[  Video  ]
+
+static Result NRI_CALL GetVideoCapabilities(const Device& device, const VideoSessionDesc& videoSessionDesc, VideoCapabilities& videoCapabilities) {
+    const DeviceVal& deviceVal = (const DeviceVal&)device;
+    NRI_RETURN_ON_FAILURE(&deviceVal, IsVideoSessionDescValid(videoSessionDesc), Result::INVALID_ARGUMENT, "'videoSessionDesc' is invalid");
+
+    return deviceVal.GetVideoInterfaceImpl().GetVideoCapabilities(deviceVal.GetImpl(), videoSessionDesc, videoCapabilities);
+}
+
+static Result NRI_CALL GetVideoAV1Capabilities(const Device& device, const VideoSessionDesc& videoSessionDesc, VideoAV1Capabilities& videoAV1Capabilities) {
+    const DeviceVal& deviceVal = (const DeviceVal&)device;
+    NRI_RETURN_ON_FAILURE(&deviceVal, IsVideoSessionDescValid(videoSessionDesc) && videoSessionDesc.codec == VideoCodec::AV1, Result::INVALID_ARGUMENT, "'videoSessionDesc' must describe a valid AV1 session");
+
+    return deviceVal.GetVideoInterfaceImpl().GetVideoAV1Capabilities(deviceVal.GetImpl(), videoSessionDesc, videoAV1Capabilities);
+}
+
+static Result NRI_CALL CreateVideoSession(Device& device, const VideoSessionDesc& videoSessionDesc, VideoSession*& videoSession) {
+    DeviceVal& deviceVal = (DeviceVal&)device;
+    videoSession = nullptr;
+
+    NRI_RETURN_ON_FAILURE(&deviceVal, IsVideoSessionDescValid(videoSessionDesc), Result::INVALID_ARGUMENT, "'videoSessionDesc' is invalid");
+
+    VideoCapabilities videoCapabilities = {};
+    Result result = deviceVal.GetVideoInterfaceImpl().GetVideoCapabilities(deviceVal.GetImpl(), videoSessionDesc, videoCapabilities);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    NRI_RETURN_ON_FAILURE(&deviceVal, videoSessionDesc.maxReferenceNum <= videoCapabilities.maxReferenceNum, Result::UNSUPPORTED, "'maxReferenceNum' exceeds the backend capability");
+
+    VideoSession* videoSessionImpl = nullptr;
+    result = deviceVal.GetVideoInterfaceImpl().CreateVideoSession(deviceVal.GetImpl(), videoSessionDesc, videoSessionImpl);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    videoSession = (VideoSession*)Allocate<VideoSessionVal>(deviceVal.GetAllocationCallbacks(), deviceVal, videoSessionImpl, videoSessionDesc, videoCapabilities);
+
+    if (!videoSession) {
+        deviceVal.GetVideoInterfaceImpl().DestroyVideoSession(videoSessionImpl);
+
+        return Result::OUT_OF_MEMORY;
+    }
+
+    return Result::SUCCESS;
+}
+
+static void NRI_CALL DestroyVideoSession(VideoSession* videoSession) {
+    if (!videoSession)
+        return;
+
+    VideoSessionVal& videoSessionVal = *(VideoSessionVal*)videoSession;
+    videoSessionVal.GetVideoInterfaceImpl().DestroyVideoSession(videoSessionVal.GetImpl());
+    Destroy(&videoSessionVal);
+}
+
+static void NRI_CALL ResetVideoSession(VideoSession& videoSession) {
+    VideoSessionVal& videoSessionVal = (VideoSessionVal&)videoSession;
+    videoSessionVal.GetVideoInterfaceImpl().ResetVideoSession(*videoSessionVal.GetImpl());
+}
+
+static Result NRI_CALL CreateVideoSessionParameters(Device& device, const VideoSessionParametersDesc& videoSessionParametersDesc, VideoSessionParameters*& videoSessionParameters) {
+    DeviceVal& deviceVal = (DeviceVal&)device;
+    videoSessionParameters = nullptr;
+
+    NRI_RETURN_ON_FAILURE(&deviceVal, videoSessionParametersDesc.session, Result::INVALID_ARGUMENT, "'session' is NULL");
+
+    VideoSessionVal& sessionVal = *(VideoSessionVal*)videoSessionParametersDesc.session;
+    NRI_RETURN_ON_FAILURE(&deviceVal, &sessionVal.GetDevice() == &deviceVal, Result::INVALID_ARGUMENT, "'session' belongs to another device");
+
+    const VideoCodec codec = sessionVal.GetDesc().codec;
+    NRI_RETURN_ON_FAILURE(&deviceVal, IsVideoSessionParametersDescValid(codec, videoSessionParametersDesc), Result::INVALID_ARGUMENT, "'videoSessionParametersDesc' is invalid for the session codec");
+
+    VideoSessionParametersDesc descImpl = videoSessionParametersDesc;
+    descImpl.session = sessionVal.GetImpl();
+
+    VideoSessionParameters* impl = nullptr;
+    Result result = deviceVal.GetVideoInterfaceImpl().CreateVideoSessionParameters(deviceVal.GetImpl(), descImpl, impl);
+    if (result != Result::SUCCESS)
+        return result;
+
+    videoSessionParameters = (VideoSessionParameters*)Allocate<VideoSessionParametersVal>(deviceVal.GetAllocationCallbacks(), deviceVal, impl, sessionVal);
+    if (!videoSessionParameters) {
+        deviceVal.GetVideoInterfaceImpl().DestroyVideoSessionParameters(impl);
+
+        return Result::OUT_OF_MEMORY;
+    }
+
+    return Result::SUCCESS;
+}
+
+static void NRI_CALL DestroyVideoSessionParameters(VideoSessionParameters* videoSessionParameters) {
+    if (!videoSessionParameters)
+        return;
+
+    VideoSessionParametersVal& videoSessionParametersVal = *(VideoSessionParametersVal*)videoSessionParameters;
+    videoSessionParametersVal.GetVideoInterfaceImpl().DestroyVideoSessionParameters(videoSessionParametersVal.GetImpl());
+    Destroy(&videoSessionParametersVal);
+}
+
+static Result NRI_CALL CreateVideoPicture(Device& device, const VideoPictureDesc& videoPictureDesc, VideoPicture*& videoPicture) {
+    DeviceVal& deviceVal = (DeviceVal&)device;
+    videoPicture = nullptr;
+
+    NRI_RETURN_ON_FAILURE(&deviceVal, videoPictureDesc.texture, Result::INVALID_ARGUMENT, "'texture' is NULL");
+
+    TextureVal& textureVal = *(TextureVal*)videoPictureDesc.texture;
+    NRI_RETURN_ON_FAILURE(&deviceVal, &textureVal.GetDevice() == &deviceVal && IsVideoPictureDescValid(videoPictureDesc, textureVal.GetDesc()), Result::INVALID_ARGUMENT, "'videoPictureDesc' is invalid or uses a texture from another device");
+
+    VideoPictureDesc descImpl = videoPictureDesc;
+    descImpl.texture = textureVal.GetImpl();
+
+    VideoPicture* impl = nullptr;
+    Result result = deviceVal.GetVideoInterfaceImpl().CreateVideoPicture(deviceVal.GetImpl(), descImpl, impl);
+    if (result != Result::SUCCESS)
+        return result;
+
+    videoPicture = (VideoPicture*)Allocate<VideoPictureVal>(deviceVal.GetAllocationCallbacks(), deviceVal, impl, videoPictureDesc, textureVal.GetDesc());
+    if (!videoPicture) {
+        deviceVal.GetVideoInterfaceImpl().DestroyVideoPicture(impl);
+
+        return Result::OUT_OF_MEMORY;
+    }
+
+    return Result::SUCCESS;
+}
+
+static void NRI_CALL DestroyVideoPicture(VideoPicture* videoPicture) {
+    if (!videoPicture)
+        return;
+
+    VideoPictureVal& videoPictureVal = *(VideoPictureVal*)videoPicture;
+    videoPictureVal.GetVideoInterfaceImpl().DestroyVideoPicture(videoPictureVal.GetImpl());
+    Destroy(&videoPictureVal);
+}
+
+static Result NRI_CALL GetVideoDecodePictureStates(const VideoPicture& videoPicture, VideoDecodePictureStates& states) {
+    const VideoPictureVal& videoPictureVal = (const VideoPictureVal&)videoPicture;
+    NRI_RETURN_ON_FAILURE(&videoPictureVal.GetDevice(), videoPictureVal.GetUsage() == VideoPictureUsage::DECODE_OUTPUT || videoPictureVal.GetUsage() == VideoPictureUsage::DECODE_REFERENCE, Result::INVALID_ARGUMENT, "'videoPicture' does not have decode usage");
+
+    return videoPictureVal.GetDevice().GetVideoInterfaceImpl().GetVideoDecodePictureStates(*videoPictureVal.GetImpl(), states);
+}
+
+static Result NRI_CALL GetVideoEncodePictureStates(const VideoPicture& videoPicture, VideoEncodePictureStates& states) {
+    const VideoPictureVal& videoPictureVal = (const VideoPictureVal&)videoPicture;
+    NRI_RETURN_ON_FAILURE(&videoPictureVal.GetDevice(), videoPictureVal.GetUsage() == VideoPictureUsage::ENCODE_INPUT || videoPictureVal.GetUsage() == VideoPictureUsage::ENCODE_REFERENCE, Result::INVALID_ARGUMENT, "'videoPicture' does not have encode usage");
+
+    return videoPictureVal.GetDevice().GetVideoInterfaceImpl().GetVideoEncodePictureStates(*videoPictureVal.GetImpl(), states);
+}
+
+static Result NRI_CALL WriteVideoAnnexBParameterSets(VideoAnnexBParameterSetsDesc& annexBParameterSetsDesc) {
+    if (annexBParameterSetsDesc.codec == VideoCodec::H264) {
+        if (!annexBParameterSetsDesc.h264Sps || !annexBParameterSetsDesc.h264Pps)
+            return Result::INVALID_ARGUMENT;
+    } else if (annexBParameterSetsDesc.codec == VideoCodec::H265) {
+        if (!annexBParameterSetsDesc.h265Vps || !annexBParameterSetsDesc.h265Sps || !annexBParameterSetsDesc.h265Pps)
+            return Result::INVALID_ARGUMENT;
+    } else
+        return Result::UNSUPPORTED;
+
+    return WriteVideoAnnexBParameterSetsShared(annexBParameterSetsDesc);
+}
+
+static Result NRI_CALL WriteVideoAnnexBEndOfStream(VideoAnnexBEndOfStreamDesc& annexBEndOfStreamDesc) {
+    if (annexBEndOfStreamDesc.codec != VideoCodec::H264 && annexBEndOfStreamDesc.codec != VideoCodec::H265)
+        return Result::UNSUPPORTED;
+
+    return WriteVideoAnnexBEndOfStreamShared(annexBEndOfStreamDesc);
+}
+
+static Result NRI_CALL WriteVideoAV1ObuHeaders(VideoAV1ObuHeadersDesc& av1ObuHeadersDesc) {
+    return WriteVideoAV1ObuHeadersShared(av1ObuHeadersDesc);
+}
+
+static void NRI_CALL CmdDecodeVideo(CommandBuffer& commandBuffer, const VideoDecodeDesc& videoDecodeDesc) {
+    ((CommandBufferVal&)commandBuffer).DecodeVideo(videoDecodeDesc);
+}
+
+static void NRI_CALL CmdEncodeVideo(CommandBuffer& commandBuffer, const VideoEncodeDesc& videoEncodeDesc) {
+    ((CommandBufferVal&)commandBuffer).EncodeVideo(videoEncodeDesc);
+}
+
+static void NRI_CALL CmdResolveVideoEncodeFeedback(CommandBuffer& commandBuffer, VideoSession& videoSession, Buffer& resolvedMetadata, uint64_t resolvedMetadataOffset) {
+    ((CommandBufferVal&)commandBuffer).ResolveVideoEncodeFeedback(videoSession, resolvedMetadata, resolvedMetadataOffset);
+}
+
+static Result NRI_CALL GetVideoEncodeFeedback(VideoSession& videoSession, Buffer& resolvedMetadataReadback, uint64_t resolvedMetadataOffset, VideoEncodeFeedback& feedback) {
+    VideoSessionVal& videoSessionVal = (VideoSessionVal&)videoSession;
+    BufferVal& resolvedMetadataReadbackVal = (BufferVal&)resolvedMetadataReadback;
+    NRI_RETURN_ON_FAILURE(&videoSessionVal.GetDevice(), videoSessionVal.GetDesc().type == VideoSessionType::ENCODE && &videoSessionVal.GetDevice() == &resolvedMetadataReadbackVal.GetDevice() && videoSessionVal.IsResolvedMetadataRangeValid(resolvedMetadataReadbackVal, resolvedMetadataOffset), Result::INVALID_ARGUMENT, "'resolvedMetadataReadback' must be a valid range from the encode session device");
+
+    return videoSessionVal.GetDevice().GetVideoInterfaceImpl().GetVideoEncodeFeedback(*videoSessionVal.GetImpl(), *resolvedMetadataReadbackVal.GetImpl(), resolvedMetadataOffset, feedback);
+}
+
+static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession& videoSession, Buffer& resolvedMetadataReadback, uint64_t resolvedMetadataOffset,
+    const VideoAV1EncodeDecodeInfoDesc& desc, VideoAV1EncodeDecodeInfo& info) {
+    VideoSessionVal& videoSessionVal = (VideoSessionVal&)videoSession;
+    BufferVal& resolvedMetadataReadbackVal = (BufferVal&)resolvedMetadataReadback;
+    NRI_RETURN_ON_FAILURE(&videoSessionVal.GetDevice(), desc.feedback && desc.sequence, Result::INVALID_ARGUMENT, "'feedback' and 'sequence' must be valid");
+    NRI_RETURN_ON_FAILURE(&videoSessionVal.GetDevice(), (desc.references == nullptr) == (desc.referenceNum == 0) && desc.referenceNum <= 8, Result::INVALID_ARGUMENT, "'references' and 'referenceNum' are inconsistent");
+    NRI_RETURN_ON_FAILURE(&videoSessionVal.GetDevice(), !desc.references || HasValidVideoAV1ReferenceKeys(desc.references, desc.referenceNum), Result::INVALID_ARGUMENT, "'references' contain inconsistent AV1 identities");
+    NRI_RETURN_ON_FAILURE(&videoSessionVal.GetDevice(), videoSessionVal.GetDesc().type == VideoSessionType::ENCODE && videoSessionVal.GetDesc().codec == VideoCodec::AV1 && &videoSessionVal.GetDevice() == &resolvedMetadataReadbackVal.GetDevice() && videoSessionVal.IsResolvedMetadataRangeValid(resolvedMetadataReadbackVal, resolvedMetadataOffset), Result::INVALID_ARGUMENT, "'resolvedMetadataReadback' must be a valid range from the AV1 encode session device");
+
+    return videoSessionVal.GetDevice().GetVideoInterfaceImpl().GetVideoEncodeAV1DecodeInfo(*videoSessionVal.GetImpl(), *resolvedMetadataReadbackVal.GetImpl(), resolvedMetadataOffset, desc, info);
+}
+
+Result DeviceVal::FillFunctionTable(VideoInterface& table) const {
+    if (!m_IsExtSupported.video)
+        return Result::UNSUPPORTED;
+
+    table.GetVideoCapabilities = ::GetVideoCapabilities;
+    table.GetVideoAV1Capabilities = ::GetVideoAV1Capabilities;
+    table.CreateVideoSession = ::CreateVideoSession;
+    table.DestroyVideoSession = ::DestroyVideoSession;
+    table.ResetVideoSession = ::ResetVideoSession;
+    table.CreateVideoSessionParameters = ::CreateVideoSessionParameters;
+    table.DestroyVideoSessionParameters = ::DestroyVideoSessionParameters;
+    table.CreateVideoPicture = ::CreateVideoPicture;
+    table.DestroyVideoPicture = ::DestroyVideoPicture;
+    table.GetVideoDecodePictureStates = ::GetVideoDecodePictureStates;
+    table.GetVideoEncodePictureStates = ::GetVideoEncodePictureStates;
+    table.WriteVideoAnnexBParameterSets = ::WriteVideoAnnexBParameterSets;
+    table.WriteVideoAnnexBEndOfStream = ::WriteVideoAnnexBEndOfStream;
+    table.WriteVideoAV1ObuHeaders = ::WriteVideoAV1ObuHeaders;
+    table.CmdDecodeVideo = ::CmdDecodeVideo;
+    table.CmdEncodeVideo = ::CmdEncodeVideo;
+    table.CmdResolveVideoEncodeFeedback = ::CmdResolveVideoEncodeFeedback;
+    table.GetVideoEncodeFeedback = ::GetVideoEncodeFeedback;
+    table.GetVideoEncodeAV1DecodeInfo = ::GetVideoEncodeAV1DecodeInfo;
 
     return Result::SUCCESS;
 }

@@ -56,11 +56,7 @@ NRI_INLINE void QueueVK::GetCalibratedTimestamps(uint64_t& timestampGPU, uint64_
 
         // CPU
         timestampInfos[1].sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR;
-#if defined(_WIN32)
-        timestampInfos[1].timeDomain = VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR; // matches D3D12
-#else
-        timestampInfos[1].timeDomain = VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR; // no support query needed
-#endif
+        timestampInfos[1].timeDomain = GetCalibratedTimestampCPUTimeDomainVK();
     }
 
     uint64_t timestamps[2] = {};

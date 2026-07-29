@@ -28,6 +28,7 @@ struct QueryPoolVal;
 struct QueueVal;
 struct SwapChainVal;
 struct TextureVal;
+struct VideoSessionVal;
 
 uint64_t GetMemorySizeD3D12(const MemoryD3D12Desc& memoryD3D12Desc);
 QueryType GetQueryTypeVK(uint32_t queryTypeVK);
@@ -79,6 +80,10 @@ struct ObjectVal : public DebugNameBaseVal {
 
     inline const RayTracingInterface& GetRayTracingInterfaceImpl() const {
         return m_Device.GetRayTracingInterfaceImpl();
+    }
+
+    inline const VideoInterface& GetVideoInterfaceImpl() const {
+        return m_Device.GetVideoInterfaceImpl();
     }
 
     inline const SwapChainInterface& GetSwapChainInterfaceImpl() const {
