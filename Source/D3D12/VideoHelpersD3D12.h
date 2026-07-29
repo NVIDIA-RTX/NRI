@@ -55,6 +55,8 @@ inline void FillVideoCapabilitiesD3D12(VideoCapabilities& videoCapabilities, con
     videoCapabilities.bitstreamOffsetAlignment = 1;
     videoCapabilities.bitstreamSizeAlignment = 1;
     videoCapabilities.bitstreamSizeMax = uint64_t(-1);
+    videoCapabilities.metadataOffsetAlignment = 1;
+    videoCapabilities.resolvedMetadataOffsetAlignment = 1;
 }
 
 inline void FillVideoDecodeAV1CapabilitiesD3D12(VideoAV1Capabilities& videoAV1Capabilities) {
@@ -88,6 +90,9 @@ inline constexpr VideoAV1PictureBits GetDefaultVideoAV1PictureFlags() {
 }
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
+
+using VideoEncodeAV1TilesLayoutD3D12 = D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA_TILES;
+using VideoEncodeAV1PostEncodeValuesD3D12 = D3D12_VIDEO_ENCODER_AV1_POST_ENCODE_VALUES;
 
 inline constexpr D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAGS GetSupportedVideoEncodeAV1FeatureFlagsD3D12() {
     return D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_ORDER_HINT_TOOLS | D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_LOOP_RESTORATION_FILTER | D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_FORCED_INTEGER_MOTION_VECTORS | D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_AUTO_SEGMENTATION | D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_CDEF_FILTERING | D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_QUANTIZATION_DELTAS | D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_LOOP_FILTER_DELTAS;
@@ -297,6 +302,30 @@ inline D3D12_VIDEO_ENCODER_CODEC GetVideoEncodeCodecD3D12(VideoCodec codec) {
         default:
             return (D3D12_VIDEO_ENCODER_CODEC)-1;
     }
+}
+
+inline bool FillVideoEncodeResourceCapabilitiesD3D12(ID3D12VideoDevice* videoDevice, const VideoSessionDesc& videoSessionDesc, D3D12_VIDEO_ENCODER_CODEC codec, const D3D12_VIDEO_ENCODER_PROFILE_DESC& profile, VideoCapabilities& videoCapabilities) {
+    D3D12_FEATURE_DATA_VIDEO_ENCODER_RESOURCE_REQUIREMENTS requirements = {};
+    requirements.Codec = codec;
+    requirements.Profile = profile;
+    requirements.InputFormat = GetDxgiFormat(videoSessionDesc.format).typed;
+    requirements.PictureTargetResolution = {videoSessionDesc.width, videoSessionDesc.height};
+
+    const HRESULT hr = videoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_RESOURCE_REQUIREMENTS, &requirements, sizeof(requirements));
+    if (FAILED(hr) || !requirements.IsSupported)
+        return false;
+
+    videoCapabilities.bitstreamOffsetAlignment = requirements.CompressedBitstreamBufferAccessAlignment;
+    videoCapabilities.bitstreamSizeAlignment = requirements.CompressedBitstreamBufferAccessAlignment;
+    videoCapabilities.metadataOffsetAlignment = requirements.EncoderMetadataBufferAccessAlignment;
+    videoCapabilities.resolvedMetadataOffsetAlignment = requirements.EncoderMetadataBufferAccessAlignment;
+    videoCapabilities.metadataSize = requirements.MaxEncoderOutputMetadataBufferSize;
+    videoCapabilities.resolvedMetadataSize = sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA) + sizeof(D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA);
+
+    if (videoSessionDesc.codec == VideoCodec::AV1)
+        videoCapabilities.resolvedMetadataSize += sizeof(VideoEncodeAV1TilesLayoutD3D12) + sizeof(VideoEncodeAV1PostEncodeValuesD3D12);
+
+    return true;
 }
 
 inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice* videoDevice, const VideoSessionDesc& videoSessionDesc, VideoCapabilities* videoCapabilities = nullptr, VideoAV1Capabilities* videoAV1Capabilities = nullptr) {
@@ -516,6 +545,8 @@ inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice* videoDevice, c
 
         if (videoCapabilities) {
             FillVideoCapabilitiesD3D12(*videoCapabilities, videoSessionDesc);
+            if (!FillVideoEncodeResourceCapabilitiesD3D12(videoDevice, videoSessionDesc, d3d12Codec, profile, *videoCapabilities))
+                return false;
         }
         if (videoAV1Capabilities) {
             if (codec != VideoCodec::AV1)
@@ -552,8 +583,11 @@ inline bool IsVideoEncodeSessionSupportedD3D12(ID3D12VideoDevice* videoDevice, c
     if (!canCreateEncoder())
         return false;
 
-    if (videoCapabilities)
+    if (videoCapabilities) {
         FillVideoCapabilitiesD3D12(*videoCapabilities, videoSessionDesc);
+        if (!FillVideoEncodeResourceCapabilitiesD3D12(videoDevice, videoSessionDesc, d3d12Codec, profile, *videoCapabilities))
+            return false;
+    }
 
     return true;
 }

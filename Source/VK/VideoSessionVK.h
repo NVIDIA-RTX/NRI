@@ -7,16 +7,6 @@ namespace nri {
 struct BufferVK;
 
 struct VideoSessionVK final : public DebugNameBase {
-    static constexpr uint32_t ENCODE_FEEDBACK_QUERY_NUM = 64;
-
-    struct EncodeFeedbackPayloadReadback {
-        BufferVK* resolvedMetadata = nullptr;
-        uint64_t resolvedMetadataOffset = 0;
-        uint64_t dstBitstreamOffset = 0;
-        bool resolvedByCommand = false;
-        bool active = false;
-    };
-
     inline VideoSessionVK(DeviceVK& device)
         : m_Device(device)
         , m_Memory(device.GetStdAllocator()) {
@@ -130,51 +120,12 @@ struct VideoSessionVK final : public DebugNameBase {
         return m_EncodeFeedbackQueryPool;
     }
 
-    inline bool HasPendingEncodeFeedbackQuery(BufferVK* resolvedMetadata, uint64_t resolvedMetadataOffset) const {
-        for (const EncodeFeedbackPayloadReadback& payloadReadback : m_EncodeFeedbackPayloadReadbacks) {
-            if (payloadReadback.active && payloadReadback.resolvedMetadata == resolvedMetadata && payloadReadback.resolvedMetadataOffset == resolvedMetadataOffset)
-                return true;
-        }
-
-        return false;
-    }
-
-    inline uint32_t FindEncodeFeedbackQuery(BufferVK* resolvedMetadata, uint64_t resolvedMetadataOffset) const {
-        for (uint32_t i = 0; i < ENCODE_FEEDBACK_QUERY_NUM; i++) {
-            const EncodeFeedbackPayloadReadback& payloadReadback = m_EncodeFeedbackPayloadReadbacks[i];
-            if (payloadReadback.active && payloadReadback.resolvedMetadata == resolvedMetadata && payloadReadback.resolvedMetadataOffset == resolvedMetadataOffset)
-                return i;
-        }
-
-        return UINT32_MAX;
-    }
-
-    inline uint32_t AllocateEncodeFeedbackQuery(BufferVK* resolvedMetadata, uint64_t resolvedMetadataOffset, uint64_t dstBitstreamOffset) {
-        for (uint32_t i = 0; i < ENCODE_FEEDBACK_QUERY_NUM; i++) {
-            EncodeFeedbackPayloadReadback& payloadReadback = m_EncodeFeedbackPayloadReadbacks[i];
-            if (payloadReadback.active)
-                continue;
-
-            payloadReadback.active = true;
-            payloadReadback.resolvedMetadata = resolvedMetadata;
-            payloadReadback.resolvedMetadataOffset = resolvedMetadataOffset;
-            payloadReadback.dstBitstreamOffset = dstBitstreamOffset;
-            return i;
-        }
-
-        return UINT32_MAX;
-    }
-
-    inline const EncodeFeedbackPayloadReadback& GetEncodeFeedbackPayloadReadback(uint32_t queryIndex) const {
-        return m_EncodeFeedbackPayloadReadbacks[queryIndex];
-    }
+    bool HasPendingEncodeFeedbackQuery(BufferVK* resolvedMetadata, uint64_t resolvedMetadataOffset) const;
+    uint32_t FindEncodeFeedbackQuery(BufferVK* resolvedMetadata, uint64_t resolvedMetadataOffset) const;
+    uint32_t AllocateEncodeFeedbackQuery(BufferVK* resolvedMetadata, uint64_t resolvedMetadataOffset, uint64_t dstBitstreamOffset);
 
     inline void SetEncodeFeedbackQueryResolved(uint32_t queryIndex) {
         m_EncodeFeedbackPayloadReadbacks[queryIndex].resolvedByCommand = true;
-    }
-
-    inline void ClearEncodeFeedbackQuery(uint32_t queryIndex) {
-        m_EncodeFeedbackPayloadReadbacks[queryIndex] = {};
     }
 
     ~VideoSessionVK();
@@ -192,8 +143,25 @@ struct VideoSessionVK final : public DebugNameBase {
     //================================================================================================================
 
     Result Create(const VideoSessionDesc& videoSessionDesc);
+    void Reset();
+    Result GetEncodeFeedback(BufferVK& resolvedMetadataReadback, uint64_t resolvedMetadataOffset, VideoEncodeFeedback& feedback);
+    Result GetEncodeAV1DecodeInfo(BufferVK& resolvedMetadataReadback, uint64_t resolvedMetadataOffset, const VideoAV1EncodeDecodeInfoDesc& desc, VideoAV1EncodeDecodeInfo& info);
 
 private:
+    static constexpr uint32_t ENCODE_FEEDBACK_QUERY_NUM = 64;
+
+    struct EncodeFeedbackPayloadReadback {
+        BufferVK* resolvedMetadata = nullptr;
+        uint64_t resolvedMetadataOffset = 0;
+        uint64_t dstBitstreamOffset = 0;
+        bool resolvedByCommand = false;
+        bool active = false;
+    };
+
+    inline void ClearEncodeFeedbackQuery(uint32_t queryIndex) {
+        m_EncodeFeedbackPayloadReadbacks[queryIndex] = {};
+    }
+
     DeviceVK& m_Device;
     VkVideoSessionKHR m_Handle = VK_NULL_HANDLE;
     VkQueryPool m_EncodeFeedbackQueryPool = VK_NULL_HANDLE;

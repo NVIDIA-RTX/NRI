@@ -44,6 +44,7 @@ typedef uint32_t DXGI_FORMAT;
 #include "Lock.h"
 #include "VideoAV1.h"
 #include "VideoAnnexB.h"
+#include "VideoShared.h"
 
 // NRI default settings (if not provided in "NRIConfig.h")
 #include "../NRIConfig.h"
@@ -411,8 +412,10 @@ inline T* Allocate(const AllocationCallbacks& allocationCallbacks, Args&&... arg
 template <typename T>
 inline void Destroy(const AllocationCallbacks& allocationCallbacks, T* object) {
     if (object) {
+        // FIXED BY AI: Preserve callbacks before destruction invalidates object-backed references.
+        const AllocationCallbacks allocationCallbacksCopy = allocationCallbacks;
         object->~T();
-        allocationCallbacks.Free(allocationCallbacks.userArg, object);
+        allocationCallbacksCopy.Free(allocationCallbacksCopy.userArg, object);
     }
 }
 

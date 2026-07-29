@@ -90,14 +90,32 @@ static void NRI_CALL AlignedFree(void*, void* memory) {
 
 #else
 
+// FIXED BY AI: Preserve payload contents when reallocation changes the aligned offset within the raw allocation.
+struct AllocationHeader {
+    void* memory;
+    size_t size;
+};
+
 static void* NRI_CALL AlignedMalloc(void*, size_t size, size_t alignment) {
-    uint8_t* memory = (uint8_t*)malloc(size + sizeof(uint8_t*) + alignment - 1);
+    const size_t effectiveAlignment = std::max(alignment, alignof(AllocationHeader));
+
+    if ((effectiveAlignment & (effectiveAlignment - 1)) || effectiveAlignment > std::numeric_limits<size_t>::max() - sizeof(AllocationHeader) + 1)
+        return nullptr;
+
+    const size_t overhead = sizeof(AllocationHeader) + effectiveAlignment - 1;
+
+    if (size > std::numeric_limits<size_t>::max() - overhead)
+        return nullptr;
+
+    uint8_t* memory = (uint8_t*)malloc(size + overhead);
+
     if (!memory)
         return nullptr;
 
-    uint8_t* alignedMemory = Align(memory + sizeof(uint8_t*), alignment);
-    uint8_t** memoryHeader = (uint8_t**)alignedMemory - 1;
-    *memoryHeader = memory;
+    uint8_t* alignedMemory = Align(memory + sizeof(AllocationHeader), effectiveAlignment);
+    AllocationHeader* header = (AllocationHeader*)alignedMemory - 1;
+    header->memory = memory;
+    header->size = size;
 
     return alignedMemory;
 }
@@ -106,30 +124,23 @@ static void* NRI_CALL AlignedRealloc(void* userArg, void* memory, size_t size, s
     if (!memory)
         return AlignedMalloc(userArg, size, alignment);
 
-    uint8_t** memoryHeader = (uint8_t**)memory - 1;
-    uint8_t* oldMemory = *memoryHeader;
+    AllocationHeader* oldHeader = (AllocationHeader*)memory - 1;
+    void* newMemory = AlignedMalloc(userArg, size, alignment);
 
-    uint8_t* newMemory = (uint8_t*)realloc(oldMemory, size + sizeof(uint8_t*) + alignment - 1);
     if (!newMemory)
         return nullptr;
 
-    if (newMemory == oldMemory)
-        return memory;
+    memcpy(newMemory, memory, std::min(size, oldHeader->size));
+    free(oldHeader->memory);
 
-    uint8_t* alignedMemory = Align(newMemory + sizeof(uint8_t*), alignment);
-    memoryHeader = (uint8_t**)alignedMemory - 1;
-    *memoryHeader = newMemory;
-
-    return alignedMemory;
+    return newMemory;
 }
 
 static void NRI_CALL AlignedFree(void*, void* memory) {
     if (!memory)
         return;
 
-    uint8_t** memoryHeader = (uint8_t**)memory - 1;
-    uint8_t* oldMemory = *memoryHeader;
-    free(oldMemory);
+    free(((AllocationHeader*)memory - 1)->memory);
 }
 
 #endif
@@ -537,10 +548,14 @@ CLEANUP:
 
 static Architecture GetArchitecture(WGPUAdapterType adapterType) {
     switch (adapterType) {
-        case WGPUAdapterType_DiscreteGPU: return Architecture::DISCRETE;
-        case WGPUAdapterType_IntegratedGPU: return Architecture::INTEGRATED;
-        case WGPUAdapterType_CPU: return Architecture::SOFTWARE;
-        default: return Architecture::UNKNOWN;
+        case WGPUAdapterType_DiscreteGPU:
+            return Architecture::DISCRETE;
+        case WGPUAdapterType_IntegratedGPU:
+            return Architecture::INTEGRATED;
+        case WGPUAdapterType_CPU:
+            return Architecture::SOFTWARE;
+        default:
+            return Architecture::UNKNOWN;
     }
 }
 

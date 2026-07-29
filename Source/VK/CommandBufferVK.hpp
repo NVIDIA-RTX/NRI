@@ -317,19 +317,6 @@ static inline void UpdateRenderingExtent(const DescriptorVK& descriptorVK, Dim_t
     layerNum = std::min(layerNum, texViewDesc.layerOrSliceNum);
 }
 
-static inline void FillVideoEncodeFeedbackVK(VideoEncodeFeedback& feedback, const uint32_t* queryResult, uint64_t dstBitstreamOffset) {
-    feedback = {};
-    feedback.encodedBitstreamOffset = queryResult[0] >= dstBitstreamOffset ? queryResult[0] - dstBitstreamOffset : queryResult[0];
-    feedback.encodedBitstreamWrittenBytes = queryResult[1];
-    feedback.writtenSubregionNum = 1;
-
-    const int32_t status = (int32_t)queryResult[2];
-    if (status < 0)
-        feedback.errorFlags = (uint64_t)status;
-    else if (status != VK_QUERY_RESULT_STATUS_COMPLETE_KHR)
-        feedback.errorFlags = (uint64_t)status;
-}
-
 static inline StdVideoH264PictureType GetVideoEncodeH264PictureTypeVK(VideoEncodeFrameType frameType) {
     switch (frameType) {
         case VideoEncodeFrameType::IDR:
@@ -763,9 +750,7 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
 
     VkVideoReferenceSlotInfoKHR setupReferenceSlot = {VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR};
     setupReferenceSlot.pNext = setupReferenceInfo;
-    uint32_t setupReferenceSlotIndex = videoDecodeDesc.dstSlot;
-    if (session.GetDesc().codec == VideoCodec::H264 && videoDecodeDesc.h264PictureDesc && videoDecodeDesc.h264PictureDesc->referenceSlot)
-        setupReferenceSlotIndex = videoDecodeDesc.h264PictureDesc->referenceSlot;
+    const uint32_t setupReferenceSlotIndex = GetVideoDecodeSetupSlot(videoDecodeDesc);
     if (setupReferenceInfo && setupReferenceSlotIndex > session.GetDesc().maxReferenceNum) {
         NRI_REPORT_ERROR(&m_Device, "The setup reference slot exceeds the session DPB slot count");
         return;
@@ -1571,12 +1556,14 @@ NRI_INLINE void CommandBufferVK::ResolveVideoEncodeFeedback(VideoSession& videoS
     }
 
     const auto& vk = m_Device.GetDispatchTable();
-    const uint64_t queryResultOffset = resolvedMetadataOffset + sizeof(VideoEncodeFeedback);
     constexpr VkDeviceSize queryResultSize = sizeof(uint32_t) * 3;
-    if (queryResultOffset > feedbackBuffer.GetDesc().size || queryResultSize > feedbackBuffer.GetDesc().size - queryResultOffset) {
+    constexpr uint64_t requiredMetadataSize = sizeof(VideoEncodeFeedback) + queryResultSize;
+
+    if (resolvedMetadataOffset > feedbackBuffer.GetDesc().size || requiredMetadataSize > feedbackBuffer.GetDesc().size - resolvedMetadataOffset) {
         NRI_REPORT_ERROR(&m_Device, "'resolvedMetadata' does not have enough space for Vulkan video encode feedback query results");
         return;
     }
+    const uint64_t queryResultOffset = resolvedMetadataOffset + sizeof(VideoEncodeFeedback);
 
     vk.CmdCopyQueryPoolResults(m_Handle, session.GetEncodeFeedbackQueryPool(), encodeFeedbackQueryIndex, 1, feedbackBuffer.GetHandle(), queryResultOffset, queryResultSize,
         VK_QUERY_RESULT_WAIT_BIT | VK_QUERY_RESULT_WITH_STATUS_BIT_KHR);

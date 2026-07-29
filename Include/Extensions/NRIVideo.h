@@ -274,6 +274,10 @@ NriStruct(VideoCapabilities) {
     uint32_t bitstreamOffsetAlignment;
     uint32_t bitstreamSizeAlignment;
     uint64_t bitstreamSizeMax;
+    uint32_t metadataOffsetAlignment;
+    uint32_t resolvedMetadataOffsetAlignment;
+    uint64_t metadataSize;         // minimum backend encode metadata range
+    uint64_t resolvedMetadataSize; // minimum resolved metadata range
 };
 
 NriStruct(VideoAV1Capabilities) {
@@ -500,14 +504,14 @@ NriStruct(VideoAnnexBParameterSetsDesc) {
     NriOptional const NriPtr(VideoH265VideoParameterSetDesc) h265Vps;
     NriOptional const NriPtr(VideoH265SequenceParameterSetDesc) h265Sps;
     NriOptional const NriPtr(VideoH265PictureParameterSetDesc) h265Pps;
-    NriOptional NriPtr(uint8_t) dst;    // if null, only "writtenSize" is returned
+    NriOptional uint8_t* dst; // if null, only "writtenSize" is returned
     uint64_t dstSize;
     uint64_t writtenSize;
 };
 
 NriStruct(VideoAnnexBEndOfStreamDesc) {
     Nri(VideoCodec) codec;
-    NriOptional NriPtr(uint8_t) dst;    // if null, only "writtenSize" is returned
+    NriOptional uint8_t* dst; // if null, only "writtenSize" is returned
     uint64_t dstSize;
     uint64_t writtenSize;
 };
@@ -539,7 +543,7 @@ NriStruct(VideoAV1SequenceDesc) {
 
 NriStruct(VideoAV1ObuHeadersDesc) {
     Nri(VideoAV1SequenceDesc) sequence;
-    NriOptional NriPtr(uint8_t) dst;    // if null, only "writtenSize" is returned
+    NriOptional uint8_t* dst; // if null, only "writtenSize" is returned
     uint64_t dstSize;
     uint64_t writtenSize;
 };
@@ -591,7 +595,8 @@ NriStruct(VideoH264DecodePictureDesc) {
     int32_t bottomFieldOrderCount;
     const uint32_t* sliceOffsets;
     uint32_t sliceOffsetNum;
-    uint32_t referenceSlot; // used when "flags" includes REFERENCE; falls back to VideoDecodeDesc::dstSlot when zero
+    bool hasReferenceSlot; // if false, VideoDecodeDesc::dstSlot is used
+    uint32_t referenceSlot;
     NriOptional const NriPtr(VideoH264DecodeReferenceDesc) references;
     NriOptional uint32_t referenceNum;
 };
@@ -853,7 +858,7 @@ NriStruct(VideoEncodeFeedback) {
 NriStruct(VideoAV1EncodeDecodeInfoDesc) {
     const NriPtr(VideoEncodeFeedback) feedback;
     const NriPtr(VideoAV1SequenceDesc) sequence;
-    NriOptional const NriPtr(uint8_t) encodedPayloadHeader; // first bytes of the encoded payload; returned bitstream ranges are bounded by "feedback"
+    NriOptional const uint8_t* encodedPayloadHeader; // first bytes of the encoded payload; returned bitstream ranges are bounded by "feedback"
     uint64_t encodedPayloadHeaderSize;
     NriOptional const NriPtr(VideoAV1ReferenceDesc) references; // previous AV1 DPB snapshot; required for inter frames
     NriOptional uint32_t referenceNum;
@@ -889,7 +894,7 @@ NriStruct(VideoEncodeDesc) {
     NriOptional const NriPtr(VideoEncodeRateControlDesc) rateControlDesc;
     Nri(VideoEncodeBits) flags;
     NriOptional NriPtr(VideoPicture) reconstructedPicture;
-    NriOptional NriPtr(Buffer) metadata;
+    NriOptional NriPtr(Buffer) metadata; // backend encode metadata; required if "VideoCapabilities::metadataSize" is non-zero
     uint64_t metadataOffset;
     NriOptional NriPtr(Buffer) resolvedMetadata; // if provided, contains "VideoEncodeFeedback" after execution.
     uint64_t resolvedMetadataOffset;
@@ -901,6 +906,7 @@ NriStruct(VideoEncodeDesc) {
     NriOptional const NriPtr(VideoH265ReferenceDesc) h265ReferenceDescs;
 };
 
+// "ResetVideoSession" discards session state reserved while recording commands. Reset affected command buffers first.
 // Threadsafe: no
 NriStruct(VideoInterface) {
     // Session
@@ -911,6 +917,7 @@ NriStruct(VideoInterface) {
         Nri(Result)     (NRI_CALL *CreateVideoSessionParameters)    (NriRef(Device) device, const NriRef(VideoSessionParametersDesc) videoSessionParametersDesc, NriOut NriRef(VideoSessionParameters*) videoSessionParameters);
         Nri(Result)     (NRI_CALL *CreateVideoPicture)              (NriRef(Device) device, const NriRef(VideoPictureDesc) videoPictureDesc, NriOut NriRef(VideoPicture*) videoPicture);
         void            (NRI_CALL *DestroyVideoSession)             (NriPtr(VideoSession) videoSession);
+        void            (NRI_CALL *ResetVideoSession)               (NriRef(VideoSession) videoSession);
         void            (NRI_CALL *DestroyVideoSessionParameters)   (NriPtr(VideoSessionParameters) videoSessionParameters);
         void            (NRI_CALL *DestroyVideoPicture)             (NriPtr(VideoPicture) videoPicture);
         

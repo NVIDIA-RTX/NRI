@@ -69,7 +69,7 @@ inline VkVideoSessionParametersCreateInfoKHR GetVideoSessionParametersCreateInfo
     return createInfo;
 }
 
-inline void FillVideoCapabilitiesVK(VideoCapabilities& videoCapabilities, const VkVideoCapabilitiesKHR& capabilities) {
+inline void FillVideoCapabilitiesVK(VideoCapabilities& videoCapabilities, const VideoSessionDesc& videoSessionDesc, const VkVideoCapabilitiesKHR& capabilities) {
     videoCapabilities = {};
     videoCapabilities.widthMin = capabilities.minCodedExtent.width;
     videoCapabilities.heightMin = capabilities.minCodedExtent.height;
@@ -77,10 +77,13 @@ inline void FillVideoCapabilitiesVK(VideoCapabilities& videoCapabilities, const 
     videoCapabilities.heightMax = capabilities.maxCodedExtent.height;
     videoCapabilities.pictureAccessGranularityWidth = capabilities.pictureAccessGranularity.width;
     videoCapabilities.pictureAccessGranularityHeight = capabilities.pictureAccessGranularity.height;
-    videoCapabilities.maxReferenceNum = capabilities.maxActiveReferencePictures;
+    videoCapabilities.maxReferenceNum = std::min(capabilities.maxActiveReferencePictures, capabilities.maxDpbSlots ? capabilities.maxDpbSlots - 1 : 0);
     videoCapabilities.bitstreamOffsetAlignment = (uint32_t)capabilities.minBitstreamBufferOffsetAlignment;
     videoCapabilities.bitstreamSizeAlignment = (uint32_t)capabilities.minBitstreamBufferSizeAlignment;
     videoCapabilities.bitstreamSizeMax = uint64_t(-1);
+    videoCapabilities.metadataOffsetAlignment = 1;
+    videoCapabilities.resolvedMetadataOffsetAlignment = 4;
+    videoCapabilities.resolvedMetadataSize = videoSessionDesc.type == VideoSessionType::ENCODE ? sizeof(VideoEncodeFeedback) + sizeof(uint32_t) * 3 : 0;
 }
 
 inline VideoAV1EncodeFeatureBits GetSupportedVideoEncodeAV1FeatureFlagsVK(VkVideoEncodeAV1StdFlagsKHR stdSyntaxFlags) {

@@ -1141,35 +1141,19 @@ Result DeviceVK::FillFunctionTable(RayTracingInterface& table) const {
 #pragma region[  Video  ]
 
 static Result NRI_CALL CreateVideoSession(Device& device, const VideoSessionDesc& videoSessionDesc, VideoSession*& videoSession) {
-    DeviceVK& deviceVK = (DeviceVK&)device;
-    VideoSessionVK* impl = Allocate<VideoSessionVK>(deviceVK.GetAllocationCallbacks(), deviceVK);
-    Result result = impl->Create(videoSessionDesc);
-
-    if (result != Result::SUCCESS) {
-        Destroy(impl);
-        videoSession = nullptr;
-    } else
-        videoSession = (VideoSession*)impl;
-
-    return result;
+    return ((DeviceVK&)device).CreateImplementation<VideoSessionVK>(videoSession, videoSessionDesc);
 }
 
 static void NRI_CALL DestroyVideoSession(VideoSession* videoSession) {
     Destroy((VideoSessionVK*)videoSession);
 }
 
+static void NRI_CALL ResetVideoSession(VideoSession& videoSession) {
+    ((VideoSessionVK&)videoSession).Reset();
+}
+
 static Result NRI_CALL CreateVideoSessionParameters(Device& device, const VideoSessionParametersDesc& videoSessionParametersDesc, VideoSessionParameters*& videoSessionParameters) {
-    DeviceVK& deviceVK = (DeviceVK&)device;
-    VideoSessionParametersVK* impl = Allocate<VideoSessionParametersVK>(deviceVK.GetAllocationCallbacks(), deviceVK);
-    Result result = impl->Create(videoSessionParametersDesc);
-
-    if (result != Result::SUCCESS) {
-        Destroy(impl);
-        videoSessionParameters = nullptr;
-    } else
-        videoSessionParameters = (VideoSessionParameters*)impl;
-
-    return result;
+    return ((DeviceVK&)device).CreateImplementation<VideoSessionParametersVK>(videoSessionParameters, videoSessionParametersDesc);
 }
 
 static void NRI_CALL DestroyVideoSessionParameters(VideoSessionParameters* videoSessionParameters) {
@@ -1177,17 +1161,7 @@ static void NRI_CALL DestroyVideoSessionParameters(VideoSessionParameters* video
 }
 
 static Result NRI_CALL CreateVideoPicture(Device& device, const VideoPictureDesc& videoPictureDesc, VideoPicture*& videoPicture) {
-    DeviceVK& deviceVK = (DeviceVK&)device;
-    VideoPictureVK* impl = Allocate<VideoPictureVK>(deviceVK.GetAllocationCallbacks(), deviceVK);
-    Result result = impl->Create(videoPictureDesc);
-
-    if (result != Result::SUCCESS) {
-        Destroy(impl);
-        videoPicture = nullptr;
-    } else
-        videoPicture = (VideoPicture*)impl;
-
-    return result;
+    return ((DeviceVK&)device).CreateImplementation<VideoPictureVK>(videoPicture, videoPictureDesc);
 }
 
 static void NRI_CALL DestroyVideoPicture(VideoPicture* videoPicture) {
@@ -1239,88 +1213,11 @@ static void NRI_CALL CmdResolveVideoEncodeFeedback(CommandBuffer& commandBuffer,
 }
 
 static Result NRI_CALL GetVideoEncodeFeedback(VideoSession& videoSession, Buffer& resolvedMetadataReadback, uint64_t resolvedMetadataOffset, VideoEncodeFeedback& feedback) {
-    VideoSessionVK& session = (VideoSessionVK&)videoSession;
-    if (session.GetEncodeFeedbackQueryPool() == VK_NULL_HANDLE)
-        return Result::UNSUPPORTED;
-
-    BufferVK& feedbackBuffer = (BufferVK&)resolvedMetadataReadback;
-    for (uint32_t i = 0; i < VideoSessionVK::ENCODE_FEEDBACK_QUERY_NUM; i++) {
-        const VideoSessionVK::EncodeFeedbackPayloadReadback& payloadReadback = session.GetEncodeFeedbackPayloadReadback(i);
-        if (!payloadReadback.active || payloadReadback.resolvedMetadata != &feedbackBuffer || payloadReadback.resolvedMetadataOffset != resolvedMetadataOffset)
-            continue;
-
-        if (payloadReadback.resolvedByCommand) {
-            uint32_t queryResult[3] = {};
-            DeviceVK& device = session.GetDevice();
-            const auto& vk = device.GetDispatchTable();
-            VkResult result = vk.GetQueryPoolResults(device, session.GetEncodeFeedbackQueryPool(), i, 1, sizeof(queryResult), queryResult, sizeof(queryResult),
-                VK_QUERY_RESULT_WITH_STATUS_BIT_KHR);
-            if (result == VK_SUCCESS) {
-                FillVideoEncodeFeedbackVK(feedback, queryResult, payloadReadback.dstBitstreamOffset);
-                session.ClearEncodeFeedbackQuery(i);
-                return Result::SUCCESS;
-            }
-
-            constexpr uint64_t queryResultSize = sizeof(uint32_t) * 3;
-            const uint64_t queryResultOffset = resolvedMetadataOffset + sizeof(VideoEncodeFeedback);
-            const void* metadata = feedbackBuffer.Map(queryResultOffset, queryResultSize);
-            if (!metadata)
-                return Result::FAILURE;
-
-            const uint32_t* mappedQueryResult = (const uint32_t*)metadata;
-            if (!mappedQueryResult[0] && !mappedQueryResult[1] && !mappedQueryResult[2]) {
-                feedback = {};
-                feedback.errorFlags = (uint64_t)result;
-
-                return Result::SUCCESS;
-            }
-
-            FillVideoEncodeFeedbackVK(feedback, mappedQueryResult, payloadReadback.dstBitstreamOffset);
-            session.ClearEncodeFeedbackQuery(i);
-            return Result::SUCCESS;
-        }
-
-        uint32_t queryResult[3] = {};
-        DeviceVK& device = session.GetDevice();
-        const auto& vk = device.GetDispatchTable();
-        VkResult result = vk.GetQueryPoolResults(device, session.GetEncodeFeedbackQueryPool(), i, 1, sizeof(queryResult), queryResult, sizeof(queryResult),
-            VK_QUERY_RESULT_WITH_STATUS_BIT_KHR);
-
-        feedback = {};
-        if (result == VK_SUCCESS) {
-            FillVideoEncodeFeedbackVK(feedback, queryResult, payloadReadback.dstBitstreamOffset);
-            session.ClearEncodeFeedbackQuery(i);
-        } else
-            feedback.errorFlags = (uint64_t)result;
-
-        return Result::SUCCESS;
-    }
-
-    return Result::FAILURE;
+    return ((VideoSessionVK&)videoSession).GetEncodeFeedback((BufferVK&)resolvedMetadataReadback, resolvedMetadataOffset, feedback);
 }
 
-static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolvedMetadataReadback, uint64_t resolvedMetadataOffset, const VideoAV1EncodeDecodeInfoDesc& desc, VideoAV1EncodeDecodeInfo& info) {
-    if (!desc.feedback || desc.feedback->errorFlags || !desc.feedback->encodedBitstreamWrittenBytes)
-        return Result::FAILURE;
-
-    if (desc.encodedPayloadHeader && desc.encodedPayloadHeaderSize)
-        return video_av1::GetVideoEncodeAV1DecodeInfoFromHeader(desc, info);
-
-    BufferVK& metadata = (BufferVK&)resolvedMetadataReadback;
-    const uint64_t headerOffset = resolvedMetadataOffset + sizeof(VideoEncodeFeedback);
-    if (headerOffset >= metadata.GetDesc().size)
-        return Result::INVALID_ARGUMENT;
-
-    const uint64_t headerSize = std::min(desc.feedback->encodedBitstreamWrittenBytes, metadata.GetDesc().size - headerOffset);
-    const uint8_t* header = (const uint8_t*)metadata.Map(headerOffset, headerSize);
-    if (!header)
-        return Result::FAILURE;
-
-    VideoAV1EncodeDecodeInfoDesc headerDesc = desc;
-    headerDesc.encodedPayloadHeader = header;
-    headerDesc.encodedPayloadHeaderSize = headerSize;
-
-    return video_av1::GetVideoEncodeAV1DecodeInfoFromHeader(headerDesc, info);
+static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession& videoSession, Buffer& resolvedMetadataReadback, uint64_t resolvedMetadataOffset, const VideoAV1EncodeDecodeInfoDesc& desc, VideoAV1EncodeDecodeInfo& info) {
+    return ((VideoSessionVK&)videoSession).GetEncodeAV1DecodeInfo((BufferVK&)resolvedMetadataReadback, resolvedMetadataOffset, desc, info);
 }
 
 Result DeviceVK::FillFunctionTable(VideoInterface& table) const {
@@ -1331,6 +1228,7 @@ Result DeviceVK::FillFunctionTable(VideoInterface& table) const {
     table.GetVideoAV1Capabilities = ::GetVideoAV1Capabilities;
     table.CreateVideoSession = ::CreateVideoSession;
     table.DestroyVideoSession = ::DestroyVideoSession;
+    table.ResetVideoSession = ::ResetVideoSession;
     table.CreateVideoSessionParameters = ::CreateVideoSessionParameters;
     table.DestroyVideoSessionParameters = ::DestroyVideoSessionParameters;
     table.CreateVideoPicture = ::CreateVideoPicture;

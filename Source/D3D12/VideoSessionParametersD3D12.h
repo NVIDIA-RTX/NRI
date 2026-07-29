@@ -12,12 +12,30 @@ struct VideoSessionParametersD3D12 final : public DebugNameBase {
         , m_H265VideoParameterSets(device.GetStdAllocator())
         , m_H265SequenceParameterSets(device.GetStdAllocator())
         , m_H265PictureParameterSets(device.GetStdAllocator())
+        , m_H265ShortTermRefPicSets(device.GetStdAllocator())
+        , m_H265LongTermRefPicsSps(device.GetStdAllocator())
         , m_H265SequenceScalingLists(device.GetStdAllocator())
         , m_H265PictureScalingLists(device.GetStdAllocator()) {
     }
 
     inline DeviceD3D12& GetDevice() const {
         return m_Device;
+    }
+
+    inline VideoSessionD3D12* GetSession() const {
+        return m_Session;
+    }
+
+    inline const VideoH264SessionParametersDesc* GetH264Parameters() const {
+        return m_H264Parameters;
+    }
+
+    inline const VideoH265SessionParametersDesc* GetH265Parameters() const {
+        return m_H265Parameters;
+    }
+
+    inline const VideoAV1SessionParametersDesc* GetAV1Parameters() const {
+        return m_AV1Parameters;
     }
 
     //================================================================================================================
@@ -33,6 +51,7 @@ struct VideoSessionParametersD3D12 final : public DebugNameBase {
 
     Result Create(const VideoSessionParametersDesc& videoSessionParametersDesc);
 
+private:
     DeviceD3D12& m_Device;
     VideoSessionD3D12* m_Session = nullptr;
     VideoH264SessionParametersDesc m_H264ParametersStorage = {};
@@ -43,6 +62,8 @@ struct VideoSessionParametersD3D12 final : public DebugNameBase {
     Vector<VideoH265VideoParameterSetDesc> m_H265VideoParameterSets;
     Vector<VideoH265SequenceParameterSetDesc> m_H265SequenceParameterSets;
     Vector<VideoH265PictureParameterSetDesc> m_H265PictureParameterSets;
+    Vector<VideoH265ShortTermRefPicSetDesc> m_H265ShortTermRefPicSets;
+    Vector<VideoH265LongTermRefPicsSpsDesc> m_H265LongTermRefPicsSps;
     Vector<VideoH265ScalingListsDesc> m_H265SequenceScalingLists;
     Vector<VideoH265ScalingListsDesc> m_H265PictureScalingLists;
     const VideoH265SessionParametersDesc* m_H265Parameters = nullptr;

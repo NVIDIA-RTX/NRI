@@ -388,6 +388,7 @@ set(SHARED_SOURCE
     "Source/Shared/UpscalerInterface.hpp"
     "Source/Shared/VideoAV1.h"
     "Source/Shared/VideoAnnexB.h"
+    "Source/Shared/VideoShared.h"
 )
 
 add_library(NRI_Shared STATIC)
@@ -890,6 +891,12 @@ if(NRI_ENABLE_VALIDATION_SUPPORT)
         "Source/Validation/SwapChainVal.hpp"
         "Source/Validation/TextureVal.h"
         "Source/Validation/TextureVal.hpp"
+        "Source/Validation/VideoPictureVal.h"
+        "Source/Validation/VideoPictureVal.hpp"
+        "Source/Validation/VideoSessionParametersVal.h"
+        "Source/Validation/VideoSessionParametersVal.hpp"
+        "Source/Validation/VideoSessionVal.h"
+        "Source/Validation/VideoSessionVal.hpp"
     )
 
     add_library(NRI_Validation STATIC)

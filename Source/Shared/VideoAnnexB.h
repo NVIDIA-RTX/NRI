@@ -63,18 +63,21 @@ struct RbspBitWriter {
             WriteBit((uint32_t)((value >> (count - i - 1u)) & 1u));
     }
 
-    void WriteUe(uint32_t value) {
-        const uint32_t codeNum = value + 1u;
+    void WriteUe(uint64_t value) {
+        const uint64_t codeNum = value + 1u;
         uint32_t bitNum = 0;
-        for (uint32_t temp = codeNum; temp; temp >>= 1)
+
+        for (uint64_t temp = codeNum; temp; temp >>= 1)
             bitNum++;
+
         for (uint32_t i = 1; i < bitNum; i++)
             WriteBit(0);
+
         WriteBits(codeNum, bitNum);
     }
 
     void WriteSe(int32_t value) {
-        const uint32_t codeNum = value <= 0 ? uint32_t(-value) * 2u : uint32_t(value) * 2u - 1u;
+        const uint64_t codeNum = value <= 0 ? uint64_t(-int64_t(value) * 2) : uint64_t(int64_t(value) * 2 - 1);
         WriteUe(codeNum);
     }
 
@@ -139,17 +142,20 @@ inline void WriteH265SubLayerOrdering(RbspBitWriter& writer, const VideoH265DecP
 }
 
 inline Result WriteH264AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& desc, ByteWriter& bytes) {
-    if (!desc.h264Sps || !desc.h264Pps)
+    const bool hasParameterSets = desc.h264Sps && desc.h264Pps;
+
+    if (!hasParameterSets)
         return Result::INVALID_ARGUMENT;
 
     const VideoH264SequenceParameterSetDesc& sps = *desc.h264Sps;
     const VideoH264PictureParameterSetDesc& pps = *desc.h264Pps;
     const bool highProfileSps = sps.profileIdc == 100 || sps.profileIdc == 110 || sps.profileIdc == 122 || sps.profileIdc == 244 || sps.profileIdc == 44 || sps.profileIdc == 83 || sps.profileIdc == 86 || sps.profileIdc == 118 || sps.profileIdc == 128 || sps.profileIdc == 138 || sps.profileIdc == 139 || sps.profileIdc == 134 || sps.profileIdc == 135;
-    if (!highProfileSps || (pps.flags & VideoH264PictureParameterSetBits::TRANSFORM_8X8_MODE) != 0)
+
+    if (!highProfileSps || sps.chromaFormatIdc > 3 || sps.pictureOrderCountType > 2 || (pps.flags & VideoH264PictureParameterSetBits::TRANSFORM_8X8_MODE) != 0)
         return Result::UNSUPPORTED;
 
     AppendH264NalHeader(bytes, 0x67);
-    RbspBitWriter spsWriter {bytes};
+    RbspBitWriter spsWriter{bytes};
     spsWriter.WriteBits(sps.profileIdc, 8);
     spsWriter.WriteBit(!!(sps.flags & VideoH264SequenceParameterSetBits::CONSTRAINT_SET0));
     spsWriter.WriteBit(!!(sps.flags & VideoH264SequenceParameterSetBits::CONSTRAINT_SET1));
@@ -161,26 +167,43 @@ inline Result WriteH264AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& d
     spsWriter.WriteBits(sps.levelIdc, 8);
     spsWriter.WriteUe(sps.sequenceParameterSetId);
     spsWriter.WriteUe(sps.chromaFormatIdc);
+
+    if (sps.chromaFormatIdc == 3)
+        spsWriter.WriteBit(!!(sps.flags & VideoH264SequenceParameterSetBits::SEPARATE_COLOUR_PLANE));
+
     spsWriter.WriteUe(sps.bitDepthLumaMinus8);
     spsWriter.WriteUe(sps.bitDepthChromaMinus8);
     spsWriter.WriteBit(!!(sps.flags & VideoH264SequenceParameterSetBits::QPPRIME_Y_ZERO_TRANSFORM_BYPASS));
     spsWriter.WriteBit(0);
     spsWriter.WriteUe(sps.log2MaxFrameNumMinus4);
     spsWriter.WriteUe(sps.pictureOrderCountType);
+
     if (sps.pictureOrderCountType == 0)
         spsWriter.WriteUe(sps.log2MaxPictureOrderCountLsbMinus4);
+    else if (sps.pictureOrderCountType == 1) {
+        spsWriter.WriteBit(!!(sps.flags & VideoH264SequenceParameterSetBits::DELTA_PIC_ORDER_ALWAYS_ZERO));
+        spsWriter.WriteSe(sps.offsetForNonReferencePicture);
+        spsWriter.WriteSe(sps.offsetForTopToBottomField);
+        spsWriter.WriteUe(0); // offset_for_ref_frame is not represented by the public descriptor
+    }
+
     spsWriter.WriteUe(sps.referenceFrameNum);
     spsWriter.WriteBit(!!(sps.flags & VideoH264SequenceParameterSetBits::GAPS_IN_FRAME_NUM_ALLOWED));
     spsWriter.WriteUe(sps.pictureWidthInMbsMinus1);
     spsWriter.WriteUe(sps.pictureHeightInMapUnitsMinus1);
-    spsWriter.WriteBit(!!(sps.flags & VideoH264SequenceParameterSetBits::FRAME_MBS_ONLY));
+    const bool frameMbsOnly = !!(sps.flags & VideoH264SequenceParameterSetBits::FRAME_MBS_ONLY);
+    spsWriter.WriteBit(frameMbsOnly);
+
+    if (!frameMbsOnly)
+        spsWriter.WriteBit(!!(sps.flags & VideoH264SequenceParameterSetBits::MB_ADAPTIVE_FRAME_FIELD));
+
     spsWriter.WriteBit(!!(sps.flags & VideoH264SequenceParameterSetBits::DIRECT_8X8_INFERENCE));
     spsWriter.WriteBit(0);
     spsWriter.WriteBit(0);
     spsWriter.FinishRbsp();
 
     AppendH264NalHeader(bytes, 0x68);
-    RbspBitWriter ppsWriter {bytes};
+    RbspBitWriter ppsWriter{bytes};
     ppsWriter.WriteUe(pps.pictureParameterSetId);
     ppsWriter.WriteUe(pps.sequenceParameterSetId);
     ppsWriter.WriteBit(!!(pps.flags & VideoH264PictureParameterSetBits::ENTROPY_CODING_MODE));
@@ -196,23 +219,39 @@ inline Result WriteH264AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& d
     ppsWriter.WriteBit(!!(pps.flags & VideoH264PictureParameterSetBits::DEBLOCKING_FILTER_CONTROL_PRESENT));
     ppsWriter.WriteBit(!!(pps.flags & VideoH264PictureParameterSetBits::CONSTRAINED_INTRA_PRED));
     ppsWriter.WriteBit(!!(pps.flags & VideoH264PictureParameterSetBits::REDUNDANT_PIC_CNT_PRESENT));
+
+    if (pps.secondChromaQpIndexOffset != pps.chromaQpIndexOffset) {
+        ppsWriter.WriteBit(0); // transform_8x8_mode_flag
+        ppsWriter.WriteBit(0); // pic_scaling_matrix_present_flag
+        ppsWriter.WriteSe(pps.secondChromaQpIndexOffset);
+    }
+
     ppsWriter.FinishRbsp();
 
     return Result::SUCCESS;
 }
 
 inline Result WriteH265AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& desc, ByteWriter& bytes) {
-    if (!desc.h265Vps || !desc.h265Sps || !desc.h265Pps)
+    const bool hasParameterSets = desc.h265Vps && desc.h265Sps && desc.h265Pps;
+
+    if (!hasParameterSets)
         return Result::INVALID_ARGUMENT;
 
     const VideoH265VideoParameterSetDesc& vps = *desc.h265Vps;
     const VideoH265SequenceParameterSetDesc& sps = *desc.h265Sps;
     const VideoH265PictureParameterSetDesc& pps = *desc.h265Pps;
-    const uint8_t vpsMaxSubLayersMinus1 = std::min<uint8_t>(vps.maxSubLayersMinus1, 7);
-    const uint8_t spsMaxSubLayersMinus1 = std::min<uint8_t>(sps.maxSubLayersMinus1, 7);
+
+    if (vps.maxSubLayersMinus1 > 6 || sps.maxSubLayersMinus1 > 6)
+        return Result::INVALID_ARGUMENT;
+
+    if (sps.numShortTermRefPicSets || (sps.flags & (VideoH265SequenceParameterSetBits::LONG_TERM_REF_PICS_PRESENT | VideoH265SequenceParameterSetBits::VUI_PARAMETERS_PRESENT | VideoH265SequenceParameterSetBits::SCALING_LIST_DATA_PRESENT)) || (pps.flags & (VideoH265PictureParameterSetBits::TILES_ENABLED | VideoH265PictureParameterSetBits::SCALING_LIST_DATA_PRESENT)))
+        return Result::UNSUPPORTED;
+
+    const uint8_t vpsMaxSubLayersMinus1 = std::min<uint8_t>(vps.maxSubLayersMinus1, 6);
+    const uint8_t spsMaxSubLayersMinus1 = std::min<uint8_t>(sps.maxSubLayersMinus1, 6);
 
     AppendH265NalHeader(bytes, 32);
-    RbspBitWriter vpsWriter {bytes};
+    RbspBitWriter vpsWriter{bytes};
     vpsWriter.WriteBits(vps.videoParameterSetId, 4);
     vpsWriter.WriteBit(1);
     vpsWriter.WriteBit(1);
@@ -241,7 +280,7 @@ inline Result WriteH265AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& d
     vpsWriter.FinishRbsp();
 
     AppendH265NalHeader(bytes, 33);
-    RbspBitWriter spsWriter {bytes};
+    RbspBitWriter spsWriter{bytes};
     spsWriter.WriteBits(sps.videoParameterSetId, 4);
     spsWriter.WriteBits(spsMaxSubLayersMinus1, 3);
     spsWriter.WriteBit(!!(sps.flags & VideoH265SequenceParameterSetBits::TEMPORAL_ID_NESTING));
@@ -272,7 +311,12 @@ inline Result WriteH265AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& d
     spsWriter.WriteUe(sps.log2DiffMaxMinLumaTransformBlockSize);
     spsWriter.WriteUe(sps.maxTransformHierarchyDepthInter);
     spsWriter.WriteUe(sps.maxTransformHierarchyDepthIntra);
-    spsWriter.WriteBit(!!(sps.flags & VideoH265SequenceParameterSetBits::SCALING_LIST_ENABLED));
+    const bool scalingListEnabled = !!(sps.flags & VideoH265SequenceParameterSetBits::SCALING_LIST_ENABLED);
+    spsWriter.WriteBit(scalingListEnabled);
+
+    if (scalingListEnabled)
+        spsWriter.WriteBit(0); // sps_scaling_list_data_present_flag
+
     spsWriter.WriteBit(!!(sps.flags & VideoH265SequenceParameterSetBits::AMP_ENABLED));
     spsWriter.WriteBit(!!(sps.flags & VideoH265SequenceParameterSetBits::SAMPLE_ADAPTIVE_OFFSET_ENABLED));
     const bool pcmEnabled = !!(sps.flags & VideoH265SequenceParameterSetBits::PCM_ENABLED);
@@ -284,23 +328,17 @@ inline Result WriteH265AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& d
         spsWriter.WriteUe(sps.log2DiffMaxMinPcmLumaCodingBlockSize);
         spsWriter.WriteBit(!!(sps.flags & VideoH265SequenceParameterSetBits::PCM_LOOP_FILTER_DISABLED));
     }
-    spsWriter.WriteUe(sps.numShortTermRefPicSets);
-    if (sps.numShortTermRefPicSets != 0)
-        return Result::UNSUPPORTED;
+    spsWriter.WriteUe(0);
     const bool longTermRefsPresent = !!(sps.flags & VideoH265SequenceParameterSetBits::LONG_TERM_REF_PICS_PRESENT);
     spsWriter.WriteBit(longTermRefsPresent);
-    if (longTermRefsPresent)
-        return Result::UNSUPPORTED;
     spsWriter.WriteBit(!!(sps.flags & VideoH265SequenceParameterSetBits::TEMPORAL_MVP_ENABLED));
     spsWriter.WriteBit(!!(sps.flags & VideoH265SequenceParameterSetBits::STRONG_INTRA_SMOOTHING_ENABLED));
     spsWriter.WriteBit(!!(sps.flags & VideoH265SequenceParameterSetBits::VUI_PARAMETERS_PRESENT));
-    if (sps.flags & VideoH265SequenceParameterSetBits::VUI_PARAMETERS_PRESENT)
-        return Result::UNSUPPORTED;
     spsWriter.WriteBit(0);
     spsWriter.FinishRbsp();
 
     AppendH265NalHeader(bytes, 34);
-    RbspBitWriter ppsWriter {bytes};
+    RbspBitWriter ppsWriter{bytes};
     ppsWriter.WriteUe(pps.pictureParameterSetId);
     ppsWriter.WriteUe(pps.sequenceParameterSetId);
     ppsWriter.WriteBit(!!(pps.flags & VideoH265PictureParameterSetBits::DEPENDENT_SLICE_SEGMENTS_ENABLED));
@@ -323,8 +361,6 @@ inline Result WriteH265AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& d
     ppsWriter.WriteBit(!!(pps.flags & VideoH265PictureParameterSetBits::WEIGHTED_PRED));
     ppsWriter.WriteBit(!!(pps.flags & VideoH265PictureParameterSetBits::WEIGHTED_BIPRED));
     ppsWriter.WriteBit(!!(pps.flags & VideoH265PictureParameterSetBits::TRANSQUANT_BYPASS_ENABLED));
-    if (pps.flags & VideoH265PictureParameterSetBits::TILES_ENABLED)
-        return Result::UNSUPPORTED;
     ppsWriter.WriteBit(0);
     ppsWriter.WriteBit(!!(pps.flags & VideoH265PictureParameterSetBits::ENTROPY_CODING_SYNC_ENABLED));
     ppsWriter.WriteBit(!!(pps.flags & VideoH265PictureParameterSetBits::LOOP_FILTER_ACROSS_SLICES_ENABLED));
@@ -339,8 +375,6 @@ inline Result WriteH265AnnexBParameterSets(const VideoAnnexBParameterSetsDesc& d
             ppsWriter.WriteSe(pps.tcOffsetDiv2);
         }
     }
-    if (pps.flags & VideoH265PictureParameterSetBits::SCALING_LIST_DATA_PRESENT)
-        return Result::UNSUPPORTED;
     ppsWriter.WriteBit(0);
     ppsWriter.WriteBit(!!(pps.flags & VideoH265PictureParameterSetBits::LISTS_MODIFICATION_PRESENT));
     ppsWriter.WriteUe(pps.log2ParallelMergeLevelMinus2);
@@ -390,12 +424,15 @@ struct ObuBitWriter {
     }
 
     void WriteUvlc(uint32_t value) {
-        const uint32_t codeNum = value + 1u;
+        const uint64_t codeNum = uint64_t(value) + 1u;
         uint32_t bitNum = 0;
-        for (uint32_t temp = codeNum; temp; temp >>= 1)
+
+        for (uint64_t temp = codeNum; temp; temp >>= 1)
             bitNum++;
+
         for (uint32_t i = 1; i < bitNum; i++)
             WriteBit(0);
+
         WriteBits(codeNum, bitNum);
     }
 
@@ -480,6 +517,10 @@ inline uint8_t GetAv1LevelIndex(uint8_t level, uint32_t width, uint32_t height) 
     return 13;
 }
 
+static inline bool IsAv1IdentityColorConfig(const VideoAV1SequenceDesc& desc) {
+    return (desc.flags & VideoAV1SequenceBits::COLOR_DESCRIPTION_PRESENT) && desc.colorPrimaries == 1 && desc.transferCharacteristics == 13 && desc.matrixCoefficients == 0;
+}
+
 inline void WriteAv1ColorConfig(ObuBitWriter& writer, const VideoAV1SequenceDesc& desc) {
     const bool highBitdepth = desc.bitDepth > 8;
     const bool twelveBit = desc.bitDepth > 10;
@@ -487,50 +528,92 @@ inline void WriteAv1ColorConfig(ObuBitWriter& writer, const VideoAV1SequenceDesc
     const bool colorDescriptionPresent = !!(desc.flags & VideoAV1SequenceBits::COLOR_DESCRIPTION_PRESENT);
 
     writer.WriteBit(highBitdepth);
+
     if (desc.seqProfile == 2 && highBitdepth)
         writer.WriteBit(twelveBit);
+
     if (desc.seqProfile != video_av1::PROFILE_HIGH)
         writer.WriteBit(monochrome);
 
     writer.WriteBit(colorDescriptionPresent);
+
     if (colorDescriptionPresent) {
         writer.WriteBits(desc.colorPrimaries, 8);
         writer.WriteBits(desc.transferCharacteristics, 8);
         writer.WriteBits(desc.matrixCoefficients, 8);
     }
 
-    writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::COLOR_RANGE));
     if (monochrome) {
-        writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::SEPARATE_UV_DELTA_Q));
+        writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::COLOR_RANGE));
+
         return;
     }
 
-    if (desc.seqProfile == 2) {
-        if (twelveBit) {
+    if (!IsAv1IdentityColorConfig(desc)) {
+        writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::COLOR_RANGE));
+
+        if (desc.seqProfile == 2 && twelveBit) {
             writer.WriteBit(desc.subsamplingX);
+
             if (desc.subsamplingX)
                 writer.WriteBit(desc.subsamplingY);
         }
-    }
 
-    if (desc.subsamplingX && desc.subsamplingY)
-        writer.WriteBits(desc.chromaSamplePosition, 2);
+        if (desc.subsamplingX && desc.subsamplingY)
+            writer.WriteBits(desc.chromaSamplePosition, 2);
+    }
 
     writer.WriteBit(!!(desc.flags & VideoAV1SequenceBits::SEPARATE_UV_DELTA_Q));
 }
 
 inline Result WriteAv1SequenceHeaderPayload(const VideoAV1SequenceDesc& desc, ByteWriter& bytes) {
-    if (desc.seqProfile > 2 || (desc.bitDepth != 8 && desc.bitDepth != 10 && desc.bitDepth != 12) || desc.frameWidthBitsMinus1 > 15 || desc.frameHeightBitsMinus1 > 15)
+    constexpr uint8_t maxSequenceProfile = 2;
+
+    if (desc.seqProfile > maxSequenceProfile || (desc.bitDepth != 8 && desc.bitDepth != 10 && desc.bitDepth != 12) || desc.frameWidthBitsMinus1 > 15 || desc.frameHeightBitsMinus1 > 15)
+
         return Result::INVALID_ARGUMENT;
+
     if ((uint32_t)desc.maxFrameWidthMinus1 >= (1u << (desc.frameWidthBitsMinus1 + 1u)) || (uint32_t)desc.maxFrameHeightMinus1 >= (1u << (desc.frameHeightBitsMinus1 + 1u)))
+
         return Result::INVALID_ARGUMENT;
 
     const bool reducedStillPictureHeader = !!(desc.flags & VideoAV1SequenceBits::REDUCED_STILL_PICTURE_HEADER);
+    const bool stillPicture = !!(desc.flags & VideoAV1SequenceBits::STILL_PICTURE);
     const bool timingInfoPresent = !!(desc.flags & VideoAV1SequenceBits::TIMING_INFO_PRESENT);
     const bool initialDisplayDelayPresent = !!(desc.flags & VideoAV1SequenceBits::INITIAL_DISPLAY_DELAY_PRESENT);
     const bool enableOrderHint = !!(desc.flags & VideoAV1SequenceBits::ENABLE_ORDER_HINT);
     const bool frameIdNumbersPresent = !!(desc.flags & VideoAV1SequenceBits::FRAME_ID_NUMBERS_PRESENT);
-    if (desc.seqForceScreenContentTools > video_av1::SELECT_SCREEN_CONTENT_TOOLS || desc.seqForceIntegerMv > video_av1::SELECT_SCREEN_CONTENT_TOOLS)
+    const bool monochrome = !!(desc.flags & VideoAV1SequenceBits::MONO_CHROME);
+    const bool identityColorConfig = !monochrome && IsAv1IdentityColorConfig(desc);
+
+    if (desc.seqForceScreenContentTools > video_av1::SELECT_SCREEN_CONTENT_TOOLS || desc.seqForceIntegerMv > video_av1::SELECT_SCREEN_CONTENT_TOOLS || (enableOrderHint && desc.orderHintBitsMinus1 > 7))
+
+        return Result::INVALID_ARGUMENT;
+
+    if (desc.subsamplingX > 1 || desc.subsamplingY > 1 || desc.chromaSamplePosition > 3)
+
+        return Result::INVALID_ARGUMENT;
+
+    if ((desc.seqProfile == 0 && desc.bitDepth == 12) || (desc.seqProfile == 1 && (desc.bitDepth == 12 || monochrome || desc.subsamplingX || desc.subsamplingY)))
+
+        return Result::INVALID_ARGUMENT;
+
+    if (monochrome && (desc.subsamplingX != 1 || desc.subsamplingY != 1 || desc.chromaSamplePosition != 0 || (desc.flags & VideoAV1SequenceBits::SEPARATE_UV_DELTA_Q)))
+
+        return Result::INVALID_ARGUMENT;
+
+    if (identityColorConfig && (!(desc.flags & VideoAV1SequenceBits::COLOR_RANGE) || desc.subsamplingX || desc.subsamplingY || desc.chromaSamplePosition))
+
+        return Result::INVALID_ARGUMENT;
+
+    if (!monochrome && !identityColorConfig && ((desc.seqProfile == 0 && (!desc.subsamplingX || !desc.subsamplingY)) || (desc.seqProfile == 2 && desc.bitDepth != 12 && (!desc.subsamplingX || desc.subsamplingY)) || (desc.seqProfile == 2 && desc.bitDepth == 12 && !desc.subsamplingX && desc.subsamplingY) || (!(desc.subsamplingX && desc.subsamplingY) && desc.chromaSamplePosition)))
+
+        return Result::INVALID_ARGUMENT;
+
+    if (reducedStillPictureHeader && (!stillPicture || timingInfoPresent || initialDisplayDelayPresent || frameIdNumbersPresent || enableOrderHint))
+        return Result::INVALID_ARGUMENT;
+
+    if (timingInfoPresent && (!desc.numUnitsInDisplayTick || !desc.timeScale || desc.numTicksPerPictureMinus1 == UINT32_MAX))
         return Result::INVALID_ARGUMENT;
 
     const bool selectScreenContentTools = desc.seqForceScreenContentTools == video_av1::SELECT_SCREEN_CONTENT_TOOLS;

@@ -952,7 +952,7 @@ NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeDesc& videoDeco
     const VideoSessionDesc& sessionDesc = session.GetDesc();
     const VideoSessionParametersD3D12* parameters = (VideoSessionParametersD3D12*)videoDecodeDesc.parameters;
 
-    if (parameters->m_Session != &session) {
+    if (parameters->GetSession() != &session) {
         NRI_REPORT_ERROR(&m_Device, "'parameters' must belong to 'session'");
         return;
     }
@@ -978,7 +978,7 @@ NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeDesc& videoDeco
             return;
         }
 
-        if (!parameters || !parameters->m_H264Parameters) {
+        if (!parameters || !parameters->GetH264Parameters()) {
             NRI_REPORT_ERROR(&m_Device, "'parameters' with H.264 SPS/PPS data must be valid for neutral H.264 D3D12 decode");
             return;
         }
@@ -995,8 +995,8 @@ NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeDesc& videoDeco
             }
         }
 
-        const uint32_t h264DstSlot = videoDecodeDesc.h264PictureDesc->referenceSlot ? videoDecodeDesc.h264PictureDesc->referenceSlot : videoDecodeDesc.dstSlot;
-        if (!BuildVideoDecodeH264ArgumentsD3D12(*parameters->m_H264Parameters, *videoDecodeDesc.h264PictureDesc, videoDecodeDesc.bitstream.size, h264DstSlot,
+        const uint32_t h264DstSlot = GetVideoDecodeSetupSlot(videoDecodeDesc);
+        if (!BuildVideoDecodeH264ArgumentsD3D12(*parameters->GetH264Parameters(), *videoDecodeDesc.h264PictureDesc, videoDecodeDesc.bitstream.size, h264DstSlot,
                 h264PictureParameters, h264InverseQuantizationMatrix, h264Slices, videoDecodeDesc.h264PictureDesc->sliceOffsetNum)) {
             NRI_REPORT_ERROR(&m_Device, "Failed to build D3D12 H.264 decode arguments from neutral descriptors");
             return;
@@ -1018,7 +1018,7 @@ NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeDesc& videoDeco
             return;
         }
 
-        if (!parameters || !parameters->m_H265Parameters) {
+        if (!parameters || !parameters->GetH265Parameters()) {
             NRI_REPORT_ERROR(&m_Device, "'parameters' with H.265 VPS/SPS/PPS data must be valid for neutral H.265 D3D12 decode");
             return;
         }
@@ -1036,7 +1036,7 @@ NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeDesc& videoDeco
             }
         }
 
-        if (!BuildVideoDecodeH265ArgumentsD3D12(*parameters->m_H265Parameters, desc, videoDecodeDesc.bitstream.size, videoDecodeDesc.dstSlot,
+        if (!BuildVideoDecodeH265ArgumentsD3D12(*parameters->GetH265Parameters(), desc, videoDecodeDesc.bitstream.size, videoDecodeDesc.dstSlot,
                 h265PictureParameters, h265InverseQuantizationMatrix, h265Slices, desc.sliceSegmentOffsetNum)) {
             NRI_REPORT_ERROR(&m_Device, "Failed to build D3D12 H.265 decode arguments from neutral descriptors");
             return;
@@ -1069,7 +1069,7 @@ NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeDesc& videoDeco
         }
 
         const VideoAV1SessionParametersDesc defaultAV1Parameters = {GetDefaultVideoAV1SequenceDescD3D12(sessionDesc.width, sessionDesc.height, sessionDesc.format)};
-        const VideoAV1SessionParametersDesc& av1Parameters = parameters && parameters->m_AV1Parameters ? *parameters->m_AV1Parameters : defaultAV1Parameters;
+        const VideoAV1SessionParametersDesc& av1Parameters = parameters && parameters->GetAV1Parameters() ? *parameters->GetAV1Parameters() : defaultAV1Parameters;
         const VideoAV1SequenceDesc& sequence = av1Parameters.sequence;
         const VideoAV1PictureBits pictureFlags = desc.flags == VideoAV1PictureBits::NONE ? GetDefaultVideoAV1PictureFlags() : desc.flags;
         av1PictureParameters.width = sessionDesc.width;
@@ -1298,6 +1298,7 @@ NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeDesc& videoDeco
     const bool h264NeutralDecode = videoDecodeDesc.h264PictureDesc != nullptr;
     const bool h265NeutralDecode = videoDecodeDesc.h265PictureDesc != nullptr;
     const bool av1NeutralDecode = videoDecodeDesc.av1PictureDesc != nullptr;
+    const uint32_t setupSlot = GetVideoDecodeSetupSlot(videoDecodeDesc);
 
     VideoDecodeReferenceLayoutD3D12 referenceLayout = {};
     if (!GetVideoDecodeReferenceLayoutD3D12(videoDecodeDesc.references, videoDecodeDesc.referenceNum, referenceLayout)) {
@@ -1308,7 +1309,7 @@ NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeDesc& videoDeco
         return;
     }
     if (h264NeutralDecode)
-        referenceLayout.slotCount = std::max(referenceLayout.slotCount, videoDecodeDesc.dstSlot + 1);
+        referenceLayout.slotCount = std::max(referenceLayout.slotCount, setupSlot + 1);
     if (h265NeutralDecode)
         referenceLayout.slotCount = std::max(referenceLayout.slotCount, videoDecodeDesc.dstSlot + 1);
     if (av1NeutralDecode)
@@ -1333,8 +1334,8 @@ NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeDesc& videoDeco
         referenceSubresources[slot] = reference.m_Subresource;
     }
     if (h264NeutralDecode) {
-        referenceResources[videoDecodeDesc.dstSlot] = (ID3D12Resource*)(*setupPicture.m_Texture);
-        referenceSubresources[videoDecodeDesc.dstSlot] = setupPicture.m_Subresource;
+        referenceResources[setupSlot] = (ID3D12Resource*)(*setupPicture.m_Texture);
+        referenceSubresources[setupSlot] = setupPicture.m_Subresource;
     }
     if (h265NeutralDecode) {
         referenceResources[videoDecodeDesc.dstSlot] = (ID3D12Resource*)(*setupPicture.m_Texture);
@@ -1457,7 +1458,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     }
 
     VideoSessionParametersD3D12& parameters = *(VideoSessionParametersD3D12*)videoEncodeDesc.parameters;
-    if (parameters.m_Session != &session) {
+    if (parameters.GetSession() != &session) {
         NRI_REPORT_ERROR(&m_Device, "'parameters' must belong to 'session'");
         return;
     }

@@ -1169,7 +1169,7 @@ static bool CanCreateVideoDecodeSessionD3D12(ID3D12VideoDevice* videoDevice, con
     heapDesc.DecodeWidth = videoSessionDesc.width;
     heapDesc.DecodeHeight = videoSessionDesc.height;
     heapDesc.Format = GetDxgiFormat(videoSessionDesc.format).typed;
-    heapDesc.MaxDecodePictureBufferCount = videoSessionDesc.maxReferenceNum ? videoSessionDesc.maxReferenceNum : 1;
+    heapDesc.MaxDecodePictureBufferCount = videoSessionDesc.maxReferenceNum + 1;
 
     ComPtr<ID3D12VideoDecoderHeapBest> heap;
     hr = videoDevice->CreateVideoDecoderHeap(&heapDesc, __uuidof(ID3D12VideoDecoderHeapBest), (void**)&heap);
@@ -1254,35 +1254,18 @@ static Result NRI_CALL GetVideoAV1Capabilities(const Device& device, const Video
 }
 
 static Result NRI_CALL CreateVideoSession(Device& device, const VideoSessionDesc& videoSessionDesc, VideoSession*& videoSession) {
-    DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
-    VideoSessionD3D12* impl = Allocate<VideoSessionD3D12>(deviceD3D12.GetAllocationCallbacks(), deviceD3D12);
-    Result result = impl->Create(videoSessionDesc);
-
-    if (result != Result::SUCCESS) {
-        Destroy(deviceD3D12.GetAllocationCallbacks(), impl);
-        videoSession = nullptr;
-    } else
-        videoSession = (VideoSession*)impl;
-
-    return result;
+    return ((DeviceD3D12&)device).CreateImplementation<VideoSessionD3D12>(videoSession, videoSessionDesc);
 }
 
 static void NRI_CALL DestroyVideoSession(VideoSession* videoSession) {
     Destroy((VideoSessionD3D12*)videoSession);
 }
 
+static void NRI_CALL ResetVideoSession(VideoSession&) {
+}
+
 static Result NRI_CALL CreateVideoSessionParameters(Device& device, const VideoSessionParametersDesc& videoSessionParametersDesc, VideoSessionParameters*& videoSessionParameters) {
-    DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
-    VideoSessionParametersD3D12* impl = Allocate<VideoSessionParametersD3D12>(deviceD3D12.GetAllocationCallbacks(), deviceD3D12);
-    Result result = impl->Create(videoSessionParametersDesc);
-
-    if (result != Result::SUCCESS) {
-        Destroy(impl);
-        videoSessionParameters = nullptr;
-    } else
-        videoSessionParameters = (VideoSessionParameters*)impl;
-
-    return result;
+    return ((DeviceD3D12&)device).CreateImplementation<VideoSessionParametersD3D12>(videoSessionParameters, videoSessionParametersDesc);
 }
 
 static void NRI_CALL DestroyVideoSessionParameters(VideoSessionParameters* videoSessionParameters) {
@@ -1290,17 +1273,7 @@ static void NRI_CALL DestroyVideoSessionParameters(VideoSessionParameters* video
 }
 
 static Result NRI_CALL CreateVideoPicture(Device& device, const VideoPictureDesc& videoPictureDesc, VideoPicture*& videoPicture) {
-    DeviceD3D12& deviceD3D12 = (DeviceD3D12&)device;
-    VideoPictureD3D12* impl = Allocate<VideoPictureD3D12>(deviceD3D12.GetAllocationCallbacks(), deviceD3D12);
-    Result result = impl->Create(videoPictureDesc);
-
-    if (result != Result::SUCCESS) {
-        Destroy(impl);
-        videoPicture = nullptr;
-    } else
-        videoPicture = (VideoPicture*)impl;
-
-    return result;
+    return ((DeviceD3D12&)device).CreateImplementation<VideoPictureD3D12>(videoPicture, videoPictureDesc);
 }
 
 static void NRI_CALL DestroyVideoPicture(VideoPicture* videoPicture) {
@@ -1385,80 +1358,6 @@ static Result NRI_CALL GetVideoEncodeFeedback(VideoSession&, Buffer& resolvedMet
 #endif
 }
 
-struct VideoEncodeAV1TilesLayoutD3D12 {
-    uint64_t rowCount;
-    uint64_t colCount;
-    std::array<uint64_t, 64> rowHeights;
-    std::array<uint64_t, 64> colWidths;
-    uint64_t contextUpdateTileId;
-};
-
-struct VideoEncodeAV1LoopFilterConfigD3D12 {
-    std::array<uint64_t, 2> level;
-    uint64_t levelU;
-    uint64_t levelV;
-    uint64_t sharpness;
-    uint64_t deltaEnabled;
-    uint64_t updateRefDelta;
-    std::array<int64_t, 8> refDeltas;
-    uint64_t updateModeDelta;
-    std::array<int64_t, 2> modeDeltas;
-};
-
-struct VideoEncodeAV1LoopFilterDeltaConfigD3D12 {
-    uint64_t deltaLfPresent;
-    uint64_t deltaLfMulti;
-    uint64_t deltaLfRes;
-};
-
-struct VideoEncodeAV1QuantizationConfigD3D12 {
-    uint64_t baseQIndex;
-    int64_t yDcDeltaQ;
-    int64_t uDcDeltaQ;
-    int64_t uAcDeltaQ;
-    int64_t vDcDeltaQ;
-    int64_t vAcDeltaQ;
-    uint64_t usingQMatrix;
-    uint64_t qmY;
-    uint64_t qmU;
-    uint64_t qmV;
-};
-
-struct VideoEncodeAV1QuantizationDeltaConfigD3D12 {
-    uint64_t deltaQPresent;
-    uint64_t deltaQRes;
-};
-
-struct VideoEncodeAV1CdefConfigD3D12 {
-    uint64_t cdefBits;
-    uint64_t cdefDampingMinus3;
-    std::array<uint64_t, 8> yPrimaryStrength;
-    std::array<uint64_t, 8> uvPrimaryStrength;
-    std::array<uint64_t, 8> ySecondaryStrength;
-    std::array<uint64_t, 8> uvSecondaryStrength;
-};
-
-struct VideoEncodeAV1SegmentationConfigD3D12 {
-    uint64_t enabled;
-    uint64_t updateMap;
-    uint64_t updateData;
-    uint64_t temporalUpdate;
-    std::array<uint64_t, 8> enabledFeatures;
-    std::array<std::array<int64_t, 8>, 8> featureValues;
-};
-
-struct VideoEncodeAV1PostEncodeValuesD3D12 {
-    uint64_t compoundPredictionType;
-    VideoEncodeAV1LoopFilterConfigD3D12 loopFilter;
-    VideoEncodeAV1LoopFilterDeltaConfigD3D12 loopFilterDelta;
-    VideoEncodeAV1QuantizationConfigD3D12 quantization;
-    VideoEncodeAV1QuantizationDeltaConfigD3D12 quantizationDelta;
-    VideoEncodeAV1CdefConfigD3D12 cdef;
-    VideoEncodeAV1SegmentationConfigD3D12 segmentation;
-    uint64_t primaryRefFrame;
-    std::array<uint64_t, 7> referenceIndices;
-};
-
 static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolvedMetadataReadback, uint64_t resolvedMetadataOffset, const VideoAV1EncodeDecodeInfoDesc& desc, VideoAV1EncodeDecodeInfo& info) {
     info = {};
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
@@ -1473,10 +1372,12 @@ static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolv
 
     constexpr uint64_t requiredMetadataSize = sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA) + sizeof(D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA) + sizeof(VideoEncodeAV1TilesLayoutD3D12) + sizeof(VideoEncodeAV1PostEncodeValuesD3D12);
     BufferD3D12& resolvedMetadataReadbackD3D12 = (BufferD3D12&)resolvedMetadataReadback;
+
     if (!IsVideoEncodeResolvedMetadataRangeValidD3D12(resolvedMetadataReadbackD3D12.GetDesc().size, resolvedMetadataOffset, requiredMetadataSize))
         return Result::INVALID_ARGUMENT;
 
     const void* metadata = resolvedMetadataReadbackD3D12.Map(resolvedMetadataOffset);
+
     if (!metadata)
         return Result::FAILURE;
 
@@ -1488,10 +1389,12 @@ static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolv
 
     if (output.EncodeErrorFlags || output.WrittenSubregionsCount != 1 || subregion.bSize <= subregion.bStartOffset)
         return Result::FAILURE;
-    if (tilesLayout.colCount != 1 || tilesLayout.rowCount != 1)
+
+    if (tilesLayout.ColCount != 1 || tilesLayout.RowCount != 1)
         return Result::FAILURE;
 
     const uint64_t tilePayloadSize = subregion.bSize - subregion.bStartOffset;
+
     if (tilePayloadSize > std::numeric_limits<uint32_t>::max())
         return Result::FAILURE;
 
@@ -1501,34 +1404,34 @@ static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolv
     const uint32_t height = info.sequence.maxFrameHeightMinus1 + 1;
     video_av1::BindPointers(info);
     video_av1::FillSingleTileLayout(info, width, height);
-    info.tileLayout.contextUpdateTileId = (uint16_t)tilesLayout.contextUpdateTileId;
+    info.tileLayout.contextUpdateTileId = (uint16_t)tilesLayout.ContextUpdateTileId;
 
     info.bitstreamOffset = subregion.bStartOffset;
     info.bitstreamSize = tilePayloadSize;
     info.tiles[0] = {0, (uint32_t)tilePayloadSize, 0, 0, 0xFF};
 
-    info.quantization.deltaQYDc = (int8_t)post.quantization.yDcDeltaQ;
-    info.quantization.deltaQUDc = (int8_t)post.quantization.uDcDeltaQ;
-    info.quantization.deltaQUAc = (int8_t)post.quantization.uAcDeltaQ;
-    info.quantization.deltaQVDc = (int8_t)post.quantization.vDcDeltaQ;
-    info.quantization.deltaQVAc = (int8_t)post.quantization.vAcDeltaQ;
-    info.quantization.usingQmatrix = (uint8_t)post.quantization.usingQMatrix;
-    info.quantization.qmY = (uint8_t)post.quantization.qmY;
-    info.quantization.qmU = (uint8_t)post.quantization.qmU;
-    info.quantization.qmV = (uint8_t)post.quantization.qmV;
+    info.quantization.deltaQYDc = (int8_t)post.Quantization.YDCDeltaQ;
+    info.quantization.deltaQUDc = (int8_t)post.Quantization.UDCDeltaQ;
+    info.quantization.deltaQUAc = (int8_t)post.Quantization.UACDeltaQ;
+    info.quantization.deltaQVDc = (int8_t)post.Quantization.VDCDeltaQ;
+    info.quantization.deltaQVAc = (int8_t)post.Quantization.VACDeltaQ;
+    info.quantization.usingQmatrix = (uint8_t)post.Quantization.UsingQMatrix;
+    info.quantization.qmY = (uint8_t)post.Quantization.QMY;
+    info.quantization.qmU = (uint8_t)post.Quantization.QMU;
+    info.quantization.qmV = (uint8_t)post.Quantization.QMV;
 
-    info.loopFilter.level[0] = (uint8_t)post.loopFilter.level[0];
-    info.loopFilter.level[1] = (uint8_t)post.loopFilter.level[1];
-    info.loopFilter.level[2] = (uint8_t)post.loopFilter.levelU;
-    info.loopFilter.level[3] = (uint8_t)post.loopFilter.levelV;
-    info.loopFilter.sharpness = (uint8_t)post.loopFilter.sharpness;
-    info.loopFilter.deltaEnabled = (uint8_t)post.loopFilter.deltaEnabled;
-    info.loopFilter.deltaUpdate = (uint8_t)post.loopFilter.updateRefDelta;
-    info.loopFilter.updateModeDelta = (uint8_t)post.loopFilter.updateModeDelta;
+    info.loopFilter.level[0] = (uint8_t)post.LoopFilter.LoopFilterLevel[0];
+    info.loopFilter.level[1] = (uint8_t)post.LoopFilter.LoopFilterLevel[1];
+    info.loopFilter.level[2] = (uint8_t)post.LoopFilter.LoopFilterLevelU;
+    info.loopFilter.level[3] = (uint8_t)post.LoopFilter.LoopFilterLevelV;
+    info.loopFilter.sharpness = (uint8_t)post.LoopFilter.LoopFilterSharpnessLevel;
+    info.loopFilter.deltaEnabled = (uint8_t)post.LoopFilter.LoopFilterDeltaEnabled;
+    info.loopFilter.deltaUpdate = (uint8_t)post.LoopFilter.UpdateRefDelta;
+    info.loopFilter.updateModeDelta = (uint8_t)post.LoopFilter.UpdateModeDelta;
     for (uint32_t i = 0; i < 8; i++)
-        info.loopFilter.refDeltas[i] = (int8_t)post.loopFilter.refDeltas[i];
+        info.loopFilter.refDeltas[i] = (int8_t)post.LoopFilter.RefDeltas[i];
     for (uint32_t i = 0; i < 2; i++)
-        info.loopFilter.modeDeltas[i] = (int8_t)post.loopFilter.modeDeltas[i];
+        info.loopFilter.modeDeltas[i] = (int8_t)post.LoopFilter.ModeDeltas[i];
 
     info.picture.frameType = VideoEncodeFrameType::IDR;
     info.picture.orderHint = 0;
@@ -1536,60 +1439,74 @@ static Result NRI_CALL GetVideoEncodeAV1DecodeInfo(VideoSession&, Buffer& resolv
     info.picture.primaryReferenceName = VideoAV1ReferenceName::NONE;
     info.picture.currentFrameId = 0;
     info.picture.flags = VideoAV1PictureBits::ERROR_RESILIENT_MODE | VideoAV1PictureBits::FORCE_INTEGER_MV | VideoAV1PictureBits::SHOW_FRAME;
+
     if (desc.referenceNum) {
         std::array<uint8_t, 7> refFrameIndices = {};
+
         for (uint32_t i = 0; i < refFrameIndices.size(); i++) {
-            if (post.referenceIndices[i] > std::numeric_limits<uint8_t>::max())
+            if (post.ReferenceIndices[i] > std::numeric_limits<uint8_t>::max())
                 return Result::FAILURE;
 
-            refFrameIndices[i] = (uint8_t)post.referenceIndices[i];
+            refFrameIndices[i] = (uint8_t)post.ReferenceIndices[i];
         }
-        if (post.primaryRefFrame > 7 || !video_av1::BuildInterFrameReferences(desc, refFrameIndices, info))
+
+        if (post.PrimaryRefFrame > 7 || !video_av1::BuildInterFrameReferences(desc, refFrameIndices, info))
             return Result::FAILURE;
 
         info.picture.frameType = VideoEncodeFrameType::P;
         info.picture.refreshFrameFlags = 0;
-        info.picture.primaryReferenceName = video_av1::GetReferenceNameFromReferenceIndex((uint32_t)post.primaryRefFrame);
+        info.picture.primaryReferenceName = video_av1::GetReferenceNameFromReferenceIndex((uint32_t)post.PrimaryRefFrame);
         info.picture.flags = VideoAV1PictureBits::SHOW_FRAME;
     }
-    if (post.quantizationDelta.deltaQPresent) {
+
+    if (post.QuantizationDelta.DeltaQPresent) {
         info.picture.flags |= VideoAV1PictureBits::DELTA_Q_PRESENT;
-        info.picture.deltaQRes = (uint8_t)post.quantizationDelta.deltaQRes;
+        info.picture.deltaQRes = (uint8_t)post.QuantizationDelta.DeltaQRes;
     }
-    if (post.loopFilterDelta.deltaLfPresent) {
+
+    if (post.LoopFilterDelta.DeltaLFPresent) {
         info.picture.flags |= VideoAV1PictureBits::DELTA_LF_PRESENT;
-        info.picture.deltaLfRes = (uint8_t)post.loopFilterDelta.deltaLfRes;
+        info.picture.deltaLfRes = (uint8_t)post.LoopFilterDelta.DeltaLFRes;
     }
-    if (post.loopFilterDelta.deltaLfMulti)
+
+    if (post.LoopFilterDelta.DeltaLFMulti)
         info.picture.flags |= VideoAV1PictureBits::DELTA_LF_MULTI;
-    if (post.segmentation.enabled) {
+
+    if (post.SegmentationConfig.NumSegments) {
         info.picture.flags |= VideoAV1PictureBits::SEGMENTATION_ENABLED;
-        if (post.segmentation.updateMap)
+
+        if (post.SegmentationConfig.UpdateMap)
             info.picture.flags |= VideoAV1PictureBits::SEGMENTATION_UPDATE_MAP;
-        if (post.segmentation.updateData)
+
+        if (post.SegmentationConfig.UpdateData)
             info.picture.flags |= VideoAV1PictureBits::SEGMENTATION_UPDATE_DATA;
-        if (post.segmentation.temporalUpdate)
+
+        if (post.SegmentationConfig.TemporalUpdate)
             info.picture.flags |= VideoAV1PictureBits::SEGMENTATION_TEMPORAL_UPDATE;
+
         info.picture.segmentation = &info.segmentation;
+
         for (uint32_t i = 0; i < 8; i++) {
-            info.segmentation.featureEnabled[i] = (uint8_t)post.segmentation.enabledFeatures[i];
+            info.segmentation.featureEnabled[i] = (uint8_t)post.SegmentationConfig.SegmentsData[i].EnabledFeatures;
+
             for (uint32_t j = 0; j < 8; j++)
-                info.segmentation.featureData[i][j] = (int16_t)post.segmentation.featureValues[i][j];
+                info.segmentation.featureData[i][j] = (int16_t)post.SegmentationConfig.SegmentsData[i].FeatureValue[j];
         }
     }
     info.picture.renderWidthMinus1 = (uint16_t)(width - 1);
     info.picture.renderHeightMinus1 = (uint16_t)(height - 1);
-    info.picture.baseQIndex = (uint8_t)post.quantization.baseQIndex;
+    info.picture.baseQIndex = (uint8_t)post.Quantization.BaseQIndex;
     info.picture.interpolationFilter = video_av1::INTERPOLATION_FILTER_EIGHTTAP;
     info.picture.txMode = video_av1::TX_MODE_SELECT;
-    info.picture.cdefDampingMinus3 = (uint8_t)post.cdef.cdefDampingMinus3;
-    info.picture.cdefBits = (uint8_t)post.cdef.cdefBits;
+    info.picture.cdefDampingMinus3 = (uint8_t)post.CDEF.CdefDampingMinus3;
+    info.picture.cdefBits = (uint8_t)post.CDEF.CdefBits;
     info.picture.tileNum = 1;
+
     for (uint32_t i = 0; i < 8; i++) {
-        info.cdef.yPrimaryStrength[i] = (uint8_t)post.cdef.yPrimaryStrength[i];
-        info.cdef.ySecondaryStrength[i] = (uint8_t)post.cdef.ySecondaryStrength[i];
-        info.cdef.uvPrimaryStrength[i] = (uint8_t)post.cdef.uvPrimaryStrength[i];
-        info.cdef.uvSecondaryStrength[i] = (uint8_t)post.cdef.uvSecondaryStrength[i];
+        info.cdef.yPrimaryStrength[i] = (uint8_t)post.CDEF.CdefYPriStrength[i];
+        info.cdef.ySecondaryStrength[i] = (uint8_t)post.CDEF.CdefYSecStrength[i];
+        info.cdef.uvPrimaryStrength[i] = (uint8_t)post.CDEF.CdefUVPriStrength[i];
+        info.cdef.uvSecondaryStrength[i] = (uint8_t)post.CDEF.CdefUVSecStrength[i];
     }
     video_av1::FillIdentityGlobalMotion(info.globalMotion);
     video_av1::BindPointers(info);
@@ -1610,6 +1527,7 @@ Result DeviceD3D12::FillFunctionTable(VideoInterface& table) const {
     table.GetVideoAV1Capabilities = ::GetVideoAV1Capabilities;
     table.CreateVideoSession = ::CreateVideoSession;
     table.DestroyVideoSession = ::DestroyVideoSession;
+    table.ResetVideoSession = ::ResetVideoSession;
     table.CreateVideoSessionParameters = ::CreateVideoSessionParameters;
     table.DestroyVideoSessionParameters = ::DestroyVideoSessionParameters;
     table.CreateVideoPicture = ::CreateVideoPicture;

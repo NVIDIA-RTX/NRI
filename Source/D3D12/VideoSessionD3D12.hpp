@@ -46,7 +46,7 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
         heapDesc.DecodeWidth = videoSessionDesc.width;
         heapDesc.DecodeHeight = videoSessionDesc.height;
         heapDesc.Format = GetDxgiFormat(videoSessionDesc.format).typed;
-        heapDesc.MaxDecodePictureBufferCount = videoSessionDesc.maxReferenceNum ? videoSessionDesc.maxReferenceNum : 1;
+        heapDesc.MaxDecodePictureBufferCount = videoSessionDesc.maxReferenceNum + 1;
 
         hr = videoDevice->CreateVideoDecoderHeap(&heapDesc, __uuidof(ID3D12VideoDecoderHeapBest), (void**)&m_Heap); // TODO-VIDEO: use "QueryLatestInterface"
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDevice::CreateVideoDecoderHeap");

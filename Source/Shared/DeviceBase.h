@@ -133,9 +133,9 @@ protected:
 template <typename T>
 inline void Destroy(T* object) {
     if (object) {
+        // FIXED BY AI: Preserve callbacks before destruction invalidates device-backed references.
+        const AllocationCallbacks allocationCallbacks = ((DeviceBase&)(object->GetDevice())).GetAllocationCallbacks();
         object->~T();
-
-        const auto& allocationCallbacks = ((DeviceBase&)(object->GetDevice())).GetAllocationCallbacks();
         allocationCallbacks.Free(allocationCallbacks.userArg, object);
     }
 }
