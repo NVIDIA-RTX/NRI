@@ -1282,8 +1282,12 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         dispatchDesc.frameTimeDelta = dispatchUpscaleDesc.settings.fsr.frameTime;
         dispatchDesc.preExposure = 1.0f;
         dispatchDesc.reset = (dispatchUpscaleDesc.flags & DispatchUpscaleBits::RESET_HISTORY) != 0;
-        dispatchDesc.cameraNear = dispatchUpscaleDesc.settings.fsr.zNear;
-        dispatchDesc.cameraFar = (m_Desc.flags & UpscalerBits::DEPTH_INFINITE) ? FLT_MAX : dispatchUpscaleDesc.settings.fsr.zFar;
+        const float zNear = dispatchUpscaleDesc.settings.fsr.zNear;
+        const float zFar = (m_Desc.flags & UpscalerBits::DEPTH_INFINITE) ? FLT_MAX : dispatchUpscaleDesc.settings.fsr.zFar;
+
+        // FFX swaps camera near and far for inverted depth
+        dispatchDesc.cameraNear = (m_Desc.flags & UpscalerBits::DEPTH_INVERTED) ? zFar : zNear;
+        dispatchDesc.cameraFar = (m_Desc.flags & UpscalerBits::DEPTH_INVERTED) ? zNear : zFar;
         dispatchDesc.cameraFovAngleVertical = dispatchUpscaleDesc.settings.fsr.verticalFov;
         dispatchDesc.viewSpaceToMetersFactor = dispatchUpscaleDesc.settings.fsr.viewSpaceToMetersFactor;
         dispatchDesc.flags = (m_Desc.flags & UpscalerBits::SRGB) ? FFX_UPSCALE_FLAG_NON_LINEAR_COLOR_SRGB : 0;
