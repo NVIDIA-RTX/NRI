@@ -20,6 +20,16 @@
 #endif
 */
 
+// FFX stuff
+
+/*
+#define NRI_FFX_DEBUG_LOG(messageType, message) \
+    do { \
+        MaybeUnused(messageType); \
+        wprintf(L"FFX: %ls\n", message); \
+    } while (false)
+*/
+
 // D3D12MA stuff
 
 /*
