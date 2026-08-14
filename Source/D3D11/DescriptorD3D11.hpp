@@ -286,7 +286,7 @@ Result DescriptorD3D11::Create(const BufferViewDesc& bufferViewDesc) {
         if (bufferViewDesc.offset != 0 && m_Device.GetVersion() == 0)
             NRI_REPORT_ERROR(&m_Device, "Constant buffers with non-zero offsets require 11.1+ feature level!");
     } else if (bufferViewDesc.type == BufferView::STRUCTURED_BUFFER || bufferViewDesc.type == BufferView::STORAGE_STRUCTURED_BUFFER) {
-        if (structureStride != bufferDesc.structureStride || structureStride == 4) {
+        if (bufferDesc.byteAddress) {
             // D3D11 requires "structureStride" passed during creation, but we violate the spec and treat "structured" buffers as "raw" to allow multiple views creation for a single buffer // TODO: this may not work on some HW!
             patchedFormat = Format::R32_UINT;
             isRaw = true;

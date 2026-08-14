@@ -690,17 +690,14 @@ NriStruct(TextureDesc) {
 };
 
 // - VK: buffers are always created with sharing mode "CONCURRENT" to match D3D12 spec
-// - "structureStride" values:
-//   - 0  - allows only "typed" views
-//          WGPU: typed buffer views are unsupported
-//   - 4  - allows "typed", "byte address" and "structured" views
-//          D3D11: allows to create multiple "structured" views for a single resource, disobeying the spec
-//   - >4 - allows only "structured" views
-//          D3D11: locks this buffer to a single "structured" layout
+// - D3D11: "structureStride != 0" locks this buffer to a single "STRUCTURED" layout, unless "byteAddress" is set to "true"
+// - D3D11: "byteAddress = true" allows to create multiple "STRUCTURED" views for a single resource by treating a "STRUCTURED" view as "BYTE_ADDRESS" (spec violation)
+// - WGPU: typed buffer views are unsupported (i.e. "structureStride = 0" and "byteAddress = false")
 NriStruct(BufferDesc) {
     uint64_t size;
-    uint32_t structureStride;
+    uint32_t structureStride;   // enable "STRUCTURED" views
     Nri(BufferUsageBits) usage;
+    bool byteAddress;           // enable "BYTE_ADDRESS" views
 };
 
 #pragma endregion
