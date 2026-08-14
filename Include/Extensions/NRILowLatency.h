@@ -44,12 +44,12 @@ NriStruct(LatencyReport) {          // The time stamp written:
 };
 
 // Multi-swapchain is supported only by VK
-// "QueueSubmitDesc::swapChain" must be used to associate work submission with a low latency swap chain
-// Threadsafe: no
+// "presentId" must be non-zero and match the value passed to "QueueSubmit" and "QueuePresent" for the frame
+// Threadsafe: yes
 NriStruct(LowLatencyInterface) {
     Nri(Result)     (NRI_CALL   *SetLatencySleepMode)   (NriRef(SwapChain) swapChain, const NriRef(LatencySleepMode) latencySleepMode);
-    Nri(Result)     (NRI_CALL   *SetLatencyMarker)      (NriRef(SwapChain) swapChain, Nri(LatencyMarker) latencyMarker);
-    Nri(Result)     (NRI_CALL   *LatencySleep)          (NriRef(SwapChain) swapChain); // call once before "INPUT_SAMPLE"
+    Nri(Result)     (NRI_CALL   *SetLatencyMarker)      (NriRef(SwapChain) swapChain, uint64_t presentId, Nri(LatencyMarker) latencyMarker);
+    Nri(Result)     (NRI_CALL   *LatencySleep)          (NriRef(SwapChain) swapChain, uint64_t presentId); // call once before "INPUT_SAMPLE"
     Nri(Result)     (NRI_CALL   *GetLatencyReport)      (const NriRef(SwapChain) swapChain, NriOut NriRef(LatencyReport) latencyReport);
 };
 

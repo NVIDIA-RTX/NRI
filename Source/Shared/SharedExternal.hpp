@@ -935,8 +935,3 @@ void nri::ConvertWcharToChar(const wchar_t* in, char* out, size_t outLength) {
 
     *out = 0;
 }
-
-uint64_t nri::GetSwapChainId() {
-    static uint64_t id = 0;
-    return id++ << PRESENT_INDEX_BIT_NUM;
-}

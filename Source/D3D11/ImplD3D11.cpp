@@ -1023,12 +1023,12 @@ static Result NRI_CALL SetLatencySleepMode(SwapChain& swapChain, const LatencySl
     return ((SwapChainD3D11&)swapChain).SetLatencySleepMode(latencySleepMode);
 }
 
-static Result NRI_CALL SetLatencyMarker(SwapChain& swapChain, LatencyMarker latencyMarker) {
-    return ((SwapChainD3D11&)swapChain).SetLatencyMarker(latencyMarker);
+static Result NRI_CALL SetLatencyMarker(SwapChain& swapChain, uint64_t presentId, LatencyMarker latencyMarker) {
+    return ((SwapChainD3D11&)swapChain).SetLatencyMarker(presentId, latencyMarker);
 }
 
-static Result NRI_CALL LatencySleep(SwapChain& swapChain) {
-    return ((SwapChainD3D11&)swapChain).LatencySleep();
+static Result NRI_CALL LatencySleep(SwapChain& swapChain, uint64_t presentId) {
+    return ((SwapChainD3D11&)swapChain).LatencySleep(presentId);
 }
 
 static Result NRI_CALL GetLatencyReport(const SwapChain& swapChain, LatencyReport& latencyReport) {
@@ -1132,12 +1132,12 @@ static Result NRI_CALL AcquireNextTexture(SwapChain& swapChain, Fence&, uint32_t
     return ((SwapChainD3D11&)swapChain).AcquireNextTexture(textureIndex);
 }
 
-static Result NRI_CALL WaitForPresent(SwapChain& swapChain) {
-    return ((SwapChainD3D11&)swapChain).WaitForPresent();
+static Result NRI_CALL WaitForPresent(SwapChain& swapChain, uint64_t presentId) {
+    return ((SwapChainD3D11&)swapChain).WaitForPresent(presentId);
 }
 
-static Result NRI_CALL QueuePresent(SwapChain& swapChain, Fence&) {
-    return ((SwapChainD3D11&)swapChain).Present();
+static Result NRI_CALL QueuePresent(SwapChain& swapChain, Fence&, uint64_t presentId) {
+    return ((SwapChainD3D11&)swapChain).Present(presentId);
 }
 
 Result DeviceD3D11::FillFunctionTable(SwapChainInterface& table) const {

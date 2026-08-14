@@ -20,6 +20,8 @@ NRI_INLINE void QueueVal::GetCalibratedTimestamps(uint64_t& timestampGPU, uint64
 }
 
 NRI_INLINE Result QueueVal::Submit(const QueueSubmitDesc& queueSubmitDesc) {
+    NRI_RETURN_ON_FAILURE(&m_Device, !queueSubmitDesc.swapChain || queueSubmitDesc.presentId != 0, Result::INVALID_ARGUMENT, "'presentId' is 0");
+
     auto queueSubmitDescImpl = queueSubmitDesc;
 
     Scratch<FenceSubmitDesc> waitFences = NRI_ALLOCATE_SCRATCH(m_Device, FenceSubmitDesc, queueSubmitDesc.waitFenceNum);
