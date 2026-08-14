@@ -281,17 +281,17 @@ bool nri::GetBufferDesc(const BufferD3D11Desc& bufferD3D11Desc, BufferDesc& buff
     bufferDesc.structureStride = desc.StructureByteStride;
 
     if (desc.BindFlags & D3D11_BIND_VERTEX_BUFFER)
-        bufferDesc.usage |= BufferUsageBits::VERTEX_BUFFER;
+        bufferDesc.usage |= BufferUsageBits::VERTEX;
     if (desc.BindFlags & D3D11_BIND_INDEX_BUFFER)
-        bufferDesc.usage |= BufferUsageBits::INDEX_BUFFER;
+        bufferDesc.usage |= BufferUsageBits::INDEX;
     if (desc.BindFlags & D3D11_BIND_CONSTANT_BUFFER)
-        bufferDesc.usage |= BufferUsageBits::CONSTANT_BUFFER;
+        bufferDesc.usage |= BufferUsageBits::CONSTANT;
     if (desc.BindFlags & D3D11_BIND_SHADER_RESOURCE)
         bufferDesc.usage |= BufferUsageBits::SHADER_RESOURCE;
     if (desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS)
         bufferDesc.usage |= BufferUsageBits::SHADER_RESOURCE_STORAGE;
     if (desc.MiscFlags & D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS)
-        bufferDesc.usage |= BufferUsageBits::ARGUMENT_BUFFER;
+        bufferDesc.usage |= BufferUsageBits::ARGUMENT;
 
     return true;
 }

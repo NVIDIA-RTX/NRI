@@ -23,16 +23,16 @@ static constexpr VkBufferUsageFlags GetBufferUsageFlags(const BufferDesc& buffer
     if (isDeviceAddressSupported)
         flags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
-    if (bufferDesc.usage & BufferUsageBits::VERTEX_BUFFER)
+    if (bufferDesc.usage & BufferUsageBits::VERTEX)
         flags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
-    if (bufferDesc.usage & BufferUsageBits::INDEX_BUFFER)
+    if (bufferDesc.usage & BufferUsageBits::INDEX)
         flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
-    if (bufferDesc.usage & BufferUsageBits::CONSTANT_BUFFER)
+    if (bufferDesc.usage & BufferUsageBits::CONSTANT)
         flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
-    if (bufferDesc.usage & BufferUsageBits::ARGUMENT_BUFFER)
+    if (bufferDesc.usage & BufferUsageBits::ARGUMENT)
         flags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
 
     bool isSSBO = bufferDesc.structureStride != 0 || bufferDesc.byteAddress; // so called SSBO, can be R/W in shaders

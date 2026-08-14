@@ -631,7 +631,7 @@ void DeviceD3D11::InitializeAmdExt(AGSContext* agsContext, bool isImported) {
 }
 
 void DeviceD3D11::GetMemoryDesc(const BufferDesc& bufferDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {
-    const bool isConstantBuffer = (bufferDesc.usage & BufferUsageBits::CONSTANT_BUFFER) == (uint32_t)BufferUsageBits::CONSTANT_BUFFER;
+    const bool isConstantBuffer = (bufferDesc.usage & BufferUsageBits::CONSTANT) == (uint32_t)BufferUsageBits::CONSTANT;
 
     uint32_t alignment = 65536;
     if (isConstantBuffer)

@@ -3,15 +3,15 @@
 static inline bool IsAccessMaskSupported(const BufferDesc& bufferDesc, AccessBits accessMask) {
     bool isSupported = true;
     if (accessMask & AccessBits::INDEX_BUFFER)
-        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::INDEX_BUFFER) != 0;
+        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::INDEX) != 0;
     if (accessMask & AccessBits::VERTEX_BUFFER)
-        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::VERTEX_BUFFER) != 0;
+        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::VERTEX) != 0;
     if (accessMask & AccessBits::CONSTANT_BUFFER)
-        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::CONSTANT_BUFFER) != 0;
+        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::CONSTANT) != 0;
     if (accessMask & AccessBits::ARGUMENT_BUFFER)
-        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::ARGUMENT_BUFFER) != 0;
+        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::ARGUMENT) != 0;
     if (accessMask & AccessBits::SCRATCH_BUFFER)
-        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::SCRATCH_BUFFER) != 0;
+        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::SCRATCH) != 0;
     if (accessMask & (AccessBits::COLOR_ATTACHMENT | AccessBits::DEPTH_STENCIL_ATTACHMENT | AccessBits::SHADING_RATE_ATTACHMENT | AccessBits::INPUT_ATTACHMENT))
         isSupported = false;
     if (accessMask & AccessBits::ACCELERATION_STRUCTURE)

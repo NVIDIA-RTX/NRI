@@ -663,11 +663,11 @@ NriBits(BufferUsageBits, uint16_t,                  // Min compatible access:   
     NONE                                = 0,
     SHADER_RESOURCE                     = NriBit(0),    // SHADER_RESOURCE                          Read-only shader resource view (SRV)
     SHADER_RESOURCE_STORAGE             = NriBit(1),    // SHADER_RESOURCE_STORAGE                  Read/write shader resource view (UAV)
-    VERTEX_BUFFER                       = NriBit(2),    // VERTEX_BUFFER                            Vertex buffer
-    INDEX_BUFFER                        = NriBit(3),    // INDEX_BUFFER                             Index buffer
-    CONSTANT_BUFFER                     = NriBit(4),    // CONSTANT_BUFFER                          Constant buffer (D3D11: can't be combined with other usages)
-    ARGUMENT_BUFFER                     = NriBit(5),    // ARGUMENT_BUFFER                          Argument buffer in "Indirect" commands
-    SCRATCH_BUFFER                      = NriBit(6),    // SCRATCH_BUFFER                           Scratch buffer in "CmdBuild*" commands
+    VERTEX                              = NriBit(2),    // VERTEX_BUFFER                            Vertex buffer
+    INDEX                               = NriBit(3),    // INDEX_BUFFER                             Index buffer
+    CONSTANT                            = NriBit(4),    // CONSTANT_BUFFER                          Constant buffer (D3D11: can't be combined with other usages)
+    ARGUMENT                            = NriBit(5),    // ARGUMENT_BUFFER                          Argument buffer in "Indirect" commands
+    SCRATCH                             = NriBit(6),    // SCRATCH_BUFFER                           Scratch buffer in "CmdBuild*" commands
     SHADER_BINDING_TABLE                = NriBit(7),    // SHADER_BINDING_TABLE                     Shader binding table (SBT) in "CmdDispatchRays*" commands
     ACCELERATION_STRUCTURE_BUILD_INPUT  = NriBit(8),    // SHADER_RESOURCE                          Read-only input in "CmdBuildAccelerationStructures" command
     ACCELERATION_STRUCTURE_STORAGE      = NriBit(9),    // ACCELERATION_STRUCTURE_READ/WRITE        (INTERNAL) acceleration structure storage

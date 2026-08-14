@@ -436,7 +436,7 @@ bool nri::GetBufferDesc(const BufferD3D12Desc& bufferD3D12Desc, BufferDesc& buff
     bufferDesc.structureStride = bufferD3D12Desc.structureStride;
 
     // There are almost no restrictions on usages in D3D12
-    bufferDesc.usage = BufferUsageBits::VERTEX_BUFFER | BufferUsageBits::INDEX_BUFFER | BufferUsageBits::CONSTANT_BUFFER | BufferUsageBits::ARGUMENT_BUFFER | BufferUsageBits::ACCELERATION_STRUCTURE_BUILD_INPUT;
+    bufferDesc.usage = BufferUsageBits::VERTEX | BufferUsageBits::INDEX | BufferUsageBits::CONSTANT | BufferUsageBits::ARGUMENT | BufferUsageBits::ACCELERATION_STRUCTURE_BUILD_INPUT;
 
     if (!(desc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE))
         bufferDesc.usage |= BufferUsageBits::SHADER_RESOURCE;
