@@ -44,6 +44,7 @@ NriStruct(LatencyReport) {          // The time stamp written:
 };
 
 // Multi-swapchain is supported only by VK
+// "QueueSubmitDesc::swapChain" must be used to associate work submissions with a low latency swap chain
 // "presentId" must be non-zero and match the value passed to "QueueSubmit" and "QueuePresent" for the frame
 // Threadsafe: yes
 NriStruct(LowLatencyInterface) {
