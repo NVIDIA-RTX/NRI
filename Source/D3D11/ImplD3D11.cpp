@@ -673,6 +673,7 @@ static void NRI_CALL EmuCmdDrawIndexedIndirect(CommandBuffer& commandBuffer, con
 }
 
 static void NRI_CALL EmuCmdEndRendering(CommandBuffer&) {
+    ((CommandBufferEmuD3D11&)commandBuffer).EndRendering();
 }
 
 static void NRI_CALL EmuCmdDispatch(CommandBuffer& commandBuffer, const DispatchDesc& dispatchDesc) {

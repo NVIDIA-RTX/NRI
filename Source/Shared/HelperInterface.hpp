@@ -438,6 +438,8 @@ Result HelperDeviceMemoryAllocator::TryToAllocateAndBindMemory(const ResourceGro
         allocateMemoryDesc.size = heap.size;
         allocateMemoryDesc.allowMultisampleTextures = hasMultisampleTextures;
         allocateMemoryDesc.priority = resourceGroupDesc.residencyPriority;
+        allocateMemoryDesc.vma.enable = resourceGroupDesc.vma;
+        allocateMemoryDesc.vma.alignment = heap.alignment;
 
         Result result = m_iCore.AllocateMemory(m_Device, allocateMemoryDesc, memory);
         if (result != Result::SUCCESS)
@@ -592,6 +594,7 @@ void HelperDeviceMemoryAllocator::GroupByMemoryType(MemoryLocation memoryLocatio
             heap.buffers.push_back(buffer);
             heap.bufferOffsets.push_back(offset);
             heap.size = offset + memoryDesc.size;
+            heap.alignment = std::max(heap.alignment, memoryDesc.alignment);
         }
     }
 
@@ -614,28 +617,29 @@ void HelperDeviceMemoryAllocator::GroupByMemoryType(MemoryLocation memoryLocatio
             heap.textures.push_back(texture);
             heap.textureOffsets.push_back(offset);
             heap.size = offset + memoryDesc.size;
+            heap.alignment = std::max(heap.alignment, memoryDesc.alignment);
         }
     }
 }
 
 void HelperDeviceMemoryAllocator::FillMemoryBindingDescs(Buffer* const* buffers, const uint64_t* bufferOffsets, uint32_t bufferNum, Memory& memory) {
+    m_BufferBindingDescs.reserve(m_BufferBindingDescs.size() + bufferNum);
+
     for (uint32_t i = 0; i < bufferNum; i++) {
-        BindBufferMemoryDesc desc = {};
+        BindBufferMemoryDesc& desc = m_BufferBindingDescs.emplace_back();
         desc.memory = &memory;
         desc.buffer = buffers[i];
         desc.offset = bufferOffsets[i];
-
-        m_BufferBindingDescs.push_back(desc);
     }
 }
 
 void HelperDeviceMemoryAllocator::FillMemoryBindingDescs(Texture* const* textures, const uint64_t* textureOffsets, uint32_t textureNum, Memory& memory) {
+    m_TextureBindingDescs.reserve(m_TextureBindingDescs.size() + textureNum);
+
     for (uint32_t i = 0; i < textureNum; i++) {
-        BindTextureMemoryDesc desc = {};
+        BindTextureMemoryDesc& desc = m_TextureBindingDescs.emplace_back();
         desc.memory = &memory;
         desc.texture = textures[i];
         desc.offset = textureOffsets[i];
-
-        m_TextureBindingDescs.push_back(desc);
     }
 }
