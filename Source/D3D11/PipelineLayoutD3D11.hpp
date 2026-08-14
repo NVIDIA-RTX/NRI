@@ -285,15 +285,17 @@ void PipelineLayoutD3D11::SetDescriptorSet(BindPoint bindPoint, BindingState& cu
     // UAVs are visible from any stage on DX11.1, but can be bound only to OM or CS
     if (isStorageRebindNeededInGraphics) {
         // Find last "non NULL" slot
-        size_t i = currentBindingState.graphicsStorageDescriptors.size() - 1;
-        for (; i >= 0; i--) {
-            if (currentBindingState.graphicsStorageDescriptors[i])
+        size_t num = 0;
+        for (size_t i = currentBindingState.graphicsStorageDescriptors.size(); i > 0; i--) {
+            if (currentBindingState.graphicsStorageDescriptors[i - 1]) {
+                num = i;
                 break;
+            }
         }
 
-        uint32_t num = (uint32_t)(i + 1);
-        ID3D11UnorderedAccessView** storages = currentBindingState.graphicsStorageDescriptors.data();
-
-        deferredContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, 0, num, storages, nullptr);
+        if (num != 0) {
+            ID3D11UnorderedAccessView** storages = currentBindingState.graphicsStorageDescriptors.data();
+            deferredContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, 0, (uint32_t)num, storages, nullptr);
+        }
     }
 }
