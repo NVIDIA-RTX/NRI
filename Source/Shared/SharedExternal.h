@@ -85,6 +85,15 @@ typedef uint32_t DXGI_FORMAT;
 #    define NRI_INLINE inline
 #endif
 
+// FFX default settings (if not provided in "NRIConfig.h")
+#ifndef NRI_FFX_DEBUG_LOG
+#    define NRI_FFX_DEBUG_LOG(messageType, message) \
+        do { \
+            MaybeUnused(messageType); \
+            wprintf(L"FFX: %ls\n", message); \
+        } while (false)
+#endif
+
 // D3D12MA default settings (if not provided in "NRIConfig.h")
 #ifndef D3D12MA_DEBUG_LOG
 #    define D3D12MA_DEBUG_LOG(format, ...) \

@@ -283,11 +283,8 @@ static void FfxDealloc(void* pUserData, void* pMem) {
 
 #    ifndef NDEBUG
 
-static void FfxDebugMessage(uint32_t, const wchar_t* message) {
-    char s[1024];
-    ConvertWcharToChar(message, s, sizeof(s));
-
-    printf("FFX: %s\n", s);
+static void FfxDebugMessage(uint32_t messageType, const wchar_t* message) {
+    NRI_FFX_DEBUG_LOG(messageType, message);
 }
 
 #    endif
