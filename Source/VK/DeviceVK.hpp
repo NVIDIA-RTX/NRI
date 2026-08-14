@@ -36,7 +36,7 @@ static constexpr VkBufferUsageFlags GetBufferUsageFlags(const BufferDesc& buffer
         flags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
 
     bool isSSBO = bufferDesc.structureStride != 0 || bufferDesc.byteAddress; // so called SSBO, can be R/W in shaders
-    if ((bufferDesc.usage & BufferUsageBits::SCRATCH_BUFFER) || isSSBO)
+    if ((bufferDesc.usage & BufferUsageBits::SCRATCH) || isSSBO)
         flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
     if (bufferDesc.usage & BufferUsageBits::SHADER_BINDING_TABLE)

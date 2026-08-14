@@ -672,7 +672,7 @@ static void NRI_CALL EmuCmdDrawIndexedIndirect(CommandBuffer& commandBuffer, con
     ((CommandBufferEmuD3D11&)commandBuffer).DrawIndexedIndirect(buffer, offset, drawNum, stride, countBuffer, countBufferOffset);
 }
 
-static void NRI_CALL EmuCmdEndRendering(CommandBuffer&) {
+static void NRI_CALL EmuCmdEndRendering(CommandBuffer& commandBuffer) {
     ((CommandBufferEmuD3D11&)commandBuffer).EndRendering();
 }
 
