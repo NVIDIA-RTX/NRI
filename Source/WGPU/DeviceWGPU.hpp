@@ -180,8 +180,8 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
         requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_StorageResourceBindingArray;
     if (wgpuAdapterHasFeature(m_Adapter, (WGPUFeatureName)WGPUNativeFeature_BufferBindingArray))
         requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_BufferBindingArray;
-    if (wgpuAdapterHasFeature(m_Adapter, (WGPUFeatureName)WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing))
-        requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing;
+    if (wgpuAdapterHasFeature(m_Adapter, (WGPUFeatureName)WGPUNativeFeature_StorageTextureArrayNonUniformIndexing))
+        requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_StorageTextureArrayNonUniformIndexing;
 
     bool isTimestampQuerySupported = wgpuAdapterHasFeature(m_Adapter, WGPUFeatureName_TimestampQuery) == WGPU_TRUE;
     bool isTimestampQueryInsideEncodersSupported = wgpuAdapterHasFeature(m_Adapter, (WGPUFeatureName)WGPUNativeFeature_TimestampQueryInsideEncoders) == WGPU_TRUE;
@@ -192,12 +192,7 @@ Result DeviceWGPU::CreateInstanceAndDevice(const DeviceCreationDesc& desc) {
         requiredFeatures[requiredFeatureNum++] = (WGPUFeatureName)WGPUNativeFeature_TimestampQueryInsidePasses;
     }
 
-    WGPUNativeLimits nativeLimits = {};
-    nativeLimits.chain.sType = (WGPUSType)WGPUSType_NativeLimits;
-    nativeLimits.maxImmediateSize = 256;
-
     WGPULimits requiredLimits = WGPU_LIMITS_INIT;
-    requiredLimits.nextInChain = &nativeLimits.chain;
     requiredLimits.maxImmediateSize = 256;
 
     WGPUDeviceExtras deviceExtras = {};
