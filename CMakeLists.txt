@@ -3,6 +3,14 @@ cmake_minimum_required(VERSION 3.30)
 include(CMakeDependentOption)
 include(FetchContent)
 
+# GitHub actions?
+if("$ENV{GITHUB_ACTIONS}" STREQUAL "")
+    set(GITHUB_CI FALSE CACHE BOOL "GitHub Actions runner" FORCE)
+else()
+    set(GITHUB_CI TRUE CACHE BOOL "GitHub Actions runner" FORCE)
+    message(STATUS "Detected environment: GitHub Actions...")
+endif()
+
 # Create project
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/Include/NRI.h" ver_h)
 string(REGEX MATCH "NRI_VERSION ([0-9]*)" _ ${ver_h})
@@ -61,7 +69,7 @@ option(NRI_STREAMER_THREAD_SAFE "'NRIStreamer' thread safety (OFF is faster)" ON
 
 cmake_dependent_option(NRI_ENABLE_D3D11_SUPPORT "Enable D3D11 backend" ON "WIN32" OFF)
 cmake_dependent_option(NRI_ENABLE_D3D12_SUPPORT "Enable D3D12 backend" ON "WIN32" OFF)
-cmake_dependent_option(NRI_ENABLE_WGPU_SUPPORT "Enable WebGPU backend" OFF "WGPU_BIN_ARCHITECTURE" OFF)
+cmake_dependent_option(NRI_ENABLE_WGPU_SUPPORT "Enable WebGPU backend" ${GITHUB_CI} "WGPU_BIN_ARCHITECTURE" OFF)
 cmake_dependent_option(NRI_ENABLE_AMDAGS "Enable AMD AGS library for D3D" ON "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT); NOT IS_ARM64" OFF)
 cmake_dependent_option(NRI_ENABLE_NVAPI "Enable NVAPI library for D3D" ON "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT); NOT IS_ARM64" OFF)
 cmake_dependent_option(NRI_ENABLE_AGILITY_SDK_SUPPORT "Enable Agility SDK support to unlock access to latest D3D12 features" ON "NRI_ENABLE_D3D12_SUPPORT" OFF)
