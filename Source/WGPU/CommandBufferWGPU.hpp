@@ -1661,7 +1661,7 @@ static bool IsClearValueZero(const Color& value) {
 
 WGPUBuffer CreateTemporaryUploadBuffer(DeviceWGPU& device, uint64_t size, const void* data) {
     WGPUBufferDescriptor desc = WGPU_BUFFER_DESCRIPTOR_INIT;
-    desc.size = Align(std::max(size, 4ull), 4);
+    desc.size = Align(std::max<uint64_t>(size, 4), 4);
     desc.usage = WGPUBufferUsage_CopySrc | WGPUBufferUsage_CopyDst;
 
     WGPUBuffer buffer = wgpuDeviceCreateBuffer(device, &desc);
@@ -1895,7 +1895,7 @@ void CommandBufferWGPU::CopyQueries(const QueryPool& queryPool, uint32_t offset,
 
     if (dstBufferWGPU.IsHostReadback()) {
         WGPUBufferDescriptor desc = WGPU_BUFFER_DESCRIPTOR_INIT;
-        desc.size = Align(std::max(queryDataSize, 4ull), 4);
+        desc.size = Align(std::max<uint64_t>(queryDataSize, 4), 4);
         desc.usage = WGPUBufferUsage_QueryResolve | WGPUBufferUsage_CopySrc;
 
         WGPUBuffer resolveBuffer = wgpuDeviceCreateBuffer(m_Device, &desc);
