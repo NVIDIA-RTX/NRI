@@ -43,7 +43,11 @@ typedef uint32_t DXGI_FORMAT;
 #include "Lock.h"
 
 // NRI default settings (if not provided in "NRIConfig.h")
-#include "../NRIConfig.h"
+#ifdef NRI_USER_CONFIG
+#    include NRI_USER_CONFIG
+#else
+#    include "../NRIConfig.h"
+#endif
 
 #ifndef NRI_TIMEOUT_PRESENT
 #    define NRI_TIMEOUT_PRESENT 1000u // 1 sec
