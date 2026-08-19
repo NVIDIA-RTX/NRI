@@ -937,7 +937,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         //      "bufferOffset" must be a multiple of the texel block size
         // VUID-VkCopyBufferToImageInfo2-dstImage-07978: If "dstImage" has a depth/stencil format,
         //      "bufferOffset" must be a multiple of 4
-        // Least Common Multiple stride across all formats: 1, 2, 4, 8, 16 // TODO: rarely used "12" fucks up the beauty of power-of-2 numbers, such formats must be avoided!
+        // Least Common Multiple stride across all formats except 12-byte formats: 1, 2, 4, 8, 16
+        // Per-format copy paths additionally align to the texel block size.
         constexpr uint32_t leastCommonMultipleStrideAccrossAllFormats = 16;
 
         m_Desc.memoryAlignment.uploadBufferTextureRow = (uint32_t)limits.optimalBufferCopyRowPitchAlignment;
@@ -2346,9 +2347,12 @@ DeviceVK::HostCopyLayout DeviceVK::GetHostCopyLayout(const TextureVK& texture, c
     uint32_t rowBlockNum = (width + formatProps.blockWidth - 1) / formatProps.blockWidth;
     uint32_t rowNum = (height + formatProps.blockHeight - 1) / formatProps.blockHeight;
     uint32_t rowSize = rowBlockNum * formatProps.stride;
-    uint32_t rowPitch = Align(rowSize, GetDesc().memoryAlignment.uploadBufferTextureRow);
 
-    offset = Align(offset, (uint64_t)GetDesc().memoryAlignment.uploadBufferTextureSlice);
+    uint32_t rowPitchAlignment = std::lcm(GetDesc().memoryAlignment.uploadBufferTextureRow, formatProps.stride);
+    uint32_t rowPitch = ((rowSize + rowPitchAlignment - 1) / rowPitchAlignment) * rowPitchAlignment;
+
+    uint64_t offsetAlignment = std::lcm((uint64_t)GetDesc().memoryAlignment.uploadBufferTextureSlice, (uint64_t)formatProps.stride);
+    offset = ((offset + offsetAlignment - 1) / offsetAlignment) * offsetAlignment;
 
     HostCopyLayout layout = {};
     layout.dataLayout.offset = offset;
