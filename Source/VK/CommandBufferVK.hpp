@@ -1461,6 +1461,12 @@ static inline VkAccessFlags2 GetAccessFlags(AccessBits accessBits) {
     if (accessBits & (AccessBits::COPY_DESTINATION | AccessBits::RESOLVE_DESTINATION | AccessBits::CLEAR_STORAGE))
         flags |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
 
+    if (accessBits & AccessBits::HOST_READ)
+        flags |= VK_ACCESS_2_HOST_READ_BIT;
+
+    if (accessBits & AccessBits::HOST_WRITE)
+        flags |= VK_ACCESS_2_HOST_WRITE_BIT;
+
     return flags;
 }
 

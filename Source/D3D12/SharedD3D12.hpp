@@ -405,6 +405,7 @@ bool nri::GetTextureDesc(const TextureD3D12Desc& textureD3D12Desc, TextureDesc& 
     textureDesc.mipNum = (Dim_t)desc.MipLevels;
     textureDesc.layerNum = textureDesc.type == TextureType::TEXTURE_3D ? 1 : (Dim_t)desc.DepthOrArraySize;
     textureDesc.sampleNum = (uint8_t)desc.SampleDesc.Count;
+    textureDesc.usage = TextureUsageBits::HOST_TRANSFER;
 
     if (desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
         textureDesc.usage |= TextureUsageBits::COLOR_ATTACHMENT;

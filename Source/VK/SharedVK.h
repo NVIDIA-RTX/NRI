@@ -60,6 +60,7 @@ struct QueryPoolVK;
 struct QueueVK;
 struct SwapChainVK;
 struct TextureVK;
+struct TransferContextVK;
 
 constexpr uint32_t INVALID_FAMILY_INDEX = uint32_t(-1);
 constexpr uint32_t RENDER_PASS_UNUSED_ATTACHMENT = uint32_t(-1);

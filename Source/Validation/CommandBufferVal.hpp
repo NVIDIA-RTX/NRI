@@ -26,6 +26,8 @@ static inline bool IsAccessMaskSupported(const BufferDesc& bufferDesc, AccessBit
         isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::SHADER_RESOURCE_STORAGE) != 0;
     if (accessMask & (AccessBits::RESOLVE_SOURCE | AccessBits::RESOLVE_DESTINATION))
         isSupported = false;
+    if (accessMask & (AccessBits::HOST_READ | AccessBits::HOST_WRITE))
+        isSupported = false;
 
     return isSupported;
 }
@@ -52,6 +54,8 @@ static inline bool IsAccessMaskSupported(const TextureDesc& textureDesc, AccessB
         isSupported = isSupported && (textureDesc.usage & TextureUsageBits::INPUT_ATTACHMENT) != 0;
     if (accessMask & (AccessBits::SHADER_RESOURCE_STORAGE | AccessBits::CLEAR_STORAGE))
         isSupported = isSupported && (textureDesc.usage & TextureUsageBits::SHADER_RESOURCE_STORAGE) != 0;
+    if (accessMask & (AccessBits::HOST_READ | AccessBits::HOST_WRITE))
+        isSupported = isSupported && (textureDesc.usage & TextureUsageBits::HOST_TRANSFER) != 0;
 
     return isSupported;
 }
@@ -97,6 +101,21 @@ static bool ValidateBufferBarrierDesc(const DeviceVal& device, uint32_t i, const
     return true;
 }
 
+static bool ValidateHostTextureState(const DeviceVal& device, uint32_t i, const AccessLayoutStage& state, const char* stateName) {
+    constexpr AccessBits hostAccess = AccessBits::HOST_READ | AccessBits::HOST_WRITE;
+    if (!(state.access & hostAccess) && !(state.stages & StageBits::HOST))
+        return true;
+
+    NRI_RETURN_ON_FAILURE(&device, state.access == AccessBits::HOST_READ || state.access == AccessBits::HOST_WRITE, false,
+        "'barrierDesc.textures[%u].%s.access' must be 'AccessBits::HOST_READ' or 'AccessBits::HOST_WRITE'", i, stateName);
+    NRI_RETURN_ON_FAILURE(&device, state.layout == Layout::GENERAL, false,
+        "'barrierDesc.textures[%u].%s.layout' must be 'Layout::GENERAL' for host access", i, stateName);
+    NRI_RETURN_ON_FAILURE(&device, state.stages == StageBits::HOST, false,
+        "'barrierDesc.textures[%u].%s.stages' must be 'StageBits::HOST' for host access", i, stateName);
+
+    return true;
+}
+
 static bool ValidateTextureBarrierDesc(const DeviceVal& device, uint32_t i, const TextureBarrierDesc& textureBarrier) {
     NRI_RETURN_ON_FAILURE(&device, textureBarrier.texture, false, "'barrierDesc.textures[%u].texture' is NULL", i);
     NRI_RETURN_ON_FAILURE(&device, textureBarrier.before.layout < Layout::MAX_NUM, false, "'barrierDesc.textures[%u].before.layout' is invalid", i);
@@ -112,6 +131,8 @@ static bool ValidateTextureBarrierDesc(const DeviceVal& device, uint32_t i, cons
         "'barrierDesc.textures[%u].before.layout' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
     NRI_RETURN_ON_FAILURE(&device, IsTextureLayoutSupported(textureVal.GetDesc(), textureBarrier.after.layout), false,
         "'barrierDesc.textures[%u].after.layout' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
+    if (!ValidateHostTextureState(device, i, textureBarrier.before, "before") || !ValidateHostTextureState(device, i, textureBarrier.after, "after"))
+        return false;
     if (textureBarrier.after.layout == Layout::PRESENT) {
         NRI_RETURN_ON_FAILURE(&device, textureBarrier.after.access == AccessBits::NONE && textureBarrier.after.stages == StageBits::NONE, false,
             "'barrierDesc.textures[%u].after.layout = Layout::PRESENT' for texture ('%s') expects 'AccessBits::NONE' and 'StageBits::NONE'", i, textureVal.GetDebugName());

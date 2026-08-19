@@ -245,6 +245,8 @@ bool nri::GetTextureDesc(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& 
         bindFlags = desc.BindFlags;
     }
 
+    textureDesc.usage |= TextureUsageBits::HOST_TRANSFER;
+
     if (bindFlags & D3D11_BIND_RENDER_TARGET)
         textureDesc.usage |= TextureUsageBits::COLOR_ATTACHMENT;
     if (bindFlags & D3D11_BIND_DEPTH_STENCIL)

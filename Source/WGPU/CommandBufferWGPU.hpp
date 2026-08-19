@@ -1450,7 +1450,10 @@ void CommandBufferWGPU::DispatchIndirect(const Buffer& buffer, uint64_t offset) 
 void CommandBufferWGPU::CopyBuffer(Buffer& dstBuffer, uint64_t dstOffset, const Buffer& srcBuffer, uint64_t srcOffset, uint64_t size) {
     EndPass();
 
-    wgpuCommandEncoderCopyBufferToBuffer(m_CommandEncoder, (BufferWGPU&)srcBuffer, srcOffset, (BufferWGPU&)dstBuffer, dstOffset, size);
+    const BufferWGPU& srcBufferWGPU = (const BufferWGPU&)srcBuffer;
+    uint64_t copySize = size == WHOLE_SIZE ? srcBufferWGPU.GetSize() : size;
+
+    wgpuCommandEncoderCopyBufferToBuffer(m_CommandEncoder, srcBufferWGPU, srcOffset, (BufferWGPU&)dstBuffer, dstOffset, copySize);
 }
 
 void CommandBufferWGPU::CopyTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion) {

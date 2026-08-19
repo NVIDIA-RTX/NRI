@@ -628,6 +628,14 @@ static void* NRI_CALL MapBuffer(Buffer&, uint64_t, uint64_t) {
 static void NRI_CALL UnmapBuffer(Buffer&) {
 }
 
+static Result NRI_CALL CopyHostMemoryToTexture(Queue&, const CopyHostMemoryToTextureDesc*, uint32_t) {
+    return Result::SUCCESS;
+}
+
+static Result NRI_CALL CopyTextureToHostMemory(Queue&, const CopyTextureToHostMemoryDesc*, uint32_t) {
+    return Result::SUCCESS;
+}
+
 static uint64_t NRI_CALL GetBufferDeviceAddress(const Buffer&) {
     return 0;
 }
@@ -764,6 +772,8 @@ Result DeviceNONE::FillFunctionTable(CoreInterface& table) const {
     table.ResetCommandAllocator = ::ResetCommandAllocator;
     table.MapBuffer = ::MapBuffer;
     table.UnmapBuffer = ::UnmapBuffer;
+    table.CopyHostMemoryToTexture = ::CopyHostMemoryToTexture;
+    table.CopyTextureToHostMemory = ::CopyTextureToHostMemory;
     table.GetBufferDeviceAddress = ::GetBufferDeviceAddress;
     table.SetDebugName = ::SetDebugName;
     table.GetDeviceNativeObject = ::GetDeviceNativeObject;

@@ -1,4 +1,4 @@
-﻿// © 2021 NVIDIA Corporation
+// © 2021 NVIDIA Corporation
 
 static uint8_t QueryLatestInterface(ComPtr<ID3D12Device>& in, ComPtr<ID3D12DeviceBest>& out) {
     static const IID versions[] = {
@@ -141,7 +141,8 @@ DeviceD3D12::DeviceD3D12(const CallbackInterface& callbacks, const AllocationCal
           Vector<QueueD3D12*>(GetStdAllocator()),
           Vector<QueueD3D12*>(GetStdAllocator()),
           Vector<QueueD3D12*>(GetStdAllocator()),
-      } {
+      }
+    , m_TransferContexts(GetStdAllocator()) {
     m_FreeDescriptors.resize(D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES, Vector<DescriptorHandle>(GetStdAllocator()));
 
     m_Desc.graphicsAPI = GraphicsAPI::D3D12;
@@ -158,6 +159,9 @@ DeviceD3D12::~DeviceD3D12() {
     if (SUCCEEDED(hr))
         pInfoQueue->UnregisterMessageCallback(m_CallbackCookie);
 #endif
+
+    for (TransferContextD3D12* context : m_TransferContexts)
+        Destroy(context);
 
     for (auto& queueFamily : m_QueueFamilies) {
         for (auto queue : queueFamily)
@@ -272,7 +276,9 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
                 D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
                 D3D12_MESSAGE_ID_CREATEPIPELINELIBRARY_INVALIDLIBRARYBLOB,
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-                // All good
+                // Barrier-only command lists are needed for layout transitions around synchronous host copies.
+                // Replacing their synchronization scopes with NONE / NO_ACCESS triggers invalid barrier access validation after a copy.
+                D3D12_MESSAGE_ID_NON_OPTIMAL_BARRIER_ONLY_EXECUTE_COMMAND_LISTS,
 #else
                 // Descriptor validation doesn't understand acceleration structures used outside of RAYGEN shaders
                 D3D12_MESSAGE_ID_COMMAND_LIST_STATIC_DESCRIPTOR_RESOURCE_DIMENSION_MISMATCH,
@@ -1533,6 +1539,189 @@ NRI_INLINE Result DeviceD3D12::WaitIdle() {
     return Result::SUCCESS;
 }
 
+DeviceD3D12::HostCopyLayout DeviceD3D12::GetHostCopyLayout(const TextureD3D12& texture, const TextureRegionDesc& region, uint64_t& offset) const {
+    const TextureDesc& textureDesc = texture.GetDesc();
+    const FormatProps& formatProps = GetFormatProps(textureDesc.format);
+
+    uint32_t width = region.width == WHOLE_SIZE ? texture.GetSize(0, region.mipOffset) : region.width;
+    uint32_t height = region.height == WHOLE_SIZE ? texture.GetSize(1, region.mipOffset) : region.height;
+    uint32_t depth = region.depth == WHOLE_SIZE ? texture.GetSize(2, region.mipOffset) : region.depth;
+    uint32_t rowBlockNum = (width + formatProps.blockWidth - 1) / formatProps.blockWidth;
+    uint32_t rowNum = (height + formatProps.blockHeight - 1) / formatProps.blockHeight;
+    uint32_t rowSize = rowBlockNum * formatProps.stride;
+    uint32_t rowPitch = Align(rowSize, GetDesc().memoryAlignment.uploadBufferTextureRow);
+
+    offset = Align(offset, (uint64_t)GetDesc().memoryAlignment.uploadBufferTextureSlice);
+
+    HostCopyLayout layout = {};
+    layout.dataLayout.offset = offset;
+    layout.dataLayout.rowPitch = rowPitch;
+    layout.dataLayout.slicePitch = rowPitch * rowNum;
+    layout.rowSize = rowSize;
+    layout.rowNum = rowNum;
+    layout.depth = depth;
+
+    offset += uint64_t(layout.dataLayout.slicePitch) * depth;
+
+    return layout;
+}
+
+Result DeviceD3D12::CopyHostMemoryToTexture(QueueD3D12& queue, const CopyHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
+    if (!copyDescNum)
+        return Result::SUCCESS;
+
+    TransferContextD3D12* context = nullptr;
+    Result result = AcquireTransferContext(queue, context);
+    if (result != Result::SUCCESS)
+        return result;
+
+    Vector<HostCopyLayout> layouts(GetStdAllocator());
+    layouts.reserve(copyDescNum);
+
+    uint64_t stagingSize = 0;
+    for (uint32_t i = 0; i < copyDescNum; i++) {
+        const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
+        layouts.push_back(GetHostCopyLayout(*(TextureD3D12*)copyDesc.dstTexture, copyDesc.dstRegion, stagingSize));
+    }
+
+    result = context->EnsureUploadBuffer(stagingSize);
+    if (result == Result::SUCCESS) {
+        uint8_t* stagingData = (uint8_t*)context->GetUploadBuffer().Map(0);
+
+        for (uint32_t i = 0; i < copyDescNum; i++) {
+            const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
+            const HostCopyLayout& layout = layouts[i];
+            uint32_t srcRowPitch = copyDesc.srcRowPitch ? copyDesc.srcRowPitch : layout.rowSize;
+            uint32_t srcSlicePitch = copyDesc.srcSlicePitch ? copyDesc.srcSlicePitch : srcRowPitch * layout.rowNum;
+
+            for (uint32_t z = 0; z < layout.depth; z++) {
+                for (uint32_t y = 0; y < layout.rowNum; y++) {
+                    uint8_t* dstRow = stagingData + layout.dataLayout.offset + uint64_t(z) * layout.dataLayout.slicePitch + uint64_t(y) * layout.dataLayout.rowPitch;
+                    const uint8_t* srcRow = (const uint8_t*)copyDesc.srcData + uint64_t(z) * srcSlicePitch + uint64_t(y) * srcRowPitch;
+                    memcpy(dstRow, srcRow, layout.rowSize);
+                }
+            }
+        }
+
+        result = context->GetCommandBuffer().Begin(nullptr);
+    }
+
+    if (result == Result::SUCCESS) {
+        // COPY queues can access COPY_SOURCE / COPY_DESTINATION directly from GENERAL / COMMON and decay back to COMMON on submission completion.
+        for (uint32_t i = 0; i < copyDescNum; i++) {
+            const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
+            context->GetCommandBuffer().UploadBufferToTexture(*copyDesc.dstTexture, copyDesc.dstRegion, (Buffer&)context->GetUploadBuffer(), layouts[i].dataLayout);
+        }
+
+        result = context->GetCommandBuffer().End();
+    }
+
+    if (result == Result::SUCCESS)
+        result = context->SubmitAndWait(queue);
+
+    ReleaseTransferContext(*context);
+
+    return result;
+}
+
+Result DeviceD3D12::CopyTextureToHostMemory(QueueD3D12& queue, const CopyTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
+    if (!copyDescNum)
+        return Result::SUCCESS;
+
+    TransferContextD3D12* context = nullptr;
+    Result result = AcquireTransferContext(queue, context);
+    if (result != Result::SUCCESS)
+        return result;
+
+    Vector<HostCopyLayout> layouts(GetStdAllocator());
+    layouts.reserve(copyDescNum);
+
+    uint64_t stagingSize = 0;
+    for (uint32_t i = 0; i < copyDescNum; i++) {
+        const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
+        layouts.push_back(GetHostCopyLayout(*(TextureD3D12*)copyDesc.srcTexture, copyDesc.srcRegion, stagingSize));
+    }
+
+    result = context->EnsureReadbackBuffer(stagingSize);
+    if (result == Result::SUCCESS)
+        result = context->GetCommandBuffer().Begin(nullptr);
+
+    if (result == Result::SUCCESS) {
+        // COPY queues can access COPY_SOURCE / COPY_DESTINATION directly from GENERAL / COMMON and decay back to COMMON on submission completion.
+        for (uint32_t i = 0; i < copyDescNum; i++) {
+            const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
+            context->GetCommandBuffer().ReadbackTextureToBuffer((Buffer&)context->GetReadbackBuffer(), layouts[i].dataLayout, *copyDesc.srcTexture, copyDesc.srcRegion);
+        }
+
+        result = context->GetCommandBuffer().End();
+    }
+
+    if (result == Result::SUCCESS)
+        result = context->SubmitAndWait(queue);
+
+    if (result == Result::SUCCESS) {
+        const uint8_t* stagingData = (const uint8_t*)context->GetReadbackBuffer().Map(0);
+
+        for (uint32_t i = 0; i < copyDescNum; i++) {
+            const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
+            const HostCopyLayout& layout = layouts[i];
+            uint32_t dstRowPitch = copyDesc.dstRowPitch ? copyDesc.dstRowPitch : layout.rowSize;
+            uint32_t dstSlicePitch = copyDesc.dstSlicePitch ? copyDesc.dstSlicePitch : dstRowPitch * layout.rowNum;
+
+            for (uint32_t z = 0; z < layout.depth; z++) {
+                for (uint32_t y = 0; y < layout.rowNum; y++) {
+                    const uint8_t* srcRow = stagingData + layout.dataLayout.offset + uint64_t(z) * layout.dataLayout.slicePitch + uint64_t(y) * layout.dataLayout.rowPitch;
+                    uint8_t* dstRow = (uint8_t*)copyDesc.dstData + uint64_t(z) * dstSlicePitch + uint64_t(y) * dstRowPitch;
+                    memcpy(dstRow, srcRow, layout.rowSize);
+                }
+            }
+        }
+    }
+
+    ReleaseTransferContext(*context);
+
+    return result;
+}
+
+Result DeviceD3D12::AcquireTransferContext(QueueD3D12& queue, TransferContextD3D12*& context) {
+    ExclusiveScope lock(m_TransferContextLock);
+
+    for (TransferContextD3D12* candidate : m_TransferContexts) {
+        if (!candidate->IsInUse() && candidate->GetType() == queue.GetType()) {
+            Result result = candidate->Prepare(queue);
+            if (result != Result::SUCCESS)
+                return result;
+
+            candidate->SetInUse(true);
+            context = candidate;
+
+            return Result::SUCCESS;
+        }
+    }
+
+    context = Allocate<TransferContextD3D12>(GetAllocationCallbacks(), *this);
+    if (!context)
+        return Result::OUT_OF_MEMORY;
+
+    Result result = context->Prepare(queue);
+    if (result != Result::SUCCESS) {
+        Destroy(context);
+        context = nullptr;
+
+        return result;
+    }
+
+    context->SetInUse(true);
+    m_TransferContexts.push_back(context);
+
+    return Result::SUCCESS;
+}
+
+void DeviceD3D12::ReleaseTransferContext(TransferContextD3D12& context) {
+    ExclusiveScope lock(m_TransferContextLock);
+    context.SetInUse(false);
+}
+
 NRI_INLINE Result DeviceD3D12::BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum) {
     for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
         const auto& desc = bindBufferMemoryDescs[i];
@@ -1600,6 +1789,12 @@ NRI_INLINE FormatSupportBits DeviceD3D12::GetFormatSupport(Format format) const 
         UPDATE_SUPPORT_BITS(D3D12_FORMAT_SUPPORT1_RENDER_TARGET, 0, FormatSupportBits::COLOR_ATTACHMENT);
         UPDATE_SUPPORT_BITS(D3D12_FORMAT_SUPPORT1_DEPTH_STENCIL, 0, FormatSupportBits::DEPTH_STENCIL_ATTACHMENT);
         UPDATE_SUPPORT_BITS(D3D12_FORMAT_SUPPORT1_BLENDABLE, 0, FormatSupportBits::BLEND);
+
+        const FormatProps& formatProps = GetFormatProps(format);
+        if (!formatProps.isDepth && !formatProps.isStencil) {
+            constexpr uint32_t textureSupport = D3D12_FORMAT_SUPPORT1_TEXTURE1D | D3D12_FORMAT_SUPPORT1_TEXTURE2D | D3D12_FORMAT_SUPPORT1_TEXTURE3D;
+            UPDATE_SUPPORT_BITS(0, textureSupport, FormatSupportBits::HOST_COPY);
+        }
 
         UPDATE_SUPPORT_BITS(D3D12_FORMAT_SUPPORT1_BUFFER, D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE | D3D12_FORMAT_SUPPORT1_SHADER_LOAD, FormatSupportBits::BUFFER);
         UPDATE_SUPPORT_BITS(D3D12_FORMAT_SUPPORT1_BUFFER | D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW, 0, FormatSupportBits::STORAGE_BUFFER);

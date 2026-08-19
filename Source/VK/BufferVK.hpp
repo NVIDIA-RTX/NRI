@@ -167,18 +167,45 @@ NRI_INLINE void* BufferVK::Map(uint64_t offset, uint64_t size) {
     m_MappedMemoryRangeSize = size;
     m_MappedMemoryRangeOffset = offset;
 
+    if (m_NonCoherentDeviceMemory) {
+        VkResult vkResult = VK_SUCCESS;
+        if (m_VmaAllocation)
+            vkResult = vmaInvalidateAllocation(m_Device.GetVma(), m_VmaAllocation, offset, size);
+        else {
+            VkMappedMemoryRange memoryRange = {VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE};
+            memoryRange.memory = m_NonCoherentDeviceMemory;
+            memoryRange.offset = m_NonCoherentDeviceMemoryOffset + offset;
+            memoryRange.size = size;
+
+            const auto& vk = m_Device.GetDispatchTable();
+            vkResult = vk.InvalidateMappedMemoryRanges(m_Device, 1, &memoryRange);
+        }
+
+        if (vkResult < 0) {
+            Result result = GetResultFromVkResult(vkResult);
+            m_Device.ReportMessage(Message::ERROR, result, __FILE__, __LINE__, "vkInvalidateMappedMemoryRanges(): failed, result = 0x%08X (%d)!", vkResult, vkResult);
+            return nullptr;
+        }
+    }
+
     return m_MappedMemory + offset;
 }
 
 NRI_INLINE void BufferVK::Unmap() {
     if (m_NonCoherentDeviceMemory) {
-        VkMappedMemoryRange memoryRange = {VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE};
-        memoryRange.memory = m_NonCoherentDeviceMemory;
-        memoryRange.offset = m_NonCoherentDeviceMemoryOffset + m_MappedMemoryRangeOffset;
-        memoryRange.size = m_MappedMemoryRangeSize;
+        VkResult vkResult = VK_SUCCESS;
+        if (m_VmaAllocation)
+            vkResult = vmaFlushAllocation(m_Device.GetVma(), m_VmaAllocation, m_MappedMemoryRangeOffset, m_MappedMemoryRangeSize);
+        else {
+            VkMappedMemoryRange memoryRange = {VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE};
+            memoryRange.memory = m_NonCoherentDeviceMemory;
+            memoryRange.offset = m_NonCoherentDeviceMemoryOffset + m_MappedMemoryRangeOffset;
+            memoryRange.size = m_MappedMemoryRangeSize;
 
-        const auto& vk = m_Device.GetDispatchTable();
-        VkResult vkResult = vk.FlushMappedMemoryRanges(m_Device, 1, &memoryRange);
+            const auto& vk = m_Device.GetDispatchTable();
+            vkResult = vk.FlushMappedMemoryRanges(m_Device, 1, &memoryRange);
+        }
+
         NRI_RETURN_VOID_ON_BAD_VKRESULT(&m_Device, vkResult, "vkFlushMappedMemoryRanges");
     }
 }

@@ -1,0 +1,94 @@
+// © 2021 NVIDIA Corporation
+
+TransferContextVK::~TransferContextVK() {
+    Destroy(m_CommandBuffer);
+    Destroy(m_CommandAllocator);
+    Destroy(m_Fence);
+    Destroy(m_UploadBuffer);
+    Destroy(m_ReadbackBuffer);
+}
+
+Result TransferContextVK::Prepare(QueueVK& queue) {
+    if (m_FamilyIndex == INVALID_FAMILY_INDEX)
+        m_FamilyIndex = queue.GetFamilyIndex();
+
+    if (!m_Fence) {
+        Result result = m_Device.CreateImplementation<FenceVK>(m_Fence, 0);
+        if (result != Result::SUCCESS)
+            return result;
+    }
+
+    if (!m_CommandAllocator) {
+        Result result = m_Device.CreateImplementation<CommandAllocatorVK>(m_CommandAllocator, (Queue&)queue);
+        if (result != Result::SUCCESS)
+            return result;
+    }
+
+    if (!m_CommandBuffer) {
+        CommandBuffer* commandBuffer = nullptr;
+        Result result = m_CommandAllocator->CreateCommandBuffer(commandBuffer);
+        if (result != Result::SUCCESS)
+            return result;
+
+        m_CommandBuffer = (CommandBufferVK*)commandBuffer;
+    }
+
+    return Result::SUCCESS;
+}
+
+Result TransferContextVK::EnsureBuffer(MemoryLocation memoryLocation, uint64_t size, BufferVK*& buffer, uint64_t& capacity) {
+    if (size <= capacity)
+        return Result::SUCCESS;
+
+    uint64_t newCapacity = capacity && capacity <= uint64_t(-1) / 2 ? capacity * 2 : size;
+    newCapacity = Align(std::max(newCapacity, size), 4ull);
+
+    BufferDesc bufferDesc = {};
+    bufferDesc.size = newCapacity;
+
+    BufferVK* newBuffer = nullptr;
+    Result result = m_Device.CreateImplementation<BufferVK>(newBuffer, bufferDesc);
+    if (result == Result::SUCCESS)
+        result = newBuffer->AllocateAndBindMemory(memoryLocation, 0.0f, true);
+
+    if (result != Result::SUCCESS) {
+        Destroy(newBuffer);
+        return result;
+    }
+
+    Destroy(buffer);
+    buffer = newBuffer;
+    capacity = newCapacity;
+
+    return Result::SUCCESS;
+}
+
+Result TransferContextVK::EnsureUploadBuffer(uint64_t size) {
+    return EnsureBuffer(MemoryLocation::HOST_UPLOAD, size, m_UploadBuffer, m_UploadBufferSize);
+}
+
+Result TransferContextVK::EnsureReadbackBuffer(uint64_t size) {
+    return EnsureBuffer(MemoryLocation::HOST_READBACK, size, m_ReadbackBuffer, m_ReadbackBufferSize);
+}
+
+Result TransferContextVK::SubmitAndWait(QueueVK& queue) {
+    FenceSubmitDesc fenceSubmitDesc = {};
+    fenceSubmitDesc.fence = (Fence*)m_Fence;
+    fenceSubmitDesc.value = m_FenceValue;
+
+    CommandBuffer* commandBuffer = (CommandBuffer*)m_CommandBuffer;
+    QueueSubmitDesc queueSubmitDesc = {};
+    queueSubmitDesc.commandBufferNum = 1;
+    queueSubmitDesc.commandBuffers = &commandBuffer;
+    queueSubmitDesc.signalFences = &fenceSubmitDesc;
+    queueSubmitDesc.signalFenceNum = 1;
+
+    Result result = queue.Submit(queueSubmitDesc);
+    if (result == Result::SUCCESS) {
+        m_Fence->Wait(m_FenceValue);
+        m_CommandAllocator->Reset();
+        m_FenceValue++;
+    }
+
+    return result;
+}

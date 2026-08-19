@@ -125,6 +125,7 @@ struct IsSupported {
     uint32_t swapChainMaintenance1        : 1;
     uint32_t fifoLatestReady              : 1;
     uint32_t unifiedImageLayoutsVideo     : 1;
+    uint32_t hostImageCopy                : 1;
 };
 
 static_assert(sizeof(IsSupported) == sizeof(uint32_t), "4 bytes expected");
@@ -241,6 +242,8 @@ struct DeviceVK final : public DeviceBase {
     void UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum);
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
     Result WaitIdle();
+    Result CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum);
+    Result CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum);
     Result BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum);
     Result BindTextureMemory(const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum);
     Result QueryVideoMemoryInfo(MemoryLocation memoryLocation, VideoMemoryInfo& videoMemoryInfo) const;
@@ -249,6 +252,16 @@ struct DeviceVK final : public DeviceBase {
     FormatSupportBits GetFormatSupport(Format format) const;
 
 private:
+    struct HostCopyLayout {
+        TextureDataLayoutDesc dataLayout;
+        uint32_t rowSize;
+        uint32_t rowNum;
+        uint32_t depth;
+    };
+
+    HostCopyLayout GetHostCopyLayout(const TextureVK& texture, const TextureRegionDesc& region, uint64_t& offset) const;
+    Result AcquireTransferContext(QueueVK& queue, TransferContextVK*& context);
+    void ReleaseTransferContext(TransferContextVK& context);
     VkResult CreateVma();
     void FilterInstanceLayers(Vector<const char*>& layers);
     void ProcessInstanceExtensions(Vector<const char*>& desiredInstanceExts);
@@ -271,6 +284,7 @@ private:
     std::array<Vector<QueueVK*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies;
     Vector<RenderPassCacheEntry> m_RenderPasses;
     Vector<FramebufferCacheEntry> m_Framebuffers;
+    Vector<TransferContextVK*> m_TransferContexts;
     DispatchTable m_VK = {};
     VkPhysicalDeviceMemoryProperties m_MemoryProps = {};
     VkAllocationCallbacks m_AllocationCallbacks = {};
@@ -289,6 +303,7 @@ private:
     bool m_IsMemoryZeroInitializationEnabled = false;
 
     Lock m_Lock;
+    Lock m_TransferContextLock;
 };
 
 } // namespace nri

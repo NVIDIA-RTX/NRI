@@ -39,7 +39,7 @@ Implicit:
 #pragma once
 
 #define NRI_VERSION 181
-#define NRI_VERSION_DATE "14 August 2026"
+#define NRI_VERSION_DATE "19 August 2026"
 
 // C/C++ compatible interface (auto-selection or via "NRI_FORCE_C" macro)
 #include "NRIDescs.h"
@@ -256,8 +256,15 @@ NriStruct(CoreInterface) {
     void*               (NRI_CALL *MapBuffer)                       (NriRef(Buffer) buffer, uint64_t offset, uint64_t size);
     void                (NRI_CALL *UnmapBuffer)                     (NriRef(Buffer) buffer);
 
-    // Device address (aka GPU virtual address)
-    // D3D11: returns "0"
+    // Synchronous host copies
+    // - all prior GPU access to the copied subresources must be complete before the call
+    // - textures must be created with "TextureUsageBits::HOST_TRANSFER"
+    // - "dstTexture" must be in "{AccessBits::HOST_WRITE, Layout::GENERAL, StageBits::HOST}"
+    // - "srcTexture" must be in "{AccessBits::HOST_READ, Layout::GENERAL, StageBits::HOST}"
+    Nri(Result)         (NRI_CALL *CopyHostMemoryToTexture)         (NriRef(Queue) queue, const NriPtr(CopyHostMemoryToTextureDesc) copyDescs, uint32_t copyDescNum);
+    Nri(Result)         (NRI_CALL *CopyTextureToHostMemory)         (NriRef(Queue) queue, const NriPtr(CopyTextureToHostMemoryDesc) copyDescs, uint32_t copyDescNum);
+
+    // Device address (aka GPU virtual address or "0" if unsupported)
     uint64_t            (NRI_CALL *GetBufferDeviceAddress)          (const NriRef(Buffer) buffer);
 
     // Pipeline cache (PSO blob storage, persisted across runs)

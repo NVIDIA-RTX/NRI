@@ -710,6 +710,9 @@ FormatSupportBits nri::GetFormatSupportWGPU(Format format) {
     const FormatProps& props = GetFormatProps(format);
     FormatSupportBits support = FormatSupportBits::TEXTURE;
 
+    if (!props.isDepth && !props.isStencil)
+        support |= FormatSupportBits::HOST_COPY;
+
     if (IsStorageTextureSupportedWGPU(format))
         support |= FormatSupportBits::STORAGE_TEXTURE;
     if (!props.isCompressed && !props.isDepth && !props.isStencil) {

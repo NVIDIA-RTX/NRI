@@ -327,6 +327,7 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 4, VK_EXT_PIPELINE_ROBUSTNESS_EXTENSION_NAME);
+    APPEND_EXT(m_MinorVersion < 4, VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME);
 
     APPEND_EXT(!disableRayTracing, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
     APPEND_EXT(!disableRayTracing, VK_KHR_RAY_QUERY_EXTENSION_NAME);
@@ -379,7 +380,8 @@ DeviceVK::DeviceVK(const CallbackInterface& callbacks, const AllocationCallbacks
           Vector<QueueVK*>(GetStdAllocator()),
       }
     , m_RenderPasses(GetStdAllocator())
-    , m_Framebuffers(GetStdAllocator()) {
+    , m_Framebuffers(GetStdAllocator())
+    , m_TransferContexts(GetStdAllocator()) {
     m_AllocationCallbacks.pUserData = (void*)&GetAllocationCallbacks();
     m_AllocationCallbacks.pfnAllocation = vkAllocateHostMemory;
     m_AllocationCallbacks.pfnReallocation = vkReallocateHostMemory;
@@ -390,6 +392,9 @@ DeviceVK::DeviceVK(const CallbackInterface& callbacks, const AllocationCallbacks
 }
 
 DeviceVK::~DeviceVK() {
+    for (TransferContextVK* context : m_TransferContexts)
+        Destroy(context);
+
     for (FramebufferCacheEntry& framebuffer : m_Framebuffers) {
         if (framebuffer.handle)
             m_VK.DestroyFramebuffer(m_Device, framebuffer.handle, m_AllocationCallbackPtr);
@@ -605,6 +610,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, KHR, Maintenance5, MAINTENANCE_5);
     PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, KHR, Maintenance6, MAINTENANCE_6);
     PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, EXT, PipelineRobustness, PIPELINE_ROBUSTNESS);
+    PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, EXT, HostImageCopy, HOST_IMAGE_COPY);
 
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, AccelerationStructure, ACCELERATION_STRUCTURE);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, ComputeShaderDerivatives, COMPUTE_SHADER_DERIVATIVES);
@@ -659,6 +665,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         features14.stippledBresenhamLines = LineRasterizationFeatures.stippledBresenhamLines;
         features14.stippledSmoothLines = LineRasterizationFeatures.stippledSmoothLines;
         features14.dynamicRenderingLocalRead = DynamicRenderingLocalReadFeatures.dynamicRenderingLocalRead;
+        features14.hostImageCopy = HostImageCopyFeatures.hostImageCopy;
     }
 
     if (m_MinorVersion > 2)
@@ -686,6 +693,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.swapChainMaintenance1 = SwapchainMaintenance1Features.swapchainMaintenance1;
     m_IsSupported.fifoLatestReady = PresentModeFifoLatestReadyFeatures.presentModeFifoLatestReady;
     m_IsSupported.unifiedImageLayoutsVideo = UnifiedImageLayoutsFeatures.unifiedImageLayoutsVideo;
+    m_IsSupported.hostImageCopy = features14.hostImageCopy;
 
     m_IsMemoryZeroInitializationEnabled = desc.enableMemoryZeroInitialization && ZeroInitializeDeviceMemoryFeatures.zeroInitializeDeviceMemory;
 
@@ -1311,6 +1319,8 @@ void DeviceVK::FillCreateInfo(const TextureDesc& textureDesc, VkImageCreateInfo&
     info.samples = (VkSampleCountFlagBits)std::max(textureDesc.sampleNum, (Sample_t)1);
     info.tiling = VK_IMAGE_TILING_OPTIMAL;
     info.usage = GetImageUsageFlags(textureDesc.usage);
+    if ((textureDesc.usage & TextureUsageBits::HOST_TRANSFER) && m_IsSupported.hostImageCopy)
+        info.usage |= VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT;
     info.sharingMode = (m_NumActiveFamilyIndices <= 1 || textureDesc.sharingMode == SharingMode::EXCLUSIVE) ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
     info.queueFamilyIndexCount = m_NumActiveFamilyIndices;
     info.pQueueFamilyIndices = m_ActiveQueueFamilyIndices.data();
@@ -1844,6 +1854,7 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(FreeCommandBuffers);
     GET_DEVICE_CORE_FUNC(MapMemory);
     GET_DEVICE_CORE_FUNC(FlushMappedMemoryRanges);
+    GET_DEVICE_CORE_FUNC(InvalidateMappedMemoryRanges);
     GET_DEVICE_CORE_FUNC(QueueWaitIdle);
     GET_DEVICE_CORE_FUNC(ResetCommandPool);
     GET_DEVICE_CORE_FUNC(ResetDescriptorPool);
@@ -1933,6 +1944,10 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     // v1.4 or VK_KHR_maintenance6
     GET_DEVICE_OPTIONAL_CORE_FUNC(CmdBindDescriptorSets2);
     GET_DEVICE_OPTIONAL_CORE_FUNC(CmdPushConstants2);
+
+    // v1.4 or VK_EXT_host_image_copy
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CopyMemoryToImage);
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CopyImageToMemory);
 
     if (IsExtensionSupported(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME, desiredDeviceExts))
         GET_DEVICE_FUNC(CmdSetFragmentShadingRateKHR);
@@ -2323,6 +2338,418 @@ NRI_INLINE Result DeviceVK::WaitIdle() {
     return Result::SUCCESS;
 }
 
+DeviceVK::HostCopyLayout DeviceVK::GetHostCopyLayout(const TextureVK& texture, const TextureRegionDesc& region, uint64_t& offset) const {
+    const FormatProps& formatProps = GetFormatProps(texture.GetDesc().format);
+    uint32_t width = region.width == WHOLE_SIZE ? texture.GetSize(0, region.mipOffset) : region.width;
+    uint32_t height = region.height == WHOLE_SIZE ? texture.GetSize(1, region.mipOffset) : region.height;
+    uint32_t depth = region.depth == WHOLE_SIZE ? texture.GetSize(2, region.mipOffset) : region.depth;
+    uint32_t rowBlockNum = (width + formatProps.blockWidth - 1) / formatProps.blockWidth;
+    uint32_t rowNum = (height + formatProps.blockHeight - 1) / formatProps.blockHeight;
+    uint32_t rowSize = rowBlockNum * formatProps.stride;
+    uint32_t rowPitch = Align(rowSize, GetDesc().memoryAlignment.uploadBufferTextureRow);
+
+    offset = Align(offset, (uint64_t)GetDesc().memoryAlignment.uploadBufferTextureSlice);
+
+    HostCopyLayout layout = {};
+    layout.dataLayout.offset = offset;
+    layout.dataLayout.rowPitch = rowPitch;
+    layout.dataLayout.slicePitch = rowPitch * rowNum;
+    layout.rowSize = rowSize;
+    layout.rowNum = rowNum;
+    layout.depth = depth;
+
+    offset += uint64_t(layout.dataLayout.slicePitch) * depth;
+
+    return layout;
+}
+
+Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
+    if (!copyDescNum)
+        return Result::SUCCESS;
+
+    const DispatchTable& vk = GetDispatchTable();
+    if (m_IsSupported.hostImageCopy) {
+        for (uint32_t i = 0; i < copyDescNum; i++) {
+            const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
+            const TextureVK& texture = *(TextureVK*)copyDesc.dstTexture;
+            const TextureDesc& textureDesc = texture.GetDesc();
+            const FormatProps& formatProps = GetFormatProps(textureDesc.format);
+            uint32_t width = copyDesc.dstRegion.width == WHOLE_SIZE ? texture.GetSize(0, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.width;
+            uint32_t rowSize = ((width + formatProps.blockWidth - 1) / formatProps.blockWidth) * formatProps.stride;
+            uint32_t rowPitch = copyDesc.srcRowPitch ? copyDesc.srcRowPitch : rowSize;
+
+            VkMemoryToImageCopy region = {VK_STRUCTURE_TYPE_MEMORY_TO_IMAGE_COPY};
+            region.pHostPointer = copyDesc.srcData;
+            if (copyDesc.srcRowPitch)
+                region.memoryRowLength = copyDesc.srcRowPitch / formatProps.stride * formatProps.blockWidth;
+            if (copyDesc.srcSlicePitch)
+                region.memoryImageHeight = copyDesc.srcSlicePitch / rowPitch * formatProps.blockHeight;
+            region.imageSubresource = {
+                GetImageAspectFlags(copyDesc.dstRegion.planes, textureDesc.format),
+                copyDesc.dstRegion.mipOffset,
+                copyDesc.dstRegion.layerOffset,
+                1,
+            };
+            region.imageOffset = {copyDesc.dstRegion.x, copyDesc.dstRegion.y, copyDesc.dstRegion.z};
+            region.imageExtent = {
+                width,
+                copyDesc.dstRegion.height == WHOLE_SIZE ? texture.GetSize(1, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.height,
+                copyDesc.dstRegion.depth == WHOLE_SIZE ? texture.GetSize(2, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.depth,
+            };
+
+            VkCopyMemoryToImageInfo info = {VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INFO};
+            info.dstImage = texture.GetHandle();
+            info.dstImageLayout = VK_IMAGE_LAYOUT_GENERAL;
+            info.regionCount = 1;
+            info.pRegions = &region;
+
+            VkResult result = vk.CopyMemoryToImage(*this, &info);
+            if (result != VK_SUCCESS)
+                return GetResultFromVkResult(result);
+        }
+
+        return Result::SUCCESS;
+    }
+
+    TransferContextVK* context = nullptr;
+    Result result = AcquireTransferContext(queue, context);
+    if (result != Result::SUCCESS)
+        return result;
+
+    Vector<HostCopyLayout> layouts(GetStdAllocator());
+    layouts.reserve(copyDescNum);
+
+    uint64_t stagingSize = 0;
+    for (uint32_t i = 0; i < copyDescNum; i++)
+        layouts.push_back(GetHostCopyLayout(*(TextureVK*)copyDescs[i].dstTexture, copyDescs[i].dstRegion, stagingSize));
+
+    result = context->EnsureUploadBuffer(stagingSize);
+    if (result == Result::SUCCESS) {
+        uint8_t* stagingData = (uint8_t*)context->GetUploadBuffer().Map(0, stagingSize);
+        if (!stagingData)
+            result = Result::FAILURE;
+
+        for (uint32_t i = 0; result == Result::SUCCESS && i < copyDescNum; i++) {
+            const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
+            const HostCopyLayout& layout = layouts[i];
+            uint32_t srcRowPitch = copyDesc.srcRowPitch ? copyDesc.srcRowPitch : layout.rowSize;
+            uint32_t srcSlicePitch = copyDesc.srcSlicePitch ? copyDesc.srcSlicePitch : srcRowPitch * layout.rowNum;
+
+            for (uint32_t z = 0; z < layout.depth; z++) {
+                for (uint32_t y = 0; y < layout.rowNum; y++) {
+                    uint8_t* dstRow = stagingData + layout.dataLayout.offset + uint64_t(z) * layout.dataLayout.slicePitch + uint64_t(y) * layout.dataLayout.rowPitch;
+                    const uint8_t* srcRow = (const uint8_t*)copyDesc.srcData + uint64_t(z) * srcSlicePitch + uint64_t(y) * srcRowPitch;
+                    memcpy(dstRow, srcRow, layout.rowSize);
+                }
+            }
+        }
+
+        context->GetUploadBuffer().Unmap();
+    }
+
+    CommandBufferVK& commandBuffer = context->GetCommandBuffer();
+    if (result == Result::SUCCESS)
+        result = commandBuffer.Begin(nullptr);
+
+    Vector<TextureBarrierDesc> textureBarriers(GetStdAllocator());
+    textureBarriers.resize(copyDescNum);
+    if (result == Result::SUCCESS) {
+        for (uint32_t i = 0; i < copyDescNum; i++) {
+            TextureBarrierDesc& barrier = textureBarriers[i];
+            barrier = {};
+            barrier.texture = copyDescs[i].dstTexture;
+            barrier.mipOffset = copyDescs[i].dstRegion.mipOffset;
+            barrier.mipNum = 1;
+            barrier.layerOffset = copyDescs[i].dstRegion.layerOffset;
+            barrier.layerNum = 1;
+            barrier.planes = copyDescs[i].dstRegion.planes;
+            barrier.before = {AccessBits::HOST_WRITE, Layout::GENERAL, StageBits::HOST};
+            barrier.after = {AccessBits::COPY_DESTINATION, Layout::GENERAL, StageBits::COPY};
+        }
+
+        BufferBarrierDesc bufferBarrier = {};
+        bufferBarrier.buffer = (Buffer*)&context->GetUploadBuffer();
+        bufferBarrier.before = {AccessBits::HOST_WRITE, StageBits::HOST};
+        bufferBarrier.after = {AccessBits::COPY_SOURCE, StageBits::COPY};
+
+        BarrierDesc barrierDesc = {};
+        barrierDesc.buffers = &bufferBarrier;
+        barrierDesc.bufferNum = 1;
+        barrierDesc.textures = textureBarriers.data();
+        barrierDesc.textureNum = copyDescNum;
+        commandBuffer.Barrier(barrierDesc);
+
+        VkCommandBuffer commandBufferHandle = commandBuffer;
+        for (uint32_t i = 0; i < copyDescNum; i++) {
+            const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
+            const TextureVK& texture = *(TextureVK*)copyDesc.dstTexture;
+            const TextureDesc& textureDesc = texture.GetDesc();
+            const FormatProps& formatProps = GetFormatProps(textureDesc.format);
+            const HostCopyLayout& layout = layouts[i];
+
+            VkBufferImageCopy2 region = {VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2};
+            region.bufferOffset = layout.dataLayout.offset;
+            region.bufferRowLength = layout.dataLayout.rowPitch / formatProps.stride * formatProps.blockWidth;
+            region.bufferImageHeight = layout.dataLayout.slicePitch / layout.dataLayout.rowPitch * formatProps.blockHeight;
+            region.imageSubresource = {GetImageAspectFlags(copyDesc.dstRegion.planes, textureDesc.format), copyDesc.dstRegion.mipOffset, copyDesc.dstRegion.layerOffset, 1};
+            region.imageOffset = {copyDesc.dstRegion.x, copyDesc.dstRegion.y, copyDesc.dstRegion.z};
+            region.imageExtent = {
+                copyDesc.dstRegion.width == WHOLE_SIZE ? texture.GetSize(0, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.width,
+                copyDesc.dstRegion.height == WHOLE_SIZE ? texture.GetSize(1, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.height,
+                copyDesc.dstRegion.depth == WHOLE_SIZE ? texture.GetSize(2, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.depth,
+            };
+
+            if (m_IsSupported.copyCommands2) {
+                VkCopyBufferToImageInfo2 info = {VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2};
+                info.srcBuffer = context->GetUploadBuffer().GetHandle();
+                info.dstImage = texture.GetHandle();
+                info.dstImageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                info.regionCount = 1;
+                info.pRegions = &region;
+                vk.CmdCopyBufferToImage2(commandBufferHandle, &info);
+            } else {
+                VkBufferImageCopy legacyRegion = {};
+                legacyRegion.bufferOffset = region.bufferOffset;
+                legacyRegion.bufferRowLength = region.bufferRowLength;
+                legacyRegion.bufferImageHeight = region.bufferImageHeight;
+                legacyRegion.imageSubresource = region.imageSubresource;
+                legacyRegion.imageOffset = region.imageOffset;
+                legacyRegion.imageExtent = region.imageExtent;
+                vk.CmdCopyBufferToImage(commandBufferHandle, context->GetUploadBuffer().GetHandle(), texture.GetHandle(), VK_IMAGE_LAYOUT_GENERAL, 1, &legacyRegion);
+            }
+
+            std::swap(textureBarriers[i].before, textureBarriers[i].after);
+        }
+
+        BarrierDesc barrierDescAfter = {};
+        barrierDescAfter.textures = textureBarriers.data();
+        barrierDescAfter.textureNum = copyDescNum;
+        commandBuffer.Barrier(barrierDescAfter);
+
+        result = commandBuffer.End();
+    }
+
+    if (result == Result::SUCCESS)
+        result = context->SubmitAndWait(queue);
+
+    ReleaseTransferContext(*context);
+
+    return result;
+}
+
+Result DeviceVK::CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
+    if (!copyDescNum)
+        return Result::SUCCESS;
+
+    const DispatchTable& vk = GetDispatchTable();
+    if (m_IsSupported.hostImageCopy) {
+        for (uint32_t i = 0; i < copyDescNum; i++) {
+            const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
+            const TextureVK& texture = *(TextureVK*)copyDesc.srcTexture;
+            const TextureDesc& textureDesc = texture.GetDesc();
+            const FormatProps& formatProps = GetFormatProps(textureDesc.format);
+            uint32_t width = copyDesc.srcRegion.width == WHOLE_SIZE ? texture.GetSize(0, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.width;
+            uint32_t rowSize = ((width + formatProps.blockWidth - 1) / formatProps.blockWidth) * formatProps.stride;
+            uint32_t rowPitch = copyDesc.dstRowPitch ? copyDesc.dstRowPitch : rowSize;
+
+            VkImageToMemoryCopy region = {VK_STRUCTURE_TYPE_IMAGE_TO_MEMORY_COPY};
+            region.imageSubresource = {
+                GetImageAspectFlags(copyDesc.srcRegion.planes, textureDesc.format),
+                copyDesc.srcRegion.mipOffset,
+                copyDesc.srcRegion.layerOffset,
+                1,
+            };
+            region.imageOffset = {copyDesc.srcRegion.x, copyDesc.srcRegion.y, copyDesc.srcRegion.z};
+            region.imageExtent = {
+                width,
+                copyDesc.srcRegion.height == WHOLE_SIZE ? texture.GetSize(1, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.height,
+                copyDesc.srcRegion.depth == WHOLE_SIZE ? texture.GetSize(2, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.depth,
+            };
+            region.pHostPointer = copyDesc.dstData;
+            if (copyDesc.dstRowPitch)
+                region.memoryRowLength = copyDesc.dstRowPitch / formatProps.stride * formatProps.blockWidth;
+            if (copyDesc.dstSlicePitch)
+                region.memoryImageHeight = copyDesc.dstSlicePitch / rowPitch * formatProps.blockHeight;
+
+            VkCopyImageToMemoryInfo info = {VK_STRUCTURE_TYPE_COPY_IMAGE_TO_MEMORY_INFO};
+            info.srcImage = texture.GetHandle();
+            info.srcImageLayout = VK_IMAGE_LAYOUT_GENERAL;
+            info.regionCount = 1;
+            info.pRegions = &region;
+
+            VkResult result = vk.CopyImageToMemory(*this, &info);
+            if (result != VK_SUCCESS)
+                return GetResultFromVkResult(result);
+        }
+
+        return Result::SUCCESS;
+    }
+
+    TransferContextVK* context = nullptr;
+    Result result = AcquireTransferContext(queue, context);
+    if (result != Result::SUCCESS)
+        return result;
+
+    Vector<HostCopyLayout> layouts(GetStdAllocator());
+    layouts.reserve(copyDescNum);
+
+    uint64_t stagingSize = 0;
+    for (uint32_t i = 0; i < copyDescNum; i++)
+        layouts.push_back(GetHostCopyLayout(*(TextureVK*)copyDescs[i].srcTexture, copyDescs[i].srcRegion, stagingSize));
+
+    result = context->EnsureReadbackBuffer(stagingSize);
+
+    CommandBufferVK& commandBuffer = context->GetCommandBuffer();
+    if (result == Result::SUCCESS)
+        result = commandBuffer.Begin(nullptr);
+
+    Vector<TextureBarrierDesc> textureBarriers(GetStdAllocator());
+    textureBarriers.resize(copyDescNum);
+    if (result == Result::SUCCESS) {
+        for (uint32_t i = 0; i < copyDescNum; i++) {
+            TextureBarrierDesc& barrier = textureBarriers[i];
+            barrier = {};
+            barrier.texture = copyDescs[i].srcTexture;
+            barrier.mipOffset = copyDescs[i].srcRegion.mipOffset;
+            barrier.mipNum = 1;
+            barrier.layerOffset = copyDescs[i].srcRegion.layerOffset;
+            barrier.layerNum = 1;
+            barrier.planes = copyDescs[i].srcRegion.planes;
+            barrier.before = {AccessBits::HOST_READ, Layout::GENERAL, StageBits::HOST};
+            barrier.after = {AccessBits::COPY_SOURCE, Layout::GENERAL, StageBits::COPY};
+        }
+
+        BarrierDesc barrierDesc = {};
+        barrierDesc.textures = textureBarriers.data();
+        barrierDesc.textureNum = copyDescNum;
+        commandBuffer.Barrier(barrierDesc);
+
+        VkCommandBuffer commandBufferHandle = commandBuffer;
+        for (uint32_t i = 0; i < copyDescNum; i++) {
+            const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
+            const TextureVK& texture = *(TextureVK*)copyDesc.srcTexture;
+            const TextureDesc& textureDesc = texture.GetDesc();
+            const FormatProps& formatProps = GetFormatProps(textureDesc.format);
+            const HostCopyLayout& layout = layouts[i];
+
+            VkBufferImageCopy2 region = {VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2};
+            region.bufferOffset = layout.dataLayout.offset;
+            region.bufferRowLength = layout.dataLayout.rowPitch / formatProps.stride * formatProps.blockWidth;
+            region.bufferImageHeight = layout.dataLayout.slicePitch / layout.dataLayout.rowPitch * formatProps.blockHeight;
+            region.imageSubresource = {GetImageAspectFlags(copyDesc.srcRegion.planes, textureDesc.format), copyDesc.srcRegion.mipOffset, copyDesc.srcRegion.layerOffset, 1};
+            region.imageOffset = {copyDesc.srcRegion.x, copyDesc.srcRegion.y, copyDesc.srcRegion.z};
+            region.imageExtent = {
+                copyDesc.srcRegion.width == WHOLE_SIZE ? texture.GetSize(0, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.width,
+                copyDesc.srcRegion.height == WHOLE_SIZE ? texture.GetSize(1, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.height,
+                copyDesc.srcRegion.depth == WHOLE_SIZE ? texture.GetSize(2, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.depth,
+            };
+
+            if (m_IsSupported.copyCommands2) {
+                VkCopyImageToBufferInfo2 info = {VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2};
+                info.srcImage = texture.GetHandle();
+                info.srcImageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                info.dstBuffer = context->GetReadbackBuffer().GetHandle();
+                info.regionCount = 1;
+                info.pRegions = &region;
+                vk.CmdCopyImageToBuffer2(commandBufferHandle, &info);
+            } else {
+                VkBufferImageCopy legacyRegion = {};
+                legacyRegion.bufferOffset = region.bufferOffset;
+                legacyRegion.bufferRowLength = region.bufferRowLength;
+                legacyRegion.bufferImageHeight = region.bufferImageHeight;
+                legacyRegion.imageSubresource = region.imageSubresource;
+                legacyRegion.imageOffset = region.imageOffset;
+                legacyRegion.imageExtent = region.imageExtent;
+                vk.CmdCopyImageToBuffer(commandBufferHandle, texture.GetHandle(), VK_IMAGE_LAYOUT_GENERAL, context->GetReadbackBuffer().GetHandle(), 1, &legacyRegion);
+            }
+
+            std::swap(textureBarriers[i].before, textureBarriers[i].after);
+        }
+
+        BufferBarrierDesc bufferBarrier = {};
+        bufferBarrier.buffer = (Buffer*)&context->GetReadbackBuffer();
+        bufferBarrier.before = {AccessBits::COPY_DESTINATION, StageBits::COPY};
+        bufferBarrier.after = {AccessBits::HOST_READ, StageBits::HOST};
+
+        BarrierDesc barrierDescAfter = {};
+        barrierDescAfter.buffers = &bufferBarrier;
+        barrierDescAfter.bufferNum = 1;
+        barrierDescAfter.textures = textureBarriers.data();
+        barrierDescAfter.textureNum = copyDescNum;
+        commandBuffer.Barrier(barrierDescAfter);
+
+        result = commandBuffer.End();
+    }
+
+    if (result == Result::SUCCESS)
+        result = context->SubmitAndWait(queue);
+
+    if (result == Result::SUCCESS) {
+        const uint8_t* stagingData = (const uint8_t*)context->GetReadbackBuffer().Map(0, stagingSize);
+        if (!stagingData)
+            result = Result::FAILURE;
+
+        for (uint32_t i = 0; result == Result::SUCCESS && i < copyDescNum; i++) {
+            const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
+            const HostCopyLayout& layout = layouts[i];
+            uint32_t dstRowPitch = copyDesc.dstRowPitch ? copyDesc.dstRowPitch : layout.rowSize;
+            uint32_t dstSlicePitch = copyDesc.dstSlicePitch ? copyDesc.dstSlicePitch : dstRowPitch * layout.rowNum;
+
+            for (uint32_t z = 0; z < layout.depth; z++) {
+                for (uint32_t y = 0; y < layout.rowNum; y++) {
+                    const uint8_t* srcRow = stagingData + layout.dataLayout.offset + uint64_t(z) * layout.dataLayout.slicePitch + uint64_t(y) * layout.dataLayout.rowPitch;
+                    uint8_t* dstRow = (uint8_t*)copyDesc.dstData + uint64_t(z) * dstSlicePitch + uint64_t(y) * dstRowPitch;
+                    memcpy(dstRow, srcRow, layout.rowSize);
+                }
+            }
+        }
+
+        context->GetReadbackBuffer().Unmap();
+    }
+
+    ReleaseTransferContext(*context);
+
+    return result;
+}
+
+Result DeviceVK::AcquireTransferContext(QueueVK& queue, TransferContextVK*& context) {
+    ExclusiveScope lock(m_TransferContextLock);
+
+    for (TransferContextVK* candidate : m_TransferContexts) {
+        if (!candidate->IsInUse() && candidate->GetFamilyIndex() == queue.GetFamilyIndex()) {
+            Result result = candidate->Prepare(queue);
+            if (result != Result::SUCCESS)
+                return result;
+
+            candidate->SetInUse(true);
+            context = candidate;
+
+            return Result::SUCCESS;
+        }
+    }
+
+    context = Allocate<TransferContextVK>(GetAllocationCallbacks(), *this);
+    if (!context)
+        return Result::OUT_OF_MEMORY;
+
+    Result result = context->Prepare(queue);
+    if (result != Result::SUCCESS) {
+        Destroy(context);
+        context = nullptr;
+        return result;
+    }
+
+    context->SetInUse(true);
+    m_TransferContexts.push_back(context);
+
+    return Result::SUCCESS;
+}
+
+void DeviceVK::ReleaseTransferContext(TransferContextVK& context) {
+    ExclusiveScope lock(m_TransferContextLock);
+    context.SetInUse(false);
+}
+
 NRI_INLINE void DeviceVK::CopyDescriptorRanges(const CopyDescriptorRangeDesc* copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum) {
     Scratch<VkCopyDescriptorSet> copies = NRI_ALLOCATE_SCRATCH(*this, VkCopyDescriptorSet, copyDescriptorRangeDescNum);
     for (uint32_t i = 0; i < copyDescriptorRangeDescNum; i++) {
@@ -2655,6 +3082,14 @@ NRI_INLINE FormatSupportBits DeviceVK::GetFormatSupport(Format format) const {
     UPDATE_TEXTURE_SUPPORT_BITS(VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT, FormatSupportBits::DEPTH_STENCIL_ATTACHMENT);
     UPDATE_TEXTURE_SUPPORT_BITS(VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT, FormatSupportBits::BLEND);
     UPDATE_TEXTURE_SUPPORT_BITS(VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT, FormatSupportBits::STORAGE_TEXTURE_ATOMICS);
+
+    const FormatProps& formatProps = GetFormatProps(format);
+    if (!formatProps.isDepth && !formatProps.isStencil) {
+        const VkFormatFeatureFlags2 hostCopyFeatures = m_IsSupported.hostImageCopy
+            ? VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT_EXT
+            : (VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT);
+        UPDATE_TEXTURE_SUPPORT_BITS(hostCopyFeatures, FormatSupportBits::HOST_COPY);
+    }
 
     UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT, FormatSupportBits::BUFFER);
     UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT, FormatSupportBits::STORAGE_BUFFER);

@@ -206,7 +206,7 @@ NriEnum(Format, uint8_t,                // |      FormatSupportBits      |
     // Plain: 8 bits per channel
     R8_UNORM,                           // + + . + . + + + + + + + . + + +
     R8_SNORM,                           // + + . + . + + + + + + + . + + +
-    R8_UINT,                            // + + . + . . + + + . + + . + + +  // SHADING_RATE compatible, see NRI_SHADING_RATE macro
+    R8_UINT,                            // + + . + . . + + + . + + . + + +  // "SHADING_RATE_ATTACHMENT" compatible, see "NRI_SHADING_RATE" macro
     R8_SINT,                            // + + . + . . + + + . + + . + + +
 
     RG8_UNORM,                          // + + . + . + + + + + + + . + + +  // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
@@ -360,7 +360,7 @@ NriBits(PlaneBits, uint8_t,
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_feature_data_format_support
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkFormatFeatureFlagBits2.html
 // WGPU: typed buffer views are unsupported; storage textures cannot be multisampled
-NriBits(FormatSupportBits, uint16_t,
+NriBits(FormatSupportBits, uint32_t,
     UNSUPPORTED                     = 0,            // format is unsupported
 
     // Texture
@@ -383,7 +383,10 @@ NriBits(FormatSupportBits, uint16_t,
 
     // Texture / buffer
     STORAGE_READ_WITHOUT_FORMAT     = NriBit(14),   // storage read with unknown format
-    STORAGE_WRITE_WITHOUT_FORMAT    = NriBit(15)    // storage write with unknown format
+    STORAGE_WRITE_WITHOUT_FORMAT    = NriBit(15),   // storage write with unknown format
+
+    // Host (generally supported for non-depth/stencil formats with "TEXTURE" bit support)
+    HOST_COPY                       = NriBit(16)    // synchronous host copies are supported
 );
 
 #pragma endregion
@@ -448,6 +451,9 @@ NriBits(StageBits, uint32_t,
 
     // Modifiers
     INDIRECT                        = NriBit(23),   // Invoked by "Indirect" commands (used in addition to other bits)
+
+    // Host
+    HOST                            = NriBit(24),   // Invoked by "CopyHostMemoryToTexture" and "CopyTextureToHostMemory"
 
     // Umbrella stages
     TESSELLATION_SHADERS            = NriMember(StageBits, TESS_CONTROL_SHADER)
@@ -523,6 +529,10 @@ NriBits(AccessBits, uint32_t,
 
     // Clear storage
     CLEAR_STORAGE                   = NriBit(22),   //  W       CLEAR_STORAGE
+
+    // Host
+    HOST_READ                       = NriBit(23),   // R        HOST
+    HOST_WRITE                      = NriBit(24),   //  W       HOST
 
     // Umbrella access
     COLOR_ATTACHMENT                = NriMember(AccessBits, COLOR_ATTACHMENT_READ)
@@ -655,7 +665,8 @@ NriBits(TextureUsageBits, uint8_t,                  // Min compatible access:   
     COLOR_ATTACHMENT                    = NriBit(2),    // COLOR_ATTACHMENT                         Color attachment (render target)
     DEPTH_STENCIL_ATTACHMENT            = NriBit(3),    // DEPTH_STENCIL_ATTACHMENT_READ/WRITE      Depth-stencil attachment (depth-stencil target)
     SHADING_RATE_ATTACHMENT             = NriBit(4),    // SHADING_RATE_ATTACHMENT                  Shading rate attachment (source)
-    INPUT_ATTACHMENT                    = NriBit(5)     // INPUT_ATTACHMENT                         Subpass input (read on-chip tile cache)
+    INPUT_ATTACHMENT                    = NriBit(5),    // INPUT_ATTACHMENT                         Subpass input (read on-chip tile cache)
+    HOST_TRANSFER                       = NriBit(6)     // HOST_READ/HOST_WRITE                     Synchronous copy between texture and host memory
 );
 
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkBufferUsageFlagBits.html
@@ -1710,6 +1721,22 @@ NriStruct(TextureDataLayoutDesc) {
     uint64_t offset;        // a buffer offset must be a multiple of "uploadBufferTextureSliceAlignment" (data placement alignment)
     uint32_t rowPitch;      // must be a multiple of "uploadBufferTextureRowAlignment"
     uint32_t slicePitch;    // must be a multiple of "uploadBufferTextureSliceAlignment"
+};
+
+NriStruct(CopyHostMemoryToTextureDesc) {
+    const void* srcData;
+    NriPtr(Texture) dstTexture;
+    Nri(TextureRegionDesc) dstRegion;
+    NriOptional uint32_t srcRowPitch;   // if rows are not tightly packed
+    NriOptional uint32_t srcSlicePitch; // if slices are not tightly packed
+};
+
+NriStruct(CopyTextureToHostMemoryDesc) {
+    NriPtr(Texture) srcTexture;
+    void* dstData;
+    Nri(TextureRegionDesc) srcRegion;
+    NriOptional uint32_t dstRowPitch;   // if rows are not tightly packed
+    NriOptional uint32_t dstSlicePitch; // if slices are not tightly packed
 };
 
 // Work submission

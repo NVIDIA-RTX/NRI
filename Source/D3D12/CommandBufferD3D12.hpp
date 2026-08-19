@@ -76,6 +76,9 @@ static inline D3D12_BARRIER_SYNC GetBarrierSyncFlags(StageBits stageBits, Access
     if (stageBits & StageBits::CLEAR_STORAGE)
         flags |= D3D12_BARRIER_SYNC_CLEAR_UNORDERED_ACCESS_VIEW;
 
+    if (stageBits & StageBits::HOST)
+        flags |= D3D12_BARRIER_SYNC_ALL;
+
     if (stageBits & (StageBits::ACCELERATION_STRUCTURE | StageBits::MICROMAP)) {
         flags |= D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE | D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE;
 

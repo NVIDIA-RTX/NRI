@@ -61,6 +61,7 @@ struct QueryPoolD3D12;
 struct QueueD3D12;
 struct SwapChainD3D12;
 struct TextureD3D12;
+struct TransferContextD3D12;
 
 typedef size_t DescriptorHandleCPU;   // D3D12_CPU_DESCRIPTOR_HANDLE
 typedef uint64_t DescriptorHandleGPU; // D3D12_GPU_DESCRIPTOR_HANDLE
