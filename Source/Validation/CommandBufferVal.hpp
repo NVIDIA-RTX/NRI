@@ -103,7 +103,7 @@ static bool ValidateBufferBarrierDesc(const DeviceVal& device, uint32_t i, const
 
 static bool ValidateHostTextureState(const DeviceVal& device, uint32_t i, const AccessLayoutStage& state, const char* stateName) {
     constexpr AccessBits hostAccess = AccessBits::HOST_READ | AccessBits::HOST_WRITE;
-    if (!(state.access & hostAccess) && !(state.stages & StageBits::HOST))
+    if (!(state.access & hostAccess))
         return true;
 
     NRI_RETURN_ON_FAILURE(&device, state.access == AccessBits::HOST_READ || state.access == AccessBits::HOST_WRITE, false,
