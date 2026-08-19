@@ -198,6 +198,7 @@ bool nri::GetTextureDesc(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& 
         return false;
 
     uint32_t bindFlags = 0;
+    D3D11_USAGE usage = D3D11_USAGE_DEFAULT;
     if (type == D3D11_RESOURCE_DIMENSION_TEXTURE1D) {
         ID3D11Texture1D* texture = (ID3D11Texture1D*)resource;
         D3D11_TEXTURE1D_DESC desc = {};
@@ -213,6 +214,7 @@ bool nri::GetTextureDesc(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& 
         textureDesc.format = DXGIFormatToNRIFormat(desc.Format);
 
         bindFlags = desc.BindFlags;
+        usage = desc.Usage;
     } else if (type == D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
         ID3D11Texture2D* texture = (ID3D11Texture2D*)resource;
         D3D11_TEXTURE2D_DESC desc = {};
@@ -228,6 +230,7 @@ bool nri::GetTextureDesc(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& 
         textureDesc.format = DXGIFormatToNRIFormat(desc.Format);
 
         bindFlags = desc.BindFlags;
+        usage = desc.Usage;
     } else if (type == D3D11_RESOURCE_DIMENSION_TEXTURE3D) {
         ID3D11Texture3D* texture = (ID3D11Texture3D*)resource;
         D3D11_TEXTURE3D_DESC desc = {};
@@ -243,9 +246,11 @@ bool nri::GetTextureDesc(const TextureD3D11Desc& textureD3D11Desc, TextureDesc& 
         textureDesc.format = DXGIFormatToNRIFormat(desc.Format);
 
         bindFlags = desc.BindFlags;
+        usage = desc.Usage;
     }
 
-    textureDesc.usage |= TextureUsageBits::HOST_TRANSFER;
+    if (usage == D3D11_USAGE_DEFAULT)
+        textureDesc.usage |= TextureUsageBits::HOST_TRANSFER;
 
     if (bindFlags & D3D11_BIND_RENDER_TARGET)
         textureDesc.usage |= TextureUsageBits::COLOR_ATTACHMENT;
