@@ -2373,39 +2373,56 @@ Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToT
 
     const DispatchTable& vk = GetDispatchTable();
     if (m_IsSupported.hostImageCopy) {
+        Vector<VkMemoryToImageCopy> regions(GetStdAllocator());
+        regions.reserve(copyDescNum);
+
         for (uint32_t i = 0; i < copyDescNum; i++) {
-            const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
-            const TextureVK& texture = *(TextureVK*)copyDesc.dstTexture;
+            bool isFirstTextureOccurrence = true;
+            for (uint32_t j = 0; isFirstTextureOccurrence && j < i; j++)
+                isFirstTextureOccurrence = copyDescs[j].dstTexture != copyDescs[i].dstTexture;
+
+            if (!isFirstTextureOccurrence)
+                continue;
+
+            const TextureVK& texture = *(TextureVK*)copyDescs[i].dstTexture;
             const TextureDesc& textureDesc = texture.GetDesc();
             const FormatProps& formatProps = GetFormatProps(textureDesc.format);
-            uint32_t width = copyDesc.dstRegion.width == WHOLE_SIZE ? texture.GetSize(0, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.width;
-            uint32_t rowSize = ((width + formatProps.blockWidth - 1) / formatProps.blockWidth) * formatProps.stride;
-            uint32_t rowPitch = copyDesc.srcRowPitch ? copyDesc.srcRowPitch : rowSize;
+            regions.clear();
+            for (uint32_t j = i; j < copyDescNum; j++) {
+                const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[j];
+                if (copyDesc.dstTexture != copyDescs[i].dstTexture)
+                    continue;
 
-            VkMemoryToImageCopy region = {VK_STRUCTURE_TYPE_MEMORY_TO_IMAGE_COPY};
-            region.pHostPointer = copyDesc.srcData;
-            if (copyDesc.srcRowPitch)
-                region.memoryRowLength = copyDesc.srcRowPitch / formatProps.stride * formatProps.blockWidth;
-            if (copyDesc.srcSlicePitch)
-                region.memoryImageHeight = copyDesc.srcSlicePitch / rowPitch * formatProps.blockHeight;
-            region.imageSubresource = {
-                GetImageAspectFlags(copyDesc.dstRegion.planes, textureDesc.format),
-                copyDesc.dstRegion.mipOffset,
-                copyDesc.dstRegion.layerOffset,
-                1,
-            };
-            region.imageOffset = {copyDesc.dstRegion.x, copyDesc.dstRegion.y, copyDesc.dstRegion.z};
-            region.imageExtent = {
-                width,
-                copyDesc.dstRegion.height == WHOLE_SIZE ? texture.GetSize(1, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.height,
-                copyDesc.dstRegion.depth == WHOLE_SIZE ? texture.GetSize(2, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.depth,
-            };
+                uint32_t width = copyDesc.dstRegion.width == WHOLE_SIZE ? texture.GetSize(0, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.width;
+                uint32_t rowSize = ((width + formatProps.blockWidth - 1) / formatProps.blockWidth) * formatProps.stride;
+                uint32_t rowPitch = copyDesc.srcRowPitch ? copyDesc.srcRowPitch : rowSize;
+
+                VkMemoryToImageCopy region = {VK_STRUCTURE_TYPE_MEMORY_TO_IMAGE_COPY};
+                region.pHostPointer = copyDesc.srcData;
+                if (copyDesc.srcRowPitch)
+                    region.memoryRowLength = copyDesc.srcRowPitch / formatProps.stride * formatProps.blockWidth;
+                if (copyDesc.srcSlicePitch)
+                    region.memoryImageHeight = copyDesc.srcSlicePitch / rowPitch * formatProps.blockHeight;
+                region.imageSubresource = {
+                    GetImageAspectFlags(copyDesc.dstRegion.planes, textureDesc.format),
+                    copyDesc.dstRegion.mipOffset,
+                    copyDesc.dstRegion.layerOffset,
+                    1,
+                };
+                region.imageOffset = {copyDesc.dstRegion.x, copyDesc.dstRegion.y, copyDesc.dstRegion.z};
+                region.imageExtent = {
+                    width,
+                    copyDesc.dstRegion.height == WHOLE_SIZE ? texture.GetSize(1, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.height,
+                    copyDesc.dstRegion.depth == WHOLE_SIZE ? texture.GetSize(2, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.depth,
+                };
+                regions.push_back(region);
+            }
 
             VkCopyMemoryToImageInfo info = {VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INFO};
             info.dstImage = texture.GetHandle();
             info.dstImageLayout = VK_IMAGE_LAYOUT_GENERAL;
-            info.regionCount = 1;
-            info.pRegions = &region;
+            info.regionCount = (uint32_t)regions.size();
+            info.pRegions = regions.data();
 
             VkResult result = vk.CopyMemoryToImage(*this, &info);
             if (result != VK_SUCCESS)
@@ -2547,39 +2564,56 @@ Result DeviceVK::CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHost
 
     const DispatchTable& vk = GetDispatchTable();
     if (m_IsSupported.hostImageCopy) {
+        Vector<VkImageToMemoryCopy> regions(GetStdAllocator());
+        regions.reserve(copyDescNum);
+
         for (uint32_t i = 0; i < copyDescNum; i++) {
-            const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
-            const TextureVK& texture = *(TextureVK*)copyDesc.srcTexture;
+            bool isFirstTextureOccurrence = true;
+            for (uint32_t j = 0; isFirstTextureOccurrence && j < i; j++)
+                isFirstTextureOccurrence = copyDescs[j].srcTexture != copyDescs[i].srcTexture;
+
+            if (!isFirstTextureOccurrence)
+                continue;
+
+            const TextureVK& texture = *(TextureVK*)copyDescs[i].srcTexture;
             const TextureDesc& textureDesc = texture.GetDesc();
             const FormatProps& formatProps = GetFormatProps(textureDesc.format);
-            uint32_t width = copyDesc.srcRegion.width == WHOLE_SIZE ? texture.GetSize(0, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.width;
-            uint32_t rowSize = ((width + formatProps.blockWidth - 1) / formatProps.blockWidth) * formatProps.stride;
-            uint32_t rowPitch = copyDesc.dstRowPitch ? copyDesc.dstRowPitch : rowSize;
+            regions.clear();
+            for (uint32_t j = i; j < copyDescNum; j++) {
+                const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[j];
+                if (copyDesc.srcTexture != copyDescs[i].srcTexture)
+                    continue;
 
-            VkImageToMemoryCopy region = {VK_STRUCTURE_TYPE_IMAGE_TO_MEMORY_COPY};
-            region.imageSubresource = {
-                GetImageAspectFlags(copyDesc.srcRegion.planes, textureDesc.format),
-                copyDesc.srcRegion.mipOffset,
-                copyDesc.srcRegion.layerOffset,
-                1,
-            };
-            region.imageOffset = {copyDesc.srcRegion.x, copyDesc.srcRegion.y, copyDesc.srcRegion.z};
-            region.imageExtent = {
-                width,
-                copyDesc.srcRegion.height == WHOLE_SIZE ? texture.GetSize(1, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.height,
-                copyDesc.srcRegion.depth == WHOLE_SIZE ? texture.GetSize(2, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.depth,
-            };
-            region.pHostPointer = copyDesc.dstData;
-            if (copyDesc.dstRowPitch)
-                region.memoryRowLength = copyDesc.dstRowPitch / formatProps.stride * formatProps.blockWidth;
-            if (copyDesc.dstSlicePitch)
-                region.memoryImageHeight = copyDesc.dstSlicePitch / rowPitch * formatProps.blockHeight;
+                uint32_t width = copyDesc.srcRegion.width == WHOLE_SIZE ? texture.GetSize(0, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.width;
+                uint32_t rowSize = ((width + formatProps.blockWidth - 1) / formatProps.blockWidth) * formatProps.stride;
+                uint32_t rowPitch = copyDesc.dstRowPitch ? copyDesc.dstRowPitch : rowSize;
+
+                VkImageToMemoryCopy region = {VK_STRUCTURE_TYPE_IMAGE_TO_MEMORY_COPY};
+                region.imageSubresource = {
+                    GetImageAspectFlags(copyDesc.srcRegion.planes, textureDesc.format),
+                    copyDesc.srcRegion.mipOffset,
+                    copyDesc.srcRegion.layerOffset,
+                    1,
+                };
+                region.imageOffset = {copyDesc.srcRegion.x, copyDesc.srcRegion.y, copyDesc.srcRegion.z};
+                region.imageExtent = {
+                    width,
+                    copyDesc.srcRegion.height == WHOLE_SIZE ? texture.GetSize(1, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.height,
+                    copyDesc.srcRegion.depth == WHOLE_SIZE ? texture.GetSize(2, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.depth,
+                };
+                region.pHostPointer = copyDesc.dstData;
+                if (copyDesc.dstRowPitch)
+                    region.memoryRowLength = copyDesc.dstRowPitch / formatProps.stride * formatProps.blockWidth;
+                if (copyDesc.dstSlicePitch)
+                    region.memoryImageHeight = copyDesc.dstSlicePitch / rowPitch * formatProps.blockHeight;
+                regions.push_back(region);
+            }
 
             VkCopyImageToMemoryInfo info = {VK_STRUCTURE_TYPE_COPY_IMAGE_TO_MEMORY_INFO};
             info.srcImage = texture.GetHandle();
             info.srcImageLayout = VK_IMAGE_LAYOUT_GENERAL;
-            info.regionCount = 1;
-            info.pRegions = &region;
+            info.regionCount = (uint32_t)regions.size();
+            info.pRegions = regions.data();
 
             VkResult result = vk.CopyImageToMemory(*this, &info);
             if (result != VK_SUCCESS)
