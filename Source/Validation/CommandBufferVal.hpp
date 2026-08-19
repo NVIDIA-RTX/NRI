@@ -122,17 +122,43 @@ static bool ValidateTextureBarrierDesc(const DeviceVal& device, uint32_t i, cons
     NRI_RETURN_ON_FAILURE(&device, textureBarrier.after.layout < Layout::MAX_NUM, false, "'barrierDesc.textures[%u].after.layout' is invalid", i);
 
     const TextureVal& textureVal = *(const TextureVal*)textureBarrier.texture;
+    const TextureDesc& textureDesc = textureVal.GetDesc();
 
-    NRI_RETURN_ON_FAILURE(&device, IsAccessMaskSupported(textureVal.GetDesc(), textureBarrier.before.access), false,
+    NRI_RETURN_ON_FAILURE(&device, textureBarrier.mipOffset < textureDesc.mipNum, false,
+        "'barrierDesc.textures[%u].mipOffset' is out of bounds for texture ('%s')", i, textureVal.GetDebugName());
+    NRI_RETURN_ON_FAILURE(&device, textureBarrier.layerOffset < textureDesc.layerNum, false,
+        "'barrierDesc.textures[%u].layerOffset' is out of bounds for texture ('%s')", i, textureVal.GetDebugName());
+
+    Dim_t mipNum = textureBarrier.mipNum == REMAINING ? textureDesc.mipNum - textureBarrier.mipOffset : textureBarrier.mipNum;
+    Dim_t layerNum = textureBarrier.layerNum == REMAINING ? textureDesc.layerNum - textureBarrier.layerOffset : textureBarrier.layerNum;
+    NRI_RETURN_ON_FAILURE(&device, mipNum <= textureDesc.mipNum - textureBarrier.mipOffset, false,
+        "'barrierDesc.textures[%u].mipNum' is out of bounds for texture ('%s')", i, textureVal.GetDebugName());
+    NRI_RETURN_ON_FAILURE(&device, layerNum <= textureDesc.layerNum - textureBarrier.layerOffset, false,
+        "'barrierDesc.textures[%u].layerNum' is out of bounds for texture ('%s')", i, textureVal.GetDebugName());
+
+    NRI_RETURN_ON_FAILURE(&device, IsAccessMaskSupported(textureDesc, textureBarrier.before.access), false,
         "'barrierDesc.textures[%u].before.access' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
-    NRI_RETURN_ON_FAILURE(&device, IsAccessMaskSupported(textureVal.GetDesc(), textureBarrier.after.access), false,
+    NRI_RETURN_ON_FAILURE(&device, IsAccessMaskSupported(textureDesc, textureBarrier.after.access), false,
         "'barrierDesc.textures[%u].after.access' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
-    NRI_RETURN_ON_FAILURE(&device, IsTextureLayoutSupported(textureVal.GetDesc(), textureBarrier.before.layout), false,
+    NRI_RETURN_ON_FAILURE(&device, IsTextureLayoutSupported(textureDesc, textureBarrier.before.layout), false,
         "'barrierDesc.textures[%u].before.layout' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
-    NRI_RETURN_ON_FAILURE(&device, IsTextureLayoutSupported(textureVal.GetDesc(), textureBarrier.after.layout), false,
+    NRI_RETURN_ON_FAILURE(&device, IsTextureLayoutSupported(textureDesc, textureBarrier.after.layout), false,
         "'barrierDesc.textures[%u].after.layout' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
     if (!ValidateHostTextureState(device, i, textureBarrier.before, "before") || !ValidateHostTextureState(device, i, textureBarrier.after, "after"))
         return false;
+
+    constexpr AccessBits hostAccess = AccessBits::HOST_READ | AccessBits::HOST_WRITE;
+    bool hasHostState = (textureBarrier.before.access & hostAccess) || (textureBarrier.after.access & hostAccess);
+    if (hasHostState) {
+        const FormatProps& formatProps = GetFormatProps(textureDesc.format);
+        NRI_RETURN_ON_FAILURE(&device, device.GetFormatSupport(textureDesc.format) & FormatSupportBits::HOST_COPY, false,
+            "texture ('%s') format does not support 'FormatSupportBits::HOST_COPY'", textureVal.GetDebugName());
+        NRI_RETURN_ON_FAILURE(&device, textureDesc.sampleNum == 1, false, "texture ('%s') is multisampled", textureVal.GetDebugName());
+        NRI_RETURN_ON_FAILURE(&device, !formatProps.isDepth && !formatProps.isStencil, false, "texture ('%s') must have a color format for host access", textureVal.GetDebugName());
+        NRI_RETURN_ON_FAILURE(&device, textureBarrier.planes == PlaneBits::ALL || textureBarrier.planes == PlaneBits::COLOR, false,
+            "'barrierDesc.textures[%u].planes' must be 'ALL' or 'COLOR' for host access", i);
+    }
+
     if (textureBarrier.after.layout == Layout::PRESENT) {
         NRI_RETURN_ON_FAILURE(&device, textureBarrier.after.access == AccessBits::NONE && textureBarrier.after.stages == StageBits::NONE, false,
             "'barrierDesc.textures[%u].after.layout = Layout::PRESENT' for texture ('%s') expects 'AccessBits::NONE' and 'StageBits::NONE'", i, textureVal.GetDebugName());
