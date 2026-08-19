@@ -44,6 +44,7 @@ struct TransferContextD3D12 {
     Result EnsureReadbackBuffer(uint64_t size);
     Result SubmitAndWait(QueueD3D12& queue);
     bool TryRecover();
+    void Trim();
 
 private:
     Result EnsureBuffer(MemoryLocation memoryLocation, uint64_t size, BufferD3D12*& buffer, uint64_t& capacity);

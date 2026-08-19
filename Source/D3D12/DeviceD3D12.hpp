@@ -1756,6 +1756,7 @@ Result DeviceD3D12::AcquireTransferContext(QueueD3D12& queue, TransferContextD3D
 
 void DeviceD3D12::ReleaseTransferContext(TransferContextD3D12& context) {
     ExclusiveScope lock(m_TransferContextLock);
+    context.Trim();
     context.SetInUse(false);
 }
 

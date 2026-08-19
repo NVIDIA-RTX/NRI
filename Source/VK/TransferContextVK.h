@@ -44,6 +44,7 @@ struct TransferContextVK {
     Result EnsureReadbackBuffer(uint64_t size);
     Result SubmitAndWait(QueueVK& queue);
     bool TryRecover();
+    void Trim();
 
 private:
     Result EnsureBuffer(MemoryLocation memoryLocation, uint64_t size, BufferVK*& buffer, uint64_t& capacity);

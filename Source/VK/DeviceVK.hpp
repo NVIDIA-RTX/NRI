@@ -2785,6 +2785,7 @@ Result DeviceVK::AcquireTransferContext(QueueVK& queue, TransferContextVK*& cont
 
 void DeviceVK::ReleaseTransferContext(TransferContextVK& context) {
     ExclusiveScope lock(m_TransferContextLock);
+    context.Trim();
     context.SetInUse(false);
 }
 

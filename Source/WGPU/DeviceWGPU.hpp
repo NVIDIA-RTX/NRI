@@ -702,6 +702,13 @@ Result DeviceWGPU::AcquireHostCopyContext(HostCopyContextWGPU*& context) {
 
 void DeviceWGPU::ReleaseHostCopyContext(HostCopyContextWGPU& context) {
     ExclusiveScope lock(m_HostCopyContextLock);
+
+    if (context.readbackBufferSize > MAX_CACHED_HOST_COPY_BUFFER_SIZE) {
+        wgpuBufferRelease(context.readbackBuffer);
+        context.readbackBuffer = nullptr;
+        context.readbackBufferSize = 0;
+    }
+
     context.isInUse = false;
 }
 
@@ -709,8 +716,10 @@ Result DeviceWGPU::EnsureReadbackBuffer(HostCopyContextWGPU& context, uint64_t s
     if (size <= context.readbackBufferSize)
         return Result::SUCCESS;
 
-    uint64_t newSize = context.readbackBufferSize && context.readbackBufferSize <= uint64_t(-1) / 2 ? context.readbackBufferSize * 2 : size;
-    newSize = Align(std::max(newSize, size), 4ull);
+    uint64_t newSize = size;
+    if (size <= MAX_CACHED_HOST_COPY_BUFFER_SIZE && context.readbackBufferSize)
+        newSize = std::min(std::max(context.readbackBufferSize * 2, size), MAX_CACHED_HOST_COPY_BUFFER_SIZE);
+    newSize = Align(newSize, 4ull);
 
     WGPUBufferDescriptor bufferDesc = WGPU_BUFFER_DESCRIPTOR_INIT;
     bufferDesc.size = newSize;

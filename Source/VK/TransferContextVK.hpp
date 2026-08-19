@@ -40,8 +40,10 @@ Result TransferContextVK::EnsureBuffer(MemoryLocation memoryLocation, uint64_t s
     if (size <= capacity)
         return Result::SUCCESS;
 
-    uint64_t newCapacity = capacity && capacity <= uint64_t(-1) / 2 ? capacity * 2 : size;
-    newCapacity = Align(std::max(newCapacity, size), 4ull);
+    uint64_t newCapacity = size;
+    if (size <= MAX_CACHED_HOST_COPY_BUFFER_SIZE && capacity)
+        newCapacity = std::min(std::max(capacity * 2, size), MAX_CACHED_HOST_COPY_BUFFER_SIZE);
+    newCapacity = Align(newCapacity, 4ull);
 
     BufferDesc bufferDesc = {};
     bufferDesc.size = newCapacity;
@@ -78,10 +80,29 @@ void TransferContextVK::Reset() {
 }
 
 bool TransferContextVK::TryRecover() {
-    if (!m_IsReusable && m_Fence->GetFenceValue() >= m_FenceValue)
+    if (!m_IsReusable && m_Fence->GetFenceValue() >= m_FenceValue) {
         Reset();
+        Trim();
+    }
 
     return m_IsReusable;
+}
+
+void TransferContextVK::Trim() {
+    if (!m_IsReusable)
+        return;
+
+    if (m_UploadBufferSize > MAX_CACHED_HOST_COPY_BUFFER_SIZE) {
+        Destroy(m_UploadBuffer);
+        m_UploadBuffer = nullptr;
+        m_UploadBufferSize = 0;
+    }
+
+    if (m_ReadbackBufferSize > MAX_CACHED_HOST_COPY_BUFFER_SIZE) {
+        Destroy(m_ReadbackBuffer);
+        m_ReadbackBuffer = nullptr;
+        m_ReadbackBufferSize = 0;
+    }
 }
 
 Result TransferContextVK::SubmitAndWait(QueueVK& queue) {
