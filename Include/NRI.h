@@ -261,6 +261,7 @@ NriStruct(CoreInterface) {
     // - textures must be created with "TextureUsageBits::HOST_TRANSFER"
     // - "dstTexture" must be in "{AccessBits::HOST_WRITE, Layout::GENERAL, StageBits::HOST}"
     // - "srcTexture" must be in "{AccessBits::HOST_READ, Layout::GENERAL, StageBits::HOST}"
+    // - destination regions in a single "CopyHostMemoryToTexture" call must not overlap
     Nri(Result)         (NRI_CALL *CopyHostMemoryToTexture)         (NriRef(Queue) queue, const NriPtr(CopyHostMemoryToTextureDesc) copyDescs, uint32_t copyDescNum);
     Nri(Result)         (NRI_CALL *CopyTextureToHostMemory)         (NriRef(Queue) queue, const NriPtr(CopyTextureToHostMemoryDesc) copyDescs, uint32_t copyDescNum);
 
