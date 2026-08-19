@@ -1829,7 +1829,7 @@ NRI_INLINE FormatSupportBits DeviceD3D12::GetFormatSupport(Format format) const 
 
         const FormatProps& formatProps = GetFormatProps(format);
         if (!formatProps.isDepth && !formatProps.isStencil) {
-            constexpr uint32_t textureSupport = D3D12_FORMAT_SUPPORT1_TEXTURE1D | D3D12_FORMAT_SUPPORT1_TEXTURE2D | D3D12_FORMAT_SUPPORT1_TEXTURE3D;
+            constexpr uint32_t textureSupport = D3D12_FORMAT_SUPPORT1_TEXTURE1D | D3D12_FORMAT_SUPPORT1_TEXTURE2D | D3D12_FORMAT_SUPPORT1_TEXTURE3D | D3D12_FORMAT_SUPPORT1_TEXTURECUBE;
             UPDATE_SUPPORT_BITS(0, textureSupport, FormatSupportBits::HOST_COPY);
         }
 
