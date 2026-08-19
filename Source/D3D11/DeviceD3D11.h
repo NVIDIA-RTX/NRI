@@ -18,6 +18,13 @@ struct HostCopyLayoutD3D11 {
     uint32_t rowNum;
 };
 
+struct HostCopyTextureD3D11 {
+    TextureD3D11* texture;
+    uint32_t subresource;
+    MemoryLocation memoryLocation;
+    bool isInUse;
+};
+
 struct DeviceD3D11 final : public DeviceBase {
     DeviceD3D11(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks);
     ~DeviceD3D11();
@@ -158,7 +165,8 @@ private:
     HostCopyLayoutD3D11 GetHostCopyLayout(const TextureD3D11& texture, const TextureRegionDesc& region) const;
     static bool IsWholeSubresource(const TextureRegionDesc& region, const HostCopyLayoutD3D11& layout);
     static bool IsBoxAligned(const TextureD3D11& texture, const TextureRegionDesc& region, const HostCopyLayoutD3D11& layout);
-    Result CreateHostCopyTexture(const TextureD3D11& texture, uint32_t width, uint32_t height, uint32_t depth, MemoryLocation memoryLocation, TextureD3D11*& hostCopyTexture, uint32_t& hostCopySubresource);
+    Result AcquireHostCopyTexture(const TextureD3D11& texture, uint32_t width, uint32_t height, uint32_t depth, MemoryLocation memoryLocation, TextureD3D11*& hostCopyTexture, uint32_t& hostCopySubresource);
+    void ReleaseHostCopyTexture(TextureD3D11& hostCopyTexture);
     void FillDesc();
     void InitializeNvExt(bool disableNVAPIInitialization, bool isImported);
     void InitializeAmdExt(AGSContext* agsContext, bool isImported);
@@ -178,6 +186,7 @@ private:
     ComPtr<ID3D11DeviceContextBest> m_ImmediateContext;
     ComPtr<ID3D11Multithread> m_Multithread;
     ComPtr<ID3D11Buffer> m_ZeroBuffer;
+    Vector<HostCopyTextureD3D11> m_HostCopyTextures;
     std::array<Vector<QueueD3D11*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies;
     CRITICAL_SECTION m_CriticalSection = {};
     CoreInterface m_iCore = {};
