@@ -23,10 +23,6 @@ struct TransferContextVK {
         return m_IsInUse;
     }
 
-    inline bool IsReusable() const {
-        return m_IsReusable;
-    }
-
     inline void SetInUse(bool isInUse) {
         m_IsInUse = isInUse;
     }
@@ -47,9 +43,11 @@ struct TransferContextVK {
     Result EnsureUploadBuffer(uint64_t size);
     Result EnsureReadbackBuffer(uint64_t size);
     Result SubmitAndWait(QueueVK& queue);
+    bool TryRecover();
 
 private:
     Result EnsureBuffer(MemoryLocation memoryLocation, uint64_t size, BufferVK*& buffer, uint64_t& capacity);
+    void Reset();
 
 private:
     DeviceVK& m_Device;

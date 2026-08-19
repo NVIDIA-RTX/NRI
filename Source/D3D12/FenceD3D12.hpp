@@ -46,6 +46,8 @@ NRI_INLINE Result FenceD3D12::Wait(uint64_t value) {
             ;
     } else if (m_Fence->GetCompletedValue() < value) {
         // Event-based wait
+        ResetEvent(m_Event);
+
         HRESULT hr = m_Fence->SetEventOnCompletion(value, m_Event);
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Fence::SetEventOnCompletion");
 

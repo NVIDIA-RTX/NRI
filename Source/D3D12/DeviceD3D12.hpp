@@ -1724,7 +1724,7 @@ Result DeviceD3D12::AcquireTransferContext(QueueD3D12& queue, TransferContextD3D
     ExclusiveScope lock(m_TransferContextLock);
 
     for (TransferContextD3D12* candidate : m_TransferContexts) {
-        if (!candidate->IsInUse() && candidate->IsReusable() && candidate->GetType() == queue.GetType()) {
+        if (!candidate->IsInUse() && candidate->GetType() == queue.GetType() && candidate->TryRecover()) {
             Result result = candidate->Prepare(queue);
             if (result != Result::SUCCESS)
                 return result;

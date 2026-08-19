@@ -2720,7 +2720,7 @@ Result DeviceVK::AcquireTransferContext(QueueVK& queue, TransferContextVK*& cont
     ExclusiveScope lock(m_TransferContextLock);
 
     for (TransferContextVK* candidate : m_TransferContexts) {
-        if (!candidate->IsInUse() && candidate->IsReusable() && candidate->GetFamilyIndex() == queue.GetFamilyIndex()) {
+        if (!candidate->IsInUse() && candidate->GetFamilyIndex() == queue.GetFamilyIndex() && candidate->TryRecover()) {
             Result result = candidate->Prepare(queue);
             if (result != Result::SUCCESS)
                 return result;

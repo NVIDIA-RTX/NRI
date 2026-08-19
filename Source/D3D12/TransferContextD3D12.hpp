@@ -71,6 +71,19 @@ Result TransferContextD3D12::EnsureReadbackBuffer(uint64_t size) {
     return EnsureBuffer(MemoryLocation::HOST_READBACK, size, m_ReadbackBuffer, m_ReadbackBufferSize);
 }
 
+void TransferContextD3D12::Reset() {
+    m_CommandAllocator->Reset();
+    m_FenceValue++;
+    m_IsReusable = true;
+}
+
+bool TransferContextD3D12::TryRecover() {
+    if (!m_IsReusable && m_Fence->GetFenceValue() >= m_FenceValue)
+        Reset();
+
+    return m_IsReusable;
+}
+
 Result TransferContextD3D12::SubmitAndWait(QueueD3D12& queue) {
     FenceSubmitDesc fenceSubmitDesc = {};
     fenceSubmitDesc.fence = (Fence*)m_Fence;
@@ -89,11 +102,8 @@ Result TransferContextD3D12::SubmitAndWait(QueueD3D12& queue) {
     if (result == Result::SUCCESS)
         result = m_Fence->Wait(m_FenceValue);
 
-    if (result == Result::SUCCESS) {
-        m_CommandAllocator->Reset();
-        m_FenceValue++;
-        m_IsReusable = true;
-    }
+    if (result == Result::SUCCESS)
+        Reset();
 
     return result;
 }

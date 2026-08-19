@@ -23,10 +23,6 @@ struct TransferContextD3D12 {
         return m_IsInUse;
     }
 
-    inline bool IsReusable() const {
-        return m_IsReusable;
-    }
-
     inline void SetInUse(bool isInUse) {
         m_IsInUse = isInUse;
     }
@@ -47,9 +43,11 @@ struct TransferContextD3D12 {
     Result EnsureUploadBuffer(uint64_t size);
     Result EnsureReadbackBuffer(uint64_t size);
     Result SubmitAndWait(QueueD3D12& queue);
+    bool TryRecover();
 
 private:
     Result EnsureBuffer(MemoryLocation memoryLocation, uint64_t size, BufferD3D12*& buffer, uint64_t& capacity);
+    void Reset();
 
 private:
     DeviceD3D12& m_Device;
