@@ -258,6 +258,7 @@ NriStruct(CoreInterface) {
 
     // Synchronous host copies
     // - all prior GPU access to the copied subresources must be complete before the call
+    // - host memory is no longer accessed and readback data is available after the call returns
     // - textures must be created with "TextureUsageBits::HOST_TRANSFER"
     // - "dstTexture" must be in "{AccessBits::HOST_WRITE, Layout::GENERAL, StageBits::HOST}"
     // - "srcTexture" must be in "{AccessBits::HOST_READ, Layout::GENERAL, StageBits::HOST}"
