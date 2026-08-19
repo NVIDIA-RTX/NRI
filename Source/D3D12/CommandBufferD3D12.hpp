@@ -135,10 +135,10 @@ static inline D3D12_BARRIER_ACCESS GetBarrierAccessFlags(AccessBits accessBits) 
     if (accessBits & (AccessBits::SHADER_RESOURCE_STORAGE | AccessBits::SCRATCH_BUFFER | AccessBits::CLEAR_STORAGE))
         flags |= D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
 
-    if (accessBits & AccessBits::COPY_SOURCE)
+    if (accessBits & (AccessBits::COPY_SOURCE | AccessBits::HOST_READ))
         flags |= D3D12_BARRIER_ACCESS_COPY_SOURCE;
 
-    if (accessBits & AccessBits::COPY_DESTINATION)
+    if (accessBits & (AccessBits::COPY_DESTINATION | AccessBits::HOST_WRITE))
         flags |= D3D12_BARRIER_ACCESS_COPY_DEST;
 
     if (accessBits & AccessBits::RESOLVE_SOURCE)
