@@ -528,6 +528,9 @@ HostCopyLayoutWGPU DeviceWGPU::GetHostCopyLayout(const TextureWGPU& texture, con
 }
 
 Result DeviceWGPU::CopyHostMemoryToTexture(const CopyHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
+    if (!copyDescNum)
+        return Result::SUCCESS;
+
     for (uint32_t i = 0; i < copyDescNum; i++) {
         const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
         const TextureWGPU& texture = *(TextureWGPU*)copyDesc.dstTexture;
