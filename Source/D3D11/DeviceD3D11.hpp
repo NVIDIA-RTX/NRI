@@ -696,14 +696,14 @@ NRI_INLINE Result DeviceD3D11::WaitIdle() {
     return Result::SUCCESS;
 }
 
-DeviceD3D11::HostCopyLayout DeviceD3D11::GetHostCopyLayout(const TextureD3D11& texture, const TextureRegionDesc& region) const {
+HostCopyLayoutD3D11 DeviceD3D11::GetHostCopyLayout(const TextureD3D11& texture, const TextureRegionDesc& region) const {
     const TextureDesc& textureDesc = texture.GetDesc();
     const FormatProps& formatProps = GetFormatProps(textureDesc.format);
     uint32_t mipWidth = std::max((uint32_t)textureDesc.width >> region.mipOffset, 1u);
     uint32_t mipHeight = std::max((uint32_t)textureDesc.height >> region.mipOffset, 1u);
     uint32_t mipDepth = std::max((uint32_t)textureDesc.depth >> region.mipOffset, 1u);
 
-    HostCopyLayout layout = {};
+    HostCopyLayoutD3D11 layout = {};
     layout.mipWidth = mipWidth;
     layout.mipHeight = mipHeight;
     layout.mipDepth = mipDepth;
@@ -716,11 +716,11 @@ DeviceD3D11::HostCopyLayout DeviceD3D11::GetHostCopyLayout(const TextureD3D11& t
     return layout;
 }
 
-bool DeviceD3D11::IsWholeSubresource(const TextureRegionDesc& region, const HostCopyLayout& layout) {
+bool DeviceD3D11::IsWholeSubresource(const TextureRegionDesc& region, const HostCopyLayoutD3D11& layout) {
     return region.x == 0 && region.y == 0 && region.z == 0 && layout.width == layout.mipWidth && layout.height == layout.mipHeight && layout.depth == layout.mipDepth;
 }
 
-bool DeviceD3D11::IsBoxAligned(const TextureD3D11& texture, const TextureRegionDesc& region, const HostCopyLayout& layout) {
+bool DeviceD3D11::IsBoxAligned(const TextureD3D11& texture, const TextureRegionDesc& region, const HostCopyLayoutD3D11& layout) {
     const FormatProps& formatProps = GetFormatProps(texture.GetDesc().format);
 
     return (region.x + layout.width) % formatProps.blockWidth == 0 && (region.y + layout.height) % formatProps.blockHeight == 0;
@@ -759,7 +759,7 @@ Result DeviceD3D11::CopyHostMemoryToTexture(QueueD3D11&, const CopyHostMemoryToT
     for (uint32_t i = 0; i < copyDescNum; i++) {
         const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
         TextureD3D11& texture = *(TextureD3D11*)copyDesc.dstTexture;
-        HostCopyLayout layout = GetHostCopyLayout(texture, copyDesc.dstRegion);
+        HostCopyLayoutD3D11 layout = GetHostCopyLayout(texture, copyDesc.dstRegion);
         uint32_t rowPitch = copyDesc.srcRowPitch ? copyDesc.srcRowPitch : layout.rowSize;
         uint32_t slicePitch = copyDesc.srcSlicePitch ? copyDesc.srcSlicePitch : rowPitch * layout.rowNum;
         uint32_t subresource = texture.GetSubresourceIndex(copyDesc.dstRegion.layerOffset, copyDesc.dstRegion.mipOffset);
@@ -834,7 +834,7 @@ Result DeviceD3D11::CopyTextureToHostMemory(QueueD3D11&, const CopyTextureToHost
     for (uint32_t i = 0; i < copyDescNum; i++) {
         const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
         TextureD3D11& srcTexture = *(TextureD3D11*)copyDesc.srcTexture;
-        HostCopyLayout layout = GetHostCopyLayout(srcTexture, copyDesc.srcRegion);
+        HostCopyLayoutD3D11 layout = GetHostCopyLayout(srcTexture, copyDesc.srcRegion);
         bool useBox = !IsWholeSubresource(copyDesc.srcRegion, layout) && IsBoxAligned(srcTexture, copyDesc.srcRegion, layout);
         uint32_t stagingWidth = useBox ? layout.width : layout.mipWidth;
         uint32_t stagingHeight = useBox ? layout.height : layout.mipHeight;

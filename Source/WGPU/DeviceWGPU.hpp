@@ -49,7 +49,7 @@ DeviceWGPU::DeviceWGPU(const CallbackInterface& callbacks, const AllocationCallb
 DeviceWGPU::~DeviceWGPU() {
     WaitIdle();
 
-    for (HostCopyContext* context : m_HostCopyContexts) {
+    for (HostCopyContextWGPU* context : m_HostCopyContexts) {
         if (context->readbackBuffer)
             wgpuBufferRelease(context->readbackBuffer);
         Destroy(GetAllocationCallbacks(), context);
@@ -504,11 +504,11 @@ Result DeviceWGPU::WaitIdle() {
     return Result::SUCCESS;
 }
 
-DeviceWGPU::HostCopyLayout DeviceWGPU::GetHostCopyLayout(const TextureWGPU& texture, const TextureRegionDesc& region, uint64_t& offset, bool alignForBufferCopy) const {
+HostCopyLayoutWGPU DeviceWGPU::GetHostCopyLayout(const TextureWGPU& texture, const TextureRegionDesc& region, uint64_t& offset, bool alignForBufferCopy) const {
     const TextureDesc& textureDesc = texture.GetDesc();
     const FormatProps& formatProps = GetFormatProps(textureDesc.format);
 
-    HostCopyLayout layout = {};
+    HostCopyLayoutWGPU layout = {};
     uint32_t width = region.width == WHOLE_SIZE ? GetDimension(GraphicsAPI::WGPU, textureDesc, 0, region.mipOffset) : region.width;
     uint32_t height = region.height == WHOLE_SIZE ? GetDimension(GraphicsAPI::WGPU, textureDesc, 1, region.mipOffset) : region.height;
     layout.width = Align(width, formatProps.blockWidth);
@@ -532,7 +532,7 @@ Result DeviceWGPU::CopyHostMemoryToTexture(const CopyHostMemoryToTextureDesc* co
         const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
         const TextureWGPU& texture = *(TextureWGPU*)copyDesc.dstTexture;
         uint64_t ignoredOffset = 0;
-        HostCopyLayout copyLayout = GetHostCopyLayout(texture, copyDesc.dstRegion, ignoredOffset, false);
+        HostCopyLayoutWGPU copyLayout = GetHostCopyLayout(texture, copyDesc.dstRegion, ignoredOffset, false);
         uint32_t rowPitch = copyDesc.srcRowPitch ? copyDesc.srcRowPitch : copyLayout.rowSize;
         uint32_t slicePitch = copyDesc.srcSlicePitch ? copyDesc.srcSlicePitch : rowPitch * copyLayout.rowNum;
         size_t dataSize = (size_t)(uint64_t(copyLayout.depth - 1) * slicePitch + uint64_t(copyLayout.rowNum - 1) * rowPitch + copyLayout.rowSize);
@@ -560,12 +560,12 @@ Result DeviceWGPU::CopyTextureToHostMemory(const CopyTextureToHostMemoryDesc* co
     if (!copyDescNum)
         return Result::SUCCESS;
 
-    HostCopyContext* context = nullptr;
+    HostCopyContextWGPU* context = nullptr;
     Result result = AcquireHostCopyContext(context);
     if (result != Result::SUCCESS)
         return result;
 
-    Vector<HostCopyLayout> layouts(GetStdAllocator());
+    Vector<HostCopyLayoutWGPU> layouts(GetStdAllocator());
     layouts.reserve(copyDescNum);
 
     uint64_t stagingSize = 0;
@@ -587,7 +587,7 @@ Result DeviceWGPU::CopyTextureToHostMemory(const CopyTextureToHostMemoryDesc* co
         for (uint32_t i = 0; i < copyDescNum; i++) {
             const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
             const TextureWGPU& texture = *(TextureWGPU*)copyDesc.srcTexture;
-            const HostCopyLayout& layout = layouts[i];
+            const HostCopyLayoutWGPU& layout = layouts[i];
 
             WGPUTexelCopyTextureInfo src = WGPU_TEXEL_COPY_TEXTURE_INFO_INIT;
             src.texture = texture;
@@ -655,7 +655,7 @@ Result DeviceWGPU::CopyTextureToHostMemory(const CopyTextureToHostMemoryDesc* co
 
     for (uint32_t i = 0; result == Result::SUCCESS && i < copyDescNum; i++) {
         const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
-        const HostCopyLayout& layout = layouts[i];
+        const HostCopyLayoutWGPU& layout = layouts[i];
         uint32_t dstRowPitch = copyDesc.dstRowPitch ? copyDesc.dstRowPitch : layout.rowSize;
         uint32_t dstSlicePitch = copyDesc.dstSlicePitch ? copyDesc.dstSlicePitch : dstRowPitch * layout.rowNum;
 
@@ -676,10 +676,10 @@ Result DeviceWGPU::CopyTextureToHostMemory(const CopyTextureToHostMemoryDesc* co
     return result;
 }
 
-Result DeviceWGPU::AcquireHostCopyContext(HostCopyContext*& context) {
+Result DeviceWGPU::AcquireHostCopyContext(HostCopyContextWGPU*& context) {
     ExclusiveScope lock(m_HostCopyContextLock);
 
-    for (HostCopyContext* candidate : m_HostCopyContexts) {
+    for (HostCopyContextWGPU* candidate : m_HostCopyContexts) {
         if (!candidate->isInUse) {
             candidate->isInUse = true;
             context = candidate;
@@ -687,7 +687,7 @@ Result DeviceWGPU::AcquireHostCopyContext(HostCopyContext*& context) {
         }
     }
 
-    context = Allocate<HostCopyContext>(GetAllocationCallbacks());
+    context = Allocate<HostCopyContextWGPU>(GetAllocationCallbacks());
     if (!context)
         return Result::OUT_OF_MEMORY;
 
@@ -697,12 +697,12 @@ Result DeviceWGPU::AcquireHostCopyContext(HostCopyContext*& context) {
     return Result::SUCCESS;
 }
 
-void DeviceWGPU::ReleaseHostCopyContext(HostCopyContext& context) {
+void DeviceWGPU::ReleaseHostCopyContext(HostCopyContextWGPU& context) {
     ExclusiveScope lock(m_HostCopyContextLock);
     context.isInUse = false;
 }
 
-Result DeviceWGPU::EnsureReadbackBuffer(HostCopyContext& context, uint64_t size) {
+Result DeviceWGPU::EnsureReadbackBuffer(HostCopyContextWGPU& context, uint64_t size) {
     if (size <= context.readbackBufferSize)
         return Result::SUCCESS;
 

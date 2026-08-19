@@ -1539,7 +1539,7 @@ NRI_INLINE Result DeviceD3D12::WaitIdle() {
     return Result::SUCCESS;
 }
 
-DeviceD3D12::HostCopyLayout DeviceD3D12::GetHostCopyLayout(const TextureD3D12& texture, const TextureRegionDesc& region, uint64_t& offset) const {
+HostCopyLayoutD3D12 DeviceD3D12::GetHostCopyLayout(const TextureD3D12& texture, const TextureRegionDesc& region, uint64_t& offset) const {
     const TextureDesc& textureDesc = texture.GetDesc();
     const FormatProps& formatProps = GetFormatProps(textureDesc.format);
 
@@ -1553,7 +1553,7 @@ DeviceD3D12::HostCopyLayout DeviceD3D12::GetHostCopyLayout(const TextureD3D12& t
 
     offset = Align(offset, (uint64_t)GetDesc().memoryAlignment.uploadBufferTextureSlice);
 
-    HostCopyLayout layout = {};
+    HostCopyLayoutD3D12 layout = {};
     layout.dataLayout.offset = offset;
     layout.dataLayout.rowPitch = rowPitch;
     layout.dataLayout.slicePitch = rowPitch * rowNum;
@@ -1575,7 +1575,7 @@ Result DeviceD3D12::CopyHostMemoryToTexture(QueueD3D12& queue, const CopyHostMem
     if (result != Result::SUCCESS)
         return result;
 
-    Vector<HostCopyLayout> layouts(GetStdAllocator());
+    Vector<HostCopyLayoutD3D12> layouts(GetStdAllocator());
     layouts.reserve(copyDescNum);
 
     uint64_t stagingSize = 0;
@@ -1590,7 +1590,7 @@ Result DeviceD3D12::CopyHostMemoryToTexture(QueueD3D12& queue, const CopyHostMem
 
         for (uint32_t i = 0; i < copyDescNum; i++) {
             const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
-            const HostCopyLayout& layout = layouts[i];
+            const HostCopyLayoutD3D12& layout = layouts[i];
             uint32_t srcRowPitch = copyDesc.srcRowPitch ? copyDesc.srcRowPitch : layout.rowSize;
             uint32_t srcSlicePitch = copyDesc.srcSlicePitch ? copyDesc.srcSlicePitch : srcRowPitch * layout.rowNum;
 
@@ -1670,7 +1670,7 @@ Result DeviceD3D12::CopyTextureToHostMemory(QueueD3D12& queue, const CopyTexture
     if (result != Result::SUCCESS)
         return result;
 
-    Vector<HostCopyLayout> layouts(GetStdAllocator());
+    Vector<HostCopyLayoutD3D12> layouts(GetStdAllocator());
     layouts.reserve(copyDescNum);
 
     uint64_t stagingSize = 0;
@@ -1701,7 +1701,7 @@ Result DeviceD3D12::CopyTextureToHostMemory(QueueD3D12& queue, const CopyTexture
 
         for (uint32_t i = 0; i < copyDescNum; i++) {
             const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
-            const HostCopyLayout& layout = layouts[i];
+            const HostCopyLayoutD3D12& layout = layouts[i];
             uint32_t dstRowPitch = copyDesc.dstRowPitch ? copyDesc.dstRowPitch : layout.rowSize;
             uint32_t dstSlicePitch = copyDesc.dstSlicePitch ? copyDesc.dstSlicePitch : dstRowPitch * layout.rowNum;
 

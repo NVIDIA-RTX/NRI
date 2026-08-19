@@ -2339,7 +2339,7 @@ NRI_INLINE Result DeviceVK::WaitIdle() {
     return Result::SUCCESS;
 }
 
-DeviceVK::HostCopyLayout DeviceVK::GetHostCopyLayout(const TextureVK& texture, const TextureRegionDesc& region, uint64_t& offset) const {
+HostCopyLayoutVK DeviceVK::GetHostCopyLayout(const TextureVK& texture, const TextureRegionDesc& region, uint64_t& offset) const {
     const FormatProps& formatProps = GetFormatProps(texture.GetDesc().format);
     uint32_t width = region.width == WHOLE_SIZE ? texture.GetSize(0, region.mipOffset) : region.width;
     uint32_t height = region.height == WHOLE_SIZE ? texture.GetSize(1, region.mipOffset) : region.height;
@@ -2354,7 +2354,7 @@ DeviceVK::HostCopyLayout DeviceVK::GetHostCopyLayout(const TextureVK& texture, c
     uint64_t offsetAlignment = std::lcm((uint64_t)GetDesc().memoryAlignment.uploadBufferTextureSlice, (uint64_t)formatProps.stride);
     offset = ((offset + offsetAlignment - 1) / offsetAlignment) * offsetAlignment;
 
-    HostCopyLayout layout = {};
+    HostCopyLayoutVK layout = {};
     layout.dataLayout.offset = offset;
     layout.dataLayout.rowPitch = rowPitch;
     layout.dataLayout.slicePitch = rowPitch * rowNum;
@@ -2420,7 +2420,7 @@ Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToT
     if (result != Result::SUCCESS)
         return result;
 
-    Vector<HostCopyLayout> layouts(GetStdAllocator());
+    Vector<HostCopyLayoutVK> layouts(GetStdAllocator());
     layouts.reserve(copyDescNum);
 
     uint64_t stagingSize = 0;
@@ -2435,7 +2435,7 @@ Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToT
 
         for (uint32_t i = 0; result == Result::SUCCESS && i < copyDescNum; i++) {
             const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
-            const HostCopyLayout& layout = layouts[i];
+            const HostCopyLayoutVK& layout = layouts[i];
             uint32_t srcRowPitch = copyDesc.srcRowPitch ? copyDesc.srcRowPitch : layout.rowSize;
             uint32_t srcSlicePitch = copyDesc.srcSlicePitch ? copyDesc.srcSlicePitch : srcRowPitch * layout.rowNum;
 
@@ -2489,7 +2489,7 @@ Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToT
             const TextureVK& texture = *(TextureVK*)copyDesc.dstTexture;
             const TextureDesc& textureDesc = texture.GetDesc();
             const FormatProps& formatProps = GetFormatProps(textureDesc.format);
-            const HostCopyLayout& layout = layouts[i];
+            const HostCopyLayoutVK& layout = layouts[i];
 
             VkBufferImageCopy2 region = {VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2};
             region.bufferOffset = layout.dataLayout.offset;
@@ -2594,7 +2594,7 @@ Result DeviceVK::CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHost
     if (result != Result::SUCCESS)
         return result;
 
-    Vector<HostCopyLayout> layouts(GetStdAllocator());
+    Vector<HostCopyLayoutVK> layouts(GetStdAllocator());
     layouts.reserve(copyDescNum);
 
     uint64_t stagingSize = 0;
@@ -2634,7 +2634,7 @@ Result DeviceVK::CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHost
             const TextureVK& texture = *(TextureVK*)copyDesc.srcTexture;
             const TextureDesc& textureDesc = texture.GetDesc();
             const FormatProps& formatProps = GetFormatProps(textureDesc.format);
-            const HostCopyLayout& layout = layouts[i];
+            const HostCopyLayoutVK& layout = layouts[i];
 
             VkBufferImageCopy2 region = {VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2};
             region.bufferOffset = layout.dataLayout.offset;
@@ -2695,7 +2695,7 @@ Result DeviceVK::CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHost
 
         for (uint32_t i = 0; result == Result::SUCCESS && i < copyDescNum; i++) {
             const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
-            const HostCopyLayout& layout = layouts[i];
+            const HostCopyLayoutVK& layout = layouts[i];
             uint32_t dstRowPitch = copyDesc.dstRowPitch ? copyDesc.dstRowPitch : layout.rowSize;
             uint32_t dstSlicePitch = copyDesc.dstSlicePitch ? copyDesc.dstSlicePitch : dstRowPitch * layout.rowNum;
 

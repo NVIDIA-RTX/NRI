@@ -10,6 +10,13 @@ typedef ID3D12Device8 ID3D12DeviceBest;
 
 namespace nri {
 
+struct HostCopyLayoutD3D12 {
+    TextureDataLayoutDesc dataLayout;
+    uint32_t rowSize;
+    uint32_t rowNum;
+    uint32_t depth;
+};
+
 struct DeviceD3D12 final : public DeviceBase {
     DeviceD3D12(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks);
     ~DeviceD3D12();
@@ -150,14 +157,7 @@ struct DeviceD3D12 final : public DeviceBase {
     Result BindMicromapMemory(const BindMicromapMemoryDesc* bindMicromapMemoryDescs, uint32_t bindMicromapMemoryDescNum);
     FormatSupportBits GetFormatSupport(Format format) const;
 private:
-    struct HostCopyLayout {
-        TextureDataLayoutDesc dataLayout;
-        uint32_t rowSize;
-        uint32_t rowNum;
-        uint32_t depth;
-    };
-
-    HostCopyLayout GetHostCopyLayout(const TextureD3D12& texture, const TextureRegionDesc& region, uint64_t& offset) const;
+    HostCopyLayoutD3D12 GetHostCopyLayout(const TextureD3D12& texture, const TextureRegionDesc& region, uint64_t& offset) const;
     Result AcquireTransferContext(QueueD3D12& queue, TransferContextD3D12*& context);
     void ReleaseTransferContext(TransferContextD3D12& context);
     HRESULT CreateVma();

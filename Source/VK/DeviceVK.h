@@ -130,6 +130,13 @@ struct IsSupported {
 
 static_assert(sizeof(IsSupported) == sizeof(uint32_t), "4 bytes expected");
 
+struct HostCopyLayoutVK {
+    TextureDataLayoutDesc dataLayout;
+    uint32_t rowSize;
+    uint32_t rowNum;
+    uint32_t depth;
+};
+
 struct DeviceVK final : public DeviceBase {
     inline operator VkDevice() const {
         return m_Device;
@@ -252,14 +259,7 @@ struct DeviceVK final : public DeviceBase {
     FormatSupportBits GetFormatSupport(Format format) const;
 
 private:
-    struct HostCopyLayout {
-        TextureDataLayoutDesc dataLayout;
-        uint32_t rowSize;
-        uint32_t rowNum;
-        uint32_t depth;
-    };
-
-    HostCopyLayout GetHostCopyLayout(const TextureVK& texture, const TextureRegionDesc& region, uint64_t& offset) const;
+    HostCopyLayoutVK GetHostCopyLayout(const TextureVK& texture, const TextureRegionDesc& region, uint64_t& offset) const;
     Result AcquireTransferContext(QueueVK& queue, TransferContextVK*& context);
     void ReleaseTransferContext(TransferContextVK& context);
     VkResult CreateVma();

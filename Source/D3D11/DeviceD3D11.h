@@ -7,6 +7,17 @@ typedef ID3D11Device5 ID3D11DeviceBest;
 
 namespace nri {
 
+struct HostCopyLayoutD3D11 {
+    uint32_t mipWidth;
+    uint32_t mipHeight;
+    uint32_t mipDepth;
+    uint32_t width;
+    uint32_t height;
+    uint32_t depth;
+    uint32_t rowSize;
+    uint32_t rowNum;
+};
+
 struct DeviceD3D11 final : public DeviceBase {
     DeviceD3D11(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks);
     ~DeviceD3D11();
@@ -144,20 +155,9 @@ struct DeviceD3D11 final : public DeviceBase {
     FormatSupportBits GetFormatSupport(Format format) const;
 
 private:
-    struct HostCopyLayout {
-        uint32_t mipWidth;
-        uint32_t mipHeight;
-        uint32_t mipDepth;
-        uint32_t width;
-        uint32_t height;
-        uint32_t depth;
-        uint32_t rowSize;
-        uint32_t rowNum;
-    };
-
-    HostCopyLayout GetHostCopyLayout(const TextureD3D11& texture, const TextureRegionDesc& region) const;
-    static bool IsWholeSubresource(const TextureRegionDesc& region, const HostCopyLayout& layout);
-    static bool IsBoxAligned(const TextureD3D11& texture, const TextureRegionDesc& region, const HostCopyLayout& layout);
+    HostCopyLayoutD3D11 GetHostCopyLayout(const TextureD3D11& texture, const TextureRegionDesc& region) const;
+    static bool IsWholeSubresource(const TextureRegionDesc& region, const HostCopyLayoutD3D11& layout);
+    static bool IsBoxAligned(const TextureD3D11& texture, const TextureRegionDesc& region, const HostCopyLayoutD3D11& layout);
     Result CreateHostCopyTexture(const TextureD3D11& texture, uint32_t width, uint32_t height, uint32_t depth, MemoryLocation memoryLocation, TextureD3D11*& hostCopyTexture, uint32_t& hostCopySubresource);
     void FillDesc();
     void InitializeNvExt(bool disableNVAPIInitialization, bool isImported);
