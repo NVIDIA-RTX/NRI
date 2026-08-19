@@ -83,11 +83,16 @@ Result TransferContextD3D12::SubmitAndWait(QueueD3D12& queue) {
     queueSubmitDesc.signalFences = &fenceSubmitDesc;
     queueSubmitDesc.signalFenceNum = 1;
 
+    m_IsReusable = false;
+
     Result result = queue.Submit(queueSubmitDesc);
+    if (result == Result::SUCCESS)
+        result = m_Fence->Wait(m_FenceValue);
+
     if (result == Result::SUCCESS) {
-        m_Fence->Wait(m_FenceValue);
         m_CommandAllocator->Reset();
         m_FenceValue++;
+        m_IsReusable = true;
     }
 
     return result;

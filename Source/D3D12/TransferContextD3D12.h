@@ -23,6 +23,10 @@ struct TransferContextD3D12 {
         return m_IsInUse;
     }
 
+    inline bool IsReusable() const {
+        return m_IsReusable;
+    }
+
     inline void SetInUse(bool isInUse) {
         m_IsInUse = isInUse;
     }
@@ -59,6 +63,7 @@ private:
     uint64_t m_FenceValue = 1;
     D3D12_COMMAND_LIST_TYPE m_CommandListType = D3D12_COMMAND_LIST_TYPE(-1);
     bool m_IsInUse = false;
+    bool m_IsReusable = true;
 };
 
 } // namespace nri
