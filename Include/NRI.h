@@ -260,8 +260,6 @@ NriStruct(CoreInterface) {
     // - all prior GPU access to the copied subresources must be complete before the call
     // - host memory is no longer accessed and readback data is available after the call returns
     // - textures must be created with "TextureUsageBits::HOST_TRANSFER"
-    // - "dstTexture" must be in "{AccessBits::HOST_WRITE, Layout::GENERAL, StageBits::HOST}"
-    // - "srcTexture" must be in "{AccessBits::HOST_READ, Layout::GENERAL, StageBits::HOST}"
     // - destination regions in a single "UploadHostMemoryToTexture" call must not overlap
     Nri(Result)         (NRI_CALL *UploadHostMemoryToTexture)       (NriRef(Queue) queue, const NriPtr(UploadHostMemoryToTextureDesc) copyDescs, uint32_t copyDescNum);
     Nri(Result)         (NRI_CALL *ReadbackTextureToHostMemory)     (NriRef(Queue) queue, const NriPtr(ReadbackTextureToHostMemoryDesc) copyDescs, uint32_t copyDescNum);

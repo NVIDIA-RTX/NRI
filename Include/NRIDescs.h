@@ -1725,14 +1725,14 @@ NriStruct(TextureDataLayoutDesc) {
 
 NriStruct(UploadHostMemoryToTextureDesc) {
     const void* srcData;
-    NriPtr(Texture) dstTexture;
+    NriPtr(Texture) dstTexture;         // must be in "{AccessBits::HOST_WRITE, Layout::GENERAL, StageBits::HOST}"
     Nri(TextureRegionDesc) dstRegion;
     NriOptional uint32_t srcRowPitch;   // if rows are not tightly packed
     NriOptional uint32_t srcSlicePitch; // if slices are not tightly packed
 };
 
 NriStruct(ReadbackTextureToHostMemoryDesc) {
-    NriPtr(Texture) srcTexture;
+    NriPtr(Texture) srcTexture;         // must be in "{AccessBits::HOST_READ, Layout::GENERAL, StageBits::HOST}"
     void* dstData;
     Nri(TextureRegionDesc) srcRegion;
     NriOptional uint32_t dstRowPitch;   // if rows are not tightly packed
