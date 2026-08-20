@@ -1614,6 +1614,33 @@ Result DeviceD3D12::CopyHostMemoryToTexture(QueueD3D12& queue, const CopyHostMem
 
         for (uint32_t i = 0; i < copyDescNum; i++) {
             const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
+
+            if (m_Desc.features.enhancedBarriers) {
+                bool isRepeatedSubresource = false;
+                for (uint32_t j = 0; !isRepeatedSubresource && j < i; j++) {
+                    const CopyHostMemoryToTextureDesc& previousCopyDesc = copyDescs[j];
+                    isRepeatedSubresource = previousCopyDesc.dstTexture == copyDesc.dstTexture && previousCopyDesc.dstRegion.mipOffset == copyDesc.dstRegion.mipOffset
+                        && previousCopyDesc.dstRegion.layerOffset == copyDesc.dstRegion.layerOffset;
+                }
+
+                if (isRepeatedSubresource) {
+                    TextureBarrierDesc textureBarrier = {};
+                    textureBarrier.texture = copyDesc.dstTexture;
+                    textureBarrier.mipOffset = copyDesc.dstRegion.mipOffset;
+                    textureBarrier.mipNum = 1;
+                    textureBarrier.layerOffset = copyDesc.dstRegion.layerOffset;
+                    textureBarrier.layerNum = 1;
+                    textureBarrier.planes = copyDesc.dstRegion.planes;
+                    textureBarrier.before = {AccessBits::COPY_DESTINATION, Layout::GENERAL, StageBits::COPY};
+                    textureBarrier.after = textureBarrier.before;
+
+                    BarrierDesc barrierDesc = {};
+                    barrierDesc.textures = &textureBarrier;
+                    barrierDesc.textureNum = 1;
+                    context->GetCommandBuffer().Barrier(barrierDesc);
+                }
+            }
+
             context->GetCommandBuffer().UploadBufferToTexture(*copyDesc.dstTexture, copyDesc.dstRegion, (Buffer&)context->GetUploadBuffer(), layouts[i].dataLayout);
 
             if (restoreCommon) {

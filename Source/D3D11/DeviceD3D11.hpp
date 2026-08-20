@@ -920,8 +920,8 @@ Result DeviceD3D11::CopyTextureToHostMemory(QueueD3D11&, const CopyTextureToHost
         D3D11_MAPPED_SUBRESOURCE mappedSubresource = {};
         HRESULT hr = context->Map((ID3D11Resource*)*stagingTexture, stagingSubresource, D3D11_MAP_READ, 0, &mappedSubresource);
         if (FAILED(hr)) {
-            for (uint32_t j = 0; j < i; j++)
-                ReleaseHostCopyTexture(*stagingTextures[j]);
+            for (TextureD3D11* acquiredTexture : stagingTextures)
+                ReleaseHostCopyTexture(*acquiredTexture);
 
             return GetResultFromHRESULT(hr);
         }
