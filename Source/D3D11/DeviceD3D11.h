@@ -20,8 +20,6 @@ struct HostCopyLayoutD3D11 {
 
 struct HostCopyTextureD3D11 {
     TextureD3D11* texture;
-    uint32_t subresource;
-    MemoryLocation memoryLocation;
     bool isInUse;
 };
 
@@ -165,7 +163,7 @@ private:
     HostCopyLayoutD3D11 GetHostCopyLayout(const TextureD3D11& texture, const TextureRegionDesc& region) const;
     static bool IsWholeSubresource(const TextureRegionDesc& region, const HostCopyLayoutD3D11& layout);
     static bool IsBoxAligned(const TextureD3D11& texture, const TextureRegionDesc& region, const HostCopyLayoutD3D11& layout);
-    Result AcquireHostCopyTexture(const TextureD3D11& texture, uint32_t width, uint32_t height, uint32_t depth, MemoryLocation memoryLocation, TextureD3D11*& hostCopyTexture, uint32_t& hostCopySubresource);
+    Result AcquireHostCopyTexture(const TextureD3D11& texture, uint32_t width, uint32_t height, uint32_t depth, TextureD3D11*& hostCopyTexture, uint32_t& hostCopySubresource);
     void ReleaseHostCopyTexture(TextureD3D11& hostCopyTexture);
     void FillDesc();
     void InitializeNvExt(bool disableNVAPIInitialization, bool isImported);

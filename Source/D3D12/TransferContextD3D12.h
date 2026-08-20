@@ -39,7 +39,7 @@ struct TransferContextD3D12 {
         return *m_ReadbackBuffer;
     }
 
-    Result Prepare(QueueD3D12& queue);
+    Result Create(QueueD3D12& queue);
     Result EnsureUploadBuffer(uint64_t size);
     Result EnsureReadbackBuffer(uint64_t size);
     Result SubmitAndWait(QueueD3D12& queue);
@@ -47,7 +47,7 @@ struct TransferContextD3D12 {
     void Trim();
 
 private:
-    Result EnsureBuffer(MemoryLocation memoryLocation, uint64_t size, BufferD3D12*& buffer, uint64_t& capacity);
+    Result EnsureBuffer(MemoryLocation memoryLocation, uint64_t size, BufferD3D12*& buffer);
     void Reset();
 
 private:
@@ -57,8 +57,6 @@ private:
     CommandAllocatorD3D12* m_CommandAllocator = nullptr;
     BufferD3D12* m_UploadBuffer = nullptr;
     BufferD3D12* m_ReadbackBuffer = nullptr;
-    uint64_t m_UploadBufferSize = 0;
-    uint64_t m_ReadbackBufferSize = 0;
     uint64_t m_FenceValue = 1;
     D3D12_COMMAND_LIST_TYPE m_CommandListType = D3D12_COMMAND_LIST_TYPE(-1);
     bool m_IsInUse = false;

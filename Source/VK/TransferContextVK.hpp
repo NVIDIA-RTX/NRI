@@ -8,35 +8,29 @@ TransferContextVK::~TransferContextVK() {
     Destroy(m_ReadbackBuffer);
 }
 
-Result TransferContextVK::Prepare(QueueVK& queue) {
-    if (m_FamilyIndex == INVALID_FAMILY_INDEX)
-        m_FamilyIndex = queue.GetFamilyIndex();
+Result TransferContextVK::Create(QueueVK& queue) {
+    m_FamilyIndex = queue.GetFamilyIndex();
 
-    if (!m_Fence) {
-        Result result = m_Device.CreateImplementation<FenceVK>(m_Fence, 0);
-        if (result != Result::SUCCESS)
-            return result;
-    }
+    Result result = m_Device.CreateImplementation<FenceVK>(m_Fence, 0);
+    if (result != Result::SUCCESS)
+        return result;
 
-    if (!m_CommandAllocator) {
-        Result result = m_Device.CreateImplementation<CommandAllocatorVK>(m_CommandAllocator, (Queue&)queue);
-        if (result != Result::SUCCESS)
-            return result;
-    }
+    result = m_Device.CreateImplementation<CommandAllocatorVK>(m_CommandAllocator, (Queue&)queue);
+    if (result != Result::SUCCESS)
+        return result;
 
-    if (!m_CommandBuffer) {
-        CommandBuffer* commandBuffer = nullptr;
-        Result result = m_CommandAllocator->CreateCommandBuffer(commandBuffer);
-        if (result != Result::SUCCESS)
-            return result;
+    CommandBuffer* commandBuffer = nullptr;
+    result = m_CommandAllocator->CreateCommandBuffer(commandBuffer);
+    if (result != Result::SUCCESS)
+        return result;
 
-        m_CommandBuffer = (CommandBufferVK*)commandBuffer;
-    }
+    m_CommandBuffer = (CommandBufferVK*)commandBuffer;
 
     return Result::SUCCESS;
 }
 
-Result TransferContextVK::EnsureBuffer(MemoryLocation memoryLocation, uint64_t size, BufferVK*& buffer, uint64_t& capacity) {
+Result TransferContextVK::EnsureBuffer(MemoryLocation memoryLocation, uint64_t size, BufferVK*& buffer) {
+    uint64_t capacity = buffer ? buffer->GetDesc().size : 0;
     if (size <= capacity)
         return Result::SUCCESS;
 
@@ -60,17 +54,16 @@ Result TransferContextVK::EnsureBuffer(MemoryLocation memoryLocation, uint64_t s
 
     Destroy(buffer);
     buffer = newBuffer;
-    capacity = newCapacity;
 
     return Result::SUCCESS;
 }
 
 Result TransferContextVK::EnsureUploadBuffer(uint64_t size) {
-    return EnsureBuffer(MemoryLocation::HOST_UPLOAD, size, m_UploadBuffer, m_UploadBufferSize);
+    return EnsureBuffer(MemoryLocation::HOST_UPLOAD, size, m_UploadBuffer);
 }
 
 Result TransferContextVK::EnsureReadbackBuffer(uint64_t size) {
-    return EnsureBuffer(MemoryLocation::HOST_READBACK, size, m_ReadbackBuffer, m_ReadbackBufferSize);
+    return EnsureBuffer(MemoryLocation::HOST_READBACK, size, m_ReadbackBuffer);
 }
 
 void TransferContextVK::Reset() {
@@ -92,16 +85,14 @@ void TransferContextVK::Trim() {
     if (!m_IsReusable)
         return;
 
-    if (m_UploadBufferSize > MAX_CACHED_HOST_COPY_BUFFER_SIZE) {
+    if (m_UploadBuffer && m_UploadBuffer->GetDesc().size > MAX_CACHED_HOST_COPY_BUFFER_SIZE) {
         Destroy(m_UploadBuffer);
         m_UploadBuffer = nullptr;
-        m_UploadBufferSize = 0;
     }
 
-    if (m_ReadbackBufferSize > MAX_CACHED_HOST_COPY_BUFFER_SIZE) {
+    if (m_ReadbackBuffer && m_ReadbackBuffer->GetDesc().size > MAX_CACHED_HOST_COPY_BUFFER_SIZE) {
         Destroy(m_ReadbackBuffer);
         m_ReadbackBuffer = nullptr;
-        m_ReadbackBufferSize = 0;
     }
 }
 

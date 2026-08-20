@@ -2437,12 +2437,11 @@ Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToT
     if (result != Result::SUCCESS)
         return result;
 
-    Vector<HostCopyLayoutVK> layouts(GetStdAllocator());
-    layouts.reserve(copyDescNum);
+    Scratch<HostCopyLayoutVK> layouts = NRI_ALLOCATE_SCRATCH(*this, HostCopyLayoutVK, copyDescNum);
 
     uint64_t stagingSize = 0;
     for (uint32_t i = 0; i < copyDescNum; i++)
-        layouts.push_back(GetHostCopyLayout(*(TextureVK*)copyDescs[i].dstTexture, copyDescs[i].dstRegion, stagingSize));
+        layouts[i] = GetHostCopyLayout(*(TextureVK*)copyDescs[i].dstTexture, copyDescs[i].dstRegion, stagingSize);
 
     result = context->EnsureUploadBuffer(stagingSize);
     if (result == Result::SUCCESS) {
@@ -2472,8 +2471,7 @@ Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToT
     if (result == Result::SUCCESS)
         result = commandBuffer.Begin(nullptr);
 
-    Vector<TextureBarrierDesc> textureBarriers(GetStdAllocator());
-    textureBarriers.resize(copyDescNum);
+    Scratch<TextureBarrierDesc> textureBarriers = NRI_ALLOCATE_SCRATCH(*this, TextureBarrierDesc, copyDescNum);
     if (result == Result::SUCCESS) {
         for (uint32_t i = 0; i < copyDescNum; i++) {
             TextureBarrierDesc& barrier = textureBarriers[i];
@@ -2496,7 +2494,7 @@ Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToT
         BarrierDesc barrierDesc = {};
         barrierDesc.buffers = &bufferBarrier;
         barrierDesc.bufferNum = 1;
-        barrierDesc.textures = textureBarriers.data();
+        barrierDesc.textures = textureBarriers;
         barrierDesc.textureNum = copyDescNum;
         commandBuffer.Barrier(barrierDesc);
 
@@ -2543,7 +2541,7 @@ Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToT
         }
 
         BarrierDesc barrierDescAfter = {};
-        barrierDescAfter.textures = textureBarriers.data();
+        barrierDescAfter.textures = textureBarriers;
         barrierDescAfter.textureNum = copyDescNum;
         commandBuffer.Barrier(barrierDescAfter);
 
@@ -2611,12 +2609,11 @@ Result DeviceVK::CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHost
     if (result != Result::SUCCESS)
         return result;
 
-    Vector<HostCopyLayoutVK> layouts(GetStdAllocator());
-    layouts.reserve(copyDescNum);
+    Scratch<HostCopyLayoutVK> layouts = NRI_ALLOCATE_SCRATCH(*this, HostCopyLayoutVK, copyDescNum);
 
     uint64_t stagingSize = 0;
     for (uint32_t i = 0; i < copyDescNum; i++)
-        layouts.push_back(GetHostCopyLayout(*(TextureVK*)copyDescs[i].srcTexture, copyDescs[i].srcRegion, stagingSize));
+        layouts[i] = GetHostCopyLayout(*(TextureVK*)copyDescs[i].srcTexture, copyDescs[i].srcRegion, stagingSize);
 
     result = context->EnsureReadbackBuffer(stagingSize);
 
@@ -2624,8 +2621,7 @@ Result DeviceVK::CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHost
     if (result == Result::SUCCESS)
         result = commandBuffer.Begin(nullptr);
 
-    Vector<TextureBarrierDesc> textureBarriers(GetStdAllocator());
-    textureBarriers.resize(copyDescNum);
+    Scratch<TextureBarrierDesc> textureBarriers = NRI_ALLOCATE_SCRATCH(*this, TextureBarrierDesc, copyDescNum);
     if (result == Result::SUCCESS) {
         for (uint32_t i = 0; i < copyDescNum; i++) {
             TextureBarrierDesc& barrier = textureBarriers[i];
@@ -2641,7 +2637,7 @@ Result DeviceVK::CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHost
         }
 
         BarrierDesc barrierDesc = {};
-        barrierDesc.textures = textureBarriers.data();
+        barrierDesc.textures = textureBarriers;
         barrierDesc.textureNum = copyDescNum;
         commandBuffer.Barrier(barrierDesc);
 
@@ -2695,7 +2691,7 @@ Result DeviceVK::CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHost
         BarrierDesc barrierDescAfter = {};
         barrierDescAfter.buffers = &bufferBarrier;
         barrierDescAfter.bufferNum = 1;
-        barrierDescAfter.textures = textureBarriers.data();
+        barrierDescAfter.textures = textureBarriers;
         barrierDescAfter.textureNum = copyDescNum;
         commandBuffer.Barrier(barrierDescAfter);
 
@@ -2738,10 +2734,6 @@ Result DeviceVK::AcquireTransferContext(QueueVK& queue, TransferContextVK*& cont
 
     for (TransferContextVK* candidate : m_TransferContexts) {
         if (!candidate->IsInUse() && candidate->GetFamilyIndex() == queue.GetFamilyIndex() && candidate->TryRecover()) {
-            Result result = candidate->Prepare(queue);
-            if (result != Result::SUCCESS)
-                return result;
-
             candidate->SetInUse(true);
             context = candidate;
 
@@ -2753,7 +2745,7 @@ Result DeviceVK::AcquireTransferContext(QueueVK& queue, TransferContextVK*& cont
     if (!context)
         return Result::OUT_OF_MEMORY;
 
-    Result result = context->Prepare(queue);
+    Result result = context->Create(queue);
     if (result != Result::SUCCESS) {
         Destroy(context);
         context = nullptr;

@@ -8,35 +8,29 @@ TransferContextD3D12::~TransferContextD3D12() {
     Destroy(m_ReadbackBuffer);
 }
 
-Result TransferContextD3D12::Prepare(QueueD3D12& queue) {
-    if (m_CommandListType == D3D12_COMMAND_LIST_TYPE(-1))
-        m_CommandListType = queue.GetType();
+Result TransferContextD3D12::Create(QueueD3D12& queue) {
+    m_CommandListType = queue.GetType();
 
-    if (!m_Fence) {
-        Result result = m_Device.CreateImplementation<FenceD3D12>(m_Fence, 0);
-        if (result != Result::SUCCESS)
-            return result;
-    }
+    Result result = m_Device.CreateImplementation<FenceD3D12>(m_Fence, 0);
+    if (result != Result::SUCCESS)
+        return result;
 
-    if (!m_CommandAllocator) {
-        Result result = m_Device.CreateImplementation<CommandAllocatorD3D12>(m_CommandAllocator, (Queue&)queue);
-        if (result != Result::SUCCESS)
-            return result;
-    }
+    result = m_Device.CreateImplementation<CommandAllocatorD3D12>(m_CommandAllocator, (Queue&)queue);
+    if (result != Result::SUCCESS)
+        return result;
 
-    if (!m_CommandBuffer) {
-        CommandBuffer* commandBuffer = nullptr;
-        Result result = m_CommandAllocator->CreateCommandBuffer(commandBuffer);
-        if (result != Result::SUCCESS)
-            return result;
+    CommandBuffer* commandBuffer = nullptr;
+    result = m_CommandAllocator->CreateCommandBuffer(commandBuffer);
+    if (result != Result::SUCCESS)
+        return result;
 
-        m_CommandBuffer = (CommandBufferD3D12*)commandBuffer;
-    }
+    m_CommandBuffer = (CommandBufferD3D12*)commandBuffer;
 
     return Result::SUCCESS;
 }
 
-Result TransferContextD3D12::EnsureBuffer(MemoryLocation memoryLocation, uint64_t size, BufferD3D12*& buffer, uint64_t& capacity) {
+Result TransferContextD3D12::EnsureBuffer(MemoryLocation memoryLocation, uint64_t size, BufferD3D12*& buffer) {
+    uint64_t capacity = buffer ? buffer->GetDesc().size : 0;
     if (size <= capacity)
         return Result::SUCCESS;
 
@@ -59,17 +53,16 @@ Result TransferContextD3D12::EnsureBuffer(MemoryLocation memoryLocation, uint64_
 
     Destroy(buffer);
     buffer = newBuffer;
-    capacity = newCapacity;
 
     return Result::SUCCESS;
 }
 
 Result TransferContextD3D12::EnsureUploadBuffer(uint64_t size) {
-    return EnsureBuffer(MemoryLocation::HOST_UPLOAD, size, m_UploadBuffer, m_UploadBufferSize);
+    return EnsureBuffer(MemoryLocation::HOST_UPLOAD, size, m_UploadBuffer);
 }
 
 Result TransferContextD3D12::EnsureReadbackBuffer(uint64_t size) {
-    return EnsureBuffer(MemoryLocation::HOST_READBACK, size, m_ReadbackBuffer, m_ReadbackBufferSize);
+    return EnsureBuffer(MemoryLocation::HOST_READBACK, size, m_ReadbackBuffer);
 }
 
 void TransferContextD3D12::Reset() {
@@ -91,16 +84,14 @@ void TransferContextD3D12::Trim() {
     if (!m_IsReusable)
         return;
 
-    if (m_UploadBufferSize > MAX_CACHED_HOST_COPY_BUFFER_SIZE) {
+    if (m_UploadBuffer && m_UploadBuffer->GetDesc().size > MAX_CACHED_HOST_COPY_BUFFER_SIZE) {
         Destroy(m_UploadBuffer);
         m_UploadBuffer = nullptr;
-        m_UploadBufferSize = 0;
     }
 
-    if (m_ReadbackBufferSize > MAX_CACHED_HOST_COPY_BUFFER_SIZE) {
+    if (m_ReadbackBuffer && m_ReadbackBuffer->GetDesc().size > MAX_CACHED_HOST_COPY_BUFFER_SIZE) {
         Destroy(m_ReadbackBuffer);
         m_ReadbackBuffer = nullptr;
-        m_ReadbackBufferSize = 0;
     }
 }
 

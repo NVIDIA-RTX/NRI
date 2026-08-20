@@ -16,8 +16,7 @@ struct HostCopyLayoutWGPU {
 };
 
 struct HostCopyContextWGPU {
-    WGPUBuffer readbackBuffer = nullptr;
-    uint64_t readbackBufferSize = 0;
+    BufferWGPU* readbackBuffer = nullptr;
     bool isInUse = false;
 };
 

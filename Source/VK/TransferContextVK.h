@@ -39,7 +39,7 @@ struct TransferContextVK {
         return *m_ReadbackBuffer;
     }
 
-    Result Prepare(QueueVK& queue);
+    Result Create(QueueVK& queue);
     Result EnsureUploadBuffer(uint64_t size);
     Result EnsureReadbackBuffer(uint64_t size);
     Result SubmitAndWait(QueueVK& queue);
@@ -47,7 +47,7 @@ struct TransferContextVK {
     void Trim();
 
 private:
-    Result EnsureBuffer(MemoryLocation memoryLocation, uint64_t size, BufferVK*& buffer, uint64_t& capacity);
+    Result EnsureBuffer(MemoryLocation memoryLocation, uint64_t size, BufferVK*& buffer);
     void Reset();
 
 private:
@@ -57,8 +57,6 @@ private:
     CommandAllocatorVK* m_CommandAllocator = nullptr;
     BufferVK* m_UploadBuffer = nullptr;
     BufferVK* m_ReadbackBuffer = nullptr;
-    uint64_t m_UploadBufferSize = 0;
-    uint64_t m_ReadbackBufferSize = 0;
     uint64_t m_FenceValue = 1;
     uint32_t m_FamilyIndex = INVALID_FAMILY_INDEX;
     bool m_IsInUse = false;

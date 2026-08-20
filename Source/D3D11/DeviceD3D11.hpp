@@ -730,7 +730,7 @@ bool DeviceD3D11::IsBoxAligned(const TextureD3D11& texture, const TextureRegionD
     return (region.x + layout.width) % formatProps.blockWidth == 0 && (region.y + layout.height) % formatProps.blockHeight == 0;
 }
 
-Result DeviceD3D11::AcquireHostCopyTexture(const TextureD3D11& texture, uint32_t width, uint32_t height, uint32_t depth, MemoryLocation memoryLocation, TextureD3D11*& hostCopyTexture, uint32_t& hostCopySubresource) {
+Result DeviceD3D11::AcquireHostCopyTexture(const TextureD3D11& texture, uint32_t width, uint32_t height, uint32_t depth, TextureD3D11*& hostCopyTexture, uint32_t& hostCopySubresource) {
     const FormatProps& formatProps = GetFormatProps(texture.GetDesc().format);
     hostCopySubresource = 0;
     while (((width << hostCopySubresource) % formatProps.blockWidth) || ((height << hostCopySubresource) % formatProps.blockHeight))
@@ -748,12 +748,12 @@ Result DeviceD3D11::AcquireHostCopyTexture(const TextureD3D11& texture, uint32_t
 
     for (HostCopyTextureD3D11& candidate : m_HostCopyTextures) {
         const TextureDesc& candidateDesc = candidate.texture->GetDesc();
-        bool isCompatible = candidate.memoryLocation == memoryLocation && candidateDesc.type == textureDesc.type && candidateDesc.format == textureDesc.format && candidateDesc.width == textureDesc.width &&
-            candidateDesc.height == textureDesc.height && candidateDesc.depth == textureDesc.depth && candidateDesc.mipNum == textureDesc.mipNum;
+        bool isCompatible = candidateDesc.type == textureDesc.type && candidateDesc.format == textureDesc.format && candidateDesc.width == textureDesc.width && candidateDesc.height == textureDesc.height &&
+            candidateDesc.depth == textureDesc.depth && candidateDesc.mipNum == textureDesc.mipNum;
         if (!candidate.isInUse && isCompatible) {
             candidate.isInUse = true;
             hostCopyTexture = candidate.texture;
-            hostCopySubresource = candidate.subresource;
+            hostCopySubresource = candidateDesc.mipNum - 1;
 
             return Result::SUCCESS;
         }
@@ -761,14 +761,14 @@ Result DeviceD3D11::AcquireHostCopyTexture(const TextureD3D11& texture, uint32_t
 
     Result result = CreateImplementation<TextureD3D11>(hostCopyTexture, textureDesc);
     if (result == Result::SUCCESS)
-        result = hostCopyTexture->Allocate(memoryLocation, 0.0f);
+        result = hostCopyTexture->Allocate(MemoryLocation::HOST_READBACK, 0.0f);
 
     if (result != Result::SUCCESS) {
         Destroy(hostCopyTexture);
         return result;
     }
 
-    m_HostCopyTextures.push_back({hostCopyTexture, hostCopySubresource, memoryLocation, true});
+    m_HostCopyTextures.push_back({hostCopyTexture, true});
 
     return Result::SUCCESS;
 }
@@ -811,7 +811,7 @@ Result DeviceD3D11::CopyHostMemoryToTexture(QueueD3D11&, const CopyHostMemoryToT
         } else {
             TextureD3D11* readbackTexture = nullptr;
             uint32_t readbackSubresource = 0;
-            Result result = AcquireHostCopyTexture(texture, layout.mipWidth, layout.mipHeight, layout.mipDepth, MemoryLocation::HOST_READBACK, readbackTexture, readbackSubresource);
+            Result result = AcquireHostCopyTexture(texture, layout.mipWidth, layout.mipHeight, layout.mipDepth, readbackTexture, readbackSubresource);
             if (result != Result::SUCCESS)
                 return result;
 
@@ -879,7 +879,7 @@ Result DeviceD3D11::CopyTextureToHostMemory(QueueD3D11&, const CopyTextureToHost
 
         TextureD3D11* stagingTexture = nullptr;
         uint32_t stagingSubresource = 0;
-        Result result = AcquireHostCopyTexture(srcTexture, stagingWidth, stagingHeight, stagingDepth, MemoryLocation::HOST_READBACK, stagingTexture, stagingSubresource);
+        Result result = AcquireHostCopyTexture(srcTexture, stagingWidth, stagingHeight, stagingDepth, stagingTexture, stagingSubresource);
         if (result != Result::SUCCESS) {
             for (TextureD3D11* acquiredTexture : stagingTextures)
                 ReleaseHostCopyTexture(*acquiredTexture);

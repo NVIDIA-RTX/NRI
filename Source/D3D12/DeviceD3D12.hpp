@@ -1575,13 +1575,12 @@ Result DeviceD3D12::CopyHostMemoryToTexture(QueueD3D12& queue, const CopyHostMem
     if (result != Result::SUCCESS)
         return result;
 
-    Vector<HostCopyLayoutD3D12> layouts(GetStdAllocator());
-    layouts.reserve(copyDescNum);
+    Scratch<HostCopyLayoutD3D12> layouts = NRI_ALLOCATE_SCRATCH(*this, HostCopyLayoutD3D12, copyDescNum);
 
     uint64_t stagingSize = 0;
     for (uint32_t i = 0; i < copyDescNum; i++) {
         const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
-        layouts.push_back(GetHostCopyLayout(*(TextureD3D12*)copyDesc.dstTexture, copyDesc.dstRegion, stagingSize));
+        layouts[i] = GetHostCopyLayout(*(TextureD3D12*)copyDesc.dstTexture, copyDesc.dstRegion, stagingSize);
     }
 
     result = context->EnsureUploadBuffer(stagingSize);
@@ -1697,13 +1696,12 @@ Result DeviceD3D12::CopyTextureToHostMemory(QueueD3D12& queue, const CopyTexture
     if (result != Result::SUCCESS)
         return result;
 
-    Vector<HostCopyLayoutD3D12> layouts(GetStdAllocator());
-    layouts.reserve(copyDescNum);
+    Scratch<HostCopyLayoutD3D12> layouts = NRI_ALLOCATE_SCRATCH(*this, HostCopyLayoutD3D12, copyDescNum);
 
     uint64_t stagingSize = 0;
     for (uint32_t i = 0; i < copyDescNum; i++) {
         const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
-        layouts.push_back(GetHostCopyLayout(*(TextureD3D12*)copyDesc.srcTexture, copyDesc.srcRegion, stagingSize));
+        layouts[i] = GetHostCopyLayout(*(TextureD3D12*)copyDesc.srcTexture, copyDesc.srcRegion, stagingSize);
     }
 
     result = context->EnsureReadbackBuffer(stagingSize);
@@ -1752,10 +1750,6 @@ Result DeviceD3D12::AcquireTransferContext(QueueD3D12& queue, TransferContextD3D
 
     for (TransferContextD3D12* candidate : m_TransferContexts) {
         if (!candidate->IsInUse() && candidate->GetType() == queue.GetType() && candidate->TryRecover()) {
-            Result result = candidate->Prepare(queue);
-            if (result != Result::SUCCESS)
-                return result;
-
             candidate->SetInUse(true);
             context = candidate;
 
@@ -1767,7 +1761,7 @@ Result DeviceD3D12::AcquireTransferContext(QueueD3D12& queue, TransferContextD3D
     if (!context)
         return Result::OUT_OF_MEMORY;
 
-    Result result = context->Prepare(queue);
+    Result result = context->Create(queue);
     if (result != Result::SUCCESS) {
         Destroy(context);
         context = nullptr;
