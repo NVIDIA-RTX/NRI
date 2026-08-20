@@ -1566,7 +1566,7 @@ HostCopyLayoutD3D12 DeviceD3D12::GetHostCopyLayout(const TextureD3D12& texture, 
     return layout;
 }
 
-Result DeviceD3D12::CopyHostMemoryToTexture(QueueD3D12& queue, const CopyHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
+Result DeviceD3D12::UploadHostMemoryToTexture(QueueD3D12& queue, const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
     if (!copyDescNum)
         return Result::SUCCESS;
 
@@ -1579,7 +1579,7 @@ Result DeviceD3D12::CopyHostMemoryToTexture(QueueD3D12& queue, const CopyHostMem
 
     uint64_t stagingSize = 0;
     for (uint32_t i = 0; i < copyDescNum; i++) {
-        const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
+        const UploadHostMemoryToTextureDesc& copyDesc = copyDescs[i];
         layouts[i] = GetHostCopyLayout(*(TextureD3D12*)copyDesc.dstTexture, copyDesc.dstRegion, stagingSize);
     }
 
@@ -1588,7 +1588,7 @@ Result DeviceD3D12::CopyHostMemoryToTexture(QueueD3D12& queue, const CopyHostMem
         uint8_t* stagingData = (uint8_t*)context->GetUploadBuffer().Map(0);
 
         for (uint32_t i = 0; i < copyDescNum; i++) {
-            const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
+            const UploadHostMemoryToTextureDesc& copyDesc = copyDescs[i];
             const HostCopyLayoutD3D12& layout = layouts[i];
             uint32_t srcRowPitch = copyDesc.srcRowPitch ? copyDesc.srcRowPitch : layout.rowSize;
             uint32_t srcSlicePitch = copyDesc.srcSlicePitch ? copyDesc.srcSlicePitch : srcRowPitch * layout.rowNum;
@@ -1605,7 +1605,7 @@ Result DeviceD3D12::CopyHostMemoryToTexture(QueueD3D12& queue, const CopyHostMem
         uint32_t restorationBarrierNum = 0;
 
         for (uint32_t i = 0; i < copyDescNum; i++) {
-            const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
+            const UploadHostMemoryToTextureDesc& copyDesc = copyDescs[i];
 
             if (m_Desc.features.enhancedBarriers) {
                 const TextureD3D12& texture = *(TextureD3D12*)copyDesc.dstTexture;
@@ -1678,7 +1678,7 @@ Result DeviceD3D12::CopyHostMemoryToTexture(QueueD3D12& queue, const CopyHostMem
     return result;
 }
 
-Result DeviceD3D12::CopyTextureToHostMemory(QueueD3D12& queue, const CopyTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
+Result DeviceD3D12::ReadbackTextureToHostMemory(QueueD3D12& queue, const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
     if (!copyDescNum)
         return Result::SUCCESS;
 
@@ -1691,7 +1691,7 @@ Result DeviceD3D12::CopyTextureToHostMemory(QueueD3D12& queue, const CopyTexture
 
     uint64_t stagingSize = 0;
     for (uint32_t i = 0; i < copyDescNum; i++) {
-        const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
+        const ReadbackTextureToHostMemoryDesc& copyDesc = copyDescs[i];
         layouts[i] = GetHostCopyLayout(*(TextureD3D12*)copyDesc.srcTexture, copyDesc.srcRegion, stagingSize);
     }
 
@@ -1702,7 +1702,7 @@ Result DeviceD3D12::CopyTextureToHostMemory(QueueD3D12& queue, const CopyTexture
     if (result == Result::SUCCESS) {
         // COPY queues can access COPY_SOURCE / COPY_DESTINATION directly from GENERAL / COMMON and decay back to COMMON on submission completion.
         for (uint32_t i = 0; i < copyDescNum; i++) {
-            const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
+            const ReadbackTextureToHostMemoryDesc& copyDesc = copyDescs[i];
             context->GetCommandBuffer().ReadbackTextureToBuffer((Buffer&)context->GetReadbackBuffer(), layouts[i].dataLayout, *copyDesc.srcTexture, copyDesc.srcRegion);
         }
 
@@ -1716,7 +1716,7 @@ Result DeviceD3D12::CopyTextureToHostMemory(QueueD3D12& queue, const CopyTexture
         const uint8_t* stagingData = (const uint8_t*)context->GetReadbackBuffer().Map(0);
 
         for (uint32_t i = 0; i < copyDescNum; i++) {
-            const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
+            const ReadbackTextureToHostMemoryDesc& copyDesc = copyDescs[i];
             const HostCopyLayoutD3D12& layout = layouts[i];
             uint32_t dstRowPitch = copyDesc.dstRowPitch ? copyDesc.dstRowPitch : layout.rowSize;
             uint32_t dstSlicePitch = copyDesc.dstSlicePitch ? copyDesc.dstSlicePitch : dstRowPitch * layout.rowNum;

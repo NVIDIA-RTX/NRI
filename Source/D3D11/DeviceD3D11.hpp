@@ -805,14 +805,14 @@ void DeviceD3D11::ReleaseHostCopyTexture(TextureD3D11& hostCopyTexture) {
     NRI_CHECK(false, "Unexpected host-copy texture");
 }
 
-Result DeviceD3D11::CopyHostMemoryToTexture(QueueD3D11&, const CopyHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
+Result DeviceD3D11::UploadHostMemoryToTexture(QueueD3D11&, const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
     if (!copyDescNum)
         return Result::SUCCESS;
 
     MultiThreadProtection multiThreadProtection(*this);
     ID3D11DeviceContextBest* context = GetImmediateContext();
 
-    auto copyDirect = [this, context](const CopyHostMemoryToTextureDesc& copyDesc) {
+    auto copyDirect = [this, context](const UploadHostMemoryToTextureDesc& copyDesc) {
         TextureD3D11& texture = *(TextureD3D11*)copyDesc.dstTexture;
         HostCopyLayoutD3D11 layout = GetHostCopyLayout(texture, copyDesc.dstRegion);
         uint32_t rowPitch = copyDesc.srcRowPitch ? copyDesc.srcRowPitch : layout.rowSize;
@@ -835,7 +835,7 @@ Result DeviceD3D11::CopyHostMemoryToTexture(QueueD3D11&, const CopyHostMemoryToT
 
     bool hasReadback = false;
     for (uint32_t i = 0; i < copyDescNum && !hasReadback; i++) {
-        const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
+        const UploadHostMemoryToTextureDesc& copyDesc = copyDescs[i];
         const TextureD3D11& texture = *(TextureD3D11*)copyDesc.dstTexture;
         HostCopyLayoutD3D11 layout = GetHostCopyLayout(texture, copyDesc.dstRegion);
         hasReadback = !IsWholeSubresource(copyDesc.dstRegion, layout) && !IsBoxAligned(texture, copyDesc.dstRegion, layout);
@@ -853,8 +853,8 @@ Result DeviceD3D11::CopyHostMemoryToTexture(QueueD3D11&, const CopyHostMemoryToT
         sortedIndices[i] = i;
 
     std::sort((uint32_t*)sortedIndices, (uint32_t*)sortedIndices + copyDescNum, [copyDescs](uint32_t a, uint32_t b) {
-        const CopyHostMemoryToTextureDesc& copyDescA = copyDescs[a];
-        const CopyHostMemoryToTextureDesc& copyDescB = copyDescs[b];
+        const UploadHostMemoryToTextureDesc& copyDescA = copyDescs[a];
+        const UploadHostMemoryToTextureDesc& copyDescB = copyDescs[b];
         if (copyDescA.dstTexture != copyDescB.dstTexture)
             return (uintptr_t)copyDescA.dstTexture < (uintptr_t)copyDescB.dstTexture;
 
@@ -867,20 +867,20 @@ Result DeviceD3D11::CopyHostMemoryToTexture(QueueD3D11&, const CopyHostMemoryToT
 
     for (uint32_t begin = 0; begin < copyDescNum;) {
         uint32_t firstCopyIndex = sortedIndices[begin];
-        const CopyHostMemoryToTextureDesc& firstCopyDesc = copyDescs[firstCopyIndex];
+        const UploadHostMemoryToTextureDesc& firstCopyDesc = copyDescs[firstCopyIndex];
         TextureD3D11& texture = *(TextureD3D11*)firstCopyDesc.dstTexture;
         uint32_t subresource = texture.GetSubresourceIndex(firstCopyDesc.dstRegion.layerOffset, firstCopyDesc.dstRegion.mipOffset);
 
         uint32_t end = begin + 1;
         for (; end < copyDescNum; end++) {
-            const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[sortedIndices[end]];
+            const UploadHostMemoryToTextureDesc& copyDesc = copyDescs[sortedIndices[end]];
             if (copyDesc.dstTexture != firstCopyDesc.dstTexture || texture.GetSubresourceIndex(copyDesc.dstRegion.layerOffset, copyDesc.dstRegion.mipOffset) != subresource)
                 break;
         }
 
         bool requiresReadback = false;
         for (uint32_t i = begin; i < end && !requiresReadback; i++) {
-            const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[sortedIndices[i]];
+            const UploadHostMemoryToTextureDesc& copyDesc = copyDescs[sortedIndices[i]];
             HostCopyLayoutD3D11 layout = GetHostCopyLayout(texture, copyDesc.dstRegion);
             requiresReadback = !IsWholeSubresource(copyDesc.dstRegion, layout) && !IsBoxAligned(texture, copyDesc.dstRegion, layout);
         }
@@ -914,7 +914,7 @@ Result DeviceD3D11::CopyHostMemoryToTexture(QueueD3D11&, const CopyHostMemoryToT
             ReleaseHostCopyTexture(*readbackTexture);
 
             for (uint32_t i = begin; i < end; i++) {
-                const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[sortedIndices[i]];
+                const UploadHostMemoryToTextureDesc& copyDesc = copyDescs[sortedIndices[i]];
                 HostCopyLayoutD3D11 layout = GetHostCopyLayout(texture, copyDesc.dstRegion);
                 uint32_t rowPitch = copyDesc.srcRowPitch ? copyDesc.srcRowPitch : layout.rowSize;
                 uint32_t slicePitch = copyDesc.srcSlicePitch ? copyDesc.srcSlicePitch : rowPitch * layout.rowNum;
@@ -936,7 +936,7 @@ Result DeviceD3D11::CopyHostMemoryToTexture(QueueD3D11&, const CopyHostMemoryToT
     return Result::SUCCESS;
 }
 
-Result DeviceD3D11::CopyTextureToHostMemory(QueueD3D11&, const CopyTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
+Result DeviceD3D11::ReadbackTextureToHostMemory(QueueD3D11&, const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
     if (!copyDescNum)
         return Result::SUCCESS;
 
@@ -950,7 +950,7 @@ Result DeviceD3D11::CopyTextureToHostMemory(QueueD3D11&, const CopyTextureToHost
         uint32_t stagingTextureNum = 0;
         uint32_t end = base;
         for (; end < copyDescNum; end++) {
-            const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[end];
+            const ReadbackTextureToHostMemoryDesc& copyDesc = copyDescs[end];
             TextureD3D11& srcTexture = *(TextureD3D11*)copyDesc.srcTexture;
             HostCopyReadbackD3D11& stagingItem = stagingItems[stagingTextureNum];
             stagingItem.layout = GetHostCopyLayout(srcTexture, copyDesc.srcRegion);
@@ -978,7 +978,7 @@ Result DeviceD3D11::CopyTextureToHostMemory(QueueD3D11&, const CopyTextureToHost
         }
 
         for (uint32_t i = 0; i < stagingTextureNum; i++) {
-            const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[base + i];
+            const ReadbackTextureToHostMemoryDesc& copyDesc = copyDescs[base + i];
             TextureD3D11& srcTexture = *(TextureD3D11*)copyDesc.srcTexture;
             const HostCopyReadbackD3D11& stagingItem = stagingItems[i];
 
@@ -995,7 +995,7 @@ Result DeviceD3D11::CopyTextureToHostMemory(QueueD3D11&, const CopyTextureToHost
         }
 
         for (uint32_t i = 0; i < stagingTextureNum; i++) {
-            const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[base + i];
+            const ReadbackTextureToHostMemoryDesc& copyDesc = copyDescs[base + i];
             TextureD3D11& srcTexture = *(TextureD3D11*)copyDesc.srcTexture;
             const HostCopyReadbackD3D11& stagingItem = stagingItems[i];
 

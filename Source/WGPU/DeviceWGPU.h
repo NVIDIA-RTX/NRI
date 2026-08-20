@@ -93,8 +93,8 @@ struct DeviceWGPU final : public DeviceBase {
 
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
     Result WaitIdle();
-    Result CopyHostMemoryToTexture(const CopyHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum);
-    Result CopyTextureToHostMemory(const CopyTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum);
+    Result UploadHostMemoryToTexture(const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum);
+    Result ReadbackTextureToHostMemory(const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum);
 
 private:
     HostCopyLayoutWGPU GetHostCopyLayout(const TextureWGPU& texture, const TextureRegionDesc& region, uint64_t& offset, bool alignForBufferCopy) const;

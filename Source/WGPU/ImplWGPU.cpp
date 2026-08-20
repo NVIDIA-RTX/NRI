@@ -554,12 +554,12 @@ static void NRI_CALL UnmapBuffer(Buffer& buffer) {
     ((BufferWGPU&)buffer).Unmap();
 }
 
-static Result NRI_CALL CopyHostMemoryToTexture(Queue& queue, const CopyHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
-    return ((QueueWGPU&)queue).GetDevice().CopyHostMemoryToTexture(copyDescs, copyDescNum);
+static Result NRI_CALL UploadHostMemoryToTexture(Queue& queue, const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
+    return ((QueueWGPU&)queue).GetDevice().UploadHostMemoryToTexture(copyDescs, copyDescNum);
 }
 
-static Result NRI_CALL CopyTextureToHostMemory(Queue& queue, const CopyTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
-    return ((QueueWGPU&)queue).GetDevice().CopyTextureToHostMemory(copyDescs, copyDescNum);
+static Result NRI_CALL ReadbackTextureToHostMemory(Queue& queue, const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
+    return ((QueueWGPU&)queue).GetDevice().ReadbackTextureToHostMemory(copyDescs, copyDescNum);
 }
 
 static uint64_t NRI_CALL GetBufferDeviceAddress(const Buffer&) {
@@ -733,8 +733,8 @@ Result DeviceWGPU::FillFunctionTable(CoreInterface& table) const {
     table.ResetCommandAllocator = ::ResetCommandAllocator;
     table.MapBuffer = ::MapBuffer;
     table.UnmapBuffer = ::UnmapBuffer;
-    table.CopyHostMemoryToTexture = ::CopyHostMemoryToTexture;
-    table.CopyTextureToHostMemory = ::CopyTextureToHostMemory;
+    table.UploadHostMemoryToTexture = ::UploadHostMemoryToTexture;
+    table.ReadbackTextureToHostMemory = ::ReadbackTextureToHostMemory;
     table.GetBufferDeviceAddress = ::GetBufferDeviceAddress;
     table.SetDebugName = ::SetDebugName;
     table.GetDeviceNativeObject = ::GetDeviceNativeObject;

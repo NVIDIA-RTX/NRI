@@ -526,12 +526,12 @@ HostCopyLayoutWGPU DeviceWGPU::GetHostCopyLayout(const TextureWGPU& texture, con
     return layout;
 }
 
-Result DeviceWGPU::CopyHostMemoryToTexture(const CopyHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
+Result DeviceWGPU::UploadHostMemoryToTexture(const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
     if (!copyDescNum)
         return Result::SUCCESS;
 
     for (uint32_t i = 0; i < copyDescNum; i++) {
-        const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
+        const UploadHostMemoryToTextureDesc& copyDesc = copyDescs[i];
         const TextureWGPU& texture = *(TextureWGPU*)copyDesc.dstTexture;
         uint64_t ignoredOffset = 0;
         HostCopyLayoutWGPU copyLayout = GetHostCopyLayout(texture, copyDesc.dstRegion, ignoredOffset, false);
@@ -561,7 +561,7 @@ Result DeviceWGPU::CopyHostMemoryToTexture(const CopyHostMemoryToTextureDesc* co
     return Result::SUCCESS;
 }
 
-Result DeviceWGPU::CopyTextureToHostMemory(const CopyTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
+Result DeviceWGPU::ReadbackTextureToHostMemory(const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
     if (!copyDescNum)
         return Result::SUCCESS;
 
@@ -589,7 +589,7 @@ Result DeviceWGPU::CopyTextureToHostMemory(const CopyTextureToHostMemoryDesc* co
 
     if (result == Result::SUCCESS) {
         for (uint32_t i = 0; i < copyDescNum; i++) {
-            const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
+            const ReadbackTextureToHostMemoryDesc& copyDesc = copyDescs[i];
             const TextureWGPU& texture = *(TextureWGPU*)copyDesc.srcTexture;
             const HostCopyLayoutWGPU& layout = layouts[i];
 
@@ -633,7 +633,7 @@ Result DeviceWGPU::CopyTextureToHostMemory(const CopyTextureToHostMemoryDesc* co
     }
 
     for (uint32_t i = 0; result == Result::SUCCESS && i < copyDescNum; i++) {
-        const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
+        const ReadbackTextureToHostMemoryDesc& copyDesc = copyDescs[i];
         const HostCopyLayoutWGPU& layout = layouts[i];
         uint32_t dstRowPitch = copyDesc.dstRowPitch ? copyDesc.dstRowPitch : layout.rowSize;
         uint32_t dstSlicePitch = copyDesc.dstSlicePitch ? copyDesc.dstSlicePitch : dstRowPitch * layout.rowNum;

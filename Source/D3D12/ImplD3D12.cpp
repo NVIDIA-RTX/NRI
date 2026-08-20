@@ -572,14 +572,14 @@ static void* NRI_CALL MapBuffer(Buffer& buffer, uint64_t offset, uint64_t) {
 static void NRI_CALL UnmapBuffer(Buffer&) {
 }
 
-static Result NRI_CALL CopyHostMemoryToTexture(Queue& queue, const CopyHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
+static Result NRI_CALL UploadHostMemoryToTexture(Queue& queue, const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
     QueueD3D12& queueD3D12 = (QueueD3D12&)queue;
-    return queueD3D12.GetDevice().CopyHostMemoryToTexture(queueD3D12, copyDescs, copyDescNum);
+    return queueD3D12.GetDevice().UploadHostMemoryToTexture(queueD3D12, copyDescs, copyDescNum);
 }
 
-static Result NRI_CALL CopyTextureToHostMemory(Queue& queue, const CopyTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
+static Result NRI_CALL ReadbackTextureToHostMemory(Queue& queue, const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
     QueueD3D12& queueD3D12 = (QueueD3D12&)queue;
-    return queueD3D12.GetDevice().CopyTextureToHostMemory(queueD3D12, copyDescs, copyDescNum);
+    return queueD3D12.GetDevice().ReadbackTextureToHostMemory(queueD3D12, copyDescs, copyDescNum);
 }
 
 static uint64_t NRI_CALL GetBufferDeviceAddress(const Buffer& buffer) {
@@ -741,8 +741,8 @@ Result DeviceD3D12::FillFunctionTable(CoreInterface& table) const {
     table.ResetCommandAllocator = ::ResetCommandAllocator;
     table.MapBuffer = ::MapBuffer;
     table.UnmapBuffer = ::UnmapBuffer;
-    table.CopyHostMemoryToTexture = ::CopyHostMemoryToTexture;
-    table.CopyTextureToHostMemory = ::CopyTextureToHostMemory;
+    table.UploadHostMemoryToTexture = ::UploadHostMemoryToTexture;
+    table.ReadbackTextureToHostMemory = ::ReadbackTextureToHostMemory;
     table.GetBufferDeviceAddress = ::GetBufferDeviceAddress;
     table.SetDebugName = ::SetDebugName;
     table.GetDeviceNativeObject = ::GetDeviceNativeObject;

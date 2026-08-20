@@ -254,8 +254,8 @@ struct DeviceVK final : public DeviceBase {
     void UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* updateDescriptorRangeDescs, uint32_t updateDescriptorRangeDescNum);
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
     Result WaitIdle();
-    Result CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum);
-    Result CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum);
+    Result UploadHostMemoryToTexture(QueueVK& queue, const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum);
+    Result ReadbackTextureToHostMemory(QueueVK& queue, const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum);
     Result BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum);
     Result BindTextureMemory(const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum);
     Result QueryVideoMemoryInfo(MemoryLocation memoryLocation, VideoMemoryInfo& videoMemoryInfo) const;

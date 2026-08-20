@@ -453,7 +453,7 @@ NriBits(StageBits, uint32_t,
     INDIRECT                        = NriBit(23),   // Invoked by "Indirect" commands (used in addition to other bits)
 
     // Host
-    HOST                            = NriBit(24),   // Invoked by "CopyHostMemoryToTexture" and "CopyTextureToHostMemory"
+    HOST                            = NriBit(24),   // Invoked by "UploadHostMemoryToTexture" and "ReadbackTextureToHostMemory"
 
     // Umbrella stages
     TESSELLATION_SHADERS            = NriMember(StageBits, TESS_CONTROL_SHADER)
@@ -1723,7 +1723,7 @@ NriStruct(TextureDataLayoutDesc) {
     uint32_t slicePitch;    // must be a multiple of "uploadBufferTextureSliceAlignment"
 };
 
-NriStruct(CopyHostMemoryToTextureDesc) {
+NriStruct(UploadHostMemoryToTextureDesc) {
     const void* srcData;
     NriPtr(Texture) dstTexture;
     Nri(TextureRegionDesc) dstRegion;
@@ -1731,7 +1731,7 @@ NriStruct(CopyHostMemoryToTextureDesc) {
     NriOptional uint32_t srcSlicePitch; // if slices are not tightly packed
 };
 
-NriStruct(CopyTextureToHostMemoryDesc) {
+NriStruct(ReadbackTextureToHostMemoryDesc) {
     NriPtr(Texture) srcTexture;
     void* dstData;
     Nri(TextureRegionDesc) srcRegion;

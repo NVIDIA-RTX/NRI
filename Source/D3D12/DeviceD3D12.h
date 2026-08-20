@@ -150,8 +150,8 @@ struct DeviceD3D12 final : public DeviceBase {
 
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
     Result WaitIdle();
-    Result CopyHostMemoryToTexture(QueueD3D12& queue, const CopyHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum);
-    Result CopyTextureToHostMemory(QueueD3D12& queue, const CopyTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum);
+    Result UploadHostMemoryToTexture(QueueD3D12& queue, const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum);
+    Result ReadbackTextureToHostMemory(QueueD3D12& queue, const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum);
     Result BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum);
     Result BindTextureMemory(const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum);
     Result BindAccelerationStructureMemory(const BindAccelerationStructureMemoryDesc* bindAccelerationStructureMemoryDescs, uint32_t bindAccelerationStructureMemoryDescNum);

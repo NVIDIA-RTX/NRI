@@ -2399,7 +2399,7 @@ HostCopyLayoutVK DeviceVK::GetHostCopyLayout(const TextureVK& texture, const Tex
     return layout;
 }
 
-Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
+Result DeviceVK::UploadHostMemoryToTexture(QueueVK& queue, const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
     if (!copyDescNum)
         return Result::SUCCESS;
 
@@ -2421,7 +2421,7 @@ Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToT
             uint32_t regionNum = 0;
             uint32_t end = i;
             for (; end < copyDescNum && copyDescs[sortedIndices[end]].dstTexture == copyDescs[copyIndex].dstTexture; end++) {
-                const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[sortedIndices[end]];
+                const UploadHostMemoryToTextureDesc& copyDesc = copyDescs[sortedIndices[end]];
 
                 uint32_t width = copyDesc.dstRegion.width == WHOLE_SIZE ? texture.GetSize(0, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.width;
                 uint32_t rowSize = ((width + formatProps.blockWidth - 1) / formatProps.blockWidth) * formatProps.stride;
@@ -2482,7 +2482,7 @@ Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToT
             result = Result::FAILURE;
 
         for (uint32_t i = 0; result == Result::SUCCESS && i < copyDescNum; i++) {
-            const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
+            const UploadHostMemoryToTextureDesc& copyDesc = copyDescs[i];
             const HostCopyLayoutVK& layout = layouts[i];
             uint32_t srcRowPitch = copyDesc.srcRowPitch ? copyDesc.srcRowPitch : layout.rowSize;
             uint32_t srcSlicePitch = copyDesc.srcSlicePitch ? copyDesc.srcSlicePitch : srcRowPitch * layout.rowNum;
@@ -2504,8 +2504,8 @@ Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToT
             sortedIndices[i] = i;
 
         std::sort((uint32_t*)sortedIndices, (uint32_t*)sortedIndices + copyDescNum, [copyDescs](uint32_t a, uint32_t b) {
-            const CopyHostMemoryToTextureDesc& copyDescA = copyDescs[a];
-            const CopyHostMemoryToTextureDesc& copyDescB = copyDescs[b];
+            const UploadHostMemoryToTextureDesc& copyDescA = copyDescs[a];
+            const UploadHostMemoryToTextureDesc& copyDescB = copyDescs[b];
             if (copyDescA.dstTexture != copyDescB.dstTexture)
                 return (uintptr_t)copyDescA.dstTexture < (uintptr_t)copyDescB.dstTexture;
             if (copyDescA.dstRegion.layerOffset != copyDescB.dstRegion.layerOffset)
@@ -2515,9 +2515,9 @@ Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToT
         });
 
         for (uint32_t i = 0; i < copyDescNum; i++) {
-            const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[sortedIndices[i]];
+            const UploadHostMemoryToTextureDesc& copyDesc = copyDescs[sortedIndices[i]];
             if (i) {
-                const CopyHostMemoryToTextureDesc& previousCopyDesc = copyDescs[sortedIndices[i - 1]];
+                const UploadHostMemoryToTextureDesc& previousCopyDesc = copyDescs[sortedIndices[i - 1]];
                 if (copyDesc.dstTexture == previousCopyDesc.dstTexture && copyDesc.dstRegion.layerOffset == previousCopyDesc.dstRegion.layerOffset && copyDesc.dstRegion.mipOffset == previousCopyDesc.dstRegion.mipOffset)
                     continue;
             }
@@ -2557,7 +2557,7 @@ Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToT
             uint32_t regionNum = 0;
             for (; end < copyDescNum && copyDescs[sortedIndices[end]].dstTexture == copyDescs[firstCopyIndex].dstTexture; end++) {
                 uint32_t copyIndex = sortedIndices[end];
-                const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[copyIndex];
+                const UploadHostMemoryToTextureDesc& copyDesc = copyDescs[copyIndex];
                 regions[regionNum] = GetHostCopyBufferImageRegion(texture, copyDesc.dstRegion, layouts[copyIndex]);
                 if (!m_IsSupported.copyCommands2)
                     legacyRegions[regionNum] = GetLegacyBufferImageCopyRegion(regions[regionNum]);
@@ -2598,7 +2598,7 @@ Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToT
     return result;
 }
 
-Result DeviceVK::CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
+Result DeviceVK::ReadbackTextureToHostMemory(QueueVK& queue, const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
     if (!copyDescNum)
         return Result::SUCCESS;
 
@@ -2615,7 +2615,7 @@ Result DeviceVK::CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHost
             uintptr_t hostRangeEnd = 0;
             uint32_t end = i;
             for (; end < copyDescNum && copyDescs[end].srcTexture == copyDescs[i].srcTexture; end++) {
-                const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[end];
+                const ReadbackTextureToHostMemoryDesc& copyDesc = copyDescs[end];
                 uint32_t width = copyDesc.srcRegion.width == WHOLE_SIZE ? texture.GetSize(0, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.width;
                 uint32_t height = copyDesc.srcRegion.height == WHOLE_SIZE ? texture.GetSize(1, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.height;
                 uint32_t depth = copyDesc.srcRegion.depth == WHOLE_SIZE ? texture.GetSize(2, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.depth;
@@ -2689,8 +2689,8 @@ Result DeviceVK::CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHost
             sortedIndices[i] = i;
 
         std::sort((uint32_t*)sortedIndices, (uint32_t*)sortedIndices + copyDescNum, [copyDescs](uint32_t a, uint32_t b) {
-            const CopyTextureToHostMemoryDesc& copyDescA = copyDescs[a];
-            const CopyTextureToHostMemoryDesc& copyDescB = copyDescs[b];
+            const ReadbackTextureToHostMemoryDesc& copyDescA = copyDescs[a];
+            const ReadbackTextureToHostMemoryDesc& copyDescB = copyDescs[b];
             if (copyDescA.srcTexture != copyDescB.srcTexture)
                 return (uintptr_t)copyDescA.srcTexture < (uintptr_t)copyDescB.srcTexture;
             if (copyDescA.srcRegion.layerOffset != copyDescB.srcRegion.layerOffset)
@@ -2700,9 +2700,9 @@ Result DeviceVK::CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHost
         });
 
         for (uint32_t i = 0; i < copyDescNum; i++) {
-            const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[sortedIndices[i]];
+            const ReadbackTextureToHostMemoryDesc& copyDesc = copyDescs[sortedIndices[i]];
             if (i) {
-                const CopyTextureToHostMemoryDesc& previousCopyDesc = copyDescs[sortedIndices[i - 1]];
+                const ReadbackTextureToHostMemoryDesc& previousCopyDesc = copyDescs[sortedIndices[i - 1]];
                 if (copyDesc.srcTexture == previousCopyDesc.srcTexture && copyDesc.srcRegion.layerOffset == previousCopyDesc.srcRegion.layerOffset && copyDesc.srcRegion.mipOffset == previousCopyDesc.srcRegion.mipOffset)
                     continue;
             }
@@ -2735,7 +2735,7 @@ Result DeviceVK::CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHost
             uint32_t regionNum = 0;
             for (; end < copyDescNum && copyDescs[sortedIndices[end]].srcTexture == copyDescs[firstCopyIndex].srcTexture; end++) {
                 uint32_t copyIndex = sortedIndices[end];
-                const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[copyIndex];
+                const ReadbackTextureToHostMemoryDesc& copyDesc = copyDescs[copyIndex];
                 regions[regionNum] = GetHostCopyBufferImageRegion(texture, copyDesc.srcRegion, layouts[copyIndex]);
                 if (!m_IsSupported.copyCommands2)
                     legacyRegions[regionNum] = GetLegacyBufferImageCopyRegion(regions[regionNum]);
@@ -2784,7 +2784,7 @@ Result DeviceVK::CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHost
             result = Result::FAILURE;
 
         for (uint32_t i = 0; result == Result::SUCCESS && i < copyDescNum; i++) {
-            const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
+            const ReadbackTextureToHostMemoryDesc& copyDesc = copyDescs[i];
             const HostCopyLayoutVK& layout = layouts[i];
             uint32_t dstRowPitch = copyDesc.dstRowPitch ? copyDesc.dstRowPitch : layout.rowSize;
             uint32_t dstSlicePitch = copyDesc.dstSlicePitch ? copyDesc.dstSlicePitch : dstRowPitch * layout.rowNum;

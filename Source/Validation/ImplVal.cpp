@@ -586,15 +586,15 @@ static bool ValidateHostTextureCopyDesc(DeviceVal& device, uint32_t i, const Tex
     return true;
 }
 
-static Result NRI_CALL CopyHostMemoryToTexture(Queue& queue, const CopyHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
+static Result NRI_CALL UploadHostMemoryToTexture(Queue& queue, const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
     QueueVal& queueVal = (QueueVal&)queue;
     DeviceVal& deviceVal = queueVal.GetDevice();
 
     NRI_RETURN_ON_FAILURE(&deviceVal, !copyDescNum || copyDescs, Result::INVALID_ARGUMENT, "'copyDescs' is NULL");
 
-    Scratch<CopyHostMemoryToTextureDesc> copyDescsImpl = NRI_ALLOCATE_SCRATCH(deviceVal, CopyHostMemoryToTextureDesc, copyDescNum);
+    Scratch<UploadHostMemoryToTextureDesc> copyDescsImpl = NRI_ALLOCATE_SCRATCH(deviceVal, UploadHostMemoryToTextureDesc, copyDescNum);
     for (uint32_t i = 0; i < copyDescNum; i++) {
-        const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
+        const UploadHostMemoryToTextureDesc& copyDesc = copyDescs[i];
         NRI_RETURN_ON_FAILURE(&deviceVal, copyDesc.srcData, Result::INVALID_ARGUMENT, "'copyDescs[%u].srcData' is NULL", i);
         NRI_RETURN_ON_FAILURE(&deviceVal, copyDesc.dstTexture, Result::INVALID_ARGUMENT, "'copyDescs[%u].dstTexture' is NULL", i);
 
@@ -606,18 +606,18 @@ static Result NRI_CALL CopyHostMemoryToTexture(Queue& queue, const CopyHostMemor
         copyDescsImpl[i].dstTexture = texture.GetImpl();
     }
 
-    return deviceVal.GetCoreInterfaceImpl().CopyHostMemoryToTexture(*queueVal.GetImpl(), copyDescsImpl, copyDescNum);
+    return deviceVal.GetCoreInterfaceImpl().UploadHostMemoryToTexture(*queueVal.GetImpl(), copyDescsImpl, copyDescNum);
 }
 
-static Result NRI_CALL CopyTextureToHostMemory(Queue& queue, const CopyTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
+static Result NRI_CALL ReadbackTextureToHostMemory(Queue& queue, const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
     QueueVal& queueVal = (QueueVal&)queue;
     DeviceVal& deviceVal = queueVal.GetDevice();
 
     NRI_RETURN_ON_FAILURE(&deviceVal, !copyDescNum || copyDescs, Result::INVALID_ARGUMENT, "'copyDescs' is NULL");
 
-    Scratch<CopyTextureToHostMemoryDesc> copyDescsImpl = NRI_ALLOCATE_SCRATCH(deviceVal, CopyTextureToHostMemoryDesc, copyDescNum);
+    Scratch<ReadbackTextureToHostMemoryDesc> copyDescsImpl = NRI_ALLOCATE_SCRATCH(deviceVal, ReadbackTextureToHostMemoryDesc, copyDescNum);
     for (uint32_t i = 0; i < copyDescNum; i++) {
-        const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
+        const ReadbackTextureToHostMemoryDesc& copyDesc = copyDescs[i];
         NRI_RETURN_ON_FAILURE(&deviceVal, copyDesc.srcTexture, Result::INVALID_ARGUMENT, "'copyDescs[%u].srcTexture' is NULL", i);
         NRI_RETURN_ON_FAILURE(&deviceVal, copyDesc.dstData, Result::INVALID_ARGUMENT, "'copyDescs[%u].dstData' is NULL", i);
 
@@ -629,7 +629,7 @@ static Result NRI_CALL CopyTextureToHostMemory(Queue& queue, const CopyTextureTo
         copyDescsImpl[i].srcTexture = texture.GetImpl();
     }
 
-    return deviceVal.GetCoreInterfaceImpl().CopyTextureToHostMemory(*queueVal.GetImpl(), copyDescsImpl, copyDescNum);
+    return deviceVal.GetCoreInterfaceImpl().ReadbackTextureToHostMemory(*queueVal.GetImpl(), copyDescsImpl, copyDescNum);
 }
 
 static uint64_t NRI_CALL GetBufferDeviceAddress(const Buffer& buffer) {
@@ -790,8 +790,8 @@ Result DeviceVal::FillFunctionTable(CoreInterface& table) const {
     table.ResetCommandAllocator = ::ResetCommandAllocator;
     table.MapBuffer = ::MapBuffer;
     table.UnmapBuffer = ::UnmapBuffer;
-    table.CopyHostMemoryToTexture = ::CopyHostMemoryToTexture;
-    table.CopyTextureToHostMemory = ::CopyTextureToHostMemory;
+    table.UploadHostMemoryToTexture = ::UploadHostMemoryToTexture;
+    table.ReadbackTextureToHostMemory = ::ReadbackTextureToHostMemory;
     table.GetBufferDeviceAddress = ::GetBufferDeviceAddress;
     table.SetDebugName = ::SetDebugName;
     table.GetDeviceNativeObject = ::GetDeviceNativeObject;
