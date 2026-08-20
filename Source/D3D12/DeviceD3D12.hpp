@@ -1607,20 +1607,17 @@ Result DeviceD3D12::CopyHostMemoryToTexture(QueueD3D12& queue, const CopyHostMem
 
     if (result == Result::SUCCESS) {
         bool restoreCommon = !m_Desc.features.enhancedBarriers && queue.GetType() != D3D12_COMMAND_LIST_TYPE_COPY;
-        Vector<D3D12_RESOURCE_BARRIER> restorationBarriers(GetStdAllocator());
-        if (restoreCommon)
-            restorationBarriers.reserve(copyDescNum);
+        Scratch<D3D12_RESOURCE_BARRIER> restorationBarriers = NRI_ALLOCATE_SCRATCH(*this, D3D12_RESOURCE_BARRIER, restoreCommon ? copyDescNum : 0);
+        Map<std::pair<uintptr_t, uint32_t>, bool> copiedSubresources(GetStdAllocator());
+        uint32_t restorationBarrierNum = 0;
 
         for (uint32_t i = 0; i < copyDescNum; i++) {
             const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
 
             if (m_Desc.features.enhancedBarriers) {
-                bool isRepeatedSubresource = false;
-                for (uint32_t j = 0; !isRepeatedSubresource && j < i; j++) {
-                    const CopyHostMemoryToTextureDesc& previousCopyDesc = copyDescs[j];
-                    isRepeatedSubresource = previousCopyDesc.dstTexture == copyDesc.dstTexture && previousCopyDesc.dstRegion.mipOffset == copyDesc.dstRegion.mipOffset
-                        && previousCopyDesc.dstRegion.layerOffset == copyDesc.dstRegion.layerOffset;
-                }
+                const TextureD3D12& texture = *(TextureD3D12*)copyDesc.dstTexture;
+                uint32_t subresource = GetSubresourceIndex(copyDesc.dstRegion.layerOffset, texture.GetDesc().layerNum, copyDesc.dstRegion.mipOffset, texture.GetDesc().mipNum, copyDesc.dstRegion.planes);
+                bool isRepeatedSubresource = !copiedSubresources.emplace(std::pair<uintptr_t, uint32_t>{(uintptr_t)&texture, subresource}, true).second;
 
                 if (isRepeatedSubresource) {
                     TextureBarrierDesc textureBarrier = {};
@@ -1654,26 +1651,27 @@ Result DeviceD3D12::CopyHostMemoryToTexture(QueueD3D12& queue, const CopyHostMem
                     barrier.Transition.Subresource = GetSubresourceIndex(copyDesc.dstRegion.layerOffset, texture.GetDesc().layerNum, copyDesc.dstRegion.mipOffset, texture.GetDesc().mipNum, copyDesc.dstRegion.planes);
                     barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
                     barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
-                    restorationBarriers.push_back(barrier);
+                    restorationBarriers[restorationBarrierNum++] = barrier;
                 }
             }
         }
 
-        if (!restorationBarriers.empty()) {
-            std::sort(restorationBarriers.begin(), restorationBarriers.end(), [](const D3D12_RESOURCE_BARRIER& a, const D3D12_RESOURCE_BARRIER& b) {
+        if (restorationBarrierNum) {
+            D3D12_RESOURCE_BARRIER* restorationBarriersBegin = restorationBarriers;
+            std::sort(restorationBarriersBegin, restorationBarriersBegin + restorationBarrierNum, [](const D3D12_RESOURCE_BARRIER& a, const D3D12_RESOURCE_BARRIER& b) {
                 uintptr_t resourceA = (uintptr_t)a.Transition.pResource;
                 uintptr_t resourceB = (uintptr_t)b.Transition.pResource;
 
                 return resourceA == resourceB ? a.Transition.Subresource < b.Transition.Subresource : resourceA < resourceB;
             });
 
-            auto end = std::unique(restorationBarriers.begin(), restorationBarriers.end(), [](const D3D12_RESOURCE_BARRIER& a, const D3D12_RESOURCE_BARRIER& b) {
+            D3D12_RESOURCE_BARRIER* end = std::unique(restorationBarriersBegin, restorationBarriersBegin + restorationBarrierNum, [](const D3D12_RESOURCE_BARRIER& a, const D3D12_RESOURCE_BARRIER& b) {
                 return a.Transition.pResource == b.Transition.pResource && a.Transition.Subresource == b.Transition.Subresource;
             });
 
-            uint32_t barrierNum = (uint32_t)(end - restorationBarriers.begin());
+            uint32_t barrierNum = (uint32_t)(end - restorationBarriersBegin);
             ID3D12GraphicsCommandList* commandList = context->GetCommandBuffer();
-            commandList->ResourceBarrier(barrierNum, restorationBarriers.data());
+            commandList->ResourceBarrier(barrierNum, restorationBarriersBegin);
         }
 
         result = context->GetCommandBuffer().End();

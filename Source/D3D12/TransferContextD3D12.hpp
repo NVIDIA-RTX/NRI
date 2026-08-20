@@ -35,8 +35,8 @@ Result TransferContextD3D12::EnsureBuffer(MemoryLocation memoryLocation, uint64_
         return Result::SUCCESS;
 
     uint64_t newCapacity = size;
-    if (size <= MAX_CACHED_HOST_COPY_BUFFER_SIZE && capacity)
-        newCapacity = std::min(std::max(capacity * 2, size), MAX_CACHED_HOST_COPY_BUFFER_SIZE);
+    if (size <= MAX_CACHED_HOST_COPY_RESOURCE_SIZE && capacity)
+        newCapacity = std::min(std::max(capacity * 2, size), MAX_CACHED_HOST_COPY_RESOURCE_SIZE);
 
     BufferDesc bufferDesc = {};
     bufferDesc.size = newCapacity;
@@ -84,12 +84,12 @@ void TransferContextD3D12::Trim() {
     if (!m_IsReusable)
         return;
 
-    if (m_UploadBuffer && m_UploadBuffer->GetDesc().size > MAX_CACHED_HOST_COPY_BUFFER_SIZE) {
+    if (m_UploadBuffer && m_UploadBuffer->GetDesc().size > MAX_CACHED_HOST_COPY_RESOURCE_SIZE) {
         Destroy(m_UploadBuffer);
         m_UploadBuffer = nullptr;
     }
 
-    if (m_ReadbackBuffer && m_ReadbackBuffer->GetDesc().size > MAX_CACHED_HOST_COPY_BUFFER_SIZE) {
+    if (m_ReadbackBuffer && m_ReadbackBuffer->GetDesc().size > MAX_CACHED_HOST_COPY_RESOURCE_SIZE) {
         Destroy(m_ReadbackBuffer);
         m_ReadbackBuffer = nullptr;
     }

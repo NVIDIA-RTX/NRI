@@ -35,8 +35,8 @@ Result TransferContextVK::EnsureBuffer(MemoryLocation memoryLocation, uint64_t s
         return Result::SUCCESS;
 
     uint64_t newCapacity = size;
-    if (size <= MAX_CACHED_HOST_COPY_BUFFER_SIZE && capacity)
-        newCapacity = std::min(std::max(capacity * 2, size), MAX_CACHED_HOST_COPY_BUFFER_SIZE);
+    if (size <= MAX_CACHED_HOST_COPY_RESOURCE_SIZE && capacity)
+        newCapacity = std::min(std::max(capacity * 2, size), MAX_CACHED_HOST_COPY_RESOURCE_SIZE);
     newCapacity = Align(newCapacity, 4ull);
 
     BufferDesc bufferDesc = {};
@@ -85,12 +85,12 @@ void TransferContextVK::Trim() {
     if (!m_IsReusable)
         return;
 
-    if (m_UploadBuffer && m_UploadBuffer->GetDesc().size > MAX_CACHED_HOST_COPY_BUFFER_SIZE) {
+    if (m_UploadBuffer && m_UploadBuffer->GetDesc().size > MAX_CACHED_HOST_COPY_RESOURCE_SIZE) {
         Destroy(m_UploadBuffer);
         m_UploadBuffer = nullptr;
     }
 
-    if (m_ReadbackBuffer && m_ReadbackBuffer->GetDesc().size > MAX_CACHED_HOST_COPY_BUFFER_SIZE) {
+    if (m_ReadbackBuffer && m_ReadbackBuffer->GetDesc().size > MAX_CACHED_HOST_COPY_RESOURCE_SIZE) {
         Destroy(m_ReadbackBuffer);
         m_ReadbackBuffer = nullptr;
     }

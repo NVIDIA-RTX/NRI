@@ -676,7 +676,7 @@ Result DeviceWGPU::AcquireHostCopyContext(HostCopyContextWGPU*& context) {
 void DeviceWGPU::ReleaseHostCopyContext(HostCopyContextWGPU& context) {
     ExclusiveScope lock(m_HostCopyContextLock);
 
-    if (context.readbackBuffer && context.readbackBuffer->GetDesc().size > MAX_CACHED_HOST_COPY_BUFFER_SIZE) {
+    if (context.readbackBuffer && context.readbackBuffer->GetDesc().size > MAX_CACHED_HOST_COPY_RESOURCE_SIZE) {
         Destroy(GetAllocationCallbacks(), context.readbackBuffer);
         context.readbackBuffer = nullptr;
     }
@@ -690,8 +690,8 @@ Result DeviceWGPU::EnsureReadbackBuffer(HostCopyContextWGPU& context, uint64_t s
         return Result::SUCCESS;
 
     uint64_t newSize = size;
-    if (size <= MAX_CACHED_HOST_COPY_BUFFER_SIZE && capacity)
-        newSize = std::min(std::max(capacity * 2, size), MAX_CACHED_HOST_COPY_BUFFER_SIZE);
+    if (size <= MAX_CACHED_HOST_COPY_RESOURCE_SIZE && capacity)
+        newSize = std::min(std::max(capacity * 2, size), MAX_CACHED_HOST_COPY_RESOURCE_SIZE);
     newSize = Align(newSize, 4ull);
 
     BufferDesc bufferDesc = {};

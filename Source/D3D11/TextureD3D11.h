@@ -49,7 +49,7 @@ struct TextureD3D11 final : public DebugNameBase {
     Result Create(const TextureD3D11Desc& textureD3D11Desc);
     Result Allocate(MemoryLocation memoryLocation, float priority);
 
-    static uint32_t GetMipmappedSize(const TextureDesc& textureDesc);
+    static uint64_t GetMipmappedSize(const TextureDesc& textureDesc);
 
     //================================================================================================================
     // DebugNameBase

@@ -98,20 +98,20 @@ Result TextureD3D11::Create(const TextureD3D11Desc& textureD3D11Desc) {
     return Result::SUCCESS;
 }
 
-uint32_t TextureD3D11::GetMipmappedSize(const TextureDesc& textureDesc) {
+uint64_t TextureD3D11::GetMipmappedSize(const TextureDesc& textureDesc) {
     bool isCompressed = textureDesc.format >= Format::BC1_RGBA_UNORM && textureDesc.format <= Format::BC7_RGBA_SRGB;
 
     uint32_t w = GetDimension(GraphicsAPI::D3D11, textureDesc, 0, 0);
     uint32_t h = GetDimension(GraphicsAPI::D3D11, textureDesc, 1, 0);
     uint32_t d = GetDimension(GraphicsAPI::D3D11, textureDesc, 2, 0);
     uint32_t mipNum = textureDesc.mipNum;
-    uint32_t size = 0;
+    uint64_t size = 0;
 
     while (mipNum) {
         if (isCompressed)
-            size += ((w + 3) >> 2) * ((h + 3) >> 2) * d;
+            size += uint64_t((w + 3) >> 2) * ((h + 3) >> 2) * d;
         else
-            size += w * h * d;
+            size += uint64_t(w) * h * d;
 
         if (w == 1 && h == 1 && d == 1)
             break;
