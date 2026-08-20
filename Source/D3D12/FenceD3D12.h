@@ -36,7 +36,7 @@ struct FenceD3D12 final : public DebugNameBase {
     uint64_t GetFenceValue() const;
     void QueueSignal(QueueD3D12& queue, uint64_t value);
     void QueueWait(QueueD3D12& queue, uint64_t value);
-    void Wait(uint64_t value);
+    Result Wait(uint64_t value);
 
 private:
     DeviceD3D12& m_Device;

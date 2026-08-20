@@ -94,6 +94,13 @@ void* BufferWGPU::Map(uint64_t offset, uint64_t size) {
         }
 
         m_MappedReadback = wgpuBufferGetConstMappedRange(m_Buffer, mapOffset, mapSize);
+        if (!m_MappedReadback) {
+            wgpuBufferUnmap(m_Buffer);
+            m_MapOffset = 0;
+            m_MapSize = 0;
+            return nullptr;
+        }
+
         return (uint8_t*)m_MappedReadback + (m_MapOffset - mapOffset);
     }
 

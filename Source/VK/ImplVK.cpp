@@ -22,6 +22,7 @@
 #include "QueueVK.h"
 #include "SwapChainVK.h"
 #include "TextureVK.h"
+#include "TransferContextVK.h"
 
 #include "HelperInterface.h"
 #include "ImguiInterface.h"
@@ -38,6 +39,7 @@ using namespace nri;
 #include "DescriptorPoolVK.hpp"
 #include "DescriptorSetVK.hpp"
 #include "DescriptorVK.hpp"
+#include "TransferContextVK.hpp"
 #include "DeviceVK.hpp"
 #include "FenceVK.hpp"
 #include "MemoryVK.hpp"
@@ -559,6 +561,16 @@ static void NRI_CALL UnmapBuffer(Buffer& buffer) {
     ((BufferVK&)buffer).Unmap();
 }
 
+static Result NRI_CALL UploadHostMemoryToTexture(Queue& queue, const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
+    QueueVK& queueVK = (QueueVK&)queue;
+    return queueVK.GetDevice().UploadHostMemoryToTexture(queueVK, copyDescs, copyDescNum);
+}
+
+static Result NRI_CALL ReadbackTextureToHostMemory(Queue& queue, const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
+    QueueVK& queueVK = (QueueVK&)queue;
+    return queueVK.GetDevice().ReadbackTextureToHostMemory(queueVK, copyDescs, copyDescNum);
+}
+
 static uint64_t NRI_CALL GetBufferDeviceAddress(const Buffer& buffer) {
     return ((BufferVK&)buffer).GetDeviceAddress();
 }
@@ -741,6 +753,8 @@ Result DeviceVK::FillFunctionTable(CoreInterface& table) const {
     table.ResetCommandAllocator = ::ResetCommandAllocator;
     table.MapBuffer = ::MapBuffer;
     table.UnmapBuffer = ::UnmapBuffer;
+    table.UploadHostMemoryToTexture = ::UploadHostMemoryToTexture;
+    table.ReadbackTextureToHostMemory = ::ReadbackTextureToHostMemory;
     table.GetBufferDeviceAddress = ::GetBufferDeviceAddress;
     table.SetDebugName = ::SetDebugName;
     table.GetDeviceNativeObject = ::GetDeviceNativeObject;

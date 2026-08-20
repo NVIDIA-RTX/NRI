@@ -36,9 +36,9 @@ NRI_INLINE void FenceD3D12::QueueWait(QueueD3D12& queue, uint64_t value) {
     }
 }
 
-NRI_INLINE void FenceD3D12::Wait(uint64_t value) {
+NRI_INLINE Result FenceD3D12::Wait(uint64_t value) {
     if (!m_Fence)
-        return;
+        return Result::SUCCESS;
 
     if (m_Event == 0 || m_Event == INVALID_HANDLE_VALUE) {
         // Busy wait
@@ -46,10 +46,14 @@ NRI_INLINE void FenceD3D12::Wait(uint64_t value) {
             ;
     } else if (m_Fence->GetCompletedValue() < value) {
         // Event-based wait
-        HRESULT hr = m_Fence->SetEventOnCompletion(value, m_Event);
-        NRI_RETURN_VOID_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Fence::SetEventOnCompletion");
+        ResetEvent(m_Event);
 
-        uint32_t result = WaitForSingleObjectEx(m_Event, NRI_TIMEOUT_FENCE, TRUE);
-        NRI_RETURN_ON_FAILURE(&m_Device, result == WAIT_OBJECT_0, ReturnVoid(), "WaitForSingleObjectEx() failed!");
+        HRESULT hr = m_Fence->SetEventOnCompletion(value, m_Event);
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Fence::SetEventOnCompletion");
+
+        uint32_t result = WaitForSingleObjectEx(m_Event, NRI_TIMEOUT_FENCE, FALSE);
+        NRI_RETURN_ON_FAILURE(&m_Device, result == WAIT_OBJECT_0, Result::FAILURE, "WaitForSingleObjectEx() failed, result = 0x%08X!", result);
     }
+
+    return Result::SUCCESS;
 }

@@ -617,6 +617,8 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         "Source/D3D12/SwapChainD3D12.hpp"
         "Source/D3D12/TextureD3D12.h"
         "Source/D3D12/TextureD3D12.hpp"
+        "Source/D3D12/TransferContextD3D12.h"
+        "Source/D3D12/TransferContextD3D12.hpp"
     )
 
     add_library(NRI_D3D12 STATIC)
@@ -739,6 +741,8 @@ if(NRI_ENABLE_VK_SUPPORT)
         "Source/VK/SwapChainVK.hpp"
         "Source/VK/TextureVK.h"
         "Source/VK/TextureVK.hpp"
+        "Source/VK/TransferContextVK.h"
+        "Source/VK/TransferContextVK.hpp"
     )
 
     add_library(NRI_VK STATIC)

@@ -53,6 +53,13 @@ Result TextureVK::Create(const TextureVKDesc& textureVKDesc) {
     if (textureVKDesc.vkImageUsageFlags & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)
         m_Desc.usage |= TextureUsageBits::INPUT_ATTACHMENT;
 
+    const VkImageUsageFlags hostTransferUsage = m_Device.m_IsSupported.hostImageCopy
+        ? VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT
+        : VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
+    if ((textureVKDesc.vkImageUsageFlags & hostTransferUsage) == hostTransferUsage)
+        m_Desc.usage |= TextureUsageBits::HOST_TRANSFER;
+
     m_OwnsNativeObjects = false;
     m_Handle = (VkImage)textureVKDesc.vkImage;
 

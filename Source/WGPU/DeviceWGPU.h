@@ -4,6 +4,22 @@
 
 namespace nri {
 
+struct HostCopyLayoutWGPU {
+    uint64_t offset;
+    uint64_t slicePitch;
+    uint32_t rowPitch;
+    uint32_t rowSize;
+    uint32_t rowNum;
+    uint32_t width;
+    uint32_t height;
+    uint32_t depth;
+};
+
+struct HostCopyContextWGPU {
+    BufferWGPU* readbackBuffer = nullptr;
+    bool isInUse = false;
+};
+
 struct DeviceWGPU final : public DeviceBase {
     DeviceWGPU(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks);
     ~DeviceWGPU();
@@ -77,13 +93,20 @@ struct DeviceWGPU final : public DeviceBase {
 
     Result GetQueue(QueueType queueType, uint32_t queueIndex, Queue*& queue);
     Result WaitIdle();
+    Result UploadHostMemoryToTexture(const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum);
+    Result ReadbackTextureToHostMemory(const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum);
 
 private:
+    HostCopyLayoutWGPU GetHostCopyLayout(const TextureWGPU& texture, const TextureRegionDesc& region, uint64_t& offset, bool alignForBufferCopy) const;
+    Result AcquireHostCopyContext(HostCopyContextWGPU*& context);
+    void ReleaseHostCopyContext(HostCopyContextWGPU& context);
+    Result EnsureReadbackBuffer(HostCopyContextWGPU& context, uint64_t size);
     Result CreateInstanceAndDevice(const DeviceCreationDesc& deviceCreationDesc);
     void FillDesc(const AdapterDesc& adapterDesc);
 
 private:
     std::array<Vector<QueueWGPU*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies;
+    Vector<HostCopyContextWGPU*> m_HostCopyContexts;
     CoreInterface m_iCore = {};
     DeviceDesc m_Desc = {};
     WGPUInstance m_Instance = nullptr;
@@ -93,6 +116,7 @@ private:
     VKBindingOffsets m_BindingOffsets = {};
     bool m_IsTimestampQueryInsidePassesSupported = false;
     bool m_IsSubgroupsSupported = false;
+    Lock m_HostCopyContextLock;
 };
 
 } // namespace nri

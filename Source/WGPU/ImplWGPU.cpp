@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <numeric>
 #include <string>
 #include <thread>
 
@@ -553,6 +554,14 @@ static void NRI_CALL UnmapBuffer(Buffer& buffer) {
     ((BufferWGPU&)buffer).Unmap();
 }
 
+static Result NRI_CALL UploadHostMemoryToTexture(Queue& queue, const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
+    return ((QueueWGPU&)queue).GetDevice().UploadHostMemoryToTexture(copyDescs, copyDescNum);
+}
+
+static Result NRI_CALL ReadbackTextureToHostMemory(Queue& queue, const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
+    return ((QueueWGPU&)queue).GetDevice().ReadbackTextureToHostMemory(copyDescs, copyDescNum);
+}
+
 static uint64_t NRI_CALL GetBufferDeviceAddress(const Buffer&) {
     // TODO: WebGPU does not expose buffer device addresses. Keep device-address/ray-tracing features disabled.
     return 0;
@@ -724,6 +733,8 @@ Result DeviceWGPU::FillFunctionTable(CoreInterface& table) const {
     table.ResetCommandAllocator = ::ResetCommandAllocator;
     table.MapBuffer = ::MapBuffer;
     table.UnmapBuffer = ::UnmapBuffer;
+    table.UploadHostMemoryToTexture = ::UploadHostMemoryToTexture;
+    table.ReadbackTextureToHostMemory = ::ReadbackTextureToHostMemory;
     table.GetBufferDeviceAddress = ::GetBufferDeviceAddress;
     table.SetDebugName = ::SetDebugName;
     table.GetDeviceNativeObject = ::GetDeviceNativeObject;

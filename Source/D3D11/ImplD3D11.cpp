@@ -1,5 +1,7 @@
 // © 2021 NVIDIA Corporation
 
+#include <algorithm>
+
 #include "SharedD3D11.h"
 
 #include "BufferD3D11.h"
@@ -526,6 +528,16 @@ static void NRI_CALL UnmapBuffer(Buffer& buffer) {
     ((BufferD3D11&)buffer).Unmap();
 }
 
+static Result NRI_CALL UploadHostMemoryToTexture(Queue& queue, const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
+    QueueD3D11& queueD3D11 = (QueueD3D11&)queue;
+    return queueD3D11.GetDevice().UploadHostMemoryToTexture(queueD3D11, copyDescs, copyDescNum);
+}
+
+static Result NRI_CALL ReadbackTextureToHostMemory(Queue& queue, const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
+    QueueD3D11& queueD3D11 = (QueueD3D11&)queue;
+    return queueD3D11.GetDevice().ReadbackTextureToHostMemory(queueD3D11, copyDescs, copyDescNum);
+}
+
 static uint64_t NRI_CALL GetBufferDeviceAddress(const Buffer&) {
     return 0;
 }
@@ -823,6 +835,8 @@ Result DeviceD3D11::FillFunctionTable(CoreInterface& table) const {
     table.ResetCommandAllocator = ::ResetCommandAllocator;
     table.MapBuffer = ::MapBuffer;
     table.UnmapBuffer = ::UnmapBuffer;
+    table.UploadHostMemoryToTexture = ::UploadHostMemoryToTexture;
+    table.ReadbackTextureToHostMemory = ::ReadbackTextureToHostMemory;
     table.GetBufferDeviceAddress = ::GetBufferDeviceAddress;
     table.SetDebugName = ::SetDebugName;
     table.GetDeviceNativeObject = ::GetDeviceNativeObject;
