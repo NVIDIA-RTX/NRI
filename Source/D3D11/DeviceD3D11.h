@@ -24,10 +24,11 @@ struct HostCopyTextureD3D11 {
     bool isInUse;
 };
 
-struct HostCopyUploadGroupD3D11 {
-    uint32_t firstCopyIndex;
-    uint32_t lastCopyIndex;
-    bool requiresReadback;
+struct HostCopyReadbackD3D11 {
+    TextureD3D11* texture;
+    HostCopyLayoutD3D11 layout;
+    uint32_t subresource;
+    bool useBox;
 };
 
 struct DeviceD3D11 final : public DeviceBase {

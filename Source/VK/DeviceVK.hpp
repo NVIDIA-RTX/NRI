@@ -17,6 +17,25 @@ static inline uint32_t NextPow2(uint32_t n) {
     return n;
 }
 
+static inline VkBufferImageCopy2 GetHostCopyBufferImageRegion(const TextureVK& texture, const TextureRegionDesc& textureRegion, const HostCopyLayoutVK& layout) {
+    const TextureDesc& textureDesc = texture.GetDesc();
+    const FormatProps& formatProps = GetFormatProps(textureDesc.format);
+
+    VkBufferImageCopy2 region = {VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2};
+    region.bufferOffset = layout.dataLayout.offset;
+    region.bufferRowLength = layout.dataLayout.rowPitch / formatProps.stride * formatProps.blockWidth;
+    region.bufferImageHeight = layout.rowNum * formatProps.blockHeight;
+    region.imageSubresource = {GetImageAspectFlags(textureRegion.planes, textureDesc.format), textureRegion.mipOffset, textureRegion.layerOffset, 1};
+    region.imageOffset = {textureRegion.x, textureRegion.y, textureRegion.z};
+    region.imageExtent = {
+        textureRegion.width == WHOLE_SIZE ? texture.GetSize(0, textureRegion.mipOffset) : textureRegion.width,
+        textureRegion.height == WHOLE_SIZE ? texture.GetSize(1, textureRegion.mipOffset) : textureRegion.height,
+        textureRegion.depth == WHOLE_SIZE ? texture.GetSize(2, textureRegion.mipOffset) : textureRegion.depth,
+    };
+
+    return region;
+}
+
 static constexpr VkBufferUsageFlags GetBufferUsageFlags(const BufferDesc& bufferDesc, bool isDeviceAddressSupported) {
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT; // TODO: ban "the opposite" for UPLOAD/READBACK?
 
@@ -2511,21 +2530,8 @@ Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToT
         for (uint32_t i = 0; i < copyDescNum; i++) {
             const CopyHostMemoryToTextureDesc& copyDesc = copyDescs[i];
             const TextureVK& texture = *(TextureVK*)copyDesc.dstTexture;
-            const TextureDesc& textureDesc = texture.GetDesc();
-            const FormatProps& formatProps = GetFormatProps(textureDesc.format);
             const HostCopyLayoutVK& layout = layouts[i];
-
-            VkBufferImageCopy2 region = {VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2};
-            region.bufferOffset = layout.dataLayout.offset;
-            region.bufferRowLength = layout.dataLayout.rowPitch / formatProps.stride * formatProps.blockWidth;
-            region.bufferImageHeight = layout.rowNum * formatProps.blockHeight;
-            region.imageSubresource = {GetImageAspectFlags(copyDesc.dstRegion.planes, textureDesc.format), copyDesc.dstRegion.mipOffset, copyDesc.dstRegion.layerOffset, 1};
-            region.imageOffset = {copyDesc.dstRegion.x, copyDesc.dstRegion.y, copyDesc.dstRegion.z};
-            region.imageExtent = {
-                copyDesc.dstRegion.width == WHOLE_SIZE ? texture.GetSize(0, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.width,
-                copyDesc.dstRegion.height == WHOLE_SIZE ? texture.GetSize(1, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.height,
-                copyDesc.dstRegion.depth == WHOLE_SIZE ? texture.GetSize(2, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.depth,
-            };
+            VkBufferImageCopy2 region = GetHostCopyBufferImageRegion(texture, copyDesc.dstRegion, layout);
 
             if (m_IsSupported.copyCommands2) {
                 VkCopyBufferToImageInfo2 info = {VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2};
@@ -2681,21 +2687,8 @@ Result DeviceVK::CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHost
         for (uint32_t i = 0; i < copyDescNum; i++) {
             const CopyTextureToHostMemoryDesc& copyDesc = copyDescs[i];
             const TextureVK& texture = *(TextureVK*)copyDesc.srcTexture;
-            const TextureDesc& textureDesc = texture.GetDesc();
-            const FormatProps& formatProps = GetFormatProps(textureDesc.format);
             const HostCopyLayoutVK& layout = layouts[i];
-
-            VkBufferImageCopy2 region = {VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2};
-            region.bufferOffset = layout.dataLayout.offset;
-            region.bufferRowLength = layout.dataLayout.rowPitch / formatProps.stride * formatProps.blockWidth;
-            region.bufferImageHeight = layout.rowNum * formatProps.blockHeight;
-            region.imageSubresource = {GetImageAspectFlags(copyDesc.srcRegion.planes, textureDesc.format), copyDesc.srcRegion.mipOffset, copyDesc.srcRegion.layerOffset, 1};
-            region.imageOffset = {copyDesc.srcRegion.x, copyDesc.srcRegion.y, copyDesc.srcRegion.z};
-            region.imageExtent = {
-                copyDesc.srcRegion.width == WHOLE_SIZE ? texture.GetSize(0, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.width,
-                copyDesc.srcRegion.height == WHOLE_SIZE ? texture.GetSize(1, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.height,
-                copyDesc.srcRegion.depth == WHOLE_SIZE ? texture.GetSize(2, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.depth,
-            };
+            VkBufferImageCopy2 region = GetHostCopyBufferImageRegion(texture, copyDesc.srcRegion, layout);
 
             if (m_IsSupported.copyCommands2) {
                 VkCopyImageToBufferInfo2 info = {VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2};

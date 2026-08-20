@@ -1,5 +1,7 @@
 // © 2021 NVIDIA Corporation
 
+#include <algorithm>
+
 #include "SharedD3D11.h"
 
 #include "BufferD3D11.h"
