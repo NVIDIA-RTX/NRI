@@ -1592,14 +1592,7 @@ Result DeviceD3D12::CopyHostMemoryToTexture(QueueD3D12& queue, const CopyHostMem
             const HostCopyLayoutD3D12& layout = layouts[i];
             uint32_t srcRowPitch = copyDesc.srcRowPitch ? copyDesc.srcRowPitch : layout.rowSize;
             uint32_t srcSlicePitch = copyDesc.srcSlicePitch ? copyDesc.srcSlicePitch : srcRowPitch * layout.rowNum;
-
-            for (uint32_t z = 0; z < layout.depth; z++) {
-                for (uint32_t y = 0; y < layout.rowNum; y++) {
-                    uint8_t* dstRow = stagingData + layout.dataLayout.offset + uint64_t(z) * layout.slicePitch + uint64_t(y) * layout.dataLayout.rowPitch;
-                    const uint8_t* srcRow = (const uint8_t*)copyDesc.srcData + uint64_t(z) * srcSlicePitch + uint64_t(y) * srcRowPitch;
-                    memcpy(dstRow, srcRow, layout.rowSize);
-                }
-            }
+            CopyTextureData(stagingData + layout.dataLayout.offset, layout.dataLayout.rowPitch, layout.slicePitch, copyDesc.srcData, srcRowPitch, srcSlicePitch, layout.rowSize, layout.rowNum, layout.depth);
         }
 
         result = context->GetCommandBuffer().Begin(nullptr);
@@ -1727,14 +1720,7 @@ Result DeviceD3D12::CopyTextureToHostMemory(QueueD3D12& queue, const CopyTexture
             const HostCopyLayoutD3D12& layout = layouts[i];
             uint32_t dstRowPitch = copyDesc.dstRowPitch ? copyDesc.dstRowPitch : layout.rowSize;
             uint32_t dstSlicePitch = copyDesc.dstSlicePitch ? copyDesc.dstSlicePitch : dstRowPitch * layout.rowNum;
-
-            for (uint32_t z = 0; z < layout.depth; z++) {
-                for (uint32_t y = 0; y < layout.rowNum; y++) {
-                    const uint8_t* srcRow = stagingData + layout.dataLayout.offset + uint64_t(z) * layout.slicePitch + uint64_t(y) * layout.dataLayout.rowPitch;
-                    uint8_t* dstRow = (uint8_t*)copyDesc.dstData + uint64_t(z) * dstSlicePitch + uint64_t(y) * dstRowPitch;
-                    memcpy(dstRow, srcRow, layout.rowSize);
-                }
-            }
+            CopyTextureData(copyDesc.dstData, dstRowPitch, dstSlicePitch, stagingData + layout.dataLayout.offset, layout.dataLayout.rowPitch, layout.slicePitch, layout.rowSize, layout.rowNum, layout.depth);
         }
     }
 
@@ -1774,8 +1760,9 @@ Result DeviceD3D12::AcquireTransferContext(QueueD3D12& queue, TransferContextD3D
 }
 
 void DeviceD3D12::ReleaseTransferContext(TransferContextD3D12& context) {
-    ExclusiveScope lock(m_TransferContextLock);
     context.Trim();
+
+    ExclusiveScope lock(m_TransferContextLock);
     context.SetInUse(false);
 }
 

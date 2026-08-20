@@ -195,6 +195,7 @@ private:
     ComPtr<ID3D11Multithread> m_Multithread;
     ComPtr<ID3D11Buffer> m_ZeroBuffer;
     Vector<HostCopyTextureD3D11> m_HostCopyTextures;
+    uint64_t m_HostCopyTextureCacheSize = 0;
     std::array<Vector<QueueD3D11*>, (size_t)QueueType::MAX_NUM> m_QueueFamilies;
     CRITICAL_SECTION m_CriticalSection = {};
     CoreInterface m_iCore = {};

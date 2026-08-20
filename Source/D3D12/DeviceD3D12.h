@@ -157,6 +157,7 @@ struct DeviceD3D12 final : public DeviceBase {
     Result BindAccelerationStructureMemory(const BindAccelerationStructureMemoryDesc* bindAccelerationStructureMemoryDescs, uint32_t bindAccelerationStructureMemoryDescNum);
     Result BindMicromapMemory(const BindMicromapMemoryDesc* bindMicromapMemoryDescs, uint32_t bindMicromapMemoryDescNum);
     FormatSupportBits GetFormatSupport(Format format) const;
+
 private:
     HostCopyLayoutD3D12 GetHostCopyLayout(const TextureD3D12& texture, const TextureRegionDesc& region, uint64_t& offset) const;
     Result AcquireTransferContext(QueueD3D12& queue, TransferContextD3D12*& context);

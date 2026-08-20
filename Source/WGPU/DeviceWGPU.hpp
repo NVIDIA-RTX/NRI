@@ -555,7 +555,10 @@ Result DeviceWGPU::CopyHostMemoryToTexture(const CopyHostMemoryToTextureDesc* co
         wgpuQueueWriteTexture(m_Queue, &dst, copyDesc.srcData, dataSize, &src.layout, &extent);
     }
 
-    return WaitIdle();
+    WGPUSubmissionIndex submissionIndex = wgpuQueueSubmitForIndex(m_Queue, 0, nullptr);
+    wgpuDevicePoll(m_Device, WGPU_TRUE, &submissionIndex);
+
+    return Result::SUCCESS;
 }
 
 Result DeviceWGPU::CopyTextureToHostMemory(const CopyTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
@@ -634,14 +637,7 @@ Result DeviceWGPU::CopyTextureToHostMemory(const CopyTextureToHostMemoryDesc* co
         const HostCopyLayoutWGPU& layout = layouts[i];
         uint32_t dstRowPitch = copyDesc.dstRowPitch ? copyDesc.dstRowPitch : layout.rowSize;
         uint32_t dstSlicePitch = copyDesc.dstSlicePitch ? copyDesc.dstSlicePitch : dstRowPitch * layout.rowNum;
-
-        for (uint32_t z = 0; z < layout.depth; z++) {
-            for (uint32_t y = 0; y < layout.rowNum; y++) {
-                const uint8_t* srcRow = stagingData + layout.offset + uint64_t(z) * layout.slicePitch + uint64_t(y) * layout.rowPitch;
-                uint8_t* dstRow = (uint8_t*)copyDesc.dstData + uint64_t(z) * dstSlicePitch + uint64_t(y) * dstRowPitch;
-                memcpy(dstRow, srcRow, layout.rowSize);
-            }
-        }
+        CopyTextureData(copyDesc.dstData, dstRowPitch, dstSlicePitch, stagingData + layout.offset, layout.rowPitch, layout.slicePitch, layout.rowSize, layout.rowNum, layout.depth);
     }
 
     if (stagingData)
@@ -674,13 +670,12 @@ Result DeviceWGPU::AcquireHostCopyContext(HostCopyContextWGPU*& context) {
 }
 
 void DeviceWGPU::ReleaseHostCopyContext(HostCopyContextWGPU& context) {
-    ExclusiveScope lock(m_HostCopyContextLock);
-
     if (context.readbackBuffer && context.readbackBuffer->GetDesc().size > MAX_CACHED_HOST_COPY_RESOURCE_SIZE) {
         Destroy(GetAllocationCallbacks(), context.readbackBuffer);
         context.readbackBuffer = nullptr;
     }
 
+    ExclusiveScope lock(m_HostCopyContextLock);
     context.isInUse = false;
 }
 

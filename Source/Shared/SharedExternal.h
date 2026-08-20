@@ -389,6 +389,29 @@ inline T Align(T x, size_t alignment) {
     return (T)((size_t(x) + alignment - 1) & ~(alignment - 1));
 }
 
+inline void CopyTextureData(void* dstData, uint64_t dstRowPitch, uint64_t dstSlicePitch, const void* srcData, uint64_t srcRowPitch, uint64_t srcSlicePitch, uint64_t rowSize, uint32_t rowNum, uint32_t sliceNum) {
+    uint8_t* dst = (uint8_t*)dstData;
+    const uint8_t* src = (const uint8_t*)srcData;
+    uint64_t sliceSize = rowSize * rowNum;
+
+    if (dstRowPitch == rowSize && srcRowPitch == rowSize) {
+        if (dstSlicePitch == sliceSize && srcSlicePitch == sliceSize) {
+            memcpy(dst, src, (size_t)(sliceSize * sliceNum));
+            return;
+        }
+
+        for (uint32_t z = 0; z < sliceNum; z++)
+            memcpy(dst + uint64_t(z) * dstSlicePitch, src + uint64_t(z) * srcSlicePitch, (size_t)sliceSize);
+
+        return;
+    }
+
+    for (uint32_t z = 0; z < sliceNum; z++) {
+        for (uint32_t y = 0; y < rowNum; y++)
+            memcpy(dst + uint64_t(z) * dstSlicePitch + uint64_t(y) * dstRowPitch, src + uint64_t(z) * srcSlicePitch + uint64_t(y) * srcRowPitch, (size_t)rowSize);
+    }
+}
+
 template <typename... Args>
 constexpr void MaybeUnused([[maybe_unused]] const Args&... args) {
 }

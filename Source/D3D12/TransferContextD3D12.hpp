@@ -72,10 +72,8 @@ void TransferContextD3D12::Reset() {
 }
 
 bool TransferContextD3D12::TryRecover() {
-    if (!m_IsReusable && m_Fence->GetFenceValue() >= m_FenceValue) {
+    if (!m_IsReusable && m_Fence->GetFenceValue() >= m_FenceValue)
         Reset();
-        Trim();
-    }
 
     return m_IsReusable;
 }

@@ -73,10 +73,8 @@ void TransferContextVK::Reset() {
 }
 
 bool TransferContextVK::TryRecover() {
-    if (!m_IsReusable && m_Fence->GetFenceValue() >= m_FenceValue) {
+    if (!m_IsReusable && m_Fence->GetFenceValue() >= m_FenceValue)
         Reset();
-        Trim();
-    }
 
     return m_IsReusable;
 }
@@ -111,8 +109,14 @@ Result TransferContextVK::SubmitAndWait(QueueVK& queue) {
     m_IsReusable = false;
 
     Result result = queue.Submit(queueSubmitDesc);
-    if (result == Result::SUCCESS)
-        result = m_Fence->Wait(m_FenceValue);
+    if (result != Result::SUCCESS) {
+        if (result != Result::DEVICE_LOST)
+            Reset();
+
+        return result;
+    }
+
+    result = m_Fence->Wait(m_FenceValue);
 
     if (result == Result::SUCCESS)
         Reset();
