@@ -154,6 +154,20 @@ void BufferVK::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDe
     m_Device.GetMemoryDesc(memoryLocation, requirements.memoryRequirements, dedicatedRequirements, memoryDesc);
 }
 
+VkMappedMemoryRange BufferVK::GetNonCoherentMappedMemoryRange(uint64_t offset, uint64_t size) const {
+    uint64_t atomSize = m_Device.GetNonCoherentAtomSize();
+    uint64_t rangeBegin = m_NonCoherentDeviceMemoryOffset + offset;
+    uint64_t rangeEnd = rangeBegin + size;
+    uint64_t bufferEnd = m_NonCoherentDeviceMemoryOffset + m_Desc.size;
+
+    VkMappedMemoryRange memoryRange = {VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE};
+    memoryRange.memory = m_NonCoherentDeviceMemory;
+    memoryRange.offset = rangeBegin & ~(atomSize - 1);
+    memoryRange.size = (bufferEnd - rangeEnd < atomSize) ? VK_WHOLE_SIZE : (Align(rangeEnd, atomSize) - memoryRange.offset);
+
+    return memoryRange;
+}
+
 NRI_INLINE void BufferVK::SetDebugName(const char* name) {
     m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)m_Handle, name);
 }
@@ -172,10 +186,7 @@ NRI_INLINE void* BufferVK::Map(uint64_t offset, uint64_t size) {
         if (m_VmaAllocation)
             vkResult = vmaInvalidateAllocation(m_Device.GetVma(), m_VmaAllocation, offset, size);
         else {
-            VkMappedMemoryRange memoryRange = {VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE};
-            memoryRange.memory = m_NonCoherentDeviceMemory;
-            memoryRange.offset = m_NonCoherentDeviceMemoryOffset + offset;
-            memoryRange.size = size;
+            VkMappedMemoryRange memoryRange = GetNonCoherentMappedMemoryRange(offset, size);
 
             const auto& vk = m_Device.GetDispatchTable();
             vkResult = vk.InvalidateMappedMemoryRanges(m_Device, 1, &memoryRange);
@@ -197,10 +208,7 @@ NRI_INLINE void BufferVK::Unmap() {
         if (m_VmaAllocation)
             vkResult = vmaFlushAllocation(m_Device.GetVma(), m_VmaAllocation, m_MappedMemoryRangeOffset, m_MappedMemoryRangeSize);
         else {
-            VkMappedMemoryRange memoryRange = {VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE};
-            memoryRange.memory = m_NonCoherentDeviceMemory;
-            memoryRange.offset = m_NonCoherentDeviceMemoryOffset + m_MappedMemoryRangeOffset;
-            memoryRange.size = m_MappedMemoryRangeSize;
+            VkMappedMemoryRange memoryRange = GetNonCoherentMappedMemoryRange(m_MappedMemoryRangeOffset, m_MappedMemoryRangeSize);
 
             const auto& vk = m_Device.GetDispatchTable();
             vkResult = vk.FlushMappedMemoryRanges(m_Device, 1, &memoryRange);

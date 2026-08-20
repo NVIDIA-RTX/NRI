@@ -132,6 +132,7 @@ static_assert(sizeof(IsSupported) == sizeof(uint32_t), "4 bytes expected");
 
 struct HostCopyLayoutVK {
     TextureDataLayoutDesc dataLayout;
+    uint64_t slicePitch;
     uint32_t rowSize;
     uint32_t rowNum;
     uint32_t depth;
@@ -168,6 +169,10 @@ struct DeviceVK final : public DeviceBase {
 
     inline bool IsHostCoherentMemory(MemoryTypeIndex memoryTypeIndex) const {
         return (m_MemoryProps.memoryTypes[memoryTypeIndex].propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
+    }
+
+    inline uint64_t GetNonCoherentAtomSize() const {
+        return m_NonCoherentAtomSize;
     }
 
     inline bool IsMemoryZeroInitializationEnabled() const {
@@ -299,6 +304,7 @@ private:
     VmaAllocator_T* m_Vma = nullptr;
     uint32_t m_NumActiveFamilyIndices = 0;
     uint32_t m_MinorVersion = 0;
+    uint64_t m_NonCoherentAtomSize = 1;
     bool m_OwnsNativeObjects = true;
     bool m_IsMemoryZeroInitializationEnabled = false;
 

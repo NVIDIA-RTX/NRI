@@ -1556,12 +1556,12 @@ HostCopyLayoutD3D12 DeviceD3D12::GetHostCopyLayout(const TextureD3D12& texture, 
     HostCopyLayoutD3D12 layout = {};
     layout.dataLayout.offset = offset;
     layout.dataLayout.rowPitch = rowPitch;
-    layout.dataLayout.slicePitch = rowPitch * rowNum;
+    layout.slicePitch = uint64_t(rowPitch) * rowNum;
     layout.rowSize = rowSize;
     layout.rowNum = rowNum;
     layout.depth = depth;
 
-    offset += uint64_t(layout.dataLayout.slicePitch) * depth;
+    offset += layout.slicePitch * depth;
 
     return layout;
 }
@@ -1595,7 +1595,7 @@ Result DeviceD3D12::CopyHostMemoryToTexture(QueueD3D12& queue, const CopyHostMem
 
             for (uint32_t z = 0; z < layout.depth; z++) {
                 for (uint32_t y = 0; y < layout.rowNum; y++) {
-                    uint8_t* dstRow = stagingData + layout.dataLayout.offset + uint64_t(z) * layout.dataLayout.slicePitch + uint64_t(y) * layout.dataLayout.rowPitch;
+                    uint8_t* dstRow = stagingData + layout.dataLayout.offset + uint64_t(z) * layout.slicePitch + uint64_t(y) * layout.dataLayout.rowPitch;
                     const uint8_t* srcRow = (const uint8_t*)copyDesc.srcData + uint64_t(z) * srcSlicePitch + uint64_t(y) * srcRowPitch;
                     memcpy(dstRow, srcRow, layout.rowSize);
                 }
@@ -1732,7 +1732,7 @@ Result DeviceD3D12::CopyTextureToHostMemory(QueueD3D12& queue, const CopyTexture
 
             for (uint32_t z = 0; z < layout.depth; z++) {
                 for (uint32_t y = 0; y < layout.rowNum; y++) {
-                    const uint8_t* srcRow = stagingData + layout.dataLayout.offset + uint64_t(z) * layout.dataLayout.slicePitch + uint64_t(y) * layout.dataLayout.rowPitch;
+                    const uint8_t* srcRow = stagingData + layout.dataLayout.offset + uint64_t(z) * layout.slicePitch + uint64_t(y) * layout.dataLayout.rowPitch;
                     uint8_t* dstRow = (uint8_t*)copyDesc.dstData + uint64_t(z) * dstSlicePitch + uint64_t(y) * dstRowPitch;
                     memcpy(dstRow, srcRow, layout.rowSize);
                 }

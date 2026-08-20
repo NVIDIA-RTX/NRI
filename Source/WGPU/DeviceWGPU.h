@@ -6,8 +6,8 @@ namespace nri {
 
 struct HostCopyLayoutWGPU {
     uint64_t offset;
+    uint64_t slicePitch;
     uint32_t rowPitch;
-    uint32_t slicePitch;
     uint32_t rowSize;
     uint32_t rowNum;
     uint32_t width;

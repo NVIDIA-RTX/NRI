@@ -885,6 +885,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
         // Fill desc
         const VkPhysicalDeviceLimits& limits = props.properties.limits;
+        m_NonCoherentAtomSize = limits.nonCoherentAtomSize;
 
         uint32_t queueFamilyNum = 0;
         m_VK.GetPhysicalDeviceQueueFamilyProperties2(m_PhysicalDevice, &queueFamilyNum, nullptr);
@@ -2357,12 +2358,12 @@ HostCopyLayoutVK DeviceVK::GetHostCopyLayout(const TextureVK& texture, const Tex
     HostCopyLayoutVK layout = {};
     layout.dataLayout.offset = offset;
     layout.dataLayout.rowPitch = rowPitch;
-    layout.dataLayout.slicePitch = rowPitch * rowNum;
+    layout.slicePitch = uint64_t(rowPitch) * rowNum;
     layout.rowSize = rowSize;
     layout.rowNum = rowNum;
     layout.depth = depth;
 
-    offset += uint64_t(layout.dataLayout.slicePitch) * depth;
+    offset += layout.slicePitch * depth;
 
     return layout;
 }
@@ -2457,7 +2458,7 @@ Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToT
 
             for (uint32_t z = 0; z < layout.depth; z++) {
                 for (uint32_t y = 0; y < layout.rowNum; y++) {
-                    uint8_t* dstRow = stagingData + layout.dataLayout.offset + uint64_t(z) * layout.dataLayout.slicePitch + uint64_t(y) * layout.dataLayout.rowPitch;
+                    uint8_t* dstRow = stagingData + layout.dataLayout.offset + uint64_t(z) * layout.slicePitch + uint64_t(y) * layout.dataLayout.rowPitch;
                     const uint8_t* srcRow = (const uint8_t*)copyDesc.srcData + uint64_t(z) * srcSlicePitch + uint64_t(y) * srcRowPitch;
                     memcpy(dstRow, srcRow, layout.rowSize);
                 }
@@ -2509,7 +2510,7 @@ Result DeviceVK::CopyHostMemoryToTexture(QueueVK& queue, const CopyHostMemoryToT
             VkBufferImageCopy2 region = {VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2};
             region.bufferOffset = layout.dataLayout.offset;
             region.bufferRowLength = layout.dataLayout.rowPitch / formatProps.stride * formatProps.blockWidth;
-            region.bufferImageHeight = layout.dataLayout.slicePitch / layout.dataLayout.rowPitch * formatProps.blockHeight;
+            region.bufferImageHeight = layout.rowNum * formatProps.blockHeight;
             region.imageSubresource = {GetImageAspectFlags(copyDesc.dstRegion.planes, textureDesc.format), copyDesc.dstRegion.mipOffset, copyDesc.dstRegion.layerOffset, 1};
             region.imageOffset = {copyDesc.dstRegion.x, copyDesc.dstRegion.y, copyDesc.dstRegion.z};
             region.imageExtent = {
@@ -2652,7 +2653,7 @@ Result DeviceVK::CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHost
             VkBufferImageCopy2 region = {VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2};
             region.bufferOffset = layout.dataLayout.offset;
             region.bufferRowLength = layout.dataLayout.rowPitch / formatProps.stride * formatProps.blockWidth;
-            region.bufferImageHeight = layout.dataLayout.slicePitch / layout.dataLayout.rowPitch * formatProps.blockHeight;
+            region.bufferImageHeight = layout.rowNum * formatProps.blockHeight;
             region.imageSubresource = {GetImageAspectFlags(copyDesc.srcRegion.planes, textureDesc.format), copyDesc.srcRegion.mipOffset, copyDesc.srcRegion.layerOffset, 1};
             region.imageOffset = {copyDesc.srcRegion.x, copyDesc.srcRegion.y, copyDesc.srcRegion.z};
             region.imageExtent = {
@@ -2714,7 +2715,7 @@ Result DeviceVK::CopyTextureToHostMemory(QueueVK& queue, const CopyTextureToHost
 
             for (uint32_t z = 0; z < layout.depth; z++) {
                 for (uint32_t y = 0; y < layout.rowNum; y++) {
-                    const uint8_t* srcRow = stagingData + layout.dataLayout.offset + uint64_t(z) * layout.dataLayout.slicePitch + uint64_t(y) * layout.dataLayout.rowPitch;
+                    const uint8_t* srcRow = stagingData + layout.dataLayout.offset + uint64_t(z) * layout.slicePitch + uint64_t(y) * layout.dataLayout.rowPitch;
                     uint8_t* dstRow = (uint8_t*)copyDesc.dstData + uint64_t(z) * dstSlicePitch + uint64_t(y) * dstRowPitch;
                     memcpy(dstRow, srcRow, layout.rowSize);
                 }

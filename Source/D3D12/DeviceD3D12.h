@@ -12,6 +12,7 @@ namespace nri {
 
 struct HostCopyLayoutD3D12 {
     TextureDataLayoutDesc dataLayout;
+    uint64_t slicePitch;
     uint32_t rowSize;
     uint32_t rowNum;
     uint32_t depth;

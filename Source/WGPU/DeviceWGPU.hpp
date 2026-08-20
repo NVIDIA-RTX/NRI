@@ -516,12 +516,12 @@ HostCopyLayoutWGPU DeviceWGPU::GetHostCopyLayout(const TextureWGPU& texture, con
     layout.rowNum = (layout.height + formatProps.blockHeight - 1) / formatProps.blockHeight;
     layout.rowSize = ((layout.width + formatProps.blockWidth - 1) / formatProps.blockWidth) * formatProps.stride;
     layout.rowPitch = alignForBufferCopy ? Align(layout.rowSize, 256u) : layout.rowSize;
-    layout.slicePitch = layout.rowPitch * layout.rowNum;
+    layout.slicePitch = uint64_t(layout.rowPitch) * layout.rowNum;
 
     uint64_t offsetAlignment = alignForBufferCopy ? std::lcm<uint64_t>(4, formatProps.stride) : 1;
     offset = Align(offset, offsetAlignment);
     layout.offset = offset;
-    offset += uint64_t(layout.slicePitch) * layout.depth;
+    offset += layout.slicePitch * layout.depth;
 
     return layout;
 }
