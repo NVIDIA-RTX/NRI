@@ -146,7 +146,7 @@ if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.${NRI_AGILITY_SDK_VERSION_MAJOR}.${NRI_AGILITY_SDK_VERSION_MINOR}
+        URL "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.${NRI_AGILITY_SDK_VERSION_MAJOR}.${NRI_AGILITY_SDK_VERSION_MINOR}"
     )
     list(APPEND DEPS agilitysdk)
 endif()
@@ -158,7 +158,7 @@ if(NRI_ENABLE_NVTX_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/NVIDIA/NVTX/archive/refs/tags/v3.5.0.zip
+        URL "https://github.com/NVIDIA/NVTX/archive/refs/tags/v3.6.0.zip"
     )
     list(APPEND DEPS nvtx)
 endif()
@@ -170,7 +170,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.360.zip
+        URL "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.360.zip"
     )
     list(APPEND DEPS vulkan_headers)
 
@@ -180,7 +180,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/3aa921224c154a0d2c43912bc88e1c42ce1f7607.zip
+        URL "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/3aa921224c154a0d2c43912bc88e1c42ce1f7607.zip"
     )
     list(APPEND DEPS vma)
 endif()
@@ -193,7 +193,7 @@ if(NRI_ENABLE_NGX_SDK)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/NVIDIA/DLSS/archive/refs/tags/v${NGX_VERSION}.zip
+        URL "https://github.com/NVIDIA/DLSS/archive/refs/tags/v${NGX_VERSION}.zip"
     )
     list(APPEND DEPS ngx)
 endif()
@@ -205,7 +205,7 @@ if(NRI_ENABLE_FFX_SDK)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/releases/download/v1.1.4/FidelityFX-SDK-v1.1.4.zip
+        URL "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/releases/download/v1.1.4/FidelityFX-SDK-v1.1.4.zip"
     )
     list(APPEND DEPS ffx)
 endif()
@@ -217,7 +217,7 @@ if(NRI_ENABLE_XESS_SDK)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/intel/xess/archive/refs/tags/v3.0.2.zip
+        URL "https://github.com/intel/xess/archive/refs/tags/v3.0.2.zip"
     )
     list(APPEND DEPS xess)
 endif()
@@ -229,7 +229,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/1d86c1130f61453634b1df85782e1fecfd59a525.zip
+        URL "https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/1d86c1130f61453634b1df85782e1fecfd59a525.zip"
     )
     list(APPEND DEPS d3d12ma)
 endif()
@@ -266,7 +266,7 @@ if(NRI_ENABLE_AMDAGS)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/GPUOpen-LibrariesAndSDKs/AGS_SDK/archive/refs/tags/v6.3.1.zip
+        URL "https://github.com/GPUOpen-LibrariesAndSDKs/AGS_SDK/archive/refs/tags/v6.3.1.zip"
     )
     list(APPEND DEPS amdags)
 endif()
@@ -282,7 +282,7 @@ if(NRI_ENABLE_NVAPI)
             DOWNLOAD_EXTRACT_TIMESTAMP 1
             DOWNLOAD_NO_PROGRESS 1
             SOURCE_SUBDIR "ignore CMakeLists.txt"
-            URL https://github.com/NVIDIA/nvapi/archive/cd6918f60b3c9a0476fdfe7e89bb32330602049d.zip
+            URL "https://github.com/NVIDIA/nvapi/archive/cd6918f60b3c9a0476fdfe7e89bb32330602049d.zip"
         )
         list(APPEND DEPS nvapi)
     endif()
@@ -296,7 +296,7 @@ if(NRI_ENABLE_SHADERMAKE AND NOT TARGET ShaderMake)
         shadermake
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
-        URL https://github.com/NVIDIA-RTX/ShaderMake/archive/5daebdbef45088fc2369d441391ecab0eba25e54.zip
+        URL "https://github.com/NVIDIA-RTX/ShaderMake/archive/5daebdbef45088fc2369d441391ecab0eba25e54.zip"
     )
     list(APPEND DEPS shadermake)
 endif()
@@ -961,7 +961,7 @@ if(NRI_STATIC_LIBRARY)
 else()
     add_library(NRI SHARED)
 
-    if(CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
         target_link_options(NRI
             PRIVATE
                 $<$<CONFIG:Release>:/DEBUG> # generate a PDB for Release build
@@ -976,9 +976,7 @@ target_sources(NRI
         ${NRI_HEADERS}
         ${NRI_RESOURCES}
         ${NRI_EXTENSIONS}
-        $<$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>:
-            nri.natvis
-        > # debugger markup
+        $<$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>:nri.natvis> # debugger markup
 )
 target_include_directories(NRI
     PRIVATE
