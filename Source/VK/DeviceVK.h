@@ -266,6 +266,8 @@ struct DeviceVK final : public DeviceBase {
 
 private:
     void ReportDeviceFaultAddressInfo(const char* name, const VkDeviceFaultAddressInfoKHR& addressInfo) const;
+    bool ReportDeviceFault(const VkDeviceFaultInfoKHR& faultInfo, uint32_t index) const;
+    Result ReportDeviceFaultVendorBinary(VkDevice device, PFN_vkGetDeviceFaultDebugInfoKHR getDeviceFaultDebugInfo) const;
     HostCopyLayoutVK GetHostCopyLayout(const TextureVK& texture, const TextureRegionDesc& region, uint64_t& offset) const;
     Result AcquireTransferContext(QueueVK& queue, TransferContextVK*& context);
     void ReleaseTransferContext(TransferContextVK& context);
@@ -309,6 +311,7 @@ private:
     uint64_t m_NonCoherentAtomSize = 1;
     bool m_OwnsNativeObjects = true;
     bool m_IsMemoryZeroInitializationEnabled = false;
+    bool m_IsDeviceFaultVendorBinaryEnabled = false;
 
     Lock m_Lock;
     Lock m_TransferContextLock;

@@ -4,8 +4,6 @@
 
 #include "SharedD3D12.h"
 
-#include <d3d12sdklayers.h>
-
 #include "AccelerationStructureD3D12.h"
 #include "BufferD3D12.h"
 #include "CommandAllocatorD3D12.h"
@@ -64,22 +62,6 @@ Result CreateDeviceD3D12(const DeviceCreationDesc& desc, const DeviceCreationD3D
         device = (DeviceBase*)impl;
 
     return result;
-}
-
-Result EnableD3D12DeviceFaultInfo(DeviceFaultInfoLevel level) {
-    if (level == DeviceFaultInfoLevel::NONE || level == DeviceFaultInfoLevel::BASIC)
-        return Result::SUCCESS;
-
-    ComPtr<ID3D12DeviceRemovedExtendedDataSettings1> dredSettings;
-    HRESULT hr = D3D12GetDebugInterface(IID_PPV_ARGS(&dredSettings));
-    if (FAILED(hr) || !dredSettings)
-        return Result::UNSUPPORTED;
-
-    dredSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
-    dredSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
-    dredSettings->SetBreadcrumbContextEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
-
-    return Result::SUCCESS;
 }
 
 //============================================================================================================================================================================================

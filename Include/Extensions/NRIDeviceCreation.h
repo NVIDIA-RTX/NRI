@@ -16,8 +16,8 @@ NriEnum(Message, uint8_t,
 
 NriEnum(DeviceFaultInfoLevel, uint8_t,
     NONE,
-    BASIC,   // Enables backend-supported basic device fault reporting
-    VERBOSE  // Enables backend-supported extended device fault reporting
+    BASIC,   // backend-supported basic device fault reporting
+    VERBOSE  // D3D12: additionally enables DRED breadcrumb contexts
 );
 
 // Callbacks must be thread safe
@@ -33,6 +33,7 @@ NriStruct(CallbackInterface) {
     void (NRI_CALL *MessageCallback)(Nri(Message) messageType, const char* file, uint32_t line, const char* message, void* userArg);
     NriOptional void (NRI_CALL *AbortExecution)(void* userArg); // break on "Message::ERROR" if provided
     NriOptional void* userArg;
+    NriOptional void (NRI_CALL *DeviceFaultDataCallback)(const void* data, uint32_t size, void* userArg); // VK only: vendor crash dump, "data" is valid only for the duration of the callback
 };
 
 // Use largest offset for the resource type planned to be used as an unbounded array

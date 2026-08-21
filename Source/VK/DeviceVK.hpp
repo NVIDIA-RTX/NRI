@@ -767,9 +767,14 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         NRI_REPORT_WARNING(this, "'VK_KHR_device_fault' is not supported, device fault info disabled");
 
     if (desc.deviceFaultInfoLevel != DeviceFaultInfoLevel::NONE) {
-        FaultFeatures.deviceFaultVendorBinary = desc.deviceFaultInfoLevel == DeviceFaultInfoLevel::VERBOSE ? FaultFeatures.deviceFaultVendorBinary : VK_FALSE;
+        const bool isVendorBinaryRequested = desc.callbackInterface.DeviceFaultDataCallback != nullptr;
+        if (isVendorBinaryRequested && FaultFeatures.deviceFault && !FaultFeatures.deviceFaultVendorBinary)
+            NRI_REPORT_WARNING(this, "'deviceFaultVendorBinary' is not supported, vendor binary reporting disabled");
+
+        FaultFeatures.deviceFaultVendorBinary = isVendorBinaryRequested ? FaultFeatures.deviceFaultVendorBinary : VK_FALSE;
         FaultFeatures.deviceFaultReportMasked = VK_FALSE;
         FaultFeatures.deviceFaultDeviceLostOnMasked = VK_FALSE;
+        m_IsDeviceFaultVendorBinaryEnabled = FaultFeatures.deviceFaultVendorBinary;
     }
 
     { // Create device
@@ -2101,6 +2106,62 @@ void DeviceVK::ReportDeviceFaultAddressInfo(const char* name, const VkDeviceFaul
         addressInfo.addressPrecision);
 }
 
+bool DeviceVK::ReportDeviceFault(const VkDeviceFaultInfoKHR& faultInfo, uint32_t index) const {
+    NRI_REPORT_DEVICE_FAULT_INFO(*this,
+        "[VK][DeviceFault] Report[%u]: flags=0x%08X groupId=0x%016" PRIX64 " description=%s",
+        index,
+        faultInfo.flags,
+        faultInfo.groupId,
+        faultInfo.description);
+
+    if ((faultInfo.flags & VK_DEVICE_FAULT_FLAG_MEMORY_ADDRESS_KHR) != 0)
+        ReportDeviceFaultAddressInfo("FaultAddress", faultInfo.faultAddressInfo);
+
+    if ((faultInfo.flags & VK_DEVICE_FAULT_FLAG_INSTRUCTION_ADDRESS_KHR) != 0)
+        ReportDeviceFaultAddressInfo("InstructionAddress", faultInfo.instructionAddressInfo);
+
+    if ((faultInfo.flags & VK_DEVICE_FAULT_FLAG_VENDOR_KHR) != 0) {
+        NRI_REPORT_DEVICE_FAULT_INFO(*this,
+            "[VK][DeviceFault]   VendorInfo: code=0x%016" PRIX64 " data=0x%016" PRIX64 " description=%s",
+            faultInfo.vendorInfo.vendorFaultCode,
+            faultInfo.vendorInfo.vendorFaultData,
+            faultInfo.vendorInfo.description);
+    }
+
+    return (faultInfo.flags & VK_DEVICE_FAULT_FLAG_DEVICE_LOST_KHR) != 0;
+}
+
+Result DeviceVK::ReportDeviceFaultVendorBinary(VkDevice device, PFN_vkGetDeviceFaultDebugInfoKHR getDeviceFaultDebugInfo) const {
+    for (uint32_t i = 0; i < DEVICE_FAULT_QUERY_MAX_NUM; i++) {
+        VkDeviceFaultDebugInfoKHR debugInfo = {VK_STRUCTURE_TYPE_DEVICE_FAULT_DEBUG_INFO_KHR};
+        VkResult vkResult = getDeviceFaultDebugInfo(device, &debugInfo);
+        if (vkResult < 0)
+            return GetResultFromVkResult(vkResult);
+        if (debugInfo.vendorBinarySize == 0)
+            return Result::SUCCESS;
+
+        Scratch<uint8_t> vendorBinary = NRI_ALLOCATE_SCRATCH(*this, uint8_t, debugInfo.vendorBinarySize);
+        if (!vendorBinary)
+            return Result::OUT_OF_MEMORY;
+
+        debugInfo.pVendorBinaryData = vendorBinary;
+        vkResult = getDeviceFaultDebugInfo(device, &debugInfo);
+        if (vkResult == VK_INCOMPLETE)
+            continue;
+        if (vkResult < 0)
+            return GetResultFromVkResult(vkResult);
+
+        m_CallbackInterface.DeviceFaultDataCallback(vendorBinary, debugInfo.vendorBinarySize, m_CallbackInterface.userArg);
+        NRI_REPORT_DEVICE_FAULT_INFO(*this, "[VK][DeviceFault] vendorBinarySize=%u", debugInfo.vendorBinarySize);
+
+        return Result::SUCCESS;
+    }
+
+    NRI_REPORT_WARNING(this, "Vendor binary changed during %u consecutive queries", DEVICE_FAULT_QUERY_MAX_NUM);
+
+    return Result::FAILURE;
+}
+
 Result DeviceVK::ReportDeviceFaultInfo() const {
     VkDevice nativeDevice = (VkDevice)*this;
     PFN_vkGetDeviceProcAddr getDeviceProcAddr = GetDispatchTable().GetDeviceProcAddr;
@@ -2111,58 +2172,63 @@ Result DeviceVK::ReportDeviceFaultInfo() const {
     if (!getDeviceFaultReports)
         return Result::UNSUPPORTED;
 
-    const uint64_t timeout = MsToUs(NRI_TIMEOUT_FENCE);
-    uint32_t faultReportNum = 0;
-    VkResult vkResult = getDeviceFaultReports(nativeDevice, timeout, &faultReportNum, nullptr);
-    if (vkResult == VK_TIMEOUT)
-        return Result::FAILURE;
-    if (vkResult < 0)
-        return GetResultFromVkResult(vkResult);
-    if (faultReportNum == 0)
-        return Result::FAILURE;
-
-    Scratch<VkDeviceFaultInfoKHR> faultReports = NRI_ALLOCATE_SCRATCH(*this, VkDeviceFaultInfoKHR, faultReportNum);
-    for (uint32_t i = 0; i < faultReportNum; i++)
-        faultReports[i] = {VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_KHR};
-
-    vkResult = getDeviceFaultReports(nativeDevice, timeout, &faultReportNum, faultReports);
-    if (vkResult == VK_TIMEOUT)
-        return Result::FAILURE;
-    if (vkResult < 0)
-        return GetResultFromVkResult(vkResult);
-    if (faultReportNum == 0)
-        return Result::FAILURE;
-
+    VkResult vkResult = VK_SUCCESS;
+    uint32_t reportIndex = 0;
     bool deviceLost = false;
-    NRI_REPORT_DEVICE_FAULT_INFO(*this, "[VK][DeviceFault] reportCount=%u", faultReportNum);
-    for (uint32_t i = 0; i < faultReportNum; i++) {
-        const VkDeviceFaultInfoKHR& faultReport = faultReports[i];
-        deviceLost |= (faultReport.flags & VK_DEVICE_FAULT_FLAG_DEVICE_LOST_KHR) != 0;
-        NRI_REPORT_DEVICE_FAULT_INFO(*this,
-            "[VK][DeviceFault] Report[%u]: flags=0x%08X groupId=0x%016" PRIX64 " description=%s",
-            i,
-            faultReport.flags,
-            faultReport.groupId,
-            faultReport.description);
-        ReportDeviceFaultAddressInfo("FaultAddress", faultReport.faultAddressInfo);
-        ReportDeviceFaultAddressInfo("InstructionAddress", faultReport.instructionAddressInfo);
+    for (uint32_t batchIndex = 0; batchIndex < DEVICE_FAULT_QUERY_MAX_NUM; batchIndex++) {
+        uint32_t faultReportNum = 0;
+        vkResult = getDeviceFaultReports(nativeDevice, 0, &faultReportNum, nullptr);
+        if (vkResult == VK_TIMEOUT)
+            break;
+        if (vkResult < 0)
+            return GetResultFromVkResult(vkResult);
+        if (faultReportNum == 0)
+            break;
 
-        NRI_REPORT_DEVICE_FAULT_INFO(*this,
-            "[VK][DeviceFault]   VendorInfo: code=0x%016" PRIX64 " data=0x%016" PRIX64 " description=%s",
-            faultReport.vendorInfo.vendorFaultCode,
-            faultReport.vendorInfo.vendorFaultData,
-            faultReport.vendorInfo.description);
+        Scratch<VkDeviceFaultInfoKHR> faultReports = NRI_ALLOCATE_SCRATCH(*this, VkDeviceFaultInfoKHR, faultReportNum);
+        if (!faultReports)
+            return Result::OUT_OF_MEMORY;
+
+        for (uint32_t i = 0; i < faultReportNum; i++)
+            faultReports[i] = {VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_KHR};
+
+        vkResult = getDeviceFaultReports(nativeDevice, 0, &faultReportNum, faultReports);
+        if (vkResult == VK_TIMEOUT)
+            break;
+        if (vkResult < 0)
+            return GetResultFromVkResult(vkResult);
+
+        for (uint32_t i = 0; i < faultReportNum; i++) {
+            deviceLost |= ReportDeviceFault(faultReports[i], reportIndex);
+            reportIndex++;
+        }
+
+        if (vkResult != VK_INCOMPLETE)
+            break;
     }
 
-    PFN_vkGetDeviceFaultDebugInfoKHR getDeviceFaultDebugInfo = (PFN_vkGetDeviceFaultDebugInfoKHR)getDeviceProcAddr(nativeDevice, "vkGetDeviceFaultDebugInfoKHR");
-    if (deviceLost && getDeviceFaultDebugInfo) {
-        VkDeviceFaultDebugInfoKHR debugInfo = {VK_STRUCTURE_TYPE_DEVICE_FAULT_DEBUG_INFO_KHR};
-        VkResult debugResult = getDeviceFaultDebugInfo(nativeDevice, &debugInfo);
-        if (debugResult >= 0)
-            NRI_REPORT_DEVICE_FAULT_INFO(*this, "[VK][DeviceFault] vendorBinarySize=%u", debugInfo.vendorBinarySize);
+    if (reportIndex == 0)
+        return Result::FAILURE;
+
+    NRI_REPORT_DEVICE_FAULT_INFO(*this, "[VK][DeviceFault] reportCount=%u", reportIndex);
+
+    Result result = Result::SUCCESS;
+    if (vkResult == VK_INCOMPLETE) {
+        NRI_REPORT_WARNING(this, "Stopped after %u consecutive fault report batches", DEVICE_FAULT_QUERY_MAX_NUM);
+        result = Result::FAILURE;
     }
 
-    return Result::SUCCESS;
+    if (deviceLost && m_IsDeviceFaultVendorBinaryEnabled) {
+        PFN_vkGetDeviceFaultDebugInfoKHR getDeviceFaultDebugInfo = (PFN_vkGetDeviceFaultDebugInfoKHR)getDeviceProcAddr(nativeDevice, "vkGetDeviceFaultDebugInfoKHR");
+        if (!getDeviceFaultDebugInfo)
+            return Result::UNSUPPORTED;
+
+        Result vendorBinaryResult = ReportDeviceFaultVendorBinary(nativeDevice, getDeviceFaultDebugInfo);
+        if (vendorBinaryResult != Result::SUCCESS)
+            return vendorBinaryResult;
+    }
+
+    return result;
 }
 
 void DeviceVK::Destruct() {

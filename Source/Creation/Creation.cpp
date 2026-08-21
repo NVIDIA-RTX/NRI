@@ -18,6 +18,7 @@
 
 #if NRI_ENABLE_D3D12_SUPPORT
 #    include <d3d12.h>
+#    include <d3d12sdklayers.h>
 #    include <dxgidebug.h>
 #endif
 
@@ -41,7 +42,6 @@ Result CreateDeviceD3D12(const DeviceCreationDesc& deviceCreationDesc, const Dev
 Result CreateDeviceVK(const DeviceCreationDesc& deviceCreationDesc, const DeviceCreationVKDesc& deviceCreationDescVK, DeviceBase*& device);
 Result CreateDeviceWGPU(const DeviceCreationDesc& deviceCreationDesc, DeviceBase*& device);
 DeviceBase* CreateDeviceValidation(const DeviceCreationDesc& deviceCreationDesc, DeviceBase& device);
-Result EnableD3D12DeviceFaultInfo(DeviceFaultInfoLevel level);
 
 constexpr uint64_t Hash(const char* name) {
     return *name != 0 ? *name ^ (33 * Hash(name + 1)) : 5381;
@@ -148,30 +148,36 @@ static void CheckAndSetDefaultCallbacks(DeviceCreationDesc& deviceCreationDesc) 
     }
 }
 
-static Result EnableDeviceFaultInfo(const DeviceCreationDesc& deviceCreationDesc) {
-    if (deviceCreationDesc.deviceFaultInfoLevel == DeviceFaultInfoLevel::NONE)
-        return Result::SUCCESS;
+static void EnableDeviceFaultInfo(const DeviceCreationDesc& deviceCreationDesc) {
+    Result result = Result::UNSUPPORTED;
 
 #if NRI_ENABLE_D3D12_SUPPORT
-    if (deviceCreationDesc.graphicsAPI == GraphicsAPI::D3D12)
-        return EnableD3D12DeviceFaultInfo(deviceCreationDesc.deviceFaultInfoLevel);
+    if (deviceCreationDesc.graphicsAPI == GraphicsAPI::D3D12) {
+        ComPtr<ID3D12DeviceRemovedExtendedDataSettings> dredSettings;
+        HRESULT hr = D3D12GetDebugInterface(IID_PPV_ARGS(&dredSettings));
+
+        if (SUCCEEDED(hr)) {
+            ComPtr<ID3D12DeviceRemovedExtendedDataSettings1> dredSettings1;
+            if (deviceCreationDesc.deviceFaultInfoLevel == DeviceFaultInfoLevel::VERBOSE)
+                hr = dredSettings->QueryInterface(IID_PPV_ARGS(&dredSettings1));
+
+            dredSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+            dredSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+            if (dredSettings1)
+                dredSettings1->SetBreadcrumbContextEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+
+            result = Result::SUCCESS;
+        }
+    }
 #endif
 
 #if NRI_ENABLE_VK_SUPPORT
     if (deviceCreationDesc.graphicsAPI == GraphicsAPI::VK)
-        return Result::SUCCESS;
+        result = Result::SUCCESS;
 #endif
 
-    return Result::UNSUPPORTED;
-}
-
-static void ReportDeviceFaultInfoEnableWarning(const DeviceCreationDesc& deviceCreationDesc, Result result) {
-    if (!deviceCreationDesc.callbackInterface.MessageCallback)
-        return;
-
-    char message[NRI_MAX_MESSAGE_LENGTH];
-    snprintf(message, sizeof(message), "Device fault info level %u is not available for the selected backend, result=%u.", (uint32_t)deviceCreationDesc.deviceFaultInfoLevel, (uint32_t)result);
-    deviceCreationDesc.callbackInterface.MessageCallback(Message::WARNING, __FILE__, __LINE__, message, deviceCreationDesc.callbackInterface.userArg);
+    if (result != Result::SUCCESS)
+        deviceCreationDesc.callbackInterface.MessageCallback(Message::WARNING, __FILE__, __LINE__, "'deviceCreationDesc.deviceFaultInfoLevel' is unsupported", deviceCreationDesc.callbackInterface.userArg);
 }
 
 static int SortAdapters(const void* pa, const void* pb) {
@@ -832,9 +838,8 @@ NRI_API Result NRI_CALL nriCreateDevice(const DeviceCreationDesc& deviceCreation
     DeviceCreationDesc modifiedDeviceCreationDesc = deviceCreationDesc;
     CheckAndSetDefaultCallbacks(modifiedDeviceCreationDesc);
 
-    Result deviceFaultInfoResult = EnableDeviceFaultInfo(modifiedDeviceCreationDesc);
-    if (deviceFaultInfoResult != Result::SUCCESS)
-        ReportDeviceFaultInfoEnableWarning(modifiedDeviceCreationDesc, deviceFaultInfoResult);
+    if (modifiedDeviceCreationDesc.deviceFaultInfoLevel != DeviceFaultInfoLevel::NONE)
+        EnableDeviceFaultInfo(modifiedDeviceCreationDesc);
 
     // Valid adapter expected (take 1st compatible)
     uint32_t adapterDescNum = ADAPTER_MAX_NUM;
