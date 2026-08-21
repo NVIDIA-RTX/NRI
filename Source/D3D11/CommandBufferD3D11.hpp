@@ -351,6 +351,7 @@ NRI_INLINE void CommandBufferD3D11::EndRendering() {
         m_DeferredContext->ResolveSubresource(dstResource, dstSubresource, srcResource, srcSubresource, format.typed);
     }
 
+    m_DeferredContext->OMSetRenderTargets(0, nullptr, nullptr);
     ResetAttachments();
 }
 

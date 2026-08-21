@@ -423,6 +423,9 @@ constexpr VkPipelineStageFlags2 GetPipelineStageFlags(StageBits stageBits) {
     if (stageBits & StageBits::CLEAR_STORAGE)
         flags |= VK_PIPELINE_STAGE_2_CLEAR_BIT;
 
+    if (stageBits & StageBits::HOST)
+        flags |= VK_PIPELINE_STAGE_2_HOST_BIT;
+
     if (stageBits & StageBits::ACCELERATION_STRUCTURE)
         flags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR; // already includes "VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR" (more strict according to the spec)
 

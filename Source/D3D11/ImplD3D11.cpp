@@ -1,5 +1,7 @@
 // © 2021 NVIDIA Corporation
 
+#include <algorithm>
+
 #include "SharedD3D11.h"
 
 #include "BufferD3D11.h"
@@ -526,6 +528,16 @@ static void NRI_CALL UnmapBuffer(Buffer& buffer) {
     ((BufferD3D11&)buffer).Unmap();
 }
 
+static Result NRI_CALL UploadHostMemoryToTexture(Queue& queue, const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
+    QueueD3D11& queueD3D11 = (QueueD3D11&)queue;
+    return queueD3D11.GetDevice().UploadHostMemoryToTexture(queueD3D11, copyDescs, copyDescNum);
+}
+
+static Result NRI_CALL ReadbackTextureToHostMemory(Queue& queue, const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
+    QueueD3D11& queueD3D11 = (QueueD3D11&)queue;
+    return queueD3D11.GetDevice().ReadbackTextureToHostMemory(queueD3D11, copyDescs, copyDescNum);
+}
+
 static uint64_t NRI_CALL GetBufferDeviceAddress(const Buffer&) {
     return 0;
 }
@@ -672,7 +684,8 @@ static void NRI_CALL EmuCmdDrawIndexedIndirect(CommandBuffer& commandBuffer, con
     ((CommandBufferEmuD3D11&)commandBuffer).DrawIndexedIndirect(buffer, offset, drawNum, stride, countBuffer, countBufferOffset);
 }
 
-static void NRI_CALL EmuCmdEndRendering(CommandBuffer&) {
+static void NRI_CALL EmuCmdEndRendering(CommandBuffer& commandBuffer) {
+    ((CommandBufferEmuD3D11&)commandBuffer).EndRendering();
 }
 
 static void NRI_CALL EmuCmdDispatch(CommandBuffer& commandBuffer, const DispatchDesc& dispatchDesc) {
@@ -822,6 +835,8 @@ Result DeviceD3D11::FillFunctionTable(CoreInterface& table) const {
     table.ResetCommandAllocator = ::ResetCommandAllocator;
     table.MapBuffer = ::MapBuffer;
     table.UnmapBuffer = ::UnmapBuffer;
+    table.UploadHostMemoryToTexture = ::UploadHostMemoryToTexture;
+    table.ReadbackTextureToHostMemory = ::ReadbackTextureToHostMemory;
     table.GetBufferDeviceAddress = ::GetBufferDeviceAddress;
     table.SetDebugName = ::SetDebugName;
     table.GetDeviceNativeObject = ::GetDeviceNativeObject;
@@ -1022,12 +1037,12 @@ static Result NRI_CALL SetLatencySleepMode(SwapChain& swapChain, const LatencySl
     return ((SwapChainD3D11&)swapChain).SetLatencySleepMode(latencySleepMode);
 }
 
-static Result NRI_CALL SetLatencyMarker(SwapChain& swapChain, LatencyMarker latencyMarker) {
-    return ((SwapChainD3D11&)swapChain).SetLatencyMarker(latencyMarker);
+static Result NRI_CALL SetLatencyMarker(SwapChain& swapChain, uint64_t presentId, LatencyMarker latencyMarker) {
+    return ((SwapChainD3D11&)swapChain).SetLatencyMarker(presentId, latencyMarker);
 }
 
-static Result NRI_CALL LatencySleep(SwapChain& swapChain) {
-    return ((SwapChainD3D11&)swapChain).LatencySleep();
+static Result NRI_CALL LatencySleep(SwapChain& swapChain, uint64_t presentId) {
+    return ((SwapChainD3D11&)swapChain).LatencySleep(presentId);
 }
 
 static Result NRI_CALL GetLatencyReport(const SwapChain& swapChain, LatencyReport& latencyReport) {
@@ -1131,12 +1146,12 @@ static Result NRI_CALL AcquireNextTexture(SwapChain& swapChain, Fence&, uint32_t
     return ((SwapChainD3D11&)swapChain).AcquireNextTexture(textureIndex);
 }
 
-static Result NRI_CALL WaitForPresent(SwapChain& swapChain) {
-    return ((SwapChainD3D11&)swapChain).WaitForPresent();
+static Result NRI_CALL WaitForPresent(SwapChain& swapChain, uint64_t presentId) {
+    return ((SwapChainD3D11&)swapChain).WaitForPresent(presentId);
 }
 
-static Result NRI_CALL QueuePresent(SwapChain& swapChain, Fence&) {
-    return ((SwapChainD3D11&)swapChain).Present();
+static Result NRI_CALL QueuePresent(SwapChain& swapChain, Fence&, uint64_t presentId) {
+    return ((SwapChainD3D11&)swapChain).Present(presentId);
 }
 
 Result DeviceD3D11::FillFunctionTable(SwapChainInterface& table) const {

@@ -38,12 +38,12 @@ struct SwapChainD3D11 final : public DisplayDescHelper, DebugNameBase {
 
     Texture* const* GetTextures(uint32_t& textureNum) const;
     Result AcquireNextTexture(uint32_t& textureIndex);
-    Result WaitForPresent();
-    Result Present();
+    Result WaitForPresent(uint64_t presentId);
+    Result Present(uint64_t presentId);
 
     Result SetLatencySleepMode(const LatencySleepMode& latencySleepMode);
-    Result SetLatencyMarker(LatencyMarker latencyMarker);
-    Result LatencySleep();
+    Result SetLatencyMarker(uint64_t presentId, LatencyMarker latencyMarker);
+    Result LatencySleep(uint64_t presentId);
     Result GetLatencyReport(LatencyReport& latencyReport);
 
 private:
@@ -52,7 +52,6 @@ private:
     TextureD3D11* m_Texture = nullptr;
     HANDLE m_FrameLatencyWaitableObject = nullptr;
     void* m_Hwnd = nullptr;
-    uint64_t m_PresentId = 0;
     uint8_t m_Version = 0;
     SwapChainBits m_Flags = SwapChainBits::NONE;
 };

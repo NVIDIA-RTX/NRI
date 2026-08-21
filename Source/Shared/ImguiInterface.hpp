@@ -10,7 +10,7 @@
 #            include "Imgui.fs.dxil.h"
 #            include "Imgui.vs.dxil.h"
 #        endif
-#        if NRI_ENABLE_VK_SUPPORT
+#        if (NRI_ENABLE_VK_SUPPORT || NRI_ENABLE_WGPU_SUPPORT)
 #            include "Imgui.fs.spirv.h"
 #            include "Imgui.vs.spirv.h"
 #        endif
@@ -174,7 +174,7 @@ const uint8_t g_Imgui_fs_dxil[] = {
 
 #endif
 
-#if NRI_ENABLE_VK_SUPPORT
+#if (NRI_ENABLE_VK_SUPPORT || NRI_ENABLE_WGPU_SUPPORT)
 
 const uint8_t g_Imgui_vs_spirv[] = {
     3,2,35,7,0,6,1,0,0,0,14,0,64,0,0,0,0,0,0,0,17,0,2,0,1,0,0,0,11,0,6,0,1,0,0,0,71,76,83,76,46,115,116,100,46,52,53,48,0,0,0,0,14,0,
@@ -694,7 +694,7 @@ void ImguiImpl::CmdDraw(CommandBuffer& commandBuffer, const DrawImguiDesc& drawI
             shaders[1].size = sizeof(g_Imgui_fs_spirv);
         }
 #    endif
-#    if NRI_ENABLE_WGPU_SUPPORT && NRI_ENABLE_VK_SUPPORT
+#    if NRI_ENABLE_WGPU_SUPPORT
         if (deviceDesc.graphicsAPI == GraphicsAPI::WGPU) {
             shaders[0].bytecode = g_Imgui_vs_spirv;
             shaders[0].size = sizeof(g_Imgui_vs_spirv);

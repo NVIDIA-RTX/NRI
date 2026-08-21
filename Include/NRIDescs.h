@@ -100,7 +100,7 @@ NriBits(GraphicsAPI, uint8_t,
     D3D11   = NriBit(1), // Direct3D 11 (feature set 11.1), available if "NRI_ENABLE_D3D11_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm)
     D3D12   = NriBit(2), // Direct3D 12 (D3D12_SDK_VERSION 4 or 619+), available if "NRI_ENABLE_D3D12_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/)
     VK      = NriBit(3), // Vulkan 1.4+, 1.3++ or 1.2+++ (can be used on MacOS via MoltenVK), available if "NRI_ENABLE_VK_SUPPORT = ON" in CMake (https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html)
-    WGPU    = NriBit(4)  // WebGPU via wgpu-native, available if "NRI_ENABLE_WGPU_SUPPORT = ON" in CMake (https://github.com/gfx-rs/wgpu-native)
+    WGPU    = NriBit(4)  // WebGPU via "wgpu-native", available if "NRI_ENABLE_WGPU_SUPPORT = ON" in CMake (https://github.com/gfx-rs/wgpu-native). Has limitations similar to D3D11
 );
 
 NriEnum(Result, int8_t,
@@ -206,7 +206,7 @@ NriEnum(Format, uint8_t,                // |      FormatSupportBits      |
     // Plain: 8 bits per channel
     R8_UNORM,                           // + + . + . + + + + + + + . + + +
     R8_SNORM,                           // + + . + . + + + + + + + . + + +
-    R8_UINT,                            // + + . + . . + + + . + + . + + +  // SHADING_RATE compatible, see NRI_SHADING_RATE macro
+    R8_UINT,                            // + + . + . . + + + . + + . + + +  // "SHADING_RATE_ATTACHMENT" compatible, see "NRI_SHADING_RATE" macro
     R8_SINT,                            // + + . + . . + + + . + + . + + +
 
     RG8_UNORM,                          // + + . + . + + + + + + + . + + +  // "AccelerationStructure" compatible (requires "tiers.rayTracing >= 2")
@@ -360,7 +360,7 @@ NriBits(PlaneBits, uint8_t,
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_feature_data_format_support
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkFormatFeatureFlagBits2.html
 // WGPU: typed buffer views are unsupported; storage textures cannot be multisampled
-NriBits(FormatSupportBits, uint16_t,
+NriBits(FormatSupportBits, uint32_t,
     UNSUPPORTED                     = 0,            // format is unsupported
 
     // Texture
@@ -383,7 +383,10 @@ NriBits(FormatSupportBits, uint16_t,
 
     // Texture / buffer
     STORAGE_READ_WITHOUT_FORMAT     = NriBit(14),   // storage read with unknown format
-    STORAGE_WRITE_WITHOUT_FORMAT    = NriBit(15)    // storage write with unknown format
+    STORAGE_WRITE_WITHOUT_FORMAT    = NriBit(15),   // storage write with unknown format
+
+    // Host (generally supported for non-depth/stencil formats with "TEXTURE" bit support)
+    HOST_COPY                       = NriBit(16)    // synchronous host copies are supported
 );
 
 #pragma endregion
@@ -448,6 +451,9 @@ NriBits(StageBits, uint32_t,
 
     // Modifiers
     INDIRECT                        = NriBit(23),   // Invoked by "Indirect" commands (used in addition to other bits)
+
+    // Host
+    HOST                            = NriBit(24),   // Invoked by "UploadHostMemoryToTexture" and "ReadbackTextureToHostMemory"
 
     // Umbrella stages
     TESSELLATION_SHADERS            = NriMember(StageBits, TESS_CONTROL_SHADER)
@@ -523,6 +529,10 @@ NriBits(AccessBits, uint32_t,
 
     // Clear storage
     CLEAR_STORAGE                   = NriBit(22),   //  W       CLEAR_STORAGE
+
+    // Host
+    HOST_READ                       = NriBit(23),   // R        HOST
+    HOST_WRITE                      = NriBit(24),   //  W       HOST
 
     // Umbrella access
     COLOR_ATTACHMENT                = NriMember(AccessBits, COLOR_ATTACHMENT_READ)
@@ -655,7 +665,8 @@ NriBits(TextureUsageBits, uint8_t,                  // Min compatible access:   
     COLOR_ATTACHMENT                    = NriBit(2),    // COLOR_ATTACHMENT                         Color attachment (render target)
     DEPTH_STENCIL_ATTACHMENT            = NriBit(3),    // DEPTH_STENCIL_ATTACHMENT_READ/WRITE      Depth-stencil attachment (depth-stencil target)
     SHADING_RATE_ATTACHMENT             = NriBit(4),    // SHADING_RATE_ATTACHMENT                  Shading rate attachment (source)
-    INPUT_ATTACHMENT                    = NriBit(5)     // INPUT_ATTACHMENT                         Subpass input (read on-chip tile cache)
+    INPUT_ATTACHMENT                    = NriBit(5),    // INPUT_ATTACHMENT                         Subpass input (read on-chip tile cache)
+    HOST_TRANSFER                       = NriBit(6)     // HOST_READ/HOST_WRITE                     Synchronous copy between texture and host memory
 );
 
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkBufferUsageFlagBits.html
@@ -663,11 +674,11 @@ NriBits(BufferUsageBits, uint16_t,                  // Min compatible access:   
     NONE                                = 0,
     SHADER_RESOURCE                     = NriBit(0),    // SHADER_RESOURCE                          Read-only shader resource view (SRV)
     SHADER_RESOURCE_STORAGE             = NriBit(1),    // SHADER_RESOURCE_STORAGE                  Read/write shader resource view (UAV)
-    VERTEX_BUFFER                       = NriBit(2),    // VERTEX_BUFFER                            Vertex buffer
-    INDEX_BUFFER                        = NriBit(3),    // INDEX_BUFFER                             Index buffer
-    CONSTANT_BUFFER                     = NriBit(4),    // CONSTANT_BUFFER                          Constant buffer (D3D11: can't be combined with other usages)
-    ARGUMENT_BUFFER                     = NriBit(5),    // ARGUMENT_BUFFER                          Argument buffer in "Indirect" commands
-    SCRATCH_BUFFER                      = NriBit(6),    // SCRATCH_BUFFER                           Scratch buffer in "CmdBuild*" commands
+    VERTEX                              = NriBit(2),    // VERTEX_BUFFER                            Vertex buffer
+    INDEX                               = NriBit(3),    // INDEX_BUFFER                             Index buffer
+    CONSTANT                            = NriBit(4),    // CONSTANT_BUFFER                          Constant buffer (D3D11: can't be combined with other usages)
+    ARGUMENT                            = NriBit(5),    // ARGUMENT_BUFFER                          Argument buffer in "Indirect" commands
+    SCRATCH                             = NriBit(6),    // SCRATCH_BUFFER                           Scratch buffer in "CmdBuild*" commands
     SHADER_BINDING_TABLE                = NriBit(7),    // SHADER_BINDING_TABLE                     Shader binding table (SBT) in "CmdDispatchRays*" commands
     ACCELERATION_STRUCTURE_BUILD_INPUT  = NriBit(8),    // SHADER_RESOURCE                          Read-only input in "CmdBuildAccelerationStructures" command
     ACCELERATION_STRUCTURE_STORAGE      = NriBit(9),    // ACCELERATION_STRUCTURE_READ/WRITE        (INTERNAL) acceleration structure storage
@@ -690,17 +701,14 @@ NriStruct(TextureDesc) {
 };
 
 // - VK: buffers are always created with sharing mode "CONCURRENT" to match D3D12 spec
-// - "structureStride" values:
-//   - 0  - allows only "typed" views
-//          WGPU: typed buffer views are unsupported
-//   - 4  - allows "typed", "byte address" and "structured" views
-//          D3D11: allows to create multiple "structured" views for a single resource, disobeying the spec
-//   - >4 - allows only "structured" views
-//          D3D11: locks this buffer to a single "structured" layout
+// - D3D11: "structureStride != 0" locks this buffer to a single "STRUCTURED" layout, unless "byteAddress" is set to "true"
+// - D3D11: "byteAddress = true" allows to create multiple "STRUCTURED" views for a single resource by treating a "STRUCTURED" view as "BYTE_ADDRESS" (spec violation)
+// - WGPU: typed buffer views are unsupported (i.e. "structureStride = 0" and "byteAddress = false")
 NriStruct(BufferDesc) {
     uint64_t size;
-    uint32_t structureStride;
+    uint32_t structureStride;   // enable "STRUCTURED" views
     Nri(BufferUsageBits) usage;
+    bool byteAddress;           // enable "BYTE_ADDRESS" views
 };
 
 #pragma endregion
@@ -1715,6 +1723,22 @@ NriStruct(TextureDataLayoutDesc) {
     uint32_t slicePitch;    // must be a multiple of "uploadBufferTextureSliceAlignment"
 };
 
+NriStruct(UploadHostMemoryToTextureDesc) {
+    const void* srcData;
+    NriPtr(Texture) dstTexture;         // must be in "{AccessBits::HOST_WRITE, Layout::GENERAL, StageBits::HOST}"
+    Nri(TextureRegionDesc) dstRegion;
+    NriOptional uint32_t srcRowPitch;   // if rows are not tightly packed
+    NriOptional uint32_t srcSlicePitch; // if slices are not tightly packed
+};
+
+NriStruct(ReadbackTextureToHostMemoryDesc) {
+    NriPtr(Texture) srcTexture;         // must be in "{AccessBits::HOST_READ, Layout::GENERAL, StageBits::HOST}"
+    void* dstData;
+    Nri(TextureRegionDesc) srcRegion;
+    NriOptional uint32_t dstRowPitch;   // if rows are not tightly packed
+    NriOptional uint32_t dstSlicePitch; // if slices are not tightly packed
+};
+
 // Work submission
 NriStruct(FenceSubmitDesc) {
     NriPtr(Fence) fence;
@@ -1729,7 +1753,10 @@ NriStruct(QueueSubmitDesc) {
     uint32_t commandBufferNum;
     const NriPtr(FenceSubmitDesc) signalFences;
     uint32_t signalFenceNum;
-    NriOptional const NriPtr(SwapChain) swapChain; // required if "NRILowLatency" is enabled in the swap chain
+
+    // Required if "NRILowLatency" is enabled for the swap chain
+    NriOptional const NriPtr(SwapChain) swapChain;
+    NriOptional uint64_t presentId; // must match the value passed to "QueuePresent" for the frame
 };
 
 // Clear
@@ -2136,6 +2163,7 @@ NriStruct(DeviceDesc) {
         bool mutableDescriptorType;                               // see "DescriptorType::MUTABLE"
         bool extendedDynamicState;                                // VK: allows to use "VertexBufferDesc::stride" (dynamic) instead of "VertexStreamDesc::stride" (static). Widely supported
         bool unifiedTextureLayouts;                               // VK: allows to use "GENERAL" everywhere: https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_unified_image_layouts.html
+        bool resourceAliasing;                                    // binding multiple distinct texture or buffer objects to overlap the same underlying memory allocation (unsupported only in D3D11)
     } features;
 
     // Shader features

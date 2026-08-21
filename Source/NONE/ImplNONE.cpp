@@ -628,6 +628,14 @@ static void* NRI_CALL MapBuffer(Buffer&, uint64_t, uint64_t) {
 static void NRI_CALL UnmapBuffer(Buffer&) {
 }
 
+static Result NRI_CALL UploadHostMemoryToTexture(Queue&, const UploadHostMemoryToTextureDesc*, uint32_t) {
+    return Result::SUCCESS;
+}
+
+static Result NRI_CALL ReadbackTextureToHostMemory(Queue&, const ReadbackTextureToHostMemoryDesc*, uint32_t) {
+    return Result::SUCCESS;
+}
+
 static uint64_t NRI_CALL GetBufferDeviceAddress(const Buffer&) {
     return 0;
 }
@@ -764,6 +772,8 @@ Result DeviceNONE::FillFunctionTable(CoreInterface& table) const {
     table.ResetCommandAllocator = ::ResetCommandAllocator;
     table.MapBuffer = ::MapBuffer;
     table.UnmapBuffer = ::UnmapBuffer;
+    table.UploadHostMemoryToTexture = ::UploadHostMemoryToTexture;
+    table.ReadbackTextureToHostMemory = ::ReadbackTextureToHostMemory;
     table.GetBufferDeviceAddress = ::GetBufferDeviceAddress;
     table.SetDebugName = ::SetDebugName;
     table.GetDeviceNativeObject = ::GetDeviceNativeObject;
@@ -850,11 +860,11 @@ static Result NRI_CALL SetLatencySleepMode(SwapChain&, const LatencySleepMode&) 
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL SetLatencyMarker(SwapChain&, LatencyMarker) {
+static Result NRI_CALL SetLatencyMarker(SwapChain&, uint64_t, LatencyMarker) {
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL LatencySleep(SwapChain&) {
+static Result NRI_CALL LatencySleep(SwapChain&, uint64_t) {
     return Result::SUCCESS;
 }
 
@@ -1156,11 +1166,11 @@ static Result NRI_CALL AcquireNextTexture(SwapChain&, Fence&, uint32_t& textureI
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL WaitForPresent(SwapChain&) {
+static Result NRI_CALL WaitForPresent(SwapChain&, uint64_t) {
     return Result::SUCCESS;
 }
 
-static Result NRI_CALL QueuePresent(SwapChain&, Fence&) {
+static Result NRI_CALL QueuePresent(SwapChain&, Fence&, uint64_t) {
     return Result::SUCCESS;
 }
 

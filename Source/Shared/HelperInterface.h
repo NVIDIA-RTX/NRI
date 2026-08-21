@@ -49,6 +49,7 @@ private:
         Vector<Texture*> textures;
         Vector<uint64_t> textureOffsets;
         uint64_t size;
+        uint32_t alignment;
         MemoryType type;
     };
 

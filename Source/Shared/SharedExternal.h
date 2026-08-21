@@ -43,7 +43,11 @@ typedef uint32_t DXGI_FORMAT;
 #include "Lock.h"
 
 // NRI default settings (if not provided in "NRIConfig.h")
-#include "../NRIConfig.h"
+#ifdef NRI_USER_CONFIG
+#    include NRI_USER_CONFIG
+#else
+#    include "../NRIConfig.h"
+#endif
 
 #ifndef NRI_TIMEOUT_PRESENT
 #    define NRI_TIMEOUT_PRESENT 1000u // 1 sec
@@ -83,6 +87,15 @@ typedef uint32_t DXGI_FORMAT;
 
 #ifndef NRI_INLINE
 #    define NRI_INLINE inline
+#endif
+
+// FFX default settings (if not provided in "NRIConfig.h")
+#ifndef NRI_FFX_DEBUG_LOG
+#    define NRI_FFX_DEBUG_LOG(messageType, message) \
+        do { \
+            MaybeUnused(messageType); \
+            wprintf(L"FFX: %ls\n", message); \
+        } while (false)
 #endif
 
 // D3D12MA default settings (if not provided in "NRIConfig.h")
@@ -331,7 +344,7 @@ namespace nri {
 // Internal consts
 constexpr uint32_t NODE_MASK = 0x1;               // mGPU is not planned
 constexpr uint32_t ROOT_SIGNATURE_DWORD_NUM = 64; // https://learn.microsoft.com/en-us/windows/win32/direct3d12/root-signature-limits
-constexpr uint64_t PRESENT_INDEX_BIT_NUM = 56ull;
+constexpr uint64_t MAX_CACHED_HOST_COPY_RESOURCE_SIZE = 64 * 1024 * 1024;
 
 // Scratch
 template <typename T>
@@ -376,6 +389,29 @@ void UnloadSharedLibrary(Library& library);
 template <typename T>
 inline T Align(T x, size_t alignment) {
     return (T)((size_t(x) + alignment - 1) & ~(alignment - 1));
+}
+
+inline void CopyTextureData(void* dstData, uint64_t dstRowPitch, uint64_t dstSlicePitch, const void* srcData, uint64_t srcRowPitch, uint64_t srcSlicePitch, uint64_t rowSize, uint32_t rowNum, uint32_t sliceNum) {
+    uint8_t* dst = (uint8_t*)dstData;
+    const uint8_t* src = (const uint8_t*)srcData;
+    uint64_t sliceSize = rowSize * rowNum;
+
+    if (dstRowPitch == rowSize && srcRowPitch == rowSize) {
+        if (dstSlicePitch == sliceSize && srcSlicePitch == sliceSize) {
+            memcpy(dst, src, (size_t)(sliceSize * sliceNum));
+            return;
+        }
+
+        for (uint32_t z = 0; z < sliceNum; z++)
+            memcpy(dst + uint64_t(z) * dstSlicePitch, src + uint64_t(z) * srcSlicePitch, (size_t)sliceSize);
+
+        return;
+    }
+
+    for (uint32_t z = 0; z < sliceNum; z++) {
+        for (uint32_t y = 0; y < rowNum; y++)
+            memcpy(dst + uint64_t(z) * dstSlicePitch + uint64_t(y) * dstRowPitch, src + uint64_t(z) * srcSlicePitch + uint64_t(y) * srcRowPitch, (size_t)rowSize);
+    }
 }
 
 template <typename... Args>
@@ -561,13 +597,6 @@ inline bool CompareUid(const Uid_t& a, const Uid_t& b) {
 // Strings
 void ConvertCharToWchar(const char* in, wchar_t* out, size_t outLen);
 void ConvertWcharToChar(const wchar_t* in, char* out, size_t outLen);
-
-// Swap chain ID
-uint64_t GetSwapChainId();
-
-inline uint64_t GetPresentIndex(uint64_t presentId) {
-    return presentId & ((1ull << PRESENT_INDEX_BIT_NUM) - 1ull);
-}
 
 // Windows/D3D specific
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)

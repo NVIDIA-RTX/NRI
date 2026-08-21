@@ -86,7 +86,7 @@ NRI_INLINE Result QueueD3D12::WaitIdle() {
     Result result = m_Device.CreateImplementation<FenceD3D12>(fence, 0);
     if (result == Result::SUCCESS) {
         fence->QueueSignal(*this, 1);
-        fence->Wait(1);
+        result = fence->Wait(1);
 
         Destroy(fence);
     }

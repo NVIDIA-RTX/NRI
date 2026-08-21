@@ -17,53 +17,79 @@ static inline uint32_t NextPow2(uint32_t n) {
     return n;
 }
 
-static constexpr VkBufferUsageFlags GetBufferUsageFlags(BufferUsageBits bufferUsageBits, uint32_t structureStride, bool isDeviceAddressSupported) {
+static inline VkBufferImageCopy2 GetHostCopyBufferImageRegion(const TextureVK& texture, const TextureRegionDesc& textureRegion, const HostCopyLayoutVK& layout) {
+    const TextureDesc& textureDesc = texture.GetDesc();
+    const FormatProps& formatProps = GetFormatProps(textureDesc.format);
+
+    VkBufferImageCopy2 region = {VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2};
+    region.bufferOffset = layout.dataLayout.offset;
+    region.bufferRowLength = layout.dataLayout.rowPitch / formatProps.stride * formatProps.blockWidth;
+    region.bufferImageHeight = layout.rowNum * formatProps.blockHeight;
+    region.imageSubresource = {GetImageAspectFlags(textureRegion.planes, textureDesc.format), textureRegion.mipOffset, textureRegion.layerOffset, 1};
+    region.imageOffset = {textureRegion.x, textureRegion.y, textureRegion.z};
+    region.imageExtent = {
+        textureRegion.width == WHOLE_SIZE ? texture.GetSize(0, textureRegion.mipOffset) : textureRegion.width,
+        textureRegion.height == WHOLE_SIZE ? texture.GetSize(1, textureRegion.mipOffset) : textureRegion.height,
+        textureRegion.depth == WHOLE_SIZE ? texture.GetSize(2, textureRegion.mipOffset) : textureRegion.depth,
+    };
+
+    return region;
+}
+
+static inline VkBufferImageCopy GetLegacyBufferImageCopyRegion(const VkBufferImageCopy2& region) {
+    VkBufferImageCopy legacyRegion = {};
+    legacyRegion.bufferOffset = region.bufferOffset;
+    legacyRegion.bufferRowLength = region.bufferRowLength;
+    legacyRegion.bufferImageHeight = region.bufferImageHeight;
+    legacyRegion.imageSubresource = region.imageSubresource;
+    legacyRegion.imageOffset = region.imageOffset;
+    legacyRegion.imageExtent = region.imageExtent;
+
+    return legacyRegion;
+}
+
+static constexpr VkBufferUsageFlags GetBufferUsageFlags(const BufferDesc& bufferDesc, bool isDeviceAddressSupported) {
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT; // TODO: ban "the opposite" for UPLOAD/READBACK?
 
     if (isDeviceAddressSupported)
         flags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
-    if (bufferUsageBits & BufferUsageBits::VERTEX_BUFFER)
+    if (bufferDesc.usage & BufferUsageBits::VERTEX)
         flags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
-    if (bufferUsageBits & BufferUsageBits::INDEX_BUFFER)
+    if (bufferDesc.usage & BufferUsageBits::INDEX)
         flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
-    if (bufferUsageBits & BufferUsageBits::CONSTANT_BUFFER)
+    if (bufferDesc.usage & BufferUsageBits::CONSTANT)
         flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
-    if (bufferUsageBits & BufferUsageBits::ARGUMENT_BUFFER)
+    if (bufferDesc.usage & BufferUsageBits::ARGUMENT)
         flags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
 
-    if (bufferUsageBits & BufferUsageBits::SCRATCH_BUFFER)
+    bool isSSBO = bufferDesc.structureStride != 0 || bufferDesc.byteAddress; // so called SSBO, can be R/W in shaders
+    if ((bufferDesc.usage & BufferUsageBits::SCRATCH) || isSSBO)
         flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
-    if (bufferUsageBits & BufferUsageBits::SHADER_BINDING_TABLE)
+    if (bufferDesc.usage & BufferUsageBits::SHADER_BINDING_TABLE)
         flags |= VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR;
 
-    if (bufferUsageBits & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE)
+    if (bufferDesc.usage & BufferUsageBits::ACCELERATION_STRUCTURE_STORAGE)
         flags |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
 
-    if (bufferUsageBits & BufferUsageBits::ACCELERATION_STRUCTURE_BUILD_INPUT)
+    if (bufferDesc.usage & BufferUsageBits::ACCELERATION_STRUCTURE_BUILD_INPUT)
         flags |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
 
-    if (bufferUsageBits & BufferUsageBits::MICROMAP_STORAGE)
+    if (bufferDesc.usage & BufferUsageBits::MICROMAP_STORAGE)
         flags |= VK_BUFFER_USAGE_MICROMAP_STORAGE_BIT_EXT;
 
-    if (bufferUsageBits & BufferUsageBits::MICROMAP_BUILD_INPUT)
+    if (bufferDesc.usage & BufferUsageBits::MICROMAP_BUILD_INPUT)
         flags |= VK_BUFFER_USAGE_MICROMAP_BUILD_INPUT_READ_ONLY_BIT_EXT;
 
-    // Based on comments for "BufferDesc::structureStride"
-    if (structureStride == 0 || structureStride == 4) {
-        if (bufferUsageBits & BufferUsageBits::SHADER_RESOURCE)
-            flags |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+    if (bufferDesc.usage & BufferUsageBits::SHADER_RESOURCE)
+        flags |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
-        if (bufferUsageBits & BufferUsageBits::SHADER_RESOURCE_STORAGE)
-            flags |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-    }
-
-    if (structureStride)
-        flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT; // so called SSBO, can be R/W in shaders
+    if (bufferDesc.usage & BufferUsageBits::SHADER_RESOURCE_STORAGE)
+        flags |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
 
     return flags;
 }
@@ -332,6 +358,7 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 4, VK_EXT_PIPELINE_ROBUSTNESS_EXTENSION_NAME);
+    APPEND_EXT(m_MinorVersion < 4, VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME);
 
     APPEND_EXT(!disableRayTracing, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
     APPEND_EXT(!disableRayTracing, VK_KHR_RAY_QUERY_EXTENSION_NAME);
@@ -385,7 +412,8 @@ DeviceVK::DeviceVK(const CallbackInterface& callbacks, const AllocationCallbacks
           Vector<QueueVK*>(GetStdAllocator()),
       }
     , m_RenderPasses(GetStdAllocator())
-    , m_Framebuffers(GetStdAllocator()) {
+    , m_Framebuffers(GetStdAllocator())
+    , m_TransferContexts(GetStdAllocator()) {
     m_AllocationCallbacks.pUserData = (void*)&GetAllocationCallbacks();
     m_AllocationCallbacks.pfnAllocation = vkAllocateHostMemory;
     m_AllocationCallbacks.pfnReallocation = vkReallocateHostMemory;
@@ -396,6 +424,9 @@ DeviceVK::DeviceVK(const CallbackInterface& callbacks, const AllocationCallbacks
 }
 
 DeviceVK::~DeviceVK() {
+    for (TransferContextVK* context : m_TransferContexts)
+        Destroy(context);
+
     for (FramebufferCacheEntry& framebuffer : m_Framebuffers) {
         if (framebuffer.handle)
             m_VK.DestroyFramebuffer(m_Device, framebuffer.handle, m_AllocationCallbackPtr);
@@ -611,6 +642,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, KHR, Maintenance5, MAINTENANCE_5);
     PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, KHR, Maintenance6, MAINTENANCE_6);
     PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, EXT, PipelineRobustness, PIPELINE_ROBUSTNESS);
+    PNEXTCHAIN_APPEND_FEATURES(m_MinorVersion < 4, EXT, HostImageCopy, HOST_IMAGE_COPY);
 
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, AccelerationStructure, ACCELERATION_STRUCTURE);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, ComputeShaderDerivatives, COMPUTE_SHADER_DERIVATIVES);
@@ -668,6 +700,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         features14.stippledBresenhamLines = LineRasterizationFeatures.stippledBresenhamLines;
         features14.stippledSmoothLines = LineRasterizationFeatures.stippledSmoothLines;
         features14.dynamicRenderingLocalRead = DynamicRenderingLocalReadFeatures.dynamicRenderingLocalRead;
+        features14.hostImageCopy = HostImageCopyFeatures.hostImageCopy;
     }
 
     if (m_MinorVersion > 2)
@@ -695,6 +728,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.swapChainMaintenance1 = SwapchainMaintenance1Features.swapchainMaintenance1;
     m_IsSupported.fifoLatestReady = PresentModeFifoLatestReadyFeatures.presentModeFifoLatestReady;
     m_IsSupported.unifiedImageLayoutsVideo = UnifiedImageLayoutsFeatures.unifiedImageLayoutsVideo;
+    m_IsSupported.hostImageCopy = features14.hostImageCopy;
 
     m_IsMemoryZeroInitializationEnabled = desc.enableMemoryZeroInitialization && ZeroInitializeDeviceMemoryFeatures.zeroInitializeDeviceMemory;
 
@@ -895,6 +929,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
         // Fill desc
         const VkPhysicalDeviceLimits& limits = props.properties.limits;
+        m_NonCoherentAtomSize = limits.nonCoherentAtomSize;
 
         uint32_t queueFamilyNum = 0;
         m_VK.GetPhysicalDeviceQueueFamilyProperties2(m_PhysicalDevice, &queueFamilyNum, nullptr);
@@ -947,12 +982,13 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         //      "bufferOffset" must be a multiple of the texel block size
         // VUID-VkCopyBufferToImageInfo2-dstImage-07978: If "dstImage" has a depth/stencil format,
         //      "bufferOffset" must be a multiple of 4
-        // Least Common Multiple stride across all formats: 1, 2, 4, 8, 16 // TODO: rarely used "12" fucks up the beauty of power-of-2 numbers, such formats must be avoided!
+        // Least Common Multiple stride across all formats except 12-byte formats: 1, 2, 4, 8, 16
+        // Per-format copy paths additionally align to the texel block size.
         constexpr uint32_t leastCommonMultipleStrideAccrossAllFormats = 16;
 
         m_Desc.memoryAlignment.uploadBufferTextureRow = (uint32_t)limits.optimalBufferCopyRowPitchAlignment;
         m_Desc.memoryAlignment.uploadBufferTextureSlice = std::lcm((uint32_t)limits.optimalBufferCopyOffsetAlignment, leastCommonMultipleStrideAccrossAllFormats);
-        m_Desc.memoryAlignment.bufferShaderResourceOffset = std::lcm((uint32_t)limits.minTexelBufferOffsetAlignment, (uint32_t)limits.minStorageBufferOffsetAlignment);
+        m_Desc.memoryAlignment.bufferShaderResourceOffset = std::lcm((uint32_t)limits.minTexelBufferOffsetAlignment, (uint32_t)limits.minStorageBufferOffsetAlignment); // see "GetBufferUsageFlags"
         m_Desc.memoryAlignment.constantBufferOffset = (uint32_t)limits.minUniformBufferOffsetAlignment;
         m_Desc.memoryAlignment.scratchBufferOffset = AccelerationStructureProps.minAccelerationStructureScratchOffsetAlignment;
         m_Desc.memoryAlignment.shaderBindingTable = RayTracingPipelineProps.shaderGroupBaseAlignment;
@@ -1225,6 +1261,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.mutableDescriptorType = MutableDescriptorTypeFeatures.mutableDescriptorType;
         m_Desc.features.extendedDynamicState = ExtendedDynamicStateFeatures.extendedDynamicState;
         m_Desc.features.unifiedTextureLayouts = UnifiedImageLayoutsFeatures.unifiedImageLayouts;
+        m_Desc.features.resourceAliasing = true;
 
         m_Desc.shaderFeatures.nativeI8 = features12.shaderInt8;
         m_Desc.shaderFeatures.nativeI16 = features.features.shaderInt16;
@@ -1255,7 +1292,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.shaderFeatures.rayTracingPositionFetch = RayTracingPositionFetchFeatures.rayTracingPositionFetch;
         m_Desc.shaderFeatures.integerDotProduct = features13.shaderIntegerDotProduct;
         m_Desc.shaderFeatures.inputAttachments = features14.dynamicRenderingLocalRead || !features13.dynamicRendering; // legacy render passes support "input attachments"
-        m_Desc.shaderFeatures.drawParameters = features11.shaderDrawParameters ? true : false; // TODO: emulation is not implemented, because >99% devices support it!
+        m_Desc.shaderFeatures.drawParameters = features11.shaderDrawParameters ? true : false;                         // TODO: emulation is not implemented, because >99% devices support it!
         m_Desc.shaderFeatures.drawIndex = m_Desc.shaderFeatures.drawParameters;
 
         // Estimate shader model last since it depends on many "m_Desc" fields
@@ -1294,7 +1331,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 void DeviceVK::FillCreateInfo(const BufferDesc& bufferDesc, VkBufferCreateInfo& info) const {
     info = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO}; // should be already set
     info.size = bufferDesc.size;
-    info.usage = GetBufferUsageFlags(bufferDesc.usage, bufferDesc.structureStride, m_IsSupported.deviceAddress);
+    info.usage = GetBufferUsageFlags(bufferDesc, m_IsSupported.deviceAddress);
     info.sharingMode = m_NumActiveFamilyIndices <= 1 ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
     info.queueFamilyIndexCount = m_NumActiveFamilyIndices;
     info.pQueueFamilyIndices = m_ActiveQueueFamilyIndices.data();
@@ -1328,6 +1365,8 @@ void DeviceVK::FillCreateInfo(const TextureDesc& textureDesc, VkImageCreateInfo&
     info.samples = (VkSampleCountFlagBits)std::max(textureDesc.sampleNum, (Sample_t)1);
     info.tiling = VK_IMAGE_TILING_OPTIMAL;
     info.usage = GetImageUsageFlags(textureDesc.usage);
+    if ((textureDesc.usage & TextureUsageBits::HOST_TRANSFER) && m_IsSupported.hostImageCopy)
+        info.usage |= VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT;
     info.sharingMode = (m_NumActiveFamilyIndices <= 1 || textureDesc.sharingMode == SharingMode::EXCLUSIVE) ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
     info.queueFamilyIndexCount = m_NumActiveFamilyIndices;
     info.pQueueFamilyIndices = m_ActiveQueueFamilyIndices.data();
@@ -1861,6 +1900,7 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     GET_DEVICE_CORE_FUNC(FreeCommandBuffers);
     GET_DEVICE_CORE_FUNC(MapMemory);
     GET_DEVICE_CORE_FUNC(FlushMappedMemoryRanges);
+    GET_DEVICE_CORE_FUNC(InvalidateMappedMemoryRanges);
     GET_DEVICE_CORE_FUNC(QueueWaitIdle);
     GET_DEVICE_CORE_FUNC(ResetCommandPool);
     GET_DEVICE_CORE_FUNC(ResetDescriptorPool);
@@ -1950,6 +1990,10 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     // v1.4 or VK_KHR_maintenance6
     GET_DEVICE_OPTIONAL_CORE_FUNC(CmdBindDescriptorSets2);
     GET_DEVICE_OPTIONAL_CORE_FUNC(CmdPushConstants2);
+
+    // v1.4 or VK_EXT_host_image_copy
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CopyMemoryToImage);
+    GET_DEVICE_OPTIONAL_CORE_FUNC(CopyImageToMemory);
 
     if (IsExtensionSupported(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME, desiredDeviceExts))
         GET_DEVICE_FUNC(CmdSetFragmentShadingRateKHR);
@@ -2340,6 +2384,470 @@ NRI_INLINE Result DeviceVK::WaitIdle() {
     return Result::SUCCESS;
 }
 
+HostCopyLayoutVK DeviceVK::GetHostCopyLayout(const TextureVK& texture, const TextureRegionDesc& region, uint64_t& offset) const {
+    const FormatProps& formatProps = GetFormatProps(texture.GetDesc().format);
+    uint32_t width = region.width == WHOLE_SIZE ? texture.GetSize(0, region.mipOffset) : region.width;
+    uint32_t height = region.height == WHOLE_SIZE ? texture.GetSize(1, region.mipOffset) : region.height;
+    uint32_t depth = region.depth == WHOLE_SIZE ? texture.GetSize(2, region.mipOffset) : region.depth;
+    uint32_t rowBlockNum = (width + formatProps.blockWidth - 1) / formatProps.blockWidth;
+    uint32_t rowNum = (height + formatProps.blockHeight - 1) / formatProps.blockHeight;
+    uint32_t rowSize = rowBlockNum * formatProps.stride;
+
+    uint32_t rowPitchAlignment = std::lcm(GetDesc().memoryAlignment.uploadBufferTextureRow, formatProps.stride);
+    uint32_t rowPitch = ((rowSize + rowPitchAlignment - 1) / rowPitchAlignment) * rowPitchAlignment;
+
+    uint64_t offsetAlignment = std::lcm((uint64_t)GetDesc().memoryAlignment.uploadBufferTextureSlice, (uint64_t)formatProps.stride);
+    offset = ((offset + offsetAlignment - 1) / offsetAlignment) * offsetAlignment;
+
+    HostCopyLayoutVK layout = {};
+    layout.dataLayout.offset = offset;
+    layout.dataLayout.rowPitch = rowPitch;
+    layout.slicePitch = uint64_t(rowPitch) * rowNum;
+    layout.rowSize = rowSize;
+    layout.rowNum = rowNum;
+    layout.depth = depth;
+
+    offset += layout.slicePitch * depth;
+
+    return layout;
+}
+
+Result DeviceVK::UploadHostMemoryToTexture(QueueVK& queue, const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
+    if (!copyDescNum)
+        return Result::SUCCESS;
+
+    const DispatchTable& vk = GetDispatchTable();
+    if (m_IsSupported.hostImageCopy) {
+        Scratch<VkMemoryToImageCopy> regions = NRI_ALLOCATE_SCRATCH(*this, VkMemoryToImageCopy, copyDescNum);
+        Scratch<uint32_t> sortedIndices = NRI_ALLOCATE_SCRATCH(*this, uint32_t, copyDescNum);
+        for (uint32_t i = 0; i < copyDescNum; i++)
+            sortedIndices[i] = i;
+        std::sort((uint32_t*)sortedIndices, (uint32_t*)sortedIndices + copyDescNum, [copyDescs](uint32_t a, uint32_t b) {
+            return (uintptr_t)copyDescs[a].dstTexture < (uintptr_t)copyDescs[b].dstTexture;
+        });
+
+        for (uint32_t i = 0; i < copyDescNum;) {
+            uint32_t copyIndex = sortedIndices[i];
+            const TextureVK& texture = *(TextureVK*)copyDescs[copyIndex].dstTexture;
+            const TextureDesc& textureDesc = texture.GetDesc();
+            const FormatProps& formatProps = GetFormatProps(textureDesc.format);
+            uint32_t regionNum = 0;
+            uint32_t end = i;
+            for (; end < copyDescNum && copyDescs[sortedIndices[end]].dstTexture == copyDescs[copyIndex].dstTexture; end++) {
+                const UploadHostMemoryToTextureDesc& copyDesc = copyDescs[sortedIndices[end]];
+
+                uint32_t width = copyDesc.dstRegion.width == WHOLE_SIZE ? texture.GetSize(0, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.width;
+                uint32_t rowSize = ((width + formatProps.blockWidth - 1) / formatProps.blockWidth) * formatProps.stride;
+                uint32_t rowPitch = copyDesc.srcRowPitch ? copyDesc.srcRowPitch : rowSize;
+
+                VkMemoryToImageCopy region = {VK_STRUCTURE_TYPE_MEMORY_TO_IMAGE_COPY};
+                region.pHostPointer = copyDesc.srcData;
+                if (copyDesc.srcRowPitch)
+                    region.memoryRowLength = copyDesc.srcRowPitch / formatProps.stride * formatProps.blockWidth;
+                if (copyDesc.srcSlicePitch)
+                    region.memoryImageHeight = copyDesc.srcSlicePitch / rowPitch * formatProps.blockHeight;
+                region.imageSubresource = {
+                    GetImageAspectFlags(copyDesc.dstRegion.planes, textureDesc.format),
+                    copyDesc.dstRegion.mipOffset,
+                    copyDesc.dstRegion.layerOffset,
+                    1,
+                };
+                region.imageOffset = {copyDesc.dstRegion.x, copyDesc.dstRegion.y, copyDesc.dstRegion.z};
+                region.imageExtent = {
+                    width,
+                    copyDesc.dstRegion.height == WHOLE_SIZE ? texture.GetSize(1, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.height,
+                    copyDesc.dstRegion.depth == WHOLE_SIZE ? texture.GetSize(2, copyDesc.dstRegion.mipOffset) : copyDesc.dstRegion.depth,
+                };
+                regions[regionNum++] = region;
+            }
+
+            VkCopyMemoryToImageInfo info = {VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INFO};
+            info.dstImage = texture.GetHandle();
+            info.dstImageLayout = VK_IMAGE_LAYOUT_GENERAL;
+            info.regionCount = regionNum;
+            info.pRegions = regions;
+
+            VkResult result = vk.CopyMemoryToImage(*this, &info);
+            if (result != VK_SUCCESS)
+                return GetResultFromVkResult(result);
+
+            i = end;
+        }
+
+        return Result::SUCCESS;
+    }
+
+    TransferContextVK* context = nullptr;
+    Result result = AcquireTransferContext(queue, context);
+    if (result != Result::SUCCESS)
+        return result;
+
+    Scratch<HostCopyLayoutVK> layouts = NRI_ALLOCATE_SCRATCH(*this, HostCopyLayoutVK, copyDescNum);
+
+    uint64_t stagingSize = 0;
+    for (uint32_t i = 0; i < copyDescNum; i++)
+        layouts[i] = GetHostCopyLayout(*(TextureVK*)copyDescs[i].dstTexture, copyDescs[i].dstRegion, stagingSize);
+
+    result = context->EnsureUploadBuffer(stagingSize);
+    if (result == Result::SUCCESS) {
+        uint8_t* stagingData = (uint8_t*)context->GetUploadBuffer().Map(0, stagingSize);
+        if (!stagingData)
+            result = Result::FAILURE;
+
+        for (uint32_t i = 0; result == Result::SUCCESS && i < copyDescNum; i++) {
+            const UploadHostMemoryToTextureDesc& copyDesc = copyDescs[i];
+            const HostCopyLayoutVK& layout = layouts[i];
+            uint32_t srcRowPitch = copyDesc.srcRowPitch ? copyDesc.srcRowPitch : layout.rowSize;
+            uint32_t srcSlicePitch = copyDesc.srcSlicePitch ? copyDesc.srcSlicePitch : srcRowPitch * layout.rowNum;
+            CopyTextureData(stagingData + layout.dataLayout.offset, layout.dataLayout.rowPitch, layout.slicePitch, copyDesc.srcData, srcRowPitch, srcSlicePitch, layout.rowSize, layout.rowNum, layout.depth);
+        }
+
+        context->GetUploadBuffer().Unmap();
+    }
+
+    CommandBufferVK& commandBuffer = context->GetCommandBuffer();
+    if (result == Result::SUCCESS)
+        result = commandBuffer.Begin(nullptr);
+
+    Scratch<TextureBarrierDesc> textureBarriers = NRI_ALLOCATE_SCRATCH(*this, TextureBarrierDesc, copyDescNum);
+    uint32_t textureBarrierNum = 0;
+    if (result == Result::SUCCESS) {
+        Scratch<uint32_t> sortedIndices = NRI_ALLOCATE_SCRATCH(*this, uint32_t, copyDescNum);
+        for (uint32_t i = 0; i < copyDescNum; i++)
+            sortedIndices[i] = i;
+
+        std::sort((uint32_t*)sortedIndices, (uint32_t*)sortedIndices + copyDescNum, [copyDescs](uint32_t a, uint32_t b) {
+            const UploadHostMemoryToTextureDesc& copyDescA = copyDescs[a];
+            const UploadHostMemoryToTextureDesc& copyDescB = copyDescs[b];
+            if (copyDescA.dstTexture != copyDescB.dstTexture)
+                return (uintptr_t)copyDescA.dstTexture < (uintptr_t)copyDescB.dstTexture;
+            if (copyDescA.dstRegion.layerOffset != copyDescB.dstRegion.layerOffset)
+                return copyDescA.dstRegion.layerOffset < copyDescB.dstRegion.layerOffset;
+
+            return copyDescA.dstRegion.mipOffset < copyDescB.dstRegion.mipOffset;
+        });
+
+        for (uint32_t i = 0; i < copyDescNum; i++) {
+            const UploadHostMemoryToTextureDesc& copyDesc = copyDescs[sortedIndices[i]];
+            if (i) {
+                const UploadHostMemoryToTextureDesc& previousCopyDesc = copyDescs[sortedIndices[i - 1]];
+                if (copyDesc.dstTexture == previousCopyDesc.dstTexture && copyDesc.dstRegion.layerOffset == previousCopyDesc.dstRegion.layerOffset && copyDesc.dstRegion.mipOffset == previousCopyDesc.dstRegion.mipOffset)
+                    continue;
+            }
+
+            TextureBarrierDesc& barrier = textureBarriers[textureBarrierNum++];
+            barrier = {};
+            barrier.texture = copyDesc.dstTexture;
+            barrier.mipOffset = copyDesc.dstRegion.mipOffset;
+            barrier.mipNum = 1;
+            barrier.layerOffset = copyDesc.dstRegion.layerOffset;
+            barrier.layerNum = 1;
+            barrier.planes = copyDesc.dstRegion.planes;
+            barrier.before = {AccessBits::HOST_WRITE, Layout::GENERAL, StageBits::HOST};
+            barrier.after = {AccessBits::COPY_DESTINATION, Layout::GENERAL, StageBits::COPY};
+        }
+
+        BufferBarrierDesc bufferBarrier = {};
+        bufferBarrier.buffer = (Buffer*)&context->GetUploadBuffer();
+        bufferBarrier.before = {AccessBits::HOST_WRITE, StageBits::HOST};
+        bufferBarrier.after = {AccessBits::COPY_SOURCE, StageBits::COPY};
+
+        BarrierDesc barrierDesc = {};
+        barrierDesc.buffers = &bufferBarrier;
+        barrierDesc.bufferNum = 1;
+        barrierDesc.textures = textureBarriers;
+        barrierDesc.textureNum = textureBarrierNum;
+        commandBuffer.Barrier(barrierDesc);
+
+        Scratch<VkBufferImageCopy2> regions = NRI_ALLOCATE_SCRATCH(*this, VkBufferImageCopy2, copyDescNum);
+        Scratch<VkBufferImageCopy> legacyRegions = NRI_ALLOCATE_SCRATCH(*this, VkBufferImageCopy, m_IsSupported.copyCommands2 ? 0 : copyDescNum);
+
+        VkCommandBuffer commandBufferHandle = commandBuffer;
+        for (uint32_t begin = 0; begin < copyDescNum;) {
+            uint32_t firstCopyIndex = sortedIndices[begin];
+            const TextureVK& texture = *(TextureVK*)copyDescs[firstCopyIndex].dstTexture;
+            uint32_t end = begin;
+            uint32_t regionNum = 0;
+            for (; end < copyDescNum && copyDescs[sortedIndices[end]].dstTexture == copyDescs[firstCopyIndex].dstTexture; end++) {
+                uint32_t copyIndex = sortedIndices[end];
+                const UploadHostMemoryToTextureDesc& copyDesc = copyDescs[copyIndex];
+                regions[regionNum] = GetHostCopyBufferImageRegion(texture, copyDesc.dstRegion, layouts[copyIndex]);
+                if (!m_IsSupported.copyCommands2)
+                    legacyRegions[regionNum] = GetLegacyBufferImageCopyRegion(regions[regionNum]);
+                regionNum++;
+            }
+
+            if (m_IsSupported.copyCommands2) {
+                VkCopyBufferToImageInfo2 info = {VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2};
+                info.srcBuffer = context->GetUploadBuffer().GetHandle();
+                info.dstImage = texture.GetHandle();
+                info.dstImageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                info.regionCount = regionNum;
+                info.pRegions = regions;
+                vk.CmdCopyBufferToImage2(commandBufferHandle, &info);
+            } else {
+                vk.CmdCopyBufferToImage(commandBufferHandle, context->GetUploadBuffer().GetHandle(), texture.GetHandle(), VK_IMAGE_LAYOUT_GENERAL, regionNum, legacyRegions);
+            }
+
+            begin = end;
+        }
+
+        for (uint32_t i = 0; i < textureBarrierNum; i++)
+            std::swap(textureBarriers[i].before, textureBarriers[i].after);
+
+        BarrierDesc barrierDescAfter = {};
+        barrierDescAfter.textures = textureBarriers;
+        barrierDescAfter.textureNum = textureBarrierNum;
+        commandBuffer.Barrier(barrierDescAfter);
+
+        result = commandBuffer.End();
+    }
+
+    if (result == Result::SUCCESS)
+        result = context->SubmitAndWait(queue);
+
+    ReleaseTransferContext(*context);
+
+    return result;
+}
+
+Result DeviceVK::ReadbackTextureToHostMemory(QueueVK& queue, const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
+    if (!copyDescNum)
+        return Result::SUCCESS;
+
+    const DispatchTable& vk = GetDispatchTable();
+    if (m_IsSupported.hostImageCopy) {
+        Scratch<VkImageToMemoryCopy> regions = NRI_ALLOCATE_SCRATCH(*this, VkImageToMemoryCopy, copyDescNum);
+
+        for (uint32_t i = 0; i < copyDescNum;) {
+            const TextureVK& texture = *(TextureVK*)copyDescs[i].srcTexture;
+            const TextureDesc& textureDesc = texture.GetDesc();
+            const FormatProps& formatProps = GetFormatProps(textureDesc.format);
+            uint32_t regionNum = 0;
+            uintptr_t hostRangeBegin = UINTPTR_MAX;
+            uintptr_t hostRangeEnd = 0;
+            uint32_t end = i;
+            for (; end < copyDescNum && copyDescs[end].srcTexture == copyDescs[i].srcTexture; end++) {
+                const ReadbackTextureToHostMemoryDesc& copyDesc = copyDescs[end];
+                uint32_t width = copyDesc.srcRegion.width == WHOLE_SIZE ? texture.GetSize(0, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.width;
+                uint32_t height = copyDesc.srcRegion.height == WHOLE_SIZE ? texture.GetSize(1, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.height;
+                uint32_t depth = copyDesc.srcRegion.depth == WHOLE_SIZE ? texture.GetSize(2, copyDesc.srcRegion.mipOffset) : copyDesc.srcRegion.depth;
+                uint32_t rowSize = ((width + formatProps.blockWidth - 1) / formatProps.blockWidth) * formatProps.stride;
+                uint32_t rowNum = (height + formatProps.blockHeight - 1) / formatProps.blockHeight;
+                uint32_t rowPitch = copyDesc.dstRowPitch ? copyDesc.dstRowPitch : rowSize;
+                uint32_t slicePitch = copyDesc.dstSlicePitch ? copyDesc.dstSlicePitch : rowPitch * rowNum;
+                uintptr_t regionBegin = (uintptr_t)copyDesc.dstData;
+                uintptr_t regionEnd = regionBegin + uint64_t(depth - 1) * slicePitch + uint64_t(rowNum - 1) * rowPitch + rowSize;
+                if (regionNum && regionBegin < hostRangeEnd && hostRangeBegin < regionEnd)
+                    break;
+
+                VkImageToMemoryCopy region = {VK_STRUCTURE_TYPE_IMAGE_TO_MEMORY_COPY};
+                region.imageSubresource = {
+                    GetImageAspectFlags(copyDesc.srcRegion.planes, textureDesc.format),
+                    copyDesc.srcRegion.mipOffset,
+                    copyDesc.srcRegion.layerOffset,
+                    1,
+                };
+                region.imageOffset = {copyDesc.srcRegion.x, copyDesc.srcRegion.y, copyDesc.srcRegion.z};
+                region.imageExtent = {width, height, depth};
+                region.pHostPointer = copyDesc.dstData;
+                if (copyDesc.dstRowPitch)
+                    region.memoryRowLength = copyDesc.dstRowPitch / formatProps.stride * formatProps.blockWidth;
+                if (copyDesc.dstSlicePitch)
+                    region.memoryImageHeight = copyDesc.dstSlicePitch / rowPitch * formatProps.blockHeight;
+                regions[regionNum++] = region;
+
+                hostRangeBegin = std::min(hostRangeBegin, regionBegin);
+                hostRangeEnd = std::max(hostRangeEnd, regionEnd);
+            }
+
+            VkCopyImageToMemoryInfo info = {VK_STRUCTURE_TYPE_COPY_IMAGE_TO_MEMORY_INFO};
+            info.srcImage = texture.GetHandle();
+            info.srcImageLayout = VK_IMAGE_LAYOUT_GENERAL;
+            info.regionCount = regionNum;
+            info.pRegions = regions;
+
+            VkResult result = vk.CopyImageToMemory(*this, &info);
+            if (result != VK_SUCCESS)
+                return GetResultFromVkResult(result);
+
+            i = end;
+        }
+
+        return Result::SUCCESS;
+    }
+
+    TransferContextVK* context = nullptr;
+    Result result = AcquireTransferContext(queue, context);
+    if (result != Result::SUCCESS)
+        return result;
+
+    Scratch<HostCopyLayoutVK> layouts = NRI_ALLOCATE_SCRATCH(*this, HostCopyLayoutVK, copyDescNum);
+
+    uint64_t stagingSize = 0;
+    for (uint32_t i = 0; i < copyDescNum; i++)
+        layouts[i] = GetHostCopyLayout(*(TextureVK*)copyDescs[i].srcTexture, copyDescs[i].srcRegion, stagingSize);
+
+    result = context->EnsureReadbackBuffer(stagingSize);
+
+    CommandBufferVK& commandBuffer = context->GetCommandBuffer();
+    if (result == Result::SUCCESS)
+        result = commandBuffer.Begin(nullptr);
+
+    Scratch<TextureBarrierDesc> textureBarriers = NRI_ALLOCATE_SCRATCH(*this, TextureBarrierDesc, copyDescNum);
+    uint32_t textureBarrierNum = 0;
+    if (result == Result::SUCCESS) {
+        Scratch<uint32_t> sortedIndices = NRI_ALLOCATE_SCRATCH(*this, uint32_t, copyDescNum);
+        for (uint32_t i = 0; i < copyDescNum; i++)
+            sortedIndices[i] = i;
+
+        std::sort((uint32_t*)sortedIndices, (uint32_t*)sortedIndices + copyDescNum, [copyDescs](uint32_t a, uint32_t b) {
+            const ReadbackTextureToHostMemoryDesc& copyDescA = copyDescs[a];
+            const ReadbackTextureToHostMemoryDesc& copyDescB = copyDescs[b];
+            if (copyDescA.srcTexture != copyDescB.srcTexture)
+                return (uintptr_t)copyDescA.srcTexture < (uintptr_t)copyDescB.srcTexture;
+            if (copyDescA.srcRegion.layerOffset != copyDescB.srcRegion.layerOffset)
+                return copyDescA.srcRegion.layerOffset < copyDescB.srcRegion.layerOffset;
+
+            return copyDescA.srcRegion.mipOffset < copyDescB.srcRegion.mipOffset;
+        });
+
+        for (uint32_t i = 0; i < copyDescNum; i++) {
+            const ReadbackTextureToHostMemoryDesc& copyDesc = copyDescs[sortedIndices[i]];
+            if (i) {
+                const ReadbackTextureToHostMemoryDesc& previousCopyDesc = copyDescs[sortedIndices[i - 1]];
+                if (copyDesc.srcTexture == previousCopyDesc.srcTexture && copyDesc.srcRegion.layerOffset == previousCopyDesc.srcRegion.layerOffset && copyDesc.srcRegion.mipOffset == previousCopyDesc.srcRegion.mipOffset)
+                    continue;
+            }
+
+            TextureBarrierDesc& barrier = textureBarriers[textureBarrierNum++];
+            barrier = {};
+            barrier.texture = copyDesc.srcTexture;
+            barrier.mipOffset = copyDesc.srcRegion.mipOffset;
+            barrier.mipNum = 1;
+            barrier.layerOffset = copyDesc.srcRegion.layerOffset;
+            barrier.layerNum = 1;
+            barrier.planes = copyDesc.srcRegion.planes;
+            barrier.before = {AccessBits::HOST_READ, Layout::GENERAL, StageBits::HOST};
+            barrier.after = {AccessBits::COPY_SOURCE, Layout::GENERAL, StageBits::COPY};
+        }
+
+        BarrierDesc barrierDesc = {};
+        barrierDesc.textures = textureBarriers;
+        barrierDesc.textureNum = textureBarrierNum;
+        commandBuffer.Barrier(barrierDesc);
+
+        Scratch<VkBufferImageCopy2> regions = NRI_ALLOCATE_SCRATCH(*this, VkBufferImageCopy2, copyDescNum);
+        Scratch<VkBufferImageCopy> legacyRegions = NRI_ALLOCATE_SCRATCH(*this, VkBufferImageCopy, m_IsSupported.copyCommands2 ? 0 : copyDescNum);
+
+        VkCommandBuffer commandBufferHandle = commandBuffer;
+        for (uint32_t begin = 0; begin < copyDescNum;) {
+            uint32_t firstCopyIndex = sortedIndices[begin];
+            const TextureVK& texture = *(TextureVK*)copyDescs[firstCopyIndex].srcTexture;
+            uint32_t end = begin;
+            uint32_t regionNum = 0;
+            for (; end < copyDescNum && copyDescs[sortedIndices[end]].srcTexture == copyDescs[firstCopyIndex].srcTexture; end++) {
+                uint32_t copyIndex = sortedIndices[end];
+                const ReadbackTextureToHostMemoryDesc& copyDesc = copyDescs[copyIndex];
+                regions[regionNum] = GetHostCopyBufferImageRegion(texture, copyDesc.srcRegion, layouts[copyIndex]);
+                if (!m_IsSupported.copyCommands2)
+                    legacyRegions[regionNum] = GetLegacyBufferImageCopyRegion(regions[regionNum]);
+                regionNum++;
+            }
+
+            if (m_IsSupported.copyCommands2) {
+                VkCopyImageToBufferInfo2 info = {VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2};
+                info.srcImage = texture.GetHandle();
+                info.srcImageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                info.dstBuffer = context->GetReadbackBuffer().GetHandle();
+                info.regionCount = regionNum;
+                info.pRegions = regions;
+                vk.CmdCopyImageToBuffer2(commandBufferHandle, &info);
+            } else {
+                vk.CmdCopyImageToBuffer(commandBufferHandle, texture.GetHandle(), VK_IMAGE_LAYOUT_GENERAL, context->GetReadbackBuffer().GetHandle(), regionNum, legacyRegions);
+            }
+
+            begin = end;
+        }
+
+        for (uint32_t i = 0; i < textureBarrierNum; i++)
+            std::swap(textureBarriers[i].before, textureBarriers[i].after);
+
+        BufferBarrierDesc bufferBarrier = {};
+        bufferBarrier.buffer = (Buffer*)&context->GetReadbackBuffer();
+        bufferBarrier.before = {AccessBits::COPY_DESTINATION, StageBits::COPY};
+        bufferBarrier.after = {AccessBits::HOST_READ, StageBits::HOST};
+
+        BarrierDesc barrierDescAfter = {};
+        barrierDescAfter.buffers = &bufferBarrier;
+        barrierDescAfter.bufferNum = 1;
+        barrierDescAfter.textures = textureBarriers;
+        barrierDescAfter.textureNum = textureBarrierNum;
+        commandBuffer.Barrier(barrierDescAfter);
+
+        result = commandBuffer.End();
+    }
+
+    if (result == Result::SUCCESS)
+        result = context->SubmitAndWait(queue);
+
+    if (result == Result::SUCCESS) {
+        const uint8_t* stagingData = (const uint8_t*)context->GetReadbackBuffer().Map(0, stagingSize);
+        if (!stagingData)
+            result = Result::FAILURE;
+
+        for (uint32_t i = 0; result == Result::SUCCESS && i < copyDescNum; i++) {
+            const ReadbackTextureToHostMemoryDesc& copyDesc = copyDescs[i];
+            const HostCopyLayoutVK& layout = layouts[i];
+            uint32_t dstRowPitch = copyDesc.dstRowPitch ? copyDesc.dstRowPitch : layout.rowSize;
+            uint32_t dstSlicePitch = copyDesc.dstSlicePitch ? copyDesc.dstSlicePitch : dstRowPitch * layout.rowNum;
+            CopyTextureData(copyDesc.dstData, dstRowPitch, dstSlicePitch, stagingData + layout.dataLayout.offset, layout.dataLayout.rowPitch, layout.slicePitch, layout.rowSize, layout.rowNum, layout.depth);
+        }
+
+        context->GetReadbackBuffer().Unmap();
+    }
+
+    ReleaseTransferContext(*context);
+
+    return result;
+}
+
+Result DeviceVK::AcquireTransferContext(QueueVK& queue, TransferContextVK*& context) {
+    ExclusiveScope lock(m_TransferContextLock);
+
+    for (TransferContextVK* candidate : m_TransferContexts) {
+        if (!candidate->IsInUse() && candidate->GetFamilyIndex() == queue.GetFamilyIndex() && candidate->TryRecover()) {
+            candidate->SetInUse(true);
+            context = candidate;
+
+            return Result::SUCCESS;
+        }
+    }
+
+    context = Allocate<TransferContextVK>(GetAllocationCallbacks(), *this);
+    if (!context)
+        return Result::OUT_OF_MEMORY;
+
+    Result result = context->Create(queue);
+    if (result != Result::SUCCESS) {
+        Destroy(context);
+        context = nullptr;
+        return result;
+    }
+
+    context->SetInUse(true);
+    m_TransferContexts.push_back(context);
+
+    return Result::SUCCESS;
+}
+
+void DeviceVK::ReleaseTransferContext(TransferContextVK& context) {
+    context.Trim();
+
+    ExclusiveScope lock(m_TransferContextLock);
+    context.SetInUse(false);
+}
+
 NRI_INLINE void DeviceVK::CopyDescriptorRanges(const CopyDescriptorRangeDesc* copyDescriptorRangeDescs, uint32_t copyDescriptorRangeDescNum) {
     Scratch<VkCopyDescriptorSet> copies = NRI_ALLOCATE_SCRATCH(*this, VkCopyDescriptorSet, copyDescriptorRangeDescNum);
     for (uint32_t i = 0; i < copyDescriptorRangeDescNum; i++) {
@@ -2672,6 +3180,14 @@ NRI_INLINE FormatSupportBits DeviceVK::GetFormatSupport(Format format) const {
     UPDATE_TEXTURE_SUPPORT_BITS(VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT, FormatSupportBits::DEPTH_STENCIL_ATTACHMENT);
     UPDATE_TEXTURE_SUPPORT_BITS(VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT, FormatSupportBits::BLEND);
     UPDATE_TEXTURE_SUPPORT_BITS(VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT, FormatSupportBits::STORAGE_TEXTURE_ATOMICS);
+
+    const FormatProps& formatProps = GetFormatProps(format);
+    if (!formatProps.isDepth && !formatProps.isStencil) {
+        const VkFormatFeatureFlags2 hostCopyFeatures = m_IsSupported.hostImageCopy
+            ? VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT_EXT
+            : (VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT);
+        UPDATE_TEXTURE_SUPPORT_BITS(hostCopyFeatures, FormatSupportBits::HOST_COPY);
+    }
 
     UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT, FormatSupportBits::BUFFER);
     UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT, FormatSupportBits::STORAGE_BUFFER);

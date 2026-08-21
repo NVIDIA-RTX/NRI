@@ -164,8 +164,6 @@ Result SwapChainD3D12::Create(const SwapChainDesc& swapChainDesc) {
 
     // Finalize
     m_Hwnd = swapChainDesc.window.windows.hwnd;
-    m_PresentId = GetSwapChainId();
-
     m_Flags = swapChainDesc.flags;
     if (!m_Device.HasNvExt())
         m_Flags &= ~SwapChainBits::ALLOW_LOW_LATENCY;
@@ -193,7 +191,9 @@ NRI_INLINE Result SwapChainD3D12::AcquireNextTexture(uint32_t& textureIndex) {
     return Result::SUCCESS;
 }
 
-NRI_INLINE Result SwapChainD3D12::WaitForPresent() {
+NRI_INLINE Result SwapChainD3D12::WaitForPresent(uint64_t presentId) {
+    MaybeUnused(presentId);
+
     if (m_FrameLatencyWaitableObject) {
         // Is device lost?
         HRESULT hr = m_Device->GetDeviceRemovedReason() == S_OK ? S_OK : DXGI_ERROR_DEVICE_REMOVED;
@@ -207,10 +207,12 @@ NRI_INLINE Result SwapChainD3D12::WaitForPresent() {
     return Result::UNSUPPORTED;
 }
 
-NRI_INLINE Result SwapChainD3D12::Present() {
+NRI_INLINE Result SwapChainD3D12::Present(uint64_t presentId) {
+    MaybeUnused(presentId);
+
 #if NRI_ENABLE_NVAPI
-    if (m_Flags & SwapChainBits::ALLOW_LOW_LATENCY)
-        SetLatencyMarker((LatencyMarker)PRESENT_START);
+    if ((m_Flags & SwapChainBits::ALLOW_LOW_LATENCY) && presentId != 0)
+        SetLatencyMarker(presentId, (LatencyMarker)PRESENT_START);
 #endif
 
     bool vsync = (m_Flags & SwapChainBits::VSYNC) != 0;
@@ -220,11 +222,9 @@ NRI_INLINE Result SwapChainD3D12::Present() {
     NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "IDXGISwapChain::Present");
 
 #if NRI_ENABLE_NVAPI
-    if (m_Flags & SwapChainBits::ALLOW_LOW_LATENCY)
-        SetLatencyMarker((LatencyMarker)PRESENT_END);
+    if ((m_Flags & SwapChainBits::ALLOW_LOW_LATENCY) && presentId != 0)
+        SetLatencyMarker(presentId, (LatencyMarker)PRESENT_END);
 #endif
-
-    m_PresentId++;
 
     return Result::SUCCESS;
 }
@@ -247,23 +247,26 @@ NRI_INLINE Result SwapChainD3D12::SetLatencySleepMode(const LatencySleepMode& la
 #endif
 }
 
-NRI_INLINE Result SwapChainD3D12::SetLatencyMarker(LatencyMarker latencyMarker) {
+NRI_INLINE Result SwapChainD3D12::SetLatencyMarker(uint64_t presentId, LatencyMarker latencyMarker) {
 #if NRI_ENABLE_NVAPI
     NV_LATENCY_MARKER_PARAMS params = {NV_LATENCY_MARKER_PARAMS_VER};
-    params.frameID = m_PresentId;
+    params.frameID = presentId;
     params.markerType = (NV_LATENCY_MARKER_TYPE)latencyMarker;
 
     NvAPI_Status status = NvAPI_D3D_SetLatencyMarker(m_Device.GetNativeObject(), &params);
 
     return status == NVAPI_OK ? Result::SUCCESS : Result::FAILURE;
 #else
+    MaybeUnused(presentId);
     MaybeUnused(latencyMarker);
 
     return Result::UNSUPPORTED;
 #endif
 }
 
-NRI_INLINE Result SwapChainD3D12::LatencySleep() {
+NRI_INLINE Result SwapChainD3D12::LatencySleep(uint64_t presentId) {
+    MaybeUnused(presentId);
+
 #if NRI_ENABLE_NVAPI
     NvAPI_Status status = NvAPI_D3D_Sleep(m_Device.GetNativeObject());
 

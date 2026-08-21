@@ -17,7 +17,7 @@ Result BufferWGPU::Create(const BufferDesc& bufferDesc, MemoryLocation memoryLoc
 }
 
 Result BufferWGPU::CreateNativeBuffer() {
-    uint64_t nativeSize = Align(std::max(m_Desc.size, 4ull), 4);
+    uint64_t nativeSize = Align(std::max<uint64_t>(m_Desc.size, 4), 4);
 
     WGPUBufferDescriptor desc = WGPU_BUFFER_DESCRIPTOR_INIT;
     desc.size = nativeSize;
@@ -53,7 +53,7 @@ Result BufferWGPU::SetHostVisible(MemoryLocation memoryLocation) {
     }
 
     if (m_MemoryLocation != MemoryLocation::DEVICE && m_MemoryLocation != MemoryLocation::HOST_READBACK && m_CpuMemory.empty())
-        m_CpuMemory.resize((size_t)Align(std::max(m_Desc.size, 4ull), 4));
+        m_CpuMemory.resize((size_t)Align(std::max<uint64_t>(m_Desc.size, 4), 4));
 
     return Result::SUCCESS;
 }
@@ -94,11 +94,18 @@ void* BufferWGPU::Map(uint64_t offset, uint64_t size) {
         }
 
         m_MappedReadback = wgpuBufferGetConstMappedRange(m_Buffer, mapOffset, mapSize);
+        if (!m_MappedReadback) {
+            wgpuBufferUnmap(m_Buffer);
+            m_MapOffset = 0;
+            m_MapSize = 0;
+            return nullptr;
+        }
+
         return (uint8_t*)m_MappedReadback + (m_MapOffset - mapOffset);
     }
 
     if (m_CpuMemory.empty())
-        m_CpuMemory.resize((size_t)Align(std::max(m_Desc.size, 4ull), 4));
+        m_CpuMemory.resize((size_t)Align(std::max<uint64_t>(m_Desc.size, 4), 4));
 
     // TODO: Host-visible upload buffers are CPU-shadowed and flushed through "wgpuQueueWriteBuffer" on unmap.
     return m_CpuMemory.data() + offset;

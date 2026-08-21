@@ -109,7 +109,7 @@ NRI_INLINE Result QueueVK::Submit(const QueueSubmitDesc& queueSubmitDesc) {
 
     VkLatencySubmissionPresentIdNV presentId = {VK_STRUCTURE_TYPE_LATENCY_SUBMISSION_PRESENT_ID_NV};
     if (queueSubmitDesc.swapChain && m_Device.m_IsSupported.presentId) {
-        presentId.presentID = ((SwapChainVK*)queueSubmitDesc.swapChain)->GetPresentId();
+        presentId.presentID = queueSubmitDesc.presentId;
         submitInfo.pNext = &presentId;
     }
 

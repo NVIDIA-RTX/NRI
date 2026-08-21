@@ -132,8 +132,13 @@ NriStruct(SwapChainInterface) {
 
     // VK only: may return "OUT_OF_DATE", fences must be created with "SWAPCHAIN_SEMAPHORE" initial value
     Nri(Result)             (NRI_CALL *AcquireNextTexture)      (NriRef(SwapChain) swapChain, NriRef(Fence) acquireSemaphore, NriOut NonNriRef(uint32_t) textureIndex);
-    Nri(Result)             (NRI_CALL *WaitForPresent)          (NriRef(SwapChain) swapChain); // call once right before input sampling (must be called starting from the 1st frame)
-    Nri(Result)             (NRI_CALL *QueuePresent)            (NriRef(SwapChain) swapChain, NriRef(Fence) releaseSemaphore);
+
+    // "presentId" must identify a previously queued presentation. Call once immediately before input sampling
+    Nri(Result)             (NRI_CALL *WaitForPresent)          (NriRef(SwapChain) swapChain, uint64_t presentId);
+
+    // A non-zero "presentId" associates the presentation with a tracked frame. Use 0 for an untracked presentation.
+    // Non-zero "presentId" values must strictly increase across frames for each swap chain, i.e. gaps are allowed
+    Nri(Result)             (NRI_CALL *QueuePresent)            (NriRef(SwapChain) swapChain, NriRef(Fence) releaseSemaphore, uint64_t presentId);
 };
 
 /*
@@ -203,7 +208,7 @@ Typical usage example, valid if the number of swap chain images >= queued frames
         NRI.QueueSubmit(queue, queueSubmitDesc);
 
     // Present
-        NRI.QueuePresent(swapChain, *releaseSemaphore);
+        NRI.QueuePresent(swapChain, *releaseSemaphore, 1 + frameIndex);
 */
 
 NriNamespaceEnd

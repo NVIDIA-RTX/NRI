@@ -241,12 +241,8 @@ WGPURenderPipeline CommandBufferWGPU::GetClearPipeline(uint32_t colorAttachmentI
     if (!shader)
         return nullptr;
 
-    WGPUPipelineLayoutExtras layoutExtras = {};
-    layoutExtras.chain.sType = (WGPUSType)WGPUSType_PipelineLayoutExtras;
-    layoutExtras.immediateDataSize = sizeof(Color32f);
-
     WGPUPipelineLayoutDescriptor layoutDesc = WGPU_PIPELINE_LAYOUT_DESCRIPTOR_INIT;
-    layoutDesc.nextInChain = &layoutExtras.chain;
+    layoutDesc.immediateSize = sizeof(Color32f);
 
     pipelineLayout = wgpuDeviceCreatePipelineLayout(m_Device, &layoutDesc);
     if (!pipelineLayout) {
@@ -415,14 +411,10 @@ WGPUComputePipeline CommandBufferWGPU::GetClearStorageBufferPipeline(WGPUBindGro
         return nullptr;
     }
 
-    WGPUPipelineLayoutExtras layoutExtras = {};
-    layoutExtras.chain.sType = (WGPUSType)WGPUSType_PipelineLayoutExtras;
-    layoutExtras.immediateDataSize = sizeof(ClearStorageBufferConstantsWGPU);
-
     WGPUPipelineLayoutDescriptor pipelineLayoutDesc = WGPU_PIPELINE_LAYOUT_DESCRIPTOR_INIT;
-    pipelineLayoutDesc.nextInChain = &layoutExtras.chain;
     pipelineLayoutDesc.bindGroupLayoutCount = 1;
     pipelineLayoutDesc.bindGroupLayouts = &layout;
+    pipelineLayoutDesc.immediateSize = sizeof(ClearStorageBufferConstantsWGPU);
 
     WGPUPipelineLayout pipelineLayout = wgpuDeviceCreatePipelineLayout(m_Device, &pipelineLayoutDesc);
     if (!pipelineLayout) {
@@ -593,14 +585,10 @@ WGPUComputePipeline CommandBufferWGPU::GetClearStorageTexturePipeline(Format for
         return nullptr;
     }
 
-    WGPUPipelineLayoutExtras layoutExtras = {};
-    layoutExtras.chain.sType = (WGPUSType)WGPUSType_PipelineLayoutExtras;
-    layoutExtras.immediateDataSize = sizeof(ClearStorageTextureConstantsWGPU);
-
     WGPUPipelineLayoutDescriptor pipelineLayoutDesc = WGPU_PIPELINE_LAYOUT_DESCRIPTOR_INIT;
-    pipelineLayoutDesc.nextInChain = &layoutExtras.chain;
     pipelineLayoutDesc.bindGroupLayoutCount = 1;
     pipelineLayoutDesc.bindGroupLayouts = &layout;
+    pipelineLayoutDesc.immediateSize = sizeof(ClearStorageTextureConstantsWGPU);
 
     WGPUPipelineLayout pipelineLayout = wgpuDeviceCreatePipelineLayout(m_Device, &pipelineLayoutDesc);
     if (!pipelineLayout) {
@@ -1056,9 +1044,9 @@ void CommandBufferWGPU::RestoreRootConstants(BindPoint bindPoint) {
             continue;
 
         if (bindPoint == BindPoint::COMPUTE)
-            wgpuComputePassEncoderSetImmediates(m_ComputePass, begin, end - begin, state.data.data() + begin);
+            wgpuComputePassEncoderSetImmediates(m_ComputePass, begin, state.data.data() + begin, end - begin);
         else
-            wgpuRenderPassEncoderSetImmediates(m_RenderPass, begin, end - begin, state.data.data() + begin);
+            wgpuRenderPassEncoderSetImmediates(m_RenderPass, begin, state.data.data() + begin, end - begin);
 
         begin = end;
     }
@@ -1080,10 +1068,10 @@ void CommandBufferWGPU::SetRootConstants(const SetRootConstantsDesc& setRootCons
     }
 
     if (m_RenderPass && m_RenderPipeline && bindPoint == BindPoint::GRAPHICS)
-        wgpuRenderPassEncoderSetImmediates(m_RenderPass, offset, setRootConstantsDesc.size, setRootConstantsDesc.data);
+        wgpuRenderPassEncoderSetImmediates(m_RenderPass, offset, setRootConstantsDesc.data, setRootConstantsDesc.size);
 
     if (m_ComputePass && m_BoundComputePipeline && bindPoint == BindPoint::COMPUTE)
-        wgpuComputePassEncoderSetImmediates(m_ComputePass, offset, setRootConstantsDesc.size, setRootConstantsDesc.data);
+        wgpuComputePassEncoderSetImmediates(m_ComputePass, offset, setRootConstantsDesc.data, setRootConstantsDesc.size);
 }
 
 void CommandBufferWGPU::SetRootDescriptor(const SetRootDescriptorDesc& setRootDescriptorDesc) {
@@ -1291,7 +1279,7 @@ void CommandBufferWGPU::ClearAttachments(const ClearAttachmentDesc* clearAttachm
                 const void* clearData = props.isInteger ? (props.isSigned ? (const void*)&clearAttachmentDesc.value.color.i : (const void*)&clearAttachmentDesc.value.color.ui) : (const void*)&clearAttachmentDesc.value.color.f;
 
                 wgpuRenderPassEncoderSetPipeline(m_RenderPass, clearPipeline);
-                wgpuRenderPassEncoderSetImmediates(m_RenderPass, 0, sizeof(clearAttachmentDesc.value.color), clearData);
+                wgpuRenderPassEncoderSetImmediates(m_RenderPass, 0, clearData, sizeof(clearAttachmentDesc.value.color));
                 drawClear(rects, rectNum);
             }
         }
@@ -1304,7 +1292,7 @@ void CommandBufferWGPU::ClearAttachments(const ClearAttachmentDesc* clearAttachm
             if (clearPipeline) {
                 Color32f clearValue = {clearAttachmentDesc.value.depthStencil.depth, 0.0f, 0.0f, 0.0f};
                 wgpuRenderPassEncoderSetPipeline(m_RenderPass, clearPipeline);
-                wgpuRenderPassEncoderSetImmediates(m_RenderPass, 0, sizeof(clearValue), &clearValue);
+                wgpuRenderPassEncoderSetImmediates(m_RenderPass, 0, &clearValue, sizeof(clearValue));
                 if (depthStencilPlanes & PlaneBits::STENCIL)
                     wgpuRenderPassEncoderSetStencilReference(m_RenderPass, clearAttachmentDesc.value.depthStencil.stencil);
 
@@ -1462,7 +1450,10 @@ void CommandBufferWGPU::DispatchIndirect(const Buffer& buffer, uint64_t offset) 
 void CommandBufferWGPU::CopyBuffer(Buffer& dstBuffer, uint64_t dstOffset, const Buffer& srcBuffer, uint64_t srcOffset, uint64_t size) {
     EndPass();
 
-    wgpuCommandEncoderCopyBufferToBuffer(m_CommandEncoder, (BufferWGPU&)srcBuffer, srcOffset, (BufferWGPU&)dstBuffer, dstOffset, size);
+    const BufferWGPU& srcBufferWGPU = (const BufferWGPU&)srcBuffer;
+    uint64_t copySize = size == WHOLE_SIZE ? srcBufferWGPU.GetSize() : size;
+
+    wgpuCommandEncoderCopyBufferToBuffer(m_CommandEncoder, srcBufferWGPU, srcOffset, (BufferWGPU&)dstBuffer, dstOffset, copySize);
 }
 
 void CommandBufferWGPU::CopyTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion) {
@@ -1673,7 +1664,7 @@ static bool IsClearValueZero(const Color& value) {
 
 WGPUBuffer CreateTemporaryUploadBuffer(DeviceWGPU& device, uint64_t size, const void* data) {
     WGPUBufferDescriptor desc = WGPU_BUFFER_DESCRIPTOR_INIT;
-    desc.size = Align(std::max(size, 4ull), 4);
+    desc.size = Align(std::max<uint64_t>(size, 4), 4);
     desc.usage = WGPUBufferUsage_CopySrc | WGPUBufferUsage_CopyDst;
 
     WGPUBuffer buffer = wgpuDeviceCreateBuffer(device, &desc);
@@ -1791,7 +1782,7 @@ void CommandBufferWGPU::ClearStorage(const ClearStorageDesc& clearStorageDesc) {
         if (pass) {
             wgpuComputePassEncoderSetPipeline(pass, pipeline);
             wgpuComputePassEncoderSetBindGroup(pass, 0, bindGroup, 0, nullptr);
-            wgpuComputePassEncoderSetImmediates(pass, 0, sizeof(constants), &constants);
+            wgpuComputePassEncoderSetImmediates(pass, 0, &constants, sizeof(constants));
             wgpuComputePassEncoderDispatchWorkgroups(pass, DivideUpWGPU(constants.wordNum, 64u), 1, 1);
             wgpuComputePassEncoderEnd(pass);
             wgpuComputePassEncoderRelease(pass);
@@ -1852,7 +1843,7 @@ void CommandBufferWGPU::ClearStorage(const ClearStorageDesc& clearStorageDesc) {
     if (pass) {
         wgpuComputePassEncoderSetPipeline(pass, pipeline);
         wgpuComputePassEncoderSetBindGroup(pass, 0, bindGroup, 0, nullptr);
-        wgpuComputePassEncoderSetImmediates(pass, 0, sizeof(constants), &constants);
+        wgpuComputePassEncoderSetImmediates(pass, 0, &constants, sizeof(constants));
         wgpuComputePassEncoderDispatchWorkgroups(pass, DivideUpWGPU(width, 8u), DivideUpWGPU(constants.height, 8u), depth);
         wgpuComputePassEncoderEnd(pass);
         wgpuComputePassEncoderRelease(pass);
@@ -1907,7 +1898,7 @@ void CommandBufferWGPU::CopyQueries(const QueryPool& queryPool, uint32_t offset,
 
     if (dstBufferWGPU.IsHostReadback()) {
         WGPUBufferDescriptor desc = WGPU_BUFFER_DESCRIPTOR_INIT;
-        desc.size = Align(std::max(queryDataSize, 4ull), 4);
+        desc.size = Align(std::max<uint64_t>(queryDataSize, 4), 4);
         desc.usage = WGPUBufferUsage_QueryResolve | WGPUBufferUsage_CopySrc;
 
         WGPUBuffer resolveBuffer = wgpuDeviceCreateBuffer(m_Device, &desc);

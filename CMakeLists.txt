@@ -3,6 +3,14 @@ cmake_minimum_required(VERSION 3.30)
 include(CMakeDependentOption)
 include(FetchContent)
 
+# GitHub actions?
+if("$ENV{GITHUB_ACTIONS}" STREQUAL "")
+    set(GITHUB_CI FALSE CACHE BOOL "GitHub Actions runner" FORCE)
+else()
+    set(GITHUB_CI TRUE CACHE BOOL "GitHub Actions runner" FORCE)
+    message(STATUS "Detected environment: GitHub Actions...")
+endif()
+
 # Create project
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/Include/NRI.h" ver_h)
 string(REGEX MATCH "NRI_VERSION ([0-9]*)" _ ${ver_h})
@@ -44,8 +52,8 @@ endif()
 # Options
 set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK will be copied relative to the directory with binaries")
 set(NRI_AGILITY_SDK_VERSION_MAJOR "619" CACHE STRING "Agility SDK major version") # 719 ("D3D12_ERROR_INVALID_REDIST" if Windows developer mode is not enabled)
-set(NRI_AGILITY_SDK_VERSION_MINOR "3" CACHE STRING "Agility SDK minor version") # 1-preview
-set(NRI_WGPU_VERSION "v29.0.0.0")
+set(NRI_AGILITY_SDK_VERSION_MINOR "5" CACHE STRING "Agility SDK minor version") # 1-preview
+set(NRI_WGPU_VERSION "v29.0.1.1")
 set(NRI_SHADERS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_Shaders" CACHE STRING "Shader output path override")
 set(NRI_NVAPI_CUSTOM_PATH "" CACHE STRING "Path to a custom NVAPI library directory")
 
@@ -61,7 +69,7 @@ option(NRI_STREAMER_THREAD_SAFE "'NRIStreamer' thread safety (OFF is faster)" ON
 
 cmake_dependent_option(NRI_ENABLE_D3D11_SUPPORT "Enable D3D11 backend" ON "WIN32" OFF)
 cmake_dependent_option(NRI_ENABLE_D3D12_SUPPORT "Enable D3D12 backend" ON "WIN32" OFF)
-cmake_dependent_option(NRI_ENABLE_WGPU_SUPPORT "Enable WebGPU backend" OFF "WGPU_BIN_ARCHITECTURE" OFF)
+cmake_dependent_option(NRI_ENABLE_WGPU_SUPPORT "Enable WebGPU backend" ${GITHUB_CI} "WGPU_BIN_ARCHITECTURE" OFF)
 cmake_dependent_option(NRI_ENABLE_AMDAGS "Enable AMD AGS library for D3D" ON "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT); NOT IS_ARM64" OFF)
 cmake_dependent_option(NRI_ENABLE_NVAPI "Enable NVAPI library for D3D" ON "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT); NOT IS_ARM64" OFF)
 cmake_dependent_option(NRI_ENABLE_AGILITY_SDK_SUPPORT "Enable Agility SDK support to unlock access to latest D3D12 features" ON "NRI_ENABLE_D3D12_SUPPORT" OFF)
@@ -138,7 +146,7 @@ if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.${NRI_AGILITY_SDK_VERSION_MAJOR}.${NRI_AGILITY_SDK_VERSION_MINOR}
+        URL "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.${NRI_AGILITY_SDK_VERSION_MAJOR}.${NRI_AGILITY_SDK_VERSION_MINOR}"
     )
     list(APPEND DEPS agilitysdk)
 endif()
@@ -150,7 +158,7 @@ if(NRI_ENABLE_NVTX_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/NVIDIA/NVTX/archive/refs/tags/v3.5.0.zip
+        URL "https://github.com/NVIDIA/NVTX/archive/refs/tags/v3.6.0.zip"
     )
     list(APPEND DEPS nvtx)
 endif()
@@ -162,7 +170,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.354.zip
+        URL "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.360.zip"
     )
     list(APPEND DEPS vulkan_headers)
 
@@ -172,12 +180,12 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/3aa921224c154a0d2c43912bc88e1c42ce1f7607.zip
+        URL "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/3aa921224c154a0d2c43912bc88e1c42ce1f7607.zip"
     )
     list(APPEND DEPS vma)
 endif()
 
-set(NGX_VERSION "310.6.0")
+set(NGX_VERSION "310.7.0")
 if(NRI_ENABLE_NGX_SDK)
     # NVIDIA NGX SDK
     fetchcontent_declare(
@@ -185,7 +193,7 @@ if(NRI_ENABLE_NGX_SDK)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/NVIDIA/DLSS/archive/refs/tags/v${NGX_VERSION}.zip
+        URL "https://github.com/NVIDIA/DLSS/archive/refs/tags/v${NGX_VERSION}.zip"
     )
     list(APPEND DEPS ngx)
 endif()
@@ -197,7 +205,7 @@ if(NRI_ENABLE_FFX_SDK)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/releases/download/v1.1.4/FidelityFX-SDK-v1.1.4.zip
+        URL "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/releases/download/v1.1.4/FidelityFX-SDK-v1.1.4.zip"
     )
     list(APPEND DEPS ffx)
 endif()
@@ -209,7 +217,7 @@ if(NRI_ENABLE_XESS_SDK)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/intel/xess/archive/refs/tags/v3.0.1.zip
+        URL "https://github.com/intel/xess/archive/refs/tags/v3.0.2.zip"
     )
     list(APPEND DEPS xess)
 endif()
@@ -221,7 +229,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/1d86c1130f61453634b1df85782e1fecfd59a525.zip
+        URL "https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/1d86c1130f61453634b1df85782e1fecfd59a525.zip"
     )
     list(APPEND DEPS d3d12ma)
 endif()
@@ -258,7 +266,7 @@ if(NRI_ENABLE_AMDAGS)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL https://github.com/GPUOpen-LibrariesAndSDKs/AGS_SDK/archive/refs/tags/v6.3.0.zip
+        URL "https://github.com/GPUOpen-LibrariesAndSDKs/AGS_SDK/archive/refs/tags/v6.3.1.zip"
     )
     list(APPEND DEPS amdags)
 endif()
@@ -274,7 +282,7 @@ if(NRI_ENABLE_NVAPI)
             DOWNLOAD_EXTRACT_TIMESTAMP 1
             DOWNLOAD_NO_PROGRESS 1
             SOURCE_SUBDIR "ignore CMakeLists.txt"
-            URL https://github.com/NVIDIA/nvapi/archive/9b181ea572f680327fe01a14a0f1f41c78034104.zip
+            URL "https://github.com/NVIDIA/nvapi/archive/cd6918f60b3c9a0476fdfe7e89bb32330602049d.zip"
         )
         list(APPEND DEPS nvapi)
     endif()
@@ -288,7 +296,7 @@ if(NRI_ENABLE_SHADERMAKE AND NOT TARGET ShaderMake)
         shadermake
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
-        URL https://github.com/NVIDIA-RTX/ShaderMake/archive/5daebdbef45088fc2369d441391ecab0eba25e54.zip
+        URL "https://github.com/NVIDIA-RTX/ShaderMake/archive/5daebdbef45088fc2369d441391ecab0eba25e54.zip"
     )
     list(APPEND DEPS shadermake)
 endif()
@@ -609,6 +617,8 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         "Source/D3D12/SwapChainD3D12.hpp"
         "Source/D3D12/TextureD3D12.h"
         "Source/D3D12/TextureD3D12.hpp"
+        "Source/D3D12/TransferContextD3D12.h"
+        "Source/D3D12/TransferContextD3D12.hpp"
     )
 
     add_library(NRI_D3D12 STATIC)
@@ -731,6 +741,8 @@ if(NRI_ENABLE_VK_SUPPORT)
         "Source/VK/SwapChainVK.hpp"
         "Source/VK/TextureVK.h"
         "Source/VK/TextureVK.hpp"
+        "Source/VK/TransferContextVK.h"
+        "Source/VK/TransferContextVK.hpp"
     )
 
     add_library(NRI_VK STATIC)
@@ -949,7 +961,7 @@ if(NRI_STATIC_LIBRARY)
 else()
     add_library(NRI SHARED)
 
-    if(CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
         target_link_options(NRI
             PRIVATE
                 $<$<CONFIG:Release>:/DEBUG> # generate a PDB for Release build
@@ -964,9 +976,7 @@ target_sources(NRI
         ${NRI_HEADERS}
         ${NRI_RESOURCES}
         ${NRI_EXTENSIONS}
-        $<$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>:
-            nri.natvis
-        > # debugger markup
+        $<$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>:nri.natvis> # debugger markup
 )
 target_include_directories(NRI
     PRIVATE
@@ -1161,7 +1171,7 @@ if(NRI_ENABLE_SHADERMAKE)
     if(NRI_ENABLE_D3D12_SUPPORT)
         list(APPEND SHADERMAKE_COMMANDS COMMAND ${SHADERMAKE_PATH} -p DXIL --compiler "${SHADERMAKE_DXC_PATH}" ${SHADERMAKE_GENERAL_ARGS})
     endif()
-    if(NRI_ENABLE_VK_SUPPORT)
+    if(NRI_ENABLE_VK_SUPPORT OR NRI_ENABLE_WGPU_SUPPORT)
         list(APPEND SHADERMAKE_COMMANDS COMMAND ${SHADERMAKE_PATH} -p SPIRV --compiler "${SHADERMAKE_DXC_VK_PATH}" ${SHADERMAKE_GENERAL_ARGS})
     endif()
     list(APPEND SHADERMAKE_COMMANDS "") # fix for "The system cannot find the batch label specified - VCEnd"

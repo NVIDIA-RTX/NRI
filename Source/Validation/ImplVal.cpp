@@ -538,6 +538,100 @@ static void NRI_CALL UnmapBuffer(Buffer& buffer) {
     ((BufferVal&)buffer).Unmap();
 }
 
+static bool ValidateHostTextureCopyDesc(DeviceVal& device, uint32_t i, const TextureVal& texture, const TextureRegionDesc& region, uint32_t rowPitch, uint32_t slicePitch, const char* name) {
+    const TextureDesc& textureDesc = texture.GetDesc();
+    const FormatProps& formatProps = GetFormatProps(textureDesc.format);
+
+    NRI_RETURN_ON_FAILURE(&device, &texture.GetDevice() == &device, false, "'%s[%u].texture' belongs to another device", name, i);
+    NRI_RETURN_ON_FAILURE(&device, texture.IsBoundToMemory(), false, "'%s[%u].texture' is not bound to memory", name, i);
+    NRI_RETURN_ON_FAILURE(&device, textureDesc.usage & TextureUsageBits::HOST_TRANSFER, false, "'%s[%u].texture' was not created with 'TextureUsageBits::HOST_TRANSFER'", name, i);
+    NRI_RETURN_ON_FAILURE(&device, device.GetFormatSupport(textureDesc.format) & FormatSupportBits::HOST_COPY, false, "'%s[%u].texture' format does not support 'FormatSupportBits::HOST_COPY'", name, i);
+    NRI_RETURN_ON_FAILURE(&device, textureDesc.sampleNum == 1, false, "'%s[%u].texture' is multisampled", name, i);
+    NRI_RETURN_ON_FAILURE(&device, !formatProps.isDepth && !formatProps.isStencil, false, "'%s[%u].texture' must have a color format", name, i);
+    NRI_RETURN_ON_FAILURE(&device, region.planes == PlaneBits::ALL || region.planes == PlaneBits::COLOR, false, "'%s[%u].region.planes' must be 'ALL' or 'COLOR'", name, i);
+    NRI_RETURN_ON_FAILURE(&device, region.mipOffset < textureDesc.mipNum, false, "'%s[%u].region.mipOffset' is out of bounds", name, i);
+    NRI_RETURN_ON_FAILURE(&device, region.layerOffset < textureDesc.layerNum, false, "'%s[%u].region.layerOffset' is out of bounds", name, i);
+
+    uint32_t mipWidth = std::max((uint32_t)textureDesc.width >> region.mipOffset, 1u);
+    uint32_t mipHeight = std::max((uint32_t)textureDesc.height >> region.mipOffset, 1u);
+    uint32_t mipDepth = std::max((uint32_t)textureDesc.depth >> region.mipOffset, 1u);
+    uint32_t width = region.width == WHOLE_SIZE ? mipWidth : region.width;
+    uint32_t height = region.height == WHOLE_SIZE ? mipHeight : region.height;
+    uint32_t depth = region.depth == WHOLE_SIZE ? mipDepth : region.depth;
+
+    NRI_RETURN_ON_FAILURE(&device, width && height && depth, false, "'%s[%u].region' has a zero extent", name, i);
+    NRI_RETURN_ON_FAILURE(&device, (uint32_t)region.x + width <= mipWidth, false, "'%s[%u].region' exceeds the mip width", name, i);
+    NRI_RETURN_ON_FAILURE(&device, (uint32_t)region.y + height <= mipHeight, false, "'%s[%u].region' exceeds the mip height", name, i);
+    NRI_RETURN_ON_FAILURE(&device, (uint32_t)region.z + depth <= mipDepth, false, "'%s[%u].region' exceeds the mip depth", name, i);
+
+    if (formatProps.isCompressed) {
+        NRI_RETURN_ON_FAILURE(&device, region.x % formatProps.blockWidth == 0, false, "'%s[%u].region.x' is not block aligned", name, i);
+        NRI_RETURN_ON_FAILURE(&device, region.y % formatProps.blockHeight == 0, false, "'%s[%u].region.y' is not block aligned", name, i);
+        NRI_RETURN_ON_FAILURE(&device, width % formatProps.blockWidth == 0 || (uint32_t)region.x + width == mipWidth, false, "'%s[%u].region.width' is not block aligned and does not reach the mip edge", name, i);
+        NRI_RETURN_ON_FAILURE(&device, height % formatProps.blockHeight == 0 || (uint32_t)region.y + height == mipHeight, false, "'%s[%u].region.height' is not block aligned and does not reach the mip edge", name, i);
+    }
+
+    uint32_t rowNum = (height + formatProps.blockHeight - 1) / formatProps.blockHeight;
+    uint32_t rowSize = ((width + formatProps.blockWidth - 1) / formatProps.blockWidth) * formatProps.stride;
+    uint32_t effectiveRowPitch = rowPitch ? rowPitch : rowSize;
+    uint64_t tightSlicePitch = uint64_t(effectiveRowPitch) * rowNum;
+    uint64_t effectiveSlicePitch = slicePitch ? slicePitch : tightSlicePitch;
+
+    NRI_RETURN_ON_FAILURE(&device, effectiveRowPitch >= rowSize, false, "'%s[%u].rowPitch' is too small", name, i);
+    NRI_RETURN_ON_FAILURE(&device, effectiveRowPitch % formatProps.stride == 0, false, "'%s[%u].rowPitch' is not texel-block aligned", name, i);
+    NRI_RETURN_ON_FAILURE(&device, tightSlicePitch <= uint32_t(-1), false, "'%s[%u]' requires a slice pitch greater than 4 GiB", name, i);
+    NRI_RETURN_ON_FAILURE(&device, effectiveSlicePitch >= tightSlicePitch, false, "'%s[%u].slicePitch' is too small", name, i);
+    NRI_RETURN_ON_FAILURE(&device, effectiveSlicePitch % effectiveRowPitch == 0, false, "'%s[%u].slicePitch' is not row aligned", name, i);
+
+    return true;
+}
+
+static Result NRI_CALL UploadHostMemoryToTexture(Queue& queue, const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
+    QueueVal& queueVal = (QueueVal&)queue;
+    DeviceVal& deviceVal = queueVal.GetDevice();
+
+    NRI_RETURN_ON_FAILURE(&deviceVal, !copyDescNum || copyDescs, Result::INVALID_ARGUMENT, "'copyDescs' is NULL");
+
+    Scratch<UploadHostMemoryToTextureDesc> copyDescsImpl = NRI_ALLOCATE_SCRATCH(deviceVal, UploadHostMemoryToTextureDesc, copyDescNum);
+    for (uint32_t i = 0; i < copyDescNum; i++) {
+        const UploadHostMemoryToTextureDesc& copyDesc = copyDescs[i];
+        NRI_RETURN_ON_FAILURE(&deviceVal, copyDesc.srcData, Result::INVALID_ARGUMENT, "'copyDescs[%u].srcData' is NULL", i);
+        NRI_RETURN_ON_FAILURE(&deviceVal, copyDesc.dstTexture, Result::INVALID_ARGUMENT, "'copyDescs[%u].dstTexture' is NULL", i);
+
+        const TextureVal& texture = *(TextureVal*)copyDesc.dstTexture;
+        if (!ValidateHostTextureCopyDesc(deviceVal, i, texture, copyDesc.dstRegion, copyDesc.srcRowPitch, copyDesc.srcSlicePitch, "copyDescs"))
+            return Result::INVALID_ARGUMENT;
+
+        copyDescsImpl[i] = copyDesc;
+        copyDescsImpl[i].dstTexture = texture.GetImpl();
+    }
+
+    return deviceVal.GetCoreInterfaceImpl().UploadHostMemoryToTexture(*queueVal.GetImpl(), copyDescsImpl, copyDescNum);
+}
+
+static Result NRI_CALL ReadbackTextureToHostMemory(Queue& queue, const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
+    QueueVal& queueVal = (QueueVal&)queue;
+    DeviceVal& deviceVal = queueVal.GetDevice();
+
+    NRI_RETURN_ON_FAILURE(&deviceVal, !copyDescNum || copyDescs, Result::INVALID_ARGUMENT, "'copyDescs' is NULL");
+
+    Scratch<ReadbackTextureToHostMemoryDesc> copyDescsImpl = NRI_ALLOCATE_SCRATCH(deviceVal, ReadbackTextureToHostMemoryDesc, copyDescNum);
+    for (uint32_t i = 0; i < copyDescNum; i++) {
+        const ReadbackTextureToHostMemoryDesc& copyDesc = copyDescs[i];
+        NRI_RETURN_ON_FAILURE(&deviceVal, copyDesc.srcTexture, Result::INVALID_ARGUMENT, "'copyDescs[%u].srcTexture' is NULL", i);
+        NRI_RETURN_ON_FAILURE(&deviceVal, copyDesc.dstData, Result::INVALID_ARGUMENT, "'copyDescs[%u].dstData' is NULL", i);
+
+        const TextureVal& texture = *(TextureVal*)copyDesc.srcTexture;
+        if (!ValidateHostTextureCopyDesc(deviceVal, i, texture, copyDesc.srcRegion, copyDesc.dstRowPitch, copyDesc.dstSlicePitch, "copyDescs"))
+            return Result::INVALID_ARGUMENT;
+
+        copyDescsImpl[i] = copyDesc;
+        copyDescsImpl[i].srcTexture = texture.GetImpl();
+    }
+
+    return deviceVal.GetCoreInterfaceImpl().ReadbackTextureToHostMemory(*queueVal.GetImpl(), copyDescsImpl, copyDescNum);
+}
+
 static uint64_t NRI_CALL GetBufferDeviceAddress(const Buffer& buffer) {
     return ((BufferVal&)buffer).GetDeviceAddress();
 }
@@ -696,6 +790,8 @@ Result DeviceVal::FillFunctionTable(CoreInterface& table) const {
     table.ResetCommandAllocator = ::ResetCommandAllocator;
     table.MapBuffer = ::MapBuffer;
     table.UnmapBuffer = ::UnmapBuffer;
+    table.UploadHostMemoryToTexture = ::UploadHostMemoryToTexture;
+    table.ReadbackTextureToHostMemory = ::ReadbackTextureToHostMemory;
     table.GetBufferDeviceAddress = ::GetBufferDeviceAddress;
     table.SetDebugName = ::SetDebugName;
     table.GetDeviceNativeObject = ::GetDeviceNativeObject;
@@ -907,12 +1003,12 @@ static Result NRI_CALL SetLatencySleepMode(SwapChain& swapChain, const LatencySl
     return ((SwapChainVal&)swapChain).SetLatencySleepMode(latencySleepMode);
 }
 
-static Result NRI_CALL SetLatencyMarker(SwapChain& swapChain, LatencyMarker latencyMarker) {
-    return ((SwapChainVal&)swapChain).SetLatencyMarker(latencyMarker);
+static Result NRI_CALL SetLatencyMarker(SwapChain& swapChain, uint64_t presentId, LatencyMarker latencyMarker) {
+    return ((SwapChainVal&)swapChain).SetLatencyMarker(presentId, latencyMarker);
 }
 
-static Result NRI_CALL LatencySleep(SwapChain& swapChain) {
-    return ((SwapChainVal&)swapChain).LatencySleep();
+static Result NRI_CALL LatencySleep(SwapChain& swapChain, uint64_t presentId) {
+    return ((SwapChainVal&)swapChain).LatencySleep(presentId);
 }
 
 static Result NRI_CALL GetLatencyReport(const SwapChain& swapChain, LatencyReport& latencyReport) {
@@ -1367,12 +1463,12 @@ static Result NRI_CALL AcquireNextTexture(SwapChain& swapChain, Fence& acquireSe
     return ((SwapChainVal&)swapChain).AcquireNextTexture(acquireSemaphore, textureIndex);
 }
 
-static Result NRI_CALL WaitForPresent(SwapChain& swapChain) {
-    return ((SwapChainVal&)swapChain).WaitForPresent();
+static Result NRI_CALL WaitForPresent(SwapChain& swapChain, uint64_t presentId) {
+    return ((SwapChainVal&)swapChain).WaitForPresent(presentId);
 }
 
-static Result NRI_CALL QueuePresent(SwapChain& swapChain, Fence& releaseSemaphore) {
-    return ((SwapChainVal&)swapChain).Present(releaseSemaphore);
+static Result NRI_CALL QueuePresent(SwapChain& swapChain, Fence& releaseSemaphore, uint64_t presentId) {
+    return ((SwapChainVal&)swapChain).Present(releaseSemaphore, presentId);
 }
 
 Result DeviceVal::FillFunctionTable(SwapChainInterface& table) const {

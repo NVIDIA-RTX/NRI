@@ -42,12 +42,16 @@ NRI_INLINE uint64_t FenceVK::GetFenceValue() const {
     return value;
 }
 
-NRI_INLINE void FenceVK::Wait(uint64_t value) {
+NRI_INLINE Result FenceVK::Wait(uint64_t value) {
     VkSemaphoreWaitInfo semaphoreWaitInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
     semaphoreWaitInfo.semaphoreCount = 1;
     semaphoreWaitInfo.pSemaphores = &m_Handle;
     semaphoreWaitInfo.pValues = &value;
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.WaitSemaphores((VkDevice)m_Device, &semaphoreWaitInfo, MsToUs(NRI_TIMEOUT_FENCE));
+    VkResult vkResult = vk.WaitSemaphores((VkDevice)m_Device, &semaphoreWaitInfo, MsToUs(NRI_TIMEOUT_FENCE));
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "WaitSemaphores");
+    NRI_RETURN_ON_FAILURE(&m_Device, vkResult == VK_SUCCESS, Result::FAILURE, "WaitSemaphores() timed out!");
+
+    return Result::SUCCESS;
 }
