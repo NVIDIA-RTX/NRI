@@ -2,21 +2,21 @@
 
 constexpr bool VERBOSE = false;
 
-static inline const char* GetDeviceFaultAddressTypeName(VkDeviceFaultAddressTypeKHR type) {
+static inline const char* GetDeviceFaultAddressTypeName(VkDeviceFaultAddressTypeEXT type) {
     switch (type) {
-        case VK_DEVICE_FAULT_ADDRESS_TYPE_NONE_KHR:
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_NONE_EXT:
             return "None";
-        case VK_DEVICE_FAULT_ADDRESS_TYPE_READ_INVALID_KHR:
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_READ_INVALID_EXT:
             return "ReadInvalid";
-        case VK_DEVICE_FAULT_ADDRESS_TYPE_WRITE_INVALID_KHR:
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_WRITE_INVALID_EXT:
             return "WriteInvalid";
-        case VK_DEVICE_FAULT_ADDRESS_TYPE_EXECUTE_INVALID_KHR:
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_EXECUTE_INVALID_EXT:
             return "ExecuteInvalid";
-        case VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_UNKNOWN_KHR:
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_UNKNOWN_EXT:
             return "InstructionPointerUnknown";
-        case VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_INVALID_KHR:
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_INVALID_EXT:
             return "InstructionPointerInvalid";
-        case VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_FAULT_KHR:
+        case VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_FAULT_EXT:
             return "InstructionPointerFault";
         default:
             return "Unknown";
@@ -388,6 +388,8 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(!disableRayTracing, VK_KHR_RAY_TRACING_POSITION_FETCH_EXTENSION_NAME);
     APPEND_EXT(!disableRayTracing, VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME);
 
+    APPEND_EXT(deviceFaultInfoLevel != DeviceFaultInfoLevel::NONE, VK_EXT_DEVICE_FAULT_EXTENSION_NAME);
+
     APPEND_EXT(true, VK_KHR_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME);
@@ -403,7 +405,6 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(true, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME);
-    APPEND_EXT(deviceFaultInfoLevel != DeviceFaultInfoLevel::NONE, VK_KHR_DEVICE_FAULT_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME); // TODO: use KHR (currently coverage is lower)
     APPEND_EXT(true, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
@@ -445,6 +446,9 @@ DeviceVK::DeviceVK(const CallbackInterface& callbacks, const AllocationCallbacks
 }
 
 DeviceVK::~DeviceVK() {
+    if (m_DeviceFaultDump)
+        GetAllocationCallbacks().Free(GetAllocationCallbacks().userArg, m_DeviceFaultDump);
+
     for (TransferContextVK* context : m_TransferContexts)
         Destroy(context);
 
@@ -682,9 +686,6 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, ShaderClock, SHADER_CLOCK);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, DynamicRenderingLocalRead, DYNAMIC_RENDERING_LOCAL_READ);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, UnifiedImageLayouts, UNIFIED_IMAGE_LAYOUTS);
-    VkPhysicalDeviceFaultFeaturesKHR FaultFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_KHR};
-    if (IsExtensionSupported(VK_KHR_DEVICE_FAULT_EXTENSION_NAME, desiredDeviceExts) && desc.deviceFaultInfoLevel != DeviceFaultInfoLevel::NONE)
-        PNEXTCHAIN_APPEND_STRUCT(FaultFeatures);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, CustomBorderColor, CUSTOM_BORDER_COLOR);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, FragmentShaderInterlock, FRAGMENT_SHADER_INTERLOCK);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, ImageSlicedViewOf3D, IMAGE_SLICED_VIEW_OF_3D);
@@ -698,6 +699,10 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, SwapchainMaintenance1, SWAPCHAIN_MAINTENANCE_1);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, ZeroInitializeDeviceMemory, ZERO_INITIALIZE_DEVICE_MEMORY);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, MutableDescriptorType, MUTABLE_DESCRIPTOR_TYPE);
+
+    VkPhysicalDeviceFaultFeaturesEXT DeviceFaultFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_EXT};
+    if (desc.deviceFaultInfoLevel != DeviceFaultInfoLevel::NONE && IsExtensionSupported(VK_EXT_DEVICE_FAULT_EXTENSION_NAME, desiredDeviceExts))
+        PNEXTCHAIN_APPEND_STRUCT(DeviceFaultFeatures);
 
     m_VK.GetPhysicalDeviceFeatures2(m_PhysicalDevice, &features);
 
@@ -750,6 +755,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.fifoLatestReady = PresentModeFifoLatestReadyFeatures.presentModeFifoLatestReady;
     m_IsSupported.unifiedImageLayoutsVideo = UnifiedImageLayoutsFeatures.unifiedImageLayoutsVideo;
     m_IsSupported.hostImageCopy = features14.hostImageCopy;
+    m_IsSupported.deviceFault = DeviceFaultFeatures.deviceFault;
+    m_IsSupported.deviceFaultVendorBinary = DeviceFaultFeatures.deviceFaultVendorBinary;
 
     m_IsMemoryZeroInitializationEnabled = desc.enableMemoryZeroInitialization && ZeroInitializeDeviceMemoryFeatures.zeroInitializeDeviceMemory;
 
@@ -762,20 +769,6 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
     if (!features13.dynamicRendering)
         NRI_REPORT_INFO(this, "'dynamicRendering' is not supported, using 'render passes'");
-
-    if (desc.deviceFaultInfoLevel != DeviceFaultInfoLevel::NONE && !FaultFeatures.deviceFault)
-        NRI_REPORT_WARNING(this, "'VK_KHR_device_fault' is not supported, device fault info disabled");
-
-    if (desc.deviceFaultInfoLevel != DeviceFaultInfoLevel::NONE) {
-        const bool isVendorBinaryRequested = desc.callbackInterface.DeviceFaultDataCallback != nullptr;
-        if (isVendorBinaryRequested && FaultFeatures.deviceFault && !FaultFeatures.deviceFaultVendorBinary)
-            NRI_REPORT_WARNING(this, "'deviceFaultVendorBinary' is not supported, vendor binary reporting disabled");
-
-        FaultFeatures.deviceFaultVendorBinary = isVendorBinaryRequested ? FaultFeatures.deviceFaultVendorBinary : VK_FALSE;
-        FaultFeatures.deviceFaultReportMasked = VK_FALSE;
-        FaultFeatures.deviceFaultDeviceLostOnMasked = VK_FALSE;
-        m_IsDeviceFaultVendorBinaryEnabled = FaultFeatures.deviceFaultVendorBinary;
-    }
 
     { // Create device
         if (isWrapper)
@@ -2061,6 +2054,9 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
         GET_DEVICE_FUNC(GetCalibratedTimestampsEXT);
     }
 
+    if (IsExtensionSupported(VK_EXT_DEVICE_FAULT_EXTENSION_NAME, desiredDeviceExts))
+        GET_DEVICE_FUNC(GetDeviceFaultInfoEXT);
+
     if (IsExtensionSupported(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME, desiredDeviceExts)) {
         GET_DEVICE_FUNC(CreateMicromapEXT);
         GET_DEVICE_FUNC(DestroyMicromapEXT);
@@ -2097,138 +2093,126 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
 #undef GET_DEVICE_FUNC
 #undef GET_INSTANCE_FUNC
 
-void DeviceVK::ReportDeviceFaultAddressInfo(const char* name, const VkDeviceFaultAddressInfoKHR& addressInfo) const {
-    NRI_REPORT_DEVICE_FAULT_INFO(*this,
-        "[VK][DeviceFault]   %s: type=%s address=0x%016" PRIX64 " precision=0x%016" PRIX64,
-        name,
-        GetDeviceFaultAddressTypeName(addressInfo.addressType),
-        addressInfo.reportedAddress,
-        addressInfo.addressPrecision);
-}
+Result DeviceVK::ReportDeviceFaultInfo(DeviceFaultDump& deviceFaultDump) {
+    deviceFaultDump = {};
 
-bool DeviceVK::ReportDeviceFault(const VkDeviceFaultInfoKHR& faultInfo, uint32_t index) const {
-    NRI_REPORT_DEVICE_FAULT_INFO(*this,
-        "[VK][DeviceFault] Report[%u]: flags=0x%08X groupId=0x%016" PRIX64 " description=%s",
-        index,
-        faultInfo.flags,
-        faultInfo.groupId,
-        faultInfo.description);
+    if (!m_IsSupported.deviceFault)
+        return Result::UNSUPPORTED;
 
-    if ((faultInfo.flags & VK_DEVICE_FAULT_FLAG_MEMORY_ADDRESS_KHR) != 0)
-        ReportDeviceFaultAddressInfo("FaultAddress", faultInfo.faultAddressInfo);
+    m_DeviceFaultLock.Acquire();
 
-    if ((faultInfo.flags & VK_DEVICE_FAULT_FLAG_INSTRUCTION_ADDRESS_KHR) != 0)
-        ReportDeviceFaultAddressInfo("InstructionAddress", faultInfo.instructionAddressInfo);
-
-    if ((faultInfo.flags & VK_DEVICE_FAULT_FLAG_VENDOR_KHR) != 0) {
-        NRI_REPORT_DEVICE_FAULT_INFO(*this,
-            "[VK][DeviceFault]   VendorInfo: code=0x%016" PRIX64 " data=0x%016" PRIX64 " description=%s",
-            faultInfo.vendorInfo.vendorFaultCode,
-            faultInfo.vendorInfo.vendorFaultData,
-            faultInfo.vendorInfo.description);
-    }
-
-    return (faultInfo.flags & VK_DEVICE_FAULT_FLAG_DEVICE_LOST_KHR) != 0;
-}
-
-Result DeviceVK::ReportDeviceFaultVendorBinary(VkDevice device, PFN_vkGetDeviceFaultDebugInfoKHR getDeviceFaultDebugInfo) const {
-    for (uint32_t i = 0; i < DEVICE_FAULT_QUERY_MAX_NUM; i++) {
-        VkDeviceFaultDebugInfoKHR debugInfo = {VK_STRUCTURE_TYPE_DEVICE_FAULT_DEBUG_INFO_KHR};
-        VkResult vkResult = getDeviceFaultDebugInfo(device, &debugInfo);
-        if (vkResult < 0)
-            return GetResultFromVkResult(vkResult);
-        if (debugInfo.vendorBinarySize == 0)
-            return Result::SUCCESS;
-
-        Scratch<uint8_t> vendorBinary = NRI_ALLOCATE_SCRATCH(*this, uint8_t, debugInfo.vendorBinarySize);
-        if (!vendorBinary)
-            return Result::OUT_OF_MEMORY;
-
-        debugInfo.pVendorBinaryData = vendorBinary;
-        vkResult = getDeviceFaultDebugInfo(device, &debugInfo);
-        if (vkResult == VK_INCOMPLETE)
-            continue;
-        if (vkResult < 0)
-            return GetResultFromVkResult(vkResult);
-
-        m_CallbackInterface.DeviceFaultDataCallback(vendorBinary, debugInfo.vendorBinarySize, m_CallbackInterface.userArg);
-        NRI_REPORT_DEVICE_FAULT_INFO(*this, "[VK][DeviceFault] vendorBinarySize=%u", debugInfo.vendorBinarySize);
+    if (m_IsDeviceFaultInfoReported) {
+        deviceFaultDump.data = m_DeviceFaultDumpSize ? m_DeviceFaultDump : nullptr;
+        deviceFaultDump.size = m_DeviceFaultDumpSize;
+        m_DeviceFaultLock.Release();
 
         return Result::SUCCESS;
     }
 
-    NRI_REPORT_WARNING(this, "Vendor binary changed during %u consecutive queries", DEVICE_FAULT_QUERY_MAX_NUM);
+    VkDeviceFaultCountsEXT faultCounts = {VK_STRUCTURE_TYPE_DEVICE_FAULT_COUNTS_EXT};
+    VkResult vkResult = m_VK.GetDeviceFaultInfoEXT(m_Device, &faultCounts, nullptr);
+    if (vkResult < 0) {
+        m_DeviceFaultLock.Release();
 
-    return Result::FAILURE;
-}
+        return GetResultFromVkResult(vkResult);
+    }
 
-Result DeviceVK::ReportDeviceFaultInfo() const {
-    VkDevice nativeDevice = (VkDevice)*this;
-    PFN_vkGetDeviceProcAddr getDeviceProcAddr = GetDispatchTable().GetDeviceProcAddr;
-    if (!getDeviceProcAddr)
-        return Result::UNSUPPORTED;
+    if (faultCounts.vendorBinarySize > SIZE_MAX) {
+        m_DeviceFaultLock.Release();
 
-    PFN_vkGetDeviceFaultReportsKHR getDeviceFaultReports = (PFN_vkGetDeviceFaultReportsKHR)getDeviceProcAddr(nativeDevice, "vkGetDeviceFaultReportsKHR");
-    if (!getDeviceFaultReports)
-        return Result::UNSUPPORTED;
+        return Result::OUT_OF_MEMORY;
+    }
 
-    VkResult vkResult = VK_SUCCESS;
-    uint32_t reportIndex = 0;
-    bool deviceLost = false;
-    for (uint32_t batchIndex = 0; batchIndex < DEVICE_FAULT_QUERY_MAX_NUM; batchIndex++) {
-        uint32_t faultReportNum = 0;
-        vkResult = getDeviceFaultReports(nativeDevice, 0, &faultReportNum, nullptr);
-        if (vkResult == VK_TIMEOUT)
-            break;
-        if (vkResult < 0)
-            return GetResultFromVkResult(vkResult);
-        if (faultReportNum == 0)
-            break;
+    Scratch<VkDeviceFaultAddressInfoEXT> addressInfos = NRI_ALLOCATE_SCRATCH(*this, VkDeviceFaultAddressInfoEXT, faultCounts.addressInfoCount);
+    Scratch<VkDeviceFaultVendorInfoEXT> vendorInfos = NRI_ALLOCATE_SCRATCH(*this, VkDeviceFaultVendorInfoEXT, faultCounts.vendorInfoCount);
+    if ((faultCounts.addressInfoCount && !addressInfos) || (faultCounts.vendorInfoCount && !vendorInfos)) {
+        m_DeviceFaultLock.Release();
 
-        Scratch<VkDeviceFaultInfoKHR> faultReports = NRI_ALLOCATE_SCRATCH(*this, VkDeviceFaultInfoKHR, faultReportNum);
-        if (!faultReports)
+        return Result::OUT_OF_MEMORY;
+    }
+
+    if (!m_IsSupported.deviceFaultVendorBinary)
+        faultCounts.vendorBinarySize = 0;
+
+    const AllocationCallbacks& allocationCallbacks = GetAllocationCallbacks();
+    uint8_t* deviceFaultData = nullptr;
+    if (faultCounts.vendorBinarySize) {
+        deviceFaultData = (uint8_t*)allocationCallbacks.Allocate(allocationCallbacks.userArg, (size_t)faultCounts.vendorBinarySize, alignof(uint8_t));
+        if (!deviceFaultData) {
+            m_DeviceFaultLock.Release();
+
             return Result::OUT_OF_MEMORY;
-
-        for (uint32_t i = 0; i < faultReportNum; i++)
-            faultReports[i] = {VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_KHR};
-
-        vkResult = getDeviceFaultReports(nativeDevice, 0, &faultReportNum, faultReports);
-        if (vkResult == VK_TIMEOUT)
-            break;
-        if (vkResult < 0)
-            return GetResultFromVkResult(vkResult);
-
-        for (uint32_t i = 0; i < faultReportNum; i++) {
-            deviceLost |= ReportDeviceFault(faultReports[i], reportIndex);
-            reportIndex++;
         }
-
-        if (vkResult != VK_INCOMPLETE)
-            break;
     }
 
-    if (reportIndex == 0)
-        return Result::FAILURE;
+    VkDeviceFaultInfoEXT faultInfo = {VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_EXT};
+    faultInfo.pAddressInfos = addressInfos;
+    faultInfo.pVendorInfos = vendorInfos;
+    faultInfo.pVendorBinaryData = deviceFaultData;
 
-    NRI_REPORT_DEVICE_FAULT_INFO(*this, "[VK][DeviceFault] reportCount=%u", reportIndex);
+    vkResult = m_VK.GetDeviceFaultInfoEXT(m_Device, &faultCounts, &faultInfo);
+    if (vkResult < 0) {
+        if (deviceFaultData)
+            allocationCallbacks.Free(allocationCallbacks.userArg, deviceFaultData);
 
-    Result result = Result::SUCCESS;
+        m_DeviceFaultLock.Release();
+
+        return GetResultFromVkResult(vkResult);
+    }
+
     if (vkResult == VK_INCOMPLETE) {
-        NRI_REPORT_WARNING(this, "Stopped after %u consecutive fault report batches", DEVICE_FAULT_QUERY_MAX_NUM);
-        result = Result::FAILURE;
+        if (deviceFaultData)
+            allocationCallbacks.Free(allocationCallbacks.userArg, deviceFaultData);
+
+        m_DeviceFaultLock.Release();
+
+        NRI_REPORT_WARNING(this, "Device fault data is incomplete");
+
+        return Result::FAILURE;
     }
 
-    if (deviceLost && m_IsDeviceFaultVendorBinaryEnabled) {
-        PFN_vkGetDeviceFaultDebugInfoKHR getDeviceFaultDebugInfo = (PFN_vkGetDeviceFaultDebugInfoKHR)getDeviceProcAddr(nativeDevice, "vkGetDeviceFaultDebugInfoKHR");
-        if (!getDeviceFaultDebugInfo)
-            return Result::UNSUPPORTED;
-
-        Result vendorBinaryResult = ReportDeviceFaultVendorBinary(nativeDevice, getDeviceFaultDebugInfo);
-        if (vendorBinaryResult != Result::SUCCESS)
-            return vendorBinaryResult;
+    if (!faultCounts.vendorBinarySize && deviceFaultData) {
+        allocationCallbacks.Free(allocationCallbacks.userArg, deviceFaultData);
+        deviceFaultData = nullptr;
     }
 
-    return result;
+    m_DeviceFaultDump = deviceFaultData;
+    m_DeviceFaultDumpSize = (size_t)faultCounts.vendorBinarySize;
+    m_IsDeviceFaultInfoReported = true;
+    deviceFaultDump.data = m_DeviceFaultDump;
+    deviceFaultDump.size = m_DeviceFaultDumpSize;
+    m_DeviceFaultLock.Release();
+
+    NRI_REPORT_DEVICE_FAULT_INFO(*this,
+        "[VK][DeviceFault] description=%s addressInfoCount=%u vendorInfoCount=%u",
+        faultInfo.description,
+        faultCounts.addressInfoCount,
+        faultCounts.vendorInfoCount);
+
+    for (uint32_t i = 0; i < faultCounts.addressInfoCount; i++) {
+        const VkDeviceFaultAddressInfoEXT& addressInfo = addressInfos[i];
+        NRI_REPORT_DEVICE_FAULT_INFO(*this,
+            "[VK][DeviceFault]   Address[%u]: type=%s address=0x%016" PRIX64 " precision=0x%016" PRIX64,
+            i,
+            GetDeviceFaultAddressTypeName(addressInfo.addressType),
+            addressInfo.reportedAddress,
+            addressInfo.addressPrecision);
+    }
+
+    for (uint32_t i = 0; i < faultCounts.vendorInfoCount; i++) {
+        const VkDeviceFaultVendorInfoEXT& vendorInfo = vendorInfos[i];
+        NRI_REPORT_DEVICE_FAULT_INFO(*this,
+            "[VK][DeviceFault]   VendorInfo[%u]: code=0x%016" PRIX64 " data=0x%016" PRIX64 " description=%s",
+            i,
+            vendorInfo.vendorFaultCode,
+            vendorInfo.vendorFaultData,
+            vendorInfo.description);
+    }
+
+    if (faultCounts.vendorBinarySize)
+        NRI_REPORT_DEVICE_FAULT_INFO(*this, "[VK][DeviceFault] vendorBinarySize=%" PRIu64, faultCounts.vendorBinarySize);
+
+    return Result::SUCCESS;
 }
 
 void DeviceVK::Destruct() {

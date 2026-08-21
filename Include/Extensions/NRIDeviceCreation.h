@@ -20,6 +20,11 @@ NriEnum(DeviceFaultInfoLevel, uint8_t,
     VERBOSE  // D3D12: additionally enables DRED breadcrumb contexts
 );
 
+NriStruct(DeviceFaultDump) {
+    NriOptional const void* data; // opaque backend-specific binary data, NRI-owned and valid until device destruction
+    uint64_t size;                // bytes, 0 if "data" is NULL
+};
+
 // Callbacks must be thread safe
 NriStruct(AllocationCallbacks) {
     void* (NRI_CALL *Allocate)(void* userArg, size_t size, size_t alignment);
@@ -33,7 +38,6 @@ NriStruct(CallbackInterface) {
     void (NRI_CALL *MessageCallback)(Nri(Message) messageType, const char* file, uint32_t line, const char* message, void* userArg);
     NriOptional void (NRI_CALL *AbortExecution)(void* userArg); // break on "Message::ERROR" if provided
     NriOptional void* userArg;
-    NriOptional void (NRI_CALL *DeviceFaultDataCallback)(const void* data, uint32_t size, void* userArg); // VK only: vendor crash dump, "data" is valid only for the duration of the callback
 };
 
 // Use largest offset for the resource type planned to be used as an unbounded array
@@ -61,7 +65,11 @@ NriStruct(QueueFamilyDesc) {
 NriStruct(DeviceCreationDesc) {
     Nri(GraphicsAPI) graphicsAPI;
     NriOptional Nri(Robustness) robustness;
-    NriOptional Nri(DeviceFaultInfoLevel) deviceFaultInfoLevel; // enables backend-supported device fault diagnostics
+    // D3D12 DRED settings are process-global: BASIC/VERBOSE affect all subsequently created D3D12 devices
+    // in the process, including non-NRI devices; settings persist after device destruction
+    // NONE leaves the current settings unchanged
+    // Concurrent D3D12 device creation with different levels requires external synchronization
+    NriOptional Nri(DeviceFaultInfoLevel) deviceFaultInfoLevel;
     NriOptional const NriPtr(AdapterDesc) adapterDesc;
     NriOptional Nri(CallbackInterface) callbackInterface;
     NriOptional Nri(AllocationCallbacks) allocationCallbacks;
@@ -100,7 +108,12 @@ NRI_API void NRI_CALL nriDestroyDevice(NriPtr(Device) device);
 // It's global state for D3D, not needed for VK because validation is tied to the logical device
 NRI_API void NRI_CALL nriReportLiveObjects();
 
-// Reports backend-specific device fault diagnostics through "CallbackInterface".
-NRI_API Nri(Result) NRI_CALL nriReportDeviceFaultInfo(const NriRef(Device) device);
+// Reports backend-specific device fault diagnostics through "CallbackInterface" and returns an optional binary dump
+// Call only after an NRI or graphics API operation reports device loss (required by Vulkan)
+// SUCCESS means the query completed; "deviceFaultDump" can still be empty
+// UNSUPPORTED means diagnostics are unavailable for the device
+// Repeated and concurrent calls are allowed; a backend can cache the dump and suppress duplicate messages
+// Wrapped Vulkan devices are unsupported; currently, only NRI-created Vulkan devices can return a non-empty dump
+NRI_API Nri(Result) NRI_CALL nriReportDeviceFaultInfo(NriRef(Device) device, NriOut NriRef(DeviceFaultDump) deviceFaultDump);
 
 NriNamespaceEnd

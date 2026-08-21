@@ -64,7 +64,6 @@ struct TransferContextVK;
 
 constexpr uint32_t INVALID_FAMILY_INDEX = uint32_t(-1);
 constexpr uint32_t RENDER_PASS_UNUSED_ATTACHMENT = uint32_t(-1);
-constexpr uint32_t DEVICE_FAULT_QUERY_MAX_NUM = 16;
 
 struct MemoryTypeInfo {
     MemoryTypeIndex index;

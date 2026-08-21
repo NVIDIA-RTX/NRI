@@ -104,6 +104,8 @@ struct FramebufferCacheEntry {
 
 struct IsSupported {
     uint32_t deviceAddress                : 1;
+    uint32_t deviceFault                  : 1;
+    uint32_t deviceFaultVendorBinary      : 1;
     uint32_t dynamicRendering             : 1;
     uint32_t copyCommands2                : 1;
     uint32_t swapChainMutableFormat       : 1;
@@ -232,7 +234,7 @@ struct DeviceVK final : public DeviceBase {
     }
 
     void Destruct() override;
-    Result ReportDeviceFaultInfo() const override;
+    Result ReportDeviceFaultInfo(DeviceFaultDump& deviceFaultDump) override;
     Result FillFunctionTable(CoreInterface& table) const override;
     Result FillFunctionTable(HelperInterface& table) const override;
     Result FillFunctionTable(LowLatencyInterface& table) const override;
@@ -265,9 +267,6 @@ struct DeviceVK final : public DeviceBase {
     FormatSupportBits GetFormatSupport(Format format) const;
 
 private:
-    void ReportDeviceFaultAddressInfo(const char* name, const VkDeviceFaultAddressInfoKHR& addressInfo) const;
-    bool ReportDeviceFault(const VkDeviceFaultInfoKHR& faultInfo, uint32_t index) const;
-    Result ReportDeviceFaultVendorBinary(VkDevice device, PFN_vkGetDeviceFaultDebugInfoKHR getDeviceFaultDebugInfo) const;
     HostCopyLayoutVK GetHostCopyLayout(const TextureVK& texture, const TextureRegionDesc& region, uint64_t& offset) const;
     Result AcquireTransferContext(QueueVK& queue, TransferContextVK*& context);
     void ReleaseTransferContext(TransferContextVK& context);
@@ -309,12 +308,15 @@ private:
     uint32_t m_NumActiveFamilyIndices = 0;
     uint32_t m_MinorVersion = 0;
     uint64_t m_NonCoherentAtomSize = 1;
+    uint8_t* m_DeviceFaultDump = nullptr;
+    size_t m_DeviceFaultDumpSize = 0;
     bool m_OwnsNativeObjects = true;
     bool m_IsMemoryZeroInitializationEnabled = false;
-    bool m_IsDeviceFaultVendorBinaryEnabled = false;
+    bool m_IsDeviceFaultInfoReported = false;
 
     Lock m_Lock;
     Lock m_TransferContextLock;
+    Lock m_DeviceFaultLock;
 };
 
 } // namespace nri

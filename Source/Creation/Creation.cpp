@@ -18,7 +18,6 @@
 
 #if NRI_ENABLE_D3D12_SUPPORT
 #    include <d3d12.h>
-#    include <d3d12sdklayers.h>
 #    include <dxgidebug.h>
 #endif
 
@@ -146,38 +145,6 @@ static void CheckAndSetDefaultCallbacks(DeviceCreationDesc& deviceCreationDesc) 
         deviceCreationDesc.allocationCallbacks.Reallocate = AlignedRealloc;
         deviceCreationDesc.allocationCallbacks.Free = AlignedFree;
     }
-}
-
-static void EnableDeviceFaultInfo(const DeviceCreationDesc& deviceCreationDesc) {
-    Result result = Result::UNSUPPORTED;
-
-#if NRI_ENABLE_D3D12_SUPPORT
-    if (deviceCreationDesc.graphicsAPI == GraphicsAPI::D3D12) {
-        ComPtr<ID3D12DeviceRemovedExtendedDataSettings> dredSettings;
-        HRESULT hr = D3D12GetDebugInterface(IID_PPV_ARGS(&dredSettings));
-
-        if (SUCCEEDED(hr)) {
-            ComPtr<ID3D12DeviceRemovedExtendedDataSettings1> dredSettings1;
-            if (deviceCreationDesc.deviceFaultInfoLevel == DeviceFaultInfoLevel::VERBOSE)
-                hr = dredSettings->QueryInterface(IID_PPV_ARGS(&dredSettings1));
-
-            dredSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
-            dredSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
-            if (dredSettings1)
-                dredSettings1->SetBreadcrumbContextEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
-
-            result = Result::SUCCESS;
-        }
-    }
-#endif
-
-#if NRI_ENABLE_VK_SUPPORT
-    if (deviceCreationDesc.graphicsAPI == GraphicsAPI::VK)
-        result = Result::SUCCESS;
-#endif
-
-    if (result != Result::SUCCESS)
-        deviceCreationDesc.callbackInterface.MessageCallback(Message::WARNING, __FILE__, __LINE__, "'deviceCreationDesc.deviceFaultInfoLevel' is unsupported", deviceCreationDesc.callbackInterface.userArg);
 }
 
 static int SortAdapters(const void* pa, const void* pb) {
@@ -838,9 +805,6 @@ NRI_API Result NRI_CALL nriCreateDevice(const DeviceCreationDesc& deviceCreation
     DeviceCreationDesc modifiedDeviceCreationDesc = deviceCreationDesc;
     CheckAndSetDefaultCallbacks(modifiedDeviceCreationDesc);
 
-    if (modifiedDeviceCreationDesc.deviceFaultInfoLevel != DeviceFaultInfoLevel::NONE)
-        EnableDeviceFaultInfo(modifiedDeviceCreationDesc);
-
     // Valid adapter expected (take 1st compatible)
     uint32_t adapterDescNum = ADAPTER_MAX_NUM;
     std::array<AdapterDesc, ADAPTER_MAX_NUM> adapterDescs = {};
@@ -1185,6 +1149,6 @@ NRI_API void NRI_CALL nriReportLiveObjects() {
 #endif
 }
 
-NRI_API Result NRI_CALL nriReportDeviceFaultInfo(const Device& device) {
-    return ((const DeviceBase&)device).ReportDeviceFaultInfo();
+NRI_API Result NRI_CALL nriReportDeviceFaultInfo(Device& device, DeviceFaultDump& deviceFaultDump) {
+    return ((DeviceBase&)device).ReportDeviceFaultInfo(deviceFaultDump);
 }

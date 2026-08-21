@@ -212,6 +212,8 @@ struct DispatchTable {
     VK_FUNC(CmdTraceRaysIndirect2KHR);                    // - | +
                                                           // VK_EXT_calibrated_timestamps
     VK_FUNC(GetCalibratedTimestampsEXT);                  // + | +
+                                                          // VK_EXT_device_fault
+    VK_FUNC(GetDeviceFaultInfoEXT);                       // + | +
                                                           // VK_EXT_opacity_micromap
     VK_FUNC(CreateMicromapEXT);                           // + | +
     VK_FUNC(DestroyMicromapEXT);                          // - | +

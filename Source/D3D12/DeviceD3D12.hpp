@@ -100,17 +100,73 @@ static inline const char* GetDredBreadcrumbOpName(D3D12_AUTO_BREADCRUMB_OP op) {
             return "BeginSubmission";
         case D3D12_AUTO_BREADCRUMB_OP_ENDSUBMISSION:
             return "EndSubmission";
+        case D3D12_AUTO_BREADCRUMB_OP_DECODEFRAME:
+            return "DecodeFrame";
+        case D3D12_AUTO_BREADCRUMB_OP_PROCESSFRAMES:
+            return "ProcessFrames";
+        case D3D12_AUTO_BREADCRUMB_OP_ATOMICCOPYBUFFERUINT:
+            return "AtomicCopyBufferUint";
+        case D3D12_AUTO_BREADCRUMB_OP_ATOMICCOPYBUFFERUINT64:
+            return "AtomicCopyBufferUint64";
+        case D3D12_AUTO_BREADCRUMB_OP_RESOLVESUBRESOURCEREGION:
+            return "ResolveSubresourceRegion";
+        case D3D12_AUTO_BREADCRUMB_OP_WRITEBUFFERIMMEDIATE:
+            return "WriteBufferImmediate";
+        case D3D12_AUTO_BREADCRUMB_OP_DECODEFRAME1:
+            return "DecodeFrame1";
+        case D3D12_AUTO_BREADCRUMB_OP_SETPROTECTEDRESOURCESESSION:
+            return "SetProtectedResourceSession";
+        case D3D12_AUTO_BREADCRUMB_OP_DECODEFRAME2:
+            return "DecodeFrame2";
+        case D3D12_AUTO_BREADCRUMB_OP_PROCESSFRAMES1:
+            return "ProcessFrames1";
         case D3D12_AUTO_BREADCRUMB_OP_BUILDRAYTRACINGACCELERATIONSTRUCTURE:
             return "BuildRayTracingAccelerationStructure";
+        case D3D12_AUTO_BREADCRUMB_OP_EMITRAYTRACINGACCELERATIONSTRUCTUREPOSTBUILDINFO:
+            return "EmitRayTracingAccelerationStructurePostbuildInfo";
+        case D3D12_AUTO_BREADCRUMB_OP_COPYRAYTRACINGACCELERATIONSTRUCTURE:
+            return "CopyRayTracingAccelerationStructure";
         case D3D12_AUTO_BREADCRUMB_OP_DISPATCHRAYS:
             return "DispatchRays";
+        case D3D12_AUTO_BREADCRUMB_OP_INITIALIZEMETACOMMAND:
+            return "InitializeMetaCommand";
+        case D3D12_AUTO_BREADCRUMB_OP_EXECUTEMETACOMMAND:
+            return "ExecuteMetaCommand";
+        case D3D12_AUTO_BREADCRUMB_OP_ESTIMATEMOTION:
+            return "EstimateMotion";
+        case D3D12_AUTO_BREADCRUMB_OP_RESOLVEMOTIONVECTORHEAP:
+            return "ResolveMotionVectorHeap";
+        case D3D12_AUTO_BREADCRUMB_OP_SETPIPELINESTATE1:
+            return "SetPipelineState1";
+        case D3D12_AUTO_BREADCRUMB_OP_INITIALIZEEXTENSIONCOMMAND:
+            return "InitializeExtensionCommand";
+        case D3D12_AUTO_BREADCRUMB_OP_EXECUTEEXTENSIONCOMMAND:
+            return "ExecuteExtensionCommand";
         case D3D12_AUTO_BREADCRUMB_OP_DISPATCHMESH:
             return "DispatchMesh";
+        case D3D12_AUTO_BREADCRUMB_OP_ENCODEFRAME:
+            return "EncodeFrame";
+        case D3D12_AUTO_BREADCRUMB_OP_RESOLVEENCODEROUTPUTMETADATA:
+            return "ResolveEncoderOutputMetadata";
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
         case D3D12_AUTO_BREADCRUMB_OP_BARRIER:
             return "Barrier";
         case D3D12_AUTO_BREADCRUMB_OP_BEGIN_COMMAND_LIST:
             return "BeginCommandList";
+        case D3D12_AUTO_BREADCRUMB_OP_DISPATCHGRAPH:
+            return "DispatchGraph";
+        case D3D12_AUTO_BREADCRUMB_OP_SETPROGRAM:
+            return "SetProgram";
+        case D3D12_AUTO_BREADCRUMB_OP_ENCODEFRAME1:
+            return "EncodeFrame1";
+        case D3D12_AUTO_BREADCRUMB_OP_RESOLVEENCODEROUTPUTMETADATA1:
+            return "ResolveEncoderOutputMetadata1";
+        case D3D12_AUTO_BREADCRUMB_OP_RESOLVEINPUTPARAMLAYOUT:
+            return "ResolveInputParamLayout";
+        case D3D12_AUTO_BREADCRUMB_OP_PROCESSFRAMES2:
+            return "ProcessFrames2";
+        case D3D12_AUTO_BREADCRUMB_OP_SET_WORK_GRAPH_MAXIMUM_GPU_INPUT_RECORDS:
+            return "SetWorkGraphMaximumGpuInputRecords";
 #endif
         default:
             return "Unknown";
@@ -296,6 +352,27 @@ Result DeviceD3D12::Create(const DeviceCreationDesc& desc, const DeviceCreationD
         InitializeNvExt(descD3D12.disableNVAPIInitialization, descD3D12.d3d12Device != nullptr);
     else if (m_Desc.adapterDesc.vendor == Vendor::AMD)
         InitializeAmdExt(descD3D12.agsContext, descD3D12.d3d12Device != nullptr);
+
+    if (desc.deviceFaultInfoLevel != DeviceFaultInfoLevel::NONE) {
+        ComPtr<ID3D12DeviceRemovedExtendedDataSettings> dredSettings;
+        HRESULT hr = D3D12GetDebugInterface(IID_PPV_ARGS(&dredSettings));
+        if (FAILED(hr) || !dredSettings)
+            NRI_REPORT_WARNING(this, "DRED is not supported, device fault diagnostics disabled");
+        else {
+            dredSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+            dredSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+
+            ComPtr<ID3D12DeviceRemovedExtendedDataSettings1> dredSettings1;
+            hr = dredSettings->QueryInterface(IID_PPV_ARGS(&dredSettings1));
+            if (SUCCEEDED(hr) && dredSettings1) {
+                D3D12_DRED_ENABLEMENT contextEnablement = D3D12_DRED_ENABLEMENT_SYSTEM_CONTROLLED;
+                if (desc.deviceFaultInfoLevel == DeviceFaultInfoLevel::VERBOSE)
+                    contextEnablement = D3D12_DRED_ENABLEMENT_FORCED_ON;
+                dredSettings1->SetBreadcrumbContextEnablement(contextEnablement);
+            } else if (desc.deviceFaultInfoLevel == DeviceFaultInfoLevel::VERBOSE)
+                NRI_REPORT_WARNING(this, "DRED breadcrumb contexts are not supported, using BASIC device fault diagnostics");
+        }
+    }
 
     // Device
     ComPtr<ID3D12Device> deviceTemp = (ID3D12Device*)descD3D12.d3d12Device;
@@ -1600,7 +1677,7 @@ ID3D12CommandSignature* DeviceD3D12::GetDispatchCommandSignature() const {
 
 void DeviceD3D12::ReportDredAllocationList(const char* listName, const D3D12_DRED_ALLOCATION_NODE1* head) const {
     uint32_t index = 0;
-    for (const D3D12_DRED_ALLOCATION_NODE1* node = head; node && index < DRED_NODE_MAX_NUM; node = node->pNext, index++) {
+    for (const D3D12_DRED_ALLOCATION_NODE1* node = head; node; node = node->pNext, index++) {
         char allocationName[NRI_MAX_MESSAGE_LENGTH];
         NRI_REPORT_DEVICE_FAULT_INFO(*this, "[D3D12][DRED] %s[%u]: type=%u name=%s", listName, index, (uint32_t)node->AllocationType, GetDredObjectName(node->ObjectNameA, node->ObjectNameW, allocationName, sizeof(allocationName)));
     }
@@ -1608,7 +1685,7 @@ void DeviceD3D12::ReportDredAllocationList(const char* listName, const D3D12_DRE
 
 void DeviceD3D12::ReportDredBreadcrumbs(const D3D12_AUTO_BREADCRUMB_NODE1* head) const {
     uint32_t nodeIndex = 0;
-    for (const D3D12_AUTO_BREADCRUMB_NODE1* node = head; node && nodeIndex < DRED_NODE_MAX_NUM; node = node->pNext, nodeIndex++) {
+    for (const D3D12_AUTO_BREADCRUMB_NODE1* node = head; node; node = node->pNext, nodeIndex++) {
         uint32_t completedBreadcrumb = node->pLastBreadcrumbValue ? *node->pLastBreadcrumbValue : 0;
         char queueName[NRI_MAX_MESSAGE_LENGTH];
         char commandListName[NRI_MAX_MESSAGE_LENGTH];
@@ -1623,14 +1700,16 @@ void DeviceD3D12::ReportDredBreadcrumbs(const D3D12_AUTO_BREADCRUMB_NODE1* head)
         if (!node->pCommandHistory || node->BreadcrumbCount == 0)
             continue;
 
+        uint32_t firstRetainedBreadcrumb = node->BreadcrumbCount > DRED_BREADCRUMB_HISTORY_MAX_NUM ? node->BreadcrumbCount - DRED_BREADCRUMB_HISTORY_MAX_NUM : 0;
         uint32_t start = completedBreadcrumb > DRED_BREADCRUMB_RADIUS ? completedBreadcrumb - DRED_BREADCRUMB_RADIUS : 0;
-        uint32_t end = node->BreadcrumbCount < completedBreadcrumb + DRED_BREADCRUMB_RADIUS + 1 ? node->BreadcrumbCount : completedBreadcrumb + DRED_BREADCRUMB_RADIUS + 1;
+        start = std::max(start, firstRetainedBreadcrumb);
+        uint32_t end = (uint32_t)std::min<uint64_t>(node->BreadcrumbCount, (uint64_t)completedBreadcrumb + DRED_BREADCRUMB_RADIUS + 1);
         for (uint32_t breadcrumbIndex = start; breadcrumbIndex < end; breadcrumbIndex++)
             NRI_REPORT_DEVICE_FAULT_INFO(*this,
                 "[D3D12][DRED]   op[%u]%s %s",
                 breadcrumbIndex,
                 (completedBreadcrumb != 0 && breadcrumbIndex == completedBreadcrumb - 1) ? " <- last completed" : "",
-                GetDredBreadcrumbOpName(node->pCommandHistory[breadcrumbIndex]));
+                GetDredBreadcrumbOpName(node->pCommandHistory[breadcrumbIndex % DRED_BREADCRUMB_HISTORY_MAX_NUM]));
 
         for (uint32_t contextIndex = 0; contextIndex < node->BreadcrumbContextsCount; contextIndex++) {
             const D3D12_DRED_BREADCRUMB_CONTEXT& context = node->pBreadcrumbContexts[contextIndex];
@@ -1649,15 +1728,21 @@ void DeviceD3D12::ReportDredBreadcrumbs(const D3D12_AUTO_BREADCRUMB_NODE1* head)
 }
 
 void DeviceD3D12::ReportDeviceRemovedExtendedData(ID3D12Device* nativeDevice) const {
+    ComPtr<ID3D12DeviceRemovedExtendedData1> dred1;
+    if (FAILED(nativeDevice->QueryInterface(IID_PPV_ARGS(&dred1))) || !dred1)
+        return;
+
     ComPtr<ID3D12DeviceRemovedExtendedData2> dred2;
     if (SUCCEEDED(nativeDevice->QueryInterface(IID_PPV_ARGS(&dred2))) && dred2) {
         D3D12_DRED_DEVICE_STATE deviceState = dred2->GetDeviceState();
         NRI_REPORT_DEVICE_FAULT_INFO(*this, "[D3D12][DRED] Device state: %s", GetDredDeviceStateName(deviceState));
+    }
 
-        D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 breadcrumbs = {};
-        if (SUCCEEDED(dred2->GetAutoBreadcrumbsOutput1(&breadcrumbs)))
-            ReportDredBreadcrumbs(breadcrumbs.pHeadAutoBreadcrumbNode);
+    D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 breadcrumbs = {};
+    if (SUCCEEDED(dred1->GetAutoBreadcrumbsOutput1(&breadcrumbs)))
+        ReportDredBreadcrumbs(breadcrumbs.pHeadAutoBreadcrumbNode);
 
+    if (dred2) {
         D3D12_DRED_PAGE_FAULT_OUTPUT2 pageFault = {};
         if (SUCCEEDED(dred2->GetPageFaultAllocationOutput2(&pageFault))) {
             NRI_REPORT_DEVICE_FAULT_INFO(*this, "[D3D12][DRED] PageFaultVA=0x%016llX flags=%u", (unsigned long long)pageFault.PageFaultVA, (uint32_t)pageFault.PageFaultFlags);
@@ -1668,26 +1753,23 @@ void DeviceD3D12::ReportDeviceRemovedExtendedData(ID3D12Device* nativeDevice) co
         return;
     }
 
-    ComPtr<ID3D12DeviceRemovedExtendedData1> dred1;
-    if (SUCCEEDED(nativeDevice->QueryInterface(IID_PPV_ARGS(&dred1))) && dred1) {
-        D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 breadcrumbs = {};
-        if (SUCCEEDED(dred1->GetAutoBreadcrumbsOutput1(&breadcrumbs)))
-            ReportDredBreadcrumbs(breadcrumbs.pHeadAutoBreadcrumbNode);
-
-        D3D12_DRED_PAGE_FAULT_OUTPUT1 pageFault = {};
-        if (SUCCEEDED(dred1->GetPageFaultAllocationOutput1(&pageFault))) {
-            NRI_REPORT_DEVICE_FAULT_INFO(*this, "[D3D12][DRED] PageFaultVA=0x%016llX", (unsigned long long)pageFault.PageFaultVA);
-            ReportDredAllocationList("ExistingAllocation", pageFault.pHeadExistingAllocationNode);
-            ReportDredAllocationList("RecentFreedAllocation", pageFault.pHeadRecentFreedAllocationNode);
-        }
+    D3D12_DRED_PAGE_FAULT_OUTPUT1 pageFault = {};
+    if (SUCCEEDED(dred1->GetPageFaultAllocationOutput1(&pageFault))) {
+        NRI_REPORT_DEVICE_FAULT_INFO(*this, "[D3D12][DRED] PageFaultVA=0x%016llX", (unsigned long long)pageFault.PageFaultVA);
+        ReportDredAllocationList("ExistingAllocation", pageFault.pHeadExistingAllocationNode);
+        ReportDredAllocationList("RecentFreedAllocation", pageFault.pHeadRecentFreedAllocationNode);
     }
 }
 
-Result DeviceD3D12::ReportDeviceFaultInfo() const {
+Result DeviceD3D12::ReportDeviceFaultInfo(DeviceFaultDump& deviceFaultDump) {
+    deviceFaultDump = {};
+
     ID3D12Device* nativeDevice = GetNativeObject();
     HRESULT deviceRemovedReason = nativeDevice->GetDeviceRemovedReason();
-    NRI_REPORT_DEVICE_FAULT_INFO(*this, "[D3D12] GetDeviceRemovedReason: 0x%08X, result=%u", (uint32_t)deviceRemovedReason, (uint32_t)GetResultFromHRESULT(deviceRemovedReason));
-    ReportDeviceRemovedExtendedData(nativeDevice);
+    if (deviceRemovedReason != S_OK) {
+        NRI_REPORT_DEVICE_FAULT_INFO(*this, "[D3D12] GetDeviceRemovedReason: 0x%08X, result=%d", (uint32_t)deviceRemovedReason, (int32_t)GetResultFromHRESULT(deviceRemovedReason));
+        ReportDeviceRemovedExtendedData(nativeDevice);
+    }
 
     return Result::SUCCESS;
 }

@@ -130,7 +130,7 @@ struct DeviceD3D12 final : public DeviceBase {
     }
 
     void Destruct() override;
-    Result ReportDeviceFaultInfo() const override;
+    Result ReportDeviceFaultInfo(DeviceFaultDump& deviceFaultDump) override;
     Result FillFunctionTable(CoreInterface& table) const override;
     Result FillFunctionTable(HelperInterface& table) const override;
     Result FillFunctionTable(LowLatencyInterface& table) const override;
