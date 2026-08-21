@@ -97,6 +97,10 @@ struct DeviceVal final : public DeviceBase {
         return ((DeviceBase&)m_Impl).GetDesc();
     }
 
+    Result ReportDeviceFaultInfo() const override {
+        return ((const DeviceBase&)m_Impl).ReportDeviceFaultInfo();
+    }
+
     void Destruct() override;
     Result FillFunctionTable(CoreInterface& table) const override;
     Result FillFunctionTable(HelperInterface& table) const override;

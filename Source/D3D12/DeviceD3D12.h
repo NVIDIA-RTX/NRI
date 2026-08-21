@@ -130,6 +130,7 @@ struct DeviceD3D12 final : public DeviceBase {
     }
 
     void Destruct() override;
+    Result ReportDeviceFaultInfo() const override;
     Result FillFunctionTable(CoreInterface& table) const override;
     Result FillFunctionTable(HelperInterface& table) const override;
     Result FillFunctionTable(LowLatencyInterface& table) const override;
@@ -159,6 +160,9 @@ struct DeviceD3D12 final : public DeviceBase {
     FormatSupportBits GetFormatSupport(Format format) const;
 
 private:
+    void ReportDredAllocationList(const char* listName, const D3D12_DRED_ALLOCATION_NODE1* head) const;
+    void ReportDredBreadcrumbs(const D3D12_AUTO_BREADCRUMB_NODE1* head) const;
+    void ReportDeviceRemovedExtendedData(ID3D12Device* nativeDevice) const;
     HostCopyLayoutD3D12 GetHostCopyLayout(const TextureD3D12& texture, const TextureRegionDesc& region, uint64_t& offset) const;
     Result AcquireTransferContext(QueueD3D12& queue, TransferContextD3D12*& context);
     void ReleaseTransferContext(TransferContextD3D12& context);

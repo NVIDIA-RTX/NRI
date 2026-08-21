@@ -42,8 +42,6 @@ Result CreateDeviceVK(const DeviceCreationDesc& deviceCreationDesc, const Device
 Result CreateDeviceWGPU(const DeviceCreationDesc& deviceCreationDesc, DeviceBase*& device);
 DeviceBase* CreateDeviceValidation(const DeviceCreationDesc& deviceCreationDesc, DeviceBase& device);
 Result EnableD3D12DeviceFaultInfo(DeviceFaultInfoLevel level);
-Result ReportDeviceFaultInfoD3D12(const Device& device, const DeviceBase& deviceBase);
-Result ReportDeviceFaultInfoVK(const Device& device, const DeviceBase& deviceBase);
 
 constexpr uint64_t Hash(const char* name) {
     return *name != 0 ? *name ^ (33 * Hash(name + 1)) : 5381;
@@ -1183,18 +1181,5 @@ NRI_API void NRI_CALL nriReportLiveObjects() {
 }
 
 NRI_API Result NRI_CALL nriReportDeviceFaultInfo(const Device& device) {
-    const DeviceBase& deviceBase = (DeviceBase&)device;
-    GraphicsAPI graphicsAPI = deviceBase.GetDesc().graphicsAPI;
-
-#if NRI_ENABLE_D3D12_SUPPORT
-    if (graphicsAPI == GraphicsAPI::D3D12)
-        return ReportDeviceFaultInfoD3D12(device, deviceBase);
-#endif
-
-#if NRI_ENABLE_VK_SUPPORT
-    if (graphicsAPI == GraphicsAPI::VK)
-        return ReportDeviceFaultInfoVK(device, deviceBase);
-#endif
-
-    return Result::UNSUPPORTED;
+    return ((const DeviceBase&)device).ReportDeviceFaultInfo();
 }

@@ -41,6 +41,94 @@ static inline uint64_t HashRootSignatureAndStride(ID3D12RootSignature* rootSigna
     return ((uint64_t)stride << 52ull) | ((uint64_t)rootSignature & ((1ull << 52) - 1));
 }
 
+static inline const char* GetDredDeviceStateName(D3D12_DRED_DEVICE_STATE state) {
+    switch (state) {
+        case D3D12_DRED_DEVICE_STATE_UNKNOWN:
+            return "Unknown";
+        case D3D12_DRED_DEVICE_STATE_HUNG:
+            return "Hung";
+        case D3D12_DRED_DEVICE_STATE_FAULT:
+            return "Fault";
+        case D3D12_DRED_DEVICE_STATE_PAGEFAULT:
+            return "PageFault";
+    }
+
+    return "Invalid";
+}
+
+static inline const char* GetDredBreadcrumbOpName(D3D12_AUTO_BREADCRUMB_OP op) {
+    switch (op) {
+        case D3D12_AUTO_BREADCRUMB_OP_SETMARKER:
+            return "SetMarker";
+        case D3D12_AUTO_BREADCRUMB_OP_BEGINEVENT:
+            return "BeginEvent";
+        case D3D12_AUTO_BREADCRUMB_OP_ENDEVENT:
+            return "EndEvent";
+        case D3D12_AUTO_BREADCRUMB_OP_DRAWINSTANCED:
+            return "DrawInstanced";
+        case D3D12_AUTO_BREADCRUMB_OP_DRAWINDEXEDINSTANCED:
+            return "DrawIndexedInstanced";
+        case D3D12_AUTO_BREADCRUMB_OP_EXECUTEINDIRECT:
+            return "ExecuteIndirect";
+        case D3D12_AUTO_BREADCRUMB_OP_DISPATCH:
+            return "Dispatch";
+        case D3D12_AUTO_BREADCRUMB_OP_COPYBUFFERREGION:
+            return "CopyBufferRegion";
+        case D3D12_AUTO_BREADCRUMB_OP_COPYTEXTUREREGION:
+            return "CopyTextureRegion";
+        case D3D12_AUTO_BREADCRUMB_OP_COPYRESOURCE:
+            return "CopyResource";
+        case D3D12_AUTO_BREADCRUMB_OP_COPYTILES:
+            return "CopyTiles";
+        case D3D12_AUTO_BREADCRUMB_OP_RESOLVESUBRESOURCE:
+            return "ResolveSubresource";
+        case D3D12_AUTO_BREADCRUMB_OP_CLEARRENDERTARGETVIEW:
+            return "ClearRenderTargetView";
+        case D3D12_AUTO_BREADCRUMB_OP_CLEARUNORDEREDACCESSVIEW:
+            return "ClearUnorderedAccessView";
+        case D3D12_AUTO_BREADCRUMB_OP_CLEARDEPTHSTENCILVIEW:
+            return "ClearDepthStencilView";
+        case D3D12_AUTO_BREADCRUMB_OP_RESOURCEBARRIER:
+            return "ResourceBarrier";
+        case D3D12_AUTO_BREADCRUMB_OP_EXECUTEBUNDLE:
+            return "ExecuteBundle";
+        case D3D12_AUTO_BREADCRUMB_OP_PRESENT:
+            return "Present";
+        case D3D12_AUTO_BREADCRUMB_OP_RESOLVEQUERYDATA:
+            return "ResolveQueryData";
+        case D3D12_AUTO_BREADCRUMB_OP_BEGINSUBMISSION:
+            return "BeginSubmission";
+        case D3D12_AUTO_BREADCRUMB_OP_ENDSUBMISSION:
+            return "EndSubmission";
+        case D3D12_AUTO_BREADCRUMB_OP_BUILDRAYTRACINGACCELERATIONSTRUCTURE:
+            return "BuildRayTracingAccelerationStructure";
+        case D3D12_AUTO_BREADCRUMB_OP_DISPATCHRAYS:
+            return "DispatchRays";
+        case D3D12_AUTO_BREADCRUMB_OP_DISPATCHMESH:
+            return "DispatchMesh";
+#if NRI_ENABLE_AGILITY_SDK_SUPPORT
+        case D3D12_AUTO_BREADCRUMB_OP_BARRIER:
+            return "Barrier";
+        case D3D12_AUTO_BREADCRUMB_OP_BEGIN_COMMAND_LIST:
+            return "BeginCommandList";
+#endif
+        default:
+            return "Unknown";
+    }
+}
+
+static inline const char* GetDredObjectName(const char* ansiName, const wchar_t* wideName, char* storage, size_t storageSize) {
+    if (ansiName && ansiName[0] != '\0')
+        return ansiName;
+
+    if (wideName && wideName[0] != L'\0') {
+        ConvertWcharToChar(wideName, storage, storageSize);
+        return storage;
+    }
+
+    return "<unnamed>";
+}
+
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
 typedef ID3D12InfoQueue1 ID3D12InfoQueueBest;
 
@@ -1508,6 +1596,100 @@ ID3D12CommandSignature* DeviceD3D12::GetDispatchRaysCommandSignature() const {
 
 ID3D12CommandSignature* DeviceD3D12::GetDispatchCommandSignature() const {
     return m_DispatchCommandSignature.GetInterface();
+}
+
+void DeviceD3D12::ReportDredAllocationList(const char* listName, const D3D12_DRED_ALLOCATION_NODE1* head) const {
+    uint32_t index = 0;
+    for (const D3D12_DRED_ALLOCATION_NODE1* node = head; node && index < DRED_NODE_MAX_NUM; node = node->pNext, index++) {
+        char allocationName[NRI_MAX_MESSAGE_LENGTH];
+        NRI_REPORT_DEVICE_FAULT_INFO(*this, "[D3D12][DRED] %s[%u]: type=%u name=%s", listName, index, (uint32_t)node->AllocationType, GetDredObjectName(node->ObjectNameA, node->ObjectNameW, allocationName, sizeof(allocationName)));
+    }
+}
+
+void DeviceD3D12::ReportDredBreadcrumbs(const D3D12_AUTO_BREADCRUMB_NODE1* head) const {
+    uint32_t nodeIndex = 0;
+    for (const D3D12_AUTO_BREADCRUMB_NODE1* node = head; node && nodeIndex < DRED_NODE_MAX_NUM; node = node->pNext, nodeIndex++) {
+        uint32_t completedBreadcrumb = node->pLastBreadcrumbValue ? *node->pLastBreadcrumbValue : 0;
+        char queueName[NRI_MAX_MESSAGE_LENGTH];
+        char commandListName[NRI_MAX_MESSAGE_LENGTH];
+        NRI_REPORT_DEVICE_FAULT_INFO(*this,
+            "[D3D12][DRED] BreadcrumbNode[%u]: queue=%s commandList=%s completed=%u/%u",
+            nodeIndex,
+            GetDredObjectName(node->pCommandQueueDebugNameA, node->pCommandQueueDebugNameW, queueName, sizeof(queueName)),
+            GetDredObjectName(node->pCommandListDebugNameA, node->pCommandListDebugNameW, commandListName, sizeof(commandListName)),
+            completedBreadcrumb,
+            node->BreadcrumbCount);
+
+        if (!node->pCommandHistory || node->BreadcrumbCount == 0)
+            continue;
+
+        uint32_t start = completedBreadcrumb > DRED_BREADCRUMB_RADIUS ? completedBreadcrumb - DRED_BREADCRUMB_RADIUS : 0;
+        uint32_t end = node->BreadcrumbCount < completedBreadcrumb + DRED_BREADCRUMB_RADIUS + 1 ? node->BreadcrumbCount : completedBreadcrumb + DRED_BREADCRUMB_RADIUS + 1;
+        for (uint32_t breadcrumbIndex = start; breadcrumbIndex < end; breadcrumbIndex++)
+            NRI_REPORT_DEVICE_FAULT_INFO(*this,
+                "[D3D12][DRED]   op[%u]%s %s",
+                breadcrumbIndex,
+                (completedBreadcrumb != 0 && breadcrumbIndex == completedBreadcrumb - 1) ? " <- last completed" : "",
+                GetDredBreadcrumbOpName(node->pCommandHistory[breadcrumbIndex]));
+
+        for (uint32_t contextIndex = 0; contextIndex < node->BreadcrumbContextsCount; contextIndex++) {
+            const D3D12_DRED_BREADCRUMB_CONTEXT& context = node->pBreadcrumbContexts[contextIndex];
+            if (context.BreadcrumbIndex >= start && context.BreadcrumbIndex < end) {
+                char contextString[NRI_MAX_MESSAGE_LENGTH];
+                const char* contextName = "<unnamed>";
+                if (context.pContextString) {
+                    ConvertWcharToChar(context.pContextString, contextString, sizeof(contextString));
+                    contextName = contextString;
+                }
+
+                NRI_REPORT_DEVICE_FAULT_INFO(*this, "[D3D12][DRED]   context[%u]: %s", context.BreadcrumbIndex, contextName);
+            }
+        }
+    }
+}
+
+void DeviceD3D12::ReportDeviceRemovedExtendedData(ID3D12Device* nativeDevice) const {
+    ComPtr<ID3D12DeviceRemovedExtendedData2> dred2;
+    if (SUCCEEDED(nativeDevice->QueryInterface(IID_PPV_ARGS(&dred2))) && dred2) {
+        D3D12_DRED_DEVICE_STATE deviceState = dred2->GetDeviceState();
+        NRI_REPORT_DEVICE_FAULT_INFO(*this, "[D3D12][DRED] Device state: %s", GetDredDeviceStateName(deviceState));
+
+        D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 breadcrumbs = {};
+        if (SUCCEEDED(dred2->GetAutoBreadcrumbsOutput1(&breadcrumbs)))
+            ReportDredBreadcrumbs(breadcrumbs.pHeadAutoBreadcrumbNode);
+
+        D3D12_DRED_PAGE_FAULT_OUTPUT2 pageFault = {};
+        if (SUCCEEDED(dred2->GetPageFaultAllocationOutput2(&pageFault))) {
+            NRI_REPORT_DEVICE_FAULT_INFO(*this, "[D3D12][DRED] PageFaultVA=0x%016llX flags=%u", (unsigned long long)pageFault.PageFaultVA, (uint32_t)pageFault.PageFaultFlags);
+            ReportDredAllocationList("ExistingAllocation", pageFault.pHeadExistingAllocationNode);
+            ReportDredAllocationList("RecentFreedAllocation", pageFault.pHeadRecentFreedAllocationNode);
+        }
+
+        return;
+    }
+
+    ComPtr<ID3D12DeviceRemovedExtendedData1> dred1;
+    if (SUCCEEDED(nativeDevice->QueryInterface(IID_PPV_ARGS(&dred1))) && dred1) {
+        D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 breadcrumbs = {};
+        if (SUCCEEDED(dred1->GetAutoBreadcrumbsOutput1(&breadcrumbs)))
+            ReportDredBreadcrumbs(breadcrumbs.pHeadAutoBreadcrumbNode);
+
+        D3D12_DRED_PAGE_FAULT_OUTPUT1 pageFault = {};
+        if (SUCCEEDED(dred1->GetPageFaultAllocationOutput1(&pageFault))) {
+            NRI_REPORT_DEVICE_FAULT_INFO(*this, "[D3D12][DRED] PageFaultVA=0x%016llX", (unsigned long long)pageFault.PageFaultVA);
+            ReportDredAllocationList("ExistingAllocation", pageFault.pHeadExistingAllocationNode);
+            ReportDredAllocationList("RecentFreedAllocation", pageFault.pHeadRecentFreedAllocationNode);
+        }
+    }
+}
+
+Result DeviceD3D12::ReportDeviceFaultInfo() const {
+    ID3D12Device* nativeDevice = GetNativeObject();
+    HRESULT deviceRemovedReason = nativeDevice->GetDeviceRemovedReason();
+    NRI_REPORT_DEVICE_FAULT_INFO(*this, "[D3D12] GetDeviceRemovedReason: 0x%08X, result=%u", (uint32_t)deviceRemovedReason, (uint32_t)GetResultFromHRESULT(deviceRemovedReason));
+    ReportDeviceRemovedExtendedData(nativeDevice);
+
+    return Result::SUCCESS;
 }
 
 void DeviceD3D12::Destruct() {

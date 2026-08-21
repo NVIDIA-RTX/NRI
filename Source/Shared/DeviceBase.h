@@ -69,6 +69,10 @@ struct DeviceBase : public DebugNameBaseVal {
     virtual ~DeviceBase() {
     }
 
+    virtual Result ReportDeviceFaultInfo() const {
+        return Result::UNSUPPORTED;
+    }
+
     virtual Result FillFunctionTable(CoreInterface&) const {
         return Result::UNSUPPORTED;
     }

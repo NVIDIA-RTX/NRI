@@ -232,6 +232,7 @@ struct DeviceVK final : public DeviceBase {
     }
 
     void Destruct() override;
+    Result ReportDeviceFaultInfo() const override;
     Result FillFunctionTable(CoreInterface& table) const override;
     Result FillFunctionTable(HelperInterface& table) const override;
     Result FillFunctionTable(LowLatencyInterface& table) const override;
@@ -264,6 +265,7 @@ struct DeviceVK final : public DeviceBase {
     FormatSupportBits GetFormatSupport(Format format) const;
 
 private:
+    void ReportDeviceFaultAddressInfo(const char* name, const VkDeviceFaultAddressInfoKHR& addressInfo) const;
     HostCopyLayoutVK GetHostCopyLayout(const TextureVK& texture, const TextureRegionDesc& region, uint64_t& offset) const;
     Result AcquireTransferContext(QueueVK& queue, TransferContextVK*& context);
     void ReleaseTransferContext(TransferContextVK& context);
