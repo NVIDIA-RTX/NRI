@@ -35,6 +35,7 @@ constexpr VkAttachmentLoadOp GetLoadOp(LoadOp loadOp) {
 constexpr std::array<VkAttachmentStoreOp, (size_t)StoreOp::MAX_NUM> g_StoreOps = {
     VK_ATTACHMENT_STORE_OP_STORE,     // STORE
     VK_ATTACHMENT_STORE_OP_DONT_CARE, // DISCARD
+    VK_ATTACHMENT_STORE_OP_NONE,      // NONE (ProjectKiwi patch; core since VK 1.3)
 };
 NRI_VALIDATE_ARRAY(g_StoreOps);
 
