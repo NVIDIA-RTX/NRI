@@ -283,8 +283,7 @@ static inline RenderPassAttachmentDesc GetRenderPassAttachmentDesc(const Attachm
     out.format = GetVkFormat(descriptorVK.GetFormat());
     out.sampleNum = (VkSampleCountFlagBits)texViewDesc.texture->GetDesc().sampleNum;
     out.loadOp = GetLoadOp(attachmentDesc.loadOp);
-    // ProjectKiwi patch: legacy render passes run on devices without VK 1.3, where STORE_OP_NONE may be unavailable
-    // as well, so degrade it to a plain store
+    // STORE_OP_NONE may be unavailable on legacy render path, conservatively revert to STORE
     out.storeOp = attachmentDesc.storeOp == StoreOp::NONE ? VK_ATTACHMENT_STORE_OP_STORE : GetStoreOp(attachmentDesc.storeOp);
     out.stencilLoadOp = out.loadOp;
     out.stencilStoreOp = out.storeOp;
