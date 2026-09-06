@@ -628,12 +628,24 @@ NRI_INLINE void PipelineVK::SetDebugName(const char* name) {
     m_Device.SetDebugNameToTrivialObject(VK_OBJECT_TYPE_PIPELINE, (uint64_t)m_Handle, name);
 }
 
-NRI_INLINE Result PipelineVK::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* dst) const {
-    const size_t dataSize = (size_t)shaderGroupNum * m_Device.GetDesc().shaderStage.rayTracing.shaderGroupIdentifierSize;
+NRI_INLINE Result PipelineVK::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, uint32_t dstStride, void* dst) const {
+    const size_t identifierSize = m_Device.GetDesc().shaderStage.rayTracing.shaderGroupIdentifierSize;
+    const size_t dataSize = (size_t)shaderGroupNum * identifierSize;
 
     const auto& vk = m_Device.GetDispatchTable();
-    VkResult vkResult = vk.GetRayTracingShaderGroupHandlesKHR(m_Device, m_Handle, baseShaderGroupIndex, shaderGroupNum, dataSize, dst);
+    if (dstStride == identifierSize) {
+        VkResult vkResult = vk.GetRayTracingShaderGroupHandlesKHR(m_Device, m_Handle, baseShaderGroupIndex, shaderGroupNum, dataSize, dst);
+        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetRayTracingShaderGroupHandlesKHR");
+
+        return Result::SUCCESS;
+    }
+
+    Scratch<uint8_t> identifiers = NRI_ALLOCATE_SCRATCH(m_Device, uint8_t, dataSize);
+    VkResult vkResult = vk.GetRayTracingShaderGroupHandlesKHR(m_Device, m_Handle, baseShaderGroupIndex, shaderGroupNum, dataSize, identifiers);
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetRayTracingShaderGroupHandlesKHR");
+
+    for (uint32_t i = 0; i < shaderGroupNum; i++)
+        memcpy((uint8_t*)dst + (size_t)i * dstStride, &identifiers[i * identifierSize], identifierSize);
 
     return Result::SUCCESS;
 }

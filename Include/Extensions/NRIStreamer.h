@@ -6,6 +6,18 @@
 
 #define NRI_STREAMER_H 1
 
+/*
+Single-threaded usage:
+- stream constants, host data or dynamic-buffer data as needed
+- for destination copies, begin a batch, set it in each "StreamBufferDataDesc" or "StreamTextureDataDesc" and record "CmdCopyStreamedData" once
+- call "EndStreamerFrame" after all command recording that uses streamed data is complete
+
+Multi-threaded usage:
+- one "Streamer" can serve multiple threads if "NRI_STREAMER_THREAD_SAFE" is enabled; otherwise synchronize all access externally
+- use a different copy batch for each independently populated command buffer and finish populating it before "CmdCopyStreamedData"
+- synchronize all users before "EndStreamerFrame" and size the constant and host-data rings to avoid overwriting live data
+*/
+
 NriNamespaceBegin
 
 NriForwardStruct(Streamer);

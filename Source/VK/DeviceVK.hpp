@@ -1851,7 +1851,7 @@ void DeviceVK::GetAccelerationStructureBuildSizesInfo(const AccelerationStructur
 
     // Convert geometries
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL) {
-        micromapNum = ConvertBotomLevelGeometries(nullptr, geometries, trianglesMicromaps, accelerationStructureDesc.geometries, geometryNum);
+        micromapNum = ConvertBottomLevelGeometries(nullptr, geometries, trianglesMicromaps, accelerationStructureDesc.geometries, geometryNum);
 
         for (uint32_t i = 0; i < geometryNum; i++) {
             const BottomLevelGeometryDesc& in = accelerationStructureDesc.geometries[i];

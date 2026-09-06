@@ -1587,7 +1587,7 @@ void CommandBufferWGPU::Dispatch(const DispatchDesc& dispatchDesc) {
 
     BindRootGroup(BindPoint::COMPUTE);
     BindDescriptorSets(BindPoint::COMPUTE);
-    wgpuComputePassEncoderDispatchWorkgroups(m_ComputePass, dispatchDesc.x, dispatchDesc.y, dispatchDesc.z);
+    wgpuComputePassEncoderDispatchWorkgroups(m_ComputePass, dispatchDesc.workGroupNumX, dispatchDesc.workGroupNumY, dispatchDesc.workGroupNumZ);
 }
 
 void CommandBufferWGPU::DispatchIndirect(const Buffer& buffer, uint64_t offset) {

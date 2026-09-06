@@ -21,6 +21,10 @@ PipelineVal::PipelineVal(DeviceVal& device, Pipeline* pipeline, const RayTracing
     , m_PipelineLayout(rayTracingPipelineDesc.pipelineLayout) {
 }
 
-NRI_INLINE Result PipelineVal::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* dst) {
-    return GetRayTracingInterfaceImpl().WriteShaderGroupIdentifiers(*GetImpl(), baseShaderGroupIndex, shaderGroupNum, dst);
+NRI_INLINE Result PipelineVal::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, uint32_t dstStride, void* dst) {
+    const uint32_t identifierSize = m_Device.GetDesc().shaderStage.rayTracing.shaderGroupIdentifierSize;
+
+    NRI_RETURN_ON_FAILURE(&m_Device, dstStride >= identifierSize, Result::INVALID_ARGUMENT, "'dstStride' is less than 'shaderStage.rayTracing.shaderGroupIdentifierSize'");
+
+    return GetRayTracingInterfaceImpl().WriteShaderGroupIdentifiers(*GetImpl(), baseShaderGroupIndex, shaderGroupNum, dstStride, dst);
 }

@@ -4,7 +4,7 @@
 
 namespace nri {
 
-uint32_t ConvertBotomLevelGeometries(
+uint32_t ConvertBottomLevelGeometries(
     VkAccelerationStructureBuildRangeInfoKHR* vkRanges,
     VkAccelerationStructureGeometryKHR* vkGeometries,
     VkAccelerationStructureTrianglesOpacityMicromapEXT* vkTrianglesMicromaps,

@@ -16,7 +16,7 @@ Requirements:
 Expected usage:
 - the goal of this extension is to support latest ImGui only
 - designed only for rendering
-- "ImguiRenderData" must be used before "EndStreamerFrame", before the associated "Streamer" host-data ring buffer wraps and before the next "CmdCopyImguiData" call using the same "Imgui"
+- "ImguiRenderData" must be used before "EndStreamerFrame" and before the associated "Streamer" host-data ring buffer wraps
 - "StreamerDesc::hostDataCapacity" must accommodate all simultaneously live host-data allocations and alignment padding
 - all data referenced by "CopyImguiDataDesc" must remain valid and immutable until "CmdCopyImguiData" returns
 - "drawList->AddCallback" functionality is not supported! But there is a special callback, allowing to override "hdrScale":
@@ -24,6 +24,16 @@ Expected usage:
      drawList->AddCallback(NRI_IMGUI_OVERRIDE_HDR_SCALE(0.0f));    // to revert back to "DrawImguiDesc::hdrScale"
 - "ImGui::Image*" functions are supported. "ImTextureID" must be a "SHADER_RESOURCE" descriptor:
      ImGui::Image((ImTextureID)descriptor, ...)
+
+Single-threaded usage:
+- configure "StreamerDesc::hostDataCapacity", call "CmdCopyImguiData" and pass the returned "ImguiRenderData" to "CmdDrawImgui"
+- record all draws before "EndStreamerFrame" and before the associated "Streamer" host-data ring buffer wraps
+
+Multi-threaded usage:
+- one "nri::Imgui" instance may be used to render several "ImGui" contexts from multiple threads; calls are internally serialized
+- the copy/draw handoff stores no instance-shared transient state: each copy returns independent "ImguiRenderData"
+- each thread must use its own command buffer and returned "ImguiRenderData"; a shared "Streamer" must follow its multi-threaded usage contract
+- different "Imgui" instances may share "ImTextureData"; access is internally synchronized, but referenced input must remain immutable until every concurrent copy returns
 */
 
 NonNriForwardStruct(ImDrawList);

@@ -88,7 +88,7 @@ NriStruct(MicromapUsageDesc) {
 };
 
 NriStruct(MicromapDesc) {
-    NriOptional uint64_t optimizedSize;         // can be retrieved by "CmdWriteMicromapsSizes" and used for compaction via "CmdCopyMicromap"
+    NriOptional uint64_t optimizedSize;         // can be retrieved by "CmdWriteMicromapSizes" and used for compaction via "CmdCopyMicromap"
     const NriPtr(MicromapUsageDesc) usages;
     uint32_t usageNum;
     Nri(MicromapBits) flags;
@@ -110,7 +110,7 @@ NriStruct(BuildMicromapDesc) {
     uint64_t scratchOffset;
 };
 
-NriStruct(BottomLevelMicromapDesc) {
+NriStruct(BottomLevelTrianglesMicromapDesc) {
     // For each triangle in the geometry, the acceleration structure build fetches an index from "indexBuffer".
     // If an index is the unsigned cast of one of the values from "MicromapSpecialIndex" then that triangle behaves as described for that special value.
     // Otherwise that triangle uses the micromap information from "micromap" at that index plus "baseTriangle".
@@ -166,7 +166,7 @@ NriStruct(BottomLevelTrianglesDesc) {
     NriOptional uint64_t transformOffset;
 
     // Micromap
-    NriOptional NriPtr(BottomLevelMicromapDesc) micromap;
+    NriOptional NriPtr(BottomLevelTrianglesMicromapDesc) micromap;
 };
 
 NriStruct(BottomLevelAabbsDesc) {
@@ -187,7 +187,7 @@ NriStruct(BottomLevelGeometryDesc) {
 
 // Data layout
 NriStruct(TransformMatrix) {
-    float transform[3][4]; // 3x4 row-major affine transformation matrix, the first three columns of matrix must define an invertible 3x3 matrix
+    float matrix[3][4]; // 3x4 row-major affine transformation matrix, the first three columns of matrix must define an invertible 3x3 matrix
 };
 
 NriStruct(BottomLevelAabb)
@@ -220,7 +220,7 @@ NriStruct(TopLevelInstance) {
     float transform[3][4];
     uint32_t instanceId                     : 24;
     uint32_t mask                           : 8;
-    uint32_t shaderBindingTableLocalOffset  : 24;
+    uint32_t shaderBindingTableRecordOffset : 24; // final hit shader binding table record index = shaderBindingTableRecordOffset + geometryIndex (from BLAS) * geometryStride (from shader) + rayOffset (from shader)
     Nri(TopLevelInstanceBits) flags         : 8;
     uint64_t accelerationStructureHandle;
 };
@@ -249,7 +249,7 @@ NriBits(AccelerationStructureBits, uint8_t,
 );
 
 NriStruct(AccelerationStructureDesc) {
-    NriOptional uint64_t optimizedSize;                     // can be retrieved by "CmdWriteAccelerationStructuresSizes" and used for compaction via "CmdCopyAccelerationStructure"
+    NriOptional uint64_t optimizedSize;                     // can be retrieved by "CmdWriteAccelerationStructureSizes" and used for compaction via "CmdCopyAccelerationStructure"
     const NriPtr(BottomLevelGeometryDesc) geometries;       // needed only for "BOTTOM_LEVEL", "HAS_BUFFER" can be used to indicate a buffer presence (no real entities needed at initialization time)
     uint32_t geometryOrInstanceNum;
     Nri(AccelerationStructureBits) flags;
@@ -300,12 +300,12 @@ NriStruct(StridedBufferRegion) {
 };
 
 NriStruct(DispatchRaysDesc) {
-    Nri(StridedBufferRegion) raygenShader;
-    Nri(StridedBufferRegion) missShaders;
-    Nri(StridedBufferRegion) hitShaderGroups;
-    Nri(StridedBufferRegion) callableShaders;
+    Nri(StridedBufferRegion) raygenShaderRecord;
+    Nri(StridedBufferRegion) missShaderBindingTable;
+    Nri(StridedBufferRegion) hitShaderBindingTable;
+    Nri(StridedBufferRegion) callableShaderBindingTable;
 
-    uint32_t x, y, z;
+    uint32_t width, height, depth;
 };
 
 NriStruct(DispatchRaysIndirectDesc) {
@@ -324,7 +324,7 @@ NriStruct(DispatchRaysIndirectDesc) {
     uint64_t callableShaderBindingTableSize;
     uint64_t callableShaderBindingTableStride;
 
-    uint32_t x, y, z;
+    uint32_t width, height, depth;
 };
 
 #pragma endregion
@@ -365,22 +365,22 @@ NriStruct(RayTracingInterface) {
     Nri(Result)     (NRI_CALL *CreatePlacedAccelerationStructure)               (NriRef(Device) device, NriOptional NriPtr(Memory) memory, uint64_t offset, const NriRef(AccelerationStructureDesc) accelerationStructureDesc, NriOut NriRef(AccelerationStructure*) accelerationStructure);
     Nri(Result)     (NRI_CALL *CreatePlacedMicromap)                            (NriRef(Device) device, NriOptional NriPtr(Memory) memory, uint64_t offset, const NriRef(MicromapDesc) micromapDesc, NriOut NriRef(Micromap*) micromap);
 
-    // Shader table
-    // "dst" size must be >= "shaderGroupNum * rayTracingShaderGroupIdentifierSize" bytes
-    // VK doesn't have a "local root signature" analog, thus stride = "rayTracingShaderGroupIdentifierSize", i.e. tight packing
-    Nri(Result)     (NRI_CALL *WriteShaderGroupIdentifiers)                     (const NriRef(Pipeline) pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, NriOut void* dst);
+    // (HOST) Shader binding table: writes shader group identifiers to "dst" with "dstStride"
+    // "dstStride" must be >= "shaderStage.rayTracing.shaderGroupIdentifierSize"; bytes after each identifier are preserved
+    // "dst" size must be >= "shaderGroupNum * dstStride" bytes
+    Nri(Result)     (NRI_CALL *WriteShaderGroupIdentifiers)                     (const NriRef(Pipeline) pipeline, uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, uint32_t dstStride, NriOut void* dst);
 
     // Command buffer
     // {
         // Micromap
         void        (NRI_CALL *CmdBuildMicromaps)                               (NriRef(CommandBuffer) commandBuffer, const NriPtr(BuildMicromapDesc) buildMicromapDescs, uint32_t buildMicromapDescNum);
-        void        (NRI_CALL *CmdWriteMicromapsSizes)                          (NriRef(CommandBuffer) commandBuffer, const NriPtr(Micromap) const* micromaps, uint32_t micromapNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
+        void        (NRI_CALL *CmdWriteMicromapSizes)                           (NriRef(CommandBuffer) commandBuffer, const NriPtr(Micromap) const* micromaps, uint32_t micromapNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
         void        (NRI_CALL *CmdCopyMicromap)                                 (NriRef(CommandBuffer) commandBuffer, NriRef(Micromap) dst, const NriRef(Micromap) src, Nri(CopyMode) copyMode);
 
         // Acceleration structure
         void        (NRI_CALL *CmdBuildTopLevelAccelerationStructures)          (NriRef(CommandBuffer) commandBuffer, const NriPtr(BuildTopLevelAccelerationStructureDesc) buildTopLevelAccelerationStructureDescs, uint32_t buildTopLevelAccelerationStructureDescNum);
-        void        (NRI_CALL *CmdBuildBottomLevelAccelerationStructures)       (NriRef(CommandBuffer) commandBuffer, const NriPtr(BuildBottomLevelAccelerationStructureDesc) buildBotomLevelAccelerationStructureDescs, uint32_t buildBotomLevelAccelerationStructureDescNum);
-        void        (NRI_CALL *CmdWriteAccelerationStructuresSizes)             (NriRef(CommandBuffer) commandBuffer, const NriPtr(AccelerationStructure) const* accelerationStructures, uint32_t accelerationStructureNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
+        void        (NRI_CALL *CmdBuildBottomLevelAccelerationStructures)       (NriRef(CommandBuffer) commandBuffer, const NriPtr(BuildBottomLevelAccelerationStructureDesc) buildBottomLevelAccelerationStructureDescs, uint32_t buildBottomLevelAccelerationStructureDescNum);
+        void        (NRI_CALL *CmdWriteAccelerationStructureSizes)              (NriRef(CommandBuffer) commandBuffer, const NriPtr(AccelerationStructure) const* accelerationStructures, uint32_t accelerationStructureNum, NriRef(QueryPool) queryPool, uint32_t queryPoolOffset);
         void        (NRI_CALL *CmdCopyAccelerationStructure)                    (NriRef(CommandBuffer) commandBuffer, NriRef(AccelerationStructure) dst, const NriRef(AccelerationStructure) src, Nri(CopyMode) copyMode);
 
         // Ray tracing

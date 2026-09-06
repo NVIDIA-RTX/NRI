@@ -45,7 +45,7 @@ struct PipelineD3D12 final : public DebugNameBase {
     // NRI
     //================================================================================================================
 
-    Result WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* dst) const;
+    Result WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, uint32_t dstStride, void* dst) const;
 
 private:
     Result CreateFromStream(const GraphicsPipelineDesc& graphicsPipelineDesc);

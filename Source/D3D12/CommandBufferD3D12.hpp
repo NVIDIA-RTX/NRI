@@ -2315,7 +2315,7 @@ NRI_INLINE void CommandBufferD3D12::ReadbackTextureToBuffer(Buffer& dstBuffer, c
 }
 
 NRI_INLINE void CommandBufferD3D12::Dispatch(const DispatchDesc& dispatchDesc) {
-    GetGraphicsCommandList()->Dispatch(dispatchDesc.x, dispatchDesc.y, dispatchDesc.z);
+    GetGraphicsCommandList()->Dispatch(dispatchDesc.workGroupNumX, dispatchDesc.workGroupNumY, dispatchDesc.workGroupNumZ);
 }
 
 NRI_INLINE void CommandBufferD3D12::DispatchIndirect(const Buffer& buffer, uint64_t offset) {
@@ -2763,7 +2763,7 @@ NRI_INLINE void CommandBufferD3D12::BuildBottomLevelAccelerationStructures(const
             out.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
         }
 
-        ConvertBotomLevelGeometries(in.geometries, in.geometryNum, geometryDescs, trianglesDescs, ommDescs);
+        ConvertBottomLevelGeometries(in.geometries, in.geometryNum, geometryDescs, trianglesDescs, ommDescs);
 
         GetGraphicsCommandList()->BuildRaytracingAccelerationStructure(&out, 0, nullptr);
     }
@@ -2818,7 +2818,7 @@ NRI_INLINE void CommandBufferD3D12::CopyMicromap(Micromap& dst, const Micromap& 
     GetGraphicsCommandList()->CopyRaytracingAccelerationStructure(((MicromapD3D12&)dst).GetHandle(), ((MicromapD3D12&)src).GetHandle(), GetCopyMode(copyMode));
 }
 
-NRI_INLINE void CommandBufferD3D12::WriteAccelerationStructuresSizes(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
+NRI_INLINE void CommandBufferD3D12::WriteAccelerationStructureSizes(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
     Scratch<D3D12_GPU_VIRTUAL_ADDRESS> virtualAddresses = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_GPU_VIRTUAL_ADDRESS, accelerationStructureNum);
     for (uint32_t i = 0; i < accelerationStructureNum; i++)
         virtualAddresses[i] = ((AccelerationStructureD3D12*)accelerationStructures[i])->GetHandle();
@@ -2837,7 +2837,7 @@ NRI_INLINE void CommandBufferD3D12::WriteAccelerationStructuresSizes(const Accel
     GetGraphicsCommandList()->EmitRaytracingAccelerationStructurePostbuildInfo(&postbuildInfo, accelerationStructureNum, virtualAddresses);
 }
 
-NRI_INLINE void CommandBufferD3D12::WriteMicromapsSizes(const Micromap* const* micromaps, uint32_t micromapNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
+NRI_INLINE void CommandBufferD3D12::WriteMicromapSizes(const Micromap* const* micromaps, uint32_t micromapNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
     Scratch<D3D12_GPU_VIRTUAL_ADDRESS> virtualAddresses = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_GPU_VIRTUAL_ADDRESS, micromapNum);
     for (uint32_t i = 0; i < micromapNum; i++)
         virtualAddresses[i] = ((MicromapD3D12*)micromaps[i])->GetHandle();
@@ -2859,30 +2859,30 @@ NRI_INLINE void CommandBufferD3D12::WriteMicromapsSizes(const Micromap* const* m
 NRI_INLINE void CommandBufferD3D12::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc) {
     D3D12_DISPATCH_RAYS_DESC desc = {};
 
-    desc.RayGenerationShaderRecord.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.raygenShader.buffer).GetDeviceAddress() + dispatchRaysDesc.raygenShader.offset;
-    desc.RayGenerationShaderRecord.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    desc.RayGenerationShaderRecord.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.raygenShaderRecord.buffer).GetDeviceAddress() + dispatchRaysDesc.raygenShaderRecord.offset;
+    desc.RayGenerationShaderRecord.SizeInBytes = dispatchRaysDesc.raygenShaderRecord.size;
 
-    if (dispatchRaysDesc.missShaders.buffer) {
-        desc.MissShaderTable.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.missShaders.buffer).GetDeviceAddress() + dispatchRaysDesc.missShaders.offset;
-        desc.MissShaderTable.SizeInBytes = dispatchRaysDesc.missShaders.size;
-        desc.MissShaderTable.StrideInBytes = dispatchRaysDesc.missShaders.stride;
+    if (dispatchRaysDesc.missShaderBindingTable.buffer) {
+        desc.MissShaderTable.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.missShaderBindingTable.buffer).GetDeviceAddress() + dispatchRaysDesc.missShaderBindingTable.offset;
+        desc.MissShaderTable.SizeInBytes = dispatchRaysDesc.missShaderBindingTable.size;
+        desc.MissShaderTable.StrideInBytes = dispatchRaysDesc.missShaderBindingTable.stride;
     }
 
-    if (dispatchRaysDesc.hitShaderGroups.buffer) {
-        desc.HitGroupTable.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.hitShaderGroups.buffer).GetDeviceAddress() + dispatchRaysDesc.hitShaderGroups.offset;
-        desc.HitGroupTable.SizeInBytes = dispatchRaysDesc.hitShaderGroups.size;
-        desc.HitGroupTable.StrideInBytes = dispatchRaysDesc.hitShaderGroups.stride;
+    if (dispatchRaysDesc.hitShaderBindingTable.buffer) {
+        desc.HitGroupTable.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.hitShaderBindingTable.buffer).GetDeviceAddress() + dispatchRaysDesc.hitShaderBindingTable.offset;
+        desc.HitGroupTable.SizeInBytes = dispatchRaysDesc.hitShaderBindingTable.size;
+        desc.HitGroupTable.StrideInBytes = dispatchRaysDesc.hitShaderBindingTable.stride;
     }
 
-    if (dispatchRaysDesc.callableShaders.buffer) {
-        desc.CallableShaderTable.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.callableShaders.buffer).GetDeviceAddress() + dispatchRaysDesc.callableShaders.offset;
-        desc.CallableShaderTable.SizeInBytes = dispatchRaysDesc.callableShaders.size;
-        desc.CallableShaderTable.StrideInBytes = dispatchRaysDesc.callableShaders.stride;
+    if (dispatchRaysDesc.callableShaderBindingTable.buffer) {
+        desc.CallableShaderTable.StartAddress = (*(BufferD3D12*)dispatchRaysDesc.callableShaderBindingTable.buffer).GetDeviceAddress() + dispatchRaysDesc.callableShaderBindingTable.offset;
+        desc.CallableShaderTable.SizeInBytes = dispatchRaysDesc.callableShaderBindingTable.size;
+        desc.CallableShaderTable.StrideInBytes = dispatchRaysDesc.callableShaderBindingTable.stride;
     }
 
-    desc.Width = dispatchRaysDesc.x;
-    desc.Height = dispatchRaysDesc.y;
-    desc.Depth = dispatchRaysDesc.z;
+    desc.Width = dispatchRaysDesc.width;
+    desc.Height = dispatchRaysDesc.height;
+    desc.Depth = dispatchRaysDesc.depth;
 
     GetGraphicsCommandList()->DispatchRays(&desc);
 }

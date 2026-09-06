@@ -688,7 +688,7 @@ void PipelineD3D12::Bind(ID3D12GraphicsCommandList* graphicsCommandList) const {
         graphicsCommandList->IASetPrimitiveTopology(m_PrimitiveTopology);
 }
 
-NRI_INLINE Result PipelineD3D12::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, void* dst) const {
+NRI_INLINE Result PipelineD3D12::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, uint32_t dstStride, void* dst) const {
     uint8_t* ptr = (uint8_t*)dst;
     size_t identifierSize = (size_t)m_Device.GetDesc().shaderStage.rayTracing.shaderGroupIdentifierSize;
     uint32_t shaderGroupIndex = baseShaderGroupIndex;
@@ -697,7 +697,7 @@ NRI_INLINE Result PipelineD3D12::WriteShaderGroupIdentifiers(uint32_t baseShader
         const void* identifier = m_StateObjectProperties->GetShaderIdentifier(m_ShaderGroupNames[shaderGroupIndex].c_str());
         memcpy(ptr, identifier, identifierSize);
 
-        ptr += identifierSize;
+        ptr += dstStride;
         shaderGroupIndex++;
     }
 

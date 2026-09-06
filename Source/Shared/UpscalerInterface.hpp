@@ -1248,9 +1248,9 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
 
         { // Dispatch
             DispatchDesc dispatchDesc = {};
-            dispatchDesc.x = (m_Desc.upscaleResolution.w + m.nis->blockSize.w - 1) / m.nis->blockSize.w;
-            dispatchDesc.y = (m_Desc.upscaleResolution.h + m.nis->blockSize.h - 1) / m.nis->blockSize.h;
-            dispatchDesc.z = 1;
+            dispatchDesc.workGroupNumX = (m_Desc.upscaleResolution.w + m.nis->blockSize.w - 1) / m.nis->blockSize.w;
+            dispatchDesc.workGroupNumY = (m_Desc.upscaleResolution.h + m.nis->blockSize.h - 1) / m.nis->blockSize.h;
+            dispatchDesc.workGroupNumZ = 1;
 
             m_iCore.CmdDispatch(commandBuffer, dispatchDesc);
         }

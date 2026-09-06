@@ -2478,7 +2478,7 @@ NRI_INLINE void CommandBufferVK::ZeroBuffer(Buffer& buffer, uint64_t offset, uin
 
 NRI_INLINE void CommandBufferVK::Dispatch(const DispatchDesc& dispatchDesc) {
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdDispatch(m_Handle, dispatchDesc.x, dispatchDesc.y, dispatchDesc.z);
+    vk.CmdDispatch(m_Handle, dispatchDesc.workGroupNumX, dispatchDesc.workGroupNumY, dispatchDesc.workGroupNumZ);
 }
 
 NRI_INLINE void CommandBufferVK::DispatchIndirect(const Buffer& buffer, uint64_t offset) {
@@ -2735,7 +2735,7 @@ NRI_INLINE void CommandBufferVK::BuildBottomLevelAccelerationStructures(const Bu
         // Fill ranges and geometries
         pRanges[i] = ranges;
 
-        uint32_t micromapNum = ConvertBotomLevelGeometries(ranges, geometries, trianglesMicromaps, in.geometries, in.geometryNum);
+        uint32_t micromapNum = ConvertBottomLevelGeometries(ranges, geometries, trianglesMicromaps, in.geometries, in.geometryNum);
 
         // Fill info
         AccelerationStructureVK* dst = (AccelerationStructureVK*)in.dst;
@@ -2825,7 +2825,7 @@ NRI_INLINE void CommandBufferVK::CopyMicromap(Micromap& dst, const Micromap& src
     vk.CmdCopyMicromapEXT(m_Handle, &info);
 }
 
-NRI_INLINE void CommandBufferVK::WriteAccelerationStructuresSizes(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
+NRI_INLINE void CommandBufferVK::WriteAccelerationStructureSizes(const AccelerationStructure* const* accelerationStructures, uint32_t accelerationStructureNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
     Scratch<VkAccelerationStructureKHR> handles = NRI_ALLOCATE_SCRATCH(m_Device, VkAccelerationStructureKHR, accelerationStructureNum);
     for (uint32_t i = 0; i < accelerationStructureNum; i++)
         handles[i] = ((AccelerationStructureVK*)accelerationStructures[i])->GetHandle();
@@ -2836,7 +2836,7 @@ NRI_INLINE void CommandBufferVK::WriteAccelerationStructuresSizes(const Accelera
     vk.CmdWriteAccelerationStructuresPropertiesKHR(m_Handle, accelerationStructureNum, handles, queryPoolVK.GetType(), queryPoolVK.GetHandle(), queryPoolOffset);
 }
 
-NRI_INLINE void CommandBufferVK::WriteMicromapsSizes(const Micromap* const* micromaps, uint32_t micromapNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
+NRI_INLINE void CommandBufferVK::WriteMicromapSizes(const Micromap* const* micromaps, uint32_t micromapNum, QueryPool& queryPool, uint32_t queryPoolOffset) {
     Scratch<VkMicromapEXT> handles = NRI_ALLOCATE_SCRATCH(m_Device, VkMicromapEXT, micromapNum);
     for (uint32_t i = 0; i < micromapNum; i++)
         handles[i] = ((MicromapVK*)micromaps[i])->GetHandle();
@@ -2849,27 +2849,27 @@ NRI_INLINE void CommandBufferVK::WriteMicromapsSizes(const Micromap* const* micr
 
 NRI_INLINE void CommandBufferVK::DispatchRays(const DispatchRaysDesc& dispatchRaysDesc) {
     VkStridedDeviceAddressRegionKHR raygen = {};
-    raygen.deviceAddress = GetBufferDeviceAddress(dispatchRaysDesc.raygenShader.buffer, dispatchRaysDesc.raygenShader.offset);
-    raygen.size = dispatchRaysDesc.raygenShader.size;
-    raygen.stride = dispatchRaysDesc.raygenShader.stride;
+    raygen.deviceAddress = GetBufferDeviceAddress(dispatchRaysDesc.raygenShaderRecord.buffer, dispatchRaysDesc.raygenShaderRecord.offset);
+    raygen.size = dispatchRaysDesc.raygenShaderRecord.size;
+    raygen.stride = dispatchRaysDesc.raygenShaderRecord.stride;
 
     VkStridedDeviceAddressRegionKHR miss = {};
-    miss.deviceAddress = GetBufferDeviceAddress(dispatchRaysDesc.missShaders.buffer, dispatchRaysDesc.missShaders.offset);
-    miss.size = dispatchRaysDesc.missShaders.size;
-    miss.stride = dispatchRaysDesc.missShaders.stride;
+    miss.deviceAddress = GetBufferDeviceAddress(dispatchRaysDesc.missShaderBindingTable.buffer, dispatchRaysDesc.missShaderBindingTable.offset);
+    miss.size = dispatchRaysDesc.missShaderBindingTable.size;
+    miss.stride = dispatchRaysDesc.missShaderBindingTable.stride;
 
     VkStridedDeviceAddressRegionKHR hit = {};
-    hit.deviceAddress = GetBufferDeviceAddress(dispatchRaysDesc.hitShaderGroups.buffer, dispatchRaysDesc.hitShaderGroups.offset);
-    hit.size = dispatchRaysDesc.hitShaderGroups.size;
-    hit.stride = dispatchRaysDesc.hitShaderGroups.stride;
+    hit.deviceAddress = GetBufferDeviceAddress(dispatchRaysDesc.hitShaderBindingTable.buffer, dispatchRaysDesc.hitShaderBindingTable.offset);
+    hit.size = dispatchRaysDesc.hitShaderBindingTable.size;
+    hit.stride = dispatchRaysDesc.hitShaderBindingTable.stride;
 
     VkStridedDeviceAddressRegionKHR callable = {};
-    callable.deviceAddress = GetBufferDeviceAddress(dispatchRaysDesc.callableShaders.buffer, dispatchRaysDesc.callableShaders.offset);
-    callable.size = dispatchRaysDesc.callableShaders.size;
-    callable.stride = dispatchRaysDesc.callableShaders.stride;
+    callable.deviceAddress = GetBufferDeviceAddress(dispatchRaysDesc.callableShaderBindingTable.buffer, dispatchRaysDesc.callableShaderBindingTable.offset);
+    callable.size = dispatchRaysDesc.callableShaderBindingTable.size;
+    callable.stride = dispatchRaysDesc.callableShaderBindingTable.stride;
 
     const auto& vk = m_Device.GetDispatchTable();
-    vk.CmdTraceRaysKHR(m_Handle, &raygen, &miss, &hit, &callable, dispatchRaysDesc.x, dispatchRaysDesc.y, dispatchRaysDesc.z);
+    vk.CmdTraceRaysKHR(m_Handle, &raygen, &miss, &hit, &callable, dispatchRaysDesc.width, dispatchRaysDesc.height, dispatchRaysDesc.depth);
 }
 
 NRI_INLINE void CommandBufferVK::DispatchRaysIndirect(const Buffer& buffer, uint64_t offset) {

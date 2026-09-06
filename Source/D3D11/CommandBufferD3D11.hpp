@@ -716,7 +716,7 @@ NRI_INLINE void CommandBufferD3D11::ResolveTexture(Texture& dstTexture, const Te
 }
 
 NRI_INLINE void CommandBufferD3D11::Dispatch(const DispatchDesc& dispatchDesc) {
-    m_DeferredContext->Dispatch(dispatchDesc.x, dispatchDesc.y, dispatchDesc.z);
+    m_DeferredContext->Dispatch(dispatchDesc.workGroupNumX, dispatchDesc.workGroupNumY, dispatchDesc.workGroupNumZ);
 }
 
 NRI_INLINE void CommandBufferD3D11::DispatchIndirect(const Buffer& buffer, uint64_t offset) {

@@ -170,7 +170,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.360.zip"
+        URL "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.361.zip"
     )
     list(APPEND DEPS vulkan_headers)
 
@@ -282,7 +282,7 @@ if(NRI_ENABLE_NVAPI)
             DOWNLOAD_EXTRACT_TIMESTAMP 1
             DOWNLOAD_NO_PROGRESS 1
             SOURCE_SUBDIR "ignore CMakeLists.txt"
-            URL "https://github.com/NVIDIA/nvapi/archive/cd6918f60b3c9a0476fdfe7e89bb32330602049d.zip"
+            URL "https://github.com/NVIDIA/nvapi/archive/a08f45f737bb142b070f1e23c58466ecbc82e398.zip"
         )
         list(APPEND DEPS nvapi)
     endif()
@@ -296,7 +296,7 @@ if(NRI_ENABLE_SHADERMAKE AND NOT TARGET ShaderMake)
         shadermake
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
-        URL "https://github.com/NVIDIA-RTX/ShaderMake/archive/5daebdbef45088fc2369d441391ecab0eba25e54.zip"
+        URL "https://github.com/NVIDIA-RTX/ShaderMake/archive/ca92f65f355f0e31cb67a9601baec705441f6401.zip"
     )
     list(APPEND DEPS shadermake)
 endif()

@@ -138,7 +138,7 @@ inline uint32_t GetSubresourceIndex(uint32_t layerOffset, uint32_t resourceLayer
     return mipOffset + (layerOffset + planeIndex * resourceLayerNum) * resourceMipNum;
 }
 
-void ConvertBotomLevelGeometries(const BottomLevelGeometryDesc* geometries, uint32_t geometryNum,
+void ConvertBottomLevelGeometries(const BottomLevelGeometryDesc* geometries, uint32_t geometryNum,
     D3D12_RAYTRACING_GEOMETRY_DESC* geometryDescs,
     D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC* triangleDescs,
     D3D12_RAYTRACING_GEOMETRY_OMM_LINKAGE_DESC* micromapDescs);

@@ -1,6 +1,6 @@
 // © 2021 NVIDIA Corporation
 
-uint32_t nri::ConvertBotomLevelGeometries(
+uint32_t nri::ConvertBottomLevelGeometries(
     VkAccelerationStructureBuildRangeInfoKHR* vkRanges,
     VkAccelerationStructureGeometryKHR* vkGeometries,
     VkAccelerationStructureTrianglesOpacityMicromapEXT* vkTrianglesMicromaps,
@@ -46,7 +46,7 @@ uint32_t nri::ConvertBotomLevelGeometries(
 
             // Update micromap
             if (triangles.micromap) {
-                const BottomLevelMicromapDesc& trianglesMicromap = *triangles.micromap;
+                const BottomLevelTrianglesMicromapDesc& trianglesMicromap = *triangles.micromap;
 
                 outTriangles.pNext = vkTrianglesMicromaps;
 
