@@ -953,8 +953,10 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     for (; currentShaderModel >= (uint32_t)D3D_SHADER_MODEL_6_0; currentShaderModel--) {
         D3D12_FEATURE_DATA_SHADER_MODEL shaderModel = {(D3D_SHADER_MODEL)currentShaderModel};
         hr = m_Device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &shaderModel, sizeof(shaderModel));
-        if (SUCCEEDED(hr))
+        if (SUCCEEDED(hr)) {
+            currentShaderModel = (uint32_t)shaderModel.HighestShaderModel;
             break;
+        }
     }
     if (currentShaderModel < D3D_SHADER_MODEL_6_0)
         currentShaderModel = D3D_SHADER_MODEL_5_1;
