@@ -243,7 +243,7 @@ static inline void RemoveInputAttachmentRange(Vector<InputAttachmentRange>& rang
         NormalizeInputAttachmentRanges(ranges);
 }
 
-static inline void FillRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, const AttachmentDesc& attachmentDesc, Dim_t& renderWidth, Dim_t& renderHeight, Dim_t& layerNum) {
+static inline void FillRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, const AttachmentDesc& attachmentDesc, bool storeOpNoneSupported, Dim_t& renderWidth, Dim_t& renderHeight, Dim_t& layerNum) {
     const DescriptorVK& descriptorVK = *(DescriptorVK*)attachmentDesc.descriptor;
     const TexViewDesc& texViewDesc = descriptorVK.GetTexViewDesc();
 
@@ -251,7 +251,7 @@ static inline void FillRenderingAttachmentInfo(VkRenderingAttachmentInfo& attach
     attachmentInfo.imageView = descriptorVK.GetImageView();
     attachmentInfo.imageLayout = texViewDesc.expectedLayout;
     attachmentInfo.loadOp = GetLoadOp(attachmentDesc.loadOp);
-    attachmentInfo.storeOp = GetStoreOp(attachmentDesc.storeOp);
+    attachmentInfo.storeOp = GetStoreOp(attachmentDesc.storeOp, storeOpNoneSupported);
     attachmentInfo.clearValue = *(VkClearValue*)&attachmentDesc.clearValue;
 
     if (attachmentDesc.resolveDst) {
@@ -275,7 +275,7 @@ static inline void FillRenderingAttachmentInfo(VkRenderingAttachmentInfo& attach
     layerNum = std::min(layerNum, texViewDesc.layerOrSliceNum);
 }
 
-static inline RenderPassAttachmentDesc GetRenderPassAttachmentDesc(const AttachmentDesc& attachmentDesc, bool isInputAttachment = false) {
+static inline RenderPassAttachmentDesc GetRenderPassAttachmentDesc(const AttachmentDesc& attachmentDesc, bool storeOpNoneSupported, bool isInputAttachment = false) {
     const DescriptorVK& descriptorVK = *(DescriptorVK*)attachmentDesc.descriptor;
     const TexViewDesc& texViewDesc = descriptorVK.GetTexViewDesc();
 
@@ -283,8 +283,7 @@ static inline RenderPassAttachmentDesc GetRenderPassAttachmentDesc(const Attachm
     out.format = GetVkFormat(descriptorVK.GetFormat());
     out.sampleNum = (VkSampleCountFlagBits)texViewDesc.texture->GetDesc().sampleNum;
     out.loadOp = GetLoadOp(attachmentDesc.loadOp);
-    // STORE_OP_NONE may be unavailable on legacy render path, conservatively revert to STORE
-    out.storeOp = attachmentDesc.storeOp == StoreOp::NONE ? VK_ATTACHMENT_STORE_OP_STORE : GetStoreOp(attachmentDesc.storeOp);
+    out.storeOp = GetStoreOp(attachmentDesc.storeOp, storeOpNoneSupported);
     out.stencilLoadOp = out.loadOp;
     out.stencilStoreOp = out.storeOp;
     out.layout = isInputAttachment ? VK_IMAGE_LAYOUT_RENDERING_LOCAL_READ : texViewDesc.expectedLayout;
@@ -1623,13 +1622,13 @@ NRI_INLINE void CommandBufferVK::BeginRendering(const RenderingDesc& renderingDe
         renderingInfo.pColorAttachments = colors;
 
         for (uint32_t i = 0; i < renderingDesc.colorNum; i++)
-            FillRenderingAttachmentInfo(colors[i], renderingDesc.colors[i], renderWidth, renderHeight, renderLayerNum);
+            FillRenderingAttachmentInfo(colors[i], renderingDesc.colors[i], m_Device.m_IsSupported.storeOpNone, renderWidth, renderHeight, renderLayerNum);
 
         VkRenderingAttachmentInfo depth = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
         if (renderingDesc.depth.descriptor) {
             m_DepthStencil = (DescriptorVK*)renderingDesc.depth.descriptor;
 
-            FillRenderingAttachmentInfo(depth, renderingDesc.depth, renderWidth, renderHeight, renderLayerNum);
+            FillRenderingAttachmentInfo(depth, renderingDesc.depth, m_Device.m_IsSupported.storeOpNone, renderWidth, renderHeight, renderLayerNum);
             renderingInfo.pDepthAttachment = &depth;
 
             const FormatProps& formatProps = GetFormatProps(m_DepthStencil->GetFormat());
@@ -1642,7 +1641,7 @@ NRI_INLINE void CommandBufferVK::BeginRendering(const RenderingDesc& renderingDe
         if (renderingDesc.stencil.descriptor) { // it's safe to do it this way, since there are no "stencil-only" formats
             m_DepthStencil = (DescriptorVK*)renderingDesc.stencil.descriptor;
 
-            FillRenderingAttachmentInfo(stencil, renderingDesc.stencil, renderWidth, renderHeight, renderLayerNum);
+            FillRenderingAttachmentInfo(stencil, renderingDesc.stencil, m_Device.m_IsSupported.storeOpNone, renderWidth, renderHeight, renderLayerNum);
             renderingInfo.pStencilAttachment = &stencil;
         }
 
@@ -1684,7 +1683,7 @@ NRI_INLINE void CommandBufferVK::BeginRendering(const RenderingDesc& renderingDe
             VkImage image = descriptorVK.GetTexViewDesc().texture->GetHandle();
             bool isInputAttachment = HasInputAttachmentRange(m_InputAttachmentRanges, image, GetSubresourceRange(descriptorVK));
 
-            renderPassDesc.colors.push_back(GetRenderPassAttachmentDesc(color, isInputAttachment));
+            renderPassDesc.colors.push_back(GetRenderPassAttachmentDesc(color, m_Device.m_IsSupported.storeOpNone, isInputAttachment));
             framebufferDesc.attachments.push_back(descriptorVK.GetImageView());
             UpdateRenderingExtent(descriptorVK, renderWidth, renderHeight, renderLayerNum);
 
@@ -1723,7 +1722,7 @@ NRI_INLINE void CommandBufferVK::BeginRendering(const RenderingDesc& renderingDe
             const FormatProps& formatProps = GetFormatProps(m_DepthStencil->GetFormat());
 
             renderPassDesc.hasDepth = true;
-            renderPassDesc.depth = GetRenderPassAttachmentDesc(renderingDesc.depth);
+            renderPassDesc.depth = GetRenderPassAttachmentDesc(renderingDesc.depth, m_Device.m_IsSupported.storeOpNone);
             framebufferDesc.attachments.push_back(m_DepthStencil->GetImageView());
             UpdateRenderingExtent(*m_DepthStencil, renderWidth, renderHeight, renderLayerNum);
 
@@ -1758,7 +1757,7 @@ NRI_INLINE void CommandBufferVK::BeginRendering(const RenderingDesc& renderingDe
             }
 
             renderPassDesc.hasStencil = true;
-            renderPassDesc.stencil = GetRenderPassAttachmentDesc(renderingDesc.stencil);
+            renderPassDesc.stencil = GetRenderPassAttachmentDesc(renderingDesc.stencil, m_Device.m_IsSupported.storeOpNone);
             if (renderingDesc.depth.descriptor) {
                 renderPassDesc.depth.stencilLoadOp = renderPassDesc.stencil.loadOp;
                 renderPassDesc.depth.stencilStoreOp = renderPassDesc.stencil.storeOp;

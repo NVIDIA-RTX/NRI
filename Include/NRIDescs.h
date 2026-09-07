@@ -1618,16 +1618,16 @@ NriStruct(ComputePipelineDesc) {
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_render_pass_beginning_access_type
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkAttachmentLoadOp.html
 NriEnum(LoadOp, uint8_t,
-    LOAD,
-    CLEAR
+    LOAD,       // loads the existing attachment contents
+    CLEAR       // clears the attachment using "AttachmentDesc::clearValue"
 );
 
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_render_pass_ending_access_type
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkAttachmentStoreOp.html
 NriEnum(StoreOp, uint8_t,
-    STORE,
-    DISCARD,
-    NONE
+    STORE,      // stores the attachment contents
+    DISCARD,    // makes the attachment contents undefined
+    NONE        // performs no store access if the attachment is not written, otherwise acts like "DISCARD"
 );
 
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_resolve_mode

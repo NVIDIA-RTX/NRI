@@ -39,7 +39,11 @@ constexpr std::array<VkAttachmentStoreOp, (size_t)StoreOp::MAX_NUM> g_StoreOps =
 };
 NRI_VALIDATE_ARRAY(g_StoreOps);
 
-constexpr VkAttachmentStoreOp GetStoreOp(StoreOp storeOp) {
+constexpr VkAttachmentStoreOp GetStoreOp(StoreOp storeOp, bool storeOpNoneSupported) {
+    // "STORE" is the only legitimate fallback because it preserves the attachment contents
+    if (storeOp == StoreOp::NONE && !storeOpNoneSupported)
+        return VK_ATTACHMENT_STORE_OP_STORE;
+
     return g_StoreOps[(size_t)storeOp];
 }
 
