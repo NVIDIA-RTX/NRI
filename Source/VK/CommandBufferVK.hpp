@@ -283,7 +283,8 @@ static inline RenderPassAttachmentDesc GetRenderPassAttachmentDesc(const Attachm
     out.format = GetVkFormat(descriptorVK.GetFormat());
     out.sampleNum = (VkSampleCountFlagBits)texViewDesc.texture->GetDesc().sampleNum;
     out.loadOp = GetLoadOp(attachmentDesc.loadOp);
-    out.storeOp = GetStoreOp(attachmentDesc.storeOp);
+    // STORE_OP_NONE may be unavailable on legacy render path, conservatively revert to STORE
+    out.storeOp = attachmentDesc.storeOp == StoreOp::NONE ? VK_ATTACHMENT_STORE_OP_STORE : GetStoreOp(attachmentDesc.storeOp);
     out.stencilLoadOp = out.loadOp;
     out.stencilStoreOp = out.storeOp;
     out.layout = isInputAttachment ? VK_IMAGE_LAYOUT_RENDERING_LOCAL_READ : texViewDesc.expectedLayout;

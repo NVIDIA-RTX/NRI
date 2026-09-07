@@ -1626,7 +1626,8 @@ NriEnum(LoadOp, uint8_t,
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkAttachmentStoreOp.html
 NriEnum(StoreOp, uint8_t,
     STORE,
-    DISCARD
+    DISCARD,
+    NONE
 );
 
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_resolve_mode
