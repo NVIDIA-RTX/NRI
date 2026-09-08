@@ -63,9 +63,7 @@ void DescriptorSetWGPU::CopyRangeFrom(uint32_t dstRangeIndex, uint32_t dstBaseDe
 
     const DescriptorRangeMappingWGPU& dstRange = m_Mapping.ranges[dstRangeIndex];
     const DescriptorRangeMappingWGPU& srcRange = srcDescriptorSet.m_Mapping.ranges[srcRangeIndex];
-    uint32_t copyNum = descriptorNum == ALL ? srcRange.descriptorNum - srcBaseDescriptor : descriptorNum;
-
-    for (uint32_t i = 0; i < copyNum; i++)
+    for (uint32_t i = 0; i < descriptorNum; i++)
         m_Descriptors[dstRange.descriptorOffset + dstBaseDescriptor + i] = srcDescriptorSet.m_Descriptors[srcRange.descriptorOffset + srcBaseDescriptor + i];
 
     m_UpdateVersion++;

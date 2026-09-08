@@ -17,7 +17,8 @@ struct DescriptorD3D12 final : public DebugNameBase {
     }
 
     inline ~DescriptorD3D12() {
-        m_Device.FreeDescriptorHandle(m_Handle);
+        if (m_Handle.IsAllocated())
+            m_Device.FreeDescriptorHandle(m_Handle);
     }
 
     inline DeviceD3D12& GetDevice() const {

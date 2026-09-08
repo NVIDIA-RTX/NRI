@@ -49,6 +49,7 @@ Result DescriptorPoolVK::Create(const DescriptorPoolDesc& descriptorPoolDesc) {
 Result DescriptorPoolVK::Create(const DescriptorPoolVKDesc& descriptorPoolVKDesc) {
     m_OwnsNativeObjects = false;
     m_Handle = (VkDescriptorPool)descriptorPoolVKDesc.vkDescriptorPool;
+    m_DescriptorSets.resize(descriptorPoolVKDesc.descriptorSetMaxNum);
 
     return Result::SUCCESS;
 }
@@ -74,24 +75,35 @@ NRI_INLINE Result DescriptorPoolVK::AllocateDescriptorSets(const PipelineLayout&
         }
     }
 
+    Scratch<VkDescriptorSetLayout> setLayouts = NRI_ALLOCATE_SCRATCH(m_Device, VkDescriptorSetLayout, instanceNum);
+    Scratch<uint32_t> variableDescriptorNums = NRI_ALLOCATE_SCRATCH(m_Device, uint32_t, hasVariableDescriptorNum ? instanceNum : 0);
+    Scratch<VkDescriptorSet> handles = NRI_ALLOCATE_SCRATCH(m_Device, VkDescriptorSet, instanceNum);
+
+    for (uint32_t i = 0; i < instanceNum; i++) {
+        setLayouts[i] = setLayout;
+        handles[i] = VK_NULL_HANDLE;
+
+        if (hasVariableDescriptorNum)
+            variableDescriptorNums[i] = variableDescriptorNum;
+    }
+
     VkDescriptorSetVariableDescriptorCountAllocateInfo variableDescriptorCountInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO};
-    variableDescriptorCountInfo.descriptorSetCount = 1;
-    variableDescriptorCountInfo.pDescriptorCounts = &variableDescriptorNum;
+    variableDescriptorCountInfo.descriptorSetCount = instanceNum;
+    variableDescriptorCountInfo.pDescriptorCounts = variableDescriptorNums;
 
     VkDescriptorSetAllocateInfo info = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
     info.pNext = hasVariableDescriptorNum ? &variableDescriptorCountInfo : nullptr;
     info.descriptorPool = m_Handle;
-    info.descriptorSetCount = 1;
-    info.pSetLayouts = &setLayout;
+    info.descriptorSetCount = instanceNum;
+    info.pSetLayouts = setLayouts;
 
     const auto& vk = m_Device.GetDispatchTable();
-    for (uint32_t i = 0; i < instanceNum; i++) {
-        VkDescriptorSet handle = VK_NULL_HANDLE;
-        VkResult vkResult = vk.AllocateDescriptorSets(m_Device, &info, &handle);
-        NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkAllocateDescriptorSets");
+    VkResult vkResult = vk.AllocateDescriptorSets(m_Device, &info, handles);
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkAllocateDescriptorSets");
 
+    for (uint32_t i = 0; i < instanceNum; i++) {
         DescriptorSetVK* descriptorSet = &m_DescriptorSets[m_DescriptorSetNum++];
-        descriptorSet->Create(&m_Device, handle, descriptorSetDesc);
+        descriptorSet->Create(&m_Device, handles[i], descriptorSetDesc);
 
         descriptorSets[i] = (DescriptorSet*)descriptorSet;
     }

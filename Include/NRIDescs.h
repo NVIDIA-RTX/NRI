@@ -76,7 +76,7 @@ NriStruct(Float2_t) {
 
 // Aliases
 static const uint32_t NriConstant(BGRA_UNUSED) = 0;     // only for "bgra" color for profiling
-static const uint32_t NriConstant(ALL) = 0;             // only for "sampleMask" and "descriptorNum"
+static const uint32_t NriConstant(ALL) = 0;             // only for "sampleMask"
 static const Nri(Dim_t) NriConstant(WHOLE_SIZE) = 0;    // only for "Dim_t" and "size"
 static const Nri(Dim_t) NriConstant(REMAINING) = 0;     // only for "mipNum" and "layerNum"
 
@@ -1022,6 +1022,9 @@ NriBits(DescriptorRangeBits, uint8_t,
     NONE                                    = 0,
     PARTIALLY_BOUND                         = NriBit(0),    // descriptors in range may not contain valid descriptors at the time the descriptors are consumed (but referenced descriptors must be valid)
     ARRAY                                   = NriBit(1),    // descriptors in range are organized into an array
+
+    // Requires "tiers.bindless" and "tiers.resourceBinding >= 2"; must be used only by the last range in a set
+    // VK: must resolve to the highest binding number in the set after applying "VKBindingOffsets"
     VARIABLE_SIZED_ARRAY                    = NriBit(2),    // descriptors in range are organized into a variable-sized array, which size is specified via "variableDescriptorNum" argument of "AllocateDescriptorSets" function
 
     // https://docs.vulkan.org/samples/latest/samples/extensions/descriptor_indexing/README.html#_update_after_bind_streaming_descriptors_concurrently
@@ -1180,7 +1183,7 @@ NriStruct(CopyDescriptorRangeDesc) {
     const NriPtr(DescriptorSet) srcDescriptorSet; // must be allocated from a "DescriptorPool" with "DescriptorPoolBits::COPY_SOURCE"
     uint32_t srcRangeIndex;
     uint32_t srcBaseDescriptor;
-    uint32_t descriptorNum;         // can be "ALL" (source)
+    uint32_t descriptorNum;         // must be > 0
 };
 
 // Binding

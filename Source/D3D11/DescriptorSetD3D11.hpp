@@ -39,10 +39,6 @@ NRI_INLINE void DescriptorSetD3D11::Copy(const CopyDescriptorRangeDesc* copyDesc
         const DescriptorD3D11** dstDescriptors = dst.m_Descriptors + dstRange.descriptorOffset + copyDescriptorSetDesc.dstBaseDescriptor;
         const DescriptorD3D11** srcDescriptors = src.m_Descriptors + srcRange.descriptorOffset + copyDescriptorSetDesc.srcBaseDescriptor;
 
-        uint32_t descriptorNum = copyDescriptorSetDesc.descriptorNum;
-        if (descriptorNum == ALL)
-            descriptorNum = srcRange.descriptorNum;
-
-        memcpy(dstDescriptors, srcDescriptors, descriptorNum * sizeof(DescriptorD3D11*));
+        memcpy(dstDescriptors, srcDescriptors, copyDescriptorSetDesc.descriptorNum * sizeof(DescriptorD3D11*));
     }
 }

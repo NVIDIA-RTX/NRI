@@ -102,7 +102,11 @@ enum DescriptorHeapType : uint8_t {
 struct DescriptorHandle {
     uint32_t heapType : DESCRIPTOR_HANDLE_HEAP_TYPE_BIT_NUM;
     uint32_t heapIndex : DESCRIPTOR_HANDLE_HEAP_INDEX_BIT_NUM;
-    uint32_t heapOffset : DESCRIPTOR_HANDLE_HEAP_OFFSET_BIT_NUM;
+    uint32_t heapOffsetPlusOne : DESCRIPTOR_HANDLE_HEAP_OFFSET_BIT_NUM; // 0 is reserved for an invalid handle
+
+    inline bool IsAllocated() const {
+        return heapOffsetPlusOne != 0;
+    }
 };
 
 constexpr uint32_t DESCRIPTORS_BATCH_SIZE = 1024;
@@ -111,7 +115,7 @@ constexpr uint32_t DRED_BREADCRUMB_HISTORY_MAX_NUM = 64 * 1024;
 constexpr uint32_t DRED_BREADCRUMB_RADIUS = 4;
 
 static_assert(D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES <= (1 << DESCRIPTOR_HANDLE_HEAP_TYPE_BIT_NUM), "Out of bounds");
-static_assert(DESCRIPTORS_BATCH_SIZE <= (1 << DESCRIPTOR_HANDLE_HEAP_OFFSET_BIT_NUM), "Out of bounds");
+static_assert(DESCRIPTORS_BATCH_SIZE < (1 << DESCRIPTOR_HANDLE_HEAP_OFFSET_BIT_NUM), "Out of bounds");
 
 struct DescriptorHeapDesc {
     ComPtr<ID3D12DescriptorHeap> heap;

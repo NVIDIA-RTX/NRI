@@ -11,7 +11,6 @@ constexpr RootParameterIndexType ROOT_PARAMETER_UNUSED = RootParameterIndexType(
 
 struct DescriptorRangeMapping {
     uint32_t heapOffset;
-    uint32_t descriptorNum;
     RootParameterIndexType rootParameterIndex;
     DescriptorHeapType descriptorHeapType;
 };
@@ -23,6 +22,7 @@ struct DescriptorSetMapping {
 
     Vector<DescriptorRangeMapping> descriptorRangeMappings;
     std::array<uint32_t, DescriptorHeapType::MAX_NUM> descriptorNum = {};
+    std::array<uint32_t, DescriptorHeapType::MAX_NUM> variableDescriptorMaxNum = {};
 };
 
 struct PipelineLayoutD3D12 final : public DebugNameBase {

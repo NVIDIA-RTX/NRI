@@ -4,7 +4,7 @@ static inline D3D12_DESCRIPTOR_RANGE_FLAGS GetDescriptorRangeFlags(const Descrip
     // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#flags-added-in-root-signature-version-11
     D3D12_DESCRIPTOR_RANGE_FLAGS descriptorRangeFlags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
 
-    bool descriptorsVolatile = (descriptorRangeDesc.flags & DescriptorRangeBits::PARTIALLY_BOUND) != 0;    // implies relaxed requirements and validation
+    bool descriptorsVolatile = (descriptorRangeDesc.flags & (DescriptorRangeBits::PARTIALLY_BOUND | DescriptorRangeBits::VARIABLE_SIZED_ARRAY)) != 0; // implies relaxed requirements and validation
     descriptorsVolatile |= (descriptorRangeDesc.flags & DescriptorRangeBits::ALLOW_UPDATE_AFTER_SET) != 0; // allows descriptor updates "after bind"
     descriptorsVolatile |= descriptorRangeDesc.descriptorType == DescriptorType::INPUT_ATTACHMENT;         // allows layout changes "after bind"
 
@@ -128,9 +128,9 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
             auto& descriptorRangeMapping = m_DescriptorSetMappings[i].descriptorRangeMappings[j];
             descriptorRangeMapping.descriptorHeapType = (DescriptorHeapType)GetDescriptorHeapType(descriptorRangeDesc.descriptorType);
             descriptorRangeMapping.heapOffset = m_DescriptorSetMappings[i].descriptorNum[descriptorRangeMapping.descriptorHeapType];
-            descriptorRangeMapping.descriptorNum = descriptorRangeDesc.descriptorNum;
-
             m_DescriptorSetMappings[i].descriptorNum[descriptorRangeMapping.descriptorHeapType] += descriptorRangeDesc.descriptorNum;
+            if (descriptorRangeDesc.flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY)
+                m_DescriptorSetMappings[i].variableDescriptorMaxNum[descriptorRangeMapping.descriptorHeapType] = descriptorRangeDesc.descriptorNum;
 
             // Skip ranges representing a "directly indexed heap"
             if (descriptorRangeDesc.descriptorType == DescriptorType::MUTABLE) {

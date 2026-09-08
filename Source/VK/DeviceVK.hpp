@@ -1474,8 +1474,8 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
             m_Desc.tiers.shadingRate = 2;
 
         // TODO: seems to be the best match
-        m_Desc.tiers.bindless = features12.descriptorIndexing ? 1 : 0;
-        m_Desc.tiers.resourceBinding = 2;
+        m_Desc.tiers.bindless = (features12.descriptorIndexing && features12.descriptorBindingVariableDescriptorCount) ? 1 : 0;
+        m_Desc.tiers.resourceBinding = features12.descriptorBindingPartiallyBound ? 2 : 0;
         m_Desc.tiers.memory = 1;
 
         m_Desc.features.swapChain = IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME, desiredDeviceExts);
@@ -3276,17 +3276,13 @@ NRI_INLINE void DeviceVK::CopyDescriptorRanges(const CopyDescriptorRangeDesc* co
         const DescriptorRangeDesc& dstRangeDesc = dst.GetDesc()->ranges[copyDescriptorSetDesc.dstRangeIndex];
         const DescriptorRangeDesc& srcRangeDesc = src.GetDesc()->ranges[copyDescriptorSetDesc.srcRangeIndex];
 
-        uint32_t descriptorNum = copyDescriptorSetDesc.descriptorNum;
-        if (descriptorNum == ALL)
-            descriptorNum = srcRangeDesc.descriptorNum;
-
         VkCopyDescriptorSet& copy = copies[i];
         copy = {VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET};
         copy.srcSet = src.GetHandle();
         copy.srcBinding = srcRangeDesc.baseRegisterIndex;
         copy.dstSet = dst.GetHandle();
         copy.dstBinding = dstRangeDesc.baseRegisterIndex;
-        copy.descriptorCount = descriptorNum;
+        copy.descriptorCount = copyDescriptorSetDesc.descriptorNum;
 
         bool isSrcArray = srcRangeDesc.flags & (DescriptorRangeBits::ARRAY | DescriptorRangeBits::VARIABLE_SIZED_ARRAY);
         if (isSrcArray)

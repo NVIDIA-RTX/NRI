@@ -1397,7 +1397,7 @@ Result DeviceD3D12::GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, Descrip
             DescriptorHandle handle = {};
             handle.heapType = type;
             handle.heapIndex = heapIndex;
-            handle.heapOffset = i;
+            handle.heapOffsetPlusOne = i + 1;
 
             freeDescriptors.push_back(handle);
         }
@@ -1421,7 +1421,7 @@ DescriptorHandleCPU DeviceD3D12::GetDescriptorHandleCPU(const DescriptorHandle& 
     ExclusiveScope lock(m_DescriptorHeapLock);
 
     const DescriptorHeapDesc& descriptorHeapDesc = m_DescriptorHeaps[descriptorHandle.heapIndex];
-    DescriptorHandleCPU descriptorHandleCPU = descriptorHeapDesc.baseHandleCPU + descriptorHandle.heapOffset * descriptorHeapDesc.descriptorSize;
+    DescriptorHandleCPU descriptorHandleCPU = descriptorHeapDesc.baseHandleCPU + (descriptorHandle.heapOffsetPlusOne - 1) * descriptorHeapDesc.descriptorSize;
 
     return descriptorHandleCPU;
 }

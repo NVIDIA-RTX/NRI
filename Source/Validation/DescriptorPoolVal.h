@@ -46,18 +46,9 @@ private:
     DescriptorPoolDesc m_Desc = {}; // .natvis
     Vector<DescriptorSetVal> m_DescriptorSets;
     uint32_t m_DescriptorSetsNum = 0;
-    uint32_t m_SamplerNum = 0;
-    uint32_t m_MutableNum = 0;
-    uint32_t m_ConstantBufferNum = 0;
-    uint32_t m_TextureNum = 0;
-    uint32_t m_StorageTextureNum = 0;
-    uint32_t m_InputAttachmentNum = 0;
-    uint32_t m_BufferNum = 0;
-    uint32_t m_StorageBufferNum = 0;
-    uint32_t m_StructuredBufferNum = 0;
-    uint32_t m_StorageStructuredBufferNum = 0;
-    uint32_t m_AccelerationStructureNum = 0;
+    std::array<uint32_t, (size_t)DescriptorType::MAX_NUM> m_DescriptorNums = {};
     bool m_SkipValidation = false;
+    Lock m_Lock;
 };
 
 } // namespace nri

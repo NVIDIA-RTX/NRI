@@ -1,8 +1,9 @@
 // © 2021 NVIDIA Corporation
 
-NRI_INLINE void DescriptorSetVal::SetImpl(DescriptorSet* impl, const DescriptorSetDesc* desc, bool isCopySource) {
+NRI_INLINE void DescriptorSetVal::SetImpl(DescriptorSet* impl, const DescriptorSetDesc* desc, uint32_t variableDescriptorNum, bool isCopySource) {
     m_Impl = impl;
     m_Desc = desc;
+    m_VariableDescriptorNum = variableDescriptorNum;
     m_IsCopySource = isCopySource;
 }
 

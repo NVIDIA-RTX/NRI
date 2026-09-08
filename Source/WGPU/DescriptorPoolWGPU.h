@@ -24,6 +24,7 @@ private:
     DeviceWGPU& m_Device;
     Vector<DescriptorSetWGPU*> m_DescriptorSets;
     DescriptorPoolDesc m_Desc = {};
+    Lock m_Lock;
 };
 
 } // namespace nri
