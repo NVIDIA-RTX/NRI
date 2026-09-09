@@ -425,23 +425,27 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
     uint32_t rangeNum = 0;
     for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++) {
         const DescriptorSetDesc& descriptorSetDesc = pipelineLayoutDesc.descriptorSets[i];
+        uint32_t variableSizedArrayNum = 0;
 
         for (uint32_t j = 0; j < descriptorSetDesc.rangeNum; j++) {
             const DescriptorRangeDesc& range = descriptorSetDesc.ranges[j];
+
+            if (range.flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY)
+                variableSizedArrayNum++;
 
             NRI_RETURN_ON_FAILURE(this, range.descriptorNum > 0, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].descriptorNum' is 0", i, j);
             NRI_RETURN_ON_FAILURE(this, range.descriptorType < DescriptorType::MAX_NUM, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].descriptorType' is invalid", i, j);
             NRI_RETURN_ON_FAILURE(this, !(range.flags & DescriptorRangeBits::PARTIALLY_BOUND) || deviceDesc.tiers.resourceBinding != 0, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].flags' has 'PARTIALLY_BOUND', but 'tiers.resourceBinding' is 0", i, j);
             NRI_RETURN_ON_FAILURE(this, !(range.flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY) || deviceDesc.tiers.bindless != 0, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].flags' has 'VARIABLE_SIZED_ARRAY', but 'tiers.bindless' is 0", i, j);
             NRI_RETURN_ON_FAILURE(this, !(range.flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY) || deviceDesc.tiers.resourceBinding >= 2, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].flags' has 'VARIABLE_SIZED_ARRAY', but 'tiers.resourceBinding' is less than 2", i, j);
-            NRI_RETURN_ON_FAILURE(this, !(range.flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY) || (j + 1) == descriptorSetDesc.rangeNum, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].flags' has 'VARIABLE_SIZED_ARRAY', but the range is not the last one in the set", i, j);
-
             if (range.shaderStages != StageBits::ALL) {
                 const uint32_t filteredVisibilityMask = range.shaderStages & pipelineLayoutDesc.shaderStages;
 
                 NRI_RETURN_ON_FAILURE(this, (uint32_t)range.shaderStages == filteredVisibilityMask, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].shaderStages' is not compatible with 'shaderStages'", i, j);
             }
         }
+
+        NRI_RETURN_ON_FAILURE(this, variableSizedArrayNum <= 1, Result::INVALID_ARGUMENT, "'descriptorSets[%u]' has more than one 'VARIABLE_SIZED_ARRAY' range", i);
 
         uint32_t n = 0;
         for (; n < i && spaces[n] != descriptorSetDesc.registerSpace; n++)

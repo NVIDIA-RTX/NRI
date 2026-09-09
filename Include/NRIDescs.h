@@ -1020,11 +1020,13 @@ NriBits(DescriptorSetBits, uint8_t,
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkDescriptorBindingFlagBits.html
 NriBits(DescriptorRangeBits, uint8_t,
     NONE                                    = 0,
+
+    // Requires "tiers.resourceBinding >= 1"; descriptor validity is additionally restricted by the tier
     PARTIALLY_BOUND                         = NriBit(0),    // descriptors in range may not contain valid descriptors at the time the descriptors are consumed (but referenced descriptors must be valid)
     ARRAY                                   = NriBit(1),    // descriptors in range are organized into an array
 
-    // Requires "tiers.bindless" and "tiers.resourceBinding >= 2"; must be used only by the last range in a set
-    // VK: must resolve to the highest binding number in the set after applying "VKBindingOffsets"
+    // Requires "tiers.bindless >= 1" and "tiers.resourceBinding >= 2"
+    // VK: only one range per set, resolving to the highest binding number after applying "VKBindingOffsets"
     VARIABLE_SIZED_ARRAY                    = NriBit(2),    // descriptors in range are organized into a variable-sized array, which size is specified via "variableDescriptorNum" argument of "AllocateDescriptorSets" function
 
     // https://docs.vulkan.org/samples/latest/samples/extensions/descriptor_indexing/README.html#_update_after_bind_streaming_descriptors_concurrently
@@ -2153,11 +2155,15 @@ NriStruct(DeviceDesc) {
 
         // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#limitations-on-static-samplers
         // 0 - ALL descriptors in range must be valid by the time the command list executes
+        //       GPUs: rare
         // 1 - only "CONSTANT_BUFFER" and "STORAGE" descriptors in range must be valid
+        //       GPUs: NVIDIA GTX 6xx, 7xx, 9xx & 10xx series
         // 2 - only referenced descriptors must be valid
+        //       GPUs: NVIDIA GTX 16xx & RTX series, AMD R9 & RX series, Intel Arc & Skylake+
         uint8_t resourceBinding;
 
-        // 1 - unbound arrays with dynamic indexing
+        // Descriptor array indexing
+        // 1 - unbounded arrays with dynamic indexing
         // 2 - D3D12 dynamic resources: https://microsoft.github.io/DirectX-Specs/d3d/HLSL_SM_6_6_DynamicResources.html
         uint8_t bindless;
 
