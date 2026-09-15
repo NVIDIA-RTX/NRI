@@ -691,6 +691,10 @@ NRI_API Result NRI_CALL nriGetInterface(const Device& device, const char* interf
         realInterfaceSize = sizeof(CoreInterface);
         if (realInterfaceSize == interfaceSize)
             result = deviceBase.FillFunctionTable(*(CoreInterface*)interfacePtr);
+    } else if (hash == Hash(NRI_STRINGIFY(DescriptorHeapInterface))) {
+        realInterfaceSize = sizeof(DescriptorHeapInterface);
+        if (realInterfaceSize == interfaceSize)
+            result = deviceBase.FillFunctionTable(*(DescriptorHeapInterface*)interfacePtr);
     } else if (hash == Hash(NRI_STRINGIFY(ImguiInterface))) {
         realInterfaceSize = sizeof(ImguiInterface);
         if (realInterfaceSize == interfaceSize)
@@ -1231,4 +1235,136 @@ NRI_API void NRI_CALL nriReportLiveObjects() {
 
 NRI_API Result NRI_CALL nriReportDeviceLostInfo(Device& device, DeviceLostDump& deviceLostDump) {
     return ((DeviceBase&)device).ReportDeviceLostInfo(deviceLostDump);
+}
+
+NRI_API PipelineLayoutSettingsDesc NRI_CALL nriFitPipelineLayoutSettingsIntoDeviceLimits(const DeviceDesc& deviceDesc, const PipelineLayoutSettingsDesc& pipelineLayoutSettingsDesc) {
+    // D3D12 root signature costs and the cross-API root descriptor size, in bytes
+    const uint32_t rootConstantCost = 4;
+    const uint32_t descriptorTableCost = 4;
+    const uint32_t rootDescriptorCost = 8;
+
+    uint32_t descriptorSetNum = pipelineLayoutSettingsDesc.descriptorSetNum;
+    uint32_t descriptorRangeNum = pipelineLayoutSettingsDesc.descriptorRangeNum;
+    uint32_t rootConstantSize = pipelineLayoutSettingsDesc.rootConstantSize;
+    uint32_t rootDescriptorNum = pipelineLayoutSettingsDesc.rootDescriptorNum;
+    uint32_t rootSamplerNum = pipelineLayoutSettingsDesc.rootSamplerNum;
+
+    if (pipelineLayoutSettingsDesc.useDescriptorHeap) {
+        // "Descriptor heap" mode has no descriptor sets or ranges and uses its own root parameter limits
+        descriptorSetNum = 0;
+        descriptorRangeNum = 0;
+
+        if (rootDescriptorNum > deviceDesc.descriptorHeap.rootDescriptorMaxNum)
+            rootDescriptorNum = deviceDesc.descriptorHeap.rootDescriptorMaxNum;
+
+        if (rootSamplerNum > deviceDesc.descriptorHeap.rootSamplerMaxNum)
+            rootSamplerNum = deviceDesc.descriptorHeap.rootSamplerMaxNum;
+
+        uint32_t freeRootDataSize = deviceDesc.descriptorHeap.rootConstantMaxSize;
+        if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
+            // D3D12 emulation injects root parameters that consume the same root-data budget
+            uint32_t reservedRootDataSize = 0;
+
+            if (pipelineLayoutSettingsDesc.enableD3D12DrawParametersEmulation)
+                reservedRootDataSize += rootDescriptorCost;
+
+            if (pipelineLayoutSettingsDesc.enableD3D12DrawIndexEmulation)
+                reservedRootDataSize += rootConstantCost;
+
+            freeRootDataSize = (reservedRootDataSize < freeRootDataSize) ? freeRootDataSize - reservedRootDataSize : 0;
+        }
+
+        // Root constants and descriptors share the root-data budget; fit them in the requested priority order
+        if (pipelineLayoutSettingsDesc.preferRootDescriptorsOverConstants) {
+            const uint32_t availableRootDescriptorNum = freeRootDataSize / rootDescriptorCost;
+            if (rootDescriptorNum > availableRootDescriptorNum)
+                rootDescriptorNum = availableRootDescriptorNum;
+
+            freeRootDataSize -= rootDescriptorNum * rootDescriptorCost;
+            const uint32_t availableRootConstantSize = rootDescriptorNum ? freeRootDataSize / rootDescriptorCost * rootDescriptorCost : freeRootDataSize;
+            if (rootConstantSize > availableRootConstantSize)
+                rootConstantSize = availableRootConstantSize;
+        } else {
+            if (rootConstantSize > freeRootDataSize)
+                rootConstantSize = freeRootDataSize;
+
+            const uint32_t alignedRootConstantSize = Align(rootConstantSize, rootDescriptorCost);
+            const uint32_t availableRootDescriptorNum = (alignedRootConstantSize <= freeRootDataSize) ? (freeRootDataSize - alignedRootConstantSize) / rootDescriptorCost : 0;
+            if (rootDescriptorNum > availableRootDescriptorNum)
+                rootDescriptorNum = availableRootDescriptorNum;
+        }
+    } else {
+        // Pipeline layouts using descriptor pools have independent root parameter limits
+        if (rootConstantSize > deviceDesc.pipelineLayout.rootConstantMaxSize)
+            rootConstantSize = deviceDesc.pipelineLayout.rootConstantMaxSize;
+
+        if (rootDescriptorNum > deviceDesc.pipelineLayout.rootDescriptorMaxNum)
+            rootDescriptorNum = deviceDesc.pipelineLayout.rootDescriptorMaxNum;
+
+        if (rootSamplerNum > deviceDesc.pipelineLayout.rootSamplerMaxNum)
+            rootSamplerNum = deviceDesc.pipelineLayout.rootSamplerMaxNum;
+
+        // Vulkan root descriptors and root samplers share the push-descriptor limit
+        if (deviceDesc.graphicsAPI == GraphicsAPI::VK) {
+            const uint32_t availableRootSamplerNum = (rootDescriptorNum < deviceDesc.pipelineLayout.rootSamplerMaxNum) ? (deviceDesc.pipelineLayout.rootSamplerMaxNum - rootDescriptorNum) : 0;
+            if (rootSamplerNum > availableRootSamplerNum)
+                rootSamplerNum = availableRootSamplerNum;
+        }
+
+        uint32_t pipelineLayoutDescriptorSetMaxNum = deviceDesc.pipelineLayout.descriptorSetMaxNum;
+
+        if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
+            // Descriptor tables, root constants, root descriptors and emulation parameters share the root signature budget
+            uint32_t freeBytesInRootSignature = 256;
+
+            if (pipelineLayoutSettingsDesc.enableD3D12DrawParametersEmulation)
+                freeBytesInRootSignature -= rootDescriptorCost;
+
+            if (pipelineLayoutSettingsDesc.enableD3D12DrawIndexEmulation)
+                freeBytesInRootSignature -= rootConstantCost;
+
+            uint32_t availableDescriptorRangeNum = freeBytesInRootSignature / descriptorTableCost;
+            if (descriptorRangeNum > availableDescriptorRangeNum)
+                descriptorRangeNum = availableDescriptorRangeNum;
+
+            freeBytesInRootSignature -= descriptorRangeNum * descriptorTableCost;
+
+            if (pipelineLayoutSettingsDesc.preferRootDescriptorsOverConstants) {
+                uint32_t availableRootDescriptorNum = freeBytesInRootSignature / rootDescriptorCost;
+                if (rootDescriptorNum > availableRootDescriptorNum)
+                    rootDescriptorNum = availableRootDescriptorNum;
+
+                freeBytesInRootSignature -= rootDescriptorNum * rootDescriptorCost;
+
+                if (rootConstantSize > freeBytesInRootSignature)
+                    rootConstantSize = freeBytesInRootSignature;
+            } else {
+                if (rootConstantSize > freeBytesInRootSignature)
+                    rootConstantSize = freeBytesInRootSignature;
+
+                freeBytesInRootSignature -= rootConstantSize;
+
+                uint32_t availableRootDescriptorNum = freeBytesInRootSignature / rootDescriptorCost;
+                if (rootDescriptorNum > availableRootDescriptorNum)
+                    rootDescriptorNum = availableRootDescriptorNum;
+            }
+        } else {
+            // Other backends reserve one internal descriptor set for root descriptors and samplers
+            if ((rootDescriptorNum || rootSamplerNum) && pipelineLayoutDescriptorSetMaxNum)
+                pipelineLayoutDescriptorSetMaxNum--;
+        }
+
+        if (descriptorSetNum > pipelineLayoutDescriptorSetMaxNum)
+            descriptorSetNum = pipelineLayoutDescriptorSetMaxNum;
+    }
+
+    // Preserve preferences and report only the fitted quantities
+    PipelineLayoutSettingsDesc modifiedPipelineLayoutLimitsDesc = pipelineLayoutSettingsDesc;
+    modifiedPipelineLayoutLimitsDesc.descriptorSetNum = descriptorSetNum;
+    modifiedPipelineLayoutLimitsDesc.descriptorRangeNum = descriptorRangeNum;
+    modifiedPipelineLayoutLimitsDesc.rootConstantSize = rootConstantSize;
+    modifiedPipelineLayoutLimitsDesc.rootDescriptorNum = rootDescriptorNum;
+    modifiedPipelineLayoutLimitsDesc.rootSamplerNum = rootSamplerNum;
+
+    return modifiedPipelineLayoutLimitsDesc;
 }

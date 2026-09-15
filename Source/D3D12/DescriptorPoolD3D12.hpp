@@ -18,7 +18,7 @@ Result DescriptorPoolD3D12::Create(const DescriptorPoolDesc& descriptorPoolDesc)
     descriptorHeapSize[DescriptorHeapType::RESOURCE] += descriptorPoolDesc.inputAttachmentMaxNum;
 
     for (uint32_t i = 0; i < DescriptorHeapType::MAX_NUM; i++) {
-        DescriptorHeapDesc& descriptorHeapDesc = m_DescriptorHeapDescs[i];
+        DescriptorHeapDescD3D12& descriptorHeapDesc = m_DescriptorHeapDescs[i];
 
         descriptorHeapDesc = {};
         if (descriptorHeapSize[i]) {
@@ -53,7 +53,7 @@ Result DescriptorPoolD3D12::Create(const DescriptorPoolD3D12Desc& descriptorPool
     };
 
     for (uint32_t i = 0; i < DescriptorHeapType::MAX_NUM; i++) {
-        DescriptorHeapDesc& descriptorHeapDesc = m_DescriptorHeapDescs[i];
+        DescriptorHeapDescD3D12& descriptorHeapDesc = m_DescriptorHeapDescs[i];
 
         descriptorHeapDesc = {};
         if (descriptorHeaps[i]) {
@@ -77,14 +77,14 @@ void DescriptorPoolD3D12::Bind(ID3D12GraphicsCommandList* graphicsCommandList) c
 }
 
 DescriptorHandleCPU DescriptorPoolD3D12::GetDescriptorHandleCPU(DescriptorHeapType descriptorHeapType, uint32_t offset) const {
-    const DescriptorHeapDesc& descriptorHeapDesc = m_DescriptorHeapDescs[descriptorHeapType];
+    const DescriptorHeapDescD3D12& descriptorHeapDesc = m_DescriptorHeapDescs[descriptorHeapType];
     DescriptorHandleCPU descriptorHandleCPU = descriptorHeapDesc.baseHandleCPU + offset * descriptorHeapDesc.descriptorSize;
 
     return descriptorHandleCPU;
 }
 
 DescriptorHandleGPU DescriptorPoolD3D12::GetDescriptorHandleGPU(DescriptorHeapType descriptorHeapType, uint32_t offset) const {
-    const DescriptorHeapDesc& descriptorHeapDesc = m_DescriptorHeapDescs[descriptorHeapType];
+    const DescriptorHeapDescD3D12& descriptorHeapDesc = m_DescriptorHeapDescs[descriptorHeapType];
     DescriptorHandleGPU descriptorHandleGPU = descriptorHeapDesc.baseHandleGPU + offset * descriptorHeapDesc.descriptorSize;
 
     return descriptorHandleGPU;
@@ -118,7 +118,7 @@ NRI_INLINE Result DescriptorPoolD3D12::AllocateDescriptorSets(const PipelineLayo
             }
 
             if (descriptorNum) {
-                DescriptorHeapDesc& descriptorHeapDesc = m_DescriptorHeapDescs[(DescriptorHeapType)h];
+                DescriptorHeapDescD3D12& descriptorHeapDesc = m_DescriptorHeapDescs[(DescriptorHeapType)h];
                 heapOffsets[h] = descriptorHeapDesc.num;
                 descriptorHeapDesc.num += descriptorNum;
             }
@@ -137,7 +137,7 @@ NRI_INLINE Result DescriptorPoolD3D12::AllocateDescriptorSets(const PipelineLayo
 NRI_INLINE void DescriptorPoolD3D12::Reset() {
     ExclusiveScope lock(m_Lock);
 
-    for (DescriptorHeapDesc& descriptorHeapDesc : m_DescriptorHeapDescs)
+    for (DescriptorHeapDescD3D12& descriptorHeapDesc : m_DescriptorHeapDescs)
         descriptorHeapDesc.num = 0;
 
     m_DescriptorSetNum = 0;

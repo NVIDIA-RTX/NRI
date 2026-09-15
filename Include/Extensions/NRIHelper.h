@@ -114,89 +114,21 @@ static inline Nri(Format) NriFunc(GetSupportedDepthFormat)(const NriRef(CoreInte
     return NriScopedMember(Format, UNKNOWN);
 }
 
-// A convinient way to fit pipeline layout settings into the device limits, respecting various restrictions
+// A convenient way to fit pipeline layout settings into the device limits, respecting various restrictions
 NriStruct(PipelineLayoutSettingsDesc) {
     uint32_t descriptorSetNum;
     uint32_t descriptorRangeNum;
     uint32_t rootConstantSize;
     uint32_t rootDescriptorNum;
+    uint32_t rootSamplerNum;
     bool preferRootDescriptorsOverConstants;
+    bool useDescriptorHeap; // uses "DeviceDesc::descriptorHeap" limits and fits descriptor sets and ranges to 0
 
     // D3D12 only (see "NRI.hlsl" for more details)
     bool enableD3D12DrawParametersEmulation;
     bool enableD3D12DrawIndexEmulation;
 };
 
-static inline Nri(PipelineLayoutSettingsDesc) NriFunc(FitPipelineLayoutSettingsIntoDeviceLimits)(const NriRef(DeviceDesc) deviceDesc, const NriRef(PipelineLayoutSettingsDesc) pipelineLayoutSettingsDesc) {
-    uint32_t descriptorSetNum = NriDeref(pipelineLayoutSettingsDesc)->descriptorSetNum;
-    uint32_t descriptorRangeNum = NriDeref(pipelineLayoutSettingsDesc)->descriptorRangeNum;
-    uint32_t rootConstantSize = NriDeref(pipelineLayoutSettingsDesc)->rootConstantSize;
-    uint32_t rootDescriptorNum = NriDeref(pipelineLayoutSettingsDesc)->rootDescriptorNum;
-
-    // Apply global limits
-    if (rootConstantSize > NriDeref(deviceDesc)->pipelineLayout.rootConstantMaxSize)
-        rootConstantSize = NriDeref(deviceDesc)->pipelineLayout.rootConstantMaxSize;
-
-    if (rootDescriptorNum > NriDeref(deviceDesc)->pipelineLayout.rootDescriptorMaxNum)
-        rootDescriptorNum = NriDeref(deviceDesc)->pipelineLayout.rootDescriptorMaxNum;
-
-    uint32_t pipelineLayoutDescriptorSetMaxNum = NriDeref(deviceDesc)->pipelineLayout.descriptorSetMaxNum;
-
-    // D3D12 has limited-size root signature
-    if (NriDeref(deviceDesc)->graphicsAPI == NriScopedMember(GraphicsAPI, D3D12)) {
-        const uint32_t descriptorTableCost = 4;
-        const uint32_t rootDescriptorCost = 8;
-
-        uint32_t freeBytesInRootSignature = 256;
-
-        // Reserved 1 root descriptor for "draw parameters" emulation
-        if (NriDeref(pipelineLayoutSettingsDesc)->enableD3D12DrawParametersEmulation)
-            freeBytesInRootSignature -= 8;
-
-        // Reserved 1 root constant for "draw index" emulation
-        if (NriDeref(pipelineLayoutSettingsDesc)->enableD3D12DrawIndexEmulation)
-            freeBytesInRootSignature -= 4;
-
-        // Must fit
-        uint32_t availableDescriptorRangeNum = freeBytesInRootSignature / descriptorTableCost;
-        if (descriptorRangeNum > availableDescriptorRangeNum)
-            descriptorRangeNum = availableDescriptorRangeNum;
-
-        freeBytesInRootSignature -= descriptorRangeNum * descriptorTableCost;
-
-        // Desired fit
-        if (NriDeref(pipelineLayoutSettingsDesc)->preferRootDescriptorsOverConstants) {
-            uint32_t availableRootDescriptorNum = freeBytesInRootSignature / rootDescriptorCost;
-            if (rootDescriptorNum > availableRootDescriptorNum)
-                rootDescriptorNum = availableRootDescriptorNum;
-
-            freeBytesInRootSignature -= rootDescriptorNum * rootDescriptorCost;
-
-            if (rootConstantSize > freeBytesInRootSignature)
-                rootConstantSize = freeBytesInRootSignature;
-        } else {
-            if (rootConstantSize > freeBytesInRootSignature)
-                rootConstantSize = freeBytesInRootSignature;
-
-            freeBytesInRootSignature -= rootConstantSize;
-
-            uint32_t availableRootDescriptorNum = freeBytesInRootSignature / rootDescriptorCost;
-            if (rootDescriptorNum > availableRootDescriptorNum)
-                rootDescriptorNum = availableRootDescriptorNum;
-        }
-    } else if (rootDescriptorNum)
-        pipelineLayoutDescriptorSetMaxNum--;
-
-    if (descriptorSetNum > pipelineLayoutDescriptorSetMaxNum)
-        descriptorSetNum = pipelineLayoutDescriptorSetMaxNum;
-
-    Nri(PipelineLayoutSettingsDesc) modifiedPipelineLayoutLimitsDesc = *NriDeref(pipelineLayoutSettingsDesc);
-    modifiedPipelineLayoutLimitsDesc.descriptorSetNum = descriptorSetNum;
-    modifiedPipelineLayoutLimitsDesc.descriptorRangeNum = descriptorRangeNum;
-    modifiedPipelineLayoutLimitsDesc.rootConstantSize = rootConstantSize;
-    modifiedPipelineLayoutLimitsDesc.rootDescriptorNum = rootDescriptorNum;
-
-    return modifiedPipelineLayoutLimitsDesc;
-}
+NRI_API Nri(PipelineLayoutSettingsDesc) NRI_CALL nriFitPipelineLayoutSettingsIntoDeviceLimits(const NriRef(DeviceDesc) deviceDesc, const NriRef(PipelineLayoutSettingsDesc) pipelineLayoutSettingsDesc);
 
 NriNamespaceEnd

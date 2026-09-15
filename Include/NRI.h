@@ -39,7 +39,7 @@ Implicit:
 #pragma once
 
 #define NRI_VERSION 181
-#define NRI_VERSION_DATE "1 September 2026"
+#define NRI_VERSION_DATE "15 September 2026"
 
 // C/C++ compatible interface (auto-selection or via "NRI_FORCE_C" macro)
 #include "NRIDescs.h"
@@ -136,7 +136,7 @@ NriStruct(CoreInterface) {
     // - if "ALLOW_UPDATE_AFTER_SET" not used, descriptor sets (and data pointed to by descriptors) must be updated before "CmdSetDescriptorSet"
     // - "ResetDescriptorPool" resets the entire pool and wipes out all allocated descriptor sets. "DescriptorSet" is a tiny struct (<= 48 bytes),
     //   so lots of descriptor sets can be created in advance and reused without calling "ResetDescriptorPool"
-    // - if there is a directly indexed descriptor heap:
+    // - when directly indexed, a descriptor pool backs the directly indexed arrays:
     //   - D3D12: "GetDescriptorSetOffsets" returns offsets in resource and sampler descriptor heaps
     //     - these offsets are needed in shaders, if the corresponding descriptor set is not the first allocated from the descriptor pool
     //   - VK: "GetDescriptorSetOffsets" returns "0"

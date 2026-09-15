@@ -25,10 +25,20 @@ struct BufferVK final : public DebugNameBase {
         return m_Desc;
     }
 
+    inline uint8_t* GetMappedMemory() const {
+        return m_MappedMemory;
+    }
+
+    inline bool RequiresMappedMemoryFlush() const {
+        return m_NonCoherentDeviceMemory != VK_NULL_HANDLE;
+    }
+
     ~BufferVK();
 
     Result Create(const BufferDesc& bufferDesc);
     Result Create(const BufferVKDesc& bufferVKDesc);
+    Result CreateDescriptorHeap(uint64_t size, uint64_t alignment);
+    Result FlushMappedRange(uint64_t offset, uint64_t size);
     Result AllocateAndBindMemory(MemoryLocation memoryLocation, float priority, bool committed);
     Result BindMemory(MemoryVK& memory, uint64_t offset, bool bindMemory);
     void GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const;
@@ -61,7 +71,9 @@ private:
     uint64_t m_MappedMemoryRangeOffset = 0;
     BufferDesc m_Desc = {};
     VmaAllocation m_VmaAllocation = nullptr;
+    uint64_t m_MemoryAlignment = 1;
     bool m_OwnsNativeObjects = true;
+    bool m_IsDescriptorHeap = false;
 };
 
 inline VkDeviceAddress GetBufferDeviceAddress(const Buffer* buffer, uint64_t offset) {

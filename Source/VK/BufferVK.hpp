@@ -40,6 +40,22 @@ Result BufferVK::Create(const BufferVKDesc& bufferVKDesc) {
     return Result::SUCCESS;
 }
 
+Result BufferVK::CreateDescriptorHeap(uint64_t size, uint64_t alignment) {
+    m_Desc = {};
+    m_Desc.size = size;
+    m_IsDescriptorHeap = true;
+    m_MemoryAlignment = alignment;
+
+    VkBufferCreateInfo info = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+    FillCreateInfo(info);
+
+    const auto& vk = m_Device.GetDispatchTable();
+    VkResult vkResult = vk.CreateBuffer(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateBuffer");
+
+    return AllocateAndBindMemory(MemoryLocation::DEVICE_UPLOAD, 1.0f, true);
+}
+
 Result BufferVK::AllocateAndBindMemory(MemoryLocation memoryLocation, float priority, bool committed) {
     NRI_CHECK(m_Handle, "Unexpected");
 
@@ -180,6 +196,9 @@ bool BufferVK::IsVideoOnly() const {
 
 void BufferVK::FillCreateInfo(VkBufferCreateInfo& info) const {
     m_Device.FillCreateInfo(m_Desc, info);
+
+    if (m_IsDescriptorHeap)
+        info.usage |= VK_BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 }
 
 void BufferVK::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {
@@ -194,6 +213,8 @@ void BufferVK::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDe
     const auto& vk = m_Device.GetDispatchTable();
     vk.GetBufferMemoryRequirements2(m_Device, &bufferMemoryRequirements, &requirements);
 
+    requirements.memoryRequirements.alignment = std::max(requirements.memoryRequirements.alignment, m_MemoryAlignment);
+
     // There is no "VK_BUFFER_USAGE" flag for "SCRATCH_BUFFER", thus "vkGetBufferMemoryRequirements" can't return proper alignment. It affects memory "sub-allocation"
     if (m_Desc.usage & BufferUsageBits::SCRATCH) {
         VkDeviceSize scratchBufferOffset = m_Device.GetDesc().memoryAlignment.scratchBufferOffset;
@@ -202,6 +223,22 @@ void BufferVK::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDe
 
     memoryDesc = {};
     m_Device.GetMemoryDesc(memoryLocation, requirements.memoryRequirements, dedicatedRequirements, memoryDesc);
+}
+
+Result BufferVK::FlushMappedRange(uint64_t offset, uint64_t size) {
+    VkResult vkResult = VK_SUCCESS;
+    if (m_VmaAllocation)
+        vkResult = vmaFlushAllocation(m_Device.GetVma(), m_VmaAllocation, offset, size);
+    else {
+        VkMappedMemoryRange memoryRange = GetNonCoherentMappedMemoryRange(offset, size);
+
+        const auto& vk = m_Device.GetDispatchTable();
+        vkResult = vk.FlushMappedMemoryRanges(m_Device, 1, &memoryRange);
+    }
+
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkFlushMappedMemoryRanges");
+
+    return Result::SUCCESS;
 }
 
 VkMappedMemoryRange BufferVK::GetNonCoherentMappedMemoryRange(uint64_t offset, uint64_t size) const {
@@ -253,17 +290,6 @@ NRI_INLINE void* BufferVK::Map(uint64_t offset, uint64_t size) {
 }
 
 NRI_INLINE void BufferVK::Unmap() {
-    if (m_NonCoherentDeviceMemory) {
-        VkResult vkResult = VK_SUCCESS;
-        if (m_VmaAllocation)
-            vkResult = vmaFlushAllocation(m_Device.GetVma(), m_VmaAllocation, m_MappedMemoryRangeOffset, m_MappedMemoryRangeSize);
-        else {
-            VkMappedMemoryRange memoryRange = GetNonCoherentMappedMemoryRange(m_MappedMemoryRangeOffset, m_MappedMemoryRangeSize);
-
-            const auto& vk = m_Device.GetDispatchTable();
-            vkResult = vk.FlushMappedMemoryRanges(m_Device, 1, &memoryRange);
-        }
-
-        NRI_RETURN_VOID_ON_BAD_VKRESULT(&m_Device, vkResult, "vkFlushMappedMemoryRanges");
-    }
+    if (m_NonCoherentDeviceMemory)
+        FlushMappedRange(m_MappedMemoryRangeOffset, m_MappedMemoryRangeSize);
 }

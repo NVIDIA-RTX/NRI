@@ -9,6 +9,7 @@
 #include "CommandAllocatorVK.h"
 #include "CommandBufferVK.h"
 #include "ConversionVK.h"
+#include "DescriptorHeapVK.h"
 #include "DescriptorPoolVK.h"
 #include "DescriptorSetVK.h"
 #include "DescriptorVK.h"
@@ -39,6 +40,7 @@ using namespace nri;
 #include "CommandAllocatorVK.hpp"
 #include "CommandBufferVK.hpp"
 #include "ConversionVK.hpp"
+#include "DescriptorHeapVK.hpp"
 #include "DescriptorPoolVK.hpp"
 #include "DescriptorSetVK.hpp"
 #include "DescriptorVK.hpp"
@@ -769,6 +771,44 @@ Result DeviceVK::FillFunctionTable(CoreInterface& table) const {
     table.GetBufferNativeObject = ::GetBufferNativeObject;
     table.GetTextureNativeObject = ::GetTextureNativeObject;
     table.GetDescriptorNativeObject = ::GetDescriptorNativeObject;
+
+    return Result::SUCCESS;
+}
+
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region[  DescriptorHeap  ]
+
+static Result NRI_CALL CreateDescriptorHeap(Device& device, const DescriptorHeapDesc& descriptorHeapDesc, DescriptorHeap*& descriptorHeap) {
+    return ((DeviceVK&)device).CreateImplementation<DescriptorHeapVK>(descriptorHeap, descriptorHeapDesc);
+}
+
+static void NRI_CALL DestroyDescriptorHeap(DescriptorHeap* descriptorHeap) {
+    Destroy((DescriptorHeapVK*)descriptorHeap);
+}
+
+static Result NRI_CALL WriteResourceDescriptors(DescriptorHeap& descriptorHeap, const WriteResourceDescriptorsDesc* writeDescs, uint32_t writeDescNum) {
+    return ((DescriptorHeapVK&)descriptorHeap).WriteResourceDescriptors(writeDescs, writeDescNum);
+}
+
+static Result NRI_CALL WriteSamplerDescriptors(DescriptorHeap& descriptorHeap, const WriteSamplerDescriptorsDesc* writeDescs, uint32_t writeDescNum) {
+    return ((DescriptorHeapVK&)descriptorHeap).WriteSamplerDescriptors(writeDescs, writeDescNum);
+}
+
+static void NRI_CALL CmdSetDescriptorHeap(CommandBuffer& commandBuffer, const DescriptorHeap& descriptorHeap) {
+    ((DescriptorHeapVK&)descriptorHeap).Bind((CommandBufferVK&)commandBuffer);
+}
+
+Result DeviceVK::FillFunctionTable(DescriptorHeapInterface& table) const {
+    if (!m_Desc.features.descriptorHeap)
+        return Result::UNSUPPORTED;
+
+    table.CreateDescriptorHeap = ::CreateDescriptorHeap;
+    table.DestroyDescriptorHeap = ::DestroyDescriptorHeap;
+    table.WriteResourceDescriptors = ::WriteResourceDescriptors;
+    table.WriteSamplerDescriptors = ::WriteSamplerDescriptors;
+    table.CmdSetDescriptorHeap = ::CmdSetDescriptorHeap;
 
     return Result::SUCCESS;
 }

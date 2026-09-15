@@ -1,5 +1,7 @@
 // © 2021 NVIDIA Corporation
 
+#include <algorithm>
+
 #include "SharedVal.h"
 
 #if NRI_ENABLE_D3D12_SUPPORT
@@ -10,6 +12,7 @@
 #include "BufferVal.h"
 #include "CommandAllocatorVal.h"
 #include "CommandBufferVal.h"
+#include "DescriptorHeapVal.h"
 #include "DescriptorPoolVal.h"
 #include "DescriptorSetVal.h"
 #include "DescriptorVal.h"
@@ -329,6 +332,7 @@ static inline bool HasValidVideoAV1ReferenceKeys(const VideoAV1ReferenceDesc* re
 #include "CommandAllocatorVal.hpp"
 #include "CommandBufferVal.hpp"
 #include "ConversionVal.hpp"
+#include "DescriptorHeapVal.hpp"
 #include "DescriptorPoolVal.hpp"
 #include "DescriptorSetVal.hpp"
 #include "DescriptorVal.hpp"
@@ -1099,6 +1103,76 @@ Result DeviceVal::FillFunctionTable(CoreInterface& table) const {
     table.GetBufferNativeObject = ::GetBufferNativeObject;
     table.GetTextureNativeObject = ::GetTextureNativeObject;
     table.GetDescriptorNativeObject = ::GetDescriptorNativeObject;
+
+    return Result::SUCCESS;
+}
+
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region[  DescriptorHeap  ]
+
+static Result NRI_CALL CreateDescriptorHeap(Device& device, const DescriptorHeapDesc& descriptorHeapDesc, DescriptorHeap*& descriptorHeap) {
+    DeviceVal& deviceVal = (DeviceVal&)device;
+    const DeviceDesc& deviceDesc = deviceVal.GetDesc();
+
+    NRI_RETURN_ON_FAILURE(&deviceVal, deviceDesc.features.descriptorHeap, Result::UNSUPPORTED, "'features.descriptorHeap' is false");
+    NRI_RETURN_ON_FAILURE(&deviceVal, descriptorHeapDesc.resourceDescriptorNum || descriptorHeapDesc.samplerDescriptorNum, Result::INVALID_ARGUMENT, "both descriptor capacities are 0");
+    NRI_RETURN_ON_FAILURE(&deviceVal, descriptorHeapDesc.resourceDescriptorNum <= deviceDesc.descriptorHeap.resourceMaxNum, Result::INVALID_ARGUMENT, "'resourceDescriptorNum' exceeds 'descriptorHeap.resourceMaxNum'");
+    NRI_RETURN_ON_FAILURE(&deviceVal, descriptorHeapDesc.samplerDescriptorNum <= deviceDesc.descriptorHeap.samplerMaxNum, Result::INVALID_ARGUMENT, "'samplerDescriptorNum' exceeds 'descriptorHeap.samplerMaxNum'");
+
+    descriptorHeap = nullptr;
+    DescriptorHeap* descriptorHeapImpl = nullptr;
+    Result result = deviceVal.GetDescriptorHeapInterfaceImpl().CreateDescriptorHeap(deviceVal.GetImpl(), descriptorHeapDesc, descriptorHeapImpl);
+    if (result != Result::SUCCESS)
+        return result;
+
+    descriptorHeap = (DescriptorHeap*)Allocate<DescriptorHeapVal>(deviceVal.GetAllocationCallbacks(), deviceVal, descriptorHeapImpl, descriptorHeapDesc);
+    if (!descriptorHeap) {
+        deviceVal.GetDescriptorHeapInterfaceImpl().DestroyDescriptorHeap(descriptorHeapImpl);
+
+        return Result::OUT_OF_MEMORY;
+    }
+
+    return Result::SUCCESS;
+}
+
+static void NRI_CALL DestroyDescriptorHeap(DescriptorHeap* descriptorHeap) {
+    if (!descriptorHeap)
+        return;
+
+    DescriptorHeapVal& descriptorHeapVal = *(DescriptorHeapVal*)descriptorHeap;
+    descriptorHeapVal.GetDevice().GetDescriptorHeapInterfaceImpl().DestroyDescriptorHeap(descriptorHeapVal.GetImpl());
+    Destroy(&descriptorHeapVal);
+}
+
+static Result NRI_CALL WriteResourceDescriptors(DescriptorHeap& descriptorHeap, const WriteResourceDescriptorsDesc* writeDescs, uint32_t writeDescNum) {
+    return ((DescriptorHeapVal&)descriptorHeap).WriteResourceDescriptors(writeDescs, writeDescNum);
+}
+
+static Result NRI_CALL WriteSamplerDescriptors(DescriptorHeap& descriptorHeap, const WriteSamplerDescriptorsDesc* writeDescs, uint32_t writeDescNum) {
+    return ((DescriptorHeapVal&)descriptorHeap).WriteSamplerDescriptors(writeDescs, writeDescNum);
+}
+
+static void NRI_CALL CmdSetDescriptorHeap(CommandBuffer& commandBuffer, const DescriptorHeap& descriptorHeap) {
+    CommandBufferVal& commandBufferVal = (CommandBufferVal&)commandBuffer;
+    const DescriptorHeapVal& descriptorHeapVal = (const DescriptorHeapVal&)descriptorHeap;
+    DeviceVal& deviceVal = commandBufferVal.GetDevice();
+
+    NRI_RETURN_ON_FAILURE(&deviceVal, &descriptorHeapVal.GetDevice() == &deviceVal, ReturnVoid(), "'descriptorHeap' belongs to another device");
+
+    commandBufferVal.SetDescriptorHeap(*descriptorHeapVal.GetImpl());
+}
+
+Result DeviceVal::FillFunctionTable(DescriptorHeapInterface& table) const {
+    if (!m_IsExtSupported.descriptorHeap)
+        return Result::UNSUPPORTED;
+
+    table.CreateDescriptorHeap = ::CreateDescriptorHeap;
+    table.DestroyDescriptorHeap = ::DestroyDescriptorHeap;
+    table.WriteResourceDescriptors = ::WriteResourceDescriptors;
+    table.WriteSamplerDescriptors = ::WriteSamplerDescriptors;
+    table.CmdSetDescriptorHeap = ::CmdSetDescriptorHeap;
 
     return Result::SUCCESS;
 }

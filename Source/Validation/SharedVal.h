@@ -15,6 +15,7 @@ struct BufferVal;
 struct CommandAllocatorVal;
 struct CommandBufferVal;
 struct DescriptorPoolVal;
+struct DescriptorHeapVal;
 struct DescriptorSetVal;
 struct DescriptorVal;
 struct DeviceVal;

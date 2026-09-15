@@ -38,6 +38,26 @@ static inline uint32_t NextPow2(uint32_t n) {
     return n;
 }
 
+static inline uint8_t GetMemoryTypeScore(MemoryLocation memoryLocation, VkMemoryPropertyFlags flags) {
+    const bool isDeviceLocal = flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    const bool isHostVisible = flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+    const bool isHostCoherent = flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    const bool isHostCached = flags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+
+    switch (memoryLocation) {
+        case MemoryLocation::DEVICE:
+            return !isHostVisible;
+        case MemoryLocation::DEVICE_UPLOAD:
+            return isDeviceLocal * 4 + isHostCoherent * 2 + !isHostCached;
+        case MemoryLocation::HOST_UPLOAD:
+            return !isDeviceLocal * 4 + isHostCoherent * 2 + !isHostCached;
+        case MemoryLocation::HOST_READBACK:
+            return !isDeviceLocal * 4 + isHostCached * 2 + isHostCoherent;
+        default:
+            return 0;
+    }
+}
+
 static inline VkBufferImageCopy2 GetHostCopyBufferImageRegion(const TextureVK& texture, const TextureRegionDesc& textureRegion, const HostCopyLayoutVK& layout) {
     const TextureDesc& textureDesc = texture.GetDesc();
     const FormatProps& formatProps = GetFormatProps(textureDesc.format);
@@ -548,6 +568,7 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
 
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_LINE_RASTERIZATION_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_MAINTENANCE_5_EXTENSION_NAME);
+    APPEND_EXT(m_MinorVersion < 4, VK_KHR_EXTENDED_FLAGS_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_MAINTENANCE_6_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 4, VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME);
@@ -577,12 +598,14 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(true, VK_KHR_PRESENT_ID_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_SHADER_CLOCK_EXTENSION_NAME);
+    APPEND_EXT(true, VK_KHR_SHADER_UNTYPED_POINTERS_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_VIDEO_QUEUE_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME);
+    APPEND_EXT(true, VK_EXT_DESCRIPTOR_HEAP_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_VIDEO_DECODE_H264_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_VIDEO_DECODE_H265_EXTENSION_NAME);
     APPEND_EXT(true, VK_KHR_VIDEO_DECODE_AV1_EXTENSION_NAME);
@@ -924,12 +947,14 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, RayTracingPipeline, RAY_TRACING_PIPELINE);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, RayTracingPositionFetch, RAY_TRACING_POSITION_FETCH);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, ShaderClock, SHADER_CLOCK);
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, ShaderUntypedPointers, SHADER_UNTYPED_POINTERS);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, DynamicRenderingLocalRead, DYNAMIC_RENDERING_LOCAL_READ);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, UnifiedImageLayouts, UNIFIED_IMAGE_LAYOUTS);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, VideoEncodeAV1, VIDEO_ENCODE_AV1);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, VideoMaintenance1, VIDEO_MAINTENANCE_1);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, VideoMaintenance2, VIDEO_MAINTENANCE_2);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, CustomBorderColor, CUSTOM_BORDER_COLOR);
+    PNEXTCHAIN_APPEND_FEATURES(true, EXT, DescriptorHeap, DESCRIPTOR_HEAP);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, FragmentShaderInterlock, FRAGMENT_SHADER_INTERLOCK);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, ImageSlicedViewOf3D, IMAGE_SLICED_VIEW_OF_3D);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, MemoryPriority, MEMORY_PRIORITY);
@@ -1007,6 +1032,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.videoMaintenance1 = VideoMaintenance1Features.videoMaintenance1;
     m_IsSupported.videoMaintenance2 = VideoMaintenance2Features.videoMaintenance2;
     m_IsSupported.videoEncodeAV1 = VideoEncodeAV1Features.videoEncodeAV1;
+    m_IsSupported.descriptorHeap = DescriptorHeapFeatures.descriptorHeap && ShaderUntypedPointersFeatures.shaderUntypedPointers && features12.bufferDeviceAddress;
 
     m_IsMemoryZeroInitializationEnabled = desc.enableMemoryZeroInitialization && ZeroInitializeDeviceMemoryFeatures.zeroInitializeDeviceMemory;
 
@@ -1154,11 +1180,15 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         PNEXTCHAIN_APPEND_PROPS(true, KHR, Maintenance10, MAINTENANCE_10);
         PNEXTCHAIN_APPEND_PROPS(true, KHR, RayTracingPipeline, RAY_TRACING_PIPELINE);
         PNEXTCHAIN_APPEND_PROPS(true, EXT, ConservativeRasterization, CONSERVATIVE_RASTERIZATION);
+        PNEXTCHAIN_APPEND_PROPS(true, EXT, DescriptorHeap, DESCRIPTOR_HEAP);
         PNEXTCHAIN_APPEND_PROPS(true, EXT, MeshShader, MESH_SHADER);
         PNEXTCHAIN_APPEND_PROPS(true, EXT, OpacityMicromap, OPACITY_MICROMAP);
         PNEXTCHAIN_APPEND_PROPS(true, EXT, SampleLocations, SAMPLE_LOCATIONS);
 
         m_VK.GetPhysicalDeviceProperties2(m_PhysicalDevice, &props);
+
+        m_DescriptorHeapProps = DescriptorHeapProps;
+        m_DescriptorHeapProps.pNext = nullptr;
 
         if (m_MinorVersion < 3) {
             props13.maxBufferSize = Maintenance4Props.maxBufferSize;
@@ -1300,6 +1330,20 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.pipelineLayout.descriptorSetMaxNum = limits.maxBoundDescriptorSets;
         m_Desc.pipelineLayout.rootConstantMaxSize = limits.maxPushConstantsSize;
         m_Desc.pipelineLayout.rootDescriptorMaxNum = props14.maxPushDescriptors;
+        m_Desc.pipelineLayout.rootSamplerMaxNum = props14.maxPushDescriptors;
+
+        if (m_IsSupported.descriptorHeap) {
+            const uint64_t resourceStride = std::max(DescriptorHeapProps.imageDescriptorSize, DescriptorHeapProps.bufferDescriptorSize);
+            const uint64_t resourceSize = DescriptorHeapProps.maxResourceHeapSize - DescriptorHeapProps.minResourceHeapReservedRange;
+            const uint64_t samplerSize = DescriptorHeapProps.maxSamplerHeapSize - DescriptorHeapProps.minSamplerHeapReservedRangeWithEmbedded;
+            const uint64_t rootDescriptorMaxNum = DescriptorHeapProps.maxPushDataSize / sizeof(uint64_t);
+
+            m_Desc.descriptorHeap.resourceMaxNum = (uint32_t)std::min(resourceSize / resourceStride, (uint64_t)UINT32_MAX);
+            m_Desc.descriptorHeap.samplerMaxNum = (uint32_t)std::min(samplerSize / DescriptorHeapProps.samplerDescriptorSize, (uint64_t)UINT32_MAX);
+            m_Desc.descriptorHeap.rootConstantMaxSize = (uint32_t)std::min(DescriptorHeapProps.maxPushDataSize, (VkDeviceSize)UINT32_MAX);
+            m_Desc.descriptorHeap.rootDescriptorMaxNum = (uint32_t)std::min(rootDescriptorMaxNum, (uint64_t)UINT32_MAX);
+            m_Desc.descriptorHeap.rootSamplerMaxNum = DescriptorHeapProps.maxDescriptorHeapEmbeddedSamplers;
+        }
 
         m_Desc.descriptorSet.samplerMaxNum = limits.maxDescriptorSetSamplers;
         m_Desc.descriptorSet.constantBufferMaxNum = limits.maxDescriptorSetUniformBuffers;
@@ -1520,6 +1564,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.rootConstantsOffset = true;
         m_Desc.features.nonConstantBufferRootDescriptorOffset = true;
         m_Desc.features.mutableDescriptorType = MutableDescriptorTypeFeatures.mutableDescriptorType;
+        m_Desc.features.descriptorHeap = m_IsSupported.descriptorHeap;
         m_Desc.features.extendedDynamicState = ExtendedDynamicStateFeatures.extendedDynamicState;
         m_Desc.features.unifiedTextureLayouts = UnifiedImageLayoutsFeatures.unifiedImageLayouts;
         m_Desc.features.resourceAliasing = true;
@@ -1582,7 +1627,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         if (m_Desc.features.meshShader || m_Desc.tiers.rayTracing >= 2)
             m_Desc.shaderModel = NriShaderModel(6, 5);
         // TODO: "m_Desc.features.mutableDescriptorType" is an optional feature, despite that it's needed to emulate SM 6.6 "ultimate" bindless
-        if (m_Desc.shaderFeatures.atomicsI64)
+        if (m_Desc.shaderFeatures.atomicsI64 || m_Desc.features.descriptorHeap)
             m_Desc.shaderModel = NriShaderModel(6, 6);
         if (features.features.shaderStorageImageMultisample)
             m_Desc.shaderModel = NriShaderModel(6, 7);
@@ -1761,60 +1806,45 @@ void DeviceVK::GetMemoryDesc2(const MicromapDesc& micromapDesc, MemoryLocation m
 }
 
 bool DeviceVK::GetMemoryDesc(MemoryLocation memoryLocation, const VkMemoryRequirements& memoryRequirements, const VkMemoryDedicatedRequirements& memoryDedicatedRequirements, MemoryDesc& memoryDesc) const {
-    VkMemoryPropertyFlags neededFlags = 0;    // must have
-    VkMemoryPropertyFlags undesiredFlags = 0; // have higher priority than desired
-    VkMemoryPropertyFlags desiredFlags = 0;   // nice to have
-    if (memoryLocation == MemoryLocation::DEVICE) {
-        neededFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        undesiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-    } else if (memoryLocation == MemoryLocation::DEVICE_UPLOAD) {
-        neededFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-        undesiredFlags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-        desiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-    } else {
-        neededFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-        undesiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        desiredFlags = (memoryLocation == MemoryLocation::HOST_READBACK ? VK_MEMORY_PROPERTY_HOST_CACHED_BIT : 0) | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-    }
-
     memoryDesc = {};
 
-    for (uint32_t phase = 0; phase < 4; phase++) {
-        for (uint32_t i = 0; i < m_MemoryProps.memoryTypeCount; i++) {
-            bool isSupported = memoryRequirements.memoryTypeBits & (1u << i);
-            bool hasNeededFlags = (m_MemoryProps.memoryTypes[i].propertyFlags & neededFlags) == neededFlags;
-            bool hasUndesiredFlags = undesiredFlags == 0 ? false : (m_MemoryProps.memoryTypes[i].propertyFlags & undesiredFlags) == undesiredFlags;
-            bool hasDesiredFlags = (m_MemoryProps.memoryTypes[i].propertyFlags & desiredFlags) == desiredFlags;
+    const VkMemoryPropertyFlags requiredFlags = memoryLocation == MemoryLocation::DEVICE ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+    uint32_t memoryTypeIndex = UINT32_MAX;
+    uint8_t bestScore = 0;
+    for (uint32_t i = 0; i < m_MemoryProps.memoryTypeCount; i++) {
+        if (!(memoryRequirements.memoryTypeBits & (1u << i)))
+            continue;
 
-            bool isOK = isSupported && hasNeededFlags; // phase 3 - only needed
-            if (phase == 0)
-                isOK = isOK && !hasUndesiredFlags && hasDesiredFlags; // phase 0 - needed, undesired and desired
-            else if (phase == 1)
-                isOK = isOK && !hasUndesiredFlags; // phase 1 - needed, undesired
-            else if (phase == 2)
-                isOK = isOK && hasDesiredFlags; // phase 2 - needed and desired
+        const VkMemoryPropertyFlags flags = m_MemoryProps.memoryTypes[i].propertyFlags;
+        if ((flags & requiredFlags) != requiredFlags)
+            continue;
 
-            if (isOK) {
-                MemoryTypeInfo memoryTypeInfo = {};
-                memoryTypeInfo.index = (MemoryTypeIndex)i;
-                memoryTypeInfo.location = memoryLocation;
-
-                // "prefersDedicatedAllocation" seems to be "too soft" making more allocations "dedicated", "requiresDedicatedAllocation" better matches D3D12
-                memoryTypeInfo.mustBeDedicated = memoryDedicatedRequirements.requiresDedicatedAllocation;
-
-                memoryDesc.size = memoryRequirements.size;
-                memoryDesc.alignment = (uint32_t)memoryRequirements.alignment;
-                memoryDesc.type = Pack(memoryTypeInfo);
-                memoryDesc.mustBeDedicated = memoryTypeInfo.mustBeDedicated;
-
-                return true;
-            }
+        const uint8_t score = GetMemoryTypeScore(memoryLocation, flags);
+        if (memoryTypeIndex == UINT32_MAX || score > bestScore) {
+            memoryTypeIndex = i;
+            bestScore = score;
         }
     }
 
-    NRI_CHECK(false, "Can't find suitable memory type");
+    if (memoryTypeIndex == UINT32_MAX) {
+        NRI_CHECK(false, "Can't find suitable memory type");
 
-    return false;
+        return false;
+    }
+
+    MemoryTypeInfo memoryTypeInfo = {};
+    memoryTypeInfo.index = (MemoryTypeIndex)memoryTypeIndex;
+    memoryTypeInfo.location = memoryLocation;
+
+    // "prefersDedicatedAllocation" seems to be "too soft" making more allocations "dedicated", "requiresDedicatedAllocation" better matches D3D12
+    memoryTypeInfo.mustBeDedicated = memoryDedicatedRequirements.requiresDedicatedAllocation;
+
+    memoryDesc.size = memoryRequirements.size;
+    memoryDesc.alignment = (uint32_t)memoryRequirements.alignment;
+    memoryDesc.type = Pack(memoryTypeInfo);
+    memoryDesc.mustBeDedicated = memoryTypeInfo.mustBeDedicated;
+
+    return true;
 }
 
 bool DeviceVK::GetMemoryTypeByIndex(uint32_t index, MemoryTypeInfo& memoryTypeInfo) const {
@@ -2330,6 +2360,19 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
 
     if (IsExtensionSupported(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME, desiredDeviceExts)) {
         GET_DEVICE_FUNC(CmdSetSampleLocationsEXT);
+    }
+
+    if (IsExtensionSupported(VK_EXT_DESCRIPTOR_HEAP_EXTENSION_NAME, desiredDeviceExts)) {
+        GET_DEVICE_FUNC(WriteSamplerDescriptorsEXT);
+        GET_DEVICE_FUNC(WriteResourceDescriptorsEXT);
+        GET_DEVICE_FUNC(CmdBindSamplerHeapEXT);
+        GET_DEVICE_FUNC(CmdBindResourceHeapEXT);
+        GET_DEVICE_FUNC(CmdPushDataEXT);
+
+        if (IsExtensionSupported(VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME, desiredDeviceExts)) {
+            GET_DEVICE_FUNC(RegisterCustomBorderColorEXT);
+            GET_DEVICE_FUNC(UnregisterCustomBorderColorEXT);
+        }
     }
 
     if (IsExtensionSupported(VK_EXT_MESH_SHADER_EXTENSION_NAME, desiredDeviceExts)) {

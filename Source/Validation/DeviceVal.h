@@ -5,14 +5,15 @@
 namespace nri {
 
 struct IsExtSupported {
-    uint32_t lowLatency   : 1;
-    uint32_t meshShader   : 1;
-    uint32_t rayTracing   : 1;
-    uint32_t video        : 1;
-    uint32_t swapChain    : 1;
-    uint32_t wrapperD3D11 : 1;
-    uint32_t wrapperD3D12 : 1;
-    uint32_t wrapperVK    : 1;
+    uint32_t lowLatency     : 1;
+    uint32_t meshShader     : 1;
+    uint32_t rayTracing     : 1;
+    uint32_t video          : 1;
+    uint32_t swapChain      : 1;
+    uint32_t wrapperD3D11   : 1;
+    uint32_t wrapperD3D12   : 1;
+    uint32_t wrapperVK      : 1;
+    uint32_t descriptorHeap : 1;
 };
 
 struct DeviceVal final : public DeviceBase {
@@ -33,6 +34,10 @@ struct DeviceVal final : public DeviceBase {
 
     inline const HelperInterface& GetHelperInterfaceImpl() const {
         return m_iHelperImpl;
+    }
+
+    inline const DescriptorHeapInterface& GetDescriptorHeapInterfaceImpl() const {
+        return m_iDescriptorHeapImpl;
     }
 
     inline const LowLatencyInterface& GetLowLatencyInterfaceImpl() const {
@@ -108,6 +113,7 @@ struct DeviceVal final : public DeviceBase {
 
     void Destruct() override;
     Result FillFunctionTable(CoreInterface& table) const override;
+    Result FillFunctionTable(DescriptorHeapInterface& table) const override;
     Result FillFunctionTable(HelperInterface& table) const override;
     Result FillFunctionTable(LowLatencyInterface& table) const override;
     Result FillFunctionTable(MeshShaderInterface& table) const override;
@@ -213,6 +219,7 @@ private:
 
     // Implementation
     CoreInterface m_iCoreImpl = {};
+    DescriptorHeapInterface m_iDescriptorHeapImpl = {};
     HelperInterface m_iHelperImpl = {};
     LowLatencyInterface m_iLowLatencyImpl = {};
     MeshShaderInterface m_iMeshShaderImpl = {};

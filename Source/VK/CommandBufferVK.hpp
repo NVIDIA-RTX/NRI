@@ -125,7 +125,7 @@ static inline VkImageSubresourceRange GetSubresourceRange(const TextureVK& textu
 }
 
 static inline VkImageSubresourceRange GetSubresourceRange(const DescriptorVK& descriptorVK) {
-    const TexViewDesc& texViewDesc = descriptorVK.GetTexViewDesc();
+    const TexViewDescVK& texViewDesc = descriptorVK.GetTexViewDesc();
     const TextureDesc& textureDesc = texViewDesc.texture->GetDesc();
 
     VkImageSubresourceRange out = {};
@@ -245,7 +245,7 @@ static inline void RemoveInputAttachmentRange(Vector<InputAttachmentRange>& rang
 
 static inline void FillRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, const AttachmentDesc& attachmentDesc, bool storeOpNoneSupported, Dim_t& renderWidth, Dim_t& renderHeight, Dim_t& layerNum) {
     const DescriptorVK& descriptorVK = *(DescriptorVK*)attachmentDesc.descriptor;
-    const TexViewDesc& texViewDesc = descriptorVK.GetTexViewDesc();
+    const TexViewDescVK& texViewDesc = descriptorVK.GetTexViewDesc();
 
     attachmentInfo = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
     attachmentInfo.imageView = descriptorVK.GetImageView();
@@ -277,7 +277,7 @@ static inline void FillRenderingAttachmentInfo(VkRenderingAttachmentInfo& attach
 
 static inline RenderPassAttachmentDesc GetRenderPassAttachmentDesc(const AttachmentDesc& attachmentDesc, bool storeOpNoneSupported, bool isInputAttachment = false) {
     const DescriptorVK& descriptorVK = *(DescriptorVK*)attachmentDesc.descriptor;
-    const TexViewDesc& texViewDesc = descriptorVK.GetTexViewDesc();
+    const TexViewDescVK& texViewDesc = descriptorVK.GetTexViewDesc();
 
     RenderPassAttachmentDesc out = {};
     out.format = GetVkFormat(descriptorVK.GetFormat());
@@ -292,7 +292,7 @@ static inline RenderPassAttachmentDesc GetRenderPassAttachmentDesc(const Attachm
 }
 
 static inline RenderPassAttachmentDesc GetRenderPassResolveAttachmentDesc(const DescriptorVK& descriptorVK) {
-    const TexViewDesc& texViewDesc = descriptorVK.GetTexViewDesc();
+    const TexViewDescVK& texViewDesc = descriptorVK.GetTexViewDesc();
 
     RenderPassAttachmentDesc out = {};
     out.format = GetVkFormat(descriptorVK.GetFormat());
@@ -307,7 +307,7 @@ static inline RenderPassAttachmentDesc GetRenderPassResolveAttachmentDesc(const 
 }
 
 static inline void UpdateRenderingExtent(const DescriptorVK& descriptorVK, Dim_t& renderWidth, Dim_t& renderHeight, Dim_t& layerNum) {
-    const TexViewDesc& texViewDesc = descriptorVK.GetTexViewDesc();
+    const TexViewDescVK& texViewDesc = descriptorVK.GetTexViewDesc();
 
     Dim_t w = texViewDesc.texture->GetSize(0, texViewDesc.mipOffset);
     Dim_t h = texViewDesc.texture->GetSize(1, texViewDesc.mipOffset);
@@ -1584,7 +1584,7 @@ NRI_INLINE void CommandBufferVK::ClearStorage(const ClearStorageDesc& clearStora
             static_assert(sizeof(VkClearColorValue) == sizeof(clearStorageDesc.value), "Unexpected sizeof");
 
             const VkClearColorValue* value = (VkClearColorValue*)&clearStorageDesc.value;
-            const TexViewDesc& texViewDesc = descriptorVK.GetTexViewDesc();
+            const TexViewDescVK& texViewDesc = descriptorVK.GetTexViewDesc();
             VkImage image = texViewDesc.texture->GetHandle();
 
             VkImageSubresourceRange subresourceRange = {};
@@ -1923,12 +1923,12 @@ NRI_INLINE void CommandBufferVK::SetPipelineLayout(BindPoint bindPoint, const Pi
     m_PipelineLayout = (PipelineLayoutVK*)&pipelineLayout;
     m_PipelineBindPoint = bindPoint;
 
-    { // Push immutable samplers
+    if (!m_PipelineLayout->IsDescriptorHeap()) {
+        // Push immutable samplers
         const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
 
         for (uint32_t i = bindingInfo.rootSamplerBindingOffset; i < (uint32_t)bindingInfo.pushDescriptors.size(); i++) {
             // https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#descriptorsets-push-descriptors
-            // To push an immutable sampler...
             VkDescriptorImageInfo imageInfo = {};
 
             VkWriteDescriptorSet descriptorWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
@@ -2006,7 +2006,13 @@ NRI_INLINE void CommandBufferVK::SetRootConstants(const SetRootConstantsDesc& se
     uint32_t offset = pushConstantBindingDesc.offset + setRootConstantsDesc.offset;
 
     const auto& vk = m_Device.GetDispatchTable();
-    if (m_Device.m_IsSupported.maintenance6) {
+    if (m_PipelineLayout->IsDescriptorHeap()) {
+        VkPushDataInfoEXT info = {VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT};
+        info.offset = offset;
+        info.data.address = setRootConstantsDesc.data;
+        info.data.size = setRootConstantsDesc.size;
+        vk.CmdPushDataEXT(m_Handle, &info);
+    } else if (m_Device.m_IsSupported.maintenance6) {
         VkPushConstantsInfo info = {VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO};
         info.layout = *m_PipelineLayout;
         info.stageFlags = pushConstantBindingDesc.stages;
@@ -2021,6 +2027,21 @@ NRI_INLINE void CommandBufferVK::SetRootConstants(const SetRootConstantsDesc& se
 
 NRI_INLINE void CommandBufferVK::SetRootDescriptor(const SetRootDescriptorDesc& setRootDescriptorDesc) {
     const DescriptorVK& descriptorVK = *(DescriptorVK*)setRootDescriptorDesc.descriptor;
+
+    if (m_PipelineLayout->IsDescriptorHeap()) {
+        const auto& bindingInfo = m_PipelineLayout->GetBindingInfo();
+        const uint64_t address = descriptorVK.GetDeviceAddress() + setRootDescriptorDesc.offset;
+
+        VkPushDataInfoEXT info = {VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT};
+        info.offset = bindingInfo.pushDescriptors[setRootDescriptorDesc.rootDescriptorIndex];
+        info.data.address = &address;
+        info.data.size = sizeof(address);
+
+        const auto& vk = m_Device.GetDispatchTable();
+        vk.CmdPushDataEXT(m_Handle, &info);
+
+        return;
+    }
 
     VkAccelerationStructureKHR accelerationStructure = descriptorVK.GetAccelerationStructure();
 

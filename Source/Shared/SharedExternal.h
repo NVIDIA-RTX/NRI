@@ -28,6 +28,7 @@ typedef uint32_t DXGI_FORMAT;
 #include "NRI.h"
 #include "NRI.hlsl"
 
+#include "Extensions/NRIDescriptorHeap.h"
 #include "Extensions/NRIDeviceCreation.h"
 #include "Extensions/NRIHelper.h"
 #include "Extensions/NRIImgui.h"

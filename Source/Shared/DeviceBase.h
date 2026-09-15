@@ -79,6 +79,10 @@ struct DeviceBase : public DebugNameBaseVal {
         return Result::UNSUPPORTED;
     }
 
+    virtual Result FillFunctionTable(DescriptorHeapInterface&) const {
+        return Result::UNSUPPORTED;
+    }
+
     virtual Result FillFunctionTable(HelperInterface&) const {
         return Result::UNSUPPORTED;
     }

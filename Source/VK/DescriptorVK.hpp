@@ -41,6 +41,44 @@ static inline VkComponentSwizzle GetComponentSwizzle(ComponentSwizzle componentS
     return (VkComponentSwizzle)componentSwizzle;
 }
 
+enum SamplerDescBits : uint32_t {
+    SAMPLER_MAG_FILTER_SHIFT = 0,
+    SAMPLER_MIN_FILTER_SHIFT = 1,
+    SAMPLER_MIP_FILTER_SHIFT = 2,
+    SAMPLER_FILTER_OP_SHIFT = 3,
+    SAMPLER_ANISOTROPY_SHIFT = 5,
+    SAMPLER_ADDRESS_U_SHIFT = 13,
+    SAMPLER_ADDRESS_V_SHIFT = 16,
+    SAMPLER_ADDRESS_W_SHIFT = 19,
+    SAMPLER_COMPARE_OP_SHIFT = 22,
+    SAMPLER_IS_INTEGER_SHIFT = 26,
+    SAMPLER_UNNORMALIZED_COORDINATES_SHIFT = 27,
+    SAMPLER_BORDER_COLOR_SHIFT = 28,
+};
+
+static inline uint32_t PackSamplerDesc(const SamplerDesc& samplerDesc, VkBorderColor borderColor) {
+    uint32_t borderColorIndex = 0;
+    if (borderColor == VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK || borderColor == VK_BORDER_COLOR_INT_OPAQUE_BLACK)
+        borderColorIndex = 1;
+    else if (borderColor == VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE || borderColor == VK_BORDER_COLOR_INT_OPAQUE_WHITE)
+        borderColorIndex = 2;
+    else if (borderColor == VK_BORDER_COLOR_FLOAT_CUSTOM_EXT || borderColor == VK_BORDER_COLOR_INT_CUSTOM_EXT)
+        borderColorIndex = 3;
+
+    return ((uint32_t)samplerDesc.filters.mag << SAMPLER_MAG_FILTER_SHIFT)
+        | ((uint32_t)samplerDesc.filters.min << SAMPLER_MIN_FILTER_SHIFT)
+        | ((uint32_t)samplerDesc.filters.mip << SAMPLER_MIP_FILTER_SHIFT)
+        | ((uint32_t)samplerDesc.filters.op << SAMPLER_FILTER_OP_SHIFT)
+        | ((uint32_t)samplerDesc.anisotropy << SAMPLER_ANISOTROPY_SHIFT)
+        | ((uint32_t)samplerDesc.addressModes.u << SAMPLER_ADDRESS_U_SHIFT)
+        | ((uint32_t)samplerDesc.addressModes.v << SAMPLER_ADDRESS_V_SHIFT)
+        | ((uint32_t)samplerDesc.addressModes.w << SAMPLER_ADDRESS_W_SHIFT)
+        | ((uint32_t)samplerDesc.compareOp << SAMPLER_COMPARE_OP_SHIFT)
+        | ((uint32_t)samplerDesc.isInteger << SAMPLER_IS_INTEGER_SHIFT)
+        | ((uint32_t)samplerDesc.unnormalizedCoordinates << SAMPLER_UNNORMALIZED_COORDINATES_SHIFT)
+        | (borderColorIndex << SAMPLER_BORDER_COLOR_SHIFT);
+}
+
 DescriptorVK::~DescriptorVK() {
     const auto& vk = m_Device.GetDispatchTable();
 
@@ -133,6 +171,8 @@ Result DescriptorVK::Create(const TextureViewDesc& textureViewDesc) {
 
     m_Type = GetImageViewDescriptorType(textureViewDesc.type);
     m_Format = textureViewDesc.format;
+    m_TextureView = textureViewDesc.type;
+    m_TextureComponents = textureViewDesc.components;
 
     m_ViewDesc.texture = {};
     m_ViewDesc.texture.texture = &textureVK;
@@ -178,14 +218,14 @@ Result DescriptorVK::Create(const BufferViewDesc& bufferViewDesc) {
         m_Format = Format::UNKNOWN;
 
     m_ViewDesc.buffer = {};
-    m_ViewDesc.buffer.buffer = bufferVK.GetHandle();
+    m_ViewDesc.buffer.buffer = &bufferVK;
     m_ViewDesc.buffer.offset = bufferViewDesc.offset;
     m_ViewDesc.buffer.range = (bufferViewDesc.size == WHOLE_SIZE) ? (bufferDesc.size - bufferViewDesc.offset) : bufferViewDesc.size;
 
     if (m_Format != Format::UNKNOWN) {
         VkBufferViewCreateInfo createInfo = {VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO};
         createInfo.flags = (VkBufferViewCreateFlags)0;
-        createInfo.buffer = m_ViewDesc.buffer.buffer;
+        createInfo.buffer = bufferVK.GetHandle();
         createInfo.format = GetVkFormat(bufferViewDesc.format);
         createInfo.offset = m_ViewDesc.buffer.offset;
         createInfo.range = m_ViewDesc.buffer.range;
@@ -208,16 +248,92 @@ Result DescriptorVK::Create(const SamplerDesc& samplerDesc) {
     VkResult vkResult = vk.CreateSampler(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_View.sampler);
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateSampler");
 
+    m_ViewDesc.sampler = {};
+    m_ViewDesc.sampler.mipBias = samplerDesc.mipBias;
+    m_ViewDesc.sampler.mipMin = samplerDesc.mipMin;
+    m_ViewDesc.sampler.mipMax = samplerDesc.mipMax;
+    m_ViewDesc.sampler.packed = PackSamplerDesc(samplerDesc, info.borderColor);
+    m_ViewDesc.sampler.customBorderColor = samplerDesc.borderColor;
+
     m_Type = DescriptorType::SAMPLER;
 
     return Result::SUCCESS;
 }
 
-Result DescriptorVK::Create(VkAccelerationStructureKHR accelerationStructure) {
+Result DescriptorVK::Create(const AccelerationStructureVK& accelerationStructure) {
     m_Type = DescriptorType::ACCELERATION_STRUCTURE;
-    m_View.accelerationStructure = accelerationStructure;
+    m_View.accelerationStructure = accelerationStructure.GetHandle();
+    m_ViewDesc.accelerationStructureAddress = accelerationStructure.GetDeviceAddress();
 
     return Result::SUCCESS;
+}
+
+void DescriptorVK::FillImageViewCreateInfo(VkImageViewCreateInfo& createInfo, VkImageViewUsageCreateInfo& usageInfo, VkImageViewSlicedCreateInfoEXT& slicesInfo) const {
+    const TextureVK& texture = *m_ViewDesc.texture.texture;
+    const TextureDesc& textureDesc = texture.GetDesc();
+
+    slicesInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_SLICED_CREATE_INFO_EXT};
+    slicesInfo.sliceOffset = m_ViewDesc.texture.layerOrSliceOffset;
+    slicesInfo.sliceCount = m_ViewDesc.texture.layerOrSliceNum;
+
+    usageInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO};
+    usageInfo.usage = GetImageViewUsage(m_TextureView);
+    if (m_TextureView == TextureView::COLOR_ATTACHMENT && (textureDesc.usage & TextureUsageBits::INPUT_ATTACHMENT))
+        usageInfo.usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+    if (textureDesc.type == TextureType::TEXTURE_3D && m_Device.m_IsSupported.imageSlicedView)
+        usageInfo.pNext = &slicesInfo;
+
+    createInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+    createInfo.pNext = &usageInfo;
+    createInfo.image = texture.GetHandle();
+    createInfo.viewType = GetImageViewType(textureDesc.type, m_TextureView, m_ViewDesc.texture.layerOrSliceNum);
+    createInfo.format = GetVkFormat(m_Format);
+    createInfo.components.r = GetComponentSwizzle(m_TextureComponents.r);
+    createInfo.components.g = GetComponentSwizzle(m_TextureComponents.g);
+    createInfo.components.b = GetComponentSwizzle(m_TextureComponents.b);
+    createInfo.components.a = GetComponentSwizzle(m_TextureComponents.a);
+    createInfo.subresourceRange.aspectMask = m_ViewDesc.texture.aspectMask;
+    createInfo.subresourceRange.baseMipLevel = m_ViewDesc.texture.mipOffset;
+    createInfo.subresourceRange.levelCount = m_ViewDesc.texture.mipNum;
+    if (textureDesc.type != TextureType::TEXTURE_3D) {
+        createInfo.subresourceRange.baseArrayLayer = m_ViewDesc.texture.layerOrSliceOffset;
+        createInfo.subresourceRange.layerCount = m_ViewDesc.texture.layerOrSliceNum;
+    } else
+        createInfo.subresourceRange.layerCount = 1;
+}
+
+void DescriptorVK::FillSamplerDesc(SamplerDesc& samplerDesc) const {
+    const SamplerViewDescVK& packedDesc = m_ViewDesc.sampler;
+    const uint32_t packed = packedDesc.packed;
+
+    samplerDesc = {};
+    samplerDesc.filters.mag = (Filter)((packed >> SAMPLER_MAG_FILTER_SHIFT) & 0x1);
+    samplerDesc.filters.min = (Filter)((packed >> SAMPLER_MIN_FILTER_SHIFT) & 0x1);
+    samplerDesc.filters.mip = (Filter)((packed >> SAMPLER_MIP_FILTER_SHIFT) & 0x1);
+    samplerDesc.filters.op = (FilterOp)((packed >> SAMPLER_FILTER_OP_SHIFT) & 0x3);
+    samplerDesc.anisotropy = (uint8_t)((packed >> SAMPLER_ANISOTROPY_SHIFT) & 0xFF);
+    samplerDesc.mipBias = packedDesc.mipBias;
+    samplerDesc.mipMin = packedDesc.mipMin;
+    samplerDesc.mipMax = packedDesc.mipMax;
+    samplerDesc.addressModes.u = (AddressMode)((packed >> SAMPLER_ADDRESS_U_SHIFT) & 0x7);
+    samplerDesc.addressModes.v = (AddressMode)((packed >> SAMPLER_ADDRESS_V_SHIFT) & 0x7);
+    samplerDesc.addressModes.w = (AddressMode)((packed >> SAMPLER_ADDRESS_W_SHIFT) & 0x7);
+    samplerDesc.compareOp = (CompareOp)((packed >> SAMPLER_COMPARE_OP_SHIFT) & 0xF);
+    samplerDesc.isInteger = ((packed >> SAMPLER_IS_INTEGER_SHIFT) & 0x1) != 0;
+    samplerDesc.unnormalizedCoordinates = ((packed >> SAMPLER_UNNORMALIZED_COORDINATES_SHIFT) & 0x1) != 0;
+
+    const uint32_t borderColorIndex = (packed >> SAMPLER_BORDER_COLOR_SHIFT) & 0x3;
+    if (borderColorIndex == 3)
+        samplerDesc.borderColor = packedDesc.customBorderColor;
+    else {
+        const uint32_t rgb = borderColorIndex == 2;
+        const uint32_t alpha = borderColorIndex != 0;
+
+        if (samplerDesc.isInteger)
+            samplerDesc.borderColor.ui = {rgb, rgb, rgb, alpha};
+        else
+            samplerDesc.borderColor.f = {(float)rgb, (float)rgb, (float)rgb, (float)alpha};
+    }
 }
 
 NRI_INLINE void DescriptorVK::SetDebugName(const char* name) {

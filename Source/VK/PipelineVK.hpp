@@ -87,6 +87,28 @@ static bool FillPipelineRobustness(const DeviceVK& device, Robustness robustness
     return true;
 }
 
+static inline void SetupDescriptorHeapShaderStages(const PipelineLayoutVK& pipelineLayout, VkPipelineShaderStageCreateInfo* stages, uint32_t stageNum, VkDescriptorSetAndBindingMappingEXT* mappings, VkShaderDescriptorSetAndBindingMappingInfoEXT* mappingInfos, DescriptorHeapMappingSamplerVK* samplers) {
+    const uint32_t mappingMaxNum = pipelineLayout.GetDescriptorHeapMappingMaxNum();
+    if (!mappingMaxNum)
+        return;
+
+    const uint32_t samplerMaxNum = pipelineLayout.GetDescriptorHeapSamplerMaxNum();
+    for (uint32_t i = 0; i < stageNum; i++) {
+        const uint32_t mappingOffset = i * mappingMaxNum;
+        const uint32_t samplerOffset = i * samplerMaxNum;
+        DescriptorHeapMappingSamplerVK* stageSamplers = samplerMaxNum ? samplers + samplerOffset : nullptr;
+        const uint32_t mappingNum = pipelineLayout.SetupDescriptorHeapMappings((VkShaderStageFlagBits)stages[i].stage, mappings + mappingOffset, stageSamplers);
+        if (!mappingNum)
+            continue;
+
+        mappingInfos[i] = {VK_STRUCTURE_TYPE_SHADER_DESCRIPTOR_SET_AND_BINDING_MAPPING_INFO_EXT};
+        mappingInfos[i].mappingCount = mappingNum;
+        mappingInfos[i].pMappings = mappings + mappingOffset;
+        mappingInfos[i].pNext = stages[i].pNext;
+        stages[i].pNext = &mappingInfos[i];
+    }
+}
+
 PipelineVK::~PipelineVK() {
     if (m_OwnsNativeObjects) {
         const auto& vk = m_Device.GetDispatchTable();
@@ -109,6 +131,16 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
 
         stages[i].pName = shaderDesc.entryPointName ? shaderDesc.entryPointName : "main";
     }
+
+    const PipelineLayoutVK& pipelineLayoutVK = *(PipelineLayoutVK*)graphicsPipelineDesc.pipelineLayout;
+    const bool isDescriptorHeap = pipelineLayoutVK.IsDescriptorHeap();
+    const uint32_t mappingMaxNum = pipelineLayoutVK.GetDescriptorHeapMappingMaxNum();
+    const uint32_t mappingSamplerMaxNum = pipelineLayoutVK.GetDescriptorHeapSamplerMaxNum();
+    Scratch<VkDescriptorSetAndBindingMappingEXT> mappings = NRI_ALLOCATE_SCRATCH(m_Device, VkDescriptorSetAndBindingMappingEXT, mappingMaxNum * graphicsPipelineDesc.shaderNum);
+    Scratch<VkShaderDescriptorSetAndBindingMappingInfoEXT> mappingInfos = NRI_ALLOCATE_SCRATCH(m_Device, VkShaderDescriptorSetAndBindingMappingInfoEXT, isDescriptorHeap ? graphicsPipelineDesc.shaderNum : 0);
+    Scratch<DescriptorHeapMappingSamplerVK> mappingSamplers = NRI_ALLOCATE_SCRATCH(m_Device, DescriptorHeapMappingSamplerVK, mappingSamplerMaxNum * graphicsPipelineDesc.shaderNum);
+    if (isDescriptorHeap)
+        SetupDescriptorHeapShaderStages(pipelineLayoutVK, stages, graphicsPipelineDesc.shaderNum, mappings, mappingInfos, mappingSamplers);
 
     // Vertex input
     const VertexInputDesc* vi = graphicsPipelineDesc.vertexInput;
@@ -369,8 +401,6 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     if ((graphicsPipelineDesc.flags & GraphicsPipelineBits::FAIL_ON_CACHE_MISS) && m_Device.GetDesc().features.pipelineCacheControl)
         flags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT;
 
-    const PipelineLayoutVK& pipelineLayoutVK = *(PipelineLayoutVK*)graphicsPipelineDesc.pipelineLayout;
-
     VkGraphicsPipelineCreateInfo info = {
         VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         nullptr,
@@ -400,6 +430,12 @@ Result PipelineVK::Create(const GraphicsPipelineDesc& graphicsPipelineDesc) {
     VkPipelineRobustnessCreateInfoEXT robustnessInfo = {VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO_EXT};
     if (FillPipelineRobustness(m_Device, graphicsPipelineDesc.robustness, robustnessInfo))
         PNEXTCHAIN_APPEND_STRUCT(robustnessInfo);
+
+    VkPipelineCreateFlags2CreateInfo flags2 = {VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO};
+    if (isDescriptorHeap) {
+        flags2.flags = flags | VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
+        PNEXTCHAIN_APPEND_STRUCT(flags2);
+    }
 
     const auto& vk = m_Device.GetDispatchTable();
     VkPipelineCache pipelineCache = VK_NULL_HANDLE;
@@ -445,6 +481,15 @@ Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc) {
         nullptr,
     };
 
+    const bool isDescriptorHeap = pipelineLayoutVK.IsDescriptorHeap();
+    const uint32_t mappingMaxNum = pipelineLayoutVK.GetDescriptorHeapMappingMaxNum();
+    const uint32_t mappingSamplerMaxNum = pipelineLayoutVK.GetDescriptorHeapSamplerMaxNum();
+    Scratch<VkDescriptorSetAndBindingMappingEXT> mappings = NRI_ALLOCATE_SCRATCH(m_Device, VkDescriptorSetAndBindingMappingEXT, mappingMaxNum);
+    VkShaderDescriptorSetAndBindingMappingInfoEXT mappingInfo = {VK_STRUCTURE_TYPE_SHADER_DESCRIPTOR_SET_AND_BINDING_MAPPING_INFO_EXT};
+    Scratch<DescriptorHeapMappingSamplerVK> mappingSamplers = NRI_ALLOCATE_SCRATCH(m_Device, DescriptorHeapMappingSamplerVK, mappingSamplerMaxNum);
+    if (isDescriptorHeap)
+        SetupDescriptorHeapShaderStages(pipelineLayoutVK, &stage, 1, mappings, &mappingInfo, mappingSamplers);
+
     VkPipelineCreateFlags computeFlags = 0;
     if ((computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS) && m_Device.GetDesc().features.pipelineCacheControl)
         computeFlags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT;
@@ -459,9 +504,17 @@ Result PipelineVK::Create(const ComputePipelineDesc& computePipelineDesc) {
         -1,
     };
 
+    PNEXTCHAIN_DECLARE(info.pNext);
+
     VkPipelineRobustnessCreateInfoEXT robustnessInfo = {VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO_EXT};
     if (FillPipelineRobustness(m_Device, computePipelineDesc.robustness, robustnessInfo))
-        info.pNext = &robustnessInfo;
+        PNEXTCHAIN_APPEND_STRUCT(robustnessInfo);
+
+    VkPipelineCreateFlags2CreateInfo flags2 = {VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO};
+    if (isDescriptorHeap) {
+        flags2.flags = computeFlags | VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
+        PNEXTCHAIN_APPEND_STRUCT(flags2);
+    }
 
     VkPipelineCache pipelineCache = VK_NULL_HANDLE;
     if (computePipelineDesc.cache)
@@ -494,6 +547,15 @@ Result PipelineVK::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc) 
 
         stages[i].pName = shaderDesc.entryPointName ? shaderDesc.entryPointName : "main";
     }
+
+    const bool isDescriptorHeap = pipelineLayoutVK.IsDescriptorHeap();
+    const uint32_t mappingMaxNum = pipelineLayoutVK.GetDescriptorHeapMappingMaxNum();
+    const uint32_t mappingSamplerMaxNum = pipelineLayoutVK.GetDescriptorHeapSamplerMaxNum();
+    Scratch<VkDescriptorSetAndBindingMappingEXT> mappings = NRI_ALLOCATE_SCRATCH(m_Device, VkDescriptorSetAndBindingMappingEXT, mappingMaxNum * stageNum);
+    Scratch<VkShaderDescriptorSetAndBindingMappingInfoEXT> mappingInfos = NRI_ALLOCATE_SCRATCH(m_Device, VkShaderDescriptorSetAndBindingMappingInfoEXT, isDescriptorHeap ? stageNum : 0);
+    Scratch<DescriptorHeapMappingSamplerVK> mappingSamplers = NRI_ALLOCATE_SCRATCH(m_Device, DescriptorHeapMappingSamplerVK, mappingSamplerMaxNum * stageNum);
+    if (isDescriptorHeap)
+        SetupDescriptorHeapShaderStages(pipelineLayoutVK, stages, stageNum, mappings, mappingInfos, mappingSamplers);
 
     Scratch<VkRayTracingShaderGroupCreateInfoKHR> groupArray = NRI_ALLOCATE_SCRATCH(m_Device, VkRayTracingShaderGroupCreateInfoKHR, rayTracingPipelineDesc.shaderGroupNum);
     for (uint32_t i = 0; i < rayTracingPipelineDesc.shaderGroupNum; i++) {
@@ -568,9 +630,17 @@ Result PipelineVK::Create(const RayTracingPipelineDesc& rayTracingPipelineDesc) 
     if ((rayTracingPipelineDesc.flags & RayTracingPipelineBits::FAIL_ON_CACHE_MISS) && m_Device.GetDesc().features.pipelineCacheControl)
         createInfo.flags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT;
 
+    PNEXTCHAIN_DECLARE(createInfo.pNext);
+
     VkPipelineRobustnessCreateInfoEXT robustnessInfo = {VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO_EXT};
     if (FillPipelineRobustness(m_Device, rayTracingPipelineDesc.robustness, robustnessInfo))
-        createInfo.pNext = &robustnessInfo;
+        PNEXTCHAIN_APPEND_STRUCT(robustnessInfo);
+
+    VkPipelineCreateFlags2CreateInfo flags2 = {VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO};
+    if (isDescriptorHeap) {
+        flags2.flags = createInfo.flags | VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
+        PNEXTCHAIN_APPEND_STRUCT(flags2);
+    }
 
     const auto& vk = m_Device.GetDispatchTable();
     VkPipelineCache pipelineCache = VK_NULL_HANDLE;

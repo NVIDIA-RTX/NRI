@@ -104,5 +104,5 @@ NRI_INLINE void AccelerationStructureVK::SetDebugName(const char* name) {
 }
 
 NRI_INLINE Result AccelerationStructureVK::CreateDescriptor(Descriptor*& descriptor) const {
-    return m_Device.CreateImplementation<DescriptorVK>(descriptor, m_Handle);
+    return m_Device.CreateImplementation<DescriptorVK>(descriptor, *this);
 }

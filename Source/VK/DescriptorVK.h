@@ -4,7 +4,7 @@
 
 namespace nri {
 
-struct TexViewDesc {
+struct TexViewDescVK {
     const TextureVK* texture;
     VkImageLayout expectedLayout;
     VkImageAspectFlags aspectMask;
@@ -12,6 +12,20 @@ struct TexViewDesc {
     Dim_t layerOrSliceNum;
     Dim_t mipOffset;
     Dim_t mipNum;
+};
+
+struct BufferViewDescVK {
+    const BufferVK* buffer;
+    VkDeviceSize offset;
+    VkDeviceSize range;
+};
+
+struct SamplerViewDescVK {
+    Color customBorderColor;
+    float mipBias;
+    float mipMin;
+    float mipMax;
+    uint32_t packed;
 };
 
 struct DescriptorVK final : public DebugNameBase {
@@ -31,12 +45,15 @@ struct DescriptorVK final : public DebugNameBase {
         return m_Format;
     }
 
-    inline const TexViewDesc& GetTexViewDesc() const {
+    inline const TexViewDescVK& GetTexViewDesc() const {
         return m_ViewDesc.texture;
     }
 
-    inline const VkDescriptorBufferInfo& GetBufferInfo() const {
-        return m_ViewDesc.buffer;
+    inline VkDescriptorBufferInfo GetBufferInfo() const {
+        if (m_Type == DescriptorType::ACCELERATION_STRUCTURE)
+            return {};
+
+        return {m_ViewDesc.buffer.buffer->GetHandle(), m_ViewDesc.buffer.offset, m_ViewDesc.buffer.range};
     }
 
     inline VkBufferView GetBufferView() const {
@@ -52,7 +69,14 @@ struct DescriptorVK final : public DebugNameBase {
     }
 
     inline VkAccelerationStructureKHR GetAccelerationStructure() const {
-        return m_View.accelerationStructure;
+        return m_Type == DescriptorType::ACCELERATION_STRUCTURE ? m_View.accelerationStructure : VK_NULL_HANDLE;
+    }
+
+    inline VkDeviceAddress GetDeviceAddress() const {
+        if (m_Type == DescriptorType::ACCELERATION_STRUCTURE)
+            return m_ViewDesc.accelerationStructureAddress;
+
+        return m_ViewDesc.buffer.buffer->GetDeviceAddress() + m_ViewDesc.buffer.offset;
     }
 
     inline bool IsDepthWritable() const {
@@ -68,7 +92,9 @@ struct DescriptorVK final : public DebugNameBase {
     Result Create(const BufferViewDesc& bufferViewDesc);
     Result Create(const TextureViewDesc& textureViewDesc);
     Result Create(const SamplerDesc& samplerDesc);
-    Result Create(VkAccelerationStructureKHR accelerationStructure);
+    Result Create(const AccelerationStructureVK& accelerationStructure);
+    void FillImageViewCreateInfo(VkImageViewCreateInfo& createInfo, VkImageViewUsageCreateInfo& usageInfo, VkImageViewSlicedCreateInfoEXT& slicesInfo) const;
+    void FillSamplerDesc(SamplerDesc& samplerDesc) const;
 
     //================================================================================================================
     // DebugNameBase
@@ -87,12 +113,16 @@ private:
     } m_View;
 
     union ViewDesc {
-        TexViewDesc texture = {}; // larger first
-        VkDescriptorBufferInfo buffer;
+        SamplerViewDescVK sampler = {}; // larger first
+        TexViewDescVK texture;
+        BufferViewDescVK buffer;
+        VkDeviceAddress accelerationStructureAddress;
     } m_ViewDesc;
 
+    ComponentMapping m_TextureComponents = {};
     DescriptorType m_Type = DescriptorType::MAX_NUM;
     Format m_Format = Format::UNKNOWN;
+    TextureView m_TextureView = TextureView::TEXTURE;
 };
 
 } // namespace nri

@@ -57,6 +57,7 @@ struct CommandBufferVal final : public ObjectVal {
     void SetPipelineLayout(BindPoint bindPoint, const PipelineLayout& pipelineLayout);
     void SetPipeline(const Pipeline& pipeline);
     void SetDescriptorPool(const DescriptorPool& descriptorPool);
+    void SetDescriptorHeap(const DescriptorHeap& descriptorHeap);
     void SetDescriptorSet(const SetDescriptorSetDesc& setDescriptorSetDesc);
     void SetRootConstants(const SetRootConstantsDesc& setRootConstantsDesc);
     void SetRootDescriptor(const SetRootDescriptorDesc& setRootDescriptorDesc);

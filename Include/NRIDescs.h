@@ -51,7 +51,7 @@ NriForwardStruct(QueryPool);        // a collection of queries of the same type
 NriForwardStruct(Descriptor);       // a handle or pointer to a resource (potentially with a header)
 NriForwardStruct(CommandBuffer);    // used to record commands which can be subsequently submitted to a device queue for execution (aka command list)
 NriForwardStruct(DescriptorSet);    // a continuous set of descriptors
-NriForwardStruct(DescriptorPool);   // maintains a pool of descriptors, descriptor sets are allocated from (aka descriptor heap)
+NriForwardStruct(DescriptorPool);   // maintains a pool of descriptors, descriptor sets are allocated from
 NriForwardStruct(PipelineLayout);   // determines the interface between shader stages and shader resources (aka root signature)
 NriForwardStruct(PipelineCache);    // a persistent cache of compiled pipeline state objects (PSOs) to accelerate subsequent PSO creations
 NriForwardStruct(CommandAllocator); // an object that command buffer memory is allocated from
@@ -975,7 +975,7 @@ NriStruct(SamplerDesc) {
     float mipMax;
     Nri(AddressModes) addressModes;
     Nri(CompareOp) compareOp;
-    Nri(Color) borderColor; // used only with "AddressMode::CLAMP_TO_BORDER"
+    Nri(Color) borderColor;       // used only with "AddressMode::CLAMP_TO_BORDER"
     bool isInteger;
     bool unnormalizedCoordinates; // requires "shaderFeatures.unnormalizedCoordinates"
 };
@@ -1000,8 +1000,13 @@ NriBits(PipelineLayoutBits, uint8_t,
     ENABLE_DRAW_PARAMETERS_EMULATION        = NriBit(1),    // D3D12: enable draw parameters emulation, requires "shaderFeatures.drawParameters"
     ENABLE_DRAW_INDEX_EMULATION             = NriBit(2),    // D3D12: enable draw index emulation, requires "shaderFeatures.drawIndex"
 
-    // https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#resourcedescriptorheaps--samplerdescriptorheaps
-    // Default VK bindings can be changed via "-fvk-bind-sampler-heap" and "-fvk-bind-resource-heap" DXC options
+    // Direct indexing has two modes:
+    // - "descriptor pool":
+    //     "MUTABLE" descriptors + "DIRECTLY_INDEXED" flags + up to two ranges in a set describing resource and sampler "virtual heaps" in a descriptor pool
+    //     https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#resourcedescriptorheaps--samplerdescriptorheaps
+    //     Default VK bindings can be changed via "-fvk-bind-sampler-heap" and "-fvk-bind-resource-heap" DXC options
+    // - "descriptor heap":
+    //     NRIDescriptorHeap functionality (requires "features.descriptorHeap") + no descriptor sets + at least one "DIRECTLY_INDEXED" flag
     SAMPLER_HEAP_DIRECTLY_INDEXED           = NriBit(3),    // requires "shaderModel >= 66"
     RESOURCE_HEAP_DIRECTLY_INDEXED          = NriBit(4)     // requires "shaderModel >= 66"
 );
@@ -1081,7 +1086,7 @@ NriStruct(DescriptorSetDesc) {
 // "PipelineLayout" consists of "DescriptorSet" descriptions and root parameters
 NriStruct(RootConstantDesc) {           // aka push constants block
     uint32_t registerIndex;
-    uint32_t size;
+    uint32_t size;                      // must be non-zero and a multiple of 4
     Nri(StageBits) shaderStages;
 };
 
@@ -1190,21 +1195,21 @@ NriStruct(CopyDescriptorRangeDesc) {
 
 // Binding
 NriStruct(SetDescriptorSetDesc) {
-    uint32_t setIndex;
+    uint32_t setIndex;              // an index in "PipelineLayoutDesc::descriptorSets"
     const NriPtr(DescriptorSet) descriptorSet;
     NriOptional Nri(BindPoint) bindPoint;
 };
 
-NriStruct(SetRootConstantsDesc) {   // requires "pipelineLayoutRootConstantMaxSize > 0"
-    uint32_t rootConstantIndex;
+NriStruct(SetRootConstantsDesc) {   // requires "pipelineLayout.rootConstantMaxSize > 0", or "descriptorHeap.rootConstantMaxSize > 0" in "descriptor heap" mode
+    uint32_t rootConstantIndex;     // an index in "PipelineLayoutDesc::rootConstants"
     const void* data;
     uint32_t size;
     uint32_t offset;                // requires "features.rootConstantsOffset"
     NriOptional Nri(BindPoint) bindPoint;
 };
 
-NriStruct(SetRootDescriptorDesc) {  // requires "pipelineLayoutRootDescriptorMaxNum > 0"
-    uint32_t rootDescriptorIndex;
+NriStruct(SetRootDescriptorDesc) {  // requires "pipelineLayout.rootDescriptorMaxNum > 0", or "descriptorHeap.rootDescriptorMaxNum > 0" in "descriptor heap" mode
+    uint32_t rootDescriptorIndex;   // an index in "PipelineLayoutDesc::rootDescriptors"
     NriPtr(Descriptor) descriptor;
     uint32_t offset;                // a non-"CONSTANT_BUFFER" descriptor requires "features.nonConstantBufferRootDescriptorOffset"
     NriOptional Nri(BindPoint) bindPoint;
@@ -1600,7 +1605,7 @@ NriStruct(GraphicsPipelineDesc) {
     uint32_t shaderNum;
     Nri(GraphicsPipelineBits) flags;
     Nri(Robustness) robustness;
-    NriOptional const NriPtr(PipelineCache) cache; // if non-NULL, pipeline creation can be served from a cached blob and the result will be added to the cache on a miss
+    NriOptional const NriPtr(PipelineCache) cache; // uses a cached blob on a hit and stores the result on a miss
 };
 
 NriStruct(ComputePipelineDesc) {
@@ -1608,7 +1613,7 @@ NriStruct(ComputePipelineDesc) {
     Nri(ShaderDesc) shader;
     Nri(ComputePipelineBits) flags;
     Nri(Robustness) robustness;
-    NriOptional const NriPtr(PipelineCache) cache; // if non-NULL, pipeline creation can be served from a cached blob and the result will be added to the cache on a miss
+    NriOptional const NriPtr(PipelineCache) cache; // uses a cached blob on a hit and stores the result on a miss
 };
 
 #pragma endregion
@@ -1960,13 +1965,14 @@ NriStruct(DeviceDesc) {
         uint32_t micromapOffset;
     } memoryAlignment;
 
-    // Pipeline layout (see "FitPipelineLayoutSettingsIntoDeviceLimits")
+    // Pipeline layout (see "nriFitPipelineLayoutSettingsIntoDeviceLimits")
     // D3D12 only: "rootConstantSize" + "descriptorSetNum" * 4 + "rootDescriptorNum" * 8 + "reservedSize" <= 256, where
     // "reservedSize" is 8 bytes for "ENABLE_DRAW_PARAMETERS_EMULATION" and 4 bytes for "ENABLE_DRAW_INDEX_EMULATION"
     struct {
         uint32_t descriptorSetMaxNum;
         uint32_t rootConstantMaxSize;
         uint32_t rootDescriptorMaxNum;
+        uint32_t rootSamplerMaxNum;
     } pipelineLayout;
 
     // Descriptor set
@@ -1985,6 +1991,15 @@ NriStruct(DeviceDesc) {
             uint32_t storageTextureMaxNum;
         } updateAfterSet;
     } descriptorSet;
+
+    // Descriptor heap
+    struct {
+        uint32_t resourceMaxNum;
+        uint32_t samplerMaxNum;
+        uint32_t rootConstantMaxSize;
+        uint32_t rootDescriptorMaxNum;
+        uint32_t rootSamplerMaxNum;
+    } descriptorHeap;
 
     // Shader stages
     struct {
@@ -2225,6 +2240,7 @@ NriStruct(DeviceDesc) {
         bool geometryShader;                                      // Geometry shader stage
         bool meshShader;                                          // NRIMeshShader
         bool lowLatency;                                          // NRILowLatency
+        bool descriptorHeap;                                      // NRIDescriptorHeap
         bool componentSwizzle;                                    // see "ComponentSwizzle" (unsupported only in D3D11)
         bool independentFrontAndBackStencilReferenceAndMasks;     // see "StencilAttachmentDesc::back"
         bool filterOpMinMax;                                      // see "FilterOp"

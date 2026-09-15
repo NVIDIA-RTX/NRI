@@ -59,6 +59,13 @@ struct DeviceNONE final : public DeviceBase {
         m_Desc.pipelineLayout.descriptorSetMaxNum = 64;
         m_Desc.pipelineLayout.rootConstantMaxSize = 256;
         m_Desc.pipelineLayout.rootDescriptorMaxNum = 64;
+        m_Desc.pipelineLayout.rootSamplerMaxNum = 2048;
+
+        m_Desc.descriptorHeap.resourceMaxNum = 1000000;
+        m_Desc.descriptorHeap.samplerMaxNum = 2048;
+        m_Desc.descriptorHeap.rootConstantMaxSize = 256;
+        m_Desc.descriptorHeap.rootDescriptorMaxNum = 64;
+        m_Desc.descriptorHeap.rootSamplerMaxNum = 2048;
 
         m_Desc.descriptorSet.samplerMaxNum = 1000000;
         m_Desc.descriptorSet.constantBufferMaxNum = 1000000;
@@ -194,6 +201,7 @@ struct DeviceNONE final : public DeviceBase {
     }
 
     Result FillFunctionTable(CoreInterface& table) const override;
+    Result FillFunctionTable(DescriptorHeapInterface& table) const override;
     Result FillFunctionTable(HelperInterface& table) const override;
     Result FillFunctionTable(LowLatencyInterface& table) const override;
     Result FillFunctionTable(MeshShaderInterface& table) const override;
@@ -787,6 +795,41 @@ Result DeviceNONE::FillFunctionTable(CoreInterface& table) const {
     table.GetBufferNativeObject = ::GetBufferNativeObject;
     table.GetTextureNativeObject = ::GetTextureNativeObject;
     table.GetDescriptorNativeObject = ::GetDescriptorNativeObject;
+
+    return Result::SUCCESS;
+}
+
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region[  DescriptorHeap  ]
+
+static Result NRI_CALL CreateDescriptorHeap(Device&, const DescriptorHeapDesc&, DescriptorHeap*& descriptorHeap) {
+    descriptorHeap = DummyObject<DescriptorHeap>();
+
+    return Result::SUCCESS;
+}
+
+static void NRI_CALL DestroyDescriptorHeap(DescriptorHeap*) {
+}
+
+static Result NRI_CALL WriteResourceDescriptors(DescriptorHeap&, const WriteResourceDescriptorsDesc*, uint32_t) {
+    return Result::SUCCESS;
+}
+
+static Result NRI_CALL WriteSamplerDescriptors(DescriptorHeap&, const WriteSamplerDescriptorsDesc*, uint32_t) {
+    return Result::SUCCESS;
+}
+
+static void NRI_CALL CmdSetDescriptorHeap(CommandBuffer&, const DescriptorHeap&) {
+}
+
+Result DeviceNONE::FillFunctionTable(DescriptorHeapInterface& table) const {
+    table.CreateDescriptorHeap = ::CreateDescriptorHeap;
+    table.DestroyDescriptorHeap = ::DestroyDescriptorHeap;
+    table.WriteResourceDescriptors = ::WriteResourceDescriptors;
+    table.WriteSamplerDescriptors = ::WriteSamplerDescriptors;
+    table.CmdSetDescriptorHeap = ::CmdSetDescriptorHeap;
 
     return Result::SUCCESS;
 }

@@ -1002,6 +1002,13 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.pipelineLayout.descriptorSetMaxNum = ROOT_SIGNATURE_DWORD_NUM / 1;
     m_Desc.pipelineLayout.rootConstantMaxSize = sizeof(uint32_t) * ROOT_SIGNATURE_DWORD_NUM / 1;
     m_Desc.pipelineLayout.rootDescriptorMaxNum = ROOT_SIGNATURE_DWORD_NUM / 2;
+    m_Desc.pipelineLayout.rootSamplerMaxNum = 2032; // https://learn.microsoft.com/en-us/windows/win32/direct3d12/hardware-support
+
+    m_Desc.descriptorHeap.resourceMaxNum = D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_2;
+    m_Desc.descriptorHeap.samplerMaxNum = D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE;
+    m_Desc.descriptorHeap.rootConstantMaxSize = m_Desc.pipelineLayout.rootConstantMaxSize;
+    m_Desc.descriptorHeap.rootDescriptorMaxNum = m_Desc.pipelineLayout.rootDescriptorMaxNum;
+    m_Desc.descriptorHeap.rootSamplerMaxNum = m_Desc.pipelineLayout.rootSamplerMaxNum;
 
     // https://learn.microsoft.com/en-us/windows/win32/direct3d12/hardware-support
     if (options.ResourceBindingTier == D3D12_RESOURCE_BINDING_TIER_1) {
@@ -1198,6 +1205,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.features.rootConstantsOffset = true;
     m_Desc.features.nonConstantBufferRootDescriptorOffset = true;
     m_Desc.features.mutableDescriptorType = true;
+    m_Desc.features.descriptorHeap = m_Desc.tiers.bindless >= 2;
     m_Desc.features.extendedDynamicState = true;
     m_Desc.features.resourceAliasing = true;
 
@@ -1384,7 +1392,7 @@ Result DeviceD3D12::GetDescriptorHandle(D3D12_DESCRIPTOR_HEAP_TYPE type, Descrip
         HRESULT hr = m_Device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&descriptorHeap));
         NRI_RETURN_ON_BAD_HRESULT(this, hr, "ID3D12Device::CreateDescriptorHeap");
 
-        DescriptorHeapDesc descriptorHeapDesc = {};
+        DescriptorHeapDescD3D12 descriptorHeapDesc = {};
         descriptorHeapDesc.heap = descriptorHeap;
         descriptorHeapDesc.baseHandleCPU = descriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr;
         descriptorHeapDesc.descriptorSize = m_Device->GetDescriptorHandleIncrementSize(type);
@@ -1420,7 +1428,7 @@ void DeviceD3D12::FreeDescriptorHandle(const DescriptorHandle& descriptorHandle)
 DescriptorHandleCPU DeviceD3D12::GetDescriptorHandleCPU(const DescriptorHandle& descriptorHandle) {
     ExclusiveScope lock(m_DescriptorHeapLock);
 
-    const DescriptorHeapDesc& descriptorHeapDesc = m_DescriptorHeaps[descriptorHandle.heapIndex];
+    const DescriptorHeapDescD3D12& descriptorHeapDesc = m_DescriptorHeaps[descriptorHandle.heapIndex];
     DescriptorHandleCPU descriptorHandleCPU = descriptorHeapDesc.baseHandleCPU + (descriptorHandle.heapOffsetPlusOne - 1) * descriptorHeapDesc.descriptorSize;
 
     return descriptorHandleCPU;

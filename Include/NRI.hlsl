@@ -213,15 +213,28 @@ Draw parameters:
     // Draw parameters and draw index (native)
     #define NRI_ENABLE_DRAW_PARAMETERS
 
-    #define NRI_DECLARE_DRAW_PARAMETERS \
-        int NRI_VERTEX_ID_OFFSET : SV_VertexID, \
-        uint NRI_INSTANCE_ID_OFFSET : SV_InstanceID, \
-        [[vk::builtin("BaseVertex")]] int NRI_BASE_VERTEX : _SV_Nothing1, \
-        [[vk::builtin("BaseInstance")]] uint NRI_BASE_INSTANCE : _SV_Nothing2, \
-        [[vk::builtin("DrawIndex")]] uint NRI_DRAW_ID : _SV_Nothing3
+    // Slang applies HLSL semantics by removing base offsets from the Vulkan built-ins
+    #ifdef __SLANG__
+        #define NRI_DECLARE_DRAW_PARAMETERS \
+            int NRI_VERTEX_ID : SV_VertexID, \
+            uint NRI_INSTANCE_ID : SV_InstanceID, \
+            int NRI_BASE_VERTEX : SV_StartVertexLocation, \
+            uint NRI_BASE_INSTANCE : SV_StartInstanceLocation, \
+            uint NRI_DRAW_ID : SV_DrawIndex
 
-    #define NRI_VERTEX_ID (NRI_VERTEX_ID_OFFSET - NRI_BASE_VERTEX)
-    #define NRI_INSTANCE_ID (NRI_INSTANCE_ID_OFFSET - NRI_BASE_INSTANCE)
+        #define NRI_VERTEX_ID_OFFSET (NRI_BASE_VERTEX + NRI_VERTEX_ID)
+        #define NRI_INSTANCE_ID_OFFSET (NRI_BASE_INSTANCE + NRI_INSTANCE_ID)
+    #else
+        #define NRI_DECLARE_DRAW_PARAMETERS \
+            int NRI_VERTEX_ID_OFFSET : SV_VertexID, \
+            uint NRI_INSTANCE_ID_OFFSET : SV_InstanceID, \
+            [[vk::builtin("BaseVertex")]] int NRI_BASE_VERTEX : _SV_Nothing1, \
+            [[vk::builtin("BaseInstance")]] uint NRI_BASE_INSTANCE : _SV_Nothing2, \
+            [[vk::builtin("DrawIndex")]] uint NRI_DRAW_ID : _SV_Nothing3
+
+        #define NRI_VERTEX_ID (NRI_VERTEX_ID_OFFSET - NRI_BASE_VERTEX)
+        #define NRI_INSTANCE_ID (NRI_INSTANCE_ID_OFFSET - NRI_BASE_INSTANCE)
+    #endif
 #endif
 
 // DXIL

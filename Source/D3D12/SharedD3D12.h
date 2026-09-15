@@ -117,7 +117,7 @@ constexpr uint32_t DRED_BREADCRUMB_RADIUS = 4;
 static_assert(D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES <= (1 << DESCRIPTOR_HANDLE_HEAP_TYPE_BIT_NUM), "Out of bounds");
 static_assert(DESCRIPTORS_BATCH_SIZE < (1 << DESCRIPTOR_HANDLE_HEAP_OFFSET_BIT_NUM), "Out of bounds");
 
-struct DescriptorHeapDesc {
+struct DescriptorHeapDescD3D12 {
     ComPtr<ID3D12DescriptorHeap> heap;
     DescriptorHandleGPU baseHandleGPU = 0;
     DescriptorHandleCPU baseHandleCPU = 0;

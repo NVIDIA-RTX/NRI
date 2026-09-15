@@ -741,6 +741,15 @@ NRI_INLINE void CommandBufferVal::SetDescriptorPool(const DescriptorPool& descri
     GetCoreInterfaceImpl().CmdSetDescriptorPool(*GetImpl(), *descriptorPoolImpl);
 }
 
+NRI_INLINE void CommandBufferVal::SetDescriptorHeap(const DescriptorHeap& descriptorHeap) {
+    NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
+    NRI_RETURN_ON_FAILURE(&m_Device, m_QueueType == QueueType::GRAPHICS || m_QueueType == QueueType::COMPUTE, ReturnVoid(), "the command buffer must belong to a GRAPHICS or COMPUTE queue");
+
+    ResetDescriptorSets();
+
+    m_Device.GetDescriptorHeapInterfaceImpl().CmdSetDescriptorHeap(*GetImpl(), descriptorHeap);
+}
+
 NRI_INLINE void CommandBufferVal::SetDescriptorSet(const SetDescriptorSetDesc& setDescriptorSetDesc) {
     NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     NRI_RETURN_ON_FAILURE(&m_Device, m_PipelineLayout, ReturnVoid(), "'SetPipelineLayout' has not been called");

@@ -50,7 +50,7 @@ NriStruct(RayTracingPipelineDesc) {
     uint32_t rayHitAttributeMaxSize;
     Nri(RayTracingPipelineBits) flags;
     Nri(Robustness) robustness;
-    NriOptional const NriPtr(PipelineCache) cache; // if non-NULL, pipeline creation can be served from a cached blob and the result will be added to the cache on a miss
+    NriOptional const NriPtr(PipelineCache) cache; // uses a cached blob on a hit and stores the result on a miss
 };
 
 #pragma endregion

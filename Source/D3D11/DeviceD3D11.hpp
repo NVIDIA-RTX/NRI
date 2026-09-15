@@ -506,6 +506,7 @@ void DeviceD3D11::FillDesc() {
     m_Desc.pipelineLayout.descriptorSetMaxNum = ROOT_SIGNATURE_DWORD_NUM / 1;
     m_Desc.pipelineLayout.rootConstantMaxSize = sizeof(uint32_t) * ROOT_SIGNATURE_DWORD_NUM / 1;
     m_Desc.pipelineLayout.rootDescriptorMaxNum = ROOT_SIGNATURE_DWORD_NUM / 2;
+    m_Desc.pipelineLayout.rootSamplerMaxNum = D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT;
 
     m_Desc.descriptorSet.samplerMaxNum = D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT;
     m_Desc.descriptorSet.constantBufferMaxNum = D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT;

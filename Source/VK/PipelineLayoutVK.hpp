@@ -1,5 +1,21 @@
 // © 2021 NVIDIA Corporation
 
+static inline SamplerDesc GetEmbeddedSamplerDesc(const SamplerDesc& samplerDesc) {
+    SamplerDesc embeddedSamplerDesc = samplerDesc;
+    const Color& borderColor = samplerDesc.borderColor;
+    const bool isZeroColor = borderColor.ui.x == 0 && borderColor.ui.y == 0 && borderColor.ui.z == 0;
+    const bool isZeroAlpha = borderColor.ui.w == 0;
+
+    if (samplerDesc.isInteger)
+        embeddedSamplerDesc.borderColor.ui = isZeroColor ? Color32ui{0, 0, 0, 1} : Color32ui{1, 1, 1, 1};
+    else if (isZeroColor && isZeroAlpha)
+        embeddedSamplerDesc.borderColor.f = {};
+    else
+        embeddedSamplerDesc.borderColor.f = isZeroColor ? Color32f{0.0f, 0.0f, 0.0f, 1.0f} : Color32f{1.0f, 1.0f, 1.0f, 1.0f};
+
+    return embeddedSamplerDesc;
+}
+
 PipelineLayoutVK::~PipelineLayoutVK() {
     const auto& vk = m_Device.GetDispatchTable();
     const auto allocationCallbacks = m_Device.GetVkAllocationCallbacks();
@@ -32,6 +48,39 @@ Result PipelineLayoutVK::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
     bindingOffsets[(size_t)DescriptorType::STRUCTURED_BUFFER] = vkBindingOffsets.tRegister;
     bindingOffsets[(size_t)DescriptorType::STORAGE_STRUCTURED_BUFFER] = vkBindingOffsets.uRegister;
     bindingOffsets[(size_t)DescriptorType::ACCELERATION_STRUCTURE] = vkBindingOffsets.tRegister;
+
+    const PipelineLayoutBits directlyIndexed = PipelineLayoutBits::SAMPLER_HEAP_DIRECTLY_INDEXED | PipelineLayoutBits::RESOURCE_HEAP_DIRECTLY_INDEXED;
+    m_IsDescriptorHeap = pipelineLayoutDesc.descriptorSetNum == 0 && (pipelineLayoutDesc.flags & directlyIndexed) != 0;
+    if (m_IsDescriptorHeap) {
+        m_BindingInfo.rootRegisterSpace = pipelineLayoutDesc.rootRegisterSpace;
+        if (pipelineLayoutDesc.rootConstantNum)
+            m_BindingInfo.rootConstants.insert(m_BindingInfo.rootConstants.end(), pipelineLayoutDesc.rootConstants, pipelineLayoutDesc.rootConstants + pipelineLayoutDesc.rootConstantNum);
+        if (pipelineLayoutDesc.rootDescriptorNum)
+            m_BindingInfo.rootDescriptors.insert(m_BindingInfo.rootDescriptors.end(), pipelineLayoutDesc.rootDescriptors, pipelineLayoutDesc.rootDescriptors + pipelineLayoutDesc.rootDescriptorNum);
+        if (pipelineLayoutDesc.rootSamplerNum)
+            m_BindingInfo.rootSamplers.insert(m_BindingInfo.rootSamplers.end(), pipelineLayoutDesc.rootSamplers, pipelineLayoutDesc.rootSamplers + pipelineLayoutDesc.rootSamplerNum);
+
+        m_BindingInfo.pushConstants.reserve(pipelineLayoutDesc.rootConstantNum);
+        m_BindingInfo.pushDescriptors.reserve(pipelineLayoutDesc.rootDescriptorNum);
+
+        uint32_t offset = 0;
+        for (uint32_t i = 0; i < pipelineLayoutDesc.rootConstantNum; i++) {
+            const RootConstantDesc& rootConstantDesc = pipelineLayoutDesc.rootConstants[i];
+            m_BindingInfo.pushConstants.push_back({GetShaderStageFlags(rootConstantDesc.shaderStages), offset});
+            offset += rootConstantDesc.size;
+        }
+
+        offset = Align(offset, sizeof(uint64_t));
+        for (uint32_t i = 0; i < pipelineLayoutDesc.rootDescriptorNum; i++) {
+            m_BindingInfo.pushDescriptors.push_back(offset);
+            offset += sizeof(uint64_t);
+        }
+
+        m_BindingInfo.rootSamplerBindingOffset = pipelineLayoutDesc.rootDescriptorNum;
+        m_BindingInfo.ignoreGlobalSPIRVOffsets = ignoreGlobalSPIRVOffsets;
+
+        return Result::SUCCESS;
+    }
 
     // Binding info
     size_t rangeNum = 0;
@@ -168,6 +217,85 @@ Result PipelineLayoutVK::Create(const PipelineLayoutDesc& pipelineLayoutDesc) {
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreatePipelineLayout");
 
     return Result::SUCCESS;
+}
+
+uint32_t PipelineLayoutVK::SetupDescriptorHeapMappings(VkShaderStageFlagBits stage, VkDescriptorSetAndBindingMappingEXT* mappings, DescriptorHeapMappingSamplerVK* samplers) const {
+    const VKBindingOffsets bindingOffsets = m_BindingInfo.ignoreGlobalSPIRVOffsets ? VKBindingOffsets{} : m_Device.GetBindingOffsets();
+    uint32_t mappingNum = 0;
+    uint32_t samplerNum = 0;
+
+    for (uint32_t i = 0; i < m_BindingInfo.rootConstants.size(); i++) {
+        const RootConstantDesc& desc = m_BindingInfo.rootConstants[i];
+        if (!(GetShaderStageFlags(desc.shaderStages) & stage))
+            continue;
+
+        VkDescriptorSetAndBindingMappingEXT& mapping = mappings[mappingNum++];
+        mapping = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT};
+        mapping.descriptorSet = m_BindingInfo.rootRegisterSpace;
+        mapping.firstBinding = desc.registerIndex + bindingOffsets.bRegister;
+        mapping.bindingCount = 1;
+        mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_UNIFORM_BUFFER_BIT_EXT;
+        mapping.source = VK_DESCRIPTOR_MAPPING_SOURCE_PUSH_DATA_EXT;
+        mapping.sourceData.pushDataOffset = m_BindingInfo.pushConstants[i].offset;
+    }
+
+    for (uint32_t i = 0; i < m_BindingInfo.rootDescriptors.size(); i++) {
+        const RootDescriptorDesc& desc = m_BindingInfo.rootDescriptors[i];
+        if (!(GetShaderStageFlags(desc.shaderStages) & stage))
+            continue;
+
+        VkDescriptorSetAndBindingMappingEXT& mapping = mappings[mappingNum++];
+        mapping = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT};
+        mapping.descriptorSet = m_BindingInfo.rootRegisterSpace;
+        mapping.firstBinding = desc.registerIndex;
+        mapping.bindingCount = 1;
+        mapping.source = VK_DESCRIPTOR_MAPPING_SOURCE_PUSH_ADDRESS_EXT;
+        mapping.sourceData.pushAddressOffset = m_BindingInfo.pushDescriptors[i];
+
+        switch (desc.descriptorType) {
+            case DescriptorType::CONSTANT_BUFFER:
+                mapping.firstBinding += bindingOffsets.bRegister;
+                mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_UNIFORM_BUFFER_BIT_EXT;
+                break;
+            case DescriptorType::STORAGE_STRUCTURED_BUFFER:
+                mapping.firstBinding += bindingOffsets.uRegister;
+                mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_READ_WRITE_STORAGE_BUFFER_BIT_EXT;
+                break;
+            case DescriptorType::ACCELERATION_STRUCTURE:
+                mapping.firstBinding += bindingOffsets.tRegister;
+                mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_ACCELERATION_STRUCTURE_BIT_EXT;
+                break;
+            default:
+                mapping.firstBinding += bindingOffsets.tRegister;
+                mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_READ_ONLY_STORAGE_BUFFER_BIT_EXT;
+                break;
+        }
+    }
+
+    for (const RootSamplerDesc& desc : m_BindingInfo.rootSamplers) {
+        if (!(GetShaderStageFlags(desc.shaderStages) & stage))
+            continue;
+
+        const SamplerDesc samplerDesc = GetEmbeddedSamplerDesc(desc.desc);
+        DescriptorHeapMappingSamplerVK& sampler = samplers[samplerNum];
+        sampler = {};
+        sampler.sampler.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        sampler.reduction.sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO;
+        VkSamplerCustomBorderColorCreateInfoEXT borderColor = {VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT};
+        m_Device.FillCreateInfo(samplerDesc, sampler.sampler, sampler.reduction, borderColor);
+
+        VkDescriptorSetAndBindingMappingEXT& mapping = mappings[mappingNum++];
+        mapping = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT};
+        mapping.descriptorSet = m_BindingInfo.rootRegisterSpace;
+        mapping.firstBinding = desc.registerIndex + bindingOffsets.sRegister;
+        mapping.bindingCount = 1;
+        mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_SAMPLER_BIT_EXT;
+        mapping.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_CONSTANT_OFFSET_EXT;
+        mapping.sourceData.constantOffset.pEmbeddedSampler = &sampler.sampler;
+        samplerNum++;
+    }
+
+    return mappingNum;
 }
 
 void PipelineLayoutVK::CreateSetLayout(VkDescriptorSetLayout* setLayout, const DescriptorSetDesc& descriptorSetDesc, const RootSamplerDesc* rootSamplers, uint32_t rootSamplerNum, bool ignoreGlobalSPIRVOffsets, bool isPush) {

@@ -402,6 +402,7 @@ void DeviceWGPU::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.pipelineLayout.descriptorSetMaxNum = limits.maxBindGroups;
     m_Desc.pipelineLayout.rootConstantMaxSize = 256;
     m_Desc.pipelineLayout.rootDescriptorMaxNum = 8;
+    m_Desc.pipelineLayout.rootSamplerMaxNum = limits.maxSamplersPerShaderStage;
 
     m_Desc.descriptorSet.samplerMaxNum = limits.maxSamplersPerShaderStage;
     m_Desc.descriptorSet.constantBufferMaxNum = limits.maxUniformBuffersPerShaderStage;

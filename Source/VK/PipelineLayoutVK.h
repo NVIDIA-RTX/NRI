@@ -9,20 +9,32 @@ struct PushConstantBindingDesc {
     uint32_t offset;
 };
 
+struct DescriptorHeapMappingSamplerVK {
+    VkSamplerCreateInfo sampler;
+    VkSamplerReductionModeCreateInfo reduction;
+};
+
 struct BindingInfo {
     BindingInfo(StdAllocator<uint8_t>& allocator)
         : ranges(allocator)
         , sets(allocator)
         , pushConstants(allocator)
-        , pushDescriptors(allocator) {
+        , pushDescriptors(allocator)
+        , rootConstants(allocator)
+        , rootDescriptors(allocator)
+        , rootSamplers(allocator) {
     }
 
     Vector<DescriptorRangeDesc> ranges;
     Vector<DescriptorSetDesc> sets;
     Vector<PushConstantBindingDesc> pushConstants;
     Vector<uint32_t> pushDescriptors;
-    uint32_t rootRegisterSpace;
-    uint32_t rootSamplerBindingOffset;
+    Vector<RootConstantDesc> rootConstants;
+    Vector<RootDescriptorDesc> rootDescriptors;
+    Vector<RootSamplerDesc> rootSamplers;
+    uint32_t rootRegisterSpace = 0;
+    uint32_t rootSamplerBindingOffset = 0;
+    bool ignoreGlobalSPIRVOffsets = false;
 };
 
 struct PipelineLayoutVK final : public DebugNameBase {
@@ -49,9 +61,22 @@ struct PipelineLayoutVK final : public DebugNameBase {
         return m_DescriptorSetLayouts[setIndex];
     }
 
+    inline bool IsDescriptorHeap() const {
+        return m_IsDescriptorHeap;
+    }
+
+    inline uint32_t GetDescriptorHeapMappingMaxNum() const {
+        return m_IsDescriptorHeap ? (uint32_t)(m_BindingInfo.rootConstants.size() + m_BindingInfo.rootDescriptors.size() + m_BindingInfo.rootSamplers.size()) : 0;
+    }
+
+    inline uint32_t GetDescriptorHeapSamplerMaxNum() const {
+        return m_IsDescriptorHeap ? (uint32_t)m_BindingInfo.rootSamplers.size() : 0;
+    }
+
     ~PipelineLayoutVK();
 
     Result Create(const PipelineLayoutDesc& pipelineLayoutDesc);
+    uint32_t SetupDescriptorHeapMappings(VkShaderStageFlagBits stage, VkDescriptorSetAndBindingMappingEXT* mappings, DescriptorHeapMappingSamplerVK* samplers) const;
 
     //================================================================================================================
     // DebugNameBase
@@ -68,6 +93,7 @@ private:
     BindingInfo m_BindingInfo;
     Vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
     Vector<VkSampler> m_ImmutableSamplers;
+    bool m_IsDescriptorHeap = false;
 };
 
 } // namespace nri

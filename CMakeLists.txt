@@ -170,7 +170,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.361.zip"
+        URL "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.362.zip"
     )
     list(APPEND DEPS vulkan_headers)
 
@@ -185,7 +185,7 @@ if(NRI_ENABLE_VK_SUPPORT)
     list(APPEND DEPS vma)
 endif()
 
-set(NGX_VERSION "310.7.0")
+set(NGX_VERSION "310.9.1")
 if(NRI_ENABLE_NGX_SDK)
     # NVIDIA NGX SDK
     fetchcontent_declare(
@@ -296,7 +296,7 @@ if(NRI_ENABLE_SHADERMAKE AND NOT TARGET ShaderMake)
         shadermake
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
-        URL "https://github.com/NVIDIA-RTX/ShaderMake/archive/ca92f65f355f0e31cb67a9601baec705441f6401.zip"
+        URL "https://github.com/NVIDIA-RTX/ShaderMake/archive/5f1473afa98cb9943f9ee146151ee70c4d101cb5.zip"
     )
     list(APPEND DEPS shadermake)
 endif()
@@ -588,6 +588,8 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         "Source/D3D12/CommandBufferD3D12.hpp"
         "Source/D3D12/DescriptorD3D12.h"
         "Source/D3D12/DescriptorD3D12.hpp"
+        "Source/D3D12/DescriptorHeapD3D12.h"
+        "Source/D3D12/DescriptorHeapD3D12.hpp"
         "Source/D3D12/DescriptorPoolD3D12.h"
         "Source/D3D12/DescriptorPoolD3D12.hpp"
         "Source/D3D12/DescriptorSetD3D12.h"
@@ -723,6 +725,8 @@ if(NRI_ENABLE_VK_SUPPORT)
         "Source/VK/DescriptorSetVK.hpp"
         "Source/VK/DescriptorVK.h"
         "Source/VK/DescriptorVK.hpp"
+        "Source/VK/DescriptorHeapVK.h"
+        "Source/VK/DescriptorHeapVK.hpp"
         "Source/VK/DeviceVK.h"
         "Source/VK/DeviceVK.hpp"
         "Source/VK/DispatchTable.h"
@@ -873,6 +877,8 @@ if(NRI_ENABLE_VALIDATION_SUPPORT)
         "Source/Validation/ConversionVal.hpp"
         "Source/Validation/DescriptorPoolVal.h"
         "Source/Validation/DescriptorPoolVal.hpp"
+        "Source/Validation/DescriptorHeapVal.h"
+        "Source/Validation/DescriptorHeapVal.hpp"
         "Source/Validation/DescriptorSetVal.h"
         "Source/Validation/DescriptorSetVal.hpp"
         "Source/Validation/DescriptorVal.h"
@@ -942,6 +948,7 @@ set_source_files_properties(${NRI_HEADERS}
 
 # Extensions headers
 set(NRI_EXTENSIONS
+    "Include/Extensions/NRIDescriptorHeap.h"
     "Include/Extensions/NRIDeviceCreation.h"
     "Include/Extensions/NRIHelper.h"
     "Include/Extensions/NRIImgui.h"

@@ -157,6 +157,7 @@ bool DeviceVal::Create() {
     result = deviceBaseImpl.FillFunctionTable(m_iHelperImpl);
     NRI_RETURN_ON_FAILURE(this, result == Result::SUCCESS, false, "Failed to get 'HelperInterface' interface");
 
+    m_IsExtSupported.descriptorHeap = deviceBaseImpl.FillFunctionTable(m_iDescriptorHeapImpl) == Result::SUCCESS;
     m_IsExtSupported.lowLatency = deviceBaseImpl.FillFunctionTable(m_iLowLatencyImpl) == Result::SUCCESS;
     m_IsExtSupported.meshShader = deviceBaseImpl.FillFunctionTable(m_iMeshShaderImpl) == Result::SUCCESS;
     m_IsExtSupported.rayTracing = deviceBaseImpl.FillFunctionTable(m_iRayTracingImpl) == Result::SUCCESS;
@@ -420,11 +421,13 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
     if (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_DRAW_INDEX_EMULATION)
         NRI_RETURN_ON_FAILURE(this, deviceDesc.shaderFeatures.drawIndex, Result::INVALID_ARGUMENT, "'ENABLE_DRAW_INDEX_EMULATION' requires 'shaderFeatures.drawIndex'");
 
+    NRI_RETURN_ON_FAILURE(this, pipelineLayoutDesc.descriptorSetNum == 0 || pipelineLayoutDesc.descriptorSets != nullptr, Result::INVALID_ARGUMENT, "'descriptorSets' is NULL");
     Scratch<uint32_t> spaces = NRI_ALLOCATE_SCRATCH(*this, uint32_t, pipelineLayoutDesc.descriptorSetNum);
 
     uint32_t rangeNum = 0;
     for (uint32_t i = 0; i < pipelineLayoutDesc.descriptorSetNum; i++) {
         const DescriptorSetDesc& descriptorSetDesc = pipelineLayoutDesc.descriptorSets[i];
+        NRI_RETURN_ON_FAILURE(this, descriptorSetDesc.rangeNum == 0 || descriptorSetDesc.ranges != nullptr, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges' is NULL", i);
         uint32_t variableSizedArrayNum = 0;
 
         for (uint32_t j = 0; j < descriptorSetDesc.rangeNum; j++) {
@@ -490,23 +493,34 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
         NRI_RETURN_ON_FAILURE(this, samplerDesc.compareOp < CompareOp::MAX_NUM, Result::INVALID_ARGUMENT, "'rootSamplers[%u].desc.compareOp' is invalid", i);
     }
 
-    uint32_t rootConstantSize = 0;
-    for (uint32_t i = 0; i < pipelineLayoutDesc.rootConstantNum; i++)
+    NRI_RETURN_ON_FAILURE(this, pipelineLayoutDesc.rootConstantNum == 0 || pipelineLayoutDesc.rootConstants != nullptr, Result::INVALID_ARGUMENT, "'rootConstants' is NULL");
+    uint64_t rootConstantSize = 0;
+    for (uint32_t i = 0; i < pipelineLayoutDesc.rootConstantNum; i++) {
+        NRI_RETURN_ON_FAILURE(this, pipelineLayoutDesc.rootConstants[i].size != 0 && IsAligned(pipelineLayoutDesc.rootConstants[i].size, 4), Result::INVALID_ARGUMENT, "'rootConstants[%u].size' must be non-zero and 4-byte aligned", i);
         rootConstantSize += pipelineLayoutDesc.rootConstants[i].size;
+    }
+
+    NRI_RETURN_ON_FAILURE(this, rootConstantSize <= UINT32_MAX, Result::INVALID_ARGUMENT, "total size of root constants exceeds UINT32_MAX");
 
     PipelineLayoutSettingsDesc origSettings = {};
+    origSettings.useDescriptorHeap = pipelineLayoutDesc.descriptorSetNum == 0
+        && ((pipelineLayoutDesc.flags & PipelineLayoutBits::RESOURCE_HEAP_DIRECTLY_INDEXED) != 0 || (pipelineLayoutDesc.flags & PipelineLayoutBits::SAMPLER_HEAP_DIRECTLY_INDEXED) != 0);
+    NRI_RETURN_ON_FAILURE(this, !origSettings.useDescriptorHeap || deviceDesc.features.descriptorHeap, Result::INVALID_ARGUMENT, "'features.descriptorHeap' is false");
+
     origSettings.descriptorSetNum = pipelineLayoutDesc.descriptorSetNum;
     origSettings.descriptorRangeNum = rangeNum;
-    origSettings.rootConstantSize = rootConstantSize;
+    origSettings.rootConstantSize = (uint32_t)rootConstantSize;
     origSettings.rootDescriptorNum = pipelineLayoutDesc.rootDescriptorNum;
+    origSettings.rootSamplerNum = pipelineLayoutDesc.rootSamplerNum;
     origSettings.enableD3D12DrawParametersEmulation = (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_DRAW_PARAMETERS_EMULATION) != 0 && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
     origSettings.enableD3D12DrawIndexEmulation = (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_DRAW_INDEX_EMULATION) != 0 && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
 
-    PipelineLayoutSettingsDesc fittedSettings = FitPipelineLayoutSettingsIntoDeviceLimits(deviceDesc, origSettings);
+    PipelineLayoutSettingsDesc fittedSettings = nriFitPipelineLayoutSettingsIntoDeviceLimits(deviceDesc, origSettings);
     NRI_RETURN_ON_FAILURE(this, origSettings.descriptorSetNum == fittedSettings.descriptorSetNum, Result::INVALID_ARGUMENT, "total number of descriptor sets (=%u) exceeds device limits", origSettings.descriptorSetNum);
     NRI_RETURN_ON_FAILURE(this, origSettings.descriptorRangeNum == fittedSettings.descriptorRangeNum, Result::INVALID_ARGUMENT, "total number of descriptor ranges (=%u) exceeds device limits", origSettings.descriptorRangeNum);
     NRI_RETURN_ON_FAILURE(this, origSettings.rootConstantSize == fittedSettings.rootConstantSize, Result::INVALID_ARGUMENT, "total size of root constants (=%u) exceeds device limits", origSettings.rootConstantSize);
     NRI_RETURN_ON_FAILURE(this, origSettings.rootDescriptorNum == fittedSettings.rootDescriptorNum, Result::INVALID_ARGUMENT, "total number of root descriptors (=%u) exceeds device limits", origSettings.rootDescriptorNum);
+    NRI_RETURN_ON_FAILURE(this, origSettings.rootSamplerNum == fittedSettings.rootSamplerNum, Result::INVALID_ARGUMENT, "total number of root samplers (=%u) exceeds device limits", origSettings.rootSamplerNum);
 
     PipelineLayout* pipelineLayoutImpl = nullptr;
     Result result = m_iCoreImpl.CreatePipelineLayout(m_Impl, pipelineLayoutDesc, pipelineLayoutImpl);

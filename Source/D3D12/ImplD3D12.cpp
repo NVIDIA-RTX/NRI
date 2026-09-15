@@ -9,6 +9,7 @@
 #include "CommandAllocatorD3D12.h"
 #include "CommandBufferD3D12.h"
 #include "DescriptorD3D12.h"
+#include "DescriptorHeapD3D12.h"
 #include "DescriptorPoolD3D12.h"
 #include "DescriptorSetD3D12.h"
 #include "FenceD3D12.h"
@@ -38,6 +39,7 @@ using namespace nri;
 #include "CommandAllocatorD3D12.hpp"
 #include "CommandBufferD3D12.hpp"
 #include "DescriptorD3D12.hpp"
+#include "DescriptorHeapD3D12.hpp"
 #include "DescriptorPoolD3D12.hpp"
 #include "DescriptorSetD3D12.hpp"
 #include "DeviceD3D12.hpp"
@@ -749,6 +751,44 @@ Result DeviceD3D12::FillFunctionTable(CoreInterface& table) const {
     table.GetBufferNativeObject = ::GetBufferNativeObject;
     table.GetTextureNativeObject = ::GetTextureNativeObject;
     table.GetDescriptorNativeObject = ::GetDescriptorNativeObject;
+
+    return Result::SUCCESS;
+}
+
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region[  DescriptorHeap  ]
+
+static Result NRI_CALL CreateDescriptorHeap(Device& device, const DescriptorHeapDesc& descriptorHeapDesc, DescriptorHeap*& descriptorHeap) {
+    return ((DeviceD3D12&)device).CreateImplementation<DescriptorHeapD3D12>(descriptorHeap, descriptorHeapDesc);
+}
+
+static void NRI_CALL DestroyDescriptorHeap(DescriptorHeap* descriptorHeap) {
+    Destroy((DescriptorHeapD3D12*)descriptorHeap);
+}
+
+static Result NRI_CALL WriteResourceDescriptors(DescriptorHeap& descriptorHeap, const WriteResourceDescriptorsDesc* writeDescs, uint32_t writeDescNum) {
+    return ((DescriptorHeapD3D12&)descriptorHeap).WriteResourceDescriptors(writeDescs, writeDescNum);
+}
+
+static Result NRI_CALL WriteSamplerDescriptors(DescriptorHeap& descriptorHeap, const WriteSamplerDescriptorsDesc* writeDescs, uint32_t writeDescNum) {
+    return ((DescriptorHeapD3D12&)descriptorHeap).WriteSamplerDescriptors(writeDescs, writeDescNum);
+}
+
+static void NRI_CALL CmdSetDescriptorHeap(CommandBuffer& commandBuffer, const DescriptorHeap& descriptorHeap) {
+    ((DescriptorHeapD3D12&)descriptorHeap).Bind(((CommandBufferD3D12&)commandBuffer).GetGraphicsCommandList());
+}
+
+Result DeviceD3D12::FillFunctionTable(DescriptorHeapInterface& table) const {
+    if (!m_Desc.features.descriptorHeap)
+        return Result::UNSUPPORTED;
+
+    table.CreateDescriptorHeap = ::CreateDescriptorHeap;
+    table.DestroyDescriptorHeap = ::DestroyDescriptorHeap;
+    table.WriteResourceDescriptors = ::WriteResourceDescriptors;
+    table.WriteSamplerDescriptors = ::WriteSamplerDescriptors;
+    table.CmdSetDescriptorHeap = ::CmdSetDescriptorHeap;
 
     return Result::SUCCESS;
 }
