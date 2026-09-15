@@ -349,10 +349,11 @@ static inline Result XessConvertError(xess_result_t code) {
 #    include "nvsdk_ngx_helpers.h"
 #    if NRI_ENABLE_VK_SUPPORT
 #        include "nvsdk_ngx_helpers_vk.h"
-#    endif
-#    include "nvsdk_ngx_helpers_dlssd.h"
-#    if NRI_ENABLE_VK_SUPPORT
+
 #        include "nvsdk_ngx_helpers_dlssd_vk.h"
+#    endif
+#    if NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT
+#        include "nvsdk_ngx_helpers_dlssd_d3d.h"
 #    endif
 
 #    if defined(__GNUC__)
