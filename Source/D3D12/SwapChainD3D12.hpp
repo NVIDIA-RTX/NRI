@@ -123,8 +123,8 @@ Result SwapChainD3D12::Create(const SwapChainDesc& swapChainDesc) {
     }
 
     // Maximum frame latency
-    uint8_t queuedFrameNum = swapChainDesc.queuedFrameNum;
     if ((swapChainDesc.flags & SwapChainBits::WAITABLE) && m_Version >= 2) {
+        uint8_t queuedFrameNum = swapChainDesc.queuedFrameNum;
         if (queuedFrameNum == 0)
             queuedFrameNum = 1;
 
@@ -134,14 +134,6 @@ Result SwapChainD3D12::Create(const SwapChainDesc& swapChainDesc) {
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "IDXGISwapChain2::SetMaximumFrameLatency");
 
         m_FrameLatencyWaitableObject = m_SwapChain->GetFrameLatencyWaitableObject();
-    } else {
-        if (queuedFrameNum == 0)
-            queuedFrameNum = 2;
-
-        ComPtr<IDXGIDevice1> dxgiDevice1;
-        hr = m_Device->QueryInterface(IID_PPV_ARGS(&dxgiDevice1));
-        if (SUCCEEDED(hr))
-            dxgiDevice1->SetMaximumFrameLatency(queuedFrameNum);
     }
 
     // Textures
