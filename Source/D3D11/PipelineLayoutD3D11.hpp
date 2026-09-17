@@ -293,9 +293,7 @@ void PipelineLayoutD3D11::SetDescriptorSet(BindPoint bindPoint, BindingState& cu
             }
         }
 
-        if (num != 0) {
-            ID3D11UnorderedAccessView** storages = currentBindingState.graphicsStorageDescriptors.data();
-            deferredContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, 0, (uint32_t)num, storages, nullptr);
-        }
+        ID3D11UnorderedAccessView** storages = num ? currentBindingState.graphicsStorageDescriptors.data() : nullptr;
+        deferredContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, 0, (uint32_t)num, storages, nullptr);
     }
 }

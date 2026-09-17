@@ -611,15 +611,12 @@ NRI_INLINE void CommandBufferD3D11::UploadBufferToTexture(Texture& dstTexture, c
 
     uint32_t dstSubresource = dst.GetSubresourceIndex(dstRegion.layerOffset, dstRegion.mipOffset);
 
-    uint32_t flags = D3D11_COPY_NO_OVERWRITE;
-    if (dstRegion.x == 0 && dstRegion.width == WHOLE_SIZE && dstRegion.y == 0 && dstRegion.height == WHOLE_SIZE && dstRegion.z == 0 && dstRegion.depth == WHOLE_SIZE)
-        flags = D3D11_COPY_DISCARD;
-
     bool isFullSubresource = (dstRegion.x == 0 && dstRegion.y == 0 && dstRegion.z == 0 &&
         (dstRegion.width == WHOLE_SIZE || dstRegion.width == dst.GetSize(0, dstRegion.mipOffset)) &&
         (dstRegion.height == WHOLE_SIZE || dstRegion.height == dst.GetSize(1, dstRegion.mipOffset)) &&
         (dstRegion.depth == WHOLE_SIZE || dstRegion.depth == dst.GetSize(2, dstRegion.mipOffset)));
 
+    uint32_t flags = isFullSubresource ? D3D11_COPY_DISCARD : D3D11_COPY_NO_OVERWRITE;
     uint8_t* data = (uint8_t*)src.Map(srcDataLayout.offset);
     m_DeferredContext->UpdateSubresource1(dst, dstSubresource, isFullSubresource ? nullptr : &dstBox, data, srcDataLayout.rowPitch, srcDataLayout.slicePitch, flags);
     src.Unmap();
