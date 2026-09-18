@@ -46,6 +46,7 @@ NRI_INLINE Result DescriptorPoolD3D11::AllocateDescriptorSets(const PipelineLayo
 NRI_INLINE void DescriptorPoolD3D11::Reset() {
     ExclusiveScope lock(m_Lock);
 
+    std::fill(m_DescriptorPool.begin(), m_DescriptorPool.end(), nullptr);
     m_DescriptorNum = 0;
     m_DescriptorSetNum = 0;
 }
