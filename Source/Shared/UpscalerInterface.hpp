@@ -29,7 +29,7 @@
 #        include "NIS.cs.dxil.h"
 #    endif
 
-#    if NRI_ENABLE_VK_SUPPORT
+#    if (NRI_ENABLE_VK_SUPPORT || NRI_ENABLE_WGPU_SUPPORT)
 #        include "NIS.cs.spirv.h"
 #    endif
 
@@ -55,6 +55,22 @@ struct Nis {
     Dim2_t blockSize = {};
     uint32_t descriptorSetIndex = 0;
 };
+
+static inline const char* GetNisOutputFormatShaderConstant(const DeviceDesc& deviceDesc, Format format) {
+    if (deviceDesc.shaderFeatures.storageWriteWithoutFormat)
+        return "0";
+
+    switch (format) {
+        case Format::RGBA8_UNORM:
+            return "1";
+        case Format::RGBA16_SFLOAT:
+            return "2";
+        case Format::RGBA32_SFLOAT:
+            return "3";
+        default:
+            return nullptr;
+    }
+}
 
 #endif
 
@@ -437,10 +453,8 @@ bool nri::IsUpscalerSupported(const DeviceDesc& deviceDesc, UpscalerType type) {
     MaybeUnused(deviceDesc, type);
 
 #if NRI_ENABLE_NIS_SDK
-    if (type == UpscalerType::NIS) {
-        if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12 || deviceDesc.graphicsAPI == GraphicsAPI::VK || deviceDesc.graphicsAPI == GraphicsAPI::D3D11)
-            return true;
-    }
+    if (type == UpscalerType::NIS)
+        return true;
 #endif
 
 #if NRI_ENABLE_FFX_SDK
@@ -581,6 +595,10 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 
 #if NRI_ENABLE_NIS_SDK
     if (upscalerDesc.type == UpscalerType::NIS) {
+        const char* outputFormat = GetNisOutputFormatShaderConstant(deviceDesc, upscalerDesc.outputFormat);
+        if (!outputFormat)
+            return Result::UNSUPPORTED;
+
         const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
         m.nis = Allocate<Nis>(allocationCallbacks);
 
@@ -629,9 +647,10 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             m.nis->blockSize.w = 32;
             m.nis->blockSize.h = deviceDesc.shaderModel >= NriShaderModel(6, 2) ? 32 : 24;
 
-            std::array<ShaderMake::ShaderConstant, 3> defines = {{
+            std::array<ShaderMake::ShaderConstant, 4> defines = {{
                 {"NIS_FP16", (deviceDesc.shaderModel >= NriShaderModel(6, 2)) ? "1" : "0"},
                 {"NIS_HDR_MODE", (upscalerDesc.flags & UpscalerBits::HDR) ? "1" : "0"},
+                {"NIS_OUTPUT_FORMAT", outputFormat},
                 {"NIS_THREAD_GROUP_SIZE", (deviceDesc.adapterDesc.vendor == Vendor::NVIDIA) ? "128" : "256"}, // TODO: verify performance
             }};
 
@@ -646,8 +665,8 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12)
                 shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_cs_dxil, GetCountOf(g_NIS_cs_dxil), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
 #    endif
-#    if NRI_ENABLE_VK_SUPPORT
-            if (deviceDesc.graphicsAPI == GraphicsAPI::VK)
+#    if (NRI_ENABLE_VK_SUPPORT || NRI_ENABLE_WGPU_SUPPORT)
+            if (deviceDesc.graphicsAPI == GraphicsAPI::VK || deviceDesc.graphicsAPI == GraphicsAPI::WGPU)
                 shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_cs_spirv, GetCountOf(g_NIS_cs_spirv), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
 #    endif
             if (!shaderMakeResult)

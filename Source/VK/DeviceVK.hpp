@@ -1565,6 +1565,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.nonConstantBufferRootDescriptorOffset = true;
         m_Desc.features.mutableDescriptorType = MutableDescriptorTypeFeatures.mutableDescriptorType;
         m_Desc.features.descriptorHeap = m_IsSupported.descriptorHeap;
+        m_Desc.features.video = m_IsSupported.videoMaintenance1 && (m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_DECODE] != 0 || m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_ENCODE] != 0);
         m_Desc.features.extendedDynamicState = ExtendedDynamicStateFeatures.extendedDynamicState;
         m_Desc.features.unifiedTextureLayouts = UnifiedImageLayoutsFeatures.unifiedImageLayouts;
         m_Desc.features.resourceAliasing = true;

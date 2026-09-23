@@ -1289,7 +1289,7 @@ static Result NRI_CALL GetVideoAV1EncodeDecodeInfo(VideoSession& videoSession, B
 }
 
 Result DeviceVK::FillFunctionTable(VideoInterface& table) const {
-    if (!m_IsSupported.videoMaintenance1 || (m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_DECODE] == 0 && m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_ENCODE] == 0))
+    if (!m_Desc.features.video)
         return Result::UNSUPPORTED;
 
     table.GetVideoCapabilities = ::GetVideoCapabilities;

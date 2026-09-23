@@ -2243,6 +2243,8 @@ static Result NRI_CALL CreateUpscaler(Device& device, const UpscalerDesc& upscal
     NRI_RETURN_ON_FAILURE(&deviceVal, upscalerDesc.mode < UpscalerMode::MAX_NUM, Result::INVALID_ARGUMENT, "'mode' is invalid");
     NRI_RETURN_ON_FAILURE(&deviceVal, upscalerDesc.upscaleResolution.w != 0 && upscalerDesc.upscaleResolution.h != 0, Result::INVALID_ARGUMENT, "'upscaleResolution' is invalid");
     NRI_RETURN_ON_FAILURE(&deviceVal, IsUpscalerSupported(deviceVal.GetDesc(), upscalerDesc.type), Result::UNSUPPORTED, "'type' is not supported");
+    if (upscalerDesc.type == UpscalerType::NIS && !deviceVal.GetDesc().shaderFeatures.storageWriteWithoutFormat)
+        NRI_RETURN_ON_FAILURE(&deviceVal, upscalerDesc.outputFormat > Format::UNKNOWN && upscalerDesc.outputFormat < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'outputFormat' is invalid");
 
     UpscalerImpl* impl = Allocate<UpscalerImpl>(deviceVal.GetAllocationCallbacks(), device, deviceVal.GetCoreInterface());
     Result result = impl->Create(upscalerDesc);
@@ -2299,6 +2301,8 @@ static void NRI_CALL CmdDispatchUpscale(CommandBuffer& commandBuffer, Upscaler& 
         return;
 
     if (upscalerVal.m_Desc.type == UpscalerType::NIS) {
+        const DescriptorVal& outputDescriptorVal = *(DescriptorVal*)dispatchUpscaleDesc.output.descriptor;
+        NRI_RETURN_ON_FAILURE(&deviceVal, deviceVal.GetDesc().shaderFeatures.storageWriteWithoutFormat || outputDescriptorVal.GetFormat() == upscalerVal.m_Desc.outputFormat, ReturnVoid(), "'output.descriptor' format does not match 'UpscalerDesc::outputFormat'");
         NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.settings.nis.sharpness >= 0.0f && dispatchUpscaleDesc.settings.nis.sharpness <= 1.0f, ReturnVoid(), "'settings.nis.sharpness' is out of range");
     } else if (upscalerVal.m_Desc.type == UpscalerType::DLRR) {
         const DenoiserGuides& guides = dispatchUpscaleDesc.guides.denoiser;

@@ -2241,6 +2241,7 @@ NriStruct(DeviceDesc) {
         bool meshShader;                                          // NRIMeshShader
         bool lowLatency;                                          // NRILowLatency
         bool descriptorHeap;                                      // NRIDescriptorHeap
+        bool video;                                               // NRIVideo
         bool componentSwizzle;                                    // see "ComponentSwizzle" (unsupported only in D3D11)
         bool independentFrontAndBackStencilReferenceAndMasks;     // see "StencilAttachmentDesc::back"
         bool filterOpMinMax;                                      // see "FilterOp"

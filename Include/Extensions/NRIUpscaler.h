@@ -52,6 +52,7 @@ NriStruct(UpscalerDesc) {
     Nri(UpscalerMode) mode;                             // not needed for NIS
     Nri(UpscalerBits) flags;
     NriOptional uint8_t preset;                         // preset for DLSR or XESS (0 default, >1 presets A, B, C...)
+    NriOptional Nri(Format) outputFormat;               // needed only for NIS, if "shaderFeatures.storageWriteWithoutFormat" is unsupported
     NriOptional NriPtr(CommandBuffer) commandBuffer;    // a non-copy-only command buffer in opened state, submission must be done manually ("wait for idle" executed, if not provided)
 };
 

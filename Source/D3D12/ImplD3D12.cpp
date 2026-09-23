@@ -1276,7 +1276,7 @@ static Result NRI_CALL GetVideoAV1EncodeDecodeInfo(VideoSession&, Buffer& resolv
 }
 
 Result DeviceD3D12::FillFunctionTable(VideoInterface& table) const {
-    if (m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_DECODE] == 0 && m_Desc.adapterDesc.queueNum[(size_t)QueueType::VIDEO_ENCODE] == 0)
+    if (!m_Desc.features.video)
         return Result::UNSUPPORTED;
 
     table.GetVideoCapabilities = ::GetVideoCapabilities;
