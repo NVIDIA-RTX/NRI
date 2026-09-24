@@ -1950,8 +1950,15 @@ Result DeviceVK::CreateInstance(bool enableGraphicsAPIValidation, const Vector<c
 
     FilterInstanceLayers(layers);
 
+    PFN_vkEnumerateInstanceVersion vkEnumerateInstanceVersion = (PFN_vkEnumerateInstanceVersion)m_VK.GetInstanceProcAddr(VK_NULL_HANDLE, "vkEnumerateInstanceVersion");
+    NRI_RETURN_ON_FAILURE(this, vkEnumerateInstanceVersion, Result::UNSUPPORTED, "Vulkan 1.0 loader is not supported");
+
+    uint32_t instanceVersion = 0;
+    VkResult vkResult = vkEnumerateInstanceVersion(&instanceVersion);
+    NRI_RETURN_ON_BAD_VKRESULT(this, vkResult, "vkEnumerateInstanceVersion");
+
     VkApplicationInfo appInfo = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
-    appInfo.apiVersion = VK_API_VERSION_1_4;
+    appInfo.apiVersion = std::clamp(instanceVersion, VK_API_VERSION_1_2, VK_API_VERSION_1_4);
 
     const VkValidationFeatureEnableEXT enabledValidationFeatures[] = {
         VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT, // TODO: add VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT?
@@ -1988,7 +1995,7 @@ Result DeviceVK::CreateInstance(bool enableGraphicsAPIValidation, const Vector<c
     if (enableGraphicsAPIValidation)
         PNEXTCHAIN_APPEND_STRUCT(validationFeatures);
 
-    VkResult vkResult = m_VK.CreateInstance(&instanceCreateInfo, m_AllocationCallbackPtr, &m_Instance);
+    vkResult = m_VK.CreateInstance(&instanceCreateInfo, m_AllocationCallbackPtr, &m_Instance);
     NRI_RETURN_ON_BAD_VKRESULT(this, vkResult, "vkCreateInstance");
 
     if (enableGraphicsAPIValidation) {
