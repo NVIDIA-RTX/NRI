@@ -1850,7 +1850,7 @@ NRI_INLINE Result DeviceD3D12::GetQueue(QueueType queueType, uint32_t queueIndex
         return Result::SUCCESS;
     }
 
-    return Result::FAILURE;
+    return Result::INVALID_ARGUMENT;
 }
 
 NRI_INLINE Result DeviceD3D12::WaitIdle() {
