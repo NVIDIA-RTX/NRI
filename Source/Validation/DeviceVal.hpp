@@ -133,12 +133,13 @@ static bool IsViewTypeSupported(const TextureDesc& textureDesc, TextureView text
 DeviceVal::DeviceVal(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks, DeviceBase& device)
     : DeviceBase(callbacks, allocationCallbacks, NRI_OBJECT_SIGNATURE)
     , m_Impl(*(Device*)&device)
+    , m_Queues(GetStdAllocator())
     , m_MemoryTypeMap(GetStdAllocator()) {
 }
 
 DeviceVal::~DeviceVal() {
-    for (size_t i = 0; i < m_Queues.size(); i++)
-        Destroy(m_Queues[i]);
+    for (const auto& queue : m_Queues)
+        Destroy(queue.second);
 
     if (m_Name) {
         const auto& allocationCallbacks = GetAllocationCallbacks();
@@ -218,11 +219,14 @@ NRI_INLINE Result DeviceVal::GetQueue(QueueType queueType, uint32_t queueIndex, 
 
     queue = nullptr;
     if (result == Result::SUCCESS) {
-        const uint32_t index = (uint32_t)queueType;
-        if (!m_Queues[index])
-            m_Queues[index] = Allocate<QueueVal>(GetAllocationCallbacks(), *this, queueImpl, queueType);
+        ExclusiveScope lock(m_Lock);
 
-        queue = (Queue*)m_Queues[index];
+        const uint64_t key = ((uint64_t)queueType << 32) | queueIndex;
+        QueueVal*& queueVal = m_Queues[key];
+        if (!queueVal)
+            queueVal = Allocate<QueueVal>(GetAllocationCallbacks(), *this, queueImpl, queueType);
+
+        queue = (Queue*)queueVal;
     }
 
     return result;
@@ -1110,22 +1114,25 @@ NRI_INLINE Result DeviceVal::AllocateMemory(const AllocateMemoryDesc& allocateMe
     NRI_RETURN_ON_FAILURE(this, allocateMemoryDesc.size != 0, Result::INVALID_ARGUMENT, "'size' is 0");
     NRI_RETURN_ON_FAILURE(this, allocateMemoryDesc.priority >= -1.0f && allocateMemoryDesc.priority <= 1.0f, Result::INVALID_ARGUMENT, "'priority' outside of [-1; 1] range");
 
-    std::unordered_map<MemoryType, MemoryLocation>::iterator it;
-    std::unordered_map<MemoryType, MemoryLocation>::iterator end;
+    MemoryLocation memoryLocation = {};
+    bool memoryTypeFound = false;
     {
         ExclusiveScope lock(m_Lock);
-        it = m_MemoryTypeMap.find(allocateMemoryDesc.type);
-        end = m_MemoryTypeMap.end();
+        const auto it = m_MemoryTypeMap.find(allocateMemoryDesc.type);
+        if (it != m_MemoryTypeMap.end()) {
+            memoryLocation = it->second;
+            memoryTypeFound = true;
+        }
     }
 
-    NRI_RETURN_ON_FAILURE(this, it != end, Result::FAILURE, "'memoryType' is invalid");
+    NRI_RETURN_ON_FAILURE(this, memoryTypeFound, Result::FAILURE, "'memoryType' is invalid");
 
     Memory* memoryImpl = nullptr;
     Result result = m_iCoreImpl.AllocateMemory(m_Impl, allocateMemoryDesc, memoryImpl);
 
     memory = nullptr;
     if (result == Result::SUCCESS)
-        memory = (Memory*)Allocate<MemoryVal>(GetAllocationCallbacks(), *this, memoryImpl, allocateMemoryDesc.size, it->second);
+        memory = (Memory*)Allocate<MemoryVal>(GetAllocationCallbacks(), *this, memoryImpl, allocateMemoryDesc.size, memoryLocation);
 
     return result;
 }

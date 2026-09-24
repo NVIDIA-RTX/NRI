@@ -211,7 +211,7 @@ private:
     char* m_Name = nullptr; // .natvis
     DeviceDesc m_Desc = {}; // .natvis
     Device& m_Impl;
-    std::array<QueueVal*, (size_t)QueueType::MAX_NUM> m_Queues = {};
+    UnorderedMap<uint64_t, QueueVal*> m_Queues;
     UnorderedMap<MemoryType, MemoryLocation> m_MemoryTypeMap;
 
     // Validation
