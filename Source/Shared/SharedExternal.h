@@ -315,10 +315,10 @@ protected:
         return returnCode; \
     }
 
-#define NRI_REPORT_INFO(deviceBase, format, ...)              (deviceBase)->ReportMessage(Message::INFO, Result::SUCCESS, __FILE__, __LINE__, format, ##__VA_ARGS__)
-#define NRI_REPORT_WARNING(deviceBase, format, ...)           (deviceBase)->ReportMessage(Message::WARNING, Result::SUCCESS, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
-#define NRI_REPORT_ERROR(deviceBase, format, ...)             (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
-#define NRI_REPORT_DEVICE_LOST_INFO(deviceBase, format, ...)  (deviceBase)->ReportMessage(Message::INFO, Result::DEVICE_LOST, __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define NRI_REPORT_INFO(deviceBase, format, ...)             (deviceBase)->ReportMessage(Message::INFO, Result::SUCCESS, __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define NRI_REPORT_WARNING(deviceBase, format, ...)          (deviceBase)->ReportMessage(Message::WARNING, Result::SUCCESS, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
+#define NRI_REPORT_ERROR(deviceBase, format, ...)            (deviceBase)->ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "%s(): " format, __FUNCTION__, ##__VA_ARGS__)
+#define NRI_REPORT_DEVICE_LOST_INFO(deviceBase, format, ...) (deviceBase)->ReportMessage(Message::INFO, Result::DEVICE_LOST, __FILE__, __LINE__, format, ##__VA_ARGS__)
 
 // Array validation
 #define NRI_VALIDATE_ARRAY(x)                 static_assert((size_t)x[x.size() - 1] != 0, "Some elements are missing in '" NRI_STRINGIFY(x) "'");
@@ -653,9 +653,25 @@ struct QueueFamilyProps {
 };
 
 inline QueueType TrySelectPreferredQueueType(const QueueFamilyProps& props, std::array<uint32_t, (size_t)QueueType::MAX_NUM>& scores) {
-    { // Prefer as much features as possible
+    // PREFERENCE_SCORE exceeds the maximum queue-count score plus all minor bonuses
+    constexpr uint32_t QUEUE_COUNT_CAP = 256;
+    constexpr uint32_t QUEUE_COUNT_WEIGHT = 16;
+    constexpr uint32_t MAX_MINOR_SCORE = 11;
+    constexpr uint32_t PREFERENCE_SCORE = ((QUEUE_COUNT_CAP * QUEUE_COUNT_WEIGHT + MAX_MINOR_SCORE) / 1000 + 1) * 1000;
+    constexpr uint32_t MAJOR_SCORE = PREFERENCE_SCORE * 2;
+    const uint32_t queueCountScore = QUEUE_COUNT_WEIGHT * std::min(props.queueCount, QUEUE_COUNT_CAP);
+
+    { // Prefer graphics+compute, then more queues, then other features
+        // VK permits transfer commands on graphics queues without "VK_QUEUE_TRANSFER_BIT". Scoring "props.copy" would reward an optional reported bit, not additional copy capability
         size_t index = (size_t)QueueType::GRAPHICS;
-        uint32_t score = ((props.graphics ? 100 : 0) + (props.compute ? 10 : 0) + (props.copy ? 10 : 0) + (props.sparse ? 5 : 0) + (props.videoDecode ? 2 : 0) + (props.videoEncode ? 2 : 0) + (props.protect ? 1 : 0) + (props.opticalFlow ? 1 : 0));
+        uint32_t score = ((props.graphics ? MAJOR_SCORE : 0)
+            + (props.compute ? PREFERENCE_SCORE : 0)
+            + queueCountScore
+            + (props.sparse ? 4 : 0)
+            + (props.videoDecode ? 2 : 0)
+            + (props.videoEncode ? 2 : 0)
+            + (props.protect ? 1 : 0)
+            + (props.opticalFlow ? 1 : 0));
 
         if (props.graphics && score > scores[index]) {
             scores[index] = score;
@@ -663,9 +679,16 @@ inline QueueType TrySelectPreferredQueueType(const QueueFamilyProps& props, std:
         }
     }
 
-    { // Prefer compute-only
+    { // Prefer compute-only, then more queues
         size_t index = (size_t)QueueType::COMPUTE;
-        uint32_t score = ((!props.graphics ? 10 : 0) + (props.compute ? 100 : 0) + (!props.copy ? 10 : 0) + (props.sparse ? 5 : 0) + (!props.videoDecode ? 2 : 0) + (!props.videoEncode ? 2 : 0) + (props.protect ? 1 : 0) + (!props.opticalFlow ? 1 : 0));
+        bool computeOnly = props.compute && !props.graphics && !props.videoDecode && !props.videoEncode && !props.opticalFlow;
+        uint32_t score = ((computeOnly ? MAJOR_SCORE : 0)
+            + (!props.graphics ? PREFERENCE_SCORE : 0)
+            + queueCountScore + (props.sparse ? 4 : 0)
+            + (!props.videoDecode ? 2 : 0)
+            + (!props.videoEncode ? 2 : 0)
+            + (props.protect ? 1 : 0)
+            + (!props.opticalFlow ? 1 : 0));
 
         if (props.compute && score > scores[index]) {
             scores[index] = score;
@@ -673,9 +696,18 @@ inline QueueType TrySelectPreferredQueueType(const QueueFamilyProps& props, std:
         }
     }
 
-    { // Prefer copy-only
+    { // Prefer copy-only, then more queues
         size_t index = (size_t)QueueType::COPY;
-        uint32_t score = ((!props.graphics ? 10 : 0) + (!props.compute ? 10 : 0) + (props.copy ? 100 * props.queueCount : 0) + (props.sparse ? 5 : 0) + (!props.videoDecode ? 2 : 0) + (!props.videoEncode ? 2 : 0) + (props.protect ? 1 : 0) + (!props.opticalFlow ? 1 : 0));
+        bool copyOnly = props.copy && !props.graphics && !props.compute && !props.videoDecode && !props.videoEncode && !props.opticalFlow;
+        uint32_t score = ((copyOnly ? MAJOR_SCORE : 0)
+            + (!props.graphics ? PREFERENCE_SCORE : 0)
+            + (!props.compute ? PREFERENCE_SCORE : 0)
+            + queueCountScore
+            + (props.sparse ? 4 : 0)
+            + (!props.videoDecode ? 2 : 0)
+            + (!props.videoEncode ? 2 : 0)
+            + (props.protect ? 1 : 0)
+            + (!props.opticalFlow ? 1 : 0));
 
         if (props.copy && score > scores[index]) {
             scores[index] = score;
@@ -685,7 +717,15 @@ inline QueueType TrySelectPreferredQueueType(const QueueFamilyProps& props, std:
 
     { // Prefer the most video decode codecs, then more queues
         size_t index = (size_t)QueueType::VIDEO_DECODE;
-        uint32_t score = props.videoDecodeCodecNum * 100000 + props.queueCount * 100 + (!props.graphics ? 10 : 0) + (!props.compute ? 10 : 0) + (!props.copy ? 10 : 0) + (props.sparse ? 5 : 0) + (props.videoDecode ? 100 * props.queueCount : 0) + (!props.videoEncode ? 2 : 0) + (props.protect ? 1 : 0) + (!props.opticalFlow ? 1 : 0);
+        uint32_t score = props.videoDecodeCodecNum * MAJOR_SCORE
+            + queueCountScore
+            + (!props.graphics ? 1 : 0)
+            + (!props.compute ? 1 : 0)
+            + (!props.copy ? 1 : 0)
+            + (props.sparse ? 4 : 0)
+            + (!props.videoEncode ? 2 : 0)
+            + (props.protect ? 1 : 0)
+            + (!props.opticalFlow ? 1 : 0);
 
         if (props.videoDecode && score > scores[index]) {
             scores[index] = score;
@@ -695,7 +735,15 @@ inline QueueType TrySelectPreferredQueueType(const QueueFamilyProps& props, std:
 
     { // Prefer the most video encode codecs, then more queues
         size_t index = (size_t)QueueType::VIDEO_ENCODE;
-        uint32_t score = props.videoEncodeCodecNum * 100000 + props.queueCount * 100 + (!props.graphics ? 10 : 0) + (!props.compute ? 10 : 0) + (!props.copy ? 10 : 0) + (props.sparse ? 5 : 0) + (!props.videoDecode ? 2 : 0) + (props.videoEncode ? 100 * props.queueCount : 0) + (props.protect ? 1 : 0) + (!props.opticalFlow ? 1 : 0);
+        uint32_t score = props.videoEncodeCodecNum * MAJOR_SCORE
+            + queueCountScore
+            + (!props.graphics ? 1 : 0)
+            + (!props.compute ? 1 : 0)
+            + (!props.copy ? 1 : 0)
+            + (props.sparse ? 4 : 0)
+            + (!props.videoDecode ? 2 : 0)
+            + (props.protect ? 1 : 0)
+            + (!props.opticalFlow ? 1 : 0);
 
         if (props.videoEncode && score > scores[index]) {
             scores[index] = score;
