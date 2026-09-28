@@ -1679,8 +1679,8 @@ NriStruct(RenderingDesc) {
 // https://microsoft.github.io/DirectX-Specs/d3d/CountersAndQueries.html
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkQueryType.html
 NriEnum(QueryType, uint8_t,
-    TIMESTAMP,                              // uint64_t, requires "features.timestamp" (for "GRAPHICS" and "COMPUTE" queues)
-    TIMESTAMP_COPY_QUEUE,                   // uint64_t, requires "features.timestampCopyQueue" (for a "COPY" queue)
+    TIMESTAMP,                              // uint64_t, requires "features.timestamp" (for "GRAPHICS" and "COMPUTE" queues), use only "CmdEndQuery" without "CmdBeginQuery"
+    TIMESTAMP_COPY_QUEUE,                   // uint64_t, requires "features.timestampCopyQueue" (for a "COPY" queue), use only "CmdEndQuery" without "CmdBeginQuery"
     OCCLUSION,                              // uint64_t, requires "features.occlusion"
     PIPELINE_STATISTICS,                    // see "PipelineStatisticsDesc", requires "features.pipelineStatistics"
     ACCELERATION_STRUCTURE_SIZE,            // uint64_t, requires "features.rayTracing"
@@ -2140,6 +2140,7 @@ NriStruct(DeviceDesc) {
         uint8_t combinedClipAndCullDistanceMaxNum;
         uint8_t viewMaxNum;                         // multiview is supported if > 1
         uint8_t shadingRateAttachmentTileSize;      // square size
+        bool timestampCopyQueueResolveOnCopyQueue;  // if "true", "CmdCopyQueries" for "TIMESTAMP_COPY_QUEUE" requires a COPY queue, otherwise "GRAPHICS" or "COMPUTE"
     } other;
 
     // Tiers (0 - unsupported)
@@ -2214,7 +2215,7 @@ NriStruct(DeviceDesc) {
         // Queries
         bool occlusion;                                           // see "QueryType::OCCLUSION"
         bool timestamp;                                           // see "QueryType::TIMESTAMP"
-        bool timestampCopyQueue;                                  // see "QueryType::TIMESTAMP_COPY_QUEUE"
+        bool timestampCopyQueue;                                  // see "QueryType::TIMESTAMP_COPY_QUEUE", see "other.timestampCopyQueueResolveOnCopyQueue"
         bool calibratedTimestamps;                                // see "GetCalibratedTimestamps"
 
         // Shading rate

@@ -1019,7 +1019,8 @@ NRI_INLINE void CommandBufferVal::BeginQuery(QueryPool& queryPool, uint32_t offs
     QueryPoolVal& queryPoolVal = (QueryPoolVal&)queryPool;
 
     NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
-    NRI_RETURN_ON_FAILURE(&m_Device, queryPoolVal.GetQueryType() != QueryType::TIMESTAMP, ReturnVoid(), "'BeginQuery' is not supported for timestamp queries");
+    QueryType queryType = queryPoolVal.GetQueryType();
+    NRI_RETURN_ON_FAILURE(&m_Device, queryType != QueryType::TIMESTAMP && queryType != QueryType::TIMESTAMP_COPY_QUEUE, ReturnVoid(), "'BeginQuery' is not supported for timestamp queries");
 
     if (!queryPoolVal.IsImported())
         NRI_RETURN_ON_FAILURE(&m_Device, offset < queryPoolVal.GetQueryNum(), ReturnVoid(), "'offset=%u' is out of range", offset);
@@ -1045,6 +1046,13 @@ NRI_INLINE void CommandBufferVal::CopyQueries(const QueryPool& queryPool, uint32
     NRI_RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
 
     const QueryPoolVal& queryPoolVal = (QueryPoolVal&)queryPool;
+    if (queryPoolVal.GetQueryType() == QueryType::TIMESTAMP_COPY_QUEUE) {
+        bool resolveOnCopyQueue = m_Device.GetDesc().other.timestampCopyQueueResolveOnCopyQueue;
+        bool validQueue = resolveOnCopyQueue ? m_QueueType == QueueType::COPY : (m_QueueType == QueueType::GRAPHICS || m_QueueType == QueueType::COMPUTE);
+        NRI_RETURN_ON_FAILURE(&m_Device, validQueue, ReturnVoid(), "the command buffer queue cannot resolve 'TIMESTAMP_COPY_QUEUE' queries");
+    } else if (queryPoolVal.GetQueryType() == QueryType::TIMESTAMP)
+        NRI_RETURN_ON_FAILURE(&m_Device, m_QueueType == QueueType::GRAPHICS || m_QueueType == QueueType::COMPUTE, ReturnVoid(), "the command buffer must belong to a 'GRAPHICS' or 'COMPUTE' queue");
+
     if (!queryPoolVal.IsImported())
         NRI_RETURN_ON_FAILURE(&m_Device, offset + num <= queryPoolVal.GetQueryNum(), ReturnVoid(), "'offset + num = %u' is out of range", offset + num);
 
@@ -1056,6 +1064,7 @@ NRI_INLINE void CommandBufferVal::CopyQueries(const QueryPool& queryPool, uint32
 
 NRI_INLINE void CommandBufferVal::ResetQueries(QueryPool& queryPool, uint32_t offset, uint32_t num) {
     NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
+    NRI_RETURN_ON_FAILURE(&m_Device, m_QueueType != QueueType::COPY, ReturnVoid(), "the command buffer must not belong to a COPY queue");
     NRI_RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
 
     QueryPoolVal& queryPoolVal = (QueryPoolVal&)queryPool;
