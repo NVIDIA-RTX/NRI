@@ -257,6 +257,10 @@ Result DeviceMetal::CreatePlacedTexture(Memory* memory, uint64_t offset, const T
     return CreatePlacedImplementationMetal<TextureMetal>(*this, memory, offset, textureDesc, texture);
 }
 
+Result DeviceMetal::CreatePlacedAccelerationStructure(Memory* memory, uint64_t offset, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
+    return CreatePlacedImplementationMetal<AccelerationStructureMetal>(*this, memory, offset, accelerationStructureDesc, accelerationStructure);
+}
+
 Result DeviceMetal::WaitIdle() {
     for (uint32_t i = 0; i < QUEUE_TYPE_NUM_METAL; i++) {
         for (uint32_t j = 0; j < m_Desc.adapterDesc.queueNum[i]; j++) {
@@ -491,5 +495,18 @@ void DeviceMetal::FillDesc(const AdapterDesc& adapterDesc) {
     // 1024 threadgroups per mesh grid limit of Apple7/Apple8
     m_Desc.features.geometryShader = m_Device->supportsFamily(MTL::GPUFamilyApple9);
     m_Desc.features.tessellationShader = m_Desc.features.geometryShader;
+
+    // Ray tracing pipelines are DXIL-only (Converter's DXR emulation). Metal 4 acceleration structures require Apple9+ (despite "supportsRaytracing")
+    if (m_Device->supportsFamily(MTL::GPUFamilyApple9)) {
+        m_Desc.tiers.rayTracing = 2;
+        m_Desc.memoryAlignment.scratchBufferOffset = 256;
+        m_Desc.memoryAlignment.shaderBindingTable = 64;
+        m_Desc.shaderStage.rayTracing.shaderGroupIdentifierSize = sizeof(IRShaderIdentifier);
+        m_Desc.shaderStage.rayTracing.shaderBindingTableMaxStride = 4096;
+        m_Desc.shaderStage.rayTracing.recursionMaxDepth = 31;
+        m_Desc.accelerationStructure.primitiveMaxNum = 1u << 24;
+        m_Desc.accelerationStructure.geometryMaxNum = 1u << 20;
+        m_Desc.accelerationStructure.instanceMaxNum = 1u << 20;
+    }
 #endif
 }

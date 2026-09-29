@@ -18,12 +18,54 @@ enum class InternalKernelMetal : uint8_t {
     PREPARE_DRAW_ROOTS,
     EMULATE_DRAWS,
     CLEAR_STORAGE_BUFFER,
+    CONVERT_INSTANCES,
+    COPY_TOP_LEVEL_HEADER,
+    COPY_WORDS,
+    PREPARE_RAYS_INDIRECT,
 
     // "CLEAR_STORAGE_TEXTURE + dimension * 3 + type", see "GetClearStorageKernelMetal"
     CLEAR_STORAGE_TEXTURE,
 
     MAX_NUM = CLEAR_STORAGE_TEXTURE + 6 * 3
 };
+
+// Host mirrors of the ray-tracing helper kernel argument structures ("buffer(3)")
+struct ConvertInstancesArgsMetal {
+    MTL::GPUAddress src; // "TopLevelInstance" array
+    MTL::GPUAddress dst; // "MTLIndirectAccelerationStructureInstanceDescriptor" array
+    MTL::GPUAddress header;
+    uint64_t accelerationStructure;
+    uint32_t instanceNum;
+    uint32_t padding;
+};
+
+struct CopyTopLevelHeaderArgsMetal {
+    MTL::GPUAddress srcContributions;
+    MTL::GPUAddress dstHeader;
+    uint64_t dstAccelerationStructure;
+    uint32_t num;
+    uint32_t padding;
+};
+
+struct CopyWordsArgsMetal {
+    MTL::GPUAddress src;
+    MTL::GPUAddress dst;
+};
+
+struct PrepareRaysIndirectArgsMetal {
+    MTL::GPUAddress src;      // "DispatchRaysIndirectDesc"
+    MTL::GPUAddress dst;      // "IRDispatchRaysArgument::DispatchRaysDesc"
+    MTL::GPUAddress dispatch; // "MTLDispatchThreadsIndirectArguments"
+};
+
+// "TopLevelInstanceBits" 0-3 match "MTLAccelerationStructureInstanceOptions", micromap bits are dropped by the kernel
+static_assert(sizeof(TopLevelInstance) == 64, "Unexpected 'TopLevelInstance' size");
+static_assert(sizeof(MTL::IndirectAccelerationStructureInstanceDescriptor) == 72, "Unexpected 'MTLIndirectAccelerationStructureInstanceDescriptor' size");
+static_assert((uint32_t)TopLevelInstanceBits::TRIANGLE_CULL_DISABLE == MTL::AccelerationStructureInstanceOptionDisableTriangleCulling, "Instance flag mismatch");
+static_assert((uint32_t)TopLevelInstanceBits::TRIANGLE_FLIP_FACING == MTL::AccelerationStructureInstanceOptionTriangleFrontFacingWindingCounterClockwise, "Instance flag mismatch");
+static_assert((uint32_t)TopLevelInstanceBits::FORCE_OPAQUE == MTL::AccelerationStructureInstanceOptionOpaque, "Instance flag mismatch");
+static_assert((uint32_t)TopLevelInstanceBits::FORCE_NON_OPAQUE == MTL::AccelerationStructureInstanceOptionNonOpaque, "Instance flag mismatch");
+static_assert(offsetof(DispatchRaysIndirectDesc, width) == 88 && sizeof(DispatchRaysIndirectDesc) == 104, "'NriPrepareRaysIndirect' layout mismatch");
 
 struct ClearPipelineKeyMetal {
     MTL::PixelFormat colors[8] = {}; // Metal 4 pipelines don't include depth / stencil formats

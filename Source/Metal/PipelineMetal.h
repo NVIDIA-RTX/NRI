@@ -53,9 +53,13 @@ struct PipelineMetal final : public DebugNameBase {
     ~PipelineMetal();
     Result Create(const GraphicsPipelineDesc& desc);
     Result Create(const ComputePipelineDesc& desc);
+    Result Create(const RayTracingPipelineDesc& desc);
+    Result WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, uint32_t dstStride, void* dst) const;
     DeviceMetal& GetDevice() const;
     MTL::RenderPipelineState* GetRenderPipeline() const;
     MTL::ComputePipelineState* GetComputePipeline() const;
+    MTL::ResourceID GetVisibleFunctionTableResourceID() const;
+    MTL::ResourceID GetIntersectionFunctionTableResourceID() const;
     MTL::DepthStencilState* GetDepthStencilState() const;
     MTL::PrimitiveType GetPrimitiveType() const;
     MTL::CullMode GetCullMode() const;
@@ -92,6 +96,9 @@ private:
     const PipelineLayoutMetal* m_Layout = nullptr;
     MTL::RenderPipelineState* m_Render = nullptr;
     MTL::ComputePipelineState* m_Compute = nullptr;
+    MTL::VisibleFunctionTable* m_VisibleFunctionTable = nullptr;
+    MTL::IntersectionFunctionTable* m_IntersectionFunctionTable = nullptr;
+    Vector<uint8_t> m_ShaderGroupIdentifiers;
     MTL::DepthStencilState* m_DepthStencil = nullptr;
     MTL::PrimitiveType m_Primitive = MTL::PrimitiveTypeTriangle;
     MTL::CullMode m_Cull = MTL::CullModeNone;

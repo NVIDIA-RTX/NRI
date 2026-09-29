@@ -21,6 +21,7 @@ Descriptors ("NriDescriptorEntry", declare heaps and tables as arrays of argumen
   - typed buffer: "resourceId" - "texture_buffer", "bufferAddress" and "metadata" as for buffers
   - texture: "resourceId"
   - sampler: "bufferAddress" - "sampler", "metadata" - mip bias (see "NriGetSamplerMipBias")
+  - acceleration structure: "bufferAddress" - "NriAccelerationStructureHeader"
 
 Root data (buffer(2)), declare a matching "constant" structure including padding:
   - "uint baseVertex, baseInstance" - if "ENABLE_DRAW_PARAMETERS_EMULATION" is set and the layout has "VERTEX_SHADER" stage
@@ -53,7 +54,14 @@ Sample mask:
   - fragment shaders opt into "MultisampleDesc::sampleMask" by combining "NriApplyPipelineSampleMask(shaderMask)" into their
     "[[sample_mask]]" output, otherwise a non-default "sampleMask" makes pipeline creation return "UNSUPPORTED"
   - function constant index 65535 is reserved
+
+Ray tracing:
+  - ray-tracing pipelines are DXIL-only, native shaders use inline ray tracing (intersection queries)
+  - an acceleration-structure descriptor points to a 64-byte header ("IRRaytracingAccelerationStructureGPUHeader" compatible),
+    written by TLAS builds and copies. Bind it as "constant NriAccelerationStructureHeader*"
 */
+
+#include <metal_raytracing>
 
 struct NriDescriptorEntry {
     ulong bufferAddress;
@@ -65,7 +73,14 @@ struct NriMultiview {
     uint viewIndices[32];
 };
 
+struct NriAccelerationStructureHeader {
+    metal::raytracing::instance_acceleration_structure accelerationStructure;
+    constant uint* instanceContributions; // indexed by the instance index, not by the user instance ID
+    ulong reserved[6];
+};
+
 static_assert(sizeof(NriDescriptorEntry) == 24, "Descriptor ABI mismatch");
+static_assert(sizeof(NriAccelerationStructureHeader) == 64, "Acceleration structure header ABI mismatch");
 
 // Buffer metadata: bits 0-31 - view size in bytes, bits 32-39 - typed buffer element offset, bit 63 - typed buffer
 inline uint NriGetBufferSize(ulong metadata) {

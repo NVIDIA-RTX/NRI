@@ -191,3 +191,112 @@ kernel void nri_emulate_draws(constant EmulateDrawsArgs& a [[buffer(0)]], uint i
 
 fragment void nri_depth_only() {
 }
+
+//============================================================================================================================================================================================
+// Ray tracing helpers (see "InternalShadersMetal.h" for the host mirrors of the argument structures), arguments at "buffer(3)"
+
+struct Instance {
+    float transform[12];
+    uint idMask;
+    uint offsetFlags;
+    ulong accelerationStructure;
+};
+
+struct MetalInstance {
+    float transform[12]; // row major, "setInstanceTransformationMatrixLayout(RowMajor)"
+    uint options;
+    uint mask;
+    uint intersectionFunctionTableOffset;
+    uint userID;
+    ulong accelerationStructure;
+};
+
+// Matches "IRRaytracingAccelerationStructureGPUHeader", instance contributions follow it
+struct TopLevelHeader {
+    ulong accelerationStructure;
+    device uint* instanceContributions;
+    ulong reserved[6];
+};
+
+inline void WriteTopLevelHeader(device TopLevelHeader* header, ulong accelerationStructure) {
+    header->accelerationStructure = accelerationStructure;
+    header->instanceContributions = (device uint*)(header + 1);
+
+    for (uint i = 0; i < 6; i++)
+        header->reserved[i] = 0;
+}
+
+struct ConvertInstancesArgs {
+    device const Instance* src;
+    device MetalInstance* dst;
+    device TopLevelHeader* header;
+    ulong accelerationStructure;
+    uint instanceNum;
+};
+
+kernel void nri_convert_instances(constant ConvertInstancesArgs& args [[buffer(3)]], uint i [[thread_position_in_grid]]) {
+    if (i == 0)
+        WriteTopLevelHeader(args.header, args.accelerationStructure);
+
+    if (i >= args.instanceNum)
+        return;
+
+    Instance src = args.src[i];
+
+    MetalInstance dst;
+    for (uint j = 0; j < 12; j++)
+        dst.transform[j] = src.transform[j];
+    dst.options = (src.offsetFlags >> 24) & 0xF;
+    dst.mask = src.idMask >> 24;
+    dst.intersectionFunctionTableOffset = 0;
+    dst.userID = src.idMask & 0xFFFFFF;
+    dst.accelerationStructure = src.accelerationStructure;
+    args.dst[i] = dst;
+
+    device uint* contributions = (device uint*)(args.header + 1);
+    contributions[i] = src.offsetFlags & 0xFFFFFF;
+}
+
+struct CopyTopLevelHeaderArgs {
+    device const uint* srcContributions;
+    device TopLevelHeader* dst;
+    ulong dstAccelerationStructure;
+    uint num;
+};
+
+kernel void nri_copy_top_level_header(constant CopyTopLevelHeaderArgs& args [[buffer(3)]], uint i [[thread_position_in_grid]]) {
+    if (i == 0)
+        WriteTopLevelHeader(args.dst, args.dstAccelerationStructure);
+
+    device uint* contributions = (device uint*)(args.dst + 1);
+    if (i < args.num)
+        contributions[i] = args.srcContributions[i];
+}
+
+struct CopyWordsArgs {
+    device const uint* src;
+    device uint* dst;
+};
+
+kernel void nri_copy_words(constant CopyWordsArgs& args [[buffer(3)]], uint i [[thread_position_in_grid]]) {
+    args.dst[i] = args.src[i];
+}
+
+struct PrepareRaysIndirectArgs {
+    device const uint* src;
+    device uint* dst;
+    device uint* dispatch;
+};
+
+kernel void nri_prepare_rays_indirect(constant PrepareRaysIndirectArgs& args [[buffer(3)]]) {
+    for (uint i = 0; i < 26; i++)
+        args.dst[i] = args.src[i];
+
+    // "MTLDispatchThreadsIndirectArguments": width, height, depth + 8x8x1 threadgroups
+    args.dispatch[0] = args.src[22];
+    args.dispatch[1] = args.src[23];
+    args.dispatch[2] = args.src[24];
+    args.dispatch[3] = 8;
+    args.dispatch[4] = 8;
+    args.dispatch[5] = 1;
+}

@@ -193,7 +193,7 @@ static uint64_t GetConverterHash(DeviceMetal& device) {
     return s_Hash;
 }
 
-// Shared by graphics and compute pipelines
+// Shared by graphics, compute and ray-tracing pipelines
 static inline IRCompiler* CreateIRCompiler(MTL::Device& device, const PipelineLayoutMetal& layout) {
     IRCompiler* compiler = IRCompilerCreate();
     IRCompilerSetCompatibilityFlags(compiler, GetIRCompatibilityFlags(device));
@@ -729,7 +729,7 @@ static Result LoadMetalBundle(DeviceMetal& device, const PipelineLayoutMetal& la
 }
 
 PipelineMetal::PipelineMetal(DeviceMetal& device)
-    : m_Device(device) {
+    : m_Device(device), m_ShaderGroupIdentifiers(device.GetStdAllocator()) {
 }
 
 PipelineMetal::~PipelineMetal() {
@@ -738,6 +738,16 @@ PipelineMetal::~PipelineMetal() {
 
     if (m_Compute)
         m_Compute->release();
+
+    if (m_VisibleFunctionTable) {
+        m_Device.RemoveResidency(m_VisibleFunctionTable);
+        m_VisibleFunctionTable->release();
+    }
+
+    if (m_IntersectionFunctionTable) {
+        m_Device.RemoveResidency(m_IntersectionFunctionTable);
+        m_IntersectionFunctionTable->release();
+    }
 
     if (m_DepthStencil)
         m_DepthStencil->release();
@@ -1153,6 +1163,379 @@ Result PipelineMetal::Create(const ComputePipelineDesc& desc) {
 
     return result;
 }
+
+// Ray tracing pipelines are DXIL-only (Converter's DXR emulation ABI), native shaders can only use inline ray tracing. Their conversions are not cached
+
+#if NRI_ENABLE_METAL_SHADER_CONVERTER
+
+Result PipelineMetal::Create(const RayTracingPipelineDesc& desc) {
+    const ShaderLibraryDesc& shaderLibrary = *desc.shaderLibrary;
+
+    for (uint32_t i = 0; i < shaderLibrary.shaderNum; i++) {
+        if (!IsDXIL(shaderLibrary.shaders[i]))
+            return Result::UNSUPPORTED;
+    }
+
+    AutoreleasePoolMetal autoreleasePool; // "NS::Error" is autoreleased
+
+    m_Layout = (const PipelineLayoutMetal*)desc.pipelineLayout;
+    m_Converted = true;
+
+    // Visible function table: slot 0 is "null", shader "i" is at "1 + i", intersection / any-hit function of hit group "i" is at "1 + shaderNum + i".
+    // Visible functions are renamed to "nri_rt_<slot>", since entry points of different shaders may have the same name
+    Vector<MTL::Library*> libraries(shaderLibrary.shaderNum + desc.shaderGroupNum, nullptr, m_Device.GetStdAllocator());
+    Vector<MTL4::FunctionDescriptor*> functions(libraries.size(), nullptr, m_Device.GetStdAllocator());
+
+    auto getVisibleFunctionName = [](size_t slot, char (&name)[32]) {
+        snprintf(name, sizeof(name), "nri_rt_%zu", slot);
+    };
+
+    IRRayTracingPipelineConfiguration* configuration = IRRayTracingPipelineConfigurationCreate();
+    IRRayTracingPipelineConfigurationSetMaxAttributeSizeInBytes(configuration, desc.rayHitAttributeMaxSize);
+    IRRayTracingPipelineConfigurationSetMaxRecursiveDepth(configuration, (int)desc.recursionMaxDepth);
+    IRRayTracingPipelineConfigurationSetRayGenerationCompilationMode(configuration, IRRayGenerationCompilationVisibleFunction);
+    IRRayTracingPipelineConfigurationSetIntersectionFunctionCompilationMode(configuration, IRIntersectionFunctionCompilationVisibleFunction);
+
+    IRRaytracingPipelineFlags flags = IRRaytracingPipelineFlagNone;
+
+    if (desc.flags & RayTracingPipelineBits::SKIP_TRIANGLES)
+        flags = (IRRaytracingPipelineFlags)(flags | IRRaytracingPipelineFlagSkipTriangles);
+
+    if (desc.flags & RayTracingPipelineBits::SKIP_AABBS)
+        flags = (IRRaytracingPipelineFlags)(flags | IRRaytracingPipelineFlagSkipProceduralPrimitives);
+    IRRayTracingPipelineConfigurationSetPipelineFlags(configuration, flags);
+
+    IRCompiler* compiler = CreateIRCompiler(*m_Device.GetNativeObject(), *m_Layout);
+    IRCompilerSetRayTracingPipelineConfiguration(compiler, configuration);
+
+    auto reportConversionError = [&](const char* name, IRError* error) {
+        m_Device.ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "DXIL ray-tracing conversion failed for '%s' (converter error %u)", name, error ? IRErrorGetCode(error) : 0);
+    };
+
+    // A missing function is reported by pipeline creation
+    auto loadBinary = [&](IRMetalLibBinary* binary, const char* name, MTL::Library*& library, MTL4::FunctionDescriptor*& function, const char* specializedName = nullptr) {
+        NS::Error* error = nullptr;
+        library = m_Device.GetNativeObject()->newLibrary(IRMetalLibGetBytecodeData(binary), &error);
+
+        if (!library) {
+            m_Device.ReportMessage(Message::ERROR, Result::FAILURE, __FILE__, __LINE__, "Metal library creation failed for '%s': %s", name, error ? error->localizedDescription()->utf8String() : "unknown error");
+
+            return false;
+        }
+
+        function = NewFunctionDescriptorMetal(library, name, nullptr, specializedName);
+
+        return true;
+    };
+
+    // Compiles "output" to a Metal function, using the reflected entry point name
+    auto loadOutput = [&](IRObject* output, IRShaderStage stage, const char* entry, size_t slot) {
+        IRMetalLibBinary* binary = IRMetalLibBinaryCreate();
+        IRShaderReflection* reflection = IRShaderReflectionCreate();
+
+        const char* name = entry;
+
+        if (IRObjectGetReflection(output, stage, reflection)) {
+            const char* reflectedName = IRShaderReflectionGetEntryPointFunctionName(reflection);
+
+            if (reflectedName)
+                name = reflectedName;
+        }
+
+        char visibleName[32];
+        getVisibleFunctionName(slot, visibleName);
+
+        bool isLoaded = IRObjectGetMetalLibBinary(output, stage, binary) && loadBinary(binary, name, libraries[slot], functions[slot], visibleName);
+
+        IRShaderReflectionDestroy(reflection);
+        IRMetalLibBinaryDestroy(binary);
+
+        return isLoaded;
+    };
+
+    Result result = Result::SUCCESS;
+
+    // Ray generation, miss, closest-hit and callable shaders
+    for (uint32_t i = 0; i < shaderLibrary.shaderNum && result == Result::SUCCESS; i++) {
+        const ShaderDesc& shader = shaderLibrary.shaders[i];
+
+        // Intersection and any-hit shaders are combined per hit group below
+        if (shader.stage == StageBits::INTERSECTION_SHADER || shader.stage == StageBits::ANY_HIT_SHADER)
+            continue;
+
+        const char* entry = shader.entryPointName ? shader.entryPointName : "main";
+        IRObject* input = IRObjectCreateFromDXIL((const uint8_t*)shader.bytecode, shader.size, IRBytecodeOwnershipNone);
+        IRError* error = nullptr;
+        IRObject* output = IRCompilerAllocCompileAndLink(compiler, entry, input, &error);
+
+        if (!output) {
+            reportConversionError(entry, error);
+            result = Result::FAILURE;
+        } else if (!loadOutput(output, GetIRShaderStage(shader.stage), entry, i))
+            result = Result::FAILURE;
+
+        if (error)
+            IRErrorDestroy(error);
+
+        if (output)
+            IRObjectDestroy(output);
+        IRObjectDestroy(input);
+    }
+
+    // Hit groups with intersection and / or any-hit shaders
+    for (uint32_t i = 0; i < desc.shaderGroupNum && result == Result::SUCCESS; i++) {
+        const ShaderDesc* intersection = nullptr;
+        const ShaderDesc* anyHit = nullptr;
+
+        for (uint32_t index : desc.shaderGroups[i].shaderIndices) {
+            if (!index)
+                continue;
+
+            const ShaderDesc& shader = shaderLibrary.shaders[index - 1];
+
+            if (shader.stage == StageBits::INTERSECTION_SHADER)
+                intersection = &shader;
+            else if (shader.stage == StageBits::ANY_HIT_SHADER)
+                anyHit = &shader;
+        }
+
+        if (!intersection && !anyHit)
+            continue;
+
+        const char* intersectionEntry = intersection ? (intersection->entryPointName ? intersection->entryPointName : "main") : nullptr;
+        const char* anyHitEntry = anyHit ? (anyHit->entryPointName ? anyHit->entryPointName : "main") : nullptr;
+        IRObject* intersectionIR = intersection ? IRObjectCreateFromDXIL((const uint8_t*)intersection->bytecode, intersection->size, IRBytecodeOwnershipNone) : nullptr;
+        IRObject* anyHitIR = anyHit ? IRObjectCreateFromDXIL((const uint8_t*)anyHit->bytecode, anyHit->size, IRBytecodeOwnershipNone) : nullptr;
+
+        IRCompilerSetHitgroupType(compiler, intersection ? IRHitGroupTypeProceduralPrimitive : IRHitGroupTypeTriangles);
+
+        IRError* error = nullptr;
+        IRObject* output = IRCompilerAllocCombineCompileAndLink(compiler, intersectionEntry, intersectionIR, anyHitEntry, anyHitIR, &error);
+
+        const uint32_t slot = shaderLibrary.shaderNum + i;
+        const char* entry = intersection ? intersectionEntry : anyHitEntry;
+
+        if (!output) {
+            reportConversionError(entry, error);
+            result = Result::FAILURE;
+        } else if (!loadOutput(output, intersection ? IRShaderStageIntersection : IRShaderStageAnyHit, entry, slot))
+            result = Result::FAILURE;
+
+        if (error)
+            IRErrorDestroy(error);
+
+        if (output)
+            IRObjectDestroy(output);
+
+        if (intersectionIR)
+            IRObjectDestroy(intersectionIR);
+
+        if (anyHitIR)
+            IRObjectDestroy(anyHitIR);
+    }
+
+    // Synthesized ray dispatch kernel and indirect intersection functions
+    MTL::Library* dispatchLibrary = nullptr;
+    MTL4::FunctionDescriptor* dispatchFunction = nullptr;
+
+    if (result == Result::SUCCESS) {
+        IRMetalLibBinary* binary = IRMetalLibBinaryCreate();
+
+        if (!IRMetalLibSynthesizeIndirectRayDispatchFunction(compiler, binary) || !loadBinary(binary, kIRRayDispatchIndirectionKernelName, dispatchLibrary, dispatchFunction))
+            result = Result::FAILURE;
+        IRMetalLibBinaryDestroy(binary);
+    }
+
+    auto synthesizeIntersection = [&](bool isProcedural, MTL::Library*& library, MTL4::FunctionDescriptor*& function) {
+        IRCompilerSetHitgroupType(compiler, isProcedural ? IRHitGroupTypeProceduralPrimitive : IRHitGroupTypeTriangles);
+
+        IRMetalLibBinary* binary = IRMetalLibBinaryCreate();
+        const char* name = isProcedural ? kIRIndirectProceduralIntersectionFunctionName : kIRIndirectTriangleIntersectionFunctionName;
+        bool isLoaded = IRMetalLibSynthesizeIndirectIntersectionFunction(compiler, binary) && loadBinary(binary, name, library, function);
+        IRMetalLibBinaryDestroy(binary);
+
+        return isLoaded;
+    };
+
+    MTL::Library* triangleLibrary = nullptr;
+    MTL4::FunctionDescriptor* triangleFunction = nullptr;
+
+    if (result == Result::SUCCESS && !(desc.flags & RayTracingPipelineBits::SKIP_TRIANGLES) && !synthesizeIntersection(false, triangleLibrary, triangleFunction))
+        result = Result::FAILURE;
+
+    MTL::Library* proceduralLibrary = nullptr;
+    MTL4::FunctionDescriptor* proceduralFunction = nullptr;
+
+    if (result == Result::SUCCESS && !(desc.flags & RayTracingPipelineBits::SKIP_AABBS) && !synthesizeIntersection(true, proceduralLibrary, proceduralFunction))
+        result = Result::FAILURE;
+
+    // Pipeline
+    if (result == Result::SUCCESS) {
+        Vector<MTL4::FunctionDescriptor*> linkedFunctions(m_Device.GetStdAllocator());
+
+        for (MTL4::FunctionDescriptor* function : functions) {
+            if (function)
+                linkedFunctions.push_back(function);
+        }
+
+        if (triangleFunction)
+            linkedFunctions.push_back(triangleFunction);
+
+        if (proceduralFunction)
+            linkedFunctions.push_back(proceduralFunction);
+
+        MTL4::StaticLinkingDescriptor* linking = MTL4::StaticLinkingDescriptor::alloc()->init();
+        linking->setFunctionDescriptors(NS::Array::array((const NS::Object* const*)linkedFunctions.data(), linkedFunctions.size()));
+
+        MTL4::ComputePipelineDescriptor* pipelineDesc = MTL4::ComputePipelineDescriptor::alloc()->init();
+        pipelineDesc->setComputeFunctionDescriptor(dispatchFunction);
+        pipelineDesc->setStaticLinkingDescriptor(linking);
+
+        // Call depth: "RaygenIndirection", recursion levels, intersection / any-hit and callable shaders
+        MTL4::PipelineStageDynamicLinkingDescriptor* dynamicLinking = MTL4::PipelineStageDynamicLinkingDescriptor::alloc()->init();
+        dynamicLinking->setMaxCallStackDepth(desc.recursionMaxDepth + 3);
+
+        const bool failOnCacheMiss = desc.flags & RayTracingPipelineBits::FAIL_ON_CACHE_MISS;
+
+        NS::Error* error = nullptr;
+        m_Compute = NewComputePipelineMetal(m_Device, desc.cache, failOnCacheMiss, pipelineDesc, dynamicLinking, &error);
+
+        if (!m_Compute) {
+            result = Result::FAILURE;
+
+            if (!failOnCacheMiss)
+                NRI_REPORT_ERROR(&m_Device, "Metal ray-tracing pipeline creation failed: %s", error ? error->localizedDescription()->utf8String() : "unknown error");
+        }
+
+        dynamicLinking->release();
+        pipelineDesc->release();
+        linking->release();
+    }
+
+    // Function tables
+    if (result == Result::SUCCESS) {
+        MTL::VisibleFunctionTableDescriptor* tableDesc = MTL::VisibleFunctionTableDescriptor::alloc()->init();
+        tableDesc->setFunctionCount(functions.size() + 1);
+        m_VisibleFunctionTable = m_Compute->newVisibleFunctionTable(tableDesc);
+        tableDesc->release();
+
+        MTL::IntersectionFunctionTableDescriptor* intersectionDesc = MTL::IntersectionFunctionTableDescriptor::alloc()->init();
+        intersectionDesc->setFunctionCount(2); // matches "intersectionFunctionTableOffset" in "AccelerationStructureMetal"
+        m_IntersectionFunctionTable = m_Compute->newIntersectionFunctionTable(intersectionDesc);
+        intersectionDesc->release();
+
+        // Residency is released in the destructor
+        if (m_VisibleFunctionTable)
+            m_Device.AddResidency(m_VisibleFunctionTable);
+
+        if (m_IntersectionFunctionTable)
+            m_Device.AddResidency(m_IntersectionFunctionTable);
+
+        if (m_VisibleFunctionTable && m_IntersectionFunctionTable) {
+            for (size_t i = 0; i < functions.size(); i++) {
+                if (functions[i]) {
+                    char name[32];
+                    getVisibleFunctionName(i, name);
+
+                    m_VisibleFunctionTable->setFunction(m_Compute->functionHandle(NS::String::string(name, NS::UTF8StringEncoding)), i + 1);
+                }
+            }
+
+            if (triangleFunction)
+                m_IntersectionFunctionTable->setFunction(m_Compute->functionHandle(NS::String::string(kIRIndirectTriangleIntersectionFunctionName, NS::UTF8StringEncoding)), 0);
+
+            if (proceduralFunction)
+                m_IntersectionFunctionTable->setFunction(m_Compute->functionHandle(NS::String::string(kIRIndirectProceduralIntersectionFunctionName, NS::UTF8StringEncoding)), 1);
+
+            m_IntersectionFunctionTable->setVisibleFunctionTable(m_VisibleFunctionTable, 0);
+        } else
+            result = Result::OUT_OF_MEMORY;
+    }
+
+    // Shader group identifiers
+    if (result == Result::SUCCESS) {
+        m_ShaderGroupIdentifiers.resize(desc.shaderGroupNum * sizeof(IRShaderIdentifier));
+
+        for (uint32_t i = 0; i < desc.shaderGroupNum; i++) {
+            uint64_t shaderHandle = 0;
+            uint64_t intersectionHandle = 0;
+
+            for (uint32_t index : desc.shaderGroups[i].shaderIndices) {
+                if (!index)
+                    continue;
+
+                const StageBits stage = shaderLibrary.shaders[index - 1].stage;
+
+                if (stage == StageBits::INTERSECTION_SHADER || stage == StageBits::ANY_HIT_SHADER)
+                    intersectionHandle = shaderLibrary.shaderNum + i + 1;
+                else
+                    shaderHandle = index;
+            }
+
+            IRShaderIdentifier identifier;
+
+            if (intersectionHandle)
+                IRShaderIdentifierInitWithCustomIntersection(&identifier, shaderHandle, intersectionHandle);
+            else
+                IRShaderIdentifierInit(&identifier, shaderHandle);
+
+            memcpy(m_ShaderGroupIdentifiers.data() + i * sizeof(identifier), &identifier, sizeof(identifier));
+        }
+    }
+
+    // Cleanup
+    MTL4::FunctionDescriptor* synthesizedFunctions[] = {dispatchFunction, triangleFunction, proceduralFunction};
+
+    for (MTL4::FunctionDescriptor* function : synthesizedFunctions) {
+        if (function)
+            function->release();
+    }
+
+    MTL::Library* synthesizedLibraries[] = {dispatchLibrary, triangleLibrary, proceduralLibrary};
+
+    for (MTL::Library* library : synthesizedLibraries) {
+        if (library)
+            library->release();
+    }
+
+    for (size_t i = 0; i < functions.size(); i++) {
+        if (functions[i])
+            functions[i]->release();
+
+        if (libraries[i])
+            libraries[i]->release();
+    }
+
+    IRCompilerDestroy(compiler);
+    IRRayTracingPipelineConfigurationDestroy(configuration);
+
+    return result;
+}
+
+Result PipelineMetal::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, uint32_t dstStride, void* dst) const {
+    const uint8_t* src = m_ShaderGroupIdentifiers.data() + baseShaderGroupIndex * sizeof(IRShaderIdentifier);
+    uint8_t* destination = (uint8_t*)dst;
+
+    for (uint32_t i = 0; i < shaderGroupNum; i++) {
+        memcpy(destination, src, sizeof(IRShaderIdentifier));
+        src += sizeof(IRShaderIdentifier);
+        destination += dstStride;
+    }
+
+    return Result::SUCCESS;
+}
+
+#else
+
+Result PipelineMetal::Create(const RayTracingPipelineDesc&) {
+    return Result::UNSUPPORTED;
+}
+
+Result PipelineMetal::WriteShaderGroupIdentifiers(uint32_t, uint32_t, uint32_t, void*) const {
+    return Result::UNSUPPORTED;
+}
+
+#endif
 
 Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
     m_Layout = (const PipelineLayoutMetal*)desc.pipelineLayout;
@@ -1586,6 +1969,14 @@ MTL::RenderPipelineState* PipelineMetal::GetRenderPipeline() const {
 
 MTL::ComputePipelineState* PipelineMetal::GetComputePipeline() const {
     return m_Compute;
+}
+
+MTL::ResourceID PipelineMetal::GetVisibleFunctionTableResourceID() const {
+    return m_VisibleFunctionTable ? m_VisibleFunctionTable->gpuResourceID() : MTL::ResourceID{};
+}
+
+MTL::ResourceID PipelineMetal::GetIntersectionFunctionTableResourceID() const {
+    return m_IntersectionFunctionTable ? m_IntersectionFunctionTable->gpuResourceID() : MTL::ResourceID{};
 }
 
 Multiview PipelineMetal::GetMultiview() const {

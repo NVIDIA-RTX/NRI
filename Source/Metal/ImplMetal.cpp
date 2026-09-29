@@ -10,6 +10,7 @@
 
 #include "SharedMetal.h"
 
+#include "AccelerationStructureMetal.h"
 #include "BufferMetal.h"
 #include "CommandAllocatorMetal.h"
 #include "CommandBufferMetal.h"
@@ -34,6 +35,7 @@
 
 using namespace nri;
 
+#include "AccelerationStructureMetal.hpp"
 #include "BufferMetal.hpp"
 #include "CommandAllocatorMetal.hpp"
 #include "CommandBufferMetal.hpp"
@@ -759,6 +761,207 @@ Result DeviceMetal::FillFunctionTable(DescriptorHeapInterface& table) const {
     table.WriteResourceDescriptors = ::WriteResourceDescriptors;
     table.WriteSamplerDescriptors = ::WriteSamplerDescriptors;
     table.CmdSetDescriptorHeap = ::CmdSetDescriptorHeap;
+
+    return Result::SUCCESS;
+}
+
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region[  RayTracing  ]
+
+static Result NRI_CALL CreateRayTracingPipeline(Device& device, const RayTracingPipelineDesc& desc, Pipeline*& pipeline) {
+    return ((DeviceMetal&)device).CreateImplementation<PipelineMetal>(pipeline, desc);
+}
+
+static Result NRI_CALL CreateAccelerationStructure(Device& device, const AccelerationStructureDesc& desc, AccelerationStructure*& structure) {
+    return ((DeviceMetal&)device).CreateImplementation<AccelerationStructureMetal>(structure, desc);
+}
+
+static Result NRI_CALL CreateAccelerationStructureDescriptor(const AccelerationStructure& structure, Descriptor*& descriptor) {
+    const auto& impl = (const AccelerationStructureMetal&)structure;
+
+    return impl.GetDevice().CreateImplementation<DescriptorMetal>(descriptor, impl);
+}
+
+static void NRI_CALL DestroyAccelerationStructure(AccelerationStructure* structure) {
+    if (structure) {
+        auto* impl = (AccelerationStructureMetal*)structure;
+        Destroy(impl->GetDevice().GetAllocationCallbacks(), impl);
+    }
+}
+
+static uint64_t NRI_CALL GetAccelerationStructureHandle(const AccelerationStructure& structure) {
+    return ((const AccelerationStructureMetal&)structure).GetHandle();
+}
+
+static uint64_t NRI_CALL GetAccelerationStructureUpdateScratchBufferSize(const AccelerationStructure& structure) {
+    return ((const AccelerationStructureMetal&)structure).GetUpdateScratchBufferSize();
+}
+
+static uint64_t NRI_CALL GetAccelerationStructureBuildScratchBufferSize(const AccelerationStructure& structure) {
+    return ((const AccelerationStructureMetal&)structure).GetBuildScratchBufferSize();
+}
+
+static Buffer* NRI_CALL GetAccelerationStructureBuffer(const AccelerationStructure& structure) {
+    return ((const AccelerationStructureMetal&)structure).GetBuffer();
+}
+
+static void NRI_CALL GetAccelerationStructureMemoryDesc(const AccelerationStructure& structure, MemoryLocation location, MemoryDesc& desc) {
+    ((const AccelerationStructureMetal&)structure).GetMemoryDesc(location, desc);
+}
+
+static void NRI_CALL GetAccelerationStructureMemoryDesc2(const Device& device, const AccelerationStructureDesc& desc, MemoryLocation location, MemoryDesc& memoryDesc) {
+    AccelerationStructureMetal::GetMemoryDesc((DeviceMetal&)device, desc, location, memoryDesc);
+}
+
+static Result NRI_CALL BindAccelerationStructureMemory(const BindAccelerationStructureMemoryDesc* descs, uint32_t num) {
+    for (uint32_t i = 0; i < num; i++) {
+        Result result = ((AccelerationStructureMetal*)descs[i].accelerationStructure)->Bind(*(MemoryMetal*)descs[i].memory, descs[i].offset);
+
+        if (result != Result::SUCCESS)
+            return result;
+    }
+
+    return Result::SUCCESS;
+}
+
+static Result NRI_CALL CreateCommittedAccelerationStructure(Device& device, MemoryLocation memoryLocation, float priority, const AccelerationStructureDesc& desc, AccelerationStructure*& structure) {
+    MaybeUnused(priority);
+
+    return ((DeviceMetal&)device).CreateImplementation<AccelerationStructureMetal>(structure, desc, memoryLocation);
+}
+
+static Result NRI_CALL CreatePlacedAccelerationStructure(Device& device, Memory* memory, uint64_t offset, const AccelerationStructureDesc& desc, AccelerationStructure*& structure) {
+    return ((DeviceMetal&)device).CreatePlacedAccelerationStructure(memory, offset, desc, structure);
+}
+
+static Result NRI_CALL WriteShaderGroupIdentifiers(const Pipeline& pipeline, uint32_t base, uint32_t num, uint32_t stride, void* dst) {
+    return ((const PipelineMetal&)pipeline).WriteShaderGroupIdentifiers(base, num, stride, dst);
+}
+
+static void NRI_CALL CmdBuildTopLevelAccelerationStructures(CommandBuffer& commands, const BuildTopLevelAccelerationStructureDesc* descs, uint32_t num) {
+    ((CommandBufferMetal&)commands).CmdBuildTopLevelAccelerationStructures(descs, num);
+}
+
+static void NRI_CALL CmdBuildBottomLevelAccelerationStructures(CommandBuffer& commands, const BuildBottomLevelAccelerationStructureDesc* descs, uint32_t num) {
+    ((CommandBufferMetal&)commands).CmdBuildBottomLevelAccelerationStructures(descs, num);
+}
+
+static void NRI_CALL CmdWriteAccelerationStructureSizes(CommandBuffer& commands, const AccelerationStructure* const* structures, uint32_t num, QueryPool& pool, uint32_t offset) {
+    ((CommandBufferMetal&)commands).CmdWriteAccelerationStructureSizes(structures, num, pool, offset);
+}
+
+static void NRI_CALL CmdCopyAccelerationStructure(CommandBuffer& commands, AccelerationStructure& dst, const AccelerationStructure& src, CopyMode mode) {
+    ((CommandBufferMetal&)commands).CmdCopyAccelerationStructure(dst, src, mode);
+}
+
+static void NRI_CALL CmdDispatchRays(CommandBuffer& commands, const DispatchRaysDesc& desc) {
+    ((CommandBufferMetal&)commands).CmdDispatchRays(desc);
+}
+
+static void NRI_CALL CmdDispatchRaysIndirect(CommandBuffer& commands, const Buffer& buffer, uint64_t offset) {
+    ((CommandBufferMetal&)commands).CmdDispatchRaysIndirect(buffer, offset);
+}
+
+static uint64_t NRI_CALL GetAccelerationStructureNativeObject(const AccelerationStructure* structure) {
+    return structure ? (uint64_t)((const AccelerationStructureMetal*)structure)->GetNativeObject() : 0;
+}
+
+// Micromaps are not supported ("tiers.rayTracing < 3")
+static uint64_t NRI_CALL GetMicromapBuildScratchBufferSize(const Micromap&) {
+    return 0;
+}
+
+static Buffer* NRI_CALL GetMicromapBuffer(const Micromap&) {
+    return nullptr;
+}
+
+static void NRI_CALL DestroyMicromap(Micromap*) {
+}
+
+static Result NRI_CALL CreateMicromap(Device&, const MicromapDesc&, Micromap*& micromap) {
+    micromap = nullptr;
+
+    return Result::UNSUPPORTED;
+}
+
+static void NRI_CALL GetMicromapMemoryDesc(const Micromap&, MemoryLocation, MemoryDesc& memoryDesc) {
+    memoryDesc = {};
+}
+
+static Result NRI_CALL BindMicromapMemory(const BindMicromapMemoryDesc*, uint32_t) {
+    return Result::UNSUPPORTED;
+}
+
+static void NRI_CALL GetMicromapMemoryDesc2(const Device&, const MicromapDesc&, MemoryLocation, MemoryDesc& memoryDesc) {
+    memoryDesc = {};
+}
+
+static Result NRI_CALL CreateCommittedMicromap(Device&, MemoryLocation, float, const MicromapDesc&, Micromap*& micromap) {
+    micromap = nullptr;
+
+    return Result::UNSUPPORTED;
+}
+
+static Result NRI_CALL CreatePlacedMicromap(Device&, Memory*, uint64_t, const MicromapDesc&, Micromap*& micromap) {
+    micromap = nullptr;
+
+    return Result::UNSUPPORTED;
+}
+
+static void NRI_CALL CmdBuildMicromaps(CommandBuffer&, const BuildMicromapDesc*, uint32_t) {
+}
+
+static void NRI_CALL CmdWriteMicromapSizes(CommandBuffer&, const Micromap* const*, uint32_t, QueryPool&, uint32_t) {
+}
+
+static void NRI_CALL CmdCopyMicromap(CommandBuffer&, Micromap&, const Micromap&, CopyMode) {
+}
+
+static uint64_t NRI_CALL GetMicromapNativeObject(const Micromap*) {
+    return 0;
+}
+
+Result DeviceMetal::FillFunctionTable(RayTracingInterface& table) const {
+    if (!m_Desc.tiers.rayTracing)
+        return Result::UNSUPPORTED;
+
+    table = {};
+    table.CreateRayTracingPipeline = ::CreateRayTracingPipeline;
+    table.CreateAccelerationStructure = ::CreateAccelerationStructure;
+    table.CreateAccelerationStructureDescriptor = ::CreateAccelerationStructureDescriptor;
+    table.DestroyAccelerationStructure = ::DestroyAccelerationStructure;
+    table.GetAccelerationStructureHandle = ::GetAccelerationStructureHandle;
+    table.GetAccelerationStructureBuildScratchBufferSize = ::GetAccelerationStructureBuildScratchBufferSize;
+    table.GetAccelerationStructureUpdateScratchBufferSize = ::GetAccelerationStructureUpdateScratchBufferSize;
+    table.GetAccelerationStructureBuffer = ::GetAccelerationStructureBuffer;
+    table.GetAccelerationStructureMemoryDesc = ::GetAccelerationStructureMemoryDesc;
+    table.GetAccelerationStructureMemoryDesc2 = ::GetAccelerationStructureMemoryDesc2;
+    table.BindAccelerationStructureMemory = ::BindAccelerationStructureMemory;
+    table.CreateCommittedAccelerationStructure = ::CreateCommittedAccelerationStructure;
+    table.CreatePlacedAccelerationStructure = ::CreatePlacedAccelerationStructure;
+    table.WriteShaderGroupIdentifiers = ::WriteShaderGroupIdentifiers;
+    table.CmdBuildTopLevelAccelerationStructures = ::CmdBuildTopLevelAccelerationStructures;
+    table.CmdBuildBottomLevelAccelerationStructures = ::CmdBuildBottomLevelAccelerationStructures;
+    table.CmdWriteAccelerationStructureSizes = ::CmdWriteAccelerationStructureSizes;
+    table.CmdCopyAccelerationStructure = ::CmdCopyAccelerationStructure;
+    table.CmdDispatchRays = ::CmdDispatchRays;
+    table.CmdDispatchRaysIndirect = ::CmdDispatchRaysIndirect;
+    table.GetAccelerationStructureNativeObject = ::GetAccelerationStructureNativeObject;
+    table.GetMicromapBuildScratchBufferSize = ::GetMicromapBuildScratchBufferSize;
+    table.GetMicromapBuffer = ::GetMicromapBuffer;
+    table.DestroyMicromap = ::DestroyMicromap;
+    table.CreateMicromap = ::CreateMicromap;
+    table.GetMicromapMemoryDesc = ::GetMicromapMemoryDesc;
+    table.BindMicromapMemory = ::BindMicromapMemory;
+    table.GetMicromapMemoryDesc2 = ::GetMicromapMemoryDesc2;
+    table.CreateCommittedMicromap = ::CreateCommittedMicromap;
+    table.CreatePlacedMicromap = ::CreatePlacedMicromap;
+    table.CmdBuildMicromaps = ::CmdBuildMicromaps;
+    table.CmdWriteMicromapSizes = ::CmdWriteMicromapSizes;
+    table.CmdCopyMicromap = ::CmdCopyMicromap;
+    table.GetMicromapNativeObject = ::GetMicromapNativeObject;
 
     return Result::SUCCESS;
 }

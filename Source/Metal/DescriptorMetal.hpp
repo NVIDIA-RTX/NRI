@@ -209,11 +209,20 @@ Result DescriptorMetal::Create(const SamplerDesc& desc) {
     return m_Sampler ? Result::SUCCESS : Result::FAILURE;
 }
 
+Result DescriptorMetal::Create(const AccelerationStructureMetal& accelerationStructure) {
+    m_AccelerationStructure = &accelerationStructure;
+
+    return Result::SUCCESS;
+}
+
 DeviceMetal& DescriptorMetal::GetDevice() const {
     return m_Device;
 }
 
 MTL::Buffer* DescriptorMetal::GetBuffer() const {
+    if (m_AccelerationStructure)
+        return m_AccelerationStructure->GetShaderBindingHeaderBuffer();
+
     return m_Buffer ? m_Buffer->GetNativeObject() : nullptr;
 }
 

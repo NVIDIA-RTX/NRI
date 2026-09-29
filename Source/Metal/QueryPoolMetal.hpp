@@ -29,9 +29,11 @@ Result QueryPoolMetal::Create(const QueryPoolDesc& desc) {
         return m_CounterHeap ? Result::SUCCESS : Result::UNSUPPORTED;
     }
 
-    if (m_Type == QueryType::OCCLUSION) {
+    if (m_Type == QueryType::OCCLUSION || m_Type == QueryType::ACCELERATION_STRUCTURE_SIZE || m_Type == QueryType::ACCELERATION_STRUCTURE_COMPACTED_SIZE) {
         // Occlusion results accumulate, host visible memory allows "ResetQueries"
-        m_VisibilityBuffer = m_Device.GetNativeObject()->newBuffer(uint64_t(desc.capacity) * sizeof(uint64_t), MTL::ResourceStorageModeShared | MTL::ResourceHazardTrackingModeUntracked);
+        const MTL::ResourceOptions storageMode = m_Type == QueryType::OCCLUSION ? MTL::ResourceStorageModeShared : MTL::ResourceStorageModePrivate;
+
+        m_VisibilityBuffer = m_Device.GetNativeObject()->newBuffer(uint64_t(desc.capacity) * sizeof(uint64_t), storageMode | MTL::ResourceHazardTrackingModeUntracked);
 
         if (!m_VisibilityBuffer)
             return Result::OUT_OF_MEMORY;

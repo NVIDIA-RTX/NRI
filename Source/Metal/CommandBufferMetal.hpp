@@ -327,8 +327,9 @@ static inline MTL::Stages GetBarrierStagesMetal(StageBits stages) {
     if (stages & StageBits::CLEAR_STORAGE)
         result |= MTL::StageDispatch | MTL::StageBlit;
 
+    // Instance conversion and TLAS header writes are dispatches
     if (stages & StageBits::ACCELERATION_STRUCTURE)
-        result |= MTL::StageAccelerationStructure;
+        result |= MTL::StageAccelerationStructure | MTL::StageDispatch;
 
     if (stages & (StageBits::COPY | StageBits::RESOLVE))
         result |= MTL::StageBlit;
@@ -1714,8 +1715,8 @@ void CommandBufferMetal::CmdCopyQueries(const QueryPool& p, uint32_t o, uint32_t
     if (q.GetType() == QueryType::OCCLUSION)
         encoder->barrierAfterQueueStages(MTL::StageFragment, MTL::StageBlit, MTL4::VisibilityOptionDevice); // visibility results are written by previous render encoders
     else {
-        encoder->barrierAfterQueueStages(MTL::StageFragment | MTL::StageDispatch, MTL::StageBlit, MTL4::VisibilityOptionDevice);
-        encoder->barrierAfterEncoderStages(MTL::StageDispatch, MTL::StageBlit, MTL4::VisibilityOptionDevice);
+        encoder->barrierAfterQueueStages(MTL::StageFragment | MTL::StageDispatch | MTL::StageAccelerationStructure, MTL::StageBlit, MTL4::VisibilityOptionDevice);
+        encoder->barrierAfterEncoderStages(MTL::StageDispatch | MTL::StageAccelerationStructure, MTL::StageBlit, MTL4::VisibilityOptionDevice);
     }
 
     if (q.GetCounterHeap()) {
@@ -1810,3 +1811,221 @@ MTL::ComputePipelineState* CommandBufferMetal::GetInternalKernel(InternalKernelM
 
     return pipeline;
 }
+
+void CommandBufferMetal::CmdBuildBottomLevelAccelerationStructures(const BuildBottomLevelAccelerationStructureDesc* descs, uint32_t num) {
+    auto* encoder = BeginCompute();
+
+    for (uint32_t i = 0; i < num; i++) {
+        const auto& desc = descs[i];
+        auto& dst = *(AccelerationStructureMetal*)desc.dst;
+        auto* descriptor = dst.CreateBuildDescriptor(desc.geometries, desc.geometryNum);
+        MTL4::BufferRange scratch(((BufferMetal*)desc.scratchBuffer)->GetGpuAddress() + desc.scratchOffset, desc.src ? dst.GetUpdateScratchBufferSize() : dst.GetBuildScratchBufferSize());
+
+        if (desc.src)
+            encoder->refitAccelerationStructure(((const AccelerationStructureMetal*)desc.src)->GetNativeObject(), descriptor, dst.GetNativeObject(), scratch);
+        else
+            encoder->buildAccelerationStructure(dst.GetNativeObject(), descriptor, scratch);
+
+        descriptor->release();
+    }
+}
+
+void CommandBufferMetal::CmdBuildTopLevelAccelerationStructures(const BuildTopLevelAccelerationStructureDesc* descs, uint32_t num) {
+    MTL::ComputePipelineState* convertInstances = GetInternalKernel(InternalKernelMetal::CONVERT_INSTANCES);
+
+    if (!convertInstances)
+        return;
+
+    // Convert NRI instances to Metal instances and write the TLAS header with instance contributions.
+    // These dispatches are part of the "ACCELERATION_STRUCTURE" stage from the NRI perspective
+    Scratch<MTL::GPUAddress> instances = NRI_ALLOCATE_SCRATCH(m_Device, MTL::GPUAddress, num);
+    SetComputeState(m_InternalArguments, convertInstances);
+    MTL4::ComputeCommandEncoder* encoder = m_ComputeEncoder;
+
+    for (uint32_t i = 0; i < num; i++) {
+        const auto& desc = descs[i];
+        const auto& dst = *(const AccelerationStructureMetal*)desc.dst;
+        const uint32_t threadNum = std::max(desc.instanceNum, 1u); // thread 0 writes the header
+        instances[i] = m_Allocator->Upload(nullptr, threadNum * sizeof(MTL::IndirectAccelerationStructureInstanceDescriptor));
+
+        ConvertInstancesArgsMetal args = {};
+        args.src = desc.instanceNum ? ((const BufferMetal*)desc.instanceBuffer)->GetGpuAddress() + desc.instanceOffset : 0;
+        args.dst = instances[i];
+        args.header = dst.GetShaderBindingHeaderAddress();
+        args.accelerationStructure = dst.GetHandle();
+        args.instanceNum = desc.instanceNum;
+
+        m_InternalArguments->setAddress(m_Allocator->Upload(&args, sizeof(args)), INTERNAL_SLOT_CONSTANTS);
+        encoder->dispatchThreads(MTL::Size(threadNum, 1, 1), MTL::Size(std::min(threadNum, 64u), 1, 1));
+    }
+
+    encoder->barrierAfterEncoderStages(MTL::StageDispatch, MTL::StageAccelerationStructure, MTL4::VisibilityOptionDevice);
+
+    for (uint32_t i = 0; i < num; i++) {
+        const auto& desc = descs[i];
+        auto& dst = *(AccelerationStructureMetal*)desc.dst;
+        auto* descriptor = dst.CreateBuildDescriptor(nullptr, 0, instances[i], desc.instanceNum);
+        MTL4::BufferRange scratch(((BufferMetal*)desc.scratchBuffer)->GetGpuAddress() + desc.scratchOffset, desc.src ? dst.GetUpdateScratchBufferSize() : dst.GetBuildScratchBufferSize());
+
+        if (desc.src)
+            encoder->refitAccelerationStructure(((const AccelerationStructureMetal*)desc.src)->GetNativeObject(), descriptor, dst.GetNativeObject(), scratch);
+        else
+            encoder->buildAccelerationStructure(dst.GetNativeObject(), descriptor, scratch);
+
+        descriptor->release();
+    }
+}
+
+void CommandBufferMetal::CmdCopyAccelerationStructure(AccelerationStructure& dst, const AccelerationStructure& src, CopyMode mode) {
+    auto& destination = (AccelerationStructureMetal&)dst;
+    const auto& source = (const AccelerationStructureMetal&)src;
+
+    MTL::ComputePipelineState* copyHeader = source.GetShaderBindingHeaderBuffer() ? GetInternalKernel(InternalKernelMetal::COPY_TOP_LEVEL_HEADER) : nullptr;
+
+    if (source.GetShaderBindingHeaderBuffer() && !copyHeader)
+        return;
+
+    auto* encoder = BeginCompute();
+
+    if (mode == CopyMode::COMPACT)
+        encoder->copyAndCompactAccelerationStructure(source.GetNativeObject(), destination.GetNativeObject());
+    else
+        encoder->copyAccelerationStructure(source.GetNativeObject(), destination.GetNativeObject());
+
+    // TLAS: write the destination header and copy instance contributions (clamped to the smaller TLAS)
+    if (copyHeader) {
+        CopyTopLevelHeaderArgsMetal args = {};
+        args.srcContributions = source.GetInstanceContributionAddress();
+        args.dstHeader = destination.GetShaderBindingHeaderAddress();
+        args.dstAccelerationStructure = destination.GetHandle();
+        args.num = std::min(source.GetInstanceNum(), destination.GetInstanceNum());
+
+        const uint32_t threadNum = std::max(args.num, 1u); // thread 0 writes the header
+        m_InternalArguments->setAddress(m_Allocator->Upload(&args, sizeof(args)), INTERNAL_SLOT_CONSTANTS);
+        SetComputeState(m_InternalArguments, copyHeader);
+        encoder->dispatchThreads(MTL::Size(threadNum, 1, 1), MTL::Size(std::min(threadNum, 64u), 1, 1));
+    }
+}
+
+void CommandBufferMetal::CmdWriteAccelerationStructureSizes(const AccelerationStructure* const* structures, uint32_t num, QueryPool& pool, uint32_t offset) {
+    auto& queries = (QueryPoolMetal&)pool;
+    const MTL::GPUAddress dst = queries.GetVisibilityBuffer()->gpuAddress() + uint64_t(offset) * sizeof(uint64_t);
+
+    // "writeCompactedAccelerationStructureSize" writes a 64-bit value
+    if (queries.GetType() == QueryType::ACCELERATION_STRUCTURE_COMPACTED_SIZE) {
+        auto* encoder = BeginCompute();
+
+        for (uint32_t i = 0; i < num; i++) {
+            const auto& structure = *(const AccelerationStructureMetal*)structures[i];
+            encoder->writeCompactedAccelerationStructureSize(structure.GetNativeObject(), MTL4::BufferRange(dst + i * sizeof(uint64_t), sizeof(uint64_t)));
+        }
+
+        return;
+    }
+
+    // Sizes are known on the host, but the query storage is private
+    MTL::ComputePipelineState* copyWords = GetInternalKernel(InternalKernelMetal::COPY_WORDS);
+
+    if (!copyWords)
+        return;
+
+    Scratch<uint64_t> sizes = NRI_ALLOCATE_SCRATCH(m_Device, uint64_t, num);
+
+    for (uint32_t i = 0; i < num; i++)
+        sizes[i] = ((const AccelerationStructureMetal*)structures[i])->GetSize();
+
+    CopyWordsArgsMetal args = {};
+    args.src = m_Allocator->Upload(sizes, num * sizeof(uint64_t));
+    args.dst = dst;
+
+    const uint32_t threadNum = num * 2;
+    auto* encoder = BeginCompute();
+    m_InternalArguments->setAddress(m_Allocator->Upload(&args, sizeof(args)), INTERNAL_SLOT_CONSTANTS);
+    SetComputeState(m_InternalArguments, copyWords);
+    encoder->dispatchThreads(MTL::Size(threadNum, 1, 1), MTL::Size(std::min(threadNum, 64u), 1, 1));
+}
+
+#if NRI_ENABLE_METAL_SHADER_CONVERTER
+
+static_assert(sizeof(DispatchRaysIndirectDesc) == sizeof(IRDispatchRaysDescriptor), "'DispatchRaysIndirectDesc' must match 'IRDispatchRaysDescriptor'");
+static_assert(offsetof(DispatchRaysIndirectDesc, width) == offsetof(IRDispatchRaysDescriptor, Width), "'DispatchRaysIndirectDesc' must match 'IRDispatchRaysDescriptor'");
+
+// Converter's ray dispatch kernel ("RaygenIndirection") is dispatched with 8x8x1 threadgroups and an exact grid
+constexpr uint32_t RAY_DISPATCH_GROUP_SIZE = 8;
+
+MTL::GPUAddress CommandBufferMetal::SetRayDispatchArguments(const IRDispatchRaysDescriptor& desc) {
+    IRDispatchRaysArgument args = {};
+    args.DispatchRaysDesc = desc;
+    args.GRS = m_Compute.root.empty() ? 0 : m_Allocator->Upload(m_Compute.root.data(), m_Compute.root.size());
+    args.ResDescHeap = m_DescriptorPool ? m_DescriptorPool->GetResourceHeapAddress() : 0;
+    args.SmpDescHeap = m_DescriptorPool ? m_DescriptorPool->GetSamplerHeapAddress() : 0;
+    args.VisibleFunctionTable = m_Pipeline->GetVisibleFunctionTableResourceID();
+    args.IntersectionFunctionTable = m_Pipeline->GetIntersectionFunctionTableResourceID();
+
+    const MTL::GPUAddress address = m_Allocator->Upload(&args, sizeof(args));
+    SetArgumentAddress(kIRRayDispatchArgumentsBindPoint, address);
+
+    return address;
+}
+
+void CommandBufferMetal::CmdDispatchRays(const DispatchRaysDesc& desc) {
+    auto getAddress = [](const StridedBufferRegion& region) -> uint64_t {
+        return region.buffer ? ((const BufferMetal*)region.buffer)->GetGpuAddress() + region.offset : 0;
+    };
+
+    auto getRange = [&](const StridedBufferRegion& region) -> IRVirtualAddressRangeAndStride {
+        IRVirtualAddressRangeAndStride range = {};
+        range.StartAddress = getAddress(region);
+        range.SizeInBytes = region.size;
+        range.StrideInBytes = region.stride;
+
+        return range;
+    };
+
+    IRDispatchRaysDescriptor dispatch = {};
+    dispatch.RayGenerationShaderRecord.StartAddress = getAddress(desc.raygenShaderRecord);
+    dispatch.RayGenerationShaderRecord.SizeInBytes = desc.raygenShaderRecord.size;
+    dispatch.MissShaderTable = getRange(desc.missShaderBindingTable);
+    dispatch.HitGroupTable = getRange(desc.hitShaderBindingTable);
+    dispatch.CallableShaderTable = getRange(desc.callableShaderBindingTable);
+    dispatch.Width = desc.width;
+    dispatch.Height = desc.height;
+    dispatch.Depth = desc.depth;
+
+    SetRayDispatchArguments(dispatch);
+
+    SetComputeState(m_Arguments, m_Pipeline->GetComputePipeline());
+    m_ComputeEncoder->dispatchThreads(MTL::Size(desc.width, desc.height, desc.depth), MTL::Size(RAY_DISPATCH_GROUP_SIZE, RAY_DISPATCH_GROUP_SIZE, 1));
+}
+
+void CommandBufferMetal::CmdDispatchRaysIndirect(const Buffer& buffer, uint64_t offset) {
+    MTL::ComputePipelineState* prepareRays = GetInternalKernel(InternalKernelMetal::PREPARE_RAYS_INDIRECT);
+
+    if (!prepareRays)
+        return;
+
+    // Copy "DispatchRaysIndirectDesc" into the ray dispatch arguments and produce "MTLDispatchThreadsIndirectArguments"
+    PrepareRaysIndirectArgsMetal args = {};
+    args.src = ((const BufferMetal&)buffer).GetGpuAddress() + offset;
+    args.dst = SetRayDispatchArguments({});
+    args.dispatch = m_Allocator->Upload(nullptr, sizeof(MTL::DispatchThreadsIndirectArguments));
+
+    auto* encoder = BeginCompute();
+    m_InternalArguments->setAddress(m_Allocator->Upload(&args, sizeof(args)), INTERNAL_SLOT_CONSTANTS);
+    SetComputeState(m_InternalArguments, prepareRays);
+    encoder->dispatchThreads(MTL::Size(1, 1, 1), MTL::Size(1, 1, 1));
+    encoder->barrierAfterEncoderStages(MTL::StageDispatch, MTL::StageDispatch, MTL4::VisibilityOptionDevice);
+
+    SetComputeState(m_Arguments, m_Pipeline->GetComputePipeline());
+    encoder->dispatchThreads(args.dispatch);
+}
+
+#else
+
+void CommandBufferMetal::CmdDispatchRays(const DispatchRaysDesc&) {
+}
+
+void CommandBufferMetal::CmdDispatchRaysIndirect(const Buffer&, uint64_t) {
+}
+
+#endif

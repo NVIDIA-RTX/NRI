@@ -59,6 +59,12 @@ struct CommandBufferMetal final : public DebugNameBase {
     void CmdDrawIndexedIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countOffset);
     void CmdDrawMeshTasks(const DrawMeshTasksDesc& desc);
     void CmdDrawMeshTasksIndirect(const Buffer& buffer, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countOffset);
+    void CmdBuildTopLevelAccelerationStructures(const BuildTopLevelAccelerationStructureDesc* descs, uint32_t num);
+    void CmdBuildBottomLevelAccelerationStructures(const BuildBottomLevelAccelerationStructureDesc* descs, uint32_t num);
+    void CmdCopyAccelerationStructure(AccelerationStructure& dst, const AccelerationStructure& src, CopyMode mode);
+    void CmdWriteAccelerationStructureSizes(const AccelerationStructure* const* structures, uint32_t num, QueryPool& pool, uint32_t offset);
+    void CmdDispatchRays(const DispatchRaysDesc& desc);
+    void CmdDispatchRaysIndirect(const Buffer& buffer, uint64_t offset);
     void CmdEndRendering();
     void CmdDispatch(const DispatchDesc& desc);
     void CmdDispatchIndirect(const Buffer& buffer, uint64_t offset);
@@ -123,6 +129,9 @@ private:
     void DrawEmulatedIndirect(MTL::GPUAddress arguments, MTL::GPUAddress roots, uint32_t drawNum, uint32_t stride, bool indexed);
 #endif
     MTL::ComputePipelineState* GetInternalKernel(InternalKernelMetal kernel); // records a failure if unavailable
+#if NRI_ENABLE_METAL_SHADER_CONVERTER
+    MTL::GPUAddress SetRayDispatchArguments(const IRDispatchRaysDescriptor& desc);
+#endif
     void ResolveColor(MTL::Texture* dst, const TextureRegionDesc& dstRegion, MTL::Texture* src, const TextureRegionDesc& srcRegion, ResolveOp op, Format format, bool attachmentResolve = false);
     static MTL::Size GetRegionSize(const TextureMetal& texture, const TextureRegionDesc& region);
 

@@ -51,7 +51,7 @@ NriStruct(FenceMetalDesc) {
 // Required "--metalShaderConverterOptions": "--root-signature=<file>" with "GetRootSignatureMetal" output for the pipeline layout (checked against
 // the reflection, except descriptor ranges and flags), "--framebuffer-fetch-register-space=998", "--minimum-gpu-family=<family>" supported by the device,
 // "--samplerLODBias" if "MTLGPUFamilyApple10" is unsupported, "--dual-source-blending-support=forceEnabled" for fragment shaders used with "SRC1" blending.
-// Metal vertex fetch must be used (no "--vertex-stage-in"). Not supported with geometry or tessellation shaders, point topologies and a sample mask.
+// Metal vertex fetch must be used (no "--vertex-stage-in"). Not supported with geometry or tessellation shaders, point topologies, a sample mask and in ray tracing pipelines.
 // Only NRI validation checks the bundle structure, untrusted data must be validated
 
 // Threadsafe: yes

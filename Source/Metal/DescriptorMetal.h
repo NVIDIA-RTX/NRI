@@ -11,6 +11,7 @@ struct DescriptorMetal final : public DebugNameBase {
     Result Create(const BufferViewDesc& desc);
     Result Create(const TextureViewDesc& desc);
     Result Create(const SamplerDesc& desc);
+    Result Create(const AccelerationStructureMetal& accelerationStructure);
 
     DeviceMetal& GetDevice() const;
     MTL::Buffer* GetBuffer() const;
@@ -27,6 +28,7 @@ struct DescriptorMetal final : public DebugNameBase {
 private:
     DeviceMetal& m_Device;
     BufferMetal* m_Buffer = nullptr;
+    const AccelerationStructureMetal* m_AccelerationStructure = nullptr;
     TextureMetal* m_Texture = nullptr;
     MTL::Texture* m_TextureView = nullptr;
     MTL::SamplerState* m_Sampler = nullptr;

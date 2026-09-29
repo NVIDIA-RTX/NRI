@@ -30,6 +30,7 @@ namespace nri {
 struct DeviceMetal;
 struct MemoryMetal;
 struct BufferMetal;
+struct AccelerationStructureMetal;
 struct TextureMetal;
 struct QueueMetal;
 struct FenceMetal;

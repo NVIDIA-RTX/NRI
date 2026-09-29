@@ -1007,6 +1007,8 @@ file(WRITE "${OUT}" "unsigned char g_${NAME}_metallib[] = {${DATA}};\n")
     endif()
 
     set(METAL_SOURCE
+        "Source/Metal/AccelerationStructureMetal.h"
+        "Source/Metal/AccelerationStructureMetal.hpp"
         "Source/Metal/BufferMetal.h"
         "Source/Metal/BufferMetal.hpp"
         "Source/Metal/CommandAllocatorMetal.h"

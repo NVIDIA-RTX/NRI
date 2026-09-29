@@ -8,6 +8,10 @@ constexpr std::array<const char*, (size_t)InternalKernelMetal::MAX_NUM> g_Intern
     "nri_prepare_draw_roots",    // PREPARE_DRAW_ROOTS
     "nri_emulate_draws",         // EMULATE_DRAWS
     "nri_clear_storage_buffer",  // CLEAR_STORAGE_BUFFER
+    "nri_convert_instances",     // CONVERT_INSTANCES
+    "nri_copy_top_level_header", // COPY_TOP_LEVEL_HEADER
+    "nri_copy_words",            // COPY_WORDS
+    "nri_prepare_rays_indirect", // PREPARE_RAYS_INDIRECT
     "nri_clear_storage_0_0",
     "nri_clear_storage_0_1",
     "nri_clear_storage_0_2",

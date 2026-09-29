@@ -55,6 +55,7 @@ struct DeviceMetal final : public DeviceBase {
     Result GetQueue(QueueType type, uint32_t index, Queue*& queue);
     Result CreatePlacedBuffer(Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer);
     Result CreatePlacedTexture(Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture);
+    Result CreatePlacedAccelerationStructure(Memory* memory, uint64_t offset, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
     Result WaitIdle();
     Result QueryVideoMemoryInfo(MemoryLocation memoryLocation, VideoMemoryInfo& videoMemoryInfo) const;
 
@@ -67,6 +68,7 @@ struct DeviceMetal final : public DeviceBase {
     Result FillFunctionTable(StreamerInterface& table) const override;
     Result FillFunctionTable(SwapChainInterface& table) const override;
     Result FillFunctionTable(MeshShaderInterface& table) const override;
+    Result FillFunctionTable(RayTracingInterface& table) const override;
     Result FillFunctionTable(DescriptorHeapInterface& table) const override;
     Result FillFunctionTable(UpscalerInterface& table) const override;
     Result FillFunctionTable(WrapperMetalInterface& table) const override;
