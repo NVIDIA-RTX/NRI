@@ -100,7 +100,8 @@ NriBits(GraphicsAPI, uint8_t,
     D3D11   = NriBit(1), // Direct3D 11 (feature set 11.1), available if "NRI_ENABLE_D3D11_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm)
     D3D12   = NriBit(2), // Direct3D 12 (D3D12_SDK_VERSION 4 or 619+), available if "NRI_ENABLE_D3D12_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/)
     VK      = NriBit(3), // Vulkan 1.4+, 1.3++ or 1.2+++ (can be used on MacOS via MoltenVK), available if "NRI_ENABLE_VK_SUPPORT = ON" in CMake (https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html)
-    WGPU    = NriBit(4)  // WebGPU via "wgpu-native", available if "NRI_ENABLE_WGPU_SUPPORT = ON" in CMake (https://github.com/gfx-rs/wgpu-native). Has limitations similar to D3D11
+    WGPU    = NriBit(4), // WebGPU via "wgpu-native", available if "NRI_ENABLE_WGPU_SUPPORT = ON" in CMake (https://github.com/gfx-rs/wgpu-native). Has limitations similar to D3D11
+    METAL   = NriBit(5)  // Metal 4 (macOS 26+, DXIL via Metal Shader Converter), available if "NRI_ENABLE_METAL_SUPPORT = ON" in CMake (https://developer.apple.com/metal/)
 );
 
 NriEnum(Result, int8_t,
@@ -683,7 +684,7 @@ NriStruct(BarrierDesc) {
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkImageType.html
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_resource_dimension
 NriEnum(TextureType, uint8_t,
-    TEXTURE_1D, // WGPU: arrays and mipmaps are unsupported
+    TEXTURE_1D, // WGPU: arrays and mipmaps are unsupported; METAL: a 2D texture with "height = 1" ("texture2d" in native shaders)
     TEXTURE_2D,
     TEXTURE_3D  // arrays are unsupported
 );
@@ -942,7 +943,7 @@ NriStruct(TextureViewDesc) {
     Nri(Dim_t) layerOffset;
     Nri(Dim_t) layerNum;                    // can be "REMAINING"
     Nri(Dim_t) sliceOffset;
-    Nri(Dim_t) sliceNum;                    // can be "REMAINING"
+    Nri(Dim_t) sliceNum;                    // can be "REMAINING" (METAL: used only by "CmdClearStorage", shader views expose all slices, attachments use "sliceOffset")
     Nri(PlaneBits) planes;                  // accessible planes (missing planes for a "DEPTH_STENCIL_ATTACHMENT" are considered read-only)
     Nri(ComponentMapping) components;
 };
@@ -970,12 +971,12 @@ NriStruct(Filters) {
 NriStruct(SamplerDesc) {
     Nri(Filters) filters;
     uint8_t anisotropy;
-    float mipBias;
+    float mipBias;                // METAL: native shaders must apply "NriGetSamplerMipBias" (0 on Apple10+, see "NRI.metal")
     float mipMin;
     float mipMax;
     Nri(AddressModes) addressModes;
     Nri(CompareOp) compareOp;
-    Nri(Color) borderColor;       // used only with "AddressMode::CLAMP_TO_BORDER"
+    Nri(Color) borderColor;       // used only with "AddressMode::CLAMP_TO_BORDER" (METAL: only transparent black, opaque black or opaque white)
     bool isInteger;
     bool unnormalizedCoordinates; // requires "shaderFeatures.unnormalizedCoordinates"
 };
@@ -997,8 +998,8 @@ NriEnum(BindPoint, uint8_t,
 NriBits(PipelineLayoutBits, uint8_t,
     NONE                                    = 0,
     IGNORE_GLOBAL_SPIRV_OFFSETS             = NriBit(0),    // VK: ignore "DeviceCreationDesc::vkBindingOffsets"
-    ENABLE_DRAW_PARAMETERS_EMULATION        = NriBit(1),    // D3D12: enable draw parameters emulation, requires "shaderFeatures.drawParameters"
-    ENABLE_DRAW_INDEX_EMULATION             = NriBit(2),    // D3D12: enable draw index emulation, requires "shaderFeatures.drawIndex"
+    ENABLE_DRAW_PARAMETERS_EMULATION        = NriBit(1),    // D3D12, METAL: enable draw parameters emulation, requires "shaderFeatures.drawParameters"
+    ENABLE_DRAW_INDEX_EMULATION             = NriBit(2),    // D3D12, METAL: enable draw index emulation, requires "shaderFeatures.drawIndex"
 
     // Direct indexing has two modes:
     // - "descriptor pool":
@@ -1382,7 +1383,7 @@ NriStruct(RasterizationDesc) {
 };
 
 NriStruct(MultisampleDesc) {
-    uint32_t sampleMask;        // can be "ALL"
+    uint32_t sampleMask;        // can be "ALL" (METAL: native fragment shaders must apply "NriApplyPipelineSampleMask", see "NRI.metal")
     Nri(Sample_t) sampleNum;
     bool alphaToCoverage;
     bool sampleLocations;       // requires "tiers.sampleLocations != 0", expects "CmdSetSampleLocations"
@@ -1402,7 +1403,7 @@ NriStruct(ShadingRateDesc) {
 
 NriEnum(Multiview, uint8_t,
     // Destination "viewport" and/or "layer" must be set in shaders explicitly, "viewMask" for rendering can be < than the one used for pipeline creation (D3D12 style)
-    FLEXIBLE,       // requires "features.flexibleMultiview"
+    FLEXIBLE,       // requires "features.flexibleMultiview" (METAL: native shaders only, DXIL lacks "SV_ViewID")
 
     // View instances go to statically assigned corresponding attachment layers, "viewMask" for rendering must match the one used for pipeline creation (VK style)
     LAYER_BASED,    // requires "features.layerBasedMultiview"
@@ -1592,6 +1593,11 @@ NriStruct(ShaderDesc) {
     const void* bytecode; // see "features.shaderBytecodeXXX"
     uint64_t size;
     NriOptional const char* entryPointName;
+
+    // METAL: required for native (metallib) compute, mesh and task shaders (MSL has no "numthreads"), ignored otherwise
+    NriOptional Nri(Dim_t) threadGroupSizeX;
+    NriOptional Nri(Dim_t) threadGroupSizeY;
+    NriOptional Nri(Dim_t) threadGroupSizeZ;
 };
 
 NriStruct(GraphicsPipelineDesc) {
@@ -1643,7 +1649,7 @@ NriEnum(StoreOp, uint8_t,
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_resolve_mode
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkResolveModeFlagBits.html
 NriEnum(ResolveOp, uint8_t,
-    AVERAGE,    // resolves the source samples to their average value, can't be used with integer and stencil formats. Depth: optional in VK ("supportedDepthResolveModes")
+    AVERAGE,    // resolves the source samples to their average value, can't be used with integer and stencil formats. Depth: optional in VK ("supportedDepthResolveModes"), unsupported in Metal
     MIN,        // resolves the source samples to their minimum value, requires "features.resolveOpMinMax"
     MAX         // resolves the source samples to their maximum value, requires "features.resolveOpMinMax"
 );
@@ -2211,6 +2217,7 @@ NriStruct(DeviceDesc) {
         bool shaderBytecodeDXIL;                                  // DXIL can be passed to "ShaderDesc::bytecode"
         bool shaderBytecodeSPIRV;                                 // SPIRV can be passed to "ShaderDesc::bytecode", WGPU expects Vulkan 1.2 environment
         bool shaderBytecodeWGSL;                                  // WGSL can be passed to "ShaderDesc::bytecode"
+        bool shaderBytecodeMETALLIB;                              // native Metal library can be passed to "ShaderDesc::bytecode"
 
         // Queries
         bool occlusion;                                           // see "QueryType::OCCLUSION"

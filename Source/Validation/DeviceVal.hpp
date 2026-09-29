@@ -166,6 +166,7 @@ bool DeviceVal::Create() {
     m_IsExtSupported.swapChain = deviceBaseImpl.FillFunctionTable(m_iSwapChainImpl) == Result::SUCCESS;
     m_IsExtSupported.wrapperD3D11 = deviceBaseImpl.FillFunctionTable(m_iWrapperD3D11Impl) == Result::SUCCESS;
     m_IsExtSupported.wrapperD3D12 = deviceBaseImpl.FillFunctionTable(m_iWrapperD3D12Impl) == Result::SUCCESS;
+    m_IsExtSupported.wrapperMetal = deviceBaseImpl.FillFunctionTable(m_iWrapperMetalImpl) == Result::SUCCESS;
     m_IsExtSupported.wrapperVK = deviceBaseImpl.FillFunctionTable(m_iWrapperVKImpl) == Result::SUCCESS;
 
     m_Desc = GetDesc();
@@ -183,13 +184,16 @@ void DeviceVal::Destruct() {
     Destroy(GetAllocationCallbacks(), this);
 }
 
-// There is no capability describing supported window systems, D3D backends accept only their native window entities
+// There is no capability describing supported window systems, D3D and Metal backends accept only their native window entities
 static inline bool IsWindowValid(GraphicsAPI graphicsAPI, const Window& window) {
     const bool hasWindows = window.windows.hwnd != nullptr;
     const bool hasMetal = window.metal.caMetalLayer != nullptr;
 
     if (graphicsAPI == GraphicsAPI::D3D11 || graphicsAPI == GraphicsAPI::D3D12)
         return hasWindows;
+
+    if (graphicsAPI == GraphicsAPI::METAL)
+        return hasMetal;
 
     const bool hasX11 = window.x11.dpy != nullptr && window.x11.window != 0;
     const bool hasWayland = window.wayland.display != nullptr && window.wayland.surface != nullptr;
@@ -198,7 +202,7 @@ static inline bool IsWindowValid(GraphicsAPI graphicsAPI, const Window& window) 
 }
 
 NRI_INLINE Result DeviceVal::CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*& swapChain) {
-    NRI_RETURN_ON_FAILURE(this, IsWindowValid(GetDesc().graphicsAPI, swapChainDesc.window), Result::INVALID_ARGUMENT, "'window' is invalid (D3D: 'windows.hwnd' is required)");
+    NRI_RETURN_ON_FAILURE(this, IsWindowValid(GetDesc().graphicsAPI, swapChainDesc.window), Result::INVALID_ARGUMENT, "'window' is invalid (D3D: 'windows.hwnd' is required, METAL: 'metal.caMetalLayer' is required)");
     NRI_RETURN_ON_FAILURE(this, swapChainDesc.queue != nullptr, Result::INVALID_ARGUMENT, "'queue' is NULL");
 
     bool isWindowValid = false;
@@ -570,6 +574,24 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
     return result;
 }
 
+// METAL: native metallib compute, mesh and task shaders don't embed their threadgroup size
+static inline bool IsThreadGroupSizeValid(GraphicsAPI graphicsAPI, const ShaderDesc& shaderDesc) {
+    const bool isMetallib = shaderDesc.size >= 4 && memcmp(shaderDesc.bytecode, "MTLB", 4) == 0;
+    const bool isThreadGroupStage = shaderDesc.stage == StageBits::COMPUTE_SHADER || shaderDesc.stage == StageBits::MESH_SHADER || shaderDesc.stage == StageBits::TASK_SHADER;
+
+    if (graphicsAPI != GraphicsAPI::METAL || !isMetallib || !isThreadGroupStage)
+        return true;
+
+    return shaderDesc.threadGroupSizeX != 0 && shaderDesc.threadGroupSizeY != 0 && shaderDesc.threadGroupSizeZ != 0;
+}
+
+// METAL: DXIL ("DXBC" container) requires Metal Shader Converter
+static inline bool IsShaderBytecodeSupported(const DeviceDesc& deviceDesc, const ShaderDesc& shaderDesc) {
+    const bool isDXIL = shaderDesc.size >= 4 && memcmp(shaderDesc.bytecode, "DXBC", 4) == 0;
+
+    return deviceDesc.graphicsAPI != GraphicsAPI::METAL || !isDXIL || deviceDesc.features.shaderBytecodeDXIL;
+}
+
 NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphicsPipelineDesc, Pipeline*& pipeline) {
     NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.pipelineLayout != nullptr, Result::INVALID_ARGUMENT, "'pipelineLayout' is NULL");
     NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.shaders != nullptr, Result::INVALID_ARGUMENT, "'shaders' is NULL");
@@ -612,6 +634,8 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
         NRI_RETURN_ON_FAILURE(this, shaderDesc->size != 0, Result::INVALID_ARGUMENT, "'shaders[%u].size' is 0", i);
         NRI_RETURN_ON_FAILURE(this, IsShaderStageValid(shaderDesc->stage, uniqueShaderStages, StageBits::GRAPHICS_SHADERS), Result::INVALID_ARGUMENT, "'shaders[%u].stage' must include only 1 graphics shader stage, unique for the entire pipeline", i);
         NRI_RETURN_ON_FAILURE(this, IsShaderStageSupported(GetDesc(), shaderDesc->stage), Result::INVALID_ARGUMENT, "'shaders[%u].stage' is not supported", i);
+        NRI_RETURN_ON_FAILURE(this, IsThreadGroupSizeValid(GetDesc().graphicsAPI, *shaderDesc), Result::INVALID_ARGUMENT, "'shaders[%u].threadGroupSizeX/Y/Z' must be non-zero for a native Metal (metallib) mesh or task shader", i);
+        NRI_RETURN_ON_FAILURE(this, IsShaderBytecodeSupported(GetDesc(), *shaderDesc), Result::UNSUPPORTED, "'shaders[%u]' is DXIL, but 'features.shaderBytecodeDXIL' is false", i);
     }
     NRI_RETURN_ON_FAILURE(this, hasEntryPoint, Result::INVALID_ARGUMENT, "a VERTEX or MESH shader is not provided");
 
@@ -688,6 +712,8 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const ComputePipelineDesc& computePi
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.shader.size != 0, Result::INVALID_ARGUMENT, "'shader.size' is 0");
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.shader.bytecode != nullptr, Result::INVALID_ARGUMENT, "'shader.bytecode' is NULL");
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.shader.stage == StageBits::COMPUTE_SHADER, Result::INVALID_ARGUMENT, "'shader.stage' must be 'StageBits::COMPUTE_SHADER'");
+    NRI_RETURN_ON_FAILURE(this, IsThreadGroupSizeValid(GetDesc().graphicsAPI, computePipelineDesc.shader), Result::INVALID_ARGUMENT, "'shader.threadGroupSizeX/Y/Z' must be non-zero for a native Metal (metallib) compute shader");
+    NRI_RETURN_ON_FAILURE(this, IsShaderBytecodeSupported(GetDesc(), computePipelineDesc.shader), Result::UNSUPPORTED, "'shader' is DXIL, but 'features.shaderBytecodeDXIL' is false");
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.robustness < Robustness::MAX_NUM, Result::INVALID_ARGUMENT, "'robustness' is invalid");
 
     if (computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS) {
@@ -1591,6 +1617,59 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
     accelerationStructure = nullptr;
     if (result == Result::SUCCESS)
         accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, true);
+
+    return result;
+}
+
+#endif
+
+#if NRI_ENABLE_METAL_SUPPORT
+
+NRI_INLINE Result DeviceVal::CreateBuffer(const BufferMetalDesc& bufferMetalDesc, Buffer*& buffer) {
+    NRI_RETURN_ON_FAILURE(this, bufferMetalDesc.mtlBuffer != nullptr, Result::INVALID_ARGUMENT, "'mtlBuffer' is NULL");
+    NRI_RETURN_ON_FAILURE(this, bufferMetalDesc.desc.size != 0, Result::INVALID_ARGUMENT, "'desc.size' is 0");
+
+    Buffer* bufferImpl = nullptr;
+    Result result = m_iWrapperMetalImpl.CreateBufferMetal(m_Impl, bufferMetalDesc, bufferImpl);
+
+    buffer = nullptr;
+
+    if (result == Result::SUCCESS)
+        buffer = (Buffer*)Allocate<BufferVal>(GetAllocationCallbacks(), *this, bufferImpl, true);
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVal::CreateTexture(const TextureMetalDesc& textureMetalDesc, Texture*& texture) {
+    const TextureDesc& textureDesc = textureMetalDesc.desc;
+    NRI_RETURN_ON_FAILURE(this, textureMetalDesc.mtlTexture != nullptr, Result::INVALID_ARGUMENT, "'mtlTexture' is NULL");
+    NRI_RETURN_ON_FAILURE(this, textureDesc.type < TextureType::MAX_NUM, Result::INVALID_ARGUMENT, "'desc.type' is invalid");
+    NRI_RETURN_ON_FAILURE(this, textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'desc.format' is invalid");
+    NRI_RETURN_ON_FAILURE(this, textureDesc.sharingMode < SharingMode::MAX_NUM, Result::INVALID_ARGUMENT, "'desc.sharingMode' is invalid");
+    NRI_RETURN_ON_FAILURE(this, textureDesc.width != 0, Result::INVALID_ARGUMENT, "'desc.width' is 0");
+    NRI_RETURN_ON_FAILURE(this, textureDesc.mipNum <= GetMaxMipNum(textureDesc.width, textureDesc.height, textureDesc.depth), Result::INVALID_ARGUMENT, "'desc.mipNum' is invalid");
+
+    Texture* textureImpl = nullptr;
+    Result result = m_iWrapperMetalImpl.CreateTextureMetal(m_Impl, textureMetalDesc, textureImpl);
+
+    texture = nullptr;
+
+    if (result == Result::SUCCESS)
+        texture = (Texture*)Allocate<TextureVal>(GetAllocationCallbacks(), *this, textureImpl, true);
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVal::CreateFence(const FenceMetalDesc& fenceMetalDesc, Fence*& fence) {
+    NRI_RETURN_ON_FAILURE(this, fenceMetalDesc.mtlSharedEvent != nullptr, Result::INVALID_ARGUMENT, "'mtlSharedEvent' is NULL");
+
+    Fence* fenceImpl = nullptr;
+    Result result = m_iWrapperMetalImpl.CreateFenceMetal(m_Impl, fenceMetalDesc, fenceImpl);
+
+    fence = nullptr;
+
+    if (result == Result::SUCCESS)
+        fence = (Fence*)Allocate<FenceVal>(GetAllocationCallbacks(), *this, fenceImpl);
 
     return result;
 }

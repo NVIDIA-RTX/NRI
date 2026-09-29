@@ -25,7 +25,7 @@
 #        include "NIS.cs.dxbc.h"
 #    endif
 
-#    if NRI_ENABLE_D3D12_SUPPORT
+#    if (NRI_ENABLE_D3D12_SUPPORT || (NRI_ENABLE_METAL_SUPPORT && NRI_ENABLE_METAL_SHADER_CONVERTER))
 #        include "NIS.cs.dxil.h"
 #    endif
 
@@ -509,8 +509,13 @@ bool nri::IsUpscalerSupported(const DeviceDesc& deviceDesc, UpscalerType type) {
     MaybeUnused(deviceDesc, type);
 
 #if NRI_ENABLE_NIS_SDK
-    if (type == UpscalerType::NIS)
+    if (type == UpscalerType::NIS) {
+#    if (NRI_ENABLE_METAL_SUPPORT && !NRI_ENABLE_METAL_SHADER_CONVERTER)
+        if (deviceDesc.graphicsAPI == GraphicsAPI::METAL)
+            return false;
+#    endif
         return true;
+    }
 #endif
 
 #if NRI_ENABLE_FFX_SDK
@@ -727,8 +732,8 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             if (deviceDesc.graphicsAPI == GraphicsAPI::D3D11)
                 shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_cs_dxbc, GetCountOf(g_NIS_cs_dxbc), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
 #    endif
-#    if NRI_ENABLE_D3D12_SUPPORT
-            if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12)
+#    if (NRI_ENABLE_D3D12_SUPPORT || (NRI_ENABLE_METAL_SUPPORT && NRI_ENABLE_METAL_SHADER_CONVERTER))
+            if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12 || deviceDesc.graphicsAPI == GraphicsAPI::METAL)
                 shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_cs_dxil, GetCountOf(g_NIS_cs_dxil), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
 #    endif
 #    if (NRI_ENABLE_VK_SUPPORT || NRI_ENABLE_WGPU_SUPPORT)

@@ -41,6 +41,7 @@ typedef uint32_t DXGI_FORMAT;
 #include "Extensions/NRIVideo.h"
 #include "Extensions/NRIWrapperD3D11.h"
 #include "Extensions/NRIWrapperD3D12.h"
+#include "Extensions/NRIWrapperMetal.h"
 #include "Extensions/NRIWrapperVK.h"
 
 #include "Lock.h"

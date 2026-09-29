@@ -237,6 +237,10 @@ const uint8_t g_Imgui_fs_spirv[] = {
 
 #    endif
 
+#    if NRI_ENABLE_METAL_SUPPORT
+#        include "Imgui.metallib.h"
+#    endif
+
 #    include "../Shaders/Imgui.fs.hlsl"
 #    include "../Shaders/Imgui.vs.hlsl"
 
@@ -793,6 +797,17 @@ void ImguiImpl::CmdDrawInternal(CommandBuffer& commandBuffer, const ImguiRenderD
 
             shaders[1].bytecode = g_Imgui_fs_spirv;
             shaders[1].size = sizeof(g_Imgui_fs_spirv);
+        }
+#    endif
+#    if NRI_ENABLE_METAL_SUPPORT
+        if (deviceDesc.graphicsAPI == GraphicsAPI::METAL) {
+            shaders[0].bytecode = g_Imgui_metallib;
+            shaders[0].size = sizeof(g_Imgui_metallib);
+            shaders[0].entryPointName = "ImguiVS";
+
+            shaders[1].bytecode = g_Imgui_metallib;
+            shaders[1].size = sizeof(g_Imgui_metallib);
+            shaders[1].entryPointName = "ImguiFS";
         }
 #    endif
 

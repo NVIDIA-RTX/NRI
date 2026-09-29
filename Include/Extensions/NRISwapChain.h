@@ -48,7 +48,7 @@ NriBits(SwapChainBits, uint8_t,
     NONE                = 0,
     VSYNC               = NriBit(0), // cap framerate to the monitor refresh rate
     WAITABLE            = NriBit(1), // unlock "WaitForPresent" reducing latency (requires "features.waitableSwapChain")
-    ALLOW_TEARING       = NriBit(2), // allow screen tearing if possible
+    ALLOW_TEARING       = NriBit(2), // allow screen tearing if possible (METAL: "displaySyncEnabled = NO", may show partially rendered frames)
     ALLOW_LOW_LATENCY   = NriBit(3)  // allow "NRILowLatency" functionality (requires "features.lowLatency")
 );
 

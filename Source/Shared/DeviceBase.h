@@ -127,6 +127,10 @@ struct DeviceBase : public DebugNameBaseVal {
         return Result::UNSUPPORTED;
     }
 
+    virtual Result FillFunctionTable(WrapperMetalInterface&) const {
+        return Result::UNSUPPORTED;
+    }
+
     virtual Result FillFunctionTable(WrapperVKInterface&) const {
         return Result::UNSUPPORTED;
     }

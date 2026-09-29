@@ -2447,6 +2447,44 @@ Result DeviceVal::FillFunctionTable(WrapperD3D12Interface& table) const {
 #pragma endregion
 
 //============================================================================================================================================================================================
+#pragma region[  WrapperMetal  ]
+
+#if NRI_ENABLE_METAL_SUPPORT
+
+static Result NRI_CALL CreateBufferMetal(Device& device, const BufferMetalDesc& desc, Buffer*& buffer) {
+    return ((DeviceVal&)device).CreateBuffer(desc, buffer);
+}
+
+static Result NRI_CALL CreateTextureMetal(Device& device, const TextureMetalDesc& desc, Texture*& texture) {
+    return ((DeviceVal&)device).CreateTexture(desc, texture);
+}
+
+static Result NRI_CALL CreateFenceMetal(Device& device, const FenceMetalDesc& desc, Fence*& fence) {
+    return ((DeviceVal&)device).CreateFence(desc, fence);
+}
+
+#endif
+
+Result DeviceVal::FillFunctionTable(WrapperMetalInterface& table) const {
+#if NRI_ENABLE_METAL_SUPPORT
+    if (!m_IsExtSupported.wrapperMetal)
+        return Result::UNSUPPORTED;
+
+    table.CreateBufferMetal = ::CreateBufferMetal;
+    table.CreateTextureMetal = ::CreateTextureMetal;
+    table.CreateFenceMetal = ::CreateFenceMetal;
+
+    return Result::SUCCESS;
+#else
+    MaybeUnused(table);
+
+    return Result::UNSUPPORTED;
+#endif
+}
+
+#pragma endregion
+
+//============================================================================================================================================================================================
 #pragma region[  WrapperVK  ]
 
 #if NRI_ENABLE_VK_SUPPORT

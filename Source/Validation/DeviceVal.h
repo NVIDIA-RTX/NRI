@@ -12,6 +12,7 @@ struct IsExtSupported {
     uint32_t swapChain      : 1;
     uint32_t wrapperD3D11   : 1;
     uint32_t wrapperD3D12   : 1;
+    uint32_t wrapperMetal   : 1;
     uint32_t wrapperVK      : 1;
     uint32_t descriptorHeap : 1;
 };
@@ -124,6 +125,7 @@ struct DeviceVal final : public DeviceBase {
     Result FillFunctionTable(UpscalerInterface& table) const override;
     Result FillFunctionTable(WrapperD3D11Interface& table) const override;
     Result FillFunctionTable(WrapperD3D12Interface& table) const override;
+    Result FillFunctionTable(WrapperMetalInterface& table) const override;
     Result FillFunctionTable(WrapperVKInterface& table) const override;
 
 #if NRI_ENABLE_IMGUI_EXTENSION
@@ -137,16 +139,19 @@ struct DeviceVal final : public DeviceBase {
     Result CreateFence(uint64_t initialValue, Fence*& fence);
     Result CreateFence(const FenceVKDesc& fenceVKDesc, Fence*& fence);
     Result CreateFence(const FenceD3D12Desc& fenceD3D12Desc, Fence*& fence);
+    Result CreateFence(const FenceMetalDesc& fenceMetalDesc, Fence*& fence);
     Result CreateMemory(const MemoryVKDesc& memoryVKDesc, Memory*& memory);
     Result CreateMemory(const MemoryD3D12Desc& memoryD3D12Desc, Memory*& memory);
     Result CreateBuffer(const BufferDesc& bufferDesc, Buffer*& buffer);
     Result CreateBuffer(const BufferVKDesc& bufferVKDesc, Buffer*& buffer);
     Result CreateBuffer(const BufferD3D11Desc& bufferD3D11Desc, Buffer*& buffer);
     Result CreateBuffer(const BufferD3D12Desc& bufferD3D12Desc, Buffer*& buffer);
+    Result CreateBuffer(const BufferMetalDesc& bufferMetalDesc, Buffer*& buffer);
     Result CreateTexture(const TextureDesc& textureDesc, Texture*& texture);
     Result CreateTexture(const TextureVKDesc& textureVKDesc, Texture*& texture);
     Result CreateTexture(const TextureD3D11Desc& textureD3D11Desc, Texture*& texture);
     Result CreateTexture(const TextureD3D12Desc& textureD3D12Desc, Texture*& texture);
+    Result CreateTexture(const TextureMetalDesc& textureMetalDesc, Texture*& texture);
     Result CreatePipeline(const GraphicsPipelineDesc& graphicsPipelineDesc, Pipeline*& pipeline);
     Result CreatePipeline(const ComputePipelineDesc& computePipelineDesc, Pipeline*& pipeline);
     Result CreatePipeline(const RayTracingPipelineDesc& rayTracingPipelineDesc, Pipeline*& pipeline);
@@ -228,6 +233,7 @@ private:
     SwapChainInterface m_iSwapChainImpl = {};
     WrapperD3D11Interface m_iWrapperD3D11Impl = {};
     WrapperD3D12Interface m_iWrapperD3D12Impl = {};
+    WrapperMetalInterface m_iWrapperMetalImpl = {};
     WrapperVKInterface m_iWrapperVKImpl = {};
 
     union {
