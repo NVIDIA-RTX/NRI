@@ -85,7 +85,7 @@ Notes:
 - *Xlib* and *Wayland* can be both enabled
 - Minimal supported client is Windows 8.1+
 - *Metal 4* backend requires macOS 26+ and Xcode 26+ (with `MetalToolchain` component), *metal-cpp* is fetched automatically, native `.metallib` shaders must follow `NRI.metal` ABI, *DXIL* support requires *Metal Shader Converter* 4.0.1, offline converted *DXIL* (*ShaderMake* `--metalFromDXIL` bundles) works everywhere (see `NRIWrapperMetal.h`)
-- static `NRI` provides *metal-cpp* private implementation (`NS/MTL/CA_PRIVATE_IMPLEMENTATION`), set `NRI_METAL_CPP_PRIVATE_IMPLEMENTATION = OFF` if the app compiles it itself
+- static `NRI` provides *metal-cpp* private implementation (`NS/MTL/CA/MTLFX_PRIVATE_IMPLEMENTATION`), set `NRI_METAL_CPP_PRIVATE_IMPLEMENTATION = OFF` if the app compiles it itself
 - *Metal Shader Converter* is required for building if `NRI_ENABLE_METAL_SHADER_CONVERTER` is on (`/usr/local/lib`)
 
 ## CMAKE OPTIONS

@@ -27,7 +27,7 @@ struct TransientResourceMetal {
 // "TRANSIENT_MAX_UNUSED_RESETS_METAL" resets gets released. "ResetCommandAllocator" (as "ID3D12CommandAllocator::Reset" and "vkResetCommandPool")
 // requires the GPU to be done with command buffers of the allocator
 struct CommandAllocatorMetal final : public DebugNameBase {
-    inline CommandAllocatorMetal(DeviceMetal& device) : m_Device(device), m_UploadChunks(device.GetStdAllocator()), m_TransientResources(device.GetStdAllocator()) {
+    inline CommandAllocatorMetal(DeviceMetal& device) : m_Device(device), m_UploadChunks(device.GetStdAllocator()), m_TransientResources(device.GetStdAllocator()), m_ReleasedObjects(device.GetStdAllocator()) {
     }
 
     ~CommandAllocatorMetal();
@@ -45,6 +45,7 @@ struct CommandAllocatorMetal final : public DebugNameBase {
     MTL::GPUAddress Upload(const void* data, uint64_t size, uint64_t alignment = 16);
     MTL::Texture* CreateTransientTexture(MTL::PixelFormat format, uint32_t width, uint32_t height);
     MTL::Buffer* CreateTransientBuffer(uint64_t size);
+    void ReleaseOnReset(NS::Object* object); // takes ownership
     void SetDebugName(const char* name) NRI_DEBUG_NAME_OVERRIDE;
 
 private:
@@ -55,6 +56,7 @@ private:
     MTL4::CommandAllocator* m_Allocator = nullptr;
     Vector<UploadChunkMetal> m_UploadChunks;
     Vector<TransientResourceMetal> m_TransientResources;
+    Vector<NS::Object*> m_ReleasedObjects;
     size_t m_UploadChunkIndex = 0; // the current chunk
     uint32_t m_ResetIndex = 0;
 };

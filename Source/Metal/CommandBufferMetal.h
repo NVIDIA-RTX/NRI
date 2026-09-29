@@ -33,6 +33,12 @@ struct CommandBufferMetal final : public DebugNameBase {
         return m_CommandBuffer;
     }
 
+    inline void ReleaseOnReset(NS::Object* object) {
+        m_Allocator->ReleaseOnReset(object);
+    }
+
+    static CommandBufferMetal& FromNativeObject(NS::Object* commandBuffer);
+    void BeginNativeEncoding();
     void RecordFailure(Result result);
     void CmdSetDescriptorPool(const DescriptorPool& descriptorPool);
     void CmdSetPipelineLayout(BindPoint bindPoint, const PipelineLayout& pipelineLayout);

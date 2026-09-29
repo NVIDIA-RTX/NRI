@@ -21,6 +21,10 @@ struct CommandBufferVal final : public ObjectVal {
         return GetCoreInterfaceImpl().GetCommandBufferNativeObject(GetImpl());
     }
 
+    inline bool CanDispatch() const {
+        return m_IsRecordingStarted && !m_IsRenderPass && (m_QueueType == QueueType::GRAPHICS || m_QueueType == QueueType::COMPUTE);
+    }
+
     inline void ResetAttachments() {
         m_RenderTargetNum = 0;
         for (auto& renderTarget : m_RenderTargets)

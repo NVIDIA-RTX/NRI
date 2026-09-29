@@ -1,6 +1,6 @@
 // © 2025 NVIDIA Corporation
 
-// Goal: providing easy-to-use access to modern upscalers: DLSS, FSR, XESS, NIS
+// Goal: providing easy-to-use access to modern upscalers: DLSS, FSR, XESS, NIS, MetalFX
 
 #pragma once
 
@@ -15,8 +15,14 @@ NriEnum(UpscalerType, uint8_t,  // Name                                     // N
     FSR,                        // AMD FidelityFX Super Resolution          FSR 4 where supported, FSR 3 otherwise
     XESS,                       // INTEL XeSS Super Resolution              upscaler, cross vendor
     DLSR,                       // NVIDIA Deep Learning Super Resolution    upscaler, NVIDIA only
-    DLRR                        // NVIDIA Deep Learning Ray Reconstruction  upscaler-denoiser, NVIDIA only
+    DLRR,                       // NVIDIA Deep Learning Ray Reconstruction  upscaler-denoiser, NVIDIA only
+    METALFX_SPATIAL,            // Apple MetalFX spatial scaler             upscaler, Metal only
+    METALFX_TEMPORAL,           // Apple MetalFX temporal scaler            upscaler, Metal only
+    METALFX_DENOISED            // Apple MetalFX temporal denoised scaler   upscaler-denoiser, Metal only
 );
+
+// MetalFX: created on the first dispatch (a hitch), resource sizes and formats must not change after it. "output" needs "COLOR_ATTACHMENT" usage.
+// No "DEPTH_LINEAR" and "MV_JITTERED" ("MV_UPSCALED" requires macOS 27). "METALFX_DENOISED": no "MV_UPSCALED", "sss" and "preTransparency", "specularMvOrHitT" is "hit distance".
 
 NriEnum(UpscalerMode, uint8_t,  // Scaling factor       // Min jitter phases (or just use unclamped Halton2D)
     NATIVE,                     // 1.0x                 8
@@ -71,14 +77,14 @@ NriStruct(UpscalerResource) {
 };
 
 // Guide buffers
-NriStruct(UpscalerGuides) {                             // For FSR, XESS, DLSR
+NriStruct(UpscalerGuides) {                             // For FSR, XESS, DLSR, METALFX_TEMPORAL
     Nri(UpscalerResource) mv;                           // .xy - surface motion
     Nri(UpscalerResource) depth;                        // .x - HW depth
     NriOptional Nri(UpscalerResource) exposure;         // .x - 1x1 exposure
     NriOptional Nri(UpscalerResource) reactive;         // .x - bias towards "input"
 };
 
-NriStruct(DenoiserGuides) {                             // For DLRR
+NriStruct(DenoiserGuides) {                             // For DLRR, METALFX_DENOISED
     Nri(UpscalerResource) mv;                           // .xy - surface motion
     Nri(UpscalerResource) depth;                        // .x - HW or linear depth
     Nri(UpscalerResource) normalRoughness;              // .xyz - world-space normal (not encoded), .w - linear roughness
@@ -119,21 +125,21 @@ NriStruct(DispatchUpscaleDesc) {
 
     // Guides (required "SHADER_RESOURCE" for resource states & descriptors)
     union {                                             // Choosen based on "UpscalerType" passed during creation
-        Nri(UpscalerGuides) upscaler;                   //      FSR, XESS, DLSR
-        Nri(DenoiserGuides) denoiser;                   //      DLRR (sRGB not supported)
+        Nri(UpscalerGuides) upscaler;                   //      FSR, XESS, DLSR, METALFX_TEMPORAL
+        Nri(DenoiserGuides) denoiser;                   //      DLRR, METALFX_DENOISED (sRGB not supported)
     } guides;
 
     // Settings
     union {                                             // Choosen based on "UpscalerType" passed during creation
         Nri(NISSettings) nis;                           //      NIS settings
         Nri(FSRSettings) fsr;                           //      FSR settings
-        Nri(DLRRSettings) dlrr;                         //      DLRR settings
+        Nri(DLRRSettings) dlrr;                         //      DLRR and METALFX_DENOISED settings
     } settings;
 
     Nri(Dim2_t) currentResolution;                      // current render resolution for inputs and guides, renderResolutionMin <= currentResolution <= renderResolution
     Nri(Float2_t) cameraJitter;                         // pointing towards the pixel center, in [-0.5; 0.5] range
     Nri(Float2_t) mvScale;                              // used to convert motion vectors to pixel space
-    NriOptional float preExposure;                      // multiplier already applied to the "input" color, 0 means 1 (FSR, XESS, DLSR, DLRR)
+    NriOptional float preExposure;                      // multiplier already applied to the "input" color, 0 means 1 (FSR, XESS, DLSR, DLRR, METALFX_TEMPORAL, METALFX_DENOISED)
     Nri(DispatchUpscaleBits) flags;
 };
 

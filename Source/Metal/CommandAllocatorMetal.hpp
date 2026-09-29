@@ -10,6 +10,9 @@ CommandAllocatorMetal::~CommandAllocatorMetal() {
     for (TransientResourceMetal& transient : m_TransientResources)
         Release(transient.resource);
 
+    for (NS::Object* object : m_ReleasedObjects)
+        object->release();
+
     if (m_Allocator)
         m_Allocator->release();
 }
@@ -52,6 +55,10 @@ void CommandAllocatorMetal::Reset() {
         }
     }
 
+    for (NS::Object* object : m_ReleasedObjects)
+        object->release();
+
+    m_ReleasedObjects.clear();
     m_UploadChunkIndex = 0;
 }
 
@@ -119,6 +126,10 @@ MTL::Buffer* CommandAllocatorMetal::CreateTransientBuffer(uint64_t size) {
     desc.size = size;
 
     return (MTL::Buffer*)AcquireTransientResource(desc);
+}
+
+void CommandAllocatorMetal::ReleaseOnReset(NS::Object* object) {
+    m_ReleasedObjects.push_back(object);
 }
 
 MTL::GPUAddress CommandAllocatorMetal::Upload(const void* data, uint64_t size, uint64_t alignment) {

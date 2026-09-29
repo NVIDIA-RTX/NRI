@@ -1,5 +1,8 @@
 // © 2026 NVIDIA Corporation
 
+// The native command buffer points to its owner (not retained), see "FromNativeObject"
+static char g_CommandBufferOwnerKey;
+
 CommandBufferMetal::~CommandBufferMetal() {
     for (Annotation& annotation : m_Annotations)
         annotation.name->release();
@@ -31,6 +34,9 @@ CommandBufferMetal::~CommandBufferMetal() {
 Result CommandBufferMetal::Create(const CommandAllocator& allocator) {
     m_Allocator = (CommandAllocatorMetal*)&allocator;
     m_CommandBuffer = m_Device.GetNativeObject()->newCommandBuffer();
+
+    if (m_CommandBuffer)
+        objc_setAssociatedObject((id)m_CommandBuffer, &g_CommandBufferOwnerKey, (id)this, OBJC_ASSOCIATION_ASSIGN);
 
     MTL4::ArgumentTableDescriptor* desc = MTL4::ArgumentTableDescriptor::alloc()->init();
     desc->setMaxBufferBindCount(31);
@@ -1795,6 +1801,28 @@ void CommandBufferMetal::CmdAnnotation(const char* name, uint32_t bgra) {
     }
 
     string->release();
+}
+
+CommandBufferMetal& CommandBufferMetal::FromNativeObject(NS::Object* commandBuffer) {
+    return *(CommandBufferMetal*)objc_getAssociatedObject((id)commandBuffer, &g_CommandBufferOwnerKey);
+}
+
+void CommandBufferMetal::BeginNativeEncoding() {
+    NRI_CHECK(!m_RenderPass, "Native encoding is impossible inside rendering");
+
+    // Pending barriers must precede native encoders
+    if (m_PendingBefore)
+        BeginCompute();
+
+    EndCompute();
+}
+
+void nri::BeginNativeEncodingMetal(NS::Object* commandBuffer) {
+    CommandBufferMetal::FromNativeObject(commandBuffer).BeginNativeEncoding();
+}
+
+void nri::ReleaseOnResetMetal(NS::Object* commandBuffer, NS::Object* object) {
+    CommandBufferMetal::FromNativeObject(commandBuffer).ReleaseOnReset(object);
 }
 
 void CommandBufferMetal::SetDebugName(const char* name) {
