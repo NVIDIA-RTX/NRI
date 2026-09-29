@@ -70,14 +70,6 @@ constexpr VkVideoCodecOperationFlagsKHR VIDEO_ENCODE_CODEC_OPERATION_MASK = 0xFF
 constexpr VkVideoEncodeFeedbackFlagsKHR VIDEO_ENCODE_REQUIRED_FEEDBACK_FLAGS = VK_VIDEO_ENCODE_FEEDBACK_BITSTREAM_BUFFER_OFFSET_BIT_KHR | VK_VIDEO_ENCODE_FEEDBACK_BITSTREAM_BYTES_WRITTEN_BIT_KHR;
 constexpr uint32_t VIDEO_ENCODE_FEEDBACK_QUERY_NUM = 64;
 
-static constexpr VkTimeDomainKHR GetCalibratedTimestampCPUTimeDomain() {
-#if defined(_WIN32)
-    return VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR; // matches D3D12
-#else
-    return VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR;
-#endif
-}
-
 struct MemoryTypeInfo {
     MemoryTypeIndex index;
     MemoryLocation location;

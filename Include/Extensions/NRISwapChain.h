@@ -135,7 +135,7 @@ NriStruct(SwapChainInterface) {
     // Returns "FAILURE" if swap chain's window is outside of all monitors
     Nri(Result)             (NRI_CALL *GetDisplayDesc)          (NriRef(SwapChain) swapChain, NriOut NriRef(DisplayDesc) displayDesc);
 
-    // VK only: may return "OUT_OF_DATE", fences must be created with "SWAPCHAIN_SEMAPHORE" initial value
+    // "acquireSemaphore" must be created with "SWAPCHAIN_SEMAPHORE" initial value (ignored in D3D). VK only: may return "OUT_OF_DATE"
     Nri(Result)             (NRI_CALL *AcquireNextTexture)      (NriRef(SwapChain) swapChain, NriRef(Fence) acquireSemaphore, NriOut NonNriRef(uint32_t) textureIndex);
 
     // "presentId" must identify a previously queued presentation. Call once immediately before input sampling
@@ -143,6 +143,7 @@ NriStruct(SwapChainInterface) {
 
     // A non-zero "presentId" associates the presentation with a tracked frame. Use 0 for an untracked presentation.
     // Non-zero "presentId" values must strictly increase across frames for each swap chain, i.e. gaps are allowed
+    // "releaseSemaphore" must be created with "SWAPCHAIN_SEMAPHORE" initial value (ignored in D3D)
     Nri(Result)             (NRI_CALL *QueuePresent)            (NriRef(SwapChain) swapChain, NriRef(Fence) releaseSemaphore, uint64_t presentId);
 };
 

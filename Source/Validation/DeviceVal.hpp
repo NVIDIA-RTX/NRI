@@ -183,7 +183,22 @@ void DeviceVal::Destruct() {
     Destroy(GetAllocationCallbacks(), this);
 }
 
+// There is no capability describing supported window systems, D3D backends accept only their native window entities
+static inline bool IsWindowValid(GraphicsAPI graphicsAPI, const Window& window) {
+    const bool hasWindows = window.windows.hwnd != nullptr;
+    const bool hasMetal = window.metal.caMetalLayer != nullptr;
+
+    if (graphicsAPI == GraphicsAPI::D3D11 || graphicsAPI == GraphicsAPI::D3D12)
+        return hasWindows;
+
+    const bool hasX11 = window.x11.dpy != nullptr && window.x11.window != 0;
+    const bool hasWayland = window.wayland.display != nullptr && window.wayland.surface != nullptr;
+
+    return hasWindows || hasX11 || hasWayland || hasMetal;
+}
+
 NRI_INLINE Result DeviceVal::CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*& swapChain) {
+    NRI_RETURN_ON_FAILURE(this, IsWindowValid(GetDesc().graphicsAPI, swapChainDesc.window), Result::INVALID_ARGUMENT, "'window' is invalid (D3D: 'windows.hwnd' is required)");
     NRI_RETURN_ON_FAILURE(this, swapChainDesc.queue != nullptr, Result::INVALID_ARGUMENT, "'queue' is NULL");
 
     bool isWindowValid = false;
@@ -460,6 +475,7 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
 
             NRI_RETURN_ON_FAILURE(this, range.descriptorNum > 0, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].descriptorNum' is 0", i, j);
             NRI_RETURN_ON_FAILURE(this, range.descriptorType < DescriptorType::MAX_NUM, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].descriptorType' is invalid", i, j);
+            NRI_RETURN_ON_FAILURE(this, range.descriptorType != DescriptorType::MUTABLE || deviceDesc.features.mutableDescriptorType, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].descriptorType' is 'MUTABLE', but 'features.mutableDescriptorType' is false", i, j);
             NRI_RETURN_ON_FAILURE(this, !(range.flags & DescriptorRangeBits::PARTIALLY_BOUND) || deviceDesc.tiers.resourceBinding != 0, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].flags' has 'PARTIALLY_BOUND', but 'tiers.resourceBinding' is 0", i, j);
             NRI_RETURN_ON_FAILURE(this, !(range.flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY) || deviceDesc.tiers.bindless != 0, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].flags' has 'VARIABLE_SIZED_ARRAY', but 'tiers.bindless' is 0", i, j);
             NRI_RETURN_ON_FAILURE(this, !(range.flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY) || deviceDesc.tiers.resourceBinding >= 2, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].flags' has 'VARIABLE_SIZED_ARRAY', but 'tiers.resourceBinding' is less than 2", i, j);
@@ -571,6 +587,7 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
     if (graphicsPipelineDesc.vertexInput) {
         NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.vertexInput->attributeNum == 0 || graphicsPipelineDesc.vertexInput->attributes != nullptr, Result::INVALID_ARGUMENT, "'vertexInput->attributes' is NULL");
         NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.vertexInput->streamNum == 0 || graphicsPipelineDesc.vertexInput->streams != nullptr, Result::INVALID_ARGUMENT, "'vertexInput->streams' is NULL");
+        NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.vertexInput->attributeNum <= GetDesc().shaderStage.vertex.attributeMaxNum, Result::INVALID_ARGUMENT, "'vertexInput->attributeNum' exceeds 'shaderStage.vertex.attributeMaxNum'");
 
         for (uint32_t i = 0; i < graphicsPipelineDesc.vertexInput->attributeNum; i++)
             NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.vertexInput->attributes[i].format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'vertexInput->attributes[%u].format' is invalid", i);
@@ -727,7 +744,7 @@ NRI_INLINE Result DeviceVal::CreateQueryPool(const QueryPoolDesc& queryPoolDesc,
     } else if (queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_SIZE || queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_COMPACTED_SIZE) {
         NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing != 0, Result::INVALID_ARGUMENT, "'tiers.rayTracing = 0'");
     } else if (queryPoolDesc.queryType == QueryType::MICROMAP_COMPACTED_SIZE) {
-        NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing, Result::INVALID_ARGUMENT, "'tiers.rayTracing < 3'");
+        NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'tiers.rayTracing < 3'");
     }
 
     QueryPool* queryPoolImpl = nullptr;
@@ -746,7 +763,7 @@ NRI_INLINE Result DeviceVal::CreateFence(uint64_t initialValue, Fence*& fence) {
 
     fence = nullptr;
     if (result == Result::SUCCESS)
-        fence = (Fence*)Allocate<FenceVal>(GetAllocationCallbacks(), *this, fenceImpl);
+        fence = (Fence*)Allocate<FenceVal>(GetAllocationCallbacks(), *this, fenceImpl, initialValue == SWAPCHAIN_SEMAPHORE);
 
     return result;
 }
@@ -847,6 +864,7 @@ NRI_INLINE Result DeviceVal::CreateCommittedTexture(MemoryLocation memoryLocatio
 
 NRI_INLINE Result DeviceVal::CreateCommittedMicromap(MemoryLocation memoryLocation, float priority, const MicromapDesc& micromapDesc, Micromap*& micromap) {
     NRI_RETURN_ON_FAILURE(this, priority >= -1.0f && priority <= 1.0f, Result::INVALID_ARGUMENT, "'priority' outside of [-1; 1] range");
+    NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'tiers.rayTracing < 3'");
     NRI_RETURN_ON_FAILURE(this, micromapDesc.usageNum != 0, Result::INVALID_ARGUMENT, "'usageNum' is 0");
     NRI_RETURN_ON_FAILURE(this, micromapDesc.usages != nullptr, Result::INVALID_ARGUMENT, "'usages' is NULL");
 
@@ -870,6 +888,9 @@ NRI_INLINE Result DeviceVal::CreateCommittedAccelerationStructure(MemoryLocation
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL && accelerationStructureDesc.geometryOrInstanceNum != 0)
         NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.geometries != nullptr, Result::INVALID_ARGUMENT, "'geometries' is NULL");
 
+    if (accelerationStructureDesc.flags & (AccelerationStructureBits::ALLOW_MICROMAP_UPDATE | AccelerationStructureBits::ALLOW_DISABLE_MICROMAPS))
+        NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'ALLOW_MICROMAP_UPDATE' and 'ALLOW_DISABLE_MICROMAPS' require 'tiers.rayTracing >= 3'");
+
     // Convert desc
     uint32_t geometryNum = 0;
     uint32_t micromapNum = 0;
@@ -883,8 +904,11 @@ NRI_INLINE Result DeviceVal::CreateCommittedAccelerationStructure(MemoryLocation
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES) {
                 NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.vertexFormat < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.vertexFormat' is invalid", i);
                 NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.indexType < IndexType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.indexType' is invalid", i);
-                if (geometryDesc.triangles.micromap)
+
+                if (geometryDesc.triangles.micromap) {
+                    NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.micromap' requires 'tiers.rayTracing >= 3'", i);
                     NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.micromap->indexType < IndexType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.micromap->indexType' is invalid", i);
+                }
             }
 
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
@@ -910,7 +934,7 @@ NRI_INLINE Result DeviceVal::CreateCommittedAccelerationStructure(MemoryLocation
 
     accelerationStructure = nullptr;
     if (result == Result::SUCCESS)
-        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, true);
+        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, true, &accelerationStructureDesc);
 
     return result;
 }
@@ -1010,6 +1034,7 @@ NRI_INLINE Result DeviceVal::CreatePlacedTexture(Memory* memory, uint64_t offset
 }
 
 NRI_INLINE Result DeviceVal::CreatePlacedMicromap(Memory* memory, uint64_t offset, const MicromapDesc& micromapDesc, Micromap*& micromap) {
+    NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'tiers.rayTracing < 3'");
     NRI_RETURN_ON_FAILURE(this, micromapDesc.usageNum != 0, Result::INVALID_ARGUMENT, "'usageNum' is 0");
     NRI_RETURN_ON_FAILURE(this, micromapDesc.usages != nullptr, Result::INVALID_ARGUMENT, "'usages' is NULL");
 
@@ -1058,6 +1083,9 @@ NRI_INLINE Result DeviceVal::CreatePlacedAccelerationStructure(Memory* memory, u
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL && accelerationStructureDesc.geometryOrInstanceNum != 0)
         NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.geometries != nullptr, Result::INVALID_ARGUMENT, "'geometries' is NULL");
 
+    if (accelerationStructureDesc.flags & (AccelerationStructureBits::ALLOW_MICROMAP_UPDATE | AccelerationStructureBits::ALLOW_DISABLE_MICROMAPS))
+        NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'ALLOW_MICROMAP_UPDATE' and 'ALLOW_DISABLE_MICROMAPS' require 'tiers.rayTracing >= 3'");
+
     // Convert desc
     uint32_t geometryNum = 0;
     uint32_t micromapNum = 0;
@@ -1071,8 +1099,11 @@ NRI_INLINE Result DeviceVal::CreatePlacedAccelerationStructure(Memory* memory, u
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES) {
                 NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.vertexFormat < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.vertexFormat' is invalid", i);
                 NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.indexType < IndexType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.indexType' is invalid", i);
-                if (geometryDesc.triangles.micromap)
+
+                if (geometryDesc.triangles.micromap) {
+                    NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.micromap' requires 'tiers.rayTracing >= 3'", i);
                     NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.micromap->indexType < IndexType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.micromap->indexType' is invalid", i);
+                }
             }
 
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
@@ -1117,7 +1148,7 @@ NRI_INLINE Result DeviceVal::CreatePlacedAccelerationStructure(Memory* memory, u
 
     accelerationStructure = nullptr;
     if (result == Result::SUCCESS)
-        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, !memory);
+        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, !memory, &accelerationStructureDesc);
 
     // Update
     if (accelerationStructure && memory) {
@@ -1604,6 +1635,7 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const RayTracingPipelineDesc& rayTra
 }
 
 NRI_INLINE Result DeviceVal::CreateMicromap(const MicromapDesc& micromapDesc, Micromap*& micromap) {
+    NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'tiers.rayTracing < 3'");
     NRI_RETURN_ON_FAILURE(this, micromapDesc.usageNum != 0, Result::INVALID_ARGUMENT, "'usageNum' is 0");
     NRI_RETURN_ON_FAILURE(this, micromapDesc.usages != nullptr, Result::INVALID_ARGUMENT, "'usages' is NULL");
 
@@ -1626,6 +1658,9 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL && accelerationStructureDesc.geometryOrInstanceNum != 0)
         NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.geometries != nullptr, Result::INVALID_ARGUMENT, "'geometries' is NULL");
 
+    if (accelerationStructureDesc.flags & (AccelerationStructureBits::ALLOW_MICROMAP_UPDATE | AccelerationStructureBits::ALLOW_DISABLE_MICROMAPS))
+        NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'ALLOW_MICROMAP_UPDATE' and 'ALLOW_DISABLE_MICROMAPS' require 'tiers.rayTracing >= 3'");
+
     // Convert desc
     uint32_t geometryNum = 0;
     uint32_t micromapNum = 0;
@@ -1639,8 +1674,11 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES) {
                 NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.vertexFormat < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.vertexFormat' is invalid", i);
                 NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.indexType < IndexType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.indexType' is invalid", i);
-                if (geometryDesc.triangles.micromap)
+
+                if (geometryDesc.triangles.micromap) {
+                    NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.micromap' requires 'tiers.rayTracing >= 3'", i);
                     NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.micromap->indexType < IndexType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.micromap->indexType' is invalid", i);
+                }
             }
 
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
@@ -1666,7 +1704,7 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
 
     accelerationStructure = nullptr;
     if (result == Result::SUCCESS)
-        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, false);
+        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, false, &accelerationStructureDesc);
 
     return result;
 }

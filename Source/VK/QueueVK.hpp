@@ -65,7 +65,7 @@ NRI_INLINE void QueueVK::GetCalibratedTimestamps(uint64_t& timestampGPU, uint64_
 
         // CPU
         timestampInfos[1].sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR;
-        timestampInfos[1].timeDomain = GetCalibratedTimestampCPUTimeDomain();
+        timestampInfos[1].timeDomain = m_Device.GetCalibratedTimestampCPUTimeDomain();
     }
 
     uint64_t timestamps[2] = {};

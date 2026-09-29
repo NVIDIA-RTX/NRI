@@ -19,6 +19,9 @@ NRI_INLINE Texture* const* SwapChainVal::GetTextures(uint32_t& textureNum) {
 }
 
 NRI_INLINE Result SwapChainVal::AcquireNextTexture(Fence& acquireSemaphore, uint32_t& textureIndex) {
+    const FenceVal& acquireSemaphoreVal = (FenceVal&)acquireSemaphore;
+    NRI_RETURN_ON_FAILURE(&m_Device, acquireSemaphoreVal.IsSwapChainSemaphore(), Result::INVALID_ARGUMENT, "'acquireSemaphore' must be created with 'SWAPCHAIN_SEMAPHORE' initial value");
+
     Fence* textureAcquiredSemaphoreImpl = NRI_GET_IMPL(Fence, &acquireSemaphore);
 
     return GetSwapChainInterfaceImpl().AcquireNextTexture(*GetImpl(), *textureAcquiredSemaphoreImpl, textureIndex);
@@ -35,6 +38,9 @@ NRI_INLINE Result SwapChainVal::WaitForPresent(uint64_t presentId) {
 }
 
 NRI_INLINE Result SwapChainVal::Present(Fence& releaseSemaphore, uint64_t presentId) {
+    const FenceVal& releaseSemaphoreVal = (FenceVal&)releaseSemaphore;
+    NRI_RETURN_ON_FAILURE(&m_Device, releaseSemaphoreVal.IsSwapChainSemaphore(), Result::INVALID_ARGUMENT, "'releaseSemaphore' must be created with 'SWAPCHAIN_SEMAPHORE' initial value");
+
     Fence* renderingFinishedSemaphoreImpl = NRI_GET_IMPL(Fence, &releaseSemaphore);
 
     return GetSwapChainInterfaceImpl().QueuePresent(*GetImpl(), *renderingFinishedSemaphoreImpl, presentId);

@@ -971,6 +971,10 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, ZeroInitializeDeviceMemory, ZERO_INITIALIZE_DEVICE_MEMORY);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, MutableDescriptorType, MUTABLE_DESCRIPTOR_TYPE);
 
+#ifdef __APPLE__
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, PortabilitySubset, PORTABILITY_SUBSET);
+#endif
+
     VkPhysicalDeviceFaultFeaturesEXT DeviceFaultFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_EXT};
     if (desc.deviceLostInfoLevel != DeviceLostInfoLevel::NONE && IsExtensionSupported(VK_EXT_DEVICE_FAULT_EXTENSION_NAME, desiredDeviceExts))
         PNEXTCHAIN_APPEND_STRUCT(DeviceFaultFeatures);
@@ -1036,6 +1040,11 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.videoMaintenance2 = VideoMaintenance2Features.videoMaintenance2;
     m_IsSupported.videoEncodeAV1 = VideoEncodeAV1Features.videoEncodeAV1;
     m_IsSupported.descriptorHeap = DescriptorHeapFeatures.descriptorHeap && ShaderUntypedPointersFeatures.shaderUntypedPointers && features12.bufferDeviceAddress;
+#ifdef __APPLE__
+    m_IsSupported.imageView2DOn3D = !IsExtensionSupported(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME, desiredDeviceExts) || PortabilitySubsetFeatures.imageView2DOn3DImage;
+#else
+    m_IsSupported.imageView2DOn3D = true;
+#endif
 
     m_IsMemoryZeroInitializationEnabled = desc.enableMemoryZeroInitialization && ZeroInitializeDeviceMemoryFeatures.zeroInitializeDeviceMemory;
 
@@ -1083,6 +1092,32 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         Result res = ResolveDispatchTable(desiredDeviceExts);
         if (res != Result::SUCCESS)
             return res;
+    }
+
+    // Calibrated timestamps: a CPU time domain is selected from the supported ones
+    if (m_VK.GetPhysicalDeviceCalibrateableTimeDomainsEXT) {
+        uint32_t timeDomainNum = 0;
+        m_VK.GetPhysicalDeviceCalibrateableTimeDomainsEXT(m_PhysicalDevice, &timeDomainNum, nullptr);
+
+        Scratch<VkTimeDomainKHR> timeDomains = NRI_ALLOCATE_SCRATCH(*this, VkTimeDomainKHR, timeDomainNum);
+        m_VK.GetPhysicalDeviceCalibrateableTimeDomainsEXT(m_PhysicalDevice, &timeDomainNum, timeDomains);
+
+#if defined(_WIN32)
+        constexpr std::array<VkTimeDomainKHR, 1> preferredTimeDomainsCPU = {VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR}; // matches D3D12
+#else
+        constexpr std::array<VkTimeDomainKHR, 2> preferredTimeDomainsCPU = {VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR, VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_KHR};
+#endif
+
+        bool isDeviceTimeDomainSupported = false;
+        for (uint32_t i = 0; i < timeDomainNum; i++)
+            isDeviceTimeDomainSupported |= timeDomains[i] == VK_TIME_DOMAIN_DEVICE_KHR;
+
+        for (VkTimeDomainKHR preferredTimeDomainCPU : preferredTimeDomainsCPU) {
+            for (uint32_t i = 0; i < timeDomainNum && isDeviceTimeDomainSupported && m_CalibratedTimestampCPUTimeDomain == VK_TIME_DOMAIN_DEVICE_KHR; i++) {
+                if (timeDomains[i] == preferredTimeDomainCPU)
+                    m_CalibratedTimestampCPUTimeDomain = preferredTimeDomainCPU;
+            }
+        }
     }
 
     // Create queues
@@ -1537,7 +1572,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.occlusion = true;
         m_Desc.features.timestamp = isTimestampSupported[(size_t)QueueType::GRAPHICS] || isTimestampSupported[(size_t)QueueType::COMPUTE];
         m_Desc.features.timestampCopyQueue = isTimestampSupported[(size_t)QueueType::COPY];
-        m_Desc.features.calibratedTimestamps = IsExtensionSupported(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, desiredDeviceExts);
+        m_Desc.features.calibratedTimestamps = m_CalibratedTimestampCPUTimeDomain != VK_TIME_DOMAIN_DEVICE_KHR;
         m_Desc.features.additionalShadingRates = FragmentShadingRateProps.maxFragmentSize.height > 2 || FragmentShadingRateProps.maxFragmentSize.width > 2;
         m_Desc.features.sumShadingRateCombiner = m_Desc.tiers.shadingRate != 0;
         m_Desc.features.rectColorClears = true;
@@ -1672,7 +1707,7 @@ void DeviceVK::FillCreateInfo(const TextureDesc& textureDesc, VkImageCreateInfo&
         flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
     if (textureDesc.layerNum >= 6 && textureDesc.width == textureDesc.height)
         flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
-    if (textureDesc.type == TextureType::TEXTURE_3D)
+    if (textureDesc.type == TextureType::TEXTURE_3D && m_IsSupported.imageView2DOn3D)
         flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT; // allow 3D demotion to a set of layers // TODO: hook up "VK_EXT_image_2d_view_of_3d"?
     if (m_Desc.tiers.sampleLocations && formatProps.isDepth)
         flags |= VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT;
@@ -2357,6 +2392,7 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     }
 
     if (IsExtensionSupported(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, desiredDeviceExts)) {
+        GET_INSTANCE_FUNC(GetPhysicalDeviceCalibrateableTimeDomainsEXT);
         GET_DEVICE_FUNC(GetCalibratedTimestampsEXT);
     }
 

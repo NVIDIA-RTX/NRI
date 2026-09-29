@@ -1643,7 +1643,7 @@ NriEnum(StoreOp, uint8_t,
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_resolve_mode
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkResolveModeFlagBits.html
 NriEnum(ResolveOp, uint8_t,
-    AVERAGE,    // resolves the source samples to their average value
+    AVERAGE,    // resolves the source samples to their average value, can't be used with integer and stencil formats. Depth: optional in VK ("supportedDepthResolveModes")
     MIN,        // resolves the source samples to their minimum value, requires "features.resolveOpMinMax"
     MAX         // resolves the source samples to their maximum value, requires "features.resolveOpMinMax"
 );
@@ -1665,7 +1665,7 @@ NriStruct(RenderingDesc) {
     const NriPtr(AttachmentDesc) colors;
     uint32_t colorNum;
     Nri(AttachmentDesc) depth;                          // may be treated as "depth-stencil"
-    Nri(AttachmentDesc) stencil;                        // (optional) separation is needed for multisample resolve
+    Nri(AttachmentDesc) stencil;                        // (optional) separation is needed for multisample resolve, otherwise "depth.resolveOp" applies to the stencil plane
     NriOptional const NriPtr(Descriptor) shadingRate;   // requires "tiers.shadingRate >= 2"
     NriOptional uint32_t viewMask;                      // if non-0, requires "viewMaxNum > 1"
 };

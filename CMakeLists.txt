@@ -462,7 +462,7 @@ target_compile_options(NRI_Shared
     PUBLIC
         # Options for Clang/GCC compilers
         # No "nullability-completeness" caused by VMA
-        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
+        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
             $<$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:
                 -Wextra
                 -Werror

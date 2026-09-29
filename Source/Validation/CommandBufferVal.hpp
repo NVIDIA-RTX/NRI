@@ -106,6 +106,13 @@ static inline bool IsDrawParametersEmulationEnabled(const PipelineLayoutDesc& pi
     return (pipelineLayoutDesc.flags & PipelineLayoutBits::ENABLE_DRAW_PARAMETERS_EMULATION) != 0 && (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) != 0;
 }
 
+// Integer and stencil samples can't be averaged in any API
+static inline bool IsAverageResolvable(Format format) {
+    const FormatProps& formatProps = GetFormatProps(format);
+
+    return !formatProps.isInteger && !formatProps.isStencil;
+}
+
 static bool ValidateBufferBarrierDesc(const DeviceVal& device, uint32_t i, const BufferBarrierDesc& bufferBarrier) {
     NRI_RETURN_ON_FAILURE(&device, bufferBarrier.buffer, false, "'barrierDesc.buffers[%u].buffer' is NULL", i);
 
@@ -617,6 +624,9 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
             NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetFormatSupport(resolveDstVal.GetFormat()) & FormatSupportBits::MULTISAMPLE_RESOLVE, ReturnVoid(), "'colors[%u].resolveDst' format does not support 'FormatSupportBits::MULTISAMPLE_RESOLVE'", i);
             if (!deviceDesc.features.resolveOpMinMax)
                 NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.colors[i].resolveOp == ResolveOp::AVERAGE, ReturnVoid(), "'features.resolveOpMinMax' is false");
+
+            if (renderingDesc.colors[i].resolveOp == ResolveOp::AVERAGE)
+                NRI_RETURN_ON_FAILURE(&m_Device, IsAverageResolvable(colorVal.GetFormat()), ReturnVoid(), "'colors[%u].resolveOp': 'ResolveOp::AVERAGE' can't be used with integer formats", i);
         }
 
         colors[i] = renderingDesc.colors[i];
@@ -646,6 +656,12 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
         NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetFormatSupport(resolveDstVal.GetFormat()) & FormatSupportBits::MULTISAMPLE_RESOLVE, ReturnVoid(), "'depth.resolveDst' format does not support 'FormatSupportBits::MULTISAMPLE_RESOLVE'");
         if (!deviceDesc.features.resolveOpMinMax)
             NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.depth.resolveOp == ResolveOp::AVERAGE, ReturnVoid(), "'features.resolveOpMinMax' is false");
+
+        // Without a separate "stencil" attachment the stencil plane is resolved with "depth.resolveOp"
+        if (renderingDesc.depth.resolveOp == ResolveOp::AVERAGE && !renderingDesc.stencil.descriptor) {
+            const DescriptorVal& depthVal = *(DescriptorVal*)renderingDesc.depth.descriptor;
+            NRI_RETURN_ON_FAILURE(&m_Device, !GetFormatProps(depthVal.GetFormat()).isStencil, ReturnVoid(), "'depth.resolveOp': 'ResolveOp::AVERAGE' can't be used with a depth-stencil format without a separate 'stencil' attachment");
+        }
     }
     if (renderingDesc.stencil.descriptor) {
         const DescriptorVal& stencilVal = *(DescriptorVal*)renderingDesc.stencil.descriptor;
@@ -656,8 +672,8 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
         NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.stencil.descriptor, ReturnVoid(), "'stencil.resolveDst' is not NULL, but 'stencil.descriptor' is NULL");
         NRI_RETURN_ON_FAILURE(&m_Device, resolveDstVal.IsDepthStencilAttachment(), ReturnVoid(), "'stencil.resolveDst' is not a 'DEPTH_STENCIL_ATTACHMENT' descriptor");
         NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetFormatSupport(resolveDstVal.GetFormat()) & FormatSupportBits::MULTISAMPLE_RESOLVE, ReturnVoid(), "'stencil.resolveDst' format does not support 'FormatSupportBits::MULTISAMPLE_RESOLVE'");
-        if (!deviceDesc.features.resolveOpMinMax)
-            NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.stencil.resolveOp == ResolveOp::AVERAGE, ReturnVoid(), "'features.resolveOpMinMax' is false");
+        NRI_RETURN_ON_FAILURE(&m_Device, deviceDesc.features.resolveOpMinMax, ReturnVoid(), "'stencil.resolveDst' requires 'features.resolveOpMinMax' (stencil can only be resolved with 'MIN' or 'MAX')");
+        NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.stencil.resolveOp != ResolveOp::AVERAGE, ReturnVoid(), "'stencil.resolveOp': 'ResolveOp::AVERAGE' can't be used with stencil");
     }
 
     Descriptor* depthStencil = renderingDesc.depth.descriptor ? renderingDesc.depth.descriptor : renderingDesc.stencil.descriptor;
@@ -902,6 +918,11 @@ NRI_INLINE void CommandBufferVal::ResolveTexture(Texture& dstTexture, const Text
     const DeviceDesc& deviceDesc = m_Device.GetDesc();
     const TextureDesc& dstDesc = ((TextureVal&)dstTexture).GetDesc();
     const TextureDesc& srcDesc = ((TextureVal&)srcTexture).GetDesc();
+    NRI_RETURN_ON_FAILURE(&m_Device, srcDesc.sampleNum > 1 && dstDesc.sampleNum == 1, ReturnVoid(), "'srcTexture' must be multisampled and 'dstTexture' must be single-sampled");
+
+    if (!dstRegion && !srcRegion)
+        NRI_RETURN_ON_FAILURE(&m_Device, srcDesc.layerNum == dstDesc.layerNum, ReturnVoid(), "'layerNum' mismatch for a whole-texture resolve");
+
     NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetFormatSupport(dstDesc.format) & FormatSupportBits::MULTISAMPLE_RESOLVE, ReturnVoid(), "'dstTexture' format does not support 'FormatSupportBits::MULTISAMPLE_RESOLVE'");
     NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetFormatSupport(srcDesc.format) & FormatSupportBits::MULTISAMPLE_RESOLVE, ReturnVoid(), "'srcTexture' format does not support 'FormatSupportBits::MULTISAMPLE_RESOLVE'");
 
@@ -909,6 +930,9 @@ NRI_INLINE void CommandBufferVal::ResolveTexture(Texture& dstTexture, const Text
         NRI_RETURN_ON_FAILURE(&m_Device, !dstRegion && !srcRegion, ReturnVoid(), "region(s) are specified, but 'features.regionResolve' is false");
     if (!deviceDesc.features.resolveOpMinMax)
         NRI_RETURN_ON_FAILURE(&m_Device, resolveOp == ResolveOp::AVERAGE, ReturnVoid(), "'features.resolveOpMinMax' is false");
+
+    if (resolveOp == ResolveOp::AVERAGE)
+        NRI_RETURN_ON_FAILURE(&m_Device, IsAverageResolvable(srcDesc.format), ReturnVoid(), "'ResolveOp::AVERAGE' can't be used with integer or stencil formats");
 
     Texture* dstTextureImpl = NRI_GET_IMPL(Texture, &dstTexture);
     Texture* srcTextureImpl = NRI_GET_IMPL(Texture, &srcTexture);
@@ -972,6 +996,17 @@ NRI_INLINE void CommandBufferVal::DispatchIndirect(const Buffer& buffer, uint64_
 
 NRI_INLINE void CommandBufferVal::Barrier(const BarrierDesc& barrierDesc) {
     NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
+
+    // Inside rendering only "Layout::INPUT_ATTACHMENT" access transitions are allowed
+    if (m_IsRenderPass) {
+        NRI_RETURN_ON_FAILURE(&m_Device, barrierDesc.globalNum == 0 && barrierDesc.bufferNum == 0, ReturnVoid(), "only texture barriers are allowed inside 'CmdBeginRendering/CmdEndRendering'");
+
+        for (uint32_t i = 0; i < barrierDesc.textureNum; i++) {
+            const TextureBarrierDesc& textureBarrier = barrierDesc.textures[i];
+            NRI_RETURN_ON_FAILURE(&m_Device, textureBarrier.before.layout == Layout::INPUT_ATTACHMENT && textureBarrier.after.layout == Layout::INPUT_ATTACHMENT, ReturnVoid(),
+                "'textures[%u]': only 'Layout::INPUT_ATTACHMENT' access transitions are allowed inside 'CmdBeginRendering/CmdEndRendering'", i);
+        }
+    }
 
     for (uint32_t i = 0; i < barrierDesc.bufferNum; i++) {
         if (!ValidateBufferBarrierDesc(m_Device, i, barrierDesc.buffers[i]))
@@ -1104,6 +1139,25 @@ NRI_INLINE void CommandBufferVal::BuildTopLevelAccelerationStructure(const Build
         NRI_RETURN_ON_FAILURE(&m_Device, in.instanceOffset <= instanceBufferVal->GetDesc().size, ReturnVoid(), "'[%u].instanceOffset=%" PRIu64 "' is out of bounds", i, in.instanceOffset);
         NRI_RETURN_ON_FAILURE(&m_Device, in.scratchOffset <= scratchBufferVal->GetDesc().size, ReturnVoid(), "'[%u].scratchOffset=%" PRIu64 "' is out of bounds", i, in.scratchOffset);
 
+        const AccelerationStructureVal& dstVal = *(AccelerationStructureVal*)in.dst;
+
+        if (dstVal.GetType() != AccelerationStructureType::MAX_NUM) {
+            NRI_RETURN_ON_FAILURE(&m_Device, dstVal.GetType() == AccelerationStructureType::TOP_LEVEL, ReturnVoid(), "'[%u].dst' is not a top level acceleration structure", i);
+            NRI_RETURN_ON_FAILURE(&m_Device, in.instanceNum <= dstVal.GetGeometryOrInstanceNum(), ReturnVoid(), "'[%u].instanceNum=%u' exceeds 'geometryOrInstanceNum=%u' used at creation", i, in.instanceNum, dstVal.GetGeometryOrInstanceNum());
+
+            if (in.src)
+                NRI_RETURN_ON_FAILURE(&m_Device, dstVal.GetFlags() & AccelerationStructureBits::ALLOW_UPDATE, ReturnVoid(), "'[%u].src' is provided (update), but 'dst' is not created with 'ALLOW_UPDATE'", i);
+        }
+
+        if (in.src) {
+            const AccelerationStructureVal& srcVal = *(AccelerationStructureVal*)in.src;
+
+            if (srcVal.GetType() != AccelerationStructureType::MAX_NUM) {
+                NRI_RETURN_ON_FAILURE(&m_Device, srcVal.GetType() == AccelerationStructureType::TOP_LEVEL, ReturnVoid(), "'[%u].src' is not a top level acceleration structure", i);
+                NRI_RETURN_ON_FAILURE(&m_Device, srcVal.GetFlags() & AccelerationStructureBits::ALLOW_UPDATE, ReturnVoid(), "'[%u].src' is not created with 'ALLOW_UPDATE'", i);
+            }
+        }
+
         auto& out = buildTopLevelAccelerationStructureDescsImpl[i];
         out = in;
         out.dst = NRI_GET_IMPL(AccelerationStructure, in.dst);
@@ -1133,8 +1187,11 @@ NRI_INLINE void CommandBufferVal::BuildBottomLevelAccelerationStructure(const Bu
             if (geometry.type == BottomLevelGeometryType::TRIANGLES) {
                 NRI_RETURN_ON_FAILURE(&m_Device, geometry.triangles.vertexFormat < Format::MAX_NUM, ReturnVoid(), "'[%u].geometries[%u].triangles.vertexFormat' is invalid", i, j);
                 NRI_RETURN_ON_FAILURE(&m_Device, geometry.triangles.indexType < IndexType::MAX_NUM, ReturnVoid(), "'[%u].geometries[%u].triangles.indexType' is invalid", i, j);
-                if (geometry.triangles.micromap)
+
+                if (geometry.triangles.micromap) {
+                    NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetDesc().tiers.rayTracing >= 3, ReturnVoid(), "'[%u].geometries[%u].triangles.micromap' requires 'tiers.rayTracing >= 3'", i, j);
                     NRI_RETURN_ON_FAILURE(&m_Device, geometry.triangles.micromap->indexType < IndexType::MAX_NUM, ReturnVoid(), "'[%u].geometries[%u].triangles.micromap->indexType' is invalid", i, j);
+                }
             }
 
             if (geometry.type == BottomLevelGeometryType::TRIANGLES && geometry.triangles.micromap)
@@ -1159,6 +1216,24 @@ NRI_INLINE void CommandBufferVal::BuildBottomLevelAccelerationStructure(const Bu
         NRI_RETURN_ON_FAILURE(&m_Device, in.scratchBuffer, ReturnVoid(), "'[%u].scratchBuffer' is NULL", i);
         NRI_RETURN_ON_FAILURE(&m_Device, in.geometries, ReturnVoid(), "'[%u].geometries' is NULL", i);
         NRI_RETURN_ON_FAILURE(&m_Device, in.scratchOffset <= scratchBufferVal->GetDesc().size, ReturnVoid(), "'[%u].scratchOffset=%" PRIu64 "' is out of bounds", i, in.scratchOffset);
+
+        const AccelerationStructureVal& dstVal = *(AccelerationStructureVal*)in.dst;
+
+        if (dstVal.GetType() != AccelerationStructureType::MAX_NUM) {
+            NRI_RETURN_ON_FAILURE(&m_Device, dstVal.GetType() == AccelerationStructureType::BOTTOM_LEVEL, ReturnVoid(), "'[%u].dst' is not a bottom level acceleration structure", i);
+
+            if (in.src)
+                NRI_RETURN_ON_FAILURE(&m_Device, dstVal.GetFlags() & AccelerationStructureBits::ALLOW_UPDATE, ReturnVoid(), "'[%u].src' is provided (update), but 'dst' is not created with 'ALLOW_UPDATE'", i);
+        }
+
+        if (in.src) {
+            const AccelerationStructureVal& srcVal = *(AccelerationStructureVal*)in.src;
+
+            if (srcVal.GetType() != AccelerationStructureType::MAX_NUM) {
+                NRI_RETURN_ON_FAILURE(&m_Device, srcVal.GetType() == AccelerationStructureType::BOTTOM_LEVEL, ReturnVoid(), "'[%u].src' is not a bottom level acceleration structure", i);
+                NRI_RETURN_ON_FAILURE(&m_Device, srcVal.GetFlags() & AccelerationStructureBits::ALLOW_UPDATE, ReturnVoid(), "'[%u].src' is not created with 'ALLOW_UPDATE'", i);
+            }
+        }
 
         auto& out = buildBottomLevelAccelerationStructureDescsImpl[i];
         out = in;

@@ -2301,9 +2301,23 @@ NRI_INLINE void CommandBufferVK::ResolveTexture(Texture& dstTexture, const Textu
 
         VkResolveImageModeInfoKHR resolveModeInfo = {VK_STRUCTURE_TYPE_RESOLVE_IMAGE_MODE_INFO_KHR};
         if (m_Device.m_IsSupported.maintenance10) {
-            resolveModeInfo.resolveMode = GetResolveOp(resolveOp);
-            resolveModeInfo.stencilResolveMode = GetResolveOp(resolveOp);
-            // TODO: resolveModeInfo.flags?
+            const FormatProps& formatProps = GetFormatProps(srcDesc.format);
+            if (formatProps.isDepth || formatProps.isStencil) {
+                // Modes are set only for the aspects referenced by the regions
+                VkImageAspectFlags aspectFlags = regions[0].srcSubresource.aspectMask;
+                if (aspectFlags & VK_IMAGE_ASPECT_DEPTH_BIT)
+                    resolveModeInfo.resolveMode = GetResolveOp(resolveOp);
+                if (aspectFlags & VK_IMAGE_ASPECT_STENCIL_BIT)
+                    resolveModeInfo.stencilResolveMode = GetResolveOp(resolveOp);
+            } else {
+                // Color resolve modes are fixed: "AVERAGE" for non-integer formats and "SAMPLE_ZERO" for integer formats
+                if (!formatProps.isInteger && resolveOp != ResolveOp::AVERAGE) {
+                    m_Device.ReportMessage(Message::ERROR, Result::UNSUPPORTED, __FILE__, __LINE__, "CmdResolveTexture(): only 'ResolveOp::AVERAGE' is supported for non-integer color formats");
+                    return;
+                }
+
+                resolveModeInfo.resolveMode = formatProps.isInteger ? VK_RESOLVE_MODE_SAMPLE_ZERO_BIT : VK_RESOLVE_MODE_AVERAGE_BIT;
+            }
 
             info.pNext = &resolveModeInfo;
         }
