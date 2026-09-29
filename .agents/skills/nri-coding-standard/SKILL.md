@@ -47,7 +47,7 @@ Apply these rules to changes under `Include`, `Source`, CMake, and build scripts
 - Validation may check required pointers, object relationships, simple ranges, counts, alignment, and advertised capability limits.
 - Null-check before casting or dereferencing validation wrappers; unwrap `*Val` objects consistently.
 - Update validation bookkeeping only after backend success or provide rollback.
-- Do not duplicate complicated GAPI-specific analysis or state tracking in Validation.
+- Validation enforces the NRI usage contract. Do not duplicate complex GAPI-specific checks or state tracking handled by native debug or validation layers.
 - Backends may assume validated descriptors. Use debug-only `NRI_CHECK` for critical internal assumptions, impossible states, unsupported native paths, or defensive crash checks.
 - Cover new NRI functionality in Validation.
 
