@@ -54,10 +54,12 @@ Result SwapChainMetal::Create(const SwapChainDesc& desc) {
     m_Layer->setWantsExtendedDynamicRangeContent(desc.format == SwapChainFormat::BT709_G10_16BIT || desc.format == SwapChainFormat::BT2020_G2084_10BIT);
     m_Layer->setFramebufferOnly(false);
     m_Layer->setDrawableSize(CGSizeMake(desc.width, desc.height));
+#if TARGET_OS_OSX
     // Like VK: no tearing unless "ALLOW_TEARING" is set without "VSYNC". There is no uncapped tearing-free mode (like "MAILBOX"),
     // so it falls back to capped. Without display sync partially rendered frames can be visible
     const bool allowTearing = (desc.flags & SwapChainBits::ALLOW_TEARING) && !(desc.flags & SwapChainBits::VSYNC);
     m_Layer->setDisplaySyncEnabled(!allowTearing);
+#endif // iOS: always in sync with the display
 
     m_IsWaitable = bool(desc.flags & SwapChainBits::WAITABLE);
 

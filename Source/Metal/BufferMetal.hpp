@@ -84,9 +84,10 @@ void* BufferMetal::Map(uint64_t offset, uint64_t size) {
 }
 
 void BufferMetal::Unmap() {
+#if TARGET_OS_OSX
     if (m_Buffer && m_MapSize && m_Buffer->storageMode() == MTL::StorageModeManaged)
         m_Buffer->didModifyRange(NS::Range::Make((NS::UInteger)m_MapOffset, (NS::UInteger)m_MapSize));
-
+#endif
     m_MapOffset = 0;
     m_MapSize = 0;
 }

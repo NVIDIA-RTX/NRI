@@ -60,13 +60,17 @@ set(NRI_WGPU_VERSION "v29.0.1.1")
 set(NRI_SHADERS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_Shaders" CACHE STRING "Shader output path override")
 set(NRI_NVAPI_CUSTOM_PATH "" CACHE STRING "Path to a custom NVAPI library directory")
 
-option(NRI_STATIC_LIBRARY "Build static library" OFF)
-option(NRI_ENABLE_NVTX_SUPPORT "Annotations for NVIDIA Nsight Systems" ON)
+# A shared library on iOS requires framework packaging and code signing
+if(IOS)
+    set(NRI_STATIC_LIBRARY_DEFAULT ON)
+else()
+    set(NRI_STATIC_LIBRARY_DEFAULT OFF)
+endif()
+
+option(NRI_STATIC_LIBRARY "Build static library" ${NRI_STATIC_LIBRARY_DEFAULT})
 option(NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS "Enable debug names, host and device annotations" ON)
 option(NRI_ENABLE_NONE_SUPPORT "Enable NONE backend" ON)
-option(NRI_ENABLE_VK_SUPPORT "Enable Vulkan backend" ON)
 option(NRI_ENABLE_VALIDATION_SUPPORT "Enable Validation backend (otherwise 'enableNRIValidation' is ignored)" ON)
-option(NRI_ENABLE_NIS_SDK "Enable NVIDIA Image Sharpening SDK" OFF)
 option(NRI_ENABLE_IMGUI_EXTENSION "Enable 'NRIImgui' extension" OFF)
 option(NRI_STREAMER_THREAD_SAFE "'NRIStreamer' thread safety (OFF is faster)" ON)
 
@@ -79,21 +83,37 @@ endif()
 
 # Internal shaders are precompiled, which requires the Metal toolchain ("xcodebuild -downloadComponent MetalToolchain")
 if(APPLE AND NRI_METAL_SUPPORT_DEFAULT)
-    execute_process(COMMAND xcrun -sdk macosx metal --version RESULT_VARIABLE NRI_METAL_PROBE_RESULT OUTPUT_QUIET ERROR_QUIET)
+    if(IOS)
+        set(NRI_METAL_PROBE_SDK iphoneos)
+    else()
+        set(NRI_METAL_PROBE_SDK macosx)
+    endif()
+
+    execute_process(COMMAND xcrun -sdk ${NRI_METAL_PROBE_SDK} metal --version RESULT_VARIABLE NRI_METAL_PROBE_RESULT OUTPUT_QUIET ERROR_QUIET)
 
     if(NOT NRI_METAL_PROBE_RESULT EQUAL 0)
         set(NRI_METAL_SUPPORT_DEFAULT OFF)
-        message(STATUS "NRI: Metal 4 backend is disabled by default (the Metal toolchain is not installed)")
+        message(STATUS "NRI: Metal 4 backend is disabled by default (the Metal toolchain for '${NRI_METAL_PROBE_SDK}' is not installed)")
     endif()
 endif()
 
-# Metal Shader Converter is enabled by default if installed
+# Metal Shader Converter (macOS and iOS devices, no simulator build) is enabled by default if installed
 set(NRI_METAL_SHADER_CONVERTER_DEFAULT OFF)
-if(APPLE)
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(NRI_METAL_SHADER_CONVERTER_SUPPORTED ON)
+    set(NRI_METAL_SHADER_CONVERTER_FIND_ARGS "")
+elseif(IOS AND NOT CMAKE_OSX_SYSROOT MATCHES "[Ss]imulator")
+    set(NRI_METAL_SHADER_CONVERTER_SUPPORTED ON)
+    set(NRI_METAL_SHADER_CONVERTER_FIND_ARGS PATHS "/usr/local/lib_iOS" NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
+else()
+    set(NRI_METAL_SHADER_CONVERTER_SUPPORTED OFF)
+endif()
+
+if(NRI_METAL_SHADER_CONVERTER_SUPPORTED)
     set(NRI_METAL_SHADER_CONVERTER_INCLUDE_PATH "" CACHE PATH "Path to Metal Shader Converter headers")
     set(NRI_METAL_SHADER_CONVERTER_LIBRARY "" CACHE FILEPATH "Path to the Metal Shader Converter library")
 
-    find_library(NRI_METAL_SHADER_CONVERTER_PROBE NAMES metalirconverter NO_CACHE)
+    find_library(NRI_METAL_SHADER_CONVERTER_PROBE NAMES metalirconverter ${NRI_METAL_SHADER_CONVERTER_FIND_ARGS} NO_CACHE)
     if(NRI_METAL_SHADER_CONVERTER_LIBRARY OR NRI_METAL_SHADER_CONVERTER_PROBE)
         set(NRI_METAL_SHADER_CONVERTER_DEFAULT ON)
     endif()
@@ -101,9 +121,12 @@ endif()
 
 cmake_dependent_option(NRI_ENABLE_D3D11_SUPPORT "Enable D3D11 backend" ON "WIN32" OFF)
 cmake_dependent_option(NRI_ENABLE_D3D12_SUPPORT "Enable D3D12 backend" ON "WIN32" OFF)
-cmake_dependent_option(NRI_ENABLE_WGPU_SUPPORT "Enable WebGPU backend" ${GITHUB_CI} "WGPU_BIN_ARCHITECTURE; NOT ANDROID" OFF)
-cmake_dependent_option(NRI_ENABLE_METAL_SUPPORT "Enable Metal 4 backend" ${NRI_METAL_SUPPORT_DEFAULT} "APPLE; NOT IOS" OFF)
-cmake_dependent_option(NRI_ENABLE_METAL_SHADER_CONVERTER "Enable DXIL conversion in the Metal backend" ${NRI_METAL_SHADER_CONVERTER_DEFAULT} "NRI_ENABLE_METAL_SUPPORT" OFF)
+cmake_dependent_option(NRI_ENABLE_NVTX_SUPPORT "Annotations for NVIDIA Nsight Systems" ON "NOT IOS" OFF)
+cmake_dependent_option(NRI_ENABLE_VK_SUPPORT "Enable Vulkan backend" ON "NOT IOS" OFF)
+cmake_dependent_option(NRI_ENABLE_NIS_SDK "Enable NVIDIA Image Sharpening SDK" OFF "NOT IOS" OFF)
+cmake_dependent_option(NRI_ENABLE_WGPU_SUPPORT "Enable WebGPU backend" ${GITHUB_CI} "WGPU_BIN_ARCHITECTURE; NOT ANDROID; NOT IOS" OFF)
+cmake_dependent_option(NRI_ENABLE_METAL_SUPPORT "Enable Metal 4 backend" ${NRI_METAL_SUPPORT_DEFAULT} "APPLE" OFF)
+cmake_dependent_option(NRI_ENABLE_METAL_SHADER_CONVERTER "Enable DXIL conversion in the Metal backend" ${NRI_METAL_SHADER_CONVERTER_DEFAULT} "NRI_ENABLE_METAL_SUPPORT; NRI_METAL_SHADER_CONVERTER_SUPPORTED" OFF)
 cmake_dependent_option(NRI_METAL_CPP_PRIVATE_IMPLEMENTATION "Compile metal-cpp implementation into NRI (static NRI: turn OFF if the app provides it)" ON "NRI_ENABLE_METAL_SUPPORT; NRI_STATIC_LIBRARY" ON)
 cmake_dependent_option(NRI_ENABLE_AMDAGS "Enable AMD AGS library for D3D" ON "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT); NOT IS_ARM64" OFF)
 cmake_dependent_option(NRI_ENABLE_NVAPI "Enable NVAPI library for D3D" ON "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT)" OFF)
@@ -958,22 +981,38 @@ if(NRI_ENABLE_METAL_SUPPORT)
         if(NOT NRI_METAL_SHADER_CONVERTER_LIBRARY)
             unset(NRI_METAL_SHADER_CONVERTER_LIBRARY CACHE)
         endif()
-        find_path(NRI_METAL_SHADER_CONVERTER_INCLUDE_PATH metal_irconverter/metal_irconverter.h PATHS "/usr/local/include" REQUIRED)
-        find_library(NRI_METAL_SHADER_CONVERTER_LIBRARY NAMES metalirconverter REQUIRED)
+        find_path(NRI_METAL_SHADER_CONVERTER_INCLUDE_PATH metal_irconverter/metal_irconverter.h PATHS "/usr/local/include" NO_CMAKE_FIND_ROOT_PATH REQUIRED)
+        find_library(NRI_METAL_SHADER_CONVERTER_LIBRARY NAMES metalirconverter ${NRI_METAL_SHADER_CONVERTER_FIND_ARGS} REQUIRED)
         message(STATUS "NRI: Metal Shader Converter headers: ${NRI_METAL_SHADER_CONVERTER_INCLUDE_PATH}")
         message(STATUS "NRI: Metal Shader Converter library: ${NRI_METAL_SHADER_CONVERTER_LIBRARY}")
     endif()
 
-    # Precompiles "Shaders/<NAME>.metal" into "<NAME>.metallib.h" ("g_<NAME>_metallib" byte array) and makes "TARGET" depend on it
+    # MetalFX is not in the iOS simulator SDK (with the Xcode generator "CMAKE_OSX_SYSROOT" must match the SDK used for building)
+    if(IOS AND CMAKE_OSX_SYSROOT MATCHES "[Ss]imulator")
+        set(NRI_METALFX_FRAMEWORK "")
+    else()
+        set(NRI_METALFX_FRAMEWORK "-framework MetalFX")
+    endif()
+
+    # Precompiles "Shaders/<NAME>.metal" into "<NAME>.metallib.h" ("g_<NAME>_metallib" byte array) and makes "TARGET" depend on it.
+    # iOS: device and simulator variants are selected by "TARGET_OS_SIMULATOR", since generators like Xcode pick the SDK at build time
     find_program(NRI_XCRUN xcrun REQUIRED)
 
     set(NRI_METALLIB_SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/EmbedMetallib.cmake")
     file(CONFIGURE
         OUTPUT "${NRI_METALLIB_SCRIPT}"
         CONTENT [=[
-file(READ "${IN}" DATA HEX)
-string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," DATA "${DATA}")
-file(WRITE "${OUT}" "unsigned char g_${NAME}_metallib[] = {${DATA}};\n")
+function(to_array IN VAR)
+    file(READ "${IN}" DATA HEX)
+    string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," DATA "${DATA}")
+    set(${VAR} "unsigned char g_${NAME}_metallib[] = {${DATA}};\n" PARENT_SCOPE)
+endfunction()
+to_array("${IN}" DATA)
+if(IN_SIMULATOR)
+    to_array("${IN_SIMULATOR}" DATA_SIMULATOR)
+    set(DATA "#include <TargetConditionals.h>\n#if TARGET_OS_SIMULATOR\n${DATA_SIMULATOR}#else\n${DATA}#endif\n")
+endif()
+file(WRITE "${OUT}" "${DATA}")
 ]=]
         @ONLY
     )
@@ -981,14 +1020,38 @@ file(WRITE "${OUT}" "unsigned char g_${NAME}_metallib[] = {${DATA}};\n")
     function(nri_embed_metallib NAME TARGET)
         set(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Shaders/${NAME}.metal")
         set(HEADER "${CMAKE_CURRENT_BINARY_DIR}/${NAME}.metallib.h")
-        set(AIR "${CMAKE_CURRENT_BINARY_DIR}/${NAME}.air")
-        set(METALLIB "${CMAKE_CURRENT_BINARY_DIR}/${NAME}.metallib")
+
+        if(IOS)
+            set(SDKS iphoneos iphonesimulator)
+        else()
+            set(SDKS macosx)
+        endif()
+
+        set(COMMANDS "")
+        set(INPUTS "")
+        foreach(SDK IN LISTS SDKS)
+            set(AIR "${CMAKE_CURRENT_BINARY_DIR}/${NAME}.${SDK}.air")
+            set(METALLIB "${CMAKE_CURRENT_BINARY_DIR}/${NAME}.${SDK}.metallib")
+            if(SDK STREQUAL "macosx")
+                set(VERSION_MIN "-mmacosx-version-min=26.0")
+                list(APPEND INPUTS -D "IN=${METALLIB}")
+            elseif(SDK STREQUAL "iphonesimulator")
+                set(VERSION_MIN "-mios-simulator-version-min=26.0")
+                list(APPEND INPUTS -D "IN_SIMULATOR=${METALLIB}")
+            else()
+                set(VERSION_MIN "-mios-version-min=26.0")
+                list(APPEND INPUTS -D "IN=${METALLIB}")
+            endif()
+            list(APPEND COMMANDS
+                COMMAND "${NRI_XCRUN}" -sdk ${SDK} metal -std=metal4.0 ${VERSION_MIN} -c "${SOURCE}" -o "${AIR}"
+                COMMAND "${NRI_XCRUN}" -sdk ${SDK} metallib "${AIR}" -o "${METALLIB}"
+            )
+        endforeach()
 
         add_custom_command(
             OUTPUT "${HEADER}"
-            COMMAND "${NRI_XCRUN}" -sdk macosx metal -std=metal4.0 -mmacosx-version-min=26.0 -c "${SOURCE}" -o "${AIR}"
-            COMMAND "${NRI_XCRUN}" -sdk macosx metallib "${AIR}" -o "${METALLIB}"
-            COMMAND "${CMAKE_COMMAND}" -D "IN=${METALLIB}" -D "OUT=${HEADER}" -D "NAME=${NAME}" -P "${NRI_METALLIB_SCRIPT}"
+            ${COMMANDS}
+            COMMAND "${CMAKE_COMMAND}" ${INPUTS} -D "OUT=${HEADER}" -D "NAME=${NAME}" -P "${NRI_METALLIB_SCRIPT}"
             DEPENDS "${SOURCE}" "${NRI_METALLIB_SCRIPT}"
             VERBATIM
         )
@@ -1068,7 +1131,7 @@ file(WRITE "${OUT}" "unsigned char g_${NAME}_metallib[] = {${DATA}};\n")
             NRI_Shared
             "-framework Foundation"
             "-framework Metal"
-            "-framework MetalFX"
+            ${NRI_METALFX_FRAMEWORK}
             "-framework QuartzCore"
             "-framework CoreGraphics"
             $<$<BOOL:${NRI_ENABLE_METAL_SHADER_CONVERTER}>:
@@ -1316,6 +1379,26 @@ if(NRI_ENABLE_AGILITY_SDK_SUPPORT)
     add_custom_command(TARGET NRI
         POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${agilitysdk_SOURCE_DIR}/build/native/bin/${BIN_ARCHITECTURE}" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${NRI_AGILITY_SDK_DIR}"
+        VERBATIM
+    )
+endif()
+
+# Metal Shader Converter: "@rpath/libmetalirconverter.dylib" is found next to "libNRI" or in the app "Frameworks" folder
+if(NRI_ENABLE_METAL_SHADER_CONVERTER AND NOT NRI_STATIC_LIBRARY)
+    if(IOS)
+        set(NRI_RPATH "@loader_path;@executable_path/Frameworks")
+    else()
+        set(NRI_RPATH "@loader_path;@executable_path/../Frameworks")
+    endif()
+
+    set_target_properties(NRI
+        PROPERTIES
+            BUILD_RPATH "${NRI_RPATH}"
+            INSTALL_RPATH "${NRI_RPATH}"
+    )
+    add_custom_command(TARGET NRI
+        POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${NRI_METAL_SHADER_CONVERTER_LIBRARY}" "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
         VERBATIM
     )
 endif()

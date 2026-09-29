@@ -101,7 +101,7 @@ NriBits(GraphicsAPI, uint8_t,
     D3D12   = NriBit(2), // Direct3D 12 (D3D12_SDK_VERSION 4 or 619+), available if "NRI_ENABLE_D3D12_SUPPORT = ON" in CMake (https://microsoft.github.io/DirectX-Specs/)
     VK      = NriBit(3), // Vulkan 1.4+, 1.3++ or 1.2+++ (can be used on MacOS via MoltenVK), available if "NRI_ENABLE_VK_SUPPORT = ON" in CMake (https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html)
     WGPU    = NriBit(4), // WebGPU via "wgpu-native", available if "NRI_ENABLE_WGPU_SUPPORT = ON" in CMake (https://github.com/gfx-rs/wgpu-native). Has limitations similar to D3D11
-    METAL   = NriBit(5)  // Metal 4 (macOS 26+, DXIL via Metal Shader Converter, pre-converted DXIL is accepted everywhere), available if "NRI_ENABLE_METAL_SUPPORT = ON" in CMake (https://developer.apple.com/metal/)
+    METAL   = NriBit(5)  // Metal 4 (macOS 26+, iOS/iPadOS 26+, DXIL via Metal Shader Converter on macOS and iOS devices, pre-converted DXIL is accepted everywhere), available if "NRI_ENABLE_METAL_SUPPORT = ON" in CMake (https://developer.apple.com/metal/)
 );
 
 NriEnum(Result, int8_t,

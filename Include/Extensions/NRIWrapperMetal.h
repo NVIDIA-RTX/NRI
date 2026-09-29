@@ -47,7 +47,7 @@ NriStruct(FenceMetalDesc) {
 };
 
 // Pre-converted DXIL: a ShaderMake Metal converter bundle ("ShaderMake -p METAL --metalFromDXIL", "SMMB", see "ShaderMake/ShaderBlob.h") can be passed
-// to "ShaderDesc::bytecode" in any Metal backend build, the function name and thread group sizes come from its reflection.
+// to "ShaderDesc::bytecode" in any Metal backend build (including iOS), the function name and thread group sizes come from its reflection.
 // Required "--metalShaderConverterOptions": "--root-signature=<file>" with "GetRootSignatureMetal" output for the pipeline layout (checked against
 // the reflection, except descriptor ranges and flags), "--framebuffer-fetch-register-space=998", "--minimum-gpu-family=<family>" supported by the device,
 // "--samplerLODBias" if "MTLGPUFamilyApple10" is unsupported, "--dual-source-blending-support=forceEnabled" for fragment shaders used with "SRC1" blending.

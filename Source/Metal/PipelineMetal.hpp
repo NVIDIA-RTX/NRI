@@ -97,7 +97,11 @@ static inline IRFormat GetIRVertexFormat(Format format) {
     return (size_t)format < g_IRVertexFormats.size() ? g_IRVertexFormats[(size_t)format] : IRFormatUnknown;
 }
 
+#    if TARGET_OS_IPHONE && !TARGET_OS_MACCATALYST
+constexpr IROperatingSystem CONVERTER_OPERATING_SYSTEM = IROperatingSystem_iOS; // no Converter for the simulator
+#    else
 constexpr IROperatingSystem CONVERTER_OPERATING_SYSTEM = IROperatingSystem_macOS;
+#    endif
 
 constexpr const char* CONVERTER_DEPLOYMENT_TARGET = "26.0.0"; // Metal 4
 
