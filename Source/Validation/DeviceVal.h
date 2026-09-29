@@ -152,6 +152,7 @@ struct DeviceVal final : public DeviceBase {
     Result CreateTexture(const TextureD3D11Desc& textureD3D11Desc, Texture*& texture);
     Result CreateTexture(const TextureD3D12Desc& textureD3D12Desc, Texture*& texture);
     Result CreateTexture(const TextureMetalDesc& textureMetalDesc, Texture*& texture);
+    Result GetRootSignature(const PipelineLayout& pipelineLayout, char* json, uint64_t& size);
     Result CreatePipeline(const GraphicsPipelineDesc& graphicsPipelineDesc, Pipeline*& pipeline);
     Result CreatePipeline(const ComputePipelineDesc& computePipelineDesc, Pipeline*& pipeline);
     Result CreatePipeline(const RayTracingPipelineDesc& rayTracingPipelineDesc, Pipeline*& pipeline);

@@ -19,6 +19,7 @@
 #include "DescriptorSetMetal.h"
 #include "FenceMetal.h"
 #include "MemoryMetal.h"
+#include "PipelineCacheMetal.h"
 #include "PipelineLayoutMetal.h"
 #include "PipelineMetal.h"
 #include "QueryPoolMetal.h"
@@ -44,6 +45,7 @@ using namespace nri;
 #include "FenceMetal.hpp"
 #include "InternalShadersMetal.hpp"
 #include "MemoryMetal.hpp"
+#include "PipelineCacheMetal.hpp"
 #include "PipelineLayoutMetal.hpp"
 #include "PipelineMetal.hpp"
 #include "QueryPoolMetal.hpp"
@@ -106,11 +108,8 @@ static Result NRI_CALL CreateComputePipeline(Device& device, const ComputePipeli
     return ((DeviceMetal&)device).CreateImplementation<PipelineMetal>(pipeline, computePipelineDesc);
 }
 
-// Pipeline caches are not supported ("features.pipelineCache = false")
-static Result NRI_CALL CreatePipelineCache(Device&, const PipelineCacheDesc&, PipelineCache*& pipelineCache) {
-    pipelineCache = nullptr;
-
-    return Result::UNSUPPORTED;
+static Result NRI_CALL CreatePipelineCache(Device& device, const PipelineCacheDesc& pipelineCacheDesc, PipelineCache*& pipelineCache) {
+    return ((DeviceMetal&)device).CreateImplementation<PipelineCacheMetal>(pipelineCache, pipelineCacheDesc);
 }
 
 static Result NRI_CALL CreateQueryPool(Device& device, const QueryPoolDesc& queryPoolDesc, QueryPool*& queryPool) {
@@ -165,13 +164,12 @@ static void NRI_CALL DestroyPipeline(Pipeline* pipeline) {
     Destroy((PipelineMetal*)pipeline);
 }
 
-static void NRI_CALL DestroyPipelineCache(PipelineCache*) {
+static void NRI_CALL DestroyPipelineCache(PipelineCache* pipelineCache) {
+    Destroy((PipelineCacheMetal*)pipelineCache);
 }
 
-static Result NRI_CALL GetPipelineCacheData(PipelineCache&, void*, uint64_t& size) {
-    size = 0;
-
-    return Result::UNSUPPORTED;
+static Result NRI_CALL GetPipelineCacheData(PipelineCache& pipelineCache, void* dst, uint64_t& size) {
+    return ((PipelineCacheMetal&)pipelineCache).GetData(dst, size);
 }
 
 static void NRI_CALL DestroyQueryPool(QueryPool* queryPool) {
@@ -1041,10 +1039,15 @@ static Result NRI_CALL CreateFenceMetal(Device& device, const FenceMetalDesc& de
     return ((DeviceMetal&)device).CreateImplementation<FenceMetal>(fence, desc);
 }
 
+static Result NRI_CALL GetRootSignatureMetal(const PipelineLayout& pipelineLayout, char* json, uint64_t& size) {
+    return ((const PipelineLayoutMetal&)pipelineLayout).GetRootSignature(json, size);
+}
+
 Result DeviceMetal::FillFunctionTable(WrapperMetalInterface& table) const {
     table.CreateBufferMetal = ::CreateBufferMetal;
     table.CreateTextureMetal = ::CreateTextureMetal;
     table.CreateFenceMetal = ::CreateFenceMetal;
+    table.GetRootSignatureMetal = ::GetRootSignatureMetal;
 
     return Result::SUCCESS;
 }

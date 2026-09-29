@@ -1,5 +1,10 @@
 // © 2026 NVIDIA Corporation
 
+#if NRI_ENABLE_METAL_SHADER_CONVERTER
+#    include <dlfcn.h>
+#    include <mach-o/loader.h>
+#endif
+
 constexpr uint8_t VERTEX_ATTRIBUTE_UNUSED = 0xFF;
 
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
@@ -146,6 +151,48 @@ static inline IRCompatibilityFlags GetIRCompatibilityFlags(MTL::Device& device) 
     return device.supportsFamily(MTL::GPUFamilyApple10) ? IRCompatibilityFlagNone : IRCompatibilityFlagSamplerLODBias;
 }
 
+// Bump if NRI conversion settings change (converted shaders are persistent, see "PipelineCacheMetal")
+constexpr uint32_t CONVERSION_REVISION = 1;
+
+// Converted shaders are identified by the Converter header version and the "LC_UUID" of the loaded library
+static uint64_t GetConverterHash(DeviceMetal& device) {
+    static const uint64_t s_Hash = [&device] {
+        const uint32_t version[] = {CONVERSION_REVISION, IR_VERSION_MAJOR, IR_VERSION_MINOR, IR_VERSION_PATCH};
+        uint64_t hash = HashMetal(version, sizeof(version));
+
+        Dl_info info = {};
+
+        if (!dladdr((const void*)&IRCompilerCreate, &info) || !info.dli_fbase) {
+            NRI_REPORT_WARNING(&device, "Metal Shader Converter image is unknown, cached conversions may be stale after a Converter update");
+
+            return hash;
+        }
+
+        const mach_header_64* image = (const mach_header_64*)info.dli_fbase;
+        const uint8_t* command = (const uint8_t*)(image + 1);
+
+        for (uint32_t i = 0; image->magic == MH_MAGIC_64 && i < image->ncmds; i++) {
+            load_command loadCommand = {};
+            memcpy(&loadCommand, command, sizeof(loadCommand));
+
+            if (loadCommand.cmd == LC_UUID) {
+                uuid_command uuidCommand = {};
+                memcpy(&uuidCommand, command, sizeof(uuidCommand));
+
+                return HashMetal(uuidCommand.uuid, sizeof(uuidCommand.uuid), hash);
+            }
+
+            command += loadCommand.cmdsize;
+        }
+
+        NRI_REPORT_WARNING(&device, "Metal Shader Converter image has no 'LC_UUID', cached conversions may be stale after a Converter update");
+
+        return hash;
+    }();
+
+    return s_Hash;
+}
+
 // Shared by graphics and compute pipelines
 static inline IRCompiler* CreateIRCompiler(MTL::Device& device, const PipelineLayoutMetal& layout) {
     IRCompiler* compiler = IRCompilerCreate();
@@ -165,9 +212,14 @@ static inline bool IsDXIL(const ShaderDesc& shader) {
 
 static_assert(sizeof(ConvertedShaderHeaderMetal) == 80 && sizeof(ConvertedVertexInputMetal) == 8, "Converted shader layout is fixed");
 
-// DXIL (uses Converter's binding ABI)
+// ShaderMake Metal converter bundle (see "NRIWrapperMetal.h")
+static inline bool IsMetalBundle(const ShaderDesc& shader) {
+    return shader.size >= 4 && memcmp(shader.bytecode, "SMMB", 4) == 0;
+}
+
+// DXIL or pre-converted DXIL (uses Converter's binding ABI)
 static inline bool IsConvertedShader(const ShaderDesc& shader) {
-    return IsDXIL(shader);
+    return IsDXIL(shader) || IsMetalBundle(shader);
 }
 
 struct ConvertedVertexInputDescMetal {
@@ -213,6 +265,179 @@ static uint8_t* WriteConvertedShader(Vector<uint8_t>& storage, ConvertedShaderHe
     memcpy(storage.data(), &header, sizeof(header));
 
     return storage.data() + header.metallibOffset;
+}
+
+// Minimal reader for Converter reflection JSON. Values are "[begin, end)" spans, escaped strings are not supported
+struct JsonValueMetal {
+    const char* begin;
+    const char* end;
+};
+
+static inline const char* SkipJsonSpaces(const char* s, const char* end) {
+    while (s < end && (*s == ' ' || *s == '\t' || *s == '\r' || *s == '\n'))
+        s++;
+
+    return s;
+}
+
+// Returns the end of the value at "s" or "nullptr"
+static const char* SkipJsonValue(const char* s, const char* end, uint32_t depth);
+
+// Calls "callback(key, value)" for object members or "callback(value, value)" for array elements
+template <typename F>
+static bool ForEachJsonValue(JsonValueMetal container, F callback, uint32_t depth = 0) {
+    const char* s = container.begin;
+
+    if (s >= container.end || (*s != '{' && *s != '['))
+        return false;
+
+    const bool isObject = *s == '{';
+    const char close = isObject ? '}' : ']';
+    s = SkipJsonSpaces(s + 1, container.end);
+
+    if (s < container.end && *s == close)
+        return true;
+
+    while (s < container.end) {
+        JsonValueMetal key = {s, nullptr};
+
+        if (isObject) {
+            if (*s != '"')
+                return false;
+
+            key.end = SkipJsonValue(s, container.end, depth + 1);
+            s = key.end ? SkipJsonSpaces(key.end, container.end) : container.end;
+
+            if (s >= container.end || *s != ':')
+                return false;
+
+            s = SkipJsonSpaces(s + 1, container.end);
+        }
+
+        JsonValueMetal value = {s, SkipJsonValue(s, container.end, depth + 1)};
+
+        if (!value.end || !callback(isObject ? key : value, value))
+            return false;
+
+        s = SkipJsonSpaces(value.end, container.end);
+
+        if (s < container.end && *s == close)
+            return true;
+
+        if (s >= container.end || *s != ',')
+            return false;
+
+        s = SkipJsonSpaces(s + 1, container.end);
+    }
+
+    return false;
+}
+
+static const char* SkipJsonValue(const char* s, const char* end, uint32_t depth) {
+    if (s >= end || depth > 16)
+        return nullptr;
+
+    if (*s == '"') {
+        for (s++; s < end; s++) {
+            if (*s == '\\')
+                s++;
+            else if (*s == '"')
+                return s + 1;
+        }
+
+        return nullptr;
+    }
+
+    if (*s == '{' || *s == '[') {
+        const char close = *s == '{' ? '}' : ']';
+        const char* last = nullptr;
+
+        if (!ForEachJsonValue({s, end}, [&](JsonValueMetal, JsonValueMetal value) { last = value.end; return true; }, depth))
+            return nullptr;
+
+        s = SkipJsonSpaces(last ? last : s + 1, end);
+
+        return s < end && *s == close ? s + 1 : nullptr;
+    }
+
+    // Numbers and literals
+    const char* begin = s;
+
+    while (s < end && (isalnum((unsigned char)*s) || *s == '-' || *s == '+' || *s == '.'))
+        s++;
+
+    return s != begin ? s : nullptr;
+}
+
+static inline bool FindJsonMember(JsonValueMetal object, const char* name, JsonValueMetal& value) {
+    const size_t nameLength = strlen(name);
+    bool isFound = false;
+
+    ForEachJsonValue(object, [&](JsonValueMetal key, JsonValueMetal member) {
+        isFound = size_t(key.end - key.begin) == nameLength + 2 && !memcmp(key.begin + 1, name, nameLength);
+
+        if (isFound)
+            value = member;
+
+        return !isFound;
+    });
+
+    return isFound;
+}
+
+static inline bool GetJsonString(JsonValueMetal value, const char*& string, size_t& length) {
+    if (value.end - value.begin < 2 || *value.begin != '"' || memchr(value.begin, '\\', value.end - value.begin))
+        return false;
+
+    string = value.begin + 1;
+    length = value.end - value.begin - 2;
+
+    return true;
+}
+
+static inline bool GetJsonUint(JsonValueMetal value, uint32_t& result) {
+    const ptrdiff_t length = value.end - value.begin;
+    uint64_t number = 0;
+
+    if (length < 1 || length > 10)
+        return false;
+
+    for (const char* s = value.begin; s < value.end; s++) {
+        if (*s < '0' || *s > '9')
+            return false;
+
+        number = number * 10 + uint64_t(*s - '0');
+    }
+
+    result = (uint32_t)number;
+
+    return number <= UINT32_MAX;
+}
+
+static inline bool GetJsonMemberString(JsonValueMetal object, const char* name, const char*& string, size_t& length) {
+    JsonValueMetal value = {};
+
+    return FindJsonMember(object, name, value) && GetJsonString(value, string, length);
+}
+
+static inline bool GetJsonMemberUint(JsonValueMetal object, const char* name, uint32_t& result) {
+    JsonValueMetal value = {};
+
+    return FindJsonMember(object, name, value) && GetJsonUint(value, result);
+}
+
+static inline bool GetJsonMemberUints(JsonValueMetal object, const char* name, uint32_t* results, uint32_t num) {
+    JsonValueMetal value = {};
+    uint32_t i = 0;
+
+    if (!FindJsonMember(object, name, value))
+        return false;
+
+    const bool isParsed = ForEachJsonValue(value, [&](JsonValueMetal, JsonValueMetal element) {
+        return i < num && GetJsonUint(element, results[i++]);
+    });
+
+    return isParsed && i == num;
 }
 
 // Reflection names converted vertex inputs as lower-case "semantic name + semantic index", i.e. "texcoord1".
@@ -347,6 +572,162 @@ static inline void SetStencilMetal(MTL::StencilDescriptor* dst, const StencilDes
     dst->setWriteMask(src.writeMask);
 }
 
+// "TopLevelArgumentBuffer" must match the pipeline layout, descriptor table accesses must fit into tables
+static bool IsRootSignatureMatchingMetal(const PipelineLayoutMetal& layout, JsonValueMetal reflection) {
+    const Vector<RootArgumentMetal>& arguments = layout.GetRootArguments();
+    JsonValueMetal value = {};
+    size_t index = 0;
+
+    bool isMatching = FindJsonMember(reflection, "TopLevelArgumentBuffer", value) && ForEachJsonValue(value, [&](JsonValueMetal, JsonValueMetal element) {
+        if (index >= arguments.size())
+            return false;
+
+        const RootArgumentMetal& argument = arguments[index++];
+        const char* type = nullptr;
+        size_t typeLength = 0;
+        uint32_t offset = 0;
+        uint32_t size = 0;
+        uint32_t registerIndex = 0;
+        uint32_t space = 0;
+
+        if (!GetJsonMemberString(element, "Type", type, typeLength) || !GetJsonMemberUint(element, "EltOffset", offset) || !GetJsonMemberUint(element, "Size", size))
+            return false;
+
+        if (!GetJsonMemberUint(element, "Slot", registerIndex) || !GetJsonMemberUint(element, "Space", space))
+            return false;
+
+        return typeLength == strlen(argument.type) && !memcmp(type, argument.type, typeLength) && offset == argument.offset && size == argument.size && registerIndex == argument.registerIndex && space == argument.space;
+    });
+
+    isMatching = isMatching && index == arguments.size();
+
+    return isMatching && FindJsonMember(reflection, "UsedResources", value) && ForEachJsonValue(value, [&](JsonValueMetal, JsonValueMetal element) {
+        uint32_t argumentIndex = 0;
+        uint32_t tableOffset = 0;
+        uint32_t tableLength = 0;
+
+        if (!GetJsonMemberUint(element, "bindingIndex", argumentIndex) || !GetJsonMemberUint(element, "tableStartIndex", tableOffset) || !GetJsonMemberUint(element, "tableLength", tableLength))
+            return false;
+
+        if (argumentIndex >= arguments.size())
+            return false;
+
+        const RootArgumentMetal& argument = arguments[argumentIndex];
+
+        if (tableOffset == UINT32_MAX)
+            return argument.registerIndex != UINT32_MAX;
+
+        if (argument.registerIndex != UINT32_MAX)
+            return false;
+
+        // Unbounded arrays have "UINT32_MAX" length
+        return tableLength == UINT32_MAX ? tableOffset < argument.descriptorNum : tableOffset + (uint64_t)tableLength <= argument.descriptorNum;
+    });
+}
+
+// Converter reflection "ShaderType"
+static inline const char* GetReflectionShaderTypeMetal(StageBits stage) {
+    if (stage == StageBits::VERTEX_SHADER)
+        return "Vertex";
+
+    if (stage == StageBits::FRAGMENT_SHADER)
+        return "Fragment";
+
+    if (stage == StageBits::COMPUTE_SHADER)
+        return "Compute";
+
+    if (stage == StageBits::TASK_SHADER)
+        return "Amplification";
+
+    if (stage == StageBits::MESH_SHADER)
+        return "Mesh";
+
+    return nullptr;
+}
+
+// Bundles are structurally checked by validation. Converter settings, which are not reflected, can't be checked
+static Result LoadMetalBundle(DeviceMetal& device, const PipelineLayoutMetal& layout, const ShaderDesc& shader, const ShaderLoadDescMetal& load, Vector<uint8_t>& storage) {
+    uint32_t bundle[6] = {}; // "magic", "version", "metallibOffset", "metallibSize", "reflectionOffset", "reflectionSize"
+    NRI_CHECK(shader.size >= sizeof(bundle), "Unexpected bundle size");
+    memcpy(bundle, shader.bytecode, sizeof(bundle));
+
+    if (load.emulation) {
+        NRI_REPORT_ERROR(&device, "Metal converter bundle: geometry / tessellation emulation is unsupported");
+
+        return Result::UNSUPPORTED;
+    }
+
+    // Converter options have no sample mask and input topology
+    if (shader.stage == StageBits::FRAGMENT_SHADER && load.sampleMask != ALL) {
+        NRI_REPORT_ERROR(&device, "Metal converter bundle: 'sampleMask' must be 'ALL'");
+
+        return Result::INVALID_ARGUMENT;
+    }
+
+    if (shader.stage == StageBits::VERTEX_SHADER && load.topology == Topology::POINT_LIST) {
+        NRI_REPORT_ERROR(&device, "Metal converter bundle: 'POINT_LIST' topology is unsupported");
+
+        return Result::INVALID_ARGUMENT;
+    }
+
+    const uint8_t* data = (const uint8_t*)shader.bytecode;
+    const JsonValueMetal reflection = {(const char*)data + bundle[4], (const char*)data + bundle[4] + bundle[5]};
+    const char* shaderType = GetReflectionShaderTypeMetal(shader.stage);
+
+    ConvertedShaderHeaderMetal header = {};
+    header.stage = shader.stage;
+    header.sampleMask = UINT32_MAX;
+    header.threadGroupSize[0] = 1;
+    header.threadGroupSize[1] = 1;
+    header.threadGroupSize[2] = 1;
+
+    Vector<ConvertedVertexInputDescMetal> vertexInputs(device.GetStdAllocator());
+    const char* type = nullptr;
+    const char* functionName = nullptr;
+    size_t typeLength = 0;
+    size_t functionNameLength = 0;
+    JsonValueMetal state = {};
+
+    bool isValid = shaderType && GetJsonMemberString(reflection, "ShaderType", type, typeLength) && typeLength == strlen(shaderType) && !memcmp(type, shaderType, typeLength);
+    isValid = isValid && GetJsonMemberString(reflection, "EntryPoint", functionName, functionNameLength) && FindJsonMember(reflection, "state", state);
+
+    if (isValid && shader.stage == StageBits::COMPUTE_SHADER)
+        isValid = GetJsonMemberUints(state, "tg_size", header.threadGroupSize, 3);
+    else if (isValid && (shader.stage == StageBits::MESH_SHADER || shader.stage == StageBits::TASK_SHADER))
+        isValid = GetJsonMemberUints(state, "num_threads", header.threadGroupSize, 3) && GetJsonMemberUint(state, "max_payload_size_in_bytes", header.payloadSize);
+    else if (isValid && shader.stage == StageBits::VERTEX_SHADER) {
+        JsonValueMetal inputs = {};
+
+        isValid = !FindJsonMember(state, "vertex_inputs", inputs) || ForEachJsonValue(inputs, [&](JsonValueMetal, JsonValueMetal input) {
+            ConvertedVertexInputDescMetal vertexInput = {};
+            const bool isParsed = GetJsonMemberString(input, "name", vertexInput.name, vertexInput.nameLength) && GetJsonMemberUint(input, "index", vertexInput.attributeIndex);
+            vertexInputs.push_back(vertexInput);
+
+            return isParsed && vertexInput.attributeIndex < CONVERTED_VERTEX_ATTRIBUTE_NUM && vertexInputs.size() <= CONVERTED_VERTEX_ATTRIBUTE_NUM;
+        });
+    }
+
+    isValid = isValid && header.threadGroupSize[0] && header.threadGroupSize[1] && header.threadGroupSize[2];
+
+    if (!isValid) {
+        NRI_REPORT_ERROR(&device, "Metal converter bundle: the reflection is invalid or doesn't match 'stage'");
+
+        return Result::INVALID_ARGUMENT;
+    }
+
+    if (!IsRootSignatureMatchingMetal(layout, reflection)) {
+        NRI_REPORT_ERROR(&device, "Metal converter bundle: the root signature doesn't match the pipeline layout");
+
+        return Result::INVALID_ARGUMENT;
+    }
+
+    const char* entryPoint = shader.entryPointName ? shader.entryPointName : "main";
+    uint8_t* metallib = WriteConvertedShader(storage, header, entryPoint, functionName, functionNameLength, vertexInputs, bundle[3]);
+    memcpy(metallib, data + bundle[2], bundle[3]);
+
+    return Result::SUCCESS;
+}
+
 PipelineMetal::PipelineMetal(DeviceMetal& device)
     : m_Device(device) {
 }
@@ -384,7 +765,7 @@ Result PipelineMetal::ConvertShader(const ShaderDesc& shader, const ShaderLoadDe
     header.threadGroupSize[1] = 1;
     header.threadGroupSize[2] = 1;
 
-    // Stage-irrelevant settings stay default
+    // Stage-irrelevant settings stay default, so shared shaders are converted (and cached) once
     if (stage == IRShaderStageVertex && load.topology != Topology::MAX_NUM)
         header.inputTopology = g_InputTopologies[(uint32_t)load.topology];
 
@@ -394,6 +775,36 @@ Result PipelineMetal::ConvertShader(const ShaderDesc& shader, const ShaderLoadDe
 
         if (load.dualSourceBlending)
             header.flags |= CONVERTED_SHADER_DUAL_SOURCE_BLENDING;
+    }
+
+    // Emulation stages depend on other stages and the vertex input layout, thus they are not cached
+    PipelineCacheMetal* cache = load.emulation ? nullptr : load.cache;
+    uint64_t key = 0;
+
+    if (cache) {
+        // Everything affecting the output
+        const uint32_t settings[] = {header.version, (uint32_t)header.stage, (uint32_t)header.flags, header.gpuFamily, header.inputTopology, header.sampleMask, FRAMEBUFFER_FETCH_SPACE, (uint32_t)CONVERTER_OPERATING_SYSTEM};
+        key = HashMetal(settings, sizeof(settings), GetConverterHash(m_Device));
+        key = HashMetal(&header.rootSignatureHash, sizeof(header.rootSignatureHash), key);
+        key = HashMetal(CONVERTER_DEPLOYMENT_TARGET, strlen(CONVERTER_DEPLOYMENT_TARGET) + 1, key);
+        key = HashMetal(entryPoint, strlen(entryPoint) + 1, key);
+        key = HashMetal(shader.bytecode, shader.size, key);
+
+        // Entries are structurally valid (see "PipelineCacheMetal::Create"), a mismatch is a key collision
+        size_t size = 0;
+
+        if (cache->FindConvertedShader(key, container, size)) {
+            ConvertedShaderHeaderMetal cached = {};
+            memcpy(&cached, container, sizeof(cached));
+
+            if (cached.stage == header.stage && cached.rootSignatureHash == header.rootSignatureHash && !strcmp((const char*)container + cached.entryPointOffset, entryPoint))
+                return Result::SUCCESS;
+
+            container = nullptr;
+        }
+
+        if (load.failOnCacheMiss)
+            return Result::FAILURE;
     }
 
     IRCompiler* compiler = CreateIRCompiler(device, *m_Layout);
@@ -552,6 +963,9 @@ Result PipelineMetal::ConvertShader(const ShaderDesc& shader, const ShaderLoadDe
         uint8_t* metallib = WriteConvertedShader(storage, header, entryPoint, name, strlen(name), vertexInputs, IRMetalLibGetBytecodeSize(binary));
         IRMetalLibGetBytecode(binary, metallib);
 
+        if (cache)
+            cache->AddConvertedShader(key, storage.data(), storage.size());
+
         container = storage.data();
     }
 
@@ -588,6 +1002,15 @@ Result PipelineMetal::LoadFunction(const ShaderDesc& shader, MTL::Library*& libr
         return Result::UNSUPPORTED;
     }
 #endif
+
+    if (IsMetalBundle(shader)) {
+        const Result result = LoadMetalBundle(m_Device, *m_Layout, shader, load, storage);
+
+        if (result != Result::SUCCESS)
+            return result;
+
+        container = storage.data();
+    }
 
     if (container) {
         ConvertedShaderHeaderMetal header = {};
@@ -662,12 +1085,39 @@ Result PipelineMetal::LoadFunction(const ShaderDesc& shader, MTL::Library*& libr
     return function ? Result::SUCCESS : Result::FAILURE;
 }
 
+// "failOnMiss" without a cache fails, since there is nothing to look up in
+static MTL::ComputePipelineState* NewComputePipelineMetal(DeviceMetal& device, const PipelineCache* cache, bool failOnMiss, const MTL4::ComputePipelineDescriptor* desc, const MTL4::PipelineStageDynamicLinkingDescriptor* linking, NS::Error** error) {
+    if (cache)
+        return ((PipelineCacheMetal*)cache)->NewComputePipeline(desc, linking, failOnMiss, error);
+
+    if (failOnMiss)
+        return nullptr;
+
+    MTL4::Compiler* compiler = device.GetCompiler();
+
+    return linking ? compiler->newComputePipelineState(desc, linking, nullptr, error) : compiler->newComputePipelineState(desc, nullptr, error);
+}
+
+static MTL::RenderPipelineState* NewRenderPipelineMetal(DeviceMetal& device, const PipelineCache* cache, bool failOnMiss, const MTL4::PipelineDescriptor* desc, NS::Error** error) {
+    if (cache)
+        return ((PipelineCacheMetal*)cache)->NewRenderPipeline(desc, failOnMiss, error);
+
+    if (failOnMiss)
+        return nullptr;
+
+    return device.GetCompiler()->newRenderPipelineState(desc, nullptr, error);
+}
+
 Result PipelineMetal::Create(const ComputePipelineDesc& desc) {
     AutoreleasePoolMetal autoreleasePool; // "NS::Error" is autoreleased
 
     m_Layout = (const PipelineLayoutMetal*)desc.pipelineLayout;
 
+    const bool failOnCacheMiss = desc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS;
+
     ShaderLoadDescMetal loadDesc = {};
+    loadDesc.cache = (PipelineCacheMetal*)desc.cache;
+    loadDesc.failOnCacheMiss = failOnCacheMiss;
 
     MTL::Library* library = nullptr;
     MTL4::FunctionDescriptor* function = nullptr;
@@ -683,11 +1133,13 @@ Result PipelineMetal::Create(const ComputePipelineDesc& desc) {
         pipelineDesc->setRequiredThreadsPerThreadgroup(m_ThreadGroup);
 
         NS::Error* error = nullptr;
-        m_Compute = m_Device.GetCompiler()->newComputePipelineState(pipelineDesc, nullptr, &error);
+        m_Compute = NewComputePipelineMetal(m_Device, desc.cache, failOnCacheMiss, pipelineDesc, nullptr, &error);
 
         if (!m_Compute) {
             result = Result::FAILURE;
-            NRI_REPORT_ERROR(&m_Device, "Metal compute pipeline creation failed: %s", error ? error->localizedDescription()->utf8String() : "unknown error");
+
+            if (!failOnCacheMiss)
+                NRI_REPORT_ERROR(&m_Device, "Metal compute pipeline creation failed: %s", error ? error->localizedDescription()->utf8String() : "unknown error");
         }
 
         pipelineDesc->release();
@@ -813,6 +1265,7 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
         const ShaderDesc& shader = desc.shaders[i];
 
         ShaderLoadDescMetal loadDesc = {};
+        loadDesc.cache = (PipelineCacheMetal*)desc.cache;
         loadDesc.vertexInput = desc.vertexInput;
         loadDesc.vertexAttributeSlots = attributeSlots;
         loadDesc.stageInLibrary = shader.stage == StageBits::VERTEX_SHADER && emulation ? &stageInLibrary : nullptr;
@@ -820,6 +1273,7 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
         loadDesc.topology = hasMesh || emulation ? Topology::MAX_NUM : topology;
         loadDesc.emulation = emulation;
         loadDesc.dualSourceBlending = dualSourceBlending;
+        loadDesc.failOnCacheMiss = desc.flags & GraphicsPipelineBits::FAIL_ON_CACHE_MISS;
 
         MTL::Library* library = nullptr;
         MTL4::FunctionDescriptor* function = nullptr;
@@ -967,6 +1421,7 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
     }
 
     if (result == Result::SUCCESS) {
+        const bool failOnCacheMiss = desc.flags & GraphicsPipelineBits::FAIL_ON_CACHE_MISS;
         NS::Error* error = nullptr;
 
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
@@ -1058,11 +1513,13 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
 #endif
 
         if (result == Result::SUCCESS) {
-            m_Render = m_Device.GetCompiler()->newRenderPipelineState(isMesh ? (MTL4::PipelineDescriptor*)mpd : (MTL4::PipelineDescriptor*)pd, nullptr, &error);
+            m_Render = NewRenderPipelineMetal(m_Device, desc.cache, failOnCacheMiss, isMesh ? (MTL4::PipelineDescriptor*)mpd : (MTL4::PipelineDescriptor*)pd, &error);
 
             if (!m_Render) {
                 result = Result::FAILURE;
-                NRI_REPORT_ERROR(&m_Device, "Metal render pipeline creation failed: %s", error ? error->localizedDescription()->utf8String() : "unknown error");
+
+                if (!failOnCacheMiss)
+                    NRI_REPORT_ERROR(&m_Device, "Metal render pipeline creation failed: %s", error ? error->localizedDescription()->utf8String() : "unknown error");
             }
         }
     }

@@ -592,6 +592,41 @@ static inline bool IsShaderBytecodeSupported(const DeviceDesc& deviceDesc, const
     return deviceDesc.graphicsAPI != GraphicsAPI::METAL || !isDXIL || deviceDesc.features.shaderBytecodeDXIL;
 }
 
+// METAL: pre-converted shaders (ShaderMake Metal converter bundles, see "NRIWrapperMetal.h"), returns an error or "nullptr"
+static const char* GetMetalBundleError(GraphicsAPI graphicsAPI, const ShaderDesc& shaderDesc) {
+    if (graphicsAPI != GraphicsAPI::METAL || shaderDesc.size < 4 || memcmp(shaderDesc.bytecode, "SMMB", 4))
+        return nullptr;
+
+    // "magic", "version", "metallibOffset", "metallibSize", "reflectionOffset", "reflectionSize"
+    uint32_t header[6] = {};
+
+    if (shaderDesc.size < sizeof(header))
+        return "the header is truncated";
+
+    memcpy(header, shaderDesc.bytecode, sizeof(header));
+
+    if (header[1] != 1)
+        return "'version' is unsupported";
+
+    const StageBits stages = StageBits::VERTEX_SHADER | StageBits::FRAGMENT_SHADER | StageBits::COMPUTE_SHADER | StageBits::TASK_SHADER | StageBits::MESH_SHADER;
+
+    if (!(shaderDesc.stage & stages))
+        return "'stage' must be 'VERTEX_SHADER', 'FRAGMENT_SHADER', 'COMPUTE_SHADER', 'TASK_SHADER' or 'MESH_SHADER'";
+
+    // Layout: header, metallib, reflection (with a zero terminator), non-overlapping and in this order
+    const uint64_t metallibEnd = header[2] + (uint64_t)header[3];
+
+    if (header[2] < sizeof(header) || header[2] % 8 || !header[3] || metallibEnd > shaderDesc.size)
+        return "'metallibOffset' or 'metallibSize' is invalid";
+
+    const uint64_t reflectionEnd = header[4] + (uint64_t)header[5];
+
+    if (header[4] < metallibEnd || !header[5] || reflectionEnd >= shaderDesc.size || ((const uint8_t*)shaderDesc.bytecode)[reflectionEnd])
+        return "'reflectionOffset' or 'reflectionSize' is invalid";
+
+    return nullptr;
+}
+
 NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphicsPipelineDesc, Pipeline*& pipeline) {
     NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.pipelineLayout != nullptr, Result::INVALID_ARGUMENT, "'pipelineLayout' is NULL");
     NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.shaders != nullptr, Result::INVALID_ARGUMENT, "'shaders' is NULL");
@@ -636,6 +671,9 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
         NRI_RETURN_ON_FAILURE(this, IsShaderStageSupported(GetDesc(), shaderDesc->stage), Result::INVALID_ARGUMENT, "'shaders[%u].stage' is not supported", i);
         NRI_RETURN_ON_FAILURE(this, IsThreadGroupSizeValid(GetDesc().graphicsAPI, *shaderDesc), Result::INVALID_ARGUMENT, "'shaders[%u].threadGroupSizeX/Y/Z' must be non-zero for a native Metal (metallib) mesh or task shader", i);
         NRI_RETURN_ON_FAILURE(this, IsShaderBytecodeSupported(GetDesc(), *shaderDesc), Result::UNSUPPORTED, "'shaders[%u]' is DXIL, but 'features.shaderBytecodeDXIL' is false", i);
+
+        const char* bundleError = GetMetalBundleError(GetDesc().graphicsAPI, *shaderDesc);
+        NRI_RETURN_ON_FAILURE(this, !bundleError, Result::INVALID_ARGUMENT, "'shaders[%u]' is an invalid Metal converter bundle: %s", i, bundleError);
     }
     NRI_RETURN_ON_FAILURE(this, hasEntryPoint, Result::INVALID_ARGUMENT, "a VERTEX or MESH shader is not provided");
 
@@ -715,6 +753,9 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const ComputePipelineDesc& computePi
     NRI_RETURN_ON_FAILURE(this, IsThreadGroupSizeValid(GetDesc().graphicsAPI, computePipelineDesc.shader), Result::INVALID_ARGUMENT, "'shader.threadGroupSizeX/Y/Z' must be non-zero for a native Metal (metallib) compute shader");
     NRI_RETURN_ON_FAILURE(this, IsShaderBytecodeSupported(GetDesc(), computePipelineDesc.shader), Result::UNSUPPORTED, "'shader' is DXIL, but 'features.shaderBytecodeDXIL' is false");
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.robustness < Robustness::MAX_NUM, Result::INVALID_ARGUMENT, "'robustness' is invalid");
+
+    const char* bundleError = GetMetalBundleError(GetDesc().graphicsAPI, computePipelineDesc.shader);
+    NRI_RETURN_ON_FAILURE(this, !bundleError, Result::INVALID_ARGUMENT, "'shader' is an invalid Metal converter bundle: %s", bundleError);
 
     if (computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS) {
         if (!GetDesc().features.pipelineCacheControl)
@@ -1672,6 +1713,14 @@ NRI_INLINE Result DeviceVal::CreateFence(const FenceMetalDesc& fenceMetalDesc, F
         fence = (Fence*)Allocate<FenceVal>(GetAllocationCallbacks(), *this, fenceImpl);
 
     return result;
+}
+
+NRI_INLINE Result DeviceVal::GetRootSignature(const PipelineLayout& pipelineLayout, char* json, uint64_t& size) {
+    NRI_RETURN_ON_FAILURE(this, json == nullptr || size != 0, Result::INVALID_ARGUMENT, "'size' is 0");
+
+    const PipelineLayout* pipelineLayoutImpl = NRI_GET_IMPL(PipelineLayout, &pipelineLayout);
+
+    return m_iWrapperMetalImpl.GetRootSignatureMetal(*pipelineLayoutImpl, json, size);
 }
 
 #endif

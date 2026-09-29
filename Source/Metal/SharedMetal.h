@@ -40,6 +40,7 @@ struct DescriptorPoolMetal;
 struct DescriptorSetMetal;
 struct PipelineLayoutMetal;
 struct PipelineMetal;
+struct PipelineCacheMetal;
 struct QueryPoolMetal;
 struct SwapChainMetal;
 
@@ -58,7 +59,7 @@ private:
     NS::AutoreleasePool* m_Pool;
 };
 
-// FNV-1a
+// FNV-1a, used for persistent data (pipeline caches and converted shaders)
 static inline uint64_t HashMetal(const void* data, size_t size, uint64_t hash = 0xCBF29CE484222325ull) {
     const uint8_t* bytes = (const uint8_t*)data;
 

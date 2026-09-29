@@ -6,6 +6,7 @@ PipelineLayoutMetal::PipelineLayoutMetal(DeviceMetal& device)
     , m_ConstantOffsets(device.GetStdAllocator())
     , m_DescriptorOffsets(device.GetStdAllocator())
     , m_SetOffsets(device.GetStdAllocator())
+    , m_RootArguments(device.GetStdAllocator())
     , m_RootSamplers(device.GetStdAllocator())
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
     , m_RootParameters(device.GetStdAllocator())
@@ -35,6 +36,22 @@ constexpr uint32_t ROOT_HASH_DESCRIPTOR = 2; // type, register, space
 constexpr uint32_t ROOT_HASH_RANGE = 3;      // type, num, base register, space, offset (followed by "ROOT_HASH_TABLE")
 constexpr uint32_t ROOT_HASH_TABLE = 4;
 constexpr uint32_t ROOT_HASH_FLAGS = 5;
+
+// Converter reflection types of root descriptors
+constexpr std::array<const char*, (size_t)DescriptorType::MAX_NUM> g_RootDescriptorReflectionTypes = {
+    "SRV", // SAMPLER (invalid)
+    "SRV", // MUTABLE (invalid)
+    "SRV", // TEXTURE (invalid)
+    "UAV", // STORAGE_TEXTURE (invalid)
+    "SRV", // INPUT_ATTACHMENT (invalid)
+    "SRV", // BUFFER (invalid)
+    "UAV", // STORAGE_BUFFER (invalid)
+    "CBV", // CONSTANT_BUFFER
+    "SRV", // STRUCTURED_BUFFER
+    "UAV", // STORAGE_STRUCTURED_BUFFER
+    "SRV", // ACCELERATION_STRUCTURE
+};
+NRI_VALIDATE_ARRAY_BY_PTR(g_RootDescriptorReflectionTypes);
 
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
 constexpr IRDescriptorRangeType g_DescriptorRangeTypes[] = {
@@ -89,7 +106,7 @@ static inline IRRootParameter1 GetDescriptorTableParameter(uint32_t rangeNum, IR
 Result PipelineLayoutMetal::Create(const PipelineLayoutDesc& desc) {
     uint32_t offset = 0;
 
-    // The root signature hash identifies converted shaders
+    // The root signature hash identifies converted shaders in pipeline caches
     auto hashRootValues = [&](std::initializer_list<uint32_t> values) {
         m_RootSignatureHash = HashMetal(values.begin(), values.size() * sizeof(uint32_t), m_RootSignatureHash);
     };
@@ -102,7 +119,7 @@ Result PipelineLayoutMetal::Create(const PipelineLayoutDesc& desc) {
     for (uint32_t i = 0; i < desc.descriptorSetNum; i++)
         rangeNum += desc.descriptorSets[i].rangeNum;
 
-    // Descriptor tables point into "ranges", which must not reallocate
+    // Descriptor tables point into "ranges", which must not reallocate (kept for "GetRootSignature")
     ranges.reserve(rangeNum);
 #endif
 
@@ -112,6 +129,7 @@ Result PipelineLayoutMetal::Create(const PipelineLayoutDesc& desc) {
 
     if ((desc.flags & PipelineLayoutBits::ENABLE_DRAW_PARAMETERS_EMULATION) && vertexStage) {
         m_DrawParametersOffset = offset;
+        m_RootArguments.push_back({"Constant", offset, 2 * sizeof(uint32_t), 0, DRAW_EMULATION_SPACE, 0});
         offset += 2 * sizeof(uint32_t);
         hashRootValues({ROOT_HASH_CONSTANTS, 0, DRAW_EMULATION_SPACE, 2, 1});
 
@@ -122,6 +140,7 @@ Result PipelineLayoutMetal::Create(const PipelineLayoutDesc& desc) {
 
     if ((desc.flags & PipelineLayoutBits::ENABLE_DRAW_INDEX_EMULATION) && vertexStage) {
         m_DrawIndexOffset = offset;
+        m_RootArguments.push_back({"Constant", offset, sizeof(uint32_t), 1, DRAW_EMULATION_SPACE, 0});
         offset += sizeof(uint32_t);
         hashRootValues({ROOT_HASH_CONSTANTS, 1, DRAW_EMULATION_SPACE, 1, 1});
 
@@ -132,6 +151,7 @@ Result PipelineLayoutMetal::Create(const PipelineLayoutDesc& desc) {
 
     for (uint32_t i = 0; i < desc.rootConstantNum; i++) {
         m_ConstantOffsets.push_back(offset);
+        m_RootArguments.push_back({"Constant", offset, desc.rootConstants[i].size, desc.rootConstants[i].registerIndex, desc.rootRegisterSpace, 0});
         offset += desc.rootConstants[i].size;
         hashRootValues({ROOT_HASH_CONSTANTS, desc.rootConstants[i].registerIndex, desc.rootRegisterSpace, desc.rootConstants[i].size / 4, 0});
 
@@ -144,6 +164,7 @@ Result PipelineLayoutMetal::Create(const PipelineLayoutDesc& desc) {
 
     for (uint32_t i = 0; i < desc.rootDescriptorNum; i++) {
         m_DescriptorOffsets.push_back(offset);
+        m_RootArguments.push_back({g_RootDescriptorReflectionTypes[(uint32_t)desc.rootDescriptors[i].descriptorType], offset, sizeof(uint64_t), desc.rootDescriptors[i].registerIndex, desc.rootRegisterSpace, 0});
         offset += sizeof(uint64_t);
         hashRootValues({ROOT_HASH_DESCRIPTOR, (uint32_t)desc.rootDescriptors[i].descriptorType, desc.rootDescriptors[i].registerIndex, desc.rootRegisterSpace});
 
@@ -227,6 +248,7 @@ Result PipelineLayoutMetal::Create(const PipelineLayoutDesc& desc) {
             m_SetOffsets.push_back(present ? offset : UINT32_MAX);
 
             if (present) {
+                m_RootArguments.push_back({"Table", offset, sizeof(uint64_t), UINT32_MAX, UINT32_MAX, sampler ? mapping.samplerNum : mapping.resourceNum});
                 offset += sizeof(uint64_t);
                 hashRootValues({ROOT_HASH_TABLE});
 
@@ -239,6 +261,7 @@ Result PipelineLayoutMetal::Create(const PipelineLayoutDesc& desc) {
 
     if (desc.rootSamplerNum) {
         m_RootSamplerOffset = offset;
+        m_RootArguments.push_back({"Table", offset, sizeof(uint64_t), UINT32_MAX, UINT32_MAX, desc.rootSamplerNum});
         offset += sizeof(uint64_t);
 
         m_RootSamplerBuffer = m_Device.GetNativeObject()->newBuffer(desc.rootSamplerNum * DESCRIPTOR_ENTRY_SIZE, MTL::ResourceStorageModeShared);
@@ -314,6 +337,10 @@ uint64_t PipelineLayoutMetal::GetRootSignatureHash() const {
     return m_RootSignatureHash;
 }
 
+const Vector<RootArgumentMetal>& PipelineLayoutMetal::GetRootArguments() const {
+    return m_RootArguments;
+}
+
 uint32_t PipelineLayoutMetal::GetRootDataSize() const {
     return m_RootDataSize;
 }
@@ -383,3 +410,37 @@ IRRootSignature* PipelineLayoutMetal::GetRootSignature() const {
 }
 
 #endif
+
+Result PipelineLayoutMetal::GetRootSignature(char* json, uint64_t& size) const {
+#if NRI_ENABLE_METAL_SHADER_CONVERTER
+    const IRVersionedRootSignatureDescriptor root = GetRootSignatureDesc();
+    const char* string = IRVersionedRootSignatureDescriptorCopyJSONString(&root);
+
+    if (!string)
+        return Result::FAILURE;
+
+    const uint64_t length = strlen(string) + 1;
+    Result result = Result::SUCCESS;
+
+    if (json) {
+        if (size < length)
+            result = Result::OUT_OF_MEMORY;
+        else
+            memcpy(json, string, length);
+    }
+
+    IRVersionedRootSignatureDescriptorReleaseString(string);
+
+    size = length;
+
+    return result;
+#else
+    // JSON requires Converter
+    if (json)
+        return Result::UNSUPPORTED;
+
+    size = 0;
+
+    return Result::SUCCESS;
+#endif
+}

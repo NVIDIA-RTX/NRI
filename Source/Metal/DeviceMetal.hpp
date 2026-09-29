@@ -78,7 +78,7 @@ Result DeviceMetal::Create(const DeviceCreationDesc& desc, const DeviceCreationM
             return Result::OUT_OF_MEMORY;
         }
 
-        // Pipelines are built by a Metal 4 compiler (thread-safe)
+        // Pipelines are built by Metal 4 compilers (thread-safe). Pipelines created with a pipeline cache use the cache's compiler
         MTL4::CompilerDescriptor* compilerDesc = MTL4::CompilerDescriptor::alloc()->init();
         m_Compiler = m_Device->newCompiler(compilerDesc, &error);
         compilerDesc->release();
@@ -442,6 +442,8 @@ void DeviceMetal::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.features.timestamp = true;
     m_Desc.features.timestampCopyQueue = true;
     m_Desc.features.calibratedTimestamps = true;
+    m_Desc.features.pipelineCache = true;
+    m_Desc.features.pipelineCacheControl = true;
     m_Desc.features.extendedDynamicState = true;
     m_Desc.features.mutableDescriptorType = true;
     // Counter heap timestamps are in GPU ticks, not nanoseconds

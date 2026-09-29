@@ -30,12 +30,23 @@ struct DescriptorEntryMetal {
 
 constexpr uint64_t DESCRIPTOR_ENTRY_SIZE = sizeof(DescriptorEntryMetal);
 
+// Root signature parameter, as reflected by Converter ("TopLevelArgumentBuffer")
+struct RootArgumentMetal {
+    const char* type; // "Constant", "CBV", "SRV", "UAV" or "Table"
+    uint32_t offset;
+    uint32_t size;
+    uint32_t registerIndex; // "UINT32_MAX" for tables
+    uint32_t space;         // "UINT32_MAX" for tables
+    uint32_t descriptorNum; // tables
+};
+
 struct PipelineLayoutMetal final : public DebugNameBase {
     PipelineLayoutMetal(DeviceMetal& device);
     ~PipelineLayoutMetal();
     Result Create(const PipelineLayoutDesc& desc);
     DeviceMetal& GetDevice() const;
     uint64_t GetRootSignatureHash() const;
+    const Vector<RootArgumentMetal>& GetRootArguments() const;
     uint32_t GetRootDataSize() const;
     uint32_t GetRootConstantOffset(uint32_t index) const;
     uint32_t GetRootDescriptorOffset(uint32_t index) const;
@@ -46,6 +57,7 @@ struct PipelineLayoutMetal final : public DebugNameBase {
     const DescriptorSetMappingMetal& GetDescriptorSetMapping(uint32_t index) const;
     void InitRootData(void* data) const;
     void WriteSetPointers(void* data, uint32_t setIndex, const DescriptorSetMetal& set) const;
+    Result GetRootSignature(char* json, uint64_t& size) const;
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
     IRRootSignature* GetRootSignature() const;
 #endif
@@ -62,6 +74,7 @@ private:
     Vector<uint32_t> m_ConstantOffsets;
     Vector<uint32_t> m_DescriptorOffsets;
     Vector<uint32_t> m_SetOffsets;
+    Vector<RootArgumentMetal> m_RootArguments;
     Vector<DescriptorMetal*> m_RootSamplers;
     MTL::Buffer* m_RootSamplerBuffer = nullptr;
     uint32_t m_RootSamplerOffset = UINT32_MAX;

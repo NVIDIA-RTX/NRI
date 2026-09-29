@@ -4,7 +4,7 @@
 
 namespace nri {
 
-// Converted shader, a private format (little-endian): the header, then data at offsets
+// Converted shader, a private format for "PipelineCacheMetal" entries and Metal converter bundles (little-endian): the header, then data at offsets
 // from the start (within "size"): 4-byte aligned "ConvertedVertexInputMetal" array, null-terminated strings and the 8-byte aligned metallib
 constexpr uint32_t CONVERTED_SHADER_MAGIC = 0x5343524E; // "NRCS"
 constexpr uint32_t CONVERTED_SHADER_VERSION = 1;
@@ -37,6 +37,7 @@ struct ConvertedShaderHeaderMetal {
 };
 
 struct ShaderLoadDescMetal {
+    PipelineCacheMetal* cache = nullptr; // converted shaders are looked up and added
     const VertexInputDesc* vertexInput = nullptr;
     uint8_t* vertexAttributeSlots = nullptr; // converted vertex shaders: receives Metal attribute indices for "vertexInput->attributes"
     MTL::Library** stageInLibrary = nullptr;
@@ -44,6 +45,7 @@ struct ShaderLoadDescMetal {
     Topology topology = Topology::MAX_NUM; // "MAX_NUM" - not a primitive pipeline
     bool emulation = false;
     bool dualSourceBlending = false;
+    bool failOnCacheMiss = false;
 };
 
 struct PipelineMetal final : public DebugNameBase {

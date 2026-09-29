@@ -1030,6 +1030,8 @@ file(WRITE "${OUT}" "unsigned char g_${NAME}_metallib[] = {${DATA}};\n")
         "Source/Metal/InternalShadersMetal.hpp"
         "Source/Metal/MemoryMetal.h"
         "Source/Metal/MemoryMetal.hpp"
+        "Source/Metal/PipelineCacheMetal.h"
+        "Source/Metal/PipelineCacheMetal.hpp"
         "Source/Metal/PipelineLayoutMetal.h"
         "Source/Metal/PipelineLayoutMetal.hpp"
         "Source/Metal/PipelineMetal.h"
