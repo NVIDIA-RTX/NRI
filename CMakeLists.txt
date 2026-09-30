@@ -52,7 +52,7 @@ endif()
 # Options
 set(NRI_AGILITY_SDK_DIR "AgilitySDK" CACHE STRING "Directory where Agility SDK will be copied relative to the directory with binaries")
 set(NRI_AGILITY_SDK_VERSION_MAJOR "619" CACHE STRING "Agility SDK major version") # 719 ("D3D12_ERROR_INVALID_REDIST" if Windows developer mode is not enabled)
-set(NRI_AGILITY_SDK_VERSION_MINOR "5" CACHE STRING "Agility SDK minor version") # 1-preview
+set(NRI_AGILITY_SDK_VERSION_MINOR "6" CACHE STRING "Agility SDK minor version") # 1-preview
 set(NRI_WGPU_VERSION "v29.0.1.1")
 set(NRI_SHADERS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_Shaders" CACHE STRING "Shader output path override")
 set(NRI_NVAPI_CUSTOM_PATH "" CACHE STRING "Path to a custom NVAPI library directory")
@@ -170,7 +170,7 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.362.zip"
+        URL "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.364.zip"
     )
     list(APPEND DEPS vulkan_headers)
 
@@ -282,7 +282,7 @@ if(NRI_ENABLE_NVAPI)
             DOWNLOAD_EXTRACT_TIMESTAMP 1
             DOWNLOAD_NO_PROGRESS 1
             SOURCE_SUBDIR "ignore CMakeLists.txt"
-            URL "https://github.com/NVIDIA/nvapi/archive/a08f45f737bb142b070f1e23c58466ecbc82e398.zip"
+            URL "https://github.com/NVIDIA/nvapi/archive/70d337db9186e968eab622f7e786de7e437faf3d.zip"
         )
         list(APPEND DEPS nvapi)
     endif()
@@ -296,7 +296,7 @@ if(NRI_ENABLE_SHADERMAKE AND NOT TARGET ShaderMake)
         shadermake
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
-        URL "https://github.com/NVIDIA-RTX/ShaderMake/archive/7abd1490b4bba728c65e7a1621e0d78d1d1121b7.zip"
+        URL "https://github.com/NVIDIA-RTX/ShaderMake/archive/a175fce84ee35b4b6e58645be975f6d8be718c30.zip"
     )
     list(APPEND DEPS shadermake)
 endif()
