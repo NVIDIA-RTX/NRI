@@ -46,6 +46,7 @@ Available interfaces:
  - `NRI.h` - core functionality
  - `NRIDeviceCreation.h` - device creation and related functionality
  - `NRIHelper.h` - a collection of various helpers to ease use of the core interface
+ - `NRIDescriptorHeap.h` - directly indexed descriptor heaps
  - `NRIImgui.h` - a light-weight *ImGui* renderer (no *ImGui* dependency)
  - `NRILowLatency.h` - low latency support (aka *NVIDIA REFLEX*)
  - `NRIMeshShader.h` - mesh shaders
@@ -124,7 +125,7 @@ Required:
 Supported:
  - (Instance) _VK_KHR_get_surface_capabilities2_
  - (Instance) _VK_KHR_surface_
- - (Instance) _VK_KHR_win32_surface_ (_VK_KHR_xlib_surface_, _VK_KHR_wayland_surface_,  _VK_EXT_metal_surface_)
+ - (Instance) _VK_KHR_win32_surface_ (_VK_KHR_xlib_surface_, _VK_KHR_wayland_surface_, _VK_KHR_android_surface_, _VK_EXT_metal_surface_)
  - (Instance) _VK_EXT_swapchain_colorspace_
  - (Instance) _VK_EXT_debug_utils_
  - (Instance) _VK_EXT_surface_maintenance1_
@@ -141,6 +142,8 @@ Supported:
  - _VK_KHR_maintenance7_
  - _VK_KHR_maintenance8_
  - _VK_KHR_maintenance9_
+ - _VK_KHR_maintenance10_
+ - _VK_KHR_extended_flags_
  - _VK_KHR_line_rasterization_
  - _VK_KHR_fragment_shading_rate_
  - _VK_KHR_pipeline_library_
@@ -154,14 +157,20 @@ Supported:
  - _VK_KHR_compute_shader_derivatives_
  - _VK_KHR_unified_image_layouts_
  - _VK_KHR_shader_integer_dot_product_
+ - _VK_KHR_shader_untyped_pointers_
+ - _VK_KHR_sampler_ycbcr_conversion_
+ - _VK_KHR_load_store_op_none_
  - _VK_KHR_dynamic_rendering_local_read_
  - _VK_EXT_extended_dynamic_state_
  - _VK_EXT_calibrated_timestamps_
  - _VK_EXT_pipeline_creation_cache_control_
  - _VK_EXT_pipeline_robustness_
+ - _VK_EXT_host_image_copy_
+ - _VK_EXT_load_store_op_none_
  - _VK_EXT_image_robustness_
  - _VK_EXT_subgroup_size_control_
  - _VK_EXT_mutable_descriptor_type_
+ - _VK_EXT_descriptor_heap_
  - _VK_EXT_swapchain_maintenance1_
  - _VK_EXT_present_mode_fifo_latest_ready_
  - _VK_EXT_opacity_micromap_
@@ -177,6 +186,18 @@ Supported:
  - _VK_EXT_robustness2_
  - _VK_EXT_fragment_shader_interlock_
  - _VK_EXT_zero_initialize_device_memory_
+ - _VK_EXT_device_fault_
+ - _VK_KHR_video_queue_
+ - _VK_KHR_video_decode_queue_
+ - _VK_KHR_video_encode_queue_
+ - _VK_KHR_video_decode_h264_
+ - _VK_KHR_video_decode_h265_
+ - _VK_KHR_video_decode_av1_
+ - _VK_KHR_video_encode_h264_
+ - _VK_KHR_video_encode_h265_
+ - _VK_KHR_video_encode_av1_
+ - _VK_KHR_video_maintenance1_
+ - _VK_KHR_video_maintenance2_
  - _VK_NV_low_latency2_
  - _VK_NVX_binary_import_
  - _VK_NVX_image_view_handle_
@@ -187,7 +208,7 @@ Supported:
 - main sample demonstrating path tracing best practices
 
 [*NRI samples*](https://github.com/NVIDIA-RTX/NRISamples):
-- many samples demonstrating NRI usage
+- many samples demonstrating basic usage, also works as unit tests
 
 ## C/C++ INTERFACE DIFFERENCES
 
@@ -206,7 +227,7 @@ Supported:
 |-------------------------|-----------------------------------------|---------------------------------|------------------------------|-------------------------------------------|
 | `Device`                | `ID3D11Device`                          | `ID3D12Device`                  | `VkDevice`                   | `WGPUDevice`                              |
 | `CommandBuffer`         | `ID3D11DeviceContext` (deferred)        | `ID3D12CommandList`             | `VkCommandBuffer`            | `WGPUCommandBuffer`                       |
-| `CommandQueue`          | `ID3D11DeviceContext` (immediate)       | `ID3D12CommandQueue`            | `VkQueue`                    | `WGPUQueue`                               |
+| `Queue`                 | `ID3D11DeviceContext` (immediate)       | `ID3D12CommandQueue`            | `VkQueue`                    | `WGPUQueue`                               |
 | `Fence`                 | `ID3D11Fence`                           | `ID3D12Fence`                   | `VkSemaphore` (timeline)     | N/A                                       |
 | `CommandAllocator`      | N/A                                     | `ID3D12CommandAllocator`        | `VkCommandPool`              | N/A                                       |
 | `Buffer`                | `ID3D11Buffer`                          | `ID3D12Resource`                | `VkBuffer`                   | `WGPUBuffer`                              |
