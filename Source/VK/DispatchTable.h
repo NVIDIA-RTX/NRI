@@ -58,6 +58,9 @@ struct DispatchTable {
 #ifdef VK_USE_PLATFORM_METAL_EXT
     VK_FUNC(CreateMetalSurfaceEXT);
 #endif
+#ifdef VK_USE_PLATFORM_ANDROID_KHR
+    VK_FUNC(CreateAndroidSurfaceKHR);
+#endif
 
     //==========================================================================
     // Device                                    Thread safety | Accounted

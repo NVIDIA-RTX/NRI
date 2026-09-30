@@ -26,7 +26,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 # Architecture
-if(NOT (WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux" OR APPLE))
+if(NOT (WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux" OR APPLE OR ANDROID))
     message(FATAL_ERROR "NRI: unsupported architecture or platform '${CMAKE_SYSTEM_NAME}', '${CMAKE_SYSTEM_PROCESSOR}'")
 elseif((CMAKE_GENERATOR_PLATFORM MATCHES "ARM64") OR (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64"))
     set(IS_ARM64 TRUE)
@@ -69,7 +69,7 @@ option(NRI_STREAMER_THREAD_SAFE "'NRIStreamer' thread safety (OFF is faster)" ON
 
 cmake_dependent_option(NRI_ENABLE_D3D11_SUPPORT "Enable D3D11 backend" ON "WIN32" OFF)
 cmake_dependent_option(NRI_ENABLE_D3D12_SUPPORT "Enable D3D12 backend" ON "WIN32" OFF)
-cmake_dependent_option(NRI_ENABLE_WGPU_SUPPORT "Enable WebGPU backend" ${GITHUB_CI} "WGPU_BIN_ARCHITECTURE" OFF)
+cmake_dependent_option(NRI_ENABLE_WGPU_SUPPORT "Enable WebGPU backend" ${GITHUB_CI} "WGPU_BIN_ARCHITECTURE; NOT ANDROID" OFF)
 cmake_dependent_option(NRI_ENABLE_AMDAGS "Enable AMD AGS library for D3D" ON "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT); NOT IS_ARM64" OFF)
 cmake_dependent_option(NRI_ENABLE_NVAPI "Enable NVAPI library for D3D" ON "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT); NOT IS_ARM64" OFF)
 cmake_dependent_option(NRI_ENABLE_AGILITY_SDK_SUPPORT "Enable Agility SDK support to unlock access to latest D3D12 features" ON "NRI_ENABLE_D3D12_SUPPORT" OFF)
@@ -782,6 +782,9 @@ if(NRI_ENABLE_VK_SUPPORT)
             >
             $<$<BOOL:${APPLE}>:
                 VK_USE_PLATFORM_METAL_EXT;VK_ENABLE_BETA_EXTENSIONS
+            >
+            $<$<BOOL:${ANDROID}>:
+                VK_USE_PLATFORM_ANDROID_KHR
             >
             $<$<BOOL:${NRI_ENABLE_XLIB_SUPPORT}>:
                 VK_USE_PLATFORM_XLIB_KHR

@@ -70,12 +70,17 @@ NriStruct(MetalWindow) {    // Expects "APPLE" platform macro
     void* caMetalLayer;     //    CAMetalLayer
 };
 
+NriStruct(AndroidWindow) {  // Expects "__ANDROID__" platform macro
+    void* nativeWindow;     //    ANativeWindow
+};
+
 NriStruct(Window) {
     // Only one entity must be initialized
     Nri(WindowsWindow) windows;
     Nri(X11Window) x11;
     Nri(WaylandWindow) wayland;
     Nri(MetalWindow) metal;
+    Nri(AndroidWindow) android;
 };
 
 // SwapChain textures will be created as "color attachment" resources

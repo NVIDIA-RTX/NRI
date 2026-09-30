@@ -76,6 +76,15 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
             NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateMetalSurfaceEXT");
         }
 #endif
+#ifdef VK_USE_PLATFORM_ANDROID_KHR
+        {
+            VkAndroidSurfaceCreateInfoKHR androidSurfaceInfo = {VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR};
+            androidSurfaceInfo.window = (ANativeWindow*)swapChainDesc.window.android.nativeWindow;
+
+            VkResult vkResult = vk.CreateAndroidSurfaceKHR(m_Device, &androidSurfaceInfo, m_Device.GetVkAllocationCallbacks(), &m_Surface);
+            NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateAndroidSurfaceKHR");
+        }
+#endif
         VkBool32 supported = VK_FALSE;
         VkResult vkResult = vk.GetPhysicalDeviceSurfaceSupportKHR(m_Device, familyIndex, m_Surface, &supported);
         NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "GetPhysicalDeviceSurfaceSupportKHR");
@@ -261,6 +270,9 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
     // Scaling mode and caps
     bool isScalingSupported = false;
     uint32_t textureNum = swapChainDesc.textureNum;
+    VkSurfaceTransformFlagBitsKHR preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+    VkCompositeAlphaFlagBitsKHR compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    VkImageUsageFlags swapchainImageUsageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     {
         VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR};
         surfaceInfo.surface = m_Surface;
@@ -302,14 +314,25 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         if (textureNum != swapChainDesc.textureNum)
             NRI_REPORT_WARNING(&m_Device, "'swapChainDesc.textureNum=%u' clamped to %u", swapChainDesc.textureNum, textureNum);
 
+        if (!(surfaceCaps.supportedTransforms & preTransform))
+            preTransform = surfaceCaps.currentTransform;
+
+        if (!(surfaceCaps.supportedCompositeAlpha & compositeAlpha)) {
+            if (surfaceCaps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR)
+                compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
+            else if (surfaceCaps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR)
+                compositeAlpha = VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
+            else
+                compositeAlpha = VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR;
+        }
+
+        // VK guarantees only COLOR_ATTACHMENT usage for swap chain images; transfer usages are optional
+        swapchainImageUsageFlags |= surfaceCaps.supportedUsageFlags & (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+
         // TODO: that's the minimal check to detect scaling support
         if (surfacePresentScalingCaps.supportedPresentScaling != 0 && surfacePresentScalingCaps.supportedPresentGravityX != 0 && surfacePresentScalingCaps.supportedPresentGravityY != 0)
             isScalingSupported = true;
     }
-
-    constexpr VkImageUsageFlags swapchainImageUsageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
-        | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-        | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
     { // Swap chain
         VkSwapchainCreateInfoKHR swapchainInfo = {VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
@@ -324,8 +347,8 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
         swapchainInfo.queueFamilyIndexCount = 1;
         swapchainInfo.pQueueFamilyIndices = &familyIndex;
-        swapchainInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-        swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+        swapchainInfo.preTransform = preTransform;
+        swapchainInfo.compositeAlpha = compositeAlpha;
         swapchainInfo.presentMode = presentMode;
         PNEXTCHAIN_DECLARE(swapchainInfo.pNext);
 

@@ -185,6 +185,24 @@ void DeviceVal::Destruct() {
 
 NRI_INLINE Result DeviceVal::CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*& swapChain) {
     NRI_RETURN_ON_FAILURE(this, swapChainDesc.queue != nullptr, Result::INVALID_ARGUMENT, "'queue' is NULL");
+
+    bool isWindowValid = false;
+#if defined(__ANDROID__)
+    isWindowValid = swapChainDesc.window.android.nativeWindow != nullptr;
+#elif defined(_WIN32)
+    isWindowValid = swapChainDesc.window.windows.hwnd != nullptr;
+#elif defined(__APPLE__)
+    isWindowValid = swapChainDesc.window.metal.caMetalLayer != nullptr;
+#else
+#    if NRI_ENABLE_XLIB_SUPPORT
+    isWindowValid = swapChainDesc.window.x11.dpy != nullptr && swapChainDesc.window.x11.window != 0;
+#    endif
+#    if NRI_ENABLE_WAYLAND_SUPPORT
+    isWindowValid = isWindowValid || (swapChainDesc.window.wayland.display != nullptr && swapChainDesc.window.wayland.surface != nullptr);
+#    endif
+#endif
+    NRI_RETURN_ON_FAILURE(this, isWindowValid, Result::INVALID_ARGUMENT, "'window' is invalid");
+
     NRI_RETURN_ON_FAILURE(this, swapChainDesc.width != 0, Result::INVALID_ARGUMENT, "'width' is 0");
     NRI_RETURN_ON_FAILURE(this, swapChainDesc.height != 0, Result::INVALID_ARGUMENT, "'height' is 0");
     NRI_RETURN_ON_FAILURE(this, swapChainDesc.textureNum != 0, Result::INVALID_ARGUMENT, "'textureNum' is invalid");

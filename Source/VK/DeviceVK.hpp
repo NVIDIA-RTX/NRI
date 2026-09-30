@@ -526,6 +526,9 @@ void DeviceVK::ProcessInstanceExtensions(Vector<const char*>& desiredInstanceExt
 #ifdef VK_USE_PLATFORM_METAL_EXT
         desiredInstanceExts.push_back(VK_EXT_METAL_SURFACE_EXTENSION_NAME);
 #endif
+#ifdef VK_USE_PLATFORM_ANDROID_KHR
+        desiredInstanceExts.push_back(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME);
+#endif
     }
 
     if (IsExtensionSupported(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME, supportedExts))
@@ -2173,6 +2176,9 @@ Result DeviceVK::ResolveInstanceDispatchTable(const Vector<const char*>& desired
 #endif
 #ifdef VK_USE_PLATFORM_METAL_EXT
         GET_INSTANCE_FUNC(CreateMetalSurfaceEXT);
+#endif
+#ifdef VK_USE_PLATFORM_ANDROID_KHR
+        GET_INSTANCE_FUNC(CreateAndroidSurfaceKHR);
 #endif
     }
 
