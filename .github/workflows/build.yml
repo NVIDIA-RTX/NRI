@@ -30,6 +30,29 @@ jobs:
           name: NRI SDK (Windows x64)
           path: _NRI_SDK
 
+  Build-Windows-ARM64:
+    runs-on: windows-2025
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Deploy
+        run: .\Scripts\Windows\1-Deploy.bat -G "Visual Studio 17 2022" -A ARM64
+
+      - name: Build
+        run: .\Scripts\Windows\2-Build.bat
+
+      - name: Prepare SDK
+        run: .\Scripts\Windows\3-PrepareSDK.bat
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NRI SDK (Windows ARM64)
+          path: _NRI_SDK
+
   Build-Ubuntu:
     runs-on: ubuntu-latest
     steps:
@@ -61,6 +84,40 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: NRI SDK (Linux x64)
+          path: _NRI_SDK
+
+  Build-Android-ARM64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: 'latest'
+
+      - name: Deploy
+        run: >-
+          bash Scripts/Linux/1-Deploy.sh
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+          -DANDROID_ABI=arm64-v8a
+          -DANDROID_PLATFORM=android-24
+
+      - name: Build
+        run: cmake --build _Build --parallel
+
+      - name: Prepare SDK
+        run: bash Scripts/Linux/3-PrepareSDK.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NRI SDK (Android ARM64)
           path: _NRI_SDK
 
   Build-macOS:
