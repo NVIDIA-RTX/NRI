@@ -44,6 +44,7 @@ Apply these rules to changes under `Include`, `Source`, CMake, and build scripts
 ## Validation Boundary
 
 - Public-input validation belongs in `Source/Validation`, not D3D11, D3D12, Vulkan, WGPU, or NONE.
+- Use `NRI_RETURN_ON_FAILURE` to reject invalid public inputs in Validation.
 - Validation may check required pointers, object relationships, simple ranges, counts, alignment, and advertised capability limits.
 - Null-check before casting or dereferencing validation wrappers; unwrap `*Val` objects consistently.
 - Update validation bookkeeping only after backend success or provide rollback.
