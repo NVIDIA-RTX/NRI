@@ -80,10 +80,31 @@ jobs:
         run: brew install ninja
 
       - name: Setup Vulkan SDK
-        uses: jakoch/install-vulkan-sdk-action@v1
+        run: |
+          version=$(curl --fail --silent --show-error --location --retry 3 https://vulkan.lunarg.com/sdk/latest/mac.txt)
+          sdk="$RUNNER_TEMP/VulkanSDK/macOS"
+          echo "VULKAN_SDK_VERSION=$version" >> "$GITHUB_ENV"
+          echo "VULKAN_SDK=$sdk" >> "$GITHUB_ENV"
+          echo "$sdk/bin" >> "$GITHUB_PATH"
+          echo "DYLD_LIBRARY_PATH=$sdk/lib/VulkanLoader/lib:$sdk/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+
+      - name: Cache Vulkan SDK
+        id: vulkan-cache
+        uses: actions/cache@v4
         with:
-          vulkan_version: 'latest'
-          cache: true
+          path: ${{ runner.temp }}/VulkanSDK
+          key: vulkan-sdk-macos-${{ runner.arch }}-${{ env.VULKAN_SDK_VERSION }}
+
+      - name: Install Vulkan SDK
+        if: steps.vulkan-cache.outputs.cache-hit != 'true'
+        run: |
+          curl --fail --location --retry 3 \
+            "https://sdk.lunarg.com/sdk/download/$VULKAN_SDK_VERSION/mac/vulkansdk-macos-$VULKAN_SDK_VERSION.zip" \
+            --output "$RUNNER_TEMP/vulkan-sdk.zip"
+          unzip -q "$RUNNER_TEMP/vulkan-sdk.zip" -d "$RUNNER_TEMP/vulkan-installer"
+          installer="vulkansdk-macOS-$VULKAN_SDK_VERSION"
+          sudo "$RUNNER_TEMP/vulkan-installer/$installer.app/Contents/MacOS/$installer" \
+            --root "$RUNNER_TEMP/VulkanSDK" --accept-licenses --default-answer --confirm-command install
 
       - name: Deploy
         run: >-
