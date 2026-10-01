@@ -1,8 +1,9 @@
 @echo off
+setlocal
+for %%I in ("%~dp0..\..") do set "ROOT=%%~fI"
 
-set ROOT=%cd%
-set SELF=%~dp0
-set SDK=_NRI_SDK
+set "SELF=%ROOT%"
+set "SDK=%ROOT%\_NRI_SDK"
 
 echo %SDK%: ROOT=%ROOT%, SELF=%SELF%
 
@@ -23,3 +24,5 @@ copy "%ROOT%\_Bin\Debug\NRI.lib" "%SDK%\Lib\Debug"
 copy "%ROOT%\_Bin\Debug\NRI.pdb" "%SDK%\Lib\Debug"
 copy "%ROOT%\_Bin\Release\NRI.dll" "%SDK%\Lib\Release"
 copy "%ROOT%\_Bin\Release\NRI.lib" "%SDK%\Lib\Release"
+
+exit /B %ERRORLEVEL%

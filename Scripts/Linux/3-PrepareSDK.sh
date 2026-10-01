@@ -1,7 +1,10 @@
 #!/bin/bash
+set -e
+
+cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
 ROOT=$(pwd)
-SELF=$(dirname "$0")
+SELF=${ROOT}
 SDK=_NRI_SDK
 
 echo ${SDK}: ROOT=${ROOT}, SELF=${SELF}

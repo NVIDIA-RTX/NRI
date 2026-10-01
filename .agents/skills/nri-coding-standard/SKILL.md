@@ -74,6 +74,6 @@ Apply these rules to changes under `Include`, `Source`, CMake, and build scripts
 
 - Preserve option names, dependency gates, warnings-as-errors, explicit source lists, `target_sources`, `source_group`, and generator-expression style.
 - Add new files to every applicable explicit source list.
-- Prefer targeted builds first. CI baselines are `.\1-Deploy.bat`, `.\2-Build.bat`, and `.\3-PrepareSDK.bat` on Windows, with corresponding shell scripts on Linux.
+- Prefer targeted builds first. CI baselines are `.\Scripts\Windows\1-Deploy.bat`, `.\Scripts\Windows\2-Build.bat`, and `.\Scripts\Windows\3-PrepareSDK.bat` on Windows, with corresponding shell scripts in `Scripts/Linux/` and `Scripts/MacOS/`. Scripts resolve paths relative to the NRI repository root.
 - Keep noisy logs under `_Tmp` when requested and report the first unique error plus the summary.
 - Run `.clang-format` on touched C/C++ when available, inspect the diff, run `git diff --check`, and verify CRLF.

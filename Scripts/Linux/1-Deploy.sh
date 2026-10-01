@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e
+
+cd "$(dirname "${BASH_SOURCE[0]}")/../.."
+
+cmake -S . -B _Build "$@"
