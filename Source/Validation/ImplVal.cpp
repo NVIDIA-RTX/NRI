@@ -60,17 +60,6 @@ static inline uint8_t GetVideoSessionBitDepth(Format format) {
     return format == Format::NV12_UNORM ? 8 : 10;
 }
 
-static inline bool IsVideoH264CroppingValid(const VideoH264SequenceParameterSetDesc& sequence) {
-    if (!(sequence.flags & VideoH264SequenceParameterSetBits::FRAME_CROPPING))
-        return true;
-
-    // 4:2:0 progressive: "CropUnitX = CropUnitY = 2"
-    const uint32_t width = (sequence.pictureWidthInMbsMinus1 + 1u) * 16u;
-    const uint32_t height = (sequence.pictureHeightInMapUnitsMinus1 + 1u) * 16u;
-
-    return (sequence.frameCropLeftOffset + sequence.frameCropRightOffset) * 2u < width && (sequence.frameCropTopOffset + sequence.frameCropBottomOffset) * 2u < height;
-}
-
 // "general_level_idc" (H.265 Table A.8, 30 times the level number) or 0
 static inline bool IsVideoH265LevelIdcValid(uint8_t generalLevelIdc) {
     constexpr std::array<uint8_t, 14> levels = {0, 30, 60, 63, 90, 93, 120, 123, 150, 153, 156, 180, 183, 186};
@@ -126,7 +115,7 @@ static inline bool IsVideoSessionParametersDescValid(const VideoSessionDesc& ses
         for (uint32_t i = 0; i < parameters.sequenceParameterSetNum; i++) {
             const VideoH264SequenceParameterSetDesc& sequence = parameters.sequenceParameterSets[i];
             const bool isProgressive = (sequence.flags & VideoH264SequenceParameterSetBits::FRAME_MBS_ONLY) && !(sequence.flags & VideoH264SequenceParameterSetBits::MB_ADAPTIVE_FRAME_FIELD);
-            if (sequence.sequenceParameterSetId >= 32 || (sequenceParameterSetMask & (1u << sequence.sequenceParameterSetId)) != 0 || sequence.profileIdc != h264HighProfileIdc || sequence.chromaFormatIdc != 1 || sequence.bitDepthLumaMinus8 != 0 || sequence.bitDepthChromaMinus8 != 0 || !isProgressive || !IsVideoH264CroppingValid(sequence))
+            if (sequence.sequenceParameterSetId >= 32 || (sequenceParameterSetMask & (1u << sequence.sequenceParameterSetId)) != 0 || sequence.profileIdc != h264HighProfileIdc || sequence.chromaFormatIdc != 1 || sequence.bitDepthLumaMinus8 != 0 || sequence.bitDepthChromaMinus8 != 0 || !isProgressive || !video::h264::IsFrameCroppingValid(sequence))
                 return false;
 
             sequenceParameterSetMask |= 1u << sequence.sequenceParameterSetId;
@@ -1911,7 +1900,7 @@ static Result NRI_CALL GetVideoPictureState(const VideoPicture& videoPicture, Vi
 
 static Result NRI_CALL WriteVideoAnnexBParameterSets(VideoAnnexBParameterSetsDesc& annexBParameterSetsDesc) {
     if (annexBParameterSetsDesc.codec == VideoCodec::H264) {
-        if (!annexBParameterSetsDesc.h264Sps || !annexBParameterSetsDesc.h264Pps || !IsVideoH264CroppingValid(*annexBParameterSetsDesc.h264Sps))
+        if (!annexBParameterSetsDesc.h264Sps || !annexBParameterSetsDesc.h264Pps || !video::h264::IsFrameCroppingValid(*annexBParameterSetsDesc.h264Sps))
             return Result::INVALID_ARGUMENT;
     } else if (annexBParameterSetsDesc.codec == VideoCodec::H265) {
         if (!annexBParameterSetsDesc.h265Vps || !annexBParameterSetsDesc.h265Sps || !annexBParameterSetsDesc.h265Pps)
