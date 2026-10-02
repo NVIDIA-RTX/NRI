@@ -1815,9 +1815,10 @@ NRI_INLINE void CommandBufferVal::EncodeVideo(const VideoEncodeDesc& videoEncode
         && videoEncodeDesc.dstBitstream.size <= dstBitstreamDesc.size - videoEncodeDesc.dstBitstream.offset
         && (capabilities.encodeBitstreamRangeSizeSupported || videoEncodeDesc.dstBitstream.size == dstBitstreamDesc.size - videoEncodeDesc.dstBitstream.offset)
         && videoEncodeDesc.bitstreamMetadataSize <= videoEncodeDesc.dstBitstream.size
+        && videoEncodeDesc.dstBitstream.size <= capabilities.bitstreamSizeMax
         && IsAligned(videoEncodeDesc.dstBitstream.offset, capabilities.bitstreamOffsetAlignment)
         && IsAligned(videoEncodeDesc.dstBitstream.size, capabilities.bitstreamSizeAlignment);
-    NRI_RETURN_ON_FAILURE(&m_Device, isDstBitstreamRangeValid, ReturnVoid(), "'dstBitstream' must be an aligned VIDEO_ENCODE buffer range containing 'bitstreamMetadataSize'; this session may require the range to extend to the end of the buffer");
+    NRI_RETURN_ON_FAILURE(&m_Device, isDstBitstreamRangeValid, ReturnVoid(), "'dstBitstream' must be an aligned VIDEO_ENCODE buffer range containing 'bitstreamMetadataSize' and within 'bitstreamSizeMax'; this session may require the range to extend to the end of the buffer");
     NRI_RETURN_ON_FAILURE(&m_Device, !capabilities.metadataSize || metadataVal, ReturnVoid(), "'metadata' is required by the video session");
 
     if (metadataVal) {

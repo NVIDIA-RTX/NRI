@@ -290,7 +290,7 @@ NriStruct(VideoCapabilities) {
     uint32_t maxReferenceNum;
     uint32_t bitstreamOffsetAlignment;
     uint32_t bitstreamSizeAlignment;
-    uint64_t bitstreamSizeMax;
+    uint64_t bitstreamSizeMax;                   // maximum "bitstream.size" for decode and "dstBitstream.size" for encode
     uint32_t metadataOffsetAlignment;
     uint32_t resolvedMetadataOffsetAlignment;
     uint32_t encodeFeedbackMaxPendingNum;        // maximum per-session feedback ranges not yet consumed by "GetVideoEncodeFeedback"; reset by "ResetVideoSession"
