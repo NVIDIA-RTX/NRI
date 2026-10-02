@@ -60,6 +60,7 @@ static StdVideoH264SequenceParameterSet GetVideoH264SequenceParameterSet(const V
     sps.flags.separate_colour_plane_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::SEPARATE_COLOUR_PLANE);
     sps.flags.gaps_in_frame_num_value_allowed_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::GAPS_IN_FRAME_NUM_ALLOWED);
     sps.flags.qpprime_y_zero_transform_bypass_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::QPPRIME_Y_ZERO_TRANSFORM_BYPASS);
+    sps.flags.frame_cropping_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::FRAME_CROPPING);
     sps.profile_idc = (StdVideoH264ProfileIdc)desc.profileIdc;
     sps.level_idc = GetVideoH264LevelIdc(desc.levelIdc);
     sps.chroma_format_idc = (StdVideoH264ChromaFormatIdc)desc.chromaFormatIdc;
@@ -74,6 +75,14 @@ static StdVideoH264SequenceParameterSet GetVideoH264SequenceParameterSet(const V
     sps.max_num_ref_frames = desc.referenceFrameNum;
     sps.pic_width_in_mbs_minus1 = desc.pictureWidthInMbsMinus1;
     sps.pic_height_in_map_units_minus1 = desc.pictureHeightInMapUnitsMinus1;
+
+    if (sps.flags.frame_cropping_flag) {
+        sps.frame_crop_left_offset = desc.frameCropLeftOffset;
+        sps.frame_crop_right_offset = desc.frameCropRightOffset;
+        sps.frame_crop_top_offset = desc.frameCropTopOffset;
+        sps.frame_crop_bottom_offset = desc.frameCropBottomOffset;
+    }
+
     return sps;
 }
 
@@ -98,145 +107,290 @@ static StdVideoH264PictureParameterSet GetVideoH264PictureParameterSet(const Vid
     return pps;
 }
 
-static bool SkipVideoAV1TimingInfo(video::av1::BitReader& reader) {
-    uint32_t ignored = 0;
-    uint8_t equalPictureInterval = 0;
-    if (!reader.ReadBits(32, ignored) || !reader.ReadBits(32, ignored) || !reader.ReadFlag(equalPictureInterval))
-        return false;
-    if (!equalPictureInterval)
-        return true;
+// Sequence header fields affecting frame header syntax or decoding; level, tier, operating points, timing and color description values are not included
+struct VideoAV1SequenceSyntaxVK {
+    uint32_t seqProfile;
+    uint32_t reducedStillPictureHeader;
+    uint32_t decoderModelInfoPresent;
+    uint32_t equalPictureInterval;
+    uint32_t bufferRemovalTimeLengthMinus1;
+    uint32_t framePresentationTimeLengthMinus1;
+    uint32_t frameWidthBitsMinus1;
+    uint32_t frameHeightBitsMinus1;
+    uint32_t maxFrameWidthMinus1;
+    uint32_t maxFrameHeightMinus1;
+    uint32_t frameIdNumbersPresent;
+    uint32_t deltaFrameIdLengthMinus2;
+    uint32_t additionalFrameIdLengthMinus1;
+    uint32_t use128x128Superblock;
+    uint32_t enableFilterIntra;
+    uint32_t enableIntraEdgeFilter;
+    uint32_t enableInterintraCompound;
+    uint32_t enableMaskedCompound;
+    uint32_t enableWarpedMotion;
+    uint32_t enableDualFilter;
+    uint32_t enableOrderHint;
+    uint32_t enableJntComp;
+    uint32_t enableRefFrameMvs;
+    uint32_t seqForceScreenContentTools;
+    uint32_t seqForceIntegerMv;
+    uint32_t orderHintBitsMinus1;
+    uint32_t enableSuperres;
+    uint32_t enableCdef;
+    uint32_t enableRestoration;
+    uint32_t bitDepth;
+    uint32_t monochrome;
+    uint32_t subsamplingX;
+    uint32_t subsamplingY;
+    uint32_t separateUvDeltaQ;
+    uint32_t filmGrainParamsPresent;
+};
 
+static bool ReadVideoAV1Uvlc(video::av1::BitReader& reader) {
+    uint32_t leadingZeros = 0;
     uint32_t bit = 0;
-    do {
+    while (true) {
         if (!reader.ReadBits(1, bit))
             return false;
-    } while (bit);
+        if (bit)
+            break;
+        if (++leadingZeros >= 32)
+            return false;
+    }
 
-    return true;
+    uint32_t ignored = 0;
+    return reader.ReadBits(leadingZeros, ignored);
 }
 
-static bool SkipVideoAV1DecoderModelInfo(video::av1::BitReader& reader, uint32_t& bufferDelayLength) {
-    uint32_t ignored = 0;
-    if (!reader.ReadBits(5, bufferDelayLength) || !reader.ReadBits(32, ignored) || !reader.ReadBits(5, ignored) || !reader.ReadBits(5, ignored))
+// AV1 "color_config"
+static bool ReadVideoAV1ColorConfig(video::av1::BitReader& reader, VideoAV1SequenceSyntaxVK& syntax) {
+    uint32_t highBitdepth = 0;
+    uint32_t twelveBit = 0;
+    if (!reader.ReadBits(1, highBitdepth) || (syntax.seqProfile == 2 && highBitdepth && !reader.ReadBits(1, twelveBit)))
         return false;
 
-    bufferDelayLength++;
-    return true;
+    syntax.bitDepth = twelveBit ? 12 : (highBitdepth ? 10 : 8);
+    if (syntax.seqProfile != video::av1::PROFILE_HIGH && !reader.ReadBits(1, syntax.monochrome))
+        return false;
+
+    uint32_t colorDescriptionPresent = 0;
+    uint32_t colorPrimaries = 2;
+    uint32_t transferCharacteristics = 2;
+    uint32_t matrixCoefficients = 2;
+    if (!reader.ReadBits(1, colorDescriptionPresent))
+        return false;
+    if (colorDescriptionPresent && (!reader.ReadBits(8, colorPrimaries) || !reader.ReadBits(8, transferCharacteristics) || !reader.ReadBits(8, matrixCoefficients)))
+        return false;
+
+    uint32_t ignored = 0;
+    if (syntax.monochrome) {
+        syntax.subsamplingX = 1;
+        syntax.subsamplingY = 1;
+        return reader.ReadBits(1, ignored); // color_range
+    }
+
+    if (colorPrimaries == 1 && transferCharacteristics == 13 && matrixCoefficients == 0) {
+        syntax.subsamplingX = 0;
+        syntax.subsamplingY = 0;
+    } else {
+        if (!reader.ReadBits(1, ignored)) // color_range
+            return false;
+
+        if (syntax.seqProfile == 0) {
+            syntax.subsamplingX = 1;
+            syntax.subsamplingY = 1;
+        } else if (syntax.seqProfile == 1) {
+            syntax.subsamplingX = 0;
+            syntax.subsamplingY = 0;
+        } else if (syntax.bitDepth == 12) {
+            if (!reader.ReadBits(1, syntax.subsamplingX) || (syntax.subsamplingX && !reader.ReadBits(1, syntax.subsamplingY)))
+                return false;
+        } else {
+            syntax.subsamplingX = 1;
+            syntax.subsamplingY = 0;
+        }
+
+        if (syntax.subsamplingX && syntax.subsamplingY && !reader.ReadBits(2, ignored)) // chroma_sample_position
+            return false;
+    }
+
+    return reader.ReadBits(1, syntax.separateUvDeltaQ);
 }
 
-static bool ApplyVideoEncodeAV1SequenceHeaderOverride(StdVideoAV1SequenceHeader& header, const uint8_t* data, size_t size) {
+// AV1 "sequence_header_obu" payload
+static bool ReadVideoAV1SequenceSyntax(const uint8_t* payload, size_t payloadSize, VideoAV1SequenceSyntaxVK& syntax) {
+    syntax = {};
+
+    video::av1::BitReader reader{payload, payloadSize, 0};
+    uint32_t ignored = 0;
+    if (!reader.ReadBits(3, syntax.seqProfile) || !reader.ReadBits(1, ignored) || !reader.ReadBits(1, syntax.reducedStillPictureHeader))
+        return false;
+
+    if (syntax.reducedStillPictureHeader) {
+        if (!reader.ReadBits(5, ignored))
+            return false;
+    } else {
+        uint32_t timingInfoPresent = 0;
+        if (!reader.ReadBits(1, timingInfoPresent))
+            return false;
+
+        if (timingInfoPresent) {
+            if (!reader.ReadBits(32, ignored) || !reader.ReadBits(32, ignored) || !reader.ReadBits(1, syntax.equalPictureInterval))
+                return false;
+            if (syntax.equalPictureInterval && !ReadVideoAV1Uvlc(reader))
+                return false;
+            if (!reader.ReadBits(1, syntax.decoderModelInfoPresent))
+                return false;
+        }
+
+        uint32_t bufferDelayLengthMinus1 = 0;
+        if (syntax.decoderModelInfoPresent) {
+            if (!reader.ReadBits(5, bufferDelayLengthMinus1) || !reader.ReadBits(32, ignored) || !reader.ReadBits(5, syntax.bufferRemovalTimeLengthMinus1) || !reader.ReadBits(5, syntax.framePresentationTimeLengthMinus1))
+                return false;
+        } else
+            syntax.equalPictureInterval = 0; // used only with the decoder model
+
+        uint32_t initialDisplayDelayPresent = 0;
+        uint32_t operatingPointNumMinus1 = 0;
+        if (!reader.ReadBits(1, initialDisplayDelayPresent) || !reader.ReadBits(5, operatingPointNumMinus1))
+            return false;
+
+        for (uint32_t i = 0; i <= operatingPointNumMinus1; i++) {
+            uint32_t seqLevelIdx = 0;
+            if (!reader.ReadBits(12, ignored) || !reader.ReadBits(5, seqLevelIdx))
+                return false;
+            if (seqLevelIdx > 7 && !reader.ReadBits(1, ignored))
+                return false;
+
+            uint32_t isPresent = 0;
+            if (syntax.decoderModelInfoPresent) {
+                if (!reader.ReadBits(1, isPresent))
+                    return false;
+                if (isPresent && (!reader.ReadBits(bufferDelayLengthMinus1 + 1, ignored) || !reader.ReadBits(bufferDelayLengthMinus1 + 1, ignored) || !reader.ReadBits(1, ignored)))
+                    return false;
+            }
+
+            if (initialDisplayDelayPresent) {
+                if (!reader.ReadBits(1, isPresent))
+                    return false;
+                if (isPresent && !reader.ReadBits(4, ignored))
+                    return false;
+            }
+        }
+    }
+
+    if (!reader.ReadBits(4, syntax.frameWidthBitsMinus1) || !reader.ReadBits(4, syntax.frameHeightBitsMinus1)
+        || !reader.ReadBits(syntax.frameWidthBitsMinus1 + 1, syntax.maxFrameWidthMinus1) || !reader.ReadBits(syntax.frameHeightBitsMinus1 + 1, syntax.maxFrameHeightMinus1))
+        return false;
+
+    if (!syntax.reducedStillPictureHeader && !reader.ReadBits(1, syntax.frameIdNumbersPresent))
+        return false;
+    if (syntax.frameIdNumbersPresent && (!reader.ReadBits(4, syntax.deltaFrameIdLengthMinus2) || !reader.ReadBits(3, syntax.additionalFrameIdLengthMinus1)))
+        return false;
+    if (!reader.ReadBits(1, syntax.use128x128Superblock) || !reader.ReadBits(1, syntax.enableFilterIntra) || !reader.ReadBits(1, syntax.enableIntraEdgeFilter))
+        return false;
+
+    syntax.seqForceScreenContentTools = STD_VIDEO_AV1_SELECT_SCREEN_CONTENT_TOOLS;
+    syntax.seqForceIntegerMv = STD_VIDEO_AV1_SELECT_INTEGER_MV;
+    if (!syntax.reducedStillPictureHeader) {
+        if (!reader.ReadBits(1, syntax.enableInterintraCompound) || !reader.ReadBits(1, syntax.enableMaskedCompound) || !reader.ReadBits(1, syntax.enableWarpedMotion)
+            || !reader.ReadBits(1, syntax.enableDualFilter) || !reader.ReadBits(1, syntax.enableOrderHint))
+            return false;
+        if (syntax.enableOrderHint && (!reader.ReadBits(1, syntax.enableJntComp) || !reader.ReadBits(1, syntax.enableRefFrameMvs)))
+            return false;
+
+        uint32_t seqChooseScreenContentTools = 0;
+        if (!reader.ReadBits(1, seqChooseScreenContentTools) || (!seqChooseScreenContentTools && !reader.ReadBits(1, syntax.seqForceScreenContentTools)))
+            return false;
+
+        if (syntax.seqForceScreenContentTools > 0) {
+            uint32_t seqChooseIntegerMv = 0;
+            if (!reader.ReadBits(1, seqChooseIntegerMv) || (!seqChooseIntegerMv && !reader.ReadBits(1, syntax.seqForceIntegerMv)))
+                return false;
+        }
+
+        if (syntax.enableOrderHint && !reader.ReadBits(3, syntax.orderHintBitsMinus1))
+            return false;
+    }
+
+    if (!reader.ReadBits(1, syntax.enableSuperres) || !reader.ReadBits(1, syntax.enableCdef) || !reader.ReadBits(1, syntax.enableRestoration))
+        return false;
+
+    return ReadVideoAV1ColorConfig(reader, syntax) && reader.ReadBits(1, syntax.filmGrainParamsPresent);
+}
+
+static bool FindVideoAV1SequenceSyntax(const uint8_t* data, size_t size, VideoAV1SequenceSyntaxVK& syntax) {
     size_t cursor = 0;
     while (cursor < size) {
         video::av1::ObuSpan span = {};
-        if (!video::av1::ReadObuHeader(data, size, cursor, span))
-            return false;
-        if (span.type != video::av1::ObuType::SequenceHeader)
-            continue;
-
-        video::av1::BitReader reader{data + span.payloadOffset, span.payloadSize, 0};
-        uint32_t ignored = 0;
-        uint8_t reducedStillPictureHeader = 0;
-        uint8_t ignoredFlag = 0;
-        if (!reader.ReadBits(3, ignored) || !reader.ReadFlag(ignoredFlag) || !reader.ReadFlag(reducedStillPictureHeader))
+        if (!video::av1::ReadObuHeader(data, size, cursor, span) || span.payloadSize > (size - span.payloadOffset))
             return false;
 
-        uint8_t decoderModelInfoPresent = 0;
-        uint8_t initialDisplayDelayPresent = 0;
-        uint32_t bufferDelayLength = 0;
-        if (reducedStillPictureHeader) {
-            if (!reader.ReadBits(5, ignored))
-                return false;
-        } else {
-            uint8_t timingInfoPresent = 0;
-            if (!reader.ReadFlag(timingInfoPresent))
-                return false;
-            if (timingInfoPresent) {
-                if (!SkipVideoAV1TimingInfo(reader) || !reader.ReadFlag(decoderModelInfoPresent))
-                    return false;
-                if (decoderModelInfoPresent && !SkipVideoAV1DecoderModelInfo(reader, bufferDelayLength))
-                    return false;
-            }
-            if (!reader.ReadFlag(initialDisplayDelayPresent) || !reader.ReadBits(5, ignored))
-                return false;
-
-            const uint32_t operatingPointNum = ignored + 1;
-            for (uint32_t i = 0; i < operatingPointNum; i++) {
-                uint32_t seqLevelIdx = 0;
-                if (!reader.ReadBits(12, ignored) || !reader.ReadBits(5, seqLevelIdx))
-                    return false;
-                if (seqLevelIdx > 7 && !reader.ReadBits(1, ignored))
-                    return false;
-                if (decoderModelInfoPresent) {
-                    uint8_t decoderModelPresentForThisOp = 0;
-                    if (!reader.ReadFlag(decoderModelPresentForThisOp))
-                        return false;
-                    if (decoderModelPresentForThisOp && (!reader.ReadBits(bufferDelayLength, ignored) || !reader.ReadBits(bufferDelayLength, ignored) || !reader.ReadBits(1, ignored)))
-                        return false;
-                }
-                if (initialDisplayDelayPresent) {
-                    uint8_t initialDisplayDelayPresentForThisOp = 0;
-                    if (!reader.ReadFlag(initialDisplayDelayPresentForThisOp))
-                        return false;
-                    if (initialDisplayDelayPresentForThisOp && !reader.ReadBits(4, ignored))
-                        return false;
-                }
-            }
-        }
-
-        uint32_t frameWidthBitsMinus1 = 0;
-        uint32_t frameHeightBitsMinus1 = 0;
-        uint32_t maxFrameWidthMinus1 = 0;
-        uint32_t maxFrameHeightMinus1 = 0;
-        if (!reader.ReadBits(4, frameWidthBitsMinus1) || !reader.ReadBits(4, frameHeightBitsMinus1) || !reader.ReadBits(frameWidthBitsMinus1 + 1, maxFrameWidthMinus1) || !reader.ReadBits(frameHeightBitsMinus1 + 1, maxFrameHeightMinus1))
-            return false;
-
-        uint8_t frameIdNumbersPresent = 0;
-        if (!reducedStillPictureHeader && !reader.ReadFlag(frameIdNumbersPresent))
-            return false;
-        if (frameIdNumbersPresent && (!reader.ReadBits(4, ignored) || !reader.ReadBits(3, ignored)))
-            return false;
-        if (!reader.ReadBits(1, ignored) || !reader.ReadBits(1, ignored) || !reader.ReadBits(1, ignored))
-            return false;
-
-        uint32_t seqForceScreenContentTools = STD_VIDEO_AV1_SELECT_SCREEN_CONTENT_TOOLS;
-        uint32_t seqForceIntegerMv = STD_VIDEO_AV1_SELECT_INTEGER_MV;
-        if (!reducedStillPictureHeader) {
-            uint8_t enableOrderHint = 0;
-            if (!reader.ReadBits(1, ignored) || !reader.ReadBits(1, ignored) || !reader.ReadBits(1, ignored) || !reader.ReadBits(1, ignored) || !reader.ReadFlag(enableOrderHint))
-                return false;
-            if (enableOrderHint && (!reader.ReadBits(1, ignored) || !reader.ReadBits(1, ignored)))
-                return false;
-
-            uint8_t seqChooseScreenContentTools = 0;
-            if (!reader.ReadFlag(seqChooseScreenContentTools))
-                return false;
-            if (!seqChooseScreenContentTools && !reader.ReadBits(1, seqForceScreenContentTools))
-                return false;
-            if (seqForceScreenContentTools > 0) {
-                uint8_t seqChooseIntegerMv = 0;
-                if (!reader.ReadFlag(seqChooseIntegerMv))
-                    return false;
-                if (!seqChooseIntegerMv && !reader.ReadBits(1, seqForceIntegerMv))
-                    return false;
-            }
-        }
-
-        header.frame_width_bits_minus_1 = (uint8_t)frameWidthBitsMinus1;
-        header.frame_height_bits_minus_1 = (uint8_t)frameHeightBitsMinus1;
-        header.max_frame_width_minus_1 = (uint16_t)maxFrameWidthMinus1;
-        header.max_frame_height_minus_1 = (uint16_t)maxFrameHeightMinus1;
-        header.seq_force_screen_content_tools = (uint8_t)seqForceScreenContentTools;
-        header.seq_force_integer_mv = (uint8_t)seqForceIntegerMv;
-        return true;
+        if (span.type == video::av1::ObuType::SequenceHeader)
+            return ReadVideoAV1SequenceSyntax(data + span.payloadOffset, (size_t)span.payloadSize, syntax);
     }
 
     return false;
+}
+
+static bool ApplyVideoEncodeAV1SequenceHeaderOverride(StdVideoAV1SequenceHeader& header, const uint8_t* data, size_t size) {
+    VideoAV1SequenceSyntaxVK syntax = {};
+    if (!FindVideoAV1SequenceSyntax(data, size, syntax))
+        return false;
+
+    header.frame_width_bits_minus_1 = (uint8_t)syntax.frameWidthBitsMinus1;
+    header.frame_height_bits_minus_1 = (uint8_t)syntax.frameHeightBitsMinus1;
+    header.max_frame_width_minus_1 = (uint16_t)syntax.maxFrameWidthMinus1;
+    header.max_frame_height_minus_1 = (uint16_t)syntax.maxFrameHeightMinus1;
+    header.seq_force_screen_content_tools = (uint8_t)syntax.seqForceScreenContentTools;
+    header.seq_force_integer_mv = (uint8_t)syntax.seqForceIntegerMv;
+
+    return true;
+}
+
+// The app writes the sequence header with "WriteVideoAV1ObuHeaders" from the same desc, so a driver override must not change what frame headers and decoding depend on
+static bool IsVideoAV1SequenceHeaderOverridden(const VideoAV1SequenceDesc& desc, const uint8_t* data, size_t size) {
+    std::array<uint8_t, 256> written = {};
+    video::bitstream::ByteWriter writer = {written.data(), written.size()};
+    if (video::av1::WriteSequenceHeaderPayload(desc, writer) != Result::SUCCESS || writer.overflow)
+        return true;
+
+    VideoAV1SequenceSyntaxVK expected = {};
+    VideoAV1SequenceSyntaxVK overridden = {};
+    if (!ReadVideoAV1SequenceSyntax(written.data(), (size_t)writer.writtenSize, expected) || !FindVideoAV1SequenceSyntax(data, size, overridden))
+        return true;
+
+    return std::memcmp(&expected, &overridden, sizeof(expected)) != 0;
 }
 
 VideoSessionParametersVK::~VideoSessionParametersVK() {
     const auto& vk = m_Device.GetDispatchTable();
     if (m_Handle)
         vk.DestroyVideoSessionParametersKHR(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
+}
+
+void VideoSessionParametersVK::GetH264ReferenceIndexDefaults(uint8_t pictureParameterSetId, uint8_t& l0DefaultActiveMinus1, uint8_t& l1DefaultActiveMinus1) const {
+    l0DefaultActiveMinus1 = 0;
+    l1DefaultActiveMinus1 = 0;
+
+    for (const ReferenceIndexDefaults& defaults : m_ReferenceIndexDefaults) {
+        if (defaults.pictureParameterSetId == pictureParameterSetId) {
+            l0DefaultActiveMinus1 = defaults.l0DefaultActiveMinus1;
+            l1DefaultActiveMinus1 = defaults.l1DefaultActiveMinus1;
+        }
+    }
+}
+
+void VideoSessionParametersVK::GetH265ReferenceIndexDefaults(uint8_t sequenceParameterSetId, uint8_t pictureParameterSetId, uint8_t& l0DefaultActiveMinus1, uint8_t& l1DefaultActiveMinus1) const {
+    l0DefaultActiveMinus1 = 0;
+    l1DefaultActiveMinus1 = 0;
+
+    for (const ReferenceIndexDefaults& defaults : m_ReferenceIndexDefaults) {
+        if (defaults.sequenceParameterSetId == sequenceParameterSetId && defaults.pictureParameterSetId == pictureParameterSetId) {
+            l0DefaultActiveMinus1 = defaults.l0DefaultActiveMinus1;
+            l1DefaultActiveMinus1 = defaults.l1DefaultActiveMinus1;
+        }
+    }
 }
 
 NRI_INLINE Result VideoSessionParametersVK::CreateNative(VideoSessionVK& session, const void* pNext) {
@@ -283,9 +437,12 @@ NRI_INLINE Result VideoSessionParametersVK::Create(const VideoSessionParametersD
     }
 
     Scratch<StdVideoH264PictureParameterSet> h264Pps = NRI_ALLOCATE_SCRATCH(m_Device, StdVideoH264PictureParameterSet, h264Parameters.pictureParameterSetNum);
+    m_ReferenceIndexDefaults.resize(h264Parameters.pictureParameterSetNum);
     for (uint32_t i = 0; i < h264Parameters.pictureParameterSetNum; i++) {
         h264Pps[i] = GetVideoH264PictureParameterSet(h264Parameters.pictureParameterSets[i]);
         h264Pps[i].pScalingLists = &defaultScalingLists;
+
+        m_ReferenceIndexDefaults[i] = {h264Pps[i].seq_parameter_set_id, h264Pps[i].pic_parameter_set_id, h264Pps[i].num_ref_idx_l0_default_active_minus1, h264Pps[i].num_ref_idx_l1_default_active_minus1};
     }
 
     VkVideoDecodeH264SessionParametersAddInfoKHR decodeAddInfo = {VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_SESSION_PARAMETERS_ADD_INFO_KHR};
@@ -324,7 +481,7 @@ NRI_INLINE Result VideoSessionParametersVK::CreateH265(VideoSessionVK& session, 
         defaultVps.profileTierLevel.generalProfileIdc = (uint8_t)((session.GetDesc().format == Format::P010_UNORM || session.GetDesc().format == Format::P016_UNORM)
                 ? STD_VIDEO_H265_PROFILE_IDC_MAIN_10
                 : STD_VIDEO_H265_PROFILE_IDC_MAIN);
-        defaultVps.profileTierLevel.generalLevelIdc = (uint8_t)GetVideoH265LevelIdc(session.GetDesc().width, session.GetDesc().height);
+        defaultVps.profileTierLevel.generalLevelIdc = GetVideoH265DefaultGeneralLevelIdc(session.GetDesc().width, session.GetDesc().height);
         defaultVps.decPicBufMgr.maxDecPicBufferingMinus1[0] = (uint8_t)std::min(session.GetDesc().maxReferenceNum ? session.GetDesc().maxReferenceNum : 1u, 15u);
         defaultVps.decPicBufMgr.maxNumReorderPics[0] = session.GetDesc().maxReferenceNum > 1 ? 1 : 0;
 
@@ -405,6 +562,7 @@ NRI_INLINE Result VideoSessionParametersVK::CreateH265(VideoSessionVK& session, 
         firstShortTermRefPicSet += sps.numShortTermRefPicSets;
     }
 
+    m_ReferenceIndexDefaults.resize(parameters->pictureParameterSetNum);
     for (uint32_t i = 0; i < parameters->pictureParameterSetNum; i++) {
         const VideoH265PictureParameterSetDesc& pps = parameters->pictureParameterSets[i];
         const StdVideoH265ScalingLists* scalingLists = nullptr;
@@ -413,6 +571,8 @@ NRI_INLINE Result VideoSessionParametersVK::CreateH265(VideoSessionVK& session, 
             scalingLists = &ppsScalingLists[i];
         }
         pictureParameterSets[i] = GetVideoH265PictureParameterSet(pps, scalingLists);
+
+        m_ReferenceIndexDefaults[i] = {pps.sequenceParameterSetId, pps.pictureParameterSetId, pps.refIndexL0DefaultActiveMinus1, pps.refIndexL1DefaultActiveMinus1};
     }
 
     VkVideoDecodeH265SessionParametersAddInfoKHR decodeAddInfo = {VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_SESSION_PARAMETERS_ADD_INFO_KHR};
@@ -491,7 +651,6 @@ NRI_INLINE Result VideoSessionParametersVK::CreateAV1(VideoSessionVK& session, c
     }
 
     if (session.GetDesc().type == VideoSessionType::ENCODE) {
-        m_AV1SequenceHeader.seq_force_screen_content_tools = 0;
         m_AV1OperatingPoint.decoder_buffer_delay = 1;
         m_AV1OperatingPoint.encoder_buffer_delay = 2;
     }
@@ -530,7 +689,21 @@ NRI_INLINE Result VideoSessionParametersVK::CreateAV1(VideoSessionVK& session, c
 
     Scratch<uint8_t> data = NRI_ALLOCATE_SCRATCH(m_Device, uint8_t, dataSize);
     vkResult = vk.GetEncodedVideoSessionParametersKHR(m_Device, &getInfo, &feedbackInfo, &dataSize, data);
-    if (vkResult != VK_SUCCESS || !feedbackInfo.hasOverrides || !ApplyVideoEncodeAV1SequenceHeaderOverride(m_AV1SequenceHeader, data, dataSize))
+    if (vkResult != VK_SUCCESS || !feedbackInfo.hasOverrides)
+        return Result::SUCCESS;
+
+    // The app emits the sequence header with "WriteVideoAV1ObuHeaders" from the same desc, which can't reproduce driver overrides
+    if (parameters) {
+        if (IsVideoAV1SequenceHeaderOverridden(parameters->sequence, data, dataSize)) {
+            NRI_REPORT_ERROR(&m_Device, "Vulkan AV1 encode driver overrides the sequence header, which 'WriteVideoAV1ObuHeaders' can't reproduce");
+
+            return Result::UNSUPPORTED;
+        }
+
+        return Result::SUCCESS;
+    }
+
+    if (!ApplyVideoEncodeAV1SequenceHeaderOverride(m_AV1SequenceHeader, data, dataSize))
         return Result::SUCCESS;
 
     vk.DestroyVideoSessionParametersKHR(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());

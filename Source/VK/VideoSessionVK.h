@@ -116,6 +116,14 @@ struct VideoSessionVK final : public DebugNameBase {
         m_ResetRecorded = true;
     }
 
+    inline const VideoEncodeRateControlDesc& GetRateControl() const {
+        return m_RateControl;
+    }
+
+    inline void SetRateControl(const VideoEncodeRateControlDesc& rateControlDesc) {
+        m_RateControl = rateControlDesc;
+    }
+
     inline VkQueryPool GetEncodeFeedbackQueryPool() const {
         return m_EncodeFeedbackQueryPool;
     }
@@ -164,6 +172,7 @@ private:
     std::array<EncodeFeedbackPayloadReadback, VIDEO_ENCODE_FEEDBACK_QUERY_NUM> m_EncodeFeedbackPayloadReadbacks = {};
     Vector<VkDeviceMemory> m_Memory;
     VideoSessionDesc m_Desc = {};
+    VideoEncodeRateControlDesc m_RateControl = {}; // recorded rate control state, valid if "m_ResetRecorded" is true
     uint32_t m_BitstreamOffsetAlignment = 1;
     uint32_t m_BitstreamSizeAlignment = 1;
     uint32_t m_RateControlModes = 0;
