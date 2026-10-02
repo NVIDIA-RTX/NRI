@@ -34,6 +34,10 @@ struct BufferD3D12 final : public DebugNameBase {
         return m_Device;
     }
 
+    inline bool IsMapped() const {
+        return m_MappedMemory != nullptr;
+    }
+
     Result Create(const BufferDesc& bufferDesc);
     Result Create(const BufferD3D12Desc& bufferD3D12Desc);
     Result Allocate(MemoryLocation memoryLocation, float priority, bool committed);

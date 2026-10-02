@@ -900,7 +900,7 @@ NriStruct(VideoAV1EncodeDecodeInfoDesc) {
     const NriPtr(VideoAV1SequenceDesc) sequence;
     NriOptional const uint8_t* encodedPayloadHeader; // first bytes of the encoded payload; returned bitstream ranges are bounded by "feedback"
     uint64_t encodedPayloadHeaderSize;
-    NriOptional const NriPtr(VideoAV1ReferenceDesc) references; // previous AV1 DPB snapshot; required for inter frames
+    NriOptional const NriPtr(VideoAV1ReferenceDesc) references; // previous AV1 DPB snapshot; required for inter frames, without it the frame is a key frame (as encoded with "FORCE_KEY_FRAME")
     NriOptional uint32_t referenceNum;
     NriOptional const NriPtr(VideoEncodePictureDesc) pictureDesc;       // submitted picture description; required if "encodedPayloadHeader" is not provided
     NriOptional const NriPtr(VideoAV1EncodePictureDesc) av1PictureDesc; // submitted AV1 picture description; required if "encodedPayloadHeader" is not provided
