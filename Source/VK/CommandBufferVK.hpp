@@ -1418,12 +1418,12 @@ NRI_INLINE void CommandBufferVK::ResolveVideoEncodeFeedback(VideoSession& videoS
     }
 
     const auto& vk = m_Device.GetDispatchTable();
-    constexpr VkDeviceSize queryResultSize = sizeof(uint64_t) * 3;
-    const uint64_t queryResultOffset = resolvedMetadataOffset + sizeof(VideoEncodeFeedback);
+    const uint64_t queryIndexOffset = resolvedMetadataOffset + sizeof(VideoEncodeFeedback);
 
-    vk.CmdCopyQueryPoolResults(m_Handle, session.GetEncodeFeedbackQueryPool(), encodeFeedbackQueryIndex, 1, feedbackBuffer.GetHandle(), queryResultOffset, queryResultSize,
-        VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT | VK_QUERY_RESULT_WITH_STATUS_BIT_KHR);
-    vk.CmdFillBuffer(m_Handle, feedbackBuffer.GetHandle(), queryResultOffset + queryResultSize, sizeof(uint32_t), encodeFeedbackQueryIndex);
+    // WORKAROUND: no "vkCmdCopyQueryPoolResults" for encode feedback queries. NVIDIA (610.57) never completes the copy
+    // ("WAIT_BIT" hangs, otherwise "DEVICE_LOST") and packs "64_BIT" results incorrectly. Only the query index is recorded,
+    // the results are read on the host in "GetEncodeFeedback"
+    vk.CmdFillBuffer(m_Handle, feedbackBuffer.GetHandle(), queryIndexOffset, sizeof(uint32_t), encodeFeedbackQueryIndex);
     session.SetEncodeFeedbackQueryResolved(encodeFeedbackQueryIndex);
 }
 
