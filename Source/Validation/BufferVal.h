@@ -34,6 +34,14 @@ struct BufferVal final : public ObjectVal {
         m_IsBoundToMemory = true;
     }
 
+    inline void SetMemoryLocation(MemoryLocation memoryLocation) {
+        m_MemoryLocation = memoryLocation;
+    }
+
+    inline bool IsHostVisible() const {
+        return m_IsBoundToMemory && m_MemoryLocation != MemoryLocation::DEVICE; // "MAX_NUM" = unknown (wrapped)
+    }
+
     //================================================================================================================
     // NRI
     //================================================================================================================
@@ -45,6 +53,7 @@ struct BufferVal final : public ObjectVal {
 private:
     BufferDesc m_Desc = {}; // .natvis
     MemoryVal* m_Memory = nullptr;
+    MemoryLocation m_MemoryLocation = MemoryLocation::MAX_NUM;
     bool m_IsBoundToMemory = false;
     bool m_IsMapped = false;
 };

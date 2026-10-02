@@ -9,7 +9,8 @@ NRI_INLINE VideoPictureVal::VideoPictureVal(DeviceVal& device, VideoPicture* imp
     , m_Layer(desc.layer)
     , m_TextureLayerNum(textureDesc.layerNum ? textureDesc.layerNum : 1)
     , m_Codec(textureDesc.videoCodec)
-    , m_Usage(desc.usage) {
+    , m_Usage(desc.usage)
+    , m_IsOutputOnly((textureDesc.usage & TextureUsageBits::VIDEO_OUTPUT_ONLY) != 0) {
 }
 
 NRI_INLINE VideoPicture* VideoPictureVal::GetImpl() const {
@@ -34,4 +35,8 @@ NRI_INLINE bool VideoPictureVal::IsSameTexture(const VideoPictureVal& videoPictu
 
 NRI_INLINE uint32_t VideoPictureVal::GetTextureLayerNum() const {
     return m_TextureLayerNum;
+}
+
+NRI_INLINE bool VideoPictureVal::IsOutputOnly() const {
+    return m_IsOutputOnly;
 }
