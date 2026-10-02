@@ -13,6 +13,7 @@ struct VideoPictureVal final : public ObjectVal {
     bool IsSameSubresource(const VideoPictureVal& videoPicture) const;
     bool IsSameTexture(const VideoPictureVal& videoPicture) const;
     uint32_t GetTextureLayerNum() const;
+    bool IsOutputOnly() const;
 
 private:
     const TextureVal* m_Texture = nullptr;
@@ -23,5 +24,6 @@ private:
     uint32_t m_TextureLayerNum = 0;
     VideoCodec m_Codec = VideoCodec::NONE;
     VideoPictureUsage m_Usage = VideoPictureUsage::MAX_NUM;
+    bool m_IsOutputOnly = false;
 };
 } // namespace nri

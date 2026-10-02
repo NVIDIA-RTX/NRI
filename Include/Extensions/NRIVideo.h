@@ -413,7 +413,7 @@ NriStruct(VideoH264SessionParametersDesc) {
 NriStruct(VideoH265ProfileTierLevelDesc) {
     Nri(VideoH265ProfileTierLevelBits) flags;
     uint8_t generalProfileIdc;
-    uint8_t generalLevelIdc; // "general_level_idc" as coded in the bitstream: 30 times the level number (e.g. 120 = level 4)
+    uint8_t generalLevelIdc; // "general_level_idc" as coded in the bitstream: 30 times the level number (e.g. 120 = level 4), or 0 (unspecified)
 };
 
 NriStruct(VideoH265DecPicBufMgrDesc) {
@@ -803,8 +803,8 @@ NriStruct(VideoAV1EncodePictureDesc) {
     uint16_t renderWidthMinus1;
     uint16_t renderHeightMinus1;
     uint8_t codedDenom;
-    uint8_t interpolationFilter;
-    uint8_t txMode; // 0 selects the backend default; ONLY_4X4 is implied for lossless frames
+    uint8_t interpolationFilter; // AV1 "interpolation_filter": 0..4 (4 = SWITCHABLE)
+    uint8_t txMode;              // 0 selects the backend default, else AV1 "TxMode" 1..2 (LARGEST, SELECT); ONLY_4X4 is implied for lossless frames
     uint8_t baseQIndex;
     uint8_t cdefDampingMinus3;
     uint8_t cdefBits;
@@ -843,8 +843,8 @@ NriStruct(VideoAV1DecodePictureDesc) {
     uint8_t baseQIndex;
     uint8_t superresDenom;
     uint8_t codedDenom;
-    uint8_t interpolationFilter;
-    uint8_t txMode;
+    uint8_t interpolationFilter; // AV1 "interpolation_filter": 0..4 (4 = SWITCHABLE)
+    uint8_t txMode;              // AV1 "TxMode": 0..2 (ONLY_4X4, LARGEST, SELECT)
     uint8_t cdefDampingMinus3;
     uint8_t cdefBits;
     uint8_t deltaQRes;
