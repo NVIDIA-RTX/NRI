@@ -18,15 +18,7 @@ Result TextureVK::Create(const TextureDesc& textureDesc) {
     m_Device.FillCreateInfo(m_Desc, info);
 
     VideoResourceProfileListVK videoProfiles = {};
-    const bool isVideoDecode = (m_Desc.usage & TextureUsageBits::VIDEO_DECODE) != 0;
-    const bool isVideoEncode = (m_Desc.usage & TextureUsageBits::VIDEO_ENCODE) != 0;
-    if (isVideoDecode || isVideoEncode) {
-        videoProfiles.Fill(isVideoDecode, isVideoEncode, m_Desc.format, m_Desc.videoCodec, m_Device.GetVideoCodecOperations(isVideoDecode, isVideoEncode));
-        if (videoProfiles.list.profileCount) {
-            videoProfiles.list.pNext = info.pNext;
-            info.pNext = &videoProfiles.list;
-        }
-    }
+    m_Device.AppendVideoProfileList(m_Desc, info, videoProfiles);
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.CreateImage(m_Device, &info, m_Device.GetVkAllocationCallbacks(), &m_Handle);
@@ -71,12 +63,16 @@ Result TextureVK::Create(const TextureVKDesc& textureVKDesc) {
     if ((textureVKDesc.vkImageUsageFlags & hostTransferUsage) == hostTransferUsage)
         m_Desc.usage |= TextureUsageBits::HOST_TRANSFER;
 
-    if (textureVKDesc.vkImageUsageFlags & VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR)
+    if ((textureVKDesc.vkImageUsageFlags & VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR) && !(textureVKDesc.vkImageUsageFlags & VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR))
+        m_Desc.usage |= TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_OUTPUT_ONLY;
+    else if (textureVKDesc.vkImageUsageFlags & VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR)
         m_Desc.usage |= TextureUsageBits::VIDEO_DECODE;
     else if (textureVKDesc.vkImageUsageFlags & VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR)
         m_Desc.usage |= TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_REFERENCE_ONLY;
 
-    if (textureVKDesc.vkImageUsageFlags & VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR)
+    if ((textureVKDesc.vkImageUsageFlags & VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR) && !(textureVKDesc.vkImageUsageFlags & VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR))
+        m_Desc.usage |= TextureUsageBits::VIDEO_ENCODE | TextureUsageBits::VIDEO_OUTPUT_ONLY;
+    else if (textureVKDesc.vkImageUsageFlags & VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR)
         m_Desc.usage |= TextureUsageBits::VIDEO_ENCODE;
     else if (textureVKDesc.vkImageUsageFlags & VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR)
         m_Desc.usage |= TextureUsageBits::VIDEO_ENCODE | TextureUsageBits::VIDEO_REFERENCE_ONLY;

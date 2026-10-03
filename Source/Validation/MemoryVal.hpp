@@ -37,6 +37,7 @@ void MemoryVal::Bind(BufferVal& buffer) {
 
     m_Buffers.push_back(&buffer);
     buffer.SetBoundToMemory(this);
+    buffer.SetMemoryLocation(m_MemoryLocation);
 }
 
 void MemoryVal::Bind(TextureVal& texture) {
