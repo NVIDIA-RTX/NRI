@@ -8,7 +8,8 @@ struct VideoSessionVK;
 
 struct VideoSessionParametersVK final : public DebugNameBase {
     inline VideoSessionParametersVK(DeviceVK& device)
-        : m_Device(device) {
+        : m_Device(device)
+        , m_H264ReferenceIndexDefaults(device.GetStdAllocator()) {
     }
 
     inline DeviceVK& GetDevice() const {
@@ -42,8 +43,15 @@ struct VideoSessionParametersVK final : public DebugNameBase {
     //================================================================================================================
 
     Result Create(const VideoSessionParametersDesc& videoSessionParametersDesc);
+    void GetH264ReferenceIndexDefaults(uint8_t pictureParameterSetId, uint8_t& l0DefaultActiveMinus1, uint8_t& l1DefaultActiveMinus1) const;
 
 private:
+    struct H264ReferenceIndexDefaults {
+        uint8_t pictureParameterSetId;
+        uint8_t l0DefaultActiveMinus1;
+        uint8_t l1DefaultActiveMinus1;
+    };
+
     Result CreateNative(VideoSessionVK& session, const void* pNext);
     Result CreateH265(VideoSessionVK& session, const VideoH265SessionParametersDesc* parameters);
     Result CreateAV1(VideoSessionVK& session, const VideoAV1SessionParametersDesc* parameters);
@@ -51,6 +59,7 @@ private:
     DeviceVK& m_Device;
     VideoSessionVK* m_Session = nullptr;
     VkVideoSessionParametersKHR m_Handle = VK_NULL_HANDLE;
+    Vector<H264ReferenceIndexDefaults> m_H264ReferenceIndexDefaults; // PPS "num_ref_idx_lX_default_active_minus1" for H.264 encode slice headers
     StdVideoAV1ColorConfig m_AV1ColorConfig = {};
     StdVideoAV1TimingInfo m_AV1TimingInfo = {};
     StdVideoAV1SequenceHeader m_AV1SequenceHeader = {};

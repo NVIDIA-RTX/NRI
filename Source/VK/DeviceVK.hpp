@@ -168,6 +168,8 @@ static constexpr VkImageUsageFlags GetImageUsageFlags(TextureUsageBits textureUs
     if (textureUsageBits & TextureUsageBits::VIDEO_DECODE) {
         if (textureUsageBits & TextureUsageBits::VIDEO_REFERENCE_ONLY)
             flags |= VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR;
+        else if (textureUsageBits & TextureUsageBits::VIDEO_OUTPUT_ONLY)
+            flags |= VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR;
         else
             flags |= VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR | VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR;
     }
@@ -175,6 +177,8 @@ static constexpr VkImageUsageFlags GetImageUsageFlags(TextureUsageBits textureUs
     if (textureUsageBits & TextureUsageBits::VIDEO_ENCODE) {
         if (textureUsageBits & TextureUsageBits::VIDEO_REFERENCE_ONLY)
             flags |= VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR;
+        else if (textureUsageBits & TextureUsageBits::VIDEO_OUTPUT_ONLY)
+            flags |= VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR;
         else
             flags |= VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR | VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR;
     }
@@ -1702,6 +1706,21 @@ void DeviceVK::FillCreateInfo(const TextureDesc& textureDesc, VkImageCreateInfo&
     info.initialLayout = IsMemoryZeroInitializationEnabled() ? VK_IMAGE_LAYOUT_ZERO_INITIALIZED_EXT : VK_IMAGE_LAYOUT_UNDEFINED;
 }
 
+void DeviceVK::AppendVideoProfileList(const TextureDesc& textureDesc, VkImageCreateInfo& info, VideoResourceProfileListVK& videoProfiles) const {
+    const bool isVideoDecode = (textureDesc.usage & TextureUsageBits::VIDEO_DECODE) != 0;
+    const bool isVideoEncode = (textureDesc.usage & TextureUsageBits::VIDEO_ENCODE) != 0;
+
+    if (!isVideoDecode && !isVideoEncode)
+        return;
+
+    videoProfiles.Fill(isVideoDecode, isVideoEncode, textureDesc.format, textureDesc.videoCodec, GetVideoCodecOperations(isVideoDecode, isVideoEncode));
+
+    if (videoProfiles.list.profileCount) {
+        videoProfiles.list.pNext = info.pNext;
+        info.pNext = &videoProfiles.list;
+    }
+}
+
 void DeviceVK::FillCreateInfo(const SamplerDesc& samplerDesc, VkSamplerCreateInfo& info, VkSamplerReductionModeCreateInfo& reductionModeInfo, VkSamplerCustomBorderColorCreateInfoEXT& borderColorInfo) const {
     info = {VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO}; // should be already set
     info.magFilter = GetFilter(samplerDesc.filters.mag);
@@ -1776,6 +1795,9 @@ void DeviceVK::GetMemoryDesc2(const TextureDesc& textureDesc, MemoryLocation mem
 
     VkMemoryRequirements2 requirements = {VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2};
     requirements.pNext = &dedicatedRequirements;
+
+    VideoResourceProfileListVK videoProfiles = {};
+    AppendVideoProfileList(textureDesc, createInfo, videoProfiles);
 
     VkDeviceImageMemoryRequirements imageMemoryRequirements = {VK_STRUCTURE_TYPE_DEVICE_IMAGE_MEMORY_REQUIREMENTS};
     imageMemoryRequirements.pCreateInfo = &createInfo;
