@@ -175,7 +175,9 @@ static inline D3D12_BARRIER_ACCESS GetBarrierAccessFlags(AccessBits accessBits) 
     if (accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE)
         flags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
 
-    if (accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_READ)
+    // WRITE already covers depth testing of a writable depth/stencil resource, so READ is redundant next to it. Observed: the debug layer
+    // (NVIDIA, driver 32.0.15.7261) rejects READ|WRITE with the DEPTH_STENCIL_WRITE layout and Close() fails. Workaround, not a spec rule.
+    if ((accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_READ) && !(accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE))
         flags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
 
     if (accessBits & (AccessBits::ACCELERATION_STRUCTURE_READ | AccessBits::MICROMAP_READ))
