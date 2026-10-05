@@ -299,7 +299,7 @@ if(NRI_ENABLE_SHADERMAKE AND NOT TARGET ShaderMake)
         shadermake
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
-        URL "https://github.com/NVIDIA-RTX/ShaderMake/archive/9c978c37ccd1c00b8669d633735823fe25ee3647.zip"
+        URL "https://github.com/NVIDIA-RTX/ShaderMake/archive/df56e577b54e9f8dc62b199460ac5908d76f5fbe.zip"
     )
     list(APPEND DEPS shadermake)
 endif()
