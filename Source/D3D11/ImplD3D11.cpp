@@ -385,6 +385,7 @@ static void NRI_CALL CmdDrawIndexedIndirect(CommandBuffer& commandBuffer, const 
 static void NRI_CALL CmdEndRendering(CommandBuffer& commandBuffer) {
     ((CommandBufferD3D11&)commandBuffer).EndRendering();
 }
+
 static void NRI_CALL CmdDispatch(CommandBuffer& commandBuffer, const DispatchDesc& dispatchDesc) {
     ((CommandBufferD3D11&)commandBuffer).Dispatch(dispatchDesc);
 }

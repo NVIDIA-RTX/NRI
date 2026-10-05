@@ -7,7 +7,6 @@ struct RequestDeviceContext {
 };
 
 static inline bool IsSameAdapter(const AdapterDesc& adapterDesc, const WGPUAdapterInfo& adapterInfo) {
-
     if (adapterDesc.vendor != Vendor::UNKNOWN && adapterDesc.deviceId && adapterInfo.vendorID && adapterInfo.deviceID)
         return adapterDesc.vendor == GetVendorFromID(adapterInfo.vendorID) && adapterDesc.deviceId == adapterInfo.deviceID;
 
@@ -17,7 +16,6 @@ static inline bool IsSameAdapter(const AdapterDesc& adapterDesc, const WGPUAdapt
 }
 
 static inline bool IsAdapterSupported(WGPUAdapter adapter) {
-
     if (wgpuAdapterHasFeature(adapter, (WGPUFeatureName)WGPUNativeFeature_Immediates) != WGPU_TRUE)
         return false;
 

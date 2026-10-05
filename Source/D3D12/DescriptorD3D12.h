@@ -44,6 +44,7 @@ struct DescriptorD3D12 final : public DebugNameBase {
     inline ID3D12Resource* GetResource() const {
         return m_Resource;
     }
+
     inline const TexViewDesc& GetTexViewDesc() const {
         return m_ViewDesc.texture;
     }

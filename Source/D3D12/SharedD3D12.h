@@ -3,9 +3,9 @@
 #pragma once
 
 #include <d3d12.h>
+#include <d3d12sdklayers.h>
 #include <d3d12video.h>
 #include <dxva.h>
-#include <d3d12sdklayers.h>
 #include <pix.h>
 
 // Validate Windows SDK version

@@ -72,7 +72,7 @@ Result AccelerationStructureVK::BindMemory(const MemoryVK* memory, uint64_t offs
         desc.offset = offset;
 
         Result result = m_Device.BindBufferMemory(&desc, 1);
-        if(result != Result::SUCCESS)
+        if (result != Result::SUCCESS)
             return result;
     }
 

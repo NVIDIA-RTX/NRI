@@ -11,7 +11,7 @@ Result FenceD3D11::Create(uint64_t initialValue) {
             // Fallback to "non monitored" fence (legacy) for pre-WDDM 2.0 or virtualized environments
             hr = m_Device->CreateFence(initialValue, D3D11_FENCE_FLAG_NON_MONITORED, IID_PPV_ARGS(&m_Fence));
         }
-		NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device5::CreateFence");
+        NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D11Device5::CreateFence");
     } else {
         D3D11_QUERY_DESC queryDesc = {};
         queryDesc.Query = D3D11_QUERY_EVENT;
