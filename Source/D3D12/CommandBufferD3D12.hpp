@@ -172,13 +172,11 @@ static inline D3D12_BARRIER_ACCESS GetBarrierAccessFlags(AccessBits accessBits) 
     if (accessBits & AccessBits::SHADING_RATE_ATTACHMENT)
         flags |= D3D12_BARRIER_ACCESS_SHADING_RATE_SOURCE;
 
-    if (accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE)
-        flags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
-
-    // WRITE already covers depth testing of a writable depth/stencil resource, so READ is redundant next to it. Observed: the debug layer
-    // (NVIDIA, driver 32.0.15.7261) rejects READ|WRITE with the DEPTH_STENCIL_WRITE layout and Close() fails. Workaround, not a spec rule.
+    // D3D12 READ is for read-only depth/stencil; WRITE also covers depth testing
     if ((accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_READ) && !(accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE))
         flags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
+    else if (accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE)
+        flags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
 
     if (accessBits & (AccessBits::ACCELERATION_STRUCTURE_READ | AccessBits::MICROMAP_READ))
         flags |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
@@ -276,10 +274,10 @@ static inline D3D12_RESOURCE_STATES GetResourceStates(AccessBits accessBits, D3D
     if (accessBits & AccessBits::SHADING_RATE_ATTACHMENT)
         resourceStates |= D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE;
 
-    if (accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_READ)
+    // DEPTH_WRITE is mutually exclusive with DEPTH_READ
+    if ((accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_READ) && !(accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE))
         resourceStates |= D3D12_RESOURCE_STATE_DEPTH_READ;
-
-    if (accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE)
+    else if (accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE)
         resourceStates |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
     if (accessBits & AccessBits::SHADER_RESOURCE) {
