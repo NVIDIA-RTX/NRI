@@ -93,10 +93,9 @@ static Result GetVideoAV1Capabilities(DeviceD3D12& device, const VideoSessionDes
 
 static Result GetVideoEncodeFeedback(BufferD3D12& resolvedMetadataReadback, uint64_t resolvedMetadataOffset, VideoEncodeFeedback& feedback) {
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-    const void* metadata = resolvedMetadataReadback.Map(resolvedMetadataOffset);
-    if (!metadata)
-        return Result::FAILURE;
+    NRI_CHECK(resolvedMetadataReadback.IsMapped(), "'resolvedMetadataReadback' must be CPU-visible");
 
+    const void* metadata = resolvedMetadataReadback.Map(resolvedMetadataOffset);
     const auto& d3d12Feedback = *(const D3D12_VIDEO_ENCODER_OUTPUT_METADATA*)metadata;
     const auto* subregions = (const D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA*)((const uint8_t*)metadata + sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA));
 
@@ -123,15 +122,19 @@ static Result GetVideoEncodeFeedback(BufferD3D12& resolvedMetadataReadback, uint
 static Result GetVideoAV1EncodeDecodeInfo(BufferD3D12& resolvedMetadataReadback, uint64_t resolvedMetadataOffset, const VideoAV1EncodeDecodeInfoDesc& desc, VideoAV1EncodeDecodeInfo& info) {
     info = {};
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
+    NRI_CHECK(desc.feedback && desc.sequence, "'feedback' and 'sequence' must be valid");
+
     if (desc.feedback->errorFlags || !desc.feedback->encodedBitstreamWrittenBytes || !desc.feedback->writtenSubregionNum)
         return Result::FAILURE;
+
     if (desc.encodedPayloadHeader && desc.encodedPayloadHeaderSize)
         return video::av1::GetEncodeDecodeInfoFromHeader(desc, info);
 
-    const void* metadata = resolvedMetadataReadback.Map(resolvedMetadataOffset);
-    if (!metadata)
-        return Result::FAILURE;
+    // Metadata only: picture header fields not reported by the resolved metadata come from the submitted picture description
+    NRI_CHECK(desc.pictureDesc && desc.av1PictureDesc, "'pictureDesc' and 'av1PictureDesc' are required without 'encodedPayloadHeader'");
+    NRI_CHECK(resolvedMetadataReadback.IsMapped(), "'resolvedMetadataReadback' must be CPU-visible");
 
+    const void* metadata = resolvedMetadataReadback.Map(resolvedMetadataOffset);
     const auto* bytes = (const uint8_t*)metadata;
     const auto& output = *(const D3D12_VIDEO_ENCODER_OUTPUT_METADATA*)bytes;
     const auto& subregion = *(const D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA*)(bytes + sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA));
@@ -156,7 +159,7 @@ static Result GetVideoAV1EncodeDecodeInfo(BufferD3D12& resolvedMetadataReadback,
     video::av1::FillSingleTileLayout(info, width, height);
     info.tileLayout.contextUpdateTileId = (uint16_t)tilesLayout.ContextUpdateTileId;
 
-    info.bitstreamOffset = subregion.bStartOffset;
+    info.bitstreamOffset = 0; // "feedback.encodedBitstreamOffset" already includes "bStartOffset"
     info.bitstreamSize = tilePayloadSize;
     info.tiles[0] = {0, (uint32_t)tilePayloadSize, 0, 0, 0xFF};
 
@@ -183,14 +186,17 @@ static Result GetVideoAV1EncodeDecodeInfo(BufferD3D12& resolvedMetadataReadback,
     for (uint32_t i = 0; i < 2; i++)
         info.loopFilter.modeDeltas[i] = (int8_t)post.LoopFilter.ModeDeltas[i];
 
-    info.picture.frameType = VideoFrameType::IDR;
-    info.picture.orderHint = 0;
-    info.picture.refreshFrameFlags = 0xFF;
+    const VideoAV1EncodePictureDesc& av1PictureDesc = *desc.av1PictureDesc;
+    const bool isKeyFrame = desc.pictureDesc->frameType == VideoFrameType::IDR || desc.pictureDesc->frameType == VideoFrameType::I;
+
+    info.picture.frameType = isKeyFrame ? VideoFrameType::IDR : VideoFrameType::P;
+    info.picture.orderHint = av1PictureDesc.orderHint;
+    info.picture.refreshFrameFlags = isKeyFrame ? 0xFF : av1PictureDesc.refreshFrameFlags;
     info.picture.primaryReferenceName = VideoAV1ReferenceName::NONE;
-    info.picture.currentFrameId = 0;
+    info.picture.currentFrameId = av1PictureDesc.currentFrameId;
     info.picture.flags = VideoAV1PictureBits::ERROR_RESILIENT_MODE | VideoAV1PictureBits::FORCE_INTEGER_MV | VideoAV1PictureBits::SHOW_FRAME;
 
-    if (desc.referenceNum) {
+    if (!isKeyFrame) {
         std::array<uint8_t, 7> refFrameIndices = {};
 
         for (uint32_t i = 0; i < refFrameIndices.size(); i++) {
@@ -203,9 +209,7 @@ static Result GetVideoAV1EncodeDecodeInfo(BufferD3D12& resolvedMetadataReadback,
         if (post.PrimaryRefFrame > 7 || !video::av1::BuildInterFrameReferences(desc, refFrameIndices, info))
             return Result::FAILURE;
 
-        info.picture.frameType = VideoFrameType::P;
-        info.picture.refreshFrameFlags = 0;
-        info.picture.primaryReferenceName = video::av1::GetReferenceNameFromReferenceIndex((uint32_t)post.PrimaryRefFrame);
+        info.picture.primaryReferenceName = video::av1::GetReferenceNameFromReferenceIndex((uint32_t)post.PrimaryRefFrame); // driver-reported
         info.picture.flags = VideoAV1PictureBits::SHOW_FRAME;
     }
 
@@ -247,7 +251,7 @@ static Result GetVideoAV1EncodeDecodeInfo(BufferD3D12& resolvedMetadataReadback,
     info.picture.renderWidthMinus1 = (uint16_t)(width - 1);
     info.picture.renderHeightMinus1 = (uint16_t)(height - 1);
     info.picture.baseQIndex = (uint8_t)post.Quantization.BaseQIndex;
-    info.picture.interpolationFilter = video::av1::INTERPOLATION_FILTER_EIGHTTAP;
+    info.picture.interpolationFilter = av1PictureDesc.interpolationFilter;
     info.picture.txMode = video::av1::TX_MODE_SELECT;
     info.picture.cdefDampingMinus3 = (uint8_t)post.CDEF.CdefDampingMinus3;
     info.picture.cdefBits = (uint8_t)post.CDEF.CdefBits;
@@ -411,6 +415,7 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
             const uint32_t supportedFeatureFlags = (av1Caps.RequiredFeatureFlags | av1Caps.SupportedFeatureFlags) & (uint32_t)GetSupportedVideoEncodeAV1FeatureFlags();
             av1Config.FeatureFlags = (D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAGS)(av1Caps.RequiredFeatureFlags | supportedFeatureFlags);
             m_AV1FeatureFlags = av1Config.FeatureFlags;
+            m_AV1RequiredFeatureFlags = av1Caps.RequiredFeatureFlags;
         }
 
         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION codecConfig = {};
@@ -429,9 +434,9 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
         if ((m_RateControlModes & video::ENCODE_RATE_CONTROL_CQP) == 0)
             return Result::UNSUPPORTED;
 
-        const VideoEncodeRateControlDesc defaultRateControl = {VideoEncodeRateControlMode::CQP, 26, 28, 30, 0, 51, 30, 1, 0, 0, 0, 0, 0};
+        const VideoEncodeRateControlDesc& defaultRateControl = VIDEO_ENCODE_DEFAULT_RATE_CONTROL;
         VideoEncodeRateControlStateD3D12 rateControlState;
-        FillVideoEncodeRateControl(defaultRateControl, rateControlState);
+        FillVideoEncodeRateControl(defaultRateControl, D3D12_VIDEO_ENCODER_SUPPORT_FLAG_NONE, rateControlState);
 
         D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_H264 h264Gop = {};
         h264Gop.GOPLength = videoSessionDesc.maxReferenceNum ? 60 : 1;
@@ -507,6 +512,8 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
             }
 
             m_BFrameSupported = videoSessionDesc.maxReferenceNum > 1;
+            m_EncodeSupportFlags[(size_t)VideoEncodeRateControlMode::CQP] = encoderSupport.SupportFlags;
+            GetVideoEncodeRateControlSupportFlags(videoDevice, D3D12_FEATURE_VIDEO_ENCODER_SUPPORT1, encoderSupport, m_RateControlModes, m_EncodeSupportFlags);
         } else {
             D3D12_FEATURE_DATA_VIDEO_ENCODER_SUPPORT encoderSupport = {};
             encoderSupport.Codec = codec;
@@ -534,6 +541,8 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
             }
 
             m_BFrameSupported = videoSessionDesc.maxReferenceNum > 1;
+            m_EncodeSupportFlags[(size_t)VideoEncodeRateControlMode::CQP] = encoderSupport.SupportFlags;
+            GetVideoEncodeRateControlSupportFlags(videoDevice, D3D12_FEATURE_VIDEO_ENCODER_SUPPORT, encoderSupport, m_RateControlModes, m_EncodeSupportFlags);
         }
 
         D3D12_VIDEO_ENCODER_DESC encoderDesc = {};

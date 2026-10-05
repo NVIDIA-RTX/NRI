@@ -60,6 +60,7 @@ static StdVideoH264SequenceParameterSet GetVideoH264SequenceParameterSet(const V
     sps.flags.separate_colour_plane_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::SEPARATE_COLOUR_PLANE);
     sps.flags.gaps_in_frame_num_value_allowed_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::GAPS_IN_FRAME_NUM_ALLOWED);
     sps.flags.qpprime_y_zero_transform_bypass_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::QPPRIME_Y_ZERO_TRANSFORM_BYPASS);
+    sps.flags.frame_cropping_flag = !!(desc.flags & VideoH264SequenceParameterSetBits::FRAME_CROPPING);
     sps.profile_idc = (StdVideoH264ProfileIdc)desc.profileIdc;
     sps.level_idc = GetVideoH264LevelIdc(desc.levelIdc);
     sps.chroma_format_idc = (StdVideoH264ChromaFormatIdc)desc.chromaFormatIdc;
@@ -74,6 +75,14 @@ static StdVideoH264SequenceParameterSet GetVideoH264SequenceParameterSet(const V
     sps.max_num_ref_frames = desc.referenceFrameNum;
     sps.pic_width_in_mbs_minus1 = desc.pictureWidthInMbsMinus1;
     sps.pic_height_in_map_units_minus1 = desc.pictureHeightInMapUnitsMinus1;
+
+    if (sps.flags.frame_cropping_flag) {
+        sps.frame_crop_left_offset = desc.frameCropLeftOffset;
+        sps.frame_crop_right_offset = desc.frameCropRightOffset;
+        sps.frame_crop_top_offset = desc.frameCropTopOffset;
+        sps.frame_crop_bottom_offset = desc.frameCropBottomOffset;
+    }
+
     return sps;
 }
 
@@ -233,10 +242,42 @@ static bool ApplyVideoEncodeAV1SequenceHeaderOverride(StdVideoAV1SequenceHeader&
     return false;
 }
 
+// The app writes the sequence header with "WriteVideoAV1ObuHeaders" from the same desc, so a driver override must not change its payload
+static bool IsVideoAV1SequenceHeaderOverridden(const VideoAV1SequenceDesc& desc, const uint8_t* data, size_t size) {
+    std::array<uint8_t, 256> written = {};
+    video::bitstream::ByteWriter writer = {written.data(), written.size()};
+    if (video::av1::WriteSequenceHeaderPayload(desc, writer) != Result::SUCCESS || writer.overflow)
+        return true;
+
+    size_t cursor = 0;
+    while (cursor < size) {
+        video::av1::ObuSpan span = {};
+        if (!video::av1::ReadObuHeader(data, size, cursor, span) || span.payloadSize > (size - span.payloadOffset))
+            return true;
+
+        if (span.type == video::av1::ObuType::SequenceHeader)
+            return span.payloadSize != writer.writtenSize || std::memcmp(data + span.payloadOffset, written.data(), (size_t)span.payloadSize) != 0;
+    }
+
+    return true;
+}
+
 VideoSessionParametersVK::~VideoSessionParametersVK() {
     const auto& vk = m_Device.GetDispatchTable();
     if (m_Handle)
         vk.DestroyVideoSessionParametersKHR(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
+}
+
+void VideoSessionParametersVK::GetH264ReferenceIndexDefaults(uint8_t pictureParameterSetId, uint8_t& l0DefaultActiveMinus1, uint8_t& l1DefaultActiveMinus1) const {
+    l0DefaultActiveMinus1 = 0;
+    l1DefaultActiveMinus1 = 0;
+
+    for (const H264ReferenceIndexDefaults& defaults : m_H264ReferenceIndexDefaults) {
+        if (defaults.pictureParameterSetId == pictureParameterSetId) {
+            l0DefaultActiveMinus1 = defaults.l0DefaultActiveMinus1;
+            l1DefaultActiveMinus1 = defaults.l1DefaultActiveMinus1;
+        }
+    }
 }
 
 NRI_INLINE Result VideoSessionParametersVK::CreateNative(VideoSessionVK& session, const void* pNext) {
@@ -283,9 +324,12 @@ NRI_INLINE Result VideoSessionParametersVK::Create(const VideoSessionParametersD
     }
 
     Scratch<StdVideoH264PictureParameterSet> h264Pps = NRI_ALLOCATE_SCRATCH(m_Device, StdVideoH264PictureParameterSet, h264Parameters.pictureParameterSetNum);
+    m_H264ReferenceIndexDefaults.resize(h264Parameters.pictureParameterSetNum);
     for (uint32_t i = 0; i < h264Parameters.pictureParameterSetNum; i++) {
         h264Pps[i] = GetVideoH264PictureParameterSet(h264Parameters.pictureParameterSets[i]);
         h264Pps[i].pScalingLists = &defaultScalingLists;
+
+        m_H264ReferenceIndexDefaults[i] = {h264Pps[i].pic_parameter_set_id, h264Pps[i].num_ref_idx_l0_default_active_minus1, h264Pps[i].num_ref_idx_l1_default_active_minus1};
     }
 
     VkVideoDecodeH264SessionParametersAddInfoKHR decodeAddInfo = {VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_SESSION_PARAMETERS_ADD_INFO_KHR};
@@ -324,7 +368,7 @@ NRI_INLINE Result VideoSessionParametersVK::CreateH265(VideoSessionVK& session, 
         defaultVps.profileTierLevel.generalProfileIdc = (uint8_t)((session.GetDesc().format == Format::P010_UNORM || session.GetDesc().format == Format::P016_UNORM)
                 ? STD_VIDEO_H265_PROFILE_IDC_MAIN_10
                 : STD_VIDEO_H265_PROFILE_IDC_MAIN);
-        defaultVps.profileTierLevel.generalLevelIdc = (uint8_t)GetVideoH265LevelIdc(session.GetDesc().width, session.GetDesc().height);
+        defaultVps.profileTierLevel.generalLevelIdc = GetVideoH265DefaultGeneralLevelIdc(session.GetDesc().width, session.GetDesc().height);
         defaultVps.decPicBufMgr.maxDecPicBufferingMinus1[0] = (uint8_t)std::min(session.GetDesc().maxReferenceNum ? session.GetDesc().maxReferenceNum : 1u, 15u);
         defaultVps.decPicBufMgr.maxNumReorderPics[0] = session.GetDesc().maxReferenceNum > 1 ? 1 : 0;
 
@@ -491,7 +535,6 @@ NRI_INLINE Result VideoSessionParametersVK::CreateAV1(VideoSessionVK& session, c
     }
 
     if (session.GetDesc().type == VideoSessionType::ENCODE) {
-        m_AV1SequenceHeader.seq_force_screen_content_tools = 0;
         m_AV1OperatingPoint.decoder_buffer_delay = 1;
         m_AV1OperatingPoint.encoder_buffer_delay = 2;
     }
@@ -530,7 +573,21 @@ NRI_INLINE Result VideoSessionParametersVK::CreateAV1(VideoSessionVK& session, c
 
     Scratch<uint8_t> data = NRI_ALLOCATE_SCRATCH(m_Device, uint8_t, dataSize);
     vkResult = vk.GetEncodedVideoSessionParametersKHR(m_Device, &getInfo, &feedbackInfo, &dataSize, data);
-    if (vkResult != VK_SUCCESS || !feedbackInfo.hasOverrides || !ApplyVideoEncodeAV1SequenceHeaderOverride(m_AV1SequenceHeader, data, dataSize))
+    if (vkResult != VK_SUCCESS || !feedbackInfo.hasOverrides)
+        return Result::SUCCESS;
+
+    // The app emits the sequence header with "WriteVideoAV1ObuHeaders" from the same desc, which can't reproduce driver overrides
+    if (parameters) {
+        if (IsVideoAV1SequenceHeaderOverridden(parameters->sequence, data, dataSize)) {
+            NRI_REPORT_ERROR(&m_Device, "Vulkan AV1 encode driver overrides the sequence header, which 'WriteVideoAV1ObuHeaders' can't reproduce");
+
+            return Result::UNSUPPORTED;
+        }
+
+        return Result::SUCCESS;
+    }
+
+    if (!ApplyVideoEncodeAV1SequenceHeaderOverride(m_AV1SequenceHeader, data, dataSize))
         return Result::SUCCESS;
 
     vk.DestroyVideoSessionParametersKHR(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
