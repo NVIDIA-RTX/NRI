@@ -11,6 +11,15 @@ When the review touches WGPU, read `../../todo-wgpu.md` completely. When it touc
 
 Review exactly the target and comparison basis specified by the user. Clarify only when genuine ambiguity could change the findings.
 
+Preserve the intentional formatting of NRI interface files, including public headers under `Include/` and internal `*Interface.h` declarations. Do not run clang-format on these files; make focused manual edits instead.
+
+When adding or editing code comments, do not add a period at the end of a single-sentence comment. Keep periods that separate sentences in multi-sentence comments:
+
+```cpp
+// This is good
+// That was bad. This is good
+```
+
 Record the exact target and comparison basis, including refs and commits when applicable. Include committed and uncommitted changes when reviewing a diff. If the review is against current `main`, verify that the local ref matches the remote before comparing.
 
 ## Map the Feature
