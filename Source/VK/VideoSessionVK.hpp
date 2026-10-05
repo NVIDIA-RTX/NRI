@@ -136,17 +136,15 @@ static inline VkVideoComponentBitDepthFlagsKHR GetVideoBitDepth(Format format) {
     return (format == Format::P010_UNORM || format == Format::P016_UNORM) ? VK_VIDEO_COMPONENT_BIT_DEPTH_10_BIT_KHR : VK_VIDEO_COMPONENT_BIT_DEPTH_8_BIT_KHR;
 }
 
-static Result IsVideoFormatSupported(DeviceVK& device, const VideoSessionDesc& videoSessionDesc, const VkVideoProfileInfoKHR& profile, bool& isSupported) {
+static Result IsVideoFormatSupported(DeviceVK& device, const VideoSessionDesc& videoSessionDesc, const VkVideoProfileInfoKHR& profile, VkImageUsageFlags videoUsage, bool& isSupported) {
     isSupported = false;
 
     VkVideoProfileListInfoKHR profileList = {VK_STRUCTURE_TYPE_VIDEO_PROFILE_LIST_INFO_KHR};
     profileList.profileCount = 1;
     profileList.pProfiles = &profile;
 
+    // Matches "GetImageUsageFlags"
     constexpr VkImageUsageFlags transferUsage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    const VkImageUsageFlags videoUsage = videoSessionDesc.type == VideoSessionType::DECODE
-        ? VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR | VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR
-        : VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR | VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR;
 
     VkPhysicalDeviceVideoFormatInfoKHR formatInfo = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_FORMAT_INFO_KHR};
     formatInfo.pNext = &profileList;
@@ -155,6 +153,9 @@ static Result IsVideoFormatSupported(DeviceVK& device, const VideoSessionDesc& v
     const auto& vk = device.GetDispatchTable();
     uint32_t formatNum = 0;
     VkResult vkResult = vk.GetPhysicalDeviceVideoFormatPropertiesKHR(device, &formatInfo, &formatNum, nullptr);
+
+    if (vkResult == VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR || vkResult == VK_ERROR_FORMAT_NOT_SUPPORTED)
+        return Result::SUCCESS; // the usage combination is not supported
     NRI_RETURN_ON_BAD_VKRESULT(&device, vkResult, "vkGetPhysicalDeviceVideoFormatPropertiesKHR");
 
     if (!formatNum)
@@ -184,13 +185,13 @@ static Result IsVideoFormatSupported(DeviceVK& device, const VideoSessionDesc& v
     return Result::SUCCESS;
 }
 
-static inline void FillVideoEncodeFeedback(VideoEncodeFeedback& feedback, const uint64_t* queryResult) {
+static inline void FillVideoEncodeFeedback(VideoEncodeFeedback& feedback, const uint32_t* queryResult) {
     feedback = {};
     feedback.encodedBitstreamOffset = queryResult[0];
     feedback.encodedBitstreamWrittenBytes = queryResult[1];
     feedback.writtenSubregionNum = 1;
 
-    const int64_t status = (int64_t)queryResult[2];
+    const int64_t status = (int32_t)queryResult[2];
     if (status < 0)
         feedback.errorFlags = (uint64_t)status;
     else if (status != VK_QUERY_RESULT_STATUS_COMPLETE_KHR)
@@ -269,20 +270,45 @@ static Result GetVideoCapabilities(DeviceVK& deviceVK, const VideoSessionDesc& v
     VkResult vkResult = vk.GetPhysicalDeviceVideoCapabilitiesKHR(deviceVK, &profile, &capabilities);
     NRI_RETURN_ON_BAD_VKRESULT(&deviceVK, vkResult, "vkGetPhysicalDeviceVideoCapabilitiesKHR");
 
-    bool isVideoFormatSupported = false;
-    Result result = IsVideoFormatSupported(deviceVK, videoSessionDesc, profile, isVideoFormatSupported);
+    // Decode output ("VIDEO_OUTPUT_ONLY") and DPB ("VIDEO_REFERENCE_ONLY") textures are checked separately, the combined usage only for coincide mode
+    const bool isDecode = videoSessionDesc.type == VideoSessionType::DECODE;
+    bool isOutputSupported = false;
+    Result result = IsVideoFormatSupported(deviceVK, videoSessionDesc, profile, isDecode ? VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR : (VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR | VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR), isOutputSupported);
     if (result != Result::SUCCESS)
         return result;
-    if (!isVideoFormatSupported)
+
+    bool isDpbSupported = !isDecode;
+
+    if (isDecode) {
+        result = IsVideoFormatSupported(deviceVK, videoSessionDesc, profile, VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR, isDpbSupported);
+
+        if (result != Result::SUCCESS)
+            return result;
+    }
+
+    bool isOutputAndDpbSupported = false;
+
+    if (isDecode && (decodeCapabilities.flags & VK_VIDEO_DECODE_CAPABILITY_DPB_AND_OUTPUT_COINCIDE_BIT_KHR)) {
+        result = IsVideoFormatSupported(deviceVK, videoSessionDesc, profile, VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR | VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR, isOutputAndDpbSupported);
+
+        if (result != Result::SUCCESS)
+            return result;
+    }
+
+    if (!isOutputSupported || !isDpbSupported)
         return Result::UNSUPPORTED;
 
     FillVideoCapabilities(videoCapabilities, videoSessionDesc, capabilities);
-    if (videoSessionDesc.type == VideoSessionType::DECODE) {
-        videoCapabilities.decodeDpbAndOutputCoincide = (decodeCapabilities.flags & VK_VIDEO_DECODE_CAPABILITY_DPB_AND_OUTPUT_COINCIDE_BIT_KHR) != 0;
+
+    if (isDecode) {
+        videoCapabilities.decodeDpbAndOutputCoincide = isOutputAndDpbSupported;
         videoCapabilities.decodeDpbAndOutputDistinct = (decodeCapabilities.flags & VK_VIDEO_DECODE_CAPABILITY_DPB_AND_OUTPUT_DISTINCT_BIT_KHR) != 0;
+
+        if (!videoCapabilities.decodeDpbAndOutputCoincide && !videoCapabilities.decodeDpbAndOutputDistinct)
+            return Result::UNSUPPORTED;
     } else if ((encodeCapabilities.supportedEncodeFeedbackFlags & VIDEO_ENCODE_REQUIRED_FEEDBACK_FLAGS) == VIDEO_ENCODE_REQUIRED_FEEDBACK_FLAGS) {
         videoCapabilities.resolvedMetadataOffsetAlignment = 8;
-        videoCapabilities.resolvedMetadataSize = sizeof(VideoEncodeFeedback) + sizeof(uint64_t) * 3 + sizeof(uint32_t);
+        videoCapabilities.resolvedMetadataSize = sizeof(VideoEncodeFeedback) + sizeof(uint32_t); // + query index
         videoCapabilities.resolvedMetadataState = {AccessBits::COPY_DESTINATION, StageBits::COPY};
         videoCapabilities.resolvedMetadataQueueType = QueueType::GRAPHICS;
         videoCapabilities.encodeFeedbackMaxPendingNum = VIDEO_ENCODE_FEEDBACK_QUERY_NUM;
@@ -405,20 +431,30 @@ NRI_INLINE Result VideoSessionVK::GetEncodeFeedback(BufferVK& resolvedMetadataRe
     if (m_EncodeFeedbackQueryPool == VK_NULL_HANDLE)
         return Result::UNSUPPORTED;
 
-    constexpr uint64_t queryPayloadSize = sizeof(uint64_t) * 3 + sizeof(uint32_t);
+    constexpr uint64_t queryPayloadSize = sizeof(uint32_t);
     const uint64_t queryPayloadOffset = resolvedMetadataOffset + sizeof(VideoEncodeFeedback);
+    NRI_CHECK(resolvedMetadataReadback.GetMappedMemory(), "'resolvedMetadataReadback' must be CPU-visible");
+
     const uint8_t* queryPayload = (const uint8_t*)resolvedMetadataReadback.Map(queryPayloadOffset, queryPayloadSize);
     if (!queryPayload)
         return Result::FAILURE;
 
-    const uint64_t* queryResult = (const uint64_t*)queryPayload;
-    const uint32_t queryIndex = *(const uint32_t*)(queryPayload + sizeof(uint64_t) * 3);
+    const uint32_t queryIndex = *(const uint32_t*)queryPayload;
     if (queryIndex >= VIDEO_ENCODE_FEEDBACK_QUERY_NUM)
         return Result::FAILURE;
 
     const EncodeFeedbackPayloadReadback& payloadReadback = m_EncodeFeedbackPayloadReadbacks[queryIndex];
     if (!payloadReadback.active || !payloadReadback.resolvedByCommand)
         return Result::FAILURE;
+
+    // WORKAROUND: host readback without "64_BIT" (see "CommandBufferVK::ResolveVideoEncodeFeedback"); offset and size fit 32 bits
+    uint32_t queryResult[3] = {};
+    const auto& vk = m_Device.GetDispatchTable();
+    VkResult vkResult = vk.GetQueryPoolResults(m_Device, m_EncodeFeedbackQueryPool, queryIndex, 1, sizeof(queryResult), queryResult, sizeof(queryResult), VK_QUERY_RESULT_WITH_STATUS_BIT_KHR);
+    if (vkResult == VK_NOT_READY)
+        return Result::FAILURE;
+
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetQueryPoolResults");
 
     FillVideoEncodeFeedback(feedback, queryResult);
     ClearEncodeFeedbackQuery(queryIndex);

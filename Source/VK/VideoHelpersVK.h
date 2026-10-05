@@ -51,6 +51,61 @@ static inline void FillVideoEncodeRateControl(const VideoEncodeRateControlDesc& 
     info.initialVirtualBufferSizeInMs = desc.initialVirtualBufferSizeMs ? desc.initialVirtualBufferSizeMs : info.virtualBufferSizeInMs;
 }
 
+struct VideoEncodeRateControlVK {
+    VkVideoEncodeRateControlInfoKHR info = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_RATE_CONTROL_INFO_KHR};
+    VkVideoEncodeRateControlLayerInfoKHR layer = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_RATE_CONTROL_LAYER_INFO_KHR};
+    VkVideoEncodeH264RateControlInfoKHR h264 = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_INFO_KHR};
+    VkVideoEncodeH265RateControlInfoKHR h265 = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_INFO_KHR};
+    VkVideoEncodeAV1RateControlInfoKHR av1 = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_RATE_CONTROL_INFO_KHR};
+};
+
+// Fills a self-referencing native chain: "rateControl" must not be copied or moved afterwards
+static inline void FillVideoEncodeRateControl(VideoEncodeRateControlVK& rateControl, const VideoEncodeRateControlDesc& desc, const VideoSessionDesc& sessionDesc) {
+    FillVideoEncodeRateControl(desc, rateControl.info, rateControl.layer);
+
+    if (sessionDesc.codec == VideoCodec::H264) {
+        rateControl.h264.gopFrameCount = sessionDesc.maxReferenceNum ? 60 : 1;
+        rateControl.h264.idrPeriod = rateControl.h264.gopFrameCount;
+        rateControl.h264.consecutiveBFrameCount = sessionDesc.maxReferenceNum > 1 ? 1 : 0;
+        rateControl.h264.temporalLayerCount = 1;
+        rateControl.info.pNext = &rateControl.h264;
+    } else if (sessionDesc.codec == VideoCodec::H265) {
+        rateControl.h265.gopFrameCount = sessionDesc.maxReferenceNum ? 60 : 1;
+        rateControl.h265.idrPeriod = rateControl.h265.gopFrameCount;
+        rateControl.h265.consecutiveBFrameCount = sessionDesc.maxReferenceNum > 1 ? 1 : 0;
+        rateControl.h265.subLayerCount = 1;
+        rateControl.info.pNext = &rateControl.h265;
+    } else if (sessionDesc.codec == VideoCodec::AV1) {
+        rateControl.av1.flags = VK_VIDEO_ENCODE_AV1_RATE_CONTROL_REGULAR_GOP_BIT_KHR | VK_VIDEO_ENCODE_AV1_RATE_CONTROL_REFERENCE_PATTERN_FLAT_BIT_KHR;
+        rateControl.av1.gopFrameCount = 300;
+        rateControl.av1.keyFramePeriod = 300;
+        rateControl.av1.consecutiveBipredictiveFrameCount = 1;
+        rateControl.info.pNext = &rateControl.av1;
+    }
+}
+
+// Compares the native rate control state produced by two descriptions (QP values are per-picture, not part of the state)
+static inline bool IsVideoEncodeRateControlEqual(const VideoEncodeRateControlDesc& a, const VideoEncodeRateControlDesc& b) {
+    VkVideoEncodeRateControlInfoKHR infoA = {};
+    VkVideoEncodeRateControlInfoKHR infoB = {};
+    VkVideoEncodeRateControlLayerInfoKHR layerA = {};
+    VkVideoEncodeRateControlLayerInfoKHR layerB = {};
+    FillVideoEncodeRateControl(a, infoA, layerA);
+    FillVideoEncodeRateControl(b, infoB, layerB);
+
+    if (infoA.rateControlMode != infoB.rateControlMode || infoA.layerCount != infoB.layerCount)
+        return false;
+
+    if (infoA.virtualBufferSizeInMs != infoB.virtualBufferSizeInMs || infoA.initialVirtualBufferSizeInMs != infoB.initialVirtualBufferSizeInMs)
+        return false;
+
+    if (!infoA.layerCount)
+        return true;
+
+    return layerA.averageBitrate == layerB.averageBitrate && layerA.maxBitrate == layerB.maxBitrate && layerA.frameRateNumerator == layerB.frameRateNumerator
+        && layerA.frameRateDenominator == layerB.frameRateDenominator;
+}
+
 static inline VkVideoReferenceSlotInfoKHR GetVideoSetupReferenceSlotForBegin(const VkVideoReferenceSlotInfoKHR& setupReferenceSlot) {
     VkVideoReferenceSlotInfoKHR beginReferenceSlot = setupReferenceSlot;
     beginReferenceSlot.slotIndex = -1;
@@ -133,6 +188,40 @@ static inline uint8_t GetVideoAV1SizeBitsMinus1(uint32_t value) {
     return bits - 1;
 }
 
+// "general_level_idc" is 30 times the level number (H.265 A.4.1)
+static inline StdVideoH265LevelIdc GetVideoH265LevelIdc(uint8_t generalLevelIdc) {
+    switch (generalLevelIdc) {
+        case 30:
+            return STD_VIDEO_H265_LEVEL_IDC_1_0;
+        case 60:
+            return STD_VIDEO_H265_LEVEL_IDC_2_0;
+        case 63:
+            return STD_VIDEO_H265_LEVEL_IDC_2_1;
+        case 90:
+            return STD_VIDEO_H265_LEVEL_IDC_3_0;
+        case 93:
+            return STD_VIDEO_H265_LEVEL_IDC_3_1;
+        case 120:
+            return STD_VIDEO_H265_LEVEL_IDC_4_0;
+        case 123:
+            return STD_VIDEO_H265_LEVEL_IDC_4_1;
+        case 150:
+            return STD_VIDEO_H265_LEVEL_IDC_5_0;
+        case 153:
+            return STD_VIDEO_H265_LEVEL_IDC_5_1;
+        case 156:
+            return STD_VIDEO_H265_LEVEL_IDC_5_2;
+        case 180:
+            return STD_VIDEO_H265_LEVEL_IDC_6_0;
+        case 183:
+            return STD_VIDEO_H265_LEVEL_IDC_6_1;
+        case 186:
+            return STD_VIDEO_H265_LEVEL_IDC_6_2;
+        default:
+            return STD_VIDEO_H265_LEVEL_IDC_INVALID;
+    }
+}
+
 static inline void FillVideoH265ProfileTierLevel(StdVideoH265ProfileTierLevel& profileTierLevel, const VideoH265ProfileTierLevelDesc& desc) {
     profileTierLevel = {};
     profileTierLevel.flags.general_tier_flag = !!(desc.flags & VideoH265ProfileTierLevelBits::TIER);
@@ -141,7 +230,7 @@ static inline void FillVideoH265ProfileTierLevel(StdVideoH265ProfileTierLevel& p
     profileTierLevel.flags.general_non_packed_constraint_flag = !!(desc.flags & VideoH265ProfileTierLevelBits::NON_PACKED_CONSTRAINT);
     profileTierLevel.flags.general_frame_only_constraint_flag = !!(desc.flags & VideoH265ProfileTierLevelBits::FRAME_ONLY_CONSTRAINT);
     profileTierLevel.general_profile_idc = (StdVideoH265ProfileIdc)desc.generalProfileIdc;
-    profileTierLevel.general_level_idc = (StdVideoH265LevelIdc)desc.generalLevelIdc;
+    profileTierLevel.general_level_idc = GetVideoH265LevelIdc(desc.generalLevelIdc);
 }
 
 static inline void FillVideoH265DecPicBufMgr(StdVideoH265DecPicBufMgr& decPicBufMgr, const VideoH265DecPicBufMgrDesc& desc) {
@@ -508,8 +597,27 @@ static inline void FillVideoDecodeAV1ReferenceInfo(StdVideoDecodeAV1ReferenceInf
     }
 }
 
+// "OrderHints[]" is indexed by reference name: "OrderHints[LAST_FRAME + i]" (AV1 7.20)
+static inline void FillVideoDecodeAV1OrderHints(uint8_t* orderHints, const VideoAV1DecodePictureDesc& desc) {
+    if (desc.orderHints)
+        std::memcpy(orderHints, desc.orderHints, STD_VIDEO_AV1_NUM_REF_FRAMES);
+    else
+        orderHints[0] = desc.orderHint;
+
+    for (uint32_t i = 0; i < desc.referenceNum; i++) {
+        const VideoAV1ReferenceDesc& reference = desc.references[i];
+        const uint8_t referenceNameIndex = video::av1::GetReferenceNameIndex(reference.name);
+
+        if (referenceNameIndex < VK_MAX_VIDEO_AV1_REFERENCES_PER_FRAME_KHR)
+            orderHints[STD_VIDEO_AV1_REFERENCE_NAME_LAST_FRAME + referenceNameIndex] = reference.orderHint;
+    }
+}
+
 static inline void FillVideoDecodeAV1SetupReferenceInfo(StdVideoDecodeAV1ReferenceInfo& info, const VideoAV1DecodePictureDesc& desc, VideoAV1PictureBits pictureFlags) {
-    FillVideoDecodeAV1ReferenceInfo(info, desc.frameType, desc.orderHint);
+    info = {};
+    info.frame_type = (uint8_t)GetVideoAV1FrameType(desc.frameType);
+    info.OrderHint = desc.orderHint;
+    FillVideoDecodeAV1OrderHints(info.SavedOrderHints, desc); // "SavedOrderHints[i][j] = OrderHints[j]" (AV1 7.20)
     info.flags.disable_frame_end_update_cdf = !!(pictureFlags & VideoAV1PictureBits::DISABLE_FRAME_END_UPDATE_CDF);
     info.flags.segmentation_enabled = !!(pictureFlags & VideoAV1PictureBits::SEGMENTATION_ENABLED);
 }
@@ -712,22 +820,26 @@ static inline void FillVideoDecodeAV1PictureInfo(StdVideoDecodeAV1PictureInfo& i
     info.OrderHint = desc.orderHint;
     info.primary_ref_frame = video::av1::GetReferenceNameIndex(desc.primaryReferenceName);
     info.refresh_frame_flags = desc.refreshFrameFlags;
-    info.interpolation_filter = desc.interpolationFilter ? (StdVideoAV1InterpolationFilter)desc.interpolationFilter : STD_VIDEO_AV1_INTERPOLATION_FILTER_SWITCHABLE;
-    info.TxMode = desc.txMode ? (StdVideoAV1TxMode)desc.txMode : STD_VIDEO_AV1_TX_MODE_SELECT;
+    info.interpolation_filter = (StdVideoAV1InterpolationFilter)desc.interpolationFilter; // 0 = EIGHTTAP
+    info.TxMode = (StdVideoAV1TxMode)desc.txMode;                                         // 0 = ONLY_4X4
     info.delta_q_res = desc.deltaQRes;
     info.delta_lf_res = desc.deltaLfRes;
     info.coded_denom = desc.codedDenom;
 
-    if (desc.orderHints)
-        std::memcpy(info.OrderHints, desc.orderHints, sizeof(info.OrderHints));
-    else
-        info.OrderHints[0] = desc.orderHint;
-    info.expectedFrameId[0] = desc.currentFrameId;
+    info.SkipModeFrame[0] = (uint8_t)desc.skipModeFrames[0];
+    info.SkipModeFrame[1] = (uint8_t)desc.skipModeFrames[1];
 
+    static_assert((uint8_t)VideoAV1ReferenceName::LAST == STD_VIDEO_AV1_REFERENCE_NAME_LAST_FRAME, "Unexpected");
+    static_assert((uint8_t)VideoAV1ReferenceName::ALTREF == STD_VIDEO_AV1_REFERENCE_NAME_ALTREF_FRAME, "Unexpected");
+
+    // "OrderHints[]" is indexed by reference name, "expectedFrameId[]" by reference name index ("i" in "ref_frame_idx[i]")
+    FillVideoDecodeAV1OrderHints(info.OrderHints, desc);
     for (uint32_t i = 0; i < desc.referenceNum; i++) {
         const VideoAV1ReferenceDesc& reference = desc.references[i];
-        info.OrderHints[reference.refFrameIndex] = reference.orderHint;
-        info.expectedFrameId[reference.refFrameIndex] = reference.frameId;
+        const uint8_t referenceNameIndex = video::av1::GetReferenceNameIndex(reference.name);
+
+        if (referenceNameIndex < VK_MAX_VIDEO_AV1_REFERENCES_PER_FRAME_KHR)
+            info.expectedFrameId[referenceNameIndex] = reference.frameId;
     }
 }
 
@@ -849,7 +961,12 @@ static inline void FillVideoEncodeAV1LoopFilter(StdVideoAV1LoopFilter& info, con
         info.flags.loop_filter_delta_update = desc->loopFilter->deltaUpdate != 0;
         std::memcpy(info.loop_filter_level, desc->loopFilter->level, sizeof(info.loop_filter_level));
         info.loop_filter_sharpness = desc->loopFilter->sharpness;
-        info.update_mode_delta = desc->loopFilter->updateModeDelta;
+
+        // Signal all ref/mode deltas on update, otherwise the provided deltas are not coded
+        if (info.flags.loop_filter_delta_enabled && info.flags.loop_filter_delta_update) {
+            info.update_ref_delta = (uint8_t)((1u << STD_VIDEO_AV1_TOTAL_REFS_PER_FRAME) - 1);
+            info.update_mode_delta = (uint8_t)((1u << STD_VIDEO_AV1_LOOP_FILTER_ADJUSTMENTS) - 1);
+        }
         std::memcpy(info.loop_filter_ref_deltas, desc->loopFilter->refDeltas, sizeof(info.loop_filter_ref_deltas));
         std::memcpy(info.loop_filter_mode_deltas, desc->loopFilter->modeDeltas, sizeof(info.loop_filter_mode_deltas));
         return;
@@ -940,12 +1057,31 @@ static inline void FillVideoDecodeAV1FilmGrain(StdVideoAV1FilmGrain& info, const
     std::memcpy(info.ar_coeffs_cr_plus_128, desc.arCoeffsCrPlus128, sizeof(info.ar_coeffs_cr_plus_128));
 }
 
-static inline StdVideoH265LevelIdc GetVideoH265LevelIdc(uint32_t width, uint32_t height) {
-    const uint64_t samples = uint64_t(width) * height;
-    if (samples <= 512ull * 512ull)
-        return STD_VIDEO_H265_LEVEL_IDC_3_1;
+// Returns the lowest of levels 3.1, 4.1, 5.1 and 6.1 (as "general_level_idc") whose Table A.8 limits allow the picture size at up to 60 frames per second
+static inline uint8_t GetVideoH265DefaultGeneralLevelIdc(uint32_t width, uint32_t height) {
+    struct Level {
+        uint8_t generalLevelIdc;
+        uint64_t maxLumaPs;
+        uint64_t maxLumaSr;
+    };
 
-    return STD_VIDEO_H265_LEVEL_IDC_4_1;
+    static constexpr Level levels[] = {
+        {93, 983040, 33177600},
+        {123, 2228224, 133693440},
+        {153, 8912896, 534773760},
+        {183, 35651584, 2139095040},
+    };
+
+    const uint64_t samples = uint64_t(width) * height;
+
+    for (const Level& level : levels) {
+        const uint64_t maxDimSquared = level.maxLumaPs * 8;
+
+        if (samples <= level.maxLumaPs && (uint64_t(width) * width) <= maxDimSquared && (uint64_t(height) * height) <= maxDimSquared && (samples * 60) <= level.maxLumaSr)
+            return level.generalLevelIdc;
+    }
+
+    return levels[std::size(levels) - 1].generalLevelIdc;
 }
 
 } // namespace nri

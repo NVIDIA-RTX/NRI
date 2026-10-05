@@ -506,8 +506,8 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
             NRI_CHECK(referenceDesc, "H.264 reference is missing after NRI validation");
 
             h264StdReferences[i] = {};
-            h264StdReferences[i].flags.top_field_flag = !!(referenceDesc->flags & VideoH264DecodeReferenceBits::TOP_FIELD);
-            h264StdReferences[i].flags.bottom_field_flag = !!(referenceDesc->flags & VideoH264DecodeReferenceBits::BOTTOM_FIELD);
+            h264StdReferences[i].flags.top_field_flag = !!(referenceDesc->flags & VideoH264DecodeReferenceBits::TOP_FIELD) && !(referenceDesc->flags & VideoH264DecodeReferenceBits::BOTTOM_FIELD);
+            h264StdReferences[i].flags.bottom_field_flag = !!(referenceDesc->flags & VideoH264DecodeReferenceBits::BOTTOM_FIELD) && !(referenceDesc->flags & VideoH264DecodeReferenceBits::TOP_FIELD);
             h264StdReferences[i].flags.used_for_long_term_reference = !!(referenceDesc->flags & VideoH264DecodeReferenceBits::LONG_TERM);
             h264StdReferences[i].flags.is_non_existing = !!(referenceDesc->flags & VideoH264DecodeReferenceBits::NON_EXISTING);
             h264StdReferences[i].FrameNum = (uint16_t)referenceDesc->frameNum;
@@ -570,7 +570,6 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
     Scratch<uint16_t> av1HeightInSbsMinus1 = NRI_ALLOCATE_SCRATCH(m_Device, uint16_t, videoDecodeDesc.av1PictureDesc ? std::max(videoDecodeDesc.av1PictureDesc->tileNum, 1u) : 0);
     void* codecPictureInfo = nullptr;
     const void* setupReferenceInfo = nullptr;
-    bool activatesSetupReferenceSlot = false;
     if (session.GetDesc().codec == VideoCodec::H264) {
         const VideoH264DecodePictureDesc& desc = *videoDecodeDesc.h264PictureDesc;
         h264StdPicture.flags.field_pic_flag = !!(desc.flags & VideoH264DecodePictureBits::FIELD_PICTURE);
@@ -600,7 +599,6 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
         h264StdReference.PicOrderCnt[1] = desc.bottomFieldOrderCount;
         h264DpbSlot.pStdReferenceInfo = &h264StdReference;
         setupReferenceInfo = &h264DpbSlot;
-        activatesSetupReferenceSlot = (desc.flags & VideoH264DecodePictureBits::REFERENCE) != 0;
     } else if (session.GetDesc().codec == VideoCodec::H265) {
         const VideoH265DecodePictureDesc& desc = *videoDecodeDesc.h265PictureDesc;
         h265StdPicture.flags.IrapPicFlag = !!(desc.flags & VideoH265DecodePictureBits::IRAP);
@@ -620,26 +618,37 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
         for (uint8_t& entry : h265StdPicture.RefPicSetLtCurr)
             entry = STD_VIDEO_H265_NO_REFERENCE_PICTURE;
 
+        // RefPicSetStCurrBefore is ordered by descending and RefPicSetStCurrAfter by ascending POC (H.265 8.3.2)
+        std::array<const VideoH265ReferenceDesc*, STD_VIDEO_DECODE_H265_REF_PIC_SET_LIST_SIZE> before = {};
+        std::array<const VideoH265ReferenceDesc*, STD_VIDEO_DECODE_H265_REF_PIC_SET_LIST_SIZE> after = {};
         uint32_t beforeNum = 0;
         uint32_t afterNum = 0;
         uint32_t longTermNum = 0;
         for (uint32_t i = 0; i < desc.referenceNum; i++) {
             const VideoH265ReferenceDesc& reference = desc.references[i];
-            const uint8_t slot = (uint8_t)reference.slot;
             if (reference.longTerm)
-                h265StdPicture.RefPicSetLtCurr[longTermNum++] = slot;
+                h265StdPicture.RefPicSetLtCurr[longTermNum++] = (uint8_t)reference.slot;
             else if (reference.pictureOrderCount < desc.pictureOrderCount)
-                h265StdPicture.RefPicSetStCurrBefore[beforeNum++] = slot;
+                before[beforeNum++] = &reference;
             else if (reference.pictureOrderCount > desc.pictureOrderCount)
-                h265StdPicture.RefPicSetStCurrAfter[afterNum++] = slot;
+                after[afterNum++] = &reference;
             else {
                 NRI_CHECK(false, "Unexpected equal H.265 short-term reference picture order count");
                 return;
             }
         }
 
+        std::sort(before.begin(), before.begin() + beforeNum, [](const VideoH265ReferenceDesc* a, const VideoH265ReferenceDesc* b) { return a->pictureOrderCount > b->pictureOrderCount; });
+        std::sort(after.begin(), after.begin() + afterNum, [](const VideoH265ReferenceDesc* a, const VideoH265ReferenceDesc* b) { return a->pictureOrderCount < b->pictureOrderCount; });
+
+        for (uint32_t i = 0; i < beforeNum; i++)
+            h265StdPicture.RefPicSetStCurrBefore[i] = (uint8_t)before[i]->slot;
+
+        for (uint32_t i = 0; i < afterNum; i++)
+            h265StdPicture.RefPicSetStCurrAfter[i] = (uint8_t)after[i]->slot;
+
         for (uint32_t i = 0; i < desc.sliceSegmentOffsetNum; i++)
-            h265SliceSegmentOffsets[i] = desc.sliceSegmentOffsets[i] + 4;
+            h265SliceSegmentOffsets[i] = desc.sliceSegmentOffsets[i] + 1; // skip the leading zero byte of the documented 4-byte start code, pointing at "00 00 01"
 
         h265Picture.pStdPictureInfo = &h265StdPicture;
         h265Picture.sliceSegmentCount = desc.sliceSegmentOffsetNum;
@@ -649,7 +658,6 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
         h265StdReference.PicOrderCntVal = desc.pictureOrderCount;
         h265DpbSlot.pStdReferenceInfo = &h265StdReference;
         setupReferenceInfo = &h265DpbSlot;
-        activatesSetupReferenceSlot = (desc.flags & VideoH265DecodePictureBits::REFERENCE) != 0;
     } else if (session.GetDesc().codec == VideoCodec::AV1) {
         const VideoAV1DecodePictureDesc& desc = *videoDecodeDesc.av1PictureDesc;
         for (int32_t& slotIndex : av1Picture.referenceNameSlotIndices)
@@ -711,7 +719,6 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
         FillVideoDecodeAV1SetupReferenceInfo(av1StdReference, desc, pictureFlags);
         av1DpbSlot.pStdReferenceInfo = &av1StdReference;
         setupReferenceInfo = &av1DpbSlot;
-        activatesSetupReferenceSlot = desc.refreshFrameFlags != 0;
     }
 
     VideoPictureVK& dstPicture = *(VideoPictureVK*)videoDecodeDesc.dstPicture;
@@ -721,7 +728,7 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
     VkVideoReferenceSlotInfoKHR setupReferenceSlot = {VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR};
     setupReferenceSlot.pNext = setupReferenceInfo;
     const uint32_t setupReferenceSlotIndex = video::GetDecodeSetupSlot(videoDecodeDesc);
-    setupReferenceSlot.slotIndex = (hasDpbSlots && activatesSetupReferenceSlot) ? (int32_t)setupReferenceSlotIndex : -1;
+    setupReferenceSlot.slotIndex = hasDpbSlots ? (int32_t)setupReferenceSlotIndex : -1;
     setupReferenceSlot.pPictureResource = &setupPicture.GetResource();
 
     VkVideoBeginCodingInfoKHR beginInfo = {VK_STRUCTURE_TYPE_VIDEO_BEGIN_CODING_INFO_KHR};
@@ -864,6 +871,16 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
             h264StdPicture.flags.no_output_of_prior_pics_flag = pictureDesc.frameType == VideoFrameType::IDR;
             h264StdPicture.seq_parameter_set_id = videoEncodeDesc.h264PictureDesc ? videoEncodeDesc.h264PictureDesc->sequenceParameterSetId : 0;
             h264StdPicture.pic_parameter_set_id = videoEncodeDesc.h264PictureDesc ? videoEncodeDesc.h264PictureDesc->pictureParameterSetId : 0;
+
+            if (h264StdPicture.pRefLists) {
+                uint8_t l0DefaultActiveMinus1 = 0;
+                uint8_t l1DefaultActiveMinus1 = 0;
+                parameters.GetH264ReferenceIndexDefaults(h264StdPicture.pic_parameter_set_id, l0DefaultActiveMinus1, l1DefaultActiveMinus1);
+
+                const bool isL1Active = pictureDesc.frameType == VideoFrameType::B;
+                h264SliceHeader.flags.num_ref_idx_active_override_flag = h264ReferenceLists.num_ref_idx_l0_active_minus1 != l0DefaultActiveMinus1
+                    || (isL1Active && h264ReferenceLists.num_ref_idx_l1_active_minus1 != l1DefaultActiveMinus1);
+            }
             h264StdPicture.idr_pic_id = pictureDesc.idrPictureId;
             h264StdPicture.primary_pic_type = GetVideoEncodeH264PictureType(pictureDesc.frameType);
             h264StdPicture.frame_num = pictureDesc.frameIndex;
@@ -871,7 +888,7 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
             h264StdPicture.temporal_id = pictureDesc.temporalLayer;
             h264SliceHeader.slice_type = pictureDesc.frameType == VideoFrameType::B ? STD_VIDEO_H264_SLICE_TYPE_B : (pictureDesc.frameType == VideoFrameType::P ? STD_VIDEO_H264_SLICE_TYPE_P : STD_VIDEO_H264_SLICE_TYPE_I);
             h264SliceHeader.disable_deblocking_filter_idc = STD_VIDEO_H264_DISABLE_DEBLOCKING_FILTER_IDC_DISABLED;
-            h264SliceInfo.constantQp = video::GetEncodeQPByFrameType(rateControlDesc, pictureDesc.frameType);
+            h264SliceInfo.constantQp = rateControlDesc.mode == VideoEncodeRateControlMode::CQP ? video::GetEncodeQPByFrameType(rateControlDesc, pictureDesc.frameType) : 0;
             h264SliceInfo.pStdSliceHeader = &h264SliceHeader;
             h264Picture.naluSliceEntryCount = 1;
             h264Picture.pNaluSliceEntries = &h264SliceInfo;
@@ -888,9 +905,9 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
         }
         case VideoCodec::H265:
             h265StdPicture.pic_type = GetVideoEncodeH265PictureType(pictureDesc.frameType);
-            h265StdPicture.sps_video_parameter_set_id = 0;
-            h265StdPicture.pps_seq_parameter_set_id = 0;
-            h265StdPicture.pps_pic_parameter_set_id = 0;
+            h265StdPicture.sps_video_parameter_set_id = videoEncodeDesc.h265PictureDesc ? videoEncodeDesc.h265PictureDesc->videoParameterSetId : 0;
+            h265StdPicture.pps_seq_parameter_set_id = videoEncodeDesc.h265PictureDesc ? videoEncodeDesc.h265PictureDesc->sequenceParameterSetId : 0;
+            h265StdPicture.pps_pic_parameter_set_id = videoEncodeDesc.h265PictureDesc ? videoEncodeDesc.h265PictureDesc->pictureParameterSetId : 0;
             h265StdPicture.PicOrderCntVal = pictureDesc.pictureOrderCount;
             h265StdPicture.TemporalId = pictureDesc.temporalLayer;
             h265StdPicture.flags.IrapPicFlag = pictureDesc.frameType == VideoFrameType::IDR || pictureDesc.frameType == VideoFrameType::I;
@@ -974,7 +991,7 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
             h265SliceHeader.flags.collocated_from_l0_flag = false;
             h265SliceHeader.slice_type = pictureDesc.frameType == VideoFrameType::B ? STD_VIDEO_H265_SLICE_TYPE_B : (pictureDesc.frameType == VideoFrameType::P ? STD_VIDEO_H265_SLICE_TYPE_P : STD_VIDEO_H265_SLICE_TYPE_I);
             h265SliceHeader.MaxNumMergeCand = 5;
-            h265SliceInfo.constantQp = video::GetEncodeQPByFrameType(rateControlDesc, pictureDesc.frameType);
+            h265SliceInfo.constantQp = rateControlDesc.mode == VideoEncodeRateControlMode::CQP ? video::GetEncodeQPByFrameType(rateControlDesc, pictureDesc.frameType) : 0;
             h265SliceInfo.pStdSliceSegmentHeader = &h265SliceHeader;
             h265Picture.naluSliceSegmentEntryCount = 1;
             h265Picture.pNaluSliceSegmentEntries = &h265SliceInfo;
@@ -1019,11 +1036,14 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
                 av1StdPicture.render_width_minus_1 = av1PictureDesc->renderWidthMinus1 ? av1PictureDesc->renderWidthMinus1 : av1StdPicture.render_width_minus_1;
                 av1StdPicture.render_height_minus_1 = av1PictureDesc->renderHeightMinus1 ? av1PictureDesc->renderHeightMinus1 : av1StdPicture.render_height_minus_1;
                 av1StdPicture.interpolation_filter = (StdVideoAV1InterpolationFilter)av1PictureDesc->interpolationFilter;
-                av1StdPicture.TxMode = av1PictureDesc->txMode ? (StdVideoAV1TxMode)av1PictureDesc->txMode : STD_VIDEO_AV1_TX_MODE_SELECT;
                 av1StdPicture.coded_denom = av1StdPicture.flags.use_superres ? av1PictureDesc->codedDenom : 0;
                 av1StdPicture.delta_q_res = av1PictureDesc->deltaQRes;
                 av1StdPicture.delta_lf_res = av1PictureDesc->deltaLfRes;
             }
+
+            if (av1PictureDesc && av1PictureDesc->txMode)
+                av1StdPicture.TxMode = (StdVideoAV1TxMode)av1PictureDesc->txMode;
+
             if (av1StdPicture.flags.frame_size_override_flag && (session.GetAV1CapabilityFlags() & VK_VIDEO_ENCODE_AV1_CAPABILITY_FRAME_SIZE_OVERRIDE_BIT_KHR) == 0) {
                 NRI_REPORT_ERROR(&m_Device, "Vulkan AV1 encode does not support frame size override");
                 return;
@@ -1288,40 +1308,30 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
         referenceSlots[videoEncodeDesc.referenceNum] = GetVideoSetupReferenceSlotForBegin(setupReferenceSlot);
     }
 
-    VkVideoEncodeRateControlInfoKHR rateControlInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_RATE_CONTROL_INFO_KHR};
-    VkVideoEncodeRateControlLayerInfoKHR rateControlLayer = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_RATE_CONTROL_LAYER_INFO_KHR};
-    VkVideoEncodeH264RateControlInfoKHR h264RateControlInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_INFO_KHR};
-    VkVideoEncodeH265RateControlInfoKHR h265RateControlInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_INFO_KHR};
-    VkVideoEncodeAV1RateControlInfoKHR av1RateControlInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_RATE_CONTROL_INFO_KHR};
+    // The rate control state is tracked per session: "VkVideoBeginCodingInfoKHR" must describe the current state, and changes are applied via "vkCmdControlVideoCodingKHR"
+    const bool needsSessionReset = !session.IsResetRecorded();
+    const bool needsRateControlUpdate = !needsSessionReset && !IsVideoEncodeRateControlEqual(session.GetRateControl(), rateControlDesc);
+
+    VideoEncodeRateControlVK rateControl = {};
+    FillVideoEncodeRateControl(rateControl, rateControlDesc, session.GetDesc());
+
+    VideoEncodeRateControlVK currentRateControl = {};
+
+    if (needsRateControlUpdate)
+        FillVideoEncodeRateControl(currentRateControl, session.GetRateControl(), session.GetDesc());
+
     VkVideoEncodeAV1GopRemainingFrameInfoKHR av1GopRemainingFrameInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_GOP_REMAINING_FRAME_INFO_KHR};
     VkVideoEncodeQualityLevelInfoKHR qualityLevelInfo = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUALITY_LEVEL_INFO_KHR};
-    const void* beginPNext = &rateControlInfo;
-    FillVideoEncodeRateControl(rateControlDesc, rateControlInfo, rateControlLayer);
-    if (session.GetDesc().codec == VideoCodec::H264) {
-        h264RateControlInfo.gopFrameCount = session.GetDesc().maxReferenceNum ? 60 : 1;
-        h264RateControlInfo.idrPeriod = h264RateControlInfo.gopFrameCount;
-        h264RateControlInfo.consecutiveBFrameCount = session.GetDesc().maxReferenceNum > 1 ? 1 : 0;
-        h264RateControlInfo.temporalLayerCount = 1;
-        rateControlInfo.pNext = &h264RateControlInfo;
-    } else if (session.GetDesc().codec == VideoCodec::H265) {
-        h265RateControlInfo.gopFrameCount = session.GetDesc().maxReferenceNum ? 60 : 1;
-        h265RateControlInfo.idrPeriod = h265RateControlInfo.gopFrameCount;
-        h265RateControlInfo.consecutiveBFrameCount = session.GetDesc().maxReferenceNum > 1 ? 1 : 0;
-        h265RateControlInfo.subLayerCount = 1;
-        rateControlInfo.pNext = &h265RateControlInfo;
-    } else if (session.GetDesc().codec == VideoCodec::AV1) {
-        av1RateControlInfo.flags = VK_VIDEO_ENCODE_AV1_RATE_CONTROL_REGULAR_GOP_BIT_KHR | VK_VIDEO_ENCODE_AV1_RATE_CONTROL_REFERENCE_PATTERN_FLAT_BIT_KHR;
-        av1RateControlInfo.gopFrameCount = 300;
-        av1RateControlInfo.keyFramePeriod = 300;
-        av1RateControlInfo.consecutiveBipredictiveFrameCount = 1;
-        rateControlInfo.pNext = &av1RateControlInfo;
-        qualityLevelInfo.pNext = &rateControlInfo;
+    const void* beginPNext = &rateControl.info;
+
+    if (session.GetDesc().codec == VideoCodec::AV1) {
+        qualityLevelInfo.pNext = &rateControl.info;
         if (session.DoesAV1RequireGopRemainingFrames() && rateControlDesc.mode != VideoEncodeRateControlMode::CQP) {
             av1GopRemainingFrameInfo.useGopRemainingFrames = VK_TRUE;
             av1GopRemainingFrameInfo.gopRemainingIntra = (pictureDesc.frameType == VideoFrameType::IDR || pictureDesc.frameType == VideoFrameType::I) ? 1 : 0;
-            av1GopRemainingFrameInfo.gopRemainingPredictive = av1RateControlInfo.gopFrameCount ? av1RateControlInfo.gopFrameCount - 1 : 0;
-            av1GopRemainingFrameInfo.gopRemainingBipredictive = av1RateControlInfo.consecutiveBipredictiveFrameCount;
-            av1GopRemainingFrameInfo.pNext = &rateControlInfo;
+            av1GopRemainingFrameInfo.gopRemainingPredictive = rateControl.av1.gopFrameCount ? rateControl.av1.gopFrameCount - 1 : 0;
+            av1GopRemainingFrameInfo.gopRemainingBipredictive = rateControl.av1.consecutiveBipredictiveFrameCount;
+            av1GopRemainingFrameInfo.pNext = &rateControl.info;
             beginPNext = &av1GopRemainingFrameInfo;
         }
     }
@@ -1357,22 +1367,31 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
     if (useEncodeFeedback)
         vk.CmdResetQueryPool(m_Handle, session.GetEncodeFeedbackQueryPool(), encodeFeedbackQueryIndex, 1);
 
-    const bool needsSessionReset = !session.IsResetRecorded();
-    if (needsSessionReset) {
-        VkVideoBeginCodingInfoKHR initBeginInfo = beginInfo;
-        initBeginInfo.pNext = nullptr;
+    // Reset or rate control change: the control scope begins with the current state (none after reset) and ends with the new one
+    if (needsSessionReset || needsRateControlUpdate) {
+        VkVideoBeginCodingInfoKHR controlBeginInfo = beginInfo;
+        controlBeginInfo.pNext = needsSessionReset ? nullptr : &currentRateControl.info;
+
+        const bool setsQualityLevel = needsSessionReset && session.GetDesc().codec == VideoCodec::AV1;
 
         VkVideoCodingControlInfoKHR controlInfo = {VK_STRUCTURE_TYPE_VIDEO_CODING_CONTROL_INFO_KHR};
+        controlInfo.flags = VK_VIDEO_CODING_CONTROL_ENCODE_RATE_CONTROL_BIT_KHR;
 
-        vk.CmdBeginVideoCodingKHR(m_Handle, &initBeginInfo);
-        controlInfo.flags = VK_VIDEO_CODING_CONTROL_RESET_BIT_KHR | VK_VIDEO_CODING_CONTROL_ENCODE_RATE_CONTROL_BIT_KHR;
-        if (session.GetDesc().codec == VideoCodec::AV1)
+        if (needsSessionReset)
+            controlInfo.flags |= VK_VIDEO_CODING_CONTROL_RESET_BIT_KHR;
+
+        if (setsQualityLevel)
             controlInfo.flags |= VK_VIDEO_CODING_CONTROL_ENCODE_QUALITY_LEVEL_BIT_KHR;
-        controlInfo.pNext = session.GetDesc().codec == VideoCodec::AV1 ? (const void*)&qualityLevelInfo : (const void*)&rateControlInfo;
+        controlInfo.pNext = setsQualityLevel ? (const void*)&qualityLevelInfo : (const void*)&rateControl.info;
+
+        vk.CmdBeginVideoCodingKHR(m_Handle, &controlBeginInfo);
         vk.CmdControlVideoCodingKHR(m_Handle, &controlInfo);
         vk.CmdEndVideoCodingKHR(m_Handle, &endInfo);
+
         session.SetResetRecorded();
+        session.SetRateControl(rateControlDesc);
     }
+
     vk.CmdBeginVideoCodingKHR(m_Handle, &beginInfo);
 
     if (useEncodeFeedback)
@@ -1399,12 +1418,12 @@ NRI_INLINE void CommandBufferVK::ResolveVideoEncodeFeedback(VideoSession& videoS
     }
 
     const auto& vk = m_Device.GetDispatchTable();
-    constexpr VkDeviceSize queryResultSize = sizeof(uint64_t) * 3;
-    const uint64_t queryResultOffset = resolvedMetadataOffset + sizeof(VideoEncodeFeedback);
+    const uint64_t queryIndexOffset = resolvedMetadataOffset + sizeof(VideoEncodeFeedback);
 
-    vk.CmdCopyQueryPoolResults(m_Handle, session.GetEncodeFeedbackQueryPool(), encodeFeedbackQueryIndex, 1, feedbackBuffer.GetHandle(), queryResultOffset, queryResultSize,
-        VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT | VK_QUERY_RESULT_WITH_STATUS_BIT_KHR);
-    vk.CmdFillBuffer(m_Handle, feedbackBuffer.GetHandle(), queryResultOffset + queryResultSize, sizeof(uint32_t), encodeFeedbackQueryIndex);
+    // WORKAROUND: no "vkCmdCopyQueryPoolResults" for encode feedback queries. NVIDIA (610.57) never completes the copy
+    // ("WAIT_BIT" hangs, otherwise "DEVICE_LOST") and packs "64_BIT" results incorrectly. Only the query index is recorded,
+    // the results are read on the host in "GetEncodeFeedback"
+    vk.CmdFillBuffer(m_Handle, feedbackBuffer.GetHandle(), queryIndexOffset, sizeof(uint32_t), encodeFeedbackQueryIndex);
     session.SetEncodeFeedbackQueryResolved(encodeFeedbackQueryIndex);
 }
 
