@@ -34,7 +34,7 @@ if(CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64EC")
 elseif((CMAKE_GENERATOR_PLATFORM MATCHES "ARM64") OR (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64"))
     set(IS_ARM64 TRUE)
     set(BIN_ARCHITECTURE "arm64")
-    set(NVAPI_BIN_ARCHITECTURE "arm64")
+    set(NVAPI_BIN_ARCHITECTURE "aarch64")
     set(WGPU_BIN_ARCHITECTURE "aarch64")
 elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(IS_ARM64 FALSE)
@@ -74,11 +74,11 @@ cmake_dependent_option(NRI_ENABLE_D3D11_SUPPORT "Enable D3D11 backend" ON "WIN32
 cmake_dependent_option(NRI_ENABLE_D3D12_SUPPORT "Enable D3D12 backend" ON "WIN32" OFF)
 cmake_dependent_option(NRI_ENABLE_WGPU_SUPPORT "Enable WebGPU backend" ${GITHUB_CI} "WGPU_BIN_ARCHITECTURE; NOT ANDROID" OFF)
 cmake_dependent_option(NRI_ENABLE_AMDAGS "Enable AMD AGS library for D3D" ON "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT); NOT IS_ARM64" OFF)
-cmake_dependent_option(NRI_ENABLE_NVAPI "Enable NVAPI library for D3D" ON "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT); NOT IS_ARM64" OFF)
+cmake_dependent_option(NRI_ENABLE_NVAPI "Enable NVAPI library for D3D" ON "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT)" OFF)
 cmake_dependent_option(NRI_ENABLE_AGILITY_SDK_SUPPORT "Enable Agility SDK support to unlock access to latest D3D12 features" ON "NRI_ENABLE_D3D12_SUPPORT" OFF)
 cmake_dependent_option(NRI_ENABLE_XLIB_SUPPORT "Enable X11 support" ON "XLIB_HEADERS" OFF)
 cmake_dependent_option(NRI_ENABLE_WAYLAND_SUPPORT "Enable Wayland support" ON "WAYLAND_HEADERS" OFF)
-cmake_dependent_option(NRI_ENABLE_NGX_SDK "Enable NVIDIA NGX (DLSS) SDK" OFF "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT OR NRI_ENABLE_VK_SUPPORT); NOT IS_ARM64" OFF)
+cmake_dependent_option(NRI_ENABLE_NGX_SDK "Enable NVIDIA NGX (DLSS) SDK" OFF "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT OR NRI_ENABLE_VK_SUPPORT); WIN32 OR NOT IS_ARM64" OFF)
 cmake_dependent_option(NRI_ENABLE_FFX_SDK "Enable AMD FidelityFX SDK" OFF "(NRI_ENABLE_VK_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT); WIN32; NOT IS_ARM64" OFF)
 cmake_dependent_option(NRI_ENABLE_XESS_SDK "Enable INTEL XeSS SDK" OFF "NRI_ENABLE_D3D12_SUPPORT; WIN32; NOT IS_ARM64" OFF)
 
@@ -189,6 +189,14 @@ if(NRI_ENABLE_VK_SUPPORT)
 endif()
 
 set(NGX_VERSION "310.9.1")
+if(IS_ARM64)
+    set(NGX_WINDOWS_DIR "Windows_aarch64")
+    set(NGX_WINDOWS_LIB_DIR "Windows_aarch64")
+else()
+    set(NGX_WINDOWS_DIR "Windows_x86_64")
+    set(NGX_WINDOWS_LIB_DIR "Windows_x86_64/x64")
+endif()
+
 if(NRI_ENABLE_NGX_SDK)
     # NVIDIA NGX SDK
     fetchcontent_declare(
@@ -334,7 +342,7 @@ endif()
 if(NRI_ENABLE_NVAPI)
     find_library(NVAPI_LIB
         NAMES
-            nvapi64 nvapi
+            nvapi64 nvapia64 nvapi
         PATHS
             "${nvapi_SOURCE_DIR}/${NVAPI_BIN_ARCHITECTURE}"
         REQUIRED
@@ -387,7 +395,7 @@ if(NRI_ENABLE_NGX_SDK)
             message("NRI: using NGX LIB with static runtime")
         endif()
 
-        set(NGX_LIB "${ngx_SOURCE_DIR}/lib/Windows_x86_64/x64/nvsdk_ngx_${NGX_SUFFIX}$<$<CONFIG:Debug>:_dbg>.lib")
+        set(NGX_LIB "${ngx_SOURCE_DIR}/lib/${NGX_WINDOWS_LIB_DIR}/nvsdk_ngx_${NGX_SUFFIX}$<$<CONFIG:Debug>:_dbg>.lib")
     else()
         set(NGX_LIB "${ngx_SOURCE_DIR}/lib/Linux_x86_64/libnvsdk_ngx.a")
     endif()
@@ -1126,8 +1134,8 @@ if(NRI_ENABLE_NGX_SDK)
     set(NGX_LIB_DIR $<IF:$<CONFIG:Debug>,dev,rel>)
 
     if(WIN32)
-        set(DLSS_SR_DLL "${ngx_SOURCE_DIR}/lib/Windows_x86_64/${NGX_LIB_DIR}/nvngx_dlss.dll")
-        set(DLSS_RR_DLL "${ngx_SOURCE_DIR}/lib/Windows_x86_64/${NGX_LIB_DIR}/nvngx_dlssd.dll")
+        set(DLSS_SR_DLL "${ngx_SOURCE_DIR}/lib/${NGX_WINDOWS_DIR}/${NGX_LIB_DIR}/nvngx_dlss.dll")
+        set(DLSS_RR_DLL "${ngx_SOURCE_DIR}/lib/${NGX_WINDOWS_DIR}/${NGX_LIB_DIR}/nvngx_dlssd.dll")
     else()
         set(DLSS_SR_DLL "${ngx_SOURCE_DIR}/lib/Linux_x86_64/${NGX_LIB_DIR}/libnvidia-ngx-dlss.so.${NGX_VERSION}")
         set(DLSS_RR_DLL "${ngx_SOURCE_DIR}/lib/Linux_x86_64/${NGX_LIB_DIR}/libnvidia-ngx-dlssd.so.${NGX_VERSION}")
