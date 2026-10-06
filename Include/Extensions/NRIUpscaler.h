@@ -12,7 +12,7 @@ NriForwardStruct(Upscaler);
 
 NriEnum(UpscalerType, uint8_t,  // Name                                     // Notes
     NIS,                        // NVIDIA Image Scaling                     sharpener-upscaler, cross vendor
-    FSR,                        // AMD FidelityFX Super Resolution          upscaler, cross vendor
+    FSR,                        // AMD FidelityFX Super Resolution          FSR 4 where supported, FSR 3 otherwise
     XESS,                       // INTEL XeSS Super Resolution              upscaler, cross vendor
     DLSR,                       // NVIDIA Deep Learning Super Resolution    upscaler, NVIDIA only
     DLRR                        // NVIDIA Deep Learning Ray Reconstruction  upscaler-denoiser, NVIDIA only

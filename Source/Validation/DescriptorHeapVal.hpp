@@ -9,7 +9,6 @@ NRI_INLINE Result DescriptorHeapVal::WriteResourceDescriptors(const WriteResourc
         NRI_RETURN_ON_FAILURE(&m_Device, writeDesc.resource, Result::INVALID_ARGUMENT, "'writeDescs[%u].resource' is NULL", i);
 
         const DescriptorVal& descriptor = *(DescriptorVal*)writeDesc.resource;
-        NRI_RETURN_ON_FAILURE(&m_Device, &descriptor.GetDevice() == &m_Device, Result::INVALID_ARGUMENT, "'writeDescs[%u].resource' belongs to another device", i);
         NRI_RETURN_ON_FAILURE(&m_Device, descriptor.GetType() < DescriptorType::MAX_NUM && descriptor.GetType() != DescriptorType::SAMPLER && descriptor.GetType() != DescriptorType::MUTABLE && descriptor.GetType() != DescriptorType::INPUT_ATTACHMENT, Result::INVALID_ARGUMENT, "'writeDescs[%u].resource' has an invalid descriptor type", i);
         NRI_RETURN_ON_FAILURE(&m_Device, writeDesc.descriptorIndex < m_Desc.resourceDescriptorNum, Result::INVALID_ARGUMENT, "'writeDescs[%u].descriptorIndex' is out of bounds", i);
 
@@ -35,7 +34,6 @@ NRI_INLINE Result DescriptorHeapVal::WriteSamplerDescriptors(const WriteSamplerD
         NRI_RETURN_ON_FAILURE(&m_Device, writeDesc.sampler, Result::INVALID_ARGUMENT, "'writeDescs[%u].sampler' is NULL", i);
 
         const DescriptorVal& descriptor = *(DescriptorVal*)writeDesc.sampler;
-        NRI_RETURN_ON_FAILURE(&m_Device, &descriptor.GetDevice() == &m_Device, Result::INVALID_ARGUMENT, "'writeDescs[%u].sampler' belongs to another device", i);
         NRI_RETURN_ON_FAILURE(&m_Device, descriptor.GetType() == DescriptorType::SAMPLER, Result::INVALID_ARGUMENT, "'writeDescs[%u].sampler' is not a sampler", i);
         NRI_RETURN_ON_FAILURE(&m_Device, writeDesc.descriptorIndex < m_Desc.samplerDescriptorNum, Result::INVALID_ARGUMENT, "'writeDescs[%u].descriptorIndex' is out of bounds", i);
 

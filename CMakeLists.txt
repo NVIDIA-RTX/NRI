@@ -202,15 +202,28 @@ if(NRI_ENABLE_NGX_SDK)
 endif()
 
 if(NRI_ENABLE_FFX_SDK)
-    # AMD FidelityFX SDK
-    fetchcontent_declare(
-        ffx
-        DOWNLOAD_EXTRACT_TIMESTAMP 1
-        DOWNLOAD_NO_PROGRESS 1
-        SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/releases/download/v1.1.4/FidelityFX-SDK-v1.1.4.zip"
-    )
-    list(APPEND DEPS ffx)
+    # Keep the legacy SDK for Vulkan (the newer FSR SDK only supports D3D12)
+    if(NRI_ENABLE_VK_SUPPORT)
+        fetchcontent_declare(
+            ffx
+            DOWNLOAD_EXTRACT_TIMESTAMP 1
+            DOWNLOAD_NO_PROGRESS 1
+            SOURCE_SUBDIR "ignore CMakeLists.txt"
+            URL "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/releases/download/v1.1.4/FidelityFX-SDK-v1.1.4.zip"
+        )
+        list(APPEND DEPS ffx)
+    endif()
+
+    if(NRI_ENABLE_D3D12_SUPPORT)
+        fetchcontent_declare(
+            fsr
+            DOWNLOAD_EXTRACT_TIMESTAMP 1
+            DOWNLOAD_NO_PROGRESS 1
+            SOURCE_SUBDIR "ignore CMakeLists.txt"
+            URL "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/archive/refs/tags/v2.3.0.zip"
+        )
+        list(APPEND DEPS fsr)
+    endif()
 endif()
 
 if(NRI_ENABLE_XESS_SDK)
@@ -419,7 +432,11 @@ target_include_directories(NRI_Shared
         $<$<BOOL:${NRI_ENABLE_NGX_SDK}>:
             ${ngx_SOURCE_DIR}/include
         >
-        $<$<BOOL:${NRI_ENABLE_FFX_SDK}>:
+        $<$<AND:$<BOOL:${NRI_ENABLE_FFX_SDK}>,$<BOOL:${NRI_ENABLE_D3D12_SUPPORT}>>:
+            ${fsr_SOURCE_DIR}/Kits/FidelityFX/api/include
+            ${fsr_SOURCE_DIR}/Kits/FidelityFX/upscalers/include
+        >
+        $<$<AND:$<BOOL:${NRI_ENABLE_FFX_SDK}>,$<NOT:$<BOOL:${NRI_ENABLE_D3D12_SUPPORT}>>>:
             ${ffx_SOURCE_DIR}/ffx-api/include/ffx_api
         >
         $<$<BOOL:${NRI_ENABLE_XESS_SDK}>:
@@ -1126,15 +1143,27 @@ endif()
 
 if(NRI_ENABLE_FFX_SDK)
     if(NRI_ENABLE_D3D12_SUPPORT)
-        find_file(FFX_DX12_DLL
+        find_file(FSR_DX12_LOADER_DLL
             NAMES
-                amd_fidelityfx_dx12.dll
+                amd_fidelityfx_loader_dx12.dll
             PATHS
-                "${ffx_SOURCE_DIR}/PrebuiltSignedDLL"
+                "${fsr_SOURCE_DIR}/Kits/FidelityFX/signedbin"
+            NO_DEFAULT_PATH
+            NO_CACHE
+            REQUIRED
+        )
+        find_file(FSR_DX12_UPSCALER_DLL
+            NAMES
+                amd_fidelityfx_upscaler_dx12.dll
+            PATHS
+                "${fsr_SOURCE_DIR}/Kits/FidelityFX/signedbin"
+            NO_DEFAULT_PATH
+            NO_CACHE
+            REQUIRED
         )
         add_custom_command(TARGET NRI
             POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FFX_DX12_DLL} "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FSR_DX12_LOADER_DLL} ${FSR_DX12_UPSCALER_DLL} "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
                 VERBATIM
         )
     endif()

@@ -109,7 +109,7 @@ Notes:
 - `NRI_ENABLE_XLIB_SUPPORT` - Enable X11 support
 - `NRI_ENABLE_WAYLAND_SUPPORT` - Enable Wayland support
 - `NRI_ENABLE_NGX_SDK` - Enable *NVIDIA NGX (DLSS)* SDK
-- `NRI_ENABLE_FFX_SDK` - Enable *AMD FidelityFX* SDK
+- `NRI_ENABLE_FFX_SDK` - Enable *AMD FSR* SDK (or fallback to *AMD FidelityFX* SDK)
 - `NRI_ENABLE_XESS_SDK` - Enable *INTEL XeSS* SDK
 
 ## AGILITY SDK

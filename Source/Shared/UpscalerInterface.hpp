@@ -80,93 +80,132 @@ static inline const char* GetNisOutputFormatShaderConstant(const DeviceDesc& dev
 #if NRI_ENABLE_FFX_SDK
 #    include "ffx_upscale.h"
 
+// Satisfy the SDK's malloc-equivalent alignment without depending on Windows headers
+constexpr size_t FFX_ALLOCATION_ALIGNMENT = 16;
+
 #    if NRI_ENABLE_D3D12_SUPPORT
-#        define FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_DX12 0x0000002u
-
-struct ffxCreateBackendDX12Desc { // TODO: copied from "dx12" header (can't be used with "vk" in one file)
-    ffxCreateContextDescHeader header;
-    ID3D12Device* device;
-};
-
+#        include "dx12/ffx_api_dx12.h"
 #    endif
 
 #    if NRI_ENABLE_VK_SUPPORT
+
+// Legacy SDK 1.1.4 Vulkan ABI, retained alongside the newer D3D12 headers
 #        define FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_VK 0x0000003u
 
-struct ffxCreateBackendVKDesc { // TODO: copied from "vk" header (can't be used with "dx12" in one file)
+struct ffxCreateBackendVKDesc {
     ffxCreateContextDescHeader header;
     VkDevice vkDevice;
     VkPhysicalDevice vkPhysicalDevice;
     PFN_vkGetDeviceProcAddr vkDeviceProcAddr;
 };
 
-// Unfortunately, FFX devs don't understand how VK works. Some VK functions are retrieved with non-CORE names,
-// despite being in CORE for years. Manual patching needed, which is not as easy in case of multiple devices.
 struct FfxVkPair {
-    VkDevice device;
-    PFN_vkGetDeviceProcAddr getDeviceProcAddress;
+    VkDevice device = VK_NULL_HANDLE;
+    PFN_vkGetDeviceProcAddr getDeviceProcAddress = nullptr;
+    FfxVkPair* next = nullptr;
 };
 
+#    endif
+
 struct FfxGlobals {
-    ;
-    std::array<FfxVkPair, 32> vkPairs = {};
-    Lock lock = {};
+    // Each SDK DLL has mutable global setup and diagnostic state
+#    if NRI_ENABLE_D3D12_SUPPORT
+    Lock d3d12Lock = {};
+#    endif
+
+#    if NRI_ENABLE_VK_SUPPORT
+    Lock vkLock = {};
+    Lock vkRegistryLock = {};
+    FfxVkPair* vkPairs = nullptr;
+#    endif
 } g_ffx;
 
-static inline void FfxRegisterDevice(VkDevice device, PFN_vkGetDeviceProcAddr getDeviceProcAddress) {
-    ExclusiveScope lock(g_ffx.lock);
+struct Ffx {
+    PfnFfxCreateContext CreateContext = nullptr;
+    PfnFfxDestroyContext DestroyContext = nullptr;
+    PfnFfxDispatch Dispatch = nullptr;
+    PfnFfxQuery Query = nullptr;
+    Library* library = nullptr;
+    ffxContext context = nullptr;
+    ffxAllocationCallbacks allocationCallbacks = {};
+    ffxAllocationCallbacks* allocationCallbacksPtr = nullptr;
+    ffxCreateContextDescUpscale contextDesc = {};
+    Lock* sdkLock = nullptr;
 
-    size_t i = 0;
-    for (; i < g_ffx.vkPairs.size(); i++) {
-        if (g_ffx.vkPairs[i].device == device) {
-            // Already registered
-            NRI_CHECK(g_ffx.vkPairs[i].getDeviceProcAddress == getDeviceProcAddress, "Unexpected");
-            return;
-        }
+#    if NRI_ENABLE_D3D12_SUPPORT
+    ffxCreateBackendDX12Desc backendD3D12Desc = {};
+    ffxCreateContextDescUpscaleVersion versionDesc = {};
+#    endif
 
-        // Empty slot is found
-        if (!g_ffx.vkPairs[i].device)
-            break;
-    }
+#    if NRI_ENABLE_VK_SUPPORT
+    ffxCreateBackendVKDesc backendVKDesc = {};
+    FfxVkPair vkPair = {};
+#    endif
+};
 
-    NRI_CHECK(i < g_ffx.vkPairs.size(), "Too many devices?");
+static inline Lock& FfxGetSdkLock(GraphicsAPI graphicsAPI) {
+#    if (NRI_ENABLE_D3D12_SUPPORT && NRI_ENABLE_VK_SUPPORT)
+    return graphicsAPI == GraphicsAPI::D3D12 ? g_ffx.d3d12Lock : g_ffx.vkLock;
+#    elif NRI_ENABLE_D3D12_SUPPORT
+    MaybeUnused(graphicsAPI);
 
-    // Add new entry
-    g_ffx.vkPairs[i] = {device, getDeviceProcAddress};
+    return g_ffx.d3d12Lock;
+#    else
+    MaybeUnused(graphicsAPI);
+
+    return g_ffx.vkLock;
+#    endif
 }
 
-static PFN_vkVoidFunction VKAPI_PTR FfxVkGetDeviceProcAddr(VkDevice device, const char* pName) {
-    // TODO: patch FFX requests here
+#    if NRI_ENABLE_VK_SUPPORT
+static inline void FfxRegisterDevice(FfxVkPair& pair, VkDevice device, PFN_vkGetDeviceProcAddr getDeviceProcAddress) {
+    ExclusiveScope lock(g_ffx.vkRegistryLock);
+
+    pair = {device, getDeviceProcAddress, g_ffx.vkPairs};
+    g_ffx.vkPairs = &pair;
+}
+
+static inline void FfxUnregisterDevice(FfxVkPair& pair) {
+    ExclusiveScope lock(g_ffx.vkRegistryLock);
+
+    for (FfxVkPair** link = &g_ffx.vkPairs; *link; link = &(*link)->next) {
+        if (*link == &pair) {
+            *link = pair.next;
+
+            return;
+        }
+    }
+
+    NRI_CHECK(false, "Unregistered FFX device");
+}
+
+static inline PFN_vkVoidFunction VKAPI_PTR FfxVkGetDeviceProcAddr(VkDevice device, const char* pName) {
+    // The legacy FFX Vulkan backend requests extension names for some core functions
     if (!strcmp(pName, "vkGetBufferMemoryRequirements2KHR"))
         pName = "vkGetBufferMemoryRequirements2";
 
-    // Find entry
-    size_t i = 0;
-    for (; i < g_ffx.vkPairs.size(); i++) {
-        if (g_ffx.vkPairs[i].device == device)
-            break;
+    PFN_vkGetDeviceProcAddr getDeviceProcAddress = nullptr;
+    {
+        ExclusiveScope lock(g_ffx.vkRegistryLock);
+
+        for (const FfxVkPair* pair = g_ffx.vkPairs; pair; pair = pair->next) {
+            if (pair->device == device) {
+                getDeviceProcAddress = pair->getDeviceProcAddress;
+                break;
+            }
+        }
     }
 
-    NRI_CHECK(i < g_ffx.vkPairs.size(), "Unexpected");
+    NRI_CHECK(getDeviceProcAddress, "Unexpected");
 
     // Use corresponding "vkGetDeviceProcAddr"
-    PFN_vkVoidFunction func = g_ffx.vkPairs[i].getDeviceProcAddress(device, pName);
+    PFN_vkVoidFunction func = getDeviceProcAddress(device, pName);
     NRI_CHECK(func || strstr(pName, "AMD"), "Another non-CORE function name?");
 
     return func;
 }
 
 #    endif
-
-struct Ffx {
-    PfnFfxCreateContext CreateContext = nullptr;
-    PfnFfxDestroyContext DestroyContext = nullptr;
-    PfnFfxDispatch Dispatch = nullptr;
-    Library* library = nullptr;
-    ffxContext context = nullptr;
-    ffxAllocationCallbacks allocationCallbacks = {};
-    ffxAllocationCallbacks* allocationCallbacksPtr = nullptr;
-};
 
 static inline Result FfxConvertError(ffxReturnCode_t code) {
     switch (code) {
@@ -177,6 +216,8 @@ static inline Result FfxConvertError(ffxReturnCode_t code) {
             return Result::INVALID_ARGUMENT;
         case FFX_API_RETURN_ERROR_MEMORY:
             return Result::OUT_OF_MEMORY;
+        case FFX_API_RETURN_NO_PROVIDER:
+            return Result::UNSUPPORTED;
     }
 
     return Result::FAILURE;
@@ -287,14 +328,17 @@ static inline FfxApiResource FfxGetResource(const CoreInterface& NRI, const Upsc
     return res;
 }
 
-static void* FfxAlloc(void* pUserData, uint64_t size) {
+static inline void* FfxAlloc(void* pUserData, uint64_t size) {
     const auto& allocationCallbacks = *(AllocationCallbacks*)pUserData;
-    return allocationCallbacks.Allocate(allocationCallbacks.userArg, size, sizeof(size_t));
+
+    return allocationCallbacks.Allocate(allocationCallbacks.userArg, size, FFX_ALLOCATION_ALIGNMENT);
 }
 
-static void FfxDealloc(void* pUserData, void* pMem) {
+static inline void FfxDealloc(void* pUserData, void* pMem) {
     const auto& allocationCallbacks = *(AllocationCallbacks*)pUserData;
-    allocationCallbacks.Free(allocationCallbacks.userArg, pMem);
+
+    if (pMem)
+        allocationCallbacks.Free(allocationCallbacks.userArg, pMem);
 }
 
 #    ifndef NDEBUG
@@ -513,11 +557,21 @@ UpscalerImpl::~UpscalerImpl() {
 
 #if NRI_ENABLE_FFX_SDK
     if (m_Desc.type == UpscalerType::FSR && m.ffx) {
-        ffxReturnCode_t result = m.ffx->DestroyContext(&m.ffx->context, m.ffx->allocationCallbacksPtr);
-        MaybeUnused(result);
-        NRI_CHECK(result == FFX_API_RETURN_OK, "ffxDestroyContext() failed!");
+        ExclusiveScope lock(*m.ffx->sdkLock);
 
-        UnloadSharedLibrary(*m.ffx->library);
+        if (m.ffx->context) {
+            ffxReturnCode_t result = m.ffx->DestroyContext(&m.ffx->context, m.ffx->allocationCallbacksPtr);
+            MaybeUnused(result);
+            NRI_CHECK(result == FFX_API_RETURN_OK, "ffxDestroyContext() failed!");
+        }
+
+#    if NRI_ENABLE_VK_SUPPORT
+        if (m.ffx->vkPair.device)
+            FfxUnregisterDevice(m.ffx->vkPair);
+#    endif
+
+        if (m.ffx->library)
+            UnloadSharedLibrary(*m.ffx->library);
 
         const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
         Destroy<Ffx>(allocationCallbacks, m.ffx);
@@ -804,9 +858,11 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
     if (upscalerDesc.type == UpscalerType::FSR) {
         const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
         m.ffx = Allocate<Ffx>(allocationCallbacks);
+        m.ffx->sdkLock = &FfxGetSdkLock(deviceDesc.graphicsAPI);
+        ExclusiveScope lock(*m.ffx->sdkLock);
 
         // Load library
-        const char* libraryName = deviceDesc.graphicsAPI == GraphicsAPI::D3D12 ? "amd_fidelityfx_dx12.dll" : "amd_fidelityfx_vk.dll";
+        const char* libraryName = deviceDesc.graphicsAPI == GraphicsAPI::D3D12 ? "amd_fidelityfx_loader_dx12.dll" : "amd_fidelityfx_vk.dll";
         Library* ffxLibrary = LoadSharedLibrary(libraryName);
         if (!ffxLibrary)
             return Result::FAILURE;
@@ -816,15 +872,9 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         m.ffx->CreateContext = (PfnFfxCreateContext)GetSharedLibraryFunction(*ffxLibrary, "ffxCreateContext");
         m.ffx->DestroyContext = (PfnFfxDestroyContext)GetSharedLibraryFunction(*ffxLibrary, "ffxDestroyContext");
         m.ffx->Dispatch = (PfnFfxDispatch)GetSharedLibraryFunction(*ffxLibrary, "ffxDispatch");
+        m.ffx->Query = (PfnFfxQuery)GetSharedLibraryFunction(*ffxLibrary, "ffxQuery");
 
-        // Verify
-        const void** functionArray = (const void**)&m.ffx->CreateContext;
-        const size_t functionArraySize = 3;
-        size_t i = 0;
-        for (; i < functionArraySize && functionArray[i] != nullptr; i++)
-            ;
-
-        if (i != functionArraySize)
+        if (!m.ffx->CreateContext || !m.ffx->DestroyContext || !m.ffx->Dispatch || !m.ffx->Query)
             return Result::FAILURE;
 
         // Allocation callbacks
@@ -852,7 +902,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         if (upscalerDesc.flags & UpscalerBits::MV_JITTERED)
             flags |= FFX_UPSCALE_ENABLE_MOTION_VECTORS_JITTER_CANCELLATION;
 
-        ffxCreateContextDescUpscale contextDesc = {};
+        ffxCreateContextDescUpscale& contextDesc = m.ffx->contextDesc;
         contextDesc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE;
         contextDesc.maxRenderSize = {upscalerProps.renderResolution.w, upscalerProps.renderResolution.h};
         contextDesc.maxUpscaleSize = {upscalerProps.upscaleResolution.w, upscalerProps.upscaleResolution.h};
@@ -864,18 +914,22 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
 #    endif
 
 #    if NRI_ENABLE_D3D12_SUPPORT
-        ffxCreateBackendDX12Desc backendD3D12Desc = {};
+        ffxCreateBackendDX12Desc& backendD3D12Desc = m.ffx->backendD3D12Desc;
+        ffxCreateContextDescUpscaleVersion& versionDesc = m.ffx->versionDesc;
 
         if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
             backendD3D12Desc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_DX12;
             backendD3D12Desc.device = (ID3D12Device*)m_iCore.GetDeviceNativeObject(&m_Device);
 
+            versionDesc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE_VERSION;
+            versionDesc.version = FFX_UPSCALER_VERSION;
+            backendD3D12Desc.header.pNext = &versionDesc.header;
             contextDesc.header.pNext = &backendD3D12Desc.header;
         }
 #    endif
 
 #    if NRI_ENABLE_VK_SUPPORT
-        ffxCreateBackendVKDesc backendVKDesc = {};
+        ffxCreateBackendVKDesc& backendVKDesc = m.ffx->backendVKDesc;
 
         if (deviceDesc.graphicsAPI == GraphicsAPI::VK) {
             WrapperVKInterface iWrapperVK = {};
@@ -885,7 +939,7 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             VkDevice vkDevice = (VkDevice)m_iCore.GetDeviceNativeObject(&m_Device);
             VkPhysicalDevice vkPhysicalDevice = (VkPhysicalDevice)iWrapperVK.GetPhysicalDeviceVK(m_Device);
             PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr = (PFN_vkGetDeviceProcAddr)iWrapperVK.GetDeviceProcAddrVK(m_Device);
-            FfxRegisterDevice(vkDevice, vkGetDeviceProcAddr);
+            FfxRegisterDevice(m.ffx->vkPair, vkDevice, vkGetDeviceProcAddr);
 
             backendVKDesc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_VK;
             backendVKDesc.vkDevice = vkDevice;
@@ -899,6 +953,13 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
         ffxReturnCode_t result = m.ffx->CreateContext(&m.ffx->context, &contextDesc.header, m.ffx->allocationCallbacksPtr);
         if (result != FFX_API_RETURN_OK)
             return FfxConvertError(result);
+
+        ffxQueryGetProviderVersion providerVersion = {};
+        providerVersion.header.type = FFX_API_QUERY_DESC_TYPE_GET_PROVIDER_VERSION;
+        result = m.ffx->Query(&m.ffx->context, &providerVersion.header);
+
+        if (result == FFX_API_RETURN_OK)
+            NRI_REPORT_INFO((DeviceBase*)&m_Device, "FSR provider: %s", providerVersion.versionName);
     }
 #endif
 
@@ -1283,6 +1344,8 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
 
 #if NRI_ENABLE_FFX_SDK
     if (m_Desc.type == UpscalerType::FSR) {
+        ExclusiveScope lock(*m.ffx->sdkLock);
+
         const UpscalerGuides& guides = dispatchUpscaleDesc.guides.upscaler;
 
         ffxDispatchDescUpscale dispatchDesc = {};
