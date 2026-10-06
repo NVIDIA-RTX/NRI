@@ -2310,6 +2310,8 @@ static void NRI_CALL CmdDispatchUpscale(CommandBuffer& commandBuffer, Upscaler& 
             return;
         if (!ValidateOptionalUpscalerResource(deviceVal, guides.sss, "guides.denoiser.sss", false))
             return;
+        if (!ValidateOptionalUpscalerResource(deviceVal, guides.preTransparency, "guides.denoiser.preTransparency", false))
+            return;
     } else {
         const UpscalerGuides& guides = dispatchUpscaleDesc.guides.upscaler;
 

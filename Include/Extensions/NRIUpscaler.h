@@ -87,6 +87,7 @@ NriStruct(DenoiserGuides) {                             // For DLRR
     Nri(UpscalerResource) specularMvOrHitT;             // .xy - specular virtual motion of the reflected world, or .x - specular hit distance otherwise
     NriOptional Nri(UpscalerResource) exposure;         // .x - 1x1 exposure
     NriOptional Nri(UpscalerResource) reactive;         // .x - bias towards "input"
+    NriOptional Nri(UpscalerResource) preTransparency;  // .xyz - color before transparency (aka transparency guide)
     NriOptional Nri(UpscalerResource) sss;              // .x - subsurface scattering, computed as "Luminance(colorAfterSSS - colorBeforeSSS)"
 };
 

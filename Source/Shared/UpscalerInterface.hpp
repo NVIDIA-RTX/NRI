@@ -470,6 +470,18 @@ static inline int32_t NgxDecrRef(void* deviceNative) {
     return g_ngx.refCounters[i].refCounter;
 }
 
+static inline void NgxSetEvalParams(NVSDK_NGX_Parameter* params, const DispatchUpscaleDesc& dispatchUpscaleDesc) {
+    NVSDK_NGX_Parameter_SetF(params, NVSDK_NGX_Parameter_Jitter_Offset_X, dispatchUpscaleDesc.cameraJitter.x);
+    NVSDK_NGX_Parameter_SetF(params, NVSDK_NGX_Parameter_Jitter_Offset_Y, dispatchUpscaleDesc.cameraJitter.y);
+    NVSDK_NGX_Parameter_SetI(params, NVSDK_NGX_Parameter_Reset, (dispatchUpscaleDesc.flags & DispatchUpscaleBits::RESET_HISTORY) ? 1 : 0);
+    NVSDK_NGX_Parameter_SetF(params, NVSDK_NGX_Parameter_MV_Scale_X, dispatchUpscaleDesc.mvScale.x == 0.0f ? 1.0f : dispatchUpscaleDesc.mvScale.x);
+    NVSDK_NGX_Parameter_SetF(params, NVSDK_NGX_Parameter_MV_Scale_Y, dispatchUpscaleDesc.mvScale.y == 0.0f ? 1.0f : dispatchUpscaleDesc.mvScale.y);
+    NVSDK_NGX_Parameter_SetUI(params, NVSDK_NGX_Parameter_DLSS_Render_Subrect_Dimensions_Width, dispatchUpscaleDesc.currentResolution.w);
+    NVSDK_NGX_Parameter_SetUI(params, NVSDK_NGX_Parameter_DLSS_Render_Subrect_Dimensions_Height, dispatchUpscaleDesc.currentResolution.h);
+    NVSDK_NGX_Parameter_SetF(params, NVSDK_NGX_Parameter_DLSS_Pre_Exposure, 1.0f);
+    NVSDK_NGX_Parameter_SetF(params, NVSDK_NGX_Parameter_DLSS_Exposure_Scale, 1.0f);
+}
+
 static void NVSDK_CONV NgxLogCallback(const char*, NVSDK_NGX_Logging_Level, NVSDK_NGX_Feature) {
 }
 
@@ -1423,45 +1435,34 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
 
         void* commandBufferNative = m_iCore.GetCommandBufferNativeObject(&commandBuffer);
 
+        NgxSetEvalParams(m.ngx->params, dispatchUpscaleDesc);
+        NVSDK_NGX_Parameter_SetF(m.ngx->params, NVSDK_NGX_Parameter_Sharpness, 0.0f);
+
         NVSDK_NGX_Result result = NVSDK_NGX_Result_Fail;
 
 #    if NRI_ENABLE_D3D11_SUPPORT
         if (deviceDesc.graphicsAPI == GraphicsAPI::D3D11) {
-            NVSDK_NGX_D3D11_DLSS_Eval_Params srEvalParams = {};
-            srEvalParams.Feature.pInColor = (ID3D11Resource*)inputNative;
-            srEvalParams.Feature.pInOutput = (ID3D11Resource*)outputNative;
-            srEvalParams.pInMotionVectors = (ID3D11Resource*)mvNative;
-            srEvalParams.pInDepth = (ID3D11Resource*)depthNative;
-            srEvalParams.pInExposureTexture = (ID3D11Resource*)exposureNative;
-            srEvalParams.pInBiasCurrentColorMask = (ID3D11Resource*)reactiveNative;
-            srEvalParams.InJitterOffsetX = dispatchUpscaleDesc.cameraJitter.x;
-            srEvalParams.InJitterOffsetY = dispatchUpscaleDesc.cameraJitter.y;
-            srEvalParams.InRenderSubrectDimensions = {dispatchUpscaleDesc.currentResolution.w, dispatchUpscaleDesc.currentResolution.h};
-            srEvalParams.InReset = (dispatchUpscaleDesc.flags & DispatchUpscaleBits::RESET_HISTORY) ? true : false;
-            srEvalParams.InMVScaleX = dispatchUpscaleDesc.mvScale.x;
-            srEvalParams.InMVScaleY = dispatchUpscaleDesc.mvScale.y;
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_Color, (ID3D11Resource*)inputNative);
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_Output, (ID3D11Resource*)outputNative);
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_MotionVectors, (ID3D11Resource*)mvNative);
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_Depth, (ID3D11Resource*)depthNative);
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_ExposureTexture, (ID3D11Resource*)exposureNative);
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_DLSS_Input_Bias_Current_Color_Mask, (ID3D11Resource*)reactiveNative);
 
-            result = NGX_D3D11_EVALUATE_DLSS_EXT((ID3D11DeviceContext*)commandBufferNative, m.ngx->handle, m.ngx->params, &srEvalParams);
+            result = NVSDK_NGX_D3D11_EvaluateFeature_C((ID3D11DeviceContext*)commandBufferNative, m.ngx->handle, m.ngx->params, nullptr);
         }
 #    endif
 
 #    if NRI_ENABLE_D3D12_SUPPORT
         if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
-            NVSDK_NGX_D3D12_DLSS_Eval_Params srEvalParams = {};
-            srEvalParams.Feature.pInColor = (ID3D12Resource*)inputNative;
-            srEvalParams.Feature.pInOutput = (ID3D12Resource*)outputNative;
-            srEvalParams.pInMotionVectors = (ID3D12Resource*)mvNative;
-            srEvalParams.pInDepth = (ID3D12Resource*)depthNative;
-            srEvalParams.pInExposureTexture = (ID3D12Resource*)exposureNative;
-            srEvalParams.pInBiasCurrentColorMask = (ID3D12Resource*)reactiveNative;
-            srEvalParams.InJitterOffsetX = dispatchUpscaleDesc.cameraJitter.x;
-            srEvalParams.InJitterOffsetY = dispatchUpscaleDesc.cameraJitter.y;
-            srEvalParams.InRenderSubrectDimensions = {dispatchUpscaleDesc.currentResolution.w, dispatchUpscaleDesc.currentResolution.h};
-            srEvalParams.InReset = (dispatchUpscaleDesc.flags & DispatchUpscaleBits::RESET_HISTORY) ? true : false;
-            srEvalParams.InMVScaleX = dispatchUpscaleDesc.mvScale.x;
-            srEvalParams.InMVScaleY = dispatchUpscaleDesc.mvScale.y;
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_Color, (ID3D12Resource*)inputNative);
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_Output, (ID3D12Resource*)outputNative);
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_MotionVectors, (ID3D12Resource*)mvNative);
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_Depth, (ID3D12Resource*)depthNative);
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_ExposureTexture, (ID3D12Resource*)exposureNative);
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_DLSS_Input_Bias_Current_Color_Mask, (ID3D12Resource*)reactiveNative);
 
-            result = NGX_D3D12_EVALUATE_DLSS_EXT((ID3D12GraphicsCommandList*)commandBufferNative, m.ngx->handle, m.ngx->params, &srEvalParams);
+            result = NVSDK_NGX_D3D12_EvaluateFeature_C((ID3D12GraphicsCommandList*)commandBufferNative, m.ngx->handle, m.ngx->params, nullptr);
         }
 #    endif
 
@@ -1474,21 +1475,14 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
             NVSDK_NGX_Resource_VK exposureVk = NgxGetResource(m_iCore, guides.exposure, exposureNative);
             NVSDK_NGX_Resource_VK reactiveVk = NgxGetResource(m_iCore, guides.reactive, reactiveNative);
 
-            NVSDK_NGX_VK_DLSS_Eval_Params srEvalParams = {};
-            srEvalParams.Feature.pInColor = &inputVk;
-            srEvalParams.Feature.pInOutput = &outputVk;
-            srEvalParams.pInMotionVectors = &mvVk;
-            srEvalParams.pInDepth = &depthVk;
-            srEvalParams.pInExposureTexture = guides.exposure.texture ? &exposureVk : nullptr;
-            srEvalParams.pInBiasCurrentColorMask = guides.reactive.texture ? &reactiveVk : nullptr;
-            srEvalParams.InJitterOffsetX = dispatchUpscaleDesc.cameraJitter.x;
-            srEvalParams.InJitterOffsetY = dispatchUpscaleDesc.cameraJitter.y;
-            srEvalParams.InRenderSubrectDimensions = {dispatchUpscaleDesc.currentResolution.w, dispatchUpscaleDesc.currentResolution.h};
-            srEvalParams.InReset = (dispatchUpscaleDesc.flags & DispatchUpscaleBits::RESET_HISTORY) ? true : false;
-            srEvalParams.InMVScaleX = dispatchUpscaleDesc.mvScale.x;
-            srEvalParams.InMVScaleY = dispatchUpscaleDesc.mvScale.y;
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_Color, &inputVk);
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_Output, &outputVk);
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_MotionVectors, &mvVk);
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_Depth, &depthVk);
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_ExposureTexture, guides.exposure.texture ? &exposureVk : nullptr);
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_DLSS_Input_Bias_Current_Color_Mask, guides.reactive.texture ? &reactiveVk : nullptr);
 
-            result = NGX_VULKAN_EVALUATE_DLSS_EXT((VkCommandBuffer)commandBufferNative, m.ngx->handle, m.ngx->params, &srEvalParams);
+            result = NVSDK_NGX_VULKAN_EvaluateFeature_C((VkCommandBuffer)commandBufferNative, m.ngx->handle, m.ngx->params, nullptr);
         }
 #    endif
 
@@ -1512,72 +1506,55 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         uint64_t exposureNative = m_iCore.GetTextureNativeObject(guides.exposure.texture);
         uint64_t reactiveNative = m_iCore.GetTextureNativeObject(guides.reactive.texture);
         uint64_t sssNative = m_iCore.GetTextureNativeObject(guides.sss.texture);
+        uint64_t preTransparencyNative = m_iCore.GetTextureNativeObject(guides.preTransparency.texture);
 
         void* commandBufferNative = m_iCore.GetCommandBufferNativeObject(&commandBuffer);
+
+        NgxSetEvalParams(m.ngx->params, dispatchUpscaleDesc);
+
+        const bool useSpecularMotion = (dispatchUpscaleDesc.flags & DispatchUpscaleBits::USE_SPECULAR_MOTION) != 0;
+        NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_DLSS_WORLD_TO_VIEW_MATRIX, useSpecularMotion ? nullptr : (float*)dispatchUpscaleDesc.settings.dlrr.worldToViewMatrix);
+        NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_DLSS_VIEW_TO_CLIP_MATRIX, useSpecularMotion ? nullptr : (float*)dispatchUpscaleDesc.settings.dlrr.viewToClipMatrix);
 
         NVSDK_NGX_Result result = NVSDK_NGX_Result_Fail;
 
 #    if NRI_ENABLE_D3D11_SUPPORT
         if (deviceDesc.graphicsAPI == GraphicsAPI::D3D11) {
-            NVSDK_NGX_D3D11_DLSSD_Eval_Params rrEvalParams = {};
-            rrEvalParams.pInColor = (ID3D11Resource*)inputNative;
-            rrEvalParams.pInOutput = (ID3D11Resource*)outputNative;
-            rrEvalParams.pInMotionVectors = (ID3D11Resource*)mvNative;
-            rrEvalParams.pInDepth = (ID3D11Resource*)depthNative;
-            rrEvalParams.pInNormals = (ID3D11Resource*)normalRoughnessNative;
-            rrEvalParams.pInDiffuseAlbedo = (ID3D11Resource*)diffuseAlbedoNative;
-            rrEvalParams.pInSpecularAlbedo = (ID3D11Resource*)specularAlbedoNative;
-            rrEvalParams.pInExposureTexture = (ID3D11Resource*)exposureNative;
-            rrEvalParams.pInBiasCurrentColorMask = (ID3D11Resource*)reactiveNative;
-            rrEvalParams.pInScreenSpaceSubsurfaceScatteringGuide = (ID3D11Resource*)sssNative;
-            rrEvalParams.InJitterOffsetX = dispatchUpscaleDesc.cameraJitter.x;
-            rrEvalParams.InJitterOffsetY = dispatchUpscaleDesc.cameraJitter.y;
-            rrEvalParams.InRenderSubrectDimensions = {dispatchUpscaleDesc.currentResolution.w, dispatchUpscaleDesc.currentResolution.h};
-            rrEvalParams.InReset = (dispatchUpscaleDesc.flags & DispatchUpscaleBits::RESET_HISTORY) ? true : false;
-            rrEvalParams.InMVScaleX = dispatchUpscaleDesc.mvScale.x;
-            rrEvalParams.InMVScaleY = dispatchUpscaleDesc.mvScale.y;
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_Color, (ID3D11Resource*)inputNative);
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_Output, (ID3D11Resource*)outputNative);
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_MotionVectors, (ID3D11Resource*)mvNative);
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_Depth, (ID3D11Resource*)depthNative);
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_DiffuseAlbedo, (ID3D11Resource*)diffuseAlbedoNative);
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_SpecularAlbedo, (ID3D11Resource*)specularAlbedoNative);
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_ExposureTexture, (ID3D11Resource*)exposureNative);
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_GBuffer_Normals, (ID3D11Resource*)normalRoughnessNative);
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_GBuffer_SpecularMvec, (ID3D11Resource*)(useSpecularMotion ? specularMvOrHitTNative : 0));
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_DLSSD_ResponsivityMask, (ID3D11Resource*)reactiveNative);
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_DLSSD_SpecularHitDistance, (ID3D11Resource*)(useSpecularMotion ? 0 : specularMvOrHitTNative));
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_DLSSD_ScreenSpaceSubsurfaceScatteringGuide, (ID3D11Resource*)sssNative);
+            NVSDK_NGX_Parameter_SetD3d11Resource(m.ngx->params, NVSDK_NGX_Parameter_DLSSD_ColorBeforeTransparency, (ID3D11Resource*)preTransparencyNative);
 
-            if (dispatchUpscaleDesc.flags & DispatchUpscaleBits::USE_SPECULAR_MOTION)
-                rrEvalParams.pInMotionVectorsReflections = (ID3D11Resource*)specularMvOrHitTNative;
-            else {
-                rrEvalParams.pInSpecularHitDistance = (ID3D11Resource*)specularMvOrHitTNative;
-                rrEvalParams.pInWorldToViewMatrix = (float*)dispatchUpscaleDesc.settings.dlrr.worldToViewMatrix;
-                rrEvalParams.pInViewToClipMatrix = (float*)dispatchUpscaleDesc.settings.dlrr.viewToClipMatrix;
-            }
-
-            result = NGX_D3D11_EVALUATE_DLSSD_EXT((ID3D11DeviceContext*)commandBufferNative, m.ngx->handle, m.ngx->params, &rrEvalParams);
+            result = NVSDK_NGX_D3D11_EvaluateFeature_C((ID3D11DeviceContext*)commandBufferNative, m.ngx->handle, m.ngx->params, nullptr);
         }
 #    endif
 
 #    if NRI_ENABLE_D3D12_SUPPORT
         if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12) {
-            NVSDK_NGX_D3D12_DLSSD_Eval_Params rrEvalParams = {};
-            rrEvalParams.pInColor = (ID3D12Resource*)inputNative;
-            rrEvalParams.pInOutput = (ID3D12Resource*)outputNative;
-            rrEvalParams.pInMotionVectors = (ID3D12Resource*)mvNative;
-            rrEvalParams.pInDepth = (ID3D12Resource*)depthNative;
-            rrEvalParams.pInNormals = (ID3D12Resource*)normalRoughnessNative;
-            rrEvalParams.pInDiffuseAlbedo = (ID3D12Resource*)diffuseAlbedoNative;
-            rrEvalParams.pInSpecularAlbedo = (ID3D12Resource*)specularAlbedoNative;
-            rrEvalParams.pInExposureTexture = (ID3D12Resource*)exposureNative;
-            rrEvalParams.pInBiasCurrentColorMask = (ID3D12Resource*)reactiveNative;
-            rrEvalParams.pInScreenSpaceSubsurfaceScatteringGuide = (ID3D12Resource*)sssNative;
-            rrEvalParams.InJitterOffsetX = dispatchUpscaleDesc.cameraJitter.x;
-            rrEvalParams.InJitterOffsetY = dispatchUpscaleDesc.cameraJitter.y;
-            rrEvalParams.InRenderSubrectDimensions = {dispatchUpscaleDesc.currentResolution.w, dispatchUpscaleDesc.currentResolution.h};
-            rrEvalParams.InReset = (dispatchUpscaleDesc.flags & DispatchUpscaleBits::RESET_HISTORY) ? true : false;
-            rrEvalParams.InMVScaleX = dispatchUpscaleDesc.mvScale.x;
-            rrEvalParams.InMVScaleY = dispatchUpscaleDesc.mvScale.y;
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_Color, (ID3D12Resource*)inputNative);
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_Output, (ID3D12Resource*)outputNative);
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_MotionVectors, (ID3D12Resource*)mvNative);
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_Depth, (ID3D12Resource*)depthNative);
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_DiffuseAlbedo, (ID3D12Resource*)diffuseAlbedoNative);
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_SpecularAlbedo, (ID3D12Resource*)specularAlbedoNative);
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_ExposureTexture, (ID3D12Resource*)exposureNative);
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_GBuffer_Normals, (ID3D12Resource*)normalRoughnessNative);
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_GBuffer_SpecularMvec, (ID3D12Resource*)(useSpecularMotion ? specularMvOrHitTNative : 0));
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_DLSSD_ResponsivityMask, (ID3D12Resource*)reactiveNative);
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_DLSSD_SpecularHitDistance, (ID3D12Resource*)(useSpecularMotion ? 0 : specularMvOrHitTNative));
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_DLSSD_ScreenSpaceSubsurfaceScatteringGuide, (ID3D12Resource*)sssNative);
+            NVSDK_NGX_Parameter_SetD3d12Resource(m.ngx->params, NVSDK_NGX_Parameter_DLSSD_ColorBeforeTransparency, (ID3D12Resource*)preTransparencyNative);
 
-            if (dispatchUpscaleDesc.flags & DispatchUpscaleBits::USE_SPECULAR_MOTION)
-                rrEvalParams.pInMotionVectorsReflections = (ID3D12Resource*)specularMvOrHitTNative;
-            else {
-                rrEvalParams.pInSpecularHitDistance = (ID3D12Resource*)specularMvOrHitTNative;
-                rrEvalParams.pInWorldToViewMatrix = (float*)dispatchUpscaleDesc.settings.dlrr.worldToViewMatrix;
-                rrEvalParams.pInViewToClipMatrix = (float*)dispatchUpscaleDesc.settings.dlrr.viewToClipMatrix;
-            }
-
-            result = NGX_D3D12_EVALUATE_DLSSD_EXT((ID3D12GraphicsCommandList*)commandBufferNative, m.ngx->handle, m.ngx->params, &rrEvalParams);
+            result = NVSDK_NGX_D3D12_EvaluateFeature_C((ID3D12GraphicsCommandList*)commandBufferNative, m.ngx->handle, m.ngx->params, nullptr);
         }
 #    endif
 
@@ -1594,34 +1571,23 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
             NVSDK_NGX_Resource_VK exposureVk = NgxGetResource(m_iCore, guides.exposure, exposureNative);
             NVSDK_NGX_Resource_VK reactiveVk = NgxGetResource(m_iCore, guides.reactive, reactiveNative);
             NVSDK_NGX_Resource_VK sssVk = NgxGetResource(m_iCore, guides.sss, sssNative);
+            NVSDK_NGX_Resource_VK preTransparencyVk = NgxGetResource(m_iCore, guides.preTransparency, preTransparencyNative);
 
-            NVSDK_NGX_VK_DLSSD_Eval_Params rrEvalParams = {};
-            rrEvalParams.pInColor = &inputVk;
-            rrEvalParams.pInOutput = &outputVk;
-            rrEvalParams.pInMotionVectors = &mvVk;
-            rrEvalParams.pInDepth = &depthVk;
-            rrEvalParams.pInNormals = &normalRoughnessVk;
-            rrEvalParams.pInDiffuseAlbedo = &diffuseAlbedoVk;
-            rrEvalParams.pInSpecularAlbedo = &specularAlbedoVk;
-            rrEvalParams.pInExposureTexture = guides.exposure.texture ? &exposureVk : nullptr;
-            rrEvalParams.pInBiasCurrentColorMask = guides.reactive.texture ? &reactiveVk : nullptr;
-            rrEvalParams.pInScreenSpaceSubsurfaceScatteringGuide = guides.sss.texture ? &sssVk : nullptr;
-            rrEvalParams.InJitterOffsetX = dispatchUpscaleDesc.cameraJitter.x;
-            rrEvalParams.InJitterOffsetY = dispatchUpscaleDesc.cameraJitter.y;
-            rrEvalParams.InRenderSubrectDimensions = {dispatchUpscaleDesc.currentResolution.w, dispatchUpscaleDesc.currentResolution.h};
-            rrEvalParams.InReset = (dispatchUpscaleDesc.flags & DispatchUpscaleBits::RESET_HISTORY) ? true : false;
-            rrEvalParams.InMVScaleX = dispatchUpscaleDesc.mvScale.x;
-            rrEvalParams.InMVScaleY = dispatchUpscaleDesc.mvScale.y;
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_Color, &inputVk);
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_Output, &outputVk);
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_MotionVectors, &mvVk);
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_Depth, &depthVk);
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_DiffuseAlbedo, &diffuseAlbedoVk);
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_SpecularAlbedo, &specularAlbedoVk);
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_ExposureTexture, guides.exposure.texture ? &exposureVk : nullptr);
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_GBuffer_Normals, &normalRoughnessVk);
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_GBuffer_SpecularMvec, useSpecularMotion ? &specularMvOrHitTVk : nullptr);
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_DLSSD_ResponsivityMask, guides.reactive.texture ? &reactiveVk : nullptr);
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_DLSSD_SpecularHitDistance, useSpecularMotion ? nullptr : &specularMvOrHitTVk);
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_DLSSD_ScreenSpaceSubsurfaceScatteringGuide, guides.sss.texture ? &sssVk : nullptr);
+            NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_DLSSD_ColorBeforeTransparency, guides.preTransparency.texture ? &preTransparencyVk : nullptr);
 
-            if (dispatchUpscaleDesc.flags & DispatchUpscaleBits::USE_SPECULAR_MOTION)
-                rrEvalParams.pInMotionVectorsReflections = &specularMvOrHitTVk;
-            else {
-                rrEvalParams.pInSpecularHitDistance = &specularMvOrHitTVk;
-                rrEvalParams.pInWorldToViewMatrix = (float*)dispatchUpscaleDesc.settings.dlrr.worldToViewMatrix;
-                rrEvalParams.pInViewToClipMatrix = (float*)dispatchUpscaleDesc.settings.dlrr.viewToClipMatrix;
-            }
-
-            result = NGX_VULKAN_EVALUATE_DLSSD_EXT((VkCommandBuffer)commandBufferNative, m.ngx->handle, m.ngx->params, &rrEvalParams);
+            result = NVSDK_NGX_VULKAN_EvaluateFeature_C((VkCommandBuffer)commandBufferNative, m.ngx->handle, m.ngx->params, nullptr);
         }
 #    endif
 
