@@ -45,7 +45,8 @@ Apply these rules to changes under `Include`, `Source`, CMake, and build scripts
 
 - Public-input validation belongs in `Source/Validation`, not D3D11, D3D12, Vulkan, WGPU, or NONE.
 - Use `NRI_RETURN_ON_FAILURE` to reject invalid public inputs in Validation.
-- Validation may check required pointers, object relationships, simple ranges, counts, alignment, and advertised capability limits.
+- Validation may check required pointers, NRI-specific object relationships, simple ranges, counts, alignment, and advertised capability limits.
+- Validation must never check whether an object belongs to the same or another device. Device ownership and cross-device object use are checked by GAPI validation; do not compare object devices or add device-ownership diagnostics in Validation.
 - Null-check before casting or dereferencing validation wrappers; unwrap `*Val` objects consistently.
 - Update validation bookkeeping only after backend success or provide rollback.
 - Validation enforces the NRI usage contract. Do not duplicate complex GAPI-specific checks or state tracking handled by native debug or validation layers.
