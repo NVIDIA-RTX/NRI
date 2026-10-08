@@ -257,6 +257,11 @@ static bool IsVideoEncodeSessionSupported(ID3D12VideoDevice* videoDevice, const 
     if (d3d12Codec == (D3D12_VIDEO_ENCODER_CODEC)-1)
         return false;
 
+    D3D12_FEATURE_DATA_VIDEO_ENCODER_CODEC codecSupport = {};
+    codecSupport.Codec = d3d12Codec;
+    if (FAILED(videoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC, &codecSupport, sizeof(codecSupport))) || !codecSupport.IsSupported)
+        return false;
+
     D3D12_VIDEO_ENCODER_PROFILE_H264 h264Profile = D3D12_VIDEO_ENCODER_PROFILE_H264_HIGH;
     const bool is10Bit = videoSessionDesc.format == Format::P010_UNORM || videoSessionDesc.format == Format::P016_UNORM;
     D3D12_VIDEO_ENCODER_PROFILE_HEVC hevcProfile = is10Bit ? D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN10 : D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN;
