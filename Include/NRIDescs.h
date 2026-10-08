@@ -602,7 +602,7 @@ NriEnum(Layout, uint8_t,            // Compatible "AccessBits":
     DEPTH_STENCIL_ATTACHMENT,           // DEPTH_STENCIL_ATTACHMENT_READ/WRITE
     DEPTH_READONLY_STENCIL_ATTACHMENT,  // DEPTH_STENCIL_ATTACHMENT_READ/WRITE (accessible "planes" = "STENCIL"), SHADER_RESOURCE (accessible "planes" = "DEPTH")
     DEPTH_ATTACHMENT_STENCIL_READONLY,  // DEPTH_STENCIL_ATTACHMENT_READ/WRITE (accessible "planes" = "DEPTH"), SHADER_RESOURCE (accessible "planes" = "STENCIL")
-    DEPTH_STENCIL_READONLY,             // DEPTH_STENCIL_ATTACHMENT_READ  (accessible "planes" = "NONE")
+    DEPTH_STENCIL_READONLY,             // DEPTH_STENCIL_ATTACHMENT_READ  (accessible "planes" = "NONE"), SHADER_RESOURCE (D3D12: graphics queue only)
     SHADING_RATE_ATTACHMENT,            // SHADING_RATE_ATTACHMENT
     INPUT_ATTACHMENT,                   // COLOR_ATTACHMENT, INPUT_ATTACHMENT
 
