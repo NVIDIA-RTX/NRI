@@ -478,7 +478,7 @@ static inline void NgxSetEvalParams(NVSDK_NGX_Parameter* params, const DispatchU
     NVSDK_NGX_Parameter_SetF(params, NVSDK_NGX_Parameter_MV_Scale_Y, dispatchUpscaleDesc.mvScale.y == 0.0f ? 1.0f : dispatchUpscaleDesc.mvScale.y);
     NVSDK_NGX_Parameter_SetUI(params, NVSDK_NGX_Parameter_DLSS_Render_Subrect_Dimensions_Width, dispatchUpscaleDesc.currentResolution.w);
     NVSDK_NGX_Parameter_SetUI(params, NVSDK_NGX_Parameter_DLSS_Render_Subrect_Dimensions_Height, dispatchUpscaleDesc.currentResolution.h);
-    NVSDK_NGX_Parameter_SetF(params, NVSDK_NGX_Parameter_DLSS_Pre_Exposure, 1.0f);
+    NVSDK_NGX_Parameter_SetF(params, NVSDK_NGX_Parameter_DLSS_Pre_Exposure, dispatchUpscaleDesc.preExposure == 0.0f ? 1.0f : dispatchUpscaleDesc.preExposure);
     NVSDK_NGX_Parameter_SetF(params, NVSDK_NGX_Parameter_DLSS_Exposure_Scale, 1.0f);
 }
 
@@ -1375,7 +1375,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         dispatchDesc.enableSharpening = dispatchUpscaleDesc.settings.fsr.sharpness != 0.0f;
         dispatchDesc.sharpness = dispatchUpscaleDesc.settings.fsr.sharpness;
         dispatchDesc.frameTimeDelta = dispatchUpscaleDesc.settings.fsr.frameTime;
-        dispatchDesc.preExposure = 1.0f;
+        dispatchDesc.preExposure = dispatchUpscaleDesc.preExposure == 0.0f ? 1.0f : dispatchUpscaleDesc.preExposure;
         dispatchDesc.reset = (dispatchUpscaleDesc.flags & DispatchUpscaleBits::RESET_HISTORY) != 0;
         const float zNear = dispatchUpscaleDesc.settings.fsr.zNear;
         const float zFar = (m_Desc.flags & UpscalerBits::DEPTH_INFINITE) ? FLT_MAX : dispatchUpscaleDesc.settings.fsr.zFar;
