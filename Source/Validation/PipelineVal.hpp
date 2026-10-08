@@ -7,8 +7,6 @@ PipelineVal::PipelineVal(DeviceVal& device, Pipeline* pipeline)
 PipelineVal::PipelineVal(DeviceVal& device, Pipeline* pipeline, const GraphicsPipelineDesc& graphicsPipelineDesc)
     : ObjectVal(device, pipeline)
     , m_PipelineLayout(graphicsPipelineDesc.pipelineLayout) {
-    m_WritesToDepth = graphicsPipelineDesc.outputMerger.depth.write;
-    m_WritesToStencil = graphicsPipelineDesc.outputMerger.stencil.front.writeMask != 0 || graphicsPipelineDesc.outputMerger.stencil.back.writeMask != 0;
 }
 
 PipelineVal::PipelineVal(DeviceVal& device, Pipeline* pipeline, const ComputePipelineDesc& computePipelineDesc)
