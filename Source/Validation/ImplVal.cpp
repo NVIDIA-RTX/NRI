@@ -2280,6 +2280,7 @@ static void NRI_CALL CmdDispatchUpscale(CommandBuffer& commandBuffer, Upscaler& 
     NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.currentResolution.w <= upscalerProps.renderResolution.w && dispatchUpscaleDesc.currentResolution.h <= upscalerProps.renderResolution.h, ReturnVoid(), "'currentResolution' is above the maximum render resolution");
     NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.cameraJitter.x >= -0.5f && dispatchUpscaleDesc.cameraJitter.x <= 0.5f, ReturnVoid(), "'cameraJitter.x' is out of range");
     NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.cameraJitter.y >= -0.5f && dispatchUpscaleDesc.cameraJitter.y <= 0.5f, ReturnVoid(), "'cameraJitter.y' is out of range");
+    NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.preExposure >= 0.0f, ReturnVoid(), "'preExposure' must be >= 0");
     if (!ValidateUpscalerResource(deviceVal, dispatchUpscaleDesc.output, "output", DescriptorType::STORAGE_TEXTURE))
         return;
     if (!ValidateUpscalerResource(deviceVal, dispatchUpscaleDesc.input, "input", DescriptorType::TEXTURE))

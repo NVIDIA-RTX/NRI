@@ -133,6 +133,7 @@ NriStruct(DispatchUpscaleDesc) {
     Nri(Dim2_t) currentResolution;                      // current render resolution for inputs and guides, renderResolutionMin <= currentResolution <= renderResolution
     Nri(Float2_t) cameraJitter;                         // pointing towards the pixel center, in [-0.5; 0.5] range
     Nri(Float2_t) mvScale;                              // used to convert motion vectors to pixel space
+    NriOptional float preExposure;                      // multiplier already applied to the "input" color, 0 means 1 (FSR, XESS, DLSR, DLRR)
     Nri(DispatchUpscaleBits) flags;
 };
 

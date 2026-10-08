@@ -470,7 +470,7 @@ static inline int32_t NgxDecrRef(void* deviceNative) {
     return g_ngx.refCounters[i].refCounter;
 }
 
-static inline void NgxSetEvalParams(NVSDK_NGX_Parameter* params, const DispatchUpscaleDesc& dispatchUpscaleDesc) {
+static inline void NgxSetEvalParams(NVSDK_NGX_Parameter* params, const DispatchUpscaleDesc& dispatchUpscaleDesc, float preExposure) {
     NVSDK_NGX_Parameter_SetF(params, NVSDK_NGX_Parameter_Jitter_Offset_X, dispatchUpscaleDesc.cameraJitter.x);
     NVSDK_NGX_Parameter_SetF(params, NVSDK_NGX_Parameter_Jitter_Offset_Y, dispatchUpscaleDesc.cameraJitter.y);
     NVSDK_NGX_Parameter_SetI(params, NVSDK_NGX_Parameter_Reset, (dispatchUpscaleDesc.flags & DispatchUpscaleBits::RESET_HISTORY) ? 1 : 0);
@@ -478,7 +478,7 @@ static inline void NgxSetEvalParams(NVSDK_NGX_Parameter* params, const DispatchU
     NVSDK_NGX_Parameter_SetF(params, NVSDK_NGX_Parameter_MV_Scale_Y, dispatchUpscaleDesc.mvScale.y == 0.0f ? 1.0f : dispatchUpscaleDesc.mvScale.y);
     NVSDK_NGX_Parameter_SetUI(params, NVSDK_NGX_Parameter_DLSS_Render_Subrect_Dimensions_Width, dispatchUpscaleDesc.currentResolution.w);
     NVSDK_NGX_Parameter_SetUI(params, NVSDK_NGX_Parameter_DLSS_Render_Subrect_Dimensions_Height, dispatchUpscaleDesc.currentResolution.h);
-    NVSDK_NGX_Parameter_SetF(params, NVSDK_NGX_Parameter_DLSS_Pre_Exposure, 1.0f);
+    NVSDK_NGX_Parameter_SetF(params, NVSDK_NGX_Parameter_DLSS_Pre_Exposure, preExposure);
     NVSDK_NGX_Parameter_SetF(params, NVSDK_NGX_Parameter_DLSS_Exposure_Scale, 1.0f);
 }
 
@@ -1297,7 +1297,9 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
     const UpscalerResource& output = dispatchUpscaleDesc.output;
     const UpscalerResource& input = dispatchUpscaleDesc.input;
 
-    MaybeUnused(commandBuffer, output, input);
+    const float preExposure = dispatchUpscaleDesc.preExposure == 0.0f ? 1.0f : dispatchUpscaleDesc.preExposure;
+
+    MaybeUnused(commandBuffer, output, input, preExposure);
 
 #if NRI_ENABLE_NIS_SDK
     if (m_Desc.type == UpscalerType::NIS) {
@@ -1375,7 +1377,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
         dispatchDesc.enableSharpening = dispatchUpscaleDesc.settings.fsr.sharpness != 0.0f;
         dispatchDesc.sharpness = dispatchUpscaleDesc.settings.fsr.sharpness;
         dispatchDesc.frameTimeDelta = dispatchUpscaleDesc.settings.fsr.frameTime;
-        dispatchDesc.preExposure = 1.0f;
+        dispatchDesc.preExposure = preExposure;
         dispatchDesc.reset = (dispatchUpscaleDesc.flags & DispatchUpscaleBits::RESET_HISTORY) != 0;
         const float zNear = dispatchUpscaleDesc.settings.fsr.zNear;
         const float zFar = (m_Desc.flags & UpscalerBits::DEPTH_INFINITE) ? FLT_MAX : dispatchUpscaleDesc.settings.fsr.zFar;
@@ -1413,7 +1415,10 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
 
         ID3D12GraphicsCommandList* commandList = (ID3D12GraphicsCommandList*)m_iCore.GetCommandBufferNativeObject(&commandBuffer);
 
-        xess_result_t result = xessD3D12Execute(m.xess->context, commandList, &executeParams);
+        xess_result_t result = xessSetExposureMultiplier(m.xess->context, 1.0f / preExposure);
+        NRI_CHECK(result == XESS_RESULT_SUCCESS, "xessSetExposureMultiplier() failed!");
+
+        result = xessD3D12Execute(m.xess->context, commandList, &executeParams);
         MaybeUnused(result);
         NRI_CHECK(result == XESS_RESULT_SUCCESS, "xessD3D12Execute() failed!");
     }
@@ -1435,7 +1440,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
 
         void* commandBufferNative = m_iCore.GetCommandBufferNativeObject(&commandBuffer);
 
-        NgxSetEvalParams(m.ngx->params, dispatchUpscaleDesc);
+        NgxSetEvalParams(m.ngx->params, dispatchUpscaleDesc, preExposure);
         NVSDK_NGX_Parameter_SetF(m.ngx->params, NVSDK_NGX_Parameter_Sharpness, 0.0f);
 
         NVSDK_NGX_Result result = NVSDK_NGX_Result_Fail;
@@ -1510,7 +1515,7 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
 
         void* commandBufferNative = m_iCore.GetCommandBufferNativeObject(&commandBuffer);
 
-        NgxSetEvalParams(m.ngx->params, dispatchUpscaleDesc);
+        NgxSetEvalParams(m.ngx->params, dispatchUpscaleDesc, preExposure);
 
         const bool useSpecularMotion = (dispatchUpscaleDesc.flags & DispatchUpscaleBits::USE_SPECULAR_MOTION) != 0;
         NVSDK_NGX_Parameter_SetVoidPointer(m.ngx->params, NVSDK_NGX_Parameter_DLSS_WORLD_TO_VIEW_MATRIX, useSpecularMotion ? nullptr : (float*)dispatchUpscaleDesc.settings.dlrr.worldToViewMatrix);
