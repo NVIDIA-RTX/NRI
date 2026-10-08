@@ -667,8 +667,6 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
     m_RenderTargetNum = renderingDesc.colorNum;
     m_IsRenderPass = true;
 
-    ValidateReadonlyDepthStencil();
-
     GetCoreInterfaceImpl().CmdBeginRendering(*GetImpl(), attachmentsDescImpl);
 }
 
