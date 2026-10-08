@@ -429,7 +429,6 @@ NRI_INLINE Result CommandBufferVal::Begin(const DescriptorPool* descriptorPool) 
     if (result == Result::SUCCESS)
         m_IsRecordingStarted = true;
 
-    m_Pipeline = nullptr;
     m_PipelineLayout = nullptr;
 
     ResetDescriptorSets();
@@ -667,8 +666,6 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
     m_RenderTargetNum = renderingDesc.colorNum;
     m_IsRenderPass = true;
 
-    ValidateReadonlyDepthStencil();
-
     GetCoreInterfaceImpl().CmdBeginRendering(*GetImpl(), attachmentsDescImpl);
 }
 
@@ -722,10 +719,6 @@ NRI_INLINE void CommandBufferVal::SetPipeline(const Pipeline& pipeline) {
     NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
 
     Pipeline* pipelineImpl = NRI_GET_IMPL(Pipeline, &pipeline);
-
-    m_Pipeline = (PipelineVal*)&pipeline;
-
-    ValidateReadonlyDepthStencil();
 
     GetCoreInterfaceImpl().CmdSetPipeline(*GetImpl(), *pipelineImpl);
 }
@@ -1673,14 +1666,4 @@ NRI_INLINE void CommandBufferVal::ResolveVideoEncodeFeedback(VideoSession& video
     NRI_RETURN_ON_FAILURE(&m_Device, videoSessionVal.IsResolvedMetadataRangeValid(resolvedMetadataVal, resolvedMetadataOffset), ReturnVoid(), "'resolvedMetadata' must be an aligned buffer range with the session-required size");
 
     GetVideoInterfaceImpl().CmdResolveVideoEncodeFeedback(*GetImpl(), *videoSessionVal.GetImpl(), *resolvedMetadataVal.GetImpl(), resolvedMetadataOffset);
-}
-
-NRI_INLINE void CommandBufferVal::ValidateReadonlyDepthStencil() {
-    if (m_Pipeline && m_DepthStencil) {
-        if (m_DepthStencil->IsDepthReadonly() && m_Pipeline->WritesToDepth())
-            NRI_REPORT_WARNING(&m_Device, "Depth is read-only, but the pipeline writes to depth. Writing happens only in VK!");
-
-        if (m_DepthStencil->IsStencilReadonly() && m_Pipeline->WritesToStencil())
-            NRI_REPORT_WARNING(&m_Device, "Stencil is read-only, but the pipeline writes to stencil. Writing happens only in VK!");
-    }
 }

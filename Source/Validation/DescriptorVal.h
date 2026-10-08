@@ -89,20 +89,10 @@ struct DescriptorVal final : public ObjectVal {
         return m_RootDescriptorOffsetMax;
     }
 
-    inline bool IsDepthReadonly() const {
-        return m_IsDepthReadonly;
-    }
-
-    inline bool IsStencilReadonly() const {
-        return m_IsStencilReadonly;
-    }
-
 private:
     DescriptorTypeExt m_Type = DescriptorTypeExt::MAX_NUM;
     Format m_Format = Format::UNKNOWN;
     uint64_t m_RootDescriptorOffsetMax = 0;
-    bool m_IsDepthReadonly = false;
-    bool m_IsStencilReadonly = false;
 };
 
 } // namespace nri
