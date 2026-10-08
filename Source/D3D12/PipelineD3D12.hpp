@@ -92,8 +92,14 @@ static inline uint64_t HashStruct(uint64_t h, const ColorAttachmentDesc& s) {
     return h;
 }
 
+static inline uint64_t HashPipelineLayout(uint64_t h, const PipelineLayout* pipelineLayout) {
+    ID3DBlob* rootSignature = ((const PipelineLayoutD3D12*)pipelineLayout)->GetRootSignatureBlob();
+    return Fnv1a64(h, rootSignature->GetBufferPointer(), rootSignature->GetBufferSize());
+}
+
 static uint64_t HashGraphicsPipelineDesc(const GraphicsPipelineDesc& d) {
     uint64_t h = FNV_INIT;
+    h = HashPipelineLayout(h, d.pipelineLayout);
     for (uint32_t i = 0; i < d.shaderNum; i++) {
         h = Fnv1a64(h, d.shaders[i].bytecode, (size_t)d.shaders[i].size);
         h = HashField(h, d.shaders[i].stage);
@@ -136,6 +142,7 @@ static uint64_t HashGraphicsPipelineDesc(const GraphicsPipelineDesc& d) {
 
 static uint64_t HashComputePipelineDesc(const ComputePipelineDesc& d) {
     uint64_t h = FNV_INIT;
+    h = HashPipelineLayout(h, d.pipelineLayout);
     h = Fnv1a64(h, d.shader.bytecode, (size_t)d.shader.size);
     h = HashField(h, d.shader.stage);
     h = HashField(h, d.robustness);

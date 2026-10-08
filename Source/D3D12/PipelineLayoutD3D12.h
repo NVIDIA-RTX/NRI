@@ -35,6 +35,10 @@ struct PipelineLayoutD3D12 final : public DebugNameBase {
         return m_RootSignature.GetInterface();
     }
 
+    inline ID3DBlob* GetRootSignatureBlob() const {
+        return m_RootSignatureBlob.GetInterface();
+    }
+
     inline DeviceD3D12& GetDevice() const {
         return m_Device;
     }
@@ -75,6 +79,7 @@ struct PipelineLayoutD3D12 final : public DebugNameBase {
 private:
     DeviceD3D12& m_Device;
     ComPtr<ID3D12RootSignature> m_RootSignature;
+    ComPtr<ID3DBlob> m_RootSignatureBlob; // part of the pipeline cache key
     Vector<DescriptorSetMapping> m_DescriptorSetMappings;
     uint32_t m_BaseRootConstant = 0;
     uint32_t m_BaseRootDescriptor = 0;

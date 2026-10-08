@@ -279,7 +279,7 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     rootSignatureDesc.pStaticSamplers = staticSamplers;
     rootSignatureDesc.Flags = GetRootSignatureStageFlags(pipelineLayoutDesc, m_Device);
 
-    ComPtr<ID3DBlob> rootSignatureBlob;
+    ComPtr<ID3DBlob>& rootSignatureBlob = m_RootSignatureBlob;
     ComPtr<ID3DBlob> errorBlob;
 
     HRESULT hr = S_OK;
