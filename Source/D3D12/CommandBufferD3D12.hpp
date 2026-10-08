@@ -246,6 +246,9 @@ static constexpr D3D12_BARRIER_LAYOUT GetBarrierLayout(Layout layout, AccessBits
     if (layout == Layout::INPUT_ATTACHMENT && (accessBits & AccessBits::INPUT_ATTACHMENT) != 0)
         return D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
 
+    if (layout == Layout::DEPTH_STENCIL_READONLY && (accessBits & AccessBits::SHADER_RESOURCE) != 0)
+        return D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_GENERIC_READ;
+
     if (layout == Layout::VIDEO_DECODE_DPB)
         return ((accessBits & AccessBits::VIDEO_DECODE_WRITE) != 0) ? D3D12_BARRIER_LAYOUT_VIDEO_DECODE_WRITE : D3D12_BARRIER_LAYOUT_VIDEO_DECODE_READ;
 
