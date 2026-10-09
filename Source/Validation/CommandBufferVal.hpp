@@ -984,7 +984,6 @@ NRI_INLINE void CommandBufferVal::CopyTexture(Texture& dstTexture, const Texture
     const PlaneBits dstPlanes = GetRegionPlanes(dstDesc.format, dstRegion);
     NRI_RETURN_ON_FAILURE(&m_Device, AreRegionPlanesValid(srcDesc.format, srcPlanes), ReturnVoid(), "'srcRegion->planes' is empty or has planes missing in the source format");
     NRI_RETURN_ON_FAILURE(&m_Device, AreRegionPlanesValid(dstDesc.format, dstPlanes), ReturnVoid(), "'dstRegion->planes' is empty or has planes missing in the destination format");
-    NRI_RETURN_ON_FAILURE(&m_Device, srcPlanes == dstPlanes, ReturnVoid(), "source and destination must copy the same planes");
 
     Texture* dstTextureImpl = NRI_GET_IMPL(Texture, &dstTexture);
     Texture* srcTextureImpl = NRI_GET_IMPL(Texture, &srcTexture);

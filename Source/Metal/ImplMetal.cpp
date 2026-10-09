@@ -56,6 +56,32 @@ using namespace nri;
 #include "TextureMetal.hpp"
 
 //============================================================================================================================================================================================
+#pragma region[  Helpers  ]
+
+static inline bool FillAdapterDesc(AdapterDesc& adapterDesc, MTL::Device* device) {
+    if (!device || !device->supportsFamily(MTL::GPUFamilyMetal4))
+        return false;
+
+    AutoreleasePoolMetal autoreleasePool;
+
+    adapterDesc = {};
+    adapterDesc.uid.low = device->registryID(); // "LUID"-like: unique and stable while the system runs
+    adapterDesc.videoMemorySize = device->recommendedMaxWorkingSetSize();
+    adapterDesc.sharedSystemMemorySize = device->hasUnifiedMemory() ? 0 : adapterDesc.videoMemorySize; // unified memory is already reported as video memory
+    adapterDesc.vendor = Vendor::UNKNOWN;                                                              // Metal exposes no PCI vendor or device IDs, "deviceId" stays 0
+    adapterDesc.architecture = device->hasUnifiedMemory() ? Architecture::INTEGRATED : Architecture::DISCRETE;
+    adapterDesc.supportedGraphicsAPIs = GraphicsAPI::METAL;
+    adapterDesc.queueNum[(uint32_t)QueueType::GRAPHICS] = QUEUE_NUM_PER_TYPE;
+    adapterDesc.queueNum[(uint32_t)QueueType::COMPUTE] = QUEUE_NUM_PER_TYPE;
+    adapterDesc.queueNum[(uint32_t)QueueType::COPY] = QUEUE_NUM_PER_TYPE;
+    strncpy(adapterDesc.name, device->name()->utf8String(), sizeof(adapterDesc.name) - 1);
+
+    return true;
+}
+
+#pragma endregion
+
+//============================================================================================================================================================================================
 #pragma region[  Core  ]
 
 static const DeviceDesc& NRI_CALL GetDeviceDesc(const Device& device) {
@@ -1227,27 +1253,6 @@ Result DeviceMetal::FillFunctionTable(WrapperMetalInterface& table) const {
 #pragma endregion
 
 //============================================================================================================================================================================================
-static bool FillAdapterDesc(AdapterDesc& adapterDesc, MTL::Device* device) {
-    if (!device || !device->supportsFamily(MTL::GPUFamilyMetal4))
-        return false;
-
-    AutoreleasePoolMetal autoreleasePool;
-
-    adapterDesc = {};
-    adapterDesc.uid.low = device->registryID(); // "LUID"-like: unique and stable while the system runs
-    adapterDesc.videoMemorySize = device->recommendedMaxWorkingSetSize();
-    adapterDesc.sharedSystemMemorySize = device->hasUnifiedMemory() ? 0 : adapterDesc.videoMemorySize; // unified memory is already reported as video memory
-    adapterDesc.vendor = Vendor::UNKNOWN;                                                              // Metal exposes no PCI vendor or device IDs, "deviceId" stays 0
-    adapterDesc.architecture = device->hasUnifiedMemory() ? Architecture::INTEGRATED : Architecture::DISCRETE;
-    adapterDesc.supportedGraphicsAPIs = GraphicsAPI::METAL;
-    adapterDesc.queueNum[(uint32_t)QueueType::GRAPHICS] = QUEUE_NUM_PER_TYPE;
-    adapterDesc.queueNum[(uint32_t)QueueType::COMPUTE] = QUEUE_NUM_PER_TYPE;
-    adapterDesc.queueNum[(uint32_t)QueueType::COPY] = QUEUE_NUM_PER_TYPE;
-    strncpy(adapterDesc.name, device->name()->utf8String(), sizeof(adapterDesc.name) - 1);
-
-    return true;
-}
-
 void UpdateAdaptersMetal(AdapterDesc* adapterDescs, uint32_t& adapterDescNum, uint32_t adapterDescMaxNum) {
     NS::Array* devices = MTL::CopyAllDevices();
 
