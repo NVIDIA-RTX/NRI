@@ -280,6 +280,10 @@ NRI_INLINE FormatSupportBits DeviceMetal::GetFormatSupport(Format format) const 
     return GetFormatSupportMetal(*m_Device, format);
 }
 
+NRI_INLINE bool DeviceMetal::IsUpscalerSupported(UpscalerType upscalerType) const {
+    return nri::IsUpscalerSupported(m_Desc, upscalerType) && IsMetalFxSupportedMetal(m_Device, upscalerType);
+}
+
 NRI_INLINE void DeviceMetal::GetMemoryDesc2(const BufferDesc& bufferDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
     BufferMetal buffer(*this);
     buffer.Create(bufferDesc);

@@ -1171,9 +1171,7 @@ static void NRI_CALL DestroyUpscaler(Upscaler* upscaler) {
 }
 
 static bool NRI_CALL IsUpscalerSupported(const Device& device, UpscalerType upscalerType) {
-    DeviceMetal& deviceMetal = (DeviceMetal&)device;
-
-    return IsUpscalerSupported(deviceMetal.GetDesc(), upscalerType) && IsMetalFxSupportedMetal(deviceMetal.GetNativeObject(), upscalerType);
+    return ((const DeviceMetal&)device).IsUpscalerSupported(upscalerType);
 }
 
 static void NRI_CALL GetUpscalerProps(const Upscaler& upscaler, UpscalerProps& upscalerProps) {

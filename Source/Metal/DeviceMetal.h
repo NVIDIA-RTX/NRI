@@ -54,6 +54,7 @@ struct DeviceMetal final : public DeviceBase {
     Result CreatePlacedAccelerationStructure(Memory* memory, uint64_t offset, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure);
     Result WaitIdle();
     FormatSupportBits GetFormatSupport(Format format) const;
+    bool IsUpscalerSupported(UpscalerType upscalerType) const;
     void GetMemoryDesc2(const BufferDesc& bufferDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc);
     void GetMemoryDesc2(const TextureDesc& textureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc);
     void GetMemoryDesc2(const AccelerationStructureDesc& accelerationStructureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc);
