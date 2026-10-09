@@ -100,7 +100,7 @@ Result SwapChainMetal::Create(const SwapChainDesc& desc) {
     return Result::SUCCESS;
 }
 
-Texture* const* SwapChainMetal::GetTextures(uint32_t& textureNum) const {
+NRI_INLINE Texture* const* SwapChainMetal::GetTextures(uint32_t& textureNum) const {
     textureNum = (uint32_t)m_Textures.size();
 
     return (Texture* const*)m_Textures.data();
@@ -114,7 +114,7 @@ void SwapChainMetal::ReleaseDrawable() {
     m_Drawable = nullptr;
 }
 
-Result SwapChainMetal::AcquireNextTexture(FenceMetal& fence, uint32_t& textureIndex) {
+NRI_INLINE Result SwapChainMetal::AcquireNextTexture(FenceMetal& fence, uint32_t& textureIndex) {
     // "resizableSwapChain": drawables keep the swap chain size, the content gets scaled to the layer bounds. Restore the size if someone else has changed it
     const CGSize size = m_Layer->drawableSize();
 
@@ -160,7 +160,7 @@ Result SwapChainMetal::AcquireNextTexture(FenceMetal& fence, uint32_t& textureIn
     return Result::SUCCESS;
 }
 
-Result SwapChainMetal::Present(FenceMetal& fence, uint64_t presentId) {
+NRI_INLINE Result SwapChainMetal::Present(FenceMetal& fence, uint64_t presentId) {
     NRI_CHECK(m_Drawable, "No texture has been acquired");
 
     if (!m_Drawable)
@@ -188,7 +188,7 @@ Result SwapChainMetal::Present(FenceMetal& fence, uint64_t presentId) {
     return Result::SUCCESS;
 }
 
-Result SwapChainMetal::WaitForPresent(uint64_t presentId) {
+NRI_INLINE Result SwapChainMetal::WaitForPresent(uint64_t presentId) {
     if (!m_IsWaitable || !presentId)
         return Result::UNSUPPORTED;
 
@@ -197,7 +197,7 @@ Result SwapChainMetal::WaitForPresent(uint64_t presentId) {
     return isPresented ? Result::SUCCESS : Result::FAILURE;
 }
 
-Result SwapChainMetal::GetDisplayDesc(DisplayDesc& desc) {
+NRI_INLINE Result SwapChainMetal::GetDisplayDesc(DisplayDesc& desc) {
     // Only a "CAMetalLayer" is provided, the "NSScreen" is not reachable from it without Objective-C
     MaybeUnused(desc);
 

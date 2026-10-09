@@ -28,7 +28,7 @@ Result CommandAllocatorMetal::Create() {
     return m_Allocator ? Result::SUCCESS : Result::FAILURE;
 }
 
-void CommandAllocatorMetal::Reset() {
+NRI_INLINE void CommandAllocatorMetal::Reset() {
     m_Allocator->reset();
     m_ResetIndex++;
 
@@ -171,7 +171,7 @@ MTL::GPUAddress CommandAllocatorMetal::Upload(const void* data, uint64_t size, u
     return chunk.address + offset;
 }
 
-void CommandAllocatorMetal::SetDebugName(const char* name) {
+NRI_INLINE void CommandAllocatorMetal::SetDebugName(const char* name) {
     // "MTL4CommandAllocator::label" is read-only, it can only be set via "MTL4CommandAllocatorDescriptor" at creation
     MaybeUnused(name);
 }

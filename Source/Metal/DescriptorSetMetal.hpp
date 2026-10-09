@@ -11,7 +11,7 @@ DeviceMetal& DescriptorSetMetal::GetDevice() const {
     return m_Pool->GetDevice();
 }
 
-void DescriptorSetMetal::GetOffsets(uint32_t& resourceOffset, uint32_t& samplerOffset) const {
+NRI_INLINE void DescriptorSetMetal::GetOffsets(uint32_t& resourceOffset, uint32_t& samplerOffset) const {
     resourceOffset = m_ResourceOffset;
     samplerOffset = m_SamplerOffset;
 }
@@ -48,14 +48,14 @@ void DescriptorSetMetal::Copy(uint32_t dstRange, uint32_t dstBase, const Descrip
     memmove(GetEntry(d, dstBase), source.GetEntry(s, srcBase), num * DESCRIPTOR_ENTRY_SIZE);
 }
 
-void DescriptorSetMetal::UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* descs, uint32_t num) {
+NRI_INLINE void DescriptorSetMetal::UpdateDescriptorRanges(const UpdateDescriptorRangeDesc* descs, uint32_t num) {
     for (uint32_t i = 0; i < num; i++) {
         const UpdateDescriptorRangeDesc& d = descs[i];
         ((DescriptorSetMetal*)d.descriptorSet)->Update(d.rangeIndex, d.baseDescriptor, d.descriptors, d.descriptorNum);
     }
 }
 
-void DescriptorSetMetal::Copy(const CopyDescriptorRangeDesc* descs, uint32_t num) {
+NRI_INLINE void DescriptorSetMetal::Copy(const CopyDescriptorRangeDesc* descs, uint32_t num) {
     for (uint32_t i = 0; i < num; i++) {
         const CopyDescriptorRangeDesc& d = descs[i];
         ((DescriptorSetMetal*)d.dstDescriptorSet)->Copy(d.dstRangeIndex, d.dstBaseDescriptor, *(DescriptorSetMetal*)d.srcDescriptorSet, d.srcRangeIndex, d.srcBaseDescriptor, d.descriptorNum);

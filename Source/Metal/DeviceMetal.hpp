@@ -240,7 +240,7 @@ MTL::GPUAddress DeviceMetal::GetTessellatorTables() {
 }
 #endif
 
-Result DeviceMetal::GetQueue(QueueType type, uint32_t index, Queue*& queue) {
+NRI_INLINE Result DeviceMetal::GetQueue(QueueType type, uint32_t index, Queue*& queue) {
     queue = nullptr;
 
     const uint32_t queueType = (uint32_t)type;
@@ -256,19 +256,79 @@ Result DeviceMetal::GetQueue(QueueType type, uint32_t index, Queue*& queue) {
     return Result::SUCCESS;
 }
 
-Result DeviceMetal::CreatePlacedBuffer(Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer) {
+NRI_INLINE Result DeviceMetal::CreatePlacedBuffer(Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer) {
     return CreatePlacedImplementation<BufferMetal>(*this, memory, offset, bufferDesc, buffer);
 }
 
-Result DeviceMetal::CreatePlacedTexture(Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture) {
+NRI_INLINE Result DeviceMetal::CreatePlacedTexture(Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture) {
     return CreatePlacedImplementation<TextureMetal>(*this, memory, offset, textureDesc, texture);
 }
 
-Result DeviceMetal::CreatePlacedAccelerationStructure(Memory* memory, uint64_t offset, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
+NRI_INLINE Result DeviceMetal::CreatePlacedAccelerationStructure(Memory* memory, uint64_t offset, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
     return CreatePlacedImplementation<AccelerationStructureMetal>(*this, memory, offset, accelerationStructureDesc, accelerationStructure);
 }
 
-Result DeviceMetal::WaitIdle() {
+NRI_INLINE FormatSupportBits DeviceMetal::GetFormatSupport(Format format) const {
+    return GetFormatSupportMetal(*m_Device, format);
+}
+
+NRI_INLINE void DeviceMetal::GetMemoryDesc2(const BufferDesc& bufferDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
+    BufferMetal buffer(*this);
+    buffer.Create(bufferDesc);
+    buffer.GetMemoryDesc(memoryLocation, memoryDesc);
+}
+
+NRI_INLINE void DeviceMetal::GetMemoryDesc2(const TextureDesc& textureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
+    TextureMetal texture(*this);
+    texture.Create(textureDesc);
+    texture.GetMemoryDesc(memoryLocation, memoryDesc);
+}
+
+NRI_INLINE void DeviceMetal::GetMemoryDesc2(const AccelerationStructureDesc& accelerationStructureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
+    const MTL::AccelerationStructureSizes sizes = GetAccelerationStructureSizes(*this, accelerationStructureDesc);
+    const uint32_t instanceNum = accelerationStructureDesc.type == AccelerationStructureType::TOP_LEVEL ? accelerationStructureDesc.geometryOrInstanceNum : 0;
+
+    uint64_t headerOffset = 0;
+    GetAccelerationStructureMemoryDesc(*this, accelerationStructureDesc.type, sizes.accelerationStructureSize, instanceNum, memoryLocation, memoryDesc, headerOffset);
+}
+
+NRI_INLINE Result DeviceMetal::BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum) {
+    for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
+        const BindBufferMemoryDesc& desc = bindBufferMemoryDescs[i];
+        const Result result = ((BufferMetal*)desc.buffer)->Bind(*(MemoryMetal*)desc.memory, desc.offset);
+
+        if (result != Result::SUCCESS)
+            return result;
+    }
+
+    return Result::SUCCESS;
+}
+
+NRI_INLINE Result DeviceMetal::BindTextureMemory(const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum) {
+    for (uint32_t i = 0; i < bindTextureMemoryDescNum; i++) {
+        const BindTextureMemoryDesc& desc = bindTextureMemoryDescs[i];
+        const Result result = ((TextureMetal*)desc.texture)->Bind(*(MemoryMetal*)desc.memory, desc.offset);
+
+        if (result != Result::SUCCESS)
+            return result;
+    }
+
+    return Result::SUCCESS;
+}
+
+NRI_INLINE Result DeviceMetal::BindAccelerationStructureMemory(const BindAccelerationStructureMemoryDesc* bindAccelerationStructureMemoryDescs, uint32_t bindAccelerationStructureMemoryDescNum) {
+    for (uint32_t i = 0; i < bindAccelerationStructureMemoryDescNum; i++) {
+        const BindAccelerationStructureMemoryDesc& desc = bindAccelerationStructureMemoryDescs[i];
+        const Result result = ((AccelerationStructureMetal*)desc.accelerationStructure)->Bind(*(MemoryMetal*)desc.memory, desc.offset);
+
+        if (result != Result::SUCCESS)
+            return result;
+    }
+
+    return Result::SUCCESS;
+}
+
+NRI_INLINE Result DeviceMetal::WaitIdle() {
     for (uint32_t i = 0; i < QUEUE_TYPE_NUM; i++) {
         for (uint32_t j = 0; j < m_Desc.adapterDesc.queueNum[i]; j++) {
             Result result = m_Queues[i][j]->WaitIdle();
@@ -281,7 +341,7 @@ Result DeviceMetal::WaitIdle() {
     return Result::SUCCESS;
 }
 
-Result DeviceMetal::QueryVideoMemoryInfo(MemoryLocation memoryLocation, VideoMemoryInfo& videoMemoryInfo) const {
+NRI_INLINE Result DeviceMetal::QueryVideoMemoryInfo(MemoryLocation memoryLocation, VideoMemoryInfo& videoMemoryInfo) const {
     MaybeUnused(memoryLocation);
 
     // Apple silicon shares one memory budget across device and host-visible allocations

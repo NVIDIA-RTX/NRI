@@ -1536,7 +1536,7 @@ Result PipelineMetal::Create(const RayTracingPipelineDesc& desc) {
     return result;
 }
 
-Result PipelineMetal::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, uint32_t dstStride, void* dst) const {
+NRI_INLINE Result PipelineMetal::WriteShaderGroupIdentifiers(uint32_t baseShaderGroupIndex, uint32_t shaderGroupNum, uint32_t dstStride, void* dst) const {
     const uint8_t* src = m_ShaderGroupIdentifiers.data() + baseShaderGroupIndex * sizeof(IRShaderIdentifier);
     uint8_t* destination = (uint8_t*)dst;
 
@@ -1555,7 +1555,7 @@ Result PipelineMetal::Create(const RayTracingPipelineDesc&) {
     return Result::UNSUPPORTED;
 }
 
-Result PipelineMetal::WriteShaderGroupIdentifiers(uint32_t, uint32_t, uint32_t, void*) const {
+NRI_INLINE Result PipelineMetal::WriteShaderGroupIdentifiers(uint32_t, uint32_t, uint32_t, void*) const {
     return Result::UNSUPPORTED;
 }
 
@@ -2108,7 +2108,7 @@ IRRuntimePrimitiveType PipelineMetal::GetEmulationPrimitive() const {
 }
 #endif
 
-void PipelineMetal::SetDebugName(const char* name) {
+NRI_INLINE void PipelineMetal::SetDebugName(const char* name) {
     // Pipeline state labels are immutable after creation.
     MaybeUnused(name);
 }

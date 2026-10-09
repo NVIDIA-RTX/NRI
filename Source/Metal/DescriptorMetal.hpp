@@ -289,7 +289,7 @@ void DescriptorMetal::WriteEntry(void* dst) const {
     memcpy(dst, &entry, sizeof(entry));
 }
 
-void DescriptorMetal::SetDebugName(const char* name) {
+NRI_INLINE void DescriptorMetal::SetDebugName(const char* name) {
     // Sampler labels are immutable after creation
     if (!m_TextureView)
         return;

@@ -405,13 +405,13 @@ IRVersionedRootSignatureDescriptor PipelineLayoutMetal::GetRootSignatureDesc() c
     return root;
 }
 
-IRRootSignature* PipelineLayoutMetal::GetRootSignature() const {
+NRI_INLINE IRRootSignature* PipelineLayoutMetal::GetRootSignature() const {
     return m_RootSignature;
 }
 
 #endif
 
-Result PipelineLayoutMetal::GetRootSignature(char* json, uint64_t& size) const {
+NRI_INLINE Result PipelineLayoutMetal::GetRootSignature(char* json, uint64_t& size) const {
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
     const IRVersionedRootSignatureDescriptor root = GetRootSignatureDesc();
     const char* string = IRVersionedRootSignatureDescriptorCopyJSONString(&root);

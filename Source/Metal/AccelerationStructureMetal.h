@@ -61,7 +61,6 @@ struct AccelerationStructureMetal final : public DebugNameBase {
         return GetShaderBindingHeaderAddress() + TOP_LEVEL_HEADER_SIZE;
     }
 
-    static void GetMemoryDesc(DeviceMetal& device, const AccelerationStructureDesc& desc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc);
 
     Result Create(const AccelerationStructureDesc& desc);
     Result Create(const AccelerationStructureDesc& desc, MemoryLocation location); // committed

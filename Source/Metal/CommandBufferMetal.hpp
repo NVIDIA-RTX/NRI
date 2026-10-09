@@ -199,7 +199,7 @@ Result CommandBufferMetal::Create(const CommandAllocator& allocator) {
     return (m_CommandBuffer && m_Arguments && m_InternalArguments) ? Result::SUCCESS : Result::OUT_OF_MEMORY;
 }
 
-Result CommandBufferMetal::Begin(const DescriptorPool* pool) {
+NRI_INLINE Result CommandBufferMetal::Begin(const DescriptorPool* pool) {
     NRI_CHECK(!m_RenderEncoder && !m_ComputeEncoder && !m_RenderPass, "The previous recording has not been ended");
 
     m_Result = Result::SUCCESS;
@@ -368,7 +368,7 @@ void CommandBufferMetal::EndRenderEncoder(bool isSuspended) {
     m_IsRenderTableBound = false;
 }
 
-Result CommandBufferMetal::End() {
+NRI_INLINE Result CommandBufferMetal::End() {
     NRI_CHECK(!m_RenderPass, "'CmdEndRendering' is missing");
 
     // A trailing barrier orders work in the next command buffers
@@ -407,12 +407,12 @@ MTL::GPUAddress CommandBufferMetal::Upload(const void* data, uint64_t size) {
     return address;
 }
 
-void CommandBufferMetal::CmdSetDescriptorPool(const DescriptorPool& pool) {
+NRI_INLINE void CommandBufferMetal::CmdSetDescriptorPool(const DescriptorPool& pool) {
     m_DescriptorPool = (DescriptorPoolMetal*)&pool;
     m_AreHeapsDirty = true;
 }
 
-void CommandBufferMetal::CmdSetPipelineLayout(BindPoint bindPoint, const PipelineLayout& layout) {
+NRI_INLINE void CommandBufferMetal::CmdSetPipelineLayout(BindPoint bindPoint, const PipelineLayout& layout) {
     m_BindPoint = bindPoint;
     State& state = bindPoint == BindPoint::GRAPHICS ? m_Graphics : m_Compute;
     state.layout = (const PipelineLayoutMetal*)&layout;
@@ -421,21 +421,21 @@ void CommandBufferMetal::CmdSetPipelineLayout(BindPoint bindPoint, const Pipelin
     state.rootAddress = 0;
 }
 
-void CommandBufferMetal::CmdSetDescriptorSet(const SetDescriptorSetDesc& desc) {
+NRI_INLINE void CommandBufferMetal::CmdSetDescriptorSet(const SetDescriptorSetDesc& desc) {
     State& s = GetState(desc.bindPoint);
 
     s.layout->WriteSetPointers(s.root.data(), desc.setIndex, *(DescriptorSetMetal*)desc.descriptorSet);
     s.rootAddress = 0;
 }
 
-void CommandBufferMetal::CmdSetRootConstants(const SetRootConstantsDesc& desc) {
+NRI_INLINE void CommandBufferMetal::CmdSetRootConstants(const SetRootConstantsDesc& desc) {
     State& s = GetState(desc.bindPoint);
 
     memcpy(s.root.data() + s.layout->GetRootConstantOffset(desc.rootConstantIndex) + desc.offset, desc.data, desc.size);
     s.rootAddress = 0;
 }
 
-void CommandBufferMetal::CmdSetRootDescriptor(const SetRootDescriptorDesc& desc) {
+NRI_INLINE void CommandBufferMetal::CmdSetRootDescriptor(const SetRootDescriptorDesc& desc) {
     State& s = GetState(desc.bindPoint);
     const DescriptorMetal& descriptor = *(DescriptorMetal*)desc.descriptor;
 
@@ -451,7 +451,7 @@ CommandBufferMetal::State& CommandBufferMetal::GetState(BindPoint bindPoint) {
     return bindPoint == BindPoint::GRAPHICS ? m_Graphics : m_Compute;
 }
 
-void CommandBufferMetal::CmdSetPipeline(const Pipeline& pipeline) {
+NRI_INLINE void CommandBufferMetal::CmdSetPipeline(const Pipeline& pipeline) {
     const bool hadSampleLocations = m_Pipeline && m_Pipeline->HasSampleLocations();
     m_Pipeline = (const PipelineMetal*)&pipeline;
     m_RenderPipelineDirty = true;
@@ -463,7 +463,7 @@ void CommandBufferMetal::CmdSetPipeline(const Pipeline& pipeline) {
         m_RenderPass->setSamplePositions(m_SamplePositions, m_Pipeline->HasSampleLocations() ? m_SamplePositionNum : 0);
 }
 
-void CommandBufferMetal::CmdBarrier(const BarrierDesc& desc) {
+NRI_INLINE void CommandBufferMetal::CmdBarrier(const BarrierDesc& desc) {
     MTL::Stages before = 0;
     MTL::Stages after = 0;
     bool hasWrites = false;
@@ -534,14 +534,14 @@ void CommandBufferMetal::CmdBarrier(const BarrierDesc& desc) {
     m_ComputeEncoder->barrierAfterStages(before, after, visibility);
 }
 
-void CommandBufferMetal::CmdSetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType type) {
+NRI_INLINE void CommandBufferMetal::CmdSetIndexBuffer(const Buffer& buffer, uint64_t offset, IndexType type) {
     const BufferMetal& b = (const BufferMetal&)buffer;
     m_IndexAddress = b.GetGpuAddress() + offset;
     m_IndexLength = b.GetDesc().size - offset;
     m_IndexType = type == IndexType::UINT16 ? MTL::IndexTypeUInt16 : MTL::IndexTypeUInt32;
 }
 
-void CommandBufferMetal::CmdSetVertexBuffers(uint32_t base, const VertexBufferDesc* descs, uint32_t num) {
+NRI_INLINE void CommandBufferMetal::CmdSetVertexBuffers(uint32_t base, const VertexBufferDesc* descs, uint32_t num) {
     for (uint32_t i = 0; i < num; i++) {
         const BufferMetal& buffer = *(BufferMetal*)descs[i].buffer;
         m_Arguments->setAddress(buffer.GetGpuAddress() + descs[i].offset, descs[i].stride, 6 + base + i);
@@ -551,7 +551,7 @@ void CommandBufferMetal::CmdSetVertexBuffers(uint32_t base, const VertexBufferDe
     }
 }
 
-void CommandBufferMetal::CmdSetViewports(const Viewport* v, uint32_t n) {
+NRI_INLINE void CommandBufferMetal::CmdSetViewports(const Viewport* v, uint32_t n) {
     m_ViewportNum = n;
 
     for (uint32_t i = 0; i < n; i++)
@@ -561,7 +561,7 @@ void CommandBufferMetal::CmdSetViewports(const Viewport* v, uint32_t n) {
         m_RenderEncoder->setViewports(m_Viewports, n);
 }
 
-void CommandBufferMetal::CmdSetScissors(const Rect* r, uint32_t n) {
+NRI_INLINE void CommandBufferMetal::CmdSetScissors(const Rect* r, uint32_t n) {
     m_ScissorNum = n;
 
     for (uint32_t i = 0; i < n; i++)
@@ -571,7 +571,7 @@ void CommandBufferMetal::CmdSetScissors(const Rect* r, uint32_t n) {
         m_RenderEncoder->setScissorRects(m_Scissors, n);
 }
 
-void CommandBufferMetal::CmdSetStencilReference(uint8_t f, uint8_t b) {
+NRI_INLINE void CommandBufferMetal::CmdSetStencilReference(uint8_t f, uint8_t b) {
     m_FrontStencil = f;
     m_BackStencil = b;
 
@@ -579,7 +579,7 @@ void CommandBufferMetal::CmdSetStencilReference(uint8_t f, uint8_t b) {
         m_RenderEncoder->setStencilReferenceValues(f, b);
 }
 
-void CommandBufferMetal::CmdSetDepthBounds(float min, float max) {
+NRI_INLINE void CommandBufferMetal::CmdSetDepthBounds(float min, float max) {
     m_DepthMin = min;
     m_DepthMax = max;
 
@@ -587,14 +587,14 @@ void CommandBufferMetal::CmdSetDepthBounds(float min, float max) {
         m_RenderEncoder->setDepthTestBounds(min, max);
 }
 
-void CommandBufferMetal::CmdSetBlendConstants(const Color32f& c) {
+NRI_INLINE void CommandBufferMetal::CmdSetBlendConstants(const Color32f& c) {
     m_BlendColor = c;
 
     if (m_RenderEncoder)
         m_RenderEncoder->setBlendColor(c.x, c.y, c.z, c.w);
 }
 
-void CommandBufferMetal::CmdSetSampleLocations(const SampleLocation* locations, Sample_t locationNum, Sample_t sampleNum) {
+NRI_INLINE void CommandBufferMetal::CmdSetSampleLocations(const SampleLocation* locations, Sample_t locationNum, Sample_t sampleNum) {
     NRI_CHECK(locationNum == sampleNum && locationNum <= 16, "Metal supports one sample-location pattern per pixel");
     MaybeUnused(sampleNum);
 
@@ -607,11 +607,11 @@ void CommandBufferMetal::CmdSetSampleLocations(const SampleLocation* locations, 
         m_RenderPass->setSamplePositions(m_SamplePositions, m_SamplePositionNum);
 }
 
-void CommandBufferMetal::CmdSetShadingRate(const ShadingRateDesc&) {
+NRI_INLINE void CommandBufferMetal::CmdSetShadingRate(const ShadingRateDesc&) {
     RecordFailure(Result::UNSUPPORTED);
 }
 
-void CommandBufferMetal::CmdSetDepthBias(const DepthBiasDesc& d) {
+NRI_INLINE void CommandBufferMetal::CmdSetDepthBias(const DepthBiasDesc& d) {
     // Like in VK, dynamic depth bias applies only to pipelines with enabled depth bias
     if (!m_Pipeline || !IsDepthBiasEnabled(m_Pipeline->GetDepthBias()))
         return;
@@ -623,7 +623,7 @@ void CommandBufferMetal::CmdSetDepthBias(const DepthBiasDesc& d) {
         m_RenderEncoder->setDepthBias(d.constant, d.slope, d.clamp);
 }
 
-void CommandBufferMetal::CmdBeginRendering(const RenderingDesc& desc) {
+NRI_INLINE void CommandBufferMetal::CmdBeginRendering(const RenderingDesc& desc) {
     EndCompute();
 
     MTL4::RenderPassDescriptor* pass = MTL4::RenderPassDescriptor::alloc()->init();
@@ -890,7 +890,7 @@ void CommandBufferMetal::BindArguments(BindPoint point) {
         SetComputeState(m_Arguments, nullptr);
 }
 
-void CommandBufferMetal::CmdClearAttachments(const ClearAttachmentDesc* clears, uint32_t clearNum, const Rect* rects, uint32_t rectNum) {
+NRI_INLINE void CommandBufferMetal::CmdClearAttachments(const ClearAttachmentDesc* clears, uint32_t clearNum, const Rect* rects, uint32_t rectNum) {
     MTL4::RenderCommandEncoder* encoder = GetRenderEncoder();
 
     if (!m_IsRenderTableBound) {
@@ -974,7 +974,7 @@ void CommandBufferMetal::CmdClearAttachments(const ClearAttachmentDesc* clears, 
         ApplyRasterState();
 }
 
-void CommandBufferMetal::CmdDraw(const DrawDesc& d) {
+NRI_INLINE void CommandBufferMetal::CmdDraw(const DrawDesc& d) {
     SetDrawArguments(&d, sizeof(d), false);
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
     if (m_Pipeline->IsGeometryEmulation() || m_Pipeline->IsTessellationEmulation()) {
@@ -987,7 +987,7 @@ void CommandBufferMetal::CmdDraw(const DrawDesc& d) {
     m_RenderEncoder->drawPrimitives(m_Pipeline->GetPrimitiveType(), d.baseVertex, d.vertexNum, d.instanceNum, d.baseInstance);
 }
 
-void CommandBufferMetal::CmdDrawIndexed(const DrawIndexedDesc& d) {
+NRI_INLINE void CommandBufferMetal::CmdDrawIndexed(const DrawIndexedDesc& d) {
     SetDrawArguments(&d, sizeof(d), true);
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
     if (m_Pipeline->IsGeometryEmulation() || m_Pipeline->IsTessellationEmulation()) {
@@ -1001,7 +1001,7 @@ void CommandBufferMetal::CmdDrawIndexed(const DrawIndexedDesc& d) {
     m_RenderEncoder->drawIndexedPrimitives(m_Pipeline->GetPrimitiveType(), d.indexNum, m_IndexType, m_IndexAddress + o, m_IndexLength - o, d.instanceNum, d.baseVertex, d.baseInstance);
 }
 
-void CommandBufferMetal::CmdDrawIndirect(const Buffer& b, uint64_t o, uint32_t n, uint32_t s, const Buffer* c, uint64_t co) {
+NRI_INLINE void CommandBufferMetal::CmdDrawIndirect(const Buffer& b, uint64_t o, uint32_t n, uint32_t s, const Buffer* c, uint64_t co) {
     const bool emulatedParameters = m_Graphics.layout->IsDrawParametersEmulationEnabled();
     const uint32_t argumentSize = emulatedParameters ? sizeof(DrawBaseDesc) : sizeof(DrawDesc);
     MTL::GPUAddress address = PrepareIndirectArguments(b, o, n, s, argumentSize, c, co);
@@ -1030,7 +1030,7 @@ void CommandBufferMetal::CmdDrawIndirect(const Buffer& b, uint64_t o, uint32_t n
     DrawIndirect(address, roots, n, s, false);
 }
 
-void CommandBufferMetal::CmdDrawIndexedIndirect(const Buffer& b, uint64_t o, uint32_t n, uint32_t s, const Buffer* c, uint64_t co) {
+NRI_INLINE void CommandBufferMetal::CmdDrawIndexedIndirect(const Buffer& b, uint64_t o, uint32_t n, uint32_t s, const Buffer* c, uint64_t co) {
     const bool emulatedParameters = m_Graphics.layout->IsDrawParametersEmulationEnabled();
     const uint32_t argumentSize = emulatedParameters ? sizeof(DrawIndexedBaseDesc) : sizeof(DrawIndexedDesc);
     MTL::GPUAddress address = PrepareIndirectArguments(b, o, n, s, argumentSize, c, co);
@@ -1087,12 +1087,12 @@ void CommandBufferMetal::DrawIndirect(MTL::GPUAddress arguments, MTL::GPUAddress
     }
 }
 
-void CommandBufferMetal::CmdDrawMeshTasks(const DrawMeshTasksDesc& d) {
+NRI_INLINE void CommandBufferMetal::CmdDrawMeshTasks(const DrawMeshTasksDesc& d) {
     BindArguments(BindPoint::GRAPHICS);
     m_RenderEncoder->drawMeshThreadgroups(MTL::Size(d.x, d.y, d.z), m_Pipeline->GetTaskThreadGroupSize(), m_Pipeline->GetMeshThreadGroupSize());
 }
 
-void CommandBufferMetal::CmdDrawMeshTasksIndirect(const Buffer& b, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countOffset) {
+NRI_INLINE void CommandBufferMetal::CmdDrawMeshTasksIndirect(const Buffer& b, uint64_t offset, uint32_t drawNum, uint32_t stride, const Buffer* countBuffer, uint64_t countOffset) {
     const MTL::GPUAddress address = PrepareIndirectArguments(b, offset, drawNum, stride, sizeof(DrawMeshTasksDesc), countBuffer, countOffset);
 
     if (!address)
@@ -1199,7 +1199,7 @@ MTL::GPUAddress CommandBufferMetal::PrepareIndirectArguments(const Buffer& buffe
     return destination;
 }
 
-void CommandBufferMetal::CmdEndRendering() {
+NRI_INLINE void CommandBufferMetal::CmdEndRendering() {
     // Load and store actions need an encoder, even if nothing has been recorded
     MTL4::RenderCommandEncoder* encoder = GetRenderEncoder();
 
@@ -1408,26 +1408,26 @@ void CommandBufferMetal::DrawEmulatedIndirect(MTL::GPUAddress arguments, MTL::GP
 }
 #endif
 
-void CommandBufferMetal::CmdDispatch(const DispatchDesc& d) {
+NRI_INLINE void CommandBufferMetal::CmdDispatch(const DispatchDesc& d) {
     BindArguments(BindPoint::COMPUTE);
     SetComputeState(m_Arguments, m_Pipeline->GetComputePipeline());
     m_ComputeEncoder->dispatchThreadgroups(MTL::Size(d.workGroupNumX, d.workGroupNumY, d.workGroupNumZ), m_Pipeline->GetThreadGroupSize());
 }
 
-void CommandBufferMetal::CmdDispatchIndirect(const Buffer& b, uint64_t o) {
+NRI_INLINE void CommandBufferMetal::CmdDispatchIndirect(const Buffer& b, uint64_t o) {
     BindArguments(BindPoint::COMPUTE);
     SetComputeState(m_Arguments, m_Pipeline->GetComputePipeline());
     m_ComputeEncoder->dispatchThreadgroups(((BufferMetal&)b).GetGpuAddress() + o, m_Pipeline->GetThreadGroupSize());
 }
 
-void CommandBufferMetal::CmdCopyBuffer(Buffer& d, uint64_t dof, const Buffer& s, uint64_t sof, uint64_t z) {
+NRI_INLINE void CommandBufferMetal::CmdCopyBuffer(Buffer& d, uint64_t dof, const Buffer& s, uint64_t sof, uint64_t z) {
     if (z == WHOLE_SIZE)
         z = ((const BufferMetal&)s).GetDesc().size;
 
     BeginCompute()->copyFromBuffer(((BufferMetal&)s).GetNativeObject(), sof, ((BufferMetal&)d).GetNativeObject(), dof, z);
 }
 
-void CommandBufferMetal::CmdCopyTexture(Texture& d, const TextureRegionDesc* dr, const Texture& s, const TextureRegionDesc* sr) {
+NRI_INLINE void CommandBufferMetal::CmdCopyTexture(Texture& d, const TextureRegionDesc* dr, const Texture& s, const TextureRegionDesc* sr) {
     const FormatProps& srcProps = GetFormatProps(((TextureMetal&)s).GetDesc().format);
     const FormatProps& dstProps = GetFormatProps(((TextureMetal&)d).GetDesc().format);
     const bool selectiveSrcPlane = sr && srcProps.isDepth && srcProps.isStencil && (sr->planes == PlaneBits::DEPTH || sr->planes == PlaneBits::STENCIL);
@@ -1479,15 +1479,15 @@ void CommandBufferMetal::CmdCopyTexture(Texture& d, const TextureRegionDesc* dr,
     BeginCompute()->copyFromTexture(((TextureMetal&)s).GetNativeObject(), a.layerOffset, a.mipOffset, MTL::Origin(a.x, a.y, a.z), size, ((TextureMetal&)d).GetNativeObject(), b.layerOffset, b.mipOffset, MTL::Origin(b.x, b.y, b.z));
 }
 
-void CommandBufferMetal::CmdUploadBufferToTexture(Texture& d, const TextureRegionDesc& r, const Buffer& s, const TextureDataLayoutDesc& l) {
+NRI_INLINE void CommandBufferMetal::CmdUploadBufferToTexture(Texture& d, const TextureRegionDesc& r, const Buffer& s, const TextureDataLayoutDesc& l) {
     BeginCompute()->copyFromBuffer(((BufferMetal&)s).GetNativeObject(), l.offset, l.rowPitch, l.slicePitch, GetRegionSize((TextureMetal&)d, r), ((TextureMetal&)d).GetNativeObject(), r.layerOffset, r.mipOffset, MTL::Origin(r.x, r.y, r.z), GetTextureCopyOptions((TextureMetal&)d, r.planes));
 }
 
-void CommandBufferMetal::CmdReadbackTextureToBuffer(Buffer& d, const TextureDataLayoutDesc& l, const Texture& s, const TextureRegionDesc& r) {
+NRI_INLINE void CommandBufferMetal::CmdReadbackTextureToBuffer(Buffer& d, const TextureDataLayoutDesc& l, const Texture& s, const TextureRegionDesc& r) {
     BeginCompute()->copyFromTexture(((TextureMetal&)s).GetNativeObject(), r.layerOffset, r.mipOffset, MTL::Origin(r.x, r.y, r.z), GetRegionSize((TextureMetal&)s, r), ((BufferMetal&)d).GetNativeObject(), l.offset, l.rowPitch, l.slicePitch, GetTextureCopyOptions((TextureMetal&)s, r.planes));
 }
 
-void CommandBufferMetal::CmdZeroBuffer(Buffer& b, uint64_t o, uint64_t z) {
+NRI_INLINE void CommandBufferMetal::CmdZeroBuffer(Buffer& b, uint64_t o, uint64_t z) {
     if (z == WHOLE_SIZE)
         z = ((BufferMetal&)b).GetDesc().size - o;
 
@@ -1574,7 +1574,7 @@ void CommandBufferMetal::ResolveColor(MTL::Texture* dst, const TextureRegionDesc
     blit->copyFromTexture(transient, 0, 0, transientOrigin, MTL::Size(width, height, 1), dst, dstRegion.layerOffset, dstRegion.mipOffset, MTL::Origin(dstRegion.x, dstRegion.y, dstRegion.z));
 }
 
-void CommandBufferMetal::CmdResolveTexture(Texture& dst, const TextureRegionDesc* dstRegion, const Texture& src, const TextureRegionDesc* srcRegion, ResolveOp op) {
+NRI_INLINE void CommandBufferMetal::CmdResolveTexture(Texture& dst, const TextureRegionDesc* dstRegion, const Texture& src, const TextureRegionDesc* srcRegion, ResolveOp op) {
     const TextureMetal& source = (const TextureMetal&)src;
     const TextureMetal& destination = (const TextureMetal&)dst;
 
@@ -1616,7 +1616,7 @@ void CommandBufferMetal::CmdResolveTexture(Texture& dst, const TextureRegionDesc
     ResolveColor(destination.GetNativeObject(), destinationRegion, source.GetNativeObject(), sourceRegion, op, source.GetDesc().format);
 }
 
-void CommandBufferMetal::CmdClearStorage(const ClearStorageDesc& desc) {
+NRI_INLINE void CommandBufferMetal::CmdClearStorage(const ClearStorageDesc& desc) {
     const DescriptorMetal& descriptor = *(const DescriptorMetal*)desc.descriptor;
     MTL::Texture* texture = descriptor.GetTexture();
     MTL::TextureType textureType = texture ? texture->textureType() : MTL::TextureTypeTextureBuffer;
@@ -1667,7 +1667,7 @@ void CommandBufferMetal::CmdClearStorage(const ClearStorageDesc& desc) {
     m_ComputeEncoder->dispatchThreads(grid, MTL::Size(8, std::min<NS::UInteger>(grid.height, 8), 1));
 }
 
-void CommandBufferMetal::CmdResetQueries(QueryPool& p, uint32_t o, uint32_t n) {
+NRI_INLINE void CommandBufferMetal::CmdResetQueries(QueryPool& p, uint32_t o, uint32_t n) {
     QueryPoolMetal& q = (QueryPoolMetal&)p;
 
     // Only occlusion results accumulate, other queries are overwritten
@@ -1680,7 +1680,7 @@ void CommandBufferMetal::CmdResetQueries(QueryPool& p, uint32_t o, uint32_t n) {
     encoder->barrierAfterStages(MTL::StageBlit, MTL::StageFragment, MTL4::VisibilityOptionDevice);
 }
 
-void CommandBufferMetal::CmdBeginQuery(QueryPool& p, uint32_t o) {
+NRI_INLINE void CommandBufferMetal::CmdBeginQuery(QueryPool& p, uint32_t o) {
     QueryPoolMetal& q = (QueryPoolMetal&)p;
     MTL::Buffer* buffer = q.GetVisibilityBuffer();
 
@@ -1701,7 +1701,7 @@ void CommandBufferMetal::CmdBeginQuery(QueryPool& p, uint32_t o) {
         m_RenderEncoder->setVisibilityResultMode(m_VisibilityMode, m_VisibilityOffset);
 }
 
-void CommandBufferMetal::CmdEndQuery(QueryPool& p, uint32_t o) {
+NRI_INLINE void CommandBufferMetal::CmdEndQuery(QueryPool& p, uint32_t o) {
     QueryPoolMetal& q = (QueryPoolMetal&)p;
 
     if (q.GetCounterHeap()) {
@@ -1718,7 +1718,7 @@ void CommandBufferMetal::CmdEndQuery(QueryPool& p, uint32_t o) {
     }
 }
 
-void CommandBufferMetal::CmdCopyQueries(const QueryPool& p, uint32_t o, uint32_t n, Buffer& d, uint64_t x) {
+NRI_INLINE void CommandBufferMetal::CmdCopyQueries(const QueryPool& p, uint32_t o, uint32_t n, Buffer& d, uint64_t x) {
     const QueryPoolMetal& q = (const QueryPoolMetal&)p;
     auto* encoder = BeginCompute();
 
@@ -1749,7 +1749,7 @@ void CommandBufferMetal::CmdCopyQueries(const QueryPool& p, uint32_t o, uint32_t
         encoder->copyFromBuffer(q.GetVisibilityBuffer(), uint64_t(o) * 8, ((BufferMetal&)d).GetNativeObject(), x, uint64_t(n) * 8);
 }
 
-void CommandBufferMetal::CmdBeginAnnotation(const char* name, uint32_t bgra) {
+NRI_INLINE void CommandBufferMetal::CmdBeginAnnotation(const char* name, uint32_t bgra) {
     MaybeUnused(bgra); // Metal debug groups have no color
 
     NS::String* string = NS::String::alloc()->init(name, NS::UTF8StringEncoding);
@@ -1771,7 +1771,7 @@ void CommandBufferMetal::CmdBeginAnnotation(const char* name, uint32_t bgra) {
     m_Annotations.push_back({string, location});
 }
 
-void CommandBufferMetal::CmdEndAnnotation() {
+NRI_INLINE void CommandBufferMetal::CmdEndAnnotation() {
     NRI_CHECK(!m_Annotations.empty(), "Unbalanced 'CmdEndAnnotation'");
 
     if (m_Annotations.empty())
@@ -1790,7 +1790,7 @@ void CommandBufferMetal::CmdEndAnnotation() {
     m_Annotations.pop_back();
 }
 
-void CommandBufferMetal::CmdAnnotation(const char* name, uint32_t bgra) {
+NRI_INLINE void CommandBufferMetal::CmdAnnotation(const char* name, uint32_t bgra) {
     MaybeUnused(bgra); // Metal signposts have no color
 
     NS::String* string = NS::String::alloc()->init(name, NS::UTF8StringEncoding);
@@ -1830,7 +1830,7 @@ void nri::ReleaseOnResetMetal(NS::Object* commandBuffer, NS::Object* object) {
     CommandBufferMetal::FromNativeObject(commandBuffer).ReleaseOnReset(object);
 }
 
-void CommandBufferMetal::SetDebugName(const char* name) {
+NRI_INLINE void CommandBufferMetal::SetDebugName(const char* name) {
     NS::String* string = NS::String::alloc()->init(name, NS::UTF8StringEncoding);
     m_CommandBuffer->setLabel(string);
     string->release();
@@ -1845,7 +1845,7 @@ MTL::ComputePipelineState* CommandBufferMetal::GetInternalKernel(InternalKernelM
     return pipeline;
 }
 
-void CommandBufferMetal::CmdBuildBottomLevelAccelerationStructures(const BuildBottomLevelAccelerationStructureDesc* descs, uint32_t num) {
+NRI_INLINE void CommandBufferMetal::CmdBuildBottomLevelAccelerationStructures(const BuildBottomLevelAccelerationStructureDesc* descs, uint32_t num) {
     auto* encoder = BeginCompute();
 
     for (uint32_t i = 0; i < num; i++) {
@@ -1863,7 +1863,7 @@ void CommandBufferMetal::CmdBuildBottomLevelAccelerationStructures(const BuildBo
     }
 }
 
-void CommandBufferMetal::CmdBuildTopLevelAccelerationStructures(const BuildTopLevelAccelerationStructureDesc* descs, uint32_t num) {
+NRI_INLINE void CommandBufferMetal::CmdBuildTopLevelAccelerationStructures(const BuildTopLevelAccelerationStructureDesc* descs, uint32_t num) {
     MTL::ComputePipelineState* convertInstances = GetInternalKernel(InternalKernelMetal::CONVERT_INSTANCES);
 
     if (!convertInstances)
@@ -1912,7 +1912,7 @@ void CommandBufferMetal::CmdBuildTopLevelAccelerationStructures(const BuildTopLe
     }
 }
 
-void CommandBufferMetal::CmdCopyAccelerationStructure(AccelerationStructure& dst, const AccelerationStructure& src, CopyMode mode) {
+NRI_INLINE void CommandBufferMetal::CmdCopyAccelerationStructure(AccelerationStructure& dst, const AccelerationStructure& src, CopyMode mode) {
     auto& destination = (AccelerationStructureMetal&)dst;
     const auto& source = (const AccelerationStructureMetal&)src;
 
@@ -1943,7 +1943,7 @@ void CommandBufferMetal::CmdCopyAccelerationStructure(AccelerationStructure& dst
     }
 }
 
-void CommandBufferMetal::CmdWriteAccelerationStructureSizes(const AccelerationStructure* const* structures, uint32_t num, QueryPool& pool, uint32_t offset) {
+NRI_INLINE void CommandBufferMetal::CmdWriteAccelerationStructureSizes(const AccelerationStructure* const* structures, uint32_t num, QueryPool& pool, uint32_t offset) {
     auto& queries = (QueryPoolMetal&)pool;
     const MTL::GPUAddress dst = queries.GetVisibilityBuffer()->gpuAddress() + uint64_t(offset) * sizeof(uint64_t);
 
@@ -2004,7 +2004,7 @@ MTL::GPUAddress CommandBufferMetal::SetRayDispatchArguments(const IRDispatchRays
     return address;
 }
 
-void CommandBufferMetal::CmdDispatchRays(const DispatchRaysDesc& desc) {
+NRI_INLINE void CommandBufferMetal::CmdDispatchRays(const DispatchRaysDesc& desc) {
     auto getAddress = [](const StridedBufferRegion& region) -> uint64_t {
         return region.buffer ? ((const BufferMetal*)region.buffer)->GetGpuAddress() + region.offset : 0;
     };
@@ -2034,7 +2034,7 @@ void CommandBufferMetal::CmdDispatchRays(const DispatchRaysDesc& desc) {
     m_ComputeEncoder->dispatchThreads(MTL::Size(desc.width, desc.height, desc.depth), MTL::Size(RAY_DISPATCH_GROUP_SIZE, RAY_DISPATCH_GROUP_SIZE, 1));
 }
 
-void CommandBufferMetal::CmdDispatchRaysIndirect(const Buffer& buffer, uint64_t offset) {
+NRI_INLINE void CommandBufferMetal::CmdDispatchRaysIndirect(const Buffer& buffer, uint64_t offset) {
     MTL::ComputePipelineState* prepareRays = GetInternalKernel(InternalKernelMetal::PREPARE_RAYS_INDIRECT);
 
     if (!prepareRays)
@@ -2061,10 +2061,10 @@ void CommandBufferMetal::CmdDispatchRaysIndirect(const Buffer& buffer, uint64_t 
 
 #else
 
-void CommandBufferMetal::CmdDispatchRays(const DispatchRaysDesc&) {
+NRI_INLINE void CommandBufferMetal::CmdDispatchRays(const DispatchRaysDesc&) {
 }
 
-void CommandBufferMetal::CmdDispatchRaysIndirect(const Buffer&, uint64_t) {
+NRI_INLINE void CommandBufferMetal::CmdDispatchRaysIndirect(const Buffer&, uint64_t) {
 }
 
 #endif

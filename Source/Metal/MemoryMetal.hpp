@@ -28,7 +28,7 @@ Result MemoryMetal::Create(const AllocateMemoryDesc& desc) {
     return Result::SUCCESS;
 }
 
-void MemoryMetal::SetDebugName(const char* name) {
+NRI_INLINE void MemoryMetal::SetDebugName(const char* name) {
     if (!m_Heap)
         return;
 

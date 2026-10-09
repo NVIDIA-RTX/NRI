@@ -229,14 +229,6 @@ void AccelerationStructureMetal::Release() {
     m_IsCommitted = false;
 }
 
-void AccelerationStructureMetal::GetMemoryDesc(DeviceMetal& device, const AccelerationStructureDesc& desc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
-    const MTL::AccelerationStructureSizes sizes = GetAccelerationStructureSizes(device, desc);
-    const uint32_t instanceNum = desc.type == AccelerationStructureType::TOP_LEVEL ? desc.geometryOrInstanceNum : 0;
-
-    uint64_t headerOffset = 0;
-    GetAccelerationStructureMemoryDesc(device, desc.type, sizes.accelerationStructureSize, instanceNum, memoryLocation, memoryDesc, headerOffset);
-}
-
 Result AccelerationStructureMetal::Create(const AccelerationStructureDesc& desc) {
     m_Flags = desc.flags;
     m_Type = desc.type;
@@ -307,12 +299,12 @@ Result AccelerationStructureMetal::Bind(MemoryMetal& memory, uint64_t offset) {
     return Result::SUCCESS;
 }
 
-void AccelerationStructureMetal::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {
+NRI_INLINE void AccelerationStructureMetal::GetMemoryDesc(MemoryLocation memoryLocation, MemoryDesc& memoryDesc) const {
     memoryDesc = m_MemoryDesc;
     memoryDesc.type = (MemoryType)memoryLocation;
 }
 
-void AccelerationStructureMetal::SetDebugName(const char* name) {
+NRI_INLINE void AccelerationStructureMetal::SetDebugName(const char* name) {
     NS::String* label = NS::String::alloc()->init(name, NS::UTF8StringEncoding);
 
     if (m_AccelerationStructure)

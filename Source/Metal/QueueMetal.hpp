@@ -133,7 +133,7 @@ uint64_t QueueMetal::SignalIdle(uint64_t& commitNum) {
     return m_IdleValue;
 }
 
-Result QueueMetal::Submit(const QueueSubmitDesc& queueSubmitDesc) {
+NRI_INLINE Result QueueMetal::Submit(const QueueSubmitDesc& queueSubmitDesc) {
     Scratch<const MTL4::CommandBuffer*> commandBuffers = NRI_ALLOCATE_SCRATCH(m_Device, const MTL4::CommandBuffer*, queueSubmitDesc.commandBufferNum);
 
     for (uint32_t i = 0; i < queueSubmitDesc.commandBufferNum; i++)
@@ -181,7 +181,7 @@ void QueueMetal::SignalDrawable(CA::MetalDrawable* drawable, FenceMetal& release
     m_Queue->signalDrawable(drawable);
 }
 
-void QueueMetal::GetCalibratedTimestamps(uint64_t& timestampGPU, uint64_t& timestampCPU) {
+NRI_INLINE void QueueMetal::GetCalibratedTimestamps(uint64_t& timestampGPU, uint64_t& timestampCPU) {
     // "sampleTimestamps" returns nanoseconds for both. GPU: converted to counter heap timestamp ticks ("timestampFrequencyHz").
     // CPU: nanoseconds in the "CLOCK_UPTIME_RAW" domain ("mach_absolute_time" converted to nanoseconds)
     MTL::Timestamp cpu = 0;
@@ -214,7 +214,7 @@ Result QueueMetal::WaitForSignal(uint64_t value, uint64_t commitNum) {
     return isCompleted ? Result::SUCCESS : Result::FAILURE;
 }
 
-Result QueueMetal::WaitIdle() {
+NRI_INLINE Result QueueMetal::WaitIdle() {
     uint64_t value = 0;
     uint64_t commitNum = 0;
 
@@ -295,7 +295,7 @@ void QueueMetal::TrimTransfer() {
     }
 }
 
-Result QueueMetal::UploadHostMemoryToTexture(const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
+NRI_INLINE Result QueueMetal::UploadHostMemoryToTexture(const UploadHostMemoryToTextureDesc* copyDescs, uint32_t copyDescNum) {
     if (!copyDescNum)
         return Result::SUCCESS;
 
@@ -340,7 +340,7 @@ Result QueueMetal::UploadHostMemoryToTexture(const UploadHostMemoryToTextureDesc
     return result;
 }
 
-Result QueueMetal::ReadbackTextureToHostMemory(const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
+NRI_INLINE Result QueueMetal::ReadbackTextureToHostMemory(const ReadbackTextureToHostMemoryDesc* copyDescs, uint32_t copyDescNum) {
     if (!copyDescNum)
         return Result::SUCCESS;
 
@@ -392,7 +392,7 @@ Result QueueMetal::ReadbackTextureToHostMemory(const ReadbackTextureToHostMemory
     return result;
 }
 
-void QueueMetal::SetDebugName(const char* name) {
+NRI_INLINE void QueueMetal::SetDebugName(const char* name) {
     // "MTL4CommandQueue::label" is read-only, it can only be set via "MTL4CommandQueueDescriptor" at creation
     MaybeUnused(name);
 }

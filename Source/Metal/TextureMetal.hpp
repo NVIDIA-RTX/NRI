@@ -148,7 +148,7 @@ Result TextureMetal::Bind(MemoryMetal& memory, uint64_t offset) {
     return m_Texture ? Result::SUCCESS : Result::FAILURE;
 }
 
-void TextureMetal::GetMemoryDesc(MemoryLocation location, MemoryDesc& memoryDesc) const {
+NRI_INLINE void TextureMetal::GetMemoryDesc(MemoryLocation location, MemoryDesc& memoryDesc) const {
     MTL::TextureDescriptor* desc = NewNativeDesc(location);
     MTL::SizeAndAlign requirements = m_Device.GetNativeObject()->heapTextureSizeAndAlign(desc);
     desc->release();
@@ -200,7 +200,7 @@ MTL::Texture* TextureMetal::GetDrawableView(MTL::PixelFormat format) {
     return view;
 }
 
-void TextureMetal::SetDebugName(const char* name) {
+NRI_INLINE void TextureMetal::SetDebugName(const char* name) {
     if (!m_Texture)
         return;
 

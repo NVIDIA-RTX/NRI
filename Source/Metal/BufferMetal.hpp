@@ -57,7 +57,7 @@ Result BufferMetal::Create(const BufferMetalDesc& desc) {
     return Result::SUCCESS;
 }
 
-Result BufferMetal::Bind(MemoryMetal& memory, uint64_t offset) {
+NRI_INLINE Result BufferMetal::Bind(MemoryMetal& memory, uint64_t offset) {
     Release();
     m_Location = memory.GetLocation();
     m_Buffer = memory.GetNativeObject()->newBuffer((NS::UInteger)m_Desc.size, GetBufferOptions(m_Location), (NS::UInteger)offset);
@@ -65,7 +65,7 @@ Result BufferMetal::Bind(MemoryMetal& memory, uint64_t offset) {
     return m_Buffer ? Result::SUCCESS : Result::FAILURE;
 }
 
-void BufferMetal::GetMemoryDesc(MemoryLocation location, MemoryDesc& memoryDesc) const {
+NRI_INLINE void BufferMetal::GetMemoryDesc(MemoryLocation location, MemoryDesc& memoryDesc) const {
     MTL::SizeAndAlign requirements = m_Device.GetNativeObject()->heapBufferSizeAndAlign((NS::UInteger)m_Desc.size, GetBufferOptions(location));
     memoryDesc.size = requirements.size;
     memoryDesc.alignment = (uint32_t)requirements.align;
@@ -73,7 +73,7 @@ void BufferMetal::GetMemoryDesc(MemoryLocation location, MemoryDesc& memoryDesc)
     memoryDesc.mustBeDedicated = false;
 }
 
-void* BufferMetal::Map(uint64_t offset, uint64_t size) {
+NRI_INLINE void* BufferMetal::Map(uint64_t offset, uint64_t size) {
     if (!m_Buffer || m_Location == MemoryLocation::DEVICE)
         return nullptr;
 
@@ -83,7 +83,7 @@ void* BufferMetal::Map(uint64_t offset, uint64_t size) {
     return (uint8_t*)m_Buffer->contents() + offset;
 }
 
-void BufferMetal::Unmap() {
+NRI_INLINE void BufferMetal::Unmap() {
 #if TARGET_OS_OSX
     if (m_Buffer && m_MapSize && m_Buffer->storageMode() == MTL::StorageModeManaged)
         m_Buffer->didModifyRange(NS::Range::Make((NS::UInteger)m_MapOffset, (NS::UInteger)m_MapSize));
@@ -92,7 +92,7 @@ void BufferMetal::Unmap() {
     m_MapSize = 0;
 }
 
-void BufferMetal::SetDebugName(const char* name) {
+NRI_INLINE void BufferMetal::SetDebugName(const char* name) {
     if (!m_Buffer)
         return;
 

@@ -71,7 +71,7 @@ static const TextureDesc& NRI_CALL GetTextureDesc(const Texture& texture) {
 }
 
 static FormatSupportBits NRI_CALL GetFormatSupport(const Device& device, Format format) {
-    return GetFormatSupportMetal(*((const DeviceMetal&)device).GetNativeObject(), format);
+    return ((const DeviceMetal&)device).GetFormatSupport(format);
 }
 
 static Result NRI_CALL GetQueue(Device& device, QueueType queueType, uint32_t queueIndex, Queue*& queue) {
@@ -207,39 +207,27 @@ static void NRI_CALL GetTextureMemoryDesc(const Texture& texture, MemoryLocation
 }
 
 static Result NRI_CALL BindBufferMemory(const BindBufferMemoryDesc* bindBufferMemoryDescs, uint32_t bindBufferMemoryDescNum) {
-    for (uint32_t i = 0; i < bindBufferMemoryDescNum; i++) {
-        BufferMetal& buffer = *(BufferMetal*)bindBufferMemoryDescs[i].buffer;
-        MemoryMetal& memory = *(MemoryMetal*)bindBufferMemoryDescs[i].memory;
-        Result result = buffer.Bind(memory, bindBufferMemoryDescs[i].offset);
+    if (!bindBufferMemoryDescNum)
+        return Result::SUCCESS;
 
-        if (result != Result::SUCCESS)
-            return result;
-    }
-
-    return Result::SUCCESS;
+    DeviceMetal& deviceMetal = ((BufferMetal*)bindBufferMemoryDescs->buffer)->GetDevice();
+    return deviceMetal.BindBufferMemory(bindBufferMemoryDescs, bindBufferMemoryDescNum);
 }
 
-static Result NRI_CALL BindTextureMemory(const BindTextureMemoryDesc* descs, uint32_t num) {
-    for (uint32_t i = 0; i < num; i++) {
-        Result result = ((TextureMetal*)descs[i].texture)->Bind(*(MemoryMetal*)descs[i].memory, descs[i].offset);
+static Result NRI_CALL BindTextureMemory(const BindTextureMemoryDesc* bindTextureMemoryDescs, uint32_t bindTextureMemoryDescNum) {
+    if (!bindTextureMemoryDescNum)
+        return Result::SUCCESS;
 
-        if (result != Result::SUCCESS)
-            return result;
-    }
-
-    return Result::SUCCESS;
+    DeviceMetal& deviceMetal = ((TextureMetal*)bindTextureMemoryDescs->texture)->GetDevice();
+    return deviceMetal.BindTextureMemory(bindTextureMemoryDescs, bindTextureMemoryDescNum);
 }
 
 static void NRI_CALL GetBufferMemoryDesc2(const Device& device, const BufferDesc& bufferDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
-    BufferMetal buffer((DeviceMetal&)device);
-    buffer.Create(bufferDesc);
-    buffer.GetMemoryDesc(memoryLocation, memoryDesc);
+    ((DeviceMetal&)device).GetMemoryDesc2(bufferDesc, memoryLocation, memoryDesc);
 }
 
 static void NRI_CALL GetTextureMemoryDesc2(const Device& device, const TextureDesc& textureDesc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
-    TextureMetal texture((DeviceMetal&)device);
-    texture.Create(textureDesc);
-    texture.GetMemoryDesc(memoryLocation, memoryDesc);
+    ((DeviceMetal&)device).GetMemoryDesc2(textureDesc, memoryLocation, memoryDesc);
 }
 
 static Result NRI_CALL CreateCommittedBuffer(Device& device, MemoryLocation memoryLocation, float priority, const BufferDesc& bufferDesc, Buffer*& buffer) {
@@ -736,10 +724,7 @@ static Result NRI_CALL CreateDescriptorHeap(Device& device, const DescriptorHeap
 }
 
 static void NRI_CALL DestroyDescriptorHeap(DescriptorHeap* heap) {
-    if (heap) {
-        auto* impl = (DescriptorPoolMetal*)heap;
-        Destroy(impl->GetDevice().GetAllocationCallbacks(), impl);
-    }
+    Destroy((DescriptorPoolMetal*)heap);
 }
 
 static Result NRI_CALL WriteResourceDescriptors(DescriptorHeap& heap, const WriteResourceDescriptorsDesc* descs, uint32_t num) {
@@ -785,10 +770,7 @@ static Result NRI_CALL CreateAccelerationStructureDescriptor(const AccelerationS
 }
 
 static void NRI_CALL DestroyAccelerationStructure(AccelerationStructure* structure) {
-    if (structure) {
-        auto* impl = (AccelerationStructureMetal*)structure;
-        Destroy(impl->GetDevice().GetAllocationCallbacks(), impl);
-    }
+    Destroy((AccelerationStructureMetal*)structure);
 }
 
 static uint64_t NRI_CALL GetAccelerationStructureHandle(const AccelerationStructure& structure) {
@@ -812,18 +794,15 @@ static void NRI_CALL GetAccelerationStructureMemoryDesc(const AccelerationStruct
 }
 
 static void NRI_CALL GetAccelerationStructureMemoryDesc2(const Device& device, const AccelerationStructureDesc& desc, MemoryLocation location, MemoryDesc& memoryDesc) {
-    AccelerationStructureMetal::GetMemoryDesc((DeviceMetal&)device, desc, location, memoryDesc);
+    ((DeviceMetal&)device).GetMemoryDesc2(desc, location, memoryDesc);
 }
 
-static Result NRI_CALL BindAccelerationStructureMemory(const BindAccelerationStructureMemoryDesc* descs, uint32_t num) {
-    for (uint32_t i = 0; i < num; i++) {
-        Result result = ((AccelerationStructureMetal*)descs[i].accelerationStructure)->Bind(*(MemoryMetal*)descs[i].memory, descs[i].offset);
+static Result NRI_CALL BindAccelerationStructureMemory(const BindAccelerationStructureMemoryDesc* bindAccelerationStructureMemoryDescs, uint32_t bindAccelerationStructureMemoryDescNum) {
+    if (!bindAccelerationStructureMemoryDescNum)
+        return Result::SUCCESS;
 
-        if (result != Result::SUCCESS)
-            return result;
-    }
-
-    return Result::SUCCESS;
+    DeviceMetal& deviceMetal = ((AccelerationStructureMetal*)bindAccelerationStructureMemoryDescs->accelerationStructure)->GetDevice();
+    return deviceMetal.BindAccelerationStructureMemory(bindAccelerationStructureMemoryDescs, bindAccelerationStructureMemoryDescNum);
 }
 
 static Result NRI_CALL CreateCommittedAccelerationStructure(Device& device, MemoryLocation memoryLocation, float priority, const AccelerationStructureDesc& desc, AccelerationStructure*& structure) {
@@ -1014,10 +993,6 @@ Result DeviceMetal::FillFunctionTable(HelperInterface& table) const {
 static Result NRI_CALL CreateStreamer(Device& device, const StreamerDesc& streamerDesc, Streamer*& streamer) {
     DeviceMetal& deviceMetal = (DeviceMetal&)device;
     StreamerImpl* impl = Allocate<StreamerImpl>(deviceMetal.GetAllocationCallbacks(), device, deviceMetal.GetCoreInterface());
-
-    if (!impl)
-        return Result::OUT_OF_MEMORY;
-
     Result result = impl->Create(streamerDesc);
 
     if (result != Result::SUCCESS) {
@@ -1138,17 +1113,13 @@ Result DeviceMetal::FillFunctionTable(SwapChainInterface& table) const {
 static Result NRI_CALL CreateImgui(Device& device, const ImguiDesc& imguiDesc, Imgui*& imgui) {
     DeviceMetal& deviceMetal = (DeviceMetal&)device;
     ImguiImpl* impl = Allocate<ImguiImpl>(deviceMetal.GetAllocationCallbacks(), device, deviceMetal.GetCoreInterface());
-    imgui = nullptr;
-
-    if (!impl)
-        return Result::OUT_OF_MEMORY;
-
     Result result = impl->Create(imguiDesc);
 
-    if (result == Result::SUCCESS)
-        imgui = (Imgui*)impl;
-    else
+    if (result != Result::SUCCESS) {
         Destroy(impl);
+        imgui = nullptr;
+    } else
+        imgui = (Imgui*)impl;
 
     return result;
 }
@@ -1187,7 +1158,7 @@ static Result NRI_CALL CreateUpscaler(Device& device, const UpscalerDesc& upscal
     Result result = impl->Create(upscalerDesc);
 
     if (result != Result::SUCCESS) {
-        Destroy(deviceMetal.GetAllocationCallbacks(), impl);
+        Destroy(impl);
         upscaler = nullptr;
     } else
         upscaler = (Upscaler*)impl;

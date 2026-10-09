@@ -27,7 +27,7 @@ Result FenceMetal::Create(const FenceMetalDesc& desc) {
     return Result::SUCCESS;
 }
 
-uint64_t FenceMetal::GetValue() const {
+NRI_INLINE uint64_t FenceMetal::GetValue() const {
     return m_Event ? m_Event->signaledValue() : 0;
 }
 
@@ -35,7 +35,7 @@ uint64_t FenceMetal::NextSignalValue() {
     return m_NextValue.fetch_add(1, std::memory_order_acq_rel) + 1;
 }
 
-Result FenceMetal::Wait(uint64_t value) {
+NRI_INLINE Result FenceMetal::Wait(uint64_t value) {
     if (!m_Event || m_IsSwapChainSemaphore)
         return Result::SUCCESS;
 
@@ -45,7 +45,7 @@ Result FenceMetal::Wait(uint64_t value) {
     return Result::SUCCESS;
 }
 
-void FenceMetal::SetDebugName(const char* name) {
+NRI_INLINE void FenceMetal::SetDebugName(const char* name) {
     if (!m_Event)
         return;
 

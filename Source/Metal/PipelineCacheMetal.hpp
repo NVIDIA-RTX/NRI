@@ -343,7 +343,7 @@ MTL::RenderPipelineState* PipelineCacheMetal::NewRenderPipeline(const MTL4::Pipe
     return pipeline;
 }
 
-Result PipelineCacheMetal::GetData(void* dst, uint64_t& size) const {
+NRI_INLINE Result PipelineCacheMetal::GetData(void* dst, uint64_t& size) const {
     ExclusiveScope lock(m_Lock);
 
     // "Flush" clears captured pipelines, thus each serialization is a new archive. The serializer refuses to serialize if nothing has been captured
@@ -453,7 +453,7 @@ DeviceMetal& PipelineCacheMetal::GetDevice() const {
     return m_Device;
 }
 
-void PipelineCacheMetal::SetDebugName(const char* name) {
+NRI_INLINE void PipelineCacheMetal::SetDebugName(const char* name) {
     // The compiler label is immutable, archive ones aren't
     NS::String* label = NS::String::alloc()->init(name, NS::UTF8StringEncoding);
 
