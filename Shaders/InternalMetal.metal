@@ -81,7 +81,7 @@ CLEAR_STORAGE_TYPES(4, texture2d_array, WRITE_2D_ARRAY)
 CLEAR_STORAGE_TYPES(5, texture3d, WRITE_3D)
 
 //============================================================================================================================================================================================
-// MIN/MAX resolves ("CmdResolveTexture", attachment resolves), constants at "buffer(3)"
+// MIN/MAX/SAMPLE_ZERO resolves ("CmdResolveTexture", attachment resolves), constants at "buffer(3)". SAMPLE_ZERO: "samples = 1"
 
 struct ResolveConstants {
     uint2 origin;

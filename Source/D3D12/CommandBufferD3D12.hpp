@@ -417,6 +417,7 @@ constexpr std::array<D3D12_RESOLVE_MODE, (size_t)ResolveOp::MAX_NUM> g_ResolveOp
     D3D12_RESOLVE_MODE_AVERAGE, // AVERAGE
     D3D12_RESOLVE_MODE_MIN,     // MIN
     D3D12_RESOLVE_MODE_MAX,     // MAX
+    D3D12_RESOLVE_MODE_AVERAGE, // SAMPLE_ZERO (unsupported, rejected by validation)
 };
 NRI_VALIDATE_ARRAY(g_ResolveOps);
 

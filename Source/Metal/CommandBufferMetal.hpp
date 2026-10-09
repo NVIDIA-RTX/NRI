@@ -626,7 +626,11 @@ void CommandBufferMetal::CmdBeginRendering(const RenderingDesc& desc) {
         // Metal depth resolve filters are "sample 0", "min" and "max" ("AVERAGE" is rejected by validation)
         if (a.resolveDst) {
             SetAttachmentResolveMetal(n, a);
-            n->setDepthResolveFilter(a.resolveOp == ResolveOp::MIN ? MTL::MultisampleDepthResolveFilterMin : MTL::MultisampleDepthResolveFilterMax);
+
+            if (a.resolveOp == ResolveOp::SAMPLE_ZERO)
+                n->setDepthResolveFilter(MTL::MultisampleDepthResolveFilterSample0);
+            else
+                n->setDepthResolveFilter(a.resolveOp == ResolveOp::MIN ? MTL::MultisampleDepthResolveFilterMin : MTL::MultisampleDepthResolveFilterMax);
         }
 
         m_RenderDepth = d.GetTexture()->pixelFormat();
@@ -646,8 +650,12 @@ void CommandBufferMetal::CmdBeginRendering(const RenderingDesc& desc) {
         n->setStoreAction(a.storeOp == StoreOp::STORE ? MTL::StoreActionStore : MTL::StoreActionDontCare);
         n->setClearStencil(a.clearValue.depthStencil.stencil);
 
-        // Stencil is not resolved: Metal stencil resolve filters are "sample 0" and "the sample selected by the depth filter",
-        // none of them matches an NRI resolve op (rejected by validation)
+        // Metal stencil resolve filters are "sample 0" and "the sample selected by the depth filter", only "SAMPLE_ZERO" matches an NRI
+        // resolve op ("MIN" and "MAX" are rejected by validation). A combined "depth" attachment resolves stencil with "depth.resolveOp"
+        if (a.resolveDst && a.resolveOp == ResolveOp::SAMPLE_ZERO) {
+            SetAttachmentResolveMetal(n, a);
+            n->setStencilResolveFilter(MTL::MultisampleStencilResolveFilterSample0);
+        }
 
         m_RenderStencil = d.GetTexture()->pixelFormat();
         updateExtent(d);
@@ -1496,7 +1504,7 @@ void CommandBufferMetal::ResolveColor(MTL::Texture* dst, const TextureRegionDesc
             uint32_t layer;
             uint32_t samples;
             uint32_t op;
-        } constants = {{srcRegion.x, srcRegion.y}, srcRegion.layerOffset, (uint32_t)src->sampleCount(), op == ResolveOp::MIN ? 1u : 2u};
+        } constants = {{srcRegion.x, srcRegion.y}, srcRegion.layerOffset, op == ResolveOp::SAMPLE_ZERO ? 1u : (uint32_t)src->sampleCount(), op == ResolveOp::MIN ? 1u : 2u}; // "SAMPLE_ZERO": only the sample 0 is read
 
         m_InternalArguments->setAddress(m_Allocator->Upload(&constants, sizeof(constants)), INTERNAL_SLOT_CONSTANTS);
         m_InternalArguments->setTexture(src->gpuResourceID(), INTERNAL_SLOT_TEXTURE);

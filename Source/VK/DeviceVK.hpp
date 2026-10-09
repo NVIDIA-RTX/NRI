@@ -1579,7 +1579,9 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.rectDepthStencilClears = true;
         m_Desc.features.regionResolve = true;
         m_Desc.features.resolveOpMinMax = m_IsSupported.maintenance10 && m_IsSupported.copyCommands2; // TODO: it's "all or nothing", without it "min/max" resolve is supported only in a render pass
-        m_Desc.features.resolveOpAverageDepth = (props12.supportedDepthResolveModes & VK_RESOLVE_MODE_AVERAGE_BIT) != 0;
+        // Depth-stencil and integer color formats are resolvable only with "maintenance10" (see "GetFormatSupport")
+        m_Desc.features.resolveOpAverageDepth = m_IsSupported.maintenance10 && (props12.supportedDepthResolveModes & VK_RESOLVE_MODE_AVERAGE_BIT) != 0;
+        m_Desc.features.resolveOpSampleZero = m_IsSupported.maintenance10; // always supported for depth and stencil, integer color formats are resolvable only with it
         m_Desc.features.pipelineCache = true;
         m_Desc.features.pipelineCacheControl = features13.pipelineCreationCacheControl;
         m_Desc.features.getMemoryDesc2 = m_IsSupported.maintenance4;
@@ -3611,8 +3613,10 @@ NRI_INLINE FormatSupportBits DeviceVK::GetFormatSupport(Format format) const {
     UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT, FormatSupportBits::VERTEX_BUFFER);
     UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT, FormatSupportBits::STORAGE_BUFFER_ATOMICS);
 
-    // Integer color formats can be resolved only with "SAMPLE_ZERO", which is not exposed
-    if ((supportBits & FormatSupportBits::COLOR_ATTACHMENT) && !formatProps.isInteger)
+    // Integer color formats can be resolved only with "SAMPLE_ZERO", which "vkCmdResolveImage" guarantees only with "maintenance10" and
+    // legacy render passes can't express (no resolve modes for color)
+    const bool isSampleZeroColorResolveSupported = m_IsSupported.maintenance10 && m_IsSupported.dynamicRendering;
+    if ((supportBits & FormatSupportBits::COLOR_ATTACHMENT) && (!formatProps.isInteger || isSampleZeroColorResolveSupported))
         supportBits |= FormatSupportBits::MULTISAMPLE_RESOLVE;
     if ((supportBits & FormatSupportBits::DEPTH_STENCIL_ATTACHMENT) && m_IsSupported.maintenance10)
         supportBits |= FormatSupportBits::MULTISAMPLE_RESOLVE;

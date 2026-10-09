@@ -48,9 +48,10 @@ constexpr VkAttachmentStoreOp GetStoreOp(StoreOp storeOp, bool storeOpNoneSuppor
 }
 
 constexpr std::array<VkResolveModeFlagBits, (size_t)ResolveOp::MAX_NUM> g_ResolveOps = {
-    VK_RESOLVE_MODE_AVERAGE_BIT, // AVERAGE
-    VK_RESOLVE_MODE_MIN_BIT,     // MIN
-    VK_RESOLVE_MODE_MAX_BIT,     // MAX
+    VK_RESOLVE_MODE_AVERAGE_BIT,     // AVERAGE
+    VK_RESOLVE_MODE_MIN_BIT,         // MIN
+    VK_RESOLVE_MODE_MAX_BIT,         // MAX
+    VK_RESOLVE_MODE_SAMPLE_ZERO_BIT, // SAMPLE_ZERO
 };
 NRI_VALIDATE_ARRAY(g_ResolveOps);
 

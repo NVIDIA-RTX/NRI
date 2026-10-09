@@ -433,6 +433,7 @@ void DeviceMetal::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.features.rectDepthStencilClears = true;
     m_Desc.features.regionResolve = true;
     m_Desc.features.resolveOpMinMax = true;
+    m_Desc.features.resolveOpSampleZero = true; // native for depth and stencil, color is resolved by a shader
     m_Desc.features.rootConstantsOffset = true;
     m_Desc.features.nonConstantBufferRootDescriptorOffset = true;
     m_Desc.features.textureCompressionBC = m_Device->supportsBCTextureCompression();

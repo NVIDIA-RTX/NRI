@@ -1651,7 +1651,8 @@ NriEnum(StoreOp, uint8_t,
 NriEnum(ResolveOp, uint8_t,
     AVERAGE,    // resolves the source samples to their average value, can't be used with integer and stencil formats. Depth: requires "features.resolveOpAverageDepth"
     MIN,        // resolves the source samples to their minimum value, requires "features.resolveOpMinMax". Color: unsupported in VK. Stencil: unsupported in Metal
-    MAX         // resolves the source samples to their maximum value, requires "features.resolveOpMinMax". Color: unsupported in VK. Stencil: unsupported in Metal
+    MAX,        // resolves the source samples to their maximum value, requires "features.resolveOpMinMax". Color: unsupported in VK. Stencil: unsupported in Metal
+    SAMPLE_ZERO // takes the value of the sample 0, requires "features.resolveOpSampleZero". Color: integer formats only in VK
 );
 
 NriStruct(AttachmentDesc) {
@@ -2237,6 +2238,7 @@ NriStruct(DeviceDesc) {
         bool regionResolve;                                       // see "CmdResolveTexture"
         bool resolveOpMinMax;                                     // see "ResolveOp"
         bool resolveOpAverageDepth;                               // "ResolveOp::AVERAGE" can be used for depth (see "ResolveOp")
+        bool resolveOpSampleZero;                                 // see "ResolveOp::SAMPLE_ZERO"
 
         // Pipeline cache
         bool pipelineCache;                                       // "PipelineCache" support (NOP fallback if unsupported, except on error)
