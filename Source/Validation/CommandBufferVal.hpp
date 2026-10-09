@@ -132,11 +132,8 @@ static inline ResolveOpBits GetColorResolveOps(const ResolveOps& resolveOps, For
     return GetFormatProps(format).isInteger ? resolveOps.colorInteger : resolveOps.color;
 }
 
-// Planes resolved by "CmdResolveTexture" for a region ("ALL" or no region means all planes of the format)
-static inline PlaneBits GetResolvedPlanes(Format format, const TextureRegionDesc* region) {
-    if (region && region->planes != PlaneBits::ALL)
-        return region->planes;
-
+// All planes of a format
+static inline PlaneBits GetFormatPlanes(Format format) {
     const FormatProps& formatProps = GetFormatProps(format);
     if (!formatProps.isDepth && !formatProps.isStencil)
         return PlaneBits::COLOR;
@@ -148,6 +145,18 @@ static inline PlaneBits GetResolvedPlanes(Format format, const TextureRegionDesc
         planes |= PlaneBits::STENCIL;
 
     return planes;
+}
+
+// Planes resolved by "CmdResolveTexture" for a region ("ALL" or no region means all planes of the format)
+static inline PlaneBits GetResolvedPlanes(Format format, const TextureRegionDesc* region) {
+    return region && region->planes != PlaneBits::ALL ? region->planes : GetFormatPlanes(format);
+}
+
+// Explicit planes must exist in the format ("NONE" is not resolvable)
+static inline bool AreResolvedPlanesValid(Format format, PlaneBits planes) {
+    const PlaneBits formatPlanes = GetFormatPlanes(format);
+
+    return planes != PlaneBits::NONE && (planes & formatPlanes) == (uint8_t)planes;
 }
 
 static bool ValidateBufferBarrierDesc(const DeviceVal& device, uint32_t i, const BufferBarrierDesc& bufferBarrier) {
@@ -992,6 +1001,8 @@ NRI_INLINE void CommandBufferVal::ResolveTexture(Texture& dstTexture, const Text
     // A missing region covers all planes
     const PlaneBits srcPlanes = GetResolvedPlanes(srcDesc.format, srcRegion);
     const PlaneBits dstPlanes = GetResolvedPlanes(dstDesc.format, dstRegion);
+    NRI_RETURN_ON_FAILURE(&m_Device, AreResolvedPlanesValid(srcDesc.format, srcPlanes), ReturnVoid(), "'srcRegion->planes' is empty or has planes missing in the source format");
+    NRI_RETURN_ON_FAILURE(&m_Device, AreResolvedPlanesValid(dstDesc.format, dstPlanes), ReturnVoid(), "'dstRegion->planes' is empty or has planes missing in the destination format");
     NRI_RETURN_ON_FAILURE(&m_Device, srcPlanes == dstPlanes, ReturnVoid(), "source and destination must resolve the same planes");
 
     if (resolveOp == ResolveOp::AVERAGE)
