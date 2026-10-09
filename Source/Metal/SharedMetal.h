@@ -83,6 +83,47 @@ static_assert(CONVERTED_VERTEX_ATTRIBUTE_BASE + CONVERTED_VERTEX_ATTRIBUTE_NUM =
 constexpr uint32_t DRAW_EMULATION_SPACE = 999;    // "NRI_BASE_ATTRIBUTES_EMULATION_SPACE" in "NRI.hlsl"
 constexpr uint32_t FRAMEBUFFER_FETCH_SPACE = 998; // input attachments
 
+// Descriptor table entry ("IRDescriptorTableEntry" / "NriDescriptorEntry")
+struct DescriptorEntryMetal {
+    uint64_t bufferAddress; // buffer GPU address or sampler resource ID
+    uint64_t resourceId;    // texture resource ID
+    uint64_t metadata;      // see "NRI.metal"
+};
+
+constexpr uint64_t DESCRIPTOR_ENTRY_SIZE = sizeof(DescriptorEntryMetal);
+
+// Converted shader, a private format for "PipelineCacheMetal" entries and Metal converter bundles (little-endian): the header, then data at offsets
+// from the start (within "size"): 4-byte aligned "ConvertedVertexInputMetal" array, null-terminated strings and the 8-byte aligned metallib
+constexpr uint32_t CONVERTED_SHADER_MAGIC = 0x5343524E; // "NRCS"
+constexpr uint32_t CONVERTED_SHADER_VERSION = 1;
+constexpr uint32_t CONVERTED_SHADER_SAMPLER_LOD_BIAS = 1 << 0;
+constexpr uint32_t CONVERTED_SHADER_DUAL_SOURCE_BLENDING = 1 << 1;
+
+struct ConvertedVertexInputMetal {
+    uint32_t nameOffset;     // lower-case semantic name and index, i.e. "texcoord1" (reflection "vertex_inputs[].name")
+    uint32_t attributeIndex; // reflection "vertex_inputs[].index", less than "CONVERTED_VERTEX_ATTRIBUTE_NUM"
+};
+
+struct ConvertedShaderHeaderMetal {
+    uint32_t magic;
+    uint32_t version;
+    uint64_t rootSignatureHash;
+    uint32_t size;
+    StageBits stage;
+    uint32_t flags; // "CONVERTED_SHADER_*"
+    uint32_t gpuFamily;
+    uint32_t inputTopology;
+    uint32_t sampleMask;
+    uint32_t threadGroupSize[3];
+    uint32_t payloadSize;
+    uint32_t entryPointOffset;
+    uint32_t functionNameOffset;
+    uint32_t vertexInputOffset;
+    uint32_t vertexInputNum;
+    uint32_t metallibOffset;
+    uint32_t metallibSize;
+};
+
 // Texture atomics: 32-bit "R32Uint" and "R32Sint", 64-bit min/max "RG32Uint" (Apple8+)
 static inline bool IsAtomicFormat(MTL::Device& device, Format format) {
     if (format == Format::RG32_UINT)

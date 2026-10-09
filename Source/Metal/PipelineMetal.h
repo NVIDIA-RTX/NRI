@@ -4,38 +4,6 @@
 
 namespace nri {
 
-// Converted shader, a private format for "PipelineCacheMetal" entries and Metal converter bundles (little-endian): the header, then data at offsets
-// from the start (within "size"): 4-byte aligned "ConvertedVertexInputMetal" array, null-terminated strings and the 8-byte aligned metallib
-constexpr uint32_t CONVERTED_SHADER_MAGIC = 0x5343524E; // "NRCS"
-constexpr uint32_t CONVERTED_SHADER_VERSION = 1;
-constexpr uint32_t CONVERTED_SHADER_SAMPLER_LOD_BIAS = 1 << 0;
-constexpr uint32_t CONVERTED_SHADER_DUAL_SOURCE_BLENDING = 1 << 1;
-
-struct ConvertedVertexInputMetal {
-    uint32_t nameOffset;     // lower-case semantic name and index, i.e. "texcoord1" (reflection "vertex_inputs[].name")
-    uint32_t attributeIndex; // reflection "vertex_inputs[].index", less than "CONVERTED_VERTEX_ATTRIBUTE_NUM"
-};
-
-struct ConvertedShaderHeaderMetal {
-    uint32_t magic;
-    uint32_t version;
-    uint64_t rootSignatureHash;
-    uint32_t size;
-    StageBits stage;
-    uint32_t flags; // "CONVERTED_SHADER_*"
-    uint32_t gpuFamily;
-    uint32_t inputTopology;
-    uint32_t sampleMask;
-    uint32_t threadGroupSize[3];
-    uint32_t payloadSize;
-    uint32_t entryPointOffset;
-    uint32_t functionNameOffset;
-    uint32_t vertexInputOffset;
-    uint32_t vertexInputNum;
-    uint32_t metallibOffset;
-    uint32_t metallibSize;
-};
-
 struct ShaderLoadDescMetal {
     PipelineCacheMetal* cache = nullptr; // converted shaders are looked up and added
     const VertexInputDesc* vertexInput = nullptr;

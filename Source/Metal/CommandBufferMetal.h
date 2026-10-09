@@ -139,7 +139,6 @@ private:
     MTL::GPUAddress SetRayDispatchArguments(const IRDispatchRaysDescriptor& desc);
 #endif
     void ResolveColor(MTL::Texture* dst, const TextureRegionDesc& dstRegion, MTL::Texture* src, const TextureRegionDesc& srcRegion, ResolveOp op, Format format, bool attachmentResolve = false);
-    static MTL::Size GetRegionSize(const TextureMetal& texture, const TextureRegionDesc& region);
 
     DeviceMetal& m_Device;
     CommandAllocatorMetal* m_Allocator = nullptr;

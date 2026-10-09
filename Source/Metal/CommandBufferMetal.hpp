@@ -100,6 +100,12 @@ static inline ColorTypeMetal GetColorType(Format format) {
     return props.isSigned ? ColorTypeMetal::SINT : ColorTypeMetal::UINT;
 }
 
+static inline MTL::Size GetRegionSize(const TextureMetal& t, const TextureRegionDesc& r) {
+    const TextureDesc& d = t.GetDesc();
+
+    return MTL::Size(r.width ? r.width : std::max(1u, uint32_t(d.width) >> r.mipOffset), r.height ? r.height : std::max(1u, uint32_t(d.height) >> r.mipOffset), r.depth ? r.depth : std::max(1u, uint32_t(d.depth) >> r.mipOffset));
+}
+
 static inline MTL::BlitOption GetTextureCopyOptions(const TextureMetal& texture, PlaneBits planes) {
     const FormatProps& props = GetFormatProps(texture.GetDesc().format);
 
@@ -1410,12 +1416,6 @@ void CommandBufferMetal::CmdCopyBuffer(Buffer& d, uint64_t dof, const Buffer& s,
         z = ((const BufferMetal&)s).GetDesc().size;
 
     BeginCompute()->copyFromBuffer(((BufferMetal&)s).GetNativeObject(), sof, ((BufferMetal&)d).GetNativeObject(), dof, z);
-}
-
-MTL::Size CommandBufferMetal::GetRegionSize(const TextureMetal& t, const TextureRegionDesc& r) {
-    const TextureDesc& d = t.GetDesc();
-
-    return MTL::Size(r.width ? r.width : std::max(1u, uint32_t(d.width) >> r.mipOffset), r.height ? r.height : std::max(1u, uint32_t(d.height) >> r.mipOffset), r.depth ? r.depth : std::max(1u, uint32_t(d.depth) >> r.mipOffset));
 }
 
 void CommandBufferMetal::CmdCopyTexture(Texture& d, const TextureRegionDesc* dr, const Texture& s, const TextureRegionDesc* sr) {

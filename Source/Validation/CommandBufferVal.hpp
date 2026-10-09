@@ -149,7 +149,7 @@ static inline PlaneBits GetFormatPlanes(Format format) {
 
 // Planes resolved by "CmdResolveTexture" for a region ("ALL" or no region means all planes of the format)
 static inline PlaneBits GetResolvedPlanes(Format format, const TextureRegionDesc* region) {
-    return region && region->planes != PlaneBits::ALL ? region->planes : GetFormatPlanes(format);
+    return (region && region->planes != PlaneBits::ALL) ? region->planes : GetFormatPlanes(format);
 }
 
 // Explicit planes must exist in the format ("NONE" is not resolvable)

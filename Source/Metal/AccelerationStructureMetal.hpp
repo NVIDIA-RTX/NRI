@@ -187,7 +187,7 @@ static inline uint64_t GetTopLevelHeaderSize(uint32_t instanceNum) {
 }
 
 // TLAS memory = AS storage + header (with instance contributions) placed after it, inside the same NRI memory
-static inline void GetAccelerationStructureMemoryDescMetal(DeviceMetal& device, AccelerationStructureType type, uint64_t size, uint32_t instanceNum, MemoryLocation memoryLocation, MemoryDesc& memoryDesc, uint64_t& headerOffset) {
+static inline void GetAccelerationStructureMemoryDesc(DeviceMetal& device, AccelerationStructureType type, uint64_t size, uint32_t instanceNum, MemoryLocation memoryLocation, MemoryDesc& memoryDesc, uint64_t& headerOffset) {
     const MTL::SizeAndAlign accelerationStructure = device.GetNativeObject()->heapAccelerationStructureSizeAndAlign((NS::UInteger)size);
 
     memoryDesc = {};
@@ -234,7 +234,7 @@ void AccelerationStructureMetal::GetMemoryDesc(DeviceMetal& device, const Accele
     const uint32_t instanceNum = desc.type == AccelerationStructureType::TOP_LEVEL ? desc.geometryOrInstanceNum : 0;
 
     uint64_t headerOffset = 0;
-    GetAccelerationStructureMemoryDescMetal(device, desc.type, sizes.accelerationStructureSize, instanceNum, memoryLocation, memoryDesc, headerOffset);
+    GetAccelerationStructureMemoryDesc(device, desc.type, sizes.accelerationStructureSize, instanceNum, memoryLocation, memoryDesc, headerOffset);
 }
 
 Result AccelerationStructureMetal::Create(const AccelerationStructureDesc& desc) {
@@ -244,7 +244,7 @@ Result AccelerationStructureMetal::Create(const AccelerationStructureDesc& desc)
     m_Sizes = GetAccelerationStructureSizes(m_Device, desc);
     m_Size = m_Sizes.accelerationStructureSize;
 
-    GetAccelerationStructureMemoryDescMetal(m_Device, m_Type, m_Size, m_InstanceNum, MemoryLocation::DEVICE, m_MemoryDesc, m_HeaderOffset);
+    GetAccelerationStructureMemoryDesc(m_Device, m_Type, m_Size, m_InstanceNum, MemoryLocation::DEVICE, m_MemoryDesc, m_HeaderOffset);
 
     BufferDesc barrierDesc = {};
     barrierDesc.size = m_Size;

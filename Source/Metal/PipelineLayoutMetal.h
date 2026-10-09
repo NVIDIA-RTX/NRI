@@ -3,15 +3,6 @@
 
 namespace nri {
 
-// Descriptor table entry ("IRDescriptorTableEntry" / "NriDescriptorEntry")
-struct DescriptorEntryMetal {
-    uint64_t bufferAddress; // buffer GPU address or sampler resource ID
-    uint64_t resourceId;    // texture resource ID
-    uint64_t metadata;      // see "NRI.metal"
-};
-
-constexpr uint64_t DESCRIPTOR_ENTRY_SIZE = sizeof(DescriptorEntryMetal);
-
 // Root signature parameter, as reflected by Converter ("TopLevelArgumentBuffer")
 struct RootArgumentMetal {
     const char* type; // "Constant", "CBV", "SRV", "UAV" or "Table"

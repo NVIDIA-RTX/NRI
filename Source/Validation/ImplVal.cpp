@@ -2200,7 +2200,17 @@ struct UpscalerVal final : public ObjectVal {
         return (UpscalerImpl*)m_Impl;
     }
 
-    UpscalerDesc m_Desc = {};       // only for .natvis
+    inline const Dim2_t& GetMetalFxInputSize() const {
+        return m_MetalFxInputSize;
+    }
+
+    inline void SetMetalFxInputSize(const Dim2_t& size) {
+        m_MetalFxInputSize = size;
+    }
+
+    UpscalerDesc m_Desc = {}; // only for .natvis
+
+private:
     Dim2_t m_MetalFxInputSize = {}; // MetalFX scalers are created for the "input" size of the first dispatch
 };
 
@@ -2299,7 +2309,7 @@ static void NRI_CALL CmdDispatchUpscale(CommandBuffer& commandBuffer, Upscaler& 
     if (isMetalFx) {
         const TextureDesc& outputDesc = ((TextureVal*)dispatchUpscaleDesc.output.texture)->GetDesc();
         const TextureDesc& inputDesc = ((TextureVal*)dispatchUpscaleDesc.input.texture)->GetDesc();
-        const Dim2_t& inputSize = upscalerVal.m_MetalFxInputSize;
+        const Dim2_t& inputSize = upscalerVal.GetMetalFxInputSize();
 
         NRI_RETURN_ON_FAILURE(&deviceVal, ((CommandBufferVal&)commandBuffer).CanDispatch(), ReturnVoid(), "MetalFX requires an open graphics or compute command buffer outside of rendering");
         NRI_RETURN_ON_FAILURE(&deviceVal, outputDesc.usage & TextureUsageBits::COLOR_ATTACHMENT, ReturnVoid(), "'output.texture' requires 'COLOR_ATTACHMENT' usage for MetalFX");
@@ -2361,9 +2371,9 @@ static void NRI_CALL CmdDispatchUpscale(CommandBuffer& commandBuffer, Upscaler& 
         }
     }
 
-    if (isMetalFx && upscalerVal.m_MetalFxInputSize.w == 0) {
+    if (isMetalFx && upscalerVal.GetMetalFxInputSize().w == 0) {
         const TextureDesc& inputDesc = ((TextureVal*)dispatchUpscaleDesc.input.texture)->GetDesc();
-        upscalerVal.m_MetalFxInputSize = {inputDesc.width, inputDesc.height};
+        upscalerVal.SetMetalFxInputSize({inputDesc.width, inputDesc.height});
     }
 
     upscalerImpl->CmdDispatchUpscale(commandBuffer, dispatchUpscaleDesc);

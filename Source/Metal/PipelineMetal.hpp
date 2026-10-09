@@ -234,7 +234,7 @@ struct ConvertedVertexInputDescMetal {
 
 // Fills "header" offsets and sizes, returns the metallib destination
 static inline uint8_t* WriteConvertedShader(Vector<uint8_t>& storage, ConvertedShaderHeaderMetal& header, const char* entryPoint, const char* functionName, size_t functionNameLength,
-    const Vector<ConvertedVertexInputDescMetal>& vertexInputs, size_t metallibSize) {
+    const ConvertedVertexInputDescMetal* vertexInputs, uint32_t vertexInputNum, size_t metallibSize) {
     auto append = [&](const char* string, size_t length) {
         const uint32_t offset = (uint32_t)storage.size();
         storage.insert(storage.end(), (const uint8_t*)string, (const uint8_t*)string + length);
@@ -246,13 +246,13 @@ static inline uint8_t* WriteConvertedShader(Vector<uint8_t>& storage, ConvertedS
     header.magic = CONVERTED_SHADER_MAGIC;
     header.version = CONVERTED_SHADER_VERSION;
     header.vertexInputOffset = sizeof(header);
-    header.vertexInputNum = (uint32_t)vertexInputs.size();
+    header.vertexInputNum = vertexInputNum;
 
-    storage.resize(sizeof(header) + vertexInputs.size() * sizeof(ConvertedVertexInputMetal));
+    storage.resize(sizeof(header) + vertexInputNum * sizeof(ConvertedVertexInputMetal));
     header.entryPointOffset = append(entryPoint, strlen(entryPoint));
     header.functionNameOffset = append(functionName, functionNameLength);
 
-    for (size_t i = 0; i < vertexInputs.size(); i++) {
+    for (uint32_t i = 0; i < vertexInputNum; i++) {
         ConvertedVertexInputMetal vertexInput = {};
         vertexInput.nameOffset = append(vertexInputs[i].name, vertexInputs[i].nameLength);
         vertexInput.attributeIndex = vertexInputs[i].attributeIndex;
@@ -685,7 +685,8 @@ static inline Result LoadMetalBundle(DeviceMetal& device, const PipelineLayoutMe
     header.threadGroupSize[1] = 1;
     header.threadGroupSize[2] = 1;
 
-    Vector<ConvertedVertexInputDescMetal> vertexInputs(device.GetStdAllocator());
+    std::array<ConvertedVertexInputDescMetal, CONVERTED_VERTEX_ATTRIBUTE_NUM> vertexInputs = {};
+    uint32_t vertexInputNum = 0;
     const char* type = nullptr;
     const char* functionName = nullptr;
     size_t typeLength = 0;
@@ -703,11 +704,13 @@ static inline Result LoadMetalBundle(DeviceMetal& device, const PipelineLayoutMe
         JsonValueMetal inputs = {};
 
         isValid = !FindJsonMember(state, "vertex_inputs", inputs) || ForEachJsonValue(inputs, [&](JsonValueMetal, JsonValueMetal input) {
-            ConvertedVertexInputDescMetal vertexInput = {};
-            const bool isParsed = GetJsonMemberString(input, "name", vertexInput.name, vertexInput.nameLength) && GetJsonMemberUint(input, "index", vertexInput.attributeIndex);
-            vertexInputs.push_back(vertexInput);
+            if (vertexInputNum == vertexInputs.size())
+                return false;
 
-            return isParsed && vertexInput.attributeIndex < CONVERTED_VERTEX_ATTRIBUTE_NUM && vertexInputs.size() <= CONVERTED_VERTEX_ATTRIBUTE_NUM;
+            ConvertedVertexInputDescMetal& vertexInput = vertexInputs[vertexInputNum++];
+            const bool isParsed = GetJsonMemberString(input, "name", vertexInput.name, vertexInput.nameLength) && GetJsonMemberUint(input, "index", vertexInput.attributeIndex);
+
+            return isParsed && vertexInput.attributeIndex < CONVERTED_VERTEX_ATTRIBUTE_NUM;
         });
     }
 
@@ -726,14 +729,14 @@ static inline Result LoadMetalBundle(DeviceMetal& device, const PipelineLayoutMe
     }
 
     const char* entryPoint = shader.entryPointName ? shader.entryPointName : "main";
-    uint8_t* metallib = WriteConvertedShader(storage, header, entryPoint, functionName, functionNameLength, vertexInputs, bundle[3]);
+    uint8_t* metallib = WriteConvertedShader(storage, header, entryPoint, functionName, functionNameLength, vertexInputs.data(), vertexInputNum, bundle[3]);
     memcpy(metallib, data + bundle[2], bundle[3]);
 
     return Result::SUCCESS;
 }
 
 // "failOnMiss" without a cache fails, since there is nothing to look up in
-static inline MTL::ComputePipelineState* NewComputePipelineMetal(DeviceMetal& device, const PipelineCache* cache, bool failOnMiss, const MTL4::ComputePipelineDescriptor* desc, const MTL4::PipelineStageDynamicLinkingDescriptor* linking, NS::Error** error) {
+static inline MTL::ComputePipelineState* NewComputePipeline(DeviceMetal& device, const PipelineCache* cache, bool failOnMiss, const MTL4::ComputePipelineDescriptor* desc, const MTL4::PipelineStageDynamicLinkingDescriptor* linking, NS::Error** error) {
     if (cache)
         return ((PipelineCacheMetal*)cache)->NewComputePipeline(desc, linking, failOnMiss, error);
 
@@ -745,7 +748,7 @@ static inline MTL::ComputePipelineState* NewComputePipelineMetal(DeviceMetal& de
     return linking ? compiler->newComputePipelineState(desc, linking, nullptr, error) : compiler->newComputePipelineState(desc, nullptr, error);
 }
 
-static inline MTL::RenderPipelineState* NewRenderPipelineMetal(DeviceMetal& device, const PipelineCache* cache, bool failOnMiss, const MTL4::PipelineDescriptor* desc, NS::Error** error) {
+static inline MTL::RenderPipelineState* NewRenderPipeline(DeviceMetal& device, const PipelineCache* cache, bool failOnMiss, const MTL4::PipelineDescriptor* desc, NS::Error** error) {
     if (cache)
         return ((PipelineCacheMetal*)cache)->NewRenderPipeline(desc, failOnMiss, error);
 
@@ -984,20 +987,27 @@ Result PipelineMetal::ConvertShader(const ShaderDesc& shader, const ShaderLoadDe
         IRMetalLibBinaryDestroy(stageIn);
     }
 
+    // Converted vertex shaders have at most "CONVERTED_VERTEX_ATTRIBUTE_NUM" inputs
+    const uint32_t vertexInputNum = hasVertexInfo ? (uint32_t)vertexInfo.info_1_0.num_vertex_inputs : 0;
+
+    if (result == Result::SUCCESS && vertexInputNum > CONVERTED_VERTEX_ATTRIBUTE_NUM) {
+        NRI_REPORT_ERROR(&m_Device, "Converted vertex shaders support up to %u vertex inputs", CONVERTED_VERTEX_ATTRIBUTE_NUM);
+        result = Result::UNSUPPORTED;
+    }
+
     // Container
     if (result == Result::SUCCESS) {
-        const uint32_t vertexInputNum = hasVertexInfo ? (uint32_t)vertexInfo.info_1_0.num_vertex_inputs : 0;
-        Vector<ConvertedVertexInputDescMetal> vertexInputs(m_Device.GetStdAllocator());
+        std::array<ConvertedVertexInputDescMetal, CONVERTED_VERTEX_ATTRIBUTE_NUM> vertexInputs = {};
 
         for (uint32_t i = 0; i < vertexInputNum; i++) {
             const IRVertexInputInfo_1_0& source = vertexInfo.info_1_0.vertex_inputs[i];
             const char* name = source.name ? source.name : "";
 
-            vertexInputs.push_back({name, strlen(name), source.attributeIndex});
+            vertexInputs[i] = {name, strlen(name), source.attributeIndex};
         }
 
         const char* name = functionName ? functionName : entryPoint;
-        uint8_t* metallib = WriteConvertedShader(storage, header, entryPoint, name, strlen(name), vertexInputs, IRMetalLibGetBytecodeSize(binary));
+        uint8_t* metallib = WriteConvertedShader(storage, header, entryPoint, name, strlen(name), vertexInputs.data(), vertexInputNum, IRMetalLibGetBytecodeSize(binary));
         IRMetalLibGetBytecode(binary, metallib);
 
         if (cache)
@@ -1147,7 +1157,7 @@ Result PipelineMetal::Create(const ComputePipelineDesc& desc) {
         pipelineDesc->setRequiredThreadsPerThreadgroup(m_ThreadGroup);
 
         NS::Error* error = nullptr;
-        m_Compute = NewComputePipelineMetal(m_Device, desc.cache, failOnCacheMiss, pipelineDesc, nullptr, &error);
+        m_Compute = NewComputePipeline(m_Device, desc.cache, failOnCacheMiss, pipelineDesc, nullptr, &error);
 
         if (!m_Compute) {
             result = Result::FAILURE;
@@ -1406,7 +1416,7 @@ Result PipelineMetal::Create(const RayTracingPipelineDesc& desc) {
         const bool failOnCacheMiss = desc.flags & RayTracingPipelineBits::FAIL_ON_CACHE_MISS;
 
         NS::Error* error = nullptr;
-        m_Compute = NewComputePipelineMetal(m_Device, desc.cache, failOnCacheMiss, pipelineDesc, dynamicLinking, &error);
+        m_Compute = NewComputePipeline(m_Device, desc.cache, failOnCacheMiss, pipelineDesc, dynamicLinking, &error);
 
         if (!m_Compute) {
             result = Result::FAILURE;
@@ -1908,7 +1918,7 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
 #endif
 
         if (result == Result::SUCCESS) {
-            m_Render = NewRenderPipelineMetal(m_Device, desc.cache, failOnCacheMiss, isMesh ? (MTL4::PipelineDescriptor*)mpd : (MTL4::PipelineDescriptor*)pd, &error);
+            m_Render = NewRenderPipeline(m_Device, desc.cache, failOnCacheMiss, isMesh ? (MTL4::PipelineDescriptor*)mpd : (MTL4::PipelineDescriptor*)pd, &error);
 
             if (!m_Render) {
                 result = Result::FAILURE;
