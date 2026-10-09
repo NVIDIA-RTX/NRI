@@ -2342,7 +2342,10 @@ NRI_INLINE void CommandBufferVK::UploadBufferToTexture(Texture& dstTexture, cons
             stride = (planes & PlaneBits::PLANE_1) ? 4 : 2;
             blockWidth = 1;
             blockHeight = 1;
-        }
+        } else if (planes == PlaneBits::STENCIL && GetFormatProps(format).isStencil)
+            stride = 1; // buffer texels of the stencil aspect are 8-bit
+        else if (planes == PlaneBits::DEPTH && GetFormatProps(format).isStencil)
+            stride = 4; // buffer texels of the depth aspect of a depth-stencil format don't include stencil
     };
     auto getPlaneDivisor = [](Format format, PlaneBits planes) {
         return ((planes & PlaneBits::PLANE_1) && (format == Format::NV12_UNORM || format == Format::P010_UNORM || format == Format::P016_UNORM)) ? 2u : 1u;
@@ -2423,7 +2426,10 @@ NRI_INLINE void CommandBufferVK::ReadbackTextureToBuffer(Buffer& dstBuffer, cons
             stride = (planes & PlaneBits::PLANE_1) ? 4 : 2;
             blockWidth = 1;
             blockHeight = 1;
-        }
+        } else if (planes == PlaneBits::STENCIL && GetFormatProps(format).isStencil)
+            stride = 1; // buffer texels of the stencil aspect are 8-bit
+        else if (planes == PlaneBits::DEPTH && GetFormatProps(format).isStencil)
+            stride = 4; // buffer texels of the depth aspect of a depth-stencil format don't include stencil
     };
     auto getPlaneDivisor = [](Format format, PlaneBits planes) {
         return ((planes & PlaneBits::PLANE_1) && (format == Format::NV12_UNORM || format == Format::P010_UNORM || format == Format::P016_UNORM)) ? 2u : 1u;
