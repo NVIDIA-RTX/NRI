@@ -2245,7 +2245,7 @@ NriStruct(DeviceDesc) {
         bool shaderBytecodeDXIL;                                  // DXIL can be passed to "ShaderDesc::bytecode"
         bool shaderBytecodeSPIRV;                                 // SPIRV can be passed to "ShaderDesc::bytecode", WGPU expects Vulkan 1.2 environment
         bool shaderBytecodeWGSL;                                  // WGSL can be passed to "ShaderDesc::bytecode"
-        bool shaderBytecodeMETALLIB;                              // native Metal library can be passed to "ShaderDesc::bytecode" (and pre-converted DXIL, see "NRIWrapperMetal.h")
+        bool shaderBytecodeMETALLIB;                              // accepts native ".metallib" and pre-converted DXIL ".metalbundle" binaries
 
         // Queries
         bool occlusion;                                           // see "QueryType::OCCLUSION"
