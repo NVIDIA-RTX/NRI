@@ -1649,7 +1649,7 @@ NriEnum(StoreOp, uint8_t,
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_resolve_mode
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkResolveModeFlagBits.html
 NriEnum(ResolveOp, uint8_t,
-    AVERAGE,    // resolves the source samples to their average value, can't be used with integer and stencil formats. Depth: optional in VK ("supportedDepthResolveModes"), unsupported in Metal
+    AVERAGE,    // resolves the source samples to their average value, can't be used with integer and stencil formats. Depth: requires "features.resolveOpAverageDepth"
     MIN,        // resolves the source samples to their minimum value, requires "features.resolveOpMinMax". Color: unsupported in VK. Stencil: unsupported in Metal
     MAX         // resolves the source samples to their maximum value, requires "features.resolveOpMinMax". Color: unsupported in VK. Stencil: unsupported in Metal
 );
@@ -2236,6 +2236,7 @@ NriStruct(DeviceDesc) {
         // Resolve
         bool regionResolve;                                       // see "CmdResolveTexture"
         bool resolveOpMinMax;                                     // see "ResolveOp"
+        bool resolveOpAverageDepth;                               // "ResolveOp::AVERAGE" can be used for depth (see "ResolveOp")
 
         // Pipeline cache
         bool pipelineCache;                                       // "PipelineCache" support (NOP fallback if unsupported, except on error)

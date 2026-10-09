@@ -114,6 +114,24 @@ static inline bool IsAverageResolvable(Format format, PlaneBits planes = PlaneBi
     return !isIntegerColor && (!formatProps.isStencil || (planes != PlaneBits::ALL && !(planes & PlaneBits::STENCIL)));
 }
 
+// Planes resolved by "CmdResolveTexture" for a region ("ALL" or no region means all planes of the format)
+static inline PlaneBits GetResolvedPlanes(Format format, const TextureRegionDesc* region) {
+    if (region && region->planes != PlaneBits::ALL)
+        return region->planes;
+
+    const FormatProps& formatProps = GetFormatProps(format);
+    if (!formatProps.isDepth && !formatProps.isStencil)
+        return PlaneBits::COLOR;
+
+    PlaneBits planes = PlaneBits::ALL; // 0
+    if (formatProps.isDepth)
+        planes |= PlaneBits::DEPTH;
+    if (formatProps.isStencil)
+        planes |= PlaneBits::STENCIL;
+
+    return planes;
+}
+
 static bool ValidateBufferBarrierDesc(const DeviceVal& device, uint32_t i, const BufferBarrierDesc& bufferBarrier) {
     NRI_RETURN_ON_FAILURE(&device, bufferBarrier.buffer, false, "'barrierDesc.buffers[%u].buffer' is NULL", i);
 
@@ -668,11 +686,12 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
         if (renderingDesc.depth.resolveOp == ResolveOp::AVERAGE)
             NRI_RETURN_ON_FAILURE(&m_Device, !isStencilResolved, ReturnVoid(), "'depth.resolveOp': 'ResolveOp::AVERAGE' can't be used with a depth-stencil format without a separate 'stencil' attachment");
 
-        // Metal depth resolve filters are "sample 0", "min" and "max". Stencil can't be resolved with "min" or "max"
-        if (deviceDesc.graphicsAPI == GraphicsAPI::METAL) {
-            NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.depth.resolveOp != ResolveOp::AVERAGE, ReturnVoid(), "'depth.resolveOp': 'ResolveOp::AVERAGE' is not supported by Metal");
+        if (renderingDesc.depth.resolveOp == ResolveOp::AVERAGE)
+            NRI_RETURN_ON_FAILURE(&m_Device, deviceDesc.features.resolveOpAverageDepth, ReturnVoid(), "'depth.resolveOp': 'ResolveOp::AVERAGE' requires 'features.resolveOpAverageDepth'");
+
+        // Metal stencil resolve filters are "sample 0" and "the sample selected by the depth filter", none of them is "MIN" or "MAX"
+        if (deviceDesc.graphicsAPI == GraphicsAPI::METAL)
             NRI_RETURN_ON_FAILURE(&m_Device, !isStencilResolved, ReturnVoid(), "'depth.resolveDst': the stencil plane can't be resolved by Metal (use a separate 'stencil' attachment without 'resolveDst')");
-        }
     }
     if (renderingDesc.stencil.descriptor) {
         const DescriptorVal& stencilVal = *(DescriptorVal*)renderingDesc.stencil.descriptor;
@@ -943,8 +962,15 @@ NRI_INLINE void CommandBufferVal::ResolveTexture(Texture& dstTexture, const Text
     if (!deviceDesc.features.resolveOpMinMax)
         NRI_RETURN_ON_FAILURE(&m_Device, resolveOp == ResolveOp::AVERAGE, ReturnVoid(), "'features.resolveOpMinMax' is false");
 
-    if (resolveOp == ResolveOp::AVERAGE)
+    // A missing region covers all planes
+    const PlaneBits srcPlanes = GetResolvedPlanes(srcDesc.format, srcRegion);
+    const PlaneBits dstPlanes = GetResolvedPlanes(dstDesc.format, dstRegion);
+    NRI_RETURN_ON_FAILURE(&m_Device, srcPlanes == dstPlanes, ReturnVoid(), "source and destination must resolve the same planes");
+
+    if (resolveOp == ResolveOp::AVERAGE) {
         NRI_RETURN_ON_FAILURE(&m_Device, IsAverageResolvable(srcDesc.format, srcRegion ? srcRegion->planes : PlaneBits::ALL), ReturnVoid(), "'ResolveOp::AVERAGE' can't be used with integer or stencil formats");
+        NRI_RETURN_ON_FAILURE(&m_Device, !(srcPlanes & PlaneBits::DEPTH) || deviceDesc.features.resolveOpAverageDepth, ReturnVoid(), "'ResolveOp::AVERAGE' for depth requires 'features.resolveOpAverageDepth'");
+    }
 
     const FormatProps& formatProps = GetFormatProps(srcDesc.format);
     const bool isDepthStencil = formatProps.isDepth || formatProps.isStencil;

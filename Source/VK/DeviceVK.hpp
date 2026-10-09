@@ -1579,6 +1579,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.rectDepthStencilClears = true;
         m_Desc.features.regionResolve = true;
         m_Desc.features.resolveOpMinMax = m_IsSupported.maintenance10 && m_IsSupported.copyCommands2; // TODO: it's "all or nothing", without it "min/max" resolve is supported only in a render pass
+        m_Desc.features.resolveOpAverageDepth = (props12.supportedDepthResolveModes & VK_RESOLVE_MODE_AVERAGE_BIT) != 0;
         m_Desc.features.pipelineCache = true;
         m_Desc.features.pipelineCacheControl = features13.pipelineCreationCacheControl;
         m_Desc.features.getMemoryDesc2 = m_IsSupported.maintenance4;

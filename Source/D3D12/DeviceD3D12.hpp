@@ -1189,6 +1189,7 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.features.rectDepthStencilClears = true;
     m_Desc.features.regionResolve = true;
     m_Desc.features.resolveOpMinMax = true;
+    m_Desc.features.resolveOpAverageDepth = true; // "AVERAGE" can be used with the depth plane
     m_Desc.features.pipelineCache = isPipelineLibrarySupported;
     m_Desc.features.pipelineCacheControl = isPipelineLibrarySupported; // emulated via "ID3D12PipelineLibrary::Load*Pipeline" miss-detection
     m_Desc.features.getMemoryDesc2 = true;
