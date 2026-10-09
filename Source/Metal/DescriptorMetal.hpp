@@ -15,7 +15,7 @@ constexpr std::array<MTL::TextureType, (size_t)TextureView::MAX_NUM> g_TextureVi
 NRI_VALIDATE_ARRAY(g_TextureViewTypes);
 
 // 1D textures are height-one 2D textures (see "NRI.metal")
-static MTL::TextureType GetTextureViewTypeMetal(TextureView type, const TextureDesc& textureDesc) {
+static inline MTL::TextureType GetTextureViewType(TextureView type, const TextureDesc& textureDesc) {
     const MTL::TextureType viewType = g_TextureViewTypes[(size_t)type];
 
     if (viewType == MTL::TextureType2D && textureDesc.type == TextureType::TEXTURE_3D)
@@ -38,7 +38,7 @@ constexpr std::array<MTL::TextureSwizzle, (size_t)ComponentSwizzle::MAX_NUM> g_T
 };
 NRI_VALIDATE_ARRAY(g_TextureSwizzles);
 
-static inline MTL::TextureSwizzle GetTextureSwizzleMetal(ComponentSwizzle swizzle, MTL::TextureSwizzle identity) {
+static inline MTL::TextureSwizzle GetTextureSwizzle(ComponentSwizzle swizzle, MTL::TextureSwizzle identity) {
     return swizzle == ComponentSwizzle::IDENTITY ? identity : g_TextureSwizzles[(uint32_t)swizzle];
 }
 
@@ -52,6 +52,13 @@ constexpr std::array<MTL::SamplerAddressMode, (size_t)AddressMode::MAX_NUM> g_Ad
 NRI_VALIDATE_ARRAY(g_AddressModes);
 
 static_assert(sizeof(DescriptorEntryMetal) == 24, "Metal Shader Converter descriptor ABI changed");
+
+static inline bool IsBorderColor(const SamplerDesc& desc, float r, float g, float b, float a) {
+    if (desc.isInteger)
+        return desc.borderColor.ui.x == (uint32_t)r && desc.borderColor.ui.y == (uint32_t)g && desc.borderColor.ui.z == (uint32_t)b && desc.borderColor.ui.w == (uint32_t)a;
+
+    return desc.borderColor.f.x == r && desc.borderColor.f.y == g && desc.borderColor.f.z == b && desc.borderColor.f.w == a;
+}
 
 DescriptorMetal::DescriptorMetal(DeviceMetal& device)
     : m_Device(device) {
@@ -96,7 +103,7 @@ Result DescriptorMetal::Create(const BufferViewDesc& desc) {
     if (desc.type == BufferView::STORAGE_BUFFER) {
         usage |= MTL::TextureUsageShaderWrite;
 
-        if (TextureMetal::IsAtomicFormat(m_Device, desc.format))
+        if (IsAtomicFormat(*m_Device.GetNativeObject(), desc.format))
             usage |= MTL::TextureUsageShaderAtomic;
     }
 
@@ -146,23 +153,16 @@ Result DescriptorMetal::Create(const TextureViewDesc& desc) {
         layers = NS::Range(desc.layerOffset, layerNum);
     }
 
-    const MTL::TextureType type = GetTextureViewTypeMetal(desc.type, m_Texture->GetDesc());
+    const MTL::TextureType type = GetTextureViewType(desc.type, m_Texture->GetDesc());
     const MTL::TextureSwizzleChannels swizzle = MTL::TextureSwizzleChannels::Make(
-        GetTextureSwizzleMetal(desc.components.r, MTL::TextureSwizzleRed),
-        GetTextureSwizzleMetal(desc.components.g, MTL::TextureSwizzleGreen),
-        GetTextureSwizzleMetal(desc.components.b, MTL::TextureSwizzleBlue),
-        GetTextureSwizzleMetal(desc.components.a, MTL::TextureSwizzleAlpha));
+        GetTextureSwizzle(desc.components.r, MTL::TextureSwizzleRed),
+        GetTextureSwizzle(desc.components.g, MTL::TextureSwizzleGreen),
+        GetTextureSwizzle(desc.components.b, MTL::TextureSwizzleBlue),
+        GetTextureSwizzle(desc.components.a, MTL::TextureSwizzleAlpha));
 
     m_TextureView = texture->newTextureView(format, type, NS::Range(desc.mipOffset, mipNum), layers, swizzle);
 
     return m_TextureView ? Result::SUCCESS : Result::FAILURE;
-}
-
-static inline bool IsBorderColor(const SamplerDesc& desc, float r, float g, float b, float a) {
-    if (desc.isInteger)
-        return desc.borderColor.ui.x == (uint32_t)r && desc.borderColor.ui.y == (uint32_t)g && desc.borderColor.ui.z == (uint32_t)b && desc.borderColor.ui.w == (uint32_t)a;
-
-    return desc.borderColor.f.x == r && desc.borderColor.f.y == g && desc.borderColor.f.z == b && desc.borderColor.f.w == a;
 }
 
 Result DescriptorMetal::Create(const SamplerDesc& desc) {

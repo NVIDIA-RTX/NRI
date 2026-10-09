@@ -159,7 +159,7 @@ static inline IRCompatibilityFlags GetIRCompatibilityFlags(MTL::Device& device) 
 constexpr uint32_t CONVERSION_REVISION = 1;
 
 // Converted shaders are identified by the Converter header version and the "LC_UUID" of the loaded library
-static uint64_t GetConverterHash(DeviceMetal& device) {
+static inline uint64_t GetConverterHash(DeviceMetal& device) {
     static const uint64_t s_Hash = [&device] {
         const uint32_t version[] = {CONVERSION_REVISION, IR_VERSION_MAJOR, IR_VERSION_MINOR, IR_VERSION_PATCH};
         uint64_t hash = HashMetal(version, sizeof(version));
@@ -233,7 +233,7 @@ struct ConvertedVertexInputDescMetal {
 };
 
 // Fills "header" offsets and sizes, returns the metallib destination
-static uint8_t* WriteConvertedShader(Vector<uint8_t>& storage, ConvertedShaderHeaderMetal& header, const char* entryPoint, const char* functionName, size_t functionNameLength,
+static inline uint8_t* WriteConvertedShader(Vector<uint8_t>& storage, ConvertedShaderHeaderMetal& header, const char* entryPoint, const char* functionName, size_t functionNameLength,
     const Vector<ConvertedVertexInputDescMetal>& vertexInputs, size_t metallibSize) {
     auto append = [&](const char* string, size_t length) {
         const uint32_t offset = (uint32_t)storage.size();
@@ -285,11 +285,11 @@ static inline const char* SkipJsonSpaces(const char* s, const char* end) {
 }
 
 // Returns the end of the value at "s" or "nullptr"
-static const char* SkipJsonValue(const char* s, const char* end, uint32_t depth);
+static inline const char* SkipJsonValue(const char* s, const char* end, uint32_t depth);
 
 // Calls "callback(key, value)" for object members or "callback(value, value)" for array elements
 template <typename F>
-static bool ForEachJsonValue(JsonValueMetal container, F callback, uint32_t depth = 0) {
+static inline bool ForEachJsonValue(JsonValueMetal container, F callback, uint32_t depth = 0) {
     const char* s = container.begin;
 
     if (s >= container.end || (*s != '{' && *s != '['))
@@ -337,7 +337,7 @@ static bool ForEachJsonValue(JsonValueMetal container, F callback, uint32_t dept
     return false;
 }
 
-static const char* SkipJsonValue(const char* s, const char* end, uint32_t depth) {
+static inline const char* SkipJsonValue(const char* s, const char* end, uint32_t depth) {
     if (s >= end || depth > 16)
         return nullptr;
 
@@ -361,7 +361,7 @@ static const char* SkipJsonValue(const char* s, const char* end, uint32_t depth)
 
         s = SkipJsonSpaces(last ? last : s + 1, end);
 
-        return s < end && *s == close ? s + 1 : nullptr;
+        return (s < end && *s == close) ? s + 1 : nullptr;
     }
 
     // Numbers and literals
@@ -564,7 +564,7 @@ constexpr std::array<MTL::PrimitiveTopologyClass, (size_t)Topology::MAX_NUM> g_T
 NRI_VALIDATE_ARRAY(g_TopologyClasses);
 
 // A face with "CompareOp::NONE" keeps the default descriptor (always passes, keeps the value)
-static inline void SetStencilMetal(MTL::StencilDescriptor* dst, const StencilDesc& src) {
+static inline void SetStencil(MTL::StencilDescriptor* dst, const StencilDesc& src) {
     if (src.compareOp == CompareOp::NONE)
         return;
 
@@ -577,7 +577,7 @@ static inline void SetStencilMetal(MTL::StencilDescriptor* dst, const StencilDes
 }
 
 // "TopLevelArgumentBuffer" must match the pipeline layout, descriptor table accesses must fit into tables
-static bool IsRootSignatureMatchingMetal(const PipelineLayoutMetal& layout, JsonValueMetal reflection) {
+static inline bool IsRootSignatureMatching(const PipelineLayoutMetal& layout, JsonValueMetal reflection) {
     const Vector<RootArgumentMetal>& arguments = layout.GetRootArguments();
     JsonValueMetal value = {};
     size_t index = 0;
@@ -630,7 +630,7 @@ static bool IsRootSignatureMatchingMetal(const PipelineLayoutMetal& layout, Json
 }
 
 // Converter reflection "ShaderType"
-static inline const char* GetReflectionShaderTypeMetal(StageBits stage) {
+static inline const char* GetReflectionShaderType(StageBits stage) {
     if (stage == StageBits::VERTEX_SHADER)
         return "Vertex";
 
@@ -650,7 +650,7 @@ static inline const char* GetReflectionShaderTypeMetal(StageBits stage) {
 }
 
 // Bundles are structurally checked by validation. Converter settings, which are not reflected, can't be checked
-static Result LoadMetalBundle(DeviceMetal& device, const PipelineLayoutMetal& layout, const ShaderDesc& shader, const ShaderLoadDescMetal& load, Vector<uint8_t>& storage) {
+static inline Result LoadMetalBundle(DeviceMetal& device, const PipelineLayoutMetal& layout, const ShaderDesc& shader, const ShaderLoadDescMetal& load, Vector<uint8_t>& storage) {
     uint32_t bundle[6] = {}; // "magic", "version", "metallibOffset", "metallibSize", "reflectionOffset", "reflectionSize"
     NRI_CHECK(shader.size >= sizeof(bundle), "Unexpected bundle size");
     memcpy(bundle, shader.bytecode, sizeof(bundle));
@@ -676,7 +676,7 @@ static Result LoadMetalBundle(DeviceMetal& device, const PipelineLayoutMetal& la
 
     const uint8_t* data = (const uint8_t*)shader.bytecode;
     const JsonValueMetal reflection = {(const char*)data + bundle[4], (const char*)data + bundle[4] + bundle[5]};
-    const char* shaderType = GetReflectionShaderTypeMetal(shader.stage);
+    const char* shaderType = GetReflectionShaderType(shader.stage);
 
     ConvertedShaderHeaderMetal header = {};
     header.stage = shader.stage;
@@ -719,7 +719,7 @@ static Result LoadMetalBundle(DeviceMetal& device, const PipelineLayoutMetal& la
         return Result::INVALID_ARGUMENT;
     }
 
-    if (!IsRootSignatureMatchingMetal(layout, reflection)) {
+    if (!IsRootSignatureMatching(layout, reflection)) {
         NRI_REPORT_ERROR(&device, "Metal converter bundle: the root signature doesn't match the pipeline layout");
 
         return Result::INVALID_ARGUMENT;
@@ -730,6 +730,29 @@ static Result LoadMetalBundle(DeviceMetal& device, const PipelineLayoutMetal& la
     memcpy(metallib, data + bundle[2], bundle[3]);
 
     return Result::SUCCESS;
+}
+
+// "failOnMiss" without a cache fails, since there is nothing to look up in
+static inline MTL::ComputePipelineState* NewComputePipelineMetal(DeviceMetal& device, const PipelineCache* cache, bool failOnMiss, const MTL4::ComputePipelineDescriptor* desc, const MTL4::PipelineStageDynamicLinkingDescriptor* linking, NS::Error** error) {
+    if (cache)
+        return ((PipelineCacheMetal*)cache)->NewComputePipeline(desc, linking, failOnMiss, error);
+
+    if (failOnMiss)
+        return nullptr;
+
+    MTL4::Compiler* compiler = device.GetCompiler();
+
+    return linking ? compiler->newComputePipelineState(desc, linking, nullptr, error) : compiler->newComputePipelineState(desc, nullptr, error);
+}
+
+static inline MTL::RenderPipelineState* NewRenderPipelineMetal(DeviceMetal& device, const PipelineCache* cache, bool failOnMiss, const MTL4::PipelineDescriptor* desc, NS::Error** error) {
+    if (cache)
+        return ((PipelineCacheMetal*)cache)->NewRenderPipeline(desc, failOnMiss, error);
+
+    if (failOnMiss)
+        return nullptr;
+
+    return device.GetCompiler()->newRenderPipelineState(desc, nullptr, error);
 }
 
 PipelineMetal::PipelineMetal(DeviceMetal& device)
@@ -1099,29 +1122,6 @@ Result PipelineMetal::LoadFunction(const ShaderDesc& shader, MTL::Library*& libr
     return function ? Result::SUCCESS : Result::FAILURE;
 }
 
-// "failOnMiss" without a cache fails, since there is nothing to look up in
-static MTL::ComputePipelineState* NewComputePipelineMetal(DeviceMetal& device, const PipelineCache* cache, bool failOnMiss, const MTL4::ComputePipelineDescriptor* desc, const MTL4::PipelineStageDynamicLinkingDescriptor* linking, NS::Error** error) {
-    if (cache)
-        return ((PipelineCacheMetal*)cache)->NewComputePipeline(desc, linking, failOnMiss, error);
-
-    if (failOnMiss)
-        return nullptr;
-
-    MTL4::Compiler* compiler = device.GetCompiler();
-
-    return linking ? compiler->newComputePipelineState(desc, linking, nullptr, error) : compiler->newComputePipelineState(desc, nullptr, error);
-}
-
-static MTL::RenderPipelineState* NewRenderPipelineMetal(DeviceMetal& device, const PipelineCache* cache, bool failOnMiss, const MTL4::PipelineDescriptor* desc, NS::Error** error) {
-    if (cache)
-        return ((PipelineCacheMetal*)cache)->NewRenderPipeline(desc, failOnMiss, error);
-
-    if (failOnMiss)
-        return nullptr;
-
-    return device.GetCompiler()->newRenderPipelineState(desc, nullptr, error);
-}
-
 Result PipelineMetal::Create(const ComputePipelineDesc& desc) {
     AutoreleasePoolMetal autoreleasePool; // "NS::Error" is autoreleased
 
@@ -1187,8 +1187,11 @@ Result PipelineMetal::Create(const RayTracingPipelineDesc& desc) {
 
     // Visible function table: slot 0 is "null", shader "i" is at "1 + i", intersection / any-hit function of hit group "i" is at "1 + shaderNum + i".
     // Visible functions are renamed to "nri_rt_<slot>", since entry points of different shaders may have the same name
-    Vector<MTL::Library*> libraries(shaderLibrary.shaderNum + desc.shaderGroupNum, nullptr, m_Device.GetStdAllocator());
-    Vector<MTL4::FunctionDescriptor*> functions(libraries.size(), nullptr, m_Device.GetStdAllocator());
+    const uint32_t slotNum = shaderLibrary.shaderNum + desc.shaderGroupNum;
+    Scratch<MTL::Library*> libraries = NRI_ALLOCATE_SCRATCH(m_Device, MTL::Library*, slotNum);
+    Scratch<MTL4::FunctionDescriptor*> functions = NRI_ALLOCATE_SCRATCH(m_Device, MTL4::FunctionDescriptor*, slotNum);
+    std::fill_n((MTL::Library**)libraries, slotNum, nullptr);
+    std::fill_n((MTL4::FunctionDescriptor**)functions, slotNum, nullptr);
 
     auto getVisibleFunctionName = [](size_t slot, char (&name)[32]) {
         snprintf(name, sizeof(name), "nri_rt_%zu", slot);
@@ -1375,21 +1378,22 @@ Result PipelineMetal::Create(const RayTracingPipelineDesc& desc) {
 
     // Pipeline
     if (result == Result::SUCCESS) {
-        Vector<MTL4::FunctionDescriptor*> linkedFunctions(m_Device.GetStdAllocator());
+        Scratch<MTL4::FunctionDescriptor*> linkedFunctions = NRI_ALLOCATE_SCRATCH(m_Device, MTL4::FunctionDescriptor*, slotNum + 2);
+        uint32_t linkedFunctionNum = 0;
 
-        for (MTL4::FunctionDescriptor* function : functions) {
-            if (function)
-                linkedFunctions.push_back(function);
+        for (uint32_t i = 0; i < slotNum; i++) {
+            if (functions[i])
+                linkedFunctions[linkedFunctionNum++] = functions[i];
         }
 
         if (triangleFunction)
-            linkedFunctions.push_back(triangleFunction);
+            linkedFunctions[linkedFunctionNum++] = triangleFunction;
 
         if (proceduralFunction)
-            linkedFunctions.push_back(proceduralFunction);
+            linkedFunctions[linkedFunctionNum++] = proceduralFunction;
 
         MTL4::StaticLinkingDescriptor* linking = MTL4::StaticLinkingDescriptor::alloc()->init();
-        linking->setFunctionDescriptors(NS::Array::array((const NS::Object* const*)linkedFunctions.data(), linkedFunctions.size()));
+        linking->setFunctionDescriptors(NS::Array::array((const NS::Object* const*)(MTL4::FunctionDescriptor**)linkedFunctions, linkedFunctionNum));
 
         MTL4::ComputePipelineDescriptor* pipelineDesc = MTL4::ComputePipelineDescriptor::alloc()->init();
         pipelineDesc->setComputeFunctionDescriptor(dispatchFunction);
@@ -1419,7 +1423,7 @@ Result PipelineMetal::Create(const RayTracingPipelineDesc& desc) {
     // Function tables
     if (result == Result::SUCCESS) {
         MTL::VisibleFunctionTableDescriptor* tableDesc = MTL::VisibleFunctionTableDescriptor::alloc()->init();
-        tableDesc->setFunctionCount(functions.size() + 1);
+        tableDesc->setFunctionCount(slotNum + 1);
         m_VisibleFunctionTable = m_Compute->newVisibleFunctionTable(tableDesc);
         tableDesc->release();
 
@@ -1436,7 +1440,7 @@ Result PipelineMetal::Create(const RayTracingPipelineDesc& desc) {
             m_Device.AddResidency(m_IntersectionFunctionTable);
 
         if (m_VisibleFunctionTable && m_IntersectionFunctionTable) {
-            for (size_t i = 0; i < functions.size(); i++) {
+            for (uint32_t i = 0; i < slotNum; i++) {
                 if (functions[i]) {
                     char name[32];
                     getVisibleFunctionName(i, name);
@@ -1502,7 +1506,7 @@ Result PipelineMetal::Create(const RayTracingPipelineDesc& desc) {
             library->release();
     }
 
-    for (size_t i = 0; i < functions.size(); i++) {
+    for (uint32_t i = 0; i < slotNum; i++) {
         if (functions[i])
             functions[i]->release();
 
@@ -1600,7 +1604,7 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
     const bool isMesh = hasMesh || emulation;
 
     // Vertex formats not reported as "VERTEX_BUFFER" (or not synthesizable by the emulation stage-in)
-    const uint32_t vertexAttributeNum = desc.vertexInput && !hasMesh ? desc.vertexInput->attributeNum : 0;
+    const uint32_t vertexAttributeNum = (desc.vertexInput && !hasMesh) ? desc.vertexInput->attributeNum : 0;
 
     for (uint32_t i = 0; i < vertexAttributeNum; i++) {
         const Format format = desc.vertexInput->attributes[i].format;
@@ -1626,7 +1630,7 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
     }
 
     // Vertex attribute slots: native - array order, converted - reflected by semantic (array order if no vertex inputs are reflected)
-    const uint32_t attributeNum = desc.vertexInput && !isMesh ? desc.vertexInput->attributeNum : 0;
+    const uint32_t attributeNum = (desc.vertexInput && !isMesh) ? desc.vertexInput->attributeNum : 0;
     uint8_t attributeSlots[256] = {};
 
     if (hasConvertedVertex && attributeNum > CONVERTED_VERTEX_ATTRIBUTE_NUM) {
@@ -1642,8 +1646,12 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
 
     MTL4::RenderPipelineDescriptor* pd = isMesh ? nullptr : MTL4::RenderPipelineDescriptor::alloc()->init();
     MTL4::MeshRenderPipelineDescriptor* mpd = isMesh ? MTL4::MeshRenderPipelineDescriptor::alloc()->init() : nullptr;
-    Vector<MTL::Library*> libraries(m_Device.GetStdAllocator());
-    Vector<MTL4::FunctionDescriptor*> functions(m_Device.GetStdAllocator());
+    // Shader functions and specialized emulation stages (at most 8)
+    const uint32_t functionMaxNum = desc.shaderNum + 8;
+    Scratch<MTL::Library*> libraries = NRI_ALLOCATE_SCRATCH(m_Device, MTL::Library*, desc.shaderNum);
+    Scratch<MTL4::FunctionDescriptor*> functions = NRI_ALLOCATE_SCRATCH(m_Device, MTL4::FunctionDescriptor*, functionMaxNum);
+    uint32_t libraryNum = 0;
+    uint32_t functionNum = 0;
     MTL::Library* stageInLibrary = nullptr;
     bool hasFragmentFunction = false;
     Result result = Result::SUCCESS;
@@ -1655,9 +1663,9 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
         loadDesc.cache = (PipelineCacheMetal*)desc.cache;
         loadDesc.vertexInput = desc.vertexInput;
         loadDesc.vertexAttributeSlots = attributeSlots;
-        loadDesc.stageInLibrary = shader.stage == StageBits::VERTEX_SHADER && emulation ? &stageInLibrary : nullptr;
+        loadDesc.stageInLibrary = (shader.stage == StageBits::VERTEX_SHADER && emulation) ? &stageInLibrary : nullptr;
         loadDesc.sampleMask = desc.multisample ? desc.multisample->sampleMask : ALL;
-        loadDesc.topology = hasMesh || emulation ? Topology::MAX_NUM : topology;
+        loadDesc.topology = (hasMesh || emulation) ? Topology::MAX_NUM : topology;
         loadDesc.emulation = emulation;
         loadDesc.dualSourceBlending = dualSourceBlending;
         loadDesc.failOnCacheMiss = desc.flags & GraphicsPipelineBits::FAIL_ON_CACHE_MISS;
@@ -1676,8 +1684,8 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
             break;
         }
 
-        libraries.push_back(library);
-        functions.push_back(function);
+        libraries[libraryNum++] = library;
+        functions[functionNum++] = function;
 
         const bool isNative = !IsConvertedShader(shader);
 
@@ -1715,7 +1723,7 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
         amplificationCount = std::min(std::max((uint32_t)__builtin_popcount(m_ViewMask), 2u), (uint32_t)deviceDesc.other.viewMaxNum);
 
     const uint32_t sampleNum = desc.multisample ? desc.multisample->sampleNum : 1;
-    const MTL4::AlphaToCoverageState alphaToCoverage = desc.multisample && desc.multisample->alphaToCoverage ? MTL4::AlphaToCoverageStateEnabled : MTL4::AlphaToCoverageStateDisabled;
+    const MTL4::AlphaToCoverageState alphaToCoverage = (desc.multisample && desc.multisample->alphaToCoverage) ? MTL4::AlphaToCoverageStateEnabled : MTL4::AlphaToCoverageStateDisabled;
 
     if (isMesh) {
         // Metal mesh pipelines require a fragment function even for depth-only draws
@@ -1840,7 +1848,7 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
                 }
 
                 MTL4::FunctionDescriptor* function = NewFunctionDescriptorMetal(library, name, constants);
-                functions.push_back(function);
+                functions[functionNum++] = function;
 
                 return function;
             };
@@ -1921,10 +1929,10 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
 
     if (stencil.front.compareOp != CompareOp::NONE || stencil.back.compareOp != CompareOp::NONE) {
         MTL::StencilDescriptor* front = MTL::StencilDescriptor::alloc()->init();
-        SetStencilMetal(front, stencil.front);
+        SetStencil(front, stencil.front);
 
         MTL::StencilDescriptor* back = MTL::StencilDescriptor::alloc()->init();
-        SetStencilMetal(back, stencil.back);
+        SetStencil(back, stencil.back);
 
         dd->setFrontFaceStencil(front);
         dd->setBackFaceStencil(back);
@@ -1945,11 +1953,11 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
     if (stageInLibrary)
         stageInLibrary->release();
 
-    for (MTL4::FunctionDescriptor* function : functions)
-        function->release();
+    for (uint32_t i = 0; i < functionNum; i++)
+        functions[i]->release();
 
-    for (MTL::Library* library : libraries)
-        library->release();
+    for (uint32_t i = 0; i < libraryNum; i++)
+        libraries[i]->release();
 
     m_Primitive = g_PrimitiveTypes[(uint32_t)topology];
     m_Cull = g_CullModes[(uint32_t)desc.rasterization.cullMode];

@@ -35,8 +35,6 @@ struct TextureMetal final : public DebugNameBase {
     MTL::Texture* GetDrawableView(MTL::PixelFormat format); // the current drawable texture, viewed as "format"
     void SetDebugName(const char* name) NRI_DEBUG_NAME_OVERRIDE;
 
-    static bool IsAtomicFormat(const DeviceMetal& device, Format format);
-
 private:
     struct DrawableView {
         MTL::PixelFormat format;

@@ -23,7 +23,7 @@ enum class InternalKernelMetal : uint8_t {
     COPY_WORDS,
     PREPARE_RAYS_INDIRECT,
 
-    // "CLEAR_STORAGE_TEXTURE + dimension * 3 + type", see "GetClearStorageKernelMetal"
+    // "CLEAR_STORAGE_TEXTURE + dimension * 3 + type", see "GetClearStorageKernel"
     CLEAR_STORAGE_TEXTURE,
 
     MAX_NUM = CLEAR_STORAGE_TEXTURE + 6 * 3

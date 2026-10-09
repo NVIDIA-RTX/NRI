@@ -1,35 +1,5 @@
 // © 2026 NVIDIA Corporation
 
-PipelineLayoutMetal::PipelineLayoutMetal(DeviceMetal& device)
-    : m_Device(device)
-    , m_Sets(device.GetStdAllocator())
-    , m_ConstantOffsets(device.GetStdAllocator())
-    , m_DescriptorOffsets(device.GetStdAllocator())
-    , m_SetOffsets(device.GetStdAllocator())
-    , m_RootArguments(device.GetStdAllocator())
-    , m_RootSamplers(device.GetStdAllocator())
-#if NRI_ENABLE_METAL_SHADER_CONVERTER
-    , m_RootParameters(device.GetStdAllocator())
-    , m_RootRanges(device.GetStdAllocator())
-#endif
-{
-}
-
-PipelineLayoutMetal::~PipelineLayoutMetal() {
-#if NRI_ENABLE_METAL_SHADER_CONVERTER
-    if (m_RootSignature)
-        IRRootSignatureDestroy(m_RootSignature);
-#endif
-
-    if (m_RootSamplerBuffer) {
-        m_Device.RemoveResidency(m_RootSamplerBuffer);
-        m_RootSamplerBuffer->release();
-    }
-
-    for (auto* sampler : m_RootSamplers)
-        Destroy(sampler);
-}
-
 // Root signature hash records
 constexpr uint32_t ROOT_HASH_CONSTANTS = 1;  // register, space, num, vertex only
 constexpr uint32_t ROOT_HASH_DESCRIPTOR = 2; // type, register, space
@@ -102,6 +72,36 @@ static inline IRRootParameter1 GetDescriptorTableParameter(uint32_t rangeNum, IR
     return parameter;
 }
 #endif
+
+PipelineLayoutMetal::PipelineLayoutMetal(DeviceMetal& device)
+    : m_Device(device)
+    , m_Sets(device.GetStdAllocator())
+    , m_ConstantOffsets(device.GetStdAllocator())
+    , m_DescriptorOffsets(device.GetStdAllocator())
+    , m_SetOffsets(device.GetStdAllocator())
+    , m_RootArguments(device.GetStdAllocator())
+    , m_RootSamplers(device.GetStdAllocator())
+#if NRI_ENABLE_METAL_SHADER_CONVERTER
+    , m_RootParameters(device.GetStdAllocator())
+    , m_RootRanges(device.GetStdAllocator())
+#endif
+{
+}
+
+PipelineLayoutMetal::~PipelineLayoutMetal() {
+#if NRI_ENABLE_METAL_SHADER_CONVERTER
+    if (m_RootSignature)
+        IRRootSignatureDestroy(m_RootSignature);
+#endif
+
+    if (m_RootSamplerBuffer) {
+        m_Device.RemoveResidency(m_RootSamplerBuffer);
+        m_RootSamplerBuffer->release();
+    }
+
+    for (auto* sampler : m_RootSamplers)
+        Destroy(sampler);
+}
 
 Result PipelineLayoutMetal::Create(const PipelineLayoutDesc& desc) {
     uint32_t offset = 0;

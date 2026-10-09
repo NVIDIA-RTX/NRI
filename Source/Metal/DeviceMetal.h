@@ -6,11 +6,6 @@
 
 namespace nri {
 
-// Metal command queues are untyped, so each supported "QueueType" can be backed by several native queues
-constexpr uint32_t QUEUE_TYPE_NUM_METAL = 3;
-constexpr uint32_t QUEUE_NUM_PER_TYPE_METAL = 4;
-constexpr uint32_t DRAW_INDIRECT_MAX_NUM_METAL = 1 << 16;
-
 struct DeviceMetal final : public DeviceBase {
     DeviceMetal(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks);
     ~DeviceMetal();
@@ -102,7 +97,7 @@ private:
     MTL::Device* m_Device = nullptr;
     MTL::ResidencySet* m_Residency = nullptr;
     MTL4::Compiler* m_Compiler = nullptr;
-    QueueMetal* m_Queues[QUEUE_TYPE_NUM_METAL][QUEUE_NUM_PER_TYPE_METAL] = {};
+    QueueMetal* m_Queues[QUEUE_TYPE_NUM][QUEUE_NUM_PER_TYPE] = {};
     MTL::Buffer* m_Constants = nullptr;
     MTL::GPUAddress m_ConstantsAddress = 0;
     std::mutex m_ResidencyLock;

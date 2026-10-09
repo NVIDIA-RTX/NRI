@@ -1,7 +1,7 @@
 // © 2026 NVIDIA Corporation
 
-constexpr uint64_t UPLOAD_CHUNK_SIZE_METAL = 256 * 1024;
-constexpr uint32_t TRANSIENT_MAX_UNUSED_RESETS_METAL = 8;
+constexpr uint64_t UPLOAD_CHUNK_SIZE = 256 * 1024;
+constexpr uint32_t TRANSIENT_MAX_UNUSED_RESETS = 8;
 
 CommandAllocatorMetal::~CommandAllocatorMetal() {
     for (UploadChunkMetal& chunk : m_UploadChunks)
@@ -37,7 +37,7 @@ void CommandAllocatorMetal::Reset() {
         UploadChunkMetal& chunk = m_UploadChunks[i - 1];
         chunk.offset = 0;
 
-        if (m_ResetIndex - chunk.lastUsed > TRANSIENT_MAX_UNUSED_RESETS_METAL) {
+        if (m_ResetIndex - chunk.lastUsed > TRANSIENT_MAX_UNUSED_RESETS) {
             Release(chunk.buffer);
             chunk = m_UploadChunks.back();
             m_UploadChunks.pop_back();
@@ -48,7 +48,7 @@ void CommandAllocatorMetal::Reset() {
         TransientResourceMetal& transient = m_TransientResources[i - 1];
         transient.isInUse = false;
 
-        if (m_ResetIndex - transient.lastUsed > TRANSIENT_MAX_UNUSED_RESETS_METAL) {
+        if (m_ResetIndex - transient.lastUsed > TRANSIENT_MAX_UNUSED_RESETS) {
             Release(transient.resource);
             transient = m_TransientResources.back();
             m_TransientResources.pop_back();
@@ -148,7 +148,7 @@ MTL::GPUAddress CommandAllocatorMetal::Upload(const void* data, uint64_t size, u
     }
 
     if (m_UploadChunkIndex == m_UploadChunks.size()) {
-        const uint64_t chunkSize = std::max(UPLOAD_CHUNK_SIZE_METAL, Align(size, 4096));
+        const uint64_t chunkSize = std::max(UPLOAD_CHUNK_SIZE, Align(size, 4096));
 
         MTL::Buffer* buffer = m_Device.GetNativeObject()->newBuffer((NS::UInteger)chunkSize, MTL::ResourceStorageModeShared | MTL::ResourceCPUCacheModeWriteCombined | MTL::ResourceHazardTrackingModeUntracked);
 

@@ -2,7 +2,7 @@
 
 #include "InternalMetal.metallib.h"
 
-// "nri_clear_storage_<dimension>_<type>" follow "CLEAR_STORAGE_TEXTURE" (see "GetClearStorageKernelMetal")
+// "nri_clear_storage_<dimension>_<type>" follow "CLEAR_STORAGE_TEXTURE" (see "GetClearStorageKernel")
 constexpr std::array<const char*, (size_t)InternalKernelMetal::MAX_NUM> g_InternalKernelNames = {
     "nri_filter_draws",          // FILTER_DRAWS
     "nri_prepare_draw_roots",    // PREPARE_DRAW_ROOTS
@@ -32,6 +32,15 @@ constexpr std::array<const char*, (size_t)InternalKernelMetal::MAX_NUM> g_Intern
     "nri_clear_storage_5_2",
 };
 NRI_VALIDATE_ARRAY_BY_PTR(g_InternalKernelNames);
+
+static inline bool IsEqual(const ClearPipelineKeyMetal& a, const ClearPipelineKeyMetal& b) {
+    bool isEqual = a.colorNum == b.colorNum && a.colorIndex == b.colorIndex && a.sampleNum == b.sampleNum && a.colorType == b.colorType && a.planes == b.planes;
+
+    for (uint32_t i = 0; isEqual && i < a.colorNum; i++)
+        isEqual = a.colors[i] == b.colors[i];
+
+    return isEqual;
+}
 
 InternalShadersMetal::InternalShadersMetal(DeviceMetal& device)
     : m_Device(device), m_ClearPipelines(device.GetStdAllocator()), m_ResolvePipelines(device.GetStdAllocator()) {
@@ -126,15 +135,6 @@ MTL::ComputePipelineState* InternalShadersMetal::GetKernel(InternalKernelMetal k
     return pipeline;
 }
 
-static inline bool IsEqual(const ClearPipelineKeyMetal& a, const ClearPipelineKeyMetal& b) {
-    bool isEqual = a.colorNum == b.colorNum && a.colorIndex == b.colorIndex && a.sampleNum == b.sampleNum && a.colorType == b.colorType && a.planes == b.planes;
-
-    for (uint32_t i = 0; isEqual && i < a.colorNum; i++)
-        isEqual = a.colors[i] == b.colors[i];
-
-    return isEqual;
-}
-
 const ClearPipelineMetal* InternalShadersMetal::FindClearPipeline(const ClearPipelineKeyMetal& key) const {
     for (const ClearPipelineMetal& clear : m_ClearPipelines) {
         if (IsEqual(clear.key, key))
@@ -176,7 +176,7 @@ ClearPipelineMetal InternalShadersMetal::GetClearPipeline(const ClearPipelineKey
     for (uint32_t i = 0; i < key.colorNum; i++) {
         MTL4::RenderPipelineColorAttachmentDescriptor* attachment = pipelineDesc->colorAttachments()->object(i);
         attachment->setPixelFormat(key.colors[i]);
-        attachment->setWriteMask(i == key.colorIndex && (key.planes & PlaneBits::COLOR) ? MTL::ColorWriteMaskAll : MTL::ColorWriteMaskNone);
+        attachment->setWriteMask((i == key.colorIndex && (key.planes & PlaneBits::COLOR)) ? MTL::ColorWriteMaskAll : MTL::ColorWriteMaskNone);
     }
 
     NS::Error* error = nullptr;

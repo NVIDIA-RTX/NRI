@@ -24,7 +24,7 @@ struct TransientResourceMetal {
 };
 
 // Upload chunks and transient resources are owned by the allocator: "Reset" rewinds and recycles them. Memory unused during the last
-// "TRANSIENT_MAX_UNUSED_RESETS_METAL" resets gets released. "ResetCommandAllocator" (as "ID3D12CommandAllocator::Reset" and "vkResetCommandPool")
+// "TRANSIENT_MAX_UNUSED_RESETS" resets gets released. "ResetCommandAllocator" (as "ID3D12CommandAllocator::Reset" and "vkResetCommandPool")
 // requires the GPU to be done with command buffers of the allocator
 struct CommandAllocatorMetal final : public DebugNameBase {
     inline CommandAllocatorMetal(DeviceMetal& device) : m_Device(device), m_UploadChunks(device.GetStdAllocator()), m_TransientResources(device.GetStdAllocator()), m_ReleasedObjects(device.GetStdAllocator()) {

@@ -1,5 +1,36 @@
 // © 2026 NVIDIA Corporation
 
+struct HostTextureCopyLayoutMetal {
+    uint64_t offset;
+    uint32_t rowSize;
+    uint32_t rowPitch;
+    uint32_t rowNum;
+    uint32_t slicePitch;
+    uint32_t depth;
+    MTL::Size size;
+};
+
+static inline HostTextureCopyLayoutMetal GetHostTextureCopyLayout(const TextureMetal& texture, const TextureRegionDesc& region, uint64_t& stagingSize) {
+    const auto& alignment = texture.GetDevice().GetDesc().memoryAlignment;
+    const TextureDesc& textureDesc = texture.GetDesc();
+    const FormatProps& formatProps = GetFormatProps(textureDesc.format);
+    uint32_t width = region.width == WHOLE_SIZE ? std::max(1u, uint32_t(textureDesc.width) >> region.mipOffset) : region.width;
+    uint32_t height = region.height == WHOLE_SIZE ? std::max(1u, uint32_t(textureDesc.height) >> region.mipOffset) : region.height;
+    uint32_t depth = region.depth == WHOLE_SIZE ? std::max(1u, uint32_t(textureDesc.depth) >> region.mipOffset) : region.depth;
+
+    HostTextureCopyLayoutMetal layout = {};
+    layout.offset = Align(stagingSize, (uint64_t)alignment.uploadBufferTextureSlice);
+    layout.rowSize = ((width + formatProps.blockWidth - 1) / formatProps.blockWidth) * formatProps.stride;
+    layout.rowPitch = Align(layout.rowSize, alignment.uploadBufferTextureRow);
+    layout.rowNum = (height + formatProps.blockHeight - 1) / formatProps.blockHeight;
+    layout.slicePitch = layout.rowPitch * layout.rowNum;
+    layout.depth = depth;
+    layout.size = MTL::Size(width, height, depth);
+    stagingSize = layout.offset + uint64_t(layout.slicePitch) * depth;
+
+    return layout;
+}
+
 QueueMetal::~QueueMetal() {
     // Feedback handlers of in-flight commits access this queue
     if (m_PendingCommits) {
@@ -195,37 +226,6 @@ Result QueueMetal::WaitIdle() {
     return WaitForSignal(value, commitNum);
 }
 
-struct HostTextureCopyLayoutMetal {
-    uint64_t offset;
-    uint32_t rowSize;
-    uint32_t rowPitch;
-    uint32_t rowNum;
-    uint32_t slicePitch;
-    uint32_t depth;
-    MTL::Size size;
-};
-
-static HostTextureCopyLayoutMetal GetHostTextureCopyLayoutMetal(const TextureMetal& texture, const TextureRegionDesc& region, uint64_t& stagingSize) {
-    const auto& alignment = texture.GetDevice().GetDesc().memoryAlignment;
-    const TextureDesc& textureDesc = texture.GetDesc();
-    const FormatProps& formatProps = GetFormatProps(textureDesc.format);
-    uint32_t width = region.width == WHOLE_SIZE ? std::max(1u, uint32_t(textureDesc.width) >> region.mipOffset) : region.width;
-    uint32_t height = region.height == WHOLE_SIZE ? std::max(1u, uint32_t(textureDesc.height) >> region.mipOffset) : region.height;
-    uint32_t depth = region.depth == WHOLE_SIZE ? std::max(1u, uint32_t(textureDesc.depth) >> region.mipOffset) : region.depth;
-
-    HostTextureCopyLayoutMetal layout = {};
-    layout.offset = Align(stagingSize, (uint64_t)alignment.uploadBufferTextureSlice);
-    layout.rowSize = ((width + formatProps.blockWidth - 1) / formatProps.blockWidth) * formatProps.stride;
-    layout.rowPitch = Align(layout.rowSize, alignment.uploadBufferTextureRow);
-    layout.rowNum = (height + formatProps.blockHeight - 1) / formatProps.blockHeight;
-    layout.slicePitch = layout.rowPitch * layout.rowNum;
-    layout.depth = depth;
-    layout.size = MTL::Size(width, height, depth);
-    stagingSize = layout.offset + uint64_t(layout.slicePitch) * depth;
-
-    return layout;
-}
-
 Result QueueMetal::BeginTransfer(uint64_t stagingSize, MTL4::ComputeCommandEncoder*& encoder) {
     // The previous transfer may have timed out
     if (m_IdleEvent->signaledValue() < m_TransferValue && !m_IdleEvent->waitUntilSignaledValue(m_TransferValue, NRI_TIMEOUT_FENCE))
@@ -303,7 +303,7 @@ Result QueueMetal::UploadHostMemoryToTexture(const UploadHostMemoryToTextureDesc
     uint64_t stagingSize = 0;
 
     for (uint32_t i = 0; i < copyDescNum; i++)
-        layouts[i] = GetHostTextureCopyLayoutMetal(*(TextureMetal*)copyDescs[i].dstTexture, copyDescs[i].dstRegion, stagingSize);
+        layouts[i] = GetHostTextureCopyLayout(*(TextureMetal*)copyDescs[i].dstTexture, copyDescs[i].dstRegion, stagingSize);
 
     // "computeCommandEncoder" returns an autoreleased object
     AutoreleasePoolMetal autoreleasePool;
@@ -348,7 +348,7 @@ Result QueueMetal::ReadbackTextureToHostMemory(const ReadbackTextureToHostMemory
     uint64_t stagingSize = 0;
 
     for (uint32_t i = 0; i < copyDescNum; i++)
-        layouts[i] = GetHostTextureCopyLayoutMetal(*(TextureMetal*)copyDescs[i].srcTexture, copyDescs[i].srcRegion, stagingSize);
+        layouts[i] = GetHostTextureCopyLayout(*(TextureMetal*)copyDescs[i].srcTexture, copyDescs[i].srcRegion, stagingSize);
 
     // "computeCommandEncoder" returns an autoreleased object
     AutoreleasePoolMetal autoreleasePool;

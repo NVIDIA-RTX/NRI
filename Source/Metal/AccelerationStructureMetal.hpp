@@ -1,6 +1,6 @@
 // © 2026 NVIDIA Corporation
 
-static MTL::AccelerationStructureUsage GetAccelerationStructureUsageMetal(AccelerationStructureBits flags) {
+static inline MTL::AccelerationStructureUsage GetAccelerationStructureUsage(AccelerationStructureBits flags) {
     MTL::AccelerationStructureUsage usage = MTL::AccelerationStructureUsageNone;
 
     if (flags & AccelerationStructureBits::ALLOW_UPDATE)
@@ -18,7 +18,7 @@ static MTL::AccelerationStructureUsage GetAccelerationStructureUsageMetal(Accele
     return usage;
 }
 
-static inline MTL::IndexType GetAccelerationStructureIndexTypeMetal(IndexType indexType) {
+static inline MTL::IndexType GetAccelerationStructureIndexType(IndexType indexType) {
     constexpr std::array<MTL::IndexType, (size_t)IndexType::MAX_NUM> g_IndexTypes = {
         MTL::IndexTypeUInt16, // UINT16
         MTL::IndexTypeUInt32, // UINT32
@@ -80,14 +80,14 @@ constexpr std::array<MTL::AttributeFormat, (size_t)Format::R10_G10_B10_A2_UNORM 
 };
 NRI_VALIDATE_ARRAY(g_AccelerationStructureVertexFormats);
 
-static MTL::AttributeFormat GetAccelerationStructureVertexFormatMetal(Format format) {
+static inline MTL::AttributeFormat GetAccelerationStructureVertexFormat(Format format) {
     return (size_t)format < g_AccelerationStructureVertexFormats.size() ? g_AccelerationStructureVertexFormats[(size_t)format] : MTL::AttributeFormatInvalid;
 }
 
 // "sizing" replaces buffer addresses with placeholders, since buffers are optional in "AccelerationStructureDesc"
-static MTL4::AccelerationStructureDescriptor* CreateBottomLevelDescriptorMetal(DeviceMetal& device, AccelerationStructureBits flags, const BottomLevelGeometryDesc* geometries, uint32_t geometryNum, bool sizing) {
+static inline MTL4::AccelerationStructureDescriptor* CreateBottomLevelDescriptor(DeviceMetal& device, AccelerationStructureBits flags, const BottomLevelGeometryDesc* geometries, uint32_t geometryNum, bool sizing) {
     auto* descriptor = MTL4::PrimitiveAccelerationStructureDescriptor::alloc()->init();
-    descriptor->setUsage(GetAccelerationStructureUsageMetal(flags));
+    descriptor->setUsage(GetAccelerationStructureUsage(flags));
 
     const auto address = [sizing](const Buffer* buffer, uint64_t offset) -> MTL::GPUAddress {
         if (sizing)
@@ -112,14 +112,14 @@ static MTL4::AccelerationStructureDescriptor* CreateBottomLevelDescriptorMetal(D
             auto* metalGeometry = MTL4::AccelerationStructureTriangleGeometryDescriptor::alloc()->init();
             metalGeometry->setVertexBuffer(MTL4::BufferRange(address(triangles.vertexBuffer, triangles.vertexOffset)));
             metalGeometry->setVertexStride(triangles.vertexStride);
-            metalGeometry->setVertexFormat(GetAccelerationStructureVertexFormatMetal(triangles.vertexFormat));
+            metalGeometry->setVertexFormat(GetAccelerationStructureVertexFormat(triangles.vertexFormat));
             metalGeometry->setTriangleCount((isIndexed ? triangles.indexNum : triangles.vertexNum) / 3);
             metalGeometry->setOpaque(isOpaque);
             metalGeometry->setAllowDuplicateIntersectionFunctionInvocation(allowDuplicateAnyHit);
 
             if (isIndexed) {
                 metalGeometry->setIndexBuffer(MTL4::BufferRange(address(triangles.indexBuffer, triangles.indexOffset)));
-                metalGeometry->setIndexType(GetAccelerationStructureIndexTypeMetal(triangles.indexType));
+                metalGeometry->setIndexType(GetAccelerationStructureIndexType(triangles.indexType));
             }
 
             if (triangles.transformBuffer) {
@@ -153,9 +153,9 @@ static MTL4::AccelerationStructureDescriptor* CreateBottomLevelDescriptorMetal(D
     return descriptor;
 }
 
-static MTL4::AccelerationStructureDescriptor* CreateTopLevelDescriptorMetal(AccelerationStructureBits flags, MTL::GPUAddress convertedInstanceAddress, uint32_t instanceNum) {
+static inline MTL4::AccelerationStructureDescriptor* CreateTopLevelDescriptor(AccelerationStructureBits flags, MTL::GPUAddress convertedInstanceAddress, uint32_t instanceNum) {
     auto* descriptor = MTL4::InstanceAccelerationStructureDescriptor::alloc()->init();
-    descriptor->setUsage(GetAccelerationStructureUsageMetal(flags));
+    descriptor->setUsage(GetAccelerationStructureUsage(flags));
     descriptor->setInstanceCount(instanceNum);
     descriptor->setInstanceDescriptorBuffer(MTL4::BufferRange(convertedInstanceAddress));
     descriptor->setInstanceDescriptorStride(sizeof(MTL::IndirectAccelerationStructureInstanceDescriptor));
@@ -165,13 +165,13 @@ static MTL4::AccelerationStructureDescriptor* CreateTopLevelDescriptorMetal(Acce
     return descriptor;
 }
 
-static MTL::AccelerationStructureSizes GetAccelerationStructureSizesMetal(DeviceMetal& device, const AccelerationStructureDesc& desc) {
+static inline MTL::AccelerationStructureSizes GetAccelerationStructureSizes(DeviceMetal& device, const AccelerationStructureDesc& desc) {
     MTL4::AccelerationStructureDescriptor* descriptor = nullptr;
 
     if (desc.type == AccelerationStructureType::BOTTOM_LEVEL)
-        descriptor = CreateBottomLevelDescriptorMetal(device, desc.flags, desc.geometries, desc.geometryOrInstanceNum, true);
+        descriptor = CreateBottomLevelDescriptor(device, desc.flags, desc.geometries, desc.geometryOrInstanceNum, true);
     else
-        descriptor = CreateTopLevelDescriptorMetal(desc.flags, 1, desc.geometryOrInstanceNum);
+        descriptor = CreateTopLevelDescriptor(desc.flags, 1, desc.geometryOrInstanceNum);
 
     MTL::AccelerationStructureSizes sizes = device.GetNativeObject()->accelerationStructureSizes(descriptor);
     descriptor->release();
@@ -182,12 +182,12 @@ static MTL::AccelerationStructureSizes GetAccelerationStructureSizesMetal(Device
     return sizes;
 }
 
-static inline uint64_t GetTopLevelHeaderSizeMetal(uint32_t instanceNum) {
+static inline uint64_t GetTopLevelHeaderSize(uint32_t instanceNum) {
     return TOP_LEVEL_HEADER_SIZE + uint64_t(instanceNum) * sizeof(uint32_t);
 }
 
 // TLAS memory = AS storage + header (with instance contributions) placed after it, inside the same NRI memory
-static void GetAccelerationStructureMemoryDescMetal(DeviceMetal& device, AccelerationStructureType type, uint64_t size, uint32_t instanceNum, MemoryLocation memoryLocation, MemoryDesc& memoryDesc, uint64_t& headerOffset) {
+static inline void GetAccelerationStructureMemoryDescMetal(DeviceMetal& device, AccelerationStructureType type, uint64_t size, uint32_t instanceNum, MemoryLocation memoryLocation, MemoryDesc& memoryDesc, uint64_t& headerOffset) {
     const MTL::SizeAndAlign accelerationStructure = device.GetNativeObject()->heapAccelerationStructureSizeAndAlign((NS::UInteger)size);
 
     memoryDesc = {};
@@ -197,7 +197,7 @@ static void GetAccelerationStructureMemoryDescMetal(DeviceMetal& device, Acceler
     headerOffset = 0;
 
     if (type == AccelerationStructureType::TOP_LEVEL) {
-        const MTL::SizeAndAlign header = device.GetNativeObject()->heapBufferSizeAndAlign((NS::UInteger)GetTopLevelHeaderSizeMetal(instanceNum), MTL::ResourceStorageModePrivate);
+        const MTL::SizeAndAlign header = device.GetNativeObject()->heapBufferSizeAndAlign((NS::UInteger)GetTopLevelHeaderSize(instanceNum), MTL::ResourceStorageModePrivate);
 
         headerOffset = Align(accelerationStructure.size, header.align);
         memoryDesc.size = headerOffset + header.size;
@@ -230,7 +230,7 @@ void AccelerationStructureMetal::Release() {
 }
 
 void AccelerationStructureMetal::GetMemoryDesc(DeviceMetal& device, const AccelerationStructureDesc& desc, MemoryLocation memoryLocation, MemoryDesc& memoryDesc) {
-    const MTL::AccelerationStructureSizes sizes = GetAccelerationStructureSizesMetal(device, desc);
+    const MTL::AccelerationStructureSizes sizes = GetAccelerationStructureSizes(device, desc);
     const uint32_t instanceNum = desc.type == AccelerationStructureType::TOP_LEVEL ? desc.geometryOrInstanceNum : 0;
 
     uint64_t headerOffset = 0;
@@ -241,7 +241,7 @@ Result AccelerationStructureMetal::Create(const AccelerationStructureDesc& desc)
     m_Flags = desc.flags;
     m_Type = desc.type;
     m_InstanceNum = desc.type == AccelerationStructureType::TOP_LEVEL ? desc.geometryOrInstanceNum : 0;
-    m_Sizes = GetAccelerationStructureSizesMetal(m_Device, desc);
+    m_Sizes = GetAccelerationStructureSizes(m_Device, desc);
     m_Size = m_Sizes.accelerationStructureSize;
 
     GetAccelerationStructureMemoryDescMetal(m_Device, m_Type, m_Size, m_InstanceNum, MemoryLocation::DEVICE, m_MemoryDesc, m_HeaderOffset);
@@ -276,7 +276,7 @@ Result AccelerationStructureMetal::Allocate() {
     m_Device.AddResidency(m_AccelerationStructure);
 
     if (m_Type == AccelerationStructureType::TOP_LEVEL) {
-        m_ShaderBindingHeader = m_Device.GetNativeObject()->newBuffer((NS::UInteger)GetTopLevelHeaderSizeMetal(m_InstanceNum), MTL::ResourceStorageModePrivate | MTL::ResourceHazardTrackingModeUntracked);
+        m_ShaderBindingHeader = m_Device.GetNativeObject()->newBuffer((NS::UInteger)GetTopLevelHeaderSize(m_InstanceNum), MTL::ResourceStorageModePrivate | MTL::ResourceHazardTrackingModeUntracked);
 
         if (!m_ShaderBindingHeader)
             return Result::OUT_OF_MEMORY;
@@ -298,7 +298,7 @@ Result AccelerationStructureMetal::Bind(MemoryMetal& memory, uint64_t offset) {
         return Result::FAILURE;
 
     if (m_Type == AccelerationStructureType::TOP_LEVEL) {
-        m_ShaderBindingHeader = heap->newBuffer((NS::UInteger)GetTopLevelHeaderSizeMetal(m_InstanceNum), heap->resourceOptions(), (NS::UInteger)(offset + m_HeaderOffset));
+        m_ShaderBindingHeader = heap->newBuffer((NS::UInteger)GetTopLevelHeaderSize(m_InstanceNum), heap->resourceOptions(), (NS::UInteger)(offset + m_HeaderOffset));
 
         if (!m_ShaderBindingHeader)
             return Result::FAILURE;
@@ -326,7 +326,7 @@ void AccelerationStructureMetal::SetDebugName(const char* name) {
 
 MTL4::AccelerationStructureDescriptor* AccelerationStructureMetal::CreateBuildDescriptor(const BottomLevelGeometryDesc* geometries, uint32_t geometryNum, MTL::GPUAddress convertedInstanceAddress, uint32_t instanceNum) const {
     if (m_Type == AccelerationStructureType::BOTTOM_LEVEL)
-        return CreateBottomLevelDescriptorMetal(m_Device, m_Flags, geometries, geometryNum, false);
+        return CreateBottomLevelDescriptor(m_Device, m_Flags, geometries, geometryNum, false);
 
-    return CreateTopLevelDescriptorMetal(m_Flags, convertedInstanceAddress, instanceNum);
+    return CreateTopLevelDescriptor(m_Flags, convertedInstanceAddress, instanceNum);
 }

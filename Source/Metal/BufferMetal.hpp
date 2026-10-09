@@ -1,6 +1,6 @@
 // © 2026 NVIDIA Corporation
 
-static MTL::ResourceOptions GetBufferOptionsMetal(MemoryLocation location) {
+static inline MTL::ResourceOptions GetBufferOptions(MemoryLocation location) {
     MTL::ResourceOptions options = location == MemoryLocation::DEVICE ? MTL::ResourceStorageModePrivate : MTL::ResourceStorageModeShared;
     options |= MTL::ResourceHazardTrackingModeUntracked;
 
@@ -34,7 +34,7 @@ Result BufferMetal::Create(const BufferDesc& desc) {
 Result BufferMetal::Create(const BufferDesc& desc, MemoryLocation location) {
     Create(desc);
     m_Location = location;
-    m_Buffer = m_Device.GetNativeObject()->newBuffer((NS::UInteger)desc.size, GetBufferOptionsMetal(location));
+    m_Buffer = m_Device.GetNativeObject()->newBuffer((NS::UInteger)desc.size, GetBufferOptions(location));
 
     if (!m_Buffer)
         return Result::OUT_OF_MEMORY;
@@ -60,13 +60,13 @@ Result BufferMetal::Create(const BufferMetalDesc& desc) {
 Result BufferMetal::Bind(MemoryMetal& memory, uint64_t offset) {
     Release();
     m_Location = memory.GetLocation();
-    m_Buffer = memory.GetNativeObject()->newBuffer((NS::UInteger)m_Desc.size, GetBufferOptionsMetal(m_Location), (NS::UInteger)offset);
+    m_Buffer = memory.GetNativeObject()->newBuffer((NS::UInteger)m_Desc.size, GetBufferOptions(m_Location), (NS::UInteger)offset);
 
     return m_Buffer ? Result::SUCCESS : Result::FAILURE;
 }
 
 void BufferMetal::GetMemoryDesc(MemoryLocation location, MemoryDesc& memoryDesc) const {
-    MTL::SizeAndAlign requirements = m_Device.GetNativeObject()->heapBufferSizeAndAlign((NS::UInteger)m_Desc.size, GetBufferOptionsMetal(location));
+    MTL::SizeAndAlign requirements = m_Device.GetNativeObject()->heapBufferSizeAndAlign((NS::UInteger)m_Desc.size, GetBufferOptions(location));
     memoryDesc.size = requirements.size;
     memoryDesc.alignment = (uint32_t)requirements.align;
     memoryDesc.type = (MemoryType)location;

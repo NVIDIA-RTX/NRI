@@ -60,6 +60,37 @@ private:
     NS::AutoreleasePool* m_Pool;
 };
 
+// Metal command queues are untyped, so each supported "QueueType" can be backed by several native queues
+constexpr uint32_t QUEUE_TYPE_NUM = 3;
+constexpr uint32_t QUEUE_NUM_PER_TYPE = 4;
+constexpr uint32_t DRAW_INDIRECT_MAX_NUM = 1 << 16;
+
+// Argument-table slots shared by native and converted shaders (see "NRI.metal"). Converted slots match "kIR*BindPoint"
+constexpr uint32_t ARGUMENT_SLOT_RESOURCE_HEAP = 0;
+constexpr uint32_t ARGUMENT_SLOT_SAMPLER_HEAP = 1;
+constexpr uint32_t ARGUMENT_SLOT_ROOT = 2;
+constexpr uint32_t ARGUMENT_SLOT_MULTIVIEW = 3;      // native only
+constexpr uint32_t ARGUMENT_SLOT_DRAW_ARGUMENTS = 4; // converted only
+constexpr uint32_t ARGUMENT_SLOT_DRAW_UNIFORMS = 5;  // converted only
+constexpr uint32_t ARGUMENT_SLOT_VERTEX_BUFFER_BASE = 6;
+
+// Converted vertex shaders read stage-in attributes from "kIRStageInAttributeStartIndex + reflected attribute index"
+constexpr uint32_t CONVERTED_VERTEX_ATTRIBUTE_BASE = 11;
+constexpr uint32_t CONVERTED_VERTEX_ATTRIBUTE_NUM = 20;
+static_assert(CONVERTED_VERTEX_ATTRIBUTE_BASE + CONVERTED_VERTEX_ATTRIBUTE_NUM == 31, "'MTLVertexDescriptor' has 31 attributes");
+
+// Reserved DXIL register spaces
+constexpr uint32_t DRAW_EMULATION_SPACE = 999;    // "NRI_BASE_ATTRIBUTES_EMULATION_SPACE" in "NRI.hlsl"
+constexpr uint32_t FRAMEBUFFER_FETCH_SPACE = 998; // input attachments
+
+// Texture atomics: 32-bit "R32Uint" and "R32Sint", 64-bit min/max "RG32Uint" (Apple8+)
+static inline bool IsAtomicFormat(MTL::Device& device, Format format) {
+    if (format == Format::RG32_UINT)
+        return device.supportsFamily(MTL::GPUFamilyApple8);
+
+    return format == Format::R32_UINT || format == Format::R32_SINT;
+}
+
 // FNV-1a, used for persistent data (pipeline caches and converted shaders)
 static inline uint64_t HashMetal(const void* data, size_t size, uint64_t hash = 0xCBF29CE484222325ull) {
     const uint8_t* bytes = (const uint8_t*)data;

@@ -1271,9 +1271,9 @@ static bool FillAdapterDescMetal(AdapterDesc& adapterDesc, MTL::Device* device) 
     adapterDesc.vendor = Vendor::UNKNOWN;                                                              // Metal exposes no PCI vendor or device IDs, "deviceId" stays 0
     adapterDesc.architecture = device->hasUnifiedMemory() ? Architecture::INTEGRATED : Architecture::DISCRETE;
     adapterDesc.supportedGraphicsAPIs = GraphicsAPI::METAL;
-    adapterDesc.queueNum[(uint32_t)QueueType::GRAPHICS] = QUEUE_NUM_PER_TYPE_METAL;
-    adapterDesc.queueNum[(uint32_t)QueueType::COMPUTE] = QUEUE_NUM_PER_TYPE_METAL;
-    adapterDesc.queueNum[(uint32_t)QueueType::COPY] = QUEUE_NUM_PER_TYPE_METAL;
+    adapterDesc.queueNum[(uint32_t)QueueType::GRAPHICS] = QUEUE_NUM_PER_TYPE;
+    adapterDesc.queueNum[(uint32_t)QueueType::COMPUTE] = QUEUE_NUM_PER_TYPE;
+    adapterDesc.queueNum[(uint32_t)QueueType::COPY] = QUEUE_NUM_PER_TYPE;
     strncpy(adapterDesc.name, device->name()->utf8String(), sizeof(adapterDesc.name) - 1);
 
     return true;

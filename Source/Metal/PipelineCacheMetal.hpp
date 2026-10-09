@@ -18,21 +18,21 @@ struct ConvertedShaderEntryMetal {
     uint64_t size;
 };
 
-constexpr uint32_t PIPELINE_CACHE_MAGIC_METAL = 0x4D34524E; // "NR4M"
-constexpr uint32_t PIPELINE_CACHE_VERSION_METAL = 3;
-constexpr char TEMP_FILE_NAME_METAL[] = "nri-cache-XXXXXX";
+constexpr uint32_t PIPELINE_CACHE_MAGIC = 0x4D34524E; // "NR4M"
+constexpr uint32_t PIPELINE_CACHE_VERSION = 3;
+constexpr char TEMP_FILE_NAME[] = "nri-cache-XXXXXX";
 
 // Reserves a unique file in the user's temporary directory
-static bool CreateTempFileMetal(char (&path)[PATH_MAX], const void* data, size_t size) {
+static inline bool CreateTempFile(char (&path)[PATH_MAX], const void* data, size_t size) {
     const size_t length = confstr(_CS_DARWIN_USER_TEMP_DIR, path, sizeof(path));
 
-    if (!length || length + sizeof(TEMP_FILE_NAME_METAL) > sizeof(path)) {
+    if (!length || length + sizeof(TEMP_FILE_NAME) > sizeof(path)) {
         path[0] = 0;
 
         return false;
     }
 
-    strcat(path, TEMP_FILE_NAME_METAL);
+    strcat(path, TEMP_FILE_NAME);
     const int fd = mkstemp(path);
 
     if (fd == -1) {
@@ -55,7 +55,7 @@ static bool CreateTempFileMetal(char (&path)[PATH_MAX], const void* data, size_t
 }
 
 // Cached containers come from "PipelineMetal::ConvertShader", but the blob is untrusted
-static bool IsConvertedShaderValidMetal(const uint8_t* container, uint64_t size) {
+static inline bool IsConvertedShaderValid(const uint8_t* container, uint64_t size) {
     ConvertedShaderHeaderMetal header = {};
 
     if (size < sizeof(header))
@@ -95,15 +95,11 @@ static bool IsConvertedShaderValidMetal(const uint8_t* container, uint64_t size)
     return header.metallibSize && header.metallibOffset + (uint64_t)header.metallibSize <= size;
 }
 
-static inline NS::URL* GetFileUrlMetal(const char* path) {
+static inline NS::URL* GetFileUrl(const char* path) {
     return NS::URL::fileURLWithPath(NS::String::string(path, NS::UTF8StringEncoding));
 }
 
-PipelineCacheMetal::PipelineCacheMetal(DeviceMetal& device)
-    : m_Device(device), m_Archives(device.GetStdAllocator()), m_ArchiveFiles(device.GetStdAllocator()), m_PendingPipelines(device.GetStdAllocator()), m_ConvertedShaders(device.GetStdAllocator()) {
-}
-
-static void ReleasePendingPipelineMetal(const PendingPipelineMetal& pendingPipeline) {
+static inline void ReleasePendingPipeline(const PendingPipelineMetal& pendingPipeline) {
     if (pendingPipeline.render)
         pendingPipeline.render->release();
 
@@ -114,9 +110,13 @@ static void ReleasePendingPipelineMetal(const PendingPipelineMetal& pendingPipel
         pendingPipeline.linking->release();
 }
 
+PipelineCacheMetal::PipelineCacheMetal(DeviceMetal& device)
+    : m_Device(device), m_Archives(device.GetStdAllocator()), m_ArchiveFiles(device.GetStdAllocator()), m_PendingPipelines(device.GetStdAllocator()), m_ConvertedShaders(device.GetStdAllocator()) {
+}
+
 PipelineCacheMetal::~PipelineCacheMetal() {
     for (const PendingPipelineMetal& pendingPipeline : m_PendingPipelines)
-        ReleasePendingPipelineMetal(pendingPipeline);
+        ReleasePendingPipeline(pendingPipeline);
 
     for (MTL4::Archive* archive : m_Archives)
         archive->release();
@@ -168,7 +168,7 @@ Result PipelineCacheMetal::Create(const PipelineCacheDesc& desc) {
     const uint8_t* archives = (const uint8_t*)desc.data + sizeof(header);
     const size_t dataSize = desc.size - sizeof(header);
 
-    if (header.magic != PIPELINE_CACHE_MAGIC_METAL || header.version != PIPELINE_CACHE_VERSION_METAL || header.archiveSize > dataSize || header.convertedShaderSize != dataSize - header.archiveSize || header.hash != HashMetal(archives, dataSize))
+    if (header.magic != PIPELINE_CACHE_MAGIC || header.version != PIPELINE_CACHE_VERSION || header.archiveSize > dataSize || header.convertedShaderSize != dataSize - header.archiveSize || header.hash != HashMetal(archives, dataSize))
         return Result::OUT_OF_DATE;
 
     for (size_t offset = 0; offset < header.archiveSize;) {
@@ -199,7 +199,7 @@ Result PipelineCacheMetal::Create(const PipelineCacheDesc& desc) {
 
         const uint8_t* container = convertedShaders + offset;
 
-        if (entry.size > header.convertedShaderSize - offset || !IsConvertedShaderValidMetal(container, entry.size))
+        if (entry.size > header.convertedShaderSize - offset || !IsConvertedShaderValid(container, entry.size))
             return Result::OUT_OF_DATE;
 
         m_ConvertedShaders.emplace(entry.key, Vector<uint8_t>(container, container + entry.size, m_Device.GetStdAllocator()));
@@ -215,7 +215,7 @@ Result PipelineCacheMetal::Create(const PipelineCacheDesc& desc) {
 
         ArchiveFileMetal file = {};
 
-        if (!CreateTempFileMetal(file.path, archiveData, archiveSize)) {
+        if (!CreateTempFile(file.path, archiveData, archiveSize)) {
             if (file.path[0])
                 unlink(file.path);
 
@@ -223,7 +223,7 @@ Result PipelineCacheMetal::Create(const PipelineCacheDesc& desc) {
         }
 
         // Incompatible archives (i.e. from another OS version) are reported via "error" and dropped. Converted shaders are still usable
-        MTL4::Archive* archive = m_Device.GetNativeObject()->newArchive(GetFileUrlMetal(file.path), &error);
+        MTL4::Archive* archive = m_Device.GetNativeObject()->newArchive(GetFileUrl(file.path), &error);
 
         if (!archive) {
             NRI_REPORT_WARNING(&m_Device, "Pipeline cache archive is out of date: %s", error ? error->localizedDescription()->utf8String() : "unknown error");
@@ -283,7 +283,7 @@ bool PipelineCacheMetal::CapturePendingPipelines() const {
         } else // the pipeline is not cached
             NRI_REPORT_WARNING(&m_Device, "Pipeline cache update failed: %s", error ? error->localizedDescription()->utf8String() : "unknown error");
 
-        ReleasePendingPipelineMetal(pendingPipeline);
+        ReleasePendingPipeline(pendingPipeline);
     }
 
     return m_IsCaptured;
@@ -354,7 +354,7 @@ Result PipelineCacheMetal::GetData(void* dst, uint64_t& size) const {
             ArchiveFileMetal file = {};
             NS::Error* error = nullptr;
 
-            if (!CreateTempFileMetal(file.path, nullptr, 0) || !m_Serializer->serializeAsArchiveAndFlushToURL(GetFileUrlMetal(file.path), &error)) {
+            if (!CreateTempFile(file.path, nullptr, 0) || !m_Serializer->serializeAsArchiveAndFlushToURL(GetFileUrl(file.path), &error)) {
                 if (file.path[0])
                     unlink(file.path);
 
@@ -389,7 +389,7 @@ Result PipelineCacheMetal::GetData(void* dst, uint64_t& size) const {
         for (const auto& it : m_ConvertedShaders)
             convertedShaderSize += sizeof(ConvertedShaderEntryMetal) + it.second.size();
 
-        dataSize = archiveSize || convertedShaderSize ? sizeof(PipelineCacheHeaderMetal) + archiveSize + convertedShaderSize : 0;
+        dataSize = (archiveSize || convertedShaderSize) ? sizeof(PipelineCacheHeaderMetal) + archiveSize + convertedShaderSize : 0;
 
         if (archives && dataSize && size >= dataSize) {
             uint8_t* convertedShaders = archives + archiveSize;
@@ -434,8 +434,8 @@ Result PipelineCacheMetal::GetData(void* dst, uint64_t& size) const {
             result = Result::FAILURE;
         else {
             PipelineCacheHeaderMetal header = {};
-            header.magic = PIPELINE_CACHE_MAGIC_METAL;
-            header.version = PIPELINE_CACHE_VERSION_METAL;
+            header.magic = PIPELINE_CACHE_MAGIC;
+            header.version = PIPELINE_CACHE_VERSION;
             header.archiveSize = archiveSize;
             header.convertedShaderSize = convertedShaderSize;
             header.hash = HashMetal(archives, (size_t)(dataSize - sizeof(header)));

@@ -23,14 +23,6 @@ static inline bool IsFormatReinterpretable(Format format, TextureUsageBits usage
     return true;
 }
 
-bool TextureMetal::IsAtomicFormat(const DeviceMetal& device, Format format) {
-    // 32-bit atomics: "R32Uint" and "R32Sint". 64-bit min/max atomics: "RG32Uint" (Apple8+)
-    if (format == Format::RG32_UINT)
-        return device.GetNativeObject()->supportsFamily(MTL::GPUFamilyApple8);
-
-    return format == Format::R32_UINT || format == Format::R32_SINT;
-}
-
 MTL::TextureDescriptor* TextureMetal::NewNativeDesc(MemoryLocation location) const {
     const Dim_t layerNum = std::max(m_Desc.layerNum, (Dim_t)1);
     const Sample_t sampleNum = std::max(m_Desc.sampleNum, (Sample_t)1);
@@ -53,7 +45,7 @@ MTL::TextureDescriptor* TextureMetal::NewNativeDesc(MemoryLocation location) con
     if (m_Desc.usage & TextureUsageBits::SHADER_RESOURCE_STORAGE) {
         usage |= MTL::TextureUsageShaderRead | MTL::TextureUsageShaderWrite;
 
-        if (IsAtomicFormat(m_Device, m_Desc.format))
+        if (IsAtomicFormat(*m_Device.GetNativeObject(), m_Desc.format))
             usage |= MTL::TextureUsageShaderAtomic;
     }
 
@@ -77,7 +69,7 @@ MTL::TextureDescriptor* TextureMetal::NewNativeDesc(MemoryLocation location) con
     nativeDesc->setArrayLength(layerNum);
     nativeDesc->setSampleCount(sampleNum);
     nativeDesc->setStorageMode(location == MemoryLocation::DEVICE ? MTL::StorageModePrivate : MTL::StorageModeShared);
-    nativeDesc->setCpuCacheMode(location == MemoryLocation::DEVICE || location == MemoryLocation::HOST_READBACK ? MTL::CPUCacheModeDefaultCache : MTL::CPUCacheModeWriteCombined);
+    nativeDesc->setCpuCacheMode((location == MemoryLocation::DEVICE || location == MemoryLocation::HOST_READBACK) ? MTL::CPUCacheModeDefaultCache : MTL::CPUCacheModeWriteCombined);
     nativeDesc->setHazardTrackingMode(MTL::HazardTrackingModeUntracked);
     nativeDesc->setUsage(usage);
 

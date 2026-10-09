@@ -1,5 +1,26 @@
 // © 2026 NVIDIA Corporation
 
+template <typename Implementation, typename Interface, typename Desc>
+static inline Result CreatePlacedImplementation(DeviceMetal& device, Memory* memory, uint64_t offset, const Desc& desc, Interface*& entity) {
+    // "memory = nullptr" means committed, "offset" holds "MemoryLocation"
+    if (!memory)
+        return device.CreateImplementation<Implementation>(entity, desc, (MemoryLocation)offset);
+
+    Result result = device.CreateImplementation<Implementation>(entity, desc);
+
+    if (result != Result::SUCCESS)
+        return result;
+
+    result = ((Implementation*)entity)->Bind(*(MemoryMetal*)memory, offset);
+
+    if (result != Result::SUCCESS) {
+        Destroy((Implementation*)entity);
+        entity = nullptr;
+    }
+
+    return result;
+}
+
 DeviceMetal::DeviceMetal(const CallbackInterface& callbacks, const AllocationCallbacks& allocationCallbacks)
     : DeviceBase(callbacks, allocationCallbacks), m_ResidencyReferences(GetStdAllocator()), m_InternalShaders(*this) {
     m_Desc.graphicsAPI = GraphicsAPI::METAL;
@@ -115,7 +136,7 @@ Result DeviceMetal::Create(const DeviceCreationDesc& desc, const DeviceCreationM
         const QueueFamilyDesc& queueFamily = desc.queueFamilies[i];
         const uint32_t queueType = (uint32_t)queueFamily.queueType;
 
-        if (queueType >= QUEUE_TYPE_NUM_METAL)
+        if (queueType >= QUEUE_TYPE_NUM)
             return Result::UNSUPPORTED;
 
         // Wrapped native queues ("queueFamilies" match)
@@ -124,7 +145,7 @@ Result DeviceMetal::Create(const DeviceCreationDesc& desc, const DeviceCreationM
         // Duplicate families append queues
         uint32_t& queueNum = m_Desc.adapterDesc.queueNum[queueType];
         const uint32_t firstQueue = queueNum;
-        const uint32_t newQueueNum = std::min(queueNum + queueFamily.queueNum, QUEUE_NUM_PER_TYPE_METAL);
+        const uint32_t newQueueNum = std::min(queueNum + queueFamily.queueNum, QUEUE_NUM_PER_TYPE);
 
         for (; queueNum < newQueueNum; queueNum++) {
             QueueMetal*& queue = m_Queues[queueType][queueNum];
@@ -188,14 +209,14 @@ void DeviceMetal::CommitResidency() {
 }
 
 void DeviceMetal::AddQueueResidencySet(MTL::ResidencySet* residencySet) {
-    for (uint32_t i = 0; i < QUEUE_TYPE_NUM_METAL; i++) {
+    for (uint32_t i = 0; i < QUEUE_TYPE_NUM; i++) {
         for (uint32_t j = 0; j < m_Desc.adapterDesc.queueNum[i]; j++)
             m_Queues[i][j]->GetNativeObject()->addResidencySet(residencySet);
     }
 }
 
 void DeviceMetal::RemoveQueueResidencySet(MTL::ResidencySet* residencySet) {
-    for (uint32_t i = 0; i < QUEUE_TYPE_NUM_METAL; i++) {
+    for (uint32_t i = 0; i < QUEUE_TYPE_NUM; i++) {
         for (uint32_t j = 0; j < m_Desc.adapterDesc.queueNum[i]; j++)
             m_Queues[i][j]->GetNativeObject()->removeResidencySet(residencySet);
     }
@@ -224,7 +245,7 @@ Result DeviceMetal::GetQueue(QueueType type, uint32_t index, Queue*& queue) {
 
     const uint32_t queueType = (uint32_t)type;
 
-    if (queueType >= QUEUE_TYPE_NUM_METAL || !m_Desc.adapterDesc.queueNum[queueType])
+    if (queueType >= QUEUE_TYPE_NUM || !m_Desc.adapterDesc.queueNum[queueType])
         return Result::UNSUPPORTED;
 
     if (index >= m_Desc.adapterDesc.queueNum[queueType])
@@ -235,41 +256,20 @@ Result DeviceMetal::GetQueue(QueueType type, uint32_t index, Queue*& queue) {
     return Result::SUCCESS;
 }
 
-template <typename Implementation, typename Interface, typename Desc>
-static Result CreatePlacedImplementationMetal(DeviceMetal& device, Memory* memory, uint64_t offset, const Desc& desc, Interface*& entity) {
-    // "memory = nullptr" means committed, "offset" holds "MemoryLocation"
-    if (!memory)
-        return device.CreateImplementation<Implementation>(entity, desc, (MemoryLocation)offset);
-
-    Result result = device.CreateImplementation<Implementation>(entity, desc);
-
-    if (result != Result::SUCCESS)
-        return result;
-
-    result = ((Implementation*)entity)->Bind(*(MemoryMetal*)memory, offset);
-
-    if (result != Result::SUCCESS) {
-        Destroy((Implementation*)entity);
-        entity = nullptr;
-    }
-
-    return result;
-}
-
 Result DeviceMetal::CreatePlacedBuffer(Memory* memory, uint64_t offset, const BufferDesc& bufferDesc, Buffer*& buffer) {
-    return CreatePlacedImplementationMetal<BufferMetal>(*this, memory, offset, bufferDesc, buffer);
+    return CreatePlacedImplementation<BufferMetal>(*this, memory, offset, bufferDesc, buffer);
 }
 
 Result DeviceMetal::CreatePlacedTexture(Memory* memory, uint64_t offset, const TextureDesc& textureDesc, Texture*& texture) {
-    return CreatePlacedImplementationMetal<TextureMetal>(*this, memory, offset, textureDesc, texture);
+    return CreatePlacedImplementation<TextureMetal>(*this, memory, offset, textureDesc, texture);
 }
 
 Result DeviceMetal::CreatePlacedAccelerationStructure(Memory* memory, uint64_t offset, const AccelerationStructureDesc& accelerationStructureDesc, AccelerationStructure*& accelerationStructure) {
-    return CreatePlacedImplementationMetal<AccelerationStructureMetal>(*this, memory, offset, accelerationStructureDesc, accelerationStructure);
+    return CreatePlacedImplementation<AccelerationStructureMetal>(*this, memory, offset, accelerationStructureDesc, accelerationStructure);
 }
 
 Result DeviceMetal::WaitIdle() {
-    for (uint32_t i = 0; i < QUEUE_TYPE_NUM_METAL; i++) {
+    for (uint32_t i = 0; i < QUEUE_TYPE_NUM; i++) {
         for (uint32_t j = 0; j < m_Desc.adapterDesc.queueNum[i]; j++) {
             Result result = m_Queues[i][j]->WaitIdle();
 
@@ -412,7 +412,7 @@ void DeviceMetal::FillDesc(const AdapterDesc& adapterDesc) {
         m_Desc.other.viewMaxNum = (uint8_t)count;
 
     // Indirect draws are issued one by one, "drawNum" bounds the CPU loop and the per-call upload of filtered arguments and roots
-    m_Desc.other.drawIndirectMaxNum = DRAW_INDIRECT_MAX_NUM_METAL;
+    m_Desc.other.drawIndirectMaxNum = DRAW_INDIRECT_MAX_NUM;
     m_Desc.other.samplerAnisotropyMax = 16.0f;
     m_Desc.tiers.resourceBinding = 2;
     m_Desc.tiers.bindless = 2;

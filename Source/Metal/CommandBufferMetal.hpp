@@ -3,6 +3,149 @@
 // The native command buffer points to its owner (not retained), see "FromNativeObject"
 static char g_CommandBufferOwnerKey;
 
+#if NRI_ENABLE_METAL_SHADER_CONVERTER
+// Object stage threadgroup memory of Converter's tessellation emulation (as in "metal_irconverter_runtime.h" draw helpers)
+constexpr NS::UInteger TESSELLATION_OBJECT_THREADGROUP_MEMORY_SIZE = 15360;
+
+// Converter's ray dispatch kernel ("RaygenIndirection") is dispatched with 8x8x1 threadgroups and an exact grid
+constexpr uint32_t RAY_DISPATCH_GROUP_SIZE = 8;
+#endif
+
+static inline MTL::Stages GetBarrierStages(StageBits stages) {
+    if (stages == StageBits::ALL)
+        return MTL::StageAll;
+
+    if (stages == StageBits::NONE)
+        return 0;
+
+    MTL::Stages result = 0;
+
+    if (stages & (StageBits::INDEX_INPUT | StageBits::VERTEX_SHADER | StageBits::TESSELLATION_SHADERS | StageBits::GEOMETRY_SHADER))
+        result |= MTL::StageVertex | MTL::StageObject | MTL::StageMesh;
+
+    if (stages & StageBits::TASK_SHADER)
+        result |= MTL::StageObject;
+
+    if (stages & StageBits::MESH_SHADER)
+        result |= MTL::StageMesh;
+
+    if (stages & (StageBits::FRAGMENT_SHADER | StageBits::DEPTH_STENCIL_ATTACHMENT | StageBits::COLOR_ATTACHMENT | StageBits::SHADING_RATE_ATTACHMENT | StageBits::RESOLVE))
+        result |= MTL::StageFragment;
+
+    if (stages & (StageBits::COMPUTE_SHADER | StageBits::RAY_TRACING_SHADERS))
+        result |= MTL::StageDispatch;
+
+    // "CmdClearStorage" dispatches, "CmdZeroBuffer" uses "fillBuffer"
+    if (stages & StageBits::CLEAR_STORAGE)
+        result |= MTL::StageDispatch | MTL::StageBlit;
+
+    // Instance conversion and TLAS header writes are dispatches
+    if (stages & StageBits::ACCELERATION_STRUCTURE)
+        result |= MTL::StageAccelerationStructure | MTL::StageDispatch;
+
+    if (stages & (StageBits::COPY | StageBits::RESOLVE))
+        result |= MTL::StageBlit;
+
+    if (stages & StageBits::INDIRECT)
+        result |= MTL::StageVertex | MTL::StageObject | MTL::StageMesh | MTL::StageDispatch;
+
+    return result;
+}
+
+static inline bool HasWriteAccess(AccessBits access) {
+    constexpr uint32_t writeAccess = (uint32_t)AccessBits::SCRATCH_BUFFER | (uint32_t)AccessBits::COLOR_ATTACHMENT_WRITE | (uint32_t)AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE
+        | (uint32_t)AccessBits::ACCELERATION_STRUCTURE_WRITE | (uint32_t)AccessBits::MICROMAP_WRITE | (uint32_t)AccessBits::SHADER_RESOURCE_STORAGE
+        | (uint32_t)AccessBits::COPY_DESTINATION | (uint32_t)AccessBits::RESOLVE_DESTINATION | (uint32_t)AccessBits::CLEAR_STORAGE | (uint32_t)AccessBits::HOST_WRITE
+        | (uint32_t)AccessBits::VIDEO_DECODE_WRITE | (uint32_t)AccessBits::VIDEO_ENCODE_WRITE;
+
+    // "NONE" is "COMMON" (any access)
+    return access == AccessBits::NONE || ((uint32_t)access & writeAccess) != 0;
+}
+
+static inline MTL::ScissorRect GetScissorRect(const nri::Rect& rect) {
+    const int32_t x = std::max<int32_t>(0, rect.x);
+    const int32_t y = std::max<int32_t>(0, rect.y);
+
+    return {(NS::UInteger)x, (NS::UInteger)y, (NS::UInteger)std::max<int32_t>(0, int32_t(rect.x) + rect.width - x), (NS::UInteger)std::max<int32_t>(0, int32_t(rect.y) + rect.height - y)};
+}
+
+static inline uint32_t GetAttachmentLayerNum(const DescriptorMetal& descriptor) {
+    const TextureViewDesc& viewDesc = descriptor.GetTextureViewDesc();
+
+    return viewDesc.layerNum == REMAINING ? uint32_t(descriptor.GetTexture()->arrayLength()) - viewDesc.layerOffset : uint32_t(viewDesc.layerNum);
+}
+
+static inline void SetAttachmentResolve(MTL::RenderPassAttachmentDescriptor* attachment, const AttachmentDesc& attachmentDesc) {
+    const DescriptorMetal& resolve = *(DescriptorMetal*)attachmentDesc.resolveDst;
+    const TextureViewDesc& resolveViewDesc = resolve.GetTextureViewDesc();
+
+    attachment->setResolveTexture(resolve.GetTexture());
+    attachment->setResolveLevel(resolveViewDesc.mipOffset);
+    attachment->setResolveSlice(resolveViewDesc.layerOffset);
+    attachment->setStoreAction(attachmentDesc.storeOp == StoreOp::STORE ? MTL::StoreActionStoreAndMultisampleResolve : MTL::StoreActionMultisampleResolve);
+}
+
+enum class ColorTypeMetal : uint8_t {
+    FLOAT,
+    UINT,
+    SINT
+};
+
+static inline ColorTypeMetal GetColorType(Format format) {
+    const FormatProps& props = GetFormatProps(format);
+
+    if (!props.isInteger)
+        return ColorTypeMetal::FLOAT;
+
+    return props.isSigned ? ColorTypeMetal::SINT : ColorTypeMetal::UINT;
+}
+
+static inline MTL::BlitOption GetTextureCopyOptions(const TextureMetal& texture, PlaneBits planes) {
+    const FormatProps& props = GetFormatProps(texture.GetDesc().format);
+
+    if (props.isDepth && props.isStencil) {
+        if (planes == PlaneBits::DEPTH)
+            return MTL::BlitOptionDepthFromDepthStencil;
+
+        if (planes == PlaneBits::STENCIL)
+            return MTL::BlitOptionStencilFromDepthStencil;
+    }
+
+    return MTL::BlitOptionNone;
+}
+
+static inline InternalKernelMetal GetClearStorageKernel(MTL::Texture* texture, Format format) {
+    if (!texture)
+        return InternalKernelMetal::CLEAR_STORAGE_BUFFER;
+
+    // Matches "nri_clear_storage_<dimension>_<type>" in "InternalMetal.metal"
+    uint32_t dimension = 0;
+
+    switch (texture->textureType()) {
+        case MTL::TextureType1D:
+            dimension = 1;
+            break;
+        case MTL::TextureType1DArray:
+            dimension = 2;
+            break;
+        case MTL::TextureType2D:
+            dimension = 3;
+            break;
+        case MTL::TextureType2DArray:
+            dimension = 4;
+            break;
+        case MTL::TextureType3D:
+            dimension = 5;
+            break;
+        default:
+            break;
+    }
+
+    const uint32_t type = (uint32_t)GetColorType(format);
+
+    return (InternalKernelMetal)((uint32_t)InternalKernelMetal::CLEAR_STORAGE_TEXTURE + dimension * 3 + type);
+}
+
 CommandBufferMetal::~CommandBufferMetal() {
     for (Annotation& annotation : m_Annotations)
         annotation.name->release();
@@ -47,7 +190,7 @@ Result CommandBufferMetal::Create(const CommandAllocator& allocator) {
     m_InternalArguments = m_Device.GetNativeObject()->newArgumentTable(desc, nullptr);
     desc->release();
 
-    return m_CommandBuffer && m_Arguments && m_InternalArguments ? Result::SUCCESS : Result::OUT_OF_MEMORY;
+    return (m_CommandBuffer && m_Arguments && m_InternalArguments) ? Result::SUCCESS : Result::OUT_OF_MEMORY;
 }
 
 Result CommandBufferMetal::Begin(const DescriptorPool* pool) {
@@ -305,57 +448,6 @@ void CommandBufferMetal::CmdSetPipeline(const Pipeline& pipeline) {
         m_RenderPass->setSamplePositions(m_SamplePositions, m_Pipeline->HasSampleLocations() ? m_SamplePositionNum : 0);
 }
 
-static inline MTL::Stages GetBarrierStagesMetal(StageBits stages) {
-    if (stages == StageBits::ALL)
-        return MTL::StageAll;
-
-    if (stages == StageBits::NONE)
-        return 0;
-
-    MTL::Stages result = 0;
-
-    if (stages & (StageBits::INDEX_INPUT | StageBits::VERTEX_SHADER | StageBits::TESSELLATION_SHADERS | StageBits::GEOMETRY_SHADER))
-        result |= MTL::StageVertex | MTL::StageObject | MTL::StageMesh;
-
-    if (stages & StageBits::TASK_SHADER)
-        result |= MTL::StageObject;
-
-    if (stages & StageBits::MESH_SHADER)
-        result |= MTL::StageMesh;
-
-    if (stages & (StageBits::FRAGMENT_SHADER | StageBits::DEPTH_STENCIL_ATTACHMENT | StageBits::COLOR_ATTACHMENT | StageBits::SHADING_RATE_ATTACHMENT | StageBits::RESOLVE))
-        result |= MTL::StageFragment;
-
-    if (stages & (StageBits::COMPUTE_SHADER | StageBits::RAY_TRACING_SHADERS))
-        result |= MTL::StageDispatch;
-
-    // "CmdClearStorage" dispatches, "CmdZeroBuffer" uses "fillBuffer"
-    if (stages & StageBits::CLEAR_STORAGE)
-        result |= MTL::StageDispatch | MTL::StageBlit;
-
-    // Instance conversion and TLAS header writes are dispatches
-    if (stages & StageBits::ACCELERATION_STRUCTURE)
-        result |= MTL::StageAccelerationStructure | MTL::StageDispatch;
-
-    if (stages & (StageBits::COPY | StageBits::RESOLVE))
-        result |= MTL::StageBlit;
-
-    if (stages & StageBits::INDIRECT)
-        result |= MTL::StageVertex | MTL::StageObject | MTL::StageMesh | MTL::StageDispatch;
-
-    return result;
-}
-
-static inline bool HasWriteAccessMetal(AccessBits access) {
-    constexpr uint32_t writeAccess = (uint32_t)AccessBits::SCRATCH_BUFFER | (uint32_t)AccessBits::COLOR_ATTACHMENT_WRITE | (uint32_t)AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE
-        | (uint32_t)AccessBits::ACCELERATION_STRUCTURE_WRITE | (uint32_t)AccessBits::MICROMAP_WRITE | (uint32_t)AccessBits::SHADER_RESOURCE_STORAGE
-        | (uint32_t)AccessBits::COPY_DESTINATION | (uint32_t)AccessBits::RESOLVE_DESTINATION | (uint32_t)AccessBits::CLEAR_STORAGE | (uint32_t)AccessBits::HOST_WRITE
-        | (uint32_t)AccessBits::VIDEO_DECODE_WRITE | (uint32_t)AccessBits::VIDEO_ENCODE_WRITE;
-
-    // "NONE" is "COMMON" (any access)
-    return access == AccessBits::NONE || ((uint32_t)access & writeAccess) != 0;
-}
-
 void CommandBufferMetal::CmdBarrier(const BarrierDesc& desc) {
     MTL::Stages before = 0;
     MTL::Stages after = 0;
@@ -363,23 +455,23 @@ void CommandBufferMetal::CmdBarrier(const BarrierDesc& desc) {
 
     for (uint32_t i = 0; i < desc.globalNum; i++) {
         const GlobalBarrierDesc& barrier = desc.globals[i];
-        before |= GetBarrierStagesMetal(barrier.before.stages);
-        after |= GetBarrierStagesMetal(barrier.after.stages);
-        hasWrites = hasWrites || HasWriteAccessMetal(barrier.before.access);
+        before |= GetBarrierStages(barrier.before.stages);
+        after |= GetBarrierStages(barrier.after.stages);
+        hasWrites = hasWrites || HasWriteAccess(barrier.before.access);
     }
 
     for (uint32_t i = 0; i < desc.bufferNum; i++) {
         const BufferBarrierDesc& barrier = desc.buffers[i];
-        before |= GetBarrierStagesMetal(barrier.before.stages);
-        after |= GetBarrierStagesMetal(barrier.after.stages);
-        hasWrites = hasWrites || HasWriteAccessMetal(barrier.before.access);
+        before |= GetBarrierStages(barrier.before.stages);
+        after |= GetBarrierStages(barrier.after.stages);
+        hasWrites = hasWrites || HasWriteAccess(barrier.before.access);
     }
 
     for (uint32_t i = 0; i < desc.textureNum; i++) {
         const TextureBarrierDesc& barrier = desc.textures[i];
-        before |= GetBarrierStagesMetal(barrier.before.stages);
-        after |= GetBarrierStagesMetal(barrier.after.stages);
-        hasWrites = hasWrites || HasWriteAccessMetal(barrier.before.access);
+        before |= GetBarrierStages(barrier.before.stages);
+        after |= GetBarrierStages(barrier.after.stages);
+        hasWrites = hasWrites || HasWriteAccess(barrier.before.access);
     }
 
     if (!before || !after)
@@ -454,18 +546,11 @@ void CommandBufferMetal::CmdSetViewports(const Viewport* v, uint32_t n) {
         m_RenderEncoder->setViewports(m_Viewports, n);
 }
 
-static inline MTL::ScissorRect GetScissorRectMetal(const nri::Rect& rect) {
-    const int32_t x = std::max<int32_t>(0, rect.x);
-    const int32_t y = std::max<int32_t>(0, rect.y);
-
-    return {(NS::UInteger)x, (NS::UInteger)y, (NS::UInteger)std::max<int32_t>(0, int32_t(rect.x) + rect.width - x), (NS::UInteger)std::max<int32_t>(0, int32_t(rect.y) + rect.height - y)};
-}
-
 void CommandBufferMetal::CmdSetScissors(const Rect* r, uint32_t n) {
     m_ScissorNum = n;
 
     for (uint32_t i = 0; i < n; i++)
-        m_Scissors[i] = GetScissorRectMetal(r[i]);
+        m_Scissors[i] = GetScissorRect(r[i]);
 
     if (m_RenderEncoder)
         m_RenderEncoder->setScissorRects(m_Scissors, n);
@@ -523,22 +608,6 @@ void CommandBufferMetal::CmdSetDepthBias(const DepthBiasDesc& d) {
         m_RenderEncoder->setDepthBias(d.constant, d.slope, d.clamp);
 }
 
-static inline uint32_t GetAttachmentLayerNumMetal(const DescriptorMetal& descriptor) {
-    const TextureViewDesc& viewDesc = descriptor.GetTextureViewDesc();
-
-    return viewDesc.layerNum == REMAINING ? uint32_t(descriptor.GetTexture()->arrayLength()) - viewDesc.layerOffset : uint32_t(viewDesc.layerNum);
-}
-
-static inline void SetAttachmentResolveMetal(MTL::RenderPassAttachmentDescriptor* attachment, const AttachmentDesc& attachmentDesc) {
-    const DescriptorMetal& resolve = *(DescriptorMetal*)attachmentDesc.resolveDst;
-    const TextureViewDesc& resolveViewDesc = resolve.GetTextureViewDesc();
-
-    attachment->setResolveTexture(resolve.GetTexture());
-    attachment->setResolveLevel(resolveViewDesc.mipOffset);
-    attachment->setResolveSlice(resolveViewDesc.layerOffset);
-    attachment->setStoreAction(attachmentDesc.storeOp == StoreOp::STORE ? MTL::StoreActionStoreAndMultisampleResolve : MTL::StoreActionMultisampleResolve);
-}
-
 void CommandBufferMetal::CmdBeginRendering(const RenderingDesc& desc) {
     EndCompute();
 
@@ -560,7 +629,7 @@ void CommandBufferMetal::CmdBeginRendering(const RenderingDesc& desc) {
         m_RenderWidth = std::min(m_RenderWidth, std::max(1u, (uint32_t)texture->width() >> mipOffset));
         m_RenderHeight = std::min(m_RenderHeight, std::max(1u, (uint32_t)texture->height() >> mipOffset));
         m_RenderSampleNum = (uint8_t)texture->sampleCount();
-        layerNum = std::min(layerNum, GetAttachmentLayerNumMetal(descriptor));
+        layerNum = std::min(layerNum, GetAttachmentLayerNum(descriptor));
     };
 
     for (uint32_t i = 0; i < desc.colorNum; i++) {
@@ -593,12 +662,12 @@ void CommandBufferMetal::CmdBeginRendering(const RenderingDesc& desc) {
             continue;
 
         if (a.resolveOp == ResolveOp::AVERAGE && m_Device.IsNativeAverageResolveSupported(viewDesc.format))
-            SetAttachmentResolveMetal(n, a);
+            SetAttachmentResolve(n, a);
         else {
             // Other color resolves are performed by a shader after the pass, which needs the multisampled contents
             const DescriptorMetal& resolve = *(DescriptorMetal*)a.resolveDst;
             const TextureViewDesc& resolveViewDesc = resolve.GetTextureViewDesc();
-            m_AttachmentResolves[m_AttachmentResolveNum++] = {d.GetTexture(), resolve.GetTexture(), a.resolveOp, viewDesc.format, viewDesc.mipOffset, resolveViewDesc.mipOffset, viewDesc.layerOffset, resolveViewDesc.layerOffset, (uint16_t)GetAttachmentLayerNumMetal(d)};
+            m_AttachmentResolves[m_AttachmentResolveNum++] = {d.GetTexture(), resolve.GetTexture(), a.resolveOp, viewDesc.format, viewDesc.mipOffset, resolveViewDesc.mipOffset, viewDesc.layerOffset, resolveViewDesc.layerOffset, (uint16_t)GetAttachmentLayerNum(d)};
             n->setStoreAction(MTL::StoreActionStore);
         }
     }
@@ -625,7 +694,7 @@ void CommandBufferMetal::CmdBeginRendering(const RenderingDesc& desc) {
 
         // Metal depth resolve filters are "sample 0", "min" and "max" ("AVERAGE" is rejected by validation)
         if (a.resolveDst) {
-            SetAttachmentResolveMetal(n, a);
+            SetAttachmentResolve(n, a);
 
             if (a.resolveOp == ResolveOp::SAMPLE_ZERO)
                 n->setDepthResolveFilter(MTL::MultisampleDepthResolveFilterSample0);
@@ -653,7 +722,7 @@ void CommandBufferMetal::CmdBeginRendering(const RenderingDesc& desc) {
         // Metal stencil resolve filters are "sample 0" and "the sample selected by the depth filter", only "SAMPLE_ZERO" matches an NRI
         // resolve op ("MIN" and "MAX" are rejected by validation). A combined "depth" attachment resolves stencil with "depth.resolveOp"
         if (a.resolveDst && a.resolveOp == ResolveOp::SAMPLE_ZERO) {
-            SetAttachmentResolveMetal(n, a);
+            SetAttachmentResolve(n, a);
             n->setStencilResolveFilter(MTL::MultisampleStencilResolveFilterSample0);
         }
 
@@ -689,7 +758,7 @@ void CommandBufferMetal::CmdBeginRendering(const RenderingDesc& desc) {
     m_VisibilityMode = MTL::VisibilityResultModeDisabled;
     m_VisibilityOffset = 0;
     m_ResumeStages = MTL::StageFragment; // attachments written by previous render passes (implicitly ordered in VK and D3D12)
-    pass->setSamplePositions(m_SamplePositions, m_Pipeline && m_Pipeline->HasSampleLocations() ? m_SamplePositionNum : 0);
+    pass->setSamplePositions(m_SamplePositions, (m_Pipeline && m_Pipeline->HasSampleLocations()) ? m_SamplePositionNum : 0);
 
     // The render encoder is opened by the first command which needs it. Until then, commands which require a render pass split
     // (queries, sample locations, indirect draw preparation) can modify the pass or record compute work without splitting
@@ -806,21 +875,6 @@ void CommandBufferMetal::BindArguments(BindPoint point) {
         SetComputeState(m_Arguments, nullptr);
 }
 
-enum class ColorTypeMetal : uint8_t {
-    FLOAT,
-    UINT,
-    SINT
-};
-
-static inline ColorTypeMetal GetColorTypeMetal(Format format) {
-    const FormatProps& props = GetFormatProps(format);
-
-    if (!props.isInteger)
-        return ColorTypeMetal::FLOAT;
-
-    return props.isSigned ? ColorTypeMetal::SINT : ColorTypeMetal::UINT;
-}
-
 void CommandBufferMetal::CmdClearAttachments(const ClearAttachmentDesc* clears, uint32_t clearNum, const Rect* rects, uint32_t rectNum) {
     MTL4::RenderCommandEncoder* encoder = GetRenderEncoder();
 
@@ -854,7 +908,7 @@ void CommandBufferMetal::CmdClearAttachments(const ClearAttachmentDesc* clears, 
         }
 
         if (key.planes & PlaneBits::COLOR)
-            key.colorType = (uint8_t)GetColorTypeMetal(m_RenderColorFormats[desc.colorAttachmentIndex]);
+            key.colorType = (uint8_t)GetColorType(m_RenderColorFormats[desc.colorAttachmentIndex]);
 
         const ClearPipelineMetal clear = m_Device.GetInternalShaders().GetClearPipeline(key);
 
@@ -888,7 +942,7 @@ void CommandBufferMetal::CmdClearAttachments(const ClearAttachmentDesc* clears, 
 
         if (rectNum) {
             for (uint32_t j = 0; j < rectNum; j++) {
-                encoder->setScissorRect(GetScissorRectMetal(rects[j]));
+                encoder->setScissorRect(GetScissorRect(rects[j]));
                 encoder->drawPrimitives(MTL::PrimitiveTypeTriangle, 0, 3, m_RenderPass->renderTargetArrayLength());
             }
         } else {
@@ -1242,9 +1296,6 @@ bool CommandBufferMetal::PrepareIndirectDrawRoots(MTL::GPUAddress arguments, uin
 }
 
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
-// Object stage threadgroup memory of Converter's tessellation emulation (as in "metal_irconverter_runtime.h" draw helpers)
-constexpr NS::UInteger TESSELLATION_OBJECT_THREADGROUP_MEMORY_SIZE = 15360;
-
 IRRuntimeDrawInfo CommandBufferMetal::PrepareEmulationDraw(bool indexed, MTL::Size& objectGroup, MTL::Size& meshGroup) {
     const IRRuntimePrimitiveType primitive = m_Pipeline->GetEmulationPrimitive();
     IRRuntimeDrawInfo info = {};
@@ -1419,26 +1470,12 @@ void CommandBufferMetal::CmdCopyTexture(Texture& d, const TextureRegionDesc* dr,
     BeginCompute()->copyFromTexture(((TextureMetal&)s).GetNativeObject(), a.layerOffset, a.mipOffset, MTL::Origin(a.x, a.y, a.z), size, ((TextureMetal&)d).GetNativeObject(), b.layerOffset, b.mipOffset, MTL::Origin(b.x, b.y, b.z));
 }
 
-static MTL::BlitOption GetTextureCopyOptionsMetal(const TextureMetal& texture, PlaneBits planes) {
-    const FormatProps& props = GetFormatProps(texture.GetDesc().format);
-
-    if (props.isDepth && props.isStencil) {
-        if (planes == PlaneBits::DEPTH)
-            return MTL::BlitOptionDepthFromDepthStencil;
-
-        if (planes == PlaneBits::STENCIL)
-            return MTL::BlitOptionStencilFromDepthStencil;
-    }
-
-    return MTL::BlitOptionNone;
-}
-
 void CommandBufferMetal::CmdUploadBufferToTexture(Texture& d, const TextureRegionDesc& r, const Buffer& s, const TextureDataLayoutDesc& l) {
-    BeginCompute()->copyFromBuffer(((BufferMetal&)s).GetNativeObject(), l.offset, l.rowPitch, l.slicePitch, GetRegionSize((TextureMetal&)d, r), ((TextureMetal&)d).GetNativeObject(), r.layerOffset, r.mipOffset, MTL::Origin(r.x, r.y, r.z), GetTextureCopyOptionsMetal((TextureMetal&)d, r.planes));
+    BeginCompute()->copyFromBuffer(((BufferMetal&)s).GetNativeObject(), l.offset, l.rowPitch, l.slicePitch, GetRegionSize((TextureMetal&)d, r), ((TextureMetal&)d).GetNativeObject(), r.layerOffset, r.mipOffset, MTL::Origin(r.x, r.y, r.z), GetTextureCopyOptions((TextureMetal&)d, r.planes));
 }
 
 void CommandBufferMetal::CmdReadbackTextureToBuffer(Buffer& d, const TextureDataLayoutDesc& l, const Texture& s, const TextureRegionDesc& r) {
-    BeginCompute()->copyFromTexture(((TextureMetal&)s).GetNativeObject(), r.layerOffset, r.mipOffset, MTL::Origin(r.x, r.y, r.z), GetRegionSize((TextureMetal&)s, r), ((BufferMetal&)d).GetNativeObject(), l.offset, l.rowPitch, l.slicePitch, GetTextureCopyOptionsMetal((TextureMetal&)s, r.planes));
+    BeginCompute()->copyFromTexture(((TextureMetal&)s).GetNativeObject(), r.layerOffset, r.mipOffset, MTL::Origin(r.x, r.y, r.z), GetRegionSize((TextureMetal&)s, r), ((BufferMetal&)d).GetNativeObject(), l.offset, l.rowPitch, l.slicePitch, GetTextureCopyOptions((TextureMetal&)s, r.planes));
 }
 
 void CommandBufferMetal::CmdZeroBuffer(Buffer& b, uint64_t o, uint64_t z) {
@@ -1489,7 +1526,7 @@ void CommandBufferMetal::ResolveColor(MTL::Texture* dst, const TextureRegionDesc
 
     if (!isNative) {
         const bool isArray = src->textureType() == MTL::TextureType2DMultisampleArray;
-        MTL::RenderPipelineState* pipeline = m_Device.GetInternalShaders().GetResolvePipeline(src->pixelFormat(), (uint8_t)GetColorTypeMetal(format), isArray);
+        MTL::RenderPipelineState* pipeline = m_Device.GetInternalShaders().GetResolvePipeline(src->pixelFormat(), (uint8_t)GetColorType(format), isArray);
 
         if (!pipeline) {
             encoder->endEncoding();
@@ -1570,44 +1607,12 @@ void CommandBufferMetal::CmdResolveTexture(Texture& dst, const TextureRegionDesc
     ResolveColor(destination.GetNativeObject(), destinationRegion, source.GetNativeObject(), sourceRegion, op, source.GetDesc().format);
 }
 
-static inline InternalKernelMetal GetClearStorageKernelMetal(MTL::Texture* texture, Format format) {
-    if (!texture)
-        return InternalKernelMetal::CLEAR_STORAGE_BUFFER;
-
-    // Matches "nri_clear_storage_<dimension>_<type>" in "InternalMetal.metal"
-    uint32_t dimension = 0;
-
-    switch (texture->textureType()) {
-        case MTL::TextureType1D:
-            dimension = 1;
-            break;
-        case MTL::TextureType1DArray:
-            dimension = 2;
-            break;
-        case MTL::TextureType2D:
-            dimension = 3;
-            break;
-        case MTL::TextureType2DArray:
-            dimension = 4;
-            break;
-        case MTL::TextureType3D:
-            dimension = 5;
-            break;
-        default:
-            break;
-    }
-
-    const uint32_t type = (uint32_t)GetColorTypeMetal(format);
-
-    return (InternalKernelMetal)((uint32_t)InternalKernelMetal::CLEAR_STORAGE_TEXTURE + dimension * 3 + type);
-}
-
 void CommandBufferMetal::CmdClearStorage(const ClearStorageDesc& desc) {
     const DescriptorMetal& descriptor = *(const DescriptorMetal*)desc.descriptor;
     MTL::Texture* texture = descriptor.GetTexture();
     MTL::TextureType textureType = texture ? texture->textureType() : MTL::TextureTypeTextureBuffer;
 
-    MTL::ComputePipelineState* pipeline = m_Device.GetInternalShaders().GetKernel(GetClearStorageKernelMetal(texture, descriptor.GetFormat()));
+    MTL::ComputePipelineState* pipeline = m_Device.GetInternalShaders().GetKernel(GetClearStorageKernel(texture, descriptor.GetFormat()));
 
     if (!pipeline) {
         RecordFailure(Result::FAILURE);
@@ -1968,9 +1973,6 @@ void CommandBufferMetal::CmdWriteAccelerationStructureSizes(const AccelerationSt
 
 static_assert(sizeof(DispatchRaysIndirectDesc) == sizeof(IRDispatchRaysDescriptor), "'DispatchRaysIndirectDesc' must match 'IRDispatchRaysDescriptor'");
 static_assert(offsetof(DispatchRaysIndirectDesc, width) == offsetof(IRDispatchRaysDescriptor, Width), "'DispatchRaysIndirectDesc' must match 'IRDispatchRaysDescriptor'");
-
-// Converter's ray dispatch kernel ("RaygenIndirection") is dispatched with 8x8x1 threadgroups and an exact grid
-constexpr uint32_t RAY_DISPATCH_GROUP_SIZE = 8;
 
 MTL::GPUAddress CommandBufferMetal::SetRayDispatchArguments(const IRDispatchRaysDescriptor& desc) {
     IRDispatchRaysArgument args = {};
