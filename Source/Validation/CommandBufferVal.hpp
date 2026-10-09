@@ -134,6 +134,9 @@ static inline ResolveOpBits GetColorResolveOps(const ResolveOps& resolveOps, For
 
 // All planes of a format
 static inline PlaneBits GetFormatPlanes(Format format) {
+    if (format == Format::NV12_UNORM || format == Format::P010_UNORM || format == Format::P016_UNORM)
+        return PlaneBits::PLANE_0 | PlaneBits::PLANE_1;
+
     const FormatProps& formatProps = GetFormatProps(format);
     if (!formatProps.isDepth && !formatProps.isStencil)
         return PlaneBits::COLOR;
