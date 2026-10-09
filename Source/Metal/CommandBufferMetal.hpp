@@ -592,10 +592,10 @@ void CommandBufferMetal::CmdBeginRendering(const RenderingDesc& desc) {
         if (!a.resolveDst)
             continue;
 
-        if (a.resolveOp == ResolveOp::AVERAGE)
+        if (a.resolveOp == ResolveOp::AVERAGE && m_Device.IsNativeAverageResolveSupported(viewDesc.format))
             SetAttachmentResolveMetal(n, a);
         else {
-            // MIN/MAX color resolves are performed by a shader after the pass, which needs the multisampled contents
+            // Other color resolves are performed by a shader after the pass, which needs the multisampled contents
             const DescriptorMetal& resolve = *(DescriptorMetal*)a.resolveDst;
             const TextureViewDesc& resolveViewDesc = resolve.GetTextureViewDesc();
             m_AttachmentResolves[m_AttachmentResolveNum++] = {d.GetTexture(), resolve.GetTexture(), a.resolveOp, viewDesc.format, viewDesc.mipOffset, resolveViewDesc.mipOffset, viewDesc.layerOffset, resolveViewDesc.layerOffset, (uint16_t)GetAttachmentLayerNumMetal(d)};
@@ -1453,7 +1453,8 @@ void CommandBufferMetal::ResolveColor(MTL::Texture* dst, const TextureRegionDesc
     const uint32_t srcHeight = std::max(1u, (uint32_t)src->height() >> srcRegion.mipOffset);
     const uint32_t width = srcRegion.width ? srcRegion.width : srcWidth;
     const uint32_t height = srcRegion.height ? srcRegion.height : srcHeight;
-    MTL::Texture* transient = attachmentResolve ? dst : m_Allocator->CreateTransientTexture(src->pixelFormat(), op == ResolveOp::AVERAGE ? srcWidth : width, op == ResolveOp::AVERAGE ? srcHeight : height);
+    const bool isNative = op == ResolveOp::AVERAGE && m_Device.IsNativeAverageResolveSupported(format);
+    MTL::Texture* transient = attachmentResolve ? dst : m_Allocator->CreateTransientTexture(src->pixelFormat(), isNative ? srcWidth : width, isNative ? srcHeight : height);
 
     if (!transient) {
         RecordFailure(Result::OUT_OF_MEMORY);
@@ -1465,7 +1466,7 @@ void CommandBufferMetal::ResolveColor(MTL::Texture* dst, const TextureRegionDesc
     auto* attachment = pass->colorAttachments()->object(0);
     attachment->setLoadAction(MTL::LoadActionDontCare);
 
-    if (op == ResolveOp::AVERAGE) {
+    if (isNative) {
         attachment->setLoadAction(MTL::LoadActionLoad);
         attachment->setTexture(src);
         attachment->setLevel(srcRegion.mipOffset);
@@ -1486,7 +1487,7 @@ void CommandBufferMetal::ResolveColor(MTL::Texture* dst, const TextureRegionDesc
     if (attachmentResolve)
         encoder->barrierAfterQueueStages(MTL::StageFragment, MTL::StageFragment, MTL4::VisibilityOptionDevice);
 
-    if (op != ResolveOp::AVERAGE) {
+    if (!isNative) {
         const bool isArray = src->textureType() == MTL::TextureType2DMultisampleArray;
         MTL::RenderPipelineState* pipeline = m_Device.GetInternalShaders().GetResolvePipeline(src->pixelFormat(), (uint8_t)GetColorTypeMetal(format), isArray);
 
@@ -1504,7 +1505,7 @@ void CommandBufferMetal::ResolveColor(MTL::Texture* dst, const TextureRegionDesc
             uint32_t layer;
             uint32_t samples;
             uint32_t op;
-        } constants = {{srcRegion.x, srcRegion.y}, srcRegion.layerOffset, op == ResolveOp::SAMPLE_ZERO ? 1u : (uint32_t)src->sampleCount(), op == ResolveOp::MIN ? 1u : 2u}; // "SAMPLE_ZERO": only the sample 0 is read
+        } constants = {{srcRegion.x, srcRegion.y}, srcRegion.layerOffset, op == ResolveOp::SAMPLE_ZERO ? 1u : (uint32_t)src->sampleCount(), (uint32_t)op}; // "SAMPLE_ZERO": only the sample 0 is read
 
         m_InternalArguments->setAddress(m_Allocator->Upload(&constants, sizeof(constants)), INTERNAL_SLOT_CONSTANTS);
         m_InternalArguments->setTexture(src->gpuResourceID(), INTERNAL_SLOT_TEXTURE);
@@ -1523,7 +1524,7 @@ void CommandBufferMetal::ResolveColor(MTL::Texture* dst, const TextureRegionDesc
 
     MTL4::ComputeCommandEncoder* blit = BeginCompute();
     blit->barrierAfterQueueStages(MTL::StageFragment, MTL::StageBlit, MTL4::VisibilityOptionDevice);
-    const MTL::Origin transientOrigin = op == ResolveOp::AVERAGE ? MTL::Origin(srcRegion.x, srcRegion.y, 0) : MTL::Origin(0, 0, 0);
+    const MTL::Origin transientOrigin = isNative ? MTL::Origin(srcRegion.x, srcRegion.y, 0) : MTL::Origin(0, 0, 0);
     blit->copyFromTexture(transient, 0, 0, transientOrigin, MTL::Size(width, height, 1), dst, dstRegion.layerOffset, dstRegion.mipOffset, MTL::Origin(dstRegion.x, dstRegion.y, dstRegion.z));
 }
 
@@ -1534,7 +1535,7 @@ void CommandBufferMetal::CmdResolveTexture(Texture& dst, const TextureRegionDesc
     // Depth-stencil resolves are only supported for attachments (rejected by validation)
     NRI_CHECK(!GetFormatProps(source.GetDesc().format).isDepth && !GetFormatProps(source.GetDesc().format).isStencil, "Depth-stencil textures can't be resolved by 'CmdResolveTexture'");
 
-    if (!dstRegion && !srcRegion && op == ResolveOp::AVERAGE && (destination.GetNativeObject()->usage() & MTL::TextureUsageRenderTarget)) {
+    if (!dstRegion && !srcRegion && op == ResolveOp::AVERAGE && m_Device.IsNativeAverageResolveSupported(source.GetDesc().format) && (destination.GetNativeObject()->usage() & MTL::TextureUsageRenderTarget)) {
         MTL4::RenderPassDescriptor* pass = MTL4::RenderPassDescriptor::alloc()->init();
 
         for (uint32_t layer = 0; layer < source.GetDesc().layerNum; layer++) {

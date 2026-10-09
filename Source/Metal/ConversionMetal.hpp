@@ -177,7 +177,8 @@ nri::FormatSupportBits nri::GetFormatSupportMetal(MTL::Device& device, Format fo
     if (!props.isInteger)
         support |= FormatSupportBits::BLEND;
 
-    // Integer formats have no native "Resolve" capability, but MIN/MAX resolves are done by a shader (AVERAGE is unsupported, like in VK)
+    // Formats without the native "Resolve" capability are resolved by a shader: integer formats (AVERAGE is unsupported, like in VK) and
+    // 32-bit float formats on some Apple7 and Apple8 GPUs (see "DeviceMetal::IsNativeAverageResolveSupported")
     support |= FormatSupportBits::MULTISAMPLE_RESOLVE;
 
     // Packed 16-bit formats have no "Write" capability. sRGB and shared exponent formats are not exposed as storage for parity with other backends

@@ -81,13 +81,13 @@ CLEAR_STORAGE_TYPES(4, texture2d_array, WRITE_2D_ARRAY)
 CLEAR_STORAGE_TYPES(5, texture3d, WRITE_3D)
 
 //============================================================================================================================================================================================
-// MIN/MAX/SAMPLE_ZERO resolves ("CmdResolveTexture", attachment resolves), constants at "buffer(3)". SAMPLE_ZERO: "samples = 1"
+// Shader resolves ("CmdResolveTexture", attachment resolves), constants at "buffer(3)". SAMPLE_ZERO: "samples = 1"
 
 struct ResolveConstants {
     uint2 origin;
     uint layer;
     uint samples;
-    uint op; // 1 - min, 2 - max
+    uint op; // "ResolveOp": 0 - average (float only, if the native resolve is unsupported), 1 - min, 2 - max
 };
 
 vertex float4 nri_resolve_vs(uint i [[vertex_id]]) {
@@ -105,8 +105,8 @@ vertex float4 nri_resolve_vs(uint i [[vertex_id]]) {
         uint2 q = uint2(p.xy) + c.origin; \
         vec<T, 4> v = READ(0); \
         for (uint i = 1; i < c.samples; i++) \
-            v = c.op == 1 ? min(v, READ(i)) : max(v, READ(i)); \
-        return v; \
+            v = c.op == 0 ? v + READ(i) : (c.op == 1 ? min(v, READ(i)) : max(v, READ(i))); \
+        return c.op == 0 ? v / T(c.samples) : v; \
     }
 
 RESOLVE(nri_resolve_2d_0, float, texture2d_ms, READ_2D)

@@ -142,6 +142,13 @@ Result DeviceMetal::Create(const DeviceCreationDesc& desc, const DeviceCreationM
     return Result::SUCCESS;
 }
 
+// Apple7 and Apple8 GPUs may lack the "Resolve" capability for 32-bit float formats (Metal Feature Set Tables, footnote 6 of "Texture capabilities by pixel format")
+bool DeviceMetal::IsNativeAverageResolveSupported(Format format) const {
+    const bool isFloat32 = format == Format::R32_SFLOAT || format == Format::RG32_SFLOAT || format == Format::RGBA32_SFLOAT;
+
+    return !isFloat32 || m_Device->supports32BitFloatFiltering();
+}
+
 void DeviceMetal::AddResidency(MTL::Allocation* allocation) {
     std::lock_guard<std::mutex> lock(m_ResidencyLock);
 

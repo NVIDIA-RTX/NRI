@@ -32,6 +32,7 @@ struct DeviceMetal final : public DeviceBase {
     void AddResidency(MTL::Allocation* allocation);
     void RemoveResidency(MTL::Allocation* allocation);
     void CommitResidency(); // no-op if the residency set hasn't changed
+    bool IsNativeAverageResolveSupported(Format format) const; // otherwise "AVERAGE" is resolved by a shader
     void AddQueueResidencySet(MTL::ResidencySet* residencySet);
     void RemoveQueueResidencySet(MTL::ResidencySet* residencySet);
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
