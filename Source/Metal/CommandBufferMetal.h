@@ -37,7 +37,6 @@ struct CommandBufferMetal final : public DebugNameBase {
         m_Allocator->ReleaseOnReset(object);
     }
 
-    static CommandBufferMetal& FromNativeObject(NS::Object* commandBuffer);
     void BeginNativeEncoding();
     void RecordFailure(Result result);
     void CmdSetDescriptorPool(const DescriptorPool& descriptorPool);

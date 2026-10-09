@@ -26,7 +26,7 @@ constexpr char TEMP_FILE_NAME[] = "nri-cache-XXXXXX";
 static inline bool CreateTempFile(char (&path)[PATH_MAX], const void* data, size_t size) {
     const size_t length = confstr(_CS_DARWIN_USER_TEMP_DIR, path, sizeof(path));
 
-    if (!length || length + sizeof(TEMP_FILE_NAME) > sizeof(path)) {
+    if (!length || (length + sizeof(TEMP_FILE_NAME)) > sizeof(path)) {
         path[0] = 0;
 
         return false;
@@ -81,7 +81,7 @@ static inline bool IsConvertedShaderValid(const uint8_t* container, uint64_t siz
     if (!isStringValid(header.entryPointOffset) || !isStringValid(header.functionNameOffset))
         return false;
 
-    if (header.vertexInputOffset % sizeof(uint32_t) || header.vertexInputOffset + (uint64_t)header.vertexInputNum * sizeof(ConvertedVertexInputMetal) > size)
+    if (header.vertexInputOffset % sizeof(uint32_t) || (header.vertexInputOffset + (uint64_t)header.vertexInputNum * sizeof(ConvertedVertexInputMetal)) > size)
         return false;
 
     for (uint32_t i = 0; i < header.vertexInputNum; i++) {
@@ -92,7 +92,7 @@ static inline bool IsConvertedShaderValid(const uint8_t* container, uint64_t siz
             return false;
     }
 
-    return header.metallibSize && header.metallibOffset + (uint64_t)header.metallibSize <= size;
+    return header.metallibSize && (header.metallibOffset + (uint64_t)header.metallibSize) <= size;
 }
 
 static inline NS::URL* GetFileUrl(const char* path) {
@@ -168,7 +168,7 @@ Result PipelineCacheMetal::Create(const PipelineCacheDesc& desc) {
     const uint8_t* archives = (const uint8_t*)desc.data + sizeof(header);
     const size_t dataSize = desc.size - sizeof(header);
 
-    if (header.magic != PIPELINE_CACHE_MAGIC || header.version != PIPELINE_CACHE_VERSION || header.archiveSize > dataSize || header.convertedShaderSize != dataSize - header.archiveSize || header.hash != HashMetal(archives, dataSize))
+    if (header.magic != PIPELINE_CACHE_MAGIC || header.version != PIPELINE_CACHE_VERSION || header.archiveSize > dataSize || header.convertedShaderSize != (dataSize - header.archiveSize) || header.hash != Fnv1a64(FNV_INIT, archives, dataSize))
         return Result::OUT_OF_DATE;
 
     for (size_t offset = 0; offset < header.archiveSize;) {
@@ -180,7 +180,7 @@ Result PipelineCacheMetal::Create(const PipelineCacheDesc& desc) {
         memcpy(&archiveSize, archives + offset, sizeof(archiveSize));
         offset += sizeof(archiveSize);
 
-        if (!archiveSize || archiveSize > header.archiveSize - offset)
+        if (!archiveSize || archiveSize > (header.archiveSize - offset))
             return Result::OUT_OF_DATE;
 
         offset += archiveSize;
@@ -199,7 +199,7 @@ Result PipelineCacheMetal::Create(const PipelineCacheDesc& desc) {
 
         const uint8_t* container = convertedShaders + offset;
 
-        if (entry.size > header.convertedShaderSize - offset || !IsConvertedShaderValid(container, entry.size))
+        if (entry.size > (header.convertedShaderSize - offset) || !IsConvertedShaderValid(container, entry.size))
             return Result::OUT_OF_DATE;
 
         m_ConvertedShaders.emplace(entry.key, Vector<uint8_t>(container, container + entry.size, m_Device.GetStdAllocator()));
@@ -415,7 +415,7 @@ NRI_INLINE Result PipelineCacheMetal::GetData(void* dst, uint64_t& size) const {
         const uint64_t fileSize = isRead ? (uint64_t)ftell(file) : 0;
         rewind(file);
 
-        const bool isCopied = isRead && offset + sizeof(fileSize) + fileSize <= archiveSize && fread(archives + offset + sizeof(fileSize), 1, fileSize, file) == fileSize;
+        const bool isCopied = isRead && (offset + sizeof(fileSize) + fileSize) <= archiveSize && fread(archives + offset + sizeof(fileSize), 1, fileSize, file) == fileSize;
         fclose(file);
 
         if (!isCopied)
@@ -438,7 +438,7 @@ NRI_INLINE Result PipelineCacheMetal::GetData(void* dst, uint64_t& size) const {
             header.version = PIPELINE_CACHE_VERSION;
             header.archiveSize = archiveSize;
             header.convertedShaderSize = convertedShaderSize;
-            header.hash = HashMetal(archives, (size_t)(dataSize - sizeof(header)));
+            header.hash = Fnv1a64(FNV_INIT, archives, (size_t)(dataSize - sizeof(header)));
 
             memcpy(dst, &header, sizeof(header));
         }

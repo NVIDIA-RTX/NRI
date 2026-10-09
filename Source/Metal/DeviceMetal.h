@@ -112,7 +112,8 @@ private:
     std::atomic_bool m_IsResidencyDirty = false; // written under "m_ResidencyLock"
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
     std::mutex m_TessellatorTablesLock;
-    MTL::Buffer* m_TessellatorTables = nullptr;
+    MTL::Buffer* m_TessellatorTables = nullptr;                    // written under "m_TessellatorTablesLock"
+    std::atomic<MTL::GPUAddress> m_TessellatorTablesAddress = {0}; // lock-free fast path for draws
 #endif
     CoreInterface m_Core = {};
     InternalShadersMetal m_InternalShaders;

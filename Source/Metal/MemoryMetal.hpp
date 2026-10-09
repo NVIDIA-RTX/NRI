@@ -10,7 +10,7 @@ MemoryMetal::~MemoryMetal() {
 Result MemoryMetal::Create(const AllocateMemoryDesc& desc) {
     m_Location = (MemoryLocation)desc.type;
 
-    // Metal heaps are already explicit suballocators. VMA suballocation and priority have no Metal equivalents.
+    // Metal heaps are already explicit suballocators. VMA suballocation and priority have no Metal equivalents
     MTL::HeapDescriptor* heapDesc = MTL::HeapDescriptor::alloc()->init();
     heapDesc->setType(MTL::HeapTypePlacement);
     heapDesc->setSize((NS::UInteger)desc.size);

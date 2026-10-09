@@ -106,6 +106,7 @@ vertex float4 nri_resolve_vs(uint i [[vertex_id]]) {
         vec<T, 4> v = READ(0); \
         for (uint i = 1; i < c.samples; i++) \
             v = c.op == 0 ? v + READ(i) : (c.op == 1 ? min(v, READ(i)) : max(v, READ(i))); \
+        \
         return c.op == 0 ? v / T(c.samples) : v; \
     }
 

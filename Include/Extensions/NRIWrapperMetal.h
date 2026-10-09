@@ -11,17 +11,17 @@
 NriNamespaceBegin
 
 // Native pointers use these exact metal-cpp types: MTL::Device*, MTL4::CommandQueue*, MTL::Buffer*, MTL::Texture*, and MTL::SharedEvent*.
-// NRI retains every supplied native object until the corresponding NRI object is destroyed.
+// NRI retains every supplied native object until the corresponding NRI object is destroyed
 
 // A collection of queues of the same type
 NriStruct(QueueFamilyMetalDesc) {
-    NriOptional void* const* mtl4Queues; // MTL4::CommandQueue*, if not provided, will be created
+    NriOptional void* const* mtl4Queues;                // MTL4::CommandQueue*, if not provided, will be created
     uint32_t queueNum;
     Nri(QueueType) queueType;
 };
 
 NriStruct(DeviceCreationMetalDesc) {
-    void* mtlDevice; // MTL::Device*
+    void* mtlDevice;                                    // MTL::Device*
     const NriPtr(QueueFamilyMetalDesc) queueFamilies;
     uint32_t queueFamilyNum;
     NriOptional Nri(CallbackInterface) callbackInterface;
@@ -29,21 +29,21 @@ NriStruct(DeviceCreationMetalDesc) {
 
     // Switches (disabled by default)
     bool enableNRIValidation;
-    bool enableMemoryZeroInitialization; // Metal memory is always zero-initialized
+    bool enableMemoryZeroInitialization;                // Metal memory is always zero-initialized
 };
 
 NriStruct(BufferMetalDesc) {
-    void* mtlBuffer;      // MTL::Buffer*
-    Nri(BufferDesc) desc; // complete NRI metadata for the native buffer
+    void* mtlBuffer;                                    // MTL::Buffer*
+    Nri(BufferDesc) desc;                               // complete NRI metadata for the native buffer
 };
 
 NriStruct(TextureMetalDesc) {
-    void* mtlTexture;      // MTL::Texture*
-    Nri(TextureDesc) desc; // complete NRI metadata for the native texture
+    void* mtlTexture;                                   // MTL::Texture*
+    Nri(TextureDesc) desc;                              // complete NRI metadata for the native texture
 };
 
 NriStruct(FenceMetalDesc) {
-    void* mtlSharedEvent; // MTL::SharedEvent*
+    void* mtlSharedEvent;                               // MTL::SharedEvent*
 };
 
 // Pre-converted DXIL: a ShaderMake Metal converter bundle ("ShaderMake -p METAL --metalFromDXIL", "SMMB", see "ShaderMake/ShaderBlob.h") can be passed

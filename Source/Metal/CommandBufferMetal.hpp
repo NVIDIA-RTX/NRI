@@ -1,7 +1,11 @@
 // © 2026 NVIDIA Corporation
 
-// The native command buffer points to its owner (not retained), see "FromNativeObject"
+// The native command buffer points to its owner (not retained)
 static char g_CommandBufferOwnerKey;
+
+static inline CommandBufferMetal& GetCommandBuffer(NS::Object* commandBuffer) {
+    return *(CommandBufferMetal*)objc_getAssociatedObject((id)commandBuffer, &g_CommandBufferOwnerKey);
+}
 
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
 // Object stage threadgroup memory of Converter's tessellation emulation (as in "metal_irconverter_runtime.h" draw helpers)
@@ -83,21 +87,6 @@ static inline void SetAttachmentResolve(MTL::RenderPassAttachmentDescriptor* att
     attachment->setResolveLevel(resolveViewDesc.mipOffset);
     attachment->setResolveSlice(resolveViewDesc.layerOffset);
     attachment->setStoreAction(attachmentDesc.storeOp == StoreOp::STORE ? MTL::StoreActionStoreAndMultisampleResolve : MTL::StoreActionMultisampleResolve);
-}
-
-enum class ColorTypeMetal : uint8_t {
-    FLOAT,
-    UINT,
-    SINT
-};
-
-static inline ColorTypeMetal GetColorType(Format format) {
-    const FormatProps& props = GetFormatProps(format);
-
-    if (!props.isInteger)
-        return ColorTypeMetal::FLOAT;
-
-    return props.isSigned ? ColorTypeMetal::SINT : ColorTypeMetal::UINT;
 }
 
 static inline MTL::Size GetRegionSize(const TextureMetal& t, const TextureRegionDesc& r) {
@@ -923,7 +912,7 @@ NRI_INLINE void CommandBufferMetal::CmdClearAttachments(const ClearAttachmentDes
         }
 
         if (key.planes & PlaneBits::COLOR)
-            key.colorType = (uint8_t)GetColorType(m_RenderColorFormats[desc.colorAttachmentIndex]);
+            key.colorType = GetColorType(m_RenderColorFormats[desc.colorAttachmentIndex]);
 
         const ClearPipelineMetal clear = m_Device.GetInternalShaders().GetClearPipeline(key);
 
@@ -938,7 +927,7 @@ NRI_INLINE void CommandBufferMetal::CmdClearAttachments(const ClearAttachmentDes
         } constants = {};
 
         memcpy(&constants.color, &desc.value.color, sizeof(constants.color));
-        constants.depth = key.planes & PlaneBits::DEPTH ? desc.value.depthStencil.depth : 0.0f;
+        constants.depth = (key.planes & PlaneBits::DEPTH) ? desc.value.depthStencil.depth : 0.0f;
 
         SetArgumentAddress(INTERNAL_SLOT_CONSTANTS, Upload(&constants, sizeof(constants)));
         encoder->setRenderPipelineState(clear.pipeline);
@@ -1535,7 +1524,7 @@ void CommandBufferMetal::ResolveColor(MTL::Texture* dst, const TextureRegionDesc
 
     if (!isNative) {
         const bool isArray = src->textureType() == MTL::TextureType2DMultisampleArray;
-        MTL::RenderPipelineState* pipeline = m_Device.GetInternalShaders().GetResolvePipeline(src->pixelFormat(), (uint8_t)GetColorType(format), isArray);
+        MTL::RenderPipelineState* pipeline = m_Device.GetInternalShaders().GetResolvePipeline(src->pixelFormat(), GetColorType(format), isArray);
 
         if (!pipeline) {
             encoder->endEncoding();
@@ -1808,10 +1797,6 @@ NRI_INLINE void CommandBufferMetal::CmdAnnotation(const char* name, uint32_t bgr
     string->release();
 }
 
-CommandBufferMetal& CommandBufferMetal::FromNativeObject(NS::Object* commandBuffer) {
-    return *(CommandBufferMetal*)objc_getAssociatedObject((id)commandBuffer, &g_CommandBufferOwnerKey);
-}
-
 void CommandBufferMetal::BeginNativeEncoding() {
     NRI_CHECK(!m_RenderPass, "Native encoding is impossible inside rendering");
 
@@ -1820,14 +1805,6 @@ void CommandBufferMetal::BeginNativeEncoding() {
         BeginCompute();
 
     EndCompute();
-}
-
-void nri::BeginNativeEncodingMetal(NS::Object* commandBuffer) {
-    CommandBufferMetal::FromNativeObject(commandBuffer).BeginNativeEncoding();
-}
-
-void nri::ReleaseOnResetMetal(NS::Object* commandBuffer, NS::Object* object) {
-    CommandBufferMetal::FromNativeObject(commandBuffer).ReleaseOnReset(object);
 }
 
 NRI_INLINE void CommandBufferMetal::SetDebugName(const char* name) {
@@ -1985,9 +1962,6 @@ NRI_INLINE void CommandBufferMetal::CmdWriteAccelerationStructureSizes(const Acc
 }
 
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
-
-static_assert(sizeof(DispatchRaysIndirectDesc) == sizeof(IRDispatchRaysDescriptor), "'DispatchRaysIndirectDesc' must match 'IRDispatchRaysDescriptor'");
-static_assert(offsetof(DispatchRaysIndirectDesc, width) == offsetof(IRDispatchRaysDescriptor, Width), "'DispatchRaysIndirectDesc' must match 'IRDispatchRaysDescriptor'");
 
 MTL::GPUAddress CommandBufferMetal::SetRayDispatchArguments(const IRDispatchRaysDescriptor& desc) {
     IRDispatchRaysArgument args = {};

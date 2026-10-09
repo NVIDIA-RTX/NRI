@@ -108,7 +108,7 @@ Result PipelineLayoutMetal::Create(const PipelineLayoutDesc& desc) {
 
     // The root signature hash identifies converted shaders in pipeline caches
     auto hashRootValues = [&](std::initializer_list<uint32_t> values) {
-        m_RootSignatureHash = HashMetal(values.begin(), values.size() * sizeof(uint32_t), m_RootSignatureHash);
+        m_RootSignatureHash = Fnv1a64(m_RootSignatureHash, values.begin(), values.size() * sizeof(uint32_t));
     };
 
 #if NRI_ENABLE_METAL_SHADER_CONVERTER

@@ -224,6 +224,11 @@ void DeviceMetal::RemoveQueueResidencySet(MTL::ResidencySet* residencySet) {
 
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
 MTL::GPUAddress DeviceMetal::GetTessellatorTables() {
+    MTL::GPUAddress address = m_TessellatorTablesAddress.load(std::memory_order_acquire);
+
+    if (address)
+        return address;
+
     std::lock_guard<std::mutex> lock(m_TessellatorTablesLock);
 
     if (!m_TessellatorTables) {
@@ -236,7 +241,10 @@ MTL::GPUAddress DeviceMetal::GetTessellatorTables() {
         AddResidency(m_TessellatorTables);
     }
 
-    return m_TessellatorTables->gpuAddress();
+    address = m_TessellatorTables->gpuAddress();
+    m_TessellatorTablesAddress.store(address, std::memory_order_release);
+
+    return address;
 }
 #endif
 
@@ -458,9 +466,9 @@ void DeviceMetal::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.shaderStage.mesh.sharedMemoryMaxSize = threadgroupMemoryMaxSize;
     m_Desc.shaderStage.mesh.outputVerticesMaxNum = 256;
     m_Desc.shaderStage.mesh.outputPrimitiveMaxNum = 512;
-    // Metal's mesh unique-scalar limit includes the position output.
+    // Metal's mesh unique-scalar limit includes the position output
     m_Desc.shaderStage.mesh.outputComponentMaxNum = 124;
-    // Apple7/Apple8 limit mesh grids to 1024 threadgroups per draw.
+    // Apple7/Apple8 limit mesh grids to 1024 threadgroups per draw
     m_Desc.shaderStage.mesh.dispatchWorkGroupMaxNum = m_Device->supportsFamily(MTL::GPUFamilyApple10) ? 4194303 : (m_Device->supportsFamily(MTL::GPUFamilyApple9) ? 1048575 : 1024);
     m_Desc.wave.laneMinNum = 32;
     m_Desc.wave.laneMaxNum = 32;
@@ -536,9 +544,9 @@ void DeviceMetal::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.other.texelOffsetMax = 7;
     m_Desc.other.texelGatherOffsetMin = -8;
     m_Desc.other.texelGatherOffsetMax = 7;
-    m_Desc.other.samplerLodBiasMax = 15.984375f; // Largest positive S4.6 native sampler bias.
+    m_Desc.other.samplerLodBiasMax = 15.984375f; // Largest positive S4.6 native sampler bias
     // Metal 4 devices meet Apple7's baseline; Converter also supports these
-    // scalar types and SM6 wave/packed-dot intrinsics.
+    // scalar types and SM6 wave/packed-dot intrinsics
     m_Desc.shaderFeatures.nativeI16 = true;
     m_Desc.shaderFeatures.nativeF16 = true;
     m_Desc.shaderFeatures.nativeI64 = true;
@@ -560,7 +568,7 @@ void DeviceMetal::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.shaderFeatures.viewportIndex = true;
     m_Desc.shaderFeatures.layerIndex = true;
     // DXIL uses Metal Shader Converter framebuffer fetches. Native MSL can use
-    // color inputs (for example, `float4 value [[color(1)]]`) directly.
+    // color inputs (for example, `float4 value [[color(1)]]`) directly
     m_Desc.shaderFeatures.inputAttachments = true;
     m_Desc.shaderFeatures.drawParameters = true; // root data emulation works for native and converted shaders (see "NRI.metal")
     m_Desc.shaderFeatures.drawIndex = true;

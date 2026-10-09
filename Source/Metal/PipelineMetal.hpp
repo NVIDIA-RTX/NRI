@@ -162,7 +162,7 @@ constexpr uint32_t CONVERSION_REVISION = 1;
 static inline uint64_t GetConverterHash(DeviceMetal& device) {
     static const uint64_t s_Hash = [&device] {
         const uint32_t version[] = {CONVERSION_REVISION, IR_VERSION_MAJOR, IR_VERSION_MINOR, IR_VERSION_PATCH};
-        uint64_t hash = HashMetal(version, sizeof(version));
+        uint64_t hash = Fnv1a64(FNV_INIT, version, sizeof(version));
 
         Dl_info info = {};
 
@@ -183,7 +183,7 @@ static inline uint64_t GetConverterHash(DeviceMetal& device) {
                 uuid_command uuidCommand = {};
                 memcpy(&uuidCommand, command, sizeof(uuidCommand));
 
-                return HashMetal(uuidCommand.uuid, sizeof(uuidCommand.uuid), hash);
+                return Fnv1a64(hash, uuidCommand.uuid, sizeof(uuidCommand.uuid));
             }
 
             command += loadCommand.cmdsize;
@@ -213,8 +213,6 @@ static inline IRCompiler* CreateIRCompiler(MTL::Device& device, const PipelineLa
 static inline bool IsDXIL(const ShaderDesc& shader) {
     return shader.size >= 4 && memcmp(shader.bytecode, "DXBC", 4) == 0;
 }
-
-static_assert(sizeof(ConvertedShaderHeaderMetal) == 80 && sizeof(ConvertedVertexInputMetal) == 8, "Converted shader layout is fixed");
 
 // ShaderMake Metal converter bundle (see "NRIWrapperMetal.h")
 static inline bool IsMetalBundle(const ShaderDesc& shader) {
@@ -378,7 +376,7 @@ static inline bool FindJsonMember(JsonValueMetal object, const char* name, JsonV
     bool isFound = false;
 
     ForEachJsonValue(object, [&](JsonValueMetal key, JsonValueMetal member) {
-        isFound = size_t(key.end - key.begin) == nameLength + 2 && !memcmp(key.begin + 1, name, nameLength);
+        isFound = size_t(key.end - key.begin) == (nameLength + 2) && !memcmp(key.begin + 1, name, nameLength);
 
         if (isFound)
             value = member;
@@ -390,7 +388,7 @@ static inline bool FindJsonMember(JsonValueMetal object, const char* name, JsonV
 }
 
 static inline bool GetJsonString(JsonValueMetal value, const char*& string, size_t& length) {
-    if (value.end - value.begin < 2 || *value.begin != '"' || memchr(value.begin, '\\', value.end - value.begin))
+    if ((value.end - value.begin) < 2 || *value.begin != '"' || memchr(value.begin, '\\', value.end - value.begin))
         return false;
 
     string = value.begin + 1;
@@ -824,11 +822,11 @@ Result PipelineMetal::ConvertShader(const ShaderDesc& shader, const ShaderLoadDe
     if (cache) {
         // Everything affecting the output
         const uint32_t settings[] = {header.version, (uint32_t)header.stage, (uint32_t)header.flags, header.gpuFamily, header.inputTopology, header.sampleMask, FRAMEBUFFER_FETCH_SPACE, (uint32_t)CONVERTER_OPERATING_SYSTEM};
-        key = HashMetal(settings, sizeof(settings), GetConverterHash(m_Device));
-        key = HashMetal(&header.rootSignatureHash, sizeof(header.rootSignatureHash), key);
-        key = HashMetal(CONVERTER_DEPLOYMENT_TARGET, strlen(CONVERTER_DEPLOYMENT_TARGET) + 1, key);
-        key = HashMetal(entryPoint, strlen(entryPoint) + 1, key);
-        key = HashMetal(shader.bytecode, shader.size, key);
+        key = Fnv1a64(GetConverterHash(m_Device), settings, sizeof(settings));
+        key = Fnv1a64(key, &header.rootSignatureHash, sizeof(header.rootSignatureHash));
+        key = Fnv1a64(key, CONVERTER_DEPLOYMENT_TARGET, strlen(CONVERTER_DEPLOYMENT_TARGET) + 1);
+        key = Fnv1a64(key, entryPoint, strlen(entryPoint) + 1);
+        key = Fnv1a64(key, shader.bytecode, shader.size);
 
         // Entries are structurally valid (see "PipelineCacheMetal::Create"), a mismatch is a key collision
         size_t size = 0;
@@ -1033,7 +1031,7 @@ Result PipelineMetal::LoadFunction(const ShaderDesc& shader, MTL::Library*& libr
     const uint8_t* bytecode = (const uint8_t*)shader.bytecode;
     size_t bytecodeSize = shader.size;
     const uint8_t* container = nullptr;
-    Vector<uint8_t> storage(m_Device.GetStdAllocator());
+    Vector<uint8_t> storage(m_Device.GetStdAllocator()); // converted shader container, its size is known only after conversion
 
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
     if (IsDXIL(shader)) {
@@ -1111,16 +1109,16 @@ Result PipelineMetal::LoadFunction(const ShaderDesc& shader, MTL::Library*& libr
 
                     MTL::FunctionConstantValues* constants = MTL::FunctionConstantValues::alloc()->init();
                     constants->setConstantValue(&nativeSampleMask, MTL::DataTypeUInt, sampleMaskConstantIndex);
-                    function = NewFunctionDescriptorMetal(library, functionName, constants);
+                    function = NewFunctionDescriptor(library, functionName, constants);
                     constants->release();
                 } else if (load.sampleMask != ALL)
                     unsupportedSampleMask = true;
                 else
-                    function = NewFunctionDescriptorMetal(library, functionName);
+                    function = NewFunctionDescriptor(library, functionName);
             } else
                 NRI_REPORT_ERROR(&m_Device, "Metal entry point '%s' was not found", functionName);
         } else
-            function = NewFunctionDescriptorMetal(library, functionName);
+            function = NewFunctionDescriptor(library, functionName);
     }
 
     if (!library)
@@ -1246,7 +1244,7 @@ Result PipelineMetal::Create(const RayTracingPipelineDesc& desc) {
             return false;
         }
 
-        function = NewFunctionDescriptorMetal(library, name, nullptr, specializedName);
+        function = NewFunctionDescriptor(library, name, nullptr, specializedName);
 
         return true;
     };
@@ -1882,7 +1880,7 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
                     return nullptr;
                 }
 
-                MTL4::FunctionDescriptor* function = NewFunctionDescriptorMetal(library, name, constants);
+                MTL4::FunctionDescriptor* function = NewFunctionDescriptor(library, name, constants);
                 functions[functionNum++] = function;
 
                 return function;
@@ -1892,8 +1890,13 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
             constants->setConstantValue(&hasTessellation, MTL::DataTypeBool, NS::String::string("tessellationEnabled", NS::UTF8StringEncoding));
 
             // "FunctionConstantValues" are copied by the specialized function descriptor
-            const std::string objectName = std::string(findName(StageBits::VERTEX_SHADER)) + ".dxil_irconverter_object_shader";
-            mpd->setObjectFunctionDescriptor(specialize(findLibrary(StageBits::VERTEX_SHADER), objectName.c_str(), constants));
+            const char* vertexName = findName(StageBits::VERTEX_SHADER); // emulation requires a vertex shader
+            const char objectSuffix[] = ".dxil_irconverter_object_shader";
+            const size_t vertexNameLength = strlen(vertexName);
+            Scratch<char> objectName = NRI_ALLOCATE_SCRATCH(m_Device, char, vertexNameLength + sizeof(objectSuffix));
+            memcpy(objectName, vertexName, vertexNameLength);
+            memcpy(objectName + vertexNameLength, objectSuffix, sizeof(objectSuffix));
+            mpd->setObjectFunctionDescriptor(specialize(findLibrary(StageBits::VERTEX_SHADER), objectName, constants));
 
             const uint32_t vertexSize = hasTessellation ? m_TessellationConfig.vsOutputSizeInBytes : m_GeometryConfig.gsVertexSizeInBytes;
             constants->setConstantValue(&vertexSize, MTL::DataTypeInt, NS::String::string("vertex_shader_output_size_fc", NS::UTF8StringEncoding));
@@ -2109,6 +2112,6 @@ IRRuntimePrimitiveType PipelineMetal::GetEmulationPrimitive() const {
 #endif
 
 NRI_INLINE void PipelineMetal::SetDebugName(const char* name) {
-    // Pipeline state labels are immutable after creation.
+    // Pipeline state labels are immutable after creation
     MaybeUnused(name);
 }

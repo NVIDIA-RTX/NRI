@@ -54,7 +54,7 @@ private:
     uint32_t m_DrawParametersOffset = UINT32_MAX;
     uint32_t m_DrawIndexOffset = UINT32_MAX;
     uint32_t m_RootDataSize = 0;
-    uint64_t m_RootSignatureHash = HashMetal(nullptr, 0);
+    uint64_t m_RootSignatureHash = FNV_INIT;
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
     Vector<IRRootParameter1> m_RootParameters; // descriptor tables point into "m_RootRanges"
     Vector<IRDescriptorRange1> m_RootRanges;

@@ -51,8 +51,6 @@ constexpr std::array<MTL::SamplerAddressMode, (size_t)AddressMode::MAX_NUM> g_Ad
 };
 NRI_VALIDATE_ARRAY(g_AddressModes);
 
-static_assert(sizeof(DescriptorEntryMetal) == 24, "Metal Shader Converter descriptor ABI changed");
-
 static inline bool IsBorderColor(const SamplerDesc& desc, float r, float g, float b, float a) {
     if (desc.isInteger)
         return desc.borderColor.ui.x == (uint32_t)r && desc.borderColor.ui.y == (uint32_t)g && desc.borderColor.ui.z == (uint32_t)b && desc.borderColor.ui.w == (uint32_t)a;

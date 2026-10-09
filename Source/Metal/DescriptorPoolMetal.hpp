@@ -87,7 +87,7 @@ NRI_INLINE Result DescriptorPoolMetal::AllocateDescriptorSets(const PipelineLayo
             resourceNum = resourceNum - variable.descriptorNum + variableNum;
     }
 
-    if (m_SetNum + instanceNum > m_Sets.size() || m_ResourceUsed + resourceNum * instanceNum > m_ResourceCapacity || m_SamplerUsed + samplerNum * instanceNum > m_SamplerCapacity)
+    if ((m_SetNum + instanceNum) > m_Sets.size() || (m_ResourceUsed + resourceNum * instanceNum) > m_ResourceCapacity || (m_SamplerUsed + samplerNum * instanceNum) > m_SamplerCapacity)
         return Result::OUT_OF_MEMORY;
 
     // Since there is no "free" functionality allocation strategy is "linear grow"

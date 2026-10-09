@@ -93,7 +93,7 @@ Result InternalShadersMetal::Create() {
 
 // Internal pipelines are built by the device's Metal 4 compiler, an unknown name is reported by pipeline creation
 MTL4::FunctionDescriptor* InternalShadersMetal::NewFunction(const char* name) const {
-    return NewFunctionDescriptorMetal(m_Library, name);
+    return NewFunctionDescriptor(m_Library, name);
 }
 
 MTL::ComputePipelineState* InternalShadersMetal::GetKernel(InternalKernelMetal kernel) {
@@ -162,7 +162,7 @@ ClearPipelineMetal InternalShadersMetal::GetClearPipeline(const ClearPipelineKey
     AutoreleasePoolMetal autoreleasePool; // "NS::Error" is autoreleased
 
     char name[32] = {};
-    snprintf(name, sizeof(name), "nri_clear_fs_%u_%u", key.colorType, key.colorIndex);
+    snprintf(name, sizeof(name), "nri_clear_fs_%u_%u", (uint32_t)key.colorType, key.colorIndex);
 
     MTL4::FunctionDescriptor* vertex = NewFunction("nri_clear_vs");
     MTL4::FunctionDescriptor* fragment = (key.planes & PlaneBits::COLOR) ? NewFunction(name) : nullptr;
@@ -186,8 +186,8 @@ ClearPipelineMetal InternalShadersMetal::GetClearPipeline(const ClearPipelineKey
 
     MTL::StencilDescriptor* stencil = MTL::StencilDescriptor::alloc()->init();
     stencil->setStencilCompareFunction(MTL::CompareFunctionAlways);
-    stencil->setDepthStencilPassOperation(key.planes & PlaneBits::STENCIL ? MTL::StencilOperationReplace : MTL::StencilOperationKeep);
-    stencil->setWriteMask(key.planes & PlaneBits::STENCIL ? 0xFF : 0);
+    stencil->setDepthStencilPassOperation((key.planes & PlaneBits::STENCIL) ? MTL::StencilOperationReplace : MTL::StencilOperationKeep);
+    stencil->setWriteMask((key.planes & PlaneBits::STENCIL) ? 0xFF : 0);
 
     MTL::DepthStencilDescriptor* depthStencilDesc = MTL::DepthStencilDescriptor::alloc()->init();
     depthStencilDesc->setDepthCompareFunction(MTL::CompareFunctionAlways);
@@ -223,7 +223,7 @@ ClearPipelineMetal InternalShadersMetal::GetClearPipeline(const ClearPipelineKey
     return clear;
 }
 
-MTL::RenderPipelineState* InternalShadersMetal::FindResolvePipeline(MTL::PixelFormat format, uint8_t colorType, bool isArray) const {
+MTL::RenderPipelineState* InternalShadersMetal::FindResolvePipeline(MTL::PixelFormat format, ColorTypeMetal colorType, bool isArray) const {
     for (const ResolvePipelineMetal& resolve : m_ResolvePipelines) {
         if (resolve.format == format && resolve.colorType == colorType && resolve.isArray == isArray)
             return resolve.pipeline;
@@ -232,7 +232,7 @@ MTL::RenderPipelineState* InternalShadersMetal::FindResolvePipeline(MTL::PixelFo
     return nullptr;
 }
 
-MTL::RenderPipelineState* InternalShadersMetal::GetResolvePipeline(MTL::PixelFormat format, uint8_t colorType, bool isArray) {
+MTL::RenderPipelineState* InternalShadersMetal::GetResolvePipeline(MTL::PixelFormat format, ColorTypeMetal colorType, bool isArray) {
     {
         std::shared_lock<std::shared_mutex> lock(m_RenderPipelineLock);
         MTL::RenderPipelineState* pipeline = FindResolvePipeline(format, colorType, isArray);
@@ -250,7 +250,7 @@ MTL::RenderPipelineState* InternalShadersMetal::GetResolvePipeline(MTL::PixelFor
     AutoreleasePoolMetal autoreleasePool; // "NS::Error" is autoreleased
 
     char name[32] = {};
-    snprintf(name, sizeof(name), "nri_resolve_%s_%u", isArray ? "array" : "2d", colorType);
+    snprintf(name, sizeof(name), "nri_resolve_%s_%u", isArray ? "array" : "2d", (uint32_t)colorType);
 
     MTL4::FunctionDescriptor* vertex = NewFunction("nri_resolve_vs");
     MTL4::FunctionDescriptor* fragment = NewFunction(name);

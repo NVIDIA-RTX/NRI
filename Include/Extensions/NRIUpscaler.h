@@ -22,7 +22,7 @@ NriEnum(UpscalerType, uint8_t,  // Name                                     // N
 );
 
 // MetalFX: created on the first dispatch (a hitch), resource sizes and formats must not change after it. "output" needs "COLOR_ATTACHMENT" usage.
-// No "DEPTH_LINEAR" and "MV_JITTERED" ("MV_UPSCALED" requires macOS 27). "METALFX_DENOISED": no "MV_UPSCALED", "sss" and "preTransparency", "specularMvOrHitT" is "hit distance".
+// No "DEPTH_LINEAR" and "MV_JITTERED" ("MV_UPSCALED" requires macOS 27). "METALFX_DENOISED": no "MV_UPSCALED", "sss" and "preTransparency", "specularMvOrHitT" is "hit distance"
 
 NriEnum(UpscalerMode, uint8_t,  // Scaling factor       // Min jitter phases (or just use unclamped Halton2D)
     NATIVE,                     // 1.0x                 8

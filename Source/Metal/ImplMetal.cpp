@@ -736,7 +736,7 @@ static Result NRI_CALL WriteSamplerDescriptors(DescriptorHeap& heap, const Write
 }
 
 static void NRI_CALL CmdSetDescriptorHeap(CommandBuffer& commandBuffer, const DescriptorHeap& heap) {
-    // Both NRI heap APIs use the same Metal argument-buffer storage and binding.
+    // Both NRI heap APIs use the same Metal argument-buffer storage and binding
     ((CommandBufferMetal&)commandBuffer).CmdSetDescriptorPool((const DescriptorPool&)heap);
 }
 
@@ -1229,7 +1229,7 @@ Result DeviceMetal::FillFunctionTable(WrapperMetalInterface& table) const {
 #pragma endregion
 
 //============================================================================================================================================================================================
-static bool FillAdapterDescMetal(AdapterDesc& adapterDesc, MTL::Device* device) {
+static bool FillAdapterDesc(AdapterDesc& adapterDesc, MTL::Device* device) {
     if (!device || !device->supportsFamily(MTL::GPUFamilyMetal4))
         return false;
 
@@ -1259,7 +1259,7 @@ void UpdateAdaptersMetal(AdapterDesc* adapterDescs, uint32_t& adapterDescNum, ui
     for (NS::UInteger i = 0; i < devices->count(); i++) {
         AdapterDesc metalAdapterDesc = {};
 
-        if (!FillAdapterDescMetal(metalAdapterDesc, devices->object<MTL::Device>(i)))
+        if (!FillAdapterDesc(metalAdapterDesc, devices->object<MTL::Device>(i)))
             continue;
 
         // Merge with the same adapter exposed by another API (i.e. MoltenVK). "deviceId" can't be used since it's 0
@@ -1282,7 +1282,7 @@ void UpdateAdaptersMetal(AdapterDesc* adapterDescs, uint32_t& adapterDescNum, ui
 }
 
 bool GetAdapterDescMetal(AdapterDesc& adapterDesc, void* device) {
-    return FillAdapterDescMetal(adapterDesc, (MTL::Device*)device);
+    return FillAdapterDesc(adapterDesc, (MTL::Device*)device);
 }
 
 Result CreateDeviceMetal(const DeviceCreationDesc& desc, const DeviceCreationMetalDesc& descMetal, DeviceBase*& device) {
@@ -1296,4 +1296,12 @@ Result CreateDeviceMetal(const DeviceCreationDesc& desc, const DeviceCreationMet
         device = (DeviceBase*)impl;
 
     return result;
+}
+
+void nri::BeginNativeEncodingMetal(NS::Object* commandBuffer) {
+    GetCommandBuffer(commandBuffer).BeginNativeEncoding();
+}
+
+void nri::ReleaseOnResetMetal(NS::Object* commandBuffer, NS::Object* object) {
+    GetCommandBuffer(commandBuffer).ReleaseOnReset(object);
 }

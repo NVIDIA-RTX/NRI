@@ -12,7 +12,7 @@ struct ImguiConstants {
 };
 
 // Match DescriptorMetal's 24-byte Converter argument-buffer ABI.
-// Unused fields keep texture and sampler entries at the same stride.
+// Unused fields keep texture and sampler entries at the same stride
 struct ImguiTextureEntry {
     constant uchar* buffer [[id(0)]];
     texture2d<float> texture [[id(1)]];

@@ -1,18 +1,5 @@
 ﻿// © 2021 NVIDIA Corporation
 
-// Hash helpers
-static constexpr uint64_t FNV_INIT = 0xCBF29CE484222325ULL;
-static constexpr uint64_t FNV_PRIME = 0x100000001B3ULL;
-
-static inline uint64_t Fnv1a64(uint64_t hash, const void* data, size_t size) {
-    const uint8_t* bytes = (const uint8_t*)data;
-    for (size_t i = 0; i < size; i++) {
-        hash ^= bytes[i];
-        hash *= FNV_PRIME;
-    }
-    return hash;
-}
-
 // Per-field absorb - "T" must be a primitive/enum (no padding); structs are decomposed below.
 template <typename T>
 static inline uint64_t HashField(uint64_t h, const T& field) {

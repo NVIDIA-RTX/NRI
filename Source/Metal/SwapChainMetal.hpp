@@ -38,7 +38,7 @@ Result SwapChainMetal::Create(const SwapChainDesc& desc) {
     m_Device.AddQueueResidencySet(m_DrawableResidency);
 
     // G22 swapchains receive display-encoded shader output, as on D3D/Vulkan.
-    // Use a non-sRGB attachment to avoid encoding the output twice.
+    // Use a non-sRGB attachment to avoid encoding the output twice
     MTL::PixelFormat format = desc.format == SwapChainFormat::BT709_G10_16BIT ? MTL::PixelFormatRGBA16Float : ((desc.format == SwapChainFormat::BT709_G22_10BIT || desc.format == SwapChainFormat::BT2020_G2084_10BIT) ? MTL::PixelFormatRGB10A2Unorm : MTL::PixelFormatBGRA8Unorm);
     m_Layer->setPixelFormat(format);
 

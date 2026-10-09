@@ -1599,7 +1599,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
 
             // Attachments: integer color formats require "SAMPLE_ZERO", which legacy render passes can't express
             m_Desc.resolve.attachment.color = ResolveOpBits::AVERAGE;
-            m_Desc.resolve.attachment.colorInteger = m_IsSupported.maintenance10 && m_IsSupported.dynamicRendering ? ResolveOpBits::SAMPLE_ZERO : ResolveOpBits::NONE;
+            m_Desc.resolve.attachment.colorInteger = (m_IsSupported.maintenance10 && m_IsSupported.dynamicRendering) ? ResolveOpBits::SAMPLE_ZERO : ResolveOpBits::NONE;
             m_Desc.resolve.attachment.depth = depthOps;
             m_Desc.resolve.attachment.stencil = stencilOps;
 

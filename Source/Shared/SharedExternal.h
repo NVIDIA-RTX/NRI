@@ -395,6 +395,21 @@ inline T Align(T x, size_t alignment) {
     return (T)((size_t(x) + alignment - 1) & ~(alignment - 1));
 }
 
+// FNV-1a
+constexpr uint64_t FNV_INIT = 0xCBF29CE484222325ull;
+constexpr uint64_t FNV_PRIME = 0x100000001B3ull;
+
+inline uint64_t Fnv1a64(uint64_t hash, const void* data, size_t size) {
+    const uint8_t* bytes = (const uint8_t*)data;
+
+    for (size_t i = 0; i < size; i++) {
+        hash ^= bytes[i];
+        hash *= FNV_PRIME;
+    }
+
+    return hash;
+}
+
 inline void CopyTextureData(void* dstData, uint64_t dstRowPitch, uint64_t dstSlicePitch, const void* srcData, uint64_t srcRowPitch, uint64_t srcSlicePitch, uint64_t rowSize, uint32_t rowNum, uint32_t sliceNum) {
     uint8_t* dst = (uint8_t*)dstData;
     const uint8_t* src = (const uint8_t*)srcData;

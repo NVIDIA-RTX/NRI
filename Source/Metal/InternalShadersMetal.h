@@ -4,14 +4,6 @@
 
 namespace nri {
 
-// Argument table slots of internal shaders ("Shaders/InternalMetal.metal"). "CmdClearAttachments" uses "INTERNAL_SLOT_CONSTANTS" in the
-// app's argument table, it must not overlap resource heap, sampler heap and root slots
-constexpr uint32_t INTERNAL_SLOT_KERNEL_CONSTANTS = 0; // indirect draw preparation
-constexpr uint32_t INTERNAL_SLOT_CONSTANTS = 3;
-constexpr uint32_t INTERNAL_SLOT_CLEAR_VALUE = 4;
-constexpr uint32_t INTERNAL_SLOT_CLEAR_OFFSET = 5; // 3D slice or typed buffer element offset
-constexpr uint32_t INTERNAL_SLOT_TEXTURE = 0;
-
 // Compute kernels in "Shaders/InternalMetal.metal"
 enum class InternalKernelMetal : uint8_t {
     FILTER_DRAWS,
@@ -65,14 +57,29 @@ static_assert((uint32_t)TopLevelInstanceBits::TRIANGLE_CULL_DISABLE == MTL::Acce
 static_assert((uint32_t)TopLevelInstanceBits::TRIANGLE_FLIP_FACING == MTL::AccelerationStructureInstanceOptionTriangleFrontFacingWindingCounterClockwise, "Instance flag mismatch");
 static_assert((uint32_t)TopLevelInstanceBits::FORCE_OPAQUE == MTL::AccelerationStructureInstanceOptionOpaque, "Instance flag mismatch");
 static_assert((uint32_t)TopLevelInstanceBits::FORCE_NON_OPAQUE == MTL::AccelerationStructureInstanceOptionNonOpaque, "Instance flag mismatch");
-static_assert(offsetof(DispatchRaysIndirectDesc, width) == 88 && sizeof(DispatchRaysIndirectDesc) == 104, "'NriPrepareRaysIndirect' layout mismatch");
+
+// Internal shader variants by color format type
+enum class ColorTypeMetal : uint8_t {
+    FLOAT,
+    UINT,
+    SINT
+};
+
+static inline ColorTypeMetal GetColorType(Format format) {
+    const FormatProps& props = GetFormatProps(format);
+
+    if (!props.isInteger)
+        return ColorTypeMetal::FLOAT;
+
+    return props.isSigned ? ColorTypeMetal::SINT : ColorTypeMetal::UINT;
+}
 
 struct ClearPipelineKeyMetal {
     MTL::PixelFormat colors[8] = {}; // Metal 4 pipelines don't include depth / stencil formats
     uint8_t colorNum = 0;
     uint8_t colorIndex = 0;
     uint8_t sampleNum = 1;
-    uint8_t colorType = 0; // "ColorTypeMetal"
+    ColorTypeMetal colorType = ColorTypeMetal::FLOAT;
     PlaneBits planes = PlaneBits::NONE;
 };
 
@@ -85,7 +92,7 @@ struct ClearPipelineMetal {
 struct ResolvePipelineMetal {
     MTL::RenderPipelineState* pipeline = nullptr;
     MTL::PixelFormat format = MTL::PixelFormatInvalid;
-    uint8_t colorType = 0; // "ColorTypeMetal"
+    ColorTypeMetal colorType = ColorTypeMetal::FLOAT;
     bool isArray = false;
 };
 
@@ -101,12 +108,12 @@ struct InternalShadersMetal {
     Result Create();
     MTL::ComputePipelineState* GetKernel(InternalKernelMetal kernel);
     ClearPipelineMetal GetClearPipeline(const ClearPipelineKeyMetal& key); // returned by value, since the cache can grow concurrently
-    MTL::RenderPipelineState* GetResolvePipeline(MTL::PixelFormat format, uint8_t colorType, bool isArray);
+    MTL::RenderPipelineState* GetResolvePipeline(MTL::PixelFormat format, ColorTypeMetal colorType, bool isArray);
 
 private:
     MTL4::FunctionDescriptor* NewFunction(const char* name) const;
     const ClearPipelineMetal* FindClearPipeline(const ClearPipelineKeyMetal& key) const;
-    MTL::RenderPipelineState* FindResolvePipeline(MTL::PixelFormat format, uint8_t colorType, bool isArray) const;
+    MTL::RenderPipelineState* FindResolvePipeline(MTL::PixelFormat format, ColorTypeMetal colorType, bool isArray) const;
 
     DeviceMetal& m_Device;
     MTL::Library* m_Library = nullptr;
