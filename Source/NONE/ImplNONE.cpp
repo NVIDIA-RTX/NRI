@@ -183,6 +183,12 @@ struct DeviceNONE final : public DeviceBase {
         memset(&m_Desc.features, 1, sizeof(m_Desc.features));
         memset(&m_Desc.shaderFeatures, 1, sizeof(m_Desc.shaderFeatures));
         memset(&m_Desc.videoFeatures, 1, sizeof(m_Desc.videoFeatures));
+
+        const ResolveOpBits allResolveOps = ResolveOpBits::AVERAGE | ResolveOpBits::MIN | ResolveOpBits::MAX | ResolveOpBits::SAMPLE_ZERO;
+        m_Desc.resolve.attachment = {allResolveOps, allResolveOps, allResolveOps, allResolveOps};
+        m_Desc.resolve.command = m_Desc.resolve.attachment;
+        m_Desc.resolve.independentDepthStencil = true;
+        m_Desc.resolve.independentDepthStencilNone = true;
     }
 
     inline ~DeviceNONE() {

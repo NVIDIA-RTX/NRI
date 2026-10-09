@@ -1250,6 +1250,7 @@ NriEnum(Topology, uint8_t,
     TRIANGLE_STRIP,
 
     // WGPU: unsupported
+    // METAL: adjacency requires a geometry shader, "TRIANGLE_STRIP_WITH_ADJACENCY" is unsupported
     LINE_LIST_WITH_ADJACENCY,
     LINE_STRIP_WITH_ADJACENCY,
     TRIANGLE_LIST_WITH_ADJACENCY,

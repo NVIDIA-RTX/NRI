@@ -639,6 +639,23 @@ static bool MetalFxCreateScaler(MetalFx& metalFx, MTL::Device* device, const Cor
 //=====================================================================================================================================
 // Upscaler
 //=====================================================================================================================================
+#if NRI_ENABLE_METAL_SUPPORT
+bool nri::IsMetalFxSupportedMetal(NS::Object* device, UpscalerType type) {
+    MTL::Device* deviceNative = (MTL::Device*)device;
+
+    if (type == UpscalerType::METALFX_SPATIAL)
+        return MTLFX::SpatialScalerDescriptor::supportsMetal4FX(deviceNative);
+
+    if (type == UpscalerType::METALFX_TEMPORAL)
+        return MTLFX::TemporalScalerDescriptor::supportsMetal4FX(deviceNative);
+
+    if (type == UpscalerType::METALFX_DENOISED)
+        return MTLFX::TemporalDenoisedScalerDescriptor::supportsMetal4FX(deviceNative);
+
+    return true;
+}
+#endif
+
 bool nri::IsUpscalerSupported(const DeviceDesc& deviceDesc, UpscalerType type) {
     MaybeUnused(deviceDesc, type);
 
@@ -675,7 +692,7 @@ bool nri::IsUpscalerSupported(const DeviceDesc& deviceDesc, UpscalerType type) {
 
 #if NRI_ENABLE_METAL_SUPPORT
     if (IsMetalFx(type)) {
-        if (deviceDesc.graphicsAPI == GraphicsAPI::METAL) // exact "supportsMetal4FX" check happens in "Create"
+        if (deviceDesc.graphicsAPI == GraphicsAPI::METAL) // the device check is "IsMetalFxSupportedMetal"
             return true;
     }
 #endif
@@ -1428,23 +1445,18 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
     if (IsMetalFx(upscalerDesc.type)) {
         MTL::Device* deviceNative = (MTL::Device*)m_iCore.GetDeviceNativeObject(&m_Device);
 
-        bool isSupported = false;
+        bool isSupported = IsMetalFxSupportedMetal(deviceNative, upscalerDesc.type);
         float scaleMin = 1.0f;
         float scaleMax = upscalerProps.scalingFactor;
 
-        if (upscalerDesc.type == UpscalerType::METALFX_SPATIAL)
-            isSupported = MTLFX::SpatialScalerDescriptor::supportsMetal4FX(deviceNative);
-        else if (upscalerDesc.type == UpscalerType::METALFX_TEMPORAL) {
-            isSupported = MTLFX::TemporalScalerDescriptor::supportsMetal4FX(deviceNative);
-
+        if (upscalerDesc.type == UpscalerType::METALFX_TEMPORAL) {
             // "MV_UPSCALED" requires macOS 27
             if (upscalerDesc.flags & UpscalerBits::MV_UPSCALED)
                 isSupported = isSupported && class_respondsToSelector((Class)_MTLFX_PRIVATE_CLS(MTLFXTemporalScalerDescriptor), _MTLFX_PRIVATE_SEL(setOutputResolutionMotionVectorsEnabled_));
 
             scaleMin = MTLFX::TemporalScalerDescriptor::supportedInputContentMinScale(deviceNative);
             scaleMax = MTLFX::TemporalScalerDescriptor::supportedInputContentMaxScale(deviceNative);
-        } else {
-            isSupported = MTLFX::TemporalDenoisedScalerDescriptor::supportsMetal4FX(deviceNative);
+        } else if (upscalerDesc.type == UpscalerType::METALFX_DENOISED) {
             scaleMin = MTLFX::TemporalDenoisedScalerDescriptor::supportedInputContentMinScale(deviceNative);
             scaleMax = MTLFX::TemporalDenoisedScalerDescriptor::supportedInputContentMaxScale(deviceNative);
         }

@@ -22,6 +22,7 @@ bool IsUpscalerSupported(const DeviceDesc& deviceDesc, UpscalerType type);
 // Metal backend hooks for direct encoding into the native command buffer ("MTL4CommandBuffer" of "CommandBufferMetal", since "CommandBuffer" can be a validation wrapper)
 void BeginNativeEncodingMetal(NS::Object* commandBuffer);                // ends the open encoder, emits pending barriers
 void ReleaseOnResetMetal(NS::Object* commandBuffer, NS::Object* object); // releases "object" on reset of the command allocator
+bool IsMetalFxSupportedMetal(NS::Object* device, UpscalerType type);     // "supportsMetal4FX" for MetalFX types, "true" otherwise
 #endif
 
 struct UpscalerImpl final : public DebugNameBase {

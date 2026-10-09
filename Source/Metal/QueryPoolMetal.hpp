@@ -23,10 +23,16 @@ Result QueryPoolMetal::Create(const QueryPoolDesc& desc) {
         m_CounterHeap = m_Device.GetNativeObject()->newCounterHeap(heapDesc, &error);
         heapDesc->release();
 
+        if (!m_CounterHeap) {
+            NRI_REPORT_ERROR(&m_Device, "Metal counter heap creation failed: %s", error ? error->localizedDescription()->utf8String() : "unknown error");
+
+            return Result::FAILURE;
+        }
+
         // Entries are resolved as-is into the destination buffer
         m_QuerySize = (uint32_t)m_Device.GetNativeObject()->sizeOfCounterHeapEntry(MTL4::CounterHeapTypeTimestamp);
 
-        return m_CounterHeap ? Result::SUCCESS : Result::UNSUPPORTED;
+        return Result::SUCCESS;
     }
 
     if (m_Type == QueryType::OCCLUSION || m_Type == QueryType::ACCELERATION_STRUCTURE_SIZE || m_Type == QueryType::ACCELERATION_STRUCTURE_COMPACTED_SIZE) {

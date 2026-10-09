@@ -184,25 +184,7 @@ void DeviceVal::Destruct() {
     Destroy(GetAllocationCallbacks(), this);
 }
 
-// There is no capability describing supported window systems, D3D and Metal backends accept only their native window entities
-static inline bool IsWindowValid(GraphicsAPI graphicsAPI, const Window& window) {
-    const bool hasWindows = window.windows.hwnd != nullptr;
-    const bool hasMetal = window.metal.caMetalLayer != nullptr;
-
-    if (graphicsAPI == GraphicsAPI::D3D11 || graphicsAPI == GraphicsAPI::D3D12)
-        return hasWindows;
-
-    if (graphicsAPI == GraphicsAPI::METAL)
-        return hasMetal;
-
-    const bool hasX11 = window.x11.dpy != nullptr && window.x11.window != 0;
-    const bool hasWayland = window.wayland.display != nullptr && window.wayland.surface != nullptr;
-
-    return hasWindows || hasX11 || hasWayland || hasMetal;
-}
-
 NRI_INLINE Result DeviceVal::CreateSwapChain(const SwapChainDesc& swapChainDesc, SwapChain*& swapChain) {
-    NRI_RETURN_ON_FAILURE(this, IsWindowValid(GetDesc().graphicsAPI, swapChainDesc.window), Result::INVALID_ARGUMENT, "'window' is invalid (D3D: 'windows.hwnd' is required, METAL: 'metal.caMetalLayer' is required)");
     NRI_RETURN_ON_FAILURE(this, swapChainDesc.queue != nullptr, Result::INVALID_ARGUMENT, "'queue' is NULL");
 
     bool isWindowValid = false;

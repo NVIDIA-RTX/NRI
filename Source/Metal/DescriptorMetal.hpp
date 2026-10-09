@@ -190,6 +190,7 @@ Result DescriptorMetal::Create(const SamplerDesc& desc) {
         else if (IsBorderColor(desc, 0.0f, 0.0f, 0.0f, 0.0f))
             d->setBorderColor(MTL::SamplerBorderColorTransparentBlack);
         else {
+            NRI_REPORT_WARNING(&m_Device, "'borderColor' must be opaque white, opaque black or transparent black");
             d->release();
 
             return Result::UNSUPPORTED;

@@ -398,6 +398,15 @@ void CommandBufferMetal::RecordFailure(Result result) {
         m_Result = result;
 }
 
+MTL::GPUAddress CommandBufferMetal::Upload(const void* data, uint64_t size) {
+    const MTL::GPUAddress address = m_Allocator->Upload(data, size);
+
+    if (!address && size)
+        RecordFailure(Result::OUT_OF_MEMORY);
+
+    return address;
+}
+
 void CommandBufferMetal::CmdSetDescriptorPool(const DescriptorPool& pool) {
     m_DescriptorPool = (DescriptorPoolMetal*)&pool;
     m_AreHeapsDirty = true;
@@ -813,7 +822,7 @@ void CommandBufferMetal::BindArguments(BindPoint point) {
             encoder->setVertexAmplificationCount(std::max(1u, count), mappings);
 
             if (count && !m_Pipeline->IsConverted())
-                SetArgumentAddress(ARGUMENT_SLOT_MULTIVIEW, m_Allocator->Upload(viewIndices, sizeof(viewIndices)));
+                SetArgumentAddress(ARGUMENT_SLOT_MULTIVIEW, Upload(viewIndices, sizeof(viewIndices)));
 
             encoder->setRenderPipelineState(m_Pipeline->GetRenderPipeline());
             encoder->setDepthStencilState(m_Pipeline->GetDepthStencilState());
@@ -838,7 +847,7 @@ void CommandBufferMetal::BindArguments(BindPoint point) {
 
     if (!root && s.layout && !s.root.empty()) {
         if (!s.rootAddress)
-            s.rootAddress = m_Allocator->Upload(s.root.data(), s.root.size());
+            s.rootAddress = Upload(s.root.data(), s.root.size());
 
         root = s.rootAddress;
     }
@@ -931,7 +940,7 @@ void CommandBufferMetal::CmdClearAttachments(const ClearAttachmentDesc* clears, 
         memcpy(&constants.color, &desc.value.color, sizeof(constants.color));
         constants.depth = key.planes & PlaneBits::DEPTH ? desc.value.depthStencil.depth : 0.0f;
 
-        SetArgumentAddress(INTERNAL_SLOT_CONSTANTS, m_Allocator->Upload(&constants, sizeof(constants)));
+        SetArgumentAddress(INTERNAL_SLOT_CONSTANTS, Upload(&constants, sizeof(constants)));
         encoder->setRenderPipelineState(clear.pipeline);
         encoder->setVertexAmplificationCount(1, nullptr);
         encoder->setDepthStencilState(clear.depthStencil);
@@ -1101,7 +1110,7 @@ bool CommandBufferMetal::DispatchInternal(InternalKernelMetal kernel, const void
     if (!pipeline)
         return false;
 
-    const MTL::GPUAddress constantsAddress = m_Allocator->Upload(constants, constantsSize);
+    const MTL::GPUAddress constantsAddress = Upload(constants, constantsSize);
 
     if (!constantsAddress) {
         RecordFailure(Result::OUT_OF_MEMORY);
@@ -1162,7 +1171,7 @@ MTL::GPUAddress CommandBufferMetal::PrepareIndirectArguments(const Buffer& buffe
     if (!drawNum || !countBuffer)
         return drawNum ? source : 0;
 
-    const MTL::GPUAddress destination = m_Allocator->Upload(nullptr, uint64_t(drawNum) * argumentSize);
+    const MTL::GPUAddress destination = Upload(nullptr, uint64_t(drawNum) * argumentSize);
 
     if (!destination) {
         RecordFailure(Result::OUT_OF_MEMORY);
@@ -1252,7 +1261,7 @@ void CommandBufferMetal::SetDrawArguments(const void* data, uint64_t size, bool 
     // Converted shaders read draw arguments and the index type ("kIRArgumentBufferDrawArgumentsBindPoint", "kIRArgumentBufferUniformsBindPoint").
     // Draw arguments are uploaded only if they change, index types are static
     if (size != m_DrawArgumentsSize || memcmp(m_DrawArguments, data, (size_t)size)) {
-        m_DrawArgumentsAddress = m_Allocator->Upload(data, size);
+        m_DrawArgumentsAddress = Upload(data, size);
         m_DrawArgumentsSize = m_DrawArgumentsAddress ? (uint32_t)size : 0;
         memcpy(m_DrawArguments, data, (size_t)size);
     }
@@ -1273,9 +1282,9 @@ bool CommandBufferMetal::PrepareIndirectDrawRoots(MTL::GPUAddress arguments, uin
     const uint32_t rootSize = m_Graphics.layout->GetRootDataSize();
 
     if (!m_Graphics.rootAddress)
-        m_Graphics.rootAddress = m_Allocator->Upload(m_Graphics.root.data(), rootSize);
+        m_Graphics.rootAddress = Upload(m_Graphics.root.data(), rootSize);
 
-    const MTL::GPUAddress destination = m_Allocator->Upload(nullptr, uint64_t(drawNum) * rootSize);
+    const MTL::GPUAddress destination = Upload(nullptr, uint64_t(drawNum) * rootSize);
 
     if (!m_Graphics.rootAddress || !destination) {
         RecordFailure(Result::OUT_OF_MEMORY);
@@ -1329,9 +1338,9 @@ IRRuntimeDrawInfo CommandBufferMetal::PrepareEmulationDraw(bool indexed, MTL::Si
     info.indexBuffer = indexed ? m_IndexAddress : 0;
     objectGroup = MTL::Size(objectThreads, 1, 1);
     meshGroup = MTL::Size(meshThreads, 1, 1);
-    SetArgumentAddress(kIRArgumentBufferUniformsBindPoint, m_Allocator->Upload(&info, sizeof(info)));
+    SetArgumentAddress(kIRArgumentBufferUniformsBindPoint, Upload(&info, sizeof(info)));
 
-    m_Arguments->setAddress(m_Allocator->Upload(m_EmulationVertexBuffers, sizeof(m_EmulationVertexBuffers)), kIRVertexBufferBindPoint);
+    m_Arguments->setAddress(Upload(m_EmulationVertexBuffers, sizeof(m_EmulationVertexBuffers)), kIRVertexBufferBindPoint);
 
     return info;
 }
@@ -1349,7 +1358,7 @@ void CommandBufferMetal::DrawEmulated(const void* arguments, uint64_t size, bool
         return;
 
     const MTL::Size groups = IRRuntimeCalculateObjectTgCountForTessellationAndGeometryEmulation(vertexNum, info.objectThreadgroupVertexStride, primitive, instanceNum);
-    SetArgumentAddress(kIRArgumentBufferDrawArgumentsBindPoint, m_Allocator->Upload(arguments, size));
+    SetArgumentAddress(kIRArgumentBufferDrawArgumentsBindPoint, Upload(arguments, size));
     BindArguments(BindPoint::GRAPHICS);
 
     if (m_Pipeline->IsTessellationEmulation())
@@ -1365,7 +1374,7 @@ void CommandBufferMetal::DrawEmulatedIndirect(MTL::GPUAddress arguments, MTL::GP
     if (!info.objectThreadgroupVertexStride)
         return;
 
-    const MTL::GPUAddress grids = m_Allocator->Upload(nullptr, uint64_t(drawNum) * sizeof(DrawMeshTasksDesc));
+    const MTL::GPUAddress grids = Upload(nullptr, uint64_t(drawNum) * sizeof(DrawMeshTasksDesc));
 
     if (!grids) {
         RecordFailure(Result::OUT_OF_MEMORY);
@@ -1544,7 +1553,7 @@ void CommandBufferMetal::ResolveColor(MTL::Texture* dst, const TextureRegionDesc
             uint32_t op;
         } constants = {{srcRegion.x, srcRegion.y}, srcRegion.layerOffset, op == ResolveOp::SAMPLE_ZERO ? 1u : (uint32_t)src->sampleCount(), (uint32_t)op}; // "SAMPLE_ZERO": only the sample 0 is read
 
-        m_InternalArguments->setAddress(m_Allocator->Upload(&constants, sizeof(constants)), INTERNAL_SLOT_CONSTANTS);
+        m_InternalArguments->setAddress(Upload(&constants, sizeof(constants)), INTERNAL_SLOT_CONSTANTS);
         m_InternalArguments->setTexture(src->gpuResourceID(), INTERNAL_SLOT_TEXTURE);
         encoder->setArgumentTable(m_InternalArguments, MTL::RenderStageFragment);
         encoder->setRenderPipelineState(pipeline);
@@ -1644,7 +1653,7 @@ void CommandBufferMetal::CmdClearStorage(const ClearStorageDesc& desc) {
         }
 
         m_InternalArguments->setTexture(texture->gpuResourceID(), INTERNAL_SLOT_TEXTURE);
-        m_InternalArguments->setAddress(m_Allocator->Upload(&offset, sizeof(offset)), INTERNAL_SLOT_CLEAR_OFFSET);
+        m_InternalArguments->setAddress(Upload(&offset, sizeof(offset)), INTERNAL_SLOT_CLEAR_OFFSET);
     } else {
         grid = MTL::Size(descriptor.GetBufferSize() / sizeof(uint32_t), 1, 1);
         m_InternalArguments->setAddress(descriptor.GetBuffer()->gpuAddress() + descriptor.GetBufferOffset(), INTERNAL_SLOT_CONSTANTS);
@@ -1653,7 +1662,7 @@ void CommandBufferMetal::CmdClearStorage(const ClearStorageDesc& desc) {
     if (!grid.width || !grid.height || !grid.depth)
         return;
 
-    m_InternalArguments->setAddress(m_Allocator->Upload(&desc.value, sizeof(desc.value)), INTERNAL_SLOT_CLEAR_VALUE);
+    m_InternalArguments->setAddress(Upload(&desc.value, sizeof(desc.value)), INTERNAL_SLOT_CLEAR_VALUE);
     SetComputeState(m_InternalArguments, pipeline);
     m_ComputeEncoder->dispatchThreads(grid, MTL::Size(8, std::min<NS::UInteger>(grid.height, 8), 1));
 }
@@ -1870,7 +1879,10 @@ void CommandBufferMetal::CmdBuildTopLevelAccelerationStructures(const BuildTopLe
         const auto& desc = descs[i];
         const auto& dst = *(const AccelerationStructureMetal*)desc.dst;
         const uint32_t threadNum = std::max(desc.instanceNum, 1u); // thread 0 writes the header
-        instances[i] = m_Allocator->Upload(nullptr, threadNum * sizeof(MTL::IndirectAccelerationStructureInstanceDescriptor));
+        instances[i] = Upload(nullptr, threadNum * sizeof(MTL::IndirectAccelerationStructureInstanceDescriptor));
+
+        if (!instances[i])
+            return;
 
         ConvertInstancesArgsMetal args = {};
         args.src = desc.instanceNum ? ((const BufferMetal*)desc.instanceBuffer)->GetGpuAddress() + desc.instanceOffset : 0;
@@ -1879,7 +1891,7 @@ void CommandBufferMetal::CmdBuildTopLevelAccelerationStructures(const BuildTopLe
         args.accelerationStructure = dst.GetHandle();
         args.instanceNum = desc.instanceNum;
 
-        m_InternalArguments->setAddress(m_Allocator->Upload(&args, sizeof(args)), INTERNAL_SLOT_CONSTANTS);
+        m_InternalArguments->setAddress(Upload(&args, sizeof(args)), INTERNAL_SLOT_CONSTANTS);
         encoder->dispatchThreads(MTL::Size(threadNum, 1, 1), MTL::Size(std::min(threadNum, 64u), 1, 1));
     }
 
@@ -1925,7 +1937,7 @@ void CommandBufferMetal::CmdCopyAccelerationStructure(AccelerationStructure& dst
         args.num = std::min(source.GetInstanceNum(), destination.GetInstanceNum());
 
         const uint32_t threadNum = std::max(args.num, 1u); // thread 0 writes the header
-        m_InternalArguments->setAddress(m_Allocator->Upload(&args, sizeof(args)), INTERNAL_SLOT_CONSTANTS);
+        m_InternalArguments->setAddress(Upload(&args, sizeof(args)), INTERNAL_SLOT_CONSTANTS);
         SetComputeState(m_InternalArguments, copyHeader);
         encoder->dispatchThreads(MTL::Size(threadNum, 1, 1), MTL::Size(std::min(threadNum, 64u), 1, 1));
     }
@@ -1959,12 +1971,15 @@ void CommandBufferMetal::CmdWriteAccelerationStructureSizes(const AccelerationSt
         sizes[i] = ((const AccelerationStructureMetal*)structures[i])->GetSize();
 
     CopyWordsArgsMetal args = {};
-    args.src = m_Allocator->Upload(sizes, num * sizeof(uint64_t));
+    args.src = Upload(sizes, num * sizeof(uint64_t));
     args.dst = dst;
+
+    if (!args.src)
+        return;
 
     const uint32_t threadNum = num * 2;
     auto* encoder = BeginCompute();
-    m_InternalArguments->setAddress(m_Allocator->Upload(&args, sizeof(args)), INTERNAL_SLOT_CONSTANTS);
+    m_InternalArguments->setAddress(Upload(&args, sizeof(args)), INTERNAL_SLOT_CONSTANTS);
     SetComputeState(m_InternalArguments, copyWords);
     encoder->dispatchThreads(MTL::Size(threadNum, 1, 1), MTL::Size(std::min(threadNum, 64u), 1, 1));
 }
@@ -1977,13 +1992,13 @@ static_assert(offsetof(DispatchRaysIndirectDesc, width) == offsetof(IRDispatchRa
 MTL::GPUAddress CommandBufferMetal::SetRayDispatchArguments(const IRDispatchRaysDescriptor& desc) {
     IRDispatchRaysArgument args = {};
     args.DispatchRaysDesc = desc;
-    args.GRS = m_Compute.root.empty() ? 0 : m_Allocator->Upload(m_Compute.root.data(), m_Compute.root.size());
+    args.GRS = m_Compute.root.empty() ? 0 : Upload(m_Compute.root.data(), m_Compute.root.size());
     args.ResDescHeap = m_DescriptorPool ? m_DescriptorPool->GetResourceHeapAddress() : 0;
     args.SmpDescHeap = m_DescriptorPool ? m_DescriptorPool->GetSamplerHeapAddress() : 0;
     args.VisibleFunctionTable = m_Pipeline->GetVisibleFunctionTableResourceID();
     args.IntersectionFunctionTable = m_Pipeline->GetIntersectionFunctionTableResourceID();
 
-    const MTL::GPUAddress address = m_Allocator->Upload(&args, sizeof(args));
+    const MTL::GPUAddress address = Upload(&args, sizeof(args));
     SetArgumentAddress(kIRRayDispatchArgumentsBindPoint, address);
 
     return address;
@@ -2029,10 +2044,13 @@ void CommandBufferMetal::CmdDispatchRaysIndirect(const Buffer& buffer, uint64_t 
     PrepareRaysIndirectArgsMetal args = {};
     args.src = ((const BufferMetal&)buffer).GetGpuAddress() + offset;
     args.dst = SetRayDispatchArguments({});
-    args.dispatch = m_Allocator->Upload(nullptr, sizeof(MTL::DispatchThreadsIndirectArguments));
+    args.dispatch = Upload(nullptr, sizeof(MTL::DispatchThreadsIndirectArguments));
+
+    if (!args.dst || !args.dispatch)
+        return;
 
     auto* encoder = BeginCompute();
-    m_InternalArguments->setAddress(m_Allocator->Upload(&args, sizeof(args)), INTERNAL_SLOT_CONSTANTS);
+    m_InternalArguments->setAddress(Upload(&args, sizeof(args)), INTERNAL_SLOT_CONSTANTS);
     SetComputeState(m_InternalArguments, prepareRays);
     encoder->dispatchThreads(MTL::Size(1, 1, 1), MTL::Size(1, 1, 1));
     encoder->barrierAfterEncoderStages(MTL::StageDispatch, MTL::StageDispatch, MTL4::VisibilityOptionDevice);

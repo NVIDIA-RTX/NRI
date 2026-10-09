@@ -991,7 +991,7 @@ Result PipelineMetal::ConvertShader(const ShaderDesc& shader, const ShaderLoadDe
     const uint32_t vertexInputNum = hasVertexInfo ? (uint32_t)vertexInfo.info_1_0.num_vertex_inputs : 0;
 
     if (result == Result::SUCCESS && vertexInputNum > CONVERTED_VERTEX_ATTRIBUTE_NUM) {
-        NRI_REPORT_ERROR(&m_Device, "Converted vertex shaders support up to %u vertex inputs", CONVERTED_VERTEX_ATTRIBUTE_NUM);
+        NRI_REPORT_WARNING(&m_Device, "Converted vertex shaders support up to %u vertex inputs", CONVERTED_VERTEX_ATTRIBUTE_NUM);
         result = Result::UNSUPPORTED;
     }
 
@@ -1126,8 +1126,11 @@ Result PipelineMetal::LoadFunction(const ShaderDesc& shader, MTL::Library*& libr
     if (!library)
         return Result::FAILURE;
 
-    if (unsupportedSampleMask)
+    if (unsupportedSampleMask) {
+        NRI_REPORT_WARNING(&m_Device, "'sampleMask' requires the native fragment shader to use the 'NriPipelineSampleMask' function constant");
+
         return Result::UNSUPPORTED;
+    }
 
     return function ? Result::SUCCESS : Result::FAILURE;
 }
@@ -1186,8 +1189,11 @@ Result PipelineMetal::Create(const RayTracingPipelineDesc& desc) {
     const ShaderLibraryDesc& shaderLibrary = *desc.shaderLibrary;
 
     for (uint32_t i = 0; i < shaderLibrary.shaderNum; i++) {
-        if (!IsDXIL(shaderLibrary.shaders[i]))
+        if (!IsDXIL(shaderLibrary.shaders[i])) {
+            NRI_REPORT_WARNING(&m_Device, "Ray tracing pipelines require DXIL shaders");
+
             return Result::UNSUPPORTED;
+        }
     }
 
     AutoreleasePoolMetal autoreleasePool; // "NS::Error" is autoreleased
@@ -1584,23 +1590,36 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
     }
 
     // Converter lacks "SV_ViewID". Native and converted stages share the binding ABI, but view indices are provided only for native pipelines
-    if (hasConvertedShaders && m_ViewMask && (hasNativeShaders || m_Multiview == Multiview::FLEXIBLE))
+    if (hasConvertedShaders && m_ViewMask && (hasNativeShaders || m_Multiview == Multiview::FLEXIBLE)) {
+        NRI_REPORT_WARNING(&m_Device, "Multiview with converted shaders requires converted shaders only and non-'FLEXIBLE' multiview");
+
         return Result::UNSUPPORTED;
+    }
 
     // Geometry/tessellation emulation requires converted stages and a vertex shader
-    if ((hasGeometry || hasTessellation) && (hasNativeShaders || !hasVertex || hasMesh))
-        return Result::UNSUPPORTED;
+    if ((hasGeometry || hasTessellation) && (hasNativeShaders || !hasVertex || hasMesh)) {
+        NRI_REPORT_WARNING(&m_Device, "Geometry and tessellation shaders require converted shaders only, with a vertex shader");
 
-    if (!hasFragment && desc.multisample && desc.multisample->sampleMask != ALL)
         return Result::UNSUPPORTED;
+    }
+
+    // The sample mask is applied by the fragment shader
+    if (!hasFragment && desc.multisample && desc.multisample->sampleMask != ALL) {
+        NRI_REPORT_WARNING(&m_Device, "'sampleMask' requires a fragment shader");
+
+        return Result::UNSUPPORTED;
+    }
 
     // Metal has no adjacency or patch primitives. They are consumed only by the geometry/tessellation emulation, which has no "strip with adjacency" type
     const Topology topology = desc.inputAssembly.topology;
     const bool isAdjacency = topology >= Topology::LINE_LIST_WITH_ADJACENCY && topology <= Topology::TRIANGLE_STRIP_WITH_ADJACENCY;
 
     if (!hasMesh) {
-        if ((isAdjacency && !hasGeometry) || (topology == Topology::PATCH_LIST && !hasTessellation) || topology == Topology::TRIANGLE_STRIP_WITH_ADJACENCY)
+        if ((isAdjacency && !hasGeometry) || (topology == Topology::PATCH_LIST && !hasTessellation) || topology == Topology::TRIANGLE_STRIP_WITH_ADJACENCY) {
+            NRI_REPORT_WARNING(&m_Device, "Adjacency topologies require a geometry shader, 'PATCH_LIST' requires tessellation, 'TRIANGLE_STRIP_WITH_ADJACENCY' is unsupported");
+
             return Result::UNSUPPORTED;
+        }
     }
 
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
@@ -1619,12 +1638,18 @@ Result PipelineMetal::Create(const GraphicsPipelineDesc& desc) {
     for (uint32_t i = 0; i < vertexAttributeNum; i++) {
         const Format format = desc.vertexInput->attributes[i].format;
 
-        if (GetVertexFormatMetal(format) == MTL::VertexFormatInvalid)
+        if (GetVertexFormatMetal(format) == MTL::VertexFormatInvalid) {
+            NRI_REPORT_WARNING(&m_Device, "'vertexInput->attributes[%u].format' doesn't support 'FormatSupportBits::VERTEX_BUFFER'", i);
+
             return Result::UNSUPPORTED;
+        }
 
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
-        if (emulation && GetIRVertexFormat(format) == IRFormatUnknown)
+        if (emulation && GetIRVertexFormat(format) == IRFormatUnknown) {
+            NRI_REPORT_WARNING(&m_Device, "'vertexInput->attributes[%u].format' is unsupported by geometry and tessellation emulation", i);
+
             return Result::UNSUPPORTED;
+        }
 #endif
     }
 

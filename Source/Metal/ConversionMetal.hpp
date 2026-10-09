@@ -189,7 +189,7 @@ nri::FormatSupportBits nri::GetFormatSupportMetal(MTL::Device& device, Format fo
     if (!isPacked16 && !props.isSrgb && !props.isBgr && !props.isExpShared)
         support |= FormatSupportBits::BUFFER | FormatSupportBits::STORAGE_BUFFER;
 
-    if (format == Format::R32_UINT || format == Format::R32_SINT)
+    if (IsAtomicFormat(device, format))
         support |= FormatSupportBits::STORAGE_TEXTURE_ATOMICS | FormatSupportBits::STORAGE_BUFFER_ATOMICS;
 
     // MSL texture access types don't declare the pixel format

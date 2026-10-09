@@ -138,6 +138,7 @@ private:
 #if NRI_ENABLE_METAL_SHADER_CONVERTER
     MTL::GPUAddress SetRayDispatchArguments(const IRDispatchRaysDescriptor& desc);
 #endif
+    MTL::GPUAddress Upload(const void* data, uint64_t size); // records "OUT_OF_MEMORY" on failure
     void ResolveColor(MTL::Texture* dst, const TextureRegionDesc& dstRegion, MTL::Texture* src, const TextureRegionDesc& srcRegion, ResolveOp op, Format format, bool attachmentResolve = false);
 
     DeviceMetal& m_Device;
