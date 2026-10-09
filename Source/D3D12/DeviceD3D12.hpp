@@ -1188,8 +1188,15 @@ void DeviceD3D12::FillDesc(bool disableD3D12EnhancedBarrier) {
     m_Desc.features.rectColorClears = true;
     m_Desc.features.rectDepthStencilClears = true;
     m_Desc.features.regionResolve = true;
-    m_Desc.features.resolveOpMinMax = true;
-    m_Desc.features.resolveOpAverageDepth = true; // "AVERAGE" can be used with the depth plane
+
+    // Resolve: "ResolveSubresourceRegion" is used for attachments and "CmdResolveTexture", "AVERAGE" can be used with the depth plane
+    m_Desc.resolve.attachment.color = ResolveOpBits::AVERAGE | ResolveOpBits::MIN | ResolveOpBits::MAX;
+    m_Desc.resolve.attachment.colorInteger = ResolveOpBits::MIN | ResolveOpBits::MAX;
+    m_Desc.resolve.attachment.depth = ResolveOpBits::AVERAGE | ResolveOpBits::MIN | ResolveOpBits::MAX;
+    m_Desc.resolve.attachment.stencil = ResolveOpBits::MIN | ResolveOpBits::MAX;
+    m_Desc.resolve.command = m_Desc.resolve.attachment;
+    m_Desc.resolve.independentDepthStencil = true;
+    m_Desc.resolve.independentDepthStencilNone = true;
     m_Desc.features.pipelineCache = isPipelineLibrarySupported;
     m_Desc.features.pipelineCacheControl = isPipelineLibrarySupported; // emulated via "ID3D12PipelineLibrary::Load*Pipeline" miss-detection
     m_Desc.features.getMemoryDesc2 = true;

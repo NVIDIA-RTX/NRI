@@ -114,20 +114,22 @@ static inline bool IsAverageResolvable(Format format, PlaneBits planes = PlaneBi
     return !isIntegerColor && (!formatProps.isStencil || (planes != PlaneBits::ALL && !(planes & PlaneBits::STENCIL)));
 }
 
-// Returns the missing feature for a resolve op or "nullptr"
-static inline const char* GetMissingResolveOpFeature(const DeviceDesc& deviceDesc, ResolveOp resolveOp) {
-    if ((resolveOp == ResolveOp::MIN || resolveOp == ResolveOp::MAX) && !deviceDesc.features.resolveOpMinMax)
-        return "'features.resolveOpMinMax' is false";
+static_assert((uint32_t)ResolveOp::MAX_NUM == 4 && (uint32_t)ResolveOpBits::SAMPLE_ZERO == NriBit((uint32_t)ResolveOp::SAMPLE_ZERO), "'ResolveOpBits' must be 'NriBit(ResolveOp)'");
 
-    if (resolveOp == ResolveOp::SAMPLE_ZERO && !deviceDesc.features.resolveOpSampleZero)
-        return "'features.resolveOpSampleZero' is false";
+constexpr std::array<const char*, (size_t)ResolveOp::MAX_NUM> g_ResolveOpNames = {
+    "AVERAGE",
+    "MIN",
+    "MAX",
+    "SAMPLE_ZERO",
+};
+NRI_VALIDATE_ARRAY_BY_PTR(g_ResolveOpNames);
 
-    return nullptr;
+static inline bool IsResolveOpSupported(ResolveOpBits resolveOps, ResolveOp resolveOp) {
+    return (resolveOps & (ResolveOpBits)NriBit((uint32_t)resolveOp)) != 0;
 }
 
-// VK color resolve modes are fixed: "AVERAGE" for non-integer formats and "SAMPLE_ZERO" for integer formats
-static inline ResolveOp GetResolveOpVK(Format format) {
-    return GetFormatProps(format).isInteger ? ResolveOp::SAMPLE_ZERO : ResolveOp::AVERAGE;
+static inline ResolveOpBits GetColorResolveOps(const ResolveOps& resolveOps, Format format) {
+    return GetFormatProps(format).isInteger ? resolveOps.colorInteger : resolveOps.color;
 }
 
 // Planes resolved by "CmdResolveTexture" for a region ("ALL" or no region means all planes of the format)
@@ -657,14 +659,13 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
 
             NRI_RETURN_ON_FAILURE(&m_Device, resolveDstVal.IsColorAttachment(), ReturnVoid(), "'colors[%u].resolveDst' is not a 'COLOR_ATTACHMENT' descriptor", i);
             NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetFormatSupport(resolveDstVal.GetFormat()) & FormatSupportBits::MULTISAMPLE_RESOLVE, ReturnVoid(), "'colors[%u].resolveDst' format does not support 'FormatSupportBits::MULTISAMPLE_RESOLVE'", i);
-            const char* missingFeature = GetMissingResolveOpFeature(deviceDesc, renderingDesc.colors[i].resolveOp);
-            NRI_RETURN_ON_FAILURE(&m_Device, !missingFeature, ReturnVoid(), "'colors[%u].resolveOp': %s", i, missingFeature);
 
-            if (renderingDesc.colors[i].resolveOp == ResolveOp::AVERAGE)
+            const ResolveOp resolveOp = renderingDesc.colors[i].resolveOp;
+            if (resolveOp == ResolveOp::AVERAGE)
                 NRI_RETURN_ON_FAILURE(&m_Device, IsAverageResolvable(colorVal.GetFormat()), ReturnVoid(), "'colors[%u].resolveOp': 'ResolveOp::AVERAGE' can't be used with integer formats", i);
 
-            if (deviceDesc.graphicsAPI == GraphicsAPI::VK)
-                NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.colors[i].resolveOp == GetResolveOpVK(colorVal.GetFormat()), ReturnVoid(), "'colors[%u].resolveOp': VK supports only 'ResolveOp::AVERAGE' for non-integer and 'ResolveOp::SAMPLE_ZERO' for integer color formats", i);
+            NRI_RETURN_ON_FAILURE(&m_Device, IsResolveOpSupported(GetColorResolveOps(deviceDesc.resolve.attachment, colorVal.GetFormat()), resolveOp), ReturnVoid(),
+                "'colors[%u].resolveOp': 'ResolveOp::%s' is not supported for this format (see 'resolve.attachment')", i, g_ResolveOpNames[(size_t)resolveOp]);
         }
 
         colors[i] = renderingDesc.colors[i];
@@ -692,22 +693,19 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
         NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.depth.descriptor, ReturnVoid(), "'depth.resolveDst' is not NULL, but 'depth.descriptor' is NULL");
         NRI_RETURN_ON_FAILURE(&m_Device, resolveDstVal.IsDepthStencilAttachment(), ReturnVoid(), "'depth.resolveDst' is not a 'DEPTH_STENCIL_ATTACHMENT' descriptor");
         NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetFormatSupport(resolveDstVal.GetFormat()) & FormatSupportBits::MULTISAMPLE_RESOLVE, ReturnVoid(), "'depth.resolveDst' format does not support 'FormatSupportBits::MULTISAMPLE_RESOLVE'");
-        const char* missingFeature = GetMissingResolveOpFeature(deviceDesc, renderingDesc.depth.resolveOp);
-        NRI_RETURN_ON_FAILURE(&m_Device, !missingFeature, ReturnVoid(), "'depth.resolveOp': %s", missingFeature);
-
         // Without a separate "stencil" attachment the stencil plane is resolved with "depth.resolveOp"
+        const ResolveOp resolveOp = renderingDesc.depth.resolveOp;
         const DescriptorVal& depthVal = *(DescriptorVal*)renderingDesc.depth.descriptor;
         const bool isStencilResolved = GetFormatProps(depthVal.GetFormat()).isStencil && !renderingDesc.stencil.descriptor;
-        if (renderingDesc.depth.resolveOp == ResolveOp::AVERAGE)
+        if (resolveOp == ResolveOp::AVERAGE)
             NRI_RETURN_ON_FAILURE(&m_Device, !isStencilResolved, ReturnVoid(), "'depth.resolveOp': 'ResolveOp::AVERAGE' can't be used with a depth-stencil format without a separate 'stencil' attachment");
 
-        if (renderingDesc.depth.resolveOp == ResolveOp::AVERAGE)
-            NRI_RETURN_ON_FAILURE(&m_Device, deviceDesc.features.resolveOpAverageDepth, ReturnVoid(), "'depth.resolveOp': 'ResolveOp::AVERAGE' requires 'features.resolveOpAverageDepth'");
+        NRI_RETURN_ON_FAILURE(&m_Device, IsResolveOpSupported(deviceDesc.resolve.attachment.depth, resolveOp), ReturnVoid(),
+            "'depth.resolveOp': 'ResolveOp::%s' is not supported for depth (see 'resolve.attachment')", g_ResolveOpNames[(size_t)resolveOp]);
 
-        // Metal stencil resolve filters are "sample 0" and "the sample selected by the depth filter", none of them is "MIN" or "MAX"
-        const bool isMinMax = renderingDesc.depth.resolveOp == ResolveOp::MIN || renderingDesc.depth.resolveOp == ResolveOp::MAX;
-        if (deviceDesc.graphicsAPI == GraphicsAPI::METAL && isMinMax)
-            NRI_RETURN_ON_FAILURE(&m_Device, !isStencilResolved, ReturnVoid(), "'depth.resolveDst': the stencil plane can't be resolved with 'MIN' or 'MAX' by Metal (use a separate 'stencil' attachment without 'resolveDst' or 'ResolveOp::SAMPLE_ZERO')");
+        if (isStencilResolved)
+            NRI_RETURN_ON_FAILURE(&m_Device, IsResolveOpSupported(deviceDesc.resolve.attachment.stencil, resolveOp), ReturnVoid(),
+                "'depth.resolveOp': 'ResolveOp::%s' is not supported for stencil, which is resolved with 'depth.resolveOp' (see 'resolve.attachment', or use a separate 'stencil' attachment)", g_ResolveOpNames[(size_t)resolveOp]);
     }
     if (renderingDesc.stencil.descriptor) {
         const DescriptorVal& stencilVal = *(DescriptorVal*)renderingDesc.stencil.descriptor;
@@ -719,12 +717,24 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
         NRI_RETURN_ON_FAILURE(&m_Device, resolveDstVal.IsDepthStencilAttachment(), ReturnVoid(), "'stencil.resolveDst' is not a 'DEPTH_STENCIL_ATTACHMENT' descriptor");
         NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetFormatSupport(resolveDstVal.GetFormat()) & FormatSupportBits::MULTISAMPLE_RESOLVE, ReturnVoid(), "'stencil.resolveDst' format does not support 'FormatSupportBits::MULTISAMPLE_RESOLVE'");
         NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.stencil.resolveOp != ResolveOp::AVERAGE, ReturnVoid(), "'stencil.resolveOp': 'ResolveOp::AVERAGE' can't be used with stencil");
+        NRI_RETURN_ON_FAILURE(&m_Device, IsResolveOpSupported(deviceDesc.resolve.attachment.stencil, renderingDesc.stencil.resolveOp), ReturnVoid(),
+            "'stencil.resolveOp': 'ResolveOp::%s' is not supported for stencil (see 'resolve.attachment')", g_ResolveOpNames[(size_t)renderingDesc.stencil.resolveOp]);
+    }
 
-        const char* missingFeature = GetMissingResolveOpFeature(deviceDesc, renderingDesc.stencil.resolveOp);
-        NRI_RETURN_ON_FAILURE(&m_Device, !missingFeature, ReturnVoid(), "'stencil.resolveOp': %s", missingFeature);
+    // Depth and stencil of a depth-stencil format resolved with different ops or only one of them
+    const Descriptor* depthStencilAttachment = renderingDesc.depth.descriptor ? renderingDesc.depth.descriptor : renderingDesc.stencil.descriptor;
+    if (depthStencilAttachment && (renderingDesc.depth.resolveDst || renderingDesc.stencil.resolveDst)) {
+        const FormatProps& formatProps = GetFormatProps(((const DescriptorVal*)depthStencilAttachment)->GetFormat());
+        if (formatProps.isDepth && formatProps.isStencil) {
+            const bool isDepthResolved = renderingDesc.depth.descriptor && renderingDesc.depth.resolveDst;
+            const bool isStencilResolved = renderingDesc.stencil.descriptor ? renderingDesc.stencil.resolveDst != nullptr : isDepthResolved;
 
-        if (deviceDesc.graphicsAPI == GraphicsAPI::METAL)
-            NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.stencil.resolveOp == ResolveOp::SAMPLE_ZERO, ReturnVoid(), "'stencil.resolveOp': stencil can't be resolved with 'MIN' or 'MAX' by Metal (use 'ResolveOp::SAMPLE_ZERO')");
+            if (isDepthResolved != isStencilResolved)
+                NRI_RETURN_ON_FAILURE(&m_Device, deviceDesc.resolve.independentDepthStencilNone, ReturnVoid(), "only one of depth and stencil is resolved, but 'resolve.independentDepthStencilNone' is false");
+
+            if (isDepthResolved && isStencilResolved && renderingDesc.stencil.descriptor && renderingDesc.depth.resolveOp != renderingDesc.stencil.resolveOp)
+                NRI_RETURN_ON_FAILURE(&m_Device, deviceDesc.resolve.independentDepthStencil, ReturnVoid(), "depth and stencil are resolved with different ops, but 'resolve.independentDepthStencil' is false");
+        }
     }
 
     Descriptor* depthStencil = renderingDesc.depth.descriptor ? renderingDesc.depth.descriptor : renderingDesc.stencil.descriptor;
@@ -979,28 +989,28 @@ NRI_INLINE void CommandBufferVal::ResolveTexture(Texture& dstTexture, const Text
 
     if (!deviceDesc.features.regionResolve)
         NRI_RETURN_ON_FAILURE(&m_Device, !dstRegion && !srcRegion, ReturnVoid(), "region(s) are specified, but 'features.regionResolve' is false");
-    const char* missingFeature = GetMissingResolveOpFeature(deviceDesc, resolveOp);
-    NRI_RETURN_ON_FAILURE(&m_Device, !missingFeature, ReturnVoid(), "'resolveOp': %s", missingFeature);
-
     // A missing region covers all planes
     const PlaneBits srcPlanes = GetResolvedPlanes(srcDesc.format, srcRegion);
     const PlaneBits dstPlanes = GetResolvedPlanes(dstDesc.format, dstRegion);
     NRI_RETURN_ON_FAILURE(&m_Device, srcPlanes == dstPlanes, ReturnVoid(), "source and destination must resolve the same planes");
 
-    if (resolveOp == ResolveOp::AVERAGE) {
+    if (resolveOp == ResolveOp::AVERAGE)
         NRI_RETURN_ON_FAILURE(&m_Device, IsAverageResolvable(srcDesc.format, srcRegion ? srcRegion->planes : PlaneBits::ALL), ReturnVoid(), "'ResolveOp::AVERAGE' can't be used with integer or stencil formats");
-        NRI_RETURN_ON_FAILURE(&m_Device, !(srcPlanes & PlaneBits::DEPTH) || deviceDesc.features.resolveOpAverageDepth, ReturnVoid(), "'ResolveOp::AVERAGE' for depth requires 'features.resolveOpAverageDepth'");
-    }
 
     const FormatProps& formatProps = GetFormatProps(srcDesc.format);
-    const bool isDepthStencil = formatProps.isDepth || formatProps.isStencil;
+    const char* opName = g_ResolveOpNames[(size_t)resolveOp];
+    if (!formatProps.isDepth && !formatProps.isStencil)
+        NRI_RETURN_ON_FAILURE(&m_Device, IsResolveOpSupported(GetColorResolveOps(deviceDesc.resolve.command, srcDesc.format), resolveOp), ReturnVoid(), "'ResolveOp::%s' is not supported for this format (see 'resolve.command')", opName);
 
-    if (deviceDesc.graphicsAPI == GraphicsAPI::VK && !isDepthStencil)
-        NRI_RETURN_ON_FAILURE(&m_Device, resolveOp == GetResolveOpVK(srcDesc.format), ReturnVoid(), "VK supports only 'ResolveOp::AVERAGE' for non-integer and 'ResolveOp::SAMPLE_ZERO' for integer color formats");
+    if (srcPlanes & PlaneBits::DEPTH)
+        NRI_RETURN_ON_FAILURE(&m_Device, IsResolveOpSupported(deviceDesc.resolve.command.depth, resolveOp), ReturnVoid(), "'ResolveOp::%s' is not supported for depth (see 'resolve.command')", opName);
 
-    // Metal resolves depth-stencil only in render passes
-    if (deviceDesc.graphicsAPI == GraphicsAPI::METAL)
-        NRI_RETURN_ON_FAILURE(&m_Device, !isDepthStencil, ReturnVoid(), "depth-stencil textures can't be resolved by 'CmdResolveTexture' in Metal (use 'depth.resolveDst' in 'CmdBeginRendering')");
+    if (srcPlanes & PlaneBits::STENCIL)
+        NRI_RETURN_ON_FAILURE(&m_Device, IsResolveOpSupported(deviceDesc.resolve.command.stencil, resolveOp), ReturnVoid(), "'ResolveOp::%s' is not supported for stencil (see 'resolve.command')", opName);
+
+    // Only one plane of a depth-stencil format
+    if (formatProps.isDepth && formatProps.isStencil && srcPlanes != (PlaneBits::DEPTH | PlaneBits::STENCIL))
+        NRI_RETURN_ON_FAILURE(&m_Device, deviceDesc.resolve.independentDepthStencilNone, ReturnVoid(), "only one of depth and stencil is resolved, but 'resolve.independentDepthStencilNone' is false");
 
     Texture* dstTextureImpl = NRI_GET_IMPL(Texture, &dstTexture);
     Texture* srcTextureImpl = NRI_GET_IMPL(Texture, &srcTexture);

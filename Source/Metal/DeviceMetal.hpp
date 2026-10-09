@@ -432,8 +432,17 @@ void DeviceMetal::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.features.rectColorClears = true;
     m_Desc.features.rectDepthStencilClears = true;
     m_Desc.features.regionResolve = true;
-    m_Desc.features.resolveOpMinMax = true;
-    m_Desc.features.resolveOpSampleZero = true; // native for depth and stencil, color is resolved by a shader
+
+    // Resolve: "AVERAGE" color uses the store action, other color ops use a shader. Depth filters are "sample 0", "min" and "max", stencil
+    // filters are "sample 0" and "the sample selected by the depth filter". "CmdResolveTexture" doesn't support depth-stencil
+    m_Desc.resolve.attachment.color = ResolveOpBits::AVERAGE | ResolveOpBits::MIN | ResolveOpBits::MAX | ResolveOpBits::SAMPLE_ZERO;
+    m_Desc.resolve.attachment.colorInteger = ResolveOpBits::MIN | ResolveOpBits::MAX | ResolveOpBits::SAMPLE_ZERO;
+    m_Desc.resolve.attachment.depth = ResolveOpBits::MIN | ResolveOpBits::MAX | ResolveOpBits::SAMPLE_ZERO;
+    m_Desc.resolve.attachment.stencil = ResolveOpBits::SAMPLE_ZERO;
+    m_Desc.resolve.command.color = m_Desc.resolve.attachment.color;
+    m_Desc.resolve.command.colorInteger = m_Desc.resolve.attachment.colorInteger;
+    m_Desc.resolve.independentDepthStencil = true;
+    m_Desc.resolve.independentDepthStencilNone = true;
     m_Desc.features.rootConstantsOffset = true;
     m_Desc.features.nonConstantBufferRootDescriptorOffset = true;
     m_Desc.features.textureCompressionBC = m_Device->supportsBCTextureCompression();

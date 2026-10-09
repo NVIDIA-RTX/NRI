@@ -1648,12 +1648,30 @@ NriEnum(StoreOp, uint8_t,
 
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_resolve_mode
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkResolveModeFlagBits.html
+// Supported resolve ops are reported per path and plane, see "DeviceDesc::resolve"
 NriEnum(ResolveOp, uint8_t,
-    AVERAGE,    // resolves the source samples to their average value, can't be used with integer and stencil formats. Depth: requires "features.resolveOpAverageDepth"
-    MIN,        // resolves the source samples to their minimum value, requires "features.resolveOpMinMax". Color: unsupported in VK. Stencil: unsupported in Metal
-    MAX,        // resolves the source samples to their maximum value, requires "features.resolveOpMinMax". Color: unsupported in VK. Stencil: unsupported in Metal
-    SAMPLE_ZERO // takes the value of the sample 0, requires "features.resolveOpSampleZero". Color: integer formats only in VK
+    AVERAGE,    // resolves the source samples to their average value (can't be used with integer and stencil formats)
+    MIN,        // resolves the source samples to their minimum value
+    MAX,        // resolves the source samples to their maximum value
+    SAMPLE_ZERO // takes the value of the sample 0
 );
+
+// "NriBit(ResolveOp)"
+NriBits(ResolveOpBits, uint8_t,
+    NONE                            = 0,
+    AVERAGE                         = NriBit(0),
+    MIN                             = NriBit(1),
+    MAX                             = NriBit(2),
+    SAMPLE_ZERO                     = NriBit(3)
+);
+
+// Supported resolve ops of a resolve path
+NriStruct(ResolveOps) {
+    Nri(ResolveOpBits) color;           // non-integer color formats
+    Nri(ResolveOpBits) colorInteger;    // integer color formats
+    Nri(ResolveOpBits) depth;
+    Nri(ResolveOpBits) stencil;
+};
 
 NriStruct(AttachmentDesc) {
     NriPtr(Descriptor) descriptor;
@@ -2132,6 +2150,14 @@ NriStruct(DeviceDesc) {
         Nri(StageBits) derivativeOpsStages; // SM 6.6+ (https://microsoft.github.io/DirectX-Specs/d3d/HLSL_SM_6_6_Derivatives.html#derivative-functions)
     } wave;
 
+    // Resolve (a format must also support "FormatSupportBits::MULTISAMPLE_RESOLVE")
+    struct {
+        Nri(ResolveOps) attachment;                 // "AttachmentDesc::resolveOp"
+        Nri(ResolveOps) command;                    // "CmdResolveTexture"
+        bool independentDepthStencil;               // depth and stencil of a depth-stencil format can be resolved with different ops
+        bool independentDepthStencilNone;           // only one of depth and stencil of a depth-stencil format can be resolved
+    } resolve;
+
     // Other
     struct {
         uint64_t timestampFrequencyHz;
@@ -2236,9 +2262,6 @@ NriStruct(DeviceDesc) {
 
         // Resolve
         bool regionResolve;                                       // see "CmdResolveTexture"
-        bool resolveOpMinMax;                                     // see "ResolveOp"
-        bool resolveOpAverageDepth;                               // "ResolveOp::AVERAGE" can be used for depth (see "ResolveOp")
-        bool resolveOpSampleZero;                                 // see "ResolveOp::SAMPLE_ZERO"
 
         // Pipeline cache
         bool pipelineCache;                                       // "PipelineCache" support (NOP fallback if unsupported, except on error)

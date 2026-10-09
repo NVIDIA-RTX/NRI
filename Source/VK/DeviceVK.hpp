@@ -1578,10 +1578,41 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.rectColorClears = true;
         m_Desc.features.rectDepthStencilClears = true;
         m_Desc.features.regionResolve = true;
-        m_Desc.features.resolveOpMinMax = m_IsSupported.maintenance10 && m_IsSupported.copyCommands2; // TODO: it's "all or nothing", without it "min/max" resolve is supported only in a render pass
-        // Depth-stencil and integer color formats are resolvable only with "maintenance10" (see "GetFormatSupport")
-        m_Desc.features.resolveOpAverageDepth = m_IsSupported.maintenance10 && (props12.supportedDepthResolveModes & VK_RESOLVE_MODE_AVERAGE_BIT) != 0;
-        m_Desc.features.resolveOpSampleZero = m_IsSupported.maintenance10; // always supported for depth and stencil, integer color formats are resolvable only with it
+
+        { // Resolve: depth-stencil formats are resolvable only with "maintenance10" (see "GetFormatSupport"), color resolve modes are fixed
+            auto toResolveOpBits = [](VkResolveModeFlags modes) {
+                ResolveOpBits bits = ResolveOpBits::NONE;
+                if (modes & VK_RESOLVE_MODE_AVERAGE_BIT)
+                    bits |= ResolveOpBits::AVERAGE;
+                if (modes & VK_RESOLVE_MODE_MIN_BIT)
+                    bits |= ResolveOpBits::MIN;
+                if (modes & VK_RESOLVE_MODE_MAX_BIT)
+                    bits |= ResolveOpBits::MAX;
+                if (modes & VK_RESOLVE_MODE_SAMPLE_ZERO_BIT)
+                    bits |= ResolveOpBits::SAMPLE_ZERO;
+
+                return bits;
+            };
+
+            const ResolveOpBits depthOps = m_IsSupported.maintenance10 ? toResolveOpBits(props12.supportedDepthResolveModes) : ResolveOpBits::NONE;
+            const ResolveOpBits stencilOps = m_IsSupported.maintenance10 ? (ResolveOpBits)(toResolveOpBits(props12.supportedStencilResolveModes) & ~ResolveOpBits::AVERAGE) : ResolveOpBits::NONE;
+
+            // Attachments: integer color formats require "SAMPLE_ZERO", which legacy render passes can't express
+            m_Desc.resolve.attachment.color = ResolveOpBits::AVERAGE;
+            m_Desc.resolve.attachment.colorInteger = m_IsSupported.maintenance10 && m_IsSupported.dynamicRendering ? ResolveOpBits::SAMPLE_ZERO : ResolveOpBits::NONE;
+            m_Desc.resolve.attachment.depth = depthOps;
+            m_Desc.resolve.attachment.stencil = stencilOps;
+
+            // "CmdResolveTexture": resolve modes require "vkCmdResolveImage2" ("copyCommands2") and "maintenance10"
+            const bool isModeSupported = m_IsSupported.maintenance10 && m_IsSupported.copyCommands2;
+            m_Desc.resolve.command.color = ResolveOpBits::AVERAGE;
+            m_Desc.resolve.command.colorInteger = isModeSupported ? ResolveOpBits::SAMPLE_ZERO : ResolveOpBits::NONE;
+            m_Desc.resolve.command.depth = isModeSupported ? depthOps : ResolveOpBits::NONE;
+            m_Desc.resolve.command.stencil = isModeSupported ? stencilOps : ResolveOpBits::NONE;
+
+            m_Desc.resolve.independentDepthStencil = props12.independentResolve;
+            m_Desc.resolve.independentDepthStencilNone = props12.independentResolveNone;
+        }
         m_Desc.features.pipelineCache = true;
         m_Desc.features.pipelineCacheControl = features13.pipelineCreationCacheControl;
         m_Desc.features.getMemoryDesc2 = m_IsSupported.maintenance4;
