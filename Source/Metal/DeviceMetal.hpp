@@ -456,7 +456,8 @@ void DeviceMetal::FillDesc(const AdapterDesc& adapterDesc) {
     m_Desc.features.textureCompressionETC2 = true;
     m_Desc.features.textureCompressionASTC = true;
     m_Desc.features.shaderBytecodeMETALLIB = true;
-    // Mesh shaders (including indirect "drawMeshThreadgroups") are Apple7+
+    // Mesh shaders are Apple7+. Metal Feature Set Tables list "indirect mesh draw arguments" (indirect "drawMeshThreadgroups") as Apple9+,
+    // but indirect mesh draws work on Apple8 (verified on M2 Max by "MeshShaderTests"). There is no fallback, since the arguments are in GPU memory
     m_Desc.features.meshShader = m_Device->supportsFamily(MTL::GPUFamilyApple7);
     m_Desc.features.drawIndirectCount = true;
     m_Desc.features.occlusion = true;
