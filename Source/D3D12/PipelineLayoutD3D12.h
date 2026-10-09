@@ -35,6 +35,10 @@ struct PipelineLayoutD3D12 final : public DebugNameBase {
         return m_RootSignature.GetInterface();
     }
 
+    inline uint64_t GetRootSignatureHash() const {
+        return m_RootSignatureHash;
+    }
+
     inline DeviceD3D12& GetDevice() const {
         return m_Device;
     }
@@ -76,6 +80,7 @@ private:
     DeviceD3D12& m_Device;
     ComPtr<ID3D12RootSignature> m_RootSignature;
     Vector<DescriptorSetMapping> m_DescriptorSetMappings;
+    uint64_t m_RootSignatureHash = 0; // part of the pipeline cache key
     uint32_t m_BaseRootConstant = 0;
     uint32_t m_BaseRootDescriptor = 0;
     RootParameterIndexType m_DrawParametersRootConstantIndex = ROOT_PARAMETER_UNUSED;

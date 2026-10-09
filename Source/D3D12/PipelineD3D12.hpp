@@ -1,18 +1,6 @@
 ﻿// © 2021 NVIDIA Corporation
 
 // Hash helpers
-static constexpr uint64_t FNV_INIT = 0xCBF29CE484222325ULL;
-static constexpr uint64_t FNV_PRIME = 0x100000001B3ULL;
-
-static inline uint64_t Fnv1a64(uint64_t hash, const void* data, size_t size) {
-    const uint8_t* bytes = (const uint8_t*)data;
-    for (size_t i = 0; i < size; i++) {
-        hash ^= bytes[i];
-        hash *= FNV_PRIME;
-    }
-    return hash;
-}
-
 // Per-field absorb - "T" must be a primitive/enum (no padding); structs are decomposed below.
 template <typename T>
 static inline uint64_t HashField(uint64_t h, const T& field) {
@@ -93,7 +81,8 @@ static inline uint64_t HashStruct(uint64_t h, const ColorAttachmentDesc& s) {
 }
 
 static uint64_t HashGraphicsPipelineDesc(const GraphicsPipelineDesc& d) {
-    uint64_t h = FNV_INIT;
+    uint64_t h = ((const PipelineLayoutD3D12*)d.pipelineLayout)->GetRootSignatureHash();
+
     for (uint32_t i = 0; i < d.shaderNum; i++) {
         h = Fnv1a64(h, d.shaders[i].bytecode, (size_t)d.shaders[i].size);
         h = HashField(h, d.shaders[i].stage);
@@ -135,7 +124,7 @@ static uint64_t HashGraphicsPipelineDesc(const GraphicsPipelineDesc& d) {
 }
 
 static uint64_t HashComputePipelineDesc(const ComputePipelineDesc& d) {
-    uint64_t h = FNV_INIT;
+    uint64_t h = ((const PipelineLayoutD3D12*)d.pipelineLayout)->GetRootSignatureHash();
     h = Fnv1a64(h, d.shader.bytecode, (size_t)d.shader.size);
     h = HashField(h, d.shader.stage);
     h = HashField(h, d.robustness);
