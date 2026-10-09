@@ -1426,11 +1426,15 @@ NRI_INLINE void CommandBufferMetal::CmdCopyTexture(Texture& d, const TextureRegi
         const TextureDesc& source = ((TextureMetal&)s).GetDesc();
         const TextureDesc& destination = ((TextureMetal&)d).GetDesc();
 
-        if (!selectiveSrcPlane || !selectiveDstPlane || sr->planes != dr->planes || source.format != destination.format || source.sampleNum > 1 || destination.sampleNum > 1) {
+        // Metal copies a single plane only through a buffer, which requires identical non-multisampled depth-stencil formats
+        if (!selectiveSrcPlane || !selectiveDstPlane || source.format != destination.format || source.sampleNum > 1 || destination.sampleNum > 1) {
+            NRI_REPORT_WARNING(&m_Device, "a single-plane depth-stencil copy requires identical non-multisampled formats");
             RecordFailure(Result::UNSUPPORTED);
 
             return;
         }
+
+        NRI_CHECK(sr->planes == dr->planes, "Planes must match"); // validated
 
         const MTL::Size size = GetRegionSize((TextureMetal&)s, *sr);
         const bool stencil = sr->planes == PlaneBits::STENCIL;

@@ -147,13 +147,13 @@ static inline PlaneBits GetFormatPlanes(Format format) {
     return planes;
 }
 
-// Planes resolved by "CmdResolveTexture" for a region ("ALL" or no region means all planes of the format)
-static inline PlaneBits GetResolvedPlanes(Format format, const TextureRegionDesc* region) {
+// Planes of a copy or resolve region ("ALL" or no region means all planes of the format)
+static inline PlaneBits GetRegionPlanes(Format format, const TextureRegionDesc* region) {
     return (region && region->planes != PlaneBits::ALL) ? region->planes : GetFormatPlanes(format);
 }
 
-// Explicit planes must exist in the format ("NONE" is not resolvable)
-static inline bool AreResolvedPlanesValid(Format format, PlaneBits planes) {
+// Explicit planes must exist in the format ("NONE" is not allowed)
+static inline bool AreRegionPlanesValid(Format format, PlaneBits planes) {
     const PlaneBits formatPlanes = GetFormatPlanes(format);
 
     return planes != PlaneBits::NONE && (planes & formatPlanes) == (uint8_t)planes;
@@ -668,6 +668,7 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
 
             NRI_RETURN_ON_FAILURE(&m_Device, resolveDstVal.IsColorAttachment(), ReturnVoid(), "'colors[%u].resolveDst' is not a 'COLOR_ATTACHMENT' descriptor", i);
             NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetFormatSupport(resolveDstVal.GetFormat()) & FormatSupportBits::MULTISAMPLE_RESOLVE, ReturnVoid(), "'colors[%u].resolveDst' format does not support 'FormatSupportBits::MULTISAMPLE_RESOLVE'", i);
+            NRI_RETURN_ON_FAILURE(&m_Device, resolveDstVal.GetFormat() == colorVal.GetFormat(), ReturnVoid(), "'colors[%u].resolveDst' format must match 'colors[%u].descriptor' format", i, i);
 
             const ResolveOp resolveOp = renderingDesc.colors[i].resolveOp;
             if (resolveOp == ResolveOp::AVERAGE)
@@ -974,6 +975,14 @@ NRI_INLINE void CommandBufferVal::CopyTexture(Texture& dstTexture, const Texture
     NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
     NRI_RETURN_ON_FAILURE(&m_Device, !m_IsRenderPass, ReturnVoid(), "must be called outside of 'CmdBeginRendering/CmdEndRendering'");
 
+    const TextureDesc& dstDesc = ((TextureVal&)dstTexture).GetDesc();
+    const TextureDesc& srcDesc = ((TextureVal&)srcTexture).GetDesc();
+    const PlaneBits srcPlanes = GetRegionPlanes(srcDesc.format, srcRegion);
+    const PlaneBits dstPlanes = GetRegionPlanes(dstDesc.format, dstRegion);
+    NRI_RETURN_ON_FAILURE(&m_Device, AreRegionPlanesValid(srcDesc.format, srcPlanes), ReturnVoid(), "'srcRegion->planes' is empty or has planes missing in the source format");
+    NRI_RETURN_ON_FAILURE(&m_Device, AreRegionPlanesValid(dstDesc.format, dstPlanes), ReturnVoid(), "'dstRegion->planes' is empty or has planes missing in the destination format");
+    NRI_RETURN_ON_FAILURE(&m_Device, srcPlanes == dstPlanes, ReturnVoid(), "source and destination must copy the same planes");
+
     Texture* dstTextureImpl = NRI_GET_IMPL(Texture, &dstTexture);
     Texture* srcTextureImpl = NRI_GET_IMPL(Texture, &srcTexture);
 
@@ -989,6 +998,7 @@ NRI_INLINE void CommandBufferVal::ResolveTexture(Texture& dstTexture, const Text
     const TextureDesc& dstDesc = ((TextureVal&)dstTexture).GetDesc();
     const TextureDesc& srcDesc = ((TextureVal&)srcTexture).GetDesc();
     NRI_RETURN_ON_FAILURE(&m_Device, srcDesc.sampleNum > 1 && dstDesc.sampleNum == 1, ReturnVoid(), "'srcTexture' must be multisampled and 'dstTexture' must be single-sampled");
+    NRI_RETURN_ON_FAILURE(&m_Device, srcDesc.format == dstDesc.format, ReturnVoid(), "'srcTexture' and 'dstTexture' formats must match");
 
     if (!dstRegion && !srcRegion)
         NRI_RETURN_ON_FAILURE(&m_Device, srcDesc.layerNum == dstDesc.layerNum, ReturnVoid(), "'layerNum' mismatch for a whole-texture resolve");
@@ -999,10 +1009,10 @@ NRI_INLINE void CommandBufferVal::ResolveTexture(Texture& dstTexture, const Text
     if (!deviceDesc.features.regionResolve)
         NRI_RETURN_ON_FAILURE(&m_Device, !dstRegion && !srcRegion, ReturnVoid(), "region(s) are specified, but 'features.regionResolve' is false");
     // A missing region covers all planes
-    const PlaneBits srcPlanes = GetResolvedPlanes(srcDesc.format, srcRegion);
-    const PlaneBits dstPlanes = GetResolvedPlanes(dstDesc.format, dstRegion);
-    NRI_RETURN_ON_FAILURE(&m_Device, AreResolvedPlanesValid(srcDesc.format, srcPlanes), ReturnVoid(), "'srcRegion->planes' is empty or has planes missing in the source format");
-    NRI_RETURN_ON_FAILURE(&m_Device, AreResolvedPlanesValid(dstDesc.format, dstPlanes), ReturnVoid(), "'dstRegion->planes' is empty or has planes missing in the destination format");
+    const PlaneBits srcPlanes = GetRegionPlanes(srcDesc.format, srcRegion);
+    const PlaneBits dstPlanes = GetRegionPlanes(dstDesc.format, dstRegion);
+    NRI_RETURN_ON_FAILURE(&m_Device, AreRegionPlanesValid(srcDesc.format, srcPlanes), ReturnVoid(), "'srcRegion->planes' is empty or has planes missing in the source format");
+    NRI_RETURN_ON_FAILURE(&m_Device, AreRegionPlanesValid(dstDesc.format, dstPlanes), ReturnVoid(), "'dstRegion->planes' is empty or has planes missing in the destination format");
     NRI_RETURN_ON_FAILURE(&m_Device, srcPlanes == dstPlanes, ReturnVoid(), "source and destination must resolve the same planes");
 
     if (resolveOp == ResolveOp::AVERAGE)

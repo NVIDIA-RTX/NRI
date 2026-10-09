@@ -653,24 +653,11 @@ static inline Result LoadMetalBundle(DeviceMetal& device, const PipelineLayoutMe
     NRI_CHECK(shader.size >= sizeof(bundle), "Unexpected bundle size");
     memcpy(bundle, shader.bytecode, sizeof(bundle));
 
-    if (load.emulation) {
-        NRI_REPORT_ERROR(&device, "Metal converter bundle: geometry / tessellation emulation is unsupported");
-
-        return Result::UNSUPPORTED;
-    }
-
-    // Converter options have no sample mask and input topology
-    if (shader.stage == StageBits::FRAGMENT_SHADER && load.sampleMask != ALL) {
-        NRI_REPORT_ERROR(&device, "Metal converter bundle: 'sampleMask' must be 'ALL'");
-
-        return Result::INVALID_ARGUMENT;
-    }
-
-    if (shader.stage == StageBits::VERTEX_SHADER && load.topology == Topology::POINT_LIST) {
-        NRI_REPORT_ERROR(&device, "Metal converter bundle: 'POINT_LIST' topology is unsupported");
-
-        return Result::INVALID_ARGUMENT;
-    }
+    // Converter options have no emulation, sample mask and input topology (validated)
+    MaybeUnused(load);
+    NRI_CHECK(!load.emulation, "Unexpected emulation");
+    NRI_CHECK(shader.stage != StageBits::FRAGMENT_SHADER || load.sampleMask == ALL, "Unexpected sample mask");
+    NRI_CHECK(shader.stage != StageBits::VERTEX_SHADER || load.topology != Topology::POINT_LIST, "Unexpected topology");
 
     const uint8_t* data = (const uint8_t*)shader.bytecode;
     const JsonValueMetal reflection = {(const char*)data + bundle[4], (const char*)data + bundle[4] + bundle[5]};

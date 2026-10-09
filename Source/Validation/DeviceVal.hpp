@@ -556,15 +556,33 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
     return result;
 }
 
-// METAL: native metallib compute, mesh and task shaders don't embed their threadgroup size
-static inline bool IsThreadGroupSizeValid(GraphicsAPI graphicsAPI, const ShaderDesc& shaderDesc) {
-    const bool isMetallib = shaderDesc.size >= 4 && memcmp(shaderDesc.bytecode, "MTLB", 4) == 0;
-    const bool isThreadGroupStage = shaderDesc.stage == StageBits::COMPUTE_SHADER || shaderDesc.stage == StageBits::MESH_SHADER || shaderDesc.stage == StageBits::TASK_SHADER;
+// Native metallib compute, mesh and task shaders don't embed their threadgroup size
+static inline bool IsThreadGroupSizeValid(const DeviceDesc& deviceDesc, const ShaderDesc& shaderDesc) {
+    const uint32_t* maxDim = nullptr;
+    uint32_t invocationMaxNum = 0;
 
-    if (graphicsAPI != GraphicsAPI::METAL || !isMetallib || !isThreadGroupStage)
+    if (shaderDesc.stage == StageBits::COMPUTE_SHADER) {
+        maxDim = deviceDesc.shaderStage.compute.workGroupMaxDim;
+        invocationMaxNum = deviceDesc.shaderStage.compute.workGroupInvocationMaxNum;
+    } else if (shaderDesc.stage == StageBits::TASK_SHADER) {
+        maxDim = deviceDesc.shaderStage.task.workGroupMaxDim;
+        invocationMaxNum = deviceDesc.shaderStage.task.workGroupInvocationMaxNum;
+    } else if (shaderDesc.stage == StageBits::MESH_SHADER) {
+        maxDim = deviceDesc.shaderStage.mesh.workGroupMaxDim;
+        invocationMaxNum = deviceDesc.shaderStage.mesh.workGroupInvocationMaxNum;
+    }
+
+    const bool isMetallib = deviceDesc.features.shaderBytecodeMETALLIB && shaderDesc.size >= 4 && memcmp(shaderDesc.bytecode, "MTLB", 4) == 0;
+    if (!maxDim || !isMetallib)
         return true;
 
-    return shaderDesc.threadGroupSizeX != 0 && shaderDesc.threadGroupSizeY != 0 && shaderDesc.threadGroupSizeZ != 0;
+    const uint32_t x = shaderDesc.threadGroupSizeX;
+    const uint32_t y = shaderDesc.threadGroupSizeY;
+    const uint32_t z = shaderDesc.threadGroupSizeZ;
+    if (!x || !y || !z)
+        return false;
+
+    return x <= maxDim[0] && y <= maxDim[1] && z <= maxDim[2] && (uint64_t(x) * y * z) <= invocationMaxNum;
 }
 
 // METAL: DXIL ("DXBC" container) requires Metal Shader Converter
@@ -575,8 +593,12 @@ static inline bool IsShaderBytecodeSupported(const DeviceDesc& deviceDesc, const
 }
 
 // METAL: pre-converted shaders (ShaderMake Metal converter bundles, see "NRIWrapperMetal.h"), returns an error or "nullptr"
+static inline bool IsMetalBundle(GraphicsAPI graphicsAPI, const ShaderDesc& shaderDesc) {
+    return graphicsAPI == GraphicsAPI::METAL && shaderDesc.size >= 4 && !memcmp(shaderDesc.bytecode, "SMMB", 4);
+}
+
 static const char* GetMetalBundleError(GraphicsAPI graphicsAPI, const ShaderDesc& shaderDesc) {
-    if (graphicsAPI != GraphicsAPI::METAL || shaderDesc.size < 4 || memcmp(shaderDesc.bytecode, "SMMB", 4))
+    if (!IsMetalBundle(graphicsAPI, shaderDesc))
         return nullptr;
 
     // "magic", "version", "metallibOffset", "metallibSize", "reflectionOffset", "reflectionSize"
@@ -641,6 +663,7 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
     const StageBits shaderStages = pipelineLayout.GetPipelineLayoutDesc().shaderStages;
     bool hasEntryPoint = false;
     uint32_t uniqueShaderStages = 0;
+    uint32_t bundleStages = 0;
     for (uint32_t i = 0; i < graphicsPipelineDesc.shaderNum; i++) {
         const ShaderDesc* shaderDesc = graphicsPipelineDesc.shaders + i;
         if (shaderDesc->stage == StageBits::VERTEX_SHADER || shaderDesc->stage == StageBits::MESH_SHADER)
@@ -651,13 +674,25 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
         NRI_RETURN_ON_FAILURE(this, shaderDesc->size != 0, Result::INVALID_ARGUMENT, "'shaders[%u].size' is 0", i);
         NRI_RETURN_ON_FAILURE(this, IsShaderStageValid(shaderDesc->stage, uniqueShaderStages, StageBits::GRAPHICS_SHADERS), Result::INVALID_ARGUMENT, "'shaders[%u].stage' must include only 1 graphics shader stage, unique for the entire pipeline", i);
         NRI_RETURN_ON_FAILURE(this, IsShaderStageSupported(GetDesc(), shaderDesc->stage), Result::INVALID_ARGUMENT, "'shaders[%u].stage' is not supported", i);
-        NRI_RETURN_ON_FAILURE(this, IsThreadGroupSizeValid(GetDesc().graphicsAPI, *shaderDesc), Result::INVALID_ARGUMENT, "'shaders[%u].threadGroupSizeX/Y/Z' must be non-zero for a native Metal (metallib) mesh or task shader", i);
+        NRI_RETURN_ON_FAILURE(this, IsThreadGroupSizeValid(GetDesc(), *shaderDesc), Result::INVALID_ARGUMENT, "'shaders[%u].threadGroupSizeX/Y/Z' must be non-zero and within 'shaderStage' limits for a native metallib mesh or task shader", i);
         NRI_RETURN_ON_FAILURE(this, IsShaderBytecodeSupported(GetDesc(), *shaderDesc), Result::UNSUPPORTED, "'shaders[%u]' is DXIL, but 'features.shaderBytecodeDXIL' is false", i);
 
         const char* bundleError = GetMetalBundleError(GetDesc().graphicsAPI, *shaderDesc);
         NRI_RETURN_ON_FAILURE(this, !bundleError, Result::INVALID_ARGUMENT, "'shaders[%u]' is an invalid Metal converter bundle: %s", i, bundleError);
+
+        if (IsMetalBundle(GetDesc().graphicsAPI, *shaderDesc))
+            bundleStages |= (uint32_t)shaderDesc->stage;
     }
     NRI_RETURN_ON_FAILURE(this, hasEntryPoint, Result::INVALID_ARGUMENT, "a VERTEX or MESH shader is not provided");
+
+    // Metal converter bundles have no geometry / tessellation emulation, sample mask and input topology (see "NRIWrapperMetal.h")
+    if (bundleStages) {
+        const bool hasEmulation = uniqueShaderStages & (uint32_t)(StageBits::GEOMETRY_SHADER | StageBits::TESSELLATION_SHADERS);
+        const bool hasSampleMask = graphicsPipelineDesc.multisample && graphicsPipelineDesc.multisample->sampleMask != ALL;
+        NRI_RETURN_ON_FAILURE(this, !hasEmulation, Result::INVALID_ARGUMENT, "Metal converter bundles can't be used with geometry or tessellation shaders");
+        NRI_RETURN_ON_FAILURE(this, !(bundleStages & (uint32_t)StageBits::FRAGMENT_SHADER) || !hasSampleMask, Result::INVALID_ARGUMENT, "a Metal converter bundle fragment shader requires 'sampleMask = ALL'");
+        NRI_RETURN_ON_FAILURE(this, !(bundleStages & (uint32_t)StageBits::VERTEX_SHADER) || graphicsPipelineDesc.inputAssembly.topology != Topology::POINT_LIST, Result::INVALID_ARGUMENT, "a Metal converter bundle vertex shader can't be used with 'POINT_LIST'");
+    }
 
     for (uint32_t i = 0; i < graphicsPipelineDesc.outputMerger.colorNum; i++) {
         const ColorAttachmentDesc* color = graphicsPipelineDesc.outputMerger.colors + i;
@@ -732,7 +767,7 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const ComputePipelineDesc& computePi
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.shader.size != 0, Result::INVALID_ARGUMENT, "'shader.size' is 0");
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.shader.bytecode != nullptr, Result::INVALID_ARGUMENT, "'shader.bytecode' is NULL");
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.shader.stage == StageBits::COMPUTE_SHADER, Result::INVALID_ARGUMENT, "'shader.stage' must be 'StageBits::COMPUTE_SHADER'");
-    NRI_RETURN_ON_FAILURE(this, IsThreadGroupSizeValid(GetDesc().graphicsAPI, computePipelineDesc.shader), Result::INVALID_ARGUMENT, "'shader.threadGroupSizeX/Y/Z' must be non-zero for a native Metal (metallib) compute shader");
+    NRI_RETURN_ON_FAILURE(this, IsThreadGroupSizeValid(GetDesc(), computePipelineDesc.shader), Result::INVALID_ARGUMENT, "'shader.threadGroupSizeX/Y/Z' must be non-zero and within 'shaderStage.compute' limits for a native metallib compute shader");
     NRI_RETURN_ON_FAILURE(this, IsShaderBytecodeSupported(GetDesc(), computePipelineDesc.shader), Result::UNSUPPORTED, "'shader' is DXIL, but 'features.shaderBytecodeDXIL' is false");
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.robustness < Robustness::MAX_NUM, Result::INVALID_ARGUMENT, "'robustness' is invalid");
 
