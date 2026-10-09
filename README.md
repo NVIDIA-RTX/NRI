@@ -24,6 +24,7 @@ Supported GAPIs:
 - *D3D11*
 - *WebGPU* (through [wgpu-native](https://github.com/gfx-rs/wgpu-native))
 - *Metal* (through [MoltenVK](https://github.com/KhronosGroup/MoltenVK))
+- *Metal 4* (native, through [metal-cpp](https://developer.apple.com/metal/cpp/))
 - None / dummy (everything is supported but does nothing)
 
 ## WHY NRI?
@@ -83,6 +84,17 @@ Scripts resolve the NRI root from their own location, so they can be launched fr
 Notes:
 - *Xlib* and *Wayland* can be both enabled
 - Minimal supported client is Windows 8.1+
+- *Metal 4* backend requires macOS 26+ or iOS 26+ (iPadOS included) and Xcode 26+ (with `MetalToolchain` component), *metal-cpp* is fetched automatically, native `.metallib` shaders must follow `NRI.metal` ABI, *DXIL* support requires *Metal Shader Converter* 4.0.1 (macOS and iOS devices, no simulator), offline converted *DXIL* (*ShaderMake* `--metalFromDXIL` bundles) works everywhere (see `NRIWrapperMetal.h`)
+- *iOS*: `-DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos|iphonesimulator -DCMAKE_OSX_ARCHITECTURES=arm64` (a separate build folder per SDK, with the *Xcode* generator *MetalFX* linking follows `CMAKE_OSX_SYSROOT`, static library by default, no *VK*, *WebGPU*, *NVTX* and *NIS*, no *MetalFX* and *Metal Shader Converter* in the simulator)
+- static `NRI` provides *metal-cpp* private implementation (`NS/MTL/CA/MTLFX_PRIVATE_IMPLEMENTATION`), set `NRI_METAL_CPP_PRIVATE_IMPLEMENTATION = OFF` if the app compiles it itself
+- *Metal Shader Converter* is required for building if `NRI_ENABLE_METAL_SHADER_CONVERTER` is on (`/usr/local/lib` on macOS, `/usr/local/lib_iOS` for iOS devices). Apple's *Metal Shader Converter* license permits distributing its dynamic libraries for shader conversion:
+    - shared `NRI` copies `libmetalirconverter.dylib` next to itself and finds it via `@loader_path` or the app `Frameworks` folder, `3-PrepareSDK` puts it into `Lib` (without Apple's license text, which comes with the *Metal Shader Converter* installer)
+    - static `NRI` leaves bundling to the app, for example:
+    ```cmake
+    set_target_properties(App PROPERTIES BUILD_RPATH "@executable_path" INSTALL_RPATH "@executable_path")
+    add_custom_command(TARGET App POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "${NRI_METAL_SHADER_CONVERTER_LIBRARY}" "$<TARGET_FILE_DIR:App>")
+    ```
+    - iOS: embed `libmetalirconverter.dylib` into the app `Frameworks` folder (`@executable_path/Frameworks`) and sign it, the *App Store* may require wrapping it into a `.framework`
 
 ## CMAKE OPTIONS
 
@@ -91,12 +103,17 @@ Notes:
 - `NRI_AGILITY_SDK_VERSION_MINOR` - *Agility SDK* minor version
 - `NRI_SHADERS_PATH` - Shader output path override
 - `NRI_NVAPI_CUSTOM_PATH` - Path to a custom NVAPI library directory
-- `NRI_STATIC_LIBRARY` - Build static library
+- `NRI_METAL_SHADER_CONVERTER_INCLUDE_PATH` - Path to a custom *Metal Shader Converter* include directory
+- `NRI_METAL_SHADER_CONVERTER_LIBRARY` - Path to a custom *Metal Shader Converter* library
+- `NRI_STATIC_LIBRARY` - Build static library (`ON` by default on iOS)
 - `NRI_ENABLE_NVTX_SUPPORT` - Annotations for NVIDIA Nsight Systems
 - `NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS` - Enable debug names, host and device annotations
 - `NRI_ENABLE_NONE_SUPPORT` - Enable NONE backend
 - `NRI_ENABLE_VK_SUPPORT` - Enable *Vulkan* backend
 - `NRI_ENABLE_WGPU_SUPPORT` - Enable *WebGPU* backend through *wgpu-native*
+- `NRI_ENABLE_METAL_SUPPORT` - Enable *Metal 4* backend (enabled by default with Xcode 26+ and its `MetalToolchain` component)
+- `NRI_ENABLE_METAL_SHADER_CONVERTER` - Enable *DXIL* support in *Metal* backend through *Metal Shader Converter* (enabled by default if installed)
+- `NRI_METAL_CPP_PRIVATE_IMPLEMENTATION` - Compile *metal-cpp* private implementation into `NRI` (can be disabled only for a static library)
 - `NRI_ENABLE_VALIDATION_SUPPORT` - Enable Validation backend (otherwise `enableNRIValidation` is ignored)
 - `NRI_ENABLE_NIS_SDK` - Enable NVIDIA Image Sharpening SDK
 - `NRI_ENABLE_IMGUI_EXTENSION` - Enable `NRIImgui` extension

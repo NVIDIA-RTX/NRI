@@ -2200,7 +2200,18 @@ struct UpscalerVal final : public ObjectVal {
         return (UpscalerImpl*)m_Impl;
     }
 
+    inline const Dim2_t& GetMetalFxInputSize() const {
+        return m_MetalFxInputSize;
+    }
+
+    inline void SetMetalFxInputSize(const Dim2_t& size) {
+        m_MetalFxInputSize = size;
+    }
+
     UpscalerDesc m_Desc = {}; // only for .natvis
+
+private:
+    Dim2_t m_MetalFxInputSize = {}; // MetalFX scalers are created for the "input" size of the first dispatch
 };
 
 static inline bool ValidateUpscalerResource(DeviceVal& deviceVal, const UpscalerResource& resource, const char* name, DescriptorType descriptorType) {
@@ -2230,6 +2241,12 @@ static Result NRI_CALL CreateUpscaler(Device& device, const UpscalerDesc& upscal
 
     if (upscalerDesc.type == UpscalerType::NIS && !deviceVal.GetDesc().shaderFeatures.storageWriteWithoutFormat)
         NRI_RETURN_ON_FAILURE(&deviceVal, upscalerDesc.outputFormat > Format::UNKNOWN && upscalerDesc.outputFormat < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'outputFormat' is invalid");
+
+    if (upscalerDesc.type == UpscalerType::METALFX_TEMPORAL || upscalerDesc.type == UpscalerType::METALFX_DENOISED)
+        NRI_RETURN_ON_FAILURE(&deviceVal, !(upscalerDesc.flags & (UpscalerBits::DEPTH_LINEAR | UpscalerBits::MV_JITTERED)), Result::UNSUPPORTED, "'DEPTH_LINEAR' and 'MV_JITTERED' are unsupported by MetalFX");
+
+    if (upscalerDesc.type == UpscalerType::METALFX_DENOISED)
+        NRI_RETURN_ON_FAILURE(&deviceVal, !(upscalerDesc.flags & UpscalerBits::MV_UPSCALED), Result::UNSUPPORTED, "'MV_UPSCALED' is unsupported by 'METALFX_DENOISED'");
 
     UpscalerImpl* impl = Allocate<UpscalerImpl>(deviceVal.GetAllocationCallbacks(), device, deviceVal.GetCoreInterface());
     Result result = impl->Create(upscalerDesc);
@@ -2286,11 +2303,24 @@ static void NRI_CALL CmdDispatchUpscale(CommandBuffer& commandBuffer, Upscaler& 
     if (!ValidateUpscalerResource(deviceVal, dispatchUpscaleDesc.input, "input", DescriptorType::TEXTURE))
         return;
 
+    // MetalFX encodes directly into the native command buffer, bypassing command validation
+    const bool isMetalFx = upscalerVal.m_Desc.type == UpscalerType::METALFX_SPATIAL || upscalerVal.m_Desc.type == UpscalerType::METALFX_TEMPORAL || upscalerVal.m_Desc.type == UpscalerType::METALFX_DENOISED;
+
+    if (isMetalFx) {
+        const TextureDesc& outputDesc = ((TextureVal*)dispatchUpscaleDesc.output.texture)->GetDesc();
+        const TextureDesc& inputDesc = ((TextureVal*)dispatchUpscaleDesc.input.texture)->GetDesc();
+        const Dim2_t& inputSize = upscalerVal.GetMetalFxInputSize();
+
+        NRI_RETURN_ON_FAILURE(&deviceVal, ((CommandBufferVal&)commandBuffer).CanDispatch(), ReturnVoid(), "MetalFX requires an open graphics or compute command buffer outside of rendering");
+        NRI_RETURN_ON_FAILURE(&deviceVal, outputDesc.usage & TextureUsageBits::COLOR_ATTACHMENT, ReturnVoid(), "'output.texture' requires 'COLOR_ATTACHMENT' usage for MetalFX");
+        NRI_RETURN_ON_FAILURE(&deviceVal, inputSize.w == 0 || (inputDesc.width == inputSize.w && inputDesc.height == inputSize.h), ReturnVoid(), "'input.texture' size must not change for MetalFX");
+    }
+
     if (upscalerVal.m_Desc.type == UpscalerType::NIS) {
         const DescriptorVal& outputDescriptorVal = *(DescriptorVal*)dispatchUpscaleDesc.output.descriptor;
         NRI_RETURN_ON_FAILURE(&deviceVal, deviceVal.GetDesc().shaderFeatures.storageWriteWithoutFormat || outputDescriptorVal.GetFormat() == upscalerVal.m_Desc.outputFormat, ReturnVoid(), "'output.descriptor' format does not match 'UpscalerDesc::outputFormat'");
         NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.settings.nis.sharpness >= 0.0f && dispatchUpscaleDesc.settings.nis.sharpness <= 1.0f, ReturnVoid(), "'settings.nis.sharpness' is out of range");
-    } else if (upscalerVal.m_Desc.type == UpscalerType::DLRR) {
+    } else if (upscalerVal.m_Desc.type == UpscalerType::DLRR || upscalerVal.m_Desc.type == UpscalerType::METALFX_DENOISED) {
         const DenoiserGuides& guides = dispatchUpscaleDesc.guides.denoiser;
 
         if (!ValidateUpscalerResource(deviceVal, guides.mv, "guides.denoiser.mv", DescriptorType::TEXTURE))
@@ -2313,7 +2343,13 @@ static void NRI_CALL CmdDispatchUpscale(CommandBuffer& commandBuffer, Upscaler& 
             return;
         if (!ValidateOptionalUpscalerResource(deviceVal, guides.preTransparency, "guides.denoiser.preTransparency", false))
             return;
-    } else {
+
+        if (upscalerVal.m_Desc.type == UpscalerType::METALFX_DENOISED) {
+            NRI_RETURN_ON_FAILURE(&deviceVal, !guides.sss.texture, ReturnVoid(), "'guides.denoiser.sss' is unsupported by 'METALFX_DENOISED'");
+            NRI_RETURN_ON_FAILURE(&deviceVal, !guides.preTransparency.texture, ReturnVoid(), "'guides.denoiser.preTransparency' is unsupported by 'METALFX_DENOISED'");
+            NRI_RETURN_ON_FAILURE(&deviceVal, !(dispatchUpscaleDesc.flags & DispatchUpscaleBits::USE_SPECULAR_MOTION), ReturnVoid(), "'USE_SPECULAR_MOTION' is unsupported by 'METALFX_DENOISED'");
+        }
+    } else if (upscalerVal.m_Desc.type != UpscalerType::METALFX_SPATIAL) {
         const UpscalerGuides& guides = dispatchUpscaleDesc.guides.upscaler;
 
         if (!ValidateUpscalerResource(deviceVal, guides.mv, "guides.upscaler.mv", DescriptorType::TEXTURE))
@@ -2333,6 +2369,11 @@ static void NRI_CALL CmdDispatchUpscale(CommandBuffer& commandBuffer, Upscaler& 
             NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.settings.fsr.viewSpaceToMetersFactor > 0.0f, ReturnVoid(), "'settings.fsr.viewSpaceToMetersFactor' must be > 0");
             NRI_RETURN_ON_FAILURE(&deviceVal, dispatchUpscaleDesc.settings.fsr.sharpness >= 0.0f && dispatchUpscaleDesc.settings.fsr.sharpness <= 1.0f, ReturnVoid(), "'settings.fsr.sharpness' is out of range");
         }
+    }
+
+    if (isMetalFx && upscalerVal.GetMetalFxInputSize().w == 0) {
+        const TextureDesc& inputDesc = ((TextureVal*)dispatchUpscaleDesc.input.texture)->GetDesc();
+        upscalerVal.SetMetalFxInputSize({inputDesc.width, inputDesc.height});
     }
 
     upscalerImpl->CmdDispatchUpscale(commandBuffer, dispatchUpscaleDesc);
@@ -2435,6 +2476,49 @@ Result DeviceVal::FillFunctionTable(WrapperD3D12Interface& table) const {
     table.CreateMemoryD3D12 = ::CreateMemoryD3D12;
     table.CreateFenceD3D12 = ::CreateFenceD3D12;
     table.CreateAccelerationStructureD3D12 = ::CreateAccelerationStructureD3D12;
+
+    return Result::SUCCESS;
+#else
+    MaybeUnused(table);
+
+    return Result::UNSUPPORTED;
+#endif
+}
+
+#pragma endregion
+
+//============================================================================================================================================================================================
+#pragma region[  WrapperMetal  ]
+
+#if NRI_ENABLE_METAL_SUPPORT
+
+static Result NRI_CALL CreateBufferMetal(Device& device, const BufferMetalDesc& desc, Buffer*& buffer) {
+    return ((DeviceVal&)device).CreateBuffer(desc, buffer);
+}
+
+static Result NRI_CALL CreateTextureMetal(Device& device, const TextureMetalDesc& desc, Texture*& texture) {
+    return ((DeviceVal&)device).CreateTexture(desc, texture);
+}
+
+static Result NRI_CALL CreateFenceMetal(Device& device, const FenceMetalDesc& desc, Fence*& fence) {
+    return ((DeviceVal&)device).CreateFence(desc, fence);
+}
+
+static Result NRI_CALL GetRootSignatureMetal(const PipelineLayout& pipelineLayout, char* json, uint64_t& size) {
+    return GetDeviceVal(pipelineLayout).GetRootSignature(pipelineLayout, json, size);
+}
+
+#endif
+
+Result DeviceVal::FillFunctionTable(WrapperMetalInterface& table) const {
+#if NRI_ENABLE_METAL_SUPPORT
+    if (!m_IsExtSupported.wrapperMetal)
+        return Result::UNSUPPORTED;
+
+    table.CreateBufferMetal = ::CreateBufferMetal;
+    table.CreateTextureMetal = ::CreateTextureMetal;
+    table.CreateFenceMetal = ::CreateFenceMetal;
+    table.GetRootSignatureMetal = ::GetRootSignatureMetal;
 
     return Result::SUCCESS;
 #else

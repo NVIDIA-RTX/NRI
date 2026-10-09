@@ -25,7 +25,7 @@
 #        include "NIS.cs.dxbc.h"
 #    endif
 
-#    if NRI_ENABLE_D3D12_SUPPORT
+#    if (NRI_ENABLE_D3D12_SUPPORT || (NRI_ENABLE_METAL_SUPPORT && NRI_ENABLE_METAL_SHADER_CONVERTER))
 #        include "NIS.cs.dxil.h"
 #    endif
 
@@ -503,14 +503,170 @@ static inline NVSDK_NGX_Resource_VK NgxGetResource(const CoreInterface& NRI, con
 #endif
 
 //=====================================================================================================================================
+// MetalFX
+//=====================================================================================================================================
+#if NRI_ENABLE_METAL_SUPPORT
+
+// MetalFX encodes its own passes. "Dispatch" is ordered by app barriers with "COMPUTE_SHADER" stage, other stages are bridged
+constexpr MTL::Stages METALFX_EXTRA_STAGES = MTL::StageVertex | MTL::StageFragment | MTL::StageMachineLearning;
+
+struct MetalFx {
+    MTL4::Compiler* compiler = nullptr;
+    MTL4FX::SpatialScaler* spatial = nullptr;
+    MTL4FX::TemporalScaler* temporal = nullptr;
+    MTL4FX::TemporalDenoisedScaler* denoised = nullptr;
+};
+
+static inline bool IsMetalFx(UpscalerType type) {
+    return type == UpscalerType::METALFX_SPATIAL || type == UpscalerType::METALFX_TEMPORAL || type == UpscalerType::METALFX_DENOISED;
+}
+
+static inline MTL::Texture* MetalFxGetTexture(const CoreInterface& NRI, const UpscalerResource& resource) {
+    return (MTL::Texture*)NRI.GetDescriptorNativeObject(resource.descriptor);
+}
+
+static inline MTL::PixelFormat MetalFxGetFormat(const CoreInterface& NRI, const UpscalerResource& resource) {
+    MTL::Texture* texture = MetalFxGetTexture(NRI, resource);
+
+    return texture ? texture->pixelFormat() : MTL::PixelFormatInvalid;
+}
+
+// Metal 4 doesn't retain resources used by command buffers, so the "roughness" view (swizzled "normalRoughness") lives until the command allocator reset
+static MTL::Texture* MetalFxCreateRoughnessView(MTL4::CommandBuffer* commandBuffer, MTL::Texture* normalRoughness) {
+    MTL::TextureSwizzleChannels swizzle = MTL::TextureSwizzleChannels::Make(MTL::TextureSwizzleAlpha, MTL::TextureSwizzleAlpha, MTL::TextureSwizzleAlpha, MTL::TextureSwizzleAlpha);
+    NS::Range levels = NS::Range::Make(0, normalRoughness->mipmapLevelCount());
+    NS::Range slices = NS::Range::Make(0, normalRoughness->arrayLength());
+
+    MTL::Texture* view = normalRoughness->newTextureView(normalRoughness->pixelFormat(), normalRoughness->textureType(), levels, slices, swizzle);
+
+    if (view)
+        ReleaseOnResetMetal(commandBuffer, view);
+
+    return view;
+}
+
+static bool MetalFxCreateScaler(MetalFx& metalFx, MTL::Device* device, const CoreInterface& NRI, const UpscalerDesc& upscalerDesc, const DispatchUpscaleDesc& dispatchUpscaleDesc) {
+    MTL::Texture* input = MetalFxGetTexture(NRI, dispatchUpscaleDesc.input);
+    MTL::Texture* output = MetalFxGetTexture(NRI, dispatchUpscaleDesc.output);
+
+    if (upscalerDesc.type == UpscalerType::METALFX_SPATIAL) {
+        MTLFX::SpatialScalerColorProcessingMode colorProcessingMode = MTLFX::SpatialScalerColorProcessingModeLinear;
+
+        if (upscalerDesc.flags & UpscalerBits::HDR)
+            colorProcessingMode = MTLFX::SpatialScalerColorProcessingModeHDR;
+        else if (upscalerDesc.flags & UpscalerBits::SRGB)
+            colorProcessingMode = MTLFX::SpatialScalerColorProcessingModePerceptual;
+
+        MTLFX::SpatialScalerDescriptor* scalerDesc = MTLFX::SpatialScalerDescriptor::alloc()->init();
+        scalerDesc->setInputWidth(input->width());
+        scalerDesc->setInputHeight(input->height());
+        scalerDesc->setOutputWidth(upscalerDesc.upscaleResolution.w);
+        scalerDesc->setOutputHeight(upscalerDesc.upscaleResolution.h);
+        scalerDesc->setColorTextureFormat(input->pixelFormat());
+        scalerDesc->setOutputTextureFormat(output->pixelFormat());
+        scalerDesc->setColorProcessingMode(colorProcessingMode);
+
+        metalFx.spatial = scalerDesc->newSpatialScaler(device, metalFx.compiler);
+        scalerDesc->release();
+
+        return metalFx.spatial != nullptr;
+    }
+
+    if (upscalerDesc.type == UpscalerType::METALFX_TEMPORAL) {
+        const UpscalerGuides& guides = dispatchUpscaleDesc.guides.upscaler;
+
+        MTLFX::TemporalScalerDescriptor* scalerDesc = MTLFX::TemporalScalerDescriptor::alloc()->init();
+        scalerDesc->setInputWidth(input->width());
+        scalerDesc->setInputHeight(input->height());
+        scalerDesc->setOutputWidth(upscalerDesc.upscaleResolution.w);
+        scalerDesc->setOutputHeight(upscalerDesc.upscaleResolution.h);
+        scalerDesc->setColorTextureFormat(input->pixelFormat());
+        scalerDesc->setOutputTextureFormat(output->pixelFormat());
+        scalerDesc->setDepthTextureFormat(MetalFxGetFormat(NRI, guides.depth));
+        scalerDesc->setMotionTextureFormat(MetalFxGetFormat(NRI, guides.mv));
+        scalerDesc->setAutoExposureEnabled(!(upscalerDesc.flags & UpscalerBits::USE_EXPOSURE));
+        scalerDesc->setInputContentPropertiesEnabled(true);
+        scalerDesc->setInputContentMinScale(MTLFX::TemporalScalerDescriptor::supportedInputContentMinScale(device));
+        scalerDesc->setInputContentMaxScale(MTLFX::TemporalScalerDescriptor::supportedInputContentMaxScale(device));
+
+        if (upscalerDesc.flags & UpscalerBits::MV_UPSCALED)
+            scalerDesc->setOutputResolutionMotionVectorsEnabled(true); // macOS 27+ (checked in "Create")
+
+        if (upscalerDesc.flags & UpscalerBits::USE_REACTIVE) {
+            scalerDesc->setReactiveMaskTextureEnabled(true);
+            scalerDesc->setReactiveMaskTextureFormat(MetalFxGetFormat(NRI, guides.reactive));
+        }
+
+        metalFx.temporal = scalerDesc->newTemporalScaler(device, metalFx.compiler);
+        scalerDesc->release();
+
+        return metalFx.temporal != nullptr;
+    }
+
+    const DenoiserGuides& guides = dispatchUpscaleDesc.guides.denoiser;
+    MTL::PixelFormat normalRoughnessFormat = MetalFxGetFormat(NRI, guides.normalRoughness);
+
+    MTLFX::TemporalDenoisedScalerDescriptor* scalerDesc = MTLFX::TemporalDenoisedScalerDescriptor::alloc()->init();
+    scalerDesc->setInputWidth(input->width());
+    scalerDesc->setInputHeight(input->height());
+    scalerDesc->setOutputWidth(upscalerDesc.upscaleResolution.w);
+    scalerDesc->setOutputHeight(upscalerDesc.upscaleResolution.h);
+    scalerDesc->setColorTextureFormat(input->pixelFormat());
+    scalerDesc->setOutputTextureFormat(output->pixelFormat());
+    scalerDesc->setDepthTextureFormat(MetalFxGetFormat(NRI, guides.depth));
+    scalerDesc->setMotionTextureFormat(MetalFxGetFormat(NRI, guides.mv));
+    scalerDesc->setNormalTextureFormat(normalRoughnessFormat);
+    scalerDesc->setRoughnessTextureFormat(normalRoughnessFormat); // a swizzled view of "normalRoughness"
+    scalerDesc->setDiffuseAlbedoTextureFormat(MetalFxGetFormat(NRI, guides.diffuseAlbedo));
+    scalerDesc->setSpecularAlbedoTextureFormat(MetalFxGetFormat(NRI, guides.specularAlbedo));
+    scalerDesc->setSpecularHitDistanceTextureFormat(MetalFxGetFormat(NRI, guides.specularMvOrHitT));
+    scalerDesc->setSpecularHitDistanceTextureEnabled(true);
+    scalerDesc->setAutoExposureEnabled(!(upscalerDesc.flags & UpscalerBits::USE_EXPOSURE));
+
+    if (upscalerDesc.flags & UpscalerBits::USE_REACTIVE) {
+        scalerDesc->setReactiveMaskTextureEnabled(true);
+        scalerDesc->setReactiveMaskTextureFormat(MetalFxGetFormat(NRI, guides.reactive));
+    }
+
+    metalFx.denoised = scalerDesc->newTemporalDenoisedScaler(device, metalFx.compiler);
+    scalerDesc->release();
+
+    return metalFx.denoised != nullptr;
+}
+
+#endif
+
+//=====================================================================================================================================
 // Upscaler
 //=====================================================================================================================================
+#if NRI_ENABLE_METAL_SUPPORT
+bool nri::IsMetalFxSupportedMetal(NS::Object* device, UpscalerType type) {
+    MTL::Device* deviceNative = (MTL::Device*)device;
+
+    if (type == UpscalerType::METALFX_SPATIAL)
+        return MTLFX::SpatialScalerDescriptor::supportsMetal4FX(deviceNative);
+
+    if (type == UpscalerType::METALFX_TEMPORAL)
+        return MTLFX::TemporalScalerDescriptor::supportsMetal4FX(deviceNative);
+
+    if (type == UpscalerType::METALFX_DENOISED)
+        return MTLFX::TemporalDenoisedScalerDescriptor::supportsMetal4FX(deviceNative);
+
+    return true;
+}
+#endif
+
 bool nri::IsUpscalerSupported(const DeviceDesc& deviceDesc, UpscalerType type) {
     MaybeUnused(deviceDesc, type);
 
 #if NRI_ENABLE_NIS_SDK
-    if (type == UpscalerType::NIS)
+    if (type == UpscalerType::NIS) {
+#    if (NRI_ENABLE_METAL_SUPPORT && !NRI_ENABLE_METAL_SHADER_CONVERTER)
+        if (deviceDesc.graphicsAPI == GraphicsAPI::METAL)
+            return false;
+#    endif
         return true;
+    }
 #endif
 
 #if NRI_ENABLE_FFX_SDK
@@ -530,6 +686,13 @@ bool nri::IsUpscalerSupported(const DeviceDesc& deviceDesc, UpscalerType type) {
 #if NRI_ENABLE_NGX_SDK
     if (type == UpscalerType::DLSR || type == UpscalerType::DLRR) {
         if (deviceDesc.adapterDesc.vendor == Vendor::NVIDIA && deviceDesc.tiers.rayTracing) // an elegant way to detect an RTX GPU?
+            return true;
+    }
+#endif
+
+#if NRI_ENABLE_METAL_SUPPORT
+    if (IsMetalFx(type)) {
+        if (deviceDesc.graphicsAPI == GraphicsAPI::METAL) // the device check is "IsMetalFxSupportedMetal"
             return true;
     }
 #endif
@@ -647,6 +810,25 @@ UpscalerImpl::~UpscalerImpl() {
         Destroy<Ngx>(allocationCallbacks, m.ngx);
     }
 #endif
+
+#if NRI_ENABLE_METAL_SUPPORT
+    if (IsMetalFx(m_Desc.type) && m.metalfx) {
+        if (m.metalfx->spatial)
+            m.metalfx->spatial->release();
+
+        if (m.metalfx->temporal)
+            m.metalfx->temporal->release();
+
+        if (m.metalfx->denoised)
+            m.metalfx->denoised->release();
+
+        if (m.metalfx->compiler)
+            m.metalfx->compiler->release();
+
+        const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
+        Destroy<MetalFx>(allocationCallbacks, m.metalfx);
+    }
+#endif
 }
 
 Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
@@ -727,8 +909,8 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
             if (deviceDesc.graphicsAPI == GraphicsAPI::D3D11)
                 shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_cs_dxbc, GetCountOf(g_NIS_cs_dxbc), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
 #    endif
-#    if NRI_ENABLE_D3D12_SUPPORT
-            if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12)
+#    if (NRI_ENABLE_D3D12_SUPPORT || (NRI_ENABLE_METAL_SUPPORT && NRI_ENABLE_METAL_SHADER_CONVERTER))
+            if (deviceDesc.graphicsAPI == GraphicsAPI::D3D12 || deviceDesc.graphicsAPI == GraphicsAPI::METAL)
                 shaderMakeResult = ShaderMake::FindPermutationInBlob(g_NIS_cs_dxil, GetCountOf(g_NIS_cs_dxil), defines.data(), (uint32_t)defines.size(), &bytecode, &size);
 #    endif
 #    if (NRI_ENABLE_VK_SUPPORT || NRI_ENABLE_WGPU_SUPPORT)
@@ -1259,6 +1441,51 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
     }
 #endif
 
+#if NRI_ENABLE_METAL_SUPPORT
+    if (IsMetalFx(upscalerDesc.type)) {
+        MTL::Device* deviceNative = (MTL::Device*)m_iCore.GetDeviceNativeObject(&m_Device);
+
+        bool isSupported = IsMetalFxSupportedMetal(deviceNative, upscalerDesc.type);
+        float scaleMin = 1.0f;
+        float scaleMax = upscalerProps.scalingFactor;
+
+        if (upscalerDesc.type == UpscalerType::METALFX_TEMPORAL) {
+            // "MV_UPSCALED" requires macOS 27
+            if (upscalerDesc.flags & UpscalerBits::MV_UPSCALED)
+                isSupported = isSupported && class_respondsToSelector((Class)_MTLFX_PRIVATE_CLS(MTLFXTemporalScalerDescriptor), _MTLFX_PRIVATE_SEL(setOutputResolutionMotionVectorsEnabled_));
+
+            scaleMin = MTLFX::TemporalScalerDescriptor::supportedInputContentMinScale(deviceNative);
+            scaleMax = MTLFX::TemporalScalerDescriptor::supportedInputContentMaxScale(deviceNative);
+        } else if (upscalerDesc.type == UpscalerType::METALFX_DENOISED) {
+            scaleMin = MTLFX::TemporalDenoisedScalerDescriptor::supportedInputContentMinScale(deviceNative);
+            scaleMax = MTLFX::TemporalDenoisedScalerDescriptor::supportedInputContentMaxScale(deviceNative);
+        }
+
+        if (!isSupported)
+            return Result::UNSUPPORTED;
+
+        // Scaling factors, including dynamic resolution, must be in the supported range
+        if (upscalerDesc.type != UpscalerType::METALFX_SPATIAL) {
+            float scaleW = (float)upscalerProps.upscaleResolution.w / (float)upscalerProps.renderResolutionMin.w;
+            float scaleH = (float)upscalerProps.upscaleResolution.h / (float)upscalerProps.renderResolutionMin.h;
+
+            if (upscalerProps.scalingFactor < scaleMin || scaleW > scaleMax || scaleH > scaleMax)
+                return Result::UNSUPPORTED;
+        }
+
+        const auto& allocationCallbacks = ((DeviceBase&)m_Device).GetAllocationCallbacks();
+        m.metalfx = Allocate<MetalFx>(allocationCallbacks);
+
+        // Scalers are created on the first dispatch, because resource formats are unknown here
+        MTL4::CompilerDescriptor* compilerDesc = MTL4::CompilerDescriptor::alloc()->init();
+        m.metalfx->compiler = deviceNative->newCompiler(compilerDesc, nullptr);
+        compilerDesc->release();
+
+        if (!m.metalfx->compiler)
+            return Result::FAILURE;
+    }
+#endif
+
     return Result::SUCCESS;
 }
 
@@ -1283,10 +1510,10 @@ void UpscalerImpl::GetUpscalerProps(UpscalerProps& upscalerProps) const {
     upscalerProps.renderResolution.h = (Dim_t)(m_Desc.upscaleResolution.h / scalingFactor + 0.5f);
     upscalerProps.jitterPhaseNum = (uint8_t)std::ceil(8.0f * scalingFactor * scalingFactor);
 
-    if (m_Desc.type == UpscalerType::NIS) {
+    if (m_Desc.type == UpscalerType::NIS || m_Desc.type == UpscalerType::METALFX_SPATIAL) {
         upscalerProps.renderResolutionMin.w = 0;
         upscalerProps.renderResolutionMin.h = 0;
-    } else if (m_Desc.mode == UpscalerMode::ULTRA_QUALITY || m_Desc.mode == UpscalerMode::QUALITY || m_Desc.mode == UpscalerMode::BALANCED) {
+    } else if (m_Desc.type != UpscalerType::METALFX_DENOISED && (m_Desc.mode == UpscalerMode::ULTRA_QUALITY || m_Desc.mode == UpscalerMode::QUALITY || m_Desc.mode == UpscalerMode::BALANCED)) {
         upscalerProps.renderResolutionMin.w = m_Desc.upscaleResolution.w / 2;
         upscalerProps.renderResolutionMin.h = m_Desc.upscaleResolution.h / 2;
     } else
@@ -1597,6 +1824,117 @@ void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const Dispat
 #    endif
 
         NRI_CHECK(result == NVSDK_NGX_Result_Success, "DLRR evaluation failed!");
+    }
+#endif
+
+#if NRI_ENABLE_METAL_SUPPORT
+    if (IsMetalFx(m_Desc.type)) {
+        NS::AutoreleasePool* autoreleasePool = NS::AutoreleasePool::alloc()->init();
+        MetalFx& metalFx = *m.metalfx;
+
+        MTL::Texture* inputNative = MetalFxGetTexture(m_iCore, input);
+        MTL::Texture* outputNative = MetalFxGetTexture(m_iCore, output);
+        NRI_CHECK(inputNative && outputNative, "'input' and 'output' must be valid textures");
+
+        // Lazy creation: needs formats (can compile shaders)
+        bool isCreated = metalFx.spatial || metalFx.temporal || metalFx.denoised;
+
+        if (!isCreated && inputNative && outputNative) {
+            MTL::Device* deviceNative = (MTL::Device*)m_iCore.GetDeviceNativeObject(&m_Device);
+            isCreated = MetalFxCreateScaler(metalFx, deviceNative, m_iCore, m_Desc, dispatchUpscaleDesc);
+
+            if (!isCreated)
+                NRI_REPORT_ERROR(&(DeviceBase&)m_Device, "MetalFX scaler creation failed");
+        }
+
+        // The scaler is created for the "input" size of the first dispatch
+        bool isInputValid = false;
+
+        if (isCreated && inputNative && outputNative) {
+            NS::UInteger inputWidth = metalFx.spatial ? metalFx.spatial->inputWidth() : (metalFx.temporal ? metalFx.temporal->inputWidth() : metalFx.denoised->inputWidth());
+            NS::UInteger inputHeight = metalFx.spatial ? metalFx.spatial->inputHeight() : (metalFx.temporal ? metalFx.temporal->inputHeight() : metalFx.denoised->inputHeight());
+
+            isInputValid = inputNative->width() == inputWidth && inputNative->height() == inputHeight;
+            NRI_CHECK(isInputValid, "'input' size must not change");
+        }
+
+        if (isInputValid) {
+            // MetalFX encodes directly into the native command buffer, which allows only one open encoder
+            MTL4::CommandBuffer* commandBufferNative = (MTL4::CommandBuffer*)m_iCore.GetCommandBufferNativeObject(&commandBuffer);
+            BeginNativeEncodingMetal(commandBufferNative);
+
+            { // Order "METALFX_EXTRA_STAGES" after all previous work ("dispatch" is ordered by app barriers)
+                MTL4::ComputeCommandEncoder* encoder = commandBufferNative->computeCommandEncoder();
+                encoder->barrierAfterStages(MTL::StageAll, METALFX_EXTRA_STAGES, MTL4::VisibilityOptionDevice);
+                encoder->endEncoding();
+            }
+
+            if (metalFx.spatial) {
+                metalFx.spatial->setColorTexture(inputNative);
+                metalFx.spatial->setOutputTexture(outputNative);
+                metalFx.spatial->setInputContentWidth(dispatchUpscaleDesc.currentResolution.w);
+                metalFx.spatial->setInputContentHeight(dispatchUpscaleDesc.currentResolution.h);
+                metalFx.spatial->encodeToCommandBuffer(commandBufferNative);
+            } else if (metalFx.temporal) {
+                const UpscalerGuides& guides = dispatchUpscaleDesc.guides.upscaler;
+
+                metalFx.temporal->setColorTexture(inputNative);
+                metalFx.temporal->setOutputTexture(outputNative);
+                metalFx.temporal->setDepthTexture(MetalFxGetTexture(m_iCore, guides.depth));
+                metalFx.temporal->setMotionTexture(MetalFxGetTexture(m_iCore, guides.mv));
+                metalFx.temporal->setExposureTexture(MetalFxGetTexture(m_iCore, guides.exposure));
+                metalFx.temporal->setReactiveMaskTexture(MetalFxGetTexture(m_iCore, guides.reactive));
+                metalFx.temporal->setInputContentWidth(dispatchUpscaleDesc.currentResolution.w);
+                metalFx.temporal->setInputContentHeight(dispatchUpscaleDesc.currentResolution.h);
+                metalFx.temporal->setJitterOffsetX(dispatchUpscaleDesc.cameraJitter.x);
+                metalFx.temporal->setJitterOffsetY(dispatchUpscaleDesc.cameraJitter.y);
+                metalFx.temporal->setMotionVectorScaleX(dispatchUpscaleDesc.mvScale.x);
+                metalFx.temporal->setMotionVectorScaleY(dispatchUpscaleDesc.mvScale.y);
+                metalFx.temporal->setDepthReversed((m_Desc.flags & UpscalerBits::DEPTH_INVERTED) != 0);
+                metalFx.temporal->setReset((dispatchUpscaleDesc.flags & DispatchUpscaleBits::RESET_HISTORY) != 0);
+                metalFx.temporal->setPreExposure(preExposure);
+                metalFx.temporal->encodeToCommandBuffer(commandBufferNative);
+            } else {
+                const DenoiserGuides& guides = dispatchUpscaleDesc.guides.denoiser;
+                MTL::Texture* normalRoughnessNative = MetalFxGetTexture(m_iCore, guides.normalRoughness);
+
+                simd::float4x4 worldToViewMatrix = {};
+                memcpy(&worldToViewMatrix, dispatchUpscaleDesc.settings.dlrr.worldToViewMatrix, sizeof(worldToViewMatrix));
+
+                simd::float4x4 viewToClipMatrix = {};
+                memcpy(&viewToClipMatrix, dispatchUpscaleDesc.settings.dlrr.viewToClipMatrix, sizeof(viewToClipMatrix));
+
+                metalFx.denoised->setColorTexture(inputNative);
+                metalFx.denoised->setOutputTexture(outputNative);
+                metalFx.denoised->setDepthTexture(MetalFxGetTexture(m_iCore, guides.depth));
+                metalFx.denoised->setMotionTexture(MetalFxGetTexture(m_iCore, guides.mv));
+                metalFx.denoised->setNormalTexture(normalRoughnessNative);
+                metalFx.denoised->setRoughnessTexture(normalRoughnessNative ? MetalFxCreateRoughnessView(commandBufferNative, normalRoughnessNative) : nullptr);
+                metalFx.denoised->setDiffuseAlbedoTexture(MetalFxGetTexture(m_iCore, guides.diffuseAlbedo));
+                metalFx.denoised->setSpecularAlbedoTexture(MetalFxGetTexture(m_iCore, guides.specularAlbedo));
+                metalFx.denoised->setSpecularHitDistanceTexture(MetalFxGetTexture(m_iCore, guides.specularMvOrHitT));
+                metalFx.denoised->setExposureTexture(MetalFxGetTexture(m_iCore, guides.exposure));
+                metalFx.denoised->setReactiveMaskTexture(MetalFxGetTexture(m_iCore, guides.reactive));
+                metalFx.denoised->setJitterOffsetX(dispatchUpscaleDesc.cameraJitter.x);
+                metalFx.denoised->setJitterOffsetY(dispatchUpscaleDesc.cameraJitter.y);
+                metalFx.denoised->setMotionVectorScaleX(dispatchUpscaleDesc.mvScale.x);
+                metalFx.denoised->setMotionVectorScaleY(dispatchUpscaleDesc.mvScale.y);
+                metalFx.denoised->setDepthReversed((m_Desc.flags & UpscalerBits::DEPTH_INVERTED) != 0);
+                metalFx.denoised->setShouldResetHistory((dispatchUpscaleDesc.flags & DispatchUpscaleBits::RESET_HISTORY) != 0);
+                metalFx.denoised->setPreExposure(preExposure);
+                metalFx.denoised->setWorldToViewMatrix(worldToViewMatrix);
+                metalFx.denoised->setViewToClipMatrix(viewToClipMatrix);
+                metalFx.denoised->encodeToCommandBuffer(commandBufferNative);
+            }
+
+            { // Order all subsequent work after "METALFX_EXTRA_STAGES" ("dispatch" is ordered by app barriers)
+                MTL4::ComputeCommandEncoder* encoder = commandBufferNative->computeCommandEncoder();
+                encoder->barrierAfterStages(METALFX_EXTRA_STAGES, MTL::StageAll, MTL4::VisibilityOptionDevice);
+                encoder->endEncoding();
+            }
+        }
+
+        autoreleasePool->release();
     }
 #endif
 }

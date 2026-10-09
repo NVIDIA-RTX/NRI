@@ -49,6 +49,7 @@ Push constants:
 
 Input attachments (reading on-chip memory):
     NRI_INPUT_ATTACHMENT(gGbuffer, 1, 1, 0); // use "NRI_INPUT_ATTACHMENT_LOAD" for loading data
+    // Metal (DXIL): define "NRI_METAL_DXIL", register space "NRI_METAL_FRAMEBUFFER_FETCH_SPACE" is reserved
 
 Draw parameters:
   - macros:
@@ -67,6 +68,8 @@ Draw parameters:
     - to enable emulation:
       - set "ENABLE_DRAW_PARAMETERS_EMULATION" and/or "ENABLE_DRAW_INDEX_EMULATION" for a corresponding "PipelineLayout"
       - define "NRI_ENABLE_DRAW_PARAMETERS_EMULATION" and/or "NRI_ENABLE_DRAW_INDEX_EMULATION" prior inclusion of "NRI.hlsl"
+  - Metal (DXIL via Metal Shader Converter) emulation:
+    - same as D3D12, but SM 6.8 base intrinsics are not supported (SM < 6.8 is required)
 */
 
 // Compiler detection
@@ -239,6 +242,7 @@ Draw parameters:
 
 // DXIL
 #define NRI_BASE_ATTRIBUTES_EMULATION_SPACE 999
+#define NRI_METAL_FRAMEBUFFER_FETCH_SPACE 998
 #ifdef NRI_DXIL
     #define NRI_RESOURCE(resourceType, name, regName, bindingIndex, setIndex) \
         resourceType name : register(NRI_MERGE_TOKENS(regName, bindingIndex), NRI_MERGE_TOKENS(space, setIndex))
@@ -250,10 +254,18 @@ Draw parameters:
     #define NRI_FORMAT(format)
 
     // Input attachment
-    #define NRI_INPUT_ATTACHMENT(name, attachmentIndex, bindingIndex, setIndex) \
-        NRI_RESOURCE(Texture2D, name, t, bindingIndex, setIndex)
+    #ifdef NRI_METAL_DXIL
+        // Framebuffer fetch: register = color attachment index
+        #define NRI_INPUT_ATTACHMENT(name, attachmentIndex, bindingIndex, setIndex) \
+            Texture2D name : register(NRI_MERGE_TOKENS(t, attachmentIndex), NRI_MERGE_TOKENS(space, NRI_METAL_FRAMEBUFFER_FETCH_SPACE))
 
-    #define NRI_INPUT_ATTACHMENT_LOAD(inputAttachment, pixelPos) inputAttachment[int2(pixelPos.xy)]
+        #define NRI_INPUT_ATTACHMENT_LOAD(inputAttachment, pixelPos) inputAttachment.Load(0)
+    #else
+        #define NRI_INPUT_ATTACHMENT(name, attachmentIndex, bindingIndex, setIndex) \
+            NRI_RESOURCE(Texture2D, name, t, bindingIndex, setIndex)
+
+        #define NRI_INPUT_ATTACHMENT_LOAD(inputAttachment, pixelPos) inputAttachment[int2(pixelPos.xy)]
+    #endif
 
     // Draw index (emulation)
     #ifdef NRI_ENABLE_DRAW_INDEX_EMULATION

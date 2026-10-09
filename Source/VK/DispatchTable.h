@@ -223,6 +223,7 @@ struct DispatchTable {
     VK_FUNC(CmdTraceRaysKHR);                             // - | +
     VK_FUNC(CmdTraceRaysIndirect2KHR);                    // - | +
                                                           // VK_EXT_calibrated_timestamps
+    VK_FUNC(GetPhysicalDeviceCalibrateableTimeDomainsEXT); // + | +
     VK_FUNC(GetCalibratedTimestampsEXT);                  // + | +
                                                           // VK_EXT_device_fault
     VK_FUNC(GetDeviceFaultInfoEXT);                       // + | +

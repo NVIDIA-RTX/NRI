@@ -1699,7 +1699,7 @@ void CommandBufferWGPU::ZeroBuffer(Buffer& buffer, uint64_t offset, uint64_t siz
 }
 
 void CommandBufferWGPU::ResolveTexture(Texture& dstTexture, const TextureRegionDesc* dstRegion, const Texture& srcTexture, const TextureRegionDesc* srcRegion, ResolveOp resolveOp) {
-    // TODO: WebGPU exposes only the default render-pass resolve behavior. "resolveOp" is ignored; keep "features.resolveOpMinMax = false".
+    // WebGPU exposes only the default render-pass resolve behavior ("AVERAGE", see "DeviceDesc::resolve")
     MaybeUnused(resolveOp);
     EndPass();
 

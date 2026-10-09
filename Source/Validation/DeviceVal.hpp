@@ -166,6 +166,7 @@ bool DeviceVal::Create() {
     m_IsExtSupported.swapChain = deviceBaseImpl.FillFunctionTable(m_iSwapChainImpl) == Result::SUCCESS;
     m_IsExtSupported.wrapperD3D11 = deviceBaseImpl.FillFunctionTable(m_iWrapperD3D11Impl) == Result::SUCCESS;
     m_IsExtSupported.wrapperD3D12 = deviceBaseImpl.FillFunctionTable(m_iWrapperD3D12Impl) == Result::SUCCESS;
+    m_IsExtSupported.wrapperMetal = deviceBaseImpl.FillFunctionTable(m_iWrapperMetalImpl) == Result::SUCCESS;
     m_IsExtSupported.wrapperVK = deviceBaseImpl.FillFunctionTable(m_iWrapperVKImpl) == Result::SUCCESS;
 
     m_Desc = GetDesc();
@@ -460,6 +461,7 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
 
             NRI_RETURN_ON_FAILURE(this, range.descriptorNum > 0, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].descriptorNum' is 0", i, j);
             NRI_RETURN_ON_FAILURE(this, range.descriptorType < DescriptorType::MAX_NUM, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].descriptorType' is invalid", i, j);
+            NRI_RETURN_ON_FAILURE(this, range.descriptorType != DescriptorType::MUTABLE || deviceDesc.features.mutableDescriptorType, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].descriptorType' is 'MUTABLE', but 'features.mutableDescriptorType' is false", i, j);
             NRI_RETURN_ON_FAILURE(this, !(range.flags & DescriptorRangeBits::PARTIALLY_BOUND) || deviceDesc.tiers.resourceBinding != 0, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].flags' has 'PARTIALLY_BOUND', but 'tiers.resourceBinding' is 0", i, j);
             NRI_RETURN_ON_FAILURE(this, !(range.flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY) || deviceDesc.tiers.bindless != 0, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].flags' has 'VARIABLE_SIZED_ARRAY', but 'tiers.bindless' is 0", i, j);
             NRI_RETURN_ON_FAILURE(this, !(range.flags & DescriptorRangeBits::VARIABLE_SIZED_ARRAY) || deviceDesc.tiers.resourceBinding >= 2, Result::INVALID_ARGUMENT, "'descriptorSets[%u].ranges[%u].flags' has 'VARIABLE_SIZED_ARRAY', but 'tiers.resourceBinding' is less than 2", i, j);
@@ -554,6 +556,81 @@ NRI_INLINE Result DeviceVal::CreatePipelineLayout(const PipelineLayoutDesc& pipe
     return result;
 }
 
+// Native metallib compute, mesh and task shaders don't embed their threadgroup size
+static inline bool IsThreadGroupSizeValid(const DeviceDesc& deviceDesc, const ShaderDesc& shaderDesc) {
+    const uint32_t* maxDim = nullptr;
+    uint32_t invocationMaxNum = 0;
+
+    if (shaderDesc.stage == StageBits::COMPUTE_SHADER) {
+        maxDim = deviceDesc.shaderStage.compute.workGroupMaxDim;
+        invocationMaxNum = deviceDesc.shaderStage.compute.workGroupInvocationMaxNum;
+    } else if (shaderDesc.stage == StageBits::TASK_SHADER) {
+        maxDim = deviceDesc.shaderStage.task.workGroupMaxDim;
+        invocationMaxNum = deviceDesc.shaderStage.task.workGroupInvocationMaxNum;
+    } else if (shaderDesc.stage == StageBits::MESH_SHADER) {
+        maxDim = deviceDesc.shaderStage.mesh.workGroupMaxDim;
+        invocationMaxNum = deviceDesc.shaderStage.mesh.workGroupInvocationMaxNum;
+    }
+
+    const bool isMetallib = deviceDesc.features.shaderBytecodeMETALLIB && shaderDesc.size >= 4 && memcmp(shaderDesc.bytecode, "MTLB", 4) == 0;
+    if (!maxDim || !isMetallib)
+        return true;
+
+    const uint32_t x = shaderDesc.threadGroupSizeX;
+    const uint32_t y = shaderDesc.threadGroupSizeY;
+    const uint32_t z = shaderDesc.threadGroupSizeZ;
+    if (!x || !y || !z)
+        return false;
+
+    return x <= maxDim[0] && y <= maxDim[1] && z <= maxDim[2] && (uint64_t(x) * y * z) <= invocationMaxNum;
+}
+
+// METAL: DXIL ("DXBC" container) requires Metal Shader Converter
+static inline bool IsShaderBytecodeSupported(const DeviceDesc& deviceDesc, const ShaderDesc& shaderDesc) {
+    const bool isDXIL = shaderDesc.size >= 4 && memcmp(shaderDesc.bytecode, "DXBC", 4) == 0;
+
+    return deviceDesc.graphicsAPI != GraphicsAPI::METAL || !isDXIL || deviceDesc.features.shaderBytecodeDXIL;
+}
+
+// METAL: pre-converted shaders (ShaderMake Metal converter bundles, see "NRIWrapperMetal.h"), returns an error or "nullptr"
+static inline bool IsMetalBundle(GraphicsAPI graphicsAPI, const ShaderDesc& shaderDesc) {
+    return graphicsAPI == GraphicsAPI::METAL && shaderDesc.size >= 4 && !memcmp(shaderDesc.bytecode, "SMMB", 4);
+}
+
+static const char* GetMetalBundleError(GraphicsAPI graphicsAPI, const ShaderDesc& shaderDesc) {
+    if (!IsMetalBundle(graphicsAPI, shaderDesc))
+        return nullptr;
+
+    // "magic", "version", "metallibOffset", "metallibSize", "reflectionOffset", "reflectionSize"
+    uint32_t header[6] = {};
+
+    if (shaderDesc.size < sizeof(header))
+        return "the header is truncated";
+
+    memcpy(header, shaderDesc.bytecode, sizeof(header));
+
+    if (header[1] != 1)
+        return "'version' is unsupported";
+
+    const StageBits stages = StageBits::VERTEX_SHADER | StageBits::FRAGMENT_SHADER | StageBits::COMPUTE_SHADER | StageBits::TASK_SHADER | StageBits::MESH_SHADER;
+
+    if (!(shaderDesc.stage & stages))
+        return "'stage' must be 'VERTEX_SHADER', 'FRAGMENT_SHADER', 'COMPUTE_SHADER', 'TASK_SHADER' or 'MESH_SHADER'";
+
+    // Layout: header, metallib, reflection (with a zero terminator), non-overlapping and in this order
+    const uint64_t metallibEnd = header[2] + (uint64_t)header[3];
+
+    if (header[2] < sizeof(header) || header[2] % 8 || !header[3] || metallibEnd > shaderDesc.size)
+        return "'metallibOffset' or 'metallibSize' is invalid";
+
+    const uint64_t reflectionEnd = header[4] + (uint64_t)header[5];
+
+    if (header[4] < metallibEnd || !header[5] || reflectionEnd >= shaderDesc.size || ((const uint8_t*)shaderDesc.bytecode)[reflectionEnd])
+        return "'reflectionOffset' or 'reflectionSize' is invalid";
+
+    return nullptr;
+}
+
 NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphicsPipelineDesc, Pipeline*& pipeline) {
     NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.pipelineLayout != nullptr, Result::INVALID_ARGUMENT, "'pipelineLayout' is NULL");
     NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.shaders != nullptr, Result::INVALID_ARGUMENT, "'shaders' is NULL");
@@ -571,6 +648,7 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
     if (graphicsPipelineDesc.vertexInput) {
         NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.vertexInput->attributeNum == 0 || graphicsPipelineDesc.vertexInput->attributes != nullptr, Result::INVALID_ARGUMENT, "'vertexInput->attributes' is NULL");
         NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.vertexInput->streamNum == 0 || graphicsPipelineDesc.vertexInput->streams != nullptr, Result::INVALID_ARGUMENT, "'vertexInput->streams' is NULL");
+        NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.vertexInput->attributeNum <= GetDesc().shaderStage.vertex.attributeMaxNum, Result::INVALID_ARGUMENT, "'vertexInput->attributeNum' exceeds 'shaderStage.vertex.attributeMaxNum'");
 
         for (uint32_t i = 0; i < graphicsPipelineDesc.vertexInput->attributeNum; i++)
             NRI_RETURN_ON_FAILURE(this, graphicsPipelineDesc.vertexInput->attributes[i].format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'vertexInput->attributes[%u].format' is invalid", i);
@@ -585,6 +663,7 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
     const StageBits shaderStages = pipelineLayout.GetPipelineLayoutDesc().shaderStages;
     bool hasEntryPoint = false;
     uint32_t uniqueShaderStages = 0;
+    uint32_t bundleStages = 0;
     for (uint32_t i = 0; i < graphicsPipelineDesc.shaderNum; i++) {
         const ShaderDesc* shaderDesc = graphicsPipelineDesc.shaders + i;
         if (shaderDesc->stage == StageBits::VERTEX_SHADER || shaderDesc->stage == StageBits::MESH_SHADER)
@@ -595,8 +674,25 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const GraphicsPipelineDesc& graphics
         NRI_RETURN_ON_FAILURE(this, shaderDesc->size != 0, Result::INVALID_ARGUMENT, "'shaders[%u].size' is 0", i);
         NRI_RETURN_ON_FAILURE(this, IsShaderStageValid(shaderDesc->stage, uniqueShaderStages, StageBits::GRAPHICS_SHADERS), Result::INVALID_ARGUMENT, "'shaders[%u].stage' must include only 1 graphics shader stage, unique for the entire pipeline", i);
         NRI_RETURN_ON_FAILURE(this, IsShaderStageSupported(GetDesc(), shaderDesc->stage), Result::INVALID_ARGUMENT, "'shaders[%u].stage' is not supported", i);
+        NRI_RETURN_ON_FAILURE(this, IsThreadGroupSizeValid(GetDesc(), *shaderDesc), Result::INVALID_ARGUMENT, "'shaders[%u].threadGroupSizeX/Y/Z' must be non-zero and within 'shaderStage' limits for a native metallib mesh or task shader", i);
+        NRI_RETURN_ON_FAILURE(this, IsShaderBytecodeSupported(GetDesc(), *shaderDesc), Result::UNSUPPORTED, "'shaders[%u]' is DXIL, but 'features.shaderBytecodeDXIL' is false", i);
+
+        const char* bundleError = GetMetalBundleError(GetDesc().graphicsAPI, *shaderDesc);
+        NRI_RETURN_ON_FAILURE(this, !bundleError, Result::INVALID_ARGUMENT, "'shaders[%u]' is an invalid Metal converter bundle: %s", i, bundleError);
+
+        if (IsMetalBundle(GetDesc().graphicsAPI, *shaderDesc))
+            bundleStages |= (uint32_t)shaderDesc->stage;
     }
     NRI_RETURN_ON_FAILURE(this, hasEntryPoint, Result::INVALID_ARGUMENT, "a VERTEX or MESH shader is not provided");
+
+    // Metal converter bundles have no geometry / tessellation emulation, sample mask and input topology (see "NRIWrapperMetal.h")
+    if (bundleStages) {
+        const bool hasEmulation = uniqueShaderStages & (uint32_t)(StageBits::GEOMETRY_SHADER | StageBits::TESSELLATION_SHADERS);
+        const bool hasSampleMask = graphicsPipelineDesc.multisample && graphicsPipelineDesc.multisample->sampleMask != ALL;
+        NRI_RETURN_ON_FAILURE(this, !hasEmulation, Result::INVALID_ARGUMENT, "Metal converter bundles can't be used with geometry or tessellation shaders");
+        NRI_RETURN_ON_FAILURE(this, !(bundleStages & (uint32_t)StageBits::FRAGMENT_SHADER) || !hasSampleMask, Result::INVALID_ARGUMENT, "a Metal converter bundle fragment shader requires 'sampleMask = ALL'");
+        NRI_RETURN_ON_FAILURE(this, !(bundleStages & (uint32_t)StageBits::VERTEX_SHADER) || graphicsPipelineDesc.inputAssembly.topology != Topology::POINT_LIST, Result::INVALID_ARGUMENT, "a Metal converter bundle vertex shader can't be used with 'POINT_LIST'");
+    }
 
     for (uint32_t i = 0; i < graphicsPipelineDesc.outputMerger.colorNum; i++) {
         const ColorAttachmentDesc* color = graphicsPipelineDesc.outputMerger.colors + i;
@@ -671,7 +767,12 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const ComputePipelineDesc& computePi
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.shader.size != 0, Result::INVALID_ARGUMENT, "'shader.size' is 0");
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.shader.bytecode != nullptr, Result::INVALID_ARGUMENT, "'shader.bytecode' is NULL");
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.shader.stage == StageBits::COMPUTE_SHADER, Result::INVALID_ARGUMENT, "'shader.stage' must be 'StageBits::COMPUTE_SHADER'");
+    NRI_RETURN_ON_FAILURE(this, IsThreadGroupSizeValid(GetDesc(), computePipelineDesc.shader), Result::INVALID_ARGUMENT, "'shader.threadGroupSizeX/Y/Z' must be non-zero and within 'shaderStage.compute' limits for a native metallib compute shader");
+    NRI_RETURN_ON_FAILURE(this, IsShaderBytecodeSupported(GetDesc(), computePipelineDesc.shader), Result::UNSUPPORTED, "'shader' is DXIL, but 'features.shaderBytecodeDXIL' is false");
     NRI_RETURN_ON_FAILURE(this, computePipelineDesc.robustness < Robustness::MAX_NUM, Result::INVALID_ARGUMENT, "'robustness' is invalid");
+
+    const char* bundleError = GetMetalBundleError(GetDesc().graphicsAPI, computePipelineDesc.shader);
+    NRI_RETURN_ON_FAILURE(this, !bundleError, Result::INVALID_ARGUMENT, "'shader' is an invalid Metal converter bundle: %s", bundleError);
 
     if (computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS) {
         if (!GetDesc().features.pipelineCacheControl)
@@ -727,7 +828,7 @@ NRI_INLINE Result DeviceVal::CreateQueryPool(const QueryPoolDesc& queryPoolDesc,
     } else if (queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_SIZE || queryPoolDesc.queryType == QueryType::ACCELERATION_STRUCTURE_COMPACTED_SIZE) {
         NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing != 0, Result::INVALID_ARGUMENT, "'tiers.rayTracing = 0'");
     } else if (queryPoolDesc.queryType == QueryType::MICROMAP_COMPACTED_SIZE) {
-        NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing, Result::INVALID_ARGUMENT, "'tiers.rayTracing < 3'");
+        NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'tiers.rayTracing < 3'");
     }
 
     QueryPool* queryPoolImpl = nullptr;
@@ -746,7 +847,7 @@ NRI_INLINE Result DeviceVal::CreateFence(uint64_t initialValue, Fence*& fence) {
 
     fence = nullptr;
     if (result == Result::SUCCESS)
-        fence = (Fence*)Allocate<FenceVal>(GetAllocationCallbacks(), *this, fenceImpl);
+        fence = (Fence*)Allocate<FenceVal>(GetAllocationCallbacks(), *this, fenceImpl, initialValue == SWAPCHAIN_SEMAPHORE);
 
     return result;
 }
@@ -847,6 +948,7 @@ NRI_INLINE Result DeviceVal::CreateCommittedTexture(MemoryLocation memoryLocatio
 
 NRI_INLINE Result DeviceVal::CreateCommittedMicromap(MemoryLocation memoryLocation, float priority, const MicromapDesc& micromapDesc, Micromap*& micromap) {
     NRI_RETURN_ON_FAILURE(this, priority >= -1.0f && priority <= 1.0f, Result::INVALID_ARGUMENT, "'priority' outside of [-1; 1] range");
+    NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'tiers.rayTracing < 3'");
     NRI_RETURN_ON_FAILURE(this, micromapDesc.usageNum != 0, Result::INVALID_ARGUMENT, "'usageNum' is 0");
     NRI_RETURN_ON_FAILURE(this, micromapDesc.usages != nullptr, Result::INVALID_ARGUMENT, "'usages' is NULL");
 
@@ -870,6 +972,9 @@ NRI_INLINE Result DeviceVal::CreateCommittedAccelerationStructure(MemoryLocation
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL && accelerationStructureDesc.geometryOrInstanceNum != 0)
         NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.geometries != nullptr, Result::INVALID_ARGUMENT, "'geometries' is NULL");
 
+    if (accelerationStructureDesc.flags & (AccelerationStructureBits::ALLOW_MICROMAP_UPDATE | AccelerationStructureBits::ALLOW_DISABLE_MICROMAPS))
+        NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'ALLOW_MICROMAP_UPDATE' and 'ALLOW_DISABLE_MICROMAPS' require 'tiers.rayTracing >= 3'");
+
     // Convert desc
     uint32_t geometryNum = 0;
     uint32_t micromapNum = 0;
@@ -883,8 +988,11 @@ NRI_INLINE Result DeviceVal::CreateCommittedAccelerationStructure(MemoryLocation
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES) {
                 NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.vertexFormat < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.vertexFormat' is invalid", i);
                 NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.indexType < IndexType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.indexType' is invalid", i);
-                if (geometryDesc.triangles.micromap)
+
+                if (geometryDesc.triangles.micromap) {
+                    NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.micromap' requires 'tiers.rayTracing >= 3'", i);
                     NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.micromap->indexType < IndexType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.micromap->indexType' is invalid", i);
+                }
             }
 
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
@@ -910,7 +1018,7 @@ NRI_INLINE Result DeviceVal::CreateCommittedAccelerationStructure(MemoryLocation
 
     accelerationStructure = nullptr;
     if (result == Result::SUCCESS)
-        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, true);
+        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, true, &accelerationStructureDesc);
 
     return result;
 }
@@ -1010,6 +1118,7 @@ NRI_INLINE Result DeviceVal::CreatePlacedTexture(Memory* memory, uint64_t offset
 }
 
 NRI_INLINE Result DeviceVal::CreatePlacedMicromap(Memory* memory, uint64_t offset, const MicromapDesc& micromapDesc, Micromap*& micromap) {
+    NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'tiers.rayTracing < 3'");
     NRI_RETURN_ON_FAILURE(this, micromapDesc.usageNum != 0, Result::INVALID_ARGUMENT, "'usageNum' is 0");
     NRI_RETURN_ON_FAILURE(this, micromapDesc.usages != nullptr, Result::INVALID_ARGUMENT, "'usages' is NULL");
 
@@ -1058,6 +1167,9 @@ NRI_INLINE Result DeviceVal::CreatePlacedAccelerationStructure(Memory* memory, u
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL && accelerationStructureDesc.geometryOrInstanceNum != 0)
         NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.geometries != nullptr, Result::INVALID_ARGUMENT, "'geometries' is NULL");
 
+    if (accelerationStructureDesc.flags & (AccelerationStructureBits::ALLOW_MICROMAP_UPDATE | AccelerationStructureBits::ALLOW_DISABLE_MICROMAPS))
+        NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'ALLOW_MICROMAP_UPDATE' and 'ALLOW_DISABLE_MICROMAPS' require 'tiers.rayTracing >= 3'");
+
     // Convert desc
     uint32_t geometryNum = 0;
     uint32_t micromapNum = 0;
@@ -1071,8 +1183,11 @@ NRI_INLINE Result DeviceVal::CreatePlacedAccelerationStructure(Memory* memory, u
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES) {
                 NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.vertexFormat < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.vertexFormat' is invalid", i);
                 NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.indexType < IndexType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.indexType' is invalid", i);
-                if (geometryDesc.triangles.micromap)
+
+                if (geometryDesc.triangles.micromap) {
+                    NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.micromap' requires 'tiers.rayTracing >= 3'", i);
                     NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.micromap->indexType < IndexType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.micromap->indexType' is invalid", i);
+                }
             }
 
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
@@ -1117,7 +1232,7 @@ NRI_INLINE Result DeviceVal::CreatePlacedAccelerationStructure(Memory* memory, u
 
     accelerationStructure = nullptr;
     if (result == Result::SUCCESS)
-        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, !memory);
+        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, !memory, &accelerationStructureDesc);
 
     // Update
     if (accelerationStructure && memory) {
@@ -1566,6 +1681,67 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
 
 #endif
 
+#if NRI_ENABLE_METAL_SUPPORT
+
+NRI_INLINE Result DeviceVal::CreateBuffer(const BufferMetalDesc& bufferMetalDesc, Buffer*& buffer) {
+    NRI_RETURN_ON_FAILURE(this, bufferMetalDesc.mtlBuffer != nullptr, Result::INVALID_ARGUMENT, "'mtlBuffer' is NULL");
+    NRI_RETURN_ON_FAILURE(this, bufferMetalDesc.desc.size != 0, Result::INVALID_ARGUMENT, "'desc.size' is 0");
+
+    Buffer* bufferImpl = nullptr;
+    Result result = m_iWrapperMetalImpl.CreateBufferMetal(m_Impl, bufferMetalDesc, bufferImpl);
+
+    buffer = nullptr;
+
+    if (result == Result::SUCCESS)
+        buffer = (Buffer*)Allocate<BufferVal>(GetAllocationCallbacks(), *this, bufferImpl, true);
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVal::CreateTexture(const TextureMetalDesc& textureMetalDesc, Texture*& texture) {
+    const TextureDesc& textureDesc = textureMetalDesc.desc;
+    NRI_RETURN_ON_FAILURE(this, textureMetalDesc.mtlTexture != nullptr, Result::INVALID_ARGUMENT, "'mtlTexture' is NULL");
+    NRI_RETURN_ON_FAILURE(this, textureDesc.type < TextureType::MAX_NUM, Result::INVALID_ARGUMENT, "'desc.type' is invalid");
+    NRI_RETURN_ON_FAILURE(this, textureDesc.format > Format::UNKNOWN && textureDesc.format < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'desc.format' is invalid");
+    NRI_RETURN_ON_FAILURE(this, textureDesc.sharingMode < SharingMode::MAX_NUM, Result::INVALID_ARGUMENT, "'desc.sharingMode' is invalid");
+    NRI_RETURN_ON_FAILURE(this, textureDesc.width != 0, Result::INVALID_ARGUMENT, "'desc.width' is 0");
+    NRI_RETURN_ON_FAILURE(this, textureDesc.mipNum <= GetMaxMipNum(textureDesc.width, textureDesc.height, textureDesc.depth), Result::INVALID_ARGUMENT, "'desc.mipNum' is invalid");
+
+    Texture* textureImpl = nullptr;
+    Result result = m_iWrapperMetalImpl.CreateTextureMetal(m_Impl, textureMetalDesc, textureImpl);
+
+    texture = nullptr;
+
+    if (result == Result::SUCCESS)
+        texture = (Texture*)Allocate<TextureVal>(GetAllocationCallbacks(), *this, textureImpl, true);
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVal::CreateFence(const FenceMetalDesc& fenceMetalDesc, Fence*& fence) {
+    NRI_RETURN_ON_FAILURE(this, fenceMetalDesc.mtlSharedEvent != nullptr, Result::INVALID_ARGUMENT, "'mtlSharedEvent' is NULL");
+
+    Fence* fenceImpl = nullptr;
+    Result result = m_iWrapperMetalImpl.CreateFenceMetal(m_Impl, fenceMetalDesc, fenceImpl);
+
+    fence = nullptr;
+
+    if (result == Result::SUCCESS)
+        fence = (Fence*)Allocate<FenceVal>(GetAllocationCallbacks(), *this, fenceImpl);
+
+    return result;
+}
+
+NRI_INLINE Result DeviceVal::GetRootSignature(const PipelineLayout& pipelineLayout, char* json, uint64_t& size) {
+    NRI_RETURN_ON_FAILURE(this, json == nullptr || size != 0, Result::INVALID_ARGUMENT, "'size' is 0");
+
+    const PipelineLayout* pipelineLayoutImpl = NRI_GET_IMPL(PipelineLayout, &pipelineLayout);
+
+    return m_iWrapperMetalImpl.GetRootSignatureMetal(*pipelineLayoutImpl, json, size);
+}
+
+#endif
+
 NRI_INLINE Result DeviceVal::CreatePipeline(const RayTracingPipelineDesc& rayTracingPipelineDesc, Pipeline*& pipeline) {
     NRI_RETURN_ON_FAILURE(this, rayTracingPipelineDesc.pipelineLayout != nullptr, Result::INVALID_ARGUMENT, "'pipelineLayout' is NULL");
     NRI_RETURN_ON_FAILURE(this, rayTracingPipelineDesc.shaderLibrary != nullptr, Result::INVALID_ARGUMENT, "'shaderLibrary' is NULL");
@@ -1604,6 +1780,7 @@ NRI_INLINE Result DeviceVal::CreatePipeline(const RayTracingPipelineDesc& rayTra
 }
 
 NRI_INLINE Result DeviceVal::CreateMicromap(const MicromapDesc& micromapDesc, Micromap*& micromap) {
+    NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'tiers.rayTracing < 3'");
     NRI_RETURN_ON_FAILURE(this, micromapDesc.usageNum != 0, Result::INVALID_ARGUMENT, "'usageNum' is 0");
     NRI_RETURN_ON_FAILURE(this, micromapDesc.usages != nullptr, Result::INVALID_ARGUMENT, "'usages' is NULL");
 
@@ -1626,6 +1803,9 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
     if (accelerationStructureDesc.type == AccelerationStructureType::BOTTOM_LEVEL && accelerationStructureDesc.geometryOrInstanceNum != 0)
         NRI_RETURN_ON_FAILURE(this, accelerationStructureDesc.geometries != nullptr, Result::INVALID_ARGUMENT, "'geometries' is NULL");
 
+    if (accelerationStructureDesc.flags & (AccelerationStructureBits::ALLOW_MICROMAP_UPDATE | AccelerationStructureBits::ALLOW_DISABLE_MICROMAPS))
+        NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'ALLOW_MICROMAP_UPDATE' and 'ALLOW_DISABLE_MICROMAPS' require 'tiers.rayTracing >= 3'");
+
     // Convert desc
     uint32_t geometryNum = 0;
     uint32_t micromapNum = 0;
@@ -1639,8 +1819,11 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES) {
                 NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.vertexFormat < Format::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.vertexFormat' is invalid", i);
                 NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.indexType < IndexType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.indexType' is invalid", i);
-                if (geometryDesc.triangles.micromap)
+
+                if (geometryDesc.triangles.micromap) {
+                    NRI_RETURN_ON_FAILURE(this, GetDesc().tiers.rayTracing >= 3, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.micromap' requires 'tiers.rayTracing >= 3'", i);
                     NRI_RETURN_ON_FAILURE(this, geometryDesc.triangles.micromap->indexType < IndexType::MAX_NUM, Result::INVALID_ARGUMENT, "'geometries[%u].triangles.micromap->indexType' is invalid", i);
+                }
             }
 
             if (geometryDesc.type == BottomLevelGeometryType::TRIANGLES && geometryDesc.triangles.micromap)
@@ -1666,7 +1849,7 @@ NRI_INLINE Result DeviceVal::CreateAccelerationStructure(const AccelerationStruc
 
     accelerationStructure = nullptr;
     if (result == Result::SUCCESS)
-        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, false);
+        accelerationStructure = (AccelerationStructure*)Allocate<AccelerationStructureVal>(GetAllocationCallbacks(), *this, accelerationStructureImpl, false, &accelerationStructureDesc);
 
     return result;
 }

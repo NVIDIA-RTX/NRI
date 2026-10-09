@@ -1,0 +1,66 @@
+// © 2026 NVIDIA Corporation
+#pragma once
+
+namespace nri {
+
+// Root signature parameter, as reflected by Converter ("TopLevelArgumentBuffer")
+struct RootArgumentMetal {
+    const char* type; // "Constant", "CBV", "SRV", "UAV" or "Table"
+    uint32_t offset;
+    uint32_t size;
+    uint32_t registerIndex; // "UINT32_MAX" for tables
+    uint32_t space;         // "UINT32_MAX" for tables
+    uint32_t descriptorNum; // tables
+};
+
+struct PipelineLayoutMetal final : public DebugNameBase {
+    PipelineLayoutMetal(DeviceMetal& device);
+    ~PipelineLayoutMetal();
+    Result Create(const PipelineLayoutDesc& desc);
+    DeviceMetal& GetDevice() const;
+    uint64_t GetRootSignatureHash() const;
+    const Vector<RootArgumentMetal>& GetRootArguments() const;
+    uint32_t GetRootDataSize() const;
+    uint32_t GetRootConstantOffset(uint32_t index) const;
+    uint32_t GetRootDescriptorOffset(uint32_t index) const;
+    uint32_t GetDrawParametersOffset() const;
+    uint32_t GetDrawIndexOffset() const;
+    bool IsDrawParametersEmulationEnabled() const;
+    bool IsDrawIndexEmulationEnabled() const;
+    const DescriptorSetMappingMetal& GetDescriptorSetMapping(uint32_t index) const;
+    void InitRootData(void* data) const;
+    void WriteSetPointers(void* data, uint32_t setIndex, const DescriptorSetMetal& set) const;
+    Result GetRootSignature(char* json, uint64_t& size) const;
+#if NRI_ENABLE_METAL_SHADER_CONVERTER
+    IRRootSignature* GetRootSignature() const;
+#endif
+    void SetDebugName(const char*) NRI_DEBUG_NAME_OVERRIDE {
+    }
+
+private:
+#if NRI_ENABLE_METAL_SHADER_CONVERTER
+    IRVersionedRootSignatureDescriptor GetRootSignatureDesc() const;
+#endif
+
+    DeviceMetal& m_Device;
+    Vector<DescriptorSetMappingMetal> m_Sets;
+    Vector<uint32_t> m_ConstantOffsets;
+    Vector<uint32_t> m_DescriptorOffsets;
+    Vector<uint32_t> m_SetOffsets;
+    Vector<RootArgumentMetal> m_RootArguments;
+    Vector<DescriptorMetal*> m_RootSamplers;
+    MTL::Buffer* m_RootSamplerBuffer = nullptr;
+    uint32_t m_RootSamplerOffset = UINT32_MAX;
+    uint32_t m_DrawParametersOffset = UINT32_MAX;
+    uint32_t m_DrawIndexOffset = UINT32_MAX;
+    uint32_t m_RootDataSize = 0;
+    uint64_t m_RootSignatureHash = FNV_INIT;
+#if NRI_ENABLE_METAL_SHADER_CONVERTER
+    Vector<IRRootParameter1> m_RootParameters; // descriptor tables point into "m_RootRanges"
+    Vector<IRDescriptorRange1> m_RootRanges;
+    IRRootSignature* m_RootSignature = nullptr;
+    IRRootSignatureFlags m_RootSignatureFlags = IRRootSignatureFlagNone;
+#endif
+};
+
+} // namespace nri

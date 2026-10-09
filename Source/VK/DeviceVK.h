@@ -133,6 +133,7 @@ struct IsSupported {
     uint32_t videoMaintenance2            : 1;
     uint32_t videoEncodeAV1               : 1;
     uint32_t descriptorHeap               : 1;
+    uint32_t imageView2DOn3D              : 1;
 };
 
 static_assert(sizeof(IsSupported) == sizeof(uint32_t), "4 bytes expected");
@@ -156,6 +157,10 @@ struct DeviceVK final : public DeviceBase {
 
     inline operator VkInstance() const {
         return m_Instance;
+    }
+
+    inline VkTimeDomainKHR GetCalibratedTimestampCPUTimeDomain() const {
+        return m_CalibratedTimestampCPUTimeDomain;
     }
 
     inline const DispatchTable& GetDispatchTable() const {
@@ -321,6 +326,7 @@ private:
     VmaAllocator_T* m_Vma = nullptr;
     uint32_t m_NumActiveFamilyIndices = 0;
     uint32_t m_MinorVersion = 0;
+    VkTimeDomainKHR m_CalibratedTimestampCPUTimeDomain = VK_TIME_DOMAIN_DEVICE_KHR;
     uint64_t m_NonCoherentAtomSize = 1;
     DeviceLostDump m_DeviceLostDump = {};
     bool m_OwnsNativeObjects = true;

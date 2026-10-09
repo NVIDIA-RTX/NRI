@@ -610,6 +610,10 @@ void DeviceD3D11::FillDesc() {
     m_Desc.features.additionalShadingRates = caps.bVariablePixelRateShadingSupported ? 1 : 0;
 #endif
 
+    // Resolve: "ResolveSubresource" only
+    m_Desc.resolve.attachment.color = ResolveOpBits::AVERAGE;
+    m_Desc.resolve.command.color = ResolveOpBits::AVERAGE;
+
     ComPtr<IDXGIFactory3> dxgiFactory3;
     hr = m_Adapter->GetParent(IID_PPV_ARGS(&dxgiFactory3));
 

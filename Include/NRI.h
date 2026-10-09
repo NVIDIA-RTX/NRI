@@ -205,12 +205,12 @@ NriStruct(CoreInterface) {
 
         // Copy (outside of rendering)
         void                (NRI_CALL *CmdCopyBuffer)               (NriRef(CommandBuffer) commandBuffer, NriRef(Buffer) dstBuffer, uint64_t dstOffset, const NriRef(Buffer) srcBuffer, uint64_t srcOffset, uint64_t size);
-        void                (NRI_CALL *CmdCopyTexture)              (NriRef(CommandBuffer) commandBuffer, NriRef(Texture) dstTexture, NriOptional const NriPtr(TextureRegionDesc) dstRegion, const NriRef(Texture) srcTexture, NriOptional const NriPtr(TextureRegionDesc) srcRegion);
+        void                (NRI_CALL *CmdCopyTexture)              (NriRef(CommandBuffer) commandBuffer, NriRef(Texture) dstTexture, NriOptional const NriPtr(TextureRegionDesc) dstRegion, const NriRef(Texture) srcTexture, NriOptional const NriPtr(TextureRegionDesc) srcRegion); // METAL: a single-plane depth-stencil copy requires identical non-multisampled formats
         void                (NRI_CALL *CmdUploadBufferToTexture)    (NriRef(CommandBuffer) commandBuffer, NriRef(Texture) dstTexture, const NriRef(TextureRegionDesc) dstRegion, const NriRef(Buffer) srcBuffer, const NriRef(TextureDataLayoutDesc) srcDataLayout);
         void                (NRI_CALL *CmdReadbackTextureToBuffer)  (NriRef(CommandBuffer) commandBuffer, NriRef(Buffer) dstBuffer, const NriRef(TextureDataLayoutDesc) dstDataLayout, const NriRef(Texture) srcTexture, const NriRef(TextureRegionDesc) srcRegion);
         void                (NRI_CALL *CmdZeroBuffer)               (NriRef(CommandBuffer) commandBuffer, NriRef(Buffer) buffer, uint64_t offset, uint64_t size);
 
-        // Resolve (outside of rendering)
+        // Resolve (outside of rendering). METAL: color only, use "RenderingDesc::depth.resolveDst" for depth
         void                (NRI_CALL *CmdResolveTexture)           (NriRef(CommandBuffer) commandBuffer, NriRef(Texture) dstTexture, NriOptional const NriPtr(TextureRegionDesc) dstRegion, const NriRef(Texture) srcTexture, NriOptional const NriPtr(TextureRegionDesc) srcRegion, Nri(ResolveOp) resolveOp); // "features.regionResolve" is needed for region specification
 
         // Clear (outside of rendering)

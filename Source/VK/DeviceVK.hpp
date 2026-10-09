@@ -971,6 +971,10 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, ZeroInitializeDeviceMemory, ZERO_INITIALIZE_DEVICE_MEMORY);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, MutableDescriptorType, MUTABLE_DESCRIPTOR_TYPE);
 
+#ifdef __APPLE__
+    PNEXTCHAIN_APPEND_FEATURES(true, KHR, PortabilitySubset, PORTABILITY_SUBSET);
+#endif
+
     VkPhysicalDeviceFaultFeaturesEXT DeviceFaultFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_EXT};
     if (desc.deviceLostInfoLevel != DeviceLostInfoLevel::NONE && IsExtensionSupported(VK_EXT_DEVICE_FAULT_EXTENSION_NAME, desiredDeviceExts))
         PNEXTCHAIN_APPEND_STRUCT(DeviceFaultFeatures);
@@ -1036,6 +1040,11 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     m_IsSupported.videoMaintenance2 = VideoMaintenance2Features.videoMaintenance2;
     m_IsSupported.videoEncodeAV1 = VideoEncodeAV1Features.videoEncodeAV1;
     m_IsSupported.descriptorHeap = DescriptorHeapFeatures.descriptorHeap && ShaderUntypedPointersFeatures.shaderUntypedPointers && features12.bufferDeviceAddress;
+#ifdef __APPLE__
+    m_IsSupported.imageView2DOn3D = !IsExtensionSupported(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME, desiredDeviceExts) || PortabilitySubsetFeatures.imageView2DOn3DImage;
+#else
+    m_IsSupported.imageView2DOn3D = true;
+#endif
 
     m_IsMemoryZeroInitializationEnabled = desc.enableMemoryZeroInitialization && ZeroInitializeDeviceMemoryFeatures.zeroInitializeDeviceMemory;
 
@@ -1083,6 +1092,32 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         Result res = ResolveDispatchTable(desiredDeviceExts);
         if (res != Result::SUCCESS)
             return res;
+    }
+
+    // Calibrated timestamps: a CPU time domain is selected from the supported ones
+    if (m_VK.GetPhysicalDeviceCalibrateableTimeDomainsEXT) {
+        uint32_t timeDomainNum = 0;
+        m_VK.GetPhysicalDeviceCalibrateableTimeDomainsEXT(m_PhysicalDevice, &timeDomainNum, nullptr);
+
+        Scratch<VkTimeDomainKHR> timeDomains = NRI_ALLOCATE_SCRATCH(*this, VkTimeDomainKHR, timeDomainNum);
+        m_VK.GetPhysicalDeviceCalibrateableTimeDomainsEXT(m_PhysicalDevice, &timeDomainNum, timeDomains);
+
+#if defined(_WIN32)
+        constexpr std::array<VkTimeDomainKHR, 1> preferredTimeDomainsCPU = {VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR}; // matches D3D12
+#else
+        constexpr std::array<VkTimeDomainKHR, 2> preferredTimeDomainsCPU = {VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR, VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_KHR};
+#endif
+
+        bool isDeviceTimeDomainSupported = false;
+        for (uint32_t i = 0; i < timeDomainNum; i++)
+            isDeviceTimeDomainSupported |= timeDomains[i] == VK_TIME_DOMAIN_DEVICE_KHR;
+
+        for (VkTimeDomainKHR preferredTimeDomainCPU : preferredTimeDomainsCPU) {
+            for (uint32_t i = 0; i < timeDomainNum && isDeviceTimeDomainSupported && m_CalibratedTimestampCPUTimeDomain == VK_TIME_DOMAIN_DEVICE_KHR; i++) {
+                if (timeDomains[i] == preferredTimeDomainCPU)
+                    m_CalibratedTimestampCPUTimeDomain = preferredTimeDomainCPU;
+            }
+        }
     }
 
     // Create queues
@@ -1537,13 +1572,47 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.occlusion = true;
         m_Desc.features.timestamp = isTimestampSupported[(size_t)QueueType::GRAPHICS] || isTimestampSupported[(size_t)QueueType::COMPUTE];
         m_Desc.features.timestampCopyQueue = isTimestampSupported[(size_t)QueueType::COPY];
-        m_Desc.features.calibratedTimestamps = IsExtensionSupported(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, desiredDeviceExts);
+        m_Desc.features.calibratedTimestamps = m_CalibratedTimestampCPUTimeDomain != VK_TIME_DOMAIN_DEVICE_KHR;
         m_Desc.features.additionalShadingRates = FragmentShadingRateProps.maxFragmentSize.height > 2 || FragmentShadingRateProps.maxFragmentSize.width > 2;
         m_Desc.features.sumShadingRateCombiner = m_Desc.tiers.shadingRate != 0;
         m_Desc.features.rectColorClears = true;
         m_Desc.features.rectDepthStencilClears = true;
         m_Desc.features.regionResolve = true;
-        m_Desc.features.resolveOpMinMax = m_IsSupported.maintenance10 && m_IsSupported.copyCommands2; // TODO: it's "all or nothing", without it "min/max" resolve is supported only in a render pass
+
+        { // Resolve: depth-stencil formats are resolvable only with "maintenance10" (see "GetFormatSupport"), color resolve modes are fixed
+            auto toResolveOpBits = [](VkResolveModeFlags modes) {
+                ResolveOpBits bits = ResolveOpBits::NONE;
+                if (modes & VK_RESOLVE_MODE_AVERAGE_BIT)
+                    bits |= ResolveOpBits::AVERAGE;
+                if (modes & VK_RESOLVE_MODE_MIN_BIT)
+                    bits |= ResolveOpBits::MIN;
+                if (modes & VK_RESOLVE_MODE_MAX_BIT)
+                    bits |= ResolveOpBits::MAX;
+                if (modes & VK_RESOLVE_MODE_SAMPLE_ZERO_BIT)
+                    bits |= ResolveOpBits::SAMPLE_ZERO;
+
+                return bits;
+            };
+
+            const ResolveOpBits depthOps = m_IsSupported.maintenance10 ? toResolveOpBits(props12.supportedDepthResolveModes) : ResolveOpBits::NONE;
+            const ResolveOpBits stencilOps = m_IsSupported.maintenance10 ? (ResolveOpBits)(toResolveOpBits(props12.supportedStencilResolveModes) & ~ResolveOpBits::AVERAGE) : ResolveOpBits::NONE;
+
+            // Attachments: integer color formats require "SAMPLE_ZERO", which legacy render passes can't express
+            m_Desc.resolve.attachment.color = ResolveOpBits::AVERAGE;
+            m_Desc.resolve.attachment.colorInteger = (m_IsSupported.maintenance10 && m_IsSupported.dynamicRendering) ? ResolveOpBits::SAMPLE_ZERO : ResolveOpBits::NONE;
+            m_Desc.resolve.attachment.depth = depthOps;
+            m_Desc.resolve.attachment.stencil = stencilOps;
+
+            // "CmdResolveTexture": resolve modes require "vkCmdResolveImage2" ("copyCommands2") and "maintenance10"
+            const bool isModeSupported = m_IsSupported.maintenance10 && m_IsSupported.copyCommands2;
+            m_Desc.resolve.command.color = ResolveOpBits::AVERAGE;
+            m_Desc.resolve.command.colorInteger = isModeSupported ? ResolveOpBits::SAMPLE_ZERO : ResolveOpBits::NONE;
+            m_Desc.resolve.command.depth = isModeSupported ? depthOps : ResolveOpBits::NONE;
+            m_Desc.resolve.command.stencil = isModeSupported ? stencilOps : ResolveOpBits::NONE;
+
+            m_Desc.resolve.independentDepthStencil = props12.independentResolve;
+            m_Desc.resolve.independentDepthStencilNone = props12.independentResolveNone;
+        }
         m_Desc.features.pipelineCache = true;
         m_Desc.features.pipelineCacheControl = features13.pipelineCreationCacheControl;
         m_Desc.features.getMemoryDesc2 = m_IsSupported.maintenance4;
@@ -1672,7 +1741,7 @@ void DeviceVK::FillCreateInfo(const TextureDesc& textureDesc, VkImageCreateInfo&
         flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
     if (textureDesc.layerNum >= 6 && textureDesc.width == textureDesc.height)
         flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
-    if (textureDesc.type == TextureType::TEXTURE_3D)
+    if (textureDesc.type == TextureType::TEXTURE_3D && m_IsSupported.imageView2DOn3D)
         flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT; // allow 3D demotion to a set of layers // TODO: hook up "VK_EXT_image_2d_view_of_3d"?
     if (m_Desc.tiers.sampleLocations && formatProps.isDepth)
         flags |= VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT;
@@ -2357,6 +2426,7 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
     }
 
     if (IsExtensionSupported(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, desiredDeviceExts)) {
+        GET_INSTANCE_FUNC(GetPhysicalDeviceCalibrateableTimeDomainsEXT);
         GET_DEVICE_FUNC(GetCalibratedTimestampsEXT);
     }
 
@@ -3574,7 +3644,10 @@ NRI_INLINE FormatSupportBits DeviceVK::GetFormatSupport(Format format) const {
     UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT, FormatSupportBits::VERTEX_BUFFER);
     UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT, FormatSupportBits::STORAGE_BUFFER_ATOMICS);
 
-    if (supportBits & FormatSupportBits::COLOR_ATTACHMENT)
+    // Integer color formats can be resolved only with "SAMPLE_ZERO", which "vkCmdResolveImage" guarantees only with "maintenance10" and
+    // legacy render passes can't express (no resolve modes for color)
+    const bool isSampleZeroColorResolveSupported = m_IsSupported.maintenance10 && m_IsSupported.dynamicRendering;
+    if ((supportBits & FormatSupportBits::COLOR_ATTACHMENT) && (!formatProps.isInteger || isSampleZeroColorResolveSupported))
         supportBits |= FormatSupportBits::MULTISAMPLE_RESOLVE;
     if ((supportBits & FormatSupportBits::DEPTH_STENCIL_ATTACHMENT) && m_IsSupported.maintenance10)
         supportBits |= FormatSupportBits::MULTISAMPLE_RESOLVE;

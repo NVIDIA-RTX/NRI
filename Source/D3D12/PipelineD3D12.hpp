@@ -1,6 +1,5 @@
 ﻿// © 2021 NVIDIA Corporation
 
-// Hash helpers
 // Per-field absorb - "T" must be a primitive/enum (no padding); structs are decomposed below.
 template <typename T>
 static inline uint64_t HashField(uint64_t h, const T& field) {

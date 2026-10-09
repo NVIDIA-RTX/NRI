@@ -1691,11 +1691,6 @@ NRI_INLINE void CommandBufferVK::BeginRendering(const RenderingDesc& renderingDe
                 SetRenderPassInputAttachmentIndex(renderPassDesc.inputAttachmentIndices, i);
 
             if (color.resolveDst) {
-                if (color.resolveOp != ResolveOp::AVERAGE) {
-                    m_Device.ReportMessage(Message::ERROR, Result::UNSUPPORTED, __FILE__, __LINE__, "CmdBeginRendering(): legacy render passes support only AVERAGE color resolve");
-                    return;
-                }
-
                 const DescriptorVK& resolveDst = *(DescriptorVK*)color.resolveDst;
                 renderPassDesc.colorResolves.push_back(GetRenderPassResolveAttachmentDesc(resolveDst));
                 colorResolves[i] = resolveDst.GetImageView();
@@ -2301,9 +2296,16 @@ NRI_INLINE void CommandBufferVK::ResolveTexture(Texture& dstTexture, const Textu
 
         VkResolveImageModeInfoKHR resolveModeInfo = {VK_STRUCTURE_TYPE_RESOLVE_IMAGE_MODE_INFO_KHR};
         if (m_Device.m_IsSupported.maintenance10) {
-            resolveModeInfo.resolveMode = GetResolveOp(resolveOp);
-            resolveModeInfo.stencilResolveMode = GetResolveOp(resolveOp);
-            // TODO: resolveModeInfo.flags?
+            const FormatProps& formatProps = GetFormatProps(srcDesc.format);
+            if (formatProps.isDepth || formatProps.isStencil) {
+                // Modes are set only for the aspects referenced by the regions
+                VkImageAspectFlags aspectFlags = regions[0].srcSubresource.aspectMask;
+                if (aspectFlags & VK_IMAGE_ASPECT_DEPTH_BIT)
+                    resolveModeInfo.resolveMode = GetResolveOp(resolveOp);
+                if (aspectFlags & VK_IMAGE_ASPECT_STENCIL_BIT)
+                    resolveModeInfo.stencilResolveMode = GetResolveOp(resolveOp);
+            } else
+                resolveModeInfo.resolveMode = GetResolveOp(resolveOp);
 
             info.pNext = &resolveModeInfo;
         }
@@ -2340,7 +2342,10 @@ NRI_INLINE void CommandBufferVK::UploadBufferToTexture(Texture& dstTexture, cons
             stride = (planes & PlaneBits::PLANE_1) ? 4 : 2;
             blockWidth = 1;
             blockHeight = 1;
-        }
+        } else if (planes == PlaneBits::STENCIL && GetFormatProps(format).isStencil)
+            stride = 1; // buffer texels of the stencil aspect are 8-bit
+        else if (planes == PlaneBits::DEPTH && GetFormatProps(format).isStencil)
+            stride = 4; // buffer texels of the depth aspect of a depth-stencil format don't include stencil
     };
     auto getPlaneDivisor = [](Format format, PlaneBits planes) {
         return ((planes & PlaneBits::PLANE_1) && (format == Format::NV12_UNORM || format == Format::P010_UNORM || format == Format::P016_UNORM)) ? 2u : 1u;
@@ -2421,7 +2426,10 @@ NRI_INLINE void CommandBufferVK::ReadbackTextureToBuffer(Buffer& dstBuffer, cons
             stride = (planes & PlaneBits::PLANE_1) ? 4 : 2;
             blockWidth = 1;
             blockHeight = 1;
-        }
+        } else if (planes == PlaneBits::STENCIL && GetFormatProps(format).isStencil)
+            stride = 1; // buffer texels of the stencil aspect are 8-bit
+        else if (planes == PlaneBits::DEPTH && GetFormatProps(format).isStencil)
+            stride = 4; // buffer texels of the depth aspect of a depth-stencil format don't include stencil
     };
     auto getPlaneDivisor = [](Format format, PlaneBits planes) {
         return ((planes & PlaneBits::PLANE_1) && (format == Format::NV12_UNORM || format == Format::P010_UNORM || format == Format::P016_UNORM)) ? 2u : 1u;

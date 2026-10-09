@@ -85,7 +85,7 @@ NriStruct(DeviceCreationDesc) {
 
     // Switches (disabled by default)
     bool enableNRIValidation;                   // embedded validation layer, checks for NRI specifics
-    bool enableGraphicsAPIValidation;           // GAPI-provided validation layer (D3D12: process-global)
+    bool enableGraphicsAPIValidation;           // GAPI-provided validation layer (D3D12: process-global; METAL: ignored, set "MTL_DEBUG_LAYER=1" instead)
     bool enableD3D11CommandBufferEmulation;     // enable? but why? (auto-enabled if deferred contexts are not supported)
     bool enableD3D12RayTracingValidation;       // slow but useful, can only be enabled if envvar "NV_ALLOW_RAYTRACING_VALIDATION" is set to "1"
     bool enableMemoryZeroInitialization;        // page-clears are fast, but memory is not cleared by default in VK
