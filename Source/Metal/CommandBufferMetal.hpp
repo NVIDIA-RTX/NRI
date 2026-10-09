@@ -624,7 +624,7 @@ void CommandBufferMetal::CmdBeginRendering(const RenderingDesc& desc) {
         n->setClearDepth(a.clearValue.depthStencil.depth);
 
         // Metal depth resolve filters are "sample 0", "min" and "max" ("AVERAGE" is rejected by validation)
-        if (a.resolveDst && a.resolveOp != ResolveOp::AVERAGE) {
+        if (a.resolveDst) {
             SetAttachmentResolveMetal(n, a);
             n->setDepthResolveFilter(a.resolveOp == ResolveOp::MIN ? MTL::MultisampleDepthResolveFilterMin : MTL::MultisampleDepthResolveFilterMax);
         }

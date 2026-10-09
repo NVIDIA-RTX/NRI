@@ -107,10 +107,11 @@ static inline bool IsDrawParametersEmulationEnabled(const PipelineLayoutDesc& pi
 }
 
 // Integer and stencil samples can't be averaged in any API
-static inline bool IsAverageResolvable(Format format) {
+static inline bool IsAverageResolvable(Format format, PlaneBits planes = PlaneBits::ALL) {
     const FormatProps& formatProps = GetFormatProps(format);
+    const bool isIntegerColor = formatProps.isInteger && !formatProps.isDepth && !formatProps.isStencil;
 
-    return !formatProps.isInteger && !formatProps.isStencil;
+    return !isIntegerColor && (!formatProps.isStencil || (planes != PlaneBits::ALL && !(planes & PlaneBits::STENCIL)));
 }
 
 static bool ValidateBufferBarrierDesc(const DeviceVal& device, uint32_t i, const BufferBarrierDesc& bufferBarrier) {
@@ -943,7 +944,7 @@ NRI_INLINE void CommandBufferVal::ResolveTexture(Texture& dstTexture, const Text
         NRI_RETURN_ON_FAILURE(&m_Device, resolveOp == ResolveOp::AVERAGE, ReturnVoid(), "'features.resolveOpMinMax' is false");
 
     if (resolveOp == ResolveOp::AVERAGE)
-        NRI_RETURN_ON_FAILURE(&m_Device, IsAverageResolvable(srcDesc.format), ReturnVoid(), "'ResolveOp::AVERAGE' can't be used with integer or stencil formats");
+        NRI_RETURN_ON_FAILURE(&m_Device, IsAverageResolvable(srcDesc.format, srcRegion ? srcRegion->planes : PlaneBits::ALL), ReturnVoid(), "'ResolveOp::AVERAGE' can't be used with integer or stencil formats");
 
     const FormatProps& formatProps = GetFormatProps(srcDesc.format);
     const bool isDepthStencil = formatProps.isDepth || formatProps.isStencil;

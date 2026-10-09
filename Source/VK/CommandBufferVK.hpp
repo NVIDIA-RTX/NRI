@@ -1691,11 +1691,6 @@ NRI_INLINE void CommandBufferVK::BeginRendering(const RenderingDesc& renderingDe
                 SetRenderPassInputAttachmentIndex(renderPassDesc.inputAttachmentIndices, i);
 
             if (color.resolveDst) {
-                if (color.resolveOp != ResolveOp::AVERAGE) {
-                    m_Device.ReportMessage(Message::ERROR, Result::UNSUPPORTED, __FILE__, __LINE__, "CmdBeginRendering(): legacy render passes support only AVERAGE color resolve");
-                    return;
-                }
-
                 const DescriptorVK& resolveDst = *(DescriptorVK*)color.resolveDst;
                 renderPassDesc.colorResolves.push_back(GetRenderPassResolveAttachmentDesc(resolveDst));
                 colorResolves[i] = resolveDst.GetImageView();
