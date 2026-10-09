@@ -301,7 +301,8 @@ Result PipelineLayoutD3D12::Create(const PipelineLayoutDesc& pipelineLayoutDesc)
     hr = m_Device->CreateRootSignature(NODE_MASK, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&m_RootSignature));
     NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12Device::CreateRootSignature");
 
-    m_RootSignatureHash = Fnv1a64(FNV_INIT, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize());
+    if (m_Device.GetDesc().features.pipelineCache)
+        m_RootSignatureHash = Fnv1a64(FNV_INIT, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize());
 
     // Draw signature (uses emulation state)
     if (pipelineLayoutDesc.shaderStages & StageBits::VERTEX_SHADER) {
