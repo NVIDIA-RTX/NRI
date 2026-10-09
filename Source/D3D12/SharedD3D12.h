@@ -109,6 +109,9 @@ struct DescriptorHandle {
     }
 };
 
+constexpr uint64_t FNV_INIT = 0xCBF29CE484222325ULL;
+constexpr uint64_t FNV_PRIME = 0x100000001B3ULL;
+
 constexpr uint32_t DESCRIPTORS_BATCH_SIZE = 1024;
 constexpr uint32_t ROOT_CONSTANT_UNUSED = uint32_t(-1);
 constexpr uint32_t DRED_BREADCRUMB_HISTORY_MAX_NUM = 64 * 1024;
@@ -124,6 +127,17 @@ struct DescriptorHeapDescD3D12 {
     uint32_t descriptorSize = 0;
     uint32_t num = 0;
 };
+
+static inline uint64_t Fnv1a64(uint64_t hash, const void* data, size_t size) {
+    const uint8_t* bytes = (const uint8_t*)data;
+
+    for (size_t i = 0; i < size; i++) {
+        hash ^= bytes[i];
+        hash *= FNV_PRIME;
+    }
+
+    return hash;
+}
 
 inline uint32_t GetSubresourceIndex(uint32_t layerOffset, uint32_t resourceLayerNum, uint32_t mipOffset, uint32_t resourceMipNum, PlaneBits planes) {
     // https://learn.microsoft.com/en-us/windows/win32/direct3d12/subresources#plane-slice
