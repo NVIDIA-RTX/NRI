@@ -127,7 +127,7 @@ cmake_dependent_option(NRI_ENABLE_NIS_SDK "Enable NVIDIA Image Sharpening SDK" O
 cmake_dependent_option(NRI_ENABLE_WGPU_SUPPORT "Enable WebGPU backend" ${GITHUB_CI} "WGPU_BIN_ARCHITECTURE; NOT ANDROID; NOT IOS" OFF)
 cmake_dependent_option(NRI_ENABLE_METAL_SUPPORT "Enable Metal 4 backend" ${NRI_METAL_SUPPORT_DEFAULT} "APPLE" OFF)
 cmake_dependent_option(NRI_ENABLE_METAL_SHADER_CONVERTER "Enable DXIL conversion in the Metal backend" ${NRI_METAL_SHADER_CONVERTER_DEFAULT} "NRI_ENABLE_METAL_SUPPORT; NRI_METAL_SHADER_CONVERTER_SUPPORTED" OFF)
-cmake_dependent_option(NRI_METAL_CPP_PRIVATE_IMPLEMENTATION "Compile metal-cpp implementation into NRI (static NRI: turn OFF if the app provides it)" ON "NRI_ENABLE_METAL_SUPPORT; NRI_STATIC_LIBRARY" ON)
+cmake_dependent_option(NRI_METAL_CPP_PRIVATE_IMPLEMENTATION "Compile metal-cpp implementation into NRI (static NRI: turn OFF if the app provides it)" ON "NRI_ENABLE_METAL_SUPPORT; NRI_STATIC_LIBRARY" ${NRI_ENABLE_METAL_SUPPORT})
 cmake_dependent_option(NRI_ENABLE_AMDAGS "Enable AMD AGS library for D3D" ON "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT); NOT IS_ARM64" OFF)
 cmake_dependent_option(NRI_ENABLE_NVAPI "Enable NVAPI library for D3D" ON "(NRI_ENABLE_D3D11_SUPPORT OR NRI_ENABLE_D3D12_SUPPORT)" OFF)
 cmake_dependent_option(NRI_ENABLE_AGILITY_SDK_SUPPORT "Enable Agility SDK support to unlock access to latest D3D12 features" ON "NRI_ENABLE_D3D12_SUPPORT" OFF)
