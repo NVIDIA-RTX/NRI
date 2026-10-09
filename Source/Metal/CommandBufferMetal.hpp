@@ -610,8 +610,6 @@ void CommandBufferMetal::CmdBeginRendering(const RenderingDesc& desc) {
     if (!stencilAttachmentDesc && depthAttachmentDesc && GetFormatProps(((DescriptorMetal*)depthAttachmentDesc->descriptor)->GetTextureViewDesc().format).isStencil)
         stencilAttachmentDesc = depthAttachmentDesc;
 
-    const bool isDepthResolved = depthAttachmentDesc && depthAttachmentDesc->resolveDst && depthAttachmentDesc->resolveOp != ResolveOp::AVERAGE;
-
     if (depthAttachmentDesc) {
         const AttachmentDesc& a = *depthAttachmentDesc;
         const DescriptorMetal& d = *(DescriptorMetal*)a.descriptor;
@@ -625,13 +623,10 @@ void CommandBufferMetal::CmdBeginRendering(const RenderingDesc& desc) {
         n->setStoreAction(a.storeOp == StoreOp::STORE ? MTL::StoreActionStore : MTL::StoreActionDontCare);
         n->setClearDepth(a.clearValue.depthStencil.depth);
 
-        // Metal depth resolve filters are "sample 0", "min" and "max"
-        if (isDepthResolved) {
+        // Metal depth resolve filters are "sample 0", "min" and "max" ("AVERAGE" is rejected by validation)
+        if (a.resolveDst && a.resolveOp != ResolveOp::AVERAGE) {
             SetAttachmentResolveMetal(n, a);
             n->setDepthResolveFilter(a.resolveOp == ResolveOp::MIN ? MTL::MultisampleDepthResolveFilterMin : MTL::MultisampleDepthResolveFilterMax);
-        } else if (a.resolveDst) {
-            NRI_REPORT_ERROR(&m_Device, "'depth.resolveOp': 'ResolveOp::AVERAGE' is not supported by Metal");
-            RecordFailure(Result::UNSUPPORTED);
         }
 
         m_RenderDepth = d.GetTexture()->pixelFormat();
@@ -651,15 +646,8 @@ void CommandBufferMetal::CmdBeginRendering(const RenderingDesc& desc) {
         n->setStoreAction(a.storeOp == StoreOp::STORE ? MTL::StoreActionStore : MTL::StoreActionDontCare);
         n->setClearStencil(a.clearValue.depthStencil.stencil);
 
-        // Metal stencil resolve filters are "sample 0" and "the sample selected by the depth filter", none of them matches an NRI
-        // resolve op. The stencil plane of a combined depth attachment follows the samples selected by the depth MIN/MAX filter
-        if (a.resolveDst && stencilAttachmentDesc == depthAttachmentDesc && isDepthResolved) {
-            SetAttachmentResolveMetal(n, a);
-            n->setStencilResolveFilter(MTL::MultisampleStencilResolveFilterDepthResolvedSample);
-        } else if (a.resolveDst) {
-            NRI_REPORT_ERROR(&m_Device, "Metal resolves stencil only as a part of a combined depth-stencil 'depth' attachment resolved with 'ResolveOp::MIN/MAX'");
-            RecordFailure(Result::UNSUPPORTED);
-        }
+        // Stencil is not resolved: Metal stencil resolve filters are "sample 0" and "the sample selected by the depth filter",
+        // none of them matches an NRI resolve op (rejected by validation)
 
         m_RenderStencil = d.GetTexture()->pixelFormat();
         updateExtent(d);
@@ -1534,15 +1522,9 @@ void CommandBufferMetal::ResolveColor(MTL::Texture* dst, const TextureRegionDesc
 void CommandBufferMetal::CmdResolveTexture(Texture& dst, const TextureRegionDesc* dstRegion, const Texture& src, const TextureRegionDesc* srcRegion, ResolveOp op) {
     const TextureMetal& source = (const TextureMetal&)src;
     const TextureMetal& destination = (const TextureMetal&)dst;
-    const FormatProps& props = GetFormatProps(source.GetDesc().format);
 
-    // Depth-stencil resolves are only supported for attachments
-    if (props.isDepth || props.isStencil) {
-        NRI_REPORT_ERROR(&m_Device, "Depth-stencil textures can't be resolved by 'CmdResolveTexture' in Metal (use 'depth/stencil.resolveDst' in 'CmdBeginRendering')");
-        RecordFailure(Result::UNSUPPORTED);
-
-        return;
-    }
+    // Depth-stencil resolves are only supported for attachments (rejected by validation)
+    NRI_CHECK(!GetFormatProps(source.GetDesc().format).isDepth && !GetFormatProps(source.GetDesc().format).isStencil, "Depth-stencil textures can't be resolved by 'CmdResolveTexture'");
 
     if (!dstRegion && !srcRegion && op == ResolveOp::AVERAGE && (destination.GetNativeObject()->usage() & MTL::TextureUsageRenderTarget)) {
         MTL4::RenderPassDescriptor* pass = MTL4::RenderPassDescriptor::alloc()->init();

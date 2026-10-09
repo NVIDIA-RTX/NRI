@@ -1650,8 +1650,8 @@ NriEnum(StoreOp, uint8_t,
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkResolveModeFlagBits.html
 NriEnum(ResolveOp, uint8_t,
     AVERAGE,    // resolves the source samples to their average value, can't be used with integer and stencil formats. Depth: optional in VK ("supportedDepthResolveModes"), unsupported in Metal
-    MIN,        // resolves the source samples to their minimum value, requires "features.resolveOpMinMax"
-    MAX         // resolves the source samples to their maximum value, requires "features.resolveOpMinMax"
+    MIN,        // resolves the source samples to their minimum value, requires "features.resolveOpMinMax". Color: unsupported in VK. Stencil: unsupported in Metal
+    MAX         // resolves the source samples to their maximum value, requires "features.resolveOpMinMax". Color: unsupported in VK. Stencil: unsupported in Metal
 );
 
 NriStruct(AttachmentDesc) {

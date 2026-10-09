@@ -3610,7 +3610,8 @@ NRI_INLINE FormatSupportBits DeviceVK::GetFormatSupport(Format format) const {
     UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT, FormatSupportBits::VERTEX_BUFFER);
     UPDATE_BUFFER_SUPPORT_BITS(VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT, FormatSupportBits::STORAGE_BUFFER_ATOMICS);
 
-    if (supportBits & FormatSupportBits::COLOR_ATTACHMENT)
+    // Integer color formats can be resolved only with "SAMPLE_ZERO", which is not exposed
+    if ((supportBits & FormatSupportBits::COLOR_ATTACHMENT) && !formatProps.isInteger)
         supportBits |= FormatSupportBits::MULTISAMPLE_RESOLVE;
     if ((supportBits & FormatSupportBits::DEPTH_STENCIL_ATTACHMENT) && m_IsSupported.maintenance10)
         supportBits |= FormatSupportBits::MULTISAMPLE_RESOLVE;
