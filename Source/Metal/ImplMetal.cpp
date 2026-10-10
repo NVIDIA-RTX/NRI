@@ -352,6 +352,13 @@ static void NRI_CALL CmdSetDepthBounds(CommandBuffer& commandBuffer, float bound
     ((CommandBufferMetal&)commandBuffer).CmdSetDepthBounds(boundsMin, boundsMax);
 }
 
+static void NRI_CALL CmdBeginConditionalRendering(CommandBuffer&, const Buffer&, uint64_t, bool) {
+    // Metal has no buffer predication. Keep "features.conditionalRendering = false"
+}
+
+static void NRI_CALL CmdEndConditionalRendering(CommandBuffer&) {
+}
+
 static void NRI_CALL CmdSetBlendConstants(CommandBuffer& commandBuffer, const Color32f& color) {
     ((CommandBufferMetal&)commandBuffer).CmdSetBlendConstants(color);
 }
@@ -663,6 +670,8 @@ Result DeviceMetal::FillFunctionTable(CoreInterface& table) const {
     table.CmdSetScissors = ::CmdSetScissors;
     table.CmdSetStencilReference = ::CmdSetStencilReference;
     table.CmdSetDepthBounds = ::CmdSetDepthBounds;
+    table.CmdBeginConditionalRendering = ::CmdBeginConditionalRendering;
+    table.CmdEndConditionalRendering = ::CmdEndConditionalRendering;
     table.CmdSetBlendConstants = ::CmdSetBlendConstants;
     table.CmdSetSampleLocations = ::CmdSetSampleLocations;
     table.CmdSetShadingRate = ::CmdSetShadingRate;

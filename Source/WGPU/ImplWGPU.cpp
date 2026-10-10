@@ -386,6 +386,13 @@ static void NRI_CALL CmdSetDepthBounds(CommandBuffer&, float, float) {
     // TODO: WebGPU does not support dynamic depth bounds. Keep "features.depthBoundsTest = false".
 }
 
+static void NRI_CALL CmdBeginConditionalRendering(CommandBuffer&, const Buffer&, uint64_t, bool) {
+    // TODO: WebGPU does not support conditional rendering. Keep "features.conditionalRendering = false"
+}
+
+static void NRI_CALL CmdEndConditionalRendering(CommandBuffer&) {
+}
+
 static void NRI_CALL CmdSetBlendConstants(CommandBuffer& commandBuffer, const Color32f& color) {
     ((CommandBufferWGPU&)commandBuffer).SetBlendConstants(color);
 }
@@ -693,6 +700,8 @@ Result DeviceWGPU::FillFunctionTable(CoreInterface& table) const {
     table.CmdSetScissors = ::CmdSetScissors;
     table.CmdSetStencilReference = ::CmdSetStencilReference;
     table.CmdSetDepthBounds = ::CmdSetDepthBounds;
+    table.CmdBeginConditionalRendering = ::CmdBeginConditionalRendering;
+    table.CmdEndConditionalRendering = ::CmdEndConditionalRendering;
     table.CmdSetBlendConstants = ::CmdSetBlendConstants;
     table.CmdSetSampleLocations = ::CmdSetSampleLocations;
     table.CmdSetShadingRate = ::CmdSetShadingRate;

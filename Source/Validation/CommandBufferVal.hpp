@@ -35,6 +35,9 @@ static inline bool IsAccessMaskSupported(const BufferDesc& bufferDesc, AccessBit
     if (accessMask & AccessBits::VIDEO_ENCODE)
         isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::VIDEO_ENCODE) != 0;
 
+    if (accessMask & AccessBits::CONDITIONAL_RENDERING)
+        isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::CONDITIONAL_RENDERING) != 0;
+
     return isSupported;
 }
 
@@ -68,6 +71,9 @@ static inline bool IsAccessMaskSupported(const TextureDesc& textureDesc, AccessB
 
     if (accessMask & AccessBits::VIDEO_ENCODE)
         isSupported = isSupported && (textureDesc.usage & TextureUsageBits::VIDEO_ENCODE) != 0;
+
+    if (accessMask & AccessBits::CONDITIONAL_RENDERING)
+        isSupported = false;
 
     return isSupported;
 }
@@ -485,6 +491,7 @@ NRI_INLINE Result CommandBufferVal::Begin(const DescriptorPool* descriptorPool) 
     if (result == Result::SUCCESS)
         m_IsRecordingStarted = true;
 
+    m_IsConditionalRendering = false;
     m_PipelineLayout = nullptr;
 
     ResetDescriptorSets();
@@ -501,9 +508,14 @@ NRI_INLINE Result CommandBufferVal::End() {
     else if (m_AnnotationStack < 0)
         NRI_REPORT_ERROR(&m_Device, "'CmdEndAnnotation' is called more times than 'CmdBeginAnnotation'");
 
+    if (m_IsConditionalRendering)
+        NRI_REPORT_ERROR(&m_Device, "'CmdBeginConditionalRendering' is not closed by 'CmdEndConditionalRendering'");
+
     Result result = GetCoreInterfaceImpl().EndCommandBuffer(*GetImpl());
-    if (result == Result::SUCCESS)
+    if (result == Result::SUCCESS) {
         m_IsRecordingStarted = m_IsWrapped;
+        m_IsConditionalRendering = false;
+    }
 
     return result;
 }
@@ -539,6 +551,33 @@ NRI_INLINE void CommandBufferVal::SetDepthBounds(float boundsMin, float boundsMa
     NRI_RETURN_ON_FAILURE(&m_Device, deviceDesc.features.depthBoundsTest, ReturnVoid(), "'features.depthBoundsTest' is false");
 
     GetCoreInterfaceImpl().CmdSetDepthBounds(*GetImpl(), boundsMin, boundsMax);
+}
+
+NRI_INLINE void CommandBufferVal::BeginConditionalRendering(const Buffer& buffer, uint64_t offset, bool inverted) {
+    NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
+    NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetDesc().features.conditionalRendering, ReturnVoid(), "'features.conditionalRendering' is false");
+    NRI_RETURN_ON_FAILURE(&m_Device, m_QueueType == QueueType::GRAPHICS || m_QueueType == QueueType::COMPUTE, ReturnVoid(), "the command buffer must belong to a 'GRAPHICS' or 'COMPUTE' queue");
+    NRI_RETURN_ON_FAILURE(&m_Device, !m_IsConditionalRendering, ReturnVoid(), "'CmdBeginConditionalRendering' is already active");
+
+    const BufferDesc& bufferDesc = ((BufferVal&)buffer).GetDesc();
+    NRI_RETURN_ON_FAILURE(&m_Device, (bufferDesc.usage & BufferUsageBits::CONDITIONAL_RENDERING) != 0, ReturnVoid(), "'buffer' must have 'BufferUsageBits::CONDITIONAL_RENDERING' usage");
+    NRI_RETURN_ON_FAILURE(&m_Device, bufferDesc.size >= 8 && IsAligned(offset, 8) && offset <= (bufferDesc.size - 8), ReturnVoid(), "'offset' must be 8-byte aligned and 'offset + 8' must be within 'buffer'");
+
+    Buffer* bufferImpl = NRI_GET_IMPL(Buffer, &buffer);
+    GetCoreInterfaceImpl().CmdBeginConditionalRendering(*GetImpl(), *bufferImpl, offset, inverted);
+
+    m_IsConditionalRendering = true;
+    m_ConditionalRenderingInsideRendering = m_IsRenderPass;
+}
+
+NRI_INLINE void CommandBufferVal::EndConditionalRendering() {
+    NRI_RETURN_ON_FAILURE(&m_Device, m_IsRecordingStarted, ReturnVoid(), "the command buffer must be in the recording state");
+    NRI_RETURN_ON_FAILURE(&m_Device, m_IsConditionalRendering, ReturnVoid(), "'CmdEndConditionalRendering' is called without 'CmdBeginConditionalRendering'");
+    NRI_RETURN_ON_FAILURE(&m_Device, m_IsRenderPass == m_ConditionalRenderingInsideRendering, ReturnVoid(), "'CmdBeginConditionalRendering' and 'CmdEndConditionalRendering' must both be inside or both outside rendering");
+
+    GetCoreInterfaceImpl().CmdEndConditionalRendering(*GetImpl());
+
+    m_IsConditionalRendering = false;
 }
 
 NRI_INLINE void CommandBufferVal::SetStencilReference(uint8_t frontRef, uint8_t backRef) {

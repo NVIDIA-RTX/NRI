@@ -377,6 +377,14 @@ static void NRI_CALL CmdSetDepthBounds(CommandBuffer& commandBuffer, float bound
     ((CommandBufferVK&)commandBuffer).SetDepthBounds(boundsMin, boundsMax);
 }
 
+static void NRI_CALL CmdBeginConditionalRendering(CommandBuffer& commandBuffer, const Buffer& buffer, uint64_t offset, bool inverted) {
+    ((CommandBufferVK&)commandBuffer).BeginConditionalRendering(buffer, offset, inverted);
+}
+
+static void NRI_CALL CmdEndConditionalRendering(CommandBuffer& commandBuffer) {
+    ((CommandBufferVK&)commandBuffer).EndConditionalRendering();
+}
+
 static void NRI_CALL CmdSetBlendConstants(CommandBuffer& commandBuffer, const Color32f& color) {
     ((CommandBufferVK&)commandBuffer).SetBlendConstants(color);
 }
@@ -720,6 +728,8 @@ Result DeviceVK::FillFunctionTable(CoreInterface& table) const {
     table.CmdSetScissors = ::CmdSetScissors;
     table.CmdSetStencilReference = ::CmdSetStencilReference;
     table.CmdSetDepthBounds = ::CmdSetDepthBounds;
+    table.CmdBeginConditionalRendering = ::CmdBeginConditionalRendering;
+    table.CmdEndConditionalRendering = ::CmdEndConditionalRendering;
     table.CmdSetBlendConstants = ::CmdSetBlendConstants;
     table.CmdSetSampleLocations = ::CmdSetSampleLocations;
     table.CmdSetShadingRate = ::CmdSetShadingRate;

@@ -113,6 +113,8 @@ struct DispatchTable {
     VK_FUNC(GetQueryPoolResults);                         // + | +
     VK_FUNC(BeginCommandBuffer);                          // - | +
     VK_FUNC(CmdSetDepthBounds);                           // - | +
+    VK_FUNC(CmdBeginConditionalRenderingEXT);             // - | +
+    VK_FUNC(CmdEndConditionalRenderingEXT);               // - | +
     VK_FUNC(CmdSetStencilReference);                      // - | +
     VK_FUNC(CmdSetBlendConstants);                        // - | +
     VK_FUNC(CmdSetDepthBias);                             // - | + TODO: "VK_EXT_depth_bias_control" offers "2" but MoltenVK doesn't support it yet

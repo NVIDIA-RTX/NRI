@@ -176,6 +176,9 @@ NriStruct(CoreInterface) {
         // Initial state (if enabled)
         void                (NRI_CALL *CmdSetStencilReference)      (NriRef(CommandBuffer) commandBuffer, uint8_t frontRef, uint8_t backRef); // "backRef" requires "features.independentFrontAndBackStencilReferenceAndMasks"
         void                (NRI_CALL *CmdSetDepthBounds)           (NriRef(CommandBuffer) commandBuffer, float boundsMin, float boundsMax); // requires "features.depthBoundsTest"
+        // "offset" is 8-byte aligned. The predicate is a 64-bit value: 0 skips, any other value runs the commands ("inverted" flips this). VK reads the low 32 bits, so keep the high 32 bits 0. Affects draws, dispatches and "CmdClearAttachments". Begin and end in one command buffer, both inside or both outside rendering. Nesting is not allowed
+        void                (NRI_CALL *CmdBeginConditionalRendering)(NriRef(CommandBuffer) commandBuffer, const NriRef(Buffer) buffer, uint64_t offset, bool inverted); // requires "features.conditionalRendering" and "BufferUsageBits::CONDITIONAL_RENDERING"
+        void                (NRI_CALL *CmdEndConditionalRendering)  (NriRef(CommandBuffer) commandBuffer);
         void                (NRI_CALL *CmdSetBlendConstants)        (NriRef(CommandBuffer) commandBuffer, const NriRef(Color32f) color);
         void                (NRI_CALL *CmdSetSampleLocations)       (NriRef(CommandBuffer) commandBuffer, const NriPtr(SampleLocation) locations, Nri(Sample_t) locationNum, Nri(Sample_t) sampleNum); // requires "tiers.sampleLocations != 0"
         void                (NRI_CALL *CmdSetShadingRate)           (NriRef(CommandBuffer) commandBuffer, const NriRef(ShadingRateDesc) shadingRateDesc); // requires "tiers.shadingRate != 0"

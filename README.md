@@ -203,6 +203,7 @@ Supported:
  - _VK_EXT_opacity_micromap_
  - _VK_EXT_sample_locations_
  - _VK_EXT_conservative_rasterization_
+ - _VK_EXT_conditional_rendering_
  - _VK_EXT_mesh_shader_
  - _VK_EXT_shader_atomic_float_
  - _VK_EXT_shader_atomic_float2_
