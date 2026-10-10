@@ -483,6 +483,7 @@ NriBits(StageBits, uint32_t,
     // Video
     VIDEO_DECODE                    = NriBit(25),   // Invoked by "CmdDecodeVideo"
     VIDEO_ENCODE                    = NriBit(26),   // Invoked by "CmdEncodeVideo"
+    CONDITIONAL_RENDERING           = NriBit(27),   // Invoked by conditional "CmdDraw*", "CmdDispatch*" and "CmdClearAttachments"
 
     // Umbrella stages
     TESSELLATION_SHADERS            = NriMember(StageBits, TESS_CONTROL_SHADER)
@@ -568,6 +569,7 @@ NriBits(AccessBits, uint32_t,
     VIDEO_DECODE_WRITE              = NriBit(26),   //  W       VIDEO_DECODE
     VIDEO_ENCODE_READ               = NriBit(27),   // R        VIDEO_ENCODE
     VIDEO_ENCODE_WRITE              = NriBit(28),   //  W       VIDEO_ENCODE
+    CONDITIONAL_RENDERING           = NriBit(29),   // R        CONDITIONAL_RENDERING
 
     // Umbrella access
     COLOR_ATTACHMENT                = NriMember(AccessBits, COLOR_ATTACHMENT_READ)
@@ -735,7 +737,8 @@ NriBits(BufferUsageBits, uint16_t,                  // Min compatible access:   
     MICROMAP_BUILD_INPUT                = NriBit(10),   // SHADER_RESOURCE                          Read-only input in "CmdBuildMicromaps" command
     MICROMAP_STORAGE                    = NriBit(11),   // MICROMAP_READ/WRITE                      (INTERNAL) micromap storage
     VIDEO_DECODE                        = NriBit(12),   // VIDEO_DECODE                             Video decode bitstream input
-    VIDEO_ENCODE                        = NriBit(13)    // VIDEO_ENCODE                             Video encode bitstream output
+    VIDEO_ENCODE                        = NriBit(13),   // VIDEO_ENCODE                             Video encode bitstream output
+    CONDITIONAL_RENDERING               = NriBit(14)    // CONDITIONAL_RENDERING                    Predicate for "CmdBeginConditionalRendering"
 );
 
 NriEnum(VideoCodec, uint8_t,
@@ -2283,6 +2286,7 @@ NriStruct(DeviceDesc) {
         bool constantAlphaBlendFactors;                           // see "BlendFactor::CONSTANT_ALPHA" and "BlendFactor::ONE_MINUS_CONSTANT_ALPHA"
         bool logicOp;                                             // see "LogicOp"
         bool depthBoundsTest;                                     // see "DepthAttachmentDesc::boundsTest"
+        bool conditionalRendering;                                // see "CmdBeginConditionalRendering"
         bool drawIndirectCount;                                   // see "countBuffer" and "countBufferOffset"
         bool lineSmoothing;                                       // see "RasterizationDesc::lineSmoothing"
         bool meshShaderPipelineStats;                             // see "PipelineStatisticsDesc"

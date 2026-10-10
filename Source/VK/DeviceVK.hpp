@@ -141,6 +141,9 @@ static constexpr VkBufferUsageFlags GetBufferUsageFlags(const BufferDesc& buffer
     if (bufferDesc.usage & BufferUsageBits::VIDEO_ENCODE)
         flags |= VK_BUFFER_USAGE_VIDEO_ENCODE_DST_BIT_KHR;
 
+    if (bufferDesc.usage & BufferUsageBits::CONDITIONAL_RENDERING)
+        flags |= VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT;
+
     return flags;
 }
 
@@ -620,6 +623,7 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(true, VK_KHR_VIDEO_MAINTENANCE_2_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME); // TODO: use KHR (currently coverage is lower)
     APPEND_EXT(true, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
+    APPEND_EXT(true, VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME);
     APPEND_EXT(true, VK_EXT_IMAGE_SLICED_VIEW_OF_3D_EXTENSION_NAME);
@@ -956,6 +960,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, VideoEncodeAV1, VIDEO_ENCODE_AV1);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, VideoMaintenance1, VIDEO_MAINTENANCE_1);
     PNEXTCHAIN_APPEND_FEATURES(true, KHR, VideoMaintenance2, VIDEO_MAINTENANCE_2);
+    PNEXTCHAIN_APPEND_FEATURES(true, EXT, ConditionalRendering, CONDITIONAL_RENDERING);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, CustomBorderColor, CUSTOM_BORDER_COLOR);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, DescriptorHeap, DESCRIPTOR_HEAP);
     PNEXTCHAIN_APPEND_FEATURES(true, EXT, FragmentShaderInterlock, FRAGMENT_SHADER_INTERLOCK);
@@ -1627,6 +1632,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
         m_Desc.features.constantAlphaBlendFactors = true;
         m_Desc.features.logicOp = features.features.logicOp;
         m_Desc.features.depthBoundsTest = features.features.depthBounds;
+        m_Desc.features.conditionalRendering = ConditionalRenderingFeatures.conditionalRendering != 0;
         m_Desc.features.drawIndirectCount = features12.drawIndirectCount;
         m_Desc.features.lineSmoothing = features14.smoothLines;
         m_Desc.features.meshShaderPipelineStats = MeshShaderFeatures.meshShaderQueries == VK_TRUE;
@@ -2440,6 +2446,11 @@ Result DeviceVK::ResolveDispatchTable(const Vector<const char*>& desiredDeviceEx
         GET_DEVICE_FUNC(CmdBuildMicromapsEXT);
         GET_DEVICE_FUNC(CmdCopyMicromapEXT);
         GET_DEVICE_FUNC(CmdWriteMicromapsPropertiesEXT);
+    }
+
+    if (IsExtensionSupported(VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME, desiredDeviceExts)) {
+        GET_DEVICE_FUNC(CmdBeginConditionalRenderingEXT);
+        GET_DEVICE_FUNC(CmdEndConditionalRenderingEXT);
     }
 
     if (IsExtensionSupported(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME, desiredDeviceExts)) {

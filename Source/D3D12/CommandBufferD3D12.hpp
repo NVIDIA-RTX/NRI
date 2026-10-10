@@ -134,6 +134,9 @@ static inline D3D12_BARRIER_SYNC GetBarrierSyncFlags(StageBits stageBits, Access
     if (stageBits & StageBits::VIDEO_ENCODE)
         flags |= D3D12_BARRIER_SYNC_VIDEO_ENCODE;
 
+    if (stageBits & StageBits::CONDITIONAL_RENDERING)
+        flags |= D3D12_BARRIER_SYNC_PREDICATION;
+
     if (stageBits & (StageBits::ACCELERATION_STRUCTURE | StageBits::MICROMAP)) {
         flags |= D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE | D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE;
 
@@ -213,6 +216,9 @@ static inline D3D12_BARRIER_ACCESS GetBarrierAccessFlags(AccessBits accessBits) 
 
     if (accessBits & AccessBits::VIDEO_ENCODE_WRITE)
         flags |= D3D12_BARRIER_ACCESS_VIDEO_ENCODE_WRITE;
+
+    if (accessBits & AccessBits::CONDITIONAL_RENDERING)
+        flags |= D3D12_BARRIER_ACCESS_PREDICATION;
 
     return flags;
 }
@@ -322,6 +328,9 @@ static inline D3D12_RESOURCE_STATES GetResourceStates(AccessBits accessBits, D3D
 
     if (accessBits & AccessBits::VIDEO_ENCODE_WRITE)
         resourceStates |= D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE;
+
+    if (accessBits & AccessBits::CONDITIONAL_RENDERING)
+        resourceStates |= D3D12_RESOURCE_STATE_PREDICATION;
 
     return resourceStates;
 }
@@ -1697,6 +1706,18 @@ NRI_INLINE void CommandBufferD3D12::SetScissors(const Rect* rects, uint32_t rect
 
 NRI_INLINE void CommandBufferD3D12::SetDepthBounds(float boundsMin, float boundsMax) {
     GetGraphicsCommandList()->OMSetDepthBounds(boundsMin, boundsMax);
+}
+
+NRI_INLINE void CommandBufferD3D12::BeginConditionalRendering(const Buffer& buffer, uint64_t offset, bool inverted) {
+    // "inverted = false" matches VK: a zero predicate skips the commands
+    const D3D12_PREDICATION_OP operation = inverted ? D3D12_PREDICATION_OP_NOT_EQUAL_ZERO : D3D12_PREDICATION_OP_EQUAL_ZERO;
+    ID3D12Resource* resource = (BufferD3D12&)buffer;
+
+    GetGraphicsCommandList()->SetPredication(resource, offset, operation);
+}
+
+NRI_INLINE void CommandBufferD3D12::EndConditionalRendering() {
+    GetGraphicsCommandList()->SetPredication(nullptr, 0, D3D12_PREDICATION_OP_EQUAL_ZERO);
 }
 
 NRI_INLINE void CommandBufferD3D12::SetStencilReference(uint8_t frontRef, uint8_t backRef) {

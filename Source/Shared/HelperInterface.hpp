@@ -383,6 +383,7 @@ HelperDeviceMemoryAllocator::MemoryHeap::MemoryHeap(MemoryType memoryType, const
     , textures(stdAllocator)
     , textureOffsets(stdAllocator)
     , size(0)
+    , alignment(0) // FIXED BY AI: GCC 11 -Werror=maybe-uninitialized reads "alignment" before the first resource sets it
     , type(memoryType) {
 }
 

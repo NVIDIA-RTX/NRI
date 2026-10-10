@@ -667,6 +667,14 @@ static void NRI_CALL CmdSetDepthBounds(CommandBuffer& commandBuffer, float bound
     ((CommandBufferVal&)commandBuffer).SetDepthBounds(boundsMin, boundsMax);
 }
 
+static void NRI_CALL CmdBeginConditionalRendering(CommandBuffer& commandBuffer, const Buffer& buffer, uint64_t offset, bool inverted) {
+    ((CommandBufferVal&)commandBuffer).BeginConditionalRendering(buffer, offset, inverted);
+}
+
+static void NRI_CALL CmdEndConditionalRendering(CommandBuffer& commandBuffer) {
+    ((CommandBufferVal&)commandBuffer).EndConditionalRendering();
+}
+
 static void NRI_CALL CmdSetBlendConstants(CommandBuffer& commandBuffer, const Color32f& color) {
     ((CommandBufferVal&)commandBuffer).SetBlendConstants(color);
 }
@@ -1051,6 +1059,8 @@ Result DeviceVal::FillFunctionTable(CoreInterface& table) const {
     table.CmdSetScissors = ::CmdSetScissors;
     table.CmdSetStencilReference = ::CmdSetStencilReference;
     table.CmdSetDepthBounds = ::CmdSetDepthBounds;
+    table.CmdBeginConditionalRendering = ::CmdBeginConditionalRendering;
+    table.CmdEndConditionalRendering = ::CmdEndConditionalRendering;
     table.CmdSetBlendConstants = ::CmdSetBlendConstants;
     table.CmdSetSampleLocations = ::CmdSetSampleLocations;
     table.CmdSetShadingRate = ::CmdSetShadingRate;

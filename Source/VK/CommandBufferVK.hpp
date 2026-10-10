@@ -428,6 +428,9 @@ static inline VkAccessFlags2 GetAccessFlags(AccessBits accessBits) {
     if (accessBits & AccessBits::VIDEO_ENCODE_WRITE)
         flags |= VK_ACCESS_2_VIDEO_ENCODE_WRITE_BIT_KHR;
 
+    if (accessBits & AccessBits::CONDITIONAL_RENDERING)
+        flags |= VK_ACCESS_2_CONDITIONAL_RENDERING_READ_BIT_EXT;
+
     return flags;
 }
 
@@ -1465,6 +1468,21 @@ NRI_INLINE void CommandBufferVK::SetScissors(const Rect* rects, uint32_t rectNum
 NRI_INLINE void CommandBufferVK::SetDepthBounds(float boundsMin, float boundsMax) {
     const auto& vk = m_Device.GetDispatchTable();
     vk.CmdSetDepthBounds(m_Handle, boundsMin, boundsMax);
+}
+
+NRI_INLINE void CommandBufferVK::BeginConditionalRendering(const Buffer& buffer, uint64_t offset, bool inverted) {
+    VkConditionalRenderingBeginInfoEXT info = {VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT};
+    info.buffer = ((BufferVK&)buffer).GetHandle();
+    info.offset = offset;
+    info.flags = inverted ? VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT : 0;
+
+    const auto& vk = m_Device.GetDispatchTable();
+    vk.CmdBeginConditionalRenderingEXT(m_Handle, &info);
+}
+
+NRI_INLINE void CommandBufferVK::EndConditionalRendering() {
+    const auto& vk = m_Device.GetDispatchTable();
+    vk.CmdEndConditionalRenderingEXT(m_Handle);
 }
 
 NRI_INLINE void CommandBufferVK::SetStencilReference(uint8_t frontRef, uint8_t backRef) {

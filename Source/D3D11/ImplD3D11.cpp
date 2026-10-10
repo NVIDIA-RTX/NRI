@@ -344,6 +344,13 @@ static void NRI_CALL CmdSetDepthBounds(CommandBuffer& commandBuffer, float bound
     ((CommandBufferD3D11&)commandBuffer).SetDepthBounds(boundsMin, boundsMax);
 }
 
+static void NRI_CALL CmdBeginConditionalRendering(CommandBuffer&, const Buffer&, uint64_t, bool) {
+    // D3D11 predication uses a query object, not a buffer. Keep "features.conditionalRendering = false"
+}
+
+static void NRI_CALL CmdEndConditionalRendering(CommandBuffer&) {
+}
+
 static void NRI_CALL CmdSetBlendConstants(CommandBuffer& commandBuffer, const Color32f& color) {
     ((CommandBufferD3D11&)commandBuffer).SetBlendConstants(color);
 }
@@ -853,6 +860,8 @@ Result DeviceD3D11::FillFunctionTable(CoreInterface& table) const {
         table.CmdSetScissors = ::EmuCmdSetScissors;
         table.CmdSetStencilReference = ::EmuCmdSetStencilReference;
         table.CmdSetDepthBounds = ::EmuCmdSetDepthBounds;
+        table.CmdBeginConditionalRendering = ::CmdBeginConditionalRendering;
+        table.CmdEndConditionalRendering = ::CmdEndConditionalRendering;
         table.CmdSetBlendConstants = ::EmuCmdSetBlendConstants;
         table.CmdSetSampleLocations = ::EmuCmdSetSampleLocations;
         table.CmdSetShadingRate = ::EmuCmdSetShadingRate;
@@ -897,6 +906,8 @@ Result DeviceD3D11::FillFunctionTable(CoreInterface& table) const {
         table.CmdSetScissors = ::CmdSetScissors;
         table.CmdSetStencilReference = ::CmdSetStencilReference;
         table.CmdSetDepthBounds = ::CmdSetDepthBounds;
+        table.CmdBeginConditionalRendering = ::CmdBeginConditionalRendering;
+        table.CmdEndConditionalRendering = ::CmdEndConditionalRendering;
         table.CmdSetBlendConstants = ::CmdSetBlendConstants;
         table.CmdSetSampleLocations = ::CmdSetSampleLocations;
         table.CmdSetShadingRate = ::CmdSetShadingRate;

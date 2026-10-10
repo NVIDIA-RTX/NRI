@@ -47,6 +47,8 @@ struct CommandBufferVal final : public ObjectVal {
     void SetViewports(const Viewport* viewports, uint32_t viewportNum);
     void SetScissors(const Rect* rects, uint32_t rectNum);
     void SetDepthBounds(float boundsMin, float boundsMax);
+    void BeginConditionalRendering(const Buffer& buffer, uint64_t offset, bool inverted);
+    void EndConditionalRendering();
     void SetStencilReference(uint8_t frontRef, uint8_t backRef);
     void SetSampleLocations(const SampleLocation* locations, Sample_t locationNum, Sample_t sampleNum);
     void SetBlendConstants(const Color32f& color);
@@ -109,6 +111,8 @@ private:
     int32_t m_AnnotationStack = 0;
     QueueType m_QueueType = QueueType::MAX_NUM;
     bool m_IsRecordingStarted = false;
+    bool m_IsConditionalRendering = false;
+    bool m_ConditionalRenderingInsideRendering = false;
     bool m_IsWrapped = false;
     bool m_IsRenderPass = false;
 };

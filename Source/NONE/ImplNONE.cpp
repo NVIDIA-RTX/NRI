@@ -512,6 +512,12 @@ static void NRI_CALL CmdSetStencilReference(CommandBuffer&, uint8_t, uint8_t) {
 static void NRI_CALL CmdSetDepthBounds(CommandBuffer&, float, float) {
 }
 
+static void NRI_CALL CmdBeginConditionalRendering(CommandBuffer&, const Buffer&, uint64_t, bool) {
+}
+
+static void NRI_CALL CmdEndConditionalRendering(CommandBuffer&) {
+}
+
 static void NRI_CALL CmdSetBlendConstants(CommandBuffer&, const Color32f&) {
 }
 
@@ -751,6 +757,8 @@ Result DeviceNONE::FillFunctionTable(CoreInterface& table) const {
     table.CmdSetScissors = ::CmdSetScissors;
     table.CmdSetStencilReference = ::CmdSetStencilReference;
     table.CmdSetDepthBounds = ::CmdSetDepthBounds;
+    table.CmdBeginConditionalRendering = ::CmdBeginConditionalRendering;
+    table.CmdEndConditionalRendering = ::CmdEndConditionalRendering;
     table.CmdSetBlendConstants = ::CmdSetBlendConstants;
     table.CmdSetSampleLocations = ::CmdSetSampleLocations;
     table.CmdSetShadingRate = ::CmdSetShadingRate;
