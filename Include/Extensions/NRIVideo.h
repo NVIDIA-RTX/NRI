@@ -707,7 +707,7 @@ NriStruct(VideoAV1TileLayoutDesc) {
     uint8_t columnNum;
     uint8_t rowNum;
     uint8_t tileSizeBytesMinus1;
-    uint8_t uniformSpacing;
+    uint8_t uniformSpacing;                                 // if set, omitted arrays are derived from the frame size
     uint16_t contextUpdateTileId;
     NriOptional const uint16_t* miColumnStarts;             // if provided, must include "columnNum + 1" entries
     NriOptional const uint16_t* miRowStarts;                // if provided, must include "rowNum + 1" entries

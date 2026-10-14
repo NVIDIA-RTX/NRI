@@ -641,6 +641,22 @@ static inline void FillVideoAV1DefaultTileInfo(StdVideoAV1TileInfo& info, uint16
     info.pHeightInSbsMinus1 = heightInSbsMinus1;
 }
 
+// Uniform AV1 tile spacing ("tile_info"): all tiles but the last one have the same size in superblocks
+static inline void FillVideoAV1UniformTileSizes(uint32_t miNum, uint32_t sbShift, uint32_t tileNum, uint16_t* miStarts, uint16_t* sizesInSbsMinus1) {
+    const uint32_t sbNum = (miNum + (1u << sbShift) - 1) >> sbShift;
+    const uint32_t tileLog2 = video::av1::TileLog2(1, tileNum);
+    const uint32_t tileSizeInSbs = (sbNum + (1u << tileLog2) - 1) >> tileLog2;
+
+    for (uint32_t i = 0; i < tileNum; i++) {
+        const uint32_t startSb = std::min(i * tileSizeInSbs, sbNum);
+        const uint32_t endSb = std::min(startSb + tileSizeInSbs, sbNum);
+        miStarts[i] = (uint16_t)std::min(startSb << sbShift, miNum);
+        sizesInSbsMinus1[i] = (uint16_t)(endSb > startSb ? endSb - startSb - 1 : 0);
+    }
+
+    miStarts[tileNum] = (uint16_t)miNum;
+}
+
 static inline bool BuildVideoEncodeH265ReferenceLists(const VideoReference* references, const VideoH265ReferenceDesc* referenceDescs, uint32_t referenceNum,
     VideoFrameType frameType, int32_t currentPictureOrderCount, VideoEncodeH265ReferenceListsVK& lists) {
     lists = {};
