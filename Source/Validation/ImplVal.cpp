@@ -200,9 +200,13 @@ static inline bool IsVideoPictureDescValid(const VideoPictureDesc& desc, const T
     return (textureDesc.usage & requiredUsage) != 0 && (!requiresOperationUsage || !isReferenceOnly) && (requiresOperationUsage || !isOutputOnly) && desc.layer < layerNum && (!desc.width || desc.width <= textureDesc.width) && (!desc.height || desc.height <= textureDesc.height);
 }
 
-static inline bool IsVideoPictureRoleCompatible(VideoPictureUsage usage, VideoPictureRole role) {
+static inline bool IsVideoPictureRoleCompatible(VideoPictureUsage usage, bool isOutputOnly, VideoPictureRole role) {
     if ((uint8_t)role >= (uint8_t)VideoPictureRole::MAX_NUM)
         return false;
+
+    // A decode output picture (coincide mode) is also the DPB picture, as accepted by "CmdDecodeVideo"
+    if (usage == VideoPictureUsage::DECODE_OUTPUT && !isOutputOnly && (role == VideoPictureRole::DECODE_REFERENCE || role == VideoPictureRole::DECODE_SETUP))
+        return true;
 
     static constexpr std::array<VideoPictureUsage, (size_t)VideoPictureRole::MAX_NUM> usages = {
         VideoPictureUsage::DECODE_OUTPUT,    // DECODE_OUTPUT
@@ -1893,7 +1897,7 @@ static void NRI_CALL DestroyVideoPicture(VideoPicture* videoPicture) {
 
 static Result NRI_CALL GetVideoPictureState(const VideoPicture& videoPicture, VideoPictureRole role, VideoPictureState& state) {
     const VideoPictureVal& videoPictureVal = (const VideoPictureVal&)videoPicture;
-    NRI_RETURN_ON_FAILURE(&videoPictureVal.GetDevice(), IsVideoPictureRoleCompatible(videoPictureVal.GetUsage(), role), Result::INVALID_ARGUMENT, "'role' is incompatible with 'videoPicture' usage");
+    NRI_RETURN_ON_FAILURE(&videoPictureVal.GetDevice(), IsVideoPictureRoleCompatible(videoPictureVal.GetUsage(), videoPictureVal.IsOutputOnly(), role), Result::INVALID_ARGUMENT, "'role' is incompatible with 'videoPicture' usage");
 
     return videoPictureVal.GetDevice().GetVideoInterfaceImpl().GetVideoPictureState(*videoPictureVal.GetImpl(), role, state);
 }
