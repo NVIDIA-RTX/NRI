@@ -1600,7 +1600,7 @@ static inline bool ParseGeneratedFrameHeader(const VideoAV1EncodeDecodeInfoDesc&
 
             if (!reader.ReadBits(2, value))
                 return false;
-            info.cdef.ySecondaryStrength[i] = (uint8_t)(value == 3 ? 4 : value);
+            info.cdef.ySecondaryStrength[i] = (uint8_t)value; // as coded: the decoders apply the 3 -> 4 adjustment
 
             if (planeNum > 1) {
                 if (!reader.ReadBits(4, value))
@@ -1609,7 +1609,7 @@ static inline bool ParseGeneratedFrameHeader(const VideoAV1EncodeDecodeInfoDesc&
 
                 if (!reader.ReadBits(2, value))
                     return false;
-                info.cdef.uvSecondaryStrength[i] = (uint8_t)(value == 3 ? 4 : value);
+                info.cdef.uvSecondaryStrength[i] = (uint8_t)value;
             }
         }
     }

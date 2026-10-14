@@ -739,10 +739,10 @@ NriStruct(VideoAV1LoopFilterDesc) {
 };
 
 NriStruct(VideoAV1CdefDesc) {
-    uint8_t yPrimaryStrength[8];
-    uint8_t ySecondaryStrength[8];
-    uint8_t uvPrimaryStrength[8];
-    uint8_t uvSecondaryStrength[8];
+    uint8_t yPrimaryStrength[8];   // 0..15
+    uint8_t ySecondaryStrength[8]; // 0..3 as coded in "cdef_y_sec_strength" (3 stands for 4, the backends pass the coded value)
+    uint8_t uvPrimaryStrength[8];  // 0..15
+    uint8_t uvSecondaryStrength[8]; // 0..3 as coded in "cdef_uv_sec_strength"
 };
 
 NriStruct(VideoAV1SegmentationDesc) {
