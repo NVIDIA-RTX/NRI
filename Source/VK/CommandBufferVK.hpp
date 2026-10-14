@@ -1280,7 +1280,8 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
         }
     }
 
-    const bool hasSetupReferenceSlot = isUsedAsReferencePicture;
+    // The setup slot is required by the session even if the picture is not used as a reference (non-reference pictures write a slot that is never referenced)
+    const bool hasSetupReferenceSlot = videoEncodeDesc.reconstructedPicture != nullptr && session.GetDesc().maxReferenceNum != 0;
     VkVideoReferenceSlotInfoKHR setupReferenceSlot = {VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR};
 
     if (hasSetupReferenceSlot) {

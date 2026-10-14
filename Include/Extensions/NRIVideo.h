@@ -935,7 +935,7 @@ NriStruct(VideoEncodeDesc) {
     NriOptional const NriPtr(VideoEncodePictureDesc) pictureDesc;
     NriOptional const NriPtr(VideoEncodeRateControlDesc) rateControlDesc;
     Nri(VideoEncodeBits) flags;
-    NriOptional NriPtr(VideoPicture) reconstructedPicture;
+    NriOptional NriPtr(VideoPicture) reconstructedPicture; // reconstructed/DPB setup picture; required for sessions with DPB slots, also for non-reference pictures (B frames, AV1 "refreshFrameFlags = 0"): the slot is written, but not referenced afterwards
     NriOptional NriPtr(Buffer) metadata; // backend encode metadata; required if "VideoCapabilities::metadataSize" is non-zero
     uint64_t metadataOffset;
     NriOptional NriPtr(Buffer) resolvedMetadata; // backend metadata consumed by "GetVideoEncodeFeedback" after the required resolve operation; a pending range must not be reused
