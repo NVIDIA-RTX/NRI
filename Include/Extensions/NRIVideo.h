@@ -661,7 +661,7 @@ NriStruct(VideoEncodeRateControlDesc) {
     uint8_t qpI;
     uint8_t qpP;
     uint8_t qpB;
-    NriOptional uint8_t qpMin;
+    NriOptional uint8_t qpMin;          // CBR/VBR QP range (AV1: Q index), defaults to the full codec range
     NriOptional uint8_t qpMax;
     uint32_t frameRateNumerator;
     uint32_t frameRateDenominator;

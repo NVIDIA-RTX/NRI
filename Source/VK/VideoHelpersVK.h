@@ -57,11 +57,44 @@ struct VideoEncodeRateControlVK {
     VkVideoEncodeH264RateControlInfoKHR h264 = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_INFO_KHR};
     VkVideoEncodeH265RateControlInfoKHR h265 = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_INFO_KHR};
     VkVideoEncodeAV1RateControlInfoKHR av1 = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_RATE_CONTROL_INFO_KHR};
+    VkVideoEncodeH264RateControlLayerInfoKHR h264Layer = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_LAYER_INFO_KHR};
+    VkVideoEncodeH265RateControlLayerInfoKHR h265Layer = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_LAYER_INFO_KHR};
+    VkVideoEncodeAV1RateControlLayerInfoKHR av1Layer = {VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_RATE_CONTROL_LAYER_INFO_KHR};
 };
 
 // Fills a self-referencing native chain: "rateControl" must not be copied or moved afterwards
 static inline void FillVideoEncodeRateControl(VideoEncodeRateControlVK& rateControl, const VideoEncodeRateControlDesc& desc, const VideoSessionDesc& sessionDesc) {
     FillVideoEncodeRateControl(desc, rateControl.info, rateControl.layer);
+
+    // WORKAROUND: NVIDIA (610.57) ignores the CBR/VBR bitrate (the same output for 300 and 80000 kbit/s) unless the QP range is enabled
+    // (H.264/H.265 QP, AV1 Q index), so the range is always passed: "qpMin/qpMax" or the full codec range
+    if (desc.mode != VideoEncodeRateControlMode::CQP) {
+        if (sessionDesc.codec == VideoCodec::H264) {
+            const int32_t qpMin = desc.qpMin;
+            const int32_t qpMax = desc.qpMax ? desc.qpMax : 51;
+            rateControl.h264Layer.useMinQp = VK_TRUE;
+            rateControl.h264Layer.minQp = {qpMin, qpMin, qpMin};
+            rateControl.h264Layer.useMaxQp = VK_TRUE;
+            rateControl.h264Layer.maxQp = {qpMax, qpMax, qpMax};
+            rateControl.layer.pNext = &rateControl.h264Layer;
+        } else if (sessionDesc.codec == VideoCodec::H265) {
+            const int32_t qpMin = desc.qpMin;
+            const int32_t qpMax = desc.qpMax ? desc.qpMax : 51;
+            rateControl.h265Layer.useMinQp = VK_TRUE;
+            rateControl.h265Layer.minQp = {qpMin, qpMin, qpMin};
+            rateControl.h265Layer.useMaxQp = VK_TRUE;
+            rateControl.h265Layer.maxQp = {qpMax, qpMax, qpMax};
+            rateControl.layer.pNext = &rateControl.h265Layer;
+        } else if (sessionDesc.codec == VideoCodec::AV1) {
+            const uint32_t qIndexMin = desc.qpMin ? desc.qpMin : 1;
+            const uint32_t qIndexMax = desc.qpMax ? desc.qpMax : 255;
+            rateControl.av1Layer.useMinQIndex = VK_TRUE;
+            rateControl.av1Layer.minQIndex = {qIndexMin, qIndexMin, qIndexMin};
+            rateControl.av1Layer.useMaxQIndex = VK_TRUE;
+            rateControl.av1Layer.maxQIndex = {qIndexMax, qIndexMax, qIndexMax};
+            rateControl.layer.pNext = &rateControl.av1Layer;
+        }
+    }
 
     if (sessionDesc.codec == VideoCodec::H264) {
         rateControl.h264.gopFrameCount = sessionDesc.maxReferenceNum ? 60 : 1;
@@ -84,7 +117,7 @@ static inline void FillVideoEncodeRateControl(VideoEncodeRateControlVK& rateCont
     }
 }
 
-// Compares the native rate control state produced by two descriptions (QP values are per-picture, not part of the state)
+// Compares the native rate control state produced by two descriptions (QP values are per-picture, not part of the state, the QP range is)
 static inline bool IsVideoEncodeRateControlEqual(const VideoEncodeRateControlDesc& a, const VideoEncodeRateControlDesc& b) {
     VkVideoEncodeRateControlInfoKHR infoA = {};
     VkVideoEncodeRateControlInfoKHR infoB = {};
@@ -103,7 +136,7 @@ static inline bool IsVideoEncodeRateControlEqual(const VideoEncodeRateControlDes
         return true;
 
     return layerA.averageBitrate == layerB.averageBitrate && layerA.maxBitrate == layerB.maxBitrate && layerA.frameRateNumerator == layerB.frameRateNumerator
-        && layerA.frameRateDenominator == layerB.frameRateDenominator;
+        && layerA.frameRateDenominator == layerB.frameRateDenominator && a.qpMin == b.qpMin && a.qpMax == b.qpMax;
 }
 
 static inline VkVideoReferenceSlotInfoKHR GetVideoSetupReferenceSlotForBegin(const VkVideoReferenceSlotInfoKHR& setupReferenceSlot) {
