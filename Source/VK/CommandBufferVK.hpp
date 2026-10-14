@@ -637,7 +637,7 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
         h264StdPicture.PicOrderCnt[0] = desc.topFieldOrderCount;
         h264StdPicture.PicOrderCnt[1] = desc.bottomFieldOrderCount;
         for (uint32_t i = 0; i < desc.sliceOffsetNum; i++)
-            h264SliceOffsets[i] = desc.sliceOffsets[i] + 4;
+            h264SliceOffsets[i] = desc.sliceOffsets[i] + 1; // skip the leading zero byte of the documented 4-byte start code, pointing at "00 00 01"
 
         h264Picture.pStdPictureInfo = &h264StdPicture;
         h264Picture.sliceCount = desc.sliceOffsetNum;
