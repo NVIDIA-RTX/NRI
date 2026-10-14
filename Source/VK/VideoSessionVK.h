@@ -108,6 +108,15 @@ struct VideoSessionVK final : public DebugNameBase {
         return m_H265MaxL1ReferenceCount;
     }
 
+    // Codec QP range of the implementation (H.264/H.265 QP, AV1 Q index)
+    inline int32_t GetEncodeQpMin() const {
+        return m_EncodeQpMin;
+    }
+
+    inline int32_t GetEncodeQpMax() const {
+        return m_EncodeQpMax;
+    }
+
     inline bool IsResetRecorded() const {
         return m_ResetRecorded;
     }
@@ -191,6 +200,8 @@ private:
     bool m_AV1RequiresGopRemainingFrames = false;
     bool m_ResetRecorded = false;
     bool m_UseInlineSessionParameters = false;
+    int32_t m_EncodeQpMin = 0;
+    int32_t m_EncodeQpMax = 51;
     uint32_t m_H264MaxBPictureL0ReferenceCount = 0;
     uint32_t m_H264MaxL1ReferenceCount = 0;
     uint32_t m_H265MaxBPictureL0ReferenceCount = 0;

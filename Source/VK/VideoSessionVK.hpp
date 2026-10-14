@@ -556,10 +556,14 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
         if (videoSessionDesc.codec == VideoCodec::H264) {
             m_H264MaxBPictureL0ReferenceCount = encodeH264Capabilities.maxBPictureL0ReferenceCount;
             m_H264MaxL1ReferenceCount = encodeH264Capabilities.maxL1ReferenceCount;
+            m_EncodeQpMin = encodeH264Capabilities.minQp;
+            m_EncodeQpMax = encodeH264Capabilities.maxQp;
         }
         if (videoSessionDesc.codec == VideoCodec::H265) {
             m_H265MaxBPictureL0ReferenceCount = encodeH265Capabilities.maxBPictureL0ReferenceCount;
             m_H265MaxL1ReferenceCount = encodeH265Capabilities.maxL1ReferenceCount;
+            m_EncodeQpMin = encodeH265Capabilities.minQp;
+            m_EncodeQpMax = encodeH265Capabilities.maxQp;
         }
         if (videoSessionDesc.codec == VideoCodec::AV1) {
             m_AV1CapabilityFlags = encodeAV1Capabilities.flags;
@@ -574,6 +578,8 @@ Result VideoSessionVK::Create(const VideoSessionDesc& videoSessionDesc) {
             m_AV1MaxTileSize = encodeAV1Capabilities.maxTileSize;
             m_AV1MinQIndex = encodeAV1Capabilities.minQIndex;
             m_AV1MaxQIndex = encodeAV1Capabilities.maxQIndex;
+            m_EncodeQpMin = (int32_t)encodeAV1Capabilities.minQIndex;
+            m_EncodeQpMax = (int32_t)encodeAV1Capabilities.maxQIndex;
             m_AV1RequiresGopRemainingFrames = encodeAV1Capabilities.requiresGopRemainingFrames != VK_FALSE;
         }
     }

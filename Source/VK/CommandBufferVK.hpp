@@ -1385,12 +1385,12 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
     const bool needsRateControlUpdate = !needsSessionReset && !IsVideoEncodeRateControlEqual(session.GetRateControl(), rateControlDesc);
 
     VideoEncodeRateControlVK rateControl = {};
-    FillVideoEncodeRateControl(rateControl, rateControlDesc, session.GetDesc());
+    FillVideoEncodeRateControl(rateControl, rateControlDesc, session.GetDesc(), session.GetEncodeQpMin(), session.GetEncodeQpMax());
 
     VideoEncodeRateControlVK currentRateControl = {};
 
     if (needsRateControlUpdate)
-        FillVideoEncodeRateControl(currentRateControl, session.GetRateControl(), session.GetDesc());
+        FillVideoEncodeRateControl(currentRateControl, session.GetRateControl(), session.GetDesc(), session.GetEncodeQpMin(), session.GetEncodeQpMax());
 
     // A begin scope with a CBR/VBR state needs the GOP remaining frames, if required
     const bool requiresAV1GopRemainingFrames = session.GetDesc().codec == VideoCodec::AV1 && session.DoesAV1RequireGopRemainingFrames();

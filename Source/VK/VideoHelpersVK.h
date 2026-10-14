@@ -63,35 +63,32 @@ struct VideoEncodeRateControlVK {
 };
 
 // Fills a self-referencing native chain: "rateControl" must not be copied or moved afterwards
-static inline void FillVideoEncodeRateControl(VideoEncodeRateControlVK& rateControl, const VideoEncodeRateControlDesc& desc, const VideoSessionDesc& sessionDesc) {
+static inline void FillVideoEncodeRateControl(VideoEncodeRateControlVK& rateControl, const VideoEncodeRateControlDesc& desc, const VideoSessionDesc& sessionDesc, int32_t codecQpMin, int32_t codecQpMax) {
     FillVideoEncodeRateControl(desc, rateControl.info, rateControl.layer);
 
     // WORKAROUND: NVIDIA (610.57) ignores the CBR/VBR bitrate (the same output for 300 and 80000 kbit/s) unless the QP range is enabled
-    // (H.264/H.265 QP, AV1 Q index), so the range is always passed: "qpMin/qpMax" or the full codec range
+    // (H.264/H.265 QP, AV1 Q index), so the range is always passed: "qpMin/qpMax" or the codec range reported by the implementation.
+    // Explicit bounds are clamped to that range (VUID-vkCmdBeginVideoCodingKHR-pBeginInfo-useMinQp/useMaxQp: the range must lie within the capabilities)
     if (desc.mode != VideoEncodeRateControlMode::CQP) {
+        const int32_t qpMin = desc.qpMin ? std::clamp<int32_t>(desc.qpMin, codecQpMin, codecQpMax) : codecQpMin;
+        const int32_t qpMax = desc.qpMax ? std::clamp<int32_t>(desc.qpMax, codecQpMin, codecQpMax) : codecQpMax;
         if (sessionDesc.codec == VideoCodec::H264) {
-            const int32_t qpMin = desc.qpMin;
-            const int32_t qpMax = desc.qpMax ? desc.qpMax : 51;
             rateControl.h264Layer.useMinQp = VK_TRUE;
             rateControl.h264Layer.minQp = {qpMin, qpMin, qpMin};
             rateControl.h264Layer.useMaxQp = VK_TRUE;
             rateControl.h264Layer.maxQp = {qpMax, qpMax, qpMax};
             rateControl.layer.pNext = &rateControl.h264Layer;
         } else if (sessionDesc.codec == VideoCodec::H265) {
-            const int32_t qpMin = desc.qpMin;
-            const int32_t qpMax = desc.qpMax ? desc.qpMax : 51;
             rateControl.h265Layer.useMinQp = VK_TRUE;
             rateControl.h265Layer.minQp = {qpMin, qpMin, qpMin};
             rateControl.h265Layer.useMaxQp = VK_TRUE;
             rateControl.h265Layer.maxQp = {qpMax, qpMax, qpMax};
             rateControl.layer.pNext = &rateControl.h265Layer;
         } else if (sessionDesc.codec == VideoCodec::AV1) {
-            const uint32_t qIndexMin = desc.qpMin ? desc.qpMin : 1;
-            const uint32_t qIndexMax = desc.qpMax ? desc.qpMax : 255;
             rateControl.av1Layer.useMinQIndex = VK_TRUE;
-            rateControl.av1Layer.minQIndex = {qIndexMin, qIndexMin, qIndexMin};
+            rateControl.av1Layer.minQIndex = {(uint32_t)qpMin, (uint32_t)qpMin, (uint32_t)qpMin};
             rateControl.av1Layer.useMaxQIndex = VK_TRUE;
-            rateControl.av1Layer.maxQIndex = {qIndexMax, qIndexMax, qIndexMax};
+            rateControl.av1Layer.maxQIndex = {(uint32_t)qpMax, (uint32_t)qpMax, (uint32_t)qpMax};
             rateControl.layer.pNext = &rateControl.av1Layer;
         }
     }
