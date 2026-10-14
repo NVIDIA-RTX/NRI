@@ -587,7 +587,10 @@ private:
 
 template <typename T>
 bool operator==(const StdAllocator<T>& left, const StdAllocator<T>& right) {
-    return left.GetInterface() == right.GetInterface();
+    const AllocationCallbacks& l = left.GetInterface();
+    const AllocationCallbacks& r = right.GetInterface();
+
+    return l.Allocate == r.Allocate && l.Reallocate == r.Reallocate && l.Free == r.Free && l.userArg == r.userArg;
 }
 
 template <typename T>
