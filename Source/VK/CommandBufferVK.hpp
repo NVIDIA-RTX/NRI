@@ -931,7 +931,7 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
             isUsedAsReferencePicture = video::IsEncodePictureUsedAsReference(session.GetDesc().codec, pictureDesc.frameType,
                 session.GetDesc().maxReferenceNum, videoEncodeDesc.reconstructedPicture != nullptr, 0);
             h264StdPicture.flags.is_reference = isUsedAsReferencePicture;
-            h264StdPicture.flags.no_output_of_prior_pics_flag = pictureDesc.frameType == VideoFrameType::IDR;
+            h264StdPicture.flags.no_output_of_prior_pics_flag = false; // an IDR must not discard the pictures still waiting for output
             h264StdPicture.seq_parameter_set_id = videoEncodeDesc.h264PictureDesc ? videoEncodeDesc.h264PictureDesc->sequenceParameterSetId : 0;
             h264StdPicture.pic_parameter_set_id = videoEncodeDesc.h264PictureDesc ? videoEncodeDesc.h264PictureDesc->pictureParameterSetId : 0;
 
@@ -978,7 +978,7 @@ NRI_INLINE void CommandBufferVK::EncodeVideo(const VideoEncodeDesc& videoEncodeD
                 session.GetDesc().maxReferenceNum, videoEncodeDesc.reconstructedPicture != nullptr, 0);
             h265StdPicture.flags.is_reference = isUsedAsReferencePicture;
             h265StdPicture.flags.pic_output_flag = true;
-            h265StdPicture.flags.no_output_of_prior_pics_flag = pictureDesc.frameType == VideoFrameType::IDR;
+            h265StdPicture.flags.no_output_of_prior_pics_flag = false; // an IDR must not discard the pictures still waiting for output
             h265StdPicture.flags.short_term_ref_pic_set_sps_flag = false;
             h265StdPicture.flags.slice_temporal_mvp_enabled_flag = false;
             for (uint8_t& entry : h265ReferenceLists.RefPicList0)
