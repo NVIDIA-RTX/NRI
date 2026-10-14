@@ -1927,7 +1927,8 @@ NRI_INLINE void CommandBufferVal::EncodeVideo(const VideoEncodeDesc& videoEncode
         return;
     }
 
-    NRI_RETURN_ON_FAILURE(&m_Device, sessionVal.GetDesc().codec != VideoCodec::AV1 || videoEncodeDesc.av1PictureDesc || !sessionVal.GetDesc().maxReferenceNum || videoEncodeDesc.reconstructedPicture, ReturnVoid(), "default AV1 key frames in sessions with DPB slots require 'reconstructedPicture'");
+    // The setup slot is always written (VUID-vkCmdEncodeVideoKHR-pEncodeInfo-08377), also for non-reference pictures (B frames, AV1 "refreshFrameFlags = 0")
+    NRI_RETURN_ON_FAILURE(&m_Device, !sessionVal.GetDesc().maxReferenceNum || videoEncodeDesc.reconstructedPicture, ReturnVoid(), "'reconstructedPicture' is required in sessions with DPB slots ('maxReferenceNum' > 0), also for non-reference pictures");
 
     VideoEncodeDesc videoEncodeDescImpl = videoEncodeDesc;
     videoEncodeDescImpl.session = videoEncodeDesc.session ? ((VideoSessionVal*)videoEncodeDesc.session)->GetImpl() : nullptr;
