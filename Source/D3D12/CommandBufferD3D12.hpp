@@ -1437,6 +1437,27 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     hevcGop.GOPLength = sessionDesc.maxReferenceNum ? 60 : 1;
     hevcGop.PPicturePeriod = sessionDesc.maxReferenceNum > 1 ? 2 : 1;
 
+    // The driver writes slice headers: "frame_num" and "pic_order_cnt_lsb" widths and the POC type must match the SPS written by the application
+    const VideoSessionParametersD3D12* encodeParameters = (VideoSessionParametersD3D12*)videoEncodeDesc.parameters;
+    if (encodeParameters && encodeParameters->GetH264Parameters() && sessionDesc.codec == VideoCodec::H264) {
+        const VideoH264SessionParametersDesc& parameters = *encodeParameters->GetH264Parameters();
+        const VideoH264PictureParameterSetDesc* pps = video::FindParameterSet(parameters.pictureParameterSets, parameters.pictureParameterSetNum, &VideoH264PictureParameterSetDesc::pictureParameterSetId,
+            videoEncodeDesc.h264PictureDesc ? videoEncodeDesc.h264PictureDesc->pictureParameterSetId : 0);
+        const VideoH264SequenceParameterSetDesc* sps = pps ? video::FindParameterSet(parameters.sequenceParameterSets, parameters.sequenceParameterSetNum, &VideoH264SequenceParameterSetDesc::sequenceParameterSetId, pps->sequenceParameterSetId) : nullptr;
+        if (sps) {
+            h264Gop.pic_order_cnt_type = sps->pictureOrderCountType;
+            h264Gop.log2_max_frame_num_minus4 = sps->log2MaxFrameNumMinus4;
+            h264Gop.log2_max_pic_order_cnt_lsb_minus4 = sps->log2MaxPictureOrderCountLsbMinus4;
+        }
+    }
+    if (encodeParameters && encodeParameters->GetH265Parameters() && sessionDesc.codec == VideoCodec::H265) {
+        const VideoH265SessionParametersDesc& parameters = *encodeParameters->GetH265Parameters();
+        const VideoH265SequenceParameterSetDesc* sps = video::FindParameterSet(parameters.sequenceParameterSets, parameters.sequenceParameterSetNum, &VideoH265SequenceParameterSetDesc::sequenceParameterSetId,
+            videoEncodeDesc.h265PictureDesc ? videoEncodeDesc.h265PictureDesc->sequenceParameterSetId : 0);
+        if (sps)
+            hevcGop.log2_max_pic_order_cnt_lsb_minus4 = sps->log2MaxPictureOrderCountLsbMinus4;
+    }
+
     D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS1 input = {};
     D3D12_VIDEO_ENCODER_ENCODEFRAME_OUTPUT_ARGUMENTS1 output = {};
     D3D12_VIDEO_ENCODER_COMPRESSED_BITSTREAM& bitstream = output.Bitstream.FrameOutputBuffer;
