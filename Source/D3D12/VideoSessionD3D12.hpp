@@ -370,6 +370,17 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
         h264Config.DirectModeConfig = D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264_DIRECT_MODES_DISABLED;
         h264Config.DisableDeblockingFilterConfig = D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264_SLICES_DEBLOCKING_MODE_0_ALL_LUMA_CHROMA_SLICE_BLOCK_EDGES_ALWAYS_FILTERED;
 
+        if (videoSessionDesc.codec == VideoCodec::H264) {
+            D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_H264 h264Caps = {};
+            D3D12_FEATURE_DATA_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT h264ConfigSupport = {};
+            h264ConfigSupport.Codec = codec;
+            h264ConfigSupport.Profile = profile;
+            h264ConfigSupport.CodecSupportLimits.DataSize = sizeof(h264Caps);
+            h264ConfigSupport.CodecSupportLimits.pH264Support = &h264Caps;
+            if (SUCCEEDED(videoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT, &h264ConfigSupport, sizeof(h264ConfigSupport))) && h264ConfigSupport.IsSupported)
+                m_CodecConfigurationSupportFlags = h264Caps.SupportFlags;
+        }
+
         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC hevcConfig = {};
         hevcConfig.MinLumaCodingUnitSize = D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_CUSIZE_8x8;
         hevcConfig.MaxLumaCodingUnitSize = D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_CUSIZE_32x32;
@@ -395,6 +406,8 @@ Result VideoSessionD3D12::Create(const VideoSessionDesc& videoSessionDesc) {
             NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12VideoDevice::CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT)");
             if (!hevcConfigSupport.IsSupported)
                 return Result::UNSUPPORTED;
+
+            m_CodecConfigurationSupportFlags = hevcCaps.SupportFlags;
 
             if (hevcCaps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_ASYMETRIC_MOTION_PARTITION_SUPPORT || hevcCaps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_ASYMETRIC_MOTION_PARTITION_REQUIRED)
                 hevcConfig.ConfigurationFlags |= D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_FLAG_USE_ASYMETRIC_MOTION_PARTITION;
