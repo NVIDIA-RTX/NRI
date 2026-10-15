@@ -838,6 +838,18 @@ Result UpscalerImpl::Create(const UpscalerDesc& upscalerDesc) {
     if (!IsUpscalerSupported(deviceDesc, upscalerDesc.type))
         return Result::UNSUPPORTED;
 
+#if NRI_ENABLE_VK_SUPPORT
+    if (deviceDesc.graphicsAPI == GraphicsAPI::VK && upscalerDesc.type != UpscalerType::NIS) {
+        WrapperVKInterface iWrapperVK = {};
+        if (nriGetInterface(m_Device, NRI_INTERFACE(WrapperVKInterface), &iWrapperVK) != Result::SUCCESS)
+            return Result::UNSUPPORTED;
+
+        VkDevice vkDevice = (VkDevice)m_iCore.GetDeviceNativeObject(&m_Device);
+        PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr = (PFN_vkGetDeviceProcAddr)iWrapperVK.GetDeviceProcAddrVK(m_Device);
+        m_VkCmdPipelineBarrier2 = (void*)vkGetDeviceProcAddr(vkDevice, "vkCmdPipelineBarrier2");
+    }
+#endif
+
     UpscalerProps upscalerProps = {};
     GetUpscalerProps(upscalerProps);
 
@@ -1520,7 +1532,54 @@ void UpscalerImpl::GetUpscalerProps(UpscalerProps& upscalerProps) const {
         upscalerProps.renderResolutionMin = upscalerProps.renderResolution; // no DRS support because of DLSS
 }
 
+#if NRI_ENABLE_VK_SUPPORT
+// SDK-backed upscalers sample their inputs in "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL", but a depth-stencil texture in
+// "SHADER_RESOURCE" is in "VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL" (see "GetImageLayout"), so move it around the SDK call
+static void TransitionDepthForUpscalerSdk(void* cmdPipelineBarrier2, const CoreInterface& NRI, CommandBuffer& commandBuffer, const UpscalerResource& depth, bool toSdk) {
+    if (!cmdPipelineBarrier2 || !depth.texture)
+        return;
+
+    const TextureDesc& textureDesc = NRI.GetTextureDesc(*depth.texture);
+    const FormatProps& formatProps = GetFormatProps(textureDesc.format);
+    if (!formatProps.isDepth && !formatProps.isStencil)
+        return;
+
+    VkImageMemoryBarrier2 barrier = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
+    barrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+    barrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+    barrier.dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT;
+    barrier.oldLayout = toSdk ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.newLayout = toSdk ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = (VkImage)NRI.GetTextureNativeObject(depth.texture);
+    barrier.subresourceRange.aspectMask = (formatProps.isDepth ? VK_IMAGE_ASPECT_DEPTH_BIT : 0) | (formatProps.isStencil ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
+    barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+    barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+
+    VkDependencyInfo dependencyInfo = {VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
+    dependencyInfo.imageMemoryBarrierCount = 1;
+    dependencyInfo.pImageMemoryBarriers = &barrier;
+
+    VkCommandBuffer vkCommandBuffer = (VkCommandBuffer)NRI.GetCommandBufferNativeObject(&commandBuffer);
+    ((PFN_vkCmdPipelineBarrier2)cmdPipelineBarrier2)(vkCommandBuffer, &dependencyInfo);
+}
+#endif
+
 void UpscalerImpl::CmdDispatchUpscale(CommandBuffer& commandBuffer, const DispatchUpscaleDesc& dispatchUpscaleDesc) {
+#if NRI_ENABLE_VK_SUPPORT
+    const bool usesDenoiserGuides = m_Desc.type == UpscalerType::DLRR || m_Desc.type == UpscalerType::METALFX_DENOISED;
+    const UpscalerResource& depth = usesDenoiserGuides ? dispatchUpscaleDesc.guides.denoiser.depth : dispatchUpscaleDesc.guides.upscaler.depth;
+
+    TransitionDepthForUpscalerSdk(m_VkCmdPipelineBarrier2, m_iCore, commandBuffer, depth, true);
+    DispatchUpscaleSdk(commandBuffer, dispatchUpscaleDesc);
+    TransitionDepthForUpscalerSdk(m_VkCmdPipelineBarrier2, m_iCore, commandBuffer, depth, false);
+#else
+    DispatchUpscaleSdk(commandBuffer, dispatchUpscaleDesc);
+#endif
+}
+
+void UpscalerImpl::DispatchUpscaleSdk(CommandBuffer& commandBuffer, const DispatchUpscaleDesc& dispatchUpscaleDesc) {
     const UpscalerResource& output = dispatchUpscaleDesc.output;
     const UpscalerResource& input = dispatchUpscaleDesc.input;
 

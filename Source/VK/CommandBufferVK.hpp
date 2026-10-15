@@ -2566,8 +2566,8 @@ NRI_INLINE void CommandBufferVK::Barrier(const BarrierDesc& barrierDesc) {
         out.srcAccessMask = GetAccessFlags(in.before.access);
         out.dstStageMask = GetPipelineStageFlags(in.after.stages);
         out.dstAccessMask = GetAccessFlags(in.after.access);
-        out.oldLayout = GetImageLayout(in.before.layout);
-        out.newLayout = GetImageLayout(in.after.layout);
+        out.oldLayout = GetImageLayout(in.before.layout, textureVK.GetDesc().format);
+        out.newLayout = GetImageLayout(in.after.layout, textureVK.GetDesc().format);
         out.srcQueueFamilyIndex = in.srcQueue ? srcQueue->GetFamilyIndex() : VK_QUEUE_FAMILY_IGNORED;
         out.dstQueueFamilyIndex = in.dstQueue ? dstQueue->GetFamilyIndex() : VK_QUEUE_FAMILY_IGNORED;
         out.image = textureVK.GetHandle();

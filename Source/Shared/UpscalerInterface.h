@@ -42,9 +42,15 @@ struct UpscalerImpl final : public DebugNameBase {
     void CmdDispatchUpscale(CommandBuffer& commandBuffer, const DispatchUpscaleDesc& dispatchUpscaleDesc);
 
 private:
+    void DispatchUpscaleSdk(CommandBuffer& commandBuffer, const DispatchUpscaleDesc& dispatchUpscaleDesc);
+
     Device& m_Device;
     const CoreInterface& m_iCore;
     UpscalerDesc m_Desc = {};
+
+#if NRI_ENABLE_VK_SUPPORT
+    void* m_VkCmdPipelineBarrier2 = nullptr; // "PFN_vkCmdPipelineBarrier2" for SDK-backed upscalers
+#endif
 
 #if (NRI_ENABLE_NIS_SDK || NRI_ENABLE_FFX_SDK || NRI_ENABLE_XESS_SDK || NRI_ENABLE_NGX_SDK || NRI_ENABLE_METAL_SUPPORT)
     union {

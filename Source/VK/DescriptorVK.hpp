@@ -157,7 +157,9 @@ Result DescriptorVK::Create(const TextureViewDesc& textureViewDesc) {
 
     // Handle mixed R/RW depth-stencil specific layouts
     VkImageLayout expectedLayout = GetImageViewLayout(textureViewDesc.type);
-    if (isAspectSensitiveAttachment && (formatProps.isDepth || formatProps.isStencil)) {
+    if (GetImageViewDescriptorType(textureViewDesc.type) == DescriptorType::TEXTURE)
+        expectedLayout = GetImageLayout(Layout::SHADER_RESOURCE, textureDesc.format);
+    else if (isAspectSensitiveAttachment && (formatProps.isDepth || formatProps.isStencil)) {
         bool isDepthReadonly = textureViewDesc.planes != PlaneBits::ALL && (textureViewDesc.planes & PlaneBits::DEPTH) == 0;
         bool isStencilReadonly = textureViewDesc.planes != PlaneBits::ALL && (textureViewDesc.planes & PlaneBits::STENCIL) == 0;
 

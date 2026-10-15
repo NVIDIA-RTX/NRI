@@ -89,6 +89,16 @@ constexpr VkImageLayout GetImageLayout(Layout layout) {
     return g_ImageLayouts[(size_t)layout];
 }
 
+// Shader reads of depth-stencil textures use the read-only attachment layout, so a texture in "SHADER_RESOURCE" and one in
+// "DEPTH_STENCIL_READONLY" (D3D12: "DIRECT_QUEUE_GENERIC_READ" if accessed as "SHADER_RESOURCE") share one descriptor layout
+inline VkImageLayout GetImageLayout(Layout layout, Format format) {
+    const FormatProps& formatProps = GetFormatProps(format);
+    if (layout == Layout::SHADER_RESOURCE && (formatProps.isDepth || formatProps.isStencil))
+        return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+
+    return GetImageLayout(layout);
+}
+
 constexpr std::array<VkDescriptorType, (size_t)DescriptorType::MAX_NUM> g_DescriptorTypes = {
     VK_DESCRIPTOR_TYPE_SAMPLER,                    // SAMPLER
     VK_DESCRIPTOR_TYPE_MUTABLE_EXT,                // MUTABLE
