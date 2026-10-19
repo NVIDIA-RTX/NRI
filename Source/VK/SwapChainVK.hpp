@@ -268,6 +268,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
     }
 
     // Scaling mode and caps
+    VkExtent2D swapChainExtent = {};
     bool isScalingSupported = false;
     uint32_t textureNum = swapChainDesc.textureNum;
     VkSurfaceTransformFlagBitsKHR preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
@@ -301,13 +302,15 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
 
         // Caps
         const VkSurfaceCapabilitiesKHR& surfaceCaps = surfaceCaps2.surfaceCapabilities;
-        const VkExtent2D& minImageExtent = isScalingSupported ? surfacePresentScalingCaps.minScaledImageExtent : surfaceCaps.minImageExtent;
-        const VkExtent2D& maxImageExtent = isScalingSupported ? surfacePresentScalingCaps.maxScaledImageExtent : surfaceCaps.maxImageExtent;
-        bool isWidthValid = swapChainDesc.width >= minImageExtent.width && swapChainDesc.width <= maxImageExtent.width;
-        NRI_RETURN_ON_FAILURE(&m_Device, isWidthValid, Result::INVALID_ARGUMENT, "swapChainDesc.width is out of [%u, %u] range", minImageExtent.width, maxImageExtent.width);
-
-        bool isHeightValid = swapChainDesc.height >= minImageExtent.height && swapChainDesc.height <= maxImageExtent.height;
-        NRI_RETURN_ON_FAILURE(&m_Device, isHeightValid, Result::INVALID_ARGUMENT, "swapChainDesc.height is out of [%u, %u] range", minImageExtent.height, maxImageExtent.height);
+        swapChainExtent.width = surfaceCaps.currentExtent.width;
+        swapChainExtent.height = surfaceCaps.currentExtent.height;
+        if (surfaceCaps.currentExtent.width != UINT32_MAX) {
+            swapChainExtent = surfaceCaps.currentExtent;
+        } else {
+            VkExtent2D desiredExtent = { swapChainDesc.width, swapChainDesc.height };
+            swapChainExtent.width = std::max(surfaceCaps.minImageExtent.width, std::min(surfaceCaps.maxImageExtent.width, desiredExtent.width));
+            swapChainExtent.height = std::max(surfaceCaps.minImageExtent.height, std::min(surfaceCaps.maxImageExtent.height, desiredExtent.height));
+        }
 
         // Silently clamp "textureNum" to the supported range
         if (textureNum < surfaceCaps.minImageCount)
@@ -416,8 +419,8 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
             desc.vkFormat = surfaceFormat.surfaceFormat.format;
             desc.vkImageType = VK_IMAGE_TYPE_2D;
             desc.vkImageUsageFlags = swapchainImageUsageFlags;
-            desc.width = swapChainDesc.width;
-            desc.height = swapChainDesc.height;
+            desc.width = swapChainExtent.width;
+            desc.height = swapChainExtent.height;
             desc.depth = 1;
             desc.mipNum = 1;
             desc.layerNum = 1;
@@ -470,9 +473,12 @@ NRI_INLINE Result SwapChainVK::AcquireNextTexture(FenceVK& acquireSemaphore, uin
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.AcquireNextImage2KHR(m_Device, &acquireInfo, &m_TextureIndex);
-    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "AcquireNextImage2KHR");
-
     textureIndex = m_TextureIndex;
+
+    if (vkResult == VK_ERROR_OUT_OF_DATE_KHR || vkResult == VK_SUBOPTIMAL_KHR)
+        return Result::OUT_OF_DATE;
+
+    NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "AcquireNextImage2KHR");
 
     return Result::SUCCESS;
 }
@@ -516,6 +522,9 @@ NRI_INLINE Result SwapChainVK::Present(FenceVK& releaseSemaphore, uint64_t prese
 
     if ((m_Flags & SwapChainBits::ALLOW_LOW_LATENCY) && presentIdValue != 0)
         SetLatencyMarker(presentIdValue, (LatencyMarker)VK_LATENCY_MARKER_PRESENT_END_NV);
+
+    if (vkResult == VK_ERROR_OUT_OF_DATE_KHR || vkResult == VK_SUBOPTIMAL_KHR)
+        return Result::OUT_OF_DATE;
 
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "QueuePresentKHR");
 
