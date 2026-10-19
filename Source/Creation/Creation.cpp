@@ -190,6 +190,17 @@ static void UpdateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterDescNu
     if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&dxgifactory))))
         return;
 
+    // Creating a device loads the adapter's user-mode driver, and releasing the last device unloads it again, so each
+    // probe used to pay for a driver load. Probe devices now stay alive until enumeration completes, and each adapter
+    // creates at most one device per API, which also answers the architecture and video queries below. Only duplicate
+    // DXGI entries can exceed the storage; their devices are then released early, which costs time but nothing else.
+    std::array<ComPtr<IUnknown>, ADAPTER_MAX_NUM * 2> probeDevices;
+    uint32_t probeDeviceNum = 0;
+    auto keepAlive = [&](IUnknown* device) {
+        if (probeDeviceNum < probeDevices.size())
+            probeDevices[probeDeviceNum++] = device;
+    };
+
     for (uint32_t i = 0; i < 256 && adapterDescNum < ADAPTER_MAX_NUM; i++) {
         ComPtr<IDXGIAdapter1> adapter;
         HRESULT hr = dxgifactory->EnumAdapters1(i, &adapter);
@@ -226,14 +237,19 @@ static void UpdateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterDescNu
         uint32_t levelNum = GetCountOf(levels);
         ComPtr<ID3D11Device> deviceD3D11;
         hr = D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, levels, levelNum, D3D11_SDK_VERSION, &deviceD3D11, nullptr, nullptr);
-        if (SUCCEEDED(hr))
+        if (SUCCEEDED(hr)) {
             adapterDesc.supportedGraphicsAPIs |= GraphicsAPI::D3D11;
+            keepAlive(deviceD3D11);
+        }
 #    endif
 
 #    if (NRI_ENABLE_D3D12_SUPPORT)
-        hr = D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), nullptr);
-        if (SUCCEEDED(hr))
+        ComPtr<ID3D12Device> deviceD3D12;
+        hr = D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&deviceD3D12));
+        if (SUCCEEDED(hr)) {
             adapterDesc.supportedGraphicsAPIs |= GraphicsAPI::D3D12;
+            keepAlive(deviceD3D12);
+        }
 #    endif
 
         // Logic: advance or skip
@@ -259,9 +275,7 @@ static void UpdateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterDescNu
                     adapterDesc.architecture = options2.UnifiedMemoryArchitecture ? Architecture::INTEGRATED : Architecture::DISCRETE;
             }
 #    else
-            ComPtr<ID3D12Device> deviceD3D12;
-            hr = D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), (void**)&deviceD3D12);
-            if (SUCCEEDED(hr)) {
+            if (deviceD3D12) {
                 D3D12_FEATURE_DATA_ARCHITECTURE architecture = {};
                 hr = deviceD3D12->CheckFeatureSupport(D3D12_FEATURE_ARCHITECTURE, &architecture, sizeof(architecture));
                 if (SUCCEEDED(hr))
@@ -279,12 +293,9 @@ static void UpdateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterDescNu
         adapterDesc.queueNum[(uint32_t)QueueType::COPY] = 4;
 
 #    if NRI_ENABLE_D3D12_SUPPORT
-        ComPtr<ID3D12Device> deviceD3D12;
-        HRESULT hrD3D12 = D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), (void**)&deviceD3D12);
-        if (SUCCEEDED(hrD3D12)) {
+        if (deviceD3D12) {
             ComPtr<ID3D12VideoDevice> videoDevice;
-            hrD3D12 = deviceD3D12->QueryInterface(IID_PPV_ARGS(&videoDevice));
-            if (SUCCEEDED(hrD3D12)) {
+            if (SUCCEEDED(deviceD3D12->QueryInterface(IID_PPV_ARGS(&videoDevice)))) {
                 adapterDesc.queueNum[(uint32_t)QueueType::VIDEO_DECODE] = 4;
                 adapterDesc.queueNum[(uint32_t)QueueType::VIDEO_ENCODE] = 4;
             }
