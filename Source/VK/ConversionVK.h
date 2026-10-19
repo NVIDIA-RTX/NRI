@@ -308,24 +308,6 @@ constexpr VkImageUsageFlags GetImageViewUsage(TextureView type) {
     return g_ImageViewUsage[(size_t)type];
 }
 
-constexpr std::array<VkImageLayout, (size_t)TextureView::MAX_NUM> g_ImageViewLayout = {
-    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                     // TEXTURE
-    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                     // TEXTURE_ARRAY
-    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                     // TEXTURE_CUBE
-    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                     // TEXTURE_CUBE_ARRAY
-    VK_IMAGE_LAYOUT_GENERAL,                                      // STORAGE_TEXTURE
-    VK_IMAGE_LAYOUT_GENERAL,                                      // STORAGE_TEXTURE_ARRAY
-    VK_IMAGE_LAYOUT_RENDERING_LOCAL_READ,                         // SUBPASS_INPUT
-    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,                     // COLOR_ATTACHMENT
-    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,             // DEPTH_STENCIL_ATTACHMENT
-    VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR, // SHADING_RATE_ATTACHMENT
-};
-NRI_VALIDATE_ARRAY(g_ImageViewLayout);
-
-constexpr VkImageLayout GetImageViewLayout(TextureView type) {
-    return g_ImageViewLayout[(size_t)type];
-}
-
 constexpr std::array<DescriptorType, (size_t)TextureView::MAX_NUM> g_ImageViewDescriptorType = {
     DescriptorType::TEXTURE,          // TEXTURE
     DescriptorType::TEXTURE,          // TEXTURE_ARRAY

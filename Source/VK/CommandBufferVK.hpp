@@ -262,9 +262,9 @@ static inline void FillRenderingAttachmentInfo(VkRenderingAttachmentInfo& attach
         attachmentInfo.resolveImageLayout = resolveDst.GetTexViewDesc().expectedLayout;
     }
 
-    // If "INPUT_ATTACHMENT" usage is set, "VK_IMAGE_LAYOUT_RENDERING_LOCAL_READ" is expected
+    // Default views of "INPUT_ATTACHMENT" textures use "VK_IMAGE_LAYOUT_RENDERING_LOCAL_READ"
     const TextureDesc& textureDesc = texViewDesc.texture->GetDesc();
-    if (textureDesc.usage & TextureUsageBits::INPUT_ATTACHMENT)
+    if ((textureDesc.usage & TextureUsageBits::INPUT_ATTACHMENT) && !texViewDesc.hasExplicitLayout)
         attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_RENDERING_LOCAL_READ;
 
     Dim_t w = texViewDesc.texture->GetSize(0, texViewDesc.mipOffset);

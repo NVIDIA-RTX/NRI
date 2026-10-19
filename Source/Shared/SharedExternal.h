@@ -391,7 +391,7 @@ void UnloadSharedLibrary(Library& library);
 
 // Helpers
 template <typename T>
-inline T Align(T x, size_t alignment) {
+static inline T Align(T x, size_t alignment) {
     return (T)((size_t(x) + alignment - 1) & ~(alignment - 1));
 }
 
@@ -399,7 +399,7 @@ inline T Align(T x, size_t alignment) {
 constexpr uint64_t FNV_INIT = 0xCBF29CE484222325ull;
 constexpr uint64_t FNV_PRIME = 0x100000001B3ull;
 
-inline uint64_t Fnv1a64(uint64_t hash, const void* data, size_t size) {
+static inline uint64_t Fnv1a64(uint64_t hash, const void* data, size_t size) {
     const uint8_t* bytes = (const uint8_t*)data;
 
     for (size_t i = 0; i < size; i++) {
@@ -410,7 +410,7 @@ inline uint64_t Fnv1a64(uint64_t hash, const void* data, size_t size) {
     return hash;
 }
 
-inline void CopyTextureData(void* dstData, uint64_t dstRowPitch, uint64_t dstSlicePitch, const void* srcData, uint64_t srcRowPitch, uint64_t srcSlicePitch, uint64_t rowSize, uint32_t rowNum, uint32_t sliceNum) {
+static inline void CopyTextureData(void* dstData, uint64_t dstRowPitch, uint64_t dstSlicePitch, const void* srcData, uint64_t srcRowPitch, uint64_t srcSlicePitch, uint64_t rowSize, uint32_t rowNum, uint32_t sliceNum) {
     uint8_t* dst = (uint8_t*)dstData;
     const uint8_t* src = (const uint8_t*)srcData;
     uint64_t sliceSize = rowSize * rowNum;
@@ -454,7 +454,7 @@ constexpr void Construct(T* objects, size_t number, Args&&... args) {
 }
 
 template <typename T, typename... Args>
-inline T* Allocate(const AllocationCallbacks& allocationCallbacks, Args&&... args) {
+static inline T* Allocate(const AllocationCallbacks& allocationCallbacks, Args&&... args) {
     T* object = (T*)allocationCallbacks.Allocate(allocationCallbacks.userArg, sizeof(T), alignof(T));
     if (object)
         new (object) T(std::forward<Args>(args)...);
@@ -463,7 +463,7 @@ inline T* Allocate(const AllocationCallbacks& allocationCallbacks, Args&&... arg
 }
 
 template <typename T>
-inline void Destroy(const AllocationCallbacks& allocationCallbacks, T* object) {
+static inline void Destroy(const AllocationCallbacks& allocationCallbacks, T* object) {
     if (object) {
         // FIXED BY AI: Preserve callbacks before destruction invalidates object-backed references.
         const AllocationCallbacks allocationCallbacksCopy = allocationCallbacks;
@@ -569,7 +569,7 @@ uint32_t NRIFormatToVKFormat(Format format);
 // Misc
 Result GetResultFromHRESULT(long result);
 
-inline Vendor GetVendorFromID(uint32_t vendorID) {
+static inline Vendor GetVendorFromID(uint32_t vendorID) {
     switch (vendorID) {
         case 0x10DE:
             return Vendor::NVIDIA;
@@ -582,7 +582,7 @@ inline Vendor GetVendorFromID(uint32_t vendorID) {
     return Vendor::UNKNOWN;
 }
 
-inline Dim_t GetDimension(GraphicsAPI api, const TextureDesc& textureDesc, Dim_t dimensionIndex, Dim_t mip) {
+static inline Dim_t GetDimension(GraphicsAPI api, const TextureDesc& textureDesc, Dim_t dimensionIndex, Dim_t mip) {
     assert(dimensionIndex < 3);
 
     Dim_t dim = textureDesc.depth;
@@ -600,11 +600,57 @@ inline Dim_t GetDimension(GraphicsAPI api, const TextureDesc& textureDesc, Dim_t
     return dim;
 }
 
-inline bool IsDepthBiasEnabled(const DepthBiasDesc& depthBiasDesc) {
+static inline bool IsDepthBiasEnabled(const DepthBiasDesc& depthBiasDesc) {
     return depthBiasDesc.constant != 0.0f || depthBiasDesc.slope != 0.0f;
 }
 
-inline TextureDesc FixTextureDesc(const TextureDesc& textureDesc) {
+static inline bool IsDepthReadOnly(Layout layout) {
+    return layout == Layout::DEPTH_STENCIL_READONLY || layout == Layout::DEPTH_READONLY_STENCIL_ATTACHMENT;
+}
+
+static inline bool IsStencilReadOnly(Layout layout) {
+    return layout == Layout::DEPTH_STENCIL_READONLY || layout == Layout::DEPTH_ATTACHMENT_STENCIL_READONLY;
+}
+
+constexpr std::array<Layout, (size_t)TextureView::MAX_NUM> g_TextureViewLayouts = {
+    Layout::SHADER_RESOURCE,          // TEXTURE
+    Layout::SHADER_RESOURCE,          // TEXTURE_ARRAY
+    Layout::SHADER_RESOURCE,          // TEXTURE_CUBE
+    Layout::SHADER_RESOURCE,          // TEXTURE_CUBE_ARRAY
+    Layout::SHADER_RESOURCE_STORAGE,  // STORAGE_TEXTURE
+    Layout::SHADER_RESOURCE_STORAGE,  // STORAGE_TEXTURE_ARRAY
+    Layout::INPUT_ATTACHMENT,         // SUBPASS_INPUT
+    Layout::COLOR_ATTACHMENT,         // COLOR_ATTACHMENT
+    Layout::DEPTH_STENCIL_ATTACHMENT, // DEPTH_STENCIL_ATTACHMENT
+    Layout::SHADING_RATE_ATTACHMENT,  // SHADING_RATE_ATTACHMENT
+};
+NRI_VALIDATE_ARRAY(g_TextureViewLayouts);
+
+static inline Layout GetTextureViewLayout(const TextureViewDesc& desc) {
+    if (desc.layout != Layout::UNDEFINED)
+        return desc.layout;
+
+    Layout layout = g_TextureViewLayouts[(size_t)desc.type];
+    if (desc.type != TextureView::DEPTH_STENCIL_ATTACHMENT && desc.type != TextureView::SUBPASS_INPUT)
+        return layout;
+
+    const FormatProps& formatProps = GetFormatProps(desc.format);
+    if (formatProps.isDepth || formatProps.isStencil) {
+        const bool depthReadOnly = desc.planes != PlaneBits::ALL && !(desc.planes & PlaneBits::DEPTH);
+        const bool stencilReadOnly = desc.planes != PlaneBits::ALL && !(desc.planes & PlaneBits::STENCIL);
+
+        if (depthReadOnly && stencilReadOnly)
+            layout = Layout::DEPTH_STENCIL_READONLY;
+        else if (depthReadOnly)
+            layout = Layout::DEPTH_READONLY_STENCIL_ATTACHMENT;
+        else if (stencilReadOnly)
+            layout = Layout::DEPTH_ATTACHMENT_STENCIL_READONLY;
+    }
+
+    return layout;
+}
+
+static inline TextureDesc FixTextureDesc(const TextureDesc& textureDesc) {
     TextureDesc desc = textureDesc;
     desc.height = std::max(desc.height, (Dim_t)1);
     desc.depth = std::max(desc.depth, (Dim_t)1);
@@ -615,7 +661,7 @@ inline TextureDesc FixTextureDesc(const TextureDesc& textureDesc) {
     return desc;
 }
 
-inline bool CompareUid(const Uid_t& a, const Uid_t& b) {
+static inline bool CompareUid(const Uid_t& a, const Uid_t& b) {
     return a.low == b.low && a.high == b.high;
 }
 
@@ -668,7 +714,7 @@ struct QueueFamilyProps {
     bool opticalFlow;
 };
 
-inline QueueType TrySelectPreferredQueueType(const QueueFamilyProps& props, std::array<uint32_t, (size_t)QueueType::MAX_NUM>& scores) {
+static inline QueueType TrySelectPreferredQueueType(const QueueFamilyProps& props, std::array<uint32_t, (size_t)QueueType::MAX_NUM>& scores) {
     // PREFERENCE_SCORE exceeds the maximum queue-count score plus all minor bonuses
     constexpr uint32_t QUEUE_COUNT_CAP = 256;
     constexpr uint32_t QUEUE_COUNT_WEIGHT = 16;
@@ -770,7 +816,7 @@ inline QueueType TrySelectPreferredQueueType(const QueueFamilyProps& props, std:
     return QueueType::MAX_NUM;
 }
 
-inline Uid_t ConstructUid(uint8_t luid[8], uint8_t uuid[16], bool isLuidValid) {
+static inline Uid_t ConstructUid(uint8_t luid[8], uint8_t uuid[16], bool isLuidValid) {
     Uid_t out = {};
 
     if (isLuidValid)

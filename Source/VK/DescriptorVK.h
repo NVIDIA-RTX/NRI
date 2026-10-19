@@ -12,6 +12,7 @@ struct TexViewDescVK {
     Dim_t layerOrSliceNum;
     Dim_t mipOffset;
     Dim_t mipNum;
+    bool hasExplicitLayout;
 };
 
 struct BufferViewDescVK {

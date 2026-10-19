@@ -65,8 +65,9 @@ static PlaneBits NormalizeClearPlanes(PlaneBits planes, Format format) {
 }
 
 static inline bool IsDepthStencilPlaneReadOnly(const DescriptorWGPU& descriptor, PlaneBits plane) {
-    PlaneBits planes = descriptor.GetTextureViewDesc().planes;
-    return planes != PlaneBits::ALL && (planes & plane) == 0;
+    const Layout layout = GetTextureViewLayout(descriptor.GetTextureViewDesc());
+
+    return plane == PlaneBits::DEPTH ? IsDepthReadOnly(layout) : IsStencilReadOnly(layout);
 }
 
 static WGPUTextureView CreateDepthStencilView(const DescriptorWGPU& descriptor) {
@@ -1373,7 +1374,8 @@ void CommandBufferWGPU::BeginRendering(const RenderingDesc& renderingDesc) {
         m_RenderDepthStencilFormat = descriptor.GetFormat();
 
         bool hasSeparateDepthStencilDescriptors = renderingDesc.depth.descriptor && renderingDesc.stencil.descriptor;
-        bool hasReadOnlyDepthStencilPlane = formatProps.isDepth && formatProps.isStencil && descriptor.GetTextureViewDesc().planes != PlaneBits::ALL;
+        const Layout layout = GetTextureViewLayout(descriptor.GetTextureViewDesc());
+        bool hasReadOnlyDepthStencilPlane = formatProps.isDepth && formatProps.isStencil && (descriptor.GetTextureViewDesc().planes != PlaneBits::ALL || IsDepthReadOnly(layout) || IsStencilReadOnly(layout));
         if (hasSeparateDepthStencilDescriptors || hasReadOnlyDepthStencilPlane) {
             // WGPU expresses read-only planes in the render pass, which requires an all-aspect view for a combined format.
             m_RenderDepthStencilView = CreateDepthStencilView(descriptor);

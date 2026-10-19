@@ -1,5 +1,56 @@
 // © 2021 NVIDIA Corporation
 
+static inline bool IsTextureViewLayoutValid(const TextureViewDesc& desc, const TextureDesc& textureDesc) {
+    if (desc.layout >= Layout::MAX_NUM)
+        return false;
+
+    if (desc.layout == Layout::UNDEFINED || desc.layout == Layout::GENERAL)
+        return true;
+
+    switch (desc.type) {
+        case TextureView::TEXTURE:
+        case TextureView::TEXTURE_ARRAY:
+        case TextureView::TEXTURE_CUBE:
+        case TextureView::TEXTURE_CUBE_ARRAY:
+        case TextureView::SUBPASS_INPUT: {
+            if (desc.type == TextureView::SUBPASS_INPUT) {
+                if (desc.layout == Layout::INPUT_ATTACHMENT)
+                    return true;
+            } else if (desc.layout == Layout::SHADER_RESOURCE)
+                return true;
+
+            const FormatProps& props = GetFormatProps(desc.format);
+            if ((!props.isDepth && !props.isStencil) || !(textureDesc.usage & TextureUsageBits::DEPTH_STENCIL_ATTACHMENT))
+                return false;
+
+            const bool hasDepth = props.isDepth && (desc.planes == PlaneBits::ALL || (desc.planes & PlaneBits::DEPTH));
+            const bool hasStencil = props.isStencil && (desc.planes == PlaneBits::ALL || (desc.planes & PlaneBits::STENCIL));
+
+            if (desc.layout == Layout::DEPTH_STENCIL_READONLY)
+                return hasDepth != hasStencil;
+            if (desc.layout == Layout::DEPTH_READONLY_STENCIL_ATTACHMENT)
+                return hasDepth && !hasStencil;
+            if (desc.layout == Layout::DEPTH_ATTACHMENT_STENCIL_READONLY)
+                return hasStencil && !hasDepth;
+
+            return false;
+        }
+        case TextureView::STORAGE_TEXTURE:
+        case TextureView::STORAGE_TEXTURE_ARRAY:
+            return desc.layout == Layout::SHADER_RESOURCE_STORAGE;
+        case TextureView::DEPTH_STENCIL_ATTACHMENT:
+            return desc.layout == Layout::DEPTH_STENCIL_ATTACHMENT || desc.layout == Layout::DEPTH_STENCIL_READONLY
+                || desc.layout == Layout::DEPTH_READONLY_STENCIL_ATTACHMENT || desc.layout == Layout::DEPTH_ATTACHMENT_STENCIL_READONLY;
+        case TextureView::COLOR_ATTACHMENT:
+            return desc.layout == Layout::COLOR_ATTACHMENT
+                || (desc.layout == Layout::INPUT_ATTACHMENT && (textureDesc.usage & TextureUsageBits::INPUT_ATTACHMENT));
+        case TextureView::SHADING_RATE_ATTACHMENT:
+            return desc.layout == Layout::SHADING_RATE_ATTACHMENT;
+        default:
+            return false;
+    }
+}
+
 static inline bool IsShaderStageValid(StageBits shaderStages, uint32_t& uniqueShaderStages, StageBits allowedStages) {
     uint32_t x = (uint32_t)(shaderStages & allowedStages);
     uint32_t n = 0;
@@ -379,6 +430,12 @@ NRI_INLINE Result DeviceVal::CreateDescriptor(const TextureViewDesc& textureView
 
     const TextureVal& textureVal = *(TextureVal*)textureViewDesc.texture;
     const TextureDesc& textureDesc = textureVal.GetDesc();
+
+    NRI_RETURN_ON_FAILURE(this, IsTextureViewLayoutValid(textureViewDesc, textureDesc), Result::INVALID_ARGUMENT, "'layout' is incompatible with the view type, format, planes or texture usage");
+
+    const bool isSampled = textureViewDesc.type <= TextureView::TEXTURE_CUBE_ARRAY;
+    const bool isMixedDepthStencil = textureViewDesc.layout == Layout::DEPTH_READONLY_STENCIL_ATTACHMENT || textureViewDesc.layout == Layout::DEPTH_ATTACHMENT_STENCIL_READONLY;
+    NRI_RETURN_ON_FAILURE(this, GetDesc().graphicsAPI != GraphicsAPI::WGPU || !isSampled || !isMixedDepthStencil, Result::UNSUPPORTED, "WGPU sampled views don't support mixed depth-stencil layouts; use 'DEPTH_STENCIL_READONLY'");
 
     Dim_t mipNum = textureViewDesc.mipNum == REMAINING ? (textureDesc.mipNum - textureViewDesc.mipOffset) : textureViewDesc.mipNum;
     Dim_t layerNum = textureViewDesc.layerNum == REMAINING ? (textureDesc.layerNum - textureViewDesc.layerOffset) : textureViewDesc.layerNum;

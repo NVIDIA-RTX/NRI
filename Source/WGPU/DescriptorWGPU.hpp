@@ -79,6 +79,8 @@ Result DescriptorWGPU::Create(const BufferViewDesc& bufferViewDesc) {
 Result DescriptorWGPU::Create(const TextureViewDesc& textureViewDesc) {
     m_Texture = (TextureWGPU*)textureViewDesc.texture;
     m_TextureViewDesc = textureViewDesc;
+    m_TextureViewDesc.format = textureViewDesc.format == Format::UNKNOWN ? m_Texture->GetDesc().format : textureViewDesc.format;
+    m_TextureViewDesc.layout = GetTextureViewLayout(m_TextureViewDesc);
 
     switch (textureViewDesc.type) {
         case TextureView::STORAGE_TEXTURE:

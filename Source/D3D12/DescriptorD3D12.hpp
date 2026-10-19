@@ -137,8 +137,8 @@ Result DescriptorD3D12::Create(const TextureViewDesc& textureViewDesc) {
                 desc.Texture1DArray.FirstArraySlice = textureViewDesc.layerOffset;
                 desc.Texture1DArray.ArraySize = layerNum;
 
-                bool isDepthReadonly = textureViewDesc.planes != PlaneBits::ALL && (textureViewDesc.planes & PlaneBits::DEPTH) == 0;
-                bool isStencilReadonly = textureViewDesc.planes != PlaneBits::ALL && (textureViewDesc.planes & PlaneBits::STENCIL) == 0;
+                bool isDepthReadonly = GetFormatProps(textureViewDesc.format).isDepth && IsDepthReadOnly(GetTextureViewLayout(textureViewDesc));
+                bool isStencilReadonly = GetFormatProps(textureViewDesc.format).isStencil && IsStencilReadOnly(GetTextureViewLayout(textureViewDesc));
                 if (isDepthReadonly)
                     desc.Flags |= D3D12_DSV_FLAG_READ_ONLY_DEPTH;
                 if (isStencilReadonly)
@@ -260,8 +260,8 @@ Result DescriptorD3D12::Create(const TextureViewDesc& textureViewDesc) {
                     desc.Texture2DArray.ArraySize = layerNum;
                 }
 
-                bool isDepthReadonly = textureViewDesc.planes != PlaneBits::ALL && (textureViewDesc.planes & PlaneBits::DEPTH) == 0;
-                bool isStencilReadonly = textureViewDesc.planes != PlaneBits::ALL && (textureViewDesc.planes & PlaneBits::STENCIL) == 0;
+                bool isDepthReadonly = GetFormatProps(textureViewDesc.format).isDepth && IsDepthReadOnly(GetTextureViewLayout(textureViewDesc));
+                bool isStencilReadonly = GetFormatProps(textureViewDesc.format).isStencil && IsStencilReadOnly(GetTextureViewLayout(textureViewDesc));
                 if (isDepthReadonly)
                     desc.Flags |= D3D12_DSV_FLAG_READ_ONLY_DEPTH;
                 if (isStencilReadonly)

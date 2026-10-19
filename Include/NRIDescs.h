@@ -589,7 +589,7 @@ NriBits(AccessBits, uint32_t,
                                     | NriMember(AccessBits, VIDEO_ENCODE_WRITE)
 );
 
-// "Layout" is ignored if "features.enhancedBarriers" is not supported
+// "Layout" in barriers is ignored if "features.enhancedBarriers" is not supported
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkImageLayout.html
 // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_layout
 NriEnum(Layout, uint8_t,            // Compatible "AccessBits":
@@ -601,9 +601,9 @@ NriEnum(Layout, uint8_t,            // Compatible "AccessBits":
     // Attachment
     COLOR_ATTACHMENT,                   // COLOR_ATTACHMENT_READ/WRITE
     DEPTH_STENCIL_ATTACHMENT,           // DEPTH_STENCIL_ATTACHMENT_READ/WRITE
-    DEPTH_READONLY_STENCIL_ATTACHMENT,  // DEPTH_STENCIL_ATTACHMENT_READ/WRITE (accessible "planes" = "STENCIL"), SHADER_RESOURCE (accessible "planes" = "DEPTH")
-    DEPTH_ATTACHMENT_STENCIL_READONLY,  // DEPTH_STENCIL_ATTACHMENT_READ/WRITE (accessible "planes" = "DEPTH"), SHADER_RESOURCE (accessible "planes" = "STENCIL")
-    DEPTH_STENCIL_READONLY,             // DEPTH_STENCIL_ATTACHMENT_READ  (accessible "planes" = "NONE"), SHADER_RESOURCE (D3D12: graphics queue only)
+    DEPTH_READONLY_STENCIL_ATTACHMENT,  // DEPTH_STENCIL_ATTACHMENT_READ/WRITE (only stencil writable), SHADER_RESOURCE (depth plane)
+    DEPTH_ATTACHMENT_STENCIL_READONLY,  // DEPTH_STENCIL_ATTACHMENT_READ/WRITE (only depth writable), SHADER_RESOURCE (stencil plane)
+    DEPTH_STENCIL_READONLY,             // DEPTH_STENCIL_ATTACHMENT_READ, SHADER_RESOURCE (D3D12: graphics queue only)
     SHADING_RATE_ATTACHMENT,            // SHADING_RATE_ATTACHMENT
     INPUT_ATTACHMENT,                   // COLOR_ATTACHMENT, INPUT_ATTACHMENT
 
@@ -944,8 +944,11 @@ NriStruct(TextureViewDesc) {
     Nri(Dim_t) layerNum;                    // can be "REMAINING"
     Nri(Dim_t) sliceOffset;
     Nri(Dim_t) sliceNum;                    // can be "REMAINING" (METAL: used only by "CmdClearStorage", shader views expose all slices, attachments use "sliceOffset")
-    Nri(PlaneBits) planes;                  // accessible planes (missing planes for a "DEPTH_STENCIL_ATTACHMENT" are considered read-only)
+    Nri(PlaneBits) planes;                  // accessible planes (missing planes are read-only for "DEPTH_STENCIL_ATTACHMENT" if "layout" is not provided, i.e. "UNDEFINED")
     Nri(ComponentMapping) components;
+
+    // Overrides the expected access-time layout without transitioning the texture. May be any layout compatible with the view and texture usage, including fully or partially read-only depth-stencil layouts
+    NriOptional Nri(Layout) layout;         // auto-derived from the "type" and "planes" if "UNDEFINED"
 };
 
 NriStruct(BufferViewDesc) {

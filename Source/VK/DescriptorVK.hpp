@@ -110,7 +110,6 @@ DescriptorVK::~DescriptorVK() {
 Result DescriptorVK::Create(const TextureViewDesc& textureViewDesc) {
     const TextureVK& textureVK = *(TextureVK*)textureViewDesc.texture;
     const TextureDesc& textureDesc = textureVK.GetDesc();
-    const FormatProps& formatProps = GetFormatProps(textureViewDesc.format);
     Dim_t mipNum = textureViewDesc.mipNum == REMAINING ? (textureDesc.mipNum - textureViewDesc.mipOffset) : textureViewDesc.mipNum;
     Dim_t layerNum = textureViewDesc.layerNum == REMAINING ? (textureDesc.layerNum - textureViewDesc.layerOffset) : textureViewDesc.layerNum;
     Dim_t sliceNum = textureViewDesc.sliceNum == REMAINING ? (textureDesc.depth - textureViewDesc.sliceOffset) : textureViewDesc.sliceNum;
@@ -127,9 +126,10 @@ Result DescriptorVK::Create(const TextureViewDesc& textureViewDesc) {
     if (textureDesc.type == TextureType::TEXTURE_3D && m_Device.m_IsSupported.imageSlicedView)
         usageInfo.pNext = &slicesInfo;
 
-    // For attachments all format-enabled aspects are needed to support mixed R/RW layouts.
-    // For shader resources a specific set of planes is needed (like depth-only or stencil-only views)
-    const bool isAspectSensitiveAttachment = textureViewDesc.type == TextureView::DEPTH_STENCIL_ATTACHMENT || textureViewDesc.type == TextureView::SUBPASS_INPUT;
+    // Depth-stencil attachments expose all format aspects; default subpass inputs preserve legacy aspect selection
+    // Explicit subpass inputs and sampled views expose the requested planes
+    const bool isAspectSensitiveAttachment = textureViewDesc.type == TextureView::DEPTH_STENCIL_ATTACHMENT
+        || (textureViewDesc.type == TextureView::SUBPASS_INPUT && textureViewDesc.layout == Layout::UNDEFINED);
     const VkImageAspectFlags aspectMask = GetImageAspectFlags(isAspectSensitiveAttachment ? PlaneBits::ALL : textureViewDesc.planes, textureViewDesc.format);
 
     VkImageSubresourceRange subresourceRange = {
@@ -155,20 +155,6 @@ Result DescriptorVK::Create(const TextureViewDesc& textureViewDesc) {
     VkResult vkResult = vk.CreateImageView(m_Device, &createInfo, m_Device.GetVkAllocationCallbacks(), &m_View.image);
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkCreateImageView");
 
-    // Handle mixed R/RW depth-stencil specific layouts
-    VkImageLayout expectedLayout = GetImageViewLayout(textureViewDesc.type);
-    if (isAspectSensitiveAttachment && (formatProps.isDepth || formatProps.isStencil)) {
-        bool isDepthReadonly = textureViewDesc.planes != PlaneBits::ALL && (textureViewDesc.planes & PlaneBits::DEPTH) == 0;
-        bool isStencilReadonly = textureViewDesc.planes != PlaneBits::ALL && (textureViewDesc.planes & PlaneBits::STENCIL) == 0;
-
-        if (isDepthReadonly && isStencilReadonly)
-            expectedLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-        else if (isDepthReadonly)
-            expectedLayout = VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
-        else if (isStencilReadonly)
-            expectedLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
-    }
-
     m_Type = GetImageViewDescriptorType(textureViewDesc.type);
     m_Format = textureViewDesc.format;
     m_TextureView = textureViewDesc.type;
@@ -176,12 +162,13 @@ Result DescriptorVK::Create(const TextureViewDesc& textureViewDesc) {
 
     m_ViewDesc.texture = {};
     m_ViewDesc.texture.texture = &textureVK;
-    m_ViewDesc.texture.expectedLayout = expectedLayout;
+    m_ViewDesc.texture.expectedLayout = GetImageLayout(GetTextureViewLayout(textureViewDesc));
     m_ViewDesc.texture.aspectMask = subresourceRange.aspectMask;
     m_ViewDesc.texture.layerOrSliceOffset = textureDesc.type == TextureType::TEXTURE_3D ? textureViewDesc.sliceOffset : textureViewDesc.layerOffset;
     m_ViewDesc.texture.layerOrSliceNum = textureDesc.type == TextureType::TEXTURE_3D ? sliceNum : layerNum;
     m_ViewDesc.texture.mipOffset = textureViewDesc.mipOffset;
     m_ViewDesc.texture.mipNum = mipNum;
+    m_ViewDesc.texture.hasExplicitLayout = textureViewDesc.layout != Layout::UNDEFINED;
 
     return Result::SUCCESS;
 }
