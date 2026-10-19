@@ -1285,15 +1285,21 @@ NRI_INLINE void CommandBufferVal::BuildBottomLevelAccelerationStructure(const Bu
         for (uint32_t j = 0; j < desc.geometryNum; j++) {
             const BottomLevelGeometryDesc& geometry = desc.geometries[j];
             NRI_RETURN_ON_FAILURE(&m_Device, geometry.type < BottomLevelGeometryType::MAX_NUM, ReturnVoid(), "'[%u].geometries[%u].type' is invalid", i, j);
+
             if (geometry.type == BottomLevelGeometryType::TRIANGLES) {
+                NRI_RETURN_ON_FAILURE(&m_Device, geometry.triangles.vertexBuffer != HAS_BUFFER, ReturnVoid(), "'[%u].geometries[%u].triangles.vertexBuffer' is HAS_BUFFER (only allowed in 'AccelerationStructureDesc')", i, j);
+                NRI_RETURN_ON_FAILURE(&m_Device, geometry.triangles.indexBuffer != HAS_BUFFER, ReturnVoid(), "'[%u].geometries[%u].triangles.indexBuffer' is HAS_BUFFER (only allowed in 'AccelerationStructureDesc')", i, j);
+                NRI_RETURN_ON_FAILURE(&m_Device, geometry.triangles.transformBuffer != HAS_BUFFER, ReturnVoid(), "'[%u].geometries[%u].triangles.transformBuffer' is HAS_BUFFER (only allowed in 'AccelerationStructureDesc')", i, j);
                 NRI_RETURN_ON_FAILURE(&m_Device, geometry.triangles.vertexFormat < Format::MAX_NUM, ReturnVoid(), "'[%u].geometries[%u].triangles.vertexFormat' is invalid", i, j);
                 NRI_RETURN_ON_FAILURE(&m_Device, geometry.triangles.indexType < IndexType::MAX_NUM, ReturnVoid(), "'[%u].geometries[%u].triangles.indexType' is invalid", i, j);
 
                 if (geometry.triangles.micromap) {
+                    NRI_RETURN_ON_FAILURE(&m_Device, geometry.triangles.micromap->indexBuffer != HAS_BUFFER, ReturnVoid(), "'[%u].geometries[%u].triangles.micromap->indexBuffer' is HAS_BUFFER (only allowed in 'AccelerationStructureDesc')", i, j);
                     NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetDesc().tiers.rayTracing >= 3, ReturnVoid(), "'[%u].geometries[%u].triangles.micromap' requires 'tiers.rayTracing >= 3'", i, j);
                     NRI_RETURN_ON_FAILURE(&m_Device, geometry.triangles.micromap->indexType < IndexType::MAX_NUM, ReturnVoid(), "'[%u].geometries[%u].triangles.micromap->indexType' is invalid", i, j);
                 }
-            }
+            } else
+                NRI_RETURN_ON_FAILURE(&m_Device, geometry.aabbs.buffer != HAS_BUFFER, ReturnVoid(), "'[%u].geometries[%u].aabbs.buffer' is HAS_BUFFER (only allowed in 'AccelerationStructureDesc')", i, j);
 
             if (geometry.type == BottomLevelGeometryType::TRIANGLES && geometry.triangles.micromap)
                 micromapTotalNum++;
