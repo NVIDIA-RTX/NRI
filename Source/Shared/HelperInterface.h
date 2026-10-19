@@ -48,9 +48,9 @@ private:
         Vector<uint64_t> bufferOffsets;
         Vector<Texture*> textures;
         Vector<uint64_t> textureOffsets;
-        uint64_t size;
-        uint32_t alignment;
-        MemoryType type;
+        uint64_t size = 0;
+        uint32_t alignment = 0;
+        MemoryType type = 0;
     };
 
     Result TryToAllocateAndBindMemory(const ResourceGroupDesc& resourceGroupDesc, Memory** allocations, size_t& allocationNum);
