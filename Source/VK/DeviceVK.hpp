@@ -563,6 +563,7 @@ void DeviceVK::ProcessDeviceExtensions(Vector<const char*>& desiredDeviceExts, b
     APPEND_EXT(m_MinorVersion < 3, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 3, VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 3, VK_KHR_MAINTENANCE_4_EXTENSION_NAME);
+    APPEND_EXT(m_MinorVersion < 3, VK_KHR_FORMAT_FEATURE_FLAGS_2_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 3, VK_KHR_SHADER_INTEGER_DOT_PRODUCT_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 3, VK_EXT_IMAGE_ROBUSTNESS_EXTENSION_NAME);
     APPEND_EXT(m_MinorVersion < 3, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME); // TODO: there are 2 and 3 versions...
@@ -774,7 +775,7 @@ Result DeviceVK::Create(const DeviceCreationDesc& desc, const DeviceCreationVKDe
                 m_VK.GetPhysicalDeviceProperties2(deviceGroups[i].physicalDevices[0], &props);
 
                 uint32_t majorVersion = VK_API_VERSION_MAJOR(props.properties.apiVersion);
-                m_MinorVersion = VK_API_VERSION_MINOR(props.properties.apiVersion);
+                m_MinorVersion = std::min(VK_API_VERSION_MINOR(props.properties.apiVersion), VK_API_VERSION_MINOR(m_InstanceVersion));
 
                 bool isSupported = (majorVersion * 10 + m_MinorVersion) >= 12;
                 if (desc.adapterDesc) {
@@ -2031,6 +2032,7 @@ Result DeviceVK::CreateInstance(bool enableGraphicsAPIValidation, const Vector<c
 
     VkApplicationInfo appInfo = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
     appInfo.apiVersion = std::clamp(instanceVersion, VK_API_VERSION_1_2, VK_API_VERSION_1_4);
+    m_InstanceVersion = appInfo.apiVersion;
 
     const VkValidationFeatureEnableEXT enabledValidationFeatures[] = {
         VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT, // TODO: add VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT?
