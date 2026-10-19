@@ -475,7 +475,7 @@ NRI_INLINE Result SwapChainVK::AcquireNextTexture(FenceVK& acquireSemaphore, uin
     VkResult vkResult = vk.AcquireNextImage2KHR(m_Device, &acquireInfo, &m_TextureIndex);
     textureIndex = m_TextureIndex;
 
-    if (vkResult == VK_ERROR_OUT_OF_DATE_KHR || vkResult == VK_SUBOPTIMAL_KHR)
+    if (vkResult == VK_ERROR_OUT_OF_DATE_KHR)
         return Result::OUT_OF_DATE;
 
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "AcquireNextImage2KHR");
@@ -523,7 +523,7 @@ NRI_INLINE Result SwapChainVK::Present(FenceVK& releaseSemaphore, uint64_t prese
     if ((m_Flags & SwapChainBits::ALLOW_LOW_LATENCY) && presentIdValue != 0)
         SetLatencyMarker(presentIdValue, (LatencyMarker)VK_LATENCY_MARKER_PRESENT_END_NV);
 
-    if (vkResult == VK_ERROR_OUT_OF_DATE_KHR || vkResult == VK_SUBOPTIMAL_KHR)
+    if (vkResult == VK_ERROR_OUT_OF_DATE_KHR)
         return Result::OUT_OF_DATE;
 
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "QueuePresentKHR");
