@@ -220,8 +220,15 @@ BufferOffset StreamerImpl::StreamTextureData(const StreamTextureDataDesc& stream
     // Allocate a minimum continous region in a buffer encompassing the destination texture region
     const FormatProps& formatProps = GetFormatProps(textureDesc.format);
     uint32_t rowPitch = w * formatProps.stride;
+    uint32_t rowNum = h;
+
+    if (formatProps.isCompressed) {
+        rowPitch = ((w + formatProps.blockWidth - 1) / formatProps.blockWidth) * formatProps.stride;
+        rowNum = (h + formatProps.blockHeight - 1) / formatProps.blockHeight;
+    }
+
     uint32_t alignedRowPitch = Align(rowPitch, deviceDesc.memoryAlignment.uploadBufferTextureRow);
-    uint32_t alignedSlicePitch = Align(alignedRowPitch * h, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
+    uint32_t alignedSlicePitch = Align(alignedRowPitch * rowNum, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
     uint64_t dataSize = alignedSlicePitch * d;
 
     m_DynamicBufferOffset = Align(m_DynamicBufferOffset, deviceDesc.memoryAlignment.uploadBufferTextureSlice);
@@ -240,7 +247,7 @@ BufferOffset StreamerImpl::StreamTextureData(const StreamTextureDataDesc& stream
         uint8_t* dst = (uint8_t*)m_iCore.MapBuffer(*m_DynamicBuffer, offset, dataSize);
 
         for (uint32_t z = 0; z < d; z++) {
-            for (uint32_t y = 0; y < h; y++) {
+            for (uint32_t y = 0; y < rowNum; y++) {
                 uint8_t* dstRow = dst + z * alignedSlicePitch + y * alignedRowPitch;
                 const uint8_t* srcRow = (uint8_t*)streamTextureDataDesc.data + z * streamTextureDataDesc.dataSlicePitch + y * streamTextureDataDesc.dataRowPitch;
                 memcpy(dstRow, srcRow, rowPitch);
