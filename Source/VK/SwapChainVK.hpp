@@ -295,15 +295,19 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         VkResult vkResult = vk.GetPhysicalDeviceSurfaceCapabilities2KHR(m_Device, &surfaceInfo, &surfaceCaps2);
         NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "vkGetPhysicalDeviceSurfaceCapabilities2KHR");
 
+        // TODO: that's the minimal check to detect scaling support
+        if (surfacePresentScalingCaps.supportedPresentScaling != 0 && surfacePresentScalingCaps.supportedPresentGravityX != 0 && surfacePresentScalingCaps.supportedPresentGravityY != 0)
+            isScalingSupported = true;
+
         // Caps
         const VkSurfaceCapabilitiesKHR& surfaceCaps = surfaceCaps2.surfaceCapabilities;
-        bool isWidthValid = swapChainDesc.width >= surfaceCaps.minImageExtent.width && swapChainDesc.width <= surfaceCaps.maxImageExtent.width;
-        NRI_RETURN_ON_FAILURE(&m_Device, isWidthValid, Result::INVALID_ARGUMENT, "swapChainDesc.width is out of [%u, %u] range", surfaceCaps.minImageExtent.width,
-            surfaceCaps.maxImageExtent.width);
+        const VkExtent2D& minImageExtent = isScalingSupported ? surfacePresentScalingCaps.minScaledImageExtent : surfaceCaps.minImageExtent;
+        const VkExtent2D& maxImageExtent = isScalingSupported ? surfacePresentScalingCaps.maxScaledImageExtent : surfaceCaps.maxImageExtent;
+        bool isWidthValid = swapChainDesc.width >= minImageExtent.width && swapChainDesc.width <= maxImageExtent.width;
+        NRI_RETURN_ON_FAILURE(&m_Device, isWidthValid, Result::INVALID_ARGUMENT, "swapChainDesc.width is out of [%u, %u] range", minImageExtent.width, maxImageExtent.width);
 
-        bool isHeightValid = swapChainDesc.height >= surfaceCaps.minImageExtent.height && swapChainDesc.height <= surfaceCaps.maxImageExtent.height;
-        NRI_RETURN_ON_FAILURE(&m_Device, isHeightValid, Result::INVALID_ARGUMENT, "swapChainDesc.height is out of [%u, %u] range", surfaceCaps.minImageExtent.height,
-            surfaceCaps.maxImageExtent.height);
+        bool isHeightValid = swapChainDesc.height >= minImageExtent.height && swapChainDesc.height <= maxImageExtent.height;
+        NRI_RETURN_ON_FAILURE(&m_Device, isHeightValid, Result::INVALID_ARGUMENT, "swapChainDesc.height is out of [%u, %u] range", minImageExtent.height, maxImageExtent.height);
 
         // Silently clamp "textureNum" to the supported range
         if (textureNum < surfaceCaps.minImageCount)
@@ -328,10 +332,6 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
 
         // VK guarantees only COLOR_ATTACHMENT usage for swap chain images; transfer usages are optional
         swapchainImageUsageFlags |= surfaceCaps.supportedUsageFlags & (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-
-        // TODO: that's the minimal check to detect scaling support
-        if (surfacePresentScalingCaps.supportedPresentScaling != 0 && surfacePresentScalingCaps.supportedPresentGravityX != 0 && surfacePresentScalingCaps.supportedPresentGravityY != 0)
-            isScalingSupported = true;
     }
 
     { // Swap chain
