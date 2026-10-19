@@ -32,11 +32,6 @@ struct SwapChainWGPU final : public DisplayDescHelper, public DebugNameBase {
     }
 
 private:
-    WGPUPresentMode GetPresentMode(const WGPUSurfaceCapabilities& capabilities, SwapChainBits flags) const;
-    WGPUCompositeAlphaMode GetAlphaMode(const WGPUSurfaceCapabilities& capabilities) const;
-    WGPUTextureFormat GetFormat(const WGPUSurfaceCapabilities& capabilities, SwapChainFormat format) const;
-
-private:
     DeviceWGPU& m_Device;
     Vector<TextureWGPU*> m_Textures;
     WGPUSurface m_Surface = nullptr;

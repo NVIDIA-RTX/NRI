@@ -135,7 +135,8 @@ NriStruct(SwapChainInterface) {
     // Returns "FAILURE" if swap chain's window is outside of all monitors
     Nri(Result)             (NRI_CALL *GetDisplayDesc)          (NriRef(SwapChain) swapChain, NriOut NriRef(DisplayDesc) displayDesc);
 
-    // "acquireSemaphore" must be created with "SWAPCHAIN_SEMAPHORE" initial value (ignored in D3D). VK only: may return "OUT_OF_DATE"
+    // "acquireSemaphore" must be created with "SWAPCHAIN_SEMAPHORE" initial value (ignored in D3D and WGPU). VK/WGPU: may return "OUT_OF_DATE"
+    // WGPU: "NOT_READY" means no texture was acquired; skip the frame, process window events and retry without recreating the swap chain
     Nri(Result)             (NRI_CALL *AcquireNextTexture)      (NriRef(SwapChain) swapChain, NriRef(Fence) acquireSemaphore, NriOut NonNriRef(uint32_t) textureIndex);
 
     // "presentId" must identify a previously queued presentation. Call once immediately before input sampling

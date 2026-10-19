@@ -106,8 +106,9 @@ NriBits(GraphicsAPI, uint8_t,
 
 NriEnum(Result, int8_t,
     // All bad, but optionally require an action ("callbackInterface.AbortExecution" is not triggered)
+    NOT_READY               = -4,   // WGPU: no swap chain texture available yet, skip the frame and retry after processing window events
     DEVICE_LOST             = -3,   // may be returned by "QueueSubmit*", "*WaitIdle", "AcquireNextTexture", "QueuePresent", "WaitForPresent"
-    OUT_OF_DATE             = -2,   // VK: swap chain is out of date, can be triggered if "features.resizableSwapChain" is not supported; D3D12: shader cache is stale
+    OUT_OF_DATE             = -2,   // VK/WGPU: swap chain is out of date, can be triggered if "features.resizableSwapChain" is not supported; D3D12: shader cache is stale
     INVALID_SDK             = -1,   // D3D12: some interfaces are missing (potential reasons: unable to load "D3D12Core.dll", version or SDK mismatch, developer mode is not enabled)
 
     // All good
