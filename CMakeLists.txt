@@ -231,7 +231,7 @@ if(NRI_ENABLE_METAL_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL "https://github.com/apple/metal-cpp/archive/27c4382b7151d55a51692cdcb27aaa98752240de.zip"
+        URL "https://github.com/apple/metal-cpp/archive/refs/tags/release/metal-cpp_macOS27_iOS27.zip"
     )
     list(APPEND DEPS metal_cpp)
 endif()
@@ -253,12 +253,12 @@ if(NRI_ENABLE_VK_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/3aa921224c154a0d2c43912bc88e1c42ce1f7607.zip"
+        URL "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/bfb2ca99e1e7e9684dc06546b552ee3eff4b10aa.zip"
     )
     list(APPEND DEPS vma)
 endif()
 
-set(NGX_VERSION "310.9.1")
+set(NGX_VERSION "310.9.16")
 if(IS_ARM64)
     set(NGX_WINDOWS_DIR "Windows_aarch64")
     set(NGX_WINDOWS_LIB_DIR "Windows_aarch64")
@@ -323,7 +323,7 @@ if(NRI_ENABLE_D3D12_SUPPORT)
         DOWNLOAD_EXTRACT_TIMESTAMP 1
         DOWNLOAD_NO_PROGRESS 1
         SOURCE_SUBDIR "ignore CMakeLists.txt"
-        URL "https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/1d86c1130f61453634b1df85782e1fecfd59a525.zip"
+        URL "https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/b73737b0b4cde0b5ab80d685209cdc0d81cf878e.zip"
     )
     list(APPEND DEPS d3d12ma)
 endif()
