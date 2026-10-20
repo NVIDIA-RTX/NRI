@@ -433,6 +433,9 @@ NriBits(FormatSupportBits, uint32_t,
 //   - "AccessBits" corresponding with any relevant resource usage after the barrier completes
 //   - "StagesBits" of all subsequent GPU work that must wait until the barrier execution is finished (stages to halt until the barrier is executed)
 //   - "Layout" for textures
+// D3D12 enhanced texture barriers:
+//   - With a defined layout and stages other than "StageBits::NONE", "AccessBits::NONE" uses conservative "COMMON" access to preserve execution dependencies (may flush caches)
+//   - "StageBits::NONE" requires no accesses or barriers to the affected subresources on that side within the same "QueueSubmit" scope
 // If "features.enhancedBarriers" is not supported:
 //   - https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#compatibility-with-legacy-d3d12_resource_states
 //   - "AccessBits::NONE" gets mapped to "COMMON" (aka "GENERAL" access), leading to potential discrepancies with VK

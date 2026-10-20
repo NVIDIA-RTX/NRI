@@ -217,6 +217,14 @@ static inline D3D12_BARRIER_ACCESS GetBarrierAccessFlags(AccessBits accessBits) 
     return flags;
 }
 
+static inline D3D12_BARRIER_ACCESS GetTextureBarrierAccessFlags(const AccessLayoutStage& state) {
+    // "NO_ACCESS" requires "SYNC_NONE" for defined layouts, preserve execution dependencies by using conservative access instead
+    if (state.access == AccessBits::NONE && state.layout != Layout::UNDEFINED && state.stages != StageBits::NONE)
+        return D3D12_BARRIER_ACCESS_COMMON;
+
+    return GetBarrierAccessFlags(state.access);
+}
+
 constexpr std::array<D3D12_BARRIER_LAYOUT, (size_t)Layout::MAX_NUM> g_BarrierLayouts = {
     D3D12_BARRIER_LAYOUT_UNDEFINED,           // UNDEFINED
     D3D12_BARRIER_LAYOUT_COMMON,              // GENERAL
@@ -2443,8 +2451,8 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
                 out = {};
                 out.SyncBefore = GetBarrierSyncFlags(in.before.stages, in.before.access);
                 out.SyncAfter = GetBarrierSyncFlags(in.after.stages, in.after.access);
-                out.AccessBefore = GetBarrierAccessFlags(in.before.access);
-                out.AccessAfter = GetBarrierAccessFlags(in.after.access);
+                out.AccessBefore = GetTextureBarrierAccessFlags(in.before);
+                out.AccessAfter = GetTextureBarrierAccessFlags(in.after);
                 out.LayoutBefore = GetBarrierLayout(in.before.layout, in.before.access);
                 out.LayoutAfter = GetBarrierLayout(in.after.layout, in.after.access);
                 out.pResource = texture;
