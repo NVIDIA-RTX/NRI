@@ -249,7 +249,15 @@ constexpr std::array<D3D12_BARRIER_LAYOUT, (size_t)Layout::MAX_NUM> g_BarrierLay
 };
 NRI_VALIDATE_ARRAY(g_BarrierLayouts);
 
-static constexpr D3D12_BARRIER_LAYOUT GetBarrierLayout(Layout layout, AccessBits accessBits) {
+static inline bool IsCopyQueue(const Queue* queue) {
+    return queue && ((const QueueD3D12*)queue)->GetType() == D3D12_COMMAND_LIST_TYPE_COPY;
+}
+
+static inline D3D12_BARRIER_LAYOUT GetBarrierLayout(Layout layout, AccessBits accessBits, bool isCopyQueue) {
+    // COPY queues use COMMON for both copy layouts, including the matching side of a queue hand-off.
+    if (isCopyQueue && (layout == Layout::COPY_SOURCE || layout == Layout::COPY_DESTINATION))
+        return D3D12_BARRIER_LAYOUT_COMMON;
+
     // Special case
     if (layout == Layout::INPUT_ATTACHMENT && (accessBits & AccessBits::INPUT_ATTACHMENT) != 0)
         return D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
@@ -2432,6 +2440,7 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
         }
 
         // Texture
+        const bool isCopyList = m_CommandListType == D3D12_COMMAND_LIST_TYPE_COPY;
         Scratch<D3D12_TEXTURE_BARRIER> textureBarriers = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_TEXTURE_BARRIER, barrierDesc.textureNum);
         if (barrierDesc.textureNum) {
             D3D12_BARRIER_GROUP* barrierGroup = &barrierGroups[barriersGroupsNum++];
@@ -2453,8 +2462,8 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
                 out.SyncAfter = GetBarrierSyncFlags(in.after.stages, in.after.access);
                 out.AccessBefore = GetTextureBarrierAccessFlags(in.before);
                 out.AccessAfter = GetTextureBarrierAccessFlags(in.after);
-                out.LayoutBefore = GetBarrierLayout(in.before.layout, in.before.access);
-                out.LayoutAfter = GetBarrierLayout(in.after.layout, in.after.access);
+                out.LayoutBefore = GetBarrierLayout(in.before.layout, in.before.access, isCopyList || IsCopyQueue(in.srcQueue));
+                out.LayoutAfter = GetBarrierLayout(in.after.layout, in.after.access, isCopyList || IsCopyQueue(in.dstQueue));
                 out.pResource = texture;
                 out.Subresources.IndexOrFirstMipLevel = in.mipOffset;
                 out.Subresources.NumMipLevels = mipNum;

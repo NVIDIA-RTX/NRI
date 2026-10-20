@@ -662,6 +662,7 @@ NriStruct(TextureBarrierDesc) {
     Nri(Dim_t) layerNum;    // can be "REMAINING"
     Nri(PlaneBits) planes;
 
+    // Source and destination queues for the "before" and "after" sides of a cross-queue texture hand-off. Specify both queues regardless of sharing mode.
     // Queue ownership transfer is potentially needed only for "SharingMode::EXCLUSIVE" textures
     // https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#synchronization-queue-transfers
     NriOptional NriPtr(Queue) srcQueue;
