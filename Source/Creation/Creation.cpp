@@ -185,7 +185,7 @@ static int SortAdapters(const void* pa, const void* pb) {
 
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
 
-static void UpdateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterDescNum, LUID* precreatedLuid) {
+static void UpdateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterDescNum, LUID* precreatedLuid, GraphicsAPI graphicsAPIs) {
     ComPtr<IDXGIFactory4> dxgifactory;
     if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&dxgifactory))))
         return;
@@ -231,24 +231,28 @@ static void UpdateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterDescNu
 
         AdapterDesc& adapterDesc = adapterDescs[n];
 
-        // Update GAPI support
+        // Update GAPI support (only for requested APIs, since each probe creates a device)
 #    if (NRI_ENABLE_D3D11_SUPPORT)
-        D3D_FEATURE_LEVEL levels[2] = {D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0};
-        uint32_t levelNum = GetCountOf(levels);
         ComPtr<ID3D11Device> deviceD3D11;
-        hr = D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, levels, levelNum, D3D11_SDK_VERSION, &deviceD3D11, nullptr, nullptr);
-        if (SUCCEEDED(hr)) {
-            adapterDesc.supportedGraphicsAPIs |= GraphicsAPI::D3D11;
-            keepAlive(deviceD3D11);
+        if (graphicsAPIs & GraphicsAPI::D3D11) {
+            D3D_FEATURE_LEVEL levels[2] = {D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0};
+            uint32_t levelNum = GetCountOf(levels);
+            hr = D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, levels, levelNum, D3D11_SDK_VERSION, &deviceD3D11, nullptr, nullptr);
+            if (SUCCEEDED(hr)) {
+                adapterDesc.supportedGraphicsAPIs |= GraphicsAPI::D3D11;
+                keepAlive(deviceD3D11);
+            }
         }
 #    endif
 
 #    if (NRI_ENABLE_D3D12_SUPPORT)
         ComPtr<ID3D12Device> deviceD3D12;
-        hr = D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&deviceD3D12));
-        if (SUCCEEDED(hr)) {
-            adapterDesc.supportedGraphicsAPIs |= GraphicsAPI::D3D12;
-            keepAlive(deviceD3D12);
+        if (graphicsAPIs & GraphicsAPI::D3D12) {
+            hr = D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&deviceD3D12));
+            if (SUCCEEDED(hr)) {
+                adapterDesc.supportedGraphicsAPIs |= GraphicsAPI::D3D12;
+                keepAlive(deviceD3D12);
+            }
         }
 #    endif
 
@@ -267,14 +271,14 @@ static void UpdateAdaptersD3D(AdapterDesc* adapterDescs, uint32_t& adapterDescNu
         // Architecture
         if (desc.Flags == DXGI_ADAPTER_FLAG_NONE) {
 #    if (NRI_ENABLE_D3D11_SUPPORT)
-            // Simpler and faster
             if (deviceD3D11) {
                 D3D11_FEATURE_DATA_D3D11_OPTIONS2 options2 = {};
                 hr = deviceD3D11->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS2, &options2, sizeof(options2));
                 if (SUCCEEDED(hr))
                     adapterDesc.architecture = options2.UnifiedMemoryArchitecture ? Architecture::INTEGRATED : Architecture::DISCRETE;
             }
-#    else
+#    endif
+#    if (NRI_ENABLE_D3D12_SUPPORT)
             if (deviceD3D12) {
                 D3D12_FEATURE_DATA_ARCHITECTURE architecture = {};
                 hr = deviceD3D12->CheckFeatureSupport(D3D12_FEATURE_ARCHITECTURE, &architecture, sizeof(architecture));
@@ -891,7 +895,7 @@ NRI_API Result NRI_CALL nriCreateDevice(const DeviceCreationDesc& deviceCreation
     std::array<AdapterDesc, ADAPTER_MAX_NUM> adapterDescs = {};
     AdapterDesc adapterDesc = {};
     if (!modifiedDeviceCreationDesc.adapterDesc) {
-        nriEnumerateAdapters(adapterDescs.data(), adapterDescNum);
+        nriEnumerateAdapters(adapterDescs.data(), adapterDescNum, modifiedDeviceCreationDesc.graphicsAPI);
         for (uint32_t i = 0; i < adapterDescNum; i++) {
             if (adapterDescs[i].supportedGraphicsAPIs & modifiedDeviceCreationDesc.graphicsAPI) {
                 adapterDesc = adapterDescs[i];
@@ -1057,7 +1061,7 @@ NRI_API Result NRI_CALL nriCreateDeviceFromD3D11Device(const DeviceCreationD3D11
                 hr = adapter->GetDesc(&desc);
                 if (SUCCEEDED(hr)) {
                     uint32_t unused = 0;
-                    UpdateAdaptersD3D(&adapterDesc, unused, &desc.AdapterLuid);
+                    UpdateAdaptersD3D(&adapterDesc, unused, &desc.AdapterLuid, GraphicsAPI::D3D11);
                 }
             }
         }
@@ -1112,7 +1116,7 @@ NRI_API Result NRI_CALL nriCreateDeviceFromD3D12Device(const DeviceCreationD3D12
 
     LUID luid = deviceCreationD3D12Desc.d3d12Device->GetAdapterLuid();
     uint32_t unused = 0;
-    UpdateAdaptersD3D(&adapterDesc, unused, &luid);
+    UpdateAdaptersD3D(&adapterDesc, unused, &luid, GraphicsAPI::D3D12);
 
     // Valid queue families expected
     Vector<QueueFamilyD3D12Desc> queueFamilies(deviceCreationDesc.allocationCallbacks);
@@ -1256,28 +1260,35 @@ NRI_API const char* NRI_CALL nriGetGraphicsAPIString(GraphicsAPI graphicsAPI) {
     }
 }
 
-NRI_API Result NRI_CALL nriEnumerateAdapters(AdapterDesc* outAdapterDescs, uint32_t& outAdapterDescNum) {
+NRI_API Result NRI_CALL nriEnumerateAdapters(AdapterDesc* outAdapterDescs, uint32_t& outAdapterDescNum, GraphicsAPI graphicsAPIs) {
     std::array<AdapterDesc, ADAPTER_MAX_NUM> adapterDescs = {};
     uint32_t adapterDescNum = 0;
 
+    if (graphicsAPIs == GraphicsAPI::ALL)
+        graphicsAPIs = ~GraphicsAPI::ALL;
+
 #if NRI_ENABLE_VK_SUPPORT
-    UpdateAdaptersVK(adapterDescs.data(), adapterDescNum, nullptr);
+    if (graphicsAPIs & GraphicsAPI::VK)
+        UpdateAdaptersVK(adapterDescs.data(), adapterDescNum, nullptr);
 #endif
 
 #if (NRI_ENABLE_D3D11_SUPPORT || NRI_ENABLE_D3D12_SUPPORT)
-    UpdateAdaptersD3D(adapterDescs.data(), adapterDescNum, nullptr);
+    if (graphicsAPIs & (GraphicsAPI::D3D11 | GraphicsAPI::D3D12))
+        UpdateAdaptersD3D(adapterDescs.data(), adapterDescNum, nullptr, graphicsAPIs);
 #endif
 
 #if NRI_ENABLE_WGPU_SUPPORT
-    UpdateAdaptersWGPU(adapterDescs.data(), adapterDescNum);
+    if (graphicsAPIs & GraphicsAPI::WGPU)
+        UpdateAdaptersWGPU(adapterDescs.data(), adapterDescNum);
 #endif
 
 #if NRI_ENABLE_METAL_SUPPORT
-    UpdateAdaptersMetal(adapterDescs.data(), adapterDescNum, ADAPTER_MAX_NUM);
+    if (graphicsAPIs & GraphicsAPI::METAL)
+        UpdateAdaptersMetal(adapterDescs.data(), adapterDescNum, ADAPTER_MAX_NUM);
 #endif
 
 #if NRI_ENABLE_NONE_SUPPORT
-    if (!adapterDescNum) {
+    if (!adapterDescNum && (graphicsAPIs & GraphicsAPI::NONE)) {
         AdapterDesc& adapterDesc = adapterDescs[adapterDescNum++];
 
         adapterDesc.videoMemorySize = 128ull << 30;
@@ -1299,7 +1310,8 @@ NRI_API Result NRI_CALL nriEnumerateAdapters(AdapterDesc* outAdapterDescs, uint3
         for (uint32_t i = 0; i < outAdapterDescNum; i++) {
             outAdapterDescs[i] = adapterDescs[i];
 #if NRI_ENABLE_NONE_SUPPORT
-            outAdapterDescs[i].supportedGraphicsAPIs |= GraphicsAPI::NONE;
+            if (graphicsAPIs & GraphicsAPI::NONE)
+                outAdapterDescs[i].supportedGraphicsAPIs |= GraphicsAPI::NONE;
 #endif
         }
     } else

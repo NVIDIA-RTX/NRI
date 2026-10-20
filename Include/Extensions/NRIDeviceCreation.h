@@ -97,7 +97,9 @@ NriStruct(DeviceCreationDesc) {
 
 // if "adapterDescs == NULL", then "adapterDescNum" is set to the number of adapters
 // else "adapterDescNum" must be set to number of elements in "adapterDescs"
-NRI_API Nri(Result) NRI_CALL nriEnumerateAdapters(NriPtr(AdapterDesc) adapterDescs, NonNriRef(uint32_t) adapterDescNum);
+// "graphicsAPIs" is a mask of graphics APIs to probe: probing creates devices, so pass only the APIs you intend to use
+// ("AdapterDesc::supportedGraphicsAPIs" reports only probed APIs, "ALL" probes every enabled backend)
+NRI_API Nri(Result) NRI_CALL nriEnumerateAdapters(NriPtr(AdapterDesc) adapterDescs, NonNriRef(uint32_t) adapterDescNum, Nri(GraphicsAPI) graphicsAPIs NriDefault(GraphicsAPI::ALL));
 
 NRI_API Nri(Result) NRI_CALL nriCreateDevice(const NriRef(DeviceCreationDesc) deviceCreationDesc, NriOut NriRef(Device*) device);
 NRI_API void NRI_CALL nriDestroyDevice(NriPtr(Device) device);
