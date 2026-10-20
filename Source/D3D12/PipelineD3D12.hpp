@@ -441,7 +441,7 @@ Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipel
     ID3D12PipelineLibrary1* lib = cache ? cache->GetLibrary() : nullptr;
     wchar_t cacheName[24] = {};
 
-    HRESULT hr = E_FAIL;
+    HRESULT hr = E_INVALIDARG;
     if (lib) {
         FormatPipelineCacheName(HashGraphicsPipelineDesc(graphicsPipelineDesc), cacheName);
         hr = lib->LoadPipeline(cacheName, &pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState));
@@ -450,6 +450,9 @@ Result PipelineD3D12::CreateFromStream(const GraphicsPipelineDesc& graphicsPipel
     }
 
     if (graphicsPipelineDesc.flags & GraphicsPipelineBits::FAIL_ON_CACHE_MISS) {
+        if (hr == E_INVALIDARG) // not in cache
+            return Result::FAILURE;
+
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12PipelineLibrary::LoadPipeline");
     }
 
@@ -483,7 +486,7 @@ Result PipelineD3D12::Create(const ComputePipelineDesc& computePipelineDesc) {
     ID3D12PipelineLibrary1* lib = cache ? cache->GetLibrary() : nullptr;
     wchar_t cacheName[24] = {};
 
-    HRESULT hr = E_FAIL;
+    HRESULT hr = E_INVALIDARG;
     if (lib) {
         FormatPipelineCacheName(HashComputePipelineDesc(computePipelineDesc), cacheName);
         hr = lib->LoadComputePipeline(cacheName, &computePipleineStateDesc, IID_PPV_ARGS(&m_PipelineState));
@@ -492,6 +495,9 @@ Result PipelineD3D12::Create(const ComputePipelineDesc& computePipelineDesc) {
     }
 
     if (computePipelineDesc.flags & ComputePipelineBits::FAIL_ON_CACHE_MISS) {
+        if (hr == E_INVALIDARG) // not in cache
+            return Result::FAILURE;
+
         NRI_RETURN_ON_BAD_HRESULT(&m_Device, hr, "ID3D12PipelineLibrary::LoadComputePipeline");
     }
 
