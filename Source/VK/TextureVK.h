@@ -25,6 +25,10 @@ struct TextureVK final : public DebugNameBase {
         return m_Desc;
     }
 
+    inline bool IsConcurrent() const {
+        return m_IsConcurrent;
+    }
+
     inline Dim_t GetSize(Dim_t dimensionIndex, Dim_t mip = 0) const {
         return GetDimension(GraphicsAPI::VK, m_Desc, dimensionIndex, mip);
     }
@@ -49,6 +53,7 @@ private:
     TextureDesc m_Desc = {};
     VmaAllocation m_VmaAllocation = nullptr;
     bool m_OwnsNativeObjects = true;
+    bool m_IsConcurrent = false; // TODO: sharing mode is unknown for wrapped images
 };
 
 } // namespace nri

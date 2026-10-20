@@ -16,6 +16,7 @@ Result TextureVK::Create(const TextureDesc& textureDesc) {
 
     VkImageCreateInfo info = {VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
     m_Device.FillCreateInfo(m_Desc, info);
+    m_IsConcurrent = info.sharingMode == VK_SHARING_MODE_CONCURRENT;
 
     VideoResourceProfileListVK videoProfiles = {};
     const bool isVideoDecode = (m_Desc.usage & TextureUsageBits::VIDEO_DECODE) != 0;
