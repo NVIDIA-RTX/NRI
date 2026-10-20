@@ -141,93 +141,19 @@ Steps (already enabled by default):
 
 It's safe to compile *NRI* using the default (most likely latest) *Agility SDK* and export some specific `D3D12SDKVersion` in the executable using *NRI*. In this case, *NRI* queries latest "available" interfaces according to the actually loaded `D3D12Core.dll`.
 
-## KNOWN VULKAN EXTENSIONS
+## SUPPORTED VULKAN EXTENSIONS
 
 Required:
- - _VK_KHR_synchronization2_
- - (APPLE) _VK_KHR_portability_enumeration_
- - (APPLE) _VK_KHR_get_physical_device_properties2_
- - (APPLE) _VK_KHR_portability_subset_
+- _VK_KHR_synchronization2_
+
+Required (Apple):
+- _VK_KHR_portability_enumeration_, _VK_KHR_get_physical_device_properties2_, _VK_KHR_portability_subset_
+
+Supported (instance):
+- _VK_KHR_get_surface_capabilities2_, _VK_KHR_surface_, _VK_KHR_win32_surface_, _VK_KHR_xlib_surface_, _VK_KHR_wayland_surface_, _VK_KHR_android_surface_, _VK_EXT_metal_surface_, _VK_EXT_swapchain_colorspace_, _VK_EXT_debug_utils_, _VK_EXT_surface_maintenance1_
 
 Supported:
- - (Instance) _VK_KHR_get_surface_capabilities2_
- - (Instance) _VK_KHR_surface_
- - (Instance) _VK_KHR_win32_surface_ (_VK_KHR_xlib_surface_, _VK_KHR_wayland_surface_, _VK_KHR_android_surface_, _VK_EXT_metal_surface_)
- - (Instance) _VK_EXT_swapchain_colorspace_
- - (Instance) _VK_EXT_debug_utils_
- - (Instance) _VK_EXT_surface_maintenance1_
- - _VK_KHR_copy_commands2_
- - _VK_KHR_dynamic_rendering_
- - _VK_KHR_swapchain_
- - _VK_KHR_present_id_
- - _VK_KHR_present_wait_
- - _VK_KHR_swapchain_mutable_format_
- - _VK_KHR_push_descriptor_
- - _VK_KHR_maintenance4_
- - _VK_KHR_maintenance5_
- - _VK_KHR_maintenance6_
- - _VK_KHR_maintenance7_
- - _VK_KHR_maintenance8_
- - _VK_KHR_maintenance9_
- - _VK_KHR_maintenance10_
- - _VK_KHR_extended_flags_
- - _VK_KHR_line_rasterization_
- - _VK_KHR_fragment_shading_rate_
- - _VK_KHR_pipeline_library_
- - _VK_KHR_ray_tracing_pipeline_
- - _VK_KHR_acceleration_structure_ (depends on _VK_KHR_deferred_host_operations_)
- - _VK_KHR_ray_query_
- - _VK_KHR_ray_tracing_position_fetch_
- - _VK_KHR_ray_tracing_maintenance1_
- - _VK_KHR_fragment_shader_barycentric_
- - _VK_KHR_shader_clock_
- - _VK_KHR_compute_shader_derivatives_
- - _VK_KHR_unified_image_layouts_
- - _VK_KHR_shader_integer_dot_product_
- - _VK_KHR_shader_untyped_pointers_
- - _VK_KHR_sampler_ycbcr_conversion_
- - _VK_KHR_load_store_op_none_
- - _VK_KHR_dynamic_rendering_local_read_
- - _VK_EXT_extended_dynamic_state_
- - _VK_EXT_calibrated_timestamps_
- - _VK_EXT_pipeline_creation_cache_control_
- - _VK_EXT_pipeline_robustness_
- - _VK_EXT_host_image_copy_
- - _VK_EXT_load_store_op_none_
- - _VK_EXT_image_robustness_
- - _VK_EXT_subgroup_size_control_
- - _VK_EXT_mutable_descriptor_type_
- - _VK_EXT_descriptor_heap_
- - _VK_EXT_swapchain_maintenance1_
- - _VK_EXT_present_mode_fifo_latest_ready_
- - _VK_EXT_opacity_micromap_
- - _VK_EXT_sample_locations_
- - _VK_EXT_conservative_rasterization_
- - _VK_EXT_mesh_shader_
- - _VK_EXT_shader_atomic_float_
- - _VK_EXT_shader_atomic_float2_
- - _VK_EXT_memory_budget_
- - _VK_EXT_memory_priority_
- - _VK_EXT_image_sliced_view_of_3d_
- - _VK_EXT_custom_border_color_
- - _VK_EXT_robustness2_
- - _VK_EXT_fragment_shader_interlock_
- - _VK_EXT_zero_initialize_device_memory_
- - _VK_EXT_device_fault_
- - _VK_KHR_video_queue_
- - _VK_KHR_video_decode_queue_
- - _VK_KHR_video_encode_queue_
- - _VK_KHR_video_decode_h264_
- - _VK_KHR_video_decode_h265_
- - _VK_KHR_video_decode_av1_
- - _VK_KHR_video_encode_h264_
- - _VK_KHR_video_encode_h265_
- - _VK_KHR_video_encode_av1_
- - _VK_KHR_video_maintenance1_
- - _VK_KHR_video_maintenance2_
- - _VK_NV_low_latency2_
- - _VK_NVX_binary_import_
- - _VK_NVX_image_view_handle_
+- _VK_KHR_copy_commands2_, _VK_KHR_dynamic_rendering_, _VK_KHR_format_feature_flags2_, _VK_KHR_swapchain_, _VK_KHR_present_id_, _VK_KHR_present_wait_, _VK_KHR_swapchain_mutable_format_, _VK_KHR_push_descriptor_, _VK_KHR_maintenance4_, _VK_KHR_maintenance5_, _VK_KHR_maintenance6_, _VK_KHR_maintenance7_, _VK_KHR_maintenance8_, _VK_KHR_maintenance9_, _VK_KHR_maintenance10_, _VK_KHR_extended_flags_, _VK_KHR_line_rasterization_, _VK_KHR_fragment_shading_rate_, _VK_KHR_pipeline_library_, _VK_KHR_ray_tracing_pipeline_, _VK_KHR_acceleration_structure_ (depends on _VK_KHR_deferred_host_operations_), _VK_KHR_ray_query_, _VK_KHR_ray_tracing_position_fetch_, _VK_KHR_ray_tracing_maintenance1_, _VK_KHR_fragment_shader_barycentric_, _VK_KHR_shader_clock_, _VK_KHR_compute_shader_derivatives_, _VK_KHR_unified_image_layouts_, _VK_KHR_shader_integer_dot_product_, _VK_KHR_shader_untyped_pointers_, _VK_KHR_sampler_ycbcr_conversion_, _VK_KHR_load_store_op_none_, _VK_KHR_dynamic_rendering_local_read_, _VK_EXT_extended_dynamic_state_, _VK_EXT_calibrated_timestamps_, _VK_EXT_pipeline_creation_cache_control_, _VK_EXT_pipeline_robustness_, _VK_EXT_host_image_copy_, _VK_EXT_load_store_op_none_, _VK_EXT_image_robustness_, _VK_EXT_subgroup_size_control_, _VK_EXT_mutable_descriptor_type_, _VK_EXT_descriptor_heap_, _VK_EXT_swapchain_maintenance1_, _VK_EXT_present_mode_fifo_latest_ready_, _VK_EXT_opacity_micromap_, _VK_EXT_sample_locations_, _VK_EXT_conservative_rasterization_, _VK_EXT_mesh_shader_, _VK_EXT_shader_atomic_float_, _VK_EXT_shader_atomic_float2_, _VK_EXT_memory_budget_, _VK_EXT_memory_priority_, _VK_EXT_image_sliced_view_of_3d_, _VK_EXT_custom_border_color_, _VK_EXT_robustness2_, _VK_EXT_fragment_shader_interlock_, _VK_EXT_zero_initialize_device_memory_, _VK_EXT_device_fault_, _VK_KHR_video_queue_, _VK_KHR_video_decode_queue_, _VK_KHR_video_encode_queue_, _VK_KHR_video_decode_h264_, _VK_KHR_video_decode_h265_, _VK_KHR_video_decode_av1_, _VK_KHR_video_encode_h264_, _VK_KHR_video_encode_h265_, _VK_KHR_video_encode_av1_, _VK_KHR_video_maintenance1_, _VK_KHR_video_maintenance2_, _VK_NV_low_latency2_, _VK_NVX_binary_import_, _VK_NVX_image_view_handle_
 
 ## SAMPLES OVERVIEW
 
