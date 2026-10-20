@@ -77,7 +77,7 @@ NRI_VALIDATE_ARRAY(g_PrimitiveTopologyTypes);
 
 D3D_PRIMITIVE_TOPOLOGY nri::GetPrimitiveTopology(Topology topology, uint8_t tessControlPointNum) {
     if (topology == Topology::PATCH_LIST)
-        return (D3D_PRIMITIVE_TOPOLOGY)((uint8_t)D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ + tessControlPointNum);
+        return (D3D_PRIMITIVE_TOPOLOGY)(D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST + tessControlPointNum - 1);
     else
         return g_PrimitiveTopologies[(size_t)topology];
 }
