@@ -2,24 +2,24 @@
 
 [![Status](https://github.com/NVIDIA-RTX/NRI/actions/workflows/build.yml/badge.svg)](https://github.com/NVIDIA-RTX/NRI/actions/workflows/build.yml)
 
-*NRI* is a modular, extensible, low-level abstract rendering interface that was designed to support all low-level features of *D3D12* and *Vulkan* GAPIs. At the same time, it aims to simplify usage and reduce the amount of code needed (especially compared with VK).
+*NRI* is a modular, extensible, low-level abstract rendering interface designed to expose the low-level features of *D3D12* and *Vulkan* GAPIs. At the same time, it aims to simplify usage and reduce the amount of code needed (especially compared with VK).
 
 Goals:
 - Generalization and unification of *D3D12* ([spec](https://microsoft.github.io/DirectX-Specs/)) and VK ([spec](https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html))
 - Explicitness (providing access to low-level features of modern GAPIs)
 - Quality-of-life and high-level extensions (e.g., streaming and upscaling)
 - Low overhead
-- Cross-platform and platform independence (AMD/INTEL friendly)
+- Cross-platform and vendor-independent (AMD/Intel friendly)
 - *D3D11* support ([spec](https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm)) (as much as possible)
 
 Non-goals:
-- Exposing entities not existing in GAPIs
+- Exposing entities that do not exist in GAPIs
 - High-level (*D3D11*-like) abstraction
 - Hidden management of any kind (except for some high-level extensions where it's desired)
 - Automatic barriers (better handled in a higher-level abstraction)
 
 Supported GAPIs:
-- *Vulkan 1.4+, 1.3++ or 1.2+++* - advertises modern Vulkan compatibility, with a *Vulkan 1.2* core + _VK_KHR_synchronization2_ baseline
+- *Vulkan 1.4+, 1.3++ or 1.2+++* - older core versions require more extensions, with a *Vulkan 1.2* + _VK_KHR_synchronization2_ baseline
 - *D3D12*
 - *D3D11*
 - *WebGPU* (through [wgpu-native](https://github.com/gfx-rs/wgpu-native))
@@ -29,61 +29,63 @@ Supported GAPIs:
 
 ## WHY NRI?
 
-There is [NVRHI](https://github.com/NVIDIA-RTX/NVRHI), which offers a *D3D11*-like abstraction layer, implying some overhead. There is [vkd3d-proton](https://github.com/HansKristian-Work/vkd3d-proton), which was designed for *D3D12* emulation using *Vulkan*. There is [nvpro-samples](https://github.com/nvpro-samples), which explores all "dark corners" of *Vulkan* usage, but does not offer any cross-API support. There are some other good, unmentioned projects, but *NRI* was designed to offer a reasonably simple, low-overhead, and high-performance render interface suitable for game development, professional rendering and hobby projects. Additionally, *NRI* can serve as a middleware for integrations. For instance, the [NRD integration layer](https://github.com/NVIDIA-RTX/NRD/tree/master/Integration) is based on *NRI*, unifying multiple GAPI support within a single codebase.
+There is [NVRHI](https://github.com/NVIDIA-RTX/NVRHI), which offers a *D3D11*-like abstraction layer, implying some overhead. There is [vkd3d-proton](https://github.com/HansKristian-Work/vkd3d-proton), which was designed for *D3D12* emulation using *Vulkan*. There is [nvpro-samples](https://github.com/nvpro-samples), which explores all "dark corners" of *Vulkan* usage, but does not offer any cross-API support. There are other good projects, but *NRI* was designed to offer a reasonably simple, low-overhead, and high-performance render interface suitable for game development, professional rendering and hobby projects. Additionally, *NRI* can serve as middleware for integrations. For instance, the [NRD integration layer](https://github.com/NVIDIA-RTX/NRD/tree/master/Integration) is based on *NRI*, providing multi-GAPI support within a single codebase.
 
 ## KEY FEATURES
- - *Multi-API support* - generalized common denominator for *D3D12*, *Vulkan*, and *D3D11* (default *D3D11* behavior is changed to match *D3D12*/VK using *NVAPI* or **AMD AGS** libraries, where applicable)
+ - *Multi-API support* - a unified interface for *D3D12*, *Vulkan*, *D3D11*, *WebGPU*, and native *Metal 4* (default *D3D11* behavior is changed to match *D3D12*/VK using *NVAPI* or **AMD AGS** libraries, where applicable)
  - *C/C++ compatible* - native interface, compatible with both languages (can be used as a *shared* or *static* library)
- - *High performance* - low overhead with zero memory allocations at runtime, honored user-provided memory allocator
+ - *High performance* - low overhead, with support for user-provided memory allocators
  - *Modern hardware tech* - support for Ray Tracing, Mesh Shaders, descriptor indexing (including directly indexed descriptor heaps) and more
  - *Mobile-ready* - optimized for Tile-Based Rendering (TBR/TBDR) architectures and friendly to mobile-oriented API designs
  - *Portable API shape* - maps cleanly to constrained GAPIs, including WebGPU and consoles
  - *D3D12 Ultimate* - full support, including Enhanced Barriers
- - *Platform Flexibility* - Windows, Linux, MacOS, and Android support
- - *Developer Experience* - integrated GAPI- and NRI- validation, VK [printf](https://github.com/KhronosGroup/*Vulkan*-ValidationLayers/blob/main/docs/debug_printf.md), and timeline annotations (GAPI, [NVTX](https://github.com/NVIDIA/NVTX) and [PIX](https://devblogs.microsoft.com/pix/winpixeventruntime/), if "WinPixEventRuntime.dll" is nearby)
- - *Memory Management* - deep integration with *AMD Virtual Memory Allocator* to ease memory management and memory reuse
+ - *Platform Flexibility* - Windows, Linux, macOS, iOS, and Android support
+ - *Developer Experience* - integrated GAPI and NRI validation, VK [printf](https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/main/docs/debug_printf.md), and timeline annotations (GAPI, [NVTX](https://github.com/NVIDIA/NVTX) and [PIX](https://devblogs.microsoft.com/pix/winpixeventruntime/), if "WinPixEventRuntime.dll" is nearby)
+ - *Memory Management* - integration with *Vulkan Memory Allocator* and *D3D12 Memory Allocator* to ease memory management and memory reuse
 
 Available interfaces:
  - `NRI.h` - core functionality
  - `NRIDeviceCreation.h` - device creation and related functionality
  - `NRIHelper.h` - a collection of various helpers to ease use of the core interface
  - `NRIDescriptorHeap.h` - directly indexed descriptor heaps
- - `NRIImgui.h` - a light-weight *ImGui* renderer (no *ImGui* dependency)
+ - `NRIImgui.h` - a lightweight *ImGui* renderer (no *ImGui* dependency)
  - `NRILowLatency.h` - low latency support (aka *NVIDIA REFLEX*)
  - `NRIMeshShader.h` - mesh shaders
  - `NRIRayTracing.h` - ray tracing
  - `NRIStreamer.h` - a convenient way to stream data into resources
  - `NRISwapChain.h` - swap chain and related functionality
- - `NRIUpscaler.h` - a configurable collection of common upscalers (*NIS*, *FSR*, *DLSS-SR*, *DLSS-RR*)
+ - `NRIUpscaler.h` - a configurable collection of common upscalers (*NIS*, *FSR*, *XeSS*, *DLSS-SR*, *DLSS-RR*, *MetalFX*)
+ - `NRIVideo.h` - hardware video encoding and decoding
+ - `NRIWrapperD3D11.h`, `NRIWrapperD3D12.h`, `NRIWrapperVK.h`, `NRIWrapperMetal.h` - interoperability with native GAPI devices and resources
 
 Repository organization:
-- there is only `main` branch used for development
-- stable versions are in `Releases` section
+- development takes place on the `main` branch
+- stable versions are available in the `Releases` section
 
 ## BUILD INSTRUCTIONS
 
-- Install [*Cmake*](https://cmake.org/download/) 3.30+
-- MacOS: install prerequisites
+- Install [*CMake*](https://cmake.org/download/) 3.30+
+- macOS: install prerequisites
     - Xcode command line tools
     - Ninja
     - [Vulkan SDK](https://vulkan.lunarg.com/sdk/home#mac), then source its `setup-env.sh`
 - Build (variant 1) - using *Git* and *CMake* explicitly
-    - Clone project and init submodules
+    - Clone the project and initialize submodules
     - Generate and build the project using *CMake*
-    - To build the binary with static MSVC runtime, add `-DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>"` parameter when deploying the project
+    - To build the binary with the static MSVC runtime, add `-DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>"` parameter when configuring the project
 - Build (variant 2) - by running scripts:
     - To deploy the project, run `Scripts/<Platform>/1-Deploy`
     - To build the project, run `Scripts/<Platform>/2-Build`
     - To package the SDK, run `Scripts/<Platform>/3-PrepareSDK`
     - To clean generated files, run `Scripts/<Platform>/4-Clean`
 
-`<Platform>` is `Windows`, `Linux` or `MacOS`. Use `.bat` on Windows; run `.sh` scripts with `bash` on Linux and MacOS.
+`<Platform>` is `Windows`, `Linux` or `MacOS`. Use `.bat` on Windows; run `.sh` scripts with `bash` on Linux and macOS.
 
 Scripts resolve the NRI root from their own location, so they can be launched from any working directory.
 
 Notes:
-- *Xlib* and *Wayland* can be both enabled
-- Minimal supported client is Windows 8.1+
+- *Xlib* and *Wayland* can both be enabled
+- Minimum supported Windows version is Windows 8.1 (backend requirements may be higher)
 - *Metal 4* backend requires macOS 26+ or iOS 26+ (iPadOS included) and Xcode 26+ (with `MetalToolchain` component), *metal-cpp* is fetched automatically, native `.metallib` shaders must follow `NRI.metal` ABI, *DXIL* support requires *Metal Shader Converter* 4.0.1 (macOS and iOS devices, no simulator), offline converted *DXIL* (*ShaderMake* `--metalFromDXIL` bundles) works everywhere (see `NRIWrapperMetal.h`)
 - *iOS*: `-DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos|iphonesimulator -DCMAKE_OSX_ARCHITECTURES=arm64` (a separate build folder per SDK, with the *Xcode* generator *MetalFX* linking follows `CMAKE_OSX_SYSROOT`, static library by default, no *VK*, *WebGPU*, *NVTX* and *NIS*, no *MetalFX* and *Metal Shader Converter* in the simulator)
 - static `NRI` provides *metal-cpp* private implementation (`NS/MTL/CA/MTLFX_PRIVATE_IMPLEMENTATION`), set `NRI_METAL_CPP_PRIVATE_IMPLEMENTATION = OFF` if the app compiles it itself
@@ -99,7 +101,7 @@ Notes:
 ## CMAKE OPTIONS
 
 - `NRI_AGILITY_SDK_DIR` - Directory where *Agility SDK* will be copied relative to the directory with binaries
-- `NRI_AGILITY_SDK_VERSION_MAJOR`- *Agility SDK* major version
+- `NRI_AGILITY_SDK_VERSION_MAJOR` - *Agility SDK* major version
 - `NRI_AGILITY_SDK_VERSION_MINOR` - *Agility SDK* minor version
 - `NRI_SHADERS_PATH` - Shader output path override
 - `NRI_NVAPI_CUSTOM_PATH` - Path to a custom NVAPI library directory
@@ -115,12 +117,12 @@ Notes:
 - `NRI_ENABLE_METAL_SHADER_CONVERTER` - Enable *DXIL* support in *Metal* backend through *Metal Shader Converter* (enabled by default if installed)
 - `NRI_METAL_CPP_PRIVATE_IMPLEMENTATION` - Compile *metal-cpp* private implementation into `NRI` (can be disabled only for a static library)
 - `NRI_ENABLE_VALIDATION_SUPPORT` - Enable Validation backend (otherwise `enableNRIValidation` is ignored)
-- `NRI_ENABLE_NIS_SDK` - Enable NVIDIA Image Sharpening SDK
+- `NRI_ENABLE_NIS_SDK` - Enable NVIDIA Image Scaling SDK
 - `NRI_ENABLE_IMGUI_EXTENSION` - Enable `NRIImgui` extension
 - `NRI_STREAMER_THREAD_SAFE` - `NRIStreamer` thread safety (`OFF` is faster)
 - `NRI_ENABLE_D3D11_SUPPORT` - Enable *D3D11* backend
 - `NRI_ENABLE_D3D12_SUPPORT` - Enable *D3D12* backend
-- `NRI_ENABLE_AMDAGS`- Enable *AMD AGS* library for D3D
+- `NRI_ENABLE_AMDAGS` - Enable *AMD AGS* library for D3D
 - `NRI_ENABLE_NVAPI` - Enable NVAPI library for D3D
 - `NRI_ENABLE_AGILITY_SDK_SUPPORT` - Enable *Agility SDK* support to unlock access to latest *D3D12* features
 - `NRI_ENABLE_XLIB_SUPPORT` - Enable X11 support
@@ -131,15 +133,15 @@ Notes:
 
 ## AGILITY SDK
 
-The bare minimum requirement for *D3D12* backend is *D3D12 Ultimate* (*Windows SDK 10.0.20348*, last pre-*Agility SDK* release). *NRI* can be compiled for this *Windows SDK* using `Scripts/Windows/1-Deploy.bat -DNRI_ENABLE_AGILITY_SDK_SUPPORT=OFF -A "x64,version=10.0.20348.0"` command line. But using the latest *Agility SDK* is highly recommended to get access to most recent *D3D12* features and improved validation. See *Overview* and *Download* sections [*here*](https://devblogs.microsoft.com/directx/directx12agility/) for more details about *Agility SDK*.
+The minimum build requirement for the *D3D12* backend is *Windows SDK 10.0.20348* (with *D3D12 Ultimate* headers, the last pre-*Agility SDK* release). *NRI* can be compiled for this *Windows SDK* using the `Scripts/Windows/1-Deploy.bat -DNRI_ENABLE_AGILITY_SDK_SUPPORT=OFF -A "x64,version=10.0.20348.0"` command line. But using the latest *Agility SDK* is highly recommended to get access to the most recent *D3D12* features and improved validation. See *Overview* and *Download* sections [*here*](https://devblogs.microsoft.com/directx/directx12agility/) for more details about *Agility SDK*.
 
-Steps (already enabled by default):
+*Agility SDK* configuration (support is enabled by default):
 - modify `NRI_AGILITY_SDK_VERSION_MAJOR` and `NRI_AGILITY_SDK_VERSION_MINOR` to the desired value
 - enable or disable `NRI_ENABLE_AGILITY_SDK_SUPPORT`
-- re-deploy project
-- (optional) include auto-generated `NRIAgilitySDK.h` header in the code of your executable using *NRI*
+- re-deploy the project
+- (optional) include the auto-generated `NRIAgilitySDK.h` header in the code of your executable using *NRI*
 
-It's safe to compile *NRI* using the default (most likely latest) *Agility SDK* and export some specific `D3D12SDKVersion` in the executable using *NRI*. In this case, *NRI* queries latest "available" interfaces according to the actually loaded `D3D12Core.dll`.
+It's safe to compile *NRI* using the default *Agility SDK* and export a specific `D3D12SDKVersion` in the executable using *NRI*. In this case, *NRI* queries the latest interfaces available in the loaded `D3D12Core.dll`.
 
 ## SUPPORTED VULKAN EXTENSIONS
 
@@ -161,7 +163,7 @@ Supported:
 - main sample demonstrating path tracing best practices
 
 [*NRI samples*](https://github.com/NVIDIA-RTX/NRISamples):
-- many samples demonstrating basic usage, also works as unit tests
+- samples demonstrating basic usage and exercising individual features
 
 ## C/C++ INTERFACE DIFFERENCES
 
