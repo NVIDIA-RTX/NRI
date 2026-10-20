@@ -441,6 +441,30 @@ static constexpr D3D12_RESOLVE_MODE GetResolveOp(ResolveOp resolveOp) {
     return g_ResolveOps[(size_t)resolveOp];
 }
 
+static inline DXGI_FORMAT GetPlaneCompatibleFormat(Format format, PlaneBits planes) {
+    // Depth/stencil buffer footprints use a single-plane format.
+    if (format == Format::D24_UNORM_S8_UINT || format == Format::D32_SFLOAT_S8_UINT)
+        return (planes & PlaneBits::STENCIL) ? DXGI_FORMAT_R8_TYPELESS : DXGI_FORMAT_R32_TYPELESS;
+
+    if (format == Format::NV12_UNORM) {
+        if (planes & PlaneBits::PLANE_0)
+            return DXGI_FORMAT_R8_UNORM;
+        if (planes & PlaneBits::PLANE_1)
+            return DXGI_FORMAT_R8G8_UNORM;
+    } else if (format == Format::P010_UNORM || format == Format::P016_UNORM) {
+        if (planes & PlaneBits::PLANE_0)
+            return DXGI_FORMAT_R16_UNORM;
+        if (planes & PlaneBits::PLANE_1)
+            return DXGI_FORMAT_R16G16_UNORM;
+    }
+
+    return GetDxgiFormat(format).typeless;
+}
+
+static inline uint32_t GetPlaneDivisor(Format format, PlaneBits planes) {
+    return ((planes & PlaneBits::PLANE_1) && (format == Format::NV12_UNORM || format == Format::P010_UNORM || format == Format::P016_UNORM)) ? 2u : 1u;
+}
+
 static inline uint8_t GetVideoDecodeAV1FrameType(VideoFrameType frameType) {
     return (frameType == VideoFrameType::IDR || frameType == VideoFrameType::I) ? 0 : 1;
 }
@@ -2236,29 +2260,11 @@ NRI_INLINE void CommandBufferD3D12::ResolveTexture(Texture& dstTexture, const Te
 NRI_INLINE void CommandBufferD3D12::UploadBufferToTexture(Texture& dstTexture, const TextureRegionDesc& dstRegion, const Buffer& srcBuffer, const TextureDataLayoutDesc& srcDataLayout) {
     const TextureD3D12& dst = (TextureD3D12&)dstTexture;
     const TextureDesc& dstDesc = dst.GetDesc();
-    auto getPlaneCompatibleFormat = [](Format format, PlaneBits planes) {
-        if (format == Format::NV12_UNORM) {
-            if (planes & PlaneBits::PLANE_0)
-                return DXGI_FORMAT_R8_UNORM;
-            if (planes & PlaneBits::PLANE_1)
-                return DXGI_FORMAT_R8G8_UNORM;
-        } else if (format == Format::P010_UNORM || format == Format::P016_UNORM) {
-            if (planes & PlaneBits::PLANE_0)
-                return DXGI_FORMAT_R16_UNORM;
-            if (planes & PlaneBits::PLANE_1)
-                return DXGI_FORMAT_R16G16_UNORM;
-        }
-
-        return GetDxgiFormat(format).typeless;
-    };
-    auto getPlaneDivisor = [](Format format, PlaneBits planes) {
-        return ((planes & PlaneBits::PLANE_1) && (format == Format::NV12_UNORM || format == Format::P010_UNORM || format == Format::P016_UNORM)) ? 2u : 1u;
-    };
 
     D3D12_TEXTURE_COPY_LOCATION dstTextureCopyLocation = {dst, D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX};
     dstTextureCopyLocation.SubresourceIndex = GetSubresourceIndex(dstRegion.layerOffset, dstDesc.layerNum, dstRegion.mipOffset, dstDesc.mipNum, dstRegion.planes);
 
-    const uint32_t planeDivisor = getPlaneDivisor(dstDesc.format, dstRegion.planes);
+    const uint32_t planeDivisor = GetPlaneDivisor(dstDesc.format, dstRegion.planes);
     const uint32_t size[3] = {
         (dstRegion.width == WHOLE_SIZE ? dst.GetSize(0, dstRegion.mipOffset) : dstRegion.width) / planeDivisor,
         (dstRegion.height == WHOLE_SIZE ? dst.GetSize(1, dstRegion.mipOffset) : dstRegion.height) / planeDivisor,
@@ -2271,7 +2277,7 @@ NRI_INLINE void CommandBufferD3D12::UploadBufferToTexture(Texture& dstTexture, c
     srcTextureCopyLocation.pResource = (BufferD3D12&)srcBuffer;
     srcTextureCopyLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
     srcTextureCopyLocation.PlacedFootprint.Offset = srcDataLayout.offset;
-    srcTextureCopyLocation.PlacedFootprint.Footprint.Format = getPlaneCompatibleFormat(dstDesc.format, dstRegion.planes);
+    srcTextureCopyLocation.PlacedFootprint.Footprint.Format = GetPlaneCompatibleFormat(dstDesc.format, dstRegion.planes);
     srcTextureCopyLocation.PlacedFootprint.Footprint.Width = size[0];
     srcTextureCopyLocation.PlacedFootprint.Footprint.Height = size[1];
     srcTextureCopyLocation.PlacedFootprint.Footprint.Depth = size[2];
@@ -2283,29 +2289,11 @@ NRI_INLINE void CommandBufferD3D12::UploadBufferToTexture(Texture& dstTexture, c
 NRI_INLINE void CommandBufferD3D12::ReadbackTextureToBuffer(Buffer& dstBuffer, const TextureDataLayoutDesc& dstDataLayout, const Texture& srcTexture, const TextureRegionDesc& srcRegion) {
     const TextureD3D12& src = (TextureD3D12&)srcTexture;
     const TextureDesc& srcDesc = src.GetDesc();
-    auto getPlaneCompatibleFormat = [](Format format, PlaneBits planes) {
-        if (format == Format::NV12_UNORM) {
-            if (planes & PlaneBits::PLANE_0)
-                return DXGI_FORMAT_R8_UNORM;
-            if (planes & PlaneBits::PLANE_1)
-                return DXGI_FORMAT_R8G8_UNORM;
-        } else if (format == Format::P010_UNORM || format == Format::P016_UNORM) {
-            if (planes & PlaneBits::PLANE_0)
-                return DXGI_FORMAT_R16_UNORM;
-            if (planes & PlaneBits::PLANE_1)
-                return DXGI_FORMAT_R16G16_UNORM;
-        }
-
-        return GetDxgiFormat(format).typeless;
-    };
-    auto getPlaneDivisor = [](Format format, PlaneBits planes) {
-        return ((planes & PlaneBits::PLANE_1) && (format == Format::NV12_UNORM || format == Format::P010_UNORM || format == Format::P016_UNORM)) ? 2u : 1u;
-    };
 
     D3D12_TEXTURE_COPY_LOCATION srcTextureCopyLocation = {src, D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX};
     srcTextureCopyLocation.SubresourceIndex = GetSubresourceIndex(srcRegion.layerOffset, srcDesc.layerNum, srcRegion.mipOffset, srcDesc.mipNum, srcRegion.planes);
 
-    const uint32_t planeDivisor = getPlaneDivisor(srcDesc.format, srcRegion.planes);
+    const uint32_t planeDivisor = GetPlaneDivisor(srcDesc.format, srcRegion.planes);
     uint32_t w = (srcRegion.width == WHOLE_SIZE ? src.GetSize(0, srcRegion.mipOffset) : srcRegion.width) / planeDivisor;
     uint32_t h = (srcRegion.height == WHOLE_SIZE ? src.GetSize(1, srcRegion.mipOffset) : srcRegion.height) / planeDivisor;
     uint32_t d = srcRegion.depth == WHOLE_SIZE ? src.GetSize(2, srcRegion.mipOffset) : srcRegion.depth;
@@ -2316,7 +2304,7 @@ NRI_INLINE void CommandBufferD3D12::ReadbackTextureToBuffer(Buffer& dstBuffer, c
     dstTextureCopyLocation.pResource = (BufferD3D12&)dstBuffer;
     dstTextureCopyLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
     dstTextureCopyLocation.PlacedFootprint.Offset = dstDataLayout.offset;
-    dstTextureCopyLocation.PlacedFootprint.Footprint.Format = getPlaneCompatibleFormat(srcDesc.format, srcRegion.planes);
+    dstTextureCopyLocation.PlacedFootprint.Footprint.Format = GetPlaneCompatibleFormat(srcDesc.format, srcRegion.planes);
     dstTextureCopyLocation.PlacedFootprint.Footprint.Width = w;
     dstTextureCopyLocation.PlacedFootprint.Footprint.Height = h;
     dstTextureCopyLocation.PlacedFootprint.Footprint.Depth = d;
