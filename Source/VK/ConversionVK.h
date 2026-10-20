@@ -407,7 +407,7 @@ constexpr VkPipelineStageFlags2 GetPipelineStageFlags(StageBits stageBits) {
         flags |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
 
     if (stageBits & StageBits::COPY)
-        flags |= VK_PIPELINE_STAGE_2_COPY_BIT;
+        flags |= VK_PIPELINE_STAGE_2_COPY_BIT | VK_PIPELINE_STAGE_2_CLEAR_BIT; // "CmdZeroBuffer" is a clear command
 
     if (stageBits & StageBits::RESOLVE)
         flags |= VK_PIPELINE_STAGE_2_RESOLVE_BIT;

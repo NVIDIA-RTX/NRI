@@ -474,7 +474,7 @@ NriBits(StageBits, uint32_t,
     MICROMAP                        = NriBit(19),   // Invoked by "Cmd*Micromap*" commands
 
     // Other
-    COPY                            = NriBit(20),   // Invoked by "CmdCopy*", "CmdUpload*" and "CmdReadback*"
+    COPY                            = NriBit(20),   // Invoked by "CmdCopy*", "CmdUpload*", "CmdReadback*" and "CmdZeroBuffer"
     RESOLVE                         = NriBit(21),   // Invoked by "CmdResolveTexture"
     CLEAR_STORAGE                   = NriBit(22),   // Invoked by "CmdClearStorage"
 
