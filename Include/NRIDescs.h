@@ -473,20 +473,23 @@ NriBits(StageBits, uint32_t,
     ACCELERATION_STRUCTURE          = NriBit(18),   // Invoked by "Cmd*AccelerationStructure*" commands
     MICROMAP                        = NriBit(19),   // Invoked by "Cmd*Micromap*" commands
 
+    // Resolve
+    RESOLVE                         = NriBit(20),   // Invoked by "CmdResolveTexture"
+    RESOLVE_ATTACHMENT              = NriBit(21),   // Invoked by "AttachmentDesc::resolveDst"
+
     // Other
-    COPY                            = NriBit(20),   // Invoked by "CmdCopy*", "CmdUpload*", "CmdReadback*" and "CmdZeroBuffer"
-    RESOLVE                         = NriBit(21),   // Invoked by "CmdResolveTexture"
-    CLEAR_STORAGE                   = NriBit(22),   // Invoked by "CmdClearStorage"
+    COPY                            = NriBit(22),   // Invoked by "CmdCopy*", "CmdUpload*", "CmdReadback*" and "CmdZeroBuffer"
+    CLEAR_STORAGE                   = NriBit(23),   // Invoked by "CmdClearStorage"
 
     // Modifiers
-    INDIRECT                        = NriBit(23),   // Invoked by "Indirect" commands (used in addition to other bits)
+    INDIRECT                        = NriBit(24),   // Invoked by "Indirect" commands (used in addition to other bits)
 
     // Host
-    HOST                            = NriBit(24),   // Invoked by "UploadHostMemoryToTexture" and "ReadbackTextureToHostMemory"
+    HOST                            = NriBit(25),   // Invoked by "UploadHostMemoryToTexture" and "ReadbackTextureToHostMemory"
 
     // Video
-    VIDEO_DECODE                    = NriBit(25),   // Invoked by "CmdDecodeVideo"
-    VIDEO_ENCODE                    = NriBit(26),   // Invoked by "CmdEncodeVideo"
+    VIDEO_DECODE                    = NriBit(26),   // Invoked by "CmdDecodeVideo"
+    VIDEO_ENCODE                    = NriBit(27),   // Invoked by "CmdEncodeVideo"
 
     // Umbrella stages
     TESSELLATION_SHADERS            = NriMember(StageBits, TESS_CONTROL_SHADER)
@@ -512,11 +515,17 @@ NriBits(StageBits, uint32_t,
                                     | NriMember(StageBits, COMPUTE_SHADER)
                                     | NriMember(StageBits, RAY_TRACING_SHADERS),
 
+    ALL_ATTACHMENT                  = NriMember(StageBits, COLOR_ATTACHMENT)
+                                    | NriMember(StageBits, DEPTH_STENCIL_ATTACHMENT)
+                                    | NriMember(StageBits, SHADING_RATE_ATTACHMENT),
+
     GRAPHICS                        = NriMember(StageBits, INDEX_INPUT)
                                     | NriMember(StageBits, GRAPHICS_SHADERS)
-                                    | NriMember(StageBits, DEPTH_STENCIL_ATTACHMENT)
-                                    | NriMember(StageBits, COLOR_ATTACHMENT)
-                                    | NriMember(StageBits, SHADING_RATE_ATTACHMENT)
+                                    | NriMember(StageBits, ALL_ATTACHMENT),
+
+    // Resolve stages are explicit in "ALL_RESOLVE" and excluded from "ALL_ATTACHMENT" and "GRAPHICS"
+    ALL_RESOLVE                     = NriMember(StageBits, RESOLVE)
+                                    | NriMember(StageBits, RESOLVE_ATTACHMENT)
 );
 
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkAccessFlagBits2.html
@@ -559,19 +568,21 @@ NriBits(AccessBits, uint32_t,
     // Resolve
     RESOLVE_SOURCE                  = NriBit(20),   // R        RESOLVE
     RESOLVE_DESTINATION             = NriBit(21),   //  W       RESOLVE
+    RESOLVE_ATTACHMENT_SOURCE       = NriBit(22),   // R        RESOLVE_ATTACHMENT
+    RESOLVE_ATTACHMENT_DESTINATION  = NriBit(23),   // RW       RESOLVE_ATTACHMENT
 
     // Clear storage
-    CLEAR_STORAGE                   = NriBit(22),   //  W       CLEAR_STORAGE
+    CLEAR_STORAGE                   = NriBit(24),   //  W       CLEAR_STORAGE
 
     // Host
-    HOST_READ                       = NriBit(23),   // R        HOST
-    HOST_WRITE                      = NriBit(24),   //  W       HOST
+    HOST_READ                       = NriBit(25),   // R        HOST
+    HOST_WRITE                      = NriBit(26),   //  W       HOST
 
     // Video
-    VIDEO_DECODE_READ               = NriBit(25),   // R        VIDEO_DECODE
-    VIDEO_DECODE_WRITE              = NriBit(26),   //  W       VIDEO_DECODE
-    VIDEO_ENCODE_READ               = NriBit(27),   // R        VIDEO_ENCODE
-    VIDEO_ENCODE_WRITE              = NriBit(28),   //  W       VIDEO_ENCODE
+    VIDEO_DECODE_READ               = NriBit(27),   // R        VIDEO_DECODE
+    VIDEO_DECODE_WRITE              = NriBit(28),   //  W       VIDEO_DECODE
+    VIDEO_ENCODE_READ               = NriBit(29),   // R        VIDEO_ENCODE
+    VIDEO_ENCODE_WRITE              = NriBit(30),   //  W       VIDEO_ENCODE
 
     // Umbrella access
     COLOR_ATTACHMENT                = NriMember(AccessBits, COLOR_ATTACHMENT_READ)
@@ -593,7 +604,7 @@ NriBits(AccessBits, uint32_t,
                                     | NriMember(AccessBits, VIDEO_ENCODE_WRITE)
 );
 
-// "Layout" in barriers is ignored if "features.enhancedBarriers" is not supported
+// Without "features.enhancedBarriers", "Layout" in barriers is used only for attachment resolve states
 // https://docs.vulkan.org/refpages/latest/refpages/source/VkImageLayout.html
 // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_barrier_layout
 NriEnum(Layout, uint8_t,            // Compatible "AccessBits":
@@ -603,6 +614,7 @@ NriEnum(Layout, uint8_t,            // Compatible "AccessBits":
     PRESENT,                            // NONE (use "after.stages = StageBits::NONE")
 
     // Attachment
+    // Color and depth-stencil attachment layouts also support "RESOLVE_ATTACHMENT_SOURCE" access, writable planes support "RESOLVE_ATTACHMENT_DESTINATION" access
     COLOR_ATTACHMENT,                   // COLOR_ATTACHMENT_READ/WRITE
     DEPTH_STENCIL_ATTACHMENT,           // DEPTH_STENCIL_ATTACHMENT_READ/WRITE
     DEPTH_READONLY_STENCIL_ATTACHMENT,  // DEPTH_STENCIL_ATTACHMENT_READ/WRITE (only stencil writable), SHADER_RESOURCE (depth plane)
@@ -642,6 +654,7 @@ NriStruct(AccessLayoutStage) {
 };
 
 NriStruct(GlobalBarrierDesc) {
+    // D3D12: global-barrier sides combining resolve and incompatible access scopes may promote stages to "ALL"
     Nri(AccessStage) before;
     Nri(AccessStage) after;
 };
@@ -1682,13 +1695,18 @@ NriStruct(ResolveOps) {
     Nri(ResolveOpBits) stencil;
 };
 
+// If "resolveDst" is specified, this attachment must be multisampled. Add "RESOLVE_ATTACHMENT_SOURCE" access and "RESOLVE_ATTACHMENT" stage to its drawing accesses and stages
 NriStruct(AttachmentDesc) {
-    NriPtr(Descriptor) descriptor;
+    NriPtr(Descriptor) descriptor;                    // attachment view
     Nri(ClearValue) clearValue;
     Nri(LoadOp) loadOp;
     Nri(StoreOp) storeOp;
-    Nri(ResolveOp) resolveOp;
-    NriOptional NriPtr(Descriptor) resolveDst;          // must be in "COLOR_ATTACHMENT" state and valid during "CmdEndRendering"
+    Nri(ResolveOp) resolveOp;                         // used if "resolveDst" is specified
+
+    // Prepare with "RESOLVE_ATTACHMENT_DESTINATION" access and "RESOLVE_ATTACHMENT" stage before "CmdBeginRendering".
+    // Both "descriptor" and "resolveDst" (if specified) must remain valid through "CmdEndRendering".
+    // Resolve views cannot use "GENERAL" or "INPUT_ATTACHMENT" layouts. "SharingMode::SIMULTANEOUS" textures are not supported.
+    NriOptional NriPtr(Descriptor) resolveDst;        // single-sample attachment view receiving resolved values from "descriptor"
 };
 
 // If "VK_KHR_dynamic_rendering" is not supported:

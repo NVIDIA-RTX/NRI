@@ -85,14 +85,29 @@ struct DescriptorVal final : public ObjectVal {
         return m_Format;
     }
 
+    inline Sample_t GetSampleNum() const {
+        return m_SampleNum;
+    }
+
+    inline SharingMode GetSharingMode() const {
+        return m_SharingMode;
+    }
+
+    inline Layout GetLayout() const {
+        return m_Layout;
+    }
+
     inline uint64_t GetRootDescriptorOffsetMax() const {
         return m_RootDescriptorOffsetMax;
     }
 
 private:
+    uint64_t m_RootDescriptorOffsetMax = 0;
     DescriptorTypeExt m_Type = DescriptorTypeExt::MAX_NUM;
     Format m_Format = Format::UNKNOWN;
-    uint64_t m_RootDescriptorOffsetMax = 0;
+    Layout m_Layout = Layout::UNDEFINED;
+    Sample_t m_SampleNum = 0;
+    SharingMode m_SharingMode = SharingMode::EXCLUSIVE;
 };
 
 } // namespace nri

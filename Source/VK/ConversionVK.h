@@ -391,7 +391,7 @@ constexpr VkPipelineStageFlags2 GetPipelineStageFlags(StageBits stageBits) {
     if (stageBits & StageBits::DEPTH_STENCIL_ATTACHMENT)
         flags |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT; // TODO: separate?
 
-    if (stageBits & StageBits::COLOR_ATTACHMENT)
+    if (stageBits & (StageBits::COLOR_ATTACHMENT | StageBits::RESOLVE_ATTACHMENT))
         flags |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 
     if (stageBits & StageBits::SHADING_RATE_ATTACHMENT)

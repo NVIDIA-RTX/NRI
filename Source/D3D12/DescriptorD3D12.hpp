@@ -73,6 +73,7 @@ Result DescriptorD3D12::Create(const TextureViewDesc& textureViewDesc) {
     m_ViewDesc.texture.layerNum = layerNum;
     m_ViewDesc.texture.mipOffset = textureViewDesc.mipOffset;
     m_ViewDesc.texture.mipNum = mipNum;
+    m_ViewDesc.texture.layout = GetTextureViewLayout(textureViewDesc);
 
     m_Format = textureViewDesc.format;
     m_Resource = textureD3D12;

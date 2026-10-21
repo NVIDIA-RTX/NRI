@@ -24,7 +24,7 @@ static inline bool IsAccessMaskSupported(const BufferDesc& bufferDesc, AccessBit
         isSupported = isSupported && (bufferDesc.usage & (BufferUsageBits::SHADER_RESOURCE | BufferUsageBits::ACCELERATION_STRUCTURE_BUILD_INPUT)) != 0;
     if (accessMask & AccessBits::SHADER_RESOURCE_STORAGE)
         isSupported = isSupported && (bufferDesc.usage & BufferUsageBits::SHADER_RESOURCE_STORAGE) != 0;
-    if (accessMask & (AccessBits::RESOLVE_SOURCE | AccessBits::RESOLVE_DESTINATION))
+    if (accessMask & (AccessBits::RESOLVE_SOURCE | AccessBits::RESOLVE_DESTINATION | AccessBits::RESOLVE_ATTACHMENT_SOURCE | AccessBits::RESOLVE_ATTACHMENT_DESTINATION))
         isSupported = false;
     if (accessMask & (AccessBits::HOST_READ | AccessBits::HOST_WRITE))
         isSupported = false;
@@ -48,6 +48,12 @@ static inline bool IsAccessMaskSupported(const TextureDesc& textureDesc, AccessB
         isSupported = isSupported && (textureDesc.usage & TextureUsageBits::SHADING_RATE_ATTACHMENT) != 0;
     if (accessMask & AccessBits::DEPTH_STENCIL_ATTACHMENT)
         isSupported = isSupported && (textureDesc.usage & TextureUsageBits::DEPTH_STENCIL_ATTACHMENT) != 0;
+    if (accessMask & (AccessBits::RESOLVE_ATTACHMENT_SOURCE | AccessBits::RESOLVE_ATTACHMENT_DESTINATION))
+        isSupported = isSupported && (textureDesc.usage & (TextureUsageBits::COLOR_ATTACHMENT | TextureUsageBits::DEPTH_STENCIL_ATTACHMENT)) != 0;
+    if (accessMask & AccessBits::RESOLVE_ATTACHMENT_SOURCE)
+        isSupported = isSupported && textureDesc.sampleNum > 1;
+    if (accessMask & AccessBits::RESOLVE_ATTACHMENT_DESTINATION)
+        isSupported = isSupported && textureDesc.sampleNum == 1;
     if (accessMask & AccessBits::ACCELERATION_STRUCTURE)
         isSupported = false;
     if (accessMask & AccessBits::MICROMAP)
@@ -190,6 +196,56 @@ static bool ValidateHostTextureState(const DeviceVal& device, uint32_t i, const 
     return true;
 }
 
+static inline bool ValidateResolveAttachmentState(const DeviceVal& device, uint32_t i, const TextureDesc& textureDesc, PlaneBits planes, const AccessLayoutStage& state, const char* stateName) {
+    bool source = state.access & AccessBits::RESOLVE_ATTACHMENT_SOURCE;
+    bool destination = state.access & AccessBits::RESOLVE_ATTACHMENT_DESTINATION;
+    if (!source && !destination)
+        return true;
+
+    NRI_RETURN_ON_FAILURE(&device, textureDesc.sharingMode != SharingMode::SIMULTANEOUS, false,
+        "'barrierDesc.textures[%u].%s' attachment resolves do not support 'SharingMode::SIMULTANEOUS'", i, stateName);
+    NRI_RETURN_ON_FAILURE(&device, source != destination && !(state.access & (AccessBits::RESOLVE_SOURCE | AccessBits::RESOLVE_DESTINATION)), false,
+        "'barrierDesc.textures[%u].%s.access' mixes incompatible resolve accesses", i, stateName);
+    NRI_RETURN_ON_FAILURE(&device, state.stages == StageBits::ALL || (state.stages != StageBits::NONE && (state.stages & StageBits::RESOLVE_ATTACHMENT)), false,
+        "'barrierDesc.textures[%u].%s.stages' must include 'RESOLVE_ATTACHMENT'", i, stateName);
+
+    const FormatProps& formatProps = GetFormatProps(textureDesc.format);
+    bool depthStencil = formatProps.isDepth || formatProps.isStencil;
+    bool attachmentLayout = depthStencil
+        ? (state.layout == Layout::DEPTH_STENCIL_ATTACHMENT || state.layout == Layout::DEPTH_STENCIL_READONLY
+            || state.layout == Layout::DEPTH_READONLY_STENCIL_ATTACHMENT || state.layout == Layout::DEPTH_ATTACHMENT_STENCIL_READONLY)
+        : state.layout == Layout::COLOR_ATTACHMENT;
+    NRI_RETURN_ON_FAILURE(&device, attachmentLayout, false,
+        "'barrierDesc.textures[%u].%s.layout' must be a color or depth-stencil attachment layout compatible with the format", i, stateName);
+
+    if (destination && depthStencil) {
+        bool depth = formatProps.isDepth && (planes == PlaneBits::ALL || (planes & PlaneBits::DEPTH));
+        bool stencil = formatProps.isStencil && (planes == PlaneBits::ALL || (planes & PlaneBits::STENCIL));
+        NRI_RETURN_ON_FAILURE(&device, (!depth || !IsDepthReadOnly(state.layout)) && (!stencil || !IsStencilReadOnly(state.layout)), false,
+            "'barrierDesc.textures[%u].%s.layout' must make the attachment resolve destination planes writable", i, stateName);
+    }
+
+    return true;
+}
+
+static inline bool ValidateResolveAttachmentDesc(const DeviceVal& device, const DescriptorVal& source, const DescriptorVal& destination, PlaneBits planes) {
+    NRI_RETURN_ON_FAILURE(&device, source.GetSharingMode() != SharingMode::SIMULTANEOUS && destination.GetSharingMode() != SharingMode::SIMULTANEOUS, false,
+        "attachment resolves do not support 'SharingMode::SIMULTANEOUS'");
+    NRI_RETURN_ON_FAILURE(&device, source.GetLayout() != Layout::GENERAL && source.GetLayout() != Layout::INPUT_ATTACHMENT
+        && destination.GetLayout() != Layout::GENERAL && destination.GetLayout() != Layout::INPUT_ATTACHMENT, false,
+        "attachment resolves require color or depth-stencil attachment view layouts");
+    NRI_RETURN_ON_FAILURE(&device, source.GetSampleNum() > 1 && destination.GetSampleNum() == 1, false,
+        "attachment resolves require a multisampled source and a single-sample destination");
+    NRI_RETURN_ON_FAILURE(&device, source.GetFormat() == destination.GetFormat(), false,
+        "attachment resolve source and destination formats must match");
+    NRI_RETURN_ON_FAILURE(&device, !(planes & PlaneBits::DEPTH) || !IsDepthReadOnly(destination.GetLayout()), false,
+        "attachment resolve destination depth must be writable");
+    NRI_RETURN_ON_FAILURE(&device, !(planes & PlaneBits::STENCIL) || !IsStencilReadOnly(destination.GetLayout()), false,
+        "attachment resolve destination stencil must be writable");
+
+    return true;
+}
+
 static bool ValidateTextureBarrierDesc(const DeviceVal& device, uint32_t i, const TextureBarrierDesc& textureBarrier) {
     NRI_RETURN_ON_FAILURE(&device, textureBarrier.texture, false, "'barrierDesc.textures[%u].texture' is NULL", i);
     NRI_RETURN_ON_FAILURE(&device, textureBarrier.before.layout < Layout::MAX_NUM, false, "'barrierDesc.textures[%u].before.layout' is invalid", i);
@@ -219,6 +275,10 @@ static bool ValidateTextureBarrierDesc(const DeviceVal& device, uint32_t i, cons
     NRI_RETURN_ON_FAILURE(&device, IsTextureLayoutSupported(textureDesc, textureBarrier.after.layout), false,
         "'barrierDesc.textures[%u].after.layout' is not supported by the usage mask of the texture ('%s')", i, textureVal.GetDebugName());
     if (!ValidateHostTextureState(device, i, textureBarrier.before, "before") || !ValidateHostTextureState(device, i, textureBarrier.after, "after"))
+        return false;
+
+    if (!ValidateResolveAttachmentState(device, i, textureDesc, textureBarrier.planes, textureBarrier.before, "before")
+        || !ValidateResolveAttachmentState(device, i, textureDesc, textureBarrier.planes, textureBarrier.after, "after"))
         return false;
 
     constexpr AccessBits hostAccess = AccessBits::HOST_READ | AccessBits::HOST_WRITE;
@@ -671,7 +731,9 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
 
             NRI_RETURN_ON_FAILURE(&m_Device, resolveDstVal.IsColorAttachment(), ReturnVoid(), "'colors[%u].resolveDst' is not a 'COLOR_ATTACHMENT' descriptor", i);
             NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetFormatSupport(resolveDstVal.GetFormat()) & FormatSupportBits::MULTISAMPLE_RESOLVE, ReturnVoid(), "'colors[%u].resolveDst' format does not support 'FormatSupportBits::MULTISAMPLE_RESOLVE'", i);
-            NRI_RETURN_ON_FAILURE(&m_Device, resolveDstVal.GetFormat() == colorVal.GetFormat(), ReturnVoid(), "'colors[%u].resolveDst' format must match 'colors[%u].descriptor' format", i, i);
+
+            if (!ValidateResolveAttachmentDesc(m_Device, colorVal, resolveDstVal, PlaneBits::COLOR))
+                return;
 
             const ResolveOp resolveOp = renderingDesc.colors[i].resolveOp;
             if (resolveOp == ResolveOp::AVERAGE)
@@ -710,6 +772,8 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
         const ResolveOp resolveOp = renderingDesc.depth.resolveOp;
         const DescriptorVal& depthVal = *(DescriptorVal*)renderingDesc.depth.descriptor;
         const bool isStencilResolved = GetFormatProps(depthVal.GetFormat()).isStencil && !renderingDesc.stencil.descriptor;
+        if (!ValidateResolveAttachmentDesc(m_Device, depthVal, resolveDstVal, isStencilResolved ? (PlaneBits::DEPTH | PlaneBits::STENCIL) : PlaneBits::DEPTH))
+            return;
         if (resolveOp == ResolveOp::AVERAGE)
             NRI_RETURN_ON_FAILURE(&m_Device, !isStencilResolved, ReturnVoid(), "'depth.resolveOp': 'ResolveOp::AVERAGE' can't be used with a depth-stencil format without a separate 'stencil' attachment");
 
@@ -729,6 +793,8 @@ NRI_INLINE void CommandBufferVal::BeginRendering(const RenderingDesc& renderingD
         NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.stencil.descriptor, ReturnVoid(), "'stencil.resolveDst' is not NULL, but 'stencil.descriptor' is NULL");
         NRI_RETURN_ON_FAILURE(&m_Device, resolveDstVal.IsDepthStencilAttachment(), ReturnVoid(), "'stencil.resolveDst' is not a 'DEPTH_STENCIL_ATTACHMENT' descriptor");
         NRI_RETURN_ON_FAILURE(&m_Device, m_Device.GetFormatSupport(resolveDstVal.GetFormat()) & FormatSupportBits::MULTISAMPLE_RESOLVE, ReturnVoid(), "'stencil.resolveDst' format does not support 'FormatSupportBits::MULTISAMPLE_RESOLVE'");
+        if (!ValidateResolveAttachmentDesc(m_Device, *(const DescriptorVal*)renderingDesc.stencil.descriptor, resolveDstVal, PlaneBits::STENCIL))
+            return;
         NRI_RETURN_ON_FAILURE(&m_Device, renderingDesc.stencil.resolveOp != ResolveOp::AVERAGE, ReturnVoid(), "'stencil.resolveOp': 'ResolveOp::AVERAGE' can't be used with stencil");
         NRI_RETURN_ON_FAILURE(&m_Device, IsResolveOpSupported(deviceDesc.resolve.attachment.stencil, renderingDesc.stencil.resolveOp), ReturnVoid(),
             "'stencil.resolveOp': 'ResolveOp::%s' is not supported for stencil (see 'resolve.attachment')", g_ResolveOpNames[(size_t)renderingDesc.stencil.resolveOp]);

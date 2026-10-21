@@ -80,6 +80,43 @@ static uint8_t QueryLatestInterface(ComPtr<ID3D12VideoEncodeCommandList>& in, Co
     return n - i - 1;
 }
 
+// Attachment resolves run between internal transitions. Their public states describe the attachment
+// states surrounding those transitions, rather than a combination of attachment and native resolve states.
+static inline AccessLayoutStage GetResolveAttachmentState(AccessLayoutStage state, Format format, PlaneBits planes, bool shaderResource) {
+    if (!(state.access & RESOLVE_ATTACHMENT_ACCESS))
+        return state;
+
+    StageBits stages = state.stages;
+    const FormatProps& formatProps = GetFormatProps(format);
+    bool isDepthStencil = formatProps.isDepth || formatProps.isStencil;
+    bool isReadOnly = (planes & PlaneBits::STENCIL) ? IsStencilReadOnly(state.layout) : IsDepthReadOnly(state.layout);
+
+    if (!isDepthStencil) {
+        state.access = AccessBits::COLOR_ATTACHMENT;
+        state.stages = StageBits::COLOR_ATTACHMENT;
+    } else if (isReadOnly) {
+        // Canonical read-only resolve sources also permit shader reads when the resource supports them.
+        // This lets internal transitions restore the same state without tracking individual shader uses.
+        state.access = AccessBits::DEPTH_STENCIL_ATTACHMENT_READ;
+        state.layout = Layout::DEPTH_STENCIL_READONLY;
+        if (shaderResource)
+            state.access |= AccessBits::SHADER_RESOURCE;
+        state.stages = StageBits::DEPTH_STENCIL_ATTACHMENT;
+        if (shaderResource)
+            state.stages |= StageBits::ALL_SHADERS;
+    } else {
+        state.access = AccessBits::DEPTH_STENCIL_ATTACHMENT;
+        state.layout = Layout::DEPTH_STENCIL_ATTACHMENT;
+        state.stages = StageBits::DEPTH_STENCIL_ATTACHMENT;
+    }
+
+    // Widen execution scopes containing stages incompatible with the canonical native attachment access.
+    if (stages == StageBits::ALL || (stages & ~(state.stages | StageBits::RESOLVE_ATTACHMENT)))
+        state.stages = StageBits::ALL;
+
+    return state;
+}
+
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
 static inline D3D12_BARRIER_SYNC GetBarrierSyncFlags(StageBits stageBits, AccessBits accessBits) {
     // Check non-mask values first
@@ -119,7 +156,7 @@ static inline D3D12_BARRIER_SYNC GetBarrierSyncFlags(StageBits stageBits, Access
     if (stageBits & StageBits::COPY)
         flags |= D3D12_BARRIER_SYNC_COPY;
 
-    if (stageBits & StageBits::RESOLVE)
+    if (stageBits & (StageBits::RESOLVE | StageBits::RESOLVE_ATTACHMENT))
         flags |= D3D12_BARRIER_SYNC_RESOLVE;
 
     if (stageBits & StageBits::CLEAR_STORAGE)
@@ -142,6 +179,19 @@ static inline D3D12_BARRIER_SYNC GetBarrierSyncFlags(StageBits stageBits, Access
         if (!(accessBits & AccessBits::ACCELERATION_STRUCTURE_WRITE))
             flags |= D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO;
     }
+
+    return flags;
+}
+
+static inline D3D12_BARRIER_SYNC GetGlobalBarrierSyncFlags(StageBits stageBits, AccessBits accessBits) {
+    D3D12_BARRIER_SYNC flags = GetBarrierSyncFlags(stageBits, accessBits);
+    if (stageBits == StageBits::ALL || stageBits == StageBits::NONE || accessBits == AccessBits::NONE)
+        return flags;
+
+    // Resolve and incompatible access scopes cannot share the native sync mask. Widen only global barriers.
+    constexpr AccessBits resolveAccess = AccessBits::RESOLVE_SOURCE | AccessBits::RESOLVE_DESTINATION | RESOLVE_ATTACHMENT_ACCESS;
+    if ((stageBits & StageBits::ALL_RESOLVE) && ((stageBits & ~StageBits::ALL_RESOLVE) || (accessBits & ~resolveAccess)))
+        return D3D12_BARRIER_SYNC_ALL;
 
     return flags;
 }
@@ -196,10 +246,10 @@ static inline D3D12_BARRIER_ACCESS GetBarrierAccessFlags(AccessBits accessBits) 
     if (accessBits & (AccessBits::COPY_DESTINATION | AccessBits::HOST_WRITE))
         flags |= D3D12_BARRIER_ACCESS_COPY_DEST;
 
-    if (accessBits & AccessBits::RESOLVE_SOURCE)
+    if (accessBits & (AccessBits::RESOLVE_SOURCE | AccessBits::RESOLVE_ATTACHMENT_SOURCE))
         flags |= D3D12_BARRIER_ACCESS_RESOLVE_SOURCE;
 
-    if (accessBits & AccessBits::RESOLVE_DESTINATION)
+    if (accessBits & (AccessBits::RESOLVE_DESTINATION | AccessBits::RESOLVE_ATTACHMENT_DESTINATION))
         flags |= D3D12_BARRIER_ACCESS_RESOLVE_DEST;
 
     if (accessBits & AccessBits::VIDEO_DECODE_READ)
@@ -401,30 +451,34 @@ static inline void ConvertRects(const Rect* in, uint32_t rectNum, D3D12_RECT* ou
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
 static inline void FillResolveBarrier(bool isSource, DescriptorD3D12& descriptor, PlaneBits planeBits, D3D12_TEXTURE_BARRIER& textureBarrier) {
-    const TexViewDesc& srcDesc = descriptor.GetTexViewDesc();
+    const TexViewDesc& viewDesc = descriptor.GetTexViewDesc();
 
     textureBarrier = {};
-    textureBarrier.SyncBefore = D3D12_BARRIER_SYNC_RENDER_TARGET;
+    AccessLayoutStage state = {isSource ? AccessBits::RESOLVE_ATTACHMENT_SOURCE : AccessBits::RESOLVE_ATTACHMENT_DESTINATION, viewDesc.layout, StageBits::ALL};
+    state = GetResolveAttachmentState(state, descriptor.GetFormat(), planeBits, !(descriptor.GetResource()->GetDesc().Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE));
+    textureBarrier.SyncBefore = GetBarrierSyncFlags(state.stages, state.access);
     textureBarrier.SyncAfter = D3D12_BARRIER_SYNC_RESOLVE;
-    textureBarrier.AccessBefore = D3D12_BARRIER_ACCESS_RENDER_TARGET;
+    textureBarrier.AccessBefore = GetBarrierAccessFlags(state.access);
     textureBarrier.AccessAfter = isSource ? D3D12_BARRIER_ACCESS_RESOLVE_SOURCE : D3D12_BARRIER_ACCESS_RESOLVE_DEST;
-    textureBarrier.LayoutBefore = D3D12_BARRIER_LAYOUT_RENDER_TARGET;
+    textureBarrier.LayoutBefore = GetBarrierLayout(state.layout, state.access, false);
     textureBarrier.LayoutAfter = isSource ? D3D12_BARRIER_LAYOUT_RESOLVE_SOURCE : D3D12_BARRIER_LAYOUT_RESOLVE_DEST;
     textureBarrier.pResource = descriptor.GetResource();
-    textureBarrier.Subresources.IndexOrFirstMipLevel = srcDesc.mipOffset;
+    textureBarrier.Subresources.IndexOrFirstMipLevel = viewDesc.mipOffset;
     textureBarrier.Subresources.NumMipLevels = 1;
-    textureBarrier.Subresources.FirstArraySlice = srcDesc.layerOffset;
-    textureBarrier.Subresources.NumArraySlices = srcDesc.layerNum;
+    textureBarrier.Subresources.FirstArraySlice = viewDesc.layerOffset;
+    textureBarrier.Subresources.NumArraySlices = viewDesc.layerNum;
     textureBarrier.Subresources.NumPlanes = 1; // TODO: can be optimized for depth-stencil resolve
     textureBarrier.Subresources.FirstPlane = (planeBits & PlaneBits::STENCIL) ? 1 : 0;
 }
 #endif
 
-static inline void FillLegacyResolveBarrier(bool isSource, DescriptorD3D12& descriptor, uint32_t subresource, D3D12_RESOURCE_BARRIER& resourceBarrier) {
+static inline void FillLegacyResolveBarrier(bool isSource, DescriptorD3D12& descriptor, PlaneBits planeBits, uint32_t subresource, D3D12_RESOURCE_BARRIER& resourceBarrier) {
     resourceBarrier = {};
     resourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     resourceBarrier.Transition.pResource = descriptor.GetResource();
-    resourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    AccessLayoutStage state = {isSource ? AccessBits::RESOLVE_ATTACHMENT_SOURCE : AccessBits::RESOLVE_ATTACHMENT_DESTINATION, descriptor.GetTexViewDesc().layout, StageBits::ALL};
+    state = GetResolveAttachmentState(state, descriptor.GetFormat(), planeBits, !(descriptor.GetResource()->GetDesc().Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE));
+    resourceBarrier.Transition.StateBefore = GetResourceStates(state.access, D3D12_COMMAND_LIST_TYPE_DIRECT);
     resourceBarrier.Transition.StateAfter = isSource ? D3D12_RESOURCE_STATE_RESOLVE_SOURCE : D3D12_RESOURCE_STATE_RESOLVE_DEST;
     resourceBarrier.Transition.Subresource = subresource;
 }
@@ -1912,9 +1966,9 @@ NRI_INLINE void CommandBufferD3D12::EndRendering() {
     Scratch<D3D12_RESOURCE_BARRIER> resourceBarriers = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_RESOURCE_BARRIER, resourceBarrierNum * 2);
     uint32_t barrierNum = 0;
 
-    constexpr uint32_t attachmentNum = (D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT + 2) * 2; // (colors, depth and stencil) x (src and dst)
+    constexpr uint32_t attachmentNum = D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT + 2; // colors, depth and stencil
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-    std::array<D3D12_TEXTURE_BARRIER, attachmentNum> textureBarriers = {};
+    std::array<D3D12_TEXTURE_BARRIER, attachmentNum * 2> textureBarriers = {};
 
     D3D12_BARRIER_GROUP barrierGroup = {};
     barrierGroup.Type = D3D12_BARRIER_TYPE_TEXTURE;
@@ -1949,13 +2003,12 @@ NRI_INLINE void CommandBufferD3D12::EndRendering() {
 
             const TexViewDesc& dstDesc = resolveDst->GetTexViewDesc();
             D3D12_RESOURCE_DESC dstResourceDesc = resolveDst->GetResource()->GetDesc();
-
             for (uint32_t layer = 0; layer < srcDesc.layerNum; layer++) {
                 uint32_t srcSubresource = GetSubresourceIndex(srcDesc.layerOffset + layer, srcResourceDesc.DepthOrArraySize, srcDesc.mipOffset, srcResourceDesc.MipLevels, planeBits);
-                FillLegacyResolveBarrier(true, *resolveSrc, srcSubresource, resourceBarriers[barrierNum++]);
+                FillLegacyResolveBarrier(true, *resolveSrc, planeBits, srcSubresource, resourceBarriers[barrierNum++]);
 
                 uint32_t dstSubresource = GetSubresourceIndex(dstDesc.layerOffset + layer, dstResourceDesc.DepthOrArraySize, dstDesc.mipOffset, dstResourceDesc.MipLevels, planeBits);
-                FillLegacyResolveBarrier(false, *resolveDst, dstSubresource, resourceBarriers[barrierNum++]);
+                FillLegacyResolveBarrier(false, *resolveDst, planeBits, dstSubresource, resourceBarriers[barrierNum++]);
             }
         }
     }
@@ -1996,9 +2049,13 @@ NRI_INLINE void CommandBufferD3D12::EndRendering() {
             ID3D12Resource* dstResource = attachmentDesc->resolveDst->GetResource();
             D3D12_RESOURCE_DESC dstResourceDesc = dstResource->GetDesc();
             const TexViewDesc& dstDesc = attachmentDesc->resolveDst->GetTexViewDesc();
-            uint32_t dstSubresource = GetSubresourceIndex(dstDesc.layerOffset, dstResourceDesc.DepthOrArraySize, dstDesc.mipOffset, dstResourceDesc.DepthOrArraySize, planeBits);
+            uint32_t dstSubresource = GetSubresourceIndex(dstDesc.layerOffset, dstResourceDesc.DepthOrArraySize, dstDesc.mipOffset, dstResourceDesc.MipLevels, planeBits);
 
-            GetGraphicsCommandList()->ResolveSubresourceRegion(dstResource, dstSubresource, 0, 0, srcResource, srcSubresource, nullptr, format.typed, resolveMode);
+            for (uint32_t layer = 0; layer < srcDesc.layerNum; layer++) {
+                GetGraphicsCommandList()->ResolveSubresourceRegion(dstResource, dstSubresource, 0, 0, srcResource, srcSubresource, nullptr, format.typed, resolveMode);
+                srcSubresource += srcResourceDesc.MipLevels;
+                dstSubresource += dstResourceDesc.MipLevels;
+            }
         }
 
         // Restore state
@@ -2360,8 +2417,8 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
 
                 D3D12_GLOBAL_BARRIER& out = globalBarriers[i];
                 out = {};
-                out.SyncBefore = GetBarrierSyncFlags(in.before.stages, in.before.access);
-                out.SyncAfter = GetBarrierSyncFlags(in.after.stages, in.after.access);
+                out.SyncBefore = GetGlobalBarrierSyncFlags(in.before.stages, in.before.access);
+                out.SyncAfter = GetGlobalBarrierSyncFlags(in.after.stages, in.after.access);
                 out.AccessBefore = GetBarrierAccessFlags(in.before.access);
                 out.AccessAfter = GetBarrierAccessFlags(in.after.access);
             }
@@ -2429,11 +2486,11 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
 
         // Texture
         const bool isCopyList = m_CommandListType == D3D12_COMMAND_LIST_TYPE_COPY;
-        Scratch<D3D12_TEXTURE_BARRIER> textureBarriers = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_TEXTURE_BARRIER, barrierDesc.textureNum);
+        Scratch<D3D12_TEXTURE_BARRIER> textureBarriers = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_TEXTURE_BARRIER, barrierDesc.textureNum * 2);
         if (barrierDesc.textureNum) {
             D3D12_BARRIER_GROUP* barrierGroup = &barrierGroups[barriersGroupsNum++];
             barrierGroup->Type = D3D12_BARRIER_TYPE_TEXTURE;
-            barrierGroup->NumBarriers = barrierDesc.textureNum;
+            barrierGroup->NumBarriers = 0;
             barrierGroup->pTextureBarriers = textureBarriers;
 
             for (uint32_t i = 0; i < barrierDesc.textureNum; i++) {
@@ -2444,14 +2501,7 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
                 Dim_t mipNum = in.mipNum == REMAINING ? (textureDesc.mipNum - in.mipOffset) : in.mipNum;
                 Dim_t layerNum = in.layerNum == REMAINING ? (textureDesc.layerNum - in.layerOffset) : in.layerNum;
 
-                D3D12_TEXTURE_BARRIER& out = textureBarriers[i];
-                out = {};
-                out.SyncBefore = GetBarrierSyncFlags(in.before.stages, in.before.access);
-                out.SyncAfter = GetBarrierSyncFlags(in.after.stages, in.after.access);
-                out.AccessBefore = GetTextureBarrierAccessFlags(in.before);
-                out.AccessAfter = GetTextureBarrierAccessFlags(in.after);
-                out.LayoutBefore = GetBarrierLayout(in.before.layout, in.before.access, isCopyList || IsCopyQueue(in.srcQueue));
-                out.LayoutAfter = GetBarrierLayout(in.after.layout, in.after.access, isCopyList || IsCopyQueue(in.dstQueue));
+                D3D12_TEXTURE_BARRIER out = {};
                 out.pResource = texture;
                 out.Subresources.IndexOrFirstMipLevel = in.mipOffset;
                 out.Subresources.NumMipLevels = mipNum;
@@ -2481,6 +2531,29 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
 
                 // https://microsoft.github.io/DirectX-Specs/d3d/D3D12EnhancedBarriers.html#d3d12_texture_barrier_flags
                 out.Flags = in.before.layout == Layout::UNDEFINED ? D3D12_TEXTURE_BARRIER_FLAG_DISCARD : D3D12_TEXTURE_BARRIER_FLAG_NONE; // TODO: verify that it works
+
+                bool attachmentResolve = (in.before.access | in.after.access) & RESOLVE_ATTACHMENT_ACCESS;
+                bool shaderResource = attachmentResolve && !(((ID3D12Resource*)texture)->GetDesc().Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE);
+                bool splitPlanes = attachmentResolve && (formatProps.isDepth || formatProps.isStencil);
+                uint32_t planeNum = splitPlanes ? out.Subresources.NumPlanes : 1;
+                for (uint32_t plane = 0; plane < planeNum; plane++) {
+                    D3D12_TEXTURE_BARRIER& dst = textureBarriers[barrierGroup->NumBarriers++];
+                    dst = out;
+                    if (splitPlanes) {
+                        dst.Subresources.FirstPlane += plane;
+                        dst.Subresources.NumPlanes = 1;
+                    }
+
+                    PlaneBits planes = dst.Subresources.FirstPlane ? PlaneBits::STENCIL : PlaneBits::DEPTH;
+                    AccessLayoutStage before = GetResolveAttachmentState(in.before, textureDesc.format, planes, shaderResource);
+                    AccessLayoutStage after = GetResolveAttachmentState(in.after, textureDesc.format, planes, shaderResource);
+                    dst.SyncBefore = GetBarrierSyncFlags(before.stages, before.access);
+                    dst.SyncAfter = GetBarrierSyncFlags(after.stages, after.access);
+                    dst.AccessBefore = GetTextureBarrierAccessFlags(before);
+                    dst.AccessAfter = GetTextureBarrierAccessFlags(after);
+                    dst.LayoutBefore = GetBarrierLayout(before.layout, before.access, isCopyList || IsCopyQueue(in.srcQueue));
+                    dst.LayoutAfter = GetBarrierLayout(after.layout, after.access, isCopyList || IsCopyQueue(in.dstQueue));
+                }
             }
         }
 
@@ -2518,7 +2591,10 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
             Dim_t mipNum = barrier.mipNum == REMAINING ? (textureDesc.mipNum - barrier.mipOffset) : barrier.mipNum;
             Dim_t layerNum = barrier.layerNum == REMAINING ? (textureDesc.layerNum - barrier.layerOffset) : barrier.layerNum;
 
-            if (layerNum == textureDesc.layerNum && mipNum == textureDesc.mipNum && barrier.planes == PlaneBits::ALL)
+            bool attachmentResolve = (barrier.before.access | barrier.after.access) & RESOLVE_ATTACHMENT_ACCESS;
+            if (attachmentResolve)
+                barrierNum += layerNum * mipNum * 2;
+            else if (layerNum == textureDesc.layerNum && mipNum == textureDesc.mipNum && barrier.planes == PlaneBits::ALL)
                 barrierNum++;
             else
                 barrierNum += layerNum * mipNum;
@@ -2557,7 +2633,26 @@ NRI_INLINE void CommandBufferD3D12::Barrier(const BarrierDesc& barrierDesc) {
             Dim_t mipNum = barrier.mipNum == REMAINING ? (textureDesc.mipNum - barrier.mipOffset) : barrier.mipNum;
             Dim_t layerNum = barrier.layerNum == REMAINING ? (textureDesc.layerNum - barrier.layerOffset) : barrier.layerNum;
 
-            if (layerNum == textureDesc.layerNum && mipNum == textureDesc.mipNum && barrier.planes == PlaneBits::ALL)
+            bool attachmentResolve = (barrier.before.access | barrier.after.access) & RESOLVE_ATTACHMENT_ACCESS;
+            if (attachmentResolve) {
+                bool shaderResource = !(((ID3D12Resource*)texture)->GetDesc().Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE);
+                const FormatProps& formatProps = GetFormatProps(textureDesc.format);
+                const PlaneBits planes[] = {formatProps.isDepth ? PlaneBits::DEPTH : PlaneBits::COLOR, PlaneBits::STENCIL};
+                uint32_t planeNum = formatProps.isStencil ? 2 : 1;
+                for (uint32_t plane = 0; plane < planeNum; plane++) {
+                    if (barrier.planes != PlaneBits::ALL && !(barrier.planes & planes[plane]))
+                        continue;
+
+                    AccessLayoutStage before = GetResolveAttachmentState(barrier.before, textureDesc.format, planes[plane], shaderResource);
+                    AccessLayoutStage after = GetResolveAttachmentState(barrier.after, textureDesc.format, planes[plane], shaderResource);
+                    for (Dim_t layer = 0; layer < layerNum; layer++) {
+                        for (Dim_t mip = 0; mip < mipNum; mip++) {
+                            uint32_t subresource = GetSubresourceIndex(barrier.layerOffset + layer, textureDesc.layerNum, barrier.mipOffset + mip, textureDesc.mipNum, planes[plane]);
+                            ptr += AddResourceBarrier(commandListType, texture, before.access, after.access, *ptr, subresource);
+                        }
+                    }
+                }
+            } else if (layerNum == textureDesc.layerNum && mipNum == textureDesc.mipNum && barrier.planes == PlaneBits::ALL)
                 ptr += AddResourceBarrier(commandListType, texture, barrier.before.access, barrier.after.access, *ptr, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
             else {
                 for (Dim_t layer = 0; layer < layerNum; layer++) {

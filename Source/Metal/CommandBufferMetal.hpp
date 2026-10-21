@@ -33,7 +33,7 @@ static inline MTL::Stages GetBarrierStages(StageBits stages) {
     if (stages & StageBits::MESH_SHADER)
         result |= MTL::StageMesh;
 
-    if (stages & (StageBits::FRAGMENT_SHADER | StageBits::DEPTH_STENCIL_ATTACHMENT | StageBits::COLOR_ATTACHMENT | StageBits::SHADING_RATE_ATTACHMENT | StageBits::RESOLVE))
+    if (stages & (StageBits::FRAGMENT_SHADER | StageBits::DEPTH_STENCIL_ATTACHMENT | StageBits::COLOR_ATTACHMENT | StageBits::SHADING_RATE_ATTACHMENT | StageBits::RESOLVE | StageBits::RESOLVE_ATTACHMENT))
         result |= MTL::StageFragment;
 
     if (stages & (StageBits::COMPUTE_SHADER | StageBits::RAY_TRACING_SHADERS))
@@ -60,7 +60,7 @@ static inline bool HasWriteAccess(AccessBits access) {
     constexpr uint32_t writeAccess = (uint32_t)AccessBits::SCRATCH_BUFFER | (uint32_t)AccessBits::COLOR_ATTACHMENT_WRITE | (uint32_t)AccessBits::DEPTH_STENCIL_ATTACHMENT_WRITE
         | (uint32_t)AccessBits::ACCELERATION_STRUCTURE_WRITE | (uint32_t)AccessBits::MICROMAP_WRITE | (uint32_t)AccessBits::SHADER_RESOURCE_STORAGE
         | (uint32_t)AccessBits::COPY_DESTINATION | (uint32_t)AccessBits::RESOLVE_DESTINATION | (uint32_t)AccessBits::CLEAR_STORAGE | (uint32_t)AccessBits::HOST_WRITE
-        | (uint32_t)AccessBits::VIDEO_DECODE_WRITE | (uint32_t)AccessBits::VIDEO_ENCODE_WRITE;
+        | (uint32_t)AccessBits::VIDEO_DECODE_WRITE | (uint32_t)AccessBits::VIDEO_ENCODE_WRITE | (uint32_t)AccessBits::RESOLVE_ATTACHMENT_DESTINATION;
 
     // "NONE" is "COMMON" (any access)
     return access == AccessBits::NONE || ((uint32_t)access & writeAccess) != 0;

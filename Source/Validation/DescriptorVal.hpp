@@ -36,7 +36,12 @@ DescriptorVal::DescriptorVal(DeviceVal& device, Descriptor* descriptor, const Bu
 
 DescriptorVal::DescriptorVal(DeviceVal& device, Descriptor* descriptor, const TextureViewDesc& textureViewDesc)
     : ObjectVal(device, descriptor) {
+    const TextureDesc& textureDesc = ((const TextureVal*)textureViewDesc.texture)->GetDesc();
+
     m_Format = textureViewDesc.format;
+    m_Layout = GetTextureViewLayout(textureViewDesc);
+    m_SampleNum = textureDesc.sampleNum;
+    m_SharingMode = textureDesc.sharingMode;
 
     switch (textureViewDesc.type) {
         case TextureView::TEXTURE:

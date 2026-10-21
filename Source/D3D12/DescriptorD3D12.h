@@ -9,6 +9,7 @@ struct TexViewDesc {
     Dim_t layerNum;
     Dim_t mipOffset;
     Dim_t mipNum;
+    Layout layout;
 };
 
 struct DescriptorD3D12 final : public DebugNameBase {

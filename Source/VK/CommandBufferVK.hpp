@@ -262,9 +262,9 @@ static inline void FillRenderingAttachmentInfo(VkRenderingAttachmentInfo& attach
         attachmentInfo.resolveImageLayout = resolveDst.GetTexViewDesc().expectedLayout;
     }
 
-    // Default views of "INPUT_ATTACHMENT" textures use "VK_IMAGE_LAYOUT_RENDERING_LOCAL_READ"
+    // Default input-attachment views use local-read layouts unless resolving requires the attachment layout
     const TextureDesc& textureDesc = texViewDesc.texture->GetDesc();
-    if ((textureDesc.usage & TextureUsageBits::INPUT_ATTACHMENT) && !texViewDesc.hasExplicitLayout)
+    if ((textureDesc.usage & TextureUsageBits::INPUT_ATTACHMENT) && !texViewDesc.hasExplicitLayout && !attachmentDesc.resolveDst)
         attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_RENDERING_LOCAL_READ;
 
     Dim_t w = texViewDesc.texture->GetSize(0, texViewDesc.mipOffset);
@@ -365,10 +365,10 @@ static inline VkAccessFlags2 GetAccessFlags(AccessBits accessBits) {
     if (accessBits & AccessBits::SCRATCH_BUFFER)
         flags |= VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
 
-    if (accessBits & AccessBits::COLOR_ATTACHMENT_READ)
+    if (accessBits & (AccessBits::COLOR_ATTACHMENT_READ | AccessBits::RESOLVE_ATTACHMENT_SOURCE | AccessBits::RESOLVE_ATTACHMENT_DESTINATION))
         flags |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
 
-    if (accessBits & AccessBits::COLOR_ATTACHMENT_WRITE)
+    if (accessBits & (AccessBits::COLOR_ATTACHMENT_WRITE | AccessBits::RESOLVE_ATTACHMENT_DESTINATION))
         flags |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
 
     if (accessBits & AccessBits::DEPTH_STENCIL_ATTACHMENT_READ)
