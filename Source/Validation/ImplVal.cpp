@@ -60,9 +60,9 @@ static inline uint8_t GetVideoSessionBitDepth(Format format) {
     return format == Format::NV12_UNORM ? 8 : 10;
 }
 
-// "general_level_idc" (H.265 Table A.8, 30 times the level number) or 0
+// "general_level_idc" (H.265 Table A.8, 30 times the level number)
 static inline bool IsVideoH265LevelIdcValid(uint8_t generalLevelIdc) {
-    constexpr std::array<uint8_t, 14> levels = {0, 30, 60, 63, 90, 93, 120, 123, 150, 153, 156, 180, 183, 186};
+    constexpr std::array<uint8_t, 13> levels = {30, 60, 63, 90, 93, 120, 123, 150, 153, 156, 180, 183, 186};
 
     return std::find(levels.begin(), levels.end(), generalLevelIdc) != levels.end();
 }
@@ -1830,7 +1830,7 @@ static Result NRI_CALL CreateVideoSessionParameters(Device& device, const VideoS
 
     NRI_RETURN_ON_FAILURE(&deviceVal, IsVideoSessionParametersDescValid(sessionVal.GetDesc(), sessionVal.GetCapabilities(), videoSessionParametersDesc), Result::INVALID_ARGUMENT, "'videoSessionParametersDesc' is invalid for the fixed session profile, format or picture layout");
     NRI_RETURN_ON_FAILURE(&deviceVal, AreVideoH265LevelsValid(videoSessionParametersDesc), Result::INVALID_ARGUMENT,
-        "H.265 'generalLevelIdc' must be 0 or 30 times a level of H.265 Table A.8 (30, 60, 63, 90, 93, 120, 123, 150, 153, 156, 180, 183 or 186)");
+        "H.265 'generalLevelIdc' must be 30 times a level of H.265 Table A.8 (30, 60, 63, 90, 93, 120, 123, 150, 153, 156, 180, 183 or 186)");
 
     VideoSessionParametersDesc descImpl = videoSessionParametersDesc;
     descImpl.session = sessionVal.GetImpl();

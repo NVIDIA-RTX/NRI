@@ -413,7 +413,7 @@ NriStruct(VideoH264SessionParametersDesc) {
 NriStruct(VideoH265ProfileTierLevelDesc) {
     Nri(VideoH265ProfileTierLevelBits) flags;
     uint8_t generalProfileIdc;
-    uint8_t generalLevelIdc; // "general_level_idc" as coded in the bitstream: 30 times the level number (e.g. 120 = level 4), or 0 (unspecified)
+    uint8_t generalLevelIdc; // "general_level_idc" as coded in the bitstream: 30 times the level number (e.g. 120 = level 4)
 };
 
 NriStruct(VideoH265DecPicBufMgrDesc) {
