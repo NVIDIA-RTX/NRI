@@ -127,8 +127,9 @@ static Result GetVideoAV1EncodeDecodeInfo(const VideoSessionD3D12& session, Buff
     if (desc.feedback->errorFlags || !desc.feedback->encodedBitstreamWrittenBytes || !desc.feedback->writtenSubregionNum)
         return Result::FAILURE;
 
+    // The D3D12 encode output is the tile data only, the frame header is built from the resolved metadata
     if (desc.encodedPayloadHeader && desc.encodedPayloadHeaderSize)
-        return video::av1::GetEncodeDecodeInfoFromHeader(desc, info);
+        return Result::UNSUPPORTED;
 
     // Metadata only: picture header fields not reported by the resolved metadata come from the submitted picture description
     NRI_CHECK(desc.pictureDesc && desc.av1PictureDesc, "'pictureDesc' and 'av1PictureDesc' are required without 'encodedPayloadHeader'");

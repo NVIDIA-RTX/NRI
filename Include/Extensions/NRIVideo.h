@@ -898,7 +898,7 @@ NriStruct(VideoEncodeFeedback) {
 NriStruct(VideoAV1EncodeDecodeInfoDesc) {
     const NriPtr(VideoEncodeFeedback) feedback;
     const NriPtr(VideoAV1SequenceDesc) sequence;
-    NriOptional const uint8_t* encodedPayloadHeader; // first bytes of the encoded payload; returned bitstream ranges are bounded by "feedback"
+    NriOptional const uint8_t* encodedPayloadHeader; // first bytes of the encoded payload; returned bitstream ranges are bounded by "feedback" (D3D12: UNSUPPORTED, the payload has no frame header)
     uint64_t encodedPayloadHeaderSize;
     NriOptional const NriPtr(VideoAV1ReferenceDesc) references; // previous AV1 DPB snapshot; required for inter frames, without it the frame is a key frame (as encoded with "FORCE_KEY_FRAME")
     NriOptional uint32_t referenceNum;
