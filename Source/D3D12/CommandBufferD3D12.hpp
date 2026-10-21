@@ -1620,17 +1620,21 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
         }
 
         for (uint32_t i = 0; i < hevcReferenceLists.list0Num; i++) {
-            if (hevcInitialLists.list0Entries[i] >= hevcReferenceLists.list0Num) {
-                NRI_REPORT_ERROR(&m_Device, "D3D12 H.265 encode: 'List0' must hold the first entries of the initial reference picture list");
+            // Short-term references only (validated): List0 holds the preceding, List1 the following pictures, the first entries of the initial lists
+            const bool isPrefix = hevcInitialLists.list0Entries[i] < hevcReferenceLists.list0Num;
+            NRI_CHECK(isPrefix, "D3D12 H.265 encode 'List0' doesn't hold the first entries of the initial reference picture list");
+            if (!isPrefix)
                 return;
-            }
+
             hevcList0References[i] = hevcInitialLists.temp0[i];
         }
         for (uint32_t i = 0; i < hevcReferenceLists.list1Num; i++) {
-            if (hevcInitialLists.list1Entries[i] >= hevcReferenceLists.list1Num) {
-                NRI_REPORT_ERROR(&m_Device, "D3D12 H.265 encode: 'List1' must hold the first entries of the initial reference picture list");
+            // Short-term references only (validated): List0 holds the preceding, List1 the following pictures, the first entries of the initial lists
+            const bool isPrefix = hevcInitialLists.list1Entries[i] < hevcReferenceLists.list1Num;
+            NRI_CHECK(isPrefix, "D3D12 H.265 encode 'List1' doesn't hold the first entries of the initial reference picture list");
+            if (!isPrefix)
                 return;
-            }
+
             hevcList1References[i] = hevcInitialLists.temp1[i];
         }
 

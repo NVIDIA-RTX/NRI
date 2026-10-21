@@ -390,7 +390,7 @@ static inline bool IsVideoEncodeH265ReferenceListValid(const VideoEncodeDesc& vi
     uint32_t list1ReferenceNum = 0;
     for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {
         const VideoH265ReferenceDesc* reference = video::FindReferenceDesc(videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, videoEncodeDesc.references[i].slot);
-        if (!reference || !IsVideoFrameTypeValid(reference->frameType))
+        if (!reference || !IsVideoFrameTypeValid(reference->frameType) || reference->longTerm)
             return false;
 
         if (reference->listIndex == 0)
@@ -1918,7 +1918,7 @@ NRI_INLINE void CommandBufferVal::EncodeVideo(const VideoEncodeDesc& videoEncode
     }
 
     if (sessionVal.GetDesc().codec == VideoCodec::H265 && videoEncodeDesc.referenceNum && !IsVideoEncodeH265ReferenceListValid(videoEncodeDesc, frameType)) {
-        NRI_REPORT_ERROR(&m_Device, "'h265ReferenceDescs' must describe every H.265 reference and B frames require List0 and List1 references");
+        NRI_REPORT_ERROR(&m_Device, "'h265ReferenceDescs' must describe every H.265 reference with short-term references only (long-term encode references are unsupported) and B frames require List0 and List1 references");
         return;
     }
 

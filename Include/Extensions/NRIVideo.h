@@ -638,7 +638,7 @@ NriStruct(VideoH265ReferenceDesc) {
     int32_t pictureOrderCount;
     uint8_t temporalLayer;
     Nri(VideoFrameType) frameType;
-    uint8_t longTerm;
+    uint8_t longTerm;  // decode only, encode supports short-term references only
     uint8_t listIndex;
 };
 
