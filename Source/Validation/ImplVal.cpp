@@ -1909,6 +1909,9 @@ static Result NRI_CALL WriteVideoAnnexBParameterSets(VideoAnnexBParameterSetsDes
     } else if (annexBParameterSetsDesc.codec == VideoCodec::H265) {
         if (!annexBParameterSetsDesc.h265Vps || !annexBParameterSetsDesc.h265Sps || !annexBParameterSetsDesc.h265Pps)
             return Result::INVALID_ARGUMENT;
+
+        if (!IsVideoH265LevelIdcValid(annexBParameterSetsDesc.h265Vps->profileTierLevel.generalLevelIdc) || !IsVideoH265LevelIdcValid(annexBParameterSetsDesc.h265Sps->profileTierLevel.generalLevelIdc))
+            return Result::INVALID_ARGUMENT;
     } else
         return Result::UNSUPPORTED;
 
