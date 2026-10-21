@@ -887,76 +887,6 @@ static bool BuildVideoDecodeH265Arguments(const VideoH265SessionParametersDesc& 
 }
 
 #if NRI_ENABLE_AGILITY_SDK_SUPPORT
-// H.265 8.3.4: "RefPicListTemp0" is the preceding pictures by descending, the following pictures by ascending picture order count, then the long-term
-// pictures ("RefPicListTemp1" has the following pictures first). "list_entry" values index them. Returns false if a list entry is not a reference
-static inline bool GetVideoEncodeHevcListEntries(const VideoEncodeDesc& videoEncodeDesc, const video::h265::EncodeReferenceLists& lists, int32_t pictureOrderCount, UINT* temp0, UINT* temp1, UINT* list0Entries, UINT* list1Entries) {
-    std::array<uint32_t, video::h265::MAX_REFERENCE_NUM> before = {};
-    std::array<uint32_t, video::h265::MAX_REFERENCE_NUM> after = {};
-    std::array<uint32_t, video::h265::MAX_REFERENCE_NUM> longTerm = {};
-    uint32_t beforeNum = 0;
-    uint32_t afterNum = 0;
-    uint32_t longTermNum = 0;
-
-    auto getPictureOrderCount = [&](uint32_t referenceIndex) {
-        return video::FindReferenceDesc(videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, videoEncodeDesc.references[referenceIndex].slot)->pictureOrderCount;
-    };
-
-    for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {
-        const VideoH265ReferenceDesc* referenceDesc = video::FindReferenceDesc(videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, videoEncodeDesc.references[i].slot);
-        if (!referenceDesc)
-            return false;
-
-        if (referenceDesc->longTerm)
-            longTerm[longTermNum++] = i;
-        else if (referenceDesc->pictureOrderCount < pictureOrderCount)
-            before[beforeNum++] = i;
-        else
-            after[afterNum++] = i;
-    }
-
-    std::sort(before.begin(), before.begin() + beforeNum, [&](uint32_t a, uint32_t b) { return getPictureOrderCount(a) > getPictureOrderCount(b); });
-    std::sort(after.begin(), after.begin() + afterNum, [&](uint32_t a, uint32_t b) { return getPictureOrderCount(a) < getPictureOrderCount(b); });
-
-    uint32_t tempNum = 0;
-    for (uint32_t i = 0; i < beforeNum; i++)
-        temp0[tempNum++] = before[i];
-    for (uint32_t i = 0; i < afterNum; i++)
-        temp0[tempNum++] = after[i];
-    for (uint32_t i = 0; i < longTermNum; i++)
-        temp0[tempNum++] = longTerm[i];
-
-    tempNum = 0;
-    for (uint32_t i = 0; i < afterNum; i++)
-        temp1[tempNum++] = after[i];
-    for (uint32_t i = 0; i < beforeNum; i++)
-        temp1[tempNum++] = before[i];
-    for (uint32_t i = 0; i < longTermNum; i++)
-        temp1[tempNum++] = longTerm[i];
-
-    auto findEntry = [&](const UINT* temp, uint32_t referenceIndex) {
-        for (uint32_t i = 0; i < tempNum; i++) {
-            if (temp[i] == referenceIndex)
-                return i;
-        }
-
-        return UINT32_MAX;
-    };
-
-    for (uint32_t i = 0; i < lists.list0Num; i++) {
-        list0Entries[i] = findEntry(temp0, lists.list0[i]);
-        if (list0Entries[i] == UINT32_MAX)
-            return false;
-    }
-
-    for (uint32_t i = 0; i < lists.list1Num; i++) {
-        list1Entries[i] = findEntry(temp1, lists.list1[i]);
-        if (list1Entries[i] == UINT32_MAX)
-            return false;
-    }
-
-    return true;
-}
-
 // Also used to rebuild the frame header from metadata ("GetVideoAV1EncodeDecodeInfo")
 static inline D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_FLAGS GetVideoEncodeAV1PictureControlFlags(VideoAV1PictureBits pictureFlags, uint32_t featureFlags, uint32_t requiredFeatureFlags) {
     D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_FLAGS flags = D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_FLAG_NONE;
@@ -1659,10 +1589,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
     const uint32_t h265ReferenceNum = sessionDesc.codec == VideoCodec::H265 ? videoEncodeDesc.referenceNum : 0;
     Scratch<UINT> hevcList0References = NRI_ALLOCATE_SCRATCH(m_Device, UINT, h265ReferenceNum);
     Scratch<UINT> hevcList1References = NRI_ALLOCATE_SCRATCH(m_Device, UINT, h265ReferenceNum);
-    Scratch<UINT> hevcList0Entries = NRI_ALLOCATE_SCRATCH(m_Device, UINT, h265ReferenceNum);
-    Scratch<UINT> hevcList1Entries = NRI_ALLOCATE_SCRATCH(m_Device, UINT, h265ReferenceNum);
-    Scratch<UINT> hevcTemp0 = NRI_ALLOCATE_SCRATCH(m_Device, UINT, h265ReferenceNum);
-    Scratch<UINT> hevcTemp1 = NRI_ALLOCATE_SCRATCH(m_Device, UINT, h265ReferenceNum);
+    video::h265::EncodeInitialLists hevcInitialLists = {};
     Scratch<D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC> hevcReferenceDescriptors = NRI_ALLOCATE_SCRATCH(m_Device, D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC, h265ReferenceNum);
     if (sessionDesc.codec == VideoCodec::H265) {
         video::h265::EncodeReferenceLists hevcReferenceLists = {};
@@ -1676,7 +1603,7 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
         for (uint32_t i = 0; i < hevcReferenceLists.list1Num; i++)
             hevcList1References[i] = hevcReferenceLists.list1[i];
 
-        if (!GetVideoEncodeHevcListEntries(videoEncodeDesc, hevcReferenceLists, pictureDesc.pictureOrderCount, hevcTemp0, hevcTemp1, hevcList0Entries, hevcList1Entries)) {
+        if (!video::h265::BuildEncodeInitialLists(videoEncodeDesc.references, videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, pictureDesc.pictureOrderCount, hevcReferenceLists, hevcInitialLists)) {
             NRI_CHECK(false, "Failed to build D3D12 H.265 initial reference picture lists from validated descriptors");
             return;
         }
@@ -1693,25 +1620,25 @@ NRI_INLINE void CommandBufferD3D12::EncodeVideo(const VideoEncodeDesc& videoEnco
         }
 
         for (uint32_t i = 0; i < hevcReferenceLists.list0Num; i++) {
-            if (hevcList0Entries[i] >= hevcReferenceLists.list0Num) {
+            if (hevcInitialLists.list0Entries[i] >= hevcReferenceLists.list0Num) {
                 NRI_REPORT_ERROR(&m_Device, "D3D12 H.265 encode: 'List0' must hold the first entries of the initial reference picture list");
                 return;
             }
-            hevcList0References[i] = hevcTemp0[i];
+            hevcList0References[i] = hevcInitialLists.temp0[i];
         }
         for (uint32_t i = 0; i < hevcReferenceLists.list1Num; i++) {
-            if (hevcList1Entries[i] >= hevcReferenceLists.list1Num) {
+            if (hevcInitialLists.list1Entries[i] >= hevcReferenceLists.list1Num) {
                 NRI_REPORT_ERROR(&m_Device, "D3D12 H.265 encode: 'List1' must hold the first entries of the initial reference picture list");
                 return;
             }
-            hevcList1References[i] = hevcTemp1[i];
+            hevcList1References[i] = hevcInitialLists.temp1[i];
         }
 
         if (hevcPps && (hevcPps->flags & VideoH265PictureParameterSetBits::LISTS_MODIFICATION_PRESENT) && videoEncodeDesc.referenceNum > 1) {
             hevcPicture.List0RefPicModificationsCount = hevcReferenceLists.list0Num;
-            hevcPicture.pList0RefPicModifications = hevcReferenceLists.list0Num ? (UINT*)hevcList0Entries : nullptr;
+            hevcPicture.pList0RefPicModifications = hevcReferenceLists.list0Num ? (UINT*)hevcInitialLists.list0Entries.data() : nullptr;
             hevcPicture.List1RefPicModificationsCount = hevcReferenceLists.list1Num;
-            hevcPicture.pList1RefPicModifications = hevcReferenceLists.list1Num ? (UINT*)hevcList1Entries : nullptr;
+            hevcPicture.pList1RefPicModifications = hevcReferenceLists.list1Num ? (UINT*)hevcInitialLists.list1Entries.data() : nullptr;
         }
 
         for (uint32_t i = 0; i < videoEncodeDesc.referenceNum; i++) {

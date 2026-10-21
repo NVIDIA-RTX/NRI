@@ -381,6 +381,101 @@ static inline bool BuildEncodeReferenceLists(const VideoReference* references, c
     return true;
 }
 
+struct EncodeInitialLists {
+    std::array<uint32_t, MAX_REFERENCE_NUM> temp0 = {}; // "RefPicListTemp0" as reference indices
+    std::array<uint32_t, MAX_REFERENCE_NUM> temp1 = {}; // "RefPicListTemp1" as reference indices
+    std::array<uint32_t, MAX_REFERENCE_NUM> list0Entries = {}; // "list_entry_l0" of the List0 entries
+    std::array<uint32_t, MAX_REFERENCE_NUM> list1Entries = {}; // "list_entry_l1" of the List1 entries
+};
+
+// H.265 8.3.4: "RefPicListTemp0" holds the preceding pictures by descending, the following pictures by ascending picture order count, then the
+// long-term pictures ("RefPicListTemp1" the following pictures first). All references are used by the current picture. "list_entry" values index them
+static inline bool BuildEncodeInitialLists(const VideoReference* references, const VideoH265ReferenceDesc* referenceDescs, uint32_t referenceNum, int32_t currentPictureOrderCount,
+    const EncodeReferenceLists& lists, EncodeInitialLists& initialLists) {
+    initialLists = {};
+
+    std::array<uint32_t, MAX_REFERENCE_NUM> before = {};
+    std::array<uint32_t, MAX_REFERENCE_NUM> after = {};
+    std::array<uint32_t, MAX_REFERENCE_NUM> longTerm = {};
+    uint32_t beforeNum = 0;
+    uint32_t afterNum = 0;
+    uint32_t longTermNum = 0;
+
+    for (uint32_t i = 0; i < referenceNum; i++) {
+        const VideoH265ReferenceDesc* referenceDesc = GetReferenceDesc(references, referenceDescs, referenceNum, i);
+        if (!referenceDesc)
+            return false;
+
+        if (referenceDesc->longTerm)
+            longTerm[longTermNum++] = i;
+        else if (referenceDesc->pictureOrderCount < currentPictureOrderCount)
+            before[beforeNum++] = i;
+        else
+            after[afterNum++] = i;
+    }
+
+    auto getPictureOrderCount = [&](uint32_t referenceIndex) {
+        return GetReferenceDesc(references, referenceDescs, referenceNum, referenceIndex)->pictureOrderCount;
+    };
+
+    std::sort(before.begin(), before.begin() + beforeNum, [&](uint32_t a, uint32_t b) { return getPictureOrderCount(a) > getPictureOrderCount(b); });
+    std::sort(after.begin(), after.begin() + afterNum, [&](uint32_t a, uint32_t b) { return getPictureOrderCount(a) < getPictureOrderCount(b); });
+
+    uint32_t tempNum = 0;
+    for (uint32_t i = 0; i < beforeNum; i++)
+        initialLists.temp0[tempNum++] = before[i];
+    for (uint32_t i = 0; i < afterNum; i++)
+        initialLists.temp0[tempNum++] = after[i];
+    for (uint32_t i = 0; i < longTermNum; i++)
+        initialLists.temp0[tempNum++] = longTerm[i];
+
+    tempNum = 0;
+    for (uint32_t i = 0; i < afterNum; i++)
+        initialLists.temp1[tempNum++] = after[i];
+    for (uint32_t i = 0; i < beforeNum; i++)
+        initialLists.temp1[tempNum++] = before[i];
+    for (uint32_t i = 0; i < longTermNum; i++)
+        initialLists.temp1[tempNum++] = longTerm[i];
+
+    auto findEntry = [&](const std::array<uint32_t, MAX_REFERENCE_NUM>& temp, uint32_t referenceIndex) {
+        for (uint32_t i = 0; i < tempNum; i++) {
+            if (temp[i] == referenceIndex)
+                return i;
+        }
+
+        return UINT32_MAX;
+    };
+
+    for (uint32_t i = 0; i < lists.list0Num; i++) {
+        initialLists.list0Entries[i] = findEntry(initialLists.temp0, lists.list0[i]);
+        if (initialLists.list0Entries[i] == UINT32_MAX)
+            return false;
+    }
+
+    for (uint32_t i = 0; i < lists.list1Num; i++) {
+        initialLists.list1Entries[i] = findEntry(initialLists.temp1, lists.list1[i]);
+        if (initialLists.list1Entries[i] == UINT32_MAX)
+            return false;
+    }
+
+    return true;
+}
+
+// Without "lists_modification_present_flag" the lists are the initial lists
+static inline bool AreEncodeListsInitial(const EncodeReferenceLists& lists, const EncodeInitialLists& initialLists) {
+    for (uint32_t i = 0; i < lists.list0Num; i++) {
+        if (initialLists.list0Entries[i] != i)
+            return false;
+    }
+
+    for (uint32_t i = 0; i < lists.list1Num; i++) {
+        if (initialLists.list1Entries[i] != i)
+            return false;
+    }
+
+    return true;
+}
+
 static inline void AppendNalHeader(bitstream::ByteWriter& bytes, uint8_t nalUnitType) {
     bytes.WriteByte(0);
     bytes.WriteByte(0);

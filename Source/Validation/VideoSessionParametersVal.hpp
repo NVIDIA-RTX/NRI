@@ -17,6 +17,7 @@ NRI_INLINE VideoSessionParametersVal::VideoSessionParametersVal(DeviceVal& devic
             const VideoH265PictureParameterSetDesc& pictureParameterSet = desc.h265Parameters->pictureParameterSets[i];
             m_H265PpsToSpsPlusOne[pictureParameterSet.pictureParameterSetId] = (uint8_t)(pictureParameterSet.sequenceParameterSetId + 1);
             m_H265PpsToVpsPlusOne[pictureParameterSet.pictureParameterSetId] = (uint8_t)(pictureParameterSet.videoParameterSetId + 1);
+            m_H265PpsListsModification[pictureParameterSet.pictureParameterSetId] = !!(pictureParameterSet.flags & VideoH265PictureParameterSetBits::LISTS_MODIFICATION_PRESENT);
         }
     }
 }
@@ -38,6 +39,10 @@ NRI_INLINE bool VideoSessionParametersVal::IsH264ParameterSetValid(uint8_t seque
 
 NRI_INLINE bool VideoSessionParametersVal::HasH265Parameters() const {
     return m_HasH265Parameters;
+}
+
+NRI_INLINE bool VideoSessionParametersVal::IsH265ListsModificationPresent(uint8_t pictureParameterSetId) const {
+    return pictureParameterSetId < 64 && m_H265PpsListsModification[pictureParameterSetId];
 }
 
 NRI_INLINE bool VideoSessionParametersVal::IsH265ParameterSetValid(uint8_t videoParameterSetId, uint8_t sequenceParameterSetId, uint8_t pictureParameterSetId) const {

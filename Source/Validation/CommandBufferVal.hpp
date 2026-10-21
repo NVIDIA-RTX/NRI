@@ -1922,6 +1922,18 @@ NRI_INLINE void CommandBufferVal::EncodeVideo(const VideoEncodeDesc& videoEncode
         return;
     }
 
+    // Without "lists_modification_present_flag" only the initial lists can be signaled (internal default parameters signal it)
+    const uint8_t h265PpsId = videoEncodeDesc.h265PictureDesc ? videoEncodeDesc.h265PictureDesc->pictureParameterSetId : 0;
+    const int32_t pictureOrderCount = videoEncodeDesc.pictureDesc ? videoEncodeDesc.pictureDesc->pictureOrderCount : 0;
+    if (sessionVal.GetDesc().codec == VideoCodec::H265 && videoEncodeDesc.referenceNum > 1 && parametersVal.HasH265Parameters() && !parametersVal.IsH265ListsModificationPresent(h265PpsId)) {
+        video::h265::EncodeReferenceLists lists = {};
+        video::h265::EncodeInitialLists initialLists = {};
+        const bool isInitial = video::h265::BuildEncodeReferenceLists(videoEncodeDesc.references, videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, frameType, pictureOrderCount, false, lists)
+            && video::h265::BuildEncodeInitialLists(videoEncodeDesc.references, videoEncodeDesc.h265ReferenceDescs, videoEncodeDesc.referenceNum, pictureOrderCount, lists, initialLists)
+            && video::h265::AreEncodeListsInitial(lists, initialLists);
+        NRI_RETURN_ON_FAILURE(&m_Device, isInitial, ReturnVoid(), "the PPS has no 'LISTS_MODIFICATION_PRESENT': H.265 List0/List1 must be in the initial reference picture list order (preceding pictures by descending, following pictures by ascending picture order count)");
+    }
+
     if (videoEncodeDesc.av1PictureDesc && !IsVideoAV1EncodePictureDescValid(videoEncodeDesc)) {
         NRI_REPORT_ERROR(&m_Device, "'av1PictureDesc' is invalid");
         return;
