@@ -795,6 +795,21 @@ NriStruct(VideoAV1FilmGrainDesc) {
     int16_t crOffset;
 };
 
+// State of a reference frame that later frame headers can depend on ("RefUpscaledWidth", "load_previous", "load_grain_params")
+NriStruct(VideoAV1SavedFrameState) {
+    Nri(VideoAV1LoopFilterDesc) loopFilter;     // "refDeltas" and "modeDeltas"
+    Nri(VideoAV1SegmentationDesc) segmentation; // "FeatureEnabled" and "FeatureData"
+    Nri(VideoAV1GlobalMotionDesc) globalMotion; // "gm_params"
+    Nri(VideoAV1FilmGrainDesc) filmGrain;       // all zero if no grain is applied
+    uint16_t upscaledWidthMinus1;
+    uint16_t frameHeightMinus1;
+    uint16_t renderWidthMinus1;
+    uint16_t renderHeightMinus1;
+    uint8_t orderHint;
+    uint8_t applyGrain; // "apply_grain" ("load_grain_params" restores it)
+    uint8_t valid;      // 0 if the frame inherited state that was not provided
+};
+
 NriStruct(VideoAV1EncodePictureDesc) {
     uint32_t currentFrameId;
     uint8_t orderHint;
@@ -905,6 +920,7 @@ NriStruct(VideoAV1EncodeDecodeInfoDesc) {
     NriOptional uint32_t referenceNum;
     NriOptional const NriPtr(VideoEncodePictureDesc) pictureDesc;       // submitted picture description; required if "encodedPayloadHeader" is not provided
     NriOptional const NriPtr(VideoAV1EncodePictureDesc) av1PictureDesc; // submitted AV1 picture description; required if "encodedPayloadHeader" is not provided
+    NriOptional const NriPtr(VideoAV1SavedFrameState) savedFrameStates;  // 8 entries indexed by "refFrameIndex": the "savedFrameState" of the frame that last refreshed each slot; required for headers that inherit state
 };
 
 NriStruct(VideoAV1EncodeDecodeInfo) {
@@ -925,6 +941,8 @@ NriStruct(VideoAV1EncodeDecodeInfo) {
     Nri(VideoAV1SegmentationDesc) segmentation;
     Nri(VideoAV1LoopRestorationDesc) loopRestoration;
     Nri(VideoAV1GlobalMotionDesc) globalMotion;
+    Nri(VideoAV1FilmGrainDesc) filmGrain;            // resolved parameters ("load_grain_params" applied)
+    Nri(VideoAV1SavedFrameState) savedFrameState;    // store into "savedFrameStates[i]" for every slot "i" in "picture.refreshFrameFlags"
 };
 
 NriStruct(VideoEncodeDesc) {

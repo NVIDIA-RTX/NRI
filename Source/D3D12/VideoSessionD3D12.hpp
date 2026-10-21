@@ -292,6 +292,19 @@ static Result GetVideoAV1EncodeDecodeInfo(const VideoSessionD3D12& session, Buff
     }
 
     video::av1::FillIdentityGlobalMotion(info.globalMotion);
+
+    // The resolved metadata reports the final state of the frame (D3D12 AV1 encode doesn't apply film grain)
+    VideoAV1SavedFrameState& savedFrameState = info.savedFrameState;
+    savedFrameState.loopFilter = info.loopFilter;
+    savedFrameState.segmentation = info.segmentation;
+    savedFrameState.globalMotion = info.globalMotion;
+    savedFrameState.upscaledWidthMinus1 = (uint16_t)(width - 1);
+    savedFrameState.frameHeightMinus1 = (uint16_t)(height - 1);
+    savedFrameState.renderWidthMinus1 = info.picture.renderWidthMinus1;
+    savedFrameState.renderHeightMinus1 = info.picture.renderHeightMinus1;
+    savedFrameState.orderHint = info.picture.orderHint;
+    savedFrameState.valid = 1;
+
     video::av1::BindPointers(info);
 
     return Result::SUCCESS;
