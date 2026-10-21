@@ -132,7 +132,7 @@ struct VideoResourceProfileListVK {
         return true;
     }
 
-    void Fill(bool decode, bool encode, Format format, VideoCodec codec, VkVideoCodecOperationFlagsKHR codecOperations) {
+    void Fill(bool decode, bool encode, Format format, VideoCodec codec, bool av1FilmGrain, VkVideoCodecOperationFlagsKHR codecOperations) {
         list.profileCount = 0;
         list.pProfiles = profiles.data();
 
@@ -143,7 +143,7 @@ struct VideoResourceProfileListVK {
             decodeH264.pictureLayout = VK_VIDEO_DECODE_H264_PICTURE_LAYOUT_PROGRESSIVE_KHR;
             decodeH265.stdProfileIdc = bitDepth == VK_VIDEO_COMPONENT_BIT_DEPTH_10_BIT_KHR ? STD_VIDEO_H265_PROFILE_IDC_MAIN_10 : STD_VIDEO_H265_PROFILE_IDC_MAIN;
             decodeAV1.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN;
-            decodeAV1.filmGrainSupport = VK_FALSE;
+            decodeAV1.filmGrainSupport = av1FilmGrain ? VK_TRUE : VK_FALSE;
 
             decodeUsage[0] = {VK_STRUCTURE_TYPE_VIDEO_DECODE_USAGE_INFO_KHR};
             decodeUsage[0].videoUsageHints = VK_VIDEO_DECODE_USAGE_DEFAULT_KHR;

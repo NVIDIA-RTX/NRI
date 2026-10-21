@@ -39,7 +39,8 @@
 using namespace nri;
 
 static inline bool IsVideoSessionDescValid(const VideoSessionDesc& desc) {
-    return (uint8_t)desc.type < (uint8_t)VideoSessionType::MAX_NUM && desc.codec > VideoCodec::NONE && desc.codec < VideoCodec::MAX_NUM && desc.format > Format::UNKNOWN && desc.format < Format::MAX_NUM && desc.width && desc.height && desc.maxReferenceNum != UINT32_MAX;
+    return (uint8_t)desc.type < (uint8_t)VideoSessionType::MAX_NUM && desc.codec > VideoCodec::NONE && desc.codec < VideoCodec::MAX_NUM && desc.format > Format::UNKNOWN && desc.format < Format::MAX_NUM && desc.width && desc.height && desc.maxReferenceNum != UINT32_MAX
+        && (!desc.av1FilmGrain || (desc.codec == VideoCodec::AV1 && desc.type == VideoSessionType::DECODE));
 }
 
 static inline bool IsVideoBufferRangeValid(uint64_t bufferSize, uint64_t offset, uint64_t requiredSize) {
@@ -199,8 +200,7 @@ static inline bool IsVideoSessionParametersDescValid(const VideoSessionDesc& ses
 
     if (hasAV1) {
         const VideoAV1SequenceDesc& sequence = desc.av1Parameters->sequence;
-        const bool usesUnsupportedFilmGrain = sessionDesc.type == VideoSessionType::DECODE && (sequence.flags & VideoAV1SequenceBits::FILM_GRAIN_PARAMS_PRESENT);
-        if (sequence.seqProfile != av1MainProfile || sequence.bitDepth != GetVideoSessionBitDepth(sessionDesc.format) || sequence.subsamplingX != 1 || sequence.subsamplingY != 1 || usesUnsupportedFilmGrain)
+        if (sequence.seqProfile != av1MainProfile || sequence.bitDepth != GetVideoSessionBitDepth(sessionDesc.format) || sequence.subsamplingX != 1 || sequence.subsamplingY != 1)
             return false;
     }
 

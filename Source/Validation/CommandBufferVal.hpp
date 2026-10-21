@@ -447,9 +447,14 @@ static inline bool AreVideoDecodeSliceOffsetsValid(const uint32_t* offsets, uint
     return true;
 }
 
+static inline bool IsVideoAV1FilmGrainDescValid(const VideoAV1FilmGrainDesc& desc) {
+    return desc.numYPoints <= 14 && desc.numCbPoints <= 10 && desc.numCrPoints <= 10 && desc.grainScalingMinus8 <= 3 && desc.arCoeffLag <= 3 && desc.arCoeffShiftMinus6 <= 3 && desc.grainScaleShift <= 3 && desc.filmGrainParamsRefIdx < 8
+        && desc.cbOffset >= 0 && desc.cbOffset <= 511 && desc.crOffset >= 0 && desc.crOffset <= 511; // "cb_offset", "cr_offset": f(9)
+}
+
 static bool IsVideoAV1DecodePictureDescValid(const VideoDecodeDesc& videoDecodeDesc) {
     const VideoAV1DecodePictureDesc& desc = *videoDecodeDesc.av1PictureDesc;
-    if (desc.flags & VideoAV1PictureBits::APPLY_GRAIN)
+    if ((desc.flags & VideoAV1PictureBits::APPLY_GRAIN) && (!desc.filmGrain || !IsVideoAV1FilmGrainDescValid(*desc.filmGrain)))
         return false;
 
     if (desc.tileNum == 0 || desc.tileNum > 64 || !desc.tiles)
@@ -1659,7 +1664,11 @@ NRI_INLINE void CommandBufferVal::DecodeVideo(const VideoDecodeDesc& videoDecode
         NRI_RETURN_ON_FAILURE(&m_Device, !isDpbAndOutputDistinct || (setupPictureVal.HasTextureExtent(sessionDesc.width, sessionDesc.height) && dstPictureVal.HasTextureExtent(sessionDesc.width, sessionDesc.height)), ReturnVoid(), "distinct 'dstPicture' and 'setupPicture' textures must have the session extent");
     }
 
-    NRI_RETURN_ON_FAILURE(&m_Device, isDpbAndOutputDistinct ? capabilities.decodeDpbAndOutputDistinct : capabilities.decodeDpbAndOutputCoincide, ReturnVoid(), "the video session does not support the requested decode output and DPB setup mode");
+    // VK: applying film grain requires a distinct setup picture, even if distinct mode isn't advertised for the session
+    const bool isFilmGrainApplied = videoDecodeDesc.av1PictureDesc && (videoDecodeDesc.av1PictureDesc->flags & VideoAV1PictureBits::APPLY_GRAIN);
+    NRI_RETURN_ON_FAILURE(&m_Device, !isFilmGrainApplied || sessionVal.GetDesc().av1FilmGrain, ReturnVoid(), "'APPLY_GRAIN' requires a session with 'av1FilmGrain'");
+    NRI_RETURN_ON_FAILURE(&m_Device, !isFilmGrainApplied || !sessionVal.GetDesc().maxReferenceNum || isDpbAndOutputDistinct, ReturnVoid(), "'APPLY_GRAIN' requires a distinct 'setupPicture' (the reference must be the picture without film grain)");
+    NRI_RETURN_ON_FAILURE(&m_Device, isDpbAndOutputDistinct ? (capabilities.decodeDpbAndOutputDistinct || isFilmGrainApplied) : capabilities.decodeDpbAndOutputCoincide, ReturnVoid(), "the video session does not support the requested decode output and DPB setup mode");
     NRI_RETURN_ON_FAILURE(&m_Device, videoDecodeDesc.setupPicture || !sessionVal.GetDesc().maxReferenceNum || !dstPictureVal.IsOutputOnly(), ReturnVoid(), "'dstPicture' uses a 'VIDEO_OUTPUT_ONLY' texture and can't be the DPB setup picture; provide a distinct 'setupPicture'");
 
     if (videoDecodeDesc.argumentNum > 10) {

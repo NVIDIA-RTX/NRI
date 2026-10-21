@@ -55,7 +55,7 @@ static void* FillVideoProfileCodecInfo(const VideoSessionDesc& videoSessionDesc,
                 VkVideoDecodeAV1ProfileInfoKHR& info = *(VkVideoDecodeAV1ProfileInfoKHR*)storage;
                 info = {VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_KHR};
                 info.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN;
-                info.filmGrainSupport = VK_FALSE;
+                info.filmGrainSupport = videoSessionDesc.av1FilmGrain ? VK_TRUE : VK_FALSE;
                 return &info;
             }
             default:

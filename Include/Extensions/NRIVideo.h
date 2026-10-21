@@ -268,7 +268,7 @@ NriBits(VideoAV1PictureBits, uint32_t,
     USES_CHROMA_LR                          = NriBit(27),
     SHOW_FRAME                              = NriBit(28),
     SHOWABLE_FRAME                          = NriBit(29),
-    APPLY_GRAIN                             = NriBit(30)  // TODO: currently unsupported for decode
+    APPLY_GRAIN                             = NriBit(30)  // decode: requires "VideoSessionDesc::av1FilmGrain"
 );
 
 NriStruct(VideoSessionDesc) {
@@ -278,6 +278,7 @@ NriStruct(VideoSessionDesc) {
     uint32_t width;
     uint32_t height;
     uint32_t maxReferenceNum;
+    bool av1FilmGrain; // AV1 decode: frames may apply film grain ("APPLY_GRAIN", into a distinct "setupPicture"); textures need "TextureDesc::videoAV1FilmGrain"; UNSUPPORTED if not available
 };
 
 NriStruct(VideoCapabilities) {
@@ -872,7 +873,7 @@ NriStruct(VideoAV1DecodePictureDesc) {
     NriOptional const NriPtr(VideoAV1SegmentationDesc) segmentation;
     NriOptional const NriPtr(VideoAV1LoopRestorationDesc) loopRestoration;
     NriOptional const NriPtr(VideoAV1GlobalMotionDesc) globalMotion;
-    NriOptional const NriPtr(VideoAV1FilmGrainDesc) filmGrain; // used with "APPLY_GRAIN"; TODO: currently unsupported for decode
+    NriOptional const NriPtr(VideoAV1FilmGrainDesc) filmGrain; // used with "APPLY_GRAIN": resolved parameters ("load_grain_params" applied, e.g. "VideoAV1EncodeDecodeInfo::filmGrain")
     NriOptional const uint8_t* orderHints;                     // 8 entries indexed like AV1 "OrderHints[]" by reference frame name: 0 = INTRA_FRAME, 1..7 = LAST..ALTREF; named reference entries are overridden by "references[].orderHint"
     Nri(VideoAV1ReferenceName) skipModeFrames[2]; // "SkipModeFrame[0..1]" used with "SKIP_MODE_PRESENT"
     const NriPtr(VideoAV1DecodeTileDesc) tiles;

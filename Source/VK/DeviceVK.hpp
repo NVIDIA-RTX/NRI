@@ -1783,7 +1783,7 @@ void DeviceVK::AppendVideoProfileList(const TextureDesc& textureDesc, VkImageCre
     if (!isVideoDecode && !isVideoEncode)
         return;
 
-    videoProfiles.Fill(isVideoDecode, isVideoEncode, textureDesc.format, textureDesc.videoCodec, GetVideoCodecOperations(isVideoDecode, isVideoEncode));
+    videoProfiles.Fill(isVideoDecode, isVideoEncode, textureDesc.format, textureDesc.videoCodec, textureDesc.videoAV1FilmGrain, GetVideoCodecOperations(isVideoDecode, isVideoEncode));
 
     if (videoProfiles.list.profileCount) {
         videoProfiles.list.pNext = info.pNext;

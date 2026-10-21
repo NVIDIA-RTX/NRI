@@ -66,6 +66,10 @@ static Result GetVideoCapabilities(DeviceD3D12& device, const VideoSessionDesc& 
         if (!videoCapabilities.decodeDpbAndOutputCoincide && !videoCapabilities.decodeDpbAndOutputDistinct)
             return Result::UNSUPPORTED;
 
+        // Film grain goes to the output, the reference (DPB) picture stays without it: needs distinct decode output
+        if (videoSessionDesc.av1FilmGrain && !videoCapabilities.decodeDpbAndOutputDistinct)
+            return Result::UNSUPPORTED;
+
         return CanCreateVideoDecodeSession(videoDevice.GetInterface(), videoSessionDesc, configuration) ? Result::SUCCESS : Result::UNSUPPORTED;
     }
 

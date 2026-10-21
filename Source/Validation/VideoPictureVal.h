@@ -31,5 +31,6 @@ private:
     VideoPictureUsage m_Usage = VideoPictureUsage::MAX_NUM;
     bool m_IsOutputOnly = false;
     bool m_IsReferenceOnly = false;
+    bool m_IsAV1FilmGrain = false;
 };
 } // namespace nri

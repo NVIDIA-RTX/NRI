@@ -353,6 +353,8 @@ NRI_INLINE Result DeviceVal::CreateTexture(const TextureDesc& textureDesc, Textu
     NRI_RETURN_ON_FAILURE(this, textureDesc.videoCodec < VideoCodec::MAX_NUM, Result::INVALID_ARGUMENT, "'videoCodec' is invalid");
     NRI_RETURN_ON_FAILURE(this, !(textureDesc.usage & (TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_ENCODE)) || textureDesc.videoCodec != VideoCodec::NONE, Result::INVALID_ARGUMENT,
         "'videoCodec' must not be 'NONE' for video textures");
+    NRI_RETURN_ON_FAILURE(this, !textureDesc.videoAV1FilmGrain || ((textureDesc.usage & TextureUsageBits::VIDEO_DECODE) && textureDesc.videoCodec == VideoCodec::AV1), Result::INVALID_ARGUMENT,
+        "'videoAV1FilmGrain' requires 'VIDEO_DECODE' and 'videoCodec = AV1'");
     NRI_RETURN_ON_FAILURE(this, !(textureDesc.usage & TextureUsageBits::VIDEO_OUTPUT_ONLY) || ((textureDesc.usage & (TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_ENCODE)) && !(textureDesc.usage & TextureUsageBits::VIDEO_REFERENCE_ONLY)), Result::INVALID_ARGUMENT,
         "'VIDEO_OUTPUT_ONLY' requires 'VIDEO_DECODE' or 'VIDEO_ENCODE' and is incompatible with 'VIDEO_REFERENCE_ONLY'");
     NRI_RETURN_ON_FAILURE(this, !(textureDesc.usage & TextureUsageBits::HOST_TRANSFER) || (GetFormatSupport(textureDesc.format) & FormatSupportBits::HOST_COPY), Result::UNSUPPORTED,
@@ -987,6 +989,8 @@ NRI_INLINE Result DeviceVal::CreateCommittedTexture(MemoryLocation memoryLocatio
     NRI_RETURN_ON_FAILURE(this, textureDesc.videoCodec < VideoCodec::MAX_NUM, Result::INVALID_ARGUMENT, "'videoCodec' is invalid");
     NRI_RETURN_ON_FAILURE(this, !(textureDesc.usage & (TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_ENCODE)) || textureDesc.videoCodec != VideoCodec::NONE, Result::INVALID_ARGUMENT,
         "'videoCodec' must not be 'NONE' for video textures");
+    NRI_RETURN_ON_FAILURE(this, !textureDesc.videoAV1FilmGrain || ((textureDesc.usage & TextureUsageBits::VIDEO_DECODE) && textureDesc.videoCodec == VideoCodec::AV1), Result::INVALID_ARGUMENT,
+        "'videoAV1FilmGrain' requires 'VIDEO_DECODE' and 'videoCodec = AV1'");
     NRI_RETURN_ON_FAILURE(this, !(textureDesc.usage & TextureUsageBits::VIDEO_OUTPUT_ONLY) || ((textureDesc.usage & (TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_ENCODE)) && !(textureDesc.usage & TextureUsageBits::VIDEO_REFERENCE_ONLY)), Result::INVALID_ARGUMENT,
         "'VIDEO_OUTPUT_ONLY' requires 'VIDEO_DECODE' or 'VIDEO_ENCODE' and is incompatible with 'VIDEO_REFERENCE_ONLY'");
     NRI_RETURN_ON_FAILURE(this, !(textureDesc.usage & TextureUsageBits::HOST_TRANSFER) || (GetFormatSupport(textureDesc.format) & FormatSupportBits::HOST_COPY), Result::UNSUPPORTED,
@@ -1137,6 +1141,8 @@ NRI_INLINE Result DeviceVal::CreatePlacedTexture(Memory* memory, uint64_t offset
     NRI_RETURN_ON_FAILURE(this, textureDesc.videoCodec < VideoCodec::MAX_NUM, Result::INVALID_ARGUMENT, "'videoCodec' is invalid");
     NRI_RETURN_ON_FAILURE(this, !(textureDesc.usage & (TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_ENCODE)) || textureDesc.videoCodec != VideoCodec::NONE, Result::INVALID_ARGUMENT,
         "'videoCodec' must not be 'NONE' for video textures");
+    NRI_RETURN_ON_FAILURE(this, !textureDesc.videoAV1FilmGrain || ((textureDesc.usage & TextureUsageBits::VIDEO_DECODE) && textureDesc.videoCodec == VideoCodec::AV1), Result::INVALID_ARGUMENT,
+        "'videoAV1FilmGrain' requires 'VIDEO_DECODE' and 'videoCodec = AV1'");
     NRI_RETURN_ON_FAILURE(this, !(textureDesc.usage & TextureUsageBits::VIDEO_OUTPUT_ONLY) || ((textureDesc.usage & (TextureUsageBits::VIDEO_DECODE | TextureUsageBits::VIDEO_ENCODE)) && !(textureDesc.usage & TextureUsageBits::VIDEO_REFERENCE_ONLY)), Result::INVALID_ARGUMENT,
         "'VIDEO_OUTPUT_ONLY' requires 'VIDEO_DECODE' or 'VIDEO_ENCODE' and is incompatible with 'VIDEO_REFERENCE_ONLY'");
     NRI_RETURN_ON_FAILURE(this, !(textureDesc.usage & TextureUsageBits::HOST_TRANSFER) || (GetFormatSupport(textureDesc.format) & FormatSupportBits::HOST_COPY), Result::UNSUPPORTED,
