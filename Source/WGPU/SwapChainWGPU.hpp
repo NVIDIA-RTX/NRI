@@ -111,6 +111,11 @@ Result SwapChainWGPU::Create(const SwapChainDesc& swapChainDesc) {
 
     WGPUTextureUsage usage = (WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopySrc | WGPUTextureUsage_CopyDst) & capabilities.usages;
 
+    // TODO: remove WAR when wgpu-native fixes "to_native_texture_usage_flags", which reports COPY_DST as CopySrc.
+    // https://github.com/gfx-rs/wgpu-native/blob/v29.0.1.1/src/conv.rs#L1759-L1766
+    if (wgpuGetVersion() == 0x1D000101 && (capabilities.usages & WGPUTextureUsage_CopySrc)) // v29.0.1.1
+        usage |= WGPUTextureUsage_CopyDst;
+
     wgpuSurfaceCapabilitiesFreeMembers(capabilities);
 
     // TODO: WGPU surface configuration does not implement NRI present scaling/gravity, queued frame count, waitable swapchain, or low-latency flags.
