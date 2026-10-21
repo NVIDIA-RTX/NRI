@@ -810,6 +810,15 @@ static inline bool IsVideoEncodeAV1TileSizeSupported(uint32_t tileWidth, uint32_
     return IsVideoEncodeAV1TileWidthSupported(tileWidth, minTileSize, maxTileSize) && IsVideoEncodeAV1TileHeightSupported(tileHeight, minTileSize, maxTileSize);
 }
 
+static inline bool IsVideoDecodeAV1ReferenceSlotNamed(const VideoAV1DecodePictureDesc& pictureDesc, uint32_t slot) {
+    for (uint32_t i = 0; i < pictureDesc.referenceNum; i++) {
+        if (pictureDesc.references[i].slot == slot && pictureDesc.references[i].name != VideoAV1ReferenceName::NONE)
+            return true;
+    }
+
+    return false;
+}
+
 static inline bool BuildVideoDecodeAV1ReferenceMapping(const VideoAV1DecodePictureDesc& pictureDesc, VideoDecodeAV1ReferenceMappingVK& mapping) {
     for (int32_t& slotIndex : mapping.referenceNameSlotIndices)
         slotIndex = -1;
@@ -818,8 +827,8 @@ static inline bool BuildVideoDecodeAV1ReferenceMapping(const VideoAV1DecodePictu
     mapping.invalidRefFrameIndex = false;
     mapping.missingPrimaryReference = false;
 
-    if (pictureDesc.referenceNum > video::av1::REFERENCE_FRAME_NUM) {
-        mapping.failingReference = video::av1::REFERENCE_FRAME_NUM;
+    if (pictureDesc.referenceNum > video::av1::DECODE_REFERENCE_DESC_MAX_NUM) {
+        mapping.failingReference = video::av1::DECODE_REFERENCE_DESC_MAX_NUM;
         return false;
     }
 

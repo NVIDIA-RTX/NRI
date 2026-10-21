@@ -606,6 +606,16 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
         }
     }
 
+    // AV1: pictures of the reference frame map that the frame doesn't use ("NONE" entries only) stay bound, but aren't decode references
+    uint32_t decodeReferenceNum = videoDecodeDesc.referenceNum;
+    if (videoDecodeDesc.av1PictureDesc) {
+        decodeReferenceNum = 0;
+        for (uint32_t i = 0; i < videoDecodeDesc.referenceNum; i++) {
+            if (IsVideoDecodeAV1ReferenceSlotNamed(*videoDecodeDesc.av1PictureDesc, (uint32_t)referenceSlots[i].slotIndex))
+                std::swap(referenceSlots[decodeReferenceNum++], referenceSlots[i]);
+        }
+    }
+
 #if defined(VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_INLINE_SESSION_PARAMETERS_INFO_KHR)
     VkVideoDecodeAV1InlineSessionParametersInfoKHR& av1InlineSessionParameters = PersistVideoStorage(VkVideoDecodeAV1InlineSessionParametersInfoKHR{VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_INLINE_SESSION_PARAMETERS_INFO_KHR});
 #endif
@@ -813,7 +823,7 @@ NRI_INLINE void CommandBufferVK::DecodeVideo(const VideoDecodeDesc& videoDecodeD
     decodeInfo.srcBufferRange = videoDecodeDesc.bitstream.size;
     decodeInfo.dstPictureResource = dstPicture.GetResource();
     decodeInfo.pSetupReferenceSlot = hasDpbSlots ? &setupReferenceSlot : nullptr;
-    decodeInfo.referenceSlotCount = videoDecodeDesc.referenceNum;
+    decodeInfo.referenceSlotCount = decodeReferenceNum;
     decodeInfo.pReferenceSlots = referenceSlots;
 
     const auto& vk = m_Device.GetDispatchTable();

@@ -455,7 +455,7 @@ static bool IsVideoAV1DecodePictureDescValid(const VideoDecodeDesc& videoDecodeD
     if (desc.tileNum == 0 || desc.tileNum > 64 || !desc.tiles)
         return false;
 
-    if (desc.referenceNum > 8 || (desc.referenceNum != 0 && !desc.references))
+    if (desc.referenceNum > video::av1::DECODE_REFERENCE_DESC_MAX_NUM || (desc.referenceNum != 0 && !desc.references))
         return false;
 
     if (desc.references && !HasValidVideoAV1ReferenceKeys(desc.references, desc.referenceNum))
@@ -508,13 +508,13 @@ static bool IsVideoAV1DecodePictureDescValid(const VideoDecodeDesc& videoDecodeD
         if (!IsVideoAV1ReferenceNameValid(reference.name) || !IsVideoFrameTypeValid(reference.frameType) || reference.refFrameIndex >= 8)
             return false;
 
-        if (reference.name != VideoAV1ReferenceName::NONE && !video::HasReferenceSlot(videoDecodeDesc.references, videoDecodeDesc.referenceNum, reference.slot))
+        // Also "NONE" entries: D3D12 maps every reference frame map entry to a reference picture
+        if (!video::HasReferenceSlot(videoDecodeDesc.references, videoDecodeDesc.referenceNum, reference.slot))
             return false;
     }
 
     for (uint32_t i = 0; i < videoDecodeDesc.referenceNum; i++) {
-        const VideoAV1ReferenceDesc* reference = video::FindReferenceDesc(desc.references, desc.referenceNum, videoDecodeDesc.references[i].slot);
-        if (!reference || reference->name == VideoAV1ReferenceName::NONE)
+        if (!video::FindReferenceDesc(desc.references, desc.referenceNum, videoDecodeDesc.references[i].slot))
             return false;
     }
 

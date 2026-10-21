@@ -695,7 +695,7 @@ NriStruct(VideoH265EncodePictureDesc) {
 };
 
 NriStruct(VideoAV1ReferenceDesc) {
-    Nri(VideoAV1ReferenceName) name; // NONE describes an AV1 DPB slot that is not mapped to a current-frame reference name
+    Nri(VideoAV1ReferenceName) name; // NONE: a valid reference frame map entry ("ref_frame_idx") not used by the current frame (decode: D3D12 needs the complete map)
     uint8_t refFrameIndex;
     Nri(VideoFrameType) frameType;
     uint8_t orderHint;
@@ -918,7 +918,7 @@ NriStruct(VideoAV1EncodeDecodeInfo) {
     uint16_t miRowStarts[65];
     uint16_t widthInSuperblocksMinus1[64];
     uint16_t heightInSuperblocksMinus1[64];
-    Nri(VideoAV1ReferenceDesc) references[8];
+    Nri(VideoAV1ReferenceDesc) references[15]; // 7 named entries, then a NONE entry for every other valid reference frame map entry
     Nri(VideoAV1QuantizationDesc) quantization;
     Nri(VideoAV1LoopFilterDesc) loopFilter;
     Nri(VideoAV1CdefDesc) cdef;
