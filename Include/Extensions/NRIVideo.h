@@ -301,7 +301,8 @@ NriStruct(VideoCapabilities) {
     Nri(QueueType) resolvedMetadataQueueType;    // queue used by the operation that writes resolved metadata
     uint32_t dpbTextureArrayMinLayerNum;         // minimum layer count when "dpbTextureArrayRequired" is true
     bool decodeDpbAndOutputCoincide;             // decode output and reconstructed/DPB setup may use the same texture subresource
-    bool decodeDpbAndOutputDistinct;             // decode output and reconstructed/DPB setup may use different texture subresources
+    bool decodeDpbAndOutputDistinct;             // decode output and reconstructed/DPB setup may use different texture subresources (textures with the session extent)
+    bool decodeReferenceOnlyRequired;            // decode DPB pictures (setup and references) must use "VIDEO_REFERENCE_ONLY" textures, which only video decode can access
     bool dpbTextureArrayRequired;                // all decode or encode DPB pictures must use layers of one texture
     bool decodeNativeArgumentsSupported;
     bool encodeBitstreamRangeSizeSupported;      // if false, encode output ranges must extend to the end of the buffer

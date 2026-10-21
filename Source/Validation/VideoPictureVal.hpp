@@ -8,9 +8,12 @@ NRI_INLINE VideoPictureVal::VideoPictureVal(DeviceVal& device, VideoPicture* imp
     , m_Height(desc.height ? desc.height : textureDesc.height)
     , m_Layer(desc.layer)
     , m_TextureLayerNum(textureDesc.layerNum ? textureDesc.layerNum : 1)
+    , m_TextureWidth(textureDesc.width)
+    , m_TextureHeight(textureDesc.height)
     , m_Codec(textureDesc.videoCodec)
     , m_Usage(desc.usage)
-    , m_IsOutputOnly((textureDesc.usage & TextureUsageBits::VIDEO_OUTPUT_ONLY) != 0) {
+    , m_IsOutputOnly((textureDesc.usage & TextureUsageBits::VIDEO_OUTPUT_ONLY) != 0)
+    , m_IsReferenceOnly((textureDesc.usage & TextureUsageBits::VIDEO_REFERENCE_ONLY) != 0) {
 }
 
 NRI_INLINE VideoPicture* VideoPictureVal::GetImpl() const {
@@ -33,10 +36,23 @@ NRI_INLINE bool VideoPictureVal::IsSameTexture(const VideoPictureVal& videoPictu
     return m_Texture == videoPicture.m_Texture;
 }
 
+NRI_INLINE bool VideoPictureVal::IsSameExtent(const VideoPictureVal& videoPicture) const {
+    // Backends may use the whole textures (D3D12 decode conversion), not only the picture extents
+    return m_Width == videoPicture.m_Width && m_Height == videoPicture.m_Height && m_TextureWidth == videoPicture.m_TextureWidth && m_TextureHeight == videoPicture.m_TextureHeight;
+}
+
+NRI_INLINE bool VideoPictureVal::HasTextureExtent(uint32_t width, uint32_t height) const {
+    return m_TextureWidth == width && m_TextureHeight == height;
+}
+
 NRI_INLINE uint32_t VideoPictureVal::GetTextureLayerNum() const {
     return m_TextureLayerNum;
 }
 
 NRI_INLINE bool VideoPictureVal::IsOutputOnly() const {
     return m_IsOutputOnly;
+}
+
+NRI_INLINE bool VideoPictureVal::IsReferenceOnly() const {
+    return m_IsReferenceOnly;
 }

@@ -24,6 +24,32 @@ static inline GUID GetVideoDecodeProfile(VideoCodec codec, Format format) {
     }
 }
 
+// Distinct decode output is a same-format, same-size "conversion" without colour conversion: both colour spaces are the same
+static inline DXGI_COLOR_SPACE_TYPE GetVideoDecodeColorSpace(Format format) {
+    return (format == Format::P010_UNORM || format == Format::P016_UNORM) ? DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P2020 : DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P709;
+}
+
+static inline bool IsVideoDecodeConversionSupported(ID3D12VideoDevice* videoDevice, const D3D12_VIDEO_DECODE_CONFIGURATION& configuration, uint32_t width, uint32_t height, Format format) {
+    const DXGI_FORMAT dxgiFormat = GetDxgiFormat(format).typed;
+    const DXGI_COLOR_SPACE_TYPE colorSpace = GetVideoDecodeColorSpace(format);
+
+    D3D12_FEATURE_DATA_VIDEO_DECODE_CONVERSION_SUPPORT conversionSupport = {};
+    conversionSupport.Configuration = configuration;
+    conversionSupport.DecodeSample = {width, height, {dxgiFormat, colorSpace}};
+    conversionSupport.OutputFormat = {dxgiFormat, colorSpace};
+    conversionSupport.FrameRate = {30, 1};
+
+    HRESULT hr = videoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_DECODE_CONVERSION_SUPPORT, &conversionSupport, sizeof(conversionSupport));
+    if (FAILED(hr) || !(conversionSupport.SupportFlags & D3D12_VIDEO_DECODE_CONVERSION_SUPPORT_FLAG_SUPPORTED))
+        return false;
+
+    // The output has the decode size
+    const D3D12_VIDEO_SIZE_RANGE& outputSizeRange = conversionSupport.ScaleSupport.OutputSizeRange;
+    const bool isEvenRequired = (conversionSupport.ScaleSupport.Flags & D3D12_VIDEO_SCALE_SUPPORT_FLAG_EVEN_DIMENSIONS_ONLY) != 0;
+
+    return width >= outputSizeRange.MinWidth && width <= outputSizeRange.MaxWidth && height >= outputSizeRange.MinHeight && height <= outputSizeRange.MaxHeight && (!isEvenRequired || (width % 2 == 0 && height % 2 == 0));
+}
+
 static inline void FillVideoCapabilities(VideoCapabilities& videoCapabilities, const VideoSessionDesc& videoSessionDesc) {
     videoCapabilities = {};
     videoCapabilities.widthMin = videoSessionDesc.width;

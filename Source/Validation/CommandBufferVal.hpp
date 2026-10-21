@@ -1652,6 +1652,11 @@ NRI_INLINE void CommandBufferVal::DecodeVideo(const VideoDecodeDesc& videoDecode
         NRI_RETURN_ON_FAILURE(&m_Device, IsVideoPictureValidForSession(setupPictureVal, VideoPictureUsage::DECODE_REFERENCE, sessionVal.GetDesc()), ReturnVoid(), "'setupPicture' must have decode reference usage and match the session format, codec and coded extent");
 
         isDpbAndOutputDistinct = !setupPictureVal.IsSameSubresource(dstPictureVal);
+        NRI_RETURN_ON_FAILURE(&m_Device, !isDpbAndOutputDistinct || setupPictureVal.IsSameExtent(dstPictureVal), ReturnVoid(), "a distinct 'setupPicture' must have the same picture and texture extents as 'dstPicture'");
+
+        // Distinct support covers the session extent (D3D12 converts between the whole textures)
+        const VideoSessionDesc& sessionDesc = sessionVal.GetDesc();
+        NRI_RETURN_ON_FAILURE(&m_Device, !isDpbAndOutputDistinct || (setupPictureVal.HasTextureExtent(sessionDesc.width, sessionDesc.height) && dstPictureVal.HasTextureExtent(sessionDesc.width, sessionDesc.height)), ReturnVoid(), "distinct 'dstPicture' and 'setupPicture' textures must have the session extent");
     }
 
     NRI_RETURN_ON_FAILURE(&m_Device, isDpbAndOutputDistinct ? capabilities.decodeDpbAndOutputDistinct : capabilities.decodeDpbAndOutputCoincide, ReturnVoid(), "the video session does not support the requested decode output and DPB setup mode");
@@ -1677,7 +1682,10 @@ NRI_INLINE void CommandBufferVal::DecodeVideo(const VideoDecodeDesc& videoDecode
 
         VideoPictureVal& pictureVal = *(VideoPictureVal*)videoDecodeDesc.references[i].picture;
         NRI_RETURN_ON_FAILURE(&m_Device, IsVideoPictureValidForSession(pictureVal, VideoPictureUsage::DECODE_REFERENCE, sessionVal.GetDesc()), ReturnVoid(), "'references[%u].picture' must have decode reference usage and match the session format, codec and coded extent", i);
+        NRI_RETURN_ON_FAILURE(&m_Device, !capabilities.decodeReferenceOnlyRequired || pictureVal.IsReferenceOnly(), ReturnVoid(), "the video session requires 'references[%u].picture' to use a 'VIDEO_REFERENCE_ONLY' texture", i);
     }
+
+    NRI_RETURN_ON_FAILURE(&m_Device, !capabilities.decodeReferenceOnlyRequired || !videoDecodeDesc.setupPicture || ((VideoPictureVal*)videoDecodeDesc.setupPicture)->IsReferenceOnly(), ReturnVoid(), "the video session requires 'setupPicture' to use a 'VIDEO_REFERENCE_ONLY' texture");
 
     const VideoPictureVal* effectiveSetupPictureVal = videoDecodeDesc.setupPicture ? (const VideoPictureVal*)videoDecodeDesc.setupPicture : &dstPictureVal;
     NRI_RETURN_ON_FAILURE(&m_Device, IsVideoDpbTextureArrayValid(effectiveSetupPictureVal, videoDecodeDesc.references, videoDecodeDesc.referenceNum, capabilities), ReturnVoid(), "the session requires all decode DPB pictures to use a texture array with at least 'VideoCapabilities::dpbTextureArrayMinLayerNum' layers");

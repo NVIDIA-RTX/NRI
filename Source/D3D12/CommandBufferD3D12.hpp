@@ -1377,6 +1377,17 @@ NRI_INLINE void CommandBufferD3D12::DecodeVideo(const VideoDecodeDesc& videoDeco
     output.pOutputTexture2D = (ID3D12Resource*)dstPicture.GetTexture();
     output.OutputSubresource = dstPicture.GetSubresource();
 
+    // Distinct decode output: the reconstructed picture goes to the setup (DPB) picture, the output gets the same picture without colour conversion
+    if (setupPicture.GetTexture() != dstPicture.GetTexture() || setupPicture.GetSubresource() != dstPicture.GetSubresource()) {
+        const DXGI_COLOR_SPACE_TYPE colorSpace = GetVideoDecodeColorSpace(session.GetDesc().format);
+
+        output.ConversionArguments.Enable = TRUE;
+        output.ConversionArguments.pReferenceTexture2D = (ID3D12Resource*)setupPicture.GetTexture();
+        output.ConversionArguments.ReferenceSubresource = setupPicture.GetSubresource();
+        output.ConversionArguments.OutputColorSpace = colorSpace;
+        output.ConversionArguments.DecodeColorSpace = colorSpace;
+    }
+
     GetVideoDecodeCommandList()->DecodeFrame(session.GetDecoder(), &output, &input);
 }
 

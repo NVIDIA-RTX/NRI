@@ -307,7 +307,10 @@ static bool IsVideoDecodeCodecSupported(ID3D12VideoDevice* videoDevice, VideoCod
     if ((decodeSupport.SupportFlags & D3D12_VIDEO_DECODE_SUPPORT_FLAG_SUPPORTED) == 0)
         return false;
 
-    return (decodeSupport.ConfigurationFlags & D3D12_VIDEO_DECODE_CONFIGURATION_FLAG_REFERENCE_ONLY_ALLOCATIONS_REQUIRED) == 0;
+    if ((decodeSupport.ConfigurationFlags & D3D12_VIDEO_DECODE_CONFIGURATION_FLAG_REFERENCE_ONLY_ALLOCATIONS_REQUIRED) == 0)
+        return true;
+
+    return IsVideoDecodeConversionSupported(videoDevice, configuration, width, height, Format::NV12_UNORM);
 }
 
 static bool CanUseSmallAlignment(const D3D12_RESOURCE_DESC1& desc, const FormatProps& formatProps) {
