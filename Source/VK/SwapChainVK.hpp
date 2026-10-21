@@ -302,12 +302,13 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
 
         // Caps
         const VkSurfaceCapabilitiesKHR& surfaceCaps = surfaceCaps2.surfaceCapabilities;
-        swapChainExtent.width = surfaceCaps.currentExtent.width;
-        swapChainExtent.height = surfaceCaps.currentExtent.height;
-        if (surfaceCaps.currentExtent.width != UINT32_MAX) {
+        VkExtent2D desiredExtent = { swapChainDesc.width, swapChainDesc.height };
+        if (isScalingSupported) {
+            swapChainExtent.width = std::max(surfacePresentScalingCaps.minScaledImageExtent.width, std::min(surfacePresentScalingCaps.maxScaledImageExtent.width, desiredExtent.width));
+            swapChainExtent.height = std::max(surfacePresentScalingCaps.minScaledImageExtent.height, std::min(surfacePresentScalingCaps.maxScaledImageExtent.height, desiredExtent.height));
+        } else if (surfaceCaps.currentExtent.width != UINT32_MAX) {
             swapChainExtent = surfaceCaps.currentExtent;
         } else {
-            VkExtent2D desiredExtent = { swapChainDesc.width, swapChainDesc.height };
             swapChainExtent.width = std::max(surfaceCaps.minImageExtent.width, std::min(surfaceCaps.maxImageExtent.width, desiredExtent.width));
             swapChainExtent.height = std::max(surfaceCaps.minImageExtent.height, std::min(surfaceCaps.maxImageExtent.height, desiredExtent.height));
         }
@@ -344,7 +345,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         swapchainInfo.minImageCount = textureNum;
         swapchainInfo.imageFormat = surfaceFormat.surfaceFormat.format;
         swapchainInfo.imageColorSpace = surfaceFormat.surfaceFormat.colorSpace;
-        swapchainInfo.imageExtent = {swapChainDesc.width, swapChainDesc.height};
+        swapchainInfo.imageExtent = {swapChainExtent.width, swapChainExtent.height};
         swapchainInfo.imageArrayLayers = 1;
         swapchainInfo.imageUsage = swapchainImageUsageFlags;
         swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -473,12 +474,9 @@ NRI_INLINE Result SwapChainVK::AcquireNextTexture(FenceVK& acquireSemaphore, uin
 
     const auto& vk = m_Device.GetDispatchTable();
     VkResult vkResult = vk.AcquireNextImage2KHR(m_Device, &acquireInfo, &m_TextureIndex);
-    textureIndex = m_TextureIndex;
-
-    if (vkResult == VK_ERROR_OUT_OF_DATE_KHR)
-        return Result::OUT_OF_DATE;
-
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "AcquireNextImage2KHR");
+
+    textureIndex = m_TextureIndex;
 
     return Result::SUCCESS;
 }
@@ -522,9 +520,6 @@ NRI_INLINE Result SwapChainVK::Present(FenceVK& releaseSemaphore, uint64_t prese
 
     if ((m_Flags & SwapChainBits::ALLOW_LOW_LATENCY) && presentIdValue != 0)
         SetLatencyMarker(presentIdValue, (LatencyMarker)VK_LATENCY_MARKER_PRESENT_END_NV);
-
-    if (vkResult == VK_ERROR_OUT_OF_DATE_KHR)
-        return Result::OUT_OF_DATE;
 
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "QueuePresentKHR");
 
