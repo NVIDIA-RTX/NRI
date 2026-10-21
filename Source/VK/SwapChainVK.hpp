@@ -313,6 +313,10 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
             swapChainExtent.height = std::max(surfaceCaps.minImageExtent.height, std::min(surfaceCaps.maxImageExtent.height, desiredExtent.height));
         }
 
+        // A minimized surface may have no drawable extent
+        if (swapChainExtent.width == 0 || swapChainExtent.height == 0)
+            return Result::NOT_READY;
+
         // Silently clamp "textureNum" to the supported range
         if (textureNum < surfaceCaps.minImageCount)
             textureNum = surfaceCaps.minImageCount;
@@ -420,8 +424,8 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
             desc.vkFormat = surfaceFormat.surfaceFormat.format;
             desc.vkImageType = VK_IMAGE_TYPE_2D;
             desc.vkImageUsageFlags = swapchainImageUsageFlags;
-            desc.width = swapChainExtent.width;
-            desc.height = swapChainExtent.height;
+            desc.width = (Dim_t)swapChainExtent.width;
+            desc.height = (Dim_t)swapChainExtent.height;
             desc.depth = 1;
             desc.mipNum = 1;
             desc.layerNum = 1;
