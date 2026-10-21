@@ -60,6 +60,26 @@ static inline uint8_t GetVideoSessionBitDepth(Format format) {
     return format == Format::NV12_UNORM ? 8 : 10;
 }
 
+// "level_idc" (H.264 Table A-1, 10 times the level number), except level 1b which has no native Vulkan level
+static inline bool IsVideoH264LevelIdcValid(uint8_t levelIdc) {
+    constexpr std::array<uint8_t, 19> levels = {10, 11, 12, 13, 20, 21, 22, 30, 31, 32, 40, 41, 42, 50, 51, 52, 60, 61, 62};
+
+    return std::find(levels.begin(), levels.end(), levelIdc) != levels.end();
+}
+
+static inline bool AreVideoH264LevelsValid(const VideoSessionParametersDesc& desc) {
+    if (!desc.h264Parameters)
+        return true;
+
+    const VideoH264SessionParametersDesc& parameters = *desc.h264Parameters;
+    for (uint32_t i = 0; i < parameters.sequenceParameterSetNum; i++) {
+        if (!IsVideoH264LevelIdcValid(parameters.sequenceParameterSets[i].levelIdc))
+            return false;
+    }
+
+    return true;
+}
+
 // "general_level_idc" (H.265 Table A.8, 30 times the level number)
 static inline bool IsVideoH265LevelIdcValid(uint8_t generalLevelIdc) {
     constexpr std::array<uint8_t, 13> levels = {30, 60, 63, 90, 93, 120, 123, 150, 153, 156, 180, 183, 186};
@@ -1829,6 +1849,8 @@ static Result NRI_CALL CreateVideoSessionParameters(Device& device, const VideoS
     VideoSessionVal& sessionVal = *(VideoSessionVal*)videoSessionParametersDesc.session;
 
     NRI_RETURN_ON_FAILURE(&deviceVal, IsVideoSessionParametersDescValid(sessionVal.GetDesc(), sessionVal.GetCapabilities(), videoSessionParametersDesc), Result::INVALID_ARGUMENT, "'videoSessionParametersDesc' is invalid for the fixed session profile, format or picture layout");
+    NRI_RETURN_ON_FAILURE(&deviceVal, AreVideoH264LevelsValid(videoSessionParametersDesc), Result::INVALID_ARGUMENT,
+        "H.264 'levelIdc' must be 10 times a level of H.264 Table A-1 (10, 11, 12, 13, 20, 21, 22, 30, 31, 32, 40, 41, 42, 50, 51, 52, 60, 61 or 62)");
     NRI_RETURN_ON_FAILURE(&deviceVal, AreVideoH265LevelsValid(videoSessionParametersDesc), Result::INVALID_ARGUMENT,
         "H.265 'generalLevelIdc' must be 30 times a level of H.265 Table A.8 (30, 60, 63, 90, 93, 120, 123, 150, 153, 156, 180, 183 or 186)");
 
@@ -1905,6 +1927,9 @@ static Result NRI_CALL GetVideoPictureState(const VideoPicture& videoPicture, Vi
 static Result NRI_CALL WriteVideoAnnexBParameterSets(VideoAnnexBParameterSetsDesc& annexBParameterSetsDesc) {
     if (annexBParameterSetsDesc.codec == VideoCodec::H264) {
         if (!annexBParameterSetsDesc.h264Sps || !annexBParameterSetsDesc.h264Pps || !video::h264::IsFrameCroppingValid(*annexBParameterSetsDesc.h264Sps))
+            return Result::INVALID_ARGUMENT;
+
+        if (!IsVideoH264LevelIdcValid(annexBParameterSetsDesc.h264Sps->levelIdc))
             return Result::INVALID_ARGUMENT;
     } else if (annexBParameterSetsDesc.codec == VideoCodec::H265) {
         if (!annexBParameterSetsDesc.h265Vps || !annexBParameterSetsDesc.h265Sps || !annexBParameterSetsDesc.h265Pps)

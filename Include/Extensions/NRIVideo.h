@@ -369,7 +369,7 @@ NriStruct(VideoPictureState) {
 NriStruct(VideoH264SequenceParameterSetDesc) {
     Nri(VideoH264SequenceParameterSetBits) flags;
     uint8_t profileIdc;
-    uint8_t levelIdc;
+    uint8_t levelIdc; // "level_idc" as coded in the bitstream: 10 times the level number (e.g. 41 = level 4.1), level 1b is not supported
     uint8_t chromaFormatIdc;
     uint8_t sequenceParameterSetId;
     uint8_t bitDepthLumaMinus8;
